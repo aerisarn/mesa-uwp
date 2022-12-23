@@ -2051,9 +2051,18 @@ si_nir_generate_gs_copy_shader(struct si_screen *sscreen,
 
    shader->info.nr_pos_exports = si_get_nr_pos_exports(gs_selector, gskey);
 
+   unsigned clip_cull_mask =
+      (gsinfo->clipdist_mask & ~gskey->ge.opt.kill_clip_distances) | gsinfo->culldist_mask;
+
    nir_shader *nir =
       ac_nir_create_gs_copy_shader(gs_nir,
+                                   sscreen->info.gfx_level,
+                                   clip_cull_mask,
+                                   shader->info.vs_output_param_offset,
+                                   shader->info.nr_param_exports,
                                    gskey->ge.opt.remove_streamout,
+                                   gskey->ge.opt.kill_pointsize,
+                                   sscreen->options.vrs2x2,
                                    output_info);
 
    struct si_shader_args args;
@@ -2095,9 +2104,6 @@ struct si_gs_output_info {
    uint8_t usage_mask_16bit_lo[16];
    uint8_t usage_mask_16bit_hi[16];
 
-   uint8_t slot_to_location[64];
-   uint8_t slot_to_location_16bit[16];
-
    ac_nir_gs_output_info info;
 };
 
@@ -2109,7 +2115,6 @@ si_init_gs_output_info(struct si_shader_info *info, struct si_gs_output_info *ou
       if (slot < VARYING_SLOT_VAR0_16BIT) {
          out_info->streams[slot] = info->output_streams[i];
          out_info->usage_mask[slot] = info->output_usagemask[i];
-         out_info->slot_to_location[slot] = i;
       } else {
          unsigned index = slot - VARYING_SLOT_VAR0_16BIT;
          /* TODO: 16bit need separated fields for lo/hi part. */
@@ -2117,7 +2122,6 @@ si_init_gs_output_info(struct si_shader_info *info, struct si_gs_output_info *ou
          out_info->streams_16bit_hi[index] = info->output_streams[i];
          out_info->usage_mask_16bit_lo[index] = info->output_usagemask[i];
          out_info->usage_mask_16bit_hi[index] = info->output_usagemask[i];
-         out_info->slot_to_location_16bit[index] = i;
       }
    }
 
@@ -2133,9 +2137,6 @@ si_init_gs_output_info(struct si_shader_info *info, struct si_gs_output_info *ou
 
    /* TODO: construct 16bit slot per component store type. */
    ac_info->types_16bit_lo = ac_info->types_16bit_hi = NULL;
-
-   ac_info->slot_to_location = out_info->slot_to_location;
-   ac_info->slot_to_location_16bit = out_info->slot_to_location_16bit;
 }
 
 bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,

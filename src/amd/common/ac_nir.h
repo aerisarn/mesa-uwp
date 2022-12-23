@@ -226,15 +226,17 @@ typedef struct ac_nir_gs_output_info {
    /* type for each 16bit slot component */
    nir_alu_type (*types_16bit_lo)[4];
    nir_alu_type (*types_16bit_hi)[4];
-
-   /* map varying slot to driver location */
-   const uint8_t *slot_to_location;
-   const uint8_t *slot_to_location_16bit;
 } ac_nir_gs_output_info;
 
 nir_shader *
 ac_nir_create_gs_copy_shader(const nir_shader *gs_nir,
+                             enum amd_gfx_level gfx_level,
+                             uint32_t clip_cull_mask,
+                             const uint8_t *param_offsets,
+                             bool has_param_exports,
                              bool disable_streamout,
+                             bool kill_pointsize,
+                             bool force_vrs,
                              ac_nir_gs_output_info *output_info);
 
 void

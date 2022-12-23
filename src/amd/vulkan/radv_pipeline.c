@@ -3042,7 +3042,14 @@ radv_pipeline_create_gs_copy_shader(struct radv_pipeline *pipeline,
       .usage_mask = gs_info->gs.output_usage_mask,
    };
    nir_shader *nir =
-      ac_nir_create_gs_copy_shader(stages[MESA_SHADER_GEOMETRY].nir, false, &output_info);
+      ac_nir_create_gs_copy_shader(stages[MESA_SHADER_GEOMETRY].nir,
+                                   device->physical_device->rad_info.gfx_level,
+                                   gs_info->outinfo.clip_dist_mask | gs_info->outinfo.cull_dist_mask,
+                                   gs_info->outinfo.vs_output_param_offset,
+                                   gs_info->outinfo.param_exports,
+                                   false, false, false,
+                                   &output_info);
+
    nir_validate_shader(nir, "after ac_nir_create_gs_copy_shader");
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
@@ -3051,15 +3058,7 @@ radv_pipeline_create_gs_copy_shader(struct radv_pipeline *pipeline,
    info.wave_size = 64; /* Wave32 not supported. */
    info.workgroup_size = 64; /* HW VS: separate waves, no workgroups */
    info.so = gs_info->so;
-
-   if (gs_info->outinfo.export_clip_dists) {
-      if (stages[MESA_SHADER_GEOMETRY].nir->info.outputs_written & VARYING_BIT_CLIP_DIST0)
-         info.outinfo.vs_output_param_offset[VARYING_SLOT_CLIP_DIST0] = info.outinfo.param_exports++;
-      if (stages[MESA_SHADER_GEOMETRY].nir->info.outputs_written & VARYING_BIT_CLIP_DIST1)
-         info.outinfo.vs_output_param_offset[VARYING_SLOT_CLIP_DIST1] = info.outinfo.param_exports++;
-
-      info.outinfo.export_clip_dists = true;
-   }
+   info.outinfo = gs_info->outinfo;
 
    struct radv_shader_args gs_copy_args = {0};
    gs_copy_args.is_gs_copy_shader = true;

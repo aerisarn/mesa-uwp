@@ -465,7 +465,13 @@ emit_streamout(nir_builder *b, unsigned stream, nir_xfb_info *info,
 
 nir_shader *
 ac_nir_create_gs_copy_shader(const nir_shader *gs_nir,
+                             enum amd_gfx_level gfx_level,
+                             uint32_t clip_cull_mask,
+                             const uint8_t *param_offsets,
+                             bool has_param_exports,
                              bool disable_streamout,
+                             bool kill_pointsize,
+                             bool force_vrs,
                              ac_nir_gs_output_info *output_info)
 {
    nir_builder b = nir_builder_init_simple_shader(
@@ -473,6 +479,9 @@ ac_nir_create_gs_copy_shader(const nir_shader *gs_nir,
 
    nir_foreach_shader_out_variable(var, gs_nir)
       nir_shader_add_variable(b.shader, nir_variable_clone(var, b.shader));
+
+   b.shader->info.outputs_written = gs_nir->info.outputs_written;
+   b.shader->info.outputs_written_16bit = gs_nir->info.outputs_written_16bit;
 
    nir_ssa_def *gsvs_ring = nir_load_ring_gsvs_amd(&b);
 
@@ -507,6 +516,14 @@ ac_nir_create_gs_copy_shader(const nir_shader *gs_nir,
                                    .base = offset,
                                    .access = ACCESS_COHERENT | ACCESS_STREAM_CACHE_POLICY);
 
+            /* clamp legacy color output */
+            if (i == VARYING_SLOT_COL0 || i == VARYING_SLOT_COL1 ||
+                i == VARYING_SLOT_BFC0 || i == VARYING_SLOT_BFC0) {
+               nir_ssa_def *color = outputs.data[i][j];
+               nir_ssa_def *clamp = nir_load_clamp_vertex_color_amd(&b);
+               outputs.data[i][j] = nir_bcsel(&b, clamp, nir_fsat(&b, color), color);
+            }
+
             offset += gs_nir->info.gs.vertices_out * 16 * 4;
          }
       }
@@ -539,49 +556,21 @@ ac_nir_create_gs_copy_shader(const nir_shader *gs_nir,
          emit_streamout(&b, stream, info, &outputs);
 
       if (stream == 0) {
-         u_foreach_bit64 (i, gs_nir->info.outputs_written) {
-            unsigned location = output_info->slot_to_location ?
-               output_info->slot_to_location[i] : i;
+         uint64_t export_outputs = b.shader->info.outputs_written;
+         if (kill_pointsize)
+            export_outputs &= ~VARYING_BIT_PSIZ;
 
-            for (unsigned j = 0; j < 4; j++) {
-               if (outputs.data[i][j]) {
-                  nir_store_output(&b, outputs.data[i][j], zero,
-                                   .base = location,
-                                   .component = j,
-                                   .write_mask = 1,
-                                   .io_semantics = {.location = i, .num_slots = 1});
-               }
-            }
+         ac_nir_export_position(&b, gfx_level, clip_cull_mask, !has_param_exports,
+                                force_vrs, export_outputs, outputs.data);
+
+         if (has_param_exports) {
+            ac_nir_export_parameter(&b, param_offsets,
+                                    b.shader->info.outputs_written,
+                                    b.shader->info.outputs_written_16bit,
+                                    outputs.data,
+                                    outputs.data_16bit_lo,
+                                    outputs.data_16bit_hi);
          }
-
-         u_foreach_bit (i, gs_nir->info.outputs_written_16bit) {
-            unsigned location = output_info->slot_to_location_16bit ?
-               output_info->slot_to_location_16bit[i] : VARYING_SLOT_VAR0_16BIT + i;
-
-            for (unsigned j = 0; j < 4; j++) {
-               if (outputs.data_16bit_lo[i][j]) {
-                  nir_store_output(&b, outputs.data_16bit_lo[i][j], zero,
-                                   .base = location,
-                                   .component = j,
-                                   .write_mask = 1,
-                                   .io_semantics = {.location = i, .num_slots = 1});
-               }
-
-               if (outputs.data_16bit_hi[i][j]) {
-                  nir_store_output(&b, outputs.data_16bit_hi[i][j], zero,
-                                   .base = location,
-                                   .component = j,
-                                   .write_mask = 1,
-                                   .io_semantics = {
-                                      .location = i,
-                                      .high_16bits = true,
-                                      .num_slots = 1
-                                   });
-               }
-            }
-         }
-
-         nir_export_vertex_amd(&b);
       }
 
       if (stream_id)
