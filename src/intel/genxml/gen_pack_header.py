@@ -2,7 +2,7 @@
 
 import argparse
 import ast
-import xml.parsers.expat
+import xml.etree.ElementTree as et
 import re
 import sys
 import copy
@@ -430,10 +430,6 @@ class Value(object):
 
 class Parser(object):
     def __init__(self):
-        self.parser = xml.parsers.expat.ParserCreate()
-        self.parser.StartElementHandler = self.start_element
-        self.parser.EndElementHandler = self.end_element
-
         self.instruction = None
         self.structs = {}
         # Set of enum names we've seen.
@@ -448,12 +444,12 @@ class Parser(object):
     def gen_guard(self):
         return self.gen_prefix("{0}_PACK_H".format(self.platform))
 
-    def start_element(self, name, attrs):
-        if name == "genxml":
-            self.platform = attrs["name"]
-            self.gen = attrs["gen"].replace('.', '')
-            print(pack_header % {'license': license, 'platform': self.platform, 'guard': self.gen_guard()})
-        elif name in ("instruction", "struct", "register"):
+    def process_item(self, item):
+        name = item.tag
+        assert name != "genxml"
+        attrs = item.attrib
+
+        if name in ("instruction", "struct", "register"):
             if name == "instruction":
                 self.instruction = safe_name(attrs["name"])
                 self.length_bias = int(attrs["bias"])
@@ -497,8 +493,12 @@ class Parser(object):
                 self.prefix = None
         elif name == "value":
             self.values.append(Value(attrs))
+        else:
+            assert False
 
-    def end_element(self, name):
+        for child_item in item:
+            self.process_item(child_item)
+
         if name  == "instruction":
             self.emit_instruction()
             self.instruction = None
@@ -519,8 +519,10 @@ class Parser(object):
         elif name  == "enum":
             self.emit_enum()
             self.enum = None
-        elif name == "genxml":
-            print('#endif /* %s */' % self.gen_guard())
+        elif name  == "value":
+            pass
+        else:
+            assert False
 
     def emit_template_struct(self, name, group):
         print("struct %s {" % self.gen_prefix(name))
@@ -612,9 +614,14 @@ class Parser(object):
         print('};\n')
 
     def parse(self, filename):
-        file = open(filename, "rb")
-        self.parser.ParseFile(file)
-        file.close()
+        xml = et.parse(filename)
+        root = xml.getroot()
+        self.platform = root.attrib["name"]
+        self.gen = root.attrib["gen"].replace('.', '')
+        print(pack_header % {'license': license, 'platform': self.platform, 'guard': self.gen_guard()})
+        for item in root:
+            self.process_item(item)
+        print('#endif /* %s */' % self.gen_guard())
 
 def parse_args():
     p = argparse.ArgumentParser()
