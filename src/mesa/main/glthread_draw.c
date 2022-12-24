@@ -1233,11 +1233,6 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
                                    basevertex, NULL, 0, NULL);
          return;
       }
-
-      /* If there is too much data to upload, sync and let the driver unroll
-       * indices. */
-      if (util_is_vbo_upload_ratio_too_large(total_count, num_vertices))
-         goto sync;
    } else if (has_user_indices) {
       /* Only compute total_count for the upload of indices. */
       for (unsigned i = 0; i < draw_count; i++) {
