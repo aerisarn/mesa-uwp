@@ -156,20 +156,23 @@ typedef struct {
 
    unsigned max_workgroup_size;
    unsigned wave_size;
+   uint32_t clipdist_enable_mask;
    const uint8_t *vs_output_param_offset; /* GFX11+ */
+   bool has_param_exports;
    bool can_cull;
    bool disable_streamout;
    bool has_gen_prim_query;
    bool has_xfb_prim_query;
+   bool kill_pointsize;
+   bool force_vrs;
 
    /* VS */
    unsigned num_vertices_per_primitive;
    bool early_prim_export;
    bool passthrough;
    bool use_edgeflags;
-   int primitive_id_location;
+   bool export_primitive_id;
    uint32_t instance_rate_inputs;
-   uint32_t clipdist_enable_mask;
    uint32_t user_clip_plane_enable_mask;
 
    /* GS */

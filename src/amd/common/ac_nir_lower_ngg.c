@@ -82,7 +82,6 @@ typedef struct
    bool streamout_enabled;
    bool has_user_edgeflags;
    unsigned max_num_waves;
-   unsigned position_store_base;
 
    /* LDS params */
    unsigned pervertex_lds_bytes;
@@ -597,14 +596,7 @@ emit_store_ngg_nogs_es_primitive_id(nir_builder *b, lower_ngg_nogs_state *st)
       prim_id = nir_load_primitive_id(b);
    }
 
-   nir_io_semantics io_sem = {
-      .location = VARYING_SLOT_PRIMITIVE_ID,
-      .num_slots = 1,
-   };
-
-   nir_store_output(b, prim_id, nir_imm_zero(b, 1, 32),
-                    .base = st->options->primitive_id_location,
-                    .src_type = nir_type_uint32, .io_semantics = io_sem);
+   st->outputs[VARYING_SLOT_PRIMITIVE_ID][0] = prim_id;
 
    /* Update outputs_written to reflect that the pass added a new output. */
    b->shader->info.outputs_written |= VARYING_BIT_PRIMITIVE_ID;
@@ -776,9 +768,6 @@ remove_extra_pos_output(nir_builder *b, nir_instr *instr, void *state)
     */
    nir_ssa_def *store_val = intrin->src[0].ssa;
    unsigned store_pos_component = nir_intrinsic_component(intrin);
-
-   /* save the store base for re-construct store output instruction */
-   s->position_store_base = nir_intrinsic_base(intrin);
 
    nir_instr_remove(instr);
 
@@ -2105,12 +2094,8 @@ ngg_nogs_gather_outputs(nir_builder *b, struct exec_list *cf_list, lower_ngg_nog
             type[c] = src_type;
          }
 
-         /* remove the edge flag output anyway as it should not be passed to next stage */
-         bool is_edge_slot = slot == VARYING_SLOT_EDGE;
-         /* remove non-pos-export slot when GFX11, they are written to buffer memory */
-         bool is_pos_export_slot = slot < VARYING_SLOT_MAX && (BITFIELD64_BIT(slot) & POS_EXPORT_MASK);
-         if (is_edge_slot || (s->options->gfx_level >= GFX11 && !is_pos_export_slot))
-            nir_instr_remove(instr);
+         /* remove all store output instructions */
+         nir_instr_remove(instr);
       }
    }
 }
@@ -2260,9 +2245,9 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
    };
 
    const bool need_prim_id_store_shared =
-      options->primitive_id_location >= 0 && shader->info.stage == MESA_SHADER_VERTEX;
+      options->export_primitive_id && shader->info.stage == MESA_SHADER_VERTEX;
 
-   if (options->primitive_id_location >= 0) {
+   if (options->export_primitive_id) {
       nir_variable *prim_id_var = nir_variable_create(shader, nir_var_shader_out, glsl_uint_type(), "ngg_prim_id");
       prim_id_var->data.location = VARYING_SLOT_PRIMITIVE_ID;
       prim_id_var->data.driver_location = VARYING_SLOT_PRIMITIVE_ID;
@@ -2326,7 +2311,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
       ngg_nogs_get_pervertex_lds_size(shader->info.stage,
                                       shader->num_outputs,
                                       state.streamout_enabled,
-                                      options->primitive_id_location >= 0,
+                                      options->export_primitive_id,
                                       state.has_user_edgeflags);
 
    if (need_prim_id_store_shared) {
@@ -2337,7 +2322,6 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
                             .memory_semantics = NIR_MEMORY_ACQ_REL, .memory_modes = nir_var_mem_shared);
    }
 
-   nir_intrinsic_instr *export_vertex_instr;
    nir_ssa_def *es_thread =
       options->can_cull ? nir_load_var(b, es_accepted_var) : has_input_vertex(b);
 
@@ -2357,11 +2341,8 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
       nir_cf_reinsert(&extracted, b->cursor);
       b->cursor = nir_after_cf_list(&if_es_thread->then_list);
 
-      if (options->primitive_id_location >= 0)
+      if (options->export_primitive_id)
          emit_store_ngg_nogs_es_primitive_id(b, &state);
-
-      /* Export all vertex attributes (including the primitive ID) */
-      export_vertex_instr = nir_export_vertex_amd(b);
    }
    nir_pop_if(b, if_es_thread);
 
@@ -2376,12 +2357,11 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
        * it seems that it's best to put the position export always at the end, and
        * then let ACO schedule it up (slightly) only when early prim export is used.
        */
-      b->cursor = nir_before_instr(&export_vertex_instr->instr);
+      b->cursor = nir_after_cf_list(&if_es_thread->then_list);
 
       nir_ssa_def *pos_val = nir_load_var(b, state.position_value_var);
-      nir_io_semantics io_sem = { .location = VARYING_SLOT_POS, .num_slots = 1 };
-      nir_store_output(b, pos_val, nir_imm_int(b, 0), .base = state.position_store_base,
-                       .component = 0, .io_semantics = io_sem, .src_type = nir_type_float32);
+      for (int i = 0; i < 4; i++)
+         state.outputs[VARYING_SLOT_POS][i] = nir_channel(b, pos_val, i);
    }
 
    /* Gather outputs data and types */
@@ -2407,23 +2387,40 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
       emit_ngg_nogs_prim_export(b, &state, nir_load_var(b, prim_exp_arg_var));
    }
 
-   /* Export varyings for GFX11+ */
-   if (state.options->gfx_level >= GFX11) {
-      vs_output outputs[64];
+   uint64_t export_outputs = shader->info.outputs_written;
+   if (options->kill_pointsize)
+      export_outputs &= ~VARYING_BIT_PSIZ;
 
-      b->cursor = nir_after_cf_list(&if_es_thread->then_list);
-      unsigned num_outputs = gather_vs_outputs(b, outputs, &state);
+   b->cursor = nir_after_cf_list(&if_es_thread->then_list);
+   ac_nir_export_position(b, options->gfx_level,
+                          options->clipdist_enable_mask,
+                          !options->has_param_exports,
+                          options->force_vrs,
+                          export_outputs, state.outputs);
 
-      if (num_outputs) {
-         b->cursor = nir_after_cf_node(&if_es_thread->cf_node);
-         create_vertex_param_phis(b, num_outputs, outputs);
+   if (options->has_param_exports) {
+      if (state.options->gfx_level >= GFX11) {
+         /* Export varyings for GFX11+ */
+         vs_output outputs[64];
+         unsigned num_outputs = gather_vs_outputs(b, outputs, &state);
 
-         b->cursor = nir_after_cf_list(&impl->body);
+         if (num_outputs) {
+            b->cursor = nir_after_cf_node(&if_es_thread->cf_node);
+            create_vertex_param_phis(b, num_outputs, outputs);
 
-         if (!num_es_threads)
-            num_es_threads = nir_load_merged_wave_info_amd(b);
-         export_vertex_params_gfx11(b, NULL, num_es_threads, num_outputs, outputs,
-                                    options->vs_output_param_offset);
+            b->cursor = nir_after_cf_list(&impl->body);
+
+            if (!num_es_threads)
+               num_es_threads = nir_load_merged_wave_info_amd(b);
+            export_vertex_params_gfx11(b, NULL, num_es_threads, num_outputs, outputs,
+                                       options->vs_output_param_offset);
+         }
+      } else {
+         ac_nir_export_parameter(b, options->vs_output_param_offset,
+                                 shader->info.outputs_written,
+                                 shader->info.outputs_written_16bit,
+                                 state.outputs, state.outputs_16bit_lo,
+                                 state.outputs_16bit_hi);
       }
    }
 

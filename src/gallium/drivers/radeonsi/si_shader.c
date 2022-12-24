@@ -1604,6 +1604,10 @@ static void si_lower_ngg(struct si_shader *shader, nir_shader *nir)
    const union si_shader_key *key = &shader->key;
    assert(key->ge.as_ngg);
 
+   unsigned clipdist_mask =
+      (sel->info.clipdist_mask & ~key->ge.opt.kill_clip_distances) |
+      sel->info.culldist_mask;
+
    ac_nir_lower_ngg_options options = {
       .family = sel->screen->info.family,
       .gfx_level = sel->screen->info.gfx_level,
@@ -1612,6 +1616,10 @@ static void si_lower_ngg(struct si_shader *shader, nir_shader *nir)
       .can_cull = !!key->ge.opt.ngg_culling,
       .disable_streamout = key->ge.opt.remove_streamout,
       .vs_output_param_offset = shader->info.vs_output_param_offset,
+      .has_param_exports = shader->info.nr_param_exports,
+      .clipdist_enable_mask = clipdist_mask,
+      .kill_pointsize = key->ge.opt.kill_pointsize,
+      .force_vrs = sel->screen->options.vrs2x2,
    };
 
    if (nir->info.stage == MESA_SHADER_VERTEX ||
@@ -1635,8 +1643,6 @@ static void si_lower_ngg(struct si_shader *shader, nir_shader *nir)
 
       unsigned clip_plane_enable =
          SI_NGG_CULL_GET_CLIP_PLANE_ENABLE(key->ge.opt.ngg_culling);
-      unsigned clipdist_mask =
-         (sel->info.clipdist_mask & clip_plane_enable) | sel->info.culldist_mask;
 
       options.num_vertices_per_primitive = gfx10_ngg_get_vertices_per_prim(shader);
       options.early_prim_export = gfx10_ngg_export_prim_early(shader);
@@ -1644,10 +1650,8 @@ static void si_lower_ngg(struct si_shader *shader, nir_shader *nir)
       options.use_edgeflags = gfx10_edgeflags_have_effect(shader);
       options.has_gen_prim_query = options.has_xfb_prim_query =
          sel->screen->use_ngg_streamout && !sel->info.base.vs.blit_sgprs_amd;
-      options.primitive_id_location =
-         key->ge.mono.u.vs_export_prim_id ? sel->info.num_outputs : -1;
+      options.export_primitive_id = key->ge.mono.u.vs_export_prim_id;
       options.instance_rate_inputs = instance_rate_inputs;
-      options.clipdist_enable_mask = clipdist_mask;
       options.user_clip_plane_enable_mask = clip_plane_enable;
 
       NIR_PASS_V(nir, ac_nir_lower_ngg_nogs, &options);
