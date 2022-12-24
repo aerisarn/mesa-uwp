@@ -34,11 +34,6 @@
     BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_INDICES) | \
     BITFIELD64_BIT(VARYING_SLOT_CULL_PRIMITIVE))
 
-#define POS_EXPORT_MASK \
-   (VARYING_BIT_POS | VARYING_BIT_PSIZ | VARYING_BIT_LAYER | VARYING_BIT_VIEWPORT | \
-    VARYING_BIT_PRIMITIVE_SHADING_RATE | VARYING_BIT_CLIP_DIST0 | VARYING_BIT_CLIP_DIST1 | \
-    VARYING_BIT_EDGE | VARYING_BIT_CLIP_VERTEX)
-
 enum {
    nggc_passflag_used_by_pos = 1,
    nggc_passflag_used_by_other = 2,
@@ -106,15 +101,10 @@ typedef struct
 
 typedef struct
 {
-   /* store output base (driver location) */
-   uint8_t base;
    /* output stream index, 2 bit per component */
    uint8_t stream;
    /* Bitmask of components used: 4 bits per slot, 1 bit per component. */
    uint8_t components_mask : 4;
-   /* These fields have the same meaning as in nir_io_semantics. */
-   unsigned no_varying : 1;
-   unsigned no_sysval_output : 1;
 } gs_output_info;
 
 typedef struct
@@ -2547,7 +2537,6 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
    assert(nir_src_is_const(intrin->src[1]) && !nir_src_as_uint(intrin->src[1]));
    b->cursor = nir_before_instr(&intrin->instr);
 
-   unsigned base = nir_intrinsic_base(intrin);
    unsigned writemask = nir_intrinsic_write_mask(intrin);
    unsigned component_offset = nir_intrinsic_component(intrin);
    nir_io_semantics io_sem = nir_intrinsic_io_semantics(intrin);
@@ -2598,22 +2587,13 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
 
       unsigned component = component_offset + comp;
 
-      /* The same output should always belong to the same base. */
-      assert(!info->components_mask || info->base == base);
-      /* The same output should always have same kill state. */
-      assert(!info->components_mask ||
-             (info->no_varying == io_sem.no_varying &&
-              info->no_sysval_output == io_sem.no_sysval_output));
       /* The same output component should always belong to the same stream. */
       assert(!(info->components_mask & (1 << component)) ||
              ((info->stream >> (component * 2)) & 3) == stream);
 
-      info->base = base;
       /* Components of the same output slot may belong to different streams. */
       info->stream |= stream << (component * 2);
       info->components_mask |= BITFIELD_BIT(component);
-      info->no_varying = io_sem.no_varying;
-      info->no_sysval_output = io_sem.no_sysval_output;
 
       /* If type is set multiple times, the value must be same. */
       assert(type[component] == nir_type_invalid || type[component] == src_type);
@@ -2869,42 +2849,12 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
       exported_out_vtx_lds_addr = ngg_gs_out_vertex_addr(b, nir_u2u32(b, exported_vtx_idx), s);
    }
 
-   unsigned num_outputs = 0;
-   /* 16 is for 16bit slots */
-   vs_output outputs[VARYING_SLOT_MAX + 16];
-
    u_foreach_bit64(slot, b->shader->info.outputs_written) {
+      unsigned packed_location =
+         util_bitcount64((b->shader->info.outputs_written & BITFIELD64_MASK(slot)));
+
       gs_output_info *info = &s->output_info[slot];
       unsigned mask = gs_output_component_mask_with_stream(info, 0);
-      if (!mask)
-         continue;
-
-      /* Output has been killed but kept only for xfb.
-       * We have done streamout, so no need to re-build store output.
-       */
-      if ((!nir_slot_is_varying(slot) || info->no_varying) &&
-          (!nir_slot_is_sysval_output(slot) || info->no_sysval_output))
-         continue;
-
-      unsigned packed_location = util_bitcount64((b->shader->info.outputs_written & BITFIELD64_MASK(slot)));
-      nir_io_semantics io_sem = {
-         .location = slot,
-         .num_slots = 1,
-         .no_varying = info->no_varying,
-         .no_sysval_output = info->no_sysval_output,
-      };
-
-      bool is_pos = BITFIELD64_BIT(slot) & POS_EXPORT_MASK;
-
-      vs_output *output = NULL;
-      if (s->options->gfx_level >= GFX11 &&
-          s->options->vs_output_param_offset[slot] <= AC_EXP_PARAM_OFFSET_31) {
-         output = &outputs[num_outputs++];
-         output->slot = slot;
-         memset(output->chan, 0, sizeof(output->chan));
-      }
-
-      nir_alu_type *types = s->output_types.types[slot];
 
       while (mask) {
          int start, count;
@@ -2914,23 +2864,8 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
                             .base = packed_location * 16 + start * 4,
                             .align_mul = 4);
 
-         for (int i = 0; i < count; i++) {
-            nir_ssa_def *val = nir_channel(b, load, i);
-
-            if (s->options->gfx_level < GFX11 || is_pos) {
-               nir_alu_type type = types[start + i];
-               assert(type != nir_type_invalid);
-
-               /* Convert to the expected bit size of the output variable. */
-               unsigned bit_size = nir_alu_type_get_type_size(type);
-               val = nir_u2uN(b, val, bit_size);
-
-               nir_store_output(b, val, nir_imm_int(b, 0), .base = info->base,
-                                .io_semantics = io_sem, .component = start + i, .write_mask = 1);
-            }
-            if (output)
-               output->chan[start + i] = val;
-         }
+         for (int i = 0; i < count; i++)
+            s->outputs[slot][start + i] = nir_channel(b, load, i);
       }
    }
 
@@ -2939,37 +2874,12 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
    u_foreach_bit(i, b->shader->info.outputs_written_16bit) {
       unsigned packed_location = num_32bit_outputs +
          util_bitcount(b->shader->info.outputs_written_16bit & BITFIELD_MASK(i));
-      unsigned slot = VARYING_SLOT_VAR0_16BIT + i;
 
       gs_output_info *info_lo = s->output_info_16bit_lo + i;
       gs_output_info *info_hi = s->output_info_16bit_hi + i;
-      unsigned mask_lo = info_lo->no_varying ? 0 :
-         gs_output_component_mask_with_stream(info_lo, 0);
-      unsigned mask_hi = info_hi->no_varying ? 0 :
-         gs_output_component_mask_with_stream(info_hi, 0);
+      unsigned mask_lo = gs_output_component_mask_with_stream(info_lo, 0);
+      unsigned mask_hi = gs_output_component_mask_with_stream(info_hi, 0);
       unsigned mask = mask_lo | mask_hi;
-      if (!mask)
-         continue;
-
-      nir_io_semantics io_sem_lo = {
-         .location = slot,
-         .num_slots = 1,
-         .no_varying = info_lo->no_varying,
-      };
-      nir_io_semantics io_sem_hi = {
-         .location = slot,
-         .num_slots = 1,
-         .no_varying = info_hi->no_varying,
-         .high_16bits = true,
-      };
-
-      vs_output *output = NULL;
-      if (s->options->gfx_level >= GFX11 &&
-          s->options->vs_output_param_offset[slot] <= AC_EXP_PARAM_OFFSET_31) {
-         output = &outputs[num_outputs++];
-         output->slot = slot;
-         memset(output->chan, 0, sizeof(output->chan));
-      }
 
       while (mask) {
          int start, count;
@@ -2979,45 +2889,55 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
                             .base = packed_location * 16 + start * 4,
                             .align_mul = 4);
 
-         for (int i = 0; i < count; i++) {
-            nir_ssa_def *val = nir_channel(b, load, i);
-            unsigned comp = start + i;
+         for (int j = 0; j < count; j++) {
+            nir_ssa_def *val = nir_channel(b, load, j);
+            unsigned comp = start + j;
 
-            if (s->options->gfx_level < GFX11) {
-               if (mask_lo & BITFIELD_BIT(comp)) {
-                  nir_store_output(b, nir_unpack_32_2x16_split_x(b, val),
-                                   nir_imm_int(b, 0),
-                                   .base = info_lo->base,
-                                   .io_semantics = io_sem_lo,
-                                   .component = comp,
-                                   .write_mask = 1);
-               }
+            if (mask_lo & BITFIELD_BIT(comp))
+               s->outputs_16bit_lo[i][comp] = nir_unpack_32_2x16_split_x(b, val);
 
-               if (mask_hi & BITFIELD_BIT(comp)) {
-                  nir_store_output(b, nir_unpack_32_2x16_split_y(b, val),
-                                   nir_imm_int(b, 0),
-                                   .base = info_hi->base,
-                                   .io_semantics = io_sem_hi,
-                                   .component = comp,
-                                   .write_mask = 1);
-               }
-            }
-
-            /* low and high varyings have been packed when LDS store */
-            if (output)
-               output->chan[comp] = val;
+            if (mask_hi & BITFIELD_BIT(comp))
+               s->outputs_16bit_hi[i][comp] = nir_unpack_32_2x16_split_y(b, val);
          }
       }
    }
 
-   nir_export_vertex_amd(b);
+   uint64_t export_outputs = b->shader->info.outputs_written;
+   if (s->options->kill_pointsize)
+      export_outputs &= ~VARYING_BIT_PSIZ;
+
+   ac_nir_export_position(b, s->options->gfx_level,
+                          s->options->clipdist_enable_mask,
+                          !s->options->has_param_exports,
+                          s->options->force_vrs,
+                          export_outputs, s->outputs);
+
    nir_pop_if(b, if_vtx_export_thread);
 
-   if (num_outputs) {
-      create_vertex_param_phis(b, num_outputs, outputs);
+   if (s->options->has_param_exports) {
+      b->cursor = nir_after_cf_list(&if_vtx_export_thread->then_list);
 
-      export_vertex_params_gfx11(b, tid_in_tg, max_num_out_vtx, num_outputs, outputs,
-                                 s->options->vs_output_param_offset);
+      if (s->options->gfx_level >= GFX11) {
+         vs_output outputs[64];
+         unsigned num_outputs = gather_vs_outputs(b, outputs,
+                                                  s->options->vs_output_param_offset,
+                                                  s->outputs, s->outputs_16bit_lo,
+                                                  s->outputs_16bit_hi);
+
+         if (num_outputs) {
+            b->cursor = nir_after_cf_list(&s->impl->body);
+            create_vertex_param_phis(b, num_outputs, outputs);
+
+            export_vertex_params_gfx11(b, tid_in_tg, max_num_out_vtx, num_outputs, outputs,
+                                       s->options->vs_output_param_offset);
+         }
+      } else {
+         ac_nir_export_parameter(b, s->options->vs_output_param_offset,
+                                 b->shader->info.outputs_written,
+                                 b->shader->info.outputs_written_16bit,
+                                 s->outputs, s->outputs_16bit_lo,
+                                 s->outputs_16bit_hi);
+      }
    }
 }
 
