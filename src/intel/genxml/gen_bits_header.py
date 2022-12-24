@@ -255,11 +255,6 @@ class XmlParser(object):
         name = item.tag
         attrs = item.attrib
         if name in ('instruction', 'struct', 'register'):
-            if name == 'instruction' and 'engine' in attrs:
-                engines = set(attrs['engine'].split('|'))
-                if not engines & self.engines:
-                    self.container_stack.append(None)
-                    return
             self.start_container(attrs)
             for struct_item in item:
                 self.process_item(struct_item)
@@ -320,9 +315,9 @@ def parse_args():
 def main():
     pargs = parse_args()
 
-    engines = pargs.engines.split(',')
+    engines = set(pargs.engines.split(','))
     valid_engines = [ 'render', 'blitter', 'video' ]
-    if set(engines) - set(valid_engines):
+    if engines - set(valid_engines):
         print("Invalid engine specified, valid engines are:\n")
         for e in valid_engines:
             print("\t%s" % e)
@@ -333,8 +328,8 @@ def main():
 
     for source in pargs.xml_sources:
         p = XmlParser(containers)
-        p.engines = set(engines)
         genxml = intel_genxml.GenXml(source)
+        genxml.filter_engines(engines)
         p.emit_genxml(genxml)
 
     included_symbols_list = pargs.include_symbols.split(',')

@@ -169,3 +169,21 @@ def sort_xml(xml: et.ElementTree) -> None:
 class GenXml(object):
     def __init__(self, filename):
         self.et = et.parse(filename)
+
+    def filter_engines(self, engines):
+        changed = False
+        items = []
+        for item in self.et.getroot():
+            # When an instruction doesn't have the engine specified,
+            # it is considered to be for all engines. Otherwise, we
+            # check to see if it's tagged for the engines requested.
+            if item.tag == 'instruction' and 'engine' in item.attrib:
+                i_engines = set(item.attrib["engine"].split('|'))
+                if not (i_engines & engines):
+                    # Drop this instruction because it doesn't support
+                    # the requested engine types.
+                    changed = True
+                    continue
+            items.append(item)
+        if changed:
+            self.et.getroot()[:] = items
