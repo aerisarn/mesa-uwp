@@ -20,8 +20,8 @@
 # SOFTWARE.
 
 import argparse
+import intel_genxml
 import os
-import xml.etree.ElementTree as et
 
 from mako.template import Template
 from util import *
@@ -245,9 +245,8 @@ class XmlParser(object):
         self.container_stack = []
         self.container_stack.append(None)
 
-    def parse(self, filename):
-        xml = et.parse(filename)
-        root = xml.getroot()
+    def emit_genxml(self, genxml):
+        root = genxml.et.getroot()
         self.gen = Gen(root.attrib['gen'])
         for item in root:
             self.process_item(item)
@@ -335,7 +334,8 @@ def main():
     for source in pargs.xml_sources:
         p = XmlParser(containers)
         p.engines = set(engines)
-        p.parse(source)
+        genxml = intel_genxml.GenXml(source)
+        p.emit_genxml(genxml)
 
     included_symbols_list = pargs.include_symbols.split(',')
     for _name_field in included_symbols_list:

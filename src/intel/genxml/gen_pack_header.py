@@ -2,7 +2,7 @@
 
 import argparse
 import ast
-import xml.etree.ElementTree as et
+import intel_genxml
 import re
 import sys
 import copy
@@ -613,9 +613,8 @@ class Parser(object):
             print('   %-36s = %6d,' % (name.upper(), value.value))
         print('};\n')
 
-    def parse(self, filename):
-        xml = et.parse(filename)
-        root = xml.getroot()
+    def emit_genxml(self, genxml):
+        root = genxml.et.getroot()
         self.platform = root.attrib["name"]
         self.gen = root.attrib["gen"].replace('.', '')
         print(pack_header % {'license': license, 'platform': self.platform, 'guard': self.gen_guard()})
@@ -641,7 +640,6 @@ def parse_args():
 def main():
     pargs = parse_args()
 
-    input_file = pargs.xml_source
     engines = pargs.engines.split(',')
     valid_engines = [ 'render', 'blitter', 'video' ]
     if set(engines) - set(valid_engines):
@@ -650,9 +648,10 @@ def main():
             print("\t%s" % e)
         sys.exit(1)
 
+    genxml = intel_genxml.GenXml(pargs.xml_source)
     p = Parser()
     p.engines = set(engines)
-    p.parse(input_file)
+    p.emit_genxml(genxml)
 
 if __name__ == '__main__':
     main()

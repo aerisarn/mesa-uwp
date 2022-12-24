@@ -164,3 +164,8 @@ def sort_xml(xml: et.ElementTree) -> None:
     for n in new_elems:
         process_attribs(n)
     genxml[:] = new_elems
+
+
+class GenXml(object):
+    def __init__(self, filename):
+        self.et = et.parse(filename)
