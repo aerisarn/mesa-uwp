@@ -2101,21 +2101,26 @@ ngg_nogs_gather_outputs(nir_builder *b, struct exec_list *cf_list, lower_ngg_nog
 }
 
 static unsigned
-gather_vs_outputs(nir_builder *b, vs_output *outputs, lower_ngg_nogs_state *s)
+gather_vs_outputs(nir_builder *b, vs_output *outputs,
+                  const uint8_t *param_offsets,
+                  nir_ssa_def *(*data)[4],
+                  nir_ssa_def *(*data_16bit_lo)[4],
+                  nir_ssa_def *(*data_16bit_hi)[4])
 {
    unsigned num_outputs = 0;
    u_foreach_bit64 (slot, b->shader->info.outputs_written) {
-      if (s->options->vs_output_param_offset[slot] > AC_EXP_PARAM_OFFSET_31)
+      if (param_offsets[slot] > AC_EXP_PARAM_OFFSET_31)
          continue;
 
+      nir_ssa_def **output = data[slot];
+
       /* skip output if no one written before */
-      if (!s->outputs[slot][0] && !s->outputs[slot][1] &&
-          !s->outputs[slot][2] && !s->outputs[slot][3])
+      if (!output[0] && !output[1] && !output[2] && !output[3])
          continue;
 
       outputs[num_outputs].slot = slot;
       for (int i = 0; i < 4; i++) {
-         nir_ssa_def *chan = s->outputs[slot][i];
+         nir_ssa_def *chan = output[i];
          /* RADV implements 16-bit outputs as 32-bit with VARYING_SLOT_VAR0-31. */
          outputs[num_outputs].chan[i] = chan && chan->bit_size == 16 ? nir_u2u32(b, chan) : chan;
       }
@@ -2124,21 +2129,20 @@ gather_vs_outputs(nir_builder *b, vs_output *outputs, lower_ngg_nogs_state *s)
 
    u_foreach_bit (i, b->shader->info.outputs_written_16bit) {
       unsigned slot = VARYING_SLOT_VAR0_16BIT + i;
-      if (s->options->vs_output_param_offset[slot] > AC_EXP_PARAM_OFFSET_31)
+      if (param_offsets[slot] > AC_EXP_PARAM_OFFSET_31)
          continue;
 
+      nir_ssa_def **output_lo = data_16bit_lo[i];
+      nir_ssa_def **output_hi = data_16bit_hi[i];
+
       /* skip output if no one written before */
-      if (!s->outputs_16bit_lo[i][0] && !s->outputs_16bit_lo[i][1] &&
-          !s->outputs_16bit_lo[i][2] && !s->outputs_16bit_lo[i][3] &&
-          !s->outputs_16bit_hi[i][0] && !s->outputs_16bit_hi[i][1] &&
-          !s->outputs_16bit_hi[i][2] && !s->outputs_16bit_hi[i][3])
+      if (!output_lo[0] && !output_lo[1] && !output_lo[2] && !output_lo[3] &&
+          !output_hi[0] && !output_hi[1] && !output_hi[2] && !output_hi[3])
          continue;
 
       vs_output *output = &outputs[num_outputs++];
       output->slot = slot;
 
-      nir_ssa_def **output_lo = s->outputs_16bit_lo[i];
-      nir_ssa_def **output_hi = s->outputs_16bit_hi[i];
       nir_ssa_def *undef = nir_ssa_undef(b, 1, 16);
       for (int j = 0; j < 4; j++) {
          nir_ssa_def *lo = output_lo[j] ? output_lo[j] : undef;
@@ -2402,7 +2406,11 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
       if (state.options->gfx_level >= GFX11) {
          /* Export varyings for GFX11+ */
          vs_output outputs[64];
-         unsigned num_outputs = gather_vs_outputs(b, outputs, &state);
+         unsigned num_outputs = gather_vs_outputs(b, outputs,
+                                                  state.options->vs_output_param_offset,
+                                                  state.outputs,
+                                                  state.outputs_16bit_lo,
+                                                  state.outputs_16bit_hi);
 
          if (num_outputs) {
             b->cursor = nir_after_cf_node(&if_es_thread->cf_node);
