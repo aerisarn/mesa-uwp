@@ -4166,9 +4166,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = ac_build_intrinsic(&ctx->ac, name, return_type, args, 5, 0);
       break;
    }
-   case nir_intrinsic_export_vertex_amd:
-      ctx->abi->export_vertex(ctx->abi);
-      break;
    case nir_intrinsic_elect:
       result = LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, visit_first_invocation(ctx),
                              ac_get_thread_id(&ctx->ac), "");

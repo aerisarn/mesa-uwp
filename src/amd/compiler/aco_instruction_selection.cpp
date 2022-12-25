@@ -5297,8 +5297,6 @@ load_input_from_temps(isel_context* ctx, nir_intrinsic_instr* instr, Temp dst)
    return true;
 }
 
-static void export_vs_varying(isel_context* ctx, int slot, bool is_pos, int* next_pos);
-
 void
 visit_store_output(isel_context* ctx, nir_intrinsic_instr* instr)
 {
@@ -8178,7 +8176,6 @@ emit_interp_center(isel_context* ctx, Temp dst, Temp bary, Temp pos1, Temp pos2)
 Temp merged_wave_info_to_mask(isel_context* ctx, unsigned i);
 Temp lanecount_to_mask(isel_context* ctx, Temp count);
 void ngg_emit_sendmsg_gs_alloc_req(isel_context* ctx, Temp vtx_cnt, Temp prm_cnt);
-static void create_vs_exports(isel_context* ctx);
 
 Temp
 get_interp_param(isel_context* ctx, nir_intrinsic_op intrin,
@@ -9073,10 +9070,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_is_subgroup_invocation_lt_amd: {
       Temp src = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
       bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), lanecount_to_mask(ctx, src));
-      break;
-   }
-   case nir_intrinsic_export_vertex_amd: {
-      create_vs_exports(ctx);
       break;
    }
    case nir_intrinsic_alloc_vertices_and_primitives_amd: {
@@ -10823,137 +10816,6 @@ visit_cf_list(isel_context* ctx, struct exec_list* list)
       }
    }
    return false;
-}
-
-static void
-export_vs_varying(isel_context* ctx, int slot, bool is_pos, int* next_pos)
-{
-   assert(ctx->stage.hw == HWStage::VS || ctx->stage.hw == HWStage::NGG);
-
-   const uint8_t *vs_output_param_offset =
-      ctx->program->info.outinfo.vs_output_param_offset;
-
-   assert(vs_output_param_offset);
-
-   int offset = vs_output_param_offset[slot];
-   unsigned mask = ctx->outputs.mask[slot];
-   if (!is_pos && !mask)
-      return;
-   if (!is_pos && offset == AC_EXP_PARAM_UNDEFINED)
-      return;
-   aco_ptr<Export_instruction> exp{
-      create_instruction<Export_instruction>(aco_opcode::exp, Format::EXP, 4, 0)};
-   exp->enabled_mask = mask;
-   for (unsigned i = 0; i < 4; ++i) {
-      if (mask & (1 << i))
-         exp->operands[i] = Operand(ctx->outputs.temps[slot * 4u + i]);
-      else
-         exp->operands[i] = Operand(v1);
-   }
-   /* GFX10 (Navi1x) skip POS0 exports if EXEC=0 and DONE=0, causing a hang.
-    * Setting valid_mask=1 prevents it and has no other effect.
-    */
-   exp->valid_mask = ctx->options->gfx_level == GFX10 && is_pos && *next_pos == 0;
-   exp->done = false;
-   exp->compressed = false;
-   if (is_pos)
-      exp->dest = V_008DFC_SQ_EXP_POS + (*next_pos)++;
-   else
-      exp->dest = V_008DFC_SQ_EXP_PARAM + offset;
-   ctx->block->instructions.emplace_back(std::move(exp));
-}
-
-static void
-export_vs_psiz_layer_viewport_vrs(isel_context* ctx, int* next_pos,
-                                  const aco_vp_output_info* outinfo)
-{
-   aco_ptr<Export_instruction> exp{
-      create_instruction<Export_instruction>(aco_opcode::exp, Format::EXP, 4, 0)};
-   exp->enabled_mask = 0;
-   for (unsigned i = 0; i < 4; ++i)
-      exp->operands[i] = Operand(v1);
-   if (ctx->outputs.mask[VARYING_SLOT_PSIZ]) {
-      exp->operands[0] = Operand(ctx->outputs.temps[VARYING_SLOT_PSIZ * 4u]);
-      exp->enabled_mask |= 0x1;
-   }
-   if (ctx->outputs.mask[VARYING_SLOT_LAYER] && !outinfo->writes_layer_per_primitive) {
-      exp->operands[2] = Operand(ctx->outputs.temps[VARYING_SLOT_LAYER * 4u]);
-      exp->enabled_mask |= 0x4;
-   }
-   if (ctx->outputs.mask[VARYING_SLOT_VIEWPORT] && !outinfo->writes_viewport_index_per_primitive) {
-      if (ctx->options->gfx_level < GFX9) {
-         exp->operands[3] = Operand(ctx->outputs.temps[VARYING_SLOT_VIEWPORT * 4u]);
-         exp->enabled_mask |= 0x8;
-      } else {
-         Builder bld(ctx->program, ctx->block);
-
-         Temp out = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand::c32(16u),
-                             Operand(ctx->outputs.temps[VARYING_SLOT_VIEWPORT * 4u]));
-         if (exp->operands[2].isTemp())
-            out = bld.vop2(aco_opcode::v_or_b32, bld.def(v1), Operand(out), exp->operands[2]);
-
-         exp->operands[2] = Operand(out);
-         exp->enabled_mask |= 0x4;
-      }
-   }
-   if (ctx->outputs.mask[VARYING_SLOT_PRIMITIVE_SHADING_RATE]) {
-      exp->operands[1] = Operand(ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_SHADING_RATE * 4u]);
-      exp->enabled_mask |= 0x2;
-   }
-
-   exp->valid_mask = ctx->options->gfx_level == GFX10 && *next_pos == 0;
-   exp->done = false;
-   exp->compressed = false;
-   exp->dest = V_008DFC_SQ_EXP_POS + (*next_pos)++;
-   ctx->block->instructions.emplace_back(std::move(exp));
-}
-
-static void
-create_vs_exports(isel_context* ctx)
-{
-   assert(ctx->stage.hw == HWStage::VS || ctx->stage.hw == HWStage::NGG);
-   const aco_vp_output_info* outinfo = &ctx->program->info.outinfo;
-
-   assert(outinfo);
-   ctx->block->kind |= block_kind_export_end;
-
-   /* Hardware requires position data to always be exported, even if the
-    * application did not write gl_Position.
-    */
-   ctx->outputs.mask[VARYING_SLOT_POS] = 0xf;
-
-   /* the order these position exports are created is important */
-   int next_pos = 0;
-   export_vs_varying(ctx, VARYING_SLOT_POS, true, &next_pos);
-
-   if (outinfo->writes_pointsize || outinfo->writes_layer || outinfo->writes_viewport_index ||
-       outinfo->writes_primitive_shading_rate) {
-      export_vs_psiz_layer_viewport_vrs(ctx, &next_pos, outinfo);
-   }
-   if (ctx->num_clip_distances + ctx->num_cull_distances > 0)
-      export_vs_varying(ctx, VARYING_SLOT_CLIP_DIST0, true, &next_pos);
-   if (ctx->num_clip_distances + ctx->num_cull_distances > 4)
-      export_vs_varying(ctx, VARYING_SLOT_CLIP_DIST1, true, &next_pos);
-
-   if (ctx->program->gfx_level >= GFX11)
-      return;
-
-   if (ctx->export_clip_dists) {
-      if (ctx->num_clip_distances + ctx->num_cull_distances > 0)
-         export_vs_varying(ctx, VARYING_SLOT_CLIP_DIST0, false, &next_pos);
-      if (ctx->num_clip_distances + ctx->num_cull_distances > 4)
-         export_vs_varying(ctx, VARYING_SLOT_CLIP_DIST1, false, &next_pos);
-   }
-
-   for (unsigned i = 0; i <= VARYING_SLOT_VAR31; ++i) {
-      if (i < VARYING_SLOT_VAR0 && i != VARYING_SLOT_LAYER && i != VARYING_SLOT_PRIMITIVE_ID &&
-          i != VARYING_SLOT_VIEWPORT)
-         continue;
-      if (ctx->shader && ctx->shader->info.per_primitive_outputs & BITFIELD64_BIT(i))
-         continue;
-
-      export_vs_varying(ctx, i, false, NULL);
-   }
 }
 
 static bool
