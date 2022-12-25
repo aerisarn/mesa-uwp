@@ -673,7 +673,7 @@ flush_ring(struct fd_batch *batch)
 
    bool use_fence_fd = false;
    if (batch->fence)
-      use_fence_fd = batch->fence;
+      use_fence_fd = batch->fence->use_fence_fd;
 
    struct fd_fence *fence =
          fd_submit_flush(batch->submit, batch->in_fence_fd, use_fence_fd);
