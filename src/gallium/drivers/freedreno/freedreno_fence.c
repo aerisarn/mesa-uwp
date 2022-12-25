@@ -42,6 +42,8 @@ fence_flush(struct pipe_context *pctx, struct pipe_fence_handle *fence,
     */
    in_dt
 {
+   MESA_TRACE_FUNC();
+
    if (!util_queue_fence_is_signalled(&fence->ready)) {
       if (fence->tc_token) {
          threaded_context_flush(pctx, fence->tc_token, timeout == 0);
@@ -131,6 +133,8 @@ bool
 fd_pipe_fence_finish(struct pipe_screen *pscreen, struct pipe_context *pctx,
                      struct pipe_fence_handle *fence, uint64_t timeout)
 {
+   MESA_TRACE_SCOPE(timeout ? "fd_pipe_fence_finish(wait)" : "fd_pipe_fence_finish(nowait)");
+
    /* Note: for TC deferred fence, pctx->flush() may not have been called
     * yet, so always do fence_flush() *first* before delegating to
     * fence->last_fence
@@ -217,6 +221,8 @@ fd_pipe_fence_server_sync(struct pipe_context *pctx, struct pipe_fence_handle *f
 {
    struct fd_context *ctx = fd_context(pctx);
 
+   MESA_TRACE_FUNC();
+
    /* NOTE: we don't expect the combination of fence-fd + async-flush-fence,
     * so timeout==0 is ok here:
     */
@@ -251,6 +257,8 @@ fd_pipe_fence_server_signal(struct pipe_context *pctx,
 int
 fd_pipe_fence_get_fd(struct pipe_screen *pscreen, struct pipe_fence_handle *fence)
 {
+   MESA_TRACE_FUNC();
+
    /* We don't expect deferred flush to be combined with fence-fd: */
    assert(!fence->last_fence);
 

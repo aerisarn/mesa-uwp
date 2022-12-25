@@ -37,6 +37,9 @@
 #include "util/compiler.h"
 #include "util/half_float.h"
 #include "util/log.h"
+#ifndef __cplusplus  // TODO fix cpu_trace.h to be c++ friendly
+#include "util/perf/cpu_trace.h"
+#endif
 #include "util/u_debug.h"
 #include "util/u_dynarray.h"
 #include "util/u_math.h"

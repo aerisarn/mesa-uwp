@@ -436,6 +436,8 @@ close_handles(struct fd_device *dev, uint32_t *handles, unsigned cnt)
 static void
 bo_flush(struct fd_bo *bo)
 {
+   MESA_TRACE_FUNC();
+
    simple_mtx_lock(&fence_lock);
    unsigned nr = bo->nr_fences;
    struct fd_fence *fences[nr];
@@ -578,6 +580,8 @@ fd_bo_cpu_prep(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t op)
 
    if (state == FD_BO_STATE_IDLE)
       return 0;
+
+   MESA_TRACE_FUNC();
 
    if (op & (FD_BO_PREP_NOSYNC | FD_BO_PREP_FLUSH)) {
       if (op & FD_BO_PREP_FLUSH)
