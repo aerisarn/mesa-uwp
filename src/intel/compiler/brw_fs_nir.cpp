@@ -3779,12 +3779,12 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
    case nir_intrinsic_shared_atomic_xor:
    case nir_intrinsic_shared_atomic_exchange:
    case nir_intrinsic_shared_atomic_comp_swap:
-      nir_emit_shared_atomic(bld, brw_aop_for_nir_intrinsic(instr), instr);
+      nir_emit_shared_atomic(bld, instr);
       break;
    case nir_intrinsic_shared_atomic_fmin:
    case nir_intrinsic_shared_atomic_fmax:
    case nir_intrinsic_shared_atomic_fcomp_swap:
-      nir_emit_shared_atomic_float(bld, brw_aop_for_nir_intrinsic(instr), instr);
+      nir_emit_shared_atomic_float(bld, instr);
       break;
 
    case nir_intrinsic_load_shared: {
@@ -4879,13 +4879,13 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    case nir_intrinsic_global_atomic_xor:
    case nir_intrinsic_global_atomic_exchange:
    case nir_intrinsic_global_atomic_comp_swap:
-      nir_emit_global_atomic(bld, brw_aop_for_nir_intrinsic(instr), instr);
+      nir_emit_global_atomic(bld, instr);
       break;
    case nir_intrinsic_global_atomic_fadd:
    case nir_intrinsic_global_atomic_fmin:
    case nir_intrinsic_global_atomic_fmax:
    case nir_intrinsic_global_atomic_fcomp_swap:
-      nir_emit_global_atomic_float(bld, brw_aop_for_nir_intrinsic(instr), instr);
+      nir_emit_global_atomic_float(bld, instr);
       break;
 
    case nir_intrinsic_load_global_const_block_intel: {
@@ -5053,13 +5053,13 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    case nir_intrinsic_ssbo_atomic_xor:
    case nir_intrinsic_ssbo_atomic_exchange:
    case nir_intrinsic_ssbo_atomic_comp_swap:
-      nir_emit_ssbo_atomic(bld, brw_aop_for_nir_intrinsic(instr), instr);
+      nir_emit_ssbo_atomic(bld, instr);
       break;
    case nir_intrinsic_ssbo_atomic_fadd:
    case nir_intrinsic_ssbo_atomic_fmin:
    case nir_intrinsic_ssbo_atomic_fmax:
    case nir_intrinsic_ssbo_atomic_fcomp_swap:
-      nir_emit_ssbo_atomic_float(bld, brw_aop_for_nir_intrinsic(instr), instr);
+      nir_emit_ssbo_atomic_float(bld, instr);
       break;
 
    case nir_intrinsic_get_ssbo_size: {
@@ -5956,8 +5956,10 @@ expand_to_32bit(const fs_builder &bld, const fs_reg &src)
 
 void
 fs_visitor::nir_emit_ssbo_atomic(const fs_builder &bld,
-                                 int op, nir_intrinsic_instr *instr)
+                                 nir_intrinsic_instr *instr)
 {
+   int op = brw_aop_for_nir_intrinsic(instr);
+
    /* The BTI untyped atomic messages only support 32-bit atomics.  If you
     * just look at the big table of messages in the Vol 7 of the SKL PRM, they
     * appear to exist.  However, if you look at Vol 2a, there are no message
@@ -6018,8 +6020,10 @@ fs_visitor::nir_emit_ssbo_atomic(const fs_builder &bld,
 
 void
 fs_visitor::nir_emit_ssbo_atomic_float(const fs_builder &bld,
-                                       int op, nir_intrinsic_instr *instr)
+                                       nir_intrinsic_instr *instr)
 {
+   int op = brw_aop_for_nir_intrinsic(instr);
+
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
       dest = get_nir_dest(instr->dest);
@@ -6067,8 +6071,10 @@ fs_visitor::nir_emit_ssbo_atomic_float(const fs_builder &bld,
 
 void
 fs_visitor::nir_emit_shared_atomic(const fs_builder &bld,
-                                   int op, nir_intrinsic_instr *instr)
+                                   nir_intrinsic_instr *instr)
 {
+   int op = brw_aop_for_nir_intrinsic(instr);
+
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
       dest = get_nir_dest(instr->dest);
@@ -6130,8 +6136,10 @@ fs_visitor::nir_emit_shared_atomic(const fs_builder &bld,
 
 void
 fs_visitor::nir_emit_shared_atomic_float(const fs_builder &bld,
-                                         int op, nir_intrinsic_instr *instr)
+                                         nir_intrinsic_instr *instr)
 {
+   int op = brw_aop_for_nir_intrinsic(instr);
+
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
       dest = get_nir_dest(instr->dest);
@@ -6192,8 +6200,10 @@ fs_visitor::nir_emit_shared_atomic_float(const fs_builder &bld,
 
 void
 fs_visitor::nir_emit_global_atomic(const fs_builder &bld,
-                                   int op, nir_intrinsic_instr *instr)
+                                   nir_intrinsic_instr *instr)
 {
+   int op = brw_aop_for_nir_intrinsic(instr);
+
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
       dest = get_nir_dest(instr->dest);
@@ -6244,8 +6254,10 @@ fs_visitor::nir_emit_global_atomic(const fs_builder &bld,
 
 void
 fs_visitor::nir_emit_global_atomic_float(const fs_builder &bld,
-                                         int op, nir_intrinsic_instr *instr)
+                                         nir_intrinsic_instr *instr)
 {
+   int op = brw_aop_for_nir_intrinsic(instr);
+
    assert(nir_intrinsic_infos[instr->intrinsic].has_dest);
    fs_reg dest = get_nir_dest(instr->dest);
 
