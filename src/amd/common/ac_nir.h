@@ -187,6 +187,10 @@ ac_nir_lower_ngg_gs(nir_shader *shader, const ac_nir_lower_ngg_options *options)
 
 void
 ac_nir_lower_ngg_ms(nir_shader *shader,
+                    enum amd_gfx_level gfx_level,
+                    uint32_t clipdist_enable_mask,
+                    const uint8_t *vs_output_param_offset,
+                    bool has_param_exports,
                     bool *out_needs_scratch_ring,
                     unsigned wave_size,
                     bool multiview);

@@ -188,6 +188,8 @@ typedef struct
 
 typedef struct
 {
+   enum amd_gfx_level gfx_level;
+
    ms_out_mem_layout layout;
    uint64_t per_vertex_outputs;
    uint64_t per_primitive_outputs;
@@ -211,6 +213,12 @@ typedef struct
       /* Bitmask of components used: 4 bits per slot, 1 bit per component. */
       uint32_t components_mask;
    } output_info[VARYING_SLOT_MAX];
+
+   /* Used by outputs export. */
+   nir_ssa_def *outputs[VARYING_SLOT_MAX][4];
+   uint32_t clipdist_enable_mask;
+   const uint8_t *vs_output_param_offset;
+   bool has_param_exports;
 } lower_ngg_ms_state;
 
 /* Per-vertex LDS layout of culling shaders */
@@ -3952,7 +3960,6 @@ ms_emit_arrayed_outputs(nir_builder *b,
       /* Should not occour here, handled separately. */
       assert(slot != VARYING_SLOT_PRIMITIVE_COUNT && slot != VARYING_SLOT_PRIMITIVE_INDICES);
 
-      const nir_io_semantics io_sem = { .location = slot, .num_slots = 1 };
       unsigned component_mask = s->output_info[slot].components_mask;
 
       while (component_mask) {
@@ -3963,8 +3970,8 @@ ms_emit_arrayed_outputs(nir_builder *b,
             ms_load_arrayed_output(b, invocation_index, zero, slot, start_comp,
                                    num_components, 32, s);
 
-         nir_store_output(b, load, nir_imm_int(b, 0), .base = slot, .component = start_comp,
-                          .io_semantics = io_sem);
+         for (int i = 0; i < num_components; i++)
+            s->outputs[slot][start_comp + i] = nir_channel(b, load, i);
       }
    }
 }
@@ -4161,6 +4168,50 @@ set_ms_final_output_counts(nir_builder *b,
 }
 
 static void
+ms_emit_primitive_export(nir_builder *b,
+                         nir_ssa_def *prim_exp_arg_ch1,
+                         uint64_t per_primitive_outputs,
+                         lower_ngg_ms_state *s)
+{
+   nir_ssa_def *prim_exp_arg_ch2 = NULL;
+
+   uint64_t export_as_prim_arg_slots =
+      VARYING_BIT_LAYER |
+      VARYING_BIT_VIEWPORT |
+      VARYING_BIT_PRIMITIVE_SHADING_RATE;
+   if (per_primitive_outputs & export_as_prim_arg_slots) {
+      /* When layer, viewport etc. are per-primitive, they need to be encoded in
+       * the primitive export instruction's second channel. The encoding is:
+       * bits 31..30: VRS rate Y
+       * bits 29..28: VRS rate X
+       * bits 23..20: viewport
+       * bits 19..17: layer
+       */
+      prim_exp_arg_ch2 = nir_imm_int(b, 0);
+
+      if (per_primitive_outputs & VARYING_BIT_LAYER) {
+         nir_ssa_def *layer = nir_ishl_imm(b, s->outputs[VARYING_SLOT_LAYER][0], 17);
+         prim_exp_arg_ch2 = nir_ior(b, prim_exp_arg_ch2, layer);
+      }
+
+      if (per_primitive_outputs & VARYING_BIT_VIEWPORT) {
+         nir_ssa_def *view = nir_ishl_imm(b, s->outputs[VARYING_SLOT_VIEWPORT][0], 20);
+         prim_exp_arg_ch2 = nir_ior(b, prim_exp_arg_ch2, view);
+      }
+
+      if (per_primitive_outputs & VARYING_BIT_PRIMITIVE_SHADING_RATE) {
+         nir_ssa_def *rate = s->outputs[VARYING_SLOT_PRIMITIVE_SHADING_RATE][0];
+         prim_exp_arg_ch2 = nir_ior(b, prim_exp_arg_ch2, rate);
+      }
+   }
+
+   nir_ssa_def *prim_exp_arg = prim_exp_arg_ch2 ?
+      nir_vec2(b, prim_exp_arg_ch1, prim_exp_arg_ch2) : prim_exp_arg_ch1;
+
+   ac_nir_export_primitive(b, prim_exp_arg);
+}
+
+static void
 emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
 {
    /* We assume there is always a single end block in the shader. */
@@ -4194,7 +4245,16 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
    {
       /* All per-vertex attributes. */
       ms_emit_arrayed_outputs(b, invocation_index, s->per_vertex_outputs, s);
-      nir_export_vertex_amd(b);
+
+      ac_nir_export_position(b, s->gfx_level, s->clipdist_enable_mask,
+                             !s->has_param_exports, false,
+                             s->per_vertex_outputs, s->outputs);
+
+      if (s->has_param_exports) {
+         ac_nir_export_parameter(b, s->vs_output_param_offset,
+                                 s->per_vertex_outputs, 0,
+                                 s->outputs, NULL, NULL);
+      }
    }
    nir_pop_if(b, if_has_output_vertex);
 
@@ -4203,15 +4263,15 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
    nir_if *if_has_output_primitive = nir_push_if(b, has_output_primitive);
    {
       /* Generic per-primitive attributes. */
-      ms_emit_arrayed_outputs(b, invocation_index, s->per_primitive_outputs & ~SPECIAL_MS_OUT_MASK, s);
+      uint64_t per_primitive_outputs = s->per_primitive_outputs & ~SPECIAL_MS_OUT_MASK;
+      ms_emit_arrayed_outputs(b, invocation_index, per_primitive_outputs, s);
 
       /* Insert layer output store if the pipeline uses multiview but the API shader doesn't write it. */
       if (s->insert_layer_output) {
-         nir_ssa_def *layer = nir_load_view_index(b);
-         const nir_io_semantics io_sem = { .location = VARYING_SLOT_LAYER, .num_slots = 1 };
-         nir_store_output(b, layer, nir_imm_int(b, 0), .base = VARYING_SLOT_LAYER, .component = 0, .io_semantics = io_sem);
+         s->outputs[VARYING_SLOT_LAYER][0] = nir_load_view_index(b);
          b->shader->info.outputs_written |= VARYING_BIT_LAYER;
          b->shader->info.per_primitive_outputs |= VARYING_BIT_LAYER;
+         per_primitive_outputs |= VARYING_BIT_LAYER;
       }
 
       /* Primitive connectivity data: describes which vertices the primitive uses. */
@@ -4249,7 +4309,12 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
       }
 
       nir_ssa_def *prim_exp_arg = emit_pack_ngg_prim_exp_arg(b, s->vertices_per_prim, indices, cull_flag, false);
-      nir_export_primitive_amd(b, prim_exp_arg);
+
+      ms_emit_primitive_export(b, prim_exp_arg, per_primitive_outputs, s);
+
+      ac_nir_export_parameter(b, s->vs_output_param_offset,
+                              per_primitive_outputs, 0,
+                              s->outputs, NULL, NULL);
    }
    nir_pop_if(b, if_has_output_primitive);
 }
@@ -4499,6 +4564,10 @@ ms_calculate_output_layout(unsigned api_shared_size,
 
 void
 ac_nir_lower_ngg_ms(nir_shader *shader,
+                    enum amd_gfx_level gfx_level,
+                    uint32_t clipdist_enable_mask,
+                    const uint8_t *vs_output_param_offset,
+                    bool has_param_exports,
                     bool *out_needs_scratch_ring,
                     unsigned wave_size,
                     bool multiview)
@@ -4556,6 +4625,10 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
       .hw_workgroup_size = hw_workgroup_size,
       .insert_layer_output = multiview && !(shader->info.outputs_written & VARYING_BIT_LAYER),
       .uses_cull_flags = uses_cull,
+      .gfx_level = gfx_level,
+      .clipdist_enable_mask = clipdist_enable_mask,
+      .vs_output_param_offset = vs_output_param_offset,
+      .has_param_exports = has_param_exports,
    };
 
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
