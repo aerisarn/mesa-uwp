@@ -4138,12 +4138,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       ctx->abi->tes_rel_patch_id_replaced = get_src(ctx, instr->src[3]);
       ctx->abi->tes_patch_id_replaced = get_src(ctx, instr->src[2]);
       break;
-   case nir_intrinsic_export_primitive_amd: {
-      struct ac_ngg_prim prim = {0};
-      prim.passthrough = get_src(ctx, instr->src[0]);
-      ac_build_export_prim(&ctx->ac, &prim);
-      break;
-   }
    case nir_intrinsic_gds_atomic_add_amd: {
       LLVMValueRef store_val = get_src(ctx, instr->src[0]);
       LLVMValueRef addr = get_src(ctx, instr->src[1]);

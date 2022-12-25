@@ -8178,7 +8178,6 @@ emit_interp_center(isel_context* ctx, Temp dst, Temp bary, Temp pos1, Temp pos2)
 Temp merged_wave_info_to_mask(isel_context* ctx, unsigned i);
 Temp lanecount_to_mask(isel_context* ctx, Temp count);
 void ngg_emit_sendmsg_gs_alloc_req(isel_context* ctx, Temp vtx_cnt, Temp prm_cnt);
-static void create_primitive_exports(isel_context *ctx, Temp prim_ch1);
 static void create_vs_exports(isel_context* ctx);
 
 Temp
@@ -9078,11 +9077,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    }
    case nir_intrinsic_export_vertex_amd: {
       create_vs_exports(ctx);
-      break;
-   }
-   case nir_intrinsic_export_primitive_amd: {
-      Temp prim_ch1 = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
-      create_primitive_exports(ctx, prim_ch1);
       break;
    }
    case nir_intrinsic_alloc_vertices_and_primitives_amd: {
@@ -10956,57 +10950,6 @@ create_vs_exports(isel_context* ctx)
           i != VARYING_SLOT_VIEWPORT)
          continue;
       if (ctx->shader && ctx->shader->info.per_primitive_outputs & BITFIELD64_BIT(i))
-         continue;
-
-      export_vs_varying(ctx, i, false, NULL);
-   }
-}
-
-static void
-create_primitive_exports(isel_context *ctx, Temp prim_ch1)
-{
-   assert(ctx->stage.hw == HWStage::NGG);
-   const aco_vp_output_info* outinfo = &ctx->program->info.outinfo;
-
-   Builder bld(ctx->program, ctx->block);
-
-   /* When layer, viewport etc. are per-primitive, they need to be encoded in
-    * the primitive export instruction's second channel. The encoding is:
-    * bits 31..30: VRS rate Y
-    * bits 29..28: VRS rate X
-    * bits 23..20: viewport
-    * bits 19..17: layer
-    */
-   Temp ch2 = bld.copy(bld.def(v1), Operand::c32(0));
-   unsigned en_mask = 1;
-
-   if (outinfo->writes_layer_per_primitive) {
-      en_mask |= 2;
-      Temp tmp = ctx->outputs.temps[VARYING_SLOT_LAYER * 4u];
-      ch2 = bld.vop3(aco_opcode::v_lshl_or_b32, bld.def(v1), tmp, Operand::c32(17), ch2);
-   }
-   if (outinfo->writes_viewport_index_per_primitive) {
-      en_mask |= 2;
-      Temp tmp = ctx->outputs.temps[VARYING_SLOT_VIEWPORT * 4u];
-      ch2 = bld.vop3(aco_opcode::v_lshl_or_b32, bld.def(v1), tmp, Operand::c32(20), ch2);
-   }
-   if (outinfo->writes_primitive_shading_rate_per_primitive) {
-      en_mask |= 2;
-      Temp tmp = ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_SHADING_RATE * 4u];
-      ch2 = bld.vop2(aco_opcode::v_or_b32, bld.def(v1), tmp, ch2);
-   }
-
-   Operand prim_ch2 = (en_mask & 2) ? Operand(ch2) : Operand(v1);
-
-   bld.exp(aco_opcode::exp, prim_ch1, prim_ch2, Operand(v1), Operand(v1),
-           en_mask /* enabled mask */, V_008DFC_SQ_EXP_PRIM /* dest */, false /* compressed */,
-           true /* done */, false /* valid mask */);
-
-   /* Export generic per-primitive attributes. */
-   for (unsigned i = 0; i <= VARYING_SLOT_VAR31; ++i) {
-      if (!(ctx->shader->info.per_primitive_outputs & BITFIELD64_BIT(i)))
-         continue;
-      if (i == VARYING_SLOT_PRIMITIVE_SHADING_RATE)
          continue;
 
       export_vs_varying(ctx, i, false, NULL);
