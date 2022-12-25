@@ -7,6 +7,7 @@ from collections import OrderedDict
 import copy
 import io
 import pathlib
+import os.path
 import re
 import xml.etree.ElementTree as et
 import typing
@@ -84,6 +85,7 @@ class Struct(object):
 # ordering of the various tag attributes
 GENXML_DESC = {
     'genxml'      : [ 'name', 'gen', ],
+    'import'      : [ 'name', ],
     'enum'        : [ 'name', 'value', 'prefix', ],
     'struct'      : [ 'name', 'length', ],
     'field'       : [ 'name', 'start', 'end', 'type', 'default', 'prefix', 'nonzero' ],
@@ -129,6 +131,9 @@ def process_attribs(elem: et.Element) -> None:
 
 def sort_xml(xml: et.ElementTree) -> None:
     genxml = xml.getroot()
+
+    imports = xml.findall('import')
+
     enums = sorted(xml.findall('enum'), key=get_name)
     enum_dict: typing.Dict[str, et.Element] = {}
     for e in enums:
@@ -161,16 +166,106 @@ def sort_xml(xml: et.ElementTree) -> None:
     for r in registers:
         r[:] = sorted(r, key=get_start)
 
-    new_elems = enums + list(sorted_structs.values()) + instructions + registers
+    new_elems = (imports + enums + list(sorted_structs.values()) +
+                 instructions + registers)
     for n in new_elems:
         process_attribs(n)
     genxml[:] = new_elems
 
 
 class GenXml(object):
-    def __init__(self, filename):
+    def __init__(self, filename, import_xml=False, files=None):
+        if files is not None:
+            self.files = files
+        else:
+            self.files = set()
         self.filename = pathlib.Path(filename)
+
+        # Assert that the file hasn't already been loaded which would
+        # indicate a loop in genxml imports, and lead to infinite
+        # recursion.
+        assert self.filename not in self.files
+
+        self.files.add(self.filename)
         self.et = et.parse(self.filename)
+        if import_xml:
+            self.merge_imported()
+
+    def merge_imported(self):
+        """Merge imported items from genxml imports.
+
+        Genxml <import> tags specify that elements should be brought
+        in from another genxml source file. After this function is
+        called, these elements will become part of the `self.et` data
+        structure as if the elements had been directly included in the
+        genxml directly.
+
+        Items from imported genxml files will be completely ignore if
+        an item with the same name is already defined in the genxml
+        file.
+
+        """
+        orig_elements = set(self.et.getroot())
+        name_and_obj = lambda i: (get_name(i), i)
+        filter_ty = lambda s: filter(lambda i: i.tag == s, orig_elements)
+        filter_ty_item = lambda s: dict(map(name_and_obj, filter_ty(s)))
+
+        # orig_by_tag stores items defined directly in the genxml
+        # file. If a genxml item is defined in the genxml directly,
+        # then any imported items of the same name are ignored.
+        orig_by_tag = {
+            'enum': filter_ty_item('enum'),
+            'struct': filter_ty_item('struct'),
+            'instruction': filter_ty_item('instruction'),
+            'register': filter_ty_item('register'),
+        }
+
+        for item in orig_elements:
+            if item.tag == 'import':
+                assert 'name' in item.attrib
+                filename = os.path.split(item.attrib['name'])
+                # We should be careful to restrict loaded files to
+                # those under the source or build trees. For now, only
+                # allow siblings of the current xml file.
+                assert filename[0] == '', 'Directories not allowed with import'
+                filename = os.path.join(os.path.dirname(self.filename),
+                                        filename[1])
+                assert os.path.exists(filename), f'{self.filename} {filename}'
+
+                # Here we load the imported genxml file. We set
+                # `import_xml` to true so that any imports in the
+                # imported genxml will be merged during the loading
+                # process.
+                #
+                # The `files` parameter is a set of files that have
+                # been loaded, and it is used to prevent any cycles
+                # (infinite recursion) while loading imported genxml
+                # files.
+                genxml = GenXml(filename, import_xml=True, files=self.files)
+                imported_elements = set(genxml.et.getroot())
+
+                # `to_add` is a set of items that were imported an
+                # should be merged into the `self.et` data structure.
+                to_add = set()
+                for i in imported_elements:
+                    if i.tag not in orig_by_tag:
+                        continue
+                    if i.attrib['name'] in orig_by_tag[i.tag]:
+                        # An item with this same name was defined in
+                        # the genxml directly. There we should ignore
+                        # (not merge) the imported item.
+                        continue
+                    to_add.add(i)
+
+                # Now that we have scanned through all the items in
+                # the imported genxml file, if any items were found
+                # which should be merged, we add them into our
+                # `self.et` data structure. After this it will be as
+                # if the items had been directly present in the genxml
+                # file.
+                if len(to_add) > 0:
+                    self.et.getroot().extend(list(to_add))
+                    sort_xml(self.et)
 
     def filter_engines(self, engines):
         changed = False

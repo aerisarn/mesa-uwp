@@ -266,7 +266,7 @@ class XmlParser(object):
             self.container_stack.pop()
         elif name == 'field':
             self.process_field(attrs)
-        elif name == 'enum':
+        elif name in ('enum', 'import'):
             pass
         else:
             assert False
@@ -330,6 +330,7 @@ def main():
         p = XmlParser(containers)
         genxml = intel_genxml.GenXml(source)
         genxml.filter_engines(engines)
+        genxml.merge_imported()
         p.emit_genxml(genxml)
 
     included_symbols_list = pargs.include_symbols.split(',')
