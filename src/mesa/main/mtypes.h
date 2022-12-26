@@ -3314,6 +3314,9 @@ struct gl_context
     */
    GLbitfield ValidPrimMaskIndexed;
 
+   /** DrawID for the next non-multi non-indirect draw. Only set by glthread. */
+   GLuint DrawID;
+
    /**
     * Whether DrawPixels/CopyPixels/Bitmap are valid to render.
     */

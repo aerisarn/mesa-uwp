@@ -12964,6 +12964,14 @@
         <param name="primcount" type="GLsizei"/>
         <param name="basevertex" type="const GLint *" count="primcount"/>
     </function>
+
+    <function name="DrawArraysInstancedBaseInstanceDrawID" es1="1.0" es2="2.0"
+              marshal="custom">
+    </function>
+
+    <function name="DrawElementsInstancedBaseVertexBaseInstanceDrawID"
+              es1="1.0" es2="2.0" marshal="custom">
+    </function>
 </category>
 
 <xi:include href="OES_EGL_image.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>

@@ -1200,7 +1200,7 @@ _mesa_draw_arrays(struct gl_context *ctx, GLenum mode, GLint start,
    draw.start = start;
    draw.count = count;
 
-   ctx->Driver.DrawGallium(ctx, &info, 0, &draw, 1);
+   ctx->Driver.DrawGallium(ctx, &info, ctx->DrawID, &draw, 1);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
       _mesa_flush(ctx);
@@ -1694,7 +1694,7 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx,
     * for the latter case elsewhere.
     */
 
-   ctx->Driver.DrawGallium(ctx, &info, 0, &draw, 1);
+   ctx->Driver.DrawGallium(ctx, &info, ctx->DrawID, &draw, 1);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
       _mesa_flush(ctx);
