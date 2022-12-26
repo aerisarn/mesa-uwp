@@ -1721,12 +1721,14 @@ agx_batch_init_state(struct agx_batch *batch)
       .varying_word_2 = true,
    });
 
+   /* clang-format off */
    agx_ppp_push(&ppp, W_CLAMP, cfg) cfg.w_clamp = 1e-10;
    agx_ppp_push(&ppp, VARYING_1, cfg);
    agx_ppp_push(&ppp, CULL_2, cfg);
    agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY_2, cfg);
    agx_ppp_push(&ppp, OUTPUT_UNKNOWN, cfg);
    agx_ppp_push(&ppp, VARYING_2, cfg);
+   /* clang-format on */
 
    agx_ppp_fini(&out, &ppp);
    batch->encoder_current = out;

@@ -17,6 +17,7 @@ struct sizetest {
    uint32_t size;
 };
 
+/* clang-format off */
 /* Sort: `sort -t"," -k1,1 -k2,5n | uniq` */
 static struct sizetest sizetests[] = {
    { PIPE_FORMAT_R8_UNORM, 1, 1, 1, 1, 0x80 },
@@ -4746,6 +4747,7 @@ static struct sizetest sizetests[] = {
    { PIPE_FORMAT_Z32_FLOAT, 4097, 15, 2, 1, 0x100000 },
    { PIPE_FORMAT_Z32_FLOAT, 4097, 15, 2, 13, 0x158000 },
 };
+/* clang-format on */
 
 TEST(UncompTwiddled, SizeTests)
 {

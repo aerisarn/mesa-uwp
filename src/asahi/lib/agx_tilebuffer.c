@@ -18,11 +18,13 @@
 static struct agx_tile_size
 agx_select_tile_size(unsigned bytes_per_pixel)
 {
+   /* clang-format off */
    struct agx_tile_size sizes[] = {
       { 32, 32 },
       { 32, 16 },
       { 16, 16 }
    };
+   /* clang-format on */
 
    for (unsigned i = 0; i < ARRAY_SIZE(sizes); ++i) {
       struct agx_tile_size size = sizes[i];

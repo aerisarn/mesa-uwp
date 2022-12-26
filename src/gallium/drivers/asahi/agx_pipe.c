@@ -74,6 +74,7 @@
 #define DRM_FORMAT_MOD_APPLE_TWIDDLED_COMPRESSED (3)
 #endif
 
+/* clang-format off */
 static const struct debug_named_value agx_debug_options[] = {
    {"trace",     AGX_DBG_TRACE,    "Trace the command stream"},
    {"deqp",      AGX_DBG_DEQP,     "Hacks for dEQP"},
@@ -86,6 +87,7 @@ static const struct debug_named_value agx_debug_options[] = {
    {"nocompress",AGX_DBG_NOCOMPRESS,"Disable lossless compression"},
    DEBUG_NAMED_VALUE_END
 };
+/* clang-format on */
 
 uint64_t agx_best_modifiers[] = {
    DRM_FORMAT_MOD_APPLE_TWIDDLED_COMPRESSED,

@@ -38,6 +38,7 @@
 extern "C" {
 #endif
 
+/* clang-format off */
 enum agx_dbg {
    AGX_DBG_MSGS        = BITFIELD_BIT(0),
    AGX_DBG_SHADERS     = BITFIELD_BIT(1),
@@ -47,6 +48,7 @@ enum agx_dbg {
    AGX_DBG_NOVALIDATE  = BITFIELD_BIT(5),
    AGX_DBG_NOOPT       = BITFIELD_BIT(6),
 };
+/* clang-format on */
 
 extern int agx_debug;
 

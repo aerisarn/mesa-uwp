@@ -16,6 +16,7 @@ struct test {
    uint32_t total_size;
 };
 
+/* clang-format off */
 struct test tests[] = {
    {
       "Simple test",
@@ -129,6 +130,7 @@ struct test tests[] = {
       8192
    }
 };
+/* clang-format on */
 
 TEST(Tilebuffer, Layouts)
 {

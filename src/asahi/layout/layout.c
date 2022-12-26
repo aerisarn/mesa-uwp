@@ -63,6 +63,7 @@ ail_min_mip_below(unsigned x, unsigned y)
 static inline struct ail_tile
 ail_get_max_tile_size(unsigned blocksize_B)
 {
+   /* clang-format off */
    switch (blocksize_B) {
    case  1: return (struct ail_tile) { 128, 128 };
    case  2: return (struct ail_tile) { 128,  64 };
@@ -71,6 +72,7 @@ ail_get_max_tile_size(unsigned blocksize_B)
    case 16: return (struct ail_tile) {  32,  32 };
    default: unreachable("Invalid blocksize");
    }
+   /* clang-format on */
 }
 
 /*

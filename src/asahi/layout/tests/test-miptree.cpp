@@ -35,6 +35,7 @@ struct miptest {
    uint32_t offsets[16];
 };
 
+/* clang-format off */
 static struct miptest miptests[] = {
    {
       PIPE_FORMAT_R8G8B8A8_UNORM,
@@ -1256,6 +1257,7 @@ static struct miptest miptests[] = {
       }
    },
 };
+/* clang-format on */
 
 TEST(Miptree, Tests2D)
 {

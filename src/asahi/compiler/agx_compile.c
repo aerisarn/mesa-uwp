@@ -36,6 +36,7 @@
 /* Alignment for shader programs. I'm not sure what the optimal value is. */
 #define AGX_CODE_ALIGN 0x100
 
+/* clang-format off */
 static const struct debug_named_value agx_debug_options[] = {
    {"msgs",      AGX_DBG_MSGS,		"Print debug messages"},
    {"shaders",   AGX_DBG_SHADERS,	"Dump shaders in NIR and AIR"},
@@ -46,6 +47,7 @@ static const struct debug_named_value agx_debug_options[] = {
    {"noopt",     AGX_DBG_NOOPT,     "Disable backend optimizations"},
    DEBUG_NAMED_VALUE_END
 };
+/* clang-format on */
 
 DEBUG_GET_ONCE_FLAGS_OPTION(agx_debug, "AGX_MESA_DEBUG", agx_debug_options, 0)
 
