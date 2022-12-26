@@ -20,6 +20,10 @@
 
 files_shared_glapi = files(
   '../entry.c',
+  '../u_current.c',
+  '../u_current.h',
+  '../u_execmem.c',
+  '../u_execmem.h',
   'glapi.c',
   'stub.c',
   'stub.h',
@@ -43,7 +47,7 @@ endif
 
 libglapi = shared_library(
   'glapi',
-  [files_shared_glapi, files_mapi_util, shared_glapi_mapi_tmp_h],
+  [files_shared_glapi, shared_glapi_mapi_tmp_h],
   c_args : [
     _glapi_c_args,
     c_msvc_compat_args,
