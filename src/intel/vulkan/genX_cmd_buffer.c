@@ -4604,7 +4604,7 @@ emit_draw_count_predicate_cond(struct anv_cmd_buffer *cmd_buffer,
 static void
 emit_indirect_count_draws(struct anv_cmd_buffer *cmd_buffer,
                           struct anv_address indirect_data_addr,
-                          uint32_t indirect_data_stride,
+                          uint64_t indirect_data_stride,
                           struct anv_address draw_count_addr,
                           uint32_t max_draw_count,
                           bool indexed)
