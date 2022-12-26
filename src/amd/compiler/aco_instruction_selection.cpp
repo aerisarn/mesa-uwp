@@ -5296,10 +5296,13 @@ load_input_from_temps(isel_context* ctx, nir_intrinsic_instr* instr, Temp dst)
 void
 visit_store_output(isel_context* ctx, nir_intrinsic_instr* instr)
 {
-   if (ctx->stage == vertex_vs || ctx->stage == tess_eval_vs || ctx->stage == fragment_fs ||
-       ctx->stage == vertex_ngg || ctx->stage == tess_eval_ngg || ctx->stage == mesh_ngg ||
-       (ctx->stage == vertex_tess_control_hs && ctx->shader->info.stage == MESA_SHADER_VERTEX) ||
-       ctx->shader->info.stage == MESA_SHADER_GEOMETRY) {
+   /* LS pass output to TCS by temp if they have same in/out patch size. */
+   bool ls_need_output = ctx->stage == vertex_tess_control_hs &&
+      ctx->shader->info.stage == MESA_SHADER_VERTEX && ctx->tcs_in_out_eq;
+
+   bool ps_need_output = ctx->stage == fragment_fs;
+
+   if (ls_need_output || ps_need_output) {
       bool stored_to_temps = store_output_to_temps(ctx, instr);
       if (!stored_to_temps) {
          isel_err(instr->src[1].ssa->parent_instr, "Unimplemented output offset instruction");
