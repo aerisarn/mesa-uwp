@@ -451,7 +451,7 @@ draw_arrays(GLenum mode, GLint first, GLsizei count, GLsizei instance_count,
 {
    GET_CURRENT_CONTEXT(ctx);
 
-   if (compiled_into_dlist && ctx->GLThread.ListMode) {
+   if (unlikely(compiled_into_dlist && ctx->GLThread.ListMode)) {
       _mesa_glthread_finish_before(ctx, "DrawArrays");
       /* Use the function that's compiled into a display list. */
       CALL_DrawArrays(ctx->CurrentServerDispatch, (mode, first, count));
@@ -531,7 +531,7 @@ _mesa_marshal_MultiDrawArrays(GLenum mode, const GLint *first,
 {
    GET_CURRENT_CONTEXT(ctx);
 
-   if (ctx->GLThread.ListMode) {
+   if (unlikely(ctx->GLThread.ListMode)) {
       _mesa_glthread_finish_before(ctx, "MultiDrawArrays");
       CALL_MultiDrawArrays(ctx->CurrentServerDispatch,
                            (mode, first, count, draw_count));
@@ -859,8 +859,21 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
 {
    GET_CURRENT_CONTEXT(ctx);
 
-   if (compiled_into_dlist && ctx->GLThread.ListMode)
-      goto sync;
+   if (unlikely(compiled_into_dlist && ctx->GLThread.ListMode)) {
+      _mesa_glthread_finish_before(ctx, "DrawElements");
+
+      /* Only use the ones that are compiled into display lists. */
+      if (basevertex) {
+         CALL_DrawElementsBaseVertex(ctx->CurrentServerDispatch,
+                                     (mode, count, type, indices, basevertex));
+      } else if (index_bounds_valid) {
+         CALL_DrawRangeElements(ctx->CurrentServerDispatch,
+                                (mode, min_index, max_index, count, type, indices));
+      } else {
+         CALL_DrawElements(ctx->CurrentServerDispatch, (mode, count, type, indices));
+      }
+      return;
+   }
 
    if (unlikely(index_bounds_valid && max_index < min_index)) {
       _mesa_marshal_InternalSetError(GL_INVALID_VALUE);
@@ -946,32 +959,6 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
    draw_elements_async_user(ctx, mode, count, type, indices, instance_count,
                             basevertex, baseinstance, index_buffer,
                             user_buffer_mask, buffers);
-   return;
-
-sync:
-   _mesa_glthread_finish_before(ctx, "DrawElements");
-
-   if (compiled_into_dlist && ctx->GLThread.ListMode) {
-      /* Only use the ones that are compiled into display lists. */
-      if (basevertex) {
-         CALL_DrawElementsBaseVertex(ctx->CurrentServerDispatch,
-                                     (mode, count, type, indices, basevertex));
-      } else if (index_bounds_valid) {
-         CALL_DrawRangeElements(ctx->CurrentServerDispatch,
-                                (mode, min_index, max_index, count, type, indices));
-      } else {
-         CALL_DrawElements(ctx->CurrentServerDispatch, (mode, count, type, indices));
-      }
-   } else if (index_bounds_valid && instance_count == 1 && baseinstance == 0) {
-      CALL_DrawRangeElementsBaseVertex(ctx->CurrentServerDispatch,
-                                       (mode, min_index, max_index, count,
-                                        type, indices, basevertex));
-   } else {
-      CALL_DrawElementsInstancedBaseVertexBaseInstance(ctx->CurrentServerDispatch,
-                                                       (mode, count, type, indices,
-                                                        instance_count, basevertex,
-                                                        baseinstance));
-   }
 }
 
 struct marshal_cmd_MultiDrawElementsUserBuf
@@ -1105,8 +1092,19 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
 {
    GET_CURRENT_CONTEXT(ctx);
 
-   if (ctx->GLThread.ListMode)
-      goto sync;
+   if (unlikely(ctx->GLThread.ListMode)) {
+      _mesa_glthread_finish_before(ctx, "MultiDrawElements");
+
+      if (basevertex) {
+         CALL_MultiDrawElementsBaseVertex(ctx->CurrentServerDispatch,
+                                          (mode, count, type, indices, draw_count,
+                                           basevertex));
+      } else {
+         CALL_MultiDrawElements(ctx->CurrentServerDispatch,
+                                (mode, count, type, indices, draw_count));
+      }
+      return;
+   }
 
    struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
    unsigned user_buffer_mask = 0;
@@ -1241,19 +1239,6 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
    multi_draw_elements_async(ctx, mode, count, type, indices, draw_count,
                              basevertex, index_buffer, user_buffer_mask,
                              buffers);
-   return;
-
-sync:
-   _mesa_glthread_finish_before(ctx, "MultiDrawElements");
-
-   if (basevertex) {
-      CALL_MultiDrawElementsBaseVertex(ctx->CurrentServerDispatch,
-                                       (mode, count, type, indices, draw_count,
-                                        basevertex));
-   } else {
-      CALL_MultiDrawElements(ctx->CurrentServerDispatch,
-                             (mode, count, type, indices, draw_count));
-   }
 }
 
 void GLAPIENTRY
