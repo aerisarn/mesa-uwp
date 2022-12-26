@@ -192,20 +192,22 @@ class GenXml(object):
         if import_xml:
             self.merge_imported()
 
-    def merge_imported(self):
-        """Merge imported items from genxml imports.
+    def process_imported(self, merge=False, drop_dupes=False):
+        """Processes imported genxml files.
 
-        Genxml <import> tags specify that elements should be brought
-        in from another genxml source file. After this function is
-        called, these elements will become part of the `self.et` data
-        structure as if the elements had been directly included in the
-        genxml directly.
+        This helper function scans imported genxml files and has two
+        mutually exclusive operating modes.
 
-        Items from imported genxml files will be completely ignore if
-        an item with the same name is already defined in the genxml
-        file.
+        If `merge` is True, then items will be merged into the
+        `self.et` data structure.
+
+        If `drop_dupes` is True, then any item that is a duplicate to
+        an item imported will be droped from the `self.et` data
+        structure. This is used by `self.optimize_xml_import` to
+        shrink the size of the genxml file by reducing duplications.
 
         """
+        assert merge != drop_dupes
         orig_elements = set(self.et.getroot())
         name_and_obj = lambda i: (get_name(i), i)
         filter_ty = lambda s: filter(lambda i: i.tag == s, orig_elements)
@@ -251,28 +253,78 @@ class GenXml(object):
 
                 # `to_add` is a set of items that were imported an
                 # should be merged into the `self.et` data structure.
+                # This is only used when the `merge` parameter is
+                # True.
                 to_add = set()
+                # `to_remove` is a set of items that can safely be
+                # imported since the item is equivalent. This is only
+                # used when the `drop_duped` parameter is True.
+                to_remove = set()
                 for i in imported_elements:
                     if i.tag not in orig_by_tag:
                         continue
                     if i.attrib['name'] in exceptions:
                         continue
                     if i.attrib['name'] in orig_by_tag[i.tag]:
-                        # An item with this same name was defined in
-                        # the genxml directly. There we should ignore
-                        # (not merge) the imported item.
-                        continue
-                    to_add.add(i)
+                        if merge:
+                            # An item with this same name was defined
+                            # in the genxml directly. There we should
+                            # ignore (not merge) the imported item.
+                            continue
+                    else:
+                        if drop_dupes:
+                            # Since this item is not the imported
+                            # genxml, we can't consider dropping it.
+                            continue
+                    if merge:
+                        to_add.add(i)
+                    else:
+                        assert drop_dupes
+                        orig_element = orig_by_tag[i.tag][i.attrib['name']]
+                        if not node_validator(i, orig_element):
+                            continue
+                        to_remove.add(orig_element)
 
-                # Now that we have scanned through all the items in
-                # the imported genxml file, if any items were found
-                # which should be merged, we add them into our
-                # `self.et` data structure. After this it will be as
-                # if the items had been directly present in the genxml
-                # file.
                 if len(to_add) > 0:
+                    # Now that we have scanned through all the items
+                    # in the imported genxml file, if any items were
+                    # found which should be merged, we add them into
+                    # our `self.et` data structure. After this it will
+                    # be as if the items had been directly present in
+                    # the genxml file.
+                    assert len(to_remove) == 0
                     self.et.getroot().extend(list(to_add))
                     sort_xml(self.et)
+                elif len(to_remove) > 0:
+                    self.et.getroot()[:] = list(orig_elements - to_remove)
+                    sort_xml(self.et)
+
+    def merge_imported(self):
+        """Merge imported items from genxml imports.
+
+        Genxml <import> tags specify that elements should be brought
+        in from another genxml source file. After this function is
+        called, these elements will become part of the `self.et` data
+        structure as if the elements had been directly included in the
+        genxml directly.
+
+        Items from imported genxml files will be completely ignore if
+        an item with the same name is already defined in the genxml
+        file.
+
+        """
+        self.process_imported(merge=True)
+
+    def optimize_xml_import(self):
+        """Optimizes the genxml by dropping items that can be imported
+
+        Scans genxml <import> tags, and loads the imported file. If
+        any item in the imported file is a duplicate to an item in the
+        genxml file, then it will be droped from the `self.et` data
+        structure.
+
+        """
+        self.process_imported(drop_dupes=True)
 
     def filter_engines(self, engines):
         changed = False
