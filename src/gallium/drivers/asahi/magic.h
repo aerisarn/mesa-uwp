@@ -24,6 +24,9 @@
 #ifndef __ASAHI_MAGIC_H
 #define __ASAHI_MAGIC_H
 
+#include "agx_state.h"
+#include <stdint.h>
+
 unsigned
 demo_cmdbuf(uint64_t *buf, size_t size,
             struct agx_pool *pool,
