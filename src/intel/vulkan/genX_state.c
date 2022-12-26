@@ -274,11 +274,7 @@ init_render_queue_state(struct anv_queue *queue)
       .end = (void *) cmds + sizeof(cmds),
    };
 
-   anv_batch_emit(&batch, GENX(PIPELINE_SELECT), ps) {
-      ps.MaskBits = GFX_VER >= 12 ? 0x13 : 3;
-      ps.MediaSamplerDOPClockGateEnable = GFX_VER >= 12;
-      ps.PipelineSelection = _3D;
-   }
+   genX(emit_pipeline_select)(&batch, _3D);
 
 #if GFX_VER == 9
    anv_batch_write_reg(&batch, GENX(CACHE_MODE_1), cm1) {
@@ -490,14 +486,7 @@ init_compute_queue_state(struct anv_queue *queue)
    batch.start = batch.next = cmds;
    batch.end = (void *) cmds + sizeof(cmds);
 
-   anv_batch_emit(&batch, GENX(PIPELINE_SELECT), ps) {
-      ps.MaskBits = 3;
-#if GFX_VER >= 11
-      ps.MaskBits |= 0x10;
-      ps.MediaSamplerDOPClockGateEnable = true;
-#endif
-      ps.PipelineSelection = GPGPU;
-   }
+   genX(emit_pipeline_select)(&batch, GPGPU);
 
    init_common_queue_state(queue, &batch);
 

@@ -6274,6 +6274,19 @@ genX(CmdTraceRaysIndirect2KHR)(
 
 #endif /* GFX_VERx10 >= 125 */
 
+/* Only emit PIPELINE_SELECT, for the whole mode switch and flushing use
+ * flush_pipeline_select()
+ */
+void
+genX(emit_pipeline_select)(struct anv_batch *batch, uint32_t pipeline)
+{
+   anv_batch_emit(batch, GENX(PIPELINE_SELECT), ps) {
+      ps.MaskBits = GFX_VER >= 12 ? 0x13 : 3;
+      ps.MediaSamplerDOPClockGateEnable = GFX_VER >= 12;
+      ps.PipelineSelection = pipeline;
+   }
+}
+
 static void
 genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
                             uint32_t pipeline)
@@ -6345,11 +6358,7 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
                              "flush and invalidate for PIPELINE_SELECT");
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
-   anv_batch_emit(&cmd_buffer->batch, GENX(PIPELINE_SELECT), ps) {
-      ps.MaskBits = GFX_VER >= 12 ? 0x13 : 3;
-      ps.MediaSamplerDOPClockGateEnable = GFX_VER >= 12;
-      ps.PipelineSelection = pipeline;
-   }
+   genX(emit_pipeline_select)(&cmd_buffer->batch, pipeline);
 
 #if GFX_VER == 9
    if (devinfo->platform == INTEL_PLATFORM_GLK) {

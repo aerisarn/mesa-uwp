@@ -243,12 +243,7 @@ genX(emit_so_memcpy_init)(struct anv_memcpy_state *state,
 
    const struct intel_l3_config *cfg = intel_get_default_l3_config(device->info);
    genX(emit_l3_config)(batch, device, cfg);
-
-   anv_batch_emit(batch, GENX(PIPELINE_SELECT), ps) {
-      ps.MaskBits = GFX_VER >= 12 ? 0x13 : 3;
-      ps.MediaSamplerDOPClockGateEnable = GFX_VER >= 12;
-      ps.PipelineSelection = _3D;
-   }
+   genX(emit_pipeline_select)(batch, _3D);
 
    emit_common_so_memcpy(batch, device, cfg);
 }
