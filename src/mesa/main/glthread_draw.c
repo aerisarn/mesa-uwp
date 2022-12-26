@@ -450,8 +450,6 @@ draw_arrays(GLenum mode, GLint first, GLsizei count, GLsizei instance_count,
             GLuint baseinstance, bool compiled_into_dlist)
 {
    GET_CURRENT_CONTEXT(ctx);
-   unsigned user_buffer_mask =
-      ctx->API == API_OPENGL_CORE ? 0 : get_user_buffer_mask(ctx);
 
    if (compiled_into_dlist && ctx->GLThread.ListMode) {
       _mesa_glthread_finish_before(ctx, "DrawArrays");
@@ -459,6 +457,9 @@ draw_arrays(GLenum mode, GLint first, GLsizei count, GLsizei instance_count,
       CALL_DrawArrays(ctx->CurrentServerDispatch, (mode, first, count));
       return;
    }
+
+   unsigned user_buffer_mask =
+      ctx->API == API_OPENGL_CORE ? 0 : get_user_buffer_mask(ctx);
 
    /* Fast path when nothing needs to be done.
     *
@@ -531,10 +532,6 @@ _mesa_marshal_MultiDrawArrays(GLenum mode, const GLint *first,
                               const GLsizei *count, GLsizei draw_count)
 {
    GET_CURRENT_CONTEXT(ctx);
-   unsigned user_buffer_mask =
-      ctx->API == API_OPENGL_CORE || draw_count <= 0 ||
-      ctx->GLThread.inside_begin_end ?
-            0 : get_user_buffer_mask(ctx);
 
    if (ctx->GLThread.ListMode) {
       _mesa_glthread_finish_before(ctx, "MultiDrawArrays");
@@ -544,6 +541,9 @@ _mesa_marshal_MultiDrawArrays(GLenum mode, const GLint *first,
    }
 
    struct glthread_attrib_binding buffers[VERT_ATTRIB_MAX];
+   unsigned user_buffer_mask =
+      ctx->API == API_OPENGL_CORE || draw_count <= 0 ||
+      ctx->GLThread.inside_begin_end ? 0 : get_user_buffer_mask(ctx);
 
    if (user_buffer_mask) {
       unsigned min_index = ~0;
@@ -860,10 +860,6 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
               bool compiled_into_dlist)
 {
    GET_CURRENT_CONTEXT(ctx);
-   struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
-   unsigned user_buffer_mask =
-      ctx->API == API_OPENGL_CORE ? 0 : get_user_buffer_mask(ctx);
-   bool has_user_indices = vao->CurrentElementBufferName == 0 && indices;
 
    if (compiled_into_dlist && ctx->GLThread.ListMode)
       goto sync;
@@ -872,6 +868,11 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
       _mesa_marshal_InternalSetError(GL_INVALID_VALUE);
       return;
    }
+
+   struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
+   unsigned user_buffer_mask =
+      ctx->API == API_OPENGL_CORE ? 0 : get_user_buffer_mask(ctx);
+   bool has_user_indices = vao->CurrentElementBufferName == 0 && indices;
 
    /* Fast path when nothing needs to be done.
     *
@@ -1108,6 +1109,10 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
                                           const GLsizei *basevertex)
 {
    GET_CURRENT_CONTEXT(ctx);
+
+   if (ctx->GLThread.ListMode)
+      goto sync;
+
    struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
    unsigned user_buffer_mask = 0;
    bool has_user_indices = false;
@@ -1121,9 +1126,6 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
       user_buffer_mask = ctx->API == API_OPENGL_CORE ? 0 : get_user_buffer_mask(ctx);
       has_user_indices = vao->CurrentElementBufferName == 0;
    }
-
-   if (ctx->GLThread.ListMode)
-      goto sync;
 
    /* Fast path when we don't need to upload anything. */
    if (!user_buffer_mask && !has_user_indices) {
