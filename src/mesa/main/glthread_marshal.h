@@ -148,6 +148,7 @@ _mesa_glthread_update_draw_always_async(struct gl_context *ctx)
    /* Executing erroneous cases will just generate GL_INVALID_OPERATION. */
    ctx->GLThread.draw_always_async =
       ctx->API == API_OPENGL_CORE ||
+      ctx->CurrentServerDispatch == ctx->ContextLost ||
       ctx->GLThread.inside_begin_end ||
       ctx->GLThread.ListMode;
 }

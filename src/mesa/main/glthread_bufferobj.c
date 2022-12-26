@@ -505,6 +505,7 @@ _mesa_marshal_BufferSubData_merged(GLuint target_or_name, GLintptr offset,
     *       the buffer storage, but we don't know the buffer size in glthread.
     */
    if (ctx->Const.AllowGLThreadBufferSubDataOpt &&
+       ctx->CurrentServerDispatch != ctx->ContextLost &&
        data && offset > 0 && size > 0) {
       struct gl_buffer_object *upload_buffer = NULL;
       unsigned upload_offset = 0;
