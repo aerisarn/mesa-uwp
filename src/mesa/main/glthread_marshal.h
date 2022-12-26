@@ -94,21 +94,6 @@ _mesa_glthread_has_no_unpack_buffer(const struct gl_context *ctx)
    return ctx->GLThread.CurrentPixelUnpackBufferName == 0;
 }
 
-/**
- * Instead of conditionally handling marshaling immediate index data in draw
- * calls (deprecated and removed in GL core), we just disable threading.
- */
-static inline bool
-_mesa_glthread_has_non_vbo_vertices_or_indices(const struct gl_context *ctx)
-{
-   const struct glthread_state *glthread = &ctx->GLThread;
-   struct glthread_vao *vao = glthread->CurrentVAO;
-
-   return ctx->API != API_OPENGL_CORE &&
-          (vao->CurrentElementBufferName == 0 ||
-           (vao->UserPointerMask & vao->BufferEnabled));
-}
-
 static inline bool
 _mesa_glthread_has_non_vbo_vertices(const struct gl_context *ctx)
 {

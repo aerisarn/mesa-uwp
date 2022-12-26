@@ -1203,6 +1203,33 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
 }
 
 void GLAPIENTRY
+_mesa_marshal_MultiModeDrawArraysIBM(const GLenum *mode, const GLint *first,
+                                     const GLsizei *count, GLsizei primcount,
+                                     GLint modestride)
+{
+   for (int i = 0 ; i < primcount; i++) {
+      if (count[i] > 0) {
+         GLenum m = *((GLenum *)((GLubyte *)mode + i * modestride));
+         _mesa_marshal_DrawArrays(m, first[i], count[i]);
+      }
+   }
+}
+
+void GLAPIENTRY
+_mesa_marshal_MultiModeDrawElementsIBM(const GLenum *mode,
+                                       const GLsizei *count, GLenum type,
+                                       const GLvoid * const *indices,
+                                       GLsizei primcount, GLint modestride)
+{
+   for (int i = 0 ; i < primcount; i++) {
+      if (count[i] > 0) {
+         GLenum m = *((GLenum *)((GLubyte *)mode + i * modestride));
+         _mesa_marshal_DrawElements(m, count[i], type, indices[i]);
+      }
+   }
+}
+
+void GLAPIENTRY
 _mesa_marshal_DrawArrays(GLenum mode, GLint first, GLsizei count)
 {
    draw_arrays(mode, first, count, 1, 0, true);
@@ -1361,6 +1388,22 @@ _mesa_unmarshal_MultiDrawElements(struct gl_context *ctx,
 uint32_t
 _mesa_unmarshal_MultiDrawElementsBaseVertex(struct gl_context *ctx,
                                             const struct marshal_cmd_MultiDrawElementsBaseVertex *cmd)
+{
+   unreachable("should never end up here");
+   return 0;
+}
+
+uint32_t
+_mesa_unmarshal_MultiModeDrawArraysIBM(struct gl_context *ctx,
+                                       const struct marshal_cmd_MultiModeDrawArraysIBM *cmd)
+{
+   unreachable("should never end up here");
+   return 0;
+}
+
+uint32_t
+_mesa_unmarshal_MultiModeDrawElementsIBM(struct gl_context *ctx,
+                                         const struct marshal_cmd_MultiModeDrawElementsIBM *cmd)
 {
    unreachable("should never end up here");
    return 0;
