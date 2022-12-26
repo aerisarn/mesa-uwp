@@ -335,31 +335,6 @@ _mesa_unmarshal_DrawArraysInstancedBaseInstance(struct gl_context *ctx,
    return cmd_size;
 }
 
-static ALWAYS_INLINE void
-draw_arrays_async(struct gl_context *ctx, GLenum mode, GLint first,
-                  GLsizei count, GLsizei instance_count, GLuint baseinstance)
-{
-   if (instance_count == 1 && baseinstance == 0) {
-      int cmd_size = sizeof(struct marshal_cmd_DrawArrays);
-      struct marshal_cmd_DrawArrays *cmd =
-         _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawArrays, cmd_size);
-
-      cmd->mode = mode;
-      cmd->first = first;
-      cmd->count = count;
-   } else {
-      int cmd_size = sizeof(struct marshal_cmd_DrawArraysInstancedBaseInstance);
-      struct marshal_cmd_DrawArraysInstancedBaseInstance *cmd =
-         _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawArraysInstancedBaseInstance, cmd_size);
-
-      cmd->mode = mode;
-      cmd->first = first;
-      cmd->count = count;
-      cmd->instance_count = instance_count;
-      cmd->baseinstance = baseinstance;
-   }
-}
-
 /* DrawArraysInstancedBaseInstance with user buffers. */
 struct marshal_cmd_DrawArraysUserBuf
 {
@@ -404,30 +379,6 @@ _mesa_unmarshal_DrawArraysUserBuf(struct gl_context *ctx,
    return cmd->cmd_base.cmd_size;
 }
 
-static ALWAYS_INLINE void
-draw_arrays_async_user(struct gl_context *ctx, GLenum mode, GLint first,
-                       GLsizei count, GLsizei instance_count, GLuint baseinstance,
-                       unsigned user_buffer_mask,
-                       const struct glthread_attrib_binding *buffers)
-{
-   int buffers_size = util_bitcount(user_buffer_mask) * sizeof(buffers[0]);
-   int cmd_size = sizeof(struct marshal_cmd_DrawArraysUserBuf) +
-                  buffers_size;
-   struct marshal_cmd_DrawArraysUserBuf *cmd;
-
-   cmd = _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawArraysUserBuf,
-                                         cmd_size);
-   cmd->mode = mode;
-   cmd->first = first;
-   cmd->count = count;
-   cmd->instance_count = instance_count;
-   cmd->baseinstance = baseinstance;
-   cmd->user_buffer_mask = user_buffer_mask;
-
-   if (user_buffer_mask)
-      memcpy(cmd + 1, buffers, buffers_size);
-}
-
 static inline unsigned
 get_user_buffer_mask(struct gl_context *ctx)
 {
@@ -468,7 +419,25 @@ draw_arrays(GLenum mode, GLint first, GLsizei count, GLsizei instance_count,
     */
    if (!user_buffer_mask || count <= 0 || instance_count <= 0 ||
        ctx->GLThread.draw_always_async) {
-      draw_arrays_async(ctx, mode, first, count, instance_count, baseinstance);
+      if (instance_count == 1 && baseinstance == 0) {
+         int cmd_size = sizeof(struct marshal_cmd_DrawArrays);
+         struct marshal_cmd_DrawArrays *cmd =
+            _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawArrays, cmd_size);
+
+         cmd->mode = mode;
+         cmd->first = first;
+         cmd->count = count;
+      } else {
+         int cmd_size = sizeof(struct marshal_cmd_DrawArraysInstancedBaseInstance);
+         struct marshal_cmd_DrawArraysInstancedBaseInstance *cmd =
+            _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawArraysInstancedBaseInstance, cmd_size);
+
+         cmd->mode = mode;
+         cmd->first = first;
+         cmd->count = count;
+         cmd->instance_count = instance_count;
+         cmd->baseinstance = baseinstance;
+      }
       return;
    }
 
@@ -479,8 +448,22 @@ draw_arrays(GLenum mode, GLint first, GLsizei count, GLsizei instance_count,
                         instance_count, buffers))
       return; /* the error is set by upload_vertices */
 
-   draw_arrays_async_user(ctx, mode, first, count, instance_count, baseinstance,
-                          user_buffer_mask, buffers);
+   int buffers_size = util_bitcount(user_buffer_mask) * sizeof(buffers[0]);
+   int cmd_size = sizeof(struct marshal_cmd_DrawArraysUserBuf) +
+                  buffers_size;
+   struct marshal_cmd_DrawArraysUserBuf *cmd;
+
+   cmd = _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawArraysUserBuf,
+                                         cmd_size);
+   cmd->mode = mode;
+   cmd->first = first;
+   cmd->count = count;
+   cmd->instance_count = instance_count;
+   cmd->baseinstance = baseinstance;
+   cmd->user_buffer_mask = user_buffer_mask;
+
+   if (user_buffer_mask)
+      memcpy(cmd + 1, buffers, buffers_size);
 }
 
 /* MultiDrawArrays with user buffers. */
@@ -712,48 +695,6 @@ _mesa_unmarshal_DrawElementsInstancedBaseVertexBaseInstance(struct gl_context *c
    return cmd_size;
 }
 
-static ALWAYS_INLINE void
-draw_elements_async(struct gl_context *ctx, GLenum mode, GLsizei count,
-                    GLenum type, const GLvoid *indices, GLsizei instance_count,
-                    GLint basevertex, GLuint baseinstance)
-{
-   if (instance_count == 1 && baseinstance == 0) {
-      int cmd_size = sizeof(struct marshal_cmd_DrawElementsBaseVertex);
-      struct marshal_cmd_DrawElementsBaseVertex *cmd =
-         _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawElementsBaseVertex, cmd_size);
-
-      cmd->mode = MIN2(mode, 0xffff);
-      cmd->type = MIN2(type, 0xffff);
-      cmd->count = count;
-      cmd->indices = indices;
-      cmd->basevertex = basevertex;
-   } else {
-      if (basevertex == 0 && baseinstance == 0) {
-         int cmd_size = sizeof(struct marshal_cmd_DrawElementsInstanced);
-         struct marshal_cmd_DrawElementsInstanced *cmd =
-            _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawElementsInstanced, cmd_size);
-
-         cmd->mode = MIN2(mode, 0xffff);
-         cmd->type = MIN2(type, 0xffff);
-         cmd->count = count;
-         cmd->instance_count = instance_count;
-         cmd->indices = indices;
-      } else {
-         int cmd_size = sizeof(struct marshal_cmd_DrawElementsInstancedBaseVertexBaseInstance);
-         struct marshal_cmd_DrawElementsInstancedBaseVertexBaseInstance *cmd =
-            _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawElementsInstancedBaseVertexBaseInstance, cmd_size);
-
-         cmd->mode = MIN2(mode, 0xffff);
-         cmd->type = MIN2(type, 0xffff);
-         cmd->count = count;
-         cmd->instance_count = instance_count;
-         cmd->basevertex = basevertex;
-         cmd->baseinstance = baseinstance;
-         cmd->indices = indices;
-      }
-   }
-}
-
 struct marshal_cmd_DrawElementsUserBuf
 {
    struct marshal_cmd_base cmd_base;
@@ -804,34 +745,6 @@ _mesa_unmarshal_DrawElementsUserBuf(struct gl_context *ctx,
                                       true);
    }
    return cmd->cmd_base.cmd_size;
-}
-
-static ALWAYS_INLINE void
-draw_elements_async_user(struct gl_context *ctx, GLenum mode, GLsizei count,
-                         GLenum type, const GLvoid *indices, GLsizei instance_count,
-                         GLint basevertex, GLuint baseinstance,
-                         struct gl_buffer_object *index_buffer,
-                         unsigned user_buffer_mask,
-                         const struct glthread_attrib_binding *buffers)
-{
-   int buffers_size = util_bitcount(user_buffer_mask) * sizeof(buffers[0]);
-   int cmd_size = sizeof(struct marshal_cmd_DrawElementsUserBuf) +
-                  buffers_size;
-   struct marshal_cmd_DrawElementsUserBuf *cmd;
-
-   cmd = _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawElementsUserBuf, cmd_size);
-   cmd->mode = MIN2(mode, 0xffff);
-   cmd->type = MIN2(type, 0xffff);
-   cmd->count = count;
-   cmd->indices = indices;
-   cmd->instance_count = instance_count;
-   cmd->basevertex = basevertex;
-   cmd->baseinstance = baseinstance;
-   cmd->user_buffer_mask = user_buffer_mask;
-   cmd->index_buffer = index_buffer;
-
-   if (user_buffer_mask)
-      memcpy(cmd + 1, buffers, buffers_size);
 }
 
 static inline bool
@@ -893,8 +806,41 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
    if (ctx->GLThread.draw_always_async || count <= 0 || instance_count <= 0 ||
        !is_index_type_valid(type) ||
        (!user_buffer_mask && !has_user_indices)) {
-      draw_elements_async(ctx, mode, count, type, indices, instance_count,
-                          basevertex, baseinstance);
+      if (instance_count == 1 && baseinstance == 0) {
+         int cmd_size = sizeof(struct marshal_cmd_DrawElementsBaseVertex);
+         struct marshal_cmd_DrawElementsBaseVertex *cmd =
+            _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawElementsBaseVertex, cmd_size);
+
+         cmd->mode = MIN2(mode, 0xffff);
+         cmd->type = MIN2(type, 0xffff);
+         cmd->count = count;
+         cmd->indices = indices;
+         cmd->basevertex = basevertex;
+      } else {
+         if (basevertex == 0 && baseinstance == 0) {
+            int cmd_size = sizeof(struct marshal_cmd_DrawElementsInstanced);
+            struct marshal_cmd_DrawElementsInstanced *cmd =
+               _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawElementsInstanced, cmd_size);
+
+            cmd->mode = MIN2(mode, 0xffff);
+            cmd->type = MIN2(type, 0xffff);
+            cmd->count = count;
+            cmd->instance_count = instance_count;
+            cmd->indices = indices;
+         } else {
+            int cmd_size = sizeof(struct marshal_cmd_DrawElementsInstancedBaseVertexBaseInstance);
+            struct marshal_cmd_DrawElementsInstancedBaseVertexBaseInstance *cmd =
+               _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawElementsInstancedBaseVertexBaseInstance, cmd_size);
+
+            cmd->mode = MIN2(mode, 0xffff);
+            cmd->type = MIN2(type, 0xffff);
+            cmd->count = count;
+            cmd->instance_count = instance_count;
+            cmd->basevertex = basevertex;
+            cmd->baseinstance = baseinstance;
+            cmd->indices = indices;
+         }
+      }
       return;
    }
 
@@ -956,9 +902,24 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
    }
 
    /* Draw asynchronously. */
-   draw_elements_async_user(ctx, mode, count, type, indices, instance_count,
-                            basevertex, baseinstance, index_buffer,
-                            user_buffer_mask, buffers);
+   int buffers_size = util_bitcount(user_buffer_mask) * sizeof(buffers[0]);
+   int cmd_size = sizeof(struct marshal_cmd_DrawElementsUserBuf) +
+                  buffers_size;
+   struct marshal_cmd_DrawElementsUserBuf *cmd;
+
+   cmd = _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawElementsUserBuf, cmd_size);
+   cmd->mode = MIN2(mode, 0xffff);
+   cmd->type = MIN2(type, 0xffff);
+   cmd->count = count;
+   cmd->indices = indices;
+   cmd->instance_count = instance_count;
+   cmd->basevertex = basevertex;
+   cmd->baseinstance = baseinstance;
+   cmd->user_buffer_mask = user_buffer_mask;
+   cmd->index_buffer = index_buffer;
+
+   if (user_buffer_mask)
+      memcpy(cmd + 1, buffers, buffers_size);
 }
 
 struct marshal_cmd_MultiDrawElementsUserBuf
