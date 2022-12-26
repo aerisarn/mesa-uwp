@@ -94,39 +94,6 @@ _mesa_glthread_has_no_unpack_buffer(const struct gl_context *ctx)
    return ctx->GLThread.CurrentPixelUnpackBufferName == 0;
 }
 
-static inline bool
-_mesa_glthread_has_non_vbo_vertices(const struct gl_context *ctx)
-{
-   const struct glthread_state *glthread = &ctx->GLThread;
-   const struct glthread_vao *vao = glthread->CurrentVAO;
-
-   return ctx->API != API_OPENGL_CORE &&
-          (vao->UserPointerMask & vao->BufferEnabled);
-}
-
-static inline bool
-_mesa_glthread_has_non_vbo_vertices_or_indirect(const struct gl_context *ctx)
-{
-   const struct glthread_state *glthread = &ctx->GLThread;
-   const struct glthread_vao *vao = glthread->CurrentVAO;
-
-   return ctx->API != API_OPENGL_CORE &&
-          (glthread->CurrentDrawIndirectBufferName == 0 ||
-           (vao->UserPointerMask & vao->BufferEnabled));
-}
-
-static inline bool
-_mesa_glthread_has_non_vbo_vertices_or_indices_or_indirect(const struct gl_context *ctx)
-{
-   const struct glthread_state *glthread = &ctx->GLThread;
-   struct glthread_vao *vao = glthread->CurrentVAO;
-
-   return ctx->API != API_OPENGL_CORE &&
-          (glthread->CurrentDrawIndirectBufferName == 0 ||
-           vao->CurrentElementBufferName == 0 ||
-           (vao->UserPointerMask & vao->BufferEnabled));
-}
-
 static inline void
 _mesa_glthread_update_draw_always_async(struct gl_context *ctx)
 {

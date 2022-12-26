@@ -1331,6 +1331,426 @@ _mesa_marshal_MultiModeDrawElementsIBM(const GLenum *mode,
    }
 }
 
+static const void *
+map_draw_indirect_params(struct gl_context *ctx, GLintptr offset,
+                         unsigned count, unsigned stride)
+{
+   struct gl_buffer_object *obj = ctx->DrawIndirectBuffer;
+
+   if (!obj)
+      return (void*)offset;
+
+   return _mesa_bufferobj_map_range(ctx, offset,
+                                    MIN2((size_t)count * stride, obj->Size),
+                                    GL_MAP_READ_BIT, obj, MAP_INTERNAL);
+}
+
+static void
+unmap_draw_indirect_params(struct gl_context *ctx)
+{
+   if (ctx->DrawIndirectBuffer)
+      _mesa_bufferobj_unmap(ctx, ctx->DrawIndirectBuffer, MAP_INTERNAL);
+}
+
+static unsigned
+read_draw_indirect_count(struct gl_context *ctx, GLintptr offset)
+{
+   unsigned result = 0;
+
+   if (ctx->ParameterBuffer) {
+      _mesa_bufferobj_get_subdata(ctx, offset, sizeof(result), &result,
+                                  ctx->ParameterBuffer);
+   }
+   return result;
+}
+
+static void
+lower_draw_arrays_indirect(struct gl_context *ctx, GLenum mode,
+                           GLintptr indirect, GLsizei stride,
+                           unsigned draw_count)
+{
+   /* If <stride> is zero, the elements are tightly packed. */
+   if (stride == 0)
+      stride = 4 * sizeof(GLuint);      /* sizeof(DrawArraysIndirectCommand) */
+
+   const uint32_t *params =
+      map_draw_indirect_params(ctx, indirect, draw_count, stride);
+
+   for (unsigned i = 0; i < draw_count; i++) {
+      draw_arrays(i, mode,
+                  params[i * stride / 4 + 2],
+                  params[i * stride / 4 + 0],
+                  params[i * stride / 4 + 1],
+                  params[i * stride / 4 + 3], false);
+   }
+
+   unmap_draw_indirect_params(ctx);
+}
+
+static void
+lower_draw_elements_indirect(struct gl_context *ctx, GLenum mode, GLenum type,
+                             GLintptr indirect, GLsizei stride,
+                             unsigned draw_count)
+{
+   /* If <stride> is zero, the elements are tightly packed. */
+   if (stride == 0)
+      stride = 5 * sizeof(GLuint);      /* sizeof(DrawArraysIndirectCommand) */
+
+   const uint32_t *params =
+      map_draw_indirect_params(ctx, indirect, draw_count, stride);
+
+   for (unsigned i = 0; i < draw_count; i++) {
+      draw_elements(i, mode,
+                    params[i * stride / 4 + 0],
+                    type,
+                    (GLvoid*)((uintptr_t)params[i * stride / 4 + 2] *
+                              get_index_size(type)),
+                    params[i * stride / 4 + 1],
+                    params[i * stride / 4 + 3],
+                    params[i * stride / 4 + 4],
+                    false, 0, 0, false);
+   }
+   unmap_draw_indirect_params(ctx);
+}
+
+struct marshal_cmd_DrawArraysIndirect
+{
+   struct marshal_cmd_base cmd_base;
+   GLenum16 mode;
+   const GLvoid * indirect;
+};
+
+uint32_t
+_mesa_unmarshal_DrawArraysIndirect(struct gl_context *ctx,
+                                   const struct marshal_cmd_DrawArraysIndirect *cmd)
+{
+   GLenum mode = cmd->mode;
+   const GLvoid * indirect = cmd->indirect;
+
+   CALL_DrawArraysIndirect(ctx->CurrentServerDispatch, (mode, indirect));
+
+   const unsigned cmd_size =
+      (align(sizeof(struct marshal_cmd_DrawArraysIndirect), 8) / 8);
+   assert(cmd_size == cmd->cmd_base.cmd_size);
+   return cmd_size;
+}
+
+void GLAPIENTRY
+_mesa_marshal_DrawArraysIndirect(GLenum mode, const GLvoid *indirect)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
+   unsigned user_buffer_mask =
+      _mesa_is_gles31(ctx) ? 0 : vao->UserPointerMask & vao->BufferEnabled;
+
+   if (ctx->GLThread.draw_always_async ||
+       !ctx->GLThread.CurrentDrawIndirectBufferName ||
+       !user_buffer_mask) {
+      int cmd_size = sizeof(struct marshal_cmd_DrawArraysIndirect);
+      struct marshal_cmd_DrawArraysIndirect *cmd;
+
+      cmd = _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawArraysIndirect, cmd_size);
+      cmd->mode = MIN2(mode, 0xffff); /* clamped to 0xffff (invalid enum) */
+      cmd->indirect = indirect;
+      return;
+   }
+
+   _mesa_glthread_finish_before(ctx, "DrawArraysIndirect");
+   lower_draw_arrays_indirect(ctx, mode, (GLintptr)indirect, 0, 1);
+}
+
+struct marshal_cmd_DrawElementsIndirect
+{
+   struct marshal_cmd_base cmd_base;
+   GLenum16 mode;
+   GLenum16 type;
+   const GLvoid * indirect;
+};
+
+uint32_t
+_mesa_unmarshal_DrawElementsIndirect(struct gl_context *ctx,
+                                     const struct marshal_cmd_DrawElementsIndirect *cmd)
+{
+   GLenum mode = cmd->mode;
+   GLenum type = cmd->type;
+   const GLvoid * indirect = cmd->indirect;
+
+   CALL_DrawElementsIndirect(ctx->CurrentServerDispatch, (mode, type, indirect));
+
+   const unsigned cmd_size =
+      (align(sizeof(struct marshal_cmd_DrawElementsIndirect), 8) / 8);
+   assert(cmd_size == cmd->cmd_base.cmd_size);
+   return cmd_size;
+}
+
+void GLAPIENTRY
+_mesa_marshal_DrawElementsIndirect(GLenum mode, GLenum type, const GLvoid *indirect)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
+   unsigned user_buffer_mask =
+      _mesa_is_gles31(ctx) ? 0 : vao->UserPointerMask & vao->BufferEnabled;
+
+   if (ctx->GLThread.draw_always_async || !is_index_type_valid(type) ||
+       !ctx->GLThread.CurrentDrawIndirectBufferName ||
+       !vao->CurrentElementBufferName || !user_buffer_mask) {
+      int cmd_size = sizeof(struct marshal_cmd_DrawElementsIndirect);
+      struct marshal_cmd_DrawElementsIndirect *cmd;
+
+      cmd = _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_DrawElementsIndirect, cmd_size);
+      cmd->mode = MIN2(mode, 0xffff); /* clamped to 0xffff (invalid enum) */
+      cmd->type = MIN2(type, 0xffff); /* clamped to 0xffff (invalid enum) */
+      cmd->indirect = indirect;
+      return;
+   }
+
+   _mesa_glthread_finish_before(ctx, "DrawElementsIndirect");
+   lower_draw_elements_indirect(ctx, mode, type, (GLintptr)indirect, 0, 1);
+}
+
+struct marshal_cmd_MultiDrawArraysIndirect
+{
+   struct marshal_cmd_base cmd_base;
+   GLenum16 mode;
+   GLsizei primcount;
+   GLsizei stride;
+   const GLvoid * indirect;
+};
+
+uint32_t
+_mesa_unmarshal_MultiDrawArraysIndirect(struct gl_context *ctx,
+                                        const struct marshal_cmd_MultiDrawArraysIndirect *cmd)
+{
+   GLenum mode = cmd->mode;
+   const GLvoid * indirect = cmd->indirect;
+   GLsizei primcount = cmd->primcount;
+   GLsizei stride = cmd->stride;
+
+   CALL_MultiDrawArraysIndirect(ctx->CurrentServerDispatch,
+                                (mode, indirect, primcount, stride));
+
+   const unsigned cmd_size =
+      (align(sizeof(struct marshal_cmd_MultiDrawArraysIndirect), 8) / 8);
+   assert(cmd_size == cmd->cmd_base.cmd_size);
+   return cmd_size;
+}
+
+void GLAPIENTRY
+_mesa_marshal_MultiDrawArraysIndirect(GLenum mode, const GLvoid *indirect,
+                                      GLsizei primcount, GLsizei stride)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
+   unsigned user_buffer_mask =
+      _mesa_is_gles31(ctx) ? 0 : vao->UserPointerMask & vao->BufferEnabled;
+
+   if (ctx->GLThread.draw_always_async ||
+       !ctx->GLThread.CurrentDrawIndirectBufferName ||
+       !user_buffer_mask) {
+      int cmd_size = sizeof(struct marshal_cmd_MultiDrawArraysIndirect);
+      struct marshal_cmd_MultiDrawArraysIndirect *cmd;
+
+      cmd = _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_MultiDrawArraysIndirect,
+                                            cmd_size);
+      cmd->mode = MIN2(mode, 0xffff); /* clamped to 0xffff (invalid enum) */
+      cmd->indirect = indirect;
+      cmd->primcount = primcount;
+      cmd->stride = stride;
+      return;
+   }
+
+   /* Lower the draw to direct due to non-VBO vertex arrays. */
+   _mesa_glthread_finish_before(ctx, "MultiDrawArraysIndirect");
+   lower_draw_arrays_indirect(ctx, mode, (GLintptr)indirect, stride, primcount);
+}
+
+struct marshal_cmd_MultiDrawElementsIndirect
+{
+   struct marshal_cmd_base cmd_base;
+   GLenum16 mode;
+   GLenum16 type;
+   GLsizei primcount;
+   GLsizei stride;
+   const GLvoid * indirect;
+};
+
+uint32_t
+_mesa_unmarshal_MultiDrawElementsIndirect(struct gl_context *ctx,
+                                          const struct marshal_cmd_MultiDrawElementsIndirect *cmd)
+{
+   GLenum mode = cmd->mode;
+   GLenum type = cmd->type;
+   const GLvoid * indirect = cmd->indirect;
+   GLsizei primcount = cmd->primcount;
+   GLsizei stride = cmd->stride;
+
+   CALL_MultiDrawElementsIndirect(ctx->CurrentServerDispatch,
+                                  (mode, type, indirect, primcount, stride));
+
+   const unsigned cmd_size =
+      (align(sizeof(struct marshal_cmd_MultiDrawElementsIndirect), 8) / 8);
+   assert(cmd_size == cmd->cmd_base.cmd_size);
+   return cmd_size;
+}
+
+void GLAPIENTRY
+_mesa_marshal_MultiDrawElementsIndirect(GLenum mode, GLenum type,
+                                        const GLvoid *indirect,
+                                        GLsizei primcount, GLsizei stride)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
+   unsigned user_buffer_mask =
+      _mesa_is_gles31(ctx) ? 0 : vao->UserPointerMask & vao->BufferEnabled;
+
+   if (ctx->GLThread.draw_always_async || !is_index_type_valid(type) ||
+       !ctx->GLThread.CurrentDrawIndirectBufferName ||
+       !vao->CurrentElementBufferName || !user_buffer_mask) {
+      int cmd_size = sizeof(struct marshal_cmd_MultiDrawElementsIndirect);
+      struct marshal_cmd_MultiDrawElementsIndirect *cmd;
+
+      cmd = _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_MultiDrawElementsIndirect,
+                                            cmd_size);
+      cmd->mode = MIN2(mode, 0xffff); /* clamped to 0xffff (invalid enum) */
+      cmd->type = MIN2(type, 0xffff); /* clamped to 0xffff (invalid enum) */
+      cmd->indirect = indirect;
+      cmd->primcount = primcount;
+      cmd->stride = stride;
+      return;
+   }
+
+   /* Lower the draw to direct due to non-VBO vertex arrays. */
+   _mesa_glthread_finish_before(ctx, "MultiDrawElementsIndirect");
+   lower_draw_elements_indirect(ctx, mode, type, (GLintptr)indirect, stride,
+                                primcount);
+}
+
+struct marshal_cmd_MultiDrawArraysIndirectCountARB
+{
+   struct marshal_cmd_base cmd_base;
+   GLenum16 mode;
+   GLsizei maxdrawcount;
+   GLsizei stride;
+   GLintptr indirect;
+   GLintptr drawcount;
+};
+
+uint32_t
+_mesa_unmarshal_MultiDrawArraysIndirectCountARB(struct gl_context *ctx,
+                                                const struct marshal_cmd_MultiDrawArraysIndirectCountARB *cmd)
+{
+   GLenum mode = cmd->mode;
+   GLintptr indirect = cmd->indirect;
+   GLintptr drawcount = cmd->drawcount;
+   GLsizei maxdrawcount = cmd->maxdrawcount;
+   GLsizei stride = cmd->stride;
+
+   CALL_MultiDrawArraysIndirectCountARB(ctx->CurrentServerDispatch,
+                                        (mode, indirect, drawcount,
+                                         maxdrawcount, stride));
+
+   const unsigned cmd_size =
+      (align(sizeof(struct marshal_cmd_MultiDrawArraysIndirectCountARB), 8) / 8);
+   assert(cmd_size == cmd->cmd_base.cmd_size);
+   return cmd_size;
+}
+
+void GLAPIENTRY
+_mesa_marshal_MultiDrawArraysIndirectCountARB(GLenum mode, GLintptr indirect,
+                                              GLintptr drawcount,
+                                              GLsizei maxdrawcount,
+                                              GLsizei stride)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
+   unsigned user_buffer_mask =
+      _mesa_is_gles31(ctx) ? 0 : vao->UserPointerMask & vao->BufferEnabled;
+
+   if (ctx->GLThread.draw_always_async || !user_buffer_mask ||
+       !ctx->GLThread.CurrentDrawIndirectBufferName) {
+      int cmd_size =
+         sizeof(struct marshal_cmd_MultiDrawArraysIndirectCountARB);
+      struct marshal_cmd_MultiDrawArraysIndirectCountARB *cmd =
+         _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_MultiDrawArraysIndirectCountARB,
+                                         cmd_size);
+
+      cmd->mode = MIN2(mode, 0xffff); /* clamped to 0xffff (invalid enum) */
+      cmd->indirect = indirect;
+      cmd->drawcount = drawcount;
+      cmd->maxdrawcount = maxdrawcount;
+      cmd->stride = stride;
+      return;
+   }
+
+   /* Lower the draw to direct due to non-VBO vertex arrays. */
+   _mesa_glthread_finish_before(ctx, "MultiDrawArraysIndirectCountARB");
+   lower_draw_arrays_indirect(ctx, mode, indirect, stride,
+                              read_draw_indirect_count(ctx, drawcount));
+}
+
+struct marshal_cmd_MultiDrawElementsIndirectCountARB
+{
+   struct marshal_cmd_base cmd_base;
+   GLenum16 mode;
+   GLenum16 type;
+   GLsizei maxdrawcount;
+   GLsizei stride;
+   GLintptr indirect;
+   GLintptr drawcount;
+};
+
+uint32_t
+_mesa_unmarshal_MultiDrawElementsIndirectCountARB(struct gl_context *ctx,
+                                                  const struct marshal_cmd_MultiDrawElementsIndirectCountARB *cmd)
+{
+   GLenum mode = cmd->mode;
+   GLenum type = cmd->type;
+   GLintptr indirect = cmd->indirect;
+   GLintptr drawcount = cmd->drawcount;
+   GLsizei maxdrawcount = cmd->maxdrawcount;
+   GLsizei stride = cmd->stride;
+
+   CALL_MultiDrawElementsIndirectCountARB(ctx->CurrentServerDispatch, (mode, type, indirect, drawcount, maxdrawcount, stride));
+
+   const unsigned cmd_size = (align(sizeof(struct marshal_cmd_MultiDrawElementsIndirectCountARB), 8) / 8);
+   assert(cmd_size == cmd->cmd_base.cmd_size);
+   return cmd_size;
+}
+
+void GLAPIENTRY
+_mesa_marshal_MultiDrawElementsIndirectCountARB(GLenum mode, GLenum type,
+                                                GLintptr indirect,
+                                                GLintptr drawcount,
+                                                GLsizei maxdrawcount,
+                                                GLsizei stride)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
+   unsigned user_buffer_mask =
+      _mesa_is_gles31(ctx) ? 0 : vao->UserPointerMask & vao->BufferEnabled;
+
+   if (ctx->GLThread.draw_always_async || !user_buffer_mask ||
+       !ctx->GLThread.CurrentDrawIndirectBufferName ||
+       !is_index_type_valid(type)) {
+      int cmd_size = sizeof(struct marshal_cmd_MultiDrawElementsIndirectCountARB);
+      struct marshal_cmd_MultiDrawElementsIndirectCountARB *cmd =
+         _mesa_glthread_allocate_command(ctx, DISPATCH_CMD_MultiDrawElementsIndirectCountARB, cmd_size);
+
+      cmd->mode = MIN2(mode, 0xffff); /* clamped to 0xffff (invalid enum) */
+      cmd->type = MIN2(type, 0xffff); /* clamped to 0xffff (invalid enum) */
+      cmd->indirect = indirect;
+      cmd->drawcount = drawcount;
+      cmd->maxdrawcount = maxdrawcount;
+      cmd->stride = stride;
+      return;
+   }
+
+   /* Lower the draw to direct due to non-VBO vertex arrays. */
+   _mesa_glthread_finish_before(ctx, "MultiDrawElementsIndirectCountARB");
+   lower_draw_elements_indirect(ctx, mode, type, indirect, stride,
+                                read_draw_indirect_count(ctx, drawcount));
+}
+
 void GLAPIENTRY
 _mesa_marshal_DrawArrays(GLenum mode, GLint first, GLsizei count)
 {
