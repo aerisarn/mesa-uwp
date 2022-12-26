@@ -8274,8 +8274,10 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
       pc.DCFlushEnable = flags & PIPE_CONTROL_DATA_CACHE_FLUSH;
       pc.StoreDataIndex = 0;
       pc.CommandStreamerStallEnable = flags & PIPE_CONTROL_CS_STALL;
+#if GFX_VERx10 < 125
       pc.GlobalSnapshotCountReset =
          flags & PIPE_CONTROL_GLOBAL_SNAPSHOT_COUNT_RESET;
+#endif
       pc.TLBInvalidate = flags & PIPE_CONTROL_TLB_INVALIDATE;
       pc.GenericMediaStateClear = flags & PIPE_CONTROL_MEDIA_STATE_CLEAR;
       pc.StallAtPixelScoreboard = flags & PIPE_CONTROL_STALL_AT_SCOREBOARD;
