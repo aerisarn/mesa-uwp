@@ -214,6 +214,8 @@ _mesa_glthread_init(struct gl_context *ctx)
    /* glthread takes over all L3 pinning */
    ctx->st->pin_thread_counter = ST_L3_PINNING_DISABLED;
 
+   _mesa_glthread_update_draw_always_async(ctx);
+
    /* Execute the thread initialization function in the thread. */
    struct util_queue_fence fence;
    util_queue_fence_init(&fence);

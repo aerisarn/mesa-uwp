@@ -142,6 +142,16 @@ _mesa_glthread_has_non_vbo_vertices_or_indices_or_indirect(const struct gl_conte
            (vao->UserPointerMask & vao->BufferEnabled));
 }
 
+static inline void
+_mesa_glthread_update_draw_always_async(struct gl_context *ctx)
+{
+   /* Executing erroneous cases will just generate GL_INVALID_OPERATION. */
+   ctx->GLThread.draw_always_async =
+      ctx->API == API_OPENGL_CORE ||
+      ctx->GLThread.inside_begin_end ||
+      ctx->GLThread.ListMode;
+}
+
 static inline unsigned
 _mesa_buffer_enum_to_count(GLenum buffer)
 {
@@ -879,8 +889,10 @@ _mesa_glthread_CallLists(struct gl_context *ctx, GLsizei n, GLenum type,
 static inline void
 _mesa_glthread_NewList(struct gl_context *ctx, GLuint list, GLenum mode)
 {
-   if (!ctx->GLThread.ListMode)
+   if (!ctx->GLThread.ListMode) {
       ctx->GLThread.ListMode = MIN2(mode, 0xffff);
+      _mesa_glthread_update_draw_always_async(ctx);
+   }
 }
 
 static inline void
@@ -890,6 +902,7 @@ _mesa_glthread_EndList(struct gl_context *ctx)
       return;
 
    ctx->GLThread.ListMode = 0;
+   _mesa_glthread_update_draw_always_async(ctx);
 
    /* Track the last display list change. */
    p_atomic_set(&ctx->GLThread.LastDListChangeBatchIndex, ctx->GLThread.next);
@@ -936,6 +949,20 @@ _mesa_glthread_DeleteFramebuffers(struct gl_context *ctx, GLsizei n,
             ctx->GLThread.CurrentReadFramebuffer = 0;
       }
    }
+}
+
+static inline void
+_mesa_glthread_Begin(struct gl_context *ctx)
+{
+   ctx->GLThread.inside_begin_end = true;
+   _mesa_glthread_update_draw_always_async(ctx);
+}
+
+static inline void
+_mesa_glthread_End(struct gl_context *ctx)
+{
+   ctx->GLThread.inside_begin_end = false;
+   _mesa_glthread_update_draw_always_async(ctx);
 }
 
 #endif /* MARSHAL_H */

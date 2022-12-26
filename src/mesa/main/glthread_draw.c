@@ -467,9 +467,7 @@ draw_arrays(GLenum mode, GLint first, GLsizei count, GLsizei instance_count,
     * for possible GL errors.
     */
    if (!user_buffer_mask || count <= 0 || instance_count <= 0 ||
-       /* This will just generate GL_INVALID_OPERATION, as it should. */
-       ctx->GLThread.inside_begin_end ||
-       (!compiled_into_dlist && ctx->GLThread.ListMode)) {
+       ctx->GLThread.draw_always_async) {
       draw_arrays_async(ctx, mode, first, count, instance_count, baseinstance);
       return;
    }
@@ -543,7 +541,7 @@ _mesa_marshal_MultiDrawArrays(GLenum mode, const GLint *first,
    struct glthread_attrib_binding buffers[VERT_ATTRIB_MAX];
    unsigned user_buffer_mask =
       ctx->API == API_OPENGL_CORE || draw_count <= 0 ||
-      ctx->GLThread.inside_begin_end ? 0 : get_user_buffer_mask(ctx);
+      ctx->GLThread.draw_always_async ? 0 : get_user_buffer_mask(ctx);
 
    if (user_buffer_mask) {
       unsigned min_index = ~0;
@@ -879,12 +877,9 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
     * This is also an error path. Zero counts should still call the driver
     * for possible GL errors.
     */
-   if (count <= 0 || instance_count <= 0 ||
+   if (ctx->GLThread.draw_always_async || count <= 0 || instance_count <= 0 ||
        !is_index_type_valid(type) ||
-       (!user_buffer_mask && !has_user_indices) ||
-       /* This will just generate GL_INVALID_OPERATION, as it should. */
-       ctx->GLThread.inside_begin_end ||
-       (!compiled_into_dlist && ctx->GLThread.ListMode)) {
+       (!user_buffer_mask && !has_user_indices)) {
       draw_elements_async(ctx, mode, count, type, indices, instance_count,
                           basevertex, baseinstance);
       return;
@@ -1122,7 +1117,7 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
     * a GL error, we don't upload anything.
     */
    if (draw_count > 0 && is_index_type_valid(type) &&
-       !ctx->GLThread.inside_begin_end) {
+       !ctx->GLThread.draw_always_async) {
       user_buffer_mask = ctx->API == API_OPENGL_CORE ? 0 : get_user_buffer_mask(ctx);
       has_user_indices = vao->CurrentElementBufferName == 0;
    }
