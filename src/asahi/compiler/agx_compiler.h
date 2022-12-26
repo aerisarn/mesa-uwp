@@ -659,7 +659,7 @@ agx_after_block(agx_block *block)
 {
    return (agx_cursor) {
       .option = agx_cursor_after_block,
-      .block = block
+      .block = block,
    };
 }
 
@@ -668,7 +668,7 @@ agx_before_instr(agx_instr *instr)
 {
    return (agx_cursor) {
       .option = agx_cursor_before_instr,
-      .instr = instr
+      .instr = instr,
    };
 }
 
@@ -677,7 +677,7 @@ agx_after_instr(agx_instr *instr)
 {
    return (agx_cursor) {
       .option = agx_cursor_after_instr,
-      .instr = instr
+      .instr = instr,
    };
 }
 
@@ -730,7 +730,7 @@ agx_init_builder(agx_context *ctx, agx_cursor cursor)
 {
    return (agx_builder) {
       .shader = ctx,
-      .cursor = cursor
+      .cursor = cursor,
    };
 }
 

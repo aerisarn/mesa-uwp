@@ -369,7 +369,7 @@ demo_mem_map(void *map, size_t size, unsigned *handles, unsigned count,
          .resource_id = { handles[i] },
          .resource_unk = { 0x20 },
          .resource_flags = { 0x1 },
-         .resource_count = 1
+         .resource_count = 1,
       };
    }
 }

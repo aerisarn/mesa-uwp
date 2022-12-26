@@ -66,7 +66,7 @@ build_background_op(nir_builder *b, enum agx_meta_op op, unsigned rt,
          nir_load_preamble(b, 1, 32, (rt * 8) + 0),
          nir_load_preamble(b, 1, 32, (rt * 8) + 2),
          nir_load_preamble(b, 1, 32, (rt * 8) + 4),
-         nir_load_preamble(b, 1, 32, (rt * 8) + 6)
+         nir_load_preamble(b, 1, 32, (rt * 8) + 6),
       };
 
       return nir_vec(b, comp, nr);

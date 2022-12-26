@@ -1048,7 +1048,7 @@ agx_create_vertex_elements(struct pipe_context *ctx,
          .buf = ve.vertex_buffer_index,
          .src_offset = ve.src_offset,
          .format = ve.src_format,
-         .divisor = ve.instance_divisor
+         .divisor = ve.instance_divisor,
       };
    }
 
@@ -1321,7 +1321,7 @@ agx_create_shader_state(struct pipe_context *pctx,
             key.vs.vbuf.strides[i] = 16;
             key.vs.vbuf.attributes[i] = (struct agx_attribute) {
                .buf = i,
-               .format = PIPE_FORMAT_R32G32B32A32_FLOAT
+               .format = PIPE_FORMAT_R32G32B32A32_FLOAT,
             };
          }
 
@@ -1648,8 +1648,8 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
                   .first_layer = surf->u.tex.first_layer,
                   .last_layer = surf->u.tex.last_layer,
                   .first_level = surf->u.tex.level,
-                  .last_level = surf->u.tex.level
-               }
+                  .last_level = surf->u.tex.level,
+               },
          }, true);
 
          agx_usc_pack(&b, TEXTURE, cfg) {

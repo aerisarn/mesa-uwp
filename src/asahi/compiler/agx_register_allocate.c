@@ -414,7 +414,7 @@ agx_ra(agx_context *ctx)
          .src_to_collect = src_to_collect,
          .ncomps = ncomps,
          .visited = visited,
-         .bound = AGX_NUM_REGS
+         .bound = AGX_NUM_REGS,
       });
    }
 
@@ -460,7 +460,7 @@ agx_ra(agx_context *ctx)
 
             copies[n++] = (struct agx_copy) {
                .dest = base + (i * width),
-               .src = ins->src[i]
+               .src = ins->src[i],
             };
          }
 
@@ -484,7 +484,7 @@ agx_ra(agx_context *ctx)
 
             copies[n++] = (struct agx_copy) {
                .dest = ins->dest[i].value,
-               .src = agx_register(base + (i * width), ins->dest[i].size)
+               .src = agx_register(base + (i * width), ins->dest[i].size),
             };
          }
 
