@@ -486,7 +486,7 @@ class Parser(object):
                 self.prefix = None
         elif name == "value":
             self.values.append(Value(attrs))
-        elif name == "import":
+        elif name in ("import", "exclude"):
             pass
         else:
             assert False
@@ -514,7 +514,7 @@ class Parser(object):
         elif name  == "enum":
             self.emit_enum()
             self.enum = None
-        elif name in ("import", "value"):
+        elif name in ("import", "exclude", "value"):
             pass
         else:
             assert False
