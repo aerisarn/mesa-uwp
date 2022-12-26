@@ -299,4 +299,53 @@
     <field name="Argument Buffer Start Address" start="130" end="191" type="address" />
     <field name="COMPUTE_WALKER_BODY" start="192" end="1439" type="COMPUTE_WALKER_BODY" />
   </instruction>
+  <instruction name="PIPE_CONTROL" bias="2" length="6" engine="render">
+    <field name="DWord Length" start="0" end="7" type="uint" default="4" />
+    <field name="HDC Pipeline Flush Enable" start="9" end="9" type="bool" />
+    <field name="L3 Read Only Cache Invalidation Enable" start="10" end="10" type="bool" />
+    <field name="Untyped Data Port Cache Flush Enable" start="11" end="11" type="bool" />
+    <field name="CCS Flush Enable" start="13" end="13" type="bool" />
+    <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="0" />
+    <field name="3D Command Opcode" start="24" end="26" type="uint" default="2" />
+    <field name="Command SubType" start="27" end="28" type="uint" default="3" />
+    <field name="Command Type" start="29" end="31" type="uint" default="3" />
+    <field name="Depth Cache Flush Enable" start="32" end="32" type="bool" />
+    <field name="Stall At Pixel Scoreboard" start="33" end="33" type="bool" />
+    <field name="State Cache Invalidation Enable" start="34" end="34" type="bool" />
+    <field name="Constant Cache Invalidation Enable" start="35" end="35" type="bool" />
+    <field name="VF Cache Invalidation Enable" start="36" end="36" type="bool" />
+    <field name="DC Flush Enable" start="37" end="37" type="bool" />
+    <field name="Pipe Control Flush Enable" start="39" end="39" type="bool" />
+    <field name="Notify Enable" start="40" end="40" type="bool" />
+    <field name="Indirect State Pointers Disable" start="41" end="41" type="bool" />
+    <field name="Texture Cache Invalidation Enable" start="42" end="42" type="bool" />
+    <field name="Instruction Cache Invalidate Enable" start="43" end="43" type="bool" />
+    <field name="Render Target Cache Flush Enable" start="44" end="44" type="bool" />
+    <field name="Depth Stall Enable" start="45" end="45" type="bool" />
+    <field name="Post Sync Operation" start="46" end="47" type="uint">
+      <value name="No Write" value="0" />
+      <value name="Write Immediate Data" value="1" />
+      <value name="Write PS Depth Count" value="2" />
+      <value name="Write Timestamp" value="3" />
+    </field>
+    <field name="PSS Stall Sync Enable" start="49" end="49" type="bool" />
+    <field name="TLB Invalidate" start="50" end="50" type="bool" />
+    <field name="Depth Stall Sync Enable" start="51" end="51" type="bool" />
+    <field name="Command Streamer Stall Enable" start="52" end="52" type="bool" />
+    <field name="Store Data Index" start="53" end="53" type="uint" />
+    <field name="Protected Memory Enable" start="54" end="54" type="bool" />
+    <field name="LRI Post Sync Operation" start="55" end="55" type="uint">
+      <value name="No LRI Operation" value="0" />
+      <value name="MMIO Write Immediate Data" value="1" />
+    </field>
+    <field name="Destination Address Type" start="56" end="56" type="uint" prefix="DAT">
+      <value name="PPGTT" value="0" />
+      <value name="GGTT" value="1" />
+    </field>
+    <field name="Flush LLC" start="58" end="58" type="bool" />
+    <field name="Protected Memory Disable" start="59" end="59" type="bool" />
+    <field name="Command Cache Invalidate Enable" start="61" end="61" type="bool" />
+    <field name="Address" start="66" end="111" type="address" />
+    <field name="Immediate Data" start="128" end="191" type="uint" />
+  </instruction>
 </genxml>

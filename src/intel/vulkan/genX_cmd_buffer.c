@@ -60,8 +60,10 @@ convert_pc_to_bits(struct GENX(PIPE_CONTROL) *pc) {
 #if GFX_VERx10 >= 125
    bits |= (pc->PSSStallSyncEnable) ?  ANV_PIPE_PSS_STALL_SYNC_BIT : 0;
 #endif
-#if GFX_VER >= 12
+#if GFX_VER == 12
    bits |= (pc->TileCacheFlushEnable) ?  ANV_PIPE_TILE_CACHE_FLUSH_BIT : 0;
+#endif
+#if GFX_VER >= 12
    bits |= (pc->HDCPipelineFlushEnable) ?  ANV_PIPE_HDC_PIPELINE_FLUSH_BIT : 0;
 #endif
    bits |= (pc->RenderTargetCacheFlushEnable) ?  ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT : 0;
@@ -2889,7 +2891,7 @@ genX(batch_emit_pipe_control_write)(struct anv_batch *batch,
          bits & ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT;
       pipe.CCSFlushEnable = bits & ANV_PIPE_CCS_CACHE_FLUSH_BIT;
 #endif
-#if GFX_VER >= 12
+#if GFX_VER == 12
       pipe.TileCacheFlushEnable = bits & ANV_PIPE_TILE_CACHE_FLUSH_BIT;
 #endif
 #if GFX_VER > 11

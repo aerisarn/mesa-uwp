@@ -354,7 +354,7 @@ enum pipe_control_flags
    PIPE_CONTROL_STATE_CACHE_INVALIDATE          = (1 << 22),
    PIPE_CONTROL_STALL_AT_SCOREBOARD             = (1 << 23),
    PIPE_CONTROL_DEPTH_CACHE_FLUSH               = (1 << 24),
-   PIPE_CONTROL_TILE_CACHE_FLUSH                = (1 << 25),
+   PIPE_CONTROL_TILE_CACHE_FLUSH                = (1 << 25), /* Not available in Gfx20+ */
    PIPE_CONTROL_FLUSH_HDC                       = (1 << 26),
    PIPE_CONTROL_PSS_STALL_SYNC                  = (1 << 27),
    PIPE_CONTROL_L3_READ_ONLY_CACHE_INVALIDATE   = (1 << 28),

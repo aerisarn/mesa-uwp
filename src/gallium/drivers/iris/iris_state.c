@@ -9603,7 +9603,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
 #if GFX_VERx10 >= 125
       pc.PSSStallSyncEnable = flags & PIPE_CONTROL_PSS_STALL_SYNC;
 #endif
-#if GFX_VER >= 12
+#if GFX_VER == 12
       pc.TileCacheFlushEnable = flags & PIPE_CONTROL_TILE_CACHE_FLUSH;
 #endif
 #if GFX_VER > 11
@@ -9628,7 +9628,9 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
          flags & PIPE_CONTROL_GLOBAL_SNAPSHOT_COUNT_RESET;
 #endif
       pc.TLBInvalidate = flags & PIPE_CONTROL_TLB_INVALIDATE;
+#if GFX_VERx10 < 200
       pc.GenericMediaStateClear = flags & PIPE_CONTROL_MEDIA_STATE_CLEAR;
+#endif
       pc.StallAtPixelScoreboard = flags & PIPE_CONTROL_STALL_AT_SCOREBOARD;
       pc.RenderTargetCacheFlushEnable =
          flags & PIPE_CONTROL_RENDER_TARGET_FLUSH;
