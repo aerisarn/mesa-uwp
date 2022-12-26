@@ -6749,8 +6749,10 @@ void
 genX(emit_pipeline_select)(struct anv_batch *batch, uint32_t pipeline)
 {
    anv_batch_emit(batch, GENX(PIPELINE_SELECT), ps) {
-      ps.MaskBits = GFX_VER >= 12 ? 0x13 : 3;
-      ps.MediaSamplerDOPClockGateEnable = GFX_VER >= 12;
+      ps.MaskBits = GFX_VER == 12 ? 0x13 : 0x3;
+#if GFX_VER == 12
+      ps.MediaSamplerDOPClockGateEnable = true;
+#endif
       ps.PipelineSelection = pipeline;
    }
 }

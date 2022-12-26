@@ -744,9 +744,11 @@ emit_pipeline_select(struct iris_batch *batch, uint32_t pipeline)
 
    iris_emit_cmd(batch, GENX(PIPELINE_SELECT), sel) {
 #if GFX_VER >= 9
-      sel.MaskBits = GFX_VER >= 12 ? 0x13 : 3;
-      sel.MediaSamplerDOPClockGateEnable = GFX_VER >= 12;
-#endif
+      sel.MaskBits = GFX_VER == 12 ? 0x13 : 0x3;
+#if GFX_VER == 12
+      sel.MediaSamplerDOPClockGateEnable = true;
+#endif /* if GFX_VER == 12 */
+#endif /* if GFX_VER >= 9 */
       sel.PipelineSelection = pipeline;
    }
 }

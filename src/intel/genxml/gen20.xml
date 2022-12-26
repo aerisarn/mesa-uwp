@@ -299,6 +299,18 @@
     <field name="Argument Buffer Start Address" start="130" end="191" type="address" />
     <field name="COMPUTE_WALKER_BODY" start="192" end="1439" type="COMPUTE_WALKER_BODY" />
   </instruction>
+  <instruction name="PIPELINE_SELECT" bias="1" length="1" engine="render">
+    <field name="Pipeline Selection" start="0" end="1" type="uint">
+      <value name="3D" value="0" />
+      <value name="Media" value="1" />
+      <value name="GPGPU" value="2" />
+    </field>
+    <field name="Mask Bits" start="8" end="15" type="uint" />
+    <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="4" />
+    <field name="3D Command Opcode" start="24" end="26" type="uint" default="1" />
+    <field name="Command SubType" start="27" end="28" type="uint" default="1" />
+    <field name="Command Type" start="29" end="31" type="uint" default="3" />
+  </instruction>
   <instruction name="PIPE_CONTROL" bias="2" length="6" engine="render">
     <field name="DWord Length" start="0" end="7" type="uint" default="4" />
     <field name="HDC Pipeline Flush Enable" start="9" end="9" type="bool" />
