@@ -228,15 +228,12 @@ struct agx_shader_key {
    };
 };
 
-void
-agx_preprocess_nir(nir_shader *nir);
+void agx_preprocess_nir(nir_shader *nir);
 
-void
-agx_compile_shader_nir(nir_shader *nir,
-      struct agx_shader_key *key,
-      struct util_debug_callback *debug,
-      struct util_dynarray *binary,
-      struct agx_shader_info *out);
+void agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
+                            struct util_debug_callback *debug,
+                            struct util_dynarray *binary,
+                            struct agx_shader_info *out);
 
 static const nir_shader_compiler_options agx_nir_options = {
    .lower_fdiv = true,
@@ -275,8 +272,10 @@ static const nir_shader_compiler_options agx_nir_options = {
    .max_unroll_iterations = 32,
    .lower_uniforms_to_ubo = true,
    .force_indirect_unrolling_sampler = true,
-   .force_indirect_unrolling = (nir_var_shader_in | nir_var_shader_out | nir_var_function_temp),
-   .lower_int64_options = (nir_lower_int64_options) ~(nir_lower_iadd64 | nir_lower_imul_2x32_64),
+   .force_indirect_unrolling =
+      (nir_var_shader_in | nir_var_shader_out | nir_var_function_temp),
+   .lower_int64_options =
+      (nir_lower_int64_options) ~(nir_lower_iadd64 | nir_lower_imul_2x32_64),
    .lower_doubles_options = nir_lower_dmod,
 };
 

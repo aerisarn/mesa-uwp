@@ -1277,12 +1277,11 @@ TEST(Miptree, Tests2D)
       ail_make_miptree(&layout);
 
       for (unsigned l = 0; l < test.levels; ++l) {
-         EXPECT_EQ(ail_get_level_offset_B(&layout, l), test.offsets[l]) <<
-				test.width << "x" << test.height << " " <<
-				util_format_short_name(test.format) <<
-				" texture has wrong offset at level " << l <<
-            ", off by " << 
-            test.offsets[l] - ail_get_level_offset_B(&layout, l);
-		}
+         EXPECT_EQ(ail_get_level_offset_B(&layout, l), test.offsets[l])
+            << test.width << "x" << test.height << " "
+            << util_format_short_name(test.format)
+            << " texture has wrong offset at level " << l << ", off by "
+            << test.offsets[l] - ail_get_level_offset_B(&layout, l);
+      }
    }
 }

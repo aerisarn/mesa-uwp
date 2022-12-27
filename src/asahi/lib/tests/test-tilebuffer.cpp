@@ -137,24 +137,22 @@ TEST(Tilebuffer, Layouts)
    for (unsigned i = 0; i < ARRAY_SIZE(tests); ++i) {
       unsigned nr_cbufs;
 
-      for (nr_cbufs = 0;
-           nr_cbufs < ARRAY_SIZE(tests[i].formats) &&
-           tests[i].formats[nr_cbufs] != PIPE_FORMAT_NONE;
-           ++nr_cbufs);
+      for (nr_cbufs = 0; nr_cbufs < ARRAY_SIZE(tests[i].formats) &&
+                         tests[i].formats[nr_cbufs] != PIPE_FORMAT_NONE;
+           ++nr_cbufs)
+         ;
 
-      struct agx_tilebuffer_layout actual =
-         agx_build_tilebuffer_layout(tests[i].formats, nr_cbufs,
-               tests[i].nr_samples);
+      struct agx_tilebuffer_layout actual = agx_build_tilebuffer_layout(
+         tests[i].formats, nr_cbufs, tests[i].nr_samples);
 
-      ASSERT_EQ(tests[i].layout.sample_size_B, actual.sample_size_B) <<
-         tests[i].name;
+      ASSERT_EQ(tests[i].layout.sample_size_B, actual.sample_size_B)
+         << tests[i].name;
       ASSERT_EQ(tests[i].layout.nr_samples, actual.nr_samples) << tests[i].name;
-      ASSERT_EQ(tests[i].layout.tile_size.width, actual.tile_size.width) <<
-         tests[i].name;
-      ASSERT_EQ(tests[i].layout.tile_size.height, actual.tile_size.height) <<
-         tests[i].name;
-      ASSERT_EQ(tests[i].total_size,
-                agx_tilebuffer_total_size(&tests[i].layout)) <<
-         tests[i].name;
+      ASSERT_EQ(tests[i].layout.tile_size.width, actual.tile_size.width)
+         << tests[i].name;
+      ASSERT_EQ(tests[i].layout.tile_size.height, actual.tile_size.height)
+         << tests[i].name;
+      ASSERT_EQ(tests[i].total_size, agx_tilebuffer_total_size(&tests[i].layout))
+         << tests[i].name;
    }
 }

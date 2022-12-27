@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "agx_meta.h"
 #include "agx_compile.h"
+#include "agx_device.h" /* for AGX_MEMORY_TYPE_SHADER */
 #include "agx_tilebuffer.h"
 #include "nir_builder.h"
-#include "agx_meta.h"
-#include "agx_device.h" /* for AGX_MEMORY_TYPE_SHADER */
 
 static struct agx_meta_shader *
 agx_compile_meta_shader(struct agx_meta_cache *cache, nir_shader *shader,
@@ -25,8 +25,7 @@ agx_compile_meta_shader(struct agx_meta_cache *cache, nir_shader *shader,
    agx_compile_shader_nir(shader, key, NULL, &binary, &res->info);
 
    res->ptr = agx_pool_upload_aligned_with_bo(&cache->pool, binary.data,
-                                              binary.size, 128,
-                                              &res->bo);
+                                              binary.size, 128, &res->bo);
    util_dynarray_fini(&binary);
 
    return res;
@@ -77,9 +76,8 @@ static struct agx_meta_shader *
 agx_build_background_shader(struct agx_meta_cache *cache,
                             struct agx_meta_key *key)
 {
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
-                                                  &agx_nir_options,
-                                                  "agx_background");
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_FRAGMENT, &agx_nir_options, "agx_background");
    b.shader->info.fs.untyped_color_outputs = true;
 
    struct agx_shader_key compiler_key = {
@@ -94,11 +92,13 @@ agx_build_background_shader(struct agx_meta_cache *cache,
       bool msaa = key->tib.nr_samples > 1;
       assert(nr > 0);
 
-      nir_variable *out = nir_variable_create(b.shader, nir_var_shader_out,
-            glsl_vector_type(GLSL_TYPE_UINT, nr), "output");
+      nir_variable *out =
+         nir_variable_create(b.shader, nir_var_shader_out,
+                             glsl_vector_type(GLSL_TYPE_UINT, nr), "output");
       out->data.location = FRAG_RESULT_DATA0 + rt;
 
-      nir_store_var(&b, out, build_background_op(&b, key->op[rt], rt, nr, msaa), 0xFF);
+      nir_store_var(&b, out, build_background_op(&b, key->op[rt], rt, nr, msaa),
+                    0xFF);
    }
 
    return agx_compile_meta_shader(cache, b.shader, &compiler_key, &key->tib);
@@ -109,25 +109,23 @@ agx_build_end_of_tile_shader(struct agx_meta_cache *cache,
                              struct agx_meta_key *key)
 {
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
-                                                  &agx_nir_options,
-                                                  "agx_eot");
+                                                  &agx_nir_options, "agx_eot");
 
-   enum glsl_sampler_dim dim = (key->tib.nr_samples > 1) ?
-                               GLSL_SAMPLER_DIM_MS :
-                               GLSL_SAMPLER_DIM_2D;
+   enum glsl_sampler_dim dim =
+      (key->tib.nr_samples > 1) ? GLSL_SAMPLER_DIM_MS : GLSL_SAMPLER_DIM_2D;
 
    for (unsigned rt = 0; rt < ARRAY_SIZE(key->op); ++rt) {
       if (key->op[rt] == AGX_META_OP_NONE)
          continue;
 
       assert(key->op[rt] == AGX_META_OP_STORE);
-      nir_block_image_store_agx(&b, nir_imm_int(&b, rt),
-                                nir_imm_intN_t(&b, key->tib.offset_B[rt], 16),
-                                .format = agx_tilebuffer_physical_format(&key->tib, rt),
-                                .image_dim = dim);
+      nir_block_image_store_agx(
+         &b, nir_imm_int(&b, rt), nir_imm_intN_t(&b, key->tib.offset_B[rt], 16),
+         .format = agx_tilebuffer_physical_format(&key->tib, rt),
+         .image_dim = dim);
    }
 
-   struct agx_shader_key compiler_key = { 0 };
+   struct agx_shader_key compiler_key = {0};
    return agx_compile_meta_shader(cache, b.shader, &compiler_key, NULL);
 }
 
@@ -168,8 +166,7 @@ key_compare(const void *a, const void *b)
 }
 
 void
-agx_meta_init(struct agx_meta_cache *cache,
-              struct agx_device *dev,
+agx_meta_init(struct agx_meta_cache *cache, struct agx_device *dev,
               void *memctx)
 {
    agx_pool_init(&cache->pool, dev, AGX_MEMORY_TYPE_SHADER, true);

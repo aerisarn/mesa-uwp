@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "agx_compiler.h"
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
+#include "agx_compiler.h"
 
 #define ALL_SAMPLES 0xFF
-#define BASE_Z 1
-#define BASE_S 2
+#define BASE_Z      1
+#define BASE_S      2
 
 static bool
 lower(nir_function_impl *impl, nir_block *block)
@@ -26,7 +26,8 @@ lower(nir_function_impl *impl, nir_block *block)
          continue;
 
       nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
-      if (sem.location != FRAG_RESULT_DEPTH && sem.location != FRAG_RESULT_STENCIL)
+      if (sem.location != FRAG_RESULT_DEPTH &&
+          sem.location != FRAG_RESULT_STENCIL)
          continue;
 
       if (zs_emit == NULL) {
@@ -34,7 +35,8 @@ lower(nir_function_impl *impl, nir_block *block)
          nir_builder_init(&b, impl);
          b.cursor = nir_before_instr(instr);
 
-         /* Multisampling will get lowered later if needed, default to broadcast */
+         /* Multisampling will get lowered later if needed, default to broadcast
+          */
          nir_ssa_def *sample_mask = nir_imm_intN_t(&b, ALL_SAMPLES, 16);
          zs_emit = nir_store_zs_agx(&b, sample_mask,
                                     nir_ssa_undef(&b, 1, 32) /* depth */,
@@ -45,7 +47,7 @@ lower(nir_function_impl *impl, nir_block *block)
 
       bool z = (sem.location == FRAG_RESULT_DEPTH);
       unsigned src_idx = z ? 1 : 2;
-      unsigned base    = z ? BASE_Z : BASE_S;
+      unsigned base = z ? BASE_Z : BASE_S;
 
       assert((nir_intrinsic_base(zs_emit) & base) == 0 &&
              "each of depth/stencil may only be written once");
@@ -76,8 +78,8 @@ agx_nir_lower_zs_emit(nir_shader *s)
       }
 
       if (progress) {
-         nir_metadata_preserve(function->impl, nir_metadata_block_index |
-                                               nir_metadata_dominance);
+         nir_metadata_preserve(
+            function->impl, nir_metadata_block_index | nir_metadata_dominance);
       } else {
          nir_metadata_preserve(function->impl, nir_metadata_all);
       }
