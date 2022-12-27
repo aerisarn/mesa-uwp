@@ -2703,6 +2703,41 @@ lower_trace_ray_logical_send(const fs_builder &bld, fs_inst *inst)
    inst->src[3] = payload;
 }
 
+static void
+lower_get_buffer_size(const fs_builder &bld, fs_inst *inst)
+{
+   const intel_device_info *devinfo = bld.shader->devinfo;
+   assert(devinfo->ver >= 7);
+   /* Since we can only execute this instruction on uniform bti/surface
+    * handles, brw_fs_nir.cpp should already have limited this to SIMD8.
+    */
+   assert(inst->exec_size == 8);
+
+   fs_reg surface = inst->src[GET_BUFFER_SIZE_SRC_SURFACE];
+   fs_reg lod = inst->src[GET_BUFFER_SIZE_SRC_LOD];
+
+   inst->opcode = SHADER_OPCODE_SEND;
+   inst->mlen = inst->exec_size / 8;
+   inst->resize_sources(3);
+   inst->ex_mlen = 0;
+   inst->ex_desc = 0;
+
+   /* src[0] & src[1] are filled by setup_surface_descriptors() */
+   inst->src[2] = lod;
+
+   const uint32_t return_format = devinfo->ver >= 8 ?
+      GFX8_SAMPLER_RETURN_FORMAT_32BITS : BRW_SAMPLER_RETURN_FORMAT_SINT32;
+
+   const uint32_t desc = brw_sampler_desc(devinfo, 0, 0,
+                                          GFX5_SAMPLER_MESSAGE_SAMPLE_RESINFO,
+                                          BRW_SAMPLER_SIMD_MODE_SIMD8,
+                                          return_format);
+
+   inst->dst = retype(inst->dst, BRW_REGISTER_TYPE_UW);
+   inst->sfid = BRW_SFID_SAMPLER;
+   setup_surface_descriptors(bld, inst, desc, surface, fs_reg() /* surface_handle */);
+}
+
 bool
 fs_visitor::lower_logical_sends()
 {
@@ -2784,6 +2819,10 @@ fs_visitor::lower_logical_sends()
 
       case SHADER_OPCODE_SAMPLEINFO_LOGICAL:
          lower_sampler_logical_send(ibld, inst, SHADER_OPCODE_SAMPLEINFO);
+         break;
+
+      case SHADER_OPCODE_GET_BUFFER_SIZE:
+         lower_get_buffer_size(ibld, inst);
          break;
 
       case SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL:

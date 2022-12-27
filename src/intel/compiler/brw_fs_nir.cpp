@@ -5008,9 +5008,11 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       /* Set LOD = 0 */
       ubld.MOV(src_payload, brw_imm_d(0));
 
-      const unsigned index = ssbo_index;
+      fs_reg srcs[GET_BUFFER_SIZE_SRCS];
+      srcs[GET_BUFFER_SIZE_SRC_SURFACE] = brw_imm_ud(ssbo_index);
+      srcs[GET_BUFFER_SIZE_SRC_LOD] = src_payload;
       fs_inst *inst = ubld.emit(SHADER_OPCODE_GET_BUFFER_SIZE, ret_payload,
-                                src_payload, brw_imm_ud(index));
+                                srcs, GET_BUFFER_SIZE_SRCS);
       inst->header_size = 0;
       inst->mlen = 1;
       inst->size_written = 4 * REG_SIZE;

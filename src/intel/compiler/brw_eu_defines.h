@@ -898,6 +898,15 @@ enum pull_uniform_constant_srcs {
    PULL_UNIFORM_CONSTANT_SRCS,
 };
 
+enum get_buffer_size_srcs {
+   /** Surface binding table index */
+   GET_BUFFER_SIZE_SRC_SURFACE,
+   /** LOD */
+   GET_BUFFER_SIZE_SRC_LOD,
+
+   GET_BUFFER_SIZE_SRCS
+};
+
 enum surface_logical_srcs {
    /** Surface binding table index */
    SURFACE_LOGICAL_SRC_SURFACE,

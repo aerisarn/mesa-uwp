@@ -258,7 +258,6 @@ fs_inst::is_control_source(unsigned arg) const
    case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
    case FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET:
    case FS_OPCODE_INTERPOLATE_AT_PER_SLOT_OFFSET:
-   case SHADER_OPCODE_GET_BUFFER_SIZE:
       return arg == 1;
 
    case SHADER_OPCODE_MOV_INDIRECT:
@@ -4998,7 +4997,6 @@ get_lowered_simd_width(const struct brw_compiler *compiler,
       return MIN2(8, inst->exec_size);
 
    case FS_OPCODE_LINTERP:
-   case SHADER_OPCODE_GET_BUFFER_SIZE:
    case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD:
    case FS_OPCODE_PACK_HALF_2x16_SPLIT:
    case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
