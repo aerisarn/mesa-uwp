@@ -7,8 +7,8 @@
 #include "layout.h"
 
 /*
- * Test uncompressed texture sizes. All test cases in this file are extracted from
- * texture structure dumps in Metal.
+ * Test uncompressed texture sizes. All test cases in this file are extracted
+ * from texture structure dumps in Metal.
  */
 struct sizetest {
    enum pipe_format format;
@@ -4766,9 +4766,10 @@ TEST(UncompTwiddled, SizeTests)
 
       ail_make_miptree(&layout);
 
-      EXPECT_EQ(layout.size_B, test.size) <<
-         test.width << "x" << test.height << "x" << test.depth << " " << (int)test.levels <<
-         "L " << util_format_short_name(test.format) <<
-         " uncompressed texture has wrong allocation size, off by " << ((int)layout.size_B - (int)test.size);
+      EXPECT_EQ(layout.size_B, test.size)
+         << test.width << "x" << test.height << "x" << test.depth << " "
+         << (int)test.levels << "L " << util_format_short_name(test.format)
+         << " uncompressed texture has wrong allocation size, off by "
+         << ((int)layout.size_B - (int)test.size);
    }
 }

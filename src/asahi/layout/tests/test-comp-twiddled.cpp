@@ -14329,9 +14329,10 @@ TEST(CompTwiddled, SizeTests)
 
       ail_make_miptree(&layout);
 
-      EXPECT_EQ(layout.size_B, test.size) <<
-         test.width << "x" << test.height << "x" << test.depth << " " << (int)test.levels <<
-         "L " << util_format_short_name(test.format) <<
-         " compressed texture has wrong allocation size, off by " << ((int)layout.size_B - (int)test.size);
+      EXPECT_EQ(layout.size_B, test.size)
+         << test.width << "x" << test.height << "x" << test.depth << " "
+         << (int)test.levels << "L " << util_format_short_name(test.format)
+         << " compressed texture has wrong allocation size, off by "
+         << ((int)layout.size_B - (int)test.size);
    }
 }
