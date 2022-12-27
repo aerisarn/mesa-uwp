@@ -825,11 +825,27 @@ struct radv_rra_trace_data {
    bool validate_as;
 };
 
+enum radv_dispatch_table {
+   RADV_DEVICE_DISPATCH_TABLE,
+   RADV_APP_DISPATCH_TABLE,
+   RADV_RGP_DISPATCH_TABLE,
+   RADV_RRA_DISPATCH_TABLE,
+   RADV_DISPATCH_TABLE_COUNT,
+};
+
+struct radv_layer_dispatch_tables {
+   struct vk_device_dispatch_table app;
+   struct vk_device_dispatch_table rgp;
+   struct vk_device_dispatch_table rra;
+};
+
 struct radv_device {
    struct vk_device vk;
 
    struct radv_instance *instance;
    struct radeon_winsys *ws;
+
+   struct radv_layer_dispatch_tables layer_dispatch;
 
    struct radeon_winsys_ctx *hw_ctx[RADV_NUM_HW_CTX];
    struct radv_meta_state meta_state;

@@ -3576,10 +3576,36 @@ radv_device_finish_perf_counter_lock_cs(struct radv_device *device)
    free(device->perf_counter_lock_cs);
 }
 
+struct dispatch_table_builder {
+   struct vk_device_dispatch_table *tables[RADV_DISPATCH_TABLE_COUNT];
+   bool used[RADV_DISPATCH_TABLE_COUNT];
+   bool initialized[RADV_DISPATCH_TABLE_COUNT];
+};
+
+static void
+add_entrypoints(struct dispatch_table_builder *b,
+                const struct vk_device_entrypoint_table *entrypoints,
+                enum radv_dispatch_table table)
+{
+   for (int32_t i = table - 1; i >= RADV_DEVICE_DISPATCH_TABLE; i--) {
+      if (i == RADV_DEVICE_DISPATCH_TABLE || b->used[i]) {
+         vk_device_dispatch_table_from_entrypoints(b->tables[i], entrypoints, !b->initialized[i]);
+         b->initialized[i] = true;
+      }
+   }
+
+   if (table < RADV_DISPATCH_TABLE_COUNT)
+      b->used[table] = true;
+}
+
 static void
 init_dispatch_tables(struct radv_device *device, struct radv_physical_device *physical_device)
 {
-   struct vk_device_dispatch_table *dispatch_table = &device->vk.dispatch_table;
+   struct dispatch_table_builder b = {0};
+   b.tables[RADV_DEVICE_DISPATCH_TABLE] = &device->vk.dispatch_table;
+   b.tables[RADV_APP_DISPATCH_TABLE] = &device->layer_dispatch.app;
+   b.tables[RADV_RGP_DISPATCH_TABLE] = &device->layer_dispatch.rgp;
+   b.tables[RADV_RRA_DISPATCH_TABLE] = &device->layer_dispatch.rra;
 
    if (physical_device->instance->vk.app_info.app_name &&
        !strcmp(physical_device->instance->vk.app_info.app_name, "metroexodus")) {
@@ -3587,21 +3613,18 @@ init_dispatch_tables(struct radv_device *device, struct radv_physical_device *ph
        * crashes sometimes.  Workaround this game bug by enabling an internal layer. Remove this
        * when the game is fixed.
        */
-      vk_device_dispatch_table_from_entrypoints(dispatch_table, &metro_exodus_device_entrypoints,
-                                                true);
-      vk_device_dispatch_table_from_entrypoints(dispatch_table, &radv_device_entrypoints, false);
-   } else if (radv_thread_trace_enabled()) {
-      vk_device_dispatch_table_from_entrypoints(dispatch_table, &sqtt_device_entrypoints, true);
-      vk_device_dispatch_table_from_entrypoints(dispatch_table, &radv_device_entrypoints, false);
-   } else if (radv_rra_trace_enabled() && radv_enable_rt(physical_device, false)) {
-      vk_device_dispatch_table_from_entrypoints(dispatch_table, &rra_device_entrypoints, true);
-      vk_device_dispatch_table_from_entrypoints(dispatch_table, &radv_device_entrypoints, false);
-   } else {
-      vk_device_dispatch_table_from_entrypoints(dispatch_table, &radv_device_entrypoints, true);
+      add_entrypoints(&b, &metro_exodus_device_entrypoints, RADV_APP_DISPATCH_TABLE);
    }
 
-   vk_device_dispatch_table_from_entrypoints(dispatch_table, &wsi_device_entrypoints, false);
-   vk_device_dispatch_table_from_entrypoints(dispatch_table, &vk_common_device_entrypoints, false);
+   if (radv_thread_trace_enabled())
+      add_entrypoints(&b, &sqtt_device_entrypoints, RADV_RGP_DISPATCH_TABLE);
+
+   if (radv_rra_trace_enabled() && radv_enable_rt(physical_device, false))
+      add_entrypoints(&b, &rra_device_entrypoints, RADV_RRA_DISPATCH_TABLE);
+
+   add_entrypoints(&b, &radv_device_entrypoints, RADV_DISPATCH_TABLE_COUNT);
+   add_entrypoints(&b, &wsi_device_entrypoints, RADV_DISPATCH_TABLE_COUNT);
+   add_entrypoints(&b, &vk_common_device_entrypoints, RADV_DISPATCH_TABLE_COUNT);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
