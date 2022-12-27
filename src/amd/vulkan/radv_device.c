@@ -1146,6 +1146,7 @@ static const driOptionDescription radv_dri_options[] = {
       DRI_CONF_RADV_ENABLE_UNIFIED_HEAP_ON_APU(false)
       DRI_CONF_RADV_TEX_NON_UNIFORM(false)
       DRI_CONF_RADV_RT(false)
+      DRI_CONF_RADV_APP_LAYER()
    DRI_CONF_SECTION_END
 };
 // clang-format on
@@ -1202,6 +1203,8 @@ radv_init_dri_options(struct radv_instance *instance)
       driQueryOptionb(&instance->dri_options, "radv_enable_unified_heap_on_apu");
 
    instance->tex_non_uniform = driQueryOptionb(&instance->dri_options, "radv_tex_non_uniform");
+
+   instance->app_layer = driQueryOptionstr(&instance->dri_options, "radv_app_layer");
 }
 
 static VkResult create_null_physical_device(struct vk_instance *vk_instance);
@@ -3607,14 +3610,8 @@ init_dispatch_tables(struct radv_device *device, struct radv_physical_device *ph
    b.tables[RADV_RGP_DISPATCH_TABLE] = &device->layer_dispatch.rgp;
    b.tables[RADV_RRA_DISPATCH_TABLE] = &device->layer_dispatch.rra;
 
-   if (physical_device->instance->vk.app_info.app_name &&
-       !strcmp(physical_device->instance->vk.app_info.app_name, "metroexodus")) {
-      /* Metro Exodus (Linux native) calls vkGetSemaphoreCounterValue() with a NULL semaphore and it
-       * crashes sometimes.  Workaround this game bug by enabling an internal layer. Remove this
-       * when the game is fixed.
-       */
+   if (!strcmp(physical_device->instance->app_layer, "metroexodus"))
       add_entrypoints(&b, &metro_exodus_device_entrypoints, RADV_APP_DISPATCH_TABLE);
-   }
 
    if (radv_thread_trace_enabled())
       add_entrypoints(&b, &sqtt_device_entrypoints, RADV_RGP_DISPATCH_TABLE);
