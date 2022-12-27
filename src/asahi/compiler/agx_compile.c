@@ -463,6 +463,11 @@ agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
        */
       agx_sample_mask(b, agx_immediate(1));
       b->shader->did_sample_mask = true;
+
+      assert(!(b->shader->nir->info.outputs_written &
+               (BITFIELD64_BIT(FRAG_RESULT_DEPTH) |
+                BITFIELD64_BIT(FRAG_RESULT_STENCIL))) &&
+             "incompatible");
    }
 
    /* Compact the registers according to the mask */
@@ -504,6 +509,7 @@ agx_emit_store_zs(agx_builder *b, nir_intrinsic_instr *instr)
     * maybe rename this flag to something more general.
     */
    b->shader->out->writes_sample_mask = true;
+   assert(!b->shader->did_sample_mask && "incompatible");
 
    return agx_zs_emit(b, agx_src_index(&instr->src[0]), zs, base);
 }
