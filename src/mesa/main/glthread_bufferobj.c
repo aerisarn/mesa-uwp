@@ -38,6 +38,7 @@ new_upload_buffer(struct gl_context *ctx, GLsizeiptr size, uint8_t **ptr)
       return NULL;
 
    obj->Immutable = true;
+   obj->GLThreadInternal = true;
 
    if (!_mesa_bufferobj_data(ctx, GL_ARRAY_BUFFER, size, NULL,
                           GL_WRITE_ONLY,

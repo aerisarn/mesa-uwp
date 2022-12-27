@@ -88,7 +88,6 @@ union gl_vertex_format_user {
 struct glthread_attrib_binding {
    struct gl_buffer_object *buffer; /**< where non-VBO data was uploaded */
    int offset;                      /**< offset to uploaded non-VBO data */
-   const void *original_pointer;    /**< restore this pointer after the draw */
 };
 
 struct glthread_attrib {
@@ -372,6 +371,7 @@ void _mesa_glthread_ProgramChanged(struct gl_context *ctx);
 void _mesa_glthread_UnrollDrawElements(struct gl_context *ctx,
                                        GLenum mode, GLsizei count, GLenum type,
                                        const GLvoid *indices, GLint basevertex);
+void _mesa_glthread_unbind_uploaded_vbos(struct gl_context *ctx);
 
 #ifdef __cplusplus
 }

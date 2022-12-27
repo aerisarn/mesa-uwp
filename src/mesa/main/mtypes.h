@@ -1465,6 +1465,7 @@ struct gl_buffer_object
    bool DeletePending:1;  /**< true if buffer object is removed from the hash */
    bool Immutable:1;    /**< GL_ARB_buffer_storage */
    bool HandleAllocated:1; /**< GL_ARB_bindless_texture */
+   bool GLThreadInternal:1; /**< Created by glthread. */
    GLenum16 Usage;      /**< GL_STREAM_DRAW_ARB, GL_STREAM_READ_ARB, etc. */
    GLchar *Label;       /**< GL_KHR_debug */
    GLsizeiptrARB Size;  /**< Size of buffer storage in bytes */

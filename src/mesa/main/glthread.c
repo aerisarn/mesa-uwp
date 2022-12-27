@@ -277,6 +277,12 @@ void _mesa_glthread_disable(struct gl_context *ctx)
    if (_glapi_get_dispatch() == ctx->MarshalExec) {
        _glapi_set_dispatch(ctx->CurrentClientDispatch);
    }
+
+   /* Unbind VBOs in all VAOs that glthread bound for non-VBO vertex uploads
+    * to restore original states.
+    */
+   if (ctx->API != API_OPENGL_CORE)
+      _mesa_glthread_unbind_uploaded_vbos(ctx);
 }
 
 void

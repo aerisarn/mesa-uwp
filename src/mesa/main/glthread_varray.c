@@ -739,3 +739,37 @@ _mesa_glthread_InterleavedArrays(struct gl_context *ctx, GLenum format,
                                                   0, 0, 0),
                                 stride, (GLubyte *) pointer + layout.voffset);
 }
+
+static void
+unbind_uploaded_vbos(void *_vao, void *_ctx)
+{
+   struct gl_context *ctx = _ctx;
+   struct gl_vertex_array_object *vao = _vao;
+
+   assert(ctx->API != API_OPENGL_CORE);
+
+   for (unsigned i = 0; i < ARRAY_SIZE(vao->BufferBinding); i++) {
+      if (vao->BufferBinding[i].BufferObj &&
+          vao->BufferBinding[i].BufferObj->GLThreadInternal) {
+         /* We don't need to restore the user pointer because it's never
+          * overwritten. When we bind a VBO internally, the user pointer
+          * in gl_array_attribute::Ptr becomes ignored and unchanged.
+          */
+         _mesa_bind_vertex_buffer(ctx, vao, i, NULL, 0,
+                                  vao->BufferBinding[i].Stride, false, false);
+      }
+   }
+}
+
+/* Unbind VBOs in all VAOs that glthread bound for non-VBO vertex uploads
+ * to restore original states.
+ */
+void
+_mesa_glthread_unbind_uploaded_vbos(struct gl_context *ctx)
+{
+   assert(ctx->API != API_OPENGL_CORE);
+
+   /* Iterate over all VAOs. */
+   _mesa_HashWalk(ctx->Array.Objects, unbind_uploaded_vbos, ctx);
+   unbind_uploaded_vbos(ctx->Array.DefaultVAO, ctx);
+}

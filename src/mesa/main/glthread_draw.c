@@ -215,7 +215,6 @@ upload_vertices(struct gl_context *ctx, unsigned user_buffer_mask,
 
          buffers[num_buffers].buffer = upload_buffer;
          buffers[num_buffers].offset = upload_offset - start;
-         buffers[num_buffers].original_pointer = ptr;
          num_buffers++;
       }
 
@@ -276,7 +275,6 @@ upload_vertices(struct gl_context *ctx, unsigned user_buffer_mask,
 
       buffers[num_buffers].buffer = upload_buffer;
       buffers[num_buffers].offset = upload_offset - offset;
-      buffers[num_buffers].original_pointer = ptr;
       num_buffers++;
    }
 
@@ -389,10 +387,8 @@ _mesa_unmarshal_DrawArraysUserBuf(struct gl_context *ctx,
       (const struct glthread_attrib_binding *)(cmd + 1);
 
    /* Bind uploaded buffers if needed. */
-   if (user_buffer_mask) {
-      _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
-                                      false);
-   }
+   if (user_buffer_mask)
+      _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask);
 
    const GLenum mode = cmd->mode;
    const GLint first = cmd->first;
@@ -405,12 +401,6 @@ _mesa_unmarshal_DrawArraysUserBuf(struct gl_context *ctx,
                                         (mode, first, count, instance_count,
                                          baseinstance));
    ctx->DrawID = 0;
-
-   /* Restore states. */
-   if (user_buffer_mask) {
-      _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
-                                      true);
-   }
    return cmd->cmd_base.cmd_size;
 }
 
@@ -540,19 +530,11 @@ _mesa_unmarshal_MultiDrawArraysUserBuf(struct gl_context *ctx,
       (const struct glthread_attrib_binding *)variable_data;
 
    /* Bind uploaded buffers if needed. */
-   if (user_buffer_mask) {
-      _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
-                                      false);
-   }
+   if (user_buffer_mask)
+      _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask);
 
    CALL_MultiDrawArrays(ctx->CurrentServerDispatch,
                         (mode, first, count, draw_count));
-
-   /* Restore states. */
-   if (user_buffer_mask) {
-      _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
-                                      true);
-   }
    return cmd->cmd_base.cmd_size;
 }
 
@@ -636,20 +618,11 @@ _mesa_marshal_MultiDrawArrays(GLenum mode, const GLint *first,
       /* The call is too large, so sync and execute the unmarshal code here. */
       _mesa_glthread_finish_before(ctx, "MultiDrawArrays");
 
-      if (user_buffer_mask) {
-         _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
-                                         false);
-      }
+      if (user_buffer_mask)
+         _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask);
 
       CALL_MultiDrawArrays(ctx->CurrentServerDispatch,
                            (mode, first, count, draw_count));
-
-      /* Restore states. */
-      if (user_buffer_mask) {
-         /* TODO: remove this after glthread takes over all uploading */
-         _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
-                                         true);
-      }
    }
 }
 
@@ -804,10 +777,8 @@ _mesa_unmarshal_DrawElementsUserBuf(struct gl_context *ctx,
       (const struct glthread_attrib_binding *)(cmd + 1);
 
    /* Bind uploaded buffers if needed. */
-   if (user_buffer_mask) {
-      _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
-                                      false);
-   }
+   if (user_buffer_mask)
+      _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask);
 
    /* Draw. */
    const GLenum mode = cmd->mode;
@@ -826,12 +797,6 @@ _mesa_unmarshal_DrawElementsUserBuf(struct gl_context *ctx,
                              baseinstance));
    ctx->DrawID = 0;
    _mesa_reference_buffer_object(ctx, &index_buffer, NULL);
-
-   /* Restore states. */
-   if (user_buffer_mask) {
-      _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
-                                      true);
-   }
    return cmd->cmd_base.cmd_size;
 }
 
@@ -1057,10 +1022,8 @@ _mesa_unmarshal_MultiDrawElementsUserBuf(struct gl_context *ctx,
       (const struct glthread_attrib_binding *)variable_data;
 
    /* Bind uploaded buffers if needed. */
-   if (user_buffer_mask) {
-      _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
-                                      false);
-   }
+   if (user_buffer_mask)
+      _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask);
 
    /* Draw. */
    const GLenum mode = cmd->mode;
@@ -1071,12 +1034,6 @@ _mesa_unmarshal_MultiDrawElementsUserBuf(struct gl_context *ctx,
                                  ((GLintptr)index_buffer, mode, count, type,
                                   indices, draw_count, basevertex));
    _mesa_reference_buffer_object(ctx, &index_buffer, NULL);
-
-   /* Restore states. */
-   if (user_buffer_mask) {
-      _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
-                                      true);
-   }
    return cmd->cmd_base.cmd_size;
 }
 
@@ -1126,23 +1083,14 @@ multi_draw_elements_async(struct gl_context *ctx, GLenum mode,
       _mesa_glthread_finish_before(ctx, "DrawElements");
 
       /* Bind uploaded buffers if needed. */
-      if (user_buffer_mask) {
-         _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
-                                         false);
-      }
+      if (user_buffer_mask)
+         _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask);
 
       /* Draw. */
       CALL_MultiDrawElementsUserBuf(ctx->CurrentServerDispatch,
                                     ((GLintptr)index_buffer, mode, count,
                                      type, indices, draw_count, basevertex));
       _mesa_reference_buffer_object(ctx, &index_buffer, NULL);
-
-      /* Restore states. */
-      /* TODO: remove this after glthread takes over all uploading */
-      if (user_buffer_mask) {
-         _mesa_InternalBindVertexBuffers(ctx, buffers, user_buffer_mask,
-                                         true);
-      }
    }
 }
 
