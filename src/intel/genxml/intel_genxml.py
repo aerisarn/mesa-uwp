@@ -73,8 +73,6 @@ class Struct(object):
         for d in deps.keys():
             if d in struct_dict:
                 self.deps[d] = struct_dict[d]
-            else:
-                assert d in enum_dict
 
     def add_xml(self, items: typing.OrderedDict[str, et.Element]) -> None:
         for d in self.deps.values():
