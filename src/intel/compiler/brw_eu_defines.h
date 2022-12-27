@@ -916,6 +916,8 @@ enum pull_varying_constant_srcs {
 enum get_buffer_size_srcs {
    /** Surface binding table index */
    GET_BUFFER_SIZE_SRC_SURFACE,
+   /** Surface bindless handle */
+   GET_BUFFER_SIZE_SRC_SURFACE_HANDLE,
    /** LOD */
    GET_BUFFER_SIZE_SRC_LOD,
 

@@ -2742,6 +2742,7 @@ lower_get_buffer_size(const fs_builder &bld, fs_inst *inst)
    assert(inst->exec_size == 8);
 
    fs_reg surface = inst->src[GET_BUFFER_SIZE_SRC_SURFACE];
+   fs_reg surface_handle = inst->src[GET_BUFFER_SIZE_SRC_SURFACE_HANDLE];
    fs_reg lod = inst->src[GET_BUFFER_SIZE_SRC_LOD];
 
    inst->opcode = SHADER_OPCODE_SEND;
@@ -2763,7 +2764,7 @@ lower_get_buffer_size(const fs_builder &bld, fs_inst *inst)
 
    inst->dst = retype(inst->dst, BRW_REGISTER_TYPE_UW);
    inst->sfid = BRW_SFID_SAMPLER;
-   setup_surface_descriptors(bld, inst, desc, surface, fs_reg() /* surface_handle */);
+   setup_surface_descriptors(bld, inst, desc, surface, surface_handle);
 }
 
 bool

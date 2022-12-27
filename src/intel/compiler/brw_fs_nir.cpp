@@ -5037,8 +5037,6 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
    case nir_intrinsic_get_ssbo_size: {
       assert(nir_src_num_components(instr->src[0]) == 1);
-      unsigned ssbo_index = nir_src_is_const(instr->src[0]) ?
-                            nir_src_as_uint(instr->src[0]) : 0;
 
       /* A resinfo's sampler message is used to get the buffer size.  The
        * SIMD8's writeback message consists of four registers and SIMD16's
@@ -5056,7 +5054,10 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       ubld.MOV(src_payload, brw_imm_d(0));
 
       fs_reg srcs[GET_BUFFER_SIZE_SRCS];
-      srcs[GET_BUFFER_SIZE_SRC_SURFACE] = brw_imm_ud(ssbo_index);
+      srcs[get_nir_src_bindless(instr->src[0]) ?
+           GET_BUFFER_SIZE_SRC_SURFACE_HANDLE :
+           GET_BUFFER_SIZE_SRC_SURFACE] =
+         get_nir_buffer_intrinsic_index(bld, instr);
       srcs[GET_BUFFER_SIZE_SRC_LOD] = src_payload;
       fs_inst *inst = ubld.emit(SHADER_OPCODE_GET_BUFFER_SIZE, ret_payload,
                                 srcs, GET_BUFFER_SIZE_SRCS);
