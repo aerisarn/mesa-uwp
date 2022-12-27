@@ -68,6 +68,7 @@ typedef void *drmDevicePtr;
 #include "winsys/null/radv_null_winsys_public.h"
 #include "git_sha1.h"
 #include "sid.h"
+#include "vk_common_entrypoints.h"
 #include "vk_format.h"
 #include "vk_sync.h"
 #include "vk_sync_dummy.h"
@@ -3575,6 +3576,34 @@ radv_device_finish_perf_counter_lock_cs(struct radv_device *device)
    free(device->perf_counter_lock_cs);
 }
 
+static void
+init_dispatch_tables(struct radv_device *device, struct radv_physical_device *physical_device)
+{
+   struct vk_device_dispatch_table *dispatch_table = &device->vk.dispatch_table;
+
+   if (physical_device->instance->vk.app_info.app_name &&
+       !strcmp(physical_device->instance->vk.app_info.app_name, "metroexodus")) {
+      /* Metro Exodus (Linux native) calls vkGetSemaphoreCounterValue() with a NULL semaphore and it
+       * crashes sometimes.  Workaround this game bug by enabling an internal layer. Remove this
+       * when the game is fixed.
+       */
+      vk_device_dispatch_table_from_entrypoints(dispatch_table, &metro_exodus_device_entrypoints,
+                                                true);
+      vk_device_dispatch_table_from_entrypoints(dispatch_table, &radv_device_entrypoints, false);
+   } else if (radv_thread_trace_enabled()) {
+      vk_device_dispatch_table_from_entrypoints(dispatch_table, &sqtt_device_entrypoints, true);
+      vk_device_dispatch_table_from_entrypoints(dispatch_table, &radv_device_entrypoints, false);
+   } else if (radv_rra_trace_enabled() && radv_enable_rt(physical_device, false)) {
+      vk_device_dispatch_table_from_entrypoints(dispatch_table, &rra_device_entrypoints, true);
+      vk_device_dispatch_table_from_entrypoints(dispatch_table, &radv_device_entrypoints, false);
+   } else {
+      vk_device_dispatch_table_from_entrypoints(dispatch_table, &radv_device_entrypoints, true);
+   }
+
+   vk_device_dispatch_table_from_entrypoints(dispatch_table, &wsi_device_entrypoints, false);
+   vk_device_dispatch_table_from_entrypoints(dispatch_table, &vk_common_device_entrypoints, false);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *pAllocator, VkDevice *pDevice)
@@ -3704,33 +3733,13 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    if (!device)
       return vk_error(physical_device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   struct vk_device_dispatch_table dispatch_table;
-
-   if (physical_device->instance->vk.app_info.app_name &&
-       !strcmp(physical_device->instance->vk.app_info.app_name, "metroexodus")) {
-      /* Metro Exodus (Linux native) calls vkGetSemaphoreCounterValue() with a NULL semaphore and it
-       * crashes sometimes.  Workaround this game bug by enabling an internal layer. Remove this
-       * when the game is fixed.
-       */
-      vk_device_dispatch_table_from_entrypoints(&dispatch_table, &metro_exodus_device_entrypoints, true);
-      vk_device_dispatch_table_from_entrypoints(&dispatch_table, &radv_device_entrypoints, false);
-   } else if (radv_thread_trace_enabled()) {
-      vk_device_dispatch_table_from_entrypoints(&dispatch_table, &sqtt_device_entrypoints, true);
-      vk_device_dispatch_table_from_entrypoints(&dispatch_table, &radv_device_entrypoints, false);
-   } else if (radv_rra_trace_enabled() && radv_enable_rt(physical_device, false)) {
-      vk_device_dispatch_table_from_entrypoints(&dispatch_table, &rra_device_entrypoints, true);
-      vk_device_dispatch_table_from_entrypoints(&dispatch_table, &radv_device_entrypoints, false);
-   } else {
-      vk_device_dispatch_table_from_entrypoints(&dispatch_table, &radv_device_entrypoints, true);
-   }
-   vk_device_dispatch_table_from_entrypoints(&dispatch_table, &wsi_device_entrypoints, false);
-
-   result =
-      vk_device_init(&device->vk, &physical_device->vk, &dispatch_table, pCreateInfo, pAllocator);
+   result = vk_device_init(&device->vk, &physical_device->vk, NULL, pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
       vk_free(&device->vk.alloc, device);
       return result;
    }
+
+   init_dispatch_tables(device, physical_device);
 
    device->vk.command_buffer_ops = &radv_cmd_buffer_ops;
 
