@@ -1,6 +1,6 @@
 variables:
    DEBIAN_X86_BUILD_BASE_IMAGE: "debian/x86_build-base"
-   DEBIAN_BASE_TAG: "2023-01-04-crosvm-virglrenderer"
+   DEBIAN_BASE_TAG: "2023-01-05-libwayland"
 
    DEBIAN_X86_BUILD_IMAGE_PATH: "debian/x86_build"
    DEBIAN_BUILD_TAG: "2022-11-03-ci-fairy-s3"

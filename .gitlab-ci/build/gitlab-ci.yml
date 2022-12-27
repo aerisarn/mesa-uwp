@@ -362,7 +362,7 @@ debian-android:
       -D glx=dri
       -D gbm=enabled
       -D egl=enabled
-      -D platforms=x11
+      -D platforms=x11,wayland
       -D osmesa=false
     GALLIUM_ST: >
       -D dri3=enabled
