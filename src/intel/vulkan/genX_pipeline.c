@@ -1115,6 +1115,8 @@ emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
    };
 
    if (xfb_info) {
+      pipeline->uses_xfb = true;
+
       so.SOFunctionEnable = true;
       so.SOStatisticsEnable = true;
 

@@ -370,6 +370,10 @@ genX(blorp_exec)(struct blorp_batch *batch,
 {
    struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
 
+   /* Turn on preemption if it was toggled off. */
+   if (!cmd_buffer->state.gfx.object_preemption)
+      genX(cmd_buffer_set_preemption)(cmd_buffer, true);
+
    if (!cmd_buffer->state.current_l3_config) {
       const struct intel_l3_config *cfg =
          intel_get_default_l3_config(cmd_buffer->device->info);

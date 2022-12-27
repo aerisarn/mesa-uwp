@@ -80,6 +80,10 @@ emit_common_so_memcpy(struct anv_batch *batch, struct anv_device *device,
       anv_batch_emit(batch, GENX(3DSTATE_MESH_CONTROL), mesh);
       anv_batch_emit(batch, GENX(3DSTATE_TASK_CONTROL), task);
    }
+
+   /* Wa_16013994831 - Disable preemption during streamout. */
+   if (intel_device_info_is_dg2(device->info))
+      genX(batch_set_preemption)(batch, false);
 #endif
 
    anv_batch_emit(batch, GENX(3DSTATE_SBE), sbe) {
@@ -259,6 +263,9 @@ genX(emit_so_memcpy_fini)(struct anv_memcpy_state *state)
 
    if ((state->batch->next - state->batch->start) & 4)
       anv_batch_emit(state->batch, GENX(MI_NOOP), noop);
+
+   if (intel_device_info_is_dg2(state->device->info))
+      genX(batch_set_preemption)(state->batch, true);
 }
 
 void

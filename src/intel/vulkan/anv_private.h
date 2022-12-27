@@ -2569,6 +2569,8 @@ struct anv_cmd_graphics_state {
    uint32_t index_offset;
 
    struct vk_sample_locations_state sample_locations;
+
+   bool object_preemption;
 };
 
 enum anv_depth_reg_mode {
@@ -3100,6 +3102,7 @@ struct anv_graphics_pipeline {
 
    bool                                         kill_pixel;
    bool                                         force_fragment_thread_dispatch;
+   bool                                         uses_xfb;
 
    uint32_t                                     vb_used;
    struct anv_pipeline_vertex_binding {

@@ -50,6 +50,7 @@ anv_cmd_state_init(struct anv_cmd_buffer *cmd_buffer)
 
    state->current_pipeline = UINT32_MAX;
    state->gfx.restart_index = UINT32_MAX;
+   state->gfx.object_preemption = true;
    state->gfx.dirty = 0;
 }
 

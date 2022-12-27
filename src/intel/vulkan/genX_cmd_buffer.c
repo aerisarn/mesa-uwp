@@ -3138,6 +3138,62 @@ cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
    }
 }
 
+/* Set preemption on/off. */
+void
+genX(batch_set_preemption)(struct anv_batch *batch, bool value)
+{
+#if GFX_VERx10 >= 120
+   anv_batch_write_reg(batch, GENX(CS_CHICKEN1), cc1) {
+      cc1.DisablePreemptionandHighPriorityPausingdueto3DPRIMITIVECommand = !value;
+      cc1.DisablePreemptionandHighPriorityPausingdueto3DPRIMITIVECommandMask = true;
+   }
+
+   /* Wa_16013994831 - we need to insert CS_STALL and 250 noops. */
+   anv_batch_emit(batch, GENX(PIPE_CONTROL), pipe) {
+      pipe.CommandStreamerStallEnable = true;
+   }
+
+   for (unsigned i = 0; i < 250; i++)
+      anv_batch_emit(batch, GENX(MI_NOOP), noop);
+#endif
+}
+
+void
+genX(cmd_buffer_set_preemption)(struct anv_cmd_buffer *cmd_buffer, bool value)
+{
+#if GFX_VERx10 >= 120
+   if (cmd_buffer->state.gfx.object_preemption == value)
+      return;
+
+   genX(batch_set_preemption)(&cmd_buffer->batch, value);
+   cmd_buffer->state.gfx.object_preemption = value;
+#endif
+}
+
+static void
+genX(streamout_prologue)(struct anv_cmd_buffer *cmd_buffer)
+{
+#if GFX_VERx10 >= 120
+   /* Wa_16013994831 - Disable preemption during streamout, enable back
+    * again if XFB not used by the current pipeline.
+    *
+    * Although this workaround applies to Gfx12+, we already disable object
+    * level preemption for another reason in genX_state.c so we can skip this
+    * for Gfx12.
+    */
+   if (!intel_device_info_is_dg2(cmd_buffer->device->info))
+      return;
+
+   if (cmd_buffer->state.gfx.pipeline->uses_xfb) {
+      genX(cmd_buffer_set_preemption)(cmd_buffer, false);
+      return;
+   }
+
+   if (!cmd_buffer->state.gfx.object_preemption)
+      genX(cmd_buffer_set_preemption)(cmd_buffer, true);
+#endif
+}
+
 static void
 cmd_buffer_emit_streamout(struct anv_cmd_buffer *cmd_buffer)
 {
@@ -3165,6 +3221,8 @@ cmd_buffer_emit_streamout(struct anv_cmd_buffer *cmd_buffer)
    default:
       unreachable("Invalid provoking vertex mode");
    }
+
+   genX(streamout_prologue)(cmd_buffer);
 
    GENX(3DSTATE_STREAMOUT_pack)(NULL, dwords, &so);
    anv_batch_emit_merge(&cmd_buffer->batch, dwords, pipeline->gfx8.streamout_state);
@@ -3627,6 +3685,12 @@ genX(EndCommandBuffer)(
    genX(cmd_buffer_flush_generated_draws)(cmd_buffer);
 #endif
 
+   /* Turn on object level preemption if it is disabled to have it in known
+    * state at the beginning of new command buffer.
+    */
+   if (!cmd_buffer->state.gfx.object_preemption)
+      genX(cmd_buffer_set_preemption)(cmd_buffer, true);
+
    /* We want every command buffer to start with the PMA fix in a known state,
     * so we disable it at the end of the command buffer.
     */
@@ -3660,6 +3724,10 @@ genX(CmdExecuteCommands)(
     * when they begin executing.  Make sure this is true.
     */
    genX(cmd_buffer_enable_pma_fix)(primary, false);
+
+   /* Turn on preemption in case it was toggled off. */
+   if (!primary->state.gfx.object_preemption)
+      genX(cmd_buffer_set_preemption)(primary, true);
 
    /* The secondary command buffer doesn't know which textures etc. have been
     * flushed prior to their execution.  Apply those flushes now.
