@@ -33,6 +33,54 @@
 #include "git_sha1.h"
 #include "vulkan/vulkan.h"
 
+ /* Logic extracted from vk_spirv_to_nir() so we have the same preparation
+ * steps for both the vulkan driver and the lib used by the WebGPU
+ * implementation.
+ * Maybe we should move those steps out of vk_spirv_to_nir() and make
+ * them vk agnosting (right, the only vk specific thing is the vk_device
+ * object that's used for the debug callback passed to spirv_to_nir()).
+ */
+void
+dxil_spirv_nir_prep(nir_shader *nir)
+{
+   /* We have to lower away local constant initializers right before we
+   * inline functions.  That way they get properly initialized at the top
+   * of the function and not at the top of its caller.
+   */
+   NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
+   NIR_PASS_V(nir, nir_lower_returns);
+   NIR_PASS_V(nir, nir_inline_functions);
+   NIR_PASS_V(nir, nir_copy_prop);
+   NIR_PASS_V(nir, nir_opt_deref);
+
+   /* Pick off the single entrypoint that we want */
+   foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
+      if (!func->is_entrypoint)
+         exec_node_remove(&func->node);
+   }
+   assert(exec_list_length(&nir->functions) == 1);
+
+   /* Now that we've deleted all but the main function, we can go ahead and
+   * lower the rest of the constant initializers.  We do this here so that
+   * nir_remove_dead_variables and split_per_member_structs below see the
+   * corresponding stores.
+   */
+   NIR_PASS_V(nir, nir_lower_variable_initializers, ~0);
+
+   /* Split member structs.  We do this before lower_io_to_temporaries so that
+   * it doesn't lower system values to temporaries by accident.
+   */
+   NIR_PASS_V(nir, nir_split_var_copies);
+   NIR_PASS_V(nir, nir_split_per_member_structs);
+
+   NIR_PASS_V(nir, nir_remove_dead_variables,
+              nir_var_shader_in | nir_var_shader_out | nir_var_system_value |
+              nir_var_shader_call_data | nir_var_ray_hit_attrib,
+              NULL);
+
+   NIR_PASS_V(nir, nir_propagate_invariant, false);
+}
+
 static void
 shared_var_info(const struct glsl_type* type, unsigned* size, unsigned* align)
 {

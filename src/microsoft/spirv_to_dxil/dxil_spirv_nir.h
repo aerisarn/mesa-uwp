@@ -29,6 +29,9 @@
 #include "nir.h"
 
 void
+dxil_spirv_nir_prep(nir_shader *nir);
+
+void
 dxil_spirv_nir_link(nir_shader *nir, nir_shader *prev_stage_nir);
 
 void
