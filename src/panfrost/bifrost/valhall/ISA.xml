@@ -322,7 +322,7 @@
     <value desc="Zero-extend to 16-bit, low-half">h0</value>
     <value desc="Zero-extend to 16-bit, high-half">h1</value>
     <value desc="Zero-extend to 32-bit">w0</value>
-    <value desc="Zero-extend to 32-bit">d0</value>
+    <value desc="Zero-extend to 64-bit">d0</value>
   </enum>
 
   <enum name="Load lane (16-bit)">
