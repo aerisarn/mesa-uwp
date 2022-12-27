@@ -33,7 +33,7 @@
     <constant desc="Zero">0x00000000</constant>
     <constant desc="All ones; integer $-1$">0xFFFFFFFF</constant>
     <constant desc="Maximum integer; floating-point NaN">0x7FFFFFFF</constant>
-    <constant desc="Integers $(-2, -3, -4, -5)$">0xFAFCFDFE</constant>
+    <constant desc="Integers $(-2, -3, -4, -6)$">0xFAFCFDFE</constant>
     <constant desc="16-bit integer $2^8$">0x01000000</constant>
     <constant desc="Multiples of 16 $(0, 32, 0, 128)$">0x80002000</constant>
     <constant desc="Multiples of 16 $(48, 80, 96, 112)$">0x70605030</constant>
