@@ -947,11 +947,6 @@ st_destroy_context(struct st_context *st)
       }
    }
 
-   st_context_free_zombie_objects(st);
-
-   simple_mtx_destroy(&st->zombie_sampler_views.mutex);
-   simple_mtx_destroy(&st->zombie_shaders.mutex);
-
    st_release_program(st, &st->fp);
    st_release_program(st, &st->gp);
    st_release_program(st, &st->vp);
@@ -978,6 +973,11 @@ st_destroy_context(struct st_context *st)
    _vbo_DestroyContext(ctx);
 
    st_destroy_program_variants(st);
+
+   st_context_free_zombie_objects(st);
+
+   simple_mtx_destroy(&st->zombie_sampler_views.mutex);
+   simple_mtx_destroy(&st->zombie_shaders.mutex);
 
    /* Do not release debug_output yet because it might be in use by other threads.
     * These threads will be terminated by _mesa_free_context_data and
