@@ -593,9 +593,9 @@
     <field name="Mipmap Mode" size="2" start="3" type="Mipmap Mode" default="Nearest"/>
     <field name="Normalized Coordinates" size="1" start="5" type="bool" default="true"/>
     <field name="Isotropic LOD" size="1" start="6" type="bool"/>
-    <field name="LOD Bias" size="16" start="0:16" type="int" default="0"/>
-    <field name="Minimum LOD" size="16" start="1:0" type="uint" default="0"/>
-    <field name="Maximum LOD" size="16" start="1:16" type="uint" default="1"/>
+    <field name="LOD Bias" size="16" start="0:16" type="slod" default="0"/>
+    <field name="Minimum LOD" size="16" start="1:0" type="ulod" default="0"/>
+    <field name="Maximum LOD" size="16" start="1:16" type="ulod" default="0"/>
     <field name="Wrap Mode S" size="4" start="2:0" type="Wrap Mode" default="Clamp to Edge"/>
     <field name="Wrap Mode T" size="4" start="2:4" type="Wrap Mode" default="Clamp to Edge"/>
     <field name="Wrap Mode R" size="4" start="2:8" type="Wrap Mode" default="Clamp to Edge"/>

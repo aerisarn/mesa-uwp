@@ -252,9 +252,9 @@ panfrost_create_sampler_state(struct pipe_context *pctx,
       cfg.minify_nearest = cso->min_img_filter == PIPE_TEX_FILTER_NEAREST;
 
       cfg.normalized_coordinates = !cso->unnormalized_coords;
-      cfg.lod_bias = FIXED_16(cso->lod_bias, true);
-      cfg.minimum_lod = FIXED_16(cso->min_lod, false);
-      cfg.maximum_lod = FIXED_16(cso->max_lod, false);
+      cfg.lod_bias = cso->lod_bias;
+      cfg.minimum_lod = cso->min_lod;
+      cfg.maximum_lod = cso->max_lod;
 
       cfg.wrap_mode_s = translate_tex_wrap(cso->wrap_s, using_nearest);
       cfg.wrap_mode_t = translate_tex_wrap(cso->wrap_t, using_nearest);
@@ -278,7 +278,7 @@ panfrost_create_sampler_state(struct pipe_context *pctx,
       /* Emulate disabled mipmapping by clamping the LOD as tight as
        * possible (from 0 to epsilon = 1/256) */
       if (cso->min_mip_filter == PIPE_TEX_MIPFILTER_NONE)
-         cfg.maximum_lod = cfg.minimum_lod + 1;
+         cfg.maximum_lod = cfg.minimum_lod + (1.0 / 256.0);
 #endif
    }
 

@@ -56,21 +56,4 @@ typedef uint64_t mali_ptr;
  */
 #define MAX_MIP_LEVELS (14)
 
-/* Used for lod encoding. Thanks @urjaman for pointing out these routines can
- * be cleaned up a lot. */
-
-#define DECODE_FIXED_16(x) ((float)(x / 256.0))
-
-static inline int16_t
-FIXED_16(float x, bool allow_negative)
-{
-   /* Clamp inputs, accounting for float error */
-   float max_lod = (32.0 - (1.0 / 512.0));
-   float min_lod = allow_negative ? -max_lod : 0.0;
-
-   x = ((x > max_lod) ? max_lod : ((x < min_lod) ? min_lod : x));
-
-   return (int)(x * 256.0);
-}
-
 #endif /* __PANFROST_JOB_H__ */
