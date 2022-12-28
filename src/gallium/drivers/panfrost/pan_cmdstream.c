@@ -3584,7 +3584,7 @@ panfrost_direct_draw(struct panfrost_batch *batch,
                                         false);
    } else {
       pan_pack(&invocation, INVOCATION, cfg) {
-         cfg.invocations = MALI_POSITIVE(vertex_count);
+         cfg.invocations = vertex_count - 1;
          cfg.size_y_shift = 0;
          cfg.size_z_shift = 0;
          cfg.workgroups_x_shift = 0;
