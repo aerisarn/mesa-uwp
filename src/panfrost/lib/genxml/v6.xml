@@ -1151,6 +1151,13 @@
     <section name="Padding" offset="64" type="Framebuffer Padding"/>
   </aggregate>
 
+  <struct name="Framebuffer pointer">
+    <field name="Type" start="0" size="1" type="bool" default="true"/>
+    <field name="ZS CRC Extension present" start="1" size="1" type="bool"/>
+    <field name="Render target count" start="2" size="4" type="uint" modifier="minus(1)"/>
+    <field name="Pointer" start="6" size="58" type="address" modifier="shr(6)"/>
+  </struct>
+
   <struct name="Job Header" align="64">
     <field name="Exception Status" size="32" start="0:0" type="uint"/>
     <field name="First Incomplete Task" size="32" start="1:0" type="uint"/>
