@@ -4381,8 +4381,6 @@ init_batch(struct panfrost_batch *batch)
       pan_pool_alloc_desc_aggregate(
          &batch->pool.base, PAN_DESC(FRAMEBUFFER), PAN_DESC(ZS_CRC_EXTENSION),
          PAN_DESC_ARRAY(MAX2(batch->key.nr_cbufs, 1), RENDER_TARGET));
-
-   batch->framebuffer.gpu |= MALI_FBD_TAG_IS_MFBD;
 #endif
 
 #if PAN_ARCH >= 6
@@ -4390,6 +4388,13 @@ init_batch(struct panfrost_batch *batch)
 #else
    /* On Midgard, the TLS is embedded in the FB descriptor */
    batch->tls = batch->framebuffer;
+
+#if PAN_ARCH == 5
+   pan_pack(&batch->tls.gpu, FRAMEBUFFER_POINTER, cfg) {
+      cfg.pointer = batch->framebuffer.gpu;
+      cfg.render_target_count = 1; /* a necessary lie */
+   }
+#endif
 #endif
 }
 
