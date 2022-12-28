@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+fs = import('fs')
+
 files_libintel_common = files(
   'i915/intel_engine.c',
   'i915/intel_engine.h',
@@ -114,7 +116,8 @@ if with_tests and not with_platform_android
       dependencies : [idep_mesautil, idep_intel_dev],
       link_with : libintel_common,
       c_args : [
-        '-DGENXML_PATH="@0@"'.format(genxml_path)
+        '-DGENXML_DIR="@0@"'.format(fs.parent(genxml_path)),
+        '-DGENXML_FILE="@0@"'.format(fs.name(genxml_path)),
       ],
     ),
     args : ['-quiet'],

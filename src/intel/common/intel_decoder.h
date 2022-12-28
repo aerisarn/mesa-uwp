@@ -55,7 +55,7 @@ struct intel_spec *intel_spec_load(const struct intel_device_info *devinfo);
 struct intel_spec *
 intel_spec_load_from_path(const struct intel_device_info *devinfo,
                           const char *path);
-struct intel_spec *intel_spec_load_filename(const char *filename);
+struct intel_spec *intel_spec_load_filename(const char *dir, const char *name);
 void intel_spec_destroy(struct intel_spec *spec);
 uint32_t intel_spec_get_gen(struct intel_spec *spec);
 struct intel_group *intel_spec_find_instruction(struct intel_spec *spec,

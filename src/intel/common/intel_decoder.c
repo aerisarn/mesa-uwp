@@ -21,7 +21,6 @@
  * IN THE SOFTWARE.
  */
 
-#include <libgen.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -744,18 +743,9 @@ intel_spec_load(const struct intel_device_info *devinfo)
 }
 
 struct intel_spec *
-intel_spec_load_filename(const char *filename)
+intel_spec_load_filename(const char *dir, const char *name)
 {
-   char *tmp = strdup(filename);
-   char *dir = strdup(dirname(tmp));
-   free(tmp);
-   tmp = strdup(filename);
-   char *base = strdup(basename(tmp));
-   free(tmp);
-   struct intel_spec *spec = intel_spec_load_common(0, dir, base);
-   free(dir);
-   free(base);
-   return spec;
+   return intel_spec_load_common(0, dir, name);
 }
 
 struct intel_spec *
