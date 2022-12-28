@@ -990,12 +990,6 @@
     <value name="D32" value="2"/>
   </enum>
 
-  <enum name="FBD Tag">
-    <value name="IS_MFBD" value="1"/>
-    <value name="HAS_ZS_RT" value="2"/>
-    <value name="MASK" value="63"/>
-  </enum>
-
   <enum name="Pre Post Frame Shader Mode">
     <value name="Never" value="0"/>
     <value name="Always" value="1"/>

@@ -874,12 +874,6 @@
     <value name="D32" value="2"/>
   </enum>
 
-  <enum name="FBD Tag">
-    <value name="IS_MFBD" value="1"/>
-    <value name="HAS_ZS_RT" value="2"/>
-    <value name="MASK" value="63"/>
-  </enum>
-
   <struct name="Framebuffer Parameters">
     <field name="Width" size="16" start="0:0" type="uint" modifier="minus(1)"/>
     <field name="Height" size="16" start="0:16" type="uint" modifier="minus(1)"/>
