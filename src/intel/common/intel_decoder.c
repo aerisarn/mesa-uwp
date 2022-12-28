@@ -738,9 +738,10 @@ intel_spec_load_from_path(const struct intel_device_info *devinfo,
 {
    size_t filename_len = strlen(path) + 20;
    char *filename = malloc(filename_len);
+   int xml_file_num = devinfo->verx10 % 10 ? devinfo->verx10 : devinfo->ver;
 
    ASSERTED size_t len = snprintf(filename, filename_len, "%s/gen%i.xml",
-                  path, devinfo->ver);
+                                  path, xml_file_num);
    assert(len < filename_len);
 
    struct intel_spec *spec = intel_spec_load_filename(filename);
