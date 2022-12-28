@@ -38,68 +38,9 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 typedef uint64_t mali_ptr;
 
-/* Compressed per-pixel formats. Each of these formats expands to one to four
- * floating-point or integer numbers, as defined by the OpenGL specification.
- * There are various places in OpenGL where the user can specify a compressed
- * format in memory, which all use the same 8-bit enum in the various
- * descriptors, although different hardware units support different formats.
- */
-
-/* The top 3 bits specify how the bits of each component are interpreted. */
-
-/* e.g. ETC2_RGB8 */
 #define MALI_FORMAT_COMPRESSED (0 << 5)
-
-/* e.g. R11F_G11F_B10F */
-#define MALI_FORMAT_SPECIAL (2 << 5)
-
-/* signed normalized, e.g. RGBA8_SNORM */
-#define MALI_FORMAT_SNORM (3 << 5)
-
-/* e.g. RGBA8UI */
-#define MALI_FORMAT_UINT (4 << 5)
-
-/* e.g. RGBA8 and RGBA32F */
-#define MALI_FORMAT_UNORM (5 << 5)
-
-/* e.g. RGBA8I and RGBA16F */
-#define MALI_FORMAT_SINT (6 << 5)
-
-/* These formats seem to largely duplicate the others. They're used at least
- * for Bifrost framebuffer output.
- */
-#define MALI_FORMAT_SPECIAL2   (7 << 5)
 #define MALI_EXTRACT_TYPE(fmt) ((fmt)&0xe0)
-
-/* If the high 3 bits are 3 to 6 these two bits say how many components
- * there are.
- */
-#define MALI_NR_CHANNELS(n)        ((n - 1) << 3)
-#define MALI_EXTRACT_CHANNELS(fmt) ((((fmt) >> 3) & 3) + 1)
-
-/* If the high 3 bits are 3 to 6, then the low 3 bits say how big each
- * component is, except the special MALI_CHANNEL_FLOAT which overrides what the
- * bits mean.
- */
-
-#define MALI_CHANNEL_4 2
-
-#define MALI_CHANNEL_8 3
-
-#define MALI_CHANNEL_16 4
-
-#define MALI_CHANNEL_32 5
-
-/* For MALI_FORMAT_SINT it means a half-float (e.g. RG16F). For
- * MALI_FORMAT_UNORM, it means a 32-bit float.
- */
-#define MALI_CHANNEL_FLOAT     7
-#define MALI_EXTRACT_BITS(fmt) (fmt & 0x7)
-
 #define MALI_EXTRACT_INDEX(pixfmt) (((pixfmt) >> 12) & 0xFF)
-
-/* The raw Midgard blend payload can either be an equation or a shader
- * address, depending on the context */
 
 /*
  * Mali Attributes
