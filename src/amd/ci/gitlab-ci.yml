@@ -17,7 +17,7 @@
   variables:
     GPU_VERSION: radeonsi-stoney
     DRIVER_NAME: radeonsi
-    # 12 devices (2022-11-30)
+    # 12 devices, 10 up (2022-12-28)
     RUNNER_TAG: mesa-ci-x86-64-lava-acer-R721T-grunt
     DEVICE_TYPE: acer-R721T-grunt
 
@@ -47,7 +47,7 @@ radeonsi-stoney-gl:amd64:
   extends:
     - .lava-test:amd64
     - .radeonsi-stoney-test:amd64
-  parallel: 11
+  parallel: 9
   variables:
     DEQP_SUITE: radeonsi-stoney
     HWCI_START_XORG: 1
