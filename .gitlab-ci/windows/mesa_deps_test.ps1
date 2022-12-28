@@ -36,38 +36,31 @@ Invoke-WebRequest -Uri 'https://www.khronos.org/registry/OpenGL/api/GL/glext.h' 
 
 Get-Date
 Write-Host "Cloning Piglit"
-git clone --no-progress --single-branch --no-checkout https://gitlab.freedesktop.org/mesa/piglit.git 'C:\src\piglit'
+git clone --no-progress --single-branch --no-checkout https://gitlab.freedesktop.org/mesa/piglit.git 'C:\piglit'
 if (!$?) {
   Write-Host "Failed to clone Piglit repository"
   Exit 1
 }
-Push-Location -Path C:\src\piglit
+Push-Location -Path C:\piglit
 git checkout f7f2a6c2275cae023a27b6cc81be3dda8c99492d
-Pop-Location
 
 Get-Date
-$piglit_build = New-Item -ItemType Directory -Path "C:\src\piglit" -Name "build"
-Push-Location -Path $piglit_build.FullName
 Write-Host "Compiling Piglit"
-cmake .. `
+cmake -S . -B . `
 -GNinja `
 -DCMAKE_BUILD_TYPE=Release `
--DCMAKE_INSTALL_PREFIX="C:\Piglit" `
 -DGLUT_INCLUDE_DIR=C:\freeglut\include `
 -DGLUT_glut_LIBRARY_RELEASE=C:\freeglut\lib\x64\freeglut.lib `
 -DGLEXT_INCLUDE_DIR=.\glext && `
 ninja -j32
 $buildstatus = $?
-ninja -j32 install | Out-Null
-$installstatus = $?
 Pop-Location
-Remove-Item -Recurse -Path $piglit_build
-if (!$buildstatus -Or !$installstatus) {
-  Write-Host "Failed to compile or install Piglit"
+if (!$buildstatus) {
+  Write-Host "Failed to compile Piglit"
   Exit 1
 }
 
-Copy-Item -Path C:\freeglut\bin\x64\freeglut.dll -Destination C:\Piglit\lib\piglit\bin\freeglut.dll
+Copy-Item -Path C:\freeglut\bin\x64\freeglut.dll -Destination C:\Piglit\bin\freeglut.dll
 
 Get-Date
 Write-Host "Cloning spirv-samples"
@@ -104,8 +97,8 @@ cmake -S $($deqp_source) `
 ninja -j32
 $buildstatus = $?
 Pop-Location
-if (!$buildstatus -Or !$installstatus) {
-  Write-Host "Failed to compile or install deqp"
+if (!$buildstatus) {
+  Write-Host "Failed to compile deqp"
   Exit 1
 }
 
@@ -141,7 +134,7 @@ Invoke-WebRequest -Uri https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D
 Expand-Archive -Path 'agility.zip' -DestinationPath 'C:\agility'
 Remove-Item 'agility.zip'
 
-$piglit_bin = 'C:\Piglit\lib\piglit\bin'
+$piglit_bin = 'C:\Piglit\bin'
 $vk_cts_bin = "$deqp_build\external\vulkancts\modules\vulkan"
 
 # Copy Agility SDK into subfolder of piglit and Vulkan CTS
