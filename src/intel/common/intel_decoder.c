@@ -21,6 +21,7 @@
  * IN THE SOFTWARE.
  */
 
+#include <libgen.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -31,6 +32,7 @@
 #include <zlib.h>
 
 #include <util/macros.h>
+#include <util/os_file.h>
 #include <util/ralloc.h>
 #include <util/u_math.h>
 
@@ -592,18 +594,34 @@ intel_spec_init(void)
    return spec;
 }
 
-struct intel_spec *
-intel_spec_load(const struct intel_device_info *devinfo)
+static bool
+get_xml_data_dir(const char *dirname, const char *filename,
+                 void **data, size_t *data_len)
 {
-   struct parser_context ctx;
-   void *buf;
+   size_t fullname_len = strlen(dirname) + strlen(filename) + 2;
+   char *fullname = malloc(fullname_len);
+
+   if (fullname == NULL)
+      return NULL;
+
+   ASSERTED size_t len = snprintf(fullname, fullname_len, "%s/%s",
+                                  dirname, filename);
+   assert(len < fullname_len);
+
+   *data = (void*)os_read_file(fullname, data_len);
+   free(fullname);
+   return *data != NULL;
+}
+
+static bool
+get_embedded_xml_data(int verx10, void **data, size_t *data_len)
+{
    uint8_t *text_data = NULL;
    uint32_t text_offset = 0, text_length = 0;
    ASSERTED uint32_t total_length;
-   uint32_t ver_10 = devinfo->verx10;
 
    for (int i = 0; i < ARRAY_SIZE(genxml_files_table); i++) {
-      if (genxml_files_table[i].ver_10 == ver_10) {
+      if (genxml_files_table[i].ver_10 == verx10) {
          text_offset = genxml_files_table[i].offset;
          text_length = genxml_files_table[i].length;
          break;
@@ -611,25 +629,8 @@ intel_spec_load(const struct intel_device_info *devinfo)
    }
 
    if (text_length == 0) {
-      fprintf(stderr, "unable to find gen (%u) data\n", ver_10);
-      return NULL;
-   }
-
-   memset(&ctx, 0, sizeof ctx);
-   ctx.parser = XML_ParserCreate(NULL);
-   XML_SetUserData(ctx.parser, &ctx);
-   if (ctx.parser == NULL) {
-      fprintf(stderr, "failed to create parser\n");
-      return NULL;
-   }
-
-   XML_SetElementHandler(ctx.parser, start_element, end_element);
-   XML_SetCharacterDataHandler(ctx.parser, character_data);
-
-   ctx.spec = intel_spec_init();
-   if (ctx.spec == NULL) {
-      fprintf(stderr, "Failed to create intel_spec\n");
-      return NULL;
+      fprintf(stderr, "unable to find gen (%u) data\n", verx10);
+      return false;
    }
 
    total_length = zlib_inflate(compress_genxmls,
@@ -637,117 +638,138 @@ intel_spec_load(const struct intel_device_info *devinfo)
                                (void **) &text_data);
    assert(text_offset + text_length <= total_length);
 
-   buf = XML_GetBuffer(ctx.parser, text_length);
-   memcpy(buf, &text_data[text_offset], text_length);
+   *data = malloc(text_length);
+   if (*data == NULL)
+      return false;
 
-   if (XML_ParseBuffer(ctx.parser, text_length, true) == 0) {
-      fprintf(stderr,
-              "Error parsing XML at line %ld col %ld byte %ld/%u: %s\n",
-              XML_GetCurrentLineNumber(ctx.parser),
-              XML_GetCurrentColumnNumber(ctx.parser),
-              XML_GetCurrentByteIndex(ctx.parser), text_length,
-              XML_ErrorString(XML_GetErrorCode(ctx.parser)));
-      XML_ParserFree(ctx.parser);
-      free(text_data);
-      return NULL;
-   }
-
-   XML_ParserFree(ctx.parser);
+   memcpy(*data, &text_data[text_offset], text_length);
    free(text_data);
-
-   return ctx.spec;
+   *data_len = text_length;
+   return true;
 }
 
-struct intel_spec *
-intel_spec_load_filename(const char *filename)
+static bool
+get_embedded_xml_data_by_name(const char *filename,
+                              void **data, size_t *data_len)
+{
+   int filename_len = strlen(filename);
+   if (filename_len < 8 || filename_len > 10)
+      return false;
+
+   if (strncmp(filename, "gen", 3) != 0 ||
+       strcmp(filename + filename_len - 4, ".xml") != 0)
+      return false;
+
+   char *numstr = strndup(filename + 3, filename_len - 7);
+   char *endptr;
+   long num = strtol(numstr, &endptr, 10);
+   if (*endptr != '\0') {
+      free(numstr);
+      return false;
+   }
+   /* convert ver numbers to verx10 */
+   if (num < 45)
+      num = num * 10;
+
+   free(numstr);
+   return get_embedded_xml_data(num, data, data_len);
+}
+
+static bool
+get_xml_data(int verx10, const char *dirname, const char *filename,
+             void **data, size_t *data_len)
+{
+   if (dirname != NULL)
+      return get_xml_data_dir(dirname, filename, data, data_len);
+   else if (filename != NULL)
+      return get_embedded_xml_data_by_name(filename, data, data_len);
+   else
+      return get_embedded_xml_data(verx10, data, data_len);
+}
+
+static struct intel_spec *
+intel_spec_load_common(int verx10, const char *dirname, const char *filename)
 {
    struct parser_context ctx;
-   FILE *input;
-   void *buf;
-   size_t len;
+   void *xmlbuf, *data;
+   size_t data_len;
 
-   input = fopen(filename, "r");
-   if (input == NULL) {
-      fprintf(stderr, "failed to open xml description\n");
+   if (!get_xml_data(verx10, dirname, filename, &data, &data_len))
       return NULL;
-   }
 
    memset(&ctx, 0, sizeof ctx);
    ctx.parser = XML_ParserCreate(NULL);
    XML_SetUserData(ctx.parser, &ctx);
    if (ctx.parser == NULL) {
+      free(data);
       fprintf(stderr, "failed to create parser\n");
-      fclose(input);
       return NULL;
    }
 
    XML_SetElementHandler(ctx.parser, start_element, end_element);
    XML_SetCharacterDataHandler(ctx.parser, character_data);
-   ctx.loc.filename = filename;
 
    ctx.spec = intel_spec_init();
    if (ctx.spec == NULL) {
+      free(data);
       fprintf(stderr, "Failed to create intel_spec\n");
-      goto end;
-   }
-
-   do {
-      buf = XML_GetBuffer(ctx.parser, XML_BUFFER_SIZE);
-      len = fread(buf, 1, XML_BUFFER_SIZE, input);
-      if (ferror(input)) {
-         fprintf(stderr, "fread: %m\n");
-         intel_spec_destroy(ctx.spec);
-         ctx.spec = NULL;
-         goto end;
-      } else if (len == 0 && feof(input))
-         goto end;
-
-      if (XML_ParseBuffer(ctx.parser, len, len == 0) == 0) {
-         fprintf(stderr,
-                 "Error parsing XML at line %ld col %ld: %s\n",
-                 XML_GetCurrentLineNumber(ctx.parser),
-                 XML_GetCurrentColumnNumber(ctx.parser),
-                 XML_ErrorString(XML_GetErrorCode(ctx.parser)));
-         intel_spec_destroy(ctx.spec);
-         ctx.spec = NULL;
-         goto end;
-      }
-   } while (len > 0);
-
- end:
-   XML_ParserFree(ctx.parser);
-
-   fclose(input);
-
-   /* free ctx.spec if genxml is empty */
-   if (ctx.spec &&
-       _mesa_hash_table_num_entries(ctx.spec->commands) == 0 &&
-       _mesa_hash_table_num_entries(ctx.spec->structs) == 0) {
-      fprintf(stderr,
-              "Error parsing XML: empty spec.\n");
-      intel_spec_destroy(ctx.spec);
       return NULL;
    }
 
+   xmlbuf = XML_GetBuffer(ctx.parser, data_len);
+   memcpy(xmlbuf, data, data_len);
+   free(data);
+   data = NULL;
+
+   if (XML_ParseBuffer(ctx.parser, data_len, true) == 0) {
+      fprintf(stderr,
+              "Error parsing XML at line %ld col %ld byte %ld/%zu: %s\n",
+              XML_GetCurrentLineNumber(ctx.parser),
+              XML_GetCurrentColumnNumber(ctx.parser),
+              XML_GetCurrentByteIndex(ctx.parser), data_len,
+              XML_ErrorString(XML_GetErrorCode(ctx.parser)));
+      XML_ParserFree(ctx.parser);
+      return NULL;
+   }
+
+   XML_ParserFree(ctx.parser);
+
    return ctx.spec;
+}
+
+struct intel_spec *
+intel_spec_load(const struct intel_device_info *devinfo)
+{
+   return intel_spec_load_common(devinfo->verx10, NULL, NULL);
+}
+
+struct intel_spec *
+intel_spec_load_filename(const char *filename)
+{
+   char *tmp = strdup(filename);
+   char *dir = strdup(dirname(tmp));
+   free(tmp);
+   tmp = strdup(filename);
+   char *base = strdup(basename(tmp));
+   free(tmp);
+   struct intel_spec *spec = intel_spec_load_common(0, dir, base);
+   free(dir);
+   free(base);
+   return spec;
 }
 
 struct intel_spec *
 intel_spec_load_from_path(const struct intel_device_info *devinfo,
                           const char *path)
 {
-   size_t filename_len = strlen(path) + 20;
-   char *filename = malloc(filename_len);
+   char filename[20];
    int xml_file_num = devinfo->verx10 % 10 ? devinfo->verx10 : devinfo->ver;
 
-   ASSERTED size_t len = snprintf(filename, filename_len, "%s/gen%i.xml",
-                                  path, xml_file_num);
-   assert(len < filename_len);
+   ASSERTED size_t len = snprintf(filename, ARRAY_SIZE(filename), "gen%i.xml",
+                                  xml_file_num);
+   assert(len < ARRAY_SIZE(filename));
 
-   struct intel_spec *spec = intel_spec_load_filename(filename);
-   free(filename);
-
-   return spec;
+   return intel_spec_load_common(devinfo->verx10, path, filename);
 }
 
 void intel_spec_destroy(struct intel_spec *spec)
