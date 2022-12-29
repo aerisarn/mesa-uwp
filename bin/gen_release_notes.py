@@ -298,7 +298,7 @@ def calculate_previous_version(version: str, is_point: bool) -> str:
 
 
 def get_features(is_point_release: bool) -> typing.Generator[str, None, None]:
-    p = pathlib.Path(__file__).parent.parent / 'docs' / 'relnotes' / 'new_features.txt'
+    p = pathlib.Path('docs') / 'relnotes' / 'new_features.txt'
     if p.exists() and p.stat().st_size > 0:
         if is_point_release:
             print("WARNING: new features being introduced in a point release", file=sys.stderr)
@@ -311,7 +311,7 @@ def get_features(is_point_release: bool) -> typing.Generator[str, None, None]:
 
 
 async def main() -> None:
-    v = pathlib.Path(__file__).parent.parent / 'VERSION'
+    v = pathlib.Path('VERSION')
     with v.open('rt') as f:
         raw_version = f.read().strip()
     is_point_release = '-rc' not in raw_version
@@ -328,7 +328,7 @@ async def main() -> None:
         gather_bugs(previous_version),
     )
 
-    final = pathlib.Path(__file__).parent.parent / 'docs' / 'relnotes' / f'{this_version}.rst'
+    final = pathlib.Path('docs') / 'relnotes' / f'{this_version}.rst'
     with final.open('wt') as f:
         try:
             f.write(TEMPLATE.render(
