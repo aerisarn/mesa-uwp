@@ -2571,6 +2571,7 @@ struct anv_cmd_graphics_state {
    VkShaderStageFlags push_constant_stages;
 
    uint32_t primitive_topology;
+   bool used_task_shader;
 
    struct anv_buffer *index_buffer;
    uint32_t index_type; /**< 3DSTATE_INDEX_BUFFER.IndexFormat */

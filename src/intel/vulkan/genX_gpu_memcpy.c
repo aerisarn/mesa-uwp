@@ -298,6 +298,10 @@ genX(cmd_buffer_so_memcpy)(struct anv_cmd_buffer *cmd_buffer,
 #if GFX_VER == 9
    genX(cmd_buffer_set_binding_for_gfx8_vb_flush)(cmd_buffer, 32, src, size);
 #endif
+
+   /* Wa_14015814527 */
+   genX(apply_task_urb_workaround)(cmd_buffer);
+
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    genX(flush_pipeline_select_3d)(cmd_buffer);

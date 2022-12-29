@@ -294,6 +294,9 @@ blorp_exec_on_render(struct blorp_batch *batch,
 
    genX(flush_pipeline_select_3d)(cmd_buffer);
 
+   /* Wa_14015814527 */
+   genX(apply_task_urb_workaround)(cmd_buffer);
+
    /* Apply any outstanding flushes in case pipeline select haven't. */
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 

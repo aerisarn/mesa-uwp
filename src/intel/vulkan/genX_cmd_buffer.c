@@ -3244,6 +3244,19 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
 
    genX(flush_pipeline_select_3d)(cmd_buffer);
 
+   /* Wa_14015814527
+    *
+    * Apply task URB workaround when switching from task to primitive.
+    */
+   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) {
+      if (anv_pipeline_is_primitive(pipeline)) {
+         genX(apply_task_urb_workaround)(cmd_buffer);
+      } else if (anv_pipeline_has_stage(cmd_buffer->state.gfx.pipeline,
+                                        MESA_SHADER_TASK)) {
+         cmd_buffer->state.gfx.used_task_shader = true;
+      }
+   }
+
    /* Apply any pending pipeline flushes we may have.  We want to apply them
     * now because, if any of those flushes are for things like push constants,
     * the GPU will read the state at weird times.
@@ -3696,6 +3709,12 @@ genX(EndCommandBuffer)(
     */
    genX(cmd_buffer_enable_pma_fix)(cmd_buffer, false);
 
+   /* Wa_14015814527
+    *
+    * Apply task URB workaround in the end of primary or secondary cmd_buffer.
+    */
+   genX(apply_task_urb_workaround)(cmd_buffer);
+
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    emit_isp_disable(cmd_buffer);
@@ -3728,6 +3747,12 @@ genX(CmdExecuteCommands)(
    /* Turn on preemption in case it was toggled off. */
    if (!primary->state.gfx.object_preemption)
       genX(cmd_buffer_set_preemption)(primary, true);
+
+   /* Wa_14015814527
+    *
+    * Apply task URB workaround before secondary cmd buffers.
+    */
+   genX(apply_task_urb_workaround)(primary);
 
    /* The secondary command buffer doesn't know which textures etc. have been
     * flushed prior to their execution.  Apply those flushes now.
