@@ -29,7 +29,7 @@
 #if PAN_ARCH <= 5
 #include "panfrost/midgard/midgard_compile.h"
 #else
-#include "panfrost/bifrost/bifrost_compile.h"
+#include "panfrost/compiler/bifrost_compile.h"
 #endif
 
 const nir_shader_compiler_options *

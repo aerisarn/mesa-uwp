@@ -33,8 +33,8 @@
 #include <stdlib.h>
 #include <genxml/gen_macros.h>
 
-#include "bifrost/disassemble.h"
-#include "bifrost/valhall/disassemble.h"
+#include "compiler/disassemble.h"
+#include "compiler/valhall/disassemble.h"
 #include "midgard/disassemble.h"
 #include "util/set.h"
 
