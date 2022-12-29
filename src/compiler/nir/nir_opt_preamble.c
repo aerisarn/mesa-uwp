@@ -180,6 +180,7 @@ can_move_intrinsic(nir_intrinsic_instr *instr, opt_preamble_ctx *ctx)
    case nir_intrinsic_load_deref:
    case nir_intrinsic_load_global_constant:
    case nir_intrinsic_load_uniform:
+   case nir_intrinsic_load_preamble:
    case nir_intrinsic_load_constant:
    case nir_intrinsic_load_sample_pos_from_id:
    case nir_intrinsic_load_kernel_input:
