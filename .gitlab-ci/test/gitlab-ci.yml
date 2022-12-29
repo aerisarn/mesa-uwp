@@ -241,9 +241,6 @@ rustfmt:
     # We don't want the tarball unpacking of .test, but will take the JWT bits.
     - !reference [default, before_script]
 
-    # temporary overrides to allow others to use harbor.freedesktop.org
-    - export IMAGE_UNDER_TEST=${IMAGE_UNDER_TEST/harbor/registry}
-
     - |
       set -x
 
