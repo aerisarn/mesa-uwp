@@ -42,7 +42,7 @@ if (!$?) {
   Exit 1
 }
 Push-Location -Path C:\piglit
-git checkout f7f2a6c2275cae023a27b6cc81be3dda8c99492d
+git checkout b41accc83689966f91217fc5b57dbe06202b8c8c
 
 Get-Date
 Write-Host "Compiling Piglit"
