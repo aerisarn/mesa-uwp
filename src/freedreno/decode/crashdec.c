@@ -469,6 +469,7 @@ dump_register(struct rnn *rnn, uint32_t offset, uint32_t value)
    } else {
       printf("<%04x>: %08x\n", offset, value);
    }
+   rnn_reginfo_free(info);
 }
 
 static void

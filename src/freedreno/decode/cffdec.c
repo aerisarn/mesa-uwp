@@ -859,10 +859,7 @@ dump_register_val(uint32_t regbase, uint32_t dword, int level)
       printf("%s<%04x>: %08x\n", levels[level], regbase, dword);
    }
 
-   if (info) {
-      free(info->name);
-      free(info);
-   }
+   rnn_reginfo_free(info);
 }
 
 static void

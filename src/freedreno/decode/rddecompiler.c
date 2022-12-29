@@ -266,6 +266,8 @@ decompile_register(uint32_t regbase, uint32_t *dwords, uint16_t cnt, int level)
       printlvl(level, "pkt4(cs, %u, (%u), %u);\n", regbase, cnt, dword);
    }
 
+   rnn_reginfo_free(info);
+
    return 1;
 }
 

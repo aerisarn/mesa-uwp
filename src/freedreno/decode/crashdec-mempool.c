@@ -39,6 +39,7 @@ dump_mem_pool_reg_write(unsigned reg, uint32_t data, unsigned context,
          printf("\t\t\t");
          dump_register(rnn_pipe, reg, data);
       }
+      rnn_reginfo_free(info);
    } else {
       printf("\t\twrite %s (%05x) context %d\n", regname(reg, 1), reg, context);
       dump_register_val(reg, data, 2);
