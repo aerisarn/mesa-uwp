@@ -1552,7 +1552,21 @@ agx_create_shader_state(struct pipe_context *pctx,
       }
       case MESA_SHADER_FRAGMENT:
          key.fs.nr_cbufs = 1;
-         key.fs.rt_formats[0] = PIPE_FORMAT_R8G8B8A8_UNORM;
+         for (unsigned i = 0; i < key.fs.nr_cbufs; ++i) {
+            key.fs.rt_formats[i] = PIPE_FORMAT_R8G8B8A8_UNORM;
+            key.fs.blend.rt[i].colormask = 0xF;
+
+            const nir_lower_blend_channel replace = {
+               .func = BLEND_FUNC_ADD,
+               .src_factor = BLEND_FACTOR_ZERO,
+               .invert_src_factor = true,
+               .dst_factor = BLEND_FACTOR_ZERO,
+               .invert_dst_factor = false,
+            };
+
+            key.fs.blend.rt[i].rgb = replace;
+            key.fs.blend.rt[i].alpha = replace;
+         }
          break;
       default:
          unreachable("Unknown shader stage in shader-db precompile");
