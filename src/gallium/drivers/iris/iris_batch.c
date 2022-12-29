@@ -982,9 +982,14 @@ submit_batch(struct iris_batch *batch)
    }
 
    int ret = 0;
-   if (!batch->screen->devinfo->no_hw &&
-       intel_ioctl(batch->screen->fd, DRM_IOCTL_I915_GEM_EXECBUFFER2, &execbuf))
-      ret = -errno;
+   if (!batch->screen->devinfo->no_hw) {
+      do {
+         ret = intel_ioctl(batch->screen->fd, DRM_IOCTL_I915_GEM_EXECBUFFER2, &execbuf);
+      } while (ret && errno == ENOMEM);
+
+      if (ret)
+	 ret = -errno;
+   }
 
    simple_mtx_unlock(bo_deps_lock);
 
