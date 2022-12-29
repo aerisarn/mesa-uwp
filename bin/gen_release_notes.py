@@ -343,6 +343,7 @@ async def main() -> None:
             ))
         except:
             print(exceptions.text_error_template().render())
+            return
 
     subprocess.run(['git', 'add', final])
     subprocess.run(['git', 'commit', '-m',
