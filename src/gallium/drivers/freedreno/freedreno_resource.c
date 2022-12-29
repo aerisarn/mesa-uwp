@@ -702,6 +702,14 @@ fd_flush_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
    struct fd_context *ctx = fd_context(pctx);
    struct fd_resource *rsc = fd_resource(prsc);
 
+   /* Flushing the resource is only required if we are relying on
+    * implicit-sync, in which case the rendering must be flushed
+    * to the kernel for the fence to be added to the backing GEM
+    * object.
+    */
+   if (ctx->no_implicit_sync)
+      return;
+
    flush_resource(ctx, rsc, PIPE_MAP_READ);
 
    /* If we had to flush a batch, make sure it makes it's way all the

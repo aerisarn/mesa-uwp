@@ -324,6 +324,12 @@ struct fd_context {
     */
    int in_fence_fd dt;
 
+   /**
+    * If we *ever* see an in-fence-fd, assume that userspace is
+    * not relying on implicit fences.
+    */
+   bool no_implicit_sync;
+
    /* track last known reset status globally and per-context to
     * determine if more resets occurred since then.  If global reset
     * count increases, it means some other context crashed.  If
