@@ -26,191 +26,12 @@
 
 #include <getopt.h>
 #include <string.h>
+#include "util/macros.h"
 #include "valhall/disassemble.h"
-#include "compiler.h"
 #include "disassemble.h"
-
-#include "compiler/glsl/gl_nir.h"
-#include "compiler/glsl/glsl_to_nir.h"
-#include "compiler/glsl/standalone.h"
-#include "compiler/nir_types.h"
-#include "main/mtypes.h"
-#include "util/u_dynarray.h"
-#include "bifrost_compile.h"
 
 unsigned gpu_id = 0x7212;
 int verbose = 0;
-
-static gl_shader_stage
-filename_to_stage(const char *stage)
-{
-   const char *ext = strrchr(stage, '.');
-
-   if (ext == NULL) {
-      fprintf(stderr, "No extension found in %s\n", stage);
-      exit(1);
-   }
-
-   if (!strcmp(ext, ".cs") || !strcmp(ext, ".comp"))
-      return MESA_SHADER_COMPUTE;
-   else if (!strcmp(ext, ".vs") || !strcmp(ext, ".vert"))
-      return MESA_SHADER_VERTEX;
-   else if (!strcmp(ext, ".fs") || !strcmp(ext, ".frag"))
-      return MESA_SHADER_FRAGMENT;
-   else {
-      fprintf(stderr, "Invalid extension %s\n", ext);
-      exit(1);
-   }
-
-   unreachable("Should've returned or bailed");
-}
-
-static int
-st_packed_uniforms_type_size(const struct glsl_type *type, bool bindless)
-{
-   return glsl_count_dword_slots(type, bindless);
-}
-
-static int
-glsl_type_size(const struct glsl_type *type, bool bindless)
-{
-   return glsl_count_attribute_slots(type, false);
-}
-
-static void
-insert_sorted(struct exec_list *var_list, nir_variable *new_var)
-{
-   nir_foreach_variable_in_list(var, var_list) {
-      if (var->data.location > new_var->data.location) {
-         exec_node_insert_node_before(&var->node, &new_var->node);
-         return;
-      }
-   }
-   exec_list_push_tail(var_list, &new_var->node);
-}
-
-static void
-sort_varyings(nir_shader *nir, nir_variable_mode mode)
-{
-   struct exec_list new_list;
-   exec_list_make_empty(&new_list);
-   nir_foreach_variable_with_modes_safe(var, nir, mode) {
-      exec_node_remove(&var->node);
-      insert_sorted(&new_list, var);
-   }
-   exec_list_append(&nir->variables, &new_list);
-}
-
-static void
-fixup_varying_slots(nir_shader *nir, nir_variable_mode mode)
-{
-   nir_foreach_variable_with_modes(var, nir, mode) {
-      if (var->data.location >= VARYING_SLOT_VAR0) {
-         var->data.location += 9;
-      } else if ((var->data.location >= VARYING_SLOT_TEX0) &&
-                 (var->data.location <= VARYING_SLOT_TEX7)) {
-         var->data.location += VARYING_SLOT_VAR0 - VARYING_SLOT_TEX0;
-      }
-   }
-}
-
-static void
-compile_shader(int stages, char **files)
-{
-   struct gl_shader_program *prog;
-   nir_shader *nir[MESA_SHADER_COMPUTE + 1];
-   unsigned shader_types[MESA_SHADER_COMPUTE + 1];
-
-   if (stages > MESA_SHADER_COMPUTE) {
-      fprintf(stderr, "Too many stages");
-      exit(1);
-   }
-
-   for (unsigned i = 0; i < stages; ++i)
-      shader_types[i] = filename_to_stage(files[i]);
-
-   struct standalone_options options = {
-      .glsl_version = 300, /* ES - needed for precision */
-      .do_link = true,
-      .lower_precision = true};
-
-   static struct gl_context local_ctx;
-
-   prog = standalone_compile_shader(&options, stages, files, &local_ctx);
-
-   for (unsigned i = 0; i < stages; ++i) {
-      gl_shader_stage stage = shader_types[i];
-      prog->_LinkedShaders[stage]->Program->info.stage = stage;
-   }
-
-   struct util_dynarray binary;
-
-   util_dynarray_init(&binary, NULL);
-
-   for (unsigned i = 0; i < stages; ++i) {
-      nir[i] = glsl_to_nir(&local_ctx.Const, prog, shader_types[i],
-                           &bifrost_nir_options);
-
-      if (shader_types[i] == MESA_SHADER_VERTEX) {
-         nir_assign_var_locations(nir[i], nir_var_shader_in,
-                                  &nir[i]->num_inputs, glsl_type_size);
-         sort_varyings(nir[i], nir_var_shader_out);
-         nir_assign_var_locations(nir[i], nir_var_shader_out,
-                                  &nir[i]->num_outputs, glsl_type_size);
-         fixup_varying_slots(nir[i], nir_var_shader_out);
-      } else if (shader_types[i] == MESA_SHADER_FRAGMENT) {
-         sort_varyings(nir[i], nir_var_shader_in);
-         nir_assign_var_locations(nir[i], nir_var_shader_in,
-                                  &nir[i]->num_inputs, glsl_type_size);
-         fixup_varying_slots(nir[i], nir_var_shader_in);
-         nir_assign_var_locations(nir[i], nir_var_shader_out,
-                                  &nir[i]->num_outputs, glsl_type_size);
-      }
-
-      nir_assign_var_locations(nir[i], nir_var_uniform, &nir[i]->num_uniforms,
-                               glsl_type_size);
-
-      NIR_PASS_V(nir[i], nir_lower_global_vars_to_local);
-      NIR_PASS_V(nir[i], nir_lower_io_to_temporaries,
-                 nir_shader_get_entrypoint(nir[i]), true, i == 0);
-      NIR_PASS_V(nir[i], nir_opt_copy_prop_vars);
-      NIR_PASS_V(nir[i], nir_opt_combine_stores, nir_var_all);
-
-      NIR_PASS_V(nir[i], nir_lower_system_values);
-      NIR_PASS_V(nir[i], gl_nir_lower_samplers, prog);
-      NIR_PASS_V(nir[i], nir_split_var_copies);
-      NIR_PASS_V(nir[i], nir_lower_var_copies);
-
-      NIR_PASS_V(nir[i], nir_lower_io, nir_var_uniform,
-                 st_packed_uniforms_type_size, (nir_lower_io_options)0);
-      NIR_PASS_V(nir[i], nir_lower_uniforms_to_ubo, true, false);
-
-      /* before buffers and vars_to_ssa */
-      NIR_PASS_V(nir[i], gl_nir_lower_images, true);
-
-      NIR_PASS_V(nir[i], gl_nir_lower_buffers, prog);
-      NIR_PASS_V(nir[i], nir_opt_constant_folding);
-
-      struct panfrost_compile_inputs inputs = {
-         .gpu_id = gpu_id,
-         .fixed_sysval_ubo = -1,
-      };
-      struct pan_shader_info info = {0};
-
-      util_dynarray_clear(&binary);
-      bifrost_compile_shader_nir(nir[i], &inputs, &binary, &info);
-
-      char *fn = NULL;
-      asprintf(&fn, "shader_%u.bin", i);
-      assert(fn != NULL);
-      FILE *fp = fopen(fn, "wb");
-      fwrite(binary.data, 1, binary.size, fp);
-      fclose(fp);
-      free(fn);
-   }
-
-   util_dynarray_fini(&binary);
-}
 
 #define BI_FOURCC(ch0, ch1, ch2, ch3)                                          \
    ((uint32_t)(ch0) | (uint32_t)(ch1) << 8 | (uint32_t)(ch2) << 16 |           \
@@ -267,10 +88,12 @@ main(int argc, char **argv)
       exit(1);
    }
 
-   static struct option longopts[] = {{"id", optional_argument, NULL, 'i'},
-                                      {"gpu", optional_argument, NULL, 'g'},
-                                      {"verbose", no_argument, &verbose, 'v'},
-                                      {NULL, 0, NULL, 0}};
+   static struct option longopts[] = {
+      {"id", optional_argument, NULL, 'i'},
+      {"gpu", optional_argument, NULL, 'g'},
+      {"verbose", no_argument, &verbose, 'v'},
+      {NULL, 0, NULL, 0},
+   };
 
    static struct {
       const char *name;
@@ -322,14 +145,6 @@ main(int argc, char **argv)
       }
    }
 
-   if (strcmp(argv[optind], "compile") == 0)
-      compile_shader(argc - optind - 1, &argv[optind + 1]);
-   else if (strcmp(argv[optind], "disasm") == 0)
-      disassemble(argv[optind + 1]);
-   else {
-      fprintf(stderr, "Unknown command. Valid: compile/disasm\n");
-      return 1;
-   }
-
+   disassemble(argv[optind + 1]);
    return 0;
 }
