@@ -310,6 +310,31 @@ def get_features(is_point_release: bool) -> typing.Generator[str, None, None]:
         yield "None"
 
 
+def update_release_notes_index(version: str) -> None:
+    relnotes_index_path = pathlib.Path('docs') / 'relnotes.rst'
+
+    with relnotes_index_path.open('r') as f:
+        relnotes = f.readlines()
+
+    new_relnotes = []
+    first_list = True
+    second_list = True
+    for line in relnotes:
+        if first_list and line.startswith('-'):
+            first_list = False
+            new_relnotes.append(f'-  :doc:`{version} release notes <relnotes/{version}>`\n')
+        if not first_list and second_list and line.startswith('   relnotes/'):
+            second_list = False
+            new_relnotes.append(f'   relnotes/{version}\n')
+        new_relnotes.append(line)
+
+    with relnotes_index_path.open('w') as f:
+        for line in new_relnotes:
+            f.write(line)
+
+    subprocess.run(['git', 'add', relnotes_index_path])
+
+
 async def main() -> None:
     v = pathlib.Path('VERSION')
     with v.open('rt') as f:
@@ -349,6 +374,9 @@ async def main() -> None:
             return
 
     subprocess.run(['git', 'add', final])
+
+    update_release_notes_index(this_version)
+
     subprocess.run(['git', 'commit', '-m',
                     f'docs: add release notes for {this_version}'])
 
