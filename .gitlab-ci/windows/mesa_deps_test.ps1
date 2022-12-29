@@ -1,32 +1,35 @@
 Get-Date
-Write-Host "Downloading Freeglut"
-
-$freeglut_zip = 'freeglut-MSVC.zip'
-$freeglut_url = "https://www.transmissionzero.co.uk/files/software/development/GLUT/$freeglut_zip"
-
-For ($i = 0; $i -lt 5; $i++) {
-  Invoke-WebRequest -Uri $freeglut_url -OutFile $freeglut_zip
-  $freeglut_downloaded = $?
-  if ($freeglut_downloaded) {
-    Break
-  }
-}
-
-if (!$freeglut_downloaded) {
-  Write-Host "Failed to download Freeglut"
-  Exit 1
-}
-
-Get-Date
-Write-Host "Installing Freeglut"
-Expand-Archive $freeglut_zip -DestinationPath C:\
-if (!$?) {
-  Write-Host "Failed to install Freeglut"
-  Exit 1
-}
+Write-Host "Cloning Waffle"
 
 $MyPath = $MyInvocation.MyCommand.Path | Split-Path -Parent
 . "$MyPath\mesa_vs_init.ps1"
+
+git clone --no-progress --single-branch --no-checkout https://gitlab.freedesktop.org/mesa/waffle.git 'C:\src\waffle'
+if (!$?) {
+  Write-Host "Failed to clone Waffle repository"
+  Exit 1
+}
+
+Push-Location -Path C:\src\waffle
+git checkout 950a1f35a718bc2a8e1dda75845e52651bb331a7
+Pop-Location
+
+Get-Date
+$waffle_build = New-Item -ItemType Directory -Path "C:\src\waffle" -Name "build"
+Push-Location -Path $waffle_build.FullName
+Write-Host "Compiling Waffle"
+meson setup `
+--buildtype=release `
+--default-library=static `
+--prefix="C:\Waffle" && `
+ninja -j32 install
+$buildstatus = $?
+Pop-Location
+Remove-Item -Recurse -Path $waffle_build
+if (!$buildstatus) {
+  Write-Host "Failed to compile or install Waffle"
+  Exit 1
+}
 
 Get-Date
 Write-Host "Downloading glext.h"
@@ -49,8 +52,9 @@ Write-Host "Compiling Piglit"
 cmake -S . -B . `
 -GNinja `
 -DCMAKE_BUILD_TYPE=Release `
--DGLUT_INCLUDE_DIR=C:\freeglut\include `
--DGLUT_glut_LIBRARY_RELEASE=C:\freeglut\lib\x64\freeglut.lib `
+-DPIGLIT_USE_WAFFLE=ON `
+-DWaffle_INCLUDE_DIRS=C:\Waffle\include\waffle-1 `
+-DWaffle_LDFLAGS=C:\Waffle\lib\libwaffle-1.a `
 -DGLEXT_INCLUDE_DIR=.\glext && `
 ninja -j32
 $buildstatus = $?
@@ -59,8 +63,6 @@ if (!$buildstatus) {
   Write-Host "Failed to compile Piglit"
   Exit 1
 }
-
-Copy-Item -Path C:\freeglut\bin\x64\freeglut.dll -Destination C:\Piglit\bin\freeglut.dll
 
 Get-Date
 Write-Host "Cloning spirv-samples"

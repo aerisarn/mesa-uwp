@@ -26,8 +26,12 @@ shaders@glsl-bug-110796
 amd_compressed_atc_texture
 intel_performance_query
 
-# The WGL tests are only built when Piglit is using Waffle
-wgl
-
 # This test will timeout and slows down the whole job, so just skip it
 spec@arb_tessellation_shader@arb_tessellation_shader-tes-gs-max-output
+spec@glsl-1.50@gs-max-output
+
+# The > symbol in a test name causes the log to be unable to be written
+>
+
+# This test requires glut
+windowoverlap

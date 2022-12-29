@@ -2,9 +2,6 @@ spec@arb_gpu_shader5@execution@built-in-functions@fs-interpolateatcentroid-array
 spec@arb_gpu_shader5@execution@ubo_array_indexing@fs-masked,Fail
 spec@arb_gpu_shader5@execution@ubo_array_indexing@fs-nonuniform-control-flow,Fail
 spec@arb_gpu_shader5@execution@ubo_array_indexing@vs-nonuniform-control-flow,Fail
-spec@arb_gpu_shader_fp64@execution@built-in-functions@fs-frexp-dvec4-only-exponent,Fail
-spec@arb_gpu_shader_fp64@execution@built-in-functions@fs-frexp-dvec4-only-mantissa,Fail
-spec@arb_gpu_shader_fp64@execution@built-in-functions@fs-frexp-dvec4-variable-index,Fail
 spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1@2-s2@2-s3@2-double-location-0,Crash
 spec@arb_gpu_shader_fp64@execution@vs-fs-explicit-locations,Crash
 spec@arb_gpu_shader_int64@execution@indirect-array-two-accesses,Fail
@@ -18,7 +15,10 @@ spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-cumulative,Fail
 spec@arb_tessellation_shader@execution@dmat-vs-gs-tcs-tes,Crash
 spec@arb_tessellation_shader@execution@gs-primitiveid-instanced,Fail
 spec@arb_tessellation_shader@execution@tcs-output-unmatched,Crash
+spec@arb_tessellation_shader@execution@tcs-tes-levels-out-of-bounds-read,Crash
+spec@arb_tessellation_shader@execution@tcs-tes-levels-out-of-bounds-write,Crash
 spec@arb_tessellation_shader@execution@tcs-tes-max-in-out-patch-components,Crash
+spec@arb_tessellation_shader@execution@tes-tes-levels-out-of-bounds-read,Crash
 spec@arb_tessellation_shader@execution@tes-primitiveid,Fail
 spec@arb_tessellation_shader@execution@variable-indexing@tcs-input-array-dvec4-index-rd,Crash
 spec@arb_tessellation_shader@execution@variable-indexing@tcs-output-array-dvec4-index-wr,Crash

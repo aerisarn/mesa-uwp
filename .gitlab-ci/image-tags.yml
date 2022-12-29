@@ -28,4 +28,4 @@ variables:
    WINDOWS_X64_BUILD_TAG: "2023-01-03-ci-libva-2.17"
 
    WINDOWS_X64_TEST_PATH: "windows/x64_test"
-   WINDOWS_X64_TEST_TAG: "2022-12-28-piglit-no-install"
+   WINDOWS_X64_TEST_TAG: "2023-01-03-piglit-waffle"
