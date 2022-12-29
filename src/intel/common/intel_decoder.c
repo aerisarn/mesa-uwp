@@ -497,12 +497,14 @@ end_element(void *data, const char *name)
       struct intel_field *field = ctx->last_field;
       ctx->last_field = NULL;
       field->inline_enum.values = ctx->values;
+      ralloc_steal(field, ctx->values);
       field->inline_enum.nvalues = ctx->n_values;
       ctx->values = ralloc_array(ctx->spec, struct intel_value*, ctx->n_allocated_values = 2);
       ctx->n_values = 0;
    } else if (strcmp(name, "enum") == 0) {
       struct intel_enum *e = ctx->enoom;
       e->values = ctx->values;
+      ralloc_steal(e, ctx->values);
       e->nvalues = ctx->n_values;
       ctx->values = ralloc_array(ctx->spec, struct intel_value*, ctx->n_allocated_values = 2);
       ctx->n_values = 0;
