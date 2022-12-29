@@ -1513,8 +1513,8 @@ cp_load_state(uint32_t *dwords, uint32_t sizedwords, int level)
       break;
    case STATE_SRC_BINDLESS: {
       const unsigned base_reg = stage == MESA_SHADER_COMPUTE
-                                   ? regbase("HLSQ_CS_BINDLESS_BASE[0].ADDR")
-                                   : regbase("HLSQ_BINDLESS_BASE[0].ADDR");
+                                   ? regbase("HLSQ_CS_BINDLESS_BASE[0].DESCRIPTOR")
+                                   : regbase("HLSQ_BINDLESS_BASE[0].DESCRIPTOR");
 
       if (is_64b()) {
          const unsigned reg = base_reg + (dwords[1] >> 28) * 2;
