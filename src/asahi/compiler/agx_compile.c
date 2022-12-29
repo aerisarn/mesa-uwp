@@ -23,12 +23,12 @@
  * SOFTWARE.
  */
 
-#include "agx_compile.h"
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir_types.h"
 #include "util/glheader.h"
 #include "util/u_debug.h"
 #include "agx_builder.h"
+#include "agx_compile.h"
 #include "agx_compiler.h"
 #include "agx_internal_formats.h"
 
@@ -652,15 +652,6 @@ agx_emit_load_frag_coord(agx_builder *b, agx_index dst,
    agx_emit_collect_to(b, dst, 4, dests);
 }
 
-static agx_instr *
-agx_blend_const(agx_builder *b, agx_index dst, unsigned comp)
-{
-   agx_index val = agx_indexed_sysval(b->shader, AGX_PUSH_BLEND_CONST,
-                                      AGX_SIZE_32, comp * 2, 4 * 2);
-
-   return agx_mov_to(b, dst, val);
-}
-
 /*
  * Demoting a helper invocation is logically equivalent to zeroing the sample
  * mask. Metal implement discard as such.
@@ -742,22 +733,6 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_back_face_agx:
       return agx_get_sr_to(b, dst, AGX_SR_BACKFACING);
 
-   case nir_intrinsic_load_texture_base_agx:
-      return agx_mov_to(b, dst,
-                        agx_indexed_sysval(b->shader, AGX_PUSH_TEXTURE_BASE,
-                                           AGX_SIZE_64, 0, 4));
-
-   case nir_intrinsic_load_ubo_base_agx:
-      return agx_mov_to(
-         b, dst,
-         agx_indexed_sysval(b->shader, AGX_PUSH_UBO_BASES, AGX_SIZE_64,
-                            nir_src_as_uint(instr->src[0]) * 4,
-                            b->shader->nir->info.num_ubos * 4));
-
-   case nir_intrinsic_load_vbo_base_agx:
-      return agx_mov_to(
-         b, dst, agx_vbo_base(b->shader, nir_src_as_uint(instr->src[0])));
-
    case nir_intrinsic_load_vertex_id:
       return agx_mov_to(b, dst, agx_abs(agx_vertex_id(b)));
 
@@ -772,15 +747,6 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 
    case nir_intrinsic_block_image_store_agx:
       return agx_emit_block_image_store(b, instr);
-
-   case nir_intrinsic_load_blend_const_color_r_float:
-      return agx_blend_const(b, dst, 0);
-   case nir_intrinsic_load_blend_const_color_g_float:
-      return agx_blend_const(b, dst, 1);
-   case nir_intrinsic_load_blend_const_color_b_float:
-      return agx_blend_const(b, dst, 2);
-   case nir_intrinsic_load_blend_const_color_a_float:
-      return agx_blend_const(b, dst, 3);
 
    default:
       fprintf(stderr, "Unhandled intrinsic %s\n",
@@ -2015,6 +1981,7 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
          out->depth_layout = layout;
    }
 
+   out->push_count = key->reserved_preamble;
    agx_optimize_nir(nir, &out->push_count);
 
    /* Implement conditional discard with real control flow like Metal */

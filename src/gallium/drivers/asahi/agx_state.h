@@ -58,12 +58,59 @@ agx_so_target(struct pipe_stream_output_target *target)
    return (struct agx_streamout_target *)target;
 }
 
+/* Shaders can access fixed-function state through system values.
+ * It is convenient to stash all of this information into a single "root"
+ * descriptor, then push individual parts as needed.
+ *
+ * In the future, we could optimize this to reduce CPU overhead, e.g. splitting
+ * into multiple descriptors for finer dirty tracking. This is not ABI with the
+ * compiler. The layout is up to us and handled by our code lowering system
+ * values to uniforms.
+ */
+struct PACKED agx_draw_uniforms {
+   /* Pointer to binding table for texture descriptor, or 0 if none */
+   uint64_t texture_base;
+
+   /* Uniform buffer objects */
+   uint64_t ubo_base[PIPE_MAX_CONSTANT_BUFFERS];
+
+   union {
+      struct {
+         /* Vertex buffer object bases, if present */
+         uint64_t vbo_base[PIPE_MAX_ATTRIBS];
+      } vs;
+
+      struct {
+         /* Blend constant if any */
+         float blend_constant[4];
+      } fs;
+   };
+};
+
+/* We only push whole elements at a time so we can calculate an upper bound */
+#define AGX_MAX_PUSH_RANGES (1 + PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_ATTRIBS)
+
+struct agx_push_range {
+   /* Base 16-bit uniform to push to */
+   uint16_t uniform;
+
+   /* Offset into agx_draw_uniforms to push in bytes */
+   uint16_t offset;
+
+   /* Number of consecutive 16-bit uniforms to push */
+   size_t length;
+};
+
 struct agx_compiled_shader {
    /* Mapped executable memory */
    struct agx_bo *bo;
 
    /* Metadata returned from the compiler */
    struct agx_shader_info info;
+
+   /* Uniforms the driver must push */
+   unsigned push_range_count;
+   struct agx_push_range push[AGX_MAX_PUSH_RANGES];
 };
 
 struct agx_uncompiled_shader {
@@ -99,9 +146,6 @@ struct agx_batch {
 
    /* PIPE_CLEAR_* bitmask */
    uint32_t clear, draw, load, resolve;
-
-   /* Base of uploaded texture descriptors */
-   uint64_t textures;
 
    uint64_t uploaded_clear_color[PIPE_MAX_COLOR_BUFS];
    double clear_depth;
@@ -411,8 +455,12 @@ agx_transfer(struct pipe_transfer *p)
    return (struct agx_transfer *)p;
 }
 
-uint64_t agx_push_location(struct agx_batch *batch, struct agx_push push,
-                           enum pipe_shader_type stage);
+uint64_t agx_upload_uniforms(struct agx_batch *batch, uint64_t textures,
+                             enum pipe_shader_type stage);
+
+bool agx_nir_lower_sysvals(nir_shader *shader,
+                           struct agx_compiled_shader *compiled,
+                           unsigned *push_size);
 
 bool agx_batch_is_active(struct agx_batch *batch);
 

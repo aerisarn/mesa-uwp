@@ -775,14 +775,6 @@ agx_builder_insert(agx_cursor *cursor, agx_instr *I)
    unreachable("Invalid cursor option");
 }
 
-/* Uniform file management */
-
-agx_index agx_indexed_sysval(agx_context *ctx, enum agx_push_type type,
-                             enum agx_size size, unsigned index,
-                             unsigned length);
-
-agx_index agx_vbo_base(agx_context *ctx, unsigned vbo);
-
 /* Routines defined for AIR */
 
 void agx_print_instr(agx_instr *I, FILE *fp);

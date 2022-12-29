@@ -1291,6 +1291,10 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
    }
 
    struct agx_shader_key base_key = {0};
+
+   NIR_PASS_V(nir, agx_nir_lower_sysvals, compiled,
+              &base_key.reserved_preamble);
+
    agx_compile_shader_nir(nir, &base_key, debug, &binary, &compiled->info);
 
    if (binary.size) {
@@ -1549,7 +1553,7 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
    }
 
    struct agx_usc_builder b =
-      agx_alloc_usc_control(&batch->pipeline_pool, cs->info.push_ranges + 2);
+      agx_alloc_usc_control(&batch->pipeline_pool, cs->push_range_count + 2);
 
    if (nr_textures) {
       agx_usc_pack(&b, TEXTURE, cfg) {
@@ -1557,8 +1561,6 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
          cfg.count = nr_textures;
          cfg.buffer = T_tex.gpu;
       }
-
-      batch->textures = T_tex.gpu;
    }
 
    if (nr_samplers) {
@@ -1572,9 +1574,11 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
    /* Must only upload uniforms after uploading textures so we can implement the
     * AGX_PUSH_TEXTURE_BASE sysval correctly.
     */
-   for (unsigned i = 0; i < cs->info.push_ranges; ++i) {
-      agx_usc_uniform(&b, cs->info.push[i].base, cs->info.push[i].length,
-                      agx_push_location(batch, cs->info.push[i], stage));
+   uint64_t uniforms = agx_upload_uniforms(batch, T_tex.gpu, stage);
+
+   for (unsigned i = 0; i < cs->push_range_count; ++i) {
+      agx_usc_uniform(&b, cs->push[i].uniform, cs->push[i].length,
+                      uniforms + cs->push[i].offset);
    }
 
    if (stage == PIPE_SHADER_FRAGMENT)
