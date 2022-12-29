@@ -1029,11 +1029,13 @@ r600_shader_from_nir(struct r600_context *rctx,
                       rscreen->b.family,
                       rscreen->has_compressed_msaa_texturing);
 
+
    r600::sfn_log << r600::SfnLog::shader_info << "pipeshader->shader.processor_type = "
                  << pipeshader->shader.processor_type << "\n";
 
    pipeshader->shader.bc.type = pipeshader->shader.processor_type;
    pipeshader->shader.bc.isa = rctx->isa;
+   pipeshader->shader.bc.ngpr = shader->required_registers();
 
    r600::Assembler afs(&pipeshader->shader, *key);
    if (!afs.lower(scheduled_shader)) {
