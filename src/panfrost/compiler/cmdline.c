@@ -26,9 +26,9 @@
 
 #include <getopt.h>
 #include <string.h>
+#include "bifrost/disassemble.h"
 #include "util/macros.h"
 #include "valhall/disassemble.h"
-#include "disassemble.h"
 
 unsigned gpu_id = 0x7212;
 int verbose = 0;

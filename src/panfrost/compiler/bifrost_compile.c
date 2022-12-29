@@ -31,6 +31,7 @@
 #include "compiler/nir_types.h"
 #include "util/u_debug.h"
 
+#include "bifrost/disassemble.h"
 #include "valhall/disassemble.h"
 #include "valhall/va_compiler.h"
 #include "bi_builder.h"
@@ -38,7 +39,6 @@
 #include "bifrost_compile.h"
 #include "bifrost_nir.h"
 #include "compiler.h"
-#include "disassemble.h"
 
 /* clang-format off */
 static const struct debug_named_value bifrost_debug_options[] = {

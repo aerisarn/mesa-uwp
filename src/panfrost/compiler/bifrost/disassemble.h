@@ -30,7 +30,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-#include "bifrost.h"
+#include "../bifrost.h"
 
 void disassemble_bifrost(FILE *fp, uint8_t *code, size_t size, bool verbose);
 
