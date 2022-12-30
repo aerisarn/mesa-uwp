@@ -126,38 +126,30 @@ fd_pipe_del_locked(struct fd_pipe *pipe)
 }
 
 /**
- * Discard any unflushed deferred submits.  This is called at context-
+ * Flush any unflushed deferred submits.  This is called at context-
  * destroy to make sure we don't leak unflushed submits.
  */
 void
 fd_pipe_purge(struct fd_pipe *pipe)
 {
    struct fd_device *dev = pipe->dev;
-   struct list_head deferred_submits;
-
-   list_inithead(&deferred_submits);
+   struct fd_fence *unflushed_fence = NULL;
 
    simple_mtx_lock(&dev->submit_lock);
 
-   foreach_submit_safe (deferred_submit, &dev->deferred_submits) {
-      if (deferred_submit->pipe != pipe)
-         continue;
-
-      list_del(&deferred_submit->node);
-      list_addtail(&deferred_submit->node, &deferred_submits);
-      dev->deferred_cmds -= fd_ringbuffer_cmd_count(deferred_submit->primary);
-   }
-
-   if (list_is_empty(&dev->deferred_submits) && dev->deferred_submits_fence) {
-      fd_fence_del(dev->deferred_submits_fence);
-      dev->deferred_submits_fence = NULL;
+   /* We only queue up deferred submits for a single pipe at a time, so
+    * if there is a deferred_submits_fence on the same pipe as us, we
+    * know we have deferred_submits queued, which need to be flushed:
+    */
+   if (dev->deferred_submits_fence && dev->deferred_submits_fence->pipe == pipe) {
+      unflushed_fence = fd_fence_ref(dev->deferred_submits_fence);
    }
 
    simple_mtx_unlock(&dev->submit_lock);
 
-   foreach_submit_safe (deferred_submit, &deferred_submits) {
-      list_del(&deferred_submit->node);
-      fd_submit_del(deferred_submit);
+   if (unflushed_fence) {
+      fd_fence_flush(unflushed_fence);
+      fd_fence_del(unflushed_fence);
    }
 }
 
