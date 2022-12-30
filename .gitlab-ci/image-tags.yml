@@ -3,7 +3,7 @@ variables:
    DEBIAN_BASE_TAG: "2023-01-05-libwayland"
 
    DEBIAN_X86_BUILD_IMAGE_PATH: "debian/x86_build"
-   DEBIAN_BUILD_TAG: "2022-11-03-ci-fairy-s3"
+   DEBIAN_BUILD_TAG: "2023-01-06-mold-1_9"
 
    DEBIAN_X86_BUILD_MINGW_IMAGE_PATH: "debian/x86_build-mingw"
    DEBIAN_BUILD_MINGW_TAG: "2023-01-03-ci-libva-2.17"
