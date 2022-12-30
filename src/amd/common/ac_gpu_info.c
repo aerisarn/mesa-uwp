@@ -1356,6 +1356,36 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
    info->max_gflops = (info->gfx_level >= GFX11 ? 256 : 128) * info->num_cu * info->max_gpu_freq_mhz / 1000;
    info->memory_bandwidth_gbps = DIV_ROUND_UP(info->memory_freq_mhz_effective * info->memory_bus_width / 8, 1000);
 
+   if (info->drm_minor >= 51) {
+      info->pcie_gen = device_info.pcie_gen;
+      info->pcie_num_lanes = device_info.pcie_num_lanes;
+
+      /* Source: https://en.wikipedia.org/wiki/PCI_Express#History_and_revisions */
+      switch (info->pcie_gen) {
+      case 1:
+         info->pcie_bandwidth_mbps = info->pcie_num_lanes * 0.25 * 1024;
+         break;
+      case 2:
+         info->pcie_bandwidth_mbps = info->pcie_num_lanes * 0.5 * 1024;
+         break;
+      case 3:
+         info->pcie_bandwidth_mbps = info->pcie_num_lanes * 0.985 * 1024;
+         break;
+      case 4:
+         info->pcie_bandwidth_mbps = info->pcie_num_lanes * 1.969 * 1024;
+         break;
+      case 5:
+         info->pcie_bandwidth_mbps = info->pcie_num_lanes * 3.938 * 1024;
+         break;
+      case 6:
+         info->pcie_bandwidth_mbps = info->pcie_num_lanes * 7.563 * 1024;
+         break;
+      case 7:
+         info->pcie_bandwidth_mbps = info->pcie_num_lanes * 15.125 * 1024;
+         break;
+      }
+   }
+
    if (info->gfx_level >= GFX10_3 && info->has_dedicated_vram) {
       info->l3_cache_size_mb = info->num_tcc_blocks *
                                (info->family == CHIP_NAVI21 ||
@@ -1451,6 +1481,9 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    memory_freq = %u GHz\n", DIV_ROUND_UP(info->memory_freq_mhz_effective, 1000));
    fprintf(f, "    memory_bus_width = %u bits\n", info->memory_bus_width);
    fprintf(f, "    memory_bandwidth = %u GB/s\n", info->memory_bandwidth_gbps);
+   fprintf(f, "    pcie_gen = %u\n", info->pcie_gen);
+   fprintf(f, "    pcie_num_lanes = %u\n", info->pcie_num_lanes);
+   fprintf(f, "    pcie_bandwidth = %1.1f GB/s\n", info->pcie_bandwidth_mbps / 1024.0);
    fprintf(f, "    clock_crystal_freq = %i KHz\n", info->clock_crystal_freq);
 
    const char *ip_string[] = {

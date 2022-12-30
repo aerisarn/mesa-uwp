@@ -68,6 +68,9 @@ struct radeon_info {
    uint32_t memory_freq_mhz_effective;
    uint32_t memory_bus_width;
    uint32_t memory_bandwidth_gbps;
+   uint32_t pcie_gen;
+   uint32_t pcie_num_lanes;
+   uint32_t pcie_bandwidth_mbps;
    uint32_t clock_crystal_freq;
    struct amd_ip_info ip[AMD_NUM_IP_TYPES];
 
