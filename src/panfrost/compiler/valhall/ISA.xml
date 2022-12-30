@@ -2291,7 +2291,7 @@
       Adds an arbitrary 32-bit immediate embedded within the instruction stream.
       If no modifiers are required, this is preferred to `IADD.i32` with a
       constant accessed as a uniform. However, if the constant is available
-      inline, `IADD.f32` is preferred.
+      inline, `IADD.i32` is preferred.
 
       `IADD_IMM.i32` with the source tied to zero is the canonical immediate move.
     </desc>
