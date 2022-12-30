@@ -1144,6 +1144,7 @@ static const driOptionDescription radv_dri_options[] = {
       DRI_CONF_RADV_FLUSH_BEFORE_QUERY_COPY(false)
       DRI_CONF_RADV_ENABLE_UNIFIED_HEAP_ON_APU(false)
       DRI_CONF_RADV_TEX_NON_UNIFORM(false)
+      DRI_CONF_RADV_RT(false)
    DRI_CONF_SECTION_END
 };
 // clang-format on

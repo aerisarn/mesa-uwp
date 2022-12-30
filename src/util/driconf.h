@@ -599,6 +599,10 @@
    DRI_CONF_OPT_B(radv_tex_non_uniform, def, \
                   "Always mark texture sample operations as non-uniform.")
 
+#define DRI_CONF_RADV_RT(def) \
+   DRI_CONF_OPT_B(radv_rt, def, \
+                  "Expose support for VK_KHR_ray_tracing_pipeline")
+
 /**
  * \brief ANV specific configuration options
  */
