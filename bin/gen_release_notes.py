@@ -217,7 +217,10 @@ async def parse_issues(commits: str) -> typing.List[str]:
 
 async def gather_bugs(version: str) -> typing.List[str]:
     commits = await gather_commits(version)
-    issues = await parse_issues(commits)
+    if commits:
+        issues = await parse_issues(commits)
+    else:
+        issues = []
 
     loop = asyncio.get_event_loop()
     async with aiohttp.ClientSession(loop=loop) as session:
