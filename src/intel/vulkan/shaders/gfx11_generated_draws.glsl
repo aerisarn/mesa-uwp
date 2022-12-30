@@ -56,7 +56,7 @@ void main()
    bool is_predicated = (flags & ANV_GENERATED_FLAG_PREDICATED) != 0;
    uint item_idx = uint(gl_FragCoord.y) * 8192 + uint(gl_FragCoord.x);
    uint indirect_data_offset = item_idx * indirect_data_stride / 4;
-   uint _3dprim_dw_size = 10;
+   uint _3dprim_dw_size = 10; /* 3DPRIMITIVE with extended parameters */
    uint cmd_idx = item_idx * _3dprim_dw_size;
    uint draw_id = draw_base + item_idx;
 

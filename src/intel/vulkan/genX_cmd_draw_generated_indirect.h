@@ -334,7 +334,7 @@ genX(cmd_buffer_emit_generated_push_data)(struct anv_cmd_buffer *cmd_buffer,
 #endif
 }
 
-static struct anv_generate_indirect_params *
+static struct anv_generated_indirect_params *
 genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
                                      struct anv_address generated_cmds_addr,
                                      uint32_t draw_cmd_stride,
@@ -352,13 +352,13 @@ genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
 
    struct anv_state push_data_state =
       anv_cmd_buffer_alloc_dynamic_state(cmd_buffer,
-                                         sizeof(struct anv_generate_indirect_params),
+                                         sizeof(struct anv_generated_indirect_params),
                                          ANV_UBO_ALIGNMENT);
 
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
 
-   struct anv_generate_indirect_params *push_data = push_data_state.map;
-   *push_data = (struct anv_generate_indirect_params) {
+   struct anv_generated_indirect_params *push_data = push_data_state.map;
+   *push_data = (struct anv_generated_indirect_params) {
       .draw                      = {
          .flags                  = (indexed ? ANV_GENERATED_FLAG_INDEXED : 0) |
                                    (cmd_buffer->state.conditional_render_enabled ?
@@ -389,7 +389,7 @@ genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
                       .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
                       .offset = push_data_state.offset,
                    },
-                   offsetof(struct anv_generate_indirect_params, draw.draw_count)),
+                   offsetof(struct anv_generated_indirect_params, draw.draw_count)),
                 count_addr, 4);
 
       /* Make sure the memcpy landed for the generating draw call to pick up
@@ -442,7 +442,7 @@ genX(cmd_buffer_emit_indirect_generated_draws_init)(struct anv_cmd_buffer *cmd_b
 
 static void
 genX(cmd_buffer_rewrite_forward_end_addr)(struct anv_cmd_buffer *cmd_buffer,
-                                          struct anv_generate_indirect_params *params)
+                                          struct anv_generated_indirect_params *params)
 {
    /* We don't know the end_addr until we have emitted all the generation
     * draws. Go and edit the address of all the push parameters.
@@ -494,7 +494,7 @@ genX(cmd_buffer_emit_indirect_generated_draws)(struct anv_cmd_buffer *cmd_buffer
 
    const uint32_t draw_cmd_stride = 4 * GENX(3DPRIMITIVE_EXTENDED_length);
 
-   struct anv_generate_indirect_params *last_params = NULL;
+   struct anv_generated_indirect_params *last_params = NULL;
    uint32_t item_base = 0;
    while (item_base < max_draw_count) {
       const uint32_t item_count = MIN2(max_draw_count - item_base,
@@ -513,7 +513,7 @@ genX(cmd_buffer_emit_indirect_generated_draws)(struct anv_cmd_buffer *cmd_buffer
       if (result != VK_SUCCESS)
          return;
 
-      struct anv_generate_indirect_params *params =
+      struct anv_generated_indirect_params *params =
          genX(cmd_buffer_emit_generate_draws)(
             cmd_buffer,
             anv_batch_current_address(&cmd_buffer->batch),

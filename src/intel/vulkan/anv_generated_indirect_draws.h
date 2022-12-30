@@ -29,7 +29,7 @@
 #define ANV_GENERATED_FLAG_INDEXED    BITFIELD_BIT(0)
 #define ANV_GENERATED_FLAG_PREDICATED BITFIELD_BIT(1)
 
-/* This needs to match generated_draws.glsl :
+/* This needs to match gfx11_generated_draws.glsl :
  *
  *    layout(set = 0, binding = 2) uniform block
  */
@@ -45,7 +45,7 @@ struct anv_generated_indirect_draw_params {
    uint32_t end_addr_udw;
 };
 
-struct anv_generate_indirect_params {
+struct anv_generated_indirect_params {
    struct anv_generated_indirect_draw_params draw;
 
    /* Global address of binding 0 */
@@ -58,7 +58,7 @@ struct anv_generate_indirect_params {
     * split into smaller chunks, see while loop in
     * genX(cmd_buffer_emit_indirect_generated_draws)
     */
-   struct anv_generate_indirect_params *prev;
+   struct anv_generated_indirect_params *prev;
 };
 
 #endif /* ANV_GENERATED_INDIRECT_DRAWS_H */

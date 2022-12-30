@@ -3551,7 +3551,7 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
 }
 
 #define GFX_HAS_GENERATED_CMDS GFX_VER >= 11
-#if GFX_VER >= 11
+#if GFX_HAS_GENERATED_CMDS
 #include "genX_cmd_draw_generated_indirect.h"
 #endif
 

@@ -31,7 +31,7 @@
 
 #include "anv_generated_indirect_draws.h"
 
-#include "shaders/generated_draws_spv.h"
+#include "shaders/gfx11_generated_draws_spv.h"
 
 /* This pass takes vulkan descriptor bindings 0 & 1 and turns them into global
  * 64bit addresses. Binding 2 is left UBO that would normally be accessed
@@ -66,7 +66,7 @@ lower_vulkan_descriptors_instr(nir_builder *b, nir_instr *instr, void *cb_data)
          nir_load_ubo(b, 1, 64,
                       nir_imm_int(b, 2),
                       nir_imm_int(b,
-                                  offsetof(struct anv_generate_indirect_params,
+                                  offsetof(struct anv_generated_indirect_params,
                                            indirect_data_addr)),
                       .align_mul = 8,
                       .align_offset = 0,
@@ -86,7 +86,7 @@ lower_vulkan_descriptors_instr(nir_builder *b, nir_instr *instr, void *cb_data)
          nir_load_ubo(b, 1, 64,
                       nir_imm_int(b, 2),
                       nir_imm_int(b,
-                                  offsetof(struct anv_generate_indirect_params,
+                                  offsetof(struct anv_generated_indirect_params,
                                            generated_cmds_addr)),
                       .align_mul = 8,
                       .align_offset = 0,
@@ -298,8 +298,8 @@ anv_device_init_generated_indirect_draws(struct anv_device *device)
          compile_upload_spirv(device,
                               &indirect_draws_key,
                               sizeof(indirect_draws_key),
-                              generated_draws_spv_source,
-                              ARRAY_SIZE(generated_draws_spv_source),
+                              gfx11_generated_draws_spv_source,
+                              ARRAY_SIZE(gfx11_generated_draws_spv_source),
                               11 /*
                                   * 2 * (2 indirect data loads + 3 3DPRIMITVE stores) +
                                   * 1 store (MI_BATCH_BUFFER_START)
