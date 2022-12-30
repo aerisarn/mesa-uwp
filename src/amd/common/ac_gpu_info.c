@@ -98,87 +98,91 @@ struct drm_amdgpu_memory_info {
    struct drm_amdgpu_heap_info gtt;
 };
 struct drm_amdgpu_info_device {
-   /** PCI Device ID */
-   uint32_t device_id;
-   /** Internal chip revision: A0, A1, etc.) */
-   uint32_t chip_rev;
-   uint32_t external_rev;
-   /** Revision id in PCI Config space */
-   uint32_t pci_rev;
-   uint32_t family;
-   uint32_t num_shader_engines;
-   uint32_t num_shader_arrays_per_engine;
-   /* in KHz */
-   uint32_t gpu_counter_freq;
-   uint64_t max_engine_clock;
-   uint64_t max_memory_clock;
-   /* cu information */
-   uint32_t cu_active_number;
-   /* NOTE: cu_ao_mask is INVALID, DON'T use it */
-   uint32_t cu_ao_mask;
-   uint32_t cu_bitmap[4][4];
-   /** Render backend pipe mask. One render backend is CB+DB. */
-   uint32_t enabled_rb_pipes_mask;
-   uint32_t num_rb_pipes;
-   uint32_t num_hw_gfx_contexts;
-   uint32_t _pad;
-   uint64_t ids_flags;
-   /** Starting virtual address for UMDs. */
-   uint64_t virtual_address_offset;
-   /** The maximum virtual address */
-   uint64_t virtual_address_max;
-   /** Required alignment of virtual addresses. */
-   uint32_t virtual_address_alignment;
-   /** Page table entry - fragment size */
-   uint32_t pte_fragment_size;
-   uint32_t gart_page_size;
-   /** constant engine ram size*/
-   uint32_t ce_ram_size;
-   /** video memory type info*/
-   uint32_t vram_type;
-   /** video memory bit width*/
-   uint32_t vram_bit_width;
-   /* vce harvesting instance */
-   uint32_t vce_harvest_config;
-   /* gfx double offchip LDS buffers */
-   uint32_t gc_double_offchip_lds_buf;
-   /* NGG Primitive Buffer */
-   uint64_t prim_buf_gpu_addr;
-   /* NGG Position Buffer */
-   uint64_t pos_buf_gpu_addr;
-   /* NGG Control Sideband */
-   uint64_t cntl_sb_buf_gpu_addr;
-   /* NGG Parameter Cache */
-   uint64_t param_buf_gpu_addr;
-   uint32_t prim_buf_size;
-   uint32_t pos_buf_size;
-   uint32_t cntl_sb_buf_size;
-   uint32_t param_buf_size;
-   /* wavefront size*/
-   uint32_t wave_front_size;
-   /* shader visible vgprs*/
-   uint32_t num_shader_visible_vgprs;
-   /* CU per shader array*/
-   uint32_t num_cu_per_sh;
-   /* number of tcc blocks*/
-   uint32_t num_tcc_blocks;
-   /* gs vgt table depth*/
-   uint32_t gs_vgt_table_depth;
-   /* gs primitive buffer depth*/
-   uint32_t gs_prim_buffer_depth;
-   /* max gs wavefront per vgt*/
-   uint32_t max_gs_waves_per_vgt;
-   uint32_t _pad1;
-   /* always on cu bitmap */
-   uint32_t cu_ao_bitmap[4][4];
-   /** Starting high virtual address for UMDs. */
-   uint64_t high_va_offset;
-   /** The maximum high virtual address */
-   uint64_t high_va_max;
-   /* gfx10 pa_sc_tile_steering_override */
-   uint32_t pa_sc_tile_steering_override;
-   /* disabled TCCs */
-   uint64_t tcc_disabled_mask;
+	/** PCI Device ID */
+	uint32_t device_id;
+	/** Internal chip revision: A0, A1, etc.) */
+	uint32_t chip_rev;
+	uint32_t external_rev;
+	/** Revision id in PCI Config space */
+	uint32_t pci_rev;
+	uint32_t family;
+	uint32_t num_shader_engines;
+	uint32_t num_shader_arrays_per_engine;
+	/* in KHz */
+	uint32_t gpu_counter_freq;
+	uint64_t max_engine_clock;
+	uint64_t max_memory_clock;
+	/* cu information */
+	uint32_t cu_active_number;
+	/* NOTE: cu_ao_mask is INVALID, DON'T use it */
+	uint32_t cu_ao_mask;
+	uint32_t cu_bitmap[4][4];
+	/** Render backend pipe mask. One render backend is CB+DB. */
+	uint32_t enabled_rb_pipes_mask;
+	uint32_t num_rb_pipes;
+	uint32_t num_hw_gfx_contexts;
+	/* PCIe version (the smaller of the GPU and the CPU/motherboard) */
+	uint32_t pcie_gen;
+	uint64_t ids_flags;
+	/** Starting virtual address for UMDs. */
+	uint64_t virtual_address_offset;
+	/** The maximum virtual address */
+	uint64_t virtual_address_max;
+	/** Required alignment of virtual addresses. */
+	uint32_t virtual_address_alignment;
+	/** Page table entry - fragment size */
+	uint32_t pte_fragment_size;
+	uint32_t gart_page_size;
+	/** constant engine ram size*/
+	uint32_t ce_ram_size;
+	/** video memory type info*/
+	uint32_t vram_type;
+	/** video memory bit width*/
+	uint32_t vram_bit_width;
+	/* vce harvesting instance */
+	uint32_t vce_harvest_config;
+	/* gfx double offchip LDS buffers */
+	uint32_t gc_double_offchip_lds_buf;
+	/* NGG Primitive Buffer */
+	uint64_t prim_buf_gpu_addr;
+	/* NGG Position Buffer */
+	uint64_t pos_buf_gpu_addr;
+	/* NGG Control Sideband */
+	uint64_t cntl_sb_buf_gpu_addr;
+	/* NGG Parameter Cache */
+	uint64_t param_buf_gpu_addr;
+	uint32_t prim_buf_size;
+	uint32_t pos_buf_size;
+	uint32_t cntl_sb_buf_size;
+	uint32_t param_buf_size;
+	/* wavefront size*/
+	uint32_t wave_front_size;
+	/* shader visible vgprs*/
+	uint32_t num_shader_visible_vgprs;
+	/* CU per shader array*/
+	uint32_t num_cu_per_sh;
+	/* number of tcc blocks*/
+	uint32_t num_tcc_blocks;
+	/* gs vgt table depth*/
+	uint32_t gs_vgt_table_depth;
+	/* gs primitive buffer depth*/
+	uint32_t gs_prim_buffer_depth;
+	/* max gs wavefront per vgt*/
+	uint32_t max_gs_waves_per_vgt;
+	/* PCIe number of lanes (the smaller of the GPU and the CPU/motherboard) */
+	uint32_t pcie_num_lanes;
+	/* always on cu bitmap */
+	uint32_t cu_ao_bitmap[4][4];
+	/** Starting high virtual address for UMDs. */
+	uint64_t high_va_offset;
+	/** The maximum high virtual address */
+	uint64_t high_va_max;
+	/* gfx10 pa_sc_tile_steering_override */
+	uint32_t pa_sc_tile_steering_override;
+	/* disabled TCCs */
+	uint64_t tcc_disabled_mask;
+	uint64_t min_engine_clock;
+	uint64_t min_memory_clock;
 };
 struct drm_amdgpu_info_hw_ip {
    uint32_t hw_ip_version_major;
