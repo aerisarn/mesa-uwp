@@ -212,10 +212,76 @@ you will need to ``CP_WAIT_FOR_IDLE`` after flushing and invalidating any
 necessary caches.
 
 Also, note that some registers are not banked at all, and will require a
-CP_WAIT_FOR_IDLE for any previous usage of the register to complete.
+``CP_WAIT_FOR_IDLE`` for any previous usage of the register to complete.
 
 In a2xx-a4xx, there weren't per-stage clusters, and instead there were two
 register banks that were flipped between per draw.
+
+Bindless/Bindful Descriptors (a6xx+)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Starting with a6xx++, cat5 (texture) and cat6 (image/ssbo/ubo) instructions are
+extended to support bindless descriptors.
+
+In the old bindful model, descriptors are separate for textures, samplers,
+UBOs, and IBOs (combined descriptor for images and SSBOs), with separate
+registers for the memory containing the array of descriptors, and/or different
+``STATE_TYPE`` and ``STATE_BLOCK`` for ``CP_LOAD_STATE``/``_FRAG``/``_GEOM``
+to pre-load the descriptors into cache.
+
+- textures - per-shader-stage
+   - registers: ``SP_xS_TEX_CONST``/``SP_xS_TEX_COUNT``
+   - state-type: ``ST6_CONSTANTS``
+   - state-block: ``SB6_xS_TEX``
+- samplers - per-shader-stage
+   - registers: ``SP_xS_TEX_SAMP``
+   - state-type: ``ST6_SHADER``
+   - state-block: ``SB6_xS_TEX``
+- UBOs - per-shader-stage
+   - registers: none
+   - state-type: ``ST6_UBO``
+   - state-block: ``SB6_xS_SHADER``
+- IBOs - global acress shader 3d stages, separate for compute shader
+   - registers: ``SP_IBO``/``SP_IBO_COUNT`` or ``SP_CS_IBO``/``SP_CS_IBO_COUNT``
+   - state-type: ``ST6_SHADER``
+   - state-block: ``ST6_IBO`` or ``ST6_CS_IBO`` for compute shaders
+   - Note, unlike per-shader-stage descriptors, ``CP_LOAD_STATE6`` is used,
+     as opposed to ``CP_LOAD_STATE6_GEOM`` or ``CP_LOAD_STATE6_FRAG``
+     depending on shader stage.
+
+.. note::
+   For the per-shader-stage registers and state-blocks the ``xS`` notation
+   refers to per-shader-stage names, ex. ``SP_FS_TEX_CONST`` or ``SB6_DS_TEX``
+
+Textures and IBOs (images) use *basically* the same 64byte descriptor format
+with some exceptions (for ex, for IBOs cubemaps are handles as 2d array).
+SSBOs are just untyped buffers, but otherwise use the same descriptors and
+instructions as images.  Samplers use a 16byte descriptor, and UBOs use an
+8byte descriptor which packs the size in the upper 15 bits of the UBO address.
+
+In the bindless model, descriptors are split into 5 desciptor sets, which are
+global across shader stages (but as with bindful IBO descriptors, separate for
+3d stages vs compute stage).  Each hw descriptor is an array of descriptors
+of configurable size (each descriptor set can be configured for a descriptor
+pitch of 8bytes or 64bytes).  Each descriptor can be of arbitrary format (ie.
+UBOs/IBOs/textures/samplers interleaved), it's interpretation by the hw is
+determined by the instruction that references the descriptor.  Each descriptor
+set can contain at least 2^^16 descriptors.
+
+The hw is configured with the base address of the descriptor set via an array
+of "BINDLESS_BASE" registers, ie ``SP_BINDLESS_BASE[n]``/``HLSQ_BINDLESS_BASE[n]``
+for 3d shader stages, or ``SP_CS_BINDLESS_BASE[n]``/``HLSQ_CS_BINDLESS_BASE[n]``
+for compute shaders, with the descriptor pitch encoded in the low bits.
+Which of the descriptor sets is referenced is encoded via three bits in the
+instruction.  The address of the descriptor is calculated as::
+
+   descriptor_addr = (BINDLESS_BASE[n] & ~0x3) +
+                     (idx * 4 * (2 << BINDLESS_BASE[n] & 0x3))
+
+
+.. note::
+   Turnip reserves one descriptor set for internal use and exposes the other
+   four for the application via the vulkan API.
 
 Software Architecture
 ---------------------
