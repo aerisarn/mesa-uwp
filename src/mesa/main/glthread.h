@@ -277,7 +277,7 @@ struct glthread_state
 };
 
 void _mesa_glthread_init(struct gl_context *ctx);
-void _mesa_glthread_destroy(struct gl_context *ctx, const char *reason);
+void _mesa_glthread_destroy(struct gl_context *ctx);
 
 void _mesa_glthread_init_dispatch0(struct gl_context *ctx,
                                    struct _glapi_table *table);

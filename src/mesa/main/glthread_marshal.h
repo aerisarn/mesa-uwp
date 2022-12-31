@@ -434,7 +434,7 @@ _mesa_glthread_Enable(struct gl_context *ctx, GLenum cap)
       _mesa_glthread_set_prim_restart(ctx, cap, true);
       break;
    case GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB:
-      _mesa_glthread_destroy(ctx, "Enable(DEBUG_OUTPUT_SYNCHRONOUS)");
+      _mesa_glthread_destroy(ctx);
       break;
    case GL_BLEND:
       ctx->GLThread.Blend = true;

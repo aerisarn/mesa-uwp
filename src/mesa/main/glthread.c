@@ -232,15 +232,12 @@ free_vao(void *data, UNUSED void *userData)
 }
 
 void
-_mesa_glthread_destroy(struct gl_context *ctx, const char *reason)
+_mesa_glthread_destroy(struct gl_context *ctx)
 {
    struct glthread_state *glthread = &ctx->GLThread;
 
    if (!glthread->enabled)
       return;
-
-   if (reason)
-      _mesa_debug(ctx, "glthread destroy reason: %s\n", reason);
 
    _mesa_glthread_finish(ctx);
    util_queue_destroy(&glthread->queue);
@@ -269,7 +266,7 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
       return;
 
    if (ctx->CurrentServerDispatch == ctx->ContextLost) {
-      _mesa_glthread_destroy(ctx, "context lost");
+      _mesa_glthread_destroy(ctx);
       return;
    }
 
@@ -299,20 +296,6 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
    }
 
    struct glthread_batch *next = glthread->next_batch;
-
-   /* Debug: execute the batch immediately from this thread.
-    *
-    * Note that glthread_unmarshal_batch() changes the dispatch table so we'll
-    * need to restore it when it returns.
-    */
-   if (false) {
-      glthread_unmarshal_batch(next, NULL, 0);
-      _glapi_set_dispatch(ctx->CurrentClientDispatch);
-
-      glthread->LastCallList = NULL;
-      glthread->LastBindBuffer = NULL;
-      return;
-   }
 
    p_atomic_add(&glthread->stats.num_offloaded_items, glthread->used);
    next->used = glthread->used;
