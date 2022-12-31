@@ -443,12 +443,15 @@ st_hw_select_draw_gallium(struct gl_context *ctx,
                           unsigned num_draws)
 {
    struct st_context *st = st_context(ctx);
+   enum mesa_prim old_mode = info->mode;
 
-   if (!st_draw_hw_select_prepare_common(ctx) ||
-       !st_draw_hw_select_prepare_mode(ctx, info))
-      return;
+   if (st_draw_hw_select_prepare_common(ctx) &&
+       st_draw_hw_select_prepare_mode(ctx, info)) {
+      cso_draw_vbo(st->cso_context, info, drawid_offset, NULL, draws,
+                   num_draws);
+   }
 
-   cso_draw_vbo(st->cso_context, info, drawid_offset, NULL, draws, num_draws);
+   info->mode = old_mode;
 }
 
 static void
