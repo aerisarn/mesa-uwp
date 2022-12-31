@@ -304,6 +304,7 @@ opt_shrink_vectors_load_const(nir_load_const_instr *instr)
 
    uint8_t reswizzle[NIR_MAX_VEC_COMPONENTS] = { 0 };
    unsigned num_components = 0;
+   bool progress = false;
    for (unsigned i = 0; i < def->num_components; i++) {
       if (!((mask >> i) & 0x1))
          continue;
@@ -313,6 +314,7 @@ opt_shrink_vectors_load_const(nir_load_const_instr *instr)
       for (j = 0; j < num_components; j++) {
          if (instr->value[i].u64 == instr->value[j].u64) {
             reswizzle[i] = j;
+            progress = true;
             break;
          }
       }
@@ -320,21 +322,20 @@ opt_shrink_vectors_load_const(nir_load_const_instr *instr)
       /* Otherwise, just append the value */
       if (j == num_components) {
          instr->value[num_components] = instr->value[i];
+	 if (i != num_components)
+            progress = true;
          reswizzle[i] = num_components++;
       }
    }
 
    unsigned rounded = round_up_components(num_components);
    assert(rounded <= def->num_components);
-   num_components = rounded;
 
-   if (num_components == def->num_components)
-      return false;
+   def->num_components = rounded;
+   if (progress)
+      reswizzle_alu_uses(def, reswizzle);
 
-   def->num_components = num_components;
-   reswizzle_alu_uses(def, reswizzle);
-
-   return true;
+   return progress;
 }
 
 static bool
