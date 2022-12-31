@@ -154,7 +154,7 @@ fd_set_constant_buffer(struct pipe_context *pctx, enum pipe_shader_type shader,
    }
 }
 
-static void
+void
 fd_set_shader_buffers(struct pipe_context *pctx, enum pipe_shader_type shader,
                       unsigned start, unsigned count,
                       const struct pipe_shader_buffer *buffers,

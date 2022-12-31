@@ -34,6 +34,7 @@
 #include "freedreno_resource.h"
 
 #include "ir3/ir3_shader.h"
+#include "ir3/ir3_descriptor.h"
 
 #include "a6xx.xml.h"
 
@@ -45,6 +46,22 @@ struct fd6_lrz_state {
 
    /* this comes from the fs program state, rather than zsa: */
    enum a6xx_ztest_mode z_mode : 2;
+};
+
+/**
+ * Bindless descriptor set state for a single descriptor set.
+ */
+struct fd6_descriptor_set {
+   /**
+    * Pre-baked descriptor state, updated when image/SSBO is bound
+    */
+   uint32_t descriptor[IR3_BINDLESS_DESC_COUNT][FDL6_TEX_CONST_DWORDS];
+
+   /**
+    * The current seqn of the backed in resource, for detecting if the
+    * resource has been rebound
+    */
+   uint16_t seqno[IR3_BINDLESS_DESC_COUNT];
 };
 
 struct fd6_context {
@@ -90,6 +107,16 @@ struct fd6_context {
 
    uint16_t tex_seqno;
    struct hash_table *tex_cache;
+
+   /**
+    * Descriptor sets for 3d shader stages
+    */
+   struct fd6_descriptor_set descriptor_sets[5] dt;
+
+   /**
+    * Descriptor set for compute shaders
+    */
+   struct fd6_descriptor_set cs_descriptor_set dt;
 
    struct {
       /* previous lrz state, which is a function of multiple gallium
