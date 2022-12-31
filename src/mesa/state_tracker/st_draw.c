@@ -115,12 +115,13 @@ static void
 st_draw_gallium(struct gl_context *ctx,
                 struct pipe_draw_info *info,
                 unsigned drawid_offset,
+                const struct pipe_draw_indirect_info *indirect,
                 const struct pipe_draw_start_count_bias *draws,
                 unsigned num_draws)
 {
    struct st_context *st = st_context(ctx);
 
-   cso_draw_vbo(st->cso_context, info, drawid_offset, NULL, draws, num_draws);
+   cso_draw_vbo(st->cso_context, info, drawid_offset, indirect, draws, num_draws);
 }
 
 static void
@@ -439,6 +440,7 @@ static void
 st_hw_select_draw_gallium(struct gl_context *ctx,
                           struct pipe_draw_info *info,
                           unsigned drawid_offset,
+                          const struct pipe_draw_indirect_info *indirect,
                           const struct pipe_draw_start_count_bias *draws,
                           unsigned num_draws)
 {
@@ -447,7 +449,7 @@ st_hw_select_draw_gallium(struct gl_context *ctx,
 
    if (st_draw_hw_select_prepare_common(ctx) &&
        st_draw_hw_select_prepare_mode(ctx, info)) {
-      cso_draw_vbo(st->cso_context, info, drawid_offset, NULL, draws,
+      cso_draw_vbo(st->cso_context, info, drawid_offset, indirect, draws,
                    num_draws);
    }
 

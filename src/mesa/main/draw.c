@@ -1200,7 +1200,7 @@ _mesa_draw_arrays(struct gl_context *ctx, GLenum mode, GLint start,
 
    st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
 
-   ctx->Driver.DrawGallium(ctx, &info, ctx->DrawID, &draw, 1);
+   ctx->Driver.DrawGallium(ctx, &info, ctx->DrawID, NULL, &draw, 1);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
       _mesa_flush(ctx);
@@ -1507,7 +1507,7 @@ _mesa_MultiDrawArrays(GLenum mode, const GLint *first,
 
    st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
 
-   ctx->Driver.DrawGallium(ctx, &info, 0, draw, primcount);
+   ctx->Driver.DrawGallium(ctx, &info, 0, NULL, draw, primcount);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)
       _mesa_flush(ctx);
@@ -1679,7 +1679,7 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx,
    if (!validate_index_bounds(ctx, &info, &draw, 1))
       return;
 
-   ctx->Driver.DrawGallium(ctx, &info, ctx->DrawID, &draw, 1);
+   ctx->Driver.DrawGallium(ctx, &info, ctx->DrawID, NULL, &draw, 1);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
       _mesa_flush(ctx);
@@ -2063,7 +2063,7 @@ _mesa_validated_multidrawelements(struct gl_context *ctx,
       if (!validate_index_bounds(ctx, &info, draw, primcount))
          return;
 
-      ctx->Driver.DrawGallium(ctx, &info, 0, draw, primcount);
+      ctx->Driver.DrawGallium(ctx, &info, 0, NULL, draw, primcount);
    } else {
       /* draw[i].start would overflow. Draw one at a time. */
       assert(info.has_user_indices);
@@ -2087,7 +2087,7 @@ _mesa_validated_multidrawelements(struct gl_context *ctx,
          if (!draw.count || !validate_index_bounds(ctx, &info, &draw, 1))
             continue;
 
-         ctx->Driver.DrawGallium(ctx, &info, i, &draw, 1);
+         ctx->Driver.DrawGallium(ctx, &info, i, NULL, &draw, 1);
       }
    }
 
@@ -2416,7 +2416,7 @@ _mesa_MultiDrawArraysIndirect(GLenum mode, const GLvoid *indirect,
          if (!draw.count)
             continue;
 
-         ctx->Driver.DrawGallium(ctx, &info, i, &draw, 1);
+         ctx->Driver.DrawGallium(ctx, &info, i, NULL, &draw, 1);
          ptr += stride;
       }
 
@@ -2532,7 +2532,7 @@ _mesa_MultiDrawElementsIndirect(GLenum mode, GLenum type,
          if (!draw.count || !validate_index_bounds(ctx, &info, &draw, 1))
             continue;
 
-         ctx->Driver.DrawGallium(ctx, &info, i, &draw, 1);
+         ctx->Driver.DrawGallium(ctx, &info, i, NULL, &draw, 1);
          ptr += stride;
       }
 

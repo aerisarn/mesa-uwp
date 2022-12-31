@@ -278,7 +278,7 @@ st_RasterPos(struct gl_context *ctx, const GLfloat v[4])
                                ctx->Array._DrawVAO->_EnabledWithMapMode);
 
    st_prepare_draw(ctx, ST_PIPELINE_RENDER_STATE_MASK);
-   st_feedback_draw_vbo(ctx, &rs->info, 0, &rs->draw, 1);
+   st_feedback_draw_vbo(ctx, &rs->info, 0, NULL, &rs->draw, 1);
 
    _mesa_restore_draw_vao(ctx, old_vao, old_vp_input_filter);
 

@@ -359,9 +359,9 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data, bool copy_to_c
                                        node->modes,
                                        node->num_draws);
    } else if (node->num_draws == 1) {
-      ctx->Driver.DrawGallium(ctx, info, 0, &node->start_count, 1);
+      ctx->Driver.DrawGallium(ctx, info, 0, NULL, &node->start_count, 1);
    } else if (node->num_draws) {
-      ctx->Driver.DrawGallium(ctx, info, 0, node->start_counts,
+      ctx->Driver.DrawGallium(ctx, info, 0, NULL, node->start_counts,
                               node->num_draws);
    }
 
