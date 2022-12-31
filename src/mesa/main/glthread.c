@@ -203,11 +203,7 @@ _mesa_glthread_init(struct gl_context *ctx)
    }
    glthread->next_batch = &glthread->batches[glthread->next];
    glthread->used = 0;
-
-   glthread->enabled = true;
    glthread->stats.queue = &glthread->queue;
-
-   ctx->CurrentClientDispatch = ctx->MarshalExec;
 
    glthread->LastDListChangeBatchIndex = -1;
 
@@ -215,6 +211,7 @@ _mesa_glthread_init(struct gl_context *ctx)
    ctx->st->pin_thread_counter = ST_L3_PINNING_DISABLED;
 
    _mesa_glthread_update_draw_always_async(ctx);
+   _mesa_glthread_enable(ctx);
 
    /* Execute the thread initialization function in the thread. */
    struct util_queue_fence fence;
@@ -236,23 +233,47 @@ _mesa_glthread_destroy(struct gl_context *ctx)
 {
    struct glthread_state *glthread = &ctx->GLThread;
 
-   if (!glthread->enabled)
+   _mesa_glthread_disable(ctx);
+
+   if (util_queue_is_initialized(&glthread->queue)) {
+      util_queue_destroy(&glthread->queue);
+
+      for (unsigned i = 0; i < MARSHAL_MAX_BATCHES; i++)
+         util_queue_fence_destroy(&glthread->batches[i].fence);
+
+      _mesa_HashDeleteAll(glthread->VAOs, free_vao, NULL);
+      _mesa_DeleteHashTable(glthread->VAOs);
+      _mesa_glthread_release_upload_buffer(ctx);
+   }
+}
+
+void _mesa_glthread_enable(struct gl_context *ctx)
+{
+   if (ctx->GLThread.enabled ||
+       ctx->CurrentServerDispatch == ctx->ContextLost ||
+       ctx->GLThread.DebugOutputSynchronous)
+      return;
+
+   ctx->GLThread.enabled = true;
+   ctx->CurrentClientDispatch = ctx->MarshalExec;
+
+   /* Update the dispatch only if the dispatch is current. */
+   if (_glapi_get_dispatch() == ctx->CurrentServerDispatch) {
+       _glapi_set_dispatch(ctx->CurrentClientDispatch);
+   }
+}
+
+void _mesa_glthread_disable(struct gl_context *ctx)
+{
+   if (!ctx->GLThread.enabled)
       return;
 
    _mesa_glthread_finish(ctx);
-   util_queue_destroy(&glthread->queue);
-
-   for (unsigned i = 0; i < MARSHAL_MAX_BATCHES; i++)
-      util_queue_fence_destroy(&glthread->batches[i].fence);
-
-   _mesa_HashDeleteAll(glthread->VAOs, free_vao, NULL);
-   _mesa_DeleteHashTable(glthread->VAOs);
-   _mesa_glthread_release_upload_buffer(ctx);
 
    ctx->GLThread.enabled = false;
    ctx->CurrentClientDispatch = ctx->CurrentServerDispatch;
 
-   /* Update the dispatch only if the context is current. */
+   /* Update the dispatch only if the dispatch is current. */
    if (_glapi_get_dispatch() == ctx->MarshalExec) {
        _glapi_set_dispatch(ctx->CurrentClientDispatch);
    }
@@ -266,7 +287,7 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
       return;
 
    if (ctx->CurrentServerDispatch == ctx->ContextLost) {
-      _mesa_glthread_destroy(ctx);
+      _mesa_glthread_disable(ctx);
       return;
    }
 

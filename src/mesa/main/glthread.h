@@ -264,6 +264,7 @@ struct glthread_state
    bool Blend;
    bool DepthTest;
    bool CullFace;
+   bool DebugOutputSynchronous;
    bool Lighting;
    bool PolygonStipple;
 
@@ -296,6 +297,8 @@ void _mesa_glthread_init_dispatch6(struct gl_context *ctx,
 void _mesa_glthread_init_dispatch7(struct gl_context *ctx,
                                    struct _glapi_table *table);
 
+void _mesa_glthread_enable(struct gl_context *ctx);
+void _mesa_glthread_disable(struct gl_context *ctx);
 void _mesa_glthread_flush_batch(struct gl_context *ctx);
 void _mesa_glthread_finish(struct gl_context *ctx);
 void _mesa_glthread_finish_before(struct gl_context *ctx, const char *func);

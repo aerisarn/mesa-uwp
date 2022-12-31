@@ -433,11 +433,12 @@ _mesa_glthread_Enable(struct gl_context *ctx, GLenum cap)
    case GL_PRIMITIVE_RESTART_FIXED_INDEX:
       _mesa_glthread_set_prim_restart(ctx, cap, true);
       break;
-   case GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB:
-      _mesa_glthread_destroy(ctx);
-      break;
    case GL_BLEND:
       ctx->GLThread.Blend = true;
+      break;
+   case GL_DEBUG_OUTPUT_SYNCHRONOUS:
+      _mesa_glthread_disable(ctx);
+      ctx->GLThread.DebugOutputSynchronous = true;
       break;
    case GL_DEPTH_TEST:
       ctx->GLThread.DepthTest = true;
@@ -483,6 +484,10 @@ _mesa_glthread_Disable(struct gl_context *ctx, GLenum cap)
    case GL_CULL_FACE:
       ctx->GLThread.CullFace = false;
       break;
+   case GL_DEBUG_OUTPUT_SYNCHRONOUS:
+      ctx->GLThread.DebugOutputSynchronous = false;
+      _mesa_glthread_enable(ctx);
+      break;
    case GL_DEPTH_TEST:
       ctx->GLThread.DepthTest = false;
       break;
@@ -519,6 +524,8 @@ _mesa_glthread_IsEnabled(struct gl_context *ctx, GLenum cap)
       return ctx->GLThread.Blend;
    case GL_CULL_FACE:
       return ctx->GLThread.CullFace;
+   case GL_DEBUG_OUTPUT_SYNCHRONOUS:
+      return ctx->GLThread.DebugOutputSynchronous;
    case GL_DEPTH_TEST:
       return ctx->GLThread.DepthTest;
    case GL_LIGHTING:
