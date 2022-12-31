@@ -337,7 +337,7 @@ genX(cmd_buffer_emit_generated_push_data)(struct anv_cmd_buffer *cmd_buffer,
 static struct anv_generated_indirect_params *
 genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
                                      struct anv_address generated_cmds_addr,
-                                     uint32_t draw_cmd_stride,
+                                     uint32_t generated_cmd_stride,
                                      struct anv_address indirect_data_addr,
                                      uint32_t indirect_data_stride,
                                      uint32_t item_base,
@@ -360,10 +360,14 @@ genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
    struct anv_generated_indirect_params *push_data = push_data_state.map;
    *push_data = (struct anv_generated_indirect_params) {
       .draw                      = {
+         .indirect_data_addr     = anv_address_physical(indirect_data_addr),
+         .indirect_data_stride   = indirect_data_stride,
          .flags                  = (indexed ? ANV_GENERATED_FLAG_INDEXED : 0) |
                                    (cmd_buffer->state.conditional_render_enabled ?
                                     ANV_GENERATED_FLAG_PREDICATED : 0) |
-                                   ((draw_cmd_stride / 4) << 16),
+                                   (anv_mocs(cmd_buffer->device, indirect_data_addr.bo,
+                                             ISL_SURF_USAGE_VERTEX_BUFFER_BIT) << 8) |
+                                   ((generated_cmd_stride / 4) << 16),
          .draw_base              = item_base,
          .item_count             = item_count,
          /* If count_addr is not NULL, we'll edit it through a the command
@@ -372,7 +376,6 @@ genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
          .draw_count             = anv_address_is_null(count_addr) ? max_count : 0,
          .max_draw_count         = max_count,
          .instance_multiplier    = pipeline->instance_multiplier,
-         .indirect_data_stride   = indirect_data_stride,
       },
       .indirect_data_addr        = anv_address_physical(indirect_data_addr),
       .generated_cmds_addr       = anv_address_physical(generated_cmds_addr),
@@ -517,7 +520,8 @@ genX(cmd_buffer_emit_indirect_generated_draws)(struct anv_cmd_buffer *cmd_buffer
             cmd_buffer,
             anv_batch_current_address(&cmd_buffer->batch),
             draw_cmd_stride,
-            indirect_data_addr,
+            anv_address_add(indirect_data_addr,
+                            item_base * indirect_data_stride),
             indirect_data_stride,
             item_base,
             item_count,

@@ -40,13 +40,14 @@ layout(set = 0, binding = 1, std430) buffer Storage1 {
 
 /* This data will be provided through push constants. */
 layout(set = 0, binding = 2) uniform block {
+   uint64_t indirect_data_addr;
+   uint indirect_data_stride;
    uint flags;
    uint draw_base;
    uint item_count;
    uint draw_count;
    uint max_draw_count;
    uint instance_multiplier;
-   uint indirect_data_stride;
    uint64_t end_addr;
 };
 
@@ -54,9 +55,9 @@ void main()
 {
    bool is_indexed = (flags & ANV_GENERATED_FLAG_INDEXED) != 0;
    bool is_predicated = (flags & ANV_GENERATED_FLAG_PREDICATED) != 0;
+   uint _3dprim_dw_size = (flags >> 16) & 0xff;
    uint item_idx = uint(gl_FragCoord.y) * 8192 + uint(gl_FragCoord.x);
    uint indirect_data_offset = item_idx * indirect_data_stride / 4;
-   uint _3dprim_dw_size = 10; /* 3DPRIMITIVE with extended parameters */
    uint cmd_idx = item_idx * _3dprim_dw_size;
    uint draw_id = draw_base + item_idx;
 

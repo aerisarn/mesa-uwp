@@ -34,13 +34,14 @@
  *    layout(set = 0, binding = 2) uniform block
  */
 struct anv_generated_indirect_draw_params {
-   uint32_t flags;
+   uint64_t indirect_data_addr;
+   uint32_t indirect_data_stride;
+   uint32_t flags; /* 0-7: bits, 8-15: mocs, 16-23: cmd_dws */
    uint32_t draw_base;
    uint32_t item_count;
    uint32_t draw_count;
    uint32_t max_draw_count;
    uint32_t instance_multiplier;
-   uint32_t indirect_data_stride;
    uint64_t end_addr;
 };
 
