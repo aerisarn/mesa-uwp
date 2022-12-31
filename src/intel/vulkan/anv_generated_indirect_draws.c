@@ -134,6 +134,7 @@ compile_upload_spirv(struct anv_device *device,
 {
    struct spirv_to_nir_options spirv_options = {
       .caps = {
+         .int64 = true,
       },
       .ubo_addr_format = nir_address_format_32bit_index_offset,
       .ssbo_addr_format = nir_address_format_64bit_global_32bit_offset,

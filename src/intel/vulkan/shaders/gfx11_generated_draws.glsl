@@ -22,6 +22,7 @@
  */
 
 #version 450
+#extension GL_ARB_gpu_shader_int64 : enable
 
 #define BITFIELD_BIT(i) (1u << (i))
 
@@ -46,8 +47,7 @@ layout(set = 0, binding = 2) uniform block {
    uint max_draw_count;
    uint instance_multiplier;
    uint indirect_data_stride;
-   uint end_addr_ldw;
-   uint end_addr_udw;
+   uint64_t end_addr;
 };
 
 void main()
@@ -115,7 +115,7 @@ void main()
                                49 << 23 |        /* MI Command Opcode */
                                1  << 8  |        /* Address Space Indicator (PPGTT) */
                                1  << 0);         /* DWord Length */
-      commands[cmd_idx + 1] = end_addr_ldw;
-      commands[cmd_idx + 2] = end_addr_udw;
+      commands[cmd_idx + 1] = uint(end_addr & 0xffffffff);
+      commands[cmd_idx + 2] = uint(end_addr >> 32);
    }
 }

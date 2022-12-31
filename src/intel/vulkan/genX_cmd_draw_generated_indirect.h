@@ -450,8 +450,7 @@ genX(cmd_buffer_rewrite_forward_end_addr)(struct anv_cmd_buffer *cmd_buffer,
    uint64_t end_addr =
       anv_address_physical(anv_batch_current_address(&cmd_buffer->batch));
    while (params != NULL) {
-      params->draw.end_addr_ldw = end_addr & 0xffffffff;
-      params->draw.end_addr_udw = end_addr >> 32;
+      params->draw.end_addr = end_addr;
       params = params->prev;
    }
 }

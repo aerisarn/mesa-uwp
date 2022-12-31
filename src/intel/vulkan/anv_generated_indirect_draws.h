@@ -41,8 +41,7 @@ struct anv_generated_indirect_draw_params {
    uint32_t max_draw_count;
    uint32_t instance_multiplier;
    uint32_t indirect_data_stride;
-   uint32_t end_addr_ldw;
-   uint32_t end_addr_udw;
+   uint64_t end_addr;
 };
 
 struct anv_generated_indirect_params {
