@@ -43,12 +43,7 @@ struct cso_context {
    struct pipe_context *pipe;
 
    /* This is equal to either pipe_context::draw_vbo or u_vbuf_draw_vbo. */
-   void (*draw_vbo)(struct pipe_context *pipe,
-                    const struct pipe_draw_info *info,
-                    unsigned drawid_offset,
-                    const struct pipe_draw_indirect_info *indirect,
-                    const struct pipe_draw_start_count_bias *draws,
-                    unsigned num_draws);
+   pipe_draw_func draw_vbo;
 };
 
 #define CSO_NO_USER_VERTEX_BUFFERS (1 << 0)

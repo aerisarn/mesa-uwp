@@ -961,12 +961,6 @@ struct gfx11_reg_pair {
    uint32_t reg_value[2];
 };
 
-typedef void (*pipe_draw_vbo_func)(struct pipe_context *pipe,
-                                   const struct pipe_draw_info *info,
-                                   unsigned drawid_offset,
-                                   const struct pipe_draw_indirect_info *indirect,
-                                   const struct pipe_draw_start_count_bias *draws,
-                                   unsigned num_draws);
 typedef void (*pipe_draw_vertex_state_func)(struct pipe_context *ctx,
                                             struct pipe_vertex_state *vstate,
                                             uint32_t partial_velem_mask,
@@ -1365,10 +1359,10 @@ struct si_context {
     */
    struct hash_table *dirty_implicit_resources;
 
-   pipe_draw_vbo_func draw_vbo[2][2][2];
+   pipe_draw_func draw_vbo[2][2][2];
    pipe_draw_vertex_state_func draw_vertex_state[2][2][2];
    /* When b.draw_vbo is a wrapper, real_draw_vbo is the real draw_vbo function */
-   pipe_draw_vbo_func real_draw_vbo;
+   pipe_draw_func real_draw_vbo;
    pipe_draw_vertex_state_func real_draw_vertex_state;
    void (*emit_spi_map[33])(struct si_context *sctx, unsigned index);
 
@@ -1594,7 +1588,7 @@ void gfx6_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs);
 /* Replace the sctx->b.draw_vbo function with a wrapper. This can be use to implement
  * optimizations without affecting the normal draw_vbo functions perf.
  */
-void si_install_draw_wrapper(struct si_context *sctx, pipe_draw_vbo_func wrapper,
+void si_install_draw_wrapper(struct si_context *sctx, pipe_draw_func wrapper,
                              pipe_draw_vertex_state_func vstate_wrapper);
 
 /* si_gpu_load.c */
@@ -2061,9 +2055,9 @@ static inline void radeon_add_to_buffer_list(struct si_context *sctx, struct rad
 
 static inline void si_select_draw_vbo(struct si_context *sctx)
 {
-   pipe_draw_vbo_func draw_vbo = sctx->draw_vbo[!!sctx->shader.tes.cso]
-                                               [!!sctx->shader.gs.cso]
-                                               [sctx->ngg];
+   pipe_draw_func draw_vbo = sctx->draw_vbo[!!sctx->shader.tes.cso]
+                                           [!!sctx->shader.gs.cso]
+                                           [sctx->ngg];
    pipe_draw_vertex_state_func draw_vertex_state =
       sctx->draw_vertex_state[!!sctx->shader.tes.cso]
                              [!!sctx->shader.gs.cso]

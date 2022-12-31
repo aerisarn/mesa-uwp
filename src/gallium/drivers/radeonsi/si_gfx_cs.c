@@ -304,7 +304,7 @@ void si_set_tracked_regs_to_clear_state(struct si_context *ctx)
    BITSET_SET_RANGE(ctx->tracked_regs.reg_saved_mask, 0, SI_NUM_TRACKED_CONTEXT_REGS - 1);
 }
 
-void si_install_draw_wrapper(struct si_context *sctx, pipe_draw_vbo_func wrapper,
+void si_install_draw_wrapper(struct si_context *sctx, pipe_draw_func wrapper,
                              pipe_draw_vertex_state_func vstate_wrapper)
 {
    if (wrapper) {

@@ -1750,12 +1750,6 @@ struct zink_rendering_info {
 };
 
 
-typedef void (*pipe_draw_vbo_func)(struct pipe_context *pipe,
-                                   const struct pipe_draw_info *info,
-                                   unsigned drawid_offset,
-                                   const struct pipe_draw_indirect_info *indirect,
-                                   const struct pipe_draw_start_count_bias *draws,
-                                   unsigned num_draws);
 typedef void (*pipe_draw_vertex_state_func)(struct pipe_context *ctx,
                                             struct pipe_vertex_state *vstate,
                                             uint32_t partial_velem_mask,
@@ -1793,7 +1787,7 @@ struct zink_context {
 
    unsigned flags;
 
-   pipe_draw_vbo_func draw_vbo[2]; //batch changed
+   pipe_draw_func draw_vbo[2]; //batch changed
    pipe_draw_vertex_state_func draw_state[2]; //batch changed
    pipe_launch_grid_func launch_grid[2]; //batch changed
 
