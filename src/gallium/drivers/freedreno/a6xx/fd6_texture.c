@@ -562,7 +562,7 @@ fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type,
    state->key = key;
    state->stateobj = fd_ringbuffer_new_object(ctx->pipe, 32 * 4);
 
-   fd6_emit_textures(ctx, state->stateobj, type, tex, NULL);
+   fd6_emit_textures(ctx, state->stateobj, type, tex);
 
    /* NOTE: uses copy of key in state obj, because pointer passed by caller
     * is probably on the stack

@@ -50,22 +50,9 @@
 #include "fd6_texture.h"
 #include "fd6_zsa.h"
 
-static void
-fd6_emit_fb_tex(struct fd_ringbuffer *state, struct fd_context *ctx) assert_dt
-{
-   /* This is patched with the appropriate descriptor for GMEM or
-    * sysmem rendering path in fd6_gmem
-    */
-   OUT_RINGP(state, 0, &ctx->batch->fb_read_patches);
-   for (unsigned i = 1; i < FDL6_TEX_CONST_DWORDS; i++)
-      OUT_RING(state, 0);
-}
-
 void
 fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
-                  enum pipe_shader_type type, struct fd_texture_stateobj *tex,
-                  /* can be NULL if no image/SSBO/fb state to merge in: */
-                  const struct ir3_shader_variant *v)
+                  enum pipe_shader_type type, struct fd_texture_stateobj *tex)
 {
    unsigned opcode, tex_samp_reg, tex_const_reg, tex_count_reg;
    enum a6xx_state_block sb;
@@ -146,14 +133,11 @@ fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
       fd_ringbuffer_del(state);
    }
 
-   unsigned num_merged_textures = tex->num_textures;
    unsigned num_textures = tex->num_textures;
-   if (v && v->fb_read)
-      num_merged_textures++;
 
-   if (num_merged_textures > 0) {
+   if (num_textures > 0) {
       struct fd_ringbuffer *state =
-         fd_ringbuffer_new_object(ctx->pipe, num_merged_textures * 16 * 4);
+         fd_ringbuffer_new_object(ctx->pipe, num_textures * 16 * 4);
       for (unsigned i = 0; i < num_textures; i++) {
          const struct fd6_pipe_sampler_view *view;
 
@@ -200,16 +184,13 @@ fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
          OUT_RING(state, view->descriptor[15]);
       }
 
-      if (v && v->fb_read)
-         fd6_emit_fb_tex(state, ctx);
-
       /* emit texture state: */
       OUT_PKT7(ring, opcode, 3);
       OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(0) |
                         CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
                         CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
                         CP_LOAD_STATE6_0_STATE_BLOCK(sb) |
-                        CP_LOAD_STATE6_0_NUM_UNIT(num_merged_textures));
+                        CP_LOAD_STATE6_0_NUM_UNIT(num_textures));
       OUT_RB(ring, state); /* SRC_ADDR_LO/HI */
 
       OUT_PKT4(ring, tex_const_reg, 2);
@@ -219,7 +200,7 @@ fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
    }
 
    OUT_PKT4(ring, tex_count_reg, 1);
-   OUT_RING(ring, num_merged_textures);
+   OUT_RING(ring, num_textures);
 }
 
 /* Emits combined texture state, which also includes any Image/SSBO
@@ -234,8 +215,7 @@ fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
  */
 static void
 fd6_emit_combined_textures(struct fd6_emit *emit,
-                           enum pipe_shader_type type,
-                           const struct ir3_shader_variant *v) assert_dt
+                           enum pipe_shader_type type) assert_dt
 {
    struct fd_context *ctx = emit->ctx;
 
@@ -249,38 +229,13 @@ fd6_emit_combined_textures(struct fd6_emit *emit,
 
    assert((type < ARRAY_SIZE(s)) && s[type]);
 
-   if (!v->fb_read) {
-      /* in the fast-path, when we don't have to mix in any image/SSBO
-       * related texture state, we can just lookup the stateobj and
-       * re-emit that:
-       *
-       * Also, framebuffer-read is a slow-path because an extra
-       * texture needs to be inserted.
-       */
-      if (ctx->tex[type].num_textures > 0) {
-         struct fd6_texture_state *tex =
+   if (ctx->tex[type].num_textures > 0) {
+      struct fd6_texture_state *tex =
             fd6_texture_state(ctx, type, &ctx->tex[type]);
 
-         fd6_state_add_group(&emit->state, tex->stateobj, s[type]);
+      fd6_state_add_group(&emit->state, tex->stateobj, s[type]);
 
-         fd6_texture_state_reference(&tex, NULL);
-      }
-   } else {
-      /* In the slow-path, create a one-shot texture state object
-       * if either TEX|PROG|SSBO|IMAGE state is dirty:
-       */
-      if ((ctx->dirty_shader[type] &
-           (FD_DIRTY_SHADER_TEX | FD_DIRTY_SHADER_PROG | FD_DIRTY_SHADER_IMAGE |
-            FD_DIRTY_SHADER_SSBO)) ||
-          v->fb_read) {
-         struct fd_texture_stateobj *tex = &ctx->tex[type];
-         struct fd_ringbuffer *stateobj = fd_submit_new_ringbuffer(
-            ctx->batch->submit, 0x1000, FD_RINGBUFFER_STREAMING);
-
-         fd6_emit_textures(ctx, stateobj, type, tex, v);
-
-         fd6_state_take_group(&emit->state, stateobj, s[type]);
-      }
+      fd6_texture_state_reference(&tex, NULL);
    }
 }
 
@@ -712,10 +667,6 @@ fd6_emit_3d_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
    struct fd_context *ctx = emit->ctx;
    struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
    const struct fd6_program_state *prog = fd6_emit_get_prog(emit);
-   const struct ir3_shader_variant *vs = emit->vs;
-   const struct ir3_shader_variant *hs = emit->hs;
-   const struct ir3_shader_variant *ds = emit->ds;
-   const struct ir3_shader_variant *gs = emit->gs;
    const struct ir3_shader_variant *fs = emit->fs;
 
    emit_marker6(ring, 5);
@@ -820,25 +771,19 @@ fd6_emit_3d_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
          fd6_state_take_group(&emit->state, state, FD6_GROUP_PRIMITIVE_PARAMS);
          break;
       case FD6_GROUP_VS_TEX:
-         fd6_emit_combined_textures(emit, PIPE_SHADER_VERTEX, vs);
+         fd6_emit_combined_textures(emit, PIPE_SHADER_VERTEX);
          break;
       case FD6_GROUP_HS_TEX:
-         if (hs) {
-            fd6_emit_combined_textures(emit, PIPE_SHADER_TESS_CTRL, hs);
-         }
+         fd6_emit_combined_textures(emit, PIPE_SHADER_TESS_CTRL);
          break;
       case FD6_GROUP_DS_TEX:
-         if (ds) {
-            fd6_emit_combined_textures(emit, PIPE_SHADER_TESS_EVAL, ds);
-         }
+         fd6_emit_combined_textures(emit, PIPE_SHADER_TESS_EVAL);
          break;
       case FD6_GROUP_GS_TEX:
-         if (gs) {
-            fd6_emit_combined_textures(emit, PIPE_SHADER_GEOMETRY, gs);
-         }
+         fd6_emit_combined_textures(emit, PIPE_SHADER_GEOMETRY);
          break;
       case FD6_GROUP_FS_TEX:
-         fd6_emit_combined_textures(emit, PIPE_SHADER_FRAGMENT, fs);
+         fd6_emit_combined_textures(emit, PIPE_SHADER_FRAGMENT);
          break;
       case FD6_GROUP_SO:
          fd6_emit_streamout(ring, emit);
@@ -865,7 +810,7 @@ fd6_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
                 FD_DIRTY_SHADER_IMAGE | FD_DIRTY_SHADER_SSBO)) {
       struct fd_texture_stateobj *tex = &ctx->tex[PIPE_SHADER_COMPUTE];
 
-      fd6_emit_textures(ctx, ring, PIPE_SHADER_COMPUTE, tex, cp);
+      fd6_emit_textures(ctx, ring, PIPE_SHADER_COMPUTE, tex);
 
       OUT_PKT4(ring, REG_A6XX_SP_VS_TEX_COUNT, 1);
       OUT_RING(ring, 0);
