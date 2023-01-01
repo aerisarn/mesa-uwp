@@ -1233,8 +1233,6 @@ static void handle_descriptor(struct rendering_state *state,
       break;
    }
    case VK_DESCRIPTOR_TYPE_SAMPLER:
-      if (!descriptor->sampler)
-         return;
       fill_sampler_stage(state, dyn_info, stage, p_stage, array_idx, descriptor, binding);
       break;
    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
