@@ -31,6 +31,7 @@
 
 #include "anv_generated_indirect_draws.h"
 
+#include "shaders/gfx9_generated_draws_spv.h"
 #include "shaders/gfx11_generated_draws_spv.h"
 
 /* This pass takes vulkan descriptor bindings 0 & 1 and turns them into global
@@ -101,7 +102,27 @@ lower_vulkan_descriptors_instr(nir_builder *b, nir_instr *instr, void *cb_data)
       break;
    }
 
-   case 2:
+   case 2: {
+      desc_value =
+         nir_load_ubo(b, 1, 64,
+                      nir_imm_int(b, 2),
+                      nir_imm_int(b,
+                                  offsetof(struct anv_generated_indirect_params,
+                                           draw_ids_addr)),
+                      .align_mul = 8,
+                      .align_offset = 0,
+                      .range_base = 0,
+                      .range = ~0);
+      desc_value =
+         nir_vec4(b,
+                  nir_unpack_64_2x32_split_x(b, desc_value),
+                  nir_unpack_64_2x32_split_y(b, desc_value),
+                  nir_imm_int(b, 0),
+                  nir_imm_int(b, 0));
+      break;
+   }
+
+   case 3:
       desc_value =
          nir_vec2(b,
                   nir_imm_int(b, 2),
@@ -276,9 +297,6 @@ compile_upload_spirv(struct anv_device *device,
 VkResult
 anv_device_init_generated_indirect_draws(struct anv_device *device)
 {
-   if (device->info->ver < 11)
-      return VK_SUCCESS;
-
    const struct intel_l3_weights w =
       intel_get_default_l3_weights(device->info,
                                    true /* wants_dc_cache */,
@@ -298,16 +316,24 @@ anv_device_init_generated_indirect_draws(struct anv_device *device)
                                    sizeof(indirect_draws_key),
                                    NULL);
    if (device->generated_draw_kernel == NULL) {
+      const uint32_t *spirv_source =
+         device->info->ver >= 11 ?
+         gfx11_generated_draws_spv_source :
+         gfx9_generated_draws_spv_source;
+      const uint32_t spirv_source_size =
+         device->info->ver >= 11 ?
+         ARRAY_SIZE(gfx11_generated_draws_spv_source) :
+         ARRAY_SIZE(gfx9_generated_draws_spv_source);
+      const uint32_t send_count =
+         device->info->ver >= 11 ?
+         11 /* 2 * (2 loads + 3 stores) + 1 store */ :
+         17 /* 2 * (2 loads + 6 stores) + 1 store */;
+
       device->generated_draw_kernel =
          compile_upload_spirv(device,
                               &indirect_draws_key,
                               sizeof(indirect_draws_key),
-                              gfx11_generated_draws_spv_source,
-                              ARRAY_SIZE(gfx11_generated_draws_spv_source),
-                              11 /*
-                                  * 2 * (2 indirect data loads + 3 3DPRIMITVE stores) +
-                                  * 1 store (MI_BATCH_BUFFER_START)
-                                  */);
+                              spirv_source, spirv_source_size, send_count);
    }
    if (device->generated_draw_kernel == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);

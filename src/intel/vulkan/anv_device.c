@@ -897,7 +897,6 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
 
 
    device->generated_indirect_draws =
-      device->info.ver >= 11 &&
       debug_get_bool_option("ANV_ENABLE_GENERATED_INDIRECT_DRAWS",
                             true);
 

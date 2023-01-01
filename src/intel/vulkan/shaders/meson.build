@@ -33,6 +33,7 @@ float64_spv_h = custom_target(
 )
 
 generated_draws_shaders = [
+  'gfx9_generated_draws.glsl',
   'gfx11_generated_draws.glsl',
 ]
 

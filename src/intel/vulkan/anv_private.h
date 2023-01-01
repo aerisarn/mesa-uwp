@@ -2777,6 +2777,11 @@ struct anv_cmd_buffer {
     */
    struct anv_address                           generation_return_addr;
 
+   /**
+    * Binding table allocation for generation shaders (only used on Gfx9).
+    */
+   struct anv_state                             generation_bt_state;
+
    /** List of anv_batch_bo used for generation
     *
     * We have to keep this separated of the anv_cmd_buffer::batch_bos that is
