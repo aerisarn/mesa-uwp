@@ -29,7 +29,7 @@
 #define ANV_GENERATED_FLAG_INDEXED    BITFIELD_BIT(0)
 #define ANV_GENERATED_FLAG_PREDICATED BITFIELD_BIT(1)
 
-/* This needs to match gfx11_generated_draws.glsl :
+/* This needs to match common_generated_draws.glsl :
  *
  *    layout(set = 0, binding = 2) uniform block
  */

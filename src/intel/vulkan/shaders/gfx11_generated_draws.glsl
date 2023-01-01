@@ -23,33 +23,9 @@
 
 #version 450
 #extension GL_ARB_gpu_shader_int64 : enable
+#extension GL_GOOGLE_include_directive : enable
 
-#define BITFIELD_BIT(i) (1u << (i))
-
-#define ANV_GENERATED_FLAG_INDEXED    BITFIELD_BIT(0)
-#define ANV_GENERATED_FLAG_PREDICATED BITFIELD_BIT(1)
-
-/* These 2 bindings will be accessed through A64 messages */
-layout(set = 0, binding = 0, std430) buffer Storage0 {
-   uint indirect_data[];
-};
-
-layout(set = 0, binding = 1, std430) buffer Storage1 {
-   uint commands[];
-};
-
-/* This data will be provided through push constants. */
-layout(set = 0, binding = 2) uniform block {
-   uint64_t indirect_data_addr;
-   uint indirect_data_stride;
-   uint flags;
-   uint draw_base;
-   uint item_count;
-   uint draw_count;
-   uint max_draw_count;
-   uint instance_multiplier;
-   uint64_t end_addr;
-};
+#include "common_generated_draws.glsl"
 
 void main()
 {
@@ -70,21 +46,17 @@ void main()
          uint vertex_offset  = indirect_data[indirect_data_offset + 3];
          uint first_instance = indirect_data[indirect_data_offset + 4];
 
-         commands[cmd_idx + 0] = (3 << 29 |         /* Command Type */
-                                  3 << 27 |         /* Command SubType */
-                                  3 << 24 |         /* 3D Command Opcode */
-                                  1 << 11 |         /* Extended Parameter Enable */
-                                  uint(is_predicated) << 8 |
-                                  8 << 0);          /* DWord Length */
-         commands[cmd_idx + 1] = 1 << 8;            /* Indexed */
-         commands[cmd_idx + 2] = index_count;       /* Vertex Count Per Instance */
-         commands[cmd_idx + 3] = first_index;       /* Start Vertex Location */
-         commands[cmd_idx + 4] = instance_count;    /* Instance Count */
-         commands[cmd_idx + 5] = first_instance;    /* Start Instance Location */
-         commands[cmd_idx + 6] = vertex_offset;     /* Base Vertex Location */
-         commands[cmd_idx + 7] = vertex_offset;     /* gl_BaseVertex */
-         commands[cmd_idx + 8] = first_instance;    /* gl_BaseInstance */
-         commands[cmd_idx + 9] = draw_id;           /* gl_DrawID */
+         write_3DPRIMITIVE_EXTENDED(cmd_idx,
+                                    is_predicated,
+                                    is_indexed,
+                                    index_count,
+                                    first_index,
+                                    instance_count,
+                                    first_instance,
+                                    vertex_offset,
+                                    vertex_offset,
+                                    first_instance,
+                                    draw_id);
       } else {
          /* Loading a VkDrawIndirectCommand structure */
          uint vertex_count   = indirect_data[indirect_data_offset + 0];
@@ -92,31 +64,22 @@ void main()
          uint first_vertex   = indirect_data[indirect_data_offset + 2];
          uint first_instance = indirect_data[indirect_data_offset + 3];
 
-         commands[cmd_idx + 0] = (3 << 29 |         /* Command Type */
-                                  3 << 27 |         /* Command SubType */
-                                  3 << 24 |         /* 3D Command Opcode */
-                                  1 << 11 |         /* Extended Parameter Enable */
-                                  uint(is_predicated) << 8 |
-                                  8 << 0);          /* DWord Length */
-         commands[cmd_idx + 1] = 0;
-         commands[cmd_idx + 2] = vertex_count;      /* Vertex Count Per Instance */
-         commands[cmd_idx + 3] = first_vertex;      /* Start Vertex Location */
-         commands[cmd_idx + 4] = instance_count;    /* Instance Count */
-         commands[cmd_idx + 5] = first_instance;    /* Start Instance Location */
-         commands[cmd_idx + 6] = 0;                 /* Base Vertex Location */
-         commands[cmd_idx + 7] = first_vertex;      /* gl_BaseVertex */
-         commands[cmd_idx + 8] = first_instance;    /* gl_BaseInstance */
-         commands[cmd_idx + 9] = draw_id;           /* gl_DrawID */
+         write_3DPRIMITIVE_EXTENDED(cmd_idx,
+                                    is_predicated,
+                                    is_indexed,
+                                    vertex_count,
+                                    first_vertex,
+                                    instance_count,
+                                    first_instance,
+                                    0 /* base_vertex_location */,
+                                    first_vertex,
+                                    first_instance,
+                                    draw_id);
       }
    } else if (draw_id == draw_count && draw_id < max_draw_count) {
       /* Only write a jump forward in the batch if we have fewer elements than
        * the max draw count.
        */
-      commands[cmd_idx + 0] = (0  << 29 |        /* Command Type */
-                               49 << 23 |        /* MI Command Opcode */
-                               1  << 8  |        /* Address Space Indicator (PPGTT) */
-                               1  << 0);         /* DWord Length */
-      commands[cmd_idx + 1] = uint(end_addr & 0xffffffff);
-      commands[cmd_idx + 2] = uint(end_addr >> 32);
+      write_MI_BATCH_BUFFER_START(cmd_idx, end_addr);
    }
 }

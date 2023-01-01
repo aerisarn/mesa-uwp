@@ -34,13 +34,15 @@ float64_spv_h = custom_target(
 
 gfx11_generated_draws_spv_h = custom_target(
   'gfx11_generated_draws_spv.h',
-  input : [glsl2spirv, 'gfx11_generated_draws.glsl'],
+  input : [glsl2spirv, 'gfx11_generated_draws.glsl',
+           files('common_generated_draws.glsl')],
   output : 'gfx11_generated_draws_spv.h',
   command : [
-    prog_python, '@INPUT@', '@OUTPUT@',
+    prog_python, '@INPUT0@', '@INPUT1@', '@OUTPUT@',
     prog_glslang,
     '--vn', 'gfx11_generated_draws_spv_source',
     '--glsl-version', '450',
     '--stage', 'frag',
+    '-I' + meson.current_source_dir(),
   ]
 )
