@@ -162,7 +162,7 @@ rewrite_partial_stride_indirect(struct st_context *st,
    if (!new_draws)
       return;
    for (unsigned i = 0; i < draw_count; i++)
-      cso_draw_vbo(st->cso_context, &new_draws[i].info, i, NULL, &new_draws[i].draw, 1);
+      st->ctx->Driver.DrawGallium(st->ctx, &new_draws[i].info, i, NULL, &new_draws[i].draw, 1);
    free(new_draws);
 }
 
@@ -244,7 +244,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
 
       indirect.draw_count = 1;
       for (i = 0; i < draw_count; i++) {
-         cso_draw_vbo(st->cso_context, &info, i, &indirect, &draw, 1);
+         ctx->Driver.DrawGallium(ctx, &info, i, &indirect, &draw, 1);
          indirect.offset += stride;
       }
    } else {
@@ -264,7 +264,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
             indirect_draw_count->buffer;
          indirect.indirect_draw_count_offset = indirect_draw_count_offset;
       }
-      cso_draw_vbo(st->cso_context, &info, 0, &indirect, &draw, 1);
+      ctx->Driver.DrawGallium(ctx, &info, 0, &indirect, &draw, 1);
    }
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH)

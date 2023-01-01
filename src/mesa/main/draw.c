@@ -2247,7 +2247,7 @@ _mesa_DrawTransformFeedbackStreamInstanced(GLenum mode, GLuint name,
    info.mode = mode;
    info.instance_count = primcount;
 
-   cso_draw_vbo(st_context(ctx)->cso_context, &info, 0, &indirect, &draw, 1);
+   ctx->Driver.DrawGallium(ctx, &info, 0, &indirect, &draw, 1);
 
    if (MESA_DEBUG_FLAGS & DEBUG_ALWAYS_FLUSH) {
       _mesa_flush(ctx);
