@@ -41,17 +41,6 @@
 static const uint8_t swiz_identity[4] = {PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y,
                                          PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W};
 
-static void
-fd6_emit_single_plane_descriptor(struct fd_ringbuffer *ring,
-                                 struct pipe_resource *prsc,
-                                 uint32_t *descriptor)
-{
-   for (int i = 0; i < FDL6_TEX_CONST_DWORDS; i++)
-      OUT_RING(ring, descriptor[i]);
-   if (prsc)
-      fd_ringbuffer_attach_bo(ring, fd_resource(prsc)->bo);
-}
-
 static uint64_t
 rsc_iova(struct pipe_resource *prsc, unsigned offset)
 {
@@ -117,28 +106,6 @@ fd6_image_descriptor(struct fd_context *ctx, const struct pipe_image_view *buf,
 
       memcpy(descriptor, view.storage_descriptor, sizeof(view.storage_descriptor));
    }
-}
-
-void
-fd6_emit_image_tex(struct fd_context *ctx, struct fd_ringbuffer *ring,
-                   const struct pipe_image_view *pimg)
-{
-   uint32_t descriptor[FDL6_TEX_CONST_DWORDS];
-   if (!pimg->resource) {
-      memset(descriptor, 0, sizeof(descriptor));
-   } else {
-      fd6_image_descriptor(ctx, pimg, descriptor);
-   }
-   fd6_emit_single_plane_descriptor(ring, pimg->resource, descriptor);
-}
-
-void
-fd6_emit_ssbo_tex(struct fd_context *ctx, struct fd_ringbuffer *ring,
-                  const struct pipe_shader_buffer *pbuf)
-{
-   uint32_t descriptor[FDL6_TEX_CONST_DWORDS];
-   fd6_ssbo_descriptor(ctx, pbuf, descriptor);
-   fd6_emit_single_plane_descriptor(ring, pbuf->buffer, descriptor);
 }
 
 static struct fd6_descriptor_set *

@@ -148,20 +148,8 @@ fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
    unsigned num_merged_textures = tex->num_textures;
    unsigned num_textures = tex->num_textures;
-   if (v) {
-      num_merged_textures += v->image_mapping.num_tex;
-
-      if (v->fb_read)
-         num_merged_textures++;
-
-      /* There could be more bound textures than what the shader uses.
-       * Which isn't known at shader compile time.  So in the case we
-       * are merging tex state, only emit the textures that the shader
-       * uses (since the image/SSBO related tex state comes immediately
-       * after)
-       */
-      num_textures = v->image_mapping.tex_base;
-   }
+   if (v && v->fb_read)
+      num_merged_textures++;
 
    if (num_merged_textures > 0) {
       struct fd_ringbuffer *state =
@@ -212,24 +200,8 @@ fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
          OUT_RING(state, view->descriptor[15]);
       }
 
-      if (v) {
-         const struct ir3_ibo_mapping *mapping = &v->image_mapping;
-         struct fd_shaderbuf_stateobj *buf = &ctx->shaderbuf[type];
-         struct fd_shaderimg_stateobj *img = &ctx->shaderimg[type];
-
-         for (unsigned i = 0; i < mapping->num_tex; i++) {
-            unsigned idx = mapping->tex_to_image[i];
-            if (idx & IBO_SSBO) {
-               fd6_emit_ssbo_tex(ctx, state, &buf->sb[idx & ~IBO_SSBO]);
-            } else {
-               fd6_emit_image_tex(ctx, state, &img->si[idx]);
-            }
-         }
-
-         if (v->fb_read) {
-            fd6_emit_fb_tex(state, ctx);
-         }
-      }
+      if (v && v->fb_read)
+         fd6_emit_fb_tex(state, ctx);
 
       /* emit texture state: */
       OUT_PKT7(ring, opcode, 3);
@@ -277,7 +249,7 @@ fd6_emit_combined_textures(struct fd6_emit *emit,
 
    assert((type < ARRAY_SIZE(s)) && s[type]);
 
-   if (!v->image_mapping.num_tex && !v->fb_read) {
+   if (!v->fb_read) {
       /* in the fast-path, when we don't have to mix in any image/SSBO
        * related texture state, we can just lookup the stateobj and
        * re-emit that:
