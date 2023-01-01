@@ -83,6 +83,65 @@ struct fd6_state_group {
    uint32_t enable_mask;
 };
 
+struct fd6_state {
+   struct fd6_state_group groups[32];
+   unsigned num_groups;
+};
+
+static inline void
+fd6_state_emit(struct fd6_state *state, struct fd_ringbuffer *ring)
+{
+   if (!state->num_groups)
+      return;
+
+   OUT_PKT7(ring, CP_SET_DRAW_STATE, 3 * state->num_groups);
+   for (unsigned i = 0; i < state->num_groups; i++) {
+      struct fd6_state_group *g = &state->groups[i];
+      unsigned n = g->stateobj ? fd_ringbuffer_size(g->stateobj) / 4 : 0;
+
+      assert((g->enable_mask & ~ENABLE_ALL) == 0);
+
+      if (n == 0) {
+         OUT_RING(ring, CP_SET_DRAW_STATE__0_COUNT(0) |
+                        CP_SET_DRAW_STATE__0_DISABLE | g->enable_mask |
+                        CP_SET_DRAW_STATE__0_GROUP_ID(g->group_id));
+         OUT_RING(ring, 0x00000000);
+         OUT_RING(ring, 0x00000000);
+      } else {
+         OUT_RING(ring, CP_SET_DRAW_STATE__0_COUNT(n) | g->enable_mask |
+                        CP_SET_DRAW_STATE__0_GROUP_ID(g->group_id));
+         OUT_RB(ring, g->stateobj);
+      }
+
+      if (g->stateobj)
+         fd_ringbuffer_del(g->stateobj);
+   }
+}
+
+static inline void
+fd6_state_take_group(struct fd6_state *state, struct fd_ringbuffer *stateobj,
+                     enum fd6_state_id group_id)
+{
+   static const unsigned enable_mask[32] = {
+         [FD6_GROUP_PROG] = ENABLE_DRAW,
+         [FD6_GROUP_PROG_BINNING] = CP_SET_DRAW_STATE__0_BINNING,
+         [FD6_GROUP_PROG_INTERP] = ENABLE_DRAW,
+         [FD6_GROUP_FS_TEX] = ENABLE_DRAW,
+   };
+   assert(state->num_groups < ARRAY_SIZE(state->groups));
+   struct fd6_state_group *g = &state->groups[state->num_groups++];
+   g->stateobj = stateobj;
+   g->group_id = group_id;
+   g->enable_mask = enable_mask[group_id] ? enable_mask[group_id] : ENABLE_ALL;
+}
+
+static inline void
+fd6_state_add_group(struct fd6_state *state, struct fd_ringbuffer *stateobj,
+                    enum fd6_state_id group_id)
+{
+   fd6_state_take_group(state, fd_ringbuffer_ref(stateobj), group_id);
+}
+
 /* grouped together emit-state for prog/vertex/state emit: */
 struct fd6_emit {
    struct fd_context *ctx;
@@ -112,8 +171,7 @@ struct fd6_emit {
 
    unsigned streamout_mask;
 
-   struct fd6_state_group groups[32];
-   unsigned num_groups;
+   struct fd6_state state;
 };
 
 static inline const struct fd6_program_state *
@@ -125,25 +183,6 @@ fd6_emit_get_prog(struct fd6_emit *emit)
       emit->prog = fd6_program_state(s);
    }
    return emit->prog;
-}
-
-static inline void
-fd6_emit_take_group(struct fd6_emit *emit, struct fd_ringbuffer *stateobj,
-                    enum fd6_state_id group_id, unsigned enable_mask)
-{
-   assert(emit->num_groups < ARRAY_SIZE(emit->groups));
-   struct fd6_state_group *g = &emit->groups[emit->num_groups++];
-   g->stateobj = stateobj;
-   g->group_id = group_id;
-   g->enable_mask = enable_mask;
-}
-
-static inline void
-fd6_emit_add_group(struct fd6_emit *emit, struct fd_ringbuffer *stateobj,
-                   enum fd6_state_id group_id, unsigned enable_mask)
-{
-   fd6_emit_take_group(emit, fd_ringbuffer_ref(stateobj), group_id,
-                       enable_mask);
 }
 
 static inline unsigned

@@ -282,18 +282,15 @@ fd6_emit_combined_textures(struct fd6_emit *emit,
 {
    struct fd_context *ctx = emit->ctx;
 
-   static const struct {
-      enum fd6_state_id state_id;
-      unsigned enable_mask;
-   } s[PIPE_SHADER_TYPES] = {
-      [PIPE_SHADER_VERTEX] = {FD6_GROUP_VS_TEX, ENABLE_ALL},
-      [PIPE_SHADER_TESS_CTRL] = {FD6_GROUP_HS_TEX, ENABLE_ALL},
-      [PIPE_SHADER_TESS_EVAL] = {FD6_GROUP_DS_TEX, ENABLE_ALL},
-      [PIPE_SHADER_GEOMETRY] = {FD6_GROUP_GS_TEX, ENABLE_ALL},
-      [PIPE_SHADER_FRAGMENT] = {FD6_GROUP_FS_TEX, ENABLE_DRAW},
+   static const enum fd6_state_id  s[PIPE_SHADER_TYPES] = {
+      [PIPE_SHADER_VERTEX]    = FD6_GROUP_VS_TEX,
+      [PIPE_SHADER_TESS_CTRL] = FD6_GROUP_HS_TEX,
+      [PIPE_SHADER_TESS_EVAL] = FD6_GROUP_DS_TEX,
+      [PIPE_SHADER_GEOMETRY]  = FD6_GROUP_GS_TEX,
+      [PIPE_SHADER_FRAGMENT]  = FD6_GROUP_FS_TEX,
    };
 
-   assert(s[type].state_id);
+   assert((type < ARRAY_SIZE(s)) && s[type]);
 
    if (!v->image_mapping.num_tex && !v->fb_read) {
       /* in the fast-path, when we don't have to mix in any image/SSBO
@@ -303,13 +300,11 @@ fd6_emit_combined_textures(struct fd6_emit *emit,
        * Also, framebuffer-read is a slow-path because an extra
        * texture needs to be inserted.
        */
-      if ((ctx->dirty_shader[type] & FD_DIRTY_SHADER_TEX) &&
-          ctx->tex[type].num_textures > 0) {
+      if (ctx->tex[type].num_textures > 0) {
          struct fd6_texture_state *tex =
             fd6_texture_state(ctx, type, &ctx->tex[type]);
 
-         fd6_emit_add_group(emit, tex->stateobj, s[type].state_id,
-                            s[type].enable_mask);
+         fd6_state_add_group(&emit->state, tex->stateobj, s[type]);
 
          fd6_texture_state_reference(&tex, NULL);
       }
@@ -327,8 +322,7 @@ fd6_emit_combined_textures(struct fd6_emit *emit,
 
          fd6_emit_textures(ctx, stateobj, type, tex, v);
 
-         fd6_emit_take_group(emit, stateobj, s[type].state_id,
-                             s[type].enable_mask);
+         fd6_state_take_group(&emit->state, stateobj, s[type]);
       }
    }
 }
@@ -705,14 +699,13 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit) assert_dt
    }
 
    if (emit->streamout_mask) {
-      fd6_emit_add_group(emit, prog->streamout_stateobj, FD6_GROUP_SO,
-                         ENABLE_ALL);
+      fd6_state_add_group(&emit->state, prog->streamout_stateobj, FD6_GROUP_SO);
    } else if (ctx->last.streamout_mask != 0) {
       /* If we transition from a draw with streamout to one without, turn
        * off streamout.
        */
-      fd6_emit_add_group(emit, fd6_context(ctx)->streamout_disable_stateobj,
-                         FD6_GROUP_SO, ENABLE_ALL);
+      fd6_state_add_group(&emit->state, fd6_context(ctx)->streamout_disable_stateobj,
+                         FD6_GROUP_SO);
    }
 
    /* Make sure that any use of our TFB outputs (indirect draw source or shader
@@ -824,131 +817,111 @@ fd6_emit_3d_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
    u_foreach_bit (b, emit->dirty_groups) {
       enum fd6_state_id group = b;
       struct fd_ringbuffer *state = NULL;
-      uint32_t enable_mask = ENABLE_ALL;
 
       switch (group) {
       case FD6_GROUP_VTXSTATE:
          state = fd6_vertex_stateobj(ctx->vtx.vtx)->stateobj;
-         fd_ringbuffer_ref(state);
+         fd6_state_add_group(&emit->state, state, FD6_GROUP_VTXSTATE);
          break;
       case FD6_GROUP_VBO:
          state = build_vbo_state(emit);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_VBO);
          break;
       case FD6_GROUP_ZSA:
          state = fd6_zsa_state(
             ctx,
             util_format_is_pure_integer(pipe_surface_format(pfb->cbufs[0])),
             fd_depth_clamp_enabled(ctx));
-         fd_ringbuffer_ref(state);
+         fd6_state_add_group(&emit->state, state, FD6_GROUP_ZSA);
          break;
       case FD6_GROUP_LRZ:
          state = build_lrz(emit);
-         if (!state)
-            continue;
+         if (state)
+            fd6_state_take_group(&emit->state, state, FD6_GROUP_LRZ);
          break;
       case FD6_GROUP_SCISSOR:
          state = build_scissor(emit);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_SCISSOR);
          break;
       case FD6_GROUP_PROG:
-         fd6_emit_add_group(emit, prog->config_stateobj, FD6_GROUP_PROG_CONFIG,
-                            ENABLE_ALL);
-         fd6_emit_add_group(emit, prog->stateobj, FD6_GROUP_PROG, ENABLE_DRAW);
-         fd6_emit_add_group(emit, prog->binning_stateobj,
-                            FD6_GROUP_PROG_BINNING,
-                            CP_SET_DRAW_STATE__0_BINNING);
+         fd6_state_add_group(&emit->state, prog->config_stateobj,
+                             FD6_GROUP_PROG_CONFIG);
+         fd6_state_add_group(&emit->state, prog->stateobj, FD6_GROUP_PROG);
+         fd6_state_add_group(&emit->state, prog->binning_stateobj,
+                             FD6_GROUP_PROG_BINNING);
 
          /* emit remaining streaming program state, ie. what depends on
           * other emit state, so cannot be pre-baked.
           */
-         fd6_emit_take_group(emit, fd6_program_interp_state(emit),
-                             FD6_GROUP_PROG_INTERP, ENABLE_DRAW);
-         continue;
+         fd6_state_take_group(&emit->state, fd6_program_interp_state(emit),
+                              FD6_GROUP_PROG_INTERP);
+         break;
       case FD6_GROUP_RASTERIZER:
          state = fd6_rasterizer_state(ctx, emit->primitive_restart);
-         fd_ringbuffer_ref(state);
+         fd6_state_add_group(&emit->state, state, FD6_GROUP_RASTERIZER);
          break;
       case FD6_GROUP_PROG_FB_RAST:
          state = build_prog_fb_rast(emit);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_PROG_FB_RAST);
          break;
       case FD6_GROUP_BLEND:
          state = fd6_blend_variant(ctx->blend, pfb->samples, ctx->sample_mask)
                     ->stateobj;
-         fd_ringbuffer_ref(state);
+         fd6_state_add_group(&emit->state, state, FD6_GROUP_BLEND);
          break;
       case FD6_GROUP_BLEND_COLOR:
          state = build_blend_color(emit);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_BLEND_COLOR);
          break;
       case FD6_GROUP_IBO:
          state = build_ibo(emit);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_IBO);
          break;
       case FD6_GROUP_CONST:
          state = fd6_build_user_consts(emit);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_CONST);
          break;
       case FD6_GROUP_DRIVER_PARAMS:
          state = fd6_build_driver_params(emit);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_DRIVER_PARAMS);
          break;
       case FD6_GROUP_PRIMITIVE_PARAMS:
          state = fd6_build_tess_consts(emit);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_PRIMITIVE_PARAMS);
          break;
       case FD6_GROUP_VS_TEX:
          fd6_emit_combined_textures(emit, PIPE_SHADER_VERTEX, vs);
-         continue;
+         break;
       case FD6_GROUP_HS_TEX:
          if (hs) {
             fd6_emit_combined_textures(emit, PIPE_SHADER_TESS_CTRL, hs);
          }
-         continue;
+         break;
       case FD6_GROUP_DS_TEX:
          if (ds) {
             fd6_emit_combined_textures(emit, PIPE_SHADER_TESS_EVAL, ds);
          }
-         continue;
+         break;
       case FD6_GROUP_GS_TEX:
          if (gs) {
             fd6_emit_combined_textures(emit, PIPE_SHADER_GEOMETRY, gs);
          }
-         continue;
+         break;
       case FD6_GROUP_FS_TEX:
          fd6_emit_combined_textures(emit, PIPE_SHADER_FRAGMENT, fs);
-         continue;
+         break;
       case FD6_GROUP_SO:
          fd6_emit_streamout(ring, emit);
-         continue;
+         break;
       case FD6_GROUP_NON_GROUP:
          fd6_emit_non_ring(ring, emit);
-         continue;
+         break;
       default:
          unreachable("bad state group");
       }
-
-      fd6_emit_take_group(emit, state, group, enable_mask);
    }
 
-   if (emit->num_groups > 0) {
-      OUT_PKT7(ring, CP_SET_DRAW_STATE, 3 * emit->num_groups);
-      for (unsigned i = 0; i < emit->num_groups; i++) {
-         struct fd6_state_group *g = &emit->groups[i];
-         unsigned n = g->stateobj ? fd_ringbuffer_size(g->stateobj) / 4 : 0;
-
-         assert((g->enable_mask & ~ENABLE_ALL) == 0);
-
-         if (n == 0) {
-            OUT_RING(ring, CP_SET_DRAW_STATE__0_COUNT(0) |
-                              CP_SET_DRAW_STATE__0_DISABLE | g->enable_mask |
-                              CP_SET_DRAW_STATE__0_GROUP_ID(g->group_id));
-            OUT_RING(ring, 0x00000000);
-            OUT_RING(ring, 0x00000000);
-         } else {
-            OUT_RING(ring, CP_SET_DRAW_STATE__0_COUNT(n) | g->enable_mask |
-                              CP_SET_DRAW_STATE__0_GROUP_ID(g->group_id));
-            OUT_RB(ring, g->stateobj);
-         }
-
-         if (g->stateobj)
-            fd_ringbuffer_del(g->stateobj);
-      }
-      emit->num_groups = 0;
-   }
+   fd6_state_emit(&emit->state, ring);
 }
 
 void
