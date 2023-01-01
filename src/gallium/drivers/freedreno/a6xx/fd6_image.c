@@ -158,6 +158,17 @@ descriptor_set(struct fd_context *ctx, enum pipe_shader_type shader)
 static void
 clear_descriptor(struct fd6_descriptor_set *set, unsigned slot)
 {
+   /* The 2nd dword of the descriptor contains the width and height.
+    * so a non-zero value means the slot was previously valid and
+    * must be cleared.  We can't leave dangling descriptors as the
+    * shader could use variable indexing into the set of IBOs to
+    * get at them.  See piglit arb_shader_image_load_store-invalid.
+    */
+   if (!set->descriptor[slot][1])
+      return;
+
+   fd6_descriptor_set_invalidate(set);
+
    memset(set->descriptor[slot], 0, sizeof(set->descriptor[slot]));
 }
 
@@ -169,6 +180,8 @@ validate_image_descriptor(struct fd_context *ctx, struct fd6_descriptor_set *set
 
    if (!rsc || (rsc->seqno == set->seqno[slot]))
       return;
+
+   fd6_descriptor_set_invalidate(set);
 
    fd6_image_descriptor(ctx, img, set->descriptor[slot]);
    set->seqno[slot] = rsc->seqno;
@@ -182,6 +195,8 @@ validate_buffer_descriptor(struct fd_context *ctx, struct fd6_descriptor_set *se
 
    if (!rsc || (rsc->seqno == set->seqno[slot]))
       return;
+
+   fd6_descriptor_set_invalidate(set);
 
    fd6_ssbo_descriptor(ctx, buf, set->descriptor[slot]);
    set->seqno[slot] = rsc->seqno;
@@ -219,6 +234,182 @@ fd6_build_ibo_state(struct fd_context *ctx, const struct ir3_shader_variant *v,
    }
 
    return state;
+}
+
+/* Build bindless descriptor state, returns ownership of state reference */
+struct fd_ringbuffer *
+fd6_build_bindless_state(struct fd_context *ctx, enum pipe_shader_type shader,
+                         bool append_fb_read)
+{
+   struct fd_shaderbuf_stateobj *bufso = &ctx->shaderbuf[shader];
+   struct fd_shaderimg_stateobj *imgso = &ctx->shaderimg[shader];
+   struct fd6_descriptor_set *set = descriptor_set(ctx, shader);
+
+   struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(
+      ctx->batch->submit, 16 * 4, FD_RINGBUFFER_STREAMING);
+
+   /* Don't re-use a previous descriptor set if appending the
+    * fb-read descriptor, as that can change across batches.
+    * The normal descriptor slots are safe to re-use even if
+    * the state is dirtied due to batch flush, but the fb-read
+    * slot is not.
+    */
+   if (unlikely(append_fb_read))
+      fd6_descriptor_set_invalidate(set);
+
+   /*
+    * Re-validate the descriptor slots, ie. in the case that
+    * the resource gets rebound due to use with non-UBWC
+    * compatible view format, etc.
+    *
+    * While we are at it, attach the BOs to the ring.
+    */
+
+   u_foreach_bit (b, bufso->enabled_mask) {
+      struct pipe_shader_buffer *buf = &bufso->sb[b];
+      unsigned idx = b + IR3_BINDLESS_SSBO_OFFSET;
+      validate_buffer_descriptor(ctx, set, idx, buf);
+      if (buf->buffer)
+         fd_ringbuffer_attach_bo(ring, fd_resource(buf->buffer)->bo);
+   }
+
+   u_foreach_bit (b, imgso->enabled_mask) {
+      struct pipe_image_view *img = &imgso->si[b];
+      unsigned idx = b + IR3_BINDLESS_IMAGE_OFFSET;
+      validate_image_descriptor(ctx, set, idx, img);
+      if (img->resource)
+         fd_ringbuffer_attach_bo(ring, fd_resource(img->resource)->bo);
+   }
+
+   if (!set->bo) {
+      set->bo = fd_bo_new(
+            ctx->dev, sizeof(set->descriptor),
+            /* Use same flags as ringbuffer so hits the same heap,
+             * because those will already have the FD_RELOC_DUMP
+             * flag set:
+             */
+            FD_BO_GPUREADONLY | FD_BO_CACHED_COHERENT,
+            "%s bindless", _mesa_shader_stage_to_abbrev(shader));
+      fd_bo_mark_for_dump(set->bo);
+
+      uint32_t *desc_buf = fd_bo_map(set->bo);
+
+      memcpy(desc_buf, set->descriptor, sizeof(set->descriptor));
+
+      if (unlikely(append_fb_read)) {
+         /* The last image slot is used for fb-read: */
+         unsigned idx = IR3_BINDLESS_DESC_COUNT - 1;
+
+         /* This is patched with the appropriate descriptor for GMEM or
+          * sysmem rendering path in fd6_gmem
+          */
+
+         struct fd_cs_patch patch = {
+               .cs = &desc_buf[idx * FDL6_TEX_CONST_DWORDS],
+         };
+         util_dynarray_append(&ctx->batch->fb_read_patches,
+                              __typeof__(patch), patch);
+      }
+   }
+
+   /*
+    * Build stateobj emitting reg writes to configure the descriptor
+    * set and CP_LOAD_STATE packets to preload the state.
+    *
+    * Note that unless the app is using the max # of SSBOs there will
+    * be a gap between the IBO descriptors used for SSBOs and for images,
+    * so emit this as two CP_LOAD_STATE packets:
+    */
+
+   unsigned idx = ir3_shader_descriptor_set(shader);
+
+   if (shader == PIPE_SHADER_COMPUTE) {
+      OUT_REG(ring, A6XX_HLSQ_INVALIDATE_CMD(.cs_bindless = 0x1f));
+      OUT_REG(ring, A6XX_SP_CS_BINDLESS_BASE_DESCRIPTOR(
+            idx, .desc_size = BINDLESS_DESCRIPTOR_64B, .bo = set->bo,
+      ));
+      OUT_REG(ring, A6XX_HLSQ_CS_BINDLESS_BASE_DESCRIPTOR(
+            idx, .desc_size = BINDLESS_DESCRIPTOR_64B, .bo = set->bo,
+      ));
+
+      if (bufso->enabled_mask) {
+         OUT_PKT(ring, CP_LOAD_STATE6_FRAG,
+            CP_LOAD_STATE6_0(
+                  .dst_off     = IR3_BINDLESS_SSBO_OFFSET,
+                  .state_type  = ST6_IBO,
+                  .state_src   = SS6_BINDLESS,
+                  .state_block = SB6_CS_SHADER,
+                  .num_unit    = util_last_bit(bufso->enabled_mask),
+            ),
+            CP_LOAD_STATE6_EXT_SRC_ADDR(
+                  /* This isn't actually an address: */
+                  .qword = (idx << 28) |
+                     IR3_BINDLESS_SSBO_OFFSET * FDL6_TEX_CONST_DWORDS,
+            ),
+         );
+      }
+
+      if (imgso->enabled_mask) {
+         OUT_PKT(ring, CP_LOAD_STATE6_FRAG,
+            CP_LOAD_STATE6_0(
+                  .dst_off     = IR3_BINDLESS_IMAGE_OFFSET,
+                  .state_type  = ST6_IBO,
+                  .state_src   = SS6_BINDLESS,
+                  .state_block = SB6_CS_SHADER,
+                  .num_unit    = util_last_bit(imgso->enabled_mask),
+            ),
+            CP_LOAD_STATE6_EXT_SRC_ADDR(
+                  /* This isn't actually an address: */
+                  .qword = (idx << 28) |
+                     IR3_BINDLESS_IMAGE_OFFSET * FDL6_TEX_CONST_DWORDS,
+            ),
+         );
+      }
+   } else {
+      OUT_REG(ring, A6XX_HLSQ_INVALIDATE_CMD(.gfx_bindless = 0x1f));
+      OUT_REG(ring, A6XX_SP_BINDLESS_BASE_DESCRIPTOR(
+            idx, .desc_size = BINDLESS_DESCRIPTOR_64B, .bo = set->bo,
+      ));
+      OUT_REG(ring, A6XX_HLSQ_BINDLESS_BASE_DESCRIPTOR(
+            idx, .desc_size = BINDLESS_DESCRIPTOR_64B, .bo = set->bo,
+      ));
+
+      if (bufso->enabled_mask) {
+         OUT_PKT(ring, CP_LOAD_STATE6,
+            CP_LOAD_STATE6_0(
+                  .dst_off     = IR3_BINDLESS_SSBO_OFFSET,
+                  .state_type  = ST6_SHADER,
+                  .state_src   = SS6_BINDLESS,
+                  .state_block = SB6_IBO,
+                  .num_unit    = util_last_bit(bufso->enabled_mask),
+            ),
+            CP_LOAD_STATE6_EXT_SRC_ADDR(
+                  /* This isn't actually an address: */
+                  .qword = (idx << 28) |
+                     IR3_BINDLESS_SSBO_OFFSET * FDL6_TEX_CONST_DWORDS,
+            ),
+         );
+      }
+
+      if (imgso->enabled_mask) {
+         OUT_PKT(ring, CP_LOAD_STATE6,
+            CP_LOAD_STATE6_0(
+                  .dst_off     = IR3_BINDLESS_IMAGE_OFFSET,
+                  .state_type  = ST6_SHADER,
+                  .state_src   = SS6_BINDLESS,
+                  .state_block = SB6_IBO,
+                  .num_unit    = util_last_bit(imgso->enabled_mask),
+            ),
+            CP_LOAD_STATE6_EXT_SRC_ADDR(
+                  /* This isn't actually an address: */
+                  .qword = (idx << 28) |
+                     IR3_BINDLESS_IMAGE_OFFSET * FDL6_TEX_CONST_DWORDS,
+            ),
+         );
+      }
+   }
+
+   return ring;
 }
 
 static void

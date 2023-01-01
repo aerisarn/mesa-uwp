@@ -62,7 +62,21 @@ struct fd6_descriptor_set {
     * resource has been rebound
     */
    uint16_t seqno[IR3_BINDLESS_DESC_COUNT];
+
+   /**
+    * Current GPU copy of the desciptor set
+    */
+   struct fd_bo *bo;
 };
+
+static void
+fd6_descriptor_set_invalidate(struct fd6_descriptor_set *set)
+{
+   if (!set->bo)
+      return;
+   fd_bo_del(set->bo);
+   set->bo = NULL;
+}
 
 struct fd6_context {
    struct fd_context base;

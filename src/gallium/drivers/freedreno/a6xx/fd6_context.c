@@ -51,6 +51,10 @@ fd6_context_destroy(struct pipe_context *pctx) in_dt
 {
    struct fd6_context *fd6_ctx = fd6_context(fd_context(pctx));
 
+   fd6_descriptor_set_invalidate(&fd6_ctx->cs_descriptor_set);
+   for (unsigned i = 0; i < ARRAY_SIZE(fd6_ctx->descriptor_sets); i++)
+      fd6_descriptor_set_invalidate(&fd6_ctx->descriptor_sets[i]);
+
    if (fd6_ctx->streamout_disable_stateobj)
       fd_ringbuffer_del(fd6_ctx->streamout_disable_stateobj);
 
@@ -183,6 +187,26 @@ setup_state_map(struct fd_context *ctx)
                              BIT(FD6_GROUP_GS_TEX));
    fd_context_add_shader_map(ctx, PIPE_SHADER_FRAGMENT, FD_DIRTY_SHADER_TEX,
                              BIT(FD6_GROUP_FS_TEX));
+
+   fd_context_add_shader_map(ctx, PIPE_SHADER_VERTEX,
+                             FD_DIRTY_SHADER_SSBO | FD_DIRTY_SHADER_IMAGE,
+                             BIT(FD6_GROUP_VS_BINDLESS));
+   fd_context_add_shader_map(ctx, PIPE_SHADER_TESS_CTRL,
+                             FD_DIRTY_SHADER_SSBO | FD_DIRTY_SHADER_IMAGE,
+                             BIT(FD6_GROUP_HS_BINDLESS));
+   fd_context_add_shader_map(ctx, PIPE_SHADER_TESS_EVAL,
+                             FD_DIRTY_SHADER_SSBO | FD_DIRTY_SHADER_IMAGE,
+                             BIT(FD6_GROUP_DS_BINDLESS));
+   fd_context_add_shader_map(ctx, PIPE_SHADER_GEOMETRY,
+                             FD_DIRTY_SHADER_SSBO | FD_DIRTY_SHADER_IMAGE,
+                             BIT(FD6_GROUP_GS_BINDLESS));
+   /* NOTE: FD6_GROUP_FS_BINDLESS has a weak dependency on the program
+    * state (ie. it needs to be re-generated with fb-read descriptor
+    * patched in) but this special case is handled in fd6_emit_3d_state()
+    */
+   fd_context_add_shader_map(ctx, PIPE_SHADER_FRAGMENT,
+                             FD_DIRTY_SHADER_SSBO | FD_DIRTY_SHADER_IMAGE,
+                             BIT(FD6_GROUP_FS_BINDLESS));
 
    /* NOTE: scissor enabled bit is part of rasterizer state, but
     * fd_rasterizer_state_bind() will mark scissor dirty if needed:

@@ -60,6 +60,10 @@ cs_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
    OUT_PKT4(ring, REG_A6XX_SP_CS_CONFIG, 2);
    OUT_RING(ring, A6XX_SP_CS_CONFIG_ENABLED |
+                     COND(v->bindless_tex, A6XX_SP_CS_CONFIG_BINDLESS_TEX) |
+                     COND(v->bindless_samp, A6XX_SP_CS_CONFIG_BINDLESS_SAMP) |
+                     COND(v->bindless_ibo, A6XX_SP_CS_CONFIG_BINDLESS_IBO) |
+                     COND(v->bindless_ubo, A6XX_SP_CS_CONFIG_BINDLESS_UBO) |
                      A6XX_SP_CS_CONFIG_NIBO(ir3_shader_nibo(v)) |
                      A6XX_SP_CS_CONFIG_NTEX(v->num_samp) |
                      A6XX_SP_CS_CONFIG_NSAMP(v->num_samp)); /* SP_VS_CONFIG */

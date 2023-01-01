@@ -66,6 +66,11 @@ enum fd6_state_id {
    FD6_GROUP_BLEND_COLOR,
    FD6_GROUP_SO,
    FD6_GROUP_IBO,
+   FD6_GROUP_VS_BINDLESS,
+   FD6_GROUP_HS_BINDLESS,
+   FD6_GROUP_DS_BINDLESS,
+   FD6_GROUP_GS_BINDLESS,
+   FD6_GROUP_FS_BINDLESS,
 
    /*
     * Virtual state-groups, which don't turn into a CP_SET_DRAW_STATE group
@@ -73,6 +78,12 @@ enum fd6_state_id {
 
    FD6_GROUP_PROG_KEY,  /* Set for any state which could change shader key */
    FD6_GROUP_NON_GROUP, /* placeholder group for state emit in IB2, keep last */
+
+   /*
+    * Note that since we don't interleave draws and grids in the same batch,
+    * the compute vs draw state groups can overlap:
+    */
+   FD6_GROUP_CS_BINDLESS = FD6_GROUP_VS_BINDLESS,
 };
 
 #define ENABLE_ALL                                                             \
@@ -133,6 +144,7 @@ fd6_state_take_group(struct fd6_state *state, struct fd_ringbuffer *stateobj,
          [FD6_GROUP_PROG_BINNING] = CP_SET_DRAW_STATE__0_BINNING,
          [FD6_GROUP_PROG_INTERP] = ENABLE_DRAW,
          [FD6_GROUP_FS_TEX] = ENABLE_DRAW,
+         [FD6_GROUP_FS_BINDLESS] = ENABLE_DRAW,
    };
    assert(state->num_groups < ARRAY_SIZE(state->groups));
    struct fd6_state_group *g = &state->groups[state->num_groups++];

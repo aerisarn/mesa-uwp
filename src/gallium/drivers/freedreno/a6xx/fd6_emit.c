@@ -793,11 +793,13 @@ fd6_emit_3d_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 
    emit_marker6(ring, 5);
 
-   /* NOTE: we track fb_read differently than _BLEND_ENABLED since we
-    * might decide to do sysmem in some cases when blend is enabled:
+   /* Special case, we need to re-emit bindless FS state w/ the
+    * fb-read state appended:
     */
-   if (fs->fb_read)
+   if ((emit->dirty_groups & BIT(FD6_GROUP_PROG)) && fs->fb_read) {
       ctx->batch->gmem_reason |= FD_GMEM_FB_READ;
+      emit->dirty_groups |= BIT(FD6_GROUP_FS_BINDLESS);
+   }
 
    u_foreach_bit (b, emit->dirty_groups) {
       enum fd6_state_id group = b;
@@ -862,6 +864,26 @@ fd6_emit_3d_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
          state = build_ibo(emit);
          fd6_state_take_group(&emit->state, state, FD6_GROUP_IBO);
          break;
+      case FD6_GROUP_VS_BINDLESS:
+         state = fd6_build_bindless_state(ctx, PIPE_SHADER_VERTEX, false);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_VS_BINDLESS);
+         break;
+      case FD6_GROUP_HS_BINDLESS:
+         state = fd6_build_bindless_state(ctx, PIPE_SHADER_TESS_CTRL, false);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_HS_BINDLESS);
+         break;
+      case FD6_GROUP_DS_BINDLESS:
+         state = fd6_build_bindless_state(ctx, PIPE_SHADER_TESS_EVAL, false);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_DS_BINDLESS);
+         break;
+      case FD6_GROUP_GS_BINDLESS:
+         state = fd6_build_bindless_state(ctx, PIPE_SHADER_GEOMETRY, false);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_GS_BINDLESS);
+         break;
+      case FD6_GROUP_FS_BINDLESS:
+         state = fd6_build_bindless_state(ctx, PIPE_SHADER_FRAGMENT, fs->fb_read);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_FS_BINDLESS);
+         break;
       case FD6_GROUP_CONST:
          state = fd6_build_user_consts(emit);
          fd6_state_take_group(&emit->state, state, FD6_GROUP_CONST);
@@ -913,6 +935,7 @@ void
 fd6_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
                   struct ir3_shader_variant *cp)
 {
+   struct fd6_state state = {};
    enum fd_dirty_shader_state dirty = ctx->dirty_shader[PIPE_SHADER_COMPUTE];
 
    if (dirty & (FD_DIRTY_SHADER_TEX | FD_DIRTY_SHADER_PROG |
@@ -957,6 +980,24 @@ fd6_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
       fd_ringbuffer_del(state);
    }
+
+   u_foreach_bit (b, ctx->gen_dirty) {
+      enum fd6_state_id group = b;
+
+      switch (group) {
+      case FD6_GROUP_CS_BINDLESS:
+         fd6_state_take_group(
+               &state,
+               fd6_build_bindless_state(ctx, PIPE_SHADER_COMPUTE, false),
+               FD6_GROUP_CS_BINDLESS);
+         break;
+      default:
+         /* State-group unused for compute shaders */
+         break;
+      }
+   }
+
+   fd6_state_emit(&state, ring);
 }
 
 /* emit setup at begin of new cmdstream buffer (don't rely on previous
