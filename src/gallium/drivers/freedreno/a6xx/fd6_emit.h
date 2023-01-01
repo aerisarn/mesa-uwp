@@ -281,8 +281,8 @@ void fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
                        struct fd_texture_stateobj *tex,
                        const struct ir3_shader_variant *v) assert_dt;
 
-void fd6_emit_state(struct fd_ringbuffer *ring,
-                    struct fd6_emit *emit) assert_dt;
+void fd6_emit_3d_state(struct fd_ringbuffer *ring,
+                       struct fd6_emit *emit) assert_dt;
 
 void fd6_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
                        struct ir3_shader_variant *cp) assert_dt;
