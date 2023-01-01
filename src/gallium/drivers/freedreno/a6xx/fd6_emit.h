@@ -82,6 +82,7 @@ enum fd6_state_id {
     * Note that since we don't interleave draws and grids in the same batch,
     * the compute vs draw state groups can overlap:
     */
+   FD6_GROUP_CS_TEX = FD6_GROUP_VS_TEX,
    FD6_GROUP_CS_BINDLESS = FD6_GROUP_VS_BINDLESS,
 };
 

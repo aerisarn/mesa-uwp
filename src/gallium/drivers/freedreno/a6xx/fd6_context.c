@@ -181,6 +181,8 @@ setup_state_map(struct fd_context *ctx)
                              BIT(FD6_GROUP_GS_TEX));
    fd_context_add_shader_map(ctx, PIPE_SHADER_FRAGMENT, FD_DIRTY_SHADER_TEX,
                              BIT(FD6_GROUP_FS_TEX));
+   fd_context_add_shader_map(ctx, PIPE_SHADER_COMPUTE, FD_DIRTY_SHADER_TEX,
+                             BIT(FD6_GROUP_CS_TEX));
 
    fd_context_add_shader_map(ctx, PIPE_SHADER_VERTEX,
                              FD_DIRTY_SHADER_SSBO | FD_DIRTY_SHADER_IMAGE,

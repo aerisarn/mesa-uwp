@@ -203,40 +203,25 @@ fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
    OUT_RING(ring, num_textures);
 }
 
-/* Emits combined texture state, which also includes any Image/SSBO
- * related texture state merged in (because we must have all texture
- * state for a given stage in a single buffer).  In the fast-path, if
- * we don't need to merge in any image/ssbo related texture state, we
- * just use cached texture stateobj.  Otherwise we generate a single-
- * use stateobj.
- *
- * TODO Is there some sane way we can still use cached texture stateobj
- * with image/ssbo in use?
+/* Helper to get tex stateobj.  Because resource rebind on other
+ * contexts can race with us and cause the texture state to be
+ * destroyed, a bit of extra care is needed to ensure we own the
+ * state reference before dropping the tex reference.  This helper
+ * handles that.
  */
-static void
-fd6_emit_combined_textures(struct fd6_emit *emit,
-                           enum pipe_shader_type type) assert_dt
+static struct fd_ringbuffer *
+tex_state(struct fd_context *ctx, enum pipe_shader_type type)
+   assert_dt
 {
-   struct fd_context *ctx = emit->ctx;
+   if (ctx->tex[type].num_textures == 0)
+      return NULL;
 
-   static const enum fd6_state_id  s[PIPE_SHADER_TYPES] = {
-      [PIPE_SHADER_VERTEX]    = FD6_GROUP_VS_TEX,
-      [PIPE_SHADER_TESS_CTRL] = FD6_GROUP_HS_TEX,
-      [PIPE_SHADER_TESS_EVAL] = FD6_GROUP_DS_TEX,
-      [PIPE_SHADER_GEOMETRY]  = FD6_GROUP_GS_TEX,
-      [PIPE_SHADER_FRAGMENT]  = FD6_GROUP_FS_TEX,
-   };
+   struct fd6_texture_state *tex = fd6_texture_state(ctx, type, &ctx->tex[type]);
+   struct fd_ringbuffer *state = fd_ringbuffer_ref(tex->stateobj);
 
-   assert((type < ARRAY_SIZE(s)) && s[type]);
+   fd6_texture_state_reference(&tex, NULL);
 
-   if (ctx->tex[type].num_textures > 0) {
-      struct fd6_texture_state *tex =
-            fd6_texture_state(ctx, type, &ctx->tex[type]);
-
-      fd6_state_add_group(&emit->state, tex->stateobj, s[type]);
-
-      fd6_texture_state_reference(&tex, NULL);
-   }
+   return state;
 }
 
 static struct fd_ringbuffer *
@@ -771,19 +756,24 @@ fd6_emit_3d_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
          fd6_state_take_group(&emit->state, state, FD6_GROUP_PRIMITIVE_PARAMS);
          break;
       case FD6_GROUP_VS_TEX:
-         fd6_emit_combined_textures(emit, PIPE_SHADER_VERTEX);
+         state = tex_state(ctx, PIPE_SHADER_VERTEX);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_VS_TEX);
          break;
       case FD6_GROUP_HS_TEX:
-         fd6_emit_combined_textures(emit, PIPE_SHADER_TESS_CTRL);
+         state = tex_state(ctx, PIPE_SHADER_TESS_CTRL);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_HS_TEX);
          break;
       case FD6_GROUP_DS_TEX:
-         fd6_emit_combined_textures(emit, PIPE_SHADER_TESS_EVAL);
+         state = tex_state(ctx, PIPE_SHADER_TESS_EVAL);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_DS_TEX);
          break;
       case FD6_GROUP_GS_TEX:
-         fd6_emit_combined_textures(emit, PIPE_SHADER_GEOMETRY);
+         state = tex_state(ctx, PIPE_SHADER_GEOMETRY);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_GS_TEX);
          break;
       case FD6_GROUP_FS_TEX:
-         fd6_emit_combined_textures(emit, PIPE_SHADER_FRAGMENT);
+         state = tex_state(ctx, PIPE_SHADER_FRAGMENT);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_FS_TEX);
          break;
       case FD6_GROUP_SO:
          fd6_emit_streamout(ring, emit);
@@ -804,34 +794,17 @@ fd6_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
                   struct ir3_shader_variant *cp)
 {
    struct fd6_state state = {};
-   enum fd_dirty_shader_state dirty = ctx->dirty_shader[PIPE_SHADER_COMPUTE];
-
-   if (dirty & (FD_DIRTY_SHADER_TEX | FD_DIRTY_SHADER_PROG |
-                FD_DIRTY_SHADER_IMAGE | FD_DIRTY_SHADER_SSBO)) {
-      struct fd_texture_stateobj *tex = &ctx->tex[PIPE_SHADER_COMPUTE];
-
-      fd6_emit_textures(ctx, ring, PIPE_SHADER_COMPUTE, tex);
-
-      OUT_PKT4(ring, REG_A6XX_SP_VS_TEX_COUNT, 1);
-      OUT_RING(ring, 0);
-
-      OUT_PKT4(ring, REG_A6XX_SP_HS_TEX_COUNT, 1);
-      OUT_RING(ring, 0);
-
-      OUT_PKT4(ring, REG_A6XX_SP_DS_TEX_COUNT, 1);
-      OUT_RING(ring, 0);
-
-      OUT_PKT4(ring, REG_A6XX_SP_GS_TEX_COUNT, 1);
-      OUT_RING(ring, 0);
-
-      OUT_PKT4(ring, REG_A6XX_SP_FS_TEX_COUNT, 1);
-      OUT_RING(ring, 0);
-   }
 
    u_foreach_bit (b, ctx->gen_dirty) {
       enum fd6_state_id group = b;
 
       switch (group) {
+      case FD6_GROUP_CS_TEX:
+         fd6_state_take_group(
+               &state,
+               tex_state(ctx, PIPE_SHADER_COMPUTE),
+               FD6_GROUP_CS_TEX);
+         break;
       case FD6_GROUP_CS_BINDLESS:
          fd6_state_take_group(
                &state,
