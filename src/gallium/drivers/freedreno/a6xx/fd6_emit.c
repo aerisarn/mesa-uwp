@@ -53,27 +53,12 @@
 static void
 fd6_emit_fb_tex(struct fd_ringbuffer *state, struct fd_context *ctx) assert_dt
 {
-   struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
-   struct pipe_surface *psurf = pfb->cbufs[0];
-   struct fd_resource *rsc = fd_resource(psurf->texture);
-
-   OUT_RINGP(state, 0, &ctx->batch->fb_read_patches); /* texconst0, patched in gmem emit */
-   OUT_RING(state, A6XX_TEX_CONST_1_WIDTH(pfb->width) |
-                      A6XX_TEX_CONST_1_HEIGHT(pfb->height));
-   OUT_RING(state, 0); /* texconst2, patched in gmem emit */
-   OUT_RING(state, A6XX_TEX_CONST_3_ARRAY_PITCH(rsc->layout.layer_size));
-   OUT_RING(state, 0); /* BASE_LO, patched in gmem emit */
-   OUT_RING(state, 0); /* BASE_HI, patched in gmem emit */
-   OUT_RING(state, 0); /* texconst6 */
-   OUT_RING(state, 0); /* texconst7 */
-   OUT_RING(state, 0); /* texconst8 */
-   OUT_RING(state, 0); /* texconst9 */
-   OUT_RING(state, 0); /* texconst10 */
-   OUT_RING(state, 0); /* texconst11 */
-   OUT_RING(state, 0);
-   OUT_RING(state, 0);
-   OUT_RING(state, 0);
-   OUT_RING(state, 0);
+   /* This is patched with the appropriate descriptor for GMEM or
+    * sysmem rendering path in fd6_gmem
+    */
+   OUT_RINGP(state, 0, &ctx->batch->fb_read_patches);
+   for (unsigned i = 1; i < FDL6_TEX_CONST_DWORDS; i++)
+      OUT_RING(state, 0);
 }
 
 void
