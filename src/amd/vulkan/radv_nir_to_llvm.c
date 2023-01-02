@@ -1243,9 +1243,16 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
       float_mode = AC_FLOAT_MODE_DENORM_FLUSH_TO_ZERO;
    }
 
+   bool exports_mrtz = false;
+   bool exports_color_null = false;
+   if (shaders[0]->info.stage == MESA_SHADER_FRAGMENT) {
+      exports_mrtz = info->ps.writes_z || info->ps.writes_stencil || info->ps.writes_sample_mask;
+      exports_color_null = !exports_mrtz || (shaders[0]->info.outputs_written & (0xffu << FRAG_RESULT_DATA0));
+   }
+
    ac_llvm_context_init(&ctx.ac, ac_llvm, options->gfx_level, options->family,
                         options->has_3d_cube_border_color_mipmap,
-                        float_mode, info->wave_size, info->ballot_bit_size);
+                        float_mode, info->wave_size, info->ballot_bit_size, exports_color_null, exports_mrtz);
    ctx.context = ctx.ac.context;
 
    ctx.max_workgroup_size = info->workgroup_size;
