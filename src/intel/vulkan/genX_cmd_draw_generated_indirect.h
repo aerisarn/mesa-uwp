@@ -369,7 +369,6 @@ genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
                                              ISL_SURF_USAGE_VERTEX_BUFFER_BIT) << 8) |
                                    ((generated_cmd_stride / 4) << 16),
          .draw_base              = item_base,
-         .item_count             = item_count,
          /* If count_addr is not NULL, we'll edit it through a the command
           * streamer.
           */

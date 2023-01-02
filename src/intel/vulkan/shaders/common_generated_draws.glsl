@@ -41,7 +41,6 @@ layout(set = 0, binding = 2) uniform block {
    uint indirect_data_stride;
    uint flags;
    uint draw_base;
-   uint item_count;
    uint draw_count;
    uint max_draw_count;
    uint instance_multiplier;
