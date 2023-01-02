@@ -140,29 +140,32 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 {
    struct fd6_context *fd6_ctx = fd6_context(ctx);
    struct shader_info *gs_info = ir3_get_shader_info(ctx->prog.gs);
-   struct fd6_emit emit = {
-      .ctx = ctx,
-      .info = info,
-      .indirect = indirect,
-      .draw = draw,
-      .key = {
+   struct fd6_emit emit;
+
+   emit.ctx = ctx;
+   emit.info = info;
+   emit.indirect = indirect;
+   emit.draw = draw;
+   emit.key = (struct ir3_cache_key){
          .vs = ctx->prog.vs,
          .gs = ctx->prog.gs,
          .fs = ctx->prog.fs,
          .key = {
-            .rasterflat = ctx->rasterizer->flatshade,
-            .ucp_enables = ctx->rasterizer->clip_plane_enable,
-            .sample_shading = (ctx->min_samples > 1),
-            .msaa = (ctx->framebuffer.samples > 1),
+               .rasterflat = ctx->rasterizer->flatshade,
+               .ucp_enables = ctx->rasterizer->clip_plane_enable,
+               .sample_shading = (ctx->min_samples > 1),
+               .msaa = (ctx->framebuffer.samples > 1),
          },
          .clip_plane_enable = ctx->rasterizer->clip_plane_enable,
          .patch_vertices = ctx->patch_vertices,
-      },
-      .rasterflat = ctx->rasterizer->flatshade,
-      .sprite_coord_enable = ctx->rasterizer->sprite_coord_enable,
-      .sprite_coord_mode = ctx->rasterizer->sprite_coord_mode,
-      .primitive_restart = info->primitive_restart && info->index_size,
    };
+   emit.rasterflat = ctx->rasterizer->flatshade;
+   emit.sprite_coord_enable = ctx->rasterizer->sprite_coord_enable;
+   emit.sprite_coord_mode = ctx->rasterizer->sprite_coord_mode;
+   emit.primitive_restart = info->primitive_restart && info->index_size;
+   emit.state.num_groups = 0;
+   emit.streamout_mask = 0;
+   emit.prog = NULL;
 
    if (!(ctx->prog.vs && ctx->prog.fs))
       return false;
