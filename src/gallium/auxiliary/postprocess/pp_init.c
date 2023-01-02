@@ -37,6 +37,16 @@
 #include "util/u_memory.h"
 #include "cso_cache/cso_context.h"
 
+const struct pp_filter_t pp_filters[PP_FILTERS] = {
+/*    name			inner	shaders	verts	init			run                       free   */
+   { "pp_noblue",		0,	2,	1,	pp_noblue_init,		pp_nocolor,               pp_nocolor_free },
+   { "pp_nogreen",		0,	2,	1,	pp_nogreen_init,	pp_nocolor,               pp_nocolor_free },
+   { "pp_nored",		0,	2,	1,	pp_nored_init,		pp_nocolor,               pp_nocolor_free },
+   { "pp_celshade",		0,	2,	1,	pp_celshade_init,	pp_nocolor,               pp_celshade_free },
+   { "pp_jimenezmlaa",		2,	5,	2,	pp_jimenezmlaa_init,	pp_jimenezmlaa,           pp_jimenezmlaa_free },
+   { "pp_jimenezmlaa_color",	2,	5,	2,	pp_jimenezmlaa_init_color, pp_jimenezmlaa_color,  pp_jimenezmlaa_free },
+};
+
 /** Initialize the post-processing queue. */
 struct pp_queue_t *
 pp_init(struct pipe_context *pipe, const unsigned int *enabled,
