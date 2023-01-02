@@ -172,9 +172,7 @@ genX(cmd_buffer_emit_generate_draws_pipeline)(struct anv_cmd_buffer *cmd_buffer)
          sbe.AttributeActiveComponentFormat[i] = ACF_XYZW;
    }
 
-   anv_batch_emit(batch, GENX(3DSTATE_WM), wm) {
-      //wm.ForceThreadDispatchEnable = ForceON;
-   }
+   anv_batch_emit(batch, GENX(3DSTATE_WM), wm);
 
    anv_batch_emit(batch, GENX(3DSTATE_PS_EXTRA), psx) {
       psx.PixelShaderValid = true;
