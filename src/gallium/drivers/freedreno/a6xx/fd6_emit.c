@@ -315,7 +315,7 @@ fd6_emit_combined_textures(struct fd6_emit *emit,
 static struct fd_ringbuffer *
 build_vbo_state(struct fd6_emit *emit) assert_dt
 {
-   const struct fd_vertex_state *vtx = emit->vtx;
+   const struct fd_vertex_state *vtx = &emit->ctx->vtx;
 
    /* Limit PKT4 size, because at max count (32) we would overflow the
     * size of the PKT4 size field:
@@ -635,8 +635,7 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit) assert_dt
    const struct fd6_program_state *prog = fd6_emit_get_prog(emit);
    const struct ir3_stream_output_info *info = prog->stream_output;
    struct fd_streamout_stateobj *so = &ctx->streamout;
-
-   emit->streamout_mask = 0;
+   unsigned streamout_mask = 0;
 
    if (!info)
       return;
@@ -680,10 +679,10 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit) assert_dt
 
       so->reset &= ~(1 << i);
 
-      emit->streamout_mask |= (1 << i);
+      streamout_mask |= (1 << i);
    }
 
-   if (emit->streamout_mask) {
+   if (streamout_mask) {
       fd6_state_add_group(&emit->state, prog->streamout_stateobj, FD6_GROUP_SO);
    } else if (ctx->last.streamout_mask != 0) {
       /* If we transition from a draw with streamout to one without, turn
@@ -710,7 +709,8 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit) assert_dt
    if (ctx->dirty & FD_DIRTY_STREAMOUT)
       fd_wfi(ctx->batch, ring);
 
-   ctx->last.streamout_mask = emit->streamout_mask;
+   ctx->last.streamout_mask = streamout_mask;
+   emit->streamout_mask = streamout_mask;
 }
 
 /**
@@ -720,7 +720,7 @@ static void
 fd6_emit_non_ring(struct fd_ringbuffer *ring, struct fd6_emit *emit) assert_dt
 {
    struct fd_context *ctx = emit->ctx;
-   const enum fd_dirty_3d_state dirty = emit->dirty;
+   const enum fd_dirty_3d_state dirty = ctx->dirty;
    unsigned num_viewports = emit->prog->num_viewports;
 
    if (dirty & FD_DIRTY_STENCIL_REF) {

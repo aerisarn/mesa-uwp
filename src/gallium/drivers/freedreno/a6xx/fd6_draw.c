@@ -142,9 +142,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
    struct shader_info *gs_info = ir3_get_shader_info(ctx->prog.gs);
    struct fd6_emit emit = {
       .ctx = ctx,
-      .vtx = &ctx->vtx,
       .info = info,
-      .drawid_offset = drawid_offset,
       .indirect = indirect,
       .draw = draw,
       .key = {
@@ -207,10 +205,8 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
    fixup_draw_state(ctx, &emit);
 
    /* *after* fixup_shader_state(): */
-   emit.dirty = ctx->dirty;
    emit.dirty_groups = ctx->gen_dirty;
 
-   emit.bs = fd6_emit_get_prog(&emit)->bs;
    emit.vs = fd6_emit_get_prog(&emit)->vs;
    emit.hs = fd6_emit_get_prog(&emit)->hs;
    emit.ds = fd6_emit_get_prog(&emit)->ds;
