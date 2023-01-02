@@ -127,6 +127,8 @@ radv_null_winsys_query_info(struct radeon_winsys *rws, struct radeon_info *info)
    else
       info->num_physical_sgprs_per_simd = 512;
 
+   info->has_3d_cube_border_color_mipmap = true;
+
    if (info->family == CHIP_GFX1100 || info->family == CHIP_GFX1101)
       info->num_physical_wave64_vgprs_per_simd = 768;
    else if (info->gfx_level >= GFX10)
