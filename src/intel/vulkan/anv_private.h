@@ -1230,7 +1230,6 @@ struct anv_device {
      * workaround slowness with indirect draw calls.
      */
     struct anv_shader_bin                      *generated_draw_kernel;
-    struct anv_shader_bin                      *generated_draw_count_kernel;
     const struct intel_l3_config               *generated_draw_l3_config;
 
     pthread_mutex_t                             mutex;

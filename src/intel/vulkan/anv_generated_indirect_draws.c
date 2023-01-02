@@ -32,7 +32,6 @@
 #include "anv_generated_indirect_draws.h"
 
 #include "shaders/generated_draws_spv.h"
-#include "shaders/generated_draws_count_spv.h"
 
 /* This pass takes vulkan descriptor bindings 0 & 1 and turns them into global
  * 64bit addresses. Binding 2 is left UBO that would normally be accessed
@@ -286,8 +285,6 @@ anv_device_init_generated_indirect_draws(struct anv_device *device)
       char name[40];
    } indirect_draws_key = {
       .name = "anv-generated-indirect-draws",
-   }, indirect_draws_count_key = {
-      .name = "anv-generated-indirect-draws-count",
    };
 
    device->generated_draw_kernel =
@@ -303,7 +300,10 @@ anv_device_init_generated_indirect_draws(struct anv_device *device)
                               sizeof(indirect_draws_key),
                               generated_draws_spv_source,
                               ARRAY_SIZE(generated_draws_spv_source),
-                              10 /* 2 * (2 loads + 3 stores) */);
+                              11 /*
+                                  * 2 * (2 indirect data loads + 3 3DPRIMITVE stores) +
+                                  * 1 store (MI_BATCH_BUFFER_START)
+                                  */);
    }
    if (device->generated_draw_kernel == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -312,29 +312,6 @@ anv_device_init_generated_indirect_draws(struct anv_device *device)
     * is no need to hold a second reference.
     */
    anv_shader_bin_unref(device, device->generated_draw_kernel);
-
-   device->generated_draw_count_kernel =
-      anv_device_search_for_kernel(device,
-                                   device->internal_cache,
-                                   &indirect_draws_count_key,
-                                   sizeof(indirect_draws_count_key),
-                                   NULL);
-   if (device->generated_draw_count_kernel == NULL) {
-      device->generated_draw_count_kernel =
-         compile_upload_spirv(device,
-                              &indirect_draws_count_key,
-                              sizeof(indirect_draws_count_key),
-                              generated_draws_count_spv_source,
-                              ARRAY_SIZE(generated_draws_count_spv_source),
-                              11 /* 2 * (3 loads + 3 stores) */);
-   }
-   if (device->generated_draw_count_kernel == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   /* The cache already has a reference and it's not going anywhere so there
-    * is no need to hold a second reference.
-    */
-   anv_shader_bin_unref(device, device->generated_draw_count_kernel);
 
    return VK_SUCCESS;
 }

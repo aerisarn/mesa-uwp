@@ -26,29 +26,19 @@
 
 #include <stdint.h>
 
+#define ANV_GENERATED_FLAG_INDEXED    BITFIELD_BIT(0)
+#define ANV_GENERATED_FLAG_PREDICATED BITFIELD_BIT(1)
+
 /* This needs to match generated_draws.glsl :
  *
  *    layout(set = 0, binding = 2) uniform block
  */
 struct anv_generated_indirect_draw_params {
-   uint32_t is_indexed;
-   uint32_t is_predicated;
-   uint32_t draw_base;
-   uint32_t draw_count;
-   uint32_t instance_multiplier;
-   uint32_t indirect_data_stride;
-};
-
-/* This needs to match generated_draws_count.glsl :
- *
- *    layout(set = 0, binding = 2) uniform block
- */
-struct anv_generated_indirect_draw_count_params {
-   uint32_t is_indexed;
-   uint32_t is_predicated;
+   uint32_t flags;
    uint32_t draw_base;
    uint32_t item_count;
    uint32_t draw_count;
+   uint32_t max_draw_count;
    uint32_t instance_multiplier;
    uint32_t indirect_data_stride;
    uint32_t end_addr_ldw;
@@ -56,10 +46,7 @@ struct anv_generated_indirect_draw_count_params {
 };
 
 struct anv_generate_indirect_params {
-   union {
-      struct anv_generated_indirect_draw_params       draw;
-      struct anv_generated_indirect_draw_count_params draw_count;
-   };
+   struct anv_generated_indirect_draw_params draw;
 
    /* Global address of binding 0 */
    uint64_t indirect_data_addr;

@@ -44,16 +44,3 @@ generated_draws_spv_h = custom_target(
     '--stage', 'frag',
   ]
 )
-
-generated_draws_count_spv_h = custom_target(
-  'generated_draws_count_spv.h',
-  input : [glsl2spirv, 'generated_draws_count.glsl'],
-  output : 'generated_draws_count_spv.h',
-  command : [
-    prog_python, '@INPUT@', '@OUTPUT@',
-    prog_glslang,
-    '--vn', 'generated_draws_count_spv_source',
-    '--glsl-version', '450',
-    '--stage', 'frag',
-  ]
-)

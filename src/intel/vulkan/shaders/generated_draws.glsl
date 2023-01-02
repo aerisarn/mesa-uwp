@@ -23,6 +23,11 @@
 
 #version 450
 
+#define BITFIELD_BIT(i) (1u << (i))
+
+#define ANV_GENERATED_FLAG_INDEXED    BITFIELD_BIT(0)
+#define ANV_GENERATED_FLAG_PREDICATED BITFIELD_BIT(1)
+
 /* These 2 bindings will be accessed through A64 messages */
 layout(set = 0, binding = 0, std430) buffer Storage0 {
    uint indirect_data[];
@@ -34,24 +39,29 @@ layout(set = 0, binding = 1, std430) buffer Storage1 {
 
 /* This data will be provided through push constants. */
 layout(set = 0, binding = 2) uniform block {
-   uint is_indexed;
-   uint is_predicated;
+   uint flags;
    uint draw_base;
+   uint item_count;
    uint draw_count;
+   uint max_draw_count;
    uint instance_multiplier;
    uint indirect_data_stride;
+   uint end_addr_ldw;
+   uint end_addr_udw;
 };
 
 void main()
 {
+   bool is_indexed = (flags & ANV_GENERATED_FLAG_INDEXED) != 0;
+   bool is_predicated = (flags & ANV_GENERATED_FLAG_PREDICATED) != 0;
    uint item_idx = uint(gl_FragCoord.y) * 8192 + uint(gl_FragCoord.x);
    uint indirect_data_offset = item_idx * indirect_data_stride / 4;
    uint _3dprim_dw_size = 10;
-   uint cmd_idx = uint(item_idx) * _3dprim_dw_size;
+   uint cmd_idx = item_idx * _3dprim_dw_size;
    uint draw_id = draw_base + item_idx;
 
    if (draw_id < draw_count) {
-      if (is_indexed != 0) {
+      if (is_indexed) {
          /* Loading a VkDrawIndexedIndirectCommand */
          uint index_count    = indirect_data[indirect_data_offset + 0];
          uint instance_count = indirect_data[indirect_data_offset + 1] * instance_multiplier;
@@ -63,7 +73,7 @@ void main()
                                   3 << 27 |         /* Command SubType */
                                   3 << 24 |         /* 3D Command Opcode */
                                   1 << 11 |         /* Extended Parameter Enable */
-                                  is_predicated << 8 |
+                                  uint(is_predicated) << 8 |
                                   8 << 0);          /* DWord Length */
          commands[cmd_idx + 1] = 1 << 8;            /* Indexed */
          commands[cmd_idx + 2] = index_count;       /* Vertex Count Per Instance */
@@ -85,7 +95,7 @@ void main()
                                   3 << 27 |         /* Command SubType */
                                   3 << 24 |         /* 3D Command Opcode */
                                   1 << 11 |         /* Extended Parameter Enable */
-                                  is_predicated << 8 |
+                                  uint(is_predicated) << 8 |
                                   8 << 0);          /* DWord Length */
          commands[cmd_idx + 1] = 0;
          commands[cmd_idx + 2] = vertex_count;      /* Vertex Count Per Instance */
@@ -97,5 +107,15 @@ void main()
          commands[cmd_idx + 8] = first_instance;    /* gl_BaseInstance */
          commands[cmd_idx + 9] = draw_id;           /* gl_DrawID */
       }
+   } else if (draw_id == draw_count && draw_id < max_draw_count) {
+      /* Only write a jump forward in the batch if we have fewer elements than
+       * the max draw count.
+       */
+      commands[cmd_idx + 0] = (0  << 29 |        /* Command Type */
+                               49 << 23 |        /* MI Command Opcode */
+                               1  << 8  |        /* Address Space Indicator (PPGTT) */
+                               1  << 0);         /* DWord Length */
+      commands[cmd_idx + 1] = end_addr_ldw;
+      commands[cmd_idx + 2] = end_addr_udw;
    }
 }
