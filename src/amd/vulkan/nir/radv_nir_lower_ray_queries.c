@@ -138,7 +138,6 @@ struct ray_query_traversal_vars {
    rq_variable *origin;
    rq_variable *direction;
 
-   rq_variable *inv_dir;
    rq_variable *bvh_base;
    rq_variable *stack;
    rq_variable *top_stack;
@@ -196,7 +195,6 @@ init_ray_query_traversal_vars(void *ctx, nir_shader *shader, unsigned array_leng
    result.direction =
       rq_variable_create(ctx, shader, array_length, vec3_type, VAR_NAME("_direction"));
 
-   result.inv_dir = rq_variable_create(ctx, shader, array_length, vec3_type, VAR_NAME("_inv_dir"));
    result.bvh_base =
       rq_variable_create(ctx, shader, array_length, glsl_uint64_t_type(), VAR_NAME("_bvh_base"));
    result.stack =
@@ -386,9 +384,6 @@ lower_rq_initialize(nir_builder *b, nir_ssa_def *index, nir_intrinsic_instr *ins
 
    rq_store_var(b, index, vars->direction, instr->src[6].ssa, 0x7);
    rq_store_var(b, index, vars->trav.direction, instr->src[6].ssa, 0x7);
-
-   nir_ssa_def *vec3ones = nir_channels(b, nir_imm_vec4(b, 1.0, 1.0, 1.0, 1.0), 0x7);
-   rq_store_var(b, index, vars->trav.inv_dir, nir_fdiv(b, vec3ones, instr->src[6].ssa), 0x7);
 
    rq_store_var(b, index, vars->closest.t, instr->src[7].ssa, 0x1);
    rq_store_var(b, index, vars->closest.intersection_type, nir_imm_int(b, intersection_type_none),
@@ -608,11 +603,15 @@ static nir_ssa_def *
 lower_rq_proceed(nir_builder *b, nir_ssa_def *index, struct ray_query_vars *vars,
                  struct radv_device *device)
 {
+   nir_variable *inv_dir =
+      nir_local_variable_create(b->impl, glsl_vector_type(GLSL_TYPE_FLOAT, 3), "inv_dir");
+   nir_store_var(b, inv_dir, nir_frcp(b, rq_load_var(b, index, vars->trav.direction)), 0x7);
+
    struct radv_ray_traversal_vars trav_vars = {
       .tmax = rq_deref_var(b, index, vars->closest.t),
       .origin = rq_deref_var(b, index, vars->trav.origin),
       .dir = rq_deref_var(b, index, vars->trav.direction),
-      .inv_dir = rq_deref_var(b, index, vars->trav.inv_dir),
+      .inv_dir = nir_build_deref_var(b, inv_dir),
       .bvh_base = rq_deref_var(b, index, vars->trav.bvh_base),
       .stack = rq_deref_var(b, index, vars->trav.stack),
       .top_stack = rq_deref_var(b, index, vars->trav.top_stack),
