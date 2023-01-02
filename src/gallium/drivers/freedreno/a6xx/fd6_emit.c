@@ -902,7 +902,7 @@ fd6_emit_3d_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
          fd6_emit_non_ring(ring, emit);
          break;
       default:
-         unreachable("bad state group");
+         break;
       }
    }
 

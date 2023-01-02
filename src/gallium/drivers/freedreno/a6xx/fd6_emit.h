@@ -66,6 +66,12 @@ enum fd6_state_id {
    FD6_GROUP_BLEND_COLOR,
    FD6_GROUP_SO,
    FD6_GROUP_IBO,
+
+   /*
+    * Virtual state-groups, which don't turn into a CP_SET_DRAW_STATE group
+    */
+
+   FD6_GROUP_PROG_KEY,  /* Set for any state which could change shader key */
    FD6_GROUP_NON_GROUP, /* placeholder group for state emit in IB2, keep last */
 };
 
@@ -148,7 +154,6 @@ struct fd6_emit {
    const struct pipe_draw_info *info;
    const struct pipe_draw_indirect_info *indirect;
    const struct pipe_draw_start_count_bias *draw;
-   struct ir3_cache_key key;
    uint32_t dirty_groups;
 
    uint32_t sprite_coord_enable; /* bitmask */
@@ -172,11 +177,6 @@ struct fd6_emit {
 static inline const struct fd6_program_state *
 fd6_emit_get_prog(struct fd6_emit *emit)
 {
-   if (!emit->prog) {
-      struct ir3_program_state *s = ir3_cache_lookup(
-         emit->ctx->shader_cache, &emit->key, &emit->ctx->debug);
-      emit->prog = fd6_program_state(s);
-   }
    return emit->prog;
 }
 
