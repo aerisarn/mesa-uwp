@@ -114,9 +114,10 @@ genX(cmd_buffer_emit_generate_draws_pipeline)(struct anv_cmd_buffer *cmd_buffer)
 
    cmd_buffer->state.current_l3_config = device->generated_draw_l3_config;
 
+   enum intel_urb_deref_block_size deref_block_size;
    genX(emit_urb_setup)(device, batch, device->generated_draw_l3_config,
                         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                        entry_size, NULL);
+                        entry_size, &deref_block_size);
 
    anv_batch_emit(batch, GENX(3DSTATE_PS_BLEND), ps_blend) {
       ps_blend.HasWriteableRT = true;
@@ -152,7 +153,7 @@ genX(cmd_buffer_emit_generate_draws_pipeline)(struct anv_cmd_buffer *cmd_buffer)
 
    anv_batch_emit(batch, GENX(3DSTATE_SF), sf) {
 #if GFX_VER >= 12
-      sf.DerefBlockSize = INTEL_URB_DEREF_BLOCK_SIZE_32; // TODO
+      sf.DerefBlockSize = deref_block_size;
 #endif
    }
 
