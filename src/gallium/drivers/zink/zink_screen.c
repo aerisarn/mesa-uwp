@@ -89,6 +89,17 @@ uint32_t
 zink_debug;
 
 
+static const struct debug_named_value
+zink_descriptor_options[] = {
+   { "auto", ZINK_DESCRIPTOR_MODE_AUTO, "Automatically detect best mode" },
+   { "lazy", ZINK_DESCRIPTOR_MODE_LAZY, "Don't cache, do least amount of updates" },
+   DEBUG_NAMED_VALUE_END
+};
+
+DEBUG_GET_ONCE_FLAGS_OPTION(zink_descriptor_mode, "ZINK_DESCRIPTORS", zink_descriptor_options, ZINK_DESCRIPTOR_MODE_AUTO)
+
+enum zink_descriptor_mode zink_descriptor_mode;
+
 static const char *
 zink_get_vendor(struct pipe_screen *pscreen)
 {
@@ -2465,6 +2476,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->abort_on_hang = debug_get_bool_option("ZINK_HANG_ABORT", false);
 
    zink_debug = debug_get_option_zink_debug();
+   zink_descriptor_mode = debug_get_option_zink_descriptor_mode();
 
    screen->loader_lib = util_dl_open(VK_LIBNAME);
    if (!screen->loader_lib)
@@ -2570,6 +2582,9 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_SSBO] = 3;
       screen->desc_set_id[ZINK_DESCRIPTOR_TYPE_IMAGE] = 4;
       screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS] = 5;
+   }
+   if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_AUTO) {
+      zink_descriptor_mode = ZINK_DESCRIPTOR_MODE_LAZY;
    }
 
    if (screen->info.have_EXT_calibrated_timestamps && !check_have_device_time(screen))
