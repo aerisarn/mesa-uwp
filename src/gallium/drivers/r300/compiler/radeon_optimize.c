@@ -107,6 +107,7 @@ static void copy_propagate_scan_read(void * data, struct rc_instruction * inst,
 	 */
 	if(reader_data->Writer->U.I.SrcReg[0].File != RC_FILE_TEMPORARY &&
 			reader_data->Writer->U.I.SrcReg[0].File != RC_FILE_INPUT &&
+			reader_data->Writer->U.I.SrcReg[0].File != RC_FILE_NONE &&
 				(inst->U.I.Opcode == RC_OPCODE_TEX ||
 				inst->U.I.Opcode == RC_OPCODE_TXB ||
 				inst->U.I.Opcode == RC_OPCODE_TXP ||
