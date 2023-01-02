@@ -231,11 +231,6 @@ genX(cmd_buffer_emit_generate_draws_pipeline)(struct anv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.push_constants_dirty |= VK_SHADER_STAGE_ALL_GRAPHICS;
    cmd_buffer->state.gfx.push_constant_stages = VK_SHADER_STAGE_FRAGMENT_BIT;
    vk_dynamic_graphics_state_dirty_all(&cmd_buffer->vk.dynamic_graphics_state);
-
-   anv_add_pending_pipe_bits(cmd_buffer,
-                             ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
-                             ANV_PIPE_STALL_AT_SCOREBOARD_BIT,
-                             "after generation batch BTI change");
 }
 
 static void
@@ -337,7 +332,7 @@ genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
       brw_wm_prog_data_const(draw_kernel->prog_data);
 
    anv_batch_emit(batch, GENX(3DSTATE_PS), ps) {
-      ps.BindingTableEntryCount = 2;
+      ps.BindingTableEntryCount = 0;
       ps.PushConstantEnable     = prog_data->base.nr_params > 0 ||
                                   prog_data->base.ubo_ranges[0].length;
 
