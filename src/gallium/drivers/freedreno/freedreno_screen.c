@@ -719,7 +719,13 @@ fd_screen_get_shader_param(struct pipe_screen *pscreen,
                   (1 << PIPE_SHADER_IR_TGSI));
    case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
    case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
-      if (is_a4xx(screen) || is_a5xx(screen) || is_a6xx(screen)) {
+      if (is_a6xx(screen)) {
+         if (param == PIPE_SHADER_CAP_MAX_SHADER_BUFFERS) {
+            return IR3_BINDLESS_SSBO_COUNT;
+         } else {
+            return IR3_BINDLESS_IMAGE_COUNT;
+         }
+      } else if (is_a4xx(screen) || is_a5xx(screen) || is_a6xx(screen)) {
          /* a5xx (and a4xx for that matter) has one state-block
           * for compute-shader SSBO's and another that is shared
           * by VS/HS/DS/GS/FS..  so to simplify things for now
