@@ -1215,10 +1215,9 @@ struct radv_bin_size_entry {
 };
 
 static VkExtent2D
-radv_gfx10_compute_bin_size(struct radv_graphics_pipeline *pipeline,
-                            struct radv_cmd_buffer *cmd_buffer)
+radv_gfx10_compute_bin_size(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
+   const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
    const struct radv_rendering_state *render = &cmd_buffer->state.render;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    VkExtent2D extent = {512, 512};
@@ -1303,11 +1302,9 @@ radv_gfx10_compute_bin_size(struct radv_graphics_pipeline *pipeline,
 }
 
 static VkExtent2D
-radv_gfx9_compute_bin_size(struct radv_graphics_pipeline *pipeline,
-                           struct radv_cmd_buffer *cmd_buffer)
-
+radv_gfx9_compute_bin_size(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
+   const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
    const struct radv_rendering_state *render = &cmd_buffer->state.render;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    static const struct radv_bin_size_entry color_size_table[][3][9] = {
@@ -1572,10 +1569,9 @@ radv_gfx9_compute_bin_size(struct radv_graphics_pipeline *pipeline,
 }
 
 static unsigned
-radv_get_disabled_binning_state(struct radv_graphics_pipeline *pipeline,
-                                struct radv_cmd_buffer *cmd_buffer)
+radv_get_disabled_binning_state(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
+   const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
    const struct radv_rendering_state *render = &cmd_buffer->state.render;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    uint32_t pa_sc_binner_cntl_0;
@@ -1615,17 +1611,17 @@ radv_get_disabled_binning_state(struct radv_graphics_pipeline *pipeline,
 }
 
 static unsigned
-radv_get_binning_state(struct radv_graphics_pipeline *pipeline, struct radv_cmd_buffer *cmd_buffer)
+radv_get_binning_state(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_device *device = pipeline->base.device;
+   const struct radv_device *device = cmd_buffer->device;
    unsigned pa_sc_binner_cntl_0;
    VkExtent2D bin_size;
 
    if (device->physical_device->rad_info.gfx_level >= GFX10) {
-      bin_size = radv_gfx10_compute_bin_size(pipeline, cmd_buffer);
+      bin_size = radv_gfx10_compute_bin_size(cmd_buffer);
    } else {
       assert(device->physical_device->rad_info.gfx_level == GFX9);
-      bin_size = radv_gfx9_compute_bin_size(pipeline, cmd_buffer);
+      bin_size = radv_gfx9_compute_bin_size(cmd_buffer);
    }
 
    if (device->pbb_allowed && bin_size.width && bin_size.height) {
@@ -1645,21 +1641,21 @@ radv_get_binning_state(struct radv_graphics_pipeline *pipeline, struct radv_cmd_
                                                                  device->physical_device->rad_info.family == CHIP_VEGA20 ||
                                                                  device->physical_device->rad_info.family >= CHIP_RAVEN2);
    } else {
-      pa_sc_binner_cntl_0 = radv_get_disabled_binning_state(pipeline, cmd_buffer);
+      pa_sc_binner_cntl_0 = radv_get_disabled_binning_state(cmd_buffer);
    }
 
    return pa_sc_binner_cntl_0;
 }
 
 static void
-radv_emit_binning_state(struct radv_cmd_buffer *cmd_buffer, struct radv_graphics_pipeline *pipeline)
+radv_emit_binning_state(struct radv_cmd_buffer *cmd_buffer)
 {
    unsigned pa_sc_binner_cntl_0;
 
-   if (pipeline->base.device->physical_device->rad_info.gfx_level < GFX9)
+   if (cmd_buffer->device->physical_device->rad_info.gfx_level < GFX9)
       return;
 
-   pa_sc_binner_cntl_0 = radv_get_binning_state(pipeline, cmd_buffer);
+   pa_sc_binner_cntl_0 = radv_get_binning_state(cmd_buffer);
 
    if (pa_sc_binner_cntl_0 == cmd_buffer->state.last_pa_sc_binner_cntl_0)
       return;
@@ -8406,7 +8402,7 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
                                    RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
                                    RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE)) ||
        cmd_buffer->state.emitted_graphics_pipeline != cmd_buffer->state.graphics_pipeline)
-      radv_emit_binning_state(cmd_buffer, cmd_buffer->state.graphics_pipeline);
+      radv_emit_binning_state(cmd_buffer);
 
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_PIPELINE)
       radv_emit_graphics_pipeline(cmd_buffer);
