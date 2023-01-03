@@ -26,6 +26,11 @@ Adreno is a mostly tile-mode renderer, but with the option to bypass tiling
 mostly write combined memory but with the ability to map some buffers as cache
 coherent with the CPU.
 
+.. toctree::
+   :glob:
+
+   freedreno/hw/*
+
 Hardware acronyms
 ^^^^^^^^^^^^^^^^^
 
