@@ -432,6 +432,18 @@ parse_delay_alu(wait_ctx& ctx, alu_delay_info& delay, Instruction* instr)
       else if (wait >= alu_delay_wait::SALU_CYCLE_1)
          delay.salu_cycles = imm[i] - (uint32_t)alu_delay_wait::SALU_CYCLE_1 + 1;
    }
+
+   for (std::pair<const PhysReg, wait_entry>& e : ctx.gpr_map) {
+      wait_entry& entry = e.second;
+
+      if (delay.valu_instrs <= entry.delay.valu_instrs)
+         delay.valu_cycles = std::max(delay.valu_cycles, entry.delay.valu_cycles);
+      if (delay.trans_instrs <= entry.delay.trans_instrs)
+         delay.trans_cycles = std::max(delay.trans_cycles, entry.delay.trans_cycles);
+      if (delay.salu_cycles <= entry.delay.salu_cycles)
+         delay.salu_cycles = std::max(delay.salu_cycles, entry.delay.salu_cycles);
+   }
+
    return true;
 }
 
