@@ -29,6 +29,8 @@
 
 #include "util/macros.h"
 
+#include "common/intel_genX_state.h"
+
 #include "anv_private.h"
 #include "anv_generated_indirect_draws.h"
 
@@ -331,13 +333,15 @@ genX(cmd_buffer_emit_generate_draws)(struct anv_cmd_buffer *cmd_buffer,
       brw_wm_prog_data_const(draw_kernel->prog_data);
 
    anv_batch_emit(batch, GENX(3DSTATE_PS), ps) {
+      intel_set_ps_dispatch_state(&ps, device->info, prog_data,
+                                  1 /* rasterization_samples */,
+                                  0 /* msaa_flags */);
+
+      ps.VectorMaskEnable       = prog_data->uses_vmask;
+
       ps.BindingTableEntryCount = 0;
       ps.PushConstantEnable     = prog_data->base.nr_params > 0 ||
                                   prog_data->base.ubo_ranges[0].length;
-
-      ps._8PixelDispatchEnable = prog_data->dispatch_8;
-      ps._16PixelDispatchEnable = prog_data->dispatch_16;
-      ps._32PixelDispatchEnable = prog_data->dispatch_32;
 
       ps.DispatchGRFStartRegisterForConstantSetupData0 =
          brw_wm_prog_data_dispatch_grf_start_reg(prog_data, ps, 0);
