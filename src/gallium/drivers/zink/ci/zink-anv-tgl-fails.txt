@@ -894,17 +894,3 @@ spec@khr_texture_compression_astc@sliced-3d-miptree-gl srgb-fp,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gl srgb-fp@sRGB decode full precision,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb-fp,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb-fp@sRGB decode full precision,Fail
-
-# https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/20506
-spec@nv_shader_atomic_int64@execution@shared-atomicadd-int,Fail
-spec@nv_shader_atomic_int64@execution@shared-atomicand-int,Fail
-spec@nv_shader_atomic_int64@execution@shared-atomicand-uint,Fail
-spec@nv_shader_atomic_int64@execution@shared-atomiccompswap-int,Fail
-spec@nv_shader_atomic_int64@execution@shared-atomicexchange-int,Fail
-spec@nv_shader_atomic_int64@execution@shared-atomicmax-int,Fail
-spec@nv_shader_atomic_int64@execution@shared-atomicmax-uint,Fail
-spec@nv_shader_atomic_int64@execution@shared-atomicmin-int,Fail
-spec@nv_shader_atomic_int64@execution@shared-atomicor-int,Fail
-spec@nv_shader_atomic_int64@execution@shared-atomicor-uint,Fail
-spec@nv_shader_atomic_int64@execution@shared-atomicxor-int,Fail
-spec@nv_shader_atomic_int64@execution@shared-atomicxor-uint,Fail
