@@ -533,7 +533,7 @@ zink_bind_depth_stencil_alpha_state(struct pipe_context *pctx, void *cso)
 {
    struct zink_context *ctx = zink_context(pctx);
 
-   bool prev_zwrite = ctx->dsa_state ? ctx->dsa_state->hw_state.depth_write : false;
+   bool prev_zswrite = ctx->dsa_state ? ctx->dsa_state->hw_state.depth_write || ctx->dsa_state->hw_state.stencil_test : false;
    ctx->dsa_state = cso;
 
    if (cso) {
@@ -544,7 +544,8 @@ zink_bind_depth_stencil_alpha_state(struct pipe_context *pctx, void *cso)
          ctx->dsa_state_changed = true;
       }
    }
-   if (prev_zwrite != (ctx->dsa_state ? ctx->dsa_state->hw_state.depth_write : false)) {
+   bool zs_write = ctx->dsa_state ? ctx->dsa_state->hw_state.depth_write || ctx->dsa_state->hw_state.stencil_test : false;
+   if (prev_zswrite != zs_write) {
       /* flag renderpass for re-check on next draw */
       ctx->rp_layout_changed = true;
    }
