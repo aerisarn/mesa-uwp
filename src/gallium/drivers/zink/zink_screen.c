@@ -595,7 +595,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->info.feats.features.multiDrawIndirect;
 
    case PIPE_CAP_IMAGE_ATOMIC_FLOAT_ADD:
-      return screen->info.have_EXT_shader_atomic_float;
+      return (screen->info.have_EXT_shader_atomic_float &&
+              screen->info.atomic_float_feats.shaderSharedFloat32AtomicAdd &&
+              screen->info.atomic_float_feats.shaderBufferFloat32AtomicAdd);
    case PIPE_CAP_SHADER_ATOMIC_INT64:
       return screen->info.have_KHR_shader_atomic_int64;
 
