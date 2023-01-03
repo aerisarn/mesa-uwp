@@ -492,9 +492,6 @@ driReleaseDrawables(struct glx_context *gc)
 {
    const struct glx_display *priv = gc->psc->display;
 
-   if (priv == NULL)
-      return;
-
    releaseDrawable(priv, gc->currentDrawable);
    releaseDrawable(priv, gc->currentReadable);
 
