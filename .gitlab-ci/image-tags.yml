@@ -1,6 +1,6 @@
 variables:
    DEBIAN_X86_BUILD_BASE_IMAGE: "debian/x86_build-base"
-   DEBIAN_BASE_TAG: "2023-01-20-all-in-1"
+   DEBIAN_BASE_TAG: "2023-01-20-kernel-6.1-439f86d0"
 
    DEBIAN_X86_BUILD_IMAGE_PATH: "debian/x86_build"
    DEBIAN_BUILD_TAG: "2023-01-20-mold-1_10"
@@ -19,7 +19,7 @@ variables:
 
    ALPINE_X86_BUILD_TAG: "2023-01-20-all-in-1"
    FEDORA_X86_BUILD_TAG: "2023-01-20-all-in-1"
-   KERNEL_ROOTFS_TAG: "2023-01-20-all-in-1"
+   KERNEL_ROOTFS_TAG: "2023-01-20-kernel-6.1-439f86d0"
 
    WINDOWS_X64_VS_PATH: "windows/x64_vs"
    WINDOWS_X64_VS_TAG: "2022-10-20-upgrade-zlib"
