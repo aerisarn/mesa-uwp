@@ -749,18 +749,9 @@ get_driver_config(const char *driverName)
 
          if (ext->base.version >= 2)
             config = ext->getXml(driverName);
-         else
-            config = strdup(ext->xml);
 
          break;
       }
-   }
-
-   if (!config) {
-      /* Fall back to the old method */
-      config = dlsym(handle, "__driConfigOptions");
-      if (config)
-         config = strdup(config);
    }
 
    dlclose(handle);
