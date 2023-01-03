@@ -600,12 +600,12 @@ SOPP = {
    (  -1,   -1,   -1,   -1, 0x1f, 0x1f, "s_code_end"),
    (  -1,   -1,   -1,   -1, 0x20, 0x04, "s_inst_prefetch"), #s_set_inst_prefetch_distance in GFX11
    (  -1,   -1,   -1,   -1, 0x21, 0x05, "s_clause"),
-   (  -1,   -1,   -1,   -1, 0x22, 0x0a, "s_wait_idle"),
-   (  -1,   -1,   -1,   -1, 0x23, 0x08, "s_waitcnt_depctr"),
+   (  -1,   -1,   -1,   -1, 0x22, 0x0a, "s_wait_idle", InstrClass.Waitcnt),
+   (  -1,   -1,   -1,   -1, 0x23, 0x08, "s_waitcnt_depctr", InstrClass.Waitcnt),
    (  -1,   -1,   -1,   -1, 0x24, 0x11, "s_round_mode"),
    (  -1,   -1,   -1,   -1, 0x25, 0x12, "s_denorm_mode"),
    (  -1,   -1,   -1,   -1, 0x26, 0x3b, "s_ttracedata_imm"),
-   (  -1,   -1,   -1,   -1,   -1, 0x07, "s_delay_alu"),
+   (  -1,   -1,   -1,   -1,   -1, 0x07, "s_delay_alu", InstrClass.Waitcnt),
    (  -1,   -1,   -1,   -1,   -1, 0x0b, "s_wait_event"),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, gfx11, name, cls) in default_class(SOPP, InstrClass.Salu):
