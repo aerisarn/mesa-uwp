@@ -125,7 +125,7 @@ MakeContextCurrent(Display * dpy, GLXDrawable draw,
    }
 
    if (oldGC != &dummyContext) {
-      oldGC->vtable->unbind(oldGC, gc);
+      oldGC->vtable->unbind(oldGC);
       oldGC->currentDpy = NULL;
    }
 
@@ -138,7 +138,7 @@ MakeContextCurrent(Display * dpy, GLXDrawable draw,
        * blown away our old context.  The caller is responsible for
        * figuring out how to handle setting a valid context.
        */
-      if (gc->vtable->bind(gc, oldGC, draw, read) != Success) {
+      if (gc->vtable->bind(gc, draw, read) != Success) {
          __glXSetCurrentContextNull();
          __glXUnlock();
          __glXSendError(dpy, GLXBadContext, None, opcode, False);

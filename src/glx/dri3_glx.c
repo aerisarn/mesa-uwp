@@ -157,8 +157,7 @@ dri3_destroy_context(struct glx_context *context)
 }
 
 static Bool
-dri3_bind_context(struct glx_context *context, struct glx_context *old,
-                  GLXDrawable draw, GLXDrawable read)
+dri3_bind_context(struct glx_context *context, GLXDrawable draw, GLXDrawable read)
 {
    struct dri3_screen *psc = (struct dri3_screen *) context->psc;
    struct dri3_drawable *pdraw, *pread;
@@ -191,7 +190,7 @@ dri3_bind_context(struct glx_context *context, struct glx_context *old,
 }
 
 static void
-dri3_unbind_context(struct glx_context *context, struct glx_context *new)
+dri3_unbind_context(struct glx_context *context)
 {
    struct dri3_screen *psc = (struct dri3_screen *) context->psc;
 
