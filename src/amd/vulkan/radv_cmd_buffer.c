@@ -515,7 +515,6 @@ radv_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
    for (unsigned i = 0; i < MAX_BIND_POINTS; i++) {
       cmd_buffer->descriptors[i].dirty = 0;
       cmd_buffer->descriptors[i].valid = 0;
-      cmd_buffer->descriptors[i].push_dirty = false;
    }
 
    radv_cmd_buffer_reset_rendering(cmd_buffer);
@@ -4232,10 +4231,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
 }
 
 static void
-radv_flush_push_descriptors(struct radv_cmd_buffer *cmd_buffer, VkPipelineBindPoint bind_point)
+radv_flush_push_descriptors(struct radv_cmd_buffer *cmd_buffer,
+                            struct radv_descriptor_state *descriptors_state)
 {
-   struct radv_descriptor_state *descriptors_state =
-      radv_get_descriptors_state(cmd_buffer, bind_point);
    struct radv_descriptor_set *set = (struct radv_descriptor_set *)&descriptors_state->push_set.set;
    unsigned bo_offset;
 
@@ -4323,9 +4321,6 @@ radv_flush_descriptors(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags st
    if (!descriptors_state->dirty)
       return;
 
-   if (descriptors_state->push_dirty)
-      radv_flush_push_descriptors(cmd_buffer, bind_point);
-
    flush_indirect_descriptors = pipeline->need_indirect_descriptor_sets;
 
    if (flush_indirect_descriptors)
@@ -4352,7 +4347,6 @@ radv_flush_descriptors(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags st
    }
 
    descriptors_state->dirty = 0;
-   descriptors_state->push_dirty = false;
 
    assert(cmd_buffer->cs->cdw <= cdw_max);
 
@@ -5849,7 +5843,8 @@ radv_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer, VkPipelineBindPoint 
                                    pDescriptorWrites, 0, NULL);
 
    radv_set_descriptor_set(cmd_buffer, pipelineBindPoint, push_set, set);
-   descriptors_state->push_dirty = true;
+
+   radv_flush_push_descriptors(cmd_buffer, descriptors_state);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -5875,7 +5870,8 @@ radv_CmdPushDescriptorSetWithTemplateKHR(VkCommandBuffer commandBuffer,
                                                 descriptorUpdateTemplate, pData);
 
    radv_set_descriptor_set(cmd_buffer, templ->bind_point, push_set, set);
-   descriptors_state->push_dirty = true;
+
+   radv_flush_push_descriptors(cmd_buffer, descriptors_state);
 }
 
 VKAPI_ATTR void VKAPI_CALL

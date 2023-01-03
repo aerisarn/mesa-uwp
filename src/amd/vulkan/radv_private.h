@@ -1421,7 +1421,6 @@ struct radv_descriptor_state {
    uint32_t dirty;
    uint32_t valid;
    struct radv_push_descriptor_set push_set;
-   bool push_dirty;
    uint32_t dynamic_buffers[4 * MAX_DYNAMIC_BUFFERS];
    uint64_t descriptor_buffers[MAX_SETS];
 };
