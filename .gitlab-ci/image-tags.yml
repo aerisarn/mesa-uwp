@@ -6,7 +6,7 @@ variables:
    DEBIAN_BUILD_TAG: "2022-11-03-ci-fairy-s3"
 
    DEBIAN_X86_BUILD_MINGW_IMAGE_PATH: "debian/x86_build-mingw"
-   DEBIAN_BUILD_MINGW_TAG: "2022-10-18-dx-headers-va"
+   DEBIAN_BUILD_MINGW_TAG: "2023-01-03-ci-libva-2.17"
 
    DEBIAN_X86_TEST_BASE_IMAGE: "debian/x86_test-base"
 
@@ -25,7 +25,7 @@ variables:
    WINDOWS_X64_VS_TAG: "2022-10-20-upgrade-zlib"
 
    WINDOWS_X64_BUILD_PATH: "windows/x64_build"
-   WINDOWS_X64_BUILD_TAG: "2022-10-18-wrap-nodownload-va"
+   WINDOWS_X64_BUILD_TAG: "2023-01-03-ci-libva-2.17"
 
    WINDOWS_X64_TEST_PATH: "windows/x64_test"
    WINDOWS_X64_TEST_TAG: "2022-12-28-piglit-no-install"
