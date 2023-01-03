@@ -1097,6 +1097,33 @@ insert_wait_states(Program* program)
 
       out_ctx[current.index] = std::move(ctx);
    }
+
+   /* Combine s_delay_alu using the skip field. */
+   if (program->gfx_level >= GFX11) {
+      for (Block& block : program->blocks) {
+         int i = 0;
+         int prev_delay_alu = -1;
+         for (aco_ptr<Instruction>& instr : block.instructions) {
+            if (instr->opcode != aco_opcode::s_delay_alu) {
+               block.instructions[i++] = std::move(instr);
+               continue;
+            }
+
+            uint16_t imm = instr->sopp().imm;
+            int skip = i - prev_delay_alu - 1;
+            if (imm >> 7 || prev_delay_alu < 0 || skip >= 6) {
+               if (imm >> 7 == 0)
+                  prev_delay_alu = i;
+               block.instructions[i++] = std::move(instr);
+               continue;
+            }
+
+            block.instructions[prev_delay_alu]->sopp().imm |= (skip << 4) | (imm << 7);
+            prev_delay_alu = -1;
+         }
+         block.instructions.resize(i);
+      }
+   }
 }
 
 } // namespace aco
