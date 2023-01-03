@@ -46,22 +46,9 @@
 #include "rnnutil.h"
 
 /* Decompiles a single cmdstream from .rd into compilable C source.
- * Given the address space bounds the generated program creates
- * a new .rd which could be used to override cmdstream with 'replay'.
- * Generated .rd is not replayable on its own and depends on buffers
- * provided by the source .rd.
- *
  * C source could be compiled using rdcompiler-meson.build as an example.
  *
- * The workflow would look like this:
- * 1) Find the cmdstream № you want to edit;
- * 2) Decompile it:
- *   rddecompiler -s %cmd_stream_№% example.rd > generate_rd.c
- * 3) Edit the command stream;
- * 4) Compile it back, see rdcompiler-meson.build for the instructions;
- * 5) Plug the generator into cmdstream replay:
- *   replay --override=%cmd_stream_№% --generator=~/generate_rd
- * 6) Repeat 3-5.
+ * For how-to see freedreno.rst
  */
 
 static int handle_file(const char *filename, uint32_t submit_to_decompile);
