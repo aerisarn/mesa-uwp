@@ -6347,6 +6347,30 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
    }
 #endif
 
+#if GFX_VER >= 12
+   /* From Tigerlake PRM, Volume 2a, PIPELINE_SELECT:
+    *
+    *   "Software must ensure Render Cache, Depth Cache and HDC Pipeline flush
+    *   are flushed through a stalling PIPE_CONTROL command prior to
+    *   programming of PIPELINE_SELECT command transitioning Pipeline Select
+    *   from 3D to GPGPU/Media.
+    *   Software must ensure HDC Pipeline flush and Generic Media State Clear
+    *   is issued through a stalling PIPE_CONTROL command prior to programming
+    *   of PIPELINE_SELECT command transitioning Pipeline Select from
+    *   GPGPU/Media to 3D."
+    *
+    * Note: Issuing PIPE_CONTROL_MEDIA_STATE_CLEAR causes GPU hangs, probably
+    * because PIPE was not in MEDIA mode?!
+    */
+   enum anv_pipe_bits bits = ANV_PIPE_CS_STALL_BIT |
+                             ANV_PIPE_HDC_PIPELINE_FLUSH_BIT;
+
+   if (cmd_buffer->state.current_pipeline == _3D) {
+      bits |= ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
+              ANV_PIPE_DEPTH_CACHE_FLUSH_BIT;
+   }
+   anv_add_pending_pipe_bits(cmd_buffer, bits, "flush PIPELINE_SELECT");
+#else
    /* From "BXML » GT » MI » vol1a GPU Overview » [Instruction]
     * PIPELINE_SELECT [DevBWR+]":
     *
@@ -6371,6 +6395,7 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
                              ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT |
                              ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT,
                              "flush and invalidate for PIPELINE_SELECT");
+#endif
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    genX(emit_pipeline_select)(&cmd_buffer->batch, pipeline);
