@@ -916,7 +916,6 @@ glx@glx-make-current,Crash
 
 glx@glx-multi-context-front,Fail
 glx@glx-multi-window-single-context,Fail
-glx@glx-swap-copy,Fail
 glx@glx-swap-pixmap-bad,Fail
 
 # X Error of failed request:  BadMatch (invalid parameter attributes)

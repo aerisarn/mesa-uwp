@@ -112,8 +112,6 @@ KHR-.*.shader_storage_buffer_object.advanced-unsizedArrayLength-fs-std140-matR
 
 glx@glx_arb_sync_control@swapbuffersmsc-divisor-zero
 glx@glx_arb_sync_control@waitformsc
-glx@glx-copy-sub-buffer.*
-glx@glx-swap-copy
 glx@glx-swap-event_interval
 glx@glx-visuals-depth
 glx@glx-visuals-stencil
