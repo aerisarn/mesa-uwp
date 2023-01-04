@@ -4419,7 +4419,8 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
       int aspect = 1 << u_bit_scan(&aspects);
       region.imageSubresource.aspectMask = aspect;
 
-      /* this may or may not work with multisampled depth/stencil buffers depending on the driver implementation:
+      /* MSAA transfers should have already been handled by U_TRANSFER_HELPER_MSAA_MAP, since
+       * there's no way to resolve using this interface:
        *
        * srcImage must have a sample count equal to VK_SAMPLE_COUNT_1_BIT
        * - vkCmdCopyImageToBuffer spec
@@ -4427,6 +4428,7 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
        * dstImage must have a sample count equal to VK_SAMPLE_COUNT_1_BIT
        * - vkCmdCopyBufferToImage spec
        */
+      assert(img->base.b.nr_samples <= 1);
       if (buf2img)
          VKCTX(CmdCopyBufferToImage)(cmdbuf, buf->obj->buffer, img->obj->image, img->layout, 1, &region);
       else
