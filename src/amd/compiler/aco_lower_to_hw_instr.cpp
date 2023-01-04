@@ -2198,7 +2198,7 @@ lower_to_hw_instr(Program* program)
                if ((block->instructions.size() - 1 - instr_idx) <= 4 &&
                    block->instructions.back()->opcode == aco_opcode::s_endpgm) {
                   unsigned null_exp_dest =
-                     (ctx.program->stage.hw == HWStage::FS) ? 9 /* NULL */ : V_008DFC_SQ_EXP_POS;
+                     program->gfx_level >= GFX11 ? V_008DFC_SQ_EXP_MRT : V_008DFC_SQ_EXP_NULL;
                   bool ignore_early_exit = true;
 
                   for (unsigned k = instr_idx + 1; k < block->instructions.size(); ++k) {
@@ -2207,7 +2207,8 @@ lower_to_hw_instr(Program* program)
                          instr2->opcode == aco_opcode::p_logical_end)
                         continue;
                      else if (instr2->opcode == aco_opcode::exp &&
-                              instr2->exp().dest == null_exp_dest)
+                              instr2->exp().dest == null_exp_dest &&
+                              instr2->exp().enabled_mask == 0)
                         continue;
                      else if (instr2->opcode == aco_opcode::p_parallelcopy &&
                               instr2->definitions[0].isFixed() &&
