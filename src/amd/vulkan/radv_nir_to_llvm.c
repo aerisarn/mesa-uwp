@@ -993,6 +993,28 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
    ac_llvm_context_init(&ctx.ac, ac_llvm, options->gfx_level, options->family,
                         options->has_3d_cube_border_color_mipmap,
                         float_mode, info->wave_size, info->ballot_bit_size, exports_color_null, exports_mrtz);
+
+   uint32_t length = 1;
+   for (uint32_t i = 0; i < shader_count; i++)
+      if (shaders[i]->info.name)
+         length += strlen(shaders[i]->info.name) + 1;
+
+   char *name = malloc(length);
+   if (name) {
+      uint32_t offset = 0;
+      for (uint32_t i = 0; i < shader_count; i++) {
+         if (!shaders[i]->info.name)
+            continue;
+
+         strcpy(name + offset, shaders[i]->info.name);
+         offset += strlen(shaders[i]->info.name);
+         if (i != shader_count - 1)
+            name[offset++] = ',';
+      }
+
+      LLVMSetSourceFileName(ctx.ac.module, name, offset);
+   }
+
    ctx.context = ctx.ac.context;
 
    ctx.max_workgroup_size = info->workgroup_size;
@@ -1132,6 +1154,8 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
    }
 
    ac_llvm_finalize_module(&ctx, ac_llvm->passmgr);
+
+   free(name);
 
    return ctx.ac.module;
 }
