@@ -55,6 +55,12 @@ struct ir3_compiler_options {
     * caching.
     */
    bool disable_cache;
+
+   /* If >= 0, this specifies the bindless descriptor set + descriptor to use
+    * for txf_ms_fb
+    */
+   int bindless_fb_read_descriptor;
+   int bindless_fb_read_slot;
 };
 
 struct ir3_compiler {

@@ -2119,6 +2119,8 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
                               .robust_buffer_access2 = robust_buffer_access2,
                               .push_ubo_with_preamble = true,
                               .disable_cache = true,
+                              .bindless_fb_read_descriptor = -1,
+                              .bindless_fb_read_slot = -1,
                            });
    if (!device->compiler) {
       result = vk_startup_errorf(physical_device->instance,

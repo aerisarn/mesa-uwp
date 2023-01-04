@@ -547,8 +547,11 @@ ir3_screen_init(struct pipe_screen *pscreen)
 {
    struct fd_screen *screen = fd_screen(pscreen);
 
-   screen->compiler = ir3_compiler_create(screen->dev, screen->dev_id,
-                                          &(struct ir3_compiler_options) {});
+   struct ir3_compiler_options options = {
+         .bindless_fb_read_descriptor = -1,
+         .bindless_fb_read_slot = -1,
+   };
+   screen->compiler = ir3_compiler_create(screen->dev, screen->dev_id, &options);
 
    /* TODO do we want to limit things to # of fast cores, or just limit
     * based on total # of both big and little cores.  The little cores
