@@ -2504,25 +2504,19 @@ get_glx_proc_address(const char *funcName)
 _GLX_PUBLIC void (*glXGetProcAddressARB(const GLubyte * procName)) (void)
 {
    typedef void (*gl_function) (void);
-   gl_function f;
+   gl_function f = NULL;
 
+   if (!strncmp((const char *) procName, "glX", 3))
+      f = (gl_function) get_glx_proc_address((const char *) procName);
 
-   /* Search the table of GLX and internal functions first.  If that
-    * fails and the supplied name could be a valid core GL name, try
-    * searching the core GL function table.  This check is done to prevent
-    * DRI based drivers from searching the core GL function table for
-    * internal API functions.
-    */
-   f = (gl_function) get_glx_proc_address((const char *) procName);
-   if ((f == NULL) && (procName[0] == 'g') && (procName[1] == 'l')
-       && (procName[2] != 'X')) {
-      if (!f)
-         f = (gl_function) _glapi_get_proc_address((const char *) procName);
+   if (f == NULL)
+      f = (gl_function) _glapi_get_proc_address((const char *) procName);
+
 #ifdef GLX_USE_APPLEGL
-      if (!f)
-         f = applegl_get_proc_address((const char *) procName);
+   if (f == NULL)
+      f = applegl_get_proc_address((const char *) procName);
 #endif
-   }
+
    return f;
 }
 
