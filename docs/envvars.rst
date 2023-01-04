@@ -941,8 +941,6 @@ RADV driver environment variables
       disable NGG for GFX10 and GFX10.3
    ``nonggc``
       disable NGG culling on GPUs where it's enabled by default (GFX10.3+ only).
-   ``nooutoforder``
-      disable out-of-order rasterization
    ``notccompatcmask``
       disable TC-compat CMASK for MSAA surfaces
    ``noumr``

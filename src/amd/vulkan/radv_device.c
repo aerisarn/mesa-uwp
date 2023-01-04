@@ -884,10 +884,6 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
    radv_get_driver_uuid(&device->driver_uuid);
    radv_get_device_uuid(&device->rad_info, &device->device_uuid);
 
-   device->out_of_order_rast_allowed =
-      device->rad_info.has_out_of_order_rast &&
-      !(device->instance->debug_flags & RADV_DEBUG_NO_OUT_OF_ORDER);
-
    device->dcc_msaa_allowed = (device->instance->perftest_flags & RADV_PERFTEST_DCC_MSAA);
 
    device->use_fmask = device->rad_info.gfx_level < GFX11 &&
@@ -1054,7 +1050,6 @@ static const struct debug_control radv_debug_options[] = {
    {"syncshaders", RADV_DEBUG_SYNC_SHADERS},
    {"preoptir", RADV_DEBUG_PREOPTIR},
    {"nodynamicbounds", RADV_DEBUG_NO_DYNAMIC_BOUNDS},
-   {"nooutoforder", RADV_DEBUG_NO_OUT_OF_ORDER},
    {"info", RADV_DEBUG_INFO},
    {"startup", RADV_DEBUG_STARTUP},
    {"checkir", RADV_DEBUG_CHECKIR},

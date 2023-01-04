@@ -53,30 +53,12 @@
 struct radv_blend_state {
    uint32_t blend_enable_4bit;
 
-   uint32_t cb_target_enabled_4bit;
-
    uint32_t spi_shader_col_format;
    uint32_t cb_shader_mask;
-
-   uint32_t commutative_4bit;
-
 };
 
 struct radv_depth_stencil_state {
    uint32_t db_shader_control;
-};
-
-struct radv_dsa_order_invariance {
-   /* Whether the final result in Z/S buffers is guaranteed to be
-    * invariant under changes to the order in which fragments arrive.
-    */
-   bool zs;
-
-   /* Whether the set of fragments that pass the combined Z/S test is
-    * guaranteed to be invariant under changes to the order in which
-    * fragments arrive.
-    */
-   bool pass_set;
 };
 
 static bool
@@ -595,32 +577,6 @@ radv_format_meta_fs_key(struct radv_device *device, VkFormat format)
    }
 }
 
-static void
-radv_blend_check_commutativity(struct radv_blend_state *blend, VkBlendOp op, VkBlendFactor src,
-                               VkBlendFactor dst, unsigned chanmask)
-{
-   /* Src factor is allowed when it does not depend on Dst. */
-   static const uint32_t src_allowed =
-      (1u << VK_BLEND_FACTOR_ONE) | (1u << VK_BLEND_FACTOR_SRC_COLOR) |
-      (1u << VK_BLEND_FACTOR_SRC_ALPHA) | (1u << VK_BLEND_FACTOR_SRC_ALPHA_SATURATE) |
-      (1u << VK_BLEND_FACTOR_CONSTANT_COLOR) | (1u << VK_BLEND_FACTOR_CONSTANT_ALPHA) |
-      (1u << VK_BLEND_FACTOR_SRC1_COLOR) | (1u << VK_BLEND_FACTOR_SRC1_ALPHA) |
-      (1u << VK_BLEND_FACTOR_ZERO) | (1u << VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR) |
-      (1u << VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA) |
-      (1u << VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR) |
-      (1u << VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA) |
-      (1u << VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR) | (1u << VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA);
-
-   if (dst == VK_BLEND_FACTOR_ONE && (src_allowed & (1u << src))) {
-      /* Addition is commutative, but floating point addition isn't
-       * associative: subtle changes can be introduced via different
-       * rounding. Be conservative, only enable for min and max.
-       */
-      if (op == VK_BLEND_OP_MAX || op == VK_BLEND_OP_MIN)
-         blend->commutative_4bit |= chanmask;
-   }
-}
-
 static bool
 radv_can_enable_dual_src(const struct vk_color_blend_attachment_state *att)
 {
@@ -672,7 +628,6 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
          if (i > 0 && key->ps.epilog.mrt0_is_dual_src)
             continue;
 
-         blend.cb_target_enabled_4bit |= 0xfu << (4 * i);
          if (!(pipeline->dynamic_states & RADV_DYNAMIC_COLOR_BLEND_ENABLE) &&
              !state->cb->attachments[i].blend_enable) {
             pipeline->cb_blend_control[i] = blend_cntl;
@@ -687,9 +642,6 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
             srcA = VK_BLEND_FACTOR_ONE;
             dstA = VK_BLEND_FACTOR_ONE;
          }
-
-         radv_blend_check_commutativity(&blend, eqRGB, srcRGB, dstRGB, 0x7u << (4 * i));
-         radv_blend_check_commutativity(&blend, eqA, srcA, dstA, 0x8u << (4 * i));
 
          /* Blending optimizations for RB+.
           * These transformations don't change the behavior.
@@ -771,164 +723,6 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
    return blend;
 }
 
-static bool
-radv_is_depth_write_enabled(const struct vk_depth_stencil_state *ds)
-{
-   return ds->depth.test_enable && ds->depth.write_enable &&
-          ds->depth.compare_op != VK_COMPARE_OP_NEVER;
-}
-
-static bool
-radv_writes_stencil(const struct vk_stencil_test_face_state *face)
-{
-   return face->write_mask &&
-          (face->op.fail != VK_STENCIL_OP_KEEP || face->op.pass != VK_STENCIL_OP_KEEP ||
-           face->op.depth_fail != VK_STENCIL_OP_KEEP);
-}
-
-static bool
-radv_is_stencil_write_enabled(const struct vk_depth_stencil_state *ds)
-{
-   return ds->stencil.test_enable &&
-          (radv_writes_stencil(&ds->stencil.front) || radv_writes_stencil(&ds->stencil.back));
-}
-
-static bool
-radv_order_invariant_stencil_op(VkStencilOp op)
-{
-   /* REPLACE is normally order invariant, except when the stencil
-    * reference value is written by the fragment shader. Tracking this
-    * interaction does not seem worth the effort, so be conservative.
-    */
-   return op != VK_STENCIL_OP_INCREMENT_AND_CLAMP && op != VK_STENCIL_OP_DECREMENT_AND_CLAMP &&
-          op != VK_STENCIL_OP_REPLACE;
-}
-
-static bool
-radv_order_invariant_stencil_state(const struct vk_stencil_test_face_state *face)
-{
-   /* Compute whether, assuming Z writes are disabled, this stencil state
-    * is order invariant in the sense that the set of passing fragments as
-    * well as the final stencil buffer result does not depend on the order
-    * of fragments.
-    */
-   return !face->write_mask ||
-          /* The following assumes that Z writes are disabled. */
-          (face->op.compare == VK_COMPARE_OP_ALWAYS &&
-           radv_order_invariant_stencil_op(face->op.pass) &&
-           radv_order_invariant_stencil_op(face->op.depth_fail)) ||
-          (face->op.compare == VK_COMPARE_OP_NEVER &&
-           radv_order_invariant_stencil_op(face->op.fail));
-}
-
-static bool
-radv_pipeline_has_dynamic_ds_states(const struct radv_graphics_pipeline *pipeline)
-{
-   return !!(pipeline->dynamic_states & (RADV_DYNAMIC_DEPTH_TEST_ENABLE |
-                                         RADV_DYNAMIC_DEPTH_WRITE_ENABLE |
-                                         RADV_DYNAMIC_DEPTH_COMPARE_OP |
-                                         RADV_DYNAMIC_STENCIL_TEST_ENABLE |
-                                         RADV_DYNAMIC_STENCIL_WRITE_MASK |
-                                         RADV_DYNAMIC_STENCIL_OP));
-}
-
-static bool
-radv_pipeline_out_of_order_rast(struct radv_graphics_pipeline *pipeline,
-                                const struct radv_blend_state *blend,
-                                const struct vk_graphics_pipeline_state *state)
-{
-   unsigned colormask = blend->cb_target_enabled_4bit;
-
-   if (!pipeline->base.device->physical_device->out_of_order_rast_allowed)
-      return false;
-
-   /* Be conservative if a logic operation is enabled with color buffers. */
-   if (colormask && (pipeline->dynamic_states & RADV_DYNAMIC_COLOR_BLEND_ENABLE) &&
-       ((pipeline->dynamic_states & RADV_DYNAMIC_LOGIC_OP_ENABLE) || state->cb->logic_op_enable))
-      return false;
-
-   /* Be conservative if an extended dynamic depth/stencil state is
-    * enabled because the driver can't update out-of-order rasterization
-    * dynamically.
-    */
-   if (radv_pipeline_has_dynamic_ds_states(pipeline))
-      return false;
-
-   /* Default depth/stencil invariance when no attachment is bound. */
-   struct radv_dsa_order_invariance dsa_order_invariant = {.zs = true, .pass_set = true};
-
-   if (state->ds) {
-      bool has_stencil = state->rp->stencil_attachment_format != VK_FORMAT_UNDEFINED;
-      struct radv_dsa_order_invariance order_invariance[2];
-      struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
-
-      /* Compute depth/stencil order invariance in order to know if
-       * it's safe to enable out-of-order.
-       */
-      bool zfunc_is_ordered = state->ds->depth.compare_op == VK_COMPARE_OP_NEVER ||
-                              state->ds->depth.compare_op == VK_COMPARE_OP_LESS ||
-                              state->ds->depth.compare_op == VK_COMPARE_OP_LESS_OR_EQUAL ||
-                              state->ds->depth.compare_op == VK_COMPARE_OP_GREATER ||
-                              state->ds->depth.compare_op == VK_COMPARE_OP_GREATER_OR_EQUAL;
-      bool depth_write_enabled = radv_is_depth_write_enabled(state->ds);
-      bool stencil_write_enabled = radv_is_stencil_write_enabled(state->ds);
-      bool ds_write_enabled = depth_write_enabled || stencil_write_enabled;
-
-      bool nozwrite_and_order_invariant_stencil =
-         !ds_write_enabled ||
-         (!depth_write_enabled && radv_order_invariant_stencil_state(&state->ds->stencil.front) &&
-          radv_order_invariant_stencil_state(&state->ds->stencil.back));
-
-      order_invariance[1].zs = nozwrite_and_order_invariant_stencil ||
-                               (!stencil_write_enabled && zfunc_is_ordered);
-      order_invariance[0].zs = !depth_write_enabled || zfunc_is_ordered;
-
-      order_invariance[1].pass_set =
-         nozwrite_and_order_invariant_stencil ||
-         (!stencil_write_enabled &&
-          (state->ds->depth.compare_op == VK_COMPARE_OP_ALWAYS ||
-           state->ds->depth.compare_op == VK_COMPARE_OP_NEVER));
-      order_invariance[0].pass_set =
-         !depth_write_enabled ||
-         (state->ds->depth.compare_op == VK_COMPARE_OP_ALWAYS ||
-          state->ds->depth.compare_op == VK_COMPARE_OP_NEVER);
-
-      dsa_order_invariant = order_invariance[has_stencil];
-      if (!dsa_order_invariant.zs)
-         return false;
-
-      /* The set of PS invocations is always order invariant,
-       * except when early Z/S tests are requested.
-       */
-      if (ps && ps->info.ps.writes_memory && ps->info.ps.early_fragment_test &&
-          !dsa_order_invariant.pass_set)
-         return false;
-
-      /* Determine if out-of-order rasterization should be disabled when occlusion queries are used. */
-      pipeline->disable_out_of_order_rast_for_occlusion = !dsa_order_invariant.pass_set;
-   }
-
-   /* No color buffers are enabled for writing. */
-   if (!colormask)
-      return true;
-
-   unsigned blendmask = colormask & blend->blend_enable_4bit;
-
-   if (blendmask) {
-      /* Only commutative blending. */
-      if (blendmask & ~blend->commutative_4bit)
-         return false;
-
-      if (!dsa_order_invariant.pass_set)
-         return false;
-   }
-
-   if (colormask & ~blendmask)
-      return false;
-
-   return true;
-}
-
 static void
 radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
                                      const struct radv_blend_state *blend,
@@ -938,7 +732,8 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
    struct radv_multisample_state *ms = &pipeline->ms;
    unsigned num_tile_pipes = pdevice->rad_info.num_tile_pipes;
-   bool out_of_order_rast = false;
+   bool out_of_order_rast =
+      state->rs->rasterization_order_amd == VK_RASTERIZATION_ORDER_RELAXED_AMD;
 
    /* From the Vulkan 1.1.129 spec, 26.7. Sample Shading:
     *
@@ -965,18 +760,6 @@ radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
       }
 
       ms->sample_shading_enable = true;
-   }
-
-   if (state->rs->rasterization_order_amd == VK_RASTERIZATION_ORDER_RELAXED_AMD) {
-      /* Out-of-order rasterization is explicitly enabled by the
-       * application.
-       */
-      out_of_order_rast = true;
-   } else {
-      /* Determine if the driver can enable out-of-order
-       * rasterization internally.
-       */
-      out_of_order_rast = radv_pipeline_out_of_order_rast(pipeline, blend, state);
    }
 
    pipeline->pa_sc_mode_cntl_1 =

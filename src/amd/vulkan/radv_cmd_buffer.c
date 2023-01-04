@@ -2560,22 +2560,6 @@ radv_emit_depth_clamp_enable(struct radv_cmd_buffer *cmd_buffer)
                           S_02800C_DISABLE_VIEWPORT_CLAMP(mode == RADV_DEPTH_CLAMP_MODE_DISABLED));
 }
 
-static unsigned
-radv_get_pa_sc_mode_cntl_1(struct radv_cmd_buffer *cmd_buffer)
-{
-   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   unsigned rasterization_samples = radv_get_rasterization_samples(cmd_buffer);
-   unsigned pa_sc_mode_cntl_1 = pipeline->pa_sc_mode_cntl_1;
-
-   if (rasterization_samples) {
-      unsigned ps_iter_samples = radv_get_ps_iter_samples(cmd_buffer);
-
-      pa_sc_mode_cntl_1 |= S_028A4C_PS_ITER_SAMPLE(ps_iter_samples > 1);
-   }
-
-   return pa_sc_mode_cntl_1;
-}
-
 static void
 radv_emit_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
 {
@@ -2583,7 +2567,7 @@ radv_emit_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
    unsigned rasterization_samples = radv_get_rasterization_samples(cmd_buffer);
    const struct radv_rendering_state *render = &cmd_buffer->state.render;
-   unsigned pa_sc_mode_cntl_1 = radv_get_pa_sc_mode_cntl_1(cmd_buffer);
+   unsigned pa_sc_mode_cntl_1 = pipeline->pa_sc_mode_cntl_1;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    unsigned spi_baryc_cntl = S_0286E0_FRONT_FACE_ALL_BITS(1);
    unsigned db_render_control = pipeline->db_render_control;
@@ -2594,8 +2578,10 @@ radv_emit_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
    if (rasterization_samples > 1) {
       unsigned ps_iter_samples = radv_get_ps_iter_samples(cmd_buffer);
 
-      if (ps_iter_samples > 1)
+      if (ps_iter_samples > 1) {
          spi_baryc_cntl |= S_0286E0_POS_FLOAT_LOCATION(2);
+         pa_sc_mode_cntl_1 |= S_028A4C_PS_ITER_SAMPLE(1);
+      }
    }
 
    if (pdevice->rad_info.gfx_level >= GFX11) {
@@ -3583,29 +3569,16 @@ radv_emit_index_buffer(struct radv_cmd_buffer *cmd_buffer, bool indirect)
 void
 radv_set_db_count_control(struct radv_cmd_buffer *cmd_buffer, bool enable_occlusion_queries)
 {
-   bool has_perfect_queries = cmd_buffer->state.perfect_occlusion_queries_enabled;
-   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   uint32_t pa_sc_mode_cntl_1 = pipeline ? radv_get_pa_sc_mode_cntl_1(cmd_buffer) : 0;
    uint32_t db_count_control;
 
    if (!enable_occlusion_queries) {
-      if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
-         if (G_028A4C_OUT_OF_ORDER_PRIMITIVE_ENABLE(pa_sc_mode_cntl_1) &&
-             pipeline->disable_out_of_order_rast_for_occlusion && has_perfect_queries) {
-            /* Re-enable out-of-order rasterization if the
-             * bound pipeline supports it and if it's has
-             * been disabled before starting any perfect
-             * occlusion queries.
-             */
-            radeon_set_context_reg(cmd_buffer->cs, R_028A4C_PA_SC_MODE_CNTL_1, pa_sc_mode_cntl_1);
-         }
-      }
       db_count_control =
          S_028004_ZPASS_INCREMENT_DISABLE(cmd_buffer->device->physical_device->rad_info.gfx_level < GFX11);
    } else {
       uint32_t sample_rate = util_logbase2(cmd_buffer->state.render.max_samples);
       bool gfx10_perfect =
-         cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX10 && has_perfect_queries;
+         cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX10 &&
+         cmd_buffer->state.perfect_occlusion_queries_enabled;
 
       if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
          /* Always enable PERFECT_ZPASS_COUNTS due to issues with partially
@@ -3615,18 +3588,6 @@ radv_set_db_count_control(struct radv_cmd_buffer *cmd_buffer, bool enable_occlus
                             S_028004_DISABLE_CONSERVATIVE_ZPASS_COUNTS(gfx10_perfect) |
                             S_028004_SAMPLE_RATE(sample_rate) | S_028004_ZPASS_ENABLE(1) |
                             S_028004_SLICE_EVEN_ENABLE(1) | S_028004_SLICE_ODD_ENABLE(1);
-
-         if (G_028A4C_OUT_OF_ORDER_PRIMITIVE_ENABLE(pa_sc_mode_cntl_1) &&
-             pipeline->disable_out_of_order_rast_for_occlusion && has_perfect_queries) {
-            /* If the bound pipeline has enabled
-             * out-of-order rasterization, we should
-             * disable it before starting any perfect
-             * occlusion queries.
-             */
-            pa_sc_mode_cntl_1 &= C_028A4C_OUT_OF_ORDER_PRIMITIVE_ENABLE;
-
-            radeon_set_context_reg(cmd_buffer->cs, R_028A4C_PA_SC_MODE_CNTL_1, pa_sc_mode_cntl_1);
-         }
       } else {
          db_count_control = S_028004_PERFECT_ZPASS_COUNTS(1) | S_028004_SAMPLE_RATE(sample_rate);
       }

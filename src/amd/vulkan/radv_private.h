@@ -276,8 +276,6 @@ struct radv_physical_device {
    int master_fd;
    struct wsi_device wsi_device;
 
-   bool out_of_order_rast_allowed;
-
    /* Whether DCC should be enabled for MSAA textures. */
    bool dcc_msaa_allowed;
 
@@ -2038,7 +2036,6 @@ struct radv_graphics_pipeline {
    /* Used for rbplus */
    uint32_t col_format_non_compacted;
 
-   bool disable_out_of_order_rast_for_occlusion;
    bool uses_drawid;
    bool uses_baseinstance;
    bool use_per_attribute_vb_descs;
