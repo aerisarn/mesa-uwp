@@ -34,10 +34,10 @@ isa_depend_files = [
 ir3_isa = custom_target(
   'ir3-isa',
   input: ['ir3.xml'],
-  output: ['isaspec-isa.h', 'ir3-isa.c', 'ir3-isa.h'],
+  output: ['ir3-isa.c', 'ir3-isa.h'],
   command: [
-    prog_isaspec_decode, '--xml', '@INPUT@', '--out-glue-h', '@OUTPUT0@',
-    '--out-c', '@OUTPUT1@', '--out-h', '@OUTPUT2@',
+    prog_isaspec_decode, '--xml', '@INPUT@',
+    '--out-c', '@OUTPUT0@', '--out-h', '@OUTPUT1@',
   ],
   depend_files: isa_depend_files,
 )

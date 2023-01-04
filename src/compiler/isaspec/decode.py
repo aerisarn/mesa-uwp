@@ -50,7 +50,7 @@ template = """\
  * IN THE SOFTWARE.
  */
 
-#include "decode.h"
+#include "${header}"
 
 /*
  * enum tables, these don't have any link back to other tables so just
@@ -192,6 +192,8 @@ const struct isa_bitset *${root.get_c_name()}[] = {
 };
 %endfor
 
+#include "decode.c"
+
 """
 
 header = """\
@@ -258,37 +260,7 @@ uint64_t_to_bitmask(uint64_t val)
     return mask;
 }
 
-#endif /* _${guard}_ */
-
-"""
-
-glue = """\
-/* Copyright (C) 2020 Google, Inc.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"),
- * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice (including the next
- * paragraph) shall be included in all copies or substantial portions of the
- * Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
- * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
- */
-
-#ifndef _${guard}_
-#define _${guard}_
-
-#include "${isa}"
+#include "decode.h"
 
 #endif /* _${guard}_ */
 
@@ -302,20 +274,14 @@ def main():
     parser.add_argument('--xml', required=True, help='isaspec XML file.')
     parser.add_argument('--out-c', required=True, help='Output C file.')
     parser.add_argument('--out-h', required=True, help='Output H file.')
-    parser.add_argument('--out-glue-h',
-                        required=True,
-                        help='Output glue H file.')
     args = parser.parse_args()
 
     isa = ISA(args.xml)
 
     try:
-        with open(args.out_glue_h, 'w') as f:
-            f.write(Template(glue).render(guard=guard(args.out_glue_h),
-                                          isa=os.path.basename(args.out_h)))
-
         with open(args.out_c, 'w') as f:
-            f.write(Template(template).render(isa=isa))
+            out_h_basename = os.path.basename(args.out_h)
+            f.write(Template(template).render(isa=isa, header=out_h_basename))
 
         with open(args.out_h, 'w') as f:
             f.write(Template(header).render(isa=isa, guard=guard(args.out_h)))
