@@ -51,8 +51,6 @@
 #include "vk_format.h"
 
 struct radv_blend_state {
-   uint32_t blend_enable_4bit;
-
    uint32_t spi_shader_col_format;
    uint32_t cb_shader_mask;
 };
@@ -689,8 +687,6 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
             blend_cntl |= S_028780_ALPHA_DESTBLEND(si_translate_blend_factor(gfx_level, dstA));
          }
          pipeline->cb_blend_control[i] = blend_cntl;
-
-         blend.blend_enable_4bit |= 0xfu << (i * 4);
       }
    }
 
@@ -1547,8 +1543,7 @@ radv_pipeline_uses_ds_feedback_loop(const VkGraphicsPipelineCreateInfo *pCreateI
 static uint32_t
 radv_compute_db_shader_control(const struct radv_graphics_pipeline *pipeline,
                                const struct vk_graphics_pipeline_state *state,
-                               const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                               const struct radv_blend_state *blend)
+                               const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
    bool uses_ds_feedback_loop = radv_pipeline_uses_ds_feedback_loop(pCreateInfo, state);
@@ -1579,7 +1574,7 @@ radv_compute_db_shader_control(const struct radv_graphics_pipeline *pipeline,
 
    bool export_conflict_wa =
       pipeline->base.device->physical_device->rad_info.has_export_conflict_bug &&
-      blend->blend_enable_4bit &&
+      radv_pipeline_is_blend_enabled(pipeline, state->cb) &&
       (!state->ms || state->ms->rasterization_samples <= 1 ||
        (pipeline->dynamic_states & RADV_DYNAMIC_RASTERIZATION_SAMPLES));
 
@@ -1600,12 +1595,11 @@ radv_compute_db_shader_control(const struct radv_graphics_pipeline *pipeline,
 static struct radv_depth_stencil_state
 radv_pipeline_init_depth_stencil_state(struct radv_graphics_pipeline *pipeline,
                                        const struct vk_graphics_pipeline_state *state,
-                                       const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                                       const struct radv_blend_state *blend)
+                                       const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    struct radv_depth_stencil_state ds_state = {0};
 
-   ds_state.db_shader_control = radv_compute_db_shader_control(pipeline, state, pCreateInfo, blend);
+   ds_state.db_shader_control = radv_compute_db_shader_control(pipeline, state, pCreateInfo);
 
    return ds_state;
 }
@@ -5239,7 +5233,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    radv_pipeline_init_dynamic_state(pipeline, &state);
 
    struct radv_depth_stencil_state ds_state =
-      radv_pipeline_init_depth_stencil_state(pipeline, &state, pCreateInfo, &blend);
+      radv_pipeline_init_depth_stencil_state(pipeline, &state, pCreateInfo);
 
    if (device->physical_device->rad_info.gfx_level >= GFX10_3)
       gfx103_pipeline_init_vrs_state(pipeline, &state);
