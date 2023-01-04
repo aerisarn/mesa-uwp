@@ -603,7 +603,6 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
 {
    const struct radv_device *device = pipeline->base.device;
    struct radv_blend_state blend = {0};
-   bool disable_dual_quad = false;
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    int i;
 
@@ -703,20 +702,10 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
                                             S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_NONE);
          }
       }
-
-      /* RB+ doesn't work with dual source blending, logic op and
-       * RESOLVE.
-       */
-      if (key->ps.epilog.mrt0_is_dual_src ||
-          (state->cb && !(pipeline->dynamic_states & RADV_DYNAMIC_LOGIC_OP_ENABLE) &&
-           state->cb->logic_op_enable))
-         disable_dual_quad = true;
    }
 
    blend.cb_shader_mask = ac_get_cb_shader_mask(key->ps.epilog.spi_shader_col_format);
    blend.spi_shader_col_format = key->ps.epilog.spi_shader_col_format;
-
-   pipeline->disable_dual_quad = disable_dual_quad;
 
    return blend;
 }
@@ -5141,9 +5130,6 @@ radv_pipeline_init_extra(struct radv_graphics_pipeline *pipeline,
        */
       blend_state->cb_shader_mask = 0xf;
 
-      if (extra->custom_blend_mode == V_028808_CB_RESOLVE)
-         pipeline->disable_dual_quad = true;
-
       pipeline->custom_blend_mode = extra->custom_blend_mode;
    }
 
@@ -5260,6 +5246,8 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
    /* Copy the non-compacted SPI_SHADER_COL_FORMAT which is used to emit RBPLUS state. */
    pipeline->col_format_non_compacted = blend.spi_shader_col_format;
+
+   pipeline->mrt0_is_dual_src = key.ps.epilog.mrt0_is_dual_src;
 
    struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
    bool enable_mrt_compaction = !key.ps.epilog.mrt0_is_dual_src && !ps->info.ps.has_epilog;

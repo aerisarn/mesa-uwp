@@ -1923,7 +1923,7 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
       if (radv_rast_prim_is_points_or_lines(cmd_buffer->state.emitted_graphics_pipeline->rast_prim) != radv_rast_prim_is_points_or_lines(pipeline->rast_prim))
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_GUARDBAND;
 
-      if (cmd_buffer->state.emitted_graphics_pipeline->disable_dual_quad != pipeline->disable_dual_quad ||
+      if (cmd_buffer->state.emitted_graphics_pipeline->mrt0_is_dual_src != pipeline->mrt0_is_dual_src ||
           cmd_buffer->state.emitted_graphics_pipeline->custom_blend_mode != pipeline->custom_blend_mode)
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP |
                                     RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP_ENABLE;
@@ -2404,8 +2404,10 @@ radv_emit_logic_op(struct radv_cmd_buffer *cmd_buffer)
    }
 
    if (cmd_buffer->device->physical_device->rad_info.has_rbplus) {
+      /* RB+ doesn't work with dual source blending, logic op and CB_RESOLVE. */
       cb_color_control |=
-         S_028808_DISABLE_DUAL_QUAD(pipeline->disable_dual_quad || d->vk.cb.logic_op_enable);
+         S_028808_DISABLE_DUAL_QUAD(pipeline->mrt0_is_dual_src || d->vk.cb.logic_op_enable ||
+                                    pipeline->custom_blend_mode == V_028808_CB_RESOLVE);
    }
 
    if (pipeline->custom_blend_mode) {

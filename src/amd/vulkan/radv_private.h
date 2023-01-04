@@ -2011,7 +2011,6 @@ struct radv_graphics_pipeline {
    struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param;
    uint8_t vtx_emit_num;
    uint64_t needed_dynamic_state;
-   bool disable_dual_quad;
    unsigned cb_blend_control[MAX_RTS];
    unsigned sx_mrt_blend_opt[MAX_RTS];
    uint32_t binding_stride[MAX_VBS];
@@ -2032,6 +2031,8 @@ struct radv_graphics_pipeline {
 
    /* Used for rbplus */
    uint32_t col_format_non_compacted;
+
+   bool mrt0_is_dual_src;
 
    bool uses_drawid;
    bool uses_baseinstance;
