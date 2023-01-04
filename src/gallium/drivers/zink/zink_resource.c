@@ -2360,6 +2360,7 @@ zink_screen_resource_init(struct pipe_screen *pscreen)
    pscreen->transfer_helper = u_transfer_helper_create(&transfer_vtbl,
       U_TRANSFER_HELPER_SEPARATE_Z32S8 | U_TRANSFER_HELPER_SEPARATE_STENCIL |
       U_TRANSFER_HELPER_INTERLEAVE_IN_PLACE |
+      U_TRANSFER_HELPER_MSAA_MAP |
       (!screen->have_D24_UNORM_S8_UINT ? U_TRANSFER_HELPER_Z24_IN_Z32F : 0));
 
    if (screen->info.have_KHR_external_memory_fd || screen->info.have_KHR_external_memory_win32) {

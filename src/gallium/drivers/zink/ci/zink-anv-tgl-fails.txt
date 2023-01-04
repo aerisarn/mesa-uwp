@@ -96,26 +96,6 @@ dEQP-EGL.functional.buffer_age.no_preserve.resize_before_swap.odd_render_render_
 
 dEQP-EGL.functional.query_context.get_current_context.rgba8888_window,Crash
 
-# https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/20508
-multisample-dEQP-GLES3.functional.multisample.default_framebuffer.depth,Fail
-multisample-dEQP-GLES3.functional.multisample.default_framebuffer.num_samples_line,Fail
-multisample-dEQP-GLES3.functional.multisample.default_framebuffer.num_samples_polygon,Fail
-multisample-dEQP-GLES3.functional.occlusion_query.depth_clear_stencil_write,Fail
-multisample-dEQP-GLES3.functional.occlusion_query.depth_write_depth_clear_stencil_write_stencil_clear,Fail
-multisample-dEQP-GLES3.functional.occlusion_query.depth_write_depth_clear,Fail
-multisample-dEQP-GLES3.functional.occlusion_query.depth_write_stencil_clear,Fail
-multisample-dEQP-GLES3.functional.occlusion_query.depth_write_stencil_write,Fail
-multisample-dEQP-GLES3.functional.occlusion_query.scissor_depth_clear_stencil_write,Fail
-multisample-dEQP-GLES3.functional.occlusion_query.scissor_depth_write_stencil_clear,Fail
-multisample-dEQP-GLES3.functional.occlusion_query.stencil_write,Fail
-multisample-dEQP-GLES31.functional.sample_shading.min_sample_shading.default_framebuffer_color,Fail
-multisample-dEQP-GLES31.functional.sample_shading.min_sample_shading.default_framebuffer_discard,Fail
-multisample-dEQP-GLES31.functional.shaders.multisample_interpolation.sample_qualifier.default_framebuffer,Fail
-multisample-dEQP-GLES31.functional.shaders.sample_variables.sample_id.default_framebuffer,Fail
-multisample-dEQP-GLES31.functional.shaders.sample_variables.sample_mask.discard_half_per_pixel.default_framebuffer,Fail
-multisample-dEQP-GLES31.functional.shaders.sample_variables.sample_mask.discard_half_per_sample.default_framebuffer,Fail
-multisample-dEQP-GLES31.functional.shaders.sample_variables.sample_mask.discard_half_per_two_samples.default_framebuffer,Fail
-
 # Around the time of running these tests there are some warnings from the kernel in dma_resv.c, and at least
 # some failures look like not waiting for rendering to complete.
 wayland-dEQP-EGL.functional.color_clears.multi_context.gles1_gles2_gles3.rgb565_pbuffer,Fail
