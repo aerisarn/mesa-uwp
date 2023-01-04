@@ -1964,7 +1964,10 @@ brw_disassemble_inst(FILE *file, const struct brw_isa_info *isa,
       err |= control(file, "function", sync_function,
                      brw_inst_cond_modifier(devinfo, inst), NULL);
 
-   } else if (!is_send(opcode)) {
+   } else if (!is_send(opcode) &&
+              (devinfo->ver < 12 ||
+               brw_inst_src0_reg_file(devinfo, inst) != BRW_IMMEDIATE_VALUE ||
+               type_sz(brw_inst_src0_type(devinfo, inst)) < 8)) {
       err |= control(file, "conditional modifier", conditional_modifier,
                      brw_inst_cond_modifier(devinfo, inst), NULL);
 
