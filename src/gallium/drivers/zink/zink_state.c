@@ -434,8 +434,8 @@ zink_bind_blend_state(struct pipe_context *pctx, void *cso)
       state->dirty |= !zink_screen(pctx->screen)->have_full_ds3;
       bool force_dual_color_blend = zink_screen(pctx->screen)->driconf.dual_color_blend_by_location &&
                                     blend && blend->dual_src_blend && state->blend_state->attachments[0].blendEnable;
-      if (force_dual_color_blend != zink_get_fs_key(ctx)->force_dual_color_blend)
-         zink_set_fs_key(ctx)->force_dual_color_blend = force_dual_color_blend;
+      if (force_dual_color_blend != zink_get_fs_base_key(ctx)->force_dual_color_blend)
+         zink_set_fs_base_key(ctx)->force_dual_color_blend = force_dual_color_blend;
       ctx->blend_state_changed = true;
    }
 }
@@ -702,7 +702,7 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
          ctx->scissor_changed = true;
 
       if (ctx->rast_state->base.force_persample_interp != force_persample_interp) {
-         zink_set_fs_key(ctx)->force_persample_interp = ctx->rast_state->base.force_persample_interp;
+         zink_set_fs_base_key(ctx)->force_persample_interp = ctx->rast_state->base.force_persample_interp;
          ctx->gfx_pipeline_state.dirty = true;
       }
       ctx->gfx_pipeline_state.force_persample_interp = ctx->rast_state->base.force_persample_interp;

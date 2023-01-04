@@ -2852,7 +2852,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
             need_optimize = true;
          }
 
-         if (!zink_fs_key(key)->samples &&
+         if (!zink_fs_key_base(key)->samples &&
             nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) {
             /* VK will always use gl_SampleMask[] values even if sample count is 0,
             * so we need to skip this write here to mimic GL's behavior of ignoring it
@@ -2865,14 +2865,14 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
             NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
             need_optimize = true;
          }
-         if (zink_fs_key(key)->force_dual_color_blend && nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DATA1)) {
+         if (zink_fs_key_base(key)->force_dual_color_blend && nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DATA1)) {
             NIR_PASS_V(nir, lower_dual_blend);
          }
-         if (zink_fs_key(key)->coord_replace_bits) {
-            NIR_PASS_V(nir, nir_lower_texcoord_replace, zink_fs_key(key)->coord_replace_bits,
-                     false, zink_fs_key(key)->coord_replace_yinvert);
+         if (zink_fs_key_base(key)->coord_replace_bits) {
+            NIR_PASS_V(nir, nir_lower_texcoord_replace, zink_fs_key_base(key)->coord_replace_bits,
+                     false, zink_fs_key_base(key)->coord_replace_yinvert);
          }
-         if (zink_fs_key(key)->force_persample_interp || zink_fs_key(key)->fbfetch_ms) {
+         if (zink_fs_key_base(key)->force_persample_interp || zink_fs_key_base(key)->fbfetch_ms) {
             nir_foreach_shader_in_variable(var, nir)
                var->data.sample = true;
             nir->info.fs.uses_sample_qualifier = true;
@@ -2880,7 +2880,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
          }
          if (nir->info.fs.uses_fbfetch_output) {
             nir_variable *fbfetch = NULL;
-            NIR_PASS_V(nir, lower_fbfetch, &fbfetch, zink_fs_key(key)->fbfetch_ms);
+            NIR_PASS_V(nir, lower_fbfetch, &fbfetch, zink_fs_key_base(key)->fbfetch_ms);
             /* old variable must be deleted to avoid spirv errors */
             fbfetch->data.mode = nir_var_shader_temp;
             nir_fixup_deref_modes(nir);

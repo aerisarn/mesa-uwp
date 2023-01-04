@@ -2299,8 +2299,8 @@ zink_update_fbfetch(struct zink_context *ctx)
       ctx->di.fbfetch.imageView = zink_csurface(ctx->fb_state.cbufs[0])->image_view;
 
       bool fbfetch_ms = ctx->fb_state.cbufs[0]->texture->nr_samples > 1;
-      if (zink_get_fs_key(ctx)->fbfetch_ms != fbfetch_ms)
-         zink_set_fs_key(ctx)->fbfetch_ms = fbfetch_ms;
+      if (zink_get_fs_base_key(ctx)->fbfetch_ms != fbfetch_ms)
+         zink_set_fs_base_key(ctx)->fbfetch_ms = fbfetch_ms;
    }
    ctx->di.fbfetch.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
    if (changed) {
