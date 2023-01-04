@@ -131,9 +131,7 @@ namespace {
          return TGL_PIPE_MATH;
       else if (inst->opcode == SHADER_OPCODE_MOV_INDIRECT ||
                inst->opcode == SHADER_OPCODE_BROADCAST ||
-               inst->opcode == SHADER_OPCODE_SHUFFLE ||
-               (inst->opcode == SHADER_OPCODE_SEL_EXEC &&
-                type_sz(inst->dst.type) > 4))
+               inst->opcode == SHADER_OPCODE_SHUFFLE)
          return TGL_PIPE_INT;
       else if (inst->opcode == FS_OPCODE_PACK_HALF_2x16_SPLIT)
          return TGL_PIPE_FLOAT;
