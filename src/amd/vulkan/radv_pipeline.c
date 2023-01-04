@@ -60,14 +60,6 @@ struct radv_depth_stencil_state {
 };
 
 static bool
-radv_is_raster_enabled(const struct radv_graphics_pipeline *pipeline,
-                       const VkGraphicsPipelineCreateInfo *pCreateInfo)
-{
-   return !pCreateInfo->pRasterizationState->rasterizerDiscardEnable ||
-          (pipeline->dynamic_states & RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE);
-}
-
-static bool
 radv_is_static_vrs_enabled(const struct radv_graphics_pipeline *pipeline,
                            const struct vk_graphics_pipeline_state *state)
 {
