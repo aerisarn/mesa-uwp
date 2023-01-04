@@ -224,7 +224,11 @@ nvk_CreateSampler(VkDevice _device,
    }
 
    assert(device->ctx->eng3d.cls >= KEPLER_A);
-   SAMP_SET_E(samp, NVA097, 1, CUBEMAP_INTERFACE_FILTERING, AUTO_SPAN_SEAM);
+   if (pCreateInfo->flags & VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT) {
+      SAMP_SET_E(samp, NVA097, 1, CUBEMAP_INTERFACE_FILTERING, USE_WRAP);
+   } else {
+      SAMP_SET_E(samp, NVA097, 1, CUBEMAP_INTERFACE_FILTERING, AUTO_SPAN_SEAM);
+   }
 
    if (device->ctx->eng3d.cls >= MAXWELL_B) {
       switch (vk_sampler_create_reduction_mode(pCreateInfo)) {

@@ -203,6 +203,11 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          f->indexTypeUint8 = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT: {
+         VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT *f = (void *)ext;
+         f->nonSeamlessCubeMap = true;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT: {
          VkPhysicalDeviceProvokingVertexFeaturesEXT *f = (void *)ext;
          f->provokingVertexLast = true;
@@ -476,6 +481,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *pdev,
       .EXT_image_2d_view_of_3d = true,
       .EXT_index_type_uint8 = true,
       .EXT_inline_uniform_block = true,
+      .EXT_non_seamless_cube_map = true,
       .EXT_pci_bus_info = true,
       .EXT_private_data = true,
       .EXT_provoking_vertex = true,
