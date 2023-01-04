@@ -33,9 +33,6 @@
 #include <xcb/glx.h>
 #include "GL/mesa_glinterop.h"
 
-static const char __glXGLXClientVendorName[] = "Mesa Project and SGI";
-static const char __glXGLXClientVersion[] = "1.4";
-
 #if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
 
 /**
@@ -1161,11 +1158,11 @@ glXGetClientString(Display * dpy, int name)
 
    switch (name) {
    case GLX_VENDOR:
-      return (__glXGLXClientVendorName);
+      return "Mesa Project and SGI";
    case GLX_VERSION:
-      return (__glXGLXClientVersion);
+      return "1.4";
    case GLX_EXTENSIONS:
-      return (__glXGetClientExtensions(dpy));
+      return __glXGetClientExtensions(dpy);
    default:
       return NULL;
    }
