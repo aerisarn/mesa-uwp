@@ -74,6 +74,10 @@ si_thread_trace_init_bo(struct si_context *sctx)
 static bool
 si_se_is_disabled(struct si_context* sctx, unsigned se)
 {
+   /* FIXME: SQTT only works on SE0 for some unknown reasons. */
+   if (sctx->screen->info.gfx_level == GFX11)
+      return se != 0;
+
    /* No active CU on the SE means it is disabled. */
    return sctx->screen->info.cu_mask[se][0] == 0;
 }
