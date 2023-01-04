@@ -219,6 +219,24 @@ hud_draw_string(struct hud_context *hud, unsigned x, unsigned y,
    hud->text.num_vertices += num/4;
 }
 
+static const char *
+get_float_modifier(double d)
+{
+   /* Round to 3 decimal places so as not to print trailing zeros. */
+   if (d*1000 != (int)(d*1000))
+      d = round(d * 1000) / 1000;
+
+   /* Show at least 4 digits with at most 3 decimal places, but not zeros. */
+   if (d >= 1000 || d == (int)d)
+      return "%.0f";
+   else if (d >= 100 || d*10 == (int)(d*10))
+      return "%.1f";
+   else if (d >= 10 || d*100 == (int)(d*100))
+      return "%.2f";
+   else
+      return "%.3f";
+}
+
 static void
 number_to_human_readable(double num, enum pipe_driver_query_type type,
                          char *out)
@@ -296,19 +314,8 @@ number_to_human_readable(double num, enum pipe_driver_query_type type,
       unit++;
    }
 
-   /* Round to 3 decimal places so as not to print trailing zeros. */
-   if (d*1000 != (int)(d*1000))
-      d = round(d * 1000) / 1000;
-
-   /* Show at least 4 digits with at most 3 decimal places, but not zeros. */
-   if (d >= 1000 || d == (int)d)
-      sprintf(out, "%.0f%s", d, units[unit]);
-   else if (d >= 100 || d*10 == (int)(d*10))
-      sprintf(out, "%.1f%s", d, units[unit]);
-   else if (d >= 10 || d*100 == (int)(d*100))
-      sprintf(out, "%.2f%s", d, units[unit]);
-   else
-      sprintf(out, "%.3f%s", d, units[unit]);
+   sprintf(out, get_float_modifier(d), d);
+   sprintf(out, "%s", units[unit]);
 }
 
 static void
@@ -988,7 +995,8 @@ hud_graph_add_value(struct hud_graph *gr, double value)
          fprintf(gr->fd, "%s: ", gr->name);
       }
       if (fabs(value - lround(value)) > FLT_EPSILON) {
-         fprintf(gr->fd, "%f\n", value);
+         fprintf(gr->fd, get_float_modifier(value), value);
+         fprintf(gr->fd, "\n");
       }
       else {
          fprintf(gr->fd, "%" PRIu64 "\n", (uint64_t) lround(value));
