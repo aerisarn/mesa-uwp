@@ -725,7 +725,6 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
 
 static void
 radv_pipeline_init_multisample_state(struct radv_graphics_pipeline *pipeline,
-                                     const struct radv_blend_state *blend,
                                      const struct vk_graphics_pipeline_state *state,
                                      unsigned rast_prim)
 {
@@ -5266,7 +5265,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
    uint32_t vgt_gs_out_prim_type = radv_pipeline_init_vgt_gs_out(pipeline, &state);
 
-   radv_pipeline_init_multisample_state(pipeline, &blend, &state, vgt_gs_out_prim_type);
+   radv_pipeline_init_multisample_state(pipeline, &state, vgt_gs_out_prim_type);
 
    if (!radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH))
       radv_pipeline_init_input_assembly_state(pipeline);
