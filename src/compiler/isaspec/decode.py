@@ -192,7 +192,7 @@ const struct isa_bitset *${root.get_c_name()}[] = {
 };
 %endfor
 
-#include "decode.c"
+#include "isaspec_decode_impl.c"
 
 """
 
@@ -260,7 +260,7 @@ uint64_t_to_bitmask(uint64_t val)
     return mask;
 }
 
-#include "decode.h"
+#include "isaspec_decode_decl.h"
 
 #endif /* _${guard}_ */
 
