@@ -1685,6 +1685,9 @@ static void si_nir_assign_param_offsets(nir_shader *nir, struct si_shader *shade
    struct si_shader_selector *sel = shader->selector;
    struct si_shader_binary_info *info = &shader->info;
 
+   uint64_t outputs_written = 0;
+   uint32_t outputs_written_16bit = 0;
+
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    assert(impl);
 
@@ -1703,6 +1706,11 @@ static void si_nir_assign_param_offsets(nir_shader *nir, struct si_shader *shade
 
          assert(intr->num_components == 1); /* only scalar stores expected */
          nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+
+         if (sem.location >= VARYING_SLOT_VAR0_16BIT)
+            outputs_written_16bit |= BITFIELD_BIT(sem.location - VARYING_SLOT_VAR0_16BIT);
+         else
+            outputs_written |= BITFIELD64_BIT(sem.location);
 
          /* primitive id output is added by ngg lowering, so we don't have its
           * output info pre-build in si_shader_info. It's handled at last of
@@ -1738,6 +1746,10 @@ static void si_nir_assign_param_offsets(nir_shader *nir, struct si_shader *shade
       info->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] = info->nr_param_exports++;
       info->vs_output_param_mask |= BITFIELD64_BIT(sel->info.num_outputs);
    }
+
+   /* Update outputs written info, we may remove some outputs before. */
+   nir->info.outputs_written = outputs_written;
+   nir->info.outputs_written_16bit = outputs_written_16bit;
 }
 
 static void si_assign_param_offsets(nir_shader *nir, struct si_shader *shader)
