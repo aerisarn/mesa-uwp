@@ -329,6 +329,31 @@ si_copy_thread_trace_info_regs(struct si_context* sctx,
       radeon_emit((info_va + i * 4));
       radeon_emit((info_va + i * 4) >> 32);
    }
+
+   if (sctx->gfx_level == GFX11) {
+      /* On GFX11, WPTR is incremented from the offset of the current buffer base address and it
+       * needs to be subtracted to get the correct offset:
+       *
+       * 1) get the current buffer base address for this SE
+       * 2) shift right by 5 bits because SQ_THREAD_TRACE_WPTR is 32-byte aligned
+       * 3) mask off the higher 3 bits because WPTR.OFFSET is 29 bits
+       */
+      uint64_t data_va =
+         ac_thread_trace_get_data_va(&sctx->screen->info, sctx->thread_trace, va, se_index);
+      uint64_t shifted_data_va = (data_va >> 5);
+      uint64_t init_wptr_value = shifted_data_va & 0x1fffffff;
+
+      radeon_emit(PKT3(PKT3_ATOMIC_MEM, 7, 0));
+      radeon_emit(ATOMIC_OP(TC_OP_ATOMIC_SUB_32));
+      radeon_emit(info_va);
+      radeon_emit(info_va >> 32);
+      radeon_emit(init_wptr_value);
+      radeon_emit(init_wptr_value >> 32);
+      radeon_emit(0);
+      radeon_emit(0);
+      radeon_emit(0);
+   }
+
    radeon_end();
 }
 
