@@ -42,6 +42,9 @@ nvk_get_image_format_features(struct nvk_physical_device *pdevice,
    }
 
    /* TODO: VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT */
+   if (vk_format_has_depth(vk_format)) {
+      features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT;
+   }
 
    if (nil_format_supports_color_targets(pdevice->dev, p_format)) {
       features |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT;
