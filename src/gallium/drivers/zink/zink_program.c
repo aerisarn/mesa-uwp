@@ -371,31 +371,6 @@ update_gfx_shader_modules(struct zink_context *ctx,
    }
 }
 
-ALWAYS_INLINE static void
-update_gfx_shader_modules_optimal(struct zink_context *ctx,
-                                  struct zink_screen *screen,
-                                  struct zink_gfx_program *prog, uint32_t mask,
-                                  struct zink_gfx_pipeline_state *state)
-{
-   assert(prog->modules[MESA_SHADER_VERTEX]);
-   for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++) {
-      if (!(mask & BITFIELD_BIT(i)))
-         continue;
-
-      assert(prog->shaders[i]);
-
-      struct zink_shader_module *zm = get_shader_module_for_stage_optimal(ctx, screen, prog->shaders[i], prog, i, state);
-      if (!zm)
-         zm = create_shader_module_for_stage_optimal(ctx, screen, prog->shaders[i], prog, i, state);
-      if (prog->modules[i] == zm->shader)
-         continue;
-      state->modules_changed = true;
-      prog->modules[i] = zm->shader;
-   }
-
-   prog->last_variant_hash = state->shader_keys_optimal.key.val;
-}
-
 static void
 generate_gfx_program_modules(struct zink_context *ctx, struct zink_screen *screen, struct zink_gfx_program *prog, struct zink_gfx_pipeline_state *state)
 {
