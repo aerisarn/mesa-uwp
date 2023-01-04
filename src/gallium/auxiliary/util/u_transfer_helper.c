@@ -585,9 +585,6 @@ u_transfer_helper_deinterleave_transfer_map(struct pipe_context *pctx,
    unsigned width = box->width;
    unsigned height = box->height;
 
-   if (!need_interleave_path(helper, format))
-      return helper->vtbl->transfer_map(pctx, prsc, level, usage, box, pptrans);
-
    assert(box->depth == 1);
 
    trans = calloc(1, sizeof(*trans));
@@ -680,12 +677,6 @@ u_transfer_helper_deinterleave_transfer_unmap(struct pipe_context *pctx,
                                               struct pipe_transfer *ptrans)
 {
    struct u_transfer_helper *helper = pctx->screen->transfer_helper;
-   enum pipe_format format = ptrans->resource->format;
-
-   if (!need_interleave_path(helper, format)) {
-      helper->vtbl->transfer_unmap(pctx, ptrans);
-      return;
-   }
 
    struct u_transfer *trans = (struct u_transfer *)ptrans;
 
