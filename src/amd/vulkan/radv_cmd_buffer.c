@@ -5656,8 +5656,6 @@ radv_CmdBindIndexBuffer(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDevice
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    RADV_FROM_HANDLE(radv_buffer, index_buffer, buffer);
 
-   cmd_buffer->state.index_buffer = index_buffer;
-   cmd_buffer->state.index_offset = offset;
    cmd_buffer->state.index_type = vk_to_index_type(indexType);
    cmd_buffer->state.index_va = radv_buffer_get_va(index_buffer->bo);
    cmd_buffer->state.index_va += index_buffer->offset + offset;
