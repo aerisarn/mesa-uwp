@@ -5214,8 +5214,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
    struct radv_pipeline_key key = radv_generate_graphics_pipeline_key(pipeline, pCreateInfo, &state);
 
-   struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, &state, &key);
-
    result = radv_create_shaders(&pipeline->base, &pipeline_layout, device, cache, &key, pCreateInfo->pStages,
                                 pCreateInfo->stageCount, pCreateInfo->flags, NULL,
                                 creation_feedback, NULL, NULL, &pipeline->last_vgt_api_stage);
@@ -5237,6 +5235,8 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
    if (device->physical_device->rad_info.gfx_level >= GFX10_3)
       gfx103_pipeline_init_vrs_state(pipeline, &state);
+
+   struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, &state, &key);
 
    /* Copy the non-compacted SPI_SHADER_COL_FORMAT which is used to emit RBPLUS state. */
    pipeline->col_format_non_compacted = blend.spi_shader_col_format;
