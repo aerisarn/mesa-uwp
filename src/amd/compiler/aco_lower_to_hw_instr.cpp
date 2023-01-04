@@ -2383,7 +2383,7 @@ lower_to_hw_instr(Program* program)
                      }
                   } else {
                      SDWA_instruction& sdwa =
-                        bld.vop1_sdwa(aco_opcode::v_mov_b32, dst, op).instr->sdwa();
+                        bld.vop1_sdwa(aco_opcode::v_mov_b32, dst, op)->sdwa();
                      sdwa.sel[0] = SubdwordSel(bits / 8, offset / 8, signext);
                   }
                }
@@ -2421,7 +2421,7 @@ lower_to_hw_instr(Program* program)
                   } else if (offset == 0 && (dst.regClass() == v1 || program->gfx_level <= GFX7)) {
                      bld.vop3(aco_opcode::v_bfe_u32, dst, op, Operand::zero(), Operand::c32(bits));
                   } else if (has_sdwa && (op.regClass() != s1 || program->gfx_level >= GFX9)) {
-                     bld.vop1_sdwa(aco_opcode::v_mov_b32, dst, op).instr->sdwa().dst_sel =
+                     bld.vop1_sdwa(aco_opcode::v_mov_b32, dst, op)->sdwa().dst_sel =
                         SubdwordSel(bits / 8, offset / 8, false);
                   } else if (program->gfx_level >= GFX11) {
                      uint8_t swiz[] = {4, 5, 6, 7};
@@ -2438,8 +2438,7 @@ lower_to_hw_instr(Program* program)
                } else {
                   assert(dst.regClass() == v2b);
                   bld.vop2_sdwa(aco_opcode::v_lshlrev_b32, dst, Operand::c32(offset), op)
-                     .instr->sdwa()
-                     .sel[1] = SubdwordSel::ubyte;
+                     ->sdwa().sel[1] = SubdwordSel::ubyte;
                }
                break;
             }
@@ -2580,7 +2579,7 @@ lower_to_hw_instr(Program* program)
                   Builder::Result ret =
                      bld.vop1_dpp8(aco_opcode::v_mov_b32, Definition(dst0, v1), src0);
                   for (unsigned j = 0; j < 8; j++) {
-                     ret.instr->dpp8().lane_sel[j] = j ^ 1;
+                     ret->dpp8().lane_sel[j] = j ^ 1;
                   }
 
                   /* Swap even lanes between mrt0 and mrt1. */
@@ -2593,7 +2592,7 @@ lower_to_hw_instr(Program* program)
                   ret = bld.vop1_dpp8(aco_opcode::v_mov_b32, Definition(dst0, v1),
                                       Operand(tmp.physReg(), v1));
                   for (unsigned j = 0; j < 8; j++) {
-                     ret.instr->dpp8().lane_sel[j] = j ^ 1;
+                     ret->dpp8().lane_sel[j] = j ^ 1;
                   }
 
                   mrt0[i] = Operand(dst0, v1);

@@ -265,7 +265,7 @@ emit_masked_swizzle(isel_context* ctx, Builder& bld, Temp src, unsigned mask)
          // DPP8 comes last, as it does not allow several modifiers like `abs` that are available with DPP16
          Builder::Result ret = bld.vop1_dpp8(aco_opcode::v_mov_b32, bld.def(v1), src);
          for (unsigned i = 0; i < 8; i++) {
-            ret.instr->dpp8().lane_sel[i] = (((i & and_mask) | or_mask) ^ xor_mask) & 0x7;
+            ret->dpp8().lane_sel[i] = (((i & and_mask) | or_mask) ^ xor_mask) & 0x7;
          }
          return ret;
       }
@@ -1016,7 +1016,7 @@ emit_idot_instruction(isel_context* ctx, nir_alu_instr* instr, aco_opcode op, Te
    Builder bld(ctx->program, ctx->block);
    bld.is_precise = instr->exact;
    VOP3P_instruction& vop3p =
-      bld.vop3p(op, Definition(dst), src[0], src[1], src[2], 0x0, 0x7).instr->vop3p();
+      bld.vop3p(op, Definition(dst), src[0], src[1], src[2], 0x0, 0x7)->vop3p();
    vop3p.clamp = clamp;
    u_foreach_bit (i, neg_lo)
       vop3p.neg_lo[i] = true;
@@ -1363,7 +1363,7 @@ uadd32_sat(Builder& bld, Definition dst, Temp src0, Temp src1)
    } else {
       add = bld.vop2_e64(aco_opcode::v_add_co_u32, dst, bld.def(bld.lm), src0, src1);
    }
-   add.instr->vop3().clamp = 1;
+   add->vop3().clamp = 1;
    return dst.getTemp();
 }
 
@@ -1382,7 +1382,7 @@ usub32_sat(Builder& bld, Definition dst, Temp src0, Temp src1)
    } else {
       sub = bld.vop2_e64(aco_opcode::v_sub_co_u32, dst, bld.def(bld.lm), src0, src1);
    }
-   sub.instr->vop3().clamp = 1;
+   sub->vop3().clamp = 1;
    return dst.getTemp();
 }
 
@@ -1978,8 +1978,7 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
             carry1 = bld.tmp(bld.lm);
             bld.vop2_e64(aco_opcode::v_addc_co_u32, Definition(dst1), Definition(carry1),
                          as_vgpr(ctx, src01), as_vgpr(ctx, src11), carry0)
-               .instr->vop3()
-               .clamp = 1;
+               ->vop3().clamp = 1;
          } else {
             Temp no_sat1 = bld.tmp(v1);
             carry1 = bld.vadd32(Definition(no_sat1), src01, src11, true, carry0).def(1).getTemp();
@@ -2221,8 +2220,7 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
             carry1 = bld.tmp(bld.lm);
             bld.vop2_e64(aco_opcode::v_subb_co_u32, Definition(dst1), Definition(carry1),
                          as_vgpr(ctx, src01), as_vgpr(ctx, src11), carry0)
-               .instr->vop3()
-               .clamp = 1;
+               ->vop3().clamp = 1;
          } else {
             Temp no_sat1 = bld.tmp(v1);
             carry1 = bld.vsub32(Definition(no_sat1), src01, src11, true, carry0).def(1).getTemp();
@@ -5152,7 +5150,7 @@ emit_single_mubuf_store(isel_context* ctx, Temp descriptor, Temp voffset, Temp s
                 offen, swizzled, idxen, /* addr64 */ false, /* disable_wqm */ false, glc,
                 /* dlc*/ false, slc);
 
-   r.instr->mubuf().sync = sync;
+   r->mubuf().sync = sync;
 }
 
 void
@@ -5402,7 +5400,7 @@ emit_interp_instr(isel_context* ctx, unsigned idx, unsigned component, Temp src,
                                              bld.m0(prim_mask), idx, component);
 
       if (ctx->program->dev.has_16bank_lds)
-         interp_p1.instr->operands[0].setLateKill(true);
+         interp_p1->operands[0].setLateKill(true);
 
       bld.vintrp(aco_opcode::v_interp_p2_f32, Definition(dst), coord2, bld.m0(prim_mask), interp_p1,
                  idx, component);
@@ -6022,7 +6020,7 @@ visit_load_push_constant(isel_context* ctx, nir_intrinsic_instr* instr)
    default: unreachable("unimplemented or forbidden load_push_constant.");
    }
 
-   bld.smem(op, Definition(vec), ptr, index).instr->smem().prevent_overflow = true;
+   bld.smem(op, Definition(vec), ptr, index)->smem().prevent_overflow = true;
 
    if (!aligned) {
       Operand byte_offset = index_cv ? Operand::c32((offset + index_cv->u32) % 4) : Operand(index);
