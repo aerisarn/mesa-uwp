@@ -1875,8 +1875,8 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
             nir_shader *nir = nir_create_passthrough_gs(
                &screen->nir_options,
                ctx->gfx_stages[prev_vertex_stage]->nir,
-               lower_line_stipple ? SHADER_PRIM_LINE_STRIP :  SHADER_PRIM_POINTS,
-               lower_line_stipple ? 2 : 1);
+               (lower_line_stipple || lower_line_smooth) ? SHADER_PRIM_LINE_STRIP :  SHADER_PRIM_POINTS,
+               (lower_line_stipple || lower_line_smooth) ? 2 : 1);
 
             struct zink_shader *shader = zink_shader_create(screen, nir, NULL);
             ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs = shader;
