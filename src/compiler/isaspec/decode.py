@@ -23,6 +23,7 @@
 
 from mako.template import Template
 from isa import ISA
+import argparse
 import os
 import sys
 
@@ -293,20 +294,41 @@ glue = """\
 
 """
 
-xml = sys.argv[1]
-glue_h = sys.argv[2]
-dst_c = sys.argv[3]
-dst_h = sys.argv[4]
+def guard(p):
+    return os.path.basename(p).upper().replace("-", "_").replace(".", "_")
 
-isa = ISA(xml)
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--xml', required=True, help='isaspec XML file.')
+    parser.add_argument('--out-c', required=True, help='Output C file.')
+    parser.add_argument('--out-h', required=True, help='Output H file.')
+    parser.add_argument('--out-glue-h',
+                        required=True,
+                        help='Output glue H file.')
+    args = parser.parse_args()
 
-with open(glue_h, 'w') as f:
-    guard = os.path.basename(glue_h).upper().replace("-", "_").replace(".", "_")
-    f.write(Template(glue).render(guard=guard, isa=os.path.basename(dst_h)))
+    isa = ISA(args.xml)
 
-with open(dst_c, 'w') as f:
-    f.write(Template(template).render(isa=isa))
+    try:
+        with open(args.out_glue_h, 'w') as f:
+            f.write(Template(glue).render(guard=guard(args.out_glue_h),
+                                          isa=os.path.basename(args.out_h)))
 
-with open(dst_h, 'w') as f:
-    guard = os.path.basename(dst_h).upper().replace("-", "_").replace(".", "_")
-    f.write(Template(header).render(isa=isa, guard=guard))
+        with open(args.out_c, 'w') as f:
+            f.write(Template(template).render(isa=isa))
+
+        with open(args.out_h, 'w') as f:
+            f.write(Template(header).render(isa=isa, guard=guard(args.out_h)))
+
+    except Exception:
+        # In the event there's an error, this imports some helpers from mako
+        # to print a useful stack trace and prints it, then exits with
+        # status 1, if python is run with debug; otherwise it just raises
+        # the exception
+        import sys
+        from mako import exceptions
+        print(exceptions.text_error_template().render(), file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()

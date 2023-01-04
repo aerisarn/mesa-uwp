@@ -36,7 +36,8 @@ ir3_isa = custom_target(
   input: ['ir3.xml'],
   output: ['isaspec-isa.h', 'ir3-isa.c', 'ir3-isa.h'],
   command: [
-    prog_isaspec_decode, '@INPUT@', '@OUTPUT@'
+    prog_isaspec_decode, '--xml', '@INPUT@', '--out-glue-h', '@OUTPUT0@',
+    '--out-c', '@OUTPUT1@', '--out-h', '@OUTPUT2@',
   ],
   depend_files: isa_depend_files,
 )
@@ -76,7 +77,7 @@ encode_h = custom_target(
   input: ['ir3.xml'],
   output: 'encode.h',
   command: [
-    prog_isaspec_encode, '@INPUT@', '@OUTPUT@'
+    prog_isaspec_encode, '--xml', '@INPUT@', '--out-h', '@OUTPUT@'
   ],
   depend_files: isa_depend_files,
 )

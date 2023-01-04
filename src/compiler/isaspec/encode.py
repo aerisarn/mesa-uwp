@@ -23,6 +23,7 @@
 
 from mako.template import Template
 from isa import ISA, BitSetDerivedField, BitSetAssertField
+import argparse
 import sys
 import re
 
@@ -683,14 +684,28 @@ isa = s.isa
 """
 
 def main():
-    xml = sys.argv[1]
-    dst = sys.argv[2]
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--xml', required=True, help='isaspec XML file.')
+    parser.add_argument('--out-h', required=True, help='Output H file.')
+    args = parser.parse_args()
 
-    isa = ISA(xml)
+    isa = ISA(args.xml)
     s = State(isa)
 
-    with open(dst, 'w') as f:
-        f.write(Template(template).render(s=s, encode_bitset=Template(encode_bitset_template)))
+    try:
+        with open(args.out_h, 'w') as f:
+            encode_bitset = Template(encode_bitset_template)
+            f.write(Template(template).render(s=s, encode_bitset=encode_bitset))
+
+    except Exception:
+        # In the event there's an error, this imports some helpers from mako
+        # to print a useful stack trace and prints it, then exits with
+        # status 1, if python is run with debug; otherwise it just raises
+        # the exception
+        import sys
+        from mako import exceptions
+        print(exceptions.text_error_template().render(), file=sys.stderr)
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
