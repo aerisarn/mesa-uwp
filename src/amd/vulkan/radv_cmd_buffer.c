@@ -8422,7 +8422,6 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
        */
       if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
          cmd_buffer->state.last_index_type = -1;
-         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_INDEX_BUFFER;
       }
    }
 
