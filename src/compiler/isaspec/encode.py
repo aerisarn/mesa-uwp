@@ -63,11 +63,11 @@ import re
 # by an override, so the exact choice to encode a given field
 # in a bitset may be conditional
 class FieldCase(object):
-    def __init__(self, field, case):
+    def __init__(self, bitset, field, case):
         self.field = field
         self.expr  = None
         if case.expr is not None:
-            self.expr = isa.expressions[case.expr]
+            self.expr = bitset.isa.expressions[case.expr]
 
     def signed(self):
         if self.field.type in ['int', 'offset', 'branch']:
@@ -75,11 +75,11 @@ class FieldCase(object):
         return 'false'
 
 class AssertField(object):
-    def __init__(self, field, case):
+    def __init__(self, bitset, field, case):
         self.field = field
         self.expr  = None
         if case.expr is not None:
-            self.expr = isa.expressions[case.expr]
+            self.expr = bitset.isa.expressions[case.expr]
 
     def signed(self):
         return 'false'
@@ -116,13 +116,13 @@ class DisplayField(object):
                     expr = bitset.isa.expressions[field.expr]
                     self.case.append_expr_fields(expr)
                 elif not isinstance(field, BitSetAssertField):
-                    yield FieldCase(field, case)
+                    yield FieldCase(bitset, field, case)
                 # if we've found an unconditional case specifying
                 # the named field, we are done
                 if case.expr is None:
                     return
         if bitset.extends is not None:
-            yield from self.fields(isa.bitsets[bitset.extends])
+            yield from self.fields(bitset.isa.bitsets[bitset.extends])
 
 # Represents an if/else case in bitset encoding which has a display
 # template string:
@@ -132,7 +132,7 @@ class Case(object):
         self.case = case
         self.expr = None
         if case.expr is not None:
-            self.expr = isa.expressions[case.expr]
+            self.expr = bitset.isa.expressions[case.expr]
         self.fieldnames = re.findall(r"{([a-zA-Z0-9_:]+)}", case.display)
         self.append_forced(bitset)
 
@@ -146,7 +146,7 @@ class Case(object):
             for name, val in bitset.encode.forced.items():
                 self.append_field(name)
         if bitset.extends is not None:
-            self.append_forced(isa.bitsets[bitset.extends])
+            self.append_forced(bitset.isa.bitsets[bitset.extends])
 
     # In the process of resolving a field, we might discover additional
     # fields that need resolving:
@@ -173,9 +173,9 @@ class Case(object):
         for case in bitset.cases:
             for name, field in case.fields.items():
                 if field.get_c_typename() == 'TYPE_ASSERT':
-                    yield AssertField(field, case)
+                    yield AssertField(bitset, field, case)
         if bitset.extends is not None:
-            yield from self.assert_cases(isa.bitsets[bitset.extends])
+            yield from self.assert_cases(bitset.isa.bitsets[bitset.extends])
 
 # State and helpers used by the template:
 class State(object):
@@ -191,7 +191,7 @@ class State(object):
                 # if this is the last case (ie. case.expr is None)
                 # then we need to go up the inheritance chain:
                 if case.expr is None and bitset.extends is not None:
-                    parent_bitset = isa.bitsets[bitset.extends]
+                    parent_bitset = bitset.isa.bitsets[bitset.extends]
                     yield from self.bitset_cases(parent_bitset, leaf_bitset)
                 continue;
             yield Case(leaf_bitset, case)
@@ -202,7 +202,7 @@ class State(object):
         unique_names = []
         for root in self.encode_roots():
             for leaf in self.encode_leafs(root):
-                for case in s.bitset_cases(leaf):
+                for case in self.bitset_cases(leaf):
                     for df in case.display_fields():
                         for f in df.fields():
                             if f.field.get_c_typename() == 'TYPE_BITSET':
@@ -285,7 +285,7 @@ class State(object):
             else:
                 extr = self.extractor_fallback(bitset, name)
         if field and field.get_c_typename() == 'TYPE_BITSET':
-            extr = 'encode' + isa.roots[field.type].get_c_name() + '(s, ' + p + ', ' + extr + ')'
+            extr = 'encode' + self.isa.roots[field.type].get_c_name() + '(s, ' + p + ', ' + extr + ')'
         return extr
 
     # A limited resolver for field type which doesn't properly account for
@@ -302,7 +302,7 @@ class State(object):
         if field is not None:
             return field
         if bitset.extends is not None:
-            return self.resolve_simple_field(isa.bitsets[bitset.extends], name)
+            return self.resolve_simple_field(bitset.isa.bitsets[bitset.extends], name)
         return None
 
     def encode_type(self, bitset):
@@ -310,7 +310,7 @@ class State(object):
             if bitset.encode.type is not None:
                 return bitset.encode.type
         if bitset.extends is not None:
-            return self.encode_type(isa.bitsets[bitset.extends])
+            return self.encode_type(bitset.isa.bitsets[bitset.extends])
         return None
 
     def expr_name(self, root, expr):
@@ -682,11 +682,15 @@ isa = s.isa
 %endfor
 """
 
-xml = sys.argv[1]
-dst = sys.argv[2]
+def main():
+    xml = sys.argv[1]
+    dst = sys.argv[2]
 
-isa = ISA(xml)
-s = State(isa)
+    isa = ISA(xml)
+    s = State(isa)
 
-with open(dst, 'w') as f:
-    f.write(Template(template).render(s=s, encode_bitset=Template(encode_bitset_template)))
+    with open(dst, 'w') as f:
+        f.write(Template(template).render(s=s, encode_bitset=Template(encode_bitset_template)))
+
+if __name__ == '__main__':
+    main()
