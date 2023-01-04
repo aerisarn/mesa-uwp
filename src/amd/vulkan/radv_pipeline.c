@@ -5284,6 +5284,13 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    bool enable_mrt_compaction = !key.ps.epilog.mrt0_is_dual_src && !ps->info.ps.has_epilog;
    if (enable_mrt_compaction) {
       blend.spi_shader_col_format = radv_compact_spi_shader_col_format(ps, &blend);
+
+      /* In presense of MRT holes (ie. the FS exports MRT1 but not MRT0), the compiler will remap
+       * them, so that only MRT0 is exported and the driver will compact SPI_SHADER_COL_FORMAT to
+       * match what the FS actually exports. Though, to make sure the hw remapping works as
+       * expected, we should also clear color attachments without exports in CB_SHADER_MASK.
+       */
+      blend.cb_shader_mask &= ps->info.ps.colors_written;
    }
 
    /* Ensure that some export memory is always allocated, for two reasons:
@@ -5307,15 +5314,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
          blend.spi_shader_col_format = V_028714_SPI_SHADER_32_R;
          pipeline->col_format_non_compacted = V_028714_SPI_SHADER_32_R;
       }
-   }
-
-   if (enable_mrt_compaction) {
-      /* In presense of MRT holes (ie. the FS exports MRT1 but not MRT0), the compiler will remap
-       * them, so that only MRT0 is exported and the driver will compact SPI_SHADER_COL_FORMAT to
-       * match what the FS actually exports. Though, to make sure the hw remapping works as
-       * expected, we should also clear color attachments without exports in CB_SHADER_MASK.
-       */
-      blend.cb_shader_mask &= ps->info.ps.colors_written;
    }
 
    if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY) && !radv_pipeline_has_ngg(pipeline)) {
