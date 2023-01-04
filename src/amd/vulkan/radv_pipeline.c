@@ -618,8 +618,7 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
          VkBlendFactor srcA = state->cb->attachments[i].src_alpha_blend_factor;
          VkBlendFactor dstA = state->cb->attachments[i].dst_alpha_blend_factor;
 
-         if (!(pipeline->dynamic_states & RADV_DYNAMIC_COLOR_WRITE_MASK) &&
-             !state->cb->attachments[i].write_mask)
+         if (!state->cb->attachments[i].write_mask)
             continue;
 
          /* Ignore other blend targets if dual-source blending
@@ -628,8 +627,7 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
          if (i > 0 && key->ps.epilog.mrt0_is_dual_src)
             continue;
 
-         if (!(pipeline->dynamic_states & RADV_DYNAMIC_COLOR_BLEND_ENABLE) &&
-             !state->cb->attachments[i].blend_enable) {
+         if (!state->cb->attachments[i].blend_enable) {
             pipeline->cb_blend_control[i] = blend_cntl;
             continue;
          }
@@ -946,10 +944,6 @@ radv_pipeline_is_blend_enabled(const struct radv_graphics_pipeline *pipeline,
                                const struct vk_color_blend_state *cb)
 {
    if (cb) {
-      if (pipeline->dynamic_states & (RADV_DYNAMIC_COLOR_WRITE_MASK |
-                                      RADV_DYNAMIC_COLOR_BLEND_ENABLE))
-         return true;
-
       for (uint32_t i = 0; i < cb->attachment_count; i++) {
          if (cb->attachments[i].write_mask && cb->attachments[i].blend_enable)
             return true;
@@ -2467,25 +2461,12 @@ radv_pipeline_generate_ps_epilog_key(const struct radv_graphics_pipeline *pipeli
          if (i > 0 && ps_epilog.mrt0_is_dual_src)
             continue;
 
-         if (pipeline->dynamic_states & RADV_DYNAMIC_COLOR_WRITE_MASK) {
-            /* Assume it's written when dynamic because it's hard to change color formats
-             * dynamically without PS epilogs on-demand.
-             */
-            ps_epilog.color_write_mask |= 0xfu << (i * 4);
-         } else {
-            ps_epilog.color_write_mask |= (unsigned)state->cb->attachments[i].write_mask << (4 * i);
-         }
-
+         ps_epilog.color_write_mask |= (unsigned)state->cb->attachments[i].write_mask << (4 * i);
          if (!((ps_epilog.color_write_mask >> (i * 4)) & 0xf))
             continue;
 
-         /* Assume blend is enabled when the state is dynamic. This might select a suboptimal format
-          * in some situations but changing color export formats dynamically is hard.
-          */
-         if ((pipeline->dynamic_states & RADV_DYNAMIC_COLOR_BLEND_ENABLE) ||
-             state->cb->attachments[i].blend_enable) {
+         if (state->cb->attachments[i].blend_enable)
             ps_epilog.color_blend_enable |= 0xfu << (i * 4);
-         }
 
          if (!((ps_epilog.color_blend_enable >> (i * 4)) & 0xf))
             continue;
