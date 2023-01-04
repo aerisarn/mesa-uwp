@@ -495,22 +495,14 @@ u_transfer_helper_transfer_flush_region(struct pipe_context *pctx,
    }
 }
 
-static void
-u_transfer_helper_deinterleave_transfer_unmap(struct pipe_context *pctx,
-                                              struct pipe_transfer *ptrans);
-
 void
 u_transfer_helper_transfer_unmap(struct pipe_context *pctx,
                                  struct pipe_transfer *ptrans)
 {
    struct u_transfer_helper *helper = pctx->screen->transfer_helper;
+   bool interleave = need_interleave_path(helper, ptrans->resource->format);
 
-   if (need_interleave_path(helper, ptrans->resource->format)) {
-      u_transfer_helper_deinterleave_transfer_unmap(pctx, ptrans);
-      return;
-   }
-
-   if (handle_transfer(ptrans->resource)) {
+   if (handle_transfer(ptrans->resource) || interleave) {
       struct u_transfer *trans = u_transfer(ptrans);
 
       if (!(ptrans->usage & PIPE_MAP_FLUSH_EXPLICIT)) {
@@ -670,28 +662,4 @@ fail:
    free(trans->staging);
    free(trans);
    return NULL;
-}
-
-static void
-u_transfer_helper_deinterleave_transfer_unmap(struct pipe_context *pctx,
-                                              struct pipe_transfer *ptrans)
-{
-   struct u_transfer_helper *helper = pctx->screen->transfer_helper;
-
-   struct u_transfer *trans = (struct u_transfer *)ptrans;
-
-   if (!(ptrans->usage & PIPE_MAP_FLUSH_EXPLICIT)) {
-      struct pipe_box box;
-      u_box_2d(0, 0, ptrans->box.width, ptrans->box.height, &box);
-      flush_region(pctx, ptrans, &box);
-   }
-
-   helper->vtbl->transfer_unmap(pctx, trans->trans);
-   if (trans->trans2)
-      helper->vtbl->transfer_unmap(pctx, trans->trans2);
-
-   pipe_resource_reference(&ptrans->resource, NULL);
-
-   free(trans->staging);
-   free(trans);
 }
