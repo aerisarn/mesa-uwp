@@ -542,7 +542,6 @@ si_get_thread_trace(struct si_context *sctx,
    unsigned max_se = sctx->screen->info.max_se;
 
    memset(thread_trace, 0, sizeof(*thread_trace));
-   thread_trace->num_traces = max_se;
 
    sctx->thread_trace->ptr = sctx->ws->buffer_map(sctx->ws, sctx->thread_trace->bo,
                                                           NULL,
@@ -562,6 +561,9 @@ si_get_thread_trace(struct si_context *sctx,
          (struct ac_thread_trace_info *)info_ptr;
 
       struct ac_thread_trace_se thread_trace_se = {0};
+
+      if (si_se_is_disabled(sctx, se))
+         continue;
 
       if (!ac_is_thread_trace_complete(&sctx->screen->info, sctx->thread_trace, info)) {
          uint32_t expected_size =
@@ -588,7 +590,8 @@ si_get_thread_trace(struct si_context *sctx,
       thread_trace_se.compute_unit =
          sctx->screen->info.gfx_level >= GFX10 ? (first_active_cu / 2) : first_active_cu;
 
-      thread_trace->traces[se] = thread_trace_se;
+      thread_trace->traces[thread_trace->num_traces] = thread_trace_se;
+      thread_trace->num_traces++;
    }
 
    thread_trace->data = sctx->thread_trace;
