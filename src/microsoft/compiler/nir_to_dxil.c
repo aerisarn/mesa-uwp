@@ -5251,12 +5251,21 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
       store_dest(ctx, &instr->dest, 1, sample, nir_alu_type_get_base_type(instr->dest_type));
       return true;
 
-   case nir_texop_query_levels:
+   case nir_texop_query_levels: {
       params.lod_or_sample = dxil_module_get_int_const(&ctx->mod, 0, 32);
       sample = emit_texture_size(ctx, &params);
       const struct dxil_value *retval = dxil_emit_extractval(&ctx->mod, sample, 3);
       store_dest(ctx, &instr->dest, 0, retval, nir_alu_type_get_base_type(instr->dest_type));
       return true;
+   }
+
+   case nir_texop_texture_samples: {
+      params.lod_or_sample = int_undef;
+      sample = emit_texture_size(ctx, &params);
+      const struct dxil_value *retval = dxil_emit_extractval(&ctx->mod, sample, 3);
+      store_dest(ctx, &instr->dest, 0, retval, nir_alu_type_get_base_type(instr->dest_type));
+      return true;
+   }
 
    default:
       fprintf(stderr, "texture op: %d\n", instr->op);
