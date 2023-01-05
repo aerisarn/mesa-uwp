@@ -6034,7 +6034,7 @@ allocate_sysvalues(struct ntd_context *ctx)
    if (ctx->shader->info.stage == MESA_SHADER_FRAGMENT &&
        ctx->shader->info.inputs_read &&
        !BITSET_TEST(ctx->shader->info.system_values_read, SYSTEM_VALUE_SAMPLE_ID)) {
-      bool need_sample_id = true;
+      bool need_sample_id = false;
 
       /* "var->data.sample = true" sometimes just mean, "I want per-sample
        * shading", which explains why we can end up with vars having flat
@@ -6043,10 +6043,17 @@ allocate_sysvalues(struct ntd_context *ctx)
        * to make DXIL validation happy.
        */
       nir_foreach_variable_with_modes(var, ctx->shader, nir_var_shader_in) {
-         if (!var->data.sample || var->data.interpolation != INTERP_MODE_FLAT) {
+         bool var_can_be_sample_rate = !var->data.centroid && var->data.interpolation != INTERP_MODE_FLAT;
+         /* If there's an input that will actually force sample-rate shading, then we don't
+          * need SV_SampleIndex. */
+         if (var->data.sample && var_can_be_sample_rate) {
             need_sample_id = false;
             break;
          }
+         /* If there's an input that wants to be sample-rate, but can't be, then we might
+          * need SV_SampleIndex. */
+         if (var->data.sample && !var_can_be_sample_rate)
+            need_sample_id = true;
       }
 
       if (need_sample_id)
