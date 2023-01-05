@@ -504,7 +504,7 @@ kill_undefined_varyings(struct nir_builder *b,
    uint64_t written = var->data.patch ?
                       prev_stage_nir->info.patch_outputs_written :
                       prev_stage_nir->info.outputs_written;
-   if (BITFIELD64_BIT(loc) & written)
+   if (BITFIELD64_RANGE(loc, glsl_varying_count(var->type)) & written)
       return false;
 
    b->cursor = nir_after_instr(instr);
@@ -555,7 +555,7 @@ kill_unused_outputs(struct nir_builder *b,
    unsigned loc = var->data.patch ?
                   var->data.location - VARYING_SLOT_PATCH0 :
                   var->data.location;
-   if (!(BITFIELD64_BIT(loc) & kill_mask))
+   if (!(BITFIELD64_RANGE(loc, glsl_varying_count(var->type)) & kill_mask))
       return false;
 
    nir_instr_remove(instr);
