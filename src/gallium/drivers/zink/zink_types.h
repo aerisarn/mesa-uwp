@@ -797,6 +797,7 @@ struct zink_gfx_pipeline_state {
    uint32_t vertex_buffers_enabled_mask;
    uint32_t vertex_strides[PIPE_MAX_ATTRIBS];
    struct zink_vertex_elements_hw_state *element_state;
+   struct zink_fs_shadow_key *shadow;
    bool sample_locations_enabled;
    enum pipe_prim_type shader_rast_prim, rast_prim; /* reduced type or max for unknown */
    union {
@@ -875,7 +876,7 @@ struct zink_shader_module {
    bool has_nonseamless;
    uint8_t num_uniforms;
    uint8_t key_size;
-   uint8_t key[0]; /* | key | uniforms | */
+   uint8_t key[0]; /* | key | uniforms | shadow swizzle | */
 };
 
 struct zink_program {
@@ -900,6 +901,7 @@ struct zink_program {
 };
 
 #define STAGE_MASK_OPTIMAL (1<<16)
+#define STAGE_MASK_OPTIMAL_SHADOW (1<<17)
 typedef bool (*equals_gfx_pipeline_state_func)(const void *a, const void *b);
 
 struct zink_gfx_library_key {
