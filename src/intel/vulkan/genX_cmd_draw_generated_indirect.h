@@ -588,6 +588,12 @@ genX(cmd_buffer_emit_generate_draws_count)(struct anv_cmd_buffer *cmd_buffer,
                 },
                 offsetof(struct anv_generate_indirect_params, draw_count.draw_count)),
              count_addr, 4);
+   /* Make sure the memcpy landed for the generating draw call to pick up the
+    * value.
+    */
+   anv_batch_emit(batch, GENX(PIPE_CONTROL), pc) {
+      pc.CommandStreamerStallEnable = true;
+   }
 
    /* Only emit the data after the memcpy above. */
    genX(cmd_buffer_emit_generated_push_data)(cmd_buffer, push_data_state);
