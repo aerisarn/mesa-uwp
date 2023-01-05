@@ -794,8 +794,7 @@ dxil_spirv_nir_passes(nir_shader *nir,
    // Force sample-rate shading if we're asked to.
    if (conf->force_sample_rate_shading) {
       assert(nir->info.stage == MESA_SHADER_FRAGMENT);
-      nir_foreach_shader_in_variable(var, nir)
-         var->data.sample = true;
+      nir->info.fs.uses_sample_shading = true;
    }
 
    if (conf->zero_based_vertex_instance_id) {

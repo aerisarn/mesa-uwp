@@ -5764,7 +5764,9 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
    }
 
    ctx->mod.info.has_per_sample_input =
-      BITSET_TEST(ctx->shader->info.system_values_read, SYSTEM_VALUE_SAMPLE_ID);
+      BITSET_TEST(ctx->shader->info.system_values_read, SYSTEM_VALUE_SAMPLE_ID) ||
+      ctx->shader->info.fs.uses_sample_shading ||
+      ctx->shader->info.fs.uses_sample_qualifier;
    if (!ctx->mod.info.has_per_sample_input && ctx->shader->info.stage == MESA_SHADER_FRAGMENT) {
       nir_foreach_variable_with_modes(var, ctx->shader, nir_var_shader_in | nir_var_system_value) {
          if (var->data.sample) {
@@ -6032,9 +6034,8 @@ allocate_sysvalues(struct ntd_context *ctx)
       driver_location = MAX2(driver_location, var->data.driver_location + 1);
 
    if (ctx->shader->info.stage == MESA_SHADER_FRAGMENT &&
-       ctx->shader->info.inputs_read &&
        !BITSET_TEST(ctx->shader->info.system_values_read, SYSTEM_VALUE_SAMPLE_ID)) {
-      bool need_sample_id = false;
+      bool need_sample_id = ctx->shader->info.fs.uses_sample_shading;
 
       /* "var->data.sample = true" sometimes just mean, "I want per-sample
        * shading", which explains why we can end up with vars having flat
