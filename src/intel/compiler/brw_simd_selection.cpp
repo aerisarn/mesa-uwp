@@ -138,10 +138,33 @@ brw_simd_should_compile(brw_simd_selection_state &state, unsigned simd)
       return false;
    }
 
-   static const bool env_skip[] = {
-      INTEL_DEBUG(DEBUG_NO8) != 0,
-      INTEL_DEBUG(DEBUG_NO16) != 0,
-      INTEL_DEBUG(DEBUG_NO32) != 0,
+   uint64_t start;
+   switch (cs_prog_data->base.stage) {
+   case MESA_SHADER_COMPUTE:
+      start = DEBUG_CS_SIMD8;
+      break;
+   case MESA_SHADER_TASK:
+      start = DEBUG_TS_SIMD8;
+      break;
+   case MESA_SHADER_MESH:
+      start = DEBUG_MS_SIMD8;
+      break;
+   case MESA_SHADER_RAYGEN:
+   case MESA_SHADER_ANY_HIT:
+   case MESA_SHADER_CLOSEST_HIT:
+   case MESA_SHADER_MISS:
+   case MESA_SHADER_INTERSECTION:
+   case MESA_SHADER_CALLABLE:
+      start = DEBUG_RT_SIMD8;
+      break;
+   default:
+      unreachable(!"unknown shader stage in brw_simd_should_compile");
+   }
+
+   const bool env_skip[] = {
+      (intel_simd & (start << 0)) == 0,
+      (intel_simd & (start << 1)) == 0,
+      (intel_simd & (start << 2)) == 0,
    };
 
    static_assert(ARRAY_SIZE(env_skip) == SIMD_COUNT);
