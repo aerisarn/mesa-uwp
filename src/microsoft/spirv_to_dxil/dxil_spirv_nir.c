@@ -490,7 +490,7 @@ kill_undefined_varyings(struct nir_builder *b,
       return false;
 
    nir_variable *var = nir_intrinsic_get_var(intr, 0);
-   if (!var)
+   if (!var || var->data.mode != nir_var_shader_in)
       return false;
 
    /* Ignore builtins for now, some of them get default values
