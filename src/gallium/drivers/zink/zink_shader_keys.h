@@ -67,6 +67,15 @@ struct zink_gs_key {
    unsigned size;
 };
 
+struct zink_fs_shadow_swizzle {
+   uint8_t s[4];
+};
+
+struct zink_fs_shadow_key {
+   uint32_t mask;
+   struct zink_fs_shadow_swizzle swizzle[32];
+};
+
 struct zink_fs_key_base {
    bool coord_replace_yinvert : 1;
    bool samples : 1;

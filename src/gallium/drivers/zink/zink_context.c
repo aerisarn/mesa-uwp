@@ -1022,6 +1022,19 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
             ivci.components.b = zink_component_mapping(clamp_zs_swizzle(sampler_view->base.swizzle_b));
             ivci.components.a = zink_component_mapping(clamp_zs_swizzle(sampler_view->base.swizzle_a));
          }
+         if (ivci.subresourceRange.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT) {
+            VkComponentSwizzle *swizzle = (VkComponentSwizzle*)&ivci.components;
+            for (unsigned i = 0; i < 4; i++) {
+               /* these require shader rewrites to correctly emulate */
+               if (swizzle[i] == VK_COMPONENT_SWIZZLE_ONE || swizzle[i] == VK_COMPONENT_SWIZZLE_ZERO)
+                  sampler_view->shadow_needs_shader_swizzle = true;
+            }
+            /* this is the data that will be used in shader rewrites */
+            sampler_view->swizzle.s[0] = clamp_zs_swizzle(sampler_view->base.swizzle_r);
+            sampler_view->swizzle.s[1] = clamp_zs_swizzle(sampler_view->base.swizzle_g);
+            sampler_view->swizzle.s[2] = clamp_zs_swizzle(sampler_view->base.swizzle_b);
+            sampler_view->swizzle.s[3] = clamp_zs_swizzle(sampler_view->base.swizzle_a);
+         }
       } else {
          enum pipe_swizzle swizzle[4] = {
             sampler_view->base.swizzle_r,
