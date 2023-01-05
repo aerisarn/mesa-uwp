@@ -229,7 +229,7 @@ genX(cmd_buffer_emit_generate_draws_pipeline)(struct anv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.gfx.vb_dirty = BITFIELD_BIT(0) | BITFIELD_BIT(1);
    cmd_buffer->state.gfx.dirty |= ~(ANV_CMD_DIRTY_INDEX_BUFFER |
                                     ANV_CMD_DIRTY_XFB_ENABLE);
-   cmd_buffer->state.push_constants_dirty |= VK_SHADER_STAGE_ALL_GRAPHICS;
+   cmd_buffer->state.push_constants_dirty |= VK_SHADER_STAGE_FRAGMENT_BIT;
    cmd_buffer->state.gfx.push_constant_stages = VK_SHADER_STAGE_FRAGMENT_BIT;
    vk_dynamic_graphics_state_dirty_all(&cmd_buffer->vk.dynamic_graphics_state);
 }
