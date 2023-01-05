@@ -3085,10 +3085,10 @@ dzn_sampler_create(struct dzn_device *device,
       switch (pCreateInfo->borderColor) {
       case VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK:
       case VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK:
-         sampler->desc.BorderColor[0] = 0.0f;
-         sampler->desc.BorderColor[1] = 0.0f;
-         sampler->desc.BorderColor[2] = 0.0f;
-         sampler->desc.BorderColor[3] =
+         sampler->desc.FloatBorderColor[0] = 0.0f;
+         sampler->desc.FloatBorderColor[1] = 0.0f;
+         sampler->desc.FloatBorderColor[2] = 0.0f;
+         sampler->desc.FloatBorderColor[3] =
             pCreateInfo->borderColor == VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK ? 0.0f : 1.0f;
          sampler->static_border_color =
             pCreateInfo->borderColor == VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK ?
@@ -3096,21 +3096,39 @@ dzn_sampler_create(struct dzn_device *device,
             D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
          break;
       case VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE:
-         sampler->desc.BorderColor[0] = sampler->desc.BorderColor[1] = 1.0f;
-         sampler->desc.BorderColor[2] = sampler->desc.BorderColor[3] = 1.0f;
+         sampler->desc.FloatBorderColor[0] = sampler->desc.FloatBorderColor[1] = 1.0f;
+         sampler->desc.FloatBorderColor[2] = sampler->desc.FloatBorderColor[3] = 1.0f;
          sampler->static_border_color = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
          break;
       case VK_BORDER_COLOR_FLOAT_CUSTOM_EXT:
          sampler->static_border_color = (D3D12_STATIC_BORDER_COLOR)-1;
-         for (unsigned i = 0; i < ARRAY_SIZE(sampler->desc.BorderColor); i++)
-            sampler->desc.BorderColor[i] = pBorderColor->customBorderColor.float32[i];
+         for (unsigned i = 0; i < ARRAY_SIZE(sampler->desc.FloatBorderColor); i++)
+            sampler->desc.FloatBorderColor[i] = pBorderColor->customBorderColor.float32[i];
          break;
       case VK_BORDER_COLOR_INT_TRANSPARENT_BLACK:
       case VK_BORDER_COLOR_INT_OPAQUE_BLACK:
+         sampler->desc.UintBorderColor[0] = 0;
+         sampler->desc.UintBorderColor[1] = 0;
+         sampler->desc.UintBorderColor[2] = 0;
+         sampler->desc.UintBorderColor[3] =
+            pCreateInfo->borderColor == VK_BORDER_COLOR_INT_TRANSPARENT_BLACK ? 0 : 1;
+         sampler->static_border_color =
+            pCreateInfo->borderColor == VK_BORDER_COLOR_INT_TRANSPARENT_BLACK ?
+            D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK :
+            D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK_UINT;
+         sampler->desc.Flags = D3D12_SAMPLER_FLAG_UINT_BORDER_COLOR;
+         break;
       case VK_BORDER_COLOR_INT_OPAQUE_WHITE:
+         sampler->desc.UintBorderColor[0] = sampler->desc.UintBorderColor[1] = 1;
+         sampler->desc.UintBorderColor[2] = sampler->desc.UintBorderColor[3] = 1;
+         sampler->static_border_color = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE_UINT;
+         sampler->desc.Flags = D3D12_SAMPLER_FLAG_UINT_BORDER_COLOR;
+         break;
       case VK_BORDER_COLOR_INT_CUSTOM_EXT:
-         /* FIXME: sampling from integer textures is not supported yet. */
          sampler->static_border_color = (D3D12_STATIC_BORDER_COLOR)-1;
+         for (unsigned i = 0; i < ARRAY_SIZE(sampler->desc.UintBorderColor); i++)
+            sampler->desc.UintBorderColor[i] = pBorderColor->customBorderColor.uint32[i];
+         sampler->desc.Flags = D3D12_SAMPLER_FLAG_UINT_BORDER_COLOR;
          break;
       default:
          unreachable("Unsupported border color");
