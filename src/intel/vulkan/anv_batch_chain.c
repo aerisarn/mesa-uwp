@@ -1829,8 +1829,15 @@ anv_queue_exec_locked(struct anv_queue *queue,
       perf_query_pool && perf_query_pass >= 0 && cmd_buffer_count;
 
    if (INTEL_DEBUG(DEBUG_SUBMIT)) {
-      fprintf(stderr, "Batch offset=0x%x len=0x%x on queue 0\n",
-              execbuf.execbuf.batch_start_offset, execbuf.execbuf.batch_len);
+      uint32_t total_size_kb = 0;
+      for (uint32_t i = 0; i < execbuf.bo_count; i++) {
+         const struct anv_bo *bo = execbuf.bos[i];
+         total_size_kb += bo->size / 1024;
+      }
+
+      fprintf(stderr, "Batch offset=0x%x len=0x%x on queue 0 (%.1fMb aperture)\n",
+              execbuf.execbuf.batch_start_offset, execbuf.execbuf.batch_len,
+              (float)total_size_kb / 1024.0f);
       for (uint32_t i = 0; i < execbuf.bo_count; i++) {
          const struct anv_bo *bo = execbuf.bos[i];
 
