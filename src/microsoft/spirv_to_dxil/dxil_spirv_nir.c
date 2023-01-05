@@ -493,10 +493,11 @@ kill_undefined_varyings(struct nir_builder *b,
    if (!var || var->data.mode != nir_var_shader_in)
       return false;
 
-   /* Ignore builtins for now, some of them get default values
+   /* Ignore most builtins for now, some of them get default values
     * when not written from previous stages.
     */
-   if (var->data.location < VARYING_SLOT_VAR0)
+   if (var->data.location < VARYING_SLOT_VAR0 &&
+       var->data.location != VARYING_SLOT_POS)
       return false;
 
    uint32_t loc = var->data.patch ?
