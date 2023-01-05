@@ -429,7 +429,8 @@ generate_gfx_program_modules_optimal(struct zink_context *ctx, struct zink_scree
 static uint32_t
 hash_pipeline_lib(const void *key)
 {
-   return 1;
+   const struct zink_gfx_library_key *gkey = key;
+   return gkey->optimal_key;
 }
 
 static bool
