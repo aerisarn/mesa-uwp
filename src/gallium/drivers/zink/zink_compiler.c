@@ -2917,7 +2917,8 @@ rewrite_tex_dest(nir_builder *b, nir_tex_instr *tex, nir_variable *var, void *da
 }
 
 VkShaderModule
-zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shader *base_nir, const struct zink_shader_key *key)
+zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
+                    nir_shader *base_nir, const struct zink_shader_key *key, const void *extra_data)
 {
    VkShaderModule mod = VK_NULL_HANDLE;
    struct zink_shader_info *sinfo = &zs->sinfo;
