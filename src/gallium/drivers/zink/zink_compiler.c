@@ -2870,7 +2870,7 @@ flag_shadow_tex(nir_variable *var, struct zink_shader *zs)
    zs->fs.legacy_shadow_mask |= BITFIELD_BIT(sampler_id);
 }
 
-static bool
+static nir_ssa_def *
 rewrite_tex_dest(nir_builder *b, nir_tex_instr *tex, nir_variable *var, void *data)
 {
    assert(var);
@@ -2883,13 +2883,14 @@ rewrite_tex_dest(nir_builder *b, nir_tex_instr *tex, nir_variable *var, void *da
    unsigned num_components = nir_dest_num_components(tex->dest);
    bool rewrite_depth = tex->is_shadow && num_components > 1 && tex->op != nir_texop_tg4 && !tex->is_sparse;
    if (bit_size == dest_size && !rewrite_depth)
-      return false;
+      return NULL;
    nir_ssa_def *dest = &tex->dest.ssa;
-   if (rewrite_depth) {
+   if (rewrite_depth && data) {
       if (b->shader->info.stage == MESA_SHADER_FRAGMENT)
          flag_shadow_tex(var, data);
       else
          mesa_loge("unhandled old-style shadow sampler in non-fragment stage!");
+      return NULL;
    }
    if (bit_size != dest_size) {
       tex->dest.ssa.bit_size = bit_size;
@@ -2903,17 +2904,76 @@ rewrite_tex_dest(nir_builder *b, nir_tex_instr *tex, nir_variable *var, void *da
       } else {
          dest = nir_f2fN(b, &tex->dest.ssa, dest_size);
       }
-      if (rewrite_depth) {
-         nir_ssa_def *vec[4] = {dest, dest, dest, dest};
-         dest = nir_vec(b, vec, num_components);
-      }
+      if (rewrite_depth)
+         return dest;
       nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, dest, dest->parent_instr);
    } else if (rewrite_depth) {
+      return dest;
+   }
+   return dest;
+}
+
+static bool
+lower_shadow_tex_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   struct zink_fs_shadow_key *shadow = data;
+   if (instr->type != nir_instr_type_tex)
+      return false;
+   nir_tex_instr *tex = nir_instr_as_tex(instr);
+   if (tex->op == nir_texop_txs || tex->op == nir_texop_lod || !tex->is_shadow || tex->is_new_style_shadow)
+      return false;
+   int handle = nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
+   nir_variable *var = NULL;
+   if (handle != -1)
+      /* gtfo bindless depth texture mode */
+      return false;
+   nir_foreach_variable_with_modes(img, b->shader, nir_var_uniform) {
+      if (glsl_type_is_sampler(glsl_without_array(img->type))) {
+         unsigned size = glsl_type_is_array(img->type) ? glsl_get_aoa_size(img->type) : 1;
+         if (tex->texture_index >= img->data.driver_location &&
+               tex->texture_index < img->data.driver_location + size) {
+            var = img;
+            break;
+         }
+      }
+   }
+   assert(var);
+   uint32_t sampler_id = var->data.binding - (PIPE_MAX_SAMPLERS * MESA_SHADER_FRAGMENT);
+   unsigned num_components = nir_dest_num_components(tex->dest);
+   nir_ssa_def *dest = rewrite_tex_dest(b, tex, var, NULL);
+   assert(!tex->is_new_style_shadow);
+   tex->dest.ssa.num_components = 1;
+   tex->is_new_style_shadow = true;
+   if (shadow && (shadow->mask & BITFIELD_BIT(sampler_id))) {
+      /* these require manual swizzles */
+      nir_ssa_def *vec[4];
+      for (unsigned i = 0; i < ARRAY_SIZE(vec); i++) {
+         switch (shadow->swizzle[sampler_id].s[i]) {
+         case PIPE_SWIZZLE_0:
+            vec[i] = nir_imm_zero(b, 1, nir_dest_bit_size(tex->dest));
+            break;
+         case PIPE_SWIZZLE_1:
+            vec[i] = nir_imm_floatN_t(b, 1, nir_dest_bit_size(tex->dest));
+            break;
+         default:
+            vec[i] = dest;
+            break;
+         }
+      }
+      nir_ssa_def *swizzle = nir_vec(b, vec, num_components);
+      nir_ssa_def_rewrite_uses_after(dest, swizzle, swizzle->parent_instr);
+   } else {
       nir_ssa_def *vec[4] = {dest, dest, dest, dest};
       nir_ssa_def *splat = nir_vec(b, vec, num_components);
       nir_ssa_def_rewrite_uses_after(dest, splat, splat->parent_instr);
    }
    return true;
+}
+
+static bool
+lower_shadow_tex(nir_shader *nir, const void *shadow)
+{
+   return nir_shader_instructions_pass(nir, lower_shadow_tex_instr, nir_metadata_dominance | nir_metadata_block_index, (void*)shadow);
 }
 
 VkShaderModule
@@ -3042,6 +3102,8 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
             nir->info.fs.uses_sample_qualifier = true;
             nir->info.fs.uses_sample_shading = true;
          }
+         if (zs->fs.legacy_shadow_mask)
+            NIR_PASS_V(nir, lower_shadow_tex, zink_fs_key_base(key)->shadow_needs_shader_swizzle ? extra_data : NULL);
          if (nir->info.fs.uses_fbfetch_output) {
             nir_variable *fbfetch = NULL;
             NIR_PASS_V(nir, lower_fbfetch, &fbfetch, zink_fs_key_base(key)->fbfetch_ms);
@@ -3826,7 +3888,7 @@ match_tex_dests_instr(nir_builder *b, nir_instr *in, void *data)
          }
       }
    }
-   return rewrite_tex_dest(b, tex, var, data);
+   return !!rewrite_tex_dest(b, tex, var, data);
 }
 
 static bool
