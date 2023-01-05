@@ -5437,7 +5437,7 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
    result = radv_pipeline_import_graphics_info(&pipeline->base, state, pipeline_layout, pCreateInfo,
                                                imported_flags);
    if (result != VK_SUCCESS)
-      goto fail_layout;
+      return result;
 
    radv_pipeline_layout_hash(pipeline_layout);
 
@@ -5450,7 +5450,7 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
 
       pipeline->base.ps_epilog = radv_create_ps_epilog(device, &key);
       if (!pipeline->base.ps_epilog)
-         goto fail_layout;
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
 
    if (pipeline->base.active_stages != 0) {
@@ -5476,18 +5476,12 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
                                    pCreateInfo->pStages, pCreateInfo->stageCount, pCreateInfo->flags,
                                    NULL, creation_feedback, NULL, NULL,
                                    &pipeline->base.last_vgt_api_stage);
-      if (result != VK_SUCCESS && result != VK_PIPELINE_COMPILE_REQUIRED)
-         goto fail_shaders;
+
+      if (result != VK_SUCCESS)
+         return result;
    }
 
    return VK_SUCCESS;
-
-fail_shaders:
-   if (pipeline->base.ps_epilog)
-      radv_shader_part_unref(device, pipeline->base.ps_epilog);
-fail_layout:
-   radv_pipeline_layout_finish(device, pipeline_layout);
-   return result;
 }
 
 static VkResult
