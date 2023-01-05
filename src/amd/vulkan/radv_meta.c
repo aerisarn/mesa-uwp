@@ -488,10 +488,19 @@ radv_device_init_meta(struct radv_device *device)
          goto fail_dgc;
    }
 
+   if (device->vk.enabled_features.nullDescriptor &&
+       device->vk.enabled_extensions.KHR_acceleration_structure) {
+      result = radv_device_init_null_accel_struct(device);
+      if (result != VK_SUCCESS)
+         goto fail_accel_struct;
+   }
+
    device->app_shaders_internal = false;
 
    return VK_SUCCESS;
 
+fail_accel_struct:
+   radv_device_finish_accel_struct_build_state(device);
 fail_dgc:
    radv_device_finish_dgc_prepare_state(device);
 fail_etc_decode:
