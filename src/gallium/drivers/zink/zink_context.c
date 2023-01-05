@@ -1916,27 +1916,27 @@ zink_set_sampler_views(struct pipe_context *pctx,
                                          res->gfx_barrier);
             zink_batch_resource_usage_set(&ctx->batch, res, false, true);
          } else if (!res->obj->is_buffer) {
-             if (res->base.b.format != b->image_view->base.format)
-                /* mutable not set by default */
-                zink_resource_object_init_mutable(ctx, res);
-             if (res->obj != b->image_view->obj) {
-                struct pipe_surface *psurf = &b->image_view->base;
-                VkImageView iv = b->image_view->image_view;
-                zink_rebind_surface(ctx, &psurf);
-                b->image_view = zink_surface(psurf);
-                update |= iv != b->image_view->image_view;
-             } else  if (a != b)
-                update = true;
-             if (shader_type == MESA_SHADER_COMPUTE)
-                flush_pending_clears(ctx, res);
-             if (b->cube_array) {
-                ctx->di.cubes[shader_type] |= BITFIELD_BIT(start_slot + i);
-             }
-             check_for_layout_update(ctx, res, shader_type == MESA_SHADER_COMPUTE);
-             if (!a)
-                update = true;
-             zink_batch_resource_usage_set(&ctx->batch, res, false, false);
-             res->obj->unordered_write = false;
+            if (res->base.b.format != b->image_view->base.format)
+               /* mutable not set by default */
+               zink_resource_object_init_mutable(ctx, res);
+            if (res->obj != b->image_view->obj) {
+               struct pipe_surface *psurf = &b->image_view->base;
+               VkImageView iv = b->image_view->image_view;
+               zink_rebind_surface(ctx, &psurf);
+               b->image_view = zink_surface(psurf);
+               update |= iv != b->image_view->image_view;
+            } else  if (a != b)
+               update = true;
+            if (shader_type == MESA_SHADER_COMPUTE)
+               flush_pending_clears(ctx, res);
+            if (b->cube_array) {
+               ctx->di.cubes[shader_type] |= BITFIELD_BIT(start_slot + i);
+            }
+            check_for_layout_update(ctx, res, shader_type == MESA_SHADER_COMPUTE);
+            if (!a)
+               update = true;
+            zink_batch_resource_usage_set(&ctx->batch, res, false, false);
+            res->obj->unordered_write = false;
          }
          res->sampler_binds[shader_type] |= BITFIELD_BIT(start_slot + i);
          res->obj->unordered_read = false;
