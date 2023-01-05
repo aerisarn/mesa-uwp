@@ -375,8 +375,10 @@ agx_wrap_from_pipe(enum pipe_tex_wrap in)
       return AGX_WRAP_MIRRORED_REPEAT;
    case PIPE_TEX_WRAP_CLAMP_TO_BORDER:
       return AGX_WRAP_CLAMP_TO_BORDER;
+   case PIPE_TEX_WRAP_CLAMP:
+      return AGX_WRAP_CLAMP_GL;
    default:
-      unreachable("todo: more wrap modes");
+      unreachable("Invalid wrap mode");
    }
 }
 
