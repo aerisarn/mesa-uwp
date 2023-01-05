@@ -3206,6 +3206,11 @@ static VkResult pvr_setup_descriptor_mappings_old(
    return VK_SUCCESS;
 }
 
+#define PVR_SELECT(_geom, _frag, _compute)         \
+   (stage == PVR_STAGE_ALLOCATION_VERTEX_GEOMETRY) \
+      ? (_geom)                                    \
+      : (stage == PVR_STAGE_ALLOCATION_FRAGMENT) ? (_frag) : (_compute)
+
 static VkResult
 pvr_cmd_buffer_upload_desc_set_table(struct pvr_cmd_buffer *const cmd_buffer,
                                      enum pvr_stage_allocation stage,
@@ -3219,17 +3224,17 @@ pvr_cmd_buffer_upload_desc_set_table(struct pvr_cmd_buffer *const cmd_buffer,
    switch (stage) {
    case PVR_STAGE_ALLOCATION_VERTEX_GEOMETRY:
    case PVR_STAGE_ALLOCATION_FRAGMENT:
-      desc_state = &cmd_buffer->state.gfx_desc_state;
-      break;
-
    case PVR_STAGE_ALLOCATION_COMPUTE:
-      desc_state = &cmd_buffer->state.compute_desc_state;
       break;
 
    default:
       unreachable("Unsupported stage.");
       break;
    }
+
+   desc_state = PVR_SELECT(&cmd_buffer->state.gfx_desc_state,
+                           &cmd_buffer->state.gfx_desc_state,
+                           &cmd_buffer->state.compute_desc_state);
 
    for (uint32_t set = 0; set < ARRAY_SIZE(bound_desc_sets); set++) {
       if (!(desc_state->valid_mask & BITFIELD_BIT(set))) {
@@ -3279,6 +3284,8 @@ pvr_process_addr_literal(struct pvr_cmd_buffer *cmd_buffer,
 
    return VK_SUCCESS;
 }
+
+#undef PVR_SELECT
 
 static VkResult pvr_setup_descriptor_mappings_new(
    struct pvr_cmd_buffer *const cmd_buffer,
