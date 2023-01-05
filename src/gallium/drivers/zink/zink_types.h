@@ -730,6 +730,7 @@ struct zink_shader {
       } non_fs;
 
       struct {
+         uint32_t legacy_shadow_mask; //is_new_style_shadow is false for these
          nir_variable *fbfetch; //for fs output
       } fs;
    };

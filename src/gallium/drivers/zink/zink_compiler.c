@@ -3746,6 +3746,15 @@ lower_sparse(nir_shader *shader)
    return nir_shader_instructions_pass(shader, lower_sparse_instr, nir_metadata_dominance, NULL);
 }
 
+static void
+flag_shadow_tex(nir_variable *var, struct zink_shader *zs)
+{
+   /* unconvert from zink_binding() */
+   uint32_t sampler_id = var->data.binding - (PIPE_MAX_SAMPLERS * MESA_SHADER_FRAGMENT);
+   assert(sampler_id < 32); //bitfield size for tracking
+   zs->fs.legacy_shadow_mask |= BITFIELD_BIT(sampler_id);
+}
+
 static bool
 match_tex_dests_instr(nir_builder *b, nir_instr *in, void *data)
 {
@@ -3786,6 +3795,10 @@ match_tex_dests_instr(nir_builder *b, nir_instr *in, void *data)
       assert(!tex->is_new_style_shadow);
       tex->dest.ssa.num_components = 1;
       tex->is_new_style_shadow = true;
+      if (b->shader->info.stage == MESA_SHADER_FRAGMENT)
+         flag_shadow_tex(var, data);
+      else
+         mesa_loge("unhandled old-style shadow sampler in non-fragment stage!");
    }
    if (bit_size != dest_size) {
       tex->dest.ssa.bit_size = bit_size;
@@ -3813,9 +3826,9 @@ match_tex_dests_instr(nir_builder *b, nir_instr *in, void *data)
 }
 
 static bool
-match_tex_dests(nir_shader *shader)
+match_tex_dests(nir_shader *shader, struct zink_shader *zs)
 {
-   return nir_shader_instructions_pass(shader, match_tex_dests_instr, nir_metadata_dominance, NULL);
+   return nir_shader_instructions_pass(shader, match_tex_dests_instr, nir_metadata_dominance, zs);
 }
 
 static bool
@@ -4269,7 +4282,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    if (!screen->info.feats.features.shaderInt64 || !screen->info.feats.features.shaderFloat64)
       NIR_PASS_V(nir, lower_64bit_vars, screen->info.feats.features.shaderInt64);
    if (nir->info.stage != MESA_SHADER_KERNEL)
-      NIR_PASS_V(nir, match_tex_dests);
+      NIR_PASS_V(nir, match_tex_dests, ret);
 
    ret->nir = nir;
    nir_foreach_shader_out_variable(var, nir)
