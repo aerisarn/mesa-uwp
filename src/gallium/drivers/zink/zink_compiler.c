@@ -3655,14 +3655,14 @@ match_tex_dests_instr(nir_builder *b, nir_instr *in, void *data)
    if (bit_size == dest_size && !rewrite_depth)
       return false;
    nir_ssa_def *dest = &tex->dest.ssa;
+   if (rewrite_depth) {
+      assert(!tex->is_new_style_shadow);
+      tex->dest.ssa.num_components = 1;
+      tex->is_new_style_shadow = true;
+   }
    if (bit_size != dest_size) {
       tex->dest.ssa.bit_size = bit_size;
       tex->dest_type = nir_get_nir_type_for_glsl_base_type(ret_type);
-      if (rewrite_depth) {
-         assert(!tex->is_new_style_shadow);
-         tex->dest.ssa.num_components = 1;
-         tex->is_new_style_shadow = true;
-      }
 
       if (is_int) {
          if (glsl_unsigned_base_type_of(ret_type) == ret_type)
@@ -3678,9 +3678,6 @@ match_tex_dests_instr(nir_builder *b, nir_instr *in, void *data)
       }
       nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, dest, dest->parent_instr);
    } else if (rewrite_depth) {
-      assert(!tex->is_new_style_shadow);
-      tex->dest.ssa.num_components = 1;
-      tex->is_new_style_shadow = true;
       nir_ssa_def *vec[4] = {dest, dest, dest, dest};
       nir_ssa_def *splat = nir_vec(b, vec, num_components);
       nir_ssa_def_rewrite_uses_after(dest, splat, splat->parent_instr);
