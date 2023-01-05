@@ -2861,6 +2861,61 @@ prune_io(nir_shader *nir)
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
 }
 
+static void
+flag_shadow_tex(nir_variable *var, struct zink_shader *zs)
+{
+   /* unconvert from zink_binding() */
+   uint32_t sampler_id = var->data.binding - (PIPE_MAX_SAMPLERS * MESA_SHADER_FRAGMENT);
+   assert(sampler_id < 32); //bitfield size for tracking
+   zs->fs.legacy_shadow_mask |= BITFIELD_BIT(sampler_id);
+}
+
+static bool
+rewrite_tex_dest(nir_builder *b, nir_tex_instr *tex, nir_variable *var, void *data)
+{
+   assert(var);
+   const struct glsl_type *type = glsl_without_array(var->type);
+   enum glsl_base_type ret_type = glsl_get_sampler_result_type(type);
+   bool is_int = glsl_base_type_is_integer(ret_type);
+   unsigned bit_size = glsl_base_type_get_bit_size(ret_type);
+   unsigned dest_size = nir_dest_bit_size(tex->dest);
+   b->cursor = nir_after_instr(&tex->instr);
+   unsigned num_components = nir_dest_num_components(tex->dest);
+   bool rewrite_depth = tex->is_shadow && num_components > 1 && tex->op != nir_texop_tg4 && !tex->is_sparse;
+   if (bit_size == dest_size && !rewrite_depth)
+      return false;
+   nir_ssa_def *dest = &tex->dest.ssa;
+   if (rewrite_depth) {
+      if (b->shader->info.stage == MESA_SHADER_FRAGMENT)
+         flag_shadow_tex(var, data);
+      else
+         mesa_loge("unhandled old-style shadow sampler in non-fragment stage!");
+   }
+   if (bit_size != dest_size) {
+      tex->dest.ssa.bit_size = bit_size;
+      tex->dest_type = nir_get_nir_type_for_glsl_base_type(ret_type);
+
+      if (is_int) {
+         if (glsl_unsigned_base_type_of(ret_type) == ret_type)
+            dest = nir_u2uN(b, &tex->dest.ssa, dest_size);
+         else
+            dest = nir_i2iN(b, &tex->dest.ssa, dest_size);
+      } else {
+         dest = nir_f2fN(b, &tex->dest.ssa, dest_size);
+      }
+      if (rewrite_depth) {
+         nir_ssa_def *vec[4] = {dest, dest, dest, dest};
+         dest = nir_vec(b, vec, num_components);
+      }
+      nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, dest, dest->parent_instr);
+   } else if (rewrite_depth) {
+      nir_ssa_def *vec[4] = {dest, dest, dest, dest};
+      nir_ssa_def *splat = nir_vec(b, vec, num_components);
+      nir_ssa_def_rewrite_uses_after(dest, splat, splat->parent_instr);
+   }
+   return true;
+}
+
 VkShaderModule
 zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shader *base_nir, const struct zink_shader_key *key)
 {
@@ -3746,15 +3801,6 @@ lower_sparse(nir_shader *shader)
    return nir_shader_instructions_pass(shader, lower_sparse_instr, nir_metadata_dominance, NULL);
 }
 
-static void
-flag_shadow_tex(nir_variable *var, struct zink_shader *zs)
-{
-   /* unconvert from zink_binding() */
-   uint32_t sampler_id = var->data.binding - (PIPE_MAX_SAMPLERS * MESA_SHADER_FRAGMENT);
-   assert(sampler_id < 32); //bitfield size for tracking
-   zs->fs.legacy_shadow_mask |= BITFIELD_BIT(sampler_id);
-}
-
 static bool
 match_tex_dests_instr(nir_builder *b, nir_instr *in, void *data)
 {
@@ -3779,50 +3825,7 @@ match_tex_dests_instr(nir_builder *b, nir_instr *in, void *data)
          }
       }
    }
-   assert(var);
-   const struct glsl_type *type = glsl_without_array(var->type);
-   enum glsl_base_type ret_type = glsl_get_sampler_result_type(type);
-   bool is_int = glsl_base_type_is_integer(ret_type);
-   unsigned bit_size = glsl_base_type_get_bit_size(ret_type);
-   unsigned dest_size = nir_dest_bit_size(tex->dest);
-   b->cursor = nir_after_instr(in);
-   unsigned num_components = nir_dest_num_components(tex->dest);
-   bool rewrite_depth = tex->is_shadow && num_components > 1 && tex->op != nir_texop_tg4 && !tex->is_sparse;
-   if (bit_size == dest_size && !rewrite_depth)
-      return false;
-   nir_ssa_def *dest = &tex->dest.ssa;
-   if (rewrite_depth) {
-      assert(!tex->is_new_style_shadow);
-      tex->dest.ssa.num_components = 1;
-      tex->is_new_style_shadow = true;
-      if (b->shader->info.stage == MESA_SHADER_FRAGMENT)
-         flag_shadow_tex(var, data);
-      else
-         mesa_loge("unhandled old-style shadow sampler in non-fragment stage!");
-   }
-   if (bit_size != dest_size) {
-      tex->dest.ssa.bit_size = bit_size;
-      tex->dest_type = nir_get_nir_type_for_glsl_base_type(ret_type);
-
-      if (is_int) {
-         if (glsl_unsigned_base_type_of(ret_type) == ret_type)
-            dest = nir_u2uN(b, &tex->dest.ssa, dest_size);
-         else
-            dest = nir_i2iN(b, &tex->dest.ssa, dest_size);
-      } else {
-         dest = nir_f2fN(b, &tex->dest.ssa, dest_size);
-      }
-      if (rewrite_depth) {
-         nir_ssa_def *vec[4] = {dest, dest, dest, dest};
-         dest = nir_vec(b, vec, num_components);
-      }
-      nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, dest, dest->parent_instr);
-   } else if (rewrite_depth) {
-      nir_ssa_def *vec[4] = {dest, dest, dest, dest};
-      nir_ssa_def *splat = nir_vec(b, vec, num_components);
-      nir_ssa_def_rewrite_uses_after(dest, splat, splat->parent_instr);
-   }
-   return true;
+   return rewrite_tex_dest(b, tex, var, data);
 }
 
 static bool
