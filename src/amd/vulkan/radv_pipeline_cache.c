@@ -382,7 +382,12 @@ radv_create_shaders_from_pipeline_cache(struct radv_device *device,
       }
    }
 
-   memcpy(pipeline->shaders, entry->shaders, sizeof(entry->shaders));
+   for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
+      if (!entry->shaders[i])
+         continue;
+
+      pipeline->shaders[i] = entry->shaders[i];
+   }
 
    if (pipeline->shaders[MESA_SHADER_GEOMETRY] &&
        !pipeline->shaders[MESA_SHADER_GEOMETRY]->info.is_ngg) {
