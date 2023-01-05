@@ -137,6 +137,8 @@ init_program(Program* program, Stage stage, const struct aco_shader_info* info,
       program->dev.sgpr_limit = 104;
    }
 
+   program->dev.scratch_alloc_granule = gfx_level >= GFX11 ? 256 : 1024;
+
    program->dev.max_wave64_per_simd = 10;
    if (program->gfx_level >= GFX10_3)
       program->dev.max_wave64_per_simd = 16;
