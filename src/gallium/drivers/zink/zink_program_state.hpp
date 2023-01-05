@@ -251,6 +251,8 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
       if (HAVE_LIB &&
           /* TODO: if there's ever a dynamic render extension with input attachments */
           !ctx->gfx_pipeline_state.render_pass &&
+          /* this is just terrible */
+          !zink_get_fs_base_key(ctx)->shadow_needs_shader_swizzle &&
           /* TODO: is sample shading even possible to handle with GPL? */
           !ctx->gfx_stages[MESA_SHADER_FRAGMENT]->nir->info.fs.uses_sample_shading &&
           !zink_get_fs_base_key(ctx)->fbfetch_ms &&
