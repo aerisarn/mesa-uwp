@@ -59,13 +59,18 @@ struct mme_cf {
 struct mme_builder;
 
 #include "mme_tu104_builder.h"
+#include "mme_fermi_builder.h"
 
+#define MME_CLS_FERMI 0x9000
 #define MME_CLS_TURING 0xc500
 
 struct mme_builder {
    uint16_t cls;
    struct mme_reg_alloc reg_alloc;
-   struct mme_tu104_builder tu104;
+   union {
+      struct mme_tu104_builder tu104;
+      struct mme_fermi_builder fermi;
+   };
 };
 
 static inline void
@@ -76,6 +81,8 @@ mme_builder_init(struct mme_builder *b, struct nv_device_info *dev)
 
    if (b->cls >= MME_CLS_TURING)
       mme_tu104_builder_init(b);
+   else if (b->cls >= MME_CLS_FERMI)
+      mme_fermi_builder_init(b);
    else
       unreachable("Unsupported GPU class");
 }
@@ -85,6 +92,8 @@ mme_builder_finish(struct mme_builder *b, size_t *size_out)
 {
    if (b->cls >= MME_CLS_TURING)
       return mme_tu104_builder_finish(&b->tu104, size_out);
+   else if (b->cls >= MME_CLS_FERMI)
+      return mme_fermi_builder_finish(&b->fermi, size_out);
    else
       unreachable("Unsupported GPU class");
 }
@@ -110,6 +119,8 @@ mme_alu_to(struct mme_builder *b,
 {
    if (b->cls >= MME_CLS_TURING)
       mme_tu104_alu_to(b, dst, op, x, y);
+   else if (b->cls >= MME_CLS_FERMI)
+      mme_fermi_alu_to(b, dst, op, x, y);
    else
       unreachable("Unsupported GPU class");
 }
@@ -144,6 +155,8 @@ mme_alu64_to(struct mme_builder *b,
 {
    if (b->cls >= MME_CLS_TURING)
       mme_tu104_alu64_to(b, dst, op_lo, op_hi, x, y);
+   else if (b->cls >= MME_CLS_FERMI)
+      mme_fermi_alu64_to(b, dst, op_lo, op_hi, x, y);
    else
       unreachable("Unsupported GPU class");
 }
@@ -318,6 +331,8 @@ mme_merge_to(struct mme_builder *b, struct mme_value dst,
 {
    if (b->cls >= MME_CLS_TURING)
       mme_tu104_merge_to(b, dst, x, y, dst_pos, bits, src_pos);
+  else if (b->cls >= MME_CLS_FERMI)
+      mme_fermi_merge_to(b, dst, x, y, dst_pos, bits, src_pos);
    else
       unreachable("Unsupported GPU class");
 }
@@ -344,6 +359,8 @@ mme_state_arr_to(struct mme_builder *b, struct mme_value dst,
 {
    if (b->cls >= MME_CLS_TURING)
       mme_tu104_state_arr_to(b, dst, state, index);
+   else if (b->cls >= MME_CLS_FERMI)
+      mme_fermi_state_arr_to(b, dst, state, index);
    else
       unreachable("Unsupported GPU class");
 }
@@ -385,16 +402,29 @@ mme_load_to(struct mme_builder *b, struct mme_value dst)
 {
    if (b->cls >= MME_CLS_TURING)
       mme_tu104_load_to(b, dst);
+   else if (b->cls >= MME_CLS_FERMI)
+      mme_fermi_load_to(b, dst);
    else
       unreachable("Unsupported GPU class");
 }
 
 static inline struct mme_value
-mme_load(struct mme_builder *b)
+mme_tu104_load(struct mme_builder *b)
 {
    struct mme_value dst = mme_alloc_reg(b);
-   mme_load_to(b, dst);
+   mme_tu104_load_to(b, dst);
    return dst;
+}
+
+static inline struct mme_value
+mme_load(struct mme_builder *b)
+{
+   if (b->cls >= MME_CLS_TURING)
+      return mme_tu104_load(b);
+   else if (b->cls >= MME_CLS_FERMI)
+      return mme_fermi_load(b);
+   else
+      unreachable("Unsupported GPU class");
 }
 
 static inline struct mme_value64
@@ -411,6 +441,8 @@ mme_mthd_arr(struct mme_builder *b, uint16_t mthd,
 {
    if (b->cls >= MME_CLS_TURING)
       mme_tu104_mthd(b, mthd, index);
+   else if (b->cls >= MME_CLS_FERMI)
+      mme_fermi_mthd_arr(b, mthd, index);
    else
       unreachable("Unsupported GPU class");
 }
@@ -427,6 +459,8 @@ mme_emit(struct mme_builder *b,
 {
    if (b->cls >= MME_CLS_TURING)
       mme_tu104_emit(b, data);
+   else if (b->cls >= MME_CLS_FERMI)
+      mme_fermi_emit(b, data);
    else
       unreachable("Unsupported GPU class");
 }
@@ -457,6 +491,8 @@ mme_start_loop(struct mme_builder *b, struct mme_value count)
 {
    if (b->cls >= MME_CLS_TURING)
       mme_tu104_start_loop(b, count);
+   else if (b->cls >= MME_CLS_FERMI)
+      mme_fermi_start_loop(b, count);
    else
       unreachable("Unsupported GPU class");
 }
@@ -466,6 +502,8 @@ mme_end_loop(struct mme_builder *b)
 {
    if (b->cls >= MME_CLS_TURING)
       mme_tu104_end_loop(b);
+   else if (b->cls >= MME_CLS_FERMI)
+      mme_fermi_end_loop(b);
    else
       unreachable("Unsupported GPU class");
 }
@@ -481,6 +519,8 @@ mme_start_if_##op(struct mme_builder *b,                          \
 {                                                                 \
    if (b->cls >= MME_CLS_TURING)                                  \
       mme_tu104_start_if(b, MME_CMP_OP_##OP, if_true, x, y);      \
+   else if (b->cls >= MME_CLS_FERMI)                              \
+      mme_fermi_start_if(b, MME_CMP_OP_##OP, if_true, x, y);      \
    else                                                           \
       unreachable("Unsupported GPU class");                       \
 }
@@ -503,6 +543,8 @@ mme_end_if(struct mme_builder *b)
 {
    if (b->cls >= MME_CLS_TURING)
       mme_tu104_end_if(b);
+   else if (b->cls >= MME_CLS_FERMI)
+      mme_fermi_end_if(b);
    else
       unreachable("Unsupported GPU class");
 }
@@ -516,6 +558,8 @@ mme_start_while(struct mme_builder *b)
 {
    if (b->cls >= MME_CLS_TURING)
       mme_tu104_start_while(b);
+   else if (b->cls >= MME_CLS_FERMI)
+      mme_fermi_start_while(b);
    else
       unreachable("Unsupported GPU class");
 }
@@ -527,6 +571,8 @@ mme_end_while_##op(struct mme_builder *b,                         \
 {                                                                 \
    if (b->cls >= MME_CLS_TURING)                                  \
       mme_tu104_end_while(b, MME_CMP_OP_##OP, if_true, x, y);     \
+   else if (b->cls >= MME_CLS_FERMI)                              \
+      mme_fermi_end_while(b, MME_CMP_OP_##OP, if_true, x, y);     \
    else                                                           \
       unreachable("Unsupported GPU class");                       \
 }
