@@ -709,17 +709,10 @@ genX(cmd_buffer_flush_generated_draws)(struct anv_cmd_buffer *cmd_buffer)
       arb.PreParserDisableMask = true;
       arb.PreParserDisable = false;
    }
-#endif
-
-#if GFX_VER < 12
-   /* Prior to Gfx12 we cannot disable the CS prefetch, so we have to emit a
-    * bunch of NOOPs to ensure we do not have generated commands loaded into
-    * the CS cache prior to them having been generated.
+#else
+   /* Prior to Gfx12 we cannot disable the CS prefetch but it doesn't matter
+    * as the prefetch shouldn't follow the MI_BATCH_BUFFER_START.
     */
-   const struct intel_device_info *devinfo = cmd_buffer->device->info;
-   const enum intel_engine_class engine_class = cmd_buffer->queue_family->engine_class;
-   for (uint32_t i = 0; i < devinfo->engine_class_prefetch[engine_class] / 4; i++)
-      anv_batch_emit(batch, GENX(MI_NOOP), noop);
 #endif
 
    /* Return to the main batch. */
