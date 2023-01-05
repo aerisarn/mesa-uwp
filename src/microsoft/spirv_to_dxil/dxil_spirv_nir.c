@@ -509,10 +509,18 @@ kill_undefined_varyings(struct nir_builder *b,
       return false;
 
    b->cursor = nir_after_instr(instr);
-   nir_ssa_def *undef =
-      nir_ssa_undef(b, nir_dest_num_components(intr->dest),
-                    nir_dest_bit_size(intr->dest));
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, undef);
+   /* Note: zero is used instead of undef, because optimization is not run here, but is
+    * run later on. If we load an undef here, and that undef ends up being used to store
+    * to position later on, that can cause some or all of the components in that position
+    * write to be removed, which is problematic especially in the case of all components,
+    * since that would remove the store instruction, and would make it tricky to satisfy
+    * the DXIL requirements of writing all position components.
+    */
+   unsigned int swizzle[NIR_MAX_VEC_COMPONENTS] = { 0 };
+   nir_ssa_def *zero =
+      nir_swizzle(b, nir_imm_intN_t(b, 0, nir_dest_bit_size(intr->dest)),
+                     swizzle, nir_dest_num_components(intr->dest));
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, zero);
    nir_instr_remove(instr);
    return true;
 }
