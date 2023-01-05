@@ -1154,6 +1154,9 @@ emit_program(Program* program, std::vector<uint32_t>& code)
    code.insert(code.end(), (uint32_t*)program->constant_data.data(),
                (uint32_t*)(program->constant_data.data() + program->constant_data.size()));
 
+   program->config->scratch_bytes_per_wave = align(
+      program->config->scratch_bytes_per_wave, program->dev.scratch_alloc_granule);
+
    return exec_size;
 }
 
