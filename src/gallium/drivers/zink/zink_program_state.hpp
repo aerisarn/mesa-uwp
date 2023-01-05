@@ -226,7 +226,10 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    const int rp_idx = state->render_pass ? 1 : 0;
    /* shortcut for reusing previous pipeline across program changes */
    if (DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT || DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT2) {
-      if (prog->last_finalized_hash[rp_idx][idx] == state->final_hash && !prog->inline_variants && likely(prog->last_pipeline[rp_idx][idx])) {
+      if (prog->last_finalized_hash[rp_idx][idx] == state->final_hash &&
+          !prog->inline_variants && likely(prog->last_pipeline[rp_idx][idx]) &&
+          /* this data is too big to compare in the fast-path */
+          likely(!prog->shaders[MESA_SHADER_FRAGMENT]->fs.legacy_shadow_mask)) {
          state->pipeline = prog->last_pipeline[rp_idx][idx]->pipeline;
          return state->pipeline;
       }
