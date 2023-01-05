@@ -4695,7 +4695,8 @@ emit_indirect_draws(struct anv_cmd_buffer *cmd_buffer,
       genX(emit_dummy_post_sync_op)(cmd_buffer, 1);
 #endif
 
-      update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, SEQUENTIAL);
+      update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer,
+                                         indexed ? RANDOM : SEQUENTIAL);
 
       offset += indirect_data_stride;
    }
