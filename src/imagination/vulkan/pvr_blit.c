@@ -1631,7 +1631,8 @@ static VkResult pvr_clear_color_attachment_static(
  */
 static VkResult pvr_add_deferred_rta_clear(struct pvr_cmd_buffer *cmd_buffer,
                                            const VkClearAttachment *attachment,
-                                           const VkClearRect *rect)
+                                           const VkClearRect *rect,
+                                           bool is_render_init)
 {
    struct pvr_render_pass_info *pass_info = &cmd_buffer->state.render_pass_info;
    struct pvr_sub_cmd_gfx *sub_cmd = &cmd_buffer->state.current_sub_cmd->gfx;
@@ -1678,6 +1679,13 @@ static VkResult pvr_add_deferred_rta_clear(struct pvr_cmd_buffer *cmd_buffer,
                 (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
 
       image_view = pass_info->attachments[hw_render->ds_attach_idx];
+   } else if (is_render_init) {
+      uint32_t index;
+
+      assert(attachment->colorAttachment < hw_render->color_init_count);
+      index = hw_render->color_init[attachment->colorAttachment].index;
+
+      image_view = pass_info->attachments[index];
    } else {
       const struct pvr_renderpass_hwsetup_subpass *hw_pass =
          pvr_get_hw_subpass(pass_info->pass, pass_info->subpass_idx);
@@ -1745,7 +1753,8 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
                                   uint32_t attachment_count,
                                   const VkClearAttachment *attachments,
                                   uint32_t rect_count,
-                                  const VkClearRect *rects)
+                                  const VkClearRect *rects,
+                                  bool is_render_init)
 {
    const struct pvr_render_pass *pass = cmd_buffer->state.render_pass_info.pass;
    struct pvr_render_pass_info *pass_info = &cmd_buffer->state.render_pass_info;
@@ -1794,11 +1803,26 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
          VkFormat format;
 
          local_attachment_idx = attachment->colorAttachment;
-         mrt_resource = &hw_pass->setup.mrt_resources[local_attachment_idx];
 
-         assert(local_attachment_idx < sub_pass->color_count);
-         global_attachment_idx =
-            sub_pass->color_attachments[local_attachment_idx];
+         if (is_render_init) {
+            struct pvr_renderpass_hwsetup_render *hw_render;
+
+            assert(pass->hw_setup->render_count > 0);
+            hw_render = &pass->hw_setup->renders[0];
+
+            mrt_resource =
+               &hw_render->init_setup.mrt_resources[local_attachment_idx];
+
+            assert(local_attachment_idx < hw_render->color_init_count);
+            global_attachment_idx =
+               hw_render->color_init[local_attachment_idx].index;
+         } else {
+            mrt_resource = &hw_pass->setup.mrt_resources[local_attachment_idx];
+
+            assert(local_attachment_idx < sub_pass->color_count);
+            global_attachment_idx =
+               sub_pass->color_attachments[local_attachment_idx];
+         }
 
          if (global_attachment_idx == VK_ATTACHMENT_UNUSED)
             continue;
@@ -1932,8 +1956,10 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
 
          if (!PVR_HAS_FEATURE(dev_info, gs_rta_support) &&
              (clear_rect->baseArrayLayer != 0 || clear_rect->layerCount > 1)) {
-            result =
-               pvr_add_deferred_rta_clear(cmd_buffer, attachment, clear_rect);
+            result = pvr_add_deferred_rta_clear(cmd_buffer,
+                                                attachment,
+                                                clear_rect,
+                                                is_render_init);
             if (result != VK_SUCCESS)
                return;
 
@@ -2022,6 +2048,13 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
    }
 }
 
+void pvr_clear_attachments_render_init(struct pvr_cmd_buffer *cmd_buffer,
+                                       const VkClearAttachment *attachment,
+                                       const VkClearRect *rect)
+{
+   pvr_clear_attachments(cmd_buffer, 1, attachment, 1, rect, true);
+}
+
 void pvr_CmdClearAttachments(VkCommandBuffer commandBuffer,
                              uint32_t attachmentCount,
                              const VkClearAttachment *pAttachments,
@@ -2095,7 +2128,8 @@ void pvr_CmdClearAttachments(VkCommandBuffer commandBuffer,
                          attachmentCount,
                          pAttachments,
                          rectCount,
-                         pRects);
+                         pRects,
+                         false);
 }
 
 void pvr_CmdResolveImage2KHR(VkCommandBuffer commandBuffer,

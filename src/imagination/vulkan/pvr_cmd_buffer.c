@@ -32,6 +32,7 @@
 #include "hwdef/rogue_hw_defs.h"
 #include "hwdef/rogue_hw_utils.h"
 #include "pvr_bo.h"
+#include "pvr_clear.h"
 #include "pvr_common.h"
 #include "pvr_csb.h"
 #include "pvr_csb_enum_helpers.h"
@@ -2464,11 +2465,15 @@ static void pvr_perform_start_of_render_attachment_clear(
    bool is_depth_stencil,
    uint32_t *index_list_clear_mask)
 {
+   ASSERTED static const VkImageAspectFlags dsc_aspect_flags =
+      VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT |
+      VK_IMAGE_ASPECT_COLOR_BIT;
    struct pvr_render_pass_info *info = &cmd_buffer->state.render_pass_info;
    const struct pvr_render_pass *pass = info->pass;
    const struct pvr_renderpass_hwsetup *hw_setup = pass->hw_setup;
    const struct pvr_renderpass_hwsetup_render *hw_render =
       &hw_setup->renders[hw_setup->subpass_map[info->subpass_idx].render];
+   VkImageAspectFlags image_aspect;
    struct pvr_image_view *iview;
    uint32_t view_idx;
    uint32_t height;
@@ -2519,7 +2524,37 @@ static void pvr_perform_start_of_render_attachment_clear(
       return;
    }
 
-   pvr_finishme("Unimplemented path!");
+   image_aspect = vk_format_aspects(pass->attachments[view_idx].vk_format);
+   assert((image_aspect & ~dsc_aspect_flags) == 0);
+
+   if (image_aspect & VK_IMAGE_ASPECT_DEPTH_BIT &&
+       hw_render->depth_init != VK_ATTACHMENT_LOAD_OP_CLEAR) {
+      image_aspect &= ~VK_IMAGE_ASPECT_DEPTH_BIT;
+   }
+
+   if (image_aspect & VK_IMAGE_ASPECT_STENCIL_BIT &&
+       hw_render->stencil_init != VK_ATTACHMENT_LOAD_OP_CLEAR) {
+      image_aspect &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
+   }
+
+   if (image_aspect != VK_IMAGE_ASPECT_NONE) {
+      VkClearAttachment clear_attachment = {
+         .aspectMask = image_aspect,
+         .colorAttachment = index,
+         .clearValue = info->clear_values[view_idx],
+      };
+      VkClearRect rect = {
+         .rect = info->render_area,
+         .baseArrayLayer = 0,
+         .layerCount = info->framebuffer->layers,
+      };
+
+      assert(view_idx < info->clear_value_count);
+
+      pvr_clear_attachments_render_init(cmd_buffer, &clear_attachment, &rect);
+
+      *index_list_clear_mask |= (1 << index);
+   }
 }
 
 static void

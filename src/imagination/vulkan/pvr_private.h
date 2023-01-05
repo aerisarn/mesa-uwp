@@ -630,11 +630,6 @@ struct pvr_render_pass_info {
    bool process_empty_tiles;
    bool enable_bg_tag;
    uint32_t isp_userpass;
-
-   /* Have we had to scissor a depth/stencil clear because render area was not
-    * tile aligned?
-    */
-   bool scissor_ds_clear;
 };
 
 struct pvr_ppp_state {
