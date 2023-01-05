@@ -276,6 +276,7 @@
     <value name="Mirrored repeat" value="2"/>
     <value name="Clamp to border" value="3"/>
     <value name="Clamp (GL)" value="4"/>
+    <value name="Mirrored clamp to edge" value="5"/>
   </enum>
 
   <enum name="Mip filter">
