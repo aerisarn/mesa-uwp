@@ -295,8 +295,10 @@ dzn_image_get_dxgi_format(VkFormat format,
 
       if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
          return DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
-      else
+      else if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT)
          return DXGI_FORMAT_X24_TYPELESS_G8_UINT;
+      else
+         return DXGI_FORMAT_R24G8_TYPELESS;
 
    case PIPE_FORMAT_X24S8_UINT:
       return usage == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT ?
