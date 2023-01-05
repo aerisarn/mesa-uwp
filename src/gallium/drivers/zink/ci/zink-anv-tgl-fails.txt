@@ -258,61 +258,6 @@ spec@!opengl 1.1@linestipple,Fail
 # (and more)
 spec@!opengl 1.1@polygon-mode,Fail
 
-# depth texturing: zink is returning intensity shadow comparisons and depth samples, regardless of depth mode.
-# Check out the "splat" in zink_compiler.c around !is_new_style_shadow, and the swizzle rewrite for depth
-# textures in zink_create_sampler_view().
-spec@!opengl 2.0@depth-tex-modes-glsl,Fail
-spec@arb_depth_texture@depth-tex-modes,Fail
-spec@arb_fragment_program_shadow@tex-shadow1d,Fail
-spec@arb_fragment_program_shadow@tex-shadow2d,Fail
-spec@arb_fragment_program_shadow@tex-shadow2drect,Fail
-spec@arb_fragment_program_shadow@txp-shadow1d,Fail
-spec@arb_fragment_program_shadow@txp-shadow2d,Fail
-spec@arb_fragment_program_shadow@txp-shadow2drect,Fail
-spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgradcube,Fail
-spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-01,Fail
-spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-03,Fail
-spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-07,Fail
-spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-08,Fail
-spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-cumulative,Fail
-spec@arb_texture_rectangle@glsl-fs-shadow2drect-01,Fail
-spec@arb_texture_rectangle@glsl-fs-shadow2drect-03,Fail
-spec@arb_texture_rectangle@glsl-fs-shadow2drect-07,Fail
-spec@arb_texture_rectangle@glsl-fs-shadow2drect-08,Fail
-spec@arb_texture_rectangle@glsl-fs-shadow2drect,Fail
-spec@arb_texture_rectangle@glsl-fs-shadow2drectproj,Fail
-spec@arb_texture_rg@execution@fs-shadow2d-red-01,Fail
-spec@arb_texture_rg@execution@fs-shadow2d-red-02,Fail
-spec@arb_texture_rg@execution@fs-shadow2d-red-03,Fail
-spec@ext_texture_array@glsl-fs-shadow1darray-01,Fail
-spec@ext_texture_array@glsl-fs-shadow1darray-03,Fail
-spec@ext_texture_array@glsl-fs-shadow1darray-07,Fail
-spec@ext_texture_array@glsl-fs-shadow1darray-08,Fail
-spec@ext_texture_array@glsl-fs-shadow1darray-bias,Fail
-spec@ext_texture_array@glsl-fs-shadow1darray,Fail
-spec@ext_texture_array@glsl-fs-shadow2darray-01,Fail
-spec@ext_texture_array@glsl-fs-shadow2darray-03,Fail
-spec@ext_texture_array@glsl-fs-shadow2darray-07,Fail
-spec@ext_texture_array@glsl-fs-shadow2darray-08,Fail
-spec@ext_texture_array@glsl-fs-shadow2darray,Fail
-spec@ext_texture_swizzle@depth_texture_mode_and_swizzle,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-01,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-03,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-07,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-08,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-bias,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow1dproj-bias,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow1dproj,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow2d-01,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow2d-03,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow2d-07,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow2d-08,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow2d-bias,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow2d,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow2dproj-bias,Fail
-spec@glsl-1.10@execution@samplers@glsl-fs-shadow2dproj,Fail
-
 spec@!opengl 2.0@gl-2.0-edgeflag-immediate,Fail
 spec@!opengl 2.0@gl-2.0-edgeflag,Fail
 
