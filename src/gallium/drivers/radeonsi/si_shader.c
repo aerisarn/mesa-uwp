@@ -2195,6 +2195,7 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
       if (prolog) {
          shader.key.ps.part.prolog = key->ps_prolog.states;
          wave32 = key->ps_prolog.wave32;
+         exports_color_null = key->ps_prolog.states.poly_stipple;
       } else {
          shader.key.ps.part.epilog = key->ps_epilog.states;
          wave32 = key->ps_epilog.wave32;
