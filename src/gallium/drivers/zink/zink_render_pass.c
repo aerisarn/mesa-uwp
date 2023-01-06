@@ -823,6 +823,8 @@ zink_render_fixup_swapchain(struct zink_context *ctx)
       unsigned old_h = ctx->fb_state.height;
       ctx->fb_state.width = ctx->swapchain_size.width;
       ctx->fb_state.height = ctx->swapchain_size.height;
+      ctx->dynamic_fb.info.renderArea.extent.width = MIN2(ctx->dynamic_fb.info.renderArea.extent.width, ctx->fb_state.width);
+      ctx->dynamic_fb.info.renderArea.extent.height = MIN2(ctx->dynamic_fb.info.renderArea.extent.height, ctx->fb_state.height);
       zink_kopper_fixup_depth_buffer(ctx);
       if (ctx->fb_state.width != old_w || ctx->fb_state.height != old_h)
          ctx->scissor_changed = true;
