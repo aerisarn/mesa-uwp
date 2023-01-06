@@ -998,9 +998,15 @@ bool Converter::assignSlots() {
       if (var->data.compact) {
          assert(!var->data.patch);
          assert(!(nir->info.outputs_read & 1ull << slot));
-         assert(glsl_type_is_array(type));
-         assert(glsl_type_is_scalar(type->fields.array));
-         assert(slots == glsl_get_length(type));
+         if (nir_is_arrayed_io(var, nir->info.stage)) {
+            assert(glsl_type_is_array(type->fields.array));
+            assert(glsl_type_is_scalar(type->fields.array->fields.array));
+            assert(slots == glsl_get_length(type->fields.array));
+         } else {
+            assert(glsl_type_is_array(type));
+            assert(glsl_type_is_scalar(type->fields.array));
+            assert(slots == glsl_get_length(type));
+         }
          assert(!glsl_base_type_is_64bit(type->without_array()->base_type));
 
          uint32_t comps = BITFIELD_RANGE(var->data.location_frac, slots);
@@ -1105,9 +1111,15 @@ bool Converter::assignSlots() {
       if (var->data.compact) {
          assert(!var->data.patch);
          assert(!(nir->info.outputs_read & 1ull << slot));
-         assert(glsl_type_is_array(type));
-         assert(glsl_type_is_scalar(type->fields.array));
-         assert(slots == glsl_get_length(type));
+         if (nir_is_arrayed_io(var, nir->info.stage)) {
+            assert(glsl_type_is_array(type->fields.array));
+            assert(glsl_type_is_scalar(type->fields.array->fields.array));
+            assert(slots == glsl_get_length(type->fields.array));
+         } else {
+            assert(glsl_type_is_array(type));
+            assert(glsl_type_is_scalar(type->fields.array));
+            assert(slots == glsl_get_length(type));
+         }
          assert(!glsl_base_type_is_64bit(type->without_array()->base_type));
 
          uint32_t comps = BITFIELD_RANGE(var->data.location_frac, slots);
