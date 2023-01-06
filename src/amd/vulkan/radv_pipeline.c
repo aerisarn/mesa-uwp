@@ -454,100 +454,7 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
                                const struct vk_graphics_pipeline_state *state,
                                const struct radv_pipeline_key *key)
 {
-   const struct radv_device *device = pipeline->base.device;
    struct radv_blend_state blend = {0};
-   const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
-   int i;
-
-   if (state->cb) {
-      for (i = 0; i < state->cb->attachment_count; i++) {
-         unsigned blend_cntl = 0;
-         unsigned srcRGB_opt, dstRGB_opt, srcA_opt, dstA_opt;
-         VkBlendOp eqRGB = state->cb->attachments[i].color_blend_op;
-         VkBlendFactor srcRGB = state->cb->attachments[i].src_color_blend_factor;
-         VkBlendFactor dstRGB = state->cb->attachments[i].dst_color_blend_factor;
-         VkBlendOp eqA = state->cb->attachments[i].alpha_blend_op;
-         VkBlendFactor srcA = state->cb->attachments[i].src_alpha_blend_factor;
-         VkBlendFactor dstA = state->cb->attachments[i].dst_alpha_blend_factor;
-
-         if (!state->cb->attachments[i].write_mask)
-            continue;
-
-         /* Ignore other blend targets if dual-source blending
-          * is enabled to prevent wrong behaviour.
-          */
-         if (i > 0 && key->ps.epilog.mrt0_is_dual_src)
-            continue;
-
-         if (!state->cb->attachments[i].blend_enable) {
-            pipeline->cb_blend_control[i] = blend_cntl;
-            continue;
-         }
-
-         radv_normalize_blend_factor(eqRGB, &srcRGB, &dstRGB);
-         radv_normalize_blend_factor(eqA, &srcA, &dstA);
-
-         /* Blending optimizations for RB+.
-          * These transformations don't change the behavior.
-          *
-          * First, get rid of DST in the blend factors:
-          *    func(src * DST, dst * 0) ---> func(src * 0, dst * SRC)
-          */
-         si_blend_remove_dst(&eqRGB, &srcRGB, &dstRGB, VK_BLEND_FACTOR_DST_COLOR,
-                             VK_BLEND_FACTOR_SRC_COLOR);
-
-         si_blend_remove_dst(&eqA, &srcA, &dstA, VK_BLEND_FACTOR_DST_COLOR,
-                             VK_BLEND_FACTOR_SRC_COLOR);
-
-         si_blend_remove_dst(&eqA, &srcA, &dstA, VK_BLEND_FACTOR_DST_ALPHA,
-                             VK_BLEND_FACTOR_SRC_ALPHA);
-
-         /* Look up the ideal settings from tables. */
-         srcRGB_opt = si_translate_blend_opt_factor(srcRGB, false);
-         dstRGB_opt = si_translate_blend_opt_factor(dstRGB, false);
-         srcA_opt = si_translate_blend_opt_factor(srcA, true);
-         dstA_opt = si_translate_blend_opt_factor(dstA, true);
-
-         /* Handle interdependencies. */
-         if (si_blend_factor_uses_dst(srcRGB))
-            dstRGB_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_NONE;
-         if (si_blend_factor_uses_dst(srcA))
-            dstA_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_NONE;
-
-         if (srcRGB == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE &&
-             (dstRGB == VK_BLEND_FACTOR_ZERO || dstRGB == VK_BLEND_FACTOR_SRC_ALPHA ||
-              dstRGB == VK_BLEND_FACTOR_SRC_ALPHA_SATURATE))
-            dstRGB_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_A0;
-
-         /* Set the final value. */
-         pipeline->sx_mrt_blend_opt[i] =
-            S_028760_COLOR_SRC_OPT(srcRGB_opt) | S_028760_COLOR_DST_OPT(dstRGB_opt) |
-            S_028760_COLOR_COMB_FCN(si_translate_blend_opt_function(eqRGB)) |
-            S_028760_ALPHA_SRC_OPT(srcA_opt) | S_028760_ALPHA_DST_OPT(dstA_opt) |
-            S_028760_ALPHA_COMB_FCN(si_translate_blend_opt_function(eqA));
-
-         blend_cntl |= S_028780_COLOR_COMB_FCN(si_translate_blend_function(eqRGB));
-         blend_cntl |= S_028780_COLOR_SRCBLEND(si_translate_blend_factor(gfx_level, srcRGB));
-         blend_cntl |= S_028780_COLOR_DESTBLEND(si_translate_blend_factor(gfx_level, dstRGB));
-         if (srcA != srcRGB || dstA != dstRGB || eqA != eqRGB) {
-            blend_cntl |= S_028780_SEPARATE_ALPHA_BLEND(1);
-            blend_cntl |= S_028780_ALPHA_COMB_FCN(si_translate_blend_function(eqA));
-            blend_cntl |= S_028780_ALPHA_SRCBLEND(si_translate_blend_factor(gfx_level, srcA));
-            blend_cntl |= S_028780_ALPHA_DESTBLEND(si_translate_blend_factor(gfx_level, dstA));
-         }
-         pipeline->cb_blend_control[i] = blend_cntl;
-      }
-   }
-
-   if (device->physical_device->rad_info.has_rbplus) {
-      /* Disable RB+ blend optimizations for dual source blending. */
-      if (key->ps.epilog.mrt0_is_dual_src) {
-         for (i = 0; i < 8; i++) {
-            pipeline->sx_mrt_blend_opt[i] = S_028760_COLOR_COMB_FCN(V_028760_OPT_COMB_NONE) |
-                                            S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_NONE);
-         }
-      }
-   }
 
    blend.cb_shader_mask = ac_get_cb_shader_mask(key->ps.epilog.spi_shader_col_format);
    blend.spi_shader_col_format = key->ps.epilog.spi_shader_col_format;
@@ -768,6 +675,8 @@ radv_dynamic_state_mask(VkDynamicState state)
       return RADV_DYNAMIC_RASTERIZATION_SAMPLES;
    case VK_DYNAMIC_STATE_LINE_RASTERIZATION_MODE_EXT:
       return RADV_DYNAMIC_LINE_RASTERIZATION_MODE;
+   case VK_DYNAMIC_STATE_COLOR_BLEND_EQUATION_EXT:
+      return RADV_DYNAMIC_COLOR_BLEND_EQUATION;
    default:
       unreachable("Unhandled dynamic state");
    }
@@ -1363,6 +1272,19 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
 
    if (states & RADV_DYNAMIC_LINE_RASTERIZATION_MODE) {
       dynamic->vk.rs.line.mode = state->rs->line.mode;
+   }
+
+   if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_COLOR_BLEND_EQUATION) {
+      for (unsigned i = 0; i < state->cb->attachment_count; i++) {
+         const struct vk_color_blend_attachment_state *att = &state->cb->attachments[i];
+
+         dynamic->vk.cb.attachments[i].src_color_blend_factor = att->src_color_blend_factor;
+         dynamic->vk.cb.attachments[i].dst_color_blend_factor = att->dst_color_blend_factor;
+         dynamic->vk.cb.attachments[i].color_blend_op = att->color_blend_op;
+         dynamic->vk.cb.attachments[i].src_alpha_blend_factor = att->src_alpha_blend_factor;
+         dynamic->vk.cb.attachments[i].dst_alpha_blend_factor = att->dst_alpha_blend_factor;
+         dynamic->vk.cb.attachments[i].alpha_blend_op = att->alpha_blend_op;
+      }
    }
 
    pipeline->dynamic_state.mask = states;
@@ -2258,7 +2180,6 @@ radv_generate_ps_epilog_key(const struct radv_graphics_pipeline *pipeline,
    key.color_is_int10 = device->physical_device->rad_info.gfx_level < GFX8 ? is_int10 : 0;
    key.enable_mrt_output_nan_fixup = device->instance->enable_mrt_output_nan_fixup ? is_float32 : 0;
    key.mrt0_is_dual_src = state->mrt0_is_dual_src;
-   key.need_src_alpha = state->need_src_alpha;
 
    return key;
 }
@@ -5054,9 +4975,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
    /* Copy the non-compacted SPI_SHADER_COL_FORMAT which is used to emit RBPLUS state. */
    pipeline->col_format_non_compacted = blend.spi_shader_col_format;
-
-   pipeline->mrt0_is_dual_src = key.ps.epilog.mrt0_is_dual_src;
-   pipeline->need_src_alpha = key.ps.epilog.need_src_alpha;
 
    struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
    bool enable_mrt_compaction = !key.ps.epilog.mrt0_is_dual_src && !ps->info.ps.has_epilog;

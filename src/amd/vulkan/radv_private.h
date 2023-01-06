@@ -1185,7 +1185,8 @@ enum radv_dynamic_state_bits {
    RADV_DYNAMIC_COLOR_BLEND_ENABLE = 1ull << 42,
    RADV_DYNAMIC_RASTERIZATION_SAMPLES = 1ull << 43,
    RADV_DYNAMIC_LINE_RASTERIZATION_MODE = 1ull << 44,
-   RADV_DYNAMIC_ALL = (1ull << 45) - 1,
+   RADV_DYNAMIC_COLOR_BLEND_EQUATION = 1ull << 45,
+   RADV_DYNAMIC_ALL = (1ull << 46) - 1,
 };
 
 enum radv_cmd_dirty_bits {
@@ -1236,14 +1237,15 @@ enum radv_cmd_dirty_bits {
    RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_ENABLE = 1ull << 42,
    RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES = 1ull << 43,
    RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE = 1ull << 44,
-   RADV_CMD_DIRTY_DYNAMIC_ALL = (1ull << 45) - 1,
-   RADV_CMD_DIRTY_PIPELINE = 1ull << 45,
-   RADV_CMD_DIRTY_INDEX_BUFFER = 1ull << 46,
-   RADV_CMD_DIRTY_FRAMEBUFFER = 1ull << 47,
-   RADV_CMD_DIRTY_VERTEX_BUFFER = 1ull << 48,
-   RADV_CMD_DIRTY_STREAMOUT_BUFFER = 1ull << 49,
-   RADV_CMD_DIRTY_GUARDBAND = 1ull << 50,
-   RADV_CMD_DIRTY_RBPLUS = 1ull << 51,
+   RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_EQUATION = 1ull << 45,
+   RADV_CMD_DIRTY_DYNAMIC_ALL = (1ull << 46) - 1,
+   RADV_CMD_DIRTY_PIPELINE = 1ull << 46,
+   RADV_CMD_DIRTY_INDEX_BUFFER = 1ull << 47,
+   RADV_CMD_DIRTY_FRAMEBUFFER = 1ull << 48,
+   RADV_CMD_DIRTY_VERTEX_BUFFER = 1ull << 49,
+   RADV_CMD_DIRTY_STREAMOUT_BUFFER = 1ull << 50,
+   RADV_CMD_DIRTY_GUARDBAND = 1ull << 51,
+   RADV_CMD_DIRTY_RBPLUS = 1ull << 52,
 };
 
 enum radv_cmd_flush_bits {
@@ -2064,8 +2066,6 @@ struct radv_graphics_pipeline {
    struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param;
    uint8_t vtx_emit_num;
    uint64_t needed_dynamic_state;
-   unsigned cb_blend_control[MAX_RTS];
-   unsigned sx_mrt_blend_opt[MAX_RTS];
    uint32_t binding_stride[MAX_VBS];
    uint8_t attrib_bindings[MAX_VERTEX_ATTRIBS];
    uint32_t attrib_ends[MAX_VERTEX_ATTRIBS];
@@ -2084,8 +2084,6 @@ struct radv_graphics_pipeline {
    /* Used for rbplus */
    uint32_t col_format_non_compacted;
 
-   bool mrt0_is_dual_src;
-   uint8_t need_src_alpha;
    bool need_null_export_workaround;
 
    bool uses_drawid;

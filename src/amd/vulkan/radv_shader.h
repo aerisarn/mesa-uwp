@@ -61,8 +61,6 @@ struct radv_ps_epilog_key {
    uint8_t enable_mrt_output_nan_fixup;
 
    bool mrt0_is_dual_src;
-
-   uint8_t need_src_alpha; /* XXX: Remove this when color blend equations are dynamic! */
 };
 
 struct radv_pipeline_key {
