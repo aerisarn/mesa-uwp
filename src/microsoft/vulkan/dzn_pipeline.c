@@ -1171,6 +1171,8 @@ dzn_graphics_pipeline_translate_rast(struct dzn_graphics_pipeline *pipeline,
       in->pRasterizationState;
    const VkPipelineViewportStateCreateInfo *in_vp =
       in_rast->rasterizerDiscardEnable ? NULL : in->pViewportState;
+   const VkPipelineMultisampleStateCreateInfo *in_ms =
+      in_rast->rasterizerDiscardEnable ? NULL : in->pMultisampleState;
 
    if (in_vp) {
       pipeline->vp.count = in_vp->viewportCount;
@@ -1199,6 +1201,15 @@ dzn_graphics_pipeline_translate_rast(struct dzn_graphics_pipeline *pipeline,
       desc->SlopeScaledDepthBias = in_rast->depthBiasSlopeFactor;
       desc->DepthBiasClamp = in_rast->depthBiasClamp;
    }
+
+   /* The Vulkan conformance tests use different reference rasterizers for single-sampled
+    * and multi-sampled lines. The single-sampled lines can be bresenham lines, but multi-
+    * sampled need to be quadrilateral lines. This still isn't *quite* sufficient, because
+    * D3D only supports a line width of 1.4 (per spec), but Vulkan requires us to support
+    * 1.0 (and without claiming wide lines, that's all we can support).
+    */
+   if (in_ms && in_ms->rasterizationSamples > 1)
+      desc->MultisampleEnable = true;
 
    assert(in_rast->lineWidth == 1.0f);
 }
