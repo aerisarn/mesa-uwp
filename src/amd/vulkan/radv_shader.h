@@ -111,6 +111,7 @@ struct radv_pipeline_key {
       /* Used to export alpha through MRTZ for alpha-to-coverage (GFX11+). */
       bool alpha_to_coverage_via_mrtz;
 
+      bool dynamic_ps_epilog;
       bool has_epilog;
    } ps;
 

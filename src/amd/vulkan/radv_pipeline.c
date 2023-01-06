@@ -2413,14 +2413,8 @@ radv_pipeline_generate_ps_epilog_key(const struct radv_graphics_pipeline *pipeli
 {
    struct radv_ps_epilog_state ps_epilog = {0};
 
-   if (state->ms && ((pipeline->dynamic_states & RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE) ||
-                      state->ms->alpha_to_coverage_enable)) {
-      /* When alpha to coverage is enabled, the driver needs to select a color export format with
-       * alpha. When this state is dynamic, always select a format with alpha because it's hard to
-       * change color export formats dynamically (note that it's suboptimal).
-       */
+   if (state->ms && state->ms->alpha_to_coverage_enable)
       ps_epilog.need_src_alpha |= 0x1;
-   }
 
    if (state->cb) {
       for (uint32_t i = 0; i < state->cb->attachment_count; i++) {
@@ -2582,8 +2576,12 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
    if (device->primitives_generated_query)
       key.primitives_generated_query = true;
 
+   if (radv_pipeline_has_dynamic_ps_epilog(pipeline))
+      key.ps.dynamic_ps_epilog = true;
+
    key.ps.has_epilog =
-      !!(pipeline->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT) && !!pipeline->ps_epilog;
+      (!!(pipeline->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT) && !!pipeline->ps_epilog) ||
+      key.ps.dynamic_ps_epilog;
 
    key.dynamic_patch_control_points =
       !!(pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS);
@@ -3559,6 +3557,10 @@ radv_pipeline_create_ps_epilog(struct radv_graphics_pipeline *pipeline,
                                const struct radv_pipeline_key *pipeline_key)
 {
    struct radv_device *device = pipeline->base.device;
+
+   /* Do not compile a PS epilog as part of the pipeline when it needs to be dynamic. */
+   if (pipeline_key->ps.dynamic_ps_epilog)
+      return true;
 
    if (pipeline->base.shaders[MESA_SHADER_FRAGMENT] &&
        pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.has_epilog && !pipeline->ps_epilog) {
