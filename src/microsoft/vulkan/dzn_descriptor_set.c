@@ -963,7 +963,7 @@ dzn_descriptor_heap_write_buffer_desc(struct dzn_descriptor_heap *heap,
          .ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
          .Buffer = {
             .FirstElement = info->offset / sizeof(uint32_t),
-            .NumElements = (UINT)size / sizeof(uint32_t),
+            .NumElements = (UINT)DIV_ROUND_UP(size, sizeof(uint32_t)),
             .Flags = D3D12_BUFFER_UAV_FLAG_RAW,
          },
       };
@@ -975,7 +975,7 @@ dzn_descriptor_heap_write_buffer_desc(struct dzn_descriptor_heap *heap,
          .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
          .Buffer = {
             .FirstElement = info->offset / sizeof(uint32_t),
-            .NumElements = (UINT)size / sizeof(uint32_t),
+            .NumElements = (UINT)DIV_ROUND_UP(size, sizeof(uint32_t)),
             .Flags = D3D12_BUFFER_SRV_FLAG_RAW,
          },
       };

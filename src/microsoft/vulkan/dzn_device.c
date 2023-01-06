@@ -2668,7 +2668,9 @@ dzn_buffer_create(struct dzn_device *device,
    buf->usage = pCreateInfo->usage;
 
    if (buf->usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
-      buf->size = ALIGN_POT(buf->size, 256);
+      buf->size = MAX2(buf->size, ALIGN_POT(buf->size, 256));
+   if (buf->usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
+      buf->size = MAX2(buf->size, ALIGN_POT(buf->size, 4));
 
    buf->desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
    buf->desc.Format = DXGI_FORMAT_UNKNOWN;
