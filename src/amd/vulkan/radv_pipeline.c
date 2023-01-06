@@ -3211,16 +3211,6 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
 
    int64_t pipeline_start = os_time_get_nano();
 
-   /* Skip the shaders cache when any of the below are true:
-    * - fast-linking is enabled because it's useless to cache unoptimized pipelines
-    * - shaders are captured because it's for debugging purposes
-    * - libraries are created with GPL
-    */
-   if (fast_linking_enabled || keep_executable_info ||
-       (pCreateInfo->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR)) {
-      skip_shaders_cache = true;
-   }
-
    for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
       stages[i].entrypoint = NULL;
       stages[i].nir = NULL;
@@ -3245,6 +3235,23 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
                         radv_get_hash_flags(device, keep_statistic_info));
 
       pipeline->base.pipeline_hash = *(uint64_t *)hash;
+   }
+
+   /* Skip the shaders cache when any of the below are true:
+    * - fast-linking is enabled because it's useless to cache unoptimized pipelines
+    * - shaders are captured because it's for debugging purposes
+    * - graphics pipeline libraries are created with the RETAIN_LINK_TIME_OPTIMIZATION flag and
+    *   module identifiers are used (ie. no SPIR-V provided).
+    */
+   if (fast_linking_enabled || keep_executable_info) {
+      skip_shaders_cache = true;
+   } else if ((pCreateInfo->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR) && retain_shaders) {
+      for (uint32_t i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
+         if (stages[i].entrypoint && !stages[i].spirv.size) {
+            skip_shaders_cache = true;
+            break;
+         }
+      }
    }
 
    bool found_in_application_cache = true;
