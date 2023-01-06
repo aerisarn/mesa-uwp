@@ -579,7 +579,7 @@ zink_gfx_program_update(struct zink_context *ctx)
    ctx->dirty_gfx_stages = 0;
 }
 
-ALWAYS_INLINE static void
+ALWAYS_INLINE static bool
 update_gfx_shader_module_optimal(struct zink_context *ctx, struct zink_gfx_program *prog, gl_shader_stage pstage)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
@@ -588,7 +588,10 @@ update_gfx_shader_module_optimal(struct zink_context *ctx, struct zink_gfx_progr
    struct zink_shader_module *zm = get_shader_module_for_stage_optimal(ctx, screen, prog->shaders[pstage], prog, pstage, &ctx->gfx_pipeline_state);
    if (!zm)
       zm = create_shader_module_for_stage_optimal(ctx, screen, prog->shaders[pstage], prog, pstage, &ctx->gfx_pipeline_state);
+
+   bool changed = prog->modules[pstage] != zm->shader;
    prog->modules[pstage] = zm->shader;
+   return changed;
 }
 
 static void
@@ -596,17 +599,17 @@ update_gfx_program_optimal(struct zink_context *ctx, struct zink_gfx_program *pr
 {
    const union zink_shader_key_optimal *optimal_key = (union zink_shader_key_optimal*)&prog->last_variant_hash;
    if (ctx->gfx_pipeline_state.shader_keys_optimal.key.vs_bits != optimal_key->vs_bits) {
-      update_gfx_shader_module_optimal(ctx, prog, ctx->last_vertex_stage->nir->info.stage);
-      ctx->gfx_pipeline_state.modules_changed = true;
+      bool changed = update_gfx_shader_module_optimal(ctx, prog, ctx->last_vertex_stage->nir->info.stage);
+      ctx->gfx_pipeline_state.modules_changed |= changed;
    }
    if (ctx->gfx_pipeline_state.shader_keys_optimal.key.fs_bits != optimal_key->fs_bits) {
-      update_gfx_shader_module_optimal(ctx, prog, MESA_SHADER_FRAGMENT);
-      ctx->gfx_pipeline_state.modules_changed = true;
+      bool changed = update_gfx_shader_module_optimal(ctx, prog, MESA_SHADER_FRAGMENT);
+      ctx->gfx_pipeline_state.modules_changed |= changed;
    }
    if (prog->shaders[MESA_SHADER_TESS_CTRL] && prog->shaders[MESA_SHADER_TESS_CTRL]->non_fs.is_generated &&
        ctx->gfx_pipeline_state.shader_keys_optimal.key.tcs_bits != optimal_key->tcs_bits) {
-      update_gfx_shader_module_optimal(ctx, prog, MESA_SHADER_TESS_CTRL);
-      ctx->gfx_pipeline_state.modules_changed = true;
+      bool changed = update_gfx_shader_module_optimal(ctx, prog, MESA_SHADER_TESS_CTRL);
+      ctx->gfx_pipeline_state.modules_changed |= changed;
    }
    prog->last_variant_hash = ctx->gfx_pipeline_state.shader_keys_optimal.key.val;
 }
