@@ -2508,6 +2508,8 @@ begin_rendering(struct zink_context *ctx)
          return 0;
       ctx->dynamic_fb.attachments[i].imageView = iv;
    }
+   if (has_swapchain)
+      zink_render_fixup_swapchain(ctx);
    if (ctx->fb_state.zsbuf && zsbuf_used) {
       struct zink_surface *surf = zink_csurface(ctx->fb_state.zsbuf);
       VkImageView iv = zink_prep_fb_attachment(ctx, surf, ctx->fb_state.nr_cbufs);
