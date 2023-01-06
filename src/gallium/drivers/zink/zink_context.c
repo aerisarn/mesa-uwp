@@ -2357,7 +2357,9 @@ begin_rendering(struct zink_context *ctx)
    unsigned clear_buffers = 0;
    ctx->gfx_pipeline_state.render_pass = NULL;
    zink_update_vk_sample_locations(ctx);
-   zink_render_update_swapchain(ctx);
+   bool has_swapchain = zink_render_update_swapchain(ctx);
+   if (has_swapchain)
+      zink_render_fixup_swapchain(ctx);
    bool has_depth = false;
    bool has_stencil = false;
    bool changed_layout = false;

@@ -589,7 +589,9 @@ setup_framebuffer(struct zink_context *ctx)
    ctx->rp_loadop_changed = false;
    ctx->rp_layout_changed = false;
    ctx->rp_changed = false;
-   zink_render_update_swapchain(ctx);
+
+   if (zink_render_update_swapchain(ctx))
+      zink_render_fixup_swapchain(ctx);
 
    if (!ctx->fb_changed)
       return;
@@ -814,6 +816,23 @@ zink_init_render_pass(struct zink_context *ctx)
 }
 
 void
+zink_render_fixup_swapchain(struct zink_context *ctx)
+{
+   if ((ctx->swapchain_size.width || ctx->swapchain_size.height)) {
+      unsigned old_w = ctx->fb_state.width;
+      unsigned old_h = ctx->fb_state.height;
+      ctx->fb_state.width = ctx->swapchain_size.width;
+      ctx->fb_state.height = ctx->swapchain_size.height;
+      zink_kopper_fixup_depth_buffer(ctx);
+      if (ctx->fb_state.width != old_w || ctx->fb_state.height != old_h)
+         ctx->scissor_changed = true;
+      if (ctx->framebuffer)
+         zink_update_framebuffer_state(ctx);
+      ctx->swapchain_size.width = ctx->swapchain_size.height = 0;
+   }
+}
+
+bool
 zink_render_update_swapchain(struct zink_context *ctx)
 {
    bool has_swapchain = false;
@@ -827,16 +846,5 @@ zink_render_update_swapchain(struct zink_context *ctx)
             zink_surface_swapchain_update(ctx, zink_csurface(ctx->fb_state.cbufs[i]));
       }
    }
-   if (has_swapchain && (ctx->swapchain_size.width || ctx->swapchain_size.height)) {
-      unsigned old_w = ctx->fb_state.width;
-      unsigned old_h = ctx->fb_state.height;
-      ctx->fb_state.width = ctx->swapchain_size.width;
-      ctx->fb_state.height = ctx->swapchain_size.height;
-      zink_kopper_fixup_depth_buffer(ctx);
-      if (ctx->fb_state.width != old_w || ctx->fb_state.height != old_h)
-         ctx->scissor_changed = true;
-      if (ctx->framebuffer)
-         zink_update_framebuffer_state(ctx);
-      ctx->swapchain_size.width = ctx->swapchain_size.height = 0;
-   }
+   return has_swapchain;
 }
