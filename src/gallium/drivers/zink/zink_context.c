@@ -2508,8 +2508,14 @@ begin_rendering(struct zink_context *ctx)
          return 0;
       ctx->dynamic_fb.attachments[i].imageView = iv;
    }
-   if (has_swapchain)
+   if (has_swapchain) {
+      struct zink_resource *res = zink_resource(ctx->fb_state.cbufs[0]->texture);
       zink_render_fixup_swapchain(ctx);
+      assert(ctx->dynamic_fb.info.renderArea.extent.width <= res->base.b.width0);
+      assert(ctx->dynamic_fb.info.renderArea.extent.height <= res->base.b.height0);
+      assert(ctx->fb_state.width <= res->base.b.width0);
+      assert(ctx->fb_state.height <= res->base.b.height0);
+   }
    if (ctx->fb_state.zsbuf && zsbuf_used) {
       struct zink_surface *surf = zink_csurface(ctx->fb_state.zsbuf);
       VkImageView iv = zink_prep_fb_attachment(ctx, surf, ctx->fb_state.nr_cbufs);
@@ -2518,6 +2524,8 @@ begin_rendering(struct zink_context *ctx)
       ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS+1].imageView = iv;
       ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS+1].imageLayout = zink_resource(surf->base.texture)->layout;
    }
+   assert(ctx->fb_state.width >= ctx->dynamic_fb.info.renderArea.extent.width);
+   assert(ctx->fb_state.height >= ctx->dynamic_fb.info.renderArea.extent.height);
    ctx->gfx_pipeline_state.dirty |= rp_changed;
    ctx->gfx_pipeline_state.rp_state = rp_state;
 
