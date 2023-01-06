@@ -133,6 +133,25 @@ tu_drm_get_priorities(const struct tu_physical_device *dev)
    return val;
 }
 
+static bool
+tu_drm_is_memory_type_supported(int fd, uint32_t flags)
+{
+   struct drm_msm_gem_new req_alloc = { .size = 0x1000, .flags = flags };
+
+   int ret =
+      drmCommandWriteRead(fd, DRM_MSM_GEM_NEW, &req_alloc, sizeof(req_alloc));
+   if (ret) {
+      return false;
+   }
+
+   struct drm_gem_close req_close = {
+      .handle = req_alloc.handle,
+   };
+   drmIoctl(fd, DRM_IOCTL_GEM_CLOSE, &req_close);
+
+   return true;
+}
+
 static int
 msm_device_get_gpu_timestamp(struct tu_device *dev, uint64_t *ts)
 {
@@ -387,16 +406,20 @@ msm_bo_init(struct tu_device *dev,
             struct tu_bo **out_bo,
             uint64_t size,
             uint64_t client_iova,
+            VkMemoryPropertyFlags mem_property,
             enum tu_bo_alloc_flags flags,
             const char *name)
 {
-   /* TODO: Choose better flags. As of 2018-11-12, freedreno/drm/msm_bo.c
-    * always sets `flags = MSM_BO_WC`, and we copy that behavior here.
-    */
    struct drm_msm_gem_new req = {
       .size = size,
-      .flags = MSM_BO_WC
+      .flags = 0
    };
+
+   if (mem_property & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) {
+      req.flags |= MSM_BO_CACHED_COHERENT;
+   } else {
+      req.flags |= MSM_BO_WC;
+   }
 
    if (flags & TU_BO_ALLOC_GPU_READ_ONLY)
       req.flags |= MSM_BO_GPU_READONLY;
@@ -557,6 +580,22 @@ msm_bo_finish(struct tu_device *dev, struct tu_bo *bo)
    tu_gem_close(dev, gem_handle);
 
    u_rwlock_rdunlock(&dev->dma_bo_lock);
+}
+
+VkResult
+tu_FlushMappedMemoryRanges(VkDevice _device,
+                           uint32_t memoryRangeCount,
+                           const VkMappedMemoryRange *pMemoryRanges)
+{
+   return VK_SUCCESS;
+}
+
+VkResult
+tu_InvalidateMappedMemoryRanges(VkDevice _device,
+                                uint32_t memoryRangeCount,
+                                const VkMappedMemoryRange *pMemoryRanges)
+{
+   return VK_SUCCESS;
 }
 
 extern const struct vk_sync_type tu_timeline_sync_type;
@@ -1251,6 +1290,12 @@ tu_knl_drm_msm_load(struct tu_instance *instance,
     * Disable this capability until solution is found.
     */
    device->has_set_iova = false;
+
+   /* Even if kernel is new enough, the GPU itself may not support it. */
+   device->has_cached_coherent_memory =
+      (device->msm_minor_version >= 8) &&
+      tu_drm_is_memory_type_supported(fd, MSM_BO_CACHED_COHERENT);
+   device->has_cached_non_coherent_memory = false;
 
    ret = tu_drm_get_param(device, MSM_PARAM_FAULTS, &device->fault_count);
    if (ret != 0) {
