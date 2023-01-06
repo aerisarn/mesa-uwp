@@ -1470,7 +1470,7 @@ struct zink_sampler_view {
       struct zink_buffer_view *buffer_view;
    };
    struct zink_surface *cube_array;
-   bool shadow_needs_shader_swizzle;
+   struct zink_surface *shadow;
    struct zink_fs_shadow_swizzle swizzle;
 };
 

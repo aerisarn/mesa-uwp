@@ -211,6 +211,9 @@ zink_component_mapping(enum pipe_swizzle swizzle)
    }
 }
 
+void
+zink_update_shadow_samplerviews(struct zink_context *ctx, unsigned mask);
+
 enum pipe_swizzle
 zink_clamp_void_swizzle(const struct util_format_description *desc, enum pipe_swizzle swizzle);
 
