@@ -482,7 +482,7 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct radv_pipel
 
    size_t size = sizeof(*entry) + sizeof(struct radv_pipeline_shader_stack_size) * num_rt_groups;
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i)
-      if (pipeline->shaders[i])
+      if (binaries[i])
          size += binaries[i]->total_size;
    if (ps_epilog_binary)
       size += ps_epilog_binary->total_size;
@@ -501,7 +501,7 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct radv_pipel
    char *p = entry->code;
 
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-      if (!pipeline->shaders[i])
+      if (!binaries[i])
          continue;
 
       entry->binary_sizes[i] = binaries[i]->total_size;
@@ -551,8 +551,9 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct radv_pipel
     * items.
     */
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-      if (!pipeline->shaders[i])
+      if (!binaries[i])
          continue;
+      assert(pipeline->shaders[i]);
 
       entry->shaders[i] = pipeline->shaders[i];
       radv_shader_ref(pipeline->shaders[i]);
