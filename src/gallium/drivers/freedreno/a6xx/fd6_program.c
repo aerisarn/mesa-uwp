@@ -664,6 +664,14 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
                    clip_cull_mask >> 4, l.max_loc);
    }
 
+   /* The hw seems to be unhappy if the last geom shader has no outputs.
+    * Normally you'd at least see gl_Position writes, but if the last
+    * geom stage simply writes to an SSBO (for ex) and no other outputs,
+    * insert a dummy varying
+    */
+   if (!l.cnt)
+      ir3_link_add(&l, 0, regid(0, 0), 0x1, l.max_loc);
+
    /* If we have stream-out, we use the full shader for binning
     * pass, rather than the optimized binning pass one, so that we
     * have all the varying outputs available for xfb.  So streamout
