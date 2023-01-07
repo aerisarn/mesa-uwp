@@ -939,57 +939,54 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    case nir_op_isub:
       return agx_iadd_to(b, dst, s0, agx_neg(s1), 0);
    case nir_op_ineg:
-      return agx_iadd_to(b, dst, agx_zero(), agx_neg(s0), 0);
+      return agx_iadd_to(b, dst, i0, agx_neg(s0), 0);
    case nir_op_imul:
-      return agx_imad_to(b, dst, s0, s1, agx_zero(), 0);
+      return agx_imad_to(b, dst, s0, s1, i0, 0);
    case nir_op_umul_2x32_64:
-      return agx_imad_to(b, dst, agx_abs(s0), agx_abs(s1), agx_zero(), 0);
+      return agx_imad_to(b, dst, agx_abs(s0), agx_abs(s1), i0, 0);
    case nir_op_imul_2x32_64:
-      return agx_imad_to(b, dst, s0, s1, agx_zero(), 0);
+      return agx_imad_to(b, dst, s0, s1, i0, 0);
    case nir_op_umul_high:
       return agx_umul_high_to(b, dst, s0, s1);
 
    case nir_op_ishl:
-      return agx_bfi_to(b, dst, agx_zero(), s0, s1, 0);
+      return agx_bfi_to(b, dst, i0, s0, s1, 0);
    case nir_op_ushr:
       return agx_ushr_to(b, dst, s0, s1);
    case nir_op_ishr:
       return agx_asr_to(b, dst, s0, s1);
 
    case nir_op_bcsel:
-      return agx_icmpsel_to(b, dst, s0, agx_zero(), s2, s1, AGX_ICOND_UEQ);
+      return agx_icmpsel_to(b, dst, s0, i0, s2, s1, AGX_ICOND_UEQ);
 
    case nir_op_b2i32:
    case nir_op_b2i16:
-      return agx_icmpsel_to(b, dst, s0, agx_zero(), agx_zero(),
-                            agx_immediate(1), AGX_ICOND_UEQ);
+      return agx_icmpsel_to(b, dst, s0, i0, i0, i1, AGX_ICOND_UEQ);
 
    case nir_op_b2f16:
    case nir_op_b2f32: {
       /* At this point, boolean is just zero/nonzero, so compare with zero */
-      agx_index one = (sz == 16) ? agx_mov_imm(b, 16, _mesa_float_to_half(1.0))
-                                 : agx_mov_imm(b, 32, fui(1.0));
+      agx_index f1 = (sz == 16) ? agx_mov_imm(b, 16, _mesa_float_to_half(1.0))
+                                : agx_mov_imm(b, 32, fui(1.0));
 
-      agx_index zero = agx_zero();
-
-      return agx_fcmpsel_to(b, dst, s0, zero, zero, one, AGX_FCOND_EQ);
+      return agx_fcmpsel_to(b, dst, s0, i0, i0, f1, AGX_FCOND_EQ);
    }
 
    case nir_op_i2i32: {
       if (src_sz == 8) {
          /* Sign extend in software, NIR likes 8-bit conversions */
-         agx_index ishl16 = agx_bfi(b, agx_zero(), s0, agx_immediate(8), 0);
+         agx_index ishl16 = agx_bfi(b, i0, s0, agx_immediate(8), 0);
          return agx_asr_to(b, dst, ishl16, agx_immediate(8));
       } else {
          assert(s0.size == AGX_SIZE_16 && "other conversions lowered");
-         return agx_iadd_to(b, dst, s0, agx_zero(), 0);
+         return agx_iadd_to(b, dst, s0, i0, 0);
       }
    }
 
    case nir_op_i2i16: {
       if (src_sz == 8) {
          /* Sign extend in software, NIR likes 8-bit conversions */
-         agx_index ishl16 = agx_bfi(b, agx_zero(), s0, agx_immediate(8), 0);
+         agx_index ishl16 = agx_bfi(b, i0, s0, agx_immediate(8), 0);
          return agx_asr_to(b, dst, ishl16, agx_immediate(8));
       } else {
          assert(s0.size == AGX_SIZE_32 && "other conversions lowered");
