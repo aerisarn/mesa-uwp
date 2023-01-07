@@ -44,6 +44,8 @@
 #include "pipe/p_defines.h"
 #include "pipe/p_screen.h"
 #include "pipe/p_state.h"
+#include "util/format_srgb.h"
+#include "util/half_float.h"
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
 #include "util/u_prim.h"
@@ -414,6 +416,29 @@ static const enum agx_compare_func agx_compare_funcs[PIPE_FUNC_ALWAYS + 1] = {
    [PIPE_FUNC_ALWAYS] = AGX_COMPARE_FUNC_ALWAYS,
 };
 
+static enum pipe_format
+fixup_border_zs(enum pipe_format orig, union pipe_color_union *c)
+{
+   switch (orig) {
+   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+   case PIPE_FORMAT_Z24X8_UNORM:
+      /* Z24 is internally promoted to Z32F via transfer_helper. These formats
+       * are normalized so should get clamped, but Z32F does not get clamped, so
+       * we clamp here.
+       */
+      c->f[0] = SATURATE(c->f[0]);
+      return PIPE_FORMAT_Z32_FLOAT;
+
+   case PIPE_FORMAT_X24S8_UINT:
+   case PIPE_FORMAT_X32_S8X24_UINT:
+      /* Separate stencil is internally promoted */
+      return PIPE_FORMAT_S8_UINT;
+
+   default:
+      return orig;
+   }
+}
+
 static void *
 agx_create_sampler_state(struct pipe_context *pctx,
                          const struct pipe_sampler_state *state)
@@ -445,6 +470,20 @@ agx_create_sampler_state(struct pipe_context *pctx,
       cfg.seamful_cube_maps =
          !(agx_device(pctx->screen)->debug & AGX_DBG_DEQP) ||
          !state->seamless_cube_map;
+
+      if (state->border_color_format != PIPE_FORMAT_NONE) {
+         /* TODO: Optimize to use compact descriptors for black/white borders */
+         so->uses_custom_border = true;
+         cfg.border_colour = AGX_BORDER_COLOUR_CUSTOM;
+      }
+   }
+
+   if (so->uses_custom_border) {
+      union pipe_color_union border = state->border_color;
+      enum pipe_format format =
+         fixup_border_zs(state->border_color_format, &border);
+
+      agx_pack_border(&so->border, border.ui, format);
    }
 
    return so;
@@ -476,6 +515,14 @@ agx_bind_sampler_states(struct pipe_context *pctx, enum pipe_shader_type shader,
 
    ctx->stage[shader].sampler_count =
       util_last_bit(ctx->stage[shader].valid_samplers);
+
+   /* Recalculate whether we need custom borders */
+   ctx->stage[shader].custom_borders = false;
+
+   u_foreach_bit(i, ctx->stage[shader].valid_samplers) {
+      if (ctx->stage[shader].samplers[i]->uses_custom_border)
+         ctx->stage[shader].custom_borders = true;
+   }
 }
 
 /* Channels agree for RGBA but are weird for force 0/1 */
@@ -1527,15 +1574,18 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
    struct agx_context *ctx = batch->ctx;
    unsigned nr_textures = ctx->stage[stage].texture_count;
    unsigned nr_samplers = ctx->stage[stage].sampler_count;
+   bool custom_borders = ctx->stage[stage].custom_borders;
 
    struct agx_ptr T_tex = agx_pool_alloc_aligned(
       &batch->pool, AGX_TEXTURE_LENGTH * nr_textures, 64);
 
-   struct agx_ptr T_samp = agx_pool_alloc_aligned(
-      &batch->pool, AGX_SAMPLER_LENGTH * nr_samplers, 64);
+   size_t sampler_length =
+      AGX_SAMPLER_LENGTH + (custom_borders ? AGX_BORDER_LENGTH : 0);
+
+   struct agx_ptr T_samp =
+      agx_pool_alloc_aligned(&batch->pool, sampler_length * nr_samplers, 64);
 
    struct agx_texture_packed *textures = T_tex.cpu;
-   struct agx_sampler_packed *samplers = T_samp.cpu;
 
    /* TODO: Dirty track me to save some CPU cycles and maybe improve caching */
    for (unsigned i = 0; i < nr_textures; ++i) {
@@ -1569,13 +1619,25 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
    }
 
    /* TODO: Dirty track me to save some CPU cycles and maybe improve caching */
+   uint8_t *out_sampler = T_samp.cpu;
    for (unsigned i = 0; i < nr_samplers; ++i) {
       struct agx_sampler_state *sampler = ctx->stage[stage].samplers[i];
+      struct agx_sampler_packed *out = (struct agx_sampler_packed *)out_sampler;
 
-      if (sampler)
-         samplers[i] = sampler->desc;
-      else
-         memset(&samplers[i], 0, sizeof(samplers[i]));
+      if (sampler) {
+         *out = sampler->desc;
+
+         if (custom_borders) {
+            memcpy(out_sampler + AGX_SAMPLER_LENGTH, &sampler->border,
+                   AGX_BORDER_LENGTH);
+         } else {
+            assert(!sampler->uses_custom_border && "invalid combination");
+         }
+      } else {
+         memset(out, 0, sampler_length);
+      }
+
+      out_sampler += sampler_length;
    }
 
    struct agx_usc_builder b =
@@ -1891,8 +1953,8 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
          cfg.uniform_register_count = ctx->vs->info.push_count;
          cfg.preshader_register_count = ctx->vs->info.nr_preamble_gprs;
          cfg.texture_state_register_count = tex_count;
-         cfg.sampler_state_register_count =
-            agx_translate_sampler_state_count(tex_count, false);
+         cfg.sampler_state_register_count = agx_translate_sampler_state_count(
+            tex_count, ctx->stage[PIPE_SHADER_VERTEX].custom_borders);
       }
       out += AGX_VDM_STATE_VERTEX_SHADER_WORD_0_LENGTH;
 
@@ -2067,14 +2129,15 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
 
    if (dirty.fragment_shader) {
       unsigned frag_tex_count = ctx->stage[PIPE_SHADER_FRAGMENT].texture_count;
+
       agx_ppp_push(&ppp, FRAGMENT_SHADER, cfg) {
          cfg.pipeline =
             agx_build_pipeline(batch, ctx->fs, PIPE_SHADER_FRAGMENT),
          cfg.uniform_register_count = ctx->fs->info.push_count;
          cfg.preshader_register_count = ctx->fs->info.nr_preamble_gprs;
          cfg.texture_state_register_count = frag_tex_count;
-         cfg.sampler_state_register_count =
-            agx_translate_sampler_state_count(frag_tex_count, false);
+         cfg.sampler_state_register_count = agx_translate_sampler_state_count(
+            frag_tex_count, ctx->stage[PIPE_SHADER_FRAGMENT].custom_borders);
          cfg.cf_binding_count = ctx->fs->info.varyings.fs.nr_bindings;
          cfg.cf_bindings = batch->varyings;
 
