@@ -817,63 +817,6 @@ agx_alu_src_index(agx_builder *b, nir_alu_src src)
 }
 
 static agx_instr *
-agx_emit_alu_bool(agx_builder *b, nir_op op, agx_index dst, agx_index s0,
-                  agx_index s1, agx_index s2)
-{
-   /* Handle 1-bit bools as zero/nonzero rather than specifically 0/1 or 0/~0.
-    * This will give the optimizer flexibility. */
-   agx_index f = agx_immediate(0);
-   agx_index t = agx_immediate(0x1);
-
-   switch (op) {
-   case nir_op_feq:
-      return agx_fcmpsel_to(b, dst, s0, s1, t, f, AGX_FCOND_EQ);
-   case nir_op_flt:
-      return agx_fcmpsel_to(b, dst, s0, s1, t, f, AGX_FCOND_LT);
-   case nir_op_fge:
-      return agx_fcmpsel_to(b, dst, s0, s1, t, f, AGX_FCOND_GE);
-   case nir_op_fneu:
-      return agx_fcmpsel_to(b, dst, s0, s1, f, t, AGX_FCOND_EQ);
-
-   case nir_op_ieq:
-      return agx_icmpsel_to(b, dst, s0, s1, t, f, AGX_ICOND_UEQ);
-   case nir_op_ine:
-      return agx_icmpsel_to(b, dst, s0, s1, f, t, AGX_ICOND_UEQ);
-   case nir_op_ilt:
-      return agx_icmpsel_to(b, dst, s0, s1, t, f, AGX_ICOND_SLT);
-   case nir_op_ige:
-      return agx_icmpsel_to(b, dst, s0, s1, f, t, AGX_ICOND_SLT);
-   case nir_op_ult:
-      return agx_icmpsel_to(b, dst, s0, s1, t, f, AGX_ICOND_ULT);
-   case nir_op_uge:
-      return agx_icmpsel_to(b, dst, s0, s1, f, t, AGX_ICOND_ULT);
-
-   case nir_op_mov:
-      return agx_mov_to(b, dst, s0);
-   case nir_op_iand:
-      return agx_and_to(b, dst, s0, s1);
-   case nir_op_ior:
-      return agx_or_to(b, dst, s0, s1);
-   case nir_op_ixor:
-      return agx_xor_to(b, dst, s0, s1);
-   case nir_op_inot:
-      return agx_xor_to(b, dst, s0, t);
-
-   case nir_op_f2b1:
-      return agx_fcmpsel_to(b, dst, s0, f, f, t, AGX_FCOND_EQ);
-   case nir_op_b2b1:
-      return agx_icmpsel_to(b, dst, s0, f, f, t, AGX_ICOND_UEQ);
-
-   case nir_op_bcsel:
-      return agx_icmpsel_to(b, dst, s0, f, s2, s1, AGX_ICOND_UEQ);
-
-   default:
-      fprintf(stderr, "Unhandled ALU op %s\n", nir_op_infos[op].name);
-      unreachable("Unhandled boolean ALU instruction");
-   }
-}
-
-static agx_instr *
 agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
 {
    unsigned srcs = nir_op_infos[instr->op].num_inputs;
@@ -890,9 +833,8 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    agx_index s2 = srcs > 2 ? agx_alu_src_index(b, instr->src[2]) : agx_null();
    agx_index s3 = srcs > 3 ? agx_alu_src_index(b, instr->src[3]) : agx_null();
 
-   /* 1-bit bools are a bit special, only handle with select ops */
-   if (sz == 1)
-      return agx_emit_alu_bool(b, instr->op, dst, s0, s1, s2);
+   agx_index i0 = agx_immediate(0);
+   agx_index i1 = agx_immediate(1);
 
 #define UNOP(nop, aop)                                                         \
    case nir_op_##nop:                                                          \
@@ -933,10 +875,42 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
       UNOP(bitfield_reverse, bitrev);
       UNOP(bit_count, popcount);
       UNOP(ufind_msb, ffs);
-      UNOP(inot, not );
       BINOP(iand, and);
       BINOP(ior, or);
       BINOP(ixor, xor);
+
+   case nir_op_feq:
+      return agx_fcmpsel_to(b, dst, s0, s1, i1, i0, AGX_FCOND_EQ);
+   case nir_op_flt:
+      return agx_fcmpsel_to(b, dst, s0, s1, i1, i0, AGX_FCOND_LT);
+   case nir_op_fge:
+      return agx_fcmpsel_to(b, dst, s0, s1, i1, i0, AGX_FCOND_GE);
+   case nir_op_fneu:
+      return agx_fcmpsel_to(b, dst, s0, s1, i0, i1, AGX_FCOND_EQ);
+
+   case nir_op_ieq:
+      return agx_icmpsel_to(b, dst, s0, s1, i1, i0, AGX_ICOND_UEQ);
+   case nir_op_ine:
+      return agx_icmpsel_to(b, dst, s0, s1, i0, i1, AGX_ICOND_UEQ);
+   case nir_op_ilt:
+      return agx_icmpsel_to(b, dst, s0, s1, i1, i0, AGX_ICOND_SLT);
+   case nir_op_ige:
+      return agx_icmpsel_to(b, dst, s0, s1, i0, i1, AGX_ICOND_SLT);
+   case nir_op_ult:
+      return agx_icmpsel_to(b, dst, s0, s1, i1, i0, AGX_ICOND_ULT);
+   case nir_op_uge:
+      return agx_icmpsel_to(b, dst, s0, s1, i0, i1, AGX_ICOND_ULT);
+
+   case nir_op_inot:
+      if (sz == 1)
+         return agx_xor_to(b, dst, s0, i1);
+      else
+         return agx_not_to(b, dst, s0);
+
+   case nir_op_f2b1:
+      return agx_fcmpsel_to(b, dst, s0, i0, i0, i1, AGX_FCOND_EQ);
+   case nir_op_b2b1:
+      return agx_icmpsel_to(b, dst, s0, i0, i0, i1, AGX_ICOND_UEQ);
 
    case nir_op_fsqrt:
       return agx_fmul_to(b, dst, s0, agx_srsqrt(b, s0));
