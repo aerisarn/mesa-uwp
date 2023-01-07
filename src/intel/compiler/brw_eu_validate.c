@@ -2076,6 +2076,22 @@ instruction_restrictions(const struct brw_isa_info *isa,
                   "If the destination is the null register, the {Switch} "
                   "instruction option must be used.");
       }
+
+      ERROR_IF(brw_inst_cond_modifier(devinfo, inst) == BRW_CONDITIONAL_NONE,
+               "CMP (or CMPN) must have a condition.");
+   }
+
+   if (brw_inst_opcode(isa, inst) == BRW_OPCODE_SEL) {
+      if (devinfo->ver < 6) {
+         ERROR_IF(brw_inst_cond_modifier(devinfo, inst) != BRW_CONDITIONAL_NONE,
+                  "SEL must not have a condition modifier");
+         ERROR_IF(brw_inst_pred_control(devinfo, inst) == BRW_PREDICATE_NONE,
+                  "SEL must be predicated");
+      } else {
+         ERROR_IF((brw_inst_cond_modifier(devinfo, inst) != BRW_CONDITIONAL_NONE) ==
+                  (brw_inst_pred_control(devinfo, inst) != BRW_PREDICATE_NONE),
+                  "SEL must either be predicated or have a condition modifiers");
+      }
    }
 
    if (brw_inst_opcode(isa, inst) == BRW_OPCODE_MUL) {
