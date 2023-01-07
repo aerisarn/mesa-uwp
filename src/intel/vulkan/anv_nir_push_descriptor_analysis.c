@@ -222,7 +222,9 @@ anv_nir_push_desc_ubo_fully_promoted(nir_shader *nir,
                   (nir_dest_bit_size(intrin->dest) / 8);
 
                for (unsigned i = 0; i < ARRAY_SIZE(bind_map->push_ranges); i++) {
-                  if (bind_map->push_ranges[i].start * 32 <= load_offset &&
+                  if (bind_map->push_ranges[i].set == binding->set &&
+                      bind_map->push_ranges[i].index == desc_idx &&
+                      bind_map->push_ranges[i].start * 32 <= load_offset &&
                       (bind_map->push_ranges[i].start +
                        bind_map->push_ranges[i].length) * 32 >=
                       (load_offset + load_bytes)) {
