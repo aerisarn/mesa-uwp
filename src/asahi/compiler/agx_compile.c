@@ -1999,7 +1999,7 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
       /* Report a canonical depth layout */
       enum gl_frag_depth_layout layout = nir->info.fs.depth_layout;
 
-      if (!(nir->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_DEPTH)))
+      if (!(nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH)))
          out->depth_layout = FRAG_DEPTH_LAYOUT_UNCHANGED;
       else if (layout == FRAG_DEPTH_LAYOUT_NONE)
          out->depth_layout = FRAG_DEPTH_LAYOUT_ANY;
