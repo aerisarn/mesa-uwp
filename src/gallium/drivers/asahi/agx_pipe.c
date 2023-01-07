@@ -1103,8 +1103,6 @@ agx_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
    ctx->writer = _mesa_pointer_hash_table_create(ctx);
 
-   /* Upload fixed shaders (TODO: compile them?) */
-
    pctx->stream_uploader = u_upload_create_default(pctx);
    if (!pctx->stream_uploader) {
       FREE(pctx);
