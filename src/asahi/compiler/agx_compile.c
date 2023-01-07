@@ -316,9 +316,7 @@ agx_umul_high_to(agx_builder *b, agx_index dst, agx_index P, agx_index Q)
    agx_index product = agx_temp(b->shader, P.size + 1);
    agx_imad_to(b, product, agx_abs(P), agx_abs(Q), agx_zero(), 0);
 
-   agx_instr *split = agx_split(b, 2, product);
-   split->dest[1] = dst;
-   return split;
+   return agx_subdivide_to(b, dst, product, 1);
 }
 
 static enum agx_format
