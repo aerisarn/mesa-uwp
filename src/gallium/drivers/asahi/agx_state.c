@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include "asahi/compiler/agx_compile.h"
 #include "asahi/lib/agx_formats.h"
+#include "asahi/lib/agx_helpers.h"
 #include "asahi/lib/agx_pack.h"
 #include "asahi/lib/agx_ppp.h"
 #include "asahi/lib/agx_usc.h"
@@ -1890,7 +1891,8 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
          cfg.uniform_register_count = ctx->vs->info.push_count;
          cfg.preshader_register_count = ctx->vs->info.nr_preamble_gprs;
          cfg.texture_state_register_count = tex_count;
-         cfg.sampler_state_register_count = tex_count;
+         cfg.sampler_state_register_count =
+            agx_translate_sampler_state_count(tex_count, false);
       }
       out += AGX_VDM_STATE_VERTEX_SHADER_WORD_0_LENGTH;
 
@@ -2071,7 +2073,8 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
          cfg.uniform_register_count = ctx->fs->info.push_count;
          cfg.preshader_register_count = ctx->fs->info.nr_preamble_gprs;
          cfg.texture_state_register_count = frag_tex_count;
-         cfg.sampler_state_register_count = frag_tex_count;
+         cfg.sampler_state_register_count =
+            agx_translate_sampler_state_count(frag_tex_count, false);
          cfg.cf_binding_count = ctx->fs->info.varyings.fs.nr_bindings;
          cfg.cf_bindings = batch->varyings;
 

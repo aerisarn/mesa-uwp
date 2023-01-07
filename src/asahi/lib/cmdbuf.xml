@@ -289,6 +289,7 @@
     <value name="Transparent black" value="0"/>
     <value name="Opaque black" value="1"/>
     <value name="Opaque white" value="2"/>
+    <value name="Custom" value="3"/>
   </enum>
 
   <struct name="Sampler" size="8">
@@ -306,6 +307,13 @@
     <field name="Compare enable" size="1" start="42" type="bool"/>
     <field name="Border colour" size="2" start="55" type="Border colour"/>
     <field name="Seamful cube maps" size="1" start="57" type="bool"/>
+  </struct>
+
+  <struct name="Border" size="16">
+    <field name="Channel 0" size="32" start="0:0" type="hex"/>
+    <field name="Channel 1" size="32" start="1:0" type="hex"/>
+    <field name="Channel 2" size="32" start="2:0" type="hex"/>
+    <field name="Channel 3" size="32" start="3:0" type="hex"/>
   </struct>
 
   <!--- Pointed to from the command buffer -->
@@ -519,11 +527,21 @@
     <field name="Depth bias" size="16" start="16" type="uint"/>
   </struct>
 
+  <enum name="Sampler states">
+    <value name="0" value="0"/>
+    <value name="4 compact" value="1"/>
+    <value name="8 compact" value="2"/>
+    <value name="12 compact" value="3"/>
+    <value name="16 compact" value="4"/>
+    <value name="8 extended" value="6"/>
+    <value name="16 extended" value="7"/>
+  </enum>
+
   <struct name="Fragment shader" size="16">
     <field name="Unknown 0" size="1" start="0" type="hex" default="0"/>
     <field name="Uniform register count" size="3" start="1" type="uint" modifier="groups(64)"/>
     <field name="Texture state register count" size="5" start="4" type="uint" modifier="groups(8)"/>
-    <field name="Sampler state register count" size="3" start="9" type="uint" modifier="groups(4)"/>
+    <field name="Sampler state register count" size="3" start="9" type="Sampler states"/>
     <field name="Preshader register count" size="4" start="12" type="uint" modifier="groups(16)"/>
     <field name="CF binding count" size="7" start="16" type="uint"/>
     <field name="Unknown 1:0" size="2" start="1:0" type="hex"/>
@@ -677,7 +695,7 @@
     <field name="Unknown 0" size="1" start="0" type="hex" default="0"/>
     <field name="Uniform register count" size="3" start="1" type="uint" modifier="groups(64)"/>
     <field name="Texture state register count" size="5" start="4" type="uint" modifier="groups(8)"/>
-    <field name="Sampler state register count" size="3" start="9" type="uint" modifier="groups(4)"/>
+    <field name="Sampler state register count" size="3" start="9" type="Sampler states"/>
     <field name="Preshader register count" size="4" start="12" type="uint" modifier="groups(16)"/>
   </struct>
 
@@ -770,7 +788,7 @@
   <struct name="Launch" size="36">
     <field name="Uniform register count" size="3" start="1" type="uint" modifier="groups(64)"/>
     <field name="Texture state register count" size="5" start="4" type="uint" modifier="groups(8)"/>
-    <field name="Sampler state register count" size="3" start="9" type="uint" modifier="groups(4)"/>
+    <field name="Sampler state register count" size="3" start="9" type="Sampler states"/>
     <field name="Preshader register count" size="4" start="12" type="uint" modifier="groups(16)"/>
     <field name="Block Type" size="3" start="29" type="CDM Block Type" default="Compute Kernel"/>
     <field name="Pipeline" size="32" start="1:0" type="address"/>
