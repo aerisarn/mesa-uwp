@@ -271,7 +271,7 @@ foz_prepare(struct foz_db *foz_db, char *cache_path)
    char *filename = NULL;
    char *idx_filename = NULL;
    if (!create_foz_db_filenames(cache_path, "foz_cache", &filename, &idx_filename))
-      return false;
+      goto fail;
 
    /* Open the default foz dbs for read/write. If the files didn't already exist
     * create them.
@@ -283,7 +283,7 @@ foz_prepare(struct foz_db *foz_db, char *cache_path)
    free(idx_filename);
 
    if (!check_files_opened_successfully(foz_db->file[0], foz_db->db_idx))
-      return false;
+      goto fail;
 
    simple_mtx_init(&foz_db->mtx, mtx_plain);
    simple_mtx_init(&foz_db->flock_mtx, mtx_plain);
@@ -291,7 +291,7 @@ foz_prepare(struct foz_db *foz_db, char *cache_path)
    foz_db->index_db = _mesa_hash_table_u64_create(NULL);
 
    if (!load_foz_dbs(foz_db, foz_db->db_idx, 0, false))
-      return false;
+      goto fail;
 
    uint8_t file_idx = 1;
    char *foz_dbs = getenv("MESA_DISK_CACHE_READ_ONLY_FOZ_DBS");
@@ -327,7 +327,7 @@ foz_prepare(struct foz_db *foz_db, char *cache_path)
 
       if (!load_foz_dbs(foz_db, db_idx, file_idx, true)) {
          fclose(db_idx);
-         return false;
+         goto fail;
       }
 
       fclose(db_idx);
@@ -338,6 +338,11 @@ foz_prepare(struct foz_db *foz_db, char *cache_path)
    }
 
    return true;
+
+fail:
+   foz_destroy(foz_db);
+
+   return false;
 }
 
 void
@@ -356,6 +361,8 @@ foz_destroy(struct foz_db *foz_db)
       simple_mtx_destroy(&foz_db->flock_mtx);
       simple_mtx_destroy(&foz_db->mtx);
    }
+
+   memset(foz_db, 0, sizeof(*foz_db));
 }
 
 /* Here we lookup a cache entry in the index hash table. If an entry is found
