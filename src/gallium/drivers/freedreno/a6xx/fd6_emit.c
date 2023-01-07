@@ -583,51 +583,6 @@ build_blend_color(struct fd6_emit *emit) assert_dt
    return ring;
 }
 
-static struct fd_ringbuffer *
-build_ibo(struct fd6_emit *emit) assert_dt
-{
-   struct fd_context *ctx = emit->ctx;
-
-   if (emit->hs) {
-      assert(ir3_shader_nibo(emit->hs) == 0);
-      assert(ir3_shader_nibo(emit->ds) == 0);
-   }
-   if (emit->gs) {
-      assert(ir3_shader_nibo(emit->gs) == 0);
-   }
-
-   unsigned nibo = ir3_shader_nibo(emit->fs);
-
-   if (nibo == 0)
-      return NULL;
-
-   struct fd_ringbuffer *ibo_state =
-      fd6_build_ibo_state(ctx, emit->fs, PIPE_SHADER_FRAGMENT);
-   struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(
-      ctx->batch->submit, 0x100, FD_RINGBUFFER_STREAMING);
-
-   OUT_PKT7(ring, CP_LOAD_STATE6, 3);
-   OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(0) |
-                     CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
-                     CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
-                     CP_LOAD_STATE6_0_STATE_BLOCK(SB6_IBO) |
-                     CP_LOAD_STATE6_0_NUM_UNIT(nibo));
-   OUT_RB(ring, ibo_state);
-
-   OUT_PKT4(ring, REG_A6XX_SP_IBO, 2);
-   OUT_RB(ring, ibo_state);
-
-   /* TODO if we used CP_SET_DRAW_STATE for compute shaders, we could
-    * de-duplicate this from program->config_stateobj
-    */
-   OUT_PKT4(ring, REG_A6XX_SP_IBO_COUNT, 1);
-   OUT_RING(ring, nibo);
-
-   fd_ringbuffer_del(ibo_state);
-
-   return ring;
-}
-
 static void
 fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit) assert_dt
 {
@@ -860,10 +815,6 @@ fd6_emit_3d_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
          state = build_blend_color(emit);
          fd6_state_take_group(&emit->state, state, FD6_GROUP_BLEND_COLOR);
          break;
-      case FD6_GROUP_IBO:
-         state = build_ibo(emit);
-         fd6_state_take_group(&emit->state, state, FD6_GROUP_IBO);
-         break;
       case FD6_GROUP_VS_BINDLESS:
          state = fd6_build_bindless_state(ctx, PIPE_SHADER_VERTEX, false);
          fd6_state_take_group(&emit->state, state, FD6_GROUP_VS_BINDLESS);
@@ -958,27 +909,6 @@ fd6_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
       OUT_PKT4(ring, REG_A6XX_SP_FS_TEX_COUNT, 1);
       OUT_RING(ring, 0);
-   }
-
-   if (dirty & (FD_DIRTY_SHADER_SSBO | FD_DIRTY_SHADER_IMAGE)) {
-      struct fd_ringbuffer *state =
-         fd6_build_ibo_state(ctx, cp, PIPE_SHADER_COMPUTE);
-
-      OUT_PKT7(ring, CP_LOAD_STATE6_FRAG, 3);
-      OUT_RING(ring, CP_LOAD_STATE6_0_DST_OFF(0) |
-                        CP_LOAD_STATE6_0_STATE_TYPE(ST6_IBO) |
-                        CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
-                        CP_LOAD_STATE6_0_STATE_BLOCK(SB6_CS_SHADER) |
-                        CP_LOAD_STATE6_0_NUM_UNIT(ir3_shader_nibo(cp)));
-      OUT_RB(ring, state);
-
-      OUT_PKT4(ring, REG_A6XX_SP_CS_IBO, 2);
-      OUT_RB(ring, state);
-
-      OUT_PKT4(ring, REG_A6XX_SP_CS_IBO_COUNT, 1);
-      OUT_RING(ring, ir3_shader_nibo(cp));
-
-      fd_ringbuffer_del(state);
    }
 
    u_foreach_bit (b, ctx->gen_dirty) {

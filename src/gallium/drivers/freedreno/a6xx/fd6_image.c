@@ -202,40 +202,6 @@ validate_buffer_descriptor(struct fd_context *ctx, struct fd6_descriptor_set *se
    set->seqno[slot] = rsc->seqno;
 }
 
-/* Build combined image/SSBO "IBO" state, returns ownership of state reference */
-struct fd_ringbuffer *
-fd6_build_ibo_state(struct fd_context *ctx, const struct ir3_shader_variant *v,
-                    enum pipe_shader_type shader)
-{
-   struct fd_shaderbuf_stateobj *bufso = &ctx->shaderbuf[shader];
-   struct fd_shaderimg_stateobj *imgso = &ctx->shaderimg[shader];
-   struct fd6_descriptor_set *set = descriptor_set(ctx, shader);
-
-   struct fd_ringbuffer *state = fd_submit_new_ringbuffer(
-      ctx->batch->submit,
-      ir3_shader_nibo(v) * FDL6_TEX_CONST_DWORDS * 4,
-      FD_RINGBUFFER_STREAMING);
-
-   assert(shader == PIPE_SHADER_COMPUTE || shader == PIPE_SHADER_FRAGMENT);
-
-   for (unsigned i = 0; i < v->num_ssbos; i++) {
-      unsigned slot = i + IR3_BINDLESS_SSBO_OFFSET;
-      validate_buffer_descriptor(ctx, set, slot, &bufso->sb[i]);
-      fd6_emit_single_plane_descriptor(state, bufso->sb[i].buffer,
-                                       set->descriptor[slot]);
-   }
-
-   for (unsigned i = v->num_ssbos; i < v->num_ibos; i++) {
-      unsigned n = i - v->num_ssbos;
-      unsigned slot = n + IR3_BINDLESS_IMAGE_OFFSET;
-      validate_image_descriptor(ctx, set, slot, &imgso->si[n]);
-      fd6_emit_single_plane_descriptor(state, imgso->si[n].resource,
-                                       set->descriptor[slot]);
-   }
-
-   return state;
-}
-
 /* Build bindless descriptor state, returns ownership of state reference */
 struct fd_ringbuffer *
 fd6_build_bindless_state(struct fd_context *ctx, enum pipe_shader_type shader,
