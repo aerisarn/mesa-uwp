@@ -1947,9 +1947,6 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
    bool object_type_dirty =
       IS_DIRTY(PRIM) || (is_points && IS_DIRTY(SPRITE_COORD_MODE));
 
-   bool fragment_control_dirty =
-      IS_DIRTY(ZS) || IS_DIRTY(RS) || IS_DIRTY(PRIM) || IS_DIRTY(QUERY);
-
    bool fragment_face_dirty =
       IS_DIRTY(ZS) || IS_DIRTY(STENCIL_REF) || IS_DIRTY(RS);
 
@@ -1957,26 +1954,27 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
                                       : is_lines ? AGX_OBJECT_TYPE_LINE
                                                  : AGX_OBJECT_TYPE_TRIANGLE;
 
-   struct agx_ppp_update ppp = agx_new_ppp_update(
-      pool, (struct AGX_PPP_HEADER){
-               .fragment_control = fragment_control_dirty,
-               .fragment_control_2 =
-                  IS_DIRTY(PRIM) || IS_DIRTY(FS_PROG) || IS_DIRTY(RS),
-               .fragment_front_face = fragment_face_dirty,
-               .fragment_front_face_2 = object_type_dirty || IS_DIRTY(FS_PROG),
-               .fragment_front_stencil = IS_DIRTY(ZS),
-               .fragment_back_face = fragment_face_dirty,
-               .fragment_back_face_2 = object_type_dirty || IS_DIRTY(FS_PROG),
-               .fragment_back_stencil = IS_DIRTY(ZS),
-               .output_select = IS_DIRTY(VS_PROG) || IS_DIRTY(FS_PROG),
-               .varying_word_0 = IS_DIRTY(VS_PROG),
-               .cull = IS_DIRTY(RS),
-               .fragment_shader = IS_DIRTY(FS) || varyings_dirty,
-               .occlusion_query = IS_DIRTY(QUERY),
-               .output_size = IS_DIRTY(VS_PROG),
-            });
+   struct AGX_PPP_HEADER dirty = {
+      .fragment_control =
+         IS_DIRTY(ZS) || IS_DIRTY(RS) || IS_DIRTY(PRIM) || IS_DIRTY(QUERY),
+      .fragment_control_2 = IS_DIRTY(PRIM) || IS_DIRTY(FS_PROG) || IS_DIRTY(RS),
+      .fragment_front_face = fragment_face_dirty,
+      .fragment_front_face_2 = object_type_dirty || IS_DIRTY(FS_PROG),
+      .fragment_front_stencil = IS_DIRTY(ZS),
+      .fragment_back_face = fragment_face_dirty,
+      .fragment_back_face_2 = object_type_dirty || IS_DIRTY(FS_PROG),
+      .fragment_back_stencil = IS_DIRTY(ZS),
+      .output_select = IS_DIRTY(VS_PROG) || IS_DIRTY(FS_PROG),
+      .varying_word_0 = IS_DIRTY(VS_PROG),
+      .cull = IS_DIRTY(RS),
+      .fragment_shader = IS_DIRTY(FS) || varyings_dirty,
+      .occlusion_query = IS_DIRTY(QUERY),
+      .output_size = IS_DIRTY(VS_PROG),
+   };
 
-   if (fragment_control_dirty) {
+   struct agx_ppp_update ppp = agx_new_ppp_update(pool, dirty);
+
+   if (dirty.fragment_control) {
       agx_ppp_push(&ppp, FRAGMENT_CONTROL, cfg) {
          if (ctx->active_queries && ctx->occlusion_query) {
             if (ctx->occlusion_query->type == PIPE_QUERY_OCCLUSION_COUNTER)
@@ -1999,7 +1997,7 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
       }
    }
 
-   if (IS_DIRTY(PRIM) || IS_DIRTY(FS_PROG) || IS_DIRTY(RS)) {
+   if (dirty.fragment_control_2) {
       agx_ppp_push(&ppp, FRAGMENT_CONTROL_2, cfg) {
          /* This avoids broken derivatives along primitive edges */
          cfg.disable_tri_merging =
@@ -2010,14 +2008,28 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
       }
    }
 
-   struct agx_fragment_face_packed front_face, back_face;
-
-   if (fragment_face_dirty) {
+   if (dirty.fragment_front_face) {
+      struct agx_fragment_face_packed front_face;
       agx_pack(&front_face, FRAGMENT_FACE, cfg) {
          cfg.stencil_reference = ctx->stencil_ref.ref_value[0];
          cfg.line_width = rast->line_width;
          cfg.polygon_mode = rast->polygon_mode;
       };
+
+      front_face.opaque[0] |= ctx->zs->depth.opaque[0];
+
+      agx_ppp_push_packed(&ppp, &front_face, FRAGMENT_FACE);
+   }
+
+   if (dirty.fragment_front_face_2)
+      agx_ppp_fragment_face_2(&ppp, object_type, &ctx->fs->info);
+
+   if (dirty.fragment_front_stencil)
+      agx_ppp_push_packed(&ppp, ctx->zs->front_stencil.opaque,
+                          FRAGMENT_STENCIL);
+
+   if (dirty.fragment_back_face) {
+      struct agx_fragment_face_packed back_face;
 
       agx_pack(&back_face, FRAGMENT_FACE, cfg) {
          bool twosided = ctx->zs->base.stencil[1].enabled;
@@ -2026,29 +2038,17 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
          cfg.polygon_mode = rast->polygon_mode;
       };
 
-      front_face.opaque[0] |= ctx->zs->depth.opaque[0];
       back_face.opaque[0] |= ctx->zs->depth.opaque[0];
-
-      agx_ppp_push_packed(&ppp, &front_face, FRAGMENT_FACE);
+      agx_ppp_push_packed(&ppp, &back_face, FRAGMENT_FACE);
    }
 
-   if (object_type_dirty || IS_DIRTY(FS_PROG))
+   if (dirty.fragment_back_face_2)
       agx_ppp_fragment_face_2(&ppp, object_type, &ctx->fs->info);
 
-   if (IS_DIRTY(ZS))
-      agx_ppp_push_packed(&ppp, ctx->zs->front_stencil.opaque,
-                          FRAGMENT_STENCIL);
-
-   if (fragment_face_dirty)
-      agx_ppp_push_packed(&ppp, &back_face, FRAGMENT_FACE);
-
-   if (object_type_dirty || IS_DIRTY(FS_PROG))
-      agx_ppp_fragment_face_2(&ppp, object_type, &ctx->fs->info);
-
-   if (IS_DIRTY(ZS))
+   if (dirty.fragment_back_stencil)
       agx_ppp_push_packed(&ppp, ctx->zs->back_stencil.opaque, FRAGMENT_STENCIL);
 
-   if (IS_DIRTY(VS_PROG) || IS_DIRTY(FS_PROG)) {
+   if (dirty.output_select) {
       agx_ppp_push(&ppp, OUTPUT_SELECT, cfg) {
          cfg.varyings = !!fs->info.varyings.fs.nr_bindings;
          cfg.point_size = vs->info.writes_psiz;
@@ -2056,16 +2056,16 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
       }
    }
 
-   if (IS_DIRTY(VS_PROG)) {
+   if (dirty.varying_word_0) {
       agx_ppp_push(&ppp, VARYING_0, cfg) {
          cfg.count = agx_num_general_outputs(&ctx->vs->info.varyings.vs);
       }
    }
 
-   if (IS_DIRTY(RS))
+   if (dirty.cull)
       agx_ppp_push_packed(&ppp, ctx->rast->cull, CULL);
 
-   if (IS_DIRTY(FS) || varyings_dirty) {
+   if (dirty.fragment_shader) {
       unsigned frag_tex_count = ctx->stage[PIPE_SHADER_FRAGMENT].texture_count;
       agx_ppp_push(&ppp, FRAGMENT_SHADER, cfg) {
          cfg.pipeline =
@@ -2082,7 +2082,7 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
       }
    }
 
-   if (IS_DIRTY(QUERY)) {
+   if (dirty.occlusion_query) {
       agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY, cfg) {
          if (ctx->active_queries && ctx->occlusion_query) {
             cfg.index = agx_get_oq_index(batch, ctx->occlusion_query);
@@ -2092,7 +2092,7 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
       }
    }
 
-   if (IS_DIRTY(VS_PROG)) {
+   if (dirty.output_size) {
       agx_ppp_push(&ppp, OUTPUT_SIZE, cfg)
          cfg.count = vs->info.varyings.vs.nr_index;
    }
