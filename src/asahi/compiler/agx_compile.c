@@ -680,7 +680,7 @@ agx_blend_const(agx_builder *b, agx_index dst, unsigned comp)
  * helper invocation semantics. For now, I'm kicking the can down the road.
  */
 static agx_instr *
-agx_emit_discard(agx_builder *b, nir_intrinsic_instr *instr)
+agx_emit_discard(agx_builder *b)
 {
    assert(!b->shader->key->fs.ignore_tib_dependencies && "invalid usage");
    agx_writeout(b, 0x0001);
@@ -748,7 +748,7 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       return NULL;
 
    case nir_intrinsic_discard:
-      return agx_emit_discard(b, instr);
+      return agx_emit_discard(b);
 
    case nir_intrinsic_load_back_face_agx:
       return agx_get_sr_to(b, dst, AGX_SR_BACKFACING);
