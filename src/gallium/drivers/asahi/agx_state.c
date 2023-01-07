@@ -1987,8 +1987,6 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
          cfg.two_sided_stencil = ctx->zs->base.stencil[1].enabled;
          cfg.depth_bias_enable = rast->base.offset_tri;
 
-         cfg.unk_fill_lines = is_points; /* XXX: what is this? */
-
          /* Always enable scissoring so we may scissor to the viewport (TODO:
           * optimize this out if the viewport is the default and the app does
           * not use the scissor test)
