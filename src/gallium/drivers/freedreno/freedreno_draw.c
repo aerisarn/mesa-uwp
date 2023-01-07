@@ -564,6 +564,12 @@ fd_launch_grid(struct pipe_context *pctx,
    if (info->indirect)
       resource_read(batch, info->indirect);
 
+   /* If the saved batch has been flushed during the resource tracking,
+    * don't re-install it:
+    */
+   if (save_batch && save_batch->flushed)
+      fd_batch_reference_locked(&save_batch, NULL);
+
    fd_screen_unlock(ctx->screen);
 
    DBG("%p: work_dim=%u, block=%ux%ux%u, grid=%ux%ux%u",
