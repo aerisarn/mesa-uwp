@@ -1996,7 +1996,7 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
    }
 
    if (dirty.fragment_control_2) {
-      agx_ppp_push(&ppp, FRAGMENT_CONTROL_2, cfg) {
+      agx_ppp_push(&ppp, FRAGMENT_CONTROL, cfg) {
          /* This avoids broken derivatives along primitive edges */
          cfg.disable_tri_merging =
             (is_lines || is_points || ctx->fs->info.disable_tri_merging);

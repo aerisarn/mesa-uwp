@@ -441,7 +441,7 @@ agxdecode_record(uint64_t va, size_t size, bool verbose)
    map += AGX_PPP_HEADER_LENGTH;
 
    PPP_PRINT(map, fragment_control, FRAGMENT_CONTROL, "Fragment control");
-   PPP_PRINT(map, fragment_control_2, FRAGMENT_CONTROL_2, "Fragment control 2");
+   PPP_PRINT(map, fragment_control_2, FRAGMENT_CONTROL, "Fragment control 2");
    PPP_PRINT(map, fragment_front_face, FRAGMENT_FACE, "Front face");
    PPP_PRINT(map, fragment_front_face_2, FRAGMENT_FACE_2, "Front face 2");
    PPP_PRINT(map, fragment_front_stencil, FRAGMENT_STENCIL, "Front stencil");
