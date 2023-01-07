@@ -33,6 +33,7 @@
 #include "freedreno_resource.h"
 #include "freedreno_tracepoints.h"
 
+#include "fd6_barrier.h"
 #include "fd6_compute.h"
 #include "fd6_const.h"
 #include "fd6_context.h"
@@ -180,6 +181,9 @@ fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info) in_dt
    OUT_RING(ring, 1); /* HLSQ_CS_KERNEL_GROUP_X */
    OUT_RING(ring, 1); /* HLSQ_CS_KERNEL_GROUP_Y */
    OUT_RING(ring, 1); /* HLSQ_CS_KERNEL_GROUP_Z */
+
+   if (ctx->batch->barrier)
+      fd6_barrier_flush(ctx->batch);
 
    if (info->indirect) {
       struct fd_resource *rsc = fd_resource(info->indirect);

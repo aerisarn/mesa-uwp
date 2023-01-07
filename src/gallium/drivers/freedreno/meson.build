@@ -178,6 +178,8 @@ files_libfreedreno = files(
   'a5xx/fd5_texture.h',
   'a5xx/fd5_zsa.c',
   'a5xx/fd5_zsa.h',
+  'a6xx/fd6_barrier.c',
+  'a6xx/fd6_barrier.h',
   'a6xx/fd6_blend.c',
   'a6xx/fd6_blend.h',
   'a6xx/fd6_blitter.c',

@@ -510,9 +510,6 @@ struct fd_context {
    void (*validate_format)(struct fd_context *ctx, struct fd_resource *rsc,
                            enum pipe_format format) dt;
 
-   /* handling for barriers: */
-   void (*framebuffer_barrier)(struct fd_context *ctx) dt;
-
    /* logger: */
    void (*record_timestamp)(struct fd_ringbuffer *ring, struct fd_bo *bo,
                             unsigned offset);

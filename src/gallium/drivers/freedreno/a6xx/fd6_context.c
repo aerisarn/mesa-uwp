@@ -30,6 +30,7 @@
 #include "freedreno_query_acc.h"
 #include "freedreno_state.h"
 
+#include "fd6_barrier.h"
 #include "fd6_blend.h"
 #include "fd6_blitter.h"
 #include "fd6_compute.h"
@@ -229,7 +230,6 @@ fd6_context_create(struct pipe_screen *pscreen, void *priv,
    fd6_gmem_init(pctx);
    fd6_texture_init(pctx);
    fd6_prog_init(pctx);
-   fd6_emit_init(pctx);
    fd6_query_context_init(pctx);
 
    setup_state_map(&fd6_ctx->base);
@@ -242,6 +242,9 @@ fd6_context_create(struct pipe_screen *pscreen, void *priv,
 
    /* after fd_context_init() to override set_shader_images() */
    fd6_image_init(pctx);
+
+   /* after fd_context_init() to override memory_barrier/texture_barrier(): */
+   fd6_barrier_init(pctx);
 
    util_blitter_set_texture_multisample(fd6_ctx->base.blitter, true);
 
