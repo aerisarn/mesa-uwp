@@ -321,14 +321,6 @@ agx_umul_high_to(agx_builder *b, agx_index dst, agx_index P, agx_index Q)
    return split;
 }
 
-static agx_index
-agx_umul_high(agx_builder *b, agx_index P, agx_index Q)
-{
-   agx_index dst = agx_temp(b->shader, P.size);
-   agx_umul_high_to(b, dst, P, Q);
-   return dst;
-}
-
 static enum agx_format
 agx_format_for_pipe(enum pipe_format format)
 {
