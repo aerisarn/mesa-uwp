@@ -140,6 +140,7 @@ struct vk_device {
    VkResult (*capture_trace)(VkQueue queue);
 
    uint32_t current_frame;
+   bool trace_hotkey_trigger;
    simple_mtx_t trace_mtx;
 
    /* For VK_EXT_private_data */

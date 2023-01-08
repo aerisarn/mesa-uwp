@@ -23,7 +23,13 @@
 
 #include <X11/Xlib-xcb.h>
 #include <X11/xshmfence.h>
+#define XK_MISCELLANY
+#define XK_LATIN1
+#include <X11/keysymdef.h>
 #include <xcb/xcb.h>
+#ifdef XCB_KEYSYMS_AVAILABLE
+#include <xcb/xcb_keysyms.h>
+#endif
 #include <xcb/dri3.h>
 #include <xcb/present.h>
 #include <xcb/shm.h>
@@ -50,6 +56,7 @@
 #include "vk_format.h"
 #include "vk_instance.h"
 #include "vk_physical_device.h"
+#include "vk_device.h"
 #include "vk_util.h"
 #include "vk_enum_to_str.h"
 #include "wsi_common_entrypoints.h"
@@ -1022,6 +1029,7 @@ struct x11_swapchain {
    bool                                         has_mit_shm;
 
    xcb_connection_t *                           conn;
+   xcb_connection_t *                           capture_conn;
    xcb_window_t                                 window;
    xcb_gc_t                                     gc;
    uint32_t                                     depth;
@@ -1680,6 +1688,29 @@ x11_present_to_x11_sw(struct x11_swapchain *chain, uint32_t image_index,
    return x11_swapchain_result(chain, VK_SUCCESS);
 }
 
+static void
+x11_capture_trace(struct x11_swapchain *chain)
+{
+   if (!chain->capture_conn)
+      return;
+
+   xcb_generic_event_t *event;
+   while ((event = xcb_poll_for_event(chain->capture_conn))) {
+      if ((event->response_type & ~0x80) != XCB_KEY_PRESS) {
+         free(event);
+         continue;
+      }
+
+      VK_FROM_HANDLE(vk_device, device, chain->base.device);
+
+      simple_mtx_lock(&device->trace_mtx);
+      device->trace_hotkey_trigger = true;
+      simple_mtx_unlock(&device->trace_mtx);
+
+      free(event);
+   }
+}
+
 /**
  * Send image to the X server for presentation at target_msc.
  */
@@ -1687,6 +1718,8 @@ static VkResult
 x11_present_to_x11(struct x11_swapchain *chain, uint32_t image_index,
                    uint64_t target_msc)
 {
+   x11_capture_trace(chain);
+
    VkResult result;
    if (chain->base.wsi->sw && !chain->has_mit_shm)
       result = x11_present_to_x11_sw(chain, image_index, target_msc);
@@ -2318,6 +2351,8 @@ x11_swapchain_destroy(struct wsi_swapchain *anv_chain,
                                              XCB_PRESENT_EVENT_MASK_NO_EVENT);
    xcb_discard_reply(chain->conn, cookie.sequence);
 
+   xcb_disconnect(chain->capture_conn);
+
    pthread_mutex_destroy(&chain->present_poll_mutex);
    pthread_mutex_destroy(&chain->present_progress_mutex);
    pthread_cond_destroy(&chain->present_progress_cond);
@@ -2600,6 +2635,24 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (chain == NULL)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+#ifdef XCB_KEYSYMS_AVAILABLE
+   VK_FROM_HANDLE(vk_device, vk_device, device);
+   if (vk_device->capture_trace) {
+      chain->capture_conn = xcb_connect(NULL, NULL);
+      assert(!xcb_connection_has_error(chain->capture_conn));
+
+      xcb_key_symbols_t *key_symbols = xcb_key_symbols_alloc(conn);
+      xcb_keycode_t *keycodes = xcb_key_symbols_get_keycode(key_symbols, XK_F12);
+      if (keycodes) {
+         xcb_grab_key(chain->capture_conn, 1, window, XCB_MOD_MASK_ANY, keycodes[0],
+                      XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+      }
+      xcb_key_symbols_free(key_symbols);
+
+      xcb_flush(chain->capture_conn);
+   }
+#endif
 
    int ret = pthread_mutex_init(&chain->present_progress_mutex, NULL);
    if (ret != 0) {

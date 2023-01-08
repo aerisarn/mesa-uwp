@@ -1248,8 +1248,10 @@ handle_trace(VkQueue queue, struct vk_device *device)
 #endif
 
    VkResult result = VK_SUCCESS;
-   if (frame_trigger || file_trigger)
+   if (frame_trigger || file_trigger || device->trace_hotkey_trigger)
       result = device->capture_trace(queue);
+
+   device->trace_hotkey_trigger = false;
 
    simple_mtx_unlock(&device->trace_mtx);
 
