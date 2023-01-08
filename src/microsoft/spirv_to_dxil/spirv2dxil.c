@@ -92,6 +92,7 @@ compile_shader(const char *filename, gl_shader_stage shader_stage, struct shader
    if (file_size % WORD_SIZE != 0) {
       fprintf(stderr, "%s size == %zu is not a multiple of %d\n", filename,
               file_size, WORD_SIZE);
+      free(file_contents);
       return false;
    }
 
