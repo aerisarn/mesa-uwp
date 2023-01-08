@@ -53,18 +53,12 @@ typedef void *drmDevicePtr;
 #include "ac_llvm_util.h"
 #endif
 
-bool
-radv_sqtt_enabled(void)
-{
-   return debug_get_num_option("RADV_THREAD_TRACE", -1) >= 0 || getenv("RADV_THREAD_TRACE_TRIGGER");
-}
-
 static bool
 radv_perf_query_supported(const struct radv_physical_device *pdev)
 {
    /* SQTT / SPM interfere with the register states for perf counters, and
     * the code has only been tested on GFX10.3 */
-   return pdev->rad_info.gfx_level == GFX10_3 && !radv_sqtt_enabled();
+   return pdev->rad_info.gfx_level == GFX10_3 && !(pdev->instance->vk.trace_mode & RADV_TRACE_MODE_RGP);
 }
 
 static bool
@@ -477,7 +471,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_conditional_rendering = true,
       .EXT_conservative_rasterization = device->rad_info.gfx_level >= GFX9,
       .EXT_custom_border_color = true,
-      .EXT_debug_marker = radv_sqtt_enabled(),
+      .EXT_debug_marker = device->instance->vk.trace_mode & RADV_TRACE_MODE_RGP,
       .EXT_depth_bias_control = true,
       .EXT_depth_clip_control = true,
       .EXT_depth_clip_enable = true,
@@ -1894,7 +1888,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
    device->ws = radv_null_winsys_create();
 #else
    if (drm_device) {
-      bool reserve_vmid = radv_sqtt_enabled();
+      bool reserve_vmid = instance->vk.trace_mode & RADV_TRACE_MODE_RGP;
 
       device->ws = radv_amdgpu_winsys_create(fd, instance->debug_flags, instance->perftest_flags, reserve_vmid);
    } else {
@@ -2491,7 +2485,7 @@ radv_GetPhysicalDeviceToolProperties(VkPhysicalDevice physicalDevice, uint32_t *
    uint32_t tool_count = 0;
 
    /* RGP */
-   rgp_enabled = radv_sqtt_enabled();
+   rgp_enabled = pdevice->instance->vk.trace_mode & RADV_TRACE_MODE_RGP;
    if (rgp_enabled)
       tool_count++;
 

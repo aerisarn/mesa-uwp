@@ -83,9 +83,10 @@ typedef void *drmDevicePtr;
 #endif
 
 static bool
-radv_spm_trace_enabled()
+radv_spm_trace_enabled(struct radv_instance *instance)
 {
-   return radv_sqtt_enabled() && debug_get_bool_option("RADV_THREAD_TRACE_CACHE_COUNTERS", true);
+   return (instance->vk.trace_mode == RADV_TRACE_MODE_RGP) &&
+          debug_get_bool_option("RADV_THREAD_TRACE_CACHE_COUNTERS", true);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -553,7 +554,7 @@ init_dispatch_tables(struct radv_device *device, struct radv_physical_device *ph
       add_entrypoints(&b, &rage2_device_entrypoints, RADV_APP_DISPATCH_TABLE);
    }
 
-   if (radv_sqtt_enabled())
+   if (physical_device->instance->vk.trace_mode & RADV_TRACE_MODE_RGP)
       add_entrypoints(&b, &sqtt_device_entrypoints, RADV_RGP_DISPATCH_TABLE);
 
    if ((physical_device->instance->vk.trace_mode & RADV_TRACE_MODE_RRA) && radv_enable_rt(physical_device, false))
@@ -624,6 +625,9 @@ capture_trace(VkQueue _queue)
             fprintf(stderr, "radv: Failed to save RRA capture!\n");
       }
    }
+
+   if (queue->device->instance->vk.trace_mode & RADV_TRACE_MODE_RGP)
+      queue->device->sqtt_triggered = true;
 
    return result;
 }
@@ -925,7 +929,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
       radv_dump_enabled_options(device, stderr);
    }
 
-   if (radv_sqtt_enabled()) {
+   if (device->instance->vk.trace_mode & RADV_TRACE_MODE_RGP) {
       if (device->physical_device->rad_info.gfx_level < GFX8 || device->physical_device->rad_info.gfx_level > GFX11) {
          fprintf(stderr, "GPU hardware not supported: refer to "
                          "the RGP documentation for the list of "
@@ -942,9 +946,9 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
               "radv: Thread trace support is enabled (initial buffer size: %u MiB, "
               "instruction timing: %s, cache counters: %s).\n",
               device->sqtt.buffer_size / (1024 * 1024), radv_is_instruction_timing_enabled() ? "enabled" : "disabled",
-              radv_spm_trace_enabled() ? "enabled" : "disabled");
+              radv_spm_trace_enabled(device->instance) ? "enabled" : "disabled");
 
-      if (radv_spm_trace_enabled()) {
+      if (radv_spm_trace_enabled(device->instance)) {
          /* TODO: add SPM counters for GFX11. */
          if (device->physical_device->rad_info.gfx_level == GFX10 ||
              device->physical_device->rad_info.gfx_level == GFX10_3) {

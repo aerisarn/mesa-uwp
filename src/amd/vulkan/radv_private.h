@@ -388,8 +388,6 @@ VkResult create_drm_physical_device(struct vk_instance *vk_instance, struct _drm
 
 void radv_physical_device_destroy(struct vk_physical_device *vk_device);
 
-bool radv_sqtt_enabled(void);
-
 enum radv_trace_mode {
    /** Radeon GPU Profiler */
    RADV_TRACE_MODE_RGP = 1 << VK_TRACE_MODE_COUNT,
@@ -1043,6 +1041,8 @@ struct radv_device {
 
    /* Thread trace. */
    struct ac_sqtt sqtt;
+   bool sqtt_enabled;
+   bool sqtt_triggered;
 
    /* Memory trace. */
    struct radv_memory_trace_data memory_trace;

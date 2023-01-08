@@ -247,6 +247,17 @@ static const struct vk_instance_extension_table radv_instance_extensions_support
 #endif
 };
 
+static void
+radv_handle_legacy_sqtt_trigger(struct vk_instance *instance)
+{
+   char *trigger_file = getenv("RADV_THREAD_TRACE_TRIGGER");
+   if (trigger_file) {
+      instance->trace_trigger_file = trigger_file;
+      instance->trace_mode |= RADV_TRACE_MODE_RGP;
+      fprintf(stderr, "WARNING: RADV_THREAD_TRACE_TRIGGER is deprecated, please use MESA_VK_TRACE_TRIGGER instead.\n");
+   }
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo, const VkAllocationCallbacks *pAllocator,
                     VkInstance *pInstance)
@@ -273,6 +284,7 @@ radv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo, const VkAllocationC
    }
 
    vk_instance_add_driver_trace_modes(&instance->vk, trace_options);
+   radv_handle_legacy_sqtt_trigger(&instance->vk);
 
    instance->debug_flags = parse_debug_string(getenv("RADV_DEBUG"), radv_debug_options);
    instance->perftest_flags = parse_debug_string(getenv("RADV_PERFTEST"), radv_perftest_options);
