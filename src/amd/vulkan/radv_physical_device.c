@@ -2484,6 +2484,8 @@ VKAPI_ATTR VkResult VKAPI_CALL
 radv_GetPhysicalDeviceToolProperties(VkPhysicalDevice physicalDevice, uint32_t *pToolCount,
                                      VkPhysicalDeviceToolProperties *pToolProperties)
 {
+   VK_FROM_HANDLE(radv_physical_device, pdevice, physicalDevice);
+
    VK_OUTARRAY_MAKE_TYPED(VkPhysicalDeviceToolProperties, out, pToolProperties, pToolCount);
    bool rgp_enabled, rmv_enabled, rra_enabled;
    uint32_t tool_count = 0;
@@ -2499,7 +2501,7 @@ radv_GetPhysicalDeviceToolProperties(VkPhysicalDevice physicalDevice, uint32_t *
       tool_count++;
 
    /* RRA */
-   rra_enabled = radv_rra_trace_enabled();
+   rra_enabled = pdevice->instance->vk.trace_mode & RADV_TRACE_MODE_RRA;
    if (rra_enabled)
       tool_count++;
 

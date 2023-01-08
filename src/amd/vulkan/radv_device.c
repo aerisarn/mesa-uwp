@@ -68,6 +68,7 @@ typedef void *drmDevicePtr;
 #include "util/os_time.h"
 #include "util/timespec.h"
 #include "util/u_atomic.h"
+#include "util/u_process.h"
 #include "vulkan/vk_icd.h"
 #include "winsys/null/radv_null_winsys_public.h"
 #include "git_sha1.h"
@@ -555,7 +556,7 @@ init_dispatch_tables(struct radv_device *device, struct radv_physical_device *ph
    if (radv_sqtt_enabled())
       add_entrypoints(&b, &sqtt_device_entrypoints, RADV_RGP_DISPATCH_TABLE);
 
-   if (radv_rra_trace_enabled() && radv_enable_rt(physical_device, false))
+   if ((physical_device->instance->vk.trace_mode & RADV_TRACE_MODE_RRA) && radv_enable_rt(physical_device, false))
       add_entrypoints(&b, &rra_device_entrypoints, RADV_RRA_DISPATCH_TABLE);
 
 #ifndef _WIN32
@@ -592,6 +593,39 @@ radv_check_status(struct vk_device *vk_device)
    if (context_reset)
       return vk_device_set_lost(&device->vk, "GPU hung triggered by other process");
    return VK_SUCCESS;
+}
+
+static VkResult
+capture_trace(VkQueue _queue)
+{
+   RADV_FROM_HANDLE(radv_queue, queue, _queue);
+
+   VkResult result = VK_SUCCESS;
+
+   char filename[2048];
+   struct tm now;
+   time_t t;
+
+   t = time(NULL);
+   now = *localtime(&t);
+
+   if (queue->device->instance->vk.trace_mode & RADV_TRACE_MODE_RRA) {
+      if (_mesa_hash_table_num_entries(queue->device->rra_trace.accel_structs) == 0) {
+         fprintf(stderr, "radv: No acceleration structures captured, not saving RRA trace.\n");
+      } else {
+         snprintf(filename, sizeof(filename), "/tmp/%s_%04d.%02d.%02d_%02d.%02d.%02d.rra", util_get_process_name(),
+                  1900 + now.tm_year, now.tm_mon + 1, now.tm_mday, now.tm_hour, now.tm_min, now.tm_sec);
+
+         result = radv_rra_dump_trace(_queue, filename);
+
+         if (result == VK_SUCCESS)
+            fprintf(stderr, "radv: RRA capture saved to '%s'\n", filename);
+         else
+            fprintf(stderr, "radv: Failed to save RRA capture!\n");
+      }
+   }
+
+   return result;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -739,6 +773,8 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    }
 
    init_dispatch_tables(device, physical_device);
+
+   device->vk.capture_trace = capture_trace;
 
    device->vk.command_buffer_ops = &radv_cmd_buffer_ops;
    device->vk.check_status = radv_check_status;
@@ -1032,7 +1068,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
       }
    }
 
-   if (radv_rra_trace_enabled() && radv_enable_rt(physical_device, false)) {
+   if ((device->instance->vk.trace_mode & RADV_TRACE_MODE_RRA) && radv_enable_rt(physical_device, false)) {
       radv_rra_trace_init(device);
    }
 

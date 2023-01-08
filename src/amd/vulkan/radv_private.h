@@ -920,9 +920,6 @@ struct radv_rra_accel_struct_data {
 void radv_destroy_rra_accel_struct_data(VkDevice device, struct radv_rra_accel_struct_data *data);
 
 struct radv_rra_trace_data {
-   int elapsed_frames;
-   int trace_frame;
-   char *trigger_file;
    struct hash_table *accel_structs;
    struct hash_table_u64 *accel_struct_vas;
    simple_mtx_t data_mtx;
@@ -3035,10 +3032,6 @@ bool radv_sqtt_sample_clocks(struct radv_device *device);
 
 void radv_emit_inhibit_clockgating(const struct radv_device *device, struct radeon_cmdbuf *cs, bool inhibit);
 void radv_emit_spi_config_cntl(const struct radv_device *device, struct radeon_cmdbuf *cs, bool enable);
-
-int radv_rra_trace_frame(void);
-char *radv_rra_trace_trigger_file(void);
-bool radv_rra_trace_enabled(void);
 
 void radv_rra_trace_init(struct radv_device *device);
 
