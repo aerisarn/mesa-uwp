@@ -117,6 +117,12 @@ agx_txs(nir_builder *b, nir_tex_instr *tex)
    if (!(nr_comps == 3 && tex->is_array))
       depth = nir_imax(b, nir_ushr(b, depth, lod), nir_imm_int(b, 1));
 
+   /* Cube maps have equal width and height, we save some instructions by only
+    * reading one. Dead code elimination will remove the redundant instructions.
+    */
+   if (tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE)
+      height = width;
+
    comp[0] = width;
    comp[1] = height;
    comp[2] = depth;
