@@ -503,6 +503,7 @@ instr_is_16bit(amd_gfx_level gfx_level, aco_opcode op)
    case aco_opcode::v_fmaak_f16:
    /* VOP1 */
    case aco_opcode::v_cvt_f16_f32:
+   case aco_opcode::p_cvt_f16_f32_rtne:
    case aco_opcode::v_cvt_f16_u16:
    case aco_opcode::v_cvt_f16_i16:
    case aco_opcode::v_rcp_f16:
@@ -518,13 +519,11 @@ instr_is_16bit(amd_gfx_level gfx_level, aco_opcode op)
    case aco_opcode::v_rndne_f16:
    case aco_opcode::v_fract_f16:
    case aco_opcode::v_sin_f16:
-   case aco_opcode::v_cos_f16: return gfx_level >= GFX10;
-   // TODO: confirm whether these write 16 or 32 bit on GFX10+
-   // case aco_opcode::v_cvt_u16_f16:
-   // case aco_opcode::v_cvt_i16_f16:
-   // case aco_opcode::p_cvt_f16_f32_rtne:
-   // case aco_opcode::v_cvt_norm_i16_f16:
-   // case aco_opcode::v_cvt_norm_u16_f16:
+   case aco_opcode::v_cos_f16:
+   case aco_opcode::v_cvt_u16_f16:
+   case aco_opcode::v_cvt_i16_f16:
+   case aco_opcode::v_cvt_norm_i16_f16:
+   case aco_opcode::v_cvt_norm_u16_f16: return gfx_level >= GFX10;
    /* on GFX10, all opsel instructions preserve the high bits */
    default: return gfx_level >= GFX10 && can_use_opsel(gfx_level, op, -1);
    }
