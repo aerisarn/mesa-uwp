@@ -294,7 +294,7 @@ indirect draws. Instead of loading HW registers with values using the
 command streamer, we generate entire set of ``3DPRIMITIVE``
 instructions using a shader. The generated instructions contain the
 entire draw call parameters. This way the command streamer executes
-only ``3DPRIMITIVE`` instructions and doesn´t do any data loading from
+only ``3DPRIMITIVE`` instructions and doesn't do any data loading from
 memory or touch HW registers, feeding the 3D pipeline as fast as it
 can.
 
