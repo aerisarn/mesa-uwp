@@ -1004,7 +1004,6 @@ static void pvr_setup_pbe_state(
    surface_params.height = iview->vk.extent.height;
    surface_params.z_only_render = false;
    surface_params.down_scale = down_scale;
-   surface_params.msaa_mode = samples;
 
    /* Setup render parameters. */
 

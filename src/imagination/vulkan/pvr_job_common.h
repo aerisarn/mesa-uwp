@@ -86,7 +86,6 @@ struct pvr_pbe_surf_params {
 
    bool z_only_render;
    bool down_scale;
-   uint32_t msaa_mode;
 };
 
 /**
