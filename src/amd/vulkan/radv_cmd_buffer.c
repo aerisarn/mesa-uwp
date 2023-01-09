@@ -230,6 +230,10 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
             dest_mask |= RADV_DYNAMIC_COLOR_WRITE_MASK;
          }
       }
+
+      if (cmd_buffer->device->physical_device->rad_info.rbplus_allowed &&
+          (dest_mask & RADV_DYNAMIC_COLOR_WRITE_MASK))
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_RBPLUS;
    }
 
    if (copy_mask & RADV_DYNAMIC_COLOR_BLEND_ENABLE) {
@@ -1726,9 +1730,6 @@ radv_emit_prefetch_L2(struct radv_cmd_buffer *cmd_buffer,
 static void
 radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
 {
-   if (!cmd_buffer->device->physical_device->rad_info.rbplus_allowed)
-      return;
-
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    struct radv_rendering_state *render = &cmd_buffer->state.render;
@@ -1865,21 +1866,22 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
     * breaks dual source blending in SkQP and does not seem to improve
     * performance. */
 
-   if (sx_ps_downconvert == cmd_buffer->state.last_sx_ps_downconvert &&
-       sx_blend_opt_epsilon == cmd_buffer->state.last_sx_blend_opt_epsilon &&
-       sx_blend_opt_control == cmd_buffer->state.last_sx_blend_opt_control)
-      return;
+   if (sx_ps_downconvert != cmd_buffer->state.last_sx_ps_downconvert ||
+       sx_blend_opt_epsilon != cmd_buffer->state.last_sx_blend_opt_epsilon ||
+       sx_blend_opt_control != cmd_buffer->state.last_sx_blend_opt_control) {
+      radeon_set_context_reg_seq(cmd_buffer->cs, R_028754_SX_PS_DOWNCONVERT, 3);
+      radeon_emit(cmd_buffer->cs, sx_ps_downconvert);
+      radeon_emit(cmd_buffer->cs, sx_blend_opt_epsilon);
+      radeon_emit(cmd_buffer->cs, sx_blend_opt_control);
 
-   radeon_set_context_reg_seq(cmd_buffer->cs, R_028754_SX_PS_DOWNCONVERT, 3);
-   radeon_emit(cmd_buffer->cs, sx_ps_downconvert);
-   radeon_emit(cmd_buffer->cs, sx_blend_opt_epsilon);
-   radeon_emit(cmd_buffer->cs, sx_blend_opt_control);
+      cmd_buffer->state.context_roll_without_scissor_emitted = true;
 
-   cmd_buffer->state.context_roll_without_scissor_emitted = true;
+      cmd_buffer->state.last_sx_ps_downconvert = sx_ps_downconvert;
+      cmd_buffer->state.last_sx_blend_opt_epsilon = sx_blend_opt_epsilon;
+      cmd_buffer->state.last_sx_blend_opt_control = sx_blend_opt_control;
+   }
 
-   cmd_buffer->state.last_sx_ps_downconvert = sx_ps_downconvert;
-   cmd_buffer->state.last_sx_blend_opt_epsilon = sx_blend_opt_epsilon;
-   cmd_buffer->state.last_sx_blend_opt_control = sx_blend_opt_control;
+   cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_RBPLUS;
 }
 
 static void
@@ -6142,6 +6144,12 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PROVOKING_VERTEX_MODE;
       }
 
+      if (cmd_buffer->device->physical_device->rad_info.rbplus_allowed &&
+          (!cmd_buffer->state.emitted_graphics_pipeline ||
+           cmd_buffer->state.emitted_graphics_pipeline->col_format_non_compacted != graphics_pipeline->col_format_non_compacted)) {
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_RBPLUS;
+      }
+
       /* Re-emit the streamout buffers because the SGPR idx can be different and with NGG streamout
        * they always need to be emitted because a buffer size of 0 is used to disable streamout.
        */
@@ -6840,6 +6848,9 @@ radv_CmdSetColorWriteMaskEXT(VkCommandBuffer commandBuffer, uint32_t firstAttach
    }
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK;
+
+   if (cmd_buffer->device->physical_device->rad_info.rbplus_allowed)
+      state->dirty |= RADV_CMD_DIRTY_RBPLUS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -7233,6 +7244,9 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
    render->vrs_att = vrs_att;
    render->vrs_texel_size = vrs_texel_size;
    cmd_buffer->state.dirty |= RADV_CMD_DIRTY_FRAMEBUFFER;
+
+   if (cmd_buffer->device->physical_device->rad_info.rbplus_allowed)
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_RBPLUS;
 
    if (render->vrs_att.iview && cmd_buffer->device->physical_device->rad_info.gfx_level == GFX10_3) {
       if (render->ds_att.iview) {
@@ -8423,9 +8437,7 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
    const struct radv_device *device = cmd_buffer->device;
    bool late_scissor_emission;
 
-   if ((cmd_buffer->state.dirty & (RADV_CMD_DIRTY_FRAMEBUFFER |
-                                   RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK)) ||
-       cmd_buffer->state.emitted_graphics_pipeline != cmd_buffer->state.graphics_pipeline)
+   if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_RBPLUS)
       radv_emit_rbplus_state(cmd_buffer);
 
    if (cmd_buffer->device->physical_device->use_ngg_culling &&

@@ -1215,6 +1215,7 @@ enum radv_cmd_dirty_bits {
    RADV_CMD_DIRTY_VERTEX_BUFFER = 1ull << 48,
    RADV_CMD_DIRTY_STREAMOUT_BUFFER = 1ull << 49,
    RADV_CMD_DIRTY_GUARDBAND = 1ull << 50,
+   RADV_CMD_DIRTY_RBPLUS = 1ull << 51,
 };
 
 enum radv_cmd_flush_bits {
