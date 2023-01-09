@@ -76,9 +76,10 @@ struct mad_info {
    aco_ptr<Instruction> add_instr;
    uint32_t mul_temp_id;
    uint16_t literal_mask;
+   uint16_t fp16_mask;
 
    mad_info(aco_ptr<Instruction> instr, uint32_t id)
-       : add_instr(std::move(instr)), mul_temp_id(id), literal_mask(0)
+       : add_instr(std::move(instr)), mul_temp_id(id), literal_mask(0), fp16_mask(0)
    {}
 };
 
@@ -4755,8 +4756,7 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          mad_info = NULL;
       }
       /* check literals */
-      else if (!instr->usesModifiers() && !instr->isVOP3P() &&
-               instr->opcode != aco_opcode::v_fma_f64 &&
+      else if (!instr->isDPP() && !instr->isVOP3P() && instr->opcode != aco_opcode::v_fma_f64 &&
                instr->opcode != aco_opcode::v_mad_legacy_f32 &&
                instr->opcode != aco_opcode::v_fma_legacy_f32) {
          /* FMA can only take literals on GFX10+ */
@@ -4770,6 +4770,7 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             return;
 
          uint32_t literal_mask = 0;
+         uint32_t fp16_mask = 0;
          uint32_t sgpr_mask = 0;
          uint32_t vgpr_mask = 0;
          uint32_t literal_uses = UINT32_MAX;
@@ -4782,6 +4783,13 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
                continue;
             if (ctx.info[op.tempId()].is_literal(get_operand_size(instr, i))) {
                uint32_t new_literal = ctx.info[op.tempId()].val;
+               float value = uif(new_literal);
+               uint16_t fp16_val = _mesa_float_to_half(value);
+               bool is_denorm = (fp16_val & 0x7fff) != 0 && (fp16_val & 0x7fff) <= 0x3ff;
+               if (_mesa_half_to_float(fp16_val) == value &&
+                   (!is_denorm || (ctx.fp_mode.denorm16_64 & fp_denorm_keep_in)))
+                  fp16_mask |= 1 << i;
+
                if (!literal_mask || literal_value == new_literal) {
                   literal_value = new_literal;
                   literal_uses = MIN2(literal_uses, ctx.uses[op.tempId()]);
@@ -4804,6 +4812,24 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          /* v_madmk/v_fmamk needs a vgpr in the third source. */
          if (!(literal_mask & 0b100) && !(vgpr_mask & 0b100))
             literal_mask = 0;
+
+         if (instr->usesModifiers())
+            literal_mask = 0;
+
+         /* We can't use three unique fp16 literals */
+         if (fp16_mask == 0b111)
+            fp16_mask = 0b11;
+
+         if ((instr->opcode == aco_opcode::v_fma_f32 ||
+              (instr->opcode == aco_opcode::v_mad_f32 && !instr->definitions[0].isPrecise())) &&
+             !instr->vop3().omod && ctx.program->gfx_level >= GFX10 &&
+             util_bitcount(fp16_mask) > std::max<uint32_t>(util_bitcount(literal_mask), 1)) {
+            assert(ctx.program->dev.fused_mad_mix);
+            u_foreach_bit (i, fp16_mask)
+               ctx.uses[instr->operands[i].tempId()]--;
+            mad_info->fp16_mask = fp16_mask;
+            return;
+         }
 
          /* Limit the number of literals to apply to not increase the code
           * size too much, but always apply literals for v_mad->v_madak
@@ -5159,8 +5185,41 @@ apply_literals(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       mad_info* info = &ctx.mad_infos[ctx.info[instr->definitions[0].tempId()].instr->pass_flags];
       const bool madak = (info->literal_mask & 0b100);
       bool has_dead_literal = false;
-      u_foreach_bit (i, info->literal_mask)
+      u_foreach_bit (i, info->literal_mask | info->fp16_mask)
          has_dead_literal |= ctx.uses[instr->operands[i].tempId()] == 0;
+
+      if (has_dead_literal && info->fp16_mask) {
+         aco_ptr<Instruction> fma_mix(
+            create_instruction<VOP3P_instruction>(aco_opcode::v_fma_mix_f32, Format::VOP3P, 3, 1));
+
+         fma_mix->vop3p().clamp = instr->vop3().clamp;
+         std::copy(std::cbegin(instr->vop3().abs), std::cend(instr->vop3().abs),
+                   std::begin(fma_mix->vop3p().neg_hi));
+         std::copy(std::cbegin(instr->vop3().neg), std::cend(instr->vop3().neg),
+                   std::begin(fma_mix->vop3p().neg_lo));
+
+         uint32_t literal = 0;
+         bool second = false;
+         u_foreach_bit (i, info->fp16_mask) {
+            float value = uif(ctx.info[instr->operands[i].tempId()].val);
+            literal |= _mesa_float_to_half(value) << (second * 16);
+            fma_mix->vop3p().opsel_lo |= second << i;
+            fma_mix->vop3p().opsel_hi |= 1 << i;
+            second = true;
+         }
+
+         for (unsigned i = 0; i < 3; i++) {
+            if (info->fp16_mask & (1 << i))
+               fma_mix->operands[i] = Operand::literal32(literal);
+            else
+               fma_mix->operands[i] = instr->operands[i];
+         }
+
+         fma_mix->definitions[0] = instr->definitions[0];
+         ctx.instructions.emplace_back(std::move(fma_mix));
+         return;
+      }
+
       if (has_dead_literal || madak) {
          aco_ptr<Instruction> new_mad;
 
