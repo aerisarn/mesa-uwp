@@ -516,6 +516,7 @@ struct radv_shader_part {
    uint32_t rsrc1;
    uint8_t num_preserved_sgprs;
    bool nontrivial_divisors;
+   uint32_t spi_shader_col_format;
 
    struct radv_shader_part_binary *binary;
 

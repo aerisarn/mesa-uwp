@@ -2668,6 +2668,8 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
    if (!epilog)
       goto fail_create;
 
+   epilog->spi_shader_col_format = key->spi_shader_col_format;
+
    /* Allocate memory and upload the epilog. */
    epilog->alloc = radv_alloc_shader_memory(device, epilog->code_size, NULL);
    if (!epilog->alloc)
