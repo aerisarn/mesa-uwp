@@ -5041,6 +5041,16 @@ nir_address_format_to_glsl_type(nir_address_format addr_format)
 
 const nir_const_value *nir_address_format_null_value(nir_address_format addr_format);
 
+nir_ssa_def *nir_build_addr_iadd(struct nir_builder *b, nir_ssa_def *addr,
+                                 nir_address_format addr_format,
+                                 nir_variable_mode modes,
+                                 nir_ssa_def *offset);
+
+nir_ssa_def *nir_build_addr_iadd_imm(struct nir_builder *b, nir_ssa_def *addr,
+                                     nir_address_format addr_format,
+                                     nir_variable_mode modes,
+                                     int64_t offset);
+
 nir_ssa_def *nir_build_addr_ieq(struct nir_builder *b, nir_ssa_def *addr0, nir_ssa_def *addr1,
                                 nir_address_format addr_format);
 
