@@ -6091,7 +6091,7 @@ fs_visitor::nir_emit_shared_atomic(const fs_builder &bld,
    if (op == LSC_OP_ATOMIC_CMPXCHG) {
       fs_reg tmp = bld.vgrf(data.type, 2);
       fs_reg sources[2] = {
-         expand_to_32bit(bld, data),
+         data,
          expand_to_32bit(bld, get_nir_src(instr->src[2]))
       };
       bld.LOAD_PAYLOAD(tmp, sources, 2, 0);
