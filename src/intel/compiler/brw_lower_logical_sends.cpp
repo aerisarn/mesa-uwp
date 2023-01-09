@@ -1556,13 +1556,13 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 
    case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
       desc = brw_dp_untyped_atomic_desc(devinfo, inst->exec_size,
-                                        arg.ud, /* atomic_op */
+                                        lsc_op_to_legacy_atomic(arg.ud),
                                         !inst->dst.is_null());
       break;
 
    case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL:
       desc = brw_dp_untyped_atomic_float_desc(devinfo, inst->exec_size,
-                                              arg.ud, /* atomic_op */
+                                              lsc_op_to_legacy_atomic(arg.ud),
                                               !inst->dst.is_null());
       break;
 
@@ -1580,7 +1580,7 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 
    case SHADER_OPCODE_TYPED_ATOMIC_LOGICAL:
       desc = brw_dp_typed_atomic_desc(devinfo, inst->exec_size, inst->group,
-                                      arg.ud, /* atomic_op */
+                                      lsc_op_to_legacy_atomic(arg.ud),
                                       !inst->dst.is_null());
       break;
 
@@ -1605,59 +1605,6 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
    /* Finally, the payload */
    inst->src[2] = payload;
    inst->src[3] = payload2;
-}
-
-static enum lsc_opcode
-brw_atomic_op_to_lsc_atomic_op(unsigned op)
-{
-   switch(op) {
-   case BRW_AOP_AND:
-      return LSC_OP_ATOMIC_AND;
-   case BRW_AOP_OR:
-      return LSC_OP_ATOMIC_OR;
-   case BRW_AOP_XOR:
-      return LSC_OP_ATOMIC_XOR;
-   case BRW_AOP_MOV:
-      return LSC_OP_ATOMIC_STORE;
-   case BRW_AOP_INC:
-      return LSC_OP_ATOMIC_INC;
-   case BRW_AOP_DEC:
-      return LSC_OP_ATOMIC_DEC;
-   case BRW_AOP_ADD:
-      return LSC_OP_ATOMIC_ADD;
-   case BRW_AOP_SUB:
-      return LSC_OP_ATOMIC_SUB;
-   case BRW_AOP_IMAX:
-      return LSC_OP_ATOMIC_MAX;
-   case BRW_AOP_IMIN:
-      return LSC_OP_ATOMIC_MIN;
-   case BRW_AOP_UMAX:
-      return LSC_OP_ATOMIC_UMAX;
-   case BRW_AOP_UMIN:
-      return LSC_OP_ATOMIC_UMIN;
-   case BRW_AOP_CMPWR:
-      return LSC_OP_ATOMIC_CMPXCHG;
-   default:
-      assert(false);
-      unreachable("invalid atomic opcode");
-   }
-}
-
-static enum lsc_opcode
-brw_atomic_op_to_lsc_fatomic_op(uint32_t aop)
-{
-   switch(aop) {
-   case BRW_AOP_FMAX:
-      return LSC_OP_ATOMIC_FMAX;
-   case BRW_AOP_FMIN:
-      return LSC_OP_ATOMIC_FMIN;
-   case BRW_AOP_FCMPWR:
-      return LSC_OP_ATOMIC_FCMPXCHG;
-   case BRW_AOP_FADD:
-      return LSC_OP_ATOMIC_FADD;
-   default:
-      unreachable("Unsupported float atomic opcode");
-   }
 }
 
 static enum lsc_data_size
@@ -1762,10 +1709,7 @@ lower_lsc_surface_logical_send(const fs_builder &bld, fs_inst *inst)
        *    Atomic messages are always forced to "un-cacheable" in the L1
        *    cache.
        */
-      enum lsc_opcode opcode =
-         inst->opcode == SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL ?
-         brw_atomic_op_to_lsc_fatomic_op(arg.ud) :
-         brw_atomic_op_to_lsc_atomic_op(arg.ud);
+      enum lsc_opcode opcode = (enum lsc_opcode) arg.ud;
 
       inst->desc = lsc_msg_desc(devinfo, opcode, inst->exec_size,
                                 surf_type, LSC_ADDR_SIZE_A32,
@@ -2104,12 +2048,7 @@ lower_lsc_a64_logical_send(const fs_builder &bld, fs_inst *inst)
        *    Atomic messages are always forced to "un-cacheable" in the L1
        *    cache.
        */
-      enum lsc_opcode opcode =
-         (inst->opcode == SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL ||
-          inst->opcode == SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT16_LOGICAL ||
-          inst->opcode == SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT64_LOGICAL) ?
-         brw_atomic_op_to_lsc_atomic_op(arg) :
-         brw_atomic_op_to_lsc_fatomic_op(arg);
+      enum lsc_opcode opcode = (enum lsc_opcode) arg;
       inst->desc = lsc_msg_desc(devinfo, opcode, inst->exec_size,
                                 LSC_ADDR_SURFTYPE_FLAT, LSC_ADDR_SIZE_A64,
                                 1 /* num_coordinates */,
@@ -2275,33 +2214,33 @@ lower_a64_logical_send(const fs_builder &bld, fs_inst *inst)
 
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL:
       desc = brw_dp_a64_untyped_atomic_desc(devinfo, inst->exec_size, 32,
-                                            arg,   /* atomic_op */
+                                            lsc_op_to_legacy_atomic(arg),
                                             !inst->dst.is_null());
       break;
 
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT16_LOGICAL:
       desc = brw_dp_a64_untyped_atomic_desc(devinfo, inst->exec_size, 16,
-                                            arg,   /* atomic_op */
+                                            lsc_op_to_legacy_atomic(arg),
                                             !inst->dst.is_null());
       break;
 
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT64_LOGICAL:
       desc = brw_dp_a64_untyped_atomic_desc(devinfo, inst->exec_size, 64,
-                                            arg,   /* atomic_op */
+                                            lsc_op_to_legacy_atomic(arg),
                                             !inst->dst.is_null());
       break;
 
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT16_LOGICAL:
       desc = brw_dp_a64_untyped_atomic_float_desc(devinfo, inst->exec_size,
                                                   16, /* bit_size */
-                                                  arg,   /* atomic_op */
+                                                  lsc_op_to_legacy_atomic(arg),
                                                   !inst->dst.is_null());
       break;
 
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT32_LOGICAL:
       desc = brw_dp_a64_untyped_atomic_float_desc(devinfo, inst->exec_size,
                                                   32, /* bit_size */
-                                                  arg,   /* atomic_op */
+                                                  lsc_op_to_legacy_atomic(arg),
                                                   !inst->dst.is_null());
       break;
 

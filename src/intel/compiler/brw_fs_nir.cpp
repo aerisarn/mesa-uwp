@@ -4272,8 +4272,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                   fs_reg(), srcs, SURFACE_LOGICAL_NUM_SRCS);
       } else {
          unsigned num_srcs = info->num_srcs;
-         int op = brw_aop_for_nir_intrinsic(instr);
-         if (op == BRW_AOP_INC || op == BRW_AOP_DEC) {
+         int op = lsc_aop_for_nir_intrinsic(instr);
+         if (op == LSC_OP_ATOMIC_INC || op == LSC_OP_ATOMIC_DEC) {
             assert(num_srcs == 4);
             num_srcs = 3;
          }
@@ -5958,7 +5958,7 @@ void
 fs_visitor::nir_emit_ssbo_atomic(const fs_builder &bld,
                                  nir_intrinsic_instr *instr)
 {
-   int op = brw_aop_for_nir_intrinsic(instr);
+   int op = lsc_aop_for_nir_intrinsic(instr);
 
    /* The BTI untyped atomic messages only support 32-bit atomics.  If you
     * just look at the big table of messages in the Vol 7 of the SKL PRM, they
@@ -5981,10 +5981,10 @@ fs_visitor::nir_emit_ssbo_atomic(const fs_builder &bld,
    srcs[SURFACE_LOGICAL_SRC_ALLOW_SAMPLE_MASK] = brw_imm_ud(1);
 
    fs_reg data;
-   if (op != BRW_AOP_INC && op != BRW_AOP_DEC && op != BRW_AOP_PREDEC)
+   if (op != LSC_OP_ATOMIC_INC && op != LSC_OP_ATOMIC_DEC)
       data = expand_to_32bit(bld, get_nir_src(instr->src[2]));
 
-   if (op == BRW_AOP_CMPWR) {
+   if (op == LSC_OP_ATOMIC_CMPXCHG) {
       fs_reg tmp = bld.vgrf(data.type, 2);
       fs_reg sources[2] = {
          data,
@@ -6022,7 +6022,7 @@ void
 fs_visitor::nir_emit_ssbo_atomic_float(const fs_builder &bld,
                                        nir_intrinsic_instr *instr)
 {
-   int op = brw_aop_for_nir_intrinsic(instr);
+   int op = lsc_aop_for_nir_intrinsic(instr);
 
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
@@ -6036,7 +6036,7 @@ fs_visitor::nir_emit_ssbo_atomic_float(const fs_builder &bld,
    srcs[SURFACE_LOGICAL_SRC_ALLOW_SAMPLE_MASK] = brw_imm_ud(1);
 
    fs_reg data = expand_to_32bit(bld, get_nir_src(instr->src[2]));
-   if (op == BRW_AOP_FCMPWR) {
+   if (op == LSC_OP_ATOMIC_FCMPXCHG) {
       fs_reg tmp = bld.vgrf(data.type, 2);
       fs_reg sources[2] = {
          data,
@@ -6073,7 +6073,7 @@ void
 fs_visitor::nir_emit_shared_atomic(const fs_builder &bld,
                                    nir_intrinsic_instr *instr)
 {
-   int op = brw_aop_for_nir_intrinsic(instr);
+   int op = lsc_aop_for_nir_intrinsic(instr);
 
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
@@ -6086,9 +6086,9 @@ fs_visitor::nir_emit_shared_atomic(const fs_builder &bld,
    srcs[SURFACE_LOGICAL_SRC_ALLOW_SAMPLE_MASK] = brw_imm_ud(1);
 
    fs_reg data;
-   if (op != BRW_AOP_INC && op != BRW_AOP_DEC && op != BRW_AOP_PREDEC)
+   if (op != LSC_OP_ATOMIC_INC && op != LSC_OP_ATOMIC_DEC)
       data = expand_to_32bit(bld, get_nir_src(instr->src[1]));
-   if (op == BRW_AOP_CMPWR) {
+   if (op == LSC_OP_ATOMIC_CMPXCHG) {
       fs_reg tmp = bld.vgrf(data.type, 2);
       fs_reg sources[2] = {
          expand_to_32bit(bld, data),
@@ -6138,7 +6138,7 @@ void
 fs_visitor::nir_emit_shared_atomic_float(const fs_builder &bld,
                                          nir_intrinsic_instr *instr)
 {
-   int op = brw_aop_for_nir_intrinsic(instr);
+   int op = lsc_aop_for_nir_intrinsic(instr);
 
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
@@ -6151,7 +6151,7 @@ fs_visitor::nir_emit_shared_atomic_float(const fs_builder &bld,
    srcs[SURFACE_LOGICAL_SRC_ALLOW_SAMPLE_MASK] = brw_imm_ud(1);
 
    fs_reg data = expand_to_32bit(bld, get_nir_src(instr->src[1]));
-   if (op == BRW_AOP_FCMPWR) {
+   if (op == LSC_OP_ATOMIC_FCMPXCHG) {
       fs_reg tmp = bld.vgrf(data.type, 2);
       fs_reg sources[2] = {
          data,
@@ -6202,7 +6202,7 @@ void
 fs_visitor::nir_emit_global_atomic(const fs_builder &bld,
                                    nir_intrinsic_instr *instr)
 {
-   int op = brw_aop_for_nir_intrinsic(instr);
+   int op = lsc_aop_for_nir_intrinsic(instr);
 
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
@@ -6211,10 +6211,10 @@ fs_visitor::nir_emit_global_atomic(const fs_builder &bld,
    fs_reg addr = get_nir_src(instr->src[0]);
 
    fs_reg data;
-   if (op != BRW_AOP_INC && op != BRW_AOP_DEC && op != BRW_AOP_PREDEC)
+   if (op != LSC_OP_ATOMIC_INC && op != LSC_OP_ATOMIC_DEC)
       data = expand_to_32bit(bld, get_nir_src(instr->src[1]));
 
-   if (op == BRW_AOP_CMPWR) {
+   if (op == LSC_OP_ATOMIC_CMPXCHG) {
       fs_reg tmp = bld.vgrf(data.type, 2);
       fs_reg sources[2] = {
          data,
@@ -6256,17 +6256,17 @@ void
 fs_visitor::nir_emit_global_atomic_float(const fs_builder &bld,
                                          nir_intrinsic_instr *instr)
 {
-   int op = brw_aop_for_nir_intrinsic(instr);
+   int op = lsc_aop_for_nir_intrinsic(instr);
 
    assert(nir_intrinsic_infos[instr->intrinsic].has_dest);
    fs_reg dest = get_nir_dest(instr->dest);
 
    fs_reg addr = get_nir_src(instr->src[0]);
 
-   assert(op != BRW_AOP_INC && op != BRW_AOP_DEC && op != BRW_AOP_PREDEC);
+   assert(op != LSC_OP_ATOMIC_INC && op != LSC_OP_ATOMIC_DEC);
    fs_reg data = expand_to_32bit(bld, get_nir_src(instr->src[1]));
 
-   if (op == BRW_AOP_FCMPWR) {
+   if (op == LSC_OP_ATOMIC_FCMPXCHG) {
       fs_reg tmp = bld.vgrf(data.type, 2);
       fs_reg sources[2] = {
          data,
