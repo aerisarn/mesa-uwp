@@ -1101,6 +1101,11 @@ can_apply_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, ssa_i
       return true;
    } else if (instr->opcode == aco_opcode::v_cvt_f32_u32 && sel.size() == 1 && !sel.sign_extend()) {
       return true;
+   } else if (instr->opcode == aco_opcode::v_lshlrev_b32 && instr->operands[0].isConstant() &&
+              sel.offset() == 0 &&
+              ((sel.size() == 2 && instr->operands[0].constantValue() >= 16u) ||
+               (sel.size() == 1 && instr->operands[0].constantValue() >= 24u))) {
+      return true;
    } else if (idx < 2 && can_use_SDWA(ctx.program->gfx_level, instr, true) &&
               (tmp.type() == RegType::vgpr || ctx.program->gfx_level >= GFX9)) {
       if (instr->isSDWA() && instr->sdwa().sel[idx] != SubdwordSel::dword)
