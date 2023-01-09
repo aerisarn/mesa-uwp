@@ -5052,54 +5052,6 @@ radv_pipeline_init_vgt_gs_out(struct radv_graphics_pipeline *pipeline,
 }
 
 static void
-radv_pipeline_init_tess_state(struct radv_graphics_pipeline *pipeline,
-                              const struct vk_graphics_pipeline_state *state)
-{
-   const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
-   struct radv_shader *tes = radv_get_shader(&pipeline->base, MESA_SHADER_TESS_EVAL);
-   unsigned type = 0, partitioning = 0, distribution_mode = 0;
-
-   switch (tes->info.tes._primitive_mode) {
-   case TESS_PRIMITIVE_TRIANGLES:
-      type = V_028B6C_TESS_TRIANGLE;
-      break;
-   case TESS_PRIMITIVE_QUADS:
-      type = V_028B6C_TESS_QUAD;
-      break;
-   case TESS_PRIMITIVE_ISOLINES:
-      type = V_028B6C_TESS_ISOLINE;
-      break;
-   default:
-      break;
-   }
-
-   switch (tes->info.tes.spacing) {
-   case TESS_SPACING_EQUAL:
-      partitioning = V_028B6C_PART_INTEGER;
-      break;
-   case TESS_SPACING_FRACTIONAL_ODD:
-      partitioning = V_028B6C_PART_FRAC_ODD;
-      break;
-   case TESS_SPACING_FRACTIONAL_EVEN:
-      partitioning = V_028B6C_PART_FRAC_EVEN;
-      break;
-   default:
-      break;
-   }
-
-   if (pdevice->rad_info.has_distributed_tess) {
-      if (pdevice->rad_info.family == CHIP_FIJI || pdevice->rad_info.family >= CHIP_POLARIS10)
-         distribution_mode = V_028B6C_TRAPEZOIDS;
-      else
-         distribution_mode = V_028B6C_DONUTS;
-   } else
-      distribution_mode = V_028B6C_NO_DIST;
-
-   pipeline->vgt_tf_param = S_028B6C_TYPE(type) | S_028B6C_PARTITIONING(partitioning) |
-                            S_028B6C_DISTRIBUTION_MODE(distribution_mode);
-}
-
-static void
 radv_pipeline_init_extra(struct radv_graphics_pipeline *pipeline,
                          const struct radv_graphics_pipeline_create_info *extra,
                          struct radv_blend_state *blend_state,
@@ -5275,10 +5227,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       struct radv_shader *gs = pipeline->base.shaders[MESA_SHADER_GEOMETRY];
 
       radv_pipeline_init_gs_ring_state(pipeline, &gs->info.gs_ring_info);
-   }
-
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL)) {
-      radv_pipeline_init_tess_state(pipeline, &state);
    }
 
    if (!radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH))

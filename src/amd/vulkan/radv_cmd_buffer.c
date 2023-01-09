@@ -1928,9 +1928,6 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP |
                                     RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP_ENABLE;
 
-      if (cmd_buffer->state.emitted_graphics_pipeline->vgt_tf_param != pipeline->vgt_tf_param)
-         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_TESS_DOMAIN_ORIGIN;
-
       if (memcmp(cmd_buffer->state.emitted_graphics_pipeline->cb_blend_control,
                  pipeline->cb_blend_control, sizeof(pipeline->cb_blend_control)) ||
           memcmp(cmd_buffer->state.emitted_graphics_pipeline->sx_mrt_blend_opt,
@@ -3949,11 +3946,49 @@ radv_emit_vertex_input(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirt
 static void
 radv_emit_tess_domain_origin(struct radv_cmd_buffer *cmd_buffer)
 {
+   const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
    const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_shader *tes = radv_get_shader(&pipeline->base, MESA_SHADER_TESS_EVAL);
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
-   unsigned vgt_tf_param = pipeline->vgt_tf_param;
+   unsigned type = 0, partitioning = 0, distribution_mode = 0;
    unsigned topology;
+
+   switch (tes->info.tes._primitive_mode) {
+   case TESS_PRIMITIVE_TRIANGLES:
+      type = V_028B6C_TESS_TRIANGLE;
+      break;
+   case TESS_PRIMITIVE_QUADS:
+      type = V_028B6C_TESS_QUAD;
+      break;
+   case TESS_PRIMITIVE_ISOLINES:
+      type = V_028B6C_TESS_ISOLINE;
+      break;
+   default:
+      unreachable("Invalid tess primitive type");
+   }
+
+   switch (tes->info.tes.spacing) {
+   case TESS_SPACING_EQUAL:
+      partitioning = V_028B6C_PART_INTEGER;
+      break;
+   case TESS_SPACING_FRACTIONAL_ODD:
+      partitioning = V_028B6C_PART_FRAC_ODD;
+      break;
+   case TESS_SPACING_FRACTIONAL_EVEN:
+      partitioning = V_028B6C_PART_FRAC_EVEN;
+      break;
+   default:
+      unreachable("Invalid tess spacing type");
+   }
+
+   if (pdevice->rad_info.has_distributed_tess) {
+      if (pdevice->rad_info.family == CHIP_FIJI || pdevice->rad_info.family >= CHIP_POLARIS10)
+         distribution_mode = V_028B6C_TRAPEZOIDS;
+      else
+         distribution_mode = V_028B6C_DONUTS;
+   } else {
+      distribution_mode = V_028B6C_NO_DIST;
+   }
 
    if (tes->info.tes.point_mode) {
       topology = V_028B6C_OUTPUT_POINT;
@@ -3969,9 +4004,10 @@ radv_emit_tess_domain_origin(struct radv_cmd_buffer *cmd_buffer)
       topology = ccw ? V_028B6C_OUTPUT_TRIANGLE_CCW : V_028B6C_OUTPUT_TRIANGLE_CW;
    }
 
-   vgt_tf_param |= S_028B6C_TOPOLOGY(topology);
-
-   radeon_set_context_reg(cmd_buffer->cs, R_028B6C_VGT_TF_PARAM, vgt_tf_param);
+   radeon_set_context_reg(cmd_buffer->cs, R_028B6C_VGT_TF_PARAM,
+                          S_028B6C_TYPE(type) | S_028B6C_PARTITIONING(partitioning) |
+                             S_028B6C_TOPOLOGY(topology) |
+                             S_028B6C_DISTRIBUTION_MODE(distribution_mode));
 }
 
 static void

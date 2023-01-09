@@ -2021,7 +2021,6 @@ struct radv_graphics_pipeline {
    uint8_t next_vertex_stage : 8;
    uint32_t vb_desc_usage_mask;
    uint32_t vb_desc_alloc_size;
-   uint32_t vgt_tf_param;
    uint32_t pa_sc_mode_cntl_1;
    uint32_t db_render_control;
 
