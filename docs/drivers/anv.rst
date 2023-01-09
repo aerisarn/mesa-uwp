@@ -9,7 +9,7 @@ specific to ANV:
 
 :envvar:`ANV_ENABLE_GENERATED_INDIRECT_DRAWS`
    If defined to ``0`` or ``false``, this will disable the generated
-   indirect draw optimization in Anv. This will only affect Gfx11+.
+   indirect draw optimization in ANV. This will only affect Gfx11+.
 :envvar:`ANV_ENABLE_PIPELINE_CACHE`
    If defined to ``0`` or ``false``, this will disable pipeline
    caching, forcing ANV to reparse and recompile any VkShaderModule
@@ -298,7 +298,7 @@ only ``3DPRIMITIVE`` instructions and doesn´t do any data loading from
 memory or touch HW registers, feeding the 3D pipeline as fast as it
 can.
 
-In Anv this implemented by using a side batch buffer. When Anv
+In ANV this implemented by using a side batch buffer. When ANV
 encounters the first indirect draws, it generates a jump into the side
 batch, the side batch contains a draw call using a generation shader
 for each indirect draw. We keep adding on more generation draws into
