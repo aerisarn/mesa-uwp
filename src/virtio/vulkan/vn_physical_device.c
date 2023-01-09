@@ -971,9 +971,14 @@ vn_physical_device_get_native_extensions(
       exts->EXT_external_memory_dma_buf = true;
    }
 
+   /* Semaphore sync fd import required for WSI to skip scrubbing
+    * the wsi/external wait semaphores.
+    */
 #ifdef VN_USE_WSI_PLATFORM
    if (renderer_exts->EXT_image_drm_format_modifier &&
-       renderer_exts->EXT_queue_family_foreign) {
+       renderer_exts->EXT_queue_family_foreign &&
+       (physical_dev->renderer_sync_fd_semaphore_features &
+        VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT)) {
       exts->KHR_incremental_present = true;
       exts->KHR_swapchain = true;
       exts->KHR_swapchain_mutable_format = true;
