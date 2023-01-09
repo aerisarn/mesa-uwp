@@ -728,6 +728,8 @@ enum pipe_conservative_raster_mode
 #define PIPE_IMAGE_ACCESS_WRITE      (1 << 1)
 #define PIPE_IMAGE_ACCESS_READ_WRITE (PIPE_IMAGE_ACCESS_READ | \
                                       PIPE_IMAGE_ACCESS_WRITE)
+#define PIPE_IMAGE_ACCESS_COHERENT   (1 << 2)
+#define PIPE_IMAGE_ACCESS_VOLATILE   (1 << 3)
 
 /**
  * Implementation capabilities/limits which are queried through

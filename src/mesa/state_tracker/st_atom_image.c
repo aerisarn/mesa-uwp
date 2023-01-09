@@ -74,6 +74,10 @@ st_convert_image(const struct st_context *st, const struct gl_image_unit *u,
       img->shader_access |= PIPE_IMAGE_ACCESS_READ;
    if (!(shader_access & ACCESS_NON_WRITEABLE))
       img->shader_access |= PIPE_IMAGE_ACCESS_WRITE;
+   if (shader_access & ACCESS_COHERENT)
+      img->shader_access |= PIPE_IMAGE_ACCESS_COHERENT;
+   if (shader_access & ACCESS_VOLATILE)
+      img->shader_access |= PIPE_IMAGE_ACCESS_VOLATILE;
 
    if (stObj->Target == GL_TEXTURE_BUFFER) {
       struct gl_buffer_object *stbuf = stObj->BufferObject;
