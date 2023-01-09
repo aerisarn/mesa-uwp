@@ -344,13 +344,15 @@ calculate_deps(struct schedule_state *state, struct schedule_node *n)
                         process_raddr_deps(state, n, raddr_b, false);
         }
 
-        if (add_op != QPU_A_NOP) {
-                process_mux_deps(state, n, add_a);
-                process_mux_deps(state, n, add_b);
-        }
-        if (mul_op != QPU_M_NOP) {
-                process_mux_deps(state, n, mul_a);
-                process_mux_deps(state, n, mul_b);
+        if (sig != QPU_SIG_LOAD_IMM && sig != QPU_SIG_BRANCH) {
+                if (add_op != QPU_A_NOP) {
+                        process_mux_deps(state, n, add_a);
+                        process_mux_deps(state, n, add_b);
+                }
+                if (mul_op != QPU_M_NOP) {
+                        process_mux_deps(state, n, mul_a);
+                        process_mux_deps(state, n, mul_b);
+                }
         }
 
         process_waddr_deps(state, n, waddr_add, true);
