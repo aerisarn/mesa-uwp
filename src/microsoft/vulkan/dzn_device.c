@@ -503,6 +503,20 @@ dzn_physical_device_cache_caps(struct dzn_physical_device *pdev)
       }
    }
 
+   D3D_ROOT_SIGNATURE_VERSION root_sig_versions[] = {
+#if D3D12_SDK_VERSION >= 609
+      D3D_ROOT_SIGNATURE_VERSION_1_2,
+#endif
+      D3D_ROOT_SIGNATURE_VERSION_1_1
+   };
+   for (UINT i = 0; i < ARRAY_SIZE(root_sig_versions); ++i) {
+      D3D12_FEATURE_DATA_ROOT_SIGNATURE root_sig = { root_sig_versions[i] };
+      if (SUCCEEDED(ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_ROOT_SIGNATURE, &root_sig, sizeof(root_sig)))) {
+         pdev->root_sig_version = root_sig.HighestVersion;
+         break;
+      }
+   }
+
    ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_ARCHITECTURE1, &pdev->architecture, sizeof(pdev->architecture));
    ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_D3D12_OPTIONS, &pdev->options, sizeof(pdev->options));
    ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_D3D12_OPTIONS2, &pdev->options2, sizeof(pdev->options2));

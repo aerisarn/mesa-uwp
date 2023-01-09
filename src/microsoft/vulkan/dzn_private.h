@@ -204,6 +204,7 @@ struct dzn_physical_device {
    ID3D12Device10 *dev10;
    D3D_FEATURE_LEVEL feature_level;
    D3D_SHADER_MODEL shader_model;
+   D3D_ROOT_SIGNATURE_VERSION root_sig_version;
    D3D12_FEATURE_DATA_ARCHITECTURE1 architecture;
    D3D12_FEATURE_DATA_D3D12_OPTIONS options;
    D3D12_FEATURE_DATA_D3D12_OPTIONS2 options2;
@@ -644,13 +645,35 @@ struct dzn_descriptor_set_layout_binding {
    };
 };
 
+#if D3D12_SDK_VERSION < 609
+typedef struct D3D12_STATIC_SAMPLER_DESC1
+{
+   D3D12_FILTER Filter;
+   D3D12_TEXTURE_ADDRESS_MODE AddressU;
+   D3D12_TEXTURE_ADDRESS_MODE AddressV;
+   D3D12_TEXTURE_ADDRESS_MODE AddressW;
+   FLOAT MipLODBias;
+   UINT MaxAnisotropy;
+   D3D12_COMPARISON_FUNC ComparisonFunc;
+   D3D12_STATIC_BORDER_COLOR BorderColor;
+   FLOAT MinLOD;
+   FLOAT MaxLOD;
+   UINT ShaderRegister;
+   UINT RegisterSpace;
+   D3D12_SHADER_VISIBILITY ShaderVisibility;
+   D3D12_SAMPLER_FLAGS Flags;
+} 	D3D12_STATIC_SAMPLER_DESC1;
+
+static const D3D_ROOT_SIGNATURE_VERSION D3D_ROOT_SIGNATURE_VERSION_1_2 = 0x3;
+#endif
+
 struct dzn_descriptor_set_layout {
    struct vk_descriptor_set_layout vk;
    uint32_t range_count[MAX_SHADER_VISIBILITIES][NUM_POOL_TYPES];
    const D3D12_DESCRIPTOR_RANGE1 *ranges[MAX_SHADER_VISIBILITIES][NUM_POOL_TYPES];
    uint32_t range_desc_count[NUM_POOL_TYPES];
    uint32_t static_sampler_count;
-   const D3D12_STATIC_SAMPLER_DESC *static_samplers;
+   const D3D12_STATIC_SAMPLER_DESC1 *static_samplers;
    uint32_t immutable_sampler_count;
    const struct dzn_sampler **immutable_samplers;
    struct {
