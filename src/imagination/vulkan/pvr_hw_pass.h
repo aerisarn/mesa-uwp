@@ -293,4 +293,6 @@ VkResult pvr_create_renderpass_hwsetup(
 void pvr_destroy_renderpass_hwsetup(const VkAllocationCallbacks *alloc,
                                     struct pvr_renderpass_hwsetup *hw_setup);
 
+uint32_t pvr_get_tile_buffer_size(const struct pvr_device *device);
+
 #endif /* PVR_HW_PASS_H */

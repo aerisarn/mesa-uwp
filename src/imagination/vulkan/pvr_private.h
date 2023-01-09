@@ -991,6 +991,9 @@ struct pvr_framebuffer {
    struct pvr_render_target *render_targets;
 
    struct pvr_spm_scratch_buffer *scratch_buffer;
+
+   uint32_t spm_eot_state_count;
+   struct pvr_spm_eot_state *spm_eot_state_per_render;
 };
 
 struct pvr_render_pass_attachment {

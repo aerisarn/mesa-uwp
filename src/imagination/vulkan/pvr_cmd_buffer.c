@@ -1370,6 +1370,10 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
     * case SPM is hit so set the flag unconditionally.
     */
    job->requires_spm_scratch_buffer = true;
+   /* FIXME: We should be using the SPM PBE reg words and the SPM EOT PDS data
+    * section instead of the regular, but for now we don't have an actual
+    * SPM EOT USC shader so that would cause problems.
+    */
 
    return VK_SUCCESS;
 }
