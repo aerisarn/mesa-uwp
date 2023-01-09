@@ -778,8 +778,10 @@ TEST_F(Cache, Combined)
 {
    const char *driver_id = "make_check";
    char blob[] = "This is a RO blob";
+   char blob2[] = "This is a RW blob";
    uint8_t dummy_key[20] = { 0 };
    uint8_t blob_key[20];
+   uint8_t blob_key2[20];
    char foz_rw_idx_file[1024];
    char foz_ro_idx_file[1024];
    char foz_rw_file[1024];
@@ -807,6 +809,7 @@ TEST_F(Cache, Combined)
                                                       driver_id, 0);
 
    disk_cache_compute_key(cache_sf_wr, blob, sizeof(blob), blob_key);
+   disk_cache_compute_key(cache_sf_wr, blob2, sizeof(blob2), blob_key2);
 
    /* Ensure that disk_cache_get returns nothing before anything is added. */
    result = (char *) disk_cache_get(cache_sf_wr, blob_key, &size);
@@ -882,10 +885,39 @@ TEST_F(Cache, Combined)
    EXPECT_EQ(size, sizeof(blob)) << "disk_cache_get of existing item (size)";
    free(result);
 
+   /* Blob2 entry must not present in any of the caches. */
+   result = (char *) disk_cache_get(cache_mesa_db, blob_key2, &size);
+   EXPECT_EQ(result, nullptr) << "disk_cache_get with non-existent item (pointer)";
+   EXPECT_EQ(size, 0) << "disk_cache_get with non-existent item (size)";
+
+   /* Put blob2 entry to the cache. */
+   disk_cache_put(cache_mesa_db, blob_key2, blob2, sizeof(blob2), NULL);
+   disk_cache_wait_for_idle(cache_mesa_db);
+
+   /* Blob2 entry must present because it shall be retrieved from the
+    * read-write cache. */
+   result = (char *) disk_cache_get(cache_mesa_db, blob_key2, &size);
+   EXPECT_STREQ(blob2, result) << "disk_cache_get of existing item (pointer)";
+   EXPECT_EQ(size, sizeof(blob2)) << "disk_cache_get of existing item (size)";
+   free(result);
+
    disk_cache_destroy(cache_mesa_db);
 
    /* Disable read-only cache. */
    setenv("MESA_DISK_CACHE_COMBINE_RW_WITH_RO_FOZ", "false", 1);
+
+   /* Create MESA-DB cache with disabled retrieval from the
+    * read-only cache. */
+   cache_mesa_db = disk_cache_create("combined_test", driver_id, 0);
+
+   /* Blob2 entry must present because it shall be retrieved from the
+    * MESA-DB cache. */
+   result = (char *) disk_cache_get(cache_mesa_db, blob_key2, &size);
+   EXPECT_STREQ(blob2, result) << "disk_cache_get of existing item (pointer)";
+   EXPECT_EQ(size, sizeof(blob2)) << "disk_cache_get of existing item (size)";
+   free(result);
+
+   disk_cache_destroy(cache_mesa_db);
 
    /* Create MESA-DB cache with disabled retrieval from the read-only
     * cache. */
@@ -917,6 +949,22 @@ TEST_F(Cache, Combined)
    EXPECT_EQ(size, sizeof(blob)) << "disk_cache_get of existing item (size)";
    free(result);
 
+   /* Blob2 entry must not present in any of the caches. */
+   result = (char *) disk_cache_get(cache_multifile, blob_key2, &size);
+   EXPECT_EQ(result, nullptr) << "disk_cache_get with non-existent item (pointer)";
+   EXPECT_EQ(size, 0) << "disk_cache_get with non-existent item (size)";
+
+   /* Put blob2 entry to the cache. */
+   disk_cache_put(cache_multifile, blob_key2, blob2, sizeof(blob2), NULL);
+   disk_cache_wait_for_idle(cache_multifile);
+
+   /* Blob2 entry must present because it shall be retrieved from the
+    * read-write cache. */
+   result = (char *) disk_cache_get(cache_multifile, blob_key2, &size);
+   EXPECT_STREQ(blob2, result) << "disk_cache_get of existing item (pointer)";
+   EXPECT_EQ(size, sizeof(blob2)) << "disk_cache_get of existing item (size)";
+   free(result);
+
    disk_cache_destroy(cache_multifile);
 
    /* Disable read-only cache. */
@@ -932,6 +980,13 @@ TEST_F(Cache, Combined)
    result = (char *) disk_cache_get(cache_multifile, blob_key, &size);
    EXPECT_EQ(result, nullptr) << "disk_cache_get with non-existent item (pointer)";
    EXPECT_EQ(size, 0) << "disk_cache_get with non-existent item (size)";
+
+   /* Blob2 entry must present because it shall be retrieved from the
+    * read-write cache. */
+   result = (char *) disk_cache_get(cache_multifile, blob_key2, &size);
+   EXPECT_STREQ(blob2, result) << "disk_cache_get of existing item (pointer)";
+   EXPECT_EQ(size, sizeof(blob2)) << "disk_cache_get of existing item (size)";
+   free(result);
 
    disk_cache_destroy(cache_multifile);
 
