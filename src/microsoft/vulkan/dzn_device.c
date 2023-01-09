@@ -3151,6 +3151,11 @@ dzn_sampler_create(struct dzn_device *device,
       }
    }
 
+#if D3D12_SDK_VERSION >= 609
+   if (pCreateInfo->unnormalizedCoordinates)
+      sampler->desc.Flags |= D3D12_SAMPLER_FLAG_NON_NORMALIZED_COORDINATES;
+#endif
+
    *out = dzn_sampler_to_handle(sampler);
    return VK_SUCCESS;
 }
