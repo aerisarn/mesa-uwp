@@ -603,7 +603,7 @@ The integer capabilities:
   as opposed to writing gl_PointSize for every point.
 * ``PIPE_CAP_TWO_SIDED_COLOR``: Driver supports two-sided coloring.  Must be 1
     for non-NIR drivers.  If set, pipe_rasterizer_state may be set to indicate
-    that backfacing primitives should use the back-side color as the FS input
+    that back-facing primitives should use the back-side color as the FS input
     color.  If unset, mesa/st will lower it to gl_FrontFacing reads in the
     fragment shader.
 * ``PIPE_CAP_CLIP_PLANES``: Driver supports user-defined clip-planes. 0 denotes none, 1 denotes MAX_CLIP_PLANES. > 1 overrides MAX.
