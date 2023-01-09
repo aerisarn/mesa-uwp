@@ -201,6 +201,12 @@ Core Mesa environment variables
    if set to ``true``, keeps hit/miss statistics for the shader cache.
    These statistics are printed when the app terminates.
 
+.. envvar:: MESA_DISK_CACHE_COMBINE_RW_WITH_RO_FOZ
+
+   if set to 1, enables simultaneous use of rw and ro fossilize db caches.
+   At first data will be retrieved from the read-only foz cache. If data
+   isn't found in the ro cache, then it will be retrieved from the rw cache.
+
 .. envvar:: MESA_GLSL
 
    :ref:`shading language compiler options <envvars>`
