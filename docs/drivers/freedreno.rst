@@ -569,7 +569,7 @@ A typical work flow would be:
 
 - After the breakpoint is reached each breadcrumb would require
   explicit ack from the user. This way it's possible to find
-  the last packet which did't hang.
+  the last packet which didn't hang.
 
 - Find the packet in the decoded cmdstream.
 
