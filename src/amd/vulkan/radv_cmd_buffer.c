@@ -1730,7 +1730,6 @@ radv_emit_prefetch_L2(struct radv_cmd_buffer *cmd_buffer,
 static void
 radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
 {
-   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    struct radv_rendering_state *render = &cmd_buffer->state.render;
 
@@ -1758,7 +1757,7 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
                      ? !G_028C74_FORCE_DST_ALPHA_1_GFX11(cb->cb_color_attrib)
                      : !G_028C74_FORCE_DST_ALPHA_1_GFX6(cb->cb_color_attrib);
 
-      uint32_t spi_format = (pipeline->col_format_non_compacted >> (i * 4)) & 0xf;
+      uint32_t spi_format = (cmd_buffer->state.col_format_non_compacted >> (i * 4)) & 0xf;
       uint32_t colormask = d->vk.cb.attachments[i].write_mask;
 
       if (format == V_028C70_COLOR_8 || format == V_028C70_COLOR_16 || format == V_028C70_COLOR_32)
@@ -6167,6 +6166,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       if (cmd_buffer->device->physical_device->rad_info.rbplus_allowed &&
           (!cmd_buffer->state.emitted_graphics_pipeline ||
            cmd_buffer->state.emitted_graphics_pipeline->col_format_non_compacted != graphics_pipeline->col_format_non_compacted)) {
+         cmd_buffer->state.col_format_non_compacted = graphics_pipeline->col_format_non_compacted;
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_RBPLUS;
       }
 
