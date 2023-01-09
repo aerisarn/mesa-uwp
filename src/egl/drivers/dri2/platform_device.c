@@ -240,6 +240,7 @@ device_get_fd(_EGLDisplay *disp, _EGLDevice *dev)
 {
 #ifdef HAVE_LIBDRM
    int fd = disp->Options.fd;
+   bool kms_swrast = disp->Options.ForceSoftware;
    /* The fcntl() code in _eglGetDeviceDisplay() ensures that valid fd >= 3,
     * and invalid one is 0.
     */
@@ -252,17 +253,21 @@ device_get_fd(_EGLDisplay *disp, _EGLDevice *dev)
       if (dev != _eglAddDevice(fd, false))
          return -1;
 
-      /* No EGL_EXT_output* extensions are supported, hence no master perms
-       * are needed. Get the render one - otherwise drivers might error out.
+      /* kms_swrast only work with primary node. It used to work with render node in
+       * the past because some downstream kernel carry a patch to enable dumb bo
+       * ioctl on render nodes.
        */
-      char *node = drmGetRenderDeviceNameFromFd(fd);
+      char *node = kms_swrast ? drmGetPrimaryDeviceNameFromFd(fd) :
+                                drmGetRenderDeviceNameFromFd(fd);
 
       /* Don't close the internal fd, get render node one based on it. */
       fd = loader_open_device(node);
       free(node);
       return fd;
    }
-   const char *node = _eglGetDRMDeviceRenderNode(dev);
+   const char *node =  _eglQueryDeviceStringEXT(dev, kms_swrast ?
+                                                     EGL_DRM_DEVICE_FILE_EXT :
+                                                     EGL_DRM_RENDER_NODE_FILE_EXT);
    return loader_open_device(node);
 #else
    _eglLog(_EGL_FATAL, "Driver bug: Built without libdrm, yet using a HW device");
