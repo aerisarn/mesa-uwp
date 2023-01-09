@@ -48,6 +48,7 @@ TEST(util_can_blit_via_copy_region, formats)
    struct pipe_resource dst_rgba8_unorm = test_resource_with_format(PIPE_FORMAT_R8G8B8A8_UNORM);
    struct pipe_resource src_rgbx8_unorm = test_resource_with_format(PIPE_FORMAT_R8G8B8X8_UNORM);
    struct pipe_resource dst_rgbx8_unorm = test_resource_with_format(PIPE_FORMAT_R8G8B8X8_UNORM);
+   struct pipe_resource dst_rgba8_srgb = test_resource_with_format(PIPE_FORMAT_R8G8B8A8_SRGB);
 
    /* Same-format blit should pass */
    struct pipe_blit_info rgba8_unorm_rgba8_unorm_blit = test_blit_with_formats(&src_rgba8_unorm, PIPE_FORMAT_R8G8B8A8_UNORM,
@@ -68,4 +69,14 @@ TEST(util_can_blit_via_copy_region, formats)
    struct pipe_blit_info rgbx8_unorm_rgba8_unorm_blit = test_blit_with_formats(&src_rgbx8_unorm, PIPE_FORMAT_R8G8B8X8_UNORM,
                                                                                &dst_rgba8_unorm, PIPE_FORMAT_R8G8B8A8_UNORM);
    ASSERT_FALSE(util_can_blit_via_copy_region(&rgbx8_unorm_rgba8_unorm_blit, false, false));
+
+   /* If the RGBA8_UNORM resources are both viewed as sRGB, it's still a memcpy.  */
+   struct pipe_blit_info rgba8_srgb_rgba8_srgb_blit = test_blit_with_formats(&src_rgba8_unorm, PIPE_FORMAT_R8G8B8A8_SRGB,
+                                                                              &dst_rgba8_unorm, PIPE_FORMAT_R8G8B8A8_SRGB);
+   ASSERT_TRUE(util_can_blit_via_copy_region(&rgba8_srgb_rgba8_srgb_blit, false, false));
+
+   /* A memcpy blit can't be lowered to copy_region if copy_region would have mismatched resource formats. */
+   struct pipe_blit_info non_memcpy_copy_region = test_blit_with_formats(&src_rgba8_unorm, PIPE_FORMAT_R8G8B8A8_UNORM,
+                                                                         &dst_rgba8_srgb, PIPE_FORMAT_R8G8B8A8_UNORM);
+   ASSERT_FALSE(util_can_blit_via_copy_region(&non_memcpy_copy_region, false, false));
 }
