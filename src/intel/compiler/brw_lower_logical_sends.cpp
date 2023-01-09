@@ -1492,7 +1492,6 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
    case SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL:
    case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
    case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
-   case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL:
       /* Untyped Surface messages go through the data cache but the SFID value
        * changed on Haswell.
        */
@@ -1555,15 +1554,15 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
       break;
 
    case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
-      desc = brw_dp_untyped_atomic_desc(devinfo, inst->exec_size,
-                                        lsc_op_to_legacy_atomic(arg.ud),
-                                        !inst->dst.is_null());
-      break;
-
-   case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL:
-      desc = brw_dp_untyped_atomic_float_desc(devinfo, inst->exec_size,
-                                              lsc_op_to_legacy_atomic(arg.ud),
-                                              !inst->dst.is_null());
+      if (lsc_opcode_is_atomic_float((enum lsc_opcode) arg.ud)) {
+         desc = brw_dp_untyped_atomic_float_desc(devinfo, inst->exec_size,
+                                                 lsc_op_to_legacy_atomic(arg.ud),
+                                                 !inst->dst.is_null());
+      } else {
+         desc = brw_dp_untyped_atomic_desc(devinfo, inst->exec_size,
+                                           lsc_op_to_legacy_atomic(arg.ud),
+                                           !inst->dst.is_null());
+      }
       break;
 
    case SHADER_OPCODE_TYPED_SURFACE_READ_LOGICAL:
@@ -1702,8 +1701,7 @@ lower_lsc_surface_logical_send(const fs_builder &bld, fs_inst *inst)
                                 LSC_CACHE_STORE_L1STATE_L3MOCS,
                                 false /* has_dest */);
       break;
-   case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
-   case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL: {
+   case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL: {
       /* Bspec: Atomic instruction -> Cache section:
        *
        *    Atomic messages are always forced to "un-cacheable" in the L1
@@ -2703,7 +2701,6 @@ fs_visitor::lower_logical_sends()
       case SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL:
       case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
       case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
-      case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL:
       case SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL:
       case SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL:
          if (devinfo->has_lsc) {

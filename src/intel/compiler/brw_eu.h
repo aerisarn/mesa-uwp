@@ -1240,6 +1240,22 @@ lsc_opcode_is_atomic(enum lsc_opcode opcode)
    }
 }
 
+static inline bool
+lsc_opcode_is_atomic_float(enum lsc_opcode opcode)
+{
+   switch (opcode) {
+   case LSC_OP_ATOMIC_FADD:
+   case LSC_OP_ATOMIC_FSUB:
+   case LSC_OP_ATOMIC_FMIN:
+   case LSC_OP_ATOMIC_FMAX:
+   case LSC_OP_ATOMIC_FCMPXCHG:
+      return true;
+
+   default:
+      return false;
+   }
+}
+
 static inline unsigned
 lsc_op_num_data_values(unsigned _op)
 {

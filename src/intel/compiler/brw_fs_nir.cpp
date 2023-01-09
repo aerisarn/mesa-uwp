@@ -6051,7 +6051,7 @@ fs_visitor::nir_emit_ssbo_atomic_float(const fs_builder &bld,
    switch (nir_dest_bit_size(instr->dest)) {
       case 16: {
          fs_reg dest32 = bld.vgrf(BRW_REGISTER_TYPE_UD);
-         bld.emit(SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL,
+         bld.emit(SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL,
                   retype(dest32, dest.type),
                   srcs, SURFACE_LOGICAL_NUM_SRCS);
          bld.MOV(retype(dest, BRW_REGISTER_TYPE_UW),
@@ -6061,7 +6061,7 @@ fs_visitor::nir_emit_ssbo_atomic_float(const fs_builder &bld,
 
       case 32:
       case 64:
-         bld.emit(SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL,
+         bld.emit(SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL,
                   dest, srcs, SURFACE_LOGICAL_NUM_SRCS);
          break;
       default:
@@ -6179,7 +6179,7 @@ fs_visitor::nir_emit_shared_atomic_float(const fs_builder &bld,
    switch (nir_dest_bit_size(instr->dest)) {
       case 16: {
          fs_reg dest32 = bld.vgrf(BRW_REGISTER_TYPE_UD);
-         bld.emit(SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL,
+         bld.emit(SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL,
                   retype(dest32, dest.type),
                   srcs, SURFACE_LOGICAL_NUM_SRCS);
          bld.MOV(retype(dest, BRW_REGISTER_TYPE_UW),
@@ -6189,7 +6189,7 @@ fs_visitor::nir_emit_shared_atomic_float(const fs_builder &bld,
 
       case 32:
       case 64:
-         bld.emit(SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL,
+         bld.emit(SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL,
                   dest, srcs, SURFACE_LOGICAL_NUM_SRCS);
          break;
       default:

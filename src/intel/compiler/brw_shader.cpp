@@ -293,8 +293,6 @@ brw_instruction_name(const struct brw_isa_info *isa, enum opcode op)
       return "untyped_atomic";
    case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
       return "untyped_atomic_logical";
-   case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL:
-      return "untyped_atomic_float_logical";
    case VEC4_OPCODE_UNTYPED_SURFACE_READ:
       return "untyped_surface_read";
    case SHADER_OPCODE_UNTYPED_SURFACE_READ_LOGICAL:
@@ -1108,7 +1106,6 @@ backend_instruction::has_side_effects() const
    case BRW_OPCODE_SYNC:
    case VEC4_OPCODE_UNTYPED_ATOMIC:
    case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
-   case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL:
    case SHADER_OPCODE_GFX4_SCRATCH_WRITE:
    case VEC4_OPCODE_UNTYPED_SURFACE_WRITE:
    case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
