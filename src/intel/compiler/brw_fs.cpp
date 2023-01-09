@@ -781,34 +781,11 @@ fs_inst::components_read(unsigned i) const
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL:
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT16_LOGICAL:
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT64_LOGICAL:
-      assert(src[2].file == IMM);
-      if (i == 1) {
-         /* Data source */
-         const unsigned op = src[2].ud;
-         switch (op) {
-         case LSC_OP_ATOMIC_INC:
-         case LSC_OP_ATOMIC_DEC:
-            return 0;
-         case LSC_OP_ATOMIC_CMPXCHG:
-            return 2;
-         default:
-            return 1;
-         }
-      } else {
-         return 1;
-      }
-
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT16_LOGICAL:
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT32_LOGICAL:
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT64_LOGICAL:
       assert(src[2].file == IMM);
-      if (i == 1) {
-         /* Data source */
-         const unsigned op = src[2].ud;
-         return op == LSC_OP_ATOMIC_FCMPXCHG ? 2 : 1;
-      } else {
-         return 1;
-      }
+      return i == 1 ? lsc_op_num_data_values(src[2].ud) : 1;
 
    case SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL:
    case SHADER_OPCODE_DWORD_SCATTERED_READ_LOGICAL:
@@ -830,6 +807,7 @@ fs_inst::components_read(unsigned i) const
       return 1;
 
    case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
+   case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL:
    case SHADER_OPCODE_TYPED_ATOMIC_LOGICAL: {
       assert(src[SURFACE_LOGICAL_SRC_IMM_DIMS].file == IMM &&
              src[SURFACE_LOGICAL_SRC_IMM_ARG].file == IMM);
@@ -838,30 +816,11 @@ fs_inst::components_read(unsigned i) const
       if (i == SURFACE_LOGICAL_SRC_ADDRESS)
          return src[SURFACE_LOGICAL_SRC_IMM_DIMS].ud;
       /* Surface operation source. */
-      else if (i == SURFACE_LOGICAL_SRC_DATA && op == LSC_OP_ATOMIC_CMPXCHG)
-         return 2;
-      else if (i == SURFACE_LOGICAL_SRC_DATA &&
-               (op == LSC_OP_ATOMIC_INC || op == LSC_OP_ATOMIC_DEC))
-         return 0;
-      else
-         return 1;
+      else if (i == SURFACE_LOGICAL_SRC_DATA)
+         return lsc_op_num_data_values(op);
    }
    case FS_OPCODE_INTERPOLATE_AT_PER_SLOT_OFFSET:
       return (i == 0 ? 2 : 1);
-
-   case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL: {
-      assert(src[SURFACE_LOGICAL_SRC_IMM_DIMS].file == IMM &&
-             src[SURFACE_LOGICAL_SRC_IMM_ARG].file == IMM);
-      const unsigned op = src[SURFACE_LOGICAL_SRC_IMM_ARG].ud;
-      /* Surface coordinates. */
-      if (i == SURFACE_LOGICAL_SRC_ADDRESS)
-         return src[SURFACE_LOGICAL_SRC_IMM_DIMS].ud;
-      /* Surface operation source. */
-      else if (i == SURFACE_LOGICAL_SRC_DATA && op == LSC_OP_ATOMIC_FCMPXCHG)
-         return 2;
-      else
-         return 1;
-   }
 
    case SHADER_OPCODE_URB_WRITE_LOGICAL:
       if (i == URB_LOGICAL_SRC_DATA)

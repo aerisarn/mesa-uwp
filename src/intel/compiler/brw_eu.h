@@ -1241,6 +1241,27 @@ lsc_opcode_is_atomic(enum lsc_opcode opcode)
 }
 
 static inline unsigned
+lsc_op_num_data_values(unsigned _op)
+{
+   enum lsc_opcode op = (enum lsc_opcode) _op;
+
+   switch (op) {
+   case LSC_OP_ATOMIC_CMPXCHG:
+   case LSC_OP_ATOMIC_FCMPXCHG:
+      return 2;
+   case LSC_OP_ATOMIC_INC:
+   case LSC_OP_ATOMIC_DEC:
+   case LSC_OP_LOAD:
+   case LSC_OP_LOAD_CMASK:
+   case LSC_OP_FENCE:
+      /* XXX: actually check docs */
+      return 0;
+   default:
+      return 1;
+   }
+}
+
+static inline unsigned
 lsc_op_to_legacy_atomic(unsigned _op)
 {
    enum lsc_opcode op = (enum lsc_opcode) _op;
