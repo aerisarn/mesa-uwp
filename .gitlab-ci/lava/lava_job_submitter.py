@@ -74,11 +74,20 @@ def generate_lava_yaml_payload(args) -> dict[str, Any]:
         },
         "timeouts": {
             "job": {"minutes": args.job_timeout},
-            "action": {"minutes": 3},
             "actions": {
+                "depthcharge-retry": {
+                    # Could take between 1 and 1.5 min in slower boots
+                    "minutes": 2
+                },
+                "depthcharge-start": {
+                    # Should take less than 1 min.
+                    "minutes": 1,
+                },
                 "depthcharge-action": {
-                    "minutes": 3 * NUMBER_OF_ATTEMPTS_LAVA_BOOT,
-                }
+                    # This timeout englobes the entire depthcharge timing,
+                    # including retries
+                    "minutes": 2 * NUMBER_OF_ATTEMPTS_LAVA_BOOT,
+                },
             }
         },
     }
