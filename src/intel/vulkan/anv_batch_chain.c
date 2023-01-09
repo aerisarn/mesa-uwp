@@ -1840,10 +1840,11 @@ anv_queue_exec_locked(struct anv_queue *queue,
               (float)total_size_kb / 1024.0f);
       for (uint32_t i = 0; i < execbuf.bo_count; i++) {
          const struct anv_bo *bo = execbuf.bos[i];
+         uint64_t size = bo->size + bo->_ccs_size;
 
          fprintf(stderr, "   BO: addr=0x%016"PRIx64"-0x%016"PRIx64" size=0x%010"PRIx64
                  " handle=%05u capture=%u name=%s\n",
-                 bo->offset, bo->offset + bo->size - 1, bo->size, bo->gem_handle,
+                 bo->offset, bo->offset + size - 1, size, bo->gem_handle,
                  (bo->flags & EXEC_OBJECT_CAPTURE) != 0, bo->name);
       }
    }
