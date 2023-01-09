@@ -61,18 +61,17 @@ d3d12_init_batch(struct d3d12_context *ctx, struct d3d12_batch *batch)
                                                   IID_PPV_ARGS(&batch->cmdalloc))))
       return false;
 
-
    batch->sampler_heap =
       d3d12_descriptor_heap_new(screen->dev,
                                 D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
                                 D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
-                                128);
+                              1024);
 
    batch->view_heap =
       d3d12_descriptor_heap_new(screen->dev,
                                 D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
                                 D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
-                                1024);
+                                8096);
 
    if (!batch->sampler_heap && !batch->view_heap)
       return false;
