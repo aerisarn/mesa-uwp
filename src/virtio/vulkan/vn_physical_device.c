@@ -704,6 +704,14 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
          ver = ver - VK_VERSION_PATCH(ver) +
                VK_VERSION_PATCH(vk10_props->apiVersion);
       }
+
+      /* Clamp to 1.2 if we disabled VK_KHR_synchronization2 since it
+       * is required for 1.3.
+       * See vn_physical_device_get_passthrough_extensions()
+       */
+      if (!physical_dev->base.base.supported_extensions.KHR_synchronization2)
+         ver = MIN2(VK_API_VERSION_1_2, ver);
+
       vk10_props->apiVersion = ver;
    }
 
@@ -926,19 +934,6 @@ vn_physical_device_init_external_semaphore_handles(
          VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
    }
 #endif
-
-   if (!(physical_dev->renderer_sync_fd_semaphore_features &
-         VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT)) {
-      /* Disable VK_KHR_synchronization2, because
-       * out implementation requires semaphore sync fd import.
-       */
-      physical_dev->base.base.supported_extensions.KHR_synchronization2 =
-         false;
-
-      /* Clamp to 1.2 because 1.3 requires VK_KHR_synchronization2. */
-      physical_dev->properties.vulkan_1_0.apiVersion = MIN2(
-         VK_API_VERSION_1_2, physical_dev->properties.vulkan_1_0.apiVersion);
-   }
 }
 
 static void
@@ -1060,7 +1055,12 @@ vn_physical_device_get_passthrough_extensions(
       .KHR_shader_integer_dot_product = true,
       .KHR_shader_non_semantic_info = true,
       .KHR_shader_terminate_invocation = true,
-      .KHR_synchronization2 = true,
+      /* Our implementation requires semaphore sync fd import
+       * for VK_KHR_synchronization2.
+       */
+      .KHR_synchronization2 =
+         physical_dev->renderer_sync_fd_semaphore_features &
+         VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT,
       .KHR_zero_initialize_workgroup_memory = true,
       .EXT_4444_formats = true,
       .EXT_extended_dynamic_state = true,
@@ -1279,6 +1279,10 @@ vn_physical_device_init(struct vn_physical_device *physical_dev)
    if (result != VK_SUCCESS)
       return result;
 
+   vn_physical_device_init_external_memory(physical_dev);
+   vn_physical_device_init_external_fence_handles(physical_dev);
+   vn_physical_device_init_external_semaphore_handles(physical_dev);
+
    vn_physical_device_init_supported_extensions(physical_dev);
 
    /* TODO query all caps with minimal round trips */
@@ -1290,10 +1294,6 @@ vn_physical_device_init(struct vn_physical_device *physical_dev)
       goto fail;
 
    vn_physical_device_init_memory_properties(physical_dev);
-
-   vn_physical_device_init_external_memory(physical_dev);
-   vn_physical_device_init_external_fence_handles(physical_dev);
-   vn_physical_device_init_external_semaphore_handles(physical_dev);
 
    result = vn_wsi_init(physical_dev);
    if (result != VK_SUCCESS)
