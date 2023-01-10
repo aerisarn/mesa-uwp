@@ -2471,6 +2471,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 
       radv_nir_shader_info_init(&stages[i].info);
       radv_nir_shader_info_pass(device, stages[i].nir, pipeline_layout, pipeline_key,
+                                pipeline->type,
                                 &stages[i].info);
    }
 
@@ -2998,7 +2999,7 @@ radv_pipeline_create_gs_copy_shader(struct radv_pipeline *pipeline,
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
    struct radv_shader_info info = {0};
-   radv_nir_shader_info_pass(device, nir, pipeline_layout, pipeline_key, &info);
+   radv_nir_shader_info_pass(device, nir, pipeline_layout, pipeline_key, pipeline->type, &info);
    info.wave_size = 64; /* Wave32 not supported. */
    info.workgroup_size = 64; /* HW VS: separate waves, no workgroups */
    info.so = gs_info->so;
