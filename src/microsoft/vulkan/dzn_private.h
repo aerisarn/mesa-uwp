@@ -451,7 +451,7 @@ struct dzn_cmd_buffer_query_range {
 };
 
 struct dzn_cmd_buffer_query_pool_state {
-   struct util_dynarray reset, collect, wait, signal;
+   struct util_dynarray reset, collect, signal;
 };
 
 struct dzn_internal_resource {
@@ -582,7 +582,6 @@ struct dzn_cmd_buffer {
    struct {
       struct hash_table *ht;
       struct util_dynarray reset;
-      struct util_dynarray wait;
       struct util_dynarray signal;
    } queries;
 

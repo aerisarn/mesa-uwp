@@ -409,7 +409,6 @@ dzn_cmd_buffer_destroy(struct vk_command_buffer *cbuf)
    util_dynarray_fini(&cmdbuf->events.wait);
    util_dynarray_fini(&cmdbuf->events.signal);
    util_dynarray_fini(&cmdbuf->queries.reset);
-   util_dynarray_fini(&cmdbuf->queries.wait);
    util_dynarray_fini(&cmdbuf->queries.signal);
 
    if (cmdbuf->rtvs.ht) {
@@ -432,7 +431,6 @@ dzn_cmd_buffer_destroy(struct vk_command_buffer *cbuf)
          struct dzn_cmd_buffer_query_pool_state *qpstate = he->data;
          util_dynarray_fini(&qpstate->reset);
          util_dynarray_fini(&qpstate->collect);
-         util_dynarray_fini(&qpstate->wait);
          util_dynarray_fini(&qpstate->signal);
          vk_free(&cbuf->pool->alloc, he->data);
       }
@@ -467,7 +465,6 @@ dzn_cmd_buffer_reset(struct vk_command_buffer *cbuf, VkCommandBufferResetFlags f
    util_dynarray_clear(&cmdbuf->events.wait);
    util_dynarray_clear(&cmdbuf->events.signal);
    util_dynarray_clear(&cmdbuf->queries.reset);
-   util_dynarray_clear(&cmdbuf->queries.wait);
    util_dynarray_clear(&cmdbuf->queries.signal);
    hash_table_foreach(cmdbuf->rtvs.ht, he)
       vk_free(&cmdbuf->vk.pool->alloc, he->data);
@@ -481,7 +478,6 @@ dzn_cmd_buffer_reset(struct vk_command_buffer *cbuf, VkCommandBufferResetFlags f
       struct dzn_cmd_buffer_query_pool_state *qpstate = he->data;
       util_dynarray_fini(&qpstate->reset);
       util_dynarray_fini(&qpstate->collect);
-      util_dynarray_fini(&qpstate->wait);
       util_dynarray_fini(&qpstate->signal);
       vk_free(&cmdbuf->vk.pool->alloc, he->data);
    }
@@ -599,7 +595,6 @@ dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
    util_dynarray_init(&cmdbuf->events.wait, NULL);
    util_dynarray_init(&cmdbuf->events.signal, NULL);
    util_dynarray_init(&cmdbuf->queries.reset, NULL);
-   util_dynarray_init(&cmdbuf->queries.wait, NULL);
    util_dynarray_init(&cmdbuf->queries.signal, NULL);
    dzn_descriptor_heap_pool_init(&cmdbuf->rtvs.pool, device,
                                  D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
@@ -821,7 +816,6 @@ dzn_cmd_buffer_create_query_pool_state(struct dzn_cmd_buffer *cmdbuf)
 
    util_dynarray_init(&state->reset, NULL);
    util_dynarray_init(&state->collect, NULL);
-   util_dynarray_init(&state->wait, NULL);
    util_dynarray_init(&state->signal, NULL);
    return state;
 }
@@ -832,7 +826,6 @@ dzn_cmd_buffer_destroy_query_pool_state(struct dzn_cmd_buffer *cmdbuf,
 {
    util_dynarray_fini(&state->reset);
    util_dynarray_fini(&state->collect);
-   util_dynarray_fini(&state->wait);
    util_dynarray_fini(&state->signal);
    vk_free(&cmdbuf->vk.pool->alloc, state);
 }
@@ -999,10 +992,6 @@ dzn_cmd_buffer_gather_queries(struct dzn_cmd_buffer *cmdbuf)
          return result;
 
       result = dzn_cmd_buffer_collect_query_ops(cmdbuf, qpool, &state->reset, &cmdbuf->queries.reset);
-      if (result != VK_SUCCESS)
-         return result;
-
-      result = dzn_cmd_buffer_collect_query_ops(cmdbuf, qpool, &state->wait, &cmdbuf->queries.wait);
       if (result != VK_SUCCESS)
          return result;
 
@@ -5154,14 +5143,6 @@ dzn_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
    if (!qpstate)
       return;
 
-   if (flags & VK_QUERY_RESULT_WAIT_BIT) {
-      for (uint32_t i = 0; i < queryCount; i++) {
-         if (!dzn_cmd_buffer_dynbitset_test(&qpstate->collect, firstQuery + i) &&
-             !dzn_cmd_buffer_dynbitset_test(&qpstate->signal, firstQuery + i))
-            dzn_cmd_buffer_dynbitset_set(cmdbuf, &qpstate->wait, firstQuery + i);
-      }
-   }
-
    VkResult result =
       dzn_cmd_buffer_collect_queries(cmdbuf, qpool, qpstate, firstQuery, queryCount);
    if (result != VK_SUCCESS)
@@ -5188,10 +5169,11 @@ dzn_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
 #undef ALL_STATS
 
    if (cmdbuf->enhanced_barriers) {
-      /* TODO: Can this be skipped if WAIT isn't set? */
-      dzn_cmd_buffer_buffer_barrier(cmdbuf, qpool->collect_buffer,
-                                    D3D12_BARRIER_SYNC_COPY, D3D12_BARRIER_SYNC_COPY,
-                                    D3D12_BARRIER_ACCESS_COPY_DEST, D3D12_BARRIER_ACCESS_COPY_SOURCE);
+      if (flags & VK_QUERY_RESULT_WAIT_BIT) {
+         dzn_cmd_buffer_buffer_barrier(cmdbuf, qpool->collect_buffer,
+                                       D3D12_BARRIER_SYNC_COPY, D3D12_BARRIER_SYNC_COPY,
+                                       D3D12_BARRIER_ACCESS_COPY_DEST, D3D12_BARRIER_ACCESS_COPY_SOURCE);
+      }
    } else {
       dzn_cmd_buffer_queue_transition_barriers(cmdbuf, qpool->collect_buffer, 0, 1,
                                                D3D12_RESOURCE_STATE_COPY_DEST,

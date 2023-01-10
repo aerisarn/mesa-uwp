@@ -1927,18 +1927,6 @@ dzn_queue_submit(struct vk_queue *q,
             return vk_error(device, VK_ERROR_UNKNOWN);
       }
 
-      util_dynarray_foreach(&cmd_buffer->queries.wait, struct dzn_cmd_buffer_query_range, range) {
-         mtx_lock(&range->qpool->queries_lock);
-         for (uint32_t q = range->start; q < range->start + range->count; q++) {
-            struct dzn_query *query = &range->qpool->queries[q];
-
-            if (query->fence &&
-                FAILED(ID3D12CommandQueue_Wait(queue->cmdqueue, query->fence, query->fence_value)))
-               return vk_error(device, VK_ERROR_UNKNOWN);
-         }
-         mtx_unlock(&range->qpool->queries_lock);
-      }
-
       util_dynarray_foreach(&cmd_buffer->queries.reset, struct dzn_cmd_buffer_query_range, range) {
          mtx_lock(&range->qpool->queries_lock);
          for (uint32_t q = range->start; q < range->start + range->count; q++) {
