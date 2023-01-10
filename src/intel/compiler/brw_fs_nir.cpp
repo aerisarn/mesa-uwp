@@ -4877,13 +4877,11 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    case nir_intrinsic_global_atomic_xor:
    case nir_intrinsic_global_atomic_exchange:
    case nir_intrinsic_global_atomic_comp_swap:
-      nir_emit_global_atomic(bld, instr);
-      break;
    case nir_intrinsic_global_atomic_fadd:
    case nir_intrinsic_global_atomic_fmin:
    case nir_intrinsic_global_atomic_fmax:
    case nir_intrinsic_global_atomic_fcomp_swap:
-      nir_emit_global_atomic_float(bld, instr);
+      nir_emit_global_atomic(bld, instr);
       break;
 
    case nir_intrinsic_load_global_const_block_intel: {
@@ -6073,70 +6071,15 @@ fs_visitor::nir_emit_global_atomic(const fs_builder &bld,
    switch (nir_dest_bit_size(instr->dest)) {
    case 16: {
       fs_reg dest32 = bld.vgrf(BRW_REGISTER_TYPE_UD);
-      bld.emit(SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT16_LOGICAL,
+      bld.emit(SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL,
                retype(dest32, dest.type),
                srcs, A64_LOGICAL_NUM_SRCS);
       bld.MOV(retype(dest, BRW_REGISTER_TYPE_UW), dest32);
       break;
    }
    case 32:
+   case 64:
       bld.emit(SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL, dest,
-               srcs, A64_LOGICAL_NUM_SRCS);
-      break;
-   case 64:
-      bld.emit(SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT64_LOGICAL, dest,
-               srcs, A64_LOGICAL_NUM_SRCS);
-      break;
-   default:
-      unreachable("Unsupported bit size");
-   }
-}
-
-void
-fs_visitor::nir_emit_global_atomic_float(const fs_builder &bld,
-                                         nir_intrinsic_instr *instr)
-{
-   int op = lsc_aop_for_nir_intrinsic(instr);
-
-   assert(nir_intrinsic_infos[instr->intrinsic].has_dest);
-   fs_reg dest = get_nir_dest(instr->dest);
-
-   fs_reg addr = get_nir_src(instr->src[0]);
-
-   assert(op != LSC_OP_ATOMIC_INC && op != LSC_OP_ATOMIC_DEC);
-   fs_reg data = expand_to_32bit(bld, get_nir_src(instr->src[1]));
-
-   if (op == LSC_OP_ATOMIC_FCMPXCHG) {
-      fs_reg tmp = bld.vgrf(data.type, 2);
-      fs_reg sources[2] = {
-         data,
-         expand_to_32bit(bld, get_nir_src(instr->src[2]))
-      };
-      bld.LOAD_PAYLOAD(tmp, sources, 2, 0);
-      data = tmp;
-   }
-
-   fs_reg srcs[A64_LOGICAL_NUM_SRCS];
-   srcs[A64_LOGICAL_ADDRESS] = addr;
-   srcs[A64_LOGICAL_SRC] = data;
-   srcs[A64_LOGICAL_ARG] = brw_imm_ud(op);
-   srcs[A64_LOGICAL_ENABLE_HELPERS] = brw_imm_ud(0);
-
-   switch (nir_dest_bit_size(instr->dest)) {
-   case 16: {
-      fs_reg dest32 = bld.vgrf(BRW_REGISTER_TYPE_UD);
-      bld.emit(SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT16_LOGICAL,
-               retype(dest32, dest.type),
-               srcs, A64_LOGICAL_NUM_SRCS);
-      bld.MOV(retype(dest, BRW_REGISTER_TYPE_UW), dest32);
-      break;
-   }
-   case 32:
-      bld.emit(SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT32_LOGICAL, dest,
-               srcs, A64_LOGICAL_NUM_SRCS);
-      break;
-   case 64:
-      bld.emit(SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT64_LOGICAL, dest,
                srcs, A64_LOGICAL_NUM_SRCS);
       break;
    default:

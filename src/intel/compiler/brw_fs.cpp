@@ -779,11 +779,6 @@ fs_inst::components_read(unsigned i) const
       return i == 1 ? src[2].ud : 1;
 
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL:
-   case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT16_LOGICAL:
-   case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT64_LOGICAL:
-   case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT16_LOGICAL:
-   case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT32_LOGICAL:
-   case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT64_LOGICAL:
       assert(src[2].file == IMM);
       return i == 1 ? lsc_op_num_data_values(src[2].ud) : 1;
 
@@ -5193,11 +5188,6 @@ get_lowered_simd_width(const struct brw_compiler *compiler,
       return inst->exec_size;
 
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL:
-   case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT16_LOGICAL:
-   case SHADER_OPCODE_A64_UNTYPED_ATOMIC_INT64_LOGICAL:
-   case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT16_LOGICAL:
-   case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT32_LOGICAL:
-   case SHADER_OPCODE_A64_UNTYPED_ATOMIC_FLOAT64_LOGICAL:
       return devinfo->has_lsc ? MIN2(16, inst->exec_size) : 8;
 
    case SHADER_OPCODE_URB_READ_LOGICAL:
