@@ -531,7 +531,8 @@ dzn_pipeline_cache_add_dxil_shader(struct vk_pipeline_cache *cache,
 }
 
 struct dzn_cached_gfx_pipeline_header {
-   uint32_t stages;
+   uint32_t stages : 31;
+   uint32_t rast_disabled_from_missing_position : 1;
    uint32_t input_count;
 };
 
@@ -598,6 +599,8 @@ dzn_pipeline_cache_lookup_gfx_pipeline(struct dzn_graphics_pipeline *pipeline,
       offset += SHA1_DIGEST_LENGTH;
    }
 
+   pipeline->rast_disabled_from_missing_position = info->rast_disabled_from_missing_position;
+
    *cache_hit = true;
 
    vk_pipeline_cache_object_unref(cache_obj);
@@ -637,6 +640,7 @@ dzn_pipeline_cache_add_gfx_pipeline(struct dzn_graphics_pipeline *pipeline,
 
    info->input_count = vertex_input_count;
    info->stages = stages;
+   info->rast_disabled_from_missing_position = pipeline->rast_disabled_from_missing_position;
 
    offset = ALIGN_POT(offset + sizeof(*info), alignof(D3D12_INPUT_ELEMENT_DESC));
 
@@ -911,10 +915,6 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
 
    /* Last step: translate NIR shaders into DXIL modules */
    u_foreach_bit(stage, active_stage_mask) {
-      /* Cache hit, we can skip the compilation. */
-      if (pipeline->templates.shaders[stage].bc)
-         continue;
-
       gl_shader_stage prev_stage =
          util_last_bit(active_stage_mask & BITFIELD_MASK(stage)) - 1;
       uint32_t prev_stage_output_clip_size = 0;
@@ -923,11 +923,19 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
           * write the position.
           */
          if (prev_stage == MESA_SHADER_NONE ||
-             !(pipeline->templates.shaders[prev_stage].nir->info.outputs_written & VARYING_BIT_POS))
+             !(pipeline->templates.shaders[prev_stage].nir->info.outputs_written & VARYING_BIT_POS)) {
+            pipeline->rast_disabled_from_missing_position = true;
+            /* Clear a cache hit if there was one. */
+            pipeline->templates.shaders[stage].bc = NULL;
             continue;
+         }
       } else if (prev_stage != MESA_SHADER_NONE) {
          prev_stage_output_clip_size = pipeline->templates.shaders[prev_stage].nir->info.clip_distance_array_size;
       }
+
+      /* Cache hit, we can skip the compilation. */
+      if (pipeline->templates.shaders[stage].bc)
+         continue;
 
       D3D12_SHADER_BYTECODE *slot =
          dzn_pipeline_get_gfx_shader_slot(out, stage);
@@ -1660,6 +1668,8 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
                              const VkAllocationCallbacks *pAllocator,
                              VkPipeline *out)
 {
+   struct dzn_physical_device *pdev =
+      container_of(device->vk.physical, struct dzn_physical_device, vk);
    const VkPipelineRenderingCreateInfo *ri = (const VkPipelineRenderingCreateInfo *)
       vk_find_struct_const(pCreateInfo, PIPELINE_RENDERING_CREATE_INFO);
    VK_FROM_HANDLE(vk_pipeline_cache, pcache, cache);
@@ -1795,6 +1805,22 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
                                                pCreateInfo);
    if (ret != VK_SUCCESS)
       goto out;
+
+   /* If we have no position output from a pre-rasterizer stage, we need to make sure that
+    * depth is disabled, to fully disable the rasterizer. We can only know this after compiling
+    * or loading the shaders.
+    */
+   if (pipeline->rast_disabled_from_missing_position) {
+      if (pdev->options14.IndependentFrontAndBackStencilRefMaskSupported) {
+         D3D12_DEPTH_STENCIL_DESC2 *ds = dzn_graphics_pipeline_get_desc(pipeline, pipeline->templates.stream_buf, ds);
+         if (ds)
+            ds->DepthEnable = ds->StencilEnable = false;
+      } else {
+         D3D12_DEPTH_STENCIL_DESC1 *ds = dzn_graphics_pipeline_get_desc(pipeline, pipeline->templates.stream_buf, ds);
+         if (ds)
+            ds->DepthEnable = ds->StencilEnable = false;
+      }
+   }
 
    if (!pipeline->variants) {
       hres = ID3D12Device4_CreatePipelineState(device->dev, stream_desc,

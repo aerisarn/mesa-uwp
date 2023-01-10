@@ -866,6 +866,8 @@ struct dzn_graphics_pipeline {
       float constants[4];
    } blend;
 
+   bool rast_disabled_from_missing_position;
+
    struct {
       uintptr_t stream_buf[MAX_GFX_PIPELINE_STATE_STREAM_SIZE / sizeof(uintptr_t)];
       D3D12_PIPELINE_STATE_STREAM_DESC stream_desc;
