@@ -5971,9 +5971,7 @@ fs_visitor::nir_emit_surface_atomic(const fs_builder &bld,
           (nir_dest_bit_size(instr->dest) == 16 &&
            (devinfo->has_lsc || lsc_opcode_is_atomic_float(op))));
 
-   fs_reg dest;
-   if (nir_intrinsic_infos[instr->intrinsic].has_dest)
-      dest = get_nir_dest(instr->dest);
+   fs_reg dest = get_nir_dest(instr->dest);
 
    fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
    srcs[SURFACE_LOGICAL_SRC_SURFACE] = surface;
@@ -6042,9 +6040,7 @@ fs_visitor::nir_emit_global_atomic(const fs_builder &bld,
 {
    int op = lsc_aop_for_nir_intrinsic(instr);
 
-   fs_reg dest;
-   if (nir_intrinsic_infos[instr->intrinsic].has_dest)
-      dest = get_nir_dest(instr->dest);
+   fs_reg dest = get_nir_dest(instr->dest);
 
    fs_reg addr = get_nir_src(instr->src[0]);
 
