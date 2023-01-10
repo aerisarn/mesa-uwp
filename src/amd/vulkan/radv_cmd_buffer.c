@@ -6275,7 +6275,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
          cmd_buffer->state.graphics_pipeline->vtx_base_sgpr != graphics_pipeline->vtx_base_sgpr;
       cmd_buffer->state.graphics_pipeline = graphics_pipeline;
 
-      bool mesh_shading = radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_MESH);
+      bool mesh_shading = (graphics_pipeline->active_stages & VK_SHADER_STAGE_MESH_BIT_EXT) > 0;
       if (mesh_shading != cmd_buffer->state.mesh_shading) {
          /* Re-emit VRS state because the combiner is different (vertex vs primitive).
           * Re-emit primitive topology because the mesh shading pipeline clobbered it.
@@ -6310,7 +6310,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
          cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_VGT_FLUSH;
       }
 
-      if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TESS_CTRL)) {
+      if (graphics_pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) {
          if (!(graphics_pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS)) {
             /* Bind the tessellation state from the pipeline when it's not dynamic. */
             struct radv_shader *tcs = graphics_pipeline->base.shaders[MESA_SHADER_TESS_CTRL];
@@ -6381,13 +6381,13 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
          MAX2(cmd_buffer->scratch_size_per_wave_needed, pipeline->scratch_bytes_per_wave);
       cmd_buffer->scratch_waves_wanted = MAX2(cmd_buffer->scratch_waves_wanted, pipeline->max_waves);
 
-      if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TESS_CTRL))
+      if (graphics_pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)
          cmd_buffer->tess_rings_needed = true;
       if (mesh_shading)
          cmd_buffer->mesh_scratch_ring_needed |=
             pipeline->shaders[MESA_SHADER_MESH]->info.ms.needs_ms_scratch_ring;
 
-      if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TASK)) {
+      if (graphics_pipeline->active_stages & VK_SHADER_STAGE_TASK_BIT_EXT) {
          if (!cmd_buffer->ace_internal.cs) {
             cmd_buffer->ace_internal.cs = radv_ace_internal_create(cmd_buffer);
             if (!cmd_buffer->ace_internal.cs)
