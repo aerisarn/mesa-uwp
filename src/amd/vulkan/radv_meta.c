@@ -44,6 +44,7 @@ radv_suspend_queries(struct radv_meta_saved_state *state, struct radv_cmd_buffer
 
       state->active_pipeline_gds_queries = cmd_buffer->state.active_pipeline_gds_queries;
       cmd_buffer->state.active_pipeline_gds_queries = 0;
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
    }
 
    /* Occlusion queries. */
@@ -61,12 +62,14 @@ radv_suspend_queries(struct radv_meta_saved_state *state, struct radv_cmd_buffer
    if (cmd_buffer->state.active_prims_gen_gds_queries) {
       state->active_prims_gen_gds_queries = cmd_buffer->state.active_prims_gen_gds_queries;
       cmd_buffer->state.active_prims_gen_gds_queries = 0;
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
    }
 
    /* Transform feedback queries (NGG). */
    if (cmd_buffer->state.active_prims_xfb_gds_queries) {
       state->active_prims_xfb_gds_queries = cmd_buffer->state.active_prims_xfb_gds_queries;
       cmd_buffer->state.active_prims_xfb_gds_queries = 0;
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
    }
 }
 
@@ -79,6 +82,7 @@ radv_resume_queries(const struct radv_meta_saved_state *state, struct radv_cmd_b
       cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_START_PIPELINE_STATS;
 
       cmd_buffer->state.active_pipeline_gds_queries = state->active_pipeline_gds_queries;
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
    }
 
    /* Occlusion queries. */
@@ -95,11 +99,13 @@ radv_resume_queries(const struct radv_meta_saved_state *state, struct radv_cmd_b
    /* Primitives generated queries (NGG). */
    if (state->active_prims_gen_gds_queries) {
       cmd_buffer->state.active_prims_gen_gds_queries = state->active_prims_gen_gds_queries;
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
    }
 
    /* Transform feedback queries (NGG). */
    if (state->active_prims_xfb_gds_queries) {
       cmd_buffer->state.active_prims_xfb_gds_queries = state->active_prims_xfb_gds_queries;
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
    }
 }
 

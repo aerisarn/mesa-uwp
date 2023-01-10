@@ -1246,6 +1246,7 @@ enum radv_cmd_dirty_bits {
    RADV_CMD_DIRTY_STREAMOUT_BUFFER = 1ull << 50,
    RADV_CMD_DIRTY_GUARDBAND = 1ull << 51,
    RADV_CMD_DIRTY_RBPLUS = 1ull << 52,
+   RADV_CMD_DIRTY_NGG_QUERY = 1ull << 53,
 };
 
 enum radv_cmd_flush_bits {

@@ -5123,7 +5123,6 @@ radv_upload_graphics_shader_descriptors(struct radv_cmd_buffer *cmd_buffer)
    VkShaderStageFlags stages = VK_SHADER_STAGE_ALL_GRAPHICS;
    radv_flush_descriptors(cmd_buffer, stages, &pipeline->base, VK_PIPELINE_BIND_POINT_GRAPHICS);
    radv_flush_constants(cmd_buffer, stages, &pipeline->base, VK_PIPELINE_BIND_POINT_GRAPHICS);
-   radv_flush_ngg_query_state(cmd_buffer);
    radv_flush_force_vrs_state(cmd_buffer);
 }
 
@@ -5793,6 +5792,10 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
 
       cmd_buffer->state.inherited_pipeline_statistics =
          pBeginInfo->pInheritanceInfo->pipelineStatistics;
+
+      if (cmd_buffer->state.inherited_pipeline_statistics &
+          VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT)
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
    }
 
    if (unlikely(cmd_buffer->device->trace_bo))
@@ -6370,6 +6373,10 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
             cmd_buffer->gds_oa_needed = true;
          }
       }
+
+      /* Re-emit NGG query state when SGPR exists but location potentially changed. */
+      if (graphics_pipeline->last_vgt_api_stage_locs[AC_UD_NGG_QUERY_STATE].sgpr_idx != -1)
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
 
       /* Re-emit the rasterization samples state because the SGPR idx can be different. */
       const struct radv_shader *ps = graphics_pipeline->base.shaders[MESA_SHADER_FRAGMENT];
@@ -7290,9 +7297,9 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
    /* After executing commands from secondary buffers we have to dirty
     * some states.
     */
-   primary->state.dirty |=
-      RADV_CMD_DIRTY_PIPELINE | RADV_CMD_DIRTY_INDEX_BUFFER | RADV_CMD_DIRTY_GUARDBAND |
-      RADV_CMD_DIRTY_DYNAMIC_ALL;
+   primary->state.dirty |= RADV_CMD_DIRTY_PIPELINE | RADV_CMD_DIRTY_INDEX_BUFFER |
+                           RADV_CMD_DIRTY_GUARDBAND | RADV_CMD_DIRTY_DYNAMIC_ALL |
+                           RADV_CMD_DIRTY_NGG_QUERY;
    radv_mark_descriptor_sets_dirty(primary, VK_PIPELINE_BIND_POINT_GRAPHICS);
    radv_mark_descriptor_sets_dirty(primary, VK_PIPELINE_BIND_POINT_COMPUTE);
 }
@@ -8704,6 +8711,11 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
 
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_RBPLUS)
       radv_emit_rbplus_state(cmd_buffer);
+
+   if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_NGG_QUERY) {
+      cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_NGG_QUERY;
+      radv_flush_ngg_query_state(cmd_buffer);
+   }
 
    if (cmd_buffer->device->physical_device->use_ngg_culling &&
        cmd_buffer->state.graphics_pipeline->is_ngg)
@@ -10913,9 +10925,12 @@ radv_set_streamout_enable(struct radv_cmd_buffer *cmd_buffer, bool enable)
         (old_hw_enabled_mask != so->hw_enabled_mask)))
       radv_emit_streamout_enable(cmd_buffer);
 
-   if (cmd_buffer->device->physical_device->use_ngg_streamout && !enable) {
+   if (cmd_buffer->device->physical_device->use_ngg_streamout) {
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
+
       /* Re-emit streamout buffers to unbind them. */
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_STREAMOUT_BUFFER;
+      if (!enable)
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_STREAMOUT_BUFFER;
    }
 }
 
