@@ -838,7 +838,8 @@ dzn_physical_device_get_format_properties(struct dzn_physical_device *pdev,
    if ((dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_LOAD) &&
        (dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW)) {
       base_props->optimalTilingFeatures |= VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
-      base_props->bufferFeatures |= VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT;
+      if (dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_BUFFER)
+         base_props->bufferFeatures |= VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT;
    }
 
 #define ATOMIC_FLAGS (D3D12_FORMAT_SUPPORT2_UAV_ATOMIC_ADD | \
@@ -852,7 +853,7 @@ dzn_physical_device_get_format_properties(struct dzn_physical_device *pdev,
       base_props->bufferFeatures |= VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT;
    }
 
-   if (dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_LOAD)
+   if (dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_BUFFER)
       base_props->bufferFeatures |= VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
 
    /* Color/depth/stencil attachment cap implies input attachement cap, and input
