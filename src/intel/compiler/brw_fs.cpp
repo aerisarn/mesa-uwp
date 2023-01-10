@@ -747,13 +747,13 @@ fs_inst::components_read(unsigned i) const
    case SHADER_OPCODE_A64_UNTYPED_READ_LOGICAL:
    case SHADER_OPCODE_A64_OWORD_BLOCK_READ_LOGICAL:
    case SHADER_OPCODE_A64_UNALIGNED_OWORD_BLOCK_READ_LOGICAL:
-      assert(src[2].file == IMM);
+      assert(src[A64_LOGICAL_ARG].file == IMM);
       return 1;
 
    case SHADER_OPCODE_A64_OWORD_BLOCK_WRITE_LOGICAL:
-      assert(src[2].file == IMM);
-      if (i == 1) { /* data to write */
-         const unsigned comps = src[2].ud / exec_size;
+      assert(src[A64_LOGICAL_ARG].file == IMM);
+      if (i == A64_LOGICAL_SRC) { /* data to write */
+         const unsigned comps = src[A64_LOGICAL_ARG].ud / exec_size;
          assert(comps > 0);
          return comps;
       } else {
@@ -775,12 +775,13 @@ fs_inst::components_read(unsigned i) const
       }
 
    case SHADER_OPCODE_A64_UNTYPED_WRITE_LOGICAL:
-      assert(src[2].file == IMM);
-      return i == 1 ? src[2].ud : 1;
+      assert(src[A64_LOGICAL_ARG].file == IMM);
+      return i == A64_LOGICAL_SRC ? src[A64_LOGICAL_ARG].ud : 1;
 
    case SHADER_OPCODE_A64_UNTYPED_ATOMIC_LOGICAL:
-      assert(src[2].file == IMM);
-      return i == 1 ? lsc_op_num_data_values(src[2].ud) : 1;
+      assert(src[A64_LOGICAL_ARG].file == IMM);
+      return i == A64_LOGICAL_SRC ?
+             lsc_op_num_data_values(src[A64_LOGICAL_ARG].ud) : 1;
 
    case SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL:
    case SHADER_OPCODE_DWORD_SCATTERED_READ_LOGICAL:
