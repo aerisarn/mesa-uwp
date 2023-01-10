@@ -277,12 +277,17 @@ nvk_AllocateMemory(VkDevice device,
    struct nvk_device_memory *mem;
    VkResult result;
 
+#if NVK_NEW_UAPI == 0
    const VkMemoryDedicatedAllocateInfo *dedicated_info =
       vk_find_struct_const(pAllocateInfo->pNext,
                            MEMORY_DEDICATED_ALLOCATE_INFO);
+#endif
 
+   struct nvk_memory_tiling_info *p_tile_info = NULL;
+
+#if NVK_NEW_UAPI == 0
    struct nvk_image_plane *dedicated_image_plane = NULL;
-   struct nvk_memory_tiling_info tile_info, *p_tile_info = NULL;
+   struct nvk_memory_tiling_info tile_info;
    if (dedicated_info && dedicated_info->image != VK_NULL_HANDLE) {
       VK_FROM_HANDLE(nvk_image, image, dedicated_info->image);
       if (image->plane_count == 1 && image->planes[0].nil.pte_kind) {
@@ -294,13 +299,16 @@ nvk_AllocateMemory(VkDevice device,
          p_tile_info = &tile_info;
       }
    }
+#endif
 
    result = nvk_allocate_memory(dev, pAllocateInfo, p_tile_info,
                                 pAllocator, &mem);
    if (result != VK_SUCCESS)
       return result;
 
+#if NVK_NEW_UAPI == 0
    mem->dedicated_image_plane = dedicated_image_plane;
+#endif
 
    *pMem = nvk_device_memory_to_handle(mem);
 

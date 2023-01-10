@@ -15,7 +15,9 @@ struct nvk_device_memory {
 
    struct list_head link;
 
+#if NVK_NEW_UAPI == 0
    struct nvk_image_plane *dedicated_image_plane;
+#endif
 
    struct nouveau_ws_bo *bo;
 
