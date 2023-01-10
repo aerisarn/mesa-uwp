@@ -359,10 +359,9 @@ public:
                            nir_intrinsic_instr *instr);
    void nir_emit_tes_intrinsic(const brw::fs_builder &bld,
                                nir_intrinsic_instr *instr);
-   void nir_emit_ssbo_atomic(const brw::fs_builder &bld,
-                             nir_intrinsic_instr *instr);
-   void nir_emit_shared_atomic(const brw::fs_builder &bld,
-                               nir_intrinsic_instr *instr);
+   void nir_emit_surface_atomic(const brw::fs_builder &bld,
+                                nir_intrinsic_instr *instr,
+                                fs_reg surface);
    void nir_emit_global_atomic(const brw::fs_builder &bld,
                                nir_intrinsic_instr *instr);
    void nir_emit_global_atomic_float(const brw::fs_builder &bld,

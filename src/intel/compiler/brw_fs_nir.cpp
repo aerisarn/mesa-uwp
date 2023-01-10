@@ -3782,7 +3782,7 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
    case nir_intrinsic_shared_atomic_fmin:
    case nir_intrinsic_shared_atomic_fmax:
    case nir_intrinsic_shared_atomic_fcomp_swap:
-      nir_emit_shared_atomic(bld, instr);
+      nir_emit_surface_atomic(bld, instr, brw_imm_ud(GFX7_BTI_SLM));
       break;
 
    case nir_intrinsic_load_shared: {
@@ -5055,7 +5055,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    case nir_intrinsic_ssbo_atomic_fmin:
    case nir_intrinsic_ssbo_atomic_fmax:
    case nir_intrinsic_ssbo_atomic_fcomp_swap:
-      nir_emit_ssbo_atomic(bld, instr);
+      nir_emit_surface_atomic(bld, instr,
+                              get_nir_ssbo_intrinsic_index(bld, instr));
       break;
 
    case nir_intrinsic_get_ssbo_size: {
@@ -5951,11 +5952,14 @@ expand_to_32bit(const fs_builder &bld, const fs_reg &src)
 }
 
 void
-fs_visitor::nir_emit_ssbo_atomic(const fs_builder &bld,
-                                 nir_intrinsic_instr *instr)
+fs_visitor::nir_emit_surface_atomic(const fs_builder &bld,
+                                    nir_intrinsic_instr *instr,
+                                    fs_reg surface)
 {
    enum lsc_opcode op = lsc_aop_for_nir_intrinsic(instr);
    int num_data = lsc_op_num_data_values(op);
+
+   bool shared = surface.file == IMM && surface.ud == GFX7_BTI_SLM;
 
    /* The BTI untyped atomic messages only support 32-bit atomics.  If you
     * just look at the big table of messages in the Vol 7 of the SKL PRM, they
@@ -5974,21 +5978,37 @@ fs_visitor::nir_emit_ssbo_atomic(const fs_builder &bld,
       dest = get_nir_dest(instr->dest);
 
    fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
-   srcs[SURFACE_LOGICAL_SRC_SURFACE] = get_nir_ssbo_intrinsic_index(bld, instr);
-   srcs[SURFACE_LOGICAL_SRC_ADDRESS] = get_nir_src(instr->src[1]);
+   srcs[SURFACE_LOGICAL_SRC_SURFACE] = surface;
    srcs[SURFACE_LOGICAL_SRC_IMM_DIMS] = brw_imm_ud(1);
    srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(op);
    srcs[SURFACE_LOGICAL_SRC_ALLOW_SAMPLE_MASK] = brw_imm_ud(1);
 
+   if (shared) {
+      /* SLM - Get the offset */
+      if (nir_src_is_const(instr->src[0])) {
+         srcs[SURFACE_LOGICAL_SRC_ADDRESS] =
+            brw_imm_ud(nir_intrinsic_base(instr) +
+                       nir_src_as_uint(instr->src[0]));
+      } else {
+         srcs[SURFACE_LOGICAL_SRC_ADDRESS] = vgrf(glsl_type::uint_type);
+         bld.ADD(srcs[SURFACE_LOGICAL_SRC_ADDRESS],
+                 retype(get_nir_src(instr->src[0]), BRW_REGISTER_TYPE_UD),
+                 brw_imm_ud(nir_intrinsic_base(instr)));
+      }
+   } else {
+      /* SSBOs */
+      srcs[SURFACE_LOGICAL_SRC_ADDRESS] = get_nir_src(instr->src[1]);
+   }
+
    fs_reg data;
    if (num_data >= 1)
-      data = expand_to_32bit(bld, get_nir_src(instr->src[2]));
+      data = expand_to_32bit(bld, get_nir_src(instr->src[shared ? 1 : 2]));
 
    if (num_data >= 2) {
       fs_reg tmp = bld.vgrf(data.type, 2);
       fs_reg sources[2] = {
          data,
-         expand_to_32bit(bld, get_nir_src(instr->src[3]))
+         expand_to_32bit(bld, get_nir_src(instr->src[shared ? 2 : 3]))
       };
       bld.LOAD_PAYLOAD(tmp, sources, 2, 0);
       data = tmp;
@@ -5996,73 +6016,6 @@ fs_visitor::nir_emit_ssbo_atomic(const fs_builder &bld,
    srcs[SURFACE_LOGICAL_SRC_DATA] = data;
 
    /* Emit the actual atomic operation */
-
-   switch (nir_dest_bit_size(instr->dest)) {
-      case 16: {
-         fs_reg dest32 = bld.vgrf(BRW_REGISTER_TYPE_UD);
-         bld.emit(SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL,
-                  retype(dest32, dest.type),
-                  srcs, SURFACE_LOGICAL_NUM_SRCS);
-         bld.MOV(retype(dest, BRW_REGISTER_TYPE_UW),
-                 retype(dest32, BRW_REGISTER_TYPE_UD));
-         break;
-      }
-
-      case 32:
-      case 64:
-         bld.emit(SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL,
-                  dest, srcs, SURFACE_LOGICAL_NUM_SRCS);
-         break;
-      default:
-         unreachable("Unsupported bit size");
-   }
-}
-
-void
-fs_visitor::nir_emit_shared_atomic(const fs_builder &bld,
-                                   nir_intrinsic_instr *instr)
-{
-   enum lsc_opcode op = lsc_aop_for_nir_intrinsic(instr);
-   int num_data = lsc_op_num_data_values(op);
-
-   fs_reg dest;
-   if (nir_intrinsic_infos[instr->intrinsic].has_dest)
-      dest = get_nir_dest(instr->dest);
-
-   fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
-   srcs[SURFACE_LOGICAL_SRC_SURFACE] = brw_imm_ud(GFX7_BTI_SLM);
-   srcs[SURFACE_LOGICAL_SRC_IMM_DIMS] = brw_imm_ud(1);
-   srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(op);
-   srcs[SURFACE_LOGICAL_SRC_ALLOW_SAMPLE_MASK] = brw_imm_ud(1);
-
-   fs_reg data;
-   if (num_data >= 1)
-      data = expand_to_32bit(bld, get_nir_src(instr->src[1]));
-
-   if (num_data >= 2) {
-      fs_reg tmp = bld.vgrf(data.type, 2);
-      fs_reg sources[2] = {
-         data,
-         expand_to_32bit(bld, get_nir_src(instr->src[2]))
-      };
-      bld.LOAD_PAYLOAD(tmp, sources, 2, 0);
-      data = tmp;
-   }
-   srcs[SURFACE_LOGICAL_SRC_DATA] = data;
-
-   /* Get the offset */
-   if (nir_src_is_const(instr->src[0])) {
-      srcs[SURFACE_LOGICAL_SRC_ADDRESS] =
-         brw_imm_ud(nir_intrinsic_base(instr) +
-                    nir_src_as_uint(instr->src[0]));
-   } else {
-      srcs[SURFACE_LOGICAL_SRC_ADDRESS] = vgrf(glsl_type::uint_type);
-      bld.ADD(srcs[SURFACE_LOGICAL_SRC_ADDRESS],
-	      retype(get_nir_src(instr->src[0]), BRW_REGISTER_TYPE_UD),
-	      brw_imm_ud(nir_intrinsic_base(instr)));
-   }
-
-   /* Emit the actual atomic operation operation */
 
    switch (nir_dest_bit_size(instr->dest)) {
       case 16: {
