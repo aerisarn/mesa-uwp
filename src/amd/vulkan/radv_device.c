@@ -3805,7 +3805,8 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
          const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *features = (const void *)ext;
          if (features->extendedDynamicState3ColorBlendEnable ||
              features->extendedDynamicState3ColorWriteMask ||
-             features->extendedDynamicState3AlphaToCoverageEnable)
+             features->extendedDynamicState3AlphaToCoverageEnable ||
+             features->extendedDynamicState3ColorBlendEquation)
             ps_epilogs = true;
          break;
       }

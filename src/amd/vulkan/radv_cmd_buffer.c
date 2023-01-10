@@ -8683,7 +8683,8 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
       } else if ((cmd_buffer->state.emitted_graphics_pipeline != cmd_buffer->state.graphics_pipeline ||
                  (cmd_buffer->state.dirty & (RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK |
                                              RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_ENABLE |
-                                             RADV_CMD_DIRTY_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE)))) {
+                                             RADV_CMD_DIRTY_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE |
+                                             RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_EQUATION)))) {
          ps_epilog = lookup_ps_epilog(cmd_buffer);
          if (!ps_epilog) {
             vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
