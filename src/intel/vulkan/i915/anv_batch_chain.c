@@ -37,10 +37,8 @@ struct anv_execbuf {
 
    struct drm_i915_gem_exec_object2 *        objects;
    uint32_t                                  bo_count;
+   uint32_t                                  bo_array_length;
    struct anv_bo **                          bos;
-
-   /* Allocated length of the 'objects' and 'bos' arrays */
-   uint32_t                                  array_length;
 
    uint32_t                                  syncobj_count;
    uint32_t                                  syncobj_array_length;
@@ -107,8 +105,8 @@ anv_execbuf_add_bo(struct anv_device *device,
       /* We've never seen this one before.  Add it to the list and assign
        * an id that we can use later.
        */
-      if (exec->bo_count >= exec->array_length) {
-         uint32_t new_len = exec->objects ? exec->array_length * 2 : 64;
+      if (exec->bo_count >= exec->bo_array_length) {
+         uint32_t new_len = exec->objects ? exec->bo_array_length * 2 : 64;
 
          struct drm_i915_gem_exec_object2 *new_objects =
             vk_alloc(exec->alloc, new_len * sizeof(*new_objects), 8, exec->alloc_scope);
@@ -134,10 +132,10 @@ anv_execbuf_add_bo(struct anv_device *device,
 
          exec->objects = new_objects;
          exec->bos = new_bos;
-         exec->array_length = new_len;
+         exec->bo_array_length = new_len;
       }
 
-      assert(exec->bo_count < exec->array_length);
+      assert(exec->bo_count < exec->bo_array_length);
 
       bo->exec_obj_index = exec->bo_count++;
       obj = &exec->objects[bo->exec_obj_index];
