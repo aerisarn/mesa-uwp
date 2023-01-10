@@ -161,6 +161,13 @@ nvk_allocate_memory(struct nvk_device *dev,
       &pdev->mem_types[pAllocateInfo->memoryTypeIndex];
    const enum nouveau_ws_bo_flags flags = nvk_memory_type_flags(type);
 
+   uint32_t alignment = (1ULL << 12);
+   if (flags & NOUVEAU_WS_BO_LOCAL)
+      alignment = (1ULL << 16);
+
+   const uint64_t aligned_size =
+      ALIGN_POT(pAllocateInfo->allocationSize, alignment);
+
    mem = vk_device_memory_create(&dev->vk, pAllocateInfo,
                                  pAllocator, sizeof(*mem));
    if (!mem)
@@ -191,8 +198,7 @@ nvk_allocate_memory(struct nvk_device *dev,
          goto fail_alloc;
       }
    } else {
-      mem->bo = nouveau_ws_bo_new(pdev->dev,
-                                  pAllocateInfo->allocationSize, 0, flags);
+      mem->bo = nouveau_ws_bo_new(pdev->dev, aligned_size, alignment, flags);
       if (!mem->bo) {
          result = vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
          goto fail_alloc;
