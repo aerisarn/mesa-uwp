@@ -1222,7 +1222,7 @@ select_shader_variant(struct d3d12_selection_context *sel_ctx, d3d12_shader_sele
          new_nir_variant->info.patch_outputs_written |= patch_mask;
          while (patch_mask) {
             int slot = u_bit_scan(&patch_mask);
-            create_varyings_from_info(new_nir_variant, &key.ds.required_patch_inputs, slot, nir_var_shader_out, true);
+            create_varyings_from_info(new_nir_variant, &key.hs.required_patch_outputs, slot, nir_var_shader_out, true);
          }
       }
       dxil_reassign_driver_locations(new_nir_variant, nir_var_shader_out,
