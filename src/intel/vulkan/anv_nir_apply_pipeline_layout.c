@@ -269,7 +269,7 @@ build_load_descriptor_mem(nir_builder *b,
                           .align_mul = 8,
                           .align_offset = desc_offset % 8,
                           .range_base = 0,
-                          .range = ~0);
+                          .range = num_components * bit_size / 8);
    }
 
    default:
