@@ -244,6 +244,7 @@ cp .gitlab-ci/container/debian/winehq.gpg.key /lava-files/rootfs-${DEBIAN_ARCH}/
 chroot /lava-files/rootfs-${DEBIAN_ARCH} sh /create-rootfs.sh
 rm /lava-files/rootfs-${DEBIAN_ARCH}/{llvm-snapshot,winehq}.gpg.key
 rm /lava-files/rootfs-${DEBIAN_ARCH}/create-rootfs.sh
+cp /etc/wgetrc /lava-files/rootfs-${DEBIAN_ARCH}/etc/.
 
 
 ############### Install the built libdrm
