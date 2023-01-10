@@ -1347,8 +1347,20 @@ dzn_graphics_pipeline_translate_zsa(struct dzn_device *device,
    const VkPipelineDepthStencilStateCreateInfo *in_zsa =
       in_rast->rasterizerDiscardEnable ? NULL : in->pDepthStencilState;
 
-   if (!in_zsa)
+   if (!in_zsa ||
+       in_rast->cullMode == VK_CULL_MODE_FRONT_AND_BACK) {
+      /* Ensure depth is disabled if the rasterizer should be disabled / everything culled */
+      if (pdev->options14.IndependentFrontAndBackStencilRefMaskSupported) {
+         d3d12_gfx_pipeline_state_stream_new_desc(out, DEPTH_STENCIL2, D3D12_DEPTH_STENCIL_DESC2, stream_desc);
+         pipeline->templates.desc_offsets.ds = (uintptr_t)stream_desc - (uintptr_t)out->pPipelineStateSubobjectStream;
+         memset(stream_desc, 0, sizeof(*stream_desc));
+      } else {
+         d3d12_gfx_pipeline_state_stream_new_desc(out, DEPTH_STENCIL1, D3D12_DEPTH_STENCIL_DESC1, stream_desc);
+         pipeline->templates.desc_offsets.ds = (uintptr_t)stream_desc - (uintptr_t)out->pPipelineStateSubobjectStream;
+         memset(stream_desc, 0, sizeof(*stream_desc));
+      }
       return;
+   }
 
    D3D12_DEPTH_STENCIL_DESC2 desc;
    memset(&desc, 0, sizeof(desc));
