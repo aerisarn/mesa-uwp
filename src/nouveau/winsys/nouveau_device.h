@@ -4,6 +4,7 @@
 #include "nouveau_private.h"
 #include "nv_device_info.h"
 #include "util/simple_mtx.h"
+#include "util/vma.h"
 
 #include <stddef.h>
 
@@ -13,6 +14,8 @@ struct hash_table;
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define NVK_NEW_UAPI 0
 
 enum nvk_debug {
    /* dumps all push buffers after submission */
@@ -28,6 +31,10 @@ enum nvk_debug {
    /* Zero all client memory allocations
     */
    NVK_DEBUG_ZERO_MEMORY = 1ull << 2,
+
+   /* Dump VM bind/unbinds
+    */
+   NVK_DEBUG_VM = 1ull << 3,
 };
 
 struct nouveau_ws_device {
@@ -41,6 +48,11 @@ struct nouveau_ws_device {
 
    simple_mtx_t bos_lock;
    struct hash_table *bos;
+
+#if NVK_NEW_UAPI == 1
+   struct util_vma_heap vma_heap;
+   simple_mtx_t vma_mutex;
+#endif
 };
 
 struct nouveau_ws_device *nouveau_ws_device_new(struct _drmDevice *drm_device);

@@ -34,12 +34,30 @@ enum nouveau_ws_bo_map_flags {
 struct nouveau_ws_bo {
    uint64_t size;
    uint64_t offset;
+   uint64_t align;
    uint64_t map_handle;
    struct nouveau_ws_device *dev;
    uint32_t handle;
    enum nouveau_ws_bo_flags flags;
    atomic_uint_fast32_t refcnt;
 };
+
+#if NVK_NEW_UAPI == 1
+uint64_t nouveau_ws_alloc_vma(struct nouveau_ws_device *dev,
+                              uint64_t size, uint64_t align, bool sparse);
+
+void nouveau_ws_free_vma(struct nouveau_ws_device *dev,
+                         uint64_t offset, uint64_t size, bool sparse);
+
+void nouveau_ws_bo_bind_vma(struct nouveau_ws_device *dev,
+                            struct nouveau_ws_bo *bo,
+                            uint64_t addr,
+                            uint64_t range,
+                            uint64_t bo_offset,
+                            uint32_t pte_kind);
+void nouveau_ws_bo_unbind_vma(struct nouveau_ws_device *dev,
+                              uint64_t offset, uint64_t range);
+#endif
 
 struct nouveau_ws_bo *nouveau_ws_bo_new(struct nouveau_ws_device *,
                                         uint64_t size, uint64_t align,
