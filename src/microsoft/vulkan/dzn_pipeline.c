@@ -562,12 +562,11 @@ dzn_pipeline_cache_lookup_gfx_pipeline(struct dzn_graphics_pipeline *pipeline,
 
    const struct dzn_cached_gfx_pipeline_header *info =
       (const struct dzn_cached_gfx_pipeline_header *)(cached_blob->data);
-   size_t offset = sizeof(*info);
+   size_t offset = ALIGN_POT(sizeof(*info), alignof(D3D12_INPUT_ELEMENT_DESC));
 
    assert(cached_blob->size >= sizeof(*info));
 
    if (info->input_count > 0) {
-      offset = ALIGN_POT(offset, alignof(D3D12_INPUT_LAYOUT_DESC));
       const D3D12_INPUT_ELEMENT_DESC *inputs =
          (const D3D12_INPUT_ELEMENT_DESC *)((uint8_t *)cached_blob->data + offset);
 
