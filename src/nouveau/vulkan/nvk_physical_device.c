@@ -161,8 +161,12 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          .standardSampleLocations = true,
          .optimalBufferCopyOffsetAlignment = 1,
          .optimalBufferCopyRowPitchAlignment = 1,
+         .bufferImageGranularity = 1,
+         .sparseAddressSpaceSize = UINT32_MAX,
       },
-
+      .sparseProperties = {
+         .residencyNonResidentStrict = true,
+      },
       /* More properties */
    };
 
@@ -462,6 +466,9 @@ nvk_get_device_features(const struct nv_device_info *info,
       /* TODO: shaderInt16 */
       /* TODO: shaderResourceResidency */
       .shaderResourceMinLod = true,
+#if NVK_NEW_UAPI == 1
+      .sparseBinding = true,
+#endif
       /* TODO: sparseResidency* */
       /* TODO: variableMultisampleRate */
       /* TODO: inheritedQueries */
@@ -853,6 +860,9 @@ nvk_GetPhysicalDeviceQueueFamilyProperties2(
       p->queueFamilyProperties.queueFlags = VK_QUEUE_GRAPHICS_BIT |
                                             VK_QUEUE_COMPUTE_BIT |
                                             VK_QUEUE_TRANSFER_BIT;
+#if NVK_NEW_UAPI == 1
+      p->queueFamilyProperties.queueFlags |= VK_QUEUE_SPARSE_BINDING_BIT;
+#endif
       p->queueFamilyProperties.queueCount = 1;
       p->queueFamilyProperties.timestampValidBits = 64;
       p->queueFamilyProperties.minImageTransferGranularity = (VkExtent3D){1, 1, 1};
