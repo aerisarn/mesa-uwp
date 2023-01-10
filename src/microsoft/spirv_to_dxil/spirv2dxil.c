@@ -255,7 +255,8 @@ main(int argc, char **argv)
       for (int32_t prev = cur - 1; prev >= MESA_SHADER_VERTEX; --prev) {
          if (!shaders[prev].nir)
             continue;
-         dxil_spirv_nir_link(shaders[cur].nir, shaders[prev].nir, &conf);
+         bool requires_runtime_data;
+         dxil_spirv_nir_link(shaders[cur].nir, shaders[prev].nir, &conf, &requires_runtime_data);
          break;
       }
    }

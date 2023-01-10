@@ -737,10 +737,12 @@ dxil_spirv_compute_pntc(nir_shader *nir)
 
 void
 dxil_spirv_nir_link(nir_shader *nir, nir_shader *prev_stage_nir,
-                    const struct dxil_spirv_runtime_conf *conf)
+                    const struct dxil_spirv_runtime_conf *conf,
+                    bool *requires_runtime_data)
 {
    glsl_type_singleton_init_or_ref();
 
+   *requires_runtime_data = false;
    if (prev_stage_nir) {
       if (nir->info.stage == MESA_SHADER_FRAGMENT) {
          nir->info.clip_distance_array_size = prev_stage_nir->info.clip_distance_array_size;
@@ -748,6 +750,7 @@ dxil_spirv_nir_link(nir_shader *nir, nir_shader *prev_stage_nir,
          if (nir->info.inputs_read & VARYING_BIT_PNTC) {
             NIR_PASS_V(prev_stage_nir, dxil_spirv_write_pntc, conf);
             NIR_PASS_V(nir, dxil_spirv_compute_pntc);
+            *requires_runtime_data = true;
          }
       }
 

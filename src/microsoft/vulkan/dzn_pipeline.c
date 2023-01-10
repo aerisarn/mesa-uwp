@@ -830,10 +830,11 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       }};
 
       assert(pipeline->templates.shaders[stage].nir);
+      bool requires_runtime_data;
       dxil_spirv_nir_link(pipeline->templates.shaders[stage].nir,
                           prev_stage != MESA_SHADER_NONE ?
                           pipeline->templates.shaders[prev_stage].nir : NULL,
-                          &conf);
+                          &conf, &requires_runtime_data);
    }
 
    u_foreach_bit(stage, active_stage_mask) {
