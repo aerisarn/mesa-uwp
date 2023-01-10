@@ -12,6 +12,7 @@
 #include "util/mesa-sha1.h"
 
 #include "vulkan/runtime/vk_device.h"
+#include "vulkan/runtime/vk_drm_syncobj.h"
 #include "vulkan/wsi/wsi_common.h"
 
 #include <sys/stat.h>
@@ -226,6 +227,7 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .maxDescriptorSetUpdateAfterBindInputAttachments = UINT32_MAX,
       .filterMinmaxSingleComponentFormats = true,
       .filterMinmaxImageComponentMapping = true,
+      .maxTimelineSemaphoreValueDifference = UINT64_MAX,
    };
 
    snprintf(core_1_2.driverName, VK_MAX_DRIVER_NAME_SIZE, "NVK");
@@ -364,6 +366,9 @@ nvk_get_device_extensions(const struct nv_device_info *info,
       .KHR_shader_non_semantic_info = true,
       .KHR_spirv_1_4 = true,
       .KHR_storage_buffer_storage_class = true,
+#if NVK_NEW_UAPI == 1
+      .KHR_timeline_semaphore = true,
+#endif
 #ifdef NVK_USE_WSI_PLATFORM
       .KHR_swapchain = true,
       .KHR_swapchain_mutable_format = true,
@@ -497,6 +502,9 @@ nvk_get_device_features(const struct nv_device_info *info,
       .uniformBufferStandardLayout = true,
       .separateDepthStencilLayouts = true,
       .hostQueryReset = true,
+#if NVK_NEW_UAPI == 1
+      .timelineSemaphore = true,
+#endif
       .bufferDeviceAddress = true,
       .bufferDeviceAddressCaptureReplay = false,
       .bufferDeviceAddressMultiDevice = false,
@@ -658,6 +666,10 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
       return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
 
    const struct nv_device_info info = ws_dev->info;
+#if NVK_NEW_UAPI == 1
+   const struct vk_sync_type syncobj_sync_type =
+      vk_drm_syncobj_get_type(ws_dev->fd);
+#endif
 
    nouveau_ws_device_destroy(ws_dev);
 
@@ -764,7 +776,12 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    }
 
    unsigned st_idx = 0;
+#if NVK_NEW_UAPI == 1
+   pdev->syncobj_sync_type = syncobj_sync_type;
+   pdev->sync_types[st_idx++] = &pdev->syncobj_sync_type;
+#else
    pdev->sync_types[st_idx++] = &nvk_bo_sync_type;
+#endif
    pdev->sync_types[st_idx++] = NULL;
    assert(st_idx <= ARRAY_SIZE(pdev->sync_types));
    pdev->vk.supported_sync_types = pdev->sync_types;

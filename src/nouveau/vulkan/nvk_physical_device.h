@@ -7,6 +7,7 @@
 #include "nv_device_info.h"
 
 #include "vulkan/runtime/vk_physical_device.h"
+#include "vulkan/runtime/vk_sync.h"
 
 #include "wsi_common.h"
 
@@ -29,6 +30,7 @@ struct nvk_physical_device {
    uint8_t mem_heap_cnt;
    uint8_t mem_type_cnt;
 
+   struct vk_sync_type syncobj_sync_type;
    const struct vk_sync_type *sync_types[2];
 };
 

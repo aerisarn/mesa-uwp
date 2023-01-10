@@ -47,6 +47,8 @@ struct nvk_queue {
 
    struct nouveau_ws_bo *empty_push;
    uint32_t empty_push_dw_count;
+
+   uint32_t syncobj_handle;
 };
 
 static inline struct nvk_device *

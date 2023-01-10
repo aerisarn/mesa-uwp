@@ -318,7 +318,13 @@ nvk_queue_init(struct nvk_device *dev, struct nvk_queue *queue,
    nvk_queue_state_init(&queue->state);
 
    queue->vk.driver_submit = nvk_queue_submit;
-
+#if NVK_NEW_UAPI == 1
+   int err = drmSyncobjCreate(dev->ws_dev->fd, 0, &queue->syncobj_handle);
+   if (err < 0) {
+      result = vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
+      goto fail_init;
+   }
+#endif
    void *empty_push_map;
    queue->empty_push = nouveau_ws_bo_new_mapped(dev->ws_dev, 4096, 0,
                                                 NOUVEAU_WS_BO_GART |
@@ -357,6 +363,10 @@ void
 nvk_queue_finish(struct nvk_device *dev, struct nvk_queue *queue)
 {
    nvk_queue_state_finish(dev, &queue->state);
+#if NVK_NEW_UAPI == 1
+   ASSERTED int err = drmSyncobjDestroy(dev->ws_dev->fd, queue->syncobj_handle);
+   assert(err == 0);
+#endif
    nouveau_ws_bo_destroy(queue->empty_push);
    vk_queue_finish(&queue->vk);
 }
