@@ -140,6 +140,10 @@ lower_shader_system_values(struct nir_builder *builder, nir_instr *instr,
       offset =
          offsetof(struct dxil_spirv_compute_runtime_data, group_count_x);
       break;
+   case nir_intrinsic_load_base_workgroup_id:
+      offset =
+         offsetof(struct dxil_spirv_compute_runtime_data, base_group_x);
+      break;
    case nir_intrinsic_load_first_vertex:
       offset = offsetof(struct dxil_spirv_vertex_runtime_data, first_vertex);
       break;
@@ -866,6 +870,10 @@ dxil_spirv_nir_passes(nir_shader *nir,
 
    NIR_PASS_V(nir, nir_lower_system_values);
 
+   nir_lower_compute_system_values_options compute_options = {
+      .has_base_workgroup_id = !conf->zero_based_compute_workgroup_id,
+   };
+   NIR_PASS_V(nir, nir_lower_compute_system_values, &compute_options);
    NIR_PASS_V(nir, dxil_nir_lower_subgroup_id);
    NIR_PASS_V(nir, dxil_nir_lower_num_subgroups);
 
