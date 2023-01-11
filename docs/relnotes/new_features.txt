@@ -6,3 +6,4 @@ Enabled VK_EXT_mesh_shader by default on RADV/RDNA2
 Implemented more VK_EXT_dynamic_state3 features on RADV
 Various raytracing, graphics pipeline library and RDNA3 improvements on RADV
 Radeon Memory Visualizer support with RADV.
+VK_KHR_shader_integer_dot_product on V3DV
