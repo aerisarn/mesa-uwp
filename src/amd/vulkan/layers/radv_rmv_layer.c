@@ -125,11 +125,11 @@ rmv_SetDebugUtilsObjectNameEXT(VkDevice _device, const VkDebugUtilsObjectNameInf
    }
    strcpy(name_buf, pNameInfo->pObjectName);
 
+   simple_mtx_lock(&device->vk.memory_trace_data.token_mtx);
    struct vk_rmv_userdata_token token;
    token.name = name_buf;
-   token.resource_id = _mesa_hash_data(&pNameInfo->objectHandle, sizeof(uint64_t));
+   token.resource_id = vk_rmv_get_resource_id_locked(&device->vk, pNameInfo->objectHandle);
 
-   simple_mtx_lock(&device->vk.memory_trace_data.token_mtx);
    vk_rmv_emit_token(&device->vk.memory_trace_data, VK_RMV_TOKEN_TYPE_USERDATA, &token);
    simple_mtx_unlock(&device->vk.memory_trace_data.token_mtx);
 
