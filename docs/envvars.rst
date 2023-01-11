@@ -549,7 +549,7 @@ Intel driver environment variables
    overrode shader with sha1 <SHA-1>" in stderr replacing the original
    assembly.
 
-:envvar:`INTEL_SIMD_DEBUG`
+.. envvar:: INTEL_SIMD_DEBUG
    a comma-separated list of named flags, which control simd dispatch widths:
 
    ``fs8``
@@ -1491,7 +1491,7 @@ Asahi driver environment variables
 PowerVR driver environment variables
 ------------------------------------------------
 
-:envvar:`PVR_DEBUG`
+.. envvar:: PVR_DEBUG
     A comma-separated list of debug options. Use `PVR_DEBUG=help` to
     print a list of available options.
 
