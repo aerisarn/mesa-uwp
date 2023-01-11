@@ -1123,7 +1123,7 @@ fs_reg_alloc::alloc_scratch_header()
 fs_reg
 fs_reg_alloc::alloc_spill_reg(unsigned size, int ip)
 {
-   int vgrf = fs->alloc.allocate(size);
+   int vgrf = fs->alloc.allocate(ALIGN(size, reg_unit(devinfo)));
    int class_idx = DIV_ROUND_UP(size, reg_unit(devinfo)) - 1;
    int n = ra_add_node(g, compiler->fs_reg_sets[rsi].classes[class_idx]);
    assert(n == first_vgrf_node + vgrf);
