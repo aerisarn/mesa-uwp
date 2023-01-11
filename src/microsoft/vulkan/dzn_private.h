@@ -553,6 +553,10 @@ struct dzn_cmd_buffer_state {
       struct dxil_spirv_vertex_runtime_data gfx;
       struct dxil_spirv_compute_runtime_data compute;
    } sysvals;
+   struct {
+      uint32_t num_views;
+      uint32_t view_mask;
+   } multiview;
 };
 
 struct dzn_cmd_buffer_rtv_key {

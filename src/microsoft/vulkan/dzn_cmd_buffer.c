@@ -454,6 +454,8 @@ dzn_cmd_buffer_reset(struct vk_command_buffer *cbuf, VkCommandBufferResetFlags f
 
    /* Reset the state */
    memset(&cmdbuf->state, 0, sizeof(cmdbuf->state));
+   cmdbuf->state.multiview.num_views = 1;
+   cmdbuf->state.multiview.view_mask = 1;
 
    /* TODO: Return resources to the pool */
    list_for_each_entry_safe(struct dzn_internal_resource, res, &cmdbuf->internal_bufs, link) {
@@ -591,6 +593,8 @@ dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
    }
 
    memset(&cmdbuf->state, 0, sizeof(cmdbuf->state));
+   cmdbuf->state.multiview.num_views = 1;
+   cmdbuf->state.multiview.view_mask = 1;
    list_inithead(&cmdbuf->internal_bufs);
    util_dynarray_init(&cmdbuf->events.wait, NULL);
    util_dynarray_init(&cmdbuf->events.signal, NULL);
@@ -2966,6 +2970,10 @@ dzn_cmd_buffer_update_pipeline(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint
          ID3D12GraphicsCommandList1_SetGraphicsRootSignature(cmdbuf->cmdlist, pipeline->root.sig);
          ID3D12GraphicsCommandList1_IASetPrimitiveTopology(cmdbuf->cmdlist, gfx->ia.topology);
          dzn_graphics_pipeline_get_state(gfx, &cmdbuf->state.pipeline_variant);
+         if (gfx->multiview.native_view_instancing)
+            ID3D12GraphicsCommandList1_SetViewInstanceMask(cmdbuf->cmdlist, gfx->multiview.view_mask);
+         else
+            ID3D12GraphicsCommandList1_SetViewInstanceMask(cmdbuf->cmdlist, 1);
       } else {
          ID3D12GraphicsCommandList1_SetComputeRootSignature(cmdbuf->cmdlist, pipeline->root.sig);
       }
@@ -3657,20 +3665,6 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
          DZN_CMD_BINDPOINT_DIRTY_PIPELINE;
    }
 
-   cmdbuf->state.sysvals.gfx.first_vertex = 0;
-   cmdbuf->state.sysvals.gfx.base_instance = 0;
-   cmdbuf->state.sysvals.gfx.is_indexed_draw = indexed;
-   cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty |=
-      DZN_CMD_BINDPOINT_DIRTY_SYSVALS;
-
-   dzn_cmd_buffer_prepare_draw(cmdbuf, indexed);
-
-   /* Restore the old IB view if we modified it during the triangle fan lowering */
-   if (ib_view.SizeInBytes) {
-      cmdbuf->state.ib.view = ib_view;
-      cmdbuf->state.dirty |= DZN_CMD_DIRTY_IB;
-   }
-
    enum dzn_indirect_draw_cmd_sig_type cmd_sig_type =
       triangle_fan_index_buf_stride > 0 ?
       DZN_INDIRECT_DRAW_TRIANGLE_FAN_CMD_SIG :
@@ -3685,10 +3679,30 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
       return;
    }
 
-   ID3D12GraphicsCommandList1_ExecuteIndirect(cmdbuf->cmdlist, cmdsig,
-                                              max_draw_count,
-                                              exec_buf, exec_buf_draw_offset,
-                                              count_buf ? exec_buf : NULL, 0);
+   cmdbuf->state.sysvals.gfx.first_vertex = 0;
+   cmdbuf->state.sysvals.gfx.base_instance = 0;
+   cmdbuf->state.sysvals.gfx.is_indexed_draw = indexed;
+
+   uint32_t view_mask = pipeline->multiview.native_view_instancing ?
+      1 : pipeline->multiview.view_mask;
+   u_foreach_bit(view, view_mask) {
+      cmdbuf->state.sysvals.gfx.view_index = view;
+      cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty |=
+         DZN_CMD_BINDPOINT_DIRTY_SYSVALS;
+
+      dzn_cmd_buffer_prepare_draw(cmdbuf, indexed);
+
+      ID3D12GraphicsCommandList1_ExecuteIndirect(cmdbuf->cmdlist, cmdsig,
+                                                 max_draw_count,
+                                                 exec_buf, exec_buf_draw_offset,
+                                                 count_buf ? exec_buf : NULL, 0);
+   }
+
+   /* Restore the old IB view if we modified it during the triangle fan lowering */
+   if (ib_view.SizeInBytes) {
+      cmdbuf->state.ib.view = ib_view;
+      cmdbuf->state.dirty |= DZN_CMD_DIRTY_IB;
+   }
 }
 
 static void
@@ -4149,14 +4163,26 @@ dzn_CmdClearAttachments(VkCommandBuffer commandBuffer,
 
       for (uint32_t j = 0; j < rectCount; j++) {
          D3D12_RECT rect;
-
          dzn_translate_rect(&rect, &pRects[j].rect);
-         dzn_cmd_buffer_clear_attachment(cmdbuf, view, layout,
-                                         &pAttachments[i].clearValue,
-                                         pAttachments[i].aspectMask,
-                                         pRects[j].baseArrayLayer,
-                                         pRects[j].layerCount,
-                                         1, &rect);
+
+         uint32_t view_mask = cmdbuf->state.multiview.view_mask;
+         if (view_mask != 0) {
+            u_foreach_bit(layer, view_mask) {
+               dzn_cmd_buffer_clear_attachment(cmdbuf, view, layout,
+                                               &pAttachments[i].clearValue,
+                                               pAttachments[i].aspectMask,
+                                               pRects[j].baseArrayLayer + layer,
+                                               pRects[j].layerCount,
+                                               1, &rect);
+            }
+         } else {
+            dzn_cmd_buffer_clear_attachment(cmdbuf, view, layout,
+                                            &pAttachments[i].clearValue,
+                                            pAttachments[i].aspectMask,
+                                            pRects[j].baseArrayLayer,
+                                            pRects[j].layerCount,
+                                            1, &rect);
+         }
       }
    }
 }
@@ -4435,11 +4461,20 @@ dzn_CmdBeginRendering(VkCommandBuffer commandBuffer,
       VK_FROM_HANDLE(dzn_image_view, iview, att->imageView);
 
       if (iview != NULL && att->loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
-         dzn_cmd_buffer_clear_attachment(cmdbuf, iview, att->imageLayout,
-                                         &att->clearValue,
-                                         VK_IMAGE_ASPECT_COLOR_BIT, 0,
-                                         VK_REMAINING_ARRAY_LAYERS, 1,
-                                         &cmdbuf->state.render.area);
+         if (pRenderingInfo->viewMask != 0) {
+            u_foreach_bit(layer, pRenderingInfo->viewMask) {
+               dzn_cmd_buffer_clear_attachment(cmdbuf, iview, att->imageLayout,
+                                               &att->clearValue,
+                                               VK_IMAGE_ASPECT_COLOR_BIT, layer,
+                                               1, 1, &cmdbuf->state.render.area);
+            }
+         } else {
+            dzn_cmd_buffer_clear_attachment(cmdbuf, iview, att->imageLayout,
+                                            &att->clearValue,
+                                            VK_IMAGE_ASPECT_COLOR_BIT, 0,
+                                            VK_REMAINING_ARRAY_LAYERS, 1,
+                                            &cmdbuf->state.render.area);
+         }
       }
    }
 
@@ -4469,12 +4504,23 @@ dzn_CmdBeginRendering(VkCommandBuffer commandBuffer,
       }
 
       if (aspects != 0) {
-         dzn_cmd_buffer_clear_attachment(cmdbuf, iview, layout,
-                                         &clear_val, aspects, 0,
-                                         VK_REMAINING_ARRAY_LAYERS, 1,
-                                         &cmdbuf->state.render.area);
+         if (pRenderingInfo->viewMask != 0) {
+            u_foreach_bit(layer, pRenderingInfo->viewMask) {
+               dzn_cmd_buffer_clear_attachment(cmdbuf, iview, layout,
+                                               &clear_val, aspects, layer,
+                                               1, 1, &cmdbuf->state.render.area);
+            }
+         } else {
+            dzn_cmd_buffer_clear_attachment(cmdbuf, iview, layout,
+                                            &clear_val, aspects, 0,
+                                            VK_REMAINING_ARRAY_LAYERS, 1,
+                                            &cmdbuf->state.render.area);
+         }
       }
    }
+
+   cmdbuf->state.multiview.num_views = MAX2(util_bitcount(pRenderingInfo->viewMask), 1);
+   cmdbuf->state.multiview.view_mask = MAX2(pRenderingInfo->viewMask, 1);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -4682,8 +4728,9 @@ dzn_CmdDraw(VkCommandBuffer commandBuffer,
 
    cmdbuf->state.sysvals.gfx.first_vertex = firstVertex;
    cmdbuf->state.sysvals.gfx.base_instance = firstInstance;
-   cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty |=
-      DZN_CMD_BINDPOINT_DIRTY_SYSVALS;
+
+   uint32_t view_mask = pipeline->multiview.native_view_instancing ?
+      1 : pipeline->multiview.view_mask;
 
    if (pipeline->ia.triangle_fan) {
       D3D12_INDEX_BUFFER_VIEW ib_view = cmdbuf->state.ib.view;
@@ -4694,9 +4741,14 @@ dzn_CmdDraw(VkCommandBuffer commandBuffer,
          return;
 
       cmdbuf->state.sysvals.gfx.is_indexed_draw = true;
-      dzn_cmd_buffer_prepare_draw(cmdbuf, true);
-      ID3D12GraphicsCommandList1_DrawIndexedInstanced(cmdbuf->cmdlist, vertexCount, instanceCount, 0,
-                                            firstVertex, firstInstance);
+      u_foreach_bit(view, view_mask) {
+         cmdbuf->state.sysvals.gfx.view_index = view;
+         cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty |=
+            DZN_CMD_BINDPOINT_DIRTY_SYSVALS;
+         dzn_cmd_buffer_prepare_draw(cmdbuf, true);
+         ID3D12GraphicsCommandList1_DrawIndexedInstanced(cmdbuf->cmdlist, vertexCount, instanceCount, 0,
+                                                firstVertex, firstInstance);
+      }
 
       /* Restore the IB view if we modified it when lowering triangle fans. */
       if (ib_view.SizeInBytes > 0) {
@@ -4705,9 +4757,14 @@ dzn_CmdDraw(VkCommandBuffer commandBuffer,
       }
    } else {
       cmdbuf->state.sysvals.gfx.is_indexed_draw = false;
-      dzn_cmd_buffer_prepare_draw(cmdbuf, false);
-      ID3D12GraphicsCommandList1_DrawInstanced(cmdbuf->cmdlist, vertexCount, instanceCount,
-                                     firstVertex, firstInstance);
+      u_foreach_bit(view, view_mask) {
+         cmdbuf->state.sysvals.gfx.view_index = view;
+         cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty |=
+            DZN_CMD_BINDPOINT_DIRTY_SYSVALS;
+         dzn_cmd_buffer_prepare_draw(cmdbuf, false);
+         ID3D12GraphicsCommandList1_DrawInstanced(cmdbuf->cmdlist, vertexCount, instanceCount,
+                                          firstVertex, firstInstance);
+      }
    }
 }
 
@@ -4763,8 +4820,6 @@ dzn_CmdDrawIndexed(VkCommandBuffer commandBuffer,
    cmdbuf->state.sysvals.gfx.first_vertex = vertexOffset;
    cmdbuf->state.sysvals.gfx.base_instance = firstInstance;
    cmdbuf->state.sysvals.gfx.is_indexed_draw = true;
-   cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty |=
-      DZN_CMD_BINDPOINT_DIRTY_SYSVALS;
 
    D3D12_INDEX_BUFFER_VIEW ib_view = cmdbuf->state.ib.view;
 
@@ -4775,9 +4830,17 @@ dzn_CmdDrawIndexed(VkCommandBuffer commandBuffer,
          return;
    }
 
-   dzn_cmd_buffer_prepare_draw(cmdbuf, true);
-   ID3D12GraphicsCommandList1_DrawIndexedInstanced(cmdbuf->cmdlist, indexCount, instanceCount, firstIndex,
-                                         vertexOffset, firstInstance);
+   uint32_t view_mask = pipeline->multiview.native_view_instancing ?
+      1 : pipeline->multiview.view_mask;
+   u_foreach_bit(view, view_mask) {
+      cmdbuf->state.sysvals.gfx.view_index = view;
+      cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty |=
+         DZN_CMD_BINDPOINT_DIRTY_SYSVALS;
+
+      dzn_cmd_buffer_prepare_draw(cmdbuf, true);
+      ID3D12GraphicsCommandList1_DrawIndexedInstanced(cmdbuf->cmdlist, indexCount, instanceCount, firstIndex,
+                                            vertexOffset, firstInstance);
+   }
 
    /* Restore the IB view if we modified it when lowering triangle fans. */
    if (pipeline->ia.triangle_fan && ib_view.SizeInBytes) {
