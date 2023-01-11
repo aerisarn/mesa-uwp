@@ -53,6 +53,10 @@ static const uint32_t ploc_spv[] = {
 #include "bvh/ploc_internal.spv.h"
 };
 
+static const uint32_t ploc_extended_spv[] = {
+#include "bvh/ploc_internal_extended.spv.h"
+};
+
 static const uint32_t copy_spv[] = {
 #include "bvh/copy.spv.h"
 };
@@ -332,6 +336,8 @@ radv_device_finish_accel_struct_build_state(struct radv_device *device)
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.ploc_pipeline,
                         &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device),
+                        state->accel_struct_build.ploc_extended_pipeline, &state->alloc);
+   radv_DestroyPipeline(radv_device_to_handle(device),
                         state->accel_struct_build.lbvh_generate_ir_pipeline, &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.lbvh_main_pipeline,
                         &state->alloc);
@@ -588,6 +594,13 @@ radv_device_init_accel_struct_build_state(struct radv_device *device)
 
    result = create_build_pipeline_spv(device, ploc_spv, sizeof(ploc_spv), sizeof(struct ploc_args),
                                       &device->meta_state.accel_struct_build.ploc_pipeline,
+                                      &device->meta_state.accel_struct_build.ploc_p_layout);
+   if (result != VK_SUCCESS)
+      return result;
+
+   result = create_build_pipeline_spv(device, ploc_extended_spv, sizeof(ploc_extended_spv),
+                                      sizeof(struct ploc_args),
+                                      &device->meta_state.accel_struct_build.ploc_extended_pipeline,
                                       &device->meta_state.accel_struct_build.ploc_p_layout);
    if (result != VK_SUCCESS)
       return result;
