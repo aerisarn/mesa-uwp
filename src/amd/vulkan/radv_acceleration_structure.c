@@ -71,9 +71,13 @@ static const uint32_t convert_internal_spv[] = {
 
 #define KEY_ID_PAIR_SIZE 8
 
-enum radv_accel_struct_build_type {
-   RADV_ACCEL_STRUCT_BUILD_TYPE_LBVH,
-   RADV_ACCEL_STRUCT_BUILD_TYPE_PLOC,
+enum internal_build_type {
+   INTERNAL_BUILD_TYPE_LBVH,
+   INTERNAL_BUILD_TYPE_PLOC,
+};
+
+struct build_config {
+   enum internal_build_type internal_type;
 };
 
 struct acceleration_structure_layout {
@@ -97,20 +101,22 @@ struct scratch_layout {
 
 static VkResult radv_device_init_accel_struct_build_state(struct radv_device *device);
 
-static enum radv_accel_struct_build_type
-build_type(uint32_t leaf_count, const VkAccelerationStructureBuildGeometryInfoKHR *build_info)
+static struct build_config
+build_config(uint32_t leaf_count, const VkAccelerationStructureBuildGeometryInfoKHR *build_info)
 {
+   struct build_config config = {0};
+
    if (leaf_count <= 4)
-      return RADV_ACCEL_STRUCT_BUILD_TYPE_LBVH;
-
-   if (build_info->type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR)
-      return RADV_ACCEL_STRUCT_BUILD_TYPE_LBVH;
-
-   if (!(build_info->flags & VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR) &&
-       !(build_info->flags & VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR))
-      return RADV_ACCEL_STRUCT_BUILD_TYPE_PLOC;
+      config.internal_type = INTERNAL_BUILD_TYPE_LBVH;
+   else if (build_info->type == VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR)
+      config.internal_type = INTERNAL_BUILD_TYPE_LBVH;
+   else if (!(build_info->flags & VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR) &&
+            !(build_info->flags & VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR))
+      config.internal_type = INTERNAL_BUILD_TYPE_PLOC;
    else
-      return RADV_ACCEL_STRUCT_BUILD_TYPE_LBVH;
+      config.internal_type = INTERNAL_BUILD_TYPE_LBVH;
+
+   return config;
 }
 
 static void
@@ -187,7 +193,9 @@ get_build_layout(struct radv_device *device, uint32_t leaf_count,
       uint32_t ploc_scratch_space = 0;
       uint32_t lbvh_node_space = 0;
 
-      if (build_type(leaf_count, build_info) == RADV_ACCEL_STRUCT_BUILD_TYPE_PLOC)
+      struct build_config config = build_config(leaf_count, build_info);
+
+      if (config.internal_type == INTERNAL_BUILD_TYPE_PLOC)
          ploc_scratch_space = DIV_ROUND_UP(leaf_count, PLOC_WORKGROUP_SIZE) *
                               sizeof(struct ploc_prefix_scan_partition);
       else
@@ -659,7 +667,7 @@ struct bvh_state {
 
    struct acceleration_structure_layout accel_struct;
    struct scratch_layout scratch;
-   enum radv_accel_struct_build_type type;
+   struct build_config config;
 };
 
 static void
@@ -831,7 +839,7 @@ lbvh_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
    radv_CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
                         cmd_buffer->device->meta_state.accel_struct_build.lbvh_main_pipeline);
    for (uint32_t i = 0; i < infoCount; ++i) {
-      if (bvh_states[i].type != RADV_ACCEL_STRUCT_BUILD_TYPE_LBVH)
+      if (bvh_states[i].config.internal_type != INTERNAL_BUILD_TYPE_LBVH)
          continue;
 
       uint32_t src_scratch_offset = bvh_states[i].scratch_offset;
@@ -860,7 +868,7 @@ lbvh_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
       cmd_buffer->device->meta_state.accel_struct_build.lbvh_generate_ir_pipeline);
 
    for (uint32_t i = 0; i < infoCount; ++i) {
-      if (bvh_states[i].type != RADV_ACCEL_STRUCT_BUILD_TYPE_LBVH)
+      if (bvh_states[i].config.internal_type != INTERNAL_BUILD_TYPE_LBVH)
          continue;
 
       const struct lbvh_generate_ir_args consts = {
@@ -887,7 +895,7 @@ ploc_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
                         cmd_buffer->device->meta_state.accel_struct_build.ploc_pipeline);
 
    for (uint32_t i = 0; i < infoCount; ++i) {
-      if (bvh_states[i].type != RADV_ACCEL_STRUCT_BUILD_TYPE_PLOC)
+      if (bvh_states[i].config.internal_type != INTERNAL_BUILD_TYPE_PLOC)
          continue;
 
       struct radv_global_sync_data initial_sync_data = {
@@ -1030,7 +1038,7 @@ radv_CmdBuildAccelerationStructuresKHR(
 
       get_build_layout(cmd_buffer->device, leaf_node_count, pInfos + i, &bvh_states[i].accel_struct,
                        &bvh_states[i].scratch);
-      bvh_states[i].type = build_type(leaf_node_count, pInfos + i);
+      bvh_states[i].config = build_config(leaf_node_count, pInfos + i);
 
       /* The internal node count is updated in lbvh_build_internal for LBVH
        * and from the PLOC shader for PLOC. */
