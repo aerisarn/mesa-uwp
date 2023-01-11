@@ -1761,7 +1761,7 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    switch (query_type) {
    case VK_QUERY_TYPE_OCCLUSION:
-      radeon_check_space(cmd_buffer->device->ws, cs, 7);
+      radeon_check_space(cmd_buffer->device->ws, cs, 11);
 
       ++cmd_buffer->state.active_occlusion_queries;
       if (cmd_buffer->state.active_occlusion_queries == 1) {
