@@ -1649,7 +1649,7 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
    OPT(nir_opt_move, nir_move_comparisons);
    OPT(nir_opt_dead_cf);
 
-   NIR_PASS_V(nir, nir_convert_to_lcssa, true, true);
+   NIR_PASS(_, nir, nir_convert_to_lcssa, true, true);
    NIR_PASS_V(nir, nir_divergence_analysis);
 
    /* TODO: Enable nir_opt_uniform_atomics on Gfx7.x too.

@@ -7481,11 +7481,11 @@ brw_compile_fs(const struct brw_compiler *compiler,
        * offset to determine render target 0 store instruction in
        * emit_alpha_to_coverage pass.
        */
-      NIR_PASS_V(nir, nir_opt_constant_folding);
-      NIR_PASS_V(nir, brw_nir_lower_alpha_to_coverage, key, prog_data);
+      NIR_PASS(_, nir, nir_opt_constant_folding);
+      NIR_PASS(_, nir, brw_nir_lower_alpha_to_coverage, key, prog_data);
    }
 
-   NIR_PASS_V(nir, brw_nir_move_interpolation_to_top);
+   NIR_PASS(_, nir, brw_nir_move_interpolation_to_top);
    brw_postprocess_nir(nir, compiler, true, debug_enabled,
                        key->base.robust_buffer_access);
 
