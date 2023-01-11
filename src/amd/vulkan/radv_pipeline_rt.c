@@ -27,6 +27,57 @@
 #include "radv_private.h"
 #include "radv_shader.h"
 
+static VkResult
+radv_create_group_handles(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
+                          struct radv_pipeline_group_handle **out_handles)
+{
+   struct radv_pipeline_group_handle *handles = calloc(sizeof(*handles), pCreateInfo->groupCount);
+   if (!handles) {
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+   }
+
+   /* For General and ClosestHit shaders, we can use the shader ID directly as handle.
+    * As (potentially different) AnyHit shaders are inlined, for Intersection shaders
+    * we use the Group ID.
+    */
+   for (unsigned i = 0; i < pCreateInfo->groupCount; ++i) {
+      const VkRayTracingShaderGroupCreateInfoKHR *group_info = &pCreateInfo->pGroups[i];
+      switch (group_info->type) {
+      case VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR:
+         if (group_info->generalShader != VK_SHADER_UNUSED_KHR)
+            handles[i].general_index = group_info->generalShader + 2;
+         break;
+      case VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR:
+         if (group_info->closestHitShader != VK_SHADER_UNUSED_KHR)
+            handles[i].closest_hit_index = group_info->closestHitShader + 2;
+         if (group_info->intersectionShader != VK_SHADER_UNUSED_KHR)
+            handles[i].intersection_index = i + 2;
+         break;
+      case VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR:
+         if (group_info->closestHitShader != VK_SHADER_UNUSED_KHR)
+            handles[i].closest_hit_index = group_info->closestHitShader + 2;
+         if (group_info->anyHitShader != VK_SHADER_UNUSED_KHR)
+            handles[i].any_hit_index = i + 2;
+         break;
+      case VK_SHADER_GROUP_SHADER_MAX_ENUM_KHR:
+         unreachable("VK_SHADER_GROUP_SHADER_MAX_ENUM_KHR");
+      }
+
+      if (pCreateInfo->flags &
+          VK_PIPELINE_CREATE_RAY_TRACING_SHADER_GROUP_HANDLE_CAPTURE_REPLAY_BIT_KHR) {
+         if (group_info->pShaderGroupCaptureReplayHandle &&
+             memcmp(group_info->pShaderGroupCaptureReplayHandle, &handles[i], sizeof(handles[i])) !=
+                0) {
+            free(handles);
+            return VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS;
+         }
+      }
+   }
+
+   *out_handles = handles;
+   return VK_SUCCESS;
+}
+
 static VkRayTracingPipelineCreateInfoKHR
 radv_create_merged_rt_create_info(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo)
 {
@@ -352,12 +403,16 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    radv_pipeline_init(device, &rt_pipeline->base.base, RADV_PIPELINE_RAY_TRACING);
    rt_pipeline->group_count = local_create_info.groupCount;
 
+   result = radv_create_group_handles(&local_create_info, &rt_pipeline->group_handles);
+   if (result != VK_SUCCESS)
+      goto pipeline_fail;
+
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
 
    struct radv_pipeline_key key = radv_generate_rt_pipeline_key(rt_pipeline, pCreateInfo->flags);
 
-   radv_hash_rt_shaders(hash, &local_create_info, &key,
+   radv_hash_rt_shaders(hash, &local_create_info, &key, rt_pipeline->group_handles,
                         radv_get_hash_flags(device, keep_statistic_info));
 
    /* First check if we can get things from the cache before we take the expensive step of
@@ -391,52 +446,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
 
    radv_compute_pipeline_init(&rt_pipeline->base, pipeline_layout);
 
-   rt_pipeline->group_handles =
-      calloc(sizeof(*rt_pipeline->group_handles), local_create_info.groupCount);
-   if (!rt_pipeline->group_handles) {
-      result = VK_ERROR_OUT_OF_HOST_MEMORY;
-      goto shader_fail;
-   }
-
    rt_pipeline->stack_size = compute_rt_stack_size(pCreateInfo, rt_pipeline->stack_sizes);
-
-   /* For General and ClosestHit shaders, we can use the shader ID directly as handle.
-    * As (potentially different) AnyHit shaders are inlined, for Intersection shaders
-    * we use the Group ID.
-    */
-   for (unsigned i = 0; i < local_create_info.groupCount; ++i) {
-      const VkRayTracingShaderGroupCreateInfoKHR *group_info = &local_create_info.pGroups[i];
-      switch (group_info->type) {
-      case VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR:
-         if (group_info->generalShader != VK_SHADER_UNUSED_KHR)
-            rt_pipeline->group_handles[i].general_index = group_info->generalShader + 2;
-         break;
-      case VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR:
-         if (group_info->closestHitShader != VK_SHADER_UNUSED_KHR)
-            rt_pipeline->group_handles[i].closest_hit_index = group_info->closestHitShader + 2;
-         if (group_info->intersectionShader != VK_SHADER_UNUSED_KHR)
-            rt_pipeline->group_handles[i].intersection_index = i + 2;
-         break;
-      case VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR:
-         if (group_info->closestHitShader != VK_SHADER_UNUSED_KHR)
-            rt_pipeline->group_handles[i].closest_hit_index = group_info->closestHitShader + 2;
-         if (group_info->anyHitShader != VK_SHADER_UNUSED_KHR)
-            rt_pipeline->group_handles[i].any_hit_index = i + 2;
-         break;
-      case VK_SHADER_GROUP_SHADER_MAX_ENUM_KHR:
-         unreachable("VK_SHADER_GROUP_SHADER_MAX_ENUM_KHR");
-      }
-
-      if (pCreateInfo->flags &
-          VK_PIPELINE_CREATE_RAY_TRACING_SHADER_GROUP_HANDLE_CAPTURE_REPLAY_BIT_KHR) {
-         if (group_info->pShaderGroupCaptureReplayHandle &&
-             memcmp(group_info->pShaderGroupCaptureReplayHandle, &rt_pipeline->group_handles[i],
-                    sizeof(rt_pipeline->group_handles[i])) != 0) {
-            result = VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS;
-            goto shader_fail;
-         }
-      }
-   }
 
    *pPipeline = radv_pipeline_to_handle(&rt_pipeline->base.base);
 
