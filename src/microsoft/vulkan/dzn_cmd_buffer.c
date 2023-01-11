@@ -4509,7 +4509,8 @@ dzn_CmdBeginRendering(VkCommandBuffer commandBuffer,
       const VkRenderingAttachmentInfo *att = &pRenderingInfo->pColorAttachments[a];
       VK_FROM_HANDLE(dzn_image_view, iview, att->imageView);
 
-      if (iview != NULL && att->loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+      if (iview != NULL && att->loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
+          !(pRenderingInfo->flags & VK_RENDERING_RESUMING_BIT)) {
          if (pRenderingInfo->viewMask != 0) {
             u_foreach_bit(layer, pRenderingInfo->viewMask) {
                dzn_cmd_buffer_clear_attachment(cmdbuf, iview, att->imageLayout,
@@ -4527,7 +4528,8 @@ dzn_CmdBeginRendering(VkCommandBuffer commandBuffer,
       }
    }
 
-   if (pRenderingInfo->pDepthAttachment || pRenderingInfo->pStencilAttachment) {
+   if ((pRenderingInfo->pDepthAttachment || pRenderingInfo->pStencilAttachment) &&
+       !(pRenderingInfo->flags & VK_RENDERING_RESUMING_BIT)) {
       const VkRenderingAttachmentInfo *z_att = pRenderingInfo->pDepthAttachment;
       const VkRenderingAttachmentInfo *s_att = pRenderingInfo->pStencilAttachment;
       struct dzn_image_view *z_iview = z_att ? dzn_image_view_from_handle(z_att->imageView) : NULL;
@@ -4577,18 +4579,20 @@ dzn_CmdEndRendering(VkCommandBuffer commandBuffer)
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
 
-   for (uint32_t i = 0; i < cmdbuf->state.render.attachments.color_count; i++) {
-      dzn_cmd_buffer_resolve_rendering_attachment(cmdbuf,
-                                                  &cmdbuf->state.render.attachments.colors[i],
-                                                  VK_IMAGE_ASPECT_COLOR_BIT);
-   }
+   if (!(cmdbuf->state.render.flags & VK_RENDERING_SUSPENDING_BIT)) {
+      for (uint32_t i = 0; i < cmdbuf->state.render.attachments.color_count; i++) {
+         dzn_cmd_buffer_resolve_rendering_attachment(cmdbuf,
+                                                     &cmdbuf->state.render.attachments.colors[i],
+                                                     VK_IMAGE_ASPECT_COLOR_BIT);
+      }
 
-   dzn_cmd_buffer_resolve_rendering_attachment(cmdbuf,
-                                               &cmdbuf->state.render.attachments.depth,
-                                               VK_IMAGE_ASPECT_DEPTH_BIT);
-   dzn_cmd_buffer_resolve_rendering_attachment(cmdbuf,
-                                               &cmdbuf->state.render.attachments.stencil,
-                                               VK_IMAGE_ASPECT_STENCIL_BIT);
+      dzn_cmd_buffer_resolve_rendering_attachment(cmdbuf,
+                                                  &cmdbuf->state.render.attachments.depth,
+                                                  VK_IMAGE_ASPECT_DEPTH_BIT);
+      dzn_cmd_buffer_resolve_rendering_attachment(cmdbuf,
+                                                  &cmdbuf->state.render.attachments.stencil,
+                                                  VK_IMAGE_ASPECT_STENCIL_BIT);
+   }
 
    memset(&cmdbuf->state.render, 0, sizeof(cmdbuf->state.render));
 }
