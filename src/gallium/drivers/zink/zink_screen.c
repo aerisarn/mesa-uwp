@@ -44,6 +44,7 @@
 #include "util/u_memory.h"
 #include "util/u_screen.h"
 #include "util/u_string.h"
+#include "util/perf/u_trace.h"
 #include "util/u_transfer_helper.h"
 #include "util/xmlconfig.h"
 
@@ -2616,6 +2617,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    zink_debug = debug_get_option_zink_debug();
    zink_descriptor_mode = debug_get_option_zink_descriptor_mode();
+
+   u_trace_state_init();
 
    screen->loader_lib = util_dl_open(VK_LIBNAME);
    if (!screen->loader_lib)

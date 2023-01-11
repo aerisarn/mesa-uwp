@@ -56,6 +56,12 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info, bool *
    if (src->format != dst->format)
       return false;
 
+   bool marker = zink_cmd_debug_marker_begin(ctx, "blit_resolve(%s->%s, %dx%d->%dx%d)",
+                                             util_format_short_name(info->src.format),
+                                             util_format_short_name(info->src.format),
+                                             info->src.box.width, info->src.box.height,
+                                             info->dst.box.width, info->dst.box.height);
+
    apply_dst_clears(ctx, info, false);
    zink_fb_clears_apply_region(ctx, info->src.resource, zink_rect_from_box(&info->src.box));
 
@@ -110,6 +116,7 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info, bool *
    VKCTX(CmdResolveImage)(cmdbuf, src->obj->image, src->layout,
                      dst->obj->image, dst->layout,
                      1, &region);
+   zink_cmd_debug_marker_end(ctx, marker);
 
    return true;
 }
@@ -158,6 +165,12 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info, bool *n
    if (info->filter == PIPE_TEX_FILTER_LINEAR &&
        !(src->obj->vkfeats & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
       return false;
+
+   bool marker = zink_cmd_debug_marker_begin(ctx, "blit_native(%s->%s, %dx%d->%dx%d)",
+                                             util_format_short_name(info->src.format),
+                                             util_format_short_name(info->src.format),
+                                             info->src.box.width, info->src.box.height,
+                                             info->dst.box.width, info->dst.box.height);
 
    apply_dst_clears(ctx, info, false);
    zink_fb_clears_apply_region(ctx, info->src.resource, zink_rect_from_box(&info->src.box));
@@ -254,6 +267,8 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info, bool *n
                   1, &region,
                   zink_filter(info->filter));
 
+   zink_cmd_debug_marker_end(ctx, marker);
+
    return true;
 }
 
@@ -315,6 +330,12 @@ zink_blit(struct pipe_context *pctx,
    bool stencil_blit = false;
    if (!util_blitter_is_blit_supported(ctx->blitter, info)) {
       if (util_format_is_depth_or_stencil(info->src.resource->format)) {
+         bool marker = zink_cmd_debug_marker_begin(ctx, "zink_blit(Z %s->%s, %dx%d->%dx%d)",
+                                                   util_format_short_name(info->src.format),
+                                                   util_format_short_name(info->dst.format),
+                                                   info->src.box.width, info->src.box.height,
+                                                   info->dst.box.width, info->dst.box.height);
+
          struct pipe_blit_info depth_blit = *info;
          depth_blit.mask = PIPE_MASK_Z;
          stencil_blit = util_blitter_is_blit_supported(ctx->blitter, &depth_blit);
@@ -322,6 +343,7 @@ zink_blit(struct pipe_context *pctx,
             zink_blit_begin(ctx, ZINK_BLIT_SAVE_FB | ZINK_BLIT_SAVE_FS | ZINK_BLIT_SAVE_TEXTURES);
             util_blitter_blit(ctx->blitter, &depth_blit);
          }
+         zink_cmd_debug_marker_end(ctx, marker);
       }
       if (!stencil_blit) {
          mesa_loge("ZINK: blit unsupported %s -> %s",
@@ -348,6 +370,11 @@ zink_blit(struct pipe_context *pctx,
    zink_blit_begin(ctx, ZINK_BLIT_SAVE_FB | ZINK_BLIT_SAVE_FS | ZINK_BLIT_SAVE_TEXTURES);
 
    if (stencil_blit) {
+      bool marker = zink_cmd_debug_marker_begin(ctx, "zink_blit(S fallback %s->%s, %dx%d->%dx%d)",
+                                                util_format_short_name(info->src.format),
+                                                util_format_short_name(info->dst.format),
+                                                info->src.box.width, info->src.box.height,
+                                                info->dst.box.width, info->dst.box.height);
       struct pipe_surface *dst_view, dst_templ;
       util_blitter_default_dst_texture(&dst_templ, info->dst.resource, info->dst.level, info->dst.box.z);
       dst_view = pctx->create_surface(pctx, info->dst.resource, &dst_templ);
@@ -366,8 +393,16 @@ zink_blit(struct pipe_context *pctx,
                                     info->scissor_enable ? &info->scissor : NULL);
 
       pipe_surface_release(pctx, &dst_view);
+
+      zink_cmd_debug_marker_end(ctx, marker);
    } else {
+      bool marker = zink_cmd_debug_marker_begin(ctx, "zink_blit(%s->%s, %dx%d->%dx%d)",
+                                                util_format_short_name(info->src.format),
+                                                util_format_short_name(info->dst.format),
+                                                info->src.box.width, info->src.box.height,
+                                                info->dst.box.width, info->dst.box.height);
       util_blitter_blit(ctx->blitter, info);
+      zink_cmd_debug_marker_end(ctx, marker);
    }
    ctx->blitting = false;
 end:

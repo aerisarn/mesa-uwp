@@ -45,7 +45,9 @@
 #include "util/format/u_format.h"
 #include "util/u_helpers.h"
 #include "util/u_inlines.h"
+#include "util/u_string.h"
 #include "util/u_thread.h"
+#include "util/perf/u_trace.h"
 #include "util/u_cpu_detect.h"
 #include "util/strndup.h"
 #include "nir.h"
@@ -5327,4 +5329,43 @@ zink_update_barriers(struct zink_context *ctx, bool is_compute,
       if (!need_barriers->entries)
          break;
    }
+}
+
+/**
+ * Emits a debug marker in the cmd stream to be captured by perfetto during
+ * execution on the GPU.
+ */
+bool
+zink_cmd_debug_marker_begin(struct zink_context *ctx, const char *fmt, ...)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+
+   if (!screen->instance_info.have_EXT_debug_utils ||
+       !(u_trace_is_enabled(U_TRACE_TYPE_PERFETTO) || u_trace_is_enabled(U_TRACE_TYPE_MARKERS)))
+      return false;
+
+   char *name;
+   va_list va;
+   va_start(va, fmt);
+   int ret = vasprintf(&name, fmt, va);
+   va_end(va);
+
+   if (ret == -1)
+      return false;
+
+   VkDebugUtilsLabelEXT info = { 0 };
+   info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+   info.pLabelName = name;
+
+   VKCTX(CmdBeginDebugUtilsLabelEXT)(ctx->batch.state->cmdbuf, &info);
+
+   free(name);
+   return true;
+}
+
+void
+zink_cmd_debug_marker_end(struct zink_context *ctx, bool emitted)
+{
+   if (emitted)
+      VKCTX(CmdEndDebugUtilsLabelEXT)(ctx->batch.state->cmdbuf);
 }
