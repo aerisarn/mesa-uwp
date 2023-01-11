@@ -1815,7 +1815,7 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
             (VkPhysicalDeviceRayTracingPipelineFeaturesKHR *)ext;
          features->rayTracingPipeline = true;
          features->rayTracingPipelineShaderGroupHandleCaptureReplay = true;
-         features->rayTracingPipelineShaderGroupHandleCaptureReplayMixed = true;
+         features->rayTracingPipelineShaderGroupHandleCaptureReplayMixed = false;
          features->rayTracingPipelineTraceRaysIndirect = true;
          features->rayTraversalPrimitiveCulling = true;
          break;
@@ -3914,6 +3914,9 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    device->physical_device = physical_device;
    simple_mtx_init(&device->trace_mtx, mtx_plain);
    simple_mtx_init(&device->pstate_mtx, mtx_plain);
+   simple_mtx_init(&device->rt_handles_mtx, mtx_plain);
+
+   device->rt_handles = _mesa_hash_table_create(NULL, _mesa_hash_u32, _mesa_key_u32_equal);
 
    device->ws = physical_device->ws;
    vk_device_set_drm_fd(&device->vk, device->ws->get_fd(device->ws));
@@ -4251,8 +4254,11 @@ fail:
          device->ws->ctx_destroy(device->hw_ctx[i]);
    }
 
+   _mesa_hash_table_destroy(device->rt_handles, NULL);
+
    simple_mtx_destroy(&device->pstate_mtx);
    simple_mtx_destroy(&device->trace_mtx);
+   simple_mtx_destroy(&device->rt_handles_mtx);
    mtx_destroy(&device->overallocation_mutex);
 
    vk_device_finish(&device->vk);
@@ -4292,6 +4298,8 @@ radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
       vk_free(&device->vk.alloc, device->private_sdma_queue);
    }
 
+   _mesa_hash_table_destroy(device->rt_handles, NULL);
+
    for (unsigned i = 0; i < RADV_NUM_HW_CTX; i++) {
       if (device->hw_ctx[i])
          device->ws->ctx_destroy(device->hw_ctx[i]);
@@ -4300,6 +4308,7 @@ radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    mtx_destroy(&device->overallocation_mutex);
    simple_mtx_destroy(&device->pstate_mtx);
    simple_mtx_destroy(&device->trace_mtx);
+   simple_mtx_destroy(&device->rt_handles_mtx);
 
    radv_device_finish_meta(device);
 

@@ -1040,6 +1040,9 @@ struct radv_device {
    bool uses_device_generated_commands;
 
    bool uses_shadow_regs;
+
+   struct hash_table *rt_handles;
+   simple_mtx_t rt_handles_mtx;
 };
 
 bool radv_device_set_pstate(struct radv_device *device, bool enable);
