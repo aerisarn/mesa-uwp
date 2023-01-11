@@ -4276,6 +4276,10 @@ dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
       .baseArrayLayer = src->vk.base_array_layer,
       .layerCount = MIN2(src->vk.layer_count, dst->vk.layer_count),
    };
+   if (src_img->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D) {
+      src_range.baseArrayLayer = 0;
+      src_range.layerCount = 1;
+   }
 
    VkImageSubresourceRange dst_range = {
       .aspectMask = (VkImageAspectFlags)aspect,
@@ -4284,6 +4288,10 @@ dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
       .baseArrayLayer = dst->vk.base_array_layer,
       .layerCount = MIN2(src->vk.layer_count, dst->vk.layer_count),
    };
+   if (dst_img->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D) {
+      dst_range.baseArrayLayer = 0;
+      dst_range.layerCount = 1;
+   }
 
    D3D12_RESOURCE_STATES src_state = dzn_image_layout_to_state(src_img, src_layout, aspect);
    D3D12_RESOURCE_STATES dst_state = dzn_image_layout_to_state(dst_img, dst_layout, aspect);
@@ -4368,13 +4376,17 @@ dzn_rendering_attachment_initial_transition(struct dzn_cmd_buffer *cmdbuf,
       return;
 
    struct dzn_image *image = container_of(iview->vk.image, struct dzn_image, vk);
-   const VkImageSubresourceRange range = {
+   VkImageSubresourceRange range = {
       .aspectMask = aspect,
       .baseMipLevel = iview->vk.base_mip_level,
       .levelCount = iview->vk.level_count,
       .baseArrayLayer = iview->vk.base_array_layer,
       .layerCount = iview->vk.layer_count,
    };
+   if (image->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D) {
+      range.baseArrayLayer = 0;
+      range.layerCount = 1;
+   }
 
    if (cmdbuf->enhanced_barriers) {
       D3D12_BARRIER_SYNC sync_before = D3D12_BARRIER_SYNC_ALL;
