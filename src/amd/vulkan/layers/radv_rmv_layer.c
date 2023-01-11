@@ -109,7 +109,7 @@ rmv_SetDebugUtilsObjectNameEXT(VkDevice _device, const VkDebugUtilsObjectNameInf
    case VK_OBJECT_TYPE_EVENT:
    case VK_OBJECT_TYPE_QUERY_POOL:
    case VK_OBJECT_TYPE_DESCRIPTOR_POOL:
-   case VK_OBJECT_TYPE_COMMAND_BUFFER:
+   case VK_OBJECT_TYPE_PIPELINE:
       break;
    default:
       return VK_SUCCESS;
