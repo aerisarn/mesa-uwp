@@ -26,8 +26,10 @@ files_asahi = files(
   'agx_query.c',
   'agx_state.c',
   'agx_uniforms.c',
-  'magic.c',
 )
+if host_machine.system() == 'darwin'
+  files_asahi += files('magic.c')
+endif
 
 libasahi = static_library(
   'asahi',

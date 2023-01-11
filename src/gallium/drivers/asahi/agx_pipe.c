@@ -1029,6 +1029,7 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
    /* Size calculation should've been exact */
    assert(handle_i == handle_count);
 
+#ifdef __APPLE__
    unsigned cmdbuf_id = agx_get_global_id(dev);
    unsigned encoder_id = agx_get_global_id(dev);
 
@@ -1051,6 +1052,16 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
       agxdecode_cmdstream(dev->cmdbuf.handle, dev->memmap.handle, true);
       agxdecode_next_frame();
    }
+#else
+   /* TODO: Linux UAPI submission */
+   (void)dev;
+   (void)zbias;
+   (void)scissor;
+   (void)clear_pipeline_textures;
+   (void)pipeline_store;
+   (void)pipeline_background;
+   (void)pipeline_background_partial;
+#endif
 
    agx_batch_cleanup(ctx, batch);
 }
