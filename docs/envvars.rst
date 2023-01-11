@@ -1460,9 +1460,6 @@ PowerVR driver environment variables
    A comma-separated list of debug options. Use `PVR_DEBUG=help` to
    print a list of available options.
 
-Other Gallium drivers have their own environment variables. These may
-change frequently so the source code should be consulted for details.
-
 i915 driver environment variables
 ---------------------------------
 
@@ -1484,3 +1481,8 @@ Freedreno driver environment variables
 .. envvar:: FD_MESA_DEBUG
 
    Debug flags for the Freedreno driver.
+
+----
+
+Other Gallium drivers have their own environment variables. These may
+change frequently so the source code should be consulted for details.
