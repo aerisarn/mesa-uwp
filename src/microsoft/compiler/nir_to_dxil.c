@@ -333,6 +333,7 @@ enum dxil_intr {
    DXIL_INTR_LEGACY_F16TOF32 = 131,
 
    DXIL_INTR_ATTRIBUTE_AT_VERTEX = 137,
+   DXIL_INTR_VIEW_ID = 138,
 
    DXIL_INTR_ANNOTATE_HANDLE = 216,
    DXIL_INTR_CREATE_HANDLE_FROM_BINDING = 217,
@@ -4439,6 +4440,10 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       default:
          unreachable("Unexpected shader kind for invocation ID");
       }
+   case nir_intrinsic_load_view_index:
+      ctx->mod.feats.view_id = true;
+      return emit_load_unary_external_function(ctx, intr, "dx.op.viewID",
+                                               DXIL_INTR_VIEW_ID);
    case nir_intrinsic_load_sample_mask_in:
       return emit_load_sample_mask_in(ctx, intr);
    case nir_intrinsic_load_tess_coord:
@@ -5914,6 +5919,7 @@ void dxil_fill_validation_state(struct ntd_context *ctx,
    state->resources.v0 = (struct dxil_resource_v0*)ctx->resources.data;
    state->state.psv1.psv0.max_expected_wave_lane_count = UINT_MAX;
    state->state.psv1.shader_stage = (uint8_t)ctx->mod.shader_kind;
+   state->state.psv1.uses_view_id = (uint8_t)ctx->mod.feats.view_id;
    state->state.psv1.sig_input_elements = (uint8_t)ctx->mod.num_sig_inputs;
    state->state.psv1.sig_output_elements = (uint8_t)ctx->mod.num_sig_outputs;
    state->state.psv1.sig_patch_const_or_prim_elements = (uint8_t)ctx->mod.num_sig_patch_consts;
