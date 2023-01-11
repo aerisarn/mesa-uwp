@@ -1977,7 +1977,7 @@ special_requirements_for_handling_double_precision_data_types(
                   "source and destination are not supported except for "
                   "broadcast of a scalar.");
 
-         ERROR_IF((file == BRW_ARCHITECTURE_REGISTER_FILE &&
+         ERROR_IF((address_mode == BRW_ADDRESS_DIRECT && file == BRW_ARCHITECTURE_REGISTER_FILE &&
                    reg != BRW_ARF_NULL && !(reg >= BRW_ARF_ACCUMULATOR && reg < BRW_ARF_FLAG)) ||
                   (dst_file == BRW_ARCHITECTURE_REGISTER_FILE &&
                    dst_reg != BRW_ARF_NULL && dst_reg != BRW_ARF_ACCUMULATOR),
