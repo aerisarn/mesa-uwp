@@ -119,4 +119,11 @@ void agx_bo_unreference(struct agx_bo *bo);
 struct agx_bo *agx_bo_import(struct agx_device *dev, int fd);
 int agx_bo_export(struct agx_bo *bo);
 
+void agx_bo_free(struct agx_device *dev, struct agx_bo *bo);
+struct agx_bo *agx_bo_alloc(struct agx_device *dev, size_t size,
+                            enum agx_bo_flags flags);
+struct agx_bo *agx_bo_cache_fetch(struct agx_device *dev, size_t size,
+                                  uint32_t flags, const bool dontwait);
+void agx_bo_cache_evict_all(struct agx_device *dev);
+
 #endif

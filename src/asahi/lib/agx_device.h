@@ -26,6 +26,7 @@
 
 #include "util/simple_mtx.h"
 #include "util/sparse_array.h"
+#include "agx_bo.h"
 #include "agx_formats.h"
 #include "io.h"
 
