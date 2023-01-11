@@ -417,6 +417,7 @@ wsi_x11_get_connection(struct wsi_device *wsi_dev,
 }
 
 static const VkFormat formats[] = {
+   VK_FORMAT_R5G6B5_UNORM_PACK16,
    VK_FORMAT_B8G8R8A8_SRGB,
    VK_FORMAT_B8G8R8A8_UNORM,
    VK_FORMAT_A2R10G10B10_UNORM_PACK32,
