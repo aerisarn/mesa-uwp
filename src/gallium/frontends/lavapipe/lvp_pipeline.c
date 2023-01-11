@@ -39,13 +39,6 @@
 
 #define MAX_DYNAMIC_STATES 72
 
-#define LVP_PIPELINE_DUP(dst, src, type, count) do {             \
-      type *temp = ralloc_array(mem_ctx, type, count);           \
-      if (!temp) return VK_ERROR_OUT_OF_HOST_MEMORY;             \
-      memcpy(temp, (src), sizeof(type) * count);                 \
-      dst = temp;                                                \
-   } while(0)
-
 void
 lvp_pipeline_destroy(struct lvp_device *device, struct lvp_pipeline *pipeline)
 {
