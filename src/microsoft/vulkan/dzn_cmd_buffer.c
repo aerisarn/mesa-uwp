@@ -432,6 +432,7 @@ dzn_cmd_buffer_destroy(struct vk_command_buffer *cbuf)
          util_dynarray_fini(&qpstate->reset);
          util_dynarray_fini(&qpstate->collect);
          util_dynarray_fini(&qpstate->signal);
+         util_dynarray_fini(&qpstate->zero);
          vk_free(&cbuf->pool->alloc, he->data);
       }
       _mesa_hash_table_destroy(cmdbuf->queries.ht, NULL);
@@ -481,6 +482,7 @@ dzn_cmd_buffer_reset(struct vk_command_buffer *cbuf, VkCommandBufferResetFlags f
       util_dynarray_fini(&qpstate->reset);
       util_dynarray_fini(&qpstate->collect);
       util_dynarray_fini(&qpstate->signal);
+      util_dynarray_fini(&qpstate->zero);
       vk_free(&cmdbuf->vk.pool->alloc, he->data);
    }
    _mesa_hash_table_clear(cmdbuf->queries.ht, NULL);
@@ -821,6 +823,7 @@ dzn_cmd_buffer_create_query_pool_state(struct dzn_cmd_buffer *cmdbuf)
    util_dynarray_init(&state->reset, NULL);
    util_dynarray_init(&state->collect, NULL);
    util_dynarray_init(&state->signal, NULL);
+   util_dynarray_init(&state->zero, NULL);
    return state;
 }
 
@@ -831,6 +834,7 @@ dzn_cmd_buffer_destroy_query_pool_state(struct dzn_cmd_buffer *cmdbuf,
    util_dynarray_fini(&state->reset);
    util_dynarray_fini(&state->collect);
    util_dynarray_fini(&state->signal);
+   util_dynarray_fini(&state->zero);
    vk_free(&cmdbuf->vk.pool->alloc, state);
 }
 
@@ -868,14 +872,16 @@ dzn_cmd_buffer_collect_queries(struct dzn_cmd_buffer *cmdbuf,
                                uint32_t query_count)
 {
    struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
-   uint32_t nbits = util_dynarray_num_elements(&state->collect, BITSET_WORD) * BITSET_WORDBITS;
+   uint32_t nbits_collect = util_dynarray_num_elements(&state->collect, BITSET_WORD) * BITSET_WORDBITS;
+   uint32_t nbits_zero = util_dynarray_num_elements(&state->zero, BITSET_WORD) * BITSET_WORDBITS;
    uint32_t start, end;
 
-   if (!nbits)
+   if (!nbits_collect && !nbits_zero)
       return VK_SUCCESS;
 
-   query_count = MIN2(query_count, nbits - first_query);
-   nbits = MIN2(first_query + query_count, nbits);
+   query_count = MIN2(query_count, MAX2(nbits_collect, nbits_zero) - first_query);
+   nbits_collect = MIN2(first_query + query_count, nbits_collect);
+   nbits_zero = MIN2(first_query + query_count, nbits_zero);
 
    VkResult result =
       dzn_cmd_buffer_dynbitset_reserve(cmdbuf, &state->signal, first_query + query_count - 1);
@@ -892,19 +898,44 @@ dzn_cmd_buffer_collect_queries(struct dzn_cmd_buffer *cmdbuf,
       dzn_cmd_buffer_flush_transition_barriers(cmdbuf, qpool->resolve_buffer, 0, 1);
    }
 
+   /* Resolve the valid query regions into the resolve buffer */
    BITSET_WORD *collect =
       util_dynarray_element(&state->collect, BITSET_WORD, 0);
 
    for (start = first_query, end = first_query,
-        __bitset_next_range(&start, &end, collect, nbits);
-        start < nbits;
-        __bitset_next_range(&start, &end, collect, nbits)) {
+        __bitset_next_range(&start, &end, collect, nbits_collect);
+        start < nbits_collect;
+        __bitset_next_range(&start, &end, collect, nbits_collect)) {
       ID3D12GraphicsCommandList1_ResolveQueryData(cmdbuf->cmdlist,
                                                   qpool->heap,
                                                   qpool->queries[start].type,
                                                   start, end - start,
                                                   qpool->resolve_buffer,
                                                   qpool->query_size * start);
+   }
+
+   /* Zero out sections of the resolve buffer that contain queries for multi-view rendering
+    * for views other than the first one. */
+   BITSET_WORD *zero =
+      util_dynarray_element(&state->zero, BITSET_WORD, 0);
+   const uint32_t step = DZN_QUERY_REFS_SECTION_SIZE / sizeof(uint64_t);
+
+   for (start = first_query, end = first_query,
+        __bitset_next_range(&start, &end, zero, nbits_zero);
+        start < nbits_zero;
+        __bitset_next_range(&start, &end, zero, nbits_zero)) {
+      uint32_t count = end - start;
+
+      for (unsigned i = 0; i < count; i += step) {
+         uint32_t sub_count = MIN2(step, count - i);
+
+         ID3D12GraphicsCommandList1_CopyBufferRegion(cmdbuf->cmdlist,
+                                                     qpool->resolve_buffer,
+                                                     dzn_query_pool_get_result_offset(qpool, start + i),
+                                                     device->queries.refs,
+                                                     DZN_QUERY_REFS_ALL_ZEROS_OFFSET,
+                                                     qpool->query_size * sub_count);
+      }
    }
 
    uint32_t offset = dzn_query_pool_get_result_offset(qpool, first_query);
@@ -928,26 +959,38 @@ dzn_cmd_buffer_collect_queries(struct dzn_cmd_buffer *cmdbuf,
                                                qpool->resolve_buffer, offset,
                                                size);
 
-   for (start = first_query, end = first_query,
-        __bitset_next_range(&start, &end, collect, nbits);
-        start < nbits;
-        __bitset_next_range(&start, &end, collect, nbits)) {
-      uint32_t step = DZN_QUERY_REFS_SECTION_SIZE / sizeof(uint64_t);
-      uint32_t count = end - start;
+   struct query_pass_data {
+      struct util_dynarray *dynarray;
+      BITSET_WORD *bitset;
+      uint32_t count;
+   } passes[] = {
+      { &state->collect, collect, nbits_collect },
+      { &state->zero, zero, nbits_zero }
+   };
+   for (uint32_t pass = 0; pass < ARRAY_SIZE(passes); ++pass) {
+      BITSET_WORD *bitset = passes[pass].bitset;
+      uint32_t nbits = passes[pass].count;
+      for (start = first_query, end = first_query,
+           __bitset_next_range(&start, &end, bitset, nbits);
+           start < nbits;
+           __bitset_next_range(&start, &end, bitset, nbits)) {
+         uint32_t step = DZN_QUERY_REFS_SECTION_SIZE / sizeof(uint64_t);
+         uint32_t count = end - start;
 
-      for (unsigned i = 0; i < count; i += step) {
-         uint32_t sub_count = MIN2(step, count - i);
+         for (unsigned i = 0; i < count; i += step) {
+            uint32_t sub_count = MIN2(step, count - i);
 
-         ID3D12GraphicsCommandList1_CopyBufferRegion(cmdbuf->cmdlist,
-                                                     qpool->collect_buffer,
-                                                     dzn_query_pool_get_availability_offset(qpool, start + i),
-                                                     device->queries.refs,
-                                                     DZN_QUERY_REFS_ALL_ONES_OFFSET,
-                                                     sizeof(uint64_t) * sub_count);
+            ID3D12GraphicsCommandList1_CopyBufferRegion(cmdbuf->cmdlist,
+                                                        qpool->collect_buffer,
+                                                        dzn_query_pool_get_availability_offset(qpool, start + i),
+                                                        device->queries.refs,
+                                                        DZN_QUERY_REFS_ALL_ONES_OFFSET,
+                                                        sizeof(uint64_t) * sub_count);
+         }
+
+         dzn_cmd_buffer_dynbitset_set_range(cmdbuf, &state->signal, start, count);
+         dzn_cmd_buffer_dynbitset_clear_range(cmdbuf, passes[pass].dynarray, start, count);
       }
-
-      dzn_cmd_buffer_dynbitset_set_range(cmdbuf, &state->signal, start, count);
-      dzn_cmd_buffer_dynbitset_clear_range(cmdbuf, &state->collect, start, count);
    }
 
    if (!cmdbuf->enhanced_barriers) {
@@ -5094,9 +5137,13 @@ dzn_CmdBeginQuery(VkCommandBuffer commandBuffer,
    if (!state)
       return;
 
-   qpool->queries[query].type = dzn_query_pool_get_query_type(qpool, flags);
-   dzn_cmd_buffer_dynbitset_clear(cmdbuf, &state->collect, query);
+   for (uint32_t i = 0; i < cmdbuf->state.multiview.num_views; ++i)
+      qpool->queries[query + i].type = dzn_query_pool_get_query_type(qpool, flags);
+
    ID3D12GraphicsCommandList1_BeginQuery(cmdbuf->cmdlist, qpool->heap, qpool->queries[query].type, query);
+
+   dzn_cmd_buffer_dynbitset_clear_range(cmdbuf, &state->collect, query, cmdbuf->state.multiview.num_views);
+   dzn_cmd_buffer_dynbitset_clear_range(cmdbuf, &state->zero, query, cmdbuf->state.multiview.num_views);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -5112,8 +5159,11 @@ dzn_CmdEndQuery(VkCommandBuffer commandBuffer,
    if (!state)
       return;
 
-   dzn_cmd_buffer_dynbitset_set(cmdbuf, &state->collect, query);
    ID3D12GraphicsCommandList1_EndQuery(cmdbuf->cmdlist, qpool->heap, qpool->queries[query].type, query);
+
+   dzn_cmd_buffer_dynbitset_set(cmdbuf, &state->collect, query);
+   if (cmdbuf->state.multiview.num_views > 1)
+      dzn_cmd_buffer_dynbitset_set_range(cmdbuf, &state->zero, query + 1, cmdbuf->state.multiview.num_views - 1);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -5139,9 +5189,13 @@ dzn_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
 
    ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
 
-   qpool->queries[query].type = D3D12_QUERY_TYPE_TIMESTAMP;
-   dzn_cmd_buffer_dynbitset_set(cmdbuf, &state->collect, query);
+   for (uint32_t i = 0; i < cmdbuf->state.multiview.num_views; ++i)
+      qpool->queries[query + i].type = D3D12_QUERY_TYPE_TIMESTAMP;
    ID3D12GraphicsCommandList1_EndQuery(cmdbuf->cmdlist, qpool->heap, qpool->queries[query].type, query);
+
+   dzn_cmd_buffer_dynbitset_set(cmdbuf, &state->collect, query);
+   if (cmdbuf->state.multiview.num_views > 1)
+      dzn_cmd_buffer_dynbitset_set_range(cmdbuf, &state->zero, query + 1, cmdbuf->state.multiview.num_views - 1);
 }
 
 
@@ -5185,6 +5239,7 @@ dzn_CmdResetQueryPool(VkCommandBuffer commandBuffer,
 
    dzn_cmd_buffer_dynbitset_set_range(cmdbuf, &state->reset, firstQuery, queryCount);
    dzn_cmd_buffer_dynbitset_clear_range(cmdbuf, &state->collect, firstQuery, queryCount);
+   dzn_cmd_buffer_dynbitset_clear_range(cmdbuf, &state->zero, firstQuery, queryCount);
 }
 
 VKAPI_ATTR void VKAPI_CALL
