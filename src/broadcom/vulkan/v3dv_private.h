@@ -736,7 +736,8 @@ struct v3dv_buffer {
 void
 v3dv_buffer_init(struct v3dv_device *device,
                  const VkBufferCreateInfo *pCreateInfo,
-                 struct v3dv_buffer *buffer);
+                 struct v3dv_buffer *buffer,
+                 uint32_t alignment);
 
 void
 v3dv_buffer_bind_memory(const VkBindBufferMemoryInfo *info);

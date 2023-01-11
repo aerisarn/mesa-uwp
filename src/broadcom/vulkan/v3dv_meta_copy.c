@@ -1246,7 +1246,8 @@ copy_image_linear_texel_buffer(struct v3dv_cmd_buffer *cmd_buffer,
       .usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT,
       .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
    };
-   v3dv_buffer_init(cmd_buffer->device, &buf_create_info, &src_buffer);
+   v3dv_buffer_init(cmd_buffer->device, &buf_create_info, &src_buffer,
+                    src->alignment);
 
    const VkBindBufferMemoryInfo buf_bind_info = {
       .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,

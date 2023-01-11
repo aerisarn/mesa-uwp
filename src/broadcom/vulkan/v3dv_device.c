@@ -2699,12 +2699,13 @@ v3dv_BindImageMemory2(VkDevice _device,
 
 void
 v3dv_buffer_init(struct v3dv_device *device,
-            const VkBufferCreateInfo *pCreateInfo,
-            struct v3dv_buffer *buffer)
+                 const VkBufferCreateInfo *pCreateInfo,
+                 struct v3dv_buffer *buffer,
+                 uint32_t alignment)
 {
    buffer->size = pCreateInfo->size;
    buffer->usage = pCreateInfo->usage;
-   buffer->alignment = V3D_NON_COHERENT_ATOM_SIZE;
+   buffer->alignment = alignment;
 }
 
 static void
@@ -2751,7 +2752,7 @@ v3dv_GetDeviceBufferMemoryRequirementsKHR(
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
 
    struct v3dv_buffer buffer = { 0 };
-   v3dv_buffer_init(device, pInfo->pCreateInfo, &buffer);
+   v3dv_buffer_init(device, pInfo->pCreateInfo, &buffer, V3D_NON_COHERENT_ATOM_SIZE);
    get_buffer_memory_requirements(&buffer, pMemoryRequirements);
 }
 
@@ -2806,7 +2807,7 @@ v3dv_CreateBuffer(VkDevice  _device,
    if (buffer == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   v3dv_buffer_init(device, pCreateInfo, buffer);
+   v3dv_buffer_init(device, pCreateInfo, buffer, V3D_NON_COHERENT_ATOM_SIZE);
 
    /* Limit allocations to 32-bit */
    const VkDeviceSize aligned_size = align64(buffer->size, buffer->alignment);
