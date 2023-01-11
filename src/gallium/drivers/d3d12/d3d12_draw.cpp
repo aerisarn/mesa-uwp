@@ -41,10 +41,7 @@
 #include "util/u_prim_restart.h"
 #include "util/u_math.h"
 
-static const D3D12_RECT MAX_SCISSOR = { D3D12_VIEWPORT_BOUNDS_MIN,
-                                        D3D12_VIEWPORT_BOUNDS_MIN,
-                                        D3D12_VIEWPORT_BOUNDS_MAX,
-                                        D3D12_VIEWPORT_BOUNDS_MAX };
+static const D3D12_RECT MAX_SCISSOR = { 0, 0, 16384, 16384 };
 
 static const D3D12_RECT MAX_SCISSOR_ARRAY[] = {
    MAX_SCISSOR, MAX_SCISSOR, MAX_SCISSOR, MAX_SCISSOR,
