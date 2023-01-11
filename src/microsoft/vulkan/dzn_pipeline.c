@@ -187,6 +187,14 @@ to_dxil_shader_stage(VkShaderStageFlagBits in)
    }
 }
 
+struct dzn_nir_options {
+   enum dxil_spirv_yz_flip_mode yz_flip_mode;
+   uint16_t y_flip_mask, z_flip_mask;
+   bool force_sample_rate_shading;
+   enum pipe_format *vi_conversions;
+   const nir_shader_compiler_options *nir_opts;
+};
+
 static VkResult
 dzn_pipeline_get_nir_shader(struct dzn_device *device,
                             const struct dzn_pipeline_layout *layout,
@@ -194,16 +202,12 @@ dzn_pipeline_get_nir_shader(struct dzn_device *device,
                             const uint8_t *hash,
                             const VkPipelineShaderStageCreateInfo *stage_info,
                             gl_shader_stage stage,
-                            enum dxil_spirv_yz_flip_mode yz_flip_mode,
-                            uint16_t y_flip_mask, uint16_t z_flip_mask,
-                            bool force_sample_rate_shading,
-                            enum pipe_format *vi_conversions,
-                            const nir_shader_compiler_options *nir_opts,
+                            const struct dzn_nir_options *options,
                             nir_shader **nir)
 {
    if (cache) {
       *nir = vk_pipeline_cache_lookup_nir(cache, hash, SHA1_DIGEST_LENGTH,
-                                          nir_opts, NULL, NULL);
+                                          options->nir_opts, NULL, NULL);
        if (*nir)
           return VK_SUCCESS;
    }
@@ -228,7 +232,7 @@ dzn_pipeline_get_nir_shader(struct dzn_device *device,
    VkResult result =
       vk_shader_module_to_nir(&device->vk, module, stage,
                               stage_info->pName, stage_info->pSpecializationInfo,
-                              &spirv_opts, nir_opts, NULL, nir);
+                              &spirv_opts, options->nir_opts, NULL, nir);
    if (result != VK_SUCCESS)
       return result;
 
@@ -243,12 +247,12 @@ dzn_pipeline_get_nir_shader(struct dzn_device *device,
       },
       .zero_based_vertex_instance_id = false,
       .yz_flip = {
-         .mode = yz_flip_mode,
-         .y_mask = y_flip_mask,
-         .z_mask = z_flip_mask,
+         .mode = options->yz_flip_mode,
+         .y_mask = options->y_flip_mask,
+         .z_mask = options->z_flip_mask,
       },
       .read_only_images_as_srvs = true,
-      .force_sample_rate_shading = force_sample_rate_shading,
+      .force_sample_rate_shading = options->force_sample_rate_shading,
    };
 
    bool requires_runtime_data;
@@ -257,12 +261,12 @@ dzn_pipeline_get_nir_shader(struct dzn_device *device,
    if (stage == MESA_SHADER_VERTEX) {
       bool needs_conv = false;
       for (uint32_t i = 0; i < MAX_VERTEX_GENERIC_ATTRIBS; i++) {
-         if (vi_conversions[i] != PIPE_FORMAT_NONE)
+         if (options->vi_conversions[i] != PIPE_FORMAT_NONE)
             needs_conv = true;
       }
 
       if (needs_conv)
-         NIR_PASS_V(*nir, dxil_nir_lower_vs_vertex_conversion, vi_conversions);
+         NIR_PASS_V(*nir, dxil_nir_lower_vs_vertex_conversion, options->vi_conversions);
    }
 
    if (cache)
@@ -695,7 +699,7 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
    const uint8_t *dxil_hashes[MESA_VULKAN_SHADER_STAGES] = { 0 };
    uint8_t attribs_hash[SHA1_DIGEST_LENGTH];
    uint8_t pipeline_hash[SHA1_DIGEST_LENGTH];
-   gl_shader_stage yz_flip_stage = MESA_SHADER_NONE;
+   gl_shader_stage last_raster_stage = MESA_SHADER_NONE;
    uint32_t active_stage_mask = 0;
    VkResult ret;
 
@@ -712,8 +716,8 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       if ((stage == MESA_SHADER_VERTEX ||
            stage == MESA_SHADER_TESS_EVAL ||
            stage == MESA_SHADER_GEOMETRY) &&
-          yz_flip_stage < stage)
-         yz_flip_stage = stage;
+          last_raster_stage < stage)
+         last_raster_stage = stage;
 
       if (stage == MESA_SHADER_FRAGMENT &&
           info->pRasterizationState &&
@@ -796,7 +800,7 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
          _mesa_sha1_init(&nir_hash_ctx);
          if (stage == MESA_SHADER_VERTEX)
             _mesa_sha1_update(&nir_hash_ctx, attribs_hash, sizeof(attribs_hash));
-         if (stage == yz_flip_stage) {
+         if (stage == last_raster_stage) {
             _mesa_sha1_update(&nir_hash_ctx, &yz_flip_mode, sizeof(yz_flip_mode));
             _mesa_sha1_update(&nir_hash_ctx, &y_flip_mask, sizeof(y_flip_mask));
             _mesa_sha1_update(&nir_hash_ctx, &z_flip_mask, sizeof(z_flip_mask));
@@ -805,14 +809,19 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
          _mesa_sha1_final(&nir_hash_ctx, nir_hash);
       }
 
+      struct dzn_nir_options options = {
+         .yz_flip_mode = stage == last_raster_stage ? yz_flip_mode : DXIL_SPIRV_YZ_FLIP_NONE,
+         .y_flip_mask = y_flip_mask,
+         .z_flip_mask = z_flip_mask,
+         .force_sample_rate_shading = stage == MESA_SHADER_FRAGMENT ? force_sample_rate_shading : false,
+         .vi_conversions = vi_conversions,
+         .nir_opts = &nir_opts
+      };
       ret = dzn_pipeline_get_nir_shader(device, layout,
                                         cache, nir_hash,
                                         stages[stage].info, stage,
-                                        stage == yz_flip_stage ? yz_flip_mode : DXIL_SPIRV_YZ_FLIP_NONE,
-                                        y_flip_mask, z_flip_mask,
-                                        stage == MESA_SHADER_FRAGMENT ? force_sample_rate_shading : false,
-                                        vi_conversions,
-                                        &nir_opts, &pipeline->templates.shaders[stage].nir);
+                                        &options,
+                                        &pipeline->templates.shaders[stage].nir);
       if (ret != VK_SUCCESS)
          return ret;
    }
@@ -854,7 +863,7 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
          if (stage == MESA_SHADER_VERTEX)
             _mesa_sha1_update(&dxil_hash_ctx, attribs_hash, sizeof(attribs_hash));
 
-         if (stage == yz_flip_stage) {
+         if (stage == last_raster_stage) {
             _mesa_sha1_update(&dxil_hash_ctx, &yz_flip_mode, sizeof(yz_flip_mode));
             _mesa_sha1_update(&dxil_hash_ctx, &y_flip_mask, sizeof(y_flip_mask));
             _mesa_sha1_update(&dxil_hash_ctx, &z_flip_mask, sizeof(z_flip_mask));
@@ -2243,11 +2252,10 @@ dzn_compute_pipeline_compile_shader(struct dzn_device *device,
          goto out;
    }
 
+   struct dzn_nir_options options = { .nir_opts = dxil_get_nir_compiler_options() };
    ret = dzn_pipeline_get_nir_shader(device, layout, cache, spirv_hash,
                                      &info->stage, MESA_SHADER_COMPUTE,
-                                     DXIL_SPIRV_YZ_FLIP_NONE, 0, 0,
-                                     false, NULL,
-                                     dxil_get_nir_compiler_options(), &nir);
+                                     &options, &nir);
    if (ret != VK_SUCCESS)
       return ret;
 
