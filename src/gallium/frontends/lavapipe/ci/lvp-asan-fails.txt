@@ -139,25 +139,8 @@ dEQP-VK.transform_feedback.primitives_generated_query.get.queue_reset.pgq_32bit_
 #     #2 0x7fcd0242f0c0 in vk_zalloc ../src/vulkan/util/vk_alloc.h:56
 #     #3 0x7fcd0242f0c0 in lvp_CreateDescriptorSetLayout ../src/gallium/frontends/lavapipe/lvp_descriptor_set.c:65
 #     #4 0x55cd57134f28  (/deqp/external/vulkancts/modules/vulkan/deqp-vk+0x226bf28)
-dEQP-VK.api.copy_and_blit.dedicated_allocation.depth_stencil_msaa_copy.whole.s8_uint_general_optimal_S_4_bit,Fail
-dEQP-VK.image.texel_view_compatible.graphic.basic.2d_image.texture_read.bc1_rgb_unorm_block.r16g16b16a16_uint,Fail
-dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.fence_fence.atomicwrite.queuefamily.payload_local.buffer.guard_local.image.vert,Fail
 dEQP-VK.pipeline.monolithic.bind_point.graphics_compute.push_write.setup_cp_gs_cs_gp.cmd_draw_dispatch,Fail
-dEQP-VK.renderpass.dedicated_allocation.formats.d24_unorm_s8_uint.input.dont_care.store.self_dep_clear_draw_depth_read_only,Fail
-dEQP-VK.renderpass.dedicated_allocation.formats.r16_sfloat.input.load.store.clear_draw_use_input_aspect,Fail
-dEQP-VK.renderpass.dedicated_allocation.formats.r32_sint.input.dont_care.dont_care.draw,Fail
-dEQP-VK.renderpass.dedicated_allocation.formats.r8_uint.input.dont_care.store.self_dep_clear_draw_use_input_aspect,Fail
-dEQP-VK.renderpass.suballocation.formats.d32_sfloat_s8_uint.input.load.dont_care.self_dep_draw,Fail
-dEQP-VK.renderpass.suballocation.formats.r16g16_snorm.input.dont_care.dont_care.self_dep_clear_draw,Fail
-dEQP-VK.renderpass.suballocation.formats.r8g8_snorm.input.clear.store.self_dep_draw_use_input_aspect,Fail
-dEQP-VK.renderpass2.dedicated_allocation.formats.r8g8b8a8_sint.input.load.dont_care.draw,Fail
-dEQP-VK.renderpass2.suballocation.formats.d24_unorm_s8_uint.input.load.dont_care.self_dep_draw_depth_read_only,Fail
-dEQP-VK.renderpass2.suballocation.formats.r16g16_snorm.input.load.dont_care.draw,Fail
-dEQP-VK.renderpass2.suballocation.formats.r8g8_sint.input.clear.dont_care.clear_draw,Fail
-dEQP-VK.renderpass2.suballocation.subpass_dependencies.separate_channels.r8g8b8a8_unorm,Fail
 dEQP-VK.robustness.image_robustness.push.notemplate.r32f.unroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.2d_array.comp,Fail
-dEQP-VK.robustness.robustness2.bind.template.rg32f.unroll.nonvolatile.storage_buffer.readwrite.no_fmt_qual.null_descriptor.samples_1.1d.frag,Fail
-dEQP-VK.robustness.robustness2.bind.template.rg32i.dontunroll.volatile.storage_image.fmt_qual.null_descriptor.samples_1.2d.frag,Fail
 dEQP-VK.robustness.robustness2.push.notemplate.r32f.dontunroll.volatile.storage_buffer.readonly.no_fmt_qual.len_256.samples_1.1d.vert,Fail
 dEQP-VK.robustness.robustness2.push.notemplate.r32f.unroll.volatile.storage_texel_buffer.fmt_qual.len_32.samples_1.1d.vert,Fail
 dEQP-VK.robustness.robustness2.push.notemplate.r32i.unroll.nonvolatile.storage_image.fmt_qual.null_descriptor.samples_1.cube_array.vert,Fail
@@ -170,7 +153,6 @@ dEQP-VK.robustness.robustness2.push.notemplate.rgba32f.unroll.nonvolatile.storag
 dEQP-VK.robustness.robustness2.push.notemplate.rgba32i.dontunroll.nonvolatile.uniform_buffer.no_fmt_qual.len_33.samples_1.1d.vert,Fail
 dEQP-VK.robustness.robustness2.push.notemplate.rgba32ui.dontunroll.volatile.storage_buffer.readwrite.no_fmt_qual.len_256.samples_1.1d.vert,Fail
 dEQP-VK.robustness.robustness2.push.notemplate.rgba32ui.unroll.volatile.storage_image.fmt_qual.img.samples_4.2d.vert,Fail
-dEQP-VK.robustness.robustness2.push.template.r32ui.unroll.volatile.storage_buffer.readwrite.no_fmt_qual.null_descriptor.samples_1.1d.vert,Fail
 dEQP-VK.synchronization2.timeline_semaphore.one_to_n.write_copy_buffer_to_image_read_image_fragment.image_128x128_r16_uint,Fail
 dEQP-VK.transform_feedback.primitives_generated_query.copy.host_reset.pgq_32bit_xfb_64bit.geom.xfb.rast.point_list.pgq_0_xfb_1.single_draw,Fail
 dEQP-VK.transform_feedback.primitives_generated_query.copy.queue_reset.pgq_32bit_xfb_64bit.geom.xfb.no_rast.line_strip.pgq_default_xfb_0.single_draw,Fail
