@@ -313,9 +313,9 @@ number_to_human_readable(double num, enum pipe_driver_query_type type,
       d /= divisor;
       unit++;
    }
-
-   sprintf(out, get_float_modifier(d), d);
-   sprintf(out, "%s", units[unit]);
+   int n = sprintf(out, get_float_modifier(d), d);
+   if (n > 0)
+      sprintf(&out[n], "%s", units[unit]);
 }
 
 static void
