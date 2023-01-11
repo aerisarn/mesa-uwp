@@ -673,14 +673,14 @@ layouts_equal(const struct lvp_descriptor_set_layout *a, const struct lvp_descri
 #endif
 
 static void
-merge_layouts(struct lvp_pipeline *dst, struct lvp_pipeline_layout *src)
+merge_layouts(struct vk_device *device, struct lvp_pipeline *dst, struct lvp_pipeline_layout *src)
 {
    if (!src)
       return;
    if (!dst->layout) {
-      /* no layout created yet: copy onto ralloc ctx allocation for auto-free */
-      dst->layout = ralloc(dst->mem_ctx, struct lvp_pipeline_layout);
+      dst->layout = vk_zalloc(&device->alloc, sizeof(struct lvp_pipeline_layout), 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       memcpy(dst->layout, src, sizeof(struct lvp_pipeline_layout));
+      dst->layout->vk.ref_cnt = 1;
       for (unsigned i = 0; i < dst->layout->vk.set_count; i++) {
          if (dst->layout->vk.set_layouts[i])
             vk_descriptor_set_layout_ref(dst->layout->vk.set_layouts[i]);
@@ -745,8 +745,6 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
       pipeline->library = true;
 
    struct lvp_pipeline_layout *layout = lvp_pipeline_layout_from_handle(pCreateInfo->layout);
-   if (layout)
-      vk_pipeline_layout_ref(&layout->vk);
 
    if (!layout || !(layout->vk.create_flags & VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT))
       /* this is a regular pipeline with no partials: directly reuse */
@@ -757,7 +755,7 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
          pipeline->layout = layout;
       else {
          /* this is a partial: copy for later merging to avoid modifying another layout */
-         merge_layouts(pipeline, layout);
+         merge_layouts(&device->vk, pipeline, layout);
       }
    }
 
@@ -778,11 +776,14 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
             pipeline->force_min_sample = p->force_min_sample;
          if (p->stages & layout_stages) {
             if (!layout || (layout->vk.create_flags & VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT))
-               merge_layouts(pipeline, p->layout);
+               merge_layouts(&device->vk, pipeline, p->layout);
          }
          pipeline->stages |= p->stages;
       }
    }
+
+   if (pipeline->layout == layout && layout)
+      vk_pipeline_layout_ref(&layout->vk);
 
    result = vk_graphics_pipeline_state_fill(&device->vk,
                                             &pipeline->graphics_state,
