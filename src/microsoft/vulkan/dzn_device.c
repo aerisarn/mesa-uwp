@@ -136,11 +136,10 @@ static const struct debug_control dzn_debug_options[] = {
 };
 
 static void
-dzn_physical_device_destroy(struct dzn_physical_device *pdev)
+dzn_physical_device_destroy(struct vk_physical_device *physical)
 {
+   struct dzn_physical_device *pdev = container_of(physical, struct dzn_physical_device, vk);
    struct dzn_instance *instance = container_of(pdev->vk.instance, struct dzn_instance, vk);
-
-   list_del(&pdev->link);
 
    if (pdev->dev)
       ID3D12Device1_Release(pdev->dev);
@@ -162,15 +161,12 @@ dzn_instance_destroy(struct dzn_instance *instance, const VkAllocationCallbacks 
    if (!instance)
       return;
 
+   vk_instance_finish(&instance->vk);
+
 #ifdef _WIN32
    if (instance->dxil_validator)
       dxil_destroy_validator(instance->dxil_validator);
 #endif
-
-   list_for_each_entry_safe(struct dzn_physical_device, pdev,
-                            &instance->physical_devices, link) {
-      dzn_physical_device_destroy(pdev);
-   }
 
    if (instance->factory)
       ID3D12DeviceFactory_Release(instance->factory);
@@ -178,7 +174,6 @@ dzn_instance_destroy(struct dzn_instance *instance, const VkAllocationCallbacks 
    if (instance->d3d12_mod)
       util_dl_close(instance->d3d12_mod);
 
-   vk_instance_finish(&instance->vk);
    vk_free2(vk_default_allocator(), alloc, instance);
 }
 
@@ -265,102 +260,6 @@ try_create_device_factory(struct util_dl_library *d3d12_mod)
    return factory;
 }
 
-static VkResult
-dzn_instance_create(const VkInstanceCreateInfo *pCreateInfo,
-                    const VkAllocationCallbacks *pAllocator,
-                    VkInstance *out)
-{
-   struct dzn_instance *instance =
-      vk_zalloc2(vk_default_allocator(), pAllocator, sizeof(*instance), 8,
-                 VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
-   if (!instance)
-      return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   struct vk_instance_dispatch_table dispatch_table;
-   vk_instance_dispatch_table_from_entrypoints(&dispatch_table,
-                                               &dzn_instance_entrypoints,
-                                               true);
-   vk_instance_dispatch_table_from_entrypoints(&dispatch_table,
-                                               &wsi_instance_entrypoints,
-                                               false);
-
-   VkResult result =
-      vk_instance_init(&instance->vk, &instance_extensions,
-                       &dispatch_table, pCreateInfo,
-                       pAllocator ? pAllocator : vk_default_allocator());
-   if (result != VK_SUCCESS) {
-      vk_free2(vk_default_allocator(), pAllocator, instance);
-      return result;
-   }
-
-   list_inithead(&instance->physical_devices);
-   instance->physical_devices_enumerated = false;
-   instance->debug_flags =
-      parse_debug_string(getenv("DZN_DEBUG"), dzn_debug_options);
-
-#ifdef _WIN32
-   if (instance->debug_flags & DZN_DEBUG_DEBUGGER) {
-      /* wait for debugger to attach... */
-      while (!IsDebuggerPresent()) {
-         Sleep(100);
-      }
-   }
-
-   if (instance->debug_flags & DZN_DEBUG_REDIRECTS) {
-      char home[MAX_PATH], path[MAX_PATH];
-      if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_PROFILE, NULL, 0, home))) {
-         snprintf(path, sizeof(path), "%s\\stderr.txt", home);
-         freopen(path, "w", stderr);
-         snprintf(path, sizeof(path), "%s\\stdout.txt", home);
-         freopen(path, "w", stdout);
-      }
-   }
-#endif
-
-   bool missing_validator = false;
-#ifdef _WIN32
-   instance->dxil_validator = dxil_create_validator(NULL);
-   missing_validator = !instance->dxil_validator;
-#endif
-
-   if (missing_validator) {
-      dzn_instance_destroy(instance, pAllocator);
-      return vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);
-   }
-
-   instance->d3d12_mod = util_dl_open(UTIL_DL_PREFIX "d3d12" UTIL_DL_EXT);
-   if (!instance->d3d12_mod) {
-      dzn_instance_destroy(instance, pAllocator);
-      return vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);
-   }
-
-   instance->d3d12.serialize_root_sig = d3d12_get_serialize_root_sig(instance->d3d12_mod);
-   if (!instance->d3d12.serialize_root_sig) {
-      dzn_instance_destroy(instance, pAllocator);
-      return vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);
-   }
-
-   instance->factory = try_create_device_factory(instance->d3d12_mod);
-
-   if (instance->debug_flags & DZN_DEBUG_D3D12)
-      d3d12_enable_debug_layer(instance->d3d12_mod, instance->factory);
-   if (instance->debug_flags & DZN_DEBUG_GBV)
-      d3d12_enable_gpu_validation(instance->d3d12_mod, instance->factory);
-
-   instance->sync_binary_type = vk_sync_binary_get_type(&dzn_sync_type);
-
-   *out = dzn_instance_to_handle(instance);
-   return VK_SUCCESS;
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
-dzn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
-                   const VkAllocationCallbacks *pAllocator,
-                   VkInstance *pInstance)
-{
-   return dzn_instance_create(pCreateInfo, pAllocator, pInstance);
-}
-
 VKAPI_ATTR void VKAPI_CALL
 dzn_DestroyInstance(VkInstance instance,
                     const VkAllocationCallbacks *pAllocator)
@@ -414,12 +313,12 @@ const struct vk_pipeline_cache_object_ops *const dzn_pipeline_cache_import_ops[]
 };
 
 static VkResult
-dzn_physical_device_create(struct dzn_instance *instance,
+dzn_physical_device_create(struct vk_instance *instance,
                            IUnknown *adapter,
                            const struct dzn_physical_device_desc *desc)
 {
    struct dzn_physical_device *pdev =
-      vk_zalloc(&instance->vk.alloc, sizeof(*pdev), 8,
+      vk_zalloc(&instance->alloc, sizeof(*pdev), 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
 
    if (!pdev)
@@ -434,11 +333,11 @@ dzn_physical_device_create(struct dzn_instance *instance,
                                                       false);
 
    VkResult result =
-      vk_physical_device_init(&pdev->vk, &instance->vk,
+      vk_physical_device_init(&pdev->vk, instance,
                               NULL, /* We set up extensions later */
                               &dispatch_table);
    if (result != VK_SUCCESS) {
-      vk_free(&instance->vk.alloc, pdev);
+      vk_free(&instance->alloc, pdev);
       return result;
    }
 
@@ -446,13 +345,15 @@ dzn_physical_device_create(struct dzn_instance *instance,
    pdev->desc = *desc;
    pdev->adapter = adapter;
    IUnknown_AddRef(adapter);
-   list_addtail(&pdev->link, &instance->physical_devices);
+   list_addtail(&pdev->vk.link, &instance->physical_devices.list);
 
    vk_warn_non_conformant_implementation("dzn");
 
+   struct dzn_instance *dzn_instance = container_of(instance, struct dzn_instance, vk);
+
    uint32_t num_sync_types = 0;
    pdev->sync_types[num_sync_types++] = &dzn_sync_type;
-   pdev->sync_types[num_sync_types++] = &instance->sync_binary_type.sync;
+   pdev->sync_types[num_sync_types++] = &dzn_instance->sync_binary_type.sync;
    pdev->sync_types[num_sync_types++] = &vk_sync_dummy_type;
    pdev->sync_types[num_sync_types] = NULL;
    assert(num_sync_types <= MAX_SYNC_TYPES);
@@ -464,7 +365,7 @@ dzn_physical_device_create(struct dzn_instance *instance,
 
    result = dzn_wsi_init(pdev);
    if (result != VK_SUCCESS) {
-      dzn_physical_device_destroy(pdev);
+      dzn_physical_device_destroy(&pdev->vk);
       return result;
    }
 
@@ -1149,44 +1050,129 @@ dzn_GetPhysicalDeviceExternalBufferProperties(VkPhysicalDevice physicalDevice,
 }
 
 VkResult
-dzn_instance_add_physical_device(struct dzn_instance *instance,
+dzn_instance_add_physical_device(struct vk_instance *instance,
                                  IUnknown *adapter,
                                  const struct dzn_physical_device_desc *desc)
 {
-   if ((instance->debug_flags & DZN_DEBUG_WARP) &&
+   struct dzn_instance *dzn_instance = container_of(instance, struct dzn_instance, vk);
+   if ((dzn_instance->debug_flags & DZN_DEBUG_WARP) &&
        !desc->is_warp)
       return VK_SUCCESS;
 
    return dzn_physical_device_create(instance, adapter, desc);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-dzn_EnumeratePhysicalDevices(VkInstance inst,
-                             uint32_t *pPhysicalDeviceCount,
-                             VkPhysicalDevice *pPhysicalDevices)
+static VkResult
+dzn_enumerate_physical_devices(struct vk_instance *instance)
 {
-   VK_FROM_HANDLE(dzn_instance, instance, inst);
+   VkResult result = VK_SUCCESS;
 
-   if (!instance->physical_devices_enumerated) {
-      VkResult result = dzn_enumerate_physical_devices_dxcore(instance);
+   mtx_lock(&instance->physical_devices.mutex);
+   if (!instance->physical_devices.enumerated) {
+      result = dzn_enumerate_physical_devices_dxcore(instance);
 #ifdef _WIN32
       if (result != VK_SUCCESS)
          result = dzn_enumerate_physical_devices_dxgi(instance);
 #endif
-      if (result != VK_SUCCESS)
-         return result;
+      if (result == VK_SUCCESS)
+         instance->physical_devices.enumerated = true;
+   }
+   mtx_unlock(&instance->physical_devices.mutex);
+
+   return result;
+}
+
+static VkResult
+dzn_instance_create(const VkInstanceCreateInfo *pCreateInfo,
+                    const VkAllocationCallbacks *pAllocator,
+                    VkInstance *out)
+{
+   struct dzn_instance *instance =
+      vk_zalloc2(vk_default_allocator(), pAllocator, sizeof(*instance), 8,
+                 VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+   if (!instance)
+      return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   struct vk_instance_dispatch_table dispatch_table;
+   vk_instance_dispatch_table_from_entrypoints(&dispatch_table,
+                                               &dzn_instance_entrypoints,
+                                               true);
+
+   VkResult result =
+      vk_instance_init(&instance->vk, &instance_extensions,
+                       &dispatch_table, pCreateInfo,
+                       pAllocator ? pAllocator : vk_default_allocator());
+   if (result != VK_SUCCESS) {
+      vk_free2(vk_default_allocator(), pAllocator, instance);
+      return result;
    }
 
-   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDevice, out, pPhysicalDevices,
-                          pPhysicalDeviceCount);
+   instance->vk.physical_devices.enumerate = dzn_enumerate_physical_devices;
+   instance->vk.physical_devices.destroy = dzn_physical_device_destroy;
+   instance->debug_flags =
+      parse_debug_string(getenv("DZN_DEBUG"), dzn_debug_options);
 
-   list_for_each_entry(struct dzn_physical_device, pdev, &instance->physical_devices, link) {
-      vk_outarray_append_typed(VkPhysicalDevice, &out, i)
-         *i = dzn_physical_device_to_handle(pdev);
+#ifdef _WIN32
+   if (instance->debug_flags & DZN_DEBUG_DEBUGGER) {
+      /* wait for debugger to attach... */
+      while (!IsDebuggerPresent()) {
+         Sleep(100);
+      }
    }
 
-   instance->physical_devices_enumerated = true;
-   return vk_outarray_status(&out);
+   if (instance->debug_flags & DZN_DEBUG_REDIRECTS) {
+      char home[MAX_PATH], path[MAX_PATH];
+      if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_PROFILE, NULL, 0, home))) {
+         snprintf(path, sizeof(path), "%s\\stderr.txt", home);
+         freopen(path, "w", stderr);
+         snprintf(path, sizeof(path), "%s\\stdout.txt", home);
+         freopen(path, "w", stdout);
+      }
+   }
+#endif
+
+   bool missing_validator = false;
+#ifdef _WIN32
+   instance->dxil_validator = dxil_create_validator(NULL);
+   missing_validator = !instance->dxil_validator;
+#endif
+
+   if (missing_validator) {
+      dzn_instance_destroy(instance, pAllocator);
+      return vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);
+   }
+
+   instance->d3d12_mod = util_dl_open(UTIL_DL_PREFIX "d3d12" UTIL_DL_EXT);
+   if (!instance->d3d12_mod) {
+      dzn_instance_destroy(instance, pAllocator);
+      return vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);
+   }
+
+   instance->d3d12.serialize_root_sig = d3d12_get_serialize_root_sig(instance->d3d12_mod);
+   if (!instance->d3d12.serialize_root_sig) {
+      dzn_instance_destroy(instance, pAllocator);
+      return vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);
+   }
+
+   instance->factory = try_create_device_factory(instance->d3d12_mod);
+
+   if (instance->debug_flags & DZN_DEBUG_D3D12)
+      d3d12_enable_debug_layer(instance->d3d12_mod, instance->factory);
+   if (instance->debug_flags & DZN_DEBUG_GBV)
+      d3d12_enable_gpu_validation(instance->d3d12_mod, instance->factory);
+
+   instance->sync_binary_type = vk_sync_binary_get_type(&dzn_sync_type);
+
+   *out = dzn_instance_to_handle(instance);
+   return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+dzn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
+                   const VkAllocationCallbacks *pAllocator,
+                   VkInstance *pInstance)
+{
+   return dzn_instance_create(pCreateInfo, pAllocator, pInstance);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL

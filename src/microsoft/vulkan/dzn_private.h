@@ -179,7 +179,6 @@ dzn_meta_blits_get_context(struct dzn_device *device,
 
 struct dzn_physical_device {
    struct vk_physical_device vk;
-   struct list_head link;
 
    struct vk_device_extension_table supported_extensions;
    struct vk_physical_device_dispatch_table dispatch;
@@ -1123,12 +1122,9 @@ struct dzn_instance {
    struct {
       PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE serialize_root_sig;
    } d3d12;
-   bool physical_devices_enumerated;
    uint32_t debug_flags;
 
    struct vk_sync_binary_type sync_binary_type;
-
-   struct list_head physical_devices;
 };
 
 struct dzn_event {
