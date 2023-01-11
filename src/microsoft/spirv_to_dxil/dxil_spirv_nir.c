@@ -115,12 +115,6 @@ add_runtime_data_var(nir_shader *nir, unsigned desc_set, unsigned binding)
    return var;
 }
 
-struct lower_system_values_data {
-   nir_address_format ubo_format;
-   unsigned desc_set;
-   unsigned binding;
-};
-
 static bool
 lower_shader_system_values(struct nir_builder *builder, nir_instr *instr,
                            void *cb_data)
@@ -136,6 +130,9 @@ lower_shader_system_values(struct nir_builder *builder, nir_instr *instr,
       return false;
 
    assert(intrin->dest.is_ssa);
+
+   const struct dxil_spirv_runtime_conf *conf =
+      (const struct dxil_spirv_runtime_conf *)cb_data;
 
    int offset = 0;
    switch (intrin->intrinsic) {
@@ -160,17 +157,15 @@ lower_shader_system_values(struct nir_builder *builder, nir_instr *instr,
       return false;
    }
 
-   struct lower_system_values_data *data =
-      (struct lower_system_values_data *)cb_data;
-
    builder->cursor = nir_after_instr(instr);
-   nir_address_format ubo_format = data->ubo_format;
+   nir_address_format ubo_format = nir_address_format_32bit_index_offset;
 
    nir_ssa_def *index = nir_vulkan_resource_index(
       builder, nir_address_format_num_components(ubo_format),
       nir_address_format_bit_size(ubo_format),
       nir_imm_int(builder, 0),
-      .desc_set = data->desc_set, .binding = data->binding,
+      .desc_set = conf->runtime_data_cbv.register_space,
+      .binding = conf->runtime_data_cbv.base_shader_register,
       .desc_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
    nir_ssa_def *load_desc = nir_load_vulkan_descriptor(
@@ -190,19 +185,13 @@ lower_shader_system_values(struct nir_builder *builder, nir_instr *instr,
 
 static bool
 dxil_spirv_nir_lower_shader_system_values(nir_shader *shader,
-                                          nir_address_format ubo_format,
-                                          unsigned desc_set, unsigned binding)
+                                          const struct dxil_spirv_runtime_conf *conf)
 {
-   struct lower_system_values_data data = {
-      .ubo_format = ubo_format,
-      .desc_set = desc_set,
-      .binding = binding,
-   };
    return nir_shader_instructions_pass(shader, lower_shader_system_values,
                                        nir_metadata_block_index |
                                           nir_metadata_dominance |
                                           nir_metadata_loop_analysis,
-                                       &data);
+                                       (void *)conf);
 }
 
 static nir_variable *
@@ -820,9 +809,7 @@ dxil_spirv_nir_passes(nir_shader *nir,
    *requires_runtime_data = false;
    NIR_PASS(*requires_runtime_data, nir,
             dxil_spirv_nir_lower_shader_system_values,
-            nir_address_format_32bit_index_offset,
-            conf->runtime_data_cbv.register_space,
-            conf->runtime_data_cbv.base_shader_register);
+            conf);
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       NIR_PASS_V(nir, nir_lower_input_attachments,
