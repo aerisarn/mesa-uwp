@@ -250,6 +250,7 @@ dzn_pipeline_get_nir_shader(struct dzn_device *device,
          .base_shader_register = 0,
       },
       .zero_based_vertex_instance_id = false,
+      .zero_based_compute_workgroup_id = false,
       .yz_flip = {
          .mode = options->yz_flip_mode,
          .y_mask = options->y_flip_mask,

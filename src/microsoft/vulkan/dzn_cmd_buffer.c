@@ -4080,16 +4080,22 @@ dzn_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-dzn_CmdDispatch(VkCommandBuffer commandBuffer,
-                uint32_t groupCountX,
-                uint32_t groupCountY,
-                uint32_t groupCountZ)
+dzn_CmdDispatchBase(VkCommandBuffer commandBuffer,
+                    uint32_t baseGroupX,
+                    uint32_t baseGroupY,
+                    uint32_t baseGroupZ,
+                    uint32_t groupCountX,
+                    uint32_t groupCountY,
+                    uint32_t groupCountZ)
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
 
    cmdbuf->state.sysvals.compute.group_count_x = groupCountX;
    cmdbuf->state.sysvals.compute.group_count_y = groupCountY;
    cmdbuf->state.sysvals.compute.group_count_z = groupCountZ;
+   cmdbuf->state.sysvals.compute.base_group_x = baseGroupX;
+   cmdbuf->state.sysvals.compute.base_group_y = baseGroupY;
+   cmdbuf->state.sysvals.compute.base_group_z = baseGroupZ;
    cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_COMPUTE].dirty |=
       DZN_CMD_BINDPOINT_DIRTY_SYSVALS;
 
@@ -5359,6 +5365,9 @@ dzn_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
    cmdbuf->state.sysvals.compute.group_count_x = 0;
    cmdbuf->state.sysvals.compute.group_count_y = 0;
    cmdbuf->state.sysvals.compute.group_count_z = 0;
+   cmdbuf->state.sysvals.compute.base_group_x = 0;
+   cmdbuf->state.sysvals.compute.base_group_y = 0;
+   cmdbuf->state.sysvals.compute.base_group_z = 0;
    cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_COMPUTE].dirty |=
       DZN_CMD_BINDPOINT_DIRTY_SYSVALS;
 
