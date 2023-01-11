@@ -567,8 +567,7 @@ si_llvm_init_export_args(struct radv_shader_context *ctx, LLVMValueRef *values,
          (ctx->options->key.ps.epilog.spi_shader_col_format >> (4 * index)) & 0xf;
       bool is_int8 = (ctx->options->key.ps.epilog.color_is_int8 >> index) & 1;
       bool is_int10 = (ctx->options->key.ps.epilog.color_is_int10 >> index) & 1;
-      bool enable_mrt_output_nan_fixup =
-         (ctx->options->key.ps.epilog.enable_mrt_output_nan_fixup >> index) & 1;
+      bool enable_mrt_output_nan_fixup = (ctx->options->enable_mrt_output_nan_fixup >> index) & 1;
 
       LLVMValueRef (*packf)(struct ac_llvm_context * ctx, LLVMValueRef args[2]) = NULL;
       LLVMValueRef (*packi)(struct ac_llvm_context * ctx, LLVMValueRef args[2], unsigned bits,
