@@ -51,7 +51,6 @@ protected:
       .prog_data = prog_data,
      }
    {
-      brw_process_intel_debug_variable();
    }
 
    ~SIMDSelectionTest() {

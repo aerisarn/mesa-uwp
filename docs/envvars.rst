@@ -549,43 +549,6 @@ Intel driver environment variables
    overrode shader with sha1 <SHA-1>" in stderr replacing the original
    assembly.
 
-.. envvar:: INTEL_SIMD_DEBUG
-
-   a comma-separated list of named flags, which control simd dispatch widths:
-
-   ``fs8``
-      allow generation of SIMD8 fragment shader
-   ``fs16``
-      allow generation of SIMD16 fragment shader
-   ``fs32``
-      allow generation of SIMD32 fragment shader
-   ``cs8``
-      allow generation of SIMD8 compute shader
-   ``cs16``
-      allow generation of SIMD16 compute shader
-   ``cs32``
-      allow generation of SIMD32 compute shader
-   ``ts8``
-      allow generation of SIMD8 task shader
-   ``ts16``
-      allow generation of SIMD16 task shader
-   ``ts32``
-      allow generation of SIMD32 task shader
-   ``ms8``
-      allow generation of SIMD8 mesh shader
-   ``ms16``
-      allow generation of SIMD16 mesh shader
-   ``ms32``
-      allow generation of SIMD32 mesh shader
-   ``rt8``
-      allow generation of SIMD8 ray-tracing shader
-   ``rt16``
-      allow generation of SIMD16 ray-tracing shader
-   ``rt32``
-      allow generation of SIMD32 ray-tracing shader
-
-   If none of widths for particular shader stage was specified, then all
-   widths are allowed.
 
 DRI environment variables
 -------------------------

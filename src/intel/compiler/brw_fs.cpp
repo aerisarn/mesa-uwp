@@ -7551,7 +7551,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
    if (!v8->run_fs(allow_spilling, false /* do_rep_send */)) {
       params->error_str = ralloc_strdup(mem_ctx, v8->fail_msg);
       return NULL;
-   } else if (INTEL_SIMD(FS, 8)) {
+   } else if (!INTEL_DEBUG(DEBUG_NO8)) {
       simd8_cfg = v8->cfg;
       prog_data->base.dispatch_grf_start_reg = v8->payload().num_regs;
       prog_data->reg_blocks_8 = brw_register_blocks(v8->grf_used);
@@ -7565,7 +7565,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
     * See: https://gitlab.freedesktop.org/mesa/mesa/-/issues/1917
     */
    if (devinfo->ver == 8 && prog_data->dual_src_blend &&
-       INTEL_SIMD(FS, 8)) {
+       !INTEL_DEBUG(DEBUG_NO8)) {
       assert(!params->use_rep_send);
       v8->limit_dispatch_width(8, "gfx8 workaround: "
                                "using SIMD8 when dual src blending.\n");
@@ -7585,7 +7585,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
 
    if (!has_spilled &&
        v8->max_dispatch_width >= 16 &&
-       (INTEL_SIMD(FS, 16) || params->use_rep_send)) {
+       (!INTEL_DEBUG(DEBUG_NO16) || params->use_rep_send)) {
       /* Try a SIMD16 compile */
       v16 = std::make_unique<fs_visitor>(compiler, params->log_data, mem_ctx, &key->base,
                                          &prog_data->base, nir, 16,
@@ -7612,7 +7612,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
    if (!has_spilled &&
        v8->max_dispatch_width >= 32 && !params->use_rep_send &&
        devinfo->ver >= 6 && !simd16_failed &&
-       INTEL_SIMD(FS, 32)) {
+       !INTEL_DEBUG(DEBUG_NO32)) {
       /* Try a SIMD32 compile */
       v32 = std::make_unique<fs_visitor>(compiler, params->log_data, mem_ctx, &key->base,
                                          &prog_data->base, nir, 32,
