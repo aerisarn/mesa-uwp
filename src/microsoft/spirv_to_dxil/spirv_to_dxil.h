@@ -114,6 +114,7 @@ struct dxil_spirv_vertex_runtime_data {
    uint32_t draw_id;
    float viewport_width;
    float viewport_height;
+   uint32_t view_index;
 };
 
 enum dxil_spirv_yz_flip_mode {
@@ -161,6 +162,11 @@ struct dxil_spirv_runtime_conf {
 
    // Force sample rate shading on a fragment shader
    bool force_sample_rate_shading;
+
+   // View index needs to be lowered to a UBO lookup
+   bool lower_view_index;
+   // View index also needs to be forwarded to RT layer output
+   bool lower_view_index_to_rt_layer;
 };
 
 struct dxil_spirv_debug_options {

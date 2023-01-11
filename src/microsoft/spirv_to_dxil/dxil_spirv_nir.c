@@ -153,6 +153,11 @@ lower_shader_system_values(struct nir_builder *builder, nir_instr *instr,
    case nir_intrinsic_load_draw_id:
       offset = offsetof(struct dxil_spirv_vertex_runtime_data, draw_id);
       break;
+   case nir_intrinsic_load_view_index:
+      if (!conf->lower_view_index)
+         return false;
+      offset = offsetof(struct dxil_spirv_vertex_runtime_data, view_index);
+      break;
    default:
       return false;
    }
@@ -733,6 +738,78 @@ dxil_spirv_compute_pntc(nir_shader *nir)
                                 pos);
 }
 
+static bool
+lower_view_index_to_rt_layer_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_store_deref)
+      return false;
+
+   nir_variable *var = nir_intrinsic_get_var(intr, 0);
+   if (!var ||
+       var->data.mode != nir_var_shader_out ||
+       var->data.location != VARYING_SLOT_LAYER)
+      return false;
+
+   b->cursor = nir_before_instr(instr);
+   nir_ssa_def *layer = intr->src[1].ssa;
+   nir_ssa_def *new_layer = nir_iadd(b, layer,
+                                     nir_load_view_index(b));
+   nir_instr_rewrite_src_ssa(instr, &intr->src[1], new_layer);
+   return true;
+}
+
+static bool
+add_layer_write(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr) {
+      if (instr->type != nir_instr_type_intrinsic)
+         return false;
+      nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+      if (intr->intrinsic != nir_intrinsic_emit_vertex &&
+          intr->intrinsic != nir_intrinsic_emit_vertex_with_counter)
+         return false;
+      b->cursor = nir_before_instr(instr);
+   }
+   nir_variable *var = (nir_variable *)data;
+   nir_store_var(b, var, nir_load_view_index(b), 0x1);
+   return true;
+}
+
+static void
+lower_view_index_to_rt_layer(nir_shader *nir)
+{
+   bool existing_write =
+      nir_shader_instructions_pass(nir,
+                                   lower_view_index_to_rt_layer_instr,
+                                   nir_metadata_block_index |
+                                   nir_metadata_dominance |
+                                   nir_metadata_loop_analysis, NULL);
+
+   if (existing_write)
+      return;
+
+   nir_variable *var = nir_variable_create(nir, nir_var_shader_out,
+                                           glsl_uint_type(), "gl_Layer");
+   var->data.location = VARYING_SLOT_LAYER;
+   var->data.interpolation = INTERP_MODE_FLAT;
+   if (nir->info.stage == MESA_SHADER_GEOMETRY) {
+      nir_shader_instructions_pass(nir,
+                                   add_layer_write,
+                                   nir_metadata_block_index |
+                                   nir_metadata_dominance |
+                                   nir_metadata_loop_analysis, var);
+   } else {
+      nir_function_impl *func = nir_shader_get_entrypoint(nir);
+      nir_builder b;
+      nir_builder_init(&b, func);
+      b.cursor = nir_after_block(nir_impl_last_block(func));
+      add_layer_write(&b, NULL, var);
+   }
+}
+
 void
 dxil_spirv_nir_link(nir_shader *nir, nir_shader *prev_stage_nir,
                     const struct dxil_spirv_runtime_conf *conf,
@@ -806,6 +883,9 @@ dxil_spirv_nir_passes(nir_shader *nir,
                  ARRAY_SIZE(system_values));
    }
 
+   if (conf->lower_view_index_to_rt_layer)
+      NIR_PASS_V(nir, lower_view_index_to_rt_layer);
+
    *requires_runtime_data = false;
    NIR_PASS(*requires_runtime_data, nir,
             dxil_spirv_nir_lower_shader_system_values,
@@ -815,7 +895,8 @@ dxil_spirv_nir_passes(nir_shader *nir,
       NIR_PASS_V(nir, nir_lower_input_attachments,
                  &(nir_input_attachment_options){
                      .use_fragcoord_sysval = false,
-                     .use_layer_id_sysval = true,
+                     .use_layer_id_sysval = !conf->lower_view_index,
+                     .use_view_id_for_layer = !conf->lower_view_index,
                  });
 
       /* This will lower load_helper to a memoized is_helper if needed; otherwise, load_helper
