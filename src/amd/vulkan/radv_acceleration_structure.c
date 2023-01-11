@@ -78,6 +78,7 @@ enum internal_build_type {
 
 struct build_config {
    enum internal_build_type internal_type;
+   bool extended_sah;
 };
 
 struct acceleration_structure_layout {
@@ -115,6 +116,11 @@ build_config(uint32_t leaf_count, const VkAccelerationStructureBuildGeometryInfo
       config.internal_type = INTERNAL_BUILD_TYPE_PLOC;
    else
       config.internal_type = INTERNAL_BUILD_TYPE_LBVH;
+
+   /* 4^(lds stack entry count) assuming we push 1 node on average. */
+   uint32_t lds_spill_threshold = 1 << (8 * 2);
+   if (leaf_count < lds_spill_threshold)
+      config.extended_sah = true;
 
    return config;
 }
@@ -888,14 +894,18 @@ lbvh_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
 static void
 ploc_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
                     const VkAccelerationStructureBuildGeometryInfoKHR *pInfos,
-                    struct bvh_state *bvh_states)
+                    struct bvh_state *bvh_states, bool extended_sah)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-   radv_CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-                        cmd_buffer->device->meta_state.accel_struct_build.ploc_pipeline);
+   radv_CmdBindPipeline(
+      commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+      extended_sah ? cmd_buffer->device->meta_state.accel_struct_build.ploc_extended_pipeline
+                   : cmd_buffer->device->meta_state.accel_struct_build.ploc_pipeline);
 
    for (uint32_t i = 0; i < infoCount; ++i) {
       if (bvh_states[i].config.internal_type != INTERNAL_BUILD_TYPE_PLOC)
+         continue;
+      if (bvh_states[i].config.extended_sah != extended_sah)
          continue;
 
       struct radv_global_sync_data initial_sync_data = {
@@ -1065,7 +1075,9 @@ radv_CmdBuildAccelerationStructuresKHR(
    cmd_buffer->state.flush_bits |= flush_bits;
 
    lbvh_build_internal(commandBuffer, infoCount, pInfos, bvh_states, flush_bits);
-   ploc_build_internal(commandBuffer, infoCount, pInfos, bvh_states);
+
+   ploc_build_internal(commandBuffer, infoCount, pInfos, bvh_states, false);
+   ploc_build_internal(commandBuffer, infoCount, pInfos, bvh_states, true);
 
    cmd_buffer->state.flush_bits |= flush_bits;
 
