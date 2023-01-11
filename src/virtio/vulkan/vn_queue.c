@@ -48,14 +48,14 @@ vn_semaphore_wait_external(struct vn_device *dev, struct vn_semaphore *sem);
 
 struct vn_queue_submission {
    VkStructureType batch_type;
-   VkQueue queue;
+   VkQueue queue_handle;
    uint32_t batch_count;
    union {
       const void *batches;
       const VkSubmitInfo *submit_batches;
       const VkSubmitInfo2 *submit_batches2;
    };
-   VkFence fence;
+   VkFence fence_handle;
 
    bool synchronous;
    bool has_feedback_fence;
@@ -145,14 +145,14 @@ vn_queue_submission_fix_batch_semaphores(struct vn_queue_submission *submit,
    uint32_t signal_count = vn_get_signal_semaphore_count(submit, batch_index);
 
    for (uint32_t i = 0; i < wait_count; i++) {
-      VkSemaphore semaphore = vn_get_wait_semaphore(submit, batch_index, i);
-      struct vn_semaphore *sem = vn_semaphore_from_handle(semaphore);
+      VkSemaphore sem_handle = vn_get_wait_semaphore(submit, batch_index, i);
+      struct vn_semaphore *sem = vn_semaphore_from_handle(sem_handle);
       const struct vn_sync_payload *payload = sem->payload;
 
       if (payload->type != VN_SYNC_TYPE_IMPORTED_SYNC_FD)
          continue;
 
-      struct vn_queue *queue = vn_queue_from_handle(submit->queue);
+      struct vn_queue *queue = vn_queue_from_handle(submit->queue_handle);
       struct vn_device *dev = queue->device;
       if (!vn_semaphore_wait_external(dev, sem))
          return VK_ERROR_DEVICE_LOST;
@@ -163,7 +163,7 @@ vn_queue_submission_fix_batch_semaphores(struct vn_queue_submission *submit,
       const VkImportSemaphoreResourceInfo100000MESA res_info = {
          .sType =
             VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_RESOURCE_INFO_100000_MESA,
-         .semaphore = semaphore,
+         .semaphore = sem_handle,
          .resourceId = 0,
       };
       vn_async_vkImportSemaphoreResource100000MESA(
@@ -184,7 +184,7 @@ vn_queue_submission_fix_batch_semaphores(struct vn_queue_submission *submit,
 static VkResult
 vn_queue_submission_prepare(struct vn_queue_submission *submit)
 {
-   struct vn_fence *fence = vn_fence_from_handle(submit->fence);
+   struct vn_fence *fence = vn_fence_from_handle(submit->fence_handle);
    const bool has_external_fence = fence && fence->is_external;
 
    submit->has_feedback_fence = fence && fence->feedback.slot;
@@ -238,8 +238,8 @@ vn_get_fence_feedback_cmd(struct vn_queue *queue, struct vn_fence *fence)
 static VkResult
 vn_queue_submission_add_fence_feedback(struct vn_queue_submission *submit)
 {
-   struct vn_fence *fence = vn_fence_from_handle(submit->fence);
-   struct vn_queue *queue = vn_queue_from_handle(submit->queue);
+   struct vn_fence *fence = vn_fence_from_handle(submit->fence_handle);
+   struct vn_queue *queue = vn_queue_from_handle(submit->queue_handle);
    const VkAllocationCallbacks *alloc = &queue->device->base.base.alloc;
    size_t batch_size = 0;
 
@@ -334,8 +334,7 @@ vn_queue_submission_prepare_submit(struct vn_queue_submission *submit)
 static void
 vn_queue_wsi_present(struct vn_queue_submission *submit)
 {
-   VkQueue queue_h = submit->queue;
-   struct vn_queue *queue = vn_queue_from_handle(queue_h);
+   struct vn_queue *queue = vn_queue_from_handle(submit->queue_handle);
    struct vn_device *dev = queue->device;
    struct vn_instance *instance = queue->device->instance;
 
@@ -361,14 +360,14 @@ vn_queue_wsi_present(struct vn_queue_submission *submit)
             vn_log(instance, "forcing vkQueueWaitIdle before presenting");
       }
 
-      vn_QueueWaitIdle(queue_h);
+      vn_QueueWaitIdle(submit->queue_handle);
    }
 }
 
 static void
 vn_queue_submission_cleanup(struct vn_queue_submission *submit)
 {
-   struct vn_queue *queue = vn_queue_from_handle(submit->queue);
+   struct vn_queue *queue = vn_queue_from_handle(submit->queue_handle);
    const VkAllocationCallbacks *alloc = &queue->device->base.base.alloc;
 
    if (submit->has_feedback_fence)
@@ -378,7 +377,7 @@ vn_queue_submission_cleanup(struct vn_queue_submission *submit)
 static VkResult
 vn_queue_submit(struct vn_queue_submission *submit)
 {
-   struct vn_queue *queue = vn_queue_from_handle(submit->queue);
+   struct vn_queue *queue = vn_queue_from_handle(submit->queue_handle);
    struct vn_device *dev = queue->device;
    struct vn_instance *instance = dev->instance;
    VkResult result;
@@ -388,18 +387,18 @@ vn_queue_submit(struct vn_queue_submission *submit)
       return vn_error(dev->instance, result);
 
    /* skip no-op submit */
-   if (!submit->batch_count && submit->fence == VK_NULL_HANDLE)
+   if (!submit->batch_count && submit->fence_handle == VK_NULL_HANDLE)
       return VK_SUCCESS;
 
    if (submit->synchronous || VN_PERF(NO_ASYNC_QUEUE_SUBMIT)) {
       if (submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO_2) {
          result = vn_call_vkQueueSubmit2(
-            instance, submit->queue, submit->batch_count,
-            submit->submit_batches2, submit->fence);
+            instance, submit->queue_handle, submit->batch_count,
+            submit->submit_batches2, submit->fence_handle);
       } else {
          result = vn_call_vkQueueSubmit(
-            instance, submit->queue, submit->batch_count,
-            submit->submit_batches, submit->fence);
+            instance, submit->queue_handle, submit->batch_count,
+            submit->submit_batches, submit->fence_handle);
       }
 
       if (result != VK_SUCCESS) {
@@ -408,11 +407,13 @@ vn_queue_submit(struct vn_queue_submission *submit)
       }
    } else {
       if (submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO_2) {
-         vn_async_vkQueueSubmit2(instance, submit->queue, submit->batch_count,
-                                 submit->submit_batches2, submit->fence);
+         vn_async_vkQueueSubmit2(instance, submit->queue_handle,
+                                 submit->batch_count, submit->submit_batches2,
+                                 submit->fence_handle);
       } else {
-         vn_async_vkQueueSubmit(instance, submit->queue, submit->batch_count,
-                                submit->submit_batches, submit->fence);
+         vn_async_vkQueueSubmit(instance, submit->queue_handle,
+                                submit->batch_count, submit->submit_batches,
+                                submit->fence_handle);
       }
    }
 
@@ -422,7 +423,7 @@ vn_queue_submit(struct vn_queue_submission *submit)
     * Imported syncs don't need a proxy renderer sync on subsequent export,
     * because an fd is already available.
     */
-   struct vn_fence *fence = vn_fence_from_handle(submit->fence);
+   struct vn_fence *fence = vn_fence_from_handle(submit->fence_handle);
    if (fence && fence->is_external &&
        fence->payload->type == VN_SYNC_TYPE_DEVICE_ONLY)
       fence->ring_idx = queue->ring_idx;
@@ -448,45 +449,45 @@ vn_queue_submit(struct vn_queue_submission *submit)
 }
 
 VkResult
-vn_QueueSubmit(VkQueue queue_h,
+vn_QueueSubmit(VkQueue queue,
                uint32_t submitCount,
                const VkSubmitInfo *pSubmits,
-               VkFence fence_h)
+               VkFence fence)
 {
    VN_TRACE_FUNC();
 
    struct vn_queue_submission submit = {
       .batch_type = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-      .queue = queue_h,
+      .queue_handle = queue,
       .batch_count = submitCount,
       .submit_batches = pSubmits,
-      .fence = fence_h,
+      .fence_handle = fence,
    };
 
    return vn_queue_submit(&submit);
 }
 
 VkResult
-vn_QueueSubmit2(VkQueue queue_h,
+vn_QueueSubmit2(VkQueue queue,
                 uint32_t submitCount,
                 const VkSubmitInfo2 *pSubmits,
-                VkFence fence_h)
+                VkFence fence)
 {
    VN_TRACE_FUNC();
 
    struct vn_queue_submission submit = {
       .batch_type = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-      .queue = queue_h,
+      .queue_handle = queue,
       .batch_count = submitCount,
       .submit_batches2 = pSubmits,
-      .fence = fence_h,
+      .fence_handle = fence,
    };
 
    return vn_queue_submit(&submit);
 }
 
 VkResult
-vn_QueueBindSparse(UNUSED VkQueue _queue,
+vn_QueueBindSparse(UNUSED VkQueue queue,
                    UNUSED uint32_t bindInfoCount,
                    UNUSED const VkBindSparseInfo *pBindInfo,
                    UNUSED VkFence fence)
