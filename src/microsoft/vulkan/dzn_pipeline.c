@@ -191,6 +191,8 @@ struct dzn_nir_options {
    enum dxil_spirv_yz_flip_mode yz_flip_mode;
    uint16_t y_flip_mask, z_flip_mask;
    bool force_sample_rate_shading;
+   bool lower_view_index;
+   bool lower_view_index_to_rt_layer;
    enum pipe_format *vi_conversions;
    const nir_shader_compiler_options *nir_opts;
 };
@@ -216,6 +218,7 @@ dzn_pipeline_get_nir_shader(struct dzn_device *device,
    struct spirv_to_nir_options spirv_opts = {
       .caps = {
          .draw_parameters = true,
+         .multiview = true,
       },
       .ubo_addr_format = nir_address_format_32bit_index_offset,
       .ssbo_addr_format = nir_address_format_32bit_index_offset,
@@ -253,6 +256,8 @@ dzn_pipeline_get_nir_shader(struct dzn_device *device,
       },
       .read_only_images_as_srvs = true,
       .force_sample_rate_shading = options->force_sample_rate_shading,
+      .lower_view_index = options->lower_view_index,
+      .lower_view_index_to_rt_layer = options->lower_view_index_to_rt_layer,
    };
 
    bool requires_runtime_data;
@@ -735,6 +740,9 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
 
    enum dxil_spirv_yz_flip_mode yz_flip_mode = DXIL_SPIRV_YZ_FLIP_NONE;
    uint16_t y_flip_mask = 0, z_flip_mask = 0;
+   bool lower_view_index =
+      !pipeline->multiview.native_view_instancing &&
+      pipeline->multiview.view_mask > 1;
 
    if (pipeline->vp.dynamic) {
       yz_flip_mode = DXIL_SPIRV_YZ_FLIP_CONDITIONAL;
@@ -771,6 +779,7 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       _mesa_sha1_update(&pipeline_hash_ctx, &y_flip_mask, sizeof(y_flip_mask));
       _mesa_sha1_update(&pipeline_hash_ctx, &z_flip_mask, sizeof(z_flip_mask));
       _mesa_sha1_update(&pipeline_hash_ctx, &force_sample_rate_shading, sizeof(force_sample_rate_shading));
+      _mesa_sha1_update(&pipeline_hash_ctx, &lower_view_index, sizeof(lower_view_index));
 
       u_foreach_bit(stage, active_stage_mask) {
          vk_pipeline_hash_shader_stage(stages[stage].info, NULL, stages[stage].spirv_hash);
@@ -798,12 +807,15 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
 
       if (cache) {
          _mesa_sha1_init(&nir_hash_ctx);
+         if (stage != MESA_SHADER_FRAGMENT)
+            _mesa_sha1_update(&nir_hash_ctx, &lower_view_index, sizeof(lower_view_index));
          if (stage == MESA_SHADER_VERTEX)
             _mesa_sha1_update(&nir_hash_ctx, attribs_hash, sizeof(attribs_hash));
          if (stage == last_raster_stage) {
             _mesa_sha1_update(&nir_hash_ctx, &yz_flip_mode, sizeof(yz_flip_mode));
             _mesa_sha1_update(&nir_hash_ctx, &y_flip_mask, sizeof(y_flip_mask));
             _mesa_sha1_update(&nir_hash_ctx, &z_flip_mask, sizeof(z_flip_mask));
+            _mesa_sha1_update(&nir_hash_ctx, &lower_view_index, sizeof(lower_view_index));
          }
          _mesa_sha1_update(&nir_hash_ctx, stages[stage].spirv_hash, sizeof(stages[stage].spirv_hash));
          _mesa_sha1_final(&nir_hash_ctx, nir_hash);
@@ -814,9 +826,12 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
          .y_flip_mask = y_flip_mask,
          .z_flip_mask = z_flip_mask,
          .force_sample_rate_shading = stage == MESA_SHADER_FRAGMENT ? force_sample_rate_shading : false,
+         .lower_view_index = lower_view_index,
+         .lower_view_index_to_rt_layer = stage == last_raster_stage ? lower_view_index : false,
          .vi_conversions = vi_conversions,
          .nir_opts = &nir_opts
       };
+
       ret = dzn_pipeline_get_nir_shader(device, layout,
                                         cache, nir_hash,
                                         stages[stage].info, stage,
@@ -1689,6 +1704,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
    VkFormat zs_fmt = VK_FORMAT_UNDEFINED;
    VkResult ret;
    HRESULT hres = 0;
+   D3D12_VIEW_INSTANCE_LOCATION vi_locs[D3D12_MAX_VIEW_INSTANCE_COUNT];
 
    struct dzn_graphics_pipeline *pipeline =
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*pipeline), 8,
@@ -1757,6 +1773,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
    dzn_graphics_pipeline_translate_zsa(device, pipeline, stream_desc, pCreateInfo);
    dzn_graphics_pipeline_translate_blend(pipeline, stream_desc, pCreateInfo);
 
+   unsigned view_mask = 0;
    if (pass) {
       const struct vk_subpass *subpass = &pass->subpasses[pCreateInfo->subpass];
       color_count = subpass->color_count;
@@ -1778,6 +1795,8 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
 
          zs_fmt = attachment->format;
       }
+
+      view_mask = subpass->view_mask;
    } else if (ri) {
       color_count = ri->colorAttachmentCount;
       memcpy(color_fmts, ri->pColorAttachmentFormats,
@@ -1786,6 +1805,8 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
          zs_fmt = ri->depthAttachmentFormat;
       else if (ri->stencilAttachmentFormat != VK_FORMAT_UNDEFINED)
          zs_fmt = ri->stencilAttachmentFormat;
+
+      view_mask = ri->viewMask;
    }
 
    if (color_count > 0) {
@@ -1806,6 +1827,23 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
                                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                                    VK_IMAGE_ASPECT_DEPTH_BIT |
                                    VK_IMAGE_ASPECT_STENCIL_BIT);
+   }
+
+   pipeline->multiview.view_mask = MAX2(view_mask, 1);
+   if (view_mask != 0 && /* Is multiview */
+       view_mask != 1 && /* Is non-trivially multiview */
+       (view_mask & ~((1 << D3D12_MAX_VIEW_INSTANCE_COUNT) - 1)) == 0 && /* Uses only views 0 thru 3 */
+       pdev->options3.ViewInstancingTier > D3D12_VIEW_INSTANCING_TIER_NOT_SUPPORTED /* Actually supported */) {
+      d3d12_gfx_pipeline_state_stream_new_desc(stream_desc, VIEW_INSTANCING, D3D12_VIEW_INSTANCING_DESC, vi);
+      vi->pViewInstanceLocations = vi_locs;
+      for (uint32_t i = 0; i < D3D12_MAX_VIEW_INSTANCE_COUNT; ++i) {
+         vi_locs[i].RenderTargetArrayIndex = i;
+         vi_locs[i].ViewportArrayIndex = 0;
+         if (view_mask & (1 << i))
+            vi->ViewInstanceCount = i + 1;
+      }
+      vi->Flags = D3D12_VIEW_INSTANCING_FLAG_ENABLE_VIEW_INSTANCE_MASKING;
+      pipeline->multiview.native_view_instancing = true;
    }
 
    ret = dzn_graphics_pipeline_compile_shaders(device, pipeline, pcache,

@@ -868,6 +868,11 @@ struct dzn_graphics_pipeline {
    bool rast_disabled_from_missing_position;
 
    struct {
+      uint32_t view_mask;
+      bool native_view_instancing;
+   } multiview;
+
+   struct {
       uintptr_t stream_buf[MAX_GFX_PIPELINE_STATE_STREAM_SIZE / sizeof(uintptr_t)];
       D3D12_PIPELINE_STATE_STREAM_DESC stream_desc;
       struct {
