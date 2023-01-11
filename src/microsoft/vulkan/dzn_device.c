@@ -1381,7 +1381,7 @@ dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .synchronization2                   = true,
       .textureCompressionASTC_HDR         = false,
       .shaderZeroInitializeWorkgroupMemory = false,
-      .dynamicRendering                   = false,
+      .dynamicRendering                   = true,
       .shaderIntegerDotProduct            = false,
       .maintenance4                       = false,
    };
