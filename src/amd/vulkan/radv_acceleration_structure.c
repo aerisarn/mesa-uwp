@@ -34,35 +34,35 @@
 #include "vk_common_entrypoints.h"
 
 static const uint32_t leaf_spv[] = {
-#include "bvh/leaf.comp.spv.h"
+#include "bvh/leaf.spv.h"
 };
 
 static const uint32_t morton_spv[] = {
-#include "bvh/morton.comp.spv.h"
+#include "bvh/morton.spv.h"
 };
 
 static const uint32_t lbvh_main_spv[] = {
-#include "bvh/lbvh_main.comp.spv.h"
+#include "bvh/lbvh_main.spv.h"
 };
 
 static const uint32_t lbvh_generate_ir_spv[] = {
-#include "bvh/lbvh_generate_ir.comp.spv.h"
+#include "bvh/lbvh_generate_ir.spv.h"
 };
 
 static const uint32_t ploc_spv[] = {
-#include "bvh/ploc_internal.comp.spv.h"
+#include "bvh/ploc_internal.spv.h"
 };
 
 static const uint32_t copy_spv[] = {
-#include "bvh/copy.comp.spv.h"
+#include "bvh/copy.spv.h"
 };
 
 static const uint32_t convert_leaf_spv[] = {
-#include "bvh/converter_leaf.comp.spv.h"
+#include "bvh/converter_leaf.spv.h"
 };
 
 static const uint32_t convert_internal_spv[] = {
-#include "bvh/converter_internal.comp.spv.h"
+#include "bvh/converter_internal.spv.h"
 };
 
 #define KEY_ID_PAIR_SIZE 8
