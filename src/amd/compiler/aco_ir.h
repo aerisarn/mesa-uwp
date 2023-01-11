@@ -1013,12 +1013,13 @@ struct FLAT_instruction;
 struct Pseudo_branch_instruction;
 struct Pseudo_barrier_instruction;
 struct Pseudo_reduction_instruction;
-struct VOP3P_instruction;
+struct VALU_instruction;
+typedef VALU_instruction VOP3P_instruction;
 struct VINTERP_inreg_instruction;
-struct VOP1_instruction;
-struct VOP2_instruction;
-struct VOPC_instruction;
-struct VOP3_instruction;
+typedef VALU_instruction VOP1_instruction;
+typedef VALU_instruction VOP2_instruction;
+typedef VALU_instruction VOPC_instruction;
+typedef VALU_instruction VOP3_instruction;
 struct VINTRP_instruction;
 struct DPP16_instruction;
 struct DPP8_instruction;
@@ -1370,6 +1371,16 @@ struct Instruction {
 
    constexpr bool isFlatLike() const noexcept { return isFlat() || isGlobal() || isScratch(); }
 
+   VALU_instruction& valu() noexcept
+   {
+      assert(isVALU());
+      return *(VALU_instruction*)this;
+   }
+   const VALU_instruction& valu() const noexcept
+   {
+      assert(isVALU());
+      return *(VALU_instruction*)this;
+   }
    constexpr bool isVALU() const noexcept
    {
       return isVOP1() || isVOP2() || isVOPC() || isVOP3() || isVOP3P() || isVINTERP_INREG();
@@ -1433,44 +1444,33 @@ struct SMEM_instruction : public Instruction {
 };
 static_assert(sizeof(SMEM_instruction) == sizeof(Instruction) + 4, "Unexpected padding");
 
-struct VOP1_instruction : public Instruction {};
-static_assert(sizeof(VOP1_instruction) == sizeof(Instruction) + 0, "Unexpected padding");
-
-struct VOP2_instruction : public Instruction {};
-static_assert(sizeof(VOP2_instruction) == sizeof(Instruction) + 0, "Unexpected padding");
-
-struct VOPC_instruction : public Instruction {};
-static_assert(sizeof(VOPC_instruction) == sizeof(Instruction) + 0, "Unexpected padding");
-
-struct VOP3_instruction : public Instruction {
-   bool abs[3];
-   bool neg[3];
-   uint8_t opsel : 4;
-   uint8_t omod : 2;
-   bool clamp : 1;
-   uint8_t padding0 : 1;
-   uint8_t padding1;
+struct VALU_instruction : public Instruction {
+   union {
+      bool neg[3];    /* VOP3, SDWA, DPP16, v_fma_mix, VINTERP_inreg */
+      bool neg_lo[3]; /* VOP3P */
+   };
+   union {
+      bool abs[3];    /* VOP3, SDWA, DPP16, v_fma_mix */
+      bool neg_hi[3]; /* VOP3P */
+   };
+   uint8_t opsel : 4; /* VOP3, VOPC12(GFX11+), VINTERP_inreg */
+   uint8_t omod : 2;  /* VOP3, SDWA(GFX9+) */
+   uint8_t padding0 : 2;
+   uint8_t opsel_lo : 3; /* VOP3P */
+   uint8_t opsel_hi : 3; /* VOP3P */
+   bool clamp : 1; /* VOP3, VOP3P, SDWA, VINTERP_inreg */
+   uint8_t padding1 : 1;
 };
-static_assert(sizeof(VOP3_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
+static_assert(sizeof(VALU_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
 
-struct VOP3P_instruction : public Instruction {
-   bool neg_lo[3];
-   bool neg_hi[3]; /* abs modifier, for v_mad_mix/v_fma_mix */
-   uint8_t opsel_lo : 3;
-   uint8_t opsel_hi : 3;
-   bool clamp : 1;
-   uint8_t padding0 : 1;
-   uint8_t padding1;
-};
-static_assert(sizeof(VOP3P_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
-
-struct VINTERP_inreg_instruction : public Instruction {
+struct VINTERP_inreg_instruction : public VALU_instruction {
    uint8_t wait_exp : 3;
-   bool clamp : 1;
-   uint8_t opsel : 4;
-   bool neg[3];
+   uint8_t padding3 : 5;
+   uint8_t padding4;
+   uint8_t padding5;
+   uint8_t padding6;
 };
-static_assert(sizeof(VINTERP_inreg_instruction) == sizeof(Instruction) + 4, "Unexpected padding");
+static_assert(sizeof(VINTERP_inreg_instruction) == sizeof(VALU_instruction) + 4, "Unexpected padding");
 
 /**
  * Data Parallel Primitives Format:
@@ -1478,21 +1478,19 @@ static_assert(sizeof(VINTERP_inreg_instruction) == sizeof(Instruction) + 4, "Une
  * The swizzle applies to the src0 operand.
  *
  */
-struct DPP16_instruction : public Instruction {
-   bool abs[2];
-   bool neg[2];
+struct DPP16_instruction : public VALU_instruction {
    uint16_t dpp_ctrl;
    uint8_t row_mask : 4;
    uint8_t bank_mask : 4;
    bool bound_ctrl : 1;
-   uint8_t padding : 7;
+   uint8_t padding3 : 7;
 };
-static_assert(sizeof(DPP16_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
+static_assert(sizeof(DPP16_instruction) == sizeof(VALU_instruction) + 4, "Unexpected padding");
 
-struct DPP8_instruction : public Instruction {
+struct DPP8_instruction : public VALU_instruction {
    uint8_t lane_sel[8];
 };
-static_assert(sizeof(DPP8_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
+static_assert(sizeof(DPP8_instruction) == sizeof(VALU_instruction) + 8, "Unexpected padding");
 
 struct SubdwordSel {
    enum sdwa_sel : uint8_t {
@@ -1551,18 +1549,14 @@ private:
  * the definition doesn't have to be VCC on GFX9+.
  *
  */
-struct SDWA_instruction : public Instruction {
+struct SDWA_instruction : public VALU_instruction {
    /* these destination modifiers aren't available with VOPC except for
     * clamp on GFX8 */
    SubdwordSel sel[2];
    SubdwordSel dst_sel;
-   bool neg[2];
-   bool abs[2];
-   bool clamp : 1;
-   uint8_t omod : 2; /* GFX9+ */
-   uint8_t padding : 5;
+   uint8_t padding3;
 };
-static_assert(sizeof(SDWA_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
+static_assert(sizeof(SDWA_instruction) == sizeof(VALU_instruction) + 4, "Unexpected padding");
 
 struct VINTRP_instruction : public Instruction {
    uint8_t attribute;
