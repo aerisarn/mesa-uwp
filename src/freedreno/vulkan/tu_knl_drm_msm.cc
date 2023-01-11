@@ -236,6 +236,18 @@ tu_gem_info(const struct tu_device *dev, uint32_t gem_handle, uint32_t info)
    return req.value;
 }
 
+enum tu_mem_sync_op
+{
+   TU_MEM_SYNC_CACHE_TO_GPU,
+   TU_MEM_SYNC_CACHE_FROM_GPU,
+};
+
+void
+sync_cache_bo(struct tu_device *dev,
+              struct tu_bo *bo,
+              VkDeviceSize offset,
+              VkDeviceSize size,
+              enum tu_mem_sync_op op);
 
 static VkResult
 tu_allocate_userspace_iova(struct tu_device *dev,
@@ -416,7 +428,11 @@ msm_bo_init(struct tu_device *dev,
    };
 
    if (mem_property & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) {
-      req.flags |= MSM_BO_CACHED_COHERENT;
+      if (mem_property & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) {
+         req.flags |= MSM_BO_CACHED_COHERENT;
+      } else {
+         req.flags |= MSM_BO_CACHED;
+      }
    } else {
       req.flags |= MSM_BO_WC;
    }
@@ -442,6 +458,20 @@ msm_bo_init(struct tu_device *dev,
 
    /* We don't use bo->name here because for the !TU_DEBUG=bo case bo->name is NULL. */
    tu_bo_set_kernel_name(dev, bo, name);
+
+   if (result == VK_SUCCESS &&
+       (mem_property & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) &&
+       !(mem_property & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
+      tu_bo_map(dev, bo);
+
+      /* Cached non-coherent memory may already have dirty cache lines,
+       * we should clean the cache lines before GPU got the chance to
+       * write into this memory.
+       *
+       * MSM already does this automatically for uncached (MSM_BO_WC) memory.
+       */
+      sync_cache_bo(dev, bo, 0, VK_WHOLE_SIZE, TU_MEM_SYNC_CACHE_TO_GPU);
+   }
 
    return result;
 }
@@ -582,12 +612,91 @@ msm_bo_finish(struct tu_device *dev, struct tu_bo *bo)
    u_rwlock_rdunlock(&dev->dma_bo_lock);
 }
 
+static inline void
+tu_sync_cacheline_to_gpu(void const *p __attribute__((unused)))
+{
+#if DETECT_ARCH_AARCH64
+   /* Clean data cache. */
+   __asm volatile("dc cvac, %0" : : "r" (p) : "memory");
+#elif (DETECT_ARCH_X86 || DETECT_ARCH_X86_64)
+   __builtin_ia32_clflush(p);
+#elif DETECT_ARCH_ARM
+   /* DCCMVAC - same as DC CVAC on aarch64.
+    * Seems to be illegal to call from userspace.
+    */
+   //__asm volatile("mcr p15, 0, %0, c7, c10, 1" : : "r" (p) : "memory");
+   unreachable("Cache line clean is unsupported on ARMv7");
+#endif
+}
+
+static inline void
+tu_sync_cacheline_from_gpu(void const *p __attribute__((unused)))
+{
+#if DETECT_ARCH_AARCH64
+   /* Clean and Invalidate data cache, there is no separate Invalidate. */
+   __asm volatile("dc civac, %0" : : "r" (p) : "memory");
+#elif (DETECT_ARCH_X86 || DETECT_ARCH_X86_64)
+   __builtin_ia32_clflush(p);
+#elif DETECT_ARCH_ARM
+   /* DCCIMVAC - same as DC CIVAC on aarch64.
+    * Seems to be illegal to call from userspace.
+    */
+   //__asm volatile("mcr p15, 0, %0, c7, c14, 1" : : "r" (p) : "memory");
+   unreachable("Cache line invalidate is unsupported on ARMv7");
+#endif
+}
+
+void
+sync_cache_bo(struct tu_device *dev,
+              struct tu_bo *bo,
+              VkDeviceSize offset,
+              VkDeviceSize size,
+              enum tu_mem_sync_op op)
+{
+   uintptr_t level1_dcache_size = dev->physical_device->level1_dcache_size;
+   char *start = (char *) bo->map + offset;
+   char *end = start + (size == VK_WHOLE_SIZE ? (bo->size - offset) : size);
+
+   start = (char *) ((uintptr_t) start & ~(level1_dcache_size - 1));
+
+   for (; start < end; start += level1_dcache_size) {
+      if (op == TU_MEM_SYNC_CACHE_TO_GPU) {
+         tu_sync_cacheline_to_gpu(start);
+      } else {
+         tu_sync_cacheline_from_gpu(start);
+      }
+   }
+}
+
+static VkResult
+sync_cache(VkDevice _device,
+           enum tu_mem_sync_op op,
+           uint32_t count,
+           const VkMappedMemoryRange *ranges)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
+
+   if (!device->physical_device->has_cached_non_coherent_memory) {
+      tu_finishme(
+         "data cache clean and invalidation are unsupported on this arch!");
+      return VK_SUCCESS;
+   }
+
+   for (uint32_t i = 0; i < count; i++) {
+      TU_FROM_HANDLE(tu_device_memory, mem, ranges[i].memory);
+      sync_cache_bo(device, mem->bo, ranges[i].offset, ranges[i].size, op);
+   }
+
+   return VK_SUCCESS;
+}
+
 VkResult
 tu_FlushMappedMemoryRanges(VkDevice _device,
                            uint32_t memoryRangeCount,
                            const VkMappedMemoryRange *pMemoryRanges)
 {
-   return VK_SUCCESS;
+   return sync_cache(_device, TU_MEM_SYNC_CACHE_TO_GPU, memoryRangeCount,
+                     pMemoryRanges);
 }
 
 VkResult
@@ -595,7 +704,8 @@ tu_InvalidateMappedMemoryRanges(VkDevice _device,
                                 uint32_t memoryRangeCount,
                                 const VkMappedMemoryRange *pMemoryRanges)
 {
-   return VK_SUCCESS;
+   return sync_cache(_device, TU_MEM_SYNC_CACHE_FROM_GPU, memoryRangeCount,
+                     pMemoryRanges);
 }
 
 extern const struct vk_sync_type tu_timeline_sync_type;
@@ -1295,7 +1405,14 @@ tu_knl_drm_msm_load(struct tu_instance *instance,
    device->has_cached_coherent_memory =
       (device->msm_minor_version >= 8) &&
       tu_drm_is_memory_type_supported(fd, MSM_BO_CACHED_COHERENT);
-   device->has_cached_non_coherent_memory = false;
+#ifdef _SC_LEVEL1_DCACHE_LINESIZE
+   if (DETECT_ARCH_AARCH64 || DETECT_ARCH_X86 || DETECT_ARCH_X86_64) {
+      long l1_dcache = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
+      device->has_cached_non_coherent_memory = l1_dcache > 0;
+      device->level1_dcache_size = l1_dcache;
+   }
+#endif
+
 
    ret = tu_drm_get_param(device, MSM_PARAM_FAULTS, &device->fault_count);
    if (ret != 0) {
