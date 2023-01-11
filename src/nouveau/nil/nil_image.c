@@ -439,6 +439,11 @@ nil_image_init(struct nv_device_info *dev,
    image->pte_kind = nil_choose_pte_kind(dev, info->format, info->samples,
                                          true /* TODO: compressed */);
 
+   image->align_B = MAX2(image->align_B, 4096);
+   if (image->pte_kind >= 0xb && image->pte_kind <= 0xe)
+      image->align_B = MAX2(image->align_B, (1 << 16));
+
+   image->size_B = ALIGN(image->size_B, image->align_B);
    return true;
 }
 
