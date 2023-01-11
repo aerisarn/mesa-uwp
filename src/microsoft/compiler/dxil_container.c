@@ -259,7 +259,6 @@ dxil_container_add_state_validation(struct dxil_container *c,
          state->state.psv1.sig_patch_const_or_prim_vectors, state->state.psv1.sig_output_vectors[0]);
    }
    size += dependency_table_size;
-   // TODO: Domain shader table goes here
 
    if (!add_part_header(c, DXIL_PSV0, size))
       return false;
