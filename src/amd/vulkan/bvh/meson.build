@@ -48,7 +48,7 @@ bvh_shaders = [
   [
     'ploc_internal.comp',
     'ploc_internal',
-    [],
+    ['EXTENDED_SAH=0'],
   ],
   [
     'converter_internal.comp',
