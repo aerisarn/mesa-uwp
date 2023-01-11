@@ -139,21 +139,6 @@ dEQP-VK.transform_feedback.primitives_generated_query.get.queue_reset.pgq_32bit_
 #     #2 0x7fcd0242f0c0 in vk_zalloc ../src/vulkan/util/vk_alloc.h:56
 #     #3 0x7fcd0242f0c0 in lvp_CreateDescriptorSetLayout ../src/gallium/frontends/lavapipe/lvp_descriptor_set.c:65
 #     #4 0x55cd57134f28  (/deqp/external/vulkancts/modules/vulkan/deqp-vk+0x226bf28)
-dEQP-VK.pipeline.monolithic.bind_point.graphics_compute.push_write.setup_cp_gs_cs_gp.cmd_draw_dispatch,Fail
-dEQP-VK.robustness.image_robustness.push.notemplate.r32f.unroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.2d_array.comp,Fail
-dEQP-VK.robustness.robustness2.push.notemplate.r32f.dontunroll.volatile.storage_buffer.readonly.no_fmt_qual.len_256.samples_1.1d.vert,Fail
-dEQP-VK.robustness.robustness2.push.notemplate.r32f.unroll.volatile.storage_texel_buffer.fmt_qual.len_32.samples_1.1d.vert,Fail
-dEQP-VK.robustness.robustness2.push.notemplate.r32i.unroll.nonvolatile.storage_image.fmt_qual.null_descriptor.samples_1.cube_array.vert,Fail
-dEQP-VK.robustness.robustness2.push.notemplate.r32ui.dontunroll.nonvolatile.sampled_image.no_fmt_qual.null_descriptor.samples_4.2d_array.vert,Fail
-dEQP-VK.robustness.robustness2.push.notemplate.r32ui.unroll.volatile.storage_buffer.readwrite.no_fmt_qual.len_36.samples_1.1d.vert,Fail
-dEQP-VK.robustness.robustness2.push.notemplate.rg32f.dontunroll.volatile.storage_texel_buffer.fmt_qual.null_descriptor.samples_1.1d.vert,Fail
-dEQP-VK.robustness.robustness2.push.notemplate.rg32i.unroll.nonvolatile.uniform_buffer.no_fmt_qual.len_33.samples_1.1d.vert,Fail
-dEQP-VK.robustness.robustness2.push.notemplate.rg32ui.unroll.nonvolatile.sampled_image.no_fmt_qual.null_descriptor.samples_1.cube_array.vert,Fail
-dEQP-VK.robustness.robustness2.push.notemplate.rgba32f.unroll.nonvolatile.storage_texel_buffer.fmt_qual.len_32.samples_1.1d.vert,Fail
-dEQP-VK.robustness.robustness2.push.notemplate.rgba32i.dontunroll.nonvolatile.uniform_buffer.no_fmt_qual.len_33.samples_1.1d.vert,Fail
-dEQP-VK.robustness.robustness2.push.notemplate.rgba32ui.dontunroll.volatile.storage_buffer.readwrite.no_fmt_qual.len_256.samples_1.1d.vert,Fail
-dEQP-VK.robustness.robustness2.push.notemplate.rgba32ui.unroll.volatile.storage_image.fmt_qual.img.samples_4.2d.vert,Fail
-dEQP-VK.synchronization2.timeline_semaphore.one_to_n.write_copy_buffer_to_image_read_image_fragment.image_128x128_r16_uint,Fail
 dEQP-VK.transform_feedback.primitives_generated_query.copy.host_reset.pgq_32bit_xfb_64bit.geom.xfb.rast.point_list.pgq_0_xfb_1.single_draw,Fail
 dEQP-VK.transform_feedback.primitives_generated_query.copy.queue_reset.pgq_32bit_xfb_64bit.geom.xfb.no_rast.line_strip.pgq_default_xfb_0.single_draw,Fail
 dEQP-VK.transform_feedback.primitives_generated_query.get.host_reset.64bit.geom.xfb.rast.triangle_fan.pgq_default_xfb_1.single_draw,Fail
