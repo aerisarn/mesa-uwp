@@ -83,6 +83,7 @@ debian-testing:
     EXTRA_OPTION: >
       -D spirv-to-dxil=true
       -D valgrind=false
+      -D perfetto=true
     MINIO_ARTIFACT_NAME: mesa-amd64
     LLVM_VERSION: "13"
   script:
@@ -412,6 +413,7 @@ debian-arm64:
       -D llvm=disabled
       -D valgrind=false
       -D imagination-srv=true
+      -D perfetto=true
     MINIO_ARTIFACT_NAME: mesa-arm64
   script:
     - .gitlab-ci/meson/build.sh

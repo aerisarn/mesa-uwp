@@ -61,6 +61,7 @@ esac
 rm -rf _build
 meson _build --native-file=native.file \
       --wrap-mode=nofallback \
+      --force-fallback-for perfetto \
       ${CROSS+--cross "$CROSS_FILE"} \
       -D prefix=`pwd`/install \
       -D libdir=lib \
