@@ -393,7 +393,7 @@ Core Mesa environment variables
    and Vulkan (in this case "select" means the GPU will be first in the reported
    physical devices list). The supported syntaxes are:
 
-   - ``DRI_PRIME=1``: selects the first non-default GPU.
+   - ``DRI_PRIME=N``: selects the Nth non-default GPU (N > 0).
    - ``DRI_PRIME=pci-0000_02_00_0``: selects the GPU connected to this PCIe bus
    - ``DRI_PRIME=vendor_id:device_id``: selects the first GPU matching these ids
 
