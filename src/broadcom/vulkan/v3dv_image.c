@@ -208,8 +208,18 @@ v3d_setup_slices(struct v3dv_image *image)
     * slices.
     *
     * We additionally align to 4k, which improves UIF XOR performance.
+    *
+    * Finally, because the Texture Base Address field must be 64-byte aligned,
+    * we also need to align linear images to 64 if the image is going to be
+    * used for transfer.
     */
-   image->alignment = image->tiled ? 4096 : image->cpp;
+   if (image->tiled) {
+      image->alignment = 4096;
+   } else {
+      image->alignment =
+         (image->vk.usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) ? 64 : image->cpp;
+   }
+
    uint32_t align_offset =
       align(image->slices[0].offset, image->alignment) - image->slices[0].offset;
    if (align_offset) {
