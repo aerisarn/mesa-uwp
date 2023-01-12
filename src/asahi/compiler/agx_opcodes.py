@@ -213,6 +213,10 @@ op("bfeil",
       encoding_32 = (0x2E | L, 0x7F | L | (0x3 << 26), 8, _),
       srcs = 3, imms = [BFI_MASK])
 
+op("extr",
+      encoding_32 = (0x2E | (0x1 << 26), 0x7F | L | (0x3 << 26), 8, _),
+      srcs = 3, imms = [BFI_MASK])
+
 op("asr",
       encoding_32 = (0x2E | L | (0x1 << 26), 0x7F | L | (0x3 << 26), 8, _),
       srcs = 2)
