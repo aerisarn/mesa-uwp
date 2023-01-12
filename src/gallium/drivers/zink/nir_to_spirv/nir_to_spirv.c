@@ -2733,6 +2733,17 @@ create_builtin_var(struct ntv_context *ctx, SpvId var_type,
    spirv_builder_emit_name(&ctx->builder, var, name);
    spirv_builder_emit_builtin(&ctx->builder, var, builtin);
 
+   if (ctx->stage == MESA_SHADER_FRAGMENT) {
+      switch (builtin) {
+      case SpvBuiltInSampleId:
+      case SpvBuiltInSubgroupLocalInvocationId:
+         spirv_builder_emit_decoration(&ctx->builder, var, SpvDecorationFlat);
+         break;
+      default:
+         break;
+      }
+   }
+
    assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
    ctx->entry_ifaces[ctx->num_entry_ifaces++] = var;
    return var;
