@@ -2534,6 +2534,24 @@ radv_emit_patch_control_points(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    unsigned ls_hs_config, base_reg;
 
+   /* Compute tessellation info that depends on the number of patch control points
+    * when the bound pipeline declared this state as dynamic.
+    */
+   if (cmd_buffer->state.graphics_pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS) {
+      /* Compute the number of patches. */
+      cmd_buffer->state.tess_num_patches = get_tcs_num_patches(
+         d->vk.ts.patch_control_points, tcs->info.tcs.tcs_vertices_out,
+         tcs->info.tcs.num_linked_inputs, tcs->info.tcs.num_linked_outputs,
+         tcs->info.tcs.num_linked_patch_outputs, pdevice->hs.tess_offchip_block_dw_size,
+         pdevice->rad_info.gfx_level, pdevice->rad_info.family);
+
+      /* Compute the LDS size. */
+      cmd_buffer->state.tess_lds_size = calculate_tess_lds_size(
+         pdevice->rad_info.gfx_level, d->vk.ts.patch_control_points, tcs->info.tcs.tcs_vertices_out,
+         tcs->info.tcs.num_linked_inputs, cmd_buffer->state.tess_num_patches,
+         tcs->info.tcs.num_linked_outputs, tcs->info.tcs.num_linked_patch_outputs);
+   }
+
    ls_hs_config = S_028B58_NUM_PATCHES(cmd_buffer->state.tess_num_patches) |
                   S_028B58_HS_NUM_INPUT_CP(d->vk.ts.patch_control_points) |
                   S_028B58_HS_NUM_OUTPUT_CP(tcs->info.tcs.tcs_vertices_out);
@@ -9145,34 +9163,6 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
           * it. This is needed for vkd3d-proton because it always declares per-draw VRS as dynamic.
           */
          cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
-      }
-   }
-
-   /* Pre-compute some tessellation info that depend on the number of patch control points when the
-    * bound pipeline declared this state as dynamic.
-    */
-   if (cmd_buffer->state.graphics_pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS) {
-      uint64_t dynamic_states =
-         cmd_buffer->state.dirty & cmd_buffer->state.emitted_graphics_pipeline->needed_dynamic_state;
-
-      if (dynamic_states & RADV_CMD_DIRTY_DYNAMIC_PATCH_CONTROL_POINTS) {
-         const struct radv_physical_device *pdevice = device->physical_device;
-         const struct radv_shader *tcs = cmd_buffer->state.shaders[MESA_SHADER_TESS_CTRL];
-         const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
-
-         /* Compute the number of patches and emit the context register. */
-         cmd_buffer->state.tess_num_patches = get_tcs_num_patches(
-            d->vk.ts.patch_control_points, tcs->info.tcs.tcs_vertices_out,
-            tcs->info.tcs.num_linked_inputs, tcs->info.tcs.num_linked_outputs,
-            tcs->info.tcs.num_linked_patch_outputs, pdevice->hs.tess_offchip_block_dw_size,
-            pdevice->rad_info.gfx_level, pdevice->rad_info.family);
-
-         /* Compute the LDS size and emit the shader register. */
-         cmd_buffer->state.tess_lds_size = calculate_tess_lds_size(
-            pdevice->rad_info.gfx_level, d->vk.ts.patch_control_points,
-            tcs->info.tcs.tcs_vertices_out, tcs->info.tcs.num_linked_inputs,
-            cmd_buffer->state.tess_num_patches, tcs->info.tcs.num_linked_outputs,
-            tcs->info.tcs.num_linked_patch_outputs);
       }
    }
 
