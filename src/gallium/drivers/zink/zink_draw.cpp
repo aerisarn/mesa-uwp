@@ -285,6 +285,19 @@ add_implicit_color_feedback_loop(struct zink_context *ctx, struct zink_resource 
 {
    if (!res->fb_bind_count || !res->sampler_bind_count[0] || ctx->feedback_loops & res->fb_binds)
       return;
+   bool is_feedback = false;
+   /* avoid false positives when a texture is bound but not used */
+   u_foreach_bit(vkstage, res->gfx_barrier) {
+      if (vkstage < VK_PIPELINE_STAGE_VERTEX_SHADER_BIT || vkstage > VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
+         continue;
+      /* in-range VkPipelineStageFlagBits can be converted to VkShaderStageFlags with a bitshift */
+      gl_shader_stage stage = vk_to_mesa_shader_stage((VkShaderStageFlagBits)(vkstage >> 3));
+      /* check shader texture usage against resource's sampler binds */
+      if ((ctx->gfx_stages[stage] && (res->sampler_binds[stage] & ctx->gfx_stages[stage]->nir->info.textures_used[0])))
+         is_feedback = true;
+   }
+   if (!is_feedback)
+      return;
    /* new feedback loop detected */
    if (res->aspect == VK_IMAGE_ASPECT_COLOR_BIT) {
       if (!ctx->gfx_pipeline_state.feedback_loop)
