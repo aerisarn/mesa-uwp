@@ -109,28 +109,19 @@ anv_execbuf_add_bo(struct anv_device *device,
          uint32_t new_len = exec->objects ? exec->bo_array_length * 2 : 64;
 
          struct drm_i915_gem_exec_object2 *new_objects =
-            vk_alloc(exec->alloc, new_len * sizeof(*new_objects), 8, exec->alloc_scope);
+            vk_realloc(exec->alloc, exec->objects,
+                       new_len * sizeof(*new_objects), 8, exec->alloc_scope);
          if (new_objects == NULL)
             return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-         struct anv_bo **new_bos =
-            vk_alloc(exec->alloc, new_len * sizeof(*new_bos), 8, exec->alloc_scope);
-         if (new_bos == NULL) {
-            vk_free(exec->alloc, new_objects);
-            return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-         }
-
-         if (exec->objects) {
-            memcpy(new_objects, exec->objects,
-                   exec->bo_count * sizeof(*new_objects));
-            memcpy(new_bos, exec->bos,
-                   exec->bo_count * sizeof(*new_bos));
-         }
-
-         vk_free(exec->alloc, exec->objects);
-         vk_free(exec->alloc, exec->bos);
-
          exec->objects = new_objects;
+
+         struct anv_bo **new_bos =
+            vk_realloc(exec->alloc, exec->bos, new_len * sizeof(*new_bos), 8,
+                       exec->alloc_scope);
+         if (new_bos == NULL)
+            return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
          exec->bos = new_bos;
          exec->bo_array_length = new_len;
       }
@@ -200,25 +191,20 @@ anv_execbuf_add_syncobj(struct anv_device *device,
       uint32_t new_len = MAX2(exec->syncobj_array_length * 2, 16);
 
       struct drm_i915_gem_exec_fence *new_syncobjs =
-         vk_alloc(exec->alloc, new_len * sizeof(*new_syncobjs),
-                  8, exec->alloc_scope);
-      if (!new_syncobjs)
+         vk_realloc(exec->alloc, exec->syncobjs,
+                    new_len * sizeof(*new_syncobjs), 8, exec->alloc_scope);
+      if (new_syncobjs == NULL)
          return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-      if (exec->syncobjs)
-         typed_memcpy(new_syncobjs, exec->syncobjs, exec->syncobj_count);
 
       exec->syncobjs = new_syncobjs;
 
       if (exec->syncobj_values) {
          uint64_t *new_syncobj_values =
-            vk_alloc(exec->alloc, new_len * sizeof(*new_syncobj_values),
-                     8, exec->alloc_scope);
-         if (!new_syncobj_values)
+            vk_realloc(exec->alloc, exec->syncobj_values,
+                       new_len * sizeof(*new_syncobj_values), 8,
+                       exec->alloc_scope);
+         if (new_syncobj_values == NULL)
             return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-         typed_memcpy(new_syncobj_values, exec->syncobj_values,
-                      exec->syncobj_count);
 
          exec->syncobj_values = new_syncobj_values;
       }
