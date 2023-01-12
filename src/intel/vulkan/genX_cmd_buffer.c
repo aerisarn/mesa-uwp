@@ -3619,6 +3619,8 @@ genX(BeginCommandBuffer)(
          gfx->stencil_att.vk_format =
             inheritance_info->stencilAttachmentFormat;
 
+         anv_cmd_graphic_state_update_has_uint_rt(gfx);
+
          cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_RENDER_TARGETS;
       }
    }
@@ -7135,6 +7137,8 @@ void genX(CmdBeginRendering)(
          gfx->color_att[i].resolve_layout = att->resolveImageLayout;
       }
    }
+
+   anv_cmd_graphic_state_update_has_uint_rt(gfx);
 
    const struct anv_image_view *fsr_iview = NULL;
    const VkRenderingFragmentShadingRateAttachmentInfoKHR *fsr_att =
