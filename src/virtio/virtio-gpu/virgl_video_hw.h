@@ -558,11 +558,36 @@ struct virgl_mpeg4_picture_desc
    uint32_t ref[2];
 };
 
+struct virgl_mpeg12_picture_desc
+{
+    struct virgl_base_picture_desc base;
+
+    unsigned picture_coding_type;
+    unsigned picture_structure;
+    unsigned frame_pred_frame_dct;
+    unsigned q_scale_type;
+    unsigned alternate_scan;
+    unsigned intra_vlc_format;
+    unsigned concealment_motion_vectors;
+    unsigned intra_dc_precision;
+    unsigned f_code[2][2];
+    unsigned top_field_first;
+    unsigned full_pel_forward_vector;
+    unsigned full_pel_backward_vector;
+    unsigned num_slices;
+
+    uint8_t intra_matrix[64];
+    uint8_t non_intra_matrix[64];
+
+    uint32_t ref[2];
+};
+
 union virgl_picture_desc {
     struct virgl_base_picture_desc base;
     struct virgl_h264_picture_desc h264;
     struct virgl_h265_picture_desc h265;
     struct virgl_mpeg4_picture_desc mpeg4;
+    struct virgl_mpeg12_picture_desc mpeg12;
     struct virgl_h264_enc_picture_desc h264_enc;
     struct virgl_h265_enc_picture_desc h265_enc;
 };

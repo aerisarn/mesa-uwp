@@ -559,6 +559,41 @@ static int fill_mpeg4_picture_desc(const struct pipe_picture_desc *desc,
     return 0;
 }
 
+static int fill_mpeg12_picture_desc(const struct pipe_picture_desc *desc,
+                                    union virgl_picture_desc *vdsc)
+{
+    unsigned i;
+    struct virgl_video_buffer *vbuf;
+    struct virgl_mpeg12_picture_desc *vmpeg12 = &vdsc->mpeg12;
+    struct pipe_mpeg12_picture_desc *mpeg12 = (struct pipe_mpeg12_picture_desc *)desc;
+
+    fill_base_picture_desc(desc, &vmpeg12->base);
+
+    for (i = 0; i < 2; i++) {
+        vbuf = virgl_video_buffer(mpeg12->ref[i]);
+        vmpeg12->ref[i] = vbuf ? vbuf->handle : 0;
+    }
+
+    memcpy(vmpeg12->intra_matrix, mpeg12->intra_matrix, 64);
+    memcpy(vmpeg12->non_intra_matrix, mpeg12->non_intra_matrix, 64);
+
+    ITEM_SET(vmpeg12, mpeg12, picture_coding_type);
+    vmpeg12->f_code[0][0]  = mpeg12->f_code[0][0] ;
+    vmpeg12->f_code[0][1]  = mpeg12->f_code[0][1] ;
+    vmpeg12->f_code[1][0]  = mpeg12->f_code[1][0] ;
+    vmpeg12->f_code[1][1]  = mpeg12->f_code[1][1] ;
+    ITEM_SET(vmpeg12, mpeg12, intra_dc_precision);
+    ITEM_SET(vmpeg12, mpeg12, picture_structure);
+    ITEM_SET(vmpeg12, mpeg12, top_field_first);
+    ITEM_SET(vmpeg12, mpeg12, frame_pred_frame_dct);
+    ITEM_SET(vmpeg12, mpeg12, concealment_motion_vectors);
+    ITEM_SET(vmpeg12, mpeg12, q_scale_type);
+    ITEM_SET(vmpeg12, mpeg12, intra_vlc_format);
+    ITEM_SET(vmpeg12, mpeg12, alternate_scan);
+    return 0;
+}
+
+
 #undef ITEM_SET
 #undef ITEM_CPY
 
@@ -572,6 +607,8 @@ static int fill_picture_desc(const struct pipe_picture_desc *desc,
         return fill_h264_picture_desc(desc, vdsc);
     case PIPE_VIDEO_FORMAT_HEVC:
         return fill_h265_picture_desc(desc, vdsc);
+    case PIPE_VIDEO_FORMAT_MPEG12:
+        return fill_mpeg12_picture_desc(desc, vdsc);
     default:
         return -1;
     }
@@ -824,7 +861,8 @@ virgl_video_create_codec(struct pipe_context *ctx,
         width = align(width, VL_MACROBLOCK_WIDTH);
         height = align(height, VL_MACROBLOCK_HEIGHT);
         break;
-    case PIPE_VIDEO_FORMAT_HEVC: /* fall through */
+    case PIPE_VIDEO_FORMAT_HEVC: 
+    case PIPE_VIDEO_FORMAT_MPEG12: /* fall through */
     default:
         break;
     }
