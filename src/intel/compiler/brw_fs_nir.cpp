@@ -1019,7 +1019,9 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
          }
       }
 
-      for (unsigned i = 0; i < 4; i++) {
+      unsigned last_bit = util_last_bit(instr->dest.write_mask);
+
+      for (unsigned i = 0; i < last_bit; i++) {
          if (!(instr->dest.write_mask & (1 << i)))
             continue;
 
@@ -1037,7 +1039,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
        * any swizzling.
        */
       if (need_extra_copy) {
-         for (unsigned i = 0; i < 4; i++) {
+         for (unsigned i = 0; i < last_bit; i++) {
             if (!(instr->dest.write_mask & (1 << i)))
                continue;
 
