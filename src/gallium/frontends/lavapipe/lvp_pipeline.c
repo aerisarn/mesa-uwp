@@ -709,7 +709,8 @@ merge_layouts(struct vk_device *device, struct lvp_pipeline *dst, struct lvp_pip
    for (unsigned i = 0; i < src->vk.set_count; i++) {
       if (!dst->layout->vk.set_layouts[i]) {
          dst->layout->vk.set_layouts[i] = src->vk.set_layouts[i];
-         vk_descriptor_set_layout_ref(src->vk.set_layouts[i]);
+         if (dst->layout->vk.set_layouts[i])
+            vk_descriptor_set_layout_ref(src->vk.set_layouts[i]);
       }
    }
    dst->layout->vk.set_count = MAX2(dst->layout->vk.set_count,
