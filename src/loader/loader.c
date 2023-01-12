@@ -323,23 +323,47 @@ static char *drm_get_id_path_tag_for_fd(int fd)
 bool loader_get_user_preferred_fd(int *fd_render_gpu, int *original_fd)
 {
    const char *dri_prime = getenv("DRI_PRIME");
-   char *default_tag, *prime = NULL;
+   char *default_tag = NULL;
    drmDevicePtr devices[MAX_DRM_DEVICES];
    int i, num_devices, fd = -1;
-   bool prime_is_vid_did;
-   uint16_t vendor_id, device_id;
+   struct {
+      enum {
+         PRIME_IS_ONE,
+         PRIME_IS_VID_DID,
+         PRIME_IS_PCI_TAG
+      } semantics;
+      union {
+         struct {
+            uint16_t v, d;
+         } as_vendor_device_ids;
+      } v;
+      char *str;
+   } prime = {};
+   prime.str = NULL;
 
    if (dri_prime)
-      prime = strdup(dri_prime);
+      prime.str = strdup(dri_prime);
 #ifdef USE_DRICONF
    else
-      prime = loader_get_dri_config_device_id();
+      prime.str = loader_get_dri_config_device_id();
 #endif
 
-   if (prime == NULL)
+   if (prime.str == NULL) {
       goto no_prime_gpu_offloading;
-   else
-      prime_is_vid_did = sscanf(prime, "%hx:%hx", &vendor_id, &device_id) == 2;
+   } else {
+      uint16_t vendor_id, device_id;
+      if (sscanf(prime.str, "%hx:%hx", &vendor_id, &device_id) == 2) {
+         prime.semantics = PRIME_IS_VID_DID;
+         prime.v.as_vendor_device_ids.v = vendor_id;
+         prime.v.as_vendor_device_ids.d = device_id;
+      } else {
+         if (strcmp(prime.str, "1") == 0) {
+            prime.semantics = PRIME_IS_ONE;
+         } else {
+            prime.semantics = PRIME_IS_PCI_TAG;
+         }
+      }
+   }
 
    default_tag = drm_get_id_path_tag_for_fd(*fd_render_gpu);
    if (default_tag == NULL)
@@ -354,25 +378,37 @@ bool loader_get_user_preferred_fd(int *fd_render_gpu, int *original_fd)
          continue;
 
       /* three formats of DRI_PRIME are supported:
-       * "1": choose any other card than the card used by default.
+       * "N": a >= 1 integer value. Select the Nth GPU, skipping the
+       *      default one.
        * id_path_tag: (for example "pci-0000_02_00_0") choose the card
        * with this id_path_tag.
        * vendor_id:device_id
        */
-      if (!strcmp(prime,"1")) {
-         if (drm_device_matches_tag(devices[i], default_tag))
-            continue;
-      } else {
-         if (prime_is_vid_did && devices[i]->bustype == DRM_BUS_PCI &&
-             devices[i]->deviceinfo.pci->vendor_id == vendor_id &&
-             devices[i]->deviceinfo.pci->device_id == device_id) {
-            /* Update prime for the "different_device"
-             * determination below. */
-            free(prime);
-            prime = drm_construct_id_path_tag(devices[i]);
-         } else {
-            if (!drm_device_matches_tag(devices[i], prime))
+      switch (prime.semantics) {
+         case PRIME_IS_ONE: {
+            /* Skip the default device */
+            if (drm_device_matches_tag(devices[i], default_tag))
                continue;
+
+            break;
+         }
+         case PRIME_IS_VID_DID: {
+            if (devices[i]->bustype == DRM_BUS_PCI &&
+                devices[i]->deviceinfo.pci->vendor_id == prime.v.as_vendor_device_ids.v &&
+                devices[i]->deviceinfo.pci->device_id == prime.v.as_vendor_device_ids.d) {
+               /* Update prime for the "different_device"
+                * determination below. */
+               free(prime.str);
+               prime.str = drm_construct_id_path_tag(devices[i]);
+               break;
+            }
+            continue;
+         }
+         case PRIME_IS_PCI_TAG: {
+            if (!drm_device_matches_tag(devices[i], prime.str)) {
+               continue;
+            }
+            break;
          }
       }
 
@@ -387,7 +423,7 @@ bool loader_get_user_preferred_fd(int *fd_render_gpu, int *original_fd)
    if (fd < 0)
       goto err;
 
-   bool is_render_and_display_gpu_diff = !!strcmp(default_tag, prime);
+   bool is_render_and_display_gpu_diff = !!strcmp(default_tag, prime.str);
    if (original_fd) {
       if (is_render_and_display_gpu_diff) {
          *original_fd = *fd_render_gpu;
@@ -402,11 +438,11 @@ bool loader_get_user_preferred_fd(int *fd_render_gpu, int *original_fd)
    }
 
    free(default_tag);
-   free(prime);
+   free(prime.str);
    return is_render_and_display_gpu_diff;
  err:
    free(default_tag);
-   free(prime);
+   free(prime.str);
  no_prime_gpu_offloading:
    if (original_fd)
       *original_fd = *fd_render_gpu;
