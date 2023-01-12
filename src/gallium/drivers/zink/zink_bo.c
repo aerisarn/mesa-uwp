@@ -722,22 +722,9 @@ zink_bo_unmap(struct zink_screen *screen, struct zink_bo *bo)
 }
 
 static VkSemaphore
-get_semaphore(struct zink_screen *screen)
-{
-   VkSemaphoreCreateInfo sci = {
-      VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-      NULL,
-      0
-   };
-   VkSemaphore sem;
-   VkResult ret = VKSCR(CreateSemaphore)(screen->dev, &sci, NULL, &sem);
-   return ret == VK_SUCCESS ? sem : VK_NULL_HANDLE;
-}
-
-static VkSemaphore
 buffer_commit_single(struct zink_screen *screen, struct zink_resource *res, struct zink_bo *bo, uint32_t bo_offset, uint32_t offset, uint32_t size, bool commit, VkSemaphore wait)
 {
-   VkSemaphore sem = get_semaphore(screen);
+   VkSemaphore sem = zink_create_semaphore(screen);
    VkBindSparseInfo sparse = {0};
    sparse.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO;
    sparse.bufferBindCount = res->obj->storage_buffer ? 2 : 1;
@@ -886,7 +873,7 @@ out:
 static VkSemaphore
 texture_commit_single(struct zink_screen *screen, struct zink_resource *res, VkSparseImageMemoryBind *ibind, unsigned num_binds, bool commit, VkSemaphore wait)
 {
-   VkSemaphore sem = get_semaphore(screen);
+   VkSemaphore sem = zink_create_semaphore(screen);
    VkBindSparseInfo sparse = {0};
    sparse.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO;
    sparse.imageBindCount = 1;
@@ -911,7 +898,7 @@ texture_commit_single(struct zink_screen *screen, struct zink_resource *res, VkS
 static VkSemaphore
 texture_commit_miptail(struct zink_screen *screen, struct zink_resource *res, struct zink_bo *bo, uint32_t bo_offset, uint32_t offset, bool commit, VkSemaphore wait)
 {
-   VkSemaphore sem = get_semaphore(screen);
+   VkSemaphore sem = zink_create_semaphore(screen);
    VkBindSparseInfo sparse = {0};
    sparse.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO;
    sparse.imageOpaqueBindCount = 1;
