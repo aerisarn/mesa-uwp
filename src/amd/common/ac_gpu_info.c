@@ -621,9 +621,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
    STATIC_ASSERT(AMDGPU_HW_IP_VCN_ENC == AMD_IP_VCN_ENC);
    STATIC_ASSERT(AMDGPU_HW_IP_VCN_JPEG == AMD_IP_VCN_JPEG);
 
-   if (!ac_query_pci_bus_info(fd, info))
-      return false;
-
    assert(info->drm_major == 3);
    info->is_amdgpu = true;
 
