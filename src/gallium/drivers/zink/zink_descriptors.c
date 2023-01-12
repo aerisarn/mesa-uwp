@@ -1254,15 +1254,9 @@ consolidate_pool_alloc(struct zink_screen *screen, struct zink_descriptor_pool_m
    if (!mpool->overflowed_pools[mpool->overflow_idx].size)
       return;
 
-   unsigned old_size = mpool->overflowed_pools[!mpool->overflow_idx].size;
-   if (util_dynarray_resize(&mpool->overflowed_pools[!mpool->overflow_idx], struct zink_descriptor_pool*, sizes[0] + sizes[1])) {
-      /* attempt to consolidate all the overflow into one array to maximize reuse */
-      uint8_t *src = mpool->overflowed_pools[mpool->overflow_idx].data;
-      uint8_t *dst = mpool->overflowed_pools[!mpool->overflow_idx].data;
-      dst += old_size;
-      memcpy(dst, src, mpool->overflowed_pools[mpool->overflow_idx].size);
-      util_dynarray_clear(&mpool->overflowed_pools[mpool->overflow_idx]);
-   }
+   /* attempt to consolidate all the overflow into one array to maximize reuse */
+   util_dynarray_append_dynarray(&mpool->overflowed_pools[!mpool->overflow_idx], &mpool->overflowed_pools[mpool->overflow_idx]);
+   util_dynarray_clear(&mpool->overflowed_pools[mpool->overflow_idx]);
 }
 
 /* called when a batch state is reset, i.e., just before a batch state becomes the current state */
