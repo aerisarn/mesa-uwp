@@ -1056,7 +1056,7 @@ static VkResult
 radv_amdgpu_winsys_cs_submit_sysmem(struct radv_amdgpu_ctx *ctx, int queue_idx,
                                     struct radv_winsys_sem_info *sem_info,
                                     struct radeon_cmdbuf **cs_array, unsigned cs_count,
-                                    struct radeon_cmdbuf *initial_preamble_cs,
+                                    struct radeon_cmdbuf **initial_preamble_cs,
                                     struct radeon_cmdbuf *continue_preamble_cs,
                                     bool uses_shadow_regs)
 {
@@ -1075,7 +1075,8 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radv_amdgpu_ctx *ctx, int queue_idx,
    for (unsigned i = 0; i < cs_count;) {
       struct radv_amdgpu_cs_ib_info *ibs;
       struct radeon_winsys_bo **bos;
-      struct radeon_cmdbuf *preamble_cs = i ? continue_preamble_cs : initial_preamble_cs;
+      struct radeon_cmdbuf *preamble_cs = i ? continue_preamble_cs :
+         initial_preamble_cs ? initial_preamble_cs[0] : NULL;
       struct radv_amdgpu_cs *cs = radv_amdgpu_cs(cs_array[i]);
       struct drm_amdgpu_bo_list_entry *handles = NULL;
       unsigned num_handles = 0;
@@ -1348,7 +1349,7 @@ radv_amdgpu_winsys_cs_submit_internal(struct radv_amdgpu_ctx *ctx,
       assert(submit->preamble_count <= 1);
       result = radv_amdgpu_winsys_cs_submit_sysmem(
          ctx, submit->queue_index, sem_info, submit->cs_array, submit->cs_count,
-         submit->initial_preamble_cs[0], submit->continue_preamble_cs, submit->uses_shadow_regs);
+         submit->initial_preamble_cs, submit->continue_preamble_cs, submit->uses_shadow_regs);
    } else if (can_patch) {
       result = radv_amdgpu_winsys_cs_submit_chained(
          ctx, submit->queue_index, sem_info, submit->cs_array, submit->cs_count,
