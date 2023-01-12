@@ -3113,6 +3113,21 @@ analyze_io(struct zink_shader *zs, nir_shader *shader)
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    nir_foreach_block(block, impl) {
       nir_foreach_instr(instr, block) {
+         if (shader->info.stage != MESA_SHADER_KERNEL && instr->type == nir_instr_type_tex) {
+            /* gl_nir_lower_samplers_as_deref is where this would normally be set, but zink doesn't use it */
+            nir_tex_instr *tex = nir_instr_as_tex(instr);
+            nir_foreach_variable_with_modes(img, shader, nir_var_uniform) {
+               if (glsl_type_is_sampler(glsl_without_array(img->type))) {
+                  unsigned size = glsl_type_is_array(img->type) ? glsl_get_aoa_size(img->type) : 1;
+                  if (tex->texture_index >= img->data.driver_location &&
+                     tex->texture_index < img->data.driver_location + size) {
+                     BITSET_SET_RANGE(shader->info.textures_used, img->data.driver_location, img->data.driver_location + (size - 1));
+                     break;
+                  }
+               }
+            }
+            continue;
+         }
          if (instr->type != nir_instr_type_intrinsic)
             continue;
  
