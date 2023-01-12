@@ -51,6 +51,7 @@
 #include "util/libdrm.h"
 #include "util/os_file.h"
 #include "util/os_misc.h"
+#include "util/u_debug.h"
 #include "git_sha1.h"
 
 #define MAX_DRM_DEVICES 64
@@ -323,6 +324,7 @@ static char *drm_get_id_path_tag_for_fd(int fd)
 bool loader_get_user_preferred_fd(int *fd_render_gpu, int *original_fd)
 {
    const char *dri_prime = getenv("DRI_PRIME");
+   bool debug = debug_get_bool_option("DRI_PRIME_DEBUG", false);
    char *default_tag = NULL;
    drmDevicePtr devices[MAX_DRM_DEVICES];
    int i, num_devices, fd = -1;
@@ -379,6 +381,33 @@ bool loader_get_user_preferred_fd(int *fd_render_gpu, int *original_fd)
    if (num_devices <= 0)
       goto err;
 
+   if (debug) {
+      log_(_LOADER_WARNING, "DRI_PRIME: %d devices\n", num_devices);
+      for (i = 0; i < num_devices; i++) {
+         log_(_LOADER_WARNING, "  %d:", i);
+         if (!(devices[i]->available_nodes & 1 << DRM_NODE_RENDER)) {
+            log_(_LOADER_WARNING, "not a render node -> not usable\n");
+            continue;
+         }
+         char *tag = drm_construct_id_path_tag(devices[i]);
+         if (tag) {
+            log_(_LOADER_WARNING, " %s", tag);
+            free(tag);
+         }
+         if (devices[i]->bustype == DRM_BUS_PCI) {
+            log_(_LOADER_WARNING, " %4x:%4x",
+               devices[i]->deviceinfo.pci->vendor_id,
+               devices[i]->deviceinfo.pci->device_id);
+         }
+         log_(_LOADER_WARNING, " %s", devices[i]->nodes[DRM_NODE_RENDER]);
+
+         if (drm_device_matches_tag(devices[i], default_tag)) {
+            log_(_LOADER_WARNING, " [default]");
+         }
+         log_(_LOADER_WARNING, "\n");
+      }
+   }
+
    if (prime.semantics == PRIME_IS_INTEGER &&
        prime.v.as_integer >= num_devices) {
       printf("Inconsistent value (%d) for DRI_PRIME. Should be < %d "
@@ -391,6 +420,8 @@ bool loader_get_user_preferred_fd(int *fd_render_gpu, int *original_fd)
       if (!(devices[i]->available_nodes & 1 << DRM_NODE_RENDER))
          continue;
 
+      log_(debug ? _LOADER_WARNING : _LOADER_INFO, "DRI_PRIME: device %d ", i);
+
       /* three formats of DRI_PRIME are supported:
        * "N": a >= 1 integer value. Select the Nth GPU, skipping the
        *      default one.
@@ -401,14 +432,20 @@ bool loader_get_user_preferred_fd(int *fd_render_gpu, int *original_fd)
       switch (prime.semantics) {
          case PRIME_IS_INTEGER: {
             /* Skip the default device */
-            if (drm_device_matches_tag(devices[i], default_tag))
+            if (drm_device_matches_tag(devices[i], default_tag)) {
+               log_(debug ? _LOADER_WARNING : _LOADER_INFO,
+                    "skipped (default device)\n");
                continue;
+            }
             prime.v.as_integer--;
 
             /* Skip more GPUs? */
-            if (prime.v.as_integer)
+            if (prime.v.as_integer) {
+               log_(debug ? _LOADER_WARNING : _LOADER_INFO,
+                    "skipped (%d more to skip)\n", prime.v.as_integer - 1);
                continue;
-
+            }
+            log_(debug ? _LOADER_WARNING : _LOADER_INFO, " -> ");
             break;
          }
          case PRIME_IS_VID_DID: {
@@ -419,18 +456,28 @@ bool loader_get_user_preferred_fd(int *fd_render_gpu, int *original_fd)
                 * determination below. */
                free(prime.str);
                prime.str = drm_construct_id_path_tag(devices[i]);
+               log_(debug ? _LOADER_WARNING : _LOADER_INFO,
+                    " - vid:did match -> ");
                break;
+            } else {
+               log_(debug ? _LOADER_WARNING : _LOADER_INFO,
+                    "skipped (vid:did didn't match)\n");
             }
             continue;
          }
          case PRIME_IS_PCI_TAG: {
-            if (!drm_device_matches_tag(devices[i], prime.str))
+            if (!drm_device_matches_tag(devices[i], prime.str)) {
+               log_(debug ? _LOADER_WARNING : _LOADER_INFO,
+                    "skipped (pci id tag didn't match)\n");
                continue;
-
+            }
+            log_(debug ? _LOADER_WARNING : _LOADER_INFO, " - pci tag match -> ");
             break;
          }
       }
 
+      log_(debug ? _LOADER_WARNING : _LOADER_INFO,
+           "selected (%s)\n", devices[i]->nodes[DRM_NODE_RENDER]);
       fd = loader_open_device(devices[i]->nodes[DRM_NODE_RENDER]);
       break;
    }
@@ -439,8 +486,13 @@ bool loader_get_user_preferred_fd(int *fd_render_gpu, int *original_fd)
    if (i == num_devices)
       goto err;
 
-   if (fd < 0)
+   if (fd < 0) {
+      log_(debug ? _LOADER_WARNING : _LOADER_INFO,
+           "DRI_PRIME: failed to open '%s'\n",
+           devices[i]->nodes[DRM_NODE_RENDER]);
+
       goto err;
+   }
 
    bool is_render_and_display_gpu_diff = !!strcmp(default_tag, prime.str);
    if (original_fd) {
@@ -460,6 +512,8 @@ bool loader_get_user_preferred_fd(int *fd_render_gpu, int *original_fd)
    free(prime.str);
    return is_render_and_display_gpu_diff;
  err:
+   log_(debug ? _LOADER_WARNING : _LOADER_INFO,
+        "DRI_PRIME: error. Using the default GPU\n");
    free(default_tag);
    free(prime.str);
  no_prime_gpu_offloading:
