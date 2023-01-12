@@ -139,14 +139,15 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    util_dynarray_clear(&bs->wait_semaphore_stages);
 
    bs->present = VK_NULL_HANDLE;
-   /* semaphores are not destroyed here;
-    * destroying semaphores triggers ioctls, so defer deletion to the submit thread to avoid blocking
-    */
-   memcpy(&bs->unref_semaphores, &bs->acquires, sizeof(struct util_dynarray));
-   util_dynarray_init(&bs->acquires, NULL);
-   while (util_dynarray_contains(&bs->wait_semaphores, VkSemaphore))
-      util_dynarray_append(&bs->unref_semaphores, VkSemaphore, util_dynarray_pop(&bs->wait_semaphores, VkSemaphore));
-   util_dynarray_init(&bs->wait_semaphores, NULL);
+   /* check the arrays first to avoid locking unnecessarily */
+   if (util_dynarray_contains(&bs->acquires, VkSemaphore) || util_dynarray_contains(&bs->wait_semaphores, VkSemaphore)) {
+      simple_mtx_lock(&screen->semaphores_lock);
+      util_dynarray_append_dynarray(&screen->semaphores, &bs->acquires);
+      util_dynarray_clear(&bs->acquires);
+      util_dynarray_append_dynarray(&screen->semaphores, &bs->wait_semaphores);
+      util_dynarray_clear(&bs->wait_semaphores);
+      simple_mtx_unlock(&screen->semaphores_lock);
+   }
    bs->swapchain = NULL;
 
    /* only reset submitted here so that tc fence desync can pick up the 'completed' flag
@@ -198,13 +199,6 @@ unref_resources(struct zink_screen *screen, struct zink_batch_state *bs)
       /* this is typically where resource objects get destroyed */
       zink_resource_object_reference(screen, &obj, NULL);
    }
-   /* check the arrays first to avoid locking unnecessarily */
-   if (!util_dynarray_contains(&bs->unref_semaphores, VkSemaphore))
-      return;
-   simple_mtx_lock(&screen->semaphores_lock);
-   util_dynarray_append_dynarray(&screen->semaphores, &bs->unref_semaphores);
-   util_dynarray_clear(&bs->unref_semaphores);
-   simple_mtx_unlock(&screen->semaphores_lock);
 }
 
 /* utility for resetting a batch state; called on context destruction */
@@ -274,7 +268,6 @@ zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs
    util_dynarray_fini(&bs->bindless_releases[0]);
    util_dynarray_fini(&bs->bindless_releases[1]);
    util_dynarray_fini(&bs->acquires);
-   util_dynarray_fini(&bs->unref_semaphores);
    util_dynarray_fini(&bs->acquire_flags);
    zink_batch_descriptor_deinit(screen, bs);
    ralloc_free(bs);
@@ -331,7 +324,6 @@ create_batch_state(struct zink_context *ctx)
    util_dynarray_init(&bs->persistent_resources, NULL);
    util_dynarray_init(&bs->unref_resources, NULL);
    util_dynarray_init(&bs->acquires, NULL);
-   util_dynarray_init(&bs->unref_semaphores, NULL);
    util_dynarray_init(&bs->acquire_flags, NULL);
    util_dynarray_init(&bs->bindless_releases[0], NULL);
    util_dynarray_init(&bs->bindless_releases[1], NULL);

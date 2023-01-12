@@ -544,7 +544,6 @@ struct zink_batch_state {
    struct zink_resource *swapchain;
    struct util_dynarray acquires;
    struct util_dynarray acquire_flags;
-   struct util_dynarray unref_semaphores;
 
    struct util_queue_fence flush_completed;
 
