@@ -581,6 +581,27 @@ static void set_custom_cu_en_mask(struct radeon_info *info)
    }
 }
 
+bool ac_query_pci_bus_info(int fd, struct radeon_info *info)
+{
+   drmDevicePtr devinfo;
+
+   /* Get PCI info. */
+   int r = drmGetDevice2(fd, 0, &devinfo);
+   if (r) {
+      fprintf(stderr, "amdgpu: drmGetDevice2 failed.\n");
+      info->pci.valid = false;
+      return false;
+   }
+   info->pci.domain = devinfo->businfo.pci->domain;
+   info->pci.bus = devinfo->businfo.pci->bus;
+   info->pci.dev = devinfo->businfo.pci->dev;
+   info->pci.func = devinfo->businfo.pci->func;
+   info->pci.valid = true;
+
+   drmFreeDevice(&devinfo);
+   return true;
+}
+
 bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
 {
    struct amdgpu_gpu_info amdinfo;
@@ -589,7 +610,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
    uint32_t vce_version = 0, vce_feature = 0, uvd_version = 0, uvd_feature = 0;
    int r, i, j;
    amdgpu_device_handle dev = dev_p;
-   drmDevicePtr devinfo;
 
    STATIC_ASSERT(AMDGPU_HW_IP_GFX == AMD_IP_GFX);
    STATIC_ASSERT(AMDGPU_HW_IP_COMPUTE == AMD_IP_COMPUTE);
@@ -601,18 +621,8 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
    STATIC_ASSERT(AMDGPU_HW_IP_VCN_ENC == AMD_IP_VCN_ENC);
    STATIC_ASSERT(AMDGPU_HW_IP_VCN_JPEG == AMD_IP_VCN_JPEG);
 
-   /* Get PCI info. */
-   r = drmGetDevice2(fd, 0, &devinfo);
-   if (r) {
-      fprintf(stderr, "amdgpu: drmGetDevice2 failed.\n");
+   if (!ac_query_pci_bus_info(fd, info))
       return false;
-   }
-   info->pci.domain = devinfo->businfo.pci->domain;
-   info->pci.bus = devinfo->businfo.pci->bus;
-   info->pci.dev = devinfo->businfo.pci->dev;
-   info->pci.func = devinfo->businfo.pci->func;
-   info->pci.valid = true;
-   drmFreeDevice(&devinfo);
 
    assert(info->drm_major == 3);
    info->is_amdgpu = true;
