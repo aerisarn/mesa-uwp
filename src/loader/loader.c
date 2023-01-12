@@ -328,11 +328,12 @@ bool loader_get_user_preferred_fd(int *fd_render_gpu, int *original_fd)
    int i, num_devices, fd = -1;
    struct {
       enum {
-         PRIME_IS_ONE,
+         PRIME_IS_INTEGER,
          PRIME_IS_VID_DID,
          PRIME_IS_PCI_TAG
       } semantics;
       union {
+         int as_integer;
          struct {
             uint16_t v, d;
          } as_vendor_device_ids;
@@ -357,10 +358,15 @@ bool loader_get_user_preferred_fd(int *fd_render_gpu, int *original_fd)
          prime.v.as_vendor_device_ids.v = vendor_id;
          prime.v.as_vendor_device_ids.d = device_id;
       } else {
-         if (strcmp(prime.str, "1") == 0) {
-            prime.semantics = PRIME_IS_ONE;
-         } else {
+         int i = atoi(prime.str);
+         if (i < 0 || strcmp(prime.str, "0") == 0) {
+            printf("Invalid value (%d) for DRI_PRIME. Should be > 0\n", i);
+            goto err;
+         } else if (i == 0) {
             prime.semantics = PRIME_IS_PCI_TAG;
+         } else {
+            prime.semantics = PRIME_IS_INTEGER;
+            prime.v.as_integer = i;
          }
       }
    }
@@ -372,6 +378,14 @@ bool loader_get_user_preferred_fd(int *fd_render_gpu, int *original_fd)
    num_devices = drmGetDevices2(0, devices, MAX_DRM_DEVICES);
    if (num_devices <= 0)
       goto err;
+
+   if (prime.semantics == PRIME_IS_INTEGER &&
+       prime.v.as_integer >= num_devices) {
+      printf("Inconsistent value (%d) for DRI_PRIME. Should be < %d "
+             "(GPU devices count). Using: %d\n",
+             prime.v.as_integer, num_devices, num_devices - 1);
+      prime.v.as_integer = num_devices - 1;
+   }
 
    for (i = 0; i < num_devices; i++) {
       if (!(devices[i]->available_nodes & 1 << DRM_NODE_RENDER))
@@ -385,9 +399,14 @@ bool loader_get_user_preferred_fd(int *fd_render_gpu, int *original_fd)
        * vendor_id:device_id
        */
       switch (prime.semantics) {
-         case PRIME_IS_ONE: {
+         case PRIME_IS_INTEGER: {
             /* Skip the default device */
             if (drm_device_matches_tag(devices[i], default_tag))
+               continue;
+            prime.v.as_integer--;
+
+            /* Skip more GPUs? */
+            if (prime.v.as_integer)
                continue;
 
             break;
@@ -405,9 +424,9 @@ bool loader_get_user_preferred_fd(int *fd_render_gpu, int *original_fd)
             continue;
          }
          case PRIME_IS_PCI_TAG: {
-            if (!drm_device_matches_tag(devices[i], prime.str)) {
+            if (!drm_device_matches_tag(devices[i], prime.str))
                continue;
-            }
+
             break;
          }
       }
