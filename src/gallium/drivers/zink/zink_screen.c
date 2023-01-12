@@ -1434,6 +1434,10 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    if (screen->threaded)
       util_queue_destroy(&screen->flush_queue);
 
+   simple_mtx_destroy(&screen->semaphores_lock);
+   while (util_dynarray_contains(&screen->semaphores, VkSemaphore))
+      VKSCR(DestroySemaphore)(screen->dev, util_dynarray_pop(&screen->semaphores, VkSemaphore), NULL);
+
    simple_mtx_destroy(&screen->queue_lock);
    VKSCR(DestroyDevice)(screen->dev, NULL);
    VKSCR(DestroyInstance)(screen->instance, NULL);
@@ -2520,6 +2524,14 @@ zink_create_semaphore(struct zink_screen *screen)
       0
    };
    VkSemaphore sem = VK_NULL_HANDLE;
+   if (util_dynarray_contains(&screen->semaphores, VkSemaphore)) {
+      simple_mtx_lock(&screen->semaphores_lock);
+      if (util_dynarray_contains(&screen->semaphores, VkSemaphore))
+         sem = util_dynarray_pop(&screen->semaphores, VkSemaphore);
+      simple_mtx_unlock(&screen->semaphores_lock);
+   }
+   if (sem)
+      return sem;
    VkResult ret = VKSCR(CreateSemaphore)(screen->dev, &sci, NULL, &sem);
    return ret == VK_SUCCESS ? sem : VK_NULL_HANDLE;
 }
@@ -2829,6 +2841,9 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    simple_mtx_init(&screen->dt_lock, mtx_plain);
 
    util_idalloc_mt_init_tc(&screen->buffer_ids);
+
+   simple_mtx_init(&screen->semaphores_lock, mtx_plain);
+   util_dynarray_init(&screen->semaphores, screen);
 
    util_vertex_state_cache_init(&screen->vertex_state_cache,
                                 zink_create_vertex_state, zink_vertex_state_destroy);

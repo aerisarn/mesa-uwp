@@ -1226,6 +1226,9 @@ struct zink_screen {
    struct util_queue flush_queue;
    struct zink_context *copy_context;
 
+   simple_mtx_t semaphores_lock;
+   struct util_dynarray semaphores;
+
    unsigned buffer_rebind_counter;
    unsigned image_rebind_counter;
    unsigned robust_ctx_count;

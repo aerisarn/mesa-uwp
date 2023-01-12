@@ -198,8 +198,13 @@ unref_resources(struct zink_screen *screen, struct zink_batch_state *bs)
       /* this is typically where resource objects get destroyed */
       zink_resource_object_reference(screen, &obj, NULL);
    }
-   while (util_dynarray_contains(&bs->unref_semaphores, VkSemaphore))
-      VKSCR(DestroySemaphore)(screen->dev, util_dynarray_pop(&bs->unref_semaphores, VkSemaphore), NULL);
+   /* check the arrays first to avoid locking unnecessarily */
+   if (!util_dynarray_contains(&bs->unref_semaphores, VkSemaphore))
+      return;
+   simple_mtx_lock(&screen->semaphores_lock);
+   util_dynarray_append_dynarray(&screen->semaphores, &bs->unref_semaphores);
+   util_dynarray_clear(&bs->unref_semaphores);
+   simple_mtx_unlock(&screen->semaphores_lock);
 }
 
 /* utility for resetting a batch state; called on context destruction */
