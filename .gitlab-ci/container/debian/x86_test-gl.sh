@@ -29,6 +29,7 @@ STABLE_EPHEMERAL=" \
       libx11-xcb-dev \
       libxcb-dri2-0-dev \
       libxkbcommon-dev \
+      libxrandr-dev \
       libxrender-dev \
       llvm-13-dev \
       llvm-11-dev \
@@ -77,6 +78,10 @@ DEQP_TARGET=surfaceless . .gitlab-ci/container/build-deqp.sh
 ############### Build apitrace
 
 . .gitlab-ci/container/build-apitrace.sh
+
+############### Build validation layer for zink
+
+. .gitlab-ci/container/build-vulkan-validation.sh
 
 ############### Uninstall the build software
 

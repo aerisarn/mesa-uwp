@@ -37,6 +37,10 @@ zink-lvp:
   variables:
     DEQP_SUITE: zink-lvp
     PIGLIT_NO_WINDOW: 1
+    # Enable validation (except for on piglit, see deqp-zink-lvp.toml), logging
+    # to stdout and aborting on unknown failures.
+    ZINK_DEBUG: validation
+    VK_LAYER_SETTINGS_PATH: ${CI_PROJECT_DIR}/install/zink-lvp-validation-settings.txt
   script:
     - xvfb-run --server-args='-noreset' sh -c "GALLIUM_DRIVER=zink VK_DRIVER=lvp install/deqp-runner.sh"
 
