@@ -66,7 +66,7 @@ vk_push_print(FILE *fp, const struct nv_push *push,
    while (cur < push->end) {
       uint32_t hdr = *cur;
       uint32_t type = hdr >> 29;
-      uint32_t inc;
+      uint32_t inc = 0;
       uint32_t count = (hdr >> 16) & 0x1fff;
       uint32_t subchan = (hdr >> 13) & 0x7;
       uint32_t mthd = (hdr & 0xfff) << 2;
