@@ -419,9 +419,6 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend, bool is_blit)
    if (!is_blend)
       NIR_PASS(progress, nir, nir_fuse_io_16);
 
-   /* Must be run at the end to prevent creation of fsin/fcos ops */
-   NIR_PASS(progress, nir, midgard_nir_scale_trig);
-
    do {
       progress = false;
 
@@ -865,8 +862,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
       ALU_CASE_RTZ(i2f16, i2f_rte);
       ALU_CASE_RTZ(u2f16, u2f_rte);
 
-      ALU_CASE(fsin, fsinpi);
-      ALU_CASE(fcos, fcospi);
+      ALU_CASE(fsin_mdg, fsinpi);
+      ALU_CASE(fcos_mdg, fcospi);
 
       /* We'll get 0 in the second arg, so:
        * ~a = ~(a | 0) = nor(a, 0) */
