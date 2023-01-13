@@ -935,7 +935,7 @@ emit_urb_direct_vec4_write(const fs_builder &bld,
    for (unsigned q = 0; q < bld.dispatch_width() / 8; q++) {
       fs_builder bld8 = bld.group(8, q);
 
-      fs_reg payload_srcs[4];
+      fs_reg payload_srcs[8];
       unsigned length = 0;
 
       for (unsigned i = 0; i < dst_comp_offset; i++)
@@ -969,7 +969,7 @@ emit_urb_direct_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
    assert(nir_src_is_const(*offset_nir_src));
 
    const unsigned comps = nir_src_num_components(instr->src[0]);
-   assert(comps <= 4);
+   assert(comps <= 8);
 
    const unsigned mask = nir_intrinsic_write_mask(instr);
    const unsigned offset_in_dwords = nir_intrinsic_base(instr) +
@@ -985,10 +985,10 @@ emit_urb_direct_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
     * needed.
     */
    const unsigned comp_shift   = offset_in_dwords % 4;
-   const unsigned first_comps  = MIN2(comps, 4 - comp_shift);
+   const unsigned first_comps  = MIN2(comps, 8 - comp_shift);
    const unsigned second_comps = comps - first_comps;
-   const unsigned first_mask   = (mask << comp_shift) & 0xF;
-   const unsigned second_mask  = (mask >> (4 - comp_shift)) & 0xF;
+   const unsigned first_mask   = (mask << comp_shift) & 0xFF;
+   const unsigned second_mask  = (mask >> (8 - comp_shift)) & 0xFF;
 
    unsigned urb_global_offset = offset_in_dwords / 4;
    adjust_handle_and_offset(bld, urb_handle, urb_global_offset);
@@ -997,7 +997,7 @@ emit_urb_direct_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
       emit_urb_direct_vec4_write(bld, urb_global_offset, src, urb_handle, 0, comp_shift, first_comps, first_mask);
 
    if (second_mask > 0) {
-      urb_global_offset++;
+      urb_global_offset += 2;
       adjust_handle_and_offset(bld, urb_handle, urb_global_offset);
 
       emit_urb_direct_vec4_write(bld, urb_global_offset, src, urb_handle, first_comps, 0, second_comps, second_mask);
@@ -1023,7 +1023,7 @@ emit_urb_indirect_vec4_write(const fs_builder &bld,
       bld8.ADD(off, off, brw_imm_ud(base));
       bld8.SHR(off, off, brw_imm_ud(2));
 
-      fs_reg payload_srcs[4];
+      fs_reg payload_srcs[8];
       unsigned length = 0;
 
       for (unsigned i = 0; i < dst_comp_offset; i++)
@@ -1055,17 +1055,17 @@ emit_urb_indirect_writes_mod(const fs_builder &bld, nir_intrinsic_instr *instr,
    assert(nir_src_bit_size(instr->src[0]) == 32);
 
    const unsigned comps = nir_src_num_components(instr->src[0]);
-   assert(comps <= 4);
+   assert(comps <= 8);
 
    const unsigned mask = nir_intrinsic_write_mask(instr);
    const unsigned base_in_dwords = nir_intrinsic_base(instr) +
                                    component_from_intrinsic(instr);
 
    const unsigned comp_shift   = mod;
-   const unsigned first_comps  = MIN2(comps, 4 - comp_shift);
+   const unsigned first_comps  = MIN2(comps, 8 - comp_shift);
    const unsigned second_comps = comps - first_comps;
-   const unsigned first_mask   = (mask << comp_shift) & 0xF;
-   const unsigned second_mask  = (mask >> (4 - comp_shift)) & 0xF;
+   const unsigned first_mask   = (mask << comp_shift) & 0xFF;
+   const unsigned second_mask  = (mask >> (8 - comp_shift)) & 0xFF;
 
    if (first_mask > 0) {
       emit_urb_indirect_vec4_write(bld, offset_src, base_in_dwords, src,
@@ -1074,7 +1074,7 @@ emit_urb_indirect_writes_mod(const fs_builder &bld, nir_intrinsic_instr *instr,
    }
 
    if (second_mask > 0) {
-      emit_urb_indirect_vec4_write(bld, offset_src, base_in_dwords + 4, src,
+      emit_urb_indirect_vec4_write(bld, offset_src, base_in_dwords + 8, src,
                                    urb_handle, first_comps, 0, second_comps,
                                    second_mask);
    }
