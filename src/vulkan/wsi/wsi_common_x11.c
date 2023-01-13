@@ -487,7 +487,7 @@ connection_get_visualtype(xcb_connection_t *conn, xcb_visualid_t visual_id)
 
 static xcb_visualtype_t *
 get_visualtype_for_window(xcb_connection_t *conn, xcb_window_t window,
-                          unsigned *depth)
+                          unsigned *depth, xcb_visualtype_t **rootvis)
 {
    xcb_query_tree_cookie_t tree_cookie;
    xcb_get_window_attributes_cookie_t attrib_cookie;
@@ -514,6 +514,8 @@ get_visualtype_for_window(xcb_connection_t *conn, xcb_window_t window,
    if (screen == NULL)
       return NULL;
 
+   if (rootvis)
+      *rootvis = screen_get_visualtype(screen, screen->root_visual, depth);
    return screen_get_visualtype(screen, visual_id, depth);
 }
 
@@ -616,7 +618,7 @@ x11_surface_get_support(VkIcdSurfaceBase *icd_surface,
       }
    }
 
-   if (!visual_supported(get_visualtype_for_window(conn, window, NULL))) {
+   if (!visual_supported(get_visualtype_for_window(conn, window, NULL, NULL))) {
       *pSupported = false;
       return VK_SUCCESS;
    }
@@ -670,7 +672,7 @@ x11_surface_get_capabilities(VkIcdSurfaceBase *icd_surface,
     * wait to read the reply until after we have a visual.
     */
    xcb_visualtype_t *visual =
-      get_visualtype_for_window(conn, window, &visual_depth);
+      get_visualtype_for_window(conn, window, &visual_depth, NULL);
 
    if (!visual)
       return VK_ERROR_SURFACE_LOST_KHR;
@@ -757,13 +759,24 @@ get_sorted_vk_formats(VkIcdSurfaceBase *surface, struct wsi_device *wsi_device,
 {
    xcb_connection_t *conn = x11_surface_get_connection(surface);
    xcb_window_t window = x11_surface_get_window(surface);
-   xcb_visualtype_t *visual = get_visualtype_for_window(conn, window, NULL);
+   xcb_visualtype_t *rootvis = NULL;
+   xcb_visualtype_t *visual = get_visualtype_for_window(conn, window, NULL, &rootvis);
 
    if (!visual)
       return false;
 
+   /* use the root window's visual to set the default */
    *count = 0;
    for (unsigned i = 0; i < ARRAY_SIZE(formats); i++) {
+      if (format_get_component_bits(formats[i], 0) == util_bitcount(rootvis->red_mask) &&
+          format_get_component_bits(formats[i], 1) == util_bitcount(rootvis->green_mask) &&
+          format_get_component_bits(formats[i], 2) == util_bitcount(rootvis->blue_mask))
+         sorted_formats[(*count)++] = formats[i];
+   }
+
+   for (unsigned i = 0; i < ARRAY_SIZE(formats); i++) {
+      if (formats[i] == sorted_formats[0])
+         continue;
       if (format_get_component_bits(formats[i], 0) == util_bitcount(visual->red_mask) &&
           format_get_component_bits(formats[i], 1) == util_bitcount(visual->green_mask) &&
           format_get_component_bits(formats[i], 2) == util_bitcount(visual->blue_mask))
