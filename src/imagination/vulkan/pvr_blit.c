@@ -314,7 +314,7 @@ static VkResult pvr_clear_color_attachment_static(
    const struct pvr_device_static_clear_state *dev_clear_state =
       &device->static_clear_state;
    const bool uses_tile_buffer = mrt_resource->type ==
-                                 USC_MRT_RESOURCE_TYPE_OUTPUT_REG;
+                                 USC_MRT_RESOURCE_TYPE_MEMORY;
    const struct pvr_pds_clear_attachment_program_info *clear_attachment_program;
    struct pvr_pds_pixel_shader_sa_program texture_program;
    uint32_t pds_state[PVR_STATIC_CLEAR_PDS_STATE_COUNT];
@@ -334,9 +334,9 @@ static VkResult pvr_clear_color_attachment_static(
       DIV_ROUND_UP(pvr_get_pbe_accum_format_size_in_bytes(format), 4U);
 
    if (uses_tile_buffer)
-      output_offset = mrt_resource->reg.offset;
-   else
       output_offset = mrt_resource->mem.offset_dw;
+   else
+      output_offset = mrt_resource->reg.offset;
 
    assert(has_eight_output_registers || out_reg_count + output_offset <= 4);
 
