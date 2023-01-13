@@ -21,7 +21,7 @@ binding_has_immutable_samplers(const VkDescriptorSetLayoutBinding *binding)
 
 void
 nvk_descriptor_stride_align_for_type(VkDescriptorType type,
-                                     const VkMutableDescriptorTypeListVALVE *type_list,
+                                     const VkMutableDescriptorTypeListEXT *type_list,
                                      uint32_t *stride, uint32_t *align)
 {
    switch (type) {
@@ -51,12 +51,12 @@ nvk_descriptor_stride_align_for_type(VkDescriptorType type,
       *align = NVK_MIN_UBO_ALIGNMENT;
       break;
 
-   case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
+   case VK_DESCRIPTOR_TYPE_MUTABLE_EXT:
       *stride = *align = 0;
       for (unsigned i = 0; i < type_list->descriptorTypeCount; i++) {
          /* This shouldn't recurse */
          assert(type_list->pDescriptorTypes[i] !=
-                VK_DESCRIPTOR_TYPE_MUTABLE_VALVE);
+                VK_DESCRIPTOR_TYPE_MUTABLE_EXT);
          uint32_t desc_stride, desc_align;
          nvk_descriptor_stride_align_for_type(type_list->pDescriptorTypes[i],
                                               NULL, &desc_stride, &desc_align);
@@ -127,9 +127,9 @@ nvk_CreateDescriptorSetLayout(VkDevice _device,
    const VkDescriptorSetLayoutBindingFlagsCreateInfo *binding_flags_info =
       vk_find_struct_const(pCreateInfo->pNext,
                            DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO);
-   const VkMutableDescriptorTypeCreateInfoVALVE *mutable_info =
+   const VkMutableDescriptorTypeCreateInfoEXT *mutable_info =
       vk_find_struct_const(pCreateInfo->pNext,
-                           MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE);
+                           MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT);
 
    uint32_t buffer_size = 0;
    uint8_t dynamic_buffer_count = 0;
@@ -169,8 +169,8 @@ nvk_CreateDescriptorSetLayout(VkDevice _device,
          break;
       }
 
-      const VkMutableDescriptorTypeListVALVE *type_list = NULL;
-      if (binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE) {
+      const VkMutableDescriptorTypeListEXT *type_list = NULL;
+      if (binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_EXT) {
          assert(mutable_info != NULL);
          assert(info_idx <= mutable_info->mutableDescriptorTypeListCount);
          type_list = &mutable_info->pMutableDescriptorTypeLists[info_idx];

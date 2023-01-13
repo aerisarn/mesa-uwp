@@ -364,14 +364,14 @@ nvk_CreateDescriptorPool(VkDevice _device,
    uint64_t size = sizeof(struct nvk_descriptor_pool);
    uint64_t bo_size = 0;
 
-   const VkMutableDescriptorTypeCreateInfoVALVE *mutable_info =
+   const VkMutableDescriptorTypeCreateInfoEXT *mutable_info =
       vk_find_struct_const(pCreateInfo->pNext,
-                           MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE);
+                           MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT);
 
    uint32_t max_align = 0;
    for (unsigned i = 0; i < pCreateInfo->poolSizeCount; ++i) {
-      const VkMutableDescriptorTypeListVALVE *type_list = NULL;
-      if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE) {
+      const VkMutableDescriptorTypeListEXT *type_list = NULL;
+      if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_MUTABLE_EXT) {
          assert(mutable_info != NULL);
          assert(i <= mutable_info->mutableDescriptorTypeListCount);
          type_list = &mutable_info->pMutableDescriptorTypeLists[i];
@@ -384,8 +384,8 @@ nvk_CreateDescriptorPool(VkDevice _device,
    }
 
    for (unsigned i = 0; i < pCreateInfo->poolSizeCount; ++i) {
-      const VkMutableDescriptorTypeListVALVE *type_list = NULL;
-      if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE) {
+      const VkMutableDescriptorTypeListEXT *type_list = NULL;
+      if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_MUTABLE_EXT) {
          assert(mutable_info != NULL);
          assert(i <= mutable_info->mutableDescriptorTypeListCount);
          type_list = &mutable_info->pMutableDescriptorTypeLists[i];
