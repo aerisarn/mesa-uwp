@@ -175,6 +175,16 @@ struct bs_thread_payload : public thread_payload {
    void load_shader_type(const brw::fs_builder &bld, fs_reg &dest) const;
 };
 
+struct brw_fs_bind_info {
+   bool valid;
+   bool bindless;
+   unsigned block;
+   unsigned set;
+   unsigned binding;
+   bblock_t *fs_block;
+   fs_inst *fs_inst_anchor;
+};
+
 /**
  * The fragment shader front-end.
  *
@@ -371,6 +381,8 @@ public:
                          nir_tex_instr *instr);
    void nir_emit_jump(const brw::fs_builder &bld,
                       nir_jump_instr *instr);
+   bool get_nir_src_bindless(const nir_src &src);
+   unsigned get_nir_src_block(const nir_src &src);
    fs_reg get_nir_src(const nir_src &src);
    fs_reg get_nir_src_imm(const nir_src &src);
    fs_reg get_nir_dest(const nir_dest &dest);
@@ -464,6 +476,7 @@ public:
 
    fs_reg *nir_locals;
    fs_reg *nir_ssa_values;
+   struct brw_fs_bind_info *nir_ssa_bind_infos;
    fs_reg *nir_system_values;
 
    bool failed;

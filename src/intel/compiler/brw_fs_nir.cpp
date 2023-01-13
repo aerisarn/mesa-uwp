@@ -319,6 +319,12 @@ fs_visitor::nir_emit_impl(nir_function_impl *impl)
    nir_ssa_values = reralloc(mem_ctx, nir_ssa_values, fs_reg,
                              impl->ssa_alloc);
 
+   nir_ssa_bind_infos = reralloc(mem_ctx, nir_ssa_bind_infos,
+                                 struct brw_fs_bind_info,
+                                 impl->ssa_alloc);
+   memset(nir_ssa_bind_infos, 0,
+          sizeof(nir_ssa_bind_infos[0]) * impl->ssa_alloc);
+
    nir_emit_cf_list(&impl->body);
 }
 
@@ -1943,6 +1949,24 @@ fs_visitor::nir_emit_load_const(const fs_builder &bld,
    }
 
    nir_ssa_values[instr->def.index] = reg;
+}
+
+bool
+fs_visitor::get_nir_src_bindless(const nir_src &src)
+{
+   assert(src.is_ssa);
+
+   return nir_ssa_bind_infos[src.ssa->index].bindless;
+}
+
+unsigned
+fs_visitor::get_nir_src_block(const nir_src &src)
+{
+   assert(src.is_ssa);
+
+   return nir_ssa_bind_infos[src.ssa->index].valid ?
+          nir_ssa_bind_infos[src.ssa->index].block :
+          UINT32_MAX;
 }
 
 fs_reg
@@ -3937,12 +3961,19 @@ fs_visitor::get_nir_ssbo_intrinsic_index(const brw::fs_builder &bld,
    const bool is_store =
       instr->intrinsic == nir_intrinsic_store_ssbo ||
       instr->intrinsic == nir_intrinsic_store_ssbo_block_intel;
-   const unsigned src = is_store ? 1 : 0;
+   nir_src src = is_store ? instr->src[1] : instr->src[0];
 
-   if (nir_src_is_const(instr->src[src])) {
-      return brw_imm_ud(nir_src_as_uint(instr->src[src]));
+   if (src.is_ssa && src.ssa->parent_instr->type == nir_instr_type_intrinsic) {
+      nir_intrinsic_instr *intrin =
+         nir_instr_as_intrinsic(src.ssa->parent_instr);
+      if (intrin->intrinsic == nir_intrinsic_resource_intel)
+         src = intrin->src[1];
+   }
+
+   if (nir_src_is_const(src)) {
+      return brw_imm_ud(nir_src_as_uint(src));
    } else {
-      return bld.emit_uniformize(get_nir_src(instr->src[src]));
+      return bld.emit_uniformize(get_nir_src(src));
    }
 }
 
@@ -4094,6 +4125,24 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       dest = get_nir_dest(instr->dest);
 
    switch (instr->intrinsic) {
+   case nir_intrinsic_resource_intel:
+      nir_ssa_bind_infos[instr->dest.ssa.index].valid = true;
+      nir_ssa_bind_infos[instr->dest.ssa.index].bindless =
+         (nir_intrinsic_resource_access_intel(instr) &
+          nir_resource_intel_bindless) != 0;
+      nir_ssa_bind_infos[instr->dest.ssa.index].block =
+         nir_intrinsic_resource_block_intel(instr);
+      nir_ssa_bind_infos[instr->dest.ssa.index].set =
+         nir_intrinsic_desc_set(instr);
+      nir_ssa_bind_infos[instr->dest.ssa.index].binding =
+         nir_intrinsic_binding(instr);
+      nir_ssa_bind_infos[instr->dest.ssa.index].fs_block =
+         bld.get_block();
+      nir_ssa_bind_infos[instr->dest.ssa.index].fs_inst_anchor =
+         bld.MOV(retype(dest, BRW_REGISTER_TYPE_UD),
+                 retype(get_nir_src(instr->src[1]), BRW_REGISTER_TYPE_UD));
+      break;
+
    case nir_intrinsic_image_load:
    case nir_intrinsic_image_store:
    case nir_intrinsic_image_atomic:
