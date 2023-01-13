@@ -9626,7 +9626,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
    unsigned wqm_coord_count = 0;
    std::vector<Temp> unpacked_coord;
    if (ctx->options->gfx_level == GFX9 && instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
-       instr->op != nir_texop_lod && instr->coord_components) {
+       instr->coord_components) {
       RegClass rc = a16 ? v2b : v1;
       for (unsigned i = 0; i < coord.bytes() / rc.bytes(); i++)
          unpacked_coord.emplace_back(emit_extract_vector(ctx, coord, i, rc));
