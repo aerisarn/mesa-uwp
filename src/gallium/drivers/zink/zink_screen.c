@@ -2584,6 +2584,14 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    if (!zink_create_instance(screen))
       goto fail;
 
+   if (zink_debug & ZINK_DEBUG_VALIDATION) {
+      if (!screen->instance_info.have_layer_KHRONOS_validation &&
+          !screen->instance_info.have_layer_LUNARG_standard_validation) {
+         mesa_loge("Failed to load validation layer");
+         goto fail;
+      }
+   }
+
    vk_instance_dispatch_table_load(&screen->vk.instance,
                                    screen->vk_GetInstanceProcAddr,
                                    screen->instance);
