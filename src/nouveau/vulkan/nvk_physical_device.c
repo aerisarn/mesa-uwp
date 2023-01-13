@@ -208,6 +208,11 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          f->indexTypeUint8 = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT: {
+         VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT *f = (void *)ext;
+         f->mutableDescriptorType = true;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT: {
          VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT *f = (void *)ext;
          f->nonSeamlessCubeMap = true;
@@ -490,6 +495,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *pdev,
       .EXT_image_view_min_lod = true,
       .EXT_index_type_uint8 = true,
       .EXT_inline_uniform_block = true,
+      .EXT_mutable_descriptor_type = true,
       .EXT_non_seamless_cube_map = true,
       .EXT_pci_bus_info = true,
       .EXT_private_data = true,
