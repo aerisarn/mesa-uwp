@@ -216,7 +216,8 @@ public:
 
    void VARYING_PULL_CONSTANT_LOAD(const brw::fs_builder &bld,
                                    const fs_reg &dst,
-                                   const fs_reg &surf_index,
+                                   const fs_reg &surface,
+                                   const fs_reg &surface_handle,
                                    const fs_reg &varying_offset,
                                    uint32_t const_offset,
                                    uint8_t alignment);

@@ -890,12 +890,27 @@ enum tex_logical_srcs {
 enum pull_uniform_constant_srcs {
    /** Surface binding table index */
    PULL_UNIFORM_CONSTANT_SRC_SURFACE,
+   /** Surface bindless handle */
+   PULL_UNIFORM_CONSTANT_SRC_SURFACE_HANDLE,
    /** Surface offset */
    PULL_UNIFORM_CONSTANT_SRC_OFFSET,
    /** Pull size */
    PULL_UNIFORM_CONSTANT_SRC_SIZE,
 
    PULL_UNIFORM_CONSTANT_SRCS,
+};
+
+enum pull_varying_constant_srcs {
+   /** Surface binding table index */
+   PULL_VARYING_CONSTANT_SRC_SURFACE,
+   /** Surface bindless handle */
+   PULL_VARYING_CONSTANT_SRC_SURFACE_HANDLE,
+   /** Surface offset */
+   PULL_VARYING_CONSTANT_SRC_OFFSET,
+   /** Pull alignment */
+   PULL_VARYING_CONSTANT_SRC_ALIGNMENT,
+
+   PULL_VARYING_CONSTANT_SRCS,
 };
 
 enum get_buffer_size_srcs {

@@ -4643,26 +4643,20 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    }
 
    case nir_intrinsic_load_ubo: {
-      fs_reg surf_index;
-      if (nir_src_is_const(instr->src[0])) {
-         const unsigned index = nir_src_as_uint(instr->src[0]);
-         surf_index = brw_imm_ud(index);
-      } else {
-         /* The block index is not a constant. Evaluate the index expression
-          * per-channel and add the base UBO index; we have to select a value
-          * from any live channel.
-          */
-         surf_index = vgrf(glsl_type::uint_type);
-         bld.MOV(surf_index, get_nir_src(instr->src[0]));
-         surf_index = bld.emit_uniformize(surf_index);
-      }
+      fs_reg surface, surface_handle;
+
+      if (get_nir_src_bindless(instr->src[0]))
+         surface_handle = get_nir_buffer_intrinsic_index(bld, instr);
+      else
+         surface = get_nir_buffer_intrinsic_index(bld, instr);
 
       if (!nir_src_is_const(instr->src[1])) {
          fs_reg base_offset = retype(get_nir_src(instr->src[1]),
                                      BRW_REGISTER_TYPE_UD);
 
          for (int i = 0; i < instr->num_components; i++)
-            VARYING_PULL_CONSTANT_LOAD(bld, offset(dest, bld, i), surf_index,
+            VARYING_PULL_CONSTANT_LOAD(bld, offset(dest, bld, i),
+                                       surface, surface_handle,
                                        base_offset, i * type_sz(dest.type),
                                        nir_dest_bit_size(instr->dest) / 8);
 
@@ -4717,9 +4711,10 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                                         (block_sz - base % block_sz) / type_size);
 
             fs_reg srcs[PULL_UNIFORM_CONSTANT_SRCS];
-            srcs[PULL_UNIFORM_CONSTANT_SRC_SURFACE] = surf_index;
-            srcs[PULL_UNIFORM_CONSTANT_SRC_OFFSET]  = brw_imm_ud(base & ~(block_sz - 1));
-            srcs[PULL_UNIFORM_CONSTANT_SRC_SIZE]    = brw_imm_ud(block_sz);
+            srcs[PULL_UNIFORM_CONSTANT_SRC_SURFACE]        = surface;
+            srcs[PULL_UNIFORM_CONSTANT_SRC_SURFACE_HANDLE] = surface_handle;
+            srcs[PULL_UNIFORM_CONSTANT_SRC_OFFSET]         = brw_imm_ud(base & ~(block_sz - 1));
+            srcs[PULL_UNIFORM_CONSTANT_SRC_SIZE]           = brw_imm_ud(block_sz);
 
             ubld.emit(FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD, packed_consts,
                       srcs, PULL_UNIFORM_CONSTANT_SRCS);
