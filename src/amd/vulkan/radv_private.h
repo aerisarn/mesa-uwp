@@ -2052,53 +2052,52 @@ struct radv_pipeline {
 struct radv_graphics_pipeline {
    struct radv_pipeline base;
 
-   VkShaderStageFlags active_stages;
-
-   struct radv_dynamic_state dynamic_state;
-
-   struct radv_vs_input_state vs_input_state;
-
-   uint64_t dynamic_states;
-   struct radv_multisample_state ms;
-   struct radv_vrs_state vrs;
-   unsigned esgs_ring_size;
-   unsigned gsvs_ring_size;
-   uint32_t vtx_base_sgpr;
-   struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param;
-   uint8_t vtx_emit_num;
-   uint64_t needed_dynamic_state;
-   uint32_t binding_stride[MAX_VBS];
-   uint8_t attrib_bindings[MAX_VERTEX_ATTRIBS];
-   uint32_t attrib_ends[MAX_VERTEX_ATTRIBS];
-   uint32_t attrib_index_offset[MAX_VERTEX_ATTRIBS];
-   uint8_t last_vertex_attrib_bit;
-   uint8_t next_vertex_stage : 8;
-   uint32_t vb_desc_usage_mask;
-   uint32_t vb_desc_alloc_size;
-   uint32_t pa_sc_mode_cntl_1;
-   uint32_t db_render_control;
-
-   /* Last pre-PS API stage */
-   gl_shader_stage last_vgt_api_stage;
-   struct radv_userdata_info *last_vgt_api_stage_locs;
-
-   /* Used for rbplus */
-   uint32_t col_format_non_compacted;
-
-   bool need_null_export_workaround;
-
    bool uses_drawid;
    bool uses_baseinstance;
    bool use_per_attribute_vb_descs;
    bool can_use_simple_input;
    bool uses_user_sample_locations;
-
+   bool need_null_export_workaround;
    /* Whether the pipeline forces per-vertex VRS (GFX10.3+). */
    bool force_vrs_per_vertex;
 
    /* Whether the pipeline uses NGG (GFX10+). */
    bool is_ngg;
    bool has_ngg_culling;
+   uint8_t vtx_emit_num;
+
+   unsigned esgs_ring_size;
+   unsigned gsvs_ring_size;
+   uint32_t vtx_base_sgpr;
+   uint64_t dynamic_states;
+   uint64_t needed_dynamic_state;
+
+   VkShaderStageFlags active_stages;
+
+   /* Used for rbplus */
+   uint32_t col_format_non_compacted;
+
+   struct radv_dynamic_state dynamic_state;
+
+   struct radv_vs_input_state vs_input_state;
+
+   struct radv_multisample_state ms;
+   struct radv_vrs_state vrs;
+   struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param;
+   uint32_t binding_stride[MAX_VBS];
+   uint8_t attrib_bindings[MAX_VERTEX_ATTRIBS];
+   uint32_t attrib_ends[MAX_VERTEX_ATTRIBS];
+   uint32_t attrib_index_offset[MAX_VERTEX_ATTRIBS];
+   uint32_t vb_desc_usage_mask;
+   uint32_t vb_desc_alloc_size;
+   uint8_t last_vertex_attrib_bit;
+   uint8_t next_vertex_stage : 8;
+   uint32_t pa_sc_mode_cntl_1;
+   uint32_t db_render_control;
+
+   /* Last pre-PS API stage */
+   gl_shader_stage last_vgt_api_stage;
+   struct radv_userdata_info *last_vgt_api_stage_locs;
 
    /* Not NULL if graphics pipeline uses streamout. */
    struct radv_shader *streamout_shader;
