@@ -639,7 +639,7 @@ static void
 add_clipdist_bit(nir_builder *b, nir_ssa_def *dist, unsigned index, nir_variable *mask)
 {
    nir_ssa_def *is_neg = nir_flt(b, dist, nir_imm_float(b, 0));
-   nir_ssa_def *neg_mask = nir_ishl_imm(b, nir_b2i8(b, is_neg), index);
+   nir_ssa_def *neg_mask = nir_ishl_imm(b, nir_b2i32(b, is_neg), index);
    neg_mask = nir_ior(b, neg_mask, nir_load_var(b, mask));
    nir_store_var(b, mask, neg_mask, 1);
 }
@@ -1334,7 +1334,8 @@ clipdist_culling_es_part(nir_builder *b, lower_ngg_nogs_state *nogs_state,
    /* store clipdist_neg_mask to LDS for culling latter in gs thread */
    if (nogs_state->has_clipdist) {
       nir_ssa_def *mask = nir_load_var(b, nogs_state->clipdist_neg_mask_var);
-      nir_store_shared(b, mask, es_vertex_lds_addr, .base = lds_es_clipdist_neg_mask);
+      nir_store_shared(b, nir_u2u8(b, mask), es_vertex_lds_addr,
+                       .base = lds_es_clipdist_neg_mask);
    }
 }
 
@@ -1398,10 +1399,10 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       nogs_state->clip_vertex_var =
          nir_local_variable_create(impl, glsl_vec4_type(), "clip_vertex");
       nogs_state->clipdist_neg_mask_var =
-         nir_local_variable_create(impl, glsl_uint8_t_type(), "clipdist_neg_mask");
+         nir_local_variable_create(impl, glsl_uint_type(), "clipdist_neg_mask");
 
       /* init mask to 0 */
-      nir_store_var(b, nogs_state->clipdist_neg_mask_var, nir_imm_intN_t(b, 0, 8), 1);
+      nir_store_var(b, nogs_state->clipdist_neg_mask_var, nir_imm_int(b, 0), 1);
    }
 
    /* Top part of the culling shader (aka. position shader part)
