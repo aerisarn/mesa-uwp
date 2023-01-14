@@ -53,7 +53,9 @@ nvk_descriptor_stride_align_for_type(VkDescriptorType type,
 
    case VK_DESCRIPTOR_TYPE_MUTABLE_EXT:
       *stride = *align = 0;
-      for (unsigned i = 0; i < type_list->descriptorTypeCount; i++) {
+      if (type_list == NULL)
+         *stride = *align = NVK_MAX_DESCRIPTOR_SIZE;
+      for (unsigned i = 0; type_list && i < type_list->descriptorTypeCount; i++) {
          /* This shouldn't recurse */
          assert(type_list->pDescriptorTypes[i] !=
                 VK_DESCRIPTOR_TYPE_MUTABLE_EXT);
@@ -172,7 +174,7 @@ nvk_CreateDescriptorSetLayout(VkDevice _device,
       const VkMutableDescriptorTypeListEXT *type_list = NULL;
       if (binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_EXT) {
          assert(mutable_info != NULL);
-         assert(info_idx <= mutable_info->mutableDescriptorTypeListCount);
+         assert(info_idx < mutable_info->mutableDescriptorTypeListCount);
          type_list = &mutable_info->pMutableDescriptorTypeLists[info_idx];
       }
 

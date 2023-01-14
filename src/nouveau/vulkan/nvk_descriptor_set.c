@@ -226,8 +226,6 @@ nvk_UpdateDescriptorSets(VkDevice device,
       const struct nvk_descriptor_set_binding_layout *dst_binding_layout =
          &dst->layout->binding[copy->dstBinding];
 
-      assert(dst_binding_layout->type == src_binding_layout->type);
-
       if (dst_binding_layout->stride > 0 && src_binding_layout->stride > 0) {
          for (uint32_t j = 0; j < copy->descriptorCount; j++) {
             ASSERTED uint32_t dst_max_size, src_max_size;
@@ -371,11 +369,9 @@ nvk_CreateDescriptorPool(VkDevice _device,
    uint32_t max_align = 0;
    for (unsigned i = 0; i < pCreateInfo->poolSizeCount; ++i) {
       const VkMutableDescriptorTypeListEXT *type_list = NULL;
-      if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_MUTABLE_EXT) {
-         assert(mutable_info != NULL);
-         assert(i <= mutable_info->mutableDescriptorTypeListCount);
-         type_list = &mutable_info->pMutableDescriptorTypeLists[i];
-      }
+      if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_MUTABLE_EXT &&
+          mutable_info && i < mutable_info->mutableDescriptorTypeListCount)
+            type_list = &mutable_info->pMutableDescriptorTypeLists[i];
 
       uint32_t stride, align;
       nvk_descriptor_stride_align_for_type(pCreateInfo->pPoolSizes[i].type,
@@ -385,11 +381,9 @@ nvk_CreateDescriptorPool(VkDevice _device,
 
    for (unsigned i = 0; i < pCreateInfo->poolSizeCount; ++i) {
       const VkMutableDescriptorTypeListEXT *type_list = NULL;
-      if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_MUTABLE_EXT) {
-         assert(mutable_info != NULL);
-         assert(i <= mutable_info->mutableDescriptorTypeListCount);
-         type_list = &mutable_info->pMutableDescriptorTypeLists[i];
-      }
+      if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_MUTABLE_EXT &&
+          mutable_info && i < mutable_info->mutableDescriptorTypeListCount)
+            type_list = &mutable_info->pMutableDescriptorTypeLists[i];
 
       uint32_t stride, align;
       nvk_descriptor_stride_align_for_type(pCreateInfo->pPoolSizes[i].type,
