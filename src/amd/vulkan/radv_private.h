@@ -2086,6 +2086,7 @@ struct radv_graphics_pipeline {
 
    bool mrt0_is_dual_src;
    uint8_t need_src_alpha;
+   bool need_null_export_workaround;
 
    bool uses_drawid;
    bool uses_baseinstance;

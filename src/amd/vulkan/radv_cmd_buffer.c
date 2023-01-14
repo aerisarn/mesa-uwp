@@ -1899,8 +1899,10 @@ radv_emit_ps_epilog_state(struct radv_cmd_buffer *cmd_buffer, struct radv_shader
    if (cmd_buffer->state.emitted_ps_epilog == ps_epilog && !pipeline_is_dirty)
       return;
 
-   radeon_set_context_reg(cmd_buffer->cs, R_028714_SPI_SHADER_COL_FORMAT,
-                          ps_epilog->spi_shader_col_format);
+   uint32_t col_format = ps_epilog->spi_shader_col_format;
+   if (pipeline->need_null_export_workaround && !col_format)
+      col_format = V_028714_SPI_SHADER_32_R;
+   radeon_set_context_reg(cmd_buffer->cs, R_028714_SPI_SHADER_COL_FORMAT, col_format);
    radeon_set_context_reg(cmd_buffer->cs, R_02823C_CB_SHADER_MASK,
                           ac_get_cb_shader_mask(ps_epilog->spi_shader_col_format));
 
@@ -8541,6 +8543,9 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
          }
 
          cmd_buffer->state.col_format_non_compacted = ps_epilog->spi_shader_col_format;
+         if (cmd_buffer->state.graphics_pipeline->need_null_export_workaround &&
+             !cmd_buffer->state.col_format_non_compacted)
+            cmd_buffer->state.col_format_non_compacted = V_028714_SPI_SHADER_32_R;
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_RBPLUS;
       }
 

@@ -5232,12 +5232,12 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
     * color and Z formats to SPI_SHADER_ZERO. The hw will skip export
     * instructions if any are present.
     */
-   if ((device->physical_device->rad_info.gfx_level <= GFX9 || ps->info.ps.can_discard) &&
-       !blend.spi_shader_col_format) {
-      if (!ps->info.ps.writes_z && !ps->info.ps.writes_stencil && !ps->info.ps.writes_sample_mask) {
-         blend.spi_shader_col_format = V_028714_SPI_SHADER_32_R;
-         pipeline->col_format_non_compacted = V_028714_SPI_SHADER_32_R;
-      }
+   pipeline->need_null_export_workaround =
+      (device->physical_device->rad_info.gfx_level <= GFX9 || ps->info.ps.can_discard) &&
+      !ps->info.ps.writes_z && !ps->info.ps.writes_stencil && !ps->info.ps.writes_sample_mask;
+   if (pipeline->need_null_export_workaround && !blend.spi_shader_col_format) {
+      blend.spi_shader_col_format = V_028714_SPI_SHADER_32_R;
+      pipeline->col_format_non_compacted = V_028714_SPI_SHADER_32_R;
    }
 
    if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY) && !radv_pipeline_has_ngg(pipeline)) {
