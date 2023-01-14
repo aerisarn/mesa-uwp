@@ -2911,7 +2911,8 @@ panfrost_update_shader_state(struct panfrost_batch *batch,
 
    if ((dirty & ss->dirty_shader) || (dirty_3d & ss->dirty_3d)) {
       batch->uniform_buffers[st] = panfrost_emit_const_buf(
-         batch, st, NULL, &batch->push_uniforms[st], NULL);
+         batch, st, &batch->nr_uniform_buffers[st], &batch->push_uniforms[st],
+         &batch->nr_push_uniforms[st]);
    }
 
 #if PAN_ARCH <= 7
@@ -3085,8 +3086,7 @@ panfrost_upload_wa_sampler(struct panfrost_batch *batch)
 
 static mali_ptr
 panfrost_emit_resources(struct panfrost_batch *batch,
-                        enum pipe_shader_type stage, mali_ptr ubos,
-                        unsigned ubo_count)
+                        enum pipe_shader_type stage)
 {
    struct panfrost_context *ctx = batch->ctx;
    struct panfrost_ptr T;
@@ -3099,7 +3099,8 @@ panfrost_emit_resources(struct panfrost_batch *batch,
                               64);
    memset(T.cpu, 0, nr_tables * pan_size(RESOURCE));
 
-   panfrost_make_resource_table(T, PAN_TABLE_UBO, ubos, ubo_count);
+   panfrost_make_resource_table(T, PAN_TABLE_UBO, batch->uniform_buffers[stage],
+                                batch->nr_uniform_buffers[stage]);
 
    panfrost_make_resource_table(T, PAN_TABLE_TEXTURE, batch->textures[stage],
                                 ctx->sampler_view_count[stage]);
@@ -3135,20 +3136,13 @@ panfrost_emit_shader(struct panfrost_batch *batch,
                      enum pipe_shader_type stage, mali_ptr shader_ptr,
                      mali_ptr thread_storage)
 {
-   unsigned fau_words = 0, ubo_count = 0;
-   mali_ptr ubos, resources;
-
-   ubos =
-      panfrost_emit_const_buf(batch, stage, &ubo_count, &cfg->fau, &fau_words);
-
-   resources = panfrost_emit_resources(batch, stage, ubos, ubo_count);
-
+   cfg->resources = panfrost_emit_resources(batch, stage);
    cfg->thread_storage = thread_storage;
    cfg->shader = shader_ptr;
-   cfg->resources = resources;
 
    /* Each entry of FAU is 64-bits */
-   cfg->fau_count = DIV_ROUND_UP(fau_words, 2);
+   cfg->fau = batch->push_uniforms[stage];
+   cfg->fau_count = DIV_ROUND_UP(batch->nr_push_uniforms[stage], 2);
 }
 #endif
 
