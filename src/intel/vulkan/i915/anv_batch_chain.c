@@ -292,9 +292,11 @@ setup_execbuf_for_cmd_buffer(struct anv_execbuf *execbuf,
 {
    VkResult result;
    /* Add surface dependencies (BOs) to the execbuf */
-   anv_execbuf_add_bo_bitset(cmd_buffer->device, execbuf,
-                             cmd_buffer->surface_relocs.dep_words,
-                             cmd_buffer->surface_relocs.deps, 0);
+   result = anv_execbuf_add_bo_bitset(cmd_buffer->device, execbuf,
+                                      cmd_buffer->surface_relocs.dep_words,
+                                      cmd_buffer->surface_relocs.deps, 0);
+   if (result != VK_SUCCESS)
+      return result;
 
    /* First, we walk over all of the bos we've seen and add them and their
     * relocations to the validate list.
