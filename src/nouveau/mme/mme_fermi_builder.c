@@ -605,7 +605,7 @@ mme_fermi_load(struct mme_builder *b)
    return dst;
 }
 
-static enum mme_tu104_alu_op
+static enum mme_fermi_alu_op
 mme_to_fermi_alu_op(enum mme_alu_op op)
 {
    switch (op) {
