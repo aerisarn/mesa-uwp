@@ -75,6 +75,20 @@ nvk_descriptor_stride_align_for_type(VkDescriptorType type,
    assert(*stride <= NVK_MAX_DESCRIPTOR_SIZE);
 }
 
+static const VkMutableDescriptorTypeListEXT *
+nvk_descriptor_get_type_list(VkDescriptorType type,
+                             const VkMutableDescriptorTypeCreateInfoEXT *info,
+                             const uint32_t info_idx)
+{
+   const VkMutableDescriptorTypeListVALVE *type_list = NULL;
+   if (type == VK_DESCRIPTOR_TYPE_MUTABLE_EXT) {
+      assert(info != NULL);
+      assert(info_idx < info->mutableDescriptorTypeListCount);
+      type_list = &info->pMutableDescriptorTypeLists[info_idx];
+   }
+   return type_list;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_CreateDescriptorSetLayout(VkDevice _device,
                               const VkDescriptorSetLayoutCreateInfo *pCreateInfo,
@@ -171,12 +185,9 @@ nvk_CreateDescriptorSetLayout(VkDevice _device,
          break;
       }
 
-      const VkMutableDescriptorTypeListEXT *type_list = NULL;
-      if (binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_EXT) {
-         assert(mutable_info != NULL);
-         assert(info_idx < mutable_info->mutableDescriptorTypeListCount);
-         type_list = &mutable_info->pMutableDescriptorTypeLists[info_idx];
-      }
+      const VkMutableDescriptorTypeListEXT *type_list =
+         nvk_descriptor_get_type_list(binding->descriptorType,
+                                      mutable_info, info_idx);
 
       uint32_t stride, align;
       nvk_descriptor_stride_align_for_type(binding->descriptorType, type_list,
@@ -228,6 +239,59 @@ nvk_CreateDescriptorSetLayout(VkDevice _device,
    *pSetLayout = nvk_descriptor_set_layout_to_handle(layout);
 
    return VK_SUCCESS;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_GetDescriptorSetLayoutSupport(VkDevice _device,
+                                  const VkDescriptorSetLayoutCreateInfo *pCreateInfo,
+                                  VkDescriptorSetLayoutSupport *pSupport)
+{
+   const VkMutableDescriptorTypeCreateInfoEXT *mutable_info =
+      vk_find_struct_const(pCreateInfo->pNext,
+                           MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT);
+
+   uint32_t buffer_size = 0;
+   uint8_t dynamic_buffer_count = 0;
+   for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
+      const VkDescriptorSetLayoutBinding *binding = &pCreateInfo->pBindings[i];
+
+      if (binding->descriptorCount == 0)
+         continue;
+
+      switch (binding->descriptorType) {
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+         dynamic_buffer_count += binding->descriptorCount;
+         break;
+      default:
+         break;
+      }
+
+      const VkMutableDescriptorTypeListEXT *type_list =
+         nvk_descriptor_get_type_list(binding->descriptorType,
+                                      mutable_info, i);
+
+      uint32_t stride, align;
+      nvk_descriptor_stride_align_for_type(binding->descriptorType, type_list,
+                                           &stride, &align);
+
+      if (stride > 0) {
+         assert(stride <= UINT8_MAX);
+         assert(util_is_power_of_two_nonzero(align));
+         buffer_size = ALIGN_POT(buffer_size, align);
+         buffer_size += stride * binding->descriptorCount;
+      }
+   }
+
+   pSupport->supported = dynamic_buffer_count <= NVK_MAX_DYNAMIC_BUFFERS;
+   if (pCreateInfo->flags &
+       VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR) {
+      if (buffer_size > NVK_PUSH_DESCRIPTOR_SET_SIZE)
+         pSupport->supported = false;
+   } else {
+      if (buffer_size > NVK_MAX_DESCRIPTOR_SET_SIZE)
+         pSupport->supported = false;
+   }
 }
 
 uint8_t
