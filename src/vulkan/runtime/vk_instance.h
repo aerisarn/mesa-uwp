@@ -60,8 +60,11 @@ struct _drmDevice;
 struct vk_physical_device;
 
 enum vk_trace_mode {
+   /** Radeon Memory Visualizer */
+   VK_TRACE_MODE_RMV = 1 << 0,
+
    /** Number of common trace modes. */
-   VK_TRACE_MODE_COUNT = 0,
+   VK_TRACE_MODE_COUNT = 1,
 };
 
 /** Base struct for all `VkInstance` implementations

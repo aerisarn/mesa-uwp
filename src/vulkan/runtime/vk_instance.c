@@ -39,6 +39,7 @@
    (VK_API_VERSION_MAJOR(version) == 1 && VK_API_VERSION_MINOR(version) == 0)
 
 static const struct debug_control trace_options[] = {
+   {"rmv", VK_TRACE_MODE_RMV},
    {NULL, 0},
 };
 

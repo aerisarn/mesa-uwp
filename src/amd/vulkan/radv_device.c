@@ -561,7 +561,7 @@ init_dispatch_tables(struct radv_device *device, struct radv_physical_device *ph
       add_entrypoints(&b, &rra_device_entrypoints, RADV_RRA_DISPATCH_TABLE);
 
 #ifndef _WIN32
-   if (vk_memory_trace_enabled())
+   if (physical_device->instance->vk.trace_mode & VK_TRACE_MODE_RMV)
       add_entrypoints(&b, &rmv_device_entrypoints, RADV_RMV_DISPATCH_TABLE);
 #endif
 
@@ -624,6 +624,13 @@ capture_trace(VkQueue _queue)
          else
             fprintf(stderr, "radv: Failed to save RRA capture!\n");
       }
+   }
+
+   if (queue->device->vk.memory_trace_data.is_enabled) {
+      simple_mtx_lock(&queue->device->vk.memory_trace_data.token_mtx);
+      radv_rmv_collect_trace_events(queue->device);
+      vk_dump_rmv_capture(&queue->device->vk.memory_trace_data);
+      simple_mtx_unlock(&queue->device->vk.memory_trace_data.token_mtx);
    }
 
    if (queue->device->instance->vk.trace_mode & RADV_TRACE_MODE_RGP)
@@ -963,7 +970,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    }
 
 #ifndef _WIN32
-   if (vk_memory_trace_enabled()) {
+   if (physical_device->instance->vk.trace_mode & VK_TRACE_MODE_RMV) {
       struct vk_rmv_device_info info;
       memset(&info, 0, sizeof(struct vk_rmv_device_info));
       radv_rmv_fill_device_info(physical_device, &info);

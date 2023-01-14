@@ -2490,7 +2490,7 @@ radv_GetPhysicalDeviceToolProperties(VkPhysicalDevice physicalDevice, uint32_t *
       tool_count++;
 
    /* RMV */
-   rmv_enabled = vk_memory_trace_enabled();
+   rmv_enabled = pdevice->instance->vk.trace_mode & VK_TRACE_MODE_RMV;
    if (rmv_enabled)
       tool_count++;
 
