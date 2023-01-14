@@ -186,6 +186,10 @@ compute_lrz_state(struct fd6_emit *emit) assert_dt
     */
    if (zsa->base.depth_enabled && (rsc->lrz_direction != FD_LRZ_UNKNOWN) &&
        (rsc->lrz_direction != lrz.direction)) {
+      if (!zsa->perf_warn_zdir && rsc->lrz_valid) {
+         perf_debug_ctx(ctx, "Invalidating LRZ due to depth test direction change");
+         zsa->perf_warn_zdir = true;
+      }
       rsc->lrz_valid = false;
    }
 
