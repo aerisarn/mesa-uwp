@@ -4600,13 +4600,13 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
        !(pipeline->dynamic_state_mask &
         (BIT(TU_DYNAMIC_STATE_LOGIC_OP) |
          BIT(TU_DYNAMIC_STATE_BLEND_ENABLE))))
-      pipeline->lrz.lrz_status |= TU_LRZ_FORCE_DISABLE_WRITE;
+      pipeline->lrz.lrz_status |= TU_LRZ_FORCE_DISABLE_WRITE | TU_LRZ_READS_DEST;
 
    if (!(pipeline->dynamic_state_mask &
          BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE)) &&
        (pipeline->blend.color_write_enable & MASK(pipeline->blend.num_rts)) !=
        MASK(pipeline->blend.num_rts))
-      pipeline->lrz.lrz_status |= TU_LRZ_FORCE_DISABLE_WRITE;
+      pipeline->lrz.lrz_status |= TU_LRZ_FORCE_DISABLE_WRITE | TU_LRZ_READS_DEST;
 
    if (!(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_BLEND))) {
       for (int i = 0; i < blend_info->attachmentCount; i++) {
@@ -4619,7 +4619,7 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
          unsigned mask = MASK(vk_format_get_nr_components(format));
          if (format != VK_FORMAT_UNDEFINED &&
              (blendAttachment.colorWriteMask & mask) != mask) {
-            pipeline->lrz.lrz_status |= TU_LRZ_FORCE_DISABLE_WRITE;
+            pipeline->lrz.lrz_status |= TU_LRZ_FORCE_DISABLE_WRITE | TU_LRZ_READS_DEST;
          }
       }
    }
