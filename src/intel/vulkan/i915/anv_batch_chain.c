@@ -770,7 +770,7 @@ anv_i915_execute_simple_batch(struct anv_queue *queue,
 
    VkResult result = anv_execbuf_add_bo(device, &execbuf, batch_bo, NULL, 0);
    if (result != VK_SUCCESS)
-      return result;
+      goto fail;
 
    execbuf.execbuf = (struct drm_i915_gem_execbuffer2) {
       .buffers_ptr = (uintptr_t) execbuf.objects,
