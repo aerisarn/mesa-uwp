@@ -58,7 +58,6 @@
 static const struct debug_named_value panfrost_debug_options[] = {
    {"perf",       PAN_DBG_PERF,     "Enable performance warnings"},
    {"trace",      PAN_DBG_TRACE,    "Trace the command stream"},
-   {"deqp",       PAN_DBG_DEQP,     "Hacks for dEQP"},
    {"dirty",      PAN_DBG_DIRTY,    "Always re-emit all state"},
    {"sync",       PAN_DBG_SYNC,     "Wait for each job's completion and abort on GPU faults"},
    {"nofp16",     PAN_DBG_NOFP16,    "Disable 16-bit support"},
@@ -101,7 +100,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
    struct panfrost_device *dev = pan_device(screen);
 
    /* Our GL 3.x implementation is WIP */
-   bool is_gl3 = dev->debug & (PAN_DBG_GL3 | PAN_DBG_DEQP);
+   bool is_gl3 = dev->debug & PAN_DBG_GL3;
 
    /* Native MRT is introduced with v5 */
    bool has_mrt = (dev->arch >= 5);
