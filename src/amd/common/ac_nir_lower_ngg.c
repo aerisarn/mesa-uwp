@@ -1391,12 +1391,17 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       nir_local_variable_create(impl, glsl_uint_type(), "repacked_arg_3"),
    };
 
+   b->cursor = nir_before_cf_list(&impl->body);
+
    if (nogs_state->options->clipdist_enable_mask ||
        nogs_state->options->user_clip_plane_enable_mask) {
       nogs_state->clip_vertex_var =
          nir_local_variable_create(impl, glsl_vec4_type(), "clip_vertex");
       nogs_state->clipdist_neg_mask_var =
          nir_local_variable_create(impl, glsl_uint8_t_type(), "clipdist_neg_mask");
+
+      /* init mask to 0 */
+      nir_store_var(b, nogs_state->clipdist_neg_mask_var, nir_imm_intN_t(b, 0, 8), 1);
    }
 
    /* Top part of the culling shader (aka. position shader part)
@@ -1405,8 +1410,6 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
     * about its position output, so we delete every other output from this part.
     * The position output is stored into a temporary variable, and reloaded later.
     */
-
-   b->cursor = nir_before_cf_list(&impl->body);
 
    nir_ssa_def *es_thread = has_input_vertex(b);
    nir_if *if_es_thread = nir_push_if(b, es_thread);
