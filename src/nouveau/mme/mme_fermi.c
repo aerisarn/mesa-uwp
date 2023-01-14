@@ -206,14 +206,12 @@ mme_fermi_print_inst(FILE *fp, unsigned indent,
          print_imm(fp, inst);
          break;
       case MME_FERMI_OP_MERGE:
-         uint32_t src_bit  = inst->bitfield.src_bit;
-         uint32_t size     = inst->bitfield.size;
-         uint32_t dst_bit  = inst->bitfield.dst_bit;
-
          fprintf(fp, "%s", mme_fermi_op_to_str(inst->op));
          print_reg(fp, inst->src[0]);
          print_reg(fp, inst->src[1]);
-         fprintf(fp, " (%u, %u, %u)", src_bit, size, dst_bit);
+         fprintf(fp, " (%u, %u, %u)", inst->bitfield.src_bit,
+                                      inst->bitfield.size,
+                                      inst->bitfield.dst_bit);
          break;
       case MME_FERMI_OP_BFE_LSL_IMM:
          fprintf(fp, "%s", mme_fermi_op_to_str(inst->op));
