@@ -1374,7 +1374,7 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
       struct asahi_vs_shader_key *key = &key_->vs;
 
       NIR_PASS_V(nir, agx_nir_lower_vbo, &key->vbuf);
-   } else {
+   } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       struct asahi_fs_shader_key *key = &key_->fs;
 
       struct agx_tilebuffer_layout tib =
