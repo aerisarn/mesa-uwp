@@ -65,7 +65,6 @@ static const struct debug_named_value panfrost_debug_options[] = {
    {"noafbc",     PAN_DBG_NO_AFBC,  "Disable AFBC support"},
    {"nocrc",      PAN_DBG_NO_CRC,   "Disable transaction elimination"},
    {"msaa16",     PAN_DBG_MSAA16,   "Enable MSAA 8x and 16x support"},
-   {"indirect",   PAN_DBG_INDIRECT, "Use experimental compute kernel for indirect draws"},
    {"linear",     PAN_DBG_LINEAR,   "Force linear textures"},
    {"nocache",    PAN_DBG_NO_CACHE, "Disable BO cache"},
    {"dump",       PAN_DBG_DUMP,     "Dump all graphics memory"},
