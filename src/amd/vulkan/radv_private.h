@@ -867,6 +867,7 @@ struct radv_rra_trace_data {
    struct hash_table_u64 *accel_struct_vas;
    simple_mtx_t data_mtx;
    bool validate_as;
+   bool copy_after_build;
    uint32_t copy_memory_index;
 };
 
