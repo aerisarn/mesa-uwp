@@ -137,10 +137,7 @@ rra_init_accel_struct_data_buffer(VkDevice vk_device, struct radv_rra_accel_stru
       .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
       .pNext = &flags_info,
       .allocationSize = requirements.size,
-      .memoryTypeIndex =
-         radv_find_memory_index(device->physical_device, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                                            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-                                                            VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
+      .memoryTypeIndex = device->rra_trace.copy_memory_index,
    };
    result = radv_alloc_memory(device, &alloc_info, NULL, &data->memory, true);
    if (result != VK_SUCCESS)

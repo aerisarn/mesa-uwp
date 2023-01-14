@@ -906,6 +906,11 @@ radv_rra_trace_init(struct radv_device *device)
    device->rra_trace.accel_structs = _mesa_pointer_hash_table_create(NULL);
    device->rra_trace.accel_struct_vas = _mesa_hash_table_u64_create(NULL);
    simple_mtx_init(&device->rra_trace.data_mtx, mtx_plain);
+
+   device->rra_trace.copy_memory_index =
+      radv_find_memory_index(device->physical_device, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                                         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+                                                         VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
 }
 
 void
