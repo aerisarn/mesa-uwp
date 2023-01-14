@@ -378,7 +378,6 @@ panfrost_get_shader_param(struct pipe_screen *screen,
 {
    struct panfrost_device *dev = pan_device(screen);
    bool is_nofp16 = dev->debug & PAN_DBG_NOFP16;
-   bool is_deqp = dev->debug & PAN_DBG_DEQP;
 
    switch (shader) {
    case PIPE_SHADER_VERTEX:
@@ -456,9 +455,8 @@ panfrost_get_shader_param(struct pipe_screen *screen,
    case PIPE_SHADER_CAP_FP16_CONST_BUFFERS:
       return dev->arch >= 6 && !is_nofp16;
    case PIPE_SHADER_CAP_INT16:
-      /* XXX: Advertise this CAP when a proper fix to lower_precision
-       * lands. GLSL IR validation failure in glmark2 -bterrain */
-      return dev->arch >= 6 && !is_nofp16 && is_deqp;
+      /* Blocked on https://gitlab.freedesktop.org/mesa/mesa/-/issues/6075 */
+      return false;
 
    case PIPE_SHADER_CAP_INT64_ATOMICS:
    case PIPE_SHADER_CAP_DROUND_SUPPORTED:
