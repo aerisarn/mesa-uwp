@@ -1825,15 +1825,13 @@ iris_gem_set_tiling(struct iris_bo *bo, const struct isl_surf *surf)
    /* GEM_SET_TILING is slightly broken and overwrites the input on the
     * error path, so we have to open code intel_ioctl().
     */
-   do {
-      struct drm_i915_gem_set_tiling set_tiling = {
-         .handle = bo->gem_handle,
-         .tiling_mode = tiling_mode,
-         .stride = surf->row_pitch_B,
-      };
-      ret = ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_SET_TILING, &set_tiling);
-   } while (ret == -1 && (errno == EINTR || errno == EAGAIN));
+   struct drm_i915_gem_set_tiling set_tiling = {
+      .handle = bo->gem_handle,
+      .tiling_mode = tiling_mode,
+      .stride = surf->row_pitch_B,
+   };
 
+   ret = intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_SET_TILING, &set_tiling);
    if (ret) {
       DBG("gem_set_tiling failed for BO %u: %s\n",
           bo->gem_handle, strerror(errno));
