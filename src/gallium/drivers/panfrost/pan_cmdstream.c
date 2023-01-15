@@ -2905,8 +2905,10 @@ panfrost_update_shader_state(struct panfrost_batch *batch,
    }
 
 #if PAN_ARCH >= 9
-   if (dirty & PAN_DIRTY_STAGE_IMAGE)
-      batch->images[st] = panfrost_emit_images(batch, st);
+   if (dirty & PAN_DIRTY_STAGE_IMAGE) {
+      batch->images[st] =
+         ctx->image_mask[st] ? panfrost_emit_images(batch, st) : 0;
+   }
 #endif
 
    if ((dirty & ss->dirty_shader) || (dirty_3d & ss->dirty_3d)) {
