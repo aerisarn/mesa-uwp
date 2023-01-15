@@ -134,19 +134,32 @@ a530-traces:
     # Increase the hangcheck timer for our spilling tests which bump up against
     # the .5s default.
     FREEDRENO_HANGCHECK_MS: 2000
+    GPU_VERSION: freedreno-a618
+    VK_DRIVER: freedreno
 
-a618_vk:
+.a618-test-kingoftown-r1:
   extends:
     - .a618-test
-    - .turnip-rules
-  parallel: 12
   variables:
     DEVICE_TYPE: sc7180-trogdor-kingoftown
     DTB: sc7180-trogdor-kingoftown-r1
     RUNNER_TAG: mesa-ci-x86-64-lava-sc7180-trogdor-kingoftown
-    VK_DRIVER: freedreno
+
+.a618-test-limozeen-nots-r5:
+  extends:
+    - .a618-test
+  variables:
+    DEVICE_TYPE: sc7180-trogdor-lazor-limozeen
+    DTB: sc7180-trogdor-lazor-limozeen-nots-r5
+    RUNNER_TAG: mesa-ci-x86-64-lava-sc7180-trogdor-lazor-limozeen
+
+a618_vk:
+  extends:
+    - .a618-test-kingoftown-r1
+    - .turnip-rules
+  parallel: 12
+  variables:
     DEQP_SUITE: freedreno-a618-vk
-    GPU_VERSION: freedreno-a618
     MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
 
 a618_vk_full:
@@ -165,15 +178,11 @@ a618_vk_full:
 
 a618_gl:
   extends:
-    - .a618-test
+    - .a618-test-limozeen-nots-r5
     - .freedreno-rules
   parallel: 4
   variables:
-    DEVICE_TYPE: sc7180-trogdor-lazor-limozeen
-    DTB: sc7180-trogdor-lazor-limozeen-nots-r5
-    RUNNER_TAG: mesa-ci-x86-64-lava-sc7180-trogdor-lazor-limozeen
     DEQP_SUITE: freedreno-a618
-    GPU_VERSION: freedreno-a618
 
 .a630-test:
   extends:
