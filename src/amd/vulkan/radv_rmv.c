@@ -276,6 +276,8 @@ append_trace_events(struct radv_device *device, int pipe_fd)
          read_ptr += length - sizeof(struct trace_event_header);
       }
    } while (true);
+
+   free(page);
 }
 
 static void
