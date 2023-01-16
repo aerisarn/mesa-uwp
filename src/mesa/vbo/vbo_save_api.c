@@ -116,7 +116,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "util/bitscan.h"
 #include "util/u_memory.h"
 #include "util/hash_table.h"
-#include "util/indices/u_indices.h"
+#include "gallium/auxiliary/indices/u_indices.h"
 #include "util/u_prim.h"
 
 #include "gallium/include/pipe/p_state.h"
