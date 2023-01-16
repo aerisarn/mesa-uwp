@@ -67,6 +67,7 @@
 #include "vk_queue.h"
 #include "vk_util.h"
 #include "vk_image.h"
+#include "vk_ycbcr_conversion.h"
 
 #include "rmv/vk_rmv_common.h"
 #include "rmv/vk_rmv_tokens.h"
@@ -2736,21 +2737,6 @@ void radv_image_view_finish(struct radv_image_view *iview);
 
 VkFormat radv_get_aspect_format(struct radv_image *image, VkImageAspectFlags mask);
 
-struct radv_sampler_ycbcr_conversion_state {
-   VkFormat format;
-   VkSamplerYcbcrModelConversion ycbcr_model;
-   VkSamplerYcbcrRange ycbcr_range;
-   VkComponentMapping components;
-   VkChromaLocation chroma_offsets[2];
-   VkFilter chroma_filter;
-};
-
-struct radv_sampler_ycbcr_conversion {
-   struct vk_object_base base;
-   /* The state is hashed for the descriptor set layout. */
-   struct radv_sampler_ycbcr_conversion_state state;
-};
-
 struct radv_buffer_view {
    struct vk_object_base base;
    struct radeon_winsys_bo *bo;
@@ -2773,7 +2759,7 @@ radv_image_extent_compare(const struct radv_image *image, const VkExtent3D *exte
 struct radv_sampler {
    struct vk_object_base base;
    uint32_t state[4];
-   struct radv_sampler_ycbcr_conversion *ycbcr_sampler;
+   struct vk_ycbcr_conversion *ycbcr_sampler;
    uint32_t border_color_slot;
 };
 
@@ -3511,9 +3497,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(radv_query_pool, base, VkQueryPool,
                                VK_OBJECT_TYPE_QUERY_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_sampler, base, VkSampler,
                                VK_OBJECT_TYPE_SAMPLER)
-VK_DEFINE_NONDISP_HANDLE_CASTS(radv_sampler_ycbcr_conversion, base,
-                               VkSamplerYcbcrConversion,
-                               VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION)
 
 #ifdef __cplusplus
 }

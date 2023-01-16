@@ -27,6 +27,7 @@
 
 #include "nir/nir.h"
 #include "nir/nir_builder.h"
+#include "nir/nir_vulkan.h"
 #include "spirv/nir_spirv.h"
 #include "util/disk_cache.h"
 #include "util/mesa-sha1.h"
@@ -3192,6 +3193,21 @@ radv_pipeline_load_retained_shaders(struct radv_graphics_pipeline *pipeline,
    }
 }
 
+static const struct vk_ycbcr_conversion_state *
+ycbcr_conversion_lookup(const void *data, uint32_t set, uint32_t binding, uint32_t array_index)
+{
+   const struct radv_pipeline_layout *layout = data;
+
+   const struct radv_descriptor_set_layout *set_layout = layout->set[set].layout;
+   const struct vk_ycbcr_conversion_state *ycbcr_samplers =
+      radv_immutable_ycbcr_samplers(set_layout, binding);
+
+   if (!ycbcr_samplers)
+      return NULL;
+
+   return ycbcr_samplers + array_index;
+}
+
 static void
 radv_postprocess_nir(struct radv_pipeline *pipeline,
                      const struct radv_pipeline_layout *pipeline_layout,
@@ -3201,6 +3217,7 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
 {
    struct radv_device *device = pipeline->device;
    enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
+   bool progress;
 
    /* Wave and workgroup size should already be filled. */
    assert(stage->info.wave_size && stage->info.workgroup_size);
@@ -3254,7 +3271,7 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
    }
 
    if (!pipeline_key->optimisations_disabled) {
-      bool progress = false;
+      progress = false;
       NIR_PASS(progress, stage->nir, nir_opt_load_store_vectorize, &vectorize_opts);
       if (progress) {
          NIR_PASS(_, stage->nir, nir_copy_prop);
@@ -3266,7 +3283,11 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
       }
    }
 
-   NIR_PASS(_, stage->nir, radv_nir_lower_ycbcr_textures, pipeline_layout);
+   progress = false;
+   NIR_PASS(progress, stage->nir, nir_vk_lower_ycbcr_tex, ycbcr_conversion_lookup, pipeline_layout);
+   /* Gather info in the case that nir_vk_lower_ycbcr_tex might have emitted resinfo instructions. */
+   if (progress)
+      nir_shader_gather_info(stage->nir, nir_shader_get_entrypoint(stage->nir));
 
    if (stage->nir->info.uses_resource_info_query)
       NIR_PASS(_, stage->nir, ac_nir_lower_resinfo, gfx_level);

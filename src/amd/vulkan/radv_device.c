@@ -7722,8 +7722,7 @@ radv_CreateSampler(VkDevice _device, const VkSamplerCreateInfo *pCreateInfo,
    radv_init_sampler(device, sampler, pCreateInfo);
 
    sampler->ycbcr_sampler =
-      ycbcr_conversion ? radv_sampler_ycbcr_conversion_from_handle(ycbcr_conversion->conversion)
-                       : NULL;
+      ycbcr_conversion ? vk_ycbcr_conversion_from_handle(ycbcr_conversion->conversion) : NULL;
    *pSampler = radv_sampler_to_handle(sampler);
 
    return VK_SUCCESS;
