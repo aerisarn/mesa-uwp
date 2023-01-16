@@ -963,7 +963,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    mai.pNext = NULL;
    mai.allocationSize = reqs.size;
    enum zink_heap heap = zink_heap_from_domain_flags(flags, aflags);
-   mai.memoryTypeIndex = zink_heap_idx_from_bits(screen, heap, reqs.memoryTypeBits);
+   mai.memoryTypeIndex = zink_mem_type_idx_from_bits(screen, heap, reqs.memoryTypeBits);
    if (mai.memoryTypeIndex == UINT32_MAX) {
       /* not valid based on reqs; demote to more compatible type */
       switch (heap) {
@@ -976,7 +976,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       default:
          break;
       }
-      mai.memoryTypeIndex = zink_heap_idx_from_bits(screen, heap, reqs.memoryTypeBits);
+      mai.memoryTypeIndex = zink_mem_type_idx_from_bits(screen, heap, reqs.memoryTypeBits);
       assert(mai.memoryTypeIndex != UINT32_MAX);
    }
    assert(reqs.memoryTypeBits & BITFIELD_BIT(mai.memoryTypeIndex));

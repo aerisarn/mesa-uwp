@@ -560,7 +560,7 @@ error_alloc_commitments:
 }
 
 struct pb_buffer *
-zink_bo_create(struct zink_screen *screen, uint64_t size, unsigned alignment, enum zink_heap heap, enum zink_alloc_flag flags, unsigned heap_idx, const void *pNext)
+zink_bo_create(struct zink_screen *screen, uint64_t size, unsigned alignment, enum zink_heap heap, enum zink_alloc_flag flags, unsigned mem_type_idx, const void *pNext)
 {
    struct zink_bo *bo;
    /* pull in sparse flag */
@@ -609,7 +609,7 @@ zink_bo_create(struct zink_screen *screen, uint64_t size, unsigned alignment, en
          unsigned low_bound = 128 * 1024 * 1024; //128MB is a very small BAR
          if (screen->info.driver_props.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY)
             low_bound *= 2; //nvidia has fat textures or something
-         unsigned vk_heap_idx = screen->info.mem_props.memoryTypes[heap_idx].heapIndex;
+         unsigned vk_heap_idx = screen->info.mem_props.memoryTypes[mem_type_idx].heapIndex;
          reclaim_all = screen->info.mem_props.memoryHeaps[vk_heap_idx].size <= low_bound;
       }
       entry = pb_slab_alloc_reclaimed(slabs, alloc_size, heap, reclaim_all);
@@ -657,12 +657,12 @@ no_slab:
    }
 
    /* Create a new one. */
-   bo = bo_create_internal(screen, size, alignment, heap, heap_idx, flags, pNext);
+   bo = bo_create_internal(screen, size, alignment, heap, mem_type_idx, flags, pNext);
    if (!bo) {
       /* Clean up buffer managers and try again. */
       clean_up_buffer_managers(screen);
 
-      bo = bo_create_internal(screen, size, alignment, heap, heap_idx, flags, pNext);
+      bo = bo_create_internal(screen, size, alignment, heap, mem_type_idx, flags, pNext);
       if (!bo)
          return NULL;
    }
