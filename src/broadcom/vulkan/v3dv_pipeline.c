@@ -247,7 +247,7 @@ v3dv_pipeline_get_nir_options(void)
    return &v3dv_nir_options;
 }
 
-static const struct vk_ycbcr_conversion *
+static const struct vk_ycbcr_conversion_state *
 lookup_ycbcr_conversion(const void *_pipeline_layout, uint32_t set,
                         uint32_t binding, uint32_t array_index)
 {
@@ -266,7 +266,7 @@ lookup_ycbcr_conversion(const void *_pipeline_layout, uint32_t set,
       const struct v3dv_sampler *immutable_samplers =
          v3dv_immutable_samplers(set_layout, bind_layout);
       const struct v3dv_sampler *sampler = &immutable_samplers[array_index];
-      return sampler->conversion;
+      return sampler->conversion ? &sampler->conversion->state : NULL;
    } else {
       return NULL;
    }

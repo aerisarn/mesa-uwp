@@ -2541,7 +2541,7 @@ anv_CreateImageView(VkDevice _device,
 
    if (conv_info) {
       VK_FROM_HANDLE(vk_ycbcr_conversion, conversion, conv_info->conversion);
-      conv_format = conversion->format;
+      conv_format = conversion->state.format;
    }
 
 #ifdef ANDROID

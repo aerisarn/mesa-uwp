@@ -772,7 +772,7 @@ anv_pipeline_stage_get_nir(struct anv_pipeline *pipeline,
    return NULL;
 }
 
-static const struct vk_ycbcr_conversion *
+static const struct vk_ycbcr_conversion_state *
 lookup_ycbcr_conversion(const void *_pipeline_layout, uint32_t set,
                         uint32_t binding, uint32_t array_index)
 {
@@ -791,7 +791,7 @@ lookup_ycbcr_conversion(const void *_pipeline_layout, uint32_t set,
    const struct anv_sampler *sampler =
       bind_layout->immutable_samplers[array_index];
 
-   return sampler ? sampler->conversion : NULL;
+   return sampler && sampler->conversion ? &sampler->conversion->state : NULL;
 }
 
 static void

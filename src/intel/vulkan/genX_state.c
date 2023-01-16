@@ -852,7 +852,7 @@ VkResult genX(CreateSampler)(
          if (conversion == NULL)
             break;
 
-         ycbcr_info = vk_format_get_ycbcr_info(conversion->format);
+         ycbcr_info = vk_format_get_ycbcr_info(conversion->state.format);
          if (ycbcr_info == NULL)
             break;
 
@@ -926,16 +926,16 @@ VkResult genX(CreateSampler)(
       const bool plane_has_chroma =
          ycbcr_info && ycbcr_info->planes[p].has_chroma;
       const VkFilter min_filter =
-         plane_has_chroma ? sampler->conversion->chroma_filter : pCreateInfo->minFilter;
+         plane_has_chroma ? sampler->conversion->state.chroma_filter : pCreateInfo->minFilter;
       const VkFilter mag_filter =
-         plane_has_chroma ? sampler->conversion->chroma_filter : pCreateInfo->magFilter;
+         plane_has_chroma ? sampler->conversion->state.chroma_filter : pCreateInfo->magFilter;
       const bool enable_min_filter_addr_rounding = min_filter != VK_FILTER_NEAREST;
       const bool enable_mag_filter_addr_rounding = mag_filter != VK_FILTER_NEAREST;
       /* From Broadwell PRM, SAMPLER_STATE:
        *   "Mip Mode Filter must be set to MIPFILTER_NONE for Planar YUV surfaces."
        */
       enum isl_format plane0_isl_format = sampler->conversion ?
-         anv_get_format(sampler->conversion->format)->planes[0].isl_format :
+         anv_get_format(sampler->conversion->state.format)->planes[0].isl_format :
          ISL_FORMAT_UNSUPPORTED;
       const bool isl_format_is_planar_yuv =
          plane0_isl_format != ISL_FORMAT_UNSUPPORTED &&
