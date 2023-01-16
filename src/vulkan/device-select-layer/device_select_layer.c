@@ -453,8 +453,17 @@ static uint32_t get_default_device(const struct instance_info *info,
       else
          default_idx = device_select_find_boot_vga_vid_did(pci_infos, physical_device_count);
    }
-   if (default_idx == -1 && cpu_count)
+   /* If no GPU has been selected so far, select the first non-CPU device. If none are available,
+    * pick the first CPU device.
+    */
+   if (default_idx == -1) {
       default_idx = device_select_find_non_cpu(pci_infos, physical_device_count);
+      if (default_idx != -1) {
+         /* device_select_find_non_cpu picked a default, do nothing */
+      } else if (cpu_count) {
+         default_idx = 0;
+      }
+   }
    /* DRI_PRIME=1 handling - pick any other device than default. */
    if (default_idx != -1 && dri_prime_is_one && physical_device_count > (cpu_count + 1)) {
       default_idx = find_non_cpu_skip(pci_infos, physical_device_count, default_idx);
