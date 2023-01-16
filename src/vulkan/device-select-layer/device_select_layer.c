@@ -457,8 +457,7 @@ static uint32_t get_default_device(const struct instance_info *info,
       default_idx = device_select_find_non_cpu(pci_infos, physical_device_count);
    /* DRI_PRIME=1 handling - pick any other device than default. */
    if (default_idx != -1 && dri_prime_is_one && physical_device_count > (cpu_count + 1)) {
-      if (default_idx == 0 || default_idx == 1)
-         default_idx = find_non_cpu_skip(pci_infos, physical_device_count, default_idx);
+      default_idx = find_non_cpu_skip(pci_infos, physical_device_count, default_idx);
    }
    free(pci_infos);
    return default_idx == -1 ? 0 : default_idx;
