@@ -1096,6 +1096,9 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro,
    driParseConfigFiles(config->options, config->options_info, 0, "msm",
                        NULL, fd_dev_name(screen->dev_id), NULL, 0, NULL, 0);
 
+   screen->conservative_lrz =
+         !driQueryOptionb(config->options, "disable_conservative_lrz");
+
    struct sysinfo si;
    sysinfo(&si);
    screen->ram_size = si.totalram;

@@ -812,7 +812,7 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
     * enable LRZ write.  But this would cause early-z/lrz to discard
     * fragments from draw A which should be visible due to draw B.
     */
-   if (reads_dest && z_write_enable) {
+   if (reads_dest && z_write_enable && cmd->device->instance->conservative_lrz) {
       perf_debug(cmd->device, "Invalidating LRZ due to blend+depthwrite");
       disable_lrz = true;
    }

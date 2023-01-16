@@ -202,17 +202,8 @@ compute_lrz_state(struct fd6_emit *emit) assert_dt
     * Normally looking at the state in draw C, we'd assume we could
     * enable LRZ write.  But this would cause early-z/lrz to discard
     * fragments from draw A which should be visible due to draw B.
-    *
-    * NOTE: So far invalid rendering due to this case has only been
-    * found in a single game (The Walking Dead: Season One -
-    * com.telltalegames.walkingdead100).  But other Telltale Games
-    * use the same Telltale Tool engine, so they might also have the
-    * same issue.  But blend+depthwrite is more common.  Hopefully
-    * it only shows up late in the renderpass where invalidating LRZ
-    * would not be too costly, but if this is found to cause perf
-    * regressions, a driconf allowlist/denylist can be added.
     */
-   if (reads_dest && zsa->writes_z) {
+   if (reads_dest && zsa->writes_z && ctx->screen->conservative_lrz) {
       if (!zsa->perf_warn_blend && rsc->lrz_valid) {
          perf_debug_ctx(ctx, "Invalidating LRZ due to blend+depthwrite");
          zsa->perf_warn_blend = true;

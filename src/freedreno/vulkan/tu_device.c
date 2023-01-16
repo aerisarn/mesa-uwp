@@ -436,6 +436,10 @@ static const driOptionDescription tu_dri_options[] = {
       DRI_CONF_VK_WSI_FORCE_BGRA8_UNORM_FIRST(false)
       DRI_CONF_VK_DONT_CARE_AS_LOAD(false)
    DRI_CONF_SECTION_END
+
+   DRI_CONF_SECTION_MISCELLANEOUS
+      DRI_CONF_DISABLE_CONSERVATIVE_LRZ(false)
+   DRI_CONF_SECTION_END
 };
 
 static void
@@ -449,6 +453,9 @@ tu_init_dri_options(struct tu_instance *instance)
 
    if (driQueryOptionb(&instance->dri_options, "vk_dont_care_as_load"))
       instance->debug_flags |= TU_DEBUG_DONT_CARE_AS_LOAD;
+
+   instance->conservative_lrz =
+         !driQueryOptionb(&instance->dri_options, "disable_conservative_lrz");
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
