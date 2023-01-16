@@ -243,6 +243,58 @@ fd_emit_string_marker(struct pipe_context *pctx, const char *string,
    fd_batch_reference(&batch, NULL);
 }
 
+static void
+fd_cs_magic_write_string(void *cs, struct u_trace_context *utctx, int magic,
+                         const char *fmt, va_list args)
+{
+   struct fd_context *ctx =
+      container_of(utctx, struct fd_context, trace_context);
+   int fmt_len = vsnprintf(NULL, 0, fmt, args);
+   int len = 4 + fmt_len + 1;
+   char *string = (char *)malloc(len);
+
+   /* format: <magic><formatted string>\0 */
+   *(uint32_t *)string = magic;
+   vsnprintf(string + 4, fmt_len + 1, fmt, args);
+
+   if (ctx->screen->gen >= 5) {
+      fd_emit_string5((struct fd_ringbuffer *)cs, string, len);
+   } else {
+      fd_emit_string((struct fd_ringbuffer *)cs, string, len);
+   }
+   free(string);
+}
+
+void
+fd_cs_trace_msg(struct u_trace_context *utctx, void *cs, const char *fmt, ...)
+{
+   va_list args;
+   va_start(args, fmt);
+   int magic = CP_NOP_MESG;
+   fd_cs_magic_write_string(cs, utctx, magic, fmt, args);
+   va_end(args);
+}
+
+void
+fd_cs_trace_start(struct u_trace_context *utctx, void *cs, const char *fmt, ...)
+{
+   va_list args;
+   va_start(args, fmt);
+   int magic = CP_NOP_BEGN;
+   fd_cs_magic_write_string(cs, utctx, magic, fmt, args);
+   va_end(args);
+}
+
+void
+fd_cs_trace_end(struct u_trace_context *utctx, void *cs, const char *fmt, ...)
+{
+   va_list args;
+   va_start(args, fmt);
+   int magic = CP_NOP_END;
+   fd_cs_magic_write_string(cs, utctx, magic, fmt, args);
+   va_end(args);
+}
+
 /**
  * If we have a pending fence_server_sync() (GPU side sync), flush now.
  * The alternative to try to track this with batch dependencies gets
