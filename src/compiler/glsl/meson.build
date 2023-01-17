@@ -70,8 +70,6 @@ float64_glsl_h = custom_target(
   command : [prog_python, '@INPUT@', '@OUTPUT@', '-n', 'float64_source'],
 )
 
-float64_glsl_file = [files('float64.glsl')]
-
 cross_platform_settings_piece_all_h = custom_target(
   'cross_platform_settings_piece_all.h',
   input : [files_xxd, 'CrossPlatformSettings_piece_all.glsl'],
