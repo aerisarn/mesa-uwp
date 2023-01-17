@@ -21,10 +21,7 @@
 project(
   'mesa',
   ['c', 'cpp'],
-  version : run_command(
-    [find_program('python3', 'python'), 'bin/meson_get_version.py', meson.project_source_root()],
-    check : true
-  ).stdout(),
+  version : files('VERSION'),
   license : 'MIT',
   meson_version : '>= 0.59',
   default_options : ['buildtype=debugoptimized', 'b_ndebug=if-release', 'c_std=c11', 'cpp_std=c++17', 'rust_std=2021']
