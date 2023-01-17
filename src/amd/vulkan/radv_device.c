@@ -7024,8 +7024,8 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
 
    /* GFX10 field has the same base shift as the GFX6 field. */
    uint32_t max_slice = radv_surface_max_layer_count(iview) - 1;
-   cb->cb_color_view =
-      S_028C6C_SLICE_START(iview->vk.base_array_layer) | S_028C6C_SLICE_MAX_GFX10(max_slice);
+   uint32_t slice_start = iview->nbc_view.valid ? 0 : iview->vk.base_array_layer;
+   cb->cb_color_view = S_028C6C_SLICE_START(slice_start) | S_028C6C_SLICE_MAX_GFX10(max_slice);
 
    if (iview->image->info.samples > 1) {
       unsigned log_samples = util_logbase2(iview->image->info.samples);

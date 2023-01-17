@@ -1980,6 +1980,7 @@ radv_image_view_make_descriptor(struct radv_image_view *iview, struct radv_devic
    struct radv_image *image = iview->image;
    struct radv_image_plane *plane = &image->planes[plane_id];
    bool is_stencil = iview->vk.aspects == VK_IMAGE_ASPECT_STENCIL_BIT;
+   unsigned first_layer = iview->vk.base_array_layer;
    uint32_t blk_w;
    union radv_descriptor *descriptor;
    uint32_t hw_level = 0;
@@ -2001,12 +2002,15 @@ radv_image_view_make_descriptor(struct radv_image_view *iview, struct radv_devic
          hw_level = nbc_view->level;
          iview->extent.width = nbc_view->width;
          iview->extent.height = nbc_view->height;
+
+         /* Clear the base array layer because addrlib adds it as part of the base addr offset. */
+         first_layer = 0;
       }
    }
 
    radv_make_texture_descriptor(
       device, image, is_storage_image, iview->vk.view_type, vk_format, components, hw_level,
-      hw_level + iview->vk.level_count - 1, iview->vk.base_array_layer,
+      hw_level + iview->vk.level_count - 1, first_layer,
       iview->vk.base_array_layer + iview->vk.layer_count - 1,
       vk_format_get_plane_width(image->vk.format, plane_id, iview->extent.width),
       vk_format_get_plane_height(image->vk.format, plane_id, iview->extent.height),
