@@ -10469,7 +10469,7 @@ radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer, struct radv_ima
    if (src_layout == dst_layout && src_queue_mask == dst_queue_mask)
       return;
 
-   if (vk_format_has_depth(image->vk.format)) {
+   if (image->vk.aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
       radv_handle_depth_image_transition(cmd_buffer, image, src_layout, dst_layout,
                                          src_queue_mask, dst_queue_mask, range, sample_locs);
    } else {
