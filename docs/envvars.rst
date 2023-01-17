@@ -337,9 +337,17 @@ Core Mesa environment variables
    them to use a submit thread from the beginning, regardless of whether or
    not they ever see a wait-before-signal condition.
 
+.. envvar:: MESA_VK_DEVICE_SELECT_DEBUG
+
+   print debug info about device selection decision-making
+
 .. envvar:: MESA_LOADER_DRIVER_OVERRIDE
 
    chooses a different driver binary such as ``etnaviv`` or ``zink``.
+
+.. envvar:: DRI_PRIME_DEBUG
+
+   print debug info about device selection decision-making
 
 .. envvar:: DRI_PRIME
 

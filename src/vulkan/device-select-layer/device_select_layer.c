@@ -542,19 +542,21 @@ static VkResult device_select_EnumeratePhysicalDevices(VkInstance instance,
 	 free(extensions);
       }
    }
-   if (selection && strcmp(selection, "list") == 0) {
+   if (should_debug_device_selection() || (selection && strcmp(selection, "list") == 0)) {
       fprintf(stderr, "selectable devices:\n");
       for (unsigned i = 0; i < physical_device_count; ++i)
          print_gpu(info, i, physical_devices[i]);
-      exit(0);
-   } else {
-      unsigned selected_index = get_default_device(info, selection, physical_device_count, physical_devices);
-      selected_physical_device_count = physical_device_count;
-      selected_physical_devices[0] = physical_devices[selected_index];
-      for (unsigned i = 0; i < physical_device_count - 1; ++i) {
-         unsigned  this_idx = i < selected_index ? i : i + 1;
-         selected_physical_devices[i + 1] = physical_devices[this_idx];
-      }
+      
+      if (selection && strcmp(selection, "list") == 0)
+         exit(0);
+   }
+
+   unsigned selected_index = get_default_device(info, selection, physical_device_count, physical_devices);
+   selected_physical_device_count = physical_device_count;
+   selected_physical_devices[0] = physical_devices[selected_index];
+   for (unsigned i = 0; i < physical_device_count - 1; ++i) {
+      unsigned  this_idx = i < selected_index ? i : i + 1;
+      selected_physical_devices[i + 1] = physical_devices[this_idx];
    }
 
    if (selected_physical_device_count == 0) {
