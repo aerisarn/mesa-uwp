@@ -292,12 +292,7 @@ struct pvr_winsys_transfer_submit_info {
    uint32_t frame_num;
    uint32_t job_num;
 
-   struct vk_sync *barrier;
-
-   /* waits and stage_flags are arrays of length wait_count. */
-   struct vk_sync **waits;
-   uint32_t wait_count;
-   uint32_t *stage_flags;
+   struct vk_sync *wait;
 
    uint32_t cmd_count;
    struct pvr_winsys_transfer_cmd cmds[PVR_TRANSFER_MAX_PREPARES_PER_SUBMIT];
@@ -310,12 +305,7 @@ struct pvr_winsys_compute_submit_info {
    uint32_t frame_num;
    uint32_t job_num;
 
-   struct vk_sync *barrier;
-
-   /* waits and stage_flags are arrays of length wait_count. */
-   struct vk_sync **waits;
-   uint32_t wait_count;
-   uint32_t *stage_flags;
+   struct vk_sync *wait;
 
    /* Firmware stream buffer. This is the maximum possible size taking into
     * consideration all HW features.
@@ -354,14 +344,6 @@ struct pvr_winsys_render_submit_info {
    /* FIXME: should this be flags instead? */
    bool run_frag;
 
-   struct vk_sync *barrier_geom;
-   struct vk_sync *barrier_frag;
-
-   /* waits and stage_flags are arrays of length wait_count. */
-   struct vk_sync **waits;
-   uint32_t wait_count;
-   uint32_t *stage_flags;
-
    struct pvr_winsys_geometry_state {
       /* Firmware stream buffer. This is the maximum possible size taking into
        * consideration all HW features.
@@ -377,6 +359,8 @@ struct pvr_winsys_render_submit_info {
 
       /* Must be 0 or a combination of PVR_WINSYS_GEOM_FLAG_* flags. */
       uint32_t flags;
+
+      struct vk_sync *wait;
    } geometry;
 
    struct pvr_winsys_fragment_state {
@@ -394,6 +378,8 @@ struct pvr_winsys_render_submit_info {
 
       /* Must be 0 or a combination of PVR_WINSYS_FRAG_FLAG_* flags. */
       uint32_t flags;
+
+      struct vk_sync *wait;
    } fragment;
 };
 
@@ -485,9 +471,9 @@ struct pvr_winsys_ops {
       struct vk_sync *signal_sync);
 
    VkResult (*null_job_submit)(struct pvr_winsys *ws,
-                               struct vk_sync **waits,
+                               struct vk_sync_wait *waits,
                                uint32_t wait_count,
-                               struct vk_sync *signal_sync);
+                               struct vk_sync_signal *signal_sync);
 };
 
 struct pvr_winsys {

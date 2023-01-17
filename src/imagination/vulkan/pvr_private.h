@@ -131,14 +131,8 @@ struct pvr_queue {
    struct pvr_compute_ctx *query_ctx;
    struct pvr_transfer_ctx *transfer_ctx;
 
-   struct vk_sync *completion[PVR_JOB_TYPE_MAX];
-
-   /* Used to setup a job dependency from jobs previously submitted, onto
-    * the next job per job type.
-    *
-    * Used to create dependencies for pipeline barriers.
-    */
-   struct vk_sync *job_dependancy[PVR_JOB_TYPE_MAX];
+   struct vk_sync *last_job_signal_sync[PVR_JOB_TYPE_MAX];
+   struct vk_sync *next_job_wait_sync[PVR_JOB_TYPE_MAX];
 };
 
 struct pvr_vertex_binding {
@@ -279,6 +273,8 @@ struct pvr_device {
    VkPhysicalDeviceFeatures features;
 
    struct pvr_bo_store *bo_store;
+
+   struct vk_sync *presignaled_sync;
 };
 
 struct pvr_device_memory {
