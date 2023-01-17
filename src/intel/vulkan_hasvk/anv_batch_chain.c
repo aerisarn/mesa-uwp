@@ -1616,7 +1616,7 @@ anv_execbuf_add_syncobj(struct anv_device *device,
       .handle = syncobj,
       .flags = flags,
    };
-   if (timeline_value)
+   if (exec->syncobj_values)
       exec->syncobj_values[exec->syncobj_count] = timeline_value;
 
    exec->syncobj_count++;
