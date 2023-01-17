@@ -3889,7 +3889,7 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
           VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) {
          pipeline->ds = library->ds;
          pipeline->lrz.fs = library->lrz.fs;
-         pipeline->lrz.force_disable_mask |= library->lrz.force_disable_mask;
+         pipeline->lrz.lrz_status |= library->lrz.lrz_status;
          pipeline->lrz.force_late_z |= library->lrz.force_late_z;
          library_dynamic_state |=
             BIT(VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK) |
@@ -3905,7 +3905,7 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
           VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) {
          pipeline->blend = library->blend;
          pipeline->output = library->output;
-         pipeline->lrz.force_disable_mask |= library->lrz.force_disable_mask;
+         pipeline->lrz.lrz_status |= library->lrz.lrz_status;
          pipeline->lrz.force_late_z |= library->lrz.force_late_z;
          pipeline->prim_order = library->prim_order;
          library_dynamic_state |=
@@ -4450,10 +4450,10 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
    if (builder->variants[MESA_SHADER_FRAGMENT]) {
       const struct ir3_shader_variant *fs = builder->variants[MESA_SHADER_FRAGMENT];
       if (fs->has_kill) {
-         pipeline->lrz.force_disable_mask |= TU_LRZ_FORCE_DISABLE_WRITE;
+         pipeline->lrz.lrz_status |= TU_LRZ_FORCE_DISABLE_WRITE;
       }
       if (fs->no_earlyz || fs->writes_pos) {
-         pipeline->lrz.force_disable_mask = TU_LRZ_FORCE_DISABLE_LRZ;
+         pipeline->lrz.lrz_status = TU_LRZ_FORCE_DISABLE_LRZ;
       }
    }
 }
@@ -4600,13 +4600,13 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
        !(pipeline->dynamic_state_mask &
         (BIT(TU_DYNAMIC_STATE_LOGIC_OP) |
          BIT(TU_DYNAMIC_STATE_BLEND_ENABLE))))
-      pipeline->lrz.force_disable_mask |= TU_LRZ_FORCE_DISABLE_WRITE;
+      pipeline->lrz.lrz_status |= TU_LRZ_FORCE_DISABLE_WRITE;
 
    if (!(pipeline->dynamic_state_mask &
          BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE)) &&
        (pipeline->blend.color_write_enable & MASK(pipeline->blend.num_rts)) !=
        MASK(pipeline->blend.num_rts))
-      pipeline->lrz.force_disable_mask |= TU_LRZ_FORCE_DISABLE_WRITE;
+      pipeline->lrz.lrz_status |= TU_LRZ_FORCE_DISABLE_WRITE;
 
    if (!(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_BLEND))) {
       for (int i = 0; i < blend_info->attachmentCount; i++) {
@@ -4619,7 +4619,7 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
          unsigned mask = MASK(vk_format_get_nr_components(format));
          if (format != VK_FORMAT_UNDEFINED &&
              (blendAttachment.colorWriteMask & mask) != mask) {
-            pipeline->lrz.force_disable_mask |= TU_LRZ_FORCE_DISABLE_WRITE;
+            pipeline->lrz.lrz_status |= TU_LRZ_FORCE_DISABLE_WRITE;
          }
       }
    }

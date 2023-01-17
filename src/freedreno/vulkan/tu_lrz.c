@@ -589,7 +589,7 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
    gras_lrz_cntl.enable = true;
    gras_lrz_cntl.lrz_write =
       z_write_enable &&
-      !(pipeline->lrz.force_disable_mask & TU_LRZ_FORCE_DISABLE_WRITE);
+      !(pipeline->lrz.lrz_status & TU_LRZ_FORCE_DISABLE_WRITE);
    gras_lrz_cntl.z_test_enable = z_write_enable;
    gras_lrz_cntl.z_bounds_enable = z_bounds_enable;
    gras_lrz_cntl.fc_enable = cmd->state.lrz.fast_clear;
@@ -661,7 +661,7 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
     * fragment tests.  We have to skip LRZ testing and updating, but as long as
     * the depth direction stayed the same we can continue with LRZ testing later.
     */
-   if (pipeline->lrz.force_disable_mask & TU_LRZ_FORCE_DISABLE_LRZ) {
+   if (pipeline->lrz.lrz_status & TU_LRZ_FORCE_DISABLE_LRZ) {
       if (cmd->state.lrz.prev_direction != TU_LRZ_UNKNOWN || !cmd->state.lrz.gpu_dir_tracking) {
          perf_debug(cmd->device, "Skipping LRZ due to FS");
          temporary_disable_lrz = true;
