@@ -830,8 +830,14 @@ BEGIN_TEST(assembler.gfx11.vop12c_v128)
    Operand op_v130(bld.tmp(v1));
    op_v130.setFixed(PhysReg(256 + 130));
 
+   //! llvm_version: #llvm_ver
+   fprintf(output, "llvm_version: %u\n", LLVM_VERSION_MAJOR);
+
    //>> BB0:
-   //! v_mul_f16_e32 v0, v1, v2 ; Error: VGPR_32_Lo128: unknown register 128 ; 6a000501
+   //; if llvm_ver >= 16:
+   //;    insert_pattern('v_mul_f16_e32 v0, v1, v2 ; Error: VGPR_32_Lo128: unknown register 128 ; 6a000501')
+   //; else:
+   //;    insert_pattern('v_mul_f16_e32 v0, v1, v2                                    ; 6a000501')
    bld.vop2(aco_opcode::v_mul_f16, dst_v0, op_v1, op_v2);
 
    //! v_mul_f16_e64 v128, v1, v2                                  ; d5350080 00020501
