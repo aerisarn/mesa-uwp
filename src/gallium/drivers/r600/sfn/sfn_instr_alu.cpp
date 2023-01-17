@@ -420,8 +420,16 @@ AluInstr::replace_source(PRegister old_src, PVirtualValue new_src)
       }
    }
 
-   /* Check the readports */
-   if (m_alu_slots * alu_ops.at(m_opcode).nsrc > 2 || m_parent_group) {
+   /* If we have a parent group, we have to check the readports with the
+    * current constellation of the parent group
+    * REMARK: this is a bit fishy, because the parent group constellation
+    * has the fields for the old sourcess set, so we will reject more
+    * possibilities, but with this is becomes  conservative check, and this is
+    * fine.
+    * TODO: handle instructions that have to be greated as a group differently
+    * so we can get rid of this (mostly fp64 instructions that are multi-slot with
+    * more than just one dest value.*/
+   if (m_parent_group) {
       AluReadportReservation read_port_check =
          !m_parent_group ? AluReadportReservation() : m_parent_group->readport_reserer();
 
@@ -435,7 +443,9 @@ AluInstr::replace_source(PRegister old_src, PVirtualValue new_src)
          }
          AluBankSwizzle bs = alu_vec_012;
          while (bs != alu_vec_unknown) {
-            if (read_port_check.schedule_vec_src(src, nsrc, bs)) {
+            AluReadportReservation rpc = read_port_check;
+            if (rpc.schedule_vec_src(src, nsrc, bs)) {
+               read_port_check = rpc;
                break;
             }
             ++bs;
@@ -443,8 +453,7 @@ AluInstr::replace_source(PRegister old_src, PVirtualValue new_src)
          if (bs == alu_vec_unknown)
             return false;
       }
-      if (m_parent_group)
-         m_parent_group->set_readport_reserer(read_port_check);
+      m_parent_group->set_readport_reserer(read_port_check);
    }
 
    for (unsigned i = 0; i < m_src.size(); ++i) {
@@ -577,11 +586,11 @@ AluInstr::pin_sources_to_chan()
 bool
 AluInstr::check_readport_validation(PRegister old_src, PVirtualValue new_src) const
 {
-   bool success = true;
-   AluReadportReservation rpr_sum;
-
    if (m_src.size() < 3)
       return true;
+
+   bool success = true;
+   AluReadportReservation rpr_sum;
 
    unsigned nsrc = alu_ops.at(m_opcode).nsrc;
    assert(nsrc * m_alu_slots == m_src.size());
