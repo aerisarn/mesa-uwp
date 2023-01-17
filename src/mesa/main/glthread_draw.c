@@ -202,7 +202,13 @@ upload_vertices(struct gl_context *ctx, unsigned user_buffer_mask,
          _mesa_glthread_upload(ctx, (uint8_t*)ptr + start,
                                end - start, &upload_offset,
                                &upload_buffer, NULL, ctx->Const.VertexBufferOffsetIsInt32 ? 0 : start);
-         assert(upload_buffer);
+         if (!upload_buffer) {
+            for (unsigned i = 0; i < num_buffers; i++)
+               _mesa_reference_buffer_object(ctx, &buffers->buffer, NULL);
+
+            _mesa_marshal_InternalSetError(GL_OUT_OF_MEMORY);
+            return false;
+         }
 
          buffers[num_buffers].buffer = upload_buffer;
          buffers[num_buffers].offset = upload_offset - start;
@@ -257,7 +263,13 @@ upload_vertices(struct gl_context *ctx, unsigned user_buffer_mask,
       _mesa_glthread_upload(ctx, (uint8_t*)ptr + offset,
                             size, &upload_offset, &upload_buffer, NULL,
                             ctx->Const.VertexBufferOffsetIsInt32 ? 0 : offset);
-      assert(upload_buffer);
+      if (!upload_buffer) {
+         for (unsigned i = 0; i < num_buffers; i++)
+            _mesa_reference_buffer_object(ctx, &buffers->buffer, NULL);
+
+         _mesa_marshal_InternalSetError(GL_OUT_OF_MEMORY);
+         return false;
+      }
 
       buffers[num_buffers].buffer = upload_buffer;
       buffers[num_buffers].offset = upload_offset - offset;
@@ -443,15 +455,17 @@ draw_arrays(GLenum mode, GLint first, GLsizei count, GLsizei instance_count,
 
    /* Upload and draw. */
    struct glthread_attrib_binding buffers[VERT_ATTRIB_MAX];
-   if (!ctx->GLThread.SupportsBufferUploads ||
-       !upload_vertices(ctx, user_buffer_mask, first, count, baseinstance,
-                        instance_count, buffers)) {
+   if (!ctx->GLThread.SupportsBufferUploads) {
       _mesa_glthread_finish_before(ctx, "DrawArrays");
       CALL_DrawArraysInstancedBaseInstance(ctx->CurrentServerDispatch,
                                            (mode, first, count, instance_count,
                                             baseinstance));
       return;
    }
+
+   if (!upload_vertices(ctx, user_buffer_mask, first, count, baseinstance,
+                        instance_count, buffers))
+      return; /* the error is set by upload_vertices */
 
    draw_arrays_async_user(ctx, mode, first, count, instance_count, baseinstance,
                           user_buffer_mask, buffers);
@@ -588,7 +602,7 @@ _mesa_marshal_MultiDrawArrays(GLenum mode, const GLint *first,
    struct glthread_attrib_binding buffers[VERT_ATTRIB_MAX];
    if (!upload_vertices(ctx, user_buffer_mask, min_index, num_vertices,
                         0, 1, buffers))
-      goto sync;
+      return; /* the error is set by upload_vertices */
 
    multi_draw_arrays_async(ctx, mode, first, count, draw_count,
                            user_buffer_mask, buffers);
@@ -946,8 +960,9 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
 
    struct glthread_attrib_binding buffers[VERT_ATTRIB_MAX];
    if (user_buffer_mask) {
-      upload_vertices(ctx, user_buffer_mask, start_vertex, num_vertices,
-                      baseinstance, instance_count, buffers);
+      if (!upload_vertices(ctx, user_buffer_mask, start_vertex, num_vertices,
+                           baseinstance, instance_count, buffers))
+         return; /* the error is set by upload_vertices */
    }
 
    /* Upload indices. */
@@ -1219,10 +1234,11 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
 
    /* Upload vertices. */
    struct glthread_attrib_binding buffers[VERT_ATTRIB_MAX];
-   if (user_buffer_mask &&
-       !upload_vertices(ctx, user_buffer_mask, min_index, num_vertices,
-                        0, 1, buffers))
-      goto sync;
+   if (user_buffer_mask) {
+      if (!upload_vertices(ctx, user_buffer_mask, min_index, num_vertices,
+                           0, 1, buffers))
+         return; /* the error is set by upload_vertices */
+   }
 
    /* Upload indices. */
    struct gl_buffer_object *index_buffer = NULL;
