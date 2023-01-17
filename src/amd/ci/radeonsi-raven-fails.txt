@@ -170,7 +170,6 @@ CreateContext/VAAPICreateContext.CreateContext/3075,Crash
 CreateContext/VAAPICreateContext.CreateContext/3245,Crash
 CreateContext/VAAPICreateContext.CreateContext/355,Crash
 CreateContext/VAAPICreateContext.CreateContext/3585,Crash
-CreateSurfaces/VAAPICreateSurfaces.CreateSurfacesWithConfigAttribs/1121,Timeout
 GetCreateConfig/VAAPIGetCreateConfig.CreateConfigNoAttributes/190,Fail
 GetCreateConfig/VAAPIGetCreateConfig.CreateConfigNoAttributes/210,Fail
 GetCreateConfig/VAAPIGetCreateConfig.CreateConfigWithAttributes/190,Fail
