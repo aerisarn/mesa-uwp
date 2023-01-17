@@ -36,18 +36,11 @@ else
   inc_amd_common_llvm = []
 endif
 
-libglsl_util = static_library(
-  'glsl_util',
-  files(
+glsl_util_files = files(
     'mesa/main/extensions_table.c',
     'mesa/program/prog_parameter.c',
     'mesa/program/symbol_table.c',
     'mesa/program/dummy_errors.c',
-  ),
-  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
-  dependencies : dep_valgrind,
-  gnu_symbol_visibility : 'hidden',
-  build_by_default : false,
 )
 
 sha1_h = custom_target(

@@ -18,6 +18,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+libglsl_util = static_library(
+  'glsl_util',
+  glsl_util_files,
+  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
+  dependencies : dep_valgrind,
+  gnu_symbol_visibility : 'hidden',
+  build_by_default : false,
+)
+
 subdir('glcpp')
 
 bison_command = []
