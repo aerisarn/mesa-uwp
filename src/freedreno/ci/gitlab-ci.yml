@@ -220,7 +220,6 @@ a618_piglit:
 .a630-test:
   extends:
     - .freedreno-test
-    - .test-manual-mr
   variables:
     FDO_CI_CONCURRENT: 10
     BM_KERNEL: /baremetal-files/cheza-kernel
@@ -268,7 +267,7 @@ a630_skqp:
     - .baremetal-deqp-test
     - .a630-test
     # SKQP tests both the GL and VK drivers.
-    #- .freedreno-turnip-rules
+    - .freedreno-turnip-rules
   variables:
     HWCI_START_XORG: 1
     DEQP_SUITE: freedreno-a630-skqp
@@ -277,7 +276,7 @@ a630_vk:
   extends:
     - .a630-test
     - .baremetal-deqp-test-freedreno-vk
-    #- .turnip-rules
+    - .turnip-rules
   variables:
     DEQP_SUITE: freedreno-a630-vk
 
@@ -299,7 +298,7 @@ a630_vk_asan:
     - .a630-test
     - .baremetal-deqp-test-freedreno-vk
     - .baremetal-arm64-asan-test
-    #- .turnip-rules
+    - .turnip-rules
   variables:
     DEQP_SUITE: freedreno-a630-vk-asan
     FDO_CI_CONCURRENT: 2 # We get OOMkills if we go too wide with asan enabled
@@ -310,7 +309,7 @@ a630_piglit:
     - .piglit-test
     - .a630-test
     # Note that piglit has GL+VK integration testing.
-    #- .freedreno-turnip-rules
+    - .freedreno-turnip-rules
   variables:
     HWCI_START_XORG: 1
     PIGLIT_PROFILES: gpu
@@ -330,7 +329,7 @@ a630-traces:
 a630-traces-restricted:
   extends:
     - a630-traces
-    #- .freedreno-rules-restricted
+    - .freedreno-rules-restricted
   variables:
     PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/restricted-traces-freedreno.yml"
     PIGLIT_REPLAY_EXTRA_ARGS: --keep-image --db-path ${CI_PROJECT_DIR}/replayer-db/ --minio_bucket=mesa-tracie-private --jwt-file=${CI_JOB_JWT_FILE}
