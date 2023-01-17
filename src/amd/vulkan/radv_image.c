@@ -1048,7 +1048,7 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
    unsigned max_mip =
       image->info.samples > 1 ? util_logbase2(image->info.samples) : image->info.levels - 1;
    if (nbc_view && nbc_view->valid)
-      max_mip = nbc_view->max_mip;
+      max_mip = nbc_view->max_mip - 1;
 
    unsigned min_lod_clamped = radv_float_to_ufixed(CLAMP(min_lod, 0, 15), 8);
    if (device->physical_device->rad_info.gfx_level >= GFX11) {
