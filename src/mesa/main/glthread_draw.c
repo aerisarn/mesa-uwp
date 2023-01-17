@@ -71,8 +71,10 @@ upload_indices(struct gl_context *ctx, unsigned count, unsigned index_size,
 
    _mesa_glthread_upload(ctx, *indices, index_size * count,
                          &upload_offset, &upload_buffer, NULL, 0);
-   assert(upload_buffer);
    *indices = (const GLvoid*)(intptr_t)upload_offset;
+
+   if (!upload_buffer)
+      _mesa_marshal_InternalSetError(GL_OUT_OF_MEMORY);
 
    return upload_buffer;
 }
@@ -91,7 +93,10 @@ upload_multi_indices(struct gl_context *ctx, unsigned total_count,
 
    _mesa_glthread_upload(ctx, NULL, index_size * total_count,
                          &upload_offset, &upload_buffer, &upload_ptr, 0);
-   assert(upload_buffer);
+   if (!upload_buffer) {
+      _mesa_marshal_InternalSetError(GL_OUT_OF_MEMORY);
+      return NULL;
+   }
 
    for (unsigned i = 0, offset = 0; i < draw_count; i++) {
       if (count[i] == 0)
@@ -940,15 +945,18 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
       goto sync;
 
    struct glthread_attrib_binding buffers[VERT_ATTRIB_MAX];
-   if (user_buffer_mask &&
-       !upload_vertices(ctx, user_buffer_mask, start_vertex, num_vertices,
-                        baseinstance, instance_count, buffers))
-      goto sync;
+   if (user_buffer_mask) {
+      upload_vertices(ctx, user_buffer_mask, start_vertex, num_vertices,
+                      baseinstance, instance_count, buffers);
+   }
 
    /* Upload indices. */
    struct gl_buffer_object *index_buffer = NULL;
-   if (has_user_indices)
+   if (has_user_indices) {
       index_buffer = upload_indices(ctx, count, index_size, &indices);
+      if (!index_buffer)
+         return; /* the error is set by upload_indices */
+   }
 
    /* Draw asynchronously. */
    draw_elements_async_user(ctx, mode, count, type, indices, instance_count,
@@ -1224,6 +1232,9 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
       index_buffer = upload_multi_indices(ctx, total_count, index_size,
                                           draw_count, count, indices,
                                           out_indices);
+      if (!index_buffer)
+         return; /* the error is set by upload_multi_indices */
+
       indices = out_indices;
    }
 
