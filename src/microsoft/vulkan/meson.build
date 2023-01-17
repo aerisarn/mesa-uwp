@@ -89,7 +89,7 @@ libvulkan_dzn = shared_library(
   cpp_args : dzn_cpp_flags,
   gnu_symbol_visibility : 'hidden',
   link_args : [ld_args_bsymbolic, ld_args_gc_sections],
-  name_prefix : host_machine.system() == 'windows' ? '' : 'lib',
+  name_prefix : host_machine.system() == 'windows' ? '' : [],
   install : true,
 )
 

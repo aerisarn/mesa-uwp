@@ -10,7 +10,7 @@ libvulkan_lvp = shared_library(
   gnu_symbol_visibility : 'hidden',
   link_args : [ld_args_bsymbolic, ld_args_gc_sections],
   dependencies : driver_swrast,
-  name_prefix : host_machine.system() == 'windows' ? '' : 'lib',
+  name_prefix : host_machine.system() == 'windows' ? '' : [],
   install : true,
 )
 

@@ -200,7 +200,7 @@ libvulkan_radeon = shared_library(
   ],
   link_depends : [libvulkan_radeon_link_depends,],
   gnu_symbol_visibility : 'hidden',
-  name_prefix : host_machine.system() == 'windows' ? '' : 'lib',
+  name_prefix : host_machine.system() == 'windows' ? '' : [],
   install : true,
 )
 
