@@ -2064,6 +2064,12 @@ struct radv_graphics_pipeline {
    /* Whether the pipeline uses NGG (GFX10+). */
    bool is_ngg;
    bool has_ngg_culling;
+   /* shortcuts for pipeline bind */
+   bool has_pv_sgpr;
+   bool has_streamout;
+   bool has_dynamic_samples;
+   bool has_sample_positions;
+
    uint8_t vtx_emit_num;
 
    unsigned esgs_ring_size;

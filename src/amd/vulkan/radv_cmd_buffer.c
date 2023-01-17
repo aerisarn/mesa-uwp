@@ -6330,7 +6330,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       }
 
       /* Re-emit the provoking vertex mode state because the SGPR idx can be different. */
-      if (graphics_pipeline->last_vgt_api_stage_locs[AC_UD_NGG_PROVOKING_VTX].sgpr_idx != -1) {
+      if (graphics_pipeline->has_pv_sgpr) {
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PROVOKING_VERTEX_MODE;
       }
 
@@ -6344,7 +6344,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       /* Re-emit the streamout buffers because the SGPR idx can be different and with NGG streamout
        * they always need to be emitted because a buffer size of 0 is used to disable streamout.
        */
-      if (graphics_pipeline->last_vgt_api_stage_locs[AC_UD_STREAMOUT_BUFFERS].sgpr_idx != -1) {
+      if (graphics_pipeline->has_streamout) {
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_STREAMOUT_BUFFER;
 
          if (cmd_buffer->device->physical_device->use_ngg_streamout) {
@@ -6358,8 +6358,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
 
       /* Re-emit the rasterization samples state because the SGPR idx can be different. */
-      const struct radv_shader *ps = graphics_pipeline->base.shaders[MESA_SHADER_FRAGMENT];
-      if (ps->info.user_sgprs_locs.shader_data[AC_UD_PS_NUM_SAMPLES].sgpr_idx != -1) {
+      if (graphics_pipeline->has_dynamic_samples) {
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
       }
 
@@ -6367,7 +6366,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
 
       radv_bind_vs_input_state(cmd_buffer, graphics_pipeline);
 
-      if (ps->info.ps.needs_sample_positions)
+      if (graphics_pipeline->has_sample_positions)
          cmd_buffer->sample_positions_needed = true;
 
       if (graphics_pipeline->esgs_ring_size > cmd_buffer->esgs_ring_size_needed)

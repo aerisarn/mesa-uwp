@@ -5047,6 +5047,11 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    pipeline->rast_prim = vgt_gs_out_prim_type;
    pipeline->last_vgt_api_stage_locs = pipeline->base.shaders[pipeline->last_vgt_api_stage]->info.user_sgprs_locs.shader_data;
 
+   pipeline->has_pv_sgpr = pipeline->last_vgt_api_stage_locs[AC_UD_NGG_PROVOKING_VTX].sgpr_idx != -1;
+   pipeline->has_streamout = pipeline->last_vgt_api_stage_locs[AC_UD_STREAMOUT_BUFFERS].sgpr_idx != -1;
+   pipeline->has_dynamic_samples = ps->info.user_sgprs_locs.shader_data[AC_UD_PS_NUM_SAMPLES].sgpr_idx != -1;
+   pipeline->has_sample_positions = ps->info.ps.needs_sample_positions;
+
    pipeline->base.push_constant_size = pipeline_layout.push_constant_size;
    pipeline->base.dynamic_offset_count = pipeline_layout.dynamic_offset_count;
 
