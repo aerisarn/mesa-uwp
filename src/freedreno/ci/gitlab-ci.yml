@@ -339,7 +339,7 @@ a630-traces-restricted:
 a630-traces-performance:
   extends:
     - a630-traces
-    #- .freedreno-rules-performance
+    - .freedreno-rules-performance
   variables:
     PIGLIT_REPLAY_SUBCOMMAND: "profile"
     PIGLIT_REPLAY_EXTRA_ARGS: "--db-path ${CI_PROJECT_DIR}/replayer-db/"
