@@ -22,8 +22,7 @@ project(
   'mesa',
   ['c', 'cpp'],
   version : run_command(
-    [find_program('python3', 'python'), 'bin/meson_get_version.py',
-     meson.version().version_compare('>= 0.56') ? meson.project_source_root() : meson.source_root()],
+    [find_program('python3', 'python'), 'bin/meson_get_version.py', meson.project_source_root()],
     check : true
   ).stdout(),
   license : 'MIT',
@@ -2082,22 +2081,14 @@ gcc_lto_quirk = (cc.get_id() == 'gcc') ? ['-fno-lto'] : []
 devenv = environment()
 
 dir_compiler_nir = join_paths(meson.current_source_dir(), 'src/compiler/nir/')
-if meson.version().version_compare('>= 0.56')
-  dir_source_root = meson.project_source_root()
-else
-  # source_root() returns a source root of the parent project if called from
-  # a subproject, which makes impossible to use Mesa as a meson subproject.
-  dir_source_root = meson.source_root()
-endif
+dir_source_root = meson.project_source_root()
 
 
 subdir('include')
 subdir('bin')
 subdir('src')
 
-if meson.version().version_compare('>= 0.58')
-  meson.add_devenv(devenv)
-endif
+meson.add_devenv(devenv)
 
 lines = ['',
   'prefix:          ' + get_option('prefix'),
