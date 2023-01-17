@@ -28,7 +28,7 @@
     - .intel-rules
 
 ## ANV only
-# 13 boards
+# 15; 10 i5 boards + 5 i7 boards (2023-01-17)
 .anv-tgl-test:
   extends:
     - .anv-test
@@ -45,7 +45,7 @@ anv-tgl-vk:
     DEQP_SUITE: anv-tgl-vk
     DEQP_VER: vk
     VK_DRIVER: intel
-  parallel: 10
+  parallel: 12  # 15 - 3 (intel job + two zink)
 
 ## Iris only
 # 5 boards
