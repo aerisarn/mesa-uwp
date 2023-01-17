@@ -2149,7 +2149,7 @@ zink_get_dmabuf_modifier_planes(struct pipe_screen *pscreen, uint64_t modifier, 
    for (unsigned i = 0; i < screen->modifier_props[format].drmFormatModifierCount; i++)
       if (screen->modifier_props[format].pDrmFormatModifierProperties[i].drmFormatModifier == modifier)
          return screen->modifier_props[format].pDrmFormatModifierProperties[i].drmFormatModifierPlaneCount;
-   return 0;
+   return util_format_get_num_planes(format);
 }
 
 static int
