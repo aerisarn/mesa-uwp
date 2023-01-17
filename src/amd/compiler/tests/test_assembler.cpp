@@ -437,6 +437,9 @@ BEGIN_TEST(assembler.gfx11.mubuf)
    Operand op_m0(bld.tmp(s1));
    op_m0.setFixed(m0);
 
+   //! llvm_version: #llvm_ver
+   fprintf(output, "llvm_version: %u\n", LLVM_VERSION_MAJOR);
+
    /* Addressing */
    //>> buffer_load_b32 v42, off, s[32:35], s30                     ; e0500000 1e082a80
    bld.mubuf(aco_opcode::buffer_load_dword, dst, op_s4, Operand(v1), op_s1, 0, false);
@@ -466,7 +469,10 @@ BEGIN_TEST(assembler.gfx11.mubuf)
    //! buffer_load_b32 v42, off, s[32:35], 0 slc                   ; e0501000 80082a80
    bld.mubuf(aco_opcode::buffer_load_dword, dst, op_s4, Operand(v1), Operand::zero(), 0, false)->mubuf().slc = true;
 
-   //! buffer_load_b32 v42, off, s[32:35], 0 tfe                   ; e0500000 80282a80
+   //; if llvm_ver >= 16:
+   //;    insert_pattern('buffer_load_b32 v[42:43], off, s[32:35], 0 tfe              ; e0500000 80282a80')
+   //; else:
+   //;    insert_pattern('buffer_load_b32 v42, off, s[32:35], 0 tfe                   ; e0500000 80282a80')
    bld.mubuf(aco_opcode::buffer_load_dword, dst, op_s4, Operand(v1), Operand::zero(), 0, false)->mubuf().tfe = true;
 
    /* LDS */
@@ -520,6 +526,9 @@ BEGIN_TEST(assembler.gfx11.mtbuf)
    unsigned dfmt = V_008F0C_BUF_DATA_FORMAT_32_32;
    unsigned nfmt = V_008F0C_BUF_NUM_FORMAT_FLOAT;
 
+   //! llvm_version: #llvm_ver
+   fprintf(output, "llvm_version: %u\n", LLVM_VERSION_MAJOR);
+
    /* Addressing */
    //>> tbuffer_load_format_x v42, off, s[32:35], s30 format:[BUF_FMT_32_32_FLOAT] ; e9900000 1e082a80
    bld.mtbuf(aco_opcode::tbuffer_load_format_x, dst, op_s4, Operand(v1), op_s1, dfmt, nfmt, 0, false);
@@ -549,7 +558,10 @@ BEGIN_TEST(assembler.gfx11.mtbuf)
    //! tbuffer_load_format_x v42, off, s[32:35], 0 format:[BUF_FMT_32_32_FLOAT] slc ; e9901000 80082a80
    bld.mtbuf(aco_opcode::tbuffer_load_format_x, dst, op_s4, Operand(v1), Operand::zero(), dfmt, nfmt, 0, false)->mtbuf().slc = true;
 
-   //! tbuffer_load_format_x v42, off, s[32:35], 0 format:[BUF_FMT_32_32_FLOAT] tfe ; e9900000 80282a80
+   //; if llvm_ver >= 16:
+   //;    insert_pattern('tbuffer_load_format_x v42, off, s[32:35], 0 format:[BUF_FMT_32_32_FLOAT] ; e9900000 80282a80')
+   //; else:
+   //;    insert_pattern('tbuffer_load_format_x v42, off, s[32:35], 0 format:[BUF_FMT_32_32_FLOAT] tfe ; e9900000 80282a80')
    bld.mtbuf(aco_opcode::tbuffer_load_format_x, dst, op_s4, Operand(v1), Operand::zero(), dfmt, nfmt, 0, false)->mtbuf().tfe = true;
 
    /* Stores */
