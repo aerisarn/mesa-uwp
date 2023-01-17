@@ -865,7 +865,7 @@ static VkResult pvr_process_cmd_buffer(
       if (result != VK_SUCCESS)
          return result;
 
-      p_atomic_inc(&device->global_queue_job_count);
+      p_atomic_inc(&device->global_cmd_buffer_submit_count);
    }
 
    pvr_update_syncobjs(device, per_cmd_buffer_syncobjs, per_submit_syncobjs);

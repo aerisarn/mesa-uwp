@@ -298,7 +298,7 @@ struct pvr_device {
    uint32_t queue_count;
 
    /* Running count of the number of job submissions across all queue. */
-   uint32_t global_queue_job_count;
+   uint32_t global_cmd_buffer_submit_count;
 
    /* Running count of the number of presentations across all queues. */
    uint32_t global_queue_present_count;
