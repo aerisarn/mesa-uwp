@@ -1331,7 +1331,6 @@ struct zink_screen {
 
    struct {
       bool broken_l4a4;
-      bool depth_clip_control_missing;
       bool implicit_sync;
       bool always_feedback_loop;
       bool always_feedback_loop_zs;

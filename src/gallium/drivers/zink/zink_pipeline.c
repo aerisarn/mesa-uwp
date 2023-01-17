@@ -148,7 +148,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    viewport_state.pViewports = NULL;
    viewport_state.scissorCount = screen->info.have_EXT_extended_dynamic_state ? 0 : state->dyn_state1.num_viewports;
    viewport_state.pScissors = NULL;
-   if (!screen->driver_workarounds.depth_clip_control_missing && !hw_rast_state->clip_halfz)
+   if (screen->info.have_EXT_depth_clip_control && !hw_rast_state->clip_halfz)
       viewport_state.pNext = &clip;
 
    VkPipelineRasterizationStateCreateInfo rast_state = {0};
