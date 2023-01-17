@@ -1709,12 +1709,6 @@ struct v3dv_cmd_buffer {
 
    struct v3dv_device *device;
 
-   /* Used at submit time to link command buffers in the submission that have
-    * spawned wait threads, so we can then wait on all of them to complete
-    * before we process any signal semaphores or fences.
-    */
-   struct list_head list_link;
-
    VkCommandBufferUsageFlags usage_flags;
 
    enum v3dv_cmd_buffer_status status;
