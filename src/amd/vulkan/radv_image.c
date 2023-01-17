@@ -2107,7 +2107,6 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
    const VkImageSubresourceRange *range = &pCreateInfo->subresourceRange;
    uint32_t plane_count = 1;
    float min_lod = 0.0f;
-   struct ac_surf_nbc_view nbc_view = {0};
 
    const struct VkImageViewMinLodCreateInfoEXT *min_lod_info =
       vk_find_struct_const(pCreateInfo->pNext, IMAGE_VIEW_MIN_LOD_CREATE_INFO_EXT);
@@ -2133,6 +2132,7 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
    }
    iview->image = image;
    iview->plane_id = radv_plane_from_aspect(pCreateInfo->subresourceRange.aspectMask);
+   iview->nbc_view.valid = false;
 
    /* If the image has an Android external format, pCreateInfo->format will be
     * VK_FORMAT_UNDEFINED. */
@@ -2244,7 +2244,7 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
                 (radv_minify(iview->extent.width, range->baseMipLevel) < lvl_width ||
                  radv_minify(iview->extent.height, range->baseMipLevel) < lvl_height) &&
                 iview->vk.layer_count == 1) {
-               compute_non_block_compressed_view(device, iview, &nbc_view);
+               compute_non_block_compressed_view(device, iview, &iview->nbc_view);
             }
          }
       }
@@ -2259,10 +2259,10 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
       VkFormat format = vk_format_get_plane_format(iview->vk.view_format, i);
       radv_image_view_make_descriptor(iview, device, format, &pCreateInfo->components, min_lod, false,
                                       disable_compression, enable_compression, iview->plane_id + i,
-                                      i, img_create_flags, &nbc_view);
+                                      i, img_create_flags, &iview->nbc_view);
       radv_image_view_make_descriptor(iview, device, format, &pCreateInfo->components, min_lod, true,
                                       disable_compression, enable_compression, iview->plane_id + i,
-                                      i, img_create_flags, &nbc_view);
+                                      i, img_create_flags, &iview->nbc_view);
    }
 }
 
