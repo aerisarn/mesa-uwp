@@ -312,6 +312,9 @@ sync_timestamp(struct fd_context *ctx)
    uint64_t cpu_ts = perfetto::base::GetBootTimeNs().count();
    uint64_t gpu_ts;
 
+   if (!ctx->ts_to_ns)
+      return;
+
    if (cpu_ts < next_clock_sync_ns)
       return;
 
