@@ -105,6 +105,9 @@ static void rogue_nir_passes(struct rogue_build_ctx *ctx,
    /* Lower ALU operations to scalars. */
    NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
 
+   /* Lower load_consts to scalars. */
+   NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
+
    /* Algebraic opts. */
    do {
       progress = false;
@@ -144,11 +147,8 @@ static void rogue_nir_passes(struct rogue_build_ctx *ctx,
    /* TODO: Investigate this further. */
    /* NIR_PASS_V(nir, nir_opt_move, nir_move_load_ubo | nir_move_load_input); */
 
-   /* Convert vecNs to movs so we can sequentially allocate them later. */
-   NIR_PASS_V(nir, nir_lower_vec_to_movs, NULL, NULL);
-
    /* Out of SSA pass. */
-   NIR_PASS_V(nir, nir_convert_from_ssa, false);
+   /* NIR_PASS_V(nir, nir_convert_from_ssa, true); */
 
    /* TODO: Re-enable scheduling after register pressure tweaks. */
 #if 0

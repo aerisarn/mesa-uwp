@@ -51,6 +51,18 @@ static void trans_nir_jump(rogue_builder *b, nir_jump_instr *jump)
    unreachable("Unimplemented NIR jump instruction type.");
 }
 
+static void trans_nir_load_const(rogue_builder *b,
+                                 nir_load_const_instr *load_const)
+{
+   rogue_reg *dst = rogue_ssa_reg(b->shader, load_const->def.index);
+   if (load_const->def.bit_size == 32) {
+      uint32_t imm = nir_const_value_as_uint(load_const->value[0], 32);
+      rogue_MOV(b, rogue_ref_reg(dst), rogue_ref_imm(imm));
+   } else {
+      unreachable("Unimplemented NIR load_const bit size.");
+   }
+}
+
 static void trans_nir_intrinsic_load_input_fs(rogue_builder *b,
                                               nir_intrinsic_instr *intr)
 {
@@ -59,7 +71,7 @@ static void trans_nir_intrinsic_load_input_fs(rogue_builder *b,
    unsigned load_size = nir_dest_num_components(intr->dest);
    assert(load_size == 1); /* TODO: We can support larger load sizes. */
 
-   rogue_reg *dst = rogue_ssa_reg(b->shader, intr->dest.reg.reg->index);
+   rogue_reg *dst = rogue_ssa_reg(b->shader, intr->dest.ssa.index);
 
    struct nir_io_semantics io_semantics = nir_intrinsic_io_semantics(intr);
    unsigned component = nir_intrinsic_component(intr);
@@ -90,7 +102,7 @@ static void trans_nir_intrinsic_load_input_vs(rogue_builder *b,
    ASSERTED unsigned load_size = nir_dest_num_components(intr->dest);
    assert(load_size == 1); /* TODO: We can support larger load sizes. */
 
-   rogue_reg *dst = rogue_ssa_reg(b->shader, intr->dest.reg.reg->index);
+   rogue_reg *dst = rogue_ssa_reg(b->shader, intr->dest.ssa.index);
 
    struct nir_io_semantics io_semantics = nir_intrinsic_io_semantics(intr);
    unsigned component = nir_intrinsic_component(intr);
@@ -127,14 +139,13 @@ static void trans_nir_intrinsic_store_output_fs(rogue_builder *b,
    ASSERTED unsigned store_size = nir_src_num_components(intr->src[0]);
    assert(store_size == 1);
 
-   nir_const_value *const_value = nir_src_as_const_value(intr->src[1]);
    /* TODO: When hoisting I/O allocation to the driver, check if this is
     * correct.
     */
-   unsigned pixout_index = nir_const_value_as_uint(*const_value, 32);
+   unsigned pixout_index = nir_src_as_uint(intr->src[1]);
 
    rogue_reg *dst = rogue_pixout_reg(b->shader, pixout_index);
-   rogue_reg *src = rogue_ssa_reg(b->shader, intr->src[0].reg.reg->index);
+   rogue_reg *src = rogue_ssa_reg(b->shader, intr->src[0].ssa->index);
 
    rogue_instr *instr =
       &rogue_MOV(b, rogue_ref_reg(dst), rogue_ref_reg(src))->instr;
@@ -156,7 +167,7 @@ static void trans_nir_intrinsic_store_output_vs(rogue_builder *b,
                                                  component);
 
    rogue_reg *dst = rogue_vtxout_reg(b->shader, vtxout_index);
-   rogue_reg *src = rogue_ssa_reg(b->shader, intr->src[0].reg.reg->index);
+   rogue_reg *src = rogue_ssa_reg(b->shader, intr->src[0].ssa->index);
 
    rogue_instr *instr =
       &rogue_MOV(b, rogue_ref_reg(dst), rogue_ref_reg(src))->instr;
@@ -192,7 +203,7 @@ static void trans_nir_intrinsic_load_ubo(rogue_builder *b,
 
    unsigned sh_index = rogue_ubo_reg(ubo_data, desc_set, binding, offset);
 
-   rogue_reg *dst = rogue_ssa_reg(b->shader, intr->dest.reg.reg->index);
+   rogue_reg *dst = rogue_ssa_reg(b->shader, intr->dest.ssa.index);
    rogue_reg *src = rogue_shared_reg(b->shader, sh_index);
    rogue_instr *instr =
       &rogue_MOV(b, rogue_ref_reg(dst), rogue_ref_reg(src))->instr;
@@ -220,9 +231,9 @@ static void trans_nir_intrinsic(rogue_builder *b, nir_intrinsic_instr *intr)
 
 static void trans_nir_alu_pack_unorm_4x8(rogue_builder *b, nir_alu_instr *alu)
 {
-   rogue_reg *dst = rogue_ssa_reg(b->shader, alu->dest.dest.reg.reg->index);
+   rogue_reg *dst = rogue_ssa_reg(b->shader, alu->dest.dest.ssa.index);
    rogue_regarray *src_array =
-      rogue_ssa_vec_regarray(b->shader, 4, alu->src[0].src.reg.reg->index, 0);
+      rogue_ssa_vec_regarray(b->shader, 4, alu->src[0].src.ssa->index, 0);
 
    rogue_alu_instr *pck_u8888 =
       rogue_PCK_U8888(b, rogue_ref_reg(dst), rogue_ref_regarray(src_array));
@@ -230,52 +241,40 @@ static void trans_nir_alu_pack_unorm_4x8(rogue_builder *b, nir_alu_instr *alu)
    rogue_set_alu_op_mod(pck_u8888, ROGUE_ALU_OP_MOD_SCALE);
 }
 
-static void trans_nir_alu_mov(rogue_builder *b, nir_alu_instr *alu)
-{
-   rogue_reg *dst;
-
-   unsigned dst_index = alu->dest.dest.reg.reg->index;
-   if (alu->dest.dest.reg.reg->num_components > 1) {
-      assert(util_is_power_of_two_nonzero(alu->dest.write_mask));
-      dst =
-         rogue_ssa_vec_reg(b->shader, dst_index, ffs(alu->dest.write_mask) - 1);
-   } else {
-      dst = rogue_ssa_reg(b->shader, dst_index);
-   }
-
-   if (alu->src[0].src.is_ssa) {
-      /* Immediate/constant source. */
-      nir_const_value *const_value = nir_src_as_const_value(alu->src[0].src);
-      unsigned imm = nir_const_value_as_uint(*const_value, 32);
-      rogue_MOV(b, rogue_ref_reg(dst), rogue_ref_imm(imm));
-   } else {
-      /* Register source. */
-      rogue_reg *src = rogue_ssa_reg(b->shader, alu->src[0].src.reg.reg->index);
-      rogue_MOV(b, rogue_ref_reg(dst), rogue_ref_reg(src));
-   }
-}
-
 static void trans_nir_alu_fmul(rogue_builder *b, nir_alu_instr *alu)
 {
-   rogue_reg *dst = rogue_ssa_reg(b->shader, alu->dest.dest.reg.reg->index);
-   rogue_reg *src0 = rogue_ssa_reg(b->shader, alu->src[0].src.reg.reg->index);
-   rogue_reg *src1 = rogue_ssa_reg(b->shader, alu->src[1].src.reg.reg->index);
+   rogue_reg *dst = rogue_ssa_reg(b->shader, alu->dest.dest.ssa.index);
+   rogue_reg *src0 = rogue_ssa_reg(b->shader, alu->src[0].src.ssa->index);
+   rogue_reg *src1 = rogue_ssa_reg(b->shader, alu->src[1].src.ssa->index);
 
    rogue_FMUL(b, rogue_ref_reg(dst), rogue_ref_reg(src0), rogue_ref_reg(src1));
 }
 
 static void trans_nir_alu_ffma(rogue_builder *b, nir_alu_instr *alu)
 {
-   rogue_reg *dst = rogue_ssa_reg(b->shader, alu->dest.dest.reg.reg->index);
-   rogue_reg *src0 = rogue_ssa_reg(b->shader, alu->src[0].src.reg.reg->index);
-   rogue_reg *src1 = rogue_ssa_reg(b->shader, alu->src[1].src.reg.reg->index);
-   rogue_reg *src2 = rogue_ssa_reg(b->shader, alu->src[2].src.reg.reg->index);
+   rogue_reg *dst = rogue_ssa_reg(b->shader, alu->dest.dest.ssa.index);
+   rogue_reg *src0 = rogue_ssa_reg(b->shader, alu->src[0].src.ssa->index);
+   rogue_reg *src1 = rogue_ssa_reg(b->shader, alu->src[1].src.ssa->index);
+   rogue_reg *src2 = rogue_ssa_reg(b->shader, alu->src[2].src.ssa->index);
 
    rogue_FMAD(b,
               rogue_ref_reg(dst),
               rogue_ref_reg(src0),
               rogue_ref_reg(src1),
               rogue_ref_reg(src2));
+}
+
+static void trans_nir_alu_vecN(rogue_builder *b, nir_alu_instr *alu, unsigned n)
+{
+   unsigned dst_index = alu->dest.dest.ssa.index;
+   rogue_reg *dst;
+   rogue_reg *src;
+
+   for (unsigned u = 0; u < n; ++u) {
+      dst = rogue_ssa_vec_reg(b->shader, dst_index, u);
+      src = rogue_ssa_reg(b->shader, alu->src[u].src.ssa->index);
+      rogue_MOV(b, rogue_ref_reg(dst), rogue_ref_reg(src));
+   }
 }
 
 static void trans_nir_alu(rogue_builder *b, nir_alu_instr *alu)
@@ -285,14 +284,14 @@ static void trans_nir_alu(rogue_builder *b, nir_alu_instr *alu)
       return trans_nir_alu_pack_unorm_4x8(b, alu);
       return;
 
-   case nir_op_mov:
-      return trans_nir_alu_mov(b, alu);
-
    case nir_op_fmul:
       return trans_nir_alu_fmul(b, alu);
 
    case nir_op_ffma:
       return trans_nir_alu_ffma(b, alu);
+
+   case nir_op_vec4:
+      return trans_nir_alu_vecN(b, alu, 4);
 
    default:
       break;
@@ -352,7 +351,7 @@ rogue_shader *rogue_nir_to_rogue(rogue_build_ctx *ctx, const nir_shader *nir)
             break;
 
          case nir_instr_type_load_const:
-            /* trans_nir_load_const(&b, nir_instr_as_load_const(instr)); */
+            trans_nir_load_const(&b, nir_instr_as_load_const(instr));
             break;
 
          case nir_instr_type_jump:
