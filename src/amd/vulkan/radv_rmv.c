@@ -721,8 +721,8 @@ radv_rmv_log_border_color_palette_create(struct radv_device *device, struct rade
    vk_rmv_emit_token(&device->vk.memory_trace_data, VK_RMV_TOKEN_TYPE_RESOURCE_CREATE,
                      &create_token);
    vk_rmv_emit_token(&device->vk.memory_trace_data, VK_RMV_TOKEN_TYPE_RESOURCE_BIND, &bind_token);
-   vk_rmv_log_cpu_map(&device->vk, bo->va, false);
    simple_mtx_unlock(&device->vk.memory_trace_data.token_mtx);
+   vk_rmv_log_cpu_map(&device->vk, bo->va, false);
 }
 
 void
