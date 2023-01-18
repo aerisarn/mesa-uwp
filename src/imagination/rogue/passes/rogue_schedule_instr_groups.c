@@ -174,9 +174,11 @@ static inline void rogue_instr_group_put(rogue_instr *instr,
    group->instrs[phase] = instr;
    group->header.phases |= BITFIELD_BIT(phase);
 
+   /* Ensure we're not mixing and matching repeats! */
+   assert(group->header.repeat == 0 || group->header.repeat == instr->repeat);
+
    /* Update repeat count. */
    group->header.repeat = instr->repeat;
-   instr->repeat = 0;
 
    /* Set end flag. */
    group->header.end = instr->end;

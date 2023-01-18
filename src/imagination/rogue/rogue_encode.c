@@ -171,7 +171,7 @@ static void rogue_encode_instr_group_header(rogue_instr_group *group,
       h.end = group->header.end;
       /* h.crel = ; */ /* Unused for now */
       /* h.atom = ; */ /* Unused for now */
-      h.rpt = group->header.repeat ? group->header.repeat - 1 : 0;
+      h.rpt = group->header.repeat - 1;
    }
 
    util_dynarray_append_mem(binary, group->size.header, &h);
