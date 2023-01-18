@@ -61,12 +61,8 @@ static const uint32_t copy_spv[] = {
 #include "bvh/copy.spv.h"
 };
 
-static const uint32_t convert_leaf_spv[] = {
-#include "bvh/converter_leaf.spv.h"
-};
-
-static const uint32_t convert_internal_spv[] = {
-#include "bvh/converter_internal.spv.h"
+static const uint32_t encode_spv[] = {
+#include "bvh/encode.spv.h"
 };
 
 #define KEY_ID_PAIR_SIZE 8
@@ -357,10 +353,8 @@ radv_device_finish_accel_struct_build_state(struct radv_device *device)
                         &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.leaf_pipeline,
                         &state->alloc);
-   radv_DestroyPipeline(radv_device_to_handle(device),
-                        state->accel_struct_build.convert_leaf_pipeline, &state->alloc);
-   radv_DestroyPipeline(radv_device_to_handle(device),
-                        state->accel_struct_build.convert_internal_pipeline, &state->alloc);
+   radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.encode_pipeline,
+                        &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.morton_pipeline,
                         &state->alloc);
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
@@ -374,9 +368,7 @@ radv_device_finish_accel_struct_build_state(struct radv_device *device)
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
                               state->accel_struct_build.leaf_p_layout, &state->alloc);
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
-                              state->accel_struct_build.convert_leaf_p_layout, &state->alloc);
-   radv_DestroyPipelineLayout(radv_device_to_handle(device),
-                              state->accel_struct_build.convert_internal_p_layout, &state->alloc);
+                              state->accel_struct_build.encode_p_layout, &state->alloc);
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
                               state->accel_struct_build.morton_p_layout, &state->alloc);
 
@@ -622,18 +614,10 @@ radv_device_init_accel_struct_build_state(struct radv_device *device)
    if (result != VK_SUCCESS)
       return result;
 
-   result = create_build_pipeline_spv(device, convert_leaf_spv, sizeof(convert_leaf_spv),
-                                      sizeof(struct convert_leaf_args),
-                                      &device->meta_state.accel_struct_build.convert_leaf_pipeline,
-                                      &device->meta_state.accel_struct_build.convert_leaf_p_layout);
-   if (result != VK_SUCCESS)
-      return result;
-
    result =
-      create_build_pipeline_spv(device, convert_internal_spv, sizeof(convert_internal_spv),
-                                sizeof(struct convert_internal_args),
-                                &device->meta_state.accel_struct_build.convert_internal_pipeline,
-                                &device->meta_state.accel_struct_build.convert_internal_p_layout);
+      create_build_pipeline_spv(device, encode_spv, sizeof(encode_spv), sizeof(struct encode_args),
+                                &device->meta_state.accel_struct_build.encode_pipeline,
+                                &device->meta_state.accel_struct_build.encode_p_layout);
    if (result != VK_SUCCESS)
       return result;
 
@@ -947,43 +931,13 @@ ploc_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
 }
 
 static void
-convert_leaf_nodes(VkCommandBuffer commandBuffer, uint32_t infoCount,
-                   const VkAccelerationStructureBuildGeometryInfoKHR *pInfos,
-                   struct bvh_state *bvh_states)
+encode_nodes(VkCommandBuffer commandBuffer, uint32_t infoCount,
+             const VkAccelerationStructureBuildGeometryInfoKHR *pInfos,
+             struct bvh_state *bvh_states)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    radv_CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-                        cmd_buffer->device->meta_state.accel_struct_build.convert_leaf_pipeline);
-   for (uint32_t i = 0; i < infoCount; ++i) {
-      if (!pInfos[i].geometryCount)
-         continue;
-
-      RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct,
-                       pInfos[i].dstAccelerationStructure);
-
-      const struct convert_leaf_args args = {
-         .intermediate_bvh = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.ir_offset,
-         .output_bvh = accel_struct->va + bvh_states[i].accel_struct.bvh_offset,
-         .geometry_type = pInfos[i].pGeometries ? pInfos[i].pGeometries[0].geometryType
-                                                : pInfos[i].ppGeometries[0]->geometryType,
-      };
-      radv_CmdPushConstants(commandBuffer,
-                            cmd_buffer->device->meta_state.accel_struct_build.convert_leaf_p_layout,
-                            VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(args), &args);
-      radv_unaligned_dispatch(cmd_buffer, bvh_states[i].leaf_node_count, 1, 1);
-   }
-   /* This is the final access to the leaf nodes, no need to flush */
-}
-
-static void
-convert_internal_nodes(VkCommandBuffer commandBuffer, uint32_t infoCount,
-                       const VkAccelerationStructureBuildGeometryInfoKHR *pInfos,
-                       struct bvh_state *bvh_states)
-{
-   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-   radv_CmdBindPipeline(
-      commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-      cmd_buffer->device->meta_state.accel_struct_build.convert_internal_pipeline);
+                        cmd_buffer->device->meta_state.accel_struct_build.encode_pipeline);
    for (uint32_t i = 0; i < infoCount; ++i) {
       RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct,
                        pInfos[i].dstAccelerationStructure);
@@ -997,7 +951,7 @@ convert_internal_nodes(VkCommandBuffer commandBuffer, uint32_t infoCount,
          geometry_type = pInfos[i].pGeometries ? pInfos[i].pGeometries[0].geometryType
                                                : pInfos[i].ppGeometries[0]->geometryType;
 
-      const struct convert_internal_args args = {
+      const struct encode_args args = {
          .intermediate_bvh = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.ir_offset,
          .output_bvh = accel_struct->va + bvh_states[i].accel_struct.bvh_offset,
          .header = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.header_offset,
@@ -1005,9 +959,9 @@ convert_internal_nodes(VkCommandBuffer commandBuffer, uint32_t infoCount,
          .leaf_node_count = bvh_states[i].leaf_node_count,
          .geometry_type = geometry_type,
       };
-      radv_CmdPushConstants(
-         commandBuffer, cmd_buffer->device->meta_state.accel_struct_build.convert_internal_p_layout,
-         VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(args), &args);
+      radv_CmdPushConstants(commandBuffer,
+                            cmd_buffer->device->meta_state.accel_struct_build.encode_p_layout,
+                            VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(args), &args);
       radv_indirect_unaligned_dispatch(cmd_buffer, NULL,
                                        pInfos[i].scratchData.deviceAddress +
                                           bvh_states[i].scratch.header_offset +
@@ -1084,9 +1038,7 @@ radv_CmdBuildAccelerationStructuresKHR(
 
    cmd_buffer->state.flush_bits |= flush_bits;
 
-   convert_leaf_nodes(commandBuffer, infoCount, pInfos, bvh_states);
-
-   convert_internal_nodes(commandBuffer, infoCount, pInfos, bvh_states);
+   encode_nodes(commandBuffer, infoCount, pInfos, bvh_states);
 
    for (uint32_t i = 0; i < infoCount; ++i) {
       RADV_FROM_HANDLE(radv_acceleration_structure, accel_struct,

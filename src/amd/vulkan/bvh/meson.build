@@ -26,6 +26,11 @@ bvh_shaders = [
     [],
   ],
   [
+    'encode.comp',
+    'encode',
+    [],
+  ],
+  [
     'lbvh_generate_ir.comp',
     'lbvh_generate_ir',
     [],
@@ -54,16 +59,6 @@ bvh_shaders = [
     'ploc_internal.comp',
     'ploc_internal_extended',
     ['EXTENDED_SAH=1'],
-  ],
-  [
-    'converter_internal.comp',
-    'converter_internal',
-    [],
-  ],
-  [
-    'converter_leaf.comp',
-    'converter_leaf',
-    [],
   ],
 ]
 

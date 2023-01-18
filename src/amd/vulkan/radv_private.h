@@ -689,10 +689,8 @@ struct radv_meta_state {
       VkPipelineLayout ploc_p_layout;
       VkPipeline ploc_pipeline;
       VkPipeline ploc_extended_pipeline;
-      VkPipelineLayout convert_leaf_p_layout;
-      VkPipeline convert_leaf_pipeline;
-      VkPipelineLayout convert_internal_p_layout;
-      VkPipeline convert_internal_pipeline;
+      VkPipelineLayout encode_p_layout;
+      VkPipeline encode_pipeline;
       VkPipelineLayout copy_p_layout;
       VkPipeline copy_pipeline;
 
