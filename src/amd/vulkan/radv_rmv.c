@@ -183,7 +183,7 @@ static void
 evaluate_trace_event(struct radv_device *device, uint64_t timestamp, struct util_dynarray *tokens,
                      struct trace_event_amdgpu_vm_update_ptes *event)
 {
-   if (event->common.pid != getpid()) {
+   if (event->common.pid != getpid() && event->pid != getpid()) {
       return;
    }
 
