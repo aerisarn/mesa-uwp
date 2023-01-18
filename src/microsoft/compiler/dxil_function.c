@@ -93,6 +93,10 @@ static struct  predefined_func_descr predefined_funcs[] = {
 {"dx.op.createHandleFromBinding", "@", "i#ib", DXIL_ATTR_KIND_READ_NONE},
 {"dx.op.annotateHandle", "@", "i@P", DXIL_ATTR_KIND_READ_NONE},
 {"dx.op.isHelperLane", "b", "i", DXIL_ATTR_KIND_READ_ONLY},
+{"dx.op.waveIsFirstLane", "b", "i", DXIL_ATTR_KIND_NO_UNWIND},
+{"dx.op.waveGetLaneIndex", "i", "i", DXIL_ATTR_KIND_READ_NONE},
+{"dx.op.waveGetLaneCount", "i", "i", DXIL_ATTR_KIND_READ_NONE},
+{"dx.op.waveReadLaneFirst", "O", "iO", DXIL_ATTR_KIND_NO_UNWIND},
 };
 
 struct func_descr {
