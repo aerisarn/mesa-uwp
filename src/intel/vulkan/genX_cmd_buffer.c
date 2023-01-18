@@ -6436,6 +6436,8 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
    if (cmd_buffer->state.current_pipeline == _3D) {
       bits |= ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
               ANV_PIPE_DEPTH_CACHE_FLUSH_BIT;
+   } else {
+      bits |= ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT;
    }
    anv_add_pending_pipe_bits(cmd_buffer, bits, "flush PIPELINE_SELECT");
 #else
