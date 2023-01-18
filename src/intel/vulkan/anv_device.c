@@ -514,19 +514,28 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
        * But some game engines can't handle single type well
        * https://gitlab.freedesktop.org/mesa/mesa/-/issues/7360#note_1719438
        *
-       * And Intel on Windows uses 3 types so it's better to add extra one here
+       * The second memory type w/out HOST_CACHED_BIT will get write-combining.
+       * See anv_AllocateMemory()).
+       *
+       * The Intel Vulkan driver for Windows also advertises these memory types.
        */
-      device->memory.type_count = 2;
+      device->memory.type_count = 3;
       device->memory.types[0] = (struct anv_memory_type) {
-          .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-          .heapIndex = 0,
+         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+         .heapIndex = 0,
       };
       device->memory.types[1] = (struct anv_memory_type) {
-          .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
-                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                           VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-                           VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
-          .heapIndex = 0,
+         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+         .heapIndex = 0,
+      };
+      device->memory.types[2] = (struct anv_memory_type) {
+         .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+                          VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
+         .heapIndex = 0,
       };
    } else {
       device->memory.heap_count = 1;
@@ -3819,7 +3828,7 @@ VkResult anv_AllocateMemory(
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    assert(pAllocateInfo->memoryTypeIndex < pdevice->memory.type_count);
-   struct anv_memory_type *mem_type =
+   const struct anv_memory_type *mem_type =
       &pdevice->memory.types[pAllocateInfo->memoryTypeIndex];
    assert(mem_type->heapIndex < pdevice->memory.heap_count);
    struct anv_memory_heap *mem_heap =
@@ -3914,9 +3923,10 @@ VkResult anv_AllocateMemory(
       alloc_flags |= ANV_BO_ALLOC_NO_LOCAL_MEM;
 
    /* If the allocated buffer might end up in local memory and it's host
-    * visible, make CPU writes are combined, it should be faster.
+    * visible and uncached, enable CPU write-combining. It should be faster.
     */
    if (!(alloc_flags & ANV_BO_ALLOC_NO_LOCAL_MEM) &&
+       (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) == 0 &&
        (mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
       alloc_flags |= ANV_BO_ALLOC_WRITE_COMBINE;
 
