@@ -4455,26 +4455,24 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
    ctx.explicit_lod = true;
    spirv_builder_emit_source(&ctx.builder, SpvSourceLanguageUnknown, 0);
 
+   SpvAddressingModel model = SpvAddressingModelLogical;
    if (gl_shader_stage_is_compute(s->info.stage)) {
-      SpvAddressingModel model;
       if (s->info.cs.ptr_size == 32)
          model = SpvAddressingModelPhysical32;
       else if (s->info.cs.ptr_size == 64)
          model = SpvAddressingModelPhysicalStorageBuffer64;
       else
          model = SpvAddressingModelLogical;
+   }
+
+   if (ctx.sinfo->have_vulkan_memory_model) {
+      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityVulkanMemoryModel);
+      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityVulkanMemoryModelDeviceScope);
+      spirv_builder_emit_mem_model(&ctx.builder, model,
+                                   SpvMemoryModelVulkan);
+   } else {
       spirv_builder_emit_mem_model(&ctx.builder, model,
                                    SpvMemoryModelGLSL450);
-   } else {
-      if (ctx.sinfo->have_vulkan_memory_model) {
-         spirv_builder_emit_cap(&ctx.builder, SpvCapabilityVulkanMemoryModel);
-         spirv_builder_emit_cap(&ctx.builder, SpvCapabilityVulkanMemoryModelDeviceScope);
-         spirv_builder_emit_mem_model(&ctx.builder, SpvAddressingModelLogical,
-                                      SpvMemoryModelVulkan);
-      } else {
-         spirv_builder_emit_mem_model(&ctx.builder, SpvAddressingModelLogical,
-                                      SpvMemoryModelGLSL450);
-      }
    }
 
    if (s->info.stage == MESA_SHADER_FRAGMENT &&
