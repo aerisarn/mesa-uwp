@@ -657,6 +657,8 @@ emit_pipeline_select(struct iris_batch *batch, uint32_t pipeline)
    if (pipeline == GPGPU && batch->name == IRIS_BATCH_RENDER) {
       flags |= PIPE_CONTROL_RENDER_TARGET_FLUSH |
                PIPE_CONTROL_DEPTH_CACHE_FLUSH;
+   } else {
+      flags |= PIPE_CONTROL_UNTYPED_DATAPORT_CACHE_FLUSH;
    }
    iris_emit_pipe_control_flush(batch, "PIPELINE_SELECT flush", flags);
 #else
