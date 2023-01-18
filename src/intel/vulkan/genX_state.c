@@ -179,6 +179,24 @@ init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
    device->l3_config = cfg;
 #endif
 
+#if GFX_VER >= 125
+   /* Wa_14014427904 - We need additional invalidate/flush when
+    * emitting NP state commands with ATS-M in compute mode.
+    */
+   if (intel_device_info_is_atsm(device->info) &&
+       queue->family->engine_class == INTEL_ENGINE_CLASS_COMPUTE) {
+      anv_batch_emit(batch, GENX(PIPE_CONTROL), pc) {
+         pc.CommandStreamerStallEnable = true;
+         pc.StateCacheInvalidationEnable = true;
+         pc.ConstantCacheInvalidationEnable = true;
+         pc.UntypedDataPortCacheFlushEnable = true;
+         pc.TextureCacheInvalidationEnable = true;
+         pc.InstructionCacheInvalidateEnable = true;
+         pc.HDCPipelineFlushEnable = true;
+      }
+   }
+#endif
+
    /* Emit STATE_BASE_ADDRESS on Gfx12+ because we set a default CPS_STATE and
     * those are relative to STATE_BASE_ADDRESS::DynamicStateBaseAddress.
     */

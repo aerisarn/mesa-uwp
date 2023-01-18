@@ -6300,6 +6300,24 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
       }
    }
 
+#if GFX_VER >= 125
+   /* Wa_14014427904 - We need additional invalidate/flush when
+    * emitting NP state commands with ATS-M in compute mode.
+    */
+   if (intel_device_info_is_atsm(device->info) &&
+      cmd_buffer->queue_family->engine_class == INTEL_ENGINE_CLASS_COMPUTE) {
+      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
+         pc.CommandStreamerStallEnable = true;
+         pc.StateCacheInvalidationEnable = true;
+         pc.ConstantCacheInvalidationEnable = true;
+         pc.UntypedDataPortCacheFlushEnable = true;
+         pc.TextureCacheInvalidationEnable = true;
+         pc.InstructionCacheInvalidateEnable = true;
+         pc.HDCPipelineFlushEnable = true;
+      }
+   }
+#endif
+
    anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_BTD), btd) {
       /* TODO: This is the timeout after which the bucketed thread dispatcher
        *       will kick off a wave of threads. We go with the lowest value
