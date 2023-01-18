@@ -146,7 +146,7 @@ static void rogue_lower_instr_group_io(rogue_instr *instr,
       break;
 
    default:
-      unreachable("Invalid instruction group type.");
+      unreachable("Unsupported instruction group type.");
    }
 }
 
@@ -350,7 +350,7 @@ static void rogue_calc_srcs_size(rogue_instr_group *group, bool upper_srcs)
             break;
 
          default:
-            unreachable("IS0 set to invalid value.");
+            unreachable("IS0 set to unsupported value.");
          }
       }
    }
@@ -438,7 +438,7 @@ static void rogue_calc_alu_instrs_size(rogue_instr_group *group,
       break;
 
    default:
-      unreachable("Invalid alu op.");
+      unreachable("Unsupported alu op.");
    }
 }
 #undef OM
@@ -466,7 +466,7 @@ static void rogue_calc_backend_instrs_size(rogue_instr_group *group,
       break;
 
    default:
-      unreachable("Invalid backend op.");
+      unreachable("Unsupported backend op.");
    }
 }
 
@@ -484,7 +484,7 @@ static void rogue_calc_ctrl_instrs_size(rogue_instr_group *group,
       break;
 
    default:
-      unreachable("Invalid ctrl op.");
+      unreachable("Unsupported ctrl op.");
    }
 }
 
@@ -509,7 +509,7 @@ static void rogue_calc_instrs_size(rogue_instr_group *group)
          break;
 
       default:
-         unreachable("Invalid instruction type.");
+         unreachable("Unsupported instruction type.");
       }
 
       group->size.total += group->size.instrs[p];
@@ -619,7 +619,7 @@ bool rogue_schedule_instr_groups(rogue_shader *shader, bool multi_instr_groups)
             break;
 
          default:
-            unreachable("Invalid instruction type.");
+            unreachable("Unsupported instruction type.");
          }
 
          rogue_instr_group *group = rogue_instr_group_create(block, group_alu);

@@ -659,7 +659,7 @@ void rogue_link_instr_write(rogue_instr *instr)
             rogue_regarray *regarray = alu->dst[i].ref.regarray;
             rogue_link_instr_write_regarray(instr, writearray, regarray, 0);
          } else {
-            unreachable("Invalid destination reference type.");
+            unreachable("Unsupported destination reference type.");
          }
       }
 
@@ -680,7 +680,7 @@ void rogue_link_instr_write(rogue_instr *instr)
             rogue_regarray *regarray = backend->dst[i].ref.regarray;
             rogue_link_instr_write_regarray(instr, writearray, regarray, i);
          } else {
-            unreachable("Invalid destination reference type.");
+            unreachable("Unsupported destination reference type.");
          }
       }
 
@@ -701,7 +701,7 @@ void rogue_link_instr_write(rogue_instr *instr)
             rogue_regarray *regarray = ctrl->dst[i].ref.regarray;
             rogue_link_instr_write_regarray(instr, writearray, regarray, i);
          } else {
-            unreachable("Invalid destination reference type.");
+            unreachable("Unsupported destination reference type.");
          }
       }
 
@@ -709,7 +709,7 @@ void rogue_link_instr_write(rogue_instr *instr)
    }
 
    default:
-      unreachable("Invalid instruction type.");
+      unreachable("Unsupported instruction type.");
    }
 }
 
@@ -803,7 +803,7 @@ void rogue_link_instr_use(rogue_instr *instr)
    }
 
    default:
-      unreachable("Invalid instruction type.");
+      unreachable("Unsupported instruction type.");
    }
 }
 
@@ -829,7 +829,7 @@ void rogue_unlink_instr_write(rogue_instr *instr)
             struct util_dynarray **writearray = &alu->dst_write[i].regarray;
             rogue_unlink_instr_write_regarray(instr, writearray);
          } else {
-            unreachable("Invalid destination reference type.");
+            unreachable("Unsupported destination reference type.");
          }
       }
 
@@ -848,7 +848,7 @@ void rogue_unlink_instr_write(rogue_instr *instr)
             struct util_dynarray **writearray = &backend->dst_write[i].regarray;
             rogue_unlink_instr_write_regarray(instr, writearray);
          } else {
-            unreachable("Invalid destination reference type.");
+            unreachable("Unsupported destination reference type.");
          }
       }
 
@@ -867,7 +867,7 @@ void rogue_unlink_instr_write(rogue_instr *instr)
             struct util_dynarray **writearray = &ctrl->dst_write[i].regarray;
             rogue_unlink_instr_write_regarray(instr, writearray);
          } else {
-            unreachable("Invalid destination reference type.");
+            unreachable("Unsupported destination reference type.");
          }
       }
 
@@ -875,7 +875,7 @@ void rogue_unlink_instr_write(rogue_instr *instr)
    }
 
    default:
-      unreachable("Invalid instruction type.");
+      unreachable("Unsupported instruction type.");
    }
 }
 
@@ -959,7 +959,7 @@ void rogue_unlink_instr_use(rogue_instr *instr)
    }
 
    default:
-      unreachable("Invalid instruction type.");
+      unreachable("Unsupported instruction type.");
    }
 }
 

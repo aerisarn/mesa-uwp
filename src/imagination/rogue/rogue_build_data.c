@@ -337,7 +337,7 @@ static void collect_io_data_vs(struct rogue_common_build_data *common_data,
    /* Process outputs. */
 
    /* We should always have at least a position variable. */
-   assert(num_outputs > 0 && "Invalid number of vertex shader outputs.");
+   assert(num_outputs > 0 && "Unsupported number of vertex shader outputs.");
 
    nir_foreach_shader_out_variable (var, nir) {
       unsigned components = glsl_get_components(var->type);

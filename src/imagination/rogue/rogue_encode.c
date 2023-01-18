@@ -64,7 +64,7 @@ static unsigned rogue_calc_da(const rogue_instr_group *group)
       }
 
    } else {
-      unreachable("Invalid instruction group ALU.");
+      unreachable("Unsupported instruction group ALU.");
    }
 
    return da;
@@ -107,7 +107,7 @@ static void rogue_encode_instr_group_header(rogue_instr_group *group,
       break;
 
    default:
-      unreachable("Invalid condition code.");
+      unreachable("Unsupported condition code.");
    }
 
    h.cc = cc.cc;
@@ -159,12 +159,12 @@ static void rogue_encode_instr_group_header(rogue_instr_group *group,
          break;
 
       default:
-         unreachable("Invalid ctrl op.");
+         unreachable("Unsupported ctrl op.");
       }
       break;
 
    default:
-      unreachable("Invalid instruction group ALU.");
+      unreachable("Unsupported instruction group ALU.");
    }
 
    if (group->header.alu != ROGUE_ALU_CONTROL) {
@@ -256,7 +256,7 @@ static void rogue_encode_alu_instr(const rogue_alu_instr *alu,
       break;
 
    default:
-      unreachable("Invalid alu op.");
+      unreachable("Unsupported alu op.");
    }
 }
 #undef OM
@@ -313,7 +313,7 @@ static void rogue_encode_backend_instr(const rogue_backend_instr *backend,
       break;
 
    default:
-      unreachable("Invalid backend op.");
+      unreachable("Unsupported backend op.");
    }
 }
 #undef OM
@@ -329,7 +329,7 @@ static void rogue_encode_ctrl_instr(const rogue_ctrl_instr *ctrl,
       break;
 
    default:
-      unreachable("Invalid ctrl op.");
+      unreachable("Unsupported ctrl op.");
    }
 }
 
@@ -367,7 +367,7 @@ static void rogue_encode_instr_group_instrs(rogue_instr_group *group,
          break;
 
       default:
-         unreachable("Invalid instruction type.");
+         unreachable("Unsupported instruction type.");
       }
 
       util_dynarray_append_mem(binary, group->size.instrs[p], &instr_encoding);
@@ -410,7 +410,7 @@ static void rogue_encode_source_map(const rogue_instr_group *group,
          break;
 
       default:
-         unreachable("IS0 set to invalid value.");
+         unreachable("IS0 set to unsupported value.");
       }
    }
 
@@ -466,7 +466,7 @@ static void rogue_encode_source_map(const rogue_instr_group *group,
          break;
 
       default:
-         unreachable("Invalid source/bytes combination.");
+         unreachable("Unsupported source/bytes combination.");
       }
       break;
 
@@ -507,7 +507,7 @@ static void rogue_encode_source_map(const rogue_instr_group *group,
          break;
 
       default:
-         unreachable("Invalid source/bytes combination.");
+         unreachable("Unsupported source/bytes combination.");
       }
       break;
 
@@ -560,12 +560,12 @@ static void rogue_encode_source_map(const rogue_instr_group *group,
          break;
 
       default:
-         unreachable("Invalid source/bytes combination.");
+         unreachable("Unsupported source/bytes combination.");
       }
       break;
 
    default:
-      unreachable("Invalid source/bytes combination.");
+      unreachable("Unsupported source/bytes combination.");
    }
 }
 
@@ -604,7 +604,7 @@ static void rogue_encode_dest_map(const rogue_instr_group *group,
          break;
 
       default:
-         unreachable("Invalid dest/bytes combination.");
+         unreachable("Unsupported dest/bytes combination.");
       }
       break;
    }
@@ -642,12 +642,12 @@ static void rogue_encode_dest_map(const rogue_instr_group *group,
          break;
 
       default:
-         unreachable("Invalid dest/bytes combination.");
+         unreachable("Unsupported dest/bytes combination.");
       }
    } break;
 
    default:
-      unreachable("Invalid dest/bytes combination.");
+      unreachable("Unsupported dest/bytes combination.");
    }
 }
 
@@ -666,7 +666,7 @@ static void rogue_encode_iss_map(const rogue_instr_group *group,
          break;
 
       default:
-         unreachable("Invalid setting for IS1.");
+         unreachable("Unsupported setting for IS1.");
       }
 
    if (rogue_ref_is_io(&io_sel->iss[2]))
@@ -679,7 +679,7 @@ static void rogue_encode_iss_map(const rogue_instr_group *group,
          break;
 
       default:
-         unreachable("Invalid setting for IS2.");
+         unreachable("Unsupported setting for IS2.");
       }
 
    if (rogue_ref_is_io(&io_sel->iss[3]))
@@ -698,7 +698,7 @@ static void rogue_encode_iss_map(const rogue_instr_group *group,
          break;
 
       default:
-         unreachable("Invalid setting for IS3.");
+         unreachable("Unsupported setting for IS3.");
       }
 
    if (rogue_ref_is_io(&io_sel->iss[4]))
@@ -717,7 +717,7 @@ static void rogue_encode_iss_map(const rogue_instr_group *group,
          break;
 
       default:
-         unreachable("Invalid setting for IS4.");
+         unreachable("Unsupported setting for IS4.");
       }
 
    if (rogue_ref_is_io(&io_sel->iss[5]))
@@ -736,7 +736,7 @@ static void rogue_encode_iss_map(const rogue_instr_group *group,
          break;
 
       default:
-         unreachable("Invalid setting for IS5.");
+         unreachable("Unsupported setting for IS5.");
       }
 }
 

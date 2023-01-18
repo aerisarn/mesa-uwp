@@ -122,7 +122,7 @@ static bool parse_cmdline(int argc, char *argv[], struct compiler_opts *opts)
          else if (!strcmp(optarg, "vert") || !strcmp(optarg, "v"))
             opts->stage = MESA_SHADER_VERTEX;
          else {
-            fprintf(stderr, "Invalid stage \"%s\".\n", optarg);
+            fprintf(stderr, "Unsupported stage \"%s\".\n", optarg);
             usage(argv[0]);
             return false;
          }

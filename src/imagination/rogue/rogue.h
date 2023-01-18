@@ -30,8 +30,6 @@
  * \brief Main header.
  */
 
-/* TODO NEXT: In "unreachable"s, replace "invalid" with "unsupported". */
-
 #include "compiler/nir/nir.h"
 #include "compiler/shader_enums.h"
 #include "compiler/spirv/nir_spirv.h"
@@ -1565,7 +1563,7 @@ rogue_instr_group_io_sel_ref(rogue_instr_group_io_sel *map, enum rogue_io io)
       return &map->dsts[io - ROGUE_IO_W0];
    else if (rogue_io_is_iss(io))
       return &map->iss[io - ROGUE_IO_IS0];
-   unreachable("Invalid io.");
+   unreachable("Unsupported io.");
 }
 
 /** Rogue instruction group. */
@@ -2249,7 +2247,7 @@ static inline unsigned rogue_instr_supported_phases(const rogue_instr *instr)
    }
 
    default:
-      unreachable("Invalid instruction type.");
+      unreachable("Unsupported instruction type.");
    }
 
    return supported_phases;
