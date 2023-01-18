@@ -3350,6 +3350,15 @@ radv_is_dual_src(VkBlendFactor factor)
    }
 }
 
+static inline void
+radv_normalize_blend_factor(VkBlendOp op, VkBlendFactor *src_factor, VkBlendFactor *dst_factor)
+{
+   if (op == VK_BLEND_OP_MIN || op == VK_BLEND_OP_MAX) {
+      *src_factor = VK_BLEND_FACTOR_ONE;
+      *dst_factor = VK_BLEND_FACTOR_ONE;
+   }
+}
+
 void si_blend_remove_dst(VkBlendOp *func, VkBlendFactor *src_factor, VkBlendFactor *dst_factor,
                          VkBlendFactor expected_dst, VkBlendFactor replacement_src);
 

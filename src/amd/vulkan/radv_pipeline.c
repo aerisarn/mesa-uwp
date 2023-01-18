@@ -484,14 +484,8 @@ radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
             continue;
          }
 
-         if (eqRGB == VK_BLEND_OP_MIN || eqRGB == VK_BLEND_OP_MAX) {
-            srcRGB = VK_BLEND_FACTOR_ONE;
-            dstRGB = VK_BLEND_FACTOR_ONE;
-         }
-         if (eqA == VK_BLEND_OP_MIN || eqA == VK_BLEND_OP_MAX) {
-            srcA = VK_BLEND_FACTOR_ONE;
-            dstA = VK_BLEND_FACTOR_ONE;
-         }
+         radv_normalize_blend_factor(eqRGB, &srcRGB, &dstRGB);
+         radv_normalize_blend_factor(eqA, &srcA, &dstA);
 
          /* Blending optimizations for RB+.
           * These transformations don't change the behavior.
