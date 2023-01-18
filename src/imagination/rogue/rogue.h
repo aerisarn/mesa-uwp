@@ -861,27 +861,26 @@ static inline bool rogue_refs_equal(rogue_ref *a, rogue_ref *b)
    return false;
 }
 
-typedef struct rogue_alu_dst {
+typedef struct rogue_instr_dst {
    rogue_ref ref;
    uint64_t mod;
    unsigned index;
-} rogue_alu_dst;
+} rogue_instr_dst;
 
-typedef struct rogue_alu_src {
+typedef struct rogue_instr_src {
    rogue_ref ref;
    uint64_t mod;
    unsigned index;
-} rogue_alu_src;
+} rogue_instr_src;
 
-/* TODO: Comparison functions for other instruction types. */
-static inline bool rogue_alu_dst_src_equal(rogue_alu_dst *alu_dst,
-                                           rogue_alu_src *alu_src)
+static inline bool rogue_instr_dst_src_equal(rogue_instr_dst *dst,
+                                             rogue_instr_src *src)
 {
    /* TODO: Take modifiers into account. */
-   if (alu_dst->mod || alu_src->mod)
+   if (dst->mod || src->mod)
       return false;
 
-   return rogue_refs_equal(&alu_dst->ref, &alu_src->ref);
+   return rogue_refs_equal(&dst->ref, &src->ref);
 }
 
 typedef struct rogue_reg_write {
@@ -907,6 +906,16 @@ typedef struct rogue_reg_use {
 
 #define rogue_foreach_reg_use_safe(use, reg) \
    list_for_each_entry_safe (rogue_reg_use, use, &(reg)->uses, link)
+
+typedef union rogue_dst_write {
+   rogue_reg_write reg;
+   struct util_dynarray *regarray;
+} rogue_dst_write;
+
+typedef union rogue_src_use {
+   rogue_reg_use reg;
+   struct util_dynarray *regarray;
+} rogue_src_use;
 
 typedef struct rogue_block_use {
    rogue_instr *instr;
@@ -1146,19 +1155,11 @@ typedef struct rogue_alu_instr {
 
    uint64_t mod;
 
-   rogue_alu_dst dst[ROGUE_ALU_OP_MAX_DSTS];
+   rogue_instr_dst dst[ROGUE_ALU_OP_MAX_DSTS];
+   rogue_dst_write dst_write[ROGUE_ALU_OP_MAX_DSTS];
 
-   union {
-      rogue_reg_write reg;
-      struct util_dynarray *regarray;
-   } dst_write[ROGUE_ALU_OP_MAX_DSTS];
-
-   rogue_alu_src src[ROGUE_ALU_OP_MAX_SRCS];
-
-   union {
-      rogue_reg_use reg;
-      struct util_dynarray *regarray;
-   } src_use[ROGUE_ALU_OP_MAX_SRCS];
+   rogue_instr_src src[ROGUE_ALU_OP_MAX_SRCS];
+   rogue_src_use src_use[ROGUE_ALU_OP_MAX_SRCS];
 } rogue_alu_instr;
 
 static inline void rogue_set_alu_op_mod(rogue_alu_instr *alu,
@@ -1228,20 +1229,8 @@ static inline bool rogue_alu_comp_is_none(const rogue_alu_instr *alu)
 rogue_alu_instr *rogue_alu_instr_create(rogue_block *block,
                                         enum rogue_alu_op op);
 
-///
-
 #define ROGUE_BACKEND_OP_MAX_SRCS 6
 #define ROGUE_BACKEND_OP_MAX_DSTS 2
-
-typedef struct rogue_backend_dst {
-   rogue_ref ref;
-   unsigned index;
-} rogue_backend_dst;
-
-typedef struct rogue_backend_src {
-   rogue_ref ref;
-   unsigned index;
-} rogue_backend_src;
 
 enum rogue_backend_op {
    ROGUE_BACKEND_OP_INVALID = 0,
@@ -1309,17 +1298,11 @@ typedef struct rogue_backend_instr {
 
    /* Backend instructions don't have source/dest modifiers. */
 
-   rogue_backend_dst dst[ROGUE_BACKEND_OP_MAX_DSTS];
-   union {
-      rogue_reg_write reg;
-      struct util_dynarray *regarray;
-   } dst_write[ROGUE_BACKEND_OP_MAX_DSTS];
+   rogue_instr_dst dst[ROGUE_BACKEND_OP_MAX_DSTS];
+   rogue_dst_write dst_write[ROGUE_BACKEND_OP_MAX_DSTS];
 
-   rogue_backend_src src[ROGUE_BACKEND_OP_MAX_SRCS];
-   union {
-      rogue_reg_use reg;
-      struct util_dynarray *regarray;
-   } src_use[ROGUE_BACKEND_OP_MAX_SRCS];
+   rogue_instr_src src[ROGUE_BACKEND_OP_MAX_SRCS];
+   rogue_src_use src_use[ROGUE_BACKEND_OP_MAX_SRCS];
 } rogue_backend_instr;
 
 static inline void rogue_set_backend_op_mod(rogue_backend_instr *backend,
@@ -1341,16 +1324,6 @@ rogue_backend_instr *rogue_backend_instr_create(rogue_block *block,
 #define ROGUE_CTRL_OP_MAX_SRCS 7
 #define ROGUE_CTRL_OP_MAX_DSTS 2
 
-typedef struct rogue_ctrl_dst {
-   rogue_ref ref;
-   unsigned index;
-} rogue_ctrl_dst;
-
-typedef struct rogue_ctrl_src {
-   rogue_ref ref;
-   unsigned index;
-} rogue_ctrl_src;
-
 typedef struct rogue_ctrl_instr {
    rogue_instr instr;
 
@@ -1360,17 +1333,11 @@ typedef struct rogue_ctrl_instr {
 
    /* Control instructions don't have source/dest modifiers. */
 
-   rogue_ctrl_dst dst[ROGUE_CTRL_OP_MAX_DSTS];
-   union {
-      rogue_reg_write reg;
-      struct util_dynarray *regarray;
-   } dst_write[ROGUE_BACKEND_OP_MAX_DSTS];
+   rogue_instr_dst dst[ROGUE_CTRL_OP_MAX_DSTS];
+   rogue_dst_write dst_write[ROGUE_CTRL_OP_MAX_DSTS];
 
-   rogue_ctrl_src src[ROGUE_CTRL_OP_MAX_SRCS];
-   union {
-      rogue_reg_use reg;
-      struct util_dynarray *regarray;
-   } src_use[ROGUE_BACKEND_OP_MAX_SRCS];
+   rogue_instr_src src[ROGUE_CTRL_OP_MAX_SRCS];
+   rogue_src_use src_use[ROGUE_CTRL_OP_MAX_SRCS];
 
    rogue_block *target_block;
    rogue_block_use block_use;
@@ -1446,17 +1413,11 @@ typedef struct rogue_bitwise_instr {
 
    /* TODO NEXT: source/dest modifiers */
 
-   rogue_bitwise_dst dst[ROGUE_BITWISE_OP_MAX_DSTS];
-   union {
-      rogue_reg_write reg;
-      struct util_dynarray *regarray;
-   } dst_write[ROGUE_BACKEND_OP_MAX_DSTS];
+   rogue_instr_dst dst[ROGUE_BITWISE_OP_MAX_DSTS];
+   rogue_dst_write dst_write[ROGUE_BITWISE_OP_MAX_DSTS];
 
-   rogue_bitwise_src src[ROGUE_BITWISE_OP_MAX_SRCS];
-   union {
-      rogue_reg_use reg;
-      struct util_dynarray *regarray;
-   } src_use[ROGUE_BACKEND_OP_MAX_SRCS];
+   rogue_instr_src src[ROGUE_BITWISE_OP_MAX_SRCS];
+   rogue_src_use src_use[ROGUE_BITWISE_OP_MAX_SRCS];
 } rogue_bitwise_instr;
 
 #if 0

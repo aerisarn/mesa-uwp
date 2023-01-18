@@ -144,7 +144,7 @@ static void validate_regarray(rogue_validation_state *state,
 }
 
 static void validate_alu_dst(rogue_validation_state *state,
-                             const rogue_alu_dst *dst,
+                             const rogue_instr_dst *dst,
                              uint64_t supported_dst_types)
 {
    state->ref = &dst->ref;
@@ -160,7 +160,7 @@ static void validate_alu_dst(rogue_validation_state *state,
 }
 
 static void validate_alu_src(rogue_validation_state *state,
-                             const rogue_alu_src *src,
+                             const rogue_instr_src *src,
                              uint64_t supported_src_types)
 {
    state->ref = &src->ref;

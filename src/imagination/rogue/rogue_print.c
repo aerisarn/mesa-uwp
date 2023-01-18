@@ -207,7 +207,7 @@ static inline void rogue_print_ref(FILE *fp, const rogue_ref *ref)
    }
 }
 
-static inline void rogue_print_alu_dst(FILE *fp, const rogue_alu_dst *dst)
+static inline void rogue_print_alu_dst(FILE *fp, const rogue_instr_dst *dst)
 {
    rogue_print_ref(fp, &dst->ref);
 
@@ -219,7 +219,7 @@ static inline void rogue_print_alu_dst(FILE *fp, const rogue_alu_dst *dst)
    }
 }
 
-static inline void rogue_print_alu_src(FILE *fp, const rogue_alu_src *src)
+static inline void rogue_print_alu_src(FILE *fp, const rogue_instr_src *src)
 {
    rogue_print_ref(fp, &src->ref);
 
@@ -284,14 +284,12 @@ static inline void rogue_print_block_label(FILE *fp, const rogue_block *block)
       fprintf(fp, "block%u", block->index);
 }
 
-static inline void rogue_print_backend_dst(FILE *fp,
-                                           const rogue_backend_dst *dst)
+static inline void rogue_print_backend_dst(FILE *fp, const rogue_instr_dst *dst)
 {
    rogue_print_ref(fp, &dst->ref);
 }
 
-static inline void rogue_print_backend_src(FILE *fp,
-                                           const rogue_backend_src *src)
+static inline void rogue_print_backend_src(FILE *fp, const rogue_instr_src *src)
 {
    rogue_print_ref(fp, &src->ref);
 }
@@ -345,7 +343,7 @@ static inline void rogue_print_ctrl_mods(FILE *fp, const rogue_ctrl_instr *ctrl)
    }
 }
 
-static inline void rogue_print_ctrl_src(FILE *fp, const rogue_ctrl_src *src)
+static inline void rogue_print_ctrl_src(FILE *fp, const rogue_instr_src *src)
 {
    rogue_print_ref(fp, &src->ref);
 }
