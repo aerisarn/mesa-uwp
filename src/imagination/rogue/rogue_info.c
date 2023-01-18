@@ -221,6 +221,7 @@ const rogue_ctrl_op_mod_info rogue_ctrl_op_mod_infos[ROGUE_CTRL_OP_MOD_COUNT] = 
 };
 
 #define OM(op_mod) BITFIELD64_BIT(ROGUE_CTRL_OP_MOD_##op_mod)
+#define T(type) BITFIELD64_BIT(ROGUE_REF_TYPE_##type - 1)
 const rogue_ctrl_op_info rogue_ctrl_op_infos[ROGUE_CTRL_OP_COUNT] = {
 	[ROGUE_CTRL_OP_INVALID] = { .str = "!INVALID!", },
 	[ROGUE_CTRL_OP_END] = { .str = "end", .ends_block = true, },
@@ -228,16 +229,23 @@ const rogue_ctrl_op_info rogue_ctrl_op_infos[ROGUE_CTRL_OP_COUNT] = {
 		.supported_op_mods = OM(END),
 	},
 	[ROGUE_CTRL_OP_BA] = { .str = "ba", .has_target = true, .ends_block = true, },
-	[ROGUE_CTRL_OP_WDF] = { .str = "wdf", .num_srcs = 1, },
+	[ROGUE_CTRL_OP_WDF] = { .str = "wdf", .num_srcs = 1,
+      .supported_src_types = { [0] = T(DRC), },
+   },
 };
+#undef T
 #undef OM
 
 #define IO(io) ROGUE_IO_##io
 #define OM(op_mod) BITFIELD64_BIT(ROGUE_BACKEND_OP_MOD_##op_mod)
+#define T(type) BITFIELD64_BIT(ROGUE_REF_TYPE_##type - 1)
+#define B(n) BITFIELD64_BIT(n)
 const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
 	[ROGUE_BACKEND_OP_INVALID] = { .str = "!INVALID!", },
    [ROGUE_BACKEND_OP_UVSW_WRITE] = { .str = "uvsw.write", .num_dsts = 1, .num_srcs = 1,
       .phase_io = { .src[0] = IO(W0), },
+      .supported_dst_types = { [0] = T(REG), },
+      .supported_src_types = { [0] = T(REG), },
    },
    [ROGUE_BACKEND_OP_UVSW_EMIT] = { .str = "uvsw.emit", },
    [ROGUE_BACKEND_OP_UVSW_ENDTASK] = { .str = "uvsw.endtask", },
@@ -245,12 +253,27 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
    [ROGUE_BACKEND_OP_UVSW_EMITTHENENDTASK] = { .str = "uvsw.emitthenendtask", },
    [ROGUE_BACKEND_OP_UVSW_WRITETHENEMITTHENENDTASK] = { .str = "uvsw.writethenemitthenendtask", .num_dsts = 1, .num_srcs = 1,
       .phase_io = { .src[0] = IO(W0), },
+      .supported_dst_types = { [0] = T(REG), },
+      .supported_src_types = { [0] = T(REG), },
    },
 	[ROGUE_BACKEND_OP_FITRP_PIXEL] = { .str = "fitrp.pixel", .num_dsts = 1, .num_srcs = 4,
       .phase_io = { .dst[0] = IO(S3), .src[1] = IO(S0), .src[2] = IO(S2), },
       .supported_op_mods = OM(SAT),
+      .supported_dst_types = { [0] = T(REG), },
+      .supported_src_types = {
+         [0] = T(DRC),
+         [1] = T(REGARRAY),
+         [2] = T(REGARRAY),
+         [3] = T(VAL),
+      },
+      .src_stride = {
+         [1] = 3,
+         [2] = 3,
+      },
    },
 };
+#undef B
+#undef T
 #undef OM
 #undef IO
 
@@ -298,6 +321,7 @@ const rogue_io_info rogue_io_infos[ROGUE_IO_COUNT] = {
 #define PH(type) ROGUE_INSTR_PHASE_##type
 #define IO(io) ROGUE_IO_##io
 #define T(type) BITFIELD64_BIT(ROGUE_REF_TYPE_##type - 1)
+#define B(n) BITFIELD64_BIT(n)
 const rogue_alu_op_info rogue_alu_op_infos[ROGUE_ALU_OP_COUNT] = {
    [ROGUE_ALU_OP_INVALID] = { .str = "!INVALID!", },
    [ROGUE_ALU_OP_MBYP] = { .str = "mbyp", .num_dsts = 1, .num_srcs = 1,
@@ -360,6 +384,7 @@ const rogue_alu_op_info rogue_alu_op_infos[ROGUE_ALU_OP_COUNT] = {
       .supported_src_types = {
          [0] = T(REGARRAY),
       },
+      .src_repeat_mask = B(0),
    },
    /* This mov is "fake" since it can be lowered to a MBYP, make a new instruction for real mov (call it MOVD?). */
    [ROGUE_ALU_OP_MOV] = { .str = "mov", .num_dsts = 1, .num_srcs = 1,
@@ -376,6 +401,7 @@ const rogue_alu_op_info rogue_alu_op_infos[ROGUE_ALU_OP_COUNT] = {
    [ROGUE_ALU_OP_FMIN] = { .str = "fmin", .num_dsts = 1, .num_srcs = 2, }, /* TODO */
    [ROGUE_ALU_OP_SEL] = { .str = "sel", .num_dsts = 1, .num_srcs = 3, }, /* TODO */
 };
+#undef B
 #undef T
 #undef IO
 #undef PH

@@ -41,9 +41,6 @@
  * through ISR and add any other restrictions). */
 /* TODO: Remember that some instructions have the DESTINATION as a source
  * (register pointers), e.g. fitrp using S3 */
-/* TODO NEXT: Add field to instr_info that specifies which source/destination
- * should be affected by instruction repeating. */
-/* TODO NEXT: Validate backend and control sources/dests. */
 /* TODO: Go through and make sure that validation state is being properly
  * updated as so to allow for validation_log to print enough info. */
 
@@ -54,10 +51,14 @@ typedef struct rogue_validation_state {
    const rogue_shader *shader; /** The shader being validated. */
    const char *when; /** Description of the validation being done. */
    bool nonfatal; /** Don't stop at the first error.*/
-   const rogue_instr *instr; /** Current instruction being validated. */
-   const rogue_instr_group *group; /** Current instruction group being
-                                      validated. */
-   const rogue_ref *ref; /** Current reference being validated. */
+   struct {
+      const rogue_instr *instr; /** Current instruction being validated. */
+      const rogue_instr_group *group; /** Current instruction group being
+                                         validated. */
+      const rogue_ref *ref; /** Current reference being validated. */
+      bool src; /** Current reference type (src/dst). */
+      unsigned param; /** Current reference src/dst index. */
+   } ctx;
    struct util_dynarray *error_msgs; /** Error message list. */
 } rogue_validation_state;
 
@@ -73,7 +74,6 @@ static bool validate_print_errors(rogue_validation_state *state)
 
    fputs("\n", stderr);
 
-   /* TODO: Figure out if/when to print this. */
    rogue_print_shader(stderr, state->shader);
    fputs("\n", stderr);
 
@@ -86,12 +86,15 @@ static void PRINTFLIKE(2, 3)
    char *msg = ralloc_asprintf(state->error_msgs, "Validation error");
 
    /* Add info about the item that was being validated. */
-   if (state->instr) {
-      ralloc_asprintf_append(&msg, " instr %u", state->instr->index);
+   if (state->ctx.instr) {
+      ralloc_asprintf_append(&msg, " instr %u", state->ctx.instr->index);
    }
 
-   if (state->ref) {
-      /* TODO: Find a way to get an index. */
+   if (state->ctx.ref) {
+      ralloc_asprintf_append(&msg,
+                             " %s %u",
+                             state->ctx.src ? "src" : "dst",
+                             state->ctx.param);
    }
 
    ralloc_asprintf_append(&msg, ": ");
@@ -143,37 +146,80 @@ static void validate_regarray(rogue_validation_state *state,
    }
 }
 
-static void validate_alu_dst(rogue_validation_state *state,
-                             const rogue_instr_dst *dst,
-                             uint64_t supported_dst_types)
+static void validate_dst(rogue_validation_state *state,
+                         const rogue_instr_dst *dst,
+                         uint64_t supported_dst_types,
+                         unsigned i,
+                         unsigned stride,
+                         unsigned repeat,
+                         uint64_t repeat_mask)
 {
-   state->ref = &dst->ref;
+   state->ctx.ref = &dst->ref;
+   state->ctx.src = false;
+   state->ctx.param = i;
 
    if (rogue_ref_is_null(&dst->ref))
-      validate_log(state, "ALU destination has not been set.");
-
-   if (!state->shader->is_grouped)
-      if (!rogue_ref_type_supported(dst->ref.type, supported_dst_types))
-         validate_log(state, "Unsupported ALU destination type.");
-
-   state->ref = NULL;
-}
-
-static void validate_alu_src(rogue_validation_state *state,
-                             const rogue_instr_src *src,
-                             uint64_t supported_src_types)
-{
-   state->ref = &src->ref;
-
-   if (rogue_ref_is_null(&src->ref))
-      validate_log(state, "ALU source has not been set.");
+      validate_log(state, "Destination has not been set.");
 
    if (!state->shader->is_grouped) {
-      if (!rogue_ref_type_supported(src->ref.type, supported_src_types))
-         validate_log(state, "Unsupported ALU source type.");
+      unsigned dst_size = stride + 1;
+      if (repeat_mask & (1 << i))
+         dst_size *= repeat;
+
+      if (rogue_ref_is_regarray(&dst->ref)) {
+         if (rogue_ref_get_regarray_size(&dst->ref) != dst_size) {
+            validate_log(state,
+                         "Expected regarray size %u, got %u.",
+                         dst_size,
+                         rogue_ref_get_regarray_size(&dst->ref));
+         }
+      } else if (dst_size > 1) {
+         validate_log(state, "Expected regarray type for destination.");
+      }
+
+      if (!rogue_ref_type_supported(dst->ref.type, supported_dst_types))
+         validate_log(state, "Unsupported destination type.");
    }
 
-   state->ref = NULL;
+   state->ctx.ref = NULL;
+}
+
+static void validate_src(rogue_validation_state *state,
+                         const rogue_instr_src *src,
+                         uint64_t supported_src_types,
+                         unsigned i,
+                         unsigned stride,
+                         unsigned repeat,
+                         uint64_t repeat_mask)
+{
+   state->ctx.ref = &src->ref;
+   state->ctx.src = true;
+   state->ctx.param = i;
+
+   if (rogue_ref_is_null(&src->ref))
+      validate_log(state, "Source has not been set.");
+
+   if (!state->shader->is_grouped) {
+      unsigned src_size = stride + 1;
+      if (repeat_mask & (1 << i))
+         src_size *= repeat;
+
+      if (rogue_ref_is_regarray(&src->ref)) {
+         if (rogue_ref_get_regarray_size(&src->ref) != src_size) {
+            validate_log(state,
+                         "Expected regarray size %u, got %u.",
+                         src_size,
+                         rogue_ref_get_regarray_size(&src->ref));
+         }
+      } else if (src_size > 1) {
+         validate_log(state, "Expected regarray type for source.");
+      }
+
+      if (!rogue_ref_type_supported(src->ref.type, supported_src_types))
+         validate_log(state, "Unsupported source type.");
+   }
+
+   state->ctx.ref = NULL;
 }
 
 static void validate_alu_instr(rogue_validation_state *state,
@@ -194,12 +240,32 @@ static void validate_alu_instr(rogue_validation_state *state,
    if (!rogue_mods_supported(alu->mod, info->supported_op_mods))
       validate_log(state, "Unsupported ALU op modifiers.");
 
-   /* Validate destinations and sources. */
-   for (unsigned i = 0; i < info->num_dsts; ++i)
-      validate_alu_dst(state, &alu->dst[i], info->supported_dst_types[i]);
+   /* Instruction repeat checks. */
+   if (alu->instr.repeat > 1 && !info->dst_repeat_mask &&
+       !info->src_repeat_mask) {
+      validate_log(state, "Repeat set for ALU op without repeat support.");
+   }
 
-   for (unsigned i = 0; i < info->num_srcs; ++i)
-      validate_alu_src(state, &alu->src[i], info->supported_src_types[i]);
+   /* Validate destinations and sources. */
+   for (unsigned i = 0; i < info->num_dsts; ++i) {
+      validate_dst(state,
+                   &alu->dst[i],
+                   info->supported_dst_types[i],
+                   i,
+                   info->dst_stride[i],
+                   alu->instr.repeat,
+                   info->dst_repeat_mask);
+   }
+
+   for (unsigned i = 0; i < info->num_srcs; ++i) {
+      validate_src(state,
+                   &alu->src[i],
+                   info->supported_src_types[i],
+                   i,
+                   info->src_stride[i],
+                   alu->instr.repeat,
+                   info->src_repeat_mask);
+   }
 
    /* TODO: Check that the src_use and dst_write fields are correct? */
 }
@@ -217,7 +283,33 @@ static void validate_backend_instr(rogue_validation_state *state,
    if (!rogue_mods_supported(backend->mod, info->supported_op_mods))
       validate_log(state, "Unsupported backend op modifiers.");
 
-   /* TODO: Validate dests and srcs? */
+   /* Instruction repeat checks. */
+   if (backend->instr.repeat > 1 && !info->dst_repeat_mask &&
+       !info->src_repeat_mask) {
+      validate_log(state, "Repeat set for backend op without repeat support.");
+   }
+
+   /* Validate destinations and sources. */
+   for (unsigned i = 0; i < info->num_dsts; ++i) {
+      validate_dst(state,
+                   &backend->dst[i],
+                   info->supported_dst_types[i],
+                   i,
+                   info->dst_stride[i],
+                   backend->instr.repeat,
+                   info->dst_repeat_mask);
+   }
+
+   for (unsigned i = 0; i < info->num_srcs; ++i) {
+      validate_src(state,
+                   &backend->src[i],
+                   info->supported_src_types[i],
+                   i,
+                   info->src_stride[i],
+                   backend->instr.repeat,
+                   info->src_repeat_mask);
+   }
+
    /* TODO: Check that the src_use and dst_write fields are correct? */
 }
 
@@ -241,7 +333,33 @@ static bool validate_ctrl_instr(rogue_validation_state *state,
    if (!rogue_mods_supported(ctrl->mod, info->supported_op_mods))
       validate_log(state, "Unsupported CTRL op modifiers.");
 
-   /* TODO: Validate dests and srcs? */
+   /* Instruction repeat checks. */
+   if (ctrl->instr.repeat > 1 && !info->dst_repeat_mask &&
+       !info->src_repeat_mask) {
+      validate_log(state, "Repeat set for CTRL op without repeat support.");
+   }
+
+   /* Validate destinations and sources. */
+   for (unsigned i = 0; i < info->num_dsts; ++i) {
+      validate_dst(state,
+                   &ctrl->dst[i],
+                   info->supported_dst_types[i],
+                   i,
+                   info->dst_stride[i],
+                   ctrl->instr.repeat,
+                   info->dst_repeat_mask);
+   }
+
+   for (unsigned i = 0; i < info->num_srcs; ++i) {
+      validate_src(state,
+                   &ctrl->src[i],
+                   info->supported_src_types[i],
+                   i,
+                   info->src_stride[i],
+                   ctrl->instr.repeat,
+                   info->src_repeat_mask);
+   }
+
    /* TODO: Check that the src_use and dst_write fields are correct? */
 
    /* nop.end counts as a end-of-block instruction. */
@@ -259,7 +377,7 @@ static bool validate_ctrl_instr(rogue_validation_state *state,
 static bool validate_instr(rogue_validation_state *state,
                            const rogue_instr *instr)
 {
-   state->instr = instr;
+   state->ctx.instr = instr;
 
    bool ends_block = false;
 
@@ -287,7 +405,7 @@ static bool validate_instr(rogue_validation_state *state,
    if (!ends_block)
       ends_block = instr->end;
 
-   state->instr = NULL;
+   state->ctx.instr = NULL;
 
    return ends_block;
 }
@@ -296,7 +414,7 @@ static bool validate_instr(rogue_validation_state *state,
 static bool validate_instr_group(rogue_validation_state *state,
                                  const rogue_instr_group *group)
 {
-   state->group = group;
+   state->ctx.group = group;
    /* TODO: Validate group properties. */
    /* TODO: Check for pseudo-instructions. */
 
@@ -315,7 +433,7 @@ static bool validate_instr_group(rogue_validation_state *state,
       ends_block = validate_instr(state, instr);
    }
 
-   state->group = NULL;
+   state->ctx.group = NULL;
 
    if (group->header.alu != ROGUE_ALU_CONTROL)
       return group->header.end;
@@ -485,8 +603,6 @@ static void validate_reg_state(rogue_validation_state *state,
    }
 }
 
-/* TODO: To properly test this and see what needs validating, try and write some
- * failing tests and then filling them from there. */
 PUBLIC
 bool rogue_validate_shader(rogue_shader *shader, const char *when)
 {

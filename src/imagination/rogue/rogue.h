@@ -37,16 +37,11 @@
 /* TODO NEXT: Make things const that can be. */
 
 /* TODO NEXT: Use debug message functions in u_debug.h */
-/* TODO NEXT: for validating `repeat` values, add to rogue instr info which
- * srcs/dsts will be affected and will need to be checked */
 
 /* TODO NEXT: Reg/src/dst things are often just simple comparisons; write
  * per-instr-type comparison function that also checks things like modifiers. */
 
 /* TODO NEXT: In "unreachable"s, replace "invalid" with "unsupported". */
-
-/* TODO NEXT: go through things that return bool and ensure they return 1 or 0,
- * not a mask (whose first bit may be non-zero)! */
 
 #include "compiler/nir/nir.h"
 #include "compiler/shader_enums.h"
@@ -756,8 +751,7 @@ static inline enum rogue_reg_class rogue_ref_get_reg_class(const rogue_ref *ref)
       return ref->regarray->regs[0]->class;
    else if (rogue_ref_is_reg(ref))
       return ref->reg->class;
-   else
-      unreachable("Ref is not a reg/regarray.");
+   unreachable("Ref is not a reg/regarray.");
 }
 
 static inline unsigned rogue_ref_get_reg_index(const rogue_ref *ref)
@@ -766,8 +760,14 @@ static inline unsigned rogue_ref_get_reg_index(const rogue_ref *ref)
       return ref->regarray->regs[0]->index;
    else if (rogue_ref_is_reg(ref))
       return ref->reg->index;
-   else
-      unreachable("Ref is not a reg/regarray.");
+   unreachable("Ref is not a reg/regarray.");
+}
+
+static inline unsigned rogue_ref_get_regarray_size(const rogue_ref *ref)
+{
+   if (rogue_ref_is_regarray(ref))
+      return ref->regarray->size;
+   unreachable("Ref is not a regarray.");
 }
 
 #define ROGUE_INTERNAL0_OFFSET 36
@@ -1046,6 +1046,9 @@ typedef struct rogue_ctrl_op_mod_info {
 extern const rogue_ctrl_op_mod_info
    rogue_ctrl_op_mod_infos[ROGUE_CTRL_OP_MOD_COUNT];
 
+#define ROGUE_CTRL_OP_MAX_SRCS 7
+#define ROGUE_CTRL_OP_MAX_DSTS 2
+
 typedef struct rogue_ctrl_op_info {
    const char *str;
 
@@ -1058,6 +1061,17 @@ typedef struct rogue_ctrl_op_info {
    unsigned num_srcs;
 
    uint64_t supported_op_mods;
+   uint64_t supported_dst_mods[ROGUE_CTRL_OP_MAX_DSTS];
+   uint64_t supported_src_mods[ROGUE_CTRL_OP_MAX_SRCS];
+
+   uint64_t supported_dst_types[ROGUE_CTRL_OP_MAX_DSTS];
+   uint64_t supported_src_types[ROGUE_CTRL_OP_MAX_SRCS];
+
+   unsigned dst_stride[ROGUE_CTRL_OP_MAX_DSTS];
+   unsigned src_stride[ROGUE_CTRL_OP_MAX_SRCS];
+
+   uint64_t dst_repeat_mask;
+   uint64_t src_repeat_mask;
 } rogue_ctrl_op_info;
 
 extern const rogue_ctrl_op_info rogue_ctrl_op_infos[ROGUE_CTRL_OP_COUNT];
@@ -1097,9 +1111,14 @@ typedef struct rogue_alu_op_info {
    uint64_t supported_dst_mods[ROGUE_ALU_OP_MAX_DSTS];
    uint64_t supported_src_mods[ROGUE_ALU_OP_MAX_SRCS];
 
-   /* TODO NEXT: Do the same for other instruction types. */
    uint64_t supported_dst_types[ROGUE_ALU_OP_MAX_DSTS];
    uint64_t supported_src_types[ROGUE_ALU_OP_MAX_SRCS];
+
+   unsigned dst_stride[ROGUE_CTRL_OP_MAX_DSTS];
+   unsigned src_stride[ROGUE_CTRL_OP_MAX_SRCS];
+
+   uint64_t dst_repeat_mask;
+   uint64_t src_repeat_mask;
 } rogue_alu_op_info;
 
 extern const rogue_alu_op_info rogue_alu_op_infos[ROGUE_ALU_OP_COUNT];
@@ -1270,6 +1289,17 @@ typedef struct rogue_backend_op_info {
    rogue_backend_io_info phase_io;
 
    uint64_t supported_op_mods;
+   uint64_t supported_dst_mods[ROGUE_BACKEND_OP_MAX_DSTS];
+   uint64_t supported_src_mods[ROGUE_BACKEND_OP_MAX_SRCS];
+
+   uint64_t supported_dst_types[ROGUE_BACKEND_OP_MAX_DSTS];
+   uint64_t supported_src_types[ROGUE_BACKEND_OP_MAX_SRCS];
+
+   unsigned dst_stride[ROGUE_CTRL_OP_MAX_DSTS];
+   unsigned src_stride[ROGUE_CTRL_OP_MAX_SRCS];
+
+   uint64_t dst_repeat_mask;
+   uint64_t src_repeat_mask;
 } rogue_backend_op_info;
 
 extern const rogue_backend_op_info
@@ -1320,9 +1350,6 @@ rogue_backend_op_mod_is_set(const rogue_backend_instr *backend,
 
 rogue_backend_instr *rogue_backend_instr_create(rogue_block *block,
                                                 enum rogue_backend_op op);
-
-#define ROGUE_CTRL_OP_MAX_SRCS 7
-#define ROGUE_CTRL_OP_MAX_DSTS 2
 
 typedef struct rogue_ctrl_instr {
    rogue_instr instr;
@@ -1378,20 +1405,31 @@ enum rogue_bitwise_op {
    ROGUE_BITWISE_OP_COUNT,
 };
 
+#define ROGUE_BITWISE_OP_MAX_SRCS 7
+#define ROGUE_BITWISE_OP_MAX_DSTS 2
+
 typedef struct rogue_bitwise_op_info {
    const char *str;
 
    unsigned num_dsts;
    unsigned num_srcs;
 
-   /* uint64_t supported_op_mods; */
+   uint64_t supported_op_mods;
+   uint64_t supported_dst_mods[ROGUE_BITWISE_OP_MAX_DSTS];
+   uint64_t supported_src_mods[ROGUE_BITWISE_OP_MAX_SRCS];
+
+   uint64_t supported_dst_types[ROGUE_BITWISE_OP_MAX_DSTS];
+   uint64_t supported_src_types[ROGUE_BITWISE_OP_MAX_SRCS];
+
+   unsigned dst_stride[ROGUE_CTRL_OP_MAX_DSTS];
+   unsigned src_stride[ROGUE_CTRL_OP_MAX_SRCS];
+
+   uint64_t dst_repeat_mask;
+   uint64_t src_repeat_mask;
 } rogue_bitwise_op_info;
 
 extern const rogue_bitwise_op_info
    rogue_bitwise_op_infos[ROGUE_BITWISE_OP_COUNT];
-
-#define ROGUE_BITWISE_OP_MAX_SRCS 7
-#define ROGUE_BITWISE_OP_MAX_DSTS 2
 
 typedef struct rogue_bitwise_dst {
    rogue_ref ref;
