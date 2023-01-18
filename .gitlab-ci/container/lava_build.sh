@@ -11,7 +11,8 @@ export DEBIAN_FRONTEND=noninteractive
 check_minio()
 {
     MINIO_PATH="${MINIO_HOST}/mesa-lava/$1/${DISTRIBUTION_TAG}/${DEBIAN_ARCH}"
-    if wget -q --method=HEAD "https://${MINIO_PATH}/done"; then
+    if curl -L --retry 4 -f --retry-all-errors --retry-delay 60 -s -X HEAD \
+      "https://${MINIO_PATH}/done"; then
         exit
     fi
 }
@@ -84,11 +85,13 @@ fi
 
 apt-get update
 apt-get install -y --no-remove \
+		   -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' \
                    ${ARCH_PACKAGES} \
                    automake \
                    bc \
                    clang \
                    cmake \
+		   curl \
                    debootstrap \
                    git \
                    glslang-tools \
@@ -120,7 +123,6 @@ apt-get install -y --no-remove \
                    python3-numpy \
                    python3-serial \
                    unzip \
-                   wget \
                    zstd
 
 

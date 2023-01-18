@@ -85,8 +85,9 @@ date +'%F %T'
 
 # If BM_BOOTFS is an URL, download it
 if echo $BM_BOOTFS | grep -q http; then
-  apt install -y wget
-  wget ${FDO_HTTP_CACHE_URI:-}$BM_BOOTFS -O /tmp/bootfs.tar
+  apt-get install -y curl
+  curl -L --retry 4 -f --retry-all-errors --retry-delay 60 \
+    "${FDO_HTTP_CACHE_URI:-}$BM_BOOTFS" -o /tmp/bootfs.tar
   BM_BOOTFS=/tmp/bootfs.tar
 fi
 

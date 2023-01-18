@@ -51,12 +51,12 @@ STABLE_EPHEMERAL=" \
 
 apt-get install -y --no-remove --no-install-recommends \
       $STABLE_EPHEMERAL \
+      curl \
       libepoxy0 \
       libxcb-shm0 \
       pciutils \
       python3-lxml \
       python3-simplejson \
-      wget \
       xinit \
       xserver-xorg-video-amdgpu \
       xserver-xorg-video-ati

@@ -13,7 +13,8 @@ apt-get install -y --no-remove $EPHEMERAL
 
 # Fetch the NDK and extract just the toolchain we want.
 ndk=android-ndk-r21d
-wget -O $ndk.zip https://dl.google.com/android/repository/$ndk-linux-x86_64.zip
+curl -L --retry 4 -f --retry-all-errors --retry-delay 60 \
+  -o $ndk.zip https://dl.google.com/android/repository/$ndk-linux-x86_64.zip
 unzip -d / $ndk.zip "$ndk/toolchains/llvm/*"
 rm $ndk.zip
 # Since it was packed as a zip file, symlinks/hardlinks got turned into
@@ -32,7 +33,8 @@ sh .gitlab-ci/container/create-android-cross-file.sh /$ndk arm-linux-androideabi
 # Not using build-libdrm.sh because we don't want its cleanup after building
 # each arch.  Fetch and extract now.
 export LIBDRM_VERSION=libdrm-2.4.110
-wget https://dri.freedesktop.org/libdrm/$LIBDRM_VERSION.tar.xz
+curl -L --retry 4 -f --retry-all-errors --retry-delay 60 \
+  -O https://dri.freedesktop.org/libdrm/$LIBDRM_VERSION.tar.xz
 tar -xf $LIBDRM_VERSION.tar.xz && rm $LIBDRM_VERSION.tar.xz
 
 for arch in \
@@ -61,7 +63,8 @@ done
 rm -rf $LIBDRM_VERSION
 
 export LIBELF_VERSION=libelf-0.8.13
-wget https://fossies.org/linux/misc/old/$LIBELF_VERSION.tar.gz
+curl -L --retry 4 -f --retry-all-errors --retry-delay 60 \
+  -O https://fossies.org/linux/misc/old/$LIBELF_VERSION.tar.gz
 
 # Not 100% sure who runs the mirror above so be extra careful
 if ! echo "4136d7b4c04df68b686570afa26988ac ${LIBELF_VERSION}.tar.gz" | md5sum -c -; then
