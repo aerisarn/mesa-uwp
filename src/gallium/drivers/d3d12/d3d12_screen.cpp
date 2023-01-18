@@ -1408,7 +1408,7 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
 
    static const D3D_SHADER_MODEL valid_shader_models[] = {
       D3D_SHADER_MODEL_6_7, D3D_SHADER_MODEL_6_6, D3D_SHADER_MODEL_6_5, D3D_SHADER_MODEL_6_4,
-      D3D_SHADER_MODEL_6_3, D3D_SHADER_MODEL_6_2, D3D_SHADER_MODEL_6_1,
+      D3D_SHADER_MODEL_6_3, D3D_SHADER_MODEL_6_2, D3D_SHADER_MODEL_6_1, D3D_SHADER_MODEL_6_0,
    };
    for (UINT i = 0; i < ARRAY_SIZE(valid_shader_models); ++i) {
       D3D12_FEATURE_DATA_SHADER_MODEL shader_model = { valid_shader_models[i] };
