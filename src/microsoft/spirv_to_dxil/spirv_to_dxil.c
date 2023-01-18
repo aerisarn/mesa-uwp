@@ -63,7 +63,7 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
       },
       .ubo_addr_format = nir_address_format_32bit_index_offset,
       .ssbo_addr_format = nir_address_format_32bit_index_offset,
-      .shared_addr_format = nir_address_format_32bit_offset_as_64bit,
+      .shared_addr_format = nir_address_format_32bit_offset,
 
       // use_deref_buffer_array_length + nir_lower_explicit_io force
       //  get_ssbo_size to take in the return from load_vulkan_descriptor

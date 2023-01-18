@@ -944,7 +944,7 @@ dxil_spirv_nir_passes(nir_shader *nir,
                  shared_var_info);
    }
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_shared,
-      nir_address_format_32bit_offset_as_64bit);
+      nir_address_format_32bit_offset);
 
    NIR_PASS_V(nir, nir_lower_clip_cull_distance_arrays);
    NIR_PASS_V(nir, nir_lower_io_to_temporaries, nir_shader_get_entrypoint(nir), true, true);
