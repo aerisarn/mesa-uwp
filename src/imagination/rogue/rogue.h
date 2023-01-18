@@ -93,7 +93,7 @@ enum rogue_reg_class {
    ROGUE_REG_CLASS_VTXOUT, /** Vertex output register. */
 
    ROGUE_REG_CLASS_COUNT,
-} ENUM_PACKED;
+} PACKED;
 
 typedef struct rogue_reg_info {
    const char *name; /** Human-readable name. */
