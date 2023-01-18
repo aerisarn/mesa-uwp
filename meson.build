@@ -2087,35 +2087,44 @@ subdir('src')
 
 meson.add_devenv(devenv)
 
-summary_lines = {
-  'prefix': get_option('prefix'),
-  'libdir': get_option('libdir'),
-  'includedir': get_option('includedir'),
+meson.add_devenv(devenv)
 
-  'OpenGL': with_opengl,
-  'ES1': with_gles1,
-  'ES2': with_gles2,
+summary(
+  {
+    'prefix': get_option('prefix'),
+    'libdir': get_option('libdir'),
+    'includedir': get_option('includedir'),
+  },
+  section: 'Directories'
+)
 
-  'OSMesa': with_osmesa ? 'lib' + osmesa_lib_name : false}
+summary(
+  {
+    'OpenGL': with_opengl,
+    'ES1': with_gles1,
+    'ES2': with_gles2,
+    'Shared glapi': with_shared_glapi,
+  },
+  section: 'OpenGL', bool_yn: true
+)
 
-if with_dri
-  summary_lines += {
-    'DRI platform': with_dri_platform,
-    'DRI driver dir': dri_drivers_path
-  }
-endif
+summary(
+  {
+    'Platform': with_dri_platform,
+    'Driver dir': dri_drivers_path,
+  },
+  section: 'DRI', bool_yn: true, list_sep: ' '
+)
 
-if with_glx == 'disabled'
-  summary_lines += {'GLX': false}
-elif with_glx == 'dri'
-  summary_lines += {'GLX': 'DRI-based'}
-elif with_glx == 'xlib'
-  summary_lines += {'GLX': 'Xlib-based'}
-else
-  summary_lines += {'GLX': with_glx}
-endif
+summary(
+  {
+    'Enabled': with_glx != 'disabled',
+    'Provider': with_glx == 'disabled' ? 'None' : with_glx
+  },
+  section: 'GLX', bool_yn: true, list_sep: ' '
+)
 
-summary_lines += {'EGL': with_egl}
+egl_summary = {'Enabled': with_egl}
 if with_egl
   egl_drivers = []
   if with_dri
@@ -2127,68 +2136,70 @@ if with_egl
   if with_platform_windows
     egl_drivers += 'builtin:wgl'
   endif
-  summary_lines += {'EGL drivers': egl_drivers}
+  egl_summary += {'Drivers': egl_drivers}
+  egl_summary += {'Platforms': _platforms}
 endif
-if with_egl or with_any_vk
-  _platforms += 'surfaceless'
-  if with_gbm and not with_platform_android
-    _platforms += 'drm'
-  endif
-  summary_lines += {'EGL/Vulkan/VL platforms': _platforms}
-endif
+summary(egl_summary, section: 'EGL', bool_yn: true, list_sep: ' ')
 
-summary_lines += {'GBM': with_gbm}
+gbm_summary = {'Enabled': with_gbm}
 if with_gbm
-  summary_lines += {'GBM backends path': gbm_backends_path}
+  gbm_summary += {'Backends path': gbm_backends_path}
 endif
+summary(gbm_summary, section: 'GBM', bool_yn: true, list_sep: ' ')
 
-summary_lines += {'Vulkan drivers': _vulkan_drivers.length() != 0 ? _vulkan_drivers : false }
-summary_lines += {'Video Codecs': _codecs.length() != 0 ? _codecs : false }
-
+vulkan_summary = {'Drivers': _vulkan_drivers.length() != 0 ? _vulkan_drivers : false }
 if with_any_vk
-  summary_lines += {'Vulkan ICD dir': with_vulkan_icd_dir}
+  vulkan_summary += {'Platforms': _platforms}
+  vulkan_summary += {'ICD dir': with_vulkan_icd_dir}
   if with_any_vulkan_layers
-    summary_lines += {'Vulkan layers': get_option('vulkan-layers')}
+    vulkan_summary += {'Layers': get_option('vulkan-layers')}
   endif
-  summary_lines += {'Vulkan Intel Ray Tracing': with_intel_vk_rt}
+  vulkan_summary += {'Video codecs': _codecs.length() != 0 ? _codecs : false}
+  vulkan_summary += {'Ray tracing': with_intel_vk_rt ? 'intel' : false}
 endif
+summary(vulkan_summary, section: 'Vulkan', bool_yn: true, list_sep: ' ')
 
-summary_lines += {'llvm': with_llvm}
+llvm_summary = {'Enabled': with_llvm}
 if with_llvm
-  summary_lines += {'llvm-version': dep_llvm.version()}
+  llvm_summary += {'Version': dep_llvm.version()}
 endif
+summary(llvm_summary, section: 'LLVM', bool_yn: true, list_sep: ' ')
 
-summary_lines += {'Gallium': with_gallium}
+gallium_summary = {'Enabled': with_gallium}
 if with_gallium
-  summary_lines += {'Gallium drivers': gallium_drivers}
+  gallium_summary += {'Drivers': gallium_drivers}
+  gallium_summary += {'Platforms': _platforms}
 
-  gallium_st = ['mesa']
+  gallium_frontends = ['mesa']
   if with_gallium_xa
-    gallium_st += 'xa'
+    gallium_frontends += 'xa'
   endif
   if with_gallium_vdpau
-    gallium_st += 'vdpau'
+    gallium_frontends += 'vdpau'
   endif
   if with_gallium_omx != 'disabled'
-    gallium_st += 'omx' + with_gallium_omx
+    gallium_frontends += 'omx' + with_gallium_omx
   endif
   if with_gallium_va
-    gallium_st += 'va'
+    gallium_frontends += 'va'
   endif
   if with_gallium_st_nine
-    gallium_st += 'nine'
+    gallium_frontends += 'nine'
   endif
   if with_gallium_opencl
-    gallium_st += 'clover'
+    gallium_frontends += 'clover'
   endif
-  summary_lines += {'Gallium st': gallium_st}
+  if with_gallium_rusticl
+    gallium_frontends += 'rusticl'
+  endif
+  gallium_summary += {'Frontends': gallium_frontends}
+  gallium_summary += {'Off-screen rendering': with_osmesa ? 'lib' + osmesa_lib_name : false}
+  gallium_summary += {'HUD lm-sensors': dep_lmsensors.found()}
 endif
+summary(gallium_summary, section: 'Gallium', bool_yn: true, list_sep: ' ')
 
-summary_lines += {'HUD lmsensors': dep_lmsensors.found()}
-summary_lines += {'Shared-glapi': with_shared_glapi}
-
-summary_lines += {'Perfetto': with_perfetto}
-if with_any_datasource
-  summary_lines += {'Perfetto ds': with_datasources}
+perfetto_summary = {'Enabled': with_perfetto}
+if with_perfetto and with_any_datasource
+  perfetto_summary += {'Data source': with_datasources}
 endif
-summary(summary_lines, section: 'Configuration summary', bool_yn: true, list_sep: ' ')
+summary(perfetto_summary, section: 'Perfetto', bool_yn: true, list_sep: ' ')
