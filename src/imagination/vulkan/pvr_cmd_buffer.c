@@ -1164,11 +1164,6 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
    return VK_SUCCESS;
 }
 
-/* Number of shareds used in the Issue Data Fence(IDF)/Wait Data Fence(WDF)
- * kernel.
- */
-#define PVR_IDF_WDF_IN_REGISTER_CONST_COUNT 12U
-
 static void
 pvr_sub_cmd_compute_job_init(const struct pvr_physical_device *pdevice,
                              struct pvr_cmd_buffer *cmd_buffer,
