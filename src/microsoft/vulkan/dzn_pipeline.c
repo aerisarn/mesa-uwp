@@ -219,6 +219,7 @@ dzn_pipeline_get_nir_shader(struct dzn_device *device,
       .caps = {
          .draw_parameters = true,
          .multiview = true,
+         .subgroup_basic = true,
       },
       .ubo_addr_format = nir_address_format_32bit_index_offset,
       .ssbo_addr_format = nir_address_format_32bit_index_offset,
