@@ -1,3 +1,4 @@
 New features
 ------------
 VK_EXT_image_compression_control on RADV
+VK_EXT_device_fault on RADV
