@@ -2895,10 +2895,11 @@ emit_load_local_workgroup_id(struct ntd_context *ctx,
 static const struct dxil_value *
 call_unary_external_function(struct ntd_context *ctx,
                              const char *name,
-                             int32_t dxil_intr)
+                             int32_t dxil_intr,
+                             enum overload_type overload)
 {
    const struct dxil_func *func =
-      dxil_get_function(&ctx->mod, name, DXIL_I32);
+      dxil_get_function(&ctx->mod, name, overload);
    if (!func)
       return false;
 
@@ -2915,9 +2916,10 @@ call_unary_external_function(struct ntd_context *ctx,
 static bool
 emit_load_unary_external_function(struct ntd_context *ctx,
                                   nir_intrinsic_instr *intr, const char *name,
-                                  int32_t dxil_intr)
+                                  int32_t dxil_intr,
+                                  enum overload_type overload)
 {
-   const struct dxil_value *value = call_unary_external_function(ctx, name, dxil_intr);
+   const struct dxil_value *value = call_unary_external_function(ctx, name, dxil_intr, overload);
    store_dest_value(ctx, &intr->dest, 0, value);
 
    return true;
@@ -2927,14 +2929,14 @@ static bool
 emit_load_sample_mask_in(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    const struct dxil_value *value = call_unary_external_function(ctx,
-      "dx.op.coverage", DXIL_INTR_COVERAGE);
+      "dx.op.coverage", DXIL_INTR_COVERAGE, DXIL_I32);
 
    /* Mask coverage with (1 << sample index). Note, done as an AND to handle extrapolation cases. */
    if (ctx->mod.info.has_per_sample_input) {
       value = dxil_emit_binop(&ctx->mod, DXIL_BINOP_AND, value,
          dxil_emit_binop(&ctx->mod, DXIL_BINOP_SHL,
             dxil_module_get_int32_const(&ctx->mod, 1),
-            call_unary_external_function(ctx, "dx.op.sampleIndex", DXIL_INTR_SAMPLE_INDEX), 0), 0);
+            call_unary_external_function(ctx, "dx.op.sampleIndex", DXIL_INTR_SAMPLE_INDEX, DXIL_I32), 0), 0);
    }
 
    store_dest_value(ctx, &intr->dest, 0, value);
@@ -4386,7 +4388,7 @@ emit_load_sample_id(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 
    if (ctx->mod.info.has_per_sample_input)
       return emit_load_unary_external_function(ctx, intr, "dx.op.sampleIndex",
-                                               DXIL_INTR_SAMPLE_INDEX);
+                                               DXIL_INTR_SAMPLE_INDEX, DXIL_I32);
 
    store_dest_value(ctx, &intr->dest, 0, dxil_module_get_int32_const(&ctx->mod, 0));
    return true;
@@ -4425,7 +4427,7 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_load_ubo_dxil(ctx, intr);
    case nir_intrinsic_load_primitive_id:
       return emit_load_unary_external_function(ctx, intr, "dx.op.primitiveID",
-                                               DXIL_INTR_PRIMITIVE_ID);
+                                               DXIL_INTR_PRIMITIVE_ID, DXIL_I32);
    case nir_intrinsic_load_sample_id:
    case nir_intrinsic_load_sample_id_no_per_sample:
       return emit_load_sample_id(ctx, intr);
@@ -4433,17 +4435,17 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       switch (ctx->mod.shader_kind) {
       case DXIL_HULL_SHADER:
          return emit_load_unary_external_function(ctx, intr, "dx.op.outputControlPointID",
-                                                  DXIL_INTR_OUTPUT_CONTROL_POINT_ID);
+                                                  DXIL_INTR_OUTPUT_CONTROL_POINT_ID, DXIL_I32);
       case DXIL_GEOMETRY_SHADER:
          return emit_load_unary_external_function(ctx, intr, "dx.op.gsInstanceID",
-                                                  DXIL_INTR_GS_INSTANCE_ID);
+                                                  DXIL_INTR_GS_INSTANCE_ID, DXIL_I32);
       default:
          unreachable("Unexpected shader kind for invocation ID");
       }
    case nir_intrinsic_load_view_index:
       ctx->mod.feats.view_id = true;
       return emit_load_unary_external_function(ctx, intr, "dx.op.viewID",
-                                               DXIL_INTR_VIEW_ID);
+                                               DXIL_INTR_VIEW_ID, DXIL_I32);
    case nir_intrinsic_load_sample_mask_in:
       return emit_load_sample_mask_in(ctx, intr);
    case nir_intrinsic_load_tess_coord:
@@ -4585,7 +4587,7 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 
    case nir_intrinsic_is_helper_invocation:
       return emit_load_unary_external_function(
-         ctx, intr, "dx.op.isHelperLane", DXIL_INTR_IS_HELPER_LANE);
+         ctx, intr, "dx.op.isHelperLane", DXIL_INTR_IS_HELPER_LANE, DXIL_I32);
 
    case nir_intrinsic_load_num_workgroups:
    case nir_intrinsic_load_workgroup_size:
