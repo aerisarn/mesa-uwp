@@ -37,13 +37,6 @@
 /* TODO: Rogue_validate should make sure that immediate (sources) don't have any
  * modifiers set... */
 
-/* TODO NEXT: Make sure that Register Usage Restrictions are followed (and go
- * through ISR and add any other restrictions). */
-/* TODO: Remember that some instructions have the DESTINATION as a source
- * (register pointers), e.g. fitrp using S3 */
-/* TODO: Go through and make sure that validation state is being properly
- * updated as so to allow for validation_log to print enough info. */
-
 /* TODO NEXT: Check for emit/end/etc. as last instruction in vertex shader, and
  * nop.end, or end flag set (or just pseudo-end) otherwise. */
 
@@ -52,6 +45,7 @@ typedef struct rogue_validation_state {
    const char *when; /** Description of the validation being done. */
    bool nonfatal; /** Don't stop at the first error.*/
    struct {
+      const rogue_block *block; /** Current basic block being validated. */
       const rogue_instr *instr; /** Current instruction being validated. */
       const rogue_instr_group *group; /** Current instruction group being
                                          validated. */
@@ -86,6 +80,14 @@ static void PRINTFLIKE(2, 3)
    char *msg = ralloc_asprintf(state->error_msgs, "Validation error");
 
    /* Add info about the item that was being validated. */
+
+   if (state->ctx.block) {
+      if (state->ctx.block->label)
+         ralloc_asprintf_append(&msg, " block \"%s\"", state->ctx.block->label);
+      else
+         ralloc_asprintf_append(&msg, " block%u", state->ctx.block->index);
+   }
+
    if (state->ctx.instr) {
       ralloc_asprintf_append(&msg, " instr %u", state->ctx.instr->index);
    }
@@ -266,8 +268,6 @@ static void validate_alu_instr(rogue_validation_state *state,
                    alu->instr.repeat,
                    info->src_repeat_mask);
    }
-
-   /* TODO: Check that the src_use and dst_write fields are correct? */
 }
 
 static void validate_backend_instr(rogue_validation_state *state,
@@ -309,8 +309,6 @@ static void validate_backend_instr(rogue_validation_state *state,
                    backend->instr.repeat,
                    info->src_repeat_mask);
    }
-
-   /* TODO: Check that the src_use and dst_write fields are correct? */
 }
 
 /* Returns true if instruction can end block. */
@@ -359,8 +357,6 @@ static bool validate_ctrl_instr(rogue_validation_state *state,
                    ctrl->instr.repeat,
                    info->src_repeat_mask);
    }
-
-   /* TODO: Check that the src_use and dst_write fields are correct? */
 
    /* nop.end counts as a end-of-block instruction. */
    if (rogue_instr_is_nop_end(&ctrl->instr))
@@ -444,11 +440,12 @@ static bool validate_instr_group(rogue_validation_state *state,
 static void validate_block(rogue_validation_state *state,
                            const rogue_block *block)
 {
-   /* TODO: Set/reset state->block */
    /* TODO: Validate block properties. */
+   state->ctx.block = block;
 
    if (list_is_empty(&block->instrs)) {
       validate_log(state, "Block is empty.");
+      state->ctx.block = NULL;
       return;
    }
 
@@ -478,6 +475,8 @@ static void validate_block(rogue_validation_state *state,
       validate_log(
          state,
          "Control flow instruction is present prior to the end of the block.");
+
+   state->ctx.block = NULL;
 }
 
 static void validate_reg_use(rogue_validation_state *state,

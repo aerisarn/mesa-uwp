@@ -30,17 +30,6 @@
  * \brief Main header.
  */
 
-/* TODO NEXT: Choose different names for Rogue IR src/dest vs e.g. S0-5, W0-1 as
- * it's confusing. Maybe read/write? */
-
-/* TODO: Look into using linear_alloc. */
-/* TODO NEXT: Make things const that can be. */
-
-/* TODO NEXT: Use debug message functions in u_debug.h */
-
-/* TODO NEXT: Reg/src/dst things are often just simple comparisons; write
- * per-instr-type comparison function that also checks things like modifiers. */
-
 /* TODO NEXT: In "unreachable"s, replace "invalid" with "unsupported". */
 
 #include "compiler/nir/nir.h"
@@ -1920,9 +1909,6 @@ static inline void rogue_instr_delete(rogue_instr *instr)
 {
    rogue_unlink_instr_use(instr);
    rogue_unlink_instr_write(instr);
-
-   /* TODO NEXT: If src/dst regs have no uses/writes,
-    * get rid of them? */
 
    list_del(&instr->link);
 
