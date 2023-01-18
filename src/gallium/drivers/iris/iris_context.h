@@ -379,6 +379,18 @@ enum pipe_control_flags
    (PIPE_CONTROL_L3_READ_ONLY_CACHE_INVALIDATE | \
     PIPE_CONTROL_CONST_CACHE_INVALIDATE)
 
+#define PIPE_CONTROL_GRAPHICS_BITS \
+   (PIPE_CONTROL_RENDER_TARGET_FLUSH |          \
+    PIPE_CONTROL_DEPTH_CACHE_FLUSH |            \
+    PIPE_CONTROL_TILE_CACHE_FLUSH |             \
+    PIPE_CONTROL_DEPTH_STALL |                  \
+    PIPE_CONTROL_STALL_AT_SCOREBOARD |          \
+    PIPE_CONTROL_PSS_STALL_SYNC |               \
+    PIPE_CONTROL_VF_CACHE_INVALIDATE |          \
+    PIPE_CONTROL_GLOBAL_SNAPSHOT_COUNT_RESET |  \
+    PIPE_CONTROL_L3_READ_ONLY_CACHE_INVALIDATE |\
+    PIPE_CONTROL_WRITE_DEPTH_COUNT)
+
 enum iris_predicate_state {
    /* The first two states are used if we can determine whether to draw
     * without having to look at the values in the query object buffer. This

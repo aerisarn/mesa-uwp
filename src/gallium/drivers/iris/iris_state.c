@@ -654,7 +654,7 @@ emit_pipeline_select(struct iris_batch *batch, uint32_t pipeline)
    enum pipe_control_flags flags = PIPE_CONTROL_CS_STALL |
                                    PIPE_CONTROL_FLUSH_HDC;
 
-   if (pipeline == GPGPU) {
+   if (pipeline == GPGPU && batch->name == IRIS_BATCH_RENDER) {
       flags |= PIPE_CONTROL_RENDER_TARGET_FLUSH |
                PIPE_CONTROL_DEPTH_CACHE_FLUSH;
    }
