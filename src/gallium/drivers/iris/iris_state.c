@@ -384,6 +384,20 @@ emit_state(struct iris_batch *batch,
 static void
 flush_before_state_base_change(struct iris_batch *batch)
 {
+   /* Wa_14014427904 - We need additional invalidate/flush when
+    * emitting NP state commands with ATS-M in compute mode.
+    */
+   bool atsm_compute = intel_device_info_is_atsm(batch->screen->devinfo) &&
+                       batch->name == IRIS_BATCH_COMPUTE;
+   uint32_t np_state_wa_bits =
+      PIPE_CONTROL_CS_STALL |
+      PIPE_CONTROL_STATE_CACHE_INVALIDATE |
+      PIPE_CONTROL_CONST_CACHE_INVALIDATE |
+      PIPE_CONTROL_UNTYPED_DATAPORT_CACHE_FLUSH |
+      PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE |
+      PIPE_CONTROL_INSTRUCTION_INVALIDATE |
+      PIPE_CONTROL_FLUSH_HDC;
+
    /* Flush before emitting STATE_BASE_ADDRESS.
     *
     * This isn't documented anywhere in the PRM.  However, it seems to be
@@ -407,6 +421,7 @@ flush_before_state_base_change(struct iris_batch *batch)
     */
    iris_emit_end_of_pipe_sync(batch,
                               "change STATE_BASE_ADDRESS (flushes)",
+                              atsm_compute ? np_state_wa_bits : 0 |
                               PIPE_CONTROL_RENDER_TARGET_FLUSH |
                               PIPE_CONTROL_DEPTH_CACHE_FLUSH |
                               PIPE_CONTROL_DATA_CACHE_FLUSH);
