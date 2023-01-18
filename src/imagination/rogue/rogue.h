@@ -508,6 +508,9 @@ enum rogue_io {
    /* Predicate register. */
    ROGUE_IO_P0,
 
+   /* For optional instruction arguments. */
+   ROGUE_IO_NONE,
+
    ROGUE_IO_COUNT,
 };
 
@@ -529,6 +532,11 @@ static inline bool rogue_io_is_iss(enum rogue_io io)
 static inline bool rogue_io_is_ft(enum rogue_io io)
 {
    return (io >= ROGUE_IO_FT0 && io <= ROGUE_IO_FTE);
+}
+
+static inline bool rogue_io_is_none(enum rogue_io io)
+{
+   return io == ROGUE_IO_NONE;
 }
 
 typedef struct rogue_io_info {

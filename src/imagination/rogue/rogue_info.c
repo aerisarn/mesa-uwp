@@ -288,6 +288,7 @@ const rogue_io_info rogue_io_infos[ROGUE_IO_COUNT] = {
 	[ROGUE_IO_FT4] = { .str = "ft4", },
 	[ROGUE_IO_FT5] = { .str = "ft5", },
 	[ROGUE_IO_P0] = { .str = "p0", },
+	[ROGUE_IO_NONE] = { .str = "_", },
 };
 
 #define SM(src_mod) BITFIELD64_BIT(ROGUE_ALU_SRC_MOD_##src_mod)
