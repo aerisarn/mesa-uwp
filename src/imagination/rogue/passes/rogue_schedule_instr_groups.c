@@ -72,11 +72,16 @@ static void rogue_lower_alu_io(rogue_alu_instr *alu, rogue_instr_group *group)
    const rogue_alu_op_info *info = &rogue_alu_op_infos[alu->op];
    enum rogue_instr_phase phase = alu->instr.index;
 
-   rogue_set_io_sel(&group->io_sel,
-                    info->phase_io[phase].dst,
-                    &alu->dst.ref,
-                    true);
-   alu->dst.ref = rogue_ref_io(info->phase_io[phase].dst);
+   for (unsigned u = 0; u < info->num_dsts; ++u) {
+      if (info->phase_io[phase].dst[u] == ROGUE_IO_INVALID)
+         continue;
+
+      rogue_set_io_sel(&group->io_sel,
+                       info->phase_io[phase].dst[u],
+                       &alu->dst[u].ref,
+                       true);
+      alu->dst[u].ref = rogue_ref_io(info->phase_io[phase].dst[u]);
+   }
 
    for (unsigned u = 0; u < info->num_srcs; ++u) {
       if (info->phase_io[phase].src[u] == ROGUE_IO_INVALID)

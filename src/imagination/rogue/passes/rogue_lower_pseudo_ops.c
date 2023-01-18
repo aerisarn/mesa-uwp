@@ -35,7 +35,7 @@
 
 static inline bool rogue_lower_FABS(rogue_builder *b, rogue_alu_instr *fabs)
 {
-   rogue_alu_instr *mbyp = rogue_MBYP(b, fabs->dst.ref, fabs->src[0].ref);
+   rogue_alu_instr *mbyp = rogue_MBYP(b, fabs->dst[0].ref, fabs->src[0].ref);
    rogue_merge_instr_comment(&mbyp->instr, &fabs->instr, "fabs");
    rogue_set_alu_src_mod(mbyp, 0, ROGUE_ALU_SRC_MOD_ABS);
    rogue_instr_delete(&fabs->instr);
@@ -45,7 +45,7 @@ static inline bool rogue_lower_FABS(rogue_builder *b, rogue_alu_instr *fabs)
 
 static inline bool rogue_lower_FNEG(rogue_builder *b, rogue_alu_instr *fneg)
 {
-   rogue_alu_instr *mbyp = rogue_MBYP(b, fneg->dst.ref, fneg->src[0].ref);
+   rogue_alu_instr *mbyp = rogue_MBYP(b, fneg->dst[0].ref, fneg->src[0].ref);
    rogue_merge_instr_comment(&mbyp->instr, &fneg->instr, "fneg");
    rogue_set_alu_src_mod(mbyp, 0, ROGUE_ALU_SRC_MOD_NEG);
    rogue_instr_delete(&fneg->instr);
@@ -55,7 +55,7 @@ static inline bool rogue_lower_FNEG(rogue_builder *b, rogue_alu_instr *fneg)
 
 static inline bool rogue_lower_FNABS(rogue_builder *b, rogue_alu_instr *fnabs)
 {
-   rogue_alu_instr *mbyp = rogue_MBYP(b, fnabs->dst.ref, fnabs->src[0].ref);
+   rogue_alu_instr *mbyp = rogue_MBYP(b, fnabs->dst[0].ref, fnabs->src[0].ref);
    rogue_merge_instr_comment(&mbyp->instr, &fnabs->instr, "fnabs");
    rogue_set_alu_src_mod(mbyp, 0, ROGUE_ALU_SRC_MOD_ABS);
    rogue_set_alu_src_mod(mbyp, 0, ROGUE_ALU_SRC_MOD_NEG);
@@ -70,11 +70,11 @@ static inline bool rogue_lower_MOV(rogue_builder *b, rogue_alu_instr *mov)
 
    /* If we're writing to a vertex output register, we need to use uvsw.write.
     */
-   if (rogue_ref_is_reg(&mov->dst.ref) &&
-       mov->dst.ref.reg->class == ROGUE_REG_CLASS_VTXOUT) {
-      instr = &rogue_UVSW_WRITE(b, mov->dst.ref, mov->src[0].ref)->instr;
+   if (rogue_ref_is_reg(&mov->dst[0].ref) &&
+       mov->dst[0].ref.reg->class == ROGUE_REG_CLASS_VTXOUT) {
+      instr = &rogue_UVSW_WRITE(b, mov->dst[0].ref, mov->src[0].ref)->instr;
    } else {
-      instr = &rogue_MBYP(b, mov->dst.ref, mov->src[0].ref)->instr;
+      instr = &rogue_MBYP(b, mov->dst[0].ref, mov->src[0].ref)->instr;
    }
 
    rogue_merge_instr_comment(instr, &mov->instr, "mov");

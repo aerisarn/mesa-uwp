@@ -646,17 +646,20 @@ void rogue_link_instr_write(rogue_instr *instr)
    switch (instr->type) {
    case ROGUE_INSTR_TYPE_ALU: {
       rogue_alu_instr *alu = rogue_instr_as_alu(instr);
+      const unsigned num_dsts = rogue_alu_op_infos[alu->op].num_dsts;
 
-      if (rogue_ref_is_reg(&alu->dst.ref)) {
-         rogue_reg_write *write = &alu->dst_write.reg;
-         rogue_reg *reg = alu->dst.ref.reg;
-         rogue_link_instr_write_reg(instr, write, reg, 0);
-      } else if (rogue_ref_is_regarray(&alu->dst.ref)) {
-         struct util_dynarray **writearray = &alu->dst_write.regarray;
-         rogue_regarray *regarray = alu->dst.ref.regarray;
-         rogue_link_instr_write_regarray(instr, writearray, regarray, 0);
-      } else {
-         unreachable("Invalid destination reference type.");
+      for (unsigned i = 0; i < num_dsts; ++i) {
+         if (rogue_ref_is_reg(&alu->dst[i].ref)) {
+            rogue_reg_write *write = &alu->dst_write[i].reg;
+            rogue_reg *reg = alu->dst[i].ref.reg;
+            rogue_link_instr_write_reg(instr, write, reg, 0);
+         } else if (rogue_ref_is_regarray(&alu->dst[i].ref)) {
+            struct util_dynarray **writearray = &alu->dst_write[i].regarray;
+            rogue_regarray *regarray = alu->dst[i].ref.regarray;
+            rogue_link_instr_write_regarray(instr, writearray, regarray, 0);
+         } else {
+            unreachable("Invalid destination reference type.");
+         }
       }
 
       break;
@@ -815,15 +818,18 @@ void rogue_unlink_instr_write(rogue_instr *instr)
    switch (instr->type) {
    case ROGUE_INSTR_TYPE_ALU: {
       rogue_alu_instr *alu = rogue_instr_as_alu(instr);
+      const unsigned num_dsts = rogue_alu_op_infos[alu->op].num_dsts;
 
-      if (rogue_ref_is_reg(&alu->dst.ref)) {
-         rogue_reg_write *write = &alu->dst_write.reg;
-         rogue_unlink_instr_write_reg(instr, write);
-      } else if (rogue_ref_is_regarray(&alu->dst.ref)) {
-         struct util_dynarray **writearray = &alu->dst_write.regarray;
-         rogue_unlink_instr_write_regarray(instr, writearray);
-      } else {
-         unreachable("Invalid destination reference type.");
+      for (unsigned i = 0; i < num_dsts; ++i) {
+         if (rogue_ref_is_reg(&alu->dst[i].ref)) {
+            rogue_reg_write *write = &alu->dst_write[i].reg;
+            rogue_unlink_instr_write_reg(instr, write);
+         } else if (rogue_ref_is_regarray(&alu->dst[i].ref)) {
+            struct util_dynarray **writearray = &alu->dst_write[i].regarray;
+            rogue_unlink_instr_write_regarray(instr, writearray);
+         } else {
+            unreachable("Invalid destination reference type.");
+         }
       }
 
       break;

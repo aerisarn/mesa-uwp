@@ -256,12 +256,21 @@ static inline void rogue_print_alu_instr(FILE *fp, const rogue_alu_instr *alu)
 
    rogue_print_alu_mods(fp, alu);
 
-   fputs(" ", fp);
+   for (unsigned i = 0; i < info->num_dsts; ++i) {
+      if (i > 0)
+         fputs(",", fp);
 
-   rogue_print_alu_dst(fp, &alu->dst);
+      fputs(" ", fp);
+
+      rogue_print_alu_dst(fp, &alu->dst[i]);
+   }
 
    for (unsigned i = 0; i < info->num_srcs; ++i) {
-      fputs(", ", fp);
+      if (i == 0 && !info->num_dsts)
+         fputs(" ", fp);
+      else
+         fputs(", ", fp);
+
       rogue_print_alu_src(fp, &alu->src[i]);
    }
 }

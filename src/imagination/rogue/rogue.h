@@ -864,6 +864,7 @@ static inline bool rogue_refs_equal(rogue_ref *a, rogue_ref *b)
 typedef struct rogue_alu_dst {
    rogue_ref ref;
    uint64_t mod;
+   unsigned index;
 } rogue_alu_dst;
 
 typedef struct rogue_alu_src {
@@ -1066,9 +1067,10 @@ static inline bool rogue_ctrl_op_has_dsts(enum rogue_ctrl_op op)
 
 /* ALU instructions have at most 3 sources. */
 #define ROGUE_ALU_OP_MAX_SRCS 3
+#define ROGUE_ALU_OP_MAX_DSTS 2
 
 typedef struct rogue_alu_io_info {
-   enum rogue_io dst;
+   enum rogue_io dst[ROGUE_ALU_OP_MAX_DSTS];
    enum rogue_io src[ROGUE_ALU_OP_MAX_SRCS];
 } rogue_alu_io_info;
 
@@ -1076,17 +1078,18 @@ typedef struct rogue_alu_io_info {
 typedef struct rogue_alu_op_info {
    const char *str;
 
+   unsigned num_dsts;
    unsigned num_srcs;
 
    uint64_t supported_phases;
    rogue_alu_io_info phase_io[ROGUE_INSTR_PHASE_COUNT];
 
    uint64_t supported_op_mods;
-   uint64_t supported_dst_mods;
+   uint64_t supported_dst_mods[ROGUE_ALU_OP_MAX_DSTS];
    uint64_t supported_src_mods[ROGUE_ALU_OP_MAX_SRCS];
 
    /* TODO NEXT: Do the same for other instruction types. */
-   uint64_t supported_dst_types;
+   uint64_t supported_dst_types[ROGUE_ALU_OP_MAX_DSTS];
    uint64_t supported_src_types[ROGUE_ALU_OP_MAX_SRCS];
 } rogue_alu_op_info;
 
@@ -1143,12 +1146,12 @@ typedef struct rogue_alu_instr {
 
    uint64_t mod;
 
-   rogue_alu_dst dst;
+   rogue_alu_dst dst[ROGUE_ALU_OP_MAX_DSTS];
 
    union {
       rogue_reg_write reg;
       struct util_dynarray *regarray;
-   } dst_write;
+   } dst_write[ROGUE_ALU_OP_MAX_DSTS];
 
    rogue_alu_src src[ROGUE_ALU_OP_MAX_SRCS];
 
@@ -1171,9 +1174,17 @@ static inline bool rogue_alu_op_mod_is_set(const rogue_alu_instr *alu,
 }
 
 static inline void rogue_set_alu_dst_mod(rogue_alu_instr *alu,
+                                         unsigned dst_index,
                                          enum rogue_alu_dst_mod mod)
 {
-   alu->dst.mod |= BITFIELD64_BIT(mod);
+   alu->dst[dst_index].mod |= BITFIELD64_BIT(mod);
+}
+
+static inline bool rogue_alu_dst_mod_is_set(const rogue_alu_instr *alu,
+                                            unsigned dst_index,
+                                            enum rogue_alu_dst_mod mod)
+{
+   return !!(alu->dst[dst_index].mod & BITFIELD64_BIT(mod));
 }
 
 static inline void rogue_set_alu_src_mod(rogue_alu_instr *alu,
@@ -2082,7 +2093,7 @@ static inline bool rogue_dst_reg_replace(rogue_reg_write *write,
 
    switch (instr->type) {
    case ROGUE_INSTR_TYPE_ALU:
-      ref = &rogue_instr_as_alu(instr)->dst.ref;
+      ref = &rogue_instr_as_alu(instr)->dst[dst_index].ref;
       break;
 
    case ROGUE_INSTR_TYPE_BACKEND:

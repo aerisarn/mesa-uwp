@@ -37,7 +37,8 @@ static bool can_back_prop(rogue_alu_instr *mov)
 {
    /* TODO: Check for src/dst modifiers when support is added for them. */
 
-   if (!rogue_ref_is_reg(&mov->src[0].ref) || !rogue_ref_is_reg(&mov->dst.ref))
+   if (!rogue_ref_is_reg(&mov->src[0].ref) ||
+       !rogue_ref_is_reg(&mov->dst[0].ref))
       return false;
 
    if (mov->src[0].ref.reg->regarray)
@@ -45,7 +46,7 @@ static bool can_back_prop(rogue_alu_instr *mov)
 
    /* Vertex outputs require uvsw.write; only back-propagate if the parent
     * instruction is also a mov. */
-   if (mov->dst.ref.reg->class == ROGUE_REG_CLASS_VTXOUT) {
+   if (mov->dst[0].ref.reg->class == ROGUE_REG_CLASS_VTXOUT) {
       rogue_reg_write *write =
          list_first_entry(&mov->src[0].ref.reg->writes, rogue_reg_write, link);
 
@@ -62,7 +63,7 @@ static bool can_back_prop(rogue_alu_instr *mov)
       return false;
 
    /* Is this the only instruction that writes to this register? */
-   if (!list_is_singular(&mov->dst.ref.reg->writes))
+   if (!list_is_singular(&mov->dst[0].ref.reg->writes))
       return false;
 
    return true;
@@ -72,13 +73,14 @@ static bool can_forward_prop(rogue_alu_instr *mov)
 {
    /* TODO: Check for src/dst modifiers when support is added for them. */
 
-   if (!rogue_ref_is_reg(&mov->src[0].ref) || !rogue_ref_is_reg(&mov->dst.ref))
+   if (!rogue_ref_is_reg(&mov->src[0].ref) ||
+       !rogue_ref_is_reg(&mov->dst[0].ref))
       return false;
 
-   if (mov->dst.ref.reg->regarray)
+   if (mov->dst[0].ref.reg->regarray)
       return false;
 
-   if (mov->dst.ref.reg->class != ROGUE_REG_CLASS_SSA)
+   if (mov->dst[0].ref.reg->class != ROGUE_REG_CLASS_SSA)
       return false;
 
    /* Is the source register written to more than once (driver-supplied regs can
@@ -87,7 +89,7 @@ static bool can_forward_prop(rogue_alu_instr *mov)
       return false;
 
    /* Is this the only instruction that writes to this register? */
-   if (!list_is_singular(&mov->dst.ref.reg->writes))
+   if (!list_is_singular(&mov->dst[0].ref.reg->writes))
       return false;
 
    return true;
@@ -96,7 +98,7 @@ static bool can_forward_prop(rogue_alu_instr *mov)
 static bool rogue_back_prop(rogue_alu_instr *mov)
 {
    rogue_reg *mov_src = mov->src[0].ref.reg;
-   rogue_reg *mov_dst = mov->dst.ref.reg;
+   rogue_reg *mov_dst = mov->dst[0].ref.reg;
 
    rogue_reg_write *write =
       list_first_entry(&mov_src->writes, rogue_reg_write, link);
@@ -114,7 +116,7 @@ static bool rogue_forward_prop(rogue_alu_instr *mov)
    bool success = true;
 
    rogue_reg *mov_src = mov->src[0].ref.reg;
-   rogue_reg *mov_dst = mov->dst.ref.reg;
+   rogue_reg *mov_dst = mov->dst[0].ref.reg;
 
    rogue_foreach_reg_use_safe (use, mov_dst)
       if (rogue_can_replace_reg_use(use, mov_src))

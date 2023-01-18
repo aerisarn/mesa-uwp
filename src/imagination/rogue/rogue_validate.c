@@ -194,8 +194,9 @@ static void validate_alu_instr(rogue_validation_state *state,
    if (!rogue_mods_supported(alu->mod, info->supported_op_mods))
       validate_log(state, "Unsupported ALU op modifiers.");
 
-   /* Validate destination and sources. */
-   validate_alu_dst(state, &alu->dst, info->supported_dst_types);
+   /* Validate destinations and sources. */
+   for (unsigned i = 0; i < info->num_dsts; ++i)
+      validate_alu_dst(state, &alu->dst[i], info->supported_dst_types[i]);
 
    for (unsigned i = 0; i < info->num_srcs; ++i)
       validate_alu_src(state, &alu->src[i], info->supported_src_types[i]);
