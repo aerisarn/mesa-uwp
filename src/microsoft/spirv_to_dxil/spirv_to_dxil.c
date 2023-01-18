@@ -60,6 +60,7 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
       .caps = {
          .draw_parameters = true,
          .multiview = true,
+         .subgroup_basic = true,
       },
       .ubo_addr_format = nir_address_format_32bit_index_offset,
       .ssbo_addr_format = nir_address_format_32bit_index_offset,

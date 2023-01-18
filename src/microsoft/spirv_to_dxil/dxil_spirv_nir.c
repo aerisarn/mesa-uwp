@@ -866,6 +866,9 @@ dxil_spirv_nir_passes(nir_shader *nir,
 
    NIR_PASS_V(nir, nir_lower_system_values);
 
+   NIR_PASS_V(nir, dxil_nir_lower_subgroup_id);
+   NIR_PASS_V(nir, dxil_nir_lower_num_subgroups);
+
    // Force sample-rate shading if we're asked to.
    if (conf->force_sample_rate_shading) {
       assert(nir->info.stage == MESA_SHADER_FRAGMENT);
