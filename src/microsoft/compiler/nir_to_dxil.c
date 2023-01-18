@@ -4556,7 +4556,7 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_image_atomic(ctx, intr, DXIL_ATOMIC_IMAX, nir_type_int);
    case nir_intrinsic_image_deref_atomic_umax:
    case nir_intrinsic_image_atomic_umax:
-      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_IMAX, nir_type_uint);
+      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_UMAX, nir_type_uint);
    case nir_intrinsic_image_deref_atomic_and:
    case nir_intrinsic_image_atomic_and:
       return emit_image_atomic(ctx, intr, DXIL_ATOMIC_AND, nir_type_uint);
