@@ -107,6 +107,8 @@ dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
 #ifdef DZN_USE_WSI_PLATFORM
       .KHR_swapchain                         = true,
 #endif
+      .EXT_shader_subgroup_ballot            = true,
+      .EXT_shader_subgroup_vote              = true,
       .EXT_vertex_attribute_divisor          = true,
    };
 }
@@ -1728,9 +1730,16 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
                     pdevice->desc.dedicated_system_memory +
                     pdevice->desc.shared_system_memory) / 4,
                128ull * 1024 * 1024, 2ull * 1024 * 1024 * 1024),
-      .subgroupSupportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT,
-      .subgroupSupportedStages = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT |
-                                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT,
+      .subgroupSupportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT |
+                                     VK_SUBGROUP_FEATURE_BALLOT_BIT |
+                                     VK_SUBGROUP_FEATURE_VOTE_BIT |
+                                     VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
+                                     VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT |
+                                     VK_SUBGROUP_FEATURE_QUAD_BIT,
+      /* Note: The CTS doesn't seem to respect the subgroupQuadOperationsInAllStages bit, and it
+       * seems more useful to support quad ops in FS/CS than subgroup ops at all in VS/GS. */
+      .subgroupSupportedStages = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT,
+      .subgroupQuadOperationsInAllStages = false,
       .subgroupSize = pdevice->options1.WaveOps ? pdevice->options1.WaveLaneCountMin : 1,
    };
    memcpy(core_1_1.driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
