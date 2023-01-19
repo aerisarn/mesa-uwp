@@ -873,6 +873,22 @@ dxil_spirv_nir_link(nir_shader *nir, nir_shader *prev_stage_nir,
    glsl_type_singleton_decref();
 }
 
+static unsigned
+lower_bit_size_callback(const nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return 0;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   switch (intr->intrinsic) {
+   case nir_intrinsic_quad_swap_horizontal:
+   case nir_intrinsic_quad_swap_vertical:
+   case nir_intrinsic_quad_swap_diagonal:
+      return intr->dest.ssa.bit_size == 1 ? 32 : 0;
+   default:
+      return 0;
+   }
+}
+
 void
 dxil_spirv_nir_passes(nir_shader *nir,
                       const struct dxil_spirv_runtime_conf *conf,
@@ -901,6 +917,16 @@ dxil_spirv_nir_passes(nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_compute_system_values, &compute_options);
    NIR_PASS_V(nir, dxil_nir_lower_subgroup_id);
    NIR_PASS_V(nir, dxil_nir_lower_num_subgroups);
+
+   nir_lower_subgroups_options subgroup_options = {
+      .ballot_bit_size = 32,
+      .ballot_components = 4,
+      .lower_subgroup_masks = true,
+      .lower_to_scalar = true,
+      .lower_relative_shuffle = true,
+   };
+   NIR_PASS_V(nir, nir_lower_subgroups, &subgroup_options);
+   NIR_PASS_V(nir, nir_lower_bit_size, lower_bit_size_callback, NULL);
 
    // Force sample-rate shading if we're asked to.
    if (conf->force_sample_rate_shading) {
