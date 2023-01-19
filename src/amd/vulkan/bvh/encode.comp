@@ -161,12 +161,12 @@ main()
    uint32_t node_id = pack_node_id(dst_node_offset, radv_bvh_node_box32);
 
    for (;;) {
-      /* Make changes to the current node's in_final_tree value visible. */
+      /* Make changes to the current node's BVH offset value visible. */
       memoryBarrier(gl_ScopeDevice, gl_StorageSemanticsBuffer,
                     gl_SemanticsAcquireRelease | gl_SemanticsMakeAvailable | gl_SemanticsMakeVisible);
 
-      uint32_t in_final_tree = node_id == RADV_BVH_ROOT_NODE ? FINAL_TREE_PRESENT : DEREF(src_node).in_final_tree;
-      if (in_final_tree == FINAL_TREE_UNKNOWN)
+      uint32_t bvh_offset = node_id == RADV_BVH_ROOT_NODE ? id_to_offset(RADV_BVH_ROOT_NODE) : DEREF(src_node).bvh_offset;
+      if (bvh_offset == RADV_UNKNOWN_BVH_OFFSET)
          continue;
 
       uint32_t found_child_count = 0;
@@ -221,8 +221,8 @@ main()
                children[collapsed_child_index] = children[found_child_count];
             }
 
-            if (in_final_tree == FINAL_TREE_PRESENT)
-               DEREF(child_node).in_final_tree = FINAL_TREE_NOT_PRESENT;
+            if (bvh_offset != RADV_NULL_BVH_OFFSET)
+               DEREF(child_node).bvh_offset = RADV_NULL_BVH_OFFSET;
          } else
             break;
       }
@@ -237,9 +237,9 @@ main()
             uint32_t child_index = offset_in_internal_nodes / SIZEOF(radv_ir_box_node);
             dst_offset = dst_internal_offset + child_index * SIZEOF(radv_bvh_box32_node);
 
-            if (in_final_tree == FINAL_TREE_PRESENT) {
+            if (bvh_offset != RADV_NULL_BVH_OFFSET) {
                REF(radv_ir_box_node) child_node = REF(radv_ir_box_node)OFFSET(args.intermediate_bvh, offset);
-               DEREF(child_node).in_final_tree = FINAL_TREE_PRESENT;
+               DEREF(child_node).bvh_offset = dst_offset;
             }
          } else {
             uint32_t child_index = offset / intermediate_leaf_node_size;
@@ -255,7 +255,7 @@ main()
 
          uint32_t child_id = pack_node_id(dst_offset, ir_type_to_bvh_type(type));
          children[i] = child_id;
-         if (in_final_tree == FINAL_TREE_PRESENT)
+         if (bvh_offset != RADV_NULL_BVH_OFFSET)
             set_parent(child_id, node_id);
       }
 
@@ -266,7 +266,7 @@ main()
             }
       }
 
-      /* Make changes to the children's in_final_tree value available to the other invocations. */
+      /* Make changes to the children's BVH offset value available to the other invocations. */
       memoryBarrier(gl_ScopeDevice, gl_StorageSemanticsBuffer,
                     gl_SemanticsAcquireRelease | gl_SemanticsMakeAvailable | gl_SemanticsMakeVisible);
 
