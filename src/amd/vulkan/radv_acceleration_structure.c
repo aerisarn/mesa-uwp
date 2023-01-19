@@ -77,6 +77,7 @@ enum internal_build_type {
 struct build_config {
    enum internal_build_type internal_type;
    bool extended_sah;
+   bool compact;
 };
 
 struct acceleration_structure_layout {
@@ -117,6 +118,9 @@ build_config(uint32_t leaf_count, const VkAccelerationStructureBuildGeometryInfo
    uint32_t lds_spill_threshold = 1 << (8 * 2);
    if (leaf_count < lds_spill_threshold)
       config.extended_sah = true;
+
+   if (build_info->flags & VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR)
+      config.compact = true;
 
    return config;
 }
