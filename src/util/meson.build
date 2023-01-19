@@ -410,6 +410,16 @@ if with_tests
     env: ['BUILD_FULL_PATH='+process_test_exe_full_path]
   )
 
+  test(
+    'process_with_overrides',
+    process_test_exe,
+    suite : ['util'],
+    env: [
+      'BUILD_FULL_PATH='+process_test_exe_full_path,
+      'MESA_PROCESS_NAME=hello',
+    ]
+  )
+
   subdir('tests/hash_table')
   subdir('tests/vma')
   subdir('tests/format')

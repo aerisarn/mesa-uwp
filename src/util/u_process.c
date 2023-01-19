@@ -261,34 +261,6 @@ success:
 }
 
 bool
-util_get_process_name_may_override(const char *env_name, char *procname, size_t size)
-{
-   const char *name;
-
-   /* First, check if the env var with env_name is set to
-    * override the normal process name query.
-    */
-   name = os_get_option(env_name);
-
-   if (!name) {
-      /* do normal query */
-      name = util_get_process_name();
-   }
-
-   assert(size > 0);
-   assert(procname);
-
-   if (name && procname && size > 0) {
-      strncpy(procname, name, size);
-      procname[size - 1] = '\0';
-      return true;
-   }
-   else {
-      return false;
-   }
-}
-
-bool
 util_get_command_line(char *cmdline, size_t size)
 {
 #if DETECT_OS_WINDOWS
