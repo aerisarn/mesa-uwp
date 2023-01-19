@@ -232,12 +232,7 @@ main()
          uint32_t offset = ir_id_to_offset(children[i]);
          uint32_t dst_offset;
 
-         if (offset < intermediate_leaf_nodes_size) {
-            uint32_t child_index = offset / intermediate_leaf_node_size;
-            dst_offset = dst_leaf_offset + child_index * output_leaf_node_size;
-
-            encode_leaf_node(type, args.intermediate_bvh + offset, args.output_bvh + dst_offset);
-         } else {
+         if (type == radv_ir_node_internal) {
             uint32_t offset_in_internal_nodes = offset - intermediate_leaf_nodes_size;
             uint32_t child_index = offset_in_internal_nodes / SIZEOF(radv_ir_box_node);
             dst_offset = dst_internal_offset + child_index * SIZEOF(radv_bvh_box32_node);
@@ -246,6 +241,11 @@ main()
                REF(radv_ir_box_node) child_node = REF(radv_ir_box_node)OFFSET(args.intermediate_bvh, offset);
                DEREF(child_node).in_final_tree = FINAL_TREE_PRESENT;
             }
+         } else {
+            uint32_t child_index = offset / intermediate_leaf_node_size;
+            dst_offset = dst_leaf_offset + child_index * output_leaf_node_size;
+
+            encode_leaf_node(type, args.intermediate_bvh + offset, args.output_bvh + dst_offset);
          }
 
          radv_aabb child_aabb =
