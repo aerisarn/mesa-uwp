@@ -2779,17 +2779,19 @@ emit_load_uint_input(struct ntv_context *ctx, nir_intrinsic_instr *intr, SpvId *
                                    SpvStorageClassInput,
                                    var_name,
                                    builtin);
-      if (builtin == SpvBuiltInSampleMask) {
-         SpvId zero = emit_uint_const(ctx, 32, 0);
-         var_type = spirv_builder_type_uint(&ctx->builder, 32);
-         SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
-                                                         SpvStorageClassInput,
-                                                         var_type);
-         *var_id = spirv_builder_emit_access_chain(&ctx->builder, pointer_type, *var_id, &zero, 1);
-      }
    }
 
-   SpvId result = spirv_builder_emit_load(&ctx->builder, var_type, *var_id);
+   SpvId load_var = *var_id;
+   if (builtin == SpvBuiltInSampleMask) {
+      SpvId zero = emit_uint_const(ctx, 32, 0);
+      var_type = spirv_builder_type_uint(&ctx->builder, 32);
+      SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
+                                                      SpvStorageClassInput,
+                                                      var_type);
+      load_var = spirv_builder_emit_access_chain(&ctx->builder, pointer_type, load_var, &zero, 1);
+   }
+
+   SpvId result = spirv_builder_emit_load(&ctx->builder, var_type, load_var);
    assert(1 == nir_dest_num_components(intr->dest));
    store_dest(ctx, &intr->dest, result, nir_type_uint);
 }
