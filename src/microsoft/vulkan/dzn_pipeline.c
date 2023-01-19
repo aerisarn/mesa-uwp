@@ -195,6 +195,7 @@ struct dzn_nir_options {
    bool lower_view_index_to_rt_layer;
    enum pipe_format *vi_conversions;
    const nir_shader_compiler_options *nir_opts;
+   enum gl_subgroup_size subgroup_size;
 };
 
 static VkResult
@@ -259,6 +260,7 @@ dzn_pipeline_get_nir_shader(struct dzn_device *device,
       if (needs_conv)
          NIR_PASS_V(*nir, dxil_nir_lower_vs_vertex_conversion, options->vi_conversions);
    }
+   (*nir)->info.subgroup_size = options->subgroup_size;
 
    if (cache)
       vk_pipeline_cache_add_nir(cache, hash, SHA1_DIGEST_LENGTH, *nir);
@@ -791,6 +793,12 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       struct mesa_sha1 nir_hash_ctx;
       uint8_t nir_hash[SHA1_DIGEST_LENGTH];
 
+      const VkPipelineShaderStageRequiredSubgroupSizeCreateInfo *subgroup_size =
+         (const VkPipelineShaderStageRequiredSubgroupSizeCreateInfo *)
+         vk_find_struct_const(stages[stage].info->pNext, PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO);
+      enum gl_subgroup_size subgroup_enum = subgroup_size && subgroup_size->requiredSubgroupSize >= 8 ?
+         subgroup_size->requiredSubgroupSize : SUBGROUP_SIZE_FULL_SUBGROUPS;
+
       if (cache) {
          _mesa_sha1_init(&nir_hash_ctx);
          if (stage != MESA_SHADER_FRAGMENT)
@@ -803,6 +811,7 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
             _mesa_sha1_update(&nir_hash_ctx, &z_flip_mask, sizeof(z_flip_mask));
             _mesa_sha1_update(&nir_hash_ctx, &lower_view_index, sizeof(lower_view_index));
          }
+         _mesa_sha1_update(&nir_hash_ctx, &subgroup_enum, sizeof(subgroup_enum));
          _mesa_sha1_update(&nir_hash_ctx, stages[stage].spirv_hash, sizeof(stages[stage].spirv_hash));
          _mesa_sha1_final(&nir_hash_ctx, nir_hash);
       }
@@ -815,7 +824,8 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
          .lower_view_index = lower_view_index,
          .lower_view_index_to_rt_layer = stage == last_raster_stage ? lower_view_index : false,
          .vi_conversions = vi_conversions,
-         .nir_opts = &nir_opts
+         .nir_opts = &nir_opts,
+         .subgroup_size = subgroup_enum,
       };
 
       ret = dzn_pipeline_get_nir_shader(device, layout,

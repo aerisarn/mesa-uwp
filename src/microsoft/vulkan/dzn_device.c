@@ -109,6 +109,7 @@ dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
 #endif
       .EXT_shader_subgroup_ballot            = true,
       .EXT_shader_subgroup_vote              = true,
+      .EXT_subgroup_size_control             = true,
       .EXT_vertex_attribute_divisor          = true,
    };
 }
@@ -1411,8 +1412,8 @@ dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .privateData                        = true,
       .shaderDemoteToHelperInvocation     = false,
       .shaderTerminateInvocation          = false,
-      .subgroupSizeControl                = false,
-      .computeFullSubgroups               = false,
+      .subgroupSizeControl                = pdev->options1.WaveOps && pdev->shader_model >= D3D_SHADER_MODEL_6_6,
+      .computeFullSubgroups               = true,
       .synchronization2                   = true,
       .textureCompressionASTC_HDR         = false,
       .shaderZeroInitializeWorkgroupMemory = false,
@@ -1817,10 +1818,10 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
    const VkPhysicalDeviceVulkan13Properties core_1_3 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES,
       .minSubgroupSize = pdevice->options1.WaveOps ? pdevice->options1.WaveLaneCountMin : 1,
-      .minSubgroupSize = pdevice->options1.WaveOps ? pdevice->options1.WaveLaneCountMax : 1,
+      .maxSubgroupSize = pdevice->options1.WaveOps ? pdevice->options1.WaveLaneCountMax : 1,
       .maxComputeWorkgroupSubgroups = D3D12_CS_THREAD_GROUP_MAX_THREADS_PER_GROUP /
          (pdevice->options1.WaveOps ? pdevice->options1.WaveLaneCountMin : 1),
-      .requiredSubgroupSizeStages = 0,
+      .requiredSubgroupSizeStages = VK_SHADER_STAGE_COMPUTE_BIT,
    };
 
    vk_foreach_struct(ext, pProperties->pNext) {
