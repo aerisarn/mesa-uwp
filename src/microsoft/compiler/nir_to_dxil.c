@@ -2098,6 +2098,7 @@ get_cast_op(nir_alu_instr *alu)
          return DXIL_CAST_FPEXT;
 
    /* int -> int */
+   case nir_op_i2i1:
    case nir_op_i2i16:
    case nir_op_i2i32:
    case nir_op_i2i64:
@@ -2108,6 +2109,7 @@ get_cast_op(nir_alu_instr *alu)
          return DXIL_CAST_SEXT;
 
    /* uint -> uint */
+   case nir_op_u2u1:
    case nir_op_u2u16:
    case nir_op_u2u32:
    case nir_op_u2u64:
@@ -2673,6 +2675,8 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_unpack_half_2x16_split_y: return emit_f16tof32(ctx, alu, src[0], true);
    case nir_op_pack_half_2x16_split: return emit_f32tof16(ctx, alu, src[0], src[1]);
 
+   case nir_op_i2i1:
+   case nir_op_u2u1:
    case nir_op_b2i16:
    case nir_op_i2i16:
    case nir_op_f2i16:
