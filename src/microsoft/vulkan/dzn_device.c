@@ -1257,7 +1257,7 @@ dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .robustBufferAccess = true, /* This feature is mandatory */
       .fullDrawIndexUint32 = false,
       .imageCubeArray = true,
-      .independentBlend = false,
+      .independentBlend = true,
       .geometryShader = true,
       .tessellationShader = false,
       .sampleRateShading = true,
