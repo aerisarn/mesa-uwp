@@ -56,7 +56,6 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
    if (stage == DXIL_SPIRV_SHADER_NONE || stage == DXIL_SPIRV_SHADER_KERNEL)
       return false;
 
-
    glsl_type_singleton_init_or_ref();
 
    struct nir_to_dxil_options opts = {
