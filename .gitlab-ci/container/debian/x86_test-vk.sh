@@ -105,9 +105,9 @@ wine64 \
 
 . .gitlab-ci/container/build-hang-detection.sh
 
-############### Build piglit
+############### Build piglit replayer
 
-PIGLIT_BUILD_TARGETS="piglit_replayer" PIGLIT_OPTS="-DPIGLIT_BUILD_GLX_TESTS=ON" . .gitlab-ci/container/build-piglit.sh
+PIGLIT_BUILD_TARGETS="piglit_replayer" . .gitlab-ci/container/build-piglit.sh
 
 ############### Build Fossilize
 
