@@ -99,6 +99,7 @@ a530_gl:
     - .test-manual-mr # Unstable as of kernel 5.19
   variables:
     DEQP_SUITE: freedreno-a530
+    PIGLIT_PLATFORM: gbm
   parallel: 6
 
 .a530_piglit:

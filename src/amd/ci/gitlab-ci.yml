@@ -20,6 +20,7 @@
     # 12 devices (2023-01-10)
     RUNNER_TAG: mesa-ci-x86-64-lava-acer-R721T-grunt
     DEVICE_TYPE: acer-R721T-grunt
+    PIGLIT_PLATFORM: mixed_glx_egl
 
 .radv-stoney-test:amd64:
   extends:

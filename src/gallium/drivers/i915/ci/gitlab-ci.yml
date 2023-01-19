@@ -16,6 +16,7 @@ i915-g33:
     - .deqp-test
   variables:
     DEQP_SUITE: i915g
+    PIGLIT_PLATFORM: gbm
 
 i915-g33-traces:
   extends:

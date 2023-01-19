@@ -15,6 +15,7 @@ virpipe-on-gl:
   variables:
     DEQP_SUITE: virpipe-gl
     GPU_VERSION: virpipe-gl
+    PIGLIT_PLATFORM: x11_egl
   tags:
     - mesa-swrast
 
