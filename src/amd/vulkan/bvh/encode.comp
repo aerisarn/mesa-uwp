@@ -169,6 +169,9 @@ main()
       if (bvh_offset == RADV_UNKNOWN_BVH_OFFSET)
          continue;
 
+      if (bvh_offset == RADV_NULL_BVH_OFFSET)
+         break;
+
       uint32_t found_child_count = 0;
       uint32_t children[4] = {RADV_BVH_INVALID_NODE, RADV_BVH_INVALID_NODE,
                               RADV_BVH_INVALID_NODE, RADV_BVH_INVALID_NODE};
@@ -221,8 +224,7 @@ main()
                children[collapsed_child_index] = children[found_child_count];
             }
 
-            if (bvh_offset != RADV_NULL_BVH_OFFSET)
-               DEREF(child_node).bvh_offset = RADV_NULL_BVH_OFFSET;
+            DEREF(child_node).bvh_offset = RADV_NULL_BVH_OFFSET;
          } else
             break;
       }
@@ -237,10 +239,8 @@ main()
             uint32_t child_index = offset_in_internal_nodes / SIZEOF(radv_ir_box_node);
             dst_offset = dst_internal_offset + child_index * SIZEOF(radv_bvh_box32_node);
 
-            if (bvh_offset != RADV_NULL_BVH_OFFSET) {
-               REF(radv_ir_box_node) child_node = REF(radv_ir_box_node)OFFSET(args.intermediate_bvh, offset);
-               DEREF(child_node).bvh_offset = dst_offset;
-            }
+            REF(radv_ir_box_node) child_node = REF(radv_ir_box_node)OFFSET(args.intermediate_bvh, offset);
+            DEREF(child_node).bvh_offset = dst_offset;
          } else {
             uint32_t child_index = offset / intermediate_leaf_node_size;
             dst_offset = dst_leaf_offset + child_index * output_leaf_node_size;
@@ -255,8 +255,7 @@ main()
 
          uint32_t child_id = pack_node_id(dst_offset, ir_type_to_bvh_type(type));
          children[i] = child_id;
-         if (bvh_offset != RADV_NULL_BVH_OFFSET)
-            set_parent(child_id, node_id);
+         set_parent(child_id, node_id);
       }
 
       for (uint i = found_child_count; i < 4; ++i) {
