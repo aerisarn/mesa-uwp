@@ -2740,14 +2740,16 @@ emit_barrier_impl(struct ntd_context *ctx, nir_variable_mode modes, nir_scope ex
    if (execution_scope == NIR_SCOPE_WORKGROUP)
       flags |= DXIL_BARRIER_MODE_SYNC_THREAD_GROUP;
 
+   bool is_compute = ctx->mod.shader_kind == DXIL_COMPUTE_SHADER;
+
    if (modes & (nir_var_mem_ssbo | nir_var_mem_global | nir_var_image)) {
-      if (mem_scope > NIR_SCOPE_WORKGROUP)
+      if (mem_scope > NIR_SCOPE_WORKGROUP || !is_compute)
          flags |= DXIL_BARRIER_MODE_UAV_FENCE_GLOBAL;
       else
          flags |= DXIL_BARRIER_MODE_UAV_FENCE_THREAD_GROUP;
    }
 
-   if (modes & nir_var_mem_shared)
+   if ((modes & nir_var_mem_shared) && is_compute)
       flags |= DXIL_BARRIER_MODE_GROUPSHARED_MEM_FENCE;
 
    func = dxil_get_function(&ctx->mod, "dx.op.barrier", DXIL_NONE);
