@@ -2065,27 +2065,6 @@ dzn_queue_init(struct dzn_queue *queue,
 }
 
 static VkResult
-check_physical_device_features(VkPhysicalDevice physicalDevice,
-                               const VkPhysicalDeviceFeatures *features)
-{
-   VK_FROM_HANDLE(dzn_physical_device, pdev, physicalDevice);
-
-   VkPhysicalDeviceFeatures supported_features;
-
-   pdev->vk.dispatch_table.GetPhysicalDeviceFeatures(physicalDevice, &supported_features);
-
-   VkBool32 *supported_feature = (VkBool32 *)&supported_features;
-   VkBool32 *enabled_feature = (VkBool32 *)features;
-   unsigned num_features = sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32);
-   for (uint32_t i = 0; i < num_features; i++) {
-      if (enabled_feature[i] && !supported_feature[i])
-         return VK_ERROR_FEATURE_NOT_PRESENT;
-   }
-
-   return VK_SUCCESS;
-}
-
-static VkResult
 dzn_device_create_sync_for_memory(struct vk_device *device,
                                   VkDeviceMemory memory,
                                   bool signal_memory,
@@ -2405,8 +2384,7 @@ dzn_CreateDevice(VkPhysicalDevice physicalDevice,
 
    /* Check enabled features */
    if (pCreateInfo->pEnabledFeatures) {
-      result = check_physical_device_features(physicalDevice,
-                                              pCreateInfo->pEnabledFeatures);
+      result = vk_physical_device_check_device_features(&physical_device->vk, pCreateInfo);
       if (result != VK_SUCCESS)
          return vk_error(physical_device, result);
    }
