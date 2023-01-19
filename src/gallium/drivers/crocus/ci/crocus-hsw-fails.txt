@@ -14,7 +14,6 @@ spec@!opengl 1.1@read-front samples=2,Fail
 spec@!opengl 1.1@read-front samples=4,Fail
 spec@!opengl 1.1@read-front samples=6,Fail
 spec@!opengl 1.1@read-front samples=8,Fail
-spec@!opengl 1.1@windowoverlap,Fail
 
 fast_color_clear@fcc-write-after-clear,Fail
 
