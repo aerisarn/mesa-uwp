@@ -78,8 +78,8 @@ agx_txs(nir_builder *b, nir_tex_instr *tex)
 
    /* Width minus 1: bits [28, 42) */
    nir_ssa_def *width_m1 =
-      nir_ior(b, nir_ushr_imm(b, w0, 28),
-              nir_ishl_imm(b, nir_iand_imm(b, w1, BITFIELD_MASK(14 - 4)), 4));
+      nir_extr_agx(b, w0, w1, nir_imm_int(b, 28), nir_imm_int(b, 14));
+
    /* Height minus 1: bits [42, 56) */
    nir_ssa_def *height_m1 =
       nir_iand_imm(b, nir_ushr_imm(b, w1, 42 - 32), BITFIELD_MASK(14));
