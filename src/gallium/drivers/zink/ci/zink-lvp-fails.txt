@@ -36,9 +36,6 @@ dEQP-GLES2.functional.clipping.line.wide_line_clip_viewport_corner,Fail
 # this test tries to be error-compatible with nvidia. spoiler: mesa isn't, and no driver can pass it
 glx@glx_arb_create_context@invalid flag,Fail
 
-glx@glx-copy-sub-buffer,Fail
-glx@glx-copy-sub-buffer samples=2,Fail
-glx@glx-copy-sub-buffer samples=4,Fail
 glx@glx-swap-pixmap-bad,Fail
 glx@glx-visuals-depth,Crash
 glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail

@@ -17,11 +17,6 @@ glx@extension string sanity,Fail
 glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
 glx@glx_arb_create_context_no_error@no error,Fail
 glx@glx_arb_create_context_robustness@invalid reset notification strategy,Fail
-glx@glx-copy-sub-buffer,Fail
-glx@glx-copy-sub-buffer samples=2,Fail
-glx@glx-copy-sub-buffer samples=4,Fail
-glx@glx-copy-sub-buffer samples=6,Fail
-glx@glx-copy-sub-buffer samples=8,Fail
 glx@glx_ext_import_context@free context,Fail
 glx@glx_ext_import_context@get context id,Fail
 glx@glx_ext_import_context@get current display,Fail
