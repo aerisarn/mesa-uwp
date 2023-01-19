@@ -153,13 +153,7 @@ main()
    REF(radv_ir_box_node) src_node = INDEX(radv_ir_box_node, intermediate_internal_nodes, global_id);
    radv_ir_box_node src = DEREF(src_node);
 
-  uint32_t dst_node_offset = dst_internal_offset + global_id * SIZEOF(radv_bvh_box32_node);
    bool is_root_node = global_id == DEREF(args.header).ir_internal_node_count - 1;
-   if (is_root_node)
-      dst_node_offset = id_to_offset(RADV_BVH_ROOT_NODE);
-
-   REF(radv_bvh_box32_node) dst_node = REF(radv_bvh_box32_node)(OFFSET(args.output_bvh, dst_node_offset));
-   uint32_t node_id = pack_node_id(dst_node_offset, radv_bvh_node_box32);
 
    for (;;) {
       /* Make changes to the current node's BVH offset value visible. */
@@ -172,6 +166,9 @@ main()
 
       if (bvh_offset == RADV_NULL_BVH_OFFSET)
          break;
+
+      REF(radv_bvh_box32_node) dst_node = REF(radv_bvh_box32_node)(OFFSET(args.output_bvh, bvh_offset));
+      uint32_t node_id = pack_node_id(bvh_offset, radv_bvh_node_box32);
 
       uint32_t found_child_count = 0;
       uint32_t children[4] = {RADV_BVH_INVALID_NODE, RADV_BVH_INVALID_NODE,
