@@ -1829,6 +1829,11 @@ emit_metadata(struct ntd_context *ctx)
    } else if (ctx->mod.shader_kind == DXIL_COMPUTE_SHADER) {
       if (!emit_tag(ctx, DXIL_SHADER_TAG_NUM_THREADS, emit_threads(ctx)))
          return false;
+      if (ctx->mod.minor_version >= 6 &&
+          ctx->shader->info.subgroup_size >= SUBGROUP_SIZE_REQUIRE_8 &&
+          !emit_tag(ctx, DXIL_SHADER_TAG_WAVE_SIZE,
+                    dxil_get_metadata_int32(&ctx->mod, ctx->shader->info.subgroup_size)))
+          return false;
    }
 
    uint64_t flags = get_module_flags(ctx);

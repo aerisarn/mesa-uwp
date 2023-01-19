@@ -272,6 +272,7 @@ enum dxil_shader_tag {
    DXIL_SHADER_TAG_DS_STATE    = 2,
    DXIL_SHADER_TAG_HS_STATE    = 3,
    DXIL_SHADER_TAG_NUM_THREADS = 4,
+   DXIL_SHADER_TAG_WAVE_SIZE   = 11,
 };
 
 enum dxil_barrier_mode {
