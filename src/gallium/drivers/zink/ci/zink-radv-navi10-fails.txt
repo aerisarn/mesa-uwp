@@ -27,7 +27,6 @@ glx@glx_ext_import_context@make current- multi process,Fail
 glx@glx_ext_import_context@make current- single process,Fail
 glx@glx_ext_import_context@query context info,Fail
 glx@glx-make-current,Crash
-glx@glx-swap-copy,Fail
 glx@glx-swap-pixmap-bad,Fail
 
 # #6322

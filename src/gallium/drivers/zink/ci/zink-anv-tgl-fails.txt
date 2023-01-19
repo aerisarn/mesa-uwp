@@ -187,7 +187,6 @@ glx@glx-buffer-age vblank_mode=0,Fail
 
 glx@glx-make-current,Crash
 glx@glx-multi-window-single-context,Crash
-glx@glx-swap-copy,Fail
 glx@glx-swap-pixmap-bad,Fail
 glx@glx-tfp,Crash
 
