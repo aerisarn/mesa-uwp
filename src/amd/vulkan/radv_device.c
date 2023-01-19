@@ -7142,7 +7142,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
 
          if (iview->nbc_view.valid) {
             base_level = iview->nbc_view.level;
-            max_mip = iview->nbc_view.max_mip - 1;
+            max_mip = iview->nbc_view.num_levels - 1;
          }
 
          cb->cb_color_view |= S_028C6C_MIP_LEVEL_GFX10(base_level);
