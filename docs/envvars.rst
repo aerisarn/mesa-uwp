@@ -86,6 +86,12 @@ Core Mesa environment variables
       print error and performance messages to stderr (or
       ``MESA_LOG_FILE``).
 
+.. envvar:: MESA_PROCESS_NAME
+
+   if set, overrides the process name string used internally for various
+   purposes (e.g. for driconf option matching, logging, artifact storage,
+   etc.).
+
 .. envvar:: MESA_LOG_FILE
 
    specifies a file name for logging all errors, warnings, etc., rather

@@ -206,10 +206,11 @@ free_program_name(void)
 static void
 util_get_process_name_callback(void)
 {
-   program_name = __getProgramName();
-   if (program_name) {
+   const char *override_name = os_get_option("MESA_PROCESS_NAME");
+   program_name = override_name ? strdup(override_name) : __getProgramName();
+
+   if (program_name)
       atexit(free_program_name);
-   }
 }
 
 const char *
