@@ -154,7 +154,8 @@ main()
    radv_ir_box_node src = DEREF(src_node);
 
   uint32_t dst_node_offset = dst_internal_offset + global_id * SIZEOF(radv_bvh_box32_node);
-   if (global_id == DEREF(args.header).ir_internal_node_count - 1)
+   bool is_root_node = global_id == DEREF(args.header).ir_internal_node_count - 1;
+   if (is_root_node)
       dst_node_offset = id_to_offset(RADV_BVH_ROOT_NODE);
 
    REF(radv_bvh_box32_node) dst_node = REF(radv_bvh_box32_node)(OFFSET(args.output_bvh, dst_node_offset));
@@ -165,7 +166,7 @@ main()
       memoryBarrier(gl_ScopeDevice, gl_StorageSemanticsBuffer,
                     gl_SemanticsAcquireRelease | gl_SemanticsMakeAvailable | gl_SemanticsMakeVisible);
 
-      uint32_t bvh_offset = node_id == RADV_BVH_ROOT_NODE ? id_to_offset(RADV_BVH_ROOT_NODE) : DEREF(src_node).bvh_offset;
+      uint32_t bvh_offset = is_root_node ? id_to_offset(RADV_BVH_ROOT_NODE) : DEREF(src_node).bvh_offset;
       if (bvh_offset == RADV_UNKNOWN_BVH_OFFSET)
          continue;
 
@@ -273,7 +274,7 @@ main()
       break;
    }
 
-   if (global_id == DEREF(args.header).ir_internal_node_count - 1) {
+   if (is_root_node) {
       REF(radv_accel_struct_header) header = REF(radv_accel_struct_header)(args.output_bvh - args.output_bvh_offset);
       DEREF(header).aabb = src.base.aabb;
       DEREF(header).bvh_offset = args.output_bvh_offset;
