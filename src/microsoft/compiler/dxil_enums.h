@@ -197,6 +197,7 @@ enum dxil_interpolation_mode  {
 
 enum overload_type {
    DXIL_NONE,
+   DXIL_I1,
    DXIL_I16,
    DXIL_I32,
    DXIL_I64,

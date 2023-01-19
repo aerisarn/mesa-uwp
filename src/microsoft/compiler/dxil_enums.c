@@ -155,6 +155,7 @@ enum dxil_primitive_topology dxil_get_primitive_topology(enum shader_prim topolo
 
 static const char *overload_str[DXIL_NUM_OVERLOADS] = {
    [DXIL_NONE] = "",
+   [DXIL_I1] = "i1",
    [DXIL_I16] = "i16",
    [DXIL_I32] = "i32",
    [DXIL_I64] = "i64",
