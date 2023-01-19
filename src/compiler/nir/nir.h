@@ -5092,6 +5092,8 @@ typedef struct {
 
 bool nir_opt_load_store_vectorize(nir_shader *shader, const nir_load_store_vectorize_options *options);
 
+typedef bool (*nir_lower_shader_calls_should_remat_func)(nir_instr *instr, void *data);
+
 typedef struct nir_lower_shader_calls_options {
    /* Address format used for load/store operations on the call stack. */
    nir_address_format address_format;
@@ -5112,6 +5114,17 @@ typedef struct nir_lower_shader_calls_options {
 
    /* Data passed to vectorizer_callback */
    void *vectorizer_data;
+
+   /* If this function pointer is not NULL, lower_shader_calls will call this
+    * function on instructions that require spill/fill/rematerialization of
+    * their value. If this function returns true, lower_shader_calls will
+    * ensure that the instruction is rematerialized, adding the sources of the
+    * instruction to be spilled/filled.
+    */
+   nir_lower_shader_calls_should_remat_func should_remat_callback;
+
+   /* Data passed to should_remat_callback */
+   void *should_remat_data;
 } nir_lower_shader_calls_options;
 
 bool
