@@ -227,6 +227,8 @@ spec@!opengl 1.1@depthstencil-default_fb-blit samples=8,Fail
 
 spec@!opengl 1.1@line-aa-width,Fail
 spec@!opengl 1.1@line-flat-clip-color,Fail
+spec@!opengl 1.1@line-smooth-coverage,Fail
+spec@!opengl 1.1@line-smooth-stipple,Fail
 
 spec@!opengl 1.1@polygon-mode-facing,Fail
 spec@!opengl 1.1@polygon-mode-offset,Fail
@@ -663,7 +665,7 @@ spec@arb_shader_image_load_store@host-mem-barrier@Transform feedback/WaW/one bit
 spec@arb_shader_image_load_store@host-mem-barrier@Transform feedback/WaW/one bit barrier test/4x4,Fail
 spec@arb_shader_image_load_store@host-mem-barrier@Transform feedback/WaW/one bit barrier test/64x64,Fail
 
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-patch-vec4-swiz-index-wr,Fail
+spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgradcube,Fail
 
 # "../src/gallium/drivers/zink/zink_compiler.c:2071: assign_producer_var_io: Assertion `*reserved < MAX_VARYING' failed."
 spec@arb_tessellation_shader@execution@variable-indexing@tes-both-input-array-float-index-rd,Crash
@@ -736,12 +738,6 @@ spec@arb_texture_buffer_object@formats (vs- arb)@GL_LUMINANCE8,Fail
 spec@arb_texture_buffer_object@formats (vs- arb)@GL_LUMINANCE8I_EXT,Fail
 spec@arb_texture_buffer_object@formats (vs- arb)@GL_LUMINANCE8UI_EXT,Fail
 
-spec@arb_texture_cube_map@copyteximage cube samples=16,Fail
-spec@arb_texture_cube_map@copyteximage cube samples=2,Fail
-spec@arb_texture_cube_map@copyteximage cube samples=4,Fail
-spec@arb_texture_cube_map@copyteximage cube samples=6,Fail
-spec@arb_texture_cube_map@copyteximage cube samples=8,Fail
-
 spec@egl 1.4@eglterminate then unbind context,Fail
 
 spec@egl_khr_gl_image@egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_component24,Fail
@@ -778,17 +774,6 @@ spec@ext_framebuffer_multisample@interpolation 8 non-centroid-deriv-disabled,Fai
 spec@ext_framebuffer_multisample@interpolation 8 non-centroid-disabled,Fail
 
 spec@ext_packed_float@query-rgba-signed-components,Fail
-
-spec@ext_texture_array@copyteximage 1d_array samples=16,Fail
-spec@ext_texture_array@copyteximage 1d_array samples=2,Fail
-spec@ext_texture_array@copyteximage 1d_array samples=4,Fail
-spec@ext_texture_array@copyteximage 1d_array samples=6,Fail
-spec@ext_texture_array@copyteximage 1d_array samples=8,Fail
-spec@ext_texture_array@copyteximage 2d_array samples=16,Fail
-spec@ext_texture_array@copyteximage 2d_array samples=2,Fail
-spec@ext_texture_array@copyteximage 2d_array samples=4,Fail
-spec@ext_texture_array@copyteximage 2d_array samples=6,Fail
-spec@ext_texture_array@copyteximage 2d_array samples=8,Fail
 
 spec@ext_transform_feedback@tessellation triangle_fan flat_first,Fail
 
