@@ -280,21 +280,6 @@ blend_factor(enum pipe_blendfactor factor)
 }
 
 
-static bool
-need_blend_constants(enum pipe_blendfactor factor)
-{
-   switch (factor) {
-   case PIPE_BLENDFACTOR_CONST_COLOR:
-   case PIPE_BLENDFACTOR_CONST_ALPHA:
-   case PIPE_BLENDFACTOR_INV_CONST_COLOR:
-   case PIPE_BLENDFACTOR_INV_CONST_ALPHA:
-      return true;
-
-   default:
-      return false;
-   }
-}
-
 static VkBlendOp
 blend_op(enum pipe_blend_func func)
 {
@@ -371,8 +356,6 @@ zink_create_blend_state(struct pipe_context *pctx,
    cso->alpha_to_coverage = blend_state->alpha_to_coverage;
    cso->alpha_to_one = blend_state->alpha_to_one;
 
-   cso->need_blend_constants = false;
-
    for (int i = 0; i < blend_state->max_rt + 1; ++i) {
       const struct pipe_rt_blend_state *rt = blend_state->rt;
       if (blend_state->independent_blend_enable)
@@ -388,12 +371,6 @@ zink_create_blend_state(struct pipe_context *pctx,
          att.srcAlphaBlendFactor = blend_factor(fix_blendfactor(rt->alpha_src_factor, cso->alpha_to_one));
          att.dstAlphaBlendFactor = blend_factor(fix_blendfactor(rt->alpha_dst_factor, cso->alpha_to_one));
          att.alphaBlendOp = blend_op(rt->alpha_func);
-
-         if (need_blend_constants(rt->rgb_src_factor) ||
-             need_blend_constants(rt->rgb_dst_factor) ||
-             need_blend_constants(rt->alpha_src_factor) ||
-             need_blend_constants(rt->alpha_dst_factor))
-            cso->need_blend_constants = true;
       }
 
       if (rt->colormask & PIPE_MASK_R)

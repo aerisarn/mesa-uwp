@@ -329,7 +329,6 @@ struct zink_blend_state {
    VkBool32 alpha_to_coverage;
    VkBool32 alpha_to_one;
 
-   bool need_blend_constants;
    bool dual_src_blend;
 };
 
