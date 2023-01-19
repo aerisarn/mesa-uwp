@@ -49,7 +49,7 @@ default:
 
 include:
   - project: 'freedesktop/ci-templates'
-    ref: ffe4d1b10aab7534489f0c4bbc4c5899df17d3f2
+    ref: 16bc29078de5e0a067ff84a1a199a3760d3b3811
     file:
       - '/templates/ci-fairy.yml'
   - project: 'freedesktop/ci-templates'
