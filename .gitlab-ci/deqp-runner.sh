@@ -120,6 +120,10 @@ if [ "$PIGLIT_PLATFORM" != "gbm" ] ; then
     DEQP_SKIPS="$DEQP_SKIPS $INSTALL/x11-skips.txt"
 fi
 
+if [ "$PIGLIT_PLATFORM" = "gbm" ]; then
+    DEQP_SKIPS="$DEQP_SKIPS $INSTALL/gbm-skips.txt"
+fi
+
 report_load() {
     echo "System load: $(cut -d' ' -f1-3 < /proc/loadavg)"
     echo "# of CPU cores: $(cat /proc/cpuinfo | grep processor | wc -l)"

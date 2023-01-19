@@ -455,13 +455,6 @@ spec@ext_texture_srgb@fbo-generatemipmap-formats@GL_SLUMINANCE8_ALPHA8,Fail
 spec@ext_texture_srgb@fbo-generatemipmap-formats@GL_SLUMINANCE8_ALPHA8 NPOT,Fail
 spec@ext_texture_srgb@fbo-generatemipmap-formats@GL_SLUMINANCE_ALPHA,Fail
 spec@ext_texture_srgb@fbo-generatemipmap-formats@GL_SLUMINANCE_ALPHA NPOT,Fail
-spec@!opengl 1.0@gl-1.0-swapbuffers-behavior,Fail
-spec@!opengl 1.1@read-front,Fail
-spec@!opengl 1.1@read-front clear-front-first,Fail
-spec@!opengl 1.1@read-front samples=2,Fail
-spec@!opengl 1.1@read-front samples=4,Fail
-spec@!opengl 1.1@read-front samples=6,Fail
-spec@!opengl 1.1@read-front samples=8,Fail
 spec@ext_framebuffer_blit@fbo-blit-check-limits,Fail
 
 # ACO bugs (pass with LLVM)

@@ -80,6 +80,10 @@ if [ "$PIGLIT_PLATFORM" != "gbm" ] ; then
     PIGLIT_SKIPS="$PIGLIT_SKIPS $INSTALL/x11-skips.txt"
 fi
 
+if [ "$PIGLIT_PLATFORM" = "gbm" ]; then
+    PIGLIT_SKIPS="$PIGLIT_SKIPS $INSTALL/gbm-skips.txt"
+fi
+
 set +e
 
 piglit-runner \

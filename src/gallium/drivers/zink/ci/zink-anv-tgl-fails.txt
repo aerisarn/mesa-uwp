@@ -258,14 +258,6 @@ spec@!opengl 1.1@linestipple,Fail
 # (and more)
 spec@!opengl 1.1@polygon-mode,Fail
 
-spec@!opengl 1.1@read-front clear-front-first,Fail
-spec@!opengl 1.1@read-front samples=16,Fail
-spec@!opengl 1.1@read-front samples=2,Fail
-spec@!opengl 1.1@read-front samples=4,Fail
-spec@!opengl 1.1@read-front samples=6,Fail
-spec@!opengl 1.1@read-front samples=8,Fail
-spec@!opengl 1.1@read-front,Fail
-
 # depth texturing: zink is returning intensity shadow comparisons and depth samples, regardless of depth mode.
 # Check out the "splat" in zink_compiler.c around !is_new_style_shadow, and the swizzle rewrite for depth
 # textures in zink_create_sampler_view().
