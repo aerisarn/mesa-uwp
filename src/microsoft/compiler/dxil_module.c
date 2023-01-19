@@ -910,6 +910,16 @@ dxil_module_get_res_props_type(struct dxil_module *mod)
 }
 
 const struct dxil_type *
+dxil_module_get_fouri32_type(struct dxil_module *mod)
+{
+   /* %dx.types.fouri32 = type { i32, i32, i32, i32 } */
+   const struct dxil_type *int32_type = dxil_module_get_int_type(mod, 32);
+   const struct dxil_type *fields[4] = { int32_type, int32_type, int32_type, int32_type };
+
+   return dxil_module_get_struct_type(mod, "dx.types.fouri32", fields, 4);
+}
+
+const struct dxil_type *
 dxil_module_add_function_type(struct dxil_module *m,
                               const struct dxil_type *ret_type,
                               const struct dxil_type **arg_types,

@@ -347,6 +347,12 @@ enum dxil_signature_element_extended_properties {
    DXIL_SIGNATURE_ELEMENT_USAGE_COMPONENT_MASK = 3,
 };
 
+enum dxil_quad_op_kind {
+   QUAD_READ_ACROSS_X = 0,
+   QUAD_READ_ACROSS_Y = 1,
+   QUAD_READ_ACROSS_DIAGONAL = 2,
+};
+
 #ifdef __cplusplus
 extern "C" {
 #endif

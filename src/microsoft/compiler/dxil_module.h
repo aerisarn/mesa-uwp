@@ -324,6 +324,9 @@ const struct dxil_type *
 dxil_module_get_res_props_type(struct dxil_module *m);
 
 const struct dxil_type *
+dxil_module_get_fouri32_type(struct dxil_module *m);
+
+const struct dxil_type *
 dxil_module_get_struct_type(struct dxil_module *m,
                             const char *name,
                             const struct dxil_type **elem_types,
