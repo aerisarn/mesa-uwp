@@ -1173,8 +1173,6 @@ dzn_image_view_prepare_rtv_desc(struct dzn_image_view *iview)
       (iview->vk.aspects & VK_IMAGE_ASPECT_PLANE_2_BIT) ? 2 :
       (iview->vk.aspects & VK_IMAGE_ASPECT_PLANE_1_BIT) ? 1 : 0;
 
-   assert(iview->vk.level_count == 1);
-
    iview->rtv_desc = (D3D12_RENDER_TARGET_VIEW_DESC) {
       .Format =
          dzn_image_get_dxgi_format(iview->vk.format,
