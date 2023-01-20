@@ -479,8 +479,8 @@ dzn_GetDescriptorSetLayoutSupport(VkDevice device,
    }
 
    pSupport->supported =
-      sampler_count <= (MAX_DESCS_PER_SAMPLER_HEAP / MAX_SETS) &&
-      other_desc_count <= (MAX_DESCS_PER_CBV_SRV_UAV_HEAP / MAX_SETS);
+      sampler_count <= MAX_DESCS_PER_SAMPLER_HEAP &&
+      other_desc_count <= MAX_DESCS_PER_CBV_SRV_UAV_HEAP;
 }
 
 static void
