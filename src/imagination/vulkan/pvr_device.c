@@ -87,6 +87,11 @@
       .name = str_name, .len = sizeof(str_name) - 1 \
    }
 
+/* Amount of padding required for VkBuffers to ensure we don't read beyond
+ * a page boundary.
+ */
+#define PVR_BUFFER_MEMORY_PADDING_SIZE 4
+
 struct pvr_drm_device_info {
    const char *name;
    size_t len;
@@ -2957,6 +2962,7 @@ void pvr_GetBufferMemoryRequirements2(
 {
    PVR_FROM_HANDLE(pvr_buffer, buffer, pInfo->buffer);
    PVR_FROM_HANDLE(pvr_device, device, _device);
+   uint64_t size;
 
    /* The Vulkan 1.0.166 spec says:
     *
@@ -2971,8 +2977,21 @@ void pvr_GetBufferMemoryRequirements2(
       (1ul << device->pdevice->memory.memoryTypeCount) - 1;
 
    pMemoryRequirements->memoryRequirements.alignment = buffer->alignment;
+
+   size = buffer->vk.size;
+
+   if (size % device->ws->page_size == 0 ||
+       size % device->ws->page_size >
+          device->ws->page_size - PVR_BUFFER_MEMORY_PADDING_SIZE) {
+      /* TODO: We can save memory by having one extra virtual page mapped
+       * in and having the first and last virtual page mapped to the first
+       * physical address.
+       */
+      size += PVR_BUFFER_MEMORY_PADDING_SIZE;
+   }
+
    pMemoryRequirements->memoryRequirements.size =
-      ALIGN_POT(buffer->vk.size, buffer->alignment);
+      ALIGN_POT(size, buffer->alignment);
 }
 
 void pvr_GetImageMemoryRequirements2(VkDevice _device,
