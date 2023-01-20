@@ -1383,7 +1383,7 @@ struct zink_surface {
    VkImageView *swapchain;
    unsigned swapchain_size;
    void *obj; //backing resource object; used to determine rebinds
-   void *dt; //current swapchain object; used to determine swapchain rebinds
+   void *dt_swapchain; //current swapchain object; used to determine swapchain rebinds
    uint32_t hash; //for surface caching
 };
 
