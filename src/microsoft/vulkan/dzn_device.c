@@ -1567,22 +1567,22 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .sparseAddressSpaceSize                   = 0,
       .maxBoundDescriptorSets                   = MAX_SETS,
       .maxPerStageDescriptorSamplers            =
-         pdevice->options.ResourceHeapTier == D3D12_RESOURCE_HEAP_TIER_1 ?
+         pdevice->options.ResourceBindingTier == D3D12_RESOURCE_BINDING_TIER_1 ?
          16u : MAX_DESCS_PER_SAMPLER_HEAP,
       .maxPerStageDescriptorUniformBuffers      =
-         pdevice->options.ResourceHeapTier <= D3D12_RESOURCE_HEAP_TIER_2 ?
+         pdevice->options.ResourceBindingTier <= D3D12_RESOURCE_BINDING_TIER_2 ?
          14u : MAX_DESCS_PER_CBV_SRV_UAV_HEAP,
       .maxPerStageDescriptorStorageBuffers      =
-         pdevice->options.ResourceHeapTier <= D3D12_RESOURCE_HEAP_TIER_2 ?
+         pdevice->options.ResourceBindingTier <= D3D12_RESOURCE_BINDING_TIER_2 ?
          64u : MAX_DESCS_PER_CBV_SRV_UAV_HEAP,
       .maxPerStageDescriptorSampledImages       =
-         pdevice->options.ResourceHeapTier == D3D12_RESOURCE_HEAP_TIER_1 ?
+         pdevice->options.ResourceBindingTier == D3D12_RESOURCE_BINDING_TIER_1 ?
          128u : MAX_DESCS_PER_CBV_SRV_UAV_HEAP,
       .maxPerStageDescriptorStorageImages       =
-         pdevice->options.ResourceHeapTier <= D3D12_RESOURCE_HEAP_TIER_2 ?
+         pdevice->options.ResourceBindingTier <= D3D12_RESOURCE_BINDING_TIER_2 ?
          64u : MAX_DESCS_PER_CBV_SRV_UAV_HEAP,
       .maxPerStageDescriptorInputAttachments    =
-         pdevice->options.ResourceHeapTier == D3D12_RESOURCE_HEAP_TIER_1 ?
+         pdevice->options.ResourceBindingTier == D3D12_RESOURCE_BINDING_TIER_1 ?
          128u : MAX_DESCS_PER_CBV_SRV_UAV_HEAP,
       .maxPerStageResources                     = MAX_DESCS_PER_CBV_SRV_UAV_HEAP,
       .maxDescriptorSetSamplers                 = MAX_DESCS_PER_SAMPLER_HEAP,
