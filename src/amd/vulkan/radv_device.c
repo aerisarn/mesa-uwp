@@ -3162,40 +3162,40 @@ radv_queue_state_finish(struct radv_queue_state *queue, struct radv_device *devi
       radv_rmv_log_command_buffer_bo_destroy(device, queue->scratch_bo);
    }
    if (queue->esgs_ring_bo) {
-      device->ws->buffer_destroy(device->ws, queue->esgs_ring_bo);
       radv_rmv_log_command_buffer_bo_destroy(device, queue->esgs_ring_bo);
+      device->ws->buffer_destroy(device->ws, queue->esgs_ring_bo);
    }
    if (queue->gsvs_ring_bo) {
-      device->ws->buffer_destroy(device->ws, queue->gsvs_ring_bo);
       radv_rmv_log_command_buffer_bo_destroy(device, queue->gsvs_ring_bo);
+      device->ws->buffer_destroy(device->ws, queue->gsvs_ring_bo);
    }
    if (queue->tess_rings_bo) {
-      device->ws->buffer_destroy(device->ws, queue->tess_rings_bo);
       radv_rmv_log_command_buffer_bo_destroy(device, queue->tess_rings_bo);
+      device->ws->buffer_destroy(device->ws, queue->tess_rings_bo);
    }
    if (queue->task_rings_bo) {
-      device->ws->buffer_destroy(device->ws, queue->task_rings_bo);
       radv_rmv_log_command_buffer_bo_destroy(device, queue->task_rings_bo);
+      device->ws->buffer_destroy(device->ws, queue->task_rings_bo);
    }
    if (queue->mesh_scratch_ring_bo) {
-      device->ws->buffer_destroy(device->ws, queue->mesh_scratch_ring_bo);
       radv_rmv_log_command_buffer_bo_destroy(device, queue->mesh_scratch_ring_bo);
+      device->ws->buffer_destroy(device->ws, queue->mesh_scratch_ring_bo);
    }
    if (queue->attr_ring_bo) {
-      device->ws->buffer_destroy(device->ws, queue->attr_ring_bo);
       radv_rmv_log_command_buffer_bo_destroy(device, queue->attr_ring_bo);
+      device->ws->buffer_destroy(device->ws, queue->attr_ring_bo);
    }
    if (queue->gds_bo) {
-      device->ws->buffer_make_resident(device->ws, queue->gds_bo, false);
       device->ws->buffer_destroy(device->ws, queue->gds_bo);
+      device->ws->buffer_make_resident(device->ws, queue->gds_bo, false);
    }
    if (queue->gds_oa_bo) {
-      device->ws->buffer_make_resident(device->ws, queue->gds_oa_bo, false);
       device->ws->buffer_destroy(device->ws, queue->gds_oa_bo);
+      device->ws->buffer_make_resident(device->ws, queue->gds_oa_bo, false);
    }
    if (queue->compute_scratch_bo) {
-      device->ws->buffer_destroy(device->ws, queue->compute_scratch_bo);
       radv_rmv_log_command_buffer_bo_destroy(device, queue->compute_scratch_bo);
+      device->ws->buffer_destroy(device->ws, queue->compute_scratch_bo);
    }
 }
 
