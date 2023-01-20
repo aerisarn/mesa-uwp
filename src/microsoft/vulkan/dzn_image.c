@@ -1001,7 +1001,7 @@ dzn_image_view_prepare_srv_desc(struct dzn_image_view *iview)
    iview->srv_desc = (D3D12_SHADER_RESOURCE_VIEW_DESC) {
       .Format =
          dzn_image_get_dxgi_format(iview->vk.format,
-                                   iview->vk.image->usage & ~VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                                   iview->vk.usage & ~VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                                    iview->vk.aspects),
    };
 
