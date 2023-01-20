@@ -243,11 +243,11 @@ append_trace_events(struct radv_device *device, int pipe_fd)
             }
          case TRACE_EVENT_TYPE_EXTENDED_DELTA:
             timestamp += event_header->time_delta;
-            timestamp += event_header->excess_length << 28;
+            timestamp += (uint64_t)event_header->excess_length << 27ULL;
             continue;
          case TRACE_EVENT_TYPE_TIMESTAMP:
             timestamp = event_header->time_delta;
-            timestamp |= event_header->excess_length << 28;
+            timestamp |= (uint64_t)event_header->excess_length << 27ULL;
             continue;
          default:
             break;
