@@ -972,15 +972,12 @@ dzn_physical_device_get_image_format_properties(struct dzn_physical_device *pdev
     * D3D12 has a few more constraints:
     *   - no UAVs on multisample resources
     */
-   bool rt_or_ds_cap =
-      dfmt_info.Support1 &
-      (D3D12_FORMAT_SUPPORT1_RENDER_TARGET | D3D12_FORMAT_SUPPORT1_DEPTH_STENCIL);
-
    properties->imageFormatProperties.sampleCounts = VK_SAMPLE_COUNT_1_BIT;
    if (info->tiling != VK_IMAGE_TILING_LINEAR &&
        info->type == VK_IMAGE_TYPE_2D &&
        !(info->flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) &&
-       rt_or_ds_cap && !is_bgra4 &&
+       (dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_MULTISAMPLE_LOAD) &&
+       !is_bgra4 &&
        !(info->usage & VK_IMAGE_USAGE_STORAGE_BIT)) {
       for (uint32_t s = VK_SAMPLE_COUNT_2_BIT; s < VK_SAMPLE_COUNT_64_BIT; s <<= 1) {
          D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS ms_info = {
