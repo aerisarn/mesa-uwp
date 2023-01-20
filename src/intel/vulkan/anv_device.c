@@ -2800,7 +2800,12 @@ void anv_GetPhysicalDeviceQueueFamilyProperties2(
                properties->priorityCount = count;
                break;
             }
-
+            case VK_STRUCTURE_TYPE_QUEUE_FAMILY_QUERY_RESULT_STATUS_PROPERTIES_KHR: {
+               VkQueueFamilyQueryResultStatusPropertiesKHR *prop =
+                  (VkQueueFamilyQueryResultStatusPropertiesKHR *)ext;
+               prop->queryResultStatusSupport = VK_TRUE;
+               break;
+            }
             default:
                anv_debug_ignored_stype(ext->sType);
             }
