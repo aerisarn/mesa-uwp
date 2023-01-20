@@ -165,6 +165,7 @@ struct radv_ir_header {
    uint32_t dispatch_size_y;
    uint32_t dispatch_size_z;
    radv_global_sync_data sync_data;
+   uint32_t dst_node_offset;
 };
 
 struct radv_bvh_triangle_node {

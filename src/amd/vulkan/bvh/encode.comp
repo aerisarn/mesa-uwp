@@ -233,9 +233,13 @@ main()
          uint32_t dst_offset;
 
          if (type == radv_ir_node_internal) {
+#if COMPACT
+            dst_offset = atomicAdd(DEREF(args.header).dst_node_offset, SIZEOF(radv_bvh_box32_node));
+#else
             uint32_t offset_in_internal_nodes = offset - intermediate_leaf_nodes_size;
             uint32_t child_index = offset_in_internal_nodes / SIZEOF(radv_ir_box_node);
             dst_offset = dst_internal_offset + child_index * SIZEOF(radv_bvh_box32_node);
+#endif
 
             REF(radv_ir_box_node) child_node = REF(radv_ir_box_node)OFFSET(args.intermediate_bvh, offset);
             DEREF(child_node).bvh_offset = dst_offset;

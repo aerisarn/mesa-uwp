@@ -28,7 +28,12 @@ bvh_shaders = [
   [
     'encode.comp',
     'encode',
-    [],
+    ['COMPACT=0'],
+  ],
+  [
+    'encode.comp',
+    'encode_compact',
+    ['COMPACT=1'],
   ],
   [
     'lbvh_generate_ir.comp',
