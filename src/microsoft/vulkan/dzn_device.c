@@ -637,17 +637,6 @@ dzn_physical_device_get_format_support(struct dzn_physical_device *pdev,
       vk_format_is_depth_or_stencil(format) ?
       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
    VkImageAspectFlags aspects = 0;
-   VkFormat patched_format =
-      dzn_graphics_pipeline_patch_vi_format(format);
-
-   if (patched_format != format) {
-      D3D12_FEATURE_DATA_FORMAT_SUPPORT dfmt_info = {
-         .Format = dzn_buffer_get_dxgi_format(patched_format),
-         .Support1 = D3D12_FORMAT_SUPPORT1_IA_VERTEX_BUFFER,
-      };
-
-      return dfmt_info;
-   }
 
    if (vk_format_has_depth(format))
       aspects = VK_IMAGE_ASPECT_DEPTH_BIT;
@@ -711,7 +700,12 @@ dzn_physical_device_get_format_properties(struct dzn_physical_device *pdev,
    }
 
    if (dfmt_info.Format == DXGI_FORMAT_UNKNOWN) {
-      *base_props = (VkFormatProperties) { 0 };
+      if (dzn_graphics_pipeline_patch_vi_format(format) != format)
+         *base_props = (VkFormatProperties){
+            .bufferFeatures = VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT | VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT,
+         };
+      else
+         *base_props = (VkFormatProperties) { 0 };
       return;
    }
 
