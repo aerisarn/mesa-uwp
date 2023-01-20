@@ -483,6 +483,9 @@ spec@nv_shader_atomic_int64@execution@ssbo-atomicmin-uint,Crash
 # Introduced with the uprev of piglit (70ce1dcacc92 - "ci: Update piglit with s3 support")
 spec@egl 1.4@egl-ext_egl_image_storage,Fail
 
+# Introduced by a8d2b288eee3 ("ci/piglit: 2023-01-19 uprev")
+spec@!opengl 1.1@line-smooth-stipple,Fail
+
 # Delta over NAVI10
 spec@!opengl 1.1@depthstencil-default_fb-blit samples=4,Fail
 spec@!opengl 1.1@depthstencil-default_fb-blit samples=6,Fail
