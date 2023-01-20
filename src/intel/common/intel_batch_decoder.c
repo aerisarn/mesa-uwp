@@ -24,9 +24,18 @@
 #include "common/intel_decoder.h"
 #include "intel_disasm.h"
 #include "util/macros.h"
+#include "util/u_debug.h"
 #include "util/u_math.h" /* Needed for ROUND_DOWN_TO */
 
 #include <string.h>
+
+static const struct debug_control debug_control[] = {
+   { "color",    INTEL_BATCH_DECODE_IN_COLOR },
+   { "full",     INTEL_BATCH_DECODE_FULL },
+   { "offsets",  INTEL_BATCH_DECODE_OFFSETS },
+   { "floats",   INTEL_BATCH_DECODE_FLOATS },
+   { NULL,    0 }
+};
 
 void
 intel_batch_decode_ctx_init(struct intel_batch_decode_ctx *ctx,
@@ -49,7 +58,7 @@ intel_batch_decode_ctx_init(struct intel_batch_decode_ctx *ctx,
    ctx->get_state_size = get_state_size;
    ctx->user_data = user_data;
    ctx->fp = fp;
-   ctx->flags = flags;
+   ctx->flags = parse_enable_string(getenv("INTEL_DECODE"), flags, debug_control);
    ctx->max_vbo_decoded_lines = -1; /* No limit! */
    ctx->engine = INTEL_ENGINE_CLASS_RENDER;
 

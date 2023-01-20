@@ -518,6 +518,25 @@ Intel driver environment variables
    ``wm``
       dump shader assembly for fragment shaders (same as ``fs``)
 
+.. envvar:: INTEL_DECODE
+
+   a comma-separated list of enable/disable flags configuring the
+   output produced by ``INTEL_DEBUG=bat`` (use with
+   ``INTEL_DECODE=+color,-floats``) :
+
+   ``color``
+      print colored output
+
+   ``floats``
+      try to decode floating point data in buffers
+
+   ``full``
+      print additional custom information for instructions (usually
+      pulling more information by inspecting memory)
+
+   ``offsets``
+      print offsets of instructions
+
 .. envvar:: INTEL_MEASURE
 
    Collects GPU timestamps over common intervals, and generates a CSV report
