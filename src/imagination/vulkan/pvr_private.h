@@ -526,19 +526,13 @@ struct pvr_sub_cmd_event {
    enum pvr_event_type type;
 
    union {
-      struct {
+      struct pvr_sub_cmd_event_set_reset {
          struct pvr_event *event;
-         /* Stages to wait for until the event is set. */
+         /* Stages to wait for until the event is set or reset. */
          uint32_t wait_for_stage_mask;
-      } set;
+      } set_reset;
 
-      struct {
-         struct pvr_event *event;
-         /* Stages to wait for until the event is reset. */
-         uint32_t wait_for_stage_mask;
-      } reset;
-
-      struct {
+      struct pvr_sub_cmd_event_wait {
          uint32_t count;
          /* Events to wait for before resuming. */
          struct pvr_event **events;
@@ -546,7 +540,7 @@ struct pvr_sub_cmd_event {
          uint32_t *wait_at_stage_masks;
       } wait;
 
-      struct {
+      struct pvr_sub_cmd_event_barrier {
          bool in_render_pass;
 
          /* Stages to wait for. */

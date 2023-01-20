@@ -290,7 +290,6 @@ void pvr_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
 {
    PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
    struct pvr_query_info query_info;
-   struct pvr_sub_cmd_event *sub_cmd;
    VkResult result;
 
    PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
@@ -322,8 +321,7 @@ void pvr_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
     * transfer job with the compute job.
     */
 
-   sub_cmd = &cmd_buffer->state.current_sub_cmd->event;
-   *sub_cmd = (struct pvr_sub_cmd_event) {
+   cmd_buffer->state.current_sub_cmd->event = (struct pvr_sub_cmd_event){
       .type = PVR_EVENT_TYPE_BARRIER,
       .barrier = {
          .wait_for_stage_mask = PVR_PIPELINE_STAGE_TRANSFER_BIT,
@@ -341,8 +339,7 @@ void pvr_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
    if (result != VK_SUCCESS)
       return;
 
-   sub_cmd = &cmd_buffer->state.current_sub_cmd->event;
-   *sub_cmd = (struct pvr_sub_cmd_event) {
+   cmd_buffer->state.current_sub_cmd->event = (struct pvr_sub_cmd_event){
       .type = PVR_EVENT_TYPE_BARRIER,
       .barrier = {
          .wait_for_stage_mask = PVR_PIPELINE_STAGE_OCCLUSION_QUERY_BIT,

@@ -1939,7 +1939,6 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
    }
 
    if (query_pool) {
-      struct pvr_sub_cmd_event *sub_cmd;
       struct pvr_query_info query_info;
 
       assert(query_bo);
@@ -1965,9 +1964,7 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
       if (result != VK_SUCCESS)
          return result;
 
-      sub_cmd = &cmd_buffer->state.current_sub_cmd->event;
-
-      *sub_cmd = (struct pvr_sub_cmd_event) {
+      cmd_buffer->state.current_sub_cmd->event = (struct pvr_sub_cmd_event){
          .type = PVR_EVENT_TYPE_BARRIER,
          .barrier = {
             .wait_for_stage_mask = PVR_PIPELINE_STAGE_FRAG_BIT,
@@ -7351,7 +7348,6 @@ pvr_cmd_buffer_insert_mid_frag_barrier_event(struct pvr_cmd_buffer *cmd_buffer,
                                              uint32_t src_stage_mask,
                                              uint32_t dst_stage_mask)
 {
-   struct pvr_sub_cmd_event *sub_cmd;
    VkResult result;
 
    assert(cmd_buffer->state.current_sub_cmd->type == PVR_SUB_CMD_TYPE_GRAPHICS);
@@ -7366,12 +7362,14 @@ pvr_cmd_buffer_insert_mid_frag_barrier_event(struct pvr_cmd_buffer *cmd_buffer,
    if (result != VK_SUCCESS)
       return result;
 
-   sub_cmd = &cmd_buffer->state.current_sub_cmd->event;
-
-   sub_cmd->type = PVR_EVENT_TYPE_BARRIER;
-   sub_cmd->barrier.in_render_pass = true;
-   sub_cmd->barrier.wait_for_stage_mask = src_stage_mask;
-   sub_cmd->barrier.wait_at_stage_mask = dst_stage_mask;
+   cmd_buffer->state.current_sub_cmd->event = (struct pvr_sub_cmd_event){
+      .type = PVR_EVENT_TYPE_BARRIER,
+      .barrier = {
+         .in_render_pass = true,
+         .wait_for_stage_mask = src_stage_mask,
+         .wait_at_stage_mask = dst_stage_mask,
+      },
+   };
 
    pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
    pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_GRAPHICS);
@@ -7390,18 +7388,19 @@ pvr_cmd_buffer_insert_barrier_event(struct pvr_cmd_buffer *cmd_buffer,
                                     uint32_t src_stage_mask,
                                     uint32_t dst_stage_mask)
 {
-   struct pvr_sub_cmd_event *sub_cmd;
    VkResult result;
 
    result = pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_EVENT);
    if (result != VK_SUCCESS)
       return result;
 
-   sub_cmd = &cmd_buffer->state.current_sub_cmd->event;
-
-   sub_cmd->type = PVR_EVENT_TYPE_BARRIER;
-   sub_cmd->barrier.wait_for_stage_mask = src_stage_mask;
-   sub_cmd->barrier.wait_at_stage_mask = dst_stage_mask;
+   cmd_buffer->state.current_sub_cmd->event = (struct pvr_sub_cmd_event){
+      .type = PVR_EVENT_TYPE_BARRIER,
+      .barrier = {
+         .wait_for_stage_mask = src_stage_mask,
+         .wait_at_stage_mask = dst_stage_mask,
+      },
+   };
 
    return pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
 }
@@ -7558,7 +7557,6 @@ void pvr_CmdResetEvent2(VkCommandBuffer commandBuffer,
 {
    PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
    PVR_FROM_HANDLE(pvr_event, event, _event);
-   struct pvr_sub_cmd_event *sub_cmd;
    VkResult result;
 
    PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
@@ -7567,11 +7565,13 @@ void pvr_CmdResetEvent2(VkCommandBuffer commandBuffer,
    if (result != VK_SUCCESS)
       return;
 
-   sub_cmd = &cmd_buffer->state.current_sub_cmd->event;
-
-   sub_cmd->type = PVR_EVENT_TYPE_RESET;
-   sub_cmd->reset.event = event;
-   sub_cmd->reset.wait_for_stage_mask = pvr_stage_mask_src(stageMask);
+   cmd_buffer->state.current_sub_cmd->event = (struct pvr_sub_cmd_event){
+      .type = PVR_EVENT_TYPE_RESET,
+      .set_reset = {
+         .event = event,
+         .wait_for_stage_mask = pvr_stage_mask_src(stageMask),
+      },
+   };
 
    pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
 }
@@ -7583,7 +7583,6 @@ void pvr_CmdSetEvent2(VkCommandBuffer commandBuffer,
    PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
    PVR_FROM_HANDLE(pvr_event, event, _event);
    VkPipelineStageFlags2 stage_mask = 0;
-   struct pvr_sub_cmd_event *sub_cmd;
    VkResult result;
 
    PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
@@ -7601,11 +7600,13 @@ void pvr_CmdSetEvent2(VkCommandBuffer commandBuffer,
    for (uint32_t i = 0; i < pDependencyInfo->imageMemoryBarrierCount; i++)
       stage_mask |= pDependencyInfo->pImageMemoryBarriers[i].srcStageMask;
 
-   sub_cmd = &cmd_buffer->state.current_sub_cmd->event;
-
-   sub_cmd->type = PVR_EVENT_TYPE_SET;
-   sub_cmd->set.event = event;
-   sub_cmd->set.wait_for_stage_mask = pvr_stage_mask_dst(stage_mask);
+   cmd_buffer->state.current_sub_cmd->event = (struct pvr_sub_cmd_event){
+      .type = PVR_EVENT_TYPE_SET,
+      .set_reset = {
+         .event = event,
+         .wait_for_stage_mask = pvr_stage_mask_dst(stage_mask),
+      },
+   };
 
    pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
 }
@@ -7616,7 +7617,6 @@ void pvr_CmdWaitEvents2(VkCommandBuffer commandBuffer,
                         const VkDependencyInfo *pDependencyInfos)
 {
    PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
-   struct pvr_sub_cmd_event *sub_cmd;
    struct pvr_event **events_array;
    uint32_t *stage_masks;
    VkResult result;
@@ -7658,12 +7658,14 @@ void pvr_CmdWaitEvents2(VkCommandBuffer commandBuffer,
       stage_masks[i] = pvr_stage_mask_dst(mask);
    }
 
-   sub_cmd = &cmd_buffer->state.current_sub_cmd->event;
-
-   sub_cmd->type = PVR_EVENT_TYPE_WAIT;
-   sub_cmd->wait.count = eventCount;
-   sub_cmd->wait.events = events_array;
-   sub_cmd->wait.wait_at_stage_masks = stage_masks;
+   cmd_buffer->state.current_sub_cmd->event = (struct pvr_sub_cmd_event){
+      .type = PVR_EVENT_TYPE_WAIT,
+      .wait = {
+         .count = eventCount,
+         .events = events_array,
+         .wait_at_stage_masks = stage_masks,
+      },
+   };
 
    pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
 }
