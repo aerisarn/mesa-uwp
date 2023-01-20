@@ -354,6 +354,8 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
    VkPhysicalDeviceVulkan11Properties core_1_1 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES,
+      .maxPerSetDescriptors = UINT32_MAX,
+      .maxMemoryAllocationSize = (1u << 31),
       /* Vulkan 1.1 properties */
    };
 
@@ -463,6 +465,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *pdev,
       .KHR_image_format_list = true,
       .KHR_imageless_framebuffer = true,
       .KHR_maintenance1 = true,
+      .KHR_maintenance3 = true,
       .KHR_push_descriptor = true,
       .KHR_relaxed_block_layout = true,
       .KHR_sampler_mirror_clamp_to_edge = true,
