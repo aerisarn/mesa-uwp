@@ -32,7 +32,8 @@ struct zink_vs_key_base {
    bool clip_halfz : 1;
    bool push_drawid : 1;
    bool last_vertex_stage : 1;
-   uint8_t pad : 5;
+   bool robust_access : 1;
+   uint8_t pad : 4;
 };
 
 struct zink_vs_key {
@@ -81,7 +82,8 @@ struct zink_fs_key {
    /* non-optimal bits after this point */
    bool lower_line_stipple : 1;
    bool lower_line_smooth : 1;
-   uint16_t pad2 : 14;
+   bool robust_access : 1;
+   uint16_t pad2 : 13;
 };
 
 struct zink_tcs_key {
@@ -92,7 +94,8 @@ struct zink_tcs_key {
  * ctx->compute_pipeline_state.key.size is set in zink_context_create.
  */
 struct zink_cs_key {
-   uint32_t pad : 32;
+   bool robust_access : 1;
+   uint32_t pad : 31;
 };
 
 struct zink_shader_key_base {
