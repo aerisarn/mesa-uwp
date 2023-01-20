@@ -550,6 +550,12 @@ anv_get_image_format_features2(const struct intel_device_info *devinfo,
    }
 
    assert(aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
+
+   if (vk_format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM) {
+      flags |= VK_FORMAT_FEATURE_2_VIDEO_DECODE_OUTPUT_BIT_KHR |
+               VK_FORMAT_FEATURE_2_VIDEO_DECODE_DPB_BIT_KHR;
+   }
+
    const struct anv_format_plane plane_format =
       anv_get_format_plane(devinfo, vk_format, 0, vk_tiling);
 
