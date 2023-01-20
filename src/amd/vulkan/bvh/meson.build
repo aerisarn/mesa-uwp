@@ -36,6 +36,11 @@ bvh_shaders = [
     ['COMPACT=1'],
   ],
   [
+    'header.comp',
+    'header',
+    [],
+  ],
+  [
     'lbvh_generate_ir.comp',
     'lbvh_generate_ir',
     [],
