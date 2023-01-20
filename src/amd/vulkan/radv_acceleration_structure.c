@@ -67,6 +67,10 @@ static const uint32_t encode_spv[] = {
 #include "bvh/encode.spv.h"
 };
 
+static const uint32_t encode_compact_spv[] = {
+#include "bvh/encode_compact.spv.h"
+};
+
 #define KEY_ID_PAIR_SIZE 8
 
 enum internal_build_type {
@@ -298,6 +302,8 @@ radv_device_finish_accel_struct_build_state(struct radv_device *device)
                         &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.encode_pipeline,
                         &state->alloc);
+   radv_DestroyPipeline(radv_device_to_handle(device),
+                        state->accel_struct_build.encode_compact_pipeline, &state->alloc);
    radv_DestroyPipeline(radv_device_to_handle(device), state->accel_struct_build.morton_pipeline,
                         &state->alloc);
    radv_DestroyPipelineLayout(radv_device_to_handle(device),
@@ -562,6 +568,13 @@ radv_device_init_accel_struct_build_state(struct radv_device *device)
       create_build_pipeline_spv(device, encode_spv, sizeof(encode_spv), sizeof(struct encode_args),
                                 &device->meta_state.accel_struct_build.encode_pipeline,
                                 &device->meta_state.accel_struct_build.encode_p_layout);
+   if (result != VK_SUCCESS)
+      goto exit;
+
+   result = create_build_pipeline_spv(
+      device, encode_compact_spv, sizeof(encode_compact_spv), sizeof(struct encode_args),
+      &device->meta_state.accel_struct_build.encode_compact_pipeline,
+      &device->meta_state.accel_struct_build.encode_p_layout);
    if (result != VK_SUCCESS)
       goto exit;
 
@@ -885,12 +898,18 @@ ploc_build_internal(VkCommandBuffer commandBuffer, uint32_t infoCount,
 static void
 encode_nodes(VkCommandBuffer commandBuffer, uint32_t infoCount,
              const VkAccelerationStructureBuildGeometryInfoKHR *pInfos,
-             struct bvh_state *bvh_states)
+             struct bvh_state *bvh_states, bool compact)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-   radv_CmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-                        cmd_buffer->device->meta_state.accel_struct_build.encode_pipeline);
+   radv_CmdBindPipeline(
+      commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+      compact ? cmd_buffer->device->meta_state.accel_struct_build.encode_compact_pipeline
+              : cmd_buffer->device->meta_state.accel_struct_build.encode_pipeline);
+
    for (uint32_t i = 0; i < infoCount; ++i) {
+      if (compact != bvh_states[i].config.compact)
+         continue;
+
       RADV_FROM_HANDLE(vk_acceleration_structure, accel_struct, pInfos[i].dstAccelerationStructure);
 
       VkGeometryTypeKHR geometry_type = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
@@ -901,6 +920,31 @@ encode_nodes(VkCommandBuffer commandBuffer, uint32_t infoCount,
       if (pInfos[i].geometryCount)
          geometry_type = pInfos[i].pGeometries ? pInfos[i].pGeometries[0].geometryType
                                                : pInfos[i].ppGeometries[0]->geometryType;
+
+      if (bvh_states[i].config.compact) {
+         uint32_t leaf_node_size = 0;
+         switch (geometry_type) {
+         case VK_GEOMETRY_TYPE_TRIANGLES_KHR:
+            leaf_node_size = sizeof(struct radv_bvh_triangle_node);
+            break;
+         case VK_GEOMETRY_TYPE_AABBS_KHR:
+            leaf_node_size = sizeof(struct radv_bvh_aabb_node);
+            break;
+         case VK_GEOMETRY_TYPE_INSTANCES_KHR:
+            leaf_node_size = sizeof(struct radv_bvh_instance_node);
+            break;
+         default:
+            unreachable("");
+         }
+
+         uint32_t dst_offset =
+            sizeof(struct radv_bvh_box32_node) + bvh_states[i].leaf_node_count * leaf_node_size;
+         radv_update_buffer_cp(cmd_buffer,
+                               pInfos[i].scratchData.deviceAddress +
+                                  bvh_states[i].scratch.header_offset +
+                                  offsetof(struct radv_ir_header, dst_node_offset),
+                               &dst_offset, sizeof(uint32_t));
+      }
 
       const struct encode_args args = {
          .intermediate_bvh = pInfos[i].scratchData.deviceAddress + bvh_states[i].scratch.ir_offset,
@@ -995,7 +1039,8 @@ radv_CmdBuildAccelerationStructuresKHR(
 
    cmd_buffer->state.flush_bits |= flush_bits;
 
-   encode_nodes(commandBuffer, infoCount, pInfos, bvh_states);
+   encode_nodes(commandBuffer, infoCount, pInfos, bvh_states, false);
+   encode_nodes(commandBuffer, infoCount, pInfos, bvh_states, true);
 
    for (uint32_t i = 0; i < infoCount; ++i) {
       RADV_FROM_HANDLE(vk_acceleration_structure, accel_struct, pInfos[i].dstAccelerationStructure);
