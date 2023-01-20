@@ -92,14 +92,16 @@ struct radv_accel_struct_header {
    uint32_t reserved;
    radv_aabb aabb;
 
-   /* Everything after this gets updated/copied from the CPU. */
+   /* Everything after this gets either updated/copied from the CPU or written by header.comp. */
    uint64_t compacted_size;
    uint64_t serialization_size;
    uint32_t copy_dispatch_size[3];
+   uint64_t size;
+
+   /* Everything after this gets updated/copied from the CPU. */
    uint32_t geometry_count;
    uint64_t instance_offset;
    uint64_t instance_count;
-   uint64_t size;
    uint32_t build_flags;
 };
 
