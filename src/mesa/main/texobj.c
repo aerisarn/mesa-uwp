@@ -436,7 +436,6 @@ _mesa_initialize_texture_object( struct gl_context *ctx,
  * Allocate and initialize a new texture object.  But don't put it into the
  * texture object hash table.
  *
- * \param shared the shared GL state structure to contain the texture object
  * \param name integer name for the texture object
  * \param target either GL_TEXTURE_1D, GL_TEXTURE_2D, GL_TEXTURE_3D,
  * GL_TEXTURE_CUBE_MAP or GL_TEXTURE_RECTANGLE_NV.  zero is ok for the sake
