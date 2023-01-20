@@ -3121,7 +3121,8 @@ radv_pipeline_get_nir(struct radv_pipeline *pipeline, struct radv_pipeline_stage
       if (pipeline->retained_shaders[s].nir) {
          stages[s].nir = nir_shader_clone(NULL, pipeline->retained_shaders[s].nir);
       } else {
-         stages[s].nir = radv_shader_spirv_to_nir(device, &stages[s], pipeline_key);
+         stages[s].nir = radv_shader_spirv_to_nir(device, &stages[s], pipeline_key,
+                                                  pipeline->is_internal);
       }
 
       if (retain_shaders)
@@ -5083,6 +5084,7 @@ radv_graphics_pipeline_create(VkDevice _device, VkPipelineCache _cache,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    radv_pipeline_init(device, &pipeline->base, RADV_PIPELINE_GRAPHICS);
+   pipeline->base.is_internal = is_internal;
 
    result = radv_graphics_pipeline_init(pipeline, device, cache, pCreateInfo, extra);
    if (result != VK_SUCCESS) {
@@ -5373,6 +5375,7 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    }
 
    radv_pipeline_init(device, &pipeline->base, RADV_PIPELINE_COMPUTE);
+   pipeline->base.is_internal = is_internal;
 
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);

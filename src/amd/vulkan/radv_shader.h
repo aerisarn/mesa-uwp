@@ -542,7 +542,8 @@ struct radv_pipeline_stage;
 
 nir_shader *radv_shader_spirv_to_nir(struct radv_device *device,
                                      const struct radv_pipeline_stage *stage,
-                                     const struct radv_pipeline_key *key);
+                                     const struct radv_pipeline_key *key,
+                                     bool is_internal);
 
 void radv_nir_lower_abi(nir_shader *shader, enum amd_gfx_level gfx_level,
                         const struct radv_shader_info *info, const struct radv_shader_args *args,

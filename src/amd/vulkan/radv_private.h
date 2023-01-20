@@ -1005,9 +1005,6 @@ struct radv_device {
    /* Whether per-vertex VRS is forced. */
    bool force_vrs_enabled;
 
-   /* Whether shaders created through application entrypoints are considered internal. */
-   bool app_shaders_internal;
-
    simple_mtx_t pstate_mtx;
    unsigned pstate_cnt;
 
@@ -2042,6 +2039,7 @@ struct radv_pipeline {
    struct radv_pipeline_slab *slab;
    struct radeon_winsys_bo *slab_bo;
 
+   bool is_internal;
    bool need_indirect_descriptor_sets;
    struct radv_shader *shaders[MESA_VULKAN_SHADER_STAGES];
    struct radv_shader *gs_copy_shader;
