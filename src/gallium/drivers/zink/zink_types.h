@@ -1341,6 +1341,7 @@ struct zink_screen {
       bool no_linestipple;
       bool no_linesmooth;
       bool no_hw_gl_point;
+      bool lower_robustImageAccess2;
       unsigned z16_unscaled_bias;
       unsigned z24_unscaled_bias;
    } driver_workarounds;

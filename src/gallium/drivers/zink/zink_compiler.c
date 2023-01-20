@@ -2946,6 +2946,8 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
                NIR_PASS_V(nir, lower_drawid);
             }
          }
+         if (zink_vs_key_base(key)->robust_access)
+            NIR_PASS(need_optimize, nir, lower_txf_lod_robustness);
          break;
       case MESA_SHADER_FRAGMENT:
          if (zink_fs_key(key)->lower_line_smooth) {
@@ -2954,6 +2956,9 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
             need_optimize = true;
          } else if (zink_fs_key(key)->lower_line_stipple)
                NIR_PASS_V(nir, lower_line_stipple_fs);
+
+         if (zink_fs_key(key)->robust_access)
+            NIR_PASS(need_optimize, nir, lower_txf_lod_robustness);
 
          if (!zink_fs_key_base(key)->samples &&
             nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) {
@@ -2999,6 +3004,10 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
             NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
             need_optimize = true;
          }
+         break;
+      case MESA_SHADER_COMPUTE:
+         if (zink_cs_key(key)->robust_access)
+            NIR_PASS(need_optimize, nir, lower_txf_lod_robustness);
          break;
       default: break;
       }

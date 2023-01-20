@@ -687,6 +687,8 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
    struct zink_shader_module *zm = NULL;
    unsigned inline_size = 0, nonseamless_size = 0;
    struct zink_shader_key *key = &ctx->compute_pipeline_state.key;
+   ASSERTED bool check_robustness = screen->driver_workarounds.lower_robustImageAccess2 && (ctx->flags & PIPE_CONTEXT_ROBUST_BUFFER_ACCESS);
+   assert(zink_cs_key(key)->robust_access == check_robustness);
 
    if (ctx && zs->nir->info.num_inlinable_uniforms &&
        ctx->inlinable_uniforms_valid_mask & BITFIELD64_BIT(MESA_SHADER_COMPUTE)) {
@@ -698,7 +700,7 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
    if (key->base.nonseamless_cube_mask)
       nonseamless_size = sizeof(uint32_t);
 
-   if (inline_size || nonseamless_size) {
+   if (inline_size || nonseamless_size || zink_cs_key(key)->robust_access) {
       struct util_dynarray *shader_cache = &comp->shader_cache[!!nonseamless_size];
       unsigned count = util_dynarray_num_elements(shader_cache, struct zink_shader_module *);
       struct zink_shader_module **pzm = shader_cache->data;
@@ -734,7 +736,7 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
       zm->key_size = key->size;
       memcpy(zm->key, key, key->size);
       zm->has_nonseamless = !!nonseamless_size;
-      assert(nonseamless_size || inline_size);
+      assert(nonseamless_size || inline_size || zink_cs_key(key)->robust_access);
       if (nonseamless_size)
          memcpy(zm->key + zm->key_size, &key->base.nonseamless_cube_mask, nonseamless_size);
       if (inline_size)
@@ -745,7 +747,7 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
          comp->inlined_variant_count++;
 
       /* this is otherwise the default variant, which is stored as comp->module */
-      if (zm->num_uniforms || nonseamless_size)
+      if (zm->num_uniforms || nonseamless_size || zink_cs_key(key)->robust_access)
          util_dynarray_append(&comp->shader_cache[!!nonseamless_size], void*, zm);
    }
    if (comp->curr == zm)
@@ -1001,7 +1003,9 @@ create_compute_program(struct zink_context *ctx, nir_shader *nir)
    comp->use_local_size = !(nir->info.workgroup_size[0] ||
                             nir->info.workgroup_size[1] ||
                             nir->info.workgroup_size[2]);
-   comp->base.can_precompile = !comp->use_local_size && (screen->info.have_EXT_non_seamless_cube_map || !zink_shader_has_cubes(nir));
+   comp->base.can_precompile = !comp->use_local_size &&
+                               (screen->info.have_EXT_non_seamless_cube_map || !zink_shader_has_cubes(nir)) &&
+                               (screen->info.rb2_feats.robustImageAccess2 || !(ctx->flags & PIPE_CONTEXT_ROBUST_BUFFER_ACCESS));
    _mesa_hash_table_init(&comp->pipelines, comp, NULL, comp->use_local_size ?
                                                        equals_compute_pipeline_state_local_size :
                                                        equals_compute_pipeline_state);

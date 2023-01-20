@@ -590,7 +590,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->info.feats.features.pipelineStatisticsQuery;
 
    case PIPE_CAP_ROBUST_BUFFER_ACCESS_BEHAVIOR:
-      return screen->info.feats.features.robustBufferAccess;
+      return screen->info.feats.features.robustBufferAccess &&
+             (screen->info.rb2_feats.robustImageAccess2 || screen->driver_workarounds.lower_robustImageAccess2);
 
    case PIPE_CAP_MULTI_DRAW_INDIRECT:
       return screen->info.feats.features.multiDrawIndirect;
@@ -2483,6 +2484,12 @@ init_driver_workarounds(struct zink_screen *screen)
       break;
    }
 
+   /* When robust contexts are advertised but robustImageAccess2 is not available */
+   screen->driver_workarounds.lower_robustImageAccess2 =
+      !screen->info.rb2_feats.robustImageAccess2 &&
+      screen->info.feats.features.robustBufferAccess &&
+      screen->info.rb_image_feats.robustImageAccess;
+
    /* once more testing has been done, use the #if 0 block */
    if (zink_debug & ZINK_DEBUG_RP)
       screen->driver_workarounds.track_renderpasses = true;
@@ -2878,7 +2885,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
                           !screen->driconf.inline_uniforms &&
                           !screen->driver_workarounds.no_linestipple &&
                           !screen->driver_workarounds.no_linesmooth &&
-                          !screen->driver_workarounds.no_hw_gl_point;
+                          !screen->driver_workarounds.no_hw_gl_point &&
+                          !screen->driver_workarounds.lower_robustImageAccess2;
    if (!screen->optimal_keys)
       screen->info.have_EXT_graphics_pipeline_library = false;
 
