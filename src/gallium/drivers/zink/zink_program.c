@@ -731,13 +731,14 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
       }
       zm->shader = mod;
       zm->num_uniforms = inline_size;
-      zm->key_size = 0;
+      zm->key_size = key->size;
+      memcpy(zm->key, key, key->size);
       zm->has_nonseamless = !!nonseamless_size;
       assert(nonseamless_size || inline_size);
       if (nonseamless_size)
-         memcpy(zm->key, &key->base.nonseamless_cube_mask, nonseamless_size);
+         memcpy(zm->key + zm->key_size, &key->base.nonseamless_cube_mask, nonseamless_size);
       if (inline_size)
-         memcpy(zm->key + nonseamless_size, key->base.inlined_uniform_values, inline_size * sizeof(uint32_t));
+         memcpy(zm->key + zm->key_size + nonseamless_size, key->base.inlined_uniform_values, inline_size * sizeof(uint32_t));
       zm->hash = shader_module_hash(zm);
       zm->default_variant = false;
       if (inline_size)

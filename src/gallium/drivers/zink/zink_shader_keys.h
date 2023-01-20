@@ -88,6 +88,13 @@ struct zink_tcs_key {
    uint8_t patch_vertices;
 };
 
+/* when adding a new field, make sure
+ * ctx->compute_pipeline_state.key.size is set in zink_context_create.
+ */
+struct zink_cs_key {
+   uint32_t pad : 32;
+};
+
 struct zink_shader_key_base {
    uint32_t nonseamless_cube_mask;
    uint32_t inlined_uniform_values[MAX_INLINABLE_UNIFORMS];
@@ -107,6 +114,7 @@ struct zink_shader_key {
       struct zink_gs_key gs;
       struct zink_fs_key fs;
       struct zink_fs_key_base fs_base;
+      struct zink_cs_key cs;
    } key;
    struct zink_shader_key_base base;
    unsigned inline_uniforms:1;
@@ -168,6 +176,11 @@ zink_tcs_key(const struct zink_shader_key *key)
    return &key->key.tcs;
 }
 
-
+static inline const struct zink_cs_key *
+zink_cs_key(const struct zink_shader_key *key)
+{
+   assert(key);
+   return &key->key.cs;
+}
 
 #endif
