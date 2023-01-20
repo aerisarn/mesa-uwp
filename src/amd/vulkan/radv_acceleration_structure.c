@@ -85,6 +85,7 @@ struct build_config {
 };
 
 struct acceleration_structure_layout {
+   uint32_t geometry_info_offset;
    uint32_t bvh_offset;
    uint32_t size;
 };
@@ -170,6 +171,9 @@ get_build_layout(struct radv_device *device, uint32_t leaf_count,
       uint32_t offset = 0;
       offset += sizeof(struct radv_accel_struct_header);
 
+      accel_struct->geometry_info_offset = offset;
+      offset += sizeof(struct radv_accel_struct_geometry_info) * build_info->geometryCount;
+
       /* Parent links, which have to go directly before bvh_offset as we index them using negative
        * offsets from there. */
       offset += bvh_size / 64 * 4;
@@ -179,7 +183,6 @@ get_build_layout(struct radv_device *device, uint32_t leaf_count,
       accel_struct->bvh_offset = offset;
 
       offset += bvh_size;
-      offset += sizeof(struct radv_accel_struct_geometry_info) * build_info->geometryCount;
 
       accel_struct->size = offset;
    }
@@ -1088,11 +1091,9 @@ radv_CmdBuildAccelerationStructuresKHR(
       radv_update_buffer_cp(cmd_buffer, vk_acceleration_structure_get_va(accel_struct) + base,
                             (const char *)&header + base, sizeof(header) - base);
 
-      VkDeviceSize geometry_infos_offset = header.compacted_size - geometry_infos_size;
-
       radv_CmdUpdateBuffer(commandBuffer, accel_struct->buffer,
-                           accel_struct->offset + geometry_infos_offset, geometry_infos_size,
-                           geometry_infos);
+                           accel_struct->offset + bvh_states[i].accel_struct.geometry_info_offset,
+                           geometry_infos_size, geometry_infos);
 
       free(geometry_infos);
    }
