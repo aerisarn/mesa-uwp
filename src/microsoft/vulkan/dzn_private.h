@@ -221,7 +221,8 @@ struct dzn_physical_device {
 
 D3D12_FEATURE_DATA_FORMAT_SUPPORT
 dzn_physical_device_get_format_support(struct dzn_physical_device *pdev,
-                                       VkFormat format);
+                                       VkFormat format,
+                                       VkImageCreateFlags create_flags);
 
 uint32_t
 dzn_physical_device_get_mem_type_mask_for_resource(const struct dzn_physical_device *pdev,

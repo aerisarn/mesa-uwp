@@ -243,7 +243,7 @@ dzn_image_create(struct dzn_device *device,
        image->vk.tiling == VK_IMAGE_TILING_OPTIMAL) {
 
       D3D12_FEATURE_DATA_FORMAT_SUPPORT dfmt_info =
-         dzn_physical_device_get_format_support(pdev, pCreateInfo->format);
+         dzn_physical_device_get_format_support(pdev, pCreateInfo->format, pCreateInfo->flags);
       if (dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_RENDER_TARGET) {
          image->desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
          image->valid_access |= D3D12_BARRIER_ACCESS_RENDER_TARGET;

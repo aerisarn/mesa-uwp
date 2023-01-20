@@ -629,9 +629,30 @@ dzn_physical_device_get_d3d12_dev(struct dzn_physical_device *pdev)
    return pdev->dev;
 }
 
+static DXGI_FORMAT
+dzn_get_most_capable_format_for_casting(VkFormat format, VkImageCreateFlags create_flags)
+{
+   enum pipe_format pfmt = vk_format_to_pipe_format(format);
+   bool block_compressed = util_format_is_compressed(pfmt);
+   if (block_compressed &&
+       !(create_flags & VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT))
+      return dzn_image_get_dxgi_format(format, 0, 0);
+   unsigned blksz = util_format_get_blocksize(pfmt);
+   switch (blksz) {
+   case 1: return DXGI_FORMAT_R8_UNORM;
+   case 2: return DXGI_FORMAT_R16_UNORM;
+   case 4: return DXGI_FORMAT_R32_FLOAT;
+   case 8: return DXGI_FORMAT_R32G32_FLOAT;
+   case 12: return DXGI_FORMAT_R32G32B32_FLOAT;
+   case 16: return DXGI_FORMAT_R32G32B32A32_FLOAT;
+   default: unreachable("Unsupported format bit size");;
+   }
+}
+
 D3D12_FEATURE_DATA_FORMAT_SUPPORT
 dzn_physical_device_get_format_support(struct dzn_physical_device *pdev,
-                                       VkFormat format)
+                                       VkFormat format,
+                                       VkImageCreateFlags create_flags)
 {
    VkImageUsageFlags usage =
       vk_format_is_depth_or_stencil(format) ?
@@ -646,6 +667,17 @@ dzn_physical_device_get_format_support(struct dzn_physical_device *pdev,
    D3D12_FEATURE_DATA_FORMAT_SUPPORT dfmt_info = {
      .Format = dzn_image_get_dxgi_format(format, usage, aspects),
    };
+
+   /* KHR_maintenance2: If an image is created with the extended usage flag
+    * (or if properties are queried with that flag), then if any compatible
+    * format can support a given usage, it should be considered supported.
+    * With the exception of depth, which are limited in their cast set,
+    * we can do this by just picking a single most-capable format to query
+    * the support for, instead of the originally requested format. */
+   if (aspects == 0 && dfmt_info.Format != DXGI_FORMAT_UNKNOWN &&
+       (create_flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT)) {
+      dfmt_info.Format = dzn_get_most_capable_format_for_casting(format, create_flags);
+   }
 
    ID3D12Device4 *dev = dzn_physical_device_get_d3d12_dev(pdev);
    ASSERTED HRESULT hres =
@@ -692,7 +724,7 @@ dzn_physical_device_get_format_properties(struct dzn_physical_device *pdev,
                                           VkFormatProperties2 *properties)
 {
    D3D12_FEATURE_DATA_FORMAT_SUPPORT dfmt_info =
-      dzn_physical_device_get_format_support(pdev, format);
+      dzn_physical_device_get_format_support(pdev, format, 0);
    VkFormatProperties *base_props = &properties->formatProperties;
 
    vk_foreach_struct(ext, properties->pNext) {
@@ -847,11 +879,12 @@ dzn_physical_device_get_image_format_properties(struct dzn_physical_device *pdev
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
    D3D12_FEATURE_DATA_FORMAT_SUPPORT dfmt_info =
-      dzn_physical_device_get_format_support(pdev, info->format);
+      dzn_physical_device_get_format_support(pdev, info->format, info->flags);
    if (dfmt_info.Format == DXGI_FORMAT_UNKNOWN)
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
-   bool is_bgra4 = info->format == VK_FORMAT_B4G4R4A4_UNORM_PACK16;
+   bool is_bgra4 = info->format == VK_FORMAT_B4G4R4A4_UNORM_PACK16 &&
+      !(info->flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT);
    ID3D12Device4 *dev = dzn_physical_device_get_d3d12_dev(pdev);
 
    if ((info->type == VK_IMAGE_TYPE_1D && !(dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_TEXTURE1D)) ||
@@ -859,6 +892,10 @@ dzn_physical_device_get_image_format_properties(struct dzn_physical_device *pdev
        (info->type == VK_IMAGE_TYPE_3D && !(dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_TEXTURE3D)) ||
        ((info->flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) &&
         !(dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_TEXTURECUBE)))
+      return VK_ERROR_FORMAT_NOT_SUPPORTED;
+
+   /* Due to extended capability querying, we might see 1D support for BC, but we don't actually have it */
+   if (vk_format_is_block_compressed(info->format) && info->type == VK_IMAGE_TYPE_1D)
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
    if ((info->usage & VK_IMAGE_USAGE_SAMPLED_BIT) &&
