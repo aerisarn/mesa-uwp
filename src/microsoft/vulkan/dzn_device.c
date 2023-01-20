@@ -722,7 +722,8 @@ dzn_physical_device_get_format_properties(struct dzn_physical_device *pdev,
                    D3D12_FORMAT_SUPPORT1_TEXTURE2D | \
                    D3D12_FORMAT_SUPPORT1_TEXTURE3D | \
                    D3D12_FORMAT_SUPPORT1_TEXTURECUBE)
-   if (dfmt_info.Support1 & TEX_FLAGS) {
+   if ((dfmt_info.Support1 & TEX_FLAGS) &&
+       (dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_LOAD)) {
       base_props->optimalTilingFeatures |=
          VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_BLIT_SRC_BIT;
    }
@@ -861,7 +862,8 @@ dzn_physical_device_get_image_format_properties(struct dzn_physical_device *pdev
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
    if ((info->usage & VK_IMAGE_USAGE_SAMPLED_BIT) &&
-       !(dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE))
+       /* Note: format support for SAMPLED is not necessarily accurate for integer formats */
+       !(dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_LOAD))
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
    if ((info->usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) &&
