@@ -465,7 +465,6 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
       .buffers_ptr = (uintptr_t) execbuf->objects,
       .buffer_count = execbuf->bo_count,
       .batch_start_offset = 0,
-      /* We'll fill in batch length later when chaining batches. */
       .batch_len = 0,
       .cliprects_ptr = 0,
       .num_cliprects = 0,
