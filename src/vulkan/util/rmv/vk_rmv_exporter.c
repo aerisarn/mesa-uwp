@@ -1609,7 +1609,7 @@ rmt_dump_data(struct vk_memory_trace_data *data, FILE *output)
    uint64_t current_timestamp = 0;
    if (util_dynarray_num_elements(&data->tokens, struct vk_rmv_token))
       current_timestamp =
-         util_dynarray_element(&data->tokens, struct vk_rmv_token, 0)->timestamp / 1000;
+         util_dynarray_element(&data->tokens, struct vk_rmv_token, 0)->timestamp / RMT_TIMESTAMP_DIVISOR;
 
    long stream_start = ftell(output);
 
