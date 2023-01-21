@@ -752,8 +752,9 @@ AluInstr::split(ValueFactory& vf)
       }
 
       SrcValues src;
-      for (int i = 0; i < alu_ops.at(m_opcode).nsrc; ++i) {
-         auto old_src = m_src[s * alu_ops.at(m_opcode).nsrc + i];
+      int nsrc = alu_ops.at(m_opcode).nsrc;
+      for (int i = 0; i < nsrc; ++i) {
+         auto old_src = m_src[k * nsrc + i];
          // Make it easy for the scheduler and pin the register to the
          // channel, otherwise scheduler would have to check whether a
          // channel switch is possible
