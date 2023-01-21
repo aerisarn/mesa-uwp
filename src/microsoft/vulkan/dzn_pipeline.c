@@ -1563,8 +1563,8 @@ dzn_graphics_pipeline_translate_blend(struct dzn_graphics_pipeline *pipeline,
 
    for (uint32_t i = 0; i < in_blend->attachmentCount; i++) {
       if (i > 0 &&
-          !memcmp(&in_blend->pAttachments[i - 1], &in_blend->pAttachments[i],
-                  sizeof(*in_blend->pAttachments)))
+          memcmp(&in_blend->pAttachments[i - 1], &in_blend->pAttachments[i],
+                 sizeof(*in_blend->pAttachments)) != 0)
          desc->IndependentBlendEnable = true;
 
       desc->RenderTarget[i].BlendEnable =
