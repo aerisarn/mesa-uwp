@@ -49,6 +49,7 @@
 #include "util/u_screen.h"
 #include "util/u_upload_mgr.h"
 #include "agx_device.h"
+#include "agx_disk_cache.h"
 #include "agx_public.h"
 #include "agx_state.h"
 #include "magic.h"
@@ -1600,10 +1601,13 @@ agx_is_dmabuf_modifier_supported(struct pipe_screen *screen, uint64_t modifier,
 }
 
 static void
-agx_destroy_screen(struct pipe_screen *screen)
+agx_destroy_screen(struct pipe_screen *pscreen)
 {
-   u_transfer_helper_destroy(screen->transfer_helper);
-   agx_close_device(agx_device(screen));
+   struct agx_screen *screen = agx_screen(pscreen);
+
+   u_transfer_helper_destroy(pscreen->transfer_helper);
+   agx_close_device(&screen->dev);
+   disk_cache_destroy(screen->disk_cache);
    ralloc_free(screen);
 }
 
@@ -1644,6 +1648,12 @@ static enum pipe_format
 agx_resource_get_internal_format(struct pipe_resource *prsrc)
 {
    return agx_resource(prsrc)->layout.format;
+}
+
+static struct disk_cache *
+agx_get_disk_shader_cache(struct pipe_screen *pscreen)
+{
+   return agx_screen(pscreen)->disk_cache;
 }
 
 static const struct u_transfer_vtbl transfer_vtbl = {
@@ -1717,6 +1727,7 @@ agx_screen_create(int fd, struct renderonly *ro, struct sw_winsys *winsys)
    screen->fence_reference = agx_fence_reference;
    screen->fence_finish = agx_fence_finish;
    screen->get_compiler_options = agx_get_compiler_options;
+   screen->get_disk_shader_cache = agx_get_disk_shader_cache;
 
    screen->resource_create = u_transfer_helper_resource_create;
    screen->resource_destroy = u_transfer_helper_resource_destroy;
@@ -1724,6 +1735,8 @@ agx_screen_create(int fd, struct renderonly *ro, struct sw_winsys *winsys)
       &transfer_vtbl,
       U_TRANSFER_HELPER_SEPARATE_Z32S8 | U_TRANSFER_HELPER_SEPARATE_STENCIL |
          U_TRANSFER_HELPER_MSAA_MAP | U_TRANSFER_HELPER_Z24_IN_Z32F);
+
+   agx_disk_cache_init(agx_screen);
 
    return screen;
 }

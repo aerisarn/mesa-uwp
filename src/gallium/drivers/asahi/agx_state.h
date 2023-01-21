@@ -39,6 +39,7 @@
 #include "gallium/include/pipe/p_screen.h"
 #include "gallium/include/pipe/p_state.h"
 #include "util/bitset.h"
+#include "util/disk_cache.h"
 #include "util/hash_table.h"
 #include "agx_meta.h"
 
@@ -116,6 +117,7 @@ struct agx_compiled_shader {
 struct agx_uncompiled_shader {
    struct pipe_shader_state base;
    struct nir_shader *nir;
+   uint8_t nir_sha1[20];
    struct hash_table *variants;
 
    /* Set on VS, passed to FS for linkage */
@@ -355,6 +357,7 @@ struct agx_screen {
    struct pipe_screen pscreen;
    struct agx_device dev;
    struct sw_winsys *winsys;
+   struct disk_cache *disk_cache;
 };
 
 static inline struct agx_screen *
