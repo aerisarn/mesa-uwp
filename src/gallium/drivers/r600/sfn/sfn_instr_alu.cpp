@@ -71,7 +71,8 @@ AluInstr::AluInstr(EAluOp opcode,
 
    if (dest && slots > 1) {
       switch (m_opcode) {
-      case op2_dot: m_allowed_desk_mask = (1 << (4 - slots)) - 1; break;
+      case op2_dot_ieee: m_allowed_desk_mask = (1 << (5 - slots)) - 1;
+         break;
       default:
          if (has_alu_flag(alu_is_cayman_trans)) {
             m_allowed_desk_mask = (1 << slots) - 1;
