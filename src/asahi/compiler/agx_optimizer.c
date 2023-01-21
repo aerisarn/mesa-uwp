@@ -192,8 +192,9 @@ agx_optimizer_copyprop(agx_instr **defs, agx_instr *I)
        * low-half of the uniform file.
        */
       if (def->src[0].type == AGX_INDEX_UNIFORM &&
-          (I->op == AGX_OPCODE_TEXTURE_LOAD ||
-           I->op == AGX_OPCODE_TEXTURE_SAMPLE ||
+          (((I->op == AGX_OPCODE_TEXTURE_LOAD ||
+             I->op == AGX_OPCODE_TEXTURE_SAMPLE) &&
+            s != 1) ||
            (I->op == AGX_OPCODE_DEVICE_LOAD &&
             (s != 0 || def->src[0].value >= 256)) ||
            (I->op == AGX_OPCODE_DEVICE_STORE &&
