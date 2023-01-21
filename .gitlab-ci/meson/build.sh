@@ -59,7 +59,8 @@ case $CI_JOB_NAME in
 esac
 
 rm -rf _build
-meson _build --native-file=native.file \
+meson setup _build \
+      --native-file=native.file \
       --wrap-mode=nofallback \
       --force-fallback-for perfetto \
       ${CROSS+--cross "$CROSS_FILE"} \

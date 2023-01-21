@@ -36,7 +36,7 @@ $depsInstallPath="C:\mesa-deps"
 
 Push-Location $builddir
 
-meson `
+meson setup `
 --default-library=shared `
 --buildtype=release `
 --wrap-mode=nodownload `
