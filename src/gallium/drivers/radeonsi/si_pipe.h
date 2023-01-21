@@ -221,6 +221,7 @@ enum
    DBG_RESERVE_VMID,
    DBG_SHADOW_REGS,
    DBG_NO_FAST_DISPLAY_LIST,
+   DBG_NO_DMA_SHADERS,
 
    /* Multimedia options: */
    DBG_NO_EFC,

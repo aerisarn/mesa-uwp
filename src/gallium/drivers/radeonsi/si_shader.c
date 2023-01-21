@@ -18,6 +18,7 @@
 #include "util/u_memory.h"
 #include "util/mesa-sha1.h"
 #include "util/ralloc.h"
+#include "util/u_upload_mgr.h"
 
 static const char scratch_rsrc_dword0_symbol[] = "SCRATCH_RSRC_DWORD0";
 
@@ -908,12 +909,14 @@ static bool upload_binary_elf(struct si_screen *sscreen, struct si_shader *shade
       return false;
 
    unsigned rx_size = ac_align_shader_binary_for_prefetch(&sscreen->info, binary.rx_size);
+   bool dma_upload = !(sscreen->debug_flags & DBG(NO_DMA_SHADERS));
 
    si_resource_reference(&shader->bo, NULL);
    shader->bo = si_aligned_buffer_create(
       &sscreen->b,
-      (sscreen->info.cpdma_prefetch_writes_memory ? 0 : SI_RESOURCE_FLAG_READ_ONLY) |
-      SI_RESOURCE_FLAG_DRIVER_INTERNAL | SI_RESOURCE_FLAG_32BIT,
+      SI_RESOURCE_FLAG_DRIVER_INTERNAL | SI_RESOURCE_FLAG_32BIT |
+      (dma_upload || sscreen->info.cpdma_prefetch_writes_memory ? 0 : SI_RESOURCE_FLAG_READ_ONLY) |
+      (dma_upload ? PIPE_RESOURCE_FLAG_UNMAPPABLE : 0),
       PIPE_USAGE_IMMUTABLE, align(rx_size, SI_CPDMA_ALIGNMENT), 256);
    if (!shader->bo)
       return false;
@@ -924,11 +927,28 @@ static bool upload_binary_elf(struct si_screen *sscreen, struct si_shader *shade
    u.get_external_symbol = si_get_external_symbol;
    u.cb_data = &scratch_va;
    u.rx_va = shader->bo->gpu_address;
-   u.rx_ptr = sscreen->ws->buffer_map(sscreen->ws,
-      shader->bo->buf, NULL,
-      PIPE_MAP_READ_WRITE | PIPE_MAP_UNSYNCHRONIZED | RADEON_MAP_TEMPORARY);
-   if (!u.rx_ptr)
-      return false;
+
+   struct si_context *upload_ctx = NULL;
+   struct pipe_resource *staging = NULL;
+   unsigned staging_offset = 0;
+
+   if (dma_upload) {
+      /* First upload into a staging buffer. */
+      upload_ctx = si_get_aux_context(&sscreen->aux_context.shader_upload);
+
+      u_upload_alloc(upload_ctx->b.stream_uploader, 0, binary.rx_size, 256,
+                     &staging_offset, &staging, (void**)&u.rx_ptr);
+      if (!u.rx_ptr) {
+         si_put_aux_context_flush(&sscreen->aux_context.shader_upload);
+         return false;
+      }
+   } else {
+      u.rx_ptr = sscreen->ws->buffer_map(sscreen->ws,
+         shader->bo->buf, NULL,
+         PIPE_MAP_READ_WRITE | PIPE_MAP_UNSYNCHRONIZED | RADEON_MAP_TEMPORARY);
+      if (!u.rx_ptr)
+         return false;
+   }
 
    int size = ac_rtld_upload(&u);
 
@@ -939,7 +959,36 @@ static bool upload_binary_elf(struct si_screen *sscreen, struct si_shader *shade
       memcpy(shader->binary.uploaded_code, u.rx_ptr, size);
    }
 
-   sscreen->ws->buffer_unmap(sscreen->ws, shader->bo->buf);
+   if (dma_upload) {
+      /* Then copy from the staging buffer to VRAM.
+       *
+       * We can't use the upload copy in si_buffer_transfer_unmap because that might use
+       * a compute shader, and we can't use shaders in the code that is responsible for making
+       * them available.
+       */
+      si_cp_dma_copy_buffer(upload_ctx, &shader->bo->b.b, staging, 0, staging_offset,
+                            binary.rx_size, SI_OP_SYNC_AFTER, SI_COHERENCY_SHADER,
+                            sscreen->info.gfx_level >= GFX7 ? L2_LRU : L2_BYPASS);
+      upload_ctx->flags |= SI_CONTEXT_INV_ICACHE | SI_CONTEXT_INV_L2;
+
+#if 0 /* debug: validate whether the copy was successful */
+      uint32_t *dst_binary = malloc(binary.rx_size);
+      uint32_t *src_binary = (uint32_t*)u.rx_ptr;
+      pipe_buffer_read(&upload_ctx->b, &shader->bo->b.b, 0, binary.rx_size, dst_binary);
+      puts("dst_binary == src_binary:");
+      for (unsigned i = 0; i < binary.rx_size / 4; i++) {
+         printf("   %08x == %08x\n", dst_binary[i], src_binary[i]);
+      }
+      free(dst_binary);
+      exit(0);
+#endif
+
+      si_put_aux_context_flush(&sscreen->aux_context.shader_upload);
+      pipe_resource_reference(&staging, NULL);
+   } else {
+      sscreen->ws->buffer_unmap(sscreen->ws, shader->bo->buf);
+   }
+
    ac_rtld_close(&binary);
    shader->gpu_address = u.rx_va;
 
