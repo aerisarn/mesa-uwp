@@ -63,7 +63,6 @@ subdir('util')
 if with_gallium
   subdir('mapi')
 endif
-# TODO: opengl
 subdir('compiler')
 if with_tools.contains('drm-shim')
   subdir('drm-shim')
