@@ -43,8 +43,8 @@
 /* maybe move to fd6_program? */
 static void
 cs_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
-                struct ir3_shader_variant *v,
-                uint32_t variable_shared_size) assert_dt
+                struct ir3_shader_variant *v)
+   assert_dt
 {
    const struct ir3_info *i = &v->info;
    enum a6xx_threadsize thrsz = i->double_threadsize ? THREAD128 : THREAD64;
@@ -75,18 +75,6 @@ cs_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
                A6XX_SP_CS_CTRL_REG0_HALFREGFOOTPRINT(i->max_half_reg + 1) |
                COND(v->mergedregs, A6XX_SP_CS_CTRL_REG0_MERGEDREGS) |
                A6XX_SP_CS_CTRL_REG0_BRANCHSTACK(ir3_shader_branchstack_hw(v)));
-
-   uint32_t shared_size =
-      MAX2(((int)(v->cs.req_local_mem + variable_shared_size) - 1) / 1024, 1);
-   OUT_PKT4(ring, REG_A6XX_SP_CS_UNKNOWN_A9B1, 1);
-   OUT_RING(ring, A6XX_SP_CS_UNKNOWN_A9B1_SHARED_SIZE(shared_size) |
-                     A6XX_SP_CS_UNKNOWN_A9B1_UNK6);
-
-   if (ctx->screen->info->a6xx.has_lpac) {
-      OUT_PKT4(ring, REG_A6XX_HLSQ_CS_UNKNOWN_B9D0, 1);
-      OUT_RING(ring, A6XX_HLSQ_CS_UNKNOWN_B9D0_SHARED_SIZE(shared_size) |
-                        A6XX_HLSQ_CS_UNKNOWN_B9D0_UNK6);
-   }
 
    uint32_t local_invocation_id, work_group_id;
    local_invocation_id =
@@ -131,7 +119,7 @@ fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info) in_dt
       return;
 
    if (ctx->dirty_shader[PIPE_SHADER_COMPUTE] & FD_DIRTY_SHADER_PROG)
-      cs_program_emit(ctx, ring, v, info->variable_shared_mem);
+      cs_program_emit(ctx, ring, v);
 
    bool emit_instrlen_workaround =
       v->instrlen > ctx->screen->info->a6xx.instr_cache_size;
@@ -178,6 +166,18 @@ fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info) in_dt
 
    OUT_PKT7(ring, CP_SET_MARKER, 1);
    OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_COMPUTE));
+
+   uint32_t shared_size =
+      MAX2(((int)(v->cs.req_local_mem + info->variable_shared_mem) - 1) / 1024, 1);
+   OUT_PKT4(ring, REG_A6XX_SP_CS_UNKNOWN_A9B1, 1);
+   OUT_RING(ring, A6XX_SP_CS_UNKNOWN_A9B1_SHARED_SIZE(shared_size) |
+                     A6XX_SP_CS_UNKNOWN_A9B1_UNK6);
+
+   if (ctx->screen->info->a6xx.has_lpac) {
+      OUT_PKT4(ring, REG_A6XX_HLSQ_CS_UNKNOWN_B9D0, 1);
+      OUT_RING(ring, A6XX_HLSQ_CS_UNKNOWN_B9D0_SHARED_SIZE(shared_size) |
+                        A6XX_HLSQ_CS_UNKNOWN_B9D0_UNK6);
+   }
 
    const unsigned *local_size =
       info->block; // v->shader->nir->info->workgroup_size;
