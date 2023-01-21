@@ -378,9 +378,6 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
          return result;
    }
 
-   for (uint32_t i = 0; i < execbuf->bo_count; i++)
-      execbuf->objects[i].offset = execbuf->bos[i]->offset;
-
    struct anv_batch_bo *first_batch_bo =
       list_first_entry(&cmd_buffers[0]->batch_bos, struct anv_batch_bo, link);
 
