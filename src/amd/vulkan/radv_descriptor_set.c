@@ -864,6 +864,7 @@ radv_create_descriptor_pool(struct radv_device *device,
       }
    }
 
+   uint64_t num_16byte_descriptors = 0;
    for (unsigned i = 0; i < pCreateInfo->poolSizeCount; ++i) {
       bo_count += radv_descriptor_type_buffer_count(pCreateInfo->pPoolSizes[i].type) *
          pCreateInfo->pPoolSizes[i].descriptorCount;
@@ -879,8 +880,10 @@ radv_create_descriptor_pool(struct radv_device *device,
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
       case VK_DESCRIPTOR_TYPE_SAMPLER:
       case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+         bo_size += 16 * pCreateInfo->pPoolSizes[i].descriptorCount;
+         num_16byte_descriptors += pCreateInfo->pPoolSizes[i].descriptorCount;
+         break;
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-         /* 32 as we may need to align for images */
          bo_size += 32 * pCreateInfo->pPoolSizes[i].descriptorCount;
          break;
       case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
@@ -900,6 +903,8 @@ radv_create_descriptor_pool(struct radv_device *device,
                /* 32 as we may need to align for images */
                mutable_size = align(mutable_size, 32);
                bo_size += mutable_size * pCreateInfo->pPoolSizes[i].descriptorCount;
+               if (mutable_size < 32)
+                  num_16byte_descriptors += pCreateInfo->pPoolSizes[i].descriptorCount;
             }
          } else {
             bo_size += 64 * pCreateInfo->pPoolSizes[i].descriptorCount;
@@ -914,6 +919,12 @@ radv_create_descriptor_pool(struct radv_device *device,
       default:
          break;
       }
+   }
+
+   if (num_16byte_descriptors) {
+      /* Reserve space to align before image descriptors. Our layout code ensures at most one gap
+       * per set. */
+      bo_size += 16 * MIN2(num_16byte_descriptors, pCreateInfo->maxSets);
    }
 
    uint64_t layouts_size = 0;
