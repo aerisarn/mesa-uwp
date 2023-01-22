@@ -3327,6 +3327,9 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
                .allow_fp16 = gfx_level >= GFX9,
             });
 
+   if (radv_use_llvm_for_stage(device, stage->stage))
+      NIR_PASS_V(stage->nir, nir_lower_io_to_scalar, nir_var_mem_global);
+
    NIR_PASS(_, stage->nir, ac_nir_lower_global_access);
    NIR_PASS_V(stage->nir, radv_nir_lower_abi, gfx_level, &stage->info, &stage->args, pipeline_key,
               radv_use_llvm_for_stage(device, stage->stage),
