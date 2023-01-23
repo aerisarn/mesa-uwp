@@ -164,15 +164,15 @@ loader_dri3_blit_context_get(struct loader_dri3_drawable *draw)
 {
    mtx_lock(&blit_context.mtx);
 
-   if (blit_context.ctx && blit_context.cur_screen != draw->dri_screen) {
+   if (blit_context.ctx && blit_context.cur_screen != draw->dri_screen_render_gpu) {
       blit_context.core->destroyContext(blit_context.ctx);
       blit_context.ctx = NULL;
    }
 
    if (!blit_context.ctx) {
-      blit_context.ctx = draw->ext->core->createNewContext(draw->dri_screen,
+      blit_context.ctx = draw->ext->core->createNewContext(draw->dri_screen_render_gpu,
                                                            NULL, NULL, NULL);
-      blit_context.cur_screen = draw->dri_screen;
+      blit_context.cur_screen = draw->dri_screen_render_gpu;
       blit_context.core = draw->ext->core;
    }
 
@@ -377,7 +377,7 @@ int
 loader_dri3_drawable_init(xcb_connection_t *conn,
                           xcb_drawable_t drawable,
                           enum loader_dri3_drawable_type type,
-                          __DRIscreen *dri_screen,
+                          __DRIscreen *dri_screen_render_gpu,
                           __DRIscreen *dri_screen_display_gpu,
                           bool is_different_gpu,
                           bool multiplanes_available,
@@ -397,7 +397,7 @@ loader_dri3_drawable_init(xcb_connection_t *conn,
    draw->drawable = drawable;
    draw->type = type;
    draw->region = 0;
-   draw->dri_screen = dri_screen;
+   draw->dri_screen_render_gpu = dri_screen_render_gpu;
    draw->dri_screen_display_gpu = dri_screen_display_gpu;
    draw->is_different_gpu = is_different_gpu;
    draw->multiplanes_available = multiplanes_available;
@@ -420,13 +420,13 @@ loader_dri3_drawable_init(xcb_connection_t *conn,
       unsigned char adaptive_sync = 0;
       unsigned char block_on_depleted_buffers = 0;
 
-      draw->ext->config->configQueryb(draw->dri_screen,
+      draw->ext->config->configQueryb(draw->dri_screen_render_gpu,
                                       "adaptive_sync",
                                       &adaptive_sync);
 
       draw->adaptive_sync = adaptive_sync;
 
-      draw->ext->config->configQueryb(draw->dri_screen,
+      draw->ext->config->configQueryb(draw->dri_screen_render_gpu,
                                       "block_on_depleted_buffers",
                                       &block_on_depleted_buffers);
 
@@ -436,14 +436,14 @@ loader_dri3_drawable_init(xcb_connection_t *conn,
    if (!draw->adaptive_sync)
       set_adaptive_sync_property(conn, draw->drawable, false);
 
-   draw->swap_interval = dri_get_initial_swap_interval(draw->dri_screen,
+   draw->swap_interval = dri_get_initial_swap_interval(draw->dri_screen_render_gpu,
                                                        draw->ext->config);
 
    dri3_update_max_num_back(draw);
 
    /* Create a new drawable */
    draw->dri_drawable =
-      draw->ext->image_driver->createNewDrawable(dri_screen,
+      draw->ext->image_driver->createNewDrawable(dri_screen_render_gpu,
                                                  dri_config,
                                                  draw);
 
@@ -1381,7 +1381,7 @@ has_supported_modifier(struct loader_dri3_drawable *draw, unsigned int format,
    bool found = false;
    int i, j;
 
-   if (!draw->ext->image->queryDmaBufModifiers(draw->dri_screen,
+   if (!draw->ext->image->queryDmaBufModifiers(draw->dri_screen_render_gpu,
                                                format, 0, NULL, NULL,
                                                &supported_modifiers_count) ||
        supported_modifiers_count == 0)
@@ -1391,7 +1391,7 @@ has_supported_modifier(struct loader_dri3_drawable *draw, unsigned int format,
    if (!supported_modifiers)
       return false;
 
-   draw->ext->image->queryDmaBufModifiers(draw->dri_screen, format,
+   draw->ext->image->queryDmaBufModifiers(draw->dri_screen_render_gpu, format,
                                           supported_modifiers_count,
                                           supported_modifiers, NULL,
                                           &supported_modifiers_count);
@@ -1508,7 +1508,7 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
          free(mod_reply);
       }
 #endif
-      buffer->image = loader_dri_create_image(draw->dri_screen, draw->ext->image,
+      buffer->image = loader_dri_create_image(draw->dri_screen_render_gpu, draw->ext->image,
                                               width, height, format,
                                               __DRI_IMAGE_USE_SHARE |
                                               __DRI_IMAGE_USE_SCANOUT |
@@ -1523,7 +1523,7 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
       if (!buffer->image)
          goto no_image;
    } else {
-      buffer->image = draw->ext->image->createImage(draw->dri_screen,
+      buffer->image = draw->ext->image->createImage(draw->dri_screen_render_gpu,
                                                     width, height,
                                                     format,
                                                     0,
@@ -1551,7 +1551,7 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
 
       if (!pixmap_buffer) {
          buffer->linear_buffer =
-           draw->ext->image->createImage(draw->dri_screen,
+           draw->ext->image->createImage(draw->dri_screen_render_gpu,
                                          width, height,
                                          dri3_linear_format_for_format(draw, format),
                                          __DRI_IMAGE_USE_SHARE |
@@ -1614,7 +1614,7 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
        */
       if (draw->ext->image->base.version >= 20)
          buffer->linear_buffer =
-            draw->ext->image->createImageFromFds2(draw->dri_screen,
+            draw->ext->image->createImageFromFds2(draw->dri_screen_render_gpu,
                                                   width,
                                                   height,
                                                   loader_image_format_to_fourcc(format),
@@ -1625,7 +1625,7 @@ dri3_alloc_render_buffer(struct loader_dri3_drawable *draw, unsigned int format,
                                                   buffer);
       else
          buffer->linear_buffer =
-            draw->ext->image->createImageFromFds(draw->dri_screen,
+            draw->ext->image->createImageFromFds(draw->dri_screen_render_gpu,
                                                  width,
                                                  height,
                                                  loader_image_format_to_fourcc(format),
@@ -1958,7 +1958,7 @@ dri3_get_pixmap_buffer(__DRIdrawable *driDrawable, unsigned int format,
     */
    cur_screen = draw->vtable->get_dri_screen();
    if (!cur_screen) {
-       cur_screen = draw->dri_screen;
+       cur_screen = draw->dri_screen_render_gpu;
    }
 
    xcb_dri3_fence_from_fd(draw->conn,

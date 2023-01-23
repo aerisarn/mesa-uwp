@@ -137,13 +137,12 @@ struct loader_dri3_drawable {
    enum loader_dri3_drawable_type type;
 
    /* Information about the GPU owning the buffer */
-   __DRIscreen *dri_screen;
-   bool is_different_gpu;
    bool multiplanes_available;
    bool prefer_back_buffer_reuse;
-
+   __DRIscreen *dri_screen_render_gpu;
    /* DRI screen created for display GPU in case of prime */
    __DRIscreen *dri_screen_display_gpu;
+   bool is_different_gpu;
 
    /* SBC numbers are tracked by using the serial numbers
     * in the present request and complete events
@@ -207,7 +206,7 @@ int
 loader_dri3_drawable_init(xcb_connection_t *conn,
                           xcb_drawable_t drawable,
                           enum loader_dri3_drawable_type type,
-                          __DRIscreen *dri_screen,
+                          __DRIscreen *dri_screen_render_gpu,
                           __DRIscreen *dri_screen_display_gpu,
                           bool is_different_gpu,
                           bool is_multiplanes_available,

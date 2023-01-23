@@ -73,7 +73,7 @@ struct dri3_display
 struct dri3_screen {
    struct glx_screen base;
 
-   __DRIscreen *driScreen;
+   __DRIscreen *driScreenRenderGPU;
    __GLXDRIscreen vtable;
 
    /* DRI screen is created for display GPU in case of prime.
@@ -94,12 +94,11 @@ struct dri3_screen {
    const __DRIconfig **driver_configs;
 
    void *driver;
-   int fd;
-   bool is_different_gpu;
-   bool prefer_back_buffer_reuse;
-
+   int fd_render_gpu;
    /* fd for display GPU in case of prime */
    int fd_display_gpu;
+   bool is_different_gpu;
+   bool prefer_back_buffer_reuse;
 
    struct loader_dri3_extensions loader_dri3_ext;
 };
