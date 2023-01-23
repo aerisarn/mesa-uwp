@@ -44,6 +44,7 @@ typedef struct {
    bool fs_pos_is_sysval;
    nir_variable *stip_tex;
    nir_ssa_def *fragcoord;
+   nir_alu_type bool_type;
 } lower_pstipple;
 
 static nir_ssa_def *
@@ -90,6 +91,18 @@ nir_lower_pstipple_block(nir_block *block,
    nir_builder_instr_insert(b, &tex->instr);
 
    nir_ssa_def *condition = nir_f2b32(b, nir_channel(b, &tex->dest.ssa, 3));
+
+   switch (state->bool_type) {
+   case nir_type_bool1:
+      condition = nir_f2b(b, nir_channel(b, &tex->dest.ssa, 3));
+      break;
+   case nir_type_bool32:
+      condition = nir_f2b32(b, nir_channel(b, &tex->dest.ssa, 3));
+      break;
+   default:
+      unreachable("Invalid Boolean type.");
+   }
+
    nir_discard_if(b, condition);
    b->shader->info.fs.uses_discard = true;
 }
@@ -110,12 +123,18 @@ void
 nir_lower_pstipple_fs(struct nir_shader *shader,
                       unsigned *samplerUnitOut,
                       unsigned fixedUnit,
-                      bool fs_pos_is_sysval)
+                      bool fs_pos_is_sysval,
+                      nir_alu_type bool_type)
 {
    lower_pstipple state = {
       .shader = shader,
       .fs_pos_is_sysval = fs_pos_is_sysval,
+      .bool_type = bool_type,
    };
+
+   assert(bool_type == nir_type_bool1 ||
+          bool_type == nir_type_bool32);
+
    if (shader->info.stage != MESA_SHADER_FRAGMENT)
       return;
 
