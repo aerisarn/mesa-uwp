@@ -247,11 +247,8 @@ agx_bo_cache_fetch(struct agx_device *dev, size_t size, uint32_t flags,
 }
 
 static void
-agx_bo_cache_evict_stale_bos(struct agx_device *dev)
+agx_bo_cache_evict_stale_bos(struct agx_device *dev, unsigned tv_sec)
 {
-   struct timespec time;
-
-   clock_gettime(CLOCK_MONOTONIC, &time);
    list_for_each_entry_safe(struct agx_bo, entry, &dev->bo_cache.lru,
                             lru_link) {
       /* We want all entries that have been used more than 1 sec ago to be
@@ -261,7 +258,7 @@ agx_bo_cache_evict_stale_bos(struct agx_device *dev)
        * seconds old, but we don't really care, as long as unused BOs are
        * dropped at some point.
        */
-      if (time.tv_sec - entry->last_used <= 2)
+      if (tv_sec - entry->last_used <= 2)
          break;
 
       agx_bo_cache_remove_locked(dev, entry);
@@ -299,7 +296,7 @@ agx_bo_cache_put_locked(struct agx_bo *bo)
    bo->label = "Unused (BO cache)";
 
    /* Let's do some cleanup in the BO cache while we hold the lock. */
-   agx_bo_cache_evict_stale_bos(dev);
+   agx_bo_cache_evict_stale_bos(dev, time.tv_sec);
 }
 
 /* Tries to add a BO to the cache. Returns if it was successful */
