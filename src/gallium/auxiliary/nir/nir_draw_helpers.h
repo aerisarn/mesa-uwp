@@ -43,7 +43,8 @@ nir_lower_aaline_fs(struct nir_shader *shader, int *varying,
                     nir_variable *stipple_pattern);
 
 void
-nir_lower_aapoint_fs(struct nir_shader *shader, int *varying);
+nir_lower_aapoint_fs(struct nir_shader *shader, int *varying,
+                     nir_alu_type bool_type);
 
 #ifdef __cplusplus
 }
