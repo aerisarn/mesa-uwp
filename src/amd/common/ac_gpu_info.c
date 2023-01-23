@@ -1355,8 +1355,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
    info->num_rb = util_bitcount(info->enabled_rb_mask);
    info->max_gflops = (info->gfx_level >= GFX11 ? 256 : 128) * info->num_cu * info->max_gpu_freq_mhz / 1000;
    info->memory_bandwidth_gbps = DIV_ROUND_UP(info->memory_freq_mhz_effective * info->memory_bus_width / 8, 1000);
+   info->has_pcie_bandwidth_info = info->drm_minor >= 51;
 
-   if (info->drm_minor >= 51) {
+   if (info->has_pcie_bandwidth_info) {
       info->pcie_gen = device_info.pcie_gen;
       info->pcie_num_lanes = device_info.pcie_num_lanes;
 
