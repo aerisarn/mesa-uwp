@@ -1050,8 +1050,6 @@ struct anv_queue {
 
    const struct anv_queue_family *           family;
 
-   uint32_t                                  index_in_family;
-
    uint32_t                                  exec_flags;
 
    /** Synchronization object for debug purposes (DEBUG_SYNC) */
