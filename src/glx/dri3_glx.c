@@ -365,7 +365,7 @@ dri3_create_drawable(struct glx_screen *base, XID xDrawable,
                                  xDrawable,
                                  glx_to_loader_dri3_drawable_type(type),
                                  psc->driScreenRenderGPU, psc->driScreenDisplayGPU,
-                                 psc->is_different_gpu, has_multibuffer,
+                                 psc->fd_render_gpu != psc->fd_display_gpu, has_multibuffer,
                                  psc->prefer_back_buffer_reuse,
                                  config->driConfig,
                                  &psc->loader_dri3_ext, &glx_dri3_vtable,
@@ -585,13 +585,12 @@ dri3_destroy_screen(struct glx_screen *base)
    struct dri3_screen *psc = (struct dri3_screen *) base;
 
    /* Free the direct rendering per screen data */
-   if (psc->is_different_gpu) {
-      if (psc->driScreenDisplayGPU) {
-         loader_dri3_close_screen(psc->driScreenDisplayGPU);
-         psc->core->destroyScreen(psc->driScreenDisplayGPU);
-      }
-      close(psc->fd_display_gpu);
+   if (psc->fd_render_gpu != psc->fd_display_gpu && psc->driScreenDisplayGPU) {
+      loader_dri3_close_screen(psc->driScreenDisplayGPU);
+      psc->core->destroyScreen(psc->driScreenDisplayGPU);
    }
+   if (psc->fd_render_gpu != psc->fd_display_gpu)
+      close(psc->fd_display_gpu);
    loader_dri3_close_screen(psc->driScreenRenderGPU);
    psc->core->destroyScreen(psc->driScreenRenderGPU);
    driDestroyConfigs(psc->driver_configs);
@@ -735,7 +734,7 @@ dri3_bind_extensions(struct dri3_screen *psc, struct glx_display * priv,
        * can have a tiling mode we can't read. Thus we can't create
        * a texture from them.
        */
-      if (!psc->is_different_gpu &&
+      if (psc->fd_render_gpu == psc->fd_display_gpu &&
          (strcmp(extensions[i]->name, __DRI_TEX_BUFFER) == 0)) {
          psc->texBuffer = (__DRItexBufferExtension *) extensions[i];
          __glXEnableDirectExtension(&psc->base, "GLX_EXT_texture_from_pixmap");
@@ -821,8 +820,7 @@ dri3_create_screen(int screen, struct glx_display * priv)
       return NULL;
    }
 
-   psc->is_different_gpu =
-      loader_get_user_preferred_fd(&psc->fd_render_gpu, &psc->fd_display_gpu);
+   loader_get_user_preferred_fd(&psc->fd_render_gpu, &psc->fd_display_gpu);
 
    driverName = loader_get_driver_for_fd(psc->fd_render_gpu);
    if (!driverName) {
@@ -842,7 +840,7 @@ dri3_create_screen(int screen, struct glx_display * priv)
    if (!loader_bind_extensions(psc, exts, ARRAY_SIZE(exts), extensions))
       goto handle_error;
 
-   if (psc->is_different_gpu) {
+   if (psc->fd_render_gpu != psc->fd_display_gpu) {
       driverNameDisplayGPU = loader_get_driver_for_fd(psc->fd_display_gpu);
       if (driverNameDisplayGPU) {
 
@@ -874,6 +872,9 @@ dri3_create_screen(int screen, struct glx_display * priv)
       goto handle_error;
    }
 
+   if (psc->fd_render_gpu == psc->fd_display_gpu)
+      psc->driScreenDisplayGPU = psc->driScreenRenderGPU;
+
    dri3_bind_extensions(psc, priv, driverName);
 
    if (!psc->image || psc->image->base.version < 7 || !psc->image->createImageFromFds) {
@@ -886,17 +887,17 @@ dri3_create_screen(int screen, struct glx_display * priv)
       goto handle_error;
    }
 
-   if (psc->is_different_gpu && psc->image->base.version < 9) {
+   if (psc->fd_render_gpu != psc->fd_display_gpu && psc->image->base.version < 9) {
       ErrorMessageF("Different GPU, but image extension version 9 or later not found\n");
       goto handle_error;
    }
 
-   if (psc->is_different_gpu && !psc->image->blitImage) {
+   if (psc->fd_render_gpu != psc->fd_display_gpu && !psc->image->blitImage) {
       ErrorMessageF("Different GPU, but blitImage not implemented for this driver\n");
       goto handle_error;
    }
 
-   if (!psc->is_different_gpu && (
+   if (psc->fd_render_gpu == psc->fd_display_gpu && (
        !psc->texBuffer || psc->texBuffer->base.version < 2 ||
        !psc->texBuffer->setTexBuffer2
        )) {
@@ -990,7 +991,7 @@ dri3_create_screen(int screen, struct glx_display * priv)
    InfoMessageF("Using DRI3 for screen %d\n", screen);
 
    psc->prefer_back_buffer_reuse = 1;
-   if (psc->is_different_gpu && psc->rendererQuery) {
+   if (psc->fd_render_gpu != psc->fd_display_gpu && psc->rendererQuery) {
       unsigned value;
       if (psc->rendererQuery->queryInteger(psc->driScreenRenderGPU,
                                            __DRI2_RENDERER_PREFER_BACK_BUFFER_REUSE,
@@ -1010,13 +1011,13 @@ handle_error:
    if (psc->driScreenRenderGPU)
        psc->core->destroyScreen(psc->driScreenRenderGPU);
    psc->driScreenRenderGPU = NULL;
-   if (psc->driScreenDisplayGPU)
+   if (psc->fd_render_gpu != psc->fd_display_gpu && psc->driScreenDisplayGPU)
        psc->core->destroyScreen(psc->driScreenDisplayGPU);
    psc->driScreenDisplayGPU = NULL;
+   if (psc->fd_display_gpu >= 0 && psc->fd_render_gpu != psc->fd_display_gpu)
+      close(psc->fd_display_gpu);
    if (psc->fd_render_gpu >= 0)
       close(psc->fd_render_gpu);
-   if (psc->fd_display_gpu >= 0)
-      close(psc->fd_display_gpu);
    if (psc->driver)
       dlclose(psc->driver);
 
