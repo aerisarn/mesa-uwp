@@ -288,10 +288,11 @@ add_implicit_color_feedback_loop(struct zink_context *ctx, struct zink_resource 
    bool is_feedback = false;
    /* avoid false positives when a texture is bound but not used */
    u_foreach_bit(vkstage, res->gfx_barrier) {
-      if (vkstage < VK_PIPELINE_STAGE_VERTEX_SHADER_BIT || vkstage > VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
+      VkPipelineStageFlags vkstagebit = BITFIELD_BIT(vkstage);
+      if (vkstagebit < VK_PIPELINE_STAGE_VERTEX_SHADER_BIT || vkstagebit > VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
          continue;
       /* in-range VkPipelineStageFlagBits can be converted to VkShaderStageFlags with a bitshift */
-      gl_shader_stage stage = vk_to_mesa_shader_stage((VkShaderStageFlagBits)(vkstage >> 3));
+      gl_shader_stage stage = vk_to_mesa_shader_stage((VkShaderStageFlagBits)(vkstagebit >> 3));
       /* check shader texture usage against resource's sampler binds */
       if ((ctx->gfx_stages[stage] && (res->sampler_binds[stage] & ctx->gfx_stages[stage]->nir->info.textures_used[0])))
          is_feedback = true;
