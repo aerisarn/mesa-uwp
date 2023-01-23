@@ -93,6 +93,8 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .shaderInputAttachmentArrayDynamicIndexing = true,
       .shaderUniformTexelBufferArrayDynamicIndexing = true,
       .shaderStorageTexelBufferArrayDynamicIndexing = true,
+      .descriptorBindingUniformTexelBufferUpdateAfterBind = true,
+      .descriptorBindingStorageTexelBufferUpdateAfterBind = true,
       .imagelessFramebuffer = true,
       .uniformBufferStandardLayout = true,
       .separateDepthStencilLayouts = true,
@@ -107,6 +109,7 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       /* Vulkan 1.3 features */
       .robustImageAccess = true,
       .inlineUniformBlock = true,
+      .descriptorBindingInlineUniformBlockUpdateAfterBind = true,
       .privateData = true,
       .dynamicRendering = true,
    };
@@ -223,6 +226,13 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceProvokingVertexFeaturesEXT *f = (void *)ext;
          f->provokingVertexLast = true;
          f->transformFeedbackPreservesProvokingVertex = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
+         VkPhysicalDeviceRobustness2FeaturesEXT *f = (void *)ext;
+         f->robustBufferAccess2 = true;
+         f->robustImageAccess2 = true;
+         f->nullDescriptor = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
@@ -384,6 +394,7 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          .subminor = 0,
          .patch = 0,
       },
+      .robustBufferAccessUpdateAfterBind = true,
    };
 
    snprintf(core_1_2.driverName, VK_MAX_DRIVER_NAME_SIZE, "NVK");
@@ -435,6 +446,13 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
          VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *p = (void *)ext;
          p->maxVertexAttribDivisor = UINT32_MAX;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
+         VkPhysicalDeviceRobustness2PropertiesEXT *p = (void *)ext;
+         p->robustStorageBufferAccessSizeAlignment =
+            NVK_SSBO_BOUNDS_CHECK_ALIGNMENT;
+         p->robustUniformBufferAccessSizeAlignment = NVK_MIN_UBO_ALIGNMENT;
          break;
       }
       /* More property structs */
@@ -502,6 +520,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *pdev,
       .EXT_pci_bus_info = true,
       .EXT_private_data = true,
       .EXT_provoking_vertex = true,
+      .EXT_robustness2 = true,
       .EXT_sample_locations = pdev->info.cls_eng3d >= MAXWELL_B,
       .EXT_separate_stencil_usage = true,
       .EXT_vertex_attribute_divisor = true,
