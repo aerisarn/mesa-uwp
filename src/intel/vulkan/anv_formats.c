@@ -974,6 +974,9 @@ void anv_GetPhysicalDeviceFormatProperties2(
          props->bufferFeatures = buffer2;
          break;
       }
+      case VK_STRUCTURE_TYPE_VIDEO_PROFILE_LIST_INFO_KHR:
+         /* don't have any thing to use this for yet */
+         break;
       default:
          anv_debug_ignored_stype(ext->sType);
          break;
@@ -1393,6 +1396,9 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
          break;
       case VK_STRUCTURE_TYPE_WSI_IMAGE_CREATE_INFO_MESA:
          from_wsi = true;
+         break;
+      case VK_STRUCTURE_TYPE_VIDEO_PROFILE_LIST_INFO_KHR:
+         /* Ignore but don't warn */
          break;
       default:
          anv_debug_ignored_stype(s->sType);
