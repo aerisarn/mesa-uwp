@@ -63,11 +63,6 @@ struct usc_mrt_desc {
     */
    uint32_t intermediate_size;
 
-   /* Number of bytes allocated for each component in the output registers (as
-    * opposed to the pixel format).
-    */
-   uint32_t component_alignment;
-
    /* Mask of the bits from each dword which are read by the PBE. */
    uint32_t valid_mask[PVR_USC_RENDER_TARGET_MAXIMUM_SIZE_IN_DWORDS];
 
