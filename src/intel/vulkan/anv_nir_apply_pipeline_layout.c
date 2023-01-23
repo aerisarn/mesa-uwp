@@ -1040,13 +1040,14 @@ lower_load_constant(nir_builder *b, nir_intrinsic_instr *intrin,
    unsigned max_offset = b->shader->constant_data_size - load_size;
    offset = nir_umin(b, offset, nir_imm_int(b, max_offset));
 
-   nir_ssa_def *const_data_base_addr = nir_pack_64_2x32_split(b,
-      nir_load_reloc_const_intel(b, BRW_SHADER_RELOC_CONST_DATA_ADDR_LOW),
-      nir_load_reloc_const_intel(b, BRW_SHADER_RELOC_CONST_DATA_ADDR_HIGH));
+   nir_ssa_def *const_data_addr = nir_pack_64_2x32_split(b,
+      nir_iadd(b,
+         nir_load_reloc_const_intel(b, BRW_SHADER_RELOC_CONST_DATA_ADDR_LOW),
+         offset),
+      nir_imm_int(b, INSTRUCTION_STATE_POOL_MIN_ADDRESS >> 32));
 
    nir_ssa_def *data =
-      nir_load_global_constant(b, nir_iadd(b, const_data_base_addr,
-                                              nir_u2u64(b, offset)),
+      nir_load_global_constant(b, const_data_addr,
                                load_align,
                                intrin->dest.ssa.num_components,
                                intrin->dest.ssa.bit_size);
