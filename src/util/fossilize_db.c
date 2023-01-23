@@ -37,10 +37,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/file.h>
-#include <sys/inotify.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#ifdef FOZ_DB_UTIL_DYNAMIC_LIST
+#include <sys/inotify.h>
+#endif
 
 #include "util/u_debug.h"
 
