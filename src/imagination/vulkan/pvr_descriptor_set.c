@@ -1835,6 +1835,100 @@ static void pvr_descriptor_update_input_attachment(
    }
 }
 
+static void pvr_write_descriptor_set(struct pvr_device *device,
+                                     const VkWriteDescriptorSet *write_set)
+{
+   PVR_FROM_HANDLE(pvr_descriptor_set, set, write_set->dstSet);
+   uint32_t *map = set->pvr_bo->bo->map;
+   const struct pvr_descriptor_set_layout_binding *binding =
+      pvr_get_descriptor_binding(set->layout, write_set->dstBinding);
+
+   /* Binding should not be NULL. */
+   assert(binding);
+
+   /* Only need to update the descriptor if it is actually being used. If it
+    * was not used in any stage, then the shader_stage_mask would be 0 and we
+    * can skip this update.
+    */
+   if (binding->shader_stage_mask == 0)
+      return;
+
+   vk_foreach_struct_const (ext, write_set->pNext) {
+      pvr_debug_ignored_stype(ext->sType);
+   }
+
+   switch (write_set->descriptorType) {
+   case VK_DESCRIPTOR_TYPE_SAMPLER:
+      pvr_descriptor_update_sampler(device,
+                                    write_set,
+                                    set,
+                                    binding,
+                                    map,
+                                    0,
+                                    PVR_STAGE_ALLOCATION_COUNT);
+      break;
+
+   case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+      pvr_descriptor_update_sampler_texture(device,
+                                            write_set,
+                                            set,
+                                            binding,
+                                            map,
+                                            0,
+                                            PVR_STAGE_ALLOCATION_COUNT);
+      break;
+
+   case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+   case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      pvr_descriptor_update_texture(device,
+                                    write_set,
+                                    set,
+                                    binding,
+                                    map,
+                                    0,
+                                    PVR_STAGE_ALLOCATION_COUNT);
+      break;
+
+   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+      pvr_descriptor_update_buffer_view(device,
+                                        write_set,
+                                        set,
+                                        binding,
+                                        map,
+                                        0,
+                                        PVR_STAGE_ALLOCATION_COUNT);
+      break;
+
+   case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+      pvr_descriptor_update_input_attachment(device,
+                                             write_set,
+                                             set,
+                                             binding,
+                                             map,
+                                             0,
+                                             PVR_STAGE_ALLOCATION_COUNT);
+      break;
+
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+      pvr_descriptor_update_buffer_info(device,
+                                        write_set,
+                                        set,
+                                        binding,
+                                        map,
+                                        0,
+                                        PVR_STAGE_ALLOCATION_COUNT);
+      break;
+
+   default:
+      unreachable("Unknown descriptor type");
+      break;
+   }
+}
+
 void pvr_UpdateDescriptorSets(VkDevice _device,
                               uint32_t descriptorWriteCount,
                               const VkWriteDescriptorSet *pDescriptorWrites,
@@ -1843,98 +1937,8 @@ void pvr_UpdateDescriptorSets(VkDevice _device,
 {
    PVR_FROM_HANDLE(pvr_device, device, _device);
 
-   for (uint32_t i = 0; i < descriptorWriteCount; i++) {
-      const VkWriteDescriptorSet *write_set = &pDescriptorWrites[i];
-      PVR_FROM_HANDLE(pvr_descriptor_set, set, write_set->dstSet);
-      uint32_t *map = set->pvr_bo->bo->map;
-      const struct pvr_descriptor_set_layout_binding *binding =
-         pvr_get_descriptor_binding(set->layout, write_set->dstBinding);
-
-      /* Binding should not be NULL. */
-      assert(binding);
-
-      /* Only need to update the descriptor if it is actually being used. If it
-       * was not used in any stage, then the shader_stage_mask would be 0 and we
-       * can skip this update.
-       */
-      if (binding->shader_stage_mask == 0)
-         continue;
-
-      vk_foreach_struct_const (ext, write_set->pNext) {
-         pvr_debug_ignored_stype(ext->sType);
-      }
-
-      switch (write_set->descriptorType) {
-      case VK_DESCRIPTOR_TYPE_SAMPLER:
-         pvr_descriptor_update_sampler(device,
-                                       write_set,
-                                       set,
-                                       binding,
-                                       map,
-                                       0,
-                                       PVR_STAGE_ALLOCATION_COUNT);
-         break;
-
-      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-         pvr_descriptor_update_sampler_texture(device,
-                                               write_set,
-                                               set,
-                                               binding,
-                                               map,
-                                               0,
-                                               PVR_STAGE_ALLOCATION_COUNT);
-         break;
-
-      case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-         pvr_descriptor_update_texture(device,
-                                       write_set,
-                                       set,
-                                       binding,
-                                       map,
-                                       0,
-                                       PVR_STAGE_ALLOCATION_COUNT);
-         break;
-
-      case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-      case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-         pvr_descriptor_update_buffer_view(device,
-                                           write_set,
-                                           set,
-                                           binding,
-                                           map,
-                                           0,
-                                           PVR_STAGE_ALLOCATION_COUNT);
-         break;
-
-      case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-         pvr_descriptor_update_input_attachment(device,
-                                                write_set,
-                                                set,
-                                                binding,
-                                                map,
-                                                0,
-                                                PVR_STAGE_ALLOCATION_COUNT);
-         break;
-
-      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-         pvr_descriptor_update_buffer_info(device,
-                                           write_set,
-                                           set,
-                                           binding,
-                                           map,
-                                           0,
-                                           PVR_STAGE_ALLOCATION_COUNT);
-         break;
-
-      default:
-         unreachable("Unknown descriptor type");
-         break;
-      }
-   }
+   for (uint32_t i = 0; i < descriptorWriteCount; i++)
+      pvr_write_descriptor_set(device, &pDescriptorWrites[i]);
 
    if (descriptorCopyCount > 0)
       pvr_finishme("Descriptor copying support missing\n");
