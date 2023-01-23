@@ -5854,6 +5854,7 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       const bool last_submit = j + advance == cmd_buffer_count;
       bool submit_ace = false;
       unsigned num_submitted_cs = 0;
+      unsigned cs_idx = 0;
 
       if (queue->device->trace_bo)
          *queue->device->trace_id_ptr = 0;
@@ -5876,6 +5877,7 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
 
          can_patch &= !(cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
          cs_array[num_submitted_cs++] = cmd_buffer->cs;
+         cs_idx = num_submitted_cs - 1;
       }
 
       /* Add gang wait postambles to make sure the gang leader waits for the whole gang. */
@@ -5899,7 +5901,7 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
          goto fail;
 
       if (queue->device->trace_bo) {
-         radv_check_gpu_hangs(queue, cs_array[j]);
+         radv_check_gpu_hangs(queue, cs_array[cs_idx]);
       }
 
       if (queue->device->tma_bo) {
