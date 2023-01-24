@@ -469,6 +469,9 @@ radix_sort_fill_buffer(VkCommandBuffer commandBuffer,
 VkResult
 radv_device_init_null_accel_struct(struct radv_device *device)
 {
+   if (device->physical_device->memory_properties.memoryTypeCount == 0)
+      return VK_SUCCESS; /* Exit in the case of null winsys. */
+
    VkDevice _device = radv_device_to_handle(device);
 
    uint32_t bvh_offset = ALIGN(sizeof(struct radv_accel_struct_header), 64);
