@@ -1196,12 +1196,23 @@ has_implicit_modifier(const uint64_t *modifiers, int count)
            drm_find_modifier(DRM_FORMAT_MOD_INVALID, modifiers, count);
 }
 
+static bool
+has_explicit_modifier(const uint64_t *modifiers, int count)
+{
+    for (int i = 0; i < count; i++) {
+        if (modifiers[i] != DRM_FORMAT_MOD_INVALID)
+            return true;
+    }
+    return false;
+}
+
 static enum fd_layout_type
 get_best_layout(struct fd_screen *screen, struct pipe_resource *prsc,
                 const struct pipe_resource *tmpl, const uint64_t *modifiers,
                 int count)
 {
    const bool can_implicit = has_implicit_modifier(modifiers, count);
+   const bool can_explicit = has_explicit_modifier(modifiers, count);
 
    /* First, find all the conditions which would force us to linear */
    if (!screen->tile_mode)
@@ -1223,8 +1234,8 @@ get_best_layout(struct fd_screen *screen, struct pipe_resource *prsc,
    if (FD_DBG(NOTILE))
        return LINEAR;
 
-   /* Shared resources with implicit modifiers must always be linear */
-   if (can_implicit && (tmpl->bind & PIPE_BIND_SHARED)) {
+   /* Shared resources without explicit modifiers must always be linear */
+   if (!can_explicit && (tmpl->bind & PIPE_BIND_SHARED)) {
       perf_debug("%" PRSC_FMT
                  ": forcing linear: shared resource + implicit modifiers",
                  PRSC_ARGS(prsc));
@@ -1378,7 +1389,7 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
     */
    if (screen->ro &&
        ((tmpl->bind & PIPE_BIND_SCANOUT) ||
-        !(count == 1 && modifiers[0] == DRM_FORMAT_MOD_INVALID))) {
+        has_explicit_modifier(modifiers, count))) {
       struct pipe_resource scanout_templat = *tmpl;
       struct renderonly_scanout *scanout;
       struct winsys_handle handle;
