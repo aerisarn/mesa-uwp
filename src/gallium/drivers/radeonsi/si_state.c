@@ -114,7 +114,7 @@ static void si_emit_cb_render_state(struct si_context *sctx)
       if (sctx->gfx_level >= GFX11) {
          radeon_opt_set_context_reg(sctx, R_028424_CB_FDCC_CONTROL, SI_TRACKED_CB_DCC_CONTROL,
                                     S_028424_SAMPLE_MASK_TRACKER_DISABLE(oc_disable) |
-                                    S_028424_SAMPLE_MASK_TRACKER_WATERMARK(15));
+                                    S_028424_SAMPLE_MASK_TRACKER_WATERMARK(0));
       } else {
          radeon_opt_set_context_reg(
             sctx, R_028424_CB_DCC_CONTROL, SI_TRACKED_CB_DCC_CONTROL,
