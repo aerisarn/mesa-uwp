@@ -795,8 +795,6 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
    } else
       va += (uint64_t)base_level_info->offset_256B * 256;
 
-   swizzle = radv_adjust_tile_swizzle(device->physical_device, swizzle);
-
    state[0] = va >> 8;
    if (gfx_level >= GFX9 || base_level_info->mode == RADEON_SURF_MODE_2D)
       state[0] |= swizzle;
