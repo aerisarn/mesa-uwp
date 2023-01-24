@@ -749,7 +749,7 @@ static void si_bind_blend_state(struct pipe_context *ctx, void *state)
        old_blend->blend_enable_4bit != blend->blend_enable_4bit)
       si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
 
-   if (old_blend->cb_target_mask != blend->cb_target_mask ||
+   if (old_blend->cb_target_enabled_4bit != blend->cb_target_enabled_4bit ||
        old_blend->alpha_to_coverage != blend->alpha_to_coverage ||
        old_blend->alpha_to_one != blend->alpha_to_one ||
        old_blend->dual_src_blend != blend->dual_src_blend ||
