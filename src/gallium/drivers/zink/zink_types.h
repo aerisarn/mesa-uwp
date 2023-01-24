@@ -1037,6 +1037,7 @@ struct zink_render_pass_state {
    unsigned num_rts;
    uint32_t clears; //for extra verification and update flagging
    uint16_t msaa_expand_mask;
+   uint16_t msaa_samples; //used with VK_EXT_multisampled_render_to_single_sampled
 };
 
 struct zink_pipeline_rt {
@@ -1045,7 +1046,8 @@ struct zink_pipeline_rt {
 };
 
 struct zink_render_pass_pipeline_state {
-   uint32_t num_attachments:22;
+   uint32_t num_attachments:14;
+   uint32_t msaa_samples : 8;
    uint32_t fbfetch:1;
    uint32_t color_read:1;
    uint32_t depth_read:1;
@@ -1397,7 +1399,6 @@ struct zink_surface {
 struct zink_ctx_surface {
    struct pipe_surface base;
    struct zink_surface *surf; //the actual surface
-   /* TODO: use VK_EXT_multisampled_render_to_single_sampled */
    struct zink_ctx_surface *transient; //for use with EXT_multisample_render_to_texture
    bool transient_init; //whether the transient surface has data
 };
@@ -1619,7 +1620,7 @@ struct zink_context {
    } dynamic_fb;
    uint32_t fb_layer_mismatch; //bitmask
    unsigned depth_bias_scale_factor;
-   struct set rendering_state_cache;
+   struct set rendering_state_cache[6]; //[util_logbase2_ceil(msrtss samplecount)]
    struct set render_pass_state_cache;
    struct hash_table *render_pass_cache;
    VkExtent2D swapchain_size;

@@ -520,6 +520,11 @@ create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe
    ici->tiling = screen->info.have_EXT_image_drm_format_modifier && modifiers_count ?
                  VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT :
                  bind & (PIPE_BIND_LINEAR | ZINK_BIND_DMABUF) ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
+   /* XXX: does this have perf implications anywhere? hopefully not */
+   if (ici->samples == VK_SAMPLE_COUNT_1_BIT &&
+      screen->info.have_EXT_multisampled_render_to_single_sampled &&
+      ici->tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
+      ici->flags |= VK_IMAGE_CREATE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_BIT_EXT;
    ici->sharingMode = VK_SHARING_MODE_EXCLUSIVE;
    ici->initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 

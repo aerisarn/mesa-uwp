@@ -2378,7 +2378,10 @@ static unsigned
 find_rp_state(struct zink_context *ctx)
 {
    bool found = false;
-   struct set_entry *he = _mesa_set_search_or_add(&ctx->rendering_state_cache, &ctx->gfx_pipeline_state.rendering_info, &found);
+   /* calc the state idx using the samples to account for msrtss */
+   unsigned idx = zink_screen(ctx->base.screen)->info.have_EXT_multisampled_render_to_single_sampled && ctx->transient_attachments ? 
+                  util_logbase2_ceil(ctx->gfx_pipeline_state.rast_samples + 1) : 0;
+   struct set_entry *he = _mesa_set_search_or_add(&ctx->rendering_state_cache[idx], &ctx->gfx_pipeline_state.rendering_info, &found);
    struct zink_rendering_info *info;
    if (found) {
       info = (void*)he->key;
@@ -2386,7 +2389,7 @@ find_rp_state(struct zink_context *ctx)
    }
    info = ralloc(ctx, struct zink_rendering_info);
    memcpy(info, &ctx->gfx_pipeline_state.rendering_info, sizeof(VkPipelineRenderingCreateInfo));
-   info->id = ctx->rendering_state_cache.entries;
+   info->id = ctx->rendering_state_cache[idx].entries;
    he->key = info;
    return info->id;
 }
@@ -2569,6 +2572,15 @@ begin_rendering(struct zink_context *ctx)
    ctx->gfx_pipeline_state.dirty |= rp_changed;
    ctx->gfx_pipeline_state.rp_state = rp_state;
 
+   VkMultisampledRenderToSingleSampledInfoEXT msrtss = {
+      VK_STRUCTURE_TYPE_MULTISAMPLED_RENDER_TO_SINGLE_SAMPLED_INFO_EXT,
+      NULL,
+      VK_TRUE,
+      ctx->gfx_pipeline_state.rast_samples + 1,
+   };
+
+   ctx->dynamic_fb.info.pNext = ctx->transient_attachments ? &msrtss : NULL;
+   assert(!ctx->transient_attachments || msrtss.rasterizationSamples != VK_SAMPLE_COUNT_1_BIT);
    VKCTX(CmdBeginRendering)(ctx->batch.state->cmdbuf, &ctx->dynamic_fb.info);
    ctx->batch.in_rp = true;
    return clear_buffers;
@@ -2609,7 +2621,8 @@ zink_batch_rp(struct zink_context *ctx)
     * - msrtss is TODO
     * - dynamic rendering doesn't have input attachments
     */
-   if (!zink_screen(ctx->base.screen)->info.have_KHR_dynamic_rendering || ctx->transient_attachments || ctx->fbfetch_outputs)
+   if (!zink_screen(ctx->base.screen)->info.have_KHR_dynamic_rendering ||
+       (ctx->transient_attachments && !zink_screen(ctx->base.screen)->info.have_EXT_multisampled_render_to_single_sampled) || ctx->fbfetch_outputs)
       clear_buffers = zink_begin_render_pass(ctx);
    else
       clear_buffers = begin_rendering(ctx);
@@ -3114,10 +3127,10 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
       struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
       if (psurf) {
          struct zink_surface *transient = zink_transient_surface(psurf);
-         if (transient)
+         if (transient || psurf->nr_samples)
             ctx->transient_attachments |= BITFIELD_BIT(i);
          if (!samples)
-            samples = MAX3(transient ? transient->base.nr_samples : 1, psurf->texture->nr_samples, 1);
+            samples = MAX3(transient ? transient->base.nr_samples : 1, psurf->texture->nr_samples, psurf->nr_samples ? psurf->nr_samples : 1);
          struct zink_resource *res = zink_resource(psurf->texture);
          if (zink_csurface(psurf)->info.layerCount > layers)
             ctx->fb_layer_mismatch |= BITFIELD_BIT(i);
@@ -3148,10 +3161,10 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    if (ctx->fb_state.zsbuf) {
       struct pipe_surface *psurf = ctx->fb_state.zsbuf;
       struct zink_surface *transient = zink_transient_surface(psurf);
-      if (transient)
+      if (transient || psurf->nr_samples)
          ctx->transient_attachments |= BITFIELD_BIT(PIPE_MAX_COLOR_BUFS);
       if (!samples)
-         samples = MAX3(transient ? transient->base.nr_samples : 1, psurf->texture->nr_samples, 1);
+         samples = MAX3(transient ? transient->base.nr_samples : 1, psurf->texture->nr_samples, psurf->nr_samples ? psurf->nr_samples : 1);
       if (zink_csurface(psurf)->info.layerCount > layers)
          ctx->fb_layer_mismatch |= BITFIELD_BIT(PIPE_MAX_COLOR_BUFS);
       zink_resource(psurf->texture)->fb_bind_count++;
@@ -4981,7 +4994,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    _mesa_hash_table_init(&ctx->framebuffer_cache, ctx, hash_framebuffer_imageless, equals_framebuffer_imageless);
    if (!zink_init_render_pass(ctx))
       goto fail;
-   _mesa_set_init(&ctx->rendering_state_cache, ctx, hash_rendering_state, equals_rendering_state);
+   for (unsigned i = 0; i < ARRAY_SIZE(ctx->rendering_state_cache); i++)
+      _mesa_set_init(&ctx->rendering_state_cache[i], ctx, hash_rendering_state, equals_rendering_state);
    ctx->dynamic_fb.info.pColorAttachments = ctx->dynamic_fb.attachments;
    ctx->dynamic_fb.info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
    for (unsigned i = 0; i < ARRAY_SIZE(ctx->dynamic_fb.attachments); i++) {
