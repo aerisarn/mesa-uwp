@@ -5143,7 +5143,7 @@ zink_tc_context_unwrap(struct pipe_context *pctx, bool threaded)
 static bool
 add_implicit_color_feedback_loop(struct zink_context *ctx, struct zink_resource *res)
 {
-   if (!res->fb_bind_count || !res->sampler_bind_count[0] || ctx->feedback_loops & res->fb_binds)
+   if (!res->fb_bind_count || !res->sampler_bind_count[0])
       return false;
    bool is_feedback = false;
    /* avoid false positives when a texture is bound but not used */
@@ -5159,6 +5159,9 @@ add_implicit_color_feedback_loop(struct zink_context *ctx, struct zink_resource 
    }
    if (!is_feedback)
       return false;
+   if (ctx->feedback_loops & res->fb_binds)
+      /* already added */
+      return true;
    /* new feedback loop detected */
    if (res->aspect == VK_IMAGE_ASPECT_COLOR_BIT) {
       if (!ctx->gfx_pipeline_state.feedback_loop)
