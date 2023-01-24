@@ -134,8 +134,10 @@ static void si_emit_cb_render_state(struct si_context *sctx)
       unsigned sx_ps_downconvert = 0;
       unsigned sx_blend_opt_epsilon = 0;
       unsigned sx_blend_opt_control = 0;
+      unsigned num_cbufs = util_last_bit(sctx->framebuffer.colorbuf_enabled_4bit &
+                                         blend->cb_target_enabled_4bit) / 4;
 
-      for (i = 0; i < sctx->framebuffer.state.nr_cbufs; i++) {
+      for (i = 0; i < num_cbufs; i++) {
          struct si_surface *surf = (struct si_surface *)sctx->framebuffer.state.cbufs[i];
          unsigned format, swap, spi_format, colormask;
          bool has_alpha, has_rgb;
@@ -771,6 +773,15 @@ static void si_bind_blend_state(struct pipe_context *ctx, void *state)
          old_blend->commutative_4bit != blend->commutative_4bit ||
          old_blend->logicop_enable != blend->logicop_enable)))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_config);
+
+   /* RB+ depth-only rendering. See the comment where we set rbplus_depth_only_opt for more
+    * information.
+    */
+   if (sctx->screen->info.rbplus_allowed &&
+       !!old_blend->cb_target_mask != !!blend->cb_target_mask) {
+      sctx->framebuffer.dirty_cbufs |= BITFIELD_BIT(0);
+      si_mark_atom_dirty(sctx, &sctx->atoms.s.framebuffer);
+   }
 
    if (likely(!radeon_uses_secure_bos(sctx->ws))) {
       if (unlikely(blend->allows_noop_optimization)) {
@@ -3215,6 +3226,20 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
 
       if (!(sctx->framebuffer.dirty_cbufs & (1 << i)))
          continue;
+
+      /* RB+ depth-only rendering. See the comment where we set rbplus_depth_only_opt for more
+       * information.
+       */
+      if (i == 0 &&
+          sctx->screen->info.rbplus_allowed &&
+          !sctx->queued.named.blend->cb_target_mask) {
+         radeon_set_context_reg(R_028C70_CB_COLOR0_INFO + i * 0x3C,
+                                (sctx->gfx_level >= GFX11 ?
+                                   S_028C70_FORMAT_GFX11(V_028C70_COLOR_32) :
+                                   S_028C70_FORMAT_GFX6(V_028C70_COLOR_32)) |
+                                S_028C70_NUMBER_TYPE(V_028C70_NUMBER_FLOAT));
+         continue;
+      }
 
       cb = (struct si_surface *)state->cbufs[i];
       if (!cb) {

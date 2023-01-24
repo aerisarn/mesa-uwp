@@ -1980,15 +1980,21 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
     * GFX10 supports pixel shaders without exports by setting both
     * the color and Z formats to SPI_SHADER_ZERO. The hw will skip export
     * instructions if any are present.
+    *
+    * RB+ depth-only rendering requires SPI_SHADER_32_R.
     */
    bool has_mrtz = info->writes_z || info->writes_stencil || info->writes_samplemask;
 
-   if (!spi_shader_col_format && !has_mrtz) {
-      if (sscreen->info.gfx_level >= GFX10) {
-         if (G_02880C_KILL_ENABLE(db_shader_control))
-            spi_shader_col_format = V_028714_SPI_SHADER_32_R;
-      } else {
+   if (!spi_shader_col_format) {
+      if (shader->key.ps.part.epilog.rbplus_depth_only_opt) {
          spi_shader_col_format = V_028714_SPI_SHADER_32_R;
+      } else if (!has_mrtz) {
+         if (sscreen->info.gfx_level >= GFX10) {
+            if (G_02880C_KILL_ENABLE(db_shader_control))
+               spi_shader_col_format = V_028714_SPI_SHADER_32_R;
+         } else {
+            spi_shader_col_format = V_028714_SPI_SHADER_32_R;
+         }
       }
    }
 
@@ -2334,6 +2340,22 @@ void si_ps_key_update_framebuffer_blend(struct si_context *sctx)
       key->ps.part.epilog.color_is_int8 &= sel->info.colors_written;
       key->ps.part.epilog.color_is_int10 &= sel->info.colors_written;
    }
+
+   /* Enable RB+ for depth-only rendering. Registers must be programmed as follows:
+    *    CB_COLOR_CONTROL.MODE = CB_DISABLE
+    *    CB_COLOR0_INFO.FORMAT = COLOR_32
+    *    CB_COLOR0_INFO.NUMBER_TYPE = NUMBER_FLOAT
+    *    SPI_SHADER_COL_FORMAT.COL0_EXPORT_FORMAT = SPI_SHADER_32_R
+    *    SX_PS_DOWNCONVERT.MRT0 = SX_RT_EXPORT_32_R
+    *
+    * Also, the following conditions must be met.
+    */
+   key->ps.part.epilog.rbplus_depth_only_opt =
+      sctx->screen->info.rbplus_allowed &&
+      blend->cb_target_enabled_4bit == 0 && /* implies CB_DISABLE */
+      !blend->alpha_to_coverage &&
+      !sel->info.base.writes_memory &&
+      !key->ps.part.epilog.spi_shader_col_format;
 
    /* Eliminate shader code computing output values that are unused.
     * This enables dead code elimination between shader parts.
