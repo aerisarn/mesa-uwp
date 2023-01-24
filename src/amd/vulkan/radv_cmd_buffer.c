@@ -798,23 +798,22 @@ radv_ace_internal_finalize(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_cmd_buffer_after_draw(struct radv_cmd_buffer *cmd_buffer, enum radv_cmd_flush_bits flags)
 {
-   if (unlikely(cmd_buffer->device->thread_trace.bo)) {
-      radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 2);
+   const struct radv_device *device = cmd_buffer->device;
+   if (unlikely(device->thread_trace.bo)) {
+      radeon_check_space(device->ws, cmd_buffer->cs, 2);
 
       radeon_emit(cmd_buffer->cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
       radeon_emit(cmd_buffer->cs, EVENT_TYPE(V_028A90_THREAD_TRACE_MARKER) | EVENT_INDEX(0));
    }
 
-   if (cmd_buffer->device->instance->debug_flags & RADV_DEBUG_SYNC_SHADERS) {
+   if (device->instance->debug_flags & RADV_DEBUG_SYNC_SHADERS) {
       enum rgp_flush_bits sqtt_flush_bits = 0;
       assert(flags & (RADV_CMD_FLAG_PS_PARTIAL_FLUSH | RADV_CMD_FLAG_CS_PARTIAL_FLUSH));
 
-      ASSERTED const unsigned cdw_max =
-         radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 4);
+      ASSERTED const unsigned cdw_max = radeon_check_space(device->ws, cmd_buffer->cs, 4);
 
       /* Force wait for graphics or compute engines to be idle. */
-      si_cs_emit_cache_flush(cmd_buffer->cs,
-                             cmd_buffer->device->physical_device->rad_info.gfx_level,
+      si_cs_emit_cache_flush(cmd_buffer->cs, device->physical_device->rad_info.gfx_level,
                              &cmd_buffer->gfx9_fence_idx, cmd_buffer->gfx9_fence_va,
                              radv_cmd_buffer_uses_mec(cmd_buffer), flags, &sqtt_flush_bits,
                              cmd_buffer->gfx9_eop_bug_va);
@@ -825,12 +824,12 @@ radv_cmd_buffer_after_draw(struct radv_cmd_buffer *cmd_buffer, enum radv_cmd_flu
           radv_pipeline_has_stage(cmd_buffer->state.graphics_pipeline, MESA_SHADER_TASK)) {
          /* Force wait for compute engines to be idle on the internal cmdbuf. */
          si_cs_emit_cache_flush(cmd_buffer->ace_internal.cs,
-                                cmd_buffer->device->physical_device->rad_info.gfx_level, NULL, 0,
-                                true, RADV_CMD_FLAG_CS_PARTIAL_FLUSH, &sqtt_flush_bits, 0);
+                                device->physical_device->rad_info.gfx_level, NULL, 0, true,
+                                RADV_CMD_FLAG_CS_PARTIAL_FLUSH, &sqtt_flush_bits, 0);
       }
    }
 
-   if (unlikely(cmd_buffer->device->trace_bo))
+   if (unlikely(device->trace_bo))
       radv_cmd_buffer_trace_emit(cmd_buffer);
 }
 
