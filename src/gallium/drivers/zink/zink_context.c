@@ -5143,7 +5143,8 @@ zink_tc_context_unwrap(struct pipe_context *pctx, bool threaded)
 static bool
 add_implicit_color_feedback_loop(struct zink_context *ctx, struct zink_resource *res)
 {
-   if (!res->fb_bind_count || !res->sampler_bind_count[0])
+   /* can only feedback loop with fb+sampler bind; image bind must be GENERAL */
+   if (!res->fb_bind_count || !res->sampler_bind_count[0] || res->image_bind_count[0])
       return false;
    bool is_feedback = false;
    /* avoid false positives when a texture is bound but not used */
