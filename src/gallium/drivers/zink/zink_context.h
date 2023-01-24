@@ -162,6 +162,11 @@ void
 zink_init_grid_functions(struct zink_context *ctx);
 struct zink_context *
 zink_tc_context_unwrap(struct pipe_context *pctx, bool threaded);
+
+void
+zink_update_barriers(struct zink_context *ctx, bool is_compute,
+                     struct pipe_resource *index, struct pipe_resource *indirect, struct pipe_resource *indirect_draw_count);
+
 #ifdef __cplusplus
 }
 #endif
