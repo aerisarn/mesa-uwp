@@ -3557,6 +3557,7 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       break;
    }
    case nir_op_pack_32_4x8: bld.copy(Definition(dst), get_alu_src(ctx, instr->src[0], 4)); break;
+   case nir_op_pack_half_2x16_rtz_split:
    case nir_op_pack_half_2x16_split: {
       if (dst.regClass() == v1) {
          if (ctx->program->gfx_level == GFX8 || ctx->program->gfx_level == GFX9)

@@ -1126,6 +1126,7 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    case nir_op_pack_half_2x16:
       result = emit_pack_2x16(&ctx->ac, src[0], ac_build_cvt_pkrtz_f16);
       break;
+   case nir_op_pack_half_2x16_rtz_split:
    case nir_op_pack_half_2x16_split:
       src[0] = ac_to_float(&ctx->ac, src[0]);
       src[1] = ac_to_float(&ctx->ac, src[1]);

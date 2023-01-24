@@ -101,6 +101,7 @@ get_nir_options_for_stage(struct radv_physical_device *device, gl_shader_stage s
       .has_dot_2x16 =
          device->rad_info.has_accelerated_dot_product && device->rad_info.gfx_level < GFX11,
       .has_find_msb_rev = true,
+      .has_pack_half_2x16_rtz = true,
       .use_scoped_barrier = true,
 #ifdef LLVM_AVAILABLE
       .has_fmulz = !device->use_llvm || LLVM_VERSION_MAJOR >= 12,
