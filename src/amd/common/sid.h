@@ -250,6 +250,8 @@
 #define PKT3_WAIT_ON_CE_COUNTER     0x86
 #define PKT3_SET_SH_REG_INDEX       0x9B
 #define PKT3_LOAD_CONTEXT_REG_INDEX 0x9F /* new for VI */
+#define PKT3_EVENT_WRITE_ZPASS      0xB1 /* GFX11+ & PFP version >= 1458 */
+#define EVENT_WRITE_ZPASS_PFP_VERSION 1458
 
 #define PKT3_DISPATCH_TASK_STATE_INIT               0xA9 /* Tells the HW about the task control buffer */
 #define PKT3_DISPATCH_MESH_INDIRECT_MULTI           0x4C /* Indirect mesh shader only dispatch [GFX only] */
