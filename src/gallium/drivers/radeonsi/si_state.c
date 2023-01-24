@@ -3323,6 +3323,11 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
                            S_028C78_DISABLE_CONSTANT_ENCODE_REG(1) |
                            S_028C78_FDCC_ENABLE(vi_dcc_enabled(tex, cb->base.u.tex.level));
 
+         if (sctx->family >= CHIP_GFX1103_R2) {
+            cb_fdcc_control |= S_028C78_ENABLE_MAX_COMP_FRAG_OVERRIDE(1) |
+                               S_028C78_MAX_COMP_FRAGS(cb->base.texture->nr_samples >= 4);
+         }
+
          radeon_set_context_reg_seq(R_028C6C_CB_COLOR0_VIEW + i * 0x3C, 4);
          radeon_emit(cb->cb_color_view);                      /* CB_COLOR0_VIEW */
          radeon_emit(cb_color_info);                          /* CB_COLOR0_INFO */
