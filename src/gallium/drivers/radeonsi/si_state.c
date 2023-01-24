@@ -5920,6 +5920,15 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
       si_pm4_set_reg(pm4, R_028620_PA_RATE_CNTL,
                      S_028620_VERTEX_RATE(2) | S_028620_PRIM_RATE(1));
 
+      uint64_t rb_mask = BITFIELD64_MASK(sctx->screen->info.max_render_backends);
+
+      si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 2, 0));
+      si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_PIXEL_PIPE_STAT_CONTROL) | EVENT_INDEX(1));
+      si_pm4_cmd_add(pm4, PIXEL_PIPE_STATE_CNTL_COUNTER_ID(0) |
+                          PIXEL_PIPE_STATE_CNTL_STRIDE(2) |
+                          PIXEL_PIPE_STATE_CNTL_INSTANCE_EN_LO(rb_mask));
+      si_pm4_cmd_add(pm4, PIXEL_PIPE_STATE_CNTL_INSTANCE_EN_HI(rb_mask));
+
       /* We must wait for idle using an EOP event before changing the attribute ring registers.
        * Use the bottom-of-pipe EOP event, but increment the PWS counter instead of writing memory.
        */

@@ -4196,6 +4196,15 @@ void ac_create_shadowing_ib_preamble(const struct radeon_info *info,
    pm4_cmd_add(pm4_cmdbuf, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
 
    if (info->gfx_level >= GFX11) {
+      uint64_t rb_mask = BITFIELD64_MASK(info->max_render_backends);
+
+      pm4_cmd_add(pm4_cmdbuf, PKT3(PKT3_EVENT_WRITE, 2, 0));
+      pm4_cmd_add(pm4_cmdbuf, EVENT_TYPE(V_028A90_PIXEL_PIPE_STAT_CONTROL) | EVENT_INDEX(1));
+      pm4_cmd_add(pm4_cmdbuf, PIXEL_PIPE_STATE_CNTL_COUNTER_ID(0) |
+                              PIXEL_PIPE_STATE_CNTL_STRIDE(2) |
+                              PIXEL_PIPE_STATE_CNTL_INSTANCE_EN_LO(rb_mask));
+      pm4_cmd_add(pm4_cmdbuf, PIXEL_PIPE_STATE_CNTL_INSTANCE_EN_HI(rb_mask));
+
       /* We must wait for idle using an EOP event before changing the attribute ring registers.
        * Use the bottom-of-pipe EOP event, but increment the PWS counter instead of writing memory.
        */
