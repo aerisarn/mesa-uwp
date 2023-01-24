@@ -1189,14 +1189,19 @@ enum fd_layout_type {
    UBWC,
 };
 
+static bool
+has_implicit_modifier(const uint64_t *modifiers, int count)
+{
+    return count == 0 ||
+           drm_find_modifier(DRM_FORMAT_MOD_INVALID, modifiers, count);
+}
+
 static enum fd_layout_type
 get_best_layout(struct fd_screen *screen, struct pipe_resource *prsc,
                 const struct pipe_resource *tmpl, const uint64_t *modifiers,
                 int count)
 {
-   bool implicit_modifiers =
-      (count == 0 ||
-       drm_find_modifier(DRM_FORMAT_MOD_INVALID, modifiers, count));
+   const bool can_implicit = has_implicit_modifier(modifiers, count);
 
    /* First, find all the conditions which would force us to linear */
    if (!screen->tile_mode)
@@ -1219,7 +1224,7 @@ get_best_layout(struct fd_screen *screen, struct pipe_resource *prsc,
        return LINEAR;
 
    /* Shared resources with implicit modifiers must always be linear */
-   if (implicit_modifiers && (tmpl->bind & PIPE_BIND_SHARED)) {
+   if (can_implicit && (tmpl->bind & PIPE_BIND_SHARED)) {
       perf_debug("%" PRSC_FMT
                  ": forcing linear: shared resource + implicit modifiers",
                  PRSC_ARGS(prsc));
@@ -1237,7 +1242,7 @@ get_best_layout(struct fd_screen *screen, struct pipe_resource *prsc,
    if (tmpl->bind & PIPE_BIND_USE_FRONT_RENDERING)
       ubwc_ok = false;
 
-   if (ubwc_ok && !implicit_modifiers &&
+   if (ubwc_ok && !can_implicit &&
        !drm_find_modifier(DRM_FORMAT_MOD_QCOM_COMPRESSED, modifiers, count)) {
       perf_debug("%" PRSC_FMT
                  ": not using UBWC: not in acceptable modifier set",
@@ -1255,7 +1260,7 @@ get_best_layout(struct fd_screen *screen, struct pipe_resource *prsc,
     * TODO we should probably also limit TILED in a similar way to UBWC above,
     * once we have a public modifier token defined.
     */
-   if (implicit_modifiers ||
+   if (can_implicit ||
        drm_find_modifier(FD_FORMAT_MOD_QCOM_TILED, modifiers, count))
       return TILED;
 
