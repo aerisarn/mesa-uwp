@@ -1686,9 +1686,9 @@ radv_emit_shader_prefetch(struct radv_cmd_buffer *cmd_buffer, struct radv_shader
    si_cp_dma_prefetch(cmd_buffer, va, shader->code_size);
 }
 
-static void
-radv_emit_prefetch_L2(struct radv_cmd_buffer *cmd_buffer,
-                      struct radv_graphics_pipeline *pipeline, bool first_stage_only)
+ALWAYS_INLINE static void
+radv_emit_prefetch_L2(struct radv_cmd_buffer *cmd_buffer, struct radv_graphics_pipeline *pipeline,
+                      bool first_stage_only)
 {
    struct radv_cmd_state *state = &cmd_buffer->state;
    uint32_t mask = state->prefetch_L2_mask;
@@ -8845,12 +8845,14 @@ radv_before_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info
 
       radv_upload_graphics_shader_descriptors(cmd_buffer);
    } else {
+      const bool need_prefetch = has_prefetch && cmd_buffer->state.prefetch_L2_mask;
+
       /* If we don't wait for idle, start prefetches first, then set
        * states, and draw at the end.
        */
       si_emit_cache_flush(cmd_buffer);
 
-      if (has_prefetch && cmd_buffer->state.prefetch_L2_mask) {
+      if (need_prefetch) {
          /* Only prefetch the vertex shader and VBO descriptors
           * in order to start the draw as soon as possible.
           */
