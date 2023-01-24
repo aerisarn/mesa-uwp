@@ -64,7 +64,7 @@
 #define DZN_USE_WSI_PLATFORM
 #endif
 
-#define DZN_API_VERSION VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION)
+#define DZN_API_VERSION VK_MAKE_VERSION(1, 1, VK_HEADER_VERSION)
 
 #define MAX_TIER2_MEMORY_TYPES 3
 
@@ -93,12 +93,15 @@ static void
 dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
 {
    pdev->vk.supported_extensions = (struct vk_device_extension_table) {
-      .KHR_create_renderpass2                = false,
-      .KHR_depth_stencil_resolve             = false,
+      .KHR_create_renderpass2                = true,
+      .KHR_depth_stencil_resolve             = true,
       .KHR_descriptor_update_template        = true,
       .KHR_draw_indirect_count               = true,
       .KHR_driver_properties                 = true,
-      .KHR_dynamic_rendering                 = false,
+      .KHR_dynamic_rendering                 = true,
+      .KHR_maintenance1                      = true,
+      .KHR_maintenance2                      = true,
+      .KHR_maintenance3                      = true,
       .KHR_multiview                         = true,
       .KHR_shader_draw_parameters            = true,
 #ifdef DZN_USE_WSI_PLATFORM
