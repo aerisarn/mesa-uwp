@@ -1778,9 +1778,9 @@ radv_image_print_info(struct radv_device *device, struct radv_image *image)
    fprintf(stderr, "Image:\n");
    fprintf(stderr,
            "  Info: size=%" PRIu64 ", alignment=%" PRIu32 ", "
-           "width=%" PRIu32 ", height=%" PRIu32 ", "
+           "width=%" PRIu32 ", height=%" PRIu32 ", depth=%" PRIu32 ", "
            "array_size=%" PRIu32 ", levels=%" PRIu32 "\n",
-           image->size, image->alignment, image->info.width, image->info.height,
+           image->size, image->alignment, image->info.width, image->info.height, image->info.depth,
            image->info.array_size, image->info.levels);
    for (unsigned i = 0; i < image->plane_count; ++i) {
       const struct radv_image_plane *plane = &image->planes[i];
