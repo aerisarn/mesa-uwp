@@ -582,6 +582,7 @@ ir3_nir_post_finalize(struct ir3_shader *shader)
 
    const nir_lower_image_options lower_image_opts = {
       .lower_cube_size = true,
+      .lower_image_samples_to_one = true
    };
    NIR_PASS_V(s, nir_lower_image, &lower_image_opts);
 
