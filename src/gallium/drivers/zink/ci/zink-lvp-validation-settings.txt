@@ -1,6 +1,6 @@
 # Please include a comment with the log message and a testcase triggering each
 # VUID at the bottom of the file.
-khronos_validation.message_id_filter = VUID-vkCmdDrawMultiEXT-colorAttachmentCount-06188,VUID-VkGraphicsPipelineCreateInfo-Geometry-07725,VUID-VkShaderModuleCreateInfo-pCode-01091,VUID-vkCmdCopyImage-srcImage-07743,VUID-vkCmdDrawMultiEXT-None-06479,VUID-vkCmdDrawMultiIndexedEXT-format-07753,VUID-vkCmdDrawMultiEXT-viewType-07752,VUID-vkCmdDispatch-viewType-07752,VUID-vkCmdDrawMultiEXT-magFilter-04553,VUID-vkCmdDrawMultiIndexedEXT-magFilter-04553,VUID-RuntimeSpirv-Location-06272,VUID-vkDestroyDevice-device-00378,UNASSIGNED-CoreValidation-DrawState-InvalidImageLayout,VUID-VkDescriptorImageInfo-imageLayout-00344,VUID-vkCmdDrawMultiEXT-None-02699
+khronos_validation.message_id_filter = VUID-vkCmdDrawMultiEXT-colorAttachmentCount-06188,VUID-VkGraphicsPipelineCreateInfo-Geometry-07725,VUID-VkShaderModuleCreateInfo-pCode-01091,VUID-vkCmdCopyImage-srcImage-07743,VUID-vkCmdDrawMultiEXT-None-06479,VUID-vkCmdDrawMultiIndexedEXT-format-07753,VUID-vkCmdDrawMultiEXT-viewType-07752,VUID-vkCmdDispatch-viewType-07752,VUID-vkCmdDrawMultiEXT-magFilter-04553,VUID-vkCmdDrawMultiIndexedEXT-magFilter-04553,VUID-RuntimeSpirv-Location-06272,VUID-vkDestroyDevice-device-00378,VUID-vkCmdDrawMultiEXT-None-02699
 khronos_validation.report_flags = error
 khronos_validation.debug_action = VK_DBG_LAYER_ACTION_LOG_MSG,VK_DBG_LAYER_ACTION_BREAK
 VK_LAYER_ENABLES=VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT
@@ -165,38 +165,6 @@ khronos_validation.log_filename = stdout
 # VkImageView as a result of this command, then the image view's format features
 # must contain VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT
 # (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-vkCmdDrawMultiEXT-magFilter-04553)
-
-# KHR-GL46.texture_view.coherency
-#
-# [ UNASSIGNED-CoreValidation-DrawState-InvalidImageLayout ] Object 0: handle =
-# 0x55ba2375da70, type = VK_OBJECT_TYPE_COMMAND_BUFFER; | MessageID = 0x4dae5635 |
-# vkQueueSubmit(): pSubmits[0].pCommandBuffers[1] command buffer VkCommandBuffer
-# 0x55ba2375da70[] expects VkImage 0x908683000000001d[] (subresource: aspectMask
-# 0x1 array layer 0, mip level 1) to be in layout
-# VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL--instead, current layout is
-# VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT.
-#
-# [ VUID-VkDescriptorImageInfo-imageLayout-00344 ] Object 0: handle =
-# 0x55ba23788bf0, type = VK_OBJECT_TYPE_COMMAND_BUFFER; | MessageID = 0xde55a405 |
-# vkCmdDrawMultiEXT: Cannot use VkImage 0x53e60f000000006b[] (layer=0 mip=0) with
-# specific layout VK_IMAGE_LAYOUT_GENERAL that doesn't match the previous known
-# layout VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT. The Vulkan spec
-# states: imageLayout must match the actual VkImageLayout of each subresource
-# accessible from imageView at the time this descriptor is accessed as defined by
-# the image layout matching rules
-# (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-VkDescriptorImageInfo-imageLayout-00344)
-#
-# [ VUID-vkCmdDrawMultiEXT-None-02699 ] Object 0: handle = 0xb82de40000000077,
-# type = VK_OBJECT_TYPE_DESCRIPTOR_SET; | MessageID = 0x568f7614 |
-# vkCmdDrawMultiEXT: Descriptor set VkDescriptorSet 0xb82de40000000077[] Image
-# layout specified at vkCmdBindDescriptorSets time doesn't match actual image
-# layout at time descriptor is used. See previous error callback for specific
-# details. The Vulkan spec states: Descriptors in each bound descriptor set,
-# specified via vkCmdBindDescriptorSets, must be valid as described by descriptor
-# validity if they are statically used by the VkPipeline bound to the pipeline
-# bind point used by this command
-# (https://github.com/KhronosGroup/Vulkan-Docs/search?q=)VUID-vkCmdDrawMultiEXT-None-02699)
-
 
 #  KHR-Single-GL46.enhanced_layouts.varying_array_locations:
 #
