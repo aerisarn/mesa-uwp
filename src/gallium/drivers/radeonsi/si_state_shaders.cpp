@@ -3392,6 +3392,18 @@ static void si_update_common_shader_state(struct si_context *sctx, struct si_sha
    sctx->do_update_shaders = true;
 }
 
+static void si_update_last_vgt_stage_state(struct si_context *sctx,
+                                           /* hw_vs refers to the last VGT stage */
+                                           struct si_shader_selector *old_hw_vs,
+                                           struct si_shader *old_hw_vs_variant)
+{
+   si_update_vs_viewport_state(sctx);
+   si_update_streamout_state(sctx);
+   si_update_clip_regs(sctx, old_hw_vs, old_hw_vs_variant, si_get_vs(sctx)->cso,
+                       si_get_vs(sctx)->current);
+   si_update_rasterized_prim(sctx);
+}
+
 static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
 {
    struct si_context *sctx = (struct si_context *)ctx;
@@ -3412,11 +3424,7 @@ static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
 
    si_update_common_shader_state(sctx, sel, PIPE_SHADER_VERTEX);
    si_select_draw_vbo(sctx);
-   si_update_vs_viewport_state(sctx);
-   si_update_streamout_state(sctx);
-   si_update_clip_regs(sctx, old_hw_vs, old_hw_vs_variant, si_get_vs(sctx)->cso,
-                       si_get_vs(sctx)->current);
-   si_update_rasterized_prim(sctx);
+   si_update_last_vgt_stage_state(sctx, old_hw_vs, old_hw_vs_variant);
    si_vs_key_update_inputs(sctx);
 
    if (sctx->screen->dpbb_allowed) {
@@ -3505,11 +3513,7 @@ static void si_bind_gs_shader(struct pipe_context *ctx, void *state)
       if (sctx->ia_multi_vgt_param_key.u.uses_tess)
          si_update_tess_uses_prim_id(sctx);
    }
-   si_update_vs_viewport_state(sctx);
-   si_update_streamout_state(sctx);
-   si_update_clip_regs(sctx, old_hw_vs, old_hw_vs_variant, si_get_vs(sctx)->cso,
-                       si_get_vs(sctx)->current);
-   si_update_rasterized_prim(sctx);
+   si_update_last_vgt_stage_state(sctx, old_hw_vs, old_hw_vs_variant);
 }
 
 static void si_bind_tcs_shader(struct pipe_context *ctx, void *state)
@@ -3570,11 +3574,7 @@ static void si_bind_tes_shader(struct pipe_context *ctx, void *state)
       si_shader_change_notify(sctx);
    if (enable_changed)
       sctx->last_tes_sh_base = -1; /* invalidate derived tess state */
-   si_update_vs_viewport_state(sctx);
-   si_update_streamout_state(sctx);
-   si_update_clip_regs(sctx, old_hw_vs, old_hw_vs_variant, si_get_vs(sctx)->cso,
-                       si_get_vs(sctx)->current);
-   si_update_rasterized_prim(sctx);
+   si_update_last_vgt_stage_state(sctx, old_hw_vs, old_hw_vs_variant);
 }
 
 void si_update_vrs_flat_shading(struct si_context *sctx)
