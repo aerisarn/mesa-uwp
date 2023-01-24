@@ -866,7 +866,7 @@ static const struct ac_reg_range Gfx11ShShadowRange[] =
    },
    {
       R_00B220_SPI_SHADER_PGM_LO_GS,
-      R_00B2AC_SPI_SHADER_USER_DATA_GS_31 - R_00B220_SPI_SHADER_PGM_LO_GS + 4,
+      R_00B2B4_SPI_SHADER_GS_MESHLET_EXP_ALLOC - R_00B220_SPI_SHADER_PGM_LO_GS + 4,
    },
    {
       R_00B2C8_SPI_SHADER_USER_ACCUM_ESGS_0,
@@ -1193,6 +1193,10 @@ static const struct ac_reg_range Gfx11NonShadowedRanges[] =
       R_00B868_COMPUTE_STATIC_THREAD_MGMT_SE3 - R_00B864_COMPUTE_STATIC_THREAD_MGMT_SE2 + 4,
    },
    {
+      R_00B894_COMPUTE_STATIC_THREAD_MGMT_SE4,
+      R_00B8A0_COMPUTE_STATIC_THREAD_MGMT_SE7 - R_00B894_COMPUTE_STATIC_THREAD_MGMT_SE4 + 4,
+   },
+   {
       R_030800_GRBM_GFX_INDEX,
       4,
    },
@@ -1238,7 +1242,13 @@ static const struct ac_reg_range Gfx11NonShadowedRanges[] =
       R_035980_SDMA0_PERFCNT_PERFCOUNTER_LO,
       R_035994_SDMA0_PERFCOUNTER1_HI - R_035980_SDMA0_PERFCNT_PERFCOUNTER_LO + 4,
    },
+   {
+      R_031100_SPI_CONFIG_CNTL,
+      4,
+   },
 };
+
+/* TODO: Port Gfx11CpRs64InitShRanges and Gfx11CpRs64InitCsShRanges from PAL. */
 
 void ac_get_reg_ranges(enum amd_gfx_level gfx_level, enum radeon_family family,
                        enum ac_reg_range_type type, unsigned *num_ranges,
