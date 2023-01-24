@@ -29,8 +29,8 @@ reset_obj(struct zink_screen *screen, struct zink_batch_state *bs, struct zink_r
    /* if no batch usage exists after removing the usage from 'bs', this resource is considered fully idle */
    if (!zink_resource_object_usage_unset(obj, bs)) {
       /* the resource is idle, so reset all access/reordering info */
-      obj->unordered_read = false;
-      obj->unordered_write = false;
+      obj->unordered_read = true;
+      obj->unordered_write = true;
       obj->access = 0;
       obj->access_stage = 0;
       /* also prune dead view objects */

@@ -597,6 +597,8 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       return NULL;
    simple_mtx_init(&obj->view_lock, mtx_plain);
    util_dynarray_init(&obj->views, NULL);
+   obj->unordered_read = true;
+   obj->unordered_write = true;
    obj->last_dt_idx = obj->dt_idx = UINT32_MAX; //TODO: unionize
 
    VkMemoryRequirements reqs = {0};
