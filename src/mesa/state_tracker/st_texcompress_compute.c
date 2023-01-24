@@ -32,6 +32,7 @@
 #include "main/shaderapi.h"
 #include "main/shaderobj.h"
 #include "main/texcompress_astc.h"
+#include "main/texcompress_astc_luts_wrap.h"
 #include "main/uniforms.h"
 
 #include "state_tracker/st_atom_constbuf.h"
@@ -41,6 +42,7 @@
 #include "state_tracker/st_texcompress_compute.h"
 #include "state_tracker/st_texture.h"
 
+#include "util/u_hash_table.h"
 #include "util/u_string.h"
 
 enum compute_program_id {
@@ -484,6 +486,73 @@ sw_decode_astc(struct st_context *st,
    return rgba8_tex;
 }
 
+static struct pipe_sampler_view *
+get_sampler_view_for_lut(struct pipe_context *pipe,
+                         const astc_decoder_lut *lut)
+{
+   struct pipe_resource *res =
+      pipe_buffer_create_with_data(pipe,
+                                   PIPE_BIND_SAMPLER_VIEW,
+                                   PIPE_USAGE_DEFAULT,
+                                   lut->size_B,
+                                   lut->data);
+   if (!res)
+      return NULL;
+
+   const struct pipe_sampler_view templ = {
+      .format = lut->format,
+      .target = PIPE_BUFFER,
+      .swizzle_r = PIPE_SWIZZLE_X,
+      .swizzle_g = PIPE_SWIZZLE_Y,
+      .swizzle_b = PIPE_SWIZZLE_Z,
+      .swizzle_a = PIPE_SWIZZLE_W,
+      .u.buf.offset = 0,
+      .u.buf.size = lut->size_B,
+   };
+
+   struct pipe_sampler_view *view =
+      pipe->create_sampler_view(pipe, res, &templ);
+
+   pipe_resource_reference(&res, NULL);
+
+   return view;
+}
+
+/* Initializes required resources for Granite ASTC GPU decode.
+ *
+ * There are 5 texture buffer objects and one additional texture required.
+ * We initialize 5 tbo's here and a single texture later during runtime.
+ */
+static bool
+initialize_astc_decoder(struct st_context *st)
+{
+   astc_decoder_lut_holder astc_lut_holder;
+   _mesa_init_astc_decoder_luts(&astc_lut_holder);
+
+   const astc_decoder_lut *luts[] = {
+      &astc_lut_holder.color_endpoint,
+      &astc_lut_holder.color_endpoint_unquant,
+      &astc_lut_holder.weights,
+      &astc_lut_holder.weights_unquant,
+      &astc_lut_holder.trits_quints,
+   };
+
+   for (unsigned i = 0; i < ARRAY_SIZE(luts); i++) {
+      st->texcompress_compute.astc_luts[i] =
+         get_sampler_view_for_lut(st->pipe, luts[i]);
+      if (!st->texcompress_compute.astc_luts[i])
+         return false;
+   }
+
+   st->texcompress_compute.astc_partition_tables =
+      _mesa_pointer_hash_table_create(NULL);
+
+   if (!st->texcompress_compute.astc_partition_tables)
+      return false;
+
+   return true;
+}
+
 bool
 st_init_texcompress_compute(struct st_context *st)
 {
@@ -497,7 +566,28 @@ st_init_texcompress_compute(struct st_context *st)
    if (!st->texcompress_compute.bc1_endpoint_buf)
       return false;
 
+   if (!initialize_astc_decoder(st))
+      return false;
+
    return true;
+}
+
+static void
+destroy_astc_decoder(struct st_context *st)
+{
+   for (unsigned i = 0; i < ARRAY_SIZE(st->texcompress_compute.astc_luts); i++)
+      pipe_sampler_view_reference(&st->texcompress_compute.astc_luts[i], NULL);
+
+   if (st->texcompress_compute.astc_partition_tables) {
+      hash_table_foreach(st->texcompress_compute.astc_partition_tables,
+                         entry) {
+         pipe_sampler_view_reference(
+            (struct pipe_sampler_view **)&entry->data, NULL);
+      }
+   }
+
+   _mesa_hash_table_destroy(st->texcompress_compute.astc_partition_tables,
+                            NULL);
 }
 
 void
@@ -511,6 +601,8 @@ st_destroy_texcompress_compute(struct st_context *st)
 
    /* Destroy the SSBO used by the BC1 shader program. */
    pipe_resource_reference(&st->texcompress_compute.bc1_endpoint_buf, NULL);
+
+   destroy_astc_decoder(st);
 }
 
 /* See st_texcompress_compute.h for more information. */
