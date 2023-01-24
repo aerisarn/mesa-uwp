@@ -5328,6 +5328,12 @@ typedef struct nir_lower_image_options {
     * Lower multi sample image load and samples_identical to use fragment_mask_load.
     */
    bool lower_to_fragment_mask_load_amd;
+
+  /**
+   * Lower image_samples to a constant in case the driver doesn't support multisampled
+   * images.
+   */
+  bool lower_image_samples_to_one;
 } nir_lower_image_options;
 
 bool nir_lower_image(nir_shader *nir,
