@@ -1717,21 +1717,21 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
       case V_028C70_COLOR_5_6_5:
          if (spi_format == V_028714_SPI_SHADER_FP16_ABGR) {
             sx_ps_downconvert |= V_028754_SX_RT_EXPORT_5_6_5 << (i * 4);
-            sx_blend_opt_epsilon |= V_028758_6BIT_FORMAT_0_75 << (i * 4);
+            sx_blend_opt_epsilon |= V_028758_6BIT_FORMAT_0_5 << (i * 4);
          }
          break;
 
       case V_028C70_COLOR_1_5_5_5:
          if (spi_format == V_028714_SPI_SHADER_FP16_ABGR) {
             sx_ps_downconvert |= V_028754_SX_RT_EXPORT_1_5_5_5 << (i * 4);
-            sx_blend_opt_epsilon |= V_028758_5BIT_FORMAT_0_75 << (i * 4);
+            sx_blend_opt_epsilon |= V_028758_5BIT_FORMAT_0_5 << (i * 4);
          }
          break;
 
       case V_028C70_COLOR_4_4_4_4:
          if (spi_format == V_028714_SPI_SHADER_FP16_ABGR) {
             sx_ps_downconvert |= V_028754_SX_RT_EXPORT_4_4_4_4 << (i * 4);
-            sx_blend_opt_epsilon |= V_028758_4BIT_FORMAT_0_75 << (i * 4);
+            sx_blend_opt_epsilon |= V_028758_4BIT_FORMAT_0_5 << (i * 4);
          }
          break;
 
@@ -1764,7 +1764,7 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
       case V_028C70_COLOR_2_10_10_10:
          if (spi_format == V_028714_SPI_SHADER_FP16_ABGR) {
             sx_ps_downconvert |= V_028754_SX_RT_EXPORT_2_10_10_10 << (i * 4);
-            sx_blend_opt_epsilon |= V_028758_10BIT_FORMAT_0_75 << (i * 4);
+            sx_blend_opt_epsilon |= V_028758_10BIT_FORMAT_0_5 << (i * 4);
          }
          break;
       case V_028C70_COLOR_5_9_9_9:
