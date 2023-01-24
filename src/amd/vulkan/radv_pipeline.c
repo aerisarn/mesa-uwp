@@ -2094,7 +2094,7 @@ radv_graphics_pipeline_link(const struct radv_pipeline *pipeline,
 }
 
 static bool
-radv_pipeline_has_dynamic_ps_epilog(const struct radv_graphics_pipeline *pipeline)
+radv_pipeline_needs_dynamic_ps_epilog(const struct radv_graphics_pipeline *pipeline)
 {
    /* These dynamic states need to compile PS epilogs on-demand. */
    return pipeline->dynamic_states & (RADV_DYNAMIC_COLOR_BLEND_ENABLE |
@@ -2364,7 +2364,7 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
    if (device->primitives_generated_query)
       key.primitives_generated_query = true;
 
-   if (radv_pipeline_has_dynamic_ps_epilog(pipeline))
+   if (radv_pipeline_needs_dynamic_ps_epilog(pipeline))
       key.ps.dynamic_ps_epilog = true;
 
    key.ps.has_epilog =
@@ -3720,7 +3720,7 @@ radv_pipeline_emit_blend_state(struct radeon_cmdbuf *ctx_cs,
                                const struct radv_graphics_pipeline *pipeline,
                                const struct radv_blend_state *blend)
 {
-   if (pipeline->ps_epilog || radv_pipeline_has_dynamic_ps_epilog(pipeline))
+   if (pipeline->ps_epilog || radv_pipeline_needs_dynamic_ps_epilog(pipeline))
       return;
 
    radeon_set_context_reg(ctx_cs, R_028714_SPI_SHADER_COL_FORMAT, blend->spi_shader_col_format);
@@ -5152,7 +5152,8 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
     * fragment shader.
     */
    if ((imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) &&
-       !(imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)) {
+       !(imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
+       !radv_pipeline_needs_dynamic_ps_epilog(&pipeline->base)) {
       struct radv_ps_epilog_key key = radv_pipeline_generate_ps_epilog_key(&pipeline->base, state, true);
 
       pipeline->base.ps_epilog = radv_create_ps_epilog(device, &key);
