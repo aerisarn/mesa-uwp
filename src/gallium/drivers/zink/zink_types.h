@@ -1036,7 +1036,7 @@ struct zink_render_pass_state {
    struct zink_rt_attrib rts[PIPE_MAX_COLOR_BUFS + 1];
    unsigned num_rts;
    uint32_t clears; //for extra verification and update flagging
-   uint32_t msaa_expand_mask;
+   uint16_t msaa_expand_mask;
 };
 
 struct zink_pipeline_rt {
