@@ -33,6 +33,31 @@
 #include "git_sha1.h"
 #include "vulkan/vulkan.h"
 
+static const struct spirv_to_nir_options
+spirv_to_nir_options = {
+   .caps = {
+      .draw_parameters = true,
+      .multiview = true,
+      .subgroup_basic = true,
+   },
+   .ubo_addr_format = nir_address_format_32bit_index_offset,
+   .ssbo_addr_format = nir_address_format_32bit_index_offset,
+   .shared_addr_format = nir_address_format_32bit_offset,
+
+   /* use_deref_buffer_array_length + nir_lower_explicit_io force
+      * get_ssbo_size to take in the return from load_vulkan_descriptor
+      * instead of vulkan_resource_index. This makes it much easier to
+      * get the DXIL handle for the SSBO.
+      */
+   .use_deref_buffer_array_length = true
+};
+
+const struct spirv_to_nir_options*
+dxil_spirv_nir_get_spirv_options(void)
+{
+   return &spirv_to_nir_options;
+}
+
  /* Logic extracted from vk_spirv_to_nir() so we have the same preparation
  * steps for both the vulkan driver and the lib used by the WebGPU
  * implementation.

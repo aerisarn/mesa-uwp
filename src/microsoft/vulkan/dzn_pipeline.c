@@ -215,28 +215,12 @@ dzn_pipeline_get_nir_shader(struct dzn_device *device,
    }
 
    VK_FROM_HANDLE(vk_shader_module, module, stage_info->module);
-   struct spirv_to_nir_options spirv_opts = {
-      .caps = {
-         .draw_parameters = true,
-         .multiview = true,
-         .subgroup_basic = true,
-      },
-      .ubo_addr_format = nir_address_format_32bit_index_offset,
-      .ssbo_addr_format = nir_address_format_32bit_index_offset,
-      .shared_addr_format = nir_address_format_32bit_offset,
-
-      /* use_deref_buffer_array_length + nir_lower_explicit_io force
-       * get_ssbo_size to take in the return from load_vulkan_descriptor
-       * instead of vulkan_resource_index. This makes it much easier to
-       * get the DXIL handle for the SSBO.
-       */
-      .use_deref_buffer_array_length = true
-   };
+   const struct spirv_to_nir_options *spirv_opts = dxil_spirv_nir_get_spirv_options();
 
    VkResult result =
       vk_shader_module_to_nir(&device->vk, module, stage,
                               stage_info->pName, stage_info->pSpecializationInfo,
-                              &spirv_opts, options->nir_opts, NULL, nir);
+                              spirv_opts, options->nir_opts, NULL, nir);
    if (result != VK_SUCCESS)
       return result;
 
