@@ -107,6 +107,13 @@ etc2_rgba_stitch_glsl_h = custom_target(
   command : [prog_python, '@INPUT@', '@OUTPUT@', '-n', 'etc2_rgba_stitch_source'],
 )
 
+astc_glsl_h = custom_target(
+  'astc_glsl.h',
+  input : [files_xxd, 'astc_decoder.glsl'],
+  output : 'astc_glsl.h',
+  command : [prog_python, '@INPUT@', '@OUTPUT@', '-n', 'astc_source'],
+)
+
 files_libglsl = files(
   'ast.h',
   'ast_array_index.cpp',
@@ -250,7 +257,7 @@ libglsl = static_library(
   [files_libglsl, glsl_parser, glsl_lexer_cpp, ir_expression_operation_h,
    ir_expression_operation_strings_h, ir_expression_operation_constant_h,
    float64_glsl_h, cross_platform_settings_piece_all_h, bc1_glsl_h, bc4_glsl_h,
-   etc2_rgba_stitch_glsl_h],
+   etc2_rgba_stitch_glsl_h, astc_glsl_h],
   c_args : [c_msvc_compat_args, no_override_init_args],
   cpp_args : [cpp_msvc_compat_args],
   gnu_symbol_visibility : 'hidden',
