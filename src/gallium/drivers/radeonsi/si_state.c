@@ -3824,6 +3824,10 @@ static void si_emit_msaa_config(struct si_context *sctx)
     */
    coverage_samples = si_get_num_coverage_samples(sctx);
 
+   /* DCC_DECOMPRESS and ELIMINATE_FAST_CLEAR require MSAA_NUM_SAMPLES=0. */
+   if (sctx->gfx_level >= GFX11 && sctx->gfx11_force_msaa_num_samples_zero)
+      coverage_samples = 1;
+
    /* The DX10 diamond test is not required by GL and decreases line rasterization
     * performance, so don't use it.
     */
@@ -3857,7 +3861,7 @@ static void si_emit_msaa_config(struct si_context *sctx)
        sctx->smoothing_enabled) {
       if (sctx->framebuffer.state.zsbuf) {
          z_samples = sctx->framebuffer.state.zsbuf->texture->nr_samples;
-         z_samples = MAX2(1, z_samples);
+         z_samples = MIN2(MAX2(1, z_samples), coverage_samples);
       } else {
          z_samples = coverage_samples;
       }
