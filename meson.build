@@ -818,14 +818,10 @@ if with_android_stub and not with_platform_android
   error('`-D android-stub=true` makes no sense without `-D platforms=android`')
 endif
 
-if get_option('android-libbacktrace') == 'auto'
-  with_libbacktrace = with_platform_android
-else
-  with_libbacktrace = get_option('android-libbacktrace') == 'true'
-  if with_libbacktrace and not with_platform_android
-    error('`-D android-libbacktrace=true` makes no sense without `-D platforms=android`')
-  endif
-endif
+with_libbacktrace = get_option('android-libbacktrace') \
+  .require(with_platform_android, error_message : '`-D android-libbacktrace=enabled` makes no sense without `-D platforms=android`') \
+  .disable_auto_if(not with_platform_android) \
+  .allowed()
 
 if with_libbacktrace
   cpp_args += '-DWITH_LIBBACKTRACE'
