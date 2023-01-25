@@ -272,7 +272,8 @@ dxil_add_global_ptr_var(struct dxil_module *m, const char *name,
 
 struct dxil_func_def *
 dxil_add_function_def(struct dxil_module *m, const char *name,
-                      const struct dxil_type *type, unsigned num_blocks);
+                      const struct dxil_type *type, unsigned num_blocks,
+                      const char *const *attr_keys, const char *const *attr_values);
 
 const struct dxil_func *
 dxil_add_function_decl(struct dxil_module *m, const char *name,

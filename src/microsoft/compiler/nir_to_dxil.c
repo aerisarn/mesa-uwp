@@ -5776,9 +5776,19 @@ emit_function(struct ntd_context *ctx, nir_function *func)
 
    nir_metadata_require(impl, nir_metadata_block_index);
 
+   const char *attr_keys[2] = { NULL };
+   const char *attr_values[2] = { NULL };
+   if (ctx->shader->info.float_controls_execution_mode &
+       (FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP32 | FLOAT_CONTROLS_DENORM_PRESERVE_FP32))
+      attr_keys[0] = "fp32-denorm-mode";
+   if (ctx->shader->info.float_controls_execution_mode & FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP32)
+      attr_values[0] = "ftz";
+   else if (ctx->shader->info.float_controls_execution_mode & FLOAT_CONTROLS_DENORM_PRESERVE_FP32)
+      attr_values[0] = "preserve";
+
    const struct dxil_type *void_type = dxil_module_get_void_type(&ctx->mod);
    const struct dxil_type *func_type = dxil_module_add_function_type(&ctx->mod, void_type, NULL, 0);
-   struct dxil_func_def *func_def = dxil_add_function_def(&ctx->mod, func->name, func_type, impl->num_blocks);
+   struct dxil_func_def *func_def = dxil_add_function_def(&ctx->mod, func->name, func_type, impl->num_blocks, attr_keys, attr_values);
    if (!func_def)
       return false;
 
