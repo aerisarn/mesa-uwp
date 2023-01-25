@@ -1797,6 +1797,9 @@ emit_mesh_state(struct anv_graphics_pipeline *pipeline)
    case BRW_INDEX_FORMAT_U32:
       index_format = INDEX_U32;
       break;
+   case BRW_INDEX_FORMAT_U888X:
+      index_format = INDEX_U888X;
+      break;
    default:
       unreachable("invalid index format");
    }
