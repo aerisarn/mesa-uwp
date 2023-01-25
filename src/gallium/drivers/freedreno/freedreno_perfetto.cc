@@ -373,6 +373,10 @@ emit_submit_id(struct fd_context *ctx)
 void
 fd_perfetto_submit(struct fd_context *ctx)
 {
+   /* sync_timestamp isn't free */
+   if (!u_trace_perfetto_active(&ctx->trace_context))
+      return;
+
    sync_timestamp(ctx);
    emit_submit_id(ctx);
 }
