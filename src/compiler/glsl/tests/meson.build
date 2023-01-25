@@ -71,7 +71,7 @@ if meson.can_run_host_binaries()
     'glsl compiler warnings',
     prog_python,
     args : [
-      join_paths(meson.current_source_dir(), 'warnings_test.py'),
+      files('warnings_test.py'),
       '--glsl-compiler', glsl_compiler,
       '--test-directory', join_paths(
         dir_source_root, 'src', 'compiler', 'glsl', 'tests', 'warnings'
@@ -85,7 +85,7 @@ if meson.can_run_host_binaries()
     'glsl optimization',
     prog_python,
     args : [
-      join_paths(meson.current_source_dir(), 'optimization_test.py'),
+      files('optimization_test.py'),
       '--test-runner', glsl_test
     ],
     suite : ['compiler', 'glsl'],
@@ -97,14 +97,14 @@ if with_tools.contains('glsl')
     'glsl dump-builder test',
     glsl_compiler,
     args : ['--version', '110', '--dump-builder',
-            join_paths(meson.current_source_dir(), 'standalone_dump-builder.frag'),
+            files('standalone_dump-builder.frag'),
            ],
     suite : ['compiler', 'glsl'],
   )
   test(
     'glsl lower-precision test',
     prog_python,
-    args : [join_paths(meson.current_source_dir(), 'lower_precision_test.py'),
+    args : [files('lower_precision_test.py'),
             glsl_compiler
            ],
     suite : ['compiler', 'glsl'],

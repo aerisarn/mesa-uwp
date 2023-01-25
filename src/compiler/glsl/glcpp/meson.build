@@ -89,7 +89,7 @@ if with_any_opengl and with_tests and meson.can_run_host_binaries() and \
       'glcpp test (@0@)'.format(m),
       prog_python,
       args : [
-        join_paths(meson.current_source_dir(), 'tests/glcpp_test.py'),
+        files('tests/glcpp_test.py'),
         glcpp, join_paths(meson.current_source_dir(), 'tests'),
         '--@0@'.format(m),
       ],
