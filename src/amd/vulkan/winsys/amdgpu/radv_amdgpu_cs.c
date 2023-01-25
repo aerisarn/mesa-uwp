@@ -1859,7 +1859,7 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request
          result = VK_ERROR_DEVICE_LOST;
       } else {
          fprintf(stderr,
-                 "amdgpu: The CS has been rejected, "
+                 "radv/amdgpu: The CS has been rejected, "
                  "see dmesg for more information (%i).\n",
                  r);
          result = VK_ERROR_UNKNOWN;
