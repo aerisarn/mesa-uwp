@@ -298,23 +298,22 @@ fd_bo_ref(struct fd_bo *bo)
 static uint32_t bo_del(struct fd_bo *bo);
 static void close_handles(struct fd_device *dev, uint32_t *handles, unsigned cnt);
 
-static uint32_t
-bo_del_or_recycle(struct fd_bo *bo)
+static bool
+try_recycle(struct fd_bo *bo)
 {
    struct fd_device *dev = bo->dev;
 
    /* No point in BO cache for suballocated buffers: */
-   if (!suballoc_bo(bo)) {
-      if ((bo->bo_reuse == BO_CACHE) &&
-          (fd_bo_cache_free(&dev->bo_cache, bo) == 0))
-         return 0;
+   if (suballoc_bo(bo))
+      return false;
 
-      if ((bo->bo_reuse == RING_CACHE) &&
-          (fd_bo_cache_free(&dev->ring_cache, bo) == 0))
-         return 0;
-   }
+   if (bo->bo_reuse == BO_CACHE)
+      return fd_bo_cache_free(&dev->bo_cache, bo) == 0;
 
-   return bo_del(bo);
+   if (bo->bo_reuse == RING_CACHE)
+      return fd_bo_cache_free(&dev->ring_cache, bo) == 0;
+
+   return false;
 }
 
 void
@@ -323,34 +322,53 @@ fd_bo_del(struct fd_bo *bo)
    if (!unref(&bo->refcnt))
       return;
 
+   if (try_recycle(bo))
+      return;
+
    struct fd_device *dev = bo->dev;
 
-   uint32_t handle = bo_del_or_recycle(bo);
+   uint32_t handle = bo_del(bo);
    if (handle)
       close_handles(dev, &handle, 1);
 }
 
 void
-fd_bo_del_array(struct fd_bo **bos, unsigned count)
+fd_bo_del_array(struct fd_bo **bos, int count)
 {
    if (!count)
       return;
 
    struct fd_device *dev = bos[0]->dev;
+
+   /*
+    * First pass, remove objects from the table that either (a) still have
+    * a live reference, or (b) no longer have a reference but are released
+    * to the BO cache:
+    */
+
+   for (int i = 0; i < count; i++) {
+      if (!unref(&bos[i]->refcnt) || try_recycle(bos[i])) {
+         bos[i--] = bos[--count];
+      }
+   }
+
+   /*
+    * Second pass, delete all of the objects remaining after first pass.
+    */
+
    uint32_t handles[64];
    unsigned cnt = 0;
 
-   for (unsigned i = 0; i < count; i++) {
-      if (!unref(&bos[i]->refcnt))
-         continue;
+   for (int i = 0; i < count; i++) {
       if (cnt == ARRAY_SIZE(handles)) {
          close_handles(dev, handles, cnt);
          cnt = 0;
       }
-      handles[cnt] = bo_del_or_recycle(bos[i]);
+      handles[cnt] = bo_del(bos[i]);
       if (handles[cnt])
          cnt++;
    }
+
    close_handles(dev, handles, cnt);
 }
 
