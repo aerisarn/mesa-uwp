@@ -351,6 +351,10 @@ dzn_cmd_buffer_require_layout(struct dzn_cmd_buffer *cmdbuf,
       assert(current_layout != VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL &&
              current_layout != VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL);
    }
+   
+   /* Nothing needs to be done for these, the appropriate sync/access was already handled */
+   if (image->desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS)
+      return needed_layout;
 
    D3D12_BARRIER_LAYOUT current_d3d_layout = dzn_vk_layout_to_d3d_layout(current_layout, cmdbuf->type, range->aspectMask);
    if (current_d3d_layout != needed_layout) {
@@ -1591,7 +1595,7 @@ dzn_CmdPipelineBarrier2_enhanced(VkCommandBuffer commandBuffer,
          D3D12_BARRIER_ACCESS layout_after_valid_access = ~0;
          if (simultaneous_access) {
             /* Simultaneous access textures never perform layout transitions, and can do any type of access from COMMON layout */
-            texture_barriers[tbar].LayoutAfter = texture_barriers[tbar].LayoutBefore = D3D12_BARRIER_LAYOUT_COMMON;
+            texture_barriers[tbar].LayoutAfter = texture_barriers[tbar].LayoutBefore = D3D12_BARRIER_LAYOUT_UNDEFINED;
          } else if (queue_ownership_transfer) {
             /* For an ownership transfer, force the foreign layout to COMMON and the matching sync/access to NONE */
             assert(info->pImageMemoryBarriers[i].srcQueueFamilyIndex != VK_QUEUE_FAMILY_IGNORED);
@@ -1603,12 +1607,18 @@ dzn_CmdPipelineBarrier2_enhanced(VkCommandBuffer commandBuffer,
                D3D12_BARRIER_LAYOUT_COMMON : dzn_vk_layout_to_d3d_layout(info->pImageMemoryBarriers[i].oldLayout, cmdbuf->type, aspect);
             texture_barriers[tbar].LayoutAfter = is_release ?
                D3D12_BARRIER_LAYOUT_COMMON : dzn_vk_layout_to_d3d_layout(info->pImageMemoryBarriers[i].newLayout, cmdbuf->type, aspect);
-            texture_barriers[tbar].SyncBefore = D3D12_BARRIER_SYNC_NONE;
-            texture_barriers[tbar].SyncAfter = D3D12_BARRIER_SYNC_NONE;
+            if (is_acquire) {
+               texture_barriers[tbar].SyncBefore = D3D12_BARRIER_SYNC_NONE;
+               texture_barriers[tbar].AccessBefore = D3D12_BARRIER_ACCESS_NO_ACCESS;
+               layout_after_valid_access = valid_access_for_layout(texture_barriers[tbar].LayoutAfter);
+            } else {
+               texture_barriers[tbar].SyncAfter = D3D12_BARRIER_SYNC_NONE;
+               texture_barriers[tbar].AccessAfter = D3D12_BARRIER_ACCESS_NO_ACCESS;
+               layout_before_valid_access = valid_access_for_layout(texture_barriers[tbar].LayoutBefore);
+            }
          } else {
             texture_barriers[tbar].LayoutBefore = dzn_vk_layout_to_d3d_layout(info->pImageMemoryBarriers[i].oldLayout, cmdbuf->type, aspect);
-            texture_barriers[tbar].LayoutAfter = simultaneous_access ?
-               D3D12_BARRIER_LAYOUT_COMMON : dzn_vk_layout_to_d3d_layout(info->pImageMemoryBarriers[i].newLayout, cmdbuf->type, aspect);
+            texture_barriers[tbar].LayoutAfter = dzn_vk_layout_to_d3d_layout(info->pImageMemoryBarriers[i].newLayout, cmdbuf->type, aspect);
             layout_before_valid_access = valid_access_for_layout(texture_barriers[tbar].LayoutBefore);
             layout_after_valid_access = valid_access_for_layout(texture_barriers[tbar].LayoutAfter);
          }
