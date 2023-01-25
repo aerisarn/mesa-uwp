@@ -239,6 +239,9 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    RADV_CMP_COPY(vk.fsr.combiner_ops[0], RADV_DYNAMIC_FRAGMENT_SHADING_RATE);
    RADV_CMP_COPY(vk.fsr.combiner_ops[1], RADV_DYNAMIC_FRAGMENT_SHADING_RATE);
 
+   RADV_CMP_COPY(vk.dr.enable, RADV_DYNAMIC_DISCARD_RECTANGLE_ENABLE);
+   RADV_CMP_COPY(vk.dr.mode, RADV_DYNAMIC_DISCARD_RECTANGLE_MODE);
+
 #undef RADV_CMP_COPY
 
    cmd_buffer->state.dirty |= dest_mask;
@@ -2030,18 +2033,39 @@ static void
 radv_emit_discard_rectangle(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   uint32_t cliprect_rule = 0;
 
-   if (!d->vk.dr.rectangle_count)
-      return;
+   if (!d->vk.dr.enable) {
+      cliprect_rule = 0xffff;
+   } else {
+      for (unsigned i = 0; i < (1u << MAX_DISCARD_RECTANGLES); ++i) {
+         /* Interpret i as a bitmask, and then set the bit in
+          * the mask if that combination of rectangles in which
+          * the pixel is contained should pass the cliprect
+          * test.
+          */
+         unsigned relevant_subset = i & ((1u << d->vk.dr.rectangle_count) - 1);
 
-   radeon_set_context_reg_seq(cmd_buffer->cs, R_028210_PA_SC_CLIPRECT_0_TL,
-                              d->vk.dr.rectangle_count * 2);
-   for (unsigned i = 0; i < d->vk.dr.rectangle_count; ++i) {
-      VkRect2D rect = d->vk.dr.rectangles[i];
-      radeon_emit(cmd_buffer->cs, S_028210_TL_X(rect.offset.x) | S_028210_TL_Y(rect.offset.y));
-      radeon_emit(cmd_buffer->cs, S_028214_BR_X(rect.offset.x + rect.extent.width) |
-                                     S_028214_BR_Y(rect.offset.y + rect.extent.height));
+         if (d->vk.dr.mode == VK_DISCARD_RECTANGLE_MODE_INCLUSIVE_EXT && !relevant_subset)
+            continue;
+
+         if (d->vk.dr.mode == VK_DISCARD_RECTANGLE_MODE_EXCLUSIVE_EXT && relevant_subset)
+            continue;
+
+         cliprect_rule |= 1u << i;
+      }
+
+      radeon_set_context_reg_seq(cmd_buffer->cs, R_028210_PA_SC_CLIPRECT_0_TL,
+                                 d->vk.dr.rectangle_count * 2);
+      for (unsigned i = 0; i < d->vk.dr.rectangle_count; ++i) {
+         VkRect2D rect = d->vk.dr.rectangles[i];
+         radeon_emit(cmd_buffer->cs, S_028210_TL_X(rect.offset.x) | S_028210_TL_Y(rect.offset.y));
+         radeon_emit(cmd_buffer->cs, S_028214_BR_X(rect.offset.x + rect.extent.width) |
+                                        S_028214_BR_Y(rect.offset.y + rect.extent.height));
+      }
    }
+
+   radeon_set_context_reg(cmd_buffer->cs, R_02820C_PA_SC_CLIPRECT_RULE, cliprect_rule);
 }
 
 static void
@@ -4350,7 +4374,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
    if (states & RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS)
       radv_emit_depth_bias(cmd_buffer);
 
-   if (states & RADV_CMD_DIRTY_DYNAMIC_DISCARD_RECTANGLE)
+   if (states & (RADV_CMD_DIRTY_DYNAMIC_DISCARD_RECTANGLE |
+                 RADV_CMD_DIRTY_DYNAMIC_DISCARD_RECTANGLE_ENABLE |
+                 RADV_CMD_DIRTY_DYNAMIC_DISCARD_RECTANGLE_MODE))
       radv_emit_discard_rectangle(cmd_buffer);
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE)
@@ -7327,6 +7353,30 @@ radv_CmdSetColorBlendEquationEXT(VkCommandBuffer commandBuffer, uint32_t firstAt
    }
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_EQUATION;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetDiscardRectangleEnableEXT(VkCommandBuffer commandBuffer, VkBool32 discardRectangleEnable)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   state->dynamic.vk.dr.enable = discardRectangleEnable;
+   state->dynamic.vk.dr.rectangle_count = discardRectangleEnable ? MAX_DISCARD_RECTANGLES : 0;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DISCARD_RECTANGLE_ENABLE;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdSetDiscardRectangleModeEXT(VkCommandBuffer commandBuffer,
+                                   VkDiscardRectangleModeEXT discardRectangleMode)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   state->dynamic.vk.dr.mode = discardRectangleMode;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DISCARD_RECTANGLE_MODE;
 }
 
 VKAPI_ATTR void VKAPI_CALL

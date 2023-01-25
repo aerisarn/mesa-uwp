@@ -670,6 +670,10 @@ radv_dynamic_state_mask(VkDynamicState state)
       return RADV_DYNAMIC_LINE_RASTERIZATION_MODE;
    case VK_DYNAMIC_STATE_COLOR_BLEND_EQUATION_EXT:
       return RADV_DYNAMIC_COLOR_BLEND_EQUATION;
+   case VK_DYNAMIC_STATE_DISCARD_RECTANGLE_ENABLE_EXT:
+      return RADV_DYNAMIC_DISCARD_RECTANGLE_ENABLE;
+   case VK_DYNAMIC_STATE_DISCARD_RECTANGLE_MODE_EXT:
+      return RADV_DYNAMIC_DISCARD_RECTANGLE_MODE;
    default:
       unreachable("Unhandled dynamic state");
    }
@@ -741,7 +745,8 @@ radv_pipeline_needed_dynamic_state(const struct radv_graphics_pipeline *pipeline
       states &= ~(RADV_DYNAMIC_STENCIL_COMPARE_MASK | RADV_DYNAMIC_STENCIL_WRITE_MASK |
                   RADV_DYNAMIC_STENCIL_REFERENCE | RADV_DYNAMIC_STENCIL_OP);
 
-   if (!state->dr->rectangle_count)
+   if (!(pipeline->dynamic_states & RADV_DYNAMIC_DISCARD_RECTANGLE_ENABLE) &&
+       !state->dr->rectangle_count)
       states &= ~RADV_DYNAMIC_DISCARD_RECTANGLE;
 
    if (!state->ms || !state->ms->sample_locations_enable)
@@ -1322,6 +1327,14 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
          dynamic->vk.cb.attachments[i].dst_alpha_blend_factor = att->dst_alpha_blend_factor;
          dynamic->vk.cb.attachments[i].alpha_blend_op = att->alpha_blend_op;
       }
+   }
+
+   if (states & RADV_DYNAMIC_DISCARD_RECTANGLE_ENABLE) {
+      dynamic->vk.dr.enable = state->dr->rectangle_count > 0;
+   }
+
+   if (states & RADV_DYNAMIC_DISCARD_RECTANGLE_MODE) {
+      dynamic->vk.dr.mode = state->dr->mode;
    }
 
    pipeline->dynamic_state.mask = states;
@@ -4181,36 +4194,6 @@ radv_pipeline_emit_vgt_shader_config(const struct radv_device *device, struct ra
 }
 
 static void
-radv_pipeline_emit_cliprect_rule(struct radeon_cmdbuf *ctx_cs,
-                                 const struct vk_graphics_pipeline_state *state)
-{
-   uint32_t cliprect_rule = 0;
-
-   if (!state->dr->rectangle_count) {
-      cliprect_rule = 0xffff;
-   } else {
-      for (unsigned i = 0; i < (1u << MAX_DISCARD_RECTANGLES); ++i) {
-         /* Interpret i as a bitmask, and then set the bit in
-          * the mask if that combination of rectangles in which
-          * the pixel is contained should pass the cliprect
-          * test.
-          */
-         unsigned relevant_subset = i & ((1u << state->dr->rectangle_count) - 1);
-
-         if (state->dr->mode == VK_DISCARD_RECTANGLE_MODE_INCLUSIVE_EXT && !relevant_subset)
-            continue;
-
-         if (state->dr->mode == VK_DISCARD_RECTANGLE_MODE_EXCLUSIVE_EXT && relevant_subset)
-            continue;
-
-         cliprect_rule |= 1u << i;
-      }
-   }
-
-   radeon_set_context_reg(ctx_cs, R_02820C_PA_SC_CLIPRECT_RULE, cliprect_rule);
-}
-
-static void
 radv_pipeline_emit_vgt_gs_out(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
                               const struct radv_graphics_pipeline *pipeline,
                               uint32_t vgt_gs_out_prim_type)
@@ -4367,7 +4350,6 @@ radv_pipeline_emit_pm4(const struct radv_device *device,
    radv_emit_ps_inputs(device, ctx_cs, last_vgt_shader, ps);
    radv_pipeline_emit_vgt_vertex_reuse(device, ctx_cs, pipeline);
    radv_pipeline_emit_vgt_shader_config(device, ctx_cs, pipeline);
-   radv_pipeline_emit_cliprect_rule(ctx_cs, state);
    radv_pipeline_emit_vgt_gs_out(device, ctx_cs, pipeline, vgt_gs_out_prim_type);
 
    if (pdevice->rad_info.gfx_level >= GFX10_3) {
