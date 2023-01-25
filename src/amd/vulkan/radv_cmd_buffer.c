@@ -1149,8 +1149,6 @@ radv_emit_sample_locations(struct radv_cmd_buffer *cmd_buffer)
    radeon_set_context_reg_seq(cs, R_028BD4_PA_SC_CENTROID_PRIORITY_0, 2);
    radeon_emit(cs, centroid_priority);
    radeon_emit(cs, centroid_priority >> 32);
-
-   cmd_buffer->state.context_roll_without_scissor_emitted = true;
 }
 
 static void
@@ -1622,8 +1620,6 @@ radv_emit_binning_state(struct radv_cmd_buffer *cmd_buffer)
 
    radeon_set_context_reg(cmd_buffer->cs, R_028C44_PA_SC_BINNER_CNTL_0, pa_sc_binner_cntl_0);
 
-   cmd_buffer->state.context_roll_without_scissor_emitted = true;
-
    cmd_buffer->state.last_pa_sc_binner_cntl_0 = pa_sc_binner_cntl_0;
 }
 
@@ -1834,8 +1830,6 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
       radeon_emit(cmd_buffer->cs, sx_blend_opt_epsilon);
       radeon_emit(cmd_buffer->cs, sx_blend_opt_control);
 
-      cmd_buffer->state.context_roll_without_scissor_emitted = true;
-
       cmd_buffer->state.last_sx_ps_downconvert = sx_ps_downconvert;
       cmd_buffer->state.last_sx_blend_opt_epsilon = sx_blend_opt_epsilon;
       cmd_buffer->state.last_sx_blend_opt_control = sx_blend_opt_control;
@@ -1930,7 +1924,6 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
        memcmp(cmd_buffer->state.emitted_graphics_pipeline->base.ctx_cs.buf, pipeline->base.ctx_cs.buf,
               pipeline->base.ctx_cs.cdw * 4)) {
       radeon_emit_array(cmd_buffer->cs, pipeline->base.ctx_cs.buf, pipeline->base.ctx_cs.cdw);
-      cmd_buffer->state.context_roll_without_scissor_emitted = true;
    }
 
    if (device->pbb_allowed) {
@@ -2065,8 +2058,6 @@ static void
 radv_emit_scissor(struct radv_cmd_buffer *cmd_buffer)
 {
    radv_write_scissors(cmd_buffer, cmd_buffer->cs);
-
-   cmd_buffer->state.context_roll_without_scissor_emitted = false;
 }
 
 static void
@@ -8935,21 +8926,17 @@ radv_need_late_scissor_emission(struct radv_cmd_buffer *cmd_buffer,
 {
    struct radv_cmd_state *state = &cmd_buffer->state;
 
-   if (!cmd_buffer->device->physical_device->rad_info.has_gfx9_scissor_bug)
-      return false;
-
    if (cmd_buffer->state.context_roll_without_scissor_emitted || info->strmout_buffer)
       return true;
 
    uint64_t used_states =
       cmd_buffer->state.graphics_pipeline->needed_dynamic_state | ~RADV_CMD_DIRTY_DYNAMIC_ALL;
 
-   /* Index, vertex and streamout buffers don't change context regs, and
-    * pipeline is already handled.
+   /* Index, vertex and streamout buffers don't change context regs.
+    * We assume that any other dirty flag causes context rolls.
     */
    used_states &= ~(RADV_CMD_DIRTY_INDEX_BUFFER | RADV_CMD_DIRTY_VERTEX_BUFFER |
-                    RADV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT | RADV_CMD_DIRTY_STREAMOUT_BUFFER |
-                    RADV_CMD_DIRTY_PIPELINE);
+                    RADV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT | RADV_CMD_DIRTY_STREAMOUT_BUFFER);
 
    if (cmd_buffer->state.dirty & used_states)
       return true;
@@ -9072,7 +9059,6 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
 {
    const struct radv_device *device = cmd_buffer->device;
    struct radv_shader_part *ps_epilog = NULL;
-   bool late_scissor_emission;
 
    if (cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT] &&
        cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT]->info.ps.has_epilog) {
@@ -9101,6 +9087,14 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
             cmd_buffer->state.dirty |= RADV_CMD_DIRTY_RBPLUS;
       }
    }
+
+   /* Determine whether GFX9 late scissor workaround should be applied based on:
+    * 1. radv_need_late_scissor_emission
+    * 2. any dirty dynamic flags that may cause context rolls
+    */
+   const bool late_scissor_emission =
+      cmd_buffer->device->physical_device->rad_info.has_gfx9_scissor_bug
+      ? radv_need_late_scissor_emission(cmd_buffer, info) : false;
 
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_RBPLUS)
       radv_emit_rbplus_state(cmd_buffer);
@@ -9136,11 +9130,6 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
    if (ps_epilog)
       radv_emit_ps_epilog_state(cmd_buffer, ps_epilog);
 
-   /* This should be before the cmd_buffer->state.dirty is cleared
-    * (excluding RADV_CMD_DIRTY_PIPELINE) and after
-    * cmd_buffer->state.context_roll_without_scissor_emitted is set. */
-   late_scissor_emission = radv_need_late_scissor_emission(cmd_buffer, info);
-
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_FRAMEBUFFER)
       radv_emit_framebuffer_state(cmd_buffer);
 
@@ -9154,8 +9143,10 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
 
    radv_emit_draw_registers(cmd_buffer, info);
 
-   if (late_scissor_emission)
+   if (late_scissor_emission) {
       radv_emit_scissor(cmd_buffer);
+      cmd_buffer->state.context_roll_without_scissor_emitted = false;
+   }
 }
 
 /* MUST inline this function to avoid massive perf loss in drawoverhead */
