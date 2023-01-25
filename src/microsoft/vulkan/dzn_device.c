@@ -845,11 +845,16 @@ dzn_physical_device_get_image_format_properties(struct dzn_physical_device *pdev
       .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2,
    };
 
+   VkImageUsageFlags usage = info->usage;
+
    /* Extract input structs */
    vk_foreach_struct_const(s, info->pNext) {
       switch (s->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO:
          external_info = (const VkPhysicalDeviceExternalImageFormatInfo *)s;
+         break;
+      case VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO:
+         usage |= ((const VkImageStencilUsageCreateInfo *)s)->stencilUsage;
          break;
       default:
          dzn_debug_ignored_stype(s->sType);
@@ -877,7 +882,7 @@ dzn_physical_device_get_image_format_properties(struct dzn_physical_device *pdev
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
    if (info->tiling != VK_IMAGE_TILING_OPTIMAL &&
-       (info->usage & ~(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)))
+       (usage & ~(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)))
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
    if (info->tiling != VK_IMAGE_TILING_OPTIMAL &&
@@ -904,24 +909,24 @@ dzn_physical_device_get_image_format_properties(struct dzn_physical_device *pdev
    if (vk_format_is_block_compressed(info->format) && info->type == VK_IMAGE_TYPE_1D)
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
-   if ((info->usage & VK_IMAGE_USAGE_SAMPLED_BIT) &&
+   if ((usage & VK_IMAGE_USAGE_SAMPLED_BIT) &&
        /* Note: format support for SAMPLED is not necessarily accurate for integer formats */
        !(dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_LOAD))
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
-   if ((info->usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) &&
+   if ((usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) &&
        (!(dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_LOAD) || is_bgra4))
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
-   if ((info->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) &&
+   if ((usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) &&
        (!(dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_RENDER_TARGET) || is_bgra4))
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
-   if ((info->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) &&
+   if ((usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) &&
        (!(dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_DEPTH_STENCIL) || is_bgra4))
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
-   if ((info->usage & VK_IMAGE_USAGE_STORAGE_BIT) &&
+   if ((usage & VK_IMAGE_USAGE_STORAGE_BIT) &&
        (!(dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW) || is_bgra4))
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
@@ -984,7 +989,7 @@ dzn_physical_device_get_image_format_properties(struct dzn_physical_device *pdev
        !(info->flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) &&
        (dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_MULTISAMPLE_LOAD) &&
        !is_bgra4 &&
-       !(info->usage & VK_IMAGE_USAGE_STORAGE_BIT)) {
+       !(usage & VK_IMAGE_USAGE_STORAGE_BIT)) {
       for (uint32_t s = VK_SAMPLE_COUNT_2_BIT; s < VK_SAMPLE_COUNT_64_BIT; s <<= 1) {
          D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS ms_info = {
             .Format = dfmt_info.Format,
