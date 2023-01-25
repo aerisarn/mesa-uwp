@@ -273,7 +273,7 @@ fd_bo_mark_for_dump(struct fd_bo *bo)
 struct fd_bo *
 fd_bo_ref(struct fd_bo *bo)
 {
-   p_atomic_inc(&bo->refcnt);
+   ref(&bo->refcnt);
    return bo;
 }
 
@@ -302,7 +302,7 @@ bo_del_or_recycle(struct fd_bo *bo)
 void
 fd_bo_del(struct fd_bo *bo)
 {
-   if (!p_atomic_dec_zero(&bo->refcnt))
+   if (!unref(&bo->refcnt))
       return;
 
    struct fd_device *dev = bo->dev;
@@ -323,7 +323,7 @@ fd_bo_del_array(struct fd_bo **bos, unsigned count)
    unsigned cnt = 0;
 
    for (unsigned i = 0; i < count; i++) {
-      if (!p_atomic_dec_zero(&bos[i]->refcnt))
+      if (!unref(&bos[i]->refcnt))
          continue;
       if (cnt == ARRAY_SIZE(handles)) {
          close_handles(dev, handles, cnt);
