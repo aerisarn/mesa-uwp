@@ -2174,7 +2174,8 @@ dzn_cmd_buffer_clear_color(struct dzn_cmd_buffer *cmdbuf,
                            uint32_t range_count,
                            const VkImageSubresourceRange *ranges)
 {
-   if (!(image->desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)) {
+   if (!(image->desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) ||
+       cmdbuf->type != D3D12_COMMAND_LIST_TYPE_DIRECT) {
       dzn_cmd_buffer_clear_ranges_with_copy(cmdbuf, image, layout, col, range_count, ranges);
       return;
    }
