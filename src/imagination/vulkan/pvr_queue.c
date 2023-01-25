@@ -220,7 +220,7 @@ static VkResult pvr_process_graphics_cmd(struct pvr_device *device,
 {
    pvr_dev_addr_t original_ctrl_stream_addr = { 0 };
    struct vk_sync *geom_signal_sync;
-   struct vk_sync *frag_signal_sync;
+   struct vk_sync *frag_signal_sync = NULL;
    VkResult result;
 
    result = vk_sync_create(&device->vk,
@@ -231,13 +231,15 @@ static VkResult pvr_process_graphics_cmd(struct pvr_device *device,
    if (result != VK_SUCCESS)
       return result;
 
-   result = vk_sync_create(&device->vk,
-                           &device->pdevice->ws->syncobj_type,
-                           0U,
-                           0UL,
-                           &frag_signal_sync);
-   if (result != VK_SUCCESS)
-      goto err_destroy_geom_sync;
+   if (sub_cmd->job.run_frag) {
+      result = vk_sync_create(&device->vk,
+                              &device->pdevice->ws->syncobj_type,
+                              0U,
+                              0UL,
+                              &frag_signal_sync);
+      if (result != VK_SUCCESS)
+         goto err_destroy_geom_sync;
+   }
 
    /* FIXME: DoShadowLoadOrStore() */
 
@@ -296,14 +298,17 @@ static VkResult pvr_process_graphics_cmd(struct pvr_device *device,
       goto err_destroy_frag_sync;
 
    pvr_update_job_syncs(device, queue, geom_signal_sync, PVR_JOB_TYPE_GEOM);
-   pvr_update_job_syncs(device, queue, frag_signal_sync, PVR_JOB_TYPE_FRAG);
+
+   if (sub_cmd->job.run_frag)
+      pvr_update_job_syncs(device, queue, frag_signal_sync, PVR_JOB_TYPE_FRAG);
 
    /* FIXME: DoShadowLoadOrStore() */
 
    return VK_SUCCESS;
 
 err_destroy_frag_sync:
-   vk_sync_destroy(&device->vk, frag_signal_sync);
+   if (frag_signal_sync)
+      vk_sync_destroy(&device->vk, frag_signal_sync);
 err_destroy_geom_sync:
    vk_sync_destroy(&device->vk, geom_signal_sync);
 
