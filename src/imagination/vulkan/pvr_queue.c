@@ -194,6 +194,25 @@ void pvr_queues_destroy(struct pvr_device *device)
    vk_free(&device->vk.alloc, device->queues);
 }
 
+static void pvr_update_job_syncs(struct pvr_device *device,
+                                 struct pvr_queue *queue,
+                                 struct vk_sync *new_signal_sync,
+                                 enum pvr_job_type submitted_job_type)
+{
+   if (queue->next_job_wait_sync[submitted_job_type]) {
+      vk_sync_destroy(&device->vk,
+                      queue->next_job_wait_sync[submitted_job_type]);
+      queue->next_job_wait_sync[submitted_job_type] = NULL;
+   }
+
+   if (queue->last_job_signal_sync[submitted_job_type]) {
+      vk_sync_destroy(&device->vk,
+                      queue->last_job_signal_sync[submitted_job_type]);
+   }
+
+   queue->last_job_signal_sync[submitted_job_type] = new_signal_sync;
+}
+
 static VkResult pvr_process_graphics_cmd(struct pvr_device *device,
                                          struct pvr_queue *queue,
                                          struct pvr_cmd_buffer *cmd_buffer,
@@ -276,20 +295,8 @@ static VkResult pvr_process_graphics_cmd(struct pvr_device *device,
    if (result != VK_SUCCESS)
       goto err_destroy_frag_sync;
 
-   /* Replace the completion fences. */
-   if (queue->last_job_signal_sync[PVR_JOB_TYPE_GEOM]) {
-      vk_sync_destroy(&device->vk,
-                      queue->last_job_signal_sync[PVR_JOB_TYPE_GEOM]);
-   }
-
-   queue->last_job_signal_sync[PVR_JOB_TYPE_GEOM] = geom_signal_sync;
-
-   if (queue->last_job_signal_sync[PVR_JOB_TYPE_FRAG]) {
-      vk_sync_destroy(&device->vk,
-                      queue->last_job_signal_sync[PVR_JOB_TYPE_FRAG]);
-   }
-
-   queue->last_job_signal_sync[PVR_JOB_TYPE_FRAG] = frag_signal_sync;
+   pvr_update_job_syncs(device, queue, geom_signal_sync, PVR_JOB_TYPE_GEOM);
+   pvr_update_job_syncs(device, queue, frag_signal_sync, PVR_JOB_TYPE_FRAG);
 
    /* FIXME: DoShadowLoadOrStore() */
 
@@ -328,13 +335,7 @@ static VkResult pvr_process_compute_cmd(struct pvr_device *device,
       return result;
    }
 
-   /* Replace the signal fence. */
-   if (queue->last_job_signal_sync[PVR_JOB_TYPE_COMPUTE]) {
-      vk_sync_destroy(&device->vk,
-                      queue->last_job_signal_sync[PVR_JOB_TYPE_COMPUTE]);
-   }
-
-   queue->last_job_signal_sync[PVR_JOB_TYPE_COMPUTE] = sync;
+   pvr_update_job_syncs(device, queue, sync, PVR_JOB_TYPE_COMPUTE);
 
    return result;
 }
@@ -365,13 +366,7 @@ static VkResult pvr_process_transfer_cmds(struct pvr_device *device,
       return result;
    }
 
-   /* Replace the signal syncs. */
-   if (queue->last_job_signal_sync[PVR_JOB_TYPE_TRANSFER]) {
-      vk_sync_destroy(&device->vk,
-                      queue->last_job_signal_sync[PVR_JOB_TYPE_TRANSFER]);
-   }
-
-   queue->last_job_signal_sync[PVR_JOB_TYPE_TRANSFER] = sync;
+   pvr_update_job_syncs(device, queue, sync, PVR_JOB_TYPE_TRANSFER);
 
    return result;
 }
@@ -408,13 +403,7 @@ pvr_process_occlusion_query_cmd(struct pvr_device *device,
       return result;
    }
 
-   if (queue->last_job_signal_sync[PVR_JOB_TYPE_OCCLUSION_QUERY]) {
-      vk_sync_destroy(
-         &device->vk,
-         queue->last_job_signal_sync[PVR_JOB_TYPE_OCCLUSION_QUERY]);
-   }
-
-   queue->last_job_signal_sync[PVR_JOB_TYPE_OCCLUSION_QUERY] = sync;
+   pvr_update_job_syncs(device, queue, sync, PVR_JOB_TYPE_OCCLUSION_QUERY);
 
    return result;
 }
