@@ -1394,6 +1394,25 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
                                 info->family == CHIP_NAVI22 ? 8 : 4);
    }
 
+   if (info->gfx_level >= GFX11) {
+      switch (info->family) {
+      case CHIP_GFX1103_R1:
+         info->attribute_ring_size_per_se = 512 * 1024;
+         break;
+      case CHIP_GFX1103_R2:
+         /* TODO: Test if 192 * 1024 is faster. */
+         info->attribute_ring_size_per_se = 256 * 1024;
+         break;
+      default:
+         info->attribute_ring_size_per_se = 1400 * 1024;
+         break;
+      }
+
+      /* The size must be aligned to 64K per SE and must be at most 16M in total. */
+      info->attribute_ring_size_per_se = align(info->attribute_ring_size_per_se, 64 * 1024);
+      assert(info->attribute_ring_size_per_se * info->max_se <= 16 * 1024 * 1024);
+   }
+
    set_custom_cu_en_mask(info);
 
    const char *ib_filename = debug_get_option("AMD_PARSE_IB", NULL);
@@ -1637,6 +1656,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    max_vgpr_alloc = %i\n", info->max_vgpr_alloc);
    fprintf(f, "    wave64_vgpr_alloc_granularity = %i\n", info->wave64_vgpr_alloc_granularity);
    fprintf(f, "    max_scratch_waves = %i\n", info->max_scratch_waves);
+   fprintf(f, "    attribute_ring_size_per_se = %u\n", info->attribute_ring_size_per_se);
 
    fprintf(f, "Render backend info:\n");
    fprintf(f, "    pa_sc_tile_steering_override = 0x%x\n", info->pa_sc_tile_steering_override);
