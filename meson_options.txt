@@ -393,14 +393,6 @@ option(
   description : 'Build OSmesa.'
 )
 option(
-  'osmesa-bits',
-  type : 'combo',
-  value : 'unspecified',
-  choices : ['unspecified', '8', '16', '32'],
-  description : 'DEPRECATED: Number of channel bits for OSMesa.'
-)
-
-option(
   'tools',
   type : 'array',
   value : [],

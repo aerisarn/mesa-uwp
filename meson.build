@@ -1870,10 +1870,6 @@ if with_osmesa
   else
     osmesa_lib_name = 'OSMesa'
   endif
-  osmesa_bits = get_option('osmesa-bits')
-  if osmesa_bits != 'unspecified'
-    warning('osmesa-bits option is deprecated and have no effect, please remove it.')
-  endif
 endif
 
 # TODO: symbol mangling
