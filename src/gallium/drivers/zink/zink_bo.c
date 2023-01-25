@@ -614,12 +614,12 @@ zink_bo_create(struct zink_screen *screen, uint64_t size, unsigned alignment, en
          unsigned vk_heap_idx = screen->info.mem_props.memoryTypes[mem_type_idx].heapIndex;
          reclaim_all = screen->info.mem_props.memoryHeaps[vk_heap_idx].size <= low_bound;
       }
-      entry = pb_slab_alloc_reclaimed(slabs, alloc_size, heap, reclaim_all);
+      entry = pb_slab_alloc_reclaimed(slabs, alloc_size, mem_type_idx, reclaim_all);
       if (!entry) {
          /* Clean up buffer managers and try again. */
          clean_up_buffer_managers(screen);
 
-         entry = pb_slab_alloc_reclaimed(slabs, alloc_size, heap, true);
+         entry = pb_slab_alloc_reclaimed(slabs, alloc_size, mem_type_idx, true);
       }
       if (!entry)
          return NULL;
@@ -1161,7 +1161,7 @@ static const struct pb_vtbl bo_slab_vtbl = {
 };
 
 static struct pb_slab *
-bo_slab_alloc(void *priv, unsigned heap, unsigned entry_size, unsigned group_index, bool encrypted)
+bo_slab_alloc(void *priv, unsigned mem_type_idx, unsigned entry_size, unsigned group_index, bool encrypted)
 {
    struct zink_screen *screen = priv;
    uint32_t base_id;
@@ -1203,8 +1203,8 @@ bo_slab_alloc(void *priv, unsigned heap, unsigned entry_size, unsigned group_ind
    }
    assert(slab_size != 0);
 
-   slab->buffer = zink_bo(zink_bo_create(screen, slab_size, slab_size, heap,
-                                         0, screen->heap_map[heap][0], NULL));
+   slab->buffer = zink_bo(zink_bo_create(screen, slab_size, slab_size, zink_heap_from_domain_flags(screen->info.mem_props.memoryTypes[mem_type_idx].propertyFlags, 0),
+                                         0, mem_type_idx, NULL));
    if (!slab->buffer)
       goto fail;
 
@@ -1259,9 +1259,9 @@ fail:
 }
 
 static struct pb_slab *
-bo_slab_alloc_normal(void *priv, unsigned heap, unsigned entry_size, unsigned group_index)
+bo_slab_alloc_normal(void *priv, unsigned mem_type_idx, unsigned entry_size, unsigned group_index)
 {
-   return bo_slab_alloc(priv, heap, entry_size, group_index, false);
+   return bo_slab_alloc(priv, mem_type_idx, entry_size, group_index, false);
 }
 
 bool
