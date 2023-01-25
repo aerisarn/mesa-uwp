@@ -23,6 +23,7 @@
  *
  **************************************************************************/
 
+#include "compiler/glsl/astc_glsl.h"
 #include "compiler/glsl/bc1_glsl.h"
 #include "compiler/glsl/bc4_glsl.h"
 #include "compiler/glsl/cross_platform_settings_piece_all.h"
@@ -49,6 +50,20 @@ enum compute_program_id {
    COMPUTE_PROGRAM_BC1,
    COMPUTE_PROGRAM_BC4,
    COMPUTE_PROGRAM_STITCH,
+   COMPUTE_PROGRAM_ASTC_4x4,
+   COMPUTE_PROGRAM_ASTC_5x4,
+   COMPUTE_PROGRAM_ASTC_5x5,
+   COMPUTE_PROGRAM_ASTC_6x5,
+   COMPUTE_PROGRAM_ASTC_6x6,
+   COMPUTE_PROGRAM_ASTC_8x5,
+   COMPUTE_PROGRAM_ASTC_8x6,
+   COMPUTE_PROGRAM_ASTC_8x8,
+   COMPUTE_PROGRAM_ASTC_10x5,
+   COMPUTE_PROGRAM_ASTC_10x6,
+   COMPUTE_PROGRAM_ASTC_10x8,
+   COMPUTE_PROGRAM_ASTC_10x10,
+   COMPUTE_PROGRAM_ASTC_12x10,
+   COMPUTE_PROGRAM_ASTC_12x12,
    COMPUTE_PROGRAM_COUNT
 };
 
@@ -487,6 +502,179 @@ sw_decode_astc(struct st_context *st,
 }
 
 static struct pipe_sampler_view *
+create_astc_cs_payload_view(struct st_context *st,
+                            uint8_t *data, unsigned stride,
+                            uint32_t width_el, uint32_t height_el)
+{
+   const struct pipe_resource src_templ = {
+      .target = PIPE_TEXTURE_2D,
+      .format = PIPE_FORMAT_R32G32B32A32_UINT,
+      .bind = PIPE_BIND_SAMPLER_VIEW,
+      .usage = PIPE_USAGE_STAGING,
+      .width0 = width_el,
+      .height0 = height_el,
+      .depth0 = 1,
+      .array_size = 1,
+   };
+
+   struct pipe_resource *payload_res =
+      st->screen->resource_create(st->screen, &src_templ);
+
+   if (!payload_res)
+      return NULL;
+
+   struct pipe_box box;
+   u_box_origin_2d(width_el, height_el, &box);
+
+   st->pipe->texture_subdata(st->pipe, payload_res, 0, 0,
+                             &box,
+                             data,
+                             stride,
+                             0 /* unused */);
+
+   const struct pipe_sampler_view view_templ = {
+      .target = PIPE_TEXTURE_2D,
+      .format = payload_res->format,
+      .swizzle_r = PIPE_SWIZZLE_X,
+      .swizzle_g = PIPE_SWIZZLE_Y,
+      .swizzle_b = PIPE_SWIZZLE_Z,
+      .swizzle_a = PIPE_SWIZZLE_W,
+   };
+
+   struct pipe_sampler_view *view =
+      st->pipe->create_sampler_view(st->pipe, payload_res, &view_templ);
+
+   pipe_resource_reference(&payload_res, NULL);
+
+   return view;
+}
+
+static struct pipe_sampler_view *
+get_astc_partition_table_view(struct st_context *st,
+                              unsigned block_w,
+                              unsigned block_h)
+{
+   struct pipe_box ptable_box;
+   void *ptable_data =
+      _mesa_get_astc_decoder_partition_table(block_w, block_h, &ptable_box);
+
+   struct pipe_sampler_view *view =
+      util_hash_table_get(st->texcompress_compute.astc_partition_tables,
+                          ptable_data);
+
+   if (view)
+      return view;
+
+   struct pipe_resource *res =
+      st_texture_create(st, PIPE_TEXTURE_2D, PIPE_FORMAT_R8_UINT, 0,
+                        ptable_box.width, ptable_box.height,
+                        1, 1, 0,
+                        PIPE_BIND_SAMPLER_VIEW, false);
+   if (!res)
+      return NULL;
+
+   st->pipe->texture_subdata(st->pipe, res, 0, 0,
+                             &ptable_box,
+                             ptable_data,
+                             ptable_box.width,
+                             0 /* unused */);
+
+   const struct pipe_sampler_view templ = {
+      .target = PIPE_TEXTURE_2D,
+      .format = res->format,
+      .swizzle_r = PIPE_SWIZZLE_X,
+      .swizzle_g = PIPE_SWIZZLE_Y,
+      .swizzle_b = PIPE_SWIZZLE_Z,
+      .swizzle_a = PIPE_SWIZZLE_W,
+   };
+
+   view = st->pipe->create_sampler_view(st->pipe, res, &templ);
+
+   pipe_resource_reference(&res, NULL);
+
+   if (view) {
+      _mesa_hash_table_insert(st->texcompress_compute.astc_partition_tables,
+                              ptable_data, view);
+      ASSERTED const unsigned max_entries =
+         COMPUTE_PROGRAM_ASTC_12x12 - COMPUTE_PROGRAM_ASTC_4x4 + 1;
+      assert(_mesa_hash_table_num_entries(
+         st->texcompress_compute.astc_partition_tables) < max_entries);
+   }
+
+   return view;
+}
+
+static struct pipe_resource *
+cs_decode_astc(struct st_context *st,
+               uint8_t *astc_data,
+               unsigned astc_stride,
+               mesa_format astc_format,
+               unsigned width_px, unsigned height_px)
+{
+   const enum compute_program_id astc_id = COMPUTE_PROGRAM_ASTC_4x4 +
+      util_format_linear(astc_format) - PIPE_FORMAT_ASTC_4x4;
+
+   unsigned block_w, block_h;
+   _mesa_get_format_block_size(astc_format, &block_w, &block_h);
+
+   struct gl_program *prog =
+      get_compute_program(st, astc_id, astc_source, block_w, block_h);
+
+   if (!prog)
+      return NULL;
+
+   struct pipe_sampler_view *ptable_view =
+      get_astc_partition_table_view(st, block_w, block_h);
+
+   if (!ptable_view)
+      return NULL;
+
+   struct pipe_sampler_view *payload_view =
+      create_astc_cs_payload_view(st, astc_data, astc_stride,
+                                  DIV_ROUND_UP(width_px, block_w),
+                                  DIV_ROUND_UP(height_px, block_h));
+
+   if (!payload_view)
+      return NULL;
+
+   /* Create the destination */
+   struct pipe_resource *rgba8_tex =
+      st_texture_create(st, PIPE_TEXTURE_2D, PIPE_FORMAT_R8G8B8A8_UNORM, 0,
+                        width_px, height_px, 1, 1, 0,
+                        PIPE_BIND_SAMPLER_VIEW, false);
+
+   if (!rgba8_tex)
+      goto release_payload_view;
+
+   const struct pipe_image_view image = {
+      .resource = rgba8_tex,
+      .format = PIPE_FORMAT_R8G8B8A8_UINT,
+      .access = PIPE_IMAGE_ACCESS_WRITE,
+      .shader_access = PIPE_IMAGE_ACCESS_WRITE,
+   };
+
+   struct pipe_sampler_view *sampler_views[] = {
+      st->texcompress_compute.astc_luts[0],
+      st->texcompress_compute.astc_luts[1],
+      st->texcompress_compute.astc_luts[2],
+      st->texcompress_compute.astc_luts[3],
+      st->texcompress_compute.astc_luts[4],
+      ptable_view,
+      payload_view,
+   };
+
+   dispatch_compute_state(st, prog, sampler_views, NULL, &image,
+                          DIV_ROUND_UP(payload_view->texture->width0, 2),
+                          DIV_ROUND_UP(payload_view->texture->height0, 2),
+                          1);
+
+release_payload_view:
+   pipe_sampler_view_reference(&payload_view, NULL);
+
+   return rgba8_tex;
+}
+
+static struct pipe_sampler_view *
 get_sampler_view_for_lut(struct pipe_context *pipe,
                          const astc_decoder_lut *lut)
 {
@@ -626,11 +814,13 @@ st_compute_transcode_astc_to_dxt5(struct st_context *st,
 
    /* Decode ASTC to RGBA8. */
    struct pipe_resource *rgba8_tex =
-      sw_decode_astc(st, astc_data, astc_stride, astc_format,
+      cs_decode_astc(st, astc_data, astc_stride, astc_format,
                      u_minify(dxt5_tex->width0, dxt5_level),
                      u_minify(dxt5_tex->height0, dxt5_level));
    if (!rgba8_tex)
       return false;
+
+   st->pipe->memory_barrier(st->pipe, PIPE_BARRIER_TEXTURE);
 
    /* Encode RGBA8 to BC3. */
    struct pipe_resource *bc3_tex = cs_encode_bc3(st, rgba8_tex);
