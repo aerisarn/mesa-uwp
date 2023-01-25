@@ -2102,8 +2102,6 @@ subdir('src')
 
 meson.add_devenv(devenv)
 
-meson.add_devenv(devenv)
-
 summary(
   {
     'prefix': get_option('prefix'),
