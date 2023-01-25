@@ -1031,6 +1031,7 @@ struct dzn_buffer {
    VkBufferUsageFlags usage;
 
    D3D12_BARRIER_ACCESS valid_access;
+   D3D12_GPU_VIRTUAL_ADDRESS gpuva;
 };
 
 DXGI_FORMAT

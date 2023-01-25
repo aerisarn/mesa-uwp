@@ -2923,6 +2923,8 @@ dzn_BindBufferMemory2(VkDevice _device,
                                                    &IID_ID3D12Resource,
                                                    (void **)&buffer->res)))
          return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+      buffer->gpuva = ID3D12Resource_GetGPUVirtualAddress(buffer->res);
    }
 
    return VK_SUCCESS;

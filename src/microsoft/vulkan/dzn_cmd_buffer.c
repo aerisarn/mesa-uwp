@@ -4993,7 +4993,7 @@ dzn_CmdBindVertexBuffers(VkCommandBuffer commandBuffer,
    for (uint32_t i = 0; i < bindingCount; i++) {
       VK_FROM_HANDLE(dzn_buffer, buf, pBuffers[i]);
 
-      vbviews[firstBinding + i].BufferLocation = ID3D12Resource_GetGPUVirtualAddress(buf->res) + pOffsets[i];
+      vbviews[firstBinding + i].BufferLocation = buf->gpuva + pOffsets[i];
       vbviews[firstBinding + i].SizeInBytes = buf->size - pOffsets[i];
    }
 
@@ -5010,7 +5010,7 @@ dzn_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
    VK_FROM_HANDLE(dzn_buffer, buf, buffer);
 
-   cmdbuf->state.ib.view.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(buf->res) + offset;
+   cmdbuf->state.ib.view.BufferLocation = buf->gpuva + offset;
    cmdbuf->state.ib.view.SizeInBytes = buf->size - offset;
    switch (indexType) {
    case VK_INDEX_TYPE_UINT16:
