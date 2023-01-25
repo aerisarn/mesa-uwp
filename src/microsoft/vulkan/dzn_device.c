@@ -64,7 +64,7 @@
 #define DZN_USE_WSI_PLATFORM
 #endif
 
-#define DZN_API_VERSION VK_MAKE_VERSION(1, 1, VK_HEADER_VERSION)
+#define DZN_API_VERSION VK_MAKE_VERSION(1, 2, VK_HEADER_VERSION)
 
 #define MAX_TIER2_MEMORY_TYPES 3
 
@@ -1358,7 +1358,7 @@ dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    const VkPhysicalDeviceVulkan12Features core_1_2 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
       .samplerMirrorClampToEdge           = false,
-      .drawIndirectCount                  = false,
+      .drawIndirectCount                  = true,
       .storageBuffer8BitAccess            = false,
       .uniformAndStorageBuffer8BitAccess  = false,
       .storagePushConstant8               = false,
@@ -1391,12 +1391,12 @@ dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 
       .samplerFilterMinmax                = false,
       .scalarBlockLayout                  = false,
-      .imagelessFramebuffer               = false,
-      .uniformBufferStandardLayout        = false,
-      .shaderSubgroupExtendedTypes        = false,
-      .separateDepthStencilLayouts        = false,
-      .hostQueryReset                     = false,
-      .timelineSemaphore                  = false,
+      .imagelessFramebuffer               = true,
+      .uniformBufferStandardLayout        = true,
+      .shaderSubgroupExtendedTypes        = true,
+      .separateDepthStencilLayouts        = true,
+      .hostQueryReset                     = true,
+      .timelineSemaphore                  = true,
       .bufferDeviceAddress                = false,
       .bufferDeviceAddressCaptureReplay   = false,
       .bufferDeviceAddressMultiDevice     = false,
@@ -1405,7 +1405,7 @@ dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .vulkanMemoryModelAvailabilityVisibilityChains = false,
       .shaderOutputViewportIndex          = false,
       .shaderOutputLayer                  = false,
-      .subgroupBroadcastDynamicId         = false,
+      .subgroupBroadcastDynamicId         = true,
    };
 
    const VkPhysicalDeviceVulkan13Features core_1_3 = {
@@ -3227,4 +3227,27 @@ dzn_DestroySamplerYcbcrConversion(VkDevice device,
                                   const VkAllocationCallbacks *pAllocator)
 {
    unreachable("Ycbcr sampler conversion is not supported");
+}
+
+VKAPI_ATTR VkDeviceAddress VKAPI_CALL
+dzn_GetBufferDeviceAddress(VkDevice device,
+                           const VkBufferDeviceAddressInfo* pInfo)
+{
+   struct dzn_buffer *buffer = dzn_buffer_from_handle(pInfo->buffer);
+
+   return buffer->gpuva;
+}
+
+VKAPI_ATTR uint64_t VKAPI_CALL
+dzn_GetBufferOpaqueCaptureAddress(VkDevice device,
+                                  const VkBufferDeviceAddressInfo *pInfo)
+{
+   return 0;
+}
+
+VKAPI_ATTR uint64_t VKAPI_CALL
+dzn_GetDeviceMemoryOpaqueCaptureAddress(VkDevice device,
+                                        const VkDeviceMemoryOpaqueCaptureAddressInfo* pInfo)
+{
+   return 0;
 }

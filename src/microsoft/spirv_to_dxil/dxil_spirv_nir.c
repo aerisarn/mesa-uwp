@@ -43,6 +43,7 @@ spirv_to_nir_options = {
       .subgroup_vote = true,
       .subgroup_shuffle = true,
       .subgroup_quad = true,
+      .descriptor_array_dynamic_indexing = true,
    },
    .ubo_addr_format = nir_address_format_32bit_index_offset,
    .ssbo_addr_format = nir_address_format_32bit_index_offset,

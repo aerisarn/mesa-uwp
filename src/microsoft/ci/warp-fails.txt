@@ -368,3 +368,10 @@ dEQP-VK.image.texel_view_compatible.graphic.extended.3d_image.texture_read.bc4_u
 dEQP-VK.image.texel_view_compatible.graphic.extended.3d_image.texture_read.bc5_unorm_block.r32g32b32a32_sint,Fail
 dEQP-VK.image.texel_view_compatible.graphic.extended.3d_image.texture_read.bc5_unorm_block.r32g32b32a32_uint,Fail
 dEQP-VK.image.texel_view_compatible.graphic.extended.3d_image.texture_read.bc7_srgb_block.r32g32b32a32_uint,Fail
+
+# I don't see this locally, probably because I have a newer D3D that removed some bad barrier validation
+dEQP-VK.image.depth_stencil_descriptor.depth_read_only_optimal.d32_sfloat.depth_att_stencil_none,Crash
+
+# This is due to pretending to resolve stencil sample 0 using min
+# This needs to be a blit shader instead, but that runs into problems since shader stencil export is optional
+dEQP-VK.imageless_framebuffer.depth_stencil_resolve,Fail
