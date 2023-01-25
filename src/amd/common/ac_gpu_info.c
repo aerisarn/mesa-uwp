@@ -1006,6 +1006,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
       info->l2_cache_size = info->num_tcc_blocks * 256 * 1024;
       break;
    case CHIP_REMBRANDT:
+   case CHIP_GFX1103_R1:
       info->l2_cache_size = info->num_tcc_blocks * 512 * 1024;
       break;
    }
