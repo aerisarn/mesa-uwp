@@ -4534,7 +4534,7 @@ dzn_CmdBeginRendering(VkCommandBuffer commandBuffer,
             dzn_cmd_buffer_clear_attachment(cmdbuf, iview, att->imageLayout,
                                             &att->clearValue,
                                             VK_IMAGE_ASPECT_COLOR_BIT, 0,
-                                            VK_REMAINING_ARRAY_LAYERS, 1,
+                                            pRenderingInfo->layerCount, 1,
                                             &cmdbuf->state.render.area);
          }
       }
