@@ -1239,7 +1239,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
 
    if (info->gfx_level >= GFX11) {
       info->pc_lines = 1024;
-      info->pbb_max_alloc_count = 255; /* minimum is 2, maximum is 256 */
+      info->pbb_max_alloc_count = 16; /* minimum is 2, maximum is 256 */
    } else if (info->gfx_level >= GFX9 && info->has_graphics) {
       unsigned pc_lines = 0;
 
