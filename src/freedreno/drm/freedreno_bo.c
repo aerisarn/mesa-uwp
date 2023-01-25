@@ -46,10 +46,28 @@ static struct fd_bo *
 lookup_bo(struct hash_table *tbl, uint32_t key)
 {
    struct fd_bo *bo = NULL;
-   struct hash_entry *entry = _mesa_hash_table_search(tbl, &key);
+   struct hash_entry *entry;
+
+   simple_mtx_assert_locked(&table_lock);
+
+   entry = _mesa_hash_table_search(tbl, &key);
    if (entry) {
+      bo = entry->data;
+
+      /* We could be racing with final unref in another thread, and won
+       * the table_lock preventing the other thread from being able to
+       * remove an object it is about to free.  Fortunately since table
+       * lookup and removal are protected by the same lock (and table
+       * removal happens before obj free) we can easily detect this by
+       * checking for refcnt==0.
+       */
+      if (bo->refcnt == 0) {
+         bo->handle = 0;
+         return NULL;
+      }
+
       /* found, incr refcnt and return: */
-      bo = fd_bo_ref(entry->data);
+      fd_bo_ref(bo);
 
       if (!list_is_empty(&bo->node)) {
          mesa_logw("bo was in cache, size=%u, alloc_flags=0x%x\n",
