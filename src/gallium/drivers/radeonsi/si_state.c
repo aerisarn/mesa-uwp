@@ -489,9 +489,6 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
                         S_028B70_OFFSET_ROUND(0));
    }
 
-   if (state->alpha_to_coverage)
-      blend->need_src_alpha_4bit |= 0xf;
-
    blend->cb_target_mask = 0;
    blend->cb_target_enabled_4bit = 0;
 
