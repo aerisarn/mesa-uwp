@@ -2549,7 +2549,7 @@ begin_rendering(struct zink_context *ctx)
       ctx->dynamic_fb.attachments[i].imageView = iv;
    }
    if (has_swapchain) {
-      struct zink_resource *res = zink_resource(ctx->fb_state.cbufs[0]->texture);
+      ASSERTED struct zink_resource *res = zink_resource(ctx->fb_state.cbufs[0]->texture);
       zink_render_fixup_swapchain(ctx);
       assert(ctx->dynamic_fb.info.renderArea.extent.width <= res->base.b.width0);
       assert(ctx->dynamic_fb.info.renderArea.extent.height <= res->base.b.height0);
