@@ -64,6 +64,8 @@ static void ac_init_llvm_target(void)
 
    ac_reset_llvm_all_options_occurences();
    LLVMParseCommandLineOptions(ARRAY_SIZE(argv), argv, NULL);
+
+   ac_llvm_run_atexit_for_destructors();
 }
 
 PUBLIC void ac_init_shared_llvm_once(void)
