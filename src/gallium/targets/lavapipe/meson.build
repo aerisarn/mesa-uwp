@@ -42,7 +42,7 @@ lvp_icd = custom_target(
 )
 
 _dev_icdname = 'lvp_devenv_icd.@0@.json'.format(host_machine.cpu())
-custom_target(
+_dev_icd = custom_target(
   'lvp_devenv_icd',
   input : [vk_icd_gen, vk_api_xml],
   output : _dev_icdname,
@@ -55,4 +55,4 @@ custom_target(
   build_by_default : true,
 )
 
-devenv.append('VK_ICD_FILENAMES', meson.current_build_dir() / _dev_icdname)
+devenv.append('VK_ICD_FILENAMES', _dev_icd.full_path())
