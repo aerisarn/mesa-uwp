@@ -755,8 +755,7 @@ static void si_bind_blend_state(struct pipe_context *ctx, void *state)
        old_blend->dual_src_blend != blend->dual_src_blend ||
        old_blend->blend_enable_4bit != blend->blend_enable_4bit ||
        old_blend->need_src_alpha_4bit != blend->need_src_alpha_4bit) {
-      si_ps_key_update_framebuffer_blend(sctx);
-      si_ps_key_update_blend_rasterizer(sctx);
+      si_ps_key_update_framebuffer_blend_rasterizer(sctx);
       si_update_ps_inputs_read_or_disabled(sctx);
       sctx->do_update_shaders = true;
    }
@@ -1214,7 +1213,7 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
        old_rs->clamp_fragment_color != rs->clamp_fragment_color ||
        old_rs->force_persample_interp != rs->force_persample_interp ||
        old_rs->polygon_mode_is_points != rs->polygon_mode_is_points) {
-      si_ps_key_update_blend_rasterizer(sctx);
+      si_ps_key_update_framebuffer_blend_rasterizer(sctx);
       si_ps_key_update_rasterizer(sctx);
       si_ps_key_update_framebuffer_rasterizer_sample_shading(sctx);
       si_update_ps_inputs_read_or_disabled(sctx);
@@ -3195,7 +3194,7 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
    }
 
    si_ps_key_update_framebuffer(sctx);
-   si_ps_key_update_framebuffer_blend(sctx);
+   si_ps_key_update_framebuffer_blend_rasterizer(sctx);
    si_ps_key_update_framebuffer_rasterizer_sample_shading(sctx);
    si_update_ps_inputs_read_or_disabled(sctx);
    sctx->do_update_shaders = true;
