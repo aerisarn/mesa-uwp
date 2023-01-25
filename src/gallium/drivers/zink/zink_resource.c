@@ -686,6 +686,8 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
       obj->is_buffer = true;
       obj->transfer_dst = true;
+      obj->vkflags = bci.flags;
+      obj->vkusage = bci.usage;
    } else {
       bool winsys_modifier = (export_types & VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT) && whandle && whandle->modifier != DRM_FORMAT_MOD_INVALID;
       uint64_t mods[10];
