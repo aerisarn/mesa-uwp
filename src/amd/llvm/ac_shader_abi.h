@@ -129,6 +129,9 @@ struct ac_shader_abi {
    /* Whether to disable anisotropic filtering. */
    bool disable_aniso_single_level;
 
+   /* Equal to radeon_info::conformant_trunc_coord. */
+   bool conformant_trunc_coord;
+
    /* Number of all interpolated inputs */
    unsigned num_interp;
 };

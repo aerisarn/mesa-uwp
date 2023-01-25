@@ -138,6 +138,7 @@ struct radv_nir_compiler_options {
    enum amd_gfx_level gfx_level;
    uint32_t address32_hi;
    bool has_3d_cube_border_color_mipmap;
+   bool conformant_trunc_coord;
 
    struct {
       void (*func)(void *private_data, enum aco_compiler_debug_level level, const char *message);

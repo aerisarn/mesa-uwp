@@ -1002,6 +1002,7 @@ static bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shade
                                 info->options & SI_PROFILE_CLAMP_DIV_BY_ZERO;
    ctx->abi.use_waterfall_for_divergent_tex_samplers = true;
    ctx->abi.disable_aniso_single_level = true;
+   ctx->abi.conformant_trunc_coord = ctx->screen->info.conformant_trunc_coord;
 
    unsigned num_outputs = info->num_outputs;
    /* need extra output to hold primitive id added by nir lower */

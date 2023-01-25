@@ -4611,7 +4611,8 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
    /* Texture coordinates fixups */
    if (instr->coord_components > 1 && instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
        instr->is_array && instr->op != nir_texop_txf) {
-      args.coords[1] = apply_round_slice(&ctx->ac, args.coords[1]);
+      if (!ctx->abi->conformant_trunc_coord)
+         args.coords[1] = apply_round_slice(&ctx->ac, args.coords[1]);
    }
 
    if (instr->coord_components > 2 &&
@@ -4620,7 +4621,8 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
         instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS) &&
        instr->is_array && instr->op != nir_texop_txf && instr->op != nir_texop_txf_ms &&
        instr->op != nir_texop_fragment_fetch_amd && instr->op != nir_texop_fragment_mask_fetch_amd) {
-      args.coords[2] = apply_round_slice(&ctx->ac, args.coords[2]);
+      if (!ctx->abi->conformant_trunc_coord)
+         args.coords[2] = apply_round_slice(&ctx->ac, args.coords[2]);
    }
 
    if (ctx->ac.gfx_level == GFX9 && instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
@@ -4686,7 +4688,7 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
    }
 
    /* Set TRUNC_COORD=0 for textureGather(). */
-   if (instr->op == nir_texop_tg4) {
+   if (instr->op == nir_texop_tg4 && !ctx->abi->conformant_trunc_coord) {
       LLVMValueRef dword0 = LLVMBuildExtractElement(ctx->ac.builder, args.sampler, ctx->ac.i32_0, "");
       dword0 = LLVMBuildAnd(ctx->ac.builder, dword0, LLVMConstInt(ctx->ac.i32, C_008F30_TRUNC_COORD, 0), "");
       args.sampler = LLVMBuildInsertElement(ctx->ac.builder, args.sampler, dword0, ctx->ac.i32_0, "");
