@@ -195,11 +195,19 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
    if (!ver)
       goto out_err;
 
+   if (strncmp("nouveau", ver->name, ver->name_len) != 0) {
+      fprintf(stderr,
+              "DRM kernel driver '%.*s' in use. NVK requires nouveau.\n",
+              ver->name_len, ver->name);
+      goto out_err;
+   }
+
    uint32_t version =
       ver->version_major << 24 |
       ver->version_minor << 8  |
       ver->version_patchlevel;
    drmFreeVersion(ver);
+   ver = NULL;
 
    if (version < 0x01000301)
       goto out_err;
@@ -260,6 +268,8 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
    return device;
 
 out_err:
+   if (ver)
+      drmFreeVersion(ver);
    FREE(device);
    close(fd);
    return NULL;
