@@ -52,7 +52,7 @@ test(
     'aco_tests',
     [aco_tests_files, gen_spirv_files],
     cpp_args : ['-DACO_TEST_SOURCE_DIR="@0@"'.format(meson.current_source_dir()),
-                '-DACO_TEST_BUILD_ROOT="@0@"'.format(meson.build_root()),
+                '-DACO_TEST_BUILD_ROOT="@0@"'.format(meson.project_build_root()),
                 '-DACO_TEST_PYTHON_BIN="@0@"'.format(prog_python.full_path())] +
                cpp_args_aco,
     include_directories : [
