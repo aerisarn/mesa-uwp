@@ -1165,6 +1165,9 @@ TEST_F(Cache, List)
 
    int err = rmrf_local(CACHE_TEST_TMP);
    EXPECT_EQ(err, 0) << "Removing " CACHE_TEST_TMP " again";
+
+   unsetenv("MESA_DISK_CACHE_SINGLE_FILE");
+   unsetenv("MESA_DISK_CACHE_READ_ONLY_FOZ_DBS_DYNAMIC_LIST");
 #endif /* FOZ_DB_UTIL_DYNAMIC_LIST */
 #endif /* ENABLE_SHADER_CACHE */
 }
