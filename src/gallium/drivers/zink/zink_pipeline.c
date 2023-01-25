@@ -339,6 +339,8 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       else
          warn_missing_feature(feedback_warn, "EXT_attachment_feedback_loop_layout");
    }
+   if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB)
+      pci.flags |= VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
    pci.layout = prog->base.layout;
    if (state->render_pass)
       pci.renderPass = state->render_pass->render_pass;
@@ -541,6 +543,8 @@ zink_create_gfx_pipeline_output(struct zink_screen *screen, struct zink_gfx_pipe
       else
          warn_missing_feature(feedback_warn, "EXT_attachment_feedback_loop_layout");
    }
+   if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB)
+      pci.flags |= VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
    pci.pColorBlendState = &blend_state;
    pci.pMultisampleState = &ms_state;
    pci.pDynamicState = &pipelineDynamicStateCreateInfo;
@@ -768,6 +772,8 @@ zink_create_gfx_pipeline_combined(struct zink_screen *screen, struct zink_gfx_pr
       pci.flags = VK_PIPELINE_CREATE_LINK_TIME_OPTIMIZATION_BIT_EXT;
    else
       pci.flags = VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
+   if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB)
+      pci.flags |= VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
    pci.pNext = &libstate;
 
    VkPipeline pipeline;
