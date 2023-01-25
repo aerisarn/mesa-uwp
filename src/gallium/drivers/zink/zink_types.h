@@ -1758,6 +1758,7 @@ struct zink_context {
    bool blend_state_changed : 1;
    bool sample_mask_changed : 1;
    bool rast_state_changed : 1;
+   bool line_width_changed : 1;
    bool dsa_state_changed : 1;
    bool stencil_ref_changed : 1;
    bool rasterizer_discard_changed : 1;

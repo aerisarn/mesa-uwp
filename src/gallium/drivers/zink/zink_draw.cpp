@@ -734,9 +734,11 @@ zink_draw(struct pipe_context *pctx,
       }
    }
 
-   if ((BATCH_CHANGED || rast_state_changed || rast_prim_changed) &&
-       ctx->gfx_pipeline_state.rast_prim == PIPE_PRIM_LINES) {
+   if (BATCH_CHANGED ||
+       /* only re-emit on non-batch change when actually drawing lines */
+       ((ctx->line_width_changed || rast_prim_changed) && ctx->gfx_pipeline_state.rast_prim == PIPE_PRIM_LINES)) {
       VKCTX(CmdSetLineWidth)(batch->state->cmdbuf, rast_state->line_width);
+      ctx->line_width_changed = false;
    }
 
    if (BATCH_CHANGED || mode_changed ||

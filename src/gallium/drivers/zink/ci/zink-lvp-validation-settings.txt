@@ -1,6 +1,6 @@
 # Please include a comment with the log message and a testcase triggering each
 # VUID at the bottom of the file.
-khronos_validation.message_id_filter = VUID-vkCmdDrawMultiEXT-commandBuffer-02701,VUID-vkCmdDrawMultiIndexedEXT-commandBuffer-02701,VUID-vkCmdDrawMultiEXT-colorAttachmentCount-06188,VUID-VkGraphicsPipelineCreateInfo-Geometry-07725,VUID-VkShaderModuleCreateInfo-pCode-01091,VUID-vkCmdCopyImage-srcImage-07743,VUID-vkCmdDrawMultiEXT-None-06479,VUID-vkCmdDrawMultiIndexedEXT-format-07753,VUID-vkCmdDrawMultiEXT-viewType-07752,VUID-vkCmdDispatch-viewType-07752,VUID-vkCmdDrawMultiEXT-magFilter-04553,VUID-vkCmdDrawMultiIndexedEXT-magFilter-04553,VUID-RuntimeSpirv-Location-06272,VUID-vkDestroyDevice-device-00378,UNASSIGNED-CoreValidation-DrawState-InvalidImageLayout,VUID-VkDescriptorImageInfo-imageLayout-00344,VUID-vkCmdDrawMultiEXT-None-02699
+khronos_validation.message_id_filter = VUID-vkCmdDrawMultiEXT-colorAttachmentCount-06188,VUID-VkGraphicsPipelineCreateInfo-Geometry-07725,VUID-VkShaderModuleCreateInfo-pCode-01091,VUID-vkCmdCopyImage-srcImage-07743,VUID-vkCmdDrawMultiEXT-None-06479,VUID-vkCmdDrawMultiIndexedEXT-format-07753,VUID-vkCmdDrawMultiEXT-viewType-07752,VUID-vkCmdDispatch-viewType-07752,VUID-vkCmdDrawMultiEXT-magFilter-04553,VUID-vkCmdDrawMultiIndexedEXT-magFilter-04553,VUID-RuntimeSpirv-Location-06272,VUID-vkDestroyDevice-device-00378,UNASSIGNED-CoreValidation-DrawState-InvalidImageLayout,VUID-VkDescriptorImageInfo-imageLayout-00344,VUID-vkCmdDrawMultiEXT-None-02699
 khronos_validation.report_flags = error
 khronos_validation.debug_action = VK_DBG_LAYER_ACTION_LOG_MSG,VK_DBG_LAYER_ACTION_BREAK
 VK_LAYER_ENABLES=VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT
@@ -23,20 +23,6 @@ khronos_validation.log_filename = stdout
 # Vulkan spec states: All child objects created on device must have been destroyed
 # prior to destroying device
 # (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-vkDestroyDevice-device-00378)
-
-# caselist of:
-#   dEQP-GLES3.functional.primitive_restart.end_restart_duplicate_restarts.lines.unsigned_short.draw_elements_instanced
-#   dEQP-GLES3.functional.primitive_restart.end_restart_duplicate_restarts.triangles.unsigned_byte.draw_range_elements
-#
-# [ VUID-vkCmdDrawMultiIndexedEXT-commandBuffer-02701 ] Object 0: handle =
-# 0x56094dcd5a20, type = VK_OBJECT_TYPE_COMMAND_BUFFER; | MessageID = 0xef7d036b |
-# vkCmdDrawMultiIndexedEXT: VK_DYNAMIC_STATE_VIEWPORT state not set for this
-# command buffer. The Vulkan spec states: If the VkPipeline object bound to the
-# pipeline bind point used by this command requires any dynamic state, that state
-# must have been set or inherited (if the VK_NV_inherited_viewport_scissor
-# extension is enabled) for commandBuffer, and done so after any previously bound
-# pipeline with the corresponding state not specified as dynamic
-# (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-vkCmdDrawMultiIndexedEXT-commandBuffer-02701)
 
 # caselist of :
 #   dEQP-GLES31.functional.shaders.helper_invocation.value.triangles
