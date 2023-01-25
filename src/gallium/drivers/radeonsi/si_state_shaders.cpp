@@ -2323,8 +2323,11 @@ void si_ps_key_update_framebuffer_blend_rasterizer(struct si_context *sctx)
 
    /* If alpha-to-coverage is enabled, we have to export alpha
     * even if there is no color buffer.
+    *
+    * Gfx11 exports alpha-to-coverage via MRTZ if MRTZ is present.
     */
-   if (!(key->ps.part.epilog.spi_shader_col_format & 0xf) && alpha_to_coverage)
+   if (!(key->ps.part.epilog.spi_shader_col_format & 0xf) && alpha_to_coverage &&
+       !key->ps.part.epilog.alpha_to_coverage_via_mrtz)
       key->ps.part.epilog.spi_shader_col_format |= V_028710_SPI_SHADER_32_AR;
 
    /* On GFX6 and GFX7 except Hawaii, the CB doesn't clamp outputs
