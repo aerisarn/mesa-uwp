@@ -56,11 +56,6 @@ option(
   description : 'enable support for dri3'
 )
 option(
-  'dri-drivers',
-  type : 'array',
-  description : 'DEPRECATED: List of dri drivers to build. If this is set to auto all drivers applicable to the target OS/architecture will be built'
-)
-option(
   'dri-drivers-path',
   type : 'string',
   value : '',

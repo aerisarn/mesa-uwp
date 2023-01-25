@@ -131,11 +131,6 @@ if with_freedreno_kgsl
   system_has_kms_drm = false
 endif
 
-dri_drivers = get_option('dri-drivers')
-if dri_drivers.length() != 0
-  error('Mesa\'s main branch no longer has any "classic" drivers, use the "amber" branch instead.')
-endif
-
 gallium_drivers = get_option('gallium-drivers')
 if gallium_drivers.contains('auto')
   if system_has_kms_drm
