@@ -465,6 +465,7 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
          infos[i].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT;
          infos[i].address = batch->state->dd.db[i]->obj->bda;
          infos[i].usage = batch->state->dd.db[i]->obj->vkusage;
+         assert(infos[i].usage);
       }
       VKSCR(CmdBindDescriptorBuffersEXT)(batch->state->cmdbuf, count, infos);
    }
