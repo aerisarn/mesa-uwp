@@ -1452,7 +1452,7 @@ anv_device_alloc_bo(struct anv_device *device,
    }
 
    const struct intel_memory_class_instance *regions[2];
-   uint32_t nregions = 0, flags = 0;
+   uint32_t nregions = 0;
 
    /* If we have vram size, we have multiple memory regions and should choose
     * one of them.
@@ -1472,17 +1472,14 @@ anv_device_alloc_bo(struct anv_device *device,
        */
       if (!(alloc_flags & ANV_BO_ALLOC_NO_LOCAL_MEM) &&
           ((alloc_flags & ANV_BO_ALLOC_MAPPED) ||
-           (alloc_flags & ANV_BO_ALLOC_LOCAL_MEM_CPU_VISIBLE))) {
+           (alloc_flags & ANV_BO_ALLOC_LOCAL_MEM_CPU_VISIBLE)))
          regions[nregions++] = device->physical->sys.region;
-         if (device->physical->vram_non_mappable.size > 0)
-            flags |= I915_GEM_CREATE_EXT_FLAG_NEEDS_CPU_ACCESS;
-      }
    } else {
       regions[nregions++] = device->physical->sys.region;
    }
 
-   uint32_t gem_handle = anv_gem_create_regions(device, size + ccs_size,
-                                                flags, nregions, regions);
+   uint32_t gem_handle = anv_gem_create(device, size + ccs_size, alloc_flags,
+                                        nregions, regions);
    if (gem_handle == 0)
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 

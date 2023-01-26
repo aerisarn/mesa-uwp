@@ -3249,6 +3249,7 @@ VkResult anv_CreateDevice(
    }
 
    anv_device_set_physical(device, physical_device);
+   device->kmd_backend = anv_kmd_backend_get(device->info->kmd_type);
 
    /* XXX(chadv): Can we dup() physicalDevice->fd here? */
    device->fd = open(physical_device->path, O_RDWR | O_CLOEXEC);

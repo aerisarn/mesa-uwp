@@ -43,52 +43,12 @@ anv_gem_close(struct anv_device *device, uint32_t gem_handle)
 }
 
 uint32_t
-anv_gem_create_regions(struct anv_device *device, uint64_t anv_bo_size,
-                       uint32_t flags, uint32_t num_regions,
-                       const struct intel_memory_class_instance **regions)
+anv_gem_create(struct anv_device *device, uint64_t anv_bo_size,
+               enum anv_bo_alloc_flags alloc_flags, uint32_t num_regions,
+               const struct intel_memory_class_instance **regions)
 {
-   if (unlikely(!device->info->mem.use_class_instance)) {
-      assert(num_regions == 1 &&
-             device->physical->sys.region == regions[0] &&
-             flags == 0);
-
-      struct drm_i915_gem_create gem_create = {
-            .size = anv_bo_size,
-      };
-      if (intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_CREATE, &gem_create))
-         return 0;
-      return gem_create.handle;
-   }
-
-   struct drm_i915_gem_memory_class_instance i915_regions[2];
-   /* Check for invalid flags */
-   assert((flags & ~I915_GEM_CREATE_EXT_FLAG_NEEDS_CPU_ACCESS) == 0);
-   assert(num_regions <= ARRAY_SIZE(i915_regions));
-
-   for (uint32_t i = 0; i < num_regions; i++) {
-      i915_regions[i].memory_class = regions[i]->klass;
-      i915_regions[i].memory_instance = regions[i]->instance;
-   }
-
-   struct drm_i915_gem_create_ext_memory_regions ext_regions = {
-      .base = { .name = I915_GEM_CREATE_EXT_MEMORY_REGIONS },
-      .num_regions = num_regions,
-      .regions = (uintptr_t)i915_regions,
-   };
-
-   struct drm_i915_gem_create_ext gem_create = {
-      .size = anv_bo_size,
-      .extensions = (uintptr_t) &ext_regions,
-      .flags = flags,
-   };
-
-   int ret = intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_CREATE_EXT,
-                         &gem_create);
-   if (ret != 0) {
-      return 0;
-   }
-
-   return gem_create.handle;
+   return device->kmd_backend->gem_create(device, regions, num_regions,
+                                          anv_bo_size, alloc_flags);
 }
 
 /**

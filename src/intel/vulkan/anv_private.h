@@ -120,6 +120,7 @@ struct intel_perf_query_result;
 
 #include "anv_android.h"
 #include "anv_entrypoints.h"
+#include "anv_kmd_backend.h"
 #include "isl/isl.h"
 
 #include "dev/intel_debug.h"
@@ -1118,6 +1119,7 @@ struct anv_device {
 
     struct anv_physical_device *                physical;
     const struct intel_device_info *            info;
+    const struct anv_kmd_backend *              kmd_backend;
     struct isl_device                           isl_dev;
     uint32_t                                    context_id;
     int                                         fd;
@@ -1346,9 +1348,9 @@ void* anv_gem_mmap(struct anv_device *device, struct anv_bo *bo,
                    uint64_t offset, uint64_t size, uint32_t flags);
 void anv_gem_munmap(struct anv_device *device, void *p, uint64_t size);
 void anv_gem_close(struct anv_device *device, uint32_t gem_handle);
-uint32_t anv_gem_create_regions(struct anv_device *device, uint64_t anv_bo_size,
-                                uint32_t flags, uint32_t num_regions,
-                                const struct intel_memory_class_instance **regions);
+uint32_t anv_gem_create(struct anv_device *device, uint64_t anv_bo_size,
+                        enum anv_bo_alloc_flags alloc_flags, uint32_t num_regions,
+                        const struct intel_memory_class_instance **regions);
 uint32_t anv_gem_userptr(struct anv_device *device, void *mem, size_t size);
 int anv_gem_wait(struct anv_device *device, uint32_t gem_handle, int64_t *timeout_ns);
 int anv_gem_set_tiling(struct anv_device *device, uint32_t gem_handle,
