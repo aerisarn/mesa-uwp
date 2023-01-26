@@ -326,8 +326,9 @@ static const VkPresentModeKHR present_modes[] = {
 
 static VkResult
 wsi_win32_surface_get_present_modes(VkIcdSurfaceBase *surface,
-                                 uint32_t* pPresentModeCount,
-                                 VkPresentModeKHR* pPresentModes)
+                                    struct wsi_device *wsi_device,
+                                    uint32_t* pPresentModeCount,
+                                    VkPresentModeKHR* pPresentModes)
 {
    if (pPresentModes == NULL) {
       *pPresentModeCount = ARRAY_SIZE(present_modes);
