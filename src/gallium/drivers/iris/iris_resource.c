@@ -1487,8 +1487,6 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
                           struct winsys_handle *whandle,
                           unsigned usage)
 {
-   assert(templ->target != PIPE_BUFFER);
-
    struct iris_screen *screen = (struct iris_screen *)pscreen;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
    struct iris_resource *res = iris_alloc_resource(pscreen, templ);
@@ -1522,6 +1520,11 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
 
    res->offset = whandle->offset;
    res->external_format = whandle->format;
+
+   if (templ->target == PIPE_BUFFER) {
+      res->surf.tiling = ISL_TILING_LINEAR;
+      return &res->base.b;
+   }
 
    /* Create a surface for each plane specified by the external format. */
    if (whandle->plane < util_format_get_num_planes(whandle->format)) {
@@ -1721,6 +1724,10 @@ iris_reallocate_resource_inplace(struct iris_context *ice,
    }
 
    iris_flush_resource(&ice->ctx, &new_res->base.b);
+   iris_foreach_batch(ice, batch) {
+      if (iris_batch_references(batch, new_res->bo))
+         iris_batch_flush(batch);
+   }
 
    struct iris_bo *old_bo = old_res->bo;
    struct iris_bo *old_aux_bo = old_res->aux.bo;
