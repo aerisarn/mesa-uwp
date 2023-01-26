@@ -407,7 +407,6 @@ static const struct debug_control tu_debug_options[] = {
    { "perfc", TU_DEBUG_PERFC },
    { "flushall", TU_DEBUG_FLUSHALL },
    { "syncdraw", TU_DEBUG_SYNCDRAW },
-   { "dontcare_as_load", TU_DEBUG_DONT_CARE_AS_LOAD },
    { "rast_order", TU_DEBUG_RAST_ORDER },
    { "unaligned_store", TU_DEBUG_UNALIGNED_STORE },
    { "log_skip_gmem_ops", TU_DEBUG_LOG_SKIP_GMEM_OPS },
@@ -451,9 +450,8 @@ tu_init_dri_options(struct tu_instance *instance)
                        instance->vk.app_info.app_name, instance->vk.app_info.app_version,
                        instance->vk.app_info.engine_name, instance->vk.app_info.engine_version);
 
-   if (driQueryOptionb(&instance->dri_options, "vk_dont_care_as_load"))
-      instance->debug_flags |= TU_DEBUG_DONT_CARE_AS_LOAD;
-
+   instance->dont_care_as_load =
+         driQueryOptionb(&instance->dri_options, "vk_dont_care_as_load");
    instance->conservative_lrz =
          !driQueryOptionb(&instance->dri_options, "disable_conservative_lrz");
 }

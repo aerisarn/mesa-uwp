@@ -684,7 +684,7 @@ attachment_set_ops(struct tu_device *device,
                    VkAttachmentStoreOp store_op,
                    VkAttachmentStoreOp stencil_store_op)
 {
-   if (device->instance->debug_flags & TU_DEBUG_DONT_CARE_AS_LOAD) {
+   if (unlikely(device->instance->dont_care_as_load)) {
       if (load_op == VK_ATTACHMENT_LOAD_OP_DONT_CARE)
          load_op = VK_ATTACHMENT_LOAD_OP_LOAD;
       if (stencil_load_op == VK_ATTACHMENT_LOAD_OP_DONT_CARE)

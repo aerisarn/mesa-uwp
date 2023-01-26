@@ -48,7 +48,7 @@ enum tu_debug_flags
    TU_DEBUG_PERFC = 1 << 9,
    TU_DEBUG_FLUSHALL = 1 << 10,
    TU_DEBUG_SYNCDRAW = 1 << 11,
-   TU_DEBUG_DONT_CARE_AS_LOAD = 1 << 12,
+   /* bit 12 is available */
    TU_DEBUG_GMEM = 1 << 13,
    TU_DEBUG_RAST_ORDER = 1 << 14,
    TU_DEBUG_UNALIGNED_STORE = 1 << 15,
@@ -149,6 +149,8 @@ struct tu_instance
    struct driOptionCache available_dri_options;
 
    enum tu_debug_flags debug_flags;
+
+   bool dont_care_as_load;
 
    /* Conservative LRZ (default true) invalidates LRZ on draws with
     * blend and depth-write enabled, because this can lead to incorrect
