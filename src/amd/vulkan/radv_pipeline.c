@@ -3373,14 +3373,15 @@ radv_pipeline_create_ps_epilog(struct radv_graphics_pipeline *pipeline,
 }
 
 static VkResult
-radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout *pipeline_layout,
-                    struct radv_device *device, struct radv_pipeline_cache *cache,
-                    const struct radv_pipeline_key *pipeline_key,
-                    const VkPipelineShaderStageCreateInfo *pStages, uint32_t stageCount,
-                    const VkPipelineCreateFlags flags,
-                    const VkPipelineCreationFeedbackCreateInfo *creation_feedback,
-                    VkGraphicsPipelineLibraryFlagBitsEXT lib_flags,
-                    gl_shader_stage *last_vgt_api_stage)
+radv_graphics_pipeline_compile(struct radv_pipeline *pipeline,
+                               struct radv_pipeline_layout *pipeline_layout,
+                               struct radv_device *device, struct radv_pipeline_cache *cache,
+                               const struct radv_pipeline_key *pipeline_key,
+                               const VkPipelineShaderStageCreateInfo *pStages, uint32_t stageCount,
+                               const VkPipelineCreateFlags flags,
+                               const VkPipelineCreationFeedbackCreateInfo *creation_feedback,
+                               VkGraphicsPipelineLibraryFlagBitsEXT lib_flags,
+                               gl_shader_stage *last_vgt_api_stage)
 {
    const char *noop_fs_entrypoint = "noop_fs";
    struct radv_shader_binary *binaries[MESA_VULKAN_SHADER_STAGES] = {NULL};
@@ -4949,10 +4950,10 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
    struct radv_pipeline_key key = radv_generate_graphics_pipeline_key(pipeline, pCreateInfo, &state);
 
-   result = radv_create_shaders(&pipeline->base, &pipeline_layout, device, cache, &key,
-                                pCreateInfo->pStages, pCreateInfo->stageCount, pCreateInfo->flags,
-                                creation_feedback, (~imported_flags) & ALL_GRAPHICS_LIB_FLAGS,
-                                &pipeline->last_vgt_api_stage);
+   result = radv_graphics_pipeline_compile(
+      &pipeline->base, &pipeline_layout, device, cache, &key, pCreateInfo->pStages,
+      pCreateInfo->stageCount, pCreateInfo->flags, creation_feedback,
+      (~imported_flags) & ALL_GRAPHICS_LIB_FLAGS, &pipeline->last_vgt_api_stage);
    if (result != VK_SUCCESS) {
       radv_pipeline_layout_finish(device, &pipeline_layout);
       return result;
@@ -5169,10 +5170,10 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
          key.vs.has_prolog = true;
       }
 
-      result =
-         radv_create_shaders(&pipeline->base.base, pipeline_layout, device, cache, &key,
-                             pCreateInfo->pStages, pCreateInfo->stageCount, pCreateInfo->flags,
-                             creation_feedback, imported_flags, &pipeline->base.last_vgt_api_stage);
+      result = radv_graphics_pipeline_compile(&pipeline->base.base, pipeline_layout, device, cache,
+                                              &key, pCreateInfo->pStages, pCreateInfo->stageCount,
+                                              pCreateInfo->flags, creation_feedback, imported_flags,
+                                              &pipeline->base.last_vgt_api_stage);
       if (result != VK_SUCCESS)
          return result;
    }
