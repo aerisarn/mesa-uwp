@@ -1106,20 +1106,12 @@ dzn_instance_add_physical_device(struct vk_instance *instance,
 static VkResult
 dzn_enumerate_physical_devices(struct vk_instance *instance)
 {
-   VkResult result = VK_SUCCESS;
-
-   mtx_lock(&instance->physical_devices.mutex);
-   if (!instance->physical_devices.enumerated) {
-      result = dzn_enumerate_physical_devices_dxcore(instance);
+   VkResult result = dzn_enumerate_physical_devices_dxcore(instance);
 #ifdef _WIN32
-      if (result != VK_SUCCESS)
-         result = dzn_enumerate_physical_devices_dxgi(instance);
+   if (result != VK_SUCCESS)
+      result = dzn_enumerate_physical_devices_dxgi(instance);
 #endif
-      if (result == VK_SUCCESS)
-         instance->physical_devices.enumerated = true;
-   }
-   mtx_unlock(&instance->physical_devices.mutex);
-
+   
    return result;
 }
 
