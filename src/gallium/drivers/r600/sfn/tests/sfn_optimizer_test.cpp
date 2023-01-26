@@ -8,13 +8,6 @@
 using namespace r600;
 using std::ostringstream;
 
-class TestShaderFromNir : public TestShader {
-
-protected:
-   void check(Shader *s, const char *expect_str);
-   void ra_check(Shader *s, const char *expect_str);
-};
-
 TEST_F(TestShaderFromNir, SimpleDCE)
 {
    auto sh = from_string(red_triangle_fs_expect_from_nir);
@@ -373,7 +366,6 @@ BLOCK_END
    check(sh, expect);
 };
 
-
 TEST_F(TestShaderFromNir, OptimizeIntoGroup)
 {
    const char *input =
@@ -417,35 +409,3 @@ BLOCK_END
    optimize(*sh);
    check(sh, expect);
 };
-
-
-void
-TestShaderFromNir::check(Shader *s, const char *expect_orig)
-{
-   ostringstream test_str;
-   s->print(test_str);
-
-   auto expect = from_string(expect_orig);
-
-   ostringstream expect_str;
-   expect->print(expect_str);
-
-   EXPECT_EQ(test_str.str(), expect_str.str());
-}
-
-void
-TestShaderFromNir::ra_check(Shader *s, const char *expect_orig)
-{
-   s->value_factory().clear_pins();
-   ostringstream test_str;
-   s->print(test_str);
-
-   auto expect = from_string(expect_orig);
-   expect->value_factory().clear_pins();
-
-   ostringstream expect_str;
-   expect->print(expect_str);
-
-   EXPECT_EQ(test_str.str(), expect_str.str());
-}
-

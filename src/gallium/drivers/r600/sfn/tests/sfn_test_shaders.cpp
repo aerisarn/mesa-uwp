@@ -9,7 +9,38 @@
 namespace r600 {
 
 using std::istringstream;
+using std::ostringstream;
 using std::string;
+
+void
+TestShaderFromNir::check(Shader *s, const char *expect_orig)
+{
+   ostringstream test_str;
+   s->print(test_str);
+
+   auto expect = from_string(expect_orig);
+
+   ostringstream expect_str;
+   expect->print(expect_str);
+
+   EXPECT_EQ(test_str.str(), expect_str.str());
+}
+
+void
+TestShaderFromNir::ra_check(Shader *s, const char *expect_orig)
+{
+   s->value_factory().clear_pins();
+   ostringstream test_str;
+   s->print(test_str);
+
+   auto expect = from_string(expect_orig);
+   expect->value_factory().clear_pins();
+
+   ostringstream expect_str;
+   expect->print(expect_str);
+
+   EXPECT_EQ(test_str.str(), expect_str.str());
+}
 
 const char *red_triangle_fs_nir =
    R"(shader: MESA_SHADER_FRAGMENT
