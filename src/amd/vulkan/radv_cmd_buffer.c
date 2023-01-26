@@ -4528,7 +4528,7 @@ radv_flush_indirect_descriptor_sets(struct radv_cmd_buffer *cmd_buffer,
          radv_emit_userdata_address(device, cs, pipeline, MESA_SHADER_TESS_CTRL,
                                     AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
 
-      if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TESS_CTRL))
+      if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TESS_EVAL))
          radv_emit_userdata_address(device, cs, pipeline, MESA_SHADER_TESS_EVAL,
                                     AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
    } else {
