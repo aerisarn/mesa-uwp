@@ -295,9 +295,6 @@ fd_bo_ref(struct fd_bo *bo)
    return bo;
 }
 
-static uint32_t bo_del(struct fd_bo *bo);
-static void close_handles(struct fd_device *dev, uint32_t *handles, unsigned cnt);
-
 static void
 bo_finalize(struct fd_bo *bo)
 {
@@ -310,6 +307,12 @@ dev_flush(struct fd_device *dev)
 {
    if (dev->funcs->flush)
       dev->funcs->flush(dev);
+}
+
+static void
+bo_del(struct fd_bo *bo)
+{
+   bo->funcs->destroy(bo);
 }
 
 static bool
@@ -343,10 +346,7 @@ fd_bo_del(struct fd_bo *bo)
 
    bo_finalize(bo);
    dev_flush(dev);
-
-   uint32_t handle = bo_del(bo);
-   if (handle)
-      close_handles(dev, &handle, 1);
+   bo_del(bo);
 }
 
 void
@@ -378,20 +378,9 @@ fd_bo_del_array(struct fd_bo **bos, int count)
     * Second pass, delete all of the objects remaining after first pass.
     */
 
-   uint32_t handles[64];
-   unsigned cnt = 0;
-
    for (int i = 0; i < count; i++) {
-      if (cnt == ARRAY_SIZE(handles)) {
-         close_handles(dev, handles, cnt);
-         cnt = 0;
-      }
-      handles[cnt] = bo_del(bos[i]);
-      if (handles[cnt])
-         cnt++;
+      bo_del(bos[i]);
    }
-
-   close_handles(dev, handles, cnt);
 }
 
 /**
@@ -406,8 +395,6 @@ fd_bo_del_list_nocache(struct list_head *list)
       return;
 
    struct fd_device *dev = first_bo(list)->dev;
-   uint32_t handles[64];
-   unsigned cnt = 0;
 
    foreach_bo (bo, list) {
       bo_finalize(bo);
@@ -417,16 +404,8 @@ fd_bo_del_list_nocache(struct list_head *list)
 
    foreach_bo_safe (bo, list) {
       assert(bo->refcnt == 0);
-      if (cnt == ARRAY_SIZE(handles)) {
-         close_handles(dev, handles, cnt);
-         cnt = 0;
-      }
-      handles[cnt] = bo_del(bo);
-      if (handles[cnt])
-         cnt++;
+      bo_del(bo);
    }
-
-   close_handles(dev, handles, cnt);
 }
 
 void
@@ -462,6 +441,10 @@ fd_bo_fini_common(struct fd_bo *bo)
 
    if (handle) {
       simple_mtx_lock(&table_lock);
+      struct drm_gem_close req = {
+         .handle = handle,
+      };
+      drmIoctl(dev->fd, DRM_IOCTL_GEM_CLOSE, &req);
       _mesa_hash_table_remove_key(dev->handle_table, &handle);
       if (bo->name)
          _mesa_hash_table_remove_key(dev->name_table, &bo->name);
@@ -469,34 +452,6 @@ fd_bo_fini_common(struct fd_bo *bo)
    }
 
    free(bo);
-}
-
-/**
- * The returned handle must be closed via a call to close_handles()
- */
-static uint32_t
-bo_del(struct fd_bo *bo)
-{
-   uint32_t handle = bo->handle;
-   bo->funcs->destroy(bo);
-   return handle;
-}
-
-static void
-close_handles(struct fd_device *dev, uint32_t *handles, unsigned cnt)
-{
-   if (!cnt)
-      return;
-
-   if (dev->funcs->flush)
-      dev->funcs->flush(dev);
-
-   for (unsigned i = 0; i < cnt; i++) {
-      struct drm_gem_close req = {
-         .handle = handles[i],
-      };
-      drmIoctl(dev->fd, DRM_IOCTL_GEM_CLOSE, &req);
-   }
 }
 
 static void
