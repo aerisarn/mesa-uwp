@@ -1138,6 +1138,9 @@ dzn_instance_create(const VkInstanceCreateInfo *pCreateInfo,
    vk_instance_dispatch_table_from_entrypoints(&dispatch_table,
                                                &dzn_instance_entrypoints,
                                                true);
+   vk_instance_dispatch_table_from_entrypoints(&dispatch_table,
+                                               &wsi_instance_entrypoints,
+                                               false);
 
    VkResult result =
       vk_instance_init(&instance->vk, &instance_extensions,
