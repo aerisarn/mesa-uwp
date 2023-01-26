@@ -263,6 +263,17 @@ Register::accept(ConstRegisterVisitor& visitor) const
 void
 Register::print(std::ostream& os) const
 {
+   if (m_flags.test(addr_or_idx)) {
+      switch (sel()) {
+      case AddressRegister::addr: os << "AR"; break;
+      case AddressRegister::idx0: os << "IDX0"; break;
+      case AddressRegister::idx1: os << "IDX1"; break;
+      default:
+         unreachable("Wrong address ID");
+      }
+      return;
+   }
+
    os << (m_flags.test(ssa) ? "S" : "R") << sel() << "." << chanchar[chan()];
 
    if (pin() != pin_none)
@@ -285,6 +296,14 @@ Register::from_string(const std::string& s)
    std::string numstr;
    char chan = 0;
    std::string pinstr;
+
+   if (s == "AR") {
+      return new AddressRegister(AddressRegister::addr);
+   } else if (s == "IDX0") {
+      return new AddressRegister(AddressRegister::idx0);
+   } else if (s == "IDX1") {
+      return new AddressRegister(AddressRegister::idx1);
+   }
 
    assert(s[0] == 'R' || s[0] == '_' || s[0] == 'S');
 

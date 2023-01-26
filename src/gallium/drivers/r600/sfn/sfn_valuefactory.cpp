@@ -648,14 +648,22 @@ split_register_string(const string& s,
 PRegister
 ValueFactory::dest_from_string(const std::string& s)
 {
-   assert(s.length() >= 4);
-
-   assert(strchr("ARS_", s[0]));
+   if (s == "AR") {
+      return new AddressRegister(AddressRegister::addr);
+   } else if (s == "IDX0") {
+      return new AddressRegister(AddressRegister::idx0);
+   } else if (s == "IDX1") {
+      return new AddressRegister(AddressRegister::idx1);
+   }
 
    string index_str;
    string size_str;
    string swizzle_str;
    string pin_str;
+
+   assert(s.length() >= 4);
+
+   assert(strchr("ARS_", s[0]));
 
    split_register_string(s, index_str, size_str, swizzle_str, pin_str);
 

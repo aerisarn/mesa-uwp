@@ -163,6 +163,7 @@ public:
       ssa,
       pin_start,
       pin_end,
+      addr_or_idx,
       flag_count
    };
 
@@ -222,6 +223,24 @@ private:
    std::bitset<flag_count> m_flags{0};
 };
 using PRegister = Register::Pointer;
+
+class AddressRegister : public Register {
+public:
+   enum Type {
+      addr,
+      idx0 = 2,
+      idx1 = 3
+   };
+   AddressRegister(Type type) :  Register(type, 0, pin_fully) {
+      set_flag(addr_or_idx);
+   }
+   Register *as_register() override { return nullptr; }
+
+protected:
+   void do_set_chan(UNUSED int c) { unreachable("Address registers must have chan 0");}
+   void set_sel_internal(UNUSED int sel) {unreachable("Address registers don't support sel override");}
+};
+
 
 inline std::ostream&
 operator<<(std::ostream& os, const Register& val)
