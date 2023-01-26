@@ -65,7 +65,7 @@ struct mme_builder;
 #define MME_CLS_TURING 0xc500
 
 struct mme_builder {
-   uint16_t cls;
+   const struct nv_device_info *devinfo;
    struct mme_reg_alloc reg_alloc;
    union {
       struct mme_tu104_builder tu104;
@@ -77,11 +77,11 @@ static inline void
 mme_builder_init(struct mme_builder *b, const struct nv_device_info *dev)
 {
    memset(b, 0, sizeof(*b));
-   b->cls = dev->cls_eng3d;
+   b->devinfo = dev;
 
-   if (b->cls >= MME_CLS_TURING)
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING)
       mme_tu104_builder_init(b);
-   else if (b->cls >= MME_CLS_FERMI)
+   else if (b->devinfo->cls_eng3d >= MME_CLS_FERMI)
       mme_fermi_builder_init(b);
    else
       unreachable("Unsupported GPU class");
@@ -90,9 +90,9 @@ mme_builder_init(struct mme_builder *b, const struct nv_device_info *dev)
 static inline uint32_t *
 mme_builder_finish(struct mme_builder *b, size_t *size_out)
 {
-   if (b->cls >= MME_CLS_TURING)
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING)
       return mme_tu104_builder_finish(&b->tu104, size_out);
-   else if (b->cls >= MME_CLS_FERMI)
+   else if (b->devinfo->cls_eng3d >= MME_CLS_FERMI)
       return mme_fermi_builder_finish(&b->fermi, size_out);
    else
       unreachable("Unsupported GPU class");
@@ -117,9 +117,9 @@ mme_alu_to(struct mme_builder *b,
            struct mme_value x,
            struct mme_value y)
 {
-   if (b->cls >= MME_CLS_TURING)
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING)
       mme_tu104_alu_to(b, dst, op, x, y);
-   else if (b->cls >= MME_CLS_FERMI)
+   else if (b->devinfo->cls_eng3d >= MME_CLS_FERMI)
       mme_fermi_alu_to(b, dst, op, x, y);
    else
       unreachable("Unsupported GPU class");
@@ -153,9 +153,9 @@ mme_alu64_to(struct mme_builder *b,
              struct mme_value64 x,
              struct mme_value64 y)
 {
-   if (b->cls >= MME_CLS_TURING)
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING)
       mme_tu104_alu64_to(b, dst, op_lo, op_hi, x, y);
-   else if (b->cls >= MME_CLS_FERMI)
+   else if (b->devinfo->cls_eng3d >= MME_CLS_FERMI)
       mme_fermi_alu64_to(b, dst, op_lo, op_hi, x, y);
    else
       unreachable("Unsupported GPU class");
@@ -329,9 +329,9 @@ mme_merge_to(struct mme_builder *b, struct mme_value dst,
              struct mme_value x, struct mme_value y,
              uint16_t dst_pos, uint16_t bits, uint16_t src_pos)
 {
-   if (b->cls >= MME_CLS_TURING)
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING)
       mme_tu104_merge_to(b, dst, x, y, dst_pos, bits, src_pos);
-  else if (b->cls >= MME_CLS_FERMI)
+  else if (b->devinfo->cls_eng3d >= MME_CLS_FERMI)
       mme_fermi_merge_to(b, dst, x, y, dst_pos, bits, src_pos);
    else
       unreachable("Unsupported GPU class");
@@ -357,9 +357,9 @@ static inline void
 mme_state_arr_to(struct mme_builder *b, struct mme_value dst,
                  uint16_t state, struct mme_value index)
 {
-   if (b->cls >= MME_CLS_TURING)
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING)
       mme_tu104_state_arr_to(b, dst, state, index);
-   else if (b->cls >= MME_CLS_FERMI)
+   else if (b->devinfo->cls_eng3d >= MME_CLS_FERMI)
       mme_fermi_state_arr_to(b, dst, state, index);
    else
       unreachable("Unsupported GPU class");
@@ -400,9 +400,9 @@ mme_dwrite(struct mme_builder *b,
 static inline void
 mme_load_to(struct mme_builder *b, struct mme_value dst)
 {
-   if (b->cls >= MME_CLS_TURING)
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING)
       mme_tu104_load_to(b, dst);
-   else if (b->cls >= MME_CLS_FERMI)
+   else if (b->devinfo->cls_eng3d >= MME_CLS_FERMI)
       mme_fermi_load_to(b, dst);
    else
       unreachable("Unsupported GPU class");
@@ -419,9 +419,9 @@ mme_tu104_load(struct mme_builder *b)
 static inline struct mme_value
 mme_load(struct mme_builder *b)
 {
-   if (b->cls >= MME_CLS_TURING)
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING)
       return mme_tu104_load(b);
-   else if (b->cls >= MME_CLS_FERMI)
+   else if (b->devinfo->cls_eng3d >= MME_CLS_FERMI)
       return mme_fermi_load(b);
    else
       unreachable("Unsupported GPU class");
@@ -439,9 +439,9 @@ static inline void
 mme_mthd_arr(struct mme_builder *b, uint16_t mthd,
              struct mme_value index)
 {
-   if (b->cls >= MME_CLS_TURING)
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING)
       mme_tu104_mthd(b, mthd, index);
-   else if (b->cls >= MME_CLS_FERMI)
+   else if (b->devinfo->cls_eng3d >= MME_CLS_FERMI)
       mme_fermi_mthd_arr(b, mthd, index);
    else
       unreachable("Unsupported GPU class");
@@ -457,9 +457,9 @@ static inline void
 mme_emit(struct mme_builder *b,
          struct mme_value data)
 {
-   if (b->cls >= MME_CLS_TURING)
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING)
       mme_tu104_emit(b, data);
-   else if (b->cls >= MME_CLS_FERMI)
+   else if (b->devinfo->cls_eng3d >= MME_CLS_FERMI)
       mme_fermi_emit(b, data);
    else
       unreachable("Unsupported GPU class");
@@ -489,9 +489,9 @@ mme_tu104_read_fifoed(struct mme_builder *b,
 static inline void
 mme_start_loop(struct mme_builder *b, struct mme_value count)
 {
-   if (b->cls >= MME_CLS_TURING)
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING)
       mme_tu104_start_loop(b, count);
-   else if (b->cls >= MME_CLS_FERMI)
+   else if (b->devinfo->cls_eng3d >= MME_CLS_FERMI)
       mme_fermi_start_loop(b, count);
    else
       unreachable("Unsupported GPU class");
@@ -500,9 +500,9 @@ mme_start_loop(struct mme_builder *b, struct mme_value count)
 static inline void
 mme_end_loop(struct mme_builder *b)
 {
-   if (b->cls >= MME_CLS_TURING)
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING)
       mme_tu104_end_loop(b);
-   else if (b->cls >= MME_CLS_FERMI)
+   else if (b->devinfo->cls_eng3d >= MME_CLS_FERMI)
       mme_fermi_end_loop(b);
    else
       unreachable("Unsupported GPU class");
@@ -517,9 +517,9 @@ static inline void                                                \
 mme_start_if_##op(struct mme_builder *b,                          \
                   struct mme_value x, struct mme_value y)         \
 {                                                                 \
-   if (b->cls >= MME_CLS_TURING)                                  \
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING)                   \
       mme_tu104_start_if(b, MME_CMP_OP_##OP, if_true, x, y);      \
-   else if (b->cls >= MME_CLS_FERMI)                              \
+   else if (b->devinfo->cls_eng3d >= MME_CLS_FERMI)               \
       mme_fermi_start_if(b, MME_CMP_OP_##OP, if_true, x, y);      \
    else                                                           \
       unreachable("Unsupported GPU class");                       \
@@ -541,9 +541,9 @@ MME_DEF_START_IF(ine,   EQ,  false)
 static inline void
 mme_end_if(struct mme_builder *b)
 {
-   if (b->cls >= MME_CLS_TURING)
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING)
       mme_tu104_end_if(b);
-   else if (b->cls >= MME_CLS_FERMI)
+   else if (b->devinfo->cls_eng3d >= MME_CLS_FERMI)
       mme_fermi_end_if(b);
    else
       unreachable("Unsupported GPU class");
@@ -556,9 +556,9 @@ mme_end_if(struct mme_builder *b)
 static inline void
 mme_start_while(struct mme_builder *b)
 {
-   if (b->cls >= MME_CLS_TURING)
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING)
       mme_tu104_start_while(b);
-   else if (b->cls >= MME_CLS_FERMI)
+   else if (b->devinfo->cls_eng3d >= MME_CLS_FERMI)
       mme_fermi_start_while(b);
    else
       unreachable("Unsupported GPU class");
@@ -569,9 +569,9 @@ static inline void                                                \
 mme_end_while_##op(struct mme_builder *b,                         \
                    struct mme_value x, struct mme_value y)        \
 {                                                                 \
-   if (b->cls >= MME_CLS_TURING)                                  \
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING)                   \
       mme_tu104_end_while(b, MME_CMP_OP_##OP, if_true, x, y);     \
-   else if (b->cls >= MME_CLS_FERMI)                              \
+   else if (b->devinfo->cls_eng3d >= MME_CLS_FERMI)               \
       mme_fermi_end_while(b, MME_CMP_OP_##OP, if_true, x, y);     \
    else                                                           \
       unreachable("Unsupported GPU class");                       \
