@@ -761,7 +761,7 @@ tu_CreateRenderPass2(VkDevice _device,
 {
    TU_FROM_HANDLE(tu_device, device, _device);
 
-   if (unlikely(device->instance->debug_flags & TU_DEBUG_DYNAMIC))
+   if (TU_DEBUG(DYNAMIC))
       return vk_common_CreateRenderPass2(_device, pCreateInfo, pAllocator,
                                          pRenderPass);
 
@@ -957,7 +957,7 @@ tu_DestroyRenderPass(VkDevice _device,
 {
    TU_FROM_HANDLE(tu_device, device, _device);
 
-   if (unlikely(device->instance->debug_flags & TU_DEBUG_DYNAMIC)) {
+   if (TU_DEBUG(DYNAMIC)) {
       vk_common_DestroyRenderPass(_device, _pass, pAllocator);
       return;
    }

@@ -4662,7 +4662,7 @@ tu_pipeline_builder_parse_rasterization_order(
    bool raster_order_attachment_access =
       pipeline->blend.raster_order_attachment_access ||
       pipeline->ds.raster_order_attachment_access ||
-      unlikely(builder->device->physical_device->instance->debug_flags & TU_DEBUG_RAST_ORDER);
+      TU_DEBUG(RAST_ORDER);
 
    /* VK_EXT_blend_operation_advanced would also require ordered access
     * when implemented in the future.
@@ -4957,7 +4957,7 @@ tu_pipeline_builder_init_graphics(
       const VkPipelineRenderingCreateInfo *rendering_info =
          vk_find_struct_const(create_info->pNext, PIPELINE_RENDERING_CREATE_INFO);
 
-      if (unlikely(dev->instance->debug_flags & TU_DEBUG_DYNAMIC) && !rendering_info)
+      if (TU_DEBUG(DYNAMIC) && !rendering_info)
          rendering_info = vk_get_pipeline_rendering_create_info(create_info);
 
       /* Get multiview_mask, which is only used for shaders */

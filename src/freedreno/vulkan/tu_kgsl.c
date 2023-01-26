@@ -263,7 +263,7 @@ tu_enumerate_devices(struct vk_instance *vk_instance)
 
    /* kgsl version check? */
 
-   if (instance->debug_flags & TU_DEBUG_STARTUP)
+   if (TU_DEBUG(STARTUP))
       mesa_logi("Found compatible device '%s'.", path);
 
    device->instance = instance;
@@ -377,8 +377,7 @@ tu_QueueSubmit2(VkQueue _queue,
    TU_FROM_HANDLE(tu_syncobj, fence, _fence);
    VkResult result = VK_SUCCESS;
 
-   if (unlikely(queue->device->physical_device->instance->debug_flags &
-                 TU_DEBUG_LOG_SKIP_GMEM_OPS)) {
+   if (TU_DEBUG(LOG_SKIP_GMEM_OPS)) {
       tu_dbg_log_gmem_load_store_skips(queue->device);
    }
 
