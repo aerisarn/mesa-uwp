@@ -63,7 +63,7 @@
            $CI_PIPELINE_SOURCE == "merge_request_event"' &&
            $GITLAB_USER_LOGIN !~ "/performance$/")
       when: never
-    - !reference [.no_scheduled_pipelines-rules, rules]
+    - !reference [.scheduled_pipeline-rules, rules]
     - changes:
         *core_file_list
       when: manual
@@ -649,7 +649,6 @@
 .iris-manual-rules:
   stage: intel
   rules:
-    - !reference [.no_scheduled_pipelines-rules, rules]
     - !reference [.collabora-farm-rules, rules]
     - !reference [.gl-manual-rules, rules]
     - changes:
@@ -682,7 +681,6 @@
 .anv-manual-rules:
   stage: intel
   rules:
-    - !reference [.no_scheduled_pipelines-rules, rules]
     - !reference [.collabora-farm-rules, rules]
     - !reference [.vulkan-manual-rules, rules]
     - changes:
