@@ -69,7 +69,7 @@ zink-anv-tgl:
 zink-anv-tgl-full:
   extends:
     - zink-anv-tgl
-    - .test-manual-mr
+    - .zink-anv-manual-rules
   variables:
     DEQP_SUITE: zink-anv-tgl-full
     JOB_TIMEOUT: 90

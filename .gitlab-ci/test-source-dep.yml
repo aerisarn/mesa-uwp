@@ -679,6 +679,16 @@
       - src/intel/**/*
       when: on_success
 
+.anv-manual-rules:
+  stage: intel
+  rules:
+    - !reference [.no_scheduled_pipelines-rules, rules]
+    - !reference [.collabora-farm-rules, rules]
+    - !reference [.vulkan-manual-rules, rules]
+    - changes:
+      - src/intel/**/*
+      when: on_success
+
 .intel-rules:
   stage: intel
   rules:
@@ -699,6 +709,13 @@
       - src/gallium/drivers/zink/**/*
       when: on_success
 
+.zink-common-manual-rules:
+  rules:
+    - !reference [.gl-manual-rules, rules]
+    - changes:
+      - src/gallium/drivers/zink/**/*
+      when: manual
+
 .zink-lvp-rules:
   stage: layered-backends
   rules:
@@ -710,6 +727,12 @@
   rules:
     - !reference [.anv-rules, rules]
     - !reference [.zink-common-rules, rules]
+
+.zink-anv-manual-rules:
+  stage: layered-backends
+  rules:
+    - !reference [.anv-manual-rules, rules]
+    - !reference [.zink-common-manual-rules, rules]
 
 .zink-anv-rules-restricted:
   stage: layered-backends
