@@ -73,7 +73,7 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
 
    for (uint32_t mme = 0, mme_pos = 0; mme < NVK_MME_COUNT; mme++) {
       size_t size;
-      uint32_t *dw = nvk_build_mme(dev, mme, &size);
+      uint32_t *dw = nvk_build_mme(&nvk_device_physical(dev)->info, mme, &size);
       if (dw == NULL)
          return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -1568,7 +1568,7 @@ nvk_mme_build_draw(struct mme_builder *b, struct mme_value begin)
 }
 
 void
-nvk_mme_draw(struct nvk_device *dev, struct mme_builder *b)
+nvk_mme_draw(struct mme_builder *b)
 {
    struct mme_value begin = mme_load(b);
 
@@ -1672,7 +1672,7 @@ nvk_mme_build_draw_indexed(struct mme_builder *b,
 }
 
 void
-nvk_mme_draw_indexed(struct nvk_device *dev, struct mme_builder *b)
+nvk_mme_draw_indexed(struct mme_builder *b)
 {
    struct mme_value begin = mme_load(b);
 
@@ -1731,11 +1731,11 @@ nvk_mme_fill(struct mme_builder *b, uint16_t idx)
 }
 
 void
-nvk_mme_draw_indirect(struct nvk_device *dev, struct mme_builder *b)
+nvk_mme_draw_indirect(struct mme_builder *b)
 {
    struct mme_value begin = mme_load(b);
 
-   if (dev->pdev->info.cls_eng3d >= TURING_A) {
+   if (b->devinfo->cls_eng3d >= TURING_A) {
       struct mme_value64 draw_addr = mme_load_addr64(b);
       struct mme_value draw_count = mme_load(b);
       struct mme_value stride = mme_load(b);
@@ -1846,11 +1846,11 @@ nvk_CmdDrawIndirect(VkCommandBuffer commandBuffer,
 }
 
 void
-nvk_mme_draw_indexed_indirect(struct nvk_device *dev, struct mme_builder *b)
+nvk_mme_draw_indexed_indirect(struct mme_builder *b)
 {
    struct mme_value begin = mme_load(b);
 
-   if (dev->pdev->info.cls_eng3d >= TURING_A) {
+   if (b->devinfo->cls_eng3d >= TURING_A) {
       struct mme_value64 draw_addr = mme_load_addr64(b);
       struct mme_value draw_count = mme_load(b);
       struct mme_value stride = mme_load(b);

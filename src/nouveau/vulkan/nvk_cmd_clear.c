@@ -12,8 +12,7 @@
 #include "nvk_cl9097.h"
 #include "drf.h"
 
-void nvk_mme_clear_views(struct nvk_device *dev,
-                         struct mme_builder *b)
+void nvk_mme_clear_views(struct mme_builder *b)
 {
    struct mme_value payload = mme_load(b);
    struct mme_value view_mask = mme_load(b);
@@ -32,8 +31,7 @@ void nvk_mme_clear_views(struct nvk_device *dev,
    }
 }
 
-void nvk_mme_clear_layers(struct nvk_device *dev,
-                          struct mme_builder *b)
+void nvk_mme_clear_layers(struct mme_builder *b)
 {
    struct mme_value payload = mme_load(b);
    struct mme_value layer_count = mme_load(b);

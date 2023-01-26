@@ -54,9 +54,9 @@ nvc0c0_qmd_set_dispatch_size(UNUSED struct nvk_device *dev, uint32_t *qmd,
 }
 
 static uint32_t
-qmd_dispatch_size_offset(struct nvk_device *dev)
+qmd_dispatch_size_offset(const struct nv_device_info *devinfo)
 {
-   assert(dev->pdev->info.cls_compute >= VOLTA_COMPUTE_A);
+   assert(devinfo->cls_compute >= VOLTA_COMPUTE_A);
    uint32_t bit = DRF_LO(DRF_MW(NVC3C0_QMDV02_02_CTA_RASTER_WIDTH));
    assert(bit % 32 == 0);
    assert(DRF_LO(DRF_MW(NVC3C0_QMDV02_02_CTA_RASTER_HEIGHT)) == bit + 32);
@@ -186,7 +186,7 @@ nvk_build_mme_add_cs_invocations(struct mme_builder *b,
 }
 
 void
-nvk_mme_add_cs_invocations(struct nvk_device *dev, struct mme_builder *b)
+nvk_mme_add_cs_invocations(struct mme_builder *b)
 {
    struct mme_value count_hi = mme_load(b);
    struct mme_value count_lo = mme_load(b);
@@ -276,9 +276,9 @@ mme_store_global_vec3(struct mme_builder *b,
 }
 
 void
-nvk_mme_dispatch_indirect(struct nvk_device *dev, struct mme_builder *b)
+nvk_mme_dispatch_indirect(struct mme_builder *b)
 {
-   if (dev->pdev->info.cls_eng3d < TURING_A)
+   if (b->devinfo->cls_eng3d < TURING_A)
       return;
 
    struct mme_value local_size = mme_load(b);
@@ -288,7 +288,7 @@ nvk_mme_dispatch_indirect(struct nvk_device *dev, struct mme_builder *b)
 
    mme_tu104_read_fifoed(b, dispatch_addr, mme_imm(3));
 
-   uint32_t qmd_size_offset = qmd_dispatch_size_offset(dev);
+   uint32_t qmd_size_offset = qmd_dispatch_size_offset(b->devinfo);
    uint32_t root_desc_size_offset =
       offsetof(struct nvk_root_descriptor_table, cs.group_count);
 

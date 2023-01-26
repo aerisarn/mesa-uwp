@@ -1,7 +1,6 @@
 #include "nvk_mme.h"
 
-#include "nvk_device.h"
-#include "nvk_physical_device.h"
+#include "nvk_private.h"
 
 static const nvk_mme_builder_func mme_builders[NVK_MME_COUNT] = {
    [NVK_MME_CLEAR_VIEWS]            = nvk_mme_clear_views,
@@ -17,12 +16,13 @@ static const nvk_mme_builder_func mme_builders[NVK_MME_COUNT] = {
 };
 
 uint32_t *
-nvk_build_mme(struct nvk_device *dev, enum nvk_mme mme, size_t *size_out)
+nvk_build_mme(const struct nv_device_info *devinfo,
+              enum nvk_mme mme, size_t *size_out)
 {
    struct mme_builder b;
-   mme_builder_init(&b, &nvk_device_physical(dev)->info);
+   mme_builder_init(&b, devinfo);
 
-   mme_builders[mme](dev, &b);
+   mme_builders[mme](&b);
 
    return mme_builder_finish(&b, size_out);
 }
@@ -30,16 +30,9 @@ nvk_build_mme(struct nvk_device *dev, enum nvk_mme mme, size_t *size_out)
 void
 nvk_test_build_all_mmes(const struct nv_device_info *devinfo)
 {
-   struct nvk_physical_device pdev = { .info = *devinfo };
-   vk_object_base_init(NULL, &pdev.vk.base, VK_OBJECT_TYPE_PHYSICAL_DEVICE);
-
-   struct nvk_device dev = { .pdev = &pdev };
-   vk_object_base_init(NULL, &dev.vk.base, VK_OBJECT_TYPE_DEVICE);
-   dev.vk.physical = &pdev.vk;
-
    for (uint32_t mme = 0; mme < NVK_MME_COUNT; mme++) {
       size_t size;
-      uint32_t *dw = nvk_build_mme(&dev, mme, &size);
+      uint32_t *dw = nvk_build_mme(devinfo, mme, &size);
       assert(dw != NULL);
       free(dw);
    }

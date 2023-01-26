@@ -289,7 +289,7 @@ mme_store_global(struct mme_builder *b,
 }
 
 void
-nvk_mme_write_cs_invocations(struct nvk_device *dev, struct mme_builder *b)
+nvk_mme_write_cs_invocations(struct mme_builder *b)
 {
    struct mme_value64 dst_addr = mme_load_addr64(b);
 
@@ -534,9 +534,9 @@ nvk_GetQueryPoolResults(VkDevice device,
 }
 
 void
-nvk_mme_copy_queries(struct nvk_device *dev, struct mme_builder *b)
+nvk_mme_copy_queries(struct mme_builder *b)
 {
-   if (dev->pdev->info.cls_eng3d < TURING_A)
+   if (b->devinfo->cls_eng3d < TURING_A)
       return;
 
    struct mme_value64 dst_addr = mme_load_addr64(b);
