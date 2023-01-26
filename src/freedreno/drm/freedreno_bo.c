@@ -298,6 +298,20 @@ fd_bo_ref(struct fd_bo *bo)
 static uint32_t bo_del(struct fd_bo *bo);
 static void close_handles(struct fd_device *dev, uint32_t *handles, unsigned cnt);
 
+static void
+bo_finalize(struct fd_bo *bo)
+{
+   if (bo->funcs->finalize)
+      bo->funcs->finalize(bo);
+}
+
+static void
+dev_flush(struct fd_device *dev)
+{
+   if (dev->funcs->flush)
+      dev->funcs->flush(dev);
+}
+
 static bool
 try_recycle(struct fd_bo *bo)
 {
@@ -327,6 +341,9 @@ fd_bo_del(struct fd_bo *bo)
 
    struct fd_device *dev = bo->dev;
 
+   bo_finalize(bo);
+   dev_flush(dev);
+
    uint32_t handle = bo_del(bo);
    if (handle)
       close_handles(dev, &handle, 1);
@@ -349,8 +366,13 @@ fd_bo_del_array(struct fd_bo **bos, int count)
    for (int i = 0; i < count; i++) {
       if (!unref(&bos[i]->refcnt) || try_recycle(bos[i])) {
          bos[i--] = bos[--count];
+      } else {
+         /* We are going to delete this one, so finalize it first: */
+         bo_finalize(bos[i]);
       }
    }
+
+   dev_flush(dev);
 
    /*
     * Second pass, delete all of the objects remaining after first pass.
@@ -386,6 +408,12 @@ fd_bo_del_list_nocache(struct list_head *list)
    struct fd_device *dev = first_bo(list)->dev;
    uint32_t handles[64];
    unsigned cnt = 0;
+
+   foreach_bo (bo, list) {
+      bo_finalize(bo);
+   }
+
+   dev_flush(dev);
 
    foreach_bo_safe (bo, list) {
       assert(bo->refcnt == 0);
@@ -439,6 +467,8 @@ fd_bo_fini_common(struct fd_bo *bo)
          _mesa_hash_table_remove_key(dev->name_table, &bo->name);
       simple_mtx_unlock(&table_lock);
    }
+
+   free(bo);
 }
 
 /**
