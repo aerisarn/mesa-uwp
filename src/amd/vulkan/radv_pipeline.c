@@ -975,15 +975,18 @@ radv_graphics_pipeline_import_lib(struct radv_graphics_pipeline *pipeline,
 
    vk_graphics_pipeline_state_merge(state, &lib->graphics_state);
 
-   /* Import the NIR shaders (after SPIRV->NIR). */
-   for (uint32_t s = 0; s < ARRAY_SIZE(lib->base.base.shaders); s++) {
-      if (!lib->base.base.retained_shaders[s].nir)
-         continue;
+   /* When link time optimization is enabled, import the retained NIR shaders from the library.
+    * Otherwise, import the compiled binaries (ie. fast link).
+    */
+   if (link_optimize) {
+      /* Import the NIR shaders (after SPIRV->NIR). */
+      for (uint32_t s = 0; s < ARRAY_SIZE(lib->base.base.shaders); s++) {
+         if (!lib->base.base.retained_shaders[s].nir)
+            continue;
 
-      pipeline->base.retained_shaders[s] = lib->base.base.retained_shaders[s];
-   }
-
-   if (!link_optimize) {
+         pipeline->base.retained_shaders[s] = lib->base.base.retained_shaders[s];
+      }
+   } else {
       /* Import the compiled shaders. */
       for (uint32_t s = 0; s < ARRAY_SIZE(lib->base.base.shaders); s++) {
          if (!lib->base.base.shaders[s])
@@ -3112,14 +3115,6 @@ radv_pipeline_nir_to_asm(struct radv_pipeline *pipeline, struct radv_pipeline_st
 }
 
 static void
-radv_pipeline_stage_retain_shader(struct radv_pipeline *pipeline, struct radv_pipeline_stage *stage)
-{
-   gl_shader_stage s = stage->stage;
-
-   pipeline->retained_shaders[s].nir = stage->nir;
-}
-
-static void
 radv_pipeline_get_nir(struct radv_pipeline *pipeline, struct radv_pipeline_stage *stages,
                       const struct radv_pipeline_key *pipeline_key, bool retain_shaders)
 {
@@ -3138,14 +3133,17 @@ radv_pipeline_get_nir(struct radv_pipeline *pipeline, struct radv_pipeline_stage
       assert(retain_shaders || pipeline->shaders[s] == NULL);
 
       if (pipeline->retained_shaders[s].nir) {
+         /* Clone the NIR shader because it's imported from a library. */
          stages[s].nir = nir_shader_clone(NULL, pipeline->retained_shaders[s].nir);
       } else {
          stages[s].nir = radv_shader_spirv_to_nir(device, &stages[s], pipeline_key,
                                                   pipeline->is_internal);
       }
 
-      if (retain_shaders)
-         radv_pipeline_stage_retain_shader(pipeline, &stages[s]);
+      if (retain_shaders) {
+         /* Clone the NIR shader because NIR passes after this step will change it. */
+         pipeline->retained_shaders[s].nir = nir_shader_clone(NULL, stages[s].nir);
+      }
 
       stages[s].feedback.duration += os_time_get_nano() - stage_start;
    }
@@ -3496,11 +3494,6 @@ radv_graphics_pipeline_compile(struct radv_pipeline *pipeline,
    }
 
    radv_pipeline_get_nir(pipeline, stages, pipeline_key, retain_shaders);
-
-   if (retain_shaders) {
-      result = VK_SUCCESS;
-      goto done;
-   }
 
    /* Force per-vertex VRS. */
    if (radv_consider_force_vrs(pipeline, noop_fs, stages, *last_vgt_api_stage)) {
