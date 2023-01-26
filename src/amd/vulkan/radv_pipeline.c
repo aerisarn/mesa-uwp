@@ -3512,19 +3512,6 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
 
    radv_pipeline_load_retained_shaders(pipeline, stages);
 
-   ASSERTED bool primitive_shading =
-      stages[MESA_SHADER_VERTEX].entrypoint || stages[MESA_SHADER_TESS_CTRL].entrypoint ||
-      stages[MESA_SHADER_TESS_EVAL].entrypoint || stages[MESA_SHADER_GEOMETRY].entrypoint;
-   ASSERTED bool mesh_shading =
-      stages[MESA_SHADER_MESH].entrypoint;
-
-   /* Primitive and mesh shading must not be mixed in the same pipeline. */
-   assert(!primitive_shading || !mesh_shading);
-   /* Mesh shaders are mandatory in mesh shading pipelines. */
-   assert(mesh_shading == !!stages[MESA_SHADER_MESH].entrypoint);
-   /* Mesh shaders always need NGG. */
-   assert(!mesh_shading || pipeline_key->use_ngg);
-
    if (!fast_linking_enabled) {
       radv_hash_shaders(hash, stages, MESA_VULKAN_SHADER_STAGES, pipeline_layout, pipeline_key,
                         radv_get_hash_flags(device, keep_statistic_info));
