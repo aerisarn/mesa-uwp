@@ -110,7 +110,7 @@ public:
    std::set<int> vtx_fetch_results;
    std::set<int> tex_fetch_results;
 
-   PRegister m_last_addr{nullptr};
+   const VirtualValue *m_last_addr{nullptr};
 
    unsigned m_max_color_exports{0};
    int m_loop_nesting{0};
@@ -288,6 +288,16 @@ AssamblerVisitor::emit_alu_op(const AluInstr& ai)
    if (m_legacy_math_rules)
        opcode = translate_for_mathrules(opcode);
 
+   if (opcode == op1_mova_int) {
+      m_bc->ar_loaded = 1;
+      m_last_addr = ai.psrc(0);
+      m_bc->ar_chan = m_last_addr->chan();
+      m_bc->ar_reg = m_last_addr->sel();
+      // TODO: this must be deducted correctly or in the scheduler
+      // we have to inject nop instructions to fix the aliasing problem
+      r600_load_ar(m_bc, true);
+   }
+
    auto hw_opcode = opcode_map.find(opcode);
 
    if (hw_opcode == opcode_map.end()) {
@@ -399,8 +409,6 @@ AssamblerVisitor::emit_alu_op(const AluInstr& ai)
 
    m_result = !r600_bytecode_add_alu_type(m_bc, &alu, type);
 
-   if (ai.opcode() == op1_mova_int)
-      m_bc->ar_loaded = 0;
 
    if (ai.opcode() == op1_set_cf_idx0)
       m_bc->index_loaded[0] = 1;
