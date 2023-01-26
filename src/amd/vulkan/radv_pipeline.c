@@ -3465,7 +3465,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
       radv_pipeline_capture_shaders(pipeline->base.device, pCreateInfo->flags);
    bool keep_statistic_info =
       radv_pipeline_capture_shader_stats(pipeline->base.device, pCreateInfo->flags);
-   struct radv_pipeline_stage stages[MESA_VULKAN_SHADER_STAGES] = {0};
+   struct radv_pipeline_stage stages[MESA_VULKAN_SHADER_STAGES];
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
    VkPipelineCreationFeedback pipeline_feedback = {
@@ -3489,6 +3489,12 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
        (pCreateInfo->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR) ||
        (lib_flags & ALL_GRAPHICS_LIB_FLAGS) != ALL_GRAPHICS_LIB_FLAGS) {
       skip_shaders_cache = true;
+   }
+
+   for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
+      stages[i].entrypoint = NULL;
+      stages[i].nir = NULL;
+      stages[i].spirv.size = 0;
    }
 
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
