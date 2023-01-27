@@ -387,6 +387,9 @@ dzn_physical_device_create(struct vk_instance *instance,
    }
 
    dzn_physical_device_get_extensions(pdev);
+   if (driQueryOptionb(&dzn_instance->dri_options, "dzn_enable_8bit_loads_stores") &&
+       pdev->options4.Native16BitShaderOpsSupported)
+      pdev->vk.supported_extensions.KHR_8bit_storage = true;
 
    return VK_SUCCESS;
 }
@@ -1132,6 +1135,7 @@ dzn_enumerate_physical_devices(struct vk_instance *instance)
 static const driOptionDescription dzn_dri_options[] = {
    DRI_CONF_SECTION_DEBUG
       DRI_CONF_DZN_CLAIM_WIDE_LINES(false)
+      DRI_CONF_DZN_ENABLE_8BIT_LOADS_STORES(false)
    DRI_CONF_SECTION_END
 };
 
@@ -1383,17 +1387,19 @@ dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    };
 
    bool support_descriptor_indexing = pdev->shader_model >= D3D_SHADER_MODEL_6_6;
+   bool support_8bit = driQueryOptionb(&instance->dri_options, "dzn_enable_8bit_loads_stores") &&
+      pdev->options4.Native16BitShaderOpsSupported;
    const VkPhysicalDeviceVulkan12Features core_1_2 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
       .samplerMirrorClampToEdge           = false,
       .drawIndirectCount                  = true,
-      .storageBuffer8BitAccess            = false,
-      .uniformAndStorageBuffer8BitAccess  = false,
-      .storagePushConstant8               = false,
+      .storageBuffer8BitAccess            = support_8bit,
+      .uniformAndStorageBuffer8BitAccess  = support_8bit,
+      .storagePushConstant8               = support_8bit,
       .shaderBufferInt64Atomics           = false,
       .shaderSharedInt64Atomics           = false,
       .shaderFloat16                      = pdev->options4.Native16BitShaderOpsSupported,
-      .shaderInt8                         = false,
+      .shaderInt8                         = support_8bit,
 
       .descriptorIndexing                                   = support_descriptor_indexing,
       .shaderInputAttachmentArrayDynamicIndexing            = true,
