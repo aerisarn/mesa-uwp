@@ -1,4 +1,4 @@
-# LLVM 15.0.1
+# LLVM 16.0.0
 
 # piglit failures
 glx@glx-make-current,Crash
@@ -145,3 +145,5 @@ KHR-GL46.sparse_texture2_tests.StandardPageSizesTestCase,Fail
 KHR-GL46.sparse_texture2_tests.UncommittedRegionsAccess,Fail
 KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupColor,Fail
 KHR-GL46.sparse_texture_clamp_tests.SparseTextureClampLookupResidency,Fail
+KHR-GL46.shader_image_load_store.basic-allTargets-atomic,Fail
+KHR-Single-GL46.enhanced_layouts.xfb_capture_inactive_output_component,Fail
