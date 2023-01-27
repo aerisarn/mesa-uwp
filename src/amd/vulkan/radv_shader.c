@@ -1200,9 +1200,6 @@ radv_lower_view_index(nir_shader *nir, bool per_primitive)
 void
 radv_lower_io(struct radv_device *device, nir_shader *nir)
 {
-   if (nir->info.stage == MESA_SHADER_COMPUTE)
-      return;
-
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs, MESA_SHADER_FRAGMENT);
    }
