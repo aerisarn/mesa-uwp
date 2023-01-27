@@ -181,7 +181,6 @@ dzn_meta_blits_get_context(struct dzn_device *device,
 struct dzn_physical_device {
    struct vk_physical_device vk;
 
-   struct vk_device_extension_table supported_extensions;
    struct vk_physical_device_dispatch_table dispatch;
 
    IUnknown *adapter;
