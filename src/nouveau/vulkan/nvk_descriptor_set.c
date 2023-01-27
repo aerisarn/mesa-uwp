@@ -133,12 +133,13 @@ write_buffer_view_desc(struct nvk_descriptor_set *set,
                        const VkBufferView bufferView,
                        uint32_t binding, uint32_t elem)
 {
-   VK_FROM_HANDLE(nvk_buffer_view, view, bufferView);
+   struct nvk_image_descriptor desc = { };
+   if (bufferView != VK_NULL_HANDLE) {
+      VK_FROM_HANDLE(nvk_buffer_view, view, bufferView);
 
-   assert(view->desc_index < (1 << 20));
-   struct nvk_image_descriptor desc = {
-      .image_index = view->desc_index,
-   };
+      assert(view->desc_index < (1 << 20));
+      desc.image_index = view->desc_index;
+   }
    write_desc(set, binding, elem, &desc, sizeof(desc));
 }
 
