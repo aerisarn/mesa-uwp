@@ -4504,13 +4504,9 @@ radv_flush_indirect_descriptor_sets(struct radv_cmd_buffer *cmd_buffer,
    if (bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS) {
       struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
 
-      if (pipeline->shaders[MESA_SHADER_VERTEX])
-         radv_emit_userdata_address(device, cs, pipeline, MESA_SHADER_VERTEX,
-                                    AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
-
-      if (pipeline->shaders[MESA_SHADER_FRAGMENT])
-         radv_emit_userdata_address(device, cs, pipeline, MESA_SHADER_FRAGMENT,
-                                    AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
+      for (unsigned s = MESA_SHADER_VERTEX; s <= MESA_SHADER_FRAGMENT; s++)
+         if (radv_pipeline_has_stage(graphics_pipeline, s))
+            radv_emit_userdata_address(device, cs, pipeline, s, AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
 
       if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_MESH))
          radv_emit_userdata_address(device, cs, pipeline, MESA_SHADER_MESH,
@@ -4518,18 +4514,6 @@ radv_flush_indirect_descriptor_sets(struct radv_cmd_buffer *cmd_buffer,
 
       if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TASK))
          radv_emit_userdata_address(device, cmd_buffer->ace_internal.cs, pipeline, MESA_SHADER_TASK,
-                                    AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
-
-      if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_GEOMETRY))
-         radv_emit_userdata_address(device, cs, pipeline, MESA_SHADER_GEOMETRY,
-                                    AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
-
-      if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TESS_CTRL))
-         radv_emit_userdata_address(device, cs, pipeline, MESA_SHADER_TESS_CTRL,
-                                    AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
-
-      if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TESS_EVAL))
-         radv_emit_userdata_address(device, cs, pipeline, MESA_SHADER_TESS_EVAL,
                                     AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
    } else {
       radv_emit_userdata_address(device, cs, pipeline, MESA_SHADER_COMPUTE,
