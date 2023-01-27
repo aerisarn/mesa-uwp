@@ -579,7 +579,7 @@ wsi_win32_acquire_next_image(struct wsi_swapchain *drv_chain,
    uint32_t index = chain->dxgi->GetCurrentBackBufferIndex();
    if (chain->wsi->wsi->WaitForFences(chain->base.device, 1,
                                       &chain->base.fences[index],
-                                      false, 2000) != VK_SUCCESS)
+                                      false, info->timeout) != VK_SUCCESS)
       return VK_TIMEOUT;
 
    *image_index = index;
