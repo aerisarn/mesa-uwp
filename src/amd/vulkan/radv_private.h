@@ -1936,7 +1936,7 @@ void radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo,
                               struct radv_pipeline_stage *out_stage, gl_shader_stage stage);
 
 void radv_hash_shaders(unsigned char *hash, const struct radv_pipeline_stage *stages,
-                       const struct radv_pipeline_layout *layout,
+                       uint32_t stage_count, const struct radv_pipeline_layout *layout,
                        const struct radv_pipeline_key *key, uint32_t flags);
 
 void radv_hash_rt_shaders(unsigned char *hash, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,

@@ -3453,7 +3453,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    if (custom_hash)
       memcpy(hash, custom_hash, 20);
    else {
-      radv_hash_shaders(hash, stages, pipeline_layout, pipeline_key,
+      radv_hash_shaders(hash, stages, MESA_VULKAN_SHADER_STAGES, pipeline_layout, pipeline_key,
                         radv_get_hash_flags(device, keep_statistic_info));
    }
 
