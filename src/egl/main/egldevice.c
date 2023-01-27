@@ -316,7 +316,13 @@ _eglQueryDevicesEXT(EGLint max_devices,
 
    num_devs = _eglRefreshDeviceList();
    devs = _eglGlobal.DeviceList;
+
+#ifdef GALLIUM_SOFTPIPE
    swrast = devs;
+#else
+   swrast = NULL;
+   num_devs--;
+#endif
 
    /* The first device is swrast. Start with the non-swrast device. */
    devs = devs->Next;
@@ -340,7 +346,7 @@ _eglQueryDevicesEXT(EGLint max_devices,
    }
 
    /* User requested the full device list, add the sofware device. */
-   if (max_devices >= num_devs) {
+   if (max_devices >= num_devs && swrast) {
       assert(_eglDeviceSupports(swrast, _EGL_DEVICE_SOFTWARE));
       devices[num_devs - 1] = swrast;
    }
