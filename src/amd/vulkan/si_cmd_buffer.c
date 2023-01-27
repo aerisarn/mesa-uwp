@@ -999,7 +999,7 @@ si_cs_emit_write_event_eop(struct radeon_cmdbuf *cs, enum amd_gfx_level gfx_leve
        */
       if (gfx_level == GFX9 && !is_mec) {
          radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 2, 0));
-         radeon_emit(cs, EVENT_TYPE(EVENT_TYPE_ZPASS_DONE) | EVENT_INDEX(1));
+         radeon_emit(cs, EVENT_TYPE(V_028A90_ZPASS_DONE) | EVENT_INDEX(1));
          radeon_emit(cs, gfx9_eop_bug_va);
          radeon_emit(cs, gfx9_eop_bug_va >> 32);
       }

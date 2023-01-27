@@ -10852,7 +10852,7 @@ radv_flush_vgt_streamout(struct radv_cmd_buffer *cmd_buffer)
    }
 
    radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-   radeon_emit(cs, EVENT_TYPE(EVENT_TYPE_SO_VGTSTREAMOUT_FLUSH) | EVENT_INDEX(0));
+   radeon_emit(cs, EVENT_TYPE(V_028A90_SO_VGTSTREAMOUT_FLUSH) | EVENT_INDEX(0));
 
    radeon_emit(cs, PKT3(PKT3_WAIT_REG_MEM, 5, 0));
    radeon_emit(cs,
