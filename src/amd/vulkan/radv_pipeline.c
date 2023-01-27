@@ -682,6 +682,11 @@ radv_dynamic_state_mask(VkDynamicState state)
    }
 }
 
+#define RADV_DYNAMIC_CB_STATES \
+   (RADV_DYNAMIC_LOGIC_OP_ENABLE | RADV_DYNAMIC_LOGIC_OP | RADV_DYNAMIC_COLOR_WRITE_ENABLE | \
+    RADV_DYNAMIC_COLOR_WRITE_MASK | RADV_DYNAMIC_COLOR_BLEND_ENABLE | \
+    RADV_DYNAMIC_COLOR_BLEND_EQUATION | RADV_DYNAMIC_BLEND_CONSTANTS)
+
 static bool
 radv_pipeline_is_blend_enabled(const struct radv_graphics_pipeline *pipeline,
                                const struct vk_color_blend_state *cb)
@@ -692,13 +697,8 @@ radv_pipeline_is_blend_enabled(const struct radv_graphics_pipeline *pipeline,
             return true;
       }
    } else {
-      const uint64_t cb_dynamic_states =
-         RADV_DYNAMIC_LOGIC_OP_ENABLE | RADV_DYNAMIC_LOGIC_OP | RADV_DYNAMIC_COLOR_WRITE_ENABLE |
-         RADV_DYNAMIC_COLOR_WRITE_MASK | RADV_DYNAMIC_COLOR_BLEND_ENABLE |
-         RADV_DYNAMIC_COLOR_BLEND_EQUATION | RADV_DYNAMIC_BLEND_CONSTANTS;
-
       /* When all color blend states are dynamic, it's allowed to be NULL. */
-      if ((pipeline->dynamic_states & cb_dynamic_states) == cb_dynamic_states)
+      if ((pipeline->dynamic_states & RADV_DYNAMIC_CB_STATES) == RADV_DYNAMIC_CB_STATES)
          return true;
    }
 
@@ -765,7 +765,7 @@ radv_pipeline_needed_dynamic_state(const struct radv_graphics_pipeline *pipeline
       states &= ~RADV_DYNAMIC_BLEND_CONSTANTS;
 
    if (!has_color_att)
-      states &= ~RADV_DYNAMIC_COLOR_WRITE_ENABLE;
+      states &= ~RADV_DYNAMIC_CB_STATES;
 
    if (!(pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT))
       states &= ~(RADV_DYNAMIC_PATCH_CONTROL_POINTS | RADV_DYNAMIC_TESS_DOMAIN_ORIGIN);
@@ -1204,7 +1204,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       dynamic->vk.rs.rasterizer_discard_enable = state->rs->rasterizer_discard_enable;
    }
 
-   if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_LOGIC_OP) {
+   if (states & RADV_DYNAMIC_LOGIC_OP) {
       if ((pipeline->dynamic_states & RADV_DYNAMIC_LOGIC_OP_ENABLE) || state->cb->logic_op_enable) {
          dynamic->vk.cb.logic_op = si_translate_blend_logic_op(state->cb->logic_op);
       }
@@ -1226,7 +1226,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       dynamic->vk.ts.domain_origin = state->ts->domain_origin;
    }
 
-   if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_LOGIC_OP_ENABLE) {
+   if (states & RADV_DYNAMIC_LOGIC_OP_ENABLE) {
       dynamic->vk.cb.logic_op_enable = state->cb->logic_op_enable;
    }
 
@@ -1263,13 +1263,13 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       dynamic->vk.rs.depth_clamp_enable = state->rs->depth_clamp_enable;
    }
 
-   if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_COLOR_WRITE_MASK) {
+   if (states & RADV_DYNAMIC_COLOR_WRITE_MASK) {
       for (unsigned i = 0; i < state->cb->attachment_count; i++) {
          dynamic->vk.cb.attachments[i].write_mask = state->cb->attachments[i].write_mask;
       }
    }
 
-   if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_COLOR_BLEND_ENABLE) {
+   if (states & RADV_DYNAMIC_COLOR_BLEND_ENABLE) {
       for (unsigned i = 0; i < state->cb->attachment_count; i++) {
          dynamic->vk.cb.attachments[i].blend_enable = state->cb->attachments[i].blend_enable;
       }
@@ -1283,7 +1283,7 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       dynamic->vk.rs.line.mode = state->rs->line.mode;
    }
 
-   if (radv_pipeline_has_color_attachments(state->rp) && states & RADV_DYNAMIC_COLOR_BLEND_EQUATION) {
+   if (states & RADV_DYNAMIC_COLOR_BLEND_EQUATION) {
       for (unsigned i = 0; i < state->cb->attachment_count; i++) {
          const struct vk_color_blend_attachment_state *att = &state->cb->attachments[i];
 
