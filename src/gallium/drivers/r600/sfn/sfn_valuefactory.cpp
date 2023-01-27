@@ -346,6 +346,29 @@ ValueFactory::dest_vec4(const nir_dest& dst, Pin pin)
    unreachable("unsupported");
 }
 
+PRegister ValueFactory::addr()
+{
+    if (!m_ar)
+        m_ar = new AddressRegister(AddressRegister::addr);
+    return m_ar;
+}
+
+PRegister ValueFactory::idx_reg(unsigned idx)
+{
+
+    if (idx == 0) {
+        if (!m_idx0)
+            m_idx0 = new AddressRegister(AddressRegister::idx0);
+        return m_idx0;
+    } else {
+        assert(idx == 1);
+        if (!m_idx1)
+            m_idx1 = new AddressRegister(AddressRegister::idx1);
+        return m_idx1;
+    }
+}
+
+
 PVirtualValue
 ValueFactory::src(const nir_alu_src& alu_src, int chan)
 {
@@ -649,11 +672,17 @@ PRegister
 ValueFactory::dest_from_string(const std::string& s)
 {
    if (s == "AR") {
-      return new AddressRegister(AddressRegister::addr);
+      if (!m_ar)
+         m_ar = new AddressRegister(AddressRegister::addr);
+      return m_ar;
    } else if (s == "IDX0") {
-      return new AddressRegister(AddressRegister::idx0);
+      if (!m_idx0)
+         m_idx0 = new AddressRegister(AddressRegister::idx0);
+      return m_idx0;
    } else if (s == "IDX1") {
-      return new AddressRegister(AddressRegister::idx1);
+      if (!m_idx1)
+         m_idx1 = new AddressRegister(AddressRegister::idx1);
+      return m_idx1;
    }
 
    string index_str;
@@ -723,7 +752,8 @@ ValueFactory::dest_from_string(const std::string& s)
          auto array = static_cast<LocalArray *>(ireg->second);
          PVirtualValue addr = nullptr;
          int offset = 0;
-         if (size_str[0] == 'S' || size_str[0] == 'R') {
+         if (size_str[0] == 'S' || size_str[0] == 'R' ||
+             size_str == "AR" || size_str.substr(0,3) == "IDX") {
             addr = src_from_string(size_str);
          } else {
             istringstream num_str(size_str);
@@ -739,6 +769,17 @@ ValueFactory::dest_from_string(const std::string& s)
 PVirtualValue
 ValueFactory::src_from_string(const std::string& s)
 {
+   if (s == "AR") {
+      assert(m_ar);
+      return m_ar;
+   } else if (s == "IDX0") {
+      assert(m_idx0);
+      return m_idx0;
+   } else if (s == "IDX1") {
+      assert(m_idx1);
+      return m_idx1;
+   }
+
    switch (s[0]) {
    case 'A':
    case 'S':
@@ -804,7 +845,8 @@ ValueFactory::src_from_string(const std::string& s)
          auto array = static_cast<LocalArray *>(ireg->second);
          PVirtualValue addr = nullptr;
          int offset = 0;
-         if (size_str[0] == 'S' || size_str[0] == 'R') {
+         if (size_str[0] == 'S' || size_str[0] == 'R' ||
+             size_str == "AR" || size_str.substr(0,3) == "IDX") {
             addr = src_from_string(size_str);
          } else {
             istringstream num_str(size_str);
