@@ -678,8 +678,7 @@ wsi_win32_surface_create_swapchain_dxgi(
    DXGI_SWAP_CHAIN_DESC1 desc = {
       create_info->imageExtent.width,
       create_info->imageExtent.height,
-      create_info->imageFormat == VK_FORMAT_B8G8R8A8_SRGB ?
-      DXGI_FORMAT_B8G8R8A8_UNORM_SRGB : DXGI_FORMAT_B8G8R8A8_UNORM,
+      DXGI_FORMAT_B8G8R8A8_UNORM,
       create_info->imageArrayLayers > 1,  // Stereo
       { 1 },                              // SampleDesc
       0,                                  // Usage (filled in below)
