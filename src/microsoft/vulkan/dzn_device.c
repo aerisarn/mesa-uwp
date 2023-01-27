@@ -96,6 +96,7 @@ static void
 dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
 {
    pdev->vk.supported_extensions = (struct vk_device_extension_table) {
+      .KHR_16bit_storage                     = pdev->options4.Native16BitShaderOpsSupported,
       .KHR_create_renderpass2                = true,
       .KHR_depth_stencil_resolve             = true,
       .KHR_descriptor_update_template        = true,
@@ -107,6 +108,7 @@ dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
       .KHR_maintenance3                      = true,
       .KHR_multiview                         = true,
       .KHR_shader_draw_parameters            = true,
+      .KHR_shader_float16_int8               = pdev->options4.Native16BitShaderOpsSupported,
 #ifdef DZN_USE_WSI_PLATFORM
       .KHR_swapchain                         = true,
 #endif
@@ -1358,8 +1360,8 @@ dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 
    VkPhysicalDeviceVulkan11Features core_1_1 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
-      .storageBuffer16BitAccess           = false,
-      .uniformAndStorageBuffer16BitAccess = false,
+      .storageBuffer16BitAccess           = pdev->options4.Native16BitShaderOpsSupported,
+      .uniformAndStorageBuffer16BitAccess = pdev->options4.Native16BitShaderOpsSupported,
       .storagePushConstant16              = false,
       .storageInputOutput16               = false,
       .multiview                          = true,
@@ -1381,7 +1383,7 @@ dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .storagePushConstant8               = false,
       .shaderBufferInt64Atomics           = false,
       .shaderSharedInt64Atomics           = false,
-      .shaderFloat16                      = false,
+      .shaderFloat16                      = pdev->options4.Native16BitShaderOpsSupported,
       .shaderInt8                         = false,
 
       .descriptorIndexing                                   = false,
