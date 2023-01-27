@@ -955,7 +955,12 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
       if (vp && vp->viewport_count > 0 &&
           mesh_prog_data->map.start_dw[VARYING_SLOT_VIEWPORT] >= 0) {
          clip.MaximumVPIndex = vp->viewport_count - 1;
+      } else {
+         clip.MaximumVPIndex = 0;
       }
+
+      clip.ForceZeroRTAIndexEnable =
+            mesh_prog_data->map.start_dw[VARYING_SLOT_LAYER] < 0;
    }
 
    clip.NonPerspectiveBarycentricEnable = wm_prog_data ?
