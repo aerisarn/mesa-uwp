@@ -1049,6 +1049,25 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
 
    struct radv_dynamic_state *dynamic = &pipeline->dynamic_state;
 
+   /* Input assembly. */
+   if (states & RADV_DYNAMIC_PRIMITIVE_TOPOLOGY) {
+      dynamic->vk.ia.primitive_topology = si_translate_prim(state->ia->primitive_topology);
+   }
+
+   if (states & RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE) {
+      dynamic->vk.ia.primitive_restart_enable = state->ia->primitive_restart_enable;
+   }
+
+   /* Tessellation. */
+   if (states & RADV_DYNAMIC_PATCH_CONTROL_POINTS) {
+      dynamic->vk.ts.patch_control_points = state->ts->patch_control_points;
+   }
+
+   if (states & RADV_DYNAMIC_TESS_DOMAIN_ORIGIN) {
+      dynamic->vk.ts.domain_origin = state->ts->domain_origin;
+   }
+
+   /* Viewport. */
    if (needed_states & RADV_DYNAMIC_VIEWPORT) {
       dynamic->vk.vp.viewport_count = state->vp->viewport_count;
       if (states & RADV_DYNAMIC_VIEWPORT) {
@@ -1066,6 +1085,19 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       }
    }
 
+   if (states & RADV_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE) {
+      dynamic->vk.vp.depth_clip_negative_one_to_one = state->vp->depth_clip_negative_one_to_one;
+   }
+
+   /* Discard rectangles. */
+   if (needed_states & RADV_DYNAMIC_DISCARD_RECTANGLE) {
+      dynamic->vk.dr.rectangle_count = state->dr->rectangle_count;
+      if (states & RADV_DYNAMIC_DISCARD_RECTANGLE) {
+         typed_memcpy(dynamic->vk.dr.rectangles, state->dr->rectangles, state->dr->rectangle_count);
+      }
+   }
+
+   /* Rasterization. */
    if (states & RADV_DYNAMIC_LINE_WIDTH) {
       dynamic->vk.rs.line.width = state->rs->line.width;
    }
@@ -1076,16 +1108,6 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       dynamic->vk.rs.depth_bias.slope = state->rs->depth_bias.slope;
    }
 
-   /* Section 9.2 of the Vulkan 1.0.15 spec says:
-    *
-    *    pColorBlendState is [...] NULL if the pipeline has rasterization
-    *    disabled or if the subpass of the render pass the pipeline is
-    *    created against does not use any color attachments.
-    */
-   if (states & RADV_DYNAMIC_BLEND_CONSTANTS) {
-      typed_memcpy(dynamic->vk.cb.blend_constants, state->cb->blend_constants, 4);
-   }
-
    if (states & RADV_DYNAMIC_CULL_MODE) {
       dynamic->vk.rs.cull_mode = state->rs->cull_mode;
    }
@@ -1094,10 +1116,79 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       dynamic->vk.rs.front_face = state->rs->front_face;
    }
 
-   if (states & RADV_DYNAMIC_PRIMITIVE_TOPOLOGY) {
-      dynamic->vk.ia.primitive_topology = si_translate_prim(state->ia->primitive_topology);
+   if (states & RADV_DYNAMIC_LINE_STIPPLE) {
+      dynamic->vk.rs.line.stipple.factor = state->rs->line.stipple.factor;
+      dynamic->vk.rs.line.stipple.pattern = state->rs->line.stipple.pattern;
    }
 
+   if (states & RADV_DYNAMIC_DEPTH_BIAS_ENABLE) {
+      dynamic->vk.rs.depth_bias.enable = state->rs->depth_bias.enable;
+   }
+
+   if (states & RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE) {
+      dynamic->vk.rs.rasterizer_discard_enable = state->rs->rasterizer_discard_enable;
+   }
+
+   if (states & RADV_DYNAMIC_POLYGON_MODE) {
+      dynamic->vk.rs.polygon_mode = si_translate_fill(state->rs->polygon_mode);
+   }
+
+   if (states & RADV_DYNAMIC_LINE_STIPPLE_ENABLE) {
+      dynamic->vk.rs.line.stipple.enable = state->rs->line.stipple.enable;
+   }
+
+   if (states & RADV_DYNAMIC_DEPTH_CLIP_ENABLE) {
+      dynamic->vk.rs.depth_clip_enable =
+         state->rs->depth_clip_enable == VK_MESA_DEPTH_CLIP_ENABLE_TRUE;
+   }
+
+   if (states & RADV_DYNAMIC_CONSERVATIVE_RAST_MODE) {
+      dynamic->vk.rs.conservative_mode = state->rs->conservative_mode;
+   }
+
+   if (states & RADV_DYNAMIC_PROVOKING_VERTEX_MODE) {
+      dynamic->vk.rs.provoking_vertex = state->rs->provoking_vertex;
+   }
+
+   if (states & RADV_DYNAMIC_DEPTH_CLAMP_ENABLE) {
+      dynamic->vk.rs.depth_clamp_enable = state->rs->depth_clamp_enable;
+   }
+
+   if (states & RADV_DYNAMIC_LINE_RASTERIZATION_MODE) {
+      dynamic->vk.rs.line.mode = state->rs->line.mode;
+   }
+
+   /* Fragment shading rate. */
+   if (states & RADV_DYNAMIC_FRAGMENT_SHADING_RATE) {
+      dynamic->vk.fsr = *state->fsr;
+   }
+
+   /* Multisample. */
+   if (states & RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE) {
+      dynamic->vk.ms.alpha_to_coverage_enable = state->ms->alpha_to_coverage_enable;
+   }
+
+   if (states & RADV_DYNAMIC_SAMPLE_MASK) {
+      dynamic->vk.ms.sample_mask = state->ms->sample_mask & 0xffff;
+   }
+
+   if (states & RADV_DYNAMIC_RASTERIZATION_SAMPLES) {
+      dynamic->vk.ms.rasterization_samples = state->ms->rasterization_samples;
+   }
+
+   if (states & RADV_DYNAMIC_SAMPLE_LOCATIONS) {
+      unsigned count = state->ms->sample_locations->per_pixel *
+                       state->ms->sample_locations->grid_size.width *
+                       state->ms->sample_locations->grid_size.height;
+
+      dynamic->sample_location.per_pixel = state->ms->sample_locations->per_pixel;
+      dynamic->sample_location.grid_size = state->ms->sample_locations->grid_size;
+      dynamic->sample_location.count = count;
+      typed_memcpy(&dynamic->sample_location.locations[0], state->ms->sample_locations->locations,
+                   count);
+   }
+
+   /* Depth stencil. */
    /* If there is no depthstencil attachment, then don't read
     * pDepthStencilState. The Vulkan spec states that pDepthStencilState may
     * be NULL in this case. Even if pDepthStencilState is non-NULL, there is
@@ -1164,44 +1255,15 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       }
    }
 
-   if (needed_states & RADV_DYNAMIC_DISCARD_RECTANGLE) {
-      dynamic->vk.dr.rectangle_count = state->dr->rectangle_count;
-      if (states & RADV_DYNAMIC_DISCARD_RECTANGLE) {
-         typed_memcpy(dynamic->vk.dr.rectangles, state->dr->rectangles, state->dr->rectangle_count);
-      }
-   }
-
-   if (states & RADV_DYNAMIC_SAMPLE_LOCATIONS) {
-      unsigned count = state->ms->sample_locations->per_pixel *
-                       state->ms->sample_locations->grid_size.width *
-                       state->ms->sample_locations->grid_size.height;
-
-      dynamic->sample_location.per_pixel = state->ms->sample_locations->per_pixel;
-      dynamic->sample_location.grid_size = state->ms->sample_locations->grid_size;
-      dynamic->sample_location.count = count;
-      typed_memcpy(&dynamic->sample_location.locations[0], state->ms->sample_locations->locations,
-                   count);
-   }
-
-   if (states & RADV_DYNAMIC_LINE_STIPPLE) {
-      dynamic->vk.rs.line.stipple.factor = state->rs->line.stipple.factor;
-      dynamic->vk.rs.line.stipple.pattern = state->rs->line.stipple.pattern;
-   }
-
-   if (states & RADV_DYNAMIC_FRAGMENT_SHADING_RATE) {
-      dynamic->vk.fsr = *state->fsr;
-   }
-
-   if (states & RADV_DYNAMIC_DEPTH_BIAS_ENABLE) {
-      dynamic->vk.rs.depth_bias.enable = state->rs->depth_bias.enable;
-   }
-
-   if (states & RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE) {
-      dynamic->vk.ia.primitive_restart_enable = state->ia->primitive_restart_enable;
-   }
-
-   if (states & RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE) {
-      dynamic->vk.rs.rasterizer_discard_enable = state->rs->rasterizer_discard_enable;
+   /* Color blend. */
+   /* Section 9.2 of the Vulkan 1.0.15 spec says:
+    *
+    *    pColorBlendState is [...] NULL if the pipeline has rasterization
+    *    disabled or if the subpass of the render pass the pipeline is
+    *    created against does not use any color attachments.
+    */
+   if (states & RADV_DYNAMIC_BLEND_CONSTANTS) {
+      typed_memcpy(dynamic->vk.cb.blend_constants, state->cb->blend_constants, 4);
    }
 
    if (states & RADV_DYNAMIC_LOGIC_OP) {
@@ -1214,53 +1276,8 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       dynamic->vk.cb.color_write_enables = state->cb->color_write_enables;
    }
 
-   if (states & RADV_DYNAMIC_PATCH_CONTROL_POINTS) {
-      dynamic->vk.ts.patch_control_points = state->ts->patch_control_points;
-   }
-
-   if (states & RADV_DYNAMIC_POLYGON_MODE) {
-      dynamic->vk.rs.polygon_mode = si_translate_fill(state->rs->polygon_mode);
-   }
-
-   if (states & RADV_DYNAMIC_TESS_DOMAIN_ORIGIN) {
-      dynamic->vk.ts.domain_origin = state->ts->domain_origin;
-   }
-
    if (states & RADV_DYNAMIC_LOGIC_OP_ENABLE) {
       dynamic->vk.cb.logic_op_enable = state->cb->logic_op_enable;
-   }
-
-   if (states & RADV_DYNAMIC_LINE_STIPPLE_ENABLE) {
-      dynamic->vk.rs.line.stipple.enable = state->rs->line.stipple.enable;
-   }
-
-   if (states & RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE) {
-      dynamic->vk.ms.alpha_to_coverage_enable = state->ms->alpha_to_coverage_enable;
-   }
-
-   if (states & RADV_DYNAMIC_SAMPLE_MASK) {
-      dynamic->vk.ms.sample_mask = state->ms->sample_mask & 0xffff;
-   }
-
-   if (states & RADV_DYNAMIC_DEPTH_CLIP_ENABLE) {
-      dynamic->vk.rs.depth_clip_enable =
-         state->rs->depth_clip_enable == VK_MESA_DEPTH_CLIP_ENABLE_TRUE;
-   }
-
-   if (states & RADV_DYNAMIC_CONSERVATIVE_RAST_MODE) {
-      dynamic->vk.rs.conservative_mode = state->rs->conservative_mode;
-   }
-
-   if (states & RADV_DYNAMIC_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE) {
-      dynamic->vk.vp.depth_clip_negative_one_to_one = state->vp->depth_clip_negative_one_to_one;
-   }
-
-   if (states & RADV_DYNAMIC_PROVOKING_VERTEX_MODE) {
-      dynamic->vk.rs.provoking_vertex = state->rs->provoking_vertex;
-   }
-
-   if (states & RADV_DYNAMIC_DEPTH_CLAMP_ENABLE) {
-      dynamic->vk.rs.depth_clamp_enable = state->rs->depth_clamp_enable;
    }
 
    if (states & RADV_DYNAMIC_COLOR_WRITE_MASK) {
@@ -1273,14 +1290,6 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
       for (unsigned i = 0; i < state->cb->attachment_count; i++) {
          dynamic->vk.cb.attachments[i].blend_enable = state->cb->attachments[i].blend_enable;
       }
-   }
-
-   if (states & RADV_DYNAMIC_RASTERIZATION_SAMPLES) {
-      dynamic->vk.ms.rasterization_samples = state->ms->rasterization_samples;
-   }
-
-   if (states & RADV_DYNAMIC_LINE_RASTERIZATION_MODE) {
-      dynamic->vk.rs.line.mode = state->rs->line.mode;
    }
 
    if (states & RADV_DYNAMIC_COLOR_BLEND_EQUATION) {
