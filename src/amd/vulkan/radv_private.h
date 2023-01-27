@@ -1362,8 +1362,6 @@ struct radv_dynamic_state {
    struct radv_sample_locations_state sample_location;
 };
 
-extern const struct radv_dynamic_state default_dynamic_state;
-
 const char *radv_get_debug_option_name(int id);
 
 const char *radv_get_perftest_option_name(int id);

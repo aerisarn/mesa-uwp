@@ -1040,14 +1040,23 @@ radv_pipeline_init_dynamic_state(struct radv_graphics_pipeline *pipeline,
                                  const struct vk_graphics_pipeline_state *state)
 {
    uint64_t needed_states = radv_pipeline_needed_dynamic_state(pipeline, state);
+   struct radv_dynamic_state *dynamic = &pipeline->dynamic_state;
    uint64_t states = needed_states;
 
-   pipeline->dynamic_state = default_dynamic_state;
+   /* Initialize non-zero values for default dynamic state. */
+   dynamic->vk.rs.line.width = 1.0f;
+   dynamic->vk.fsr.fragment_size.width = 1u;
+   dynamic->vk.fsr.fragment_size.height = 1u;
+   dynamic->vk.ds.depth.bounds_test.max = 1.0f;
+   dynamic->vk.ds.stencil.front.compare_mask = ~0;
+   dynamic->vk.ds.stencil.front.write_mask = ~0;
+   dynamic->vk.ds.stencil.back.compare_mask = ~0;
+   dynamic->vk.ds.stencil.back.write_mask = ~0;
+   dynamic->vk.ms.rasterization_samples = VK_SAMPLE_COUNT_1_BIT;
+
    pipeline->needed_dynamic_state = needed_states;
 
    states &= ~pipeline->dynamic_states;
-
-   struct radv_dynamic_state *dynamic = &pipeline->dynamic_state;
 
    /* Input assembly. */
    if (states & RADV_DYNAMIC_PRIMITIVE_TOPOLOGY) {
