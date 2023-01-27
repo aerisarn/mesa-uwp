@@ -98,11 +98,6 @@ spec@!opengl 2.0@gl-2.0-edgeflag-immediate,Crash
 spec@!opengl 1.0@gl-1.0-edgeflag,Crash
 spec@!opengl 1.0@gl-1.0-edgeflag-quads,Crash
 
-
-spec@arb_arrays_of_arrays@execution@sampler@fs-nested-struct-arrays-nonconst-nested-array,Fail
-# Skips prior to exposing gl45, now fails for same reason as above test
-spec@arb_gl_spirv@execution@uniform@sampler2d-nonconst-nested-array,Fail
-
 spec@arb_depth_buffer_float@fbo-clear-formats stencil,Fail
 spec@arb_depth_buffer_float@fbo-clear-formats stencil@GL_DEPTH32F_STENCIL8,Fail
 spec@arb_depth_buffer_float@fbo-generatemipmap-formats,Fail
