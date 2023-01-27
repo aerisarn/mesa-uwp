@@ -903,6 +903,7 @@ AssamblerVisitor::visit(const IfInstr& instr)
    auto [addr, dummy0, dummy1] = pred->indirect_addr();
    {
    }
+   assert(!dummy1);
    if (addr) {
       if (!m_last_addr || !m_bc->ar_loaded || !m_last_addr->equal_to(*addr)) {
          m_bc->ar_reg = addr->sel();

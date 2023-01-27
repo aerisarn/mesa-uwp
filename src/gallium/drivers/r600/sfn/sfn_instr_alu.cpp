@@ -439,11 +439,20 @@ bool AluInstr::can_replace_source(PRegister old_src, PVirtualValue new_src)
    if (m_dest) {
       /* We don't allow src and dst with rel and different indirect register
        * addresses */
-      if (m_dest->pin() == pin_array && new_src->pin() == pin_array) {
+      if (m_dest->pin() == pin_array) {
          auto dav = static_cast<const LocalArrayValue *>(m_dest)->addr();
-         auto sav = static_cast<const LocalArrayValue *>(new_src)->addr();
-         if (dav && sav && dav->as_register() && !dav->equal_to(*sav))
-            return false;
+         if (new_src->pin() == pin_array) {
+            auto sav = static_cast<const LocalArrayValue *>(new_src)->addr();
+            if (dav && sav && dav->as_register() && !dav->equal_to(*sav))
+               return false;
+         } else if (dav && dav->as_register()) {
+            /* don't support resolving a buffer address and an register address
+             * at the same time. It could be done, but it's currently a mess
+             * to schedule */
+            auto u = new_src->as_uniform();
+            if (u && u->buf_addr())
+               return false;
+         }
       }
    }
    return true;
@@ -666,15 +675,18 @@ public:
    void visit(const InlineConstant& value) { (void)value; }
 
    PRegister addr{nullptr};
-   bool is_index{false};
+   PRegister index{nullptr};
+   bool addr_is_for_dest{false};
 };
 
 void
 ResolveIndirectArrayAddr::visit(const LocalArrayValue& value)
 {
    auto a = value.addr();
-   if (a)
+   if (a) {
       addr = a->as_register();
+      assert(!addr_is_for_dest);
+   }
 }
 
 void
@@ -682,12 +694,11 @@ ResolveIndirectArrayAddr::visit(const UniformValue& value)
 {
    auto a = value.buf_addr();
    if (a) {
-      addr = a->as_register();
-      is_index = true;
+      index = a->as_register();
    }
 }
 
-std::tuple<PRegister, bool, bool>
+std::tuple<PRegister, bool, PRegister>
 AluInstr::indirect_addr() const
 {
    ResolveIndirectArrayAddr visitor;
@@ -695,16 +706,13 @@ AluInstr::indirect_addr() const
    if (m_dest) {
       m_dest->accept(visitor);
       if (visitor.addr)
-         return {visitor.addr, false, false};
+          visitor.addr_is_for_dest = true;
    }
 
    for (auto s : m_src) {
       s->accept(visitor);
-      if (visitor.addr) {
-         return {visitor.addr, !visitor.is_index, visitor.is_index};
-      }
    }
-   return {nullptr, false, false};
+   return {visitor.addr, visitor.addr_is_for_dest, visitor.index};
 }
 
 AluGroup *
