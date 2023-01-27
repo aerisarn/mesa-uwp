@@ -688,6 +688,7 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       const VkPipelineShaderStageCreateInfo *info;
       uint8_t spirv_hash[SHA1_DIGEST_LENGTH];
       uint8_t dxil_hash[SHA1_DIGEST_LENGTH];
+      uint8_t link_hashes[SHA1_DIGEST_LENGTH][2];
    } stages[MESA_VULKAN_SHADER_STAGES] = { 0 };
    const uint8_t *dxil_hashes[MESA_VULKAN_SHADER_STAGES] = { 0 };
    uint8_t attribs_hash[SHA1_DIGEST_LENGTH];
@@ -858,6 +859,11 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
                           prev_stage != MESA_SHADER_NONE ?
                           pipeline->templates.shaders[prev_stage].nir : NULL,
                           &conf, &requires_runtime_data);
+
+      if (prev_stage != MESA_SHADER_NONE) {
+         memcpy(stages[stage].link_hashes[0], stages[prev_stage].spirv_hash, SHA1_DIGEST_LENGTH);
+         memcpy(stages[prev_stage].link_hashes[1], stages[stage].spirv_hash, SHA1_DIGEST_LENGTH);
+      }
    }
 
    u_foreach_bit(stage, active_stage_mask) {
@@ -882,14 +888,10 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
 
          if (stage == MESA_SHADER_FRAGMENT)
             _mesa_sha1_update(&dxil_hash_ctx, &force_sample_rate_shading, sizeof(force_sample_rate_shading));
-         else {
-            gl_shader_stage prev_stage = util_last_bit(active_stage_mask & BITFIELD_MASK(stage)) - 1;
-            uint32_t prev_stage_output_clip_size = prev_stage == MESA_SHADER_NONE ? 0 :
-               pipeline->templates.shaders[prev_stage].nir->info.clip_distance_array_size;
-            _mesa_sha1_update(&dxil_hash_ctx, &prev_stage_output_clip_size, sizeof(prev_stage_output_clip_size));
-         }
 
          _mesa_sha1_update(&dxil_hash_ctx, stages[stage].spirv_hash, sizeof(stages[stage].spirv_hash));
+         _mesa_sha1_update(&dxil_hash_ctx, stages[stage].link_hashes[0], sizeof(stages[stage].link_hashes[0]));
+         _mesa_sha1_update(&dxil_hash_ctx, stages[stage].link_hashes[1], sizeof(stages[stage].link_hashes[1]));
          _mesa_sha1_update(&dxil_hash_ctx, bindings_hash, sizeof(bindings_hash));
          _mesa_sha1_final(&dxil_hash_ctx, stages[stage].dxil_hash);
          dxil_hashes[stage] = stages[stage].dxil_hash;
