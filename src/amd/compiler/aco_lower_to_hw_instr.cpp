@@ -1145,12 +1145,20 @@ copy_constant(lower_context* ctx, Builder& bld, Definition dst, Operand op)
          else
             bld.vop1(aco_opcode::v_bfrev_b32, dst, Operand::c32(rev));
          return;
-      } else if (dst.regClass() == s1 && imm != 0) {
+      } else if (dst.regClass() == s1) {
          unsigned start = (ffs(imm) - 1) & 0x1f;
          unsigned size = util_bitcount(imm) & 0x1f;
-         if ((((1u << size) - 1u) << start) == imm) {
+         if (BITFIELD_RANGE(start, size) == imm) {
             bld.sop2(aco_opcode::s_bfm_b32, dst, Operand::c32(size), Operand::c32(start));
             return;
+         }
+         if (ctx->program->gfx_level >= GFX9) {
+            Operand op_lo = Operand::c32(int32_t(int16_t(imm)));
+            Operand op_hi = Operand::c32(int32_t(int16_t(imm >> 16)));
+            if (!op_lo.isLiteral() && !op_hi.isLiteral()) {
+               bld.sop2(aco_opcode::s_pack_ll_b32_b16, dst, op_lo, op_hi);
+               return;
+            }
          }
       }
    }
