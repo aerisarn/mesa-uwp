@@ -138,6 +138,29 @@ fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info) in_dt
    if (ctx->dirty_shader[PIPE_SHADER_COMPUTE] & FD_DIRTY_SHADER_PROG)
       cs_program_emit(ctx, ring, v, info->variable_shared_mem);
 
+   bool emit_instrlen_workaround =
+      v->instrlen > ctx->screen->info->a6xx.instr_cache_size;
+
+   /* There appears to be a HW bug where in some rare circumstances it appears
+    * to accidentally use the FS instrlen instead of the CS instrlen, which
+    * affects all known gens. Based on various experiments it appears that the
+    * issue is that when prefetching a branch destination and there is a cache
+    * miss, when fetching from memory the HW bounds-checks the fetch against
+    * SP_CS_INSTRLEN, except when one of the two register contexts is active
+    * it accidentally fetches SP_FS_INSTRLEN from the other (inactive)
+    * context. To workaround it we set the FS instrlen here and do a dummy
+    * event to roll the context (because it fetches SP_FS_INSTRLEN from the
+    * "wrong" context). Because the bug seems to involve cache misses, we
+    * don't emit this if the entire CS program fits in cache, which will
+    * hopefully be the majority of cases.
+    *
+    * See https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/19023
+    */
+   if (emit_instrlen_workaround) {
+      OUT_REG(ring, A6XX_SP_FS_INSTRLEN(v->instrlen));
+      fd6_event_write(ctx->batch, ring, LABEL, false);
+   }
+
    fd6_emit_cs_state(ctx, ring, v);
    fd6_emit_cs_consts(v, ring, ctx, info);
 
