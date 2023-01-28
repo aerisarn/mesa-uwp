@@ -64,7 +64,7 @@ event_write(struct fd_context *ctx, struct fd_ringbuffer *ring,
    return 0;
 }
 
-static void
+void
 fd6_emit_flushes(struct fd_context *ctx, struct fd_ringbuffer *ring,
                  unsigned flushes)
 {

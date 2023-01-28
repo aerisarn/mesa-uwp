@@ -118,6 +118,9 @@ fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info) in_dt
    if (!v)
       return;
 
+   if (ctx->batch->barrier)
+      fd6_barrier_flush(ctx->batch);
+
    if (ctx->dirty_shader[PIPE_SHADER_COMPUTE] & FD_DIRTY_SHADER_PROG)
       cs_program_emit(ctx, ring, v);
 
@@ -204,9 +207,6 @@ fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info) in_dt
    OUT_RING(ring, 1); /* HLSQ_CS_KERNEL_GROUP_Y */
    OUT_RING(ring, 1); /* HLSQ_CS_KERNEL_GROUP_Z */
 
-   if (ctx->batch->barrier)
-      fd6_barrier_flush(ctx->batch);
-
    if (info->indirect) {
       struct fd_resource *rsc = fd_resource(info->indirect);
 
@@ -226,10 +226,6 @@ fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info) in_dt
    }
 
    trace_end_compute(&ctx->batch->trace, ring);
-
-   OUT_WFI5(ring);
-
-   fd6_cache_flush(ctx->batch, ring);
 
    fd_context_all_clean(ctx);
 }
