@@ -4198,9 +4198,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
                                                    ctx->ac.i1false,
                                                    ctx->ac.i1false}, 6, 0);
       break;
-   case nir_intrinsic_load_force_vrs_rates_amd:
-      result = ac_get_arg(&ctx->ac, ctx->args->force_vrs_rates);
-      break;
    case nir_intrinsic_load_scalar_arg_amd:
    case nir_intrinsic_load_vector_arg_amd: {
       assert(nir_intrinsic_base(instr) < AC_MAX_ARGS);
