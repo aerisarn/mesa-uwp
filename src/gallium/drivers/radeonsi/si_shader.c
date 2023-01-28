@@ -1874,7 +1874,10 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
        (sel->stage == MESA_SHADER_GEOMETRY && shader->key.ge.as_ngg)) &&
       !shader->key.ge.as_ls && !shader->key.ge.as_es;
 
-   if (is_last_vgt_stage)
+   /* Legacy GS is not last VGT stage because it has GS copy shader. */
+   bool is_legacy_gs = sel->stage == MESA_SHADER_GEOMETRY && !key->ge.as_ngg;
+
+   if (is_last_vgt_stage || is_legacy_gs)
       NIR_PASS(progress, nir, si_nir_clamp_vertex_color);
 
    if (progress)
@@ -1916,10 +1919,9 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
          NIR_PASS_V(nir, ac_nir_lower_legacy_vs, primitive_id_location,
                     key->ge.opt.remove_streamout);
       }
-   }
-
-   if (sel->stage == MESA_SHADER_GEOMETRY && !key->ge.as_ngg)
+   } else if (is_legacy_gs) {
       NIR_PASS_V(nir, ac_nir_lower_legacy_gs, false, sel->screen->use_ngg, output_info);
+   }
 
    NIR_PASS(progress2, nir, si_nir_lower_abi, shader, args);
 
@@ -2011,11 +2013,6 @@ si_nir_generate_gs_copy_shader(struct si_screen *sscreen,
       ac_nir_create_gs_copy_shader(gs_nir,
                                    gskey->ge.opt.remove_streamout,
                                    output_info);
-
-   /* used in si_nir_clamp_vertex_color */
-   nir->info.outputs_written = gsinfo->base.outputs_written;
-   nir->info.outputs_written_16bit = gsinfo->base.outputs_written_16bit;
-   NIR_PASS_V(nir, si_nir_clamp_vertex_color);
 
    struct si_shader_args args;
    si_init_shader_args(shader, &args);
