@@ -1163,6 +1163,15 @@ copy_constant(lower_context* ctx, Builder& bld, Definition dst, Operand op)
    } else if (dst.regClass() == s2) {
       /* s_ashr_i64 writes SCC, so we can't use it */
       assert(Operand::is_constant_representable(op.constantValue64(), 8, true, false));
+      uint64_t imm = op.constantValue64();
+      if (op.isLiteral()) {
+         unsigned start = (ffsll(imm) - 1) & 0x3f;
+         unsigned size = util_bitcount64(imm) & 0x3f;
+         if (BITFIELD64_RANGE(start, size) == imm) {
+            bld.sop2(aco_opcode::s_bfm_b64, dst, Operand::c32(size), Operand::c32(start));
+            return;
+         }
+      }
       bld.sop1(aco_opcode::s_mov_b64, dst, op);
    } else if (dst.regClass() == v2) {
       if (Operand::is_constant_representable(op.constantValue64(), 8, true, false)) {
