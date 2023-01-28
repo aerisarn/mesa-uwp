@@ -31,6 +31,7 @@
 #include "sfn_instr_alugroup.h"
 #include "sfn_instr_tex.h"
 #include "sfn_shader.h"
+#include "sfn_virtualvalues.h"
 
 #include <algorithm>
 #include <sstream>
@@ -427,32 +428,33 @@ bool AluInstr::can_replace_source(PRegister old_src, PVirtualValue new_src)
    if (old_src->pin() == pin_array)
       return false;
 
-   if (new_src->get_addr()) {
-      for (auto& s : m_src) {
-         auto addr = s->get_addr();
-         /* can't have two different indirect addresses in the same instr */
-         if (addr && !addr->equal_to(*new_src->get_addr()))
+   auto [addr, dummy, index] = indirect_addr();
+   auto addr_reg = addr ?  addr->as_register() : nullptr;
+   auto index_reg = index ? index->as_register() : nullptr;
+
+   if (auto u = new_src->as_uniform()) {
+      if (u && u->buf_addr()) {
+
+         /* Don't mix indirect buffer and indirect registers, because the
+          * scheduler can't handle it yet. */
+         if (addr_reg)
+            return false;
+
+         /* Don't allow two different index registers, can't deal with that yet */
+         if (index_reg && !index_reg->equal_to(*u->buf_addr()))
             return false;
       }
    }
 
-   if (m_dest) {
-      /* We don't allow src and dst with rel and different indirect register
-       * addresses */
-      if (m_dest->pin() == pin_array) {
-         auto dav = static_cast<const LocalArrayValue *>(m_dest)->addr();
-         if (new_src->pin() == pin_array) {
-            auto sav = static_cast<const LocalArrayValue *>(new_src)->addr();
-            if (dav && sav && dav->as_register() && !dav->equal_to(*sav))
-               return false;
-         } else if (dav && dav->as_register()) {
-            /* don't support resolving a buffer address and an register address
-             * at the same time. It could be done, but it's currently a mess
-             * to schedule */
-            auto u = new_src->as_uniform();
-            if (u && u->buf_addr())
-               return false;
-         }
+   if (auto new_addr = new_src->get_addr()) {
+      auto new_addr_reg = new_addr->as_register();
+      bool new_addr_lowered = new_addr_reg &&
+                              new_addr_reg->has_flag(Register::addr_or_idx);
+
+      if (addr_reg) {
+         if (!addr_reg->equal_to(*new_addr) || new_addr_lowered ||
+             addr_reg->has_flag(Register::addr_or_idx))
+            return false;
       }
    }
    return true;
