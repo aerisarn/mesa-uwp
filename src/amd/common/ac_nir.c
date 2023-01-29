@@ -75,6 +75,7 @@ ac_nir_export_position(nir_builder *b,
                        enum amd_gfx_level gfx_level,
                        uint32_t clip_cull_mask,
                        bool no_param_export,
+                       bool force_vrs,
                        uint64_t outputs_written,
                        nir_ssa_def *(*outputs)[4])
 {
@@ -119,7 +120,7 @@ ac_nir_export_position(nir_builder *b,
    if (!outputs[VARYING_SLOT_VIEWPORT][0])
       outputs_written &= ~VARYING_BIT_VIEWPORT;
 
-   if (outputs_written & mask) {
+   if ((outputs_written & mask) || force_vrs) {
       nir_ssa_def *zero = nir_imm_float(b, 0);
       nir_ssa_def *vec[4] = { zero, zero, zero, zero };
       unsigned flags = 0;
@@ -135,8 +136,18 @@ ac_nir_export_position(nir_builder *b,
          write_mask |= BITFIELD_BIT(1);
       }
 
+      nir_ssa_def *rates = NULL;
       if (outputs_written & VARYING_BIT_PRIMITIVE_SHADING_RATE) {
-         vec[1] = nir_ior(b, vec[1], outputs[VARYING_SLOT_PRIMITIVE_SHADING_RATE][0]);
+         rates = outputs[VARYING_SLOT_PRIMITIVE_SHADING_RATE][0];
+      } else if (force_vrs) {
+         /* If Pos.W != 1 (typical for non-GUI elements), use coarse shading. */
+         nir_ssa_def *pos_w = nir_channel(b, pos, 3);
+         nir_ssa_def *cond = nir_fneu(b, pos_w, nir_imm_float(b, 1));
+         rates = nir_bcsel(b, cond, nir_load_force_vrs_rates_amd(b), nir_imm_int(b, 0));
+      }
+
+      if (rates) {
+         vec[1] = nir_ior(b, vec[1], rates);
          write_mask |= BITFIELD_BIT(1);
       }
 
