@@ -31,6 +31,7 @@
 #include "agx_builder.h"
 #include "agx_compiler.h"
 #include "agx_internal_formats.h"
+#include "agx_nir.h"
 
 /* Alignment for shader programs. I'm not sure what the optimal value is. */
 #define AGX_CODE_ALIGN 0x100
@@ -1918,6 +1919,7 @@ agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
    NIR_PASS_V(nir, nir_opt_peephole_select, 64, false, true);
 
    NIR_PASS_V(nir, nir_opt_algebraic_late);
+   NIR_PASS_V(nir, agx_nir_lower_algebraic_late);
    NIR_PASS_V(nir, nir_opt_constant_folding);
 
    /* Must run after uses are fixed but before a last round of copyprop + DCE */
