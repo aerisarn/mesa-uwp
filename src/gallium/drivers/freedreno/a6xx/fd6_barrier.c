@@ -177,7 +177,6 @@ fd6_memory_barrier(struct pipe_context *pctx, unsigned flags)
    unsigned flushes = 0;
 
    if (flags & (PIPE_BARRIER_SHADER_BUFFER |
-                PIPE_BARRIER_IMAGE |
                 PIPE_BARRIER_CONSTANT_BUFFER |
                 PIPE_BARRIER_VERTEX_BUFFER |
                 PIPE_BARRIER_INDEX_BUFFER |
@@ -186,6 +185,7 @@ fd6_memory_barrier(struct pipe_context *pctx, unsigned flags)
    }
 
    if (flags & (PIPE_BARRIER_TEXTURE |
+                PIPE_BARRIER_IMAGE |
                 PIPE_BARRIER_INDIRECT_BUFFER |
                 PIPE_BARRIER_UPDATE_BUFFER |
                 PIPE_BARRIER_UPDATE_TEXTURE)) {
