@@ -789,7 +789,8 @@ radv_declare_shader_args(enum amd_gfx_level gfx_level, const struct radv_pipelin
          if (previous_stage == MESA_SHADER_TESS_EVAL && key->dynamic_patch_control_points)
             ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tes_num_patches);
 
-         if (info->force_vrs_per_vertex) {
+         /* Legacy GS force vrs is handled by GS copy shader. */
+         if (info->force_vrs_per_vertex && info->is_ngg) {
             ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.force_vrs_rates);
          }
 

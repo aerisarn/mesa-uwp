@@ -459,72 +459,6 @@ radv_lower_primitive_shading_rate(nir_shader *nir, enum amd_gfx_level gfx_level)
 }
 
 bool
-radv_force_primitive_shading_rate(nir_shader *nir, struct radv_device *device)
-{
-   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
-   bool progress = false;
-
-   nir_builder b;
-   nir_builder_init(&b, impl);
-
-   nir_foreach_block_reverse(block, impl) {
-      nir_foreach_instr_reverse(instr, block) {
-         if (instr->type != nir_instr_type_intrinsic)
-            continue;
-
-         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-         if (intr->intrinsic != nir_intrinsic_store_deref)
-            continue;
-
-         nir_variable *var = nir_intrinsic_get_var(intr, 0);
-         if (var->data.mode != nir_var_shader_out ||
-             var->data.location != VARYING_SLOT_POS)
-            continue;
-
-         b.cursor = nir_after_instr(instr);
-
-         nir_ssa_scalar scalar_idx = nir_ssa_scalar_resolved(intr->src[1].ssa, 3);
-
-         /* Use coarse shading if the value of Pos.W can't be determined or if its value is != 1
-          * (typical for non-GUI elements).
-          */
-         if (!nir_ssa_scalar_is_const(scalar_idx) ||
-             nir_ssa_scalar_as_uint(scalar_idx) != 0x3f800000u) {
-
-            var = nir_variable_create(nir, nir_var_shader_out, glsl_int_type(), "vrs rate");
-            var->data.location = VARYING_SLOT_PRIMITIVE_SHADING_RATE;
-            var->data.interpolation = INTERP_MODE_NONE;
-
-            nir_ssa_def *vrs_rates = nir_load_force_vrs_rates_amd(&b);
-
-            nir_ssa_def *pos_w = nir_channel(&b, intr->src[1].ssa, 3);
-            nir_ssa_def *val = nir_bcsel(&b, nir_fneu(&b, pos_w, nir_imm_float(&b, 1.0f)),
-                                             vrs_rates, nir_imm_int(&b, 0));
-
-            nir_deref_instr *deref = nir_build_deref_var(&b, var);
-            nir_store_deref(&b, deref, val, 0x1);
-
-            /* Update outputs_written to reflect that the pass added a new output. */
-            nir->info.outputs_written |= BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_SHADING_RATE);
-
-            progress = true;
-            if (nir->info.stage == MESA_SHADER_VERTEX)
-               break;
-         }
-      }
-      if (nir->info.stage == MESA_SHADER_VERTEX && progress)
-         break;
-   }
-
-   if (progress)
-      nir_metadata_preserve(impl, nir_metadata_block_index | nir_metadata_dominance);
-   else
-      nir_metadata_preserve(impl, nir_metadata_all);
-
-   return progress;
-}
-
-bool
 radv_lower_fs_intrinsics(nir_shader *nir, const struct radv_pipeline_stage *fs_stage,
                          const struct radv_pipeline_key *key)
 {
@@ -1456,6 +1390,7 @@ void radv_lower_ngg(struct radv_device *device, struct radv_pipeline_stage *ngg_
    options.disable_streamout = !device->physical_device->use_ngg_streamout;
    options.has_gen_prim_query = info->has_ngg_prim_query;
    options.has_xfb_prim_query = info->has_ngg_xfb_query;
+   options.force_vrs = info->force_vrs_per_vertex;
 
    if (nir->info.stage == MESA_SHADER_VERTEX ||
        nir->info.stage == MESA_SHADER_TESS_EVAL) {

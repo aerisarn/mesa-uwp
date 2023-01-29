@@ -4966,11 +4966,6 @@ static void
 radv_flush_force_vrs_state(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   enum amd_gfx_level gfx_level = pipeline->base.device->physical_device->rad_info.gfx_level;
-   const unsigned stage = pipeline->last_vgt_api_stage;
-   struct radv_userdata_info *loc = &pipeline->last_vgt_api_stage_locs[AC_UD_FORCE_VRS_RATES];
-   uint32_t vrs_rates = 0;
-   uint32_t base_reg;
 
    if (!pipeline->force_vrs_per_vertex) {
       /* Un-set the SGPR index so we know to re-emit it later. */
@@ -4978,9 +4973,21 @@ radv_flush_force_vrs_state(struct radv_cmd_buffer *cmd_buffer)
       return;
    }
 
+   struct radv_userdata_info *loc;
+   uint32_t base_reg;
+
+   if (radv_pipeline_has_gs_copy_shader(&pipeline->base)) {
+      loc = &pipeline->base.gs_copy_shader->info.user_sgprs_locs.shader_data[AC_UD_FORCE_VRS_RATES];
+      base_reg = R_00B130_SPI_SHADER_USER_DATA_VS_0;
+   } else {
+      loc = &pipeline->last_vgt_api_stage_locs[AC_UD_FORCE_VRS_RATES];
+      base_reg = pipeline->base.user_data_0[pipeline->last_vgt_api_stage];
+   }
+
    assert(loc->sgpr_idx != -1);
 
-   base_reg = pipeline->base.user_data_0[stage];
+   enum amd_gfx_level gfx_level = pipeline->base.device->physical_device->rad_info.gfx_level;
+   uint32_t vrs_rates = 0;
 
    switch (cmd_buffer->device->force_vrs) {
    case RADV_FORCE_VRS_2x2:

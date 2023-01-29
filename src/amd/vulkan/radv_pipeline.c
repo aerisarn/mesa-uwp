@@ -2545,9 +2545,12 @@ static void
 radv_fill_shader_info(struct radv_graphics_pipeline *pipeline,
                       struct radv_pipeline_layout *pipeline_layout,
                       const struct radv_pipeline_key *pipeline_key,
-                      struct radv_pipeline_stage *stages)
+                      struct radv_pipeline_stage *stages,
+                      bool noop_fs)
 {
    struct radv_device *device = pipeline->base.device;
+
+   bool consider_force_vrs = radv_consider_force_vrs(pipeline, noop_fs, stages);
 
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
       if (!stages[i].nir)
@@ -2555,7 +2558,9 @@ radv_fill_shader_info(struct radv_graphics_pipeline *pipeline,
 
       radv_nir_shader_info_init(&stages[i].info);
       radv_nir_shader_info_pass(device, stages[i].nir, pipeline_layout, pipeline_key,
-                                pipeline->base.type, &stages[i].info);
+                                pipeline->base.type,
+                                i == pipeline->last_vgt_api_stage && consider_force_vrs,
+                                &stages[i].info);
    }
 
    radv_nir_shader_info_link(device, pipeline_key, stages);
@@ -3048,18 +3053,19 @@ radv_pipeline_create_gs_copy_shader(struct radv_pipeline *pipeline,
                                    gs_info->outinfo.clip_dist_mask | gs_info->outinfo.cull_dist_mask,
                                    gs_info->outinfo.vs_output_param_offset,
                                    gs_info->outinfo.param_exports,
-                                   false, false, false,
+                                   false, false, gs_info->force_vrs_per_vertex,
                                    &output_info);
 
    nir_validate_shader(nir, "after ac_nir_create_gs_copy_shader");
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
    struct radv_shader_info info = {0};
-   radv_nir_shader_info_pass(device, nir, pipeline_layout, pipeline_key, pipeline->type, &info);
+   radv_nir_shader_info_pass(device, nir, pipeline_layout, pipeline_key, pipeline->type, false, &info);
    info.wave_size = 64; /* Wave32 not supported. */
    info.workgroup_size = 64; /* HW VS: separate waves, no workgroups */
    info.so = gs_info->so;
    info.outinfo = gs_info->outinfo;
+   info.force_vrs_per_vertex = gs_info->force_vrs_per_vertex;
 
    struct radv_shader_args gs_copy_args = {0};
    gs_copy_args.is_gs_copy_shader = true;
@@ -3329,7 +3335,7 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
                     stage->info.outinfo.vs_output_param_offset,
                     stage->info.outinfo.param_exports,
                     stage->info.outinfo.export_prim_id,
-                    false, false, false);
+                    false, false, stage->info.force_vrs_per_vertex);
 
       } else {
          ac_nir_gs_output_info gs_out_info = {
@@ -3608,13 +3614,6 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
 
    radv_pipeline_get_nir(pipeline, stages, pipeline_key, retain_shaders);
 
-   /* Force per-vertex VRS. */
-   if (radv_consider_force_vrs(pipeline, noop_fs, stages)) {
-      assert(pipeline->last_vgt_api_stage != MESA_SHADER_MESH);
-      nir_shader *last_vgt_shader = stages[pipeline->last_vgt_api_stage].nir;
-      NIR_PASS(_, last_vgt_shader, radv_force_primitive_shading_rate, device);
-   }
-
    bool optimize_conservatively = pipeline_key->optimisations_disabled;
 
    /* Determine if shaders uses NGG before linking because it's needed for some NIR pass. */
@@ -3655,7 +3654,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
                pipeline_key);
    }
 
-   radv_fill_shader_info(pipeline, pipeline_layout, pipeline_key, stages);
+   radv_fill_shader_info(pipeline, pipeline_layout, pipeline_key, stages, noop_fs);
 
    radv_declare_pipeline_args(device, stages, pipeline_key);
 
@@ -5539,7 +5538,7 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline,
    /* Run the shader info pass. */
    radv_nir_shader_info_init(&cs_stage.info);
    radv_nir_shader_info_pass(device, cs_stage.nir, pipeline_layout, pipeline_key,
-                             pipeline->base.type, &cs_stage.info);
+                             pipeline->base.type, false, &cs_stage.info);
 
    /* Declare shader arguments. */
    cs_stage.args.explicit_scratch_args = !radv_use_llvm_for_stage(device, MESA_SHADER_COMPUTE);
