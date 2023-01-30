@@ -99,33 +99,26 @@ static LLVMValueRef first_active_invocation(struct lp_build_nir_context *bld_bas
 {
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
+   struct lp_build_context *uint_bld = &bld_base->uint_bld;
 
    if (invocation_0_must_be_active(bld_base))
       return lp_build_const_int32(gallivm, 0);
 
-   /* have to find the first active (nonzero) invocation in the exec_mask
-    * vector, but there's no nice LLVM intrinsic to do so.  Loop down from the
-    * last invocation to the first, storing the loop counter to a scalar temp
-    * if that channel is active. At the end we'll have a scalar temp with the
-    * first active channel in it.
-    */
    LLVMValueRef exec_mask = mask_vec(bld_base);
-   struct lp_build_loop_state loop_state;
-   LLVMValueRef res_store = lp_build_alloca(gallivm, bld_base->int_bld.elem_type, "");
-   LLVMValueRef outer_cond = LLVMBuildICmp(builder, LLVMIntNE, exec_mask, bld_base->uint_bld.zero, "");
-   lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, bld_base->uint_bld.type.length));
 
-   LLVMValueRef if_cond = LLVMBuildExtractElement(gallivm->builder, outer_cond, loop_state.counter, "");
-   struct lp_build_if_state ifthen;
+   LLVMValueRef bitmask = LLVMBuildICmp(builder, LLVMIntNE, exec_mask, bld_base->uint_bld.zero, "exec_bitvec");
+   /* Turn it from N x i1 to iN, then extend it up to i32 so we can use a single
+    * cttz intrinsic -- I assume the compiler will drop the extend if there are
+    * smaller instructions available, since we have is_zero_poison.
+    */
+   bitmask = LLVMBuildBitCast(builder, bitmask, LLVMIntTypeInContext(gallivm->context, uint_bld->type.length), "exec_bitmask");
+   bitmask = LLVMBuildZExt(builder, bitmask, bld_base->int_bld.elem_type, "");
 
-   lp_build_if(&ifthen, gallivm, if_cond);
-   LLVMBuildStore(builder, loop_state.counter, res_store);
-   lp_build_endif(&ifthen);
-
-   lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, -1),
-                          lp_build_const_int32(gallivm, -1), LLVMIntEQ);
-
-   return LLVMBuildLoad2(builder, bld_base->int_bld.elem_type, res_store, "");
+   /* We know that exec mask always has a set bit (otherwise we would have
+    * jumped), so we can set is_zero_poison to true.
+    */
+   return lp_build_intrinsic_binary(builder, "llvm.cttz.i32", bld_base->int_bld.elem_type, bitmask,
+                                    LLVMConstInt(LLVMInt1TypeInContext(gallivm->context), true, false));
 }
 
 static LLVMValueRef
