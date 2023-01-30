@@ -296,16 +296,16 @@ vn_build_buffer_memory_barrier(const VkDependencyInfo *dep_info,
    assert(mask_is_32bit(barrier2->dstStageMask));
    assert(mask_is_32bit(barrier2->dstAccessMask));
 
-   *barrier1 = (VkBufferMemoryBarrier) {
-      .sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-      .pNext               = NULL,
-      .srcAccessMask       = barrier2->srcAccessMask,
-      .dstAccessMask       = barrier2->dstAccessMask,
+   *barrier1 = (VkBufferMemoryBarrier){
+      .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+      .pNext = NULL,
+      .srcAccessMask = barrier2->srcAccessMask,
+      .dstAccessMask = barrier2->dstAccessMask,
       .srcQueueFamilyIndex = barrier2->srcQueueFamilyIndex,
       .dstQueueFamilyIndex = barrier2->dstQueueFamilyIndex,
-      .buffer              = barrier2->buffer,
-      .offset              = barrier2->offset,
-      .size                = barrier2->size,
+      .buffer = barrier2->buffer,
+      .offset = barrier2->offset,
+      .size = barrier2->size,
    };
 
    *src_stage_mask = barrier2->srcStageMask;
