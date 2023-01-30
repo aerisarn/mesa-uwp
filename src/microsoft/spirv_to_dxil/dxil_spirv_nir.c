@@ -988,6 +988,9 @@ dxil_spirv_nir_passes(nir_shader *nir,
    }
 
    NIR_PASS_V(nir, nir_opt_deref);
+   NIR_PASS_V(nir, dxil_nir_split_unaligned_loads_stores,
+              nir_var_mem_ubo | nir_var_mem_push_const |
+              nir_var_mem_ssbo);
 
    if (conf->read_only_images_as_srvs) {
       const nir_opt_access_options opt_access_options = {
@@ -1019,6 +1022,7 @@ dxil_spirv_nir_passes(nir_shader *nir,
       NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_mem_shared,
                  shared_var_info);
    }
+   NIR_PASS_V(nir, dxil_nir_split_unaligned_loads_stores, nir_var_mem_shared);
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_shared,
       nir_address_format_32bit_offset);
 
