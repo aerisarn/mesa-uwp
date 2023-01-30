@@ -795,6 +795,8 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
    } else
       va += (uint64_t)base_level_info->offset_256B * 256;
 
+   swizzle = radv_adjust_tile_swizzle(device->physical_device, swizzle);
+
    state[0] = va >> 8;
    if (gfx_level >= GFX9 || base_level_info->mode == RADEON_SURF_MODE_2D)
       state[0] |= swizzle;
@@ -809,7 +811,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
          if (gfx_level <= GFX8)
             meta_va += plane->surface.u.legacy.color.dcc_level[base_level].dcc_offset;
 
-         unsigned dcc_tile_swizzle = plane->surface.tile_swizzle << 8;
+         unsigned dcc_tile_swizzle = swizzle << 8;
          dcc_tile_swizzle &= (1 << plane->surface.meta_alignment_log2) - 1;
          meta_va |= dcc_tile_swizzle;
       } else if (!disable_compression && radv_image_is_tc_compat_htile(image)) {

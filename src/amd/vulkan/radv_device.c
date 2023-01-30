@@ -6970,6 +6970,8 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
       tile_swizzle = iview->nbc_view.tile_swizzle;
    }
 
+   tile_swizzle = radv_adjust_tile_swizzle(device->physical_device, tile_swizzle);
+
    cb->cb_color_base = va >> 8;
 
    if (device->physical_device->rad_info.gfx_level >= GFX9) {
