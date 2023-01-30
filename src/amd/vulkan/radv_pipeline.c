@@ -5366,7 +5366,7 @@ radv_compute_pipeline_init(struct radv_compute_pipeline *pipeline,
 }
 
 VkResult
-radv_compute_pipeline_compile(struct radv_pipeline *pipeline,
+radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline,
                               struct radv_pipeline_layout *pipeline_layout,
                               struct radv_device *device, struct radv_pipeline_cache *cache,
                               const struct radv_pipeline_key *pipeline_key,
@@ -5378,8 +5378,8 @@ radv_compute_pipeline_compile(struct radv_pipeline *pipeline,
 {
    struct radv_shader_binary *binaries[MESA_VULKAN_SHADER_STAGES] = {NULL};
    unsigned char hash[20];
-   bool keep_executable_info = radv_pipeline_capture_shaders(pipeline->device, flags);
-   bool keep_statistic_info = radv_pipeline_capture_shader_stats(pipeline->device, flags);
+   bool keep_executable_info = radv_pipeline_capture_shaders(pipeline->base.device, flags);
+   bool keep_statistic_info = radv_pipeline_capture_shader_stats(pipeline->base.device, flags);
    struct radv_pipeline_stage cs_stage = {0};
    VkPipelineCreationFeedback pipeline_feedback = {
       .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
@@ -5397,11 +5397,11 @@ radv_compute_pipeline_compile(struct radv_pipeline *pipeline,
                         radv_get_hash_flags(device, keep_statistic_info));
    }
 
-   pipeline->pipeline_hash = *(uint64_t *)hash;
+   pipeline->base.pipeline_hash = *(uint64_t *)hash;
 
    bool found_in_application_cache = true;
    if (!keep_executable_info &&
-       radv_create_shaders_from_pipeline_cache(device, cache, hash, pipeline, stack_sizes,
+       radv_create_shaders_from_pipeline_cache(device, cache, hash, &pipeline->base, stack_sizes,
                                                num_stack_sizes, &found_in_application_cache)) {
       if (found_in_application_cache)
          pipeline_feedback.flags |=
@@ -5416,7 +5416,7 @@ radv_compute_pipeline_compile(struct radv_pipeline *pipeline,
    int64_t stage_start = os_time_get_nano();
 
    /* Compile SPIR-V shader to NIR. */
-   cs_stage.nir = radv_shader_spirv_to_nir(device, &cs_stage, pipeline_key, pipeline->is_internal);
+   cs_stage.nir = radv_shader_spirv_to_nir(device, &cs_stage, pipeline_key, pipeline->base.is_internal);
 
    radv_optimize_nir(cs_stage.nir, pipeline_key->optimisations_disabled, false);
 
@@ -5429,7 +5429,7 @@ radv_compute_pipeline_compile(struct radv_pipeline *pipeline,
    /* Run the shader info pass. */
    radv_nir_shader_info_init(&cs_stage.info);
    radv_nir_shader_info_pass(device, cs_stage.nir, pipeline_layout, pipeline_key,
-                             pipeline->type, &cs_stage.info);
+                             pipeline->base.type, &cs_stage.info);
 
    /* Declare shader arguments. */
    cs_stage.args.explicit_scratch_args = !radv_use_llvm_for_stage(device, MESA_SHADER_COMPUTE);
@@ -5445,20 +5445,20 @@ radv_compute_pipeline_compile(struct radv_pipeline *pipeline,
    stage_start = os_time_get_nano();
 
    /* Postprocess NIR. */
-   radv_postprocess_nir(pipeline, pipeline_layout, pipeline_key, MESA_SHADER_NONE, &cs_stage);
+   radv_postprocess_nir(&pipeline->base, pipeline_layout, pipeline_key, MESA_SHADER_NONE, &cs_stage);
 
    if (radv_can_dump_shader(device, cs_stage.nir, false))
       nir_print_shader(cs_stage.nir, stderr);
 
    /* Compile NIR shader to AMD assembly. */
-   pipeline->shaders[MESA_SHADER_COMPUTE] = radv_shader_nir_to_asm(
+   pipeline->base.shaders[MESA_SHADER_COMPUTE] = radv_shader_nir_to_asm(
       device, &cs_stage, &cs_stage.nir, 1, pipeline_key,
       keep_executable_info, keep_statistic_info, &binaries[MESA_SHADER_COMPUTE]);
 
    cs_stage.feedback.duration += os_time_get_nano() - stage_start;
 
    if (keep_executable_info) {
-      struct radv_shader *shader = pipeline->shaders[MESA_SHADER_COMPUTE];
+      struct radv_shader *shader = pipeline->base.shaders[MESA_SHADER_COMPUTE];
 
       if (cs_stage.spirv.size) {
          shader->spirv = malloc(cs_stage.spirv.size);
@@ -5468,17 +5468,17 @@ radv_compute_pipeline_compile(struct radv_pipeline *pipeline,
    }
 
    /* Upload compute shader binary. */
-   radv_upload_shaders(device, pipeline, binaries, NULL);
+   radv_upload_shaders(device, &pipeline->base, binaries, NULL);
 
    if (!keep_executable_info) {
-      radv_pipeline_cache_insert_shaders(device, cache, hash, pipeline, binaries,
+      radv_pipeline_cache_insert_shaders(device, cache, hash, &pipeline->base, binaries,
                                          stack_sizes ? *stack_sizes : NULL,
                                          num_stack_sizes ? *num_stack_sizes : 0);
    }
 
    free(binaries[MESA_SHADER_COMPUTE]);
    if (radv_can_dump_shader_stats(device, cs_stage.nir)) {
-      radv_dump_shader_stats(device, pipeline, MESA_SHADER_COMPUTE, stderr);
+      radv_dump_shader_stats(device, &pipeline->base, MESA_SHADER_COMPUTE, stderr);
    }
    ralloc_free(cs_stage.nir);
 
@@ -5523,7 +5523,7 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
 
    struct radv_pipeline_key key = radv_generate_compute_pipeline_key(pipeline, pCreateInfo);
 
-   result = radv_compute_pipeline_compile(&pipeline->base, pipeline_layout, device, cache, &key,
+   result = radv_compute_pipeline_compile(pipeline, pipeline_layout, device, cache, &key,
                                           &pCreateInfo->stage, pCreateInfo->flags, NULL,
                                           creation_feedback, NULL, NULL);
    if (result != VK_SUCCESS) {

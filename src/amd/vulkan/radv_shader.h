@@ -555,9 +555,10 @@ void radv_init_shader_arenas(struct radv_device *device);
 void radv_destroy_shader_arenas(struct radv_device *device);
 
 struct radv_pipeline_shader_stack_size;
+struct radv_compute_pipeline;
 
 VkResult radv_compute_pipeline_compile(
-   struct radv_pipeline *pipeline, struct radv_pipeline_layout *pipeline_layout,
+   struct radv_compute_pipeline *pipeline, struct radv_pipeline_layout *pipeline_layout,
    struct radv_device *device, struct radv_pipeline_cache *cache,
    const struct radv_pipeline_key *pipeline_key, const VkPipelineShaderStageCreateInfo *pStage,
    const VkPipelineCreateFlags flags, const uint8_t *custom_hash,
