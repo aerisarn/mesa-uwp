@@ -61,7 +61,7 @@
     # performance jobs, see below.
     - if: ('$GITLAB_USER_LOGIN == "marge-bot" &&
            $CI_PIPELINE_SOURCE == "merge_request_event"' &&
-           $GITLAB_USER_LOGIN !~ "/performance$/")
+           $CI_JOB_NAME !~ "/performance$/")
       when: never
     - !reference [.scheduled_pipeline-rules, rules]
     - changes:
