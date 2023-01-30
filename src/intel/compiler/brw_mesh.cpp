@@ -1452,7 +1452,7 @@ fs_visitor::emit_task_mesh_store(const fs_builder &bld, nir_intrinsic_instr *ins
 
 void
 fs_visitor::emit_task_mesh_load(const fs_builder &bld, nir_intrinsic_instr *instr,
-                                const fs_reg &urb_handle)
+                                const fs_reg &urb_handle, bool mask)
 {
    fs_reg dest = get_nir_dest(instr->dest);
    nir_src *offset_nir_src = nir_get_io_offset_src(instr);
@@ -1460,7 +1460,8 @@ fs_visitor::emit_task_mesh_load(const fs_builder &bld, nir_intrinsic_instr *inst
    fs_builder ubld8 = bld.group(8, 0).exec_all();
    fs_reg h = ubld8.vgrf(BRW_REGISTER_TYPE_UD, 1);
    ubld8.MOV(h, urb_handle);
-   ubld8.AND(h, h, brw_imm_ud(0xFFFF));
+   if (mask)
+      ubld8.AND(h, h, brw_imm_ud(0xFFFF));
 
    /* TODO(mesh): for per_vertex and per_primitive, if we could keep around
     * the non-array-index offset, we could use to decide if we can perform
@@ -1488,7 +1489,7 @@ fs_visitor::nir_emit_task_intrinsic(const fs_builder &bld,
 
    case nir_intrinsic_load_output:
    case nir_intrinsic_load_task_payload:
-      emit_task_mesh_load(bld, instr, payload.urb_output);
+      emit_task_mesh_load(bld, instr, payload.urb_output, true);
       break;
 
    default:
@@ -1514,11 +1515,11 @@ fs_visitor::nir_emit_mesh_intrinsic(const fs_builder &bld,
    case nir_intrinsic_load_per_vertex_output:
    case nir_intrinsic_load_per_primitive_output:
    case nir_intrinsic_load_output:
-      emit_task_mesh_load(bld, instr, payload.urb_output);
+      emit_task_mesh_load(bld, instr, payload.urb_output, true);
       break;
 
    case nir_intrinsic_load_task_payload:
-      emit_task_mesh_load(bld, instr, payload.task_urb_input);
+      emit_task_mesh_load(bld, instr, payload.task_urb_input, false);
       break;
 
    default:
