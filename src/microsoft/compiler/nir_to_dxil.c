@@ -2107,6 +2107,7 @@ get_cast_op(nir_alu_instr *alu)
 
    /* float -> float */
    case nir_op_f2f16_rtz:
+   case nir_op_f2f16:
    case nir_op_f2f32:
    case nir_op_f2f64:
       assert(dst_bits != src_bits);
@@ -2707,6 +2708,7 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_u2f16:
    case nir_op_i2f16:
    case nir_op_f2f16_rtz:
+   case nir_op_f2f16:
    case nir_op_b2i32:
    case nir_op_f2f32:
    case nir_op_f2i32:
