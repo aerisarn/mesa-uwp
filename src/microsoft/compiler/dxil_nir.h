@@ -42,7 +42,6 @@ bool dxil_nir_lower_atomics_to_dxil(nir_shader *shader);
 bool dxil_nir_lower_deref_ssbo(nir_shader *shader);
 bool dxil_nir_opt_alu_deref_srcs(nir_shader *shader);
 bool dxil_nir_lower_upcast_phis(nir_shader *shader, unsigned min_bit_size);
-bool dxil_nir_lower_fp16_casts(nir_shader *shader);
 bool dxil_nir_split_clip_cull_distance(nir_shader *shader);
 bool dxil_nir_lower_double_math(nir_shader *shader);
 bool dxil_nir_lower_system_values_to_zero(nir_shader *shader,

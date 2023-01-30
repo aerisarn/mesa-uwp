@@ -1085,7 +1085,7 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
    NIR_PASS_V(nir, dxil_nir_lower_loads_stores_to_dxil);
    NIR_PASS_V(nir, dxil_nir_opt_alu_deref_srcs);
    NIR_PASS_V(nir, dxil_nir_lower_atomics_to_dxil);
-   NIR_PASS_V(nir, nir_lower_fp16_casts);
+   NIR_PASS_V(nir, nir_lower_fp16_casts, nir_lower_fp16_all);
    NIR_PASS_V(nir, nir_lower_convert_alu_types, NULL);
 
    // Convert pack to pack_split
