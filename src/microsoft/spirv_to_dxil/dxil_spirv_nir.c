@@ -44,6 +44,10 @@ spirv_to_nir_options = {
       .subgroup_shuffle = true,
       .subgroup_quad = true,
       .descriptor_array_dynamic_indexing = true,
+      .float_controls = true,
+      .float16 = true,
+      .int16 = true,
+      .storage_16bit = true,
    },
    .ubo_addr_format = nir_address_format_32bit_index_offset,
    .ssbo_addr_format = nir_address_format_32bit_index_offset,
@@ -1053,6 +1057,7 @@ dxil_spirv_nir_passes(nir_shader *nir,
                             conf->push_constant_cbv.base_shader_register);
    }
 
+   NIR_PASS_V(nir, nir_lower_fp16_casts, nir_lower_fp16_all & ~nir_lower_fp16_rtz);
    NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
    NIR_PASS_V(nir, nir_opt_dce);
    NIR_PASS_V(nir, dxil_nir_lower_double_math);
@@ -1090,7 +1095,7 @@ dxil_spirv_nir_passes(nir_shader *nir,
    NIR_PASS_V(nir, dxil_nir_lower_atomics_to_dxil);
    NIR_PASS_V(nir, dxil_nir_split_clip_cull_distance);
    const struct dxil_nir_lower_loads_stores_options loads_stores_options = {
-      .use_16bit_ssbo = false,
+      .use_16bit_ssbo = conf->shader_model_max >= SHADER_MODEL_6_2,
    };
    NIR_PASS_V(nir, dxil_nir_lower_loads_stores_to_dxil, &loads_stores_options);
    NIR_PASS_V(nir, dxil_nir_split_typed_samplers);
