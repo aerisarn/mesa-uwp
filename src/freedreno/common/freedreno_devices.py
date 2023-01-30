@@ -36,6 +36,12 @@ class CHIP(Enum):
     A6XX = 6
     A7XX = 7
 
+class CCUColorCacheFraction(Enum):
+    FULL = 0
+    HALF = 1
+    QUARTER = 2
+    EIGHTH = 3
+
 
 class State(object):
     def __init__(self):
@@ -143,6 +149,13 @@ class A6xxGPUInfo(GPUInfo):
         self.a6xx.has_cp_reg_write = True
         self.a6xx.has_8bpp_ubwc = True
 
+        self.a6xx.has_gmem_fast_clear = True
+
+        self.a6xx.sysmem_per_ccu_cache_size = 64 * 1024
+        self.a6xx.gmem_ccu_color_cache_fraction = CCUColorCacheFraction.QUARTER.value
+
+        self.a6xx.prim_alloc_threshold = 0x7
+
         for name, val in template.items():
             if name == "magic": # handled above
                 continue
@@ -217,7 +230,7 @@ a6xx_gen1 = dict(
         fibers_per_sp = 128 * 16,
         reg_size_vec4 = 96,
         instr_cache_size = 64,
-        concurrent_resolve = True,
+        concurrent_resolve = False,
         indirect_draw_wfm_quirk = True,
         depth_bounds_require_depth_test_quirk = True,
     )

@@ -1489,7 +1489,8 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
    }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CONTROL_1_REG, 5);
-   tu_cs_emit(cs, 0x7);
+   tu_cs_emit(cs, A6XX_HLSQ_CONTROL_1_REG_PRIMALLOCTHRESHOLD(
+      cs->device->physical_device->info->a6xx.prim_alloc_threshold));
    tu_cs_emit(cs, A6XX_HLSQ_CONTROL_2_REG_FACEREGID(face_regid) |
                   A6XX_HLSQ_CONTROL_2_REG_SAMPLEID(samp_id_regid) |
                   A6XX_HLSQ_CONTROL_2_REG_SAMPLEMASK(smask_in_regid) |

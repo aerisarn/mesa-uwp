@@ -746,16 +746,23 @@ fd6_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 void
 fd6_emit_ccu_cntl(struct fd_ringbuffer *ring, struct fd_screen *screen, bool gmem)
 {
+   enum a6xx_ccu_color_cache_size cache_size = (a6xx_ccu_color_cache_size)(screen->info->a6xx.gmem_ccu_color_cache_fraction);
    uint32_t offset = gmem ? screen->ccu_offset_gmem : screen->ccu_offset_bypass;
    uint32_t offset_hi = offset >> 21;
    offset &= 0x1fffff;
 
-   OUT_REG(ring, A6XX_RB_CCU_CNTL(
-         .concurrent_resolve = gmem && screen->info->a6xx.concurrent_resolve,
-         .color_offset_hi = offset_hi,
-         .gmem = gmem,
-         .color_offset = offset,
-   ));
+   OUT_REG(ring,
+           A6XX_RB_CCU_CNTL(.gmem_fast_clear_disable =
+                               !screen->info->a6xx.has_gmem_fast_clear,
+                            .concurrent_resolve =
+                               screen->info->a6xx.concurrent_resolve,
+                            .depth_offset_hi = 0,
+                            .color_offset_hi = offset_hi,
+                            .depth_cache_size = 0,
+                            .depth_offset = 0,
+                            .color_cache_size = cache_size,
+                            .color_offset = offset,
+                            ));
 }
 
 template void fd6_emit_cs_state<A6XX>(struct fd_context *ctx, struct fd_ringbuffer *ring, struct fd6_compute_state *cs);

@@ -200,15 +200,22 @@ tu_emit_cache_flush_renderpass(struct tu_cmd_buffer *cmd_buffer)
 }
 
 static struct fd_reg_pair
-rb_ccu_cntl(uint32_t color_offset, bool gmem)
+rb_ccu_cntl(struct tu_device *dev, uint32_t color_offset)
 {
    uint32_t color_offset_hi = color_offset >> 21;
    color_offset &= 0x1fffff;
-   return A6XX_RB_CCU_CNTL(
-         .color_offset_hi = color_offset_hi,
-         .gmem = gmem,
-         .color_offset = color_offset,
-   );
+   enum a6xx_ccu_color_cache_size cache_size =
+      (a6xx_ccu_color_cache_size)(dev->physical_device->info->a6xx.gmem_ccu_color_cache_fraction);
+   bool concurrent_resolve = dev->physical_device->info->a6xx.concurrent_resolve;
+   return  A6XX_RB_CCU_CNTL(.gmem_fast_clear_disable =
+         !dev->physical_device->info->a6xx.has_gmem_fast_clear,
+      .concurrent_resolve = concurrent_resolve,
+      .depth_offset_hi = 0,
+      .color_offset_hi = color_offset_hi,
+      .depth_cache_size = 0,
+      .depth_offset = 0,
+      .color_cache_size = cache_size,
+      .color_offset = color_offset);
 }
 
 /* Cache flushes for things that use the color/depth read/write path (i.e.
@@ -252,12 +259,13 @@ tu_emit_cache_flush_ccu(struct tu_cmd_buffer *cmd_buffer,
    tu6_emit_flushes(cmd_buffer, cs, &cmd_buffer->state.cache);
 
    if (ccu_state != cmd_buffer->state.ccu_state) {
-      struct tu_physical_device *phys_dev = cmd_buffer->device->physical_device;
+      struct tu_physical_device *phys_dev =
+         cmd_buffer->device->physical_device;
       tu_cs_emit_regs(cs,
-                      rb_ccu_cntl(ccu_state == TU_CMD_CCU_GMEM ?
-                                  phys_dev->ccu_offset_gmem :
-                                  phys_dev->ccu_offset_bypass,
-                                  ccu_state == TU_CMD_CCU_GMEM));
+         rb_ccu_cntl(cmd_buffer->device,
+         ccu_state == TU_CMD_CCU_GMEM ?
+            phys_dev->ccu_offset_gmem :
+            phys_dev->ccu_offset_bypass));
       cmd_buffer->state.ccu_state = ccu_state;
    }
 }
@@ -1045,7 +1053,7 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    cmd->state.cache.pending_flush_bits &=
       ~(TU_CMD_FLAG_WAIT_FOR_IDLE | TU_CMD_FLAG_CACHE_INVALIDATE);
 
-   tu_cs_emit_regs(cs, rb_ccu_cntl(phys_dev->ccu_offset_bypass, false));
+   tu_cs_emit_regs(cs, rb_ccu_cntl(dev, phys_dev->ccu_offset_bypass));
    cmd->state.ccu_state = TU_CMD_CCU_SYSMEM;
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_DBG_ECO_CNTL,
                         phys_dev->info->a6xx.magic.RB_DBG_ECO_CNTL);

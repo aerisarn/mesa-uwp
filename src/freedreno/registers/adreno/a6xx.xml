@@ -2638,18 +2638,25 @@ to upconvert to 32b float internally?
 	<!-- 0x8e00-0x8e03 invalid -->
 	<reg32 offset="0x8e04" name="RB_DBG_ECO_CNTL" usage="cmd"/> <!-- TODO: valid mask 0xfffffeff -->
 	<reg32 offset="0x8e05" name="RB_ADDR_MODE_CNTL" pos="0" type="a5xx_address_mode"/>
-
 	<!-- 0x02080000 in GMEM, zero otherwise?  -->
 	<reg32 offset="0x8e06" name="RB_UNKNOWN_8E06" variants="A7XX-" usage="cmd"/>
+	<enum name="a6xx_ccu_color_cache_size">
+		<value value="0x0" name="CCU_COLOR_CACHE_SIZE_FULL"/>
+		<value value="0x1" name="CCU_COLOR_CACHE_SIZE_HALF"/>
+		<value value="0x2" name="CCU_COLOR_CACHE_SIZE_QUARTER"/>
+		<value value="0x3" name="CCU_COLOR_CACHE_SIZE_EIGHTH"/>
+	</enum>
 
 	<reg32 offset="0x8e07" name="RB_CCU_CNTL" usage="cmd">
+		<bitfield name="GMEM_FAST_CLEAR_DISABLE" pos="0" type="boolean"/>
 		<!-- concurrent resolves are apparently a 2-bit enum on a650+ -->
 		<bitfield name="CONCURRENT_RESOLVE" pos="2" type="boolean"/>
 		<bitfield name="DEPTH_OFFSET_HI" pos="7" type="hex"/>
 		<bitfield name="COLOR_OFFSET_HI" pos="9" type="hex"/>
+		<bitfield name="DEPTH_CACHE_SIZE" low="10" high="11" type="uint"/>
 		<!-- GMEM offset of CCU depth cache -->
 		<bitfield name="DEPTH_OFFSET" low="12" high="20" shr="12" type="hex"/>
-		<bitfield name="GMEM" pos="22" type="boolean"/> <!-- set for GMEM path -->
+		<bitfield name="COLOR_CACHE_SIZE" low="21" high="22" type="a6xx_ccu_color_cache_size"/>
 		<!-- GMEM offset of CCU color cache
 			for GMEM rendering, we set it to GMEM size minus the minimum
 			CCU color cache size. CCU color cache will be needed in some
@@ -4018,7 +4025,10 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xb980" type="a6xx_hlsq_fs_cntl_0" name="HLSQ_FS_CNTL_0" variants="A6XX" usage="rp_blit"/>
 	<reg32 offset="0xb981" name="HLSQ_UNKNOWN_B981" pos="0" type="boolean" variants="A6XX"/> <!-- never used by blob -->
 	<reg32 offset="0xb982" name="HLSQ_CONTROL_1_REG" low="0" high="2" variants="A6XX" usage="rp_blit">
-		<!-- TODO: have test cases with either 0x3 or 0x7 -->
+		<!-- Sets the maximum number of primitives allowed in one FS wave minus one, similarly to the
+				 A3xx field, except that it's not necessary to set it to anything but the maximum, since
+				 the hardware will simply emit smaller waves when it runs out of space.	-->
+		<bitfield name="PRIMALLOCTHRESHOLD" low="0" high="2" type="uint"/>
 	</reg32>
 	<reg32 offset="0xb983" name="HLSQ_CONTROL_2_REG" variants="A6XX" usage="rp_blit">
 		<bitfield name="FACEREGID" low="0" high="7" type="a3xx_regid"/>
@@ -4031,13 +4041,11 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xb985" type="a6xx_hlsq_control_4_reg" name="HLSQ_CONTROL_4_REG" variants="A6XX" usage="rp_blit"/>
 	<reg32 offset="0xb986" type="a6xx_hlsq_control_5_reg" name="HLSQ_CONTROL_5_REG" variants="A6XX" usage="rp_blit"/>
 	<reg32 offset="0xb987" name="HLSQ_CS_CNTL" type="a6xx_hlsq_xs_cntl" variants="A6XX" usage="cmd"/>
-
 	<!-- Either 0 or 0x401, the non-zero value is only in a few of dEQP-VK.ssbo.phys.layout.3_level_*.*8vec4 -->
 	<reg32 offset="0xa9c5" name="HLSQ_UNKNOWN_A9C5" variants="A7XX-" usage="cmd"/>
-
 	<reg32 offset="0xa9c6" type="a6xx_hlsq_fs_cntl_0" name="HLSQ_FS_CNTL_0" variants="A7XX-" usage="rp_blit"/>
 	<reg32 offset="0xa9c7" name="HLSQ_CONTROL_1_REG" low="0" high="2" variants="A7XX-" usage="rp_blit">
-		<!-- TODO: have test cases with either 0x3 or 0x7 -->
+			<bitfield name="PRIMALLOCTHRESHOLD" low="0" high="2" type="uint"/>
 	</reg32>
 	<reg32 offset="0xa9c8" name="HLSQ_CONTROL_2_REG" variants="A7XX-" usage="rp_blit">
 		<bitfield name="FACEREGID" low="0" high="7" type="a3xx_regid"/>

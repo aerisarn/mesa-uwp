@@ -612,12 +612,19 @@ tu_physical_device_init(struct tu_physical_device *device,
       goto fail_free_name;
    }
    switch (fd_dev_gen(&device->dev_id)) {
-   case 6:
+   case 6: {
       device->info = info;
-      device->ccu_offset_bypass = device->info->num_ccu * A6XX_CCU_DEPTH_SIZE;
-      device->ccu_offset_gmem = (device->gmem_size -
-         device->info->num_ccu * A6XX_CCU_GMEM_COLOR_SIZE);
+      uint32_t depth_cache_size =
+         device->info->num_ccu * device->info->a6xx.sysmem_per_ccu_cache_size;
+      uint32_t color_cache_size =
+         (device->info->num_ccu *
+          device->info->a6xx.sysmem_per_ccu_cache_size) /
+         (1 << device->info->a6xx.gmem_ccu_color_cache_fraction);
+
+      device->ccu_offset_bypass = depth_cache_size;
+      device->ccu_offset_gmem = device->gmem_size - color_cache_size;
       break;
+   }
    default:
       result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                                  "device %s is unsupported", device->name);
