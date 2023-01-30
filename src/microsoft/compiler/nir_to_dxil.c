@@ -2649,9 +2649,21 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
 
    case nir_op_fround_even: return emit_unary_intin(ctx, alu, DXIL_INTR_ROUND_NE, src[0]);
    case nir_op_frcp: {
-         const struct dxil_value *one = dxil_module_get_float_const(&ctx->mod, 1.0f);
-         return emit_binop(ctx, alu, DXIL_BINOP_SDIV, one, src[0]);
+      const struct dxil_value *one;
+      switch (alu->dest.dest.ssa.bit_size) {
+      case 16:
+         one = dxil_module_get_float16_const(&ctx->mod, 0x3C00);
+         break;
+      case 32:
+         one = dxil_module_get_float_const(&ctx->mod, 1.0f);
+         break;
+      case 64:
+         one = dxil_module_get_double_const(&ctx->mod, 1.0);
+         break;
+      default: unreachable("Invalid float size");
       }
+      return emit_binop(ctx, alu, DXIL_BINOP_SDIV, one, src[0]);
+   }
    case nir_op_fsat: return emit_unary_intin(ctx, alu, DXIL_INTR_SATURATE, src[0]);
    case nir_op_bit_count: return emit_unary_intin(ctx, alu, DXIL_INTR_COUNTBITS, src[0]);
    case nir_op_bitfield_reverse: return emit_unary_intin(ctx, alu, DXIL_INTR_BFREV, src[0]);
