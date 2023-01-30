@@ -240,10 +240,25 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_merged_wave_info_amd:
       replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ac.merged_wave_info);
       break;
-   case nir_intrinsic_load_cull_any_enabled_amd:
-      replacement = nggc_bool_setting(
-         b, radv_nggc_front_face | radv_nggc_back_face | radv_nggc_small_primitives, s);
+   case nir_intrinsic_load_cull_any_enabled_amd: {
+      nir_ssa_def *gs_tg_info = ac_nir_load_arg(b, &s->args->ac, s->args->ac.gs_tg_info);
+
+      /* Consider a workgroup small if it contains less than 16 triangles.
+       *
+       * The gs_tg_info[30:22] is the number of primitives, which we know is non-zero,
+       * so the below is equivalent to: "ult(ubfe(gs_tg_info, 22, 9), 16)", but
+       * ACO can optimize out the comparison to zero (see try_optimize_scc_nocompare).
+       */
+      nir_ssa_def *small_workgroup =
+         nir_ieq_imm(b, nir_iand_imm(b, gs_tg_info, BITFIELD_RANGE(22 + 4, 9 - 4)), 0);
+
+      nir_ssa_def *mask = nir_bcsel(
+         b, small_workgroup, nir_imm_int(b, radv_nggc_none),
+         nir_imm_int(b, radv_nggc_front_face | radv_nggc_back_face | radv_nggc_small_primitives));
+      nir_ssa_def *settings = ac_nir_load_arg(b, &s->args->ac, s->args->ngg_culling_settings);
+      replacement = nir_ine_imm(b, nir_iand(b, settings, mask), 0);
       break;
+   }
    case nir_intrinsic_load_cull_front_face_enabled_amd:
       replacement = nggc_bool_setting(b, radv_nggc_front_face, s);
       break;
