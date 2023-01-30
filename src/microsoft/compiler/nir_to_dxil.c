@@ -1925,6 +1925,8 @@ store_dest(struct ntd_context *ctx, nir_dest *dest, unsigned chan,
    case nir_type_float:
       if (nir_dest_bit_size(*dest) == 64)
          ctx->mod.feats.doubles = true;
+      if (nir_dest_bit_size(*dest) == 16)
+         ctx->mod.feats.native_low_precision = true;
       store_dest_value(ctx, dest, chan, value);
       break;
    case nir_type_uint:
@@ -1982,6 +1984,8 @@ get_src(struct ntd_context *ctx, nir_src *src, unsigned chan,
          assert(ctx->mod.feats.doubles);
          ctx->mod.feats.int64_ops = true;
       }
+      if (bit_size == 16)
+         ctx->mod.feats.native_low_precision = true;
       assert(dxil_value_type_bitsize_equal_to(value, bit_size));
       return bitcast_to_int(ctx,  bit_size, value);
       }
@@ -1996,6 +2000,8 @@ get_src(struct ntd_context *ctx, nir_src *src, unsigned chan,
          assert(ctx->mod.feats.int64_ops);
          ctx->mod.feats.doubles = true;
       }
+      if (bit_size == 16)
+         ctx->mod.feats.native_low_precision = true;
       assert(dxil_value_type_bitsize_equal_to(value, bit_size));
       return bitcast_to_float(ctx, bit_size, value);
 
