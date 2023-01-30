@@ -3397,6 +3397,7 @@ radv_graphics_pipeline_compile(struct radv_pipeline *pipeline,
                                const VkPipelineCreateFlags flags,
                                const VkPipelineCreationFeedbackCreateInfo *creation_feedback,
                                VkGraphicsPipelineLibraryFlagBitsEXT lib_flags,
+                               bool fast_linking_enabled,
                                gl_shader_stage *last_vgt_api_stage)
 {
    const char *noop_fs_entrypoint = "noop_fs";
@@ -3459,13 +3460,15 @@ radv_graphics_pipeline_compile(struct radv_pipeline *pipeline,
    /* Mesh shaders always need NGG. */
    assert(!mesh_shading || pipeline_key->use_ngg);
 
-   radv_hash_shaders(hash, stages, MESA_VULKAN_SHADER_STAGES, pipeline_layout, pipeline_key,
-                     radv_get_hash_flags(device, keep_statistic_info));
+   if (!fast_linking_enabled) {
+      radv_hash_shaders(hash, stages, MESA_VULKAN_SHADER_STAGES, pipeline_layout, pipeline_key,
+                        radv_get_hash_flags(device, keep_statistic_info));
 
-   pipeline->pipeline_hash = *(uint64_t *)hash;
+      pipeline->pipeline_hash = *(uint64_t *)hash;
+   }
 
    bool found_in_application_cache = true;
-   if (!keep_executable_info &&
+   if (!fast_linking_enabled && !keep_executable_info &&
        radv_create_shaders_from_pipeline_cache(device, cache, hash, pipeline, NULL, NULL,
                                                &found_in_application_cache)) {
       if (found_in_application_cache)
@@ -3603,7 +3606,7 @@ radv_graphics_pipeline_compile(struct radv_pipeline *pipeline,
    /* Upload shader binaries. */
    radv_upload_shaders(device, pipeline, binaries, gs_copy_binary);
 
-   if (!keep_executable_info) {
+   if (!fast_linking_enabled && !keep_executable_info) {
       if (pipeline->gs_copy_shader) {
          assert(!binaries[MESA_SHADER_COMPUTE] && !pipeline->shaders[MESA_SHADER_COMPUTE]);
          binaries[MESA_SHADER_COMPUTE] = gs_copy_binary;
@@ -4912,6 +4915,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 {
    struct radv_pipeline_layout pipeline_layout = {0};
    struct vk_graphics_pipeline_state state = {0};
+   bool fast_linking_enabled = false;
    VkResult result;
 
    pipeline->last_vgt_api_stage = MESA_SHADER_NONE;
@@ -4944,6 +4948,8 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
          imported_flags |= gfx_pipeline_lib->lib_flags;
       }
+
+      fast_linking_enabled = !link_optimize;
    }
 
    /* Import graphics pipeline info that was not included in the libraries. */
@@ -4954,7 +4960,8 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       return result;
    }
 
-   radv_pipeline_layout_hash(&pipeline_layout);
+   if (!fast_linking_enabled)
+      radv_pipeline_layout_hash(&pipeline_layout);
 
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
@@ -4964,7 +4971,8 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    result = radv_graphics_pipeline_compile(
       &pipeline->base, &pipeline_layout, device, cache, &key, pCreateInfo->pStages,
       pCreateInfo->stageCount, pCreateInfo->flags, creation_feedback,
-      (~imported_flags) & ALL_GRAPHICS_LIB_FLAGS, &pipeline->last_vgt_api_stage);
+      (~imported_flags) & ALL_GRAPHICS_LIB_FLAGS, fast_linking_enabled,
+      &pipeline->last_vgt_api_stage);
    if (result != VK_SUCCESS) {
       radv_pipeline_layout_finish(device, &pipeline_layout);
       return result;
@@ -5184,7 +5192,7 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
       result = radv_graphics_pipeline_compile(&pipeline->base.base, pipeline_layout, device, cache,
                                               &key, pCreateInfo->pStages, pCreateInfo->stageCount,
                                               pCreateInfo->flags, creation_feedback, imported_flags,
-                                              &pipeline->base.last_vgt_api_stage);
+                                              false, &pipeline->base.last_vgt_api_stage);
       if (result != VK_SUCCESS)
          return result;
    }
