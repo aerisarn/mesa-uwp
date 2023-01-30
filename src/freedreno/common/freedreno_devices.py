@@ -126,14 +126,13 @@ class A6xxGPUInfo(GPUInfo):
        into distinct sub-generations.  The template parameter avoids
        duplication of parameters that are unique to the sub-generation.
     """
-    def __init__(self, chip, template, num_ccu, tile_align_w, tile_align_h, magic_regs):
+    def __init__(self, chip, template, num_ccu, tile_align_w, tile_align_h, num_vsc_pipes, magic_regs):
         super().__init__(chip, gmem_align_w = 16, gmem_align_h = 4,
                          tile_align_w = tile_align_w,
                          tile_align_h = tile_align_h,
                          tile_max_w   = 1024, # max_bitfield_val(5, 0, 5)
                          tile_max_h   = max_bitfield_val(14, 8, 4),
-                         num_vsc_pipes = 32)
-
+                         num_vsc_pipes = num_vsc_pipes)
         # The # of SP cores seems to always match # of CCU
         self.num_sp_cores = num_ccu
         self.num_ccu = num_ccu
@@ -307,6 +306,7 @@ add_gpus([
         num_ccu = 1,
         tile_align_w = 32,
         tile_align_h = 32,
+        num_vsc_pipes = 32,
         magic_regs = dict(
             PC_POWER_CNTL = 0,
             TPL1_DBG_ECO_CNTL = 0x00108000,
@@ -332,6 +332,7 @@ add_gpus([
         num_ccu = 1,
         tile_align_w = 32,
         tile_align_h = 16,
+        num_vsc_pipes = 32,
         magic_regs = dict(
             PC_POWER_CNTL = 0,
             TPL1_DBG_ECO_CNTL = 0x01008000,
@@ -357,6 +358,7 @@ add_gpus([
         num_ccu = 2,
         tile_align_w = 32,
         tile_align_h = 16,
+        num_vsc_pipes = 32,
         magic_regs = dict(
             PC_POWER_CNTL = 1,
             TPL1_DBG_ECO_CNTL = 0x00108000,
@@ -382,6 +384,7 @@ add_gpus([
         num_ccu = 2,
         tile_align_w = 32,
         tile_align_h = 16,
+        num_vsc_pipes = 32,
         magic_regs = dict(
             PC_POWER_CNTL = 1,
             TPL1_DBG_ECO_CNTL = 0x00008000,
@@ -407,6 +410,7 @@ add_gpus([
         num_ccu = 4,
         tile_align_w = 64,
         tile_align_h = 32,
+        num_vsc_pipes = 32,
         magic_regs = dict(
             PC_POWER_CNTL = 3,
             TPL1_DBG_ECO_CNTL = 0x00108000,
@@ -432,6 +436,7 @@ add_gpus([
         num_ccu = 3,
         tile_align_w = 96,
         tile_align_h = 16,
+        num_vsc_pipes = 32,
         magic_regs = dict(
             PC_POWER_CNTL = 2,
             # this seems to be a chicken bit that fixes cubic filtering:
@@ -462,6 +467,7 @@ add_gpus([
         num_ccu = 2,
         tile_align_w = 32,
         tile_align_h = 16,
+        num_vsc_pipes = 32,
         magic_regs = dict(
             PC_POWER_CNTL = 1,
             TPL1_DBG_ECO_CNTL = 0x05008000,
@@ -487,6 +493,7 @@ add_gpus([
         num_ccu = 3,
         tile_align_w = 96,
         tile_align_h = 16,
+        num_vsc_pipes = 32,
         magic_regs = dict(
             PC_POWER_CNTL = 2,
             TPL1_DBG_ECO_CNTL = 0x05008000,
@@ -512,6 +519,7 @@ add_gpus([
         num_ccu = 8,
         tile_align_w = 64,
         tile_align_h = 32,
+        num_vsc_pipes = 32,
         magic_regs = dict(
             PC_POWER_CNTL = 7,
             TPL1_DBG_ECO_CNTL = 0x01008000,
@@ -539,6 +547,7 @@ add_gpus([
         num_ccu = 4,
         tile_align_w = 64,
         tile_align_h = 32,
+        num_vsc_pipes = 32,
         magic_regs = dict()
     ))
 

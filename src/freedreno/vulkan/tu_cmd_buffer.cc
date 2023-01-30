@@ -87,6 +87,7 @@ static void
 tu6_lazy_emit_vsc(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    struct tu_device *dev = cmd->device;
+   uint32_t num_vsc_pipes = dev->physical_device->info->num_vsc_pipes;
 
    /* VSC buffers:
     * use vsc pitches from the largest values used so far with this device
@@ -114,18 +115,19 @@ tu6_lazy_emit_vsc(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    mtx_unlock(&dev->mutex);
 
    struct tu_bo *vsc_bo;
-   uint32_t size0 = cmd->vsc_prim_strm_pitch * MAX_VSC_PIPES +
-                    cmd->vsc_draw_strm_pitch * MAX_VSC_PIPES;
+   uint32_t size0 = cmd->vsc_prim_strm_pitch * num_vsc_pipes +
+                    cmd->vsc_draw_strm_pitch * num_vsc_pipes;
 
-   tu_get_scratch_bo(dev, size0 + MAX_VSC_PIPES * 4, &vsc_bo);
+   tu_get_scratch_bo(dev, size0 + num_vsc_pipes * 4, &vsc_bo);
 
    tu_cs_emit_regs(cs,
                    A6XX_VSC_DRAW_STRM_SIZE_ADDRESS(.bo = vsc_bo, .bo_offset = size0));
    tu_cs_emit_regs(cs,
                    A6XX_VSC_PRIM_STRM_ADDRESS(.bo = vsc_bo));
-   tu_cs_emit_regs(cs,
-                   A6XX_VSC_DRAW_STRM_ADDRESS(.bo = vsc_bo,
-                                              .bo_offset = cmd->vsc_prim_strm_pitch * MAX_VSC_PIPES));
+   tu_cs_emit_regs(
+      cs, A6XX_VSC_DRAW_STRM_ADDRESS(.bo = vsc_bo,
+                                     .bo_offset = cmd->vsc_prim_strm_pitch *
+                                                  num_vsc_pipes));
 
    cmd->vsc_initialized = true;
 }
@@ -1144,7 +1146,9 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 }
 
 static void
-update_vsc_pipe(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
+update_vsc_pipe(struct tu_cmd_buffer *cmd,
+                struct tu_cs *cs,
+                uint32_t num_vsc_pipes)
 {
    const struct tu_tiling_config *tiling = cmd->state.tiling;
 
@@ -1156,8 +1160,8 @@ update_vsc_pipe(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
                    A6XX_VSC_BIN_COUNT(.nx = tiling->tile_count.width,
                                       .ny = tiling->tile_count.height));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_VSC_PIPE_CONFIG_REG(0), 32);
-   tu_cs_emit_array(cs, tiling->pipe_config, 32);
+   tu_cs_emit_pkt4(cs, REG_A6XX_VSC_PIPE_CONFIG_REG(0), num_vsc_pipes);
+   tu_cs_emit_array(cs, tiling->pipe_config, num_vsc_pipes);
 
    tu_cs_emit_regs(cs,
                    A6XX_VSC_PRIM_STRM_PITCH(cmd->vsc_prim_strm_pitch),
@@ -1244,7 +1248,7 @@ tu6_emit_binning_pass(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_regs(cs,
                    A6XX_VFD_MODE_CNTL(.render_mode = BINNING_PASS));
 
-   update_vsc_pipe(cmd, cs);
+   update_vsc_pipe(cmd, cs, phys_dev->info->num_vsc_pipes);
 
    tu_cs_emit_regs(cs,
                    A6XX_PC_POWER_CNTL(phys_dev->info->a6xx.magic.PC_POWER_CNTL));
