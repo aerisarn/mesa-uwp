@@ -1874,19 +1874,6 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 
    radeon_emit_array(cmd_buffer->cs, pipeline->base.cs.buf, pipeline->base.cs.cdw);
 
-   if (pipeline->has_ngg_culling &&
-       pipeline->last_vgt_api_stage != MESA_SHADER_GEOMETRY &&
-       !cmd_buffer->state.last_nggc_settings) {
-      /* The already emitted RSRC2 contains the LDS required for NGG culling.
-       * Culling is currently disabled, so re-emit RSRC2 to reduce LDS usage.
-       * API GS always needs LDS, so this isn't useful there.
-       */
-      struct radv_shader *v = pipeline->base.shaders[pipeline->last_vgt_api_stage];
-      radeon_set_sh_reg(cmd_buffer->cs, R_00B22C_SPI_SHADER_PGM_RSRC2_GS,
-                        (v->config.rsrc2 & C_00B22C_LDS_SIZE) |
-                        S_00B22C_LDS_SIZE(v->info.num_lds_blocks_when_not_culling));
-   }
-
    if (!cmd_buffer->state.emitted_graphics_pipeline ||
        cmd_buffer->state.emitted_graphics_pipeline->base.ctx_cs.cdw != pipeline->base.ctx_cs.cdw ||
        cmd_buffer->state.emitted_graphics_pipeline->base.ctx_cs_hash != pipeline->base.ctx_cs_hash ||
@@ -8567,27 +8554,6 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
    if (emit_settings) {
       assert(nggc_sgpr_idx >= 0);
       radeon_set_sh_reg(cmd_buffer->cs, base_reg + nggc_sgpr_idx * 4, nggc_settings);
-   }
-
-   /* These only need to be emitted when culling is turned on or off,
-    * but not when it stays on and just some settings change.
-    */
-   if (!!cmd_buffer->state.last_nggc_settings != !!nggc_settings) {
-      uint32_t rsrc2 = v->config.rsrc2;
-
-      if (!nggc_settings) {
-         /* Allocate less LDS when culling is disabled. (But GS always needs it.) */
-         if (stage != MESA_SHADER_GEOMETRY)
-            rsrc2 = (rsrc2 & C_00B22C_LDS_SIZE) | S_00B22C_LDS_SIZE(v->info.num_lds_blocks_when_not_culling);
-      }
-
-      /* When the pipeline is dirty and not yet emitted, don't write it here
-       * because radv_emit_graphics_pipeline will overwrite this register.
-       */
-      if (!(cmd_buffer->state.dirty & RADV_CMD_DIRTY_PIPELINE) ||
-          cmd_buffer->state.emitted_graphics_pipeline == pipeline) {
-         radeon_set_sh_reg(cmd_buffer->cs, R_00B22C_SPI_SHADER_PGM_RSRC2_GS, rsrc2);
-      }
    }
 
    cmd_buffer->state.last_nggc_settings = nggc_settings;

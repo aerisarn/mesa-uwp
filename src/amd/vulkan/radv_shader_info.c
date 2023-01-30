@@ -1284,19 +1284,6 @@ radv_determine_ngg_settings(struct radv_device *device, struct radv_pipeline_sta
    nir_function_impl *impl = nir_shader_get_entrypoint(es_stage->nir);
    es_stage->info.has_ngg_early_prim_export = exec_list_is_singular(&impl->body);
 
-   /* Invocations that process an input vertex */
-   const struct gfx10_ngg_info *ngg_info = &es_stage->info.ngg_info;
-   unsigned max_vtx_in = MIN2(256, ngg_info->hw_max_esverts);
-
-   unsigned lds_bytes_if_culling_off = 0;
-   /* We need LDS space when VS needs to export the primitive ID. */
-   if (es_stage->stage == MESA_SHADER_VERTEX && es_stage->info.outinfo.export_prim_id)
-      lds_bytes_if_culling_off = max_vtx_in * 4u;
-
-   es_stage->info.num_lds_blocks_when_not_culling =
-      DIV_ROUND_UP(lds_bytes_if_culling_off,
-                   device->physical_device->rad_info.lds_encode_granularity);
-
    /* NGG passthrough mode should be disabled when culling and when the vertex shader
     * exports the primitive ID.
     */

@@ -253,7 +253,6 @@ struct radv_shader_info {
    bool has_ngg_early_prim_export;
    bool has_ngg_prim_query;
    bool has_ngg_xfb_query;
-   uint32_t num_lds_blocks_when_not_culling;
    uint32_t num_tess_patches;
    uint32_t esgs_itemsize; /* Only for VS or TES as ES */
    struct radv_vs_output_info outinfo;
