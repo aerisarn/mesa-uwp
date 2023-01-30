@@ -243,6 +243,14 @@ a6xx_gen1 = dict(
         depth_bounds_require_depth_test_quirk = True,
     )
 
+# a605, a608, a610, 612
+a6xx_gen1_low = {**a6xx_gen1, **dict(
+        has_gmem_fast_clear = False,
+        sysmem_per_ccu_cache_size = 8 * 1024,
+        gmem_ccu_color_cache_fraction = CCUColorCacheFraction.HALF.value,
+        vs_max_inputs_count = 16,
+)}
+
 # a640, a680:
 a6xx_gen2 = dict(
         fibers_per_sp = 128 * 4 * 16,
@@ -303,6 +311,36 @@ a6xx_gen4 = dict(
         has_lrz_dir_tracking = True,
         has_per_view_viewport = True,
     )
+
+add_gpus([
+        GPUId(605), # TODO: Test it, based only on libwrapfake dumps
+        GPUId(608), # TODO: Test it, based only on libwrapfake dumps
+        GPUId(610),
+        GPUId(612), # TODO: Test it, based only on libwrapfake dumps
+    ], A6xxGPUInfo(
+        CHIP.A6XX,
+        a6xx_gen1_low,
+        num_ccu = 1,
+        tile_align_w = 32,
+        tile_align_h = 16,
+        num_vsc_pipes = 16,
+        cs_shared_mem_size = 16 * 1024,
+        magic_regs = dict(
+            PC_POWER_CNTL = 0,
+            TPL1_DBG_ECO_CNTL = 0,
+            GRAS_DBG_ECO_CNTL = 0,
+            SP_CHICKEN_BITS = 0,
+            UCHE_CLIENT_PF = 0x00000004,
+            PC_MODE_CNTL = 0xf,
+            SP_DBG_ECO_CNTL = 0x0,
+            RB_DBG_ECO_CNTL = 0x04100000,
+            RB_DBG_ECO_CNTL_blit = 0x04100000,
+            HLSQ_DBG_ECO_CNTL = 0,
+            RB_UNKNOWN_8E01 = 0x00000001,
+            VPC_DBG_ECO_CNTL = 0x0,
+            UCHE_UNKNOWN_0E12 = 0x10000000,
+        ),
+    ))
 
 add_gpus([
         GPUId(615),
