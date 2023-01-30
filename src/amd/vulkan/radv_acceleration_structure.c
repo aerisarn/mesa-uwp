@@ -126,13 +126,7 @@ get_build_layout(struct radv_device *device, uint32_t leaf_count,
                  const VkAccelerationStructureBuildGeometryInfoKHR *build_info,
                  struct acceleration_structure_layout *accel_struct, struct scratch_layout *scratch)
 {
-   /* Initialize to 1 to have enought space for the root node. */
-   uint32_t child_count = leaf_count;
-   uint32_t internal_count = 1;
-   while (child_count > 1) {
-      child_count = DIV_ROUND_UP(child_count, 2);
-      internal_count += child_count;
-   }
+   uint32_t internal_count = MAX2(leaf_count, 2) - 1;
 
    VkGeometryTypeKHR geometry_type = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
 
