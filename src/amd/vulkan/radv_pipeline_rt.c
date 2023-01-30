@@ -258,9 +258,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    struct radv_ray_tracing_pipeline *rt_pipeline = NULL;
    uint8_t hash[20];
    nir_shader *shader = NULL;
-   bool keep_statistic_info =
-      (pCreateInfo->flags & VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR) ||
-      (device->instance->debug_flags & RADV_DEBUG_DUMP_SHADER_STATS) || device->keep_shader_info;
+   bool keep_statistic_info = radv_pipeline_capture_shader_stats(device, pCreateInfo->flags);
 
    if (pCreateInfo->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR)
       return radv_rt_pipeline_library_create(_device, _cache, pCreateInfo, pAllocator, pPipeline);

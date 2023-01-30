@@ -3384,6 +3384,21 @@ radv_pipeline_create_ps_epilog(struct radv_graphics_pipeline *pipeline,
    return true;
 }
 
+static bool
+radv_pipeline_capture_shaders(const struct radv_device *device, VkPipelineCreateFlags flags)
+{
+   return (flags & VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR) ||
+          device->keep_shader_info;
+}
+
+bool
+radv_pipeline_capture_shader_stats(const struct radv_device *device, VkPipelineCreateFlags flags)
+{
+   return (flags & VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR) ||
+          (device->instance->debug_flags & RADV_DEBUG_DUMP_SHADER_STATS) ||
+          device->keep_shader_info;
+}
+
 static VkResult
 radv_graphics_pipeline_compile(struct radv_pipeline *pipeline,
                                struct radv_pipeline_layout *pipeline_layout,
@@ -3400,12 +3415,8 @@ radv_graphics_pipeline_compile(struct radv_pipeline *pipeline,
    struct radv_shader_binary *binaries[MESA_VULKAN_SHADER_STAGES] = {NULL};
    struct radv_shader_binary *gs_copy_binary = NULL;
    unsigned char hash[20];
-   bool keep_executable_info =
-      (flags & VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR) ||
-      device->keep_shader_info;
-   bool keep_statistic_info = (flags & VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR) ||
-                              (device->instance->debug_flags & RADV_DEBUG_DUMP_SHADER_STATS) ||
-                              device->keep_shader_info;
+   bool keep_executable_info = radv_pipeline_capture_shaders(pipeline->device, flags);
+   bool keep_statistic_info = radv_pipeline_capture_shader_stats(pipeline->device, flags);
    struct radv_pipeline_stage stages[MESA_VULKAN_SHADER_STAGES] = {0};
    VkPipelineCreationFeedback pipeline_feedback = {
       .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
@@ -5372,12 +5383,8 @@ radv_compute_pipeline_compile(struct radv_pipeline *pipeline,
 {
    struct radv_shader_binary *binaries[MESA_VULKAN_SHADER_STAGES] = {NULL};
    unsigned char hash[20];
-   bool keep_executable_info =
-      (flags & VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR) ||
-      device->keep_shader_info;
-   bool keep_statistic_info = (flags & VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR) ||
-                              (device->instance->debug_flags & RADV_DEBUG_DUMP_SHADER_STATS) ||
-                              device->keep_shader_info;
+   bool keep_executable_info = radv_pipeline_capture_shaders(pipeline->device, flags);
+   bool keep_statistic_info = radv_pipeline_capture_shader_stats(pipeline->device, flags);
    struct radv_pipeline_stage cs_stage = {0};
    VkPipelineCreationFeedback pipeline_feedback = {
       .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,

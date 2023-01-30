@@ -2270,6 +2270,9 @@ VkResult radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
                                       const VkAllocationCallbacks *pAllocator,
                                       VkPipeline *pPipeline, bool is_internal);
 
+bool radv_pipeline_capture_shader_stats(const struct radv_device *device,
+                                        VkPipelineCreateFlags flags);
+
 void radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline,
                            const VkAllocationCallbacks *allocator);
 
