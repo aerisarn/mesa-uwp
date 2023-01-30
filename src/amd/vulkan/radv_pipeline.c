@@ -2509,6 +2509,38 @@ radv_fill_shader_info_ngg(struct radv_graphics_pipeline *pipeline,
    }
 }
 
+static bool
+radv_consider_force_vrs(const struct radv_graphics_pipeline *pipeline, bool noop_fs,
+                        const struct radv_pipeline_stage *stages)
+{
+   struct radv_device *device = pipeline->base.device;
+
+   if (!device->force_vrs_enabled)
+      return false;
+
+   if (pipeline->last_vgt_api_stage != MESA_SHADER_VERTEX &&
+       pipeline->last_vgt_api_stage != MESA_SHADER_TESS_EVAL &&
+       pipeline->last_vgt_api_stage != MESA_SHADER_GEOMETRY)
+      return false;
+
+   nir_shader *last_vgt_shader = stages[pipeline->last_vgt_api_stage].nir;
+   if (last_vgt_shader->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_SHADING_RATE))
+      return false;
+
+   /* VRS has no effect if there is no pixel shader. */
+   if (noop_fs)
+      return false;
+
+   /* Do not enable if the PS uses gl_FragCoord because it breaks postprocessing in some games. */
+   nir_shader *fs_shader = stages[MESA_SHADER_FRAGMENT].nir;
+   if (fs_shader &&
+       BITSET_TEST(fs_shader->info.system_values_read, SYSTEM_VALUE_FRAG_COORD)) {
+      return false;
+   }
+
+   return true;
+}
+
 static void
 radv_fill_shader_info(struct radv_graphics_pipeline *pipeline,
                       struct radv_pipeline_layout *pipeline_layout,
@@ -2841,38 +2873,6 @@ radv_upload_shaders(struct radv_device *device, struct radv_pipeline *pipeline,
    }
 
    return VK_SUCCESS;
-}
-
-static bool
-radv_consider_force_vrs(const struct radv_graphics_pipeline *pipeline, bool noop_fs,
-                        const struct radv_pipeline_stage *stages)
-{
-   struct radv_device *device = pipeline->base.device;
-
-   if (!device->force_vrs_enabled)
-      return false;
-
-   if (pipeline->last_vgt_api_stage != MESA_SHADER_VERTEX &&
-       pipeline->last_vgt_api_stage != MESA_SHADER_TESS_EVAL &&
-       pipeline->last_vgt_api_stage != MESA_SHADER_GEOMETRY)
-      return false;
-
-   nir_shader *last_vgt_shader = stages[pipeline->last_vgt_api_stage].nir;
-   if (last_vgt_shader->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_SHADING_RATE))
-      return false;
-
-   /* VRS has no effect if there is no pixel shader. */
-   if (noop_fs)
-      return false;
-
-   /* Do not enable if the PS uses gl_FragCoord because it breaks postprocessing in some games. */
-   nir_shader *fs_shader = stages[MESA_SHADER_FRAGMENT].nir;
-   if (fs_shader &&
-       BITSET_TEST(fs_shader->info.system_values_read, SYSTEM_VALUE_FRAG_COORD)) {
-      return false;
-   }
-
-   return true;
 }
 
 static nir_ssa_def *
