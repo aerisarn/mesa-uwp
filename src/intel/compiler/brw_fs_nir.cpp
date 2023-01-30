@@ -4584,6 +4584,15 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
       assert(fence_regs_count <= ARRAY_SIZE(fence_regs));
 
+      /* Be conservative in Gen11+ and always stall in a fence.  Since
+       * there are two different fences, and shader might want to
+       * synchronize between them.
+       *
+       * TODO: Use scope and visibility information for the barriers from NIR
+       * to make a better decision on whether we need to stall.
+       */
+      bool force_stall = devinfo->ver >= 11;
+
       /* There are four cases where we want to insert a stall:
        *
        *  1. If we're a nir_intrinsic_end_invocation_interlock.  This is
@@ -4599,10 +4608,12 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
        *     scheduling barrier to keep the compiler from moving things
        *     around in an invalid way.
        *
-       *  4. On platforms with LSC.
+       *  4. On Gen11+ and platforms with LSC, we have multiple fence types,
+       *     without further information about the fence, we need to force a
+       *     stall.
        */
       if (instr->intrinsic == nir_intrinsic_end_invocation_interlock ||
-          fence_regs_count != 1 || devinfo->has_lsc) {
+          fence_regs_count != 1 || devinfo->has_lsc || force_stall) {
          ubld.exec_all().group(1, 0).emit(
             FS_OPCODE_SCHEDULING_FENCE, ubld.null_reg_ud(),
             fence_regs, fence_regs_count);
