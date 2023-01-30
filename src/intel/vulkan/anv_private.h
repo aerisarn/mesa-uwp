@@ -1050,6 +1050,8 @@ struct anv_queue {
 
    const struct anv_queue_family *           family;
 
+   struct intel_batch_decode_ctx *           decoder;
+
    uint32_t                                  exec_flags;
 
    /** Synchronization object for debug purposes (DEBUG_SYNC) */
@@ -1221,7 +1223,7 @@ struct anv_device {
     pthread_mutex_t                             mutex;
     pthread_cond_t                              queue_submit;
 
-    struct intel_batch_decode_ctx               decoder_ctx;
+    struct intel_batch_decode_ctx               decoder[ANV_MAX_QUEUE_FAMILIES];
     /*
      * When decoding a anv_cmd_buffer, we might need to search for BOs through
      * the cmd_buffer's list.

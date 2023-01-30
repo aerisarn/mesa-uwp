@@ -3200,22 +3200,26 @@ VkResult anv_CreateDevice(
       goto fail_alloc;
 
    if (INTEL_DEBUG(DEBUG_BATCH)) {
-      const unsigned decode_flags =
-         INTEL_BATCH_DECODE_FULL |
-         (INTEL_DEBUG(DEBUG_COLOR) ? INTEL_BATCH_DECODE_IN_COLOR : 0) |
-         INTEL_BATCH_DECODE_OFFSETS |
-         INTEL_BATCH_DECODE_FLOATS;
+      for (unsigned i = 0; i < physical_device->queue.family_count; i++) {
+         struct intel_batch_decode_ctx *decoder = &device->decoder[i];
 
-      intel_batch_decode_ctx_init(&device->decoder_ctx,
-                                  &physical_device->compiler->isa,
-                                  &physical_device->info,
-                                  stderr, decode_flags, NULL,
-                                  decode_get_bo, NULL, device);
+         const unsigned decode_flags =
+            INTEL_BATCH_DECODE_FULL |
+            (INTEL_DEBUG(DEBUG_COLOR) ? INTEL_BATCH_DECODE_IN_COLOR : 0) |
+            INTEL_BATCH_DECODE_OFFSETS |
+            INTEL_BATCH_DECODE_FLOATS;
 
-      device->decoder_ctx.dynamic_base = DYNAMIC_STATE_POOL_MIN_ADDRESS;
-      device->decoder_ctx.surface_base = INTERNAL_SURFACE_STATE_POOL_MIN_ADDRESS;
-      device->decoder_ctx.instruction_base =
-         INSTRUCTION_STATE_POOL_MIN_ADDRESS;
+         intel_batch_decode_ctx_init(decoder,
+                                     &physical_device->compiler->isa,
+                                     &physical_device->info,
+                                     stderr, decode_flags, NULL,
+                                     decode_get_bo, NULL, device);
+
+         decoder->engine = physical_device->queue.families[i].engine_class;
+         decoder->dynamic_base = DYNAMIC_STATE_POOL_MIN_ADDRESS;
+         decoder->surface_base = INTERNAL_SURFACE_STATE_POOL_MIN_ADDRESS;
+         decoder->instruction_base = INSTRUCTION_STATE_POOL_MIN_ADDRESS;
+      }
    }
 
    anv_device_set_physical(device, physical_device);
@@ -3635,6 +3639,8 @@ void anv_DestroyDevice(
    if (!device)
       return;
 
+   struct anv_physical_device *pdevice = device->physical;
+
    anv_device_utrace_finish(device);
 
    anv_device_finish_blorp(device);
@@ -3707,8 +3713,10 @@ void anv_DestroyDevice(
 
    intel_gem_destroy_context(device->fd, device->context_id);
 
-   if (INTEL_DEBUG(DEBUG_BATCH))
-      intel_batch_decode_ctx_finish(&device->decoder_ctx);
+   if (INTEL_DEBUG(DEBUG_BATCH)) {
+      for (unsigned i = 0; i < pdevice->queue.family_count; i++)
+         intel_batch_decode_ctx_finish(&device->decoder[i]);
+   }
 
    close(device->fd);
 
