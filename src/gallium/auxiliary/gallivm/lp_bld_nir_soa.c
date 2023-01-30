@@ -94,6 +94,37 @@ invocation_0_must_be_active(struct lp_build_nir_context *bld_base)
    return true;
 }
 
+/** Returns a scalar value of the first active invocation in the exec_mask. */
+static LLVMValueRef first_active_invocation(struct lp_build_nir_context *bld_base)
+{
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+   LLVMBuilderRef builder = gallivm->builder;
+
+   /* have to find the first active (nonzero) invocation in the exec_mask
+    * vector, but there's no nice LLVM intrinsic to do so.  Loop down from the
+    * last invocation to the first, storing the loop counter to a scalar temp
+    * if that channel is active. At the end we'll have a scalar temp with the
+    * first active channel in it.
+    */
+   LLVMValueRef exec_mask = mask_vec(bld_base);
+   struct lp_build_loop_state loop_state;
+   LLVMValueRef res_store = lp_build_alloca(gallivm, bld_base->int_bld.elem_type, "");
+   LLVMValueRef outer_cond = LLVMBuildICmp(builder, LLVMIntNE, exec_mask, bld_base->uint_bld.zero, "");
+   lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, bld_base->uint_bld.type.length));
+
+   LLVMValueRef if_cond = LLVMBuildExtractElement(gallivm->builder, outer_cond, loop_state.counter, "");
+   struct lp_build_if_state ifthen;
+
+   lp_build_if(&ifthen, gallivm, if_cond);
+   LLVMBuildStore(builder, loop_state.counter, res_store);
+   lp_build_endif(&ifthen);
+
+   lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, -1),
+                          lp_build_const_int32(gallivm, -1), LLVMIntEQ);
+
+   return LLVMBuildLoad2(builder, bld_base->int_bld.elem_type, res_store, "");
+}
+
 static LLVMValueRef
 lp_build_zero_bits(struct gallivm_state *gallivm, int bit_size, bool is_float)
 {
@@ -1684,7 +1715,6 @@ static void emit_tex(struct lp_build_nir_context *bld_base,
 {
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
    struct gallivm_state *gallivm = bld_base->base.gallivm;
-   LLVMBuilderRef builder = bld_base->base.gallivm->builder;
 
    params->type = bld_base->base.type;
    params->context_type = bld->context_type;
@@ -1741,23 +1771,8 @@ static void emit_tex(struct lp_build_nir_context *bld_base,
    }
 
    if (params->texture_index_offset) {
-      struct lp_build_loop_state loop_state;
-      LLVMValueRef exec_mask = mask_vec(bld_base);
-      LLVMValueRef outer_cond = LLVMBuildICmp(builder, LLVMIntNE, exec_mask, bld_base->uint_bld.zero, "");
-      LLVMValueRef res_store = lp_build_alloca(gallivm, bld_base->uint_bld.elem_type, "");
-      lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
-      LLVMValueRef if_cond = LLVMBuildExtractElement(gallivm->builder, outer_cond, loop_state.counter, "");
-
-      struct lp_build_if_state ifthen;
-      lp_build_if(&ifthen, gallivm, if_cond);
-      LLVMValueRef value_ptr = LLVMBuildExtractElement(gallivm->builder, params->texture_index_offset,
-                                                       loop_state.counter, "");
-      LLVMBuildStore(builder, value_ptr, res_store);
-      lp_build_endif(&ifthen);
-      lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, bld_base->uint_bld.type.length),
-                             NULL, LLVMIntUGE);
-      LLVMValueRef idx_val = LLVMBuildLoad2(builder, bld_base->uint_bld.elem_type, res_store, "");
-      params->texture_index_offset = idx_val;
+      params->texture_index_offset = LLVMBuildExtractElement(gallivm->builder, params->texture_index_offset,
+                                                             first_active_invocation(bld_base), "");
    }
 
    params->type = bld_base->base.type;
@@ -2531,32 +2546,8 @@ static void emit_read_invocation(struct lp_build_nir_context *bld_base,
                                  LLVMValueRef result[4])
 {
    struct gallivm_state *gallivm = bld_base->base.gallivm;
-   LLVMBuilderRef builder = gallivm->builder;
-   LLVMValueRef idx;
+   LLVMValueRef idx = first_active_invocation(bld_base);
    struct lp_build_context *uint_bld = get_int_bld(bld_base, true, bit_size);
-
-   /* have to find the first active (nonzero) invocation in the exec_mask
-    * vector, but there's no nice LLVM intrinsic to do so.  Loop down from the
-    * last invocation to the first, storing the loop counter to a scalar temp
-    * if that channel is active. At the end we'll have a scalar temp with the
-    * first active channel in it.
-    */
-   LLVMValueRef exec_mask = mask_vec(bld_base);
-   struct lp_build_loop_state loop_state;
-   LLVMValueRef res_store = lp_build_alloca(gallivm, bld_base->int_bld.elem_type, "");
-   LLVMValueRef outer_cond = LLVMBuildICmp(builder, LLVMIntNE, exec_mask, bld_base->uint_bld.zero, "");
-   lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, bld_base->uint_bld.type.length));
-
-   LLVMValueRef if_cond = LLVMBuildExtractElement(gallivm->builder, outer_cond, loop_state.counter, "");
-   struct lp_build_if_state ifthen;
-
-   lp_build_if(&ifthen, gallivm, if_cond);
-   LLVMBuildStore(builder, loop_state.counter, res_store);
-   lp_build_endif(&ifthen);
-
-   lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, -1),
-                          lp_build_const_int32(gallivm, -1), LLVMIntEQ);
-   idx = LLVMBuildLoad2(builder, bld_base->int_bld.elem_type, res_store, "");
 
    /* If we're emitting readInvocation() (as opposed to readFirstInvocation),
     * use the first active channel to pull the invocation index number out of
