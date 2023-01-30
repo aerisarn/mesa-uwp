@@ -8386,8 +8386,6 @@ radv_skip_ngg_culling(struct radv_cmd_buffer *cmd_buffer,
                       const struct radv_graphics_pipeline *pipeline,
                       const struct radv_draw_info *draw_info)
 {
-   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
-
    /* If we have to draw only a few vertices, we get better latency if
     * we disable NGG culling.
     *
@@ -8398,14 +8396,6 @@ radv_skip_ngg_culling(struct radv_cmd_buffer *cmd_buffer,
       return false;
 
    if (!draw_info->indirect && draw_info->count < 128)
-      return true;
-
-   /* With graphics pipeline library, NGG culling is enabled unconditionally because we don't know
-    * the primitive topology at compile time, but we should still disable it dynamically for points
-    * or lines.
-    */
-   unsigned num_vertices_per_prim = si_conv_prim_to_gs_out(d->vk.ia.primitive_topology) + 1;
-   if (num_vertices_per_prim != 3)
       return true;
 
    return false;
@@ -8421,6 +8411,14 @@ radv_get_ngg_culling_settings(struct radv_cmd_buffer *cmd_buffer, bool vp_y_inve
     * The face culling algorithm can delete very tiny triangles (even if unintended).
     */
    if (d->vk.rs.conservative_mode == VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT)
+      return radv_nggc_none;
+
+   /* With graphics pipeline library, NGG culling is unconditionally compiled into shaders
+    * because we don't know the primitive topology at compile time, so we should
+    * disable it dynamically for points or lines.
+    */
+   const unsigned num_vertices_per_prim = si_conv_prim_to_gs_out(d->vk.ia.primitive_topology) + 1;
+   if (num_vertices_per_prim != 3)
       return radv_nggc_none;
 
    /* Cull every triangle when rasterizer discard is enabled. */
@@ -8487,7 +8485,8 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
       (RADV_CMD_DIRTY_PIPELINE |
        RADV_CMD_DIRTY_DYNAMIC_CULL_MODE | RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
        RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE | RADV_CMD_DIRTY_DYNAMIC_VIEWPORT |
-       RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE | RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES);
+       RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE | RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
+       RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY);
 
    /* Check small draw status:
     * For small draw calls, we disable culling by setting the SGPR to 0.
