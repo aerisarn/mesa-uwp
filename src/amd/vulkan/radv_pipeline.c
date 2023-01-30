@@ -179,7 +179,7 @@ radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline
       radv_pipeline_layout_finish(device, &gfx_pipeline_lib->layout);
 
       for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-         ralloc_free(pipeline->retained_shaders[i].nir);
+         ralloc_free(gfx_pipeline_lib->base.retained_shaders[i].nir);
       }
 
       if (gfx_pipeline_lib->base.ps_epilog)
@@ -981,10 +981,10 @@ radv_graphics_pipeline_import_lib(struct radv_graphics_pipeline *pipeline,
    if (link_optimize) {
       /* Import the NIR shaders (after SPIRV->NIR). */
       for (uint32_t s = 0; s < ARRAY_SIZE(lib->base.base.shaders); s++) {
-         if (!lib->base.base.retained_shaders[s].nir)
+         if (!lib->base.retained_shaders[s].nir)
             continue;
 
-         pipeline->base.retained_shaders[s] = lib->base.base.retained_shaders[s];
+         pipeline->retained_shaders[s] = lib->base.retained_shaders[s];
       }
    } else {
       /* Import the compiled shaders. */
@@ -3128,9 +3128,9 @@ radv_pipeline_get_nir(struct radv_graphics_pipeline *pipeline, struct radv_pipel
 
       assert(retain_shaders || pipeline->base.shaders[s] == NULL);
 
-      if (pipeline->base.retained_shaders[s].nir) {
+      if (pipeline->retained_shaders[s].nir) {
          /* Clone the NIR shader because it's imported from a library. */
-         stages[s].nir = nir_shader_clone(NULL, pipeline->base.retained_shaders[s].nir);
+         stages[s].nir = nir_shader_clone(NULL, pipeline->retained_shaders[s].nir);
       } else {
          stages[s].nir =
             radv_shader_spirv_to_nir(device, &stages[s], pipeline_key, pipeline->base.is_internal);
@@ -3138,7 +3138,7 @@ radv_pipeline_get_nir(struct radv_graphics_pipeline *pipeline, struct radv_pipel
 
       if (retain_shaders) {
          /* Clone the NIR shader because NIR passes after this step will change it. */
-         pipeline->base.retained_shaders[s].nir = nir_shader_clone(NULL, stages[s].nir);
+         pipeline->retained_shaders[s].nir = nir_shader_clone(NULL, stages[s].nir);
       }
 
       stages[s].feedback.duration += os_time_get_nano() - stage_start;
@@ -3150,7 +3150,7 @@ radv_pipeline_load_retained_shaders(struct radv_graphics_pipeline *pipeline,
                                     struct radv_pipeline_stage *stages)
 {
    for (uint32_t s = 0; s < MESA_VULKAN_SHADER_STAGES; s++) {
-      if (!pipeline->base.retained_shaders[s].nir)
+      if (!pipeline->retained_shaders[s].nir)
          continue;
 
       int64_t stage_start = os_time_get_nano();
@@ -3159,7 +3159,7 @@ radv_pipeline_load_retained_shaders(struct radv_graphics_pipeline *pipeline,
 
       stages[s].stage = s;
       stages[s].entrypoint =
-         nir_shader_get_entrypoint(pipeline->base.retained_shaders[s].nir)->function->name;
+         nir_shader_get_entrypoint(pipeline->retained_shaders[s].nir)->function->name;
 
       stages[s].feedback.duration += os_time_get_nano() - stage_start;
       stages[s].feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
@@ -4940,7 +4940,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
          /* If we have link time optimization, all libraries must be created with
           * VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT.
           */
-         assert(!link_optimize || gfx_pipeline_lib->base.base.retain_shaders);
+         assert(!link_optimize || gfx_pipeline_lib->base.retain_shaders);
 
          radv_graphics_pipeline_import_lib(pipeline, &state, &pipeline_layout, gfx_pipeline_lib,
                                            link_optimize);
@@ -5124,7 +5124,7 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
    struct radv_pipeline_layout *pipeline_layout = &pipeline->layout;
 
    pipeline->base.last_vgt_api_stage = MESA_SHADER_NONE;
-   pipeline->base.base.retain_shaders =
+   pipeline->base.retain_shaders =
       (pCreateInfo->flags & VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT) != 0;
    pipeline->lib_flags = lib_flags;
 

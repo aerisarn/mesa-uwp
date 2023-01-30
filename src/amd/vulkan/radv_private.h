@@ -2057,12 +2057,6 @@ struct radv_pipeline {
    /* Pipeline layout info. */
    uint32_t push_constant_size;
    uint32_t dynamic_offset_count;
-
-   /* For graphics pipeline library */
-   bool retain_shaders;
-   struct {
-      nir_shader *nir;
-   } retained_shaders[MESA_VULKAN_SHADER_STAGES];
 };
 
 struct radv_graphics_pipeline {
@@ -2134,6 +2128,12 @@ struct radv_graphics_pipeline {
 
    /* Custom blend mode for internal operations. */
    unsigned custom_blend_mode;
+
+   /* For graphics pipeline library */
+   bool retain_shaders;
+   struct {
+      nir_shader *nir;
+   } retained_shaders[MESA_VULKAN_SHADER_STAGES];
 };
 
 struct radv_compute_pipeline {
