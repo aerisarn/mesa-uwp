@@ -5605,8 +5605,6 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
    cmd_buffer->state.last_sx_ps_downconvert = -1;
    cmd_buffer->state.last_sx_blend_opt_epsilon = -1;
    cmd_buffer->state.last_sx_blend_opt_control = -1;
-   cmd_buffer->state.last_nggc_settings = -1;
-   cmd_buffer->state.last_nggc_settings_sgpr_idx = -1;
    cmd_buffer->state.mesh_shading = false;
    cmd_buffer->state.last_vrs_rates = -1;
    cmd_buffer->state.last_vrs_rates_sgpr_idx = -1;
@@ -6206,6 +6204,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       }
 
       cmd_buffer->state.mesh_shading = mesh_shading;
+      cmd_buffer->state.has_nggc = graphics_pipeline->has_ngg_culling;
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_PIPELINE | RADV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT;
       cmd_buffer->push_constant_stages |= graphics_pipeline->active_stages;
 
@@ -7185,9 +7184,6 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
       if (secondary->state.last_index_type != -1) {
          primary->state.last_index_type = secondary->state.last_index_type;
       }
-
-      primary->state.last_nggc_settings = secondary->state.last_nggc_settings;
-      primary->state.last_nggc_settings_sgpr_idx = secondary->state.last_nggc_settings_sgpr_idx;
 
       primary->state.last_vrs_rates = secondary->state.last_vrs_rates;
       primary->state.last_vrs_rates_sgpr_idx = secondary->state.last_vrs_rates_sgpr_idx;
@@ -8443,42 +8439,9 @@ radv_get_ngg_culling_settings(struct radv_cmd_buffer *cmd_buffer, bool vp_y_inve
 static void
 radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer)
 {
-   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const unsigned stage = pipeline->last_vgt_api_stage;
-   const bool nggc_supported = pipeline->has_ngg_culling;
-
-   if (!nggc_supported && !cmd_buffer->state.last_nggc_settings) {
-      /* Current shader doesn't support culling and culling was already disabled:
-       * No further steps needed, just remember the SGPR's location is not set.
-       */
-      cmd_buffer->state.last_nggc_settings_sgpr_idx = -1;
-      return;
-   }
-
-   /* Check dirty flags:
-    * - Dirty pipeline: SGPR index may have changed (we have to re-emit if changed).
-    * - Dirty dynamic flags: culling settings may have changed.
-    */
-   const bool dirty =
-      cmd_buffer->state.dirty &
-      (RADV_CMD_DIRTY_PIPELINE |
-       RADV_CMD_DIRTY_DYNAMIC_CULL_MODE | RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
-       RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE | RADV_CMD_DIRTY_DYNAMIC_VIEWPORT |
-       RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE | RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
-       RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY);
-
-   /* See if anything changed. */
-   if (!dirty)
-      return;
-
-   /* Remember small draw state. */
-   const struct radv_shader *v = pipeline->base.shaders[stage];
-   assert(v->info.has_ngg_culling == nggc_supported);
-
-   /* Find the user SGPR. */
    const uint32_t base_reg = pipeline->base.user_data_0[stage];
-   const int8_t nggc_sgpr_idx = pipeline->last_vgt_api_stage_locs[AC_UD_NGG_CULLING_SETTINGS].sgpr_idx;
-   assert(!nggc_supported || nggc_sgpr_idx != -1);
 
    /* Get viewport transform. */
    float vp_scale[2], vp_translate[2];
@@ -8487,16 +8450,10 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer)
    bool vp_y_inverted = (-vp_scale[1] + vp_translate[1]) > (vp_scale[1] + vp_translate[1]);
 
    /* Get current culling settings. */
-   uint32_t nggc_settings = nggc_supported
-                            ? radv_get_ngg_culling_settings(cmd_buffer, vp_y_inverted)
-                            : radv_nggc_none;
+   uint32_t nggc_settings = radv_get_ngg_culling_settings(cmd_buffer, vp_y_inverted);
 
-   bool emit_viewport = nggc_settings &&
-                        (cmd_buffer->state.dirty & RADV_CMD_DIRTY_DYNAMIC_VIEWPORT ||
-                         cmd_buffer->state.last_nggc_settings_sgpr_idx != nggc_sgpr_idx ||
-                         !cmd_buffer->state.last_nggc_settings);
-
-   if (emit_viewport) {
+   if (cmd_buffer->state.dirty &
+       (RADV_CMD_DIRTY_PIPELINE | RADV_CMD_DIRTY_DYNAMIC_VIEWPORT | RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES)) {
       /* Correction for inverted Y */
       if (vp_y_inverted) {
          vp_scale[1] = -vp_scale[1];
@@ -8516,20 +8473,11 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer)
       radeon_emit_array(cmd_buffer->cs, vp_reg_values, 4);
    }
 
-   bool emit_settings = nggc_supported &&
-                        (cmd_buffer->state.last_nggc_settings != nggc_settings ||
-                         cmd_buffer->state.last_nggc_settings_sgpr_idx != nggc_sgpr_idx);
+   const int8_t nggc_sgpr_idx =
+      pipeline->last_vgt_api_stage_locs[AC_UD_NGG_CULLING_SETTINGS].sgpr_idx;
+   assert(nggc_sgpr_idx != -1);
 
-   /* This needs to be emitted when culling is turned on
-    * and when it's already on but some settings change.
-    */
-   if (emit_settings) {
-      assert(nggc_sgpr_idx >= 0);
-      radeon_set_sh_reg(cmd_buffer->cs, base_reg + nggc_sgpr_idx * 4, nggc_settings);
-   }
-
-   cmd_buffer->state.last_nggc_settings = nggc_settings;
-   cmd_buffer->state.last_nggc_settings_sgpr_idx = nggc_sgpr_idx;
+   radeon_set_sh_reg(cmd_buffer->cs, base_reg + nggc_sgpr_idx * 4, nggc_settings);
 }
 
 static void
@@ -8574,8 +8522,12 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
       radv_flush_ngg_query_state(cmd_buffer);
    }
 
-   if (cmd_buffer->device->physical_device->use_ngg_culling &&
-       cmd_buffer->state.graphics_pipeline->is_ngg)
+   if ((cmd_buffer->state.dirty &
+        (RADV_CMD_DIRTY_PIPELINE | RADV_CMD_DIRTY_DYNAMIC_CULL_MODE |
+         RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE | RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE |
+         RADV_CMD_DIRTY_DYNAMIC_VIEWPORT | RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE |
+         RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES | RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY)) &&
+       cmd_buffer->state.has_nggc)
       radv_emit_ngg_culling_state(cmd_buffer);
 
    if ((cmd_buffer->state.dirty & (RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK |
