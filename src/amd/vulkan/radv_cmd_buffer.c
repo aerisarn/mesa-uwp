@@ -4183,7 +4183,7 @@ radv_emit_msaa_state(struct radv_cmd_buffer *cmd_buffer)
    unsigned db_eqaa;
 
    db_eqaa = S_028804_HIGH_QUALITY_INTERSECTIONS(1) | S_028804_INCOHERENT_EQAA_READS(1) |
-             S_028804_INTERPOLATE_COMP_Z(1) | S_028804_STATIC_ANCHOR_ASSOCIATIONS(1);
+             S_028804_STATIC_ANCHOR_ASSOCIATIONS(1);
 
    if (pdevice->rad_info.gfx_level >= GFX9 &&
        d->vk.rs.conservative_mode != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT) {
