@@ -1621,7 +1621,11 @@ static LLVMValueRef emit_get_ssbo_size(struct lp_build_nir_context *bld_base,
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
    LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
    struct lp_build_context *bld_broad = &bld_base->uint_bld;
-   LLVMValueRef size_ptr = lp_llvm_buffer_num_elements(gallivm, bld->ssbo_ptr, LLVMBuildExtractElement(builder, index, lp_build_const_int32(gallivm, 0), ""), LP_MAX_TGSI_SHADER_BUFFERS);
+   LLVMValueRef ssbo_index = LLVMBuildExtractElement(builder, index,
+                                                     first_active_invocation(bld_base), "");
+   LLVMValueRef size_ptr = lp_llvm_buffer_num_elements(gallivm, bld->ssbo_ptr,
+                                                       ssbo_index,
+                                                       LP_MAX_TGSI_SHADER_BUFFERS);
 
    return lp_build_broadcast_scalar(bld_broad, size_ptr);
 }
@@ -1641,7 +1645,7 @@ static void emit_image_op(struct lp_build_nir_context *bld_base,
 
    if (params->image_index_offset)
       params->image_index_offset = LLVMBuildExtractElement(gallivm->builder, params->image_index_offset,
-                                                           lp_build_const_int32(gallivm, 0), "");
+                                                           first_active_invocation(bld_base), "");
 
    bld->image->emit_op(bld->image,
                        bld->bld_base.base.gallivm,
@@ -1661,7 +1665,7 @@ static void emit_image_size(struct lp_build_nir_context *bld_base,
 
    if (params->texture_unit_offset)
       params->texture_unit_offset = LLVMBuildExtractElement(gallivm->builder, params->texture_unit_offset,
-                                                            lp_build_const_int32(gallivm, 0), "");
+                                                            first_active_invocation(bld_base), "");
    bld->image->emit_size_query(bld->image,
                                bld->bld_base.base.gallivm,
                                params);
