@@ -7188,7 +7188,6 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
 
       primary->state.last_nggc_settings = secondary->state.last_nggc_settings;
       primary->state.last_nggc_settings_sgpr_idx = secondary->state.last_nggc_settings_sgpr_idx;
-      primary->state.last_nggc_skip = secondary->state.last_nggc_skip;
 
       primary->state.last_vrs_rates = secondary->state.last_vrs_rates;
       primary->state.last_vrs_rates_sgpr_idx = secondary->state.last_vrs_rates_sgpr_idx;
@@ -8381,26 +8380,6 @@ radv_need_late_scissor_emission(struct radv_cmd_buffer *cmd_buffer,
    return false;
 }
 
-ALWAYS_INLINE static bool
-radv_skip_ngg_culling(struct radv_cmd_buffer *cmd_buffer,
-                      const struct radv_graphics_pipeline *pipeline,
-                      const struct radv_draw_info *draw_info)
-{
-   /* If we have to draw only a few vertices, we get better latency if
-    * we disable NGG culling.
-    *
-    * When tessellation is used, what matters is the number of tessellated
-    * vertices, so let's always assume it's not a small draw.
-    */
-   if (pipeline->last_vgt_api_stage != MESA_SHADER_VERTEX)
-      return false;
-
-   if (!draw_info->indirect && draw_info->count < 128)
-      return true;
-
-   return false;
-}
-
 ALWAYS_INLINE static uint32_t
 radv_get_ngg_culling_settings(struct radv_cmd_buffer *cmd_buffer, bool vp_y_inverted)
 {
@@ -8462,7 +8441,7 @@ radv_get_ngg_culling_settings(struct radv_cmd_buffer *cmd_buffer, bool vp_y_inve
 }
 
 static void
-radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info *draw_info)
+radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const unsigned stage = pipeline->last_vgt_api_stage;
@@ -8488,17 +8467,11 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
        RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE | RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
        RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY);
 
-   /* Check small draw status:
-    * For small draw calls, we disable culling by setting the SGPR to 0.
-    */
-   const bool skip = radv_skip_ngg_culling(cmd_buffer, pipeline, draw_info);
-
    /* See if anything changed. */
-   if (!dirty && skip == cmd_buffer->state.last_nggc_skip)
+   if (!dirty)
       return;
 
    /* Remember small draw state. */
-   cmd_buffer->state.last_nggc_skip = skip;
    const struct radv_shader *v = pipeline->base.shaders[stage];
    assert(v->info.has_ngg_culling == nggc_supported);
 
@@ -8514,7 +8487,7 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer, const struct rad
    bool vp_y_inverted = (-vp_scale[1] + vp_translate[1]) > (vp_scale[1] + vp_translate[1]);
 
    /* Get current culling settings. */
-   uint32_t nggc_settings = nggc_supported && !skip
+   uint32_t nggc_settings = nggc_supported
                             ? radv_get_ngg_culling_settings(cmd_buffer, vp_y_inverted)
                             : radv_nggc_none;
 
@@ -8603,7 +8576,7 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
 
    if (cmd_buffer->device->physical_device->use_ngg_culling &&
        cmd_buffer->state.graphics_pipeline->is_ngg)
-      radv_emit_ngg_culling_state(cmd_buffer, info);
+      radv_emit_ngg_culling_state(cmd_buffer);
 
    if ((cmd_buffer->state.dirty & (RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK |
                                    RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
