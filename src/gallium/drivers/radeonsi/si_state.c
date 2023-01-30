@@ -3977,12 +3977,25 @@ void si_make_buffer_descriptor(struct si_screen *screen, struct si_resource *buf
    if (screen->info.gfx_level >= GFX10) {
       const struct gfx10_format *fmt = &ac_get_gfx10_format_table(&screen->info)[format];
 
-      /* OOB_SELECT chooses the out-of-bounds check:
+      /* OOB_SELECT chooses the out-of-bounds check.
+       *
+       * GFX10:
        *  - 0: (index >= NUM_RECORDS) || (offset >= STRIDE)
        *  - 1: index >= NUM_RECORDS
        *  - 2: NUM_RECORDS == 0
-       *  - 3: if SWIZZLE_ENABLE == 0: offset >= NUM_RECORDS
-       *       else: swizzle_address >= NUM_RECORDS
+       *  - 3: if SWIZZLE_ENABLE:
+       *          swizzle_address >= NUM_RECORDS
+       *       else:
+       *          offset >= NUM_RECORDS
+       *
+       * GFX11:
+       *  - 0: (index >= NUM_RECORDS) || (offset+payload > STRIDE)
+       *  - 1: index >= NUM_RECORDS
+       *  - 2: NUM_RECORDS == 0
+       *  - 3: if SWIZZLE_ENABLE && STRIDE:
+       *          (index >= NUM_RECORDS) || ( offset+payload > STRIDE)
+       *       else:
+       *          offset+payload > NUM_RECORDS
        */
       state[7] |= S_008F0C_FORMAT(fmt->img_format) |
                   S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_STRUCTURED_WITH_OFFSET) |
