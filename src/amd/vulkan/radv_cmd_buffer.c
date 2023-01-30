@@ -1708,7 +1708,9 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
              spi_format == V_028714_SPI_SHADER_UINT16_ABGR ||
              spi_format == V_028714_SPI_SHADER_SINT16_ABGR) {
             sx_ps_downconvert |= V_028754_SX_RT_EXPORT_8_8_8_8 << (i * 4);
-            sx_blend_opt_epsilon |= V_028758_8BIT_FORMAT << (i * 4);
+
+            if (G_028C70_NUMBER_TYPE(cb->cb_color_info) != V_028C70_NUMBER_SRGB)
+               sx_blend_opt_epsilon |= V_028758_8BIT_FORMAT << (i * 4);
          }
          break;
 
