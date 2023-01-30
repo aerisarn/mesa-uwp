@@ -100,6 +100,9 @@ static LLVMValueRef first_active_invocation(struct lp_build_nir_context *bld_bas
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
 
+   if (invocation_0_must_be_active(bld_base))
+      return lp_build_const_int32(gallivm, 0);
+
    /* have to find the first active (nonzero) invocation in the exec_mask
     * vector, but there's no nice LLVM intrinsic to do so.  Loop down from the
     * last invocation to the first, storing the loop counter to a scalar temp
