@@ -63,11 +63,40 @@ fail_bo:
 }
 
 void
+nouveau_ws_push_init_cpu(struct nouveau_ws_push *push,
+                         void *data, size_t size)
+{
+   push->map = data;
+   push->orig_map = push->map;
+   push->end = push->map + size;
+
+   util_dynarray_init(&push->bos, NULL);
+}
+
+void
 nouveau_ws_push_destroy(struct nouveau_ws_push *push)
 {
    util_dynarray_fini(&push->bos);
-   munmap(push->orig_map, push->bo->size);
-   nouveau_ws_bo_destroy(push->bo);
+   if (push->bo) {
+      munmap(push->orig_map, push->bo->size);
+      nouveau_ws_bo_destroy(push->bo);
+   }
+}
+
+void
+nouveau_ws_push_append(struct nouveau_ws_push *push,
+                       const struct nouveau_ws_push *other)
+{
+   /* We only use this for CPU pushes. */
+   assert(other->bo == NULL);
+
+   /* We don't support BO refs for now */
+   assert(other->bos.size == 0);
+
+   size_t count = other->map - other->orig_map;
+   memcpy(push->map, other->orig_map, count * sizeof(*push->map));
+   push->map += count;
+   push->last_size = NULL;
 }
 
 static void
@@ -248,6 +277,9 @@ nouveau_ws_push_submit(
    struct drm_nouveau_gem_pushbuf_bo req_bo[NOUVEAU_GEM_MAX_BUFFERS] = {};
    struct drm_nouveau_gem_pushbuf req = {};
    struct drm_nouveau_gem_pushbuf_push req_push = {};
+
+   /* Can't submit a CPU push */
+   assert(push->bo);
 
    if (push->map == push->orig_map)
       return 0;
