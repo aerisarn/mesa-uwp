@@ -22,9 +22,9 @@ struct nvk_shader {
    uint8_t *code_ptr;
    uint32_t code_size;
 
-   bool need_tls;
    uint8_t num_gprs;
    uint8_t num_barriers;
+   uint32_t slm_size;
 
    uint32_t hdr[NVC0_MAX_SHADER_HEADER_SIZE/4];
    uint32_t flags[2];
@@ -53,7 +53,6 @@ struct nvk_shader {
    } fs;
 
    struct {
-      uint32_t lmem_size; /* local memory (TGSI PRIVATE resource) size */
       uint32_t smem_size; /* shared memory (TGSI LOCAL resource) size */
       uint32_t block_size[3];
    } cp;

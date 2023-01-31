@@ -652,7 +652,7 @@ nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,
       assert(info_out.bin.tlsSpace < (1 << 24));
       shader->hdr[0] |= 1 << 26;
       shader->hdr[1] |= align(info_out.bin.tlsSpace, 0x10); /* l[] size */
-      shader->need_tls = true;
+      shader->slm_size = info_out.bin.tlsSpace;
    }
 
    if (info_out.io.globalAccess)

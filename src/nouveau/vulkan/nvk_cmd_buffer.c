@@ -381,6 +381,7 @@ nvk_CmdBindPipeline(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_pipeline, pipeline, _pipeline);
+   struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
 
    for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
       if (!pipeline->shaders[s].bo)
@@ -388,6 +389,9 @@ nvk_CmdBindPipeline(VkCommandBuffer commandBuffer,
 
       nouveau_ws_push_ref(cmd->push, pipeline->shaders[s].bo,
                           NOUVEAU_WS_BO_RD);
+
+      if (pipeline->shaders[s].slm_size)
+         nvk_device_ensure_slm(dev, pipeline->shaders[s].slm_size);
    }
 
    switch (pipelineBindPoint) {

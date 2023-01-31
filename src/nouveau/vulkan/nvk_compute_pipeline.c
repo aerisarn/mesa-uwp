@@ -40,8 +40,7 @@ gv100_compute_setup_launch_desc_template(uint32_t *qmd,
    NVC3C0_QMDV02_02_VAL_SET(qmd, SHARED_MEMORY_SIZE,
                             align(shader->cp.smem_size, 0x100));
    NVC3C0_QMDV02_02_VAL_SET(qmd, SHADER_LOCAL_MEMORY_LOW_SIZE,
-                            (shader->hdr[1] & 0xfffff0) +
-                            align(shader->cp.lmem_size, 0x10));
+                            align(shader->slm_size, 0x10));
    NVC3C0_QMDV02_02_VAL_SET(qmd, SHADER_LOCAL_MEMORY_HIGH_SIZE, 0);
    NVC3C0_QMDV02_02_VAL_SET(qmd, MIN_SM_CONFIG_SHARED_MEM_SIZE,
                             gv100_sm_config_smem_size(8 * 1024));

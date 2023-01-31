@@ -24,33 +24,10 @@
 #define NVC3C0_QMDV02_02_VAL_SET(p,a...) NVVAL_MW_SET((p), NVC3C0, QMDV02_02, ##a)
 #define NVC3C0_QMDV02_02_DEF_SET(p,a...) NVDEF_MW_SET((p), NVC3C0, QMDV02_02, ##a)
 
-static uint64_t
-calc_tls_size(struct nvk_device *device,
-              uint32_t lpos, uint32_t lneg, uint32_t cstack)
-{
-   uint64_t size = (lpos + lneg) * 32 + cstack;
-
-   assert (size < (1 << 20));
-
-   size *= 64; /* max warps */
-   size  = align(size, 0x8000);
-   size *= device->pdev->dev->mp_count;
-
-   size = align(size, 1 << 17);
-   return size;
-}
-
 void
 nvk_cmd_buffer_begin_compute(struct nvk_cmd_buffer *cmd,
                              const VkCommandBufferBeginInfo *pBeginInfo)
-{
-   struct nvk_device *dev = (struct nvk_device *)cmd->vk.base.device;
-
-   if (dev->ctx->compute.cls < 0xa0c0)
-      return;
-
-   cmd->tls_space_needed = calc_tls_size(dev, 128 * 16, 0, 0x200);
-}
+{ }
 
 static void
 gv100_compute_setup_launch_desc(uint32_t *qmd,

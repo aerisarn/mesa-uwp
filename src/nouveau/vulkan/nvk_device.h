@@ -11,13 +11,29 @@
 struct novueau_ws_context;
 struct nvk_physical_device;
 
-struct nvk_queue_alloc_info {
-   uint64_t tls_size;
+struct nvk_slm_area {
+   simple_mtx_t mutex;
+   struct nouveau_ws_bo *bo;
+   uint32_t bytes_per_warp;
+   uint32_t bytes_per_mp;
 };
 
 struct nvk_queue_state {
-   struct nvk_queue_alloc_info alloc_info;
-   struct nouveau_ws_bo *tls_bo;
+   struct {
+      struct nouveau_ws_bo *bo;
+      uint32_t alloc_count;
+   } images;
+
+   struct {
+      struct nouveau_ws_bo *bo;
+      uint32_t alloc_count;
+   } samplers;
+
+   struct {
+      struct nouveau_ws_bo *bo;
+      uint32_t bytes_per_warp;
+      uint32_t bytes_per_mp;
+   } slm;
 
    struct nouveau_ws_push *push;
 };
@@ -41,6 +57,7 @@ struct nvk_device {
 
    struct nvk_descriptor_table images;
    struct nvk_descriptor_table samplers;
+   struct nvk_slm_area slm;
 
    struct nvk_queue queue;
 
@@ -51,6 +68,9 @@ struct nvk_device {
 };
 
 VK_DEFINE_HANDLE_CASTS(nvk_device, vk.base, VkDevice, VK_OBJECT_TYPE_DEVICE)
+
+VkResult nvk_device_ensure_slm(struct nvk_device *dev,
+                               uint32_t bytes_per_thread);
 
 static struct nvk_physical_device *
 nvk_device_physical(struct nvk_device *device)

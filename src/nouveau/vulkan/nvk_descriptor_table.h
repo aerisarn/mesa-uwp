@@ -41,18 +41,18 @@ void nvk_descriptor_table_free(struct nvk_device *device,
                                struct nvk_descriptor_table *table,
                                uint32_t index);
 
-static inline void
-nvk_push_descriptor_table_ref(struct nouveau_ws_push *push,
-                              const struct nvk_descriptor_table *table)
+static inline struct nouveau_ws_bo *
+nvk_descriptor_table_get_bo_ref(struct nvk_descriptor_table *table,
+                                uint32_t *alloc_count_out)
 {
-   if (table->bo)
-      nouveau_ws_push_ref(push, table->bo, NOUVEAU_WS_BO_RD);
-}
+   simple_mtx_lock(&table->mutex);
+   struct nouveau_ws_bo *bo = table->bo;
+   if (bo)
+      nouveau_ws_bo_ref(bo);
+   *alloc_count_out = table->alloc;
+   simple_mtx_unlock(&table->mutex);
 
-static inline uint64_t
-nvk_descriptor_table_base_address(const struct nvk_descriptor_table *table)
-{
-   return table->bo->offset;
+   return bo;
 }
 
 #endif
