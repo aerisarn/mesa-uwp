@@ -8,15 +8,15 @@
 struct nvk_descriptor_set_layout;
 
 struct nvk_pipeline_layout {
-  struct vk_object_base base;
+   struct vk_object_base base;
 
-  unsigned char sha1[20];
+   unsigned char sha1[20];
 
-  uint32_t num_sets;
+   uint32_t num_sets;
 
-  struct {
-    struct nvk_descriptor_set_layout *layout;
-  } set[NVK_MAX_SETS];
+   struct {
+      struct nvk_descriptor_set_layout *layout;
+   } set[NVK_MAX_SETS];
 };
 
 VK_DEFINE_HANDLE_CASTS(nvk_pipeline_layout, base, VkPipelineLayout,
