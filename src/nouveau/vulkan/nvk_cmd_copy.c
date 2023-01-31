@@ -20,9 +20,8 @@
 struct nouveau_copy_buffer {
    uint64_t base_addr;
    VkImageType image_type;
-   VkOffset3D offset_el;
-   uint32_t base_array_layer;
-   VkExtent3D extent_el;
+   struct nil_offset4d offset_el;
+   struct nil_extent4d extent_el;
    uint32_t bpp;
    uint32_t row_stride;
    uint32_t array_stride;
@@ -36,7 +35,7 @@ struct nouveau_copy {
       uint8_t comp_size;
       uint8_t dst[4];
    } remap;
-   VkExtent3D extent_el;
+   struct nil_extent4d extent_el;
 };
 
 static struct nouveau_copy_buffer
@@ -54,32 +53,16 @@ nouveau_copy_rect_buffer(
    };
 }
 
-static VkOffset3D
-vk_offset_px_to_el(VkOffset3D offset, VkFormat format)
+static struct nil_offset4d
+vk_to_nil_offset(VkOffset3D offset, uint32_t base_array_layer)
 {
-   const struct util_format_description *desc = vk_format_description(format);
-
-   assert(offset.x % desc->block.width == 0);
-   assert(offset.y % desc->block.height == 0);
-   assert(offset.z % desc->block.depth == 0);
-
-   offset.x /= desc->block.width;
-   offset.y /= desc->block.height;
-   offset.z /= desc->block.depth;
-
-   return offset;
+   return nil_offset4d(offset.x, offset.y, offset.z, base_array_layer);
 }
 
-static VkExtent3D
-vk_extent_px_to_el(VkExtent3D extent, VkFormat format)
+static struct nil_extent4d
+vk_to_nil_extent(VkExtent3D extent, uint32_t array_layers)
 {
-   const struct util_format_description *desc = vk_format_description(format);
-
-   extent.width = DIV_ROUND_UP(extent.width, desc->block.width);
-   extent.height = DIV_ROUND_UP(extent.height, desc->block.height);
-   extent.depth = DIV_ROUND_UP(extent.depth, desc->block.depth);
-
-   return extent;
+   return nil_extent4d(extent.width, extent.height, extent.depth, array_layers);
 }
 
 static struct nouveau_copy_buffer
@@ -90,15 +73,21 @@ nouveau_copy_rect_image(
 {
    const VkExtent3D lvl_extent_px =
       vk_image_mip_level_extent(&img->vk, sub_res->mipLevel);
+   const struct nil_extent4d lvl_extent4d_px =
+      vk_to_nil_extent(lvl_extent_px, img->vk.array_layers);
+
    offset_px = vk_image_sanitize_offset(&img->vk, offset_px);
+   const struct nil_offset4d offset4d_px =
+      vk_to_nil_offset(offset_px, sub_res->baseArrayLayer);
 
    struct nouveau_copy_buffer buf = {
       .base_addr = nvk_image_base_address(img) +
                    img->nil.levels[sub_res->mipLevel].offset_B,
       .image_type = img->vk.image_type,
-      .offset_el = vk_offset_px_to_el(offset_px, img->vk.format),
-      .base_array_layer = sub_res->baseArrayLayer,
-      .extent_el = vk_extent_px_to_el(lvl_extent_px, img->vk.format),
+      .offset_el = nil_offset4d_px_to_el(offset4d_px, img->nil.format,
+                                         img->nil.sample_layout),
+      .extent_el = nil_extent4d_px_to_el(lvl_extent4d_px, img->nil.format,
+                                         img->nil.sample_layout),
       .bpp = vk_format_get_blocksize(img->vk.format),
       .row_stride = img->nil.levels[sub_res->mipLevel].row_stride_B,
       .array_stride = img->nil.array_stride_B,
@@ -175,15 +164,16 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
       dst_bw = copy->dst.bpp;
    }
 
-   for (unsigned z = 0; z < copy->extent_el.depth; z++) {
+   assert(copy->extent_el.depth == 1 || copy->extent_el.array_len == 1);
+   for (unsigned z = 0; z < MAX2(copy->extent_el.d, copy->extent_el.a); z++) {
       VkDeviceSize src_addr = copy->src.base_addr;
       VkDeviceSize dst_addr = copy->dst.base_addr;
 
       if (copy->src.image_type != VK_IMAGE_TYPE_3D)
-         src_addr += (z + copy->src.base_array_layer) * copy->src.array_stride;
+         src_addr += (z + copy->src.offset_el.a) * copy->src.array_stride;
 
       if (copy->dst.image_type != VK_IMAGE_TYPE_3D)
-         dst_addr += (z + copy->dst.base_array_layer) * copy->dst.array_stride;
+         dst_addr += (z + copy->dst.offset_el.a) * copy->dst.array_stride;
 
       if (!copy->src.tiling.is_tiled) {
          src_addr += copy->src.offset_el.x * copy->src.bpp +
@@ -351,19 +341,16 @@ nvk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
 
       const VkExtent3D extent_px =
          vk_image_sanitize_extent(&dst->vk, region->imageExtent);
-      VkExtent3D extent_el = vk_extent_px_to_el(extent_px, dst->vk.format);
-
-      if (dst->vk.image_type != VK_IMAGE_TYPE_3D) {
-         assert(extent_el.depth == 1);
-         extent_el.depth = region->imageSubresource.layerCount;
-      }
+      const struct nil_extent4d extent4d_px =
+         vk_to_nil_extent(extent_px, region->imageSubresource.layerCount);
 
       struct nouveau_copy copy = {
          .src = nouveau_copy_rect_buffer(src, region->bufferOffset,
                                          buffer_layout),
          .dst = nouveau_copy_rect_image(dst, region->imageOffset,
                                         &region->imageSubresource),
-         .extent_el = extent_el,
+         .extent_el = nil_extent4d_px_to_el(extent4d_px, dst->nil.format,
+                                            dst->nil.sample_layout),
       };
 
       const VkImageAspectFlagBits aspects = region->imageSubresource.aspectMask;
@@ -423,19 +410,16 @@ nvk_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
 
       const VkExtent3D extent_px =
          vk_image_sanitize_extent(&src->vk, region->imageExtent);
-      VkExtent3D extent_el = vk_extent_px_to_el(extent_px, src->vk.format);
-
-      if (src->vk.image_type != VK_IMAGE_TYPE_3D) {
-         assert(extent_el.depth == 1);
-         extent_el.depth = region->imageSubresource.layerCount;
-      }
+      const struct nil_extent4d extent4d_px =
+         vk_to_nil_extent(extent_px, region->imageSubresource.layerCount);
 
       struct nouveau_copy copy = {
          .src = nouveau_copy_rect_image(src, region->imageOffset,
                                         &region->imageSubresource),
          .dst = nouveau_copy_rect_buffer(dst, region->bufferOffset,
                                          buffer_layout),
-         .extent_el = extent_el,
+         .extent_el = nil_extent4d_px_to_el(extent4d_px, src->nil.format,
+                                            src->nil.sample_layout),
       };
 
       const VkImageAspectFlagBits aspects = region->imageSubresource.aspectMask;
@@ -499,21 +483,16 @@ nvk_CmdCopyImage2(VkCommandBuffer commandBuffer,
        */
       const VkExtent3D extent_px =
          vk_image_sanitize_extent(&src->vk, region->extent);
-      VkExtent3D extent_el = vk_extent_px_to_el(extent_px, src->vk.format);
-
-      if (src->vk.image_type != VK_IMAGE_TYPE_3D) {
-         assert(extent_el.depth == 1);
-         extent_el.depth = region->srcSubresource.layerCount;
-      }
-      assert(dst->vk.image_type == VK_IMAGE_TYPE_3D ||
-             extent_el.depth == region->dstSubresource.layerCount);
+      const struct nil_extent4d extent4d_px =
+         vk_to_nil_extent(extent_px, region->srcSubresource.layerCount);
 
       struct nouveau_copy copy = {
          .src = nouveau_copy_rect_image(src, region->srcOffset,
                                         &region->srcSubresource),
          .dst = nouveau_copy_rect_image(dst, region->dstOffset,
                                         &region->dstSubresource),
-         .extent_el = extent_el,
+         .extent_el = nil_extent4d_px_to_el(extent4d_px, src->nil.format,
+                                            src->nil.sample_layout),
       };
 
       const VkImageAspectFlagBits aspects = region->srcSubresource.aspectMask;
