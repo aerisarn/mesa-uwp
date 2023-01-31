@@ -209,7 +209,29 @@ nvk_CmdExecuteCommands(VkCommandBuffer commandBuffer,
                        uint32_t commandBufferCount,
                        const VkCommandBuffer *pCommandBuffers)
 {
-   unreachable("Secondary command buffers not yet supported");
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+
+   nvk_cmd_buffer_flush_push(cmd);
+
+   for (uint32_t i = 0; i < commandBufferCount; i++) {
+      VK_FROM_HANDLE(nvk_cmd_buffer, other, pCommandBuffers[i]);
+
+      /* We only need to copy the pushes and BO refs.  We do not copy the
+       * nvk_cmd_buffer::bos because that tracks ownership.  Instead, we
+       * depend on the app to not discard secondaries while they are used by a
+       * primary.  The Vulkan 1.3.227 spec for vkFreeCommandBuffers() says:
+       *
+       *    "Any primary command buffer that is in the recording or executable
+       *    state and has any element of pCommandBuffers recorded into it,
+       *    becomes invalid."
+       *
+       * In other words, if the secondary command buffer ever goes away, this
+       * command buffer is invalid and the only thing the client can validly
+       * do with it is reset it.  vkResetCommandPool() has similar language.
+       */
+      util_dynarray_append_dynarray(&cmd->pushes, &other->pushes);
+      util_dynarray_append_dynarray(&cmd->bo_refs, &other->bo_refs);
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL
