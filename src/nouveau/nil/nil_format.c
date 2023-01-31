@@ -1,5 +1,8 @@
 #include "nil_format.h"
 
+#include "cl9097tex.h"
+#include "clb097tex.h"
+
 #include "gallium/drivers/nouveau/nv50/g80_defs.xml.h"
 #include "gallium/drivers/nouveau/nv50/g80_texture.xml.h"
 #include "gallium/drivers/nouveau/nvc0/gm107_texture.xml.h"
@@ -22,23 +25,23 @@ struct nil_format_info {
 #define G80_ZETA_FORMAT_NONE    0
 #define G80_SURFACE_FORMAT_NONE    0
 
-#define SF_A(sz) G80_TIC_0_COMPONENTS_SIZES_##sz
-#define SF_B(sz) G200_TIC_0_COMPONENTS_SIZES_##sz
-#define SF_C(sz) GF100_TIC_0_COMPONENTS_SIZES_##sz
-#define SF_D(sz) GM107_TIC2_0_COMPONENTS_SIZES_##sz
+#define SF_A(sz) NV9097_TEXHEAD0_COMPONENT_SIZES_##sz
+#define SF_B(sz) NV9097_TEXHEAD0_COMPONENT_SIZES_##sz
+#define SF_C(sz) NV9097_TEXHEAD0_COMPONENT_SIZES_##sz
+#define SF_D(sz) NVB097_TEXHEAD_BL_COMPONENTS_SIZES_##sz
 #define SF(c, pf, sf, r, g, b, a, t0, t1, t2, t3, sz, u)                \
    [PIPE_FORMAT_##pf] = {                                               \
       .rt = sf,                                                         \
       .tic = {                                                          \
          SF_##c(sz),                                                    \
-         G80_TIC_TYPE_##t0,                                             \
-         G80_TIC_TYPE_##t1,                                             \
-         G80_TIC_TYPE_##t2,                                             \
-         G80_TIC_TYPE_##t3,                                             \
-         G80_TIC_SOURCE_##r,                                            \
-         G80_TIC_SOURCE_##g,                                            \
-         G80_TIC_SOURCE_##b,                                            \
-         G80_TIC_SOURCE_##a,                                            \
+         NV9097_TEXHEAD0_R_DATA_TYPE_NUM_##t0,                          \
+         NV9097_TEXHEAD0_G_DATA_TYPE_NUM_##t1,                          \
+         NV9097_TEXHEAD0_B_DATA_TYPE_NUM_##t2,                          \
+         NV9097_TEXHEAD0_A_DATA_TYPE_NUM_##t3,                          \
+         NV9097_TEXHEAD0_X_SOURCE_IN_##r,                               \
+         NV9097_TEXHEAD0_Y_SOURCE_IN_##g,                               \
+         NV9097_TEXHEAD0_Z_SOURCE_IN_##b,                               \
+         NV9097_TEXHEAD0_W_SOURCE_IN_##a,                               \
       }                                                                 \
    }
 
@@ -196,7 +199,6 @@ static const struct nil_format_info nil_format_infos[PIPE_FORMAT_COUNT] =
    F3(C, BPTC_RGB_FLOAT,  NONE, R, G, B, xx, FLOAT, BC6H_SF16, t),
    F3(C, BPTC_RGB_UFLOAT, NONE, R, G, B, xx, FLOAT, BC6H_UF16, t),
 
-#if NOUVEAU_DRIVER == 0xc0
    F3(D, ETC1_RGB8,       NONE, R,  G,  B, xx, UNORM, ETC2_RGB,     t),
    F3(D, ETC2_RGB8,       NONE, R,  G,  B, xx, UNORM, ETC2_RGB,     t),
    F3(D, ETC2_SRGB8,      NONE, R,  G,  B, xx, UNORM, ETC2_RGB,     t),
@@ -238,7 +240,6 @@ static const struct nil_format_info nil_format_infos[PIPE_FORMAT_COUNT] =
    C4(D, ASTC_10x10_SRGB, NONE, R, G, B, A, UNORM, ASTC_2D_10X10, t),
    C4(D, ASTC_12x10_SRGB, NONE, R, G, B, A, UNORM, ASTC_2D_12X10, t),
    C4(D, ASTC_12x12_SRGB, NONE, R, G, B, A, UNORM, ASTC_2D_12X12, t),
-#endif
 
    C4(A, R32G32B32A32_FLOAT, RGBA32_FLOAT, R, G, B, A, FLOAT, R32_G32_B32_A32, IB),
    C4(A, R32G32B32A32_UNORM, NONE, R, G, B, A, UNORM, R32_G32_B32_A32, T),
