@@ -5,6 +5,7 @@
 
 mod bitset;
 mod nak_assign_regs;
+mod nak_encode_tu102;
 mod nak_from_nir;
 mod nak_ir;
 mod nak_opt_copy_prop;
@@ -14,11 +15,26 @@ mod util;
 
 use nak_bindings::*;
 use nak_from_nir::*;
+use std::os::raw::c_void;
 
 #[repr(C)]
 struct ShaderBin {
     bin: nak_shader_bin,
-    instrs: Vec<u32>,
+    code: Vec<u32>,
+}
+
+impl ShaderBin {
+    pub fn new(info: nak_shader_info, code: Vec<u32>) -> ShaderBin {
+        let bin = nak_shader_bin {
+            info: info,
+            code_size: (code.len() * 4).try_into().unwrap(),
+            code: code.as_ptr() as *const c_void,
+        };
+        ShaderBin {
+            bin: bin,
+            code: code,
+        }
+    }
 }
 
 #[no_mangle]
@@ -54,5 +70,26 @@ pub extern "C" fn nak_compile_shader(
 
     println!("NAK IR:\n{}", &s);
 
-    std::ptr::null_mut()
+    let info = nak_shader_info {
+        num_gprs: 255,
+        tls_size: 0,
+        cs: nak_shader_info__bindgen_ty_1 {
+            local_size: [0; 3],
+            smem_size: 0,
+        },
+        hdr: [0; 32],
+    };
+
+    let code = nak_encode_tu102::encode_shader(&s);
+
+    print!("Encoded shader:");
+    for i in 0..code.len() {
+        if (i % 8) == 0 {
+            print!("\n  ");
+        }
+        print!("  {:#x}", code[i]);
+    }
+    print!("\n\n");
+
+    Box::into_raw(Box::new(ShaderBin::new(info, code))) as *mut nak_shader_bin
 }

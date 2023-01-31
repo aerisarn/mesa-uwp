@@ -534,7 +534,13 @@ impl Instr {
             out_load: false,
             flags: 0,
         };
-        Instr::new(Opcode::ALD(attr), slice::from_ref(&dst), &[vtx, offset])
+        let mut instr = Instr::new(
+            Opcode::ALD(attr),
+            slice::from_ref(&dst),
+            &[vtx, offset],
+        );
+        instr.deps.set_wr_bar(0);
+        instr
     }
 
     pub fn new_ast(attr_addr: u16, data: Src, vtx: Src, offset: Src) -> Instr {
@@ -545,7 +551,12 @@ impl Instr {
             out_load: false,
             flags: 0,
         };
-        Instr::new(Opcode::AST(attr), &[], &[data, vtx, offset])
+        let mut instr =
+            Instr::new(Opcode::AST(attr), &[], &[data, vtx, offset]);
+        instr.deps.set_delay(2);
+        instr.deps.set_rd_bar(0);
+        instr.deps.add_wt_bar(0);
+        instr
     }
 
     pub fn new_fs_out(srcs: &[Src]) -> Instr {
@@ -553,7 +564,11 @@ impl Instr {
     }
 
     pub fn new_exit() -> Instr {
-        Instr::new(Opcode::EXIT, &[], &[])
+        let mut instr = Instr::new(Opcode::EXIT, &[], &[]);
+        for i in 0..6 {
+            instr.deps.add_wt_bar(i);
+        }
+        instr
     }
 
     pub fn dst(&self, idx: usize) -> &Dst {
