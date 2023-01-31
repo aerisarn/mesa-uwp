@@ -23,6 +23,10 @@ METHOD_ARRAY_SIZES = {
     'SET_VERTEX_ATTRIBUTE_*'    : 16,
     'SET_VERTEX_STREAM_*'       : 16,
     'BIND_GROUP_CONSTANT_BUFFER': 16,
+    'LOAD_CONSTANT_BUFFER'      : 16,
+    'CALL_MME_MACRO'            : 256,
+    'SET_MME_SHADOW_SCRATCH'    : 256,
+    'CALL_MME_DATA'             : 256,
 }
 
 METHOD_IS_FLOAT = [
