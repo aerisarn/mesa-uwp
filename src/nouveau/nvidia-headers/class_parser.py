@@ -32,8 +32,35 @@ f = open(filein)
 
 fout = open(fileout, 'w')
 
+METHOD_ARRAY_SIZES = {
+    'SET_STREAM_OUT_BUFFER_*'   : 4,
+    'SET_PIPELINE_*'            : 6,
+    'SET_COLOR_TARGET_*'        : 8,
+    'SET_COLOR_COMPRESSION'     : 8,
+    'SET_CT_WRITE'              : 8,
+    'SET_BLEND'                 : 8,
+    'SET_BLEND_PER_TARGET_*'    : 8,
+    'SET_VIEWPORT_*'            : 16,
+    'SET_SCISSOR_*'             : 16,
+    'SET_VERTEX_ATTRIBUTE_*'    : 16,
+    'SET_VERTEX_STREAM_*'       : 16,
+    'BIND_GROUP_CONSTANT_BUFFER': 16,
+}
+
+def glob_match(glob, name):
+    if glob.endswith('*'):
+        return name.startswith(glob[:-1])
+    else:
+        assert '*' not in glob
+        return name == glob
+
 class method(object):
-    pass
+    @property
+    def array_size(self):
+        for (glob, value) in METHOD_ARRAY_SIZES.items():
+            if glob_match(glob, self.name):
+                return value
+        return 0
 
 # Simple state machine
 # state 0 looking for a new method define
@@ -165,10 +192,16 @@ for mthd in mthddict:
 print("static inline const char* P_PARSE_" + nvcl + "_MTHD(uint16_t idx) {")
 print("\tswitch (idx) {")
 for mthd in mthddict:
-    if mthddict[mthd].is_array:
+    if mthddict[mthd].is_array and mthddict[mthd].array_size == 0:
         continue
-    print("\tcase " + nvcl + "_" + mthd + ":")
-    print("\t\treturn \"" + nvcl + "_" + mthd + "\";")
+
+    if mthddict[mthd].is_array:
+        for i in range(mthddict[mthd].array_size):
+            print("\tcase " + nvcl + "_" + mthd + "(" + str(i) + "):")
+            print("\t\treturn \"" + nvcl + "_" + mthd + "(" + str(i) + ")\";")
+    else:
+        print("\tcase " + nvcl + "_" + mthd + ":")
+        print("\t\treturn \"" + nvcl + "_" + mthd + "\";")
 print("\tdefault:")
 print("\t\treturn \"unknown method\";")
 print("\t};")
@@ -178,9 +211,14 @@ print("static inline void P_DUMP_" + nvcl + "_MTHD_DATA(uint16_t idx, uint32_t d
 print("\tuint32_t parsed;")
 print("\tswitch (idx) {")
 for mthd in mthddict:
-    if mthddict[mthd].is_array:
+    if mthddict[mthd].is_array and mthddict[mthd].array_size == 0:
         continue
-    print("\tcase " + nvcl + "_" + mthd + ":")
+
+    if mthddict[mthd].is_array:
+        for i in range(mthddict[mthd].array_size):
+            print("\tcase " + nvcl + "_" + mthd + "(" + str(i) + "):")
+    else:
+        print("\tcase " + nvcl + "_" + mthd + ":")
     for field_name in mthddict[mthd].field_name_start:
         field_width = int(mthddict[mthd].field_name_end[field_name]) - int(mthddict[mthd].field_name_start[field_name]) + 1
         if (field_width == 32):
