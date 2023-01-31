@@ -4,6 +4,7 @@
  */
 
 mod nak_ir;
+mod nir;
 
 use nak_bindings::*;
 

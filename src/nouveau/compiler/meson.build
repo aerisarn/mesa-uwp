@@ -16,12 +16,41 @@ libnak_deps = [
 ]
 
 nak_bindings_rs = rust.bindgen(
-  input : ['nak.h'],
+  input : ['nak_bindings.h'],
   output : 'nak_bindings.rs',
+  include_directories : [
+    include_directories(dep_valgrind.get_pkgconfig_variable('includedir')),
+    inc_compiler,
+    inc_gallium,
+    inc_gallium_aux,
+    inc_include,
+    inc_nir,
+    inc_src,
+  ],
+  c_args : [
+    pre_args,
+  ],
   args : [
+    '--raw-line', '#![allow(non_camel_case_types)]',
+    '--raw-line', '#![allow(non_snake_case)]',
+    '--raw-line', '#![allow(non_upper_case_globals)]',
+    '--allowlist-type', 'exec_list',
+    '--allowlist-type', 'exec_node',
+    '--allowlist-type', 'gl_frag_result',
+    '--allowlist-type', 'gl_interp_mode',
+    '--allowlist-type', 'gl_shader_stage',
+    '--allowlist-type', 'gl_system_value',
+    '--allowlist-type', 'gl_varying_slot',
+    '--allowlist-type', 'gl_vert_attrib',
     '--allowlist-type', 'nak_.*',
+    '--allowlist-type', 'nir_.*',
+    '--allowlist-type', 'mesa_scope',
+    '--allowlist-type', 'shader_prim',
+    '--allowlist-var', 'nir_.*_infos',
     '--allowlist-function', 'nak_.*',
-    '--allowlist-type', 'nir_shader',
+    '--allowlist-function', 'nir_.*',
+    '--allowlist-function', 'glsl_.*',
+    '--no-prepend-enum-name',
   ],
 )
 
