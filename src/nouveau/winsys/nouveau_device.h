@@ -15,6 +15,10 @@ enum nvk_debug {
     * dumps the buffer leading to that.
     */
    NVK_DEBUG_PUSH_SYNC = 1ull << 1,
+
+   /* Zero all client memory allocations
+    */
+   NVK_DEBUG_ZERO_MEMORY = 1ull << 2,
 };
 
 enum nouveau_ws_device_type {

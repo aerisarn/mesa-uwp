@@ -1,12 +1,73 @@
 #include "nvk_device_memory.h"
 
 #include "nouveau_bo.h"
+#include "nouveau_push.h"
 
 #include "nvk_device.h"
 #include "nvk_physical_device.h"
 
 #include <inttypes.h>
 #include <sys/mman.h>
+
+#include "nvtypes.h"
+#include "nvk_cl902d.h"
+
+static VkResult
+zero_vram(struct nvk_device *dev, struct nouveau_ws_bo *bo)
+{
+   struct nouveau_ws_push *push = nouveau_ws_push_new(dev->pdev->dev, 4096);
+   if (push == NULL)
+      return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+
+   nouveau_ws_push_ref(push, bo, NOUVEAU_WS_BO_WR);
+   uint64_t addr = bo->offset;
+
+   /* can't go higher for whatever reason */
+   uint32_t pitch = 1 << 19;
+
+   P_IMMD(push, NV902D, SET_OPERATION, V_SRCCOPY);
+
+   P_MTHD(push, NV902D, SET_DST_FORMAT);
+   P_NV902D_SET_DST_FORMAT(push, V_A8B8G8R8);
+   P_NV902D_SET_DST_MEMORY_LAYOUT(push, V_PITCH);
+
+   P_MTHD(push, NV902D, SET_DST_PITCH);
+   P_NV902D_SET_DST_PITCH(push, pitch);
+
+   P_MTHD(push, NV902D, SET_DST_OFFSET_UPPER);
+   P_NV902D_SET_DST_OFFSET_UPPER(push, addr >> 32);
+   P_NV902D_SET_DST_OFFSET_LOWER(push, addr & 0xffffffff);
+
+   P_MTHD(push, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT);
+   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR_FORMAT(push, V_A8B8G8R8);
+   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR(push, 0);
+
+   uint32_t height = bo->size / pitch;
+   uint32_t extra = bo->size % pitch;
+
+   if (height > 0) {
+      P_IMMD(push, NV902D, RENDER_SOLID_PRIM_MODE, V_RECTS);
+
+      P_MTHD(push, NV902D, RENDER_SOLID_PRIM_POINT_SET_X(0));
+      P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 0, 0);
+      P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 0, 0);
+      P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 1, pitch / 4);
+      P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 1, height);
+   }
+
+   P_IMMD(push, NV902D, RENDER_SOLID_PRIM_MODE, V_RECTS);
+
+   P_MTHD(push, NV902D, RENDER_SOLID_PRIM_POINT_SET_X(0));
+   P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 0, 0);
+   P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 0, height);
+   P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 1, extra / 4);
+   P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 1, height);
+
+   nouveau_ws_push_submit(push, dev->pdev->dev, dev->ctx);
+   nouveau_ws_push_destroy(push);
+
+   return VK_SUCCESS;
+}
 
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_AllocateMemory(
@@ -39,9 +100,32 @@ nvk_AllocateMemory(
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
+   VkResult result;
+   if (device->pdev->dev->debug_flags & NVK_DEBUG_ZERO_MEMORY) {
+      if (type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+         void *map = nouveau_ws_bo_map(mem->bo, NOUVEAU_WS_BO_RDWR);
+         if (map == NULL) {
+            result = vk_errorf(device, VK_ERROR_OUT_OF_HOST_MEMORY,
+                               "Memory map failed");
+            goto fail_bo;
+         }
+         memset(map, 0, mem->bo->size);
+         munmap(map, mem->bo->size);
+      } else {
+         VkResult result = zero_vram(device, mem->bo);
+         if (result != VK_SUCCESS)
+            goto fail_bo;
+      }
+   }
+
    *pMem = nvk_device_memory_to_handle(mem);
 
    return VK_SUCCESS;
+
+fail_bo:
+   nouveau_ws_bo_destroy(mem->bo);
+   vk_object_free(&device->vk, pAllocator, mem);
+   return result;
 }
 
 VKAPI_ATTR void VKAPI_CALL

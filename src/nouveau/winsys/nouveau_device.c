@@ -73,6 +73,7 @@ nouveau_ws_device_set_dbg_flags(struct nouveau_ws_device *dev)
    const struct debug_control flags[] = {
       { "push_dump", NVK_DEBUG_PUSH_DUMP },
       { "push_sync", NVK_DEBUG_PUSH_SYNC },
+      { "zero_memory", NVK_DEBUG_ZERO_MEMORY },
       { NULL, 0 },
    };
 
