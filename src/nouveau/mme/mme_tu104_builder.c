@@ -241,14 +241,14 @@ build_alu_to(struct mme_builder *b,
    enum mme_tu104_reg y_reg = mme_value_alu_reg(y);
 
    if (x_reg == MME_TU104_REG_IMM32 && y_reg == MME_TU104_REG_IMM32) {
-      y = mme_tu104_alu(b, MME_TU104_ALU_OP_ADD, y, mme_zero(), 0);
+      y = mme_mov(b, y);
       y_reg = mme_value_alu_reg(y);
    }
 
    if (mme_tu104_alu_op_has_implicit_imm(op) &&
        (x_reg == MME_TU104_REG_IMM32 ||
         (x_reg == MME_TU104_REG_IMM && y_reg == MME_TU104_REG_IMM))) {
-      x = mme_tu104_alu(b, MME_TU104_ALU_OP_ADD, x, mme_zero(), 0);
+      x = mme_mov(b, x);
       x_reg = mme_value_alu_reg(x);
    }
 
