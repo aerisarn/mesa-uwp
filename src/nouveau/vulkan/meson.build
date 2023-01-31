@@ -77,6 +77,7 @@ nvk_entrypoints = custom_target(
 
 nvk_deps = [
   dep_libdrm,
+  idep_nil,
   idep_nir,
   idep_nouveau_ws,
   idep_nvidia_headers,
