@@ -231,13 +231,15 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
       device->mem_heaps[1].size = ndev->gart_size;
       device->mem_heaps[1].flags = 0;
       device->mem_types[1].heapIndex = 1;
-      device->mem_types[1].propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+      device->mem_types[1].propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                           VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
    } else {
       device->mem_type_cnt = 1;
       device->mem_heap_cnt = 1;
 
       device->mem_heaps[0].size = ndev->gart_size;
-      device->mem_types[0].propertyFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+      device->mem_types[0].propertyFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
    }
 
    unsigned st_idx = 0;
