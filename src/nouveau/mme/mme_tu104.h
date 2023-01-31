@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "util/macros.h"
 
@@ -31,6 +32,8 @@ enum PACKED mme_tu104_pred {
    MME_TU104_PRED_UUUT,
    MME_TU104_PRED_UUUF,
 };
+
+const char *mme_tu104_pred_to_str(enum mme_tu104_pred pred);
 
 enum PACKED mme_tu104_reg {
    MME_TU104_REG_R0,
@@ -101,6 +104,10 @@ enum PACKED mme_tu104_alu_op {
    MME_TU104_ALU_OP_DWRITE,
 };
 
+const char *mme_tu104_alu_op_to_str(enum mme_tu104_alu_op op);
+
+bool mme_tu104_alu_op_has_side_effects(enum mme_tu104_alu_op op);
+
 enum PACKED mme_tu104_out_op {
    MME_TU104_OUT_OP_NONE,
    MME_TU104_OUT_OP_ALU0,
@@ -160,6 +167,18 @@ struct mme_tu104_inst {
       { MME_TU104_OUT_DEFAULTS },      \
       { MME_TU104_OUT_DEFAULTS }       \
    },
+
+void mme_tu104_print_inst(FILE *fp, unsigned indent,
+                          const struct mme_tu104_inst *inst);
+
+void mme_tu104_print(FILE *fp, const struct mme_tu104_inst *insts,
+                     uint32_t inst_count);
+
+void mme_tu104_encode(uint32_t *out, uint32_t inst_count,
+                      const struct mme_tu104_inst *insts);
+
+void mme_tu104_decode(struct mme_tu104_inst *insts,
+                      const uint32_t *in, uint32_t inst_count);
 
 #ifdef __cplusplus
 }

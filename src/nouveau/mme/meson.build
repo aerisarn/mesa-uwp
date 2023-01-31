@@ -1,4 +1,4 @@
-# Copyright © 2021 Ilia Mirkin
+# Copyright © 2022 Collabora, Ltd.
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,16 +18,38 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-subdir('nvidia-headers')
-subdir('compiler')
-subdir('winsys')
-if with_tools.contains('drm-shim')
-  subdir('drm-shim')
-endif
+mme_isa_depend_files = [
+  'mme_tu104.xml',
+  isaspec_py_deps
+]
 
-subdir('codegen')
-if with_nouveau_vk
-  subdir('nil')
-  subdir('mme')
-  subdir('vulkan')
-endif
+mme_encode_h = custom_target(
+  'mme-tu104-encode.h',
+  input: ['mme_tu104.xml'],
+  output: 'mme_tu104_encode.h',
+  command: [
+    prog_isaspec_encode, '--xml', '@INPUT@', '--out-h', '@OUTPUT@'
+  ],
+  depend_files: mme_isa_depend_files,
+)
+
+libnouveau_mme_files = files(
+  'mme_tu104.c',
+  'mme_tu104.h',
+)
+
+_libnouveau_mme = static_library(
+  'nouveau_mme',
+  [libnouveau_mme_files, mme_encode_h],
+  include_directories : [inc_include, inc_src],
+  gnu_symbol_visibility : 'hidden',
+  dependencies : [
+    idep_mesautil,
+    idep_nvidia_headers,
+  ],
+)
+
+idep_nouveau_mme = declare_dependency(
+  include_directories : include_directories('.'),
+  link_with : _libnouveau_mme,
+)
