@@ -40,6 +40,12 @@ struct nvk_queue {
    struct nouveau_ws_push *empty_push;
 };
 
+static inline struct nvk_device *
+nvk_queue_device(struct nvk_queue *queue)
+{
+   return (struct nvk_device *)queue->vk.base.device;
+}
+
 VkResult nvk_queue_init(struct nvk_device *dev, struct nvk_queue *queue,
                         const VkDeviceQueueCreateInfo *pCreateInfo,
                         uint32_t index_in_family);
