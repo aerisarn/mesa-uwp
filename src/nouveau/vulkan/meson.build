@@ -45,6 +45,8 @@ nvk_files = files(
   'nvk_pipeline.c',
   'nvk_pipeline.h',
   'nvk_private.h',
+  'nvk_query_pool.c',
+  'nvk_query_pool.h',
   'nvk_queue.c',
   'nvk_queue.h',
   'nvk_queue_drm_nouveau.c',

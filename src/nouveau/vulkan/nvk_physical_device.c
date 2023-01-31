@@ -74,6 +74,7 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .shaderInputAttachmentArrayDynamicIndexing = true,
       .shaderUniformTexelBufferArrayDynamicIndexing = true,
       .shaderStorageTexelBufferArrayDynamicIndexing = true,
+      .hostQueryReset = true,
    };
 
    VkPhysicalDeviceVulkan13Features core_1_3 = {
@@ -297,6 +298,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *device,
       .EXT_inline_uniform_block = true,
       .EXT_extended_dynamic_state = true,
       .EXT_extended_dynamic_state2 = true,
+      .EXT_host_query_reset = true,
       .EXT_pci_bus_info = true,
       .EXT_vertex_input_dynamic_state = true,
    };
