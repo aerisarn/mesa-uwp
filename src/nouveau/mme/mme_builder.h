@@ -464,6 +464,14 @@ mme_load(struct mme_builder *b)
    return dst;
 }
 
+static inline struct mme_value64
+mme_load_addr64(struct mme_builder *b)
+{
+   struct mme_value hi = mme_load(b);
+   struct mme_value lo = mme_load(b);
+   return mme_value64(lo, hi);
+}
+
 static inline void
 mme_mthd_arr(struct mme_builder *b, uint16_t mthd,
              struct mme_value index)
@@ -482,6 +490,13 @@ mme_emit(struct mme_builder *b,
          struct mme_value data)
 {
    mme_tu104_emit(b, data);
+}
+
+static inline void
+mme_emit_addr64(struct mme_builder *b, struct mme_value64 addr)
+{
+   mme_tu104_emit(b, addr.hi);
+   mme_tu104_emit(b, addr.lo);
 }
 
 static inline void
