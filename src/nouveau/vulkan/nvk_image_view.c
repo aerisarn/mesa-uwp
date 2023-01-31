@@ -3,10 +3,11 @@
 #include "nvk_device.h"
 #include "nvk_image.h"
 
-VKAPI_ATTR VkResult VKAPI_CALL nvk_CreateImageView(VkDevice _device,
-   const VkImageViewCreateInfo *pCreateInfo,
-   const VkAllocationCallbacks *pAllocator,
-   VkImageView *pView)
+VKAPI_ATTR VkResult VKAPI_CALL
+nvk_CreateImageView(VkDevice _device,
+                    const VkImageViewCreateInfo *pCreateInfo,
+                    const VkAllocationCallbacks *pAllocator,
+                    VkImageView *pView)
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
    struct nvk_image_view *view;
@@ -20,9 +21,10 @@ VKAPI_ATTR VkResult VKAPI_CALL nvk_CreateImageView(VkDevice _device,
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR void VKAPI_CALL vkDestroyImageView(VkDevice _device,
-   VkImageView imageView,
-   const VkAllocationCallbacks *pAllocator)
+VKAPI_ATTR void VKAPI_CALL
+nvk_DestroyImageView(VkDevice _device,
+                     VkImageView imageView,
+                     const VkAllocationCallbacks *pAllocator)
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
    VK_FROM_HANDLE(nvk_image_view, view, imageView);
