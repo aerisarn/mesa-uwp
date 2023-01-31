@@ -12,6 +12,8 @@
 #include <fcntl.h>
 #include <xf86drm.h>
 
+#define NVK_MIN_UBO_ALIGNMENT 16
+
 /**
  * Warn on ignored extension structs.
  *
