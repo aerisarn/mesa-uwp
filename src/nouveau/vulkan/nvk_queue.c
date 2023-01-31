@@ -2,9 +2,9 @@
 
 #include "nvk_device.h"
 #include "nvk_physical_device.h"
+#include "nv_push.h"
 
 #include "nouveau_context.h"
-#include "nouveau_push.h"
 
 #include "nvk_cl9097.h"
 #include "nvk_cl90b5.h"
@@ -231,15 +231,25 @@ nvk_queue_init(struct nvk_device *dev, struct nvk_queue *queue,
 
    queue->vk.driver_submit = nvk_queue_submit_drm_nouveau;
 
-   queue->empty_push = nouveau_ws_push_new(dev->pdev->dev, 4096);
+   void *empty_push_map;
+   queue->empty_push = nouveau_ws_bo_new_mapped(dev->pdev->dev, 4096, 0,
+                                                NOUVEAU_WS_BO_GART |
+                                                NOUVEAU_WS_BO_MAP,
+                                                NOUVEAU_WS_BO_WR,
+                                                &empty_push_map);
    if (queue->empty_push == NULL) {
       result = vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
       goto fail_init;
    }
 
-   struct nv_push *p = P_SPACE(queue->empty_push, 2);
-   P_MTHD(p, NV90B5, NOP);
-   P_NV90B5_NOP(p, 0);
+   {
+      struct nv_push push;
+      nv_push_init(&push, empty_push_map, 2);
+      P_MTHD(&push, NV90B5, NOP);
+      P_NV90B5_NOP(&push, 0);
+      queue->empty_push_dw_count = nv_push_dw_count(&push);
+   }
+   nouveau_ws_bo_unmap(queue->empty_push, empty_push_map);
 
    return VK_SUCCESS;
 
@@ -253,6 +263,6 @@ void
 nvk_queue_finish(struct nvk_device *dev, struct nvk_queue *queue)
 {
    nvk_queue_state_finish(dev, &queue->state);
-   nouveau_ws_push_destroy(queue->empty_push);
+   nouveau_ws_bo_destroy(queue->empty_push);
    vk_queue_finish(&queue->vk);
 }

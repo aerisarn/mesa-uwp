@@ -37,7 +37,8 @@ struct nvk_queue {
 
    struct nvk_queue_state state;
 
-   struct nouveau_ws_push *empty_push;
+   struct nouveau_ws_bo *empty_push;
+   uint32_t empty_push_dw_count;
 };
 
 static inline struct nvk_device *

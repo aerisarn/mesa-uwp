@@ -143,7 +143,7 @@ nvk_queue_submit_drm_nouveau(struct vk_queue *vk_queue,
    }
 
    if (submit->command_buffer_count == 0) {
-      push_add_ws_push(&pb, queue->empty_push);
+      push_add_push(&pb, queue->empty_push, 0, queue->empty_push_dw_count);
    } else {
       push_add_queue_state(&pb, &queue->state);
 
