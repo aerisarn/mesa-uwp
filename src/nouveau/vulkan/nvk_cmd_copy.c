@@ -615,42 +615,29 @@ nvk_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_buffer, dst, dstBuffer);
-   uint32_t pitch = 65536;
 
-   assert(dataSize <= 65536);
+   uint64_t dst_addr = nvk_buffer_address(dst, dstOffset);
 
-   VkDeviceSize dst_addr = nvk_buffer_address(dst, 0);
+   uint64_t data_addr;
+   nvk_cmd_buffer_upload_data(cmd, pData, dataSize, 64, &data_addr);
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 26 + dataSize / 4);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 10);
 
-   P_IMMD(p, NV902D, SET_OPERATION, V_SRCCOPY);
+   P_MTHD(p, NV90B5, OFFSET_IN_UPPER);
+   P_NV90B5_OFFSET_IN_UPPER(p, data_addr >> 32);
+   P_NV90B5_OFFSET_IN_LOWER(p, data_addr & 0xffffffff);
+   P_NV90B5_OFFSET_OUT_UPPER(p, dst_addr >> 32);
+   P_NV90B5_OFFSET_OUT_LOWER(p, dst_addr & 0xffffffff);
 
-   P_MTHD(p, NV902D, SET_DST_OFFSET_UPPER);
-   P_NV902D_SET_DST_OFFSET_UPPER(p, dst_addr >> 32);
-   P_NV902D_SET_DST_OFFSET_LOWER(p, dst_addr & 0xffffffff);
+   P_MTHD(p, NV90B5, LINE_LENGTH_IN);
+   P_NV90B5_LINE_LENGTH_IN(p, dataSize);
+   P_NV90B5_LINE_COUNT(p, 1);
 
-   P_MTHD(p, NV902D, SET_DST_FORMAT);
-   P_NV902D_SET_DST_FORMAT(p, V_A8B8G8R8);
-   P_NV902D_SET_DST_MEMORY_LAYOUT(p, V_PITCH);
-
-   P_MTHD(p, NV902D, SET_DST_PITCH);
-   P_NV902D_SET_DST_PITCH(p, pitch);
-
-   P_IMMD(p, NV902D, SET_PIXELS_FROM_CPU_DATA_TYPE, V_COLOR);
-   P_IMMD(p, NV902D, SET_PIXELS_FROM_CPU_COLOR_FORMAT, V_A8B8G8R8);
-
-   P_MTHD(p, NV902D, SET_PIXELS_FROM_CPU_SRC_WIDTH);
-   P_NV902D_SET_PIXELS_FROM_CPU_SRC_WIDTH(p, dataSize / 4);
-   P_NV902D_SET_PIXELS_FROM_CPU_SRC_HEIGHT(p, 1);
-   P_NV902D_SET_PIXELS_FROM_CPU_DX_DU_FRAC(p, 0);
-   P_NV902D_SET_PIXELS_FROM_CPU_DX_DU_INT(p, 1);
-   P_NV902D_SET_PIXELS_FROM_CPU_DY_DV_FRAC(p, 0);
-   P_NV902D_SET_PIXELS_FROM_CPU_DY_DV_INT(p, 1);
-   P_NV902D_SET_PIXELS_FROM_CPU_DST_X0_FRAC(p, 0);
-   P_NV902D_SET_PIXELS_FROM_CPU_DST_X0_INT(p, (dstOffset % pitch) / 4);
-   P_NV902D_SET_PIXELS_FROM_CPU_DST_Y0_FRAC(p, 0);
-   P_NV902D_SET_PIXELS_FROM_CPU_DST_Y0_INT(p, (dstOffset / pitch) / 4);
-
-   P_0INC(p, NV902D, PIXELS_FROM_CPU_DATA);
-   P_INLINE_ARRAY(p, pData, dataSize / 4);
+   P_IMMD(p, NV90B5, LAUNCH_DMA, {
+      .data_transfer_type = DATA_TRANSFER_TYPE_NON_PIPELINED,
+      .multi_line_enable = MULTI_LINE_ENABLE_TRUE,
+      .flush_enable = FLUSH_ENABLE_TRUE,
+      .src_memory_layout = SRC_MEMORY_LAYOUT_PITCH,
+      .dst_memory_layout = DST_MEMORY_LAYOUT_PITCH,
+   });
 }
