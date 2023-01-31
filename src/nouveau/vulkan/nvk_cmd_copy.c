@@ -220,7 +220,7 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
             P_NV90B5_SET_SRC_DEPTH(p, copy->src.extent_el.depth);
             P_NV90B5_SET_SRC_LAYER(p, z + copy->src.offset_el.z);
 
-            if (cmd->pool->dev->ctx->copy.cls >= 0xc1b5) {
+            if (nvk_cmd_buffer_device(cmd)->ctx->copy.cls >= 0xc1b5) {
                P_MTHD(p, NVC1B5, SRC_ORIGIN_X);
                P_NVC1B5_SRC_ORIGIN_X(p, copy->src.offset_el.x * src_bw);
                P_NVC1B5_SRC_ORIGIN_Y(p, copy->src.offset_el.y);
@@ -253,7 +253,7 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
             P_NV90B5_SET_DST_DEPTH(p, copy->dst.extent_el.depth);
             P_NV90B5_SET_DST_LAYER(p, z + copy->dst.offset_el.z);
 
-            if (cmd->pool->dev->ctx->copy.cls >= 0xc1b5) {
+            if (nvk_cmd_buffer_device(cmd)->ctx->copy.cls >= 0xc1b5) {
                P_MTHD(p, NVC1B5, DST_ORIGIN_X);
                P_NVC1B5_DST_ORIGIN_X(p, copy->dst.offset_el.x * dst_bw);
                P_NVC1B5_DST_ORIGIN_Y(p, copy->dst.offset_el.y);

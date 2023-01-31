@@ -15,14 +15,16 @@ struct nvk_image_view;
 
 struct nvk_cmd_pool {
    struct vk_command_pool vk;
-   struct list_head cmd_buffers;
-   struct list_head free_cmd_buffers;
-
-   struct nvk_device *dev;
 };
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_cmd_pool, vk.base, VkCommandPool,
                                VK_OBJECT_TYPE_COMMAND_POOL)
+
+static inline struct nvk_device *
+nvk_cmd_pool_device(struct nvk_cmd_pool *pool)
+{
+   return (struct nvk_device *)pool->vk.base.device;
+}
 
 /** Root descriptor table.  This gets pushed to the GPU directly */
 struct nvk_root_descriptor_table {
@@ -105,17 +107,12 @@ struct nvk_cmd_buffer_upload {
 struct nvk_cmd_buffer {
    struct vk_command_buffer vk;
 
-   struct nvk_cmd_pool *pool;
-   struct list_head pool_link;
-
    struct {
       struct nvk_graphics_state gfx;
       struct nvk_compute_state cs;
    } state;
 
    struct nouveau_ws_push *push;
-   bool reset_on_submit;
-   VkResult record_result;
 
    struct nvk_cmd_buffer_upload upload;
 
@@ -125,13 +122,13 @@ struct nvk_cmd_buffer {
 VK_DEFINE_HANDLE_CASTS(nvk_cmd_buffer, vk.base, VkCommandBuffer,
                        VK_OBJECT_TYPE_COMMAND_BUFFER)
 
+extern const struct vk_command_buffer_ops nvk_cmd_buffer_ops;
+
 static inline struct nvk_device *
 nvk_cmd_buffer_device(struct nvk_cmd_buffer *cmd)
 {
    return (struct nvk_device *)cmd->vk.base.device;
 }
-
-VkResult nvk_reset_cmd_buffer(struct nvk_cmd_buffer *cmd_buffer);
 
 void nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
                                    const VkCommandBufferBeginInfo *pBeginInfo);

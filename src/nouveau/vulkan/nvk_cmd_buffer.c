@@ -44,69 +44,77 @@ nvk_cmd_buffer_upload_finish(struct nvk_cmd_buffer_upload *upload)
 }
 
 static void
-nvk_destroy_cmd_buffer(struct nvk_cmd_buffer *cmd_buffer)
+nvk_destroy_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer)
 {
-   list_del(&cmd_buffer->pool_link);
+   struct nvk_cmd_buffer *cmd_buffer =
+      container_of(vk_cmd_buffer, struct nvk_cmd_buffer, vk);
 
    nvk_cmd_buffer_upload_finish(&cmd_buffer->upload);
    nouveau_ws_push_destroy(cmd_buffer->push);
    vk_command_buffer_finish(&cmd_buffer->vk);
-   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer);
+   vk_free(&cmd_buffer->vk.pool->alloc, cmd_buffer);
 }
 
 static VkResult
-nvk_create_cmd_buffer(struct nvk_device *device,
-                      struct nvk_cmd_pool *pool,
-                      VkCommandBufferLevel level,
-                      VkCommandBuffer *pCommandBuffer)
+nvk_create_cmd_buffer(struct vk_command_pool *vk_pool,
+                      struct vk_command_buffer **cmd_buffer_out)
 {
+   struct nvk_cmd_pool *pool = container_of(vk_pool, struct nvk_cmd_pool, vk);
+   struct nvk_device *device = nvk_cmd_pool_device(pool);
    struct nvk_cmd_buffer *cmd_buffer;
+   VkResult result;
 
    cmd_buffer = vk_zalloc(&pool->vk.alloc, sizeof(*cmd_buffer), 8,
                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (cmd_buffer == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   VkResult result =
-      vk_command_buffer_init(&pool->vk, &cmd_buffer->vk, NULL, level);
+   result = vk_command_buffer_init(&pool->vk, &cmd_buffer->vk,
+                                   &nvk_cmd_buffer_ops, 0);
    if (result != VK_SUCCESS) {
-      vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer);
+      vk_free(&pool->vk.alloc, cmd_buffer);
       return result;
    }
 
    cmd_buffer->vk.dynamic_graphics_state.vi =
       &cmd_buffer->state.gfx._dynamic_vi;
 
-   cmd_buffer->pool = pool;
-   list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
-
    cmd_buffer->push = nouveau_ws_push_new(device->pdev->dev, NVK_CMD_BUF_SIZE);
    nvk_cmd_buffer_upload_init(&cmd_buffer->upload);
-   *pCommandBuffer = nvk_cmd_buffer_to_handle(cmd_buffer);
+
+   *cmd_buffer_out = &cmd_buffer->vk;
+
    return VK_SUCCESS;
 }
 
-VkResult
-nvk_reset_cmd_buffer(struct nvk_cmd_buffer *cmd_buffer)
+static void
+nvk_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
+                     UNUSED VkCommandBufferResetFlags flags)
 {
+   struct nvk_cmd_buffer *cmd_buffer =
+      container_of(vk_cmd_buffer, struct nvk_cmd_buffer, vk);
+
    vk_command_buffer_reset(&cmd_buffer->vk);
 
    nouveau_ws_push_reset(cmd_buffer->push);
    nvk_cmd_buffer_upload_reset(&cmd_buffer->upload);
    memset(&cmd_buffer->state, 0, sizeof(cmd_buffer->state));
-
-   cmd_buffer->record_result = VK_SUCCESS;
-
-   return cmd_buffer->record_result;
 }
 
+const struct vk_command_buffer_ops nvk_cmd_buffer_ops = {
+   .create = nvk_create_cmd_buffer,
+   .reset = nvk_reset_cmd_buffer,
+   .destroy = nvk_destroy_cmd_buffer,
+};
+
 static bool
-nvk_cmd_buffer_resize_upload_buf(struct nvk_cmd_buffer *cmd_buffer, uint64_t min_needed)
+nvk_cmd_buffer_resize_upload_buf(struct nvk_cmd_buffer *cmd_buffer,
+                                 uint64_t min_needed)
 {
+   struct nvk_device *device = nvk_cmd_buffer_device(cmd_buffer);
    uint64_t new_size;
    struct nouveau_ws_bo *bo = NULL;
    struct nvk_cmd_buffer_upload *upload;
-   struct nvk_device *device = (struct nvk_device *)cmd_buffer->vk.base.device;
 
    new_size = MAX2(min_needed, 16 * 1024);
    new_size = MAX2(new_size, 2 * cmd_buffer->upload.size);
@@ -119,7 +127,8 @@ nvk_cmd_buffer_resize_upload_buf(struct nvk_cmd_buffer *cmd_buffer, uint64_t min
       upload = malloc(sizeof(*upload));
 
       if (!upload) {
-         cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+         vk_command_buffer_set_error(&cmd_buffer->vk,
+                                     VK_ERROR_OUT_OF_HOST_MEMORY);
          nouveau_ws_bo_destroy(bo);
          return false;
       }
@@ -134,7 +143,8 @@ nvk_cmd_buffer_resize_upload_buf(struct nvk_cmd_buffer *cmd_buffer, uint64_t min
    cmd_buffer->upload.map = nouveau_ws_bo_map(cmd_buffer->upload.upload_bo, NOUVEAU_WS_BO_WR);
 
    if (!cmd_buffer->upload.map) {
-      cmd_buffer->record_result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+      vk_command_buffer_set_error(&cmd_buffer->vk,
+                                  VK_ERROR_OUT_OF_DEVICE_MEMORY);
       return false;
    }
 
@@ -190,11 +200,8 @@ nvk_CreateCommandPool(VkDevice _device,
       return result;
    }
 
-   list_inithead(&pool->cmd_buffers);
-   list_inithead(&pool->free_cmd_buffers);
-   pool->dev = device;
-
    *pCmdPool = nvk_cmd_pool_to_handle(pool);
+
    return VK_SUCCESS;
 }
 
@@ -209,36 +216,8 @@ nvk_DestroyCommandPool(VkDevice _device,
    if (!pool)
       return;
 
-   list_for_each_entry_safe(struct nvk_cmd_buffer, cmd_buffer, &pool->cmd_buffers, pool_link)
-   {
-      nvk_destroy_cmd_buffer(cmd_buffer);
-   }
-
-   list_for_each_entry_safe(struct nvk_cmd_buffer, cmd_buffer, &pool->free_cmd_buffers, pool_link)
-   {
-      nvk_destroy_cmd_buffer(cmd_buffer);
-   }
-
    vk_command_pool_finish(&pool->vk);
    vk_free2(&device->vk.alloc, pAllocator, pool);
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
-nvk_ResetCommandPool(VkDevice device,
-                     VkCommandPool commandPool,
-                     VkCommandPoolResetFlags flags)
-{
-   VK_FROM_HANDLE(nvk_cmd_pool, pool, commandPool);
-   VkResult result;
-
-   list_for_each_entry(struct nvk_cmd_buffer, cmd_buffer, &pool->cmd_buffers, pool_link)
-   {
-      result = nvk_reset_cmd_buffer(cmd_buffer);
-      if (result != VK_SUCCESS)
-         return result;
-   }
-
-   return VK_SUCCESS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -248,91 +227,7 @@ nvk_TrimCommandPool(VkDevice device,
 {
    VK_FROM_HANDLE(nvk_cmd_pool, pool, commandPool);
 
-   list_for_each_entry_safe(struct nvk_cmd_buffer, cmd_buffer, &pool->free_cmd_buffers, pool_link)
-   {
-      nvk_destroy_cmd_buffer(cmd_buffer);
-   }
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
-nvk_AllocateCommandBuffers(VkDevice _device,
-                           const VkCommandBufferAllocateInfo *pAllocateInfo,
-                           VkCommandBuffer *pCommandBuffers)
-{
-   VK_FROM_HANDLE(nvk_device, device, _device);
-   VK_FROM_HANDLE(nvk_cmd_pool, pool, pAllocateInfo->commandPool);
-   uint32_t i;
-   VkResult result = VK_SUCCESS;
-
-   for (i = 0; i < pAllocateInfo->commandBufferCount; i++) {
-      if (!list_is_empty(&pool->free_cmd_buffers)) {
-         struct nvk_cmd_buffer *cmd_buffer =
-            list_first_entry(&pool->free_cmd_buffers, struct nvk_cmd_buffer, pool_link);
-
-         list_del(&cmd_buffer->pool_link);
-         list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
-
-         result = nvk_reset_cmd_buffer(cmd_buffer);
-         vk_command_buffer_finish(&cmd_buffer->vk);
-         VkResult init_result =
-            vk_command_buffer_init(&pool->vk, &cmd_buffer->vk, NULL,
-                                   pAllocateInfo->level);
-         if (init_result != VK_SUCCESS)
-            result = init_result;
-
-         /* Re-initializing the command buffer resets this pointer */
-         cmd_buffer->vk.dynamic_graphics_state.vi =
-            &cmd_buffer->state.gfx._dynamic_vi;
-
-         pCommandBuffers[i] = nvk_cmd_buffer_to_handle(cmd_buffer);
-      } else {
-         result = nvk_create_cmd_buffer(device, pool, pAllocateInfo->level, &pCommandBuffers[i]);
-      }
-      if (result != VK_SUCCESS)
-         break;
-   }
-
-   if (result != VK_SUCCESS) {
-      nvk_FreeCommandBuffers(_device, pAllocateInfo->commandPool, i, pCommandBuffers);
-      /* From the Vulkan 1.0.66 spec:
-       *
-       * "vkAllocateCommandBuffers can be used to create multiple
-       *  command buffers. If the creation of any of those command
-       *  buffers fails, the implementation must destroy all
-       *  successfully created command buffer objects from this
-       *  command, set all entries of the pCommandBuffers array to
-       *  NULL and return the error."
-       */
-      memset(pCommandBuffers, 0, sizeof(*pCommandBuffers) * pAllocateInfo->commandBufferCount);
-   }
-   return result;
-}
-
-VKAPI_ATTR void VKAPI_CALL
-nvk_FreeCommandBuffers(VkDevice device,
-                       VkCommandPool commandPool,
-                       uint32_t commandBufferCount,
-                       const VkCommandBuffer *pCommandBuffers)
-{
-   VK_FROM_HANDLE(nvk_cmd_pool, pool, commandPool);
-   for (uint32_t i = 0; i < commandBufferCount; i++) {
-      VK_FROM_HANDLE(nvk_cmd_buffer, cmd_buffer, pCommandBuffers[i]);
-
-      if (!cmd_buffer)
-         continue;
-      assert(cmd_buffer->pool == pool);
-
-      list_del(&cmd_buffer->pool_link);
-      list_addtail(&cmd_buffer->pool_link, &pool->free_cmd_buffers);
-   }
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
-nvk_ResetCommandBuffer(VkCommandBuffer commandBuffer,
-                       VkCommandBufferResetFlags flags)
-{
-   VK_FROM_HANDLE(nvk_cmd_buffer, cmd_buffer, commandBuffer);
-   return nvk_reset_cmd_buffer(cmd_buffer);
+   vk_command_pool_trim(&pool->vk, flags);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -341,12 +236,7 @@ nvk_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
 
-   nvk_reset_cmd_buffer(cmd);
-
-   if (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
-      cmd->reset_on_submit = true;
-   else
-      cmd->reset_on_submit = false;
+   nvk_reset_cmd_buffer(&cmd->vk, 0);
 
    nvk_cmd_buffer_begin_compute(cmd, pBeginInfo);
    nvk_cmd_buffer_begin_graphics(cmd, pBeginInfo);
@@ -358,7 +248,7 @@ VKAPI_ATTR VkResult VKAPI_CALL
 nvk_EndCommandBuffer(VkCommandBuffer commandBuffer)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
-   return cmd->record_result;
+   return vk_command_buffer_get_record_result(&cmd->vk);
 }
 
 VKAPI_ATTR void VKAPI_CALL

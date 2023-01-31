@@ -409,8 +409,6 @@ nvk_queue_submit(struct vk_queue *vkqueue, struct vk_queue_submit *submission)
 
       nouveau_ws_push_submit(cmd->push, device->pdev->dev, device->ctx);
       nouveau_ws_push_reset_refs(cmd->push, real_refs);
-      if (cmd->reset_on_submit)
-         nvk_reset_cmd_buffer(cmd);
    }
 
    for (uint32_t i = 0; i < submission->signal_count; i++) {
@@ -451,6 +449,8 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
       vk_device_init(&device->vk, &physical_device->vk, &dispatch_table, pCreateInfo, pAllocator);
    if (result != VK_SUCCESS)
       goto fail_alloc;
+
+   device->vk.command_buffer_ops = &nvk_cmd_buffer_ops;
 
    int ret = nouveau_ws_context_create(physical_device->dev, &device->ctx);
    if (ret) {
