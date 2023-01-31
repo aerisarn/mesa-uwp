@@ -84,6 +84,44 @@ static void check_swizzle(nir_alu_src * src, const char * swizzle)
    }
 }
 
+TEST_F(nir_opt_shrink_vectors_test, opt_shrink_vectors_alu_trailing_component_only)
+{
+   /* Test that opt_shrink_vectors correctly removes unused trailing channels
+    * of alus.
+    *
+    * vec4 32 ssa_1 = fmov ssa_0.xyzx
+    * vec1 32 ssa_2 = fmov ssa_1.x
+    *
+    * to
+    *
+    * vec1 32 ssa_1 = fmov ssa_0.x
+    * vec1 32 ssa_2 = fmov ssa_1.x
+    */
+
+   nir_ssa_def *alu_result = nir_build_alu1(&bld, nir_op_mov, in_def);
+   nir_alu_instr *alu_instr = nir_instr_as_alu(alu_result->parent_instr);
+   alu_result->num_components = 4;
+   alu_instr->dest.write_mask = BITFIELD_MASK(4);
+   set_swizzle(&alu_instr->src[0], "xyxx");
+
+   nir_ssa_def *alu2_result = nir_build_alu1(&bld, nir_op_mov, alu_result);
+   nir_alu_instr *alu2_instr = nir_instr_as_alu(alu2_result->parent_instr);
+   set_swizzle(&alu2_instr->src[0], "x");
+   alu2_result->num_components = 1;
+   alu2_instr->dest.write_mask = BITFIELD_MASK(1);
+
+   nir_store_var(&bld, out_var, alu2_result, 1);
+
+   ASSERT_TRUE(nir_opt_shrink_vectors(bld.shader));
+
+   nir_validate_shader(bld.shader, NULL);
+
+   check_swizzle(&alu_instr->src[0], "x");
+   ASSERT_TRUE(alu_result->num_components == 1);
+
+   ASSERT_FALSE(nir_opt_shrink_vectors(bld.shader));
+}
+
 TEST_F(nir_opt_shrink_vectors_test, opt_shrink_vectors_simple)
 {
    /* Tests that opt_shrink_vectors correctly shrinks a simple case.

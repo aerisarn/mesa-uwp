@@ -234,16 +234,18 @@ opt_shrink_vectors_alu(nir_builder *b, nir_alu_instr *instr)
       }
    }
 
+   /* update uses */
+   if (progress)
+      reswizzle_alu_uses(def, reswizzle);
+
    unsigned rounded = round_up_components(num_components);
    assert(rounded <= def->num_components);
+   if (rounded < def->num_components)
+      progress = true;
 
    /* update dest */
    def->num_components = rounded;
    instr->dest.write_mask = BITFIELD_MASK(rounded);
-
-   /* update uses */
-   if (progress)
-      reswizzle_alu_uses(def, reswizzle);
 
    return progress;
 }
