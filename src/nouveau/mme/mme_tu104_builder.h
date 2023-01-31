@@ -17,24 +17,13 @@ enum mme_tu104_instr_parts {
 
 #define MME_TU104_BUILDER_MAX_INSTS 128
 
-enum mme_tu104_cf_type {
-   MME_CF_TYPE_IF,
-   MME_CF_TYPE_LOOP,
-   MME_CF_TYPE_WHILE,
-};
-
-struct mme_tu104_cf {
-   enum mme_tu104_cf_type type;
-   uint16_t start_ip;
-};
-
 struct mme_tu104_builder {
    uint32_t inst_count;
    struct mme_tu104_inst insts[MME_TU104_BUILDER_MAX_INSTS];
    enum mme_tu104_instr_parts inst_parts;
 
    uint32_t cf_depth;
-   struct mme_tu104_cf cf_stack[8];
+   struct mme_cf cf_stack[8];
 };
 
 void mme_tu104_builder_init(struct mme_builder *b);

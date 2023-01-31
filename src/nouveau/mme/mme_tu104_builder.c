@@ -587,7 +587,7 @@ mme_cmp_to_tu104_branch_op(enum mme_cmp_op op)
 
 static void
 mme_tu104_start_cf(struct mme_builder *b,
-                   enum mme_tu104_cf_type type,
+                   enum mme_cf_type type,
                    enum mme_tu104_alu_op op,
                    struct mme_value x,
                    struct mme_value y,
@@ -601,7 +601,7 @@ mme_tu104_start_cf(struct mme_builder *b,
    uint16_t ip = tb->inst_count - 1;
    assert(tb->insts[ip].alu[0].op == op);
 
-   tb->cf_stack[tb->cf_depth++] = (struct mme_tu104_cf) {
+   tb->cf_stack[tb->cf_depth++] = (struct mme_cf) {
       .type = type,
       .start_ip = ip,
    };
@@ -610,8 +610,8 @@ mme_tu104_start_cf(struct mme_builder *b,
    mme_tu104_new_inst(tb);
 }
 
-static struct mme_tu104_cf
-mme_tu104_end_cf(struct mme_builder *b, enum mme_tu104_cf_type type)
+static struct mme_cf
+mme_tu104_end_cf(struct mme_builder *b, enum mme_cf_type type)
 {
    struct mme_tu104_builder *tb = &b->tu104;
 
@@ -619,7 +619,7 @@ mme_tu104_end_cf(struct mme_builder *b, enum mme_tu104_cf_type type)
       mme_tu104_new_inst(tb);
 
    assert(tb->cf_depth > 0);
-   struct mme_tu104_cf cf = tb->cf_stack[--tb->cf_depth];
+   struct mme_cf cf = tb->cf_stack[--tb->cf_depth];
    assert(cf.type == type);
 
    int delta = tb->inst_count - cf.start_ip - 1;
@@ -674,7 +674,7 @@ mme_tu104_end_while(struct mme_builder *b,
 {
    struct mme_tu104_builder *tb = &b->tu104;
 
-   struct mme_tu104_cf cf = mme_tu104_end_cf(b, MME_CF_TYPE_WHILE);
+   struct mme_cf cf = mme_tu104_end_cf(b, MME_CF_TYPE_WHILE);
 
    int delta = tb->inst_count - cf.start_ip - 2;
    uint16_t control = (-delta & BITFIELD_MASK(13)) |

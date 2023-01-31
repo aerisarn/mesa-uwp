@@ -44,6 +44,17 @@ enum mme_cmp_op {
    MME_CMP_OP_EQ,
 };
 
+enum mme_cf_type {
+   MME_CF_TYPE_IF,
+   MME_CF_TYPE_LOOP,
+   MME_CF_TYPE_WHILE,
+};
+
+struct mme_cf {
+   enum mme_cf_type type;
+   uint16_t start_ip;
+};
+
 struct mme_builder;
 
 #include "mme_tu104_builder.h"
