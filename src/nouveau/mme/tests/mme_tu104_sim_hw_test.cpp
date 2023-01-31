@@ -11,8 +11,15 @@
 #include "nouveau_bo.h"
 #include "nouveau_context.h"
 #include "nouveau_device.h"
-#include "nouveau_push.h"
 
+/* nouveau_drm.h isn't C++-friendly */
+#define class cls
+#include <nouveau_drm.h>
+#undef class
+
+#include <xf86drm.h>
+
+#include "nv_push.h"
 #include "nvk_clc597.h"
 
 class mme_tu104_sim_test : public ::testing::Test {
@@ -22,12 +29,13 @@ public:
 
    void SetUp();
    void push_macro(uint32_t id, const std::vector<uint32_t>& macro);
+   void reset_push();
    void submit_push();
    void test_macro(const mme_builder *b,
                    const std::vector<uint32_t>& macro,
                    const std::vector<uint32_t>& params);
 
-   struct nouveau_ws_push *push;
+   struct nv_push *p;
    uint64_t data_addr;
    uint32_t *data;
 
@@ -36,16 +44,23 @@ private:
    struct nouveau_ws_device *dev;
    struct nouveau_ws_context *ctx;
    struct nouveau_ws_bo *data_bo;
+   struct nouveau_ws_bo *push_bo;
+   void *push_map;
+   struct nv_push push;
 };
 
 mme_tu104_sim_test::mme_tu104_sim_test() :
-  push(NULL), data(NULL), fd(-1), dev(NULL), ctx(NULL), data_bo(NULL)
-{ }
+  data(NULL), fd(-1), dev(NULL), ctx(NULL), data_bo(NULL), push_bo(NULL)
+{
+   memset(&push, 0, sizeof(push));
+}
 
 mme_tu104_sim_test::~mme_tu104_sim_test()
 {
-   if (push)
-      nouveau_ws_push_destroy(push);
+   if (push_bo) {
+      nouveau_ws_bo_unmap(push_bo, push_map);
+      nouveau_ws_bo_destroy(push_bo);
+   }
    if (ctx)
       nouveau_ws_context_destroy(ctx);
    if (dev)
@@ -92,27 +107,61 @@ mme_tu104_sim_test::SetUp()
    ASSERT_EQ(ret, 0);
 
    uint32_t data_bo_flags = NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP;
-   data_bo = nouveau_ws_bo_new(dev, DATA_BO_SIZE, 0,
-                               (nouveau_ws_bo_flags)data_bo_flags);
+   data_bo = nouveau_ws_bo_new_mapped(dev, DATA_BO_SIZE, 0,
+                                      (nouveau_ws_bo_flags)data_bo_flags,
+                                      NOUVEAU_WS_BO_RDWR, (void **)&data);
    ASSERT_TRUE(data_bo != NULL);
-
-   data = (uint32_t *)nouveau_ws_bo_map(data_bo, NOUVEAU_WS_BO_RDWR);
-   ASSERT_TRUE(data != NULL);
-
    memset(data, 139, DATA_BO_SIZE);
-
    data_addr = data_bo->offset;
 
-   push = nouveau_ws_push_new(dev, PUSH_SIZE);
-   ASSERT_TRUE(push != NULL);
+   uint32_t push_bo_flags = NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP;
+   push_bo = nouveau_ws_bo_new_mapped(dev, PUSH_SIZE, 0,
+                                      (nouveau_ws_bo_flags)push_bo_flags,
+                                      NOUVEAU_WS_BO_WR, &push_map);
+   ASSERT_TRUE(push_bo != NULL);
+   reset_push();
+}
+
+void
+mme_tu104_sim_test::reset_push()
+{
+   nv_push_init(&push, (uint32_t *)push_map, PUSH_SIZE / 4);
+   p = &push;
 }
 
 void
 mme_tu104_sim_test::submit_push()
 {
-   nouveau_ws_push_ref(push, data_bo, NOUVEAU_WS_BO_RDWR);
+   struct drm_nouveau_gem_pushbuf_bo bos[2];
+   memset(bos, 0, sizeof(bos));
 
-   int ret = nouveau_ws_push_submit(push, dev, ctx);
+   bos[0].handle = push_bo->handle,
+   bos[0].valid_domains = NOUVEAU_GEM_DOMAIN_GART;
+   bos[0].read_domains = NOUVEAU_GEM_DOMAIN_GART;
+
+   bos[1].handle = data_bo->handle,
+   bos[1].valid_domains = NOUVEAU_GEM_DOMAIN_GART;
+   bos[1].read_domains = NOUVEAU_GEM_DOMAIN_GART;
+   bos[1].write_domains = NOUVEAU_GEM_DOMAIN_GART;
+
+   struct drm_nouveau_gem_pushbuf_push push;
+   memset(&push, 0, sizeof(push));
+
+   push.bo_index = 0;
+   push.offset = 0;
+   push.length = nv_push_dw_count(&this->push) * 4;
+
+   struct drm_nouveau_gem_pushbuf req;
+   memset(&req, 0, sizeof(req));
+
+   req.channel = ctx->channel;
+   req.nr_buffers = 2;
+   req.buffers = (uintptr_t)bos;
+   req.nr_push = 1;
+   req.push = (uintptr_t)&push;
+
+   int ret = drmCommandWriteRead(dev->fd, DRM_NOUVEAU_GEM_PUSHBUF,
+                                 &req, sizeof(req));
    ASSERT_EQ(ret, 0);
 
    bool ok = nouveau_ws_bo_wait(data_bo, NOUVEAU_WS_BO_RDWR);
@@ -122,8 +171,6 @@ mme_tu104_sim_test::submit_push()
 void
 mme_tu104_sim_test::push_macro(uint32_t id, const std::vector<uint32_t> &macro)
 {
-   nv_push *p = P_SPACE(push, 5 + macro.size());
-
    P_MTHD(p, NVC597, LOAD_MME_START_ADDRESS_RAM_POINTER);
    P_NVC597_LOAD_MME_START_ADDRESS_RAM_POINTER(p, id);
    P_NVC597_LOAD_MME_START_ADDRESS_RAM(p, 0);
@@ -155,8 +202,6 @@ mme_tu104_sim_test::test_macro(const mme_builder *b,
 
    /* Now run the macro on the GPU */
    push_macro(0, macro);
-
-   nv_push *p = P_SPACE(push, 1 + MAX2(1, params.size()));
 
    P_1INC(p, NVC597, CALL_MME_MACRO(0));
    if (params.empty()) {
@@ -297,7 +342,7 @@ TEST_F(mme_tu104_sim_test, pred_param)
    auto macro = mme_builder_finish_vec(&b);
 
    for (uint32_t j = 0; j < 4; j++) {
-      nouveau_ws_push_reset(push);
+      reset_push();
 
       std::vector<uint32_t> params;
       params.push_back((j & 1) * 2043);
@@ -527,7 +572,7 @@ TEST_F(mme_tu104_sim_test, pred_alu)
       auto macro = mme_builder_finish_vec(&b);
 
       for (uint32_t j = 0; j < 2; j++) {
-         nouveau_ws_push_reset(push);
+         reset_push();
 
          std::vector<uint32_t> params;
          params.push_back(j * 25894);
@@ -598,7 +643,7 @@ TEST_F(mme_tu104_sim_test, pred_out)
       auto macro = mme_builder_finish_vec(&b);
 
       for (uint32_t j = 0; j < 2; j++) {
-         nouveau_ws_push_reset(push);
+         reset_push();
 
          std::vector<uint32_t> params;
          params.push_back(j * 25894);
@@ -664,7 +709,7 @@ TEST_F(mme_tu104_sim_test, add_imm)
    };
 
    for (uint32_t i = 0; i < ARRAY_SIZE(vals); i++) {
-      nouveau_ws_push_reset(push);
+      reset_push();
 
       std::vector<uint32_t> params;
       params.push_back(vals[i]);
@@ -788,7 +833,7 @@ TEST_F(mme_tu104_sim_test, addc_imm)
    };
 
    for (uint32_t i = 0; i < ARRAY_SIZE(vals); i++) {
-      nouveau_ws_push_reset(push);
+      reset_push();
 
       std::vector<uint32_t> params;
       params.push_back(low32(vals[i]));
@@ -886,7 +931,7 @@ TEST_F(mme_tu104_sim_test, mul_imm)
    int32_t vals[] = { 1, -5, -1, 5 };
 
    for (uint32_t i = 0; i < ARRAY_SIZE(vals); i++) {
-      nouveau_ws_push_reset(push);
+      reset_push();
 
       std::vector<uint32_t> params;
       params.push_back(vals[i]);
@@ -949,7 +994,7 @@ TEST_F(mme_tu104_sim_test, mulu_imm)
    int32_t vals[] = { 1, -5, -1, 5 };
 
    for (uint32_t i = 0; i < ARRAY_SIZE(vals); i++) {
-      nouveau_ws_push_reset(push);
+      reset_push();
 
       std::vector<uint32_t> params;
       params.push_back(vals[i]);
@@ -1170,7 +1215,7 @@ TEST_F(mme_tu104_sim_test, loop)
    uint32_t counts[] = {0, 1, 5, 9};
 
    for (uint32_t i = 0; i < ARRAY_SIZE(counts); i++) {
-      nouveau_ws_push_reset(push);
+      reset_push();
 
       std::vector<uint32_t> params;
       params.push_back(counts[i]);
@@ -1323,7 +1368,7 @@ TEST_F(mme_tu104_sim_test, if_##op)                                  \
    uint32_t vals[] = {23, 56, (uint32_t)-5, (uint32_t)-10, 56, 14};  \
                                                                      \
    for (uint32_t i = 0; i < ARRAY_SIZE(vals) - 1; i++) {             \
-      nouveau_ws_push_reset(push);                                   \
+      reset_push();                                                  \
                                                                      \
       std::vector<uint32_t> params;                                  \
       params.push_back(vals[i + 0]);                                 \
@@ -1438,7 +1483,7 @@ TEST_F(mme_tu104_sim_test, do_ble)
    uint32_t counts[] = {0, 1, 5, 9};
 
    for (uint32_t i = 0; i < ARRAY_SIZE(counts); i++) {
-      nouveau_ws_push_reset(push);
+      reset_push();
 
       std::vector<uint32_t> params;
       params.push_back(counts[i]);
@@ -1491,8 +1536,6 @@ TEST_F(mme_tu104_sim_test, dwrite_dma)
    auto macro = mme_builder_finish_vec(&b);
 
    push_macro(0, macro);
-
-   nv_push *p = P_SPACE(push, 10);
 
    P_1INC(p, NVC597, CALL_MME_MACRO(0));
    P_INLINE_DATA(p, canary5);
@@ -1547,11 +1590,10 @@ TEST_F(mme_tu104_sim_test, dram_limit)
    auto macro = mme_builder_finish_vec(&b);
 
    for (uint32_t i = 0; i < MME_TU104_DRAM_COUNT; i += chunk_size) {
-      nouveau_ws_push_reset(push);
+      reset_push();
 
       push_macro(0, macro);
 
-      nv_push *p = P_SPACE(push, 3);
       P_1INC(p, NVC597, CALL_MME_MACRO(0));
       P_INLINE_DATA(p, i);
       P_INLINE_DATA(p, chunk_size);
@@ -1589,7 +1631,6 @@ TEST_F(mme_tu104_sim_test, dma_read_fifoed)
 
    auto macro = mme_builder_finish_vec(&b);
 
-   nv_push *p = P_SPACE(push, 5);
    P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
 
    for (uint32_t i = 0; i < 64; i++)
@@ -1631,11 +1672,10 @@ TEST_F(mme_tu104_sim_test, scratch_limit)
    auto macro = mme_builder_finish_vec(&b);
 
    for (uint32_t i = 0; i < MME_TU104_SCRATCH_COUNT; i += chunk_size) {
-      nouveau_ws_push_reset(push);
+      reset_push();
 
       push_macro(0, macro);
 
-      nv_push *p = P_SPACE(push, 3);
       P_1INC(p, NVC597, CALL_MME_MACRO(0));
       P_INLINE_DATA(p, i);
       P_INLINE_DATA(p, chunk_size);
