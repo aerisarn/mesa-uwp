@@ -459,6 +459,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *pdev,
       .EXT_private_data = true,
       .EXT_provoking_vertex = true,
       .EXT_sample_locations = pdev->info.cls_eng3d >= MAXWELL_B,
+      .EXT_separate_stencil_usage = true,
       .EXT_vertex_attribute_divisor = true,
       .EXT_vertex_input_dynamic_state = true,
    };
