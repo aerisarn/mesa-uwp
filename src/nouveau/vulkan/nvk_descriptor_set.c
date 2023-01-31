@@ -254,8 +254,7 @@ nvk_descriptor_set_destroy(struct nvk_device *device, struct nvk_descriptor_pool
       }
    }
 
-   vk_object_base_finish(&set->base);
-   vk_free2(&device->vk.alloc, NULL, set);
+   vk_object_free(&device->vk, NULL, set);
 }
 
 static void
@@ -271,8 +270,7 @@ nvk_destroy_descriptor_pool(struct nvk_device *device, const VkAllocationCallbac
       nouveau_ws_bo_destroy(pool->bo);
    }
 
-   vk_object_base_finish(&pool->base);
-   vk_free2(&device->vk.alloc, pAllocator, pool);
+   vk_object_free(&device->vk, pAllocator, pool);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -333,10 +331,10 @@ nvk_CreateDescriptorPool(VkDevice _device,
    uint64_t entries_size = sizeof(struct nvk_descriptor_pool_entry) * pCreateInfo->maxSets;
    size += entries_size;
 
-   pool = vk_zalloc2(&device->vk.alloc, pAllocator, size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   pool = vk_object_zalloc(&device->vk, pAllocator, size,
+                           VK_OBJECT_TYPE_DESCRIPTOR_POOL);
    if (!pool)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-   vk_object_base_init(&device->vk, &pool->base, VK_OBJECT_TYPE_DESCRIPTOR_POOL);
 
    if (bo_size) {
       uint32_t flags = NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP;
@@ -368,12 +366,11 @@ nvk_descriptor_set_create(struct nvk_device *device, struct nvk_descriptor_pool 
 
    uint32_t mem_size = sizeof(struct nvk_descriptor_set) +
       layout->dynamic_buffer_count * sizeof(struct nvk_buffer_address);
-   set = vk_zalloc2(&device->vk.alloc, NULL, mem_size, 8,
-                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
+   set = vk_object_zalloc(&device->vk, NULL, mem_size,
+                          VK_OBJECT_TYPE_DESCRIPTOR_SET);
    if (!set)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   vk_object_base_init(&device->vk, &set->base, VK_OBJECT_TYPE_DESCRIPTOR_SET);
 
    set->layout = layout;
    if (pool->entry_count == pool->max_entry_count)
