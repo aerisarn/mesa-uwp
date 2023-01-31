@@ -1,6 +1,10 @@
 nvk_files = files(
   'nvk_device.c',
   'nvk_device.h',
+  'nvk_image.c',
+  'nvk_image.h',
+  'nvk_image_view.c',
+  'nvk_image_view.h',
   'nvk_instance.c',
   'nvk_instance.h',
   'nvk_physical_device.c',
