@@ -18,6 +18,7 @@
 #include "nvk_clc597.h"
 #include "nvk_cl90b5.h"
 #include "nvk_cla0c0.h"
+#include "nvk_cl906f.h"
 
 static void
 nvk_destroy_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer)
@@ -553,17 +554,21 @@ nvk_CmdBindTransformFeedbackBuffersEXT(VkCommandBuffer commandBuffer,
 void
 nvk_mme_xfb_counter_load(struct mme_builder *b)
 {
-   if (b->devinfo->cls_eng3d < TURING_A)
-      return;
-
-   struct mme_value64 counter_addr = mme_load_addr64(b);
    struct mme_value buffer = mme_load(b);
 
-   mme_tu104_read_fifoed(b, counter_addr, mme_imm(1));
-   mme_free_reg(b, counter_addr.lo);
-   mme_free_reg(b, counter_addr.hi);
+   struct mme_value counter;
+   if (b->devinfo->cls_eng3d >= TURING_A) {
+      struct mme_value64 counter_addr = mme_load_addr64(b);
 
-   struct mme_value counter = mme_load(b);
+      mme_tu104_read_fifoed(b, counter_addr, mme_imm(1));
+      mme_free_reg(b, counter_addr.lo);
+      mme_free_reg(b, counter_addr.hi);
+
+      counter = mme_load(b);
+   } else {
+      counter = mme_load(b);
+   }
+
    mme_mthd_arr(b, NV9097_SET_STREAM_OUT_BUFFER_LOAD_WRITE_POINTER(0), buffer);
    mme_emit(b, counter);
 
@@ -580,9 +585,6 @@ nvk_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    const uint32_t max_buffers = 4;
-
-   /* TODO: pre-Turing transform feedback */
-   assert(nvk_cmd_buffer_device(cmd)->ctx->eng3d.cls >= TURING_A);
 
    struct nv_push *p = nvk_cmd_buffer_push(cmd, 2+2*max_buffers);
 
@@ -601,12 +603,23 @@ nvk_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer,
       uint64_t offset = pCounterBufferOffsets ? pCounterBufferOffsets[i] : 0;
       uint64_t cb_addr = nvk_buffer_address(buffer, offset);
 
-      struct nv_push *p = nvk_cmd_buffer_push(cmd, 6);
-      P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
-      P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_XFB_COUNTER_LOAD));
-      P_INLINE_DATA(p, cb_addr >> 32);
-      P_INLINE_DATA(p, cb_addr);
-      P_INLINE_DATA(p, cb_idx);
+      if (nvk_cmd_buffer_device(cmd)->ctx->eng3d.cls >= TURING_A) {
+         struct nv_push *p = nvk_cmd_buffer_push(cmd, 6);
+         P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
+         P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_XFB_COUNTER_LOAD));
+         P_INLINE_DATA(p, cb_idx);
+         P_INLINE_DATA(p, cb_addr >> 32);
+         P_INLINE_DATA(p, cb_addr);
+      } else {
+         struct nv_push *p = nvk_cmd_buffer_push(cmd, 4);
+         /* Stall the command streamer */
+         __push_immd(p, SUBC_NV9097, NV906F_SET_REFERENCE, 0);
+
+         P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_XFB_COUNTER_LOAD));
+         P_INLINE_DATA(p, cb_idx);
+         nv_push_update_count(p, 1);
+         nvk_cmd_buffer_push_indirect_buffer(cmd, buffer, offset, 4);
+      }
    }
 }
 

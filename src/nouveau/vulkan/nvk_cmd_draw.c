@@ -2131,18 +2131,16 @@ nvk_CmdDrawIndexedIndirectCount(VkCommandBuffer commandBuffer,
 void
 nvk_mme_xfb_draw_indirect(struct mme_builder *b)
 {
-   if (b->devinfo->cls_eng3d < TURING_A)
-      return;
-
    struct mme_value begin = mme_load(b);
    struct mme_value instance_count = mme_load(b);
    struct mme_value first_instance = mme_load(b);
 
-   struct mme_value64 counter_addr = mme_load_addr64(b);
-
-   mme_tu104_read_fifoed(b, counter_addr, mme_imm(1));
-   mme_free_reg(b, counter_addr.lo);
-   mme_free_reg(b, counter_addr.hi);
+   if (b->devinfo->cls_eng3d >= TURING_A) {
+      struct mme_value64 counter_addr = mme_load_addr64(b);
+      mme_tu104_read_fifoed(b, counter_addr, mme_imm(1));
+      mme_free_reg(b, counter_addr.lo);
+      mme_free_reg(b, counter_addr.hi);
+   }
    struct mme_value counter = mme_load(b);
 
    struct mme_draw_params params = {
@@ -2183,9 +2181,6 @@ nvk_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
 
-   /* TODO: pre-Turing transform feedback */
-   assert(nvk_cmd_buffer_3d_cls(cmd) >= TURING_A);
-
    nvk_flush_gfx_state(cmd);
 
    uint32_t begin;
@@ -2196,16 +2191,33 @@ nvk_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
       .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
    });
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 12);
-   P_IMMD(p, NV9097, SET_DRAW_AUTO_START, counterOffset);
-   P_IMMD(p, NV9097, SET_DRAW_AUTO_STRIDE, vertexStride);
-   P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
-   P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_XFB_DRAW_INDIRECT));
-   P_INLINE_DATA(p, begin);
-   P_INLINE_DATA(p, instanceCount);
-   P_INLINE_DATA(p, firstInstance);
-   uint64_t counter_addr = nvk_buffer_address(counter_buffer,
-                                              counterBufferOffset);
-   P_INLINE_DATA(p, counter_addr >> 32);
-   P_INLINE_DATA(p, counter_addr);
+   if (nvk_cmd_buffer_3d_cls(cmd) >= TURING_A) {
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 12);
+      P_IMMD(p, NV9097, SET_DRAW_AUTO_START, counterOffset);
+      P_IMMD(p, NV9097, SET_DRAW_AUTO_STRIDE, vertexStride);
+      P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
+
+      P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_XFB_DRAW_INDIRECT));
+      P_INLINE_DATA(p, begin);
+      P_INLINE_DATA(p, instanceCount);
+      P_INLINE_DATA(p, firstInstance);
+      uint64_t counter_addr = nvk_buffer_address(counter_buffer,
+            counterBufferOffset);
+      P_INLINE_DATA(p, counter_addr >> 32);
+      P_INLINE_DATA(p, counter_addr);
+   } else {
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 10);
+      /* Stall the command streamer */
+      __push_immd(p, SUBC_NV9097, NV906F_SET_REFERENCE, 0);
+      P_IMMD(p, NV9097, SET_DRAW_AUTO_START, counterOffset);
+      P_IMMD(p, NV9097, SET_DRAW_AUTO_STRIDE, vertexStride);
+
+      P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_XFB_DRAW_INDIRECT));
+      P_INLINE_DATA(p, begin);
+      P_INLINE_DATA(p, instanceCount);
+      P_INLINE_DATA(p, firstInstance);
+      nv_push_update_count(p, 1);
+      nvk_cmd_buffer_push_indirect_buffer(cmd, counter_buffer,
+            counterBufferOffset, 4);
+   }
 }

@@ -24,6 +24,7 @@
 #include "clc3c0.h"
 #include "clc597.h"
 #include "clc5c0.h"
+#include "clc597.h"
 
 VKAPI_ATTR void VKAPI_CALL
 nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
@@ -313,7 +314,7 @@ nvk_get_device_extensions(const struct nv_device_info *dev,
       .EXT_robustness2 = true,
       .EXT_sample_locations = dev->cls_eng3d >= MAXWELL_B,
       .EXT_separate_stencil_usage = true,
-      .EXT_transform_feedback = dev->cls_eng3d >= TURING_A,
+      .EXT_transform_feedback = true,
       .EXT_vertex_attribute_divisor = true,
       .EXT_vertex_input_dynamic_state = true,
    };
@@ -482,8 +483,8 @@ nvk_get_device_features(const struct nv_device_info *dev,
       .nullDescriptor = true,
 
       /* VK_EXT_transform_feedback */
-      .transformFeedback = dev->cls_eng3d >= TURING_A,
-      .geometryStreams = dev->cls_eng3d >= TURING_A,
+      .transformFeedback = true,
+      .geometryStreams = true,
 
       /* VK_EXT_vertex_attribute_divisor */
       .vertexAttributeInstanceRateDivisor = true,
