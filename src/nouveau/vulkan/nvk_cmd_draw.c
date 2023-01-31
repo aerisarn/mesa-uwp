@@ -501,10 +501,11 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
       const uint8_t zs_format = nil_format_to_depth_stencil(p_format);
       P_NV9097_SET_ZT_FORMAT(p, zs_format);
       assert(image->nil.dim != NIL_IMAGE_DIM_3D);
+      assert(level->tiling.z_log2 == 0);
       P_NV9097_SET_ZT_BLOCK_SIZE(p, {
          .width = WIDTH_ONE_GOB,
          .height = level->tiling.y_log2,
-         .depth = level->tiling.z_log2,
+         .depth = DEPTH_ONE_GOB,
       });
       P_NV9097_SET_ZT_ARRAY_PITCH(p, image->nil.array_stride_B >> 2);
 
