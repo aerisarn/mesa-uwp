@@ -170,7 +170,7 @@ for mthd in mthddict:
     print("\tcase " + nvcl + "_" + mthd + ":")
     print("\t\treturn \"" + nvcl + "_" + mthd + "\";")
 print("\tdefault:")
-print("\t\treturn \"unkown method\";")
+print("\t\treturn \"unknown method\";")
 print("\t};")
 print("}")
 
@@ -186,7 +186,7 @@ for mthd in mthddict:
         if (field_width == 32):
             print("\t\tparsed = data;")
         else:
-            print("\t\tparsed = (data >> " + mthddict[mthd].field_name_start[field_name] + ") & ((1 << " + str(field_width) + ") - 1);")
+            print("\t\tparsed = (data >> " + mthddict[mthd].field_name_start[field_name] + ") & ((1u << " + str(field_width) + ") - 1);")
         print("\t\tprintf(\"%s." + field_name + " = \", prefix);")
         if len(mthddict[mthd].field_defs[field_name]):
             print("\t\tswitch (parsed) {")
