@@ -19,6 +19,7 @@
 #include "nvk_clb197.h"
 #include "nvk_clc397.h"
 #include "nvk_clc597.h"
+#include "drf.h"
 
 static inline uint16_t
 nvk_cmd_buffer_3d_cls(struct nvk_cmd_buffer *cmd)
@@ -1243,6 +1244,33 @@ vk_to_nv9097_primitive_topology(VkPrimitiveTopology prim)
    }
 }
 
+void
+nvk_mme_draw(struct nvk_device *dev, struct mme_builder *b)
+{
+   struct mme_value begin = mme_load(b);
+   struct mme_value vertex_count = mme_load(b);
+   struct mme_value instance_count = mme_load(b);
+   struct mme_value first_vertex = mme_load(b);
+   struct mme_value first_instance = mme_load(b);
+
+   mme_mthd(b, NV9097_SET_GLOBAL_BASE_INSTANCE_INDEX);
+   mme_emit(b, first_instance);
+
+   mme_loop(b, instance_count) {
+      mme_mthd(b, NV9097_BEGIN);
+      mme_emit(b, begin);
+
+      mme_mthd(b, NV9097_SET_VERTEX_ARRAY_START);
+      mme_emit(b, first_vertex);
+      mme_emit(b, vertex_count);
+
+      mme_mthd(b, NV9097_END);
+      mme_emit(b, mme_zero());
+
+      mme_set_field_enum(b, begin, NV9097_BEGIN_INSTANCE_ID, SUBSEQUENT);
+   }
+}
+
 VKAPI_ATTR void VKAPI_CALL
 nvk_CmdDraw(VkCommandBuffer commandBuffer,
             uint32_t vertexCount,
@@ -1256,27 +1284,54 @@ nvk_CmdDraw(VkCommandBuffer commandBuffer,
 
    nvk_flush_gfx_state(cmd);
 
-   const uint32_t begin_op =
-      vk_to_nv9097_primitive_topology(dyn->ia.primitive_topology);
+   uint32_t begin;
+   V_NV9097_BEGIN(begin, {
+      .op = vk_to_nv9097_primitive_topology(dyn->ia.primitive_topology),
+      .primitive_id = NV9097_BEGIN_PRIMITIVE_ID_FIRST,
+      .instance_id = NV9097_BEGIN_INSTANCE_ID_FIRST,
+      .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
+   });
 
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 2 + 7 * instanceCount);
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 6);
+   P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW));
+   P_INLINE_DATA(p, begin);
+   P_INLINE_DATA(p, vertexCount);
+   P_INLINE_DATA(p, instanceCount);
+   P_INLINE_DATA(p, firstVertex);
+   P_INLINE_DATA(p, firstInstance);
+}
 
-   P_IMMD(p, NV9097, SET_GLOBAL_BASE_INSTANCE_INDEX, firstInstance);
+void
+nvk_mme_draw_indexed(struct nvk_device *dev, struct mme_builder *b)
+{
+   struct mme_value begin = mme_load(b);
+   struct mme_value index_count = mme_load(b);
+   struct mme_value instance_count = mme_load(b);
+   struct mme_value first_index = mme_load(b);
+   struct mme_value vertex_offset = mme_load(b);
+   struct mme_value first_instance = mme_load(b);
 
-   for (unsigned i = 0; i < instanceCount; i++) {
-      P_IMMD(p, NV9097, BEGIN, {
-         .op = begin_op,
-         .primitive_id = NV9097_BEGIN_PRIMITIVE_ID_FIRST,
-         .instance_id = (i == 0) ? NV9097_BEGIN_INSTANCE_ID_FIRST :
-                                   NV9097_BEGIN_INSTANCE_ID_SUBSEQUENT,
-         .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
-      });
+   mme_mthd(b, NV9097_SET_GLOBAL_BASE_VERTEX_INDEX);
+   mme_emit(b, vertex_offset);
 
-      P_MTHD(p, NV9097, SET_VERTEX_ARRAY_START);
-      P_NV9097_SET_VERTEX_ARRAY_START(p, firstVertex);
-      P_NV9097_DRAW_VERTEX_ARRAY(p, vertexCount);
+   mme_mthd(b, NV9097_SET_VERTEX_ID_BASE);
+   mme_emit(b, vertex_offset);
 
-      P_IMMD(p, NV9097, END, 0);
+   mme_mthd(b, NV9097_SET_GLOBAL_BASE_INSTANCE_INDEX);
+   mme_emit(b, first_instance);
+
+   mme_loop(b, instance_count) {
+      mme_mthd(b, NV9097_BEGIN);
+      mme_emit(b, begin);
+
+      mme_mthd(b, NV9097_SET_INDEX_BUFFER_F);
+      mme_emit(b, first_index);
+      mme_emit(b, index_count);
+
+      mme_mthd(b, NV9097_END);
+      mme_emit(b, mme_zero());
+
+      mme_set_field_enum(b, begin, NV9097_BEGIN_INSTANCE_ID, SUBSEQUENT);
    }
 }
 
@@ -1294,27 +1349,20 @@ nvk_CmdDrawIndexed(VkCommandBuffer commandBuffer,
 
    nvk_flush_gfx_state(cmd);
 
-   const uint32_t begin_op =
-      vk_to_nv9097_primitive_topology(dyn->ia.primitive_topology);
+   uint32_t begin;
+   V_NV9097_BEGIN(begin, {
+      .op = vk_to_nv9097_primitive_topology(dyn->ia.primitive_topology),
+      .primitive_id = NV9097_BEGIN_PRIMITIVE_ID_FIRST,
+      .instance_id = NV9097_BEGIN_INSTANCE_ID_FIRST,
+      .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
+   });
 
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 6 + 7 * instanceCount);
-   P_IMMD(p, NV9097, SET_GLOBAL_BASE_VERTEX_INDEX, vertexOffset);
-   P_IMMD(p, NV9097, SET_VERTEX_ID_BASE, vertexOffset);
-   P_IMMD(p, NV9097, SET_GLOBAL_BASE_INSTANCE_INDEX, firstInstance);
-
-   for (unsigned i = 0; i < instanceCount; i++) {
-      P_IMMD(p, NV9097, BEGIN, {
-         .op = begin_op,
-         .primitive_id = NV9097_BEGIN_PRIMITIVE_ID_FIRST,
-         .instance_id = (i == 0) ? NV9097_BEGIN_INSTANCE_ID_FIRST :
-                                   NV9097_BEGIN_INSTANCE_ID_SUBSEQUENT,
-         .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
-      });
-
-      P_MTHD(p, NV9097, SET_INDEX_BUFFER_F);
-      P_NV9097_SET_INDEX_BUFFER_F(p, firstIndex);
-      P_NV9097_DRAW_INDEX_BUFFER(p, indexCount);
-
-      P_IMMD(p, NV9097, END, 0);
-   }
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 7);
+   P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDEXED));
+   P_INLINE_DATA(p, begin);
+   P_INLINE_DATA(p, indexCount);
+   P_INLINE_DATA(p, instanceCount);
+   P_INLINE_DATA(p, firstIndex);
+   P_INLINE_DATA(p, vertexOffset);
+   P_INLINE_DATA(p, firstInstance);
 }
