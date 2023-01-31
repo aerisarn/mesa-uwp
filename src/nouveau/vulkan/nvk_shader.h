@@ -72,6 +72,11 @@ nvk_physical_device_nir_options(const struct nvk_physical_device *pdevice,
 const struct spirv_to_nir_options *
 nvk_physical_device_spirv_options(const struct nvk_physical_device *pdevice);
 
+bool
+nvk_nir_lower_descriptors(nir_shader *nir,
+                          const struct vk_pipeline_layout *layout,
+                          bool robust_buffer_access);
+
 void
 nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
               const struct vk_pipeline_layout *layout);

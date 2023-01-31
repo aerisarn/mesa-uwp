@@ -2,7 +2,6 @@
 #include "nvk_device.h"
 #include "nvk_shader.h"
 #include "nvk_physical_device.h"
-#include "nvk_nir.h"
 
 #include "nouveau_bo.h"
 #include "nouveau_context.h"

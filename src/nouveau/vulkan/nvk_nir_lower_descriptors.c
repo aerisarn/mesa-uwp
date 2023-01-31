@@ -1,7 +1,7 @@
 #include "nvk_cmd_buffer.h"
 #include "nvk_descriptor_set.h"
 #include "nvk_descriptor_set_layout.h"
-#include "nvk_nir.h"
+#include "nvk_shader.h"
 
 #include "nir_builder.h"
 #include "nir_deref.h"
