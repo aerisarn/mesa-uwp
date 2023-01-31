@@ -2152,8 +2152,11 @@ static unsigned si_tex_mipfilter(unsigned filter)
    }
 }
 
-static unsigned si_tex_compare(unsigned compare)
+static unsigned si_tex_compare(unsigned mode, unsigned compare)
 {
+   if (mode == PIPE_TEX_COMPARE_NONE)
+      return V_008F30_SQ_TEX_DEPTH_COMPARE_NEVER;
+
    switch (compare) {
    default:
    case PIPE_FUNC_NEVER:
@@ -4808,7 +4811,7 @@ static void *si_create_sampler_state(struct pipe_context *ctx,
    rstate->val[0] =
       (S_008F30_CLAMP_X(si_tex_wrap(state->wrap_s)) | S_008F30_CLAMP_Y(si_tex_wrap(state->wrap_t)) |
        S_008F30_CLAMP_Z(si_tex_wrap(state->wrap_r)) | S_008F30_MAX_ANISO_RATIO(max_aniso_ratio) |
-       S_008F30_DEPTH_COMPARE_FUNC(si_tex_compare(state->compare_func)) |
+       S_008F30_DEPTH_COMPARE_FUNC(si_tex_compare(state->compare_mode, state->compare_func)) |
        S_008F30_FORCE_UNNORMALIZED(state->unnormalized_coords) |
        S_008F30_ANISO_THRESHOLD(max_aniso_ratio >> 1) | S_008F30_ANISO_BIAS(max_aniso_ratio) |
        S_008F30_DISABLE_CUBE_WRAP(!state->seamless_cube_map) |
