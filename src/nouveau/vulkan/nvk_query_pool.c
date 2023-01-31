@@ -1,15 +1,18 @@
 #include "nvk_query_pool.h"
 
+#include "nvk_buffer.h"
 #include "nvk_cmd_buffer.h"
 #include "nvk_device.h"
+#include "nvk_mme.h"
 #include "nvk_physical_device.h"
 #include "util/os_time.h"
 
 #include "nouveau_bo.h"
 
-#include "nvk_cl9097.h"
 #include "nvk_cl906f.h"
+#include "nvk_cl9097.h"
 #include "nvk_cla0c0.h"
+#include "nvk_clc597.h"
 
 struct nvk_query_report {
    uint64_t value;
@@ -561,4 +564,168 @@ nvk_GetQueryPoolResults(VkDevice device,
    }
 
    return status;
+}
+
+static void
+mme_store_global(struct mme_builder *b,
+                 struct mme_value64 addr,
+                 struct mme_value v)
+{
+   mme_mthd(b, NV9097_SET_REPORT_SEMAPHORE_A);
+   mme_emit_addr64(b, addr);
+   mme_emit(b, v);
+   mme_emit(b, mme_imm(0x10000000));
+}
+
+void
+nvk_mme_copy_queries(struct nvk_device *dev, struct mme_builder *b)
+{
+   struct mme_value64 dst_addr = mme_load_addr64(b);
+   struct mme_value64 dst_stride = mme_load_addr64(b);
+   struct mme_value64 avail_addr = mme_load_addr64(b);
+   struct mme_value64 report_addr = mme_load_addr64(b);
+
+   struct mme_value query_count = mme_load(b);
+   struct mme_value control = mme_load(b);
+
+   struct mme_value flags = control;
+   struct mme_value write64 =
+      mme_and(b, flags, mme_imm(VK_QUERY_RESULT_64_BIT));
+   struct mme_value query_stride =
+      mme_merge(b, mme_zero(), control, 0, 16, 8);
+   struct mme_value is_timestamp =
+      mme_merge(b, mme_zero(), control, 0, 1, 24);
+
+   mme_while(b, ugt, query_count, mme_zero()) {
+      struct mme_value dw_per_query = mme_srl(b, query_stride, mme_imm(2));
+      mme_tu104_read_fifoed(b, report_addr, dw_per_query);
+      mme_free_reg(b, dw_per_query);
+
+      struct mme_value64 write_addr = mme_mov64(b, dst_addr);
+      struct mme_value report_count = mme_srl(b, query_stride, mme_imm(4));
+      mme_while(b, ugt, report_count, mme_zero()) {
+         struct mme_value result_lo = mme_alloc_reg(b);
+         struct mme_value result_hi = mme_alloc_reg(b);
+         struct mme_value64 result = mme_value64(result_lo, result_hi);
+
+         mme_if(b, ine, is_timestamp, mme_zero()) {
+            mme_load_to(b, mme_zero());
+            mme_load_to(b, mme_zero());
+            mme_load_to(b, result_lo);
+            mme_load_to(b, result_hi);
+            mme_sub_to(b, report_count, report_count, mme_imm(1));
+         }
+         mme_if(b, ieq, is_timestamp, mme_zero()) {
+            struct mme_value begin_lo = mme_load(b);
+            struct mme_value begin_hi = mme_load(b);
+            struct mme_value64 begin = mme_value64(begin_lo, begin_hi);
+            mme_load_to(b, mme_zero());
+            mme_load_to(b, mme_zero());
+
+            struct mme_value end_lo = mme_load(b);
+            struct mme_value end_hi = mme_load(b);
+            struct mme_value64 end = mme_value64(end_lo, end_hi);
+            mme_load_to(b, mme_zero());
+            mme_load_to(b, mme_zero());
+
+            mme_sub64_to(b, result, end, begin);
+            mme_sub_to(b, report_count, report_count, mme_imm(2));
+
+            mme_free_reg(b, begin_lo);
+            mme_free_reg(b, begin_hi);
+            mme_free_reg(b, end_lo);
+            mme_free_reg(b, end_hi);
+         }
+
+         mme_store_global(b, write_addr, result_lo);
+         mme_add64_to(b, write_addr, write_addr, mme_imm64(4));
+         mme_if(b, ine, write64, mme_zero()) {
+            mme_store_global(b, write_addr, result_hi);
+            mme_add64_to(b, write_addr, write_addr, mme_imm64(4));
+         }
+      }
+
+      struct mme_value with_availability =
+         mme_and(b, flags, mme_imm(VK_QUERY_RESULT_WITH_AVAILABILITY_BIT));
+      mme_if(b, ine, with_availability, mme_zero()) {
+         mme_tu104_read_fifoed(b, avail_addr, mme_imm(1));
+         struct mme_value avail = mme_load(b);
+         mme_store_global(b, write_addr, avail);
+         mme_if(b, ine, write64, mme_zero()) {
+            mme_add64_to(b, write_addr, write_addr, mme_imm64(4));
+            mme_store_global(b, write_addr, mme_zero());
+         }
+      }
+      mme_free_reg(b, with_availability);
+
+      mme_add64_to(b, avail_addr, avail_addr, mme_imm64(4));
+
+      mme_add64_to(b, report_addr, report_addr,
+                   mme_value64(query_stride, mme_zero()));
+
+      mme_add64_to(b, dst_addr, dst_addr, dst_stride);
+
+      mme_sub_to(b, query_count, query_count, mme_imm(1));
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
+                            VkQueryPool queryPool,
+                            uint32_t firstQuery,
+                            uint32_t queryCount,
+                            VkBuffer dstBuffer,
+                            VkDeviceSize dstOffset,
+                            VkDeviceSize stride,
+                            VkQueryResultFlags flags)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_query_pool, pool, queryPool);
+   VK_FROM_HANDLE(nvk_buffer, dst_buffer, dstBuffer);
+
+   nvk_cmd_buffer_ref_bo(cmd, pool->bo);
+
+   if (flags & VK_QUERY_RESULT_WAIT_BIT) {
+      for (uint32_t i = 0; i < queryCount; i++) {
+         uint64_t avail_addr = nvk_query_available_addr(pool, firstQuery + i);
+
+         struct nv_push *p = nvk_cmd_buffer_push(cmd, 5);
+         __push_mthd(p, SUBC_NV9097, NV906F_SEMAPHOREA);
+         P_NV906F_SEMAPHOREA(p, avail_addr >> 32);
+         P_NV906F_SEMAPHOREB(p, (avail_addr & UINT32_MAX) >> 2);
+         P_NV906F_SEMAPHOREC(p, 1);
+         P_NV906F_SEMAPHORED(p, {
+            .operation = OPERATION_ACQ_GEQ,
+            .acquire_switch = ACQUIRE_SWITCH_ENABLED,
+            .release_size = RELEASE_SIZE_4BYTE,
+         });
+      }
+   }
+
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 12);
+   P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
+   P_1INC(p, NVC597, CALL_MME_MACRO(NVK_MME_COPY_QUERIES));
+
+   uint64_t dst_start = nvk_buffer_address(dst_buffer, dstOffset);
+   P_INLINE_DATA(p, dst_start >> 32);
+   P_INLINE_DATA(p, dst_start);
+   P_INLINE_DATA(p, stride >> 32);
+   P_INLINE_DATA(p, stride);
+
+   uint64_t avail_start = nvk_query_available_addr(pool, firstQuery);
+   P_INLINE_DATA(p, avail_start >> 32);
+   P_INLINE_DATA(p, avail_start);
+
+   uint64_t report_start = nvk_query_report_addr(pool, firstQuery);
+   P_INLINE_DATA(p, report_start >> 32);
+   P_INLINE_DATA(p, report_start);
+
+   P_INLINE_DATA(p, queryCount);
+
+   uint32_t is_timestamp = pool->vk.query_type == VK_QUERY_TYPE_TIMESTAMP;
+
+   uint32_t control = (flags & 0xff) |
+                      (pool->query_stride << 8) |
+                      (is_timestamp << 24);
+   P_INLINE_DATA(p, control);
 }

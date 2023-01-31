@@ -9,6 +9,7 @@ static const nvk_mme_builder_func mme_builders[NVK_MME_COUNT] = {
    [NVK_MME_DRAW_INDEXED]           = nvk_mme_draw_indexed,
    [NVK_MME_DRAW_INDIRECT]          = nvk_mme_draw_indirect,
    [NVK_MME_DRAW_INDEXED_INDIRECT]  = nvk_mme_draw_indexed_indirect,
+   [NVK_MME_COPY_QUERIES]           = nvk_mme_copy_queries,
 };
 
 uint32_t *

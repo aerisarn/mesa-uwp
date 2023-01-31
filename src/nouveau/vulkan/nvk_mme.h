@@ -12,6 +12,7 @@ enum nvk_mme {
    NVK_MME_DRAW_INDEXED,
    NVK_MME_DRAW_INDIRECT,
    NVK_MME_DRAW_INDEXED_INDIRECT,
+   NVK_MME_COPY_QUERIES,
    NVK_MME_COUNT,
 };
 
@@ -28,5 +29,6 @@ void nvk_mme_draw_indexed(struct nvk_device *dev, struct mme_builder *b);
 void nvk_mme_draw_indirect(struct nvk_device *dev, struct mme_builder *b);
 void nvk_mme_draw_indexed_indirect(struct nvk_device *dev,
                                    struct mme_builder *b);
+void nvk_mme_copy_queries(struct nvk_device *dev, struct mme_builder *b);
 
 #endif /* NVK_MME_H */
