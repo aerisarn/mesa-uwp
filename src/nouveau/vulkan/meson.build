@@ -28,6 +28,8 @@ nvk_files = files(
   'nvk_nir_lower_descriptors.c',
   'nvk_physical_device.c',
   'nvk_physical_device.h',
+  'nvk_pipeline.c',
+  'nvk_pipeline.h',
   'nvk_pipeline_layout.c',
   'nvk_pipeline_layout.h',
   'nvk_private.h',
