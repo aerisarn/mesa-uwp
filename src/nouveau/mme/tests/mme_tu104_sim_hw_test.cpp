@@ -122,6 +122,12 @@ mme_tu104_sim_test::reset_push()
 {
    nv_push_init(&push, (uint32_t *)push_map, PUSH_SIZE / 4);
    p = &push;
+
+   P_MTHD(p, NVC597, SET_OBJECT);
+   P_NVC597_SET_OBJECT(p, {
+      .class_id = dev->info.cls_eng3d,
+      .engine_id = 0,
+   });
 }
 
 void
