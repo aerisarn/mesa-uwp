@@ -277,14 +277,6 @@ impl Ref {
             Src::SSA(ssa) => Some(ssa),
         }
     }
-
-    pub fn is_zero(&self) -> bool {
-        match self {
-            Ref::Zero => true,
-            Ref::Imm(i) => i.u == 0,
-            _ => false,
-        }
-    }
 }
 
 impl fmt::Display for Ref {
@@ -1541,29 +1533,6 @@ impl Shader {
                 _ => vec![instr],
             }
         })
-    }
-
-    pub fn lower_zero_to_gpr255(&mut self) {
-        for f in &mut self.functions {
-            for b in &mut f.blocks {
-                for instr in &mut b.instrs {
-                    let zero_file = match instr.op {
-                        Op::PLop3(_) => RegFile::Pred,
-                        _ => RegFile::GPR,
-                    };
-                    for dst in instr.dsts_mut() {
-                        if dst.is_zero() {
-                            *dst = Dst::Reg(RegRef::zero(zero_file, 1))
-                        }
-                    }
-                    for src in instr.srcs_mut() {
-                        if src.is_zero() {
-                            *src = Src::Reg(RegRef::zero(zero_file, 1))
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
