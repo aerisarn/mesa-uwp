@@ -367,7 +367,7 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       },
    };
 
-   snprintf(core_1_2.driverName, VK_MAX_DRIVER_NAME_SIZE, "nvk");
+   snprintf(core_1_2.driverName, VK_MAX_DRIVER_NAME_SIZE, "NVK");
    snprintf(core_1_2.driverInfo, VK_MAX_DRIVER_INFO_SIZE,
             "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
 
@@ -504,7 +504,7 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
       goto fail_fd;
    }
 
-   vk_warn_non_conformant_implementation("nvk");
+   vk_warn_non_conformant_implementation("NVK");
 
    struct nvk_physical_device *device =
       vk_zalloc(&instance->vk.alloc, sizeof(*device), 8, VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
