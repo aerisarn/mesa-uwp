@@ -254,7 +254,7 @@ mme_fermi_bfe(struct mme_fermi_builder *fb,
               struct mme_value src_bits,
               struct mme_value src_reg,
               struct mme_value dst_bits,
-              struct mme_value size)
+              uint32_t size)
 {
    assert(dst_reg.type == MME_VALUE_TYPE_REG &&
           mme_fermi_is_zero_or_reg(src_reg) &&
@@ -271,13 +271,13 @@ mme_fermi_bfe(struct mme_fermi_builder *fb,
       inst->src[0] = mme_value_alu_reg(src_bits);
       inst->src[1] = mme_value_alu_reg(src_reg);
       inst->bitfield.dst_bit = mme_value_alu_imm(dst_bits);
-      inst->bitfield.size = mme_value_alu_imm(size);
+      inst->bitfield.size = size;
    } else if (mme_fermi_bfe_lsl_can_use_reg(fb, src_bits, dst_bits)) {
       inst->op = MME_FERMI_OP_BFE_LSL_REG;
       inst->src[0] = mme_value_alu_reg(dst_bits);
       inst->src[1] = mme_value_alu_reg(src_reg);
       inst->bitfield.src_bit = mme_value_alu_imm(src_bits);
-      inst->bitfield.size = mme_value_alu_imm(size);
+      inst->bitfield.size = size;
    }
 
    inst->assign_op = MME_FERMI_ASSIGN_OP_MOVE;
@@ -295,7 +295,7 @@ mme_fermi_sll_to(struct mme_fermi_builder *b,
 {
    assert(mme_fermi_is_zero_or_reg(dst));
 
-   mme_fermi_bfe(b, dst, mme_zero(), x, y, mme_imm(31));
+   mme_fermi_bfe(b, dst, mme_zero(), x, y, 31);
 }
 
 static void
@@ -306,7 +306,7 @@ mme_fermi_srl_to(struct mme_fermi_builder *b,
 {
    assert(mme_fermi_is_zero_or_reg(dst));
 
-   mme_fermi_bfe(b, dst, y, x, mme_zero(), mme_imm(31));
+   mme_fermi_bfe(b, dst, y, x, mme_zero(), 31);
 }
 
 static struct mme_value
