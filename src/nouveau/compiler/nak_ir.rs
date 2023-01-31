@@ -837,6 +837,28 @@ impl fmt::Display for OpFAdd {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpFSet {
+    pub dst: Dst,
+    pub cmp_op: FloatCmpOp,
+    pub srcs: [Src; 2],
+    pub src_mods: [SrcMod; 2],
+}
+
+impl fmt::Display for OpFSet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "FSET.{} {} {{ {}, {} }}",
+            self.cmp_op,
+            self.dst,
+            self.mod_src(0),
+            self.mod_src(1),
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
 pub struct OpFSetP {
     pub dst: Dst,
     pub cmp_op: FloatCmpOp,
@@ -1249,6 +1271,7 @@ impl fmt::Display for OpFSOut {
 #[derive(Display, DstsAsSlice, SrcsAsSlice)]
 pub enum Op {
     FAdd(OpFAdd),
+    FSet(OpFSet),
     FSetP(OpFSetP),
     IAdd3(OpIAdd3),
     ISetP(OpISetP),
@@ -1445,6 +1468,20 @@ impl Instr {
         }))
     }
 
+    pub fn new_fset(
+        dst: Dst,
+        cmp_op: FloatCmpOp,
+        x: ModSrc,
+        y: ModSrc,
+    ) -> Instr {
+        Instr::new(Op::FSet(OpFSet {
+            dst: dst,
+            cmp_op: cmp_op,
+            srcs: [x.src, y.src],
+            src_mods: [x.src_mod, y.src_mod],
+        }))
+    }
+
     pub fn new_fsetp(
         dst: Dst,
         cmp_op: FloatCmpOp,
@@ -1636,6 +1673,7 @@ impl Instr {
     pub fn get_latency(&self) -> Option<u32> {
         match self.op {
             Op::FAdd(_)
+            | Op::FSet(_)
             | Op::FSetP(_)
             | Op::IAdd3(_)
             | Op::Lop3(_)

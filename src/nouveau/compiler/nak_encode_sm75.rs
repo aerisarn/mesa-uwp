@@ -321,6 +321,19 @@ impl SM75Instr {
         );
     }
 
+    fn encode_fset(&mut self, op: &OpFSet) {
+        self.encode_alu(
+            0x00a,
+            Some(op.dst),
+            Some(op.mod_src(0)),
+            op.mod_src(1),
+            None,
+        );
+        self.set_float_cmp_op(76..80, op.cmp_op);
+        self.set_bit(80, false); /* TODO: Denorm mode */
+        self.set_field(87..90, 0x7_u8); /* TODO: src predicate */
+    }
+
     fn encode_fsetp(&mut self, op: &OpFSetP) {
         self.encode_alu(0x00b, None, Some(op.mod_src(0)), op.mod_src(1), None);
 
@@ -597,6 +610,7 @@ impl SM75Instr {
 
         match &instr.op {
             Op::FAdd(op) => si.encode_fadd(&op),
+            Op::FSet(op) => si.encode_fset(&op),
             Op::FSetP(op) => si.encode_fsetp(&op),
             Op::IAdd3(op) => si.encode_iadd3(&op),
             Op::ISetP(op) => si.encode_isetp(&op),

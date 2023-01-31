@@ -161,6 +161,32 @@ impl<'a> ShaderFromNir<'a> {
                     saturate: true,
                 })));
             }
+            nir_op_fsign => {
+                let lz = self.alloc_ssa(RegFile::GPR, 1);
+                self.instrs.push(Instr::new_fset(
+                    lz,
+                    FloatCmpOp::OrdLt,
+                    srcs[0].into(),
+                    Src::Zero.into(),
+                ));
+
+                let gz = self.alloc_ssa(RegFile::GPR, 1);
+                self.instrs.push(Instr::new_fset(
+                    gz,
+                    FloatCmpOp::OrdGt,
+                    srcs[0].into(),
+                    Src::Zero.into(),
+                ));
+
+                self.instrs.push(Instr::new_fadd(
+                    dst,
+                    gz.into(),
+                    ModSrc {
+                        src: lz,
+                        src_mod: SrcMod::FNeg,
+                    },
+                ));
+            }
             nir_op_i2f32 => {
                 self.instrs.push(Instr::new_i2f(dst, srcs[0]));
             }
