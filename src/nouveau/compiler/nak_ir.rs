@@ -778,6 +778,66 @@ impl Shader {
             f.map_instrs(map);
         }
     }
+
+    pub fn lower_vec_split(&mut self) {
+        self.map_instrs(&|instr: Instr| -> Instr {
+            match instr.op {
+                Opcode::VEC => {
+                    let comps = u8::try_from(instr.num_srcs()).unwrap();
+                    if comps == 1 {
+                        let src = instr.src(0);
+                        let dst = instr.dst(0);
+                        Instr::new_mov(*dst, *src)
+                    } else {
+                        let mut instrs = Vec::new();
+                        let vec_dst = instr.dst(0).as_reg().unwrap();
+                        assert!(comps == vec_dst.comps());
+                        for i in 0..comps {
+                            let src = instr.src(i.into());
+                            let dst = Dst::Reg(vec_dst.as_comp(i).unwrap());
+                            instrs.push(Instr::new_mov(dst, *src));
+                        }
+                        Instr::new_meta(instrs)
+                    }
+                }
+                Opcode::SPLIT => {
+                    let comps = u8::try_from(instr.num_dsts()).unwrap();
+                    if instr.num_dsts() == 1 {
+                        let src = instr.src(0);
+                        let dst = instr.dst(0);
+                        Instr::new_mov(*dst, *src)
+                    } else {
+                        let mut instrs = Vec::new();
+                        let vec_src = instr.src(0).as_reg().unwrap();
+                        assert!(comps == vec_src.comps());
+                        for i in 0..comps {
+                            let src = Dst::Reg(vec_src.as_comp(i).unwrap());
+                            let dst = instr.dst(i.into());
+                            if let Dst::Zero = dst {
+                                continue;
+                            }
+                            instrs.push(Instr::new_mov(*dst, src));
+                        }
+                        Instr::new_meta(instrs)
+                    }
+                }
+                Opcode::FS_OUT => {
+                    let mut instrs = Vec::new();
+                    for i in 0..instr.num_srcs() {
+                        let dst = Ref::new_reg(
+                            RegFile::GPR,
+                            i.try_into().unwrap(),
+                            1,
+                        );
+                        let src = instr.src(i);
+                        instrs.push(Instr::new_mov(dst, *src));
+                    }
+                    Instr::new_meta(instrs)
+                }
+                _ => instr,
+            }
+        })
+    }
 }
 
 impl fmt::Display for Shader {
