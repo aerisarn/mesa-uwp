@@ -28,8 +28,8 @@ nvk_queue_state_finish(struct nvk_device *dev,
       nouveau_ws_bo_destroy(qs->samplers.bo);
    if (qs->slm.bo)
       nouveau_ws_bo_destroy(qs->slm.bo);
-   if (qs->push)
-      nouveau_ws_push_destroy(qs->push);
+   if (qs->push.bo)
+      nouveau_ws_bo_destroy(qs->push.bo);
 }
 
 VkResult
@@ -91,14 +91,19 @@ nvk_queue_state_update(struct nvk_device *dev,
    if (!dirty)
       return VK_SUCCESS;
 
-   struct nouveau_ws_push *pb = nouveau_ws_push_new(dev->pdev->dev, 256);
-   if (pb == NULL)
+   struct nouveau_ws_bo *push_bo;
+   void *push_map;
+   push_bo = nouveau_ws_bo_new_mapped(dev->pdev->dev, 256 * 4, 0,
+                                      NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP,
+                                      NOUVEAU_WS_BO_WR, &push_map);
+   if (push_bo == NULL)
       return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-   struct nv_push *p = P_SPACE(pb, 256);
+
+   struct nv_push push;
+   nv_push_init(&push, push_map, 256);
+   struct nv_push *p = &push;
 
    if (qs->images.bo) {
-      nouveau_ws_push_ref(pb, qs->images.bo, NOUVEAU_WS_BO_RD);
-
       /* Compute */
       P_MTHD(p, NVA0C0, SET_TEX_HEADER_POOL_A);
       P_NVA0C0_SET_TEX_HEADER_POOL_A(p, qs->images.bo->offset >> 32);
@@ -119,8 +124,6 @@ nvk_queue_state_update(struct nvk_device *dev,
    }
 
    if (qs->samplers.bo) {
-      nouveau_ws_push_ref(pb, qs->samplers.bo, NOUVEAU_WS_BO_RD);
-
       /* Compute */
       P_MTHD(p, NVA0C0, SET_TEX_SAMPLER_POOL_A);
       P_NVA0C0_SET_TEX_SAMPLER_POOL_A(p, qs->samplers.bo->offset >> 32);
@@ -141,7 +144,6 @@ nvk_queue_state_update(struct nvk_device *dev,
    }
 
    if (qs->slm.bo) {
-      nouveau_ws_push_ref(pb, qs->slm.bo, NOUVEAU_WS_BO_RDWR);
       const uint64_t slm_addr = qs->slm.bo->offset;
       const uint64_t slm_size = qs->slm.bo->size;
       const uint64_t slm_per_warp = qs->slm.bytes_per_warp;
@@ -209,9 +211,13 @@ nvk_queue_state_update(struct nvk_device *dev,
     */
    P_IMMD(p, NV9097, SET_SHADER_LOCAL_MEMORY_WINDOW, 0xff << 24);
 
-   if (qs->push)
-      nouveau_ws_push_destroy(qs->push);
-   qs->push = pb;
+   nouveau_ws_bo_unmap(push_bo, push_map);
+
+   if (qs->push.bo)
+      nouveau_ws_bo_destroy(qs->push.bo);
+
+   qs->push.bo = push_bo;
+   qs->push.dw_count = nv_push_dw_count(&push);
 
    return VK_SUCCESS;
 }

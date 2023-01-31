@@ -116,8 +116,8 @@ push_add_queue_state(struct push_builder *pb, struct nvk_queue_state *qs)
       push_add_bo(pb, qs->samplers.bo, NOUVEAU_WS_BO_RD);
    if (qs->slm.bo)
       push_add_bo(pb, qs->slm.bo, NOUVEAU_WS_BO_RDWR);
-   if (qs->push)
-      push_add_ws_push(pb, qs->push);
+   if (qs->push.bo)
+      push_add_push(pb, qs->push.bo, 0, qs->push.dw_count);
 }
 
 VkResult

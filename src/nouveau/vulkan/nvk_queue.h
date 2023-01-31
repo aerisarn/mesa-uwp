@@ -26,7 +26,10 @@ struct nvk_queue_state {
       uint32_t bytes_per_mp;
    } slm;
 
-   struct nouveau_ws_push *push;
+   struct {
+      struct nouveau_ws_bo *bo;
+      uint32_t dw_count;
+   } push;
 };
 
 VkResult nvk_queue_state_update(struct nvk_device *dev,
