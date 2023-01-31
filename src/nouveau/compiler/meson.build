@@ -70,6 +70,14 @@ libnak_bindings_gen = static_library(
   rust_crate_type : 'rlib',
 )
 
+libnak_ir_proc = shared_library(
+  'nak_ir_proc',
+  files('nak_ir_proc.rs'),
+  rust_crate_type : 'proc-macro',
+  dependencies : [dep_syn],
+  install : false,
+)
+
 _libnak_rs = static_library(
   'nak_rs',
   [libnak_rs_files],
@@ -86,7 +94,7 @@ _libnak_rs = static_library(
     '-Aclippy::type_complexity',
     '-Anon_snake_case',
   ],
-  link_with: [libnak_bindings_gen],
+  link_with: [libnak_bindings_gen, libnak_ir_proc],
 )
 
 _libnak = static_library(

@@ -3,6 +3,9 @@
  * SPDX-License-Identifier: MIT
  */
 
+extern crate nak_ir_proc;
+
+use nak_ir_proc::*;
 use std::fmt;
 use std::ops::{BitAnd, BitOr, Not, Range};
 use std::slice;
@@ -313,6 +316,16 @@ impl fmt::Display for Ref {
 
 pub type Src = Ref;
 pub type Dst = Ref;
+
+pub trait SrcsAsSlice {
+    fn srcs_as_slice(&self) -> &[Src];
+    fn srcs_as_mut_slice(&mut self) -> &mut [Src];
+}
+
+pub trait DstsAsSlice {
+    fn dsts_as_slice(&self) -> &[Dst];
+    fn dsts_as_mut_slice(&mut self) -> &mut [Dst];
+}
 
 pub enum Pred {
     None,
