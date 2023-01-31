@@ -25,9 +25,9 @@
 
 VKAPI_ATTR void VKAPI_CALL
 nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
-   VkPhysicalDeviceFeatures2 *pFeatures)
+                               VkPhysicalDeviceFeatures2 *pFeatures)
 {
-   // VK_FROM_HANDLE(nvk_physical_device, pdevice, physicalDevice);
+   // VK_FROM_HANDLE(nvk_physical_device, pdev, physicalDevice);
 
    pFeatures->features = (VkPhysicalDeviceFeatures) {
       .robustBufferAccess = true,
@@ -124,27 +124,29 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 
 VKAPI_ATTR void VKAPI_CALL
 nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
-   VkPhysicalDeviceProperties2 *pProperties)
+                                 VkPhysicalDeviceProperties2 *pProperties)
 {
-   VK_FROM_HANDLE(nvk_physical_device, pdevice, physicalDevice);
-   VkSampleCountFlagBits sample_count = VK_SAMPLE_COUNT_1_BIT |
-      VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT | VK_SAMPLE_COUNT_8_BIT;
+   VK_FROM_HANDLE(nvk_physical_device, pdev, physicalDevice);
+   VkSampleCountFlagBits sample_counts = VK_SAMPLE_COUNT_1_BIT |
+                                         VK_SAMPLE_COUNT_2_BIT |
+                                         VK_SAMPLE_COUNT_4_BIT |
+                                         VK_SAMPLE_COUNT_8_BIT;
    pProperties->properties = (VkPhysicalDeviceProperties) {
       .apiVersion = VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION),
       .driverVersion = vk_get_driver_version(),
-      .vendorID = pdevice->dev->vendor_id,
-      .deviceID = pdevice->dev->device_id,
-      .deviceType = pdevice->dev->is_integrated ? VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU
-                                                : VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU,
+      .vendorID = pdev->dev->vendor_id,
+      .deviceID = pdev->dev->device_id,
+      .deviceType = pdev->dev->is_integrated ? VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU
+                                             : VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU,
       .limits = (VkPhysicalDeviceLimits) {
          .maxImageArrayLayers = 2048,
-         .maxImageDimension1D = pdevice->dev->chipset >= 0x130 ? 0x8000 : 0x4000,
-         .maxImageDimension2D = pdevice->dev->chipset >= 0x130 ? 0x8000 : 0x4000,
+         .maxImageDimension1D = pdev->dev->chipset >= 0x130 ? 0x8000 : 0x4000,
+         .maxImageDimension2D = pdev->dev->chipset >= 0x130 ? 0x8000 : 0x4000,
          .maxImageDimension3D = 0x4000,
          .maxImageDimensionCube = 0x8000,
          .maxPushConstantsSize = NVK_MAX_PUSH_SIZE,
-         .maxFramebufferHeight = pdevice->dev->chipset >= 0x130 ? 0x8000 : 0x4000,
-         .maxFramebufferWidth = pdevice->dev->chipset >= 0x130 ? 0x8000 : 0x4000,
+         .maxFramebufferHeight = pdev->dev->chipset >= 0x130 ? 0x8000 : 0x4000,
+         .maxFramebufferWidth = pdev->dev->chipset >= 0x130 ? 0x8000 : 0x4000,
          .maxFramebufferLayers = 2048,
          .maxColorAttachments = NVK_MAX_RTS,
          .maxClipDistances = 8,
@@ -214,15 +216,15 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          .maxDrawIndirectCount = UINT32_MAX,
          .timestampComputeAndGraphics = true,
          .timestampPeriod = 1,
-         .framebufferColorSampleCounts = sample_count,
-         .framebufferDepthSampleCounts = sample_count,
-         .framebufferNoAttachmentsSampleCounts = sample_count | VK_SAMPLE_COUNT_16_BIT,
-         .framebufferStencilSampleCounts = sample_count,
-         .sampledImageColorSampleCounts = sample_count,
-         .sampledImageDepthSampleCounts = sample_count,
-         .sampledImageIntegerSampleCounts = sample_count,
-         .sampledImageStencilSampleCounts = sample_count,
-         .storageImageSampleCounts = sample_count,
+         .framebufferColorSampleCounts = sample_counts,
+         .framebufferDepthSampleCounts = sample_counts,
+         .framebufferNoAttachmentsSampleCounts = sample_counts | VK_SAMPLE_COUNT_16_BIT,
+         .framebufferStencilSampleCounts = sample_counts,
+         .sampledImageColorSampleCounts = sample_counts,
+         .sampledImageDepthSampleCounts = sample_counts,
+         .sampledImageIntegerSampleCounts = sample_counts,
+         .sampledImageStencilSampleCounts = sample_counts,
+         .storageImageSampleCounts = sample_counts,
          .standardSampleLocations = true,
          .optimalBufferCopyOffsetAlignment = 1,
          .optimalBufferCopyRowPitchAlignment = 1,
@@ -231,8 +233,9 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       /* More properties */
    };
 
-   snprintf(pProperties->properties.deviceName, sizeof(pProperties->properties.deviceName),
-            "%s", pdevice->dev->device_name);
+   snprintf(pProperties->properties.deviceName,
+            sizeof(pProperties->properties.deviceName),
+            "%s", pdev->dev->device_name);
 
    VkPhysicalDeviceVulkan11Properties core_1_1 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES,
@@ -277,7 +280,7 @@ vk_icdGetPhysicalDeviceProcAddr(VkInstance _instance, const char *pName)
 
 static void
 nvk_get_device_extensions(const struct nvk_physical_device *device,
-   struct vk_device_extension_table *ext)
+                          struct vk_device_extension_table *ext)
 {
    *ext = (struct vk_device_extension_table) {
       .KHR_copy_commands2 = true,
@@ -294,14 +297,15 @@ nvk_get_device_extensions(const struct nvk_physical_device *device,
       .EXT_inline_uniform_block = true,
       .EXT_extended_dynamic_state = true,
       .EXT_extended_dynamic_state2 = true,
+      .EXT_pci_bus_info = true,
       .EXT_vertex_input_dynamic_state = true,
    };
 }
 
 static VkResult
 nvk_physical_device_try_create(struct nvk_instance *instance,
-   drmDevicePtr drm_device,
-   struct nvk_physical_device **device_out)
+                               drmDevicePtr drm_device,
+                               struct nvk_physical_device **device_out)
 {
    // const char *primary_path = drm_device->nodes[DRM_NODE_PRIMARY];
    const char *path = drm_device->nodes[DRM_NODE_RENDER];
@@ -437,19 +441,20 @@ VkResult nvk_create_drm_physical_device(struct vk_instance *vk_instance,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_GetPhysicalDeviceMemoryProperties2(VkPhysicalDevice physicalDevice,
+nvk_GetPhysicalDeviceMemoryProperties2(
+   VkPhysicalDevice physicalDevice,
    VkPhysicalDeviceMemoryProperties2 *pMemoryProperties)
 {
-   VK_FROM_HANDLE(nvk_physical_device, pdevice, physicalDevice);
+   VK_FROM_HANDLE(nvk_physical_device, pdev, physicalDevice);
 
-   pMemoryProperties->memoryProperties.memoryHeapCount = pdevice->mem_heap_cnt;
-   for (int i = 0; i < pdevice->mem_heap_cnt; i++) {
-      pMemoryProperties->memoryProperties.memoryHeaps[i] = pdevice->mem_heaps[i];
+   pMemoryProperties->memoryProperties.memoryHeapCount = pdev->mem_heap_cnt;
+   for (int i = 0; i < pdev->mem_heap_cnt; i++) {
+      pMemoryProperties->memoryProperties.memoryHeaps[i] = pdev->mem_heaps[i];
    }
 
-   pMemoryProperties->memoryProperties.memoryTypeCount = pdevice->mem_type_cnt;
-   for (int i = 0; i < pdevice->mem_type_cnt; i++) {
-      pMemoryProperties->memoryProperties.memoryTypes[i] = pdevice->mem_types[i];
+   pMemoryProperties->memoryProperties.memoryTypeCount = pdev->mem_type_cnt;
+   for (int i = 0; i < pdev->mem_type_cnt; i++) {
+      pMemoryProperties->memoryProperties.memoryTypes[i] = pdev->mem_types[i];
    }
 
    vk_foreach_struct(ext, pMemoryProperties->pNext)
@@ -468,11 +473,12 @@ nvk_GetPhysicalDeviceMemoryProperties2(VkPhysicalDevice physicalDevice,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_GetPhysicalDeviceQueueFamilyProperties2(VkPhysicalDevice physicalDevice,
+nvk_GetPhysicalDeviceQueueFamilyProperties2(
+   VkPhysicalDevice physicalDevice,
    uint32_t *pQueueFamilyPropertyCount,
    VkQueueFamilyProperties2 *pQueueFamilyProperties)
 {
-   // VK_FROM_HANDLE(nvk_physical_device, pdevice, physicalDevice);
+   // VK_FROM_HANDLE(nvk_physical_device, pdev, physicalDevice);
    VK_OUTARRAY_MAKE_TYPED(
       VkQueueFamilyProperties2, out, pQueueFamilyProperties, pQueueFamilyPropertyCount);
 
