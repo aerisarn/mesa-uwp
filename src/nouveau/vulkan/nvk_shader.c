@@ -123,6 +123,23 @@ lower_load_global_constant_offset_instr(nir_builder *b, nir_instr *instr,
    return true;
 }
 
+static nir_variable *
+find_or_create_input(nir_builder *b, const struct glsl_type *type,
+                     const char *name, unsigned location)
+{
+   nir_foreach_shader_in_variable(in, b->shader) {
+      if (in->data.location == location)
+         return in;
+   }
+   nir_variable *in = nir_variable_create(b->shader, nir_var_shader_in,
+                                          type, name);
+   in->data.location = location;
+   if (glsl_type_is_integer(type))
+      in->data.interpolation = INTERP_MODE_FLAT;
+
+   return in;
+}
+
 static bool
 lower_fragcoord_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
 {
@@ -132,26 +149,27 @@ lower_fragcoord_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
       return false;
 
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-   if (intrin->intrinsic != nir_intrinsic_load_frag_coord)
-      return false;
 
-   nir_variable *var = NULL;
-   nir_foreach_shader_in_variable(in, b->shader) {
-      if (in->data.location == VARYING_SLOT_POS) {
-         var = in;
-         break;
-      }
-   }
-   if (var == NULL) {
-      var = nir_variable_create(b->shader, nir_var_shader_in,
-                                glsl_vec4_type(), "gl_FragCoord");
-      var->data.location = VARYING_SLOT_POS;
+   nir_variable *var;
+   switch (intrin->intrinsic) {
+   case nir_intrinsic_load_frag_coord:
+      var = find_or_create_input(b, glsl_vec4_type(),
+                                 "gl_FragCoord",
+                                 VARYING_SLOT_POS);
+      break;
+   case nir_intrinsic_load_layer_id:
+      var = find_or_create_input(b, glsl_int_type(),
+                                 "gl_Layer", VARYING_SLOT_LAYER);
+      break;
+
+   default:
+      return false;
    }
 
    b->cursor = nir_before_instr(&intrin->instr);
-   nir_ssa_def *pos = nir_load_var(b, var);
+   nir_ssa_def *val = nir_load_var(b, var);
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, pos);
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, val);
 
    return true;
 }
