@@ -296,5 +296,6 @@ nvk_DestroySampler(VkDevice _device,
    if (!sampler)
       return;
 
+   nvk_descriptor_table_free(device, &device->samplers, sampler->desc_index);
    vk_object_free(&device->vk, pAllocator, sampler);
 }
