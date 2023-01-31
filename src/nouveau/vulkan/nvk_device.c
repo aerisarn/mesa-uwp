@@ -2,6 +2,7 @@
 
 #include "nvk_bo_sync.h"
 #include "nvk_cmd_buffer.h"
+#include "nvk_device_memory.h"
 #include "nvk_instance.h"
 #include "nvk_physical_device.h"
 
@@ -157,6 +158,13 @@ nvk_queue_submit(struct vk_queue *vkqueue, struct vk_queue_submit *submission)
          nouveau_ws_push_ref(cmd->push, bo_sync->bo, NOUVEAU_WS_BO_RDWR);
       }
 
+      simple_mtx_lock(&device->memory_objects_lock);
+      list_for_each_entry(struct nvk_device_memory, mem,
+                          &device->memory_objects, link) {
+         nouveau_ws_push_ref(cmd->push, mem->bo, NOUVEAU_WS_BO_RDWR);
+      }
+      simple_mtx_unlock(&device->memory_objects_lock);
+
       nouveau_ws_push_submit(cmd->push, device->pdev->dev, device->ctx);
       nouveau_ws_push_reset_refs(cmd->push, real_refs);
       if (cmd->reset_on_submit)
@@ -211,11 +219,14 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
       goto fail_init;
    }
 
+   list_inithead(&device->memory_objects);
+   simple_mtx_init(&device->memory_objects_lock, mtx_plain);
+
    result = nvk_descriptor_table_init(device, &device->images,
                                       8 * 4 /* tic entry size */,
                                       1024, 1024);
    if (result != VK_SUCCESS)
-      goto fail_ctx;
+      goto fail_memory_objects;
 
    /* Reserve the descriptor at offset 0 to be the null descriptor */
    ASSERTED uint32_t null_image_index;
@@ -278,7 +289,8 @@ fail_samplers:
    nvk_descriptor_table_finish(device, &device->samplers);
 fail_images:
    nvk_descriptor_table_finish(device, &device->images);
-fail_ctx:
+fail_memory_objects:
+   simple_mtx_destroy(&device->memory_objects_lock);
    nouveau_ws_context_destroy(device->ctx);
 fail_init:
    vk_device_finish(&device->vk);
@@ -309,6 +321,8 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    vk_device_finish(&device->vk);
    nvk_descriptor_table_finish(device, &device->samplers);
    nvk_descriptor_table_finish(device, &device->images);
+   assert(list_is_empty(&device->memory_objects));
+   simple_mtx_destroy(&device->memory_objects_lock);
    nouveau_ws_context_destroy(device->ctx);
    vk_free(&device->vk.alloc, device);
 }

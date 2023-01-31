@@ -118,6 +118,10 @@ nvk_AllocateMemory(
       }
    }
 
+   simple_mtx_lock(&device->memory_objects_lock);
+   list_addtail(&mem->link, &device->memory_objects);
+   simple_mtx_unlock(&device->memory_objects_lock);
+
    *pMem = nvk_device_memory_to_handle(mem);
 
    return VK_SUCCESS;
@@ -142,6 +146,10 @@ nvk_FreeMemory(
 
    if (mem->map)
       nvk_UnmapMemory(_device, _mem);
+
+   simple_mtx_lock(&device->memory_objects_lock);
+   list_del(&mem->link);
+   simple_mtx_unlock(&device->memory_objects_lock);
 
    nouveau_ws_bo_destroy(mem->bo);
 

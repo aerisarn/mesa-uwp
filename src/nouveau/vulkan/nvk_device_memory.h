@@ -3,8 +3,12 @@
 
 #include "nvk_private.h"
 
+#include "util/list.h"
+
 struct nvk_device_memory {
    struct vk_object_base base;
+
+   struct list_head link;
 
    struct nouveau_ws_bo *bo;
 

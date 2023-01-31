@@ -36,6 +36,9 @@ struct nvk_device {
 
    struct nouveau_ws_context *ctx;
 
+   simple_mtx_t memory_objects_lock;
+   struct list_head memory_objects;
+
    struct nvk_descriptor_table images;
    struct nvk_descriptor_table samplers;
 
