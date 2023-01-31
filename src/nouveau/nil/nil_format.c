@@ -4,6 +4,11 @@
 #include "gallium/drivers/nouveau/nv50/g80_texture.xml.h"
 #include "gallium/drivers/nouveau/nvc0/gm107_texture.xml.h"
 
+struct nil_format_info {
+   uint32_t rt;
+   struct nil_tic_format tic;
+};
+
 /* Abbreviated usage masks:
  * T: texturing
  * R: render target
@@ -14,21 +19,27 @@
  * I: image / surface, implies T
  */
 
+#define G80_ZETA_FORMAT_NONE    0
+#define G80_SURFACE_FORMAT_NONE    0
+
 #define SF_A(sz) G80_TIC_0_COMPONENTS_SIZES_##sz
 #define SF_B(sz) G200_TIC_0_COMPONENTS_SIZES_##sz
 #define SF_C(sz) GF100_TIC_0_COMPONENTS_SIZES_##sz
 #define SF_D(sz) GM107_TIC2_0_COMPONENTS_SIZES_##sz
 #define SF(c, pf, sf, r, g, b, a, t0, t1, t2, t3, sz, u)                \
    [PIPE_FORMAT_##pf] = {                                               \
-      SF_##c(sz),                                                       \
-      G80_TIC_TYPE_##t0,                                                \
-      G80_TIC_TYPE_##t1,                                                \
-      G80_TIC_TYPE_##t2,                                                \
-      G80_TIC_TYPE_##t3,                                                \
-      G80_TIC_SOURCE_##r,                                               \
-      G80_TIC_SOURCE_##g,                                               \
-      G80_TIC_SOURCE_##b,                                               \
-      G80_TIC_SOURCE_##a,                                               \
+      .rt = sf,                                                         \
+      .tic = {                                                          \
+         SF_##c(sz),                                                    \
+         G80_TIC_TYPE_##t0,                                             \
+         G80_TIC_TYPE_##t1,                                             \
+         G80_TIC_TYPE_##t2,                                             \
+         G80_TIC_TYPE_##t3,                                             \
+         G80_TIC_SOURCE_##r,                                            \
+         G80_TIC_SOURCE_##g,                                            \
+         G80_TIC_SOURCE_##b,                                            \
+         G80_TIC_SOURCE_##a,                                            \
+      }                                                                 \
    }
 
 #define C4(c, p, n, r, g, b, a, t, s, u)                                \
@@ -65,7 +76,7 @@
 #define A1(c, p, n, r, g, b, a, t, s, u)         \
    C4(c, p, n, ZERO, ZERO, ZERO, a, t, s, u)
 
-const struct nil_tic_format nil_tic_formats[PIPE_FORMAT_COUNT] =
+static const struct nil_format_info nil_format_infos[PIPE_FORMAT_COUNT] =
 {
    C4(A, B8G8R8A8_UNORM, BGRA8_UNORM, B, G, R, A, UNORM, A8B8G8R8, ID),
    F3(A, B8G8R8X8_UNORM, BGRX8_UNORM, B, G, R, xx, UNORM, A8B8G8R8, TD),
@@ -314,3 +325,28 @@ const struct nil_tic_format nil_tic_formats[PIPE_FORMAT_COUNT] =
    SF(A, R8SG8SB8UX8U_NORM, 0, R, G, B, ONE_FLOAT, SNORM, SNORM, UNORM, UNORM, A8B8G8R8, T),
    SF(A, R5SG5SB6U_NORM, 0, R, G, B, ONE_FLOAT, SNORM, SNORM, UNORM, UNORM, B6G5R5, T),
 };
+
+bool
+nil_format_supports_render(struct nouveau_ws_device *dev,
+                           enum pipe_format format)
+{
+   assert(format < PIPE_FORMAT_COUNT);
+   const struct nil_format_info *fmt = &nil_format_infos[format];
+   return fmt->rt != 0;
+}
+
+uint32_t
+nil_format_to_render(enum pipe_format format)
+{
+   assert(format < PIPE_FORMAT_COUNT);
+   const struct nil_format_info *fmt = &nil_format_infos[format];
+   return fmt->rt;
+}
+
+const struct nil_tic_format *
+nil_tic_format_for_pipe(enum pipe_format format)
+{
+   assert(format < PIPE_FORMAT_COUNT);
+   const struct nil_format_info *fmt = &nil_format_infos[format];
+   return fmt->tic.comp_sizes == 0 ? NULL : &fmt->tic;
+}

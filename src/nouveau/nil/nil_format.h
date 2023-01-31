@@ -7,7 +7,14 @@
 
 #include "util/format/u_format.h"
 
+struct nouveau_ws_device;
+
 /* We don't have our own format enum; we use PIPE_FORMAT for everything */
+
+bool nil_format_supports_render(struct nouveau_ws_device *dev,
+                                enum pipe_format format);
+
+uint32_t nil_format_to_render(enum pipe_format format);
 
 struct nil_tic_format {
    unsigned comp_sizes:8;
@@ -21,14 +28,7 @@ struct nil_tic_format {
    unsigned src_w:3;
 };
 
-extern const struct nil_tic_format nil_tic_formats[];
-
-static inline const struct nil_tic_format *
-nil_tic_format_for_pipe(enum pipe_format format)
-{
-   assert(format < PIPE_FORMAT_COUNT);
-   const struct nil_tic_format *fmt = &nil_tic_formats[format];
-   return fmt->comp_sizes == 0 ? NULL : fmt;
-}
+const struct nil_tic_format *
+nil_tic_format_for_pipe(enum pipe_format format);
 
 #endif /* NIL_FORMAT_H */
