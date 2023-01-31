@@ -500,6 +500,21 @@ mme_emit_addr64(struct mme_builder *b, struct mme_value64 addr)
 }
 
 static inline void
+mme_tu104_read_fifoed(struct mme_builder *b,
+                      struct mme_value64 addr,
+                      struct mme_value count)
+{
+   mme_mthd(b, 0x0550 /* NVC597_SET_MME_MEM_ADDRESS_A */);
+   mme_emit_addr64(b, addr);
+
+   mme_mthd(b, 0x0560 /* NVC597_MME_DMA_READ_FIFOED */);
+   mme_emit(b, count);
+
+   mme_tu104_alu_no_dst(b, MME_TU104_ALU_OP_EXTENDED,
+                        mme_imm(0x1000), mme_imm(1), 0);
+}
+
+static inline void
 mme_start_loop(struct mme_builder *b, struct mme_value count)
 {
    mme_tu104_start_loop(b, count);
