@@ -1,3 +1,4 @@
+#include "nvk_cmd_buffer.h"
 #include "nvk_descriptor_set_layout.h"
 #include "nvk_nir.h"
 #include "nvk_pipeline_layout.h"
@@ -37,8 +38,6 @@ lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
    if (ctx->clamp_desc_array_bounds)
       index = nir_umin(b, index, nir_imm_int(b, binding_layout->array_size - 1));
 
-   const uint32_t desc_ubo_index = set; /* TODO */
-
    assert(binding_layout->stride > 0);
    nir_ssa_def *desc_ubo_offset = nir_iadd_imm(
       b, nir_imul_imm(b, index, binding_layout->stride), binding_layout->offset);
@@ -46,9 +45,16 @@ lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
    unsigned desc_align = (1 << (ffs(binding_layout->stride) - 1));
    desc_align = MIN2(desc_align, 16);
 
+   uint32_t set_addr_offset =
+      offsetof(struct nvk_root_descriptor_table, sets) + set * sizeof(uint64_t);
+
+   nir_ssa_def *set_addr =
+      nir_load_ubo(b, 1, 64, nir_imm_int(b, 0), nir_imm_int(b, set_addr_offset),
+                   .align_mul = 8, .align_offset = 0, .range = ~0);
+
    nir_ssa_def *desc =
-      nir_load_ubo(b, 4, 32, nir_imm_int(b, desc_ubo_index), desc_ubo_offset,
-                   .align_mul = 16, .align_offset = 0, .range = ~0);
+      nir_load_global_constant_offset(b, 4, 32, set_addr, desc_ubo_offset,
+                                      .align_mul = 16, .align_offset = 0);
 
    nir_ssa_def_rewrite_uses(&intrin->dest.ssa, desc);
 
