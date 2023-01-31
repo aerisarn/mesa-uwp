@@ -624,3 +624,32 @@ vk_format_get_ycbcr_info(VkFormat format)
 
    return info;
 }
+
+static uint32_t
+swizzled_color_component(const VkClearColorValue *color,
+                         VkComponentSwizzle swizzle,
+                         uint32_t comp, bool is_int)
+{
+   switch (swizzle) {
+   case VK_COMPONENT_SWIZZLE_IDENTITY: return color->uint32[comp];
+   case VK_COMPONENT_SWIZZLE_ZERO:     return 0;
+   case VK_COMPONENT_SWIZZLE_ONE:      return is_int ? 1 : 0x3f800000;
+   case VK_COMPONENT_SWIZZLE_R:        return color->uint32[0];
+   case VK_COMPONENT_SWIZZLE_G:        return color->uint32[1];
+   case VK_COMPONENT_SWIZZLE_B:        return color->uint32[2];
+   case VK_COMPONENT_SWIZZLE_A:        return color->uint32[3];
+   default: unreachable("Invalid component swizzle");
+   }
+}
+
+VkClearColorValue
+vk_swizzle_color_value(VkClearColorValue color,
+                       VkComponentMapping swizzle, bool is_int)
+{
+   return (VkClearColorValue) { .uint32 = {
+      swizzled_color_component(&color, swizzle.r, 0, is_int),
+      swizzled_color_component(&color, swizzle.g, 1, is_int),
+      swizzled_color_component(&color, swizzle.b, 2, is_int),
+      swizzled_color_component(&color, swizzle.a, 3, is_int),
+   }};
+}
