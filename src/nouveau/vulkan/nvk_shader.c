@@ -146,30 +146,37 @@ static bool
 lower_fragcoord_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
 {
    assert(b->shader->info.stage == MESA_SHADER_FRAGMENT);
+   nir_variable *var;
 
    if (instr->type != nir_instr_type_intrinsic)
       return false;
 
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   b->cursor = nir_before_instr(&intrin->instr);
 
-   nir_variable *var;
+   nir_ssa_def *val;
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_frag_coord:
       var = find_or_create_input(b, glsl_vec4_type(),
                                  "gl_FragCoord",
                                  VARYING_SLOT_POS);
+      val = nir_load_var(b, var);
+      break;
+   case nir_intrinsic_load_sample_pos:
+      var = find_or_create_input(b, glsl_vec4_type(),
+                                 "gl_FragCoord",
+                                 VARYING_SLOT_POS);
+      val = nir_ffract(b, nir_trim_vector(b, nir_load_var(b, var), 2));
       break;
    case nir_intrinsic_load_layer_id:
       var = find_or_create_input(b, glsl_int_type(),
                                  "gl_Layer", VARYING_SLOT_LAYER);
+      val = nir_load_var(b, var);
       break;
 
    default:
       return false;
    }
-
-   b->cursor = nir_before_instr(&intrin->instr);
-   nir_ssa_def *val = nir_load_var(b, var);
 
    nir_ssa_def_rewrite_uses(&intrin->dest.ssa, val);
 
