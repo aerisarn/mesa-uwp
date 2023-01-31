@@ -176,8 +176,15 @@ clear_image(struct nvk_cmd_buffer *cmd,
                                                            &ranges[r]);
          }
 
+         const VkImageViewUsageCreateInfo view_usage_info = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO,
+            .usage = (ranges[r].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) ?
+                     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT :
+                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+         };
          const VkImageViewCreateInfo view_info = {
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext = &view_usage_info,
             .image = nvk_image_to_handle(image),
             .viewType = render_view_type(image->vk.image_type, layer_count),
             .format = format,
