@@ -286,6 +286,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *device,
 {
    *ext = (struct vk_device_extension_table) {
       .KHR_copy_commands2 = true,
+      .KHR_create_renderpass2 = true,
       .KHR_dedicated_allocation = true,
       .KHR_get_memory_requirements2 = true,
       .KHR_format_feature_flags2 = true,
