@@ -522,6 +522,12 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
       });
 
       P_IMMD(p, NV9097, SET_ZT_LAYER, iview->vk.base_array_layer);
+
+      if (nvk_cmd_buffer_3d_cls(cmd) >= MAXWELL_B) {
+         P_IMMD(p, NVC597, SET_ZT_SPARSE, {
+            .enable = ENABLE_FALSE,
+         });
+      }
    } else {
       P_IMMD(p, NV9097, SET_ZT_SELECT, 0 /* target_count */);
    }
