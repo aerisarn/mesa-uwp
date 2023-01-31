@@ -1,10 +1,10 @@
 #include "nvk_device_memory.h"
 
 #include "nouveau_bo.h"
-#include "nouveau_push.h"
 
 #include "nvk_device.h"
 #include "nvk_physical_device.h"
+#include "nv_push.h"
 
 #include <inttypes.h>
 #include <sys/mman.h>
@@ -15,13 +15,11 @@
 static VkResult
 zero_vram(struct nvk_device *dev, struct nouveau_ws_bo *bo)
 {
-   struct nouveau_ws_push *push = nouveau_ws_push_new(dev->pdev->dev, 4096);
-   if (push == NULL)
-      return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+   uint32_t push_data[256];
+   struct nv_push push;
+   nv_push_init(&push, push_data, ARRAY_SIZE(push_data));
+   struct nv_push *p = &push;
 
-   struct nv_push *p = P_SPACE(push, 4096);
-
-   nouveau_ws_push_ref(push, bo, NOUVEAU_WS_BO_WR);
    uint64_t addr = bo->offset;
 
    /* can't go higher for whatever reason */
@@ -65,10 +63,8 @@ zero_vram(struct nvk_device *dev, struct nouveau_ws_bo *bo)
    P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(p, 1, extra / 4);
    P_NV902D_RENDER_SOLID_PRIM_POINT_Y(p, 1, height);
 
-   nouveau_ws_push_submit(push, dev->pdev->dev, dev->ctx);
-   nouveau_ws_push_destroy(push);
-
-   return VK_SUCCESS;
+   return nvk_queue_submit_simple(&dev->queue, push_data,
+                                  nv_push_dw_count(&push), bo);
 }
 
 VkResult
