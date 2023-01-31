@@ -13,6 +13,43 @@ struct lower_descriptors_ctx {
    nir_address_format ssbo_addr_format;
 };
 
+static nir_ssa_def *
+load_descriptor_set_addr(nir_builder *b, uint32_t set,
+                         UNUSED const struct lower_descriptors_ctx *ctx)
+{
+   uint32_t set_addr_offset =
+      offsetof(struct nvk_root_descriptor_table, sets) + set * sizeof(uint64_t);
+
+   return nir_load_ubo(b, 1, 64, nir_imm_int(b, 0),
+                       nir_imm_int(b, set_addr_offset),
+                       .align_mul = 8, .align_offset = 0, .range = ~0);
+}
+
+static nir_ssa_def *
+load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
+                uint32_t set, uint32_t binding, nir_ssa_def *index,
+                const struct lower_descriptors_ctx *ctx)
+{
+   assert(set < NVK_MAX_SETS);
+   const struct nvk_descriptor_set_binding_layout *binding_layout =
+      &ctx->layout->set[set].layout->binding[binding];
+
+   if (ctx->clamp_desc_array_bounds)
+      index = nir_umin(b, index, nir_imm_int(b, binding_layout->array_size - 1));
+
+   assert(binding_layout->stride > 0);
+   nir_ssa_def *desc_ubo_offset =
+      nir_iadd_imm(b, nir_imul_imm(b, index, binding_layout->stride),
+                      binding_layout->offset);
+
+   unsigned desc_align = (1 << (ffs(binding_layout->stride) - 1));
+   desc_align = MIN2(desc_align, 16);
+
+   nir_ssa_def *set_addr = load_descriptor_set_addr(b, set, ctx);
+   return nir_load_global_constant_offset(b, 4, 32, set_addr, desc_ubo_offset,
+                                          .align_mul = 16, .align_offset = 0);
+}
+
 static bool
 lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
                              const struct lower_descriptors_ctx *ctx)
@@ -32,29 +69,7 @@ lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
    uint32_t binding = nir_intrinsic_binding(parent);
    index = nir_iadd(b, index, nir_ssa_for_src(b, parent->src[0], 1));
 
-   const struct nvk_descriptor_set_binding_layout *binding_layout =
-      &ctx->layout->set[set].layout->binding[binding];
-
-   if (ctx->clamp_desc_array_bounds)
-      index = nir_umin(b, index, nir_imm_int(b, binding_layout->array_size - 1));
-
-   assert(binding_layout->stride > 0);
-   nir_ssa_def *desc_ubo_offset = nir_iadd_imm(
-      b, nir_imul_imm(b, index, binding_layout->stride), binding_layout->offset);
-
-   unsigned desc_align = (1 << (ffs(binding_layout->stride) - 1));
-   desc_align = MIN2(desc_align, 16);
-
-   uint32_t set_addr_offset =
-      offsetof(struct nvk_root_descriptor_table, sets) + set * sizeof(uint64_t);
-
-   nir_ssa_def *set_addr =
-      nir_load_ubo(b, 1, 64, nir_imm_int(b, 0), nir_imm_int(b, set_addr_offset),
-                   .align_mul = 8, .align_offset = 0, .range = ~0);
-
-   nir_ssa_def *desc =
-      nir_load_global_constant_offset(b, 4, 32, set_addr, desc_ubo_offset,
-                                      .align_mul = 16, .align_offset = 0);
+   nir_ssa_def *desc = load_descriptor(b, 4, 32, set, binding, index, ctx);
 
    nir_ssa_def_rewrite_uses(&intrin->dest.ssa, desc);
 
@@ -89,27 +104,8 @@ load_resource_deref_desc(nir_builder *b, nir_deref_instr *deref,
    uint32_t set, binding;
    nir_ssa_def *index;
    get_resource_deref_binding(b, deref, &set, &binding, &index);
-
-   const struct nvk_descriptor_set_binding_layout *binding_layout =
-      &ctx->layout->set[set].layout->binding[binding];
-
-   if (ctx->clamp_desc_array_bounds)
-      index = nir_umin(b, index, nir_imm_int(b, binding_layout->array_size - 1));
-
-   const uint32_t desc_ubo_index = set; /* TODO */
-
-   assert(binding_layout->stride > 0);
-   nir_ssa_def *desc_ubo_offset =
-      nir_iadd_imm(b, nir_imul_imm(b, index, binding_layout->stride),
-                   binding_layout->offset + desc_offset);
-
-   unsigned desc_align = (1 << (ffs(binding_layout->stride) - 1));
-   desc_align = MIN2(desc_align, 16);
-
-   return nir_load_ubo(b, num_components, bit_size,
-                       nir_imm_int(b, desc_ubo_index), desc_ubo_offset,
-                       .align_mul = desc_align,
-                       .align_offset = (desc_offset % desc_align), .range = ~0);
+   return load_descriptor(b, num_components, bit_size,
+                          set, binding, index, ctx);
 }
 
 static bool
