@@ -439,27 +439,10 @@ clear_image_level_layers(struct vk_command_buffer *cmd,
    VkCommandBuffer _cmd = vk_command_buffer_to_handle(cmd);
    VkResult result;
 
-   VkImageViewType view_type;
-   switch (image->image_type) {
-   case VK_IMAGE_TYPE_1D:
-      view_type = layer_count == 1 ? VK_IMAGE_VIEW_TYPE_1D :
-                                     VK_IMAGE_VIEW_TYPE_1D_ARRAY;
-      break;
-
-   case VK_IMAGE_TYPE_2D:
-   case VK_IMAGE_TYPE_3D:
-      view_type = layer_count == 1 ? VK_IMAGE_VIEW_TYPE_2D :
-                                     VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-      break;
-
-   default:
-      unreachable("Invalid image type");
-   }
-
    const VkImageViewCreateInfo view_info = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
       .image = vk_image_to_handle(image),
-      .viewType = view_type,
+      .viewType = vk_image_render_view_type(image, layer_count),
       .format = format,
       .subresourceRange = {
          .aspectMask = aspects,

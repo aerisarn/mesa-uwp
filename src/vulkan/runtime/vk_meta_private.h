@@ -23,6 +23,7 @@
 #ifndef VK_META_PRIVATE_H
 #define VK_META_PRIVATE_H
 
+#include "vk_image.h"
 #include "vk_meta.h"
 
 #ifdef __cplusplus
@@ -46,6 +47,22 @@ vk_meta_rendering_info_copy(struct vk_meta_rendering_info *dst,
       dst->color_attachment_formats[a] = src->color_attachment_formats[a];
    dst->depth_attachment_format = src->depth_attachment_format;
    dst->stencil_attachment_format = src->stencil_attachment_format;
+}
+
+static inline VkImageViewType
+vk_image_render_view_type(const struct vk_image *image, uint32_t layer_count)
+{
+   switch (image->image_type) {
+   case VK_IMAGE_TYPE_1D:
+      return layer_count == 1 ? VK_IMAGE_VIEW_TYPE_1D :
+                                VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+   case VK_IMAGE_TYPE_2D:
+   case VK_IMAGE_TYPE_3D:
+      return layer_count == 1 ? VK_IMAGE_VIEW_TYPE_2D :
+                                VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+   default:
+      unreachable("Invalid image type");
+   }
 }
 
 #ifdef __cplusplus
