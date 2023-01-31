@@ -712,22 +712,29 @@ mme_fermi_merge_to(struct mme_builder *b, struct mme_value dst,
    assert(bits < 32);
    assert(src_pos < 32);
 
+   struct mme_value y_reg = mme_fermi_value_as_reg(b, x);
+   struct mme_value x_reg = mme_fermi_value_as_reg(b, y);
+
    if (!mme_fermi_next_inst_can_fit_a_full_inst(fb))
       mme_fermi_new_inst(fb);
 
    struct mme_fermi_inst *inst = mme_fermi_cur_inst(fb);
 
    inst->op = MME_FERMI_OP_MERGE;
-   inst->src[0] = mme_value_alu_reg(x);
-   inst->src[1] = mme_value_alu_reg(y);
+   inst->src[0] = mme_value_alu_reg(x_reg);
+   inst->src[1] = mme_value_alu_reg(y_reg);
    inst->bitfield.dst_bit = dst_pos;
    inst->bitfield.src_bit = src_pos;
    inst->bitfield.size = bits;
 
    inst->assign_op = MME_FERMI_ASSIGN_OP_MOVE;
    inst->dst = mme_value_alu_reg(dst);
+
    mme_fermi_set_inst_parts(fb, MME_FERMI_INSTR_PART_OP |
                                 MME_FERMI_INSTR_PART_ASSIGN);
+
+   mme_free_reg_if_tmp(b, x, x_reg);
+   mme_free_reg_if_tmp(b, y, y_reg);
 }
 
 uint32_t *
