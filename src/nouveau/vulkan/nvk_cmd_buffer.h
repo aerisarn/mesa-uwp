@@ -144,7 +144,11 @@ nvk_get_descriptors_state(struct nvk_cmd_buffer *cmd,
 };
 
 VkResult nvk_cmd_buffer_upload_alloc(struct nvk_cmd_buffer *cmd,
-                                     uint32_t size,
+                                     uint32_t size, uint32_t alignment,
                                      uint64_t *addr, void **ptr);
+
+VkResult nvk_cmd_buffer_upload_data(struct nvk_cmd_buffer *cmd,
+                                    const void *data, uint32_t size,
+                                    uint32_t alignment, uint64_t *addr);
 
 #endif

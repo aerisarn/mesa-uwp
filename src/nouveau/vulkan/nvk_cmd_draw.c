@@ -1037,22 +1037,19 @@ nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
    const struct nvk_descriptor_state *desc = &cmd->state.gfx.descriptors;
    VkResult result;
 
-   uint32_t root_table_size = sizeof(desc->root);
-   void *root_table_map;
    uint64_t root_table_addr;
-   result = nvk_cmd_buffer_upload_alloc(cmd, root_table_size,
-                                        &root_table_addr, &root_table_map);
+   result = nvk_cmd_buffer_upload_data(cmd, &desc->root, sizeof(desc->root),
+                                       NVK_MIN_UBO_ALIGNMENT,
+                                       &root_table_addr);
    if (unlikely(result != VK_SUCCESS)) {
       vk_command_buffer_set_error(&cmd->vk, result);
       return;
    }
 
-   memcpy(root_table_map, &desc->root, sizeof(desc->root));
-
    struct nv_push *p = P_SPACE(cmd->push, 26);
 
    P_MTHD(p, NV9097, SET_CONSTANT_BUFFER_SELECTOR_A);
-   P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_A(p, root_table_size);
+   P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_A(p, sizeof(desc->root));
    P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_B(p, root_table_addr >> 32);
    P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_C(p, root_table_addr);
 

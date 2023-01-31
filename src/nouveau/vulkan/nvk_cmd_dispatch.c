@@ -76,17 +76,14 @@ nvk_CmdDispatch(VkCommandBuffer commandBuffer,
    desc->root.cs.grid_size[1] = groupCountY;
    desc->root.cs.grid_size[2] = groupCountZ;
 
-   uint32_t root_table_size = sizeof(desc->root);
-   void *root_table_map;
    uint64_t root_table_addr;
-   result = nvk_cmd_buffer_upload_alloc(cmd, root_table_size,
-                                        &root_table_addr, &root_table_map);
+   result = nvk_cmd_buffer_upload_data(cmd, &desc->root, sizeof(desc->root),
+                                       NVK_MIN_UBO_ALIGNMENT,
+                                       &root_table_addr);
    if (unlikely(result != VK_SUCCESS)) {
       vk_command_buffer_set_error(&cmd->vk, result);
       return;
    }
-
-   memcpy(root_table_map, &desc->root, sizeof(desc->root));
 
    uint32_t qmd[128];
    memset(qmd, 0, sizeof(qmd));
@@ -94,18 +91,15 @@ nvk_CmdDispatch(VkCommandBuffer commandBuffer,
 
    gv100_compute_setup_launch_desc(qmd, groupCountX, groupCountY, groupCountZ);
 
-   gp100_cp_launch_desc_set_cb(qmd, 0, root_table_size, root_table_addr);
-   gp100_cp_launch_desc_set_cb(qmd, 1, root_table_size, root_table_addr);
+   gp100_cp_launch_desc_set_cb(qmd, 0, sizeof(desc->root), root_table_addr);
+   gp100_cp_launch_desc_set_cb(qmd, 1, sizeof(desc->root), root_table_addr);
 
    uint64_t qmd_addr;
-   void *qmd_map;
-   result = nvk_cmd_buffer_upload_alloc(cmd, sizeof(qmd), &qmd_addr,&qmd_map);
+   result = nvk_cmd_buffer_upload_data(cmd, qmd, sizeof(qmd), 256, &qmd_addr);
    if (unlikely(result != VK_SUCCESS)) {
       vk_command_buffer_set_error(&cmd->vk, result);
       return;
    }
-
-   memcpy(qmd_map, qmd, sizeof(qmd));
 
    struct nv_push *p = P_SPACE(cmd->push, 6);
 

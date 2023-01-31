@@ -152,19 +152,15 @@ nvk_cmd_buffer_resize_upload_buf(struct nvk_cmd_buffer *cmd,
 }
 
 VkResult
-nvk_cmd_buffer_upload_alloc(struct nvk_cmd_buffer *cmd, uint32_t size,
+nvk_cmd_buffer_upload_alloc(struct nvk_cmd_buffer *cmd,
+                            uint32_t size, uint32_t alignment,
                             uint64_t *addr, void **ptr)
 {
    assert(size % 4 == 0);
 
-   /* Align to the scalar cache line size if it results in this allocation
-    * being placed in less of them.
-    */
    uint32_t offset = cmd->upload.offset;
-   uint32_t line_size = 256;//for compute dispatches
-   uint32_t gap = align(offset, line_size) - offset;
-   if ((size & ~(line_size - 1)) > gap)
-      offset = align(offset, line_size);
+   if (align > 0)
+      offset = align(offset, alignment);
 
    if (offset + size > cmd->upload.size) {
       if (!nvk_cmd_buffer_resize_upload_buf(cmd, size))
@@ -176,6 +172,23 @@ nvk_cmd_buffer_upload_alloc(struct nvk_cmd_buffer *cmd, uint32_t size,
    *ptr = cmd->upload.map + offset;
 
    cmd->upload.offset = offset + size;
+
+   return VK_SUCCESS;
+}
+
+VkResult
+nvk_cmd_buffer_upload_data(struct nvk_cmd_buffer *cmd,
+                           const void *data, uint32_t size,
+                           uint32_t alignment, uint64_t *addr)
+{
+   VkResult result;
+   void *map;
+
+   result = nvk_cmd_buffer_upload_alloc(cmd, size, alignment, addr, &map);
+   if (unlikely(result != VK_SUCCESS))
+      return result;
+
+   memcpy(map, data, size);
 
    return VK_SUCCESS;
 }
