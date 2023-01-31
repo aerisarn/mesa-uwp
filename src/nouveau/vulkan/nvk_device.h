@@ -3,6 +3,7 @@
 
 #include "nvk_private.h"
 
+#include "nvk_descriptor_table.h"
 #include "vulkan/runtime/vk_device.h"
 #include "vulkan/runtime/vk_queue.h"
 
@@ -31,6 +32,8 @@ struct nvk_device {
    struct nvk_physical_device *pdev;
 
    struct nouveau_ws_context *ctx;
+
+   struct nvk_descriptor_table images;
 
    struct nvk_queue queue;
 

@@ -42,6 +42,13 @@ nvk_update_preamble_push(struct nvk_queue_state *qs, struct nvk_device *dev,
    P_NVA0C0_SET_SHADER_LOCAL_MEMORY_A(push, qs->tls_bo->offset >> 32);
    P_NVA0C0_SET_SHADER_LOCAL_MEMORY_B(push, qs->tls_bo->offset & 0xffffffff);
 
+   nvk_push_descriptor_table_ref(push, &dev->images);
+   uint64_t thp_addr = nvk_descriptor_table_base_address(&dev->images);
+   P_MTHD(push, NVA0C0, SET_TEX_HEADER_POOL_A);
+   P_NVA0C0_SET_TEX_HEADER_POOL_A(push, thp_addr >> 32);
+   P_NVA0C0_SET_TEX_HEADER_POOL_B(push, thp_addr & 0xffffffff);
+   P_NVA0C0_SET_TEX_HEADER_POOL_C(push, dev->images.alloc);
+
    uint64_t temp_size = qs->tls_bo->size / dev->pdev->dev->mp_count;
    P_MTHD(push, NVA0C0, SET_SHADER_LOCAL_MEMORY_NON_THROTTLED_A);
    P_NVA0C0_SET_SHADER_LOCAL_MEMORY_NON_THROTTLED_A(push, temp_size >> 32);
@@ -177,9 +184,15 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
       goto fail_init;
    }
 
-   result = vk_queue_init(&device->queue.vk, &device->vk, &pCreateInfo->pQueueCreateInfos[0], 0);
+   result = nvk_descriptor_table_init(device, &device->images,
+                                      8 * 4 /* tic entry size */,
+                                      1024, 1024);
    if (result != VK_SUCCESS)
       goto fail_ctx;
+
+   result = vk_queue_init(&device->queue.vk, &device->vk, &pCreateInfo->pQueueCreateInfos[0], 0);
+   if (result != VK_SUCCESS)
+      goto fail_images;
 
    if (pthread_mutex_init(&device->mutex, NULL) != 0) {
       result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
@@ -215,6 +228,8 @@ fail_mutex:
    pthread_mutex_destroy(&device->mutex);
 fail_queue:
    vk_queue_finish(&device->queue.vk);
+fail_images:
+   nvk_descriptor_table_finish(device, &device->images);
 fail_ctx:
    nouveau_ws_context_destroy(device->ctx);
 fail_init:
@@ -240,6 +255,7 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    pthread_mutex_destroy(&device->mutex);
    vk_queue_finish(&device->queue.vk);
    vk_device_finish(&device->vk);
+   nvk_descriptor_table_finish(device, &device->images);
    nouveau_ws_context_destroy(device->ctx);
    vk_free(&device->vk.alloc, device);
 }
