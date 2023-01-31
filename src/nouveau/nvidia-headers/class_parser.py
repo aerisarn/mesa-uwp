@@ -4,35 +4,10 @@
 # probably needs python3.9
 
 import argparse
+import os.path
 import sys
 
 from mako.template import Template
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--out_h', required=True, help='Output C header.')
-parser.add_argument('--in_h',
-                    help='Input class header file.',
-                    required=True)
-args = parser.parse_args()
-
-filein = args.in_h
-fileout = args.out_h
-
-if (filein.strip == ""):
-    print("class_parser.py class.h output.h")
-    sys.exit()
-
-nvcl = filein.split("/")[-1]
-clheader = nvcl
-nvcl = nvcl.removeprefix("cl")
-nvcl = nvcl.removesuffix(".h")
-nvcl = nvcl.upper()
-
-nvcl = "NV" + nvcl
-
-f = open(filein)
-
-fout = open(fileout, 'w')
 
 METHOD_ARRAY_SIZES = {
     'SET_STREAM_OUT_BUFFER_*'   : 4,
@@ -241,93 +216,132 @@ class method(object):
                 return True
         return False
 
-# Simple state machine
-# state 0 looking for a new method define
-# state 1 looking for new fields in a method
-# state 2 looking for enums for a fields in a method
-# blank lines reset the state machine to 0
+def parse_header(nvcl, f):
+    # Simple state machine
+    # state 0 looking for a new method define
+    # state 1 looking for new fields in a method
+    # state 2 looking for enums for a fields in a method
+    # blank lines reset the state machine to 0
 
-state = 0
-mthddict = {}
-curmthd = {}
-for line in f:
+    state = 0
+    mthddict = {}
+    curmthd = {}
+    for line in f:
 
-    if line.strip() == "":
-        state = 0
-        if (curmthd):
-            if not len(curmthd.field_name_start):
-                del mthddict[curmthd.name]
-        curmthd = {}
-        continue
-
-    if line.startswith("#define"):
-        list = line.split();
-        if "_cl_" in list[1]:
-            continue
-
-        if not list[1].startswith(nvcl):
-            continue
-
-        if list[1].endswith("TYPEDEF"):
-            continue
-
-        if state == 2:
-            teststr = nvcl + "_" + curmthd.name + "_" + curfield + "_"
-            if ":" in list[2]:
-                state = 1
-            elif teststr in list[1]:
-                curmthd.field_defs[curfield][list[1].removeprefix(teststr)] = list[2]
-            else:
-                state = 1
-
-        if state == 1:
-            teststr = nvcl + "_" + curmthd.name + "_"
-            if teststr in list[1]:
-                if ("0x" in list[2]):
-                    state = 1
-                else:
-                    field = list[1].removeprefix(teststr)
-                    bitfield = list[2].split(":")
-                    curmthd.field_name_start[field] = bitfield[1]
-                    curmthd.field_name_end[field] = bitfield[0]
-                    curmthd.field_defs[field] = {}
-                    curfield = field
-                    state = 2
-            else:
-                if not len(curmthd.field_name_start):
-                    del mthddict[curmthd.name]
-                    curmthd = {}
-                state = 0
-
-        if state == 0:
+        if line.strip() == "":
+            state = 0
             if (curmthd):
                 if not len(curmthd.field_name_start):
                     del mthddict[curmthd.name]
-            teststr = nvcl + "_"
-            is_array = 0
-            if (':' in list[2]):
+            curmthd = {}
+            continue
+
+        if line.startswith("#define"):
+            list = line.split();
+            if "_cl_" in list[1]:
                 continue
-            name = list[1].removeprefix(teststr)
-            if name.endswith("(i)"):
-                is_array = 1
-                name = name.removesuffix("(i)")
-            if name.endswith("(j)"):
-                is_array = 1
-                name = name.removesuffix("(j)")
-            x = method()
-            x.name = name
-            x.addr = list[2]
-            x.is_array = is_array
-            x.field_name_start = {}
-            x.field_name_end = {}
-            x.field_defs = {}
-            mthddict[x.name] = x
 
-            curmthd = x
-            state = 1
+            if not list[1].startswith(nvcl):
+                continue
 
-fout.write(TEMPLATE_H.render(clheader=clheader, nvcl=nvcl,
-                             mthddict=mthddict, bs='\\'))
+            if list[1].endswith("TYPEDEF"):
+                continue
 
-fout.close()
-f.close()
+            if state == 2:
+                teststr = nvcl + "_" + curmthd.name + "_" + curfield + "_"
+                if ":" in list[2]:
+                    state = 1
+                elif teststr in list[1]:
+                    curmthd.field_defs[curfield][list[1].removeprefix(teststr)] = list[2]
+                else:
+                    state = 1
+
+            if state == 1:
+                teststr = nvcl + "_" + curmthd.name + "_"
+                if teststr in list[1]:
+                    if ("0x" in list[2]):
+                        state = 1
+                    else:
+                        field = list[1].removeprefix(teststr)
+                        bitfield = list[2].split(":")
+                        curmthd.field_name_start[field] = bitfield[1]
+                        curmthd.field_name_end[field] = bitfield[0]
+                        curmthd.field_defs[field] = {}
+                        curfield = field
+                        state = 2
+                else:
+                    if not len(curmthd.field_name_start):
+                        del mthddict[curmthd.name]
+                        curmthd = {}
+                    state = 0
+
+            if state == 0:
+                if (curmthd):
+                    if not len(curmthd.field_name_start):
+                        del mthddict[curmthd.name]
+                teststr = nvcl + "_"
+                is_array = 0
+                if (':' in list[2]):
+                    continue
+                name = list[1].removeprefix(teststr)
+                if name.endswith("(i)"):
+                    is_array = 1
+                    name = name.removesuffix("(i)")
+                if name.endswith("(j)"):
+                    is_array = 1
+                    name = name.removesuffix("(j)")
+                x = method()
+                x.name = name
+                x.addr = list[2]
+                x.is_array = is_array
+                x.field_name_start = {}
+                x.field_name_end = {}
+                x.field_defs = {}
+                mthddict[x.name] = x
+
+                curmthd = x
+                state = 1
+
+    return mthddict
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--out_h', required=True, help='Output C header.')
+    parser.add_argument('--in_h',
+                        help='Input class header file.',
+                        required=True)
+    args = parser.parse_args()
+
+    clheader = os.path.basename(args.in_h)
+    nvcl = clheader
+    nvcl = nvcl.removeprefix("cl")
+    nvcl = nvcl.removesuffix(".h")
+    nvcl = nvcl.upper()
+    nvcl = "NV" + nvcl
+
+    with open(args.in_h, 'r', encoding='utf-8') as f:
+        mthddict = parse_header(nvcl, f)
+
+    environment = {
+        'clheader': clheader,
+        'nvcl': nvcl,
+        'mthddict': mthddict,
+        'bs': '\\'
+    }
+
+    try:
+        with open(args.out_h, 'w', encoding='utf-8') as f:
+            f.write(TEMPLATE_H.render(**environment))
+
+    except Exception:
+        # In the event there's an error, this imports some helpers from mako
+        # to print a useful stack trace and prints it, then exits with
+        # status 1, if python is run with debug; otherwise it just raises
+        # the exception
+        import sys
+        from mako import exceptions
+        print(exceptions.text_error_template().render(), file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()
