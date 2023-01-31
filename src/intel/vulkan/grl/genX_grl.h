@@ -28,9 +28,11 @@
 extern "C" {
 #endif
 
-#include "anv_private.h"
 #include "grl/grl_cl_kernel.h"
 #include "genxml/gen_macros.h"
+
+struct anv_cmd_buffer;
+struct anv_kernel_arg;
 
 void
 genX(grl_dispatch)(struct anv_cmd_buffer *cmd_buffer,
