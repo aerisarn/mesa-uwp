@@ -32,7 +32,6 @@ enum mme_alu_op {
    MME_ALU_OP_SLE,
    MME_ALU_OP_SLEU,
    MME_ALU_OP_SEQ,
-   MME_ALU_OP_STATE,
    MME_ALU_OP_DREAD,
    MME_ALU_OP_DWRITE,
 };
@@ -315,8 +314,7 @@ static inline void
 mme_state_arr_to(struct mme_builder *b, struct mme_value dst,
                  uint16_t state, struct mme_value index)
 {
-   assert(state % 4 == 0);
-   mme_alu_to(b, dst, MME_ALU_OP_STATE, mme_imm(state >> 2), index, 0);
+   mme_tu104_state_arr_to(b, dst, state, index);
 }
 
 static inline void

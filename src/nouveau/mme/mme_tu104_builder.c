@@ -308,7 +308,6 @@ mme_to_tu104_alu_op(enum mme_alu_op op)
    ALU_CASE(SLE)
    ALU_CASE(SLEU)
    ALU_CASE(SEQ)
-   ALU_CASE(STATE)
    ALU_CASE(DREAD)
    ALU_CASE(DWRITE)
 #undef ALU_CASE
@@ -361,6 +360,15 @@ mme_tu104_merge_to(struct mme_builder *b, struct mme_value dst,
    assert(src_pos < 32);
    uint32_t ctrl = (dst_pos << 10) | (bits << 5) | src_pos;
    build_alu_to(b, dst, MME_TU104_ALU_OP_MERGE, x, y, ctrl, false);
+}
+
+void
+mme_tu104_state_arr_to(struct mme_builder *b, struct mme_value dst,
+                       uint16_t state, struct mme_value index)
+{
+   assert(state % 4 == 0);
+   build_alu_to(b, dst, MME_TU104_ALU_OP_STATE,
+                mme_imm(state >> 2), index, 0, false);
 }
 
 void
