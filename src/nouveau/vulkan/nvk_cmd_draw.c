@@ -1674,6 +1674,9 @@ nvk_CmdDrawIndexed(VkCommandBuffer commandBuffer,
 void
 nvk_mme_draw_indirect(struct nvk_device *dev, struct mme_builder *b)
 {
+   if (dev->ctx->eng3d.cls < TURING_A)
+      return;
+
    struct mme_value begin = mme_load(b);
    struct mme_value64 draw_addr = mme_load_addr64(b);
    struct mme_value draw_count = mme_load(b);
@@ -1702,6 +1705,9 @@ nvk_CmdDrawIndirect(VkCommandBuffer commandBuffer,
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
 
+   /* TODO: Indirect draw pre-Turing */
+   assert(nvk_cmd_buffer_3d_cls(cmd) >= TURING_A);
+
    nvk_flush_gfx_state(cmd);
 
    uint32_t begin;
@@ -1726,6 +1732,9 @@ nvk_CmdDrawIndirect(VkCommandBuffer commandBuffer,
 void
 nvk_mme_draw_indexed_indirect(struct nvk_device *dev, struct mme_builder *b)
 {
+   if (dev->ctx->eng3d.cls < TURING_A)
+      return;
+
    struct mme_value begin = mme_load(b);
    struct mme_value64 draw_addr = mme_load_addr64(b);
    struct mme_value draw_count = mme_load(b);
@@ -1753,6 +1762,9 @@ nvk_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_buffer, buffer, _buffer);
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
+
+   /* TODO: Indirect draw pre-Turing */
+   assert(nvk_cmd_buffer_3d_cls(cmd) >= TURING_A);
 
    nvk_flush_gfx_state(cmd);
 

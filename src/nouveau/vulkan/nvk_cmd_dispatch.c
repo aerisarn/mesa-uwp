@@ -278,6 +278,9 @@ mme_store_global_vec3(struct mme_builder *b,
 void
 nvk_mme_dispatch_indirect(struct nvk_device *dev, struct mme_builder *b)
 {
+   if (dev->ctx->eng3d.cls < TURING_A)
+      return;
+
    struct mme_value local_size = mme_load(b);
    struct mme_value64 dispatch_addr = mme_load_addr64(b);
    struct mme_value64 root_desc_addr = mme_load_addr64(b);
@@ -311,6 +314,9 @@ nvk_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_buffer, buffer, _buffer);
    struct nvk_descriptor_state *desc = &cmd->state.cs.descriptors;
+
+   /* TODO: Indirect dispatch pre-Turing */
+   assert(nvk_cmd_buffer_device(cmd)->ctx->eng3d.cls >= TURING_A);
 
    desc->root.cs.base_group[0] = 0;
    desc->root.cs.base_group[1] = 0;

@@ -9,6 +9,7 @@
 #include "util/os_time.h"
 
 #include "nouveau_bo.h"
+#include "nouveau_context.h"
 
 #include "nvk_cl906f.h"
 #include "nvk_cl9097.h"
@@ -535,6 +536,9 @@ nvk_GetQueryPoolResults(VkDevice device,
 void
 nvk_mme_copy_queries(struct nvk_device *dev, struct mme_builder *b)
 {
+   if (dev->ctx->eng3d.cls < TURING_A)
+      return;
+
    struct mme_value64 dst_addr = mme_load_addr64(b);
    struct mme_value64 dst_stride = mme_load_addr64(b);
    struct mme_value64 avail_addr = mme_load_addr64(b);
@@ -637,6 +641,9 @@ nvk_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_query_pool, pool, queryPool);
    VK_FROM_HANDLE(nvk_buffer, dst_buffer, dstBuffer);
+
+   /* TODO: vkCmdCopyQueryPoolResults() with a compute shader */
+   assert(nvk_cmd_buffer_device(cmd)->ctx->eng3d.cls >= TURING_A);
 
    nvk_cmd_buffer_ref_bo(cmd, pool->bo);
 
