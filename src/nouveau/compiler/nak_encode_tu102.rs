@@ -374,7 +374,7 @@ fn encode_ast(bs: &mut impl BitSetMut, instr: &Instr, attr: &AttrAccess) {
     assert!(!attr.out_load);
 }
 
-fn encode_mem_access(bs: &mut impl BitSetMut, access: &MemAccess) {
+fn encode_mem_access(bs: &mut impl BitSetMut, sm: u8, access: &MemAccess) {
     bs.set_field(
         72..73,
         match access.addr_type {
@@ -394,27 +394,38 @@ fn encode_mem_access(bs: &mut impl BitSetMut, access: &MemAccess) {
             MemType::B128 => 6_u8,
         },
     );
-    bs.set_field(
-        77..79,
-        match access.scope {
-            MemScope::CTA => 0_u8,
-            MemScope::Cluster => 1_u8,
-            MemScope::GPU => 2_u8,
-            MemScope::System => 3_u8,
-        },
-    );
-    bs.set_field(
-        79..81,
-        match access.order {
-            /* Constant => 0_u8, */
-            /* Weak? => 1_u8, */
-            MemOrder::Strong => 2_u8,
-            /* MMIO => 3_u8, */
-        },
-    );
+    if sm <= 75 {
+        bs.set_field(
+            77..79,
+            match access.scope {
+                MemScope::CTA => 0_u8,
+                MemScope::Cluster => 1_u8,
+                MemScope::GPU => 2_u8,
+                MemScope::System => 3_u8,
+            },
+        );
+        bs.set_field(
+            79..81,
+            match access.order {
+                /* Constant => 0_u8, */
+                /* Weak? => 1_u8, */
+                MemOrder::Strong => 2_u8,
+                /* MMIO => 3_u8, */
+            },
+        );
+    } else {
+        assert!(access.scope == MemScope::System);
+        assert!(access.order == MemOrder::Strong);
+        bs.set_field(77..81, 0xa);
+    }
 }
 
-fn encode_ld(bs: &mut impl BitSetMut, instr: &Instr, access: &MemAccess) {
+fn encode_ld(
+    bs: &mut impl BitSetMut,
+    instr: &Instr,
+    sm: u8,
+    access: &MemAccess,
+) {
     encode_instr_base(bs, &instr, 0x980);
     assert!(instr.num_dsts() == 1);
     assert!(instr.num_srcs() == 1);
@@ -423,10 +434,15 @@ fn encode_ld(bs: &mut impl BitSetMut, instr: &Instr, access: &MemAccess) {
     encode_reg(bs, 24..32, *instr.src(0).as_reg().unwrap());
     bs.set_field(32..64, 0_u32 /* Immediate offset */);
 
-    encode_mem_access(bs, access);
+    encode_mem_access(bs, sm, access);
 }
 
-fn encode_st(bs: &mut impl BitSetMut, instr: &Instr, access: &MemAccess) {
+fn encode_st(
+    bs: &mut impl BitSetMut,
+    instr: &Instr,
+    sm: u8,
+    access: &MemAccess,
+) {
     encode_instr_base(bs, &instr, 0x385);
     assert!(instr.num_dsts() == 0);
     assert!(instr.num_srcs() == 2);
@@ -435,7 +451,7 @@ fn encode_st(bs: &mut impl BitSetMut, instr: &Instr, access: &MemAccess) {
     bs.set_field(32..64, 0_u32 /* Immediate offset */);
     encode_reg(bs, 64..72, *instr.src(1).as_reg().unwrap());
 
-    encode_mem_access(bs, access);
+    encode_mem_access(bs, sm, access);
 }
 
 fn encode_exit(bs: &mut impl BitSetMut, instr: &Instr) {
@@ -449,7 +465,7 @@ fn encode_exit(bs: &mut impl BitSetMut, instr: &Instr) {
     bs.set_field(90..91, false); /* NOT */
 }
 
-pub fn encode_instr(instr: &Instr) -> [u32; 4] {
+pub fn encode_instr(instr: &Instr, sm: u8) -> [u32; 4] {
     let mut enc = [0_u32; 4];
     let mut bs = BitSetMutView::new(&mut enc);
     match &instr.op {
@@ -462,8 +478,8 @@ pub fn encode_instr(instr: &Instr) -> [u32; 4] {
         Opcode::SHL => encode_shl(&mut bs, instr),
         Opcode::ALD(a) => encode_ald(&mut bs, instr, &a),
         Opcode::AST(a) => encode_ast(&mut bs, instr, &a),
-        Opcode::LD(a) => encode_ld(&mut bs, instr, a),
-        Opcode::ST(a) => encode_st(&mut bs, instr, a),
+        Opcode::LD(a) => encode_ld(&mut bs, instr, sm, a),
+        Opcode::ST(a) => encode_st(&mut bs, instr, sm, a),
         Opcode::EXIT => encode_exit(&mut bs, instr),
         _ => panic!("Unhandled instruction"),
     }
@@ -476,7 +492,7 @@ pub fn encode_shader(shader: &Shader) -> Vec<u32> {
     let func = &shader.functions[0];
     for b in &func.blocks {
         for instr in &b.instrs {
-            let e = encode_instr(&instr);
+            let e = encode_instr(&instr, shader.sm);
             encoded.extend_from_slice(&e[..]);
         }
     }

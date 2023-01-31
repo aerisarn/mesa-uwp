@@ -623,10 +623,12 @@ impl fmt::Display for MemType {
     }
 }
 
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum MemOrder {
     Strong,
 }
 
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum MemScope {
     CTA,
     Cluster,
@@ -645,6 +647,7 @@ impl fmt::Display for MemScope {
     }
 }
 
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum MemSpace {
     Global,
     Local,
