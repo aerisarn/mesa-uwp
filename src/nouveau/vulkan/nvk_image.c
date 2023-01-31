@@ -195,6 +195,10 @@ static VkResult nvk_image_init(struct nvk_device *device,
 {
    vk_image_init(&device->vk, &image->vk, pCreateInfo);
 
+   enum nil_image_usage_flags usage = 0; /* TODO */
+   if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR)
+      usage |= NIL_IMAGE_USAGE_LINEAR_BIT;
+
    struct nil_image_init_info nil_info = {
       .dim = vk_image_type_to_nil_dim(pCreateInfo->imageType),
       .format = vk_format_to_pipe_format(pCreateInfo->format),
@@ -206,6 +210,7 @@ static VkResult nvk_image_init(struct nvk_device *device,
       },
       .levels = pCreateInfo->mipLevels,
       .samples = pCreateInfo->samples,
+      .usage = usage,
    };
 
    ASSERTED bool ok = nil_image_init(nvk_device_physical(device)->dev,

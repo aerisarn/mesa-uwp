@@ -94,6 +94,9 @@ static struct nil_tiling
 choose_tiling(struct nil_extent4d extent_B,
               enum nil_image_usage_flags usage)
 {
+   if (usage & NIL_IMAGE_USAGE_LINEAR_BIT)
+      return (struct nil_tiling) { .is_tiled = false };
+
    struct nil_tiling tiling = {
       .is_tiled = true,
       .gob_height_8 = true,

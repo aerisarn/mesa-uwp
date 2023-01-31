@@ -24,6 +24,7 @@ enum nil_image_usage_flags {
    NIL_IMAGE_USAGE_STORAGE_BIT         = BITFIELD_BIT(4),
    NIL_IMAGE_USAGE_CUBE_BIT            = BITFIELD_BIT(5),
    NIL_IMAGE_USAGE_2D_VIEW_BIT         = BITFIELD_BIT(6),
+   NIL_IMAGE_USAGE_LINEAR_BIT          = BITFIELD_BIT(7),
 };
 
 enum PACKED nil_view_type {
