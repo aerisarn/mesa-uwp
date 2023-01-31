@@ -985,7 +985,7 @@ nvk_flush_cb_state(struct nvk_cmd_buffer *cmd)
 static void
 nvk_flush_dynamic_state(struct nvk_cmd_buffer *cmd)
 {
-   const struct vk_dynamic_graphics_state *dyn =
+   struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
 
    if (!vk_dynamic_graphics_state_any_dirty(dyn))
@@ -1002,6 +1002,8 @@ nvk_flush_dynamic_state(struct nvk_cmd_buffer *cmd)
 
    nvk_flush_ds_state(cmd);
    nvk_flush_cb_state(cmd);
+
+   vk_dynamic_graphics_state_clear_dirty(dyn);
 }
 
 static void
