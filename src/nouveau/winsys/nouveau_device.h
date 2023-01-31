@@ -35,6 +35,12 @@ struct nouveau_ws_device {
    enum nouveau_ws_device_type device_type;
    uint32_t chipset;
 
+   uint16_t cls_copy;
+   uint16_t cls_eng2d;
+   uint16_t cls_eng3d;
+   uint16_t cls_m2mf;
+   uint16_t cls_compute;
+
    char *chipset_name;
    char *device_name;
 

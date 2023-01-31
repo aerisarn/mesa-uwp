@@ -6,6 +6,8 @@
 #include <nvif/cl0080.h>
 #include <nvif/class.h>
 
+#include "nouveau_context.h"
+
 #include "util/u_debug.h"
 #include "util/os_file.h"
 #include "util/os_misc.h"
@@ -228,6 +230,18 @@ nouveau_ws_device_new(int fd)
    device->mp_count = value >> 8;
 
    nouveau_ws_device_set_dbg_flags(device);
+
+   struct nouveau_ws_context *tmp_ctx;
+   if (nouveau_ws_context_create(device, &tmp_ctx))
+      goto out_dev;
+
+   device->cls_copy     = tmp_ctx->copy.cls;
+   device->cls_eng2d    = tmp_ctx->eng2d.cls;
+   device->cls_eng3d    = tmp_ctx->eng3d.cls;
+   device->cls_m2mf     = tmp_ctx->m2mf.cls;
+   device->cls_compute  = tmp_ctx->compute.cls;
+
+   nouveau_ws_context_destroy(tmp_ctx);
 
    return device;
 
