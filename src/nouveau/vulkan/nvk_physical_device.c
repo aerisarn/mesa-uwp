@@ -56,6 +56,7 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    VkPhysicalDeviceVulkan13Features core_1_3 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
       /* Vulkan 1.3 features */
+      .inlineUniformBlock = true,
    };
 
    vk_foreach_struct(ext, pFeatures->pNext)
@@ -140,6 +141,8 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
    VkPhysicalDeviceVulkan13Properties core_1_3 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES,
       /* Vulkan 1.3 properties */
+      .maxInlineUniformBlockSize = 1 << 16,
+      .maxPerStageDescriptorInlineUniformBlocks = 32,
    };
 
    vk_foreach_struct(ext, pProperties->pNext)
@@ -181,6 +184,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *device,
 #endif
       .KHR_variable_pointers = true,
       .EXT_custom_border_color = true,
+      .EXT_inline_uniform_block = true,
    };
 }
 

@@ -5,6 +5,7 @@
 #include "nvk_pipeline_layout.h"
 
 #include "nir_builder.h"
+#include "nir_deref.h"
 
 struct lower_descriptors_ctx {
    const struct nvk_pipeline_layout *layout;
@@ -53,6 +54,22 @@ load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
       return nir_load_ubo(b, num_components, bit_size,
                           nir_imm_int(b, 0), root_desc_offset,
                           .align_mul = 16, .align_offset = 0, .range = ~0);
+   }
+
+   case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK: {
+      nir_ssa_def *base_addr =
+         nir_iadd_imm(b, load_descriptor_set_addr(b, set, ctx),
+                          binding_layout->offset);
+
+      assert(binding_layout->stride == 1);
+      const uint32_t binding_size = binding_layout->array_size;
+
+      /* Convert it to nir_address_format_64bit_bounded_global */
+      assert(num_components == 4 && bit_size == 32);
+      return nir_vec4(b, nir_unpack_64_2x32_split_x(b, base_addr),
+                         nir_unpack_64_2x32_split_y(b, base_addr),
+                         nir_imm_int(b, binding_size),
+                         nir_imm_int(b, 0));
    }
 
    default: {
