@@ -358,6 +358,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *device,
       .KHR_maintenance1 = true,
       .KHR_push_descriptor = true,
       .KHR_separate_depth_stencil_layouts = true,
+      .KHR_storage_buffer_storage_class = true,
 #ifdef NVK_USE_WSI_PLATFORM
       .KHR_swapchain = true,
       .KHR_swapchain_mutable_format = true,
