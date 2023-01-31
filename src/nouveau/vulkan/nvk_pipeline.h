@@ -4,8 +4,6 @@
 #include "nvk_private.h"
 #include "nvk_shader.h"
 
-#include "nouveau_push.h"
-
 #include "vk_graphics_state.h"
 #include "vk_object.h"
 
@@ -52,8 +50,8 @@ nvk_compute_pipeline_create(struct nvk_device *device,
 struct nvk_graphics_pipeline {
    struct nvk_pipeline base;
 
-   struct nouveau_ws_push push;
    uint32_t push_data[192];
+   uint32_t push_dw_count;
 
    struct vk_vertex_input_state _dynamic_vi;
    struct vk_dynamic_graphics_state dynamic;

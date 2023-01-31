@@ -615,11 +615,11 @@ void
 nvk_cmd_bind_graphics_pipeline(struct nvk_cmd_buffer *cmd,
                                struct nvk_graphics_pipeline *pipeline)
 {
-   struct nouveau_ws_push *p = cmd->push;
-
    cmd->state.gfx.pipeline = pipeline;
    vk_cmd_set_dynamic_graphics_state(&cmd->vk, &pipeline->dynamic);
-   nouveau_ws_push_append(p, &pipeline->push);
+
+   struct nv_push *p = P_SPACE(cmd->push, pipeline->push_dw_count);
+   nv_push_raw(p, pipeline->push_data, pipeline->push_dw_count);
 }
 
 static void

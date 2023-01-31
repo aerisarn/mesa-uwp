@@ -3,6 +3,7 @@
 #include "nvk_device.h"
 #include "nvk_pipeline_layout.h"
 #include "nvk_shader.h"
+#include "nv_push.h"
 #include "vk_nir.h"
 #include "vk_pipeline.h"
 
@@ -13,18 +14,16 @@
 #include "nvk_clc397.h"
 
 static void
-emit_pipeline_ts_state(struct nvk_graphics_pipeline *pipeline,
+emit_pipeline_ts_state(struct nv_push *p,
                        const struct vk_tessellation_state *ts)
 {
    assert(ts->domain_origin == VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT);
 }
 
 static void
-emit_pipeline_vp_state(struct nvk_graphics_pipeline *pipeline,
+emit_pipeline_vp_state(struct nv_push *p,
                        const struct vk_viewport_state *vp)
 {
-   struct nv_push *p = P_SPACE(&pipeline->push, 0);
-
    P_IMMD(p, NV9097, SET_VIEWPORT_Z_CLIP, vp->depth_clip_negative_one_to_one ?
                                           RANGE_NEGATIVE_W_TO_POSITIVE_W :
                                           RANGE_ZERO_TO_POSITIVE_W);
@@ -56,11 +55,9 @@ vk_to_nv9097_provoking_vertex(VkProvokingVertexModeEXT vk_mode)
 }
 
 static void
-emit_pipeline_rs_state(struct nvk_graphics_pipeline *pipeline,
+emit_pipeline_rs_state(struct nv_push *p,
                        const struct vk_rasterization_state *rs)
 {
-   struct nv_push *p = P_SPACE(&pipeline->push, 0);
-
    /* TODO: Depth clip/clamp? */
    P_IMMD(p, NV9097, SET_VIEWPORT_CLIP_CONTROL, {
       .min_z_zero_max_z_one      = MIN_Z_ZERO_MAX_Z_ONE_TRUE,
@@ -88,11 +85,9 @@ emit_pipeline_rs_state(struct nvk_graphics_pipeline *pipeline,
 }
 
 static void
-emit_pipeline_ms_state(struct nvk_graphics_pipeline *pipeline,
+emit_pipeline_ms_state(struct nv_push *p,
                        const struct vk_multisample_state *ms)
 {
-   struct nv_push *p = P_SPACE(&pipeline->push, 0);
-
    P_IMMD(p, NV9097, SET_ANTI_ALIAS, ffs(ms->rasterization_samples) - 1);
    P_IMMD(p, NV9097, SET_ANTI_ALIAS_ENABLE, ms->sample_shading_enable);
    P_IMMD(p, NV9097, SET_ANTI_ALIAS_ALPHA_CONTROL, {
@@ -154,11 +149,9 @@ vk_to_nv9097_blend_factor(VkBlendFactor vk_factor)
 }
 
 static void
-emit_pipeline_cb_state(struct nvk_graphics_pipeline *pipeline,
+emit_pipeline_cb_state(struct nv_push *p,
                        const struct vk_color_blend_state *cb)
 {
-   struct nv_push *p = P_SPACE(&pipeline->push, 0);
-
    P_IMMD(p, NV9097, SET_BLEND_STATE_PER_TARGET, ENABLE_TRUE);
 
    P_IMMD(p, NV9097, SET_LOGIC_OP, cb->logic_op_enable);
@@ -244,9 +237,9 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
       nvk_shader_upload(device, &pipeline->base.shaders[stage]);
    }
 
-   nouveau_ws_push_init_cpu(&pipeline->push, &pipeline->push_data,
-                            sizeof(pipeline->push_data));
-   struct nv_push *p = P_SPACE(&pipeline->push, 0);
+   struct nv_push push;
+   nv_push_init(&push, pipeline->push_data, ARRAY_SIZE(pipeline->push_data));
+   struct nv_push *p = &push;
 
    struct nvk_shader *last_geom = NULL;
    for (gl_shader_stage stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
@@ -339,11 +332,13 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
                                             NULL, &all, NULL, 0, NULL);
    assert(result == VK_SUCCESS);
 
-   if (state.ts) emit_pipeline_ts_state(pipeline, state.ts);
-   if (state.vp) emit_pipeline_vp_state(pipeline, state.vp);
-   if (state.rs) emit_pipeline_rs_state(pipeline, state.rs);
-   if (state.ms) emit_pipeline_ms_state(pipeline, state.ms);
-   if (state.cb) emit_pipeline_cb_state(pipeline, state.cb);
+   if (state.ts) emit_pipeline_ts_state(&push, state.ts);
+   if (state.vp) emit_pipeline_vp_state(&push, state.vp);
+   if (state.rs) emit_pipeline_rs_state(&push, state.rs);
+   if (state.ms) emit_pipeline_ms_state(&push, state.ms);
+   if (state.cb) emit_pipeline_cb_state(&push, state.cb);
+
+   pipeline->push_dw_count = nv_push_dw_count(&push);
 
    pipeline->dynamic.vi = &pipeline->_dynamic_vi;
    vk_dynamic_graphics_state_fill(&pipeline->dynamic, &state);

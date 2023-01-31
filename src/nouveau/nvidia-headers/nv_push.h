@@ -242,4 +242,13 @@ nv_push_val(struct nv_push *push, uint32_t idx, uint32_t val)
    P_INLINE_DATA(push, val);
 }
 
+static inline void
+nv_push_raw(struct nv_push *push, uint32_t *raw_dw, uint32_t dw_count)
+{
+   assert(push->end + dw_count <= push->limit);
+   memcpy(push->end, raw_dw, dw_count * 4);
+   push->end += dw_count;
+   push->last_size = NULL;
+}
+
 #endif /* NV_PUSH_H */
