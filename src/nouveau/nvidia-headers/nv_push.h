@@ -32,6 +32,12 @@ nv_push_dw_count(struct nv_push *push)
    return push->end - push->start;
 }
 
+#ifndef NDEBUG
+void nv_push_validate(struct nv_push *push);
+#else
+static inline void nv_push_validate(struct nv_push *push) { }
+#endif
+
 #define SUBC_NV9097 0
 #define SUBC_NVA097 0
 #define SUBC_NVB097 0

@@ -34,7 +34,7 @@ endforeach
 
 _libnvidia_headers = static_library(
   'nvidia_headers',
-  cl_generated,
+  ['nv_push.c', cl_generated],
   include_directories : ['.', 'classes', inc_include, inc_src],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
