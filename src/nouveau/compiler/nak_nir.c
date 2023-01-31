@@ -3,8 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "nak.h"
-#include "nir.h"
+#include "nak_private.h"
 #include "nir_builder.h"
 
 #define OPT(nir, pass, ...) ({                           \

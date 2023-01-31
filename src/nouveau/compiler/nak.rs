@@ -24,6 +24,7 @@ use util::NextMultipleOf;
 pub extern "C" fn nak_compiler_create(
     dev: *const nv_device_info,
 ) -> *mut nak_compiler {
+    assert!(!dev.is_null());
     let dev = unsafe { &*dev };
 
     let nak = Box::new(nak_compiler { sm: dev.sm });
