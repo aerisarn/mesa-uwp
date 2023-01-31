@@ -86,6 +86,14 @@ impl<'a> ShaderFromNir<'a> {
         let dst = self.get_dst(&alu.def);
 
         match alu.op {
+            nir_op_b2f32 => {
+                self.instrs.push(Instr::new(Op::Sel(OpSel {
+                    dst: dst,
+                    cond: srcs[0],
+                    srcs: [Src::Zero, Src::new_imm_u32(0x3f800000)],
+                    cond_mod: SrcMod::BNot,
+                })));
+            }
             nir_op_bcsel => {
                 self.instrs
                     .push(Instr::new_sel(dst, srcs[0], srcs[1], srcs[2]));
