@@ -17,6 +17,7 @@
 
 #include <sys/types.h>
 
+struct nak_compiler;
 struct nvk_instance;
 
 struct nvk_physical_device {
@@ -24,6 +25,7 @@ struct nvk_physical_device {
    struct nv_device_info info;
    dev_t render_dev;
    dev_t primary_dev;
+   struct nak_compiler *nak;
    struct wsi_device wsi_device;
 
    uint8_t device_uuid[VK_UUID_SIZE];

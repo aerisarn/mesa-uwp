@@ -120,6 +120,9 @@ const nir_shader_compiler_options *
 nvk_physical_device_nir_options(const struct nvk_physical_device *pdev,
                                 gl_shader_stage stage)
 {
+   if (use_nak(stage))
+      return nak_nir_options(pdev->nak);
+
    enum pipe_shader_type p_stage = pipe_shader_type_from_mesa(stage);
    return nv50_ir_nir_shader_compiler_options(pdev->info.chipset, p_stage);
 }
@@ -1210,9 +1213,7 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
                          const struct nvk_fs_key *fs_key,
                          struct nvk_shader *shader)
 {
-   struct nak_compiler *nak = nak_compiler_create(&pdev->info);
-
-   struct nak_shader_bin *bin = nak_compile_shader(nir, nak);
+   struct nak_shader_bin *bin = nak_compile_shader(nir, pdev->nak);
 
    shader->stage = nir->info.stage;
 
@@ -1238,8 +1239,6 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
 #ifndef NDEBUG
    nvk_shader_dump(shader);
 #endif
-
-   nak_compiler_destroy(nak);
 
    return VK_SUCCESS;
 }

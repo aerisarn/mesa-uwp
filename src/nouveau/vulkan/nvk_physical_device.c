@@ -4,6 +4,7 @@
  */
 #include "nvk_physical_device.h"
 
+#include "nak.h"
 #include "nvk_buffer.h"
 #include "nvk_entrypoints.h"
 #include "nvk_format.h"
@@ -833,6 +834,12 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    pdev->render_dev = render_dev;
    pdev->info = info;
 
+   pdev->nak = nak_compiler_create(&pdev->info);
+   if (pdev->nak == NULL) {
+      result = vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      goto fail_init;
+   }
+
    nvk_physical_device_init_pipeline_cache(pdev);
 
    pdev->mem_heaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
@@ -882,6 +889,8 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
 
 fail_disk_cache:
    nvk_physical_device_free_disk_cache(pdev);
+   nak_compiler_destroy(pdev->nak);
+fail_init:
    vk_physical_device_finish(&pdev->vk);
 fail_alloc:
    vk_free(&instance->vk.alloc, pdev);
@@ -896,6 +905,7 @@ nvk_physical_device_destroy(struct vk_physical_device *vk_pdev)
 
    nvk_finish_wsi(pdev);
    nvk_physical_device_free_disk_cache(pdev);
+   nak_compiler_destroy(pdev->nak);
    vk_physical_device_finish(&pdev->vk);
    vk_free(&pdev->vk.instance->alloc, pdev);
 }
