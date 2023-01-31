@@ -1381,22 +1381,6 @@ nvk_CmdDrawIndexed(VkCommandBuffer commandBuffer,
    P_INLINE_DATA(p, firstInstance);
 }
 
-static inline void
-mme_read_fifoed(struct mme_builder *b,
-                struct mme_value64 addr,
-                uint32_t count)
-{
-   mme_mthd(b, NVC597_SET_MME_MEM_ADDRESS_A);
-   mme_emit(b, addr.hi);
-   mme_emit(b, addr.lo);
-
-   mme_mthd(b, NVC597_MME_DMA_READ_FIFOED);
-   mme_emit(b, mme_imm(count));
-
-   mme_tu104_alu_no_dst(b, MME_TU104_ALU_OP_EXTENDED,
-                        mme_imm(0x1000), mme_imm(1), 0);
-}
-
 void
 nvk_mme_draw_indirect(struct nvk_device *dev, struct mme_builder *b)
 {
@@ -1409,7 +1393,7 @@ nvk_mme_draw_indirect(struct nvk_device *dev, struct mme_builder *b)
 
    struct mme_value draw = mme_mov(b, mme_zero());
    mme_while(b, ult, draw, draw_count) {
-      mme_read_fifoed(b, draw_addr, 4);
+      mme_tu104_read_fifoed(b, draw_addr, mme_imm(4));
 
       nvk_build_mme_draw(b, begin);
 
@@ -1463,7 +1447,7 @@ nvk_mme_draw_indexed_indirect(struct nvk_device *dev, struct mme_builder *b)
 
    struct mme_value draw = mme_mov(b, mme_zero());
    mme_while(b, ult, draw, draw_count) {
-      mme_read_fifoed(b, draw_addr, 5);
+      mme_tu104_read_fifoed(b, draw_addr, mme_imm(5));
 
       nvk_mme_build_draw_indexed(b, begin);
 
