@@ -29,6 +29,7 @@
 #include "gallium/drivers/r600/r600_shader.h"
 #include "nir.h"
 #include "nir_intrinsics.h"
+#include "nir_intrinsics_indices.h"
 #include "sfn_debug.h"
 #include "sfn_instr.h"
 #include "sfn_instr_alugroup.h"
@@ -947,7 +948,8 @@ Shader::evaluate_resource_offset(nir_intrinsic_instr *instr, int src_id)
    auto& vf = value_factory();
 
    PRegister uav_id{nullptr};
-   int offset = 0;
+   int offset = nir_intrinsic_has_range_base(instr) ?
+                   nir_intrinsic_range_base(instr) : 0;
 
    auto uav_id_const = nir_src_as_const_value(instr->src[src_id]);
    if (uav_id_const) {
