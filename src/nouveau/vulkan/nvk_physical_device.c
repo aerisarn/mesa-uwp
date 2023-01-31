@@ -302,6 +302,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *device,
       .KHR_get_memory_requirements2 = true,
       .KHR_format_feature_flags2 = true,
       .KHR_imageless_framebuffer = true,
+      .KHR_maintenance1 = true,
       .KHR_push_descriptor = true,
       .KHR_separate_depth_stencil_layouts = true,
 #ifdef NVK_USE_WSI_PLATFORM
