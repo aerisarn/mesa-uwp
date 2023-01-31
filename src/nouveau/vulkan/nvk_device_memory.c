@@ -105,7 +105,7 @@ nvk_allocate_memory(struct nvk_device *device,
    }
    if (!mem->bo) {
       vk_object_free(&device->vk, pAllocator, mem);
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
    }
 
    VkResult result;
