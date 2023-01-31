@@ -966,7 +966,7 @@ TEST_F(mme_tu104_sim_test, mul_mulh)
 static inline struct mme_value
 mme_mulu(struct mme_builder *b, struct mme_value x, struct mme_value y)
 {
-   return mme_alu(b, MME_ALU_OP_MULU, x, y, 0);
+   return mme_alu(b, MME_ALU_OP_MULU, x, y);
 }
 
 TEST_F(mme_tu104_sim_test, mulu_imm)

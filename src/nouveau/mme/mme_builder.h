@@ -84,21 +84,19 @@ mme_alu_to(struct mme_builder *b,
            struct mme_value dst,
            enum mme_alu_op op,
            struct mme_value x,
-           struct mme_value y,
-           uint16_t implicit_imm)
+           struct mme_value y)
 {
-   mme_tu104_alu_to(b, dst, op, x, y, implicit_imm);
+   mme_tu104_alu_to(b, dst, op, x, y);
 }
 
 static inline struct mme_value
 mme_alu(struct mme_builder *b,
         enum mme_alu_op op,
         struct mme_value x,
-        struct mme_value y,
-        uint16_t implicit_imm)
+        struct mme_value y)
 {
    struct mme_value dst = mme_alloc_reg(b);
-   mme_alu_to(b, dst, op, x, y, implicit_imm);
+   mme_alu_to(b, dst, op, x, y);
    return dst;
 }
 
@@ -106,10 +104,9 @@ static inline void
 mme_alu_no_dst(struct mme_builder *b,
                enum mme_alu_op op,
                struct mme_value x,
-               struct mme_value y,
-               uint16_t implicit_imm)
+               struct mme_value y)
 {
-   mme_alu_to(b, mme_zero(), op, x, y, implicit_imm);
+   mme_alu_to(b, mme_zero(), op, x, y);
 }
 
 static inline void
@@ -141,14 +138,14 @@ static inline void                                          \
 mme_##op##_to(struct mme_builder *b, struct mme_value dst,  \
               struct mme_value x)                           \
 {                                                           \
-   mme_alu_to(b, dst, MME_ALU_OP_##OP, x, mme_zero(), 0);   \
+   mme_alu_to(b, dst, MME_ALU_OP_##OP, x, mme_zero());      \
 }                                                           \
                                                             \
 static inline struct mme_value                              \
 mme_##op(struct mme_builder *b,                             \
          struct mme_value x)                                \
 {                                                           \
-   return mme_alu(b, MME_ALU_OP_##OP, x, mme_zero(), 0);    \
+   return mme_alu(b, MME_ALU_OP_##OP, x, mme_zero());       \
 }
 
 #define MME_DEF_ALU2(op, OP)                                \
@@ -156,14 +153,14 @@ static inline void                                          \
 mme_##op##_to(struct mme_builder *b, struct mme_value dst,  \
               struct mme_value x, struct mme_value y)       \
 {                                                           \
-   mme_alu_to(b, dst, MME_ALU_OP_##OP, x, y, 0);            \
+   mme_alu_to(b, dst, MME_ALU_OP_##OP, x, y);               \
 }                                                           \
                                                             \
 static inline struct mme_value                              \
 mme_##op(struct mme_builder *b,                             \
          struct mme_value x, struct mme_value y)            \
 {                                                           \
-   return mme_alu(b, MME_ALU_OP_##OP, x, y, 0);             \
+   return mme_alu(b, MME_ALU_OP_##OP, x, y);                \
 }
 
 MME_DEF_ALU1(mov,    ADD);
@@ -346,7 +343,7 @@ static inline void
 mme_dwrite(struct mme_builder *b,
            struct mme_value idx, struct mme_value val)
 {
-   mme_alu_no_dst(b, MME_ALU_OP_DWRITE, idx, val, 0);
+   mme_alu_no_dst(b, MME_ALU_OP_DWRITE, idx, val);
 }
 
 static inline void

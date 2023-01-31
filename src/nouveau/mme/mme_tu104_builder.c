@@ -321,10 +321,9 @@ mme_tu104_alu_to(struct mme_builder *b,
                  struct mme_value dst,
                  enum mme_alu_op op,
                  struct mme_value x,
-                 struct mme_value y,
-                 uint16_t implicit_imm)
+                 struct mme_value y)
 {
-   build_alu_to(b, dst, mme_to_tu104_alu_op(op), x, y, implicit_imm, false);
+   build_alu_to(b, dst, mme_to_tu104_alu_op(op), x, y, 0, false);
 }
 
 void

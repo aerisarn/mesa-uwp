@@ -51,8 +51,7 @@ void mme_tu104_alu_to(struct mme_builder *b,
                       struct mme_value dst,
                       enum mme_alu_op op,
                       struct mme_value x,
-                      struct mme_value y,
-                      uint16_t implicit_imm);
+                      struct mme_value y);
 
 void mme_tu104_alu64_to(struct mme_builder *b,
                         struct mme_value64 dst,
