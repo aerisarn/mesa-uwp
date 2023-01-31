@@ -5,7 +5,8 @@
 #include "clb097tex.h"
 
 struct nil_format_info {
-   uint32_t rt;
+   /* Color of depth/stencil target format */
+   uint32_t czt;
    struct nil_tic_format tic;
 };
 
@@ -28,7 +29,7 @@ struct nil_format_info {
 #define SF_D(sz) NVB097_TEXHEAD_BL_COMPONENTS_SIZES_##sz
 #define SF(c, pf, sf, r, g, b, a, t0, t1, t2, t3, sz, u)                \
    [PIPE_FORMAT_##pf] = {                                               \
-      .rt = sf,                                                         \
+      .czt = sf,                                                        \
       .tic = {                                                          \
          SF_##c(sz),                                                    \
          NV9097_TEXHEAD0_R_DATA_TYPE_NUM_##t0,                          \
@@ -334,7 +335,7 @@ nil_format_supports_render(struct nouveau_ws_device *dev,
 {
    assert(format < PIPE_FORMAT_COUNT);
    const struct nil_format_info *fmt = &nil_format_infos[format];
-   return fmt->rt != 0;
+   return fmt->czt != 0;
 }
 
 uint32_t
@@ -342,7 +343,7 @@ nil_format_to_render(enum pipe_format format)
 {
    assert(format < PIPE_FORMAT_COUNT);
    const struct nil_format_info *fmt = &nil_format_infos[format];
-   return fmt->rt;
+   return fmt->czt;
 }
 
 const struct nil_tic_format *
