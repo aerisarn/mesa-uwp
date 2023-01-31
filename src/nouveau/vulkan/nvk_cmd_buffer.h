@@ -9,6 +9,8 @@
 #include "vulkan/runtime/vk_command_buffer.h"
 #include "vulkan/runtime/vk_command_pool.h"
 
+struct nvk_image_view;
+
 #define NVK_CMD_BUF_SIZE 64*1024
 
 struct nvk_cmd_pool {
@@ -48,7 +50,29 @@ struct nvk_descriptor_state {
    uint32_t sets_dirty;
 };
 
+struct nvk_attachment {
+   struct nvk_image_view *iview;
+
+   VkResolveModeFlagBits resolve_mode;
+   struct nvk_image_view *resolve_iview;
+};
+
+struct nvk_rendering_state {
+   VkRenderingFlagBits flags;
+
+   VkRect2D area;
+   uint32_t layer_count;
+   uint32_t view_mask;
+   uint32_t samples;
+
+   uint32_t color_att_count;
+   struct nvk_attachment color_att[NVK_MAX_RTS];
+   struct nvk_attachment depth_att;
+   struct nvk_attachment stencil_att;
+};
+
 struct nvk_graphics_state {
+   struct nvk_rendering_state render;
    struct nvk_graphics_pipeline *pipeline;
    struct nvk_descriptor_state descriptors;
 

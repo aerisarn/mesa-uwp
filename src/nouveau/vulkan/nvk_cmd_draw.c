@@ -1,6 +1,12 @@
 #include "nvk_cmd_buffer.h"
 #include "nvk_device.h"
+#include "nvk_image.h"
+#include "nvk_image_view.h"
 #include "nvk_physical_device.h"
+
+#include "nil_format.h"
+#include "vulkan/runtime/vk_render_pass.h"
+#include "vulkan/util/vk_format.h"
 
 #include "nouveau_context.h"
 
@@ -246,6 +252,270 @@ nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
    P_IMMD(p, NV9097, INVALIDATE_SAMPLER_CACHE, {
       .lines = LINES_ALL
    });
+
+   char gcbiar_data[VK_GCBIARR_DATA_SIZE(NVK_MAX_RTS)];
+   const VkRenderingInfo *resume_info =
+      vk_get_command_buffer_inheritance_as_rendering_resume(cmd->vk.level,
+                                                            pBeginInfo,
+                                                            gcbiar_data);
+   if (resume_info)
+      nvk_CmdBeginRendering(nvk_cmd_buffer_to_handle(cmd), resume_info);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdClearAttachments(VkCommandBuffer commandBuffer,
+                        uint32_t attachmentCount,
+                        const VkClearAttachment *pAttachments,
+                        uint32_t rectCount,
+                        const VkClearRect *pRects)
+{
+   unreachable("TODO: Attachment clears");
+}
+
+static void
+nvk_attachment_init(struct nvk_attachment *att,
+                    const VkRenderingAttachmentInfo *info)
+{
+   if (info == NULL || info->imageView == VK_NULL_HANDLE) {
+      *att = (struct nvk_attachment) { .iview = NULL, };
+      return;
+   }
+
+   VK_FROM_HANDLE(nvk_image_view, iview, info->imageView);
+   *att = (struct nvk_attachment) {
+      .iview = iview,
+   };
+
+   if (info->resolveMode != VK_RESOLVE_MODE_NONE) {
+      VK_FROM_HANDLE(nvk_image_view, res_iview, info->resolveImageView);
+      assert(iview->vk.format == res_iview->vk.format);
+
+      att->resolve_mode = info->resolveMode;
+      att->resolve_iview = res_iview;
+   }
+}
+
+void
+nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
+                      const VkRenderingInfo *pRenderingInfo)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   struct nvk_rendering_state *render = &cmd->state.gfx.render;
+   struct nouveau_ws_push *p = cmd->push;
+
+   memset(render, 0, sizeof(*render));
+
+   render->flags = pRenderingInfo->flags;
+   render->area = pRenderingInfo->renderArea;
+   render->view_mask = pRenderingInfo->viewMask;
+   render->layer_count = pRenderingInfo->layerCount;
+   render->samples = 0;
+
+   const uint32_t layer_count =
+      render->view_mask ? util_last_bit(render->view_mask) :
+                          render->layer_count;
+
+   P_MTHD(p, NV9097, SET_SURFACE_CLIP_HORIZONTAL);
+   P_NV9097_SET_SURFACE_CLIP_HORIZONTAL(p, {
+      .x       = render->area.offset.x,
+      .width   = render->area.extent.width,
+   });
+   P_NV9097_SET_SURFACE_CLIP_VERTICAL(p, {
+      .y       = render->area.offset.y,
+      .height  = render->area.extent.height,
+   });
+
+   render->color_att_count = pRenderingInfo->colorAttachmentCount;
+   for (uint32_t i = 0; i < render->color_att_count; i++) {
+      nvk_attachment_init(&render->color_att[i],
+                          &pRenderingInfo->pColorAttachments[i]);
+   }
+
+   nvk_attachment_init(&render->depth_att,
+                       pRenderingInfo->pDepthAttachment);
+   nvk_attachment_init(&render->stencil_att,
+                       pRenderingInfo->pStencilAttachment);
+
+   /* If we don't have any attachments, emit a dummy color attachment */
+   if (render->color_att_count == 0 &&
+       render->depth_att.iview == NULL &&
+       render->stencil_att.iview == NULL)
+      render->color_att_count = 1;
+
+   for (uint32_t i = 0; i < render->color_att_count; i++) {
+      if (render->color_att[i].iview) {
+         const struct nvk_image_view *iview = render->color_att[i].iview;
+         const struct nvk_image *image = (struct nvk_image *)iview->vk.image;
+         const struct nil_image_level *level =
+            &image->nil.levels[iview->vk.base_mip_level];
+
+         assert(render->samples == 0 || render->samples == image->vk.samples);
+         render->samples |= image->vk.samples;
+
+         nvk_push_image_ref(cmd->push, image, NOUVEAU_WS_BO_WR);
+         uint64_t addr = nvk_image_base_address(image) + level->offset_B;
+
+         P_MTHD(p, NV9097, SET_COLOR_TARGET_A(i));
+         P_NV9097_SET_COLOR_TARGET_A(p, i, addr >> 32);
+         P_NV9097_SET_COLOR_TARGET_B(p, i, addr);
+         assert(level->tiling.is_tiled);
+         P_NV9097_SET_COLOR_TARGET_WIDTH(p, i, iview->vk.extent.width);
+         P_NV9097_SET_COLOR_TARGET_HEIGHT(p, i, iview->vk.extent.height);
+         const enum pipe_format p_format =
+            vk_format_to_pipe_format(iview->vk.format);
+         P_NV9097_SET_COLOR_TARGET_FORMAT(p, i, nil_format_to_render(p_format));
+         P_NV9097_SET_COLOR_TARGET_MEMORY(p, i, {
+            .block_width   = BLOCK_WIDTH_ONE_GOB,
+            .block_height  = level->tiling.y_log2,
+            .block_depth   = level->tiling.z_log2,
+            .layout        = LAYOUT_BLOCKLINEAR,
+            .third_dimension_control =
+               (image->nil.dim == NIL_IMAGE_DIM_3D) ?
+               THIRD_DIMENSION_CONTROL_THIRD_DIMENSION_DEFINES_DEPTH_SIZE :
+               THIRD_DIMENSION_CONTROL_THIRD_DIMENSION_DEFINES_ARRAY_SIZE,
+         });
+         P_NV9097_SET_COLOR_TARGET_THIRD_DIMENSION(p, i,
+            iview->vk.base_array_layer + layer_count);
+         P_NV9097_SET_COLOR_TARGET_ARRAY_PITCH(p, i,
+            image->nil.array_stride_B >> 2);
+         P_NV9097_SET_COLOR_TARGET_LAYER(p, i, iview->vk.base_array_layer);
+      } else {
+         P_MTHD(p, NV9097, SET_COLOR_TARGET_A(i));
+         P_NV9097_SET_COLOR_TARGET_A(p, i, 0);
+         P_NV9097_SET_COLOR_TARGET_B(p, i, 0);
+         P_NV9097_SET_COLOR_TARGET_WIDTH(p, i, 64);
+         P_NV9097_SET_COLOR_TARGET_HEIGHT(p, i, 0);
+         P_NV9097_SET_COLOR_TARGET_FORMAT(p, i, V_DISABLED);
+         P_NV9097_SET_COLOR_TARGET_MEMORY(p, i, {
+            .layout        = LAYOUT_BLOCKLINEAR,
+         });
+         P_NV9097_SET_COLOR_TARGET_THIRD_DIMENSION(p, i, layer_count);
+         P_NV9097_SET_COLOR_TARGET_ARRAY_PITCH(p, i, 0);
+         P_NV9097_SET_COLOR_TARGET_LAYER(p, i, 0);
+      }
+   }
+
+   P_IMMD(p, NV9097, SET_CT_SELECT, {
+      .target_count = render->color_att_count,
+      .target0 = 0,
+      .target1 = 1,
+      .target2 = 2,
+      .target3 = 3,
+      .target4 = 4,
+      .target5 = 5,
+      .target6 = 6,
+      .target7 = 7,
+   });
+
+   if (render->depth_att.iview || render->stencil_att.iview) {
+      struct nvk_image_view *iview = render->depth_att.iview ?
+                                     render->depth_att.iview :
+                                     render->stencil_att.iview;
+      const struct nvk_image *image = (struct nvk_image *)iview->vk.image;
+      const struct nil_image_level *level =
+         &image->nil.levels[iview->vk.base_mip_level];
+
+      assert(render->samples == 0 || render->samples == image->vk.samples);
+      render->samples |= image->vk.samples;
+
+      nvk_push_image_ref(cmd->push, image, NOUVEAU_WS_BO_WR);
+      uint64_t addr = nvk_image_base_address(image) + level->offset_B;
+
+      P_MTHD(p, NV9097, SET_ZT_A);
+      P_NV9097_SET_ZT_A(p, addr >> 32);
+      P_NV9097_SET_ZT_B(p, addr);
+      const enum pipe_format p_format =
+         vk_format_to_pipe_format(iview->vk.format);
+      P_NV9097_SET_ZT_FORMAT(p, nil_format_to_render(p_format));
+      assert(image->nil.dim != NIL_IMAGE_DIM_3D);
+      P_NV9097_SET_ZT_BLOCK_SIZE(p, {
+         .width = WIDTH_ONE_GOB,
+         .height = level->tiling.y_log2,
+         .depth = level->tiling.z_log2,
+      });
+      P_NV9097_SET_ZT_ARRAY_PITCH(p, image->nil.array_stride_B >> 2);
+
+      P_MTHD(p, NV9097, SET_ZT_SELECT);
+      P_NV9097_SET_ZT_SELECT(p, 1 /* target_count */);
+
+      P_NV9097_SET_ZT_SIZE_A(p, iview->vk.extent.width);
+      P_NV9097_SET_ZT_SIZE_B(p, iview->vk.extent.height);
+      P_NV9097_SET_ZT_SIZE_C(p, {
+         .third_dimension  = iview->vk.base_array_layer + layer_count,
+         .control          = (image->nil.dim == NIL_IMAGE_DIM_3D) ?
+                             CONTROL_ARRAY_SIZE_IS_ONE :
+                             CONTROL_THIRD_DIMENSION_DEFINES_ARRAY_SIZE,
+      });
+
+      P_IMMD(p, NV9097, SET_ZT_LAYER, iview->vk.base_array_layer);
+   } else {
+      P_IMMD(p, NV9097, SET_ZT_SELECT, 0 /* target_count */);
+   }
+
+   P_IMMD(p, NV9097, SET_ANTI_ALIAS, ffs(render->samples) - 1);
+
+   if (render->flags & VK_RENDERING_RESUMING_BIT)
+      return;
+
+   uint32_t clear_count = 0;
+   VkClearAttachment clear_att[NVK_MAX_RTS + 1];
+   for (uint32_t i = 0; i < pRenderingInfo->colorAttachmentCount; i++) {
+      const VkRenderingAttachmentInfo *att_info =
+         &pRenderingInfo->pColorAttachments[i];
+      if (att_info->imageView == VK_NULL_HANDLE ||
+          att_info->loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR)
+         continue;
+
+      clear_att[clear_count++] = (VkClearAttachment) {
+         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+         .colorAttachment = i,
+         .clearValue = att_info->clearValue,
+      };
+   }
+
+   clear_att[clear_count] = (VkClearAttachment) { .aspectMask = 0, };
+   if (pRenderingInfo->pDepthAttachment != NULL &&
+       pRenderingInfo->pDepthAttachment->imageView != VK_NULL_HANDLE &&
+       pRenderingInfo->pDepthAttachment->loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR) {
+      clear_att[clear_count].aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+      clear_att[clear_count].clearValue.depthStencil.depth =
+         pRenderingInfo->pDepthAttachment->clearValue.depthStencil.depth;
+   }
+   if (pRenderingInfo->pStencilAttachment != NULL &&
+       pRenderingInfo->pStencilAttachment->imageView != VK_NULL_HANDLE &&
+       pRenderingInfo->pStencilAttachment->loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR) {
+      clear_att[clear_count].aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+      clear_att[clear_count].clearValue.depthStencil.stencil =
+         pRenderingInfo->pStencilAttachment->clearValue.depthStencil.depth;
+   }
+   if (clear_att[clear_count].aspectMask != 0)
+      clear_count++;
+
+   if (clear_count > 0) {
+      const VkClearRect clear_rect = {
+         .rect = render->area,
+         .baseArrayLayer = 0,
+         .layerCount = render->view_mask ? 1 : render->layer_count,
+      };
+      nvk_CmdClearAttachments(nvk_cmd_buffer_to_handle(cmd),
+                              clear_count, clear_att, 1, &clear_rect);
+   }
+
+   /* TODO: Attachment clears */
+}
+
+void
+nvk_CmdEndRendering(VkCommandBuffer commandBuffer)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   struct nvk_rendering_state *render = &cmd->state.gfx.render;
+
+   if (!(render->flags & VK_RENDERING_SUSPENDING_BIT)) {
+      /* TODO: Attachment resolves */
+   }
+
+   /* TODO: Tear down rendering if needed */
+   memset(render, 0, sizeof(*render));
 }
 
 void
