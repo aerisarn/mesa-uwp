@@ -160,10 +160,10 @@ nvk_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
    vk_foreach_struct(ext, pFormatProperties->pNext) {
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR: {
-         VkFormatProperties3KHR *props = (VkFormatProperties3KHR *)ext;
-         props->linearTilingFeatures = linear2;
-         props->optimalTilingFeatures = optimal2;
-         props->bufferFeatures = buffer2;
+         VkFormatProperties3KHR *p = (void *)ext;
+         p->linearTilingFeatures = linear2;
+         p->optimalTilingFeatures = optimal2;
+         p->bufferFeatures = buffer2;
          break;
       }
 
