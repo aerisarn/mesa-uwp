@@ -183,10 +183,14 @@ nvk_CreateDescriptorSetLayout(VkDevice _device,
       nvk_descriptor_stride_align_for_type(binding->descriptorType, type_list,
                                            &stride, &align);
 
-      assert(stride <= UINT8_MAX);
-      layout->binding[b].offset = ALIGN_POT(buffer_size, align);
-      layout->binding[b].stride = stride;
-      buffer_size += stride * binding->descriptorCount;
+      if (stride > 0) {
+         assert(stride <= UINT8_MAX);
+         assert(util_is_power_of_two_nonzero(align));
+         buffer_size = ALIGN_POT(buffer_size, align);
+         layout->binding[b].offset = buffer_size;
+         layout->binding[b].stride = stride;
+         buffer_size += stride * binding->descriptorCount;
+      }
 
       if (binding_has_immutable_samplers(binding)) {
          layout->binding[b].immutable_samplers = samplers;
