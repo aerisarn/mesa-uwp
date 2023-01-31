@@ -1,6 +1,7 @@
 #include "nvk_buffer.h"
 #include "nvk_cmd_buffer.h"
 #include "nvk_device.h"
+#include "nvk_image.h"
 
 static VkResult
 nvk_cmd_bind_map_buffer(struct vk_command_buffer *vk_cmd,
@@ -112,6 +113,56 @@ nvk_CmdClearAttachments(VkCommandBuffer commandBuffer,
    vk_meta_clear_attachments(&cmd->vk, &dev->meta, &render,
                              attachmentCount, pAttachments,
                              rectCount, pRects);
+
+   nvk_meta_end(cmd, &save);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdClearColorImage(VkCommandBuffer commandBuffer,
+                       VkImage _image,
+                       VkImageLayout imageLayout,
+                       const VkClearColorValue *pColor,
+                       uint32_t rangeCount,
+                       const VkImageSubresourceRange *pRanges)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_image, image, _image);
+   struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
+
+   /* Cannot be rendering right now */
+   assert(cmd->state.gfx.render.samples == 0);
+
+   struct nvk_meta_save save;
+   nvk_meta_begin(cmd, &save);
+
+   vk_meta_clear_color_image(&cmd->vk, &dev->meta,
+                             &image->vk, imageLayout, image->vk.format,
+                             pColor, rangeCount, pRanges);
+
+   nvk_meta_end(cmd, &save);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
+                              VkImage _image,
+                              VkImageLayout imageLayout,
+                              const VkClearDepthStencilValue *pDepthStencil,
+                              uint32_t rangeCount,
+                              const VkImageSubresourceRange *pRanges)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_image, image, _image);
+   struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
+
+   /* Cannot be rendering right now */
+   assert(cmd->state.gfx.render.samples == 0);
+
+   struct nvk_meta_save save;
+   nvk_meta_begin(cmd, &save);
+
+   vk_meta_clear_depth_stencil_image(&cmd->vk, &dev->meta,
+                                     &image->vk, imageLayout,
+                                     pDepthStencil, rangeCount, pRanges);
 
    nvk_meta_end(cmd, &save);
 }

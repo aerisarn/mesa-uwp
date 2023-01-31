@@ -409,6 +409,7 @@ nvk_CmdCopyImage2(VkCommandBuffer commandBuffer,
    }
 }
 
+#if 0
 VKAPI_ATTR void VKAPI_CALL
 nvk_CmdClearColorImage(VkCommandBuffer commandBuffer,
                        VkImage image,
@@ -528,6 +529,7 @@ nvk_CmdClearColorImage(VkCommandBuffer commandBuffer,
       }
    }
 }
+#endif
 
 VKAPI_ATTR void VKAPI_CALL
 nvk_CmdFillBuffer(VkCommandBuffer commandBuffer,
