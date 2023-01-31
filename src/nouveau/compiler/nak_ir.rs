@@ -508,8 +508,8 @@ impl fmt::Display for MemAccess {
     }
 }
 
-const MIN_INSTR_DELAY: u8 = 1;
-const MAX_INSTR_DELAY: u8 = 15;
+pub const MIN_INSTR_DELAY: u8 = 1;
+pub const MAX_INSTR_DELAY: u8 = 15;
 
 pub struct InstrDeps {
     pub delay: u8,
@@ -660,13 +660,7 @@ impl Instr {
             out_load: false,
             flags: 0,
         };
-        let mut instr = Instr::new(
-            Opcode::ALD(attr),
-            slice::from_ref(&dst),
-            &[vtx, offset],
-        );
-        instr.deps.set_wr_bar(0);
-        instr
+        Instr::new(Opcode::ALD(attr), slice::from_ref(&dst), &[vtx, offset])
     }
 
     pub fn new_ast(attr_addr: u16, data: Src, vtx: Src, offset: Src) -> Instr {
@@ -677,12 +671,7 @@ impl Instr {
             out_load: false,
             flags: 0,
         };
-        let mut instr =
-            Instr::new(Opcode::AST(attr), &[], &[data, vtx, offset]);
-        instr.deps.set_delay(2);
-        instr.deps.set_rd_bar(0);
-        instr.deps.add_wt_bar(0);
-        instr
+        Instr::new(Opcode::AST(attr), &[], &[data, vtx, offset])
     }
 
     pub fn new_ld(dst: Dst, access: MemAccess, addr: Src) -> Instr {
@@ -755,6 +744,29 @@ impl Instr {
                 false
             }
             _ => true,
+        }
+    }
+
+    pub fn get_latency(&self) -> Option<u32> {
+        match self.op {
+            Opcode::FADD
+            | Opcode::FFMA
+            | Opcode::FMNMX
+            | Opcode::FMUL
+            | Opcode::IADD3
+            | Opcode::SHL => Some(6),
+            Opcode::MOV => Some(15),
+            Opcode::S2R(_) => None,
+            Opcode::ALD(_) => None,
+            Opcode::AST(_) => Some(15),
+            Opcode::LD(_) => None,
+            Opcode::ST(_) => None,
+            Opcode::EXIT => Some(15),
+            Opcode::NOOP
+            | Opcode::META(_)
+            | Opcode::VEC
+            | Opcode::SPLIT
+            | Opcode::FS_OUT => panic!("Not a hardware opcode"),
         }
     }
 }

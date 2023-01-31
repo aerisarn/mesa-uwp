@@ -5,6 +5,7 @@
 
 mod bitset;
 mod nak_assign_regs;
+mod nak_calc_instr_deps;
 mod nak_encode_tu102;
 mod nak_from_nir;
 mod nak_ir;
@@ -259,6 +260,7 @@ pub extern "C" fn nak_compile_shader(
 
     s.assign_regs_trivial();
     s.lower_vec_split();
+    s.calc_instr_deps();
     s.lower_zero_to_gpr255();
 
     println!("NAK IR:\n{}", &s);
