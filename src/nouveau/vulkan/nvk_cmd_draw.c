@@ -291,13 +291,39 @@ nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
       .lines = LINES_ALL
    });
 
-   char gcbiar_data[VK_GCBIARR_DATA_SIZE(NVK_MAX_RTS)];
-   const VkRenderingInfo *resume_info =
-      vk_get_command_buffer_inheritance_as_rendering_resume(cmd->vk.level,
-                                                            pBeginInfo,
-                                                            gcbiar_data);
-   if (resume_info)
-      nvk_CmdBeginRendering(nvk_cmd_buffer_to_handle(cmd), resume_info);
+   if (cmd->vk.level != VK_COMMAND_BUFFER_LEVEL_PRIMARY &&
+       (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT)) {
+      char gcbiar_data[VK_GCBIARR_DATA_SIZE(NVK_MAX_RTS)];
+      const VkRenderingInfo *resume_info =
+         vk_get_command_buffer_inheritance_as_rendering_resume(cmd->vk.level,
+                                                               pBeginInfo,
+                                                               gcbiar_data);
+      if (resume_info) {
+         nvk_CmdBeginRendering(nvk_cmd_buffer_to_handle(cmd), resume_info);
+      } else {
+         const VkCommandBufferInheritanceRenderingInfo *inheritance_info =
+            vk_get_command_buffer_inheritance_rendering_info(cmd->vk.level,
+                                                             pBeginInfo);
+         assert(inheritance_info);
+
+         struct nvk_rendering_state *render = &cmd->state.gfx.render;
+         render->flags = inheritance_info->flags;
+         render->area = (VkRect2D) { };
+         render->layer_count = 0;
+         render->view_mask = inheritance_info->viewMask;
+         render->samples = inheritance_info->rasterizationSamples;
+
+         render->color_att_count = inheritance_info->colorAttachmentCount;
+         for (uint32_t i = 0; i < render->color_att_count; i++) {
+            render->color_att[i].vk_format =
+               inheritance_info->pColorAttachmentFormats[i];
+         }
+         render->depth_att.vk_format =
+            inheritance_info->depthAttachmentFormat;
+         render->stencil_att.vk_format =
+            inheritance_info->stencilAttachmentFormat;
+      }
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -351,6 +377,7 @@ nvk_attachment_init(struct nvk_attachment *att,
 
    VK_FROM_HANDLE(nvk_image_view, iview, info->imageView);
    *att = (struct nvk_attachment) {
+      .vk_format = iview->vk.format,
       .iview = iview,
    };
 

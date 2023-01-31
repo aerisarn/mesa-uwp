@@ -51,6 +51,7 @@ struct nvk_descriptor_state {
 };
 
 struct nvk_attachment {
+   VkFormat vk_format;
    struct nvk_image_view *iview;
 
    VkResolveModeFlagBits resolve_mode;
