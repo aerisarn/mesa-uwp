@@ -173,9 +173,16 @@ nvk_descriptor_table_remove(struct nvk_device *dev,
                             uint32_t index)
 {
    simple_mtx_lock(&table->mutex);
+
+   void *map = (char *)table->map + (index * table->desc_size);
+   memset(map, 0, table->desc_size);
+
+   /* Sanity check for double-free */
    assert(table->free_count < table->alloc);
    for (uint32_t i = 0; i < table->free_count; i++)
       assert(table->free_table[i] != index);
+
    table->free_table[table->free_count++] = index;
+
    simple_mtx_unlock(&table->mutex);
 }
