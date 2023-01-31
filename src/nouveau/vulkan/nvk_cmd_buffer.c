@@ -279,6 +279,10 @@ nvk_AllocateCommandBuffers(VkDevice _device,
          if (init_result != VK_SUCCESS)
             result = init_result;
 
+         /* Re-initializing the command buffer resets this pointer */
+         cmd_buffer->vk.dynamic_graphics_state.vi =
+            &cmd_buffer->state.gfx._dynamic_vi;
+
          pCommandBuffers[i] = nvk_cmd_buffer_to_handle(cmd_buffer);
       } else {
          result = nvk_create_cmd_buffer(device, pool, pAllocateInfo->level, &pCommandBuffers[i]);
