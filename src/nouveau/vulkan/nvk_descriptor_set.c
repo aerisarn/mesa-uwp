@@ -96,9 +96,13 @@ write_buffer_desc(struct nvk_descriptor_set *set,
 {
    VK_FROM_HANDLE(nvk_buffer, buffer, info->buffer);
 
+   const struct nvk_addr_range addr_range =
+      nvk_buffer_addr_range(buffer, info->offset, info->range);
+   assert(addr_range.range <= UINT32_MAX);
+
    const struct nvk_buffer_address desc = {
-      .base_addr = nvk_buffer_address(buffer, info->offset),
-      .size = vk_buffer_range(&buffer->vk, info->offset, info->range),
+      .base_addr = addr_range.addr,
+      .size = addr_range.range,
    };
    write_desc(set, binding, elem, &desc, sizeof(desc));
 }
@@ -112,11 +116,15 @@ write_dynamic_buffer_desc(struct nvk_descriptor_set *set,
    const struct nvk_descriptor_set_binding_layout *binding_layout =
       &set->layout->binding[binding];
 
+   const struct nvk_addr_range addr_range =
+      nvk_buffer_addr_range(buffer, info->offset, info->range);
+   assert(addr_range.range <= UINT32_MAX);
+
    struct nvk_buffer_address *desc =
       &set->dynamic_buffers[binding_layout->dynamic_buffer_index + elem];
    *desc = (struct nvk_buffer_address){
-      .base_addr = nvk_buffer_address(buffer, info->offset),
-      .size = vk_buffer_range(&buffer->vk, info->offset, info->range),
+      .base_addr = addr_range.addr,
+      .size = addr_range.range,
    };
 }
 
