@@ -43,7 +43,7 @@ struct nouveau_ws_device {
    char *device_name;
 
    /* maps to CUDAs Compute capability version */
-   uint8_t cm;
+   uint8_t sm;
 
    uint64_t vram_size;
    uint64_t gart_size;
