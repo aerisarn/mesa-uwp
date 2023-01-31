@@ -180,7 +180,8 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
     */
    result = nvk_heap_init(device, &device->shader_heap,
                           NOUVEAU_WS_BO_LOCAL, NOUVEAU_WS_BO_WR,
-                          4096 /* overalloc */, false /* contiguous */);
+                          4096 /* overalloc */,
+                          device->ctx->eng3d.cls < VOLTA_A);
    if (result != VK_SUCCESS)
       goto fail_samplers;
 

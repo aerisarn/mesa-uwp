@@ -28,6 +28,8 @@ nvk_queue_state_finish(struct nvk_device *dev,
       nouveau_ws_bo_destroy(qs->images.bo);
    if (qs->samplers.bo)
       nouveau_ws_bo_destroy(qs->samplers.bo);
+   if (qs->shaders.bo)
+      nouveau_ws_bo_destroy(qs->shaders.bo);
    if (qs->slm.bo)
       nouveau_ws_bo_destroy(qs->slm.bo);
    if (qs->push.bo) {
@@ -79,6 +81,19 @@ nvk_queue_state_update(struct nvk_device *dev,
       /* No change */
       if (bo)
          nouveau_ws_bo_destroy(bo);
+   }
+
+   if (dev->shader_heap.contiguous) {
+      bo = nvk_heap_get_contiguous_bo_ref(&dev->shader_heap);
+      if (qs->shaders.bo != bo) {
+         if (qs->shaders.bo)
+            nouveau_ws_bo_destroy(qs->shaders.bo);
+         qs->shaders.bo = bo;
+         dirty = true;
+      } else {
+         if (bo)
+            nouveau_ws_bo_destroy(bo);
+      }
    }
 
    bo = nvk_slm_area_get_bo_ref(&dev->slm, &bytes_per_warp, &bytes_per_mp);
@@ -156,6 +171,20 @@ nvk_queue_state_update(struct nvk_device *dev,
       P_IMMD(p, NV9097, INVALIDATE_SAMPLER_CACHE_NO_WFI, {
          .lines = LINES_ALL
       });
+   }
+
+   if (qs->shaders.bo) {
+      /* Compute */
+      assert(dev->ctx->compute.cls < VOLTA_COMPUTE_A);
+      P_MTHD(p, NVA0C0, SET_PROGRAM_REGION_A);
+      P_NVA0C0_SET_PROGRAM_REGION_A(p, qs->shaders.bo->offset >> 32);
+      P_NVA0C0_SET_PROGRAM_REGION_B(p, qs->shaders.bo->offset);
+
+      /* 3D */
+      assert(dev->ctx->eng3d.cls < VOLTA_A);
+      P_MTHD(p, NV9097, SET_PROGRAM_REGION_A);
+      P_NV9097_SET_PROGRAM_REGION_A(p, qs->shaders.bo->offset >> 32);
+      P_NV9097_SET_PROGRAM_REGION_B(p, qs->shaders.bo->offset);
    }
 
    if (qs->slm.bo) {
