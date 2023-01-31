@@ -9,11 +9,11 @@ use crate::nak_ir::*;
 use std::ops::Range;
 
 trait SrcMod {
-    fn src_mod(&self, idx: usize) -> u8;
+    fn src_mod(&self) -> u8;
 }
 
-impl SrcMod for Instr {
-    fn src_mod(&self, idx: usize) -> u8 {
+impl SrcMod for Src {
+    fn src_mod(&self) -> u8 {
         0 /* TODO */
     }
 }
@@ -79,16 +79,6 @@ fn encode_instr_base(bs: &mut impl BitSetMut, instr: &Instr, opcode: u16) {
         bs.set_bit(15, instr.pred_inv);
     }
 
-    if instr.num_dsts() > 0 {
-        assert!(instr.num_dsts() == 1);
-        let reg = instr.dst(0).as_reg().unwrap();
-        match reg.file() {
-            RegFile::GPR => encode_reg(bs, 16..24, *reg),
-            RegFile::Pred => encode_pred(bs, 81..84, *reg),
-            _ => panic!("Unsupported destination"),
-        }
-    }
-
     bs.set_field(105..109, instr.deps.delay);
     bs.set_bit(109, instr.deps.yld);
     bs.set_field(110..113, instr.deps.wr_bar().unwrap_or(7));
@@ -122,117 +112,165 @@ impl ALUSrc {
     }
 }
 
-fn encode_alu(bs: &mut impl BitSetMut, instr: &Instr, opcode: u16) {
+fn encode_alu(
+    bs: &mut impl BitSetMut,
+    instr: &Instr,
+    opcode: u16,
+    dst: Option<&Dst>,
+    src0: Option<&Src>,
+    src1: &Src,
+    src2: Option<&Src>,
+) {
     encode_instr_base(bs, instr, opcode);
 
-    encode_reg(bs, 24..32, *instr.src(0).as_reg().unwrap());
-    bs.set_field(32..72, 0u64); /* Pad */
-
-    let mut form = 0_u8;
-    if instr.num_srcs() > 1 {
-        match ALUSrc::from_src(instr.src(1), 1) {
-            ALUSrc::Reg(reg1) => {
-                if instr.num_srcs() == 2 {
-                    form = 1;
-                    encode_reg(bs, 32..40, reg1);
-                    encode_mod(bs, 62..64, instr.src_mod(1));
-                } else {
-                    assert!(instr.num_srcs() == 3);
-                    match ALUSrc::from_src(instr.src(2), 1) {
-                        ALUSrc::Reg(reg2) => {
-                            form = 1;
-                            encode_reg(bs, 32..40, reg1);
-                            encode_mod(bs, 62..64, instr.src_mod(1));
-                            encode_reg(bs, 64..72, reg2);
-                            encode_mod(bs, 74..76, instr.src_mod(2));
-                        }
-                        ALUSrc::UReg(reg2) => {
-                            form = 7;
-                            encode_ureg(bs, 32..40, reg2);
-                            encode_mod(bs, 62..64, instr.src_mod(2));
-                            encode_reg(bs, 64..72, reg1);
-                            encode_mod(bs, 74..76, instr.src_mod(1));
-                        }
-                        ALUSrc::Imm(imm) => {
-                            form = 2;
-                            encode_imm(bs, 32..64, &imm);
-                            encode_reg(bs, 64..72, reg1);
-                            encode_mod(bs, 74..76, instr.src_mod(1));
-                        }
-                        ALUSrc::CBuf(cb) => {
-                            form = 3;
-                            /* TODO encode_cx */
-                            encode_cb(bs, 38..59, &cb);
-                            encode_mod(bs, 62..64, instr.src_mod(2));
-                            encode_reg(bs, 64..72, reg1);
-                            encode_mod(bs, 74..76, instr.src_mod(1));
-                        }
-                        _ => panic!("Invalid instruction form"),
-                    }
-                }
-            }
-            ALUSrc::Reg(reg1) => {
-                form = 6;
-                encode_ureg(bs, 32..40, reg1);
-                encode_mod(bs, 62..64, instr.src_mod(1));
-                if instr.num_srcs() > 2 {
-                    assert!(instr.num_srcs() == 3);
-                    encode_reg(bs, 64..72, *instr.src(2).as_reg().unwrap());
-                    encode_mod(bs, 74..76, instr.src_mod(2));
-                }
-            }
-            ALUSrc::Imm(imm) => {
-                form = 4;
-                encode_imm(bs, 32..64, &imm);
-                if instr.num_srcs() > 2 {
-                    encode_reg(bs, 64..72, *instr.src(2).as_reg().unwrap());
-                    encode_mod(bs, 74..76, instr.src_mod(2));
-                }
-            }
-            ALUSrc::CBuf(cb) => {
-                form = 5;
-                /* TODO encode_cx */
-                encode_cb(bs, 38..59, &cb);
-                encode_mod(bs, 62..64, instr.src_mod(1));
-                if instr.num_srcs() > 2 {
-                    encode_reg(bs, 64..72, *instr.src(2).as_reg().unwrap());
-                    encode_mod(bs, 74..76, instr.src_mod(2));
-                }
-            }
-            _ => panic!("Invalid instruction form"),
-        }
+    if let Some(dst) = dst {
+        encode_reg(bs, 16..24, *dst.as_reg().unwrap());
     }
+
+    if let Some(src0) = src0 {
+        encode_reg(bs, 24..32, *src0.as_reg().unwrap());
+    }
+
+    let form = match ALUSrc::from_src(src1, 1) {
+        ALUSrc::Reg(reg1) => {
+            if let Some(src2) = src2 {
+                match ALUSrc::from_src(src2, 1) {
+                    ALUSrc::Reg(reg2) => {
+                        encode_reg(bs, 32..40, reg1);
+                        encode_mod(bs, 62..64, src1.src_mod());
+                        encode_reg(bs, 64..72, reg2);
+                        encode_mod(bs, 74..76, src2.src_mod());
+                        1_u8 /* form */
+                    }
+                    ALUSrc::UReg(reg2) => {
+                        encode_ureg(bs, 32..40, reg2);
+                        encode_mod(bs, 62..64, src2.src_mod());
+                        encode_reg(bs, 64..72, reg1);
+                        encode_mod(bs, 74..76, src1.src_mod());
+                        7_u8 /* form */
+                    }
+                    ALUSrc::Imm(imm) => {
+                        encode_imm(bs, 32..64, &imm);
+                        encode_reg(bs, 64..72, reg1);
+                        encode_mod(bs, 74..76, src1.src_mod());
+                        2_u8 /* form */
+                    }
+                    ALUSrc::CBuf(cb) => {
+                        /* TODO encode_cx */
+                        encode_cb(bs, 38..59, &cb);
+                        encode_mod(bs, 62..64, src2.src_mod());
+                        encode_reg(bs, 64..72, reg1);
+                        encode_mod(bs, 74..76, src1.src_mod());
+                        3_u8 /* form */
+                    }
+                    _ => panic!("Invalid instruction form"),
+                }
+            } else {
+                encode_reg(bs, 32..40, reg1);
+                encode_mod(bs, 62..64, src1.src_mod());
+                1_u8 /* form */
+            }
+        }
+        ALUSrc::Reg(reg1) => {
+            encode_ureg(bs, 32..40, reg1);
+            encode_mod(bs, 62..64, src1.src_mod());
+            if let Some(src2) = src2 {
+                encode_reg(bs, 64..72, *src2.as_reg().unwrap());
+                encode_mod(bs, 74..76, src2.src_mod());
+            }
+            6_u8 /* form */
+        }
+        ALUSrc::Imm(imm) => {
+            encode_imm(bs, 32..64, &imm);
+            if let Some(src2) = src2 {
+                encode_reg(bs, 64..72, *src2.as_reg().unwrap());
+                encode_mod(bs, 74..76, src2.src_mod());
+            }
+            4_u8 /* form */
+        }
+        ALUSrc::CBuf(cb) => {
+            encode_cb(bs, 38..59, &cb);
+            encode_mod(bs, 62..64, src1.src_mod());
+            if let Some(src2) = src2 {
+                encode_reg(bs, 64..72, *src2.as_reg().unwrap());
+                encode_mod(bs, 74..76, src2.src_mod());
+            }
+            5_u8 /* form */
+        }
+        _ => panic!("Invalid instruction form"),
+    };
 
     bs.set_field(9..12, form);
 }
 
 fn encode_s2r(bs: &mut impl BitSetMut, instr: &Instr, idx: u8) {
     encode_instr_base(bs, &instr, 0x919);
+    encode_reg(bs, 16..24, *instr.dst(0).as_reg().unwrap());
     bs.set_field(72..80, idx);
 }
 
 fn encode_mov(bs: &mut impl BitSetMut, instr: &Instr) {
-    encode_alu(bs, instr, 0x002);
+    assert!(instr.num_dsts() == 1);
+    assert!(instr.num_srcs() == 1);
+    encode_alu(
+        bs,
+        instr,
+        0x002,
+        Some(instr.dst(0)),
+        None,
+        instr.src(0),
+        None,
+    );
     bs.set_field(72..76, 0xf_u32 /* TODO: Quad lanes */);
 }
 
 fn encode_sel(bs: &mut impl BitSetMut, instr: &Instr) {
-    let i = Instr::new(Opcode::SEL, instr.dsts(), &instr.srcs()[1..]);
-    encode_alu(bs, &i, 0x007);
+    assert!(instr.num_dsts() == 1);
+    assert!(instr.num_srcs() == 3);
+    encode_alu(
+        bs,
+        instr,
+        0x007,
+        Some(instr.dst(0)),
+        Some(instr.src(1)),
+        instr.src(2),
+        None,
+    );
 
     encode_pred(bs, 87..90, *instr.src(0).as_reg().unwrap());
     bs.set_bit(90, false); /* not */
 }
 
 fn encode_iadd3(bs: &mut impl BitSetMut, instr: &Instr) {
-    encode_alu(bs, instr, 0x010);
+    assert!(instr.num_dsts() == 1);
+    assert!(instr.num_srcs() == 3);
+    encode_alu(
+        bs,
+        instr,
+        0x010,
+        Some(instr.dst(0)),
+        Some(instr.src(0)),
+        instr.src(1),
+        Some(instr.src(2)),
+    );
 
     bs.set_field(81..84, 7_u32); /* pred */
     bs.set_field(84..87, 7_u32); /* pred */
 }
 
 fn encode_lop3(bs: &mut impl BitSetMut, instr: &Instr, op: &LogicOp) {
-    encode_alu(bs, instr, 0x012);
+    assert!(instr.num_dsts() == 1);
+    assert!(instr.num_srcs() == 3);
+    encode_alu(
+        bs,
+        instr,
+        0x012,
+        Some(instr.dst(0)),
+        Some(instr.src(0)),
+        instr.src(1),
+        Some(instr.src(2)),
+    );
+
     bs.set_field(72..80, op.lut);
     bs.set_bit(80, false); /* .PAND */
     bs.set_field(81..84, 7_u32); /* pred */
@@ -256,7 +294,17 @@ fn encode_cmp_op(bs: &mut impl BitSetMut, range: Range<usize>, op: &CmpOp) {
 }
 
 fn encode_isetp(bs: &mut impl BitSetMut, instr: &Instr, op: &IntCmpOp) {
-    encode_alu(bs, instr, 0x00c);
+    assert!(instr.num_dsts() == 1);
+    assert!(instr.num_srcs() == 2);
+    encode_alu(
+        bs,
+        instr,
+        0x00c,
+        None,
+        Some(instr.src(0)),
+        instr.src(1),
+        None,
+    );
 
     bs.set_field(
         73..74,
@@ -268,6 +316,7 @@ fn encode_isetp(bs: &mut impl BitSetMut, instr: &Instr, op: &IntCmpOp) {
     bs.set_field(74..76, 0_u32); /* pred combine op */
     encode_cmp_op(bs, 76..79, &op.cmp_op);
 
+    encode_pred(bs, 81..84, *instr.dst(0).as_reg().unwrap());
     bs.set_field(84..87, 7_u32); /* dst1 */
 
     bs.set_field(87..90, 7_u32); /* src pred */
@@ -275,7 +324,17 @@ fn encode_isetp(bs: &mut impl BitSetMut, instr: &Instr, op: &IntCmpOp) {
 }
 
 fn encode_shl(bs: &mut impl BitSetMut, instr: &Instr) {
-    encode_alu(bs, instr, 0x019);
+    assert!(instr.num_dsts() == 1);
+    assert!(instr.num_srcs() == 2);
+    encode_alu(
+        bs,
+        instr,
+        0x019,
+        Some(instr.dst(0)),
+        Some(instr.src(0)),
+        instr.src(1),
+        None,
+    );
 
     bs.set_field(73..75, 3_u32 /* U32 */);
     bs.set_bit(75, true /* W? */);
@@ -285,7 +344,10 @@ fn encode_shl(bs: &mut impl BitSetMut, instr: &Instr) {
 
 fn encode_ald(bs: &mut impl BitSetMut, instr: &Instr, attr: &AttrAccess) {
     encode_instr_base(bs, &instr, 0x321);
+    assert!(instr.num_dsts() == 1);
+    assert!(instr.num_srcs() == 2);
 
+    encode_reg(bs, 16..24, *instr.dst(0).as_reg().unwrap());
     encode_reg(bs, 24..32, *instr.src(0).as_reg().unwrap());
     encode_reg(bs, 32..40, *instr.src(1).as_reg().unwrap());
 
@@ -299,6 +361,7 @@ fn encode_ald(bs: &mut impl BitSetMut, instr: &Instr, attr: &AttrAccess) {
 fn encode_ast(bs: &mut impl BitSetMut, instr: &Instr, attr: &AttrAccess) {
     encode_instr_base(bs, &instr, 0x322);
     assert!(instr.num_dsts() == 0);
+    assert!(instr.num_srcs() == 3);
 
     encode_reg(bs, 32..40, *instr.src(0).as_reg().unwrap());
     encode_reg(bs, 24..32, *instr.src(1).as_reg().unwrap());
@@ -353,7 +416,10 @@ fn encode_mem_access(bs: &mut impl BitSetMut, access: &MemAccess) {
 
 fn encode_ld(bs: &mut impl BitSetMut, instr: &Instr, access: &MemAccess) {
     encode_instr_base(bs, &instr, 0x980);
+    assert!(instr.num_dsts() == 1);
+    assert!(instr.num_srcs() == 1);
 
+    encode_reg(bs, 16..24, *instr.dst(0).as_reg().unwrap());
     encode_reg(bs, 24..32, *instr.src(0).as_reg().unwrap());
     bs.set_field(32..64, 0_u32 /* Immediate offset */);
 
@@ -362,6 +428,8 @@ fn encode_ld(bs: &mut impl BitSetMut, instr: &Instr, access: &MemAccess) {
 
 fn encode_st(bs: &mut impl BitSetMut, instr: &Instr, access: &MemAccess) {
     encode_instr_base(bs, &instr, 0x385);
+    assert!(instr.num_dsts() == 0);
+    assert!(instr.num_srcs() == 2);
 
     encode_reg(bs, 24..32, *instr.src(0).as_reg().unwrap());
     bs.set_field(32..64, 0_u32 /* Immediate offset */);
@@ -372,6 +440,8 @@ fn encode_st(bs: &mut impl BitSetMut, instr: &Instr, access: &MemAccess) {
 
 fn encode_exit(bs: &mut impl BitSetMut, instr: &Instr) {
     encode_instr_base(bs, instr, 0x94d);
+    assert!(instr.num_dsts() == 0);
+    assert!(instr.num_srcs() == 0);
 
     bs.set_field(84..85, false); /* ./.KEEPREFCOUNT/.PREEMPTED/.INVALID3 */
     bs.set_field(85..86, false); /* .NO_ATEXIT */

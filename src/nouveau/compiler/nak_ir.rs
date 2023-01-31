@@ -829,7 +829,7 @@ impl Instr {
     }
 
     pub fn new_mov(dst: Dst, src: Src) -> Instr {
-        Instr::new(Opcode::MOV, slice::from_ref(&dst), &[Src::Zero, src])
+        Instr::new(Opcode::MOV, slice::from_ref(&dst), slice::from_ref(&src))
     }
 
     pub fn new_sel(dst: Dst, sel: Src, x: Src, y: Src) -> Instr {
