@@ -1,5 +1,7 @@
 #include "nouveau_device.h"
 
+#include <fcntl.h>
+#include <unistd.h>
 #include <xf86drm.h>
 #include <nouveau_drm.h>
 #include <nouveau/nvif/ioctl.h>
@@ -179,14 +181,17 @@ nouveau_ws_device_info(int fd, struct nouveau_ws_device *dev)
 }
 
 struct nouveau_ws_device *
-nouveau_ws_device_new(int fd)
+nouveau_ws_device_new(drmDevicePtr drm_device)
 {
+   const char *path = drm_device->nodes[DRM_NODE_RENDER];
    struct nouveau_ws_device *device = CALLOC_STRUCT(nouveau_ws_device);
    uint64_t value = 0;
-   int dup_fd = os_dupfd_cloexec(fd);
-   drmVersionPtr ver;
 
-   ver = drmGetVersion(dup_fd);
+   int fd = open(path, O_RDWR | O_CLOEXEC);
+   if (fd < 0)
+      goto out_err;
+
+   drmVersionPtr ver = drmGetVersion(fd);
    if (!ver)
       goto out_err;
 
@@ -199,22 +204,22 @@ nouveau_ws_device_new(int fd)
    if (version < 0x01000301)
       goto out_err;
 
-   if (nouveau_ws_device_alloc(dup_fd, device))
+   if (nouveau_ws_device_alloc(fd, device))
       goto out_err;
 
-   if (nouveau_ws_device_info(dup_fd, device))
+   if (nouveau_ws_device_info(fd, device))
       goto out_err;
 
-   if (nouveau_ws_param(dup_fd, NOUVEAU_GETPARAM_PCI_DEVICE, &value))
+   if (nouveau_ws_param(fd, NOUVEAU_GETPARAM_PCI_DEVICE, &value))
       goto out_err;
    device->device_id = value;
 
-   if (nouveau_ws_param(dup_fd, NOUVEAU_GETPARAM_AGP_SIZE, &value))
+   if (nouveau_ws_param(fd, NOUVEAU_GETPARAM_AGP_SIZE, &value))
       goto out_err;
    os_get_available_system_memory(&device->gart_size);
    device->gart_size = MIN2(device->gart_size, value);
 
-   device->fd = dup_fd;
+   device->fd = fd;
    device->vendor_id = 0x10de;
    device->cm = sm_for_chipset(device->chipset);
    device->is_integrated = device->vram_size == 0;
@@ -224,7 +229,7 @@ nouveau_ws_device_new(int fd)
    else
       device->local_mem_domain = NOUVEAU_GEM_DOMAIN_VRAM;
 
-   if (nouveau_ws_param(dup_fd, NOUVEAU_GETPARAM_GRAPH_UNITS, &value))
+   if (nouveau_ws_param(fd, NOUVEAU_GETPARAM_GRAPH_UNITS, &value))
       goto out_err;
    device->gpc_count = value & 0x000000ff;
    device->mp_count = value >> 8;
@@ -247,7 +252,7 @@ nouveau_ws_device_new(int fd)
 
 out_err:
    FREE(device);
-   close(dup_fd);
+   close(fd);
    return NULL;
 }
 

@@ -40,7 +40,6 @@ public:
    uint32_t *data;
 
 private:
-   int fd;
    struct nouveau_ws_device *dev;
    struct nouveau_ws_context *ctx;
    struct nouveau_ws_bo *data_bo;
@@ -50,7 +49,7 @@ private:
 };
 
 mme_tu104_sim_test::mme_tu104_sim_test() :
-  data(NULL), fd(-1), dev(NULL), ctx(NULL), data_bo(NULL), push_bo(NULL)
+  data(NULL), dev(NULL), ctx(NULL), data_bo(NULL), push_bo(NULL)
 {
    memset(&push, 0, sizeof(push));
 }
@@ -65,7 +64,6 @@ mme_tu104_sim_test::~mme_tu104_sim_test()
       nouveau_ws_context_destroy(ctx);
    if (dev)
       nouveau_ws_device_destroy(dev);
-   close(fd);
 }
 
 #define PUSH_SIZE 64 * 4096
@@ -82,12 +80,9 @@ mme_tu104_sim_test::SetUp()
       if (devices[i]->available_nodes & 1 << DRM_NODE_RENDER &&
           devices[i]->bustype == DRM_BUS_PCI &&
           devices[i]->deviceinfo.pci->vendor_id == 0x10de) {
-         fd = open(devices[i]->nodes[DRM_NODE_RENDER], O_RDWR | O_CLOEXEC);
-         if (fd < 0)
+         dev = nouveau_ws_device_new(devices[i]);
+         if (dev == NULL)
             continue;
-
-         dev = nouveau_ws_device_new(fd);
-         ASSERT_TRUE(dev != NULL);
 
          if (dev->cls_eng3d < TURING_A) {
             nouveau_ws_device_destroy(dev);

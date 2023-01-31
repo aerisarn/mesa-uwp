@@ -5,6 +5,8 @@
 
 #include <stddef.h>
 
+struct _drmDevice;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -62,7 +64,7 @@ struct nouveau_ws_device {
    enum nvk_debug debug_flags;
 };
 
-struct nouveau_ws_device *nouveau_ws_device_new(int fd);
+struct nouveau_ws_device *nouveau_ws_device_new(struct _drmDevice *drm_device);
 void nouveau_ws_device_destroy(struct nouveau_ws_device *);
 
 #ifdef __cplusplus

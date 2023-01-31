@@ -497,26 +497,11 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
                                drmDevicePtr drm_device,
                                struct nvk_physical_device **device_out)
 {
-   // const char *primary_path = drm_device->nodes[DRM_NODE_PRIMARY];
-   const char *path = drm_device->nodes[DRM_NODE_RENDER];
    VkResult result;
-   int fd;
 
-   fd = open(path, O_RDWR | O_CLOEXEC);
-   if (fd < 0) {
-      if (errno == ENOMEM) {
-         return vk_errorf(
-            instance, VK_ERROR_OUT_OF_HOST_MEMORY, "Unable to open device %s: out of memory", path);
-      }
-      return vk_errorf(
-         instance, VK_ERROR_INCOMPATIBLE_DRIVER, "Unable to open device %s: %m", path);
-   }
-
-   struct nouveau_ws_device *ndev = nouveau_ws_device_new(fd);
-   if (!ndev) {
-      result = vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
-      goto fail_fd;
-   }
+   struct nouveau_ws_device *ndev = nouveau_ws_device_new(drm_device);
+   if (!ndev)
+      return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
 
    vk_warn_non_conformant_implementation("NVK");
 
@@ -596,7 +581,6 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
 
    *device_out = device;
 
-   close(fd);
    return VK_SUCCESS;
 
 fail_init:
@@ -605,10 +589,6 @@ fail_alloc:
    vk_free(&instance->vk.alloc, device);
 fail_dev_alloc:
    nouveau_ws_device_destroy(ndev);
-   return result;
-
-fail_fd:
-   close(fd);
    return result;
 }
 
