@@ -23,6 +23,17 @@ mme_isa_depend_files = [
   isaspec_py_deps
 ]
 
+mme_isa = custom_target(
+  'mme_isa',
+  input: ['mme_tu104.xml'],
+  output: ['mme_tu104_isa.c', 'mme_tu104_isa.h'],
+  command: [
+    prog_isaspec_decode, '--xml', '@INPUT@',
+    '--out-c', '@OUTPUT0@', '--out-h', '@OUTPUT1@',
+  ],
+  depend_files: mme_isa_depend_files,
+)
+
 mme_encode_h = custom_target(
   'mme-tu104-encode.h',
   input: ['mme_tu104.xml'],
@@ -38,17 +49,19 @@ libnouveau_mme_files = files(
   'mme_tu104.c',
   'mme_tu104.h',
   'mme_tu104_builder.c',
+  'mme_tu104_dump.c',
   'mme_tu104_sim.c',
   'mme_tu104_sim.h',
 )
 
 _libnouveau_mme = static_library(
   'nouveau_mme',
-  [libnouveau_mme_files, mme_encode_h],
+  [libnouveau_mme_files, mme_isa, mme_encode_h],
   include_directories : [inc_include, inc_src],
   gnu_symbol_visibility : 'hidden',
   dependencies : [
     idep_mesautil,
+    idep_isaspec_decode,
     idep_nvidia_headers,
   ],
 )

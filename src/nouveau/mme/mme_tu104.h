@@ -186,6 +186,8 @@ void mme_tu104_encode(uint32_t *out, uint32_t inst_count,
 void mme_tu104_decode(struct mme_tu104_inst *insts,
                       const uint32_t *in, uint32_t inst_count);
 
+void mme_tu104_dump(FILE *fp, uint32_t *encoded, size_t encoded_size);
+
 #ifdef __cplusplus
 }
 #endif
