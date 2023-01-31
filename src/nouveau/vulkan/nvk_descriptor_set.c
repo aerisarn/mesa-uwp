@@ -65,7 +65,7 @@ write_buffer_desc(struct nvk_descriptor_set *set,
 
    struct nvk_buffer_address *desc = desc_ubo_data(set, binding, elem);
    *desc = (struct nvk_buffer_address){
-      .base_addr = nvk_buffer_address(buffer) + info->offset,
+      .base_addr = nvk_buffer_address(buffer, info->offset),
       .size = vk_buffer_range(&buffer->vk, info->offset, info->range),
    };
 }
