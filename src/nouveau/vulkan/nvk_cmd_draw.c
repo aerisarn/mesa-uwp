@@ -1,3 +1,4 @@
+#include "nvk_buffer.h"
 #include "nvk_cmd_buffer.h"
 #include "nvk_device.h"
 #include "nvk_image.h"
@@ -1119,4 +1120,176 @@ nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
    P_IMMD(p, NVA097, INVALIDATE_SHADER_CACHES_NO_WFI, {
       .constant = CONSTANT_TRUE,
    });
+}
+
+static void
+nvk_flush_gfx_state(struct nvk_cmd_buffer *cmd)
+{
+   nvk_flush_dynamic_state(cmd);
+   nvk_flush_descriptors(cmd);
+}
+
+static uint32_t
+vk_to_nv_index_format(VkIndexType type)
+{
+   switch (type) {
+   case VK_INDEX_TYPE_UINT16:
+      return NVC597_SET_INDEX_BUFFER_E_INDEX_SIZE_TWO_BYTES;
+   case VK_INDEX_TYPE_UINT32:
+      return NVC597_SET_INDEX_BUFFER_E_INDEX_SIZE_FOUR_BYTES;
+   case VK_INDEX_TYPE_UINT8_EXT:
+      return NVC597_SET_INDEX_BUFFER_E_INDEX_SIZE_ONE_BYTE;
+   default:
+      unreachable("Invalid index type");
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
+                       VkBuffer _buffer,
+                       VkDeviceSize offset,
+                       VkIndexType indexType)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_buffer, buffer, _buffer);
+   struct nouveau_ws_push *p = cmd->push;
+
+   uint64_t addr, range;
+   if (buffer) {
+      addr = nvk_buffer_address(buffer, offset);
+      range = vk_buffer_range(&buffer->vk, offset, VK_WHOLE_SIZE);
+   } else {
+      range = addr = 0;
+   }
+
+   P_MTHD(p, NV9097, SET_INDEX_BUFFER_A);
+   P_NV9097_SET_INDEX_BUFFER_A(p, addr >> 32);
+   P_NV9097_SET_INDEX_BUFFER_B(p, addr);
+
+   if (nvk_cmd_buffer_3d_cls(cmd) >= TURING_A) {
+      P_MTHD(p, NVC597, SET_INDEX_BUFFER_SIZE_A);
+      P_NVC597_SET_INDEX_BUFFER_SIZE_A(p, range >> 32);
+      P_NVC597_SET_INDEX_BUFFER_SIZE_B(p, range);
+   } else {
+      uint64_t limit = addr + range;
+      P_MTHD(p, NV9097, SET_INDEX_BUFFER_C);
+      P_NV9097_SET_INDEX_BUFFER_C(p, limit >> 32);
+      P_NV9097_SET_INDEX_BUFFER_D(p, limit);
+   }
+
+   P_IMMD(p, NV9097, SET_INDEX_BUFFER_E, vk_to_nv_index_format(indexType));
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdBindVertexBuffers2(VkCommandBuffer commandBuffer,
+                          uint32_t firstBinding,
+                          uint32_t bindingCount,
+                          const VkBuffer *pBuffers,
+                          const VkDeviceSize *pOffsets,
+                          const VkDeviceSize *pSizes,
+                          const VkDeviceSize *pStrides)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   struct nouveau_ws_push *p = cmd->push;
+
+   if (pStrides) {
+      vk_cmd_set_vertex_binding_strides(&cmd->vk, firstBinding,
+                                        bindingCount, pStrides);
+   }
+
+   for (uint32_t i = 0; i < bindingCount; i++) {
+      VK_FROM_HANDLE(nvk_buffer, buffer, pBuffers[i]);
+      uint32_t idx = firstBinding + i;
+
+      uint64_t size = pSizes ? pSizes[i] : VK_WHOLE_SIZE;
+      uint64_t addr, range;
+      if (buffer) {
+         addr = nvk_buffer_address(buffer, pOffsets[i]);
+         range = vk_buffer_range(&buffer->vk, pOffsets[i], size);
+      } else {
+         range = addr = 0;
+      }
+
+      P_MTHD(p, NV9097, SET_VERTEX_STREAM_A_LOCATION_A(idx));
+      P_NV9097_SET_VERTEX_STREAM_A_LOCATION_A(p, idx, addr >> 32);
+      P_NV9097_SET_VERTEX_STREAM_A_LOCATION_B(p, idx, addr);
+
+      if (nvk_cmd_buffer_3d_cls(cmd) >= TURING_A) {
+         P_MTHD(p, NVC597, SET_VERTEX_STREAM_SIZE_A(idx));
+         P_NVC597_SET_VERTEX_STREAM_SIZE_A(p, idx, range >> 32);
+         P_NVC597_SET_VERTEX_STREAM_SIZE_B(p, idx, range);
+      } else {
+         uint64_t limit = addr + range - 1;
+         P_MTHD(p, NV9097, SET_VERTEX_STREAM_LIMIT_A_A(idx));
+         P_NV9097_SET_VERTEX_STREAM_LIMIT_A_A(p, idx, limit >> 32);
+         P_NV9097_SET_VERTEX_STREAM_LIMIT_A_B(p, idx, limit);
+      }
+   }
+}
+
+static uint32_t
+vk_to_nv9097_primitive_topology(VkPrimitiveTopology prim)
+{
+   switch (prim) {
+   case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
+      return NV9097_BEGIN_OP_POINTS;
+   case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
+      return NV9097_BEGIN_OP_LINES;
+   case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP:
+      return NV9097_BEGIN_OP_LINE_STRIP;
+   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
+      return NV9097_BEGIN_OP_TRIANGLES;
+   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:
+      return NV9097_BEGIN_OP_TRIANGLE_STRIP;
+   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
+      return NV9097_BEGIN_OP_TRIANGLE_FAN;
+   case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
+      return NV9097_BEGIN_OP_LINELIST_ADJCY;
+   case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
+      return NV9097_BEGIN_OP_LINESTRIP_ADJCY;
+   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
+      return NV9097_BEGIN_OP_TRIANGLELIST_ADJCY;
+   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
+      return NV9097_BEGIN_OP_TRIANGLESTRIP_ADJCY;
+   case VK_PRIMITIVE_TOPOLOGY_PATCH_LIST:
+      return NV9097_BEGIN_OP_PATCH;
+   default:
+      unreachable("Invalid primitive topology");
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdDraw(VkCommandBuffer commandBuffer,
+            uint32_t vertexCount,
+            uint32_t instanceCount,
+            uint32_t firstVertex,
+            uint32_t firstInstance)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd->vk.dynamic_graphics_state;
+   struct nouveau_ws_push *p = cmd->push;
+
+   nvk_flush_gfx_state(cmd);
+
+   const uint32_t begin_op =
+      vk_to_nv9097_primitive_topology(dyn->ia.primitive_topology);
+
+   P_IMMD(p, NV9097, SET_GLOBAL_BASE_INSTANCE_INDEX, firstInstance);
+
+   for (unsigned i = 0; i < instanceCount; i++) {
+      P_IMMD(p, NV9097, BEGIN, {
+         .op = begin_op,
+         .primitive_id = NV9097_BEGIN_PRIMITIVE_ID_FIRST,
+         .instance_id = (i == 0) ? NV9097_BEGIN_INSTANCE_ID_FIRST :
+                                   NV9097_BEGIN_INSTANCE_ID_SUBSEQUENT,
+         .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
+      });
+
+      P_MTHD(p, NV9097, SET_VERTEX_ARRAY_START);
+      P_NV9097_SET_VERTEX_ARRAY_START(p, firstVertex);
+      P_NV9097_DRAW_VERTEX_ARRAY(p, vertexCount);
+
+      P_IMMD(p, NV9097, END, 0);
+   }
 }
