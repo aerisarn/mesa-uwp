@@ -330,12 +330,15 @@ opt_shrink_vectors_load_const(nir_load_const_instr *instr)
       }
    }
 
-   unsigned rounded = round_up_components(num_components);
-   assert(rounded <= def->num_components);
-
-   def->num_components = rounded;
    if (progress)
       reswizzle_alu_uses(def, reswizzle);
+
+   unsigned rounded = round_up_components(num_components);
+   assert(rounded <= def->num_components);
+   if (rounded < def->num_components)
+      progress = true;
+
+   def->num_components = rounded;
 
    return progress;
 }
