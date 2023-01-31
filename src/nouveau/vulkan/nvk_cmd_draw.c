@@ -693,8 +693,7 @@ nvk_flush_vp_state(struct nvk_cmd_buffer *cmd)
          P_MTHD(p, NV9097, SET_VIEWPORT_SCALE_X(i));
          P_NV9097_SET_VIEWPORT_SCALE_X(p, i, fui(0.5f * vp->width));
          P_NV9097_SET_VIEWPORT_SCALE_Y(p, i, fui(0.5f * vp->height));
-         P_NV9097_SET_VIEWPORT_SCALE_Z(p, i,
-            fui(0.5f * (vp->maxDepth - vp->minDepth)));
+         P_NV9097_SET_VIEWPORT_SCALE_Z(p, i, fui(vp->maxDepth - vp->minDepth));
 
          P_NV9097_SET_VIEWPORT_OFFSET_X(p, i, fui(vp->x + 0.5f * vp->width));
          P_NV9097_SET_VIEWPORT_OFFSET_Y(p, i, fui(vp->y + 0.5f * vp->height));
