@@ -74,6 +74,7 @@ nvk_entrypoints = custom_target(
 
 nvk_deps = [
   dep_libdrm,
+  idep_nak,
   idep_nil,
   idep_nir,
   idep_nouveau_mme,

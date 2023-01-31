@@ -18,6 +18,7 @@
 #include "vk_shader_module.h"
 #include "vk_ycbcr_conversion.h"
 
+#include "nak.h"
 #include "nir.h"
 #include "nir_builder.h"
 #include "nir_xfb_info.h"
@@ -26,6 +27,7 @@
 #include "nv50_ir_driver.h"
 
 #include "util/mesa-sha1.h"
+#include "util/u_debug.h"
 
 #include "cla097.h"
 #include "clb097.h"
@@ -77,15 +79,41 @@ get_prog_optimize(void)
    return debug_get_num_option("NV50_PROG_OPTIMIZE", 3);
 }
 
+static uint32_t
+get_nak_stages(void)
+{
+   const struct debug_control flags[] = {
+      { "vs", BITFIELD64_BIT(MESA_SHADER_VERTEX) },
+      { "tcs", BITFIELD64_BIT(MESA_SHADER_TESS_CTRL) },
+      { "tes", BITFIELD64_BIT(MESA_SHADER_TESS_EVAL) },
+      { "gs", BITFIELD64_BIT(MESA_SHADER_GEOMETRY) },
+      { "fs", BITFIELD64_BIT(MESA_SHADER_FRAGMENT) },
+      { "cs", BITFIELD64_BIT(MESA_SHADER_COMPUTE) },
+      { "all", ~0 },
+      { NULL, 0 },
+   };
+
+   return parse_debug_string(getenv("NVK_USE_NAK"), flags);
+}
+
+static bool
+use_nak(gl_shader_stage stage)
+{
+   return get_nak_stages() & BITFIELD64_BIT(stage);
+}
+
 uint64_t
 nvk_physical_device_compiler_flags(const struct nvk_physical_device *pdev)
 {
    uint64_t prog_debug = get_prog_debug();
    uint64_t prog_optimize = get_prog_optimize();
+   uint64_t nak_stages = get_nak_stages();
 
    assert(prog_debug <= UINT8_MAX);
    assert(prog_optimize <= UINT8_MAX);
-   return prog_debug | (prog_optimize << 8);
+   assert(nak_stages <= UINT32_MAX);
+
+   return prog_debug | (prog_optimize << 8) | (nak_stages << 16);
 }
 
 const nir_shader_compiler_options *
@@ -458,6 +486,9 @@ nvk_shader_stage_to_nir(struct nvk_device *dev,
                                                      mem_ctx, &nir);
    if (result != VK_SUCCESS)
       return result;
+
+   if (use_nak(nir->info.stage))
+      nak_preprocess_nir(nir, NULL);
 
    vk_pipeline_cache_add_nir(cache, stage_sha1, sizeof(stage_sha1), nir);
 
@@ -1173,6 +1204,42 @@ nvk_fill_transform_feedback_state(struct nir_shader *nir,
    return xfb;
 }
 
+static VkResult
+nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
+                         nir_shader *nir,
+                         const struct nvk_fs_key *fs_key,
+                         struct nvk_shader *shader)
+{
+   struct nak_shader_bin *bin = nak_compile_shader(nir, NULL);
+
+   shader->stage = nir->info.stage;
+
+   if (pdev->info.cls_eng3d >= TURING_A)
+      shader->num_gprs = MIN2((unsigned)bin->info.num_gprs + 5, 255); //XXX: why?
+   else
+      shader->num_gprs = MAX2(4, bin->info.num_gprs);
+   shader->slm_size = bin->info.tls_size;
+
+   if (nir->info.stage == MESA_SHADER_COMPUTE) {
+      for (unsigned i = 0; i < 3; i++)
+         shader->cp.block_size[i] = bin->info.cs.local_size[i];
+      shader->cp.smem_size = bin->info.cs.smem_size;
+   }
+
+   STATIC_ASSERT(sizeof(shader->hdr) == sizeof(bin->info.hdr));
+   memcpy(shader->hdr, bin->info.hdr, sizeof(bin->info.hdr));
+
+   /* TODO: Free the nak_shader_bin */
+   shader->code_ptr = (void *)bin->code;
+   shader->code_size = bin->code_size;
+
+#ifndef NDEBUG
+   nvk_shader_dump(shader);
+#endif
+
+   return VK_SUCCESS;
+}
+
 VkResult
 nvk_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
                 const struct nvk_fs_key *fs_key,
@@ -1181,6 +1248,9 @@ nvk_compile_nir(struct nvk_physical_device *pdev, nir_shader *nir,
    struct nv50_ir_prog_info *info;
    struct nv50_ir_prog_info_out info_out = {};
    int ret;
+
+   if (use_nak(nir->info.stage))
+      return nvk_compile_nir_with_nak(pdev, nir, fs_key, shader);
 
    info = CALLOC_STRUCT(nv50_ir_prog_info);
    if (!info)
