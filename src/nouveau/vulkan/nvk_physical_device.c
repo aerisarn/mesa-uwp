@@ -77,6 +77,7 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       /* TODO: sparseResidency* */
       /* TODO: variableMultisampleRate */
       /* TODO: inheritedQueries */
+      .inheritedQueries = true,
    };
 
    VkPhysicalDeviceVulkan11Features core_1_1 = {
