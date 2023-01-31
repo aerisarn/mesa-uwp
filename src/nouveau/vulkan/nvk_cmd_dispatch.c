@@ -118,8 +118,8 @@ nvk_CmdDispatch(VkCommandBuffer commandBuffer,
    memcpy(qmd, pipeline->qmd_template, 256);
    gv100_compute_setup_launch_desc(qmd, groupCountX, groupCountY, groupCountZ);
 
-   gp100_cp_launch_desc_set_cb(qmd, 0, 256, root_table_addr);
-   gp100_cp_launch_desc_set_cb(qmd, 1, 256, root_table_addr);
+   gp100_cp_launch_desc_set_cb(qmd, 0, root_table_size, root_table_addr);
+   gp100_cp_launch_desc_set_cb(qmd, 1, root_table_size, root_table_addr);
 
    P_MTHD(cmd->push, NVA0C0, INVALIDATE_SHADER_CACHES_NO_WFI);
    P_NVA0C0_INVALIDATE_SHADER_CACHES_NO_WFI(cmd->push, { .constant = CONSTANT_TRUE });
