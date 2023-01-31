@@ -179,6 +179,12 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          f->sampler2DViewOf3D = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
+         VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT *f = (void *)ext;
+         f->vertexAttributeInstanceRateDivisor = true;
+         f->vertexAttributeInstanceRateZeroDivisor = true;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT: {
          VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT *f = (void *)ext;
          f->vertexInputDynamicState = true;
@@ -355,7 +361,11 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          p->pciFunction = pdev->info.pci_func;
          break;
       }
-
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
+         VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *p = (void *)ext;
+         p->maxVertexAttribDivisor = UINT32_MAX;
+         break;
+      }
       /* More property structs */
       default:
          break;
@@ -409,6 +419,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *pdev,
       .EXT_pci_bus_info = true,
       .EXT_private_data = true,
       .EXT_sample_locations = pdev->info.cls_eng3d >= MAXWELL_B,
+      .EXT_vertex_attribute_divisor = true,
       .EXT_vertex_input_dynamic_state = true,
    };
 }
