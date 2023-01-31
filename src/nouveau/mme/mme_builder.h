@@ -48,6 +48,8 @@ struct mme_tu104_builder {
    struct mme_tu104_cf cf_stack[8];
 };
 
+void mme_tu104_builder_init(struct mme_builder *b);
+
 void mme_tu104_add_inst(struct mme_builder *b,
                         const struct mme_tu104_inst *inst);
 
@@ -100,10 +102,8 @@ void mme_tu104_end_while(struct mme_builder *b,
 uint32_t *mme_tu104_builder_finish(struct mme_tu104_builder *b,
                                    size_t *size_out);
 
-#define MME_BUILDER_MAX_REGS 23
-
 struct mme_builder {
-   uint32_t reg_alloc;
+   struct mme_reg_alloc reg_alloc;
 
    struct mme_tu104_builder tu104;
 };
@@ -112,6 +112,7 @@ static inline void
 mme_builder_init(struct mme_builder *b)
 {
    memset(b, 0, sizeof(*b));
+   mme_tu104_builder_init(b);
 }
 
 static inline uint32_t *
@@ -120,35 +121,16 @@ mme_builder_finish(struct mme_builder *b, size_t *size_out)
    return mme_tu104_builder_finish(&b->tu104, size_out);
 }
 
-static inline uint8_t
-__mme_alloc_reg(struct mme_builder *b)
-{
-   uint8_t reg = ffs(~b->reg_alloc) - 1;
-   b->reg_alloc |= (1u << reg);
-   return reg;
-}
-
-static inline void
-__mme_free_reg(struct mme_builder *b, uint8_t reg)
-{
-   b->reg_alloc &= ~(1u << reg);
-}
-
 static inline struct mme_value
 mme_alloc_reg(struct mme_builder *b)
 {
-   struct mme_value val = {
-      .type = MME_VALUE_TYPE_REG,
-      .reg = __mme_alloc_reg(b),
-   };
-   return val;
+   return mme_reg_alloc_alloc(&b->reg_alloc);
 }
 
 static inline void
 mme_free_reg(struct mme_builder *b, struct mme_value val)
 {
-   assert(val.type == MME_VALUE_TYPE_REG);
-   __mme_free_reg(b, val.reg);
+   mme_reg_alloc_free(&b->reg_alloc, val);
 }
 
 static inline struct mme_value

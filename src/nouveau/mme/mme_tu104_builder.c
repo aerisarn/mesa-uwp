@@ -3,6 +3,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define MME_TU104_MAX_REGS 23
+
+void
+mme_tu104_builder_init(struct mme_builder *b)
+{
+   mme_reg_alloc_init(&b->reg_alloc, BITFIELD_MASK(MME_TU104_MAX_REGS));
+}
+
 static void
 mme_tu104_new_inst(struct mme_tu104_builder *tb)
 {

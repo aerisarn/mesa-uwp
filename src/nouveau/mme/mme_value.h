@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "util/bitscan.h"
 #include "util/macros.h"
 
 #ifdef __cplusplus
@@ -75,6 +76,47 @@ mme_imm64(uint64_t imm)
       mme_imm((uint32_t)(imm >> 32)),
    };
    return val;
+}
+
+struct mme_reg_alloc {
+   uint32_t exists;
+   uint32_t alloc;
+};
+
+static inline void
+mme_reg_alloc_init(struct mme_reg_alloc *a, uint32_t exists)
+{
+   a->alloc = 0;
+   a->exists = exists;
+}
+
+static inline struct mme_value
+mme_reg_alloc_alloc(struct mme_reg_alloc *a)
+{
+   uint8_t reg = ffs(~a->alloc & a->exists) - 1;
+   assert(reg < 32);
+   assert(a->exists & (1u << reg));
+
+   a->alloc |= (1u << reg);
+
+   struct mme_value val = {
+      .type = MME_VALUE_TYPE_REG,
+      .reg = reg,
+   };
+
+   return val;
+}
+
+static inline void
+mme_reg_alloc_free(struct mme_reg_alloc *a, struct mme_value val)
+{
+   assert(val.type == MME_VALUE_TYPE_REG);
+
+   assert(val.reg < 32);
+   assert(a->exists & (1u << val.reg));
+   assert(a->alloc & (1u << val.reg));
+
+   a->alloc &= ~(1u << val.reg);
 }
 
 #ifdef __cplusplus
