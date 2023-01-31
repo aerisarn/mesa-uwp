@@ -1,5 +1,5 @@
-#ifndef NIL_H
-#define NIL_H
+#ifndef NIL_IMAGE_H
+#define NIL_IMAGE_H
 
 #include <assert.h>
 #include <stdbool.h>
@@ -176,4 +176,4 @@ void nil_buffer_fill_tic(struct nouveau_ws_device *dev,
                          uint32_t num_elements,
                          void *desc_out);
 
-#endif /* NIL_H */
+#endif /* NIL_IMAGE_H */
