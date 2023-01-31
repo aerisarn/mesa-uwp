@@ -20,8 +20,11 @@ enum nvk_mme {
 };
 
 enum nvk_mme_scratch {
-   NVK_MME_SCRATCH_CS_INVOCATIONS_HI,
+   NVK_MME_SCRATCH_CS_INVOCATIONS_HI = 0,
    NVK_MME_SCRATCH_CS_INVOCATIONS_LO,
+
+   /* Must be at the end */
+   NVK_MME_NUM_SCRATCH,
 };
 
 typedef void (*nvk_mme_builder_func)(struct nvk_device *dev,
