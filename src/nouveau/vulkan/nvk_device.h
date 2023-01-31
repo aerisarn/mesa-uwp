@@ -4,6 +4,7 @@
 #include "nvk_private.h"
 
 #include "nvk_descriptor_table.h"
+#include "nvk_heap.h"
 #include "nvk_queue.h"
 #include "vk_device.h"
 #include "vk_meta.h"
@@ -35,6 +36,7 @@ struct nvk_device {
 
    struct nvk_descriptor_table images;
    struct nvk_descriptor_table samplers;
+   struct nvk_heap shader_heap;
    struct nvk_slm_area slm;
    struct nouveau_ws_bo *zero_page;
 

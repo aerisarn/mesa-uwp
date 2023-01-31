@@ -12,6 +12,7 @@
 #include "nvk_cla0c0.h"
 #include "cla1c0.h"
 #include "nvk_clc3c0.h"
+#include "nvk_clc397.h"
 
 static void
 nvk_queue_state_init(struct nvk_queue_state *qs)

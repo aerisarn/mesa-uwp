@@ -8,6 +8,8 @@
 
 #include "vulkan/wsi/wsi_common.h"
 
+#include "clc397.h"
+
 static void
 nvk_slm_area_init(struct nvk_slm_area *area)
 {
@@ -166,6 +168,15 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto fail_images;
 
+   /* The I-cache pre-fetches and we don't really know by how much.  Over-
+    * allocate shader BOs by 4K to ensure we don't run past.
+    */
+   result = nvk_heap_init(device, &device->shader_heap,
+                          NOUVEAU_WS_BO_LOCAL, NOUVEAU_WS_BO_WR,
+                          4096 /* overalloc */);
+   if (result != VK_SUCCESS)
+      goto fail_samplers;
+
    nvk_slm_area_init(&device->slm);
 
    if (pthread_mutex_init(&device->mutex, NULL) != 0) {
@@ -225,6 +236,8 @@ fail_mutex:
    pthread_mutex_destroy(&device->mutex);
 fail_slm:
    nvk_slm_area_finish(&device->slm);
+   nvk_heap_finish(device, &device->shader_heap);
+fail_samplers:
    nvk_descriptor_table_finish(device, &device->samplers);
 fail_images:
    nvk_descriptor_table_finish(device, &device->images);
@@ -254,6 +267,7 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    nouveau_ws_bo_destroy(device->zero_page);
    vk_device_finish(&device->vk);
    nvk_slm_area_finish(&device->slm);
+   nvk_heap_finish(device, &device->shader_heap);
    nvk_descriptor_table_finish(device, &device->samplers);
    nvk_descriptor_table_finish(device, &device->images);
    assert(list_is_empty(&device->memory_objects));
