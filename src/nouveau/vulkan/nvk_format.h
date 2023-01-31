@@ -13,4 +13,18 @@ struct nvk_format {
 #define NVK_FORMATS 28
 extern struct nvk_format nvk_formats[NVK_FORMATS];
 
+struct nvk_tic_format {
+   unsigned comp_sizes:8;
+   unsigned type_r:3;
+   unsigned type_g:3;
+   unsigned type_b:3;
+   unsigned type_a:3;
+   unsigned src_x:3;
+   unsigned src_y:3;
+   unsigned src_z:3;
+   unsigned src_w:3;
+};
+
+extern const struct nvk_tic_format pipe_to_nvk_tic_format[];
+
 #endif
