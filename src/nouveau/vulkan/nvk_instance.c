@@ -34,8 +34,8 @@ static const struct vk_instance_extension_table instance_extensions = {
 
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_EnumerateInstanceExtensionProperties(const char *pLayerName,
-   uint32_t *pPropertyCount,
-   VkExtensionProperties *pProperties)
+                                         uint32_t *pPropertyCount,
+                                         VkExtensionProperties *pProperties)
 {
    if (pLayerName)
       return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
@@ -46,8 +46,8 @@ nvk_EnumerateInstanceExtensionProperties(const char *pLayerName,
 
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
-   const VkAllocationCallbacks *pAllocator,
-   VkInstance *pInstance)
+                   const VkAllocationCallbacks *pAllocator,
+                   VkInstance *pInstance)
 {
    struct nvk_instance *instance;
    VkResult result;
@@ -55,22 +55,25 @@ nvk_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    if (pAllocator == NULL)
       pAllocator = vk_default_allocator();
 
-   instance = vk_alloc(pAllocator, sizeof(*instance), 8, VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+   instance = vk_alloc(pAllocator, sizeof(*instance), 8,
+                       VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
    if (!instance)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    struct vk_instance_dispatch_table dispatch_table;
-   vk_instance_dispatch_table_from_entrypoints(&dispatch_table, &nvk_instance_entrypoints, true);
+   vk_instance_dispatch_table_from_entrypoints(&dispatch_table,
+                                               &nvk_instance_entrypoints,
+                                               true);
 
-   result = vk_instance_init(
-      &instance->vk, &instance_extensions, &dispatch_table, pCreateInfo, pAllocator);
-
+   result = vk_instance_init(&instance->vk, &instance_extensions,
+                             &dispatch_table, pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
       vk_free(pAllocator, instance);
       return result;
    }
 
-   instance->vk.physical_devices.try_create_for_drm = nvk_create_drm_physical_device;
+   instance->vk.physical_devices.try_create_for_drm =
+      nvk_create_drm_physical_device;
    instance->vk.physical_devices.destroy = nvk_physical_device_destroy;
 
    *pInstance = nvk_instance_to_handle(instance);
@@ -78,7 +81,8 @@ nvk_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_DestroyInstance(VkInstance _instance, const VkAllocationCallbacks *pAllocator)
+nvk_DestroyInstance(VkInstance _instance,
+                    const VkAllocationCallbacks *pAllocator)
 {
    VK_FROM_HANDLE(nvk_instance, instance, _instance);
 
@@ -93,7 +97,9 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 nvk_GetInstanceProcAddr(VkInstance _instance, const char *pName)
 {
    VK_FROM_HANDLE(nvk_instance, instance, _instance);
-   return vk_instance_get_proc_addr(&instance->vk, &nvk_instance_entrypoints, pName);
+   return vk_instance_get_proc_addr(&instance->vk,
+                                    &nvk_instance_entrypoints,
+                                    pName);
 }
 
 PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
