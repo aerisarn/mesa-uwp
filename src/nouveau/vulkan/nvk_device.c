@@ -117,6 +117,32 @@ nvk_update_preambles(struct nvk_queue_state *qs, struct nvk_device *device,
 }
 
 static VkResult
+nvk_queue_init(struct nvk_device *dev, struct nvk_queue *queue,
+               const VkDeviceQueueCreateInfo *pCreateInfo,
+               uint32_t index_in_family)
+{
+   VkResult result;
+
+   result = vk_queue_init(&queue->vk, &dev->vk, pCreateInfo, index_in_family);
+   if (result != VK_SUCCESS)
+      return result;
+
+   return VK_SUCCESS;
+}
+
+static void
+nvk_queue_finish(struct nvk_device *dev, struct nvk_queue *queue)
+{
+   if (queue->state.push)
+      nouveau_ws_push_destroy(queue->state.push);
+   if (queue->empty_push)
+      nouveau_ws_push_destroy(queue->empty_push);
+   if (queue->state.tls_bo)
+      nouveau_ws_bo_destroy(queue->state.tls_bo);
+   vk_queue_finish(&queue->vk);
+}
+
+static VkResult
 nvk_queue_submit(struct vk_queue *vkqueue, struct vk_queue_submit *submission)
 {
    struct nvk_device *device = container_of(vkqueue->base.device, struct nvk_device, vk);
@@ -241,7 +267,8 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto fail_images;
 
-   result = vk_queue_init(&device->queue.vk, &device->vk, &pCreateInfo->pQueueCreateInfos[0], 0);
+   result = nvk_queue_init(device, &device->queue,
+                           &pCreateInfo->pQueueCreateInfos[0], 0);
    if (result != VK_SUCCESS)
       goto fail_samplers;
 
@@ -284,7 +311,7 @@ fail_queue_submit:
 fail_mutex:
    pthread_mutex_destroy(&device->mutex);
 fail_queue:
-   vk_queue_finish(&device->queue.vk);
+   nvk_queue_finish(device, &device->queue);
 fail_samplers:
    nvk_descriptor_table_finish(device, &device->samplers);
 fail_images:
@@ -309,15 +336,9 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    nvk_device_finish_meta(device);
 
-   if (device->queue.state.push)
-      nouveau_ws_push_destroy(device->queue.state.push);
-   if (device->queue.empty_push)
-      nouveau_ws_push_destroy(device->queue.empty_push);
-   if (device->queue.state.tls_bo)
-      nouveau_ws_bo_destroy(device->queue.state.tls_bo);
    pthread_cond_destroy(&device->queue_submit);
    pthread_mutex_destroy(&device->mutex);
-   vk_queue_finish(&device->queue.vk);
+   nvk_queue_finish(device, &device->queue);
    vk_device_finish(&device->vk);
    nvk_descriptor_table_finish(device, &device->samplers);
    nvk_descriptor_table_finish(device, &device->images);
