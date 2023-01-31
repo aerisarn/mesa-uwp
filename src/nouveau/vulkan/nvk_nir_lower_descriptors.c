@@ -97,26 +97,33 @@ load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
    }
 }
 
+static nir_ssa_def *
+load_descriptor_for_idx_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
+                               const struct lower_descriptors_ctx *ctx)
+{
+   nir_ssa_def *index = nir_imm_int(b, 0);
+
+   while (intrin->intrinsic == nir_intrinsic_vulkan_resource_reindex) {
+      index = nir_iadd(b, index, nir_ssa_for_src(b, intrin->src[1], 1));
+      intrin = nir_src_as_intrinsic(intrin->src[0]);
+   }
+
+   assert(intrin->intrinsic == nir_intrinsic_vulkan_resource_index);
+   uint32_t set = nir_intrinsic_desc_set(intrin);
+   uint32_t binding = nir_intrinsic_binding(intrin);
+   index = nir_iadd(b, index, nir_ssa_for_src(b, intrin->src[0], 1));
+
+   return load_descriptor(b, 4, 32, set, binding, index, ctx);
+}
+
 static bool
 lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
                              const struct lower_descriptors_ctx *ctx)
 {
    b->cursor = nir_before_instr(&intrin->instr);
 
-   nir_ssa_def *index = nir_imm_int(b, 0);
-
-   nir_intrinsic_instr *parent = nir_src_as_intrinsic(intrin->src[0]);
-   while (parent->intrinsic == nir_intrinsic_vulkan_resource_reindex) {
-      index = nir_iadd(b, index, nir_ssa_for_src(b, intrin->src[1], 1));
-      parent = nir_src_as_intrinsic(intrin->src[0]);
-   }
-
-   assert(parent->intrinsic == nir_intrinsic_vulkan_resource_index);
-   uint32_t set = nir_intrinsic_desc_set(parent);
-   uint32_t binding = nir_intrinsic_binding(parent);
-   index = nir_iadd(b, index, nir_ssa_for_src(b, parent->src[0], 1));
-
-   nir_ssa_def *desc = load_descriptor(b, 4, 32, set, binding, index, ctx);
+   nir_intrinsic_instr *idx_intrin = nir_src_as_intrinsic(intrin->src[0]);
+   nir_ssa_def *desc = load_descriptor_for_idx_intrin(b, idx_intrin, ctx);
 
    nir_ssa_def_rewrite_uses(&intrin->dest.ssa, desc);
 
