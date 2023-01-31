@@ -11,6 +11,11 @@ nvk_pipeline_destroy(struct nvk_device *device,
                      struct nvk_pipeline *pipeline,
                      const VkAllocationCallbacks *pAllocator)
 {
+   for (uint32_t s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
+      if (pipeline->shaders[s].bo)
+         nouveau_ws_bo_destroy(pipeline->shaders[s].bo);
+   }
+
    vk_object_free(&device->vk, pAllocator, pipeline);
 }
 
