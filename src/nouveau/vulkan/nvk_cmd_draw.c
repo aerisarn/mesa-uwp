@@ -560,3 +560,521 @@ nvk_cmd_bind_graphics_pipeline(struct nvk_cmd_buffer *cmd,
 {
    cmd->state.gfx.pipeline = pipeline;
 }
+
+#define VFMT(vk_fmt, widths, swap_rb, type) \
+   [VK_FORMAT_##vk_fmt] = \
+   { NV9097_SET_VERTEX_ATTRIBUTE_A_COMPONENT_BIT_WIDTHS_##widths, \
+     NV9097_SET_VERTEX_ATTRIBUTE_A_SWAP_R_AND_B_##swap_rb, \
+     NV9097_SET_VERTEX_ATTRIBUTE_A_NUMERICAL_TYPE_NUM_##type }
+
+static const struct nvk_vf_format {
+   uint8_t component_bit_widths;
+   uint8_t swap_r_and_b:1;
+   uint8_t numerical_type:7;
+} nvk_vf_formats[] = {
+   VFMT(R8_UNORM,                   R8,               FALSE,   UNORM),
+   VFMT(R8_SNORM,                   R8,               FALSE,   SNORM),
+   VFMT(R8_USCALED,                 R8,               FALSE,   USCALED),
+   VFMT(R8_SSCALED,                 R8,               FALSE,   SSCALED),
+   VFMT(R8_UINT,                    R8,               FALSE,   UINT),
+   VFMT(R8_SINT,                    R8,               FALSE,   SINT),
+
+   VFMT(R8G8_UNORM,                 R8_G8,            FALSE,   UNORM),
+   VFMT(R8G8_SNORM,                 R8_G8,            FALSE,   SNORM),
+   VFMT(R8G8_USCALED,               R8_G8,            FALSE,   USCALED),
+   VFMT(R8G8_SSCALED,               R8_G8,            FALSE,   SSCALED),
+   VFMT(R8G8_UINT,                  R8_G8,            FALSE,   UINT),
+   VFMT(R8G8_SINT,                  R8_G8,            FALSE,   SINT),
+
+   VFMT(R8G8B8_UNORM,               R8_G8_B8,         FALSE,   UNORM),
+   VFMT(R8G8B8_SNORM,               R8_G8_B8,         FALSE,   SNORM),
+   VFMT(R8G8B8_USCALED,             R8_G8_B8,         FALSE,   USCALED),
+   VFMT(R8G8B8_SSCALED,             R8_G8_B8,         FALSE,   SSCALED),
+   VFMT(R8G8B8_UINT,                R8_G8_B8,         FALSE,   UINT),
+   VFMT(R8G8B8_SINT,                R8_G8_B8,         FALSE,   SINT),
+
+   VFMT(B8G8R8_UNORM,               R8_G8_B8,         TRUE,    UNORM),
+   VFMT(B8G8R8_SNORM,               R8_G8_B8,         TRUE,    SNORM),
+   VFMT(B8G8R8_USCALED,             R8_G8_B8,         TRUE,    USCALED),
+   VFMT(B8G8R8_SSCALED,             R8_G8_B8,         TRUE,    SSCALED),
+   VFMT(B8G8R8_UINT,                R8_G8_B8,         TRUE,    UINT),
+   VFMT(B8G8R8_SINT,                R8_G8_B8,         TRUE,    SINT),
+
+   VFMT(R8G8B8A8_UNORM,             R8_G8_B8_A8,      FALSE,   UNORM),
+   VFMT(R8G8B8A8_SNORM,             R8_G8_B8_A8,      FALSE,   SNORM),
+   VFMT(R8G8B8A8_USCALED,           R8_G8_B8_A8,      FALSE,   USCALED),
+   VFMT(R8G8B8A8_SSCALED,           R8_G8_B8_A8,      FALSE,   SSCALED),
+   VFMT(R8G8B8A8_UINT,              R8_G8_B8_A8,      FALSE,   UINT),
+   VFMT(R8G8B8A8_SINT,              R8_G8_B8_A8,      FALSE,   SINT),
+
+   VFMT(B8G8R8A8_UNORM,             R8_G8_B8_A8,      TRUE,   UNORM),
+   VFMT(B8G8R8A8_SNORM,             R8_G8_B8_A8,      TRUE,   SNORM),
+   VFMT(B8G8R8A8_USCALED,           R8_G8_B8_A8,      TRUE,   USCALED),
+   VFMT(B8G8R8A8_SSCALED,           R8_G8_B8_A8,      TRUE,   SSCALED),
+   VFMT(B8G8R8A8_UINT,              R8_G8_B8_A8,      TRUE,   UINT),
+   VFMT(B8G8R8A8_SINT,              R8_G8_B8_A8,      TRUE,   SINT),
+
+   VFMT(A2R10G10B10_UNORM_PACK32,   A2B10G10R10,      TRUE,    UNORM),
+   VFMT(A2R10G10B10_SNORM_PACK32,   A2B10G10R10,      TRUE,    SNORM),
+   VFMT(A2R10G10B10_USCALED_PACK32, A2B10G10R10,      TRUE,    USCALED),
+   VFMT(A2R10G10B10_SSCALED_PACK32, A2B10G10R10,      TRUE,    SSCALED),
+   VFMT(A2R10G10B10_UINT_PACK32,    A2B10G10R10,      TRUE,    UINT),
+   VFMT(A2R10G10B10_SINT_PACK32,    A2B10G10R10,      TRUE,    SINT),
+
+   VFMT(A2B10G10R10_UNORM_PACK32,   A2B10G10R10,      FALSE,   UNORM),
+   VFMT(A2B10G10R10_SNORM_PACK32,   A2B10G10R10,      FALSE,   SNORM),
+   VFMT(A2B10G10R10_USCALED_PACK32, A2B10G10R10,      FALSE,   USCALED),
+   VFMT(A2B10G10R10_SSCALED_PACK32, A2B10G10R10,      FALSE,   SSCALED),
+   VFMT(A2B10G10R10_UINT_PACK32,    A2B10G10R10,      FALSE,   UINT),
+   VFMT(A2B10G10R10_SINT_PACK32,    A2B10G10R10,      FALSE,   SINT),
+
+   VFMT(R16_UNORM,                  R16,              FALSE,   UNORM),
+   VFMT(R16_SNORM,                  R16,              FALSE,   SNORM),
+   VFMT(R16_USCALED,                R16,              FALSE,   USCALED),
+   VFMT(R16_SSCALED,                R16,              FALSE,   SSCALED),
+   VFMT(R16_UINT,                   R16,              FALSE,   UINT),
+   VFMT(R16_SINT,                   R16,              FALSE,   SINT),
+   VFMT(R16_SFLOAT,                 R16,              FALSE,   FLOAT),
+
+   VFMT(R16G16_UNORM,               R16_G16,          FALSE,   UNORM),
+   VFMT(R16G16_SNORM,               R16_G16,          FALSE,   SNORM),
+   VFMT(R16G16_USCALED,             R16_G16,          FALSE,   USCALED),
+   VFMT(R16G16_SSCALED,             R16_G16,          FALSE,   SSCALED),
+   VFMT(R16G16_UINT,                R16_G16,          FALSE,   UINT),
+   VFMT(R16G16_SINT,                R16_G16,          FALSE,   SINT),
+   VFMT(R16G16_SFLOAT,              R16_G16,          FALSE,   FLOAT),
+
+   VFMT(R16G16B16_UNORM,            R16_G16_B16,      FALSE,   UNORM),
+   VFMT(R16G16B16_SNORM,            R16_G16_B16,      FALSE,   SNORM),
+   VFMT(R16G16B16_USCALED,          R16_G16_B16,      FALSE,   USCALED),
+   VFMT(R16G16B16_SSCALED,          R16_G16_B16,      FALSE,   SSCALED),
+   VFMT(R16G16B16_UINT,             R16_G16_B16,      FALSE,   UINT),
+   VFMT(R16G16B16_SINT,             R16_G16_B16,      FALSE,   SINT),
+   VFMT(R16G16B16_SFLOAT,           R16_G16_B16,      FALSE,   FLOAT),
+
+   VFMT(R16G16B16A16_UNORM,         R16_G16_B16_A16,  FALSE,   UNORM),
+   VFMT(R16G16B16A16_SNORM,         R16_G16_B16_A16,  FALSE,   SNORM),
+   VFMT(R16G16B16A16_USCALED,       R16_G16_B16_A16,  FALSE,   USCALED),
+   VFMT(R16G16B16A16_SSCALED,       R16_G16_B16_A16,  FALSE,   SSCALED),
+   VFMT(R16G16B16A16_UINT,          R16_G16_B16_A16,  FALSE,   UINT),
+   VFMT(R16G16B16A16_SINT,          R16_G16_B16_A16,  FALSE,   SINT),
+   VFMT(R16G16B16A16_SFLOAT,        R16_G16_B16_A16,  FALSE,   FLOAT),
+
+   VFMT(R32_UINT,                   R32,              FALSE,   UINT),
+   VFMT(R32_SINT,                   R32,              FALSE,   SINT),
+   VFMT(R32_SFLOAT,                 R32,              FALSE,   FLOAT),
+
+   VFMT(R32G32_UINT,                R32_G32,          FALSE,   UINT),
+   VFMT(R32G32_SINT,                R32_G32,          FALSE,   SINT),
+   VFMT(R32G32_SFLOAT,              R32_G32,          FALSE,   FLOAT),
+
+   VFMT(R32G32B32_UINT,             R32_G32_B32,      FALSE,   UINT),
+   VFMT(R32G32B32_SINT,             R32_G32_B32,      FALSE,   SINT),
+   VFMT(R32G32B32_SFLOAT,           R32_G32_B32,      FALSE,   FLOAT),
+
+   VFMT(R32G32B32A32_UINT,          R32_G32_B32_A32,  FALSE,   UINT),
+   VFMT(R32G32B32A32_SINT,          R32_G32_B32_A32,  FALSE,   SINT),
+   VFMT(R32G32B32A32_SFLOAT,        R32_G32_B32_A32,  FALSE,   FLOAT),
+};
+
+#undef VFMT
+
+static void
+nvk_flush_vi_state(struct nvk_cmd_buffer *cmd)
+{
+   struct nouveau_ws_push *p = cmd->push;
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd->vk.dynamic_graphics_state;
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VI)) {
+      u_foreach_bit(a, dyn->vi->attributes_valid) {
+         const struct nvk_vf_format *fmt =
+            &nvk_vf_formats[dyn->vi->attributes[a].format];
+
+         P_IMMD(p, NV9097, SET_VERTEX_ATTRIBUTE_A(a), {
+            .stream                 = dyn->vi->attributes[a].binding,
+            .offset                 = dyn->vi->attributes[a].offset,
+            .component_bit_widths   = fmt->component_bit_widths,
+            .numerical_type         = fmt->numerical_type,
+            .swap_r_and_b           = fmt->swap_r_and_b,
+         });
+      }
+
+      u_foreach_bit(b, dyn->vi->bindings_valid) {
+         const bool instanced = dyn->vi->bindings[b].input_rate ==
+                                VK_VERTEX_INPUT_RATE_INSTANCE;
+         P_IMMD(p, NV9097, SET_VERTEX_STREAM_INSTANCE_A(b), instanced);
+         P_IMMD(p, NV9097, SET_VERTEX_STREAM_A_FREQUENCY(b),
+            dyn->vi->bindings[b].divisor);
+      }
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VI_BINDING_STRIDES)) {
+      for (uint32_t b = 0; b < 32; b++) {
+         P_IMMD(p, NV9097, SET_VERTEX_STREAM_A_FORMAT(b), {
+            .stride = dyn->vi_binding_strides[b],
+            .enable = (dyn->vi->bindings_valid & BITFIELD_BIT(b)) != 0,
+         });
+      }
+   }
+}
+
+static void
+nvk_flush_ia_state(struct nvk_cmd_buffer *cmd)
+{
+   struct nouveau_ws_push *p = cmd->push;
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd->vk.dynamic_graphics_state;
+
+   /** Nothing to do for MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY */
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE)) {
+      P_IMMD(p, NV9097, SET_DA_PRIMITIVE_RESTART_VERTEX_ARRAY,
+         dyn->ia.primitive_restart_enable);
+   }
+}
+
+static void
+nvk_flush_ts_state(struct nvk_cmd_buffer *cmd)
+{
+   struct nouveau_ws_push *p = cmd->push;
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd->vk.dynamic_graphics_state;
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_TS_PATCH_CONTROL_POINTS))
+      P_IMMD(p, NV9097, SET_PATCH, dyn->ts.patch_control_points);
+}
+
+static void
+nvk_flush_vp_state(struct nvk_cmd_buffer *cmd)
+{
+   struct nouveau_ws_push *p = cmd->push;
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd->vk.dynamic_graphics_state;
+
+   /* Nothing to do for MESA_VK_DYNAMIC_VP_VIEWPORT_COUNT */
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_VIEWPORTS)) {
+      for (uint32_t i = 0; i < dyn->vp.viewport_count; i++) {
+         const VkViewport *vp = &dyn->vp.viewports[i];
+
+         P_MTHD(p, NV9097, SET_VIEWPORT_SCALE_X(i));
+         P_NV9097_SET_VIEWPORT_SCALE_X(p, i, fui(0.5f * vp->width));
+         P_NV9097_SET_VIEWPORT_SCALE_Y(p, i, fui(0.5f * vp->height));
+         P_NV9097_SET_VIEWPORT_SCALE_Z(p, i,
+            fui(0.5f * (vp->maxDepth - vp->minDepth)));
+
+         P_NV9097_SET_VIEWPORT_OFFSET_X(p, i, fui(vp->x + 0.5f * vp->width));
+         P_NV9097_SET_VIEWPORT_OFFSET_Y(p, i, fui(vp->y + 0.5f * vp->height));
+         P_NV9097_SET_VIEWPORT_OFFSET_Z(p, i, fui(vp->minDepth));
+
+         const uint32_t xmin = vp->x;
+         const uint32_t xmax = vp->x + vp->width;
+         const uint32_t ymin = MIN2(vp->y, vp->y + vp->height);
+         const uint32_t ymax = MAX2(vp->y, vp->y + vp->height);
+         assert(xmin <= xmax && ymin <= ymax);
+
+         P_MTHD(p, NV9097, SET_VIEWPORT_CLIP_HORIZONTAL(i));
+         P_NV9097_SET_VIEWPORT_CLIP_HORIZONTAL(p, i, {
+            .x0      = xmin,
+            .width   = xmax - xmin,
+         });
+         P_NV9097_SET_VIEWPORT_CLIP_VERTICAL(p, i, {
+            .y0      = ymin,
+            .height  = ymax - ymin,
+         });
+         P_NV9097_SET_VIEWPORT_CLIP_MIN_Z(p, i, fui(vp->minDepth));
+         P_NV9097_SET_VIEWPORT_CLIP_MAX_Z(p, i, fui(vp->maxDepth));
+
+         if (nvk_cmd_buffer_3d_cls(cmd) >= MAXWELL_B) {
+            P_IMMD(p, NVB197, SET_VIEWPORT_COORDINATE_SWIZZLE(i), {
+               .x = X_POS_X,
+               .y = Y_POS_Y,
+               .z = Z_POS_Z,
+               .w = W_POS_W,
+            });
+         }
+      }
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_SCISSOR_COUNT)) {
+      for (unsigned i = dyn->vp.scissor_count; i < NVK_MAX_VIEWPORTS; i++)
+         P_IMMD(p, NV9097, SET_SCISSOR_ENABLE(i), V_FALSE);
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_SCISSORS)) {
+      for (unsigned i = 0; i < dyn->vp.scissor_count; i++) {
+         const VkRect2D *s = &dyn->vp.scissors[i];
+
+         const uint32_t xmin = MIN2(16384, s->offset.x);
+         const uint32_t xmax = MIN2(16384, s->offset.x + s->extent.width);
+         const uint32_t ymin = MIN2(16384, s->offset.y);
+         const uint32_t ymax = MIN2(16384, s->offset.y + s->extent.height);
+
+         P_MTHD(p, NV9097, SET_SCISSOR_ENABLE(i));
+         P_NV9097_SET_SCISSOR_ENABLE(p, i, V_TRUE);
+         P_NV9097_SET_SCISSOR_HORIZONTAL(p, i, {
+            .xmin = xmin,
+            .xmax = xmax,
+         });
+         P_NV9097_SET_SCISSOR_VERTICAL(p, i, {
+            .ymin = ymin,
+            .ymax = ymax,
+         });
+      }
+   }
+}
+
+static uint32_t
+vk_to_nv9097_cull_mode(VkCullModeFlags vk_cull_mode)
+{
+   static const uint16_t vk_to_nv9097[] = {
+      [VK_CULL_MODE_FRONT_BIT]      = NV9097_OGL_SET_CULL_FACE_V_FRONT,
+      [VK_CULL_MODE_BACK_BIT]       = NV9097_OGL_SET_CULL_FACE_V_BACK,
+      [VK_CULL_MODE_FRONT_AND_BACK] = NV9097_OGL_SET_CULL_FACE_V_FRONT_AND_BACK,
+   };
+   assert(vk_cull_mode < ARRAY_SIZE(vk_to_nv9097));
+   return vk_to_nv9097[vk_cull_mode];
+}
+
+static uint32_t
+vk_to_nv9097_front_face(VkFrontFace vk_face)
+{
+   ASSERTED static const uint16_t vk_to_nv9097[] = {
+      [VK_FRONT_FACE_COUNTER_CLOCKWISE]   = NV9097_OGL_SET_FRONT_FACE_V_CW,
+      [VK_FRONT_FACE_CLOCKWISE]           = NV9097_OGL_SET_FRONT_FACE_V_CCW,
+   };
+   assert(vk_face < ARRAY_SIZE(vk_to_nv9097));
+
+   uint32_t nv9097_face = 0x900 | vk_face;
+   assert(nv9097_face == vk_to_nv9097[vk_face]);
+   return nv9097_face;
+}
+
+static void
+nvk_flush_rs_state(struct nvk_cmd_buffer *cmd)
+{
+   struct nouveau_ws_push *p = cmd->push;
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd->vk.dynamic_graphics_state;
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE))
+      P_IMMD(p, NV9097, SET_RASTER_ENABLE, !dyn->rs.rasterizer_discard_enable);
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_CULL_MODE)) {
+      P_IMMD(p, NV9097, OGL_SET_CULL, dyn->rs.cull_mode != VK_CULL_MODE_NONE);
+
+      if (dyn->rs.cull_mode != VK_CULL_MODE_NONE) {
+         uint32_t face = vk_to_nv9097_cull_mode(dyn->rs.cull_mode);
+         P_IMMD(p, NV9097, OGL_SET_CULL_FACE, face);
+      }
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_FRONT_FACE)) {
+      P_IMMD(p, NV9097, OGL_SET_FRONT_FACE,
+         vk_to_nv9097_front_face(dyn->rs.front_face));
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_ENABLE)) {
+      P_MTHD(p, NV9097, SET_POLY_OFFSET_POINT);
+      P_NV9097_SET_POLY_OFFSET_POINT(p, dyn->rs.depth_bias.enable);
+      P_NV9097_SET_POLY_OFFSET_LINE(p, dyn->rs.depth_bias.enable);
+      P_NV9097_SET_POLY_OFFSET_FILL(p, dyn->rs.depth_bias.enable);
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS)) {
+      P_IMMD(p, NV9097, SET_DEPTH_BIAS, fui(dyn->rs.depth_bias.constant));
+      P_IMMD(p, NV9097, SET_SLOPE_SCALE_DEPTH_BIAS, fui(dyn->rs.depth_bias.slope));
+      P_IMMD(p, NV9097, SET_DEPTH_BIAS_CLAMP, fui(dyn->rs.depth_bias.clamp));
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_LINE_WIDTH)) {
+      P_MTHD(p, NV9097, SET_LINE_WIDTH_FLOAT);
+      P_NV9097_SET_LINE_WIDTH_FLOAT(p, fui(dyn->rs.line.width));
+      P_NV9097_SET_ALIASED_LINE_WIDTH_FLOAT(p, fui(dyn->rs.line.width));
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_LINE_STIPPLE)) {
+      P_IMMD(p, NV9097, SET_LINE_STIPPLE_PARAMETERS, {
+         .factor  = dyn->rs.line.stipple.factor,
+         .pattern = dyn->rs.line.stipple.pattern,
+      });
+   }
+}
+
+static uint32_t
+vk_to_nv9097_compare_op(VkCompareOp vk_op)
+{
+   ASSERTED static const uint16_t vk_to_nv9097[] = {
+      [VK_COMPARE_OP_NEVER]            = NV9097_SET_DEPTH_FUNC_V_OGL_NEVER,
+      [VK_COMPARE_OP_LESS]             = NV9097_SET_DEPTH_FUNC_V_OGL_LESS,
+      [VK_COMPARE_OP_EQUAL]            = NV9097_SET_DEPTH_FUNC_V_OGL_EQUAL,
+      [VK_COMPARE_OP_LESS_OR_EQUAL]    = NV9097_SET_DEPTH_FUNC_V_OGL_LEQUAL,
+      [VK_COMPARE_OP_GREATER]          = NV9097_SET_DEPTH_FUNC_V_OGL_GREATER,
+      [VK_COMPARE_OP_NOT_EQUAL]        = NV9097_SET_DEPTH_FUNC_V_OGL_NOTEQUAL,
+      [VK_COMPARE_OP_GREATER_OR_EQUAL] = NV9097_SET_DEPTH_FUNC_V_OGL_GEQUAL,
+      [VK_COMPARE_OP_ALWAYS]           = NV9097_SET_DEPTH_FUNC_V_OGL_ALWAYS,
+   };
+   assert(vk_op < ARRAY_SIZE(vk_to_nv9097));
+
+   uint32_t nv9097_op = 0x200 | vk_op;
+   assert(nv9097_op == vk_to_nv9097[vk_op]);
+   return nv9097_op;
+}
+
+static uint32_t
+vk_to_nv9097_stencil_op(VkStencilOp vk_op)
+{
+#define OP(vk, nv) [VK_STENCIL_OP_##vk] = NV9097_SET_STENCIL_OP_FAIL_V_##nv
+   ASSERTED static const uint16_t vk_to_nv9097[] = {
+      OP(KEEP,                D3D_KEEP),
+      OP(ZERO,                D3D_ZERO),
+      OP(REPLACE,             D3D_REPLACE),
+      OP(INCREMENT_AND_CLAMP, D3D_INCRSAT),
+      OP(DECREMENT_AND_CLAMP, D3D_DECRSAT),
+      OP(INVERT,              D3D_INVERT),
+      OP(INCREMENT_AND_WRAP,  D3D_INCR),
+      OP(DECREMENT_AND_WRAP,  D3D_DECR),
+   };
+   assert(vk_op < ARRAY_SIZE(vk_to_nv9097));
+#undef OP
+
+   uint32_t nv9097_op = vk_op + 1;
+   assert(nv9097_op == vk_to_nv9097[vk_op]);
+   return nv9097_op;
+}
+
+static void
+nvk_flush_ds_state(struct nvk_cmd_buffer *cmd)
+{
+   struct nouveau_ws_push *p = cmd->push;
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd->vk.dynamic_graphics_state;
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_TEST_ENABLE))
+      P_IMMD(p, NV9097, SET_DEPTH_TEST, dyn->ds.depth.test_enable);
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_WRITE_ENABLE))
+      P_IMMD(p, NV9097, SET_DEPTH_WRITE, dyn->ds.depth.write_enable);
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_COMPARE_OP)) {
+      const uint32_t func = vk_to_nv9097_compare_op(dyn->ds.depth.compare_op);
+      P_IMMD(p, NV9097, SET_DEPTH_FUNC, func);
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_BOUNDS_TEST_ENABLE))
+      P_IMMD(p, NV9097, SET_DEPTH_BOUNDS_TEST, dyn->ds.depth.bounds_test.enable);
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_BOUNDS_TEST_BOUNDS)) {
+      P_MTHD(p, NV9097, SET_DEPTH_BOUNDS_MIN);
+      P_NV9097_SET_DEPTH_BOUNDS_MIN(p, dyn->ds.depth.bounds_test.min);
+      P_NV9097_SET_DEPTH_BOUNDS_MAX(p, dyn->ds.depth.bounds_test.max);
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_STENCIL_TEST_ENABLE))
+      P_IMMD(p, NV9097, SET_STENCIL_TEST, dyn->ds.stencil.test_enable);
+
+   const struct vk_stencil_test_face_state *front = &dyn->ds.stencil.front;
+   const struct vk_stencil_test_face_state *back = &dyn->ds.stencil.back;
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_STENCIL_OP)) {
+      P_MTHD(p, NV9097, SET_STENCIL_OP_FAIL);
+      P_NV9097_SET_STENCIL_OP_FAIL(p, vk_to_nv9097_stencil_op(front->op.fail));
+      P_NV9097_SET_STENCIL_OP_ZFAIL(p, vk_to_nv9097_stencil_op(front->op.depth_fail));
+      P_NV9097_SET_STENCIL_OP_ZPASS(p, vk_to_nv9097_stencil_op(front->op.pass));
+      P_NV9097_SET_STENCIL_FUNC(p, vk_to_nv9097_compare_op(front->op.compare));
+
+      P_MTHD(p, NV9097, SET_BACK_STENCIL_OP_FAIL);
+      P_NV9097_SET_BACK_STENCIL_OP_FAIL(p, vk_to_nv9097_stencil_op(back->op.fail));
+      P_NV9097_SET_BACK_STENCIL_OP_ZFAIL(p, vk_to_nv9097_stencil_op(back->op.depth_fail));
+      P_NV9097_SET_BACK_STENCIL_OP_ZPASS(p, vk_to_nv9097_stencil_op(back->op.pass));
+      P_NV9097_SET_BACK_STENCIL_FUNC(p, vk_to_nv9097_compare_op(back->op.compare));
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_STENCIL_COMPARE_MASK)) {
+      P_IMMD(p, NV9097, SET_STENCIL_FUNC_MASK, front->compare_mask);
+      P_IMMD(p, NV9097, SET_BACK_STENCIL_FUNC_MASK, back->compare_mask);
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_STENCIL_WRITE_MASK)) {
+      P_IMMD(p, NV9097, SET_STENCIL_MASK, front->write_mask);
+      P_IMMD(p, NV9097, SET_BACK_STENCIL_MASK, back->write_mask);
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_STENCIL_REFERENCE)) {
+      P_IMMD(p, NV9097, SET_STENCIL_FUNC_REF, front->reference);
+      P_IMMD(p, NV9097, SET_BACK_STENCIL_FUNC_REF, back->reference);
+   }
+}
+
+static uint32_t
+vk_to_nv9097_logic_op(VkLogicOp vk_op)
+{
+   ASSERTED uint16_t vk_to_nv9097[] = {
+      [VK_LOGIC_OP_CLEAR]           = NV9097_SET_LOGIC_OP_FUNC_V_CLEAR,
+      [VK_LOGIC_OP_AND]             = NV9097_SET_LOGIC_OP_FUNC_V_AND,
+      [VK_LOGIC_OP_AND_REVERSE]     = NV9097_SET_LOGIC_OP_FUNC_V_AND_REVERSE,
+      [VK_LOGIC_OP_COPY]            = NV9097_SET_LOGIC_OP_FUNC_V_COPY,
+      [VK_LOGIC_OP_AND_INVERTED]    = NV9097_SET_LOGIC_OP_FUNC_V_AND_INVERTED,
+      [VK_LOGIC_OP_NO_OP]           = NV9097_SET_LOGIC_OP_FUNC_V_NOOP,
+      [VK_LOGIC_OP_XOR]             = NV9097_SET_LOGIC_OP_FUNC_V_XOR,
+      [VK_LOGIC_OP_OR]              = NV9097_SET_LOGIC_OP_FUNC_V_OR,
+      [VK_LOGIC_OP_NOR]             = NV9097_SET_LOGIC_OP_FUNC_V_NOR,
+      [VK_LOGIC_OP_EQUIVALENT]      = NV9097_SET_LOGIC_OP_FUNC_V_EQUIV,
+      [VK_LOGIC_OP_INVERT]          = NV9097_SET_LOGIC_OP_FUNC_V_INVERT,
+      [VK_LOGIC_OP_OR_REVERSE]      = NV9097_SET_LOGIC_OP_FUNC_V_OR_REVERSE,
+      [VK_LOGIC_OP_COPY_INVERTED]   = NV9097_SET_LOGIC_OP_FUNC_V_COPY_INVERTED,
+      [VK_LOGIC_OP_OR_INVERTED]     = NV9097_SET_LOGIC_OP_FUNC_V_OR_INVERTED,
+      [VK_LOGIC_OP_NAND]            = NV9097_SET_LOGIC_OP_FUNC_V_NAND,
+      [VK_LOGIC_OP_SET]             = NV9097_SET_LOGIC_OP_FUNC_V_SET,
+   };
+   assert(vk_op < ARRAY_SIZE(vk_to_nv9097));
+
+   uint32_t nv9097_op = 0x1500 | vk_op;
+   assert(nv9097_op == vk_to_nv9097[vk_op]);
+   return nv9097_op;
+}
+
+static void
+nvk_flush_cb_state(struct nvk_cmd_buffer *cmd)
+{
+   struct nouveau_ws_push *p = cmd->push;
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd->vk.dynamic_graphics_state;
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_LOGIC_OP)) {
+      const uint32_t func = vk_to_nv9097_logic_op(dyn->cb.logic_op);
+      P_IMMD(p, NV9097, SET_LOGIC_OP_FUNC, func);
+   }
+
+   /* MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES */
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_BLEND_CONSTANTS)) {
+      P_MTHD(p, NV9097, SET_BLEND_CONST_RED);
+      P_NV9097_SET_BLEND_CONST_RED(p,     fui(dyn->cb.blend_constants[0]));
+      P_NV9097_SET_BLEND_CONST_GREEN(p,   fui(dyn->cb.blend_constants[1]));
+      P_NV9097_SET_BLEND_CONST_BLUE(p,    fui(dyn->cb.blend_constants[2]));
+      P_NV9097_SET_BLEND_CONST_ALPHA(p,   fui(dyn->cb.blend_constants[3]));
+   }
+}
+
+static void
+nvk_flush_dynamic_state(struct nvk_cmd_buffer *cmd)
+{
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd->vk.dynamic_graphics_state;
+
+   if (!vk_dynamic_graphics_state_any_dirty(dyn))
+      return;
+
+   nvk_flush_vi_state(cmd);
+   nvk_flush_ia_state(cmd);
+   nvk_flush_ts_state(cmd);
+   nvk_flush_vp_state(cmd);
+   nvk_flush_rs_state(cmd);
+
+   /* MESA_VK_DYNAMIC_FSR */
+   /* MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS */
+
+   nvk_flush_ds_state(cmd);
+   nvk_flush_cb_state(cmd);
+}

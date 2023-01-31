@@ -19,6 +19,7 @@
 #define NVK_MAX_DYNAMIC_BUFFERS 64
 #define NVK_MAX_RTS 8
 #define NVK_MIN_UBO_ALIGNMENT 16
+#define NVK_MAX_VIEWPORTS 16
 
 /**
  * Warn on ignored extension structs.
