@@ -117,6 +117,14 @@ vk_meta_lookup_pipeline(struct vk_meta_device *meta,
                                             key_data, key_size);
 }
 
+static inline VkSampler
+vk_meta_lookup_sampler(struct vk_meta_device *meta,
+                       const void *key_data, size_t key_size)
+{
+   return (VkSampler)vk_meta_lookup_object(meta, VK_OBJECT_TYPE_SAMPLER,
+                                           key_data, key_size);
+}
+
 struct vk_meta_rendering_info {
    uint32_t view_mask;
    uint32_t samples;
@@ -154,6 +162,13 @@ vk_meta_create_compute_pipeline(struct vk_device *device,
                                 const VkComputePipelineCreateInfo *info,
                                 const void *key_data, size_t key_size,
                                 VkPipeline *pipeline_out);
+
+VkResult
+vk_meta_create_sampler(struct vk_device *device,
+                       struct vk_meta_device *meta,
+                       const VkSamplerCreateInfo *info,
+                       const void *key_data, size_t key_size,
+                       VkSampler *sampler_out);
 
 struct vk_meta_object_list {
    struct util_dynarray arr;

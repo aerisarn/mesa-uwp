@@ -96,6 +96,9 @@ destroy_object(struct vk_device *device, struct vk_object_base *obj)
    case VK_OBJECT_TYPE_PIPELINE:
       disp->DestroyPipeline(_device, (VkPipeline)(uintptr_t)obj, NULL);
       break;
+   case VK_OBJECT_TYPE_SAMPLER:
+      disp->DestroySampler(_device, (VkSampler)(uintptr_t)obj, NULL);
+      break;
    default:
       unreachable("Unsupported object type");
    }
@@ -193,6 +196,28 @@ vk_meta_cache_object(struct vk_device *device,
       /* Return the newly inserted object */
       return (uint64_t)(uintptr_t)obj;
    }
+}
+
+VkResult
+vk_meta_create_sampler(struct vk_device *device,
+                       struct vk_meta_device *meta,
+                       const VkSamplerCreateInfo *info,
+                       const void *key_data, size_t key_size,
+                       VkSampler *sampler_out)
+{
+   const struct vk_device_dispatch_table *disp = &device->dispatch_table;
+   VkDevice _device = vk_device_to_handle(device);
+
+   VkSampler sampler;
+   VkResult result = disp->CreateSampler(_device, info, NULL, &sampler);
+   if (result != VK_SUCCESS)
+      return result;
+
+   *sampler_out = (VkSampler)
+      vk_meta_cache_object(device, meta, key_data, key_size,
+                           VK_OBJECT_TYPE_SAMPLER,
+                           (uint64_t)sampler);
+   return VK_SUCCESS;
 }
 
 VkResult
