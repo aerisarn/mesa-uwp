@@ -9,6 +9,7 @@
 #include "vk_shader_module.h"
 
 #include "nir.h"
+#include "nir_builder.h"
 #include "compiler/spirv/nir_spirv.h"
 
 #include "nv50_ir_driver.h"
@@ -43,6 +44,32 @@ pipe_shader_type_from_mesa(gl_shader_stage stage)
    default:
       unreachable("bad shader stage");
    }
+}
+
+static bool
+lower_load_global_constant_offset_instr(nir_builder *b, nir_instr *instr,
+                                        UNUSED void *_data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   if (intrin->intrinsic != nir_intrinsic_load_global_constant_offset)
+      return false;
+
+   b->cursor = nir_before_instr(&intrin->instr);
+
+   nir_ssa_def *val =
+      nir_build_load_global(b, intrin->dest.ssa.num_components,
+                            intrin->dest.ssa.bit_size,
+                            nir_iadd(b, intrin->src[0].ssa,
+                                        nir_u2u64(b, intrin->src[1].ssa)),
+                            .access = nir_intrinsic_access(intrin),
+                            .align_mul = nir_intrinsic_align_mul(intrin),
+                            .align_offset = nir_intrinsic_align_offset(intrin));
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, val);
+
+   return true;
 }
 
 VkResult
@@ -95,6 +122,9 @@ nvk_shader_compile_to_nir(struct nvk_device *device,
             spirv_options.ssbo_addr_format);
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ubo,
             spirv_options.ubo_addr_format);
+   NIR_PASS(_, nir, nir_shader_instructions_pass,
+            lower_load_global_constant_offset_instr,
+            nir_metadata_block_index | nir_metadata_dominance, NULL);
 
    if (!nir->info.shared_memory_explicit_layout) {
       NIR_PASS(_, nir, nir_lower_vars_to_explicit_types,
