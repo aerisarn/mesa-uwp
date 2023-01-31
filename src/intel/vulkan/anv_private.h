@@ -1196,6 +1196,12 @@ struct anv_device {
     struct anv_bo                              *btd_fifo_bo;
     struct anv_address                          rt_uuid_addr;
 
+    /** A pre packed VERTEX_ELEMENT_STATE feeding 0s to the VS stage
+     *
+     * For use when a pipeline has no VS input
+     */
+    uint32_t                                    empty_vs_input[2];
+
     /** Shadow ray query BO
      *
      * The ray_query_bo only holds the current ray being traced. When using
@@ -3081,10 +3087,32 @@ struct anv_graphics_pipeline {
 
    uint32_t                                     vb_used;
 
+   /* Number of VERTEX_ELEMENT_STATE input elements used by the shader */
+   uint32_t                                     vs_input_elements;
+
+   /* Number of VERTEX_ELEMENT_STATE elements we need to implement some of the
+    * draw parameters
+    */
+   uint32_t                                     svgs_count;
+
+   /* Pre computed VERTEX_ELEMENT_STATE structures for the vertex input that
+    * can be copied into the anv_cmd_buffer behind a 3DSTATE_VERTEX_BUFFER.
+    *
+    * When MESA_VK_DYNAMIC_VI is not dynamic
+    *
+    *     vertex_input_elems = vs_input_elements + svgs_count
+    *
+    * All the VERTEX_ELEMENT_STATE can be directly copied behind a
+    * 3DSTATE_VERTEX_ELEMENTS instruction in the command buffer. Otherwise
+    * this array only holds the svgs_count elements.
+    */
+   uint32_t                                     vertex_input_elems;
+   uint32_t                                     vertex_input_data[96];
+
    /* Pre computed CS instructions that can directly be copied into
     * anv_cmd_buffer.
     */
-   uint32_t                                     batch_data[512];
+   uint32_t                                     batch_data[416];
 
    /* Pre packed CS instructions & structures that need to be merged later
     * with dynamic state.

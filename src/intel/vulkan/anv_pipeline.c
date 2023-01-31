@@ -2216,6 +2216,21 @@ anv_pipeline_setup_l3_config(struct anv_pipeline *pipeline, bool needs_slm)
    pipeline->l3_config = intel_get_l3_config(devinfo, w);
 }
 
+static uint32_t
+get_vs_input_elements(const struct brw_vs_prog_data *vs_prog_data)
+{
+   /* Pull inputs_read out of the VS prog data */
+   const uint64_t inputs_read = vs_prog_data->inputs_read;
+   const uint64_t double_inputs_read =
+      vs_prog_data->double_inputs_read & inputs_read;
+   assert((inputs_read & ((1 << VERT_ATTRIB_GENERIC0) - 1)) == 0);
+   const uint32_t elements = inputs_read >> VERT_ATTRIB_GENERIC0;
+   const uint32_t elements_double = double_inputs_read >> VERT_ATTRIB_GENERIC0;
+
+   return __builtin_popcount(elements) -
+          __builtin_popcount(elements_double) / 2;
+}
+
 static VkResult
 anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
                            struct anv_device *device,
@@ -2260,12 +2275,28 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
    anv_pipeline_setup_l3_config(&pipeline->base, false);
 
    if (anv_pipeline_is_primitive(pipeline)) {
-      const uint64_t inputs_read = get_vs_prog_data(pipeline)->inputs_read;
+      const struct brw_vs_prog_data *vs_prog_data = get_vs_prog_data(pipeline);
+      const uint64_t inputs_read = vs_prog_data->inputs_read;
 
       u_foreach_bit(a, state->vi->attributes_valid) {
          if (inputs_read & BITFIELD64_BIT(VERT_ATTRIB_GENERIC0 + a))
             pipeline->vb_used |= BITFIELD64_BIT(state->vi->attributes[a].binding);
       }
+
+      /* The total number of vertex elements we need to program. We might need
+       * a couple more to implement some of the draw parameters.
+       */
+      pipeline->svgs_count =
+         (vs_prog_data->uses_vertexid ||
+          vs_prog_data->uses_instanceid ||
+          vs_prog_data->uses_firstvertex ||
+          vs_prog_data->uses_baseinstance) + vs_prog_data->uses_drawid;
+
+      pipeline->vs_input_elements = get_vs_input_elements(vs_prog_data);
+
+      pipeline->vertex_input_elems =
+         (BITSET_TEST(state->dynamic, MESA_VK_DYNAMIC_VI) ?
+          0 : pipeline->vs_input_elements) + pipeline->svgs_count;
 
       /* Our implementation of VK_KHR_multiview uses instancing to draw the
        * different views when primitive replication cannot be used.  If the
