@@ -2267,13 +2267,6 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
             pipeline->vb_used |= BITFIELD64_BIT(state->vi->attributes[a].binding);
       }
 
-      u_foreach_bit(b, state->vi->bindings_valid) {
-         pipeline->vb[b].stride = state->vi->bindings[b].stride;
-         pipeline->vb[b].instanced = state->vi->bindings[b].input_rate ==
-                                      VK_VERTEX_INPUT_RATE_INSTANCE;
-         pipeline->vb[b].instance_divisor = state->vi->bindings[b].divisor;
-      }
-
       /* Our implementation of VK_KHR_multiview uses instancing to draw the
        * different views when primitive replication cannot be used.  If the
        * client asks for instancing, we need to multiply by the client's

@@ -3080,11 +3080,6 @@ struct anv_graphics_pipeline {
    bool                                         uses_xfb;
 
    uint32_t                                     vb_used;
-   struct anv_pipeline_vertex_binding {
-      uint32_t                                  stride;
-      bool                                      instanced;
-      uint32_t                                  instance_divisor;
-   } vb[MAX_VBS];
 
    /* Pre computed CS instructions that can directly be copied into
     * anv_cmd_buffer.
