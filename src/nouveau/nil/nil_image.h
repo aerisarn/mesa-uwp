@@ -159,6 +159,11 @@ uint64_t nil_image_level_size_B(const struct nil_image *image,
 uint64_t nil_image_level_depth_stride_B(const struct nil_image *image,
                                         uint32_t level);
 
+void nil_image_3d_level_as_2d_array(const struct nil_image *image_3d,
+                                    uint32_t level,
+                                    struct nil_image *image_2d_out,
+                                    uint64_t *offset_B_out);
+
 void nil_image_fill_tic(struct nouveau_ws_device *dev,
                         const struct nil_image *image,
                         const struct nil_view *view,

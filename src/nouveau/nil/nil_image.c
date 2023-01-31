@@ -375,3 +375,44 @@ nil_image_level_depth_stride_B(const struct nil_image *image, uint32_t level)
 
    return (uint64_t)lvl_ext_B.w * (uint64_t)lvl_ext_B.h;
 }
+
+void
+nil_image_3d_level_as_2d_array(const struct nil_image *image_3d,
+                               uint32_t level,
+                               struct nil_image *image_2d_out,
+                               uint64_t *offset_B_out)
+{
+   assert(image_3d->dim == NIL_IMAGE_DIM_3D);
+   assert(level <= image_3d->num_levels);
+   assert(image_3d->num_samples == 1);
+   assert(!image_3d->levels[level].tiling.is_tiled ||
+          image_3d->levels[level].tiling.z_log2 == 0);
+
+   struct nil_extent4d lvl_ext_px =
+      nil_minify_extent4d(image_3d->extent_px, level);
+   struct nil_extent4d lvl_ext_B = image_level_extent_B(image_3d, level);
+   struct nil_extent4d lvl_tiling_ext_B =
+      nil_tiling_extent_B(image_3d->levels[level].tiling);
+   lvl_ext_B = nil_extent4d_align(lvl_ext_B, lvl_tiling_ext_B);
+   uint64_t z_stride = (uint64_t)lvl_ext_B.w * (uint64_t)lvl_ext_B.h;
+
+   *offset_B_out = image_3d->levels[level].offset_B;
+   *image_2d_out = (struct nil_image) {
+      .dim = NIL_IMAGE_DIM_2D,
+      .format = image_3d->format,
+      .extent_px = {
+         .w = lvl_ext_px.w,
+         .h = lvl_ext_px.h,
+         .d = 1,
+         .a = lvl_ext_px.d,
+      },
+      .num_levels = 1,
+      .num_samples = 1,
+      .levels[0] = image_3d->levels[level],
+      .array_stride_B = z_stride,
+      .align_B = nil_tiling_size_B(image_3d->levels[level].tiling),
+      .size_B = lvl_ext_B.d * z_stride,
+      .tile_mode = image_3d->tile_mode,
+      .pte_kind = image_3d->pte_kind,
+   };
+}
