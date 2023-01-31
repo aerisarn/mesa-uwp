@@ -15,4 +15,10 @@ struct nvk_buffer {
 
 VK_DEFINE_HANDLE_CASTS(nvk_buffer, vk.base, VkBuffer, VK_OBJECT_TYPE_BUFFER)
 
+static inline uint64_t
+nvk_buffer_address(struct nvk_buffer *buffer)
+{
+   return 0; /* TODO */
+}
+
 #endif
