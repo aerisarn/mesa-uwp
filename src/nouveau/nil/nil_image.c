@@ -164,8 +164,6 @@ nil_image_init(struct nouveau_ws_device *dev,
       .format = info->format,
       .extent_px = info->extent_px,
       .num_levels = info->levels,
-      /* TODO: Figure out miptails */
-      .mip_tail_start = info->levels,
       .num_samples = info->samples,
    };
 

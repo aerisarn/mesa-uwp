@@ -95,7 +95,6 @@ struct nil_image {
 
    struct nil_extent4d extent_px;
    uint8_t num_levels;
-   uint8_t mip_tail_start;
    uint8_t num_samples;
 
    struct nil_image_level levels[NIL_MAX_LEVELS];

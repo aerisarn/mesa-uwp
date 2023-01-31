@@ -151,12 +151,12 @@ nil_image_fill_tic(struct nouveau_ws_device *dev,
    tic[5] |= height - 1;
    tic[5] |= (depth - 1) << 16;
 
-   tic[3] |= image->mip_tail_start << GM107_TIC2_3_MAX_MIP_LEVEL__SHIFT;
+   const uint32_t last_level = view->num_levels + view->base_level - 1;
+   tic[3] |= last_level << GM107_TIC2_3_MAX_MIP_LEVEL__SHIFT;
 
    tic[6] |= GM107_TIC2_6_ANISO_FINE_SPREAD_FUNC_TWO;
    tic[6] |= GM107_TIC2_6_ANISO_COARSE_SPREAD_FUNC_ONE;
 
-   const uint32_t last_level = view->num_levels + view->base_level - 1;
    tic[7] |= (last_level << 4) | view->base_level;
    tic[7] |= gm107_tic7_4_multi_sample_count(image->num_samples);
 
