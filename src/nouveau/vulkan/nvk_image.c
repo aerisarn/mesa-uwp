@@ -26,6 +26,10 @@ nvk_get_image_format_features(struct nvk_physical_device *pdevice,
    if (!nil_format_supports_texturing(pdevice->dev, p_format))
       return 0;
 
+   /* You can't tile a non-power-of-two */
+   if (!util_is_power_of_two_nonzero(util_format_get_blocksize(p_format)))
+      return 0;
+
    features |= VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT;
    features |= VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
    features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
