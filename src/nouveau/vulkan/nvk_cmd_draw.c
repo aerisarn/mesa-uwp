@@ -1514,26 +1514,28 @@ nvk_mme_build_draw(struct mme_builder *b, struct mme_value begin)
    struct mme_value vertex_count = mme_load(b);
    struct mme_value instance_count = mme_load(b);
    struct mme_value first_vertex = mme_load(b);
-   struct mme_value first_instance = mme_load(b);
-
-   // load base instance in root descriptor
-   const uint32_t base_instance_offset =
-      nvk_root_descriptor_offset(draw.base_instance);
-   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
-   mme_emit(b, mme_imm(base_instance_offset));
-   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
-   mme_emit(b, first_instance);
 
    mme_mthd(b, NV9097_SET_GLOBAL_BASE_VERTEX_INDEX);
    mme_emit(b, mme_zero());
-
    mme_mthd(b, NV9097_SET_VERTEX_ID_BASE);
    mme_emit(b, mme_zero());
 
-   mme_mthd(b, NV9097_SET_GLOBAL_BASE_INSTANCE_INDEX);
-   mme_emit(b, first_instance);
+   {
+      struct mme_value first_instance = mme_load(b);
 
-   mme_free_reg(b, first_instance);
+      /* Store base instance in the root descriptor table */
+      const uint32_t base_instance_offset =
+         nvk_root_descriptor_offset(draw.base_instance);
+      mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
+      mme_emit(b, mme_imm(base_instance_offset));
+      mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
+      mme_emit(b, first_instance);
+
+      mme_mthd(b, NV9097_SET_GLOBAL_BASE_INSTANCE_INDEX);
+      mme_emit(b, first_instance);
+
+      mme_free_reg(b, first_instance);
+   }
 
    /* Make a copy of begin because this helper may be called inside an MME loop
     * (i.e. indirect draws) and we're going to modify the value of begin below.
@@ -1558,6 +1560,10 @@ nvk_mme_build_draw(struct mme_builder *b, struct mme_value begin)
 
       mme_set_field_enum(b, begin, NV9097_BEGIN_INSTANCE_ID, SUBSEQUENT);
    }
+
+   mme_free_reg(b, begin);
+   mme_free_reg(b, first_vertex);
+   mme_free_reg(b, vertex_count);
 }
 
 void
@@ -1606,27 +1612,34 @@ nvk_mme_build_draw_indexed(struct mme_builder *b,
    struct mme_value index_count = mme_load(b);
    struct mme_value instance_count = mme_load(b);
    struct mme_value first_index = mme_load(b);
-   struct mme_value vertex_offset = mme_load(b);
-   struct mme_value first_instance = mme_load(b);
 
-   // load base instance in root descriptor
-   const uint32_t base_instance_offset =
-      nvk_root_descriptor_offset(draw.base_instance);
-   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
-   mme_emit(b, mme_imm(base_instance_offset));
-   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
-   mme_emit(b, first_instance);
+   {
+      struct mme_value vertex_offset = mme_load(b);
 
-   mme_mthd(b, NV9097_SET_GLOBAL_BASE_VERTEX_INDEX);
-   mme_emit(b, vertex_offset);
+      mme_mthd(b, NV9097_SET_GLOBAL_BASE_VERTEX_INDEX);
+      mme_emit(b, vertex_offset);
+      mme_mthd(b, NV9097_SET_VERTEX_ID_BASE);
+      mme_emit(b, vertex_offset);
 
-   mme_mthd(b, NV9097_SET_VERTEX_ID_BASE);
-   mme_emit(b, vertex_offset);
+      mme_free_reg(b, vertex_offset);
+   }
 
-   mme_mthd(b, NV9097_SET_GLOBAL_BASE_INSTANCE_INDEX);
-   mme_emit(b, first_instance);
+   {
+      struct mme_value first_instance = mme_load(b);
 
-   mme_free_reg(b, first_instance);
+      /* Store base instance in the root descriptor table */
+      const uint32_t base_instance_offset =
+         nvk_root_descriptor_offset(draw.base_instance);
+      mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
+      mme_emit(b, mme_imm(base_instance_offset));
+      mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
+      mme_emit(b, first_instance);
+
+      mme_mthd(b, NV9097_SET_GLOBAL_BASE_INSTANCE_INDEX);
+      mme_emit(b, first_instance);
+
+      mme_free_reg(b, first_instance);
+   }
 
    /* Make a copy of begin because this helper may be called inside an MME loop
     * (i.e. indirect draws) and we're going to modify the value of begin below.
@@ -1651,6 +1664,10 @@ nvk_mme_build_draw_indexed(struct mme_builder *b,
 
       mme_set_field_enum(b, begin, NV9097_BEGIN_INSTANCE_ID, SUBSEQUENT);
    }
+
+   mme_free_reg(b, begin);
+   mme_free_reg(b, first_index);
+   mme_free_reg(b, index_count);
 }
 
 void
