@@ -263,6 +263,26 @@ nak_sysval_attr_addr(gl_system_value sysval)
    }
 }
 
+static uint8_t
+nak_sysval_sysval_idx(gl_system_value sysval)
+{
+   switch (sysval) {
+   case SYSTEM_VALUE_SUBGROUP_INVOCATION:    return 0x00;
+   case SYSTEM_VALUE_VERTICES_IN:            return 0x10;
+   case SYSTEM_VALUE_INVOCATION_ID:          return 0x11;
+   case SYSTEM_VALUE_HELPER_INVOCATION:      return 0x13;
+   case SYSTEM_VALUE_LOCAL_INVOCATION_INDEX: return 0x20;
+   case SYSTEM_VALUE_LOCAL_INVOCATION_ID:    return 0x21;
+   case SYSTEM_VALUE_WORKGROUP_ID:           return 0x25;
+   case SYSTEM_VALUE_SUBGROUP_EQ_MASK:       return 0x38;
+   case SYSTEM_VALUE_SUBGROUP_LT_MASK:       return 0x39;
+   case SYSTEM_VALUE_SUBGROUP_LE_MASK:       return 0x3a;
+   case SYSTEM_VALUE_SUBGROUP_GT_MASK:       return 0x3b;
+   case SYSTEM_VALUE_SUBGROUP_GE_MASK:       return 0x3c;
+   default: unreachable("Invalid system value");
+   }
+}
+
 static bool
 nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
 {
@@ -301,6 +321,33 @@ nak_nir_lower_system_value_instr(nir_builder *b, nir_instr *instr, void *data)
       val = nir_load_input(b, intrin->def.num_components, 32,
                            nir_imm_int(b, 0), .base = addr,
                            .dest_type = nir_type_int32);
+      break;
+   }
+
+   case nir_intrinsic_load_subgroup_invocation:
+   case nir_intrinsic_load_patch_vertices_in:
+   case nir_intrinsic_load_helper_invocation:
+   case nir_intrinsic_load_local_invocation_index:
+   case nir_intrinsic_load_local_invocation_id:
+   case nir_intrinsic_load_workgroup_id:
+   case nir_intrinsic_load_workgroup_id_zero_base:
+   case nir_intrinsic_load_subgroup_eq_mask:
+   case nir_intrinsic_load_subgroup_lt_mask:
+   case nir_intrinsic_load_subgroup_le_mask:
+   case nir_intrinsic_load_subgroup_gt_mask:
+   case nir_intrinsic_load_subgroup_ge_mask: {
+      const gl_system_value sysval =
+         intrin->intrinsic == nir_intrinsic_load_workgroup_id_zero_base ?
+         SYSTEM_VALUE_WORKGROUP_ID :
+         nir_system_value_from_intrinsic(intrin->intrinsic);
+      const uint32_t idx = nak_sysval_sysval_idx(sysval);
+      nir_def *comps[3];
+      assert(intrin->def.num_components <= 3);
+      for (unsigned c = 0; c < intrin->def.num_components; c++) {
+         comps[c] = nir_load_sysval_nv(b, 32, .base = idx + c,
+                                       .access = ACCESS_CAN_REORDER);
+      }
+      val = nir_vec(b, comps, intrin->def.num_components);
       break;
    }
 
