@@ -48,7 +48,7 @@ nvk_update_preamble_push(struct nvk_queue_state *qs, struct nvk_device *dev,
    P_MTHD(push, NVA0C0, SET_TEX_HEADER_POOL_A);
    P_NVA0C0_SET_TEX_HEADER_POOL_A(push, thp_addr >> 32);
    P_NVA0C0_SET_TEX_HEADER_POOL_B(push, thp_addr & 0xffffffff);
-   P_NVA0C0_SET_TEX_HEADER_POOL_C(push, dev->images.alloc);
+   P_NVA0C0_SET_TEX_HEADER_POOL_C(push, dev->images.alloc - 1);
 
    uint64_t temp_size = qs->tls_bo->size / dev->pdev->dev->mp_count;
    P_MTHD(push, NVA0C0, SET_SHADER_LOCAL_MEMORY_NON_THROTTLED_A);
