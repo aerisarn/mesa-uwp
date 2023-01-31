@@ -133,6 +133,7 @@ static void pvr_physical_device_get_supported_extensions(
    *extensions = (struct vk_device_extension_table){
       .KHR_external_memory = true,
       .KHR_external_memory_fd = true,
+      .KHR_timeline_semaphore = true,
 #if defined(PVR_USE_WSI_PLATFORM)
       .KHR_swapchain = true,
 #endif
@@ -667,7 +668,18 @@ void pvr_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    };
 
    vk_foreach_struct (ext, pFeatures->pNext) {
-      pvr_debug_ignored_stype(ext->sType);
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
+         VkPhysicalDeviceTimelineSemaphoreFeatures *pFeature =
+            (VkPhysicalDeviceTimelineSemaphoreFeatures *)ext;
+         pFeature->timelineSemaphore = VK_TRUE;
+         break;
+      }
+      default: {
+         pvr_debug_ignored_stype(ext->sType);
+         break;
+      }
+      }
    }
 }
 
@@ -1043,7 +1055,18 @@ void pvr_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
           VK_UUID_SIZE);
 
    vk_foreach_struct (ext, pProperties->pNext) {
-      pvr_debug_ignored_stype(ext->sType);
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
+         VkPhysicalDeviceTimelineSemaphoreProperties *pProperties =
+            (VkPhysicalDeviceTimelineSemaphoreProperties *)ext;
+         pProperties->maxTimelineSemaphoreValueDifference = UINT64_MAX;
+         break;
+      }
+      default: {
+         pvr_debug_ignored_stype(ext->sType);
+         break;
+      }
+      }
    }
 }
 

@@ -48,6 +48,7 @@
 #include "util/os_misc.h"
 #include "vk_log.h"
 #include "vk_sync.h"
+#include "vk_sync_timeline.h"
 
 /* Amount of space used to hold sync prim values (in bytes). */
 #define PVR_SRV_SYNC_PRIM_VALUE_SIZE 4U
@@ -677,7 +678,11 @@ struct pvr_winsys *pvr_srv_winsys_create(int master_fd,
 
    srv_ws->base.syncobj_type = pvr_srv_sync_type;
    srv_ws->base.sync_types[0] = &srv_ws->base.syncobj_type;
-   srv_ws->base.sync_types[1] = NULL;
+
+   srv_ws->base.timeline_syncobj_type =
+      vk_sync_timeline_get_type(srv_ws->base.sync_types[0]);
+   srv_ws->base.sync_types[1] = &srv_ws->base.timeline_syncobj_type.sync;
+   srv_ws->base.sync_types[2] = NULL;
 
    result = pvr_srv_memctx_init(srv_ws);
    if (result != VK_SUCCESS)

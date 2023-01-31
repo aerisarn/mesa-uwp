@@ -41,6 +41,7 @@
 #include "util/macros.h"
 #include "util/vma.h"
 #include "vk_sync.h"
+#include "vk_sync_timeline.h"
 
 struct pvr_device_info;
 struct pvr_device_runtime_info;
@@ -480,8 +481,9 @@ struct pvr_winsys {
    uint64_t page_size;
    uint32_t log2_page_size;
 
-   const struct vk_sync_type *sync_types[2];
+   const struct vk_sync_type *sync_types[3];
    struct vk_sync_type syncobj_type;
+   struct vk_sync_timeline_type timeline_syncobj_type;
 
    const struct pvr_winsys_ops *ops;
 };
