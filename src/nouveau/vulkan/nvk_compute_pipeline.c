@@ -76,12 +76,10 @@ nvk_compute_pipeline_create(struct nvk_device *device,
    struct nvk_compute_pipeline *pipeline;
    VkResult result;
 
-   pipeline = vk_object_zalloc(&device->vk, pAllocator, sizeof(*pipeline),
-                               VK_OBJECT_TYPE_PIPELINE);
+   pipeline = (void *)nvk_pipeline_zalloc(device, NVK_PIPELINE_COMPUTE,
+                                          sizeof(*pipeline), pAllocator);
    if (pipeline == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   pipeline->base.type = NVK_PIPELINE_COMPUTE;
 
    assert(pCreateInfo->stage.stage == VK_SHADER_STAGE_COMPUTE_BIT);
 
@@ -111,6 +109,6 @@ nvk_compute_pipeline_create(struct nvk_device *device,
    return VK_SUCCESS;
 
 fail:
-   vk_object_free(&device->vk, pAllocator, pipeline);
+   nvk_pipeline_free(device, &pipeline->base, pAllocator);
    return result;
 }

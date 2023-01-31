@@ -6,10 +6,28 @@
 
 #include "vk_pipeline_cache.h"
 
-static void
-nvk_pipeline_destroy(struct nvk_device *device,
-                     struct nvk_pipeline *pipeline,
-                     const VkAllocationCallbacks *pAllocator)
+struct nvk_pipeline *
+nvk_pipeline_zalloc(struct nvk_device *device,
+                    enum nvk_pipeline_type type, size_t size,
+                    const VkAllocationCallbacks *pAllocator)
+{
+   struct nvk_pipeline *pipeline;
+
+   assert(size >= sizeof(*pipeline));
+   pipeline = vk_object_zalloc(&device->vk, pAllocator, size,
+                               VK_OBJECT_TYPE_PIPELINE);
+   if (pipeline == NULL)
+      return NULL;
+
+   pipeline->type = type;
+
+   return pipeline;
+}
+
+void
+nvk_pipeline_free(struct nvk_device *device,
+                  struct nvk_pipeline *pipeline,
+                  const VkAllocationCallbacks *pAllocator)
 {
    for (uint32_t s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
       if (pipeline->shaders[s].bo)
@@ -99,5 +117,5 @@ nvk_DestroyPipeline(VkDevice _device, VkPipeline _pipeline,
    if (!pipeline)
       return;
 
-   nvk_pipeline_destroy(device, pipeline, pAllocator);
+   nvk_pipeline_free(device, pipeline, pAllocator);
 }

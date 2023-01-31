@@ -24,6 +24,15 @@ struct nvk_pipeline {
 VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_pipeline, base, VkPipeline,
                                VK_OBJECT_TYPE_PIPELINE)
 
+void
+nvk_pipeline_free(struct nvk_device *device,
+                  struct nvk_pipeline *pipeline,
+                  const VkAllocationCallbacks *pAllocator);
+struct nvk_pipeline *
+nvk_pipeline_zalloc(struct nvk_device *device,
+                    enum nvk_pipeline_type type, size_t size,
+                    const VkAllocationCallbacks *pAllocator);
+
 struct nvk_compute_pipeline {
    struct nvk_pipeline base;
 
