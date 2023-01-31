@@ -276,7 +276,7 @@ nvk_CreateSampler(VkDevice _device,
    SAMP_SET_U(samp, NV9097, 4, BORDER_COLOR_R, bc.uint32[0]);
    SAMP_SET_U(samp, NV9097, 5, BORDER_COLOR_G, bc.uint32[1]);
    SAMP_SET_U(samp, NV9097, 6, BORDER_COLOR_B, bc.uint32[2]);
-   SAMP_SET_U(samp, NV9097, 7, BORDER_COLOR_A, bc.uint32[2]);
+   SAMP_SET_U(samp, NV9097, 7, BORDER_COLOR_A, bc.uint32[3]);
 
    memcpy(desc_map, samp, sizeof(samp));
 
