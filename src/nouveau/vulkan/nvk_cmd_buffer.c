@@ -373,6 +373,32 @@ nvk_CmdPushConstants(VkCommandBuffer commandBuffer,
    }
 }
 
+static struct nvk_push_descriptor_set *
+nvk_cmd_push_descriptors(struct nvk_cmd_buffer *cmd,
+                         VkPipelineBindPoint bind_point,
+                         uint32_t set)
+{
+   struct nvk_descriptor_state *desc =
+      nvk_get_descriptors_state(cmd, bind_point);
+
+   assert(set < NVK_MAX_SETS);
+   if (unlikely(desc->push[set] == NULL)) {
+      desc->push[set] = vk_zalloc(&cmd->vk.pool->alloc,
+                                  sizeof(*desc->push[set]), 8,
+                                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      if (unlikely(desc->push[set] == NULL)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
+         return NULL;
+      }
+   }
+
+   /* Pushing descriptors replaces whatever sets are bound */
+   desc->sets[set] = NULL;
+   desc->push_dirty |= BITFIELD_BIT(set);
+
+   return desc->push[set];
+}
+
 VKAPI_ATTR void VKAPI_CALL
 nvk_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
                             VkPipelineBindPoint pipelineBindPoint,
@@ -383,30 +409,17 @@ nvk_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(vk_pipeline_layout, pipeline_layout, layout);
-   struct nvk_descriptor_state *desc =
-      nvk_get_descriptors_state(cmd, pipelineBindPoint);
 
-   assert(set < NVK_MAX_SETS);
-   if (unlikely(desc->push[set] == NULL)) {
-      desc->push[set] = vk_zalloc(&cmd->vk.pool->alloc,
-                                  sizeof(*desc->push[set]), 8,
-                                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-      if (unlikely(desc->push[set] == NULL)) {
-         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
-         return;
-      }
-   }
-
-   /* Pushing descriptors replaces whatever sets are bound */
-   desc->sets[set] = NULL;
+   struct nvk_push_descriptor_set *push_set =
+      nvk_cmd_push_descriptors(cmd, pipelineBindPoint, set);
+   if (unlikely(push_set == NULL))
+      return;
 
    struct nvk_descriptor_set_layout *set_layout =
       vk_to_nvk_descriptor_set_layout(pipeline_layout->set_layouts[set]);
 
-   nvk_push_descriptor_set_update(desc->push[set],
-                                  set_layout,
+   nvk_push_descriptor_set_update(push_set, set_layout,
                                   descriptorWriteCount, pDescriptorWrites);
-   desc->push_dirty |= BITFIELD_BIT(set);
 }
 
 void
