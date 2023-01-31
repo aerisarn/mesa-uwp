@@ -378,7 +378,7 @@ struct zink_descriptor_template {
    uint16_t stride; //the stride between mem pointers
    uint16_t db_size; //the size of the entry in the buffer
    unsigned count; //the number of descriptors
-   uint8_t *mem; //the base host pointer to update from
+   size_t offset; //the offset of the base host pointer to update from
 };
 
 /* ctx->dd; created at context creation */

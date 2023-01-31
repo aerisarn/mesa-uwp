@@ -318,42 +318,42 @@ init_db_template_entry(struct zink_context *ctx, struct zink_shader *shader, enu
 
     switch (shader->bindings[type][idx].type) {
     case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-       entry->mem = (void*)&ctx->di.db.ubos[stage][index];
+       entry->offset = offsetof(struct zink_context, di.db.ubos[stage][index]);
        entry->stride = sizeof(VkDescriptorAddressInfoEXT);
        entry->db_size = screen->info.db_props.robustUniformBufferDescriptorSize;
        break;
     case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-       entry->mem = (void*)&ctx->di.textures[stage][index];
+       entry->offset = offsetof(struct zink_context, di.textures[stage][index]);
        entry->stride = sizeof(VkDescriptorImageInfo);
        entry->db_size = screen->info.db_props.combinedImageSamplerDescriptorSize;
        break;
     case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-       entry->mem = (void*)&ctx->di.textures[stage][index];
+       entry->offset = offsetof(struct zink_context, di.textures[stage][index]);
        entry->stride = sizeof(VkDescriptorImageInfo);
        entry->db_size = screen->info.db_props.sampledImageDescriptorSize;
        break;
     case VK_DESCRIPTOR_TYPE_SAMPLER:
-       entry->mem = (void*)&ctx->di.textures[stage][index];
+       entry->offset = offsetof(struct zink_context, di.textures[stage][index]);
        entry->stride = sizeof(VkDescriptorImageInfo);
        entry->db_size = screen->info.db_props.samplerDescriptorSize;
        break;
     case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-       entry->mem = (void*)&ctx->di.db.tbos[stage][index];
+       entry->offset = offsetof(struct zink_context, di.db.tbos[stage][index]);
        entry->stride = sizeof(VkDescriptorAddressInfoEXT);
        entry->db_size = screen->info.db_props.robustUniformTexelBufferDescriptorSize;
        break;
     case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-       entry->mem = (void*)&ctx->di.db.ssbos[stage][index];
+       entry->offset = offsetof(struct zink_context, di.db.ssbos[stage][index]);
        entry->stride = sizeof(VkDescriptorAddressInfoEXT);
        entry->db_size = screen->info.db_props.robustStorageBufferDescriptorSize;
        break;
     case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-       entry->mem = (void*)&ctx->di.images[stage][index];
+       entry->offset = offsetof(struct zink_context, di.images[stage][index]);
        entry->stride = sizeof(VkDescriptorImageInfo);
        entry->db_size = screen->info.db_props.storageImageDescriptorSize;
        break;
     case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-       entry->mem = (void*)&ctx->di.db.texel_images[stage][index];
+       entry->offset = offsetof(struct zink_context, di.db.texel_images[stage][index]);
        entry->stride = sizeof(VkDescriptorAddressInfoEXT);
        entry->db_size = screen->info.db_props.robustStorageTexelBufferDescriptorSize;
        break;
@@ -979,7 +979,7 @@ zink_descriptors_update_masked_buffer(struct zink_context *ctx, bool is_compute,
                 key->bindings[i].descriptorCount == 1) {
                for (unsigned j = 0; j < key->bindings[i].descriptorCount; j++) {
                   /* VkDescriptorDataEXT is a union of pointers; the member doesn't matter */
-                  info.data.pSampler = (void*)(pg->dd.db_template[type][i].mem + j * pg->dd.db_template[type][i].stride);
+                  info.data.pSampler = (void*)(((uint8_t*)ctx) + pg->dd.db_template[type][i].offset + j * pg->dd.db_template[type][i].stride);
                   VKSCR(GetDescriptorEXT)(screen->dev, &info, pg->dd.db_template[type][i].db_size, bs->dd.db_map[type] + desc_offset + j * pg->dd.db_template[type][i].db_size);
                }
             } else {
@@ -989,7 +989,7 @@ zink_descriptors_update_masked_buffer(struct zink_context *ctx, bool is_compute,
                uint8_t *samplers = db + key->bindings[i].descriptorCount * screen->info.db_props.sampledImageDescriptorSize;
                for (unsigned j = 0; j < key->bindings[i].descriptorCount; j++) {
                   /* VkDescriptorDataEXT is a union of pointers; the member doesn't matter */
-                  info.data.pSampler = (void*)(pg->dd.db_template[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW][i].mem +
+                  info.data.pSampler = (void*)(((uint8_t*)ctx) + pg->dd.db_template[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW][i].offset +
                                                j * pg->dd.db_template[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW][i].stride);
                   VKSCR(GetDescriptorEXT)(screen->dev, &info, pg->dd.db_template[type][ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW].db_size, buf);
                   /* drivers that don't support combinedImageSamplerDescriptorSingleArray must have sampler arrays written in memory as
