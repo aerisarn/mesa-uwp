@@ -3,10 +3,12 @@
  * SPDX-License-Identifier: MIT
  */
 
+mod nak_from_nir;
 mod nak_ir;
 mod nir;
 
 use nak_bindings::*;
+use nak_from_nir::*;
 
 #[repr(C)]
 struct ShaderBin {
@@ -23,9 +25,15 @@ pub extern "C" fn nak_shader_bin_destroy(bin: *mut nak_shader_bin) {
 
 #[no_mangle]
 pub extern "C" fn nak_compile_shader(
-    _nir: *mut nir_shader,
-    _nak: *const nak_compiler,
+    nir: *mut nir_shader,
+    nak: *const nak_compiler,
 ) -> *mut nak_shader_bin {
-    println!("Hello from rust!");
+    unsafe { nak_postprocess_nir(nir, nak) };
+    let nir = unsafe { &*nir };
+
+    let mut s = nak_shader_from_nir(nir);
+
+    println!("NAK IR:\n{}", &s);
+
     std::ptr::null_mut()
 }
