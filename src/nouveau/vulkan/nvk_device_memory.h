@@ -5,6 +5,8 @@
 
 #include "util/list.h"
 
+struct nvk_device;
+
 struct nvk_device_memory {
    struct vk_object_base base;
 
@@ -16,5 +18,14 @@ struct nvk_device_memory {
 };
 
 VK_DEFINE_HANDLE_CASTS(nvk_device_memory, base, VkDeviceMemory, VK_OBJECT_TYPE_DEVICE_MEMORY)
+
+VkResult nvk_allocate_memory(struct nvk_device *device,
+                             const VkMemoryAllocateInfo *pAllocateInfo,
+                             const VkAllocationCallbacks *pAllocator,
+                             struct nvk_device_memory **mem_out);
+
+void nvk_free_memory(struct nvk_device *device,
+                     struct nvk_device_memory *mem,
+                     const VkAllocationCallbacks *pAllocator);
 
 #endif

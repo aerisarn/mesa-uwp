@@ -69,14 +69,12 @@ zero_vram(struct nvk_device *dev, struct nouveau_ws_bo *bo)
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-nvk_AllocateMemory(
-   VkDevice _device,
-   const VkMemoryAllocateInfo *pAllocateInfo,
-   const VkAllocationCallbacks *pAllocator,
-   VkDeviceMemory *pMem)
+VkResult
+nvk_allocate_memory(struct nvk_device *device,
+                    const VkMemoryAllocateInfo *pAllocateInfo,
+                    const VkAllocationCallbacks *pAllocator,
+                    struct nvk_device_memory **mem_out)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
    VkMemoryType *type = &device->pdev->mem_types[pAllocateInfo->memoryTypeIndex];
    struct nvk_device_memory *mem;
 
@@ -122,7 +120,7 @@ nvk_AllocateMemory(
    list_addtail(&mem->link, &device->memory_objects);
    simple_mtx_unlock(&device->memory_objects_lock);
 
-   *pMem = nvk_device_memory_to_handle(mem);
+   *mem_out = mem;
 
    return VK_SUCCESS;
 
@@ -132,20 +130,13 @@ fail_bo:
    return result;
 }
 
-VKAPI_ATTR void VKAPI_CALL
-nvk_FreeMemory(
-   VkDevice _device,
-   VkDeviceMemory _mem,
-   const VkAllocationCallbacks *pAllocator)
+void
+nvk_free_memory(struct nvk_device *device,
+                struct nvk_device_memory *mem,
+                const VkAllocationCallbacks *pAllocator)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
-   VK_FROM_HANDLE(nvk_device_memory, mem, _mem);
-
-   if (!mem)
-      return;
-
    if (mem->map)
-      nvk_UnmapMemory(_device, _mem);
+      munmap(mem->map, mem->bo->size);
 
    simple_mtx_lock(&device->memory_objects_lock);
    list_del(&mem->link);
@@ -154,6 +145,40 @@ nvk_FreeMemory(
    nouveau_ws_bo_destroy(mem->bo);
 
    vk_object_free(&device->vk, pAllocator, mem);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+nvk_AllocateMemory(
+   VkDevice _device,
+   const VkMemoryAllocateInfo *pAllocateInfo,
+   const VkAllocationCallbacks *pAllocator,
+   VkDeviceMemory *pMem)
+{
+   VK_FROM_HANDLE(nvk_device, device, _device);
+   struct nvk_device_memory *mem;
+   VkResult result;
+
+   result = nvk_allocate_memory(device, pAllocateInfo, pAllocator, &mem);
+   if (result != VK_SUCCESS)
+      return result;
+
+   *pMem = nvk_device_memory_to_handle(mem);
+
+   return VK_SUCCESS;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_FreeMemory(VkDevice _device,
+               VkDeviceMemory _mem,
+               const VkAllocationCallbacks *pAllocator)
+{
+   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device_memory, mem, _mem);
+
+   if (!mem)
+      return;
+
+   nvk_free_memory(device, mem, pAllocator);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
