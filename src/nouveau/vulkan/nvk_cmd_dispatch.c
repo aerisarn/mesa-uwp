@@ -101,7 +101,7 @@ nvk_CmdDispatch(VkCommandBuffer commandBuffer,
       return;
    }
 
-   struct nv_push *p = P_SPACE(cmd->push, 6);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 6);
 
    P_MTHD(p, NVA0C0, INVALIDATE_SHADER_CACHES_NO_WFI);
    P_NVA0C0_INVALIDATE_SHADER_CACHES_NO_WFI(p, {

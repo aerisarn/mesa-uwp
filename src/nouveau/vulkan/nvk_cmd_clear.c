@@ -58,7 +58,7 @@ emit_clear_rects(struct nvk_cmd_buffer *cmd,
 {
    struct nvk_rendering_state *render = &cmd->state.gfx.render;
 
-   struct nv_push *p = P_SPACE(cmd->push, rect_count * 6);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, rect_count * 6);
 
    for (uint32_t r = 0; r < rect_count; r++) {
       P_MTHD(p, NV9097, SET_CLEAR_RECT_HORIZONTAL);
@@ -115,7 +115,7 @@ nvk_CmdClearAttachments(VkCommandBuffer commandBuffer,
                         const VkClearRect *pRects)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
-   struct nv_push *p = P_SPACE(cmd->push, 2 + attachmentCount * 4);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 2 + attachmentCount * 4);
 
    P_IMMD(p, NV9097, SET_CLEAR_SURFACE_CONTROL, {
       .respect_stencil_mask   = RESPECT_STENCIL_MASK_FALSE,
@@ -147,7 +147,7 @@ nvk_CmdClearAttachments(VkCommandBuffer commandBuffer,
          continue;
 
       VkClearColorValue color = pAttachments[i].clearValue.color;
-      p = P_SPACE(cmd->push, 5);
+      p = nvk_cmd_buffer_push(cmd, 5);
 
       P_MTHD(p, NV9097, SET_COLOR_CLEAR_VALUE(0));
       P_NV9097_SET_COLOR_CLEAR_VALUE(p, 0, color.uint32[0]);

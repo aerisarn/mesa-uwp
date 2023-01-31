@@ -144,7 +144,7 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
 {
    uint32_t src_bw, dst_bw;
    if (copy->remap.comp_size > 0) {
-      struct nv_push *p = P_SPACE(cmd->push, 2);
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 2);
 
       assert(copy->src.bpp % copy->remap.comp_size == 0);
       assert(copy->dst.bpp % copy->remap.comp_size == 0);
@@ -192,7 +192,7 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
       }
 
       for (unsigned z = 0; z < copy->extent_el.depth; z++) {
-         struct nv_push *p = P_SPACE(cmd->push, 31);
+         struct nv_push *p = nvk_cmd_buffer_push(cmd, 31);
 
          P_MTHD(p, NV90B5, OFFSET_IN_UPPER);
          P_NV90B5_OFFSET_IN_UPPER(p, src_addr >> 32);
@@ -299,7 +299,7 @@ nvk_CmdCopyBuffer2(VkCommandBuffer commandBuffer,
       uint64_t size = region->size;
 
       while (size) {
-         struct nv_push *p = P_SPACE(cmd->push, 10);
+         struct nv_push *p = nvk_cmd_buffer_push(cmd, 10);
 
          P_MTHD(p, NV90B5, OFFSET_IN_UPPER);
          P_NV90B5_OFFSET_IN_UPPER(p, src_addr >> 32);
@@ -547,7 +547,7 @@ nvk_CmdFillBuffer(VkCommandBuffer commandBuffer,
    uint32_t pitch = 1 << 19;
    uint32_t line = pitch / 4;
 
-   struct nv_push *p = P_SPACE(cmd->push, 33);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 33);
 
    P_IMMD(p, NV902D, SET_OPERATION, V_SRCCOPY);
 
@@ -622,7 +622,7 @@ nvk_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
 
    VkDeviceSize dst_addr = nvk_buffer_address(dst, 0);
 
-   struct nv_push *p = P_SPACE(cmd->push, 26 + dataSize / 4);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 26 + dataSize / 4);
 
    P_IMMD(p, NV902D, SET_OPERATION, V_SRCCOPY);
 

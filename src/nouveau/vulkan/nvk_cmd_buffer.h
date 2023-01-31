@@ -116,6 +116,13 @@ nvk_cmd_buffer_device(struct nvk_cmd_buffer *cmd)
    return (struct nvk_device *)cmd->vk.base.device;
 }
 
+
+static inline struct nv_push *
+nvk_cmd_buffer_push(struct nvk_cmd_buffer *cmd, uint32_t dw_count)
+{
+   return P_SPACE(cmd->push, dw_count);
+}
+
 void nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
                                    const VkCommandBufferBeginInfo *pBeginInfo);
 void nvk_cmd_buffer_begin_compute(struct nvk_cmd_buffer *cmd,

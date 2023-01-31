@@ -21,7 +21,7 @@ nvk_CmdBlitImage2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_image, src, pBlitImageInfo->srcImage);
    VK_FROM_HANDLE(nvk_image, dst, pBlitImageInfo->dstImage);
 
-   struct nv_push *p = P_SPACE(cmd->push, 16);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 16);
 
    assert(nvk_get_format(src->vk.format)->supports_2d_blit);
    assert(nvk_get_format(dst->vk.format)->supports_2d_blit);
@@ -69,7 +69,7 @@ nvk_CmdBlitImage2(VkCommandBuffer commandBuffer,
 
    for (unsigned r = 0; r < pBlitImageInfo->regionCount; r++) {
       const VkImageBlit2 *region = &pBlitImageInfo->pRegions[r];
-      p = P_SPACE(cmd->push, 30 + region->srcSubresource.layerCount * 10);
+      p = nvk_cmd_buffer_push(cmd, 30 + region->srcSubresource.layerCount * 10);
 
       unsigned x_i = region->dstOffsets[0].x < region->dstOffsets[1].x ? 0 : 1;
       unsigned y_i = region->dstOffsets[0].y < region->dstOffsets[1].y ? 0 : 1;
