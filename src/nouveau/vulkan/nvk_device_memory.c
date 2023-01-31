@@ -15,58 +15,58 @@
 static VkResult
 zero_vram(struct nvk_device *dev, struct nouveau_ws_bo *bo)
 {
-   struct nouveau_ws_push *p = nouveau_ws_push_new(dev->pdev->dev, 4096);
-   if (p == NULL)
+   struct nouveau_ws_push *push = nouveau_ws_push_new(dev->pdev->dev, 4096);
+   if (push == NULL)
       return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
-   struct nouveau_ws_push_buffer *push = P_SPACE(p, 4096);
+   struct nouveau_ws_push_buffer *p = P_SPACE(push, 4096);
 
-   nouveau_ws_push_ref(p, bo, NOUVEAU_WS_BO_WR);
+   nouveau_ws_push_ref(push, bo, NOUVEAU_WS_BO_WR);
    uint64_t addr = bo->offset;
 
    /* can't go higher for whatever reason */
    uint32_t pitch = 1 << 19;
 
-   P_IMMD(push, NV902D, SET_OPERATION, V_SRCCOPY);
+   P_IMMD(p, NV902D, SET_OPERATION, V_SRCCOPY);
 
-   P_MTHD(push, NV902D, SET_DST_FORMAT);
-   P_NV902D_SET_DST_FORMAT(push, V_A8B8G8R8);
-   P_NV902D_SET_DST_MEMORY_LAYOUT(push, V_PITCH);
+   P_MTHD(p, NV902D, SET_DST_FORMAT);
+   P_NV902D_SET_DST_FORMAT(p, V_A8B8G8R8);
+   P_NV902D_SET_DST_MEMORY_LAYOUT(p, V_PITCH);
 
-   P_MTHD(push, NV902D, SET_DST_PITCH);
-   P_NV902D_SET_DST_PITCH(push, pitch);
+   P_MTHD(p, NV902D, SET_DST_PITCH);
+   P_NV902D_SET_DST_PITCH(p, pitch);
 
-   P_MTHD(push, NV902D, SET_DST_OFFSET_UPPER);
-   P_NV902D_SET_DST_OFFSET_UPPER(push, addr >> 32);
-   P_NV902D_SET_DST_OFFSET_LOWER(push, addr & 0xffffffff);
+   P_MTHD(p, NV902D, SET_DST_OFFSET_UPPER);
+   P_NV902D_SET_DST_OFFSET_UPPER(p, addr >> 32);
+   P_NV902D_SET_DST_OFFSET_LOWER(p, addr & 0xffffffff);
 
-   P_MTHD(push, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT);
-   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR_FORMAT(push, V_A8B8G8R8);
-   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR(push, 0);
+   P_MTHD(p, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT);
+   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR_FORMAT(p, V_A8B8G8R8);
+   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR(p, 0);
 
    uint32_t height = bo->size / pitch;
    uint32_t extra = bo->size % pitch;
 
    if (height > 0) {
-      P_IMMD(push, NV902D, RENDER_SOLID_PRIM_MODE, V_RECTS);
+      P_IMMD(p, NV902D, RENDER_SOLID_PRIM_MODE, V_RECTS);
 
-      P_MTHD(push, NV902D, RENDER_SOLID_PRIM_POINT_SET_X(0));
-      P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 0, 0);
-      P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 0, 0);
-      P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 1, pitch / 4);
-      P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 1, height);
+      P_MTHD(p, NV902D, RENDER_SOLID_PRIM_POINT_SET_X(0));
+      P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(p, 0, 0);
+      P_NV902D_RENDER_SOLID_PRIM_POINT_Y(p, 0, 0);
+      P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(p, 1, pitch / 4);
+      P_NV902D_RENDER_SOLID_PRIM_POINT_Y(p, 1, height);
    }
 
-   P_IMMD(push, NV902D, RENDER_SOLID_PRIM_MODE, V_RECTS);
+   P_IMMD(p, NV902D, RENDER_SOLID_PRIM_MODE, V_RECTS);
 
-   P_MTHD(push, NV902D, RENDER_SOLID_PRIM_POINT_SET_X(0));
-   P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 0, 0);
-   P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 0, height);
-   P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 1, extra / 4);
-   P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 1, height);
+   P_MTHD(p, NV902D, RENDER_SOLID_PRIM_POINT_SET_X(0));
+   P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(p, 0, 0);
+   P_NV902D_RENDER_SOLID_PRIM_POINT_Y(p, 0, height);
+   P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(p, 1, extra / 4);
+   P_NV902D_RENDER_SOLID_PRIM_POINT_Y(p, 1, height);
 
-   nouveau_ws_push_submit(p, dev->pdev->dev, dev->ctx);
-   nouveau_ws_push_destroy(p);
+   nouveau_ws_push_submit(push, dev->pdev->dev, dev->ctx);
+   nouveau_ws_push_destroy(push);
 
    return VK_SUCCESS;
 }
