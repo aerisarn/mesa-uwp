@@ -185,6 +185,35 @@ TEST_F(mme_builder_test, sub_imm)
    }
 }
 
+TEST_F(mme_builder_test, sll_srl)
+{
+   static const uint32_t x = 0xac406fe1;
+
+   for (auto sim : sims) {
+      mme_builder b;
+      mme_builder_init(&b, sim->devinfo);
+
+      mme_value xv = mme_load(&b);
+      mme_value yv = mme_load(&b);
+
+      sim->mme_store_data(&b, 0, mme_sll(&b, xv, yv));
+      sim->mme_store_data(&b, 1, mme_srl(&b, xv, yv));
+
+      auto macro = mme_builder_finish_vec(&b);
+
+      /* Fermi can't shift by 0 */
+      for (uint32_t i = 1; i < 31; i++) {
+         std::vector<uint32_t> params;
+         params.push_back(x);
+         params.push_back(i);
+
+         sim->run_macro(macro, params);
+         ASSERT_EQ(sim->data[0], x << i);
+         ASSERT_EQ(sim->data[1], x >> i);
+      }
+   }
+}
+
 TEST_F(mme_builder_test, merge)
 {
    static const struct {
