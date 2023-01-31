@@ -2,6 +2,7 @@
 
 #include "nvk_bo_sync.h"
 #include "nvk_cmd_buffer.h"
+#include "nvk_cmd_pool.h"
 #include "nvk_device.h"
 #include "nvk_device_memory.h"
 #include "nvk_physical_device.h"
@@ -176,6 +177,9 @@ nvk_queue_submit_drm_nouveau(struct vk_queue *vk_queue,
       for (unsigned i = 0; i < submit->command_buffer_count; i++) {
          struct nvk_cmd_buffer *cmd =
             container_of(submit->command_buffers[i], struct nvk_cmd_buffer, vk);
+
+         list_for_each_entry_safe(struct nvk_cmd_bo, bo, &cmd->bos, link)
+            push_add_bo(&pb, bo->bo, NOUVEAU_WS_BO_RD);
 
          push_add_ws_push(&pb, cmd->push);
       }

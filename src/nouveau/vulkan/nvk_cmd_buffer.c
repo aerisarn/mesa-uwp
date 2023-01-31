@@ -17,44 +17,16 @@
 #include "nvk_cla0c0.h"
 
 static void
-nvk_cmd_buffer_upload_init(struct nvk_cmd_buffer_upload *upload)
-{
-   memset(upload, 0, sizeof(*upload));
-   list_inithead(&upload->list);
-}
-
-static void
-nvk_cmd_buffer_upload_reset(struct nvk_cmd_buffer_upload *upload)
-{
-   list_for_each_entry_safe(struct nvk_cmd_buffer_upload, child,
-                            &upload->list, list) {
-      nouveau_ws_bo_unmap(child->upload_bo, child->map);
-      nouveau_ws_bo_destroy(child->upload_bo);
-      free(child);
-   }
-   list_inithead(&upload->list);
-
-   upload->offset = 0;
-}
-
-static void
-nvk_cmd_buffer_upload_finish(struct nvk_cmd_buffer_upload *upload)
-{
-   nvk_cmd_buffer_upload_reset(upload);
-   if (upload->upload_bo)
-      nouveau_ws_bo_destroy(upload->upload_bo);
-}
-
-static void
 nvk_destroy_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer)
 {
    struct nvk_cmd_buffer *cmd =
       container_of(vk_cmd_buffer, struct nvk_cmd_buffer, vk);
+   struct nvk_cmd_pool *pool = nvk_cmd_buffer_pool(cmd);
 
-   nvk_cmd_buffer_upload_finish(&cmd->upload);
+   nvk_cmd_pool_free_bo_list(pool, &cmd->bos);
    nouveau_ws_push_destroy(cmd->push);
    vk_command_buffer_finish(&cmd->vk);
-   vk_free(&cmd->vk.pool->alloc, cmd);
+   vk_free(&pool->vk.alloc, cmd);
 }
 
 static VkResult
@@ -81,8 +53,8 @@ nvk_create_cmd_buffer(struct vk_command_pool *vk_pool,
    cmd->vk.dynamic_graphics_state.vi =
       &cmd->state.gfx._dynamic_vi;
 
+   list_inithead(&cmd->bos);
    cmd->push = nouveau_ws_push_new(device->pdev->dev, NVK_CMD_BUF_SIZE);
-   nvk_cmd_buffer_upload_init(&cmd->upload);
 
    *cmd_buffer_out = &cmd->vk;
 
@@ -95,11 +67,13 @@ nvk_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
 {
    struct nvk_cmd_buffer *cmd =
       container_of(vk_cmd_buffer, struct nvk_cmd_buffer, vk);
+   struct nvk_cmd_pool *pool = nvk_cmd_buffer_pool(cmd);
 
    vk_command_buffer_reset(&cmd->vk);
 
+   nvk_cmd_pool_free_bo_list(pool, &cmd->bos);
+   cmd->upload_bo = NULL;
    nouveau_ws_push_reset(cmd->push);
-   nvk_cmd_buffer_upload_reset(&cmd->upload);
    memset(&cmd->state, 0, sizeof(cmd->state));
 }
 
@@ -109,69 +83,34 @@ const struct vk_command_buffer_ops nvk_cmd_buffer_ops = {
    .destroy = nvk_destroy_cmd_buffer,
 };
 
-static bool
-nvk_cmd_buffer_resize_upload_buf(struct nvk_cmd_buffer *cmd,
-                                 uint64_t min_needed)
-{
-   struct nvk_device *device = nvk_cmd_buffer_device(cmd);
-   uint64_t new_size;
-   struct nouveau_ws_bo *bo = NULL;
-   struct nvk_cmd_buffer_upload *upload;
-
-   new_size = MAX2(min_needed, 16 * 1024);
-   new_size = MAX2(new_size, 2 * cmd->upload.size);
-
-   uint32_t flags = NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP;
-   bo = nouveau_ws_bo_new(device->pdev->dev, new_size, 0, flags);
-
-   nvk_cmd_buffer_ref_bo(cmd, bo);
-   if (cmd->upload.upload_bo) {
-      upload = malloc(sizeof(*upload));
-
-      if (!upload) {
-         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
-         nouveau_ws_bo_destroy(bo);
-         return false;
-      }
-
-      memcpy(upload, &cmd->upload, sizeof(*upload));
-      list_add(&upload->list, &cmd->upload.list);
-   }
-
-   cmd->upload.upload_bo = bo;
-   cmd->upload.size = new_size;
-   cmd->upload.offset = 0;
-   cmd->upload.map = nouveau_ws_bo_map(cmd->upload.upload_bo, NOUVEAU_WS_BO_WR);
-
-   if (!cmd->upload.map) {
-      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-      return false;
-   }
-
-   return true;
-}
-
 VkResult
 nvk_cmd_buffer_upload_alloc(struct nvk_cmd_buffer *cmd,
                             uint32_t size, uint32_t alignment,
                             uint64_t *addr, void **ptr)
 {
    assert(size % 4 == 0);
+   assert(size < NVK_CMD_BO_SIZE);
 
-   uint32_t offset = cmd->upload.offset;
+   uint32_t offset = cmd->upload_offset;
    if (align > 0)
       offset = align(offset, alignment);
 
-   if (offset + size > cmd->upload.size) {
-      if (!nvk_cmd_buffer_resize_upload_buf(cmd, size))
-         return vk_error(cmd, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+   assert(offset <= NVK_CMD_BO_SIZE);
+   if (cmd->upload_bo == NULL || size > NVK_CMD_BO_SIZE - offset) {
+      struct nvk_cmd_bo *bo;
+      VkResult result = nvk_cmd_pool_alloc_bo(nvk_cmd_buffer_pool(cmd), &bo);
+      if (unlikely(result != VK_SUCCESS))
+         return result;
+
+      nvk_cmd_buffer_ref_bo(cmd, bo->bo);
+      cmd->upload_bo = bo;
       offset = 0;
    }
 
-   *addr = cmd->upload.upload_bo->offset + offset;
-   *ptr = cmd->upload.map + offset;
+   *addr = cmd->upload_bo->bo->offset + offset;
+   *ptr = (char *)cmd->upload_bo->map + offset;
 
-   cmd->upload.offset = offset + size;
+   cmd->upload_offset = offset + size;
 
    return VK_SUCCESS;
 }

@@ -8,6 +8,7 @@
 
 #include "vk_command_buffer.h"
 
+struct nvk_cmd_pool;
 struct nvk_image_view;
 
 #define NVK_CMD_BUF_SIZE 64*1024
@@ -82,14 +83,6 @@ struct nvk_compute_state {
    struct nvk_descriptor_state descriptors;
 };
 
-struct nvk_cmd_buffer_upload {
-   uint8_t *map;
-   unsigned offset;
-   uint64_t size;
-   struct nouveau_ws_bo *upload_bo;
-   struct list_head list;
-};
-
 struct nvk_cmd_buffer {
    struct vk_command_buffer vk;
 
@@ -98,9 +91,13 @@ struct nvk_cmd_buffer {
       struct nvk_compute_state cs;
    } state;
 
-   struct nouveau_ws_push *push;
+   /** List of nvk_cmd_bo */
+   struct list_head bos;
 
-   struct nvk_cmd_buffer_upload upload;
+   struct nvk_cmd_bo *upload_bo;
+   uint32_t upload_offset;
+
+   struct nouveau_ws_push *push;
 
    uint64_t tls_space_needed;
 };
@@ -116,6 +113,11 @@ nvk_cmd_buffer_device(struct nvk_cmd_buffer *cmd)
    return (struct nvk_device *)cmd->vk.base.device;
 }
 
+static inline struct nvk_cmd_pool *
+nvk_cmd_buffer_pool(struct nvk_cmd_buffer *cmd)
+{
+   return (struct nvk_cmd_pool *)cmd->vk.pool;
+}
 
 static inline struct nv_push *
 nvk_cmd_buffer_push(struct nvk_cmd_buffer *cmd, uint32_t dw_count)
