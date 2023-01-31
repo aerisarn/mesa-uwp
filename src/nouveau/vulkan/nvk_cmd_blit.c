@@ -14,9 +14,8 @@
 #include "nvk_cl902d.h"
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_CmdBlitImage2(
-   VkCommandBuffer commandBuffer,
-   const VkBlitImageInfo2 *pBlitImageInfo)
+nvk_CmdBlitImage2(VkCommandBuffer commandBuffer,
+                  const VkBlitImageInfo2 *pBlitImageInfo)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_image, src, pBlitImageInfo->srcImage);
@@ -186,12 +185,11 @@ nvk_CmdBlitImage2(
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_CmdFillBuffer(
-   VkCommandBuffer commandBuffer,
-   VkBuffer dstBuffer,
-   VkDeviceSize dstOffset,
-   VkDeviceSize fillSize,
-   uint32_t data)
+nvk_CmdFillBuffer(VkCommandBuffer commandBuffer,
+                  VkBuffer dstBuffer,
+                  VkDeviceSize dstOffset,
+                  VkDeviceSize fillSize,
+                  uint32_t data)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_buffer, dst, dstBuffer);
@@ -267,12 +265,11 @@ nvk_CmdFillBuffer(
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_CmdUpdateBuffer(
-   VkCommandBuffer commandBuffer,
-   VkBuffer dstBuffer,
-   VkDeviceSize dstOffset,
-   VkDeviceSize dataSize,
-   const void *pData)
+nvk_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
+                    VkBuffer dstBuffer,
+                    VkDeviceSize dstOffset,
+                    VkDeviceSize dataSize,
+                    const void *pData)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_buffer, dst, dstBuffer);
@@ -318,12 +315,11 @@ nvk_CmdUpdateBuffer(
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_CmdClearColorImage(
-   VkCommandBuffer commandBuffer,
-   VkImage _image,
-   VkImageLayout imageLayout,
-   const VkClearColorValue *pColor,
-   uint32_t rangeCount,
-   const VkImageSubresourceRange *pRanges)
+nvk_CmdClearColorImage(VkCommandBuffer commandBuffer,
+                       VkImage _image,
+                       VkImageLayout imageLayout,
+                       const VkClearColorValue *pColor,
+                       uint32_t rangeCount,
+                       const VkImageSubresourceRange *pRanges)
 {
 }

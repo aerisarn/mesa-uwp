@@ -207,9 +207,8 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_CmdCopyBuffer2(
-   VkCommandBuffer commandBuffer,
-   const VkCopyBufferInfo2 *pCopyBufferInfo)
+nvk_CmdCopyBuffer2(VkCommandBuffer commandBuffer,
+                   const VkCopyBufferInfo2 *pCopyBufferInfo)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_buffer, src, pCopyBufferInfo->srcBuffer);
@@ -229,9 +228,8 @@ nvk_CmdCopyBuffer2(
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_CmdCopyBufferToImage2(
-   VkCommandBuffer commandBuffer,
-   const VkCopyBufferToImageInfo2 *pCopyBufferToImageInfo)
+nvk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
+                          const VkCopyBufferToImageInfo2 *pCopyBufferToImageInfo)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_buffer, src, pCopyBufferToImageInfo->srcBuffer);
@@ -273,9 +271,8 @@ nvk_CmdCopyBufferToImage2(
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_CmdCopyImageToBuffer2(
-   VkCommandBuffer commandBuffer,
-   const VkCopyImageToBufferInfo2 *pCopyImageToBufferInfo)
+nvk_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
+                          const VkCopyImageToBufferInfo2 *pCopyImageToBufferInfo)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_image, src, pCopyImageToBufferInfo->srcImage);
@@ -317,9 +314,8 @@ nvk_CmdCopyImageToBuffer2(
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_CmdCopyImage2(
-   VkCommandBuffer commandBuffer,
-   const VkCopyImageInfo2 *pCopyImageInfo)
+nvk_CmdCopyImage2(VkCommandBuffer commandBuffer,
+                  const VkCopyImageInfo2 *pCopyImageInfo)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_image, src, pCopyImageInfo->srcImage);
