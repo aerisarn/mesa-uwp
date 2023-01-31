@@ -225,6 +225,65 @@ fn encode_ast(bs: &mut impl BitSetMut, instr: &Instr, attr: &AttrAccess) {
     assert!(!attr.out_load);
 }
 
+fn encode_mem_access(bs: &mut impl BitSetMut, access: &MemAccess) {
+    bs.set_field(
+        72..73,
+        match access.addr_type {
+            MemAddrType::A32 => 0_u8,
+            MemAddrType::A64 => 1_u8,
+        },
+    );
+    bs.set_field(
+        73..76,
+        match access.mem_type {
+            MemType::U8 => 0_u8,
+            MemType::I8 => 1_u8,
+            MemType::U16 => 2_u8,
+            MemType::I16 => 3_u8,
+            MemType::B32 => 4_u8,
+            MemType::B64 => 5_u8,
+            MemType::B128 => 6_u8,
+        },
+    );
+    bs.set_field(
+        77..79,
+        match access.scope {
+            MemScope::CTA => 0_u8,
+            MemScope::Cluster => 1_u8,
+            MemScope::GPU => 2_u8,
+            MemScope::System => 3_u8,
+        },
+    );
+    bs.set_field(
+        79..81,
+        match access.order {
+            /* Constant => 0_u8, */
+            /* Weak? => 1_u8, */
+            MemOrder::Strong => 2_u8,
+            /* MMIO => 3_u8, */
+        },
+    );
+}
+
+fn encode_ld(bs: &mut impl BitSetMut, instr: &Instr, access: &MemAccess) {
+    encode_instr_base(bs, &instr, 0x980);
+
+    encode_reg(bs, 24..32, *instr.src(0).as_reg().unwrap());
+    bs.set_field(32..64, 0_u32 /* Immediate offset */);
+
+    encode_mem_access(bs, access);
+}
+
+fn encode_st(bs: &mut impl BitSetMut, instr: &Instr, access: &MemAccess) {
+    encode_instr_base(bs, &instr, 0x385);
+
+    encode_reg(bs, 24..32, *instr.src(0).as_reg().unwrap());
+    bs.set_field(32..64, 0_u32 /* Immediate offset */);
+    encode_reg(bs, 64..72, *instr.src(1).as_reg().unwrap());
+
+    encode_mem_access(bs, access);
+}
+
 fn encode_exit(bs: &mut impl BitSetMut, instr: &Instr) {
     encode_instr_base(bs, instr, 0x94d);
 
@@ -242,6 +301,8 @@ pub fn encode_instr(instr: &Instr) -> [u32; 4] {
         Opcode::MOV => encode_mov(&mut bs, instr),
         Opcode::ALD(a) => encode_ald(&mut bs, instr, &a),
         Opcode::AST(a) => encode_ast(&mut bs, instr, &a),
+        Opcode::LD(a) => encode_ld(&mut bs, instr, a),
+        Opcode::ST(a) => encode_st(&mut bs, instr, a),
         Opcode::EXIT => encode_exit(&mut bs, instr),
         _ => panic!("Unhandled instruction"),
     }

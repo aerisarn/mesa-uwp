@@ -108,6 +108,20 @@ impl<'a> ShaderFromNir<'a> {
     fn parse_intrinsic(&mut self, intrin: &nir_intrinsic_instr) {
         let srcs = intrin.srcs_as_slice();
         match intrin.intrinsic {
+            nir_intrinsic_load_global => {
+                let size_B =
+                    (intrin.def.bit_size() / 8) * intrin.def.num_components();
+                assert!(u32::from(size_B) <= intrin.align());
+                let access = MemAccess {
+                    addr_type: MemAddrType::A64,
+                    mem_type: MemType::from_size(size_B, false),
+                    order: MemOrder::Strong,
+                    scope: MemScope::System,
+                };
+                let addr = self.get_src(&srcs[0]);
+                let dst = self.get_dst(&intrin.def);
+                self.instrs.push(Instr::new_ld(dst, access, addr));
+            }
             nir_intrinsic_load_input => {
                 let addr = u16::try_from(intrin.base()).unwrap();
                 let vtx = Src::new_zero();
@@ -151,6 +165,20 @@ impl<'a> ShaderFromNir<'a> {
                 } else {
                     panic!("Indirect UBO indices not yet supported");
                 }
+            }
+            nir_intrinsic_store_global => {
+                let data = self.get_src(&srcs[0]);
+                let size_B =
+                    (srcs[0].bit_size() / 8) * srcs[0].num_components();
+                assert!(u32::from(size_B) <= intrin.align());
+                let access = MemAccess {
+                    addr_type: MemAddrType::A64,
+                    mem_type: MemType::from_size(size_B, false),
+                    order: MemOrder::Strong,
+                    scope: MemScope::System,
+                };
+                let addr = self.get_src(&srcs[1]);
+                self.instrs.push(Instr::new_st(access, addr, data));
             }
             nir_intrinsic_store_output => {
                 if self.nir.info.stage() == MESA_SHADER_FRAGMENT {

@@ -394,6 +394,120 @@ pub struct AttrAccess {
     pub flags: u8,
 }
 
+pub enum MemAddrType {
+    A32,
+    A64,
+}
+
+impl fmt::Display for MemAddrType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MemAddrType::A32 => write!(f, "A32"),
+            MemAddrType::A64 => write!(f, "A64"),
+        }
+    }
+}
+
+pub enum MemType {
+    U8,
+    I8,
+    U16,
+    I16,
+    B32,
+    B64,
+    B128,
+}
+
+impl MemType {
+    pub fn from_size(size: u8, is_signed: bool) -> MemType {
+        match size {
+            1 => {
+                if is_signed {
+                    MemType::I8
+                } else {
+                    MemType::U8
+                }
+            }
+            2 => {
+                if is_signed {
+                    MemType::I16
+                } else {
+                    MemType::U16
+                }
+            }
+            4 => MemType::B32,
+            8 => MemType::B64,
+            16 => MemType::B128,
+            _ => panic!("Invalid memory load/store size"),
+        }
+    }
+}
+
+impl fmt::Display for MemType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MemType::U8 => write!(f, "U8"),
+            MemType::I8 => write!(f, "I8"),
+            MemType::U16 => write!(f, "U16"),
+            MemType::I16 => write!(f, "I16"),
+            MemType::B32 => write!(f, "B32"),
+            MemType::B64 => write!(f, "B64"),
+            MemType::B128 => write!(f, "B128"),
+        }
+    }
+}
+
+pub enum MemOrder {
+    Strong,
+}
+
+pub enum MemScope {
+    CTA,
+    Cluster,
+    GPU,
+    System,
+}
+
+impl fmt::Display for MemScope {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MemScope::CTA => write!(f, "CTA"),
+            MemScope::Cluster => write!(f, "SM"),
+            MemScope::GPU => write!(f, "GPU"),
+            MemScope::System => write!(f, "SYS"),
+        }
+    }
+}
+
+pub enum MemSpace {
+    Global,
+    Local,
+    Shared,
+}
+
+impl fmt::Display for MemSpace {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MemSpace::Global => write!(f, "GLOBAL"),
+            MemSpace::Local => write!(f, "LOCAL"),
+            MemSpace::Shared => write!(f, "SHARED"),
+        }
+    }
+}
+
+pub struct MemAccess {
+    pub addr_type: MemAddrType,
+    pub mem_type: MemType,
+    pub order: MemOrder,
+    pub scope: MemScope,
+}
+
+impl fmt::Display for MemAccess {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}.{}.{}", self.addr_type, self.mem_type, self.scope)
+    }
+}
+
 const MIN_INSTR_DELAY: u8 = 1;
 const MAX_INSTR_DELAY: u8 = 15;
 
@@ -563,6 +677,18 @@ impl Instr {
         instr
     }
 
+    pub fn new_ld(dst: Dst, access: MemAccess, addr: Src) -> Instr {
+        Instr::new(
+            Opcode::LD(access),
+            slice::from_ref(&dst),
+            slice::from_ref(&addr),
+        )
+    }
+
+    pub fn new_st(access: MemAccess, addr: Src, data: Src) -> Instr {
+        Instr::new(Opcode::ST(access), &[], &[addr, data])
+    }
+
     pub fn new_fs_out(srcs: &[Src]) -> Instr {
         Instr::new(Opcode::FS_OUT, &[], srcs)
     }
@@ -617,7 +743,9 @@ impl Instr {
 
     pub fn can_eliminate(&self) -> bool {
         match self.op {
-            Opcode::FS_OUT | Opcode::EXIT | Opcode::AST(_) => false,
+            Opcode::FS_OUT | Opcode::EXIT | Opcode::AST(_) | Opcode::ST(_) => {
+                false
+            }
             _ => true,
         }
     }
@@ -658,6 +786,8 @@ pub enum Opcode {
 
     ALD(AttrAccess),
     AST(AttrAccess),
+    LD(MemAccess),
+    ST(MemAccess),
 
     FS_OUT,
 
@@ -679,6 +809,8 @@ impl fmt::Display for Opcode {
             Opcode::SPLIT => write!(f, "SPLIT"),
             Opcode::ALD(_) => write!(f, "ALD"),
             Opcode::AST(_) => write!(f, "AST"),
+            Opcode::LD(a) => write!(f, "LD.{}", a),
+            Opcode::ST(a) => write!(f, "ST.{}", a),
             Opcode::FS_OUT => write!(f, "FS_OUT"),
             Opcode::EXIT => write!(f, "EXIT"),
         }
