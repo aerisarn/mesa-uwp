@@ -169,3 +169,8 @@ pub fn derive_srcs_as_slice(input: TokenStream) -> TokenStream {
 pub fn derive_dsts_as_slice(input: TokenStream) -> TokenStream {
     derive_as_slice(input, "DstsAsSlice", "dsts", "Dst")
 }
+
+#[proc_macro_derive(SrcModsAsSlice)]
+pub fn derive_src_mods_as_slice(input: TokenStream) -> TokenStream {
+    derive_as_slice(input, "SrcModsAsSlice", "src_mods", "SrcMod")
+}

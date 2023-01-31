@@ -327,6 +327,124 @@ pub trait DstsAsSlice {
     fn dsts_as_mut_slice(&mut self) -> &mut [Dst];
 }
 
+pub enum SrcMod {
+    None,
+    FAbs,
+    FNeg,
+    FNegAbs,
+    IAbs,
+    INeg,
+    INegAbs,
+    BNot,
+}
+
+impl SrcMod {
+    pub fn is_float(&self) -> bool {
+        match self {
+            SrcMod::None | SrcMod::FAbs | SrcMod::FNeg | SrcMod::FNegAbs => {
+                true
+            }
+            SrcMod::IAbs | SrcMod::INeg | SrcMod::INegAbs | SrcMod::BNot => {
+                false
+            }
+        }
+    }
+
+    pub fn is_int(&self) -> bool {
+        match self {
+            SrcMod::None | SrcMod::IAbs | SrcMod::INeg | SrcMod::INegAbs => {
+                true
+            }
+            SrcMod::FAbs | SrcMod::FNeg | SrcMod::FNegAbs | SrcMod::BNot => {
+                false
+            }
+        }
+    }
+
+    pub fn is_binary(&self) -> bool {
+        match self {
+            SrcMod::None | SrcMod::BNot => true,
+            _ => false,
+        }
+    }
+
+    pub fn has_neg(&self) -> bool {
+        match self {
+            SrcMod::None | SrcMod::FAbs | SrcMod::IAbs => false,
+            SrcMod::FNeg | SrcMod::FNegAbs | SrcMod::INeg | SrcMod::INegAbs => {
+                true
+            }
+            SrcMod::BNot => panic!("This is a boolean modifier"),
+        }
+    }
+
+    pub fn has_abs(&self) -> bool {
+        match self {
+            SrcMod::None | SrcMod::FNeg | SrcMod::INeg => false,
+            SrcMod::FAbs | SrcMod::FNegAbs | SrcMod::IAbs | SrcMod::INegAbs => {
+                true
+            }
+            SrcMod::BNot => panic!("This is a boolean modifier"),
+        }
+    }
+
+    pub fn has_not(&self) -> bool {
+        match self {
+            SrcMod::None => false,
+            SrcMod::BNot => true,
+            _ => panic!("This is not a boolean modifier"),
+        }
+    }
+}
+
+pub struct ModSrc {
+    pub src: Src,
+    pub src_mod: SrcMod,
+}
+
+impl From<Src> for ModSrc {
+    fn from(value: Src) -> ModSrc {
+        ModSrc {
+            src: value,
+            src_mod: SrcMod::None,
+        }
+    }
+}
+
+impl fmt::Display for ModSrc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.src_mod {
+            SrcMod::None => write!(f, "{}", self.src),
+            SrcMod::FAbs | SrcMod::IAbs => write!(f, "|{}|", self.src),
+            SrcMod::FNeg | SrcMod::INeg => write!(f, "-{}", self.src),
+            SrcMod::FNegAbs | SrcMod::INegAbs => write!(f, "-|{}|", self.src),
+            SrcMod::BNot => write!(f, "!{}", self.src),
+        }
+    }
+}
+
+pub trait SrcModsAsSlice: SrcsAsSlice {
+    fn src_mods_as_slice(&self) -> &[SrcMod];
+    fn src_mods_as_mut_slice(&mut self) -> &mut [SrcMod];
+
+    fn srcs_mods_as_slices(&self) -> (&[Src], &[SrcMod]) {
+        (self.srcs_as_slice(), self.src_mods_as_slice())
+    }
+
+    fn srcs_mods_as_mut_slices(&mut self) -> (&mut [Src], &mut [SrcMod]) {
+        unsafe {
+            /* It's safe to double-borrow here because sources and modifiers
+             * will never overlap within a given instruction struct.
+             */
+            let ptr = self as *mut Self;
+            let srcs = (*ptr).srcs_as_mut_slice();
+            let mods = self.src_mods_as_mut_slice();
+            assert!(mods.len() <= srcs.len());
+            (&mut srcs[..mods.len()], mods)
+        }
+    }
+}
+
 pub enum Pred {
     None,
     SSA(SSAValue),
