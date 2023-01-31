@@ -132,12 +132,10 @@ nil_image_fill_tic(struct nouveau_ws_device *dev,
    tic[3] |= GM107_TIC2_3_LOD_ANISO_QUALITY_HIGH |
              GM107_TIC2_3_LOD_ISO_QUALITY_HIGH;
 
-   const uint32_t width = u_minify(image->extent_px.width, view->base_level);
-   const uint32_t height = u_minify(image->extent_px.height, view->base_level);
    uint32_t depth;
    if (view->type == NIL_VIEW_TYPE_3D) {
       assert(image->dim == NIL_IMAGE_DIM_3D);
-      depth = u_minify(image->extent_px.depth, view->base_level);
+      depth = image->extent_px.depth;
    } else if (view->type == NIL_VIEW_TYPE_CUBE ||
               view->type == NIL_VIEW_TYPE_CUBE_ARRAY) {
       assert(image->dim == NIL_IMAGE_DIM_2D);
@@ -147,8 +145,8 @@ nil_image_fill_tic(struct nouveau_ws_device *dev,
       depth = view->array_len;
    }
 
-   tic[4] |= width - 1;
-   tic[5] |= height - 1;
+   tic[4] |= image->extent_px.width - 1;
+   tic[5] |= image->extent_px.height - 1;
    tic[5] |= (depth - 1) << 16;
 
    const uint32_t last_level = view->num_levels + view->base_level - 1;
