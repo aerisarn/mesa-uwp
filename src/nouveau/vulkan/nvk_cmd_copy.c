@@ -47,8 +47,7 @@ nouveau_copy_linear(struct nouveau_ws_push *push,
 }
 
 struct nouveau_copy_buffer {
-   struct nouveau_ws_bo *bo;
-   uint64_t bo_offset;
+   uint64_t base_addr;
    VkOffset3D offset;
    VkExtent3D extent;
    uint32_t row_stride;
@@ -70,8 +69,7 @@ nouveau_copy_rect_buffer(
    struct vk_image_buffer_layout buffer_layout)
 {
    return (struct nouveau_copy_buffer) {
-      .bo = buf->mem->bo,
-      .bo_offset = buf->offset + offset,
+      .base_addr = nvk_buffer_address(buf, offset),
       .row_stride = buffer_layout.row_stride_B,
       .layer_stride = buffer_layout.image_stride_B,
    };
@@ -84,8 +82,7 @@ nouveau_copy_rect_image(
    const VkImageSubresourceLayers *sub_res)
 {
    struct nouveau_copy_buffer buf = {
-      .bo = img->mem->bo,
-      .bo_offset = img->offset,
+      .base_addr = nvk_image_base_address(img),
       .offset = vk_image_sanitize_offset(&img->vk, offset),
       .extent = img->vk.extent,
       .row_stride = img->row_stride,
@@ -102,8 +99,8 @@ nouveau_copy_rect_image(
 static void
 nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
 {
-   VkDeviceSize src_addr = copy->src.bo->offset + copy->src.bo_offset;
-   VkDeviceSize dst_addr = copy->dst.bo->offset + copy->dst.bo_offset;
+   VkDeviceSize src_addr = copy->src.base_addr;
+   VkDeviceSize dst_addr = copy->dst.base_addr;
 
    if (!copy->src.tile.is_tiled) {
       src_addr +=
@@ -120,9 +117,6 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
    }
 
    struct nouveau_ws_push *push = cmd->push;
-
-   nouveau_ws_push_ref(push, copy->src.bo, NOUVEAU_WS_BO_RD);
-   nouveau_ws_push_ref(push, copy->dst.bo, NOUVEAU_WS_BO_WR);
 
    for (unsigned z = 0; z < copy->extent.depth; z++) {
       PUSH_MTHD(push, NV90B5, OFFSET_IN_UPPER,
@@ -237,6 +231,9 @@ nvk_CmdCopyBufferToImage2(
    VK_FROM_HANDLE(nvk_buffer, src, pCopyBufferToImageInfo->srcBuffer);
    VK_FROM_HANDLE(nvk_image, dst, pCopyBufferToImageInfo->dstImage);
 
+   nvk_push_buffer_ref(cmd->push, src, NOUVEAU_WS_BO_RD);
+   nvk_push_image_ref(cmd->push, dst, NOUVEAU_WS_BO_WR);
+
    for (unsigned r = 0; r < pCopyBufferToImageInfo->regionCount; r++) {
       const VkBufferImageCopy2 *region = &pCopyBufferToImageInfo->pRegions[r];
       struct vk_image_buffer_layout buffer_layout = vk_image_buffer_copy_layout(&dst->vk, region);
@@ -278,6 +275,9 @@ nvk_CmdCopyImageToBuffer2(
    VK_FROM_HANDLE(nvk_image, src, pCopyImageToBufferInfo->srcImage);
    VK_FROM_HANDLE(nvk_buffer, dst, pCopyImageToBufferInfo->dstBuffer);
 
+   nvk_push_image_ref(cmd->push, src, NOUVEAU_WS_BO_RD);
+   nvk_push_buffer_ref(cmd->push, dst, NOUVEAU_WS_BO_WR);
+
    for (unsigned r = 0; r < pCopyImageToBufferInfo->regionCount; r++) {
       const VkBufferImageCopy2 *region = &pCopyImageToBufferInfo->pRegions[r];
       struct vk_image_buffer_layout buffer_layout = vk_image_buffer_copy_layout(&src->vk, region);
@@ -318,6 +318,9 @@ nvk_CmdCopyImage2(
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_image, src, pCopyImageInfo->srcImage);
    VK_FROM_HANDLE(nvk_image, dst, pCopyImageInfo->dstImage);
+
+   nvk_push_image_ref(cmd->push, src, NOUVEAU_WS_BO_RD);
+   nvk_push_image_ref(cmd->push, dst, NOUVEAU_WS_BO_WR);
 
    uint16_t bpp = vk_format_description(src->vk.format)->block.bits;
    assert(bpp == vk_format_description(dst->vk.format)->block.bits);
