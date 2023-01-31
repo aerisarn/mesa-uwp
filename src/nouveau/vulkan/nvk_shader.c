@@ -210,7 +210,10 @@ void
 nvk_shader_upload(struct nvk_physical_device *physical, struct nvk_shader *shader)
 {
    void *ptr;
-   shader->bo = nouveau_ws_bo_new(physical->dev, shader->code_size, 256,
+   /* TODO: The I-cache pre-fetches and we don't really know by how much.  So
+    * throw on a bunch just to be sure.
+    */
+   shader->bo = nouveau_ws_bo_new(physical->dev, shader->code_size + 4096, 256,
                                   NOUVEAU_WS_BO_LOCAL | NOUVEAU_WS_BO_MAP);
 
    ptr = nouveau_ws_bo_map(shader->bo, NOUVEAU_WS_BO_WR);
