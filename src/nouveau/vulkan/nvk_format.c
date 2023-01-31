@@ -74,6 +74,8 @@ static const struct nvk_va_format nvk_vf_formats[] = {
    VA_FMT(A2B10G10R10_UINT_PACK32,     A2B10G10R10,      FALSE,   UINT),
    VA_FMT(A2B10G10R10_SINT_PACK32,     A2B10G10R10,      FALSE,   SINT),
 
+   VA_FMT(B10G11R11_UFLOAT_PACK32,     B10G11R11,        FALSE,   FLOAT),
+
    VA_FMT(R16_UNORM,                   R16,              FALSE,   UNORM),
    VA_FMT(R16_SNORM,                   R16,              FALSE,   SNORM),
    VA_FMT(R16_USCALED,                 R16,              FALSE,   USCALED),
