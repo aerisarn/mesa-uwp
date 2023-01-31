@@ -71,6 +71,18 @@ nvk_cmd_bind_compute_pipeline(struct nvk_cmd_buffer *cmd,
    cmd->state.cs.pipeline = pipeline;
 }
 
+static uint32_t
+nvk_compute_local_size(struct nvk_cmd_buffer *cmd)
+{
+   const struct nvk_compute_pipeline *pipeline = cmd->state.cs.pipeline;
+   const struct nvk_shader *shader =
+      &pipeline->base.shaders[MESA_SHADER_COMPUTE];
+
+   return shader->cp.block_size[0] *
+          shader->cp.block_size[1] *
+          shader->cp.block_size[2];
+}
+
 static uint64_t
 nvk_flush_compute_state(struct nvk_cmd_buffer *cmd,
                         uint64_t *root_desc_addr_out)
@@ -121,6 +133,36 @@ nvk_flush_compute_state(struct nvk_cmd_buffer *cmd,
    return qmd_addr;
 }
 
+static void
+nvk_build_mme_add_cs_invocations(struct mme_builder *b,
+                                 struct mme_value64 count)
+{
+   struct mme_value accum_hi = mme_state(b,
+      NVC597_SET_MME_SHADOW_SCRATCH(NVK_MME_SCRATCH_CS_INVOCATIONS_HI));
+   struct mme_value accum_lo = mme_state(b,
+      NVC597_SET_MME_SHADOW_SCRATCH(NVK_MME_SCRATCH_CS_INVOCATIONS_LO));
+   struct mme_value64 accum = mme_value64(accum_lo, accum_hi);
+
+   accum = mme_add64(b, accum, count);
+
+   STATIC_ASSERT(NVK_MME_SCRATCH_CS_INVOCATIONS_HI + 1 ==
+                 NVK_MME_SCRATCH_CS_INVOCATIONS_LO);
+
+   mme_mthd(b, NVC597_SET_MME_SHADOW_SCRATCH(NVK_MME_SCRATCH_CS_INVOCATIONS_HI));
+   mme_emit(b, accum.hi);
+   mme_emit(b, accum.lo);
+}
+
+void
+nvk_mme_add_cs_invocations(struct nvk_device *dev, struct mme_builder *b)
+{
+   struct mme_value count_hi = mme_load(b);
+   struct mme_value count_lo = mme_load(b);
+   struct mme_value64 count = mme_value64(count_lo, count_hi);
+
+   nvk_build_mme_add_cs_invocations(b, count);
+}
+
 VKAPI_ATTR void VKAPI_CALL
 nvk_CmdDispatch(VkCommandBuffer commandBuffer,
                 uint32_t groupCountX,
@@ -138,7 +180,16 @@ nvk_CmdDispatch(VkCommandBuffer commandBuffer,
    if (unlikely(qmd_addr == 0))
       return;
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 6);
+   const uint32_t local_size = nvk_compute_local_size(cmd);
+   const uint64_t cs_invocations =
+      (uint64_t)local_size * (uint64_t)groupCountX *
+      (uint64_t)groupCountY * (uint64_t)groupCountZ;
+
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 9);
+
+   P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_ADD_CS_INVOCATIONS));
+   P_INLINE_DATA(p, cs_invocations >> 32);
+   P_INLINE_DATA(p, cs_invocations);
 
    P_MTHD(p, NVA0C0, INVALIDATE_SHADER_CACHES_NO_WFI);
    P_NVA0C0_INVALIDATE_SHADER_CACHES_NO_WFI(p, {
@@ -189,6 +240,7 @@ mme_store_global_vec3(struct mme_builder *b,
 void
 nvk_mme_dispatch_indirect(struct nvk_device *dev, struct mme_builder *b)
 {
+   struct mme_value local_size = mme_load(b);
    struct mme_value64 dispatch_addr = mme_load_addr64(b);
    struct mme_value64 root_desc_addr = mme_load_addr64(b);
    struct mme_value64 qmd_addr = mme_load_addr64(b);
@@ -202,6 +254,10 @@ nvk_mme_dispatch_indirect(struct nvk_device *dev, struct mme_builder *b)
    struct mme_value group_count_x = mme_load(b);
    struct mme_value group_count_y = mme_load(b);
    struct mme_value group_count_z = mme_load(b);
+
+   struct mme_value64 cs1 = mme_umul_32x32_64(b, local_size, group_count_x);
+   struct mme_value64 cs2 = mme_umul_32x32_64(b, group_count_y, group_count_z);
+   nvk_build_mme_add_cs_invocations(b, mme_mul64(b, cs1, cs2));
 
    mme_store_global_vec3(b, qmd_addr, qmd_size_offset,
                          group_count_x, group_count_y, group_count_z);
@@ -224,10 +280,11 @@ nvk_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
    if (unlikely(qmd_addr == 0))
       return;
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 15);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 16);
 
    P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
    P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DISPATCH_INDIRECT));
+   P_INLINE_DATA(p, nvk_compute_local_size(cmd));
    P_INLINE_DATA(p, dispatch_addr >> 32);
    P_INLINE_DATA(p, dispatch_addr);
    P_INLINE_DATA(p, root_desc_addr >> 32);

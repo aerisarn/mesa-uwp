@@ -277,6 +277,32 @@ static const struct nvk_3d_stat_query nvk_3d_stat_queries[] = {{
 }};
 
 static void
+mme_store_global(struct mme_builder *b,
+                 struct mme_value64 addr,
+                 struct mme_value v)
+{
+   mme_mthd(b, NV9097_SET_REPORT_SEMAPHORE_A);
+   mme_emit_addr64(b, addr);
+   mme_emit(b, v);
+   mme_emit(b, mme_imm(0x10000000));
+}
+
+void
+nvk_mme_write_cs_invocations(struct nvk_device *dev, struct mme_builder *b)
+{
+   struct mme_value64 dst_addr = mme_load_addr64(b);
+
+   struct mme_value accum_hi = mme_state(b,
+      NVC597_SET_MME_SHADOW_SCRATCH(NVK_MME_SCRATCH_CS_INVOCATIONS_HI));
+   struct mme_value accum_lo = mme_state(b,
+      NVC597_SET_MME_SHADOW_SCRATCH(NVK_MME_SCRATCH_CS_INVOCATIONS_LO));
+   struct mme_value64 accum = mme_value64(accum_lo, accum_hi);
+
+   mme_store_global(b, dst_addr, accum.lo);
+   mme_store_global(b, mme_add64(b, dst_addr, mme_imm64(4)), accum.hi);
+}
+
+static void
 nvk_cmd_begin_end_query(struct nvk_cmd_buffer *cmd,
                         struct nvk_query_pool *pool,
                         uint32_t query, uint32_t index,
@@ -317,16 +343,22 @@ nvk_cmd_begin_end_query(struct nvk_cmd_buffer *cmd,
          /* The 3D stat queries array MUST be sorted */
          assert(!(stats_left & (sq->flag - 1)));
 
-         P_MTHD(p, NV9097, SET_REPORT_SEMAPHORE_A);
-         P_NV9097_SET_REPORT_SEMAPHORE_A(p, report_addr >> 32);
-         P_NV9097_SET_REPORT_SEMAPHORE_B(p, report_addr);
-         P_NV9097_SET_REPORT_SEMAPHORE_C(p, 0);
-         P_NV9097_SET_REPORT_SEMAPHORE_D(p, {
-            .operation = OPERATION_REPORT_ONLY,
-            .pipeline_location = sq->loc,
-            .report = sq->report,
-            .structure_size = STRUCTURE_SIZE_FOUR_WORDS,
-         });
+         if (sq->flag == VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT) {
+            P_1INC(p, NVC597, CALL_MME_MACRO(NVK_MME_WRITE_CS_INVOCATIONS));
+            P_INLINE_DATA(p, report_addr >> 32);
+            P_INLINE_DATA(p, report_addr);
+         } else {
+            P_MTHD(p, NV9097, SET_REPORT_SEMAPHORE_A);
+            P_NV9097_SET_REPORT_SEMAPHORE_A(p, report_addr >> 32);
+            P_NV9097_SET_REPORT_SEMAPHORE_B(p, report_addr);
+            P_NV9097_SET_REPORT_SEMAPHORE_C(p, 0);
+            P_NV9097_SET_REPORT_SEMAPHORE_D(p, {
+               .operation = OPERATION_REPORT_ONLY,
+               .pipeline_location = sq->loc,
+               .report = sq->report,
+               .structure_size = STRUCTURE_SIZE_FOUR_WORDS,
+            });
+         }
 
          report_addr += 2 * sizeof(struct nvk_query_report);
          stats_left &= ~sq->flag;
@@ -498,17 +530,6 @@ nvk_GetQueryPoolResults(VkDevice device,
    }
 
    return status;
-}
-
-static void
-mme_store_global(struct mme_builder *b,
-                 struct mme_value64 addr,
-                 struct mme_value v)
-{
-   mme_mthd(b, NV9097_SET_REPORT_SEMAPHORE_A);
-   mme_emit_addr64(b, addr);
-   mme_emit(b, v);
-   mme_emit(b, mme_imm(0x10000000));
 }
 
 void
