@@ -216,12 +216,18 @@ nvk_queue_state_update(struct nvk_device *dev,
       P_NVA0C0_SET_TEX_HEADER_POOL_A(p, qs->images.bo->offset >> 32);
       P_NVA0C0_SET_TEX_HEADER_POOL_B(p, qs->images.bo->offset);
       P_NVA0C0_SET_TEX_HEADER_POOL_C(p, qs->images.alloc_count - 1);
+      P_IMMD(p, NVA0C0, INVALIDATE_TEXTURE_HEADER_CACHE_NO_WFI, {
+         .lines = LINES_ALL
+      });
 
       /* 3D */
       P_MTHD(p, NV9097, SET_TEX_HEADER_POOL_A);
       P_NV9097_SET_TEX_HEADER_POOL_A(p, qs->images.bo->offset >> 32);
       P_NV9097_SET_TEX_HEADER_POOL_B(p, qs->images.bo->offset);
       P_NV9097_SET_TEX_HEADER_POOL_C(p, qs->images.alloc_count - 1);
+      P_IMMD(p, NV9097, INVALIDATE_TEXTURE_HEADER_CACHE_NO_WFI, {
+         .lines = LINES_ALL
+      });
    }
 
    if (qs->samplers.bo) {
@@ -232,12 +238,18 @@ nvk_queue_state_update(struct nvk_device *dev,
       P_NVA0C0_SET_TEX_SAMPLER_POOL_A(p, qs->samplers.bo->offset >> 32);
       P_NVA0C0_SET_TEX_SAMPLER_POOL_B(p, qs->samplers.bo->offset);
       P_NVA0C0_SET_TEX_SAMPLER_POOL_C(p, qs->samplers.alloc_count - 1);
+      P_IMMD(p, NVA0C0, INVALIDATE_SAMPLER_CACHE_NO_WFI, {
+         .lines = LINES_ALL
+      });
 
       /* 3D */
       P_MTHD(p, NV9097, SET_TEX_SAMPLER_POOL_A);
       P_NV9097_SET_TEX_SAMPLER_POOL_A(p, qs->samplers.bo->offset >> 32);
       P_NV9097_SET_TEX_SAMPLER_POOL_B(p, qs->samplers.bo->offset);
       P_NV9097_SET_TEX_SAMPLER_POOL_C(p, qs->samplers.alloc_count - 1);
+      P_IMMD(p, NV9097, INVALIDATE_SAMPLER_CACHE_NO_WFI, {
+         .lines = LINES_ALL
+      });
    }
 
    if (qs->slm.bo) {

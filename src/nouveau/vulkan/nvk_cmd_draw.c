@@ -284,9 +284,6 @@ nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
    P_IMMD(p, NV9097, SET_POINT_CENTER_MODE, V_OGL);
    P_IMMD(p, NV9097, SET_EDGE_FLAG, V_TRUE);
    P_IMMD(p, NV9097, SET_SAMPLER_BINDING, V_INDEPENDENTLY);
-   P_IMMD(p, NV9097, INVALIDATE_SAMPLER_CACHE, {
-      .lines = LINES_ALL
-   });
 
    if (cmd->vk.level != VK_COMMAND_BUFFER_LEVEL_PRIMARY &&
        (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT)) {
