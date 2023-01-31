@@ -1508,7 +1508,7 @@ vk_to_nv9097_primitive_topology(VkPrimitiveTopology prim)
 }
 
 static void
-nvk_build_mme_draw(struct mme_builder *b, struct mme_value begin)
+nvk_mme_build_draw(struct mme_builder *b, struct mme_value begin)
 {
    /* These are in VkDrawIndirectCommand order */
    struct mme_value vertex_count = mme_load(b);
@@ -1565,7 +1565,7 @@ nvk_mme_draw(struct nvk_device *dev, struct mme_builder *b)
 {
    struct mme_value begin = mme_load(b);
 
-   nvk_build_mme_draw(b, begin);
+   nvk_mme_build_draw(b, begin);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -1708,7 +1708,7 @@ nvk_mme_draw_indirect(struct nvk_device *dev, struct mme_builder *b)
    mme_while(b, ult, draw, draw_count) {
       mme_tu104_read_fifoed(b, draw_addr, mme_imm(4));
 
-      nvk_build_mme_draw(b, begin);
+      nvk_mme_build_draw(b, begin);
 
       mme_add_to(b, draw, draw, mme_imm(1));
       mme_add64_to(b, draw_addr, draw_addr, mme_value64(stride, mme_zero()));
