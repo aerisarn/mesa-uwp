@@ -104,6 +104,9 @@ struct nil_image {
 
    uint32_t align_B;
    uint64_t size_B;
+
+   uint16_t tile_mode;
+   uint8_t pte_kind;
 };
 
 struct nil_view {

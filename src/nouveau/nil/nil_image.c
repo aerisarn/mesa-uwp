@@ -2,6 +2,11 @@
 
 #include "util/u_math.h"
 
+#include "nouveau_device.h"
+
+#include "cl9097.h"
+#include "clc597.h"
+
 static struct nil_extent4d
 nil_minify_extent4d(struct nil_extent4d extent, uint32_t level)
 {
@@ -142,6 +147,138 @@ image_level_extent_B(const struct nil_image *image, uint32_t level)
    return nil_extent4d_el_to_B(level_extent_el, B_per_el);
 }
 
+static uint8_t
+tu102_choose_pte_kind(enum pipe_format format, bool compressed)
+{
+   switch (format) {
+   case PIPE_FORMAT_Z16_UNORM:
+      if (compressed)
+         return 0x0b; // NV_MMU_PTE_KIND_Z16_COMPRESSIBLE_DISABLE_PLC
+      else
+         return 0x01; // NV_MMU_PTE_KIND_Z16
+   case PIPE_FORMAT_X8Z24_UNORM:
+   case PIPE_FORMAT_S8X24_UINT:
+   case PIPE_FORMAT_S8_UINT_Z24_UNORM:
+      if (compressed)
+         return 0x0e; // NV_MMU_PTE_KIND_Z24S8_COMPRESSIBLE_DISABLE_PLC
+      else
+         return 0x05; // NV_MMU_PTE_KIND_Z24S8
+   case PIPE_FORMAT_X24S8_UINT:
+   case PIPE_FORMAT_Z24X8_UNORM:
+   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+      if (compressed)
+         return 0x0c; // NV_MMU_PTE_KIND_S8Z24_COMPRESSIBLE_DISABLE_PLC
+      else
+         return 0x03; // NV_MMU_PTE_KIND_S8Z24
+   case PIPE_FORMAT_X32_S8X24_UINT:
+   case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+      if (compressed)
+         return 0x0d; // NV_MMU_PTE_KIND_ZF32_X24S8_COMPRESSIBLE_DISABLE_PLC
+      else
+         return 0x04; // NV_MMU_PTE_KIND_ZF32_X24S8
+   case PIPE_FORMAT_Z32_FLOAT:
+   default:
+      return 0;
+   }
+}
+
+static uint8_t
+nvc0_choose_pte_kind(enum pipe_format format,
+                     uint32_t samples, bool compressed)
+{
+   const unsigned ms = util_logbase2(samples);
+
+   switch (format) {
+   case PIPE_FORMAT_Z16_UNORM:
+      if (compressed)
+         return 0x02 + ms;
+      else
+         return 0x01;
+   case PIPE_FORMAT_X8Z24_UNORM:
+   case PIPE_FORMAT_S8X24_UINT:
+   case PIPE_FORMAT_S8_UINT_Z24_UNORM:
+      if (compressed)
+         return 0x51 + ms;
+      else
+         return 0x46;
+   case PIPE_FORMAT_X24S8_UINT:
+   case PIPE_FORMAT_Z24X8_UNORM:
+   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+      if (compressed)
+         return 0x17 + ms;
+      else
+         return 0x11;
+      break;
+   case PIPE_FORMAT_Z32_FLOAT:
+      if (compressed)
+         return 0x86 + ms;
+      else
+         return 0x7b;
+      break;
+   case PIPE_FORMAT_X32_S8X24_UINT:
+   case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+      if (compressed)
+         return 0xce + ms;
+      else
+         return 0xc3;
+   default:
+      switch (util_format_get_blocksizebits(format)) {
+      case 128:
+         if (compressed)
+            return 0xf4 + ms * 2;
+         else
+            return 0xfe;
+         break;
+      case 64:
+         if (compressed) {
+            switch (samples) {
+            case 1:  return 0xe6;
+            case 2:  return 0xeb;
+            case 4:  return 0xed;
+            case 8:  return 0xf2;
+            default: return 0;
+            }
+         } else {
+            return 0xfe;
+         }
+         break;
+      case 32:
+         if (compressed && ms) {
+            switch (samples) {
+               /* This one makes things blurry:
+            case 1:  return 0xdb;
+               */
+            case 2:  return 0xdd;
+            case 4:  return 0xdf;
+            case 8:  return 0xe4;
+            default: return 0;
+            }
+         } else {
+            return 0xfe;
+         }
+         break;
+      case 16:
+      case 8:
+         return 0xfe;
+      default:
+         return 0;
+      }
+   }
+}
+
+static uint8_t
+nil_choose_pte_kind(struct nouveau_ws_device *dev,
+                    enum pipe_format format,
+                    uint32_t samples, bool compressed)
+{
+   if (dev->cls_eng3d >= TURING_A)
+      return tu102_choose_pte_kind(format, compressed);
+   else if (dev->cls_eng3d >= FERMI_A)
+      return nvc0_choose_pte_kind(format, samples, compressed);
+   else
+      unreachable("Unsupported 3D engine class");
+}
+
 bool
 nil_image_init(struct nouveau_ws_device *dev,
                struct nil_image *image,
@@ -198,6 +335,12 @@ nil_image_init(struct nouveau_ws_device *dev,
    image->array_stride_B = ALIGN(layer_size_B, image->align_B);
 
    image->size_B = (uint64_t)image->array_stride_B * image->extent_px.a;
+
+   image->tile_mode = (uint16_t)image->levels[0].tiling.y_log2 << 4 |
+                      (uint16_t)image->levels[0].tiling.z_log2 << 8;
+
+   image->pte_kind = nil_choose_pte_kind(dev, info->format, info->samples,
+                                         true /* TODO: compressed */);
 
    return true;
 }
