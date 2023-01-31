@@ -106,12 +106,83 @@ nak_optimize_nir(nir_shader *nir, const struct nak_compiler *nak)
    optimize_nir(nir, nak, false);
 }
 
+static unsigned
+lower_bit_size_cb(const nir_instr *instr, void *_data)
+{
+   switch (instr->type) {
+   case nir_instr_type_alu: {
+      nir_alu_instr *alu = nir_instr_as_alu(instr);
+      switch (alu->op) {
+      case nir_op_bit_count:
+      case nir_op_ufind_msb:
+      case nir_op_ifind_msb:
+      case nir_op_find_lsb:
+         /* These are handled specially because the destination is always
+          * 32-bit and so the bit size of the instruction is given by the
+          * source.
+          */
+         return alu->src[0].src.ssa->bit_size == 32 ? 0 : 32;
+      default:
+         break;
+      }
+
+      if (alu->def.bit_size >= 32)
+         return 0;
+
+      /* TODO: Some hardware has native 16-bit support */
+      if (alu->def.bit_size & (8 | 16))
+         return 32;
+
+      return 0;
+   }
+
+   case nir_instr_type_intrinsic: {
+      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+      switch (intrin->intrinsic) {
+      case nir_intrinsic_vote_feq:
+      case nir_intrinsic_vote_ieq:
+      case nir_intrinsic_read_invocation:
+      case nir_intrinsic_read_first_invocation:
+      case nir_intrinsic_shuffle:
+      case nir_intrinsic_shuffle_xor:
+      case nir_intrinsic_shuffle_up:
+      case nir_intrinsic_shuffle_down:
+      case nir_intrinsic_quad_broadcast:
+      case nir_intrinsic_quad_swap_horizontal:
+      case nir_intrinsic_quad_swap_vertical:
+      case nir_intrinsic_quad_swap_diagonal:
+      case nir_intrinsic_reduce:
+      case nir_intrinsic_inclusive_scan:
+      case nir_intrinsic_exclusive_scan:
+         if (intrin->src[0].ssa->bit_size != 32)
+            return 32;
+         return 0;
+
+      default:
+         return 0;
+      }
+   }
+
+   case nir_instr_type_phi: {
+      nir_phi_instr *phi = nir_instr_as_phi(instr);
+      if (phi->def.bit_size != 32)
+         return 32;
+      return 0;
+   }
+
+   default:
+      return 0;
+   }
+}
+
 void
 nak_preprocess_nir(nir_shader *nir, const struct nak_compiler *nak)
 {
    UNUSED bool progress = false;
 
    nir_validate_ssa_dominance(nir, "before nak_preprocess_nir");
+
+   OPT(nir, nir_lower_bit_size, lower_bit_size_cb, (void *)nak);
 
    const nir_lower_tex_options tex_options = {
       .lower_txp = ~0,
