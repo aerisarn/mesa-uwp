@@ -551,6 +551,22 @@ mme_tu104_emit(struct mme_builder *b, struct mme_value data)
    }
 }
 
+static enum mme_tu104_alu_op
+mme_cmp_to_tu104_branch_op(enum mme_cmp_op op)
+{
+   switch (op) {
+#define CMP_CASE(op) case MME_CMP_OP_##op: return MME_TU104_ALU_OP_B##op;
+   CMP_CASE(LT)
+   CMP_CASE(LTU)
+   CMP_CASE(LE)
+   CMP_CASE(LEU)
+   CMP_CASE(EQ)
+#undef CMP_CASE
+   default:
+      unreachable("Unsupported MME CMP op");
+   }
+}
+
 static void
 mme_tu104_start_cf(struct mme_builder *b,
                    enum mme_tu104_cf_type type,
@@ -610,11 +626,12 @@ mme_tu104_end_loop(struct mme_builder *b)
 
 void
 mme_tu104_start_if(struct mme_builder *b,
-                   enum mme_tu104_alu_op op, bool if_true,
+                   enum mme_cmp_op op, bool if_true,
                    struct mme_value x, struct mme_value y)
 {
    uint16_t control = if_true ? 0 : BITFIELD_BIT(15);
-   mme_tu104_start_cf(b, MME_CF_TYPE_IF, op, x, y, control);
+   mme_tu104_start_cf(b, MME_CF_TYPE_IF, mme_cmp_to_tu104_branch_op(op),
+                      x, y, control);
 }
 
 void
@@ -632,7 +649,7 @@ mme_tu104_start_while(struct mme_builder *b)
 
 void
 mme_tu104_end_while(struct mme_builder *b,
-                    enum mme_tu104_alu_op op,
+                    enum mme_cmp_op cmp,
                     bool if_true,
                     struct mme_value x,
                     struct mme_value y)
@@ -644,7 +661,8 @@ mme_tu104_end_while(struct mme_builder *b,
    int delta = tb->inst_count - cf.start_ip - 2;
    uint16_t control = (-delta & BITFIELD_MASK(13)) |
                       (if_true ? BITFIELD_BIT(15) : 0);
-   build_alu_to(b, mme_zero(), op, x, y, control, true);
+   build_alu_to(b, mme_zero(), mme_cmp_to_tu104_branch_op(cmp),
+                x, y, control, true);
 }
 
 uint32_t *

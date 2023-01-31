@@ -38,6 +38,14 @@ enum mme_alu_op {
    MME_ALU_OP_DWRITE,
 };
 
+enum mme_cmp_op {
+   MME_CMP_OP_LT,
+   MME_CMP_OP_LTU,
+   MME_CMP_OP_LE,
+   MME_CMP_OP_LEU,
+   MME_CMP_OP_EQ,
+};
+
 struct mme_builder;
 
 enum mme_tu104_instr_parts {
@@ -115,7 +123,7 @@ void mme_tu104_start_loop(struct mme_builder *b,
 void mme_tu104_end_loop(struct mme_builder *b);
 
 void mme_tu104_start_if(struct mme_builder *b,
-                        enum mme_tu104_alu_op op,
+                        enum mme_cmp_op op,
                         bool if_true,
                         struct mme_value x,
                         struct mme_value y);
@@ -123,7 +131,7 @@ void mme_tu104_end_if(struct mme_builder *b);
 
 void mme_tu104_start_while(struct mme_builder *b);
 void mme_tu104_end_while(struct mme_builder *b,
-                         enum mme_tu104_alu_op op,
+                         enum mme_cmp_op op,
                          bool if_true,
                          struct mme_value x,
                          struct mme_value y);
@@ -500,19 +508,19 @@ static inline void                                                \
 mme_start_if_##op(struct mme_builder *b,                          \
                   struct mme_value x, struct mme_value y)         \
 {                                                                 \
-   mme_tu104_start_if(b, MME_TU104_ALU_OP_##OP, if_true, x, y);   \
+   mme_tu104_start_if(b, MME_CMP_OP_##OP, if_true, x, y);         \
 }
 
-MME_DEF_START_IF(ilt,   BLT,  true)
-MME_DEF_START_IF(ult,   BLTU, true)
-MME_DEF_START_IF(ile,   BLE,  true)
-MME_DEF_START_IF(ule,   BLEU, true)
-MME_DEF_START_IF(ieq,   BEQ,  true)
-MME_DEF_START_IF(ige,   BLT,  false)
-MME_DEF_START_IF(uge,   BLTU, false)
-MME_DEF_START_IF(igt,   BLE,  false)
-MME_DEF_START_IF(ugt,   BLEU, false)
-MME_DEF_START_IF(ine,   BEQ,  false)
+MME_DEF_START_IF(ilt,   LT,  true)
+MME_DEF_START_IF(ult,   LTU, true)
+MME_DEF_START_IF(ile,   LE,  true)
+MME_DEF_START_IF(ule,   LEU, true)
+MME_DEF_START_IF(ieq,   EQ,  true)
+MME_DEF_START_IF(ige,   LT,  false)
+MME_DEF_START_IF(uge,   LTU, false)
+MME_DEF_START_IF(igt,   LE,  false)
+MME_DEF_START_IF(ugt,   LEU, false)
+MME_DEF_START_IF(ine,   EQ,  false)
 
 #undef MME_DEF_START_IF
 
@@ -537,19 +545,19 @@ static inline void                                                \
 mme_end_while_##op(struct mme_builder *b,                         \
                    struct mme_value x, struct mme_value y)        \
 {                                                                 \
-   mme_tu104_end_while(b, MME_TU104_ALU_OP_##OP, if_true, x, y);  \
+   mme_tu104_end_while(b, MME_CMP_OP_##OP, if_true, x, y);        \
 }
 
-MME_DEF_END_WHILE(ilt,   BLT,  true)
-MME_DEF_END_WHILE(ult,   BLTU, true)
-MME_DEF_END_WHILE(ile,   BLE,  true)
-MME_DEF_END_WHILE(ule,   BLEU, true)
-MME_DEF_END_WHILE(ieq,   BEQ,  true)
-MME_DEF_END_WHILE(ige,   BLT,  false)
-MME_DEF_END_WHILE(uge,   BLTU, false)
-MME_DEF_END_WHILE(igt,   BLE,  false)
-MME_DEF_END_WHILE(ugt,   BLEU, false)
-MME_DEF_END_WHILE(ine,   BEQ,  false)
+MME_DEF_END_WHILE(ilt,   LT,  true)
+MME_DEF_END_WHILE(ult,   LTU, true)
+MME_DEF_END_WHILE(ile,   LE,  true)
+MME_DEF_END_WHILE(ule,   LEU, true)
+MME_DEF_END_WHILE(ieq,   EQ,  true)
+MME_DEF_END_WHILE(ige,   LT,  false)
+MME_DEF_END_WHILE(uge,   LTU, false)
+MME_DEF_END_WHILE(igt,   LE,  false)
+MME_DEF_END_WHILE(ugt,   LEU, false)
+MME_DEF_END_WHILE(ine,   EQ,  false)
 
 #define mme_while(b, cmp, x, y) \
    for (bool run = (mme_start_while(b), true); run; \
