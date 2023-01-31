@@ -815,6 +815,36 @@ iris_batch_update_syncobjs(struct iris_batch *batch)
    }
 }
 
+/**
+ * Convert the syncobj which will be signaled when this batch completes
+ * to a SYNC_FILE object, for use with import/export sync ioctls.
+ */
+bool
+iris_batch_syncobj_to_sync_file_fd(struct iris_batch *batch, int *out_fd)
+{
+   int drm_fd = batch->screen->fd;
+
+   struct iris_syncobj *batch_syncobj =
+      iris_batch_get_signal_syncobj(batch);
+
+   struct drm_syncobj_handle syncobj_to_fd_ioctl = {
+      .handle = batch_syncobj->handle,
+      .flags = DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_EXPORT_SYNC_FILE,
+      .fd = -1,
+   };
+   if (intel_ioctl(drm_fd, DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD,
+                   &syncobj_to_fd_ioctl)) {
+      fprintf(stderr, "DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD ioctl failed (%d)\n",
+              errno);
+      return false;
+   }
+
+   assert(syncobj_to_fd_ioctl.fd >= 0);
+   *out_fd = syncobj_to_fd_ioctl.fd;
+
+   return true;
+}
+
 const char *
 iris_batch_name_to_string(enum iris_batch_name name)
 {

@@ -53,6 +53,7 @@
 #include "dev/intel_debug.h"
 #include "common/intel_gem.h"
 #include "dev/intel_device_info.h"
+#include "drm-uapi/dma-buf.h"
 #include "isl/isl.h"
 #include "util/os_mman.h"
 #include "util/u_debug.h"
@@ -440,6 +441,68 @@ vma_free(struct iris_bufmgr *bufmgr,
    assert(memzone < ARRAY_SIZE(bufmgr->vma_allocator));
 
    util_vma_heap_free(&bufmgr->vma_allocator[memzone], address, size);
+}
+
+/* Exports a BO's implicit synchronization state to a drm_syncobj, returning
+ * its wrapping iris_syncobj. The drm_syncobj is created new and has to be
+ * destroyed by the caller after the execbuf ioctl.
+ */
+struct iris_syncobj *
+iris_bo_export_sync_state(struct iris_bo *bo)
+{
+   struct iris_bufmgr *bufmgr = bo->bufmgr;
+   int drm_fd = iris_bufmgr_get_fd(bufmgr);
+
+   struct iris_syncobj *iris_syncobj = iris_create_syncobj(bufmgr);
+
+   struct dma_buf_export_sync_file export_sync_file_ioctl = {
+      .flags = DMA_BUF_SYNC_RW, /* TODO */
+      .fd = -1,
+   };
+   if (intel_ioctl(bo->real.prime_fd, DMA_BUF_IOCTL_EXPORT_SYNC_FILE,
+                   &export_sync_file_ioctl)) {
+      fprintf(stderr, "DMA_BUF_IOCTL_EXPORT_SYNC_FILE ioctl failed (%d)\n",
+              errno);
+      goto error_export;
+   }
+
+   int sync_file_fd = export_sync_file_ioctl.fd;
+   assert(sync_file_fd >= 0);
+
+   struct drm_syncobj_handle syncobj_import_ioctl = {
+      .handle = iris_syncobj->handle,
+      .flags = DRM_SYNCOBJ_FD_TO_HANDLE_FLAGS_IMPORT_SYNC_FILE,
+      .fd = sync_file_fd,
+   };
+   if (intel_ioctl(drm_fd, DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE,
+                   &syncobj_import_ioctl)) {
+      fprintf(stderr, "DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE ioctl failed (%d)\n",
+              errno);
+   }
+
+   close(sync_file_fd);
+
+   return iris_syncobj;
+error_export:
+   iris_syncobj_destroy(bufmgr, iris_syncobj);
+   return NULL;
+}
+
+/* Import the state of a sync_file_fd (which we should have gotten from
+ * batch_syncobj_to_sync_file_fd) into a BO as its implicit synchronization
+ * state.
+ */
+void
+iris_bo_import_sync_state(struct iris_bo *bo, int sync_file_fd)
+{
+   struct dma_buf_import_sync_file import_sync_file_ioctl = {
+      .flags = DMA_BUF_SYNC_WRITE,
+      .fd = sync_file_fd,
+   };
+   if (intel_ioctl(bo->real.prime_fd, DMA_BUF_IOCTL_IMPORT_SYNC_FILE,
+                   &import_sync_file_ioctl))
+      fprintf(stderr, "DMA_BUF_IOCTL_IMPORT_SYNC_FILE ioctl failed (%d)\n",
+              errno);
 }
 
 /* A timeout of 0 just checks for busyness. */

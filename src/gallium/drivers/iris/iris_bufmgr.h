@@ -584,4 +584,7 @@ enum iris_madvice {
    IRIS_MADVICE_DONT_NEED = 1,
 };
 
+void iris_bo_import_sync_state(struct iris_bo *bo, int sync_file_fd);
+struct iris_syncobj *iris_bo_export_sync_state(struct iris_bo *bo);
+
 #endif /* IRIS_BUFMGR_H */
