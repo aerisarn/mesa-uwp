@@ -60,22 +60,6 @@ nvk_files = files(
   'nvk_wsi.h'
 )
 
-nouveau_icd = custom_target(
-  'nouveau_icd',
-  input : [vk_icd_gen, vk_api_xml],
-  output : 'nouveau_icd.@0@.json'.format(host_machine.cpu()),
-  command : [
-    prog_python, '@INPUT0@',
-    '--api-version', '1.3', '--xml', '@INPUT1@',
-    '--lib-path', join_paths(get_option('prefix'), get_option('libdir'),
-                             'libvulkan_nouveau.so'),
-    '--out', '@OUTPUT@',
-  ],
-  build_by_default : true,
-  install_dir : with_vulkan_icd_dir,
-  install : true,
-)
-
 nvk_entrypoints = custom_target(
   'nvk_entrypoints',
   input : [vk_entrypoints_gen, vk_api_xml],
@@ -119,3 +103,43 @@ libvulkan_nouveau = shared_library(
   gnu_symbol_visibility : 'hidden',
   install : true,
 )
+
+icd_lib_path = join_paths(get_option('prefix'), get_option('libdir'))
+icd_file_name = 'libvulkan_nouveau.so'
+if with_platform_windows
+  icd_lib_path = join_paths(get_option('prefix'), get_option('bindir'))
+  icd_file_name = 'vulkan_nouveau.dll'
+endif
+
+nouveau_icd = custom_target(
+  'nouveau_icd',
+  input : [vk_icd_gen, vk_api_xml],
+  output : 'nouveau_icd.@0@.json'.format(host_machine.cpu()),
+  command : [
+    prog_python, '@INPUT0@',
+    '--api-version', '1.3', '--xml', '@INPUT1@',
+    '--lib-path', join_paths(icd_lib_path, icd_file_name),
+    '--out', '@OUTPUT@',
+  ],
+  build_by_default : true,
+  install_dir : with_vulkan_icd_dir,
+  install : true,
+)
+
+if meson.version().version_compare('>= 0.58')
+  _dev_icdname = 'nouveau_devenv_icd.@0@.json'.format(host_machine.cpu())
+  custom_target(
+    'nouveau_devenv_icd',
+    input : [vk_icd_gen, vk_api_xml],
+    output : _dev_icdname,
+    command : [
+      prog_python, '@INPUT0@',
+      '--api-version', '1.3', '--xml', '@INPUT1@',
+      '--lib-path', meson.current_build_dir() / icd_file_name,
+      '--out', '@OUTPUT@',
+    ],
+    build_by_default : true,
+  )
+
+  devenv.append('VK_ICD_FILENAMES', meson.current_build_dir() / _dev_icdname)
+endif
