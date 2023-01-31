@@ -502,23 +502,21 @@ vk_meta_blit_image(struct vk_command_buffer *cmd,
                         &dst_rect.y0, &dst_rect.y1,
                         &push.y_off, &push.y_scale);
 
-      uint32_t dst_base_layer, dst_layer_count;
+      uint32_t dst_layer_count;
       if (src_image->image_type == VK_IMAGE_TYPE_3D) {
-         dst_base_layer = MIN2(regions[r].dstOffsets[0].z,
-                               regions[r].dstOffsets[1].z);
-
          uint32_t layer0, layer1;
          compute_off_scale(src_extent.depth,
                            regions[r].srcOffsets[0].z,
                            regions[r].srcOffsets[1].z,
-                           regions[r].dstOffsets[0].z - dst_base_layer,
-                           regions[r].dstOffsets[1].z - dst_base_layer,
+                           regions[r].dstOffsets[0].z,
+                           regions[r].dstOffsets[1].z,
                            &layer0, &layer1,
                            &push.z_off, &push.z_scale);
-         assert(layer0 == 0);
-         dst_layer_count = layer1;
+         dst_rect.layer = layer0;
+         dst_layer_count = layer1 - layer0;
       } else {
-         dst_base_layer = regions[r].dstSubresource.baseArrayLayer;
+         assert(regions[r].srcSubresource.layerCount ==
+                regions[r].dstSubresource.layerCount);
          dst_layer_count = regions[r].dstSubresource.layerCount;
          push.arr_delta = regions[r].dstSubresource.baseArrayLayer -
                           regions[r].srcSubresource.baseArrayLayer;
@@ -543,8 +541,8 @@ vk_meta_blit_image(struct vk_command_buffer *cmd,
             .aspectMask = regions[r].dstSubresource.aspectMask,
             .baseMipLevel = regions[r].dstSubresource.mipLevel,
             .levelCount = 1,
-            .baseArrayLayer = dst_base_layer,
-            .layerCount = dst_layer_count,
+            .baseArrayLayer = regions[r].dstSubresource.baseArrayLayer,
+            .layerCount = regions[r].dstSubresource.layerCount,
          },
       };
       result = vk_meta_create_image_view(cmd, meta, &dst_view_info, &dst_view);
@@ -572,7 +570,7 @@ vk_meta_blit_image(struct vk_command_buffer *cmd,
                dst_rect.y1 - dst_rect.y0
             },
          },
-         .layerCount = dst_layer_count,
+         .layerCount = dst_rect.layer + dst_layer_count,
       };
 
       if (key.aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
