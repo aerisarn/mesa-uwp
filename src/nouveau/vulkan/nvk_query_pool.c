@@ -9,6 +9,7 @@
 
 #include "nvk_cl9097.h"
 #include "nvk_cl906f.h"
+#include "nvk_cla0c0.h"
 
 struct nvk_query_report {
    uint64_t value;
@@ -285,6 +286,164 @@ nvk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
    });
 }
 
+struct nvk_3d_stat_query {
+   VkQueryPipelineStatisticFlagBits flag;
+   uint8_t loc;
+   uint8_t report;
+};
+
+/* This must remain sorted in flag order */
+static const struct nvk_3d_stat_query nvk_3d_stat_queries[] = {{
+   .flag    = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT,
+   .loc     = NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_DATA_ASSEMBLER,
+   .report  = NV9097_SET_REPORT_SEMAPHORE_D_REPORT_DA_VERTICES_GENERATED,
+}, {
+   .flag    = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT,
+   .loc     = NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_DATA_ASSEMBLER,
+   .report  = NV9097_SET_REPORT_SEMAPHORE_D_REPORT_DA_PRIMITIVES_GENERATED,
+}, {
+   .flag    = VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT,
+   .loc     = NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_VERTEX_SHADER,
+   .report  = NV9097_SET_REPORT_SEMAPHORE_D_REPORT_VS_INVOCATIONS,
+}, {
+   .flag    = VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT,
+   .loc     = NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_GEOMETRY_SHADER,
+   .report  = NV9097_SET_REPORT_SEMAPHORE_D_REPORT_GS_INVOCATIONS,
+}, {
+   .flag    = VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT,
+   .loc     = NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_GEOMETRY_SHADER,
+   .report  = NV9097_SET_REPORT_SEMAPHORE_D_REPORT_GS_PRIMITIVES_GENERATED,
+}, {
+   .flag    = VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT,
+   .loc     = NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_VPC, /* TODO */
+   .report  = NV9097_SET_REPORT_SEMAPHORE_D_REPORT_CLIPPER_INVOCATIONS,
+}, {
+   .flag    = VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT,
+   .loc     = NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_VPC, /* TODO */
+   .report  = NV9097_SET_REPORT_SEMAPHORE_D_REPORT_CLIPPER_PRIMITIVES_GENERATED,
+}, {
+   .flag    = VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT,
+   .loc     = NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_PIXEL_SHADER,
+   .report  = NV9097_SET_REPORT_SEMAPHORE_D_REPORT_PS_INVOCATIONS,
+}, {
+   .flag    = VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT,
+   .loc     = NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_TESSELATION_INIT_SHADER,
+   .report  = NV9097_SET_REPORT_SEMAPHORE_D_REPORT_TI_INVOCATIONS,
+}, {
+   .flag    = VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT,
+   .loc     = NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_TESSELATION_SHADER,
+   .report  = NV9097_SET_REPORT_SEMAPHORE_D_REPORT_TS_INVOCATIONS,
+}, {
+   .flag    = VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT,
+   .loc     = UINT8_MAX,
+   .report  = UINT8_MAX,
+}};
+
+static void
+nvk_cmd_begin_end_query(struct nvk_cmd_buffer *cmd,
+                        struct nvk_query_pool *pool,
+                        uint32_t query, uint32_t index,
+                        bool end)
+{
+   uint64_t report_addr = nvk_query_report_addr(pool, query) +
+                          end * sizeof(struct nvk_query_report);
+
+   struct nv_push *p;
+   switch (pool->vk.query_type) {
+   case VK_QUERY_TYPE_OCCLUSION:
+      p = nvk_cmd_buffer_push(cmd, 2 + 5 * (1 + end));
+
+      P_IMMD(p, NV9097, SET_ZPASS_PIXEL_COUNT, !end);
+
+      P_MTHD(p, NV9097, SET_REPORT_SEMAPHORE_A);
+      P_NV9097_SET_REPORT_SEMAPHORE_A(p, report_addr >> 32);
+      P_NV9097_SET_REPORT_SEMAPHORE_B(p, report_addr);
+      P_NV9097_SET_REPORT_SEMAPHORE_C(p, 0);
+      P_NV9097_SET_REPORT_SEMAPHORE_D(p, {
+         .operation = OPERATION_REPORT_ONLY,
+         .pipeline_location = PIPELINE_LOCATION_ALL,
+         .report = REPORT_ZPASS_PIXEL_CNT64,
+         .structure_size = STRUCTURE_SIZE_FOUR_WORDS,
+      });
+      break;
+
+   case VK_QUERY_TYPE_PIPELINE_STATISTICS: {
+      uint32_t stat_count = util_bitcount(pool->vk.pipeline_statistics);
+      p = nvk_cmd_buffer_push(cmd, (stat_count + end) * 5);
+
+      ASSERTED uint32_t stats_left = pool->vk.pipeline_statistics;
+      for (uint32_t i = 0; i < ARRAY_SIZE(nvk_3d_stat_queries); i++) {
+         const struct nvk_3d_stat_query *sq = &nvk_3d_stat_queries[i];
+         if (!(stats_left & sq->flag))
+            continue;
+
+         /* The 3D stat queries array MUST be sorted */
+         assert(!(stats_left & (sq->flag - 1)));
+
+         P_MTHD(p, NV9097, SET_REPORT_SEMAPHORE_A);
+         P_NV9097_SET_REPORT_SEMAPHORE_A(p, report_addr >> 32);
+         P_NV9097_SET_REPORT_SEMAPHORE_B(p, report_addr);
+         P_NV9097_SET_REPORT_SEMAPHORE_C(p, 0);
+         P_NV9097_SET_REPORT_SEMAPHORE_D(p, {
+            .operation = OPERATION_REPORT_ONLY,
+            .pipeline_location = sq->loc,
+            .report = sq->report,
+            .structure_size = STRUCTURE_SIZE_FOUR_WORDS,
+         });
+
+         report_addr += 2 * sizeof(struct nvk_query_report);
+         stats_left &= ~sq->flag;
+      }
+      break;
+   }
+   default:
+      unreachable("Unsupported query type");
+   }
+
+   if (end) {
+      uint64_t available_addr = nvk_query_available_addr(pool, query);
+      P_MTHD(p, NV9097, SET_REPORT_SEMAPHORE_A);
+      P_NV9097_SET_REPORT_SEMAPHORE_A(p, available_addr >> 32);
+      P_NV9097_SET_REPORT_SEMAPHORE_B(p, available_addr);
+      P_NV9097_SET_REPORT_SEMAPHORE_C(p, 1);
+      P_NV9097_SET_REPORT_SEMAPHORE_D(p, {
+         .operation = OPERATION_RELEASE,
+         .release = RELEASE_AFTER_ALL_PRECEEDING_WRITES_COMPLETE,
+         .pipeline_location = PIPELINE_LOCATION_ALL,
+         .structure_size = STRUCTURE_SIZE_ONE_WORD,
+      });
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdBeginQueryIndexedEXT(VkCommandBuffer commandBuffer,
+                            VkQueryPool queryPool,
+                            uint32_t query,
+                            VkQueryControlFlags flags,
+                            uint32_t index)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_query_pool, pool, queryPool);
+
+   nvk_cmd_buffer_ref_bo(cmd, pool->bo);
+
+   nvk_cmd_begin_end_query(cmd, pool, query, index, false);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdEndQueryIndexedEXT(VkCommandBuffer commandBuffer,
+                          VkQueryPool queryPool,
+                          uint32_t query,
+                          uint32_t index)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_query_pool, pool, queryPool);
+
+   nvk_cmd_buffer_ref_bo(cmd, pool->bo);
+
+   nvk_cmd_begin_end_query(cmd, pool, query, index, true);
+}
+
 static bool
 nvk_query_is_available(struct nvk_query_pool *pool, uint32_t query)
 {
@@ -373,6 +532,19 @@ nvk_GetQueryPoolResults(VkDevice device,
 
       uint32_t available_dst_idx = 1;
       switch (pool->vk.query_type) {
+      case VK_QUERY_TYPE_OCCLUSION:
+         if (write_results)
+            cpu_get_query_delta(dst, src, 0, flags);
+         break;
+      case VK_QUERY_TYPE_PIPELINE_STATISTICS: {
+         uint32_t stat_count = util_bitcount(pool->vk.pipeline_statistics);
+         available_dst_idx = stat_count;
+         if (write_results) {
+            for (uint32_t j = 0; j < stat_count; j++)
+               cpu_get_query_delta(dst, src, j, flags);
+         }
+         break;
+      }
       case VK_QUERY_TYPE_TIMESTAMP:
          if (write_results)
             cpu_write_query_result(dst, 0, flags, src->timestamp);
