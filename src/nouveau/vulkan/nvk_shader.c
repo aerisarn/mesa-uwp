@@ -175,6 +175,8 @@ nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       NIR_PASS(_, nir, nir_shader_instructions_pass, lower_fragcoord_instr,
                nir_metadata_block_index | nir_metadata_dominance, NULL);
+      NIR_PASS(_, nir, nir_lower_input_attachments,
+               &(nir_input_attachment_options) { });
    }
 
    nir_lower_compute_system_values_options csv_options = {
