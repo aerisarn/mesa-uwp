@@ -1300,10 +1300,15 @@ nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
 
    nvk_cmd_buffer_flush_push_descriptors(cmd, desc);
 
+   /* pre Pascal the constant buffer sizes need to be 0x100 aligned. As we
+    * simply allocated a buffer and upload data to it, make sure its size is
+    * 0x100 aligned.
+    */
+   STATIC_ASSERT((sizeof(desc->root) & 0xff) == 0);
+
    uint64_t root_table_addr;
    result = nvk_cmd_buffer_upload_data(cmd, &desc->root, sizeof(desc->root),
-                                       NVK_MIN_UBO_ALIGNMENT,
-                                       &root_table_addr);
+                                       0x100, &root_table_addr);
    if (unlikely(result != VK_SUCCESS)) {
       vk_command_buffer_set_error(&cmd->vk, result);
       return;
