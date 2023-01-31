@@ -116,7 +116,7 @@ vk_to_9097_max_anisotropy(float max_anisotropy)
       return NV9097_TEXSAMP0_MAX_ANISOTROPY_ANISO_12_TO_1;
 
    uint32_t aniso_u32 = MAX2(0.0f, max_anisotropy);
-   return (aniso_u32 >> 1) << 20;
+   return aniso_u32 >> 1;
 }
 
 static uint32_t
