@@ -36,6 +36,7 @@ extern "C" {
 struct hash_table;
 struct vk_command_buffer;
 struct vk_device;
+struct vk_image;
 
 struct vk_meta_rect {
    uint32_t x0, y0, x1, y1;
@@ -50,6 +51,7 @@ struct vk_meta_device {
    simple_mtx_t cache_mtx;
 
    uint32_t max_bind_map_buffer_size_B;
+   bool use_layered_rendering;
 
    VkResult (*cmd_bind_map_buffer)(struct vk_command_buffer *cmd,
                                    struct vk_meta_device *meta,
@@ -202,6 +204,23 @@ void vk_meta_clear_attachments(struct vk_command_buffer *cmd,
 void vk_meta_clear_rendering(struct vk_meta_device *meta,
                              struct vk_command_buffer *cmd,
                              const VkRenderingInfo *pRenderingInfo);
+
+void vk_meta_clear_color_image(struct vk_command_buffer *cmd,
+                               struct vk_meta_device *meta,
+                               struct vk_image *image,
+                               VkImageLayout image_layout,
+                               VkFormat format,
+                               const VkClearColorValue *color,
+                               uint32_t range_count,
+                               const VkImageSubresourceRange *ranges);
+
+void vk_meta_clear_depth_stencil_image(struct vk_command_buffer *cmd,
+                                       struct vk_meta_device *meta,
+                                       struct vk_image *image,
+                                       VkImageLayout image_layout,
+                                       const VkClearDepthStencilValue *depth_stencil,
+                                       uint32_t range_count,
+                                       const VkImageSubresourceRange *ranges);
 
 #ifdef __cplusplus
 }

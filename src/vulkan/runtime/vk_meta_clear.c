@@ -412,3 +412,201 @@ vk_meta_clear_rendering(struct vk_meta_device *meta,
                                 1, &clear_rect);
    }
 }
+
+static void
+clear_image_level_layers(struct vk_command_buffer *cmd,
+                         struct vk_meta_device *meta,
+                         struct vk_image *image,
+                         VkImageLayout image_layout,
+                         VkFormat format,
+                         const VkClearValue *clear_value,
+                         VkImageAspectFlags aspects,
+                         uint32_t level,
+                         uint32_t base_array_layer,
+                         uint32_t layer_count)
+{
+   struct vk_device *device = cmd->base.device;
+   const struct vk_device_dispatch_table *disp = &device->dispatch_table;
+   VkCommandBuffer _cmd = vk_command_buffer_to_handle(cmd);
+   VkResult result;
+
+   VkImageViewType view_type;
+   switch (image->image_type) {
+   case VK_IMAGE_TYPE_1D:
+      view_type = layer_count == 1 ? VK_IMAGE_VIEW_TYPE_1D :
+                                     VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+      break;
+
+   case VK_IMAGE_TYPE_2D:
+   case VK_IMAGE_TYPE_3D:
+      view_type = layer_count == 1 ? VK_IMAGE_VIEW_TYPE_2D :
+                                     VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+      break;
+
+   default:
+      unreachable("Invalid image type");
+   }
+
+   const VkImageViewCreateInfo view_info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+      .image = vk_image_to_handle(image),
+      .viewType = view_type,
+      .format = format,
+      .subresourceRange = {
+         .aspectMask = aspects,
+         .baseMipLevel = level,
+         .levelCount = 1,
+         .baseArrayLayer = base_array_layer,
+         .layerCount = layer_count,
+      }
+   };
+
+   VkImageView image_view;
+   result = vk_meta_create_image_view(cmd, meta, &view_info, &image_view);
+   if (unlikely(result != VK_SUCCESS)) {
+      /* TODO: Report error */
+      return;
+   }
+
+   VkRenderingAttachmentInfo vk_att = {
+      .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+      .imageView = image_view,
+      .imageLayout = image_layout,
+      .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+      .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+   };
+   VkRenderingInfo vk_render = {
+      .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+   };
+   struct vk_meta_rendering_info meta_render = {
+      .samples = image->samples,
+   };
+
+   if (image->aspects == VK_IMAGE_ASPECT_COLOR_BIT) {
+      vk_render.colorAttachmentCount = 1;
+      vk_render.pColorAttachments = &vk_att;
+      meta_render.color_attachment_count = 1;
+      meta_render.color_attachment_formats[0] = format;
+   }
+
+   if (image->aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+      vk_render.pDepthAttachment = &vk_att;
+      meta_render.depth_attachment_format = format;
+   }
+
+   if (image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+      vk_render.pStencilAttachment = &vk_att;
+      meta_render.stencil_attachment_format = format;
+   }
+
+   const VkClearAttachment clear_att = {
+      .aspectMask = aspects,
+      .colorAttachment = 0,
+      .clearValue = *clear_value,
+   };
+
+   const VkExtent3D level_extent = vk_image_mip_level_extent(image, level);
+
+   const VkClearRect clear_rect = {
+      .rect = {
+         .offset = { 0, 0 },
+         .extent = { level_extent.width, level_extent.height },
+      },
+      .baseArrayLayer = 0,
+      .layerCount = layer_count,
+   };
+
+   disp->CmdBeginRendering(_cmd, &vk_render);
+
+   vk_meta_clear_attachments(cmd, meta, &meta_render,
+                             1, &clear_att, 1, &clear_rect);
+
+   disp->CmdEndRendering(_cmd);
+}
+
+static void
+clear_image_level(struct vk_command_buffer *cmd,
+                  struct vk_meta_device *meta,
+                  struct vk_image *image,
+                  VkImageLayout image_layout,
+                  VkFormat format,
+                  const VkClearValue *clear_value,
+                  uint32_t level,
+                  const VkImageSubresourceRange *range)
+{
+   const VkExtent3D level_extent = vk_image_mip_level_extent(image, level);
+
+   uint32_t base_array_layer, layer_count;
+   if (image->image_type == VK_IMAGE_TYPE_3D) {
+      base_array_layer = 0;
+      layer_count = level_extent.depth;
+   } else {
+      base_array_layer = range->baseArrayLayer;
+      layer_count = vk_image_subresource_layer_count(image, range);
+   }
+
+   if (layer_count > 1 && !meta->use_layered_rendering) {
+      for (uint32_t a = 0; a < layer_count; a++) {
+         clear_image_level_layers(cmd, meta, image, image_layout,
+                                  format, clear_value,
+                                  range->aspectMask, level,
+                                  base_array_layer + a, 1);
+      }
+   } else {
+      clear_image_level_layers(cmd, meta, image, image_layout,
+                               format, clear_value,
+                               range->aspectMask, level,
+                               base_array_layer, layer_count);
+   }
+}
+
+void
+vk_meta_clear_color_image(struct vk_command_buffer *cmd,
+                          struct vk_meta_device *meta,
+                          struct vk_image *image,
+                          VkImageLayout image_layout,
+                          VkFormat format,
+                          const VkClearColorValue *color,
+                          uint32_t range_count,
+                          const VkImageSubresourceRange *ranges)
+{
+   const VkClearValue clear_value = {
+      .color = *color,
+   };
+   for (uint32_t r = 0; r < range_count; r++) {
+      const uint32_t level_count =
+         vk_image_subresource_level_count(image, &ranges[r]);
+
+      for (uint32_t l = 0; l < level_count; l++) {
+         clear_image_level(cmd, meta, image, image_layout,
+                           format, &clear_value,
+                           ranges[r].baseMipLevel + l,
+                           &ranges[r]);
+      }
+   }
+}
+
+void
+vk_meta_clear_depth_stencil_image(struct vk_command_buffer *cmd,
+                                  struct vk_meta_device *meta,
+                                  struct vk_image *image,
+                                  VkImageLayout image_layout,
+                                  const VkClearDepthStencilValue *depth_stencil,
+                                  uint32_t range_count,
+                                  const VkImageSubresourceRange *ranges)
+{
+   const VkClearValue clear_value = {
+      .depthStencil = *depth_stencil,
+   };
+   for (uint32_t r = 0; r < range_count; r++) {
+      const uint32_t level_count =
+         vk_image_subresource_level_count(image, &ranges[r]);
+
+      for (uint32_t l = 0; l < level_count; l++) {
+         clear_image_level(cmd, meta, image, image_layout,
+                           image->format, &clear_value,
+                           ranges[r].baseMipLevel + l,
+                           &ranges[r]);
+      }
+   }
+}
