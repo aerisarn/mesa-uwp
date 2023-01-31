@@ -274,34 +274,34 @@ nouveau_ws_push_dump(struct nouveau_ws_push *push, struct nouveau_ws_context *ct
             switch (subchan) {
             case 0:
                if (ctx->compute.cls >= 0xc597)
-                  P_DUMP_NVC597_MTHD_DATA(mthd, value, "\t\t");
+                  P_DUMP_NVC597_MTHD_DATA(stdout, mthd, value, "\t\t");
                else if (ctx->compute.cls >= 0xc397)
-                  P_DUMP_NVC397_MTHD_DATA(mthd, value, "\t\t");
+                  P_DUMP_NVC397_MTHD_DATA(stdout,mthd, value, "\t\t");
                else if (ctx->compute.cls >= 0xb197)
-                  P_DUMP_NVB197_MTHD_DATA(mthd, value, "\t\t");
+                  P_DUMP_NVB197_MTHD_DATA(stdout,mthd, value, "\t\t");
                else if (ctx->compute.cls >= 0xa097)
-                  P_DUMP_NVA097_MTHD_DATA(mthd, value, "\t\t");
+                  P_DUMP_NVA097_MTHD_DATA(stdout,mthd, value, "\t\t");
                else
-                  P_DUMP_NV9097_MTHD_DATA(mthd, value, "\t\t");
+                  P_DUMP_NV9097_MTHD_DATA(stdout,mthd, value, "\t\t");
                break;
             case 1:
                if (ctx->compute.cls >= 0xc3c0)
-                  P_DUMP_NVC3C0_MTHD_DATA(mthd, value, "\t\t");
+                  P_DUMP_NVC3C0_MTHD_DATA(stdout,mthd, value, "\t\t");
                else if (ctx->compute.cls >= 0xc0c0)
-                  P_DUMP_NVC0C0_MTHD_DATA(mthd, value, "\t\t");
+                  P_DUMP_NVC0C0_MTHD_DATA(stdout,mthd, value, "\t\t");
                else
-                  P_DUMP_NVA0C0_MTHD_DATA(mthd, value, "\t\t");
+                  P_DUMP_NVA0C0_MTHD_DATA(stdout,mthd, value, "\t\t");
                break;
             case 3:
-               P_DUMP_NV902D_MTHD_DATA(mthd, value, "\t\t");
+               P_DUMP_NV902D_MTHD_DATA(stdout,mthd, value, "\t\t");
                break;
             case 4:
                if (ctx->copy.cls >= 0xc1b5)
-                  P_DUMP_NVC1B5_MTHD_DATA(mthd, value, "\t\t");
+                  P_DUMP_NVC1B5_MTHD_DATA(stdout,mthd, value, "\t\t");
                else if (ctx->copy.cls >= 0xa0b5)
-                  P_DUMP_NVA0B5_MTHD_DATA(mthd, value, "\t\t");
+                  P_DUMP_NVA0B5_MTHD_DATA(stdout,mthd, value, "\t\t");
                else
-                  P_DUMP_NV90B5_MTHD_DATA(mthd, value, "\t\t");
+                  P_DUMP_NV90B5_MTHD_DATA(stdout,mthd, value, "\t\t");
                break;
             default:
                mthd_name = "";

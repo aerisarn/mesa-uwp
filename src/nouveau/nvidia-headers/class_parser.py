@@ -51,6 +51,7 @@ TEMPLATE_H = Template("""\
 #include "${clheader}"
 
 #include <assert.h>
+#include <stdio.h>
 #include "util/u_math.h"
 
 %for mthd in mthddict:
@@ -123,7 +124,8 @@ __${nvcl}_${mthd}(uint32_t *val_out, struct nv_${nvcl.lower()}_${mthd} st)
 %endfor
 
 const char *P_PARSE_${nvcl}_MTHD(uint16_t idx);
-void P_DUMP_${nvcl}_MTHD_DATA(uint16_t idx, uint32_t data, const char *prefix);
+void P_DUMP_${nvcl}_MTHD_DATA(FILE *fp, uint16_t idx, uint32_t data,
+                              const char *prefix);
 """)
 
 TEMPLATE_C = Template("""\
@@ -155,7 +157,8 @@ P_PARSE_${nvcl}_MTHD(uint16_t idx)
 }
 
 void
-P_DUMP_${nvcl}_MTHD_DATA(uint16_t idx, uint32_t data, const char *prefix)
+P_DUMP_${nvcl}_MTHD_DATA(FILE *fp, uint16_t idx, uint32_t data,
+                         const char *prefix)
 {
     uint32_t parsed;
     switch (idx) {
@@ -181,30 +184,30 @@ P_DUMP_${nvcl}_MTHD_DATA(uint16_t idx, uint32_t data, const char *prefix)
     %else:
         parsed = (data >> ${field_start}) & ((1u << ${field_width}) - 1);
     %endif
-        printf("%s.${field_name} = ", prefix);
+        fprintf(fp, "%s.${field_name} = ", prefix);
     %if len(mthddict[mthd].field_defs[field_name]):
         switch (parsed) {
       %for d in mthddict[mthd].field_defs[field_name]:
         case ${nvcl}_${mthd}_${field_name}_${d}:
-            printf("${d}${bs}n");
+            fprintf(fp, "${d}${bs}n");
             break;
       %endfor
         default:
-            printf("0x%x${bs}n", parsed);
+            fprintf(fp, "0x%x${bs}n", parsed);
             break;
         }
     %else:
       %if mthddict[mthd].is_float:
-        printf("%ff (0x%x)${bs}n", uif(parsed), parsed);
+        fprintf(fp, "%ff (0x%x)${bs}n", uif(parsed), parsed);
       %else:
-        printf("(0x%x)${bs}n", parsed);
+        fprintf(fp, "(0x%x)${bs}n", parsed);
       %endif
     %endif
         break;
   %endfor
 %endfor
     default:
-        printf("%s.VALUE = 0x%x${bs}n", prefix, data);
+        fprintf(fp, "%s.VALUE = 0x%x${bs}n", prefix, data);
         break;
     }
 }

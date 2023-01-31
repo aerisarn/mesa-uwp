@@ -197,7 +197,7 @@ flush_mthd(struct mme_tu104_sim *sim)
             break;
          default:
             fprintf(stdout, "%s:\n", P_PARSE_NVC597_MTHD(mthd));
-            P_DUMP_NVC597_MTHD_DATA(mthd, *p, "    ");
+            P_DUMP_NVC597_MTHD_DATA(stdout, mthd, *p, "    ");
             break;
          }
       }
