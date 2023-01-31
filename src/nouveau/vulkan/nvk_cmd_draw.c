@@ -890,8 +890,8 @@ nvk_flush_ds_state(struct nvk_cmd_buffer *cmd)
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_DEPTH_BOUNDS_TEST_BOUNDS)) {
       P_MTHD(p, NV9097, SET_DEPTH_BOUNDS_MIN);
-      P_NV9097_SET_DEPTH_BOUNDS_MIN(p, dyn->ds.depth.bounds_test.min);
-      P_NV9097_SET_DEPTH_BOUNDS_MAX(p, dyn->ds.depth.bounds_test.max);
+      P_NV9097_SET_DEPTH_BOUNDS_MIN(p, fui(dyn->ds.depth.bounds_test.min));
+      P_NV9097_SET_DEPTH_BOUNDS_MAX(p, fui(dyn->ds.depth.bounds_test.max));
    }
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_DS_STENCIL_TEST_ENABLE))
