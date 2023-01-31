@@ -311,7 +311,8 @@ mme_tu104_alu64_to(struct mme_builder *b,
 void
 mme_tu104_load_to(struct mme_builder *b, struct mme_value dst)
 {
-   assert(dst.type == MME_VALUE_TYPE_REG);
+   assert(dst.type == MME_VALUE_TYPE_REG ||
+          dst.type == MME_VALUE_TYPE_ZERO);
 
    struct mme_tu104_alu alu = {
       .dst = mme_value_alu_reg(dst),
