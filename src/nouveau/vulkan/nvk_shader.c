@@ -81,7 +81,6 @@ nvk_shader_compile_to_nir(struct nvk_device *device,
    NIR_PASS(_, nir, nir_split_struct_vars, nir_var_function_temp);
    NIR_PASS(_, nir, nir_lower_vars_to_ssa);
 
-   NIR_PASS(_, nir, nvk_nir_lower_descriptors, layout, true);
    NIR_PASS(_, nir, nir_lower_system_values);
 
    nir_lower_compute_system_values_options csv_options = {
@@ -91,11 +90,11 @@ nvk_shader_compile_to_nir(struct nvk_device *device,
    /* Vulkan uses the separate-shader linking model */
    nir->info.separate_shader = true;
 
+   NIR_PASS(_, nir, nvk_nir_lower_descriptors, layout, true);
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ssbo,
-            nir_address_format_64bit_global_32bit_offset);
-
+            spirv_options.ssbo_addr_format);
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ubo,
-            nir_address_format_64bit_global_32bit_offset);
+            spirv_options.ubo_addr_format);
 
    if (!nir->info.shared_memory_explicit_layout) {
       NIR_PASS(_, nir, nir_lower_vars_to_explicit_types,
@@ -104,7 +103,6 @@ nvk_shader_compile_to_nir(struct nvk_device *device,
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_shared,
             nir_address_format_32bit_offset);
 
-   NIR_PASS(_, nir, nvk_nir_lower_descriptors, layout, true);
    NIR_PASS(_, nir, nir_copy_prop);
    NIR_PASS(_, nir, nir_opt_dce);
 
