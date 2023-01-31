@@ -40,6 +40,28 @@ nil_extent4d_mul(struct nil_extent4d a, struct nil_extent4d b)
    };
 }
 
+static struct nil_offset4d
+nil_offset4d_div_round_down(struct nil_offset4d num, struct nil_extent4d denom)
+{
+   return (struct nil_offset4d) {
+      .x = num.x / denom.w,
+      .y = num.y / denom.h,
+      .z = num.z / denom.d,
+      .a = num.a / denom.a,
+   };
+}
+
+static struct nil_offset4d
+nil_offset4d_mul(struct nil_offset4d a, struct nil_extent4d b)
+{
+   return (struct nil_offset4d) {
+      .x = a.x * b.w,
+      .y = a.y * b.h,
+      .z = a.z * b.d,
+      .a = a.a * b.a,
+   };
+}
+
 static struct nil_extent4d
 nil_extent4d_align(struct nil_extent4d ext, struct nil_extent4d align)
 {
@@ -94,6 +116,17 @@ nil_extent4d_px_to_el(struct nil_extent4d extent_px,
       nil_extent4d_px_to_sa(extent_px, sample_layout);
 
    return nil_extent4d_div_round_up(extent_sa, nil_el_extent_sa(format));
+}
+
+struct nil_offset4d
+nil_offset4d_px_to_el(struct nil_offset4d offset_px,
+                      enum pipe_format format,
+                      enum nil_sample_layout sample_layout)
+{
+   const struct nil_offset4d offset_sa =
+      nil_offset4d_mul(offset_px, nil_px_extent_sa(sample_layout));
+
+   return nil_offset4d_div_round_down(offset_sa, nil_el_extent_sa(format));
 }
 
 static struct nil_extent4d

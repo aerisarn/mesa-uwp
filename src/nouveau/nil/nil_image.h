@@ -71,6 +71,29 @@ nil_extent4d_px_to_el(struct nil_extent4d extent_px,
                       enum pipe_format format,
                       enum nil_sample_layout sample_layout);
 
+struct nil_offset4d {
+   uint32_t x;
+   uint32_t y;
+   uint32_t z;
+   uint32_t a;
+};
+
+static inline struct nil_offset4d
+nil_offset4d(uint32_t x, uint32_t y, uint32_t z, uint32_t a)
+{
+   struct nil_offset4d o;
+   o.x = x;
+   o.y = y;
+   o.z = z;
+   o.a = a;
+   return o;
+}
+
+struct nil_offset4d
+nil_offset4d_px_to_el(struct nil_offset4d offset_px,
+                      enum pipe_format format,
+                      enum nil_sample_layout sample_layout);
+
 #define NIL_GOB_WIDTH_B 64
 #define NIL_GOB_HEIGHT(gob_height_8) ((gob_height_8) ? 8 : 4)
 #define NIL_GOB_DEPTH 1
