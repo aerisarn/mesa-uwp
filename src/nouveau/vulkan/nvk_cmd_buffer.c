@@ -240,7 +240,7 @@ nvk_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    nvk_reset_cmd_buffer(&cmd->vk, 0);
 
    /* Start with a nop so we have at least something to submit */
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 2);
+   struct nv_push *p = P_SPACE(cmd->push, 2);
    P_MTHD(p, NV90B5, NOP);
    P_NV90B5_NOP(p, 0);
 

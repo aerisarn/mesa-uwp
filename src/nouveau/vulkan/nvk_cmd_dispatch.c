@@ -82,7 +82,7 @@ nvk_CmdDispatch(VkCommandBuffer commandBuffer,
                                     &root_table_map))
       return; /* TODO: Error */
 
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 14 + root_table_size / 4);
+   struct nv_push *p = P_SPACE(cmd->push, 14 + root_table_size / 4);
 
    P_MTHD(p, NVA0C0, OFFSET_OUT_UPPER);
    P_NVA0C0_OFFSET_OUT_UPPER(p, root_table_addr >> 32);

@@ -109,7 +109,7 @@ nvk_queue_state_update(struct nvk_device *dev,
    struct nouveau_ws_push *pb = nouveau_ws_push_new(dev->pdev->dev, 256);
    if (pb == NULL)
       return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
-   struct nouveau_ws_push_buffer *p = P_SPACE(pb, 256);
+   struct nv_push *p = P_SPACE(pb, 256);
 
    if (qs->images.bo) {
       nouveau_ws_push_ref(pb, qs->images.bo, NOUVEAU_WS_BO_RD);
@@ -241,7 +241,7 @@ nvk_queue_submit(struct vk_queue *vkqueue, struct vk_queue_submit *submission)
    if (!queue->empty_push) {
       queue->empty_push = nouveau_ws_push_new(device->pdev->dev, 4096);
 
-      struct nouveau_ws_push_buffer *p = P_SPACE(queue->empty_push, 2);
+      struct nv_push *p = P_SPACE(queue->empty_push, 2);
 
       P_MTHD(p, NV90B5, NOP);
       P_NV90B5_NOP(p, 0);

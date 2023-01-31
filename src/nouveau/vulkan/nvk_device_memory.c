@@ -19,7 +19,7 @@ zero_vram(struct nvk_device *dev, struct nouveau_ws_bo *bo)
    if (push == NULL)
       return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
-   struct nouveau_ws_push_buffer *p = P_SPACE(push, 4096);
+   struct nv_push *p = P_SPACE(push, 4096);
 
    nouveau_ws_push_ref(push, bo, NOUVEAU_WS_BO_WR);
    uint64_t addr = bo->offset;

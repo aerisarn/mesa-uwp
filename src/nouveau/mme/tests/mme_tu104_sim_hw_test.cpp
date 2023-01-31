@@ -122,7 +122,7 @@ mme_tu104_sim_test::submit_push()
 void
 mme_tu104_sim_test::push_macro(uint32_t id, const std::vector<uint32_t> &macro)
 {
-   nouveau_ws_push_buffer *p = P_SPACE(push, 5 + macro.size());
+   nv_push *p = P_SPACE(push, 5 + macro.size());
 
    P_MTHD(p, NVC597, LOAD_MME_START_ADDRESS_RAM_POINTER);
    P_NVC597_LOAD_MME_START_ADDRESS_RAM_POINTER(p, id);
@@ -156,7 +156,7 @@ mme_tu104_sim_test::test_macro(const mme_builder *b,
    /* Now run the macro on the GPU */
    push_macro(0, macro);
 
-   nouveau_ws_push_buffer *p = P_SPACE(push, 1 + MAX2(1, params.size()));
+   nv_push *p = P_SPACE(push, 1 + MAX2(1, params.size()));
 
    P_1INC(p, NVC597, CALL_MME_MACRO(0));
    if (params.empty()) {
@@ -1492,7 +1492,7 @@ TEST_F(mme_tu104_sim_test, dwrite_dma)
 
    push_macro(0, macro);
 
-   nouveau_ws_push_buffer *p = P_SPACE(push, 10);
+   nv_push *p = P_SPACE(push, 10);
 
    P_1INC(p, NVC597, CALL_MME_MACRO(0));
    P_INLINE_DATA(p, canary5);
@@ -1551,7 +1551,7 @@ TEST_F(mme_tu104_sim_test, dram_limit)
 
       push_macro(0, macro);
 
-      nouveau_ws_push_buffer *p = P_SPACE(push, 3);
+      nv_push *p = P_SPACE(push, 3);
       P_1INC(p, NVC597, CALL_MME_MACRO(0));
       P_INLINE_DATA(p, i);
       P_INLINE_DATA(p, chunk_size);
@@ -1589,7 +1589,7 @@ TEST_F(mme_tu104_sim_test, dma_read_fifoed)
 
    auto macro = mme_builder_finish_vec(&b);
 
-   nouveau_ws_push_buffer *p = P_SPACE(push, 5);
+   nv_push *p = P_SPACE(push, 5);
    P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
 
    for (uint32_t i = 0; i < 64; i++)
@@ -1635,7 +1635,7 @@ TEST_F(mme_tu104_sim_test, scratch_limit)
 
       push_macro(0, macro);
 
-      nouveau_ws_push_buffer *p = P_SPACE(push, 3);
+      nv_push *p = P_SPACE(push, 3);
       P_1INC(p, NVC597, CALL_MME_MACRO(0));
       P_INLINE_DATA(p, i);
       P_INLINE_DATA(p, chunk_size);

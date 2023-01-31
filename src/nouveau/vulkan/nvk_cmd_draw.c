@@ -35,7 +35,7 @@ nvk_device_init_context_draw_state(struct nvk_device *dev)
    if (pb == NULL)
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
-   struct nouveau_ws_push_buffer *p = P_SPACE(pb, 0x1000);
+   struct nv_push *p = P_SPACE(pb, 0x1000);
 
    P_MTHD(p, NV9097, SET_OBJECT);
    P_NV9097_SET_OBJECT(p, {
@@ -387,7 +387,7 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    struct nvk_rendering_state *render = &cmd->state.gfx.render;
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 23 + pRenderingInfo->colorAttachmentCount * 10);
+   struct nv_push *p = P_SPACE(cmd->push, 23 + pRenderingInfo->colorAttachmentCount * 10);
 
    memset(render, 0, sizeof(*render));
 
@@ -630,7 +630,7 @@ nvk_flush_vi_state(struct nvk_cmd_buffer *cmd)
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
 
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 256);
+   struct nv_push *p = P_SPACE(cmd->push, 256);
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VI)) {
       u_foreach_bit(a, dyn->vi->attributes_valid) {
@@ -674,7 +674,7 @@ nvk_flush_ia_state(struct nvk_cmd_buffer *cmd)
    /** Nothing to do for MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY */
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE)) {
-      struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 2);
+      struct nv_push *p = P_SPACE(cmd->push, 2);
       P_IMMD(p, NV9097, SET_DA_PRIMITIVE_RESTART,
              dyn->ia.primitive_restart_enable);
    }
@@ -687,7 +687,7 @@ nvk_flush_ts_state(struct nvk_cmd_buffer *cmd)
       &cmd->vk.dynamic_graphics_state;
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_TS_PATCH_CONTROL_POINTS)) {
-      struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 2);
+      struct nv_push *p = P_SPACE(cmd->push, 2);
       P_IMMD(p, NV9097, SET_PATCH, dyn->ts.patch_control_points);
    }
 }
@@ -698,7 +698,7 @@ nvk_flush_vp_state(struct nvk_cmd_buffer *cmd)
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
 
-   struct nouveau_ws_push_buffer *p =
+   struct nv_push *p =
       P_SPACE(cmd->push, 14 * dyn->vp.viewport_count + 4 * NVK_MAX_VIEWPORTS);
 
    /* Nothing to do for MESA_VK_DYNAMIC_VP_VIEWPORT_COUNT */
@@ -807,7 +807,7 @@ vk_to_nv9097_front_face(VkFrontFace vk_face)
 static void
 nvk_flush_rs_state(struct nvk_cmd_buffer *cmd)
 {
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 23);
+   struct nv_push *p = P_SPACE(cmd->push, 23);
 
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
@@ -901,7 +901,7 @@ vk_to_nv9097_stencil_op(VkStencilOp vk_op)
 static void
 nvk_flush_ds_state(struct nvk_cmd_buffer *cmd)
 {
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 35);
+   struct nv_push *p = P_SPACE(cmd->push, 35);
 
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
@@ -992,7 +992,7 @@ vk_to_nv9097_logic_op(VkLogicOp vk_op)
 static void
 nvk_flush_cb_state(struct nvk_cmd_buffer *cmd)
 {
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 7);
+   struct nv_push *p = P_SPACE(cmd->push, 7);
 
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
@@ -1051,7 +1051,7 @@ nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
 
    memcpy(root_table_map, &desc->root, sizeof(desc->root));
 
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 26);
+   struct nv_push *p = P_SPACE(cmd->push, 26);
 
    P_MTHD(p, NV9097, SET_CONSTANT_BUFFER_SELECTOR_A);
    P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_A(p, root_table_size);
@@ -1121,7 +1121,7 @@ nvk_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_buffer, buffer, _buffer);
 
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 10);
+   struct nv_push *p = P_SPACE(cmd->push, 10);
 
    uint64_t addr, range;
    if (buffer) {
@@ -1156,7 +1156,7 @@ void
 nvk_cmd_bind_vertex_buffer(struct nvk_cmd_buffer *cmd, uint32_t vb_idx,
                            struct nvk_addr_range addr_range)
 {
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 6);
+   struct nv_push *p = P_SPACE(cmd->push, 6);
 
    P_MTHD(p, NV9097, SET_VERTEX_STREAM_A_LOCATION_A(vb_idx));
    P_NV9097_SET_VERTEX_STREAM_A_LOCATION_A(p, vb_idx, addr_range.addr >> 32);
@@ -1300,7 +1300,7 @@ nvk_CmdDraw(VkCommandBuffer commandBuffer,
       .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
    });
 
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 6);
+   struct nv_push *p = P_SPACE(cmd->push, 6);
    P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW));
    P_INLINE_DATA(p, begin);
    P_INLINE_DATA(p, vertexCount);
@@ -1374,7 +1374,7 @@ nvk_CmdDrawIndexed(VkCommandBuffer commandBuffer,
       .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
    });
 
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 7);
+   struct nv_push *p = P_SPACE(cmd->push, 7);
    P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDEXED));
    P_INLINE_DATA(p, begin);
    P_INLINE_DATA(p, indexCount);
@@ -1443,7 +1443,7 @@ nvk_CmdDrawIndirect(VkCommandBuffer commandBuffer,
       .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
    });
 
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 8);
+   struct nv_push *p = P_SPACE(cmd->push, 8);
    P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
    P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDIRECT));
    P_INLINE_DATA(p, begin);
@@ -1497,7 +1497,7 @@ nvk_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
       .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
    });
 
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 8);
+   struct nv_push *p = P_SPACE(cmd->push, 8);
    P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
    P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDEXED_INDIRECT));
    P_INLINE_DATA(p, begin);

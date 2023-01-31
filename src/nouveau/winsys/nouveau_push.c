@@ -42,10 +42,7 @@ nouveau_ws_push_new(struct nouveau_ws_device *dev, uint64_t size)
 
    struct nouveau_ws_push_buffer push_buf;
    push_buf.bo = bo;
-   push_buf.map = map;
-   push_buf.orig_map = map;
-   push_buf.end = map;
-   push_buf.last_size = NULL;
+   nv_push_init(&push_buf.push, map, 0);
 
    util_dynarray_init(&push->bos, NULL);
    util_dynarray_init(&push->pushs, NULL);
@@ -68,10 +65,7 @@ nouveau_ws_push_init_cpu(struct nouveau_ws_push *push,
 {
    struct nouveau_ws_push_buffer push_buf;
    push_buf.bo = NULL;
-   push_buf.map = data;
-   push_buf.orig_map = data;
-   push_buf.end = data + size_bytes;
-   push_buf.last_size = NULL;
+   nv_push_init(&push_buf.push, data, size_bytes / sizeof(uint32_t));
 
    util_dynarray_init(&push->bos, NULL);
    util_dynarray_init(&push->pushs, NULL);
@@ -82,7 +76,7 @@ void
 nouveau_ws_push_destroy(struct nouveau_ws_push *push)
 {
    util_dynarray_foreach(&push->pushs, struct nouveau_ws_push_buffer, buf) {
-      nouveau_ws_bo_unmap(buf->bo, buf->orig_map);
+      nouveau_ws_bo_unmap(buf->bo, buf->push.orig_map);
       nouveau_ws_bo_destroy(buf->bo);
    }
 
@@ -90,18 +84,18 @@ nouveau_ws_push_destroy(struct nouveau_ws_push *push)
    util_dynarray_fini(&push->pushs);
 }
 
-struct nouveau_ws_push_buffer *
+struct nv_push *
 nouveau_ws_push_space(struct nouveau_ws_push *push,
                       uint32_t count)
 {
    struct nouveau_ws_push_buffer *buf = _nouveau_ws_push_top(push);
 
    if (!count)
-      return buf;
+      return &buf->push;
 
-   if (buf->map + count < buf->orig_map + (buf->bo->size / 4)) {
-      buf->end = buf->map + count;
-      return buf;
+   if (buf->push.map + count < buf->push.orig_map + (buf->bo->size / 4)) {
+      buf->push.end = buf->push.map + count;
+      return &buf->push;
    }
 
    uint32_t flags = NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP;
@@ -119,13 +113,10 @@ nouveau_ws_push_space(struct nouveau_ws_push *push,
 
    struct nouveau_ws_push_buffer push_buf;
    push_buf.bo = bo;
-   push_buf.map = map;
-   push_buf.orig_map = map;
-   push_buf.end = map + count;
-   push_buf.last_size = NULL;
+   nv_push_init(&push_buf.push, map, count);
 
    util_dynarray_append(&push->pushs, struct nouveau_ws_push_buffer, push_buf);
-   return _nouveau_ws_push_top(push);
+   return &_nouveau_ws_push_top(push)->push;
 
 fail_map:
    nouveau_ws_bo_destroy(bo);
@@ -137,10 +128,10 @@ nouveau_ws_push_append(struct nouveau_ws_push *push,
                        const struct nouveau_ws_push *other)
 {
    struct nouveau_ws_push_buffer *other_buf = _nouveau_ws_push_top(other);
-   size_t count = other_buf->map - other_buf->orig_map;
+   size_t count = nv_push_dw_count(&other_buf->push);
 
-   struct nouveau_ws_push_buffer *push_buf = P_SPACE(push, count);
-   if (!push_buf)
+   struct nv_push *p = P_SPACE(push, count);
+   if (!p)
       return -ENOMEM;
 
    /* We only use this for CPU pushes. */
@@ -149,11 +140,9 @@ nouveau_ws_push_append(struct nouveau_ws_push *push,
    /* We don't support BO refs for now */
    assert(other->bos.size == 0);
 
-   assert(push_buf->map + count <= push_buf->end);
-
-   memcpy(push_buf->map, other_buf->orig_map, count * sizeof(*push_buf->map));
-   push_buf->map += count;
-   push_buf->last_size = NULL;
+   memcpy(p->map, other_buf->push.orig_map, count * sizeof(*p->map));
+   p->map += count;
+   p->last_size = NULL;
 
    return 0;
 }
@@ -163,16 +152,16 @@ nouveau_ws_push_valid(struct nouveau_ws_push *push) {
    util_dynarray_foreach(&push->pushs, struct nouveau_ws_push_buffer, buf) {
       struct nouveau_ws_push_buffer *buf = _nouveau_ws_push_top(push);
 
-      uint32_t *cur = buf->orig_map;
+      uint32_t *cur = buf->push.orig_map;
 
       /* submitting empty push buffers is probably a bug */
-      assert(buf->map != buf->orig_map);
+      assert(buf->push.map != buf->push.orig_map);
 
       /* make sure we don't overrun the bo */
-      assert(buf->map <= buf->end);
+      assert(buf->push.map <= buf->push.end);
 
       /* parse all the headers to see if we get to buf->map */
-      while (cur < buf->map) {
+      while (cur < buf->push.map) {
          uint32_t hdr = *cur;
          uint32_t mthd = hdr >> 29;
 
@@ -193,7 +182,7 @@ nouveau_ws_push_valid(struct nouveau_ws_push *push) {
          }
 
          cur++;
-         assert(cur <= buf->map);
+         assert(cur <= buf->push.map);
       }
    }
 }
@@ -202,9 +191,9 @@ static void
 nouveau_ws_push_dump(struct nouveau_ws_push *push, struct nouveau_ws_context *ctx)
 {
    util_dynarray_foreach(&push->pushs, struct nouveau_ws_push_buffer, buf) {
-      uint32_t *cur = buf->orig_map;
+      uint32_t *cur = buf->push.orig_map;
 
-      while (cur < buf->map) {
+      while (cur < buf->push.map) {
          uint32_t hdr = *cur;
          uint32_t type = hdr >> 29;
          uint32_t inc;
@@ -214,7 +203,7 @@ nouveau_ws_push_dump(struct nouveau_ws_push *push, struct nouveau_ws_context *ct
          uint32_t value = 0;
          bool is_immd = false;
 
-         printf("[0x%08" PRIxPTR "] HDR %x subch %i", cur - buf->orig_map, hdr, subchan);
+         printf("[0x%08" PRIxPTR "] HDR %x subch %i", cur - buf->push.orig_map, hdr, subchan);
          cur++;
 
          switch (type) {
@@ -351,7 +340,7 @@ nouveau_ws_push_submit(
       /* Can't submit a CPU push */
       assert(buf->bo);
 
-      if (buf->map == buf->orig_map)
+      if (buf->push.map == buf->push.orig_map)
          continue;
 
       req_bo[i].handle = buf->bo->handle;
@@ -360,7 +349,7 @@ nouveau_ws_push_submit(
 
       req_push[i].bo_index = i;
       req_push[i].offset = 0;
-      req_push[i].length = (buf->map - buf->orig_map) * 4;
+      req_push[i].length = nv_push_dw_count(&buf->push) * 4;
 
       i++;
    }
@@ -445,12 +434,12 @@ void nouveau_ws_push_reset(struct nouveau_ws_push *push)
    bool first = true;
    util_dynarray_foreach(&push->pushs, struct nouveau_ws_push_buffer, buf) {
       if (first) {
-         buf->map = buf->orig_map;
+         buf->push.map = buf->push.orig_map;
          first = false;
          continue;
       }
 
-      nouveau_ws_bo_unmap(buf->bo, buf->orig_map);
+      nouveau_ws_bo_unmap(buf->bo, buf->push.orig_map);
       nouveau_ws_bo_destroy(buf->bo);
    }
 

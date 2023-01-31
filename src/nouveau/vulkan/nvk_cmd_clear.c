@@ -58,7 +58,7 @@ emit_clear_rects(struct nvk_cmd_buffer *cmd,
 {
    struct nvk_rendering_state *render = &cmd->state.gfx.render;
 
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, rect_count * 6);
+   struct nv_push *p = P_SPACE(cmd->push, rect_count * 6);
 
    for (uint32_t r = 0; r < rect_count; r++) {
       P_MTHD(p, NV9097, SET_CLEAR_RECT_HORIZONTAL);
@@ -115,7 +115,7 @@ nvk_CmdClearAttachments(VkCommandBuffer commandBuffer,
                         const VkClearRect *pRects)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 2 + attachmentCount * 4);
+   struct nv_push *p = P_SPACE(cmd->push, 2 + attachmentCount * 4);
 
    P_IMMD(p, NV9097, SET_CLEAR_SURFACE_CONTROL, {
       .respect_stencil_mask   = RESPECT_STENCIL_MASK_FALSE,
