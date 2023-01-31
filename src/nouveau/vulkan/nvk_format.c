@@ -10,6 +10,57 @@
 #include "vulkan/util/vk_enum_defines.h"
 #include "vulkan/util/vk_format.h"
 
+bool
+nvk_is_storage_image_format(VkFormat vk_format)
+{
+   /* TODO: This shouldn't be a fixed list */
+
+   switch (vk_format) {
+   case VK_FORMAT_R32G32B32A32_UINT:
+   case VK_FORMAT_R32G32B32A32_SINT:
+   case VK_FORMAT_R32G32B32A32_SFLOAT:
+   case VK_FORMAT_R32_UINT:
+   case VK_FORMAT_R32_SINT:
+   case VK_FORMAT_R32_SFLOAT:
+   case VK_FORMAT_R16G16B16A16_UINT:
+   case VK_FORMAT_R16G16B16A16_SINT:
+   case VK_FORMAT_R16G16B16A16_SFLOAT:
+   case VK_FORMAT_R32G32_UINT:
+   case VK_FORMAT_R32G32_SINT:
+   case VK_FORMAT_R32G32_SFLOAT:
+   case VK_FORMAT_R8G8B8A8_UINT:
+   case VK_FORMAT_R8G8B8A8_SINT:
+   case VK_FORMAT_R16G16_UINT:
+   case VK_FORMAT_R16G16_SINT:
+   case VK_FORMAT_R16G16_SFLOAT:
+   case VK_FORMAT_R8G8_UINT:
+   case VK_FORMAT_R8G8_SINT:
+   case VK_FORMAT_R16_UINT:
+   case VK_FORMAT_R16_SFLOAT:
+   case VK_FORMAT_R16_SINT:
+   case VK_FORMAT_R8_UINT:
+   case VK_FORMAT_R8_SINT:
+   case VK_FORMAT_A2B10G10R10_UINT_PACK32:
+   case VK_FORMAT_A2B10G10R10_UNORM_PACK32:
+   case VK_FORMAT_B10G11R11_UFLOAT_PACK32:
+   case VK_FORMAT_R16G16B16A16_UNORM:
+   case VK_FORMAT_R16G16B16A16_SNORM:
+   case VK_FORMAT_R8G8B8A8_UNORM:
+   case VK_FORMAT_R8G8B8A8_SNORM:
+   case VK_FORMAT_R16G16_UNORM:
+   case VK_FORMAT_R16G16_SNORM:
+   case VK_FORMAT_R8G8_UNORM:
+   case VK_FORMAT_R8G8_SNORM:
+   case VK_FORMAT_R16_UNORM:
+   case VK_FORMAT_R16_SNORM:
+   case VK_FORMAT_R8_UNORM:
+   case VK_FORMAT_R8_SNORM:
+      return true;
+   default:
+      return false;
+   }
+}
+
 /*
  * nvidia names
  *   _: UNORM

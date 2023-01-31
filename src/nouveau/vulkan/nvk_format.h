@@ -3,6 +3,8 @@
 
 #include "nvk_private.h"
 
+bool nvk_is_storage_image_format(VkFormat vk_format);
+
 struct nvk_format {
    VkFormat vk_format;
    uint8_t hw_format;

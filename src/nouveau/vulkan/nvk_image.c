@@ -8,57 +8,6 @@
 #include "nil_format.h"
 #include "vulkan/util/vk_format.h"
 
-static bool
-is_storage_image_format(enum pipe_format p_format)
-{
-   /* TODO: This shouldn't be a fixed list */
-
-   switch (p_format) {
-   case PIPE_FORMAT_R32G32B32A32_UINT:
-   case PIPE_FORMAT_R32G32B32A32_SINT:
-   case PIPE_FORMAT_R32G32B32A32_FLOAT:
-   case PIPE_FORMAT_R32_UINT:
-   case PIPE_FORMAT_R32_SINT:
-   case PIPE_FORMAT_R32_FLOAT:
-   case PIPE_FORMAT_R16G16B16A16_UINT:
-   case PIPE_FORMAT_R16G16B16A16_SINT:
-   case PIPE_FORMAT_R16G16B16A16_FLOAT:
-   case PIPE_FORMAT_R32G32_UINT:
-   case PIPE_FORMAT_R32G32_SINT:
-   case PIPE_FORMAT_R32G32_FLOAT:
-   case PIPE_FORMAT_R8G8B8A8_UINT:
-   case PIPE_FORMAT_R8G8B8A8_SINT:
-   case PIPE_FORMAT_R16G16_UINT:
-   case PIPE_FORMAT_R16G16_SINT:
-   case PIPE_FORMAT_R16G16_FLOAT:
-   case PIPE_FORMAT_R8G8_UINT:
-   case PIPE_FORMAT_R8G8_SINT:
-   case PIPE_FORMAT_R16_UINT:
-   case PIPE_FORMAT_R16_FLOAT:
-   case PIPE_FORMAT_R16_SINT:
-   case PIPE_FORMAT_R8_UINT:
-   case PIPE_FORMAT_R8_SINT:
-   case PIPE_FORMAT_R10G10B10A2_UINT:
-   case PIPE_FORMAT_R10G10B10A2_UNORM:
-   case PIPE_FORMAT_R11G11B10_FLOAT:
-   case PIPE_FORMAT_R16G16B16A16_UNORM:
-   case PIPE_FORMAT_R16G16B16A16_SNORM:
-   case PIPE_FORMAT_R8G8B8A8_UNORM:
-   case PIPE_FORMAT_R8G8B8A8_SNORM:
-   case PIPE_FORMAT_R16G16_UNORM:
-   case PIPE_FORMAT_R16G16_SNORM:
-   case PIPE_FORMAT_R8G8_UNORM:
-   case PIPE_FORMAT_R8G8_SNORM:
-   case PIPE_FORMAT_R16_UNORM:
-   case PIPE_FORMAT_R16_SNORM:
-   case PIPE_FORMAT_R8_UNORM:
-   case PIPE_FORMAT_R8_SNORM:
-      return true;
-   default:
-      return false;
-   }
-}
-
 VkFormatFeatureFlags2
 nvk_get_image_format_features(struct nvk_physical_device *pdevice,
                               VkFormat vk_format, VkImageTiling tiling)
@@ -85,7 +34,7 @@ nvk_get_image_format_features(struct nvk_physical_device *pdevice,
        util_format_is_snorm(p_format))
       features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
 
-   if (is_storage_image_format(p_format)) {
+   if (nvk_is_storage_image_format(vk_format)) {
       features |= VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT |
                   VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
                   VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
