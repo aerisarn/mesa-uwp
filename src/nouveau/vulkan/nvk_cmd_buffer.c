@@ -92,13 +92,24 @@ const struct vk_command_buffer_ops nvk_cmd_buffer_ops = {
 /* If we ever fail to allocate a push, we use this */
 static uint32_t push_runout[NVK_CMD_BUFFER_MAX_PUSH];
 
+static VkResult
+nvk_cmd_buffer_alloc_bo(struct nvk_cmd_buffer *cmd, struct nvk_cmd_bo **bo_out)
+{
+   VkResult result = nvk_cmd_pool_alloc_bo(nvk_cmd_buffer_pool(cmd), bo_out);
+   if (result != VK_SUCCESS)
+      return result;
+
+   list_addtail(&(*bo_out)->link, &cmd->bos);
+
+   return VK_SUCCESS;
+}
+
 void
 nvk_cmd_buffer_new_push(struct nvk_cmd_buffer *cmd)
 {
-   struct nvk_cmd_pool *pool = nvk_cmd_buffer_pool(cmd);
    VkResult result;
 
-   result = nvk_cmd_pool_alloc_bo(pool, &cmd->push_bo);
+   result = nvk_cmd_buffer_alloc_bo(cmd, &cmd->push_bo);
    if (unlikely(result != VK_SUCCESS)) {
       STATIC_ASSERT(NVK_CMD_BUFFER_MAX_PUSH <= NVK_CMD_BO_SIZE / 4);
       cmd->push_bo = NULL;
@@ -149,7 +160,7 @@ nvk_cmd_buffer_upload_alloc(struct nvk_cmd_buffer *cmd,
    }
 
    struct nvk_cmd_bo *bo;
-   VkResult result = nvk_cmd_pool_alloc_bo(nvk_cmd_buffer_pool(cmd), &bo);
+   VkResult result = nvk_cmd_buffer_alloc_bo(cmd, &bo);
    if (unlikely(result != VK_SUCCESS))
       return result;
 

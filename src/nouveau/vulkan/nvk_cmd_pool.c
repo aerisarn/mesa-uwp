@@ -89,6 +89,7 @@ void
 nvk_cmd_pool_free_bo_list(struct nvk_cmd_pool *pool, struct list_head *bos)
 {
    list_splicetail(bos, &pool->free_bos);
+   list_inithead(bos);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -102,8 +103,8 @@ nvk_DestroyCommandPool(VkDevice _device,
    if (!pool)
       return;
 
-   nvk_cmd_pool_destroy_bos(pool);
    vk_command_pool_finish(&pool->vk);
+   nvk_cmd_pool_destroy_bos(pool);
    vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 
