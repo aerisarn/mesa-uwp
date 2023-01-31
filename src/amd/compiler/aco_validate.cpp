@@ -382,6 +382,30 @@ validate_ir(Program* program)
                }
                check(num_sgprs + (literal.isUndefined() ? 0 : 1) <= const_bus_limit,
                      "Too many SGPRs/literals", instr.get());
+
+               /* Validate modifiers. */
+               check(!instr->valu().opsel || instr->isVOP3() || instr->isVINTERP_INREG(),
+                     "OPSEL set for unsupported instruction format", instr.get());
+               check(!instr->valu().opsel_lo || instr->isVOP3P(),
+                     "OPSEL_LO set for unsupported instruction format", instr.get());
+               check(!instr->valu().opsel_hi || instr->isVOP3P(),
+                     "OPSEL_HI set for unsupported instruction format", instr.get());
+               check(!instr->valu().omod || instr->isVOP3() ||instr->isSDWA(),
+                     "OMOD set for unsupported instruction format", instr.get());
+               check(!instr->valu().clamp || instr->isVOP3() || instr->isVOP3P() ||
+                        instr->isSDWA() || instr->isVINTERP_INREG(),
+                     "CLAMP set for unsupported instruction format", instr.get());
+
+               for (bool abs : instr->valu().abs) {
+                  check(!abs || instr->isVOP3() || instr->isVOP3P() || instr->isSDWA() ||
+                           instr->isDPP16(),
+                        "ABS/NEG_HI set for unsupported instruction format", instr.get());
+               }
+               for (bool neg : instr->valu().neg) {
+                  check(!neg || instr->isVOP3() || instr->isVOP3P() || instr->isSDWA() ||
+                           instr->isDPP16() || instr->isVINTERP_INREG(),
+                        "NEG/NEG_LO set for unsupported instruction format", instr.get());
+               }
             }
 
             if (instr->isSOP1() || instr->isSOP2()) {
