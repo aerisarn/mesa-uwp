@@ -115,46 +115,45 @@ nvk_slm_area_ensure(struct nvk_device *dev,
 
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_CreateDevice(VkPhysicalDevice physicalDevice,
-   const VkDeviceCreateInfo *pCreateInfo,
-   const VkAllocationCallbacks *pAllocator,
-   VkDevice *pDevice)
+                 const VkDeviceCreateInfo *pCreateInfo,
+                 const VkAllocationCallbacks *pAllocator,
+                 VkDevice *pDevice)
 {
-   VK_FROM_HANDLE(nvk_physical_device, physical_device, physicalDevice);
+   VK_FROM_HANDLE(nvk_physical_device, pdev, physicalDevice);
    VkResult result = VK_ERROR_OUT_OF_HOST_MEMORY;
-   struct nvk_device *device;
+   struct nvk_device *dev;
 
-   device = vk_zalloc2(&physical_device->instance->vk.alloc,
-      pAllocator,
-      sizeof(*device),
-      8,
-      VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
-   if (!device)
-      return vk_error(physical_device, VK_ERROR_OUT_OF_HOST_MEMORY);
+   dev = vk_zalloc2(&pdev->instance->vk.alloc, pAllocator,
+                    sizeof(*dev), 8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   if (!dev)
+      return vk_error(pdev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    struct vk_device_dispatch_table dispatch_table;
-   vk_device_dispatch_table_from_entrypoints(&dispatch_table, &nvk_device_entrypoints, true);
-   vk_device_dispatch_table_from_entrypoints(&dispatch_table, &wsi_device_entrypoints, false);
+   vk_device_dispatch_table_from_entrypoints(&dispatch_table,
+                                             &nvk_device_entrypoints, true);
+   vk_device_dispatch_table_from_entrypoints(&dispatch_table,
+                                             &wsi_device_entrypoints, false);
 
-   result =
-      vk_device_init(&device->vk, &physical_device->vk, &dispatch_table, pCreateInfo, pAllocator);
+   result = vk_device_init(&dev->vk, &pdev->vk, &dispatch_table,
+                           pCreateInfo, pAllocator);
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
-   device->vk.command_buffer_ops = &nvk_cmd_buffer_ops;
+   dev->vk.command_buffer_ops = &nvk_cmd_buffer_ops;
 
-   int ret = nouveau_ws_context_create(physical_device->dev, &device->ctx);
+   int ret = nouveau_ws_context_create(pdev->dev, &dev->ctx);
    if (ret) {
       if (ret == -ENOSPC)
-         result = vk_error(device, VK_ERROR_TOO_MANY_OBJECTS);
+         result = vk_error(dev, VK_ERROR_TOO_MANY_OBJECTS);
       else
-         result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+         result = vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto fail_init;
    }
 
-   list_inithead(&device->memory_objects);
-   simple_mtx_init(&device->memory_objects_lock, mtx_plain);
+   list_inithead(&dev->memory_objects);
+   simple_mtx_init(&dev->memory_objects_lock, mtx_plain);
 
-   result = nvk_descriptor_table_init(device, &device->images,
+   result = nvk_descriptor_table_init(dev, &dev->images,
                                       8 * 4 /* tic entry size */,
                                       1024, 1024 * 1024);
    if (result != VK_SUCCESS)
@@ -163,13 +162,13 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    /* Reserve the descriptor at offset 0 to be the null descriptor */
    uint32_t null_image[8] = { 0, };
    ASSERTED uint32_t null_image_index;
-   result = nvk_descriptor_table_add(device, &device->images,
+   result = nvk_descriptor_table_add(dev, &dev->images,
                                      null_image, sizeof(null_image),
                                      &null_image_index);
    assert(result == VK_SUCCESS);
    assert(null_image_index == 0);
 
-   result = nvk_descriptor_table_init(device, &device->samplers,
+   result = nvk_descriptor_table_init(dev, &dev->samplers,
                                       8 * 4 /* tsc entry size */,
                                       4096, 4096);
    if (result != VK_SUCCESS)
@@ -178,133 +177,133 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    /* The I-cache pre-fetches and we don't really know by how much.  Over-
     * allocate shader BOs by 4K to ensure we don't run past.
     */
-   result = nvk_heap_init(device, &device->shader_heap,
+   result = nvk_heap_init(dev, &dev->shader_heap,
                           NOUVEAU_WS_BO_LOCAL, NOUVEAU_WS_BO_WR,
                           4096 /* overalloc */,
-                          device->ctx->eng3d.cls < VOLTA_A);
+                          dev->ctx->eng3d.cls < VOLTA_A);
    if (result != VK_SUCCESS)
       goto fail_samplers;
 
-   result = nvk_heap_init(device, &device->event_heap,
+   result = nvk_heap_init(dev, &dev->event_heap,
                           NOUVEAU_WS_BO_LOCAL, NOUVEAU_WS_BO_WR,
                           0 /* overalloc */, false /* contiguous */);
    if (result != VK_SUCCESS)
       goto fail_shader_heap;
 
-   nvk_slm_area_init(&device->slm);
+   nvk_slm_area_init(&dev->slm);
 
-   if (pthread_mutex_init(&device->mutex, NULL) != 0) {
-      result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
+   if (pthread_mutex_init(&dev->mutex, NULL) != 0) {
+      result = vk_error(dev, VK_ERROR_INITIALIZATION_FAILED);
       goto fail_slm;
    }
 
    pthread_condattr_t condattr;
    if (pthread_condattr_init(&condattr) != 0) {
-      result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
+      result = vk_error(dev, VK_ERROR_INITIALIZATION_FAILED);
       goto fail_mutex;
    }
    if (pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC) != 0) {
       pthread_condattr_destroy(&condattr);
-      result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
+      result = vk_error(dev, VK_ERROR_INITIALIZATION_FAILED);
       goto fail_mutex;
    }
-   if (pthread_cond_init(&device->queue_submit, &condattr) != 0) {
+   if (pthread_cond_init(&dev->queue_submit, &condattr) != 0) {
       pthread_condattr_destroy(&condattr);
-      result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
+      result = vk_error(dev, VK_ERROR_INITIALIZATION_FAILED);
       goto fail_mutex;
    }
    pthread_condattr_destroy(&condattr);
 
-   device->pdev = physical_device;
+   dev->pdev = pdev;
 
    void *zero_map;
-   device->zero_page = nouveau_ws_bo_new_mapped(device->pdev->dev, 0x1000, 0,
+   dev->zero_page = nouveau_ws_bo_new_mapped(dev->pdev->dev, 0x1000, 0,
                                                 NOUVEAU_WS_BO_LOCAL,
                                                 NOUVEAU_WS_BO_WR, &zero_map);
-   if (device->zero_page == NULL)
+   if (dev->zero_page == NULL)
       goto fail_queue_submit;
 
    memset(zero_map, 0, 0x1000);
-   nouveau_ws_bo_unmap(device->zero_page, zero_map);
+   nouveau_ws_bo_unmap(dev->zero_page, zero_map);
 
-   if (device->ctx->eng3d.cls >= FERMI_A &&
-       device->ctx->eng3d.cls < MAXWELL_A) {
+   if (dev->ctx->eng3d.cls >= FERMI_A &&
+       dev->ctx->eng3d.cls < MAXWELL_A) {
       /* max size is 256k */
-      device->vab_memory =
-         nouveau_ws_bo_new(device->pdev->dev, 1 << 17, 1 << 20, NOUVEAU_WS_BO_LOCAL);
-      if (device->vab_memory == NULL)
+      dev->vab_memory = nouveau_ws_bo_new(dev->pdev->dev, 1 << 17, 1 << 20,
+                                          NOUVEAU_WS_BO_LOCAL);
+      if (dev->vab_memory == NULL)
          goto fail_zero_page;
    }
 
-   result = nvk_queue_init(device, &device->queue,
+   result = nvk_queue_init(dev, &dev->queue,
                            &pCreateInfo->pQueueCreateInfos[0], 0);
    if (result != VK_SUCCESS)
       goto fail_vab_memory;
 
-   result = nvk_device_init_meta(device);
+   result = nvk_device_init_meta(dev);
    if (result != VK_SUCCESS)
       goto fail_queue;
 
-   *pDevice = nvk_device_to_handle(device);
+   *pDevice = nvk_device_to_handle(dev);
 
    return VK_SUCCESS;
 
 fail_queue:
-   nvk_queue_finish(device, &device->queue);
+   nvk_queue_finish(dev, &dev->queue);
 fail_vab_memory:
-   if (device->vab_memory)
-      nouveau_ws_bo_destroy(device->vab_memory);
+   if (dev->vab_memory)
+      nouveau_ws_bo_destroy(dev->vab_memory);
 fail_zero_page:
-   nouveau_ws_bo_destroy(device->zero_page);
+   nouveau_ws_bo_destroy(dev->zero_page);
 fail_queue_submit:
-   pthread_cond_destroy(&device->queue_submit);
+   pthread_cond_destroy(&dev->queue_submit);
 fail_mutex:
-   pthread_mutex_destroy(&device->mutex);
+   pthread_mutex_destroy(&dev->mutex);
 fail_slm:
-   nvk_slm_area_finish(&device->slm);
-   nvk_heap_finish(device, &device->event_heap);
+   nvk_slm_area_finish(&dev->slm);
+   nvk_heap_finish(dev, &dev->event_heap);
 fail_shader_heap:
-   nvk_heap_finish(device, &device->shader_heap);
+   nvk_heap_finish(dev, &dev->shader_heap);
 fail_samplers:
-   nvk_descriptor_table_finish(device, &device->samplers);
+   nvk_descriptor_table_finish(dev, &dev->samplers);
 fail_images:
-   nvk_descriptor_table_finish(device, &device->images);
+   nvk_descriptor_table_finish(dev, &dev->images);
 fail_memory_objects:
-   simple_mtx_destroy(&device->memory_objects_lock);
-   nouveau_ws_context_destroy(device->ctx);
+   simple_mtx_destroy(&dev->memory_objects_lock);
+   nouveau_ws_context_destroy(dev->ctx);
 fail_init:
-   vk_device_finish(&device->vk);
+   vk_device_finish(&dev->vk);
 fail_alloc:
-   vk_free(&device->vk.alloc, device);
+   vk_free(&dev->vk.alloc, dev);
    return result;
 }
 
 VKAPI_ATTR void VKAPI_CALL
 nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 {
-   VK_FROM_HANDLE(nvk_device, device, _device);
+   VK_FROM_HANDLE(nvk_device, dev, _device);
 
-   if (!device)
+   if (!dev)
       return;
 
-   nvk_device_finish_meta(device);
+   nvk_device_finish_meta(dev);
 
-   pthread_cond_destroy(&device->queue_submit);
-   pthread_mutex_destroy(&device->mutex);
-   nvk_queue_finish(device, &device->queue);
-   if (device->vab_memory)
-      nouveau_ws_bo_destroy(device->vab_memory);
-   nouveau_ws_bo_destroy(device->zero_page);
-   vk_device_finish(&device->vk);
-   nvk_slm_area_finish(&device->slm);
-   nvk_heap_finish(device, &device->event_heap);
-   nvk_heap_finish(device, &device->shader_heap);
-   nvk_descriptor_table_finish(device, &device->samplers);
-   nvk_descriptor_table_finish(device, &device->images);
-   assert(list_is_empty(&device->memory_objects));
-   simple_mtx_destroy(&device->memory_objects_lock);
-   nouveau_ws_context_destroy(device->ctx);
-   vk_free(&device->vk.alloc, device);
+   pthread_cond_destroy(&dev->queue_submit);
+   pthread_mutex_destroy(&dev->mutex);
+   nvk_queue_finish(dev, &dev->queue);
+   if (dev->vab_memory)
+      nouveau_ws_bo_destroy(dev->vab_memory);
+   nouveau_ws_bo_destroy(dev->zero_page);
+   vk_device_finish(&dev->vk);
+   nvk_slm_area_finish(&dev->slm);
+   nvk_heap_finish(dev, &dev->event_heap);
+   nvk_heap_finish(dev, &dev->shader_heap);
+   nvk_descriptor_table_finish(dev, &dev->samplers);
+   nvk_descriptor_table_finish(dev, &dev->images);
+   assert(list_is_empty(&dev->memory_objects));
+   simple_mtx_destroy(&dev->memory_objects_lock);
+   nouveau_ws_context_destroy(dev->ctx);
+   vk_free(&dev->vk.alloc, dev);
 }
 
 VkResult
