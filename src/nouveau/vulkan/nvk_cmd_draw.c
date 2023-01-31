@@ -47,7 +47,8 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
    /* M2MF state */
    if (dev->ctx->m2mf.cls <= FERMI_MEMORY_TO_MEMORY_FORMAT_A) {
       /* we absolutely do not support Fermi, but if somebody wants to toy
-      /* around with it, this is a must */
+       * around with it, this is a must
+       */
       P_MTHD(p, NV9039, SET_OBJECT);
       P_NV9039_SET_OBJECT(p, {
          .class_id = dev->ctx->m2mf.cls,
