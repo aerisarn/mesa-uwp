@@ -191,6 +191,14 @@ void vk_meta_draw_volume(struct vk_command_buffer *cmd,
                          const struct vk_meta_rect *rect,
                          uint32_t layer_count);
 
+void vk_meta_clear_attachments(struct vk_command_buffer *cmd,
+                               struct vk_meta_device *meta,
+                               const struct vk_meta_rendering_info *render,
+                               uint32_t attachment_count,
+                               const VkClearAttachment *attachments,
+                               uint32_t rect_count,
+                               const VkClearRect *rects);
+
 #ifdef __cplusplus
 }
 #endif

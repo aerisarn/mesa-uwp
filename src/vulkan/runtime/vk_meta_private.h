@@ -35,6 +35,19 @@ extern const VkPipelineViewportStateCreateInfo vk_meta_draw_rects_vs_state;
 
 struct nir_shader *vk_meta_draw_rects_vs_nir(struct vk_meta_device *device);
 
+static inline void
+vk_meta_rendering_info_copy(struct vk_meta_rendering_info *dst,
+                            const struct vk_meta_rendering_info *src)
+{
+   dst->view_mask = src->view_mask;
+   dst->samples = src->samples;
+   dst->color_attachment_count = src->color_attachment_count;
+   for (uint32_t a = 0; a < src->color_attachment_count; a++)
+      dst->color_attachment_formats[a] = src->color_attachment_formats[a];
+   dst->depth_attachment_format = src->depth_attachment_format;
+   dst->stencil_attachment_format = src->stencil_attachment_format;
+}
+
 #ifdef __cplusplus
 }
 #endif
