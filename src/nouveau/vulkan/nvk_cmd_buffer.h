@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 
+struct nvk_buffer;
 struct nvk_cmd_bo;
 struct nvk_cmd_pool;
 struct nvk_image_view;
@@ -184,6 +185,12 @@ nvk_cmd_buffer_push(struct nvk_cmd_buffer *cmd, uint32_t dw_count)
    
    return &cmd->push;
 }
+
+void
+nvk_cmd_buffer_push_indirect_buffer(struct nvk_cmd_buffer *cmd,
+                                    struct nvk_buffer *buffer,
+                                    uint64_t offset,
+                                    uint64_t dw_count);
 
 static inline void
 nvk_cmd_buffer_ref_bo(struct nvk_cmd_buffer *cmd,

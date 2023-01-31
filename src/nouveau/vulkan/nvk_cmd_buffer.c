@@ -1,9 +1,11 @@
 #include "nvk_cmd_buffer.h"
 
+#include "nvk_buffer.h"
 #include "nvk_cmd_pool.h"
 #include "nvk_descriptor_set.h"
 #include "nvk_descriptor_set_layout.h"
 #include "nvk_device.h"
+#include "nvk_device_memory.h"
 #include "nvk_pipeline.h"
 #include "nvk_physical_device.h"
 
@@ -138,6 +140,28 @@ nvk_cmd_buffer_new_push(struct nvk_cmd_buffer *cmd)
       cmd->push_bo_limit =
          (uint32_t *)((char *)cmd->push_bo->map + NVK_CMD_BO_SIZE);
    }
+}
+
+#define NVC0_IB_ENTRY_1_NO_PREFETCH (1 << (31 - 8))
+
+void
+nvk_cmd_buffer_push_indirect_buffer(struct nvk_cmd_buffer *cmd,
+                                    struct nvk_buffer *buffer,
+                                    uint64_t offset, uint64_t range)
+{
+   nvk_cmd_buffer_flush_push(cmd);
+
+   /* TODO: The new uAPI should just take addresses */
+   struct nouveau_ws_bo *bo = buffer->mem->bo;
+   uint64_t bo_offset = nvk_buffer_address(buffer, offset) - bo->offset;
+   assert(bo_offset < NVC0_IB_ENTRY_1_NO_PREFETCH);
+
+   struct nvk_cmd_push push = {
+      .bo = bo,
+      .bo_offset = bo_offset,
+      .range = NVC0_IB_ENTRY_1_NO_PREFETCH | range,
+   };
+   util_dynarray_append(&cmd->pushes, struct nvk_cmd_push, push);
 }
 
 VkResult
@@ -456,11 +480,17 @@ nvk_cmd_buffer_dump(struct nvk_cmd_buffer *cmd, FILE *fp)
    struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
 
    util_dynarray_foreach(&cmd->pushes, struct nvk_cmd_push, p) {
-      struct nv_push push = {
-         .start = (uint32_t *)p->map,
-         .end = (uint32_t *)((char *)p->map + p->range),
-      };
-      vk_push_print(fp, &push, &dev->pdev->info);
+      if (p->map) {
+         struct nv_push push = {
+            .start = (uint32_t *)p->map,
+            .end = (uint32_t *)((char *)p->map + p->range),
+         };
+         vk_push_print(fp, &push, &dev->pdev->info);
+      } else {
+         fprintf(fp, "<%u B of INDIRECT DATA at 0x%"PRIx64">\n",
+                 p->range & ~NVC0_IB_ENTRY_1_NO_PREFETCH,
+                 p->bo->offset + p->bo_offset);
+      }
    }
 }
 
