@@ -1,7 +1,12 @@
 #include "nvk_cmd_buffer.h"
 
+#include "nvk_device.h"
 #include "nvk_image.h"
 #include "nvk_image_view.h"
+#include "nvk_physical_device.h"
+
+#include "nil_format.h"
+#include "vk_format.h"
 
 #include "nvk_cl9097.h"
 
@@ -219,6 +224,18 @@ clear_image(struct nvk_cmd_buffer *cmd,
    }
 }
 
+static VkFormat
+vk_packed_int_format_for_size(unsigned size_B)
+{
+   switch (size_B) {
+   case 1:  return VK_FORMAT_R8_UINT;
+   case 2:  return VK_FORMAT_R16_UINT;
+   case 4:  return VK_FORMAT_R32_UINT;
+   case 8:  return VK_FORMAT_R32G32_UINT;
+   case 16: return VK_FORMAT_R32G32B32A32_UINT;
+   default: unreachable("Invalid image format size");
+   }
+}
 
 VKAPI_ATTR void VKAPI_CALL
 nvk_CmdClearColorImage(VkCommandBuffer commandBuffer,
@@ -229,13 +246,28 @@ nvk_CmdClearColorImage(VkCommandBuffer commandBuffer,
                        const VkImageSubresourceRange *pRanges)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
    VK_FROM_HANDLE(nvk_image, image, _image);
 
-   const VkClearValue clear_value = {
+   VkClearValue clear_value = {
       .color = *pColor,
    };
 
-   clear_image(cmd, image, imageLayout, image->vk.format,
+   VkFormat vk_format = image->vk.format;
+   enum pipe_format p_format = vk_format_to_pipe_format(vk_format);
+   assert(p_format != PIPE_FORMAT_NONE);
+
+   if (!nil_format_supports_color_targets(dev->pdev->dev, p_format)) {
+      memset(&clear_value, 0, sizeof(clear_value));
+      util_format_pack_rgba(p_format, clear_value.color.uint32,
+                            pColor->uint32, 1);
+
+      unsigned bpp = util_format_get_blocksize(p_format);
+      vk_format = vk_packed_int_format_for_size(bpp);
+      p_format = vk_format_to_pipe_format(vk_format);
+   }
+
+   clear_image(cmd, image, imageLayout, vk_format,
                &clear_value, rangeCount, pRanges);
 }
 
