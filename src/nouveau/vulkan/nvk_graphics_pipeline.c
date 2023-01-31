@@ -239,7 +239,9 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
       if (result != VK_SUCCESS)
          goto fail;
 
-      nvk_shader_upload(device, &pipeline->base.shaders[stage]);
+      result = nvk_shader_upload(device, &pipeline->base.shaders[stage]);
+      if (result != VK_SUCCESS)
+         goto fail;
    }
 
    struct nv_push push;

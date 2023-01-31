@@ -711,7 +711,7 @@ nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,
    return VK_SUCCESS;
 }
 
-void
+VkResult
 nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader)
 {
    uint32_t hdr_size = 0;
@@ -741,4 +741,6 @@ nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader)
    if (debug_get_bool_option("NV50_PROG_DEBUG", false))
       nvk_shader_dump(shader);
 #endif
+
+   return VK_SUCCESS;
 }
