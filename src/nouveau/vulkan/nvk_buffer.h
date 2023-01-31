@@ -27,7 +27,7 @@ nvk_push_buffer_ref(struct nouveau_ws_push *push,
 }
 
 static inline uint64_t
-nvk_buffer_address(struct nvk_buffer *buffer, uint64_t offset)
+nvk_buffer_address(const struct nvk_buffer *buffer, uint64_t offset)
 {
    return buffer->mem->bo->offset + buffer->offset + offset;
 }

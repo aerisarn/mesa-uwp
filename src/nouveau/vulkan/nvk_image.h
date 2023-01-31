@@ -34,7 +34,7 @@ nvk_push_image_ref(struct nouveau_ws_push *push,
 }
 
 static inline uint64_t
-nvk_image_base_address(struct nvk_image *image)
+nvk_image_base_address(const struct nvk_image *image)
 {
    return image->mem->bo->offset + image->offset;
 }
