@@ -1,5 +1,6 @@
 libnak_c_files = files(
   'nak.h',
+  'nak_nir.c',
 )
 
 libnak_deps = [
