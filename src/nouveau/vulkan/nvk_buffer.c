@@ -50,8 +50,14 @@ nvk_GetBufferMemoryRequirements2(VkDevice _device,
       .memoryTypeBits = BITFIELD_MASK(device->pdev->mem_type_cnt),
    };
 
-   vk_foreach_struct(ext, pMemoryRequirements->pNext) {
+   vk_foreach_struct_const(ext, pMemoryRequirements->pNext) {
       switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
+         VkMemoryDedicatedRequirements *dedicated = (void *)ext;
+         dedicated->prefersDedicatedAllocation = false;
+         dedicated->requiresDedicatedAllocation = false;
+         break;
+      }
       default:
          nvk_debug_ignored_stype(ext->sType);
          break;

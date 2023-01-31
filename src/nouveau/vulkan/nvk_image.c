@@ -262,8 +262,14 @@ nvk_GetImageMemoryRequirements2(VkDevice _device,
    pMemoryRequirements->memoryRequirements.alignment = 0x1000;
    pMemoryRequirements->memoryRequirements.size = image->nil.size_B;
 
-   vk_foreach_struct_const(ext, pInfo->pNext) {
+   vk_foreach_struct_const(ext, pMemoryRequirements->pNext) {
       switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
+         VkMemoryDedicatedRequirements *dedicated = (void *)ext;
+         dedicated->prefersDedicatedAllocation = false;
+         dedicated->requiresDedicatedAllocation = false;
+         break;
+      }
       default:
          nvk_debug_ignored_stype(ext->sType);
          break;
