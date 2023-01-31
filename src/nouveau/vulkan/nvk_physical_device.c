@@ -33,37 +33,50 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    pFeatures->features = (VkPhysicalDeviceFeatures) {
       .robustBufferAccess = true,
       .fullDrawIndexUint32 = true,
-      .independentBlend = true,
-      .logicOp = true,
-      .multiViewport = true,
-      .samplerAnisotropy = true,
-      .shaderClipDistance = true,
-      .shaderCullDistance = true,
-      .shaderResourceMinLod = true,
       .imageCubeArray = true,
+      .independentBlend = true,
+      /* TODO: geometryShader */
+      /* TODO: tessellationShader */
+      .sampleRateShading = true,
       .dualSrcBlend = true,
+      .logicOp = true,
       .multiDrawIndirect = true,
       .drawIndirectFirstInstance = true,
       .depthClamp = true,
       .depthBiasClamp = true,
       .fillModeNonSolid = true,
       .depthBounds = true,
-      .fragmentStoresAndAtomics = true,
-      .alphaToOne = true,
-      .occlusionQueryPrecise = true,
-      .pipelineStatisticsQuery = true,
-      .sampleRateShading = true,
-      .textureCompressionBC = true,
-      .vertexPipelineStoresAndAtomics = true,
       .wideLines = true,
       .largePoints = true,
-      /* More features */
+      .alphaToOne = true,
+      .multiViewport = true,
+      .samplerAnisotropy = true,
+      .textureCompressionETC2 = false,
+      .textureCompressionBC = true,
+      .textureCompressionASTC_LDR = false,
+      .occlusionQueryPrecise = true,
+      .pipelineStatisticsQuery = true,
+      .vertexPipelineStoresAndAtomics = true,
+      .fragmentStoresAndAtomics = true,
+      /* TODO: shaderTessellationAndGeometryPointSize */
       .shaderStorageImageExtendedFormats = true,
+      /* TODO: shaderStorageImageMultisample */
+      /* TODO: shaderStorageImageReadWithoutFormat */
       .shaderStorageImageWriteWithoutFormat = true,
       .shaderUniformBufferArrayDynamicIndexing = true,
       .shaderSampledImageArrayDynamicIndexing = true,
       .shaderStorageBufferArrayDynamicIndexing = true,
       .shaderStorageImageArrayDynamicIndexing = true,
+      .shaderClipDistance = true,
+      .shaderCullDistance = true,
+      /* TODO: shaderFloat64 */
+      /* TODO: shaderInt64 */
+      /* TODO: shaderInt16 */
+      /* TODO: shaderResourceResidency */
+      .shaderResourceMinLod = true,
+      /* TODO: sparseResidency* */
+      /* TODO: variableMultisampleRate */
+      /* TODO: inheritedQueries */
    };
 
    VkPhysicalDeviceVulkan11Features core_1_1 = {
