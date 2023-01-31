@@ -171,7 +171,7 @@ traces:
     freedreno-a630:
       checksum: 5c0c5da476775dfac94b79e7edb556ce
     zink-a630:
-      checksum: e9c21d9a253cbae19f09ddfa01d9622a
+      checksum: a8dea3dcb341c0f6c786a264dee51766
 
   filament/filament-default.trace:
     freedreno-a306:
