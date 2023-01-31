@@ -178,7 +178,15 @@ mme_imm64(uint64_t imm)
 static inline uint8_t
 __mme_alloc_reg(struct mme_builder *b)
 {
-   return b->reg_alloc++;
+   uint8_t reg = ffs(~b->reg_alloc) - 1;
+   b->reg_alloc |= (1u << reg);
+   return reg;
+}
+
+static inline void
+__mme_free_reg(struct mme_builder *b, uint8_t reg)
+{
+   b->reg_alloc &= ~(1u << reg);
 }
 
 static inline struct mme_value
@@ -189,6 +197,13 @@ mme_alloc_reg(struct mme_builder *b)
       .reg = __mme_alloc_reg(b),
    };
    return val;
+}
+
+static inline void
+mme_free_reg(struct mme_builder *b, struct mme_value val)
+{
+   assert(val.type == MME_VALUE_TYPE_REG);
+   __mme_free_reg(b, val.reg);
 }
 
 static inline struct mme_value
