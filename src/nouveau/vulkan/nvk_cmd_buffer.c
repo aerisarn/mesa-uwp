@@ -16,8 +16,10 @@ nvk_destroy_cmd_buffer(struct nvk_cmd_buffer *cmd_buffer)
 }
 
 static VkResult
-nvk_create_cmd_buffer(struct nvk_device *device, struct nvk_cmd_pool *pool,
-                      VkCommandBufferLevel level, VkCommandBuffer *pCommandBuffer)
+nvk_create_cmd_buffer(struct nvk_device *device,
+                      struct nvk_cmd_pool *pool,
+                      VkCommandBufferLevel level,
+                      VkCommandBuffer *pCommandBuffer)
 {
    struct nvk_cmd_buffer *cmd_buffer;
 
@@ -52,18 +54,21 @@ nvk_reset_cmd_buffer(struct nvk_cmd_buffer *cmd_buffer)
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_CreateCommandPool(VkDevice _device, const VkCommandPoolCreateInfo *pCreateInfo,
-                      const VkAllocationCallbacks *pAllocator, VkCommandPool *pCmdPool)
+nvk_CreateCommandPool(VkDevice _device,
+                      const VkCommandPoolCreateInfo *pCreateInfo,
+                      const VkAllocationCallbacks *pAllocator,
+                      VkCommandPool *pCmdPool)
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
    struct nvk_cmd_pool *pool;
 
-   pool =
-      vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*pool), 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   pool = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*pool), 8,
+                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (pool == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   VkResult result = vk_command_pool_init(&device->vk, &pool->vk, pCreateInfo, pAllocator);
+   VkResult result = vk_command_pool_init(&device->vk, &pool->vk,
+                                          pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, pAllocator, pool);
       return result;
@@ -78,7 +83,8 @@ nvk_CreateCommandPool(VkDevice _device, const VkCommandPoolCreateInfo *pCreateIn
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_DestroyCommandPool(VkDevice _device, VkCommandPool commandPool,
+nvk_DestroyCommandPool(VkDevice _device,
+                       VkCommandPool commandPool,
                        const VkAllocationCallbacks *pAllocator)
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
@@ -102,7 +108,9 @@ nvk_DestroyCommandPool(VkDevice _device, VkCommandPool commandPool,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_ResetCommandPool(VkDevice device, VkCommandPool commandPool, VkCommandPoolResetFlags flags)
+nvk_ResetCommandPool(VkDevice device,
+                     VkCommandPool commandPool,
+                     VkCommandPoolResetFlags flags)
 {
    VK_FROM_HANDLE(nvk_cmd_pool, pool, commandPool);
    VkResult result;
@@ -118,7 +126,9 @@ nvk_ResetCommandPool(VkDevice device, VkCommandPool commandPool, VkCommandPoolRe
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_TrimCommandPool(VkDevice device, VkCommandPool commandPool, VkCommandPoolTrimFlags flags)
+nvk_TrimCommandPool(VkDevice device,
+                    VkCommandPool commandPool,
+                    VkCommandPoolTrimFlags flags)
 {
    VK_FROM_HANDLE(nvk_cmd_pool, pool, commandPool);
 
@@ -179,7 +189,9 @@ nvk_AllocateCommandBuffers(VkDevice _device,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_FreeCommandBuffers(VkDevice device, VkCommandPool commandPool, uint32_t commandBufferCount,
+nvk_FreeCommandBuffers(VkDevice device,
+                       VkCommandPool commandPool,
+                       uint32_t commandBufferCount,
                        const VkCommandBuffer *pCommandBuffers)
 {
    VK_FROM_HANDLE(nvk_cmd_pool, pool, commandPool);
@@ -196,14 +208,16 @@ nvk_FreeCommandBuffers(VkDevice device, VkCommandPool commandPool, uint32_t comm
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_ResetCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferResetFlags flags)
+nvk_ResetCommandBuffer(VkCommandBuffer commandBuffer,
+                       VkCommandBufferResetFlags flags)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd_buffer, commandBuffer);
    return nvk_reset_cmd_buffer(cmd_buffer);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBeginInfo *pBeginInfo)
+nvk_BeginCommandBuffer(VkCommandBuffer commandBuffer,
+                       const VkCommandBufferBeginInfo *pBeginInfo)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
 
@@ -224,5 +238,6 @@ nvk_EndCommandBuffer(VkCommandBuffer commandBuffer)
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_CmdPipelineBarrier2(VkCommandBuffer commandBuffer, const VkDependencyInfo *pDependencyInfo) {
-}
+nvk_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
+                        const VkDependencyInfo *pDependencyInfo)
+{ }
