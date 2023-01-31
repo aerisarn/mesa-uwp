@@ -4,9 +4,20 @@
 #include "cl9097tex.h"
 #include "clb097tex.h"
 
+enum nil_format_support_flags {
+   NIL_FORMAT_SUPPORTS_TEXTURE_BIT        = BITFIELD_BIT(0),
+   NIL_FORMAT_SUPPORTS_BUFFER_BIT         = BITFIELD_BIT(1),
+   NIL_FORMAT_SUPPORTS_STORAGE_BIT        = BITFIELD_BIT(2),
+   NIL_FORMAT_SUPPORTS_RENDER_BIT         = BITFIELD_BIT(3),
+   NIL_FORMAT_SUPPORTS_BLEND_BIT          = BITFIELD_BIT(4),
+   NIL_FORMAT_SUPPORTS_DEPTH_STENCIL_BIT  = BITFIELD_BIT(5),
+   NIL_FORMAT_SUPPORTS_SCANOUT_BIT        = BITFIELD_BIT(6),
+};
+
 struct nil_format_info {
    /* Color of depth/stencil target format */
-   uint32_t czt;
+   unsigned czt:8;
+   unsigned support:24;
    struct nil_tic_format tic;
 };
 
@@ -19,9 +30,19 @@ struct nil_format_info {
  * Z: depth/stencil
  * I: image / surface, implies T
  */
-
-#define G80_ZETA_FORMAT_NONE    0
-#define G80_SURFACE_FORMAT_NONE    0
+#define U_T   NIL_FORMAT_SUPPORTS_TEXTURE_BIT
+#define U_I   U_T | NIL_FORMAT_SUPPORTS_BUFFER_BIT | \
+                    NIL_FORMAT_SUPPORTS_STORAGE_BIT
+#define U_TR  NIL_FORMAT_SUPPORTS_RENDER_BIT | U_T
+#define U_IR  NIL_FORMAT_SUPPORTS_RENDER_BIT | U_I
+#define U_TB  NIL_FORMAT_SUPPORTS_BLEND_BIT | U_TR
+#define U_IB  NIL_FORMAT_SUPPORTS_BLEND_BIT | U_IR
+#define U_TD  NIL_FORMAT_SUPPORTS_SCANOUT_BIT | U_TB
+#define U_TZ  NIL_FORMAT_SUPPORTS_DEPTH_STENCIL_BIT | U_T
+#define U_ID  U_TD | U_I
+#define U_TC  U_TB
+#define U_IC  U_IB
+#define U_t   U_T
 
 #define SF_A(sz) NV9097_TEXHEAD0_COMPONENT_SIZES_##sz
 #define SF_B(sz) NV9097_TEXHEAD0_COMPONENT_SIZES_##sz
@@ -30,6 +51,7 @@ struct nil_format_info {
 #define SF(c, pf, sf, r, g, b, a, t0, t1, t2, t3, sz, u)                \
    [PIPE_FORMAT_##pf] = {                                               \
       .czt = sf,                                                        \
+      .support = U_##u,                                                 \
       .tic = {                                                          \
          SF_##c(sz),                                                    \
          NV9097_TEXHEAD0_R_DATA_TYPE_NUM_##t0,                          \
@@ -335,7 +357,7 @@ nil_format_supports_color_targets(struct nouveau_ws_device *dev,
 {
    assert(format < PIPE_FORMAT_COUNT);
    const struct nil_format_info *fmt = &nil_format_infos[format];
-   return fmt->czt != 0;
+   return fmt->support & NIL_FORMAT_SUPPORTS_RENDER_BIT;
 }
 
 uint8_t
@@ -343,6 +365,7 @@ nil_format_to_color_target(enum pipe_format format)
 {
    assert(format < PIPE_FORMAT_COUNT);
    const struct nil_format_info *fmt = &nil_format_infos[format];
+   assert(fmt->support & NIL_FORMAT_SUPPORTS_RENDER_BIT);
    return fmt->czt;
 }
 
@@ -351,6 +374,7 @@ nil_format_to_depth_stencil(enum pipe_format format)
 {
    assert(format < PIPE_FORMAT_COUNT);
    const struct nil_format_info *fmt = &nil_format_infos[format];
+   assert(fmt->support & NIL_FORMAT_SUPPORTS_DEPTH_STENCIL_BIT);
    return fmt->czt;
 }
 
