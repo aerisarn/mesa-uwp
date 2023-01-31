@@ -197,15 +197,15 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
 
    device->pdev = physical_device;
 
-   device->zero_page = nouveau_ws_bo_new(device->pdev->dev, 0x1000, 0, NOUVEAU_WS_BO_LOCAL);
+   void *zero_map;
+   device->zero_page = nouveau_ws_bo_new_mapped(device->pdev->dev, 0x1000, 0,
+                                                NOUVEAU_WS_BO_LOCAL,
+                                                NOUVEAU_WS_BO_WR, &zero_map);
    if (device->zero_page == NULL)
       goto fail_mutex;
 
-   void *map = nouveau_ws_bo_map(device->zero_page, NOUVEAU_WS_BO_WR);
-   if (map == NULL)
-      goto fail_zero_page;
-   memset(map, 0, 0x1000);
-   nouveau_ws_bo_unmap(device->zero_page, map);
+   memset(zero_map, 0, 0x1000);
+   nouveau_ws_bo_unmap(device->zero_page, zero_map);
 
    result = nvk_device_init_context_draw_state(device);
    if (result != VK_SUCCESS)
