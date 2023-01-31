@@ -17,18 +17,9 @@
 #include "push906f.h"
 
 static void
-nouveau_copy_linear(
-   struct nouveau_ws_push *push,
-   struct nouveau_ws_bo *src, uint64_t src_offset,
-   struct nouveau_ws_bo *dst, uint64_t dst_offset,
-   uint64_t size)
+nouveau_copy_linear(struct nouveau_ws_push *push,
+                    uint64_t src_addr, uint64_t dst_addr, uint64_t size)
 {
-   VkDeviceSize src_addr = src->offset + src_offset;
-   VkDeviceSize dst_addr = dst->offset + dst_offset;
-
-   nouveau_ws_push_ref(push, src, NOUVEAU_WS_BO_RD);
-   nouveau_ws_push_ref(push, dst, NOUVEAU_WS_BO_WR);
-
    while (size) {
       unsigned bytes = MIN2(size, 1 << 17);
 
@@ -223,16 +214,17 @@ nvk_CmdCopyBuffer(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_buffer, src, srcBuffer);
    VK_FROM_HANDLE(nvk_buffer, dst, dstBuffer);
-   struct nouveau_ws_push *push = cmd->push;
+
+   nvk_push_buffer_ref(cmd->push, src, NOUVEAU_WS_BO_RD);
+   nvk_push_buffer_ref(cmd->push, dst, NOUVEAU_WS_BO_WR);
 
    for (unsigned r = 0; r < regionCount; r++) {
       const VkBufferCopy *region = &pRegions[r];
 
-      nouveau_copy_linear(
-         push,
-         src->mem->bo, src->offset + region->srcOffset,
-         dst->mem->bo, dst->offset + region->dstOffset,
-         region->size);
+      nouveau_copy_linear(cmd->push,
+                          nvk_buffer_address(src, region->srcOffset),
+                          nvk_buffer_address(dst, region->dstOffset),
+                          region->size);
    }
 }
 
