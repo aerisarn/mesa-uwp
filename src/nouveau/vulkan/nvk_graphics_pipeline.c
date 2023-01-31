@@ -9,6 +9,7 @@
 #include "nouveau_context.h"
 
 #include "nvk_cl9097.h"
+#include "nvk_clb197.h"
 #include "nvk_clc397.h"
 
 static void
@@ -283,6 +284,15 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
             .fraction_of_max_quads_per_subtile                 = 0x20,
          });
          P_NV9097_SET_SUBTILING_PERF_KNOB_B(p, 0x20);
+
+         P_IMMD(p, NV9097, SET_API_MANDATED_EARLY_Z, shader->fs.early_z);
+
+         if (device->ctx->eng3d.cls >= MAXWELL_B) {
+            P_IMMD(p, NVB197, SET_POST_Z_PS_IMASK,
+                   shader->fs.post_depth_coverage);
+         } else {
+            assert(!shader->fs.post_depth_coverage);
+         }
 
          P_MTHD(p, NV9097, SET_ZCULL_BOUNDS);
          P_INLINE_DATA(p, shader->flags[0]);
