@@ -1,7 +1,10 @@
 #include "nil_format.h"
 
+#include "nouveau_device.h"
+
 #include "cl9097.h"
 #include "cl9097tex.h"
+#include "cla297.h"
 #include "clb097tex.h"
 
 enum nil_format_support_flags {
@@ -352,12 +355,75 @@ static const struct nil_format_info nil_format_infos[PIPE_FORMAT_COUNT] =
 };
 
 bool
+nil_format_supports_texturing(struct nouveau_ws_device *dev,
+                              enum pipe_format format)
+{
+   assert(format < PIPE_FORMAT_COUNT);
+   const struct nil_format_info *fmt = &nil_format_infos[format];
+   if (!(fmt->support & NIL_FORMAT_SUPPORTS_TEXTURE_BIT))
+      return false;
+
+   const struct util_format_description *desc = util_format_description(format);
+   if (desc->layout == UTIL_FORMAT_LAYOUT_ETC ||
+       desc->layout == UTIL_FORMAT_LAYOUT_ASTC) {
+      return dev->device_type == NOUVEAU_WS_DEVICE_TYPE_SOC &&
+             dev->cls_eng3d >= KEPLER_C;
+   }
+
+   return true;
+}
+
+bool
+nil_format_supports_filtering(struct nouveau_ws_device *dev,
+                              enum pipe_format format)
+{
+   return nil_format_supports_texturing(dev, format) &&
+          !util_format_is_pure_integer(format);
+}
+
+bool
+nil_format_supports_buffer(struct nouveau_ws_device *dev,
+                           enum pipe_format format)
+{
+   assert(format < PIPE_FORMAT_COUNT);
+   const struct nil_format_info *fmt = &nil_format_infos[format];
+   return fmt->support & NIL_FORMAT_SUPPORTS_BUFFER_BIT;
+}
+
+bool
+nil_format_supports_storage(struct nouveau_ws_device *dev,
+                            enum pipe_format format)
+{
+   assert(format < PIPE_FORMAT_COUNT);
+   const struct nil_format_info *fmt = &nil_format_infos[format];
+   return fmt->support & NIL_FORMAT_SUPPORTS_STORAGE_BIT;
+}
+
+bool
 nil_format_supports_color_targets(struct nouveau_ws_device *dev,
                                   enum pipe_format format)
 {
    assert(format < PIPE_FORMAT_COUNT);
    const struct nil_format_info *fmt = &nil_format_infos[format];
    return fmt->support & NIL_FORMAT_SUPPORTS_RENDER_BIT;
+}
+
+bool
+nil_format_supports_blending(struct nouveau_ws_device *dev,
+                             enum pipe_format format)
+{
+   assert(format < PIPE_FORMAT_COUNT);
+   const struct nil_format_info *fmt = &nil_format_infos[format];
+   return fmt->support & NIL_FORMAT_SUPPORTS_BLEND_BIT;
+}
+
+bool
+nil_format_supports_depth_stencil(struct nouveau_ws_device *dev,
+                                  enum pipe_format format)
+{
+   assert(format < PIPE_FORMAT_COUNT);
+   const struct nil_format_info *fmt = &nil_format_infos[format];
+   return fmt->support & NIL_FORMAT_SUPPORTS_DEPTH_STENCIL_BIT;
 }
 
 uint8_t

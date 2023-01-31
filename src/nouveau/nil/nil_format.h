@@ -11,7 +11,25 @@ struct nouveau_ws_device;
 
 /* We don't have our own format enum; we use PIPE_FORMAT for everything */
 
+bool nil_format_supports_texturing(struct nouveau_ws_device *dev,
+                                   enum pipe_format format);
+
+bool nil_format_supports_filtering(struct nouveau_ws_device *dev,
+                                   enum pipe_format format);
+
+bool nil_format_supports_buffer(struct nouveau_ws_device *dev,
+                                enum pipe_format format);
+
+bool nil_format_supports_storage(struct nouveau_ws_device *dev,
+                                 enum pipe_format format);
+
 bool nil_format_supports_color_targets(struct nouveau_ws_device *dev,
+                                       enum pipe_format format);
+
+bool nil_format_supports_blending(struct nouveau_ws_device *dev,
+                                  enum pipe_format format);
+
+bool nil_format_supports_depth_stencil(struct nouveau_ws_device *dev,
                                        enum pipe_format format);
 
 uint8_t nil_format_to_color_target(enum pipe_format format);
