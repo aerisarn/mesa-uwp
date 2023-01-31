@@ -96,6 +96,39 @@ lower_load_global_constant_offset_instr(nir_builder *b, nir_instr *instr,
    return true;
 }
 
+static bool
+lower_fragcoord_instr(nir_builder *b, nir_instr *instr, UNUSED void *_data)
+{
+   assert(b->shader->info.stage == MESA_SHADER_FRAGMENT);
+
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   if (intrin->intrinsic != nir_intrinsic_load_frag_coord)
+      return false;
+
+   nir_variable *var = NULL;
+   nir_foreach_shader_in_variable(in, b->shader) {
+      if (in->data.location == VARYING_SLOT_POS) {
+         var = in;
+         break;
+      }
+   }
+   if (var == NULL) {
+      var = nir_variable_create(b->shader, nir_var_shader_in,
+                                glsl_vec4_type(), "gl_FragCoord");
+      var->data.location = VARYING_SLOT_POS;
+   }
+
+   b->cursor = nir_before_instr(&intrin->instr);
+   nir_ssa_def *pos = nir_load_var(b, var);
+
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, pos);
+
+   return true;
+}
+
 static int
 count_location_slots(const struct glsl_type *type, bool bindless)
 {
@@ -121,6 +154,11 @@ nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
    NIR_PASS(_, nir, nir_lower_vars_to_ssa);
 
    NIR_PASS(_, nir, nir_lower_system_values);
+
+   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS(_, nir, nir_shader_instructions_pass, lower_fragcoord_instr,
+               nir_metadata_block_index | nir_metadata_dominance, NULL);
+   }
 
    nir_lower_compute_system_values_options csv_options = {
    };
