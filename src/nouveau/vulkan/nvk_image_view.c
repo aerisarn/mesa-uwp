@@ -49,7 +49,7 @@ nvk_image_view_destroy(struct nvk_device *device,
 
    if (view->storage_desc_index) {
       nvk_descriptor_table_free(device, &device->images,
-                                view->sampled_desc_index);
+                                view->storage_desc_index);
    }
 
    vk_image_view_destroy(&device->vk, pAllocator, &view->vk);
