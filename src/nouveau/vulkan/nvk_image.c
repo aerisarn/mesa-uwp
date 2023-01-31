@@ -216,6 +216,9 @@ nvk_image_init(struct nvk_device *device,
 {
    vk_image_init(&device->vk, &image->vk, pCreateInfo);
 
+   /* TODO: Implement multisampling */
+   assert(pCreateInfo->samples == VK_SAMPLE_COUNT_1_BIT);
+
    enum nil_image_usage_flags usage = 0; /* TODO */
    if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR)
       usage |= NIL_IMAGE_USAGE_LINEAR_BIT;
