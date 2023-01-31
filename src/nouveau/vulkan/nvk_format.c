@@ -2,6 +2,7 @@
 
 #include "nvtypes.h"
 #include "classes/cl902d.h"
+#include "classes/cl90c0.h"
 
 /*
  * nvidia names
@@ -156,5 +157,10 @@ struct nvk_format nvk_formats[NVK_FORMATS] = {
       .vk_format = VK_FORMAT_R32G32B32A32_SFLOAT,
       .hw_format = NV902D_SET_SRC_FORMAT_V_RF32_GF32_BF32_AF32,
       .supports_2d_blit = true,
+   },
+   {
+      .vk_format = VK_FORMAT_R32_UINT,
+      .hw_format = NV90C0_SET_SU_LD_ST_TARGET_FORMAT_COLOR_RU32,
+      .supports_2d_blit = false,
    },
 };

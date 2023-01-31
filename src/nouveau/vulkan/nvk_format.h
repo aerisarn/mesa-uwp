@@ -10,7 +10,7 @@ struct nvk_format {
    bool supports_2d_blit:1;
 };
 
-#define NVK_FORMATS 27
+#define NVK_FORMATS 28
 extern struct nvk_format nvk_formats[NVK_FORMATS];
 
 #endif
