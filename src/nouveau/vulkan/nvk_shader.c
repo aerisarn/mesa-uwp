@@ -76,19 +76,48 @@ lower_load_global_constant_offset_instr(nir_builder *b, nir_instr *instr,
       return false;
 
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-   if (intrin->intrinsic != nir_intrinsic_load_global_constant_offset)
+   if (intrin->intrinsic != nir_intrinsic_load_global_constant_offset &&
+       intrin->intrinsic != nir_intrinsic_load_global_constant_bounded)
       return false;
 
    b->cursor = nir_before_instr(&intrin->instr);
 
+   nir_ssa_def *base_addr = intrin->src[0].ssa;
+   nir_ssa_def *offset = intrin->src[1].ssa;
+
+   nir_ssa_def *zero = NULL;
+   if (intrin->intrinsic == nir_intrinsic_load_global_constant_bounded) {
+      nir_ssa_def *bound = intrin->src[2].ssa;
+
+      unsigned bit_size = intrin->dest.ssa.bit_size;
+      assert(bit_size >= 8 && bit_size % 8 == 0);
+      unsigned byte_size = bit_size / 8;
+
+      zero = nir_imm_zero(b, intrin->num_components, bit_size);
+
+      unsigned load_size = byte_size * intrin->num_components;
+
+      nir_ssa_def *sat_offset =
+         nir_umin(b, offset, nir_imm_int(b, UINT32_MAX - (load_size - 1)));
+      nir_ssa_def *in_bounds =
+         nir_ilt(b, nir_iadd_imm(b, sat_offset, load_size - 1), bound);
+
+      nir_push_if(b, in_bounds);
+   }
+
    nir_ssa_def *val =
       nir_build_load_global(b, intrin->dest.ssa.num_components,
                             intrin->dest.ssa.bit_size,
-                            nir_iadd(b, intrin->src[0].ssa,
-                                        nir_u2u64(b, intrin->src[1].ssa)),
+                            nir_iadd(b, base_addr, nir_u2u64(b, offset)),
                             .access = nir_intrinsic_access(intrin),
                             .align_mul = nir_intrinsic_align_mul(intrin),
                             .align_offset = nir_intrinsic_align_offset(intrin));
+
+   if (intrin->intrinsic == nir_intrinsic_load_global_constant_bounded) {
+      nir_pop_if(b, NULL);
+      val = nir_if_phi(b, val, zero);
+   }
+
    nir_ssa_def_rewrite_uses(&intrin->dest.ssa, val);
 
    return true;
