@@ -336,13 +336,25 @@ impl SM75Instr {
     }
 
     fn encode_iadd3(&mut self, op: &OpIAdd3) {
-        self.encode_alu(
-            0x010,
-            Some(op.dst),
-            Some(op.mod_src(0)),
-            op.mod_src(1),
-            Some(op.mod_src(2)),
-        );
+        /* TODO: This should happen as part of a legalization pass */
+        assert!(op.srcs[0].is_reg_or_zero());
+        if op.srcs[2].is_reg_or_zero() {
+            self.encode_alu(
+                0x010,
+                Some(op.dst),
+                Some(op.mod_src(0)),
+                op.mod_src(1),
+                Some(op.mod_src(2)),
+            );
+        } else {
+            self.encode_alu(
+                0x010,
+                Some(op.dst),
+                Some(op.mod_src(0)),
+                op.mod_src(2),
+                Some(op.mod_src(1)),
+            );
+        }
 
         self.set_pred_src(81..84, op.carry[0]);
         self.set_pred_src(84..87, op.carry[1]);

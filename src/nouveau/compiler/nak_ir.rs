@@ -277,6 +277,13 @@ impl Ref {
             Src::SSA(ssa) => Some(ssa),
         }
     }
+
+    pub fn is_reg_or_zero(&self) -> bool {
+        match self {
+            Ref::Zero | Ref::SSA(_) | Ref::Reg(_) => true,
+            Ref::Imm(_) | Ref::CBuf(_) => false,
+        }
+    }
 }
 
 impl fmt::Display for Ref {
