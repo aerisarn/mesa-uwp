@@ -838,6 +838,25 @@ impl Shader {
             }
         })
     }
+
+    pub fn lower_zero_to_gpr255(&mut self) {
+        for f in &mut self.functions {
+            for b in &mut f.blocks {
+                for instr in &mut b.instrs {
+                    for dst in instr.dsts_mut() {
+                        if dst.is_zero() {
+                            *dst = Dst::Reg(RegRef::zero(RegFile::GPR, 1))
+                        }
+                    }
+                    for src in instr.srcs_mut() {
+                        if src.is_zero() {
+                            *src = Src::Reg(RegRef::zero(RegFile::GPR, 1))
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl fmt::Display for Shader {
