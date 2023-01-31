@@ -53,6 +53,7 @@ struct nvk_shader {
       uint8_t colors;
       uint8_t color_interp[2];
       bool sample_mask_in;
+      bool uses_sample_shading;
       bool force_persample_interp;
       bool flatshade;
       bool reads_framebuffer;

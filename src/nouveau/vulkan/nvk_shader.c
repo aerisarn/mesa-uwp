@@ -697,6 +697,7 @@ nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,
       break;
    case PIPE_SHADER_FRAGMENT:
       ret = nvk_fs_gen_header(shader, &info_out);
+      shader->fs.uses_sample_shading = nir->info.fs.uses_sample_shading;
       break;
    case PIPE_SHADER_COMPUTE:
       break;

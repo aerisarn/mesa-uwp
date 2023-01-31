@@ -63,13 +63,29 @@ nvk_populate_fs_key(struct nvk_fs_key *key,
 
 static void
 emit_pipeline_ms_state(struct nv_push *p,
-                       const struct vk_multisample_state *ms)
+                       const struct vk_multisample_state *ms,
+                       bool force_max_samples)
 {
-   P_IMMD(p, NV9097, SET_ANTI_ALIAS, ffs(ms->rasterization_samples) - 1);
-   P_IMMD(p, NV9097, SET_ANTI_ALIAS_ENABLE, ms->sample_shading_enable);
+   P_IMMD(p, NV9097, SET_ANTI_ALIAS_ENABLE, ms->rasterization_samples > 1);
    P_IMMD(p, NV9097, SET_ANTI_ALIAS_ALPHA_CONTROL, {
       .alpha_to_coverage   = ms->alpha_to_coverage_enable,
       .alpha_to_one        = ms->alpha_to_one_enable,
+   });
+
+   P_MTHD(p, NV9097, SET_SAMPLE_MASK_X0_Y0);
+   P_NV9097_SET_SAMPLE_MASK_X0_Y0(p, ms->sample_mask & 0xffff);
+   P_NV9097_SET_SAMPLE_MASK_X1_Y0(p, ms->sample_mask & 0xffff);
+   P_NV9097_SET_SAMPLE_MASK_X0_Y1(p, ms->sample_mask & 0xffff);
+   P_NV9097_SET_SAMPLE_MASK_X1_Y1(p, ms->sample_mask & 0xffff);
+
+   const float min_sample_shading = force_max_samples ? 1 :
+      (ms->sample_shading_enable ? CLAMP(ms->min_sample_shading, 0, 1) : 0);
+   uint32_t min_samples = ceilf(ms->rasterization_samples * min_sample_shading);
+   min_samples = util_next_power_of_two(MAX2(1, min_samples));
+
+   P_IMMD(p, NV9097, SET_HYBRID_ANTI_ALIAS_CONTROL, {
+      .passes = min_samples,
+      .centroid = min_samples > 1 ? CENTROID_PER_PASS : CENTROID_PER_FRAGMENT,
    });
 
    /* TODO */
@@ -235,6 +251,8 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
    nv_push_init(&push, pipeline->push_data, ARRAY_SIZE(pipeline->push_data));
    struct nv_push *p = &push;
 
+   bool force_max_samples = false;
+
    struct nvk_shader *last_geom = NULL;
    for (gl_shader_stage stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       struct nvk_shader *shader = &pipeline->base.shaders[stage];
@@ -305,6 +323,14 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
 
          P_MTHD(p, NV9097, SET_ZCULL_BOUNDS);
          P_INLINE_DATA(p, shader->flags[0]);
+
+         /* If we're using the incoming sample mask and doing sample shading,
+          * we have to do sample shading "to the max", otherwise there's no
+          * way to tell which sets of samples are covered by the current
+          * invocation.
+          */
+         force_max_samples = shader->fs.sample_mask_in ||
+                             shader->fs.uses_sample_shading;
          break;
 
       default:
@@ -323,7 +349,7 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
    if (state.ts) emit_pipeline_ts_state(&push, state.ts);
    if (state.vp) emit_pipeline_vp_state(&push, state.vp);
    if (state.rs) emit_pipeline_rs_state(&push, state.rs);
-   if (state.ms) emit_pipeline_ms_state(&push, state.ms);
+   if (state.ms) emit_pipeline_ms_state(&push, state.ms, force_max_samples);
    if (state.cb) emit_pipeline_cb_state(&push, state.cb);
 
    pipeline->push_dw_count = nv_push_dw_count(&push);
