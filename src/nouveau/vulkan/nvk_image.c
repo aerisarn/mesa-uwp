@@ -209,9 +209,10 @@ vk_image_type_to_nil_dim(VkImageType type)
    }
 }
 
-static VkResult nvk_image_init(struct nvk_device *device,
-   struct nvk_image *image,
-   const VkImageCreateInfo *pCreateInfo)
+static VkResult
+nvk_image_init(struct nvk_device *device,
+               struct nvk_image *image,
+               const VkImageCreateInfo *pCreateInfo)
 {
    vk_image_init(&device->vk, &image->vk, pCreateInfo);
 
@@ -255,8 +256,8 @@ nvk_CreateImage(VkDevice _device,
    struct nvk_image *image;
    VkResult result;
 
-   image = vk_zalloc2(
-      &device->vk.alloc, pAllocator, sizeof(*image), 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   image = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*image), 8,
+                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!image)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
