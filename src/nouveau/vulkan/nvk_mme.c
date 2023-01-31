@@ -1,6 +1,7 @@
 #include "nvk_mme.h"
 
 #include "nvk_device.h"
+#include "nvk_physical_device.h"
 
 static const nvk_mme_builder_func mme_builders[NVK_MME_COUNT] = {
    [NVK_MME_CLEAR_VIEWS]            = nvk_mme_clear_views,
@@ -19,7 +20,7 @@ uint32_t *
 nvk_build_mme(struct nvk_device *dev, enum nvk_mme mme, size_t *size_out)
 {
    struct mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &nvk_device_physical(dev)->info);
 
    mme_builders[mme](dev, &b);
 

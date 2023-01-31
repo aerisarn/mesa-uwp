@@ -3,6 +3,7 @@
 
 #include "mme_value.h"
 #include "mme_tu104.h"
+#include "nv_device_info.h"
 
 #include "util/bitscan.h"
 #include "util/enum_operators.h"
@@ -68,10 +69,10 @@ struct mme_builder {
 };
 
 static inline void
-mme_builder_init(struct mme_builder *b)
+mme_builder_init(struct mme_builder *b, struct nv_device_info *dev)
 {
    memset(b, 0, sizeof(*b));
-   b->cls = MME_CLS_TURING;
+   b->cls = dev->cls_eng3d;
 
    if (b->cls >= MME_CLS_TURING)
       mme_tu104_builder_init(b);

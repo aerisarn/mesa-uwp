@@ -38,9 +38,9 @@ public:
    struct nv_push *p;
    uint64_t data_addr;
    uint32_t *data;
+   struct nouveau_ws_device *dev;
 
 private:
-   struct nouveau_ws_device *dev;
    struct nouveau_ws_context *ctx;
    struct nouveau_ws_bo *data_bo;
    struct nouveau_ws_bo *push_bo;
@@ -272,7 +272,7 @@ TEST_F(mme_tu104_sim_test, sanity)
    const uint32_t canary = 0xc0ffee01;
 
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_store_imm_addr(&b, data_addr, mme_imm(canary));
 
@@ -285,7 +285,7 @@ TEST_F(mme_tu104_sim_test, sanity)
 TEST_F(mme_tu104_sim_test, multi_param)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value v0 = mme_alloc_reg(&b);
    mme_value v1 = mme_alloc_reg(&b);
@@ -323,7 +323,7 @@ TEST_F(mme_tu104_sim_test, multi_param)
 TEST_F(mme_tu104_sim_test, pred_param)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value v0 = mme_load(&b);
    mme_value v1 = mme_mov(&b, mme_imm(240));
@@ -358,7 +358,7 @@ TEST_F(mme_tu104_sim_test, pred_param)
 TEST_F(mme_tu104_sim_test, out_imm0)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_mthd(&b, NVC597_SET_REPORT_SEMAPHORE_A);
    mme_emit(&b, mme_imm(high32(data_addr + 0)));
@@ -387,7 +387,7 @@ TEST_F(mme_tu104_sim_test, out_imm0)
 TEST_F(mme_tu104_sim_test, out_imm1)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_mthd(&b, NVC597_SET_REPORT_SEMAPHORE_A);
    mme_emit(&b, mme_imm(high32(data_addr + 0)));
@@ -416,7 +416,7 @@ TEST_F(mme_tu104_sim_test, out_imm1)
 TEST_F(mme_tu104_sim_test, out_immhigh0)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_mthd(&b, NVC597_SET_REPORT_SEMAPHORE_A);
    mme_emit(&b, mme_imm(high32(data_addr + 0)));
@@ -445,7 +445,7 @@ TEST_F(mme_tu104_sim_test, out_immhigh0)
 TEST_F(mme_tu104_sim_test, out_immhigh1)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_mthd(&b, NVC597_SET_REPORT_SEMAPHORE_A);
    mme_emit(&b, mme_imm(high32(data_addr + 0)));
@@ -474,7 +474,7 @@ TEST_F(mme_tu104_sim_test, out_immhigh1)
 TEST_F(mme_tu104_sim_test, out_imm32)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_mthd(&b, NVC597_SET_REPORT_SEMAPHORE_A);
    mme_emit(&b, mme_imm(high32(data_addr + 0)));
@@ -507,7 +507,7 @@ TEST_F(mme_tu104_sim_test, reg_imm32)
    const uint32_t canary = 0xc0ffee01;
 
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value v = mme_alloc_reg(&b);
 
@@ -550,7 +550,7 @@ TEST_F(mme_tu104_sim_test, pred_alu)
 
    for (uint32_t i = 0; i < ARRAY_SIZE(preds); i++) {
       mme_builder b;
-      mme_builder_init(&b);
+      mme_builder_init(&b, &dev->info);
 
       mme_value pred = mme_load(&b);
       mme_value v0 = mme_mov(&b, mme_imm(i * 100 + 13));
@@ -606,7 +606,7 @@ TEST_F(mme_tu104_sim_test, pred_out)
 
    for (uint32_t i = 0; i < ARRAY_SIZE(preds); i++) {
       mme_builder b;
-      mme_builder_init(&b);
+      mme_builder_init(&b, &dev->info);
 
       mme_value pred = mme_load(&b);
 
@@ -657,7 +657,7 @@ TEST_F(mme_tu104_sim_test, pred_out)
 TEST_F(mme_tu104_sim_test, add)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value x = mme_load(&b);
    mme_value y = mme_load(&b);
@@ -676,7 +676,7 @@ TEST_F(mme_tu104_sim_test, add)
 TEST_F(mme_tu104_sim_test, add_imm)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value x = mme_load(&b);
 
@@ -722,7 +722,7 @@ TEST_F(mme_tu104_sim_test, add_imm)
 TEST_F(mme_tu104_sim_test, addc)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    struct mme_value64 x = { mme_load(&b), mme_load(&b) };
    struct mme_value64 y = { mme_load(&b), mme_load(&b) };
@@ -746,7 +746,7 @@ TEST_F(mme_tu104_sim_test, addc)
 TEST_F(mme_tu104_sim_test, addc_imm)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value x_lo = mme_load(&b);
    mme_value x_hi = mme_load(&b);
@@ -847,7 +847,7 @@ TEST_F(mme_tu104_sim_test, addc_imm)
 TEST_F(mme_tu104_sim_test, sub)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value x = mme_load(&b);
    mme_value y = mme_load(&b);
@@ -866,7 +866,7 @@ TEST_F(mme_tu104_sim_test, sub)
 TEST_F(mme_tu104_sim_test, subb)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    struct mme_value64 x = { mme_load(&b), mme_load(&b) };
    struct mme_value64 y = { mme_load(&b), mme_load(&b) };
@@ -890,7 +890,7 @@ TEST_F(mme_tu104_sim_test, subb)
 TEST_F(mme_tu104_sim_test, mul)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value x = mme_load(&b);
    mme_value y = mme_load(&b);
@@ -909,7 +909,7 @@ TEST_F(mme_tu104_sim_test, mul)
 TEST_F(mme_tu104_sim_test, mul_imm)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value x = mme_load(&b);
 
@@ -944,7 +944,7 @@ TEST_F(mme_tu104_sim_test, mul_imm)
 TEST_F(mme_tu104_sim_test, mul_mulh)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value x = mme_load(&b);
    mme_value y = mme_load(&b);
@@ -972,7 +972,7 @@ mme_mulu(struct mme_builder *b, struct mme_value x, struct mme_value y)
 TEST_F(mme_tu104_sim_test, mulu_imm)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value x = mme_load(&b);
 
@@ -1007,7 +1007,7 @@ TEST_F(mme_tu104_sim_test, mulu_imm)
 TEST_F(mme_tu104_sim_test, mulu_mulh)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value x = mme_load(&b);
    mme_value y = mme_load(&b);
@@ -1029,7 +1029,7 @@ TEST_F(mme_tu104_sim_test, mulu_mulh)
 TEST_F(mme_tu104_sim_test, clz)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value bits = mme_clz(&b, mme_load(&b));
    mme_store_imm_addr(&b, data_addr, bits);
@@ -1046,7 +1046,7 @@ TEST_F(mme_tu104_sim_test, clz)
 TEST_F(mme_tu104_sim_test, op)                                       \
 {                                                                    \
    mme_builder b;                                                    \
-   mme_builder_init(&b);                                             \
+   mme_builder_init(&b, &dev->info);                                 \
                                                                      \
    mme_value val = mme_load(&b);                                     \
    mme_value shift1 = mme_load(&b);                                  \
@@ -1074,7 +1074,7 @@ SHIFT_TEST(sra)
 TEST_F(mme_tu104_sim_test, op)                                       \
 {                                                                    \
    mme_builder b;                                                    \
-   mme_builder_init(&b);                                             \
+   mme_builder_init(&b, &dev->info);                                 \
                                                                      \
    mme_value x = mme_load(&b);                                       \
    mme_value y = mme_load(&b);                                       \
@@ -1104,7 +1104,7 @@ BITOP_TEST(xor)
 TEST_F(mme_tu104_sim_test, merge)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value x = mme_load(&b);
    mme_value y = mme_load(&b);
@@ -1134,7 +1134,7 @@ TEST_F(mme_tu104_sim_test, merge)
 TEST_F(mme_tu104_sim_test, op)                  \
 {                                               \
    mme_builder b;                               \
-   mme_builder_init(&b);                        \
+   mme_builder_init(&b, &dev->info);            \
                                                 \
    mme_value x = mme_load(&b);                  \
    mme_value y = mme_load(&b);                  \
@@ -1191,7 +1191,7 @@ mme_inc_whole_inst(mme_builder *b, mme_value val)
 TEST_F(mme_tu104_sim_test, loop)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value count = mme_load(&b);
 
@@ -1231,7 +1231,7 @@ TEST_F(mme_tu104_sim_test, loop)
 TEST_F(mme_tu104_sim_test, jal)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value x = mme_mov(&b, mme_zero());
    mme_value y = mme_mov(&b, mme_zero());
@@ -1265,7 +1265,7 @@ TEST_F(mme_tu104_sim_test, jal)
 TEST_F(mme_tu104_sim_test, bxx_fwd)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value vals[10];
    for (uint32_t i = 0; i < 10; i++)
@@ -1291,7 +1291,7 @@ TEST_F(mme_tu104_sim_test, bxx_fwd)
 TEST_F(mme_tu104_sim_test, bxx_bwd)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value vals[15];
    for (uint32_t i = 0; i < 15; i++)
@@ -1346,7 +1346,7 @@ static bool c_ine(int32_t x, int32_t y) { return x != y; };
 TEST_F(mme_tu104_sim_test, if_##op)                                  \
 {                                                                    \
    mme_builder b;                                                    \
-   mme_builder_init(&b);                                             \
+   mme_builder_init(&b, &dev->info);                                 \
                                                                      \
    mme_value x = mme_load(&b);                                       \
    mme_value y = mme_load(&b);                                       \
@@ -1398,7 +1398,7 @@ IF_TEST(ine)
 TEST_F(mme_tu104_sim_test, while_##op)                \
 {                                                     \
    mme_builder b;                                     \
-   mme_builder_init(&b);                              \
+   mme_builder_init(&b, &dev->info);                  \
                                                       \
    mme_value x = mme_mov(&b, mme_zero());             \
    mme_value y = mme_mov(&b, mme_zero());             \
@@ -1462,7 +1462,7 @@ WHILE_TEST(ine, 0, 1, 7)
 TEST_F(mme_tu104_sim_test, do_ble)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_alu(&b, R5, ADD, LOAD0, ZERO);
    mme_alu(&b, R6, ADD, ZERO, ZERO);
@@ -1497,7 +1497,7 @@ TEST_F(mme_tu104_sim_test, do_ble)
 TEST_F(mme_tu104_sim_test, dread_dwrite)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value x = mme_load(&b);
    mme_value y = mme_load(&b);
@@ -1526,7 +1526,7 @@ TEST_F(mme_tu104_sim_test, dwrite_dma)
    const uint32_t canary8 = canary5 & 0x00ffff00;
 
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value x = mme_load(&b);
    mme_value y = mme_load(&b);
@@ -1567,7 +1567,7 @@ TEST_F(mme_tu104_sim_test, dram_limit)
    static const uint32_t chunk_size = 32;
 
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value start = mme_load(&b);
    mme_value count = mme_load(&b);
@@ -1609,7 +1609,7 @@ TEST_F(mme_tu104_sim_test, dram_limit)
 TEST_F(mme_tu104_sim_test, dma_read_fifoed)
 {
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_mthd(&b, NVC597_SET_MME_DATA_RAM_ADDRESS);
    mme_emit(&b, mme_zero());
@@ -1647,7 +1647,7 @@ TEST_F(mme_tu104_sim_test, scratch_limit)
    static const uint32_t chunk_size = 32;
 
    mme_builder b;
-   mme_builder_init(&b);
+   mme_builder_init(&b, &dev->info);
 
    mme_value start = mme_load(&b);
    mme_value count = mme_load(&b);
