@@ -114,12 +114,14 @@ nvk_cmd_buffer_new_push(struct nvk_cmd_buffer *cmd)
 static void
 nvk_cmd_buffer_flush_push(struct nvk_cmd_buffer *cmd)
 {
-   struct nvk_cmd_push push = {
-      .bo = cmd->push_bo,
-      .start_dw = cmd->push.start - (uint32_t *)cmd->push_bo->map,
-      .dw_count = nv_push_dw_count(&cmd->push),
-   };
-   util_dynarray_append(&cmd->pushes, struct nvk_cmd_push, push);
+   if (likely(cmd->push_bo != NULL)) {
+      struct nvk_cmd_push push = {
+         .bo = cmd->push_bo,
+         .start_dw = cmd->push.start - (uint32_t *)cmd->push_bo->map,
+         .dw_count = nv_push_dw_count(&cmd->push),
+      };
+      util_dynarray_append(&cmd->pushes, struct nvk_cmd_push, push);
+   }
 
    cmd->push.start = cmd->push.end;
 }
