@@ -51,6 +51,8 @@ nvk_create_cmd_buffer(struct vk_command_pool *vk_pool,
 
    cmd->vk.dynamic_graphics_state.vi =
       &cmd->state.gfx._dynamic_vi;
+   cmd->vk.dynamic_graphics_state.ms.sample_locations =
+      &cmd->state.gfx._dynamic_sl;
 
    list_inithead(&cmd->bos);
    util_dynarray_init(&cmd->pushes, NULL);

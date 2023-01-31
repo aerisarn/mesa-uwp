@@ -9,6 +9,7 @@
 #include "nvk_pipeline.h"
 
 #include "nil_format.h"
+#include "util/bitpack_helpers.h"
 #include "vulkan/runtime/vk_render_pass.h"
 #include "vulkan/util/vk_format.h"
 
@@ -909,6 +910,69 @@ nvk_flush_rs_state(struct nvk_cmd_buffer *cmd)
    }
 }
 
+static VkSampleLocationEXT
+vk_sample_location(const struct vk_sample_locations_state *sl,
+                   uint32_t x, uint32_t y, uint32_t s)
+{
+   x = x % sl->grid_size.width;
+   y = y % sl->grid_size.height;
+
+   return sl->locations[(x + y * sl->grid_size.width) * sl->per_pixel + s];
+}
+
+struct nvk_sample_location {
+   uint8_t x_u4:4;
+   uint8_t y_u4:4;
+};
+
+static struct nvk_sample_location
+vk_to_nvk_sample_location(VkSampleLocationEXT loc)
+{
+   return (struct nvk_sample_location) {
+      .x_u4 = util_bitpack_ufixed(loc.x, 0, 3, 4),
+      .y_u4 = util_bitpack_ufixed(loc.y, 0, 3, 4),
+   };
+}
+
+static void
+nvk_flush_ms_state(struct nvk_cmd_buffer *cmd)
+{
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd->vk.dynamic_graphics_state;
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS)) {
+      const struct vk_sample_locations_state *sl = dyn->ms.sample_locations;
+
+      if (nvk_cmd_buffer_3d_cls(cmd) >= MAXWELL_B) {
+         struct nvk_sample_location loc[16];
+         for (uint32_t n = 0; n < ARRAY_SIZE(loc); n++) {
+            const uint32_t s = n % sl->per_pixel;
+            const uint32_t px = n / sl->per_pixel;
+            const uint32_t x = px % 2;
+            const uint32_t y = px / 2;
+
+            loc[n] = vk_to_nvk_sample_location(vk_sample_location(sl, x, y, s));
+         }
+
+         struct nv_push *p = nvk_cmd_buffer_push(cmd, 5);
+
+         P_MTHD(p, NVB197, SET_ANTI_ALIAS_SAMPLE_POSITIONS(0));
+         for (uint32_t i = 0; i < 4; i++) {
+            P_NVB197_SET_ANTI_ALIAS_SAMPLE_POSITIONS(p, i, {
+               .x0 = loc[i * 4 + 0].x_u4,
+               .y0 = loc[i * 4 + 0].y_u4,
+               .x1 = loc[i * 4 + 1].x_u4,
+               .y1 = loc[i * 4 + 1].y_u4,
+               .x2 = loc[i * 4 + 2].x_u4,
+               .y2 = loc[i * 4 + 2].y_u4,
+               .x3 = loc[i * 4 + 3].x_u4,
+               .y3 = loc[i * 4 + 3].y_u4,
+            });
+         }
+      }
+   }
+}
+
 static uint32_t
 vk_to_nv9097_compare_op(VkCompareOp vk_op)
 {
@@ -1085,8 +1149,8 @@ nvk_flush_dynamic_state(struct nvk_cmd_buffer *cmd)
    nvk_flush_rs_state(cmd);
 
    /* MESA_VK_DYNAMIC_FSR */
-   /* MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS */
 
+   nvk_flush_ms_state(cmd);
    nvk_flush_ds_state(cmd);
    nvk_flush_cb_state(cmd);
 

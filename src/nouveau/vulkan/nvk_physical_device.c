@@ -16,6 +16,7 @@
 #include "cla0c0.h"
 #include "cla1c0.h"
 #include "clb0c0.h"
+#include "clb197.h"
 #include "clb1c0.h"
 #include "clc0c0.h"
 #include "clc1c0.h"
@@ -355,7 +356,7 @@ vk_icdGetPhysicalDeviceProcAddr(VkInstance _instance, const char *pName)
 }
 
 static void
-nvk_get_device_extensions(const struct nvk_physical_device *device,
+nvk_get_device_extensions(const struct nvk_physical_device *pdev,
                           struct vk_device_extension_table *ext)
 {
    *ext = (struct vk_device_extension_table) {
@@ -390,6 +391,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *device,
       .EXT_inline_uniform_block = true,
       .EXT_pci_bus_info = true,
       .EXT_private_data = true,
+      .EXT_sample_locations = pdev->info.cls_eng3d >= MAXWELL_B,
       .EXT_vertex_input_dynamic_state = true,
    };
 }
