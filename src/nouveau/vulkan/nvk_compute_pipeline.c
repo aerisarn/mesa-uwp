@@ -103,7 +103,7 @@ nvk_compute_pipeline_create(struct nvk_device *device,
    if (result != VK_SUCCESS)
       goto fail;
 
-   nvk_shader_upload(pdevice, &pipeline->base.shaders[MESA_SHADER_COMPUTE]);
+   nvk_shader_upload(device, &pipeline->base.shaders[MESA_SHADER_COMPUTE]);
    gv100_compute_setup_launch_desc_template(pipeline->qmd_template, &pipeline->base.shaders[MESA_SHADER_COMPUTE]);
    *pPipeline = nvk_pipeline_to_handle(&pipeline->base);
    return VK_SUCCESS;

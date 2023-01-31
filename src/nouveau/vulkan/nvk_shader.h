@@ -55,5 +55,5 @@ nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,
                 struct nvk_shader *shader);
 
 void
-nvk_shader_upload(struct nvk_physical_device *physical, struct nvk_shader *shader);
+nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader);
 #endif
