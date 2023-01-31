@@ -307,7 +307,37 @@ nvk_CmdClearAttachments(VkCommandBuffer commandBuffer,
                         uint32_t rectCount,
                         const VkClearRect *pRects)
 {
-   unreachable("TODO: Attachment clears");
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   struct nvk_rendering_state *render = &cmd->state.gfx.render;
+
+   for (unsigned i = 0; i < attachmentCount; i++) {
+      assert(pAttachments[i].aspectMask == VK_IMAGE_ASPECT_COLOR_BIT);
+      if (pAttachments[i].colorAttachment == VK_ATTACHMENT_UNUSED)
+         return;
+
+      struct nvk_image_view *iview =
+         render->color_att[pAttachments[i].colorAttachment].iview;
+      for (unsigned r = 0; r < rectCount; r++) {
+         assert(pRects[r].rect.offset.x == 0);
+         assert(pRects[r].rect.offset.y == 0);
+         assert(pRects[r].rect.extent.width == iview->vk.extent.width);
+         assert(pRects[r].rect.extent.height == iview->vk.extent.height);
+
+         const VkImageSubresourceRange subres = {
+            .aspectMask = pAttachments[i].aspectMask,
+            .baseMipLevel = iview->vk.base_mip_level,
+            .levelCount = 1,
+            .baseArrayLayer = iview->vk.base_array_layer +
+                              pRects[r].baseArrayLayer,
+            .layerCount = pRects[r].layerCount,
+         };
+         nvk_CmdClearColorImage(commandBuffer,
+                                vk_image_to_handle(iview->vk.image),
+                                VK_IMAGE_LAYOUT_GENERAL,
+                                &pAttachments[i].clearValue.color,
+                                1, &subres);
+      }
+   }
 }
 
 static void
