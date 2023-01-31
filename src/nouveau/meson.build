@@ -19,7 +19,9 @@
 # SOFTWARE.
 
 subdir('nvidia-headers')
-subdir('compiler')
+if with_nouveau_vk
+  subdir('compiler')
+endif
 subdir('winsys')
 if with_tools.contains('drm-shim')
   subdir('drm-shim')
