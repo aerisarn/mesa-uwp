@@ -19,8 +19,8 @@
 # SOFTWARE.
 
 libnil_files = files(
-  'nil.c',
-  'nil.h',
+  'nil_image.c',
+  'nil_image.h',
 )
 
 _libnil = static_library(
