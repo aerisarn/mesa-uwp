@@ -772,13 +772,18 @@ vk_to_nv9097_cull_mode(VkCullModeFlags vk_cull_mode)
 static uint32_t
 vk_to_nv9097_front_face(VkFrontFace vk_face)
 {
+   /* Vulkan and OpenGL are backwards here because Vulkan assumes the D3D
+    * convention in which framebuffer coordinates always start in the upper
+    * left while OpenGL has framebuffer coordinates starting in the lower
+    * left.  Therefore, we want the reverse of the hardware enum name.
+    */
    ASSERTED static const uint16_t vk_to_nv9097[] = {
-      [VK_FRONT_FACE_COUNTER_CLOCKWISE]   = NV9097_OGL_SET_FRONT_FACE_V_CW,
-      [VK_FRONT_FACE_CLOCKWISE]           = NV9097_OGL_SET_FRONT_FACE_V_CCW,
+      [VK_FRONT_FACE_COUNTER_CLOCKWISE]   = NV9097_OGL_SET_FRONT_FACE_V_CCW,
+      [VK_FRONT_FACE_CLOCKWISE]           = NV9097_OGL_SET_FRONT_FACE_V_CW,
    };
    assert(vk_face < ARRAY_SIZE(vk_to_nv9097));
 
-   uint32_t nv9097_face = 0x900 | vk_face;
+   uint32_t nv9097_face = 0x900 | (1 - vk_face);
    assert(nv9097_face == vk_to_nv9097[vk_face]);
    return nv9097_face;
 }
