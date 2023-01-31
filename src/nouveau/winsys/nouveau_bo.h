@@ -28,7 +28,14 @@ struct nouveau_ws_bo {
    _Atomic uint32_t refcnt;
 };
 
-struct nouveau_ws_bo *nouveau_ws_bo_new(struct nouveau_ws_device *, uint64_t size, uint64_t align, enum nouveau_ws_bo_flags);
+struct nouveau_ws_bo *nouveau_ws_bo_new(struct nouveau_ws_device *,
+                                        uint64_t size, uint64_t align,
+                                        enum nouveau_ws_bo_flags);
+struct nouveau_ws_bo *nouveau_ws_bo_new_tiled(struct nouveau_ws_device *,
+                                              uint64_t size, uint64_t align,
+                                              uint8_t pte_kind,
+                                              uint16_t tile_mode,
+                                              enum nouveau_ws_bo_flags);
 void nouveau_ws_bo_destroy(struct nouveau_ws_bo *);
 void *nouveau_ws_bo_map(struct nouveau_ws_bo *, enum nouveau_ws_bo_map_flags);
 bool nouveau_ws_bo_wait(struct nouveau_ws_bo *, enum nouveau_ws_bo_map_flags flags);
