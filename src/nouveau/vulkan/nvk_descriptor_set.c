@@ -249,7 +249,8 @@ nvk_destroy_descriptor_pool(struct nvk_device *device, const VkAllocationCallbac
       nvk_descriptor_set_destroy(device, pool, pool->entries[i].set, false);
    }
 
-   nouveau_ws_bo_destroy(pool->bo);
+   if (pool->bo)
+      nouveau_ws_bo_destroy(pool->bo);
 
    vk_object_base_finish(&pool->base);
    vk_free2(&device->vk.alloc, pAllocator, pool);
