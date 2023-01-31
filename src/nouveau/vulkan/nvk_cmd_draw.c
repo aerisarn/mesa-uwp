@@ -170,6 +170,7 @@ void
 nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
                               const VkCommandBufferBeginInfo *pBeginInfo)
 {
+   struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
    struct nouveau_ws_push *p = cmd->push;
 
    P_MTHD(p, NV9097, SET_OBJECT);
@@ -213,6 +214,20 @@ nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
    /* TODO: temp */
 
    P_IMMD(p, NV9097, SET_SHADER_LOCAL_MEMORY_WINDOW, 0xff000000); /* TODO */
+
+   nvk_push_descriptor_table_ref(p, &dev->samplers);
+   uint64_t tsp_addr = nvk_descriptor_table_base_address(&dev->samplers);
+   P_MTHD(p, NV9097, SET_TEX_SAMPLER_POOL_A);
+   P_NV9097_SET_TEX_SAMPLER_POOL_A(p, tsp_addr >> 32);
+   P_NV9097_SET_TEX_SAMPLER_POOL_B(p, tsp_addr);
+   P_NV9097_SET_TEX_SAMPLER_POOL_C(p, dev->samplers.alloc - 1);
+
+   nvk_push_descriptor_table_ref(p, &dev->images);
+   uint64_t thp_addr = nvk_descriptor_table_base_address(&dev->images);
+   P_MTHD(p, NV9097, SET_TEX_HEADER_POOL_A);
+   P_NV9097_SET_TEX_HEADER_POOL_A(p, thp_addr >> 32);
+   P_NV9097_SET_TEX_HEADER_POOL_B(p, thp_addr & 0xffffffff);
+   P_NV9097_SET_TEX_HEADER_POOL_C(p, dev->images.alloc - 1);
 
    /* TODO: TIC */
    /* TODO: TSC */
