@@ -2,6 +2,13 @@
 
 #include "nvk_physical_device.h"
 
+VKAPI_ATTR VkResult VKAPI_CALL
+nvk_EnumerateInstanceVersion(uint32_t *pApiVersion)
+{
+   *pApiVersion = VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION);
+   return VK_SUCCESS;
+}
+
 static const struct vk_instance_extension_table instance_extensions = {
    .KHR_get_physical_device_properties2 = true,
    .EXT_debug_report = true,
