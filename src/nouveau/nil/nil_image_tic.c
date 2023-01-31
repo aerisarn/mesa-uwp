@@ -3,8 +3,8 @@
 #include "nil_format.h"
 #include "util/bitpack_helpers.h"
 
-#include "nouveau/nvidia-headers/classes/clb097tex.h"
-#include "nouveau/winsys/drf.h"
+#include "clb097tex.h"
+#include "drf.h"
 
 ALWAYS_INLINE static void
 __set_u32(uint32_t *o, uint32_t v, unsigned lo, unsigned hi)
