@@ -32,6 +32,8 @@
 #include "util/os_time.h"
 #include "util/timespec.h"
 
+#include <poll.h>
+
 static struct nvk_bo_sync *
 to_nvk_bo_sync(struct vk_sync *sync)
 {
@@ -50,9 +52,17 @@ nvk_bo_sync_init(struct vk_device *vk_device,
    sync->state = initial_value ? NVK_BO_SYNC_STATE_SIGNALED :
                                  NVK_BO_SYNC_STATE_RESET;
 
-   sync->bo = nouveau_ws_bo_new(device->pdev->dev, 0x1000, 0, NOUVEAU_WS_BO_GART);
+   sync->bo = nouveau_ws_bo_new(device->pdev->dev, 0x1000, 0,
+                                NOUVEAU_WS_BO_GART);
    if (!sync->bo)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   int err = nouveau_ws_bo_dma_buf(sync->bo, &sync->dmabuf_fd);
+   if (err) {
+      nouveau_ws_bo_destroy(sync->bo);
+      return vk_errorf(device, VK_ERROR_UNKNOWN, "dma-buf export failed: %m");
+   }
+
    return VK_SUCCESS;
 }
 
@@ -62,6 +72,7 @@ nvk_bo_sync_finish(struct vk_device *vk_device,
 {
    struct nvk_bo_sync *sync = to_nvk_bo_sync(vk_sync);
 
+   close(sync->dmabuf_fd);
    nouveau_ws_bo_destroy(sync->bo);
 }
 
@@ -102,6 +113,35 @@ nvk_get_relative_timeout(uint64_t abs_timeout)
 }
 
 static VkResult
+nvk_wait_dmabuf(struct nvk_device *device, int dmabuf_fd,
+                uint64_t abs_timeout_ns)
+{
+   uint64_t now = os_time_get_nano();
+   uint64_t rel_timeout_ns =
+      now < abs_timeout_ns ? abs_timeout_ns - now : 0;
+
+   struct timespec rel_timeout_ts = {
+      .tv_sec = rel_timeout_ns / 1000000000,
+      .tv_nsec = rel_timeout_ns % 1000000000,
+   };
+
+   struct pollfd fd = {
+      .fd = dmabuf_fd,
+      .events = POLLOUT
+   };
+
+   int ret = ppoll(&fd, 1, &rel_timeout_ts, NULL);
+   if (ret < 0) {
+      return vk_errorf(device, VK_ERROR_UNKNOWN,
+                       "poll() failed: %m");
+   } else if (ret == 0) {
+      return VK_TIMEOUT;
+   } else {
+      return VK_SUCCESS;
+   }
+}
+
+static VkResult
 nvk_bo_sync_wait(struct vk_device *vk_device,
                  uint32_t wait_count,
                  const struct vk_sync_wait *waits,
@@ -109,6 +149,7 @@ nvk_bo_sync_wait(struct vk_device *vk_device,
                  uint64_t abs_timeout_ns)
 {
    struct nvk_device *device = container_of(vk_device, struct nvk_device, vk);
+   VkResult result;
 
    uint32_t pending = wait_count;
    while (pending) {
@@ -140,9 +181,10 @@ nvk_bo_sync_wait(struct vk_device *vk_device,
              * on it until we hit a timeout.
              */
             if (!(wait_flags & VK_SYNC_WAIT_PENDING)) {
-               if (!nouveau_ws_bo_wait(sync->bo, NOUVEAU_WS_BO_RDWR)) {
-                  return vk_error(device, VK_TIMEOUT);
-               }
+               result = nvk_wait_dmabuf(device, sync->dmabuf_fd, abs_timeout_ns);
+               /* This also covers VK_TIMEOUT */
+               if (result != VK_SUCCESS)
+                  return result;
 
                sync->state = NVK_BO_SYNC_STATE_SIGNALED;
                signaled = true;

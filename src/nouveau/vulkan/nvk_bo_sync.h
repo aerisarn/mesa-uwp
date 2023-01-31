@@ -15,6 +15,7 @@ struct nvk_bo_sync {
 
    enum nvk_bo_sync_state state;
    struct nouveau_ws_bo *bo;
+   int dmabuf_fd;
 };
 
 VKAPI_ATTR VkResult VKAPI_CALL
