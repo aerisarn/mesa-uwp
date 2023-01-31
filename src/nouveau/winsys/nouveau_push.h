@@ -94,7 +94,7 @@ __push_immd(struct nouveau_ws_push *push, int subc, uint32_t mthd, uint32_t val)
 
 #define P_IMMD(push, class, mthd, args...) do {\
    uint32_t __val; \
-   V_##class##_##mthd(__val, args);         \
+   VA_##class##_##mthd(__val, args);         \
    __push_immd(push, SUBC_##class, class##_##mthd, __val); \
    } while(0)
 

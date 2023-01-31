@@ -198,6 +198,10 @@ for mthd in mthddict:
         print("\tstruct " + structname + " __data = { ." + next(iter(mthddict[mthd].field_name_start)).lower() + " = (args) }; \\")
     print("\t__" + nvcl.strip() + "_" + mthd + "(&val, __data); \\")
     print("\t}")
+    if mthddict[mthd].is_array:
+        print("#define VA_" + nvcl + "_" + mthd + "(i) V_" + nvcl + "_" + mthd)
+    else:
+        print("#define VA_" + nvcl + "_" + mthd + " V_" + nvcl + "_" + mthd)
     print("#define P_" + nvcl + "_" + mthd + "(push, " + ("idx, " if mthddict[mthd].is_array else "") + "args...) do { \\")
     for field_name in mthddict[mthd].field_name_start:
         if len(mthddict[mthd].field_defs[field_name]):
