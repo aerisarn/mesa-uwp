@@ -70,7 +70,7 @@ vulkan_runtime_files = files(
   'vk_log.h',
   'vk_meta.c',
   'vk_meta.h',
-  'vk_meta_blit.c',
+  'vk_meta_blit_resolve.c',
   'vk_meta_draw_rects.c',
   'vk_meta_clear.c',
   'vk_nir.c',
