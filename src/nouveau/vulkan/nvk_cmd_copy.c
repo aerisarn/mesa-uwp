@@ -63,6 +63,10 @@ struct nouveau_copy_buffer {
 struct nouveau_copy {
    struct nouveau_copy_buffer src;
    struct nouveau_copy_buffer dst;
+   struct {
+      uint8_t comp_size;
+      uint8_t dst[4];
+   } remap;
    VkExtent3D extent_el;
    uint32_t layer_count;
 };
@@ -134,12 +138,72 @@ nouveau_copy_rect_image(
    return buf;
 }
 
+static uint32_t
+to_90b5_remap_comp_size(uint8_t comp_size)
+{
+   static const uint8_t to_90b5[] = {
+      [1] = NV90B5_SET_REMAP_COMPONENTS_COMPONENT_SIZE_ONE,
+      [2] = NV90B5_SET_REMAP_COMPONENTS_COMPONENT_SIZE_TWO,
+      [3] = NV90B5_SET_REMAP_COMPONENTS_COMPONENT_SIZE_THREE,
+      [4] = NV90B5_SET_REMAP_COMPONENTS_COMPONENT_SIZE_FOUR,
+   };
+   assert(comp_size > 0 && comp_size < ARRAY_SIZE(to_90b5));
+
+   uint32_t size_90b5 = comp_size - 1;
+   assert(size_90b5 == to_90b5[comp_size]);
+   return size_90b5;
+}
+
+static uint32_t
+to_90b5_remap_num_comps(uint8_t num_comps)
+{
+   static const uint8_t to_90b5[] = {
+      [1] = NV90B5_SET_REMAP_COMPONENTS_NUM_SRC_COMPONENTS_ONE,
+      [2] = NV90B5_SET_REMAP_COMPONENTS_NUM_SRC_COMPONENTS_TWO,
+      [3] = NV90B5_SET_REMAP_COMPONENTS_NUM_SRC_COMPONENTS_THREE,
+      [4] = NV90B5_SET_REMAP_COMPONENTS_NUM_SRC_COMPONENTS_FOUR,
+   };
+   assert(num_comps > 0 && num_comps < ARRAY_SIZE(to_90b5));
+
+   uint32_t num_comps_90b5 = num_comps - 1;
+   assert(num_comps_90b5 == to_90b5[num_comps]);
+   return num_comps_90b5;
+}
+
 static void
 nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
 {
    struct nouveau_ws_push *push = cmd->push;
 
-   assert(copy->src.bpp == copy->dst.bpp);
+   uint32_t src_bw, dst_bw;
+   if (copy->remap.comp_size > 0) {
+      assert(copy->src.bpp % copy->remap.comp_size == 0);
+      assert(copy->dst.bpp % copy->remap.comp_size == 0);
+      uint32_t num_src_comps = copy->src.bpp / copy->remap.comp_size;
+      uint32_t num_dst_comps = copy->dst.bpp / copy->remap.comp_size;
+
+      /* When running with component remapping enabled, most X/Y dimensions
+       * are in units of blocks.
+       */
+      src_bw = dst_bw = 1;
+
+      P_IMMD(push, NV90B5, SET_REMAP_COMPONENTS, {
+         .dst_x = copy->remap.dst[0],
+         .dst_y = copy->remap.dst[1],
+         .dst_z = copy->remap.dst[2],
+         .dst_w = copy->remap.dst[3],
+         .component_size = to_90b5_remap_comp_size(copy->remap.comp_size),
+         .num_src_components = to_90b5_remap_comp_size(num_src_comps),
+         .num_dst_components = to_90b5_remap_comp_size(num_dst_comps),
+      });
+   } else {
+      /* When component remapping is disabled, dimensions are in units of
+       * bytes (an implicit block widht of 1B).
+       */
+      assert(copy->src.bpp == copy->dst.bpp);
+      src_bw = copy->src.bpp;
+      dst_bw = copy->dst.bpp;
+   }
 
    for (unsigned w = 0; w < copy->layer_count; w++) {
       VkDeviceSize src_addr = copy->src.base_addr;
@@ -166,7 +230,7 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
          P_NV90B5_OFFSET_OUT_LOWER(push, dst_addr & 0xfffffff);
          P_NV90B5_PITCH_IN(push, copy->src.row_stride);
          P_NV90B5_PITCH_OUT(push, copy->dst.row_stride);
-         P_NV90B5_LINE_LENGTH_IN(push, copy->extent_el.width * copy->src.bpp);
+         P_NV90B5_LINE_LENGTH_IN(push, copy->extent_el.width * src_bw);
          P_NV90B5_LINE_COUNT(push, copy->extent_el.height);
 
          uint32_t src_layout = 0, dst_layout = 0;
@@ -180,21 +244,19 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
                              GOB_HEIGHT_GOB_HEIGHT_FERMI_8 :
                              GOB_HEIGHT_GOB_HEIGHT_TESLA_4,
             });
-            P_NV90B5_SET_SRC_WIDTH(push, copy->src.extent_el.width *
-                                         copy->src.bpp);
+            P_NV90B5_SET_SRC_WIDTH(push, copy->src.extent_el.width * src_bw);
             P_NV90B5_SET_SRC_HEIGHT(push, copy->src.extent_el.height);
             P_NV90B5_SET_SRC_DEPTH(push, copy->src.extent_el.depth);
             P_NV90B5_SET_SRC_LAYER(push, z + copy->src.offset_el.z);
 
             if (cmd->pool->dev->ctx->copy.cls >= 0xc1b5) {
                P_MTHD(push, NVC1B5, SRC_ORIGIN_X);
-               P_NVC1B5_SRC_ORIGIN_X(push, copy->src.offset_el.x *
-                                           copy->src.bpp);
+               P_NVC1B5_SRC_ORIGIN_X(push, copy->src.offset_el.x * src_bw);
                P_NVC1B5_SRC_ORIGIN_Y(push, copy->src.offset_el.y);
             } else {
                P_MTHD(push, NV90B5, SET_SRC_ORIGIN);
                P_NV90B5_SET_SRC_ORIGIN(push, {
-                  .x = copy->src.offset_el.x * copy->src.bpp,
+                  .x = copy->src.offset_el.x * src_bw,
                   .y = copy->src.offset_el.y
                });
             }
@@ -215,21 +277,19 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
                              GOB_HEIGHT_GOB_HEIGHT_FERMI_8 :
                              GOB_HEIGHT_GOB_HEIGHT_TESLA_4,
             });
-            P_NV90B5_SET_DST_WIDTH(push, copy->dst.extent_el.width *
-                                         copy->dst.bpp);
+            P_NV90B5_SET_DST_WIDTH(push, copy->dst.extent_el.width * dst_bw);
             P_NV90B5_SET_DST_HEIGHT(push, copy->dst.extent_el.height);
             P_NV90B5_SET_DST_DEPTH(push, copy->dst.extent_el.depth);
             P_NV90B5_SET_DST_LAYER(push, z + copy->dst.offset_el.z);
 
             if (cmd->pool->dev->ctx->copy.cls >= 0xc1b5) {
                P_MTHD(push, NVC1B5, DST_ORIGIN_X);
-               P_NVC1B5_DST_ORIGIN_X(push, copy->dst.offset_el.x *
-                                           copy->dst.bpp);
+               P_NVC1B5_DST_ORIGIN_X(push, copy->dst.offset_el.x * dst_bw);
                P_NVC1B5_DST_ORIGIN_Y(push, copy->dst.offset_el.y);
             } else {
                P_MTHD(push, NV90B5, SET_DST_ORIGIN);
                P_NV90B5_SET_DST_ORIGIN(push, {
-                  .x = copy->dst.offset_el.x * copy->dst.bpp,
+                  .x = copy->dst.offset_el.x * dst_bw,
                   .y = copy->dst.offset_el.y
                });
             }
@@ -245,7 +305,8 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
             .multi_line_enable = MULTI_LINE_ENABLE_TRUE,
             .flush_enable = FLUSH_ENABLE_TRUE,
             .src_memory_layout = src_layout,
-            .dst_memory_layout = dst_layout
+            .dst_memory_layout = dst_layout,
+            .remap_enable = copy->remap.comp_size > 0,
          });
       }
    }
@@ -302,6 +363,27 @@ nvk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
          .layer_count = region->imageSubresource.layerCount,
       };
 
+      const VkImageAspectFlagBits aspects = region->imageSubresource.aspectMask;
+      switch (dst->vk.format) {
+      case VK_FORMAT_D24_UNORM_S8_UINT:
+         if (aspects == VK_IMAGE_ASPECT_DEPTH_BIT) {
+            copy.remap.comp_size = 1;
+            copy.remap.dst[0] = NV90B5_SET_REMAP_COMPONENTS_DST_X_SRC_X;
+            copy.remap.dst[1] = NV90B5_SET_REMAP_COMPONENTS_DST_Y_SRC_Y;
+            copy.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_SRC_Z;
+            copy.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_NO_WRITE;
+         } else {
+            assert(aspects == VK_IMAGE_ASPECT_STENCIL_BIT);
+            copy.remap.comp_size = 1;
+            copy.remap.dst[0] = NV90B5_SET_REMAP_COMPONENTS_DST_X_NO_WRITE;
+            copy.remap.dst[1] = NV90B5_SET_REMAP_COMPONENTS_DST_Y_NO_WRITE;
+            copy.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_NO_WRITE;
+            copy.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_SRC_X;
+         }
+      default:
+         break;
+      }
+
       nouveau_copy_rect(cmd, &copy);
 
       vk_foreach_struct_const(ext, region->pNext) {
@@ -351,6 +433,27 @@ nvk_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
          .extent_el = extent_el,
          .layer_count = region->imageSubresource.layerCount,
       };
+
+      const VkImageAspectFlagBits aspects = region->imageSubresource.aspectMask;
+      switch (src->vk.format) {
+      case VK_FORMAT_D24_UNORM_S8_UINT:
+         if (aspects == VK_IMAGE_ASPECT_DEPTH_BIT) {
+            copy.remap.comp_size = 1;
+            copy.remap.dst[0] = NV90B5_SET_REMAP_COMPONENTS_DST_X_SRC_X;
+            copy.remap.dst[1] = NV90B5_SET_REMAP_COMPONENTS_DST_Y_SRC_Y;
+            copy.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_SRC_Z;
+            copy.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_NO_WRITE;
+         } else {
+            assert(aspects == VK_IMAGE_ASPECT_STENCIL_BIT);
+            copy.remap.comp_size = 1;
+            copy.remap.dst[0] = NV90B5_SET_REMAP_COMPONENTS_DST_X_SRC_W;
+            copy.remap.dst[1] = NV90B5_SET_REMAP_COMPONENTS_DST_Y_NO_WRITE;
+            copy.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_NO_WRITE;
+            copy.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_NO_WRITE;
+         }
+      default:
+         break;
+      }
 
       nouveau_copy_rect(cmd, &copy);
 
@@ -405,6 +508,31 @@ nvk_CmdCopyImage2(VkCommandBuffer commandBuffer,
          .extent_el = extent_el,
          .layer_count = region->srcSubresource.layerCount,
       };
+
+      const VkImageAspectFlagBits aspects = region->srcSubresource.aspectMask;
+      assert(aspects == region->dstSubresource.aspectMask);
+      switch (src->vk.format) {
+      case VK_FORMAT_D24_UNORM_S8_UINT:
+         if (aspects == VK_IMAGE_ASPECT_DEPTH_BIT) {
+            copy.remap.comp_size = 1;
+            copy.remap.dst[0] = NV90B5_SET_REMAP_COMPONENTS_DST_W_SRC_X;
+            copy.remap.dst[1] = NV90B5_SET_REMAP_COMPONENTS_DST_Y_SRC_Y;
+            copy.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_SRC_Z;
+            copy.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_NO_WRITE;
+         } else if (aspects == VK_IMAGE_ASPECT_STENCIL_BIT) {
+            copy.remap.comp_size = 1;
+            copy.remap.dst[0] = NV90B5_SET_REMAP_COMPONENTS_DST_X_NO_WRITE;
+            copy.remap.dst[1] = NV90B5_SET_REMAP_COMPONENTS_DST_Y_NO_WRITE;
+            copy.remap.dst[2] = NV90B5_SET_REMAP_COMPONENTS_DST_Z_NO_WRITE;
+            copy.remap.dst[3] = NV90B5_SET_REMAP_COMPONENTS_DST_W_SRC_W;
+         } else {
+            /* If we're copying both, there's nothing special to do */
+            assert(aspects == (VK_IMAGE_ASPECT_DEPTH_BIT |
+                               VK_IMAGE_ASPECT_STENCIL_BIT));
+         }
+      default:
+         break;
+      }
 
       nouveau_copy_rect(cmd, &copy);
    }
