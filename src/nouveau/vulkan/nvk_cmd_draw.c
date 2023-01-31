@@ -1244,10 +1244,10 @@ vk_to_nv9097_primitive_topology(VkPrimitiveTopology prim)
    }
 }
 
-void
-nvk_mme_draw(struct nvk_device *dev, struct mme_builder *b)
+static void
+nvk_build_mme_draw(struct mme_builder *b, struct mme_value begin)
 {
-   struct mme_value begin = mme_load(b);
+   /* These are in VkDrawIndirectCommand order */
    struct mme_value vertex_count = mme_load(b);
    struct mme_value instance_count = mme_load(b);
    struct mme_value first_vertex = mme_load(b);
@@ -1269,6 +1269,14 @@ nvk_mme_draw(struct nvk_device *dev, struct mme_builder *b)
 
       mme_set_field_enum(b, begin, NV9097_BEGIN_INSTANCE_ID, SUBSEQUENT);
    }
+}
+
+void
+nvk_mme_draw(struct nvk_device *dev, struct mme_builder *b)
+{
+   struct mme_value begin = mme_load(b);
+
+   nvk_build_mme_draw(b, begin);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -1301,10 +1309,11 @@ nvk_CmdDraw(VkCommandBuffer commandBuffer,
    P_INLINE_DATA(p, firstInstance);
 }
 
-void
-nvk_mme_draw_indexed(struct nvk_device *dev, struct mme_builder *b)
+static void
+nvk_mme_build_draw_indexed(struct mme_builder *b,
+                           struct mme_value begin)
 {
-   struct mme_value begin = mme_load(b);
+   /* These are in VkDrawIndexedIndirectCommand order */
    struct mme_value index_count = mme_load(b);
    struct mme_value instance_count = mme_load(b);
    struct mme_value first_index = mme_load(b);
@@ -1333,6 +1342,14 @@ nvk_mme_draw_indexed(struct nvk_device *dev, struct mme_builder *b)
 
       mme_set_field_enum(b, begin, NV9097_BEGIN_INSTANCE_ID, SUBSEQUENT);
    }
+}
+
+void
+nvk_mme_draw_indexed(struct nvk_device *dev, struct mme_builder *b)
+{
+   struct mme_value begin = mme_load(b);
+
+   nvk_mme_build_draw_indexed(b, begin);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -1365,4 +1382,128 @@ nvk_CmdDrawIndexed(VkCommandBuffer commandBuffer,
    P_INLINE_DATA(p, firstIndex);
    P_INLINE_DATA(p, vertexOffset);
    P_INLINE_DATA(p, firstInstance);
+}
+
+static inline void
+mme_read_fifoed(struct mme_builder *b,
+                struct mme_value64 addr,
+                uint32_t count)
+{
+   mme_mthd(b, NVC597_SET_MME_MEM_ADDRESS_A);
+   mme_emit(b, addr.hi);
+   mme_emit(b, addr.lo);
+
+   mme_mthd(b, NVC597_MME_DMA_READ_FIFOED);
+   mme_emit(b, mme_imm(count));
+
+   mme_tu104_alu_no_dst(b, MME_TU104_ALU_OP_EXTENDED,
+                        mme_imm(0x1000), mme_imm(1), 0);
+}
+
+void
+nvk_mme_draw_indirect(struct nvk_device *dev, struct mme_builder *b)
+{
+   struct mme_value begin = mme_load(b);
+   struct mme_value draw_addr_hi = mme_load(b);
+   struct mme_value draw_addr_lo = mme_load(b);
+   struct mme_value64 draw_addr = mme_value64(draw_addr_lo, draw_addr_hi);
+   struct mme_value draw_count = mme_load(b);
+   struct mme_value stride = mme_load(b);
+
+   struct mme_value draw = mme_mov(b, mme_zero());
+   mme_while(b, ult, draw, draw_count) {
+      mme_read_fifoed(b, draw_addr, 4);
+
+      nvk_build_mme_draw(b, begin);
+
+      mme_add_to(b, draw, draw, mme_imm(1));
+      mme_add64_to(b, draw_addr, draw_addr, mme_value64(stride, mme_zero()));
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdDrawIndirect(VkCommandBuffer commandBuffer,
+                    VkBuffer _buffer,
+                    VkDeviceSize offset,
+                    uint32_t drawCount,
+                    uint32_t stride)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_buffer, buffer, _buffer);
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd->vk.dynamic_graphics_state;
+
+   nvk_flush_gfx_state(cmd);
+
+   uint32_t begin;
+   V_NV9097_BEGIN(begin, {
+      .op = vk_to_nv9097_primitive_topology(dyn->ia.primitive_topology),
+      .primitive_id = NV9097_BEGIN_PRIMITIVE_ID_FIRST,
+      .instance_id = NV9097_BEGIN_INSTANCE_ID_FIRST,
+      .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
+   });
+
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 8);
+   P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
+   P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDIRECT));
+   P_INLINE_DATA(p, begin);
+   uint64_t draw_addr = nvk_buffer_address(buffer, offset);
+   P_INLINE_DATA(p, draw_addr >> 32);
+   P_INLINE_DATA(p, draw_addr);
+   P_INLINE_DATA(p, drawCount);
+   P_INLINE_DATA(p, stride);
+}
+
+void
+nvk_mme_draw_indexed_indirect(struct nvk_device *dev, struct mme_builder *b)
+{
+   struct mme_value begin = mme_load(b);
+   struct mme_value draw_addr_hi = mme_load(b);
+   struct mme_value draw_addr_lo = mme_load(b);
+   struct mme_value64 draw_addr = mme_value64(draw_addr_lo, draw_addr_hi);
+   struct mme_value draw_count = mme_load(b);
+   struct mme_value stride = mme_load(b);
+
+   struct mme_value draw = mme_mov(b, mme_zero());
+   mme_while(b, ult, draw, draw_count) {
+      mme_read_fifoed(b, draw_addr, 5);
+
+      nvk_mme_build_draw_indexed(b, begin);
+
+      mme_add_to(b, draw, draw, mme_imm(1));
+      mme_add64_to(b, draw_addr, draw_addr, mme_value64(stride, mme_zero()));
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
+                           VkBuffer _buffer,
+                           VkDeviceSize offset,
+                           uint32_t drawCount,
+                           uint32_t stride)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_buffer, buffer, _buffer);
+   const struct vk_dynamic_graphics_state *dyn =
+      &cmd->vk.dynamic_graphics_state;
+
+   nvk_flush_gfx_state(cmd);
+
+   uint32_t begin;
+   V_NV9097_BEGIN(begin, {
+      .op = vk_to_nv9097_primitive_topology(dyn->ia.primitive_topology),
+      .primitive_id = NV9097_BEGIN_PRIMITIVE_ID_FIRST,
+      .instance_id = NV9097_BEGIN_INSTANCE_ID_FIRST,
+      .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
+   });
+
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 8);
+   P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
+   P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDEXED_INDIRECT));
+   P_INLINE_DATA(p, begin);
+   uint64_t draw_addr = nvk_buffer_address(buffer, offset);
+   P_INLINE_DATA(p, draw_addr >> 32);
+   P_INLINE_DATA(p, draw_addr);
+   P_INLINE_DATA(p, drawCount);
+   P_INLINE_DATA(p, stride);
 }
