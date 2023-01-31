@@ -247,7 +247,7 @@ nvk_CreateSampler(VkDevice _device,
       }
    }
 
-   SAMP_SET_UF(samp, NV9097, 1, MIP_LOD_BIAS, pCreateInfo->mipLodBias);
+   SAMP_SET_SF(samp, NV9097, 1, MIP_LOD_BIAS, pCreateInfo->mipLodBias);
 
    assert(device->ctx->eng3d.cls >= KEPLER_A);
    if (pCreateInfo->unnormalizedCoordinates) {
