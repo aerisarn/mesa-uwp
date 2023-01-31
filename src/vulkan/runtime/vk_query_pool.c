@@ -23,6 +23,10 @@
 
 #include "vk_query_pool.h"
 
+#include "vk_command_buffer.h"
+#include "vk_common_entrypoints.h"
+#include "vk_device.h"
+
 void *
 vk_query_pool_create(struct vk_device *device,
                      const VkQueryPoolCreateInfo *pCreateInfo,
@@ -52,4 +56,29 @@ vk_query_pool_destroy(struct vk_device *device,
                       struct vk_query_pool *query_pool)
 {
    vk_object_free(device, alloc, query_pool);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdBeginQuery(VkCommandBuffer commandBuffer,
+                        VkQueryPool queryPool,
+                        uint32_t query,
+                        VkQueryControlFlags flags)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd_buffer, commandBuffer);
+   const struct vk_device_dispatch_table *disp =
+      &cmd_buffer->base.device->dispatch_table;
+
+   disp->CmdBeginQueryIndexedEXT(commandBuffer, queryPool, query, flags, 0);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdEndQuery(VkCommandBuffer commandBuffer,
+                      VkQueryPool queryPool,
+                      uint32_t query)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd_buffer, commandBuffer);
+   const struct vk_device_dispatch_table *disp =
+      &cmd_buffer->base.device->dispatch_table;
+
+   disp->CmdEndQueryIndexedEXT(commandBuffer, queryPool, query, 0);
 }
