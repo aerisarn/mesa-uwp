@@ -9,19 +9,7 @@
 #include "nouveau_bo.h"
 #include "nouveau_context.h"
 
-#include "nvtypes.h"
-#include "nvk_cl9097.h"
-#include "nvk_cl902d.h"
-#include "nvk_cl90b5.h"
-#include "nvk_cla097.h"
-#include "nvk_cla0b5.h"
-#include "nvk_cla0c0.h"
-#include "nvk_clb197.h"
-#include "nvk_clc0c0.h"
-#include "nvk_clc1b5.h"
-#include "nvk_clc397.h"
-#include "nvk_clc3c0.h"
-#include "nvk_clc597.h"
+#include "nv_device_info.h"
 
 struct nouveau_ws_push*
 nouveau_ws_push_new(struct nouveau_ws_device *dev, uint64_t size)
@@ -149,146 +137,22 @@ nouveau_ws_push_append(struct nouveau_ws_push *push,
 
 static void
 nouveau_ws_push_valid(struct nouveau_ws_push *push) {
-   util_dynarray_foreach(&push->pushs, struct nouveau_ws_push_buffer, buf) {
-      struct nouveau_ws_push_buffer *buf = _nouveau_ws_push_top(push);
-
+   util_dynarray_foreach(&push->pushs, struct nouveau_ws_push_buffer, buf)
       nv_push_validate(&buf->push);
-   }
 }
 
 static void
 nouveau_ws_push_dump(struct nouveau_ws_push *push, struct nouveau_ws_context *ctx)
 {
-   util_dynarray_foreach(&push->pushs, struct nouveau_ws_push_buffer, buf) {
-      uint32_t *cur = buf->push.start;
-
-      while (cur < buf->push.end) {
-         uint32_t hdr = *cur;
-         uint32_t type = hdr >> 29;
-         uint32_t inc;
-         uint32_t count = (hdr >> 16) & 0x1fff;
-         uint32_t subchan = (hdr >> 13) & 0x7;
-         uint32_t mthd = (hdr & 0xfff) << 2;
-         uint32_t value = 0;
-         bool is_immd = false;
-
-         printf("[0x%08" PRIxPTR "] HDR %x subch %i", cur - buf->push.start, hdr, subchan);
-         cur++;
-
-         switch (type) {
-         case 4:
-            printf(" IMMD\n");
-            inc = 0;
-            is_immd = true;
-            value = count;
-            count = 1;
-            break;
-         case 1:
-            printf(" NINC\n");
-            inc = count;
-            break;
-         case 3:
-            printf(" 0INC\n");
-            inc = 0;
-            break;
-         case 5:
-            printf(" 1INC\n");
-            inc = 1;
-            break;
-         }
-
-         while (count--) {
-            const char *mthd_name = "";
-            switch (subchan) {
-            case 0:
-               if (ctx->compute.cls >= 0xc597)
-                  mthd_name = P_PARSE_NVC597_MTHD(mthd);
-               else if (ctx->compute.cls >= 0xc397)
-                  mthd_name = P_PARSE_NVC397_MTHD(mthd);
-               else if (ctx->compute.cls >= 0xb197)
-                  mthd_name = P_PARSE_NVB197_MTHD(mthd);
-               else if (ctx->compute.cls >= 0xa097)
-                  mthd_name = P_PARSE_NVA097_MTHD(mthd);
-               else
-                  mthd_name = P_PARSE_NV9097_MTHD(mthd);
-               break;
-            case 1:
-               if (ctx->compute.cls >= 0xc3c0)
-                  mthd_name = P_PARSE_NVC3C0_MTHD(mthd);
-               else if (ctx->compute.cls >= 0xc0c0)
-                  mthd_name = P_PARSE_NVC0C0_MTHD(mthd);
-               else
-                  mthd_name = P_PARSE_NVA0C0_MTHD(mthd);
-               break;
-            case 3:
-               mthd_name = P_PARSE_NV902D_MTHD(mthd);
-               break;
-            case 4:
-               if (ctx->copy.cls >= 0xc1b5)
-                  mthd_name = P_PARSE_NVC1B5_MTHD(mthd);
-               else if (ctx->copy.cls >= 0xa0b5)
-                  mthd_name = P_PARSE_NVA0B5_MTHD(mthd);
-               else
-                  mthd_name = P_PARSE_NV90B5_MTHD(mthd);
-               break;
-            default:
-               mthd_name = "";
-               break;
-            }
-
-            if (!is_immd)
-               value = *cur;
-
-            printf("\tmthd %04x %s\n", mthd, mthd_name);
-            switch (subchan) {
-            case 0:
-               if (ctx->compute.cls >= 0xc597)
-                  P_DUMP_NVC597_MTHD_DATA(stdout, mthd, value, "\t\t");
-               else if (ctx->compute.cls >= 0xc397)
-                  P_DUMP_NVC397_MTHD_DATA(stdout,mthd, value, "\t\t");
-               else if (ctx->compute.cls >= 0xb197)
-                  P_DUMP_NVB197_MTHD_DATA(stdout,mthd, value, "\t\t");
-               else if (ctx->compute.cls >= 0xa097)
-                  P_DUMP_NVA097_MTHD_DATA(stdout,mthd, value, "\t\t");
-               else
-                  P_DUMP_NV9097_MTHD_DATA(stdout,mthd, value, "\t\t");
-               break;
-            case 1:
-               if (ctx->compute.cls >= 0xc3c0)
-                  P_DUMP_NVC3C0_MTHD_DATA(stdout,mthd, value, "\t\t");
-               else if (ctx->compute.cls >= 0xc0c0)
-                  P_DUMP_NVC0C0_MTHD_DATA(stdout,mthd, value, "\t\t");
-               else
-                  P_DUMP_NVA0C0_MTHD_DATA(stdout,mthd, value, "\t\t");
-               break;
-            case 3:
-               P_DUMP_NV902D_MTHD_DATA(stdout,mthd, value, "\t\t");
-               break;
-            case 4:
-               if (ctx->copy.cls >= 0xc1b5)
-                  P_DUMP_NVC1B5_MTHD_DATA(stdout,mthd, value, "\t\t");
-               else if (ctx->copy.cls >= 0xa0b5)
-                  P_DUMP_NVA0B5_MTHD_DATA(stdout,mthd, value, "\t\t");
-               else
-                  P_DUMP_NV90B5_MTHD_DATA(stdout,mthd, value, "\t\t");
-               break;
-            default:
-               mthd_name = "";
-               break;
-            }
-
-            if (!is_immd)
-               cur++;
-
-            if (inc) {
-               inc--;
-               mthd += 4;
-            }
-         }
-
-         printf("\n");
-      }
-   }
+   struct nv_device_info devinfo = {
+      .cls_copy = ctx->copy.cls,
+      .cls_eng2d = ctx->eng2d.cls,
+      .cls_eng3d = ctx->eng3d.cls,
+      .cls_m2mf = ctx->m2mf.cls,
+      .cls_compute = ctx->compute.cls,
+   };
+   util_dynarray_foreach(&push->pushs, struct nouveau_ws_push_buffer, buf)
+      vk_push_print(stdout, &buf->push, &devinfo);
 }
 
 int

@@ -7,6 +7,9 @@
 #include <assert.h>
 #include <stddef.h>
 #include <string.h>
+#include <stdio.h>
+
+struct nv_device_info;
 
 struct nv_push {
    uint32_t *start;
@@ -37,6 +40,9 @@ void nv_push_validate(struct nv_push *push);
 #else
 static inline void nv_push_validate(struct nv_push *push) { }
 #endif
+
+void vk_push_print(FILE *fp, const struct nv_push *push,
+                   const struct nv_device_info *devinfo);
 
 #define SUBC_NV9097 0
 #define SUBC_NVA097 0
