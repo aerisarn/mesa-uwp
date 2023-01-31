@@ -595,6 +595,13 @@ impl Instr {
     pub fn num_srcs(&self) -> usize {
         self.srcs().len()
     }
+
+    pub fn can_eliminate(&self) -> bool {
+        match self.op {
+            Opcode::FS_OUT | Opcode::EXIT | Opcode::AST(_) => false,
+            _ => true,
+        }
+    }
 }
 
 pub struct MetaInstr {

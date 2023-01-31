@@ -6,6 +6,7 @@
 mod nak_from_nir;
 mod nak_ir;
 mod nak_opt_copy_prop;
+mod nak_opt_dce;
 mod nir;
 
 use nak_bindings::*;
@@ -37,6 +38,10 @@ pub extern "C" fn nak_compile_shader(
     println!("NAK IR:\n{}", &s);
 
     s.opt_copy_prop();
+
+    println!("NAK IR:\n{}", &s);
+
+    s.opt_dce();
 
     println!("NAK IR:\n{}", &s);
 
