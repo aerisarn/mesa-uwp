@@ -26,6 +26,9 @@ nvk_get_buffer_format_features(struct nvk_physical_device *pdevice,
    if (nvk_is_storage_image_format(vk_format))
       features |= VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT;
 
+   if (nvk_get_va_format(pdevice, vk_format))
+      features |= VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT;
+
    return features;
 }
 
