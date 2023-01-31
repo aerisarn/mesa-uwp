@@ -73,6 +73,11 @@ nvk_create_cmd_buffer(struct nvk_device *device,
       return result;
    }
 
+   cmd_buffer->vk.dynamic_graphics_state.vi =
+      &cmd_buffer->state.gfx._dynamic_vi;
+   cmd_buffer->vk.dynamic_graphics_state.ms.sample_locations =
+      &cmd_buffer->state.gfx._dynamic_ms_sl;
+
    cmd_buffer->pool = pool;
    list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
 
@@ -341,6 +346,7 @@ nvk_BeginCommandBuffer(VkCommandBuffer commandBuffer,
       cmd->reset_on_submit = false;
 
    nvk_cmd_buffer_begin_compute(cmd, pBeginInfo);
+   nvk_cmd_buffer_begin_graphics(cmd, pBeginInfo);
 
    return VK_SUCCESS;
 }
@@ -366,6 +372,16 @@ nvk_CmdBindPipeline(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_pipeline, pipeline, _pipeline);
 
    switch (pipelineBindPoint) {
+   case VK_PIPELINE_BIND_POINT_GRAPHICS:
+      for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
+         if (!pipeline->shaders[s].bo)
+            continue;
+
+         nouveau_ws_push_ref(cmd->push, pipeline->shaders[s].bo,
+                             NOUVEAU_WS_BO_RD);
+      }
+      cmd->state.gfx.pipeline = (struct nvk_graphics_pipeline *)pipeline;
+      break;
    case VK_PIPELINE_BIND_POINT_COMPUTE:
       assert(pipeline->type == NVK_PIPELINE_COMPUTE);
       nouveau_ws_push_ref(cmd->push,
@@ -431,17 +447,18 @@ nvk_CmdPushConstants(VkCommandBuffer commandBuffer,
                      const void *pValues)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+
+   if (stageFlags & VK_SHADER_STAGE_ALL_GRAPHICS) {
+      struct nvk_descriptor_state *desc =
+         nvk_get_descriptors_state(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS);
+
+      memcpy(desc->root.push + offset, pValues, size);
+   }
+
    if (stageFlags & VK_SHADER_STAGE_COMPUTE_BIT) {
       struct nvk_descriptor_state *desc =
          nvk_get_descriptors_state(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
 
       memcpy(desc->root.push + offset, pValues, size);
    }
-
-//   if (stageFlags & VK_SHADER_STAGE_ALL_GRAPHICS) {
-//      struct nvk_descriptor_state *desc =
-//         nvk_get_descriptors_state(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS);
-//
-//      memcpy(desc->root.push + offset, pValues, size);
-//   }
 }

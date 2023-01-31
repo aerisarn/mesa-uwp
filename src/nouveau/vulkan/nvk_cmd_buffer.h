@@ -48,6 +48,15 @@ struct nvk_descriptor_state {
    uint32_t sets_dirty;
 };
 
+struct nvk_graphics_state {
+   struct nvk_graphics_pipeline *pipeline;
+   struct nvk_descriptor_state descriptors;
+
+   /* Needed by vk_command_buffer::dynamic_graphics_state */
+   struct vk_vertex_input_state _dynamic_vi;
+   struct vk_sample_locations_state _dynamic_ms_sl;
+};
+
 struct nvk_compute_state {
    struct nvk_compute_pipeline *pipeline;
    struct nvk_descriptor_state descriptors;
@@ -68,6 +77,7 @@ struct nvk_cmd_buffer {
    struct list_head pool_link;
 
    struct {
+      struct nvk_graphics_state gfx;
       struct nvk_compute_state cs;
    } state;
 
@@ -80,19 +90,23 @@ struct nvk_cmd_buffer {
    uint64_t tls_space_needed;
 };
 
-VkResult nvk_reset_cmd_buffer(struct nvk_cmd_buffer *cmd_buffer);
-void nvk_cmd_buffer_begin_compute(struct nvk_cmd_buffer *cmd,
-                                  const VkCommandBufferBeginInfo *pBeginInfo);
-
-
 VK_DEFINE_HANDLE_CASTS(nvk_cmd_buffer, vk.base, VkCommandBuffer,
                        VK_OBJECT_TYPE_COMMAND_BUFFER)
+
+VkResult nvk_reset_cmd_buffer(struct nvk_cmd_buffer *cmd_buffer);
+
+void nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
+                                   const VkCommandBufferBeginInfo *pBeginInfo);
+void nvk_cmd_buffer_begin_compute(struct nvk_cmd_buffer *cmd,
+                                  const VkCommandBufferBeginInfo *pBeginInfo);
 
 static inline struct nvk_descriptor_state *
 nvk_get_descriptors_state(struct nvk_cmd_buffer *cmd,
                           VkPipelineBindPoint bind_point)
 {
    switch (bind_point) {
+   case VK_PIPELINE_BIND_POINT_GRAPHICS:
+      return &cmd->state.gfx.descriptors;
    case VK_PIPELINE_BIND_POINT_COMPUTE:
       return &cmd->state.cs.descriptors;
    default:
