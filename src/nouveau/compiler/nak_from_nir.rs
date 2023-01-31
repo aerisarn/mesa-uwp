@@ -97,13 +97,23 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs.push(Instr::new_iadd(dst, srcs[0], srcs[1]));
             }
             nir_op_iand => {
-                self.instrs.push(Instr::new_lop3(
-                    dst,
-                    LogicOp::new_lut(&|x, y, _| x & y),
-                    srcs[0],
-                    srcs[1],
-                    Src::Zero,
-                ));
+                if alu.def.bit_size() == 1 {
+                    self.instrs.push(Instr::new_plop3(
+                        dst,
+                        LogicOp::new_lut(&|x, y, _| x & y),
+                        srcs[0],
+                        srcs[1],
+                        Src::Zero,
+                    ));
+                } else {
+                    self.instrs.push(Instr::new_lop3(
+                        dst,
+                        LogicOp::new_lut(&|x, y, _| x & y),
+                        srcs[0],
+                        srcs[1],
+                        Src::Zero,
+                    ));
+                }
             }
             nir_op_ieq => {
                 self.instrs.push(Instr::new_isetp(
@@ -142,22 +152,42 @@ impl<'a> ShaderFromNir<'a> {
                 ));
             }
             nir_op_inot => {
-                self.instrs.push(Instr::new_lop3(
-                    dst,
-                    LogicOp::new_lut(&|x, _, _| !x),
-                    srcs[0],
-                    Src::Zero,
-                    Src::Zero,
-                ));
+                if alu.def.bit_size() == 1 {
+                    self.instrs.push(Instr::new_plop3(
+                        dst,
+                        LogicOp::new_lut(&|x, _, _| !x),
+                        srcs[0],
+                        Src::Zero,
+                        Src::Zero,
+                    ));
+                } else {
+                    self.instrs.push(Instr::new_lop3(
+                        dst,
+                        LogicOp::new_lut(&|x, _, _| !x),
+                        srcs[0],
+                        Src::Zero,
+                        Src::Zero,
+                    ));
+                }
             }
             nir_op_ior => {
-                self.instrs.push(Instr::new_lop3(
-                    dst,
-                    LogicOp::new_lut(&|x, y, _| x | y),
-                    srcs[0],
-                    srcs[1],
-                    Src::Zero,
-                ));
+                if alu.def.bit_size() == 1 {
+                    self.instrs.push(Instr::new_plop3(
+                        dst,
+                        LogicOp::new_lut(&|x, y, _| x | y),
+                        srcs[0],
+                        srcs[1],
+                        Src::Zero,
+                    ));
+                } else {
+                    self.instrs.push(Instr::new_lop3(
+                        dst,
+                        LogicOp::new_lut(&|x, y, _| x | y),
+                        srcs[0],
+                        srcs[1],
+                        Src::Zero,
+                    ));
+                }
             }
             nir_op_ishl => {
                 self.instrs.push(Instr::new_shl(dst, srcs[0], srcs[1]));

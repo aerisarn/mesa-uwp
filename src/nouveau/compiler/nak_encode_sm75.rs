@@ -90,7 +90,7 @@ impl SM75Instr {
     fn set_pred_reg(&mut self, range: Range<usize>, reg: RegRef) {
         assert!(range.len() == 3);
         assert!(reg.file() == RegFile::Pred);
-        assert!(reg.base_idx() <= 6);
+        assert!(reg.base_idx() <= 7);
         self.set_field(range, reg.base_idx());
     }
 
@@ -306,6 +306,26 @@ impl SM75Instr {
         self.set_bit(90, true);
     }
 
+    fn encode_plop3(&mut self, instr: &Instr, op: &LogicOp) {
+        assert!(instr.num_dsts() == 1);
+        assert!(instr.num_srcs() == 3);
+
+        self.set_opcode(0x81c);
+        self.set_field(64..67, op.lut & 0x7);
+        self.set_field(72..77, op.lut >> 3);
+
+        self.set_pred_reg(68..71, *instr.src(2).as_reg().unwrap());
+        self.set_bit(71, false); /* NOT(src2) */
+
+        self.set_pred_reg(77..80, *instr.src(1).as_reg().unwrap());
+        self.set_bit(80, false); /* NOT(src1) */
+        self.set_pred_reg(81..84, *instr.dst(0).as_reg().unwrap());
+        self.set_field(84..87, 7_u8); /* Def1 */
+
+        self.set_pred_reg(87..90, *instr.src(0).as_reg().unwrap());
+        self.set_bit(90, false); /* NOT(src0) */
+    }
+
     fn set_cmp_op(&mut self, range: Range<usize>, op: &CmpOp) {
         assert!(range.len() == 3);
         self.set_field(
@@ -488,6 +508,7 @@ impl SM75Instr {
             Opcode::SEL => si.encode_sel(instr),
             Opcode::IADD3 => si.encode_iadd3(instr),
             Opcode::LOP3(op) => si.encode_lop3(instr, &op),
+            Opcode::PLOP3(op) => si.encode_plop3(instr, &op),
             Opcode::ISETP(op) => si.encode_isetp(instr, &op),
             Opcode::SHL => si.encode_shl(instr),
             Opcode::ALD(a) => si.encode_ald(instr, &a),

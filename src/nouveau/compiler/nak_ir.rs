@@ -823,6 +823,10 @@ impl Instr {
         Instr::new(Opcode::LOP3(op), slice::from_ref(&dst), &[x, y, z])
     }
 
+    pub fn new_plop3(dst: Dst, op: LogicOp, x: Src, y: Src, z: Src) -> Instr {
+        Instr::new(Opcode::PLOP3(op), slice::from_ref(&dst), &[x, y, z])
+    }
+
     pub fn new_shl(dst: Dst, x: Src, shift: Src) -> Instr {
         Instr::new(Opcode::SHL, slice::from_ref(&dst), &[x, shift])
     }
@@ -950,6 +954,7 @@ impl Instr {
             | Opcode::FMUL
             | Opcode::IADD3
             | Opcode::LOP3(_)
+            | Opcode::PLOP3(_)
             | Opcode::ISETP(_)
             | Opcode::SHL => Some(6),
             Opcode::MOV => Some(15),
@@ -999,6 +1004,7 @@ pub enum Opcode {
 
     IADD3,
     LOP3(LogicOp),
+    PLOP3(LogicOp),
     ISETP(IntCmpOp),
     SHL,
 
@@ -1029,6 +1035,7 @@ impl fmt::Display for Opcode {
             Opcode::FMUL => write!(f, "FMUL"),
             Opcode::IADD3 => write!(f, "IADD3"),
             Opcode::LOP3(op) => write!(f, "LOP3.{}", op),
+            Opcode::PLOP3(op) => write!(f, "PLOP3.{}", op),
             Opcode::ISETP(op) => write!(f, "ISETP.{}", op),
             Opcode::SHL => write!(f, "SHL"),
             Opcode::S2R(i) => write!(f, "S2R({})", i),
@@ -1234,14 +1241,18 @@ impl Shader {
         for f in &mut self.functions {
             for b in &mut f.blocks {
                 for instr in &mut b.instrs {
+                    let zero_file = match instr.op {
+                        Opcode::PLOP3(_) => RegFile::Pred,
+                        _ => RegFile::GPR,
+                    };
                     for dst in instr.dsts_mut() {
                         if dst.is_zero() {
-                            *dst = Dst::Reg(RegRef::zero(RegFile::GPR, 1))
+                            *dst = Dst::Reg(RegRef::zero(zero_file, 1))
                         }
                     }
                     for src in instr.srcs_mut() {
                         if src.is_zero() {
-                            *src = Src::Reg(RegRef::zero(RegFile::GPR, 1))
+                            *src = Src::Reg(RegRef::zero(zero_file, 1))
                         }
                     }
                 }
