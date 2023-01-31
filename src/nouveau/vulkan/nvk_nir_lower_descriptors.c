@@ -1,4 +1,5 @@
 #include "nvk_cmd_buffer.h"
+#include "nvk_descriptor_set.h"
 #include "nvk_descriptor_set_layout.h"
 #include "nvk_nir.h"
 #include "nvk_pipeline_layout.h"
@@ -149,30 +150,58 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
 {
    b->cursor = nir_before_instr(&tex->instr);
 
-   for (unsigned i = 0; i < tex->num_srcs; i++) {
-      if (tex->src[i].src_type != nir_tex_src_texture_deref &&
-          tex->src[i].src_type != nir_tex_src_sampler_deref)
-         continue;
+   const int texture_src_idx =
+      nir_tex_instr_src_index(tex, nir_tex_src_texture_deref);
+   const int sampler_src_idx =
+      nir_tex_instr_src_index(tex, nir_tex_src_sampler_deref);
+   if (texture_src_idx < 0) {
+      assert(sampler_src_idx < 0);
+      return false;
+   }
 
-      nir_deref_instr *deref = nir_src_as_deref(tex->src[i].src);
-      nir_ssa_def *desc = load_resource_deref_desc(b, deref, 0, 1, 32, ctx);
+   nir_deref_instr *texture = nir_src_as_deref(tex->src[texture_src_idx].src);
+   nir_deref_instr *sampler = sampler_src_idx < 0 ? NULL :
+                              nir_src_as_deref(tex->src[sampler_src_idx].src);
+   assert(texture);
 
-      switch (tex->src[i].src_type) {
-      case nir_tex_src_texture_deref:
-         tex->src[i].src_type = nir_tex_src_texture_handle;
-         nir_instr_rewrite_src_ssa(&tex->instr, &tex->src[i].src,
-                                   nir_iand_imm(b, desc, 0x000fffff));
-         break;
+   nir_ssa_def *combined_handle;
+   if (texture == sampler) {
+      combined_handle = load_resource_deref_desc(b, texture, 0, 1, 32, ctx);
+   } else {
+      nir_ssa_def *texture_desc =
+         load_resource_deref_desc(b, texture, 0, 1, 32, ctx);
+      combined_handle = nir_iand_imm(b, texture_desc,
+                                     NVK_IMAGE_DESCRIPTOR_IMAGE_INDEX_MASK);
 
-      case nir_tex_src_sampler_deref:
-         tex->src[i].src_type = nir_tex_src_sampler_handle;
-         nir_instr_rewrite_src_ssa(&tex->instr, &tex->src[i].src,
-                                   nir_iand_imm(b, desc, 0xfff00000));
-         break;
-
-      default:
-         unreachable("Unhandled texture source");
+      if (sampler != NULL) {
+         nir_ssa_def *sampler_desc =
+            load_resource_deref_desc(b, sampler, 0, 1, 32, ctx);
+         nir_ssa_def *sampler_index =
+            nir_iand_imm(b, sampler_desc,
+                         NVK_IMAGE_DESCRIPTOR_SAMPLER_INDEX_MASK);
+         combined_handle = nir_ior(b, combined_handle, sampler_index);
       }
+   }
+
+   /* TODO: The nv50 back-end assumes it's 64-bit because of GL */
+   combined_handle = nir_u2u64(b, combined_handle);
+
+   /* TODO: The nv50 back-end assumes it gets handles both places, even for
+    * texelFetch.
+    */
+   nir_instr_rewrite_src_ssa(&tex->instr,
+                             &tex->src[texture_src_idx].src,
+                             combined_handle);
+   tex->src[texture_src_idx].src_type = nir_tex_src_texture_handle;
+
+   if (sampler_src_idx < 0) {
+      nir_tex_instr_add_src(tex, nir_tex_src_sampler_handle,
+                            nir_src_for_ssa(combined_handle));
+   } else {
+      nir_instr_rewrite_src_ssa(&tex->instr,
+                                &tex->src[sampler_src_idx].src,
+                                combined_handle);
+      tex->src[sampler_src_idx].src_type = nir_tex_src_sampler_handle;
    }
 
    return true;

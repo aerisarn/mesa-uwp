@@ -9,6 +9,9 @@
 
 struct nvk_descriptor_set_layout;
 
+#define NVK_IMAGE_DESCRIPTOR_IMAGE_INDEX_MASK   0x000fffff
+#define NVK_IMAGE_DESCRIPTOR_SAMPLER_INDEX_MASK 0xfff00000
+
 struct nvk_image_descriptor {
    unsigned image_index:20;
    unsigned sampler_index:12;
