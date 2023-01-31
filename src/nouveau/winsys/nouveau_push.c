@@ -113,7 +113,7 @@ nouveau_ws_push_space(struct nouveau_ws_push *push,
    if (!bo)
       return NULL;
 
-   void *map = nouveau_ws_bo_map(bo, NOUVEAU_WS_BO_RDWR);
+   uint32_t *map = nouveau_ws_bo_map(bo, NOUVEAU_WS_BO_RDWR);
    if (!map)
       goto fail_map;
 
