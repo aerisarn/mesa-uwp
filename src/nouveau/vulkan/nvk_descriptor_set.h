@@ -19,15 +19,6 @@ struct nvk_buffer_address {
    uint32_t zero; /* Must be zero! */
 };
 
-struct nvk_descriptor_set {
-   struct vk_object_base base;
-   struct nvk_descriptor_set_layout *layout;
-   uint32_t buffer_count;
-   uint32_t bo_offset;
-   struct nouveau_ws_bo *bo;
-   void *mapped_ptr;
-};
-
 struct nvk_descriptor_pool_entry {
    uint32_t offset;
    uint32_t size;
@@ -47,6 +38,16 @@ struct nvk_descriptor_pool {
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_descriptor_pool, base, VkDescriptorPool,
                                VK_OBJECT_TYPE_DESCRIPTOR_POOL)
+
+struct nvk_descriptor_set {
+   struct vk_object_base base;
+   struct nvk_descriptor_set_layout *layout;
+   uint32_t buffer_count;
+   uint32_t bo_offset;
+   struct nouveau_ws_bo *bo;
+   void *mapped_ptr;
+};
+
 VK_DEFINE_HANDLE_CASTS(nvk_descriptor_set, base, VkDescriptorSet,
                        VK_OBJECT_TYPE_DESCRIPTOR_SET)
 
