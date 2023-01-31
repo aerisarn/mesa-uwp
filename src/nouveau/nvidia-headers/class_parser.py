@@ -6,6 +6,8 @@
 import argparse
 import sys
 
+from mako.template import Template
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--out_h', required=True, help='Output C header.')
 parser.add_argument('--in_h',
@@ -62,6 +64,159 @@ METHOD_IS_FLOAT = [
     'SET_VIEWPORT_CLIP_MAX_Z',
     'SET_Z_CLEAR_VALUE',
 ]
+
+TEMPLATE_H = Template("""\
+/* parsed class ${nvcl} */
+
+#include "${clheader}"
+
+%for mthd in mthddict:
+struct nv_${nvcl.lower()}_${mthd} {
+  %for field_name in mthddict[mthd].field_name_start:
+    uint32_t ${field_name.lower()};
+  %endfor
+};
+
+static inline void
+__${nvcl}_${mthd}(uint32_t *val_out, struct nv_${nvcl.lower()}_${mthd} st)
+{
+    uint32_t val = 0;
+  %for field_name in mthddict[mthd].field_name_start:
+    <%
+        field_start = int(mthddict[mthd].field_name_start[field_name])
+        field_end = int(mthddict[mthd].field_name_end[field_name])
+        field_width = field_end - field_start + 1
+    %>
+    %if field_width == 32:
+    val |= st.${field_name.lower()};
+    %else:
+    assert(st.${field_name.lower()} < (1ULL << ${field_width}));
+    val |= st.${field_name.lower()} << ${field_start};
+    %endif
+  %endfor
+    *val_out = val;
+}
+
+#define V_${nvcl}_${mthd}(val, args...) { ${bs}
+  %for field_name in mthddict[mthd].field_name_start:
+    %for d in mthddict[mthd].field_defs[field_name]:
+    UNUSED uint32_t ${field_name}_${d} = ${nvcl}_${mthd}_${field_name}_${d}; ${bs}
+    %endfor
+  %endfor
+  %if len(mthddict[mthd].field_name_start) > 1:
+    struct nv_${nvcl.lower()}_${mthd} __data = args; ${bs}
+  %else:
+<% field_name = next(iter(mthddict[mthd].field_name_start)).lower() %>\
+    struct nv_${nvcl.lower()}_${mthd} __data = { .${field_name} = (args) }; ${bs}
+  %endif
+    __${nvcl}_${mthd}(&val, __data); ${bs}
+}
+
+%if mthddict[mthd].is_array:
+#define VA_${nvcl}_${mthd}(i) V_${nvcl}_${mthd}
+%else:
+#define VA_${nvcl}_${mthd} V_${nvcl}_${mthd}
+%endif
+
+%if mthddict[mthd].is_array:
+#define P_${nvcl}_${mthd}(push, idx, args...) do { ${bs}
+%else:
+#define P_${nvcl}_${mthd}(push, args...) do { ${bs}
+%endif
+  %for field_name in mthddict[mthd].field_name_start:
+    %for d in mthddict[mthd].field_defs[field_name]:
+    UNUSED uint32_t ${field_name}_${d} = ${nvcl}_${mthd}_${field_name}_${d}; ${bs}
+    %endfor
+  %endfor
+    uint32_t nvk_p_ret; ${bs}
+    V_${nvcl}_${mthd}(nvk_p_ret, args); ${bs}
+    %if mthddict[mthd].is_array:
+    nvk_push_val(push, ${nvcl}_${mthd}(idx), nvk_p_ret); ${bs}
+    %else:
+    nvk_push_val(push, ${nvcl}_${mthd}, nvk_p_ret); ${bs}
+    %endif
+} while(0)
+
+%endfor
+
+static inline const char*
+P_PARSE_${nvcl}_MTHD(uint16_t idx)
+{
+    switch (idx) {
+%for mthd in mthddict:
+  %if mthddict[mthd].is_array and mthddict[mthd].array_size == 0:
+    <% continue %>
+  %endif
+  %if mthddict[mthd].is_array:
+    %for i in range(mthddict[mthd].array_size):
+    case ${nvcl}_${mthd}(${i}):
+        return "${nvcl}_${mthd}(${i})";
+    %endfor
+  % else:
+    case ${nvcl}_${mthd}:
+        return "${nvcl}_${mthd}";
+  %endif
+%endfor
+    default:
+        return "unknown method";
+    }
+}
+
+static inline void
+P_DUMP_${nvcl}_MTHD_DATA(uint16_t idx, uint32_t data, const char *prefix)
+{
+    uint32_t parsed;
+    switch (idx) {
+%for mthd in mthddict:
+  %if mthddict[mthd].is_array and mthddict[mthd].array_size == 0:
+    <% continue %>
+  %endif
+  %if mthddict[mthd].is_array:
+    %for i in range(mthddict[mthd].array_size):
+    case ${nvcl}_${mthd}(${i}):
+    %endfor
+  % else:
+    case ${nvcl}_${mthd}:
+  %endif
+  %for field_name in mthddict[mthd].field_name_start:
+    <%
+        field_start = int(mthddict[mthd].field_name_start[field_name])
+        field_end = int(mthddict[mthd].field_name_end[field_name])
+        field_width = field_end - field_start + 1
+    %>
+    %if field_width == 32:
+        parsed = data;
+    %else:
+        parsed = (data >> ${field_start}) & ((1u << ${field_width}) - 1);
+    %endif
+        printf("%s.${field_name} = ", prefix);
+    %if len(mthddict[mthd].field_defs[field_name]):
+        switch (parsed) {
+      %for d in mthddict[mthd].field_defs[field_name]:
+        case ${nvcl}_${mthd}_${field_name}_${d}:
+            printf("${d}${bs}n");
+            break;
+      %endfor
+        default:
+            printf("0x%x${bs}n", parsed);
+            break;
+        }
+    %else:
+      %if mthddict[mthd].is_float:
+        printf("%ff (0x%x)${bs}n", *(float *)&parsed, parsed);
+      %else:
+        printf("(0x%x)${bs}n", parsed);
+      %endif
+    %endif
+        break;
+  %endfor
+%endfor
+    default:
+        printf("%s.VALUE = 0x%x${bs}n", prefix, data);
+        break;
+    }
+}
+""")
 
 def glob_match(glob, name):
     if glob.endswith('*'):
@@ -171,111 +326,8 @@ for line in f:
             curmthd = x
             state = 1
 
-sys.stdout = fout
-print("/* parsed class " + nvcl + " */")
-
-print("#include \"" + clheader + "\"")
-for mthd in mthddict:
-    structname = "nv_" + nvcl.lower() + "_" + mthd
-    print("struct " + structname + " {")
-    for field_name in mthddict[mthd].field_name_start:
-        print("\tuint32_t " + field_name.lower() + ";")
-    print("};")
-    print("static inline void __" + nvcl.strip() + "_" + mthd + "(uint32_t *val_out, struct " + structname + " st" + ") {")
-    print("\tuint32_t val = 0;")
-    for field_name in mthddict[mthd].field_name_start:
-        field_width = int(mthddict[mthd].field_name_end[field_name]) - int(mthddict[mthd].field_name_start[field_name]) + 1
-        if (field_width == 32):
-            print("\tval |= st." + field_name.lower() + ";")
-        else:
-            print("\tassert(st." + field_name.lower() + " < (1ULL << " + str(field_width) + "));")
-            print("\tval |= (st." + field_name.lower() + " & ((1ULL << " + str(field_width) + ") - 1)) << " + mthddict[mthd].field_name_start[field_name] + ";");
-    print("\t*val_out = val;");
-    print("}")
-    print("#define V_" + nvcl + "_" + mthd + "(val, args...) { \\")
-    for field_name in mthddict[mthd].field_name_start:
-        if len(mthddict[mthd].field_defs[field_name]):
-            for d in mthddict[mthd].field_defs[field_name]:
-                print("UNUSED uint32_t " + field_name + "_" + d + " = " + nvcl + "_" + mthd + "_" + field_name + "_" + d+"; \\")
-    if len(mthddict[mthd].field_name_start) > 1:
-        print("\tstruct " + structname + " __data = args; \\")
-    else:
-        print("\tstruct " + structname + " __data = { ." + next(iter(mthddict[mthd].field_name_start)).lower() + " = (args) }; \\")
-    print("\t__" + nvcl.strip() + "_" + mthd + "(&val, __data); \\")
-    print("\t}")
-    if mthddict[mthd].is_array:
-        print("#define VA_" + nvcl + "_" + mthd + "(i) V_" + nvcl + "_" + mthd)
-    else:
-        print("#define VA_" + nvcl + "_" + mthd + " V_" + nvcl + "_" + mthd)
-    print("#define P_" + nvcl + "_" + mthd + "(push, " + ("idx, " if mthddict[mthd].is_array else "") + "args...) do { \\")
-    for field_name in mthddict[mthd].field_name_start:
-        if len(mthddict[mthd].field_defs[field_name]):
-            for d in mthddict[mthd].field_defs[field_name]:
-                print("UNUSED uint32_t " + field_name + "_" + d + " = " + nvcl + "_" + mthd + "_" + field_name + "_" + d+"; \\")
-    print("\tuint32_t nvk_p_ret;\\")
-    print("\tV_" + nvcl + "_" + mthd + "(nvk_p_ret, args)\\");
-    print("\tnvk_push_val(push, " + nvcl + "_" + mthd + ("(idx), " if mthddict[mthd].is_array else ",") + " nvk_p_ret);\\");
-    print("\t} while(0)")
-
-print("static inline const char* P_PARSE_" + nvcl + "_MTHD(uint16_t idx) {")
-print("\tswitch (idx) {")
-for mthd in mthddict:
-    if mthddict[mthd].is_array and mthddict[mthd].array_size == 0:
-        continue
-
-    if mthddict[mthd].is_array:
-        for i in range(mthddict[mthd].array_size):
-            print("\tcase " + nvcl + "_" + mthd + "(" + str(i) + "):")
-            print("\t\treturn \"" + nvcl + "_" + mthd + "(" + str(i) + ")\";")
-    else:
-        print("\tcase " + nvcl + "_" + mthd + ":")
-        print("\t\treturn \"" + nvcl + "_" + mthd + "\";")
-print("\tdefault:")
-print("\t\treturn \"unknown method\";")
-print("\t};")
-print("}")
-
-print("static inline void P_DUMP_" + nvcl + "_MTHD_DATA(uint16_t idx, uint32_t data, const char *prefix) {")
-print("\tuint32_t parsed;")
-print("\tswitch (idx) {")
-for mthd in mthddict:
-    if mthddict[mthd].is_array and mthddict[mthd].array_size == 0:
-        continue
-
-    if mthddict[mthd].is_array:
-        for i in range(mthddict[mthd].array_size):
-            print("\tcase " + nvcl + "_" + mthd + "(" + str(i) + "):")
-    else:
-        print("\tcase " + nvcl + "_" + mthd + ":")
-    for field_name in mthddict[mthd].field_name_start:
-        field_width = int(mthddict[mthd].field_name_end[field_name]) - int(mthddict[mthd].field_name_start[field_name]) + 1
-        if (field_width == 32):
-            print("\t\tparsed = data;")
-        else:
-            print("\t\tparsed = (data >> " + mthddict[mthd].field_name_start[field_name] + ") & ((1u << " + str(field_width) + ") - 1);")
-        print("\t\tprintf(\"%s." + field_name + " = \", prefix);")
-        if len(mthddict[mthd].field_defs[field_name]):
-            print("\t\tswitch (parsed) {")
-            for d in mthddict[mthd].field_defs[field_name]:
-                print("\t\tcase " + nvcl + "_" + mthd + "_" + field_name + "_" + d + ":")
-                print("\t\t\tprintf(\"" + d + "\\n\");")
-                print("\t\t\tbreak;")
-            print("\t\tdefault:")
-            print("\t\t\tprintf(\"0x%x\\n\", parsed);")
-            print("\t\t\tbreak;")
-            print("\t\t}")
-        else:
-            if mthddict[mthd].is_float:
-                print("\t\t\tprintf(\"%ff (0x%x)\\n\", *(float *)&parsed, parsed);")
-            else:
-                print("\t\tprintf(\"0x%x\\n\", parsed);")
-    print("\t\tbreak;")
-
-print("\tdefault:")
-print("\t\tprintf(\"%s.VALUE = 0x%x\\n\", prefix, data);")
-print("\t\tbreak;")
-print("\t};")
-print("}")
+fout.write(TEMPLATE_H.render(clheader=clheader, nvcl=nvcl,
+                             mthddict=mthddict, bs='\\'))
 
 fout.close()
 f.close()
