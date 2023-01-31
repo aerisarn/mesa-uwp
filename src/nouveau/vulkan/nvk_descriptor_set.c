@@ -54,7 +54,6 @@ write_image_view_desc(struct nvk_descriptor_set *set,
           * that our descriptor index is at most 11 bits.
           */
          assert(view->storage_desc_index < (1 << 11));
-         assert(view->vk.image->image_type != VK_IMAGE_TYPE_3D);
 
          desc.image_index = view->storage_desc_index;
       } else {

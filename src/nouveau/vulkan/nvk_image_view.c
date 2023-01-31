@@ -108,6 +108,19 @@ nvk_image_view_init(struct nvk_device *device,
           view->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)
          nil_view.type = NIL_VIEW_TYPE_2D_ARRAY;
 
+      if (view->vk.view_type == VK_IMAGE_VIEW_TYPE_3D) {
+         /* Without VK_AMD_shader_image_load_store_lod, the client can only
+          * get at the first LOD from the shader anyway.
+          */
+         assert(view->vk.base_array_layer == 0);
+         assert(view->vk.layer_count = 1);
+         nil_view.type = NIL_VIEW_TYPE_2D_ARRAY;
+         nil_view.num_levels = 1;
+         nil_view.base_array_layer = 0;
+         nil_view.array_len = view->vk.extent.depth;
+         image_3d_view_as_2d_array(&nil_image, &nil_view, &base_addr);
+      }
+
       uint32_t tic[8];
       nil_image_fill_tic(nvk_device_physical(device)->dev,
                          &nil_image, &nil_view, base_addr, tic);

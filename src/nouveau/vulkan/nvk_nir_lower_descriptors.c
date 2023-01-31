@@ -190,6 +190,13 @@ lower_image_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
    nir_ssa_def *desc = load_resource_deref_desc(b, deref, 0, 1, 32, ctx);
    nir_rewrite_image_intrinsic(intrin, desc, true);
 
+   /* We treat 3D images as 2D arrays */
+   if (nir_intrinsic_image_dim(intrin) == GLSL_SAMPLER_DIM_3D) {
+      assert(!nir_intrinsic_image_array(intrin));
+      nir_intrinsic_set_image_dim(intrin, GLSL_SAMPLER_DIM_2D);
+      nir_intrinsic_set_image_array(intrin, true);
+   }
+
    /* We don't support ReadWithoutFormat yet */
    if (intrin->intrinsic == nir_intrinsic_image_deref_load)
       assert(nir_intrinsic_format(intrin) != PIPE_FORMAT_NONE);
