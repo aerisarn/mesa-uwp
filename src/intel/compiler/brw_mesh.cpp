@@ -927,7 +927,6 @@ emit_urb_direct_vec4_write(const fs_builder &bld,
                            unsigned urb_global_offset,
                            const fs_reg &src,
                            fs_reg urb_handle,
-                           unsigned src_comp_offset,
                            unsigned dst_comp_offset,
                            unsigned comps,
                            unsigned mask)
@@ -942,7 +941,7 @@ emit_urb_direct_vec4_write(const fs_builder &bld,
          payload_srcs[length++] = reg_undef;
 
       for (unsigned c = 0; c < comps; c++)
-         payload_srcs[length++] = quarter(offset(src, bld, c + src_comp_offset), q);
+         payload_srcs[length++] = quarter(offset(src, bld, c), q);
 
       fs_reg srcs[URB_LOGICAL_NUM_SRCS];
       srcs[URB_LOGICAL_SRC_HANDLE] = urb_handle;
@@ -969,39 +968,23 @@ emit_urb_direct_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
    assert(nir_src_is_const(*offset_nir_src));
 
    const unsigned comps = nir_src_num_components(instr->src[0]);
-   assert(comps <= 8);
+   assert(comps <= 4);
 
-   const unsigned mask = nir_intrinsic_write_mask(instr);
    const unsigned offset_in_dwords = nir_intrinsic_base(instr) +
                                      nir_src_as_uint(*offset_nir_src) +
                                      component_from_intrinsic(instr);
 
    /* URB writes are vec4 aligned but the intrinsic offsets are in dwords.
-    * With a max of 4 components, an intrinsic can require up to two writes.
-    *
-    * First URB write will be shifted by comp_shift.  If there are other
-    * components left, then dispatch a second write.  In addition to that,
-    * take mask into account to decide whether each write will be actually
-    * needed.
+    * We can write up to 8 dwords, so single vec4 write is enough.
     */
-   const unsigned comp_shift   = offset_in_dwords % 4;
-   const unsigned first_comps  = MIN2(comps, 8 - comp_shift);
-   const unsigned second_comps = comps - first_comps;
-   const unsigned first_mask   = (mask << comp_shift) & 0xFF;
-   const unsigned second_mask  = (mask >> (8 - comp_shift)) & 0xFF;
+   const unsigned comp_shift = offset_in_dwords % 4;
+   const unsigned mask = nir_intrinsic_write_mask(instr) << comp_shift;
 
    unsigned urb_global_offset = offset_in_dwords / 4;
    adjust_handle_and_offset(bld, urb_handle, urb_global_offset);
 
-   if (first_mask > 0)
-      emit_urb_direct_vec4_write(bld, urb_global_offset, src, urb_handle, 0, comp_shift, first_comps, first_mask);
-
-   if (second_mask > 0) {
-      urb_global_offset += 2;
-      adjust_handle_and_offset(bld, urb_handle, urb_global_offset);
-
-      emit_urb_direct_vec4_write(bld, urb_global_offset, src, urb_handle, first_comps, 0, second_comps, second_mask);
-   }
+   emit_urb_direct_vec4_write(bld, urb_global_offset, src, urb_handle,
+                              comp_shift, comps, mask);
 }
 
 static void
@@ -1010,7 +993,6 @@ emit_urb_indirect_vec4_write(const fs_builder &bld,
                              unsigned base,
                              const fs_reg &src,
                              fs_reg urb_handle,
-                             unsigned src_comp_offset,
                              unsigned dst_comp_offset,
                              unsigned comps,
                              unsigned mask)
@@ -1030,7 +1012,7 @@ emit_urb_indirect_vec4_write(const fs_builder &bld,
          payload_srcs[length++] = reg_undef;
 
       for (unsigned c = 0; c < comps; c++)
-         payload_srcs[length++] = quarter(offset(src, bld, c + src_comp_offset), q);
+         payload_srcs[length++] = quarter(offset(src, bld, c), q);
 
       fs_reg srcs[URB_LOGICAL_NUM_SRCS];
       srcs[URB_LOGICAL_SRC_HANDLE] = urb_handle;
@@ -1055,29 +1037,16 @@ emit_urb_indirect_writes_mod(const fs_builder &bld, nir_intrinsic_instr *instr,
    assert(nir_src_bit_size(instr->src[0]) == 32);
 
    const unsigned comps = nir_src_num_components(instr->src[0]);
-   assert(comps <= 8);
+   assert(comps <= 4);
 
-   const unsigned mask = nir_intrinsic_write_mask(instr);
    const unsigned base_in_dwords = nir_intrinsic_base(instr) +
                                    component_from_intrinsic(instr);
 
-   const unsigned comp_shift   = mod;
-   const unsigned first_comps  = MIN2(comps, 8 - comp_shift);
-   const unsigned second_comps = comps - first_comps;
-   const unsigned first_mask   = (mask << comp_shift) & 0xFF;
-   const unsigned second_mask  = (mask >> (8 - comp_shift)) & 0xFF;
+   const unsigned comp_shift = mod;
+   const unsigned mask = nir_intrinsic_write_mask(instr) << comp_shift;
 
-   if (first_mask > 0) {
-      emit_urb_indirect_vec4_write(bld, offset_src, base_in_dwords, src,
-                                   urb_handle, 0, comp_shift, first_comps,
-                                   first_mask);
-   }
-
-   if (second_mask > 0) {
-      emit_urb_indirect_vec4_write(bld, offset_src, base_in_dwords + 8, src,
-                                   urb_handle, first_comps, 0, second_comps,
-                                   second_mask);
-   }
+   emit_urb_indirect_vec4_write(bld, offset_src, base_in_dwords, src,
+                                urb_handle, comp_shift, comps, mask);
 }
 
 static void
@@ -1268,8 +1237,7 @@ fs_visitor::emit_task_mesh_store(const fs_builder &bld, nir_intrinsic_instr *ins
 
       if (offset_nir_src->is_ssa) {
          /* Try to calculate the value of (offset + base) % 4. If we can do
-          * this, then we can do indirect writes using only up to 2 URB
-          * writes (1 if modulo + num_comps is <= 4).
+          * this, then we can do indirect writes using only 1 URB write.
           */
          use_mod = nir_mod_analysis(nir_get_ssa_scalar(offset_nir_src->ssa, 0), nir_type_uint, 4, &mod);
          if (use_mod) {
