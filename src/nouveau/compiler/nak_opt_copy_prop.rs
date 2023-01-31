@@ -29,19 +29,19 @@ impl CopyPropPass {
     pub fn run(&mut self, f: &mut Function) {
         for b in &mut f.blocks {
             for instr in &mut b.instrs {
-                match instr.op {
-                    Opcode::VEC => {
+                match &instr.op {
+                    Op::Vec(vec) => {
                         self.add_copy(
-                            instr.dst(0).as_ssa().unwrap(),
-                            instr.srcs().to_vec(),
+                            vec.dst.as_ssa().unwrap(),
+                            vec.srcs.to_vec(),
                         );
                     }
-                    Opcode::SPLIT => {
-                        let src_ssa = instr.src(0).as_ssa().unwrap();
+                    Op::Split(split) => {
+                        let src_ssa = split.src.as_ssa().unwrap();
                         if let Some(src_vec) = self.get_copy(src_ssa).cloned() {
-                            assert!(src_vec.len() == instr.num_dsts());
-                            for i in 0..instr.num_dsts() {
-                                if let Dst::SSA(ssa) = instr.dst(i) {
+                            assert!(src_vec.len() == split.dsts.len());
+                            for (i, dst) in split.dsts.iter().enumerate() {
+                                if let Dst::SSA(ssa) = dst {
                                     self.add_copy(ssa, vec![src_vec[i]]);
                                 }
                             }
@@ -51,7 +51,7 @@ impl CopyPropPass {
                 }
 
                 if let Pred::SSA(src_ssa) = &instr.pred {
-                    if let Some(src_vec) = self.get_copy(src_ssa) {
+                    if let Some(src_vec) = self.get_copy(&src_ssa) {
                         if let Src::SSA(ssa) = src_vec[0] {
                             instr.pred = Pred::SSA(ssa);
                         }
@@ -61,7 +61,7 @@ impl CopyPropPass {
                 for src in instr.srcs_mut() {
                     if let Ref::SSA(src_ssa) = src {
                         if src_ssa.comps() == 1 {
-                            if let Some(src_vec) = self.get_copy(src_ssa) {
+                            if let Some(src_vec) = self.get_copy(&src_ssa) {
                                 *src = src_vec[0];
                             }
                         }

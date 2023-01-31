@@ -174,3 +174,30 @@ pub fn derive_dsts_as_slice(input: TokenStream) -> TokenStream {
 pub fn derive_src_mods_as_slice(input: TokenStream) -> TokenStream {
     derive_as_slice(input, "SrcModsAsSlice", "src_mods", "SrcMod")
 }
+
+#[proc_macro_derive(Display)]
+pub fn enum_derive_display(input: TokenStream) -> TokenStream {
+    let DeriveInput { ident, data, .. } = parse_macro_input!(input);
+
+    if let Data::Enum(e) = data {
+        let mut cases = TokenStream2::new();
+        for v in e.variants {
+            let case = v.ident;
+            cases.extend(quote! {
+                #ident::#case(x) => x.fmt(f),
+            });
+        }
+        quote! {
+            impl fmt::Display for #ident {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    match self {
+                        #cases
+                    }
+                }
+            }
+        }
+        .into()
+    } else {
+        panic!("Not an enum type");
+    }
+}

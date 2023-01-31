@@ -8,7 +8,6 @@ extern crate nak_ir_proc;
 use nak_ir_proc::*;
 use std::fmt;
 use std::ops::{BitAnd, BitOr, Not, Range};
-use std::slice;
 
 #[derive(Clone, Copy)]
 pub struct Immediate {
@@ -327,6 +326,7 @@ pub trait DstsAsSlice {
     fn dsts_as_mut_slice(&mut self) -> &mut [Dst];
 }
 
+#[derive(Clone, Copy)]
 pub enum SrcMod {
     None,
     FAbs,
@@ -374,7 +374,7 @@ impl SrcMod {
             SrcMod::FNeg | SrcMod::FNegAbs | SrcMod::INeg | SrcMod::INegAbs => {
                 true
             }
-            SrcMod::BNot => panic!("This is a boolean modifier"),
+            SrcMod::BNot => panic!("This is a binary modifier"),
         }
     }
 
@@ -384,7 +384,7 @@ impl SrcMod {
             SrcMod::FAbs | SrcMod::FNegAbs | SrcMod::IAbs | SrcMod::INegAbs => {
                 true
             }
-            SrcMod::BNot => panic!("This is a boolean modifier"),
+            SrcMod::BNot => panic!("This is a binary modifier"),
         }
     }
 
@@ -392,7 +392,7 @@ impl SrcMod {
         match self {
             SrcMod::None => false,
             SrcMod::BNot => true,
-            _ => panic!("This is not a boolean modifier"),
+            _ => panic!("This is not a binary modifier"),
         }
     }
 }
@@ -443,130 +443,11 @@ pub trait SrcModsAsSlice: SrcsAsSlice {
             (&mut srcs[..mods.len()], mods)
         }
     }
-}
 
-pub enum Pred {
-    None,
-    SSA(SSAValue),
-    Reg(RegRef),
-}
-
-impl Pred {
-    pub fn new_ssa(file: RegFile, idx: u32, comps: u8) -> Pred {
-        Pred::SSA(SSAValue::new(file, idx, comps))
-    }
-
-    pub fn new_reg(file: RegFile, idx: u8, comps: u8) -> Pred {
-        Pred::Reg(RegRef::new(file, idx, comps))
-    }
-
-    pub fn as_reg(&self) -> Option<&RegRef> {
-        match self {
-            Pred::Reg(r) => Some(r),
-            _ => None,
-        }
-    }
-
-    pub fn as_ssa(&self) -> Option<&SSAValue> {
-        match self {
-            Pred::SSA(r) => Some(r),
-            _ => None,
-        }
-    }
-
-    pub fn is_none(&self) -> bool {
-        match self {
-            Pred::None => true,
-            _ => false,
-        }
-    }
-}
-
-impl fmt::Display for Pred {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Pred::None => (),
-            Pred::SSA(v) => {
-                if v.is_uniform() {
-                    write!(f, "USSA{}@{}", v.idx(), v.comps())?;
-                } else {
-                    write!(f, "SSA{}@{}", v.idx(), v.comps())?;
-                }
-            }
-            Pred::Reg(r) => r.fmt(f)?,
-        }
-        Ok(())
-    }
-}
-
-struct InstrRefArr {
-    num_dsts: u8,
-    num_srcs: u8,
-    refs: [Ref; 4],
-}
-
-struct InstrRefVecs {
-    dsts: Vec<Dst>,
-    srcs: Vec<Src>,
-}
-
-enum InstrRefs {
-    Array(InstrRefArr),
-    Vecs(InstrRefVecs),
-}
-
-impl InstrRefs {
-    pub fn new(dsts: &[Dst], srcs: &[Src]) -> InstrRefs {
-        if dsts.len() + srcs.len() > 4 {
-            InstrRefs::Vecs(InstrRefVecs {
-                dsts: Vec::from(dsts),
-                srcs: Vec::from(srcs),
-            })
-        } else {
-            let mut refs = [Ref::Zero, Ref::Zero, Ref::Zero, Ref::Zero];
-            for i in 0..dsts.len() {
-                refs[i] = dsts[i];
-            }
-            for i in 0..srcs.len() {
-                refs[dsts.len() + i] = srcs[i];
-            }
-            InstrRefs::Array(InstrRefArr {
-                num_dsts: dsts.len().try_into().unwrap(),
-                num_srcs: srcs.len().try_into().unwrap(),
-                refs: refs,
-            })
-        }
-    }
-
-    pub fn dsts(&self) -> &[Dst] {
-        match self {
-            InstrRefs::Array(x) => &x.refs[..x.num_dsts.into()],
-            InstrRefs::Vecs(x) => &x.dsts,
-        }
-    }
-
-    pub fn dsts_mut(&mut self) -> &mut [Dst] {
-        match self {
-            InstrRefs::Array(x) => &mut x.refs[..x.num_dsts.into()],
-            InstrRefs::Vecs(x) => &mut x.dsts,
-        }
-    }
-
-    pub fn srcs(&self) -> &[Src] {
-        match self {
-            InstrRefs::Array(x) => {
-                &x.refs[x.num_dsts.into()..(x.num_dsts + x.num_srcs).into()]
-            }
-            InstrRefs::Vecs(x) => &x.srcs,
-        }
-    }
-
-    pub fn srcs_mut(&mut self) -> &mut [Src] {
-        match self {
-            InstrRefs::Array(x) => {
-                &mut x.refs[x.num_dsts.into()..(x.num_dsts + x.num_srcs).into()]
-            }
-            InstrRefs::Vecs(x) => &mut x.srcs,
+    fn mod_src(&self, idx: usize) -> ModSrc {
+        ModSrc {
+            src: self.srcs_as_slice()[idx],
+            src_mod: self.src_mods_as_slice()[idx],
         }
     }
 }
@@ -614,17 +495,6 @@ impl fmt::Display for IntCmpType {
             IntCmpType::U32 => write!(f, "U32"),
             IntCmpType::I32 => write!(f, "I32"),
         }
-    }
-}
-
-pub struct IntCmpOp {
-    pub cmp_op: CmpOp,
-    pub cmp_type: IntCmpType,
-}
-
-impl fmt::Display for IntCmpOp {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}.{}", self.cmp_op, self.cmp_type)
     }
 }
 
@@ -681,14 +551,6 @@ impl fmt::Display for LogicOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "LUT[{:#x}]", self.lut)
     }
-}
-
-pub struct AttrAccess {
-    pub addr: u16,
-    pub comps: u8,
-    pub patch: bool,
-    pub out_load: bool,
-    pub flags: u8,
 }
 
 pub enum MemAddrType {
@@ -808,6 +670,423 @@ impl fmt::Display for MemAccess {
     }
 }
 
+pub struct AttrAccess {
+    pub addr: u16,
+    pub comps: u8,
+    pub patch: bool,
+    pub out_load: bool,
+    pub flags: u8,
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpIAdd3 {
+    pub dst: Dst,
+    pub srcs: [Src; 3],
+    pub carry: [Src; 2],
+    pub src_mods: [SrcMod; 3],
+}
+
+impl fmt::Display for OpIAdd3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "IADD3 {} {{ {}, {}, {}, {}, {} }}",
+            self.dst,
+            self.mod_src(0),
+            self.mod_src(1),
+            self.mod_src(2),
+            self.carry[0],
+            self.carry[1]
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpISetP {
+    pub dst: Dst,
+
+    pub cmp_op: CmpOp,
+    pub cmp_type: IntCmpType,
+
+    pub srcs: [Src; 2],
+    /* TODO: Other predicates? Combine ops? */
+}
+
+impl fmt::Display for OpISetP {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "ISETP.{}.{} {} {{ {}, {} }}",
+            self.cmp_op, self.cmp_type, self.dst, self.srcs[0], self.srcs[1],
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpLop3 {
+    pub dst: Dst,
+    pub srcs: [Src; 3],
+    pub op: LogicOp,
+}
+
+impl fmt::Display for OpLop3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "LOP3.{} {} {{ {}, {}, {} }}",
+            self.op, self.dst, self.srcs[0], self.srcs[1], self.srcs[2],
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpShl {
+    pub dst: Dst,
+    pub srcs: [Src; 2],
+}
+
+impl fmt::Display for OpShl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "SHL {} {{ {}, {} }}",
+            self.dst, self.srcs[0], self.srcs[1],
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpMov {
+    pub dst: Dst,
+    pub src: Src,
+    pub quad_lanes: u8,
+}
+
+impl fmt::Display for OpMov {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.quad_lanes == 0xf {
+            write!(f, "MOV {} {}", self.dst, self.src)
+        } else {
+            write!(f, "MOV[{:#x}] {} {}", self.quad_lanes, self.dst, self.src)
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpSel {
+    pub dst: Dst,
+    pub cond: Src,
+    pub srcs: [Src; 2],
+    pub cond_mod: SrcMod,
+}
+
+impl fmt::Display for OpSel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "SEL {} {{ {}, {}, {} }}",
+            self.dst,
+            self.mod_src(0),
+            self.srcs[0],
+            self.srcs[1],
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpPLop3 {
+    pub dst: Dst,
+    pub srcs: [Src; 3],
+    pub src_mods: [SrcMod; 3],
+    pub op: LogicOp,
+}
+
+impl fmt::Display for OpPLop3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "PLOP3.{} {} {{ {}, {}, {} }}",
+            self.op,
+            self.dst,
+            self.mod_src(0),
+            self.mod_src(1),
+            self.mod_src(2),
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpLd {
+    pub dst: Dst,
+    pub addr: Src,
+    pub offset: u32,
+    pub access: MemAccess,
+}
+
+impl fmt::Display for OpLd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "LD.{} {} [{}", self.access, self.dst, self.addr)?;
+        if self.offset > 0 {
+            write!(f, "+{}", self.offset)?;
+        }
+        write!(f, "]")
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpSt {
+    pub addr: Src,
+    pub data: Src,
+    pub offset: u32,
+    pub access: MemAccess,
+}
+
+impl fmt::Display for OpSt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ST.{} [{}", self.access, self.addr)?;
+        if self.offset > 0 {
+            write!(f, "+{}", self.offset)?;
+        }
+        write!(f, "] {}", self.data)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpALd {
+    pub dst: Dst,
+    pub vtx: Src,
+    pub offset: Src,
+    pub access: AttrAccess,
+}
+
+impl fmt::Display for OpALd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ALD {} a", self.dst)?;
+        match self.vtx {
+            Src::Zero => (),
+            _ => write!(f, "[{}]", self.vtx)?,
+        }
+        write!(f, "[{:#x}", self.access.addr)?;
+        match self.vtx {
+            Src::Zero => (),
+            _ => write!(f, "+{}", self.offset)?,
+        }
+        write!(f, "]")
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpASt {
+    pub vtx: Src,
+    pub offset: Src,
+    pub data: Src,
+    pub access: AttrAccess,
+}
+
+impl fmt::Display for OpASt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ALD a")?;
+        match self.vtx {
+            Src::Zero => (),
+            _ => write!(f, "[{}]", self.vtx)?,
+        }
+        write!(f, "[{:#x}", self.access.addr)?;
+        match self.vtx {
+            Src::Zero => (),
+            _ => write!(f, "+{}", self.offset)?,
+        }
+        write!(f, "] {}", self.data)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpExit {}
+
+impl fmt::Display for OpExit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "EXIT")
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpS2R {
+    pub dst: Dst,
+    pub idx: u8,
+}
+
+impl fmt::Display for OpS2R {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "S2R {} sr[{:#x}]", self.dst, self.idx)
+    }
+}
+
+#[repr(C)]
+#[derive(DstsAsSlice, SrcModsAsSlice)]
+pub struct OpVec {
+    pub dst: Dst,
+    pub srcs: Vec<Src>,
+}
+
+impl SrcsAsSlice for OpVec {
+    fn srcs_as_slice(&self) -> &[Src] {
+        &self.srcs
+    }
+
+    fn srcs_as_mut_slice(&mut self) -> &mut [Src] {
+        &mut self.srcs
+    }
+}
+
+impl fmt::Display for OpVec {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "VEC {} {{ {}", self.dst, self.srcs[0])?;
+        for src in &self.srcs[1..] {
+            write!(f, " {}", src)?;
+        }
+        write!(f, "}}")
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, SrcModsAsSlice)]
+pub struct OpSplit {
+    pub dsts: Vec<Dst>,
+    pub src: Src,
+}
+
+impl DstsAsSlice for OpSplit {
+    fn dsts_as_slice(&self) -> &[Dst] {
+        &self.dsts
+    }
+
+    fn dsts_as_mut_slice(&mut self) -> &mut [Dst] {
+        &mut self.dsts
+    }
+}
+
+impl fmt::Display for OpSplit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "SPLIT {{ {}", self.dsts[0])?;
+        for dst in &self.dsts[1..] {
+            write!(f, " {}", dst)?;
+        }
+        write!(f, "}} {}", self.src)
+    }
+}
+
+#[repr(C)]
+#[derive(DstsAsSlice, SrcModsAsSlice)]
+pub struct OpFSOut {
+    pub srcs: Vec<Src>,
+}
+
+impl SrcsAsSlice for OpFSOut {
+    fn srcs_as_slice(&self) -> &[Src] {
+        &self.srcs
+    }
+
+    fn srcs_as_mut_slice(&mut self) -> &mut [Src] {
+        &mut self.srcs
+    }
+}
+
+impl fmt::Display for OpFSOut {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "FS_OUT {{ {}", self.srcs[0])?;
+        for src in &self.srcs[1..] {
+            write!(f, " {}", src)?;
+        }
+        write!(f, "}}")
+    }
+}
+
+#[derive(Display, DstsAsSlice, SrcsAsSlice)]
+pub enum Op {
+    IAdd3(OpIAdd3),
+    ISetP(OpISetP),
+    Lop3(OpLop3),
+    Shl(OpShl),
+    Mov(OpMov),
+    Sel(OpSel),
+    PLop3(OpPLop3),
+    Ld(OpLd),
+    St(OpSt),
+    ALd(OpALd),
+    ASt(OpASt),
+    Exit(OpExit),
+    S2R(OpS2R),
+    Vec(OpVec),
+    Split(OpSplit),
+    FSOut(OpFSOut),
+}
+
+pub enum Pred {
+    None,
+    SSA(SSAValue),
+    Reg(RegRef),
+}
+
+impl Pred {
+    pub fn new_ssa(file: RegFile, idx: u32, comps: u8) -> Pred {
+        Pred::SSA(SSAValue::new(file, idx, comps))
+    }
+
+    pub fn new_reg(file: RegFile, idx: u8, comps: u8) -> Pred {
+        Pred::Reg(RegRef::new(file, idx, comps))
+    }
+
+    pub fn as_reg(&self) -> Option<&RegRef> {
+        match self {
+            Pred::Reg(r) => Some(r),
+            _ => None,
+        }
+    }
+
+    pub fn as_ssa(&self) -> Option<&SSAValue> {
+        match self {
+            Pred::SSA(r) => Some(r),
+            _ => None,
+        }
+    }
+
+    pub fn is_none(&self) -> bool {
+        match self {
+            Pred::None => true,
+            _ => false,
+        }
+    }
+}
+
+impl fmt::Display for Pred {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Pred::None => (),
+            Pred::SSA(v) => {
+                if v.is_uniform() {
+                    write!(f, "USSA{}@{}", v.idx(), v.comps())?;
+                } else {
+                    write!(f, "SSA{}@{}", v.idx(), v.comps())?;
+                }
+            }
+            Pred::Reg(r) => r.fmt(f)?,
+        }
+        Ok(())
+    }
+}
+
 pub const MIN_INSTR_DELAY: u8 = 1;
 pub const MAX_INSTR_DELAY: u8 = 15;
 
@@ -902,34 +1181,29 @@ impl fmt::Display for InstrDeps {
 }
 
 pub struct Instr {
-    pub op: Opcode,
     pub pred: Pred,
     pub pred_inv: bool,
+    pub op: Op,
     pub deps: InstrDeps,
-    refs: InstrRefs,
 }
 
 impl Instr {
-    pub fn new(op: Opcode, dsts: &[Dst], srcs: &[Src]) -> Instr {
+    pub fn new(op: Op) -> Instr {
         Instr {
             op: op,
             pred: Pred::None,
             pred_inv: false,
-            refs: InstrRefs::new(dsts, srcs),
             deps: InstrDeps::new(),
         }
     }
 
-    pub fn new_noop() -> Instr {
-        Instr::new(Opcode::NOOP, &[], &[])
-    }
-
-    pub fn new_fadd(dst: Dst, x: Src, y: Src) -> Instr {
-        Instr::new(Opcode::FADD, slice::from_ref(&dst), &[x, y])
-    }
-
     pub fn new_iadd(dst: Dst, x: Src, y: Src) -> Instr {
-        Instr::new(Opcode::IADD3, slice::from_ref(&dst), &[Src::Zero, x, y])
+        Instr::new(Op::IAdd3(OpIAdd3 {
+            dst: dst,
+            srcs: [Src::Zero, x, y],
+            carry: [Src::Zero; 2],
+            src_mods: [SrcMod::None; 3],
+        }))
     }
 
     pub fn new_isetp(
@@ -939,219 +1213,172 @@ impl Instr {
         x: Src,
         y: Src,
     ) -> Instr {
-        let op = IntCmpOp {
-            cmp_type: cmp_type,
+        Instr::new(Op::ISetP(OpISetP {
+            dst: dst,
             cmp_op: cmp_op,
-        };
-        Instr::new(Opcode::ISETP(op), slice::from_ref(&dst), &[x, y])
+            cmp_type: cmp_type,
+            srcs: [x, y],
+        }))
     }
 
     pub fn new_lop3(dst: Dst, op: LogicOp, x: Src, y: Src, z: Src) -> Instr {
-        Instr::new(Opcode::LOP3(op), slice::from_ref(&dst), &[x, y, z])
-    }
-
-    pub fn new_plop3(dst: Dst, op: LogicOp, x: Src, y: Src, z: Src) -> Instr {
-        Instr::new(Opcode::PLOP3(op), slice::from_ref(&dst), &[x, y, z])
+        Instr::new(Op::Lop3(OpLop3 {
+            dst: dst,
+            srcs: [x, y, z],
+            op: op,
+        }))
     }
 
     pub fn new_shl(dst: Dst, x: Src, shift: Src) -> Instr {
-        Instr::new(Opcode::SHL, slice::from_ref(&dst), &[x, shift])
-    }
-
-    pub fn new_s2r(dst: Dst, idx: u8) -> Instr {
-        Instr::new(Opcode::S2R(idx), slice::from_ref(&dst), &[])
+        Instr::new(Op::Shl(OpShl {
+            dst: dst,
+            srcs: [x, shift],
+        }))
     }
 
     pub fn new_mov(dst: Dst, src: Src) -> Instr {
-        Instr::new(Opcode::MOV, slice::from_ref(&dst), slice::from_ref(&src))
+        Instr::new(Op::Mov(OpMov {
+            dst: dst,
+            src: src,
+            quad_lanes: 0xf,
+        }))
     }
 
     pub fn new_sel(dst: Dst, sel: Src, x: Src, y: Src) -> Instr {
-        Instr::new(Opcode::SEL, slice::from_ref(&dst), &[sel, x, y])
+        Instr::new(Op::Sel(OpSel {
+            dst: dst,
+            cond: sel,
+            srcs: [x, y],
+            cond_mod: SrcMod::None,
+        }))
     }
 
-    pub fn new_vec(dst: Dst, srcs: &[Src]) -> Instr {
-        Instr::new(Opcode::VEC, slice::from_ref(&dst), srcs)
-    }
-
-    pub fn new_split(dsts: &[Dst], src: Src) -> Instr {
-        Instr::new(Opcode::SPLIT, dsts, slice::from_ref(&src))
-    }
-
-    pub fn new_ald(dst: Dst, attr_addr: u16, vtx: Src, offset: Src) -> Instr {
-        let attr = AttrAccess {
-            addr: attr_addr,
-            comps: dst.as_ssa().unwrap().comps(),
-            patch: false,
-            out_load: false,
-            flags: 0,
-        };
-        Instr::new(Opcode::ALD(attr), slice::from_ref(&dst), &[vtx, offset])
-    }
-
-    pub fn new_ast(attr_addr: u16, data: Src, vtx: Src, offset: Src) -> Instr {
-        let attr = AttrAccess {
-            addr: attr_addr,
-            comps: data.as_ssa().unwrap().comps(),
-            patch: false,
-            out_load: false,
-            flags: 0,
-        };
-        Instr::new(Opcode::AST(attr), &[], &[data, vtx, offset])
+    pub fn new_plop3(dst: Dst, op: LogicOp, x: Src, y: Src, z: Src) -> Instr {
+        Instr::new(Op::PLop3(OpPLop3 {
+            dst: dst,
+            srcs: [x, y, z],
+            src_mods: [SrcMod::None; 3],
+            op: op,
+        }))
     }
 
     pub fn new_ld(dst: Dst, access: MemAccess, addr: Src) -> Instr {
-        Instr::new(
-            Opcode::LD(access),
-            slice::from_ref(&dst),
-            slice::from_ref(&addr),
-        )
+        Instr::new(Op::Ld(OpLd {
+            dst: dst,
+            addr: addr,
+            offset: 0,
+            access: access,
+        }))
     }
 
     pub fn new_st(access: MemAccess, addr: Src, data: Src) -> Instr {
-        Instr::new(Opcode::ST(access), &[], &[addr, data])
+        Instr::new(Op::St(OpSt {
+            addr: addr,
+            data: data,
+            offset: 0,
+            access: access,
+        }))
     }
 
-    pub fn new_fs_out(srcs: &[Src]) -> Instr {
-        Instr::new(Opcode::FS_OUT, &[], srcs)
+    pub fn new_ald(dst: Dst, attr_addr: u16, vtx: Src, offset: Src) -> Instr {
+        Instr::new(Op::ALd(OpALd {
+            dst: dst,
+            vtx: vtx,
+            offset: offset,
+            access: AttrAccess {
+                addr: attr_addr,
+                comps: dst.as_ssa().unwrap().comps(),
+                patch: false,
+                out_load: false,
+                flags: 0,
+            },
+        }))
+    }
+
+    pub fn new_ast(attr_addr: u16, data: Src, vtx: Src, offset: Src) -> Instr {
+        Instr::new(Op::ASt(OpASt {
+            vtx: vtx,
+            offset: offset,
+            data: data,
+            access: AttrAccess {
+                addr: attr_addr,
+                comps: data.as_ssa().unwrap().comps(),
+                patch: false,
+                out_load: false,
+                flags: 0,
+            },
+        }))
     }
 
     pub fn new_exit() -> Instr {
-        let mut instr = Instr::new(Opcode::EXIT, &[], &[]);
-        for i in 0..6 {
-            instr.deps.add_wt_bar(i);
-        }
-        instr
+        Instr::new(Op::Exit(OpExit {}))
     }
 
-    pub fn dst(&self, idx: usize) -> &Dst {
-        &self.refs.dsts()[idx]
+    pub fn new_s2r(dst: Dst, idx: u8) -> Instr {
+        Instr::new(Op::S2R(OpS2R { dst: dst, idx: idx }))
     }
 
-    pub fn dst_mut(&mut self, idx: usize) -> &mut Dst {
-        &mut self.refs.dsts_mut()[idx]
+    pub fn new_vec(dst: Dst, srcs: &[Src]) -> Instr {
+        Instr::new(Op::Vec(OpVec {
+            dst: dst,
+            srcs: srcs.to_vec(),
+        }))
+    }
+
+    pub fn new_split(dsts: &[Dst], src: Src) -> Instr {
+        Instr::new(Op::Split(OpSplit {
+            dsts: dsts.to_vec(),
+            src: src,
+        }))
+    }
+
+    pub fn new_fs_out(srcs: &[Src]) -> Instr {
+        Instr::new(Op::FSOut(OpFSOut {
+            srcs: srcs.to_vec(),
+        }))
     }
 
     pub fn dsts(&self) -> &[Dst] {
-        self.refs.dsts()
+        self.op.dsts_as_slice()
     }
 
     pub fn dsts_mut(&mut self) -> &mut [Dst] {
-        self.refs.dsts_mut()
-    }
-
-    pub fn src(&self, idx: usize) -> &Src {
-        &self.refs.srcs()[idx]
-    }
-
-    pub fn src_mut(&mut self, idx: usize) -> &mut Src {
-        &mut self.refs.srcs_mut()[idx]
+        self.op.dsts_as_mut_slice()
     }
 
     pub fn srcs(&self) -> &[Src] {
-        self.refs.srcs()
+        self.op.srcs_as_slice()
     }
 
     pub fn srcs_mut(&mut self) -> &mut [Src] {
-        self.refs.srcs_mut()
-    }
-
-    pub fn num_dsts(&self) -> usize {
-        self.dsts().len()
-    }
-
-    pub fn num_srcs(&self) -> usize {
-        self.srcs().len()
+        self.op.srcs_as_mut_slice()
     }
 
     pub fn can_eliminate(&self) -> bool {
         match self.op {
-            Opcode::FS_OUT | Opcode::EXIT | Opcode::AST(_) | Opcode::ST(_) => {
-                false
-            }
+            Op::ASt(_) | Op::St(_) | Op::Exit(_) | Op::FSOut(_) => false,
             _ => true,
         }
     }
 
     pub fn get_latency(&self) -> Option<u32> {
         match self.op {
-            Opcode::FADD
-            | Opcode::FFMA
-            | Opcode::FMNMX
-            | Opcode::FMUL
-            | Opcode::IADD3
-            | Opcode::LOP3(_)
-            | Opcode::PLOP3(_)
-            | Opcode::ISETP(_)
-            | Opcode::SHL => Some(6),
-            Opcode::MOV => Some(15),
-            Opcode::SEL => Some(15),
-            Opcode::S2R(_) => None,
-            Opcode::ALD(_) => None,
-            Opcode::AST(_) => Some(15),
-            Opcode::LD(_) => None,
-            Opcode::ST(_) => None,
-            Opcode::EXIT => Some(15),
-            Opcode::NOOP | Opcode::VEC | Opcode::SPLIT | Opcode::FS_OUT => {
+            Op::IAdd3(_)
+            | Op::Lop3(_)
+            | Op::PLop3(_)
+            | Op::ISetP(_)
+            | Op::Shl(_) => Some(6),
+            Op::Mov(_) => Some(15),
+            Op::Sel(_) => Some(15),
+            Op::S2R(_) => None,
+            Op::ALd(_) => None,
+            Op::ASt(_) => Some(15),
+            Op::Ld(_) => None,
+            Op::St(_) => None,
+            Op::Exit(_) => Some(15),
+            Op::Vec(_) | Op::Split(_) | Op::FSOut(_) => {
                 panic!("Not a hardware opcode")
             }
-        }
-    }
-}
-
-pub enum Opcode {
-    NOOP,
-    FADD,
-    FFMA,
-    FMNMX,
-    FMUL,
-
-    IADD3,
-    LOP3(LogicOp),
-    PLOP3(LogicOp),
-    ISETP(IntCmpOp),
-    SHL,
-
-    S2R(u8),
-    MOV,
-    SEL,
-    VEC,
-    SPLIT,
-
-    ALD(AttrAccess),
-    AST(AttrAccess),
-    LD(MemAccess),
-    ST(MemAccess),
-
-    FS_OUT,
-
-    EXIT,
-}
-
-impl fmt::Display for Opcode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Opcode::NOOP => write!(f, "NOOP"),
-            Opcode::FADD => write!(f, "FADD"),
-            Opcode::FFMA => write!(f, "FFMA"),
-            Opcode::FMNMX => write!(f, "FMNMX"),
-            Opcode::FMUL => write!(f, "FMUL"),
-            Opcode::IADD3 => write!(f, "IADD3"),
-            Opcode::LOP3(op) => write!(f, "LOP3.{}", op),
-            Opcode::PLOP3(op) => write!(f, "PLOP3.{}", op),
-            Opcode::ISETP(op) => write!(f, "ISETP.{}", op),
-            Opcode::SHL => write!(f, "SHL"),
-            Opcode::S2R(i) => write!(f, "S2R({})", i),
-            Opcode::MOV => write!(f, "MOV"),
-            Opcode::SEL => write!(f, "SEL"),
-            Opcode::VEC => write!(f, "VEC"),
-            Opcode::SPLIT => write!(f, "SPLIT"),
-            Opcode::ALD(_) => write!(f, "ALD"),
-            Opcode::AST(_) => write!(f, "AST"),
-            Opcode::LD(a) => write!(f, "LD.{}", a),
-            Opcode::ST(a) => write!(f, "ST.{}", a),
-            Opcode::FS_OUT => write!(f, "FS_OUT"),
-            Opcode::EXIT => write!(f, "EXIT"),
         }
     }
 }
@@ -1165,21 +1392,7 @@ impl fmt::Display for Instr {
                 write!(f, "@{}", self.pred)?;
             }
         }
-        write!(f, "{} {{", self.op)?;
-        if self.num_dsts() > 0 {
-            write!(f, " {}", self.dst(0))?;
-            for dst in &self.dsts()[1..] {
-                write!(f, ", {}", dst)?;
-            }
-        }
-        write!(f, " }} {{")?;
-        if self.num_srcs() > 0 {
-            write!(f, " {}", self.src(0))?;
-            for src in &self.srcs()[1..] {
-                write!(f, ", {}", src)?;
-            }
-        }
-        write!(f, " }} {}", self.deps)
+        write!(f, "{} {}", self.op, self.deps)
     }
 }
 
@@ -1274,48 +1487,48 @@ impl Shader {
     pub fn lower_vec_split(&mut self) {
         self.map_instrs(&|instr: Instr| -> Vec<Instr> {
             match instr.op {
-                Opcode::VEC => {
+                Op::Vec(vec) => {
                     let mut instrs = Vec::new();
-                    let comps = u8::try_from(instr.num_srcs()).unwrap();
+                    let comps = u8::try_from(vec.srcs.len()).unwrap();
                     if comps == 1 {
-                        let src = instr.src(0);
-                        let dst = instr.dst(0);
-                        instrs.push(Instr::new_mov(*dst, *src));
+                        let src = vec.srcs[0];
+                        let dst = vec.dst;
+                        instrs.push(Instr::new_mov(dst, src));
                     } else {
-                        let vec_dst = instr.dst(0).as_reg().unwrap();
+                        let vec_dst = vec.dst.as_reg().unwrap();
                         assert!(comps == vec_dst.comps());
                         for i in 0..comps {
-                            let src = instr.src(i.into());
+                            let src = vec.srcs[usize::from(i)];
                             let dst = Dst::Reg(vec_dst.as_comp(i).unwrap());
-                            instrs.push(Instr::new_mov(dst, *src));
+                            instrs.push(Instr::new_mov(dst, src));
                         }
                     }
                     instrs
                 }
-                Opcode::SPLIT => {
+                Op::Split(split) => {
                     let mut instrs = Vec::new();
-                    let comps = u8::try_from(instr.num_dsts()).unwrap();
+                    let comps = u8::try_from(split.dsts.len()).unwrap();
                     if comps == 1 {
-                        let src = instr.src(0);
-                        let dst = instr.dst(0);
-                        instrs.push(Instr::new_mov(*dst, *src));
+                        let src = split.src;
+                        let dst = split.dsts[0];
+                        instrs.push(Instr::new_mov(dst, src));
                     } else {
-                        let vec_src = instr.src(0).as_reg().unwrap();
+                        let vec_src = split.src.as_reg().unwrap();
                         assert!(comps == vec_src.comps());
                         for i in 0..comps {
                             let src = Dst::Reg(vec_src.as_comp(i).unwrap());
-                            let dst = instr.dst(i.into());
+                            let dst = split.dsts[usize::from(i)];
                             if let Dst::Zero = dst {
                                 continue;
                             }
-                            instrs.push(Instr::new_mov(*dst, src));
+                            instrs.push(Instr::new_mov(dst, src));
                         }
                     }
                     instrs
                 }
-                Opcode::FS_OUT => {
+                Op::FSOut(out) => {
                     let mut instrs = Vec::new();
-                    for (i, src) in instr.srcs().iter().enumerate() {
+                    for (i, src) in out.srcs.iter().enumerate() {
                         let dst = Ref::new_reg(
                             RegFile::GPR,
                             i.try_into().unwrap(),
@@ -1335,7 +1548,7 @@ impl Shader {
             for b in &mut f.blocks {
                 for instr in &mut b.instrs {
                     let zero_file = match instr.op {
-                        Opcode::PLOP3(_) => RegFile::Pred,
+                        Op::PLop3(_) => RegFile::Pred,
                         _ => RegFile::GPR,
                     };
                     for dst in instr.dsts_mut() {

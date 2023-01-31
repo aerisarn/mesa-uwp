@@ -90,9 +90,6 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs
                     .push(Instr::new_sel(dst, srcs[0], srcs[1], srcs[2]));
             }
-            nir_op_fadd => {
-                self.instrs.push(Instr::new_fadd(dst, srcs[0], srcs[1]));
-            }
             nir_op_iadd => {
                 self.instrs.push(Instr::new_iadd(dst, srcs[0], srcs[1]));
             }
