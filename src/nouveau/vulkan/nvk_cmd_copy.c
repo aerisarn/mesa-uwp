@@ -54,6 +54,7 @@ struct nouveau_copy_buffer {
    VkOffset3D offset_el;
    uint32_t base_array_layer;
    VkExtent3D extent_el;
+   uint32_t bpp;
    uint32_t row_stride;
    uint32_t array_stride;
    struct nil_tiling tiling;
@@ -62,7 +63,6 @@ struct nouveau_copy_buffer {
 struct nouveau_copy {
    struct nouveau_copy_buffer src;
    struct nouveau_copy_buffer dst;
-   uint32_t bpp;
    VkExtent3D extent_el;
    uint32_t layer_count;
 };
@@ -75,6 +75,7 @@ nouveau_copy_rect_buffer(
 {
    return (struct nouveau_copy_buffer) {
       .base_addr = nvk_buffer_address(buf, offset),
+      .bpp = buffer_layout.element_size_B,
       .row_stride = buffer_layout.row_stride_B,
       .array_stride = buffer_layout.image_stride_B,
    };
@@ -124,6 +125,7 @@ nouveau_copy_rect_image(
       .offset_el = vk_offset_px_to_el(offset_px, img->vk.format),
       .base_array_layer = sub_res->baseArrayLayer,
       .extent_el = vk_extent_px_to_el(lvl_extent_px, img->vk.format),
+      .bpp = vk_format_get_blocksize(img->vk.format),
       .row_stride = img->nil.levels[sub_res->mipLevel].row_stride_B,
       .array_stride = img->nil.array_stride_B,
       .tiling = img->nil.levels[sub_res->mipLevel].tiling,
@@ -137,6 +139,8 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
 {
    struct nouveau_ws_push *push = cmd->push;
 
+   assert(copy->src.bpp == copy->dst.bpp);
+
    for (unsigned w = 0; w < copy->layer_count; w++) {
       VkDeviceSize src_addr = copy->src.base_addr;
       VkDeviceSize dst_addr = copy->dst.base_addr;
@@ -145,12 +149,12 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
       dst_addr += (w + copy->dst.base_array_layer) * copy->dst.array_stride;
 
       if (!copy->src.tiling.is_tiled) {
-         src_addr += copy->src.offset_el.x * copy->bpp +
+         src_addr += copy->src.offset_el.x * copy->src.bpp +
                      copy->src.offset_el.y * copy->src.row_stride;
       }
 
       if (!copy->dst.tiling.is_tiled) {
-         dst_addr += copy->dst.offset_el.x * copy->bpp +
+         dst_addr += copy->dst.offset_el.x * copy->dst.bpp +
                      copy->dst.offset_el.y * copy->dst.row_stride;
       }
 
@@ -162,7 +166,7 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
          P_NV90B5_OFFSET_OUT_LOWER(push, dst_addr & 0xfffffff);
          P_NV90B5_PITCH_IN(push, copy->src.row_stride);
          P_NV90B5_PITCH_OUT(push, copy->dst.row_stride);
-         P_NV90B5_LINE_LENGTH_IN(push, copy->extent_el.width * copy->bpp);
+         P_NV90B5_LINE_LENGTH_IN(push, copy->extent_el.width * copy->src.bpp);
          P_NV90B5_LINE_COUNT(push, copy->extent_el.height);
 
          uint32_t src_layout = 0, dst_layout = 0;
@@ -176,19 +180,21 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
                              GOB_HEIGHT_GOB_HEIGHT_FERMI_8 :
                              GOB_HEIGHT_GOB_HEIGHT_TESLA_4,
             });
-            P_NV90B5_SET_SRC_WIDTH(push, copy->src.extent_el.width * copy->bpp);
+            P_NV90B5_SET_SRC_WIDTH(push, copy->src.extent_el.width *
+                                         copy->src.bpp);
             P_NV90B5_SET_SRC_HEIGHT(push, copy->src.extent_el.height);
             P_NV90B5_SET_SRC_DEPTH(push, copy->src.extent_el.depth);
             P_NV90B5_SET_SRC_LAYER(push, z + copy->src.offset_el.z);
 
             if (cmd->pool->dev->ctx->copy.cls >= 0xc1b5) {
                P_MTHD(push, NVC1B5, SRC_ORIGIN_X);
-               P_NVC1B5_SRC_ORIGIN_X(push, copy->src.offset_el.x * copy->bpp);
+               P_NVC1B5_SRC_ORIGIN_X(push, copy->src.offset_el.x *
+                                           copy->src.bpp);
                P_NVC1B5_SRC_ORIGIN_Y(push, copy->src.offset_el.y);
             } else {
                P_MTHD(push, NV90B5, SET_SRC_ORIGIN);
                P_NV90B5_SET_SRC_ORIGIN(push, {
-                  .x = copy->src.offset_el.x * copy->bpp,
+                  .x = copy->src.offset_el.x * copy->src.bpp,
                   .y = copy->src.offset_el.y
                });
             }
@@ -209,19 +215,21 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
                              GOB_HEIGHT_GOB_HEIGHT_FERMI_8 :
                              GOB_HEIGHT_GOB_HEIGHT_TESLA_4,
             });
-            P_NV90B5_SET_DST_WIDTH(push, copy->dst.extent_el.width * copy->bpp);
+            P_NV90B5_SET_DST_WIDTH(push, copy->dst.extent_el.width *
+                                         copy->dst.bpp);
             P_NV90B5_SET_DST_HEIGHT(push, copy->dst.extent_el.height);
             P_NV90B5_SET_DST_DEPTH(push, copy->dst.extent_el.depth);
             P_NV90B5_SET_DST_LAYER(push, z + copy->dst.offset_el.z);
 
             if (cmd->pool->dev->ctx->copy.cls >= 0xc1b5) {
                P_MTHD(push, NVC1B5, DST_ORIGIN_X);
-               P_NVC1B5_DST_ORIGIN_X(push, copy->dst.offset_el.x * copy->bpp);
+               P_NVC1B5_DST_ORIGIN_X(push, copy->dst.offset_el.x *
+                                           copy->dst.bpp);
                P_NVC1B5_DST_ORIGIN_Y(push, copy->dst.offset_el.y);
             } else {
                P_MTHD(push, NV90B5, SET_DST_ORIGIN);
                P_NV90B5_SET_DST_ORIGIN(push, {
-                  .x = copy->dst.offset_el.x * copy->bpp,
+                  .x = copy->dst.offset_el.x * copy->dst.bpp,
                   .y = copy->dst.offset_el.y
                });
             }
@@ -290,7 +298,6 @@ nvk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
                                          buffer_layout),
          .dst = nouveau_copy_rect_image(dst, region->imageOffset,
                                         &region->imageSubresource),
-         .bpp = buffer_layout.element_size_B,
          .extent_el = extent_el,
          .layer_count = region->imageSubresource.layerCount,
       };
@@ -341,7 +348,6 @@ nvk_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
                                         &region->imageSubresource),
          .dst = nouveau_copy_rect_buffer(dst, region->bufferOffset,
                                          buffer_layout),
-         .bpp = buffer_layout.element_size_B,
          .extent_el = extent_el,
          .layer_count = region->imageSubresource.layerCount,
       };
@@ -377,10 +383,6 @@ nvk_CmdCopyImage2(VkCommandBuffer commandBuffer,
    nvk_push_image_ref(cmd->push, src, NOUVEAU_WS_BO_RD);
    nvk_push_image_ref(cmd->push, dst, NOUVEAU_WS_BO_WR);
 
-   uint16_t bpp = vk_format_description(src->vk.format)->block.bits;
-   assert(bpp == vk_format_description(dst->vk.format)->block.bits);
-   bpp /= 8;
-
    for (unsigned r = 0; r < pCopyImageInfo->regionCount; r++) {
       const VkImageCopy2 *region = &pCopyImageInfo->pRegions[r];
 
@@ -400,7 +402,6 @@ nvk_CmdCopyImage2(VkCommandBuffer commandBuffer,
                                         &region->srcSubresource),
          .dst = nouveau_copy_rect_image(dst, region->dstOffset,
                                         &region->dstSubresource),
-         .bpp = bpp,
          .extent_el = extent_el,
          .layer_count = region->srcSubresource.layerCount,
       };
