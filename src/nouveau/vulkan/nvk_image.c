@@ -50,10 +50,11 @@ static void nvk_image_finish(struct nvk_image *image)
    vk_image_finish(&image->vk);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL nvk_CreateImage(VkDevice _device,
-   const VkImageCreateInfo *pCreateInfo,
-   const VkAllocationCallbacks *pAllocator,
-   VkImage *pImage)
+VKAPI_ATTR VkResult VKAPI_CALL
+nvk_CreateImage(VkDevice _device,
+                const VkImageCreateInfo *pCreateInfo,
+                const VkAllocationCallbacks *pAllocator,
+                VkImage *pImage)
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
    struct nvk_image *image;
@@ -75,9 +76,10 @@ VKAPI_ATTR VkResult VKAPI_CALL nvk_CreateImage(VkDevice _device,
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR void VKAPI_CALL nvk_DestroyImage(VkDevice _device,
-   VkImage _image,
-   const VkAllocationCallbacks *pAllocator)
+VKAPI_ATTR void VKAPI_CALL
+nvk_DestroyImage(VkDevice _device,
+                 VkImage _image,
+                 const VkAllocationCallbacks *pAllocator)
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
    VK_FROM_HANDLE(nvk_image, image, _image);
@@ -89,10 +91,10 @@ VKAPI_ATTR void VKAPI_CALL nvk_DestroyImage(VkDevice _device,
    vk_free2(&device->vk.alloc, pAllocator, image);
 }
 
-VKAPI_ATTR void VKAPI_CALL nvk_GetImageMemoryRequirements2(
-   VkDevice _device,
-   const VkImageMemoryRequirementsInfo2 *pInfo,
-   VkMemoryRequirements2 *pMemoryRequirements)
+VKAPI_ATTR void VKAPI_CALL
+nvk_GetImageMemoryRequirements2(VkDevice _device,
+                                const VkImageMemoryRequirementsInfo2 *pInfo,
+                                VkMemoryRequirements2 *pMemoryRequirements)
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
    VK_FROM_HANDLE(nvk_image, image, pInfo->image);
@@ -114,10 +116,9 @@ VKAPI_ATTR void VKAPI_CALL nvk_GetImageMemoryRequirements2(
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_BindImageMemory2(
-   VkDevice _device,
-   uint32_t bindInfoCount,
-   const VkBindImageMemoryInfo *pBindInfos)
+nvk_BindImageMemory2(VkDevice _device,
+                     uint32_t bindInfoCount,
+                     const VkBindImageMemoryInfo *pBindInfos)
 {
    for (uint32_t i = 0; i < bindInfoCount; ++i) {
       VK_FROM_HANDLE(nvk_device_memory, mem, pBindInfos[i].memory);
