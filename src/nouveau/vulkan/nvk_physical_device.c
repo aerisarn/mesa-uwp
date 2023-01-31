@@ -469,9 +469,6 @@ nvk_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
       if (format->vk_format != base_info->format)
          continue;
 
-      if (!format->supports_2d_blit)
-         return VK_ERROR_FORMAT_NOT_SUPPORTED;
-
       if (base_info->type == VK_IMAGE_TYPE_1D)
          base_props->imageFormatProperties.maxExtent = (VkExtent3D){32768, 1, 1};
       else if (base_info->type == VK_IMAGE_TYPE_2D)
