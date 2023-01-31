@@ -247,6 +247,7 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
                             sizeof(pipeline->push_data));
    struct nouveau_ws_push *p = &pipeline->push;
 
+   struct nvk_shader *last_geom = NULL;
    for (gl_shader_stage stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       struct nvk_shader *shader = &pipeline->base.shaders[stage];
       uint32_t idx = mesa_to_nv9097_shader_type[stage];
@@ -258,6 +259,9 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
 
       if (shader->bo == NULL)
          continue;
+
+      if (stage != MESA_SHADER_FRAGMENT)
+         last_geom = shader;
 
       uint64_t addr = nvk_shader_address(shader);
       assert(device->ctx->eng3d.cls >= VOLTA_A);
@@ -292,7 +296,9 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
    /* TODO: prog_selects_layer */
    P_IMMD(p, NV9097, SET_RT_LAYER, {
       .v       = 0,
-      .control = CONTROL_V_SELECTS_LAYER,
+      .control = (last_geom->hdr[13] & (1 << 9)) ?
+                 CONTROL_GEOMETRY_SHADER_SELECTS_LAYER :
+                 CONTROL_V_SELECTS_LAYER,
    });
 
    struct vk_graphics_pipeline_all_state all;
