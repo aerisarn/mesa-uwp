@@ -132,22 +132,34 @@ nil_image_fill_tic(struct nouveau_ws_device *dev,
    tic[3] |= GM107_TIC2_3_LOD_ANISO_QUALITY_HIGH |
              GM107_TIC2_3_LOD_ISO_QUALITY_HIGH;
 
+   const uint32_t width = image->extent_px.width;
+   const uint32_t height = image->extent_px.height;
    uint32_t depth;
-   if (view->type == NIL_VIEW_TYPE_3D) {
-      assert(image->dim == NIL_IMAGE_DIM_3D);
-      depth = image->extent_px.depth;
-   } else if (view->type == NIL_VIEW_TYPE_CUBE ||
-              view->type == NIL_VIEW_TYPE_CUBE_ARRAY) {
+   switch (view->type) {
+   case NIL_VIEW_TYPE_1D:
+   case NIL_VIEW_TYPE_1D_ARRAY:
+   case NIL_VIEW_TYPE_2D:
+   case NIL_VIEW_TYPE_2D_ARRAY:
+      assert(image->extent_px.depth == 1);
+      depth = view->array_len;
+      break;
+   case NIL_VIEW_TYPE_CUBE:
+   case NIL_VIEW_TYPE_CUBE_ARRAY:
       assert(image->dim == NIL_IMAGE_DIM_2D);
       assert(view->array_len % 6 == 0);
       depth = view->array_len / 6;
-   } else {
-      depth = view->array_len;
-   }
+      break;
+   case NIL_VIEW_TYPE_3D:
+      assert(image->dim == NIL_IMAGE_DIM_3D);
+      depth = image->extent_px.depth;
+      break;
+   default:
+      unreachable("Unsupported image view target");
+   };
 
-   tic[4] |= image->extent_px.width - 1;
-   tic[5] |= image->extent_px.height - 1;
-   tic[5] |= (depth - 1) << 16;
+   tic[4] |= (width - 1) << GM107_TIC2_4_WIDTH_MINUS_ONE__SHIFT;
+   tic[5] |= (height - 1) << GM107_TIC2_5_HEIGHT_MINUS_ONE__SHIFT;
+   tic[5] |= (depth - 1) << GM107_TIC2_5_DEPTH_MINUS_ONE__SHIFT;
 
    const uint32_t last_level = view->num_levels + view->base_level - 1;
    tic[3] |= last_level << GM107_TIC2_3_MAX_MIP_LEVEL__SHIFT;
