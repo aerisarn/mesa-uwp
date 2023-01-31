@@ -111,7 +111,7 @@ idep_nouveau_mme = declare_dependency(
 if with_tests and not with_platform_android
   executable(
     'mme_fermi_sim_hw_test',
-    files('tests/mme_fermi_sim_hw_test.cpp'),
+    files('tests/mme_runner.cpp', 'tests/mme_fermi_sim_hw_test.cpp'),
     gnu_symbol_visibility : 'hidden',
     include_directories : [inc_include, inc_src],
     dependencies : [
@@ -127,7 +127,7 @@ if with_tests and not with_platform_android
 
   executable(
     'mme_tu104_sim_hw_test',
-    files('tests/mme_tu104_sim_hw_test.cpp'),
+    files('tests/mme_runner.cpp', 'tests/mme_tu104_sim_hw_test.cpp'),
     gnu_symbol_visibility : 'hidden',
     include_directories : [inc_include, inc_src],
     dependencies : [

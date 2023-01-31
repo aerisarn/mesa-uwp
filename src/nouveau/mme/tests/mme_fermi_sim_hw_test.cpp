@@ -1,187 +1,32 @@
-#include <fcntl.h>
-#include <string.h>
-#include <xf86drm.h>
-#include <vector>
+#include "mme_runner.h"
 
-#include <gtest/gtest.h>
-
-#include "mme_builder.h"
 #include "mme_fermi_sim.h"
-
-#include "nouveau_bo.h"
-#include "nouveau_context.h"
-#include "nouveau_device.h"
-
-/* nouveau_drm.h isn't C++-friendly */
-#define class cls
-#include <nouveau_drm.h>
-#undef class
-
-#include <xf86drm.h>
-
-#include "nv_push.h"
-/* we use Fermi Compute and 2D as interface are identical between Fermi and Volta*/
-#include "nvk_cl9097.h"
-#include "nvk_cl902d.h"
 /* for VOLTA_A */
 #include "nvk_clc397.h"
 
-class mme_fermi_sim_test : public ::testing::Test {
+class mme_fermi_sim_test : public ::testing::Test, public mme_hw_runner {
 public:
    mme_fermi_sim_test();
    ~mme_fermi_sim_test();
 
    void SetUp();
-   void push_macro(uint32_t id, const std::vector<uint32_t>& macro);
-   void reset_push();
-   void submit_push();
    void test_macro(const mme_builder *b,
                    const std::vector<uint32_t>& macro,
                    const std::vector<uint32_t>& params);
-
-   struct nv_push *p;
-   uint64_t data_addr;
-   uint32_t *data;
-   struct nouveau_ws_device *dev;
-
-private:
-   struct nouveau_ws_context *ctx;
-   struct nouveau_ws_bo *data_bo;
-   struct nouveau_ws_bo *push_bo;
-   void *push_map;
-   struct nv_push push;
 };
 
 mme_fermi_sim_test::mme_fermi_sim_test() :
-  data(NULL), dev(NULL), ctx(NULL), data_bo(NULL), push_bo(NULL)
-{
-   memset(&push, 0, sizeof(push));
-}
+   ::testing::Test(),
+   mme_hw_runner()
+{ }
 
 mme_fermi_sim_test::~mme_fermi_sim_test()
-{
-   if (push_bo) {
-      nouveau_ws_bo_unmap(push_bo, push_map);
-      nouveau_ws_bo_destroy(push_bo);
-   }
-   if (ctx)
-      nouveau_ws_context_destroy(ctx);
-   if (dev)
-      nouveau_ws_device_destroy(dev);
-}
-
-#define PUSH_SIZE 64 * 4096
-#define DATA_BO_SIZE 4096
+{ }
 
 void
 mme_fermi_sim_test::SetUp()
 {
-   drmDevicePtr devices[8];
-   int max_devices = drmGetDevices2(0, devices, 8);
-
-   int i;
-   for (i = 0; i < max_devices; i++) {
-      if (devices[i]->available_nodes & 1 << DRM_NODE_RENDER &&
-          devices[i]->bustype == DRM_BUS_PCI &&
-          devices[i]->deviceinfo.pci->vendor_id == 0x10de) {
-         dev = nouveau_ws_device_new(devices[i]);
-         if (dev == NULL)
-            continue;
-
-         if (dev->info.cls_eng3d < FERMI_A || dev->info.cls_eng3d > VOLTA_A) {
-            nouveau_ws_device_destroy(dev);
-            dev = NULL;
-            continue;
-         }
-
-         /* Found a Fermi+ device */
-         break;
-      }
-   }
-
-   /* We need a Fermi+ device */
-   ASSERT_TRUE(dev != NULL);
-
-   int ret = nouveau_ws_context_create(dev, &ctx);
-   ASSERT_EQ(ret, 0);
-
-   uint32_t data_bo_flags = NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP;
-   data_bo = nouveau_ws_bo_new_mapped(dev, DATA_BO_SIZE, 0,
-                                      (nouveau_ws_bo_flags)data_bo_flags,
-                                      NOUVEAU_WS_BO_RDWR, (void **)&data);
-   ASSERT_TRUE(data_bo != NULL);
-   memset(data, 139, DATA_BO_SIZE);
-   data_addr = data_bo->offset;
-
-   uint32_t push_bo_flags = NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP;
-   push_bo = nouveau_ws_bo_new_mapped(dev, PUSH_SIZE, 0,
-                                      (nouveau_ws_bo_flags)push_bo_flags,
-                                      NOUVEAU_WS_BO_WR, &push_map);
-   ASSERT_TRUE(push_bo != NULL);
-   reset_push();
-}
-
-void
-mme_fermi_sim_test::reset_push()
-{
-   nv_push_init(&push, (uint32_t *)push_map, PUSH_SIZE / 4);
-   p = &push;
-
-   P_MTHD(p, NV9097, SET_OBJECT);
-   P_NV9097_SET_OBJECT(p, {
-      .class_id = dev->info.cls_eng3d,
-      .engine_id = 0,
-   });
-}
-
-void
-mme_fermi_sim_test::submit_push()
-{
-   struct drm_nouveau_gem_pushbuf_bo bos[2];
-   memset(bos, 0, sizeof(bos));
-
-   bos[0].handle = push_bo->handle,
-   bos[0].valid_domains = NOUVEAU_GEM_DOMAIN_GART;
-   bos[0].read_domains = NOUVEAU_GEM_DOMAIN_GART;
-
-   bos[1].handle = data_bo->handle,
-   bos[1].valid_domains = NOUVEAU_GEM_DOMAIN_GART;
-   bos[1].read_domains = NOUVEAU_GEM_DOMAIN_GART;
-   bos[1].write_domains = NOUVEAU_GEM_DOMAIN_GART;
-
-   struct drm_nouveau_gem_pushbuf_push push;
-   memset(&push, 0, sizeof(push));
-
-   push.bo_index = 0;
-   push.offset = 0;
-   push.length = nv_push_dw_count(&this->push) * 4;
-
-   struct drm_nouveau_gem_pushbuf req;
-   memset(&req, 0, sizeof(req));
-
-   req.channel = ctx->channel;
-   req.nr_buffers = 2;
-   req.buffers = (uintptr_t)bos;
-   req.nr_push = 1;
-   req.push = (uintptr_t)&push;
-
-   int ret = drmCommandWriteRead(dev->fd, DRM_NOUVEAU_GEM_PUSHBUF,
-                                 &req, sizeof(req));
-   ASSERT_EQ(ret, 0);
-
-   bool ok = nouveau_ws_bo_wait(data_bo, NOUVEAU_WS_BO_RDWR);
-   ASSERT_TRUE(ok);
-}
-
-void
-mme_fermi_sim_test::push_macro(uint32_t id, const std::vector<uint32_t> &macro)
-{
-   P_MTHD(p, NV9097, LOAD_MME_START_ADDRESS_RAM_POINTER);
-   P_NV9097_LOAD_MME_START_ADDRESS_RAM_POINTER(p, id);
-   P_NV9097_LOAD_MME_START_ADDRESS_RAM(p, 0);
-   P_1INC(p, NV9097, LOAD_MME_INSTRUCTION_RAM_POINTER);
-   P_NV9097_LOAD_MME_INSTRUCTION_RAM_POINTER(p, 0);
-   P_INLINE_ARRAY(p, &macro[0], macro.size());
+   ASSERT_TRUE(set_up_hw(FERMI_A, VOLTA_A));
 }
 
 void
@@ -205,31 +50,11 @@ mme_fermi_sim_test::test_macro(const mme_builder *b,
                  params.size(), &params[0],
                  1, &sim_mem);
 
-   /* Now run the macro on the GPU */
-   push_macro(0, macro);
-
-   P_1INC(p, NV9097, CALL_MME_MACRO(0));
-   if (params.empty()) {
-      P_NV9097_CALL_MME_MACRO(p, 0, 0);
-   } else {
-      P_INLINE_ARRAY(p, &params[0], params.size());
-   }
-
-   submit_push();
+   run_macro(macro, params);
 
    /* Check the results */
    for (uint32_t i = 0; i < data_dwords; i++)
       ASSERT_EQ(data[i], sim_data[i]);
-}
-
-static std::vector<uint32_t>
-mme_builder_finish_vec(mme_builder *b)
-{
-   size_t size = 0;
-   uint32_t *dw = mme_builder_finish(b, &size);
-   std::vector<uint32_t> vec(dw, dw + (size / 4));
-   free(dw);
-   return vec;
 }
 
 static mme_fermi_reg
@@ -239,50 +64,12 @@ mme_fermi_value_as_reg(mme_value val)
    return (mme_fermi_reg)(MME_FERMI_REG_ZERO + val.reg);
 }
 
-static inline uint32_t
-high32(uint64_t x)
-{
-   return (uint32_t)(x >> 32);
-}
-
-static inline uint32_t
-low32(uint64_t x)
-{
-   return (uint32_t)x;
-}
-
-static void
-mme_store_imm_addr(mme_builder *b, uint64_t addr, mme_value v, bool free_reg)
-{
-   mme_mthd(b, NV9097_SET_REPORT_SEMAPHORE_A);
-   mme_emit(b, mme_imm(high32(addr)));
-   mme_emit(b, mme_imm(low32(addr)));
-   mme_emit(b, v);
-   mme_emit(b, mme_imm(0x10000000));
-
-   if (free_reg && v.type == MME_VALUE_TYPE_REG)
-      mme_free_reg(b, v);
-}
-
-static void
-mme_store(mme_builder *b, struct mme_value64 addr, mme_value v, bool free_reg)
-{
-   mme_mthd(b, NV9097_SET_REPORT_SEMAPHORE_A);
-   mme_emit(b, addr.hi);
-   mme_emit(b, addr.lo);
-   mme_emit(b, v);
-   mme_emit(b, mme_imm(0x10000000));
-
-   if (free_reg && v.type == MME_VALUE_TYPE_REG)
-      mme_free_reg(b, v);
-}
-
 TEST_F(mme_fermi_sim_test, sanity)
 {
    const uint32_t canary = 0xc0ffee01;
 
    mme_builder b;
-   mme_builder_init(&b, &dev->info);
+   mme_builder_init(&b, devinfo);
 
    mme_store_imm_addr(&b, data_addr, mme_imm(canary), false);
 
@@ -295,7 +82,7 @@ TEST_F(mme_fermi_sim_test, sanity)
 TEST_F(mme_fermi_sim_test, add)
 {
    mme_builder b;
-   mme_builder_init(&b, &dev->info);
+   mme_builder_init(&b, devinfo);
 
    mme_value x = mme_load(&b);
    mme_value y = mme_load(&b);
@@ -314,7 +101,7 @@ TEST_F(mme_fermi_sim_test, add)
 TEST_F(mme_fermi_sim_test, add_imm)
 {
    mme_builder b;
-   mme_builder_init(&b, &dev->info);
+   mme_builder_init(&b, devinfo);
 
    mme_value x = mme_load(&b);
 
@@ -367,7 +154,7 @@ TEST_F(mme_fermi_sim_test, add_imm)
 TEST_F(mme_fermi_sim_test, add_imm_no_carry)
 {
    mme_builder b;
-   mme_builder_init(&b, &dev->info);
+   mme_builder_init(&b, devinfo);
 
    mme_value x_lo = mme_load(&b);
    mme_value x_hi = mme_load(&b);
@@ -479,7 +266,7 @@ TEST_F(mme_fermi_sim_test, add_imm_no_carry)
 TEST_F(mme_fermi_sim_test, addc)
 {
    mme_builder b;
-   mme_builder_init(&b, &dev->info);
+   mme_builder_init(&b, devinfo);
 
    struct mme_value64 x = { mme_load(&b), mme_load(&b) };
    struct mme_value64 y = { mme_load(&b), mme_load(&b) };
@@ -503,7 +290,7 @@ TEST_F(mme_fermi_sim_test, addc)
 TEST_F(mme_fermi_sim_test, sub)
 {
    mme_builder b;
-   mme_builder_init(&b, &dev->info);
+   mme_builder_init(&b, devinfo);
 
    mme_value x = mme_load(&b);
    mme_value y = mme_load(&b);
@@ -522,7 +309,7 @@ TEST_F(mme_fermi_sim_test, sub)
 TEST_F(mme_fermi_sim_test, subb)
 {
    mme_builder b;
-   mme_builder_init(&b, &dev->info);
+   mme_builder_init(&b, devinfo);
 
    struct mme_value64 x = { mme_load(&b), mme_load(&b) };
    struct mme_value64 y = { mme_load(&b), mme_load(&b) };
@@ -547,7 +334,7 @@ TEST_F(mme_fermi_sim_test, subb)
 TEST_F(mme_fermi_sim_test, op)                                             \
 {                                                                          \
    mme_builder b;                                                          \
-   mme_builder_init(&b, &dev->info);                                       \
+   mme_builder_init(&b, devinfo);                                       \
                                                                            \
    mme_value val = mme_load(&b);                                           \
    mme_value shift1 = mme_load(&b);                                        \
@@ -574,7 +361,7 @@ SHIFT_TEST(srl)
 TEST_F(mme_fermi_sim_test, op)                           \
 {                                                        \
    mme_builder b;                                        \
-   mme_builder_init(&b, &dev->info);                     \
+   mme_builder_init(&b, devinfo);                     \
                                                          \
    mme_value x = mme_load(&b);                           \
    mme_value y = mme_load(&b);                           \
@@ -609,7 +396,7 @@ static bool c_ieq(int32_t x, int32_t y) { return x == y; };
 TEST_F(mme_fermi_sim_test, if_##op)                                  \
 {                                                                    \
    mme_builder b;                                                    \
-   mme_builder_init(&b, &dev->info);                                 \
+   mme_builder_init(&b, devinfo);                                 \
                                                                      \
    mme_value x = mme_load(&b);                                       \
    mme_value y = mme_load(&b);                                       \
@@ -665,7 +452,7 @@ mme_fermi_inc_whole_inst(mme_builder *b, mme_value val)
 TEST_F(mme_fermi_sim_test, while_##op)                   \
 {                                                        \
    mme_builder b;                                        \
-   mme_builder_init(&b, &dev->info);                     \
+   mme_builder_init(&b, devinfo);                     \
                                                          \
    mme_value x = mme_mov(&b, mme_zero());                \
    mme_value y = mme_mov(&b, mme_zero());                \
@@ -721,7 +508,7 @@ WHILE_TEST(ine, 0, 1, 7)
 TEST_F(mme_fermi_sim_test, loop)
 {
    mme_builder b;
-   mme_builder_init(&b, &dev->info);
+   mme_builder_init(&b, devinfo);
 
    mme_value count = mme_load(&b);
 
@@ -761,7 +548,7 @@ TEST_F(mme_fermi_sim_test, loop)
 TEST_F(mme_fermi_sim_test, merge)
 {
    mme_builder b;
-   mme_builder_init(&b, &dev->info);
+   mme_builder_init(&b, devinfo);
 
    mme_value x = mme_load(&b);
    mme_value y = mme_load(&b);
@@ -793,7 +580,7 @@ TEST_F(mme_fermi_sim_test, merge)
 TEST_F(mme_fermi_sim_test, branch_delay_slot)
 {
    mme_builder b;
-   mme_builder_init(&b, &dev->info);
+   mme_builder_init(&b, devinfo);
 
    mme_value x = mme_load(&b);
    mme_value y = mme_load(&b);
@@ -823,7 +610,7 @@ TEST_F(mme_fermi_sim_test, branch_delay_slot)
 TEST_F(mme_fermi_sim_test, state)
 {
    mme_builder b;
-   mme_builder_init(&b, &dev->info);
+   mme_builder_init(&b, devinfo);
 
    mme_value x = mme_load(&b);
    mme_value y = mme_load(&b);
@@ -854,7 +641,7 @@ TEST_F(mme_fermi_sim_test, scratch_limit)
    static const uint32_t chunk_size = 32;
 
    mme_builder b;
-   mme_builder_init(&b, &dev->info);
+   mme_builder_init(&b, devinfo);
 
    mme_value start = mme_load(&b);
    mme_value count = mme_load(&b);
@@ -901,7 +688,7 @@ TEST_F(mme_fermi_sim_test, scratch_limit)
 TEST_F(mme_fermi_sim_test, load_imm_to_reg)
 {
    mme_builder b;
-   mme_builder_init(&b, &dev->info);
+   mme_builder_init(&b, devinfo);
 
    uint32_t vals[] = {
       0x0001ffff,
