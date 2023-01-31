@@ -308,7 +308,6 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
    if (state.cb) emit_pipeline_cb_state(pipeline, state.cb);
 
    pipeline->dynamic.vi = &pipeline->_dynamic_vi;
-   pipeline->dynamic.ms.sample_locations = &pipeline->_dynamic_ms_sl;
    vk_dynamic_graphics_state_fill(&pipeline->dynamic, &state);
 
    *pPipeline = nvk_pipeline_to_handle(&pipeline->base);

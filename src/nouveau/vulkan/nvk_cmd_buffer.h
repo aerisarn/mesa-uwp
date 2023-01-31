@@ -87,7 +87,6 @@ struct nvk_graphics_state {
 
    /* Needed by vk_command_buffer::dynamic_graphics_state */
    struct vk_vertex_input_state _dynamic_vi;
-   struct vk_sample_locations_state _dynamic_ms_sl;
 };
 
 struct nvk_compute_state {

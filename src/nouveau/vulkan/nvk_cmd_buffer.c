@@ -75,8 +75,6 @@ nvk_create_cmd_buffer(struct nvk_device *device,
 
    cmd_buffer->vk.dynamic_graphics_state.vi =
       &cmd_buffer->state.gfx._dynamic_vi;
-   cmd_buffer->vk.dynamic_graphics_state.ms.sample_locations =
-      &cmd_buffer->state.gfx._dynamic_ms_sl;
 
    cmd_buffer->pool = pool;
    list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
