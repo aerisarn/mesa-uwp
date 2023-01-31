@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+mod nak_assign_regs;
 mod nak_from_nir;
 mod nak_ir;
 mod nak_opt_copy_prop;
@@ -43,6 +44,10 @@ pub extern "C" fn nak_compile_shader(
     println!("NAK IR:\n{}", &s);
 
     s.opt_dce();
+
+    println!("NAK IR:\n{}", &s);
+
+    s.assign_regs_trivial();
 
     println!("NAK IR:\n{}", &s);
 
