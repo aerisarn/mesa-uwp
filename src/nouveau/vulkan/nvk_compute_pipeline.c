@@ -58,9 +58,9 @@ gv100_compute_setup_launch_desc_template(uint32_t *qmd,
    NVC3C0_QMDV02_02_VAL_SET(qmd, REGISTER_COUNT_V, shader->num_gprs);
    NVC3C0_QMDV02_02_VAL_SET(qmd, BARRIER_COUNT, shader->num_barriers);
 
-   uint64_t entry = shader->bo->offset;
-   NVC3C0_QMDV02_02_VAL_SET(qmd, PROGRAM_ADDRESS_LOWER, entry & 0xffffffff);
-   NVC3C0_QMDV02_02_VAL_SET(qmd, PROGRAM_ADDRESS_UPPER, entry >> 32);
+   uint64_t addr = nvk_shader_address(shader);
+   NVC3C0_QMDV02_02_VAL_SET(qmd, PROGRAM_ADDRESS_LOWER, addr & 0xffffffff);
+   NVC3C0_QMDV02_02_VAL_SET(qmd, PROGRAM_ADDRESS_UPPER, addr >> 32);
 
 }
 

@@ -2,8 +2,10 @@
 #define NVK_SHADER_H 1
 
 #include "nvk_private.h"
+#include "nvk_device_memory.h"
 
 #include "nir.h"
+#include "nouveau_bo.h"
 
 struct vk_shader_module;
 struct nvk_device;
@@ -30,6 +32,12 @@ struct nvk_shader {
 
    struct nouveau_ws_bo *bo;
 };
+
+static inline uint64_t
+nvk_shader_address(const struct nvk_shader *shader)
+{
+   return shader->bo->offset;
+}
 
 const nir_shader_compiler_options *
 nvk_physical_device_nir_options(const struct nvk_physical_device *pdevice,
