@@ -155,12 +155,12 @@ impl AllocBarriers {
                         continue;
                     }
 
-                    if instr.num_srcs() > 0 {
+                    if !instr.srcs().is_empty() {
                         let bar = self.alloc_barrier();
                         instr.deps.set_rd_bar(bar.try_into().unwrap());
                         self.set_instr_read_barrier(instr, bar);
                     }
-                    if instr.num_dsts() > 0 {
+                    if !instr.dsts().is_empty() {
                         let bar = self.alloc_barrier();
                         instr.deps.set_wr_bar(bar.try_into().unwrap());
                         self.set_instr_write_barrier(instr, bar);

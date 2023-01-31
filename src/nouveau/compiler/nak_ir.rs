@@ -1200,7 +1200,7 @@ impl Shader {
                 }
                 Opcode::SPLIT => {
                     let comps = u8::try_from(instr.num_dsts()).unwrap();
-                    if instr.num_dsts() == 1 {
+                    if comps == 1 {
                         let src = instr.src(0);
                         let dst = instr.dst(0);
                         Instr::new_mov(*dst, *src)
@@ -1221,13 +1221,12 @@ impl Shader {
                 }
                 Opcode::FS_OUT => {
                     let mut instrs = Vec::new();
-                    for i in 0..instr.num_srcs() {
+                    for (i, src) in instr.srcs().iter().enumerate() {
                         let dst = Ref::new_reg(
                             RegFile::GPR,
                             i.try_into().unwrap(),
                             1,
                         );
-                        let src = instr.src(i);
                         instrs.push(Instr::new_mov(dst, *src));
                     }
                     Instr::new_meta(instrs)
