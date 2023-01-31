@@ -116,6 +116,63 @@ load_struct_var(nir_builder *b, nir_variable *var, uint32_t field)
    return nir_load_deref(b, deref);
 }
 
+static nir_ssa_def *
+build_texop(nir_builder *b, nir_texop tex_op,
+            nir_variable *texture, nir_variable *sampler,
+            nir_ssa_def *coord,
+            unsigned num_extra_srcs, const nir_tex_src *extra_srcs)
+{
+   const unsigned num_srcs = 2 + (sampler != NULL) + num_extra_srcs;
+
+   nir_tex_instr *tex = nir_tex_instr_create(b->shader, num_srcs);
+   tex->op = tex_op;
+   tex->sampler_dim = glsl_get_sampler_dim(texture->type);
+   tex->dest_type = nir_get_nir_type_for_glsl_base_type(
+      glsl_get_sampler_result_type(texture->type));
+   tex->coord_components = coord->num_components;
+   tex->is_array = glsl_sampler_type_is_array(texture->type);
+   tex->is_shadow = false;
+
+   unsigned src_idx = 0;
+   tex->src[src_idx++] = (nir_tex_src) {
+      .src_type = nir_tex_src_coord,
+      .src = nir_src_for_ssa(coord),
+   };
+   tex->src[src_idx++] = (nir_tex_src) {
+      .src_type = nir_tex_src_texture_deref,
+      .src = nir_src_for_ssa(&nir_build_deref_var(b, texture)->dest.ssa),
+   };
+   if (sampler != NULL) {
+      tex->src[src_idx++] = (nir_tex_src) {
+         .src_type = nir_tex_src_sampler_deref,
+         .src = nir_src_for_ssa(&nir_build_deref_var(b, sampler)->dest.ssa),
+      };
+   }
+
+   for (unsigned i = 0; i < num_extra_srcs; i++)
+      tex->src[src_idx++] = extra_srcs[i];
+
+   assert(src_idx == num_srcs);
+
+   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
+   nir_builder_instr_insert(b, &tex->instr);
+
+   return &tex->dest.ssa;
+}
+
+static nir_ssa_def *
+build_txl(nir_builder *b, nir_variable *texture, nir_variable *sampler,
+          nir_ssa_def *coord)
+{
+   const nir_tex_src lod_src = {
+      .src_type = nir_tex_src_lod,
+      .src = nir_src_for_ssa(nir_imm_float(b, 0)),
+   };
+
+   return build_texop(b, nir_texop_txl, texture, sampler,
+                      coord, 1, &lod_src);
+}
+
 static nir_shader *
 build_blit_shader(const struct vk_meta_blit_key *key)
 {
@@ -217,37 +274,15 @@ build_blit_shader(const struct vk_meta_blit_key *key)
       texture->data.descriptor_set = 0;
       texture->data.binding = aspect_to_tex_binding(aspect);
 
-      nir_tex_instr *tex = nir_tex_instr_create(b->shader, 3);
-      tex->op = nir_texop_txl;
-      tex->sampler_dim = key->dim;
-      tex->dest_type = nir_get_nir_type_for_glsl_base_type(base_type);
-      tex->coord_components = src_coord->num_components;
-      tex->is_array = is_array;
-      tex->is_shadow = false;
-
-      tex->src[0] = (nir_tex_src) {
-         .src_type = nir_tex_src_coord,
-         .src = nir_src_for_ssa(src_coord),
-      };
-      tex->src[1] = (nir_tex_src) {
-         .src_type = nir_tex_src_texture_deref,
-         .src = nir_src_for_ssa(&nir_build_deref_var(b, texture)->dest.ssa),
-      };
-      tex->src[2] = (nir_tex_src) {
-         .src_type = nir_tex_src_sampler_deref,
-         .src = nir_src_for_ssa(&nir_build_deref_var(b, sampler)->dest.ssa),
-      };
-
-      nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
-
-      nir_builder_instr_insert(b, &tex->instr);
+      nir_ssa_def *val = build_txl(b, texture, sampler, src_coord);
+      val = nir_trim_vector(b, val, out_comps);
 
       const struct glsl_type *out_type = glsl_vector_type(base_type, out_comps);
       nir_variable *out = nir_variable_create(b->shader, nir_var_shader_out,
                                               out_type, out_name);
       out->data.location = out_location;
 
-      nir_store_var(b, out, &tex->dest.ssa, BITFIELD_MASK(out_comps));
+      nir_store_var(b, out, val, BITFIELD_MASK(out_comps));
    }
 
    return b->shader;
