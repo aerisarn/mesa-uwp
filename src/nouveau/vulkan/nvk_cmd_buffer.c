@@ -12,6 +12,7 @@
 
 #include "nouveau/nouveau.h"
 
+#include "nvk_cl90b5.h"
 #include "nvk_cla0c0.h"
 
 static void
@@ -237,6 +238,11 @@ nvk_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
 
    nvk_reset_cmd_buffer(&cmd->vk, 0);
+
+   /* Start with a nop so we have at least something to submit */
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 2);
+   P_MTHD(p, NV90B5, NOP);
+   P_NV90B5_NOP(p, 0);
 
    nvk_cmd_buffer_begin_compute(cmd, pBeginInfo);
    nvk_cmd_buffer_begin_graphics(cmd, pBeginInfo);
