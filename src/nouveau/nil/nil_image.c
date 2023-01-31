@@ -436,8 +436,10 @@ nil_image_init(struct nv_device_info *dev,
    image->tile_mode = (uint16_t)image->levels[0].tiling.y_log2 << 4 |
                       (uint16_t)image->levels[0].tiling.z_log2 << 8;
 
-   image->pte_kind = nil_choose_pte_kind(dev, info->format, info->samples,
-                                         true /* TODO: compressed */);
+   if (!(info->usage & NIL_IMAGE_USAGE_LINEAR_BIT)) {
+      image->pte_kind = nil_choose_pte_kind(dev, info->format, info->samples,
+                                            true /* TODO: compressed */);
+   }
 
    image->align_B = MAX2(image->align_B, 4096);
    if (image->pte_kind >= 0xb && image->pte_kind <= 0xe)
