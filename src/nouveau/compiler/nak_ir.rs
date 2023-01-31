@@ -467,6 +467,14 @@ impl Src {
         }
     }
 
+    pub fn as_ssa(&self) -> Option<&SSAValue> {
+        if self.src_mod.is_none() {
+            self.src_ref.as_ssa()
+        } else {
+            None
+        }
+    }
+
     pub fn get_reg(&self) -> Option<&RegRef> {
         self.src_ref.get_reg()
     }

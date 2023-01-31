@@ -81,6 +81,15 @@ impl<'a> ShaderFromNir<'a> {
         }
     }
 
+    fn split64(&mut self, ssa: SSAValue) -> [SSAValue; 2] {
+        assert!(ssa.comps() == 2);
+        let split =
+            [self.alloc_ssa(ssa.file(), 1), self.alloc_ssa(ssa.file(), 1)];
+        let dsts = [split[0].into(), split[1].into()];
+        self.instrs.push(Instr::new_split(&dsts, ssa.into()));
+        split
+    }
+
     fn parse_alu(&mut self, alu: &nir_alu_instr) {
         let mut srcs = Vec::new();
         for alu_src in alu.srcs_as_slice() {
@@ -198,7 +207,33 @@ impl<'a> ShaderFromNir<'a> {
                 })));
             }
             nir_op_iadd => {
-                self.instrs.push(Instr::new_iadd(dst, srcs[0], srcs[1]));
+                if alu.def.bit_size() == 64 {
+                    let x = self.split64(*srcs[0].as_ssa().unwrap());
+                    let y = self.split64(*srcs[1].as_ssa().unwrap());
+                    let carry = self.alloc_ssa(RegFile::Pred, 1);
+
+                    let sum = [
+                        self.alloc_ssa(dst.as_ssa().unwrap().file(), 1),
+                        self.alloc_ssa(dst.as_ssa().unwrap().file(), 1),
+                    ];
+                    self.instrs.push(Instr::new(Op::IAdd3(OpIAdd3 {
+                        dst: sum[0].into(),
+                        overflow: carry.into(),
+                        srcs: [x[0].into(), y[0].into(), Src::new_zero()],
+                        carry: Src::new_zero(),
+                    })));
+                    self.instrs.push(Instr::new(Op::IAdd3(OpIAdd3 {
+                        dst: sum[1].into(),
+                        overflow: Dst::None,
+                        srcs: [x[1].into(), y[1].into(), Src::new_zero()],
+                        carry: carry.into(),
+                    })));
+
+                    let sum = [sum[0].into(), sum[1].into()];
+                    self.instrs.push(Instr::new_vec(dst, &sum));
+                } else {
+                    self.instrs.push(Instr::new_iadd(dst, srcs[0], srcs[1]));
+                }
             }
             nir_op_iand => {
                 if alu.def.bit_size() == 1 {
