@@ -167,17 +167,19 @@ __push_0inc(struct nv_push *push, int subc, uint32_t mthd)
 
 #define P_0INC(push, class, mthd) __push_0inc(push, SUBC_##class, class##_##mthd)
 
+#define NV_PUSH_MAX_COUNT 0x1fff
+
 static inline bool
 nv_push_update_count(struct nv_push *push, uint16_t count)
 {
    uint32_t last_hdr_val = *push->last_size;
 
-   assert(count <= 0x1fff);
-   if (count > 0x1fff)
+   assert(count <= NV_PUSH_MAX_COUNT);
+   if (count > NV_PUSH_MAX_COUNT)
       return false;
 
    /* size is encoded at 28:16 */
-   uint32_t new_count = (count + (last_hdr_val >> 16)) & 0x1fff;
+   uint32_t new_count = (count + (last_hdr_val >> 16)) & NV_PUSH_MAX_COUNT;
    bool overflow = new_count < count;
    /* if we would overflow, don't change anything and just let it be */
    assert(!overflow);
