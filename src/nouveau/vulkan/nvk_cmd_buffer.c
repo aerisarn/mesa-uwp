@@ -111,9 +111,10 @@ nvk_cmd_buffer_flush_push(struct nvk_cmd_buffer *cmd)
 {
    if (likely(cmd->push_bo != NULL)) {
       struct nvk_cmd_push push = {
-         .bo = cmd->push_bo,
-         .start_dw = cmd->push.start - (uint32_t *)cmd->push_bo->map,
-         .dw_count = nv_push_dw_count(&cmd->push),
+         .bo = cmd->push_bo->bo,
+         .map = cmd->push.start,
+         .bo_offset = (char *)cmd->push.start - (char *)cmd->push_bo->map,
+         .range = nv_push_dw_count(&cmd->push) * 4,
       };
       util_dynarray_append(&cmd->pushes, struct nvk_cmd_push, push);
    }
@@ -456,8 +457,8 @@ nvk_cmd_buffer_dump(struct nvk_cmd_buffer *cmd, FILE *fp)
 
    util_dynarray_foreach(&cmd->pushes, struct nvk_cmd_push, p) {
       struct nv_push push = {
-         .start = (uint32_t *)p->bo->map + p->start_dw,
-         .end = (uint32_t *)p->bo->map + p->start_dw + p->dw_count,
+         .start = (uint32_t *)p->map,
+         .end = (uint32_t *)((char *)p->map + p->range),
       };
       vk_push_print(fp, &push, &dev->pdev->info);
    }

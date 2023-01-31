@@ -100,9 +100,10 @@ struct nvk_compute_state {
 };
 
 struct nvk_cmd_push {
-   struct nvk_cmd_bo *bo;
-   uint32_t start_dw;
-   uint32_t dw_count;
+   struct nouveau_ws_bo *bo;
+   void *map;
+   uint32_t bo_offset;
+   uint32_t range;
 };
 
 struct nvk_cmd_bo_ref {

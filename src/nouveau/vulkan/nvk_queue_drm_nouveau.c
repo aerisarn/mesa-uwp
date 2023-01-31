@@ -194,7 +194,7 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
             push_add_bo(&pb, bo->bo, NOUVEAU_WS_BO_RD);
 
          util_dynarray_foreach(&cmd->pushes, struct nvk_cmd_push, push)
-            push_add_push(&pb, push->bo->bo, push->start_dw * 4, push->dw_count * 4);
+            push_add_push(&pb, push->bo, push->bo_offset, push->range);
 
          util_dynarray_foreach(&cmd->bo_refs, struct nvk_cmd_bo_ref, ref)
             push_add_bo(&pb, ref->bo, NOUVEAU_WS_BO_RDWR);
