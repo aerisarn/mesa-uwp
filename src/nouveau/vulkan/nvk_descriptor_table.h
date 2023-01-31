@@ -33,13 +33,14 @@ VkResult nvk_descriptor_table_init(struct nvk_device *device,
 void nvk_descriptor_table_finish(struct nvk_device *device,
                                  struct nvk_descriptor_table *table);
 
-void *nvk_descriptor_table_alloc(struct nvk_device *device,
-                                 struct nvk_descriptor_table *table,
-                                 uint32_t *index_out);
+VkResult nvk_descriptor_table_add(struct nvk_device *dev,
+                                  struct nvk_descriptor_table *table,
+                                  const void *desc_data, size_t desc_size,
+                                  uint32_t *index_out);
 
-void nvk_descriptor_table_free(struct nvk_device *device,
-                               struct nvk_descriptor_table *table,
-                               uint32_t index);
+void nvk_descriptor_table_remove(struct nvk_device *dev,
+                                 struct nvk_descriptor_table *table,
+                                 uint32_t index);
 
 static inline struct nouveau_ws_bo *
 nvk_descriptor_table_get_bo_ref(struct nvk_descriptor_table *table,

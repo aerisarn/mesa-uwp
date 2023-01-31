@@ -44,6 +44,7 @@ nvk_image_view_init(struct nvk_device *device,
                     const VkImageViewCreateInfo *pCreateInfo)
 {
    VK_FROM_HANDLE(nvk_image, image, pCreateInfo->image);
+   VkResult result;
 
    memset(view, 0, sizeof(*view));
 
@@ -66,38 +67,38 @@ nvk_image_view_init(struct nvk_device *device,
 
    if (view->vk.usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
                          VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
-      uint32_t *desc_map = nvk_descriptor_table_alloc(device, &device->images,
-                                                      &view->sampled_desc_index);
-      if (desc_map == NULL) {
-         nvk_image_view_finish(device, view);
-         return vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                          "Failed to allocate image descriptor");
-      }
-
+      uint32_t tic[8];
       nil_image_fill_tic(nvk_device_physical(device)->dev,
                          &image->nil, &nil_view,
-                         nvk_image_base_address(image),
-                         desc_map);
+                         nvk_image_base_address(image), tic);
+
+      result = nvk_descriptor_table_add(device, &device->images,
+                                        tic, sizeof(tic),
+                                        &view->sampled_desc_index);
+      if (result != VK_SUCCESS) {
+         nvk_image_view_finish(device, view);
+         return result;
+      }
    }
 
    if (view->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT) {
-      uint32_t *desc_map = nvk_descriptor_table_alloc(device, &device->images,
-                                                      &view->storage_desc_index);
-      if (desc_map == NULL) {
-         nvk_image_view_finish(device, view);
-         return vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                          "Failed to allocate image descriptor");
-      }
-
       /* For storage images, we can't have any cubes */
       if (view->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE ||
           view->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)
          nil_view.type = NIL_VIEW_TYPE_2D_ARRAY;
 
+      uint32_t tic[8];
       nil_image_fill_tic(nvk_device_physical(device)->dev,
                          &image->nil, &nil_view,
-                         nvk_image_base_address(image),
-                         desc_map);
+                         nvk_image_base_address(image), tic);
+
+      result = nvk_descriptor_table_add(device, &device->images,
+                                        tic, sizeof(tic),
+                                        &view->storage_desc_index);
+      if (result != VK_SUCCESS) {
+         nvk_image_view_finish(device, view);
+         return result;
+      }
    }
 
    return VK_SUCCESS;
@@ -108,13 +109,13 @@ nvk_image_view_finish(struct nvk_device *device,
                       struct nvk_image_view *view)
 {
    if (view->sampled_desc_index) {
-      nvk_descriptor_table_free(device, &device->images,
-                                view->sampled_desc_index);
+      nvk_descriptor_table_remove(device, &device->images,
+                                  view->sampled_desc_index);
    }
 
    if (view->storage_desc_index) {
-      nvk_descriptor_table_free(device, &device->images,
-                                view->storage_desc_index);
+      nvk_descriptor_table_remove(device, &device->images,
+                                  view->storage_desc_index);
    }
 
    vk_image_view_finish(&view->vk);

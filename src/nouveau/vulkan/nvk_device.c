@@ -468,11 +468,13 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
       goto fail_memory_objects;
 
    /* Reserve the descriptor at offset 0 to be the null descriptor */
+   uint32_t null_image[8] = { 0, };
    ASSERTED uint32_t null_image_index;
-   void *null_desc = nvk_descriptor_table_alloc(device, &device->images,
-                                                &null_image_index);
-   assert(null_desc != NULL && null_image_index == 0);
-   memset(null_desc, 0, 8 * 4);
+   result = nvk_descriptor_table_add(device, &device->images,
+                                     null_image, sizeof(null_image),
+                                     &null_image_index);
+   assert(result == VK_SUCCESS);
+   assert(null_image_index == 0);
 
    result = nvk_descriptor_table_init(device, &device->samplers,
                                       8 * 4 /* tsc entry size */,

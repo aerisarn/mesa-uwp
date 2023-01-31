@@ -155,19 +155,12 @@ nvk_CreateSampler(VkDevice _device,
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
    struct nvk_sampler *sampler;
+   VkResult result;
 
    sampler = vk_object_zalloc(&device->vk, pAllocator, sizeof(*sampler),
                               VK_OBJECT_TYPE_SAMPLER);
    if (!sampler)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   uint32_t *desc_map = nvk_descriptor_table_alloc(device, &device->samplers,
-                                                   &sampler->desc_index);
-   if (desc_map == NULL) {
-      vk_object_free(&device->vk, pAllocator, sampler);
-      return vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                       "Failed to allocate image descriptor");
-   }
 
    uint32_t samp[8] = {};
    SAMP_SET_U(samp, NV9097, 0, ADDRESS_U,
@@ -278,7 +271,13 @@ nvk_CreateSampler(VkDevice _device,
    SAMP_SET_U(samp, NV9097, 6, BORDER_COLOR_B, bc.uint32[2]);
    SAMP_SET_U(samp, NV9097, 7, BORDER_COLOR_A, bc.uint32[3]);
 
-   memcpy(desc_map, samp, sizeof(samp));
+   result = nvk_descriptor_table_add(device, &device->samplers,
+                                     samp, sizeof(samp),
+                                     &sampler->desc_index);
+   if (result != VK_SUCCESS) {
+      vk_object_free(&device->vk, pAllocator, sampler);
+      return result;
+   }
 
    *pSampler = nvk_sampler_to_handle(sampler);
 
@@ -296,6 +295,6 @@ nvk_DestroySampler(VkDevice _device,
    if (!sampler)
       return;
 
-   nvk_descriptor_table_free(device, &device->samplers, sampler->desc_index);
+   nvk_descriptor_table_remove(device, &device->samplers, sampler->desc_index);
    vk_object_free(&device->vk, pAllocator, sampler);
 }

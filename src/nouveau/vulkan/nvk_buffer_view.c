@@ -42,25 +42,25 @@ nvk_CreateBufferView(VkDevice _device,
    VK_FROM_HANDLE(nvk_device, device, _device);
    VK_FROM_HANDLE(nvk_buffer, buffer, pCreateInfo->buffer);
    struct nvk_buffer_view *view;
+   VkResult result;
 
    view = vk_buffer_view_create(&device->vk, pCreateInfo,
                                  pAllocator, sizeof(*view));
    if (!view)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   uint32_t *desc_map = nvk_descriptor_table_alloc(device, &device->images,
-                                                   &view->desc_index);
-   if (desc_map == NULL) {
-      vk_buffer_view_destroy(&device->vk, pAllocator, &view->vk);
-      return vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                       "Failed to allocate image descriptor");
-   }
-
+   uint32_t desc[8];
    nil_buffer_fill_tic(nvk_device_physical(device)->dev,
                        nvk_buffer_address(buffer, view->vk.offset),
                        vk_format_to_pipe_format(view->vk.format),
-                       view->vk.elements,
-                       desc_map);
+                       view->vk.elements, desc);
+
+   result = nvk_descriptor_table_add(device, &device->images,
+                                     desc, sizeof(desc), &view->desc_index);
+   if (result != VK_SUCCESS) {
+      vk_buffer_view_destroy(&device->vk, pAllocator, &view->vk);
+      return result;
+   }
 
    *pBufferView = nvk_buffer_view_to_handle(view);
 
@@ -78,7 +78,7 @@ nvk_DestroyBufferView(VkDevice _device,
    if (!view)
       return;
 
-   nvk_descriptor_table_free(device, &device->images, view->desc_index);
+   nvk_descriptor_table_remove(device, &device->images, view->desc_index);
 
    vk_buffer_view_destroy(&device->vk, pAllocator, &view->vk);
 }

@@ -70,39 +70,62 @@ nvk_descriptor_table_finish(struct nvk_device *device,
 
 #define NVK_IMAGE_DESC_INVALID
 
-static void *
-nvk_descriptor_table_alloc_locked(struct nvk_device *device,
+static VkResult
+nvk_descriptor_table_alloc_locked(struct nvk_device *dev,
                                   struct nvk_descriptor_table *table,
                                   uint32_t *index_out)
 {
    if (table->free_count > 0) {
       *index_out = table->free_table[--table->free_count];
-      return (char *)table->map + (*index_out * table->desc_size);
+      return VK_SUCCESS;
    }
 
    if (table->next_desc < table->alloc) {
       *index_out = table->next_desc++;
-      return (char *)table->map + (*index_out * table->desc_size);
+      return VK_SUCCESS;
    }
 
-   return NULL;
+   return vk_errorf(dev, VK_ERROR_OUT_OF_HOST_MEMORY,
+                    "Descriptor table not large enough");
 }
 
-void *
-nvk_descriptor_table_alloc(struct nvk_device *device,
-                           struct nvk_descriptor_table *table,
-                           uint32_t *index_out)
+static VkResult
+nvk_descriptor_table_add_locked(struct nvk_device *dev,
+                                struct nvk_descriptor_table *table,
+                                const void *desc_data, size_t desc_size,
+                                uint32_t *index_out)
+{
+   VkResult result = nvk_descriptor_table_alloc_locked(dev, table, index_out);
+   if (result != VK_SUCCESS)
+      return result;
+
+   void *map = (char *)table->map + (*index_out * table->desc_size);
+
+   assert(desc_size == table->desc_size);
+   memcpy(map, desc_data, table->desc_size);
+
+   return VK_SUCCESS;
+}
+
+
+VkResult
+nvk_descriptor_table_add(struct nvk_device *dev,
+                         struct nvk_descriptor_table *table,
+                         const void *desc_data, size_t desc_size,
+                         uint32_t *index_out)
 {
    simple_mtx_lock(&table->mutex);
-   void *map = nvk_descriptor_table_alloc_locked(device, table, index_out);
+   VkResult result = nvk_descriptor_table_add_locked(dev, table, desc_data,
+                                                     desc_size, index_out);
    simple_mtx_unlock(&table->mutex);
-   return map;
+
+   return result;
 }
 
 void
-nvk_descriptor_table_free(struct nvk_device *device,
-                          struct nvk_descriptor_table *table,
-                          uint32_t index)
+nvk_descriptor_table_remove(struct nvk_device *dev,
+                            struct nvk_descriptor_table *table,
+                            uint32_t index)
 {
    simple_mtx_lock(&table->mutex);
    assert(table->free_count < table->alloc);
