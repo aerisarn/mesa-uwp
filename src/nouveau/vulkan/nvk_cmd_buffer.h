@@ -123,6 +123,13 @@ nvk_cmd_buffer_push(struct nvk_cmd_buffer *cmd, uint32_t dw_count)
    return P_SPACE(cmd->push, dw_count);
 }
 
+static inline void
+nvk_cmd_buffer_ref_bo(struct nvk_cmd_buffer *cmd,
+                      struct nouveau_ws_bo *bo)
+{
+   nouveau_ws_push_ref(cmd->push, bo, NOUVEAU_WS_BO_RDWR);
+}
+
 void nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
                                    const VkCommandBufferBeginInfo *pBeginInfo);
 void nvk_cmd_buffer_begin_compute(struct nvk_cmd_buffer *cmd,

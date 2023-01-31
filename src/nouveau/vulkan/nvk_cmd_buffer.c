@@ -124,7 +124,7 @@ nvk_cmd_buffer_resize_upload_buf(struct nvk_cmd_buffer *cmd,
    uint32_t flags = NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP;
    bo = nouveau_ws_bo_new(device->pdev->dev, new_size, 0, flags);
 
-   nouveau_ws_push_ref(cmd->push, bo, NOUVEAU_WS_BO_RD);
+   nvk_cmd_buffer_ref_bo(cmd, bo);
    if (cmd->upload.upload_bo) {
       upload = malloc(sizeof(*upload));
 
@@ -245,8 +245,7 @@ nvk_CmdBindPipeline(VkCommandBuffer commandBuffer,
       if (!pipeline->shaders[s].bo)
          continue;
 
-      nouveau_ws_push_ref(cmd->push, pipeline->shaders[s].bo,
-                          NOUVEAU_WS_BO_RD);
+      nvk_cmd_buffer_ref_bo(cmd, pipeline->shaders[s].bo);
 
       if (pipeline->shaders[s].slm_size)
          nvk_device_ensure_slm(dev, pipeline->shaders[s].slm_size);
@@ -289,7 +288,8 @@ nvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
          pipeline_layout->set[set_idx].layout;
 
       if (desc->sets[set_idx] != set) {
-         nvk_push_descriptor_set_ref(cmd->push, set);
+         if (set->bo)
+            nvk_cmd_buffer_ref_bo(cmd, set->bo);
          desc->root.sets[set_idx] = nvk_descriptor_set_addr(set);
          desc->sets[set_idx] = set;
          desc->sets_dirty |= BITFIELD_BIT(set_idx);

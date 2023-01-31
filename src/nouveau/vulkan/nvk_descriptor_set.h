@@ -4,7 +4,6 @@
 #include "nvk_private.h"
 
 #include "nouveau_bo.h"
-#include "nouveau_push.h"
 #include "vulkan/runtime/vk_object.h"
 
 struct nvk_descriptor_set_layout;
@@ -57,14 +56,6 @@ struct nvk_descriptor_set {
 
 VK_DEFINE_HANDLE_CASTS(nvk_descriptor_set, base, VkDescriptorSet,
                        VK_OBJECT_TYPE_DESCRIPTOR_SET)
-
-static inline void
-nvk_push_descriptor_set_ref(struct nouveau_ws_push *push,
-                            const struct nvk_descriptor_set *set)
-{
-   if (set->bo)
-      nouveau_ws_push_ref(push, set->bo, NOUVEAU_WS_BO_RD);
-}
 
 static inline uint64_t
 nvk_descriptor_set_addr(const struct nvk_descriptor_set *set)
