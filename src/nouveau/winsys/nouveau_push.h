@@ -166,6 +166,16 @@ P_INLINE_DATA(struct nouveau_ws_push *push, uint32_t value)
 }
 
 static inline void
+P_INLINE_FLOAT(struct nouveau_ws_push *push, float value)
+{
+   if (nvk_push_update_count(push, 1)) {
+      /* push new value */
+      *(float *)push->map = value;
+      push->map++;
+   }
+}
+
+static inline void
 P_INLINE_ARRAY(struct nouveau_ws_push *push, const uint32_t *data, int num_dw)
 {
    if (nvk_push_update_count(push, num_dw)) {
