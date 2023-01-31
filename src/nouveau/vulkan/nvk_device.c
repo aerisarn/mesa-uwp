@@ -168,14 +168,9 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
 
    nvk_slm_area_init(&device->slm);
 
-   result = nvk_queue_init(device, &device->queue,
-                           &pCreateInfo->pQueueCreateInfos[0], 0);
-   if (result != VK_SUCCESS)
-      goto fail_slm;
-
    if (pthread_mutex_init(&device->mutex, NULL) != 0) {
       result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
-      goto fail_queue;
+      goto fail_slm;
    }
 
    pthread_condattr_t condattr;
@@ -202,31 +197,36 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
                                                 NOUVEAU_WS_BO_LOCAL,
                                                 NOUVEAU_WS_BO_WR, &zero_map);
    if (device->zero_page == NULL)
-      goto fail_mutex;
+      goto fail_queue_submit;
 
    memset(zero_map, 0, 0x1000);
    nouveau_ws_bo_unmap(device->zero_page, zero_map);
 
-   result = nvk_device_init_context_draw_state(device);
+   result = nvk_queue_init(device, &device->queue,
+                           &pCreateInfo->pQueueCreateInfos[0], 0);
    if (result != VK_SUCCESS)
       goto fail_zero_page;
 
+   result = nvk_device_init_context_draw_state(device);
+   if (result != VK_SUCCESS)
+      goto fail_queue;
+
    result = nvk_device_init_meta(device);
    if (result != VK_SUCCESS)
-      goto fail_queue_submit;
+      goto fail_queue;
 
    *pDevice = nvk_device_to_handle(device);
 
    return VK_SUCCESS;
 
+fail_queue:
+   nvk_queue_finish(device, &device->queue);
 fail_queue_submit:
    pthread_cond_destroy(&device->queue_submit);
 fail_zero_page:
    nouveau_ws_bo_destroy(device->zero_page);
 fail_mutex:
    pthread_mutex_destroy(&device->mutex);
-fail_queue:
-   nvk_queue_finish(device, &device->queue);
 fail_slm:
    nvk_slm_area_finish(&device->slm);
    nvk_descriptor_table_finish(device, &device->samplers);
