@@ -257,8 +257,14 @@ nvk_queue_init(struct nvk_device *dev, struct nvk_queue *queue,
    }
    nouveau_ws_bo_unmap(queue->empty_push, empty_push_map);
 
+   result = nvk_queue_init_context_draw_state(queue);
+   if (result != VK_SUCCESS)
+      goto fail_empty_push;
+
    return VK_SUCCESS;
 
+fail_empty_push:
+   nouveau_ws_bo_destroy(queue->empty_push);
 fail_init:
    vk_queue_finish(&queue->vk);
 

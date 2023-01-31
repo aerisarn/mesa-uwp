@@ -28,14 +28,14 @@ nvk_cmd_buffer_3d_cls(struct nvk_cmd_buffer *cmd)
 }
 
 VkResult
-nvk_device_init_context_draw_state(struct nvk_device *dev)
+nvk_queue_init_context_draw_state(struct nvk_queue *queue)
 {
-   struct nouveau_ws_push *pb =
-      nouveau_ws_push_new(dev->pdev->dev, NVK_CMD_BUF_SIZE);
-   if (pb == NULL)
-      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+   struct nvk_device *dev = nvk_queue_device(queue);
 
-   struct nv_push *p = P_SPACE(pb, 0x1000);
+   uint32_t push_data[512];
+   struct nv_push push;
+   nv_push_init(&push, push_data, ARRAY_SIZE(push_data));
+   struct nv_push *p = &push;
 
    P_MTHD(p, NV9097, SET_OBJECT);
    P_NV9097_SET_OBJECT(p, {
@@ -46,10 +46,8 @@ nvk_device_init_context_draw_state(struct nvk_device *dev)
    for (uint32_t mme = 0, mme_pos = 0; mme < NVK_MME_COUNT; mme++) {
       size_t size;
       uint32_t *dw = nvk_build_mme(dev, mme, &size);
-      if (dw == NULL) {
-         nouveau_ws_push_destroy(pb);
+      if (dw == NULL)
          return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
-      }
 
       assert(size % sizeof(uint32_t) == 0);
       const uint32_t num_dw = size / sizeof(uint32_t);
@@ -310,12 +308,8 @@ nvk_device_init_context_draw_state(struct nvk_device *dev)
    P_NV9097_SET_VERTEX_STREAM_SUBSTITUTE_A(p, zero_addr >> 32);
    P_NV9097_SET_VERTEX_STREAM_SUBSTITUTE_B(p, zero_addr);
 
-   int ret = nouveau_ws_push_submit(pb, dev->pdev->dev, dev->ctx);
-   nouveau_ws_push_destroy(pb);
-   if (ret)
-      return vk_error(dev, VK_ERROR_INITIALIZATION_FAILED);
-
-   return VK_SUCCESS;
+   return nvk_queue_submit_simple(queue, push_data, nv_push_dw_count(&push),
+                                  NULL /* extra_bo */);
 }
 
 void

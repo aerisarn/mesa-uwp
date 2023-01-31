@@ -207,10 +207,6 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto fail_zero_page;
 
-   result = nvk_device_init_context_draw_state(device);
-   if (result != VK_SUCCESS)
-      goto fail_queue;
-
    result = nvk_device_init_meta(device);
    if (result != VK_SUCCESS)
       goto fail_queue;
