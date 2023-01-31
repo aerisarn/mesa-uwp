@@ -49,6 +49,9 @@ struct nvk_meta_save {
    struct vk_dynamic_graphics_state dynamic;
    struct nvk_graphics_pipeline *pipeline;
    struct nvk_addr_range vb0;
+   struct nvk_descriptor_set *desc0;
+   bool has_push_desc0;
+   struct nvk_push_descriptor_set push_desc0;
    uint8_t push[128];
 };
 
@@ -61,6 +64,11 @@ nvk_meta_begin(struct nvk_cmd_buffer *cmd,
 
    save->pipeline = cmd->state.gfx.pipeline;
    save->vb0 = cmd->state.gfx.vb0;
+
+   save->desc0 = cmd->state.gfx.descriptors.sets[0];
+   save->has_push_desc0 = cmd->state.gfx.descriptors.push[0];
+   if (save->has_push_desc0)
+      save->push_desc0 = *cmd->state.gfx.descriptors.push[0];
 
    STATIC_ASSERT(sizeof(save->push) ==
                  sizeof(cmd->state.gfx.descriptors.root.push));
@@ -88,6 +96,14 @@ static void
 nvk_meta_end(struct nvk_cmd_buffer *cmd,
              struct nvk_meta_save *save)
 {
+   if (save->desc0) {
+      cmd->state.gfx.descriptors.sets[0] = save->desc0;
+      cmd->state.gfx.descriptors.sets_dirty |= BITFIELD_BIT(0);
+   } else if (save->has_push_desc0) {
+      *cmd->state.gfx.descriptors.push[0] = save->push_desc0;
+      cmd->state.gfx.descriptors.push_dirty |= BITFIELD_BIT(0);
+   }
+
    /* Restore the dynamic state */
    assert(save->dynamic.vi == &cmd->state.gfx._dynamic_vi);
    cmd->vk.dynamic_graphics_state = save->dynamic;
