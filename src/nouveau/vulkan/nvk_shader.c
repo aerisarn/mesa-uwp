@@ -722,25 +722,24 @@ nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader)
          hdr_size = GF100_SHADER_HEADER_SIZE;
    }
 
-   /* TODO: The I-cache pre-fetches and we don't really know by how much.  So
-    * throw on a bunch just to be sure.
-    */
    uint32_t total_size = shader->code_size + hdr_size;
-   shader->bo = nouveau_ws_bo_new(nvk_device_physical(dev)->dev,
-                                  total_size + 4096, 256,
-                                  NOUVEAU_WS_BO_LOCAL | NOUVEAU_WS_BO_MAP);
+   char *data = malloc(total_size);
+   if (data == NULL)
+      return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   void *ptr = nouveau_ws_bo_map(shader->bo, NOUVEAU_WS_BO_WR);
-
-   assert(hdr_size <= sizeof(shader->hdr));
-   memcpy(ptr, shader->hdr, hdr_size);
-   memcpy(ptr + hdr_size, shader->code_ptr, shader->code_size);
-   nouveau_ws_bo_unmap(shader->bo, ptr);
+   memcpy(data, shader->hdr, hdr_size);
+   memcpy(data + hdr_size, shader->code_ptr, shader->code_size);
 
 #ifndef NDEBUG
    if (debug_get_bool_option("NV50_PROG_DEBUG", false))
       nvk_shader_dump(shader);
 #endif
 
-   return VK_SUCCESS;
+   VkResult result = nvk_heap_upload(dev, &dev->shader_heap, data,
+                                     total_size, 256, &shader->upload_addr);
+   if (result == VK_SUCCESS)
+      shader->upload_size = total_size;
+   free(data);
+
+   return result;
 }

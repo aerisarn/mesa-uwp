@@ -143,6 +143,15 @@ push_add_queue_state(struct push_builder *pb, struct nvk_queue_state *qs)
       push_add_push(pb, qs->push.bo, 0, qs->push.dw_count);
 }
 
+static void
+push_add_heap(struct push_builder *pb, struct nvk_heap *heap)
+{
+   simple_mtx_lock(&heap->mutex);
+   for (uint32_t i = 0; i < heap->bo_count; i++)
+      push_add_bo(pb, heap->bos[i].bo, NOUVEAU_WS_BO_RDWR);
+   simple_mtx_unlock(&heap->mutex);
+}
+
 VkResult
 nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
                              struct vk_queue_submit *submit,
@@ -165,6 +174,8 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
       push_add_push(&pb, queue->empty_push, 0, queue->empty_push_dw_count);
    } else {
       push_add_queue_state(&pb, &queue->state);
+
+      push_add_heap(&pb, &dev->shader_heap);
 
       simple_mtx_lock(&dev->memory_objects_lock);
       list_for_each_entry(struct nvk_device_memory, mem,

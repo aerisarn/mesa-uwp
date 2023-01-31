@@ -22,6 +22,9 @@ struct nvk_shader {
    uint8_t *code_ptr;
    uint32_t code_size;
 
+   uint32_t upload_size;
+   uint64_t upload_addr;
+
    uint8_t num_gprs;
    uint8_t num_barriers;
    uint32_t slm_size;
@@ -56,14 +59,12 @@ struct nvk_shader {
       uint32_t smem_size; /* shared memory (TGSI LOCAL resource) size */
       uint32_t block_size[3];
    } cp;
-
-   struct nouveau_ws_bo *bo;
 };
 
 static inline uint64_t
 nvk_shader_address(const struct nvk_shader *shader)
 {
-   return shader->bo->offset;
+   return shader->upload_addr;
 }
 
 const nir_shader_compiler_options *

@@ -255,11 +255,6 @@ nvk_CmdBindPipeline(VkCommandBuffer commandBuffer,
    struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
 
    for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
-      if (!pipeline->shaders[s].bo)
-         continue;
-
-      nvk_cmd_buffer_ref_bo(cmd, pipeline->shaders[s].bo);
-
       if (pipeline->shaders[s].slm_size)
          nvk_device_ensure_slm(dev, pipeline->shaders[s].slm_size);
    }

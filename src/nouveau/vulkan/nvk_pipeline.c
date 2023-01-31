@@ -29,8 +29,11 @@ nvk_pipeline_free(struct nvk_device *device,
                   const VkAllocationCallbacks *pAllocator)
 {
    for (uint32_t s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
-      if (pipeline->shaders[s].bo)
-         nouveau_ws_bo_destroy(pipeline->shaders[s].bo);
+      if (pipeline->shaders[s].upload_size > 0) {
+         nvk_heap_free(device, &device->shader_heap,
+                       pipeline->shaders[s].upload_addr,
+                       pipeline->shaders[s].upload_size);
+      }
    }
 
    vk_object_free(&device->vk, pAllocator, pipeline);

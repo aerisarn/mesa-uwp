@@ -254,11 +254,11 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
       uint32_t idx = mesa_to_nv9097_shader_type[stage];
 
       P_IMMD(p, NV9097, SET_PIPELINE_SHADER(idx), {
-         .enable  = shader->bo != NULL,
+         .enable  = shader->upload_size > 0,
          .type    = mesa_to_nv9097_shader_type[stage],
       });
 
-      if (shader->bo == NULL)
+      if (shader->upload_size == 0)
          continue;
 
       if (stage != MESA_SHADER_FRAGMENT)
