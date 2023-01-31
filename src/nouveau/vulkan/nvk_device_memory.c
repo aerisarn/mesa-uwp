@@ -63,8 +63,8 @@ zero_vram(struct nvk_device *dev, struct nouveau_ws_bo *bo)
    P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(p, 1, extra / 4);
    P_NV902D_RENDER_SOLID_PRIM_POINT_Y(p, 1, height);
 
-   return nvk_queue_submit_simple(&dev->queue, push_data,
-                                  nv_push_dw_count(&push), bo);
+   return nvk_queue_submit_simple(&dev->queue, nv_push_dw_count(&push),
+                                  push_data, 1, &bo, false /* sync */);
 }
 
 VkResult

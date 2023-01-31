@@ -112,9 +112,10 @@ push_submit(struct push_builder *pb, struct nvk_queue *queue, bool sync)
 
 VkResult
 nvk_queue_submit_simple_drm_nouveau(struct nvk_queue *queue,
-                                    struct nouveau_ws_bo *push_bo,
                                     uint32_t push_dw_count,
-                                    struct nouveau_ws_bo *extra_bo,
+                                    struct nouveau_ws_bo *push_bo,
+                                    uint32_t extra_bo_count,
+                                    struct nouveau_ws_bo **extra_bos,
                                     bool sync)
 {
    struct nvk_device *dev = nvk_queue_device(queue);
@@ -123,9 +124,8 @@ nvk_queue_submit_simple_drm_nouveau(struct nvk_queue *queue,
    push_builder_init(dev, &pb);
 
    push_add_push(&pb, push_bo, 0, push_dw_count);
-
-   if (extra_bo)
-      push_add_bo(&pb, extra_bo, NOUVEAU_WS_BO_RDWR);
+   for (uint32_t i = 0; i < extra_bo_count; i++)
+      push_add_bo(&pb, extra_bos[i], NOUVEAU_WS_BO_RDWR);
 
    return push_submit(&pb, queue, sync);
 }

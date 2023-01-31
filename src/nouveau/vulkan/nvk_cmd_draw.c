@@ -308,8 +308,8 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
    P_NV9097_SET_VERTEX_STREAM_SUBSTITUTE_A(p, zero_addr >> 32);
    P_NV9097_SET_VERTEX_STREAM_SUBSTITUTE_B(p, zero_addr);
 
-   return nvk_queue_submit_simple(queue, push_data, nv_push_dw_count(&push),
-                                  NULL /* extra_bo */);
+   return nvk_queue_submit_simple(queue, nv_push_dw_count(&push), push_data,
+                                  0, NULL, false /* sync */);
 }
 
 void
