@@ -262,6 +262,27 @@ void vk_meta_blit_image2(struct vk_command_buffer *cmd,
                          struct vk_meta_device *meta,
                          const VkBlitImageInfo2 *blit);
 
+void vk_meta_resolve_image(struct vk_command_buffer *cmd,
+                           struct vk_meta_device *meta,
+                           struct vk_image *src_image,
+                           VkFormat src_format,
+                           VkImageLayout src_image_layout,
+                           struct vk_image *dst_image,
+                           VkFormat dst_format,
+                           VkImageLayout dst_image_layout,
+                           uint32_t region_count,
+                           const VkImageResolve2 *regions,
+                           VkResolveModeFlagBits resolve_mode,
+                           VkResolveModeFlagBits stencil_resolve_mode);
+
+void vk_meta_resolve_image2(struct vk_command_buffer *cmd,
+                            struct vk_meta_device *meta,
+                            const VkResolveImageInfo2 *resolve);
+
+void vk_meta_resolve_rendering(struct vk_command_buffer *cmd,
+                               struct vk_meta_device *meta,
+                               const VkRenderingInfo *pRenderingInfo);
+
 #ifdef __cplusplus
 }
 #endif
