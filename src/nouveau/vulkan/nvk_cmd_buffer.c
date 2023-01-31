@@ -232,10 +232,18 @@ nvk_CmdExecuteCommands(VkCommandBuffer commandBuffer,
    }
 }
 
+#include "nvk_cl9097.h"
+
 VKAPI_ATTR void VKAPI_CALL
 nvk_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
                         const VkDependencyInfo *pDependencyInfo)
-{ }
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+
+   /* TODO: We don't need to WFI all the time, do we? */
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 2);
+   P_IMMD(p, NV9097, WAIT_FOR_IDLE, 0);
+}
 
 VKAPI_ATTR void VKAPI_CALL
 nvk_CmdBindPipeline(VkCommandBuffer commandBuffer,
