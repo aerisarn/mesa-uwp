@@ -90,8 +90,8 @@ push_submit(struct push_builder *pb, struct nvk_queue *queue)
                                  DRM_NOUVEAU_GEM_PUSHBUF,
                                  &pb->req, sizeof(pb->req));
    if (ret != 0) {
-      return vk_queue_set_lost(&queue->vk,
-                               "DRM_NOUVEAU_GEM_PUSHBUF failed: %m");
+      return vk_errorf(queue, VK_ERROR_UNKNOWN,
+                       "DRM_NOUVEAU_GEM_PUSHBUF failed: %m");
    }
 
    return VK_SUCCESS;
@@ -130,17 +130,12 @@ push_add_queue_state(struct push_builder *pb, struct nvk_queue_state *qs)
 }
 
 VkResult
-nvk_queue_submit_drm_nouveau(struct vk_queue *vk_queue,
+nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
                              struct vk_queue_submit *submit)
 {
-   struct nvk_queue *queue = container_of(vk_queue, struct nvk_queue, vk);
    struct nvk_device *dev = nvk_queue_device(queue);
    struct push_builder pb;
    VkResult result;
-
-   result = nvk_queue_state_update(dev, &queue->state);
-   if (result != VK_SUCCESS)
-      return result;
 
    push_builder_init(dev, &pb);
 

@@ -222,6 +222,30 @@ nvk_queue_state_update(struct nvk_device *dev,
    return VK_SUCCESS;
 }
 
+static VkResult
+nvk_queue_submit(struct vk_queue *vk_queue,
+                 struct vk_queue_submit *submit)
+{
+   struct nvk_queue *queue = container_of(vk_queue, struct nvk_queue, vk);
+   struct nvk_device *dev = nvk_queue_device(queue);
+   VkResult result;
+
+   if (vk_queue_is_lost(&queue->vk))
+      return VK_ERROR_DEVICE_LOST;
+
+   result = nvk_queue_state_update(dev, &queue->state);
+   if (result != VK_SUCCESS) {
+      return vk_queue_set_lost(&queue->vk, "Failed to update queue base "
+                                           "pointers pushbuf");
+   }
+
+   result = nvk_queue_submit_drm_nouveau(queue, submit);
+   if (result != VK_SUCCESS)
+      return vk_queue_set_lost(&queue->vk, "Submit failed");
+
+   return VK_SUCCESS;
+}
+
 VkResult
 nvk_queue_init(struct nvk_device *dev, struct nvk_queue *queue,
                const VkDeviceQueueCreateInfo *pCreateInfo,
@@ -235,7 +259,7 @@ nvk_queue_init(struct nvk_device *dev, struct nvk_queue *queue,
 
    nvk_queue_state_init(&queue->state);
 
-   queue->vk.driver_submit = nvk_queue_submit_drm_nouveau;
+   queue->vk.driver_submit = nvk_queue_submit;
 
    void *empty_push_map;
    queue->empty_push = nouveau_ws_bo_new_mapped(dev->pdev->dev, 4096, 0,
@@ -288,6 +312,9 @@ nvk_queue_submit_simple(struct nvk_queue *queue,
    struct nouveau_ws_bo *push_bo;
    VkResult result;
 
+   if (vk_queue_is_lost(&queue->vk))
+      return VK_ERROR_DEVICE_LOST;
+
    void *push_map;
    push_bo = nouveau_ws_bo_new_mapped(dev->pdev->dev, dw_count * 4, 0,
                                       NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP,
@@ -299,6 +326,8 @@ nvk_queue_submit_simple(struct nvk_queue *queue,
 
    result = nvk_queue_submit_simple_drm_nouveau(queue, push_bo, dw_count,
                                                 extra_bo);
+   if (result != VK_SUCCESS)
+      result = vk_queue_set_lost(&queue->vk, "Submit failed");
 
    nouveau_ws_bo_unmap(push_bo, push_map);
    nouveau_ws_bo_destroy(push_bo);
