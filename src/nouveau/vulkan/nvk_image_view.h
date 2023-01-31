@@ -12,6 +12,7 @@ struct nvk_image_view {
    uint32_t desc_index;
 };
 
-VK_DEFINE_HANDLE_CASTS(nvk_image_view, vk.base, VkImageView, VK_OBJECT_TYPE_IMAGE_VIEW)
+VK_DEFINE_HANDLE_CASTS(nvk_image_view, vk.base, VkImageView,
+                       VK_OBJECT_TYPE_IMAGE_VIEW)
 
 #endif
