@@ -3201,11 +3201,6 @@ Converter::run()
    NIR_PASS_V(nir, nir_opt_deref);
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);
 
-   /* codegen assumes vec4 alignment for memory */
-   NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_function_temp, function_temp_type_info);
-   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_function_temp, nir_address_format_32bit_offset);
-   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
-
    NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
               type_size, (nir_lower_io_options)0);
 
@@ -3243,6 +3238,12 @@ Converter::run()
       NIR_PASS(progress, nir, nir_opt_dead_cf);
       NIR_PASS(progress, nir, nir_lower_64bit_phis);
    } while (progress);
+
+   /* codegen assumes vec4 alignment for memory */
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
+   NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_function_temp, function_temp_type_info);
+   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_function_temp, nir_address_format_32bit_offset);
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
 
    NIR_PASS_V(nir, nir_opt_combine_barriers, NULL, NULL);
 
