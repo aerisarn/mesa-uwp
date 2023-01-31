@@ -208,6 +208,7 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
                                             NULL, &all, NULL, 0, NULL);
    assert(result == VK_SUCCESS);
 
+   nir_shader *nir[MESA_SHADER_STAGES] = {};
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
       const VkPipelineShaderStageCreateInfo *sinfo = &pCreateInfo->pStages[i];
       gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
@@ -221,14 +222,18 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
       const struct spirv_to_nir_options spirv_options =
          nvk_physical_device_spirv_options(pdevice, &robustness);
 
-      nir_shader *nir;
       result = vk_pipeline_shader_stage_to_nir(&device->vk, sinfo,
                                                &spirv_options, nir_options,
-                                               NULL, &nir);
+                                               NULL, &nir[stage]);
       if (result != VK_SUCCESS)
          goto fail;
 
-      nvk_lower_nir(device, nir, &robustness, pipeline_layout);
+      nvk_lower_nir(device, nir[stage], &robustness, pipeline_layout);
+   }
+
+   for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+      if (nir[stage] == NULL)
+         continue;
 
       struct nvk_fs_key fs_key_tmp, *fs_key = NULL;
       if (stage == MESA_SHADER_FRAGMENT) {
@@ -236,9 +241,9 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
          fs_key = &fs_key_tmp;
       }
 
-      result = nvk_compile_nir(pdevice, nir, fs_key,
+      result = nvk_compile_nir(pdevice, nir[stage], fs_key,
                                &pipeline->base.shaders[stage]);
-      ralloc_free(nir);
+      ralloc_free(nir[stage]);
       if (result != VK_SUCCESS)
          goto fail;
 
