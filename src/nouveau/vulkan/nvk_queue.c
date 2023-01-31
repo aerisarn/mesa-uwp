@@ -28,8 +28,10 @@ nvk_queue_state_finish(struct nvk_device *dev,
       nouveau_ws_bo_destroy(qs->samplers.bo);
    if (qs->slm.bo)
       nouveau_ws_bo_destroy(qs->slm.bo);
-   if (qs->push.bo)
+   if (qs->push.bo) {
+      nouveau_ws_bo_unmap(qs->push.bo, qs->push.bo_map);
       nouveau_ws_bo_destroy(qs->push.bo);
+   }
 }
 
 VkResult
@@ -211,12 +213,13 @@ nvk_queue_state_update(struct nvk_device *dev,
     */
    P_IMMD(p, NV9097, SET_SHADER_LOCAL_MEMORY_WINDOW, 0xff << 24);
 
-   nouveau_ws_bo_unmap(push_bo, push_map);
-
-   if (qs->push.bo)
+   if (qs->push.bo) {
+      nouveau_ws_bo_unmap(qs->push.bo, qs->push.bo_map);
       nouveau_ws_bo_destroy(qs->push.bo);
+   }
 
    qs->push.bo = push_bo;
+   qs->push.bo_map = push_map;
    qs->push.dw_count = nv_push_dw_count(&push);
 
    return VK_SUCCESS;
