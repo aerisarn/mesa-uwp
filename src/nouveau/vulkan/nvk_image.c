@@ -83,6 +83,10 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
 {
    VK_FROM_HANDLE(nvk_physical_device, pdevice, physicalDevice);
 
+   /* Initialize to zero in case we return VK_ERROR_FORMAT_NOT_SUPPORTED */
+   memset(&pImageFormatProperties->imageFormatProperties, 0,
+          sizeof(pImageFormatProperties->imageFormatProperties));
+
    VkFormatFeatureFlags2KHR features =
       nvk_get_image_format_features(pdevice, pImageFormatInfo->format,
                                              pImageFormatInfo->tiling);
