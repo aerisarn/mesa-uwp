@@ -161,16 +161,16 @@ nouveau_ws_device_info(int fd, struct nouveau_ws_device *dev)
 
    switch (args.info.platform) {
    case NV_DEVICE_INFO_V0_IGP:
-      dev->device_type = NOUVEAU_WS_DEVICE_TYPE_IGP;
+      dev->info.type = NV_DEVICE_TYPE_IGP;
       break;
    case NV_DEVICE_INFO_V0_SOC:
-      dev->device_type = NOUVEAU_WS_DEVICE_TYPE_SOC;
+      dev->info.type = NV_DEVICE_TYPE_SOC;
       break;
    case NV_DEVICE_INFO_V0_PCI:
    case NV_DEVICE_INFO_V0_AGP:
    case NV_DEVICE_INFO_V0_PCIE:
    default:
-      dev->device_type = NOUVEAU_WS_DEVICE_TYPE_DIS;
+      dev->info.type = NV_DEVICE_TYPE_DIS;
       break;
    }
 

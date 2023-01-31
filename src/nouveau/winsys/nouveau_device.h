@@ -28,18 +28,11 @@ enum nvk_debug {
    NVK_DEBUG_ZERO_MEMORY = 1ull << 2,
 };
 
-enum nouveau_ws_device_type {
-   NOUVEAU_WS_DEVICE_TYPE_IGP = 0,
-   NOUVEAU_WS_DEVICE_TYPE_DIS = 1,
-   NOUVEAU_WS_DEVICE_TYPE_SOC = 2,
-};
-
 struct nouveau_ws_device {
    int fd;
 
    uint16_t vendor_id;
    uint16_t device_id;
-   enum nouveau_ws_device_type device_type;
    uint32_t chipset;
 
    struct nv_device_info info;
