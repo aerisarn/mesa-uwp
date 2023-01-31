@@ -5,3 +5,4 @@
 
 #include "nak.h"
 #include "nir.h"
+#include "nv_device_info.h"

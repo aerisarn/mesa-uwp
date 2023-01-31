@@ -13,6 +13,7 @@ libnak_rs_files = files(
 libnak_deps = [
   idep_mesautil,
   idep_nir_headers,
+  idep_nvidia_headers,
 ]
 
 nak_bindings_rs = rust.bindgen(

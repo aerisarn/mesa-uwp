@@ -20,6 +20,22 @@ use nak_from_nir::*;
 use std::os::raw::c_void;
 use util::NextMultipleOf;
 
+#[no_mangle]
+pub extern "C" fn nak_compiler_create(
+    dev: *const nv_device_info,
+) -> *mut nak_compiler {
+    let dev = unsafe { &*dev };
+
+    let nak = Box::new(nak_compiler { sm: dev.sm });
+
+    Box::into_raw(nak)
+}
+
+#[no_mangle]
+pub extern "C" fn nak_compiler_destroy(nak: *mut nak_compiler) {
+    unsafe { Box::from_raw(nak) };
+}
+
 #[repr(C)]
 struct ShaderBin {
     bin: nak_shader_bin,
