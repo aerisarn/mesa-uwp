@@ -15,8 +15,10 @@ align_u32(uint32_t v, uint32_t a)
    return (v + a - 1) & ~(a - 1);
 }
 
-static void *desc_ubo_data(struct nvk_descriptor_set *set, uint32_t binding,
-                           uint32_t elem) {
+static void *
+desc_ubo_data(struct nvk_descriptor_set *set, uint32_t binding,
+              uint32_t elem)
+{
    const struct nvk_descriptor_set_binding_layout *binding_layout =
       &set->layout->binding[binding];
 
@@ -24,9 +26,11 @@ static void *desc_ubo_data(struct nvk_descriptor_set *set, uint32_t binding,
           elem * binding_layout->stride;
 }
 
-static void write_sampler_desc(struct nvk_descriptor_set *set,
-                               const VkDescriptorImageInfo *const info,
-                               uint32_t binding, uint32_t elem) {
+static void
+write_sampler_desc(struct nvk_descriptor_set *set,
+                   const VkDescriptorImageInfo *const info,
+                   uint32_t binding, uint32_t elem)
+{
    const struct nvk_descriptor_set_binding_layout *binding_layout =
       &set->layout->binding[binding];
 
@@ -40,9 +44,11 @@ static void write_sampler_desc(struct nvk_descriptor_set *set,
    desc->sampler_index = sampler->desc_index;
 }
 
-static void write_image_view_desc(struct nvk_descriptor_set *set,
-                                  const VkDescriptorImageInfo *const info,
-                                  uint32_t binding, uint32_t elem) {
+static void
+write_image_view_desc(struct nvk_descriptor_set *set,
+                      const VkDescriptorImageInfo *const info,
+                      uint32_t binding, uint32_t elem)
+{
    VK_FROM_HANDLE(nvk_image_view, view, info->imageView);
 
    struct nvk_image_descriptor *desc = desc_ubo_data(set, binding, elem);
@@ -50,9 +56,11 @@ static void write_image_view_desc(struct nvk_descriptor_set *set,
    desc->image_index = view->desc_index;
 }
 
-static void write_buffer_desc(struct nvk_descriptor_set *set,
-                              const VkDescriptorBufferInfo *const info,
-                              uint32_t binding, uint32_t elem) {
+static void
+write_buffer_desc(struct nvk_descriptor_set *set,
+                  const VkDescriptorBufferInfo *const info,
+                  uint32_t binding, uint32_t elem)
+{
    VK_FROM_HANDLE(nvk_buffer, buffer, info->buffer);
 
    struct nvk_buffer_address *desc = desc_ubo_data(set, binding, elem);
@@ -62,24 +70,30 @@ static void write_buffer_desc(struct nvk_descriptor_set *set,
    };
 }
 
-static void write_buffer_view_desc(struct nvk_descriptor_set *set,
-                                   const VkBufferView bufferView,
-                                   uint32_t binding, uint32_t elem) {
+static void
+write_buffer_view_desc(struct nvk_descriptor_set *set,
+                       const VkBufferView bufferView,
+                       uint32_t binding, uint32_t elem)
+{
    /* TODO */
 }
 
 static void
 write_inline_uniform_data(struct nvk_descriptor_set *set,
                           const VkWriteDescriptorSetInlineUniformBlock *info,
-                          uint32_t binding, uint32_t offset) {
+                          uint32_t binding, uint32_t offset)
+{
    memcpy((char *)desc_ubo_data(set, binding, 0) + offset, info->pData,
           info->dataSize);
 }
 
-VKAPI_ATTR void VKAPI_CALL nvk_UpdateDescriptorSets(
-   VkDevice device, uint32_t descriptorWriteCount,
-   const VkWriteDescriptorSet *pDescriptorWrites, uint32_t descriptorCopyCount,
-   const VkCopyDescriptorSet *pDescriptorCopies) {
+VKAPI_ATTR void VKAPI_CALL
+nvk_UpdateDescriptorSets(VkDevice device,
+                         uint32_t descriptorWriteCount,
+                         const VkWriteDescriptorSet *pDescriptorWrites,
+                         uint32_t descriptorCopyCount,
+                         const VkCopyDescriptorSet *pDescriptorCopies)
+{
    for (uint32_t w = 0; w < descriptorWriteCount; w++) {
       const VkWriteDescriptorSet *write = &pDescriptorWrites[w];
       VK_FROM_HANDLE(nvk_descriptor_set, set, write->dstSet);
@@ -324,7 +338,7 @@ nvk_AllocateDescriptorSets(VkDevice _device,
 
    if (result != VK_SUCCESS) {
       nvk_FreeDescriptorSets(_device, pAllocateInfo->descriptorPool, i, pDescriptorSets);
-            for (i = 0; i < pAllocateInfo->descriptorSetCount; i++) {
+      for (i = 0; i < pAllocateInfo->descriptorSetCount; i++) {
          pDescriptorSets[i] = VK_NULL_HANDLE;
       }
    }
@@ -359,7 +373,7 @@ nvk_DestroyDescriptorPool(VkDevice _device, VkDescriptorPool _pool,
 
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_ResetDescriptorPool(VkDevice _device, VkDescriptorPool descriptorPool,
-                         VkDescriptorPoolResetFlags flags)
+                        VkDescriptorPoolResetFlags flags)
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
    VK_FROM_HANDLE(nvk_descriptor_pool, pool, descriptorPool);
