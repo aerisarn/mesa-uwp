@@ -25,6 +25,8 @@ nvk_init_wsi(struct nvk_physical_device *pdev)
    if (result != VK_SUCCESS)
       return result;
 
+   pdev->wsi_device.supports_scanout = false;
+
    pdev->vk.wsi_device = &pdev->wsi_device;
 
    return result;
