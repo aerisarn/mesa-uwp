@@ -556,17 +556,17 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    clear_att[clear_count] = (VkClearAttachment) { .aspectMask = 0, };
    if (pRenderingInfo->pDepthAttachment != NULL &&
        pRenderingInfo->pDepthAttachment->imageView != VK_NULL_HANDLE &&
-       pRenderingInfo->pDepthAttachment->loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR) {
+       pRenderingInfo->pDepthAttachment->loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
       clear_att[clear_count].aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
       clear_att[clear_count].clearValue.depthStencil.depth =
          pRenderingInfo->pDepthAttachment->clearValue.depthStencil.depth;
    }
    if (pRenderingInfo->pStencilAttachment != NULL &&
        pRenderingInfo->pStencilAttachment->imageView != VK_NULL_HANDLE &&
-       pRenderingInfo->pStencilAttachment->loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR) {
+       pRenderingInfo->pStencilAttachment->loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
       clear_att[clear_count].aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
       clear_att[clear_count].clearValue.depthStencil.stencil =
-         pRenderingInfo->pStencilAttachment->clearValue.depthStencil.depth;
+         pRenderingInfo->pStencilAttachment->clearValue.depthStencil.stencil;
    }
    if (clear_att[clear_count].aspectMask != 0)
       clear_count++;
