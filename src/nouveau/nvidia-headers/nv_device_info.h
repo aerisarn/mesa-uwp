@@ -15,6 +15,10 @@ struct nv_device_info {
    enum nv_device_type type;
 
    uint16_t device_id;
+   uint16_t chipset;
+
+   char device_name[64];
+   char chipset_name[16];
 
    /* Populated if type == NV_DEVICE_TYPE_DIS */
    struct {
@@ -25,11 +29,15 @@ struct nv_device_info {
       uint8_t revision_id;
    } pci;
 
+   uint8_t sm; /**< Shader model */
+
    uint16_t cls_copy;
    uint16_t cls_eng2d;
    uint16_t cls_eng3d;
    uint16_t cls_m2mf;
    uint16_t cls_compute;
+
+   uint64_t vram_size_B;
 };
 
 #endif /* NV_DEVINFO_H */

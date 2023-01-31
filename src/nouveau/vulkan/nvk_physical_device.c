@@ -40,22 +40,22 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
    pProperties->properties = (VkPhysicalDeviceProperties) {
       .apiVersion = VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION),
       .driverVersion = vk_get_driver_version(),
-      .vendorID = pdev->dev->vendor_id,
-      .deviceID = pdev->dev->device_id,
+      .vendorID = NVIDIA_VENDOR_ID,
+      .deviceID = pdev->info.device_id,
       .deviceType = pdev->info.type == NV_DEVICE_TYPE_DIS ?
                     VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU :
                     VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU,
       .limits = (VkPhysicalDeviceLimits) {
          .maxImageArrayLayers = 2048,
-         .maxImageDimension1D = pdev->dev->chipset >= 0x130 ? 0x8000 : 0x4000,
-         .maxImageDimension2D = pdev->dev->chipset >= 0x130 ? 0x8000 : 0x4000,
+         .maxImageDimension1D = pdev->info.chipset >= 0x130 ? 0x8000 : 0x4000,
+         .maxImageDimension2D = pdev->info.chipset >= 0x130 ? 0x8000 : 0x4000,
          .maxImageDimension3D = 0x4000,
          .maxImageDimensionCube = 0x8000,
          .maxPushConstantsSize = NVK_MAX_PUSH_SIZE,
          .maxMemoryAllocationCount = 1024,
-         .bufferImageGranularity = pdev->dev->chipset >= 0x120 ? 0x400 : 0x10000,
-         .maxFramebufferHeight = pdev->dev->chipset >= 0x130 ? 0x8000 : 0x4000,
-         .maxFramebufferWidth = pdev->dev->chipset >= 0x130 ? 0x8000 : 0x4000,
+         .bufferImageGranularity = pdev->info.chipset >= 0x120 ? 0x400 : 0x10000,
+         .maxFramebufferHeight = pdev->info.chipset >= 0x130 ? 0x8000 : 0x4000,
+         .maxFramebufferWidth = pdev->info.chipset >= 0x130 ? 0x8000 : 0x4000,
          .maxFramebufferLayers = 2048,
          .maxColorAttachments = NVK_MAX_RTS,
          .maxClipDistances = 8,
@@ -161,7 +161,7 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
    snprintf(pProperties->properties.deviceName,
             sizeof(pProperties->properties.deviceName),
-            "%s", pdev->dev->device_name);
+            "%s", pdev->info.device_name);
 
    VkPhysicalDeviceVulkan11Properties core_1_1 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES,
@@ -668,11 +668,11 @@ nvk_create_drm_physical_device(struct vk_instance *_instance,
    pdev->mem_types[0].propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
    pdev->mem_types[0].heapIndex = 0;
 
-   if (ndev->vram_size) {
+   if (pdev->info.vram_size_B) {
       pdev->mem_type_cnt = 2;
       pdev->mem_heap_cnt = 2;
 
-      pdev->mem_heaps[0].size = ndev->vram_size;
+      pdev->mem_heaps[0].size = pdev->info.vram_size_B;
       pdev->mem_heaps[1].size = ndev->gart_size;
       pdev->mem_heaps[1].flags = 0;
       pdev->mem_types[1].heapIndex = 1;

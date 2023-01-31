@@ -160,8 +160,8 @@ nouveau_ws_device_info(int fd, struct nouveau_ws_device *dev)
    if (ret)
       return ret;
 
-   dev->chipset = args.info.chipset;
-   dev->vram_size = args.info.ram_user;
+   dev->info.chipset = args.info.chipset;
+   dev->info.vram_size_B = args.info.ram_user;
 
    switch (args.info.platform) {
    case NV_DEVICE_INFO_V0_IGP:
@@ -178,8 +178,11 @@ nouveau_ws_device_info(int fd, struct nouveau_ws_device *dev)
       break;
    }
 
-   dev->chipset_name = strndup(args.info.chip, sizeof(args.info.chip));
-   dev->device_name = strndup(args.info.name, sizeof(args.info.name));
+   STATIC_ASSERT(sizeof(dev->info.device_name) >= sizeof(args.info.name));
+   memcpy(dev->info.device_name, args.info.name, sizeof(args.info.name));
+
+   STATIC_ASSERT(sizeof(dev->info.chipset_name) >= sizeof(args.info.chip));
+   memcpy(dev->info.chipset_name, args.info.chip, sizeof(args.info.chip));
 
    return 0;
 }
@@ -220,14 +223,14 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
    if (nouveau_ws_device_alloc(fd, device))
       goto out_err;
 
+   if (nouveau_ws_param(fd, NOUVEAU_GETPARAM_PCI_DEVICE, &value))
+      goto out_err;
+
+   device->info.device_id = value;
+
    if (nouveau_ws_device_info(fd, device))
       goto out_err;
 
-   if (nouveau_ws_param(fd, NOUVEAU_GETPARAM_PCI_DEVICE, &value))
-      goto out_err;
-   device->device_id = value;
-
-   device->info.device_id = value;
    if (drm_device->bustype == DRM_BUS_PCI) {
       assert(device->info.type == NV_DEVICE_TYPE_DIS);
       assert(device->info.device_id == drm_device->deviceinfo.pci->device_id);
@@ -241,15 +244,13 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
 
    if (nouveau_ws_param(fd, NOUVEAU_GETPARAM_AGP_SIZE, &value))
       goto out_err;
+
    os_get_available_system_memory(&device->gart_size);
    device->gart_size = MIN2(device->gart_size, value);
 
    device->fd = fd;
-   device->vendor_id = 0x10de;
-   device->sm = sm_for_chipset(device->chipset);
-   device->is_integrated = device->vram_size == 0;
 
-   if (device->vram_size == 0)
+   if (device->info.vram_size_B == 0)
       device->local_mem_domain = NOUVEAU_GEM_DOMAIN_GART;
    else
       device->local_mem_domain = NOUVEAU_GEM_DOMAIN_VRAM;
@@ -265,6 +266,7 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
    if (nouveau_ws_context_create(device, &tmp_ctx))
       goto out_err;
 
+   device->info.sm = sm_for_chipset(device->info.chipset);
    device->info.cls_copy = tmp_ctx->copy.cls;
    device->info.cls_eng2d = tmp_ctx->eng2d.cls;
    device->info.cls_eng3d = tmp_ctx->eng3d.cls;
@@ -296,7 +298,5 @@ nouveau_ws_device_destroy(struct nouveau_ws_device *device)
    _mesa_hash_table_destroy(device->bos, NULL);
    simple_mtx_destroy(&device->bos_lock);
    close(device->fd);
-   FREE(device->chipset_name);
-   FREE(device->device_name);
    FREE(device);
 }

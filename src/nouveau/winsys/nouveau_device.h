@@ -33,21 +33,9 @@ enum nvk_debug {
 struct nouveau_ws_device {
    int fd;
 
-   uint16_t vendor_id;
-   uint16_t device_id;
-   uint32_t chipset;
-
    struct nv_device_info info;
 
-   char *chipset_name;
-   char *device_name;
-
-   /* maps to CUDAs Compute capability version */
-   uint8_t sm;
-
-   uint64_t vram_size;
    uint64_t gart_size;
-   bool is_integrated;
    uint32_t local_mem_domain;
 
    uint8_t gpc_count;
