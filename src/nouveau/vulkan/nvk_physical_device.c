@@ -249,12 +249,6 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
    device->instance = instance;
    device->dev = ndev;
 
-   result = nvk_init_wsi(device);
-   if (result != VK_SUCCESS) {
-      vk_error(instance, result);
-      goto fail_alloc;
-   }
-
    device->mem_heaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
    device->mem_types[0].propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
    device->mem_types[0].heapIndex = 0;
@@ -283,6 +277,12 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
    device->sync_types[st_idx++] = NULL;
    assert(st_idx <= ARRAY_SIZE(device->sync_types));
    device->vk.supported_sync_types = device->sync_types;
+
+   result = nvk_init_wsi(device);
+   if (result != VK_SUCCESS) {
+      vk_error(instance, result);
+      goto fail_alloc;
+   }
 
    *device_out = device;
 
