@@ -3,7 +3,7 @@
 
 #include "nvk_physical_device.h"
 
-VkResult nvk_init_wsi(struct nvk_physical_device *physical_device);
-void nvk_finish_wsi(struct nvk_physical_device *physical_device);
+VkResult nvk_init_wsi(struct nvk_physical_device *pdev);
+void nvk_finish_wsi(struct nvk_physical_device *pdev);
 
 #endif
