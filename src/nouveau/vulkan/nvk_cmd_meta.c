@@ -59,7 +59,9 @@ nvk_meta_begin(struct nvk_cmd_buffer *cmd,
    save->pipeline = cmd->state.gfx.pipeline;
    save->vb0 = cmd->state.gfx.vb0;
 
-   /* TODO: Push */
+   STATIC_ASSERT(sizeof(save->push) ==
+                 sizeof(cmd->state.gfx.descriptors.root.push));
+   memcpy(save->push, cmd->state.gfx.descriptors.root.push, sizeof(save->push));
 }
 
 static void
@@ -96,7 +98,7 @@ nvk_meta_end(struct nvk_cmd_buffer *cmd,
 
    nvk_cmd_bind_vertex_buffer(cmd, 0, save->vb0);
 
-   /* TODO: Push */
+   memcpy(cmd->state.gfx.descriptors.root.push, save->push, sizeof(save->push));
 }
 
 VKAPI_ATTR void VKAPI_CALL
