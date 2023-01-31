@@ -36,9 +36,3 @@ nvk_finish_wsi(struct nvk_physical_device *pdev)
    pdev->vk.wsi_device = NULL;
    wsi_device_finish(&pdev->wsi_device, &pdev->instance->vk.alloc);
 }
-
-VKAPI_ATTR VkResult VKAPI_CALL
-nvk_QueuePresentKHR(VkQueue _queue, const VkPresentInfoKHR *pPresentInfo)
-{
-   return VK_NOT_READY;
-}
