@@ -1,6 +1,7 @@
 #ifndef MME_BUILDER_H
 #define MME_BUILDER_H
 
+#include "mme_value.h"
 #include "mme_tu104.h"
 
 #include "util/bitscan.h"
@@ -9,26 +10,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-enum mme_value_type {
-   MME_VALUE_TYPE_ZERO,
-   MME_VALUE_TYPE_IMM,
-   MME_VALUE_TYPE_REG,
-};
-
-struct mme_value {
-   enum mme_value_type type;
-
-   union {
-      uint32_t imm;
-      uint32_t reg;
-   };
-};
-
-struct mme_value64 {
-   struct mme_value lo;
-   struct mme_value hi;
-};
 
 struct mme_builder;
 
@@ -137,53 +118,6 @@ static inline uint32_t *
 mme_builder_finish(struct mme_builder *b, size_t *size_out)
 {
    return mme_tu104_builder_finish(&b->tu104, size_out);
-}
-
-static inline struct mme_value
-mme_zero()
-{
-   struct mme_value val = {
-      .type = MME_VALUE_TYPE_ZERO,
-   };
-   return val;
-}
-
-static inline struct mme_value
-mme_imm(uint32_t imm)
-{
-   struct mme_value val = {
-      .type = MME_VALUE_TYPE_IMM,
-      .imm = imm,
-   };
-   return val;
-}
-
-static inline bool
-mme_is_zero(struct mme_value x)
-{
-   switch (x.type) {
-   case MME_VALUE_TYPE_ZERO:  return true;
-   case MME_VALUE_TYPE_IMM:   return x.imm == 0;
-   case MME_VALUE_TYPE_REG:   return false;
-   default: unreachable("Invalid MME value type");
-   }
-}
-
-static inline struct mme_value64
-mme_value64(struct mme_value lo, struct mme_value hi)
-{
-   struct mme_value64 val = { lo, hi };
-   return val;
-}
-
-static inline struct mme_value64
-mme_imm64(uint64_t imm)
-{
-   struct mme_value64 val = {
-      mme_imm((uint32_t)imm),
-      mme_imm((uint32_t)(imm >> 32)),
-   };
-   return val;
 }
 
 static inline uint8_t
