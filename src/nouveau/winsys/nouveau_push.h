@@ -19,27 +19,27 @@ struct nouveau_ws_push_bo {
 };
 
 struct nv_push {
-   uint32_t *orig_map;
-   uint32_t *map;
+   uint32_t *start;
    uint32_t *end;
+   uint32_t *limit;
    uint32_t *last_size;
 };
 
 static inline void
 nv_push_init(struct nv_push *push, uint32_t *start, size_t dw_count)
 {
-   push->orig_map = start;
-   push->map = start;
-   push->end = start + dw_count;
+   push->start = start;
+   push->end = start;
+   push->limit = start + dw_count;
    push->last_size = NULL;
 }
 
 static inline size_t
 nv_push_dw_count(struct nv_push *push)
 {
-   assert(push->orig_map <= push->map);
-   assert(push->map <= push->end);
-   return push->map - push->orig_map;
+   assert(push->start <= push->end);
+   assert(push->end <= push->limit);
+   return push->end - push->start;
 }
 
 struct nouveau_ws_push_buffer {
@@ -123,9 +123,9 @@ __push_mthd_size(struct nv_push *push, int subc, uint32_t mthd, unsigned size)
 {
    __push_verify(push);
 
-   push->last_size = push->map;
-   *push->map = NVC0_FIFO_PKHDR_SQ(subc, mthd, size);
-   push->map++;
+   push->last_size = push->end;
+   *push->end = NVC0_FIFO_PKHDR_SQ(subc, mthd, size);
+   push->end++;
 }
 
 static inline void
@@ -147,9 +147,9 @@ static inline void
 __push_immd(struct nv_push *push, int subc, uint32_t mthd, uint32_t val)
 {
    __push_verify(push);
-   push->last_size = push->map;
-   *push->map = NVC0_FIFO_PKHDR_IL(subc, mthd, val);
-   push->map++;
+   push->last_size = push->end;
+   *push->end = NVC0_FIFO_PKHDR_IL(subc, mthd, val);
+   push->end++;
 }
 
 #define P_IMMD(push, class, mthd, args...) do {                         \
@@ -173,9 +173,9 @@ static inline void
 __push_1inc(struct nv_push *push, int subc, uint32_t mthd)
 {
    __push_verify(push);
-   push->last_size = push->map;
-   *push->map = NVC0_FIFO_PKHDR_1I(subc, mthd, 0);
-   push->map++;
+   push->last_size = push->end;
+   *push->end = NVC0_FIFO_PKHDR_1I(subc, mthd, 0);
+   push->end++;
 }
 
 #define P_1INC(push, class, mthd) __push_1inc(push, SUBC_##class, class##_##mthd)
@@ -190,9 +190,9 @@ static inline void
 __push_0inc(struct nv_push *push, int subc, uint32_t mthd)
 {
    __push_verify(push);
-   push->last_size = push->map;
-   *push->map = NVC0_FIFO_PKHDR_0I(subc, mthd, 0);
-   push->map++;
+   push->last_size = push->end;
+   *push->end = NVC0_FIFO_PKHDR_0I(subc, mthd, 0);
+   push->end++;
 }
 
 #define P_0INC(push, class, mthd) __push_0inc(push, SUBC_##class, class##_##mthd)
@@ -225,8 +225,8 @@ P_INLINE_DATA(struct nv_push *push, uint32_t value)
 {
    if (nvk_push_update_count(push, 1)) {
       /* push new value */
-      *push->map = value;
-      push->map++;
+      *push->end = value;
+      push->end++;
    }
 }
 
@@ -235,8 +235,8 @@ P_INLINE_FLOAT(struct nv_push *push, float value)
 {
    if (nvk_push_update_count(push, 1)) {
       /* push new value */
-      *(float *)push->map = value;
-      push->map++;
+      *(float *)push->end = value;
+      push->end++;
    }
 }
 
@@ -245,8 +245,8 @@ P_INLINE_ARRAY(struct nv_push *push, const uint32_t *data, int num_dw)
 {
    if (nvk_push_update_count(push, num_dw)) {
       /* push new value */
-      memcpy(push->map, data, num_dw * 4);
-      push->map += num_dw;
+      memcpy(push->end, data, num_dw * 4);
+      push->end += num_dw;
    }
 }
 
@@ -260,7 +260,7 @@ nvk_push_val(struct nv_push *push, uint32_t idx, uint32_t val)
    UNUSED bool is_immd = (last_hdr_val & 0xe0000000) == 0x80000000;
    UNUSED uint16_t last_method = (last_hdr_val & 0x1fff) << 2;
 
-   uint16_t distance = push->map - push->last_size - 1;
+   uint16_t distance = push->end - push->last_size - 1;
    if (is_0inc)
       distance = 0;
    else if (is_1inc)
@@ -271,7 +271,7 @@ nvk_push_val(struct nv_push *push, uint32_t idx, uint32_t val)
    assert(last_hdr_val);
    assert(!is_immd);
    assert(last_method == idx);
-   assert(push->map < push->end);
+   assert(push->end < push->limit);
 
    P_INLINE_DATA(push, val);
 }

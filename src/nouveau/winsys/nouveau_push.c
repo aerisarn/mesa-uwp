@@ -76,7 +76,7 @@ void
 nouveau_ws_push_destroy(struct nouveau_ws_push *push)
 {
    util_dynarray_foreach(&push->pushs, struct nouveau_ws_push_buffer, buf) {
-      nouveau_ws_bo_unmap(buf->bo, buf->push.orig_map);
+      nouveau_ws_bo_unmap(buf->bo, buf->push.start);
       nouveau_ws_bo_destroy(buf->bo);
    }
 
@@ -93,8 +93,8 @@ nouveau_ws_push_space(struct nouveau_ws_push *push,
    if (!count)
       return &buf->push;
 
-   if (buf->push.map + count < buf->push.orig_map + (buf->bo->size / 4)) {
-      buf->push.end = buf->push.map + count;
+   if (buf->push.end + count < buf->push.start + (buf->bo->size / 4)) {
+      buf->push.limit = buf->push.end + count;
       return &buf->push;
    }
 
@@ -140,8 +140,8 @@ nouveau_ws_push_append(struct nouveau_ws_push *push,
    /* We don't support BO refs for now */
    assert(other->bos.size == 0);
 
-   memcpy(p->map, other_buf->push.orig_map, count * sizeof(*p->map));
-   p->map += count;
+   memcpy(p->end, other_buf->push.start, count * sizeof(*p->end));
+   p->end += count;
    p->last_size = NULL;
 
    return 0;
@@ -152,16 +152,16 @@ nouveau_ws_push_valid(struct nouveau_ws_push *push) {
    util_dynarray_foreach(&push->pushs, struct nouveau_ws_push_buffer, buf) {
       struct nouveau_ws_push_buffer *buf = _nouveau_ws_push_top(push);
 
-      uint32_t *cur = buf->push.orig_map;
+      uint32_t *cur = buf->push.start;
 
       /* submitting empty push buffers is probably a bug */
-      assert(buf->push.map != buf->push.orig_map);
+      assert(buf->push.end != buf->push.start);
 
       /* make sure we don't overrun the bo */
-      assert(buf->push.map <= buf->push.end);
+      assert(buf->push.end <= buf->push.limit);
 
       /* parse all the headers to see if we get to buf->map */
-      while (cur < buf->push.map) {
+      while (cur < buf->push.end) {
          uint32_t hdr = *cur;
          uint32_t mthd = hdr >> 29;
 
@@ -182,7 +182,7 @@ nouveau_ws_push_valid(struct nouveau_ws_push *push) {
          }
 
          cur++;
-         assert(cur <= buf->push.map);
+         assert(cur <= buf->push.end);
       }
    }
 }
@@ -191,9 +191,9 @@ static void
 nouveau_ws_push_dump(struct nouveau_ws_push *push, struct nouveau_ws_context *ctx)
 {
    util_dynarray_foreach(&push->pushs, struct nouveau_ws_push_buffer, buf) {
-      uint32_t *cur = buf->push.orig_map;
+      uint32_t *cur = buf->push.start;
 
-      while (cur < buf->push.map) {
+      while (cur < buf->push.end) {
          uint32_t hdr = *cur;
          uint32_t type = hdr >> 29;
          uint32_t inc;
@@ -203,7 +203,7 @@ nouveau_ws_push_dump(struct nouveau_ws_push *push, struct nouveau_ws_context *ct
          uint32_t value = 0;
          bool is_immd = false;
 
-         printf("[0x%08" PRIxPTR "] HDR %x subch %i", cur - buf->push.orig_map, hdr, subchan);
+         printf("[0x%08" PRIxPTR "] HDR %x subch %i", cur - buf->push.start, hdr, subchan);
          cur++;
 
          switch (type) {
@@ -340,7 +340,7 @@ nouveau_ws_push_submit(
       /* Can't submit a CPU push */
       assert(buf->bo);
 
-      if (buf->push.map == buf->push.orig_map)
+      if (buf->push.end == buf->push.start)
          continue;
 
       req_bo[i].handle = buf->bo->handle;
@@ -434,12 +434,12 @@ void nouveau_ws_push_reset(struct nouveau_ws_push *push)
    bool first = true;
    util_dynarray_foreach(&push->pushs, struct nouveau_ws_push_buffer, buf) {
       if (first) {
-         buf->push.map = buf->push.orig_map;
+         buf->push.end = buf->push.start;
          first = false;
          continue;
       }
 
-      nouveau_ws_bo_unmap(buf->bo, buf->push.orig_map);
+      nouveau_ws_bo_unmap(buf->bo, buf->push.start);
       nouveau_ws_bo_destroy(buf->bo);
    }
 
