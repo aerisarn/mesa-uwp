@@ -26,8 +26,8 @@ nvk_CmdBlitImage2(
    assert(src->format->supports_2d_blit);
    assert(dst->format->supports_2d_blit);
 
-   nouveau_ws_push_ref(push, src->mem->bo, NOUVEAU_WS_BO_RD);
-   nouveau_ws_push_ref(push, dst->mem->bo, NOUVEAU_WS_BO_WR);
+   nvk_push_image_ref(push, src, NOUVEAU_WS_BO_RD);
+   nvk_push_image_ref(push, dst, NOUVEAU_WS_BO_WR);
 
    P_IMMD(push, NV902D, SET_CLIP_ENABLE, V_FALSE);
    P_IMMD(push, NV902D, SET_COLOR_KEY_ENABLE, V_FALSE);
@@ -206,7 +206,7 @@ nvk_CmdFillBuffer(
    uint32_t pitch = 1 << 19;
    uint32_t line = pitch / 4;
 
-   nouveau_ws_push_ref(push, dst->mem->bo, NOUVEAU_WS_BO_WR);
+   nvk_push_buffer_ref(push, dst, NOUVEAU_WS_BO_WR);
 
    P_IMMD(push, NV902D, SET_OPERATION, V_SRCCOPY);
 
@@ -283,7 +283,7 @@ nvk_CmdUpdateBuffer(
 
    VkDeviceSize dst_addr = nvk_buffer_address(dst, 0);
 
-   nouveau_ws_push_ref(push, dst->mem->bo, NOUVEAU_WS_BO_WR);
+   nvk_push_buffer_ref(push, dst, NOUVEAU_WS_BO_WR);
 
    P_IMMD(push, NV902D, SET_OPERATION, V_SRCCOPY);
 
