@@ -98,6 +98,13 @@ impl<'a> ShaderFromNir<'a> {
                     srcs: [Src::new_zero(), Src::new_imm_u32(0x3f800000)],
                 })));
             }
+            nir_op_b2i32 => {
+                self.instrs.push(Instr::new(Op::Sel(OpSel {
+                    dst: dst,
+                    cond: srcs[0].not(),
+                    srcs: [Src::new_zero(), Src::new_imm_u32(1)],
+                })));
+            }
             nir_op_bcsel => {
                 self.instrs
                     .push(Instr::new_sel(dst, srcs[0], srcs[1], srcs[2]));
