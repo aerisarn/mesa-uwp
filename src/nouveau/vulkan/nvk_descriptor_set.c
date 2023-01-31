@@ -270,6 +270,7 @@ nvk_CreateDescriptorPool(VkDevice _device,
       vk_find_struct_const(pCreateInfo->pNext,
                            MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE);
 
+   uint32_t max_align = 0;
    for (unsigned i = 0; i < pCreateInfo->poolSizeCount; ++i) {
       const VkMutableDescriptorTypeListVALVE *type_list = NULL;
       if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE) {
@@ -281,7 +282,21 @@ nvk_CreateDescriptorPool(VkDevice _device,
       uint32_t stride, align;
       nvk_descriptor_stride_align_for_type(pCreateInfo->pPoolSizes[i].type,
                                            type_list, &stride, &align);
-      bo_size += MAX2(stride, align) *
+      max_align = MAX2(max_align, align);
+   }
+
+   for (unsigned i = 0; i < pCreateInfo->poolSizeCount; ++i) {
+      const VkMutableDescriptorTypeListVALVE *type_list = NULL;
+      if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE) {
+         assert(mutable_info != NULL);
+         assert(i <= mutable_info->mutableDescriptorTypeListCount);
+         type_list = &mutable_info->pMutableDescriptorTypeLists[i];
+      }
+
+      uint32_t stride, align;
+      nvk_descriptor_stride_align_for_type(pCreateInfo->pPoolSizes[i].type,
+                                           type_list, &stride, &align);
+      bo_size += MAX2(stride, max_align) *
                  pCreateInfo->pPoolSizes[i].descriptorCount;
    }
 
