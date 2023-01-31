@@ -93,26 +93,26 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: {
-         VkPhysicalDevice4444FormatsFeaturesEXT *features = (void *)ext;
-         features->formatA4R4G4B4 = true;
-         features->formatA4B4G4R4 = true;
+         VkPhysicalDevice4444FormatsFeaturesEXT *f = (void *)ext;
+         f->formatA4R4G4B4 = true;
+         f->formatA4B4G4R4 = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
-         VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *features = (void *)ext;
-         features->extendedDynamicState = true;
+         VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *f = (void *)ext;
+         f->extendedDynamicState = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT: {
-         VkPhysicalDeviceExtendedDynamicState2FeaturesEXT *features = (void *)ext;
-         features->extendedDynamicState2 = true;
-         features->extendedDynamicState2LogicOp = true;
-         features->extendedDynamicState2PatchControlPoints = true;
+         VkPhysicalDeviceExtendedDynamicState2FeaturesEXT *f = (void *)ext;
+         f->extendedDynamicState2 = true;
+         f->extendedDynamicState2LogicOp = true;
+         f->extendedDynamicState2PatchControlPoints = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT: {
-         VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT *features = (void *)ext;
-         features->vertexInputDynamicState = true;
+         VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT *f = (void *)ext;
+         f->vertexInputDynamicState = true;
          break;
       }
       /* More feature structs */
