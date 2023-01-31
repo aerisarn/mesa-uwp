@@ -264,6 +264,8 @@ nvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
       VK_FROM_HANDLE(nvk_descriptor_set, set, pDescriptorSets[i]);
 
       if (desc->sets[set_idx] != set) {
+         nvk_push_descriptor_set_ref(cmd->push, set);
+         desc->root.sets[set_idx] = nvk_descriptor_set_addr(set);
          desc->sets[set_idx] = set;
          desc->sets_dirty |= BITFIELD_BIT(set_idx);
       }

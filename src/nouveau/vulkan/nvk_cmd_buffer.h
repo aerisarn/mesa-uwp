@@ -19,7 +19,19 @@ struct nvk_cmd_pool {
 VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_cmd_pool, vk.base, VkCommandPool,
                                VK_OBJECT_TYPE_COMMAND_POOL)
 
+/** Root descriptor table.  This gets pushed to the GPU directly */
+struct nvk_root_descriptor_table {
+   /* Client push constants */
+   uint8_t push[128];
+
+   /* Descriptor set base addresses */
+   uint64_t sets[NVK_MAX_SETS];
+
+   /* TODO: Dynamic buffer bindings */
+};
+
 struct nvk_descriptor_state {
+   struct nvk_root_descriptor_table root;
    struct nvk_descriptor_set *sets[NVK_MAX_SETS];
    uint32_t sets_dirty;
 };
