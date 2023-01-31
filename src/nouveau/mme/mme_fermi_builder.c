@@ -725,8 +725,8 @@ mme_fermi_merge_to(struct mme_builder *b, struct mme_value dst,
    assert(bits < 32);
    assert(src_pos < 32);
 
-   struct mme_value y_reg = mme_fermi_value_as_reg(b, x);
-   struct mme_value x_reg = mme_fermi_value_as_reg(b, y);
+   struct mme_value x_reg = mme_fermi_value_as_reg(b, x);
+   struct mme_value y_reg = mme_fermi_value_as_reg(b, y);
 
    if (!mme_fermi_next_inst_can_fit_a_full_inst(fb))
       mme_fermi_new_inst(fb);
