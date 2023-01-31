@@ -182,6 +182,110 @@ nvk_CmdResetQueryPool(VkCommandBuffer commandBuffer,
 }
 
 static bool
+clear_bits64(uint64_t *bitfield, uint64_t bits)
+{
+   bool has_bits = (*bitfield & bits) != 0;
+   *bitfield &= ~bits;
+   return has_bits;
+}
+
+static uint32_t
+vk_stage_flags_to_nv9097_pipeline_location(VkPipelineStageFlags2 flags)
+{
+   if (clear_bits64(&flags, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR |
+                            VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT |
+                            VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT |
+                            VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT |
+                            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT|
+                            VK_PIPELINE_STAGE_2_COPY_BIT|
+                            VK_PIPELINE_STAGE_2_RESOLVE_BIT|
+                            VK_PIPELINE_STAGE_2_BLIT_BIT|
+                            VK_PIPELINE_STAGE_2_CLEAR_BIT))
+      return NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_ALL;
+
+   if (clear_bits64(&flags, VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT))
+      return NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_DEPTH_TEST;
+
+   if (clear_bits64(&flags, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT))
+      return NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_PIXEL_SHADER;
+
+   if (clear_bits64(&flags, VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT))
+      return NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_ZCULL;
+
+   if (clear_bits64(&flags, VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT))
+      return NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_STREAMING_OUTPUT;
+
+   if (clear_bits64(&flags, VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT |
+                            VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT))
+      return NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_GEOMETRY_SHADER;
+
+   if (clear_bits64(&flags, VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT))
+      return NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_TESSELATION_SHADER;
+
+   if (clear_bits64(&flags, VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT))
+      return NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_TESSELATION_INIT_SHADER;
+
+   if (clear_bits64(&flags, VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT))
+      return NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_VERTEX_SHADER;
+
+   if (clear_bits64(&flags, VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT |
+                            VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT |
+                            VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT))
+      return NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_DATA_ASSEMBLER;
+
+   clear_bits64(&flags, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT |
+                        VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT |
+                        VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT);
+
+   /* TODO: Doing this on 3D will likely cause a WFI which is probably ok but,
+    * if we tracked which subchannel we've used most recently, we can probably
+    * do better than that.
+    */
+   clear_bits64(&flags, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+   assert(flags == 0);
+
+   return NV9097_SET_REPORT_SEMAPHORE_D_PIPELINE_LOCATION_NONE;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
+                       VkPipelineStageFlags2 stage,
+                       VkQueryPool queryPool,
+                       uint32_t query)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_query_pool, pool, queryPool);
+
+   nvk_cmd_buffer_ref_bo(cmd, pool->bo);
+
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 10);
+
+   uint64_t report_addr = nvk_query_report_addr(pool, query);
+   P_MTHD(p, NV9097, SET_REPORT_SEMAPHORE_A);
+   P_NV9097_SET_REPORT_SEMAPHORE_A(p, report_addr >> 32);
+   P_NV9097_SET_REPORT_SEMAPHORE_B(p, report_addr);
+   P_NV9097_SET_REPORT_SEMAPHORE_C(p, 0);
+   P_NV9097_SET_REPORT_SEMAPHORE_D(p, {
+      .operation = OPERATION_REPORT_ONLY,
+      .pipeline_location = vk_stage_flags_to_nv9097_pipeline_location(stage),
+      .structure_size = STRUCTURE_SIZE_FOUR_WORDS,
+   });
+
+   uint64_t available_addr = nvk_query_available_addr(pool, query);
+   P_MTHD(p, NV9097, SET_REPORT_SEMAPHORE_A);
+   P_NV9097_SET_REPORT_SEMAPHORE_A(p, available_addr >> 32);
+   P_NV9097_SET_REPORT_SEMAPHORE_B(p, available_addr);
+   P_NV9097_SET_REPORT_SEMAPHORE_C(p, 1);
+   P_NV9097_SET_REPORT_SEMAPHORE_D(p, {
+      .operation = OPERATION_RELEASE,
+      .release = RELEASE_AFTER_ALL_PRECEEDING_WRITES_COMPLETE,
+      .pipeline_location = PIPELINE_LOCATION_ALL,
+      .structure_size = STRUCTURE_SIZE_ONE_WORD,
+   });
+}
+
+static bool
 nvk_query_is_available(struct nvk_query_pool *pool, uint32_t query)
 {
    uint32_t *available = nvk_query_available_map(pool, query);
@@ -269,6 +373,10 @@ nvk_GetQueryPoolResults(VkDevice device,
 
       uint32_t available_dst_idx = 1;
       switch (pool->vk.query_type) {
+      case VK_QUERY_TYPE_TIMESTAMP:
+         if (write_results)
+            cpu_write_query_result(dst, 0, flags, src->timestamp);
+         break;
       default:
          unreachable("Unsupported query type");
       }
