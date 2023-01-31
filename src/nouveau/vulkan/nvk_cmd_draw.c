@@ -424,7 +424,6 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
          assert(render->samples == 0 || render->samples == image->vk.samples);
          render->samples |= image->vk.samples;
 
-         nvk_push_image_ref(cmd->push, image, NOUVEAU_WS_BO_WR);
          uint64_t addr = nvk_image_base_address(image) + level->offset_B;
 
          P_MTHD(p, NV9097, SET_COLOR_TARGET_A(i));
@@ -491,7 +490,6 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
       assert(render->samples == 0 || render->samples == image->vk.samples);
       render->samples |= image->vk.samples;
 
-      nvk_push_image_ref(cmd->push, image, NOUVEAU_WS_BO_WR);
       uint64_t addr = nvk_image_base_address(image) + level->offset_B;
 
       P_MTHD(p, NV9097, SET_ZT_A);

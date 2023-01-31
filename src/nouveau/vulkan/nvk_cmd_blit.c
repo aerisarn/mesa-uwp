@@ -25,9 +25,6 @@ nvk_CmdBlitImage2(VkCommandBuffer commandBuffer,
    assert(nvk_get_format(src->vk.format)->supports_2d_blit);
    assert(nvk_get_format(dst->vk.format)->supports_2d_blit);
 
-   nvk_push_image_ref(p, src, NOUVEAU_WS_BO_RD);
-   nvk_push_image_ref(p, dst, NOUVEAU_WS_BO_WR);
-
    P_IMMD(p, NV902D, SET_CLIP_ENABLE, V_FALSE);
    P_IMMD(p, NV902D, SET_COLOR_KEY_ENABLE, V_FALSE);
    P_IMMD(p, NV902D, SET_RENDER_ENABLE_C, MODE_TRUE);

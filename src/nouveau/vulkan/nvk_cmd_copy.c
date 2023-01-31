@@ -289,9 +289,6 @@ nvk_CmdCopyBuffer2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_buffer, src, pCopyBufferInfo->srcBuffer);
    VK_FROM_HANDLE(nvk_buffer, dst, pCopyBufferInfo->dstBuffer);
 
-   nvk_push_buffer_ref(cmd->push, src, NOUVEAU_WS_BO_RD);
-   nvk_push_buffer_ref(cmd->push, dst, NOUVEAU_WS_BO_WR);
-
    for (unsigned r = 0; r < pCopyBufferInfo->regionCount; r++) {
       const VkBufferCopy2 *region = &pCopyBufferInfo->pRegions[r];
 
@@ -336,9 +333,6 @@ nvk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_buffer, src, pCopyBufferToImageInfo->srcBuffer);
    VK_FROM_HANDLE(nvk_image, dst, pCopyBufferToImageInfo->dstImage);
-
-   nvk_push_buffer_ref(cmd->push, src, NOUVEAU_WS_BO_RD);
-   nvk_push_image_ref(cmd->push, dst, NOUVEAU_WS_BO_WR);
 
    for (unsigned r = 0; r < pCopyBufferToImageInfo->regionCount; r++) {
       const VkBufferImageCopy2 *region = &pCopyBufferToImageInfo->pRegions[r];
@@ -408,9 +402,6 @@ nvk_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_image, src, pCopyImageToBufferInfo->srcImage);
    VK_FROM_HANDLE(nvk_buffer, dst, pCopyImageToBufferInfo->dstBuffer);
 
-   nvk_push_image_ref(cmd->push, src, NOUVEAU_WS_BO_RD);
-   nvk_push_buffer_ref(cmd->push, dst, NOUVEAU_WS_BO_WR);
-
    for (unsigned r = 0; r < pCopyImageToBufferInfo->regionCount; r++) {
       const VkBufferImageCopy2 *region = &pCopyImageToBufferInfo->pRegions[r];
       struct vk_image_buffer_layout buffer_layout =
@@ -479,9 +470,6 @@ nvk_CmdCopyImage2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_image, src, pCopyImageInfo->srcImage);
    VK_FROM_HANDLE(nvk_image, dst, pCopyImageInfo->dstImage);
 
-   nvk_push_image_ref(cmd->push, src, NOUVEAU_WS_BO_RD);
-   nvk_push_image_ref(cmd->push, dst, NOUVEAU_WS_BO_WR);
-
    for (unsigned r = 0; r < pCopyImageInfo->regionCount; r++) {
       const VkImageCopy2 *region = &pCopyImageInfo->pRegions[r];
 
@@ -546,8 +534,6 @@ nvk_CmdClearColorImage(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_image, dst, image);
    struct nouveau_ws_push *p = cmd->push;
-
-   nvk_push_image_ref(p, dst, NOUVEAU_WS_BO_WR);
 
    P_IMMD(p, NV902D, SET_OPERATION, V_SRCCOPY);
 
@@ -676,8 +662,6 @@ nvk_CmdFillBuffer(VkCommandBuffer commandBuffer,
    uint32_t pitch = 1 << 19;
    uint32_t line = pitch / 4;
 
-   nvk_push_buffer_ref(p, dst, NOUVEAU_WS_BO_WR);
-
    P_IMMD(p, NV902D, SET_OPERATION, V_SRCCOPY);
 
    P_MTHD(p, NV902D, SET_DST_FORMAT);
@@ -751,8 +735,6 @@ nvk_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
    assert(dataSize <= 65536);
 
    VkDeviceSize dst_addr = nvk_buffer_address(dst, 0);
-
-   nvk_push_buffer_ref(p, dst, NOUVEAU_WS_BO_WR);
 
    P_IMMD(p, NV902D, SET_OPERATION, V_SRCCOPY);
 
