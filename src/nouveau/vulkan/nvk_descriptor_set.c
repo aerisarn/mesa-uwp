@@ -16,22 +16,30 @@ align_u32(uint32_t v, uint32_t a)
    return (v + a - 1) & ~(a - 1);
 }
 
-static void *
+static inline void *
 desc_ubo_data(struct nvk_descriptor_set *set, uint32_t binding,
-              uint32_t elem)
+              uint32_t elem, uint32_t *size_out)
 {
    const struct nvk_descriptor_set_binding_layout *binding_layout =
       &set->layout->binding[binding];
 
-   return (char *)set->mapped_ptr + binding_layout->offset +
-          elem * binding_layout->stride;
+   uint32_t offset = binding_layout->offset + elem * binding_layout->stride;
+   assert(offset < set->layout->descriptor_buffer_size);
+
+   if (size_out != NULL)
+      *size_out = set->layout->descriptor_buffer_size - offset;
+
+   return (char *)set->mapped_ptr + offset;
 }
 
 static void
 write_desc(struct nvk_descriptor_set *set, uint32_t binding, uint32_t elem,
            const void *desc_data, size_t desc_size)
 {
-   memcpy(desc_ubo_data(set, binding, elem), desc_data, desc_size);
+   ASSERTED uint32_t dst_size;
+   void *dst = desc_ubo_data(set, binding, elem, &dst_size);
+   assert(desc_size <= dst_size);
+   memcpy(dst, desc_data, desc_size);
 }
 
 static void
@@ -214,9 +222,17 @@ nvk_UpdateDescriptorSets(VkDevice device,
 
       if (dst_binding_layout->stride > 0 && src_binding_layout->stride > 0) {
          for (uint32_t j = 0; j < copy->descriptorCount; j++) {
-            memcpy(desc_ubo_data(dst, copy->dstBinding, copy->dstArrayElement + j),
-                   desc_ubo_data(src, copy->srcBinding, copy->srcArrayElement + j),
-                   MIN2(dst_binding_layout->stride, src_binding_layout->stride));
+            ASSERTED uint32_t dst_max_size, src_max_size;
+            void *dst_map = desc_ubo_data(dst, copy->dstBinding,
+                                          copy->dstArrayElement + j,
+                                          &dst_max_size);
+            const void *src_map = desc_ubo_data(src, copy->srcBinding,
+                                                copy->srcArrayElement + j,
+                                                &src_max_size);
+            const uint32_t copy_size = MIN2(dst_binding_layout->stride,
+                                            src_binding_layout->stride);
+            assert(copy_size <= dst_max_size && copy_size <= src_max_size);
+            memcpy(dst_map, src_map, copy_size);
          }
       }
 
