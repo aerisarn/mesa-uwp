@@ -47,6 +47,17 @@ METHOD_ARRAY_SIZES = {
     'BIND_GROUP_CONSTANT_BUFFER': 16,
 }
 
+METHOD_IS_FLOAT = [
+    'SET_BLEND_CONST_*',
+    'SET_DEPTH_BIAS',
+    'SET_LINE_WIDTH_FLOAT',
+    'SET_ALIASED_LINE_WIDTH_FLOAT',
+    'SET_VIEWPORT_SCALE_*',
+    'SET_VIEWPORT_OFFSET_*',
+    'SET_VIEWPORT_CLIP_MIN_Z',
+    'SET_VIEWPORT_CLIP_MAX_Z',
+]
+
 def glob_match(glob, name):
     if glob.endswith('*'):
         return name.startswith(glob[:-1])
@@ -61,6 +72,14 @@ class method(object):
             if glob_match(glob, self.name):
                 return value
         return 0
+
+    @property
+    def is_float(self):
+        for glob in METHOD_IS_FLOAT:
+            if glob_match(glob, self.name):
+                assert len(self.field_defs) == 1
+                return True
+        return False
 
 # Simple state machine
 # state 0 looking for a new method define
@@ -237,7 +256,10 @@ for mthd in mthddict:
             print("\t\t\tbreak;")
             print("\t\t}")
         else:
-            print("\t\tprintf(\"0x%x\\n\", parsed);")
+            if mthddict[mthd].is_float:
+                print("\t\t\tprintf(\"%ff (0x%x)\\n\", *(float *)&parsed, parsed);")
+            else:
+                print("\t\tprintf(\"0x%x\\n\", parsed);")
     print("\t\tbreak;")
 
 print("\tdefault:")
