@@ -4,7 +4,6 @@
 #include "nvk_private.h"
 
 #include "nouveau_bo.h"
-#include "nouveau_push.h"
 #include "util/simple_mtx.h"
 
 struct nvk_device;
