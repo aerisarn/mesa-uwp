@@ -126,6 +126,41 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          f->extendedDynamicState2PatchControlPoints = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT: {
+         VkPhysicalDeviceExtendedDynamicState3FeaturesEXT *f = (void *)ext;
+         f->extendedDynamicState3TessellationDomainOrigin = false;
+         f->extendedDynamicState3DepthClampEnable = false;
+         f->extendedDynamicState3PolygonMode = false;
+         f->extendedDynamicState3RasterizationSamples = false;
+         f->extendedDynamicState3SampleMask = false;
+         f->extendedDynamicState3AlphaToCoverageEnable = false;
+         f->extendedDynamicState3AlphaToOneEnable = false;
+         f->extendedDynamicState3LogicOpEnable = false;
+         f->extendedDynamicState3ColorBlendEnable = false;
+         f->extendedDynamicState3ColorBlendEquation = false;
+         f->extendedDynamicState3ColorWriteMask = false;
+         f->extendedDynamicState3RasterizationStream = false;
+         f->extendedDynamicState3ConservativeRasterizationMode = false;
+         f->extendedDynamicState3ExtraPrimitiveOverestimationSize = false;
+         f->extendedDynamicState3DepthClipEnable = false;
+         f->extendedDynamicState3SampleLocationsEnable = false;
+         f->extendedDynamicState3ColorBlendAdvanced = false;
+         f->extendedDynamicState3ProvokingVertexMode = false;
+         f->extendedDynamicState3LineRasterizationMode = false;
+         f->extendedDynamicState3LineStippleEnable = false;
+         f->extendedDynamicState3DepthClipNegativeOneToOne = false;
+         f->extendedDynamicState3ViewportWScalingEnable = false;
+         f->extendedDynamicState3ViewportSwizzle = false;
+         f->extendedDynamicState3CoverageToColorEnable = false;
+         f->extendedDynamicState3CoverageToColorLocation = false;
+         f->extendedDynamicState3CoverageModulationMode = false;
+         f->extendedDynamicState3CoverageModulationTableEnable = false;
+         f->extendedDynamicState3CoverageModulationTable = false;
+         f->extendedDynamicState3CoverageReductionMode = false;
+         f->extendedDynamicState3RepresentativeFragmentTestEnable = false;
+         f->extendedDynamicState3ShadingRateImageEnable = false;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT: {
          VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT *f = (void *)ext;
          f->vertexInputDynamicState = true;
@@ -280,6 +315,12 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          continue;
 
       switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT: {
+         VkPhysicalDeviceExtendedDynamicState3PropertiesEXT *p = (void *)ext;
+         p->dynamicPrimitiveTopologyUnrestricted = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT: {
          VkPhysicalDevicePCIBusInfoPropertiesEXT *p = (void *)ext;
          p->pciDomain = pdev->info.pci_domain;
@@ -327,6 +368,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *device,
       .EXT_inline_uniform_block = true,
       .EXT_extended_dynamic_state = true,
       .EXT_extended_dynamic_state2 = true,
+      .EXT_extended_dynamic_state3 = true,
       .EXT_host_query_reset = true,
       .EXT_pci_bus_info = true,
       .EXT_vertex_input_dynamic_state = true,
