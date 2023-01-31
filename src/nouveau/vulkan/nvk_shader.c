@@ -46,6 +46,29 @@ pipe_shader_type_from_mesa(gl_shader_stage stage)
    }
 }
 
+const nir_shader_compiler_options *
+nvk_physical_device_nir_options(const struct nvk_physical_device *pdevice,
+                                gl_shader_stage stage)
+{
+   enum pipe_shader_type p_stage = pipe_shader_type_from_mesa(stage);
+   return nv50_ir_nir_shader_compiler_options(pdevice->dev->chipset, p_stage);
+}
+
+static const struct spirv_to_nir_options spirv_options = {
+   .caps = {
+      .image_write_without_format = true,
+   },
+   .ssbo_addr_format = nir_address_format_64bit_global_32bit_offset,
+   .ubo_addr_format = nir_address_format_64bit_global_32bit_offset,
+   .shared_addr_format = nir_address_format_32bit_offset,
+};
+
+const struct spirv_to_nir_options *
+nvk_physical_device_spirv_options(const struct nvk_physical_device *pdevice)
+{
+   return &spirv_options;
+}
+
 static bool
 lower_load_global_constant_offset_instr(nir_builder *b, nir_instr *instr,
                                         UNUSED void *_data)
@@ -72,38 +95,10 @@ lower_load_global_constant_offset_instr(nir_builder *b, nir_instr *instr,
    return true;
 }
 
-VkResult
-nvk_shader_compile_to_nir(struct nvk_device *device,
-                          struct vk_shader_module *module,
-                          const char *entrypoint_name,
-                          gl_shader_stage stage,
-                          const VkSpecializationInfo *spec_info,
-                          const struct nvk_pipeline_layout *layout,
-                          nir_shader **nir_out)
+void
+nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
+              const struct nvk_pipeline_layout *layout)
 {
-   struct nvk_physical_device *pdevice = nvk_device_physical(device);
-   const nir_shader_compiler_options *nir_options =
-      nv50_ir_nir_shader_compiler_options(pdevice->dev->chipset,
-                                          pipe_shader_type_from_mesa(stage));
-
-   const struct spirv_to_nir_options spirv_options = {
-      .caps =
-      {
-         .image_write_without_format = true,
-      },
-      .ssbo_addr_format = nir_address_format_64bit_global_32bit_offset,
-      .ubo_addr_format = nir_address_format_64bit_global_32bit_offset,
-      .shared_addr_format = nir_address_format_32bit_offset,
-   };
-
-   nir_shader *nir;
-   VkResult result = vk_shader_module_to_nir(&device->vk, module, stage,
-                                             entrypoint_name, spec_info,
-                                             &spirv_options, nir_options,
-                                             NULL, &nir);
-   if (result != VK_SUCCESS)
-      return result;
-
    NIR_PASS(_, nir, nir_lower_global_vars_to_local);
 
    NIR_PASS(_, nir, nir_split_struct_vars, nir_var_function_temp);
@@ -140,10 +135,6 @@ nvk_shader_compile_to_nir(struct nvk_device *device,
 
    NIR_PASS(_, nir, nir_copy_prop);
    NIR_PASS(_, nir, nir_opt_dce);
-
-   *nir_out = nir;
-
-   return VK_SUCCESS;
 }
 
 VkResult

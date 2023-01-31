@@ -31,14 +31,16 @@ struct nvk_shader {
    struct nouveau_ws_bo *bo;
 };
 
-VkResult
-nvk_shader_compile_to_nir(struct nvk_device *device,
-                          struct vk_shader_module *module,
-                          const char *entrypoint_name,
-                          gl_shader_stage stage,
-                          const VkSpecializationInfo *spec_info,
-                          const struct nvk_pipeline_layout *layout,
-                          nir_shader **nir_out);
+const nir_shader_compiler_options *
+nvk_physical_device_nir_options(const struct nvk_physical_device *pdevice,
+                                gl_shader_stage stage);
+
+const struct spirv_to_nir_options *
+nvk_physical_device_spirv_options(const struct nvk_physical_device *pdevice);
+
+void
+nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
+              const struct nvk_pipeline_layout *layout);
 
 VkResult
 nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,

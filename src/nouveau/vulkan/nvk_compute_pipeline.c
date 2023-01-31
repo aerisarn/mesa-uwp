@@ -5,7 +5,8 @@
 #include "nvk_shader.h"
 
 #include "nouveau_bo.h"
-#include "vk_shader_module.h"
+#include "vk_nir.h"
+#include "vk_pipeline.h"
 
 #include "drf.h"
 #include "cla0c0qmd.h"
@@ -83,16 +84,21 @@ nvk_compute_pipeline_create(struct nvk_device *device,
    pipeline->base.type = NVK_PIPELINE_COMPUTE;
 
    assert(pCreateInfo->stage.stage == VK_SHADER_STAGE_COMPUTE_BIT);
-   VK_FROM_HANDLE(vk_shader_module, module, pCreateInfo->stage.module);
+
+   const nir_shader_compiler_options *nir_options =
+      nvk_physical_device_nir_options(pdevice, MESA_SHADER_COMPUTE);
+   const struct spirv_to_nir_options *spirv_options =
+      nvk_physical_device_spirv_options(pdevice);
 
    nir_shader *nir;
-   result = nvk_shader_compile_to_nir(device, module,
-                                      pCreateInfo->stage.pName,
-                                      MESA_SHADER_COMPUTE,
-                                      pCreateInfo->stage.pSpecializationInfo,
-                                      pipeline_layout, &nir);
+   result = vk_pipeline_shader_stage_to_nir(&device->vk,
+                                            &pCreateInfo->stage,
+                                            spirv_options, nir_options,
+                                            NULL, &nir);
    if (result != VK_SUCCESS)
       goto fail;
+
+   nvk_lower_nir(device, nir, pipeline_layout);
 
    result = nvk_compile_nir(pdevice, nir, &pipeline->base.shaders[MESA_SHADER_COMPUTE]);
    if (result != VK_SUCCESS)
