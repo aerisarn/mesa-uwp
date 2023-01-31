@@ -4815,8 +4815,7 @@ static void *si_create_sampler_state(struct pipe_context *ctx,
        S_008F30_FORCE_UNNORMALIZED(state->unnormalized_coords) |
        S_008F30_ANISO_THRESHOLD(max_aniso_ratio >> 1) | S_008F30_ANISO_BIAS(max_aniso_ratio) |
        S_008F30_DISABLE_CUBE_WRAP(!state->seamless_cube_map) |
-       S_008F30_TRUNC_COORD(trunc_coord) |
-       S_008F30_COMPAT_MODE(sctx->gfx_level == GFX8 || sctx->gfx_level == GFX9));
+       S_008F30_TRUNC_COORD(trunc_coord));
    rstate->val[1] = (S_008F34_MIN_LOD(S_FIXED(CLAMP(state->min_lod, 0, 15), 8)) |
                      S_008F34_MAX_LOD(S_FIXED(CLAMP(state->max_lod, 0, 15), 8)) |
                      S_008F34_PERF_MIP(max_aniso_ratio ? max_aniso_ratio + 6 : 0));
@@ -4830,6 +4829,7 @@ static void *si_create_sampler_state(struct pipe_context *ctx,
    if (sscreen->info.gfx_level >= GFX10) {
       rstate->val[2] |= S_008F38_ANISO_OVERRIDE_GFX10(1);
    } else {
+      rstate->val[0] |= S_008F30_COMPAT_MODE(sctx->gfx_level >= GFX8);
       rstate->val[2] |= S_008F38_DISABLE_LSB_CEIL(sctx->gfx_level <= GFX8) |
                         S_008F38_FILTER_PREC_FIX(1) |
                         S_008F38_ANISO_OVERRIDE_GFX8(sctx->gfx_level >= GFX8);
