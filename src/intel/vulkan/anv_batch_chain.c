@@ -1266,6 +1266,7 @@ anv_queue_submit_locked(struct anv_queue *queue,
          uint32_t next = n + 1;
          /* Can we chain the last buffer into the next one? */
          if (next < end &&
+             anv_cmd_buffer_is_chainable(cmd_buffers[n]) &&
              anv_cmd_buffer_is_chainable(cmd_buffers[next]) &&
              can_chain_query_pools
              (cmd_buffers[next]->perf_query_pool, perf_query_pool)) {
