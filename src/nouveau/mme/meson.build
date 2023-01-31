@@ -34,8 +34,10 @@ mme_encode_h = custom_target(
 )
 
 libnouveau_mme_files = files(
+  'mme_builder.h',
   'mme_tu104.c',
   'mme_tu104.h',
+  'mme_tu104_builder.c',
 )
 
 _libnouveau_mme = static_library(

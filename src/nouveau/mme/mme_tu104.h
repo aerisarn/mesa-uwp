@@ -106,7 +106,10 @@ enum PACKED mme_tu104_alu_op {
 
 const char *mme_tu104_alu_op_to_str(enum mme_tu104_alu_op op);
 
+bool mme_tu104_alu_op_has_implicit_imm(enum mme_tu104_alu_op op);
 bool mme_tu104_alu_op_has_side_effects(enum mme_tu104_alu_op op);
+bool mme_tu104_alu_op_is_control_flow(enum mme_tu104_alu_op op);
+bool mme_tu104_alu_op_may_depend_on_mthd(enum mme_tu104_alu_op op);
 
 enum PACKED mme_tu104_out_op {
    MME_TU104_OUT_OP_NONE,
@@ -127,6 +130,9 @@ struct mme_tu104_alu {
    enum mme_tu104_alu_op op;
    enum mme_tu104_reg src[2];
 };
+
+bool mme_tu104_alus_have_dependency(const struct mme_tu104_alu *first,
+                                    const struct mme_tu104_alu *second);
 
 #define MME_TU104_ALU_DEFAULTS      \
    .dst = MME_TU104_REG_ZERO,       \

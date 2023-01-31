@@ -217,10 +217,10 @@ mme_tu104_print_alu_src(FILE *fp, const struct mme_tu104_inst *inst,
 }
 
 bool
-mme_tu104_alu_op_has_side_effects(enum mme_tu104_alu_op op)
+mme_tu104_alu_op_has_implicit_imm(enum mme_tu104_alu_op op)
 {
    switch (op) {
-   case MME_TU104_ALU_OP_EXTENDED:
+   case MME_TU104_ALU_OP_MERGE:
    case MME_TU104_ALU_OP_LOOP:
    case MME_TU104_ALU_OP_JAL:
    case MME_TU104_ALU_OP_BLT:
@@ -228,11 +228,78 @@ mme_tu104_alu_op_has_side_effects(enum mme_tu104_alu_op op)
    case MME_TU104_ALU_OP_BLE:
    case MME_TU104_ALU_OP_BLEU:
    case MME_TU104_ALU_OP_BEQ:
-   case MME_TU104_ALU_OP_DWRITE:
       return true;
    default:
       return false;
    }
+}
+
+bool
+mme_tu104_alu_op_has_side_effects(enum mme_tu104_alu_op op)
+{
+   return mme_tu104_alu_op_is_control_flow(op) ||
+          op == MME_TU104_ALU_OP_EXTENDED ||
+          op == MME_TU104_ALU_OP_DWRITE;
+}
+
+bool
+mme_tu104_alu_op_is_control_flow(enum mme_tu104_alu_op op)
+{
+   switch (op) {
+   case MME_TU104_ALU_OP_LOOP:
+   case MME_TU104_ALU_OP_JAL:
+   case MME_TU104_ALU_OP_BLT:
+   case MME_TU104_ALU_OP_BLTU:
+   case MME_TU104_ALU_OP_BLE:
+   case MME_TU104_ALU_OP_BLEU:
+   case MME_TU104_ALU_OP_BEQ:
+      return true;
+   default:
+      return false;
+   }
+}
+
+bool
+mme_tu104_alu_op_may_depend_on_mthd(enum mme_tu104_alu_op op)
+{
+   switch (op) {
+   case MME_TU104_ALU_OP_EXTENDED:
+   case MME_TU104_ALU_OP_STATE:
+      return true;
+   default:
+      return false;
+   }
+}
+
+bool
+mme_tu104_alus_have_dependency(const struct mme_tu104_alu *first,
+                               const struct mme_tu104_alu *second)
+{
+   if (first->dst != MME_TU104_REG_ZERO &&
+       (first->dst == second->src[0] || first->dst == second->src[1]))
+      return true;
+
+   /* TODO: This could be more detailed */
+   if (first->op == MME_TU104_ALU_OP_DWRITE &&
+       (second->op == MME_TU104_ALU_OP_DREAD ||
+        second->op == MME_TU104_ALU_OP_DWRITE))
+      return true;
+
+   /* TODO: This could be more detailed */
+   if (second->op == MME_TU104_ALU_OP_DWRITE &&
+       (first->op == MME_TU104_ALU_OP_DREAD ||
+        first->op == MME_TU104_ALU_OP_DWRITE))
+      return true;
+
+   /* EXTENDED acts like a barrier between MME_DMA_READ_FIFOED and LOAD0/1 */
+   if (first->op == MME_TU104_ALU_OP_EXTENDED &&
+       (second->src[0] == MME_TU104_REG_LOAD0 ||
+        second->src[0] == MME_TU104_REG_LOAD1 ||
+        second->src[1] == MME_TU104_REG_LOAD0 ||
+        second->src[1] == MME_TU104_REG_LOAD1))
+      return true;
+
+   return false;
 }
 
 static bool
