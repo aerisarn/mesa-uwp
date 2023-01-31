@@ -10,6 +10,8 @@ nvk_files = files(
   'nvk_physical_device.c',
   'nvk_physical_device.h',
   'nvk_private.h',
+  'nvk_sampler.c',
+  'nvk_sampler.h',
 )
 
 nouveau_icd = custom_target(
