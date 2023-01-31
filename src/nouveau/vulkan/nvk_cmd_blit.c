@@ -22,8 +22,8 @@ nvk_CmdBlitImage2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_image, dst, pBlitImageInfo->dstImage);
    struct nouveau_ws_push *push = cmd->push;
 
-   assert(src->format->supports_2d_blit);
-   assert(dst->format->supports_2d_blit);
+   assert(nvk_get_format(src->vk.format)->supports_2d_blit);
+   assert(nvk_get_format(dst->vk.format)->supports_2d_blit);
 
    nvk_push_image_ref(push, src, NOUVEAU_WS_BO_RD);
    nvk_push_image_ref(push, dst, NOUVEAU_WS_BO_WR);
@@ -32,8 +32,11 @@ nvk_CmdBlitImage2(VkCommandBuffer commandBuffer,
    P_IMMD(push, NV902D, SET_COLOR_KEY_ENABLE, V_FALSE);
    P_IMMD(push, NV902D, SET_RENDER_ENABLE_C, MODE_TRUE);
 
-   P_IMMD(push, NV902D, SET_SRC_FORMAT, src->format->hw_format);
-   P_IMMD(push, NV902D, SET_DST_FORMAT, dst->format->hw_format);
+   const uint32_t src_hw_format = nvk_get_format(src->vk.format)->hw_format;
+   const uint32_t dst_hw_format = nvk_get_format(dst->vk.format)->hw_format;
+
+   P_IMMD(push, NV902D, SET_SRC_FORMAT, src_hw_format);
+   P_IMMD(push, NV902D, SET_DST_FORMAT, dst_hw_format);
 
    if (pBlitImageInfo->filter == VK_FILTER_NEAREST) {
       P_IMMD(push, NV902D, SET_PIXELS_FROM_MEMORY_SAMPLE_MODE, {
@@ -53,9 +56,9 @@ nvk_CmdBlitImage2(VkCommandBuffer commandBuffer,
     *
     * NOTE: this only works for blits to 8 bit or packed formats
     */
-   if (vk_format_get_nr_components(src->format->vk_format) == 1 &&
-       src->format->hw_format != dst->format->hw_format) {
-      uint8_t mask = vk_format_is_snorm(dst->format->vk_format) ? 0x7f : 0xff;
+   if (vk_format_get_nr_components(src->vk.format) == 1 &&
+       src_hw_format != dst_hw_format) {
+      uint8_t mask = vk_format_is_snorm(dst->vk.format) ? 0x7f : 0xff;
       P_MTHD(push, NV902D, SET_BETA4);
       P_NV902D_SET_BETA4(push, {
          .r = mask,
@@ -68,9 +71,6 @@ nvk_CmdBlitImage2(VkCommandBuffer commandBuffer,
 
    for (unsigned r = 0; r < pBlitImageInfo->regionCount; r++) {
       const VkImageBlit2 *region = &pBlitImageInfo->pRegions[r];
-
-      struct nvk_image_level *src_level = &src->level[region->srcSubresource.mipLevel];
-      struct nvk_image_level *dst_level = &dst->level[region->dstSubresource.mipLevel];
 
       unsigned x_i = region->dstOffsets[0].x < region->dstOffsets[1].x ? 0 : 1;
       unsigned y_i = region->dstOffsets[0].y < region->dstOffsets[1].y ? 0 : 1;
@@ -100,43 +100,53 @@ nvk_CmdBlitImage2(VkCommandBuffer commandBuffer,
       src_start_x_fp += scaling_x_fp / 2;
       src_start_y_fp += scaling_y_fp / 2;
 
-      if (src_level->tile.is_tiled) {
+      const struct nil_image_level *src_level =
+         &src->nil.levels[region->srcSubresource.mipLevel];
+      const VkExtent3D src_level_extent =
+         vk_image_mip_level_extent(&src->vk, region->srcSubresource.mipLevel);
+
+      if (src_level->tiling.is_tiled) {
          P_MTHD(push, NV902D, SET_SRC_MEMORY_LAYOUT);
          P_NV902D_SET_SRC_MEMORY_LAYOUT(push, V_BLOCKLINEAR);
          P_NV902D_SET_SRC_BLOCK_SIZE(push, {
-            .height = src_level->tile.y,
-            .depth = src_level->tile.z,
+            .height = src_level->tiling.y_log2,
+            .depth = src_level->tiling.z_log2,
          });
       } else {
          P_IMMD(push, NV902D, SET_SRC_MEMORY_LAYOUT, V_PITCH);
       }
 
       P_MTHD(push, NV902D, SET_SRC_DEPTH);
-      P_NV902D_SET_SRC_DEPTH(push, src_level->extent.depth);
+      P_NV902D_SET_SRC_DEPTH(push, src_level_extent.depth);
 
       P_MTHD(push, NV902D, SET_SRC_PITCH);
-      P_NV902D_SET_SRC_PITCH(push, src_level->row_stride);
-      P_NV902D_SET_SRC_WIDTH(push, src_level->extent.width);
-      P_NV902D_SET_SRC_HEIGHT(push, src_level->extent.height);
+      P_NV902D_SET_SRC_PITCH(push, src_level->row_stride_B);
+      P_NV902D_SET_SRC_WIDTH(push, src_level_extent.width);
+      P_NV902D_SET_SRC_HEIGHT(push, src_level_extent.height);
 
-      if (dst_level->tile.is_tiled) {
+      const struct nil_image_level *dst_level =
+         &dst->nil.levels[region->dstSubresource.mipLevel];
+      const VkExtent3D dst_level_extent =
+         vk_image_mip_level_extent(&dst->vk, region->dstSubresource.mipLevel);
+
+      if (dst_level->tiling.is_tiled) {
          P_MTHD(push, NV902D, SET_DST_MEMORY_LAYOUT);
          P_NV902D_SET_DST_MEMORY_LAYOUT(push, V_BLOCKLINEAR);
          P_NV902D_SET_DST_BLOCK_SIZE(push, {
-            .height = dst_level->tile.y,
-            .depth = dst_level->tile.z,
+            .height = dst_level->tiling.y_log2,
+            .depth = dst_level->tiling.z_log2,
          });
       } else {
          P_IMMD(push, NV902D, SET_DST_MEMORY_LAYOUT, V_PITCH);
       }
 
       P_MTHD(push, NV902D, SET_DST_DEPTH);
-      P_NV902D_SET_DST_DEPTH(push, dst_level->extent.depth);
+      P_NV902D_SET_DST_DEPTH(push, dst_level_extent.depth);
 
       P_MTHD(push, NV902D, SET_DST_PITCH);
-      P_NV902D_SET_DST_PITCH(push, dst_level->row_stride);
-      P_NV902D_SET_DST_WIDTH(push, dst_level->extent.width);
-      P_NV902D_SET_DST_HEIGHT(push, dst_level->extent.height);
+      P_NV902D_SET_DST_PITCH(push, dst_level->row_stride_B);
+      P_NV902D_SET_DST_WIDTH(push, dst_level_extent.width);
+      P_NV902D_SET_DST_HEIGHT(push, dst_level_extent.height);
 
       P_MTHD(push, NV902D, SET_PIXELS_FROM_MEMORY_DST_X0);
       P_NV902D_SET_PIXELS_FROM_MEMORY_DST_X0(push, dst_start_x);
@@ -154,13 +164,15 @@ nvk_CmdBlitImage2(VkCommandBuffer commandBuffer,
       assert(src->vk.image_type != VK_IMAGE_TYPE_3D);
       assert(dst->vk.image_type != VK_IMAGE_TYPE_3D);
       for (unsigned w = 0; w < region->srcSubresource.layerCount; w++) {
-         VkDeviceSize src_addr = nvk_image_base_address(src, region->srcSubresource.mipLevel);
-         VkDeviceSize dst_addr = nvk_image_base_address(dst, region->dstSubresource.mipLevel);
+         const uint32_t src_layer = w + region->srcSubresource.baseArrayLayer;
+         const VkDeviceSize src_addr = nvk_image_base_address(src) +
+                                       src_layer * src->nil.array_stride_B +
+                                       src_level->offset_B;
 
-         src_addr += (w + region->srcSubresource.baseArrayLayer) *
-                     src_level->layer_stride;
-         dst_addr += (w + region->dstSubresource.baseArrayLayer) *
-                     dst_level->layer_stride;
+         const uint32_t dst_layer = w + region->dstSubresource.baseArrayLayer;
+         const VkDeviceSize dst_addr = nvk_image_base_address(dst) +
+                                       dst_layer * dst->nil.array_stride_B +
+                                       dst_level->offset_B;
 
          P_MTHD(push, NV902D, SET_SRC_OFFSET_UPPER);
          P_NV902D_SET_SRC_OFFSET_UPPER(push, src_addr >> 32);

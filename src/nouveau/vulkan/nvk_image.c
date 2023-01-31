@@ -7,86 +7,15 @@
 #include "nvk_format.h"
 #include "nvk_physical_device.h"
 
-/* calculates optimal tiling for a given CreateInfo
- *
- * This ends being quite wasteful, but it's a more or less plain copy of what gallium does
- */
-static struct nvk_tile
-nvk_image_tile_from_create_info(
-   VkExtent3D extent,
-   const VkImageCreateInfo *pCreateInfo,
-   uint64_t modifier)
+static enum nil_image_dim
+vk_image_type_to_nil_dim(VkImageType type)
 {
-   VkImageTiling tiling = pCreateInfo->tiling;
-   struct nvk_tile tile = {};
-
-   switch (tiling) {
-   case VK_IMAGE_TILING_LINEAR:
-      tile.is_tiled = false;
-      return tile;
-   case VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT:
-      tile.is_fermi = true;
-      tile.is_tiled = true;
-      tile.x = 0;
-      tile.y = modifier & 0xf;
-      tile.z = 0;
-      return tile;
-   case VK_IMAGE_TILING_OPTIMAL:
-      /* code is below */
-      break;
+   switch (type) {
+   case VK_IMAGE_TYPE_1D:  return NIL_IMAGE_DIM_1D;
+   case VK_IMAGE_TYPE_2D:  return NIL_IMAGE_DIM_2D;
+   case VK_IMAGE_TYPE_3D:  return NIL_IMAGE_DIM_3D;
    default:
-      assert(!"unknown image tiling");
-      break;
-   }
-
-   uint32_t height = extent.height;
-   uint32_t depth = extent.depth;
-
-   // fermi is the baseline anyway (for now)
-   tile.is_fermi = true;
-   tile.is_tiled = true;
-
-   // always 0 for now
-   tile.x = 0;
-
-        if (height >= 256) tile.y = 5;
-   else if (height >= 128) tile.y = 4;
-   else if (height >=  64) tile.y = 3;
-   else if (height >=  32) tile.y = 2;
-   else if (height >=  16) tile.y = 1;
-   else                    tile.y = 0;
-
-   // not quite sure why, but gallium does the same
-   if (pCreateInfo->imageType == VK_IMAGE_TYPE_3D)
-      tile.y = MIN2(tile.y, 2);
-
-   if (pCreateInfo->flags & VK_IMAGE_CREATE_2D_VIEW_COMPATIBLE_BIT_EXT)
-      return tile;
-
-        if (depth >= 32) tile.z = 5;
-   else if (depth >= 16) tile.z = 4;
-   else if (depth >=  8) tile.z = 3;
-   else if (depth >=  4) tile.z = 2;
-   else if (depth >=  2) tile.z = 1;
-   else                  tile.z = 0;
-
-   return tile;
-}
-
-static VkExtent3D
-nvk_image_tile_to_blocks(struct nvk_tile tile)
-{
-   if (!tile.is_tiled) {
-      return (VkExtent3D){1, 1, 1};
-   } else {
-      uint32_t height = tile.is_fermi ? 8 : 4;
-
-      return (VkExtent3D){
-         .width = 64 << tile.x,
-         .height = height << tile.y,
-         .depth = 1 << tile.z,
-      };
-
+      unreachable("Invalid image type");
    }
 }
 
@@ -94,37 +23,24 @@ static VkResult nvk_image_init(struct nvk_device *device,
    struct nvk_image *image,
    const VkImageCreateInfo *pCreateInfo)
 {
-   uint64_t block_size = vk_format_get_blocksizebits(pCreateInfo->format) / 8;
-
    vk_image_init(&device->vk, &image->vk, pCreateInfo);
 
-   image->format = nvk_get_format(pCreateInfo->format);
-   assert(image->format);
+   struct nil_image_init_info nil_info = {
+      .dim = vk_image_type_to_nil_dim(pCreateInfo->imageType),
+      .format = vk_format_to_pipe_format(pCreateInfo->format),
+      .extent_px = {
+         .w = pCreateInfo->extent.width,
+         .h = pCreateInfo->extent.height,
+         .d = pCreateInfo->extent.depth,
+         .a = pCreateInfo->arrayLayers,
+      },
+      .levels = pCreateInfo->mipLevels,
+      .samples = pCreateInfo->samples,
+   };
 
-   for (uint32_t l = 0; l < pCreateInfo->mipLevels; l++) {
-      struct nvk_image_level *level = &image->level[l];
-      VkExtent3D extent = vk_image_mip_level_extent(&image->vk, l);
-      struct nvk_tile tile = nvk_image_tile_from_create_info(
-         extent,
-         pCreateInfo,
-         0
-      );
-      VkExtent3D block = nvk_image_tile_to_blocks(tile);
-
-      /* need to apply a minimum alignment */
-      image->min_size = align(image->min_size, 0x80);
-      level->offset = image->min_size;
-      level->tile = tile;
-      level->extent = extent;
-      level->row_stride = align(extent.width * block_size, block.width);
-
-      /* for untiled images we need to align the row_stride to 0x80 */
-      if (!tile.is_tiled)
-         level->row_stride = align(level->row_stride, 0x80);
-
-      level->layer_stride = level->row_stride * align(extent.height, block.height);
-      image->min_size += level->layer_stride * align(extent.depth * image->vk.array_layers, block.depth);
-   }
+   ASSERTED bool ok = nil_image_init(nvk_device_physical(device)->dev,
+                                     &image->nil, &nil_info);
+   assert(ok);
 
    return VK_SUCCESS;
 }
@@ -186,7 +102,7 @@ VKAPI_ATTR void VKAPI_CALL nvk_GetImageMemoryRequirements2(
    // TODO hope for the best?
    pMemoryRequirements->memoryRequirements.memoryTypeBits = memory_types;
    pMemoryRequirements->memoryRequirements.alignment = 0x1000;
-   pMemoryRequirements->memoryRequirements.size = image->min_size;
+   pMemoryRequirements->memoryRequirements.size = image->nil.size_B;
 
    vk_foreach_struct_const(ext, pInfo->pNext) {
       switch (ext->sType) {

@@ -479,7 +479,7 @@ nvk_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
    else
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
-   base_props->imageFormatProperties.maxMipLevels = NVK_MAX_MIP_LEVELS;
+   base_props->imageFormatProperties.maxMipLevels = 15;
    base_props->imageFormatProperties.maxArrayLayers = 2048;
    base_props->imageFormatProperties.sampleCounts = 0;
    base_props->imageFormatProperties.maxResourceSize = 0xffffffff; // TODO proper value

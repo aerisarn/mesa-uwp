@@ -53,8 +53,8 @@ struct nouveau_copy_buffer {
    uint32_t base_array_layer;
    VkExtent3D extent;
    uint32_t row_stride;
-   uint32_t layer_stride;
-   struct nvk_tile tile;
+   uint32_t array_stride;
+   struct nil_tiling tiling;
 };
 
 struct nouveau_copy {
@@ -74,7 +74,7 @@ nouveau_copy_rect_buffer(
    return (struct nouveau_copy_buffer) {
       .base_addr = nvk_buffer_address(buf, offset),
       .row_stride = buffer_layout.row_stride_B,
-      .layer_stride = buffer_layout.image_stride_B,
+      .array_stride = buffer_layout.image_stride_B,
    };
 }
 
@@ -84,16 +84,15 @@ nouveau_copy_rect_image(
    VkOffset3D offset,
    const VkImageSubresourceLayers *sub_res)
 {
-   struct nvk_image_level *level = &img->level[sub_res->mipLevel];
-
    struct nouveau_copy_buffer buf = {
-      .base_addr = nvk_image_base_address(img, sub_res->mipLevel),
+      .base_addr = nvk_image_base_address(img) +
+                   img->nil.levels[sub_res->mipLevel].offset_B,
       .offset = vk_image_sanitize_offset(&img->vk, offset),
-      .extent = level->extent,
+      .extent = vk_image_mip_level_extent(&img->vk, sub_res->mipLevel),
       .base_array_layer = sub_res->baseArrayLayer,
-      .row_stride = level->row_stride,
-      .layer_stride = level->layer_stride,
-      .tile = level->tile,
+      .row_stride = img->nil.levels[sub_res->mipLevel].row_stride_B,
+      .array_stride = img->nil.array_stride_B,
+      .tiling = img->nil.levels[sub_res->mipLevel].tiling,
    };
 
    return buf;
@@ -108,15 +107,15 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
       VkDeviceSize src_addr = copy->src.base_addr;
       VkDeviceSize dst_addr = copy->dst.base_addr;
 
-      src_addr += (w + copy->src.base_array_layer) * copy->src.layer_stride;
-      dst_addr += (w + copy->dst.base_array_layer) * copy->dst.layer_stride;
+      src_addr += (w + copy->src.base_array_layer) * copy->src.array_stride;
+      dst_addr += (w + copy->dst.base_array_layer) * copy->dst.array_stride;
 
-      if (!copy->src.tile.is_tiled) {
+      if (!copy->src.tiling.is_tiled) {
          src_addr += copy->src.offset.x * copy->bpp +
                      copy->src.offset.y * copy->src.row_stride;
       }
 
-      if (!copy->dst.tile.is_tiled) {
+      if (!copy->dst.tiling.is_tiled) {
          dst_addr += copy->dst.offset.x * copy->bpp +
                      copy->dst.offset.y * copy->dst.row_stride;
       }
@@ -133,14 +132,15 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
          P_NV90B5_LINE_COUNT(push, copy->extent.height);
 
          uint32_t src_layout = 0, dst_layout = 0;
-         if (copy->src.tile.is_tiled) {
-            assert(copy->src.tile.is_fermi);
+         if (copy->src.tiling.is_tiled) {
             P_MTHD(push, NV90B5, SET_SRC_BLOCK_SIZE);
             P_NV90B5_SET_SRC_BLOCK_SIZE(push, {
-               .width = copy->src.tile.x,
-               .height = copy->src.tile.y,
-               .depth = copy->src.tile.z,
-               .gob_height = GOB_HEIGHT_GOB_HEIGHT_FERMI_8,
+               .width = 0, /* Tiles are always 1 GOB wide */
+               .height = copy->src.tiling.y_log2,
+               .depth = copy->src.tiling.z_log2,
+               .gob_height = copy->src.tiling.gob_height_8 ?
+                             GOB_HEIGHT_GOB_HEIGHT_FERMI_8 :
+                             GOB_HEIGHT_GOB_HEIGHT_TESLA_4,
             });
             P_NV90B5_SET_SRC_WIDTH(push, copy->src.extent.width * copy->bpp);
             P_NV90B5_SET_SRC_HEIGHT(push, copy->src.extent.height);
@@ -161,18 +161,19 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
 
             src_layout = NV90B5_LAUNCH_DMA_SRC_MEMORY_LAYOUT_BLOCKLINEAR;
          } else {
-            src_addr += copy->src.layer_stride;
+            src_addr += copy->src.array_stride;
             src_layout = NV90B5_LAUNCH_DMA_SRC_MEMORY_LAYOUT_PITCH;
          }
 
-         if (copy->dst.tile.is_tiled) {
-            assert(copy->dst.tile.is_fermi);
+         if (copy->dst.tiling.is_tiled) {
             P_MTHD(push, NV90B5, SET_DST_BLOCK_SIZE);
             P_NV90B5_SET_DST_BLOCK_SIZE(push, {
-               .width = copy->dst.tile.x,
-               .height = copy->dst.tile.y,
-               .depth = copy->dst.tile.z,
-               .gob_height = GOB_HEIGHT_GOB_HEIGHT_FERMI_8,
+               .width = 0, /* Tiles are always 1 GOB wide */
+               .height = copy->dst.tiling.y_log2,
+               .depth = copy->dst.tiling.z_log2,
+               .gob_height = copy->dst.tiling.gob_height_8 ?
+                             GOB_HEIGHT_GOB_HEIGHT_FERMI_8 :
+                             GOB_HEIGHT_GOB_HEIGHT_TESLA_4,
             });
             P_NV90B5_SET_DST_WIDTH(push, copy->dst.extent.width * copy->bpp);
             P_NV90B5_SET_DST_HEIGHT(push, copy->dst.extent.height);
@@ -193,7 +194,7 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
 
             dst_layout = NV90B5_LAUNCH_DMA_DST_MEMORY_LAYOUT_BLOCKLINEAR;
          } else {
-            dst_addr += copy->dst.layer_stride;
+            dst_addr += copy->dst.array_stride;
             dst_layout = NV90B5_LAUNCH_DMA_DST_MEMORY_LAYOUT_PITCH;
          }
 
