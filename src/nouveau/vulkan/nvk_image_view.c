@@ -3,13 +3,6 @@
 #include "nvk_device.h"
 #include "nvk_image.h"
 
-static VkResult nvk_image_view_init(struct nvk_device *device,
-   struct nvk_image_view *view,
-   const VkImageViewCreateInfo *pCreateInfo)
-{
-   return VK_SUCCESS;
-}
-
 VKAPI_ATTR VkResult VKAPI_CALL nvk_CreateImageView(VkDevice _device,
    const VkImageViewCreateInfo *pCreateInfo,
    const VkAllocationCallbacks *pAllocator,
