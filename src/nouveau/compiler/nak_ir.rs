@@ -455,6 +455,45 @@ pub enum PredSetOp {
 }
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
+pub enum FloatCmpOp {
+    OrdEq,
+    OrdNe,
+    OrdLt,
+    OrdLe,
+    OrdGt,
+    OrdGe,
+    UnordEq,
+    UnordNe,
+    UnordLt,
+    UnordLe,
+    UnordGt,
+    UnordGe,
+    IsNum,
+    IsNan,
+}
+
+impl fmt::Display for FloatCmpOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FloatCmpOp::OrdEq => write!(f, "EQ"),
+            FloatCmpOp::OrdNe => write!(f, "NE"),
+            FloatCmpOp::OrdLt => write!(f, "LT"),
+            FloatCmpOp::OrdLe => write!(f, "LE"),
+            FloatCmpOp::OrdGt => write!(f, "GT"),
+            FloatCmpOp::OrdGe => write!(f, "GE"),
+            FloatCmpOp::UnordEq => write!(f, "EQU"),
+            FloatCmpOp::UnordNe => write!(f, "NEU"),
+            FloatCmpOp::UnordLt => write!(f, "LTU"),
+            FloatCmpOp::UnordLe => write!(f, "LEU"),
+            FloatCmpOp::UnordGt => write!(f, "GTU"),
+            FloatCmpOp::UnordGe => write!(f, "GEU"),
+            FloatCmpOp::IsNum => write!(f, "NUM"),
+            FloatCmpOp::IsNan => write!(f, "NAN"),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum IntCmpOp {
     Eq,
     Ne,
@@ -782,6 +821,29 @@ impl fmt::Display for OpFAdd {
         write!(
             f,
             " {} {{ {}, {} }}",
+            self.dst,
+            self.mod_src(0),
+            self.mod_src(1),
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpFSetP {
+    pub dst: Dst,
+    pub cmp_op: FloatCmpOp,
+    pub srcs: [Src; 2],
+    pub src_mods: [SrcMod; 2],
+    /* TODO: Other predicates? Combine ops? */
+}
+
+impl fmt::Display for OpFSetP {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "FSETP.{} {} {{ {}, {} }}",
+            self.cmp_op,
             self.dst,
             self.mod_src(0),
             self.mod_src(1),
@@ -1147,6 +1209,7 @@ impl fmt::Display for OpFSOut {
 #[derive(Display, DstsAsSlice, SrcsAsSlice)]
 pub enum Op {
     FAdd(OpFAdd),
+    FSetP(OpFSetP),
     IAdd3(OpIAdd3),
     ISetP(OpISetP),
     Lop3(OpLop3),
@@ -1340,6 +1403,20 @@ impl Instr {
         }))
     }
 
+    pub fn new_fsetp(
+        dst: Dst,
+        cmp_op: FloatCmpOp,
+        x: ModSrc,
+        y: ModSrc,
+    ) -> Instr {
+        Instr::new(Op::FSetP(OpFSetP {
+            dst: dst,
+            cmp_op: cmp_op,
+            srcs: [x.src, y.src],
+            src_mods: [x.src_mod, y.src_mod],
+        }))
+    }
+
     pub fn new_iadd(dst: Dst, x: Src, y: Src) -> Instr {
         Instr::new(Op::IAdd3(OpIAdd3 {
             dst: dst,
@@ -1517,6 +1594,7 @@ impl Instr {
     pub fn get_latency(&self) -> Option<u32> {
         match self.op {
             Op::FAdd(_)
+            | Op::FSetP(_)
             | Op::IAdd3(_)
             | Op::Lop3(_)
             | Op::PLop3(_)

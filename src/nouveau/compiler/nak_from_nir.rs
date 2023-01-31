@@ -97,6 +97,38 @@ impl<'a> ShaderFromNir<'a> {
                     srcs[1].into(),
                 ));
             }
+            nir_op_feq => {
+                self.instrs.push(Instr::new_fsetp(
+                    dst,
+                    FloatCmpOp::OrdEq,
+                    srcs[0].into(),
+                    srcs[1].into(),
+                ));
+            }
+            nir_op_fge => {
+                self.instrs.push(Instr::new_fsetp(
+                    dst,
+                    FloatCmpOp::OrdGe,
+                    srcs[0].into(),
+                    srcs[1].into(),
+                ));
+            }
+            nir_op_flt => {
+                self.instrs.push(Instr::new_fsetp(
+                    dst,
+                    FloatCmpOp::OrdLt,
+                    srcs[0].into(),
+                    srcs[1].into(),
+                ));
+            }
+            nir_op_fneu => {
+                self.instrs.push(Instr::new_fsetp(
+                    dst,
+                    FloatCmpOp::UnordNe,
+                    srcs[0].into(),
+                    srcs[1].into(),
+                ));
+            }
             nir_op_i2f32 => {
                 self.instrs.push(Instr::new_i2f(dst, srcs[0]));
             }

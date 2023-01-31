@@ -298,6 +298,43 @@ impl SM75Instr {
         self.set_bit(80, false); /* TODO: Denorm mode */
     }
 
+    fn set_float_cmp_op(&mut self, range: Range<usize>, op: FloatCmpOp) {
+        assert!(range.len() == 4);
+        self.set_field(
+            range,
+            match op {
+                FloatCmpOp::OrdLt => 0x01_u8,
+                FloatCmpOp::OrdEq => 0x02_u8,
+                FloatCmpOp::OrdLe => 0x03_u8,
+                FloatCmpOp::OrdGt => 0x04_u8,
+                FloatCmpOp::OrdNe => 0x05_u8,
+                FloatCmpOp::OrdGe => 0x06_u8,
+                FloatCmpOp::UnordLt => 0x09_u8,
+                FloatCmpOp::UnordEq => 0x0a_u8,
+                FloatCmpOp::UnordLe => 0x0b_u8,
+                FloatCmpOp::UnordGt => 0x0c_u8,
+                FloatCmpOp::UnordNe => 0x0d_u8,
+                FloatCmpOp::UnordGe => 0x0e_u8,
+                FloatCmpOp::IsNum => 0x07_u8,
+                FloatCmpOp::IsNan => 0x08_u8,
+            },
+        );
+    }
+
+    fn encode_fsetp(&mut self, op: &OpFSetP) {
+        self.encode_alu(0x00b, None, Some(op.mod_src(0)), op.mod_src(1), None);
+
+        self.set_field(74..76, 0_u32); /* pred combine op */
+        self.set_float_cmp_op(76..80, op.cmp_op);
+        self.set_bit(80, false); /* TODO: Denorm mode */
+
+        self.set_pred_dst(81..84, op.dst);
+        self.set_field(84..87, 7_u32); /* TODO: dst1 */
+
+        self.set_field(87..90, 0x7_u8); /* TODO: src pred */
+        self.set_bit(90, false); /* TODO: src pred neg */
+    }
+
     fn encode_iadd3(&mut self, op: &OpIAdd3) {
         self.encode_alu(
             0x010,
@@ -548,6 +585,7 @@ impl SM75Instr {
 
         match &instr.op {
             Op::FAdd(op) => si.encode_fadd(&op),
+            Op::FSetP(op) => si.encode_fsetp(&op),
             Op::IAdd3(op) => si.encode_iadd3(&op),
             Op::ISetP(op) => si.encode_isetp(&op),
             Op::Lop3(op) => si.encode_lop3(&op),
