@@ -8,7 +8,6 @@
 #include "nvk_physical_device.h"
 
 #include "nouveau_context.h"
-#include "nouveau_push.h"
 
 #include <nouveau_drm.h>
 #include <xf86drm.h>
@@ -82,16 +81,6 @@ push_add_push(struct push_builder *pb, struct nouveau_ws_bo *bo,
       .offset = dw_offset * 4,
       .length = dw_count * 4,
    };
-}
-
-static void
-push_add_ws_push(struct push_builder *pb, struct nouveau_ws_push *push)
-{
-   util_dynarray_foreach(&push->bos, struct nouveau_ws_push_bo, push_bo)
-      push_add_bo(pb, push_bo->bo, push_bo->flags);
-
-   util_dynarray_foreach(&push->pushs, struct nouveau_ws_push_buffer, buf)
-      push_add_push(pb, buf->bo, 0, nv_push_dw_count(&buf->push));
 }
 
 static VkResult
@@ -181,7 +170,11 @@ nvk_queue_submit_drm_nouveau(struct vk_queue *vk_queue,
          list_for_each_entry_safe(struct nvk_cmd_bo, bo, &cmd->bos, link)
             push_add_bo(&pb, bo->bo, NOUVEAU_WS_BO_RD);
 
-         push_add_ws_push(&pb, cmd->push);
+         util_dynarray_foreach(&cmd->pushes, struct nvk_cmd_push, push)
+            push_add_push(&pb, push->bo->bo, push->start_dw, push->dw_count);
+
+         util_dynarray_foreach(&cmd->bo_refs, struct nvk_cmd_bo_ref, ref)
+            push_add_bo(&pb, ref->bo, NOUVEAU_WS_BO_RDWR);
       }
    }
 

@@ -3,15 +3,17 @@
 
 #include "nvk_private.h"
 
-#include "nouveau_push.h"
+#include "nv_push.h"
+#include "nvk_cmd_pool.h"
 #include "nvk_descriptor_set.h"
+
+#include "util/u_dynarray.h"
 
 #include "vk_command_buffer.h"
 
+struct nvk_cmd_bo;
 struct nvk_cmd_pool;
 struct nvk_image_view;
-
-#define NVK_CMD_BUF_SIZE 64*1024
 
 /** Root descriptor table.  This gets pushed to the GPU directly */
 struct nvk_root_descriptor_table {
@@ -83,6 +85,16 @@ struct nvk_compute_state {
    struct nvk_descriptor_state descriptors;
 };
 
+struct nvk_cmd_push {
+   struct nvk_cmd_bo *bo;
+   uint32_t start_dw;
+   uint32_t dw_count;
+};
+
+struct nvk_cmd_bo_ref {
+   struct nouveau_ws_bo *bo;
+};
+
 struct nvk_cmd_buffer {
    struct vk_command_buffer vk;
 
@@ -91,13 +103,34 @@ struct nvk_cmd_buffer {
       struct nvk_compute_state cs;
    } state;
 
-   /** List of nvk_cmd_bo */
+   /** List of nvk_cmd_bo
+    *
+    * This list exists entirely for ownership tracking.  Everything in here
+    * must also be in pushes or bo_refs if it is to be referenced by this
+    * command buffer.
+    */
    struct list_head bos;
 
    struct nvk_cmd_bo *upload_bo;
    uint32_t upload_offset;
 
-   struct nouveau_ws_push *push;
+   struct nvk_cmd_bo *push_bo;
+   uint32_t *push_bo_limit;
+   struct nv_push push;
+
+   /** Array of struct nvk_cmd_push
+    *
+    * This acts both as a BO reference as well as provides a range in the
+    * buffer to use as a pushbuf.
+    */
+   struct util_dynarray pushes;
+
+   /** Array of struct nvk_cmd_bo_ref
+    *
+    * This is for any internal allocations which we want to reference which
+    * aren't push buffers.
+    */
+   struct util_dynarray bo_refs;
 
    uint64_t tls_space_needed;
 };
@@ -119,17 +152,30 @@ nvk_cmd_buffer_pool(struct nvk_cmd_buffer *cmd)
    return (struct nvk_cmd_pool *)cmd->vk.pool;
 }
 
+void nvk_cmd_buffer_new_push(struct nvk_cmd_buffer *cmd);
+
+#define NVK_CMD_BUFFER_MAX_PUSH 256
+
 static inline struct nv_push *
 nvk_cmd_buffer_push(struct nvk_cmd_buffer *cmd, uint32_t dw_count)
 {
-   return P_SPACE(cmd->push, dw_count);
+   assert(dw_count <= NVK_CMD_BUFFER_MAX_PUSH);
+
+   /* Compare to the actual limit on our push bo */
+   if (unlikely(cmd->push.end + dw_count > cmd->push_bo_limit))
+      nvk_cmd_buffer_new_push(cmd);
+
+   cmd->push.limit = cmd->push.end + dw_count;
+   
+   return &cmd->push;
 }
 
 static inline void
 nvk_cmd_buffer_ref_bo(struct nvk_cmd_buffer *cmd,
                       struct nouveau_ws_bo *bo)
 {
-   nouveau_ws_push_ref(cmd->push, bo, NOUVEAU_WS_BO_RDWR);
+   struct nvk_cmd_bo_ref ref = { .bo = bo };
+   util_dynarray_append(&cmd->bo_refs, struct nvk_cmd_bo_ref, ref);
 }
 
 void nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,

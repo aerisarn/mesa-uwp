@@ -24,7 +24,8 @@ nvk_destroy_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer)
    struct nvk_cmd_pool *pool = nvk_cmd_buffer_pool(cmd);
 
    nvk_cmd_pool_free_bo_list(pool, &cmd->bos);
-   nouveau_ws_push_destroy(cmd->push);
+   util_dynarray_fini(&cmd->pushes);
+   util_dynarray_fini(&cmd->bo_refs);
    vk_command_buffer_finish(&cmd->vk);
    vk_free(&pool->vk.alloc, cmd);
 }
@@ -54,7 +55,8 @@ nvk_create_cmd_buffer(struct vk_command_pool *vk_pool,
       &cmd->state.gfx._dynamic_vi;
 
    list_inithead(&cmd->bos);
-   cmd->push = nouveau_ws_push_new(device->pdev->dev, NVK_CMD_BUF_SIZE);
+   util_dynarray_init(&cmd->pushes, NULL);
+   util_dynarray_init(&cmd->bo_refs, NULL);
 
    *cmd_buffer_out = &cmd->vk;
 
@@ -73,7 +75,13 @@ nvk_reset_cmd_buffer(struct vk_command_buffer *vk_cmd_buffer,
 
    nvk_cmd_pool_free_bo_list(pool, &cmd->bos);
    cmd->upload_bo = NULL;
-   nouveau_ws_push_reset(cmd->push);
+   cmd->push_bo = NULL;
+   cmd->push_bo_limit = NULL;
+   cmd->push = (struct nv_push) {0};
+
+   util_dynarray_clear(&cmd->pushes);
+   util_dynarray_clear(&cmd->bo_refs);
+
    memset(&cmd->state, 0, sizeof(cmd->state));
 }
 
@@ -82,6 +90,41 @@ const struct vk_command_buffer_ops nvk_cmd_buffer_ops = {
    .reset = nvk_reset_cmd_buffer,
    .destroy = nvk_destroy_cmd_buffer,
 };
+
+/* If we ever fail to allocate a push, we use this */
+static uint32_t push_runout[NVK_CMD_BUFFER_MAX_PUSH];
+
+void
+nvk_cmd_buffer_new_push(struct nvk_cmd_buffer *cmd)
+{
+   struct nvk_cmd_pool *pool = nvk_cmd_buffer_pool(cmd);
+   VkResult result;
+
+   result = nvk_cmd_pool_alloc_bo(pool, &cmd->push_bo);
+   if (unlikely(result != VK_SUCCESS)) {
+      STATIC_ASSERT(NVK_CMD_BUFFER_MAX_PUSH <= NVK_CMD_BO_SIZE / 4);
+      cmd->push_bo = NULL;
+      nv_push_init(&cmd->push, push_runout, 0);
+      cmd->push_bo_limit = &push_runout[NVK_CMD_BUFFER_MAX_PUSH];
+   } else {
+      nv_push_init(&cmd->push, cmd->push_bo->map, 0);
+      cmd->push_bo_limit =
+         (uint32_t *)((char *)cmd->push_bo->map + NVK_CMD_BO_SIZE);
+   }
+}
+
+static void
+nvk_cmd_buffer_flush_push(struct nvk_cmd_buffer *cmd)
+{
+   struct nvk_cmd_push push = {
+      .bo = cmd->push_bo,
+      .start_dw = cmd->push.start - (uint32_t *)cmd->push_bo->map,
+      .dw_count = nv_push_dw_count(&cmd->push),
+   };
+   util_dynarray_append(&cmd->pushes, struct nvk_cmd_push, push);
+
+   cmd->push.start = cmd->push.end;
+}
 
 VkResult
 nvk_cmd_buffer_upload_alloc(struct nvk_cmd_buffer *cmd,
@@ -155,6 +198,9 @@ VKAPI_ATTR VkResult VKAPI_CALL
 nvk_EndCommandBuffer(VkCommandBuffer commandBuffer)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+
+   nvk_cmd_buffer_flush_push(cmd);
+
    return vk_command_buffer_get_record_result(&cmd->vk);
 }
 
