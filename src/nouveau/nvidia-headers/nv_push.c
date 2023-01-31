@@ -4,6 +4,7 @@
 
 #include <inttypes.h>
 
+#include "nvk_cl906f.h"
 #include "nvk_cl9097.h"
 #include "nvk_cl902d.h"
 #include "nvk_cl90b5.h"
@@ -100,82 +101,90 @@ vk_push_print(FILE *fp, const struct nv_push *push,
 
       while (count--) {
          const char *mthd_name = "";
-         switch (subchan) {
-         case 0:
-            if (devinfo->cls_eng3d >= 0xc597)
-               mthd_name = P_PARSE_NVC597_MTHD(mthd);
-            else if (devinfo->cls_eng3d >= 0xc397)
-               mthd_name = P_PARSE_NVC397_MTHD(mthd);
-            else if (devinfo->cls_eng3d >= 0xb197)
-               mthd_name = P_PARSE_NVB197_MTHD(mthd);
-            else if (devinfo->cls_eng3d >= 0xa097)
-               mthd_name = P_PARSE_NVA097_MTHD(mthd);
-            else
-               mthd_name = P_PARSE_NV9097_MTHD(mthd);
-            break;
-         case 1:
-            if (devinfo->cls_compute >= 0xc3c0)
-               mthd_name = P_PARSE_NVC3C0_MTHD(mthd);
-            else if (devinfo->cls_compute >= 0xc0c0)
-               mthd_name = P_PARSE_NVC0C0_MTHD(mthd);
-            else
-               mthd_name = P_PARSE_NVA0C0_MTHD(mthd);
-            break;
-         case 3:
-            mthd_name = P_PARSE_NV902D_MTHD(mthd);
-            break;
-         case 4:
-            if (devinfo->cls_copy >= 0xc1b5)
-               mthd_name = P_PARSE_NVC1B5_MTHD(mthd);
-            else if (devinfo->cls_copy >= 0xa0b5)
-               mthd_name = P_PARSE_NVA0B5_MTHD(mthd);
-            else
-               mthd_name = P_PARSE_NV90B5_MTHD(mthd);
-            break;
-         default:
-            mthd_name = "";
-            break;
+         if (mthd < 0x100) {
+            mthd_name = P_PARSE_NV906F_MTHD(mthd);
+         } else {
+            switch (subchan) {
+            case 0:
+               if (devinfo->cls_eng3d >= 0xc597)
+                  mthd_name = P_PARSE_NVC597_MTHD(mthd);
+               else if (devinfo->cls_eng3d >= 0xc397)
+                  mthd_name = P_PARSE_NVC397_MTHD(mthd);
+               else if (devinfo->cls_eng3d >= 0xb197)
+                  mthd_name = P_PARSE_NVB197_MTHD(mthd);
+               else if (devinfo->cls_eng3d >= 0xa097)
+                  mthd_name = P_PARSE_NVA097_MTHD(mthd);
+               else
+                  mthd_name = P_PARSE_NV9097_MTHD(mthd);
+               break;
+            case 1:
+               if (devinfo->cls_compute >= 0xc3c0)
+                  mthd_name = P_PARSE_NVC3C0_MTHD(mthd);
+               else if (devinfo->cls_compute >= 0xc0c0)
+                  mthd_name = P_PARSE_NVC0C0_MTHD(mthd);
+               else
+                  mthd_name = P_PARSE_NVA0C0_MTHD(mthd);
+               break;
+            case 3:
+               mthd_name = P_PARSE_NV902D_MTHD(mthd);
+               break;
+            case 4:
+               if (devinfo->cls_copy >= 0xc1b5)
+                  mthd_name = P_PARSE_NVC1B5_MTHD(mthd);
+               else if (devinfo->cls_copy >= 0xa0b5)
+                  mthd_name = P_PARSE_NVA0B5_MTHD(mthd);
+               else
+                  mthd_name = P_PARSE_NV90B5_MTHD(mthd);
+               break;
+            default:
+               mthd_name = "";
+               break;
+            }
          }
 
          if (!is_immd)
             value = *cur;
 
          fprintf(fp, "\tmthd %04x %s\n", mthd, mthd_name);
-         switch (subchan) {
-         case 0:
-            if (devinfo->cls_eng3d >= 0xc597)
-               P_DUMP_NVC597_MTHD_DATA(fp, mthd, value, "\t\t");
-            else if (devinfo->cls_eng3d >= 0xc397)
-               P_DUMP_NVC397_MTHD_DATA(fp, mthd, value, "\t\t");
-            else if (devinfo->cls_eng3d >= 0xb197)
-               P_DUMP_NVB197_MTHD_DATA(fp, mthd, value, "\t\t");
-            else if (devinfo->cls_eng3d >= 0xa097)
-               P_DUMP_NVA097_MTHD_DATA(fp, mthd, value, "\t\t");
-            else
-               P_DUMP_NV9097_MTHD_DATA(fp, mthd, value, "\t\t");
-            break;
-         case 1:
-            if (devinfo->cls_compute >= 0xc3c0)
-               P_DUMP_NVC3C0_MTHD_DATA(fp, mthd, value, "\t\t");
-            else if (devinfo->cls_compute >= 0xc0c0)
-               P_DUMP_NVC0C0_MTHD_DATA(fp, mthd, value, "\t\t");
-            else
-               P_DUMP_NVA0C0_MTHD_DATA(fp, mthd, value, "\t\t");
-            break;
-         case 3:
-            P_DUMP_NV902D_MTHD_DATA(fp, mthd, value, "\t\t");
-            break;
-         case 4:
-            if (devinfo->cls_copy >= 0xc1b5)
-               P_DUMP_NVC1B5_MTHD_DATA(fp, mthd, value, "\t\t");
-            else if (devinfo->cls_copy >= 0xa0b5)
-               P_DUMP_NVA0B5_MTHD_DATA(fp, mthd, value, "\t\t");
-            else
-               P_DUMP_NV90B5_MTHD_DATA(fp, mthd, value, "\t\t");
-            break;
-         default:
-            mthd_name = "";
-            break;
+         if (mthd < 0x100) {
+            P_DUMP_NV906F_MTHD_DATA(fp, mthd, value, "\t\t");
+         } else {
+            switch (subchan) {
+            case 0:
+               if (devinfo->cls_eng3d >= 0xc597)
+                  P_DUMP_NVC597_MTHD_DATA(fp, mthd, value, "\t\t");
+               else if (devinfo->cls_eng3d >= 0xc397)
+                  P_DUMP_NVC397_MTHD_DATA(fp, mthd, value, "\t\t");
+               else if (devinfo->cls_eng3d >= 0xb197)
+                  P_DUMP_NVB197_MTHD_DATA(fp, mthd, value, "\t\t");
+               else if (devinfo->cls_eng3d >= 0xa097)
+                  P_DUMP_NVA097_MTHD_DATA(fp, mthd, value, "\t\t");
+               else
+                  P_DUMP_NV9097_MTHD_DATA(fp, mthd, value, "\t\t");
+               break;
+            case 1:
+               if (devinfo->cls_compute >= 0xc3c0)
+                  P_DUMP_NVC3C0_MTHD_DATA(fp, mthd, value, "\t\t");
+               else if (devinfo->cls_compute >= 0xc0c0)
+                  P_DUMP_NVC0C0_MTHD_DATA(fp, mthd, value, "\t\t");
+               else
+                  P_DUMP_NVA0C0_MTHD_DATA(fp, mthd, value, "\t\t");
+               break;
+            case 3:
+               P_DUMP_NV902D_MTHD_DATA(fp, mthd, value, "\t\t");
+               break;
+            case 4:
+               if (devinfo->cls_copy >= 0xc1b5)
+                  P_DUMP_NVC1B5_MTHD_DATA(fp, mthd, value, "\t\t");
+               else if (devinfo->cls_copy >= 0xa0b5)
+                  P_DUMP_NVA0B5_MTHD_DATA(fp, mthd, value, "\t\t");
+               else
+                  P_DUMP_NV90B5_MTHD_DATA(fp, mthd, value, "\t\t");
+               break;
+            default:
+               mthd_name = "";
+               break;
+            }
          }
 
          if (!is_immd)
