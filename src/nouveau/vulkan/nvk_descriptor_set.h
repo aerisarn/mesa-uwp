@@ -49,6 +49,7 @@ struct nvk_descriptor_set {
    struct vk_object_base base;
    struct nvk_descriptor_set_layout *layout;
    uint32_t bo_offset;
+   uint32_t bo_size;
    struct nouveau_ws_bo *bo;
    void *mapped_ptr;
 

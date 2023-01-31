@@ -24,10 +24,10 @@ desc_ubo_data(struct nvk_descriptor_set *set, uint32_t binding,
       &set->layout->binding[binding];
 
    uint32_t offset = binding_layout->offset + elem * binding_layout->stride;
-   assert(offset < set->layout->descriptor_buffer_size);
+   assert(offset < set->bo_size);
 
    if (size_out != NULL)
-      *size_out = set->layout->descriptor_buffer_size - offset;
+      *size_out = set->bo_size - offset;
 
    return (char *)set->mapped_ptr + offset;
 }
@@ -263,6 +263,7 @@ nvk_push_descriptor_set_update(struct nvk_push_descriptor_set *push_set,
    assert(layout->descriptor_buffer_size < sizeof(push_set->data));
    struct nvk_descriptor_set set = {
       .layout = layout,
+      .bo_size = sizeof(push_set->data),
       .mapped_ptr = push_set->data,
    };
 
@@ -449,8 +450,9 @@ nvk_descriptor_set_create(struct nvk_device *device,
    if (pool->entry_count == pool->max_entry_count)
       return VK_ERROR_OUT_OF_POOL_MEMORY;
 
+   set->bo_size = layout->descriptor_buffer_size;
    if (layout->descriptor_buffer_size > 0) {
-      if (pool->current_offset + layout->descriptor_buffer_size > pool->size)
+      if (pool->current_offset + set->bo_size > pool->size)
          return VK_ERROR_OUT_OF_POOL_MEMORY;
 
       set->bo = pool->bo;
@@ -459,10 +461,9 @@ nvk_descriptor_set_create(struct nvk_device *device,
    }
 
    pool->entries[pool->entry_count].offset = set->bo_offset;
-   pool->entries[pool->entry_count].size = layout->descriptor_buffer_size;
+   pool->entries[pool->entry_count].size = set->bo_size;
    pool->entries[pool->entry_count].set = set;
-   pool->current_offset += ALIGN(layout->descriptor_buffer_size,
-                                 NVK_MIN_UBO_ALIGNMENT);
+   pool->current_offset += ALIGN(set->bo_size, NVK_MIN_UBO_ALIGNMENT);
    pool->entry_count++;
 
    vk_descriptor_set_layout_ref(&layout->vk);
@@ -666,6 +667,7 @@ nvk_push_descriptor_set_update_template(
 {
    struct nvk_descriptor_set tmp_set = {
       .layout = layout,
+      .bo_size = sizeof(push_set->data),
       .mapped_ptr = push_set->data,
    };
    nvk_descriptor_set_write_template(&tmp_set, template, data);
