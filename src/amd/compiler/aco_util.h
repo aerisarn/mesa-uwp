@@ -29,6 +29,7 @@
 #include "util/bitscan.h"
 #include "util/u_math.h"
 
+#include <array>
 #include <cassert>
 #include <cstddef>
 #include <functional>
@@ -235,25 +236,23 @@ private:
 };
 
 /*
- * Cache-friendly set of 32-bit IDs with O(1) insert/erase/lookup and
+ * Cache-friendly set of 32-bit IDs with fast insert/erase/lookup and
  * the ability to efficiently iterate over contained elements.
  *
- * Internally implemented as a bit vector: If the set contains an ID, the
- * corresponding bit is set. It doesn't use std::vector<bool> since we then
- * couldn't efficiently iterate over the elements.
+ * Internally implemented as a map of fixed-size bit vectors: If the set contains an ID, the
+ * corresponding bit in the appropriate bit vector is set. It doesn't use std::vector<bool> since
+ * we then couldn't efficiently iterate over the elements.
  *
  * The interface resembles a subset of std::set/std::unordered_set.
  */
 struct IDSet {
+   static const uint32_t block_size = 1024u;
+   using block_t = std::array<uint64_t, block_size / 64>;
+
    struct Iterator {
       const IDSet* set;
-      union {
-         struct {
-            uint32_t bit : 6;
-            uint32_t word : 26;
-         };
-         uint32_t id;
-      };
+      std::map<uint32_t, block_t>::const_iterator block;
+      uint32_t id;
 
       Iterator& operator++();
 
@@ -262,55 +261,54 @@ struct IDSet {
       uint32_t operator*() const;
    };
 
-   size_t count(uint32_t id) const
-   {
-      if (id >= words.size() * 64)
-         return 0;
-
-      return words[id / 64u] & (1ull << (id % 64u)) ? 1 : 0;
-   }
+   size_t count(uint32_t id) const { return find(id) != end(); }
 
    Iterator find(uint32_t id) const
    {
-      if (!count(id))
+      uint32_t block_index = id / block_size;
+      auto it = words.find(block_index);
+      if (it == words.end())
          return end();
 
-      Iterator it;
-      it.set = this;
-      it.bit = id % 64u;
-      it.word = id / 64u;
-      return it;
+      const block_t& block = it->second;
+      uint32_t sub_id = id % block_size;
+
+      if (block[sub_id / 64u] & (1ull << (sub_id % 64u)))
+         return Iterator{this, it, id};
+      else
+         return end();
    }
 
    std::pair<Iterator, bool> insert(uint32_t id)
    {
-      if (words.size() * 64u <= id)
-         words.resize(id / 64u + 1);
+      uint32_t block_index = id / block_size;
+      auto it = words.try_emplace(block_index).first;
+      block_t& block = it->second;
+      uint32_t sub_id = id % block_size;
 
-      Iterator it;
-      it.set = this;
-      it.bit = id % 64u;
-      it.word = id / 64u;
+      uint64_t* word = &block[sub_id / 64u];
+      uint64_t mask = 1ull << (sub_id % 64u);
+      if (*word & mask)
+         return std::make_pair(Iterator{this, it, id}, false);
 
-      uint64_t mask = 1ull << it.bit;
-      if (words[it.word] & mask)
-         return std::make_pair(it, false);
-
-      words[it.word] |= mask;
-      bits_set++;
-      return std::make_pair(it, true);
+      *word |= mask;
+      return std::make_pair(Iterator{this, it, id}, true);
    }
 
    bool insert(const IDSet other)
    {
       bool inserted = false;
-      words.resize(std::max(words.size(), other.words.size()));
-      for (unsigned i = 0; i < other.words.size(); i++) {
-         uint64_t new_bits = other.words[i] & ~words[i];
-         if (new_bits) {
-            inserted = true;
-            bits_set += util_bitcount64(new_bits);
-            words[i] |= new_bits;
+
+      for (auto it = other.words.begin(); it != other.words.end(); ++it) {
+         block_t& dst = words[it->first];
+         const block_t& src = it->second;
+
+         for (unsigned j = 0; j < src.size(); j++) {
+            uint64_t new_bits = src[j] & ~dst[j];
+            if (new_bits) {
+               inserted = true;
+               dst[j] |= new_bits;
+            }
          }
       }
       return inserted;
@@ -318,70 +316,102 @@ struct IDSet {
 
    size_t erase(uint32_t id)
    {
-      if (!count(id))
+      uint32_t block_index = id / block_size;
+      auto it = words.find(block_index);
+      if (it == words.end())
          return 0;
 
-      words[id / 64u] ^= 1ull << (id % 64u);
-      bits_set--;
+      block_t& block = it->second;
+      uint32_t sub_id = id % block_size;
+
+      uint64_t* word = &block[sub_id / 64u];
+      uint64_t mask = 1ull << (sub_id % 64u);
+      if (!(*word & mask))
+         return 0;
+
+      *word ^= mask;
       return 1;
    }
 
    Iterator cbegin() const
    {
-      Iterator it;
-      it.set = this;
-      for (size_t i = 0; i < words.size(); i++) {
-         if (words[i]) {
-            it.word = i;
-            it.bit = ffsll(words[i]) - 1;
-            return it;
+      Iterator res;
+      res.set = this;
+
+      for (auto it = words.begin(); it != words.end(); ++it) {
+         uint32_t first = get_first_set(it->second);
+         if (first != UINT32_MAX) {
+            res.block = it;
+            res.id = it->first * block_size + first;
+            return res;
          }
       }
-      return end();
+
+      return cend();
    }
 
-   Iterator cend() const
-   {
-      Iterator it;
-      it.set = this;
-      it.word = words.size();
-      it.bit = 0;
-      return it;
-   }
+   Iterator cend() const { return Iterator{this, words.end(), UINT32_MAX}; }
 
    Iterator begin() const { return cbegin(); }
 
    Iterator end() const { return cend(); }
 
-   bool empty() const { return bits_set == 0; }
+   size_t size() const
+   {
+      size_t bits_set = 0;
+      for (auto block : words) {
+         for (uint64_t word : block.second)
+            bits_set += util_bitcount64(word);
+      }
+      return bits_set;
+   }
 
-   size_t size() const { return bits_set; }
+   bool empty() const { return !size(); }
 
-   std::vector<uint64_t> words;
-   uint32_t bits_set = 0;
+private:
+   static uint32_t get_first_set(const block_t& words)
+   {
+      for (size_t i = 0; i < words.size(); i++) {
+         if (words[i])
+            return i * 64u + (ffsll(words[i]) - 1);
+      }
+      return UINT32_MAX;
+   }
+
+   std::map<uint32_t, block_t> words;
 };
 
 inline IDSet::Iterator&
 IDSet::Iterator::operator++()
 {
-   uint64_t m = set->words[word];
-   m &= ~((2ull << bit) - 1ull);
-   if (!m) {
-      /* don't continue past the end */
-      if (word == set->words.size())
-         return *this;
+   uint32_t block_index = id / block_size;
+   const block_t& block_words = block->second;
+   uint32_t sub_id = id % block_size;
 
-      word++;
-      for (; word < set->words.size(); word++) {
-         if (set->words[word]) {
-            bit = ffsll(set->words[word]) - 1;
-            return *this;
-         }
-      }
-      bit = 0;
-   } else {
-      bit = ffsll(m) - 1;
+   uint64_t m = block_words[sub_id / 64u];
+   uint32_t bit = sub_id % 64u;
+   m = (m >> bit) >> 1;
+   if (m) {
+      id += ffsll(m);
+      return *this;
    }
+
+   for (uint32_t i = sub_id / 64u + 1; i < block_words.size(); i++) {
+      if (block_words[i]) {
+         id = block_index * block_size + i * 64u + ffsll(block_words[i]) - 1;
+         return *this;
+      }
+   }
+
+   for (++block; block != set->words.end(); ++block) {
+      uint32_t first = get_first_set(block->second);
+      if (first != UINT32_MAX) {
+         id = block->first * block_size + first;
+         return *this;
+      }
+   }
+
+   id = UINT32_MAX;
    return *this;
 }
 
@@ -389,13 +419,14 @@ inline bool
 IDSet::Iterator::operator!=(const IDSet::Iterator& other) const
 {
    assert(set == other.set);
+   assert(id != other.id || block == other.block);
    return id != other.id;
 }
 
 inline uint32_t
 IDSet::Iterator::operator*() const
 {
-   return (word << 6) | bit;
+   return id;
 }
 
 /*
