@@ -43,7 +43,10 @@ METHOD_IS_FLOAT = [
 TEMPLATE_H = Template("""\
 /* parsed class ${nvcl} */
 
+#include "nvtypes.h"
 #include "${clheader}"
+
+#include <assert.h>
 
 %for mthd in mthddict:
 struct nv_${nvcl.lower()}_${mthd} {
@@ -114,7 +117,16 @@ __${nvcl}_${mthd}(uint32_t *val_out, struct nv_${nvcl.lower()}_${mthd} st)
 
 %endfor
 
-static inline const char*
+const char *P_PARSE_${nvcl}_MTHD(uint16_t idx);
+void P_DUMP_${nvcl}_MTHD_DATA(uint16_t idx, uint32_t data, const char *prefix);
+""")
+
+TEMPLATE_C = Template("""\
+#include "${header}"
+
+#include <stdio.h>
+
+const char*
 P_PARSE_${nvcl}_MTHD(uint16_t idx)
 {
     switch (idx) {
@@ -137,7 +149,7 @@ P_PARSE_${nvcl}_MTHD(uint16_t idx)
     }
 }
 
-static inline void
+void
 P_DUMP_${nvcl}_MTHD_DATA(uint16_t idx, uint32_t data, const char *prefix)
 {
     uint32_t parsed;
@@ -307,6 +319,7 @@ def parse_header(nvcl, f):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--out_h', required=True, help='Output C header.')
+    parser.add_argument('--out_c', required=True, help='Output C file.')
     parser.add_argument('--in_h',
                         help='Input class header file.',
                         required=True)
@@ -324,6 +337,7 @@ def main():
 
     environment = {
         'clheader': clheader,
+        'header': os.path.basename(args.out_h),
         'nvcl': nvcl,
         'mthddict': mthddict,
         'bs': '\\'
@@ -332,6 +346,8 @@ def main():
     try:
         with open(args.out_h, 'w', encoding='utf-8') as f:
             f.write(TEMPLATE_H.render(**environment))
+        with open(args.out_c, 'w', encoding='utf-8') as f:
+            f.write(TEMPLATE_C.render(**environment))
 
     except Exception:
         # In the event there's an error, this imports some helpers from mako
