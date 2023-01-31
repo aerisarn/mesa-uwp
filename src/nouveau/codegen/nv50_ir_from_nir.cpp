@@ -995,15 +995,44 @@ bool Converter::assignSlots() {
          return false;
       }
 
-      for (uint16_t i = 0u; i < slots; ++i, ++vary) {
-         nv50_ir_varying *v = &info_out->in[vary];
+      if (var->data.compact) {
+         assert(!var->data.patch);
+         assert(!(nir->info.outputs_read & 1ull << slot));
+         assert(glsl_type_is_array(type));
+         assert(glsl_type_is_scalar(type->fields.array));
+         assert(slots == glsl_get_length(type));
+         assert(!glsl_base_type_is_64bit(type->without_array()->base_type));
 
-         v->patch = var->data.patch;
-         v->sn = name;
-         v->si = index + i;
-         v->mask |= getMaskForType(type, i) << var->data.location_frac;
+         uint32_t comps = BITFIELD_RANGE(var->data.location_frac, slots);
+         assert(!(comps & ~0xff));
+
+         if (comps & 0x0f) {
+            nv50_ir_varying *v = &info_out->in[vary];
+            v->sn = name;
+            v->si = index;
+            v->mask |= comps & 0x0f;
+            info_out->numInputs =
+               std::max<uint8_t>(info_out->numInputs, vary + 1);
+         }
+         if (comps & 0xf0) {
+            nv50_ir_varying *v = &info_out->in[vary + 1];
+            v->sn = name;
+            v->si = index + 1;
+            v->mask |= (comps & 0xf0) >> 4;
+            info_out->numInputs =
+               std::max<uint8_t>(info_out->numInputs, vary + 2);
+         }
+      } else {
+         for (uint16_t i = 0u; i < slots; ++i, ++vary) {
+            nv50_ir_varying *v = &info_out->in[vary];
+
+            v->patch = var->data.patch;
+            v->sn = name;
+            v->si = index + i;
+            v->mask |= getMaskForType(type, i) << var->data.location_frac;
+         }
+         info_out->numInputs = std::max<uint8_t>(info_out->numInputs, vary);
       }
-      info_out->numInputs = std::max<uint8_t>(info_out->numInputs, vary);
    }
 
    nir_foreach_shader_out_variable(var, nir) {
@@ -1073,17 +1102,46 @@ bool Converter::assignSlots() {
          return false;
       }
 
-      for (uint16_t i = 0u; i < slots; ++i, ++vary) {
-         nv50_ir_varying *v = &info_out->out[vary];
-         v->patch = var->data.patch;
-         v->sn = name;
-         v->si = index + i;
-         v->mask |= getMaskForType(type, i) << var->data.location_frac;
+      if (var->data.compact) {
+         assert(!var->data.patch);
+         assert(!(nir->info.outputs_read & 1ull << slot));
+         assert(glsl_type_is_array(type));
+         assert(glsl_type_is_scalar(type->fields.array));
+         assert(slots == glsl_get_length(type));
+         assert(!glsl_base_type_is_64bit(type->without_array()->base_type));
 
-         if (nir->info.outputs_read & 1ull << slot)
-            v->oread = 1;
+         uint32_t comps = BITFIELD_RANGE(var->data.location_frac, slots);
+         assert(!(comps & ~0xff));
+
+         if (comps & 0x0f) {
+            nv50_ir_varying *v = &info_out->out[vary];
+            v->sn = name;
+            v->si = index;
+            v->mask |= comps & 0x0f;
+            info_out->numOutputs =
+               std::max<uint8_t>(info_out->numOutputs, vary + 1);
+         }
+         if (comps & 0xf0) {
+            nv50_ir_varying *v = &info_out->out[vary + 1];
+            v->sn = name;
+            v->si = index + 1;
+            v->mask |= (comps & 0xf0) >> 4;
+            info_out->numOutputs =
+               std::max<uint8_t>(info_out->numOutputs, vary + 2);
+         }
+      } else {
+         for (uint16_t i = 0u; i < slots; ++i, ++vary) {
+            nv50_ir_varying *v = &info_out->out[vary];
+            v->patch = var->data.patch;
+            v->sn = name;
+            v->si = index + i;
+            v->mask |= getMaskForType(type, i) << var->data.location_frac;
+
+            if (nir->info.outputs_read & 1ull << slot)
+               v->oread = 1;
+         }
+         info_out->numOutputs = std::max<uint8_t>(info_out->numOutputs, vary);
       }
-      info_out->numOutputs = std::max<uint8_t>(info_out->numOutputs, vary);
    }
 
    if (info_out->io.genUserClip > 0) {
