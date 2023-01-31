@@ -29,6 +29,8 @@ nvk_files = files(
   'nvk_format.c',
   'nvk_format.h',
   'nvk_graphics_pipeline.c',
+  'nvk_heap.c',
+  'nvk_heap.h',
   'nvk_image.c',
   'nvk_image.h',
   'nvk_image_view.c',
