@@ -19,6 +19,8 @@
 # SOFTWARE.
 
 libnil_files = files(
+  'nil_format.c',
+  'nil_format.h',
   'nil_image.c',
   'nil_image.h',
 )
