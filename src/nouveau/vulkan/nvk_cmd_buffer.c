@@ -13,10 +13,39 @@
 #include "nvk_cla0c0.h"
 
 static void
+nvk_cmd_buffer_upload_init(struct nvk_cmd_buffer_upload *upload)
+{
+   memset(upload, 0, sizeof(*upload));
+   list_inithead(&upload->list);
+}
+
+static void
+nvk_cmd_buffer_upload_reset(struct nvk_cmd_buffer_upload *upload)
+{
+   list_for_each_entry_safe(struct nvk_cmd_buffer_upload, child,
+                            &upload->list, list) {
+      nouveau_ws_bo_destroy(child->upload_bo);
+      free(child);
+   }
+   list_inithead(&upload->list);
+
+   upload->offset = 0;
+}
+
+static void
+nvk_cmd_buffer_upload_finish(struct nvk_cmd_buffer_upload *upload)
+{
+   nvk_cmd_buffer_upload_reset(upload);
+   if (upload->upload_bo)
+      nouveau_ws_bo_destroy(upload->upload_bo);
+}
+
+static void
 nvk_destroy_cmd_buffer(struct nvk_cmd_buffer *cmd_buffer)
 {
    list_del(&cmd_buffer->pool_link);
 
+   nvk_cmd_buffer_upload_finish(&cmd_buffer->upload);
    nouveau_ws_push_destroy(cmd_buffer->push);
    vk_command_buffer_finish(&cmd_buffer->vk);
    vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer);
@@ -46,6 +75,7 @@ nvk_create_cmd_buffer(struct nvk_device *device,
    list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
 
    cmd_buffer->push = nouveau_ws_push_new(device->pdev->dev, NVK_CMD_BUF_SIZE);
+   nvk_cmd_buffer_upload_init(&cmd_buffer->upload);
    *pCommandBuffer = nvk_cmd_buffer_to_handle(cmd_buffer);
    return VK_SUCCESS;
 }
@@ -56,6 +86,7 @@ nvk_reset_cmd_buffer(struct nvk_cmd_buffer *cmd_buffer)
    vk_command_buffer_reset(&cmd_buffer->vk);
 
    nouveau_ws_push_reset(cmd_buffer->push);
+   nvk_cmd_buffer_upload_reset(&cmd_buffer->upload);
    memset(&cmd_buffer->state, 0, sizeof(cmd_buffer->state));
 
    cmd_buffer->record_result = VK_SUCCESS;
