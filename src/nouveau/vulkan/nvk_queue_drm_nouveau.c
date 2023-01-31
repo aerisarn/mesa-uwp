@@ -203,6 +203,11 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
 
    result = push_submit(&pb, queue, sync);
    if (result == VK_SUCCESS) {
+      for (uint32_t i = 0; i < submit->wait_count; i++) {
+         struct nvk_bo_sync *bo_sync =
+            container_of(submit->waits[i].sync, struct nvk_bo_sync, sync);
+         bo_sync->state = NVK_BO_SYNC_STATE_RESET;
+      }
       for (uint32_t i = 0; i < submit->signal_count; i++) {
          struct nvk_bo_sync *bo_sync =
             container_of(submit->signals[i].sync, struct nvk_bo_sync, sync);
