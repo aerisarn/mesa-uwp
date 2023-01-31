@@ -85,7 +85,8 @@ nvk_CreateImageView(VkDevice _device,
       },
    };
 
-   if (view->vk.usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
+   if (view->vk.usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
+                         VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
       uint32_t *desc_map = nvk_descriptor_table_alloc(device, &device->images,
                                                       &view->sampled_desc_index);
       if (desc_map == NULL) {
