@@ -42,5 +42,6 @@ _libnvidia_headers = static_library(
 
 idep_nvidia_headers = declare_dependency(
   include_directories : include_directories('.', 'classes'),
+  sources : cl_generated,
   link_with : _libnvidia_headers,
 )
