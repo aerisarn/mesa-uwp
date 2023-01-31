@@ -70,3 +70,21 @@ idep_nouveau_mme = declare_dependency(
   include_directories : include_directories('.'),
   link_with : _libnouveau_mme,
 )
+
+if with_tests and not with_platform_android
+  executable(
+    'mme_tu104_sim_hw_test',
+    files('tests/mme_tu104_sim_hw_test.cpp'),
+    gnu_symbol_visibility : 'hidden',
+    include_directories : [inc_include, inc_src],
+    dependencies : [
+      dep_libdrm,
+      idep_gtest,
+      idep_mesautil,
+      idep_nvidia_headers,
+      idep_nouveau_mme,
+      idep_nouveau_ws
+    ],
+    install : true,
+  )
+endif
