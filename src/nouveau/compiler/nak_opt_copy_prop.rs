@@ -50,6 +50,14 @@ impl CopyPropPass {
                     _ => (),
                 }
 
+                if let Pred::SSA(src_ssa) = &instr.pred {
+                    if let Some(src_vec) = self.get_copy(src_ssa) {
+                        if let Src::SSA(ssa) = src_vec[0] {
+                            instr.pred = Pred::SSA(ssa);
+                        }
+                    }
+                }
+
                 for src in instr.srcs_mut() {
                     if let Ref::SSA(src_ssa) = src {
                         if src_ssa.comps() == 1 {

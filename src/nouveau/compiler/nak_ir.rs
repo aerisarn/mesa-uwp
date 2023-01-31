@@ -314,6 +314,60 @@ impl fmt::Display for Ref {
 pub type Src = Ref;
 pub type Dst = Ref;
 
+pub enum Pred {
+    None,
+    SSA(SSAValue),
+    Reg(RegRef),
+}
+
+impl Pred {
+    pub fn new_ssa(file: RegFile, idx: u32, comps: u8) -> Pred {
+        Pred::SSA(SSAValue::new(file, idx, comps))
+    }
+
+    pub fn new_reg(file: RegFile, idx: u8, comps: u8) -> Pred {
+        Pred::Reg(RegRef::new(file, idx, comps))
+    }
+
+    pub fn as_reg(&self) -> Option<&RegRef> {
+        match self {
+            Pred::Reg(r) => Some(r),
+            _ => None,
+        }
+    }
+
+    pub fn as_ssa(&self) -> Option<&SSAValue> {
+        match self {
+            Pred::SSA(r) => Some(r),
+            _ => None,
+        }
+    }
+
+    pub fn is_none(&self) -> bool {
+        match self {
+            Pred::None => true,
+            _ => false,
+        }
+    }
+}
+
+impl fmt::Display for Pred {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Pred::None => (),
+            Pred::SSA(v) => {
+                if v.is_uniform() {
+                    write!(f, "USSA{}@{}", v.idx(), v.comps())?;
+                } else {
+                    write!(f, "SSA{}@{}", v.idx(), v.comps())?;
+                }
+            }
+            Pred::Reg(r) => r.fmt(f)?,
+        }
+        Ok(())
+    }
+}
+
 struct InstrRefArr {
     num_dsts: u8,
     num_srcs: u8,
@@ -658,6 +712,8 @@ impl fmt::Display for InstrDeps {
 
 pub struct Instr {
     pub op: Opcode,
+    pub pred: Pred,
+    pub pred_inv: bool,
     pub deps: InstrDeps,
     refs: InstrRefs,
 }
@@ -666,6 +722,8 @@ impl Instr {
     pub fn new(op: Opcode, dsts: &[Dst], srcs: &[Src]) -> Instr {
         Instr {
             op: op,
+            pred: Pred::None,
+            pred_inv: false,
             refs: InstrRefs::new(dsts, srcs),
             deps: InstrDeps::new(),
         }
@@ -906,6 +964,13 @@ impl fmt::Display for Opcode {
 
 impl fmt::Display for Instr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if !self.pred.is_none() {
+            if self.pred_inv {
+                write!(f, "@!{}", self.pred)?;
+            } else {
+                write!(f, "@{}", self.pred)?;
+            }
+        }
         write!(f, "{} {{", self.op)?;
         if self.num_dsts() > 0 {
             write!(f, " {}", self.dst(0))?;

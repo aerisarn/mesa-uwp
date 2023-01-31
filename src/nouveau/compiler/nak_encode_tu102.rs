@@ -36,6 +36,12 @@ fn encode_ureg(bs: &mut impl BitSetMut, range: Range<usize>, reg: RegRef) {
     bs.set_field(range, reg.base_idx());
 }
 
+fn encode_pred(bs: &mut impl BitSetMut, range: Range<usize>, reg: RegRef) {
+    assert!(range.len() == 3);
+    assert!(reg.file() == RegFile::Pred);
+    bs.set_field(range, reg.base_idx());
+}
+
 fn encode_mod(bs: &mut impl BitSetMut, range: Range<usize>, src_mod: u8) {
     assert!(range.len() == 2);
     bs.set_field(range, src_mod);
@@ -64,10 +70,23 @@ fn encode_cx(bs: &mut impl BitSetMut, range: Range<usize>, cb: &CBufRef) {
 
 fn encode_instr_base(bs: &mut impl BitSetMut, instr: &Instr, opcode: u16) {
     bs.set_field(0..12, opcode);
-    bs.set_field(12..16, 0x7_u8); /* TODO: Predicate */
+
+    if instr.pred.is_none() {
+        bs.set_field(12..15, 0x7_u8);
+        bs.set_bit(15, false);
+    } else {
+        encode_pred(bs, 12..15, *instr.pred.as_reg().unwrap());
+        bs.set_bit(15, instr.pred_inv);
+    }
+
     if instr.num_dsts() > 0 {
         assert!(instr.num_dsts() == 1);
-        encode_reg(bs, 16..24, *instr.dst(0).as_reg().unwrap());
+        let reg = instr.dst(0).as_reg().unwrap();
+        match reg.file() {
+            RegFile::GPR => encode_reg(bs, 16..24, *reg),
+            RegFile::Pred => encode_pred(bs, 81..84, *reg),
+            _ => panic!("Unsupported destination"),
+        }
     }
 
     bs.set_field(105..109, instr.deps.delay);

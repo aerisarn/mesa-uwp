@@ -38,10 +38,14 @@ impl<'a> ShaderFromNir<'a> {
     }
 
     fn ref_for_nir_def(&self, def: &nir_def) -> Src {
-        assert!(def.bit_size == 32 || def.bit_size == 64);
-        let dwords = (def.bit_size / 32) * def.num_components;
-        //Src::new_ssa(def.index, dwords, !def.divergent)
-        Src::new_ssa(RegFile::GPR, def.index, dwords)
+        if def.bit_size == 1 {
+            Src::new_ssa(RegFile::Pred, def.index, def.num_components)
+        } else {
+            assert!(def.bit_size == 32 || def.bit_size == 64);
+            let dwords = (def.bit_size / 32) * def.num_components;
+            //Src::new_ssa(def.index, dwords, !def.divergent)
+            Src::new_ssa(RegFile::GPR, def.index, dwords)
+        }
     }
 
     fn get_src(&self, src: &nir_src) -> Src {
@@ -53,10 +57,10 @@ impl<'a> ShaderFromNir<'a> {
     }
 
     fn get_alu_src(&mut self, alu_src: &nir_alu_src) -> Src {
-        assert!(alu_src.src.bit_size() == 32);
         if alu_src.src.num_components() == 1 {
             self.get_src(&alu_src.src)
         } else {
+            assert!(alu_src.src.bit_size() == 32);
             let vec_src = self.get_src(&alu_src.src);
             let comp = self.alloc_ssa(vec_src.as_ssa().unwrap().file(), 1);
             let mut dsts = Vec::new();

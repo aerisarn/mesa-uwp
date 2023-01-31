@@ -23,6 +23,10 @@ impl DeadCodePass {
     }
 
     fn mark_instr_live(&mut self, instr: &Instr) {
+        if let Pred::SSA(ssa) = &instr.pred {
+            self.mark_ssa_live(ssa);
+        }
+
         for src in instr.srcs() {
             if let Src::SSA(ssa) = src {
                 self.mark_ssa_live(ssa);
