@@ -187,6 +187,11 @@ fn encode_alu(bs: &mut impl BitSetMut, instr: &Instr, opcode: u16) {
     bs.set_field(9..12, form);
 }
 
+fn encode_s2r(bs: &mut impl BitSetMut, instr: &Instr, idx: u8) {
+    encode_instr_base(bs, &instr, 0x919);
+    bs.set_field(72..80, idx);
+}
+
 fn encode_mov(bs: &mut impl BitSetMut, instr: &Instr) {
     encode_alu(bs, instr, 0x002);
     bs.set_field(72..76, 0xf_u32 /* TODO: Quad lanes */);
@@ -233,6 +238,7 @@ pub fn encode_instr(instr: &Instr) -> [u32; 4] {
     let mut enc = [0_u32; 4];
     let mut bs = BitSetMutView::new(&mut enc);
     match &instr.op {
+        Opcode::S2R(i) => encode_s2r(&mut bs, instr, *i),
         Opcode::MOV => encode_mov(&mut bs, instr),
         Opcode::ALD(a) => encode_ald(&mut bs, instr, &a),
         Opcode::AST(a) => encode_ast(&mut bs, instr, &a),

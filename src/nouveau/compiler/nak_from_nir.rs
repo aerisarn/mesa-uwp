@@ -122,6 +122,11 @@ impl<'a> ShaderFromNir<'a> {
                 let dst = self.get_dst(&intrin.def);
                 self.instrs.push(Instr::new_ald(dst, addr, vtx, offset));
             }
+            nir_intrinsic_load_sysval_nv => {
+                let idx = u8::try_from(intrin.base()).unwrap();
+                let dst = self.get_dst(&intrin.def);
+                self.instrs.push(Instr::new_s2r(dst, idx));
+            }
             nir_intrinsic_store_output => {
                 if self.nir.info.stage() == MESA_SHADER_FRAGMENT {
                     /* We assume these only ever happen in the last block.

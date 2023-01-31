@@ -514,6 +514,10 @@ impl Instr {
         Instr::new(Opcode::FADD, slice::from_ref(&dst), &[x, y])
     }
 
+    pub fn new_s2r(dst: Dst, idx: u8) -> Instr {
+        Instr::new(Opcode::S2R(idx), slice::from_ref(&dst), &[])
+    }
+
     pub fn new_mov(dst: Dst, src: Src) -> Instr {
         Instr::new(Opcode::MOV, slice::from_ref(&dst), &[Src::Zero, src])
     }
@@ -647,6 +651,7 @@ pub enum Opcode {
     FMNMX,
     FMUL,
 
+    S2R(u8),
     MOV,
     VEC,
     SPLIT,
@@ -668,6 +673,7 @@ impl fmt::Display for Opcode {
             Opcode::FFMA => write!(f, "FFMA"),
             Opcode::FMNMX => write!(f, "FMNMX"),
             Opcode::FMUL => write!(f, "FMUL"),
+            Opcode::S2R(i) => write!(f, "S2R({})", i),
             Opcode::MOV => write!(f, "MOV"),
             Opcode::VEC => write!(f, "VEC"),
             Opcode::SPLIT => write!(f, "SPLIT"),
