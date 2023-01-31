@@ -1,6 +1,12 @@
 add_languages('rust', required: true)
 rust = import('unstable-rust')
 
+dep_syn = dependency('syn',
+  version : '>= 2.0.15',
+  fallback : ['syn', 'dep_syn'],
+  required : true,
+)
+
 libnak_c_files = files(
   'nak.h',
   'nak_nir.c',
