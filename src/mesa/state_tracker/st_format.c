@@ -1210,7 +1210,9 @@ st_choose_format(struct st_context *st, GLenum internalFormat,
     * formats are not color-renderable.  Mesa's check for making those
     * non-color-renderable is based on our chosen format being 2101010.
     */
-   if (type == GL_UNSIGNED_INT_2_10_10_10_REV) {
+   if (type == GL_UNSIGNED_INT_2_10_10_10_REV ||
+       type == GL_UNSIGNED_INT_10_10_10_2 ||
+       type == GL_UNSIGNED_INT_10_10_10_2_OES) {
       if (internalFormat == GL_RGB)
          internalFormat = GL_RGB10;
       else if (internalFormat == GL_RGBA)
