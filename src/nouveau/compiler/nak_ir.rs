@@ -118,6 +118,16 @@ impl HasRegFile for SSAValue {
     }
 }
 
+impl fmt::Display for SSAValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_uniform() {
+            write!(f, "USSA{}@{}", self.idx(), self.comps())
+        } else {
+            write!(f, "SSA{}@{}", self.idx(), self.comps())
+        }
+    }
+}
+
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct RegRef {
     packed: u16,
@@ -272,18 +282,12 @@ impl fmt::Display for Ref {
             Ref::CBuf(r) => {
                 match r.buf {
                     CBuf::Binding(idx) => write!(f, "c[{:#x}]", idx)?,
-                    CBuf::BindlessSSA(r) => write!(f, "cx[USSA{}]", r.idx())?,
-                    CBuf::BindlessGPR(r) => write!(f, "cx[UR{}]", r)?,
+                    CBuf::BindlessSSA(v) => write!(f, "cx[{}]", v)?,
+                    CBuf::BindlessGPR(r) => write!(f, "cx[{}]", r)?,
                 }
                 write!(f, "[{:#x}]", r.offset)?;
             }
-            Ref::SSA(v) => {
-                if v.is_uniform() {
-                    write!(f, "USSA{}@{}", v.idx(), v.comps())?;
-                } else {
-                    write!(f, "SSA{}@{}", v.idx(), v.comps())?;
-                }
-            }
+            Ref::SSA(v) => v.fmt(f)?,
             Ref::Reg(r) => r.fmt(f)?,
         }
         Ok(())
