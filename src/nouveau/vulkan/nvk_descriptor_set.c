@@ -301,6 +301,16 @@ nvk_CreateDescriptorPool(VkDevice _device,
                  pCreateInfo->pPoolSizes[i].descriptorCount;
    }
 
+   /* Individual descriptor sets are aligned to the min UBO alignment to
+    * ensure that we don't end up with unaligned data access in any shaders.
+    * This means that each descriptor buffer allocated may burn up to 16B of
+    * extra space to get the right alignment.  (Technically, it's at most 28B
+    * because we're always going to start at least 4B aligned but we're being
+    * conservative here.)  Allocate enough extra space that we can chop it
+    * into maxSets pieces and align each one of them to 32B.
+    */
+   bo_size += NVK_MIN_UBO_ALIGNMENT * pCreateInfo->maxSets;
+
    uint64_t entries_size = sizeof(struct nvk_descriptor_pool_entry) * pCreateInfo->maxSets;
    size += entries_size;
 
@@ -362,7 +372,8 @@ nvk_descriptor_set_create(struct nvk_device *device, struct nvk_descriptor_pool 
    pool->entries[pool->entry_count].offset = set->bo_offset;
    pool->entries[pool->entry_count].size = layout->descriptor_buffer_size;
    pool->entries[pool->entry_count].set = set;
-   pool->current_offset += layout->descriptor_buffer_size;
+   pool->current_offset += ALIGN(layout->descriptor_buffer_size,
+                                 NVK_MIN_UBO_ALIGNMENT);
    pool->entry_count++;
 
    for (uint32_t b = 0; b < layout->binding_count; b++) {
