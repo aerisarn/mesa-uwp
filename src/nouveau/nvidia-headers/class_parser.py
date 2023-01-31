@@ -203,8 +203,8 @@ P_DUMP_${nvcl}_MTHD_DATA(FILE *fp, uint16_t idx, uint32_t data,
         fprintf(fp, "(0x%x)${bs}n", parsed);
       %endif
     %endif
-        break;
   %endfor
+        break;
 %endfor
     default:
         fprintf(fp, "%s.VALUE = 0x%x${bs}n", prefix, data);
