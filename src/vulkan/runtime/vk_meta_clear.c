@@ -33,6 +33,7 @@
 #include "nir_builder.h"
 
 struct vk_meta_clear_key {
+   enum vk_meta_object_key_type key_type;
    struct vk_meta_rendering_info render;
    uint8_t color_attachments_cleared;
    bool clear_depth;
@@ -208,6 +209,7 @@ vk_meta_clear_attachments(struct vk_command_buffer *cmd,
 
    struct vk_meta_clear_key key;
    memset(&key, 0, sizeof(key));
+   key.key_type = VK_META_OBJECT_KEY_CLEAR_PIPELINE;
    vk_meta_rendering_info_copy(&key.render, render);
 
    struct vk_meta_clear_push_data push = {0};

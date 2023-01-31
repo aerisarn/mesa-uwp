@@ -74,6 +74,13 @@ VkResult vk_meta_device_init(struct vk_device *device,
 void vk_meta_device_finish(struct vk_device *device,
                            struct vk_meta_device *meta);
 
+/** Keys should start with one of these to ensure uniqueness */
+enum vk_meta_object_key_type {
+   VK_META_OBJECT_KEY_TYPE_INVALD = 0,
+   VK_META_OBJECT_KEY_CLEAR_PIPELINE,
+   VK_META_OBJECT_KEY_BLIT_PIPELINE,
+};
+
 uint64_t vk_meta_lookup_object(struct vk_meta_device *meta,
                                 VkObjectType obj_type,
                                 const void *key_data, size_t key_size);

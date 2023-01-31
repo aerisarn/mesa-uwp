@@ -134,6 +134,10 @@ vk_meta_lookup_object(struct vk_meta_device *meta,
                       VkObjectType obj_type,
                       const void *key_data, size_t key_size)
 {
+   assert(key_size >= sizeof(enum vk_meta_object_key_type));
+   assert(*(enum vk_meta_object_key_type *)key_data !=
+          VK_META_OBJECT_KEY_TYPE_INVALD);
+
    struct cache_key key = {
       .obj_type = obj_type,
       .key_size = key_size,
@@ -163,6 +167,10 @@ vk_meta_cache_object(struct vk_device *device,
                      VkObjectType obj_type,
                      uint64_t handle)
 {
+   assert(key_size >= sizeof(enum vk_meta_object_key_type));
+   assert(*(enum vk_meta_object_key_type *)key_data !=
+          VK_META_OBJECT_KEY_TYPE_INVALD);
+
    struct cache_key *key = cache_key_create(obj_type, key_data, key_size);
    struct vk_object_base *obj =
       vk_object_base_from_u64_handle(handle, obj_type);
