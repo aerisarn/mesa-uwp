@@ -4,9 +4,10 @@
 #include "nvk_private.h"
 
 #include "nvk_descriptor_table.h"
-#include "vulkan/runtime/vk_device.h"
-#include "vulkan/runtime/vk_meta.h"
-#include "vulkan/runtime/vk_queue.h"
+#include "nvk_queue.h"
+#include "vk_device.h"
+#include "vk_meta.h"
+#include "vk_queue.h"
 
 struct novueau_ws_context;
 struct nvk_physical_device;
@@ -18,33 +19,10 @@ struct nvk_slm_area {
    uint32_t bytes_per_mp;
 };
 
-struct nvk_queue_state {
-   struct {
-      struct nouveau_ws_bo *bo;
-      uint32_t alloc_count;
-   } images;
-
-   struct {
-      struct nouveau_ws_bo *bo;
-      uint32_t alloc_count;
-   } samplers;
-
-   struct {
-      struct nouveau_ws_bo *bo;
-      uint32_t bytes_per_warp;
-      uint32_t bytes_per_mp;
-   } slm;
-
-   struct nouveau_ws_push *push;
-};
-
-struct nvk_queue {
-   struct vk_queue vk;
-
-   struct nvk_queue_state state;
-
-   struct nouveau_ws_push *empty_push;
-};
+struct nouveau_ws_bo *
+nvk_slm_area_get_bo_ref(struct nvk_slm_area *area,
+                        uint32_t *bytes_per_warp_out,
+                        uint32_t *bytes_per_mp_out);
 
 struct nvk_device {
    struct vk_device vk;
