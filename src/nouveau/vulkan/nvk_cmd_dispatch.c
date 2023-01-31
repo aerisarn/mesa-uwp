@@ -141,18 +141,18 @@ nvk_flush_compute_state(struct nvk_cmd_buffer *cmd,
 
    if (dev->ctx->compute.cls >= PASCAL_COMPUTE_A) {
       nvc0c0_qmd_set_dispatch_size(nvk_cmd_buffer_device(cmd), qmd,
-                                   desc->root.cs.grid_size[0],
-                                   desc->root.cs.grid_size[1],
-                                   desc->root.cs.grid_size[2]);
+                                   desc->root.cs.group_count[0],
+                                   desc->root.cs.group_count[1],
+                                   desc->root.cs.group_count[2]);
 
       nvc0c0_cp_launch_desc_set_cb(qmd, 0, sizeof(desc->root), root_desc_addr);
       nvc0c0_cp_launch_desc_set_cb(qmd, 1, sizeof(desc->root), root_desc_addr);
    } else {
       assert(dev->ctx->compute.cls >= KEPLER_COMPUTE_A);
       nva0c0_qmd_set_dispatch_size(nvk_cmd_buffer_device(cmd), qmd,
-                                   desc->root.cs.grid_size[0],
-                                   desc->root.cs.grid_size[1],
-                                   desc->root.cs.grid_size[2]);
+                                   desc->root.cs.group_count[0],
+                                   desc->root.cs.group_count[1],
+                                   desc->root.cs.group_count[2]);
 
       nva0c0_cp_launch_desc_set_cb(qmd, 0, sizeof(desc->root), root_desc_addr);
       nva0c0_cp_launch_desc_set_cb(qmd, 1, sizeof(desc->root), root_desc_addr);
@@ -210,9 +210,9 @@ nvk_CmdDispatch(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    struct nvk_descriptor_state *desc = &cmd->state.cs.descriptors;
 
-   desc->root.cs.grid_size[0] = groupCountX;
-   desc->root.cs.grid_size[1] = groupCountY;
-   desc->root.cs.grid_size[2] = groupCountZ;
+   desc->root.cs.group_count[0] = groupCountX;
+   desc->root.cs.group_count[1] = groupCountY;
+   desc->root.cs.group_count[2] = groupCountZ;
 
    uint64_t qmd_addr = nvk_flush_compute_state(cmd, NULL);
    if (unlikely(qmd_addr == 0))
@@ -287,7 +287,7 @@ nvk_mme_dispatch_indirect(struct nvk_device *dev, struct mme_builder *b)
 
    uint32_t qmd_size_offset = qmd_dispatch_size_offset(dev);
    uint32_t root_desc_size_offset =
-      offsetof(struct nvk_root_descriptor_table, cs.grid_size);
+      offsetof(struct nvk_root_descriptor_table, cs.group_count);
 
    struct mme_value group_count_x = mme_load(b);
    struct mme_value group_count_y = mme_load(b);
