@@ -8,6 +8,8 @@
 #include "nil_format.h"
 #include "vulkan/util/vk_format.h"
 
+#include "clb197.h"
+
 VkFormatFeatureFlags2
 nvk_get_image_format_features(struct nvk_physical_device *pdevice,
                               VkFormat vk_format, VkImageTiling tiling)
@@ -21,20 +23,31 @@ nvk_get_image_format_features(struct nvk_physical_device *pdevice,
    if (p_format == PIPE_FORMAT_NONE)
       return 0;
 
-   const struct nil_tic_format *tic_format = nil_tic_format_for_pipe(p_format);
-   if (tic_format == NULL)
+   if (!nil_format_supports_texturing(pdevice->dev, p_format))
       return 0;
 
    features |= VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT;
    features |= VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
    features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
 
-   if (util_format_is_float(p_format) ||
-       util_format_is_unorm(p_format) ||
-       util_format_is_snorm(p_format))
+   if (nil_format_supports_filtering(pdevice->dev, p_format)) {
       features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+      if (pdevice->dev->cls_eng3d >= MAXWELL_B)
+         features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT;
+   }
 
-   if (nvk_is_storage_image_format(vk_format)) {
+   /* TODO: VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT */
+
+   if (nil_format_supports_color_targets(pdevice->dev, p_format)) {
+      features |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT;
+      if (nil_format_supports_blending(pdevice->dev, p_format))
+         features |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT;
+   }
+
+   if (vk_format_is_depth_or_stencil(vk_format))
+      return 0; /* TODO: Depth/stencil support */
+
+   if (nil_format_supports_storage(pdevice->dev, p_format)) {
       features |= VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT |
                   VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
    }
