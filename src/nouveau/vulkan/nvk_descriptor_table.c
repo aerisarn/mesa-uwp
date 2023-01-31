@@ -3,6 +3,60 @@
 #include "nvk_device.h"
 #include "nvk_physical_device.h"
 
+#include <sys/mman.h>
+
+static VkResult
+nvk_descriptor_table_grow_locked(struct nvk_device *dev,
+                                 struct nvk_descriptor_table *table,
+                                 uint32_t new_alloc)
+{
+   struct nvk_physical_device *pdev = nvk_device_physical(dev);
+   struct nouveau_ws_bo *new_bo;
+   void *new_map;
+   uint32_t *new_free_table;
+
+   assert(new_alloc > table->alloc && new_alloc <= table->max_alloc);
+
+   const uint32_t new_bo_size = new_alloc * table->desc_size;
+   new_bo = nouveau_ws_bo_new(pdev->dev, new_bo_size, 256,
+                              NOUVEAU_WS_BO_LOCAL | NOUVEAU_WS_BO_MAP);
+   if (new_bo == NULL) {
+      return vk_errorf(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                       "Failed to allocate the image descriptor table");
+   }
+
+   new_map = nouveau_ws_bo_map(new_bo, NOUVEAU_WS_BO_WR);
+   if (new_map == NULL) {
+      nouveau_ws_bo_destroy(new_bo);
+      return vk_errorf(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                       "Failed to map the image descriptor table");
+   }
+
+   if (table->bo) {
+      assert(new_bo_size >= table->bo->size);
+      memcpy(new_map, table->map, table->bo->size);
+
+      munmap(table->map, table->bo->size);
+      nouveau_ws_bo_destroy(table->bo);
+   }
+   table->bo = new_bo;
+   table->map = new_map;
+
+   const size_t new_free_table_size = new_alloc * sizeof(uint32_t);
+   new_free_table = vk_realloc(&dev->vk.alloc, table->free_table,
+                               new_free_table_size, 4,
+                               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (new_free_table == NULL) {
+      return vk_errorf(dev, VK_ERROR_OUT_OF_HOST_MEMORY,
+                       "Failed to allocate image descriptor free table");
+   }
+   table->free_table = new_free_table;
+
+   table->alloc = new_alloc;
+
+   return VK_SUCCESS;
+}
+
 VkResult
 nvk_descriptor_table_init(struct nvk_device *device,
                           struct nvk_descriptor_table *table,
@@ -10,50 +64,28 @@ nvk_descriptor_table_init(struct nvk_device *device,
                           uint32_t min_descriptor_count,
                           uint32_t max_descriptor_count)
 {
-   struct nvk_physical_device *pdevice = nvk_device_physical(device);
    memset(table, 0, sizeof(*table));
    VkResult result;
 
    simple_mtx_init(&table->mutex, mtx_plain);
 
-   /* TODO: Implement table growing.  This requires new uAPI */
-   assert(min_descriptor_count == max_descriptor_count);
+   assert(util_is_power_of_two_nonzero(min_descriptor_count));
+   assert(util_is_power_of_two_nonzero(max_descriptor_count));
 
    table->desc_size = descriptor_size;
-   table->alloc = min_descriptor_count;
+   table->alloc = 0;
+   table->max_alloc = max_descriptor_count;
    table->next_desc = 0;
    table->free_count = 0;
 
-   const uint32_t bo_size = table->alloc * table->desc_size;
-   table->bo = nouveau_ws_bo_new(pdevice->dev, bo_size, 256,
-                                 NOUVEAU_WS_BO_LOCAL | NOUVEAU_WS_BO_MAP);
-   if (table->bo == NULL) {
-      result = vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                         "Failed to allocate the image descriptor table");
-      goto fail;
-   }
-
-   table->map = nouveau_ws_bo_map(table->bo, NOUVEAU_WS_BO_WR);
-   if (table->map == NULL) {
-      result = vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                         "Failed to map the image descriptor table");
-      goto fail;
-   }
-
-   const size_t free_table_size = table->alloc * sizeof(uint32_t);
-   table->free_table = vk_alloc(&device->vk.alloc, free_table_size, 4,
-                                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (table->free_table == NULL) {
-      result = vk_errorf(device, VK_ERROR_OUT_OF_HOST_MEMORY,
-                         "Failed to allocate image descriptor free table");
-      goto fail;
+   result = nvk_descriptor_table_grow_locked(device, table,
+                                             min_descriptor_count);
+   if (result != VK_SUCCESS) {
+      nvk_descriptor_table_finish(device, table);
+      return result;
    }
 
    return VK_SUCCESS;
-
-fail:
-   nvk_descriptor_table_finish(device, table);
-   return result;
 }
 
 void
@@ -75,6 +107,8 @@ nvk_descriptor_table_alloc_locked(struct nvk_device *dev,
                                   struct nvk_descriptor_table *table,
                                   uint32_t *index_out)
 {
+   VkResult result;
+
    if (table->free_count > 0) {
       *index_out = table->free_table[--table->free_count];
       return VK_SUCCESS;
@@ -85,8 +119,19 @@ nvk_descriptor_table_alloc_locked(struct nvk_device *dev,
       return VK_SUCCESS;
    }
 
-   return vk_errorf(dev, VK_ERROR_OUT_OF_HOST_MEMORY,
-                    "Descriptor table not large enough");
+   if (table->next_desc >= table->max_alloc) {
+      return vk_errorf(dev, VK_ERROR_OUT_OF_HOST_MEMORY,
+                       "Descriptor table not large enough");
+   }
+
+   result = nvk_descriptor_table_grow_locked(dev, table, table->alloc * 2);
+   if (result != VK_SUCCESS)
+      return result;
+
+   assert(table->next_desc < table->alloc);
+   *index_out = table->next_desc++;
+
+   return VK_SUCCESS;
 }
 
 static VkResult

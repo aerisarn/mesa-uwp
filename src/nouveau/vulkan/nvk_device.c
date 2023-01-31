@@ -463,7 +463,7 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
 
    result = nvk_descriptor_table_init(device, &device->images,
                                       8 * 4 /* tic entry size */,
-                                      1024, 1024);
+                                      1024, 1024 * 1024);
    if (result != VK_SUCCESS)
       goto fail_memory_objects;
 

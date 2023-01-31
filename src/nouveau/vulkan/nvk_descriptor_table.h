@@ -14,6 +14,7 @@ struct nvk_descriptor_table {
 
    uint32_t desc_size; /**< Size of a descriptor */
    uint32_t alloc; /**< Number of descriptors allocated */
+   uint32_t max_alloc; /**< Maximum possible number of descriptors */
    uint32_t next_desc; /**< Next unallocated descriptor */
    uint32_t free_count; /**< Size of free_table */
 
