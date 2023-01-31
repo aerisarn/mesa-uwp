@@ -221,9 +221,9 @@ impl Ref {
         Ref::Imm(Immediate { u: u })
     }
 
-    pub fn new_cbuf(buf: CBuf, offset: u16) -> Ref {
+    pub fn new_cbuf(idx: u8, offset: u16) -> Ref {
         Ref::CBuf(CBufRef {
-            buf: buf,
+            buf: CBuf::Binding(idx),
             offset: offset,
         })
     }

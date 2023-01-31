@@ -127,6 +127,31 @@ impl<'a> ShaderFromNir<'a> {
                 let dst = self.get_dst(&intrin.def);
                 self.instrs.push(Instr::new_s2r(dst, idx));
             }
+            nir_intrinsic_load_ubo => {
+                let idx = srcs[0];
+                let offset = srcs[1];
+                let dst = self.get_dst(&intrin.def);
+                let dwords =
+                    (intrin.def.bit_size() / 32) * intrin.def.num_components();
+                if let Some(imm_idx) = idx.as_uint() {
+                    let imm_idx = u8::try_from(imm_idx).unwrap();
+                    if let Some(imm_offset) = offset.as_uint() {
+                        let imm_offset = u16::try_from(imm_offset).unwrap();
+                        let mut srcs = Vec::new();
+                        for i in 0..dwords {
+                            srcs.push(Src::new_cbuf(
+                                imm_idx,
+                                imm_offset + u16::from(i) * 4,
+                            ));
+                        }
+                        self.instrs.push(Instr::new_vec(dst, &srcs));
+                    } else {
+                        panic!("Indirect UBO offsets not yet supported");
+                    }
+                } else {
+                    panic!("Indirect UBO indices not yet supported");
+                }
+            }
             nir_intrinsic_store_output => {
                 if self.nir.info.stage() == MESA_SHADER_FRAGMENT {
                     /* We assume these only ever happen in the last block.
