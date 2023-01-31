@@ -3,6 +3,8 @@
 
 #include "nvk_private.h"
 
+struct nvk_physical_device;
+
 bool nvk_is_storage_image_format(VkFormat vk_format);
 
 struct nvk_format {
@@ -13,5 +15,14 @@ struct nvk_format {
 };
 
 const struct nvk_format *nvk_get_format(VkFormat vk_format);
+
+struct nvk_va_format {
+   uint8_t bit_widths;
+   uint8_t swap_rb:1;
+   uint8_t type:7;
+};
+
+const struct nvk_va_format *
+nvk_get_va_format(const struct nvk_physical_device *pdev, VkFormat format);
 
 #endif

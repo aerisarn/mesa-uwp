@@ -1,6 +1,7 @@
 #include "nvk_buffer.h"
 #include "nvk_cmd_buffer.h"
 #include "nvk_device.h"
+#include "nvk_format.h"
 #include "nvk_image.h"
 #include "nvk_image_view.h"
 #include "nvk_physical_device.h"
@@ -599,142 +600,26 @@ nvk_cmd_bind_graphics_pipeline(struct nvk_cmd_buffer *cmd,
    nouveau_ws_push_append(p, &pipeline->push);
 }
 
-#define VFMT(vk_fmt, widths, swap_rb, type) \
-   [VK_FORMAT_##vk_fmt] = \
-   { NV9097_SET_VERTEX_ATTRIBUTE_A_COMPONENT_BIT_WIDTHS_##widths, \
-     NV9097_SET_VERTEX_ATTRIBUTE_A_SWAP_R_AND_B_##swap_rb, \
-     NV9097_SET_VERTEX_ATTRIBUTE_A_NUMERICAL_TYPE_NUM_##type }
-
-static const struct nvk_vf_format {
-   uint8_t component_bit_widths;
-   uint8_t swap_r_and_b:1;
-   uint8_t numerical_type:7;
-} nvk_vf_formats[] = {
-   VFMT(R8_UNORM,                   R8,               FALSE,   UNORM),
-   VFMT(R8_SNORM,                   R8,               FALSE,   SNORM),
-   VFMT(R8_USCALED,                 R8,               FALSE,   USCALED),
-   VFMT(R8_SSCALED,                 R8,               FALSE,   SSCALED),
-   VFMT(R8_UINT,                    R8,               FALSE,   UINT),
-   VFMT(R8_SINT,                    R8,               FALSE,   SINT),
-
-   VFMT(R8G8_UNORM,                 R8_G8,            FALSE,   UNORM),
-   VFMT(R8G8_SNORM,                 R8_G8,            FALSE,   SNORM),
-   VFMT(R8G8_USCALED,               R8_G8,            FALSE,   USCALED),
-   VFMT(R8G8_SSCALED,               R8_G8,            FALSE,   SSCALED),
-   VFMT(R8G8_UINT,                  R8_G8,            FALSE,   UINT),
-   VFMT(R8G8_SINT,                  R8_G8,            FALSE,   SINT),
-
-   VFMT(R8G8B8_UNORM,               R8_G8_B8,         FALSE,   UNORM),
-   VFMT(R8G8B8_SNORM,               R8_G8_B8,         FALSE,   SNORM),
-   VFMT(R8G8B8_USCALED,             R8_G8_B8,         FALSE,   USCALED),
-   VFMT(R8G8B8_SSCALED,             R8_G8_B8,         FALSE,   SSCALED),
-   VFMT(R8G8B8_UINT,                R8_G8_B8,         FALSE,   UINT),
-   VFMT(R8G8B8_SINT,                R8_G8_B8,         FALSE,   SINT),
-
-   VFMT(B8G8R8_UNORM,               R8_G8_B8,         TRUE,    UNORM),
-   VFMT(B8G8R8_SNORM,               R8_G8_B8,         TRUE,    SNORM),
-   VFMT(B8G8R8_USCALED,             R8_G8_B8,         TRUE,    USCALED),
-   VFMT(B8G8R8_SSCALED,             R8_G8_B8,         TRUE,    SSCALED),
-   VFMT(B8G8R8_UINT,                R8_G8_B8,         TRUE,    UINT),
-   VFMT(B8G8R8_SINT,                R8_G8_B8,         TRUE,    SINT),
-
-   VFMT(R8G8B8A8_UNORM,             R8_G8_B8_A8,      FALSE,   UNORM),
-   VFMT(R8G8B8A8_SNORM,             R8_G8_B8_A8,      FALSE,   SNORM),
-   VFMT(R8G8B8A8_USCALED,           R8_G8_B8_A8,      FALSE,   USCALED),
-   VFMT(R8G8B8A8_SSCALED,           R8_G8_B8_A8,      FALSE,   SSCALED),
-   VFMT(R8G8B8A8_UINT,              R8_G8_B8_A8,      FALSE,   UINT),
-   VFMT(R8G8B8A8_SINT,              R8_G8_B8_A8,      FALSE,   SINT),
-
-   VFMT(B8G8R8A8_UNORM,             R8_G8_B8_A8,      TRUE,   UNORM),
-   VFMT(B8G8R8A8_SNORM,             R8_G8_B8_A8,      TRUE,   SNORM),
-   VFMT(B8G8R8A8_USCALED,           R8_G8_B8_A8,      TRUE,   USCALED),
-   VFMT(B8G8R8A8_SSCALED,           R8_G8_B8_A8,      TRUE,   SSCALED),
-   VFMT(B8G8R8A8_UINT,              R8_G8_B8_A8,      TRUE,   UINT),
-   VFMT(B8G8R8A8_SINT,              R8_G8_B8_A8,      TRUE,   SINT),
-
-   VFMT(A2R10G10B10_UNORM_PACK32,   A2B10G10R10,      TRUE,    UNORM),
-   VFMT(A2R10G10B10_SNORM_PACK32,   A2B10G10R10,      TRUE,    SNORM),
-   VFMT(A2R10G10B10_USCALED_PACK32, A2B10G10R10,      TRUE,    USCALED),
-   VFMT(A2R10G10B10_SSCALED_PACK32, A2B10G10R10,      TRUE,    SSCALED),
-   VFMT(A2R10G10B10_UINT_PACK32,    A2B10G10R10,      TRUE,    UINT),
-   VFMT(A2R10G10B10_SINT_PACK32,    A2B10G10R10,      TRUE,    SINT),
-
-   VFMT(A2B10G10R10_UNORM_PACK32,   A2B10G10R10,      FALSE,   UNORM),
-   VFMT(A2B10G10R10_SNORM_PACK32,   A2B10G10R10,      FALSE,   SNORM),
-   VFMT(A2B10G10R10_USCALED_PACK32, A2B10G10R10,      FALSE,   USCALED),
-   VFMT(A2B10G10R10_SSCALED_PACK32, A2B10G10R10,      FALSE,   SSCALED),
-   VFMT(A2B10G10R10_UINT_PACK32,    A2B10G10R10,      FALSE,   UINT),
-   VFMT(A2B10G10R10_SINT_PACK32,    A2B10G10R10,      FALSE,   SINT),
-
-   VFMT(R16_UNORM,                  R16,              FALSE,   UNORM),
-   VFMT(R16_SNORM,                  R16,              FALSE,   SNORM),
-   VFMT(R16_USCALED,                R16,              FALSE,   USCALED),
-   VFMT(R16_SSCALED,                R16,              FALSE,   SSCALED),
-   VFMT(R16_UINT,                   R16,              FALSE,   UINT),
-   VFMT(R16_SINT,                   R16,              FALSE,   SINT),
-   VFMT(R16_SFLOAT,                 R16,              FALSE,   FLOAT),
-
-   VFMT(R16G16_UNORM,               R16_G16,          FALSE,   UNORM),
-   VFMT(R16G16_SNORM,               R16_G16,          FALSE,   SNORM),
-   VFMT(R16G16_USCALED,             R16_G16,          FALSE,   USCALED),
-   VFMT(R16G16_SSCALED,             R16_G16,          FALSE,   SSCALED),
-   VFMT(R16G16_UINT,                R16_G16,          FALSE,   UINT),
-   VFMT(R16G16_SINT,                R16_G16,          FALSE,   SINT),
-   VFMT(R16G16_SFLOAT,              R16_G16,          FALSE,   FLOAT),
-
-   VFMT(R16G16B16_UNORM,            R16_G16_B16,      FALSE,   UNORM),
-   VFMT(R16G16B16_SNORM,            R16_G16_B16,      FALSE,   SNORM),
-   VFMT(R16G16B16_USCALED,          R16_G16_B16,      FALSE,   USCALED),
-   VFMT(R16G16B16_SSCALED,          R16_G16_B16,      FALSE,   SSCALED),
-   VFMT(R16G16B16_UINT,             R16_G16_B16,      FALSE,   UINT),
-   VFMT(R16G16B16_SINT,             R16_G16_B16,      FALSE,   SINT),
-   VFMT(R16G16B16_SFLOAT,           R16_G16_B16,      FALSE,   FLOAT),
-
-   VFMT(R16G16B16A16_UNORM,         R16_G16_B16_A16,  FALSE,   UNORM),
-   VFMT(R16G16B16A16_SNORM,         R16_G16_B16_A16,  FALSE,   SNORM),
-   VFMT(R16G16B16A16_USCALED,       R16_G16_B16_A16,  FALSE,   USCALED),
-   VFMT(R16G16B16A16_SSCALED,       R16_G16_B16_A16,  FALSE,   SSCALED),
-   VFMT(R16G16B16A16_UINT,          R16_G16_B16_A16,  FALSE,   UINT),
-   VFMT(R16G16B16A16_SINT,          R16_G16_B16_A16,  FALSE,   SINT),
-   VFMT(R16G16B16A16_SFLOAT,        R16_G16_B16_A16,  FALSE,   FLOAT),
-
-   VFMT(R32_UINT,                   R32,              FALSE,   UINT),
-   VFMT(R32_SINT,                   R32,              FALSE,   SINT),
-   VFMT(R32_SFLOAT,                 R32,              FALSE,   FLOAT),
-
-   VFMT(R32G32_UINT,                R32_G32,          FALSE,   UINT),
-   VFMT(R32G32_SINT,                R32_G32,          FALSE,   SINT),
-   VFMT(R32G32_SFLOAT,              R32_G32,          FALSE,   FLOAT),
-
-   VFMT(R32G32B32_UINT,             R32_G32_B32,      FALSE,   UINT),
-   VFMT(R32G32B32_SINT,             R32_G32_B32,      FALSE,   SINT),
-   VFMT(R32G32B32_SFLOAT,           R32_G32_B32,      FALSE,   FLOAT),
-
-   VFMT(R32G32B32A32_UINT,          R32_G32_B32_A32,  FALSE,   UINT),
-   VFMT(R32G32B32A32_SINT,          R32_G32_B32_A32,  FALSE,   SINT),
-   VFMT(R32G32B32A32_SFLOAT,        R32_G32_B32_A32,  FALSE,   FLOAT),
-};
-
-#undef VFMT
-
 static void
 nvk_flush_vi_state(struct nvk_cmd_buffer *cmd)
 {
+   struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
+   struct nvk_physical_device *pdev = nvk_device_physical(dev);
    struct nouveau_ws_push *p = cmd->push;
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VI)) {
       u_foreach_bit(a, dyn->vi->attributes_valid) {
-         const struct nvk_vf_format *fmt =
-            &nvk_vf_formats[dyn->vi->attributes[a].format];
+         const struct nvk_va_format *fmt =
+            nvk_get_va_format(pdev, dyn->vi->attributes[a].format);
 
          P_IMMD(p, NV9097, SET_VERTEX_ATTRIBUTE_A(a), {
             .stream                 = dyn->vi->attributes[a].binding,
             .offset                 = dyn->vi->attributes[a].offset,
-            .component_bit_widths   = fmt->component_bit_widths,
-            .numerical_type         = fmt->numerical_type,
-            .swap_r_and_b           = fmt->swap_r_and_b,
+            .component_bit_widths   = fmt->bit_widths,
+            .numerical_type         = fmt->type,
+            .swap_r_and_b           = fmt->swap_rb,
          });
       }
 
