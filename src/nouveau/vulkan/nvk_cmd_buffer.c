@@ -130,28 +130,42 @@ nvk_cmd_buffer_upload_alloc(struct nvk_cmd_buffer *cmd,
                             uint64_t *addr, void **ptr)
 {
    assert(size % 4 == 0);
-   assert(size < NVK_CMD_BO_SIZE);
+   assert(size <= NVK_CMD_BO_SIZE);
 
    uint32_t offset = cmd->upload_offset;
    if (align > 0)
       offset = align(offset, alignment);
 
    assert(offset <= NVK_CMD_BO_SIZE);
-   if (cmd->upload_bo == NULL || size > NVK_CMD_BO_SIZE - offset) {
-      struct nvk_cmd_bo *bo;
-      VkResult result = nvk_cmd_pool_alloc_bo(nvk_cmd_buffer_pool(cmd), &bo);
-      if (unlikely(result != VK_SUCCESS))
-         return result;
+   if (cmd->upload_bo != NULL && size <= NVK_CMD_BO_SIZE - offset) {
+      *addr = cmd->upload_bo->bo->offset + offset;
+      *ptr = (char *)cmd->upload_bo->map + offset;
 
-      nvk_cmd_buffer_ref_bo(cmd, bo->bo);
-      cmd->upload_bo = bo;
-      offset = 0;
+      cmd->upload_offset = offset + size;
+
+      return VK_SUCCESS;
    }
 
-   *addr = cmd->upload_bo->bo->offset + offset;
-   *ptr = (char *)cmd->upload_bo->map + offset;
+   struct nvk_cmd_bo *bo;
+   VkResult result = nvk_cmd_pool_alloc_bo(nvk_cmd_buffer_pool(cmd), &bo);
+   if (unlikely(result != VK_SUCCESS))
+      return result;
 
-   cmd->upload_offset = offset + size;
+   nvk_cmd_buffer_ref_bo(cmd, bo->bo);
+
+   *addr = bo->bo->offset;
+   *ptr = bo->map;
+
+   /* Pick whichever of the current upload BO and the new BO will have more
+    * room left to be the BO for the next upload.  If our upload size is
+    * bigger than the old offset, we're better off burning the whole new
+    * upload BO on this one allocation and continuing on the current upload
+    * BO.
+    */
+   if (size < cmd->upload_offset) {
+      cmd->upload_bo = bo;
+      cmd->upload_offset = size;
+   }
 
    return VK_SUCCESS;
 }
