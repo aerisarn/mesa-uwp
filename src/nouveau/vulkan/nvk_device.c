@@ -190,6 +190,13 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto fail_ctx;
 
+   /* Reserve the descriptor at offset 0 to be the null descriptor */
+   ASSERTED uint32_t null_image_index;
+   void *null_desc = nvk_descriptor_table_alloc(device, &device->images,
+                                                &null_image_index);
+   assert(null_desc != NULL && null_image_index == 0);
+   memset(null_desc, 0, 8 * 4);
+
    result = vk_queue_init(&device->queue.vk, &device->vk, &pCreateInfo->pQueueCreateInfos[0], 0);
    if (result != VK_SUCCESS)
       goto fail_images;
