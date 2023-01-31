@@ -132,7 +132,10 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
       maxExtent = (VkExtent3D) { 16384, 16384, 1 };
       maxMipLevels = 15;
       maxArraySize = 2048;
-      sampleCounts = VK_SAMPLE_COUNT_1_BIT; /* TODO: MSAA */
+      sampleCounts = VK_SAMPLE_COUNT_1_BIT |
+                     VK_SAMPLE_COUNT_2_BIT |
+                     VK_SAMPLE_COUNT_4_BIT |
+                     VK_SAMPLE_COUNT_8_BIT;
       break;
    case VK_IMAGE_TYPE_3D:
       maxExtent = (VkExtent3D) { 2048, 2048, 2048 };
