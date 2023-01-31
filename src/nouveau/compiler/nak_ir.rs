@@ -278,6 +278,14 @@ impl Ref {
         }
     }
 
+    pub fn is_uniform(&self) -> bool {
+        match self {
+            Src::Zero | Src::Imm(_) | Src::CBuf(_) => true,
+            Src::SSA(ssa) => ssa.is_uniform(),
+            Src::Reg(reg) => reg.is_uniform(),
+        }
+    }
+
     pub fn is_reg_or_zero(&self) -> bool {
         match self {
             Ref::Zero | Ref::SSA(_) | Ref::Reg(_) => true,
@@ -338,6 +346,13 @@ pub enum SrcMod {
 }
 
 impl SrcMod {
+    pub fn is_none(&self) -> bool {
+        match self {
+            SrcMod::None => true,
+            _ => false,
+        }
+    }
+
     pub fn is_float(&self) -> bool {
         match self {
             SrcMod::None | SrcMod::FAbs | SrcMod::FNeg | SrcMod::FNegAbs => {
@@ -360,7 +375,7 @@ impl SrcMod {
         }
     }
 
-    pub fn is_binary(&self) -> bool {
+    pub fn is_bitwise(&self) -> bool {
         match self {
             SrcMod::None | SrcMod::BNot => true,
             _ => false,
