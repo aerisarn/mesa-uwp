@@ -238,15 +238,6 @@ nvk_queue_submit(struct vk_queue *vkqueue, struct vk_queue_submit *submission)
    struct nvk_queue *queue = container_of(vkqueue, struct nvk_queue, vk);
    VkResult result;
 
-   if (!queue->empty_push) {
-      queue->empty_push = nouveau_ws_push_new(device->pdev->dev, 4096);
-
-      struct nv_push *p = P_SPACE(queue->empty_push, 2);
-
-      P_MTHD(p, NV90B5, NOP);
-      P_NV90B5_NOP(p, 0);
-   }
-
    result = nvk_queue_state_update(device, &queue->state);
    if (result != VK_SUCCESS)
       return result;
@@ -312,18 +303,32 @@ nvk_queue_init(struct nvk_device *dev, struct nvk_queue *queue,
    if (result != VK_SUCCESS)
       return result;
 
-   queue->vk.driver_submit = nvk_queue_submit;
-
    nvk_queue_state_init(&queue->state);
 
+   queue->vk.driver_submit = nvk_queue_submit;
+
+   queue->empty_push = nouveau_ws_push_new(dev->pdev->dev, 4096);
+   if (queue->empty_push == NULL) {
+      result = vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      goto fail_init;
+   }
+
+   struct nv_push *p = P_SPACE(queue->empty_push, 2);
+   P_MTHD(p, NV90B5, NOP);
+   P_NV90B5_NOP(p, 0);
+
    return VK_SUCCESS;
+
+fail_init:
+   vk_queue_finish(&queue->vk);
+
+   return result;
 }
 
 void
 nvk_queue_finish(struct nvk_device *dev, struct nvk_queue *queue)
 {
    nvk_queue_state_finish(dev, &queue->state);
-   if (queue->empty_push)
-      nouveau_ws_push_destroy(queue->empty_push);
+   nouveau_ws_push_destroy(queue->empty_push);
    vk_queue_finish(&queue->vk);
 }
