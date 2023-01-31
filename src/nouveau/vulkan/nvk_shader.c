@@ -193,7 +193,6 @@ nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,
    if (info_out.io.fp64)
       shader->hdr[0] |= 1 << 27;
 
-   ralloc_free(nir);
    return VK_SUCCESS;
 }
 
