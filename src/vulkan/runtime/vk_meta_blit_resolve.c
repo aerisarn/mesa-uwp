@@ -126,90 +126,20 @@ load_struct_var(nir_builder *b, nir_variable *var, uint32_t field)
 }
 
 static nir_ssa_def *
-build_texop(nir_builder *b, nir_texop tex_op,
-            nir_variable *texture, nir_variable *sampler,
-            nir_ssa_def *coord,
-            unsigned num_extra_srcs, const nir_tex_src *extra_srcs)
-{
-   const unsigned num_srcs = 2 + (sampler != NULL) + num_extra_srcs;
-
-   nir_tex_instr *tex = nir_tex_instr_create(b->shader, num_srcs);
-   tex->op = tex_op;
-   tex->sampler_dim = glsl_get_sampler_dim(texture->type);
-   tex->dest_type = nir_get_nir_type_for_glsl_base_type(
-      glsl_get_sampler_result_type(texture->type));
-   tex->coord_components = coord->num_components;
-   tex->is_array = glsl_sampler_type_is_array(texture->type);
-   tex->is_shadow = false;
-
-   unsigned src_idx = 0;
-   tex->src[src_idx++] = (nir_tex_src) {
-      .src_type = nir_tex_src_coord,
-      .src = nir_src_for_ssa(coord),
-   };
-   tex->src[src_idx++] = (nir_tex_src) {
-      .src_type = nir_tex_src_texture_deref,
-      .src = nir_src_for_ssa(&nir_build_deref_var(b, texture)->dest.ssa),
-   };
-   if (sampler != NULL) {
-      tex->src[src_idx++] = (nir_tex_src) {
-         .src_type = nir_tex_src_sampler_deref,
-         .src = nir_src_for_ssa(&nir_build_deref_var(b, sampler)->dest.ssa),
-      };
-   }
-
-   for (unsigned i = 0; i < num_extra_srcs; i++)
-      tex->src[src_idx++] = extra_srcs[i];
-
-   assert(src_idx == num_srcs);
-
-   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
-   nir_builder_instr_insert(b, &tex->instr);
-
-   return &tex->dest.ssa;
-}
-
-static nir_ssa_def *
-build_txl(nir_builder *b, nir_variable *texture, nir_variable *sampler,
-          nir_ssa_def *coord)
-{
-   const nir_tex_src lod_src = {
-      .src_type = nir_tex_src_lod,
-      .src = nir_src_for_ssa(nir_imm_float(b, 0)),
-   };
-
-   return build_texop(b, nir_texop_txl, texture, sampler,
-                      coord, 1, &lod_src);
-}
-
-static nir_ssa_def *
-build_txf_ms(nir_builder *b, nir_variable *texture,
-             nir_ssa_def *coord, nir_ssa_def *ms_idx)
-{
-   const nir_tex_src ms_idx_src = {
-      .src_type = nir_tex_src_ms_index,
-      .src = nir_src_for_ssa(ms_idx),
-   };
-
-   return build_texop(b, nir_texop_txf_ms, texture, NULL,
-                      coord, 1, &ms_idx_src);
-}
-
-static nir_ssa_def *
-build_tex_resolve(nir_builder *b, nir_variable *texture,
+build_tex_resolve(nir_builder *b, nir_deref_instr *t,
                   nir_ssa_def *coord,
                   VkSampleCountFlagBits samples,
                   VkResolveModeFlagBits resolve_mode)
 {
-   nir_ssa_def *accum = build_txf_ms(b, texture, coord, nir_imm_int(b, 0));
+   nir_ssa_def *accum = nir_txf_ms_deref(b, t, coord, nir_imm_int(b, 0));
    if (resolve_mode == VK_RESOLVE_MODE_SAMPLE_ZERO_BIT)
       return accum;
 
    const enum glsl_base_type base_type =
-      glsl_get_sampler_result_type(texture->type);
+      glsl_get_sampler_result_type(t->type);
 
    for (unsigned i = 1; i < samples; i++) {
-      nir_ssa_def *val = build_txf_ms(b, texture, coord, nir_imm_int(b, i));
+      nir_ssa_def *val = nir_txf_ms_deref(b, t, coord, nir_imm_int(b, i));
       switch (resolve_mode) {
       case VK_RESOLVE_MODE_AVERAGE_BIT:
          assert(base_type == GLSL_TYPE_FLOAT);
@@ -321,6 +251,7 @@ build_blit_shader(const struct vk_meta_blit_key *key)
                                                glsl_bare_sampler_type(), NULL);
    sampler->data.descriptor_set = 0;
    sampler->data.binding = BLIT_DESC_BINDING_SAMPLER;
+   nir_deref_instr *s = nir_build_deref_var(b, sampler);
 
    u_foreach_bit(a, key->aspects) {
       VkImageAspectFlagBits aspect = (1 << a);
@@ -370,12 +301,13 @@ build_blit_shader(const struct vk_meta_blit_key *key)
                                                   texture_type, tex_name);
       texture->data.descriptor_set = 0;
       texture->data.binding = aspect_to_tex_binding(aspect);
+      nir_deref_instr *t = nir_build_deref_var(b, texture);
 
       nir_ssa_def *val;
       if (resolve_mode == VK_RESOLVE_MODE_NONE) {
-         val = build_txl(b, texture, sampler, src_coord);
+         val = nir_txl_deref(b, t, s, src_coord, nir_imm_float(b, 0));
       } else {
-         val = build_tex_resolve(b, texture, nir_f2u32(b, src_coord),
+         val = build_tex_resolve(b, t, nir_f2u32(b, src_coord),
                                  key->src_samples, resolve_mode);
       }
       val = nir_trim_vector(b, val, out_comps);
