@@ -329,6 +329,7 @@
   rules:
     - !reference [.performance-rules, rules]
     - !reference [.freedreno-manual-rules, rules]
+  allow_failure: true # see comment in .performance-rules, which we don't inherit this line from.
 
 .nouveau-rules:
   stage: nouveau
@@ -547,6 +548,7 @@
     - changes:
         *virgl_file_list
       when: manual
+  allow_failure: true # see comment in .performance-rules, which we don't inherit this line from.
 
 .venus-rules:
   stage: layered-backends
@@ -667,6 +669,7 @@
     - changes:
         *iris_file_list
       when: manual
+  allow_failure: true # see comment in .performance-rules, which we don't inherit this line from.
 
 .anv-rules:
   stage: intel
