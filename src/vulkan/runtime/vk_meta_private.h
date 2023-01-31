@@ -50,6 +50,17 @@ vk_meta_rendering_info_copy(struct vk_meta_rendering_info *dst,
 }
 
 static inline VkImageViewType
+vk_image_sampled_view_type(const struct vk_image *image)
+{
+   switch (image->image_type) {
+   case VK_IMAGE_TYPE_1D: return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+   case VK_IMAGE_TYPE_2D: return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+   case VK_IMAGE_TYPE_3D: return VK_IMAGE_VIEW_TYPE_3D;
+   default: unreachable("Invalid image type");
+   }
+}
+
+static inline VkImageViewType
 vk_image_render_view_type(const struct vk_image *image, uint32_t layer_count)
 {
    switch (image->image_type) {

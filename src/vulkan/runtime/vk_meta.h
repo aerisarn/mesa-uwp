@@ -79,6 +79,7 @@ enum vk_meta_object_key_type {
    VK_META_OBJECT_KEY_TYPE_INVALD = 0,
    VK_META_OBJECT_KEY_CLEAR_PIPELINE,
    VK_META_OBJECT_KEY_BLIT_PIPELINE,
+   VK_META_OBJECT_KEY_BLIT_SAMPLER,
 };
 
 uint64_t vk_meta_lookup_object(struct vk_meta_device *meta,
@@ -243,6 +244,22 @@ void vk_meta_clear_depth_stencil_image(struct vk_command_buffer *cmd,
                                        const VkClearDepthStencilValue *depth_stencil,
                                        uint32_t range_count,
                                        const VkImageSubresourceRange *ranges);
+
+void vk_meta_blit_image(struct vk_command_buffer *cmd,
+                        struct vk_meta_device *meta,
+                        struct vk_image *src_image,
+                        VkFormat src_format,
+                        VkImageLayout src_image_layout,
+                        struct vk_image *dst_image,
+                        VkFormat dst_format,
+                        VkImageLayout dst_image_layout,
+                        uint32_t region_count,
+                        const VkImageBlit2 *regions,
+                        VkFilter filter);
+
+void vk_meta_blit_image2(struct vk_command_buffer *cmd,
+                         struct vk_meta_device *meta,
+                         const VkBlitImageInfo2 *blit);
 
 #ifdef __cplusplus
 }
