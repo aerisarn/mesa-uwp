@@ -4,6 +4,7 @@
 #include "nvk_format.h"
 #include "nvk_image.h"
 #include "nvk_image_view.h"
+#include "nvk_mme.h"
 #include "nvk_physical_device.h"
 #include "nvk_pipeline.h"
 
@@ -40,6 +41,30 @@ nvk_device_init_context_draw_state(struct nvk_device *dev)
       .class_id = dev->ctx->eng3d.cls,
       .engine_id = 0,
    });
+
+   for (uint32_t mme = 0, mme_pos = 0; mme < NVK_MME_COUNT; mme++) {
+      size_t size;
+      uint32_t *dw = nvk_build_mme(dev, mme, &size);
+      if (dw == NULL) {
+         nouveau_ws_push_destroy(pb);
+         return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
+
+      assert(size % sizeof(uint32_t) == 0);
+      const uint32_t num_dw = size / sizeof(uint32_t);
+
+      P_MTHD(p, NV9097, LOAD_MME_START_ADDRESS_RAM_POINTER);
+      P_NV9097_LOAD_MME_START_ADDRESS_RAM_POINTER(p, mme);
+      P_NV9097_LOAD_MME_START_ADDRESS_RAM(p, mme_pos);
+
+      P_1INC(p, NV9097, LOAD_MME_INSTRUCTION_RAM_POINTER);
+      P_NV9097_LOAD_MME_INSTRUCTION_RAM_POINTER(p, mme_pos);
+      P_INLINE_ARRAY(p, dw, num_dw);
+
+      mme_pos += num_dw;
+
+      free(dw);
+   }
 
    P_IMMD(p, NV9097, SET_RENDER_ENABLE_C, MODE_TRUE);
 
@@ -242,8 +267,6 @@ nvk_device_init_context_draw_state(struct nvk_device *dev)
 
    for (unsigned i = 0; i < 16; i++)
       P_IMMD(p, NV9097, SET_SCISSOR_ENABLE(i), V_FALSE);
-
-   /* TODO: Macros */
 
    P_IMMD(p, NV9097, SET_CT_MRT_ENABLE, V_TRUE);
 
