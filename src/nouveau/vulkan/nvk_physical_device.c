@@ -268,6 +268,15 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          continue;
 
       switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT: {
+         VkPhysicalDevicePCIBusInfoPropertiesEXT *p = (void *)ext;
+         p->pciDomain = pdev->info.pci_domain;
+         p->pciBus = pdev->info.pci_bus;
+         p->pciDevice = pdev->info.pci_dev;
+         p->pciFunction = pdev->info.pci_func;
+         break;
+      }
+
       /* More property structs */
       default:
          break;
@@ -365,6 +374,13 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
    device->instance = instance;
    device->dev = ndev;
    device->info = (struct nv_device_info) {
+      .pci_domain       = drm_device->businfo.pci->domain,
+      .pci_bus          = drm_device->businfo.pci->bus,
+      .pci_dev          = drm_device->businfo.pci->dev,
+      .pci_func         = drm_device->businfo.pci->func,
+      .pci_device_id    = drm_device->deviceinfo.pci->device_id,
+      .pci_revision_id  = drm_device->deviceinfo.pci->revision_id,
+
       .cls_copy = ndev->cls_copy,
       .cls_eng2d = ndev->cls_eng2d,
       .cls_eng3d = ndev->cls_eng3d,
