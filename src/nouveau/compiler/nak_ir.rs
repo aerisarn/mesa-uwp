@@ -1196,6 +1196,18 @@ impl fmt::Display for OpASt {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpBra {
+    pub target: u32,
+}
+
+impl fmt::Display for OpBra {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "BRA B{}", self.target)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpExit {}
 
 impl fmt::Display for OpExit {
@@ -1345,6 +1357,7 @@ pub enum Op {
     St(OpSt),
     ALd(OpALd),
     ASt(OpASt),
+    Bra(OpBra),
     Exit(OpExit),
     S2R(OpS2R),
     FMov(OpFMov),
@@ -1380,6 +1393,18 @@ impl Pred {
             Pred::None => true,
             _ => false,
         }
+    }
+}
+
+impl From<RegRef> for Pred {
+    fn from(reg: RegRef) -> Pred {
+        Pred::Reg(reg)
+    }
+}
+
+impl From<SSAValue> for Pred {
+    fn from(ssa: SSAValue) -> Pred {
+        Pred::SSA(ssa)
     }
 }
 
@@ -1656,6 +1681,10 @@ impl Instr {
         }))
     }
 
+    pub fn new_bra(block: u32) -> Instr {
+        Instr::new(Op::Bra(OpBra { target: block }))
+    }
+
     pub fn new_exit() -> Instr {
         Instr::new(Op::Exit(OpExit {}))
     }
@@ -1700,9 +1729,20 @@ impl Instr {
         self.op.srcs_as_mut_slice()
     }
 
+    pub fn is_branch(&self) -> bool {
+        match self.op {
+            Op::Bra(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn can_eliminate(&self) -> bool {
         match self.op {
-            Op::ASt(_) | Op::St(_) | Op::Exit(_) | Op::FSOut(_) => false,
+            Op::ASt(_)
+            | Op::St(_)
+            | Op::Bra(_)
+            | Op::Exit(_)
+            | Op::FSOut(_) => false,
             _ => true,
         }
     }
@@ -1724,7 +1764,7 @@ impl Instr {
             Op::ASt(_) => Some(15),
             Op::Ld(_) => None,
             Op::St(_) => None,
-            Op::Exit(_) => Some(15),
+            Op::Bra(_) | Op::Exit(_) => Some(15),
             Op::FMov(_)
             | Op::IMov(_)
             | Op::Vec(_)
@@ -1740,9 +1780,9 @@ impl fmt::Display for Instr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if !self.pred.is_none() {
             if self.pred_inv {
-                write!(f, "@!{}", self.pred)?;
+                write!(f, "@!{} ", self.pred)?;
             } else {
-                write!(f, "@{}", self.pred)?;
+                write!(f, "@{} ", self.pred)?;
             }
         }
         write!(f, "{} {}", self.op, self.deps)
@@ -1750,7 +1790,7 @@ impl fmt::Display for Instr {
 }
 
 pub struct BasicBlock {
-    id: u32,
+    pub id: u32,
     pub instrs: Vec<Instr>,
 }
 
@@ -1768,6 +1808,18 @@ impl BasicBlock {
             instrs.append(&mut map(i));
         }
         self.instrs = instrs;
+    }
+
+    pub fn branch_mut(&mut self) -> Option<&mut Instr> {
+        if let Some(i) = self.instrs.last_mut() {
+            if i.is_branch() {
+                Some(i)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 }
 

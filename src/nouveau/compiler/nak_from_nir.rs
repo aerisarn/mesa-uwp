@@ -13,8 +13,10 @@ use nak_bindings::*;
 struct ShaderFromNir<'a> {
     nir: &'a nir_shader,
     func: Option<Function>,
+    blocks: Vec<BasicBlock>,
     instrs: Vec<Instr>,
     fs_out_regs: Vec<Src>,
+    end_block_id: u32,
 }
 
 impl<'a> ShaderFromNir<'a> {
@@ -28,8 +30,10 @@ impl<'a> ShaderFromNir<'a> {
         Self {
             nir: nir,
             func: None,
+            blocks: Vec::new(),
             instrs: Vec::new(),
             fs_out_regs: fs_out_regs,
+            end_block_id: 0,
         }
     }
 
@@ -320,9 +324,7 @@ impl<'a> ShaderFromNir<'a> {
     }
 
     fn parse_jump(&mut self, jump: &nir_jump_instr) {
-        match jump.type_ {
-            _ => panic!("Unsupported jump instruction"),
-        }
+        /* Nothing to do */
     }
 
     fn parse_tex(&mut self, _tex: &nir_tex_instr) {
@@ -450,7 +452,7 @@ impl<'a> ShaderFromNir<'a> {
         panic!("SSA undef not implemented yet");
     }
 
-    fn parse_basic_block(&mut self, nb: &nir_block) -> BasicBlock {
+    fn parse_block(&mut self, nb: &nir_block) {
         for ni in nb.iter_instr_list() {
             match ni.type_ {
                 nir_instr_type_alu => self.parse_alu(ni.as_alu().unwrap()),
@@ -468,32 +470,78 @@ impl<'a> ShaderFromNir<'a> {
                 _ => panic!("Unsupported instruction type"),
             }
         }
-        let mut b = BasicBlock::new(0 /* TODO: Block indices */);
+
+        let succ = nb.successors();
+        let s0 = succ[0].unwrap();
+        if let Some(s1) = succ[1] {
+            /* Jump to the else.  We'll come back and fix up the predicate as
+             * part of our handling of nir_if.
+             */
+            self.instrs.push(Instr::new_bra(s1.index));
+        } else if s0.index == self.end_block_id {
+            self.instrs.push(Instr::new_exit());
+        } else {
+            self.instrs.push(Instr::new_bra(s0.index));
+        }
+
+        let mut b = BasicBlock::new(nb.index);
         b.instrs.append(&mut self.instrs);
-        b
+        self.blocks.push(b);
+    }
+
+    fn parse_if(&mut self, ni: &nir_if) {
+        let cond = self.get_ssa(&ni.condition.as_def());
+
+        let if_bra = self.blocks.last_mut().unwrap().branch_mut().unwrap();
+        if_bra.pred = cond.into();
+        /* This is the branch to jump to the else */
+        if_bra.pred_inv = true;
+
+        self.parse_cf_list(ni.iter_then_list());
+        self.parse_cf_list(ni.iter_else_list());
+    }
+
+    fn parse_loop(&mut self, nl: &nir_loop) {
+        self.parse_cf_list(nl.iter_body());
+    }
+
+    fn parse_cf_list(&mut self, list: ExecListIter<nir_cf_node>) {
+        for node in list {
+            match node.type_ {
+                nir_cf_node_block => {
+                    self.parse_block(node.as_block().unwrap());
+                }
+                nir_cf_node_if => {
+                    self.parse_if(node.as_if().unwrap());
+                }
+                nir_cf_node_loop => {
+                    self.parse_loop(node.as_loop().unwrap());
+                }
+                _ => panic!("Invalid inner CF node type"),
+            }
+        }
     }
 
     pub fn parse_function_impl(&mut self, nfi: &nir_function_impl) -> Function {
         self.func = Some(Function::new(0, nfi.ssa_alloc));
-        for node in nfi.iter_body() {
-            /* TODO: Control-flow */
-            let b = self.parse_basic_block(node.as_block().unwrap());
-            self.func.as_mut().unwrap().blocks.push(b);
-        }
+        self.end_block_id = nfi.end_block().index;
 
-        let end_block = self.func.as_mut().unwrap().blocks.last_mut().unwrap();
+        self.parse_cf_list(nfi.iter_body());
+
+        let end_block = self.blocks.last_mut().unwrap();
 
         if self.nir.info.stage() == MESA_SHADER_FRAGMENT
             && nfi.function().is_entrypoint
         {
             let fs_out_regs =
                 std::mem::replace(&mut self.fs_out_regs, Vec::new());
-            end_block.instrs.push(Instr::new_fs_out(&fs_out_regs));
+            let fs_out = Instr::new_fs_out(&fs_out_regs);
+            end_block.instrs.insert(end_block.instrs.len() - 1, fs_out);
         }
 
-        end_block.instrs.push(Instr::new_exit());
-
-        self.func.take().unwrap()
+        let mut f = self.func.take().unwrap();
+        f.blocks.append(&mut self.blocks);
+        f
     }
 
     pub fn parse_shader(&mut self, sm: u8) -> Shader {

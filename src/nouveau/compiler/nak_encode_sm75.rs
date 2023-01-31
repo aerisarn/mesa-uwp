@@ -6,6 +6,7 @@
 use crate::bitset::*;
 use crate::nak_ir::*;
 
+use std::collections::HashMap;
 use std::ops::Range;
 
 struct ALURegRef {
@@ -199,7 +200,7 @@ impl SM75Instr {
     }
 
     fn set_pred(&mut self, pred: &Pred, pred_inv: bool) {
-        assert!(pred.is_none() || !pred_inv);
+        assert!(!pred.is_none() || !pred_inv);
         self.set_pred_reg(
             12..15,
             match pred {
@@ -666,6 +667,28 @@ impl SM75Instr {
         assert!(!op.access.out_load);
     }
 
+    fn encode_bra(
+        &mut self,
+        op: &OpBra,
+        ip: usize,
+        block_offsets: &HashMap<u32, usize>,
+    ) {
+        let ip = u64::try_from(ip).unwrap();
+        assert!(ip < i64::MAX as u64);
+        let ip = ip as i64;
+
+        let target_ip = *block_offsets.get(&op.target).unwrap();
+        let target_ip = u64::try_from(target_ip).unwrap();
+        assert!(target_ip < i64::MAX as u64);
+        let target_ip = target_ip as i64;
+
+        let rel_offset = target_ip - ip - 4;
+
+        self.set_opcode(0x947);
+        self.set_field(34..82, rel_offset);
+        self.set_field(87..90, 0x7_u8); /* TODO: Pred? */
+    }
+
     fn encode_exit(&mut self, op: &OpExit) {
         self.set_opcode(0x94d);
 
@@ -682,7 +705,12 @@ impl SM75Instr {
         self.set_field(72..80, op.idx);
     }
 
-    pub fn encode(instr: &Instr, sm: u8) -> [u32; 4] {
+    pub fn encode(
+        instr: &Instr,
+        sm: u8,
+        ip: usize,
+        block_offsets: &HashMap<u32, usize>,
+    ) -> [u32; 4] {
         assert!(sm >= 75);
 
         let mut si = SM75Instr {
@@ -706,6 +734,7 @@ impl SM75Instr {
             Op::St(op) => si.encode_st(&op),
             Op::ALd(op) => si.encode_ald(&op),
             Op::ASt(op) => si.encode_ast(&op),
+            Op::Bra(op) => si.encode_bra(&op, ip, block_offsets),
             Op::Exit(op) => si.encode_exit(&op),
             Op::S2R(op) => si.encode_s2r(&op),
             _ => panic!("Unhandled instruction"),
@@ -722,9 +751,22 @@ pub fn encode_shader(shader: &Shader) -> Vec<u32> {
     let mut encoded = Vec::new();
     assert!(shader.functions.len() == 1);
     let func = &shader.functions[0];
+
+    let mut num_instrs = 0_usize;
+    let mut block_offsets = HashMap::new();
+    for b in &func.blocks {
+        block_offsets.insert(b.id, num_instrs);
+        num_instrs += b.instrs.len() * 4;
+    }
+
     for b in &func.blocks {
         for instr in &b.instrs {
-            let e = SM75Instr::encode(instr, shader.sm);
+            let e = SM75Instr::encode(
+                instr,
+                shader.sm,
+                encoded.len(),
+                &block_offsets,
+            );
             encoded.extend_from_slice(&e[..]);
         }
     }

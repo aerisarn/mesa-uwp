@@ -473,10 +473,14 @@ nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak)
    nak_optimize_nir(nir, nak);
    nir_divergence_analysis(nir);
 
-   /* Compact SSA defs because we'll use them to index arrays */
+   /* Re-index blocks and compact SSA defs because we'll use them to index
+    * arrays
+    */
    nir_foreach_function(func, nir) {
-      if (func->impl)
+      if (func->impl) {
+         nir_index_blocks(func->impl);
          nir_index_ssa_defs(func->impl);
+      }
    }
 
    nir_print_shader(nir, stderr);
