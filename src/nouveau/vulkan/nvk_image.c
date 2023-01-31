@@ -259,6 +259,32 @@ nvk_CreateImage(VkDevice _device,
       return result;
    }
 
+   if (image->nil.pte_kind) {
+      assert(device->pdev->mem_heaps[0].flags &
+             VK_MEMORY_HEAP_DEVICE_LOCAL_BIT);
+
+      const VkMemoryAllocateInfo alloc_info = {
+         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+         .allocationSize = image->nil.size_B,
+         .memoryTypeIndex = 0,
+      };
+      const struct nvk_memory_tiling_info tile_info = {
+         .tile_mode = image->nil.tile_mode,
+         .pte_kind = image->nil.pte_kind,
+      };
+
+      result = nvk_allocate_memory(device, &alloc_info, &tile_info,
+                                   pAllocator, &image->internal);
+      if (result != VK_SUCCESS) {
+         nvk_image_finish(image);
+         vk_free2(&device->vk.alloc, pAllocator, image);
+         return result;
+      }
+
+      image->mem = image->internal;
+      image->offset = 0;
+   }
+
    *pImage = nvk_image_to_handle(image);
 
    return VK_SUCCESS;
@@ -274,6 +300,9 @@ nvk_DestroyImage(VkDevice _device,
 
    if (!image)
       return;
+
+   if (image->internal)
+      nvk_free_memory(device, image->internal, pAllocator);
 
    nvk_image_finish(image);
    vk_free2(&device->vk.alloc, pAllocator, image);
@@ -337,6 +366,9 @@ nvk_BindImageMemory2(VkDevice _device,
    for (uint32_t i = 0; i < bindInfoCount; ++i) {
       VK_FROM_HANDLE(nvk_device_memory, mem, pBindInfos[i].memory);
       VK_FROM_HANDLE(nvk_image, image, pBindInfos[i].image);
+
+      if (image->internal)
+         continue;
 
       image->mem = mem;
       image->offset = pBindInfos[i].memoryOffset;

@@ -72,6 +72,7 @@ zero_vram(struct nvk_device *dev, struct nouveau_ws_bo *bo)
 VkResult
 nvk_allocate_memory(struct nvk_device *device,
                     const VkMemoryAllocateInfo *pAllocateInfo,
+                    const struct nvk_memory_tiling_info *tile_info,
                     const VkAllocationCallbacks *pAllocator,
                     struct nvk_device_memory **mem_out)
 {
@@ -92,7 +93,16 @@ nvk_allocate_memory(struct nvk_device *device,
       flags |= NOUVEAU_WS_BO_MAP;
 
    mem->map = NULL;
-   mem->bo = nouveau_ws_bo_new(device->pdev->dev, pAllocateInfo->allocationSize, 0, flags);
+   if (tile_info) {
+      mem->bo = nouveau_ws_bo_new_tiled(device->pdev->dev,
+                                        pAllocateInfo->allocationSize, 0,
+                                        tile_info->pte_kind,
+                                        tile_info->tile_mode,
+                                        flags);
+   } else {
+      mem->bo = nouveau_ws_bo_new(device->pdev->dev,
+                                  pAllocateInfo->allocationSize, 0, flags);
+   }
    if (!mem->bo) {
       vk_object_free(&device->vk, pAllocator, mem);
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -158,7 +168,7 @@ nvk_AllocateMemory(
    struct nvk_device_memory *mem;
    VkResult result;
 
-   result = nvk_allocate_memory(device, pAllocateInfo, pAllocator, &mem);
+   result = nvk_allocate_memory(device, pAllocateInfo, NULL, pAllocator, &mem);
    if (result != VK_SUCCESS)
       return result;
 

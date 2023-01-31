@@ -19,8 +19,14 @@ struct nvk_device_memory {
 
 VK_DEFINE_HANDLE_CASTS(nvk_device_memory, base, VkDeviceMemory, VK_OBJECT_TYPE_DEVICE_MEMORY)
 
+struct nvk_memory_tiling_info {
+   uint16_t tile_mode;
+   uint8_t pte_kind;
+};
+
 VkResult nvk_allocate_memory(struct nvk_device *device,
                              const VkMemoryAllocateInfo *pAllocateInfo,
+                             const struct nvk_memory_tiling_info *tile_info,
                              const VkAllocationCallbacks *pAllocator,
                              struct nvk_device_memory **mem_out);
 

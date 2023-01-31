@@ -17,6 +17,10 @@ nvk_get_image_format_features(struct nvk_physical_device *pdevice,
 
 struct nvk_image {
    struct vk_image vk;
+
+   /* Used for internal dedicated allocations */
+   struct nvk_device_memory *internal;
+
    struct nvk_device_memory *mem;
    VkDeviceSize offset;
 
