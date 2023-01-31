@@ -470,6 +470,191 @@ get_blit_sampler(struct vk_device *device,
                                  &key, sizeof(key), sampler_out);
 }
 
+static void
+do_blit(struct vk_command_buffer *cmd,
+        struct vk_meta_device *meta,
+        struct vk_image *src_image,
+        VkFormat src_format,
+        VkImageLayout src_image_layout,
+        VkImageSubresourceLayers src_subres,
+        struct vk_image *dst_image,
+        VkFormat dst_format,
+        VkImageLayout dst_image_layout,
+        VkImageSubresourceLayers dst_subres,
+        VkSampler sampler,
+        struct vk_meta_blit_key *key,
+        struct vk_meta_blit_push_data *push,
+        const struct vk_meta_rect *dst_rect,
+        uint32_t dst_layer_count)
+{
+   struct vk_device *device = cmd->base.device;
+   const struct vk_device_dispatch_table *disp = &device->dispatch_table;
+   VkResult result;
+
+   VkDescriptorSetLayout set_layout;
+   result = get_blit_descriptor_set_layout(device, meta, &set_layout);
+   if (unlikely(result != VK_SUCCESS)) {
+      vk_command_buffer_set_error(cmd, result);
+      return;
+   }
+
+   VkPipelineLayout pipeline_layout;
+   result = get_blit_pipeline_layout(device, meta, set_layout,
+                                     &pipeline_layout);
+   if (unlikely(result != VK_SUCCESS)) {
+      vk_command_buffer_set_error(cmd, result);
+      return;
+   }
+
+   key->aspects = dst_subres.aspectMask;
+
+   VkImageView dst_view;
+   const VkImageViewUsageCreateInfo dst_view_usage = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO,
+      .usage = (key->aspects & VK_IMAGE_ASPECT_COLOR_BIT) ?
+               VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT :
+               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+   };
+   const VkImageViewCreateInfo dst_view_info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+      .pNext = &dst_view_usage,
+      .image = vk_image_to_handle(dst_image),
+      .viewType = vk_image_sampled_view_type(dst_image),
+      .format = dst_format,
+      .subresourceRange = {
+         .aspectMask = dst_subres.aspectMask,
+         .baseMipLevel = dst_subres.mipLevel,
+         .levelCount = 1,
+         .baseArrayLayer = dst_subres.baseArrayLayer,
+         .layerCount = dst_subres.layerCount,
+      },
+   };
+   result = vk_meta_create_image_view(cmd, meta, &dst_view_info,
+                                      &dst_view);
+   if (unlikely(result != VK_SUCCESS)) {
+      vk_command_buffer_set_error(cmd, result);
+      return;
+   }
+
+   const VkRenderingAttachmentInfo vk_att = {
+      .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+      .imageView = dst_view,
+      .imageLayout = dst_image_layout,
+      .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+      .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+   };
+   VkRenderingInfo vk_render = {
+      .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+      .renderArea = {
+         .offset = {
+            dst_rect->x0,
+            dst_rect->y0
+         },
+         .extent = {
+            dst_rect->x1 - dst_rect->x0,
+            dst_rect->y1 - dst_rect->y0
+         },
+      },
+      .layerCount = dst_rect->layer + dst_layer_count,
+   };
+
+   if (key->aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
+      vk_render.colorAttachmentCount = 1;
+      vk_render.pColorAttachments = &vk_att;
+   }
+   if (key->aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+      vk_render.pDepthAttachment = &vk_att;
+   if (key->aspects & VK_IMAGE_ASPECT_STENCIL_BIT)
+      vk_render.pStencilAttachment = &vk_att;
+
+   disp->CmdBeginRendering(vk_command_buffer_to_handle(cmd), &vk_render);
+
+   VkPipeline pipeline;
+   result = get_blit_pipeline(device, meta, key,
+                              pipeline_layout, &pipeline);
+   if (unlikely(result != VK_SUCCESS)) {
+      vk_command_buffer_set_error(cmd, result);
+      return;
+   }
+
+   disp->CmdBindPipeline(vk_command_buffer_to_handle(cmd),
+                         VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+   uint32_t desc_count = 0;
+   VkDescriptorImageInfo image_infos[3];
+   VkWriteDescriptorSet desc_writes[3];
+
+   image_infos[desc_count] = (VkDescriptorImageInfo) {
+      .sampler = sampler,
+   };
+   desc_writes[desc_count] = (VkWriteDescriptorSet) {
+      .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+      .dstBinding = BLIT_DESC_BINDING_SAMPLER,
+      .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+      .descriptorCount = 1,
+      .pImageInfo = &image_infos[desc_count],
+   };
+   desc_count++;
+
+   u_foreach_bit(a, src_subres.aspectMask) {
+      VkImageAspectFlagBits aspect = (1 << a);
+
+      VkImageView src_view;
+      const VkImageViewUsageCreateInfo src_view_usage = {
+         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO,
+         .usage = VK_IMAGE_USAGE_SAMPLED_BIT,
+      };
+      const VkImageViewCreateInfo src_view_info = {
+         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+         .pNext = &src_view_usage,
+         .image = vk_image_to_handle(src_image),
+         .viewType = vk_image_sampled_view_type(src_image),
+         .format = src_format,
+         .subresourceRange = {
+            .aspectMask = aspect,
+            .baseMipLevel = src_subres.mipLevel,
+            .levelCount = 1,
+            .baseArrayLayer = src_subres.baseArrayLayer,
+            .layerCount = src_subres.layerCount,
+         },
+      };
+      result = vk_meta_create_image_view(cmd, meta, &src_view_info,
+                                         &src_view);
+      if (unlikely(result != VK_SUCCESS)) {
+         vk_command_buffer_set_error(cmd, result);
+         return;
+      }
+
+      assert(desc_count < ARRAY_SIZE(image_infos));
+      assert(desc_count < ARRAY_SIZE(desc_writes));
+      image_infos[desc_count] = (VkDescriptorImageInfo) {
+         .imageView = src_view,
+      };
+      desc_writes[desc_count] = (VkWriteDescriptorSet) {
+         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+         .dstBinding = aspect_to_tex_binding(aspect),
+         .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+         .descriptorCount = 1,
+         .pImageInfo = &image_infos[desc_count],
+      };
+      desc_count++;
+   }
+
+   disp->CmdPushDescriptorSetKHR(vk_command_buffer_to_handle(cmd),
+                                 VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                 pipeline_layout, 0,
+                                 desc_count, desc_writes);
+
+   disp->CmdPushConstants(vk_command_buffer_to_handle(cmd),
+                          pipeline_layout,
+                          VK_SHADER_STAGE_FRAGMENT_BIT,
+                          0, sizeof(*push), push);
+
+   meta->cmd_draw_volume(cmd, meta, dst_rect, dst_layer_count);
+
+   disp->CmdEndRendering(vk_command_buffer_to_handle(cmd));
+}
+
 void
 vk_meta_blit_image(struct vk_command_buffer *cmd,
                    struct vk_meta_device *meta,
@@ -484,26 +669,10 @@ vk_meta_blit_image(struct vk_command_buffer *cmd,
                    VkFilter filter)
 {
    struct vk_device *device = cmd->base.device;
-   const struct vk_device_dispatch_table *disp = &device->dispatch_table;
    VkResult result;
 
    VkSampler sampler;
    result = get_blit_sampler(device, meta, filter, &sampler);
-   if (unlikely(result != VK_SUCCESS)) {
-      vk_command_buffer_set_error(cmd, result);
-      return;
-   }
-
-   VkDescriptorSetLayout set_layout;
-   result = get_blit_descriptor_set_layout(device, meta, &set_layout);
-   if (unlikely(result != VK_SUCCESS)) {
-      vk_command_buffer_set_error(cmd, result);
-      return;
-   }
-
-   VkPipelineLayout pipeline_layout;
-   result = get_blit_pipeline_layout(device, meta, set_layout,
-                                     &pipeline_layout);
    if (unlikely(result != VK_SUCCESS)) {
       vk_command_buffer_set_error(cmd, result);
       return;
@@ -557,151 +726,12 @@ vk_meta_blit_image(struct vk_command_buffer *cmd,
                           regions[r].srcSubresource.baseArrayLayer;
       }
 
-      key.aspects = regions[r].dstSubresource.aspectMask;
-
-      VkImageView dst_view;
-      const VkImageViewUsageCreateInfo dst_view_usage = {
-         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO,
-         .usage = (key.aspects & VK_IMAGE_ASPECT_COLOR_BIT) ?
-                  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT :
-                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-      };
-      const VkImageViewCreateInfo dst_view_info = {
-         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-         .pNext = &dst_view_usage,
-         .image = vk_image_to_handle(dst_image),
-         .viewType = vk_image_sampled_view_type(dst_image),
-         .format = dst_format,
-         .subresourceRange = {
-            .aspectMask = regions[r].dstSubresource.aspectMask,
-            .baseMipLevel = regions[r].dstSubresource.mipLevel,
-            .levelCount = 1,
-            .baseArrayLayer = regions[r].dstSubresource.baseArrayLayer,
-            .layerCount = regions[r].dstSubresource.layerCount,
-         },
-      };
-      result = vk_meta_create_image_view(cmd, meta, &dst_view_info, &dst_view);
-      if (unlikely(result != VK_SUCCESS)) {
-         vk_command_buffer_set_error(cmd, result);
-         return;
-      }
-
-      const VkRenderingAttachmentInfo vk_att = {
-         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-         .imageView = dst_view,
-         .imageLayout = dst_image_layout,
-         .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-      };
-      VkRenderingInfo vk_render = {
-         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-         .renderArea = {
-            .offset = {
-               dst_rect.x0,
-               dst_rect.y0
-            },
-            .extent = {
-               dst_rect.x1 - dst_rect.x0,
-               dst_rect.y1 - dst_rect.y0
-            },
-         },
-         .layerCount = dst_rect.layer + dst_layer_count,
-      };
-
-      if (key.aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
-         vk_render.colorAttachmentCount = 1;
-         vk_render.pColorAttachments = &vk_att;
-      }
-      if (key.aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
-         vk_render.pDepthAttachment = &vk_att;
-      if (key.aspects & VK_IMAGE_ASPECT_STENCIL_BIT)
-         vk_render.pStencilAttachment = &vk_att;
-
-      disp->CmdBeginRendering(vk_command_buffer_to_handle(cmd), &vk_render);
-
-      VkPipeline pipeline;
-      result = get_blit_pipeline(device, meta, &key,
-                                 pipeline_layout, &pipeline);
-      if (unlikely(result != VK_SUCCESS)) {
-         vk_command_buffer_set_error(cmd, result);
-         return;
-      }
-
-      uint32_t desc_count = 0;
-      VkDescriptorImageInfo image_infos[3];
-      VkWriteDescriptorSet desc_writes[3];
-
-      image_infos[desc_count] = (VkDescriptorImageInfo) {
-         .sampler = sampler,
-      };
-      desc_writes[desc_count] = (VkWriteDescriptorSet) {
-         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-         .dstBinding = BLIT_DESC_BINDING_SAMPLER,
-         .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
-         .descriptorCount = 1,
-         .pImageInfo = &image_infos[desc_count],
-      };
-      desc_count++;
-
-      u_foreach_bit(a, regions[r].srcSubresource.aspectMask) {
-         VkImageAspectFlagBits aspect = (1 << a);
-
-         VkImageView src_view;
-         const VkImageViewUsageCreateInfo src_view_usage = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO,
-            .usage = VK_IMAGE_USAGE_SAMPLED_BIT,
-         };
-         const VkImageViewCreateInfo src_view_info = {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .pNext = &src_view_usage,
-            .image = vk_image_to_handle(src_image),
-            .viewType = vk_image_sampled_view_type(src_image),
-            .format = src_format,
-            .subresourceRange = {
-               .aspectMask = aspect,
-               .baseMipLevel = regions[r].srcSubresource.mipLevel,
-               .levelCount = 1,
-               .baseArrayLayer = regions[r].srcSubresource.baseArrayLayer,
-               .layerCount = regions[r].srcSubresource.layerCount,
-            },
-         };
-         result = vk_meta_create_image_view(cmd, meta, &src_view_info,
-                                            &src_view);
-         if (unlikely(result != VK_SUCCESS)) {
-            vk_command_buffer_set_error(cmd, result);
-            return;
-         }
-
-         assert(desc_count < ARRAY_SIZE(image_infos));
-         assert(desc_count < ARRAY_SIZE(desc_writes));
-         image_infos[desc_count] = (VkDescriptorImageInfo) {
-            .imageView = src_view,
-         };
-         desc_writes[desc_count] = (VkWriteDescriptorSet) {
-            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstBinding = aspect_to_tex_binding(aspect),
-            .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-            .descriptorCount = 1,
-            .pImageInfo = &image_infos[desc_count],
-         };
-         desc_count++;
-      }
-
-      disp->CmdBindPipeline(vk_command_buffer_to_handle(cmd),
-                            VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
-      disp->CmdPushDescriptorSetKHR(vk_command_buffer_to_handle(cmd),
-                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                    pipeline_layout, 0,
-                                    desc_count, desc_writes);
-
-      disp->CmdPushConstants(vk_command_buffer_to_handle(cmd),
-                             pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT,
-                             0, sizeof(push), &push);
-
-      meta->cmd_draw_volume(cmd, meta, &dst_rect, dst_layer_count);
-
-      disp->CmdEndRendering(vk_command_buffer_to_handle(cmd));
+      do_blit(cmd, meta,
+              src_image, src_format, src_image_layout,
+              regions[r].srcSubresource,
+              dst_image, dst_format, dst_image_layout,
+              regions[r].dstSubresource,
+              sampler, &key, &push, &dst_rect, dst_layer_count);
    }
 }
 
