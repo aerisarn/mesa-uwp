@@ -16,6 +16,9 @@ struct nvk_cmd_pool {
    struct nvk_device *dev;
 };
 
+VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_cmd_pool, vk.base, VkCommandPool,
+                               VK_OBJECT_TYPE_COMMAND_POOL)
+
 struct nvk_cmd_buffer {
    struct vk_command_buffer vk;
 
@@ -30,7 +33,5 @@ VkResult nvk_reset_cmd_buffer(struct nvk_cmd_buffer *cmd_buffer);
 
 VK_DEFINE_HANDLE_CASTS(nvk_cmd_buffer, vk.base, VkCommandBuffer,
                        VK_OBJECT_TYPE_COMMAND_BUFFER)
-VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_cmd_pool, vk.base, VkCommandPool,
-                               VK_OBJECT_TYPE_COMMAND_POOL)
 
 #endif
