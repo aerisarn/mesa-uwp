@@ -47,6 +47,7 @@ nvk_files = files(
   'nvk_private.h',
   'nvk_queue.c',
   'nvk_queue.h',
+  'nvk_queue_drm_nouveau.c',
   'nvk_sampler.c',
   'nvk_sampler.h',
   'nvk_shader.c',

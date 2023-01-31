@@ -29,6 +29,9 @@ struct nvk_queue_state {
    struct nouveau_ws_push *push;
 };
 
+VkResult nvk_queue_state_update(struct nvk_device *dev,
+                                struct nvk_queue_state *qs);
+
 struct nvk_queue {
    struct vk_queue vk;
 
@@ -42,5 +45,8 @@ VkResult nvk_queue_init(struct nvk_device *dev, struct nvk_queue *queue,
                         uint32_t index_in_family);
 
 void nvk_queue_finish(struct nvk_device *dev, struct nvk_queue *queue);
+
+VkResult nvk_queue_submit_drm_nouveau(struct vk_queue *vkqueue,
+                                      struct vk_queue_submit *submit);
 
 #endif
