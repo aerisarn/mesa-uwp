@@ -18,15 +18,6 @@ libnak_deps = [
 nak_bindings_rs = rust.bindgen(
   input : ['nak_bindings.h'],
   output : 'nak_bindings.rs',
-  include_directories : [
-    include_directories(dep_valgrind.get_pkgconfig_variable('includedir')),
-    inc_compiler,
-    inc_gallium,
-    inc_gallium_aux,
-    inc_include,
-    inc_nir,
-    inc_src,
-  ],
   c_args : [
     pre_args,
   ],
@@ -52,6 +43,7 @@ nak_bindings_rs = rust.bindgen(
     '--allowlist-function', 'glsl_.*',
     '--no-prepend-enum-name',
   ],
+  dependencies : libnak_deps,
 )
 
 libnak_bindings_gen = static_library(
