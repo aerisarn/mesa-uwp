@@ -32,6 +32,8 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    pFeatures->features = (VkPhysicalDeviceFeatures) {
       .robustBufferAccess = true,
       /* More features */
+      .shaderStorageImageExtendedFormats = true,
+      .shaderStorageImageWriteWithoutFormat = true,
    };
 
    VkPhysicalDeviceVulkan11Features core_1_1 = {

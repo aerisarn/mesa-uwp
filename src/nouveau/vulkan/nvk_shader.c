@@ -89,6 +89,7 @@ nvk_shader_compile_to_nir(struct nvk_device *device,
    const struct spirv_to_nir_options spirv_options = {
       .caps =
       {
+         .image_write_without_format = true,
       },
       .ssbo_addr_format = nir_address_format_64bit_global_32bit_offset,
       .ubo_addr_format = nir_address_format_64bit_global_32bit_offset,
