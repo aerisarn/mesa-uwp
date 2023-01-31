@@ -331,21 +331,26 @@ nvk_descriptor_set_create(struct nvk_device *device, struct nvk_descriptor_pool 
    vk_object_base_init(&device->vk, &set->base, VK_OBJECT_TYPE_DESCRIPTOR_SET);
 
    set->layout = layout;
-   if (pool->entry_count == pool->max_entry_count) {
+   if (pool->entry_count == pool->max_entry_count)
       return VK_ERROR_OUT_OF_POOL_MEMORY;
-   }
 
-   if (pool->current_offset + layout->descriptor_buffer_size <= pool->size) {
+   if (layout->descriptor_buffer_size > 0) {
+      if (pool->current_offset + layout->descriptor_buffer_size > pool->size)
+         return VK_ERROR_OUT_OF_POOL_MEMORY;
+
       set->bo = pool->bo;
       set->mapped_ptr = (uint32_t *)(pool->mapped_ptr + pool->current_offset);
       set->bo_offset = pool->current_offset;
-      pool->entries[pool->entry_count].offset = pool->current_offset;
-      pool->entries[pool->entry_count].size = layout->descriptor_buffer_size;
-      pool->entries[pool->entry_count].set = set;
-      pool->current_offset += layout->descriptor_buffer_size;
    }
+
+   pool->entries[pool->entry_count].offset = set->bo_offset;
+   pool->entries[pool->entry_count].size = layout->descriptor_buffer_size;
+   pool->entries[pool->entry_count].set = set;
+   pool->current_offset += layout->descriptor_buffer_size;
    pool->entry_count++;
+
    *out_set = set;
+
    return VK_SUCCESS;
 }
 

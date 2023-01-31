@@ -69,6 +69,9 @@ nvk_push_descriptor_set_ref(struct nouveau_ws_push *push,
 static inline uint64_t
 nvk_descriptor_set_addr(const struct nvk_descriptor_set *set)
 {
+   if (set->bo == NULL)
+      return 0;
+
    return set->bo->offset + set->bo_offset;
 }
 
