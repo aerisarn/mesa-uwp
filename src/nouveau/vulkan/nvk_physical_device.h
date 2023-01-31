@@ -4,6 +4,7 @@
 #include "nvk_private.h"
 
 #include "nouveau_device.h"
+#include "nv_device_info.h"
 
 #include "vulkan/runtime/vk_physical_device.h"
 
@@ -15,6 +16,7 @@ struct nvk_physical_device {
    struct vk_physical_device vk;
    struct nvk_instance *instance;
    struct nouveau_ws_device *dev;
+   struct nv_device_info info;
    struct wsi_device wsi_device;
 
    // TODO: add mapable VRAM heap if possible
