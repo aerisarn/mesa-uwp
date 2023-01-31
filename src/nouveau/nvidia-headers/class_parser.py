@@ -114,9 +114,9 @@ __${nvcl}_${mthd}(uint32_t *val_out, struct nv_${nvcl.lower()}_${mthd} st)
     uint32_t nvk_p_ret; ${bs}
     V_${nvcl}_${mthd}(nvk_p_ret, args); ${bs}
     %if mthddict[mthd].is_array:
-    nvk_push_val(push, ${nvcl}_${mthd}(idx), nvk_p_ret); ${bs}
+    nv_push_val(push, ${nvcl}_${mthd}(idx), nvk_p_ret); ${bs}
     %else:
-    nvk_push_val(push, ${nvcl}_${mthd}, nvk_p_ret); ${bs}
+    nv_push_val(push, ${nvcl}_${mthd}, nvk_p_ret); ${bs}
     %endif
 } while(0)
 
