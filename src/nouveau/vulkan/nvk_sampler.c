@@ -4,8 +4,10 @@
 #include "nouveau_context.h"
 
 #include "util/bitpack_helpers.h"
+#include "util/format/format_utils.h"
 #include "util/format_srgb.h"
-#include "vulkan/runtime/vk_sampler.h"
+#include "vk_format.h"
+#include "vk_sampler.h"
 
 #include "cla097.h"
 #include "clb197.h"
@@ -256,11 +258,31 @@ nvk_CreateSampler(VkDevice _device,
    SAMP_SET_UF(samp, NV9097, 2, MIN_LOD_CLAMP, pCreateInfo->minLod);
    SAMP_SET_UF(samp, NV9097, 2, MAX_LOD_CLAMP, pCreateInfo->maxLod);
 
-   const VkClearColorValue bc =
-      vk_sampler_border_color_value(pCreateInfo, NULL);
+   VkClearColorValue bc = vk_sampler_border_color_value(pCreateInfo, NULL);
    uint8_t bc_srgb[3];
-   for (unsigned i = 0; i < 3; i++)
-      bc_srgb[i] = util_format_linear_float_to_srgb_8unorm(bc.float32[i]);
+
+   const VkSamplerBorderColorComponentMappingCreateInfoEXT *swiz_info =
+      vk_find_struct_const(pCreateInfo->pNext,
+                           SAMPLER_BORDER_COLOR_COMPONENT_MAPPING_CREATE_INFO_EXT);
+   if (swiz_info) {
+      if (swiz_info->srgb) {
+         for (uint32_t i = 0; i < 3; i++)
+            bc.float32[i] = util_format_linear_to_srgb_float(bc.float32[i]);
+      }
+
+      const bool is_int = vk_border_color_is_int(pCreateInfo->borderColor);
+      bc = vk_swizzle_color_value(bc, swiz_info->components, is_int);
+
+      for (uint32_t i = 0; i < 3; i++)
+         bc_srgb[i] = _mesa_float_to_unorm(bc.float32[i], 8);
+   } else {
+      /* Otherwise, we can assume no swizzle or that the border color is
+       * transparent black or opaque white and there's nothing to do but
+       * convert the (unswizzled) border color to sRGB.
+       */
+      for (unsigned i = 0; i < 3; i++)
+         bc_srgb[i] = util_format_linear_float_to_srgb_8unorm(bc.float32[i]);
+   }
 
    SAMP_SET_U(samp, NV9097, 2, S_R_G_B_BORDER_COLOR_R, bc_srgb[0]);
    SAMP_SET_U(samp, NV9097, 3, S_R_G_B_BORDER_COLOR_G, bc_srgb[1]);

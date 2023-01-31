@@ -102,6 +102,12 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          f->formatA4B4G4R4 = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BORDER_COLOR_SWIZZLE_FEATURES_EXT: {
+         VkPhysicalDeviceBorderColorSwizzleFeaturesEXT *f = (void *)ext;
+         f->borderColorSwizzle = true;
+         f->borderColorSwizzleFromImage = false;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
          VkPhysicalDeviceCustomBorderColorFeaturesEXT *f = (void *)ext;
          f->customBorderColors = true;
@@ -316,6 +322,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *device,
       .KHR_swapchain_mutable_format = true,
 #endif
       .KHR_variable_pointers = true,
+      .EXT_border_color_swizzle = true,
       .EXT_custom_border_color = true,
       .EXT_inline_uniform_block = true,
       .EXT_extended_dynamic_state = true,
