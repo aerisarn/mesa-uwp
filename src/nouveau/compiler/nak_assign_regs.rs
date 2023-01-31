@@ -66,14 +66,6 @@ impl TrivialRegAlloc {
         }
     }
 
-    pub fn rewrite_ref(&mut self, r: Ref) -> Ref {
-        if let Ref::SSA(ssa) = r {
-            Ref::Reg(self.rewrite_ssa(ssa))
-        } else {
-            r
-        }
-    }
-
     pub fn do_alloc(&mut self, s: &mut Shader) {
         for f in &mut s.functions {
             for b in &mut f.blocks {
@@ -82,10 +74,14 @@ impl TrivialRegAlloc {
                         instr.pred = Pred::Reg(self.rewrite_ssa(ssa));
                     }
                     for dst in instr.dsts_mut() {
-                        *dst = self.rewrite_ref(*dst);
+                        if let Dst::SSA(ssa) = dst {
+                            *dst = self.rewrite_ssa(*ssa).into();
+                        }
                     }
                     for src in instr.srcs_mut() {
-                        src.src_ref = self.rewrite_ref(src.src_ref);
+                        if let SrcRef::SSA(ssa) = src.src_ref {
+                            src.src_ref = self.rewrite_ssa(ssa).into();
+                        }
                     }
                 }
             }

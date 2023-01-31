@@ -203,6 +203,52 @@ impl fmt::Display for RegRef {
 }
 
 #[derive(Clone, Copy)]
+pub enum Dst {
+    None,
+    SSA(SSAValue),
+    Reg(RegRef),
+}
+
+impl Dst {
+    pub fn as_reg(&self) -> Option<&RegRef> {
+        match self {
+            Dst::Reg(r) => Some(r),
+            _ => None,
+        }
+    }
+
+    pub fn as_ssa(&self) -> Option<&SSAValue> {
+        match self {
+            Dst::SSA(r) => Some(r),
+            _ => None,
+        }
+    }
+}
+
+impl From<RegRef> for Dst {
+    fn from(reg: RegRef) -> Dst {
+        Dst::Reg(reg)
+    }
+}
+
+impl From<SSAValue> for Dst {
+    fn from(ssa: SSAValue) -> Dst {
+        Dst::SSA(ssa)
+    }
+}
+
+impl fmt::Display for Dst {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Dst::None => write!(f, "NULL")?,
+            Dst::SSA(v) => v.fmt(f)?,
+            Dst::Reg(r) => r.fmt(f)?,
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Copy)]
 pub enum CBuf {
     Binding(u8),
     BindlessSSA(SSAValue),
@@ -216,7 +262,7 @@ pub struct CBufRef {
 }
 
 #[derive(Clone, Copy)]
-pub enum Ref {
+pub enum SrcRef {
     Zero,
     Imm(Immediate),
     CBuf(CBufRef),
@@ -224,62 +270,62 @@ pub enum Ref {
     Reg(RegRef),
 }
 
-impl Ref {
-    pub fn new_ssa(file: RegFile, idx: u32, comps: u8) -> Ref {
-        Ref::SSA(SSAValue::new(file, idx, comps))
-    }
-
-    pub fn new_reg(file: RegFile, idx: u8, comps: u8) -> Ref {
-        Ref::Reg(RegRef::new(file, idx, comps))
-    }
-
-    pub fn as_dst(&self) -> Dst {
-        *self
-    }
-
+impl SrcRef {
     pub fn as_reg(&self) -> Option<&RegRef> {
         match self {
-            Ref::Reg(r) => Some(r),
+            SrcRef::Reg(r) => Some(r),
             _ => None,
         }
     }
 
     pub fn as_ssa(&self) -> Option<&SSAValue> {
         match self {
-            Ref::SSA(r) => Some(r),
+            SrcRef::SSA(r) => Some(r),
             _ => None,
         }
     }
 
     pub fn get_reg(&self) -> Option<&RegRef> {
         match self {
-            Ref::Zero | Ref::Imm(_) | Ref::SSA(_) => None,
-            Ref::CBuf(cb) => match &cb.buf {
+            SrcRef::Zero | SrcRef::Imm(_) | SrcRef::SSA(_) => None,
+            SrcRef::CBuf(cb) => match &cb.buf {
                 CBuf::Binding(_) | CBuf::BindlessSSA(_) => None,
                 CBuf::BindlessGPR(reg) => Some(reg),
             },
-            Ref::Reg(reg) => Some(reg),
+            SrcRef::Reg(reg) => Some(reg),
         }
     }
 
     pub fn get_ssa(&self) -> Option<&SSAValue> {
         match self {
-            Ref::Zero | Ref::Imm(_) | Ref::Reg(_) => None,
-            Ref::CBuf(cb) => match &cb.buf {
+            SrcRef::Zero | SrcRef::Imm(_) | SrcRef::Reg(_) => None,
+            SrcRef::CBuf(cb) => match &cb.buf {
                 CBuf::Binding(_) | CBuf::BindlessGPR(_) => None,
                 CBuf::BindlessSSA(ssa) => Some(ssa),
             },
-            Ref::SSA(ssa) => Some(ssa),
+            SrcRef::SSA(ssa) => Some(ssa),
         }
     }
 }
 
-impl fmt::Display for Ref {
+impl From<RegRef> for SrcRef {
+    fn from(reg: RegRef) -> SrcRef {
+        SrcRef::Reg(reg)
+    }
+}
+
+impl From<SSAValue> for SrcRef {
+    fn from(ssa: SSAValue) -> SrcRef {
+        SrcRef::SSA(ssa)
+    }
+}
+
+impl fmt::Display for SrcRef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Ref::Zero => write!(f, "ZERO")?,
-            Ref::Imm(x) => write!(f, "{:#x}", x.u)?,
-            Ref::CBuf(r) => {
+            SrcRef::Zero => write!(f, "ZERO")?,
+            SrcRef::Imm(x) => write!(f, "{:#x}", x.u)?,
+            SrcRef::CBuf(r) => {
                 match r.buf {
                     CBuf::Binding(idx) => write!(f, "c[{:#x}]", idx)?,
                     CBuf::BindlessSSA(v) => write!(f, "cx[{}]", v)?,
@@ -287,14 +333,12 @@ impl fmt::Display for Ref {
                 }
                 write!(f, "[{:#x}]", r.offset)?;
             }
-            Ref::SSA(v) => v.fmt(f)?,
-            Ref::Reg(r) => r.fmt(f)?,
+            SrcRef::SSA(v) => v.fmt(f)?,
+            SrcRef::Reg(r) => r.fmt(f)?,
         }
         Ok(())
     }
 }
-
-pub type Dst = Ref;
 
 #[derive(Clone, Copy)]
 pub enum SrcMod {
@@ -367,21 +411,21 @@ impl SrcMod {
 
 #[derive(Clone, Copy)]
 pub struct Src {
-    pub src_ref: Ref,
+    pub src_ref: SrcRef,
     pub src_mod: SrcMod,
 }
 
 impl Src {
     pub fn new_zero() -> Src {
-        Ref::Zero.into()
+        SrcRef::Zero.into()
     }
 
     pub fn new_imm_u32(u: u32) -> Src {
-        Ref::Imm(Immediate { u: u }).into()
+        SrcRef::Imm(Immediate { u: u }).into()
     }
 
     pub fn new_cbuf(idx: u8, offset: u16) -> Src {
-        Ref::CBuf(CBufRef {
+        SrcRef::CBuf(CBufRef {
             buf: CBuf::Binding(idx),
             offset: offset,
         })
@@ -419,33 +463,45 @@ impl Src {
 
     pub fn is_uniform(&self) -> bool {
         match self.src_ref {
-            Ref::Zero | Ref::Imm(_) | Ref::CBuf(_) => true,
-            Ref::SSA(ssa) => ssa.is_uniform(),
-            Ref::Reg(reg) => reg.is_uniform(),
+            SrcRef::Zero | SrcRef::Imm(_) | SrcRef::CBuf(_) => true,
+            SrcRef::SSA(ssa) => ssa.is_uniform(),
+            SrcRef::Reg(reg) => reg.is_uniform(),
         }
     }
 
     pub fn is_zero(&self) -> bool {
         match self.src_ref {
-            Ref::Zero => true,
+            SrcRef::Zero => true,
             _ => false,
         }
     }
 
     pub fn is_reg_or_zero(&self) -> bool {
         match self.src_ref {
-            Ref::Zero | Ref::SSA(_) | Ref::Reg(_) => true,
-            Ref::Imm(_) | Ref::CBuf(_) => false,
+            SrcRef::Zero | SrcRef::SSA(_) | SrcRef::Reg(_) => true,
+            SrcRef::Imm(_) | SrcRef::CBuf(_) => false,
         }
     }
 }
 
-impl From<Ref> for Src {
-    fn from(src_ref: Ref) -> Src {
+impl From<SrcRef> for Src {
+    fn from(src_ref: SrcRef) -> Src {
         Src {
             src_ref: src_ref,
             src_mod: SrcMod::None,
         }
+    }
+}
+
+impl From<RegRef> for Src {
+    fn from(reg: RegRef) -> Src {
+        SrcRef::from(reg).into()
+    }
+}
+
+impl From<SSAValue> for Src {
+    fn from(ssa: SSAValue) -> Src {
+        SrcRef::from(ssa).into()
     }
 }
 
@@ -1291,14 +1347,6 @@ pub enum Pred {
 }
 
 impl Pred {
-    pub fn new_ssa(file: RegFile, idx: u32, comps: u8) -> Pred {
-        Pred::SSA(SSAValue::new(file, idx, comps))
-    }
-
-    pub fn new_reg(file: RegFile, idx: u8, comps: u8) -> Pred {
-        Pred::Reg(RegRef::new(file, idx, comps))
-    }
-
     pub fn as_reg(&self) -> Option<&RegRef> {
         match self {
             Pred::Reg(r) => Some(r),
@@ -1476,7 +1524,7 @@ impl Instr {
     pub fn new_iadd(dst: Dst, x: Src, y: Src) -> Instr {
         Instr::new(Op::IAdd3(OpIAdd3 {
             dst: dst,
-            overflow: Dst::Zero,
+            overflow: Dst::None,
             srcs: [Src::new_zero(), x, y],
             carry: Src::new_zero(),
         }))
@@ -1734,10 +1782,10 @@ impl Function {
         }
     }
 
-    pub fn alloc_ssa(&mut self, file: RegFile, comps: u8) -> Ref {
+    pub fn alloc_ssa(&mut self, file: RegFile, comps: u8) -> SSAValue {
         let idx = self.ssa_count;
         self.ssa_count += 1;
-        Ref::new_ssa(file, idx, comps)
+        SSAValue::new(file, idx, comps)
     }
 
     pub fn map_instrs<F: Fn(Instr) -> Vec<Instr>>(&mut self, map: &F) {
@@ -1789,7 +1837,7 @@ impl Shader {
                 Op::IMov(mov) => {
                     vec![Instr::new(Op::IAdd3(OpIAdd3 {
                         dst: mov.dst,
-                        overflow: Dst::Zero,
+                        overflow: Dst::None,
                         srcs: [Src::new_zero(), mov.src, Src::new_zero()],
                         carry: Src::new_zero(),
                     }))]
@@ -1823,12 +1871,12 @@ impl Shader {
                         let vec_src = split.src.src_ref.as_reg().unwrap();
                         assert!(comps == vec_src.comps());
                         for i in 0..comps {
-                            let src = Dst::Reg(vec_src.as_comp(i).unwrap());
+                            let src = vec_src.as_comp(i).unwrap();
                             let dst = split.dsts[usize::from(i)];
-                            if let Dst::Zero = dst {
+                            if let Dst::None = dst {
                                 continue;
                             }
-                            instrs.push(Instr::new_mov(dst, src.into()));
+                            instrs.push(Instr::new_mov(dst.into(), src.into()));
                         }
                     }
                     instrs
@@ -1836,12 +1884,9 @@ impl Shader {
                 Op::FSOut(out) => {
                     let mut instrs = Vec::new();
                     for (i, src) in out.srcs.iter().enumerate() {
-                        let dst = Ref::new_reg(
-                            RegFile::GPR,
-                            i.try_into().unwrap(),
-                            1,
-                        );
-                        instrs.push(Instr::new_mov(dst, *src));
+                        let dst =
+                            RegRef::new(RegFile::GPR, i.try_into().unwrap(), 1);
+                        instrs.push(Instr::new_mov(dst.into(), *src));
                     }
                     instrs
                 }

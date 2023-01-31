@@ -200,7 +200,7 @@ impl CalcDelay {
             .dsts()
             .iter()
             .map(|dst| match dst {
-                Dst::Zero => 0,
+                Dst::None => 0,
                 Dst::Reg(reg) => self.reg_ready(reg),
                 _ => panic!("Should be run after RA"),
             })

@@ -33,27 +33,27 @@ impl<'a> ShaderFromNir<'a> {
         }
     }
 
-    pub fn alloc_ssa(&mut self, file: RegFile, comps: u8) -> Ref {
+    pub fn alloc_ssa(&mut self, file: RegFile, comps: u8) -> SSAValue {
         self.func.as_mut().unwrap().alloc_ssa(file, comps)
     }
 
-    fn ref_for_nir_def(&self, def: &nir_def) -> Ref {
+    fn get_ssa(&self, def: &nir_def) -> SSAValue {
         if def.bit_size == 1 {
-            Ref::new_ssa(RegFile::Pred, def.index, def.num_components)
+            SSAValue::new(RegFile::Pred, def.index, def.num_components)
         } else {
             assert!(def.bit_size == 32 || def.bit_size == 64);
             let dwords = (def.bit_size / 32) * def.num_components;
             //Src::new_ssa(def.index, dwords, !def.divergent)
-            Ref::new_ssa(RegFile::GPR, def.index, dwords)
+            SSAValue::new(RegFile::GPR, def.index, dwords)
         }
     }
 
     fn get_src(&self, src: &nir_src) -> Src {
-        self.ref_for_nir_def(&src.as_def()).into()
+        self.get_ssa(&src.as_def()).into()
     }
 
-    fn get_dst(&self, def: &nir_def) -> Dst {
-        self.ref_for_nir_def(def).as_dst()
+    fn get_dst(&self, dst: &nir_def) -> Dst {
+        self.get_ssa(dst).into()
     }
 
     fn get_alu_src(&mut self, alu_src: &nir_alu_src) -> Src {
@@ -67,9 +67,9 @@ impl<'a> ShaderFromNir<'a> {
             let mut dsts = Vec::new();
             for c in 0..alu_src.src.num_components() {
                 if c == alu_src.swizzle[0] {
-                    dsts.push(comp.as_dst());
+                    dsts.push(comp.into());
                 } else {
-                    dsts.push(Dst::Zero);
+                    dsts.push(Dst::None);
                 }
             }
             self.instrs.push(Instr::new_split(&dsts, vec_src));
@@ -157,7 +157,7 @@ impl<'a> ShaderFromNir<'a> {
             nir_op_fsign => {
                 let lz = self.alloc_ssa(RegFile::GPR, 1);
                 self.instrs.push(Instr::new_fset(
-                    lz,
+                    lz.into(),
                     FloatCmpOp::OrdLt,
                     srcs[0],
                     Src::new_zero(),
@@ -165,7 +165,7 @@ impl<'a> ShaderFromNir<'a> {
 
                 let gz = self.alloc_ssa(RegFile::GPR, 1);
                 self.instrs.push(Instr::new_fset(
-                    gz,
+                    gz.into(),
                     FloatCmpOp::OrdGt,
                     srcs[0],
                     Src::new_zero(),
@@ -416,7 +416,7 @@ impl<'a> ShaderFromNir<'a> {
                     for c in 0..intrin.num_components {
                         let tmp = self.alloc_ssa(RegFile::GPR, 1);
                         self.fs_out_regs[(base + c) as usize] = tmp.into();
-                        dsts.push(tmp);
+                        dsts.push(Dst::from(tmp));
                     }
                     self.instrs.push(Instr::new_split(&dsts, data))
                 } else {
@@ -432,7 +432,7 @@ impl<'a> ShaderFromNir<'a> {
     }
 
     fn parse_load_const(&mut self, load_const: &nir_load_const_instr) {
-        let dst = self.ref_for_nir_def(&load_const.def);
+        let dst = self.get_dst(&load_const.def);
         let mut srcs = Vec::new();
         for c in 0..load_const.def.num_components {
             assert!(load_const.def.bit_size == 32);

@@ -31,7 +31,7 @@ enum ALUSrc {
 impl ALUSrc {
     fn from_nonzero_src(src: &Src) -> ALUSrc {
         match src.src_ref {
-            Ref::Reg(reg) => {
+            SrcRef::Reg(reg) => {
                 assert!(reg.comps() == 1);
                 let alu_ref = ALURegRef {
                     reg: reg,
@@ -44,11 +44,11 @@ impl ALUSrc {
                     _ => panic!("Invalid ALU register file"),
                 }
             }
-            Ref::Imm(i) => {
+            SrcRef::Imm(i) => {
                 assert!(src.src_mod.is_none());
                 ALUSrc::Imm(i)
             }
-            Ref::CBuf(cb) => {
+            SrcRef::CBuf(cb) => {
                 let alu_ref = ALUCBufRef {
                     cb: cb,
                     abs: src.src_mod.has_abs(),
@@ -62,7 +62,7 @@ impl ALUSrc {
 
     fn zero(file: RegFile) -> ALUSrc {
         let src = Src {
-            src_ref: Ref::Reg(RegRef::zero(file, 1)),
+            src_ref: SrcRef::Reg(RegRef::zero(file, 1)),
             /* Modifiers don't matter for zero */
             src_mod: SrcMod::None,
         };
@@ -71,7 +71,7 @@ impl ALUSrc {
 
     pub fn from_src(src: &Src) -> ALUSrc {
         match src.src_ref {
-            Ref::Zero => ALUSrc::zero(RegFile::GPR),
+            SrcRef::Zero => ALUSrc::zero(RegFile::GPR),
             _ => ALUSrc::from_nonzero_src(src),
         }
     }
@@ -79,7 +79,7 @@ impl ALUSrc {
     pub fn from_usrc(src: &Src) -> ALUSrc {
         assert!(src.is_uniform());
         match src.src_ref {
-            Ref::Zero => ALUSrc::zero(RegFile::UGPR),
+            SrcRef::Zero => ALUSrc::zero(RegFile::UGPR),
             _ => ALUSrc::from_nonzero_src(src),
         }
     }
@@ -140,15 +140,15 @@ impl SM75Instr {
     fn set_reg_src(&mut self, range: Range<usize>, src: Src) {
         assert!(src.src_mod.is_none());
         match src.src_ref {
-            Ref::Zero => self.set_reg(range, RegRef::zero(RegFile::GPR, 1)),
-            Ref::Reg(reg) => self.set_reg(range, reg),
+            SrcRef::Zero => self.set_reg(range, RegRef::zero(RegFile::GPR, 1)),
+            SrcRef::Reg(reg) => self.set_reg(range, reg),
             _ => panic!("Not a register"),
         }
     }
 
     fn set_pred_dst(&mut self, range: Range<usize>, dst: Dst) {
         match dst {
-            Dst::Zero => {
+            Dst::None => {
                 self.set_pred_reg(range, RegRef::zero(RegFile::Pred, 1));
             }
             Dst::Reg(reg) => self.set_pred_reg(range, reg),
@@ -158,10 +158,10 @@ impl SM75Instr {
 
     fn set_pred_src(&mut self, range: Range<usize>, not_bit: isize, src: Src) {
         match src.src_ref {
-            Ref::Zero => {
+            SrcRef::Zero => {
                 self.set_pred_reg(range, RegRef::zero(RegFile::Pred, 1));
             }
-            Ref::Reg(reg) => self.set_pred_reg(range, reg),
+            SrcRef::Reg(reg) => self.set_pred_reg(range, reg),
             _ => panic!("Not a register"),
         }
         if not_bit >= 0 {

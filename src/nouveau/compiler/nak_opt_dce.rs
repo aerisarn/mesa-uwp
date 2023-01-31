@@ -28,7 +28,7 @@ impl DeadCodePass {
         }
 
         for src in instr.srcs() {
-            if let Ref::SSA(ssa) = &src.src_ref {
+            if let SrcRef::SSA(ssa) = &src.src_ref {
                 self.mark_ssa_live(ssa);
             }
         }
@@ -36,8 +36,8 @@ impl DeadCodePass {
 
     fn is_dst_live(&self, dst: &Dst) -> bool {
         match dst {
-            Ref::SSA(ssa) => self.live_ssa.get(ssa).is_some(),
-            Ref::Zero => false,
+            Dst::SSA(ssa) => self.live_ssa.get(ssa).is_some(),
+            Dst::None => false,
             _ => panic!("Invalid SSA destination"),
         }
     }
