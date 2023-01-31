@@ -72,6 +72,11 @@ struct nvk_rendering_state {
    struct nvk_attachment stencil_att;
 };
 
+struct nvk_addr_range {
+   uint64_t addr;
+   uint64_t range;
+};
+
 struct nvk_graphics_state {
    struct nvk_rendering_state render;
    struct nvk_graphics_pipeline *pipeline;
@@ -135,6 +140,9 @@ void nvk_cmd_bind_graphics_pipeline(struct nvk_cmd_buffer *cmd,
                                     struct nvk_graphics_pipeline *pipeline);
 void nvk_cmd_bind_compute_pipeline(struct nvk_cmd_buffer *cmd,
                                    struct nvk_compute_pipeline *pipeline);
+
+void nvk_cmd_bind_vertex_buffer(struct nvk_cmd_buffer *cmd, uint32_t vb_idx,
+                                struct nvk_addr_range addr_range);
 
 static inline struct nvk_descriptor_state *
 nvk_get_descriptors_state(struct nvk_cmd_buffer *cmd,

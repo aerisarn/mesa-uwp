@@ -1237,6 +1237,28 @@ nvk_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    P_IMMD(p, NV9097, SET_INDEX_BUFFER_E, vk_to_nv_index_format(indexType));
 }
 
+void
+nvk_cmd_bind_vertex_buffer(struct nvk_cmd_buffer *cmd, uint32_t vb_idx,
+                           struct nvk_addr_range addr_range)
+{
+   struct nouveau_ws_push *p = cmd->push;
+
+   P_MTHD(p, NV9097, SET_VERTEX_STREAM_A_LOCATION_A(vb_idx));
+   P_NV9097_SET_VERTEX_STREAM_A_LOCATION_A(p, vb_idx, addr_range.addr >> 32);
+   P_NV9097_SET_VERTEX_STREAM_A_LOCATION_B(p, vb_idx, addr_range.addr);
+
+   if (nvk_cmd_buffer_3d_cls(cmd) >= TURING_A) {
+      P_MTHD(p, NVC597, SET_VERTEX_STREAM_SIZE_A(vb_idx));
+      P_NVC597_SET_VERTEX_STREAM_SIZE_A(p, vb_idx, addr_range.range >> 32);
+      P_NVC597_SET_VERTEX_STREAM_SIZE_B(p, vb_idx, addr_range.range);
+   } else {
+      uint64_t limit = addr_range.addr + addr_range.range - 1;
+      P_MTHD(p, NV9097, SET_VERTEX_STREAM_LIMIT_A_A(vb_idx));
+      P_NV9097_SET_VERTEX_STREAM_LIMIT_A_A(p, vb_idx, limit >> 32);
+      P_NV9097_SET_VERTEX_STREAM_LIMIT_A_B(p, vb_idx, limit);
+   }
+}
+
 VKAPI_ATTR void VKAPI_CALL
 nvk_CmdBindVertexBuffers2(VkCommandBuffer commandBuffer,
                           uint32_t firstBinding,
@@ -1247,7 +1269,6 @@ nvk_CmdBindVertexBuffers2(VkCommandBuffer commandBuffer,
                           const VkDeviceSize *pStrides)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
-   struct nouveau_ws_push *p = cmd->push;
 
    if (pStrides) {
       vk_cmd_set_vertex_binding_strides(&cmd->vk, firstBinding,
@@ -1259,28 +1280,13 @@ nvk_CmdBindVertexBuffers2(VkCommandBuffer commandBuffer,
       uint32_t idx = firstBinding + i;
 
       uint64_t size = pSizes ? pSizes[i] : VK_WHOLE_SIZE;
-      uint64_t addr, range;
+      struct nvk_addr_range addr_range = { };
       if (buffer) {
-         addr = nvk_buffer_address(buffer, pOffsets[i]);
-         range = vk_buffer_range(&buffer->vk, pOffsets[i], size);
-      } else {
-         range = addr = 0;
+         addr_range.addr = nvk_buffer_address(buffer, pOffsets[i]);
+         addr_range.range = vk_buffer_range(&buffer->vk, pOffsets[i], size);
       }
 
-      P_MTHD(p, NV9097, SET_VERTEX_STREAM_A_LOCATION_A(idx));
-      P_NV9097_SET_VERTEX_STREAM_A_LOCATION_A(p, idx, addr >> 32);
-      P_NV9097_SET_VERTEX_STREAM_A_LOCATION_B(p, idx, addr);
-
-      if (nvk_cmd_buffer_3d_cls(cmd) >= TURING_A) {
-         P_MTHD(p, NVC597, SET_VERTEX_STREAM_SIZE_A(idx));
-         P_NVC597_SET_VERTEX_STREAM_SIZE_A(p, idx, range >> 32);
-         P_NVC597_SET_VERTEX_STREAM_SIZE_B(p, idx, range);
-      } else {
-         uint64_t limit = addr + range - 1;
-         P_MTHD(p, NV9097, SET_VERTEX_STREAM_LIMIT_A_A(idx));
-         P_NV9097_SET_VERTEX_STREAM_LIMIT_A_A(p, idx, limit >> 32);
-         P_NV9097_SET_VERTEX_STREAM_LIMIT_A_B(p, idx, limit);
-      }
+      nvk_cmd_bind_vertex_buffer(cmd, idx, addr_range);
    }
 }
 
