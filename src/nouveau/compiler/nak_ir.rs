@@ -4,7 +4,7 @@
  */
 
 use std::fmt;
-use std::ops::Range;
+use std::ops::{BitAnd, BitOr, Not, Range};
 use std::slice;
 
 #[derive(Clone, Copy)]
@@ -386,6 +386,61 @@ impl InstrRefs {
     }
 }
 
+pub struct LogicOp {
+    pub lut: u8,
+}
+
+impl LogicOp {
+    #[inline]
+    pub fn new_lut<F: Fn(u8, u8, u8) -> u8>(f: &F) -> LogicOp {
+        LogicOp {
+            lut: f(0xf0, 0xcc, 0xaa),
+        }
+    }
+
+    pub fn eval<
+        T: BitAnd<Output = T> + BitOr<Output = T> + Copy + Not<Output = T>,
+    >(
+        &self,
+        x: T,
+        y: T,
+        z: T,
+    ) -> T {
+        let mut res = x & !x; /* zero */
+        if (self.lut & (1 << 0)) != 0 {
+            res = res | (!x & !y & !z);
+        }
+        if (self.lut & (1 << 1)) != 0 {
+            res = res | (!x & !y & z);
+        }
+        if (self.lut & (1 << 2)) != 0 {
+            res = res | (!x & y & !z);
+        }
+        if (self.lut & (1 << 3)) != 0 {
+            res = res | (!x & y & z);
+        }
+        if (self.lut & (1 << 4)) != 0 {
+            res = res | (x & !y & !z);
+        }
+        if (self.lut & (1 << 5)) != 0 {
+            res = res | (x & !y & z);
+        }
+        if (self.lut & (1 << 6)) != 0 {
+            res = res | (x & y & !z);
+        }
+        if (self.lut & (1 << 7)) != 0 {
+            res = res | (x & y & z);
+        }
+        res
+    }
+}
+
+impl fmt::Display for LogicOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "LUT[{:#x}]", self.lut)
+    }
+}
+
 pub struct AttrAccess {
     pub addr: u16,
     pub comps: u8,
@@ -632,6 +687,10 @@ impl Instr {
         Instr::new(Opcode::IADD3, slice::from_ref(&dst), &[Src::Zero, x, y])
     }
 
+    pub fn new_lop3(dst: Dst, op: LogicOp, x: Src, y: Src, z: Src) -> Instr {
+        Instr::new(Opcode::LOP3(op), slice::from_ref(&dst), &[x, y, z])
+    }
+
     pub fn new_shl(dst: Dst, x: Src, shift: Src) -> Instr {
         Instr::new(Opcode::SHL, slice::from_ref(&dst), &[x, shift])
     }
@@ -754,6 +813,7 @@ impl Instr {
             | Opcode::FMNMX
             | Opcode::FMUL
             | Opcode::IADD3
+            | Opcode::LOP3(_)
             | Opcode::SHL => Some(6),
             Opcode::MOV => Some(15),
             Opcode::S2R(_) => None,
@@ -800,6 +860,7 @@ pub enum Opcode {
     FMUL,
 
     IADD3,
+    LOP3(LogicOp),
     SHL,
 
     S2R(u8),
@@ -827,6 +888,7 @@ impl fmt::Display for Opcode {
             Opcode::FMNMX => write!(f, "FMNMX"),
             Opcode::FMUL => write!(f, "FMUL"),
             Opcode::IADD3 => write!(f, "IADD3"),
+            Opcode::LOP3(op) => write!(f, "LOP3.{}", op),
             Opcode::SHL => write!(f, "SHL"),
             Opcode::S2R(i) => write!(f, "S2R({})", i),
             Opcode::MOV => write!(f, "MOV"),

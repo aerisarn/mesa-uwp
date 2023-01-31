@@ -204,6 +204,15 @@ fn encode_iadd3(bs: &mut impl BitSetMut, instr: &Instr) {
     bs.set_field(84..87, 7_u32); /* pred */
 }
 
+fn encode_lop3(bs: &mut impl BitSetMut, instr: &Instr, op: &LogicOp) {
+    encode_alu(bs, instr, 0x012);
+    bs.set_field(72..80, op.lut);
+    bs.set_bit(80, false); /* .PAND */
+    bs.set_field(81..84, 7_u32); /* pred */
+    bs.set_field(84..87, 7_u32); /* pred */
+    bs.set_bit(90, true);
+}
+
 fn encode_shl(bs: &mut impl BitSetMut, instr: &Instr) {
     encode_alu(bs, instr, 0x019);
 
@@ -316,6 +325,7 @@ pub fn encode_instr(instr: &Instr) -> [u32; 4] {
         Opcode::S2R(i) => encode_s2r(&mut bs, instr, *i),
         Opcode::MOV => encode_mov(&mut bs, instr),
         Opcode::IADD3 => encode_iadd3(&mut bs, instr),
+        Opcode::LOP3(op) => encode_lop3(&mut bs, instr, &op),
         Opcode::SHL => encode_shl(&mut bs, instr),
         Opcode::ALD(a) => encode_ald(&mut bs, instr, &a),
         Opcode::AST(a) => encode_ast(&mut bs, instr, &a),
