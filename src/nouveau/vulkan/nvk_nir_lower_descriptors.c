@@ -116,6 +116,7 @@ static bool
 lower_image_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
                    const struct lower_descriptors_ctx *ctx)
 {
+   b->cursor = nir_before_instr(&intrin->instr);
    nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
    nir_ssa_def *desc = load_resource_deref_desc(b, deref, 0, 1, 32, ctx);
    nir_rewrite_image_intrinsic(intrin, desc, true);
