@@ -200,7 +200,7 @@ mme_fermi_reg(uint32_t reg)
 static bool
 is_int18(uint32_t i)
 {
-   return i == util_mask_sign_extend(i, 18);
+   return i == (uint32_t)util_mask_sign_extend(i, 18);
 }
 
 static inline void
