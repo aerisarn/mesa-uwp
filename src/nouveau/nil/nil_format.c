@@ -74,18 +74,17 @@ struct nil_format_info {
 #define C4(c, p, n, r, g, b, a, t, s, u)                                \
    SF(c, p, NV9097_SET_COLOR_TARGET_FORMAT_V_##n, r, g, b, a, t, t, t, t, s, u)
 
-#define ZX(c, p, n, r, g, b, a, t, s, u)                                \
+#define ZX(c, p, n, r, t, s, u)                                         \
    SF(c, p, NV9097_SET_ZT_FORMAT_V_##n,                                 \
-      r, g, b, ONE_FLOAT, t, UINT, UINT, UINT, s, u)
-#define ZS(c, p, n, r, g, b, a, t, s, u)                                \
+      r, ZERO, ZERO, ONE_FLOAT, t, UINT, UINT, UINT, s, u)
+#define ZS(c, p, n, r, t, s, u)                                         \
    SF(c, p, NV9097_SET_ZT_FORMAT_V_##n,                                 \
-      r, g, b, ONE_FLOAT, t, UINT, UINT, UINT, s, u)
-#define SZ(c, p, n, r, g, b, a, t, s, u)                                \
+      r, ZERO, ZERO, ONE_FLOAT, t, UINT, UINT, UINT, s, u)
+#define SZ(c, p, n, r, t, s, u)                                         \
    SF(c, p, NV9097_SET_ZT_FORMAT_V_##n,                                 \
-      r, g, b, ONE_FLOAT, UINT, t, UINT, UINT, s, u)
+      r, ZERO, ZERO, ONE_FLOAT, UINT, t, UINT, UINT, s, u)
 #define SX(c, p, r, s, u)                                               \
-   SF(c, p, 0,                                                          \
-      r, r, r, r, UINT, UINT, UINT, UINT, s, u)
+   SF(c, p, 0, r, ZERO, ZERO, ONE_INT, UINT, UINT, UINT, UINT, s, u)
 
 #define F3(c, p, n, r, g, b, a, t, s, u)         \
    C4(c, p, n, r, g, b, ONE_FLOAT, t, s, u)
@@ -116,13 +115,13 @@ static const struct nil_format_info nil_format_infos[PIPE_FORMAT_COUNT] =
    C4(A, R8G8B8A8_SRGB,    A8BL8GL8RL8,   R, G, B, A, UNORM, A8B8G8R8, TB),
    F3(A, R8G8B8X8_SRGB,    X8BL8GL8RL8,   R, G, B, x, UNORM, A8B8G8R8, TB),
 
-   ZX(B, Z16_UNORM,              Z16,        R, R, R, x, UNORM,   Z16,        TZ),
-   ZX(A, Z32_FLOAT,              ZF32,       R, R, R, x, FLOAT,   ZF32,       TZ),
-   ZX(A, Z24X8_UNORM,            X8Z24,      R, R, R, x, UNORM,   X8Z24,      TZ),
-   SZ(A, X8Z24_UNORM,            Z24S8,      G, G, G, x, UNORM,   Z24S8,      TZ),
-   ZS(A, Z24_UNORM_S8_UINT,      S8Z24,      R, R, R, x, UNORM,   S8Z24,      TZ),
-   SZ(A, S8_UINT_Z24_UNORM,      Z24S8,      G, G, G, x, UNORM,   Z24S8,      TZ),
-   ZS(A, Z32_FLOAT_S8X24_UINT,   ZF32_X24S8, R, R, R, x, FLOAT,   ZF32_X24S8, TZ),
+   ZX(B, Z16_UNORM,              Z16,        R, UNORM,   Z16,        TZ),
+   ZX(A, Z32_FLOAT,              ZF32,       R, FLOAT,   ZF32,       TZ),
+   ZX(A, Z24X8_UNORM,            X8Z24,      R, UNORM,   X8Z24,      TZ),
+   SZ(A, X8Z24_UNORM,            Z24S8,      G, UNORM,   Z24S8,      TZ),
+   ZS(A, Z24_UNORM_S8_UINT,      S8Z24,      R, UNORM,   S8Z24,      TZ),
+   SZ(A, S8_UINT_Z24_UNORM,      Z24S8,      G, UNORM,   Z24S8,      TZ),
+   ZS(A, Z32_FLOAT_S8X24_UINT,   ZF32_X24S8, R, FLOAT,   ZF32_X24S8, TZ),
 
    SX(A, S8_UINT,          R, R8,         T),
    SX(A, X24S8_UINT,       G, G8R24,      T),
