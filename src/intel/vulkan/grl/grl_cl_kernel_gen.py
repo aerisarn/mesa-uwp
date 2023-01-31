@@ -36,12 +36,12 @@ TEMPLATE_H = Template(COPYRIGHT + """
 #ifndef GRL_CL_KERNEL_H
 #define GRL_CL_KERNEL_H
 
+#include "genxml/gen_macros.h"
+#include "compiler/brw_kernel.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "genxml/gen_macros.h"
-#include "compiler/brw_kernel.h"
 
 enum grl_cl_kernel {
 % for k in kernels:
