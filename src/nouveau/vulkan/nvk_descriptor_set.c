@@ -45,8 +45,13 @@ write_image_view_desc(struct nvk_descriptor_set *set,
    if (descriptor_type != VK_DESCRIPTOR_TYPE_SAMPLER &&
        info->imageView != VK_NULL_HANDLE) {
       VK_FROM_HANDLE(nvk_image_view, view, info->imageView);
-      assert(view->desc_index < (1 << 20));
-      desc.image_index = view->desc_index;
+      if (descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
+         assert(view->storage_desc_index < (1 << 20));
+         desc.image_index = view->storage_desc_index;
+      } else {
+         assert(view->sampled_desc_index < (1 << 20));
+         desc.image_index = view->sampled_desc_index;
+      }
    }
 
    if (descriptor_type == VK_DESCRIPTOR_TYPE_SAMPLER ||

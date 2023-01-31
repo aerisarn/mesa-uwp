@@ -37,6 +37,24 @@ vk_swizzle_to_pipe(VkComponentSwizzle swizzle)
    }
 }
 
+static void
+nvk_image_view_destroy(struct nvk_device *device,
+                       const VkAllocationCallbacks *pAllocator,
+                       struct nvk_image_view *view)
+{
+   if (view->sampled_desc_index) {
+      nvk_descriptor_table_free(device, &device->images,
+                                view->sampled_desc_index);
+   }
+
+   if (view->storage_desc_index) {
+      nvk_descriptor_table_free(device, &device->images,
+                                view->sampled_desc_index);
+   }
+
+   vk_image_view_destroy(&device->vk, pAllocator, &view->vk);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_CreateImageView(VkDevice _device,
                     const VkImageViewCreateInfo *pCreateInfo,
@@ -51,14 +69,6 @@ nvk_CreateImageView(VkDevice _device,
                                pAllocator, sizeof(*view));
    if (view == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   uint32_t *desc_map = nvk_descriptor_table_alloc(device, &device->images,
-                                                   &view->desc_index);
-   if (desc_map == NULL) {
-      vk_image_view_destroy(&device->vk, pAllocator, &view->vk);
-      return vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                       "Failed to allocate image descriptor");
-   }
 
    struct nil_view nil_view = {
       .type = vk_image_view_type_to_nil_view_type(view->vk.view_type),
@@ -75,10 +85,40 @@ nvk_CreateImageView(VkDevice _device,
       },
    };
 
-   nil_image_fill_tic(nvk_device_physical(device)->dev,
-                      &image->nil, &nil_view,
-                      nvk_image_base_address(image),
-                      desc_map);
+   if (view->vk.usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
+      uint32_t *desc_map = nvk_descriptor_table_alloc(device, &device->images,
+                                                      &view->sampled_desc_index);
+      if (desc_map == NULL) {
+         nvk_image_view_destroy(device, pAllocator, view);
+         return vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                          "Failed to allocate image descriptor");
+      }
+
+      nil_image_fill_tic(nvk_device_physical(device)->dev,
+                         &image->nil, &nil_view,
+                         nvk_image_base_address(image),
+                         desc_map);
+   }
+
+   if (view->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT) {
+      uint32_t *desc_map = nvk_descriptor_table_alloc(device, &device->images,
+                                                      &view->storage_desc_index);
+      if (desc_map == NULL) {
+         nvk_image_view_destroy(device, pAllocator, view);
+         return vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                          "Failed to allocate image descriptor");
+      }
+
+      /* For storage images, we can't have any cubes */
+      if (view->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE ||
+          view->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)
+         nil_view.type = NIL_VIEW_TYPE_2D_ARRAY;
+
+      nil_image_fill_tic(nvk_device_physical(device)->dev,
+                         &image->nil, &nil_view,
+                         nvk_image_base_address(image),
+                         desc_map);
+   }
 
    *pView = nvk_image_view_to_handle(view);
 
@@ -96,7 +136,5 @@ nvk_DestroyImageView(VkDevice _device,
    if (!view)
       return;
 
-   nvk_descriptor_table_free(device, &device->images, view->desc_index);
-
-   vk_image_view_destroy(&device->vk, pAllocator, &view->vk);
+   nvk_image_view_destroy(device, pAllocator, view);
 }
