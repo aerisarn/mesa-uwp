@@ -18,7 +18,7 @@ binding_has_immutable_samplers(const VkDescriptorSetLayoutBinding *binding) {
   }
 }
 
-static void descriptor_stride_align_for_type(
+void nvk_descriptor_stride_align_for_type(
     VkDescriptorType type, const VkMutableDescriptorTypeListVALVE *type_list,
     uint32_t *stride, uint32_t *align) {
   switch (type) {
@@ -54,8 +54,8 @@ static void descriptor_stride_align_for_type(
       assert(type_list->pDescriptorTypes[i] !=
              VK_DESCRIPTOR_TYPE_MUTABLE_VALVE);
       uint32_t desc_stride, desc_align;
-      descriptor_stride_align_for_type(type_list->pDescriptorTypes[i], NULL,
-                                       &desc_stride, &desc_align);
+      nvk_descriptor_stride_align_for_type(type_list->pDescriptorTypes[i],
+                                           NULL, &desc_stride, &desc_align);
       *stride = MAX2(*stride, desc_stride);
       *align = MAX2(*align, desc_align);
     }
@@ -163,8 +163,8 @@ VKAPI_ATTR VkResult VKAPI_CALL nvk_CreateDescriptorSetLayout(
     }
 
     uint32_t stride, align;
-    descriptor_stride_align_for_type(binding->descriptorType, type_list,
-                                     &stride, &align);
+    nvk_descriptor_stride_align_for_type(binding->descriptorType, type_list,
+                                         &stride, &align);
 
     layout->binding[b].offset = ALIGN_POT(buffer_size, align);
     layout->binding[b].stride = stride;

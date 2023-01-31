@@ -50,6 +50,10 @@ struct nvk_descriptor_set_layout {
 VK_DEFINE_HANDLE_CASTS(nvk_descriptor_set_layout, base, VkDescriptorSetLayout,
                        VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT)
 
+void nvk_descriptor_stride_align_for_type(
+    VkDescriptorType type, const VkMutableDescriptorTypeListVALVE *type_list,
+    uint32_t *stride, uint32_t *align);
+
 void nvk_descriptor_set_layout_destroy(
     struct nvk_device *device, struct nvk_descriptor_set_layout *layout);
 
