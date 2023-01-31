@@ -44,8 +44,15 @@ nvk_get_image_format_features(struct nvk_physical_device *pdevice,
          features |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT;
    }
 
-   if (vk_format_is_depth_or_stencil(vk_format))
-      return 0; /* TODO: Depth/stencil support */
+   if (vk_format_is_depth_or_stencil(vk_format)) {
+      if (vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT)
+         return 0; /* TODO */
+
+      if (!nil_format_supports_depth_stencil(pdevice->dev, p_format))
+         return 0;
+
+      features |= VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT;
+   }
 
    if (nil_format_supports_storage(pdevice->dev, p_format)) {
       features |= VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT |
