@@ -43,6 +43,17 @@ struct nak_shader_info {
    uint32_t hdr[32];
 };
 
+struct nak_shader_bin {
+   struct nak_shader_info info;
+   uint32_t code_size;
+   const void *code;
+};
+
+void nak_shader_bin_destroy(struct nak_shader_bin *bin);
+
+struct nak_shader_bin *
+nak_compile_shader(nir_shader *nir, const struct nak_compiler *nak);
+
 #ifdef __cplusplus
 }
 #endif
