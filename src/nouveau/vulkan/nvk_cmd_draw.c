@@ -434,7 +434,8 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
          P_NV9097_SET_COLOR_TARGET_HEIGHT(p, i, iview->vk.extent.height);
          const enum pipe_format p_format =
             vk_format_to_pipe_format(iview->vk.format);
-         P_NV9097_SET_COLOR_TARGET_FORMAT(p, i, nil_format_to_render(p_format));
+         const uint8_t ct_format = nil_format_to_color_target(p_format);
+         P_NV9097_SET_COLOR_TARGET_FORMAT(p, i, ct_format);
          P_NV9097_SET_COLOR_TARGET_MEMORY(p, i, {
             .block_width   = BLOCK_WIDTH_ONE_GOB,
             .block_height  = level->tiling.y_log2,
@@ -497,7 +498,8 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
       P_NV9097_SET_ZT_B(p, addr);
       const enum pipe_format p_format =
          vk_format_to_pipe_format(iview->vk.format);
-      P_NV9097_SET_ZT_FORMAT(p, nil_format_to_render(p_format));
+      const uint8_t zs_format = nil_format_to_depth_stencil(p_format);
+      P_NV9097_SET_ZT_FORMAT(p, zs_format);
       assert(image->nil.dim != NIL_IMAGE_DIM_3D);
       P_NV9097_SET_ZT_BLOCK_SIZE(p, {
          .width = WIDTH_ONE_GOB,

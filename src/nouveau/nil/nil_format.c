@@ -330,16 +330,24 @@ static const struct nil_format_info nil_format_infos[PIPE_FORMAT_COUNT] =
 };
 
 bool
-nil_format_supports_render(struct nouveau_ws_device *dev,
-                           enum pipe_format format)
+nil_format_supports_color_targets(struct nouveau_ws_device *dev,
+                                  enum pipe_format format)
 {
    assert(format < PIPE_FORMAT_COUNT);
    const struct nil_format_info *fmt = &nil_format_infos[format];
    return fmt->czt != 0;
 }
 
-uint32_t
-nil_format_to_render(enum pipe_format format)
+uint8_t
+nil_format_to_color_target(enum pipe_format format)
+{
+   assert(format < PIPE_FORMAT_COUNT);
+   const struct nil_format_info *fmt = &nil_format_infos[format];
+   return fmt->czt;
+}
+
+uint8_t
+nil_format_to_depth_stencil(enum pipe_format format)
 {
    assert(format < PIPE_FORMAT_COUNT);
    const struct nil_format_info *fmt = &nil_format_infos[format];
