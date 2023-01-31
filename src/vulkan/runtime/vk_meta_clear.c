@@ -468,6 +468,8 @@ clear_image_level_layers(struct vk_command_buffer *cmd,
       return;
    }
 
+   const VkExtent3D level_extent = vk_image_mip_level_extent(image, level);
+
    VkRenderingAttachmentInfo vk_att = {
       .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
       .imageView = image_view,
@@ -477,6 +479,11 @@ clear_image_level_layers(struct vk_command_buffer *cmd,
    };
    VkRenderingInfo vk_render = {
       .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+      .renderArea = {
+         .offset = { 0, 0 },
+         .extent = { level_extent.width, level_extent.height },
+      },
+      .layerCount = layer_count,
    };
    struct vk_meta_rendering_info meta_render = {
       .samples = image->samples,
@@ -504,8 +511,6 @@ clear_image_level_layers(struct vk_command_buffer *cmd,
       .colorAttachment = 0,
       .clearValue = *clear_value,
    };
-
-   const VkExtent3D level_extent = vk_image_mip_level_extent(image, level);
 
    const VkClearRect clear_rect = {
       .rect = {
