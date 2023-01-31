@@ -1,6 +1,8 @@
+#include "nvk_buffer.h"
 #include "nvk_cmd_buffer.h"
 #include "nvk_descriptor_set.h"
 #include "nvk_device.h"
+#include "nvk_mme.h"
 #include "nvk_physical_device.h"
 #include "nvk_pipeline.h"
 
@@ -8,9 +10,11 @@
 
 #include "classes/cla0b5.h"
 
+#include "nvk_cl9097.h"
 #include "nvk_cla0c0.h"
 #include "cla1c0.h"
 #include "nvk_clc3c0.h"
+#include "nvk_clc597.h"
 
 #include "drf.h"
 #include "cla0c0qmd.h"
@@ -38,6 +42,17 @@ qmd_set_dispatch_size(UNUSED struct nvk_device *dev, uint32_t *qmd,
    NVC3C0_QMDV02_02_VAL_SET(qmd, CTA_RASTER_DEPTH, z);
 }
 
+static uint32_t
+qmd_dispatch_size_offset(struct nvk_device *dev)
+{
+   assert(dev->ctx->compute.cls >= VOLTA_COMPUTE_A);
+   uint32_t bit = DRF_LO(DRF_MW(NVC3C0_QMDV02_02_CTA_RASTER_WIDTH));
+   assert(bit % 32 == 0);
+   assert(DRF_LO(DRF_MW(NVC3C0_QMDV02_02_CTA_RASTER_HEIGHT)) == bit + 32);
+   assert(DRF_LO(DRF_MW(NVC3C0_QMDV02_02_CTA_RASTER_DEPTH)) == bit + 64);
+   return bit / 8;
+}
+
 static inline void
 gp100_cp_launch_desc_set_cb(uint32_t *qmd, unsigned index,
                             uint32_t size, uint64_t address)
@@ -57,7 +72,8 @@ nvk_cmd_bind_compute_pipeline(struct nvk_cmd_buffer *cmd,
 }
 
 static uint64_t
-nvk_flush_compute_state(struct nvk_cmd_buffer *cmd)
+nvk_flush_compute_state(struct nvk_cmd_buffer *cmd,
+                        uint64_t *root_desc_addr_out)
 {
    const struct nvk_compute_pipeline *pipeline = cmd->state.cs.pipeline;
    const struct nvk_shader *shader =
@@ -99,6 +115,9 @@ nvk_flush_compute_state(struct nvk_cmd_buffer *cmd)
       return 0;
    }
 
+   if (root_desc_addr_out != NULL)
+      *root_desc_addr_out = root_desc_addr;
+
    return qmd_addr;
 }
 
@@ -115,11 +134,106 @@ nvk_CmdDispatch(VkCommandBuffer commandBuffer,
    desc->root.cs.grid_size[1] = groupCountY;
    desc->root.cs.grid_size[2] = groupCountZ;
 
-   uint64_t qmd_addr = nvk_flush_compute_state(cmd);
+   uint64_t qmd_addr = nvk_flush_compute_state(cmd, NULL);
    if (unlikely(qmd_addr == 0))
       return;
 
    struct nv_push *p = nvk_cmd_buffer_push(cmd, 6);
+
+   P_MTHD(p, NVA0C0, INVALIDATE_SHADER_CACHES_NO_WFI);
+   P_NVA0C0_INVALIDATE_SHADER_CACHES_NO_WFI(p, {
+      .constant = CONSTANT_TRUE
+   });
+
+   P_MTHD(p, NVA0C0, SEND_PCAS_A);
+   P_NVA0C0_SEND_PCAS_A(p, qmd_addr >> 8);
+   P_IMMD(p, NVA0C0, SEND_SIGNALING_PCAS_B, {
+      .invalidate = INVALIDATE_TRUE,
+      .schedule = SCHEDULE_TRUE
+   });
+}
+
+static void
+mme_store_global(struct mme_builder *b,
+                 struct mme_value64 addr,
+                 uint64_t offset,
+                 struct mme_value v)
+{
+   if (offset > 0)
+      addr = mme_add64(b, addr, mme_imm64(offset));
+
+   mme_mthd(b, NV9097_SET_REPORT_SEMAPHORE_A);
+   mme_emit_addr64(b, addr);
+   mme_emit(b, v);
+   mme_emit(b, mme_imm(0x10000000));
+
+   if (offset > 0) {
+      mme_free_reg(b, addr.lo);
+      mme_free_reg(b, addr.hi);
+   }
+}
+
+static void
+mme_store_global_vec3(struct mme_builder *b,
+                      struct mme_value64 addr,
+                      uint32_t offset,
+                      struct mme_value x,
+                      struct mme_value y,
+                      struct mme_value z)
+{
+   mme_store_global(b, addr, offset + 0, x);
+   mme_store_global(b, addr, offset + 4, y);
+   mme_store_global(b, addr, offset + 8, z);
+}
+
+void
+nvk_mme_dispatch_indirect(struct nvk_device *dev, struct mme_builder *b)
+{
+   struct mme_value64 dispatch_addr = mme_load_addr64(b);
+   struct mme_value64 root_desc_addr = mme_load_addr64(b);
+   struct mme_value64 qmd_addr = mme_load_addr64(b);
+
+   mme_tu104_read_fifoed(b, dispatch_addr, mme_imm(3));
+
+   uint32_t qmd_size_offset = qmd_dispatch_size_offset(dev);
+   uint32_t root_desc_size_offset =
+      offsetof(struct nvk_root_descriptor_table, cs.grid_size);
+
+   struct mme_value group_count_x = mme_load(b);
+   struct mme_value group_count_y = mme_load(b);
+   struct mme_value group_count_z = mme_load(b);
+
+   mme_store_global_vec3(b, qmd_addr, qmd_size_offset,
+                         group_count_x, group_count_y, group_count_z);
+   mme_store_global_vec3(b, root_desc_addr, root_desc_size_offset,
+                         group_count_x, group_count_y, group_count_z);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
+                        VkBuffer _buffer,
+                        VkDeviceSize offset)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_buffer, buffer, _buffer);
+
+   uint64_t dispatch_addr = nvk_buffer_address(buffer, offset);
+
+   uint64_t root_desc_addr;
+   uint64_t qmd_addr = nvk_flush_compute_state(cmd, &root_desc_addr);
+   if (unlikely(qmd_addr == 0))
+      return;
+
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 15);
+
+   P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
+   P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DISPATCH_INDIRECT));
+   P_INLINE_DATA(p, dispatch_addr >> 32);
+   P_INLINE_DATA(p, dispatch_addr);
+   P_INLINE_DATA(p, root_desc_addr >> 32);
+   P_INLINE_DATA(p, root_desc_addr);
+   P_INLINE_DATA(p, qmd_addr >> 32);
+   P_INLINE_DATA(p, qmd_addr);
 
    P_MTHD(p, NVA0C0, INVALIDATE_SHADER_CACHES_NO_WFI);
    P_NVA0C0_INVALIDATE_SHADER_CACHES_NO_WFI(p, {
