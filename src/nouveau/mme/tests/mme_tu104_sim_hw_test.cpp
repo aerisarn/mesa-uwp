@@ -966,7 +966,7 @@ TEST_F(mme_tu104_sim_test, mul_mulh)
 static inline struct mme_value
 mme_mulu(struct mme_builder *b, struct mme_value x, struct mme_value y)
 {
-   return mme_tu104_alu(b, MME_TU104_ALU_OP_MULU, x, y, 0);
+   return mme_tu104_alu(b, MME_ALU_OP_MULU, x, y, 0);
 }
 
 TEST_F(mme_tu104_sim_test, mulu_imm)
@@ -1621,8 +1621,7 @@ TEST_F(mme_tu104_sim_test, dma_read_fifoed)
    mme_mthd(&b, NVC597_MME_DMA_READ_FIFOED);
    mme_emit(&b, mme_imm(2));
 
-   mme_tu104_alu_no_dst(&b, MME_TU104_ALU_OP_EXTENDED,
-                        mme_imm(0x1000), mme_imm(1), 0);
+   mme_tu104_load_barrier(&b);
 
    mme_value x = mme_load(&b);
    mme_value y = mme_load(&b);

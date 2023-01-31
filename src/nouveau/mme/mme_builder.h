@@ -11,6 +11,33 @@
 extern "C" {
 #endif
 
+enum mme_alu_op {
+   MME_ALU_OP_ADD,
+   MME_ALU_OP_ADDC,
+   MME_ALU_OP_SUB,
+   MME_ALU_OP_SUBB,
+   MME_ALU_OP_MUL,
+   MME_ALU_OP_MULH,
+   MME_ALU_OP_MULU,
+   MME_ALU_OP_CLZ,
+   MME_ALU_OP_SLL,
+   MME_ALU_OP_SRL,
+   MME_ALU_OP_SRA,
+   MME_ALU_OP_AND,
+   MME_ALU_OP_NAND,
+   MME_ALU_OP_OR,
+   MME_ALU_OP_XOR,
+   MME_ALU_OP_MERGE,
+   MME_ALU_OP_SLT,
+   MME_ALU_OP_SLTU,
+   MME_ALU_OP_SLE,
+   MME_ALU_OP_SLEU,
+   MME_ALU_OP_SEQ,
+   MME_ALU_OP_STATE,
+   MME_ALU_OP_DREAD,
+   MME_ALU_OP_DWRITE,
+};
+
 struct mme_builder;
 
 enum mme_tu104_instr_parts {
@@ -60,17 +87,19 @@ void mme_tu104_add_inst(struct mme_builder *b,
 
 void mme_tu104_alu_to(struct mme_builder *b,
                       struct mme_value dst,
-                      enum mme_tu104_alu_op op,
+                      enum mme_alu_op op,
                       struct mme_value x,
                       struct mme_value y,
                       uint16_t implicit_imm);
 
 void mme_tu104_alu64_to(struct mme_builder *b,
                         struct mme_value64 dst,
-                        enum mme_tu104_alu_op op_lo,
-                        enum mme_tu104_alu_op op_hi,
+                        enum mme_alu_op op_lo,
+                        enum mme_alu_op op_hi,
                         struct mme_value64 x,
                         struct mme_value64 y);
+
+void mme_tu104_load_barrier(struct mme_builder *b);
 
 void mme_tu104_load_to(struct mme_builder *b,
                        struct mme_value dst);
@@ -135,7 +164,7 @@ mme_free_reg(struct mme_builder *b, struct mme_value val)
 
 static inline struct mme_value
 mme_tu104_alu(struct mme_builder *b,
-              enum mme_tu104_alu_op op,
+              enum mme_alu_op op,
               struct mme_value x,
               struct mme_value y,
               uint16_t implicit_imm)
@@ -147,7 +176,7 @@ mme_tu104_alu(struct mme_builder *b,
 
 static inline void
 mme_tu104_alu_no_dst(struct mme_builder *b,
-                     enum mme_tu104_alu_op op,
+                     enum mme_alu_op op,
                      struct mme_value x,
                      struct mme_value y,
                      uint16_t implicit_imm)
@@ -157,7 +186,7 @@ mme_tu104_alu_no_dst(struct mme_builder *b,
 
 static inline struct mme_value64
 mme_tu104_alu64(struct mme_builder *b,
-                enum mme_tu104_alu_op op_lo, enum mme_tu104_alu_op op_hi,
+                enum mme_alu_op op_lo, enum mme_alu_op op_hi,
                 struct mme_value64 x, struct mme_value64 y)
 {
    struct mme_value64 dst = {
@@ -168,34 +197,34 @@ mme_tu104_alu64(struct mme_builder *b,
    return dst;
 }
 
-#define MME_TU104_DEF_ALU1(op, OP)                                      \
-static inline void                                                      \
-mme_##op##_to(struct mme_builder *b, struct mme_value dst,              \
-              struct mme_value x)                                       \
-{                                                                       \
-   mme_tu104_alu_to(b, dst, MME_TU104_ALU_OP_##OP, x, mme_zero(), 0);   \
-}                                                                       \
-                                                                        \
-static inline struct mme_value                                          \
-mme_##op(struct mme_builder *b,                                         \
-         struct mme_value x)                                            \
-{                                                                       \
-   return mme_tu104_alu(b, MME_TU104_ALU_OP_##OP, x, mme_zero(), 0);    \
+#define MME_TU104_DEF_ALU1(op, OP)                                \
+static inline void                                                \
+mme_##op##_to(struct mme_builder *b, struct mme_value dst,        \
+              struct mme_value x)                                 \
+{                                                                 \
+   mme_tu104_alu_to(b, dst, MME_ALU_OP_##OP, x, mme_zero(), 0);   \
+}                                                                 \
+                                                                  \
+static inline struct mme_value                                    \
+mme_##op(struct mme_builder *b,                                   \
+         struct mme_value x)                                      \
+{                                                                 \
+   return mme_tu104_alu(b, MME_ALU_OP_##OP, x, mme_zero(), 0);    \
 }
 
-#define MME_TU104_DEF_ALU2(op, OP)                             \
-static inline void                                             \
-mme_##op##_to(struct mme_builder *b, struct mme_value dst,     \
-              struct mme_value x, struct mme_value y)          \
-{                                                              \
-   mme_tu104_alu_to(b, dst, MME_TU104_ALU_OP_##OP, x, y, 0);   \
-}                                                              \
-                                                               \
-static inline struct mme_value                                 \
-mme_##op(struct mme_builder *b,                                \
-         struct mme_value x, struct mme_value y)               \
-{                                                              \
-   return mme_tu104_alu(b, MME_TU104_ALU_OP_##OP, x, y, 0);    \
+#define MME_TU104_DEF_ALU2(op, OP)                          \
+static inline void                                          \
+mme_##op##_to(struct mme_builder *b, struct mme_value dst,  \
+              struct mme_value x, struct mme_value y)       \
+{                                                           \
+   mme_tu104_alu_to(b, dst, MME_ALU_OP_##OP, x, y, 0);      \
+}                                                           \
+                                                            \
+static inline struct mme_value                              \
+mme_##op(struct mme_builder *b,                             \
+         struct mme_value x, struct mme_value y)            \
+{                                                           \
+   return mme_tu104_alu(b, MME_ALU_OP_##OP, x, y, 0);       \
 }
 
 MME_TU104_DEF_ALU1(mov,    ADD);
@@ -215,11 +244,6 @@ MME_TU104_DEF_ALU2(sltu,   SLTU);
 MME_TU104_DEF_ALU2(sle,    SLE);
 MME_TU104_DEF_ALU2(sleu,   SLEU);
 MME_TU104_DEF_ALU2(seq,    SEQ);
-MME_TU104_DEF_ALU2(blt,    BLT);
-MME_TU104_DEF_ALU2(bltu,   BLTU);
-MME_TU104_DEF_ALU2(ble,    BLE);
-MME_TU104_DEF_ALU2(bleu,   BLEU);
-MME_TU104_DEF_ALU2(beq,    BEQ);
 MME_TU104_DEF_ALU1(dread,  DREAD);
 
 #undef MME_TU104_DEF_ALU1
@@ -229,54 +253,48 @@ static inline void
 mme_mov64_to(struct mme_builder *b, struct mme_value64 dst,
              struct mme_value64 x)
 {
-   mme_tu104_alu64_to(b, dst, MME_TU104_ALU_OP_ADD,
-                      MME_TU104_ALU_OP_ADD, x, mme_imm64(0));
+   mme_tu104_alu64_to(b, dst, MME_ALU_OP_ADD, MME_ALU_OP_ADD, x, mme_imm64(0));
 }
 
 static inline struct mme_value64
 mme_mov64(struct mme_builder *b, struct mme_value64 x)
 {
-   return mme_tu104_alu64(b, MME_TU104_ALU_OP_ADD,
-                          MME_TU104_ALU_OP_ADD, x, mme_imm64(0));
+   return mme_tu104_alu64(b, MME_ALU_OP_ADD, MME_ALU_OP_ADD, x, mme_imm64(0));
 }
 
 static inline void
 mme_add64_to(struct mme_builder *b, struct mme_value64 dst,
              struct mme_value64 x, struct mme_value64 y)
 {
-   mme_tu104_alu64_to(b, dst, MME_TU104_ALU_OP_ADD,
-                      MME_TU104_ALU_OP_ADDC, x, y);
+   mme_tu104_alu64_to(b, dst, MME_ALU_OP_ADD, MME_ALU_OP_ADDC, x, y);
 }
 
 static inline struct mme_value64
 mme_add64(struct mme_builder *b,
           struct mme_value64 x, struct mme_value64 y)
 {
-   return mme_tu104_alu64(b, MME_TU104_ALU_OP_ADD,
-                          MME_TU104_ALU_OP_ADDC, x, y);
+   return mme_tu104_alu64(b, MME_ALU_OP_ADD, MME_ALU_OP_ADDC, x, y);
 }
 
 static inline void
 mme_sub64_to(struct mme_builder *b, struct mme_value64 dst,
              struct mme_value64 x, struct mme_value64 y)
 {
-   mme_tu104_alu64_to(b, dst, MME_TU104_ALU_OP_SUB,
-                      MME_TU104_ALU_OP_SUBB, x, y);
+   mme_tu104_alu64_to(b, dst, MME_ALU_OP_SUB, MME_ALU_OP_SUBB, x, y);
 }
 
 static inline struct mme_value64
 mme_sub64(struct mme_builder *b,
           struct mme_value64 x, struct mme_value64 y)
 {
-   return mme_tu104_alu64(b, MME_TU104_ALU_OP_SUB,
-                          MME_TU104_ALU_OP_SUBB, x, y);
+   return mme_tu104_alu64(b, MME_ALU_OP_SUB, MME_ALU_OP_SUBB, x, y);
 }
 
 static inline void
 mme_imul_32x32_64_to(struct mme_builder *b, struct mme_value64 dst,
                      struct mme_value x, struct mme_value y)
 {
-   mme_tu104_alu64_to(b, dst, MME_TU104_ALU_OP_MUL, MME_TU104_ALU_OP_MULH,
+   mme_tu104_alu64_to(b, dst, MME_ALU_OP_MUL, MME_ALU_OP_MULH,
                       mme_value64(x, mme_zero()),
                       mme_value64(y, mme_zero()));
 }
@@ -285,7 +303,7 @@ static inline struct mme_value64
 mme_imul_32x32_64(struct mme_builder *b,
                   struct mme_value x, struct mme_value y)
 {
-   return mme_tu104_alu64(b, MME_TU104_ALU_OP_MUL, MME_TU104_ALU_OP_MULH,
+   return mme_tu104_alu64(b, MME_ALU_OP_MUL, MME_ALU_OP_MULH,
                           mme_value64(x, mme_zero()),
                           mme_value64(y, mme_zero()));
 }
@@ -294,7 +312,7 @@ static inline void
 mme_umul_32x32_64_to(struct mme_builder *b, struct mme_value64 dst,
                      struct mme_value x, struct mme_value y)
 {
-   mme_tu104_alu64_to(b, dst, MME_TU104_ALU_OP_MULU, MME_TU104_ALU_OP_MULH,
+   mme_tu104_alu64_to(b, dst, MME_ALU_OP_MULU, MME_ALU_OP_MULH,
                       mme_value64(x, mme_zero()),
                       mme_value64(y, mme_zero()));
 }
@@ -303,7 +321,7 @@ static inline struct mme_value64
 mme_umul_32x32_64(struct mme_builder *b,
                   struct mme_value x, struct mme_value y)
 {
-   return mme_tu104_alu64(b, MME_TU104_ALU_OP_MULU, MME_TU104_ALU_OP_MULH,
+   return mme_tu104_alu64(b, MME_ALU_OP_MULU, MME_ALU_OP_MULH,
                           mme_value64(x, mme_zero()),
                           mme_value64(y, mme_zero()));
 }
@@ -337,7 +355,7 @@ mme_merge_to(struct mme_builder *b, struct mme_value dst,
    assert(dst_pos < 32);
    assert(bits < 32);
    assert(src_pos < 32);
-   mme_tu104_alu_to(b, dst, MME_TU104_ALU_OP_MERGE, x, y,
+   mme_tu104_alu_to(b, dst, MME_ALU_OP_MERGE, x, y,
                     (dst_pos << 10) | (bits << 5) | src_pos);
 }
 
@@ -362,7 +380,7 @@ mme_state_arr_to(struct mme_builder *b, struct mme_value dst,
                  uint16_t state, struct mme_value index)
 {
    assert(state % 4 == 0);
-   mme_tu104_alu_to(b, dst, MME_TU104_ALU_OP_STATE,
+   mme_tu104_alu_to(b, dst, MME_ALU_OP_STATE,
                     mme_imm(state >> 2), index, 0);
 }
 
@@ -395,7 +413,7 @@ static inline void
 mme_dwrite(struct mme_builder *b,
            struct mme_value idx, struct mme_value val)
 {
-   mme_tu104_alu_no_dst(b, MME_TU104_ALU_OP_DWRITE, idx, val, 0);
+   mme_tu104_alu_no_dst(b, MME_ALU_OP_DWRITE, idx, val, 0);
 }
 
 static inline void
@@ -458,8 +476,7 @@ mme_tu104_read_fifoed(struct mme_builder *b,
    mme_mthd(b, 0x0560 /* NVC597_MME_DMA_READ_FIFOED */);
    mme_emit(b, count);
 
-   mme_tu104_alu_no_dst(b, MME_TU104_ALU_OP_EXTENDED,
-                        mme_imm(0x1000), mme_imm(1), 0);
+   mme_tu104_load_barrier(b);
 }
 
 static inline void

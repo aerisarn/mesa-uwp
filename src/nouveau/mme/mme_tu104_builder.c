@@ -283,22 +283,57 @@ build_alu_to(struct mme_builder *b,
    mme_tu104_push_alu(&b->tu104, &alu, imm0, imm1, implicit_imm, must_be_alu0);
 }
 
+static enum mme_tu104_alu_op
+mme_to_tu104_alu_op(enum mme_alu_op op)
+{
+   switch (op) {
+#define ALU_CASE(op) case MME_ALU_OP_##op: return MME_TU104_ALU_OP_##op;
+   ALU_CASE(ADD)
+   ALU_CASE(ADDC)
+   ALU_CASE(SUB)
+   ALU_CASE(SUBB)
+   ALU_CASE(MUL)
+   ALU_CASE(MULH)
+   ALU_CASE(MULU)
+   ALU_CASE(CLZ)
+   ALU_CASE(SLL)
+   ALU_CASE(SRL)
+   ALU_CASE(SRA)
+   ALU_CASE(AND)
+   ALU_CASE(NAND)
+   ALU_CASE(OR)
+   ALU_CASE(XOR)
+   ALU_CASE(MERGE)
+   ALU_CASE(SLT)
+   ALU_CASE(SLTU)
+   ALU_CASE(SLE)
+   ALU_CASE(SLEU)
+   ALU_CASE(SEQ)
+   ALU_CASE(STATE)
+   ALU_CASE(DREAD)
+   ALU_CASE(DWRITE)
+#undef ALU_CASE
+   default:
+      unreachable("Unsupported MME ALU op");
+   }
+}
+
 void
 mme_tu104_alu_to(struct mme_builder *b,
                  struct mme_value dst,
-                 enum mme_tu104_alu_op op,
+                 enum mme_alu_op op,
                  struct mme_value x,
                  struct mme_value y,
                  uint16_t implicit_imm)
 {
-   build_alu_to(b, dst, op, x, y, implicit_imm, false);
+   build_alu_to(b, dst, mme_to_tu104_alu_op(op), x, y, implicit_imm, false);
 }
 
 void
 mme_tu104_alu64_to(struct mme_builder *b,
                    struct mme_value64 dst,
-                   enum mme_tu104_alu_op op_lo,
-                   enum mme_tu104_alu_op op_hi,
+                   enum mme_alu_op op_lo,
+                   enum mme_alu_op op_hi,
                    struct mme_value64 x,
                    struct mme_value64 y)
 {
@@ -313,8 +348,15 @@ mme_tu104_alu64_to(struct mme_builder *b,
    if (y.hi.type == MME_VALUE_TYPE_IMM && y.hi.imm != 0)
       y.hi = mme_mov(b, y.hi);
 
-   build_alu_to(b, dst.lo, op_lo, x.lo, y.lo, 0, true);
-   build_alu_to(b, dst.hi, op_hi, x.hi, y.hi, 0, false);
+   build_alu_to(b, dst.lo, mme_to_tu104_alu_op(op_lo), x.lo, y.lo, 0, true);
+   build_alu_to(b, dst.hi, mme_to_tu104_alu_op(op_hi), x.hi, y.hi, 0, false);
+}
+
+void
+mme_tu104_load_barrier(struct mme_builder *b)
+{
+   build_alu_to(b, mme_zero(), MME_TU104_ALU_OP_EXTENDED,
+                mme_imm(0x1000), mme_imm(1), 0, false);
 }
 
 void
