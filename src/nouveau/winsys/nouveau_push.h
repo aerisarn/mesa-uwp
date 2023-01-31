@@ -66,12 +66,19 @@ __push_verify(struct nouveau_ws_push *push)
 }
 
 static inline void
-__push_mthd(struct nouveau_ws_push *push, int subc, uint32_t mthd)
+__push_mthd_size(struct nouveau_ws_push *push,
+                 int subc, uint32_t mthd, unsigned size)
 {
    __push_verify(push);
    push->last_size = push->map;
-   *push->map = NVC0_FIFO_PKHDR_SQ(subc, mthd, 0);
+   *push->map = NVC0_FIFO_PKHDR_SQ(subc, mthd, size);
    push->map++;
+}
+
+static inline void
+__push_mthd(struct nouveau_ws_push *push, int subc, uint32_t mthd)
+{
+   __push_mthd_size(push, subc, mthd, 0);
 }
 
 #define P_MTHD(push, class, mthd) __push_mthd(push, SUBC_##class, class##_##mthd)
@@ -79,7 +86,7 @@ __push_mthd(struct nouveau_ws_push *push, int subc, uint32_t mthd)
 static inline uint32_t
 NVC0_FIFO_PKHDR_IL(int subc, int mthd, uint16_t data)
 {
-   assert(data < 0x2000);
+   assert(!(data & ~0x1fff));
    return 0x80000000 | (data << 16) | (subc << 13) | (mthd >> 2);
 }
 
@@ -92,11 +99,17 @@ __push_immd(struct nouveau_ws_push *push, int subc, uint32_t mthd, uint32_t val)
    push->map++;
 }
 
-#define P_IMMD(push, class, mthd, args...) do {\
-   uint32_t __val; \
-   VA_##class##_##mthd(__val, args);         \
-   __push_immd(push, SUBC_##class, class##_##mthd, __val); \
-   } while(0)
+#define P_IMMD(push, class, mthd, args...) do {                         \
+   uint32_t __val;                                                      \
+   VA_##class##_##mthd(__val, args);                                    \
+   if (__builtin_constant_p(__val & ~0x1fff) && !(__val & ~0x1fff)) {   \
+      __push_immd(push, SUBC_##class, class##_##mthd, __val);           \
+   } else {                                                             \
+      __push_mthd_size(push, SUBC_##class, class##_##mthd, 1);          \
+      *push->map = __val;                                               \
+      push->map++;                                                      \
+   }                                                                    \
+} while(0)
 
 static inline uint32_t
 NVC0_FIFO_PKHDR_1I(int subc, int mthd, unsigned size)
