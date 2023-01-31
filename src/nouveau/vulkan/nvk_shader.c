@@ -95,6 +95,21 @@ lower_load_global_constant_offset_instr(nir_builder *b, nir_instr *instr,
    return true;
 }
 
+static int
+count_location_slots(const struct glsl_type *type, bool bindless)
+{
+   return glsl_count_attribute_slots(type, false);
+}
+
+static void
+assign_io_locations(nir_shader *nir)
+{
+   nir_assign_var_locations(nir, nir_var_shader_in, &nir->num_inputs,
+                            count_location_slots);
+   nir_assign_var_locations(nir, nir_var_shader_out, &nir->num_outputs,
+                            count_location_slots);
+}
+
 void
 nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
               const struct nvk_pipeline_layout *layout)
@@ -135,6 +150,11 @@ nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
 
    NIR_PASS(_, nir, nir_copy_prop);
    NIR_PASS(_, nir, nir_opt_dce);
+
+   if (nir->info.stage != MESA_SHADER_COMPUTE)
+      assign_io_locations(nir);
+
+   nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 }
 
 VkResult
