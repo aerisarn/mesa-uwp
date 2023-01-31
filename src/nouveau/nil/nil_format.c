@@ -362,6 +362,15 @@ nil_format_supports_texturing(struct nouveau_ws_device *dev,
    if (!(fmt->support & NIL_FORMAT_SUPPORTS_TEXTURE_BIT))
       return false;
 
+   /* The image/texture hardware doesn't clamp 2-bit SNORM alpha components to
+    * [-1, 1] which is out-of-spec according to Vulkan.  Fortunately, as of
+    * September 14, 2022, according to vulkan.gpuinfo.org, these formats are
+    * only supported by lavapipe and a handful of mobile phones.
+    */
+   if (fmt->tic.comp_sizes == NV9097_TEXHEAD0_COMPONENT_SIZES_A2B10G10R10 &&
+       fmt->tic.type_r == NV9097_TEXHEAD0_A_DATA_TYPE_NUM_SNORM)
+      return false;
+
    const struct util_format_description *desc = util_format_description(format);
    if (desc->layout == UTIL_FORMAT_LAYOUT_ETC ||
        desc->layout == UTIL_FORMAT_LAYOUT_ASTC) {
