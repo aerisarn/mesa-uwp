@@ -186,9 +186,7 @@ nil_image_fill_tic(struct nouveau_ws_device *dev,
    TH_SET_U(th, NVB097, BL, WIDTH_MINUS_ONE, width - 1);
    TH_SET_U(th, NVB097, BL, HEIGHT_MINUS_ONE, height - 1);
    TH_SET_U(th, NVB097, BL, DEPTH_MINUS_ONE, depth - 1);
-
-   const uint32_t last_level = view->num_levels + view->base_level - 1;
-   TH_SET_U(th, NVB097, BL, MAX_MIP_LEVEL, last_level);
+   TH_SET_U(th, NVB097, BL, MAX_MIP_LEVEL, image->num_levels - 1);
 
    TH_SET_U(th, NVB097, BL, TEXTURE_TYPE,
             nil_to_nvb097_texture_type(view->type));
@@ -206,7 +204,9 @@ nil_image_fill_tic(struct nouveau_ws_device *dev,
    TH_SET_E(th, NVB097, BL, ANISO_COARSE_SPREAD_FUNC, SPREAD_FUNC_TWO);
 
    TH_SET_U(th, NVB097, BL, RES_VIEW_MIN_MIP_LEVEL, view->base_level);
-   TH_SET_U(th, NVB097, BL, RES_VIEW_MAX_MIP_LEVEL, last_level);
+   TH_SET_U(th, NVB097, BL, RES_VIEW_MAX_MIP_LEVEL,
+            view->num_levels + view->base_level - 1);
+
    TH_SET_U(th, NVB097, BL, MULTI_SAMPLE_COUNT,
             uint_to_nvb097_multi_sample_count(image->num_samples));
 
