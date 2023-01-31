@@ -147,7 +147,13 @@ impl SM75Instr {
     }
 
     fn set_pred_dst(&mut self, range: Range<usize>, dst: Dst) {
-        self.set_pred_reg(range, *dst.as_reg().unwrap());
+        match dst {
+            Dst::Zero => {
+                self.set_pred_reg(range, RegRef::zero(RegFile::Pred, 1));
+            }
+            Dst::Reg(reg) => self.set_pred_reg(range, reg),
+            _ => panic!("Not a register"),
+        }
     }
 
     fn set_pred_src(&mut self, range: Range<usize>, not_bit: isize, src: Src) {
@@ -437,8 +443,8 @@ impl SM75Instr {
             );
         }
 
-        self.set_pred_src(81..84, -1, op.carry[0]);
-        self.set_pred_src(84..87, -1, op.carry[1]);
+        self.set_pred_dst(81..84, op.overflow);
+        self.set_pred_src(84..87, -1, op.carry);
     }
 
     fn set_int_cmp_op(&mut self, range: Range<usize>, op: IntCmpOp) {

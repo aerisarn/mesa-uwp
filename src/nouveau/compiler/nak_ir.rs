@@ -885,21 +885,22 @@ impl fmt::Display for OpFSetP {
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpIAdd3 {
     pub dst: Dst,
+    pub overflow: Dst,
     pub srcs: [Src; 3],
-    pub carry: [Src; 2],
+    pub carry: Src,
 }
 
 impl fmt::Display for OpIAdd3 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "IADD3 {} {{ {}, {}, {}, {}, {} }}",
+            "IADD3 {{ {} {} }} {{ {}, {}, {}, {} }}",
             self.dst,
+            self.overflow,
             self.srcs[0],
             self.srcs[1],
             self.srcs[2],
-            self.carry[0],
-            self.carry[1]
+            self.carry,
         )
     }
 }
@@ -1471,8 +1472,9 @@ impl Instr {
     pub fn new_iadd(dst: Dst, x: Src, y: Src) -> Instr {
         Instr::new(Op::IAdd3(OpIAdd3 {
             dst: dst,
+            overflow: Dst::Zero,
             srcs: [Src::new_zero(), x, y],
-            carry: [Src::new_zero(); 2],
+            carry: Src::new_zero(),
         }))
     }
 
@@ -1783,8 +1785,9 @@ impl Shader {
                 Op::IMov(mov) => {
                     vec![Instr::new(Op::IAdd3(OpIAdd3 {
                         dst: mov.dst,
+                        overflow: Dst::Zero,
                         srcs: [Src::new_zero(), mov.src, Src::new_zero()],
-                        carry: [Src::new_zero(); 2],
+                        carry: Src::new_zero(),
                     }))]
                 }
                 Op::Vec(vec) => {
