@@ -272,3 +272,30 @@ nvk_queue_finish(struct nvk_device *dev, struct nvk_queue *queue)
    nouveau_ws_bo_destroy(queue->empty_push);
    vk_queue_finish(&queue->vk);
 }
+
+VkResult
+nvk_queue_submit_simple(struct nvk_queue *queue,
+                        const uint32_t *dw, uint32_t dw_count,
+                        struct nouveau_ws_bo *extra_bo)
+{
+   struct nvk_device *dev = nvk_queue_device(queue);
+   struct nouveau_ws_bo *push_bo;
+   VkResult result;
+
+   void *push_map;
+   push_bo = nouveau_ws_bo_new_mapped(dev->pdev->dev, dw_count * 4, 0,
+                                      NOUVEAU_WS_BO_GART | NOUVEAU_WS_BO_MAP,
+                                      NOUVEAU_WS_BO_WR, &push_map);
+   if (push_bo == NULL)
+      return vk_error(queue, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+
+   memcpy(push_map, dw, dw_count * 4);
+
+   result = nvk_queue_submit_simple_drm_nouveau(queue, push_bo, dw_count,
+                                                extra_bo);
+
+   nouveau_ws_bo_unmap(push_bo, push_map);
+   nouveau_ws_bo_destroy(push_bo);
+
+   return result;
+}

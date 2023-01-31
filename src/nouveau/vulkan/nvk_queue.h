@@ -56,6 +56,15 @@ VkResult nvk_queue_init(struct nvk_device *dev, struct nvk_queue *queue,
 
 void nvk_queue_finish(struct nvk_device *dev, struct nvk_queue *queue);
 
+VkResult nvk_queue_submit_simple(struct nvk_queue *queue,
+                                 const uint32_t *dw, uint32_t dw_count,
+                                 struct nouveau_ws_bo *extra_bo);
+
+VkResult nvk_queue_submit_simple_drm_nouveau(struct nvk_queue *queue,
+                                             struct nouveau_ws_bo *push_bo,
+                                             uint32_t push_dw_count,
+                                             struct nouveau_ws_bo *extra_bo);
+
 VkResult nvk_queue_submit_drm_nouveau(struct vk_queue *vkqueue,
                                       struct vk_queue_submit *submit);
 
