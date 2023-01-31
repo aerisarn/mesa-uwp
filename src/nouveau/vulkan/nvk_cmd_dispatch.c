@@ -86,21 +86,7 @@ nvk_CmdDispatch(VkCommandBuffer commandBuffer,
       return;
    }
 
-   struct nv_push *p = P_SPACE(cmd->push, 14 + root_table_size / 4);
-
-   P_MTHD(p, NVA0C0, OFFSET_OUT_UPPER);
-   P_NVA0C0_OFFSET_OUT_UPPER(p, root_table_addr >> 32);
-   P_NVA0C0_OFFSET_OUT(p, root_table_addr & 0xffffffff);
-   P_MTHD(p, NVA0C0, LINE_LENGTH_IN);
-   P_NVA0C0_LINE_LENGTH_IN(p, root_table_size);
-   P_NVA0C0_LINE_COUNT(p, 0x1);
-
-   P_1INC(p, NVA0C0, LAUNCH_DMA);
-   P_NVA0C0_LAUNCH_DMA(p, {
-      .dst_memory_layout = DST_MEMORY_LAYOUT_PITCH,
-      .sysmembar_disable = SYSMEMBAR_DISABLE_TRUE
-   });
-   P_INLINE_ARRAY(p, (uint32_t *)&desc->root, root_table_size / 4);
+   memcpy(root_table_map, &desc->root, sizeof(desc->root));
 
    uint32_t *qmd;
    uint64_t qmd_addr;
@@ -115,6 +101,8 @@ nvk_CmdDispatch(VkCommandBuffer commandBuffer,
 
    gp100_cp_launch_desc_set_cb(qmd, 0, root_table_size, root_table_addr);
    gp100_cp_launch_desc_set_cb(qmd, 1, root_table_size, root_table_addr);
+
+   struct nv_push *p = P_SPACE(cmd->push, 6);
 
    P_MTHD(p, NVA0C0, INVALIDATE_SHADER_CACHES_NO_WFI);
    P_NVA0C0_INVALIDATE_SHADER_CACHES_NO_WFI(p, {
