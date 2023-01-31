@@ -3,6 +3,7 @@
 #include "nvk_image.h"
 #include "nvk_image_view.h"
 #include "nvk_physical_device.h"
+#include "nvk_pipeline.h"
 
 #include "nil_format.h"
 #include "vulkan/runtime/vk_render_pass.h"
@@ -558,7 +559,11 @@ void
 nvk_cmd_bind_graphics_pipeline(struct nvk_cmd_buffer *cmd,
                                struct nvk_graphics_pipeline *pipeline)
 {
+   struct nouveau_ws_push *p = cmd->push;
+
    cmd->state.gfx.pipeline = pipeline;
+   vk_cmd_set_dynamic_graphics_state(&cmd->vk, &pipeline->dynamic);
+   nouveau_ws_push_append(p, &pipeline->push);
 }
 
 #define VFMT(vk_fmt, widths, swap_rb, type) \

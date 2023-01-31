@@ -37,16 +37,6 @@ nvk_pipeline_free(struct nvk_device *device,
    vk_object_free(&device->vk, pAllocator, pipeline);
 }
 
-static VkResult
-nvk_graphics_pipeline_create(struct nvk_device *device,
-                             struct vk_pipeline_cache *cache,
-                             const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                             const VkAllocationCallbacks *pAllocator,
-                             VkPipeline *pPipeline)
-{
-   unreachable("Graphics pipelines not yet implemented");
-}
-
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_CreateGraphicsPipelines(VkDevice _device,
                             VkPipelineCache pipelineCache,
