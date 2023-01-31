@@ -42,7 +42,7 @@ struct nvk_root_descriptor_table {
    /* Descriptor set base addresses */
    uint64_t sets[NVK_MAX_SETS];
 
-   /* TODO: Dynamic buffer bindings */
+   /* Dynamic buffer bindings */
    struct nvk_buffer_address dynamic_buffers[NVK_MAX_DYNAMIC_BUFFERS];
 };
 
