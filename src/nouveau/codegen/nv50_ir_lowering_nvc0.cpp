@@ -931,8 +931,8 @@ bool
 NVC0LoweringPass::handleTEX(TexInstruction *i)
 {
    const int dim = i->tex.target.getDim() + i->tex.target.isCube();
-   const int arg = i->tex.target.getArgCount();
-   const int lyr = arg - (i->tex.target.isMS() ? 2 : 1);
+   const int arg = i->tex.target.getArgCount() - i->tex.target.isMS();
+   const int lyr = arg - 1;
    const int chipset = prog->getTarget()->getChipset();
 
    /* Only normalize in the non-explicit derivatives case. For explicit
