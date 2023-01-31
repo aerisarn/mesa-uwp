@@ -74,7 +74,7 @@ struct mme_builder {
 };
 
 static inline void
-mme_builder_init(struct mme_builder *b, struct nv_device_info *dev)
+mme_builder_init(struct mme_builder *b, const struct nv_device_info *dev)
 {
    memset(b, 0, sizeof(*b));
    b->cls = dev->cls_eng3d;
