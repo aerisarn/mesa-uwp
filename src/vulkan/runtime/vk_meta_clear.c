@@ -73,7 +73,7 @@ build_clear_shader(const struct vk_meta_clear_key *key)
       const struct glsl_type *out_type;
       if (vk_format_is_int(key->render.color_attachment_formats[a]))
          out_type = glsl_ivec4_type();
-      else if (vk_format_is_int(key->render.color_attachment_formats[a]))
+      else if (vk_format_is_uint(key->render.color_attachment_formats[a]))
          out_type = glsl_uvec4_type();
       else
          out_type = glsl_vec4_type();
