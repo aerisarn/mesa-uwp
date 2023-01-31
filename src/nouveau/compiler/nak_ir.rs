@@ -357,6 +357,20 @@ impl SrcMod {
         }
     }
 
+    pub fn is_alu(&self) -> bool {
+        match self {
+            SrcMod::None | SrcMod::Abs | SrcMod::Neg | SrcMod::NegAbs => true,
+            SrcMod::Not => false,
+        }
+    }
+
+    pub fn is_bitwise(&self) -> bool {
+        match self {
+            SrcMod::None | SrcMod::Not => true,
+            SrcMod::Abs | SrcMod::Neg | SrcMod::NegAbs => false,
+        }
+    }
+
     pub fn has_neg(&self) -> bool {
         match self {
             SrcMod::None | SrcMod::Abs => false,
