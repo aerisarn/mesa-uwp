@@ -37,9 +37,34 @@ struct hash_table;
 struct vk_command_buffer;
 struct vk_device;
 
+struct vk_meta_rect {
+   uint32_t x0, y0, x1, y1;
+   float z;
+   uint32_t layer;
+};
+
+#define VK_PRIMITIVE_TOPOLOGY_META_RECT_LIST_MESA (VkPrimitiveTopology)11
+
 struct vk_meta_device {
    struct hash_table *cache;
    simple_mtx_t cache_mtx;
+
+   uint32_t max_bind_map_buffer_size_B;
+
+   VkResult (*cmd_bind_map_buffer)(struct vk_command_buffer *cmd,
+                                   struct vk_meta_device *meta,
+                                   VkBuffer buffer,
+                                   void **map_out);
+
+   void (*cmd_draw_rects)(struct vk_command_buffer *cmd,
+                          struct vk_meta_device *meta,
+                          uint32_t rect_count,
+                          const struct vk_meta_rect *rects);
+
+   void (*cmd_draw_volume)(struct vk_command_buffer *cmd,
+                           struct vk_meta_device *meta,
+                           const struct vk_meta_rect *rect,
+                           uint32_t layer_count);
 };
 
 VkResult vk_meta_device_init(struct vk_device *device,
@@ -155,6 +180,16 @@ VkResult vk_meta_create_image_view(struct vk_command_buffer *cmd,
                                    struct vk_meta_device *meta,
                                    const VkImageViewCreateInfo *info,
                                    VkImageView *image_view_out);
+
+void vk_meta_draw_rects(struct vk_command_buffer *cmd,
+                        struct vk_meta_device *meta,
+                        uint32_t rect_count,
+                        const struct vk_meta_rect *rects);
+
+void vk_meta_draw_volume(struct vk_command_buffer *cmd,
+                         struct vk_meta_device *meta,
+                         const struct vk_meta_rect *rect,
+                         uint32_t layer_count);
 
 #ifdef __cplusplus
 }

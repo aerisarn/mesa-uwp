@@ -21,10 +21,11 @@
  * IN THE SOFTWARE.
  */
 
-#include "vk_meta.h"
+#include "vk_meta_private.h"
 
 #include "vk_command_buffer.h"
 #include "vk_device.h"
+#include "vk_pipeline.h"
 #include "vk_util.h"
 
 #include "util/hash_table.h"
@@ -109,6 +110,9 @@ vk_meta_device_init(struct vk_device *device,
    meta->cache = _mesa_hash_table_create(NULL, cache_key_hash,
                                                cache_key_equal);
    simple_mtx_init(&meta->cache_mtx, mtx_plain);
+
+   meta->cmd_draw_rects = vk_meta_draw_rects;
+   meta->cmd_draw_volume = vk_meta_draw_volume;
 
    return VK_SUCCESS;
 }
@@ -228,6 +232,66 @@ vk_meta_create_pipeline_layout(struct vk_device *device,
    return VK_SUCCESS;
 }
 
+static VkResult
+create_rect_list_pipeline(struct vk_device *device,
+                          struct vk_meta_device *meta,
+                          const VkGraphicsPipelineCreateInfo *info,
+                          VkPipeline *pipeline_out)
+{
+   const struct vk_device_dispatch_table *disp = &device->dispatch_table;
+   VkDevice _device = vk_device_to_handle(device);
+
+   VkGraphicsPipelineCreateInfo info_local = *info;
+
+   STACK_ARRAY(VkPipelineShaderStageCreateInfo, stages, info->stageCount + 1);
+   for (uint32_t i = 0; i < info->stageCount; i++) {
+      assert(info->pStages[i].stage != VK_SHADER_STAGE_VERTEX_BIT);
+      stages[i + 1] = info->pStages[i];
+   }
+
+   VkPipelineShaderStageNirCreateInfoMESA vs_nir_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_NIR_CREATE_INFO_MESA,
+      .nir = vk_meta_draw_rects_vs_nir(meta),
+   };
+   stages[0] = (VkPipelineShaderStageCreateInfo) {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+      .pNext = &vs_nir_info,
+      .stage = VK_SHADER_STAGE_VERTEX_BIT,
+      .pName = "main",
+   };
+
+   info_local.stageCount = info->stageCount + 1;
+   info_local.pStages = stages;
+   info_local.pVertexInputState = &vk_meta_draw_rects_vi_state;
+   info_local.pViewportState = &vk_meta_draw_rects_vs_state;
+
+   uint32_t dyn_count = info->pDynamicState != NULL ?
+                        info->pDynamicState->dynamicStateCount : 0;
+
+   STACK_ARRAY(VkDynamicState, dyn_state, dyn_count + 2);
+   for (uint32_t i = 0; i < dyn_count; i++)
+      dyn_state[i] = info->pDynamicState->pDynamicStates[i];
+
+   dyn_state[dyn_count + 0] = VK_DYNAMIC_STATE_VIEWPORT;
+   dyn_state[dyn_count + 1] = VK_DYNAMIC_STATE_SCISSOR;
+
+   const VkPipelineDynamicStateCreateInfo dyn_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+      .dynamicStateCount = dyn_count + 2,
+      .pDynamicStates = dyn_state,
+   };
+
+   info_local.pDynamicState = &dyn_info;
+
+   VkResult result = disp->CreateGraphicsPipelines(_device, VK_NULL_HANDLE,
+                                                   1, &info_local, NULL,
+                                                   pipeline_out);
+
+   STACK_ARRAY_FINISH(dyn_state);
+
+   return result;
+}
+
 static const VkPipelineRasterizationStateCreateInfo default_rs_info = {
    .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
    .depthClampEnable = false,
@@ -254,6 +318,7 @@ vk_meta_create_graphics_pipeline(struct vk_device *device,
 {
    const struct vk_device_dispatch_table *disp = &device->dispatch_table;
    VkDevice _device = vk_device_to_handle(device);
+   VkResult result;
 
    VkGraphicsPipelineCreateInfo info_local = *info;
 
@@ -267,6 +332,10 @@ vk_meta_create_graphics_pipeline(struct vk_device *device,
       .stencilAttachmentFormat = render->stencil_attachment_format,
    };
    __vk_append_struct(&info_local, &r_info);
+
+   /* Assume rectangle pipelines */
+   if (info_local.pInputAssemblyState == NULL)
+   info_local.pInputAssemblyState = &vk_meta_draw_rects_ia_state;
 
    if (info_local.pRasterizationState == NULL)
       info_local.pRasterizationState = &default_rs_info;
@@ -304,9 +373,16 @@ vk_meta_create_graphics_pipeline(struct vk_device *device,
    }
 
    VkPipeline pipeline;
-   VkResult result = disp->CreateGraphicsPipelines(_device, VK_NULL_HANDLE,
-                                                   1, &info_local,
-                                                   NULL, &pipeline);
+   if (info_local.pInputAssemblyState->topology ==
+       VK_PRIMITIVE_TOPOLOGY_META_RECT_LIST_MESA) {
+      result = create_rect_list_pipeline(device, meta,
+                                         &info_local,
+                                         &pipeline);
+   } else {
+      result = disp->CreateGraphicsPipelines(_device, VK_NULL_HANDLE,
+                                             1, &info_local,
+                                             NULL, &pipeline);
+   }
    if (unlikely(result != VK_SUCCESS))
       return result;
 
