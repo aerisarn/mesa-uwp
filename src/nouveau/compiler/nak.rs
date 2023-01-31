@@ -6,7 +6,7 @@
 mod bitset;
 mod nak_assign_regs;
 mod nak_calc_instr_deps;
-mod nak_encode_tu102;
+mod nak_encode_sm75;
 mod nak_from_nir;
 mod nak_ir;
 mod nak_opt_copy_prop;
@@ -296,7 +296,11 @@ pub extern "C" fn nak_compile_shader(
         hdr: encode_hdr_for_nir(nir, 0 /* tls_size */),
     };
 
-    let code = nak_encode_tu102::encode_shader(&s);
+    let code = if nak.sm >= 75 {
+        nak_encode_sm75::encode_shader(&s)
+    } else {
+        panic!("Unsupported shader model");
+    };
 
     print!("Encoded shader:");
     for i in 0..code.len() {
