@@ -2637,6 +2637,7 @@ optimize_encoding_vop2(Program* program, ra_ctx& ctx, RegisterFile& register_fil
    static_assert(sizeof(VOP2_instruction) <= sizeof(VOP3P_instruction),
                  "Invalid direct instruction cast.");
    instr->format = Format::VOP2;
+   instr->valu().opsel_hi = 0;
    switch (instr->opcode) {
    case aco_opcode::v_mad_f32: instr->opcode = aco_opcode::v_mac_f32; break;
    case aco_opcode::v_fma_f32: instr->opcode = aco_opcode::v_fmac_f32; break;
