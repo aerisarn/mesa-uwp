@@ -522,7 +522,7 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
       P_IMMD(p, NV9097, SET_ZT_SELECT, 0 /* target_count */);
    }
 
-   P_IMMD(p, NV9097, SET_ANTI_ALIAS, ffs(render->samples) - 1);
+   P_IMMD(p, NV9097, SET_ANTI_ALIAS, ffs(MAX2(1, render->samples)) - 1);
 
    if (render->flags & VK_RENDERING_RESUMING_BIT)
       return;
