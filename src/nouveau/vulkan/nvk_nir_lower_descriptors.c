@@ -182,6 +182,11 @@ lower_image_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
    nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
    nir_ssa_def *desc = load_resource_deref_desc(b, deref, 0, 1, 32, ctx);
    nir_rewrite_image_intrinsic(intrin, desc, true);
+
+   /* We don't support ReadWithoutFormat yet */
+   if (intrin->intrinsic == nir_intrinsic_image_deref_load)
+      assert(nir_intrinsic_format(intrin) != PIPE_FORMAT_NONE);
+
    return true;
 }
 

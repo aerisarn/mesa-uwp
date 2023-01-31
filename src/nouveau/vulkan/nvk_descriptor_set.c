@@ -48,6 +48,14 @@ write_image_view_desc(struct nvk_descriptor_set *set,
       if (descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
          assert(view->storage_desc_index > 0);
          assert(view->storage_desc_index < (1 << 20));
+
+         /* The nv50 compiler currently does some whacky stuff with images.
+          * For now, just assert that we never do storage on 3D images and
+          * that our descriptor index is at most 11 bits.
+          */
+         assert(view->storage_desc_index < (1 << 11));
+         assert(view->vk.image->image_type != VK_IMAGE_TYPE_3D);
+
          desc.image_index = view->storage_desc_index;
       } else {
          assert(view->sampled_desc_index > 0);
