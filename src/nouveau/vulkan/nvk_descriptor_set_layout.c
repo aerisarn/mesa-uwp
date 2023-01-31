@@ -138,9 +138,9 @@ nvk_CreateDescriptorSetLayout(VkDevice _device,
    uint8_t dynamic_buffer_count = 0;
    for (uint32_t b = 0; b < num_bindings; b++) {
       /* We stashed the pCreateInfo->pBindings[] index (plus one) in the
-     * immutable_samplers pointer.  Check for NULL (empty binding) and then
-     * reset it and compute the index.
-     */
+       * immutable_samplers pointer.  Check for NULL (empty binding) and then
+       * reset it and compute the index.
+       */
       if (layout->binding[b].immutable_samplers == NULL)
          continue;
       const uint32_t info_idx =
