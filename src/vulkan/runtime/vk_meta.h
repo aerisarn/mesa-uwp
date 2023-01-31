@@ -52,6 +52,7 @@ struct vk_meta_device {
 
    uint32_t max_bind_map_buffer_size_B;
    bool use_layered_rendering;
+   bool use_stencil_export;
 
    VkResult (*cmd_bind_map_buffer)(struct vk_command_buffer *cmd,
                                    struct vk_meta_device *meta,

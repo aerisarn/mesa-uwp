@@ -33,6 +33,7 @@
 struct vk_meta_blit_key {
    enum vk_meta_object_key_type key_type;
    enum glsl_sampler_dim dim;
+   bool stencil_as_discard;
    VkFormat dst_format;
    VkImageAspectFlags aspects;
 };
@@ -69,7 +70,8 @@ aspect_to_tex_binding(VkImageAspectFlagBits aspect)
 struct vk_meta_blit_push_data {
    float x_off, y_off, x_scale, y_scale;
    float z_off, z_scale;
-   int32_t arr_delta, _pad;
+   int32_t arr_delta;
+   uint32_t stencil_bit;
 };
 
 static inline void
@@ -277,12 +279,20 @@ build_blit_shader(const struct vk_meta_blit_key *key)
       nir_ssa_def *val = build_txl(b, texture, sampler, src_coord);
       val = nir_trim_vector(b, val, out_comps);
 
-      const struct glsl_type *out_type = glsl_vector_type(base_type, out_comps);
-      nir_variable *out = nir_variable_create(b->shader, nir_var_shader_out,
-                                              out_type, out_name);
-      out->data.location = out_location;
+      if (key->stencil_as_discard) {
+         assert(key->aspects == VK_IMAGE_ASPECT_STENCIL_BIT);
+         nir_ssa_def *stencil_bit = nir_channel(b, z_xform, 3);
+         nir_discard_if(b, nir_ieq(b, nir_iand(b, val, stencil_bit),
+                                      nir_imm_int(b, 0)));
+      } else {
+         const struct glsl_type *out_type =
+            glsl_vector_type(base_type, out_comps);
+         nir_variable *out = nir_variable_create(b->shader, nir_var_shader_out,
+                                                 out_type, out_name);
+         out->data.location = out_location;
 
-      nir_store_var(b, out, val, BITFIELD_MASK(out_comps));
+         nir_store_var(b, out, val, BITFIELD_MASK(out_comps));
+      }
    }
 
    return b->shader;
@@ -394,6 +404,10 @@ get_blit_pipeline(struct vk_device *device,
    VkPipelineDepthStencilStateCreateInfo ds_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
    };
+   VkDynamicState dyn_tmp;
+   VkPipelineDynamicStateCreateInfo dyn_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+   };
    struct vk_meta_rendering_info render = {
       .samples = 1,
    };
@@ -413,7 +427,13 @@ get_blit_pipeline(struct vk_device *device,
       ds_info.front.passOp = VK_STENCIL_OP_REPLACE;
       ds_info.front.compareMask = ~0u;
       ds_info.front.writeMask = ~0u;
+      ds_info.front.reference = ~0;
       ds_info.back = ds_info.front;
+      if (key->stencil_as_discard) {
+         dyn_tmp = VK_DYNAMIC_STATE_STENCIL_WRITE_MASK;
+         dyn_info.dynamicStateCount = 1;
+         dyn_info.pDynamicStates = &dyn_tmp;
+      }
       render.stencil_attachment_format = key->dst_format;
    }
 
@@ -422,6 +442,7 @@ get_blit_pipeline(struct vk_device *device,
       .stageCount = 1,
       .pStages = &fs_info,
       .pDepthStencilState = &ds_info,
+      .pDynamicState = &dyn_info,
       .layout = layout,
    };
 
@@ -506,80 +527,6 @@ do_blit(struct vk_command_buffer *cmd,
       return;
    }
 
-   key->aspects = dst_subres.aspectMask;
-
-   VkImageView dst_view;
-   const VkImageViewUsageCreateInfo dst_view_usage = {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO,
-      .usage = (key->aspects & VK_IMAGE_ASPECT_COLOR_BIT) ?
-               VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT :
-               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-   };
-   const VkImageViewCreateInfo dst_view_info = {
-      .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-      .pNext = &dst_view_usage,
-      .image = vk_image_to_handle(dst_image),
-      .viewType = vk_image_sampled_view_type(dst_image),
-      .format = dst_format,
-      .subresourceRange = {
-         .aspectMask = dst_subres.aspectMask,
-         .baseMipLevel = dst_subres.mipLevel,
-         .levelCount = 1,
-         .baseArrayLayer = dst_subres.baseArrayLayer,
-         .layerCount = dst_subres.layerCount,
-      },
-   };
-   result = vk_meta_create_image_view(cmd, meta, &dst_view_info,
-                                      &dst_view);
-   if (unlikely(result != VK_SUCCESS)) {
-      vk_command_buffer_set_error(cmd, result);
-      return;
-   }
-
-   const VkRenderingAttachmentInfo vk_att = {
-      .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-      .imageView = dst_view,
-      .imageLayout = dst_image_layout,
-      .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-      .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-   };
-   VkRenderingInfo vk_render = {
-      .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-      .renderArea = {
-         .offset = {
-            dst_rect->x0,
-            dst_rect->y0
-         },
-         .extent = {
-            dst_rect->x1 - dst_rect->x0,
-            dst_rect->y1 - dst_rect->y0
-         },
-      },
-      .layerCount = dst_rect->layer + dst_layer_count,
-   };
-
-   if (key->aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
-      vk_render.colorAttachmentCount = 1;
-      vk_render.pColorAttachments = &vk_att;
-   }
-   if (key->aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
-      vk_render.pDepthAttachment = &vk_att;
-   if (key->aspects & VK_IMAGE_ASPECT_STENCIL_BIT)
-      vk_render.pStencilAttachment = &vk_att;
-
-   disp->CmdBeginRendering(vk_command_buffer_to_handle(cmd), &vk_render);
-
-   VkPipeline pipeline;
-   result = get_blit_pipeline(device, meta, key,
-                              pipeline_layout, &pipeline);
-   if (unlikely(result != VK_SUCCESS)) {
-      vk_command_buffer_set_error(cmd, result);
-      return;
-   }
-
-   disp->CmdBindPipeline(vk_command_buffer_to_handle(cmd),
-                         VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
    uint32_t desc_count = 0;
    VkDescriptorImageInfo image_infos[3];
    VkWriteDescriptorSet desc_writes[3];
@@ -645,14 +592,124 @@ do_blit(struct vk_command_buffer *cmd,
                                  pipeline_layout, 0,
                                  desc_count, desc_writes);
 
-   disp->CmdPushConstants(vk_command_buffer_to_handle(cmd),
-                          pipeline_layout,
-                          VK_SHADER_STAGE_FRAGMENT_BIT,
-                          0, sizeof(*push), push);
+   assert(dst_subres.aspectMask == src_subres.aspectMask);
+   VkImageAspectFlags aspects_left = dst_subres.aspectMask;
 
-   meta->cmd_draw_volume(cmd, meta, dst_rect, dst_layer_count);
+   while (aspects_left) {
+      key->aspects = aspects_left;
 
-   disp->CmdEndRendering(vk_command_buffer_to_handle(cmd));
+      /* If we need to write stencil via iterative discard, it has to be
+       * written by itself because otherwise the discards would also throw
+       * away color or depth data.
+       */
+      if ((key->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
+          key->aspects != VK_IMAGE_ASPECT_STENCIL_BIT &&
+          !meta->use_stencil_export)
+         key->aspects &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
+
+      key->stencil_as_discard = key->aspects == VK_IMAGE_ASPECT_STENCIL_BIT &&
+                                !meta->use_stencil_export;
+
+      VkImageView dst_view;
+      const VkImageViewUsageCreateInfo dst_view_usage = {
+         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO,
+         .usage = (key->aspects & VK_IMAGE_ASPECT_COLOR_BIT) ?
+                  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT :
+                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+      };
+      const VkImageViewCreateInfo dst_view_info = {
+         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+         .pNext = &dst_view_usage,
+         .image = vk_image_to_handle(dst_image),
+         .viewType = vk_image_sampled_view_type(dst_image),
+         .format = dst_format,
+         .subresourceRange = {
+            .aspectMask = dst_subres.aspectMask,
+            .baseMipLevel = dst_subres.mipLevel,
+            .levelCount = 1,
+            .baseArrayLayer = dst_subres.baseArrayLayer,
+            .layerCount = dst_subres.layerCount,
+         },
+      };
+      result = vk_meta_create_image_view(cmd, meta, &dst_view_info,
+                                         &dst_view);
+      if (unlikely(result != VK_SUCCESS)) {
+         vk_command_buffer_set_error(cmd, result);
+         return;
+      }
+
+      const VkRenderingAttachmentInfo vk_att = {
+         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+         .imageView = dst_view,
+         .imageLayout = dst_image_layout,
+         .loadOp = key->stencil_as_discard ? VK_ATTACHMENT_LOAD_OP_CLEAR :
+                                             VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+      };
+      VkRenderingInfo vk_render = {
+         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+         .renderArea = {
+            .offset = {
+               dst_rect->x0,
+               dst_rect->y0
+            },
+            .extent = {
+               dst_rect->x1 - dst_rect->x0,
+               dst_rect->y1 - dst_rect->y0
+            },
+         },
+         .layerCount = dst_rect->layer + dst_layer_count,
+      };
+
+      if (key->aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
+         vk_render.colorAttachmentCount = 1;
+         vk_render.pColorAttachments = &vk_att;
+      }
+      if (key->aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+         vk_render.pDepthAttachment = &vk_att;
+      if (key->aspects & VK_IMAGE_ASPECT_STENCIL_BIT)
+         vk_render.pStencilAttachment = &vk_att;
+
+      disp->CmdBeginRendering(vk_command_buffer_to_handle(cmd), &vk_render);
+
+      VkPipeline pipeline;
+      result = get_blit_pipeline(device, meta, key,
+                                 pipeline_layout, &pipeline);
+      if (unlikely(result != VK_SUCCESS)) {
+         vk_command_buffer_set_error(cmd, result);
+         return;
+      }
+
+      disp->CmdBindPipeline(vk_command_buffer_to_handle(cmd),
+                            VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+      if (key->stencil_as_discard) {
+         for (uint32_t i = 0; i < 8; i++) {
+            push->stencil_bit = BITFIELD_BIT(i);
+            disp->CmdPushConstants(vk_command_buffer_to_handle(cmd),
+                                   pipeline_layout,
+                                   VK_SHADER_STAGE_FRAGMENT_BIT,
+                                   0, sizeof(*push), push);
+
+            disp->CmdSetStencilWriteMask(vk_command_buffer_to_handle(cmd),
+                                         VK_STENCIL_FACE_FRONT_AND_BACK,
+                                         push->stencil_bit);
+
+            meta->cmd_draw_volume(cmd, meta, dst_rect, dst_layer_count);
+         }
+      } else {
+         disp->CmdPushConstants(vk_command_buffer_to_handle(cmd),
+                                pipeline_layout,
+                                VK_SHADER_STAGE_FRAGMENT_BIT,
+                                0, sizeof(*push), push);
+
+         meta->cmd_draw_volume(cmd, meta, dst_rect, dst_layer_count);
+      }
+
+      disp->CmdEndRendering(vk_command_buffer_to_handle(cmd));
+
+      aspects_left &= ~key->aspects;
+   }
 }
 
 void
