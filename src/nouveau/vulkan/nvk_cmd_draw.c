@@ -1385,9 +1385,7 @@ void
 nvk_mme_draw_indirect(struct nvk_device *dev, struct mme_builder *b)
 {
    struct mme_value begin = mme_load(b);
-   struct mme_value draw_addr_hi = mme_load(b);
-   struct mme_value draw_addr_lo = mme_load(b);
-   struct mme_value64 draw_addr = mme_value64(draw_addr_lo, draw_addr_hi);
+   struct mme_value64 draw_addr = mme_load_addr64(b);
    struct mme_value draw_count = mme_load(b);
    struct mme_value stride = mme_load(b);
 
@@ -1439,9 +1437,7 @@ void
 nvk_mme_draw_indexed_indirect(struct nvk_device *dev, struct mme_builder *b)
 {
    struct mme_value begin = mme_load(b);
-   struct mme_value draw_addr_hi = mme_load(b);
-   struct mme_value draw_addr_lo = mme_load(b);
-   struct mme_value64 draw_addr = mme_value64(draw_addr_lo, draw_addr_hi);
+   struct mme_value64 draw_addr = mme_load_addr64(b);
    struct mme_value draw_count = mme_load(b);
    struct mme_value stride = mme_load(b);
 
