@@ -93,6 +93,12 @@ struct nvk_cmd_buffer {
 VK_DEFINE_HANDLE_CASTS(nvk_cmd_buffer, vk.base, VkCommandBuffer,
                        VK_OBJECT_TYPE_COMMAND_BUFFER)
 
+static inline struct nvk_device *
+nvk_cmd_buffer_device(struct nvk_cmd_buffer *cmd)
+{
+   return (struct nvk_device *)cmd->vk.base.device;
+}
+
 VkResult nvk_reset_cmd_buffer(struct nvk_cmd_buffer *cmd_buffer);
 
 void nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
