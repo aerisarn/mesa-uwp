@@ -240,7 +240,8 @@ nvk_UpdateDescriptorSets(VkDevice device,
 }
 
 static void
-nvk_descriptor_set_destroy(struct nvk_device *device, struct nvk_descriptor_pool *pool,
+nvk_descriptor_set_destroy(struct nvk_device *device,
+                           struct nvk_descriptor_pool *pool,
                            struct nvk_descriptor_set *set, bool free_bo)
 {
    if (free_bo) {
@@ -258,7 +259,8 @@ nvk_descriptor_set_destroy(struct nvk_device *device, struct nvk_descriptor_pool
 }
 
 static void
-nvk_destroy_descriptor_pool(struct nvk_device *device, const VkAllocationCallbacks *pAllocator,
+nvk_destroy_descriptor_pool(struct nvk_device *device,
+                            const VkAllocationCallbacks *pAllocator,
                             struct nvk_descriptor_pool *pool)
 {
    for (int i = 0; i < pool->entry_count; ++i) {
@@ -328,7 +330,8 @@ nvk_CreateDescriptorPool(VkDevice _device,
     */
    bo_size += NVK_MIN_UBO_ALIGNMENT * pCreateInfo->maxSets;
 
-   uint64_t entries_size = sizeof(struct nvk_descriptor_pool_entry) * pCreateInfo->maxSets;
+   uint64_t entries_size = sizeof(struct nvk_descriptor_pool_entry) *
+                           pCreateInfo->maxSets;
    size += entries_size;
 
    pool = vk_object_zalloc(&device->vk, pAllocator, size,
@@ -358,8 +361,10 @@ nvk_CreateDescriptorPool(VkDevice _device,
 }
 
 static VkResult
-nvk_descriptor_set_create(struct nvk_device *device, struct nvk_descriptor_pool *pool,
-                          struct nvk_descriptor_set_layout *layout, const uint32_t *variable_count,
+nvk_descriptor_set_create(struct nvk_device *device,
+                          struct nvk_descriptor_pool *pool,
+                          struct nvk_descriptor_set_layout *layout,
+                          const uint32_t *variable_count,
                           struct nvk_descriptor_set **out_set)
 {
    struct nvk_descriptor_set *set;
@@ -424,9 +429,11 @@ nvk_AllocateDescriptorSets(VkDevice _device,
 
    /* allocate a set of buffers for each shader to contain descriptors */
    for (i = 0; i < pAllocateInfo->descriptorSetCount; i++) {
-      VK_FROM_HANDLE(nvk_descriptor_set_layout, layout, pAllocateInfo->pSetLayouts[i]);
+      VK_FROM_HANDLE(nvk_descriptor_set_layout, layout,
+                     pAllocateInfo->pSetLayouts[i]);
       const uint32_t *variable_count = NULL;
-      result = nvk_descriptor_set_create(device, pool, layout, variable_count, &set);
+      result = nvk_descriptor_set_create(device, pool, layout,
+                                         variable_count, &set);
       if (result != VK_SUCCESS)
          break;
 
@@ -443,13 +450,15 @@ nvk_AllocateDescriptorSets(VkDevice _device,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_FreeDescriptorSets(VkDevice _device, VkDescriptorPool descriptorPool, uint32_t count,
+nvk_FreeDescriptorSets(VkDevice _device,
+                       VkDescriptorPool descriptorPool,
+                       uint32_t descriptorSetCount,
                        const VkDescriptorSet *pDescriptorSets)
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
    VK_FROM_HANDLE(nvk_descriptor_pool, pool, descriptorPool);
 
-   for (uint32_t i = 0; i < count; i++) {
+   for (uint32_t i = 0; i < descriptorSetCount; i++) {
       VK_FROM_HANDLE(nvk_descriptor_set, set, pDescriptorSets[i]);
 
       if (set)
@@ -459,7 +468,8 @@ nvk_FreeDescriptorSets(VkDevice _device, VkDescriptorPool descriptorPool, uint32
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_DestroyDescriptorPool(VkDevice _device, VkDescriptorPool _pool,
+nvk_DestroyDescriptorPool(VkDevice _device,
+                          VkDescriptorPool _pool,
                           const VkAllocationCallbacks *pAllocator)
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
@@ -472,7 +482,8 @@ nvk_DestroyDescriptorPool(VkDevice _device, VkDescriptorPool _pool,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_ResetDescriptorPool(VkDevice _device, VkDescriptorPool descriptorPool,
+nvk_ResetDescriptorPool(VkDevice _device,
+                        VkDescriptorPool descriptorPool,
                         VkDescriptorPoolResetFlags flags)
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
