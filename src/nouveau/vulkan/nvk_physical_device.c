@@ -123,6 +123,7 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          .maxComputeWorkGroupSize = {1024, 1024, 64},
          .maxStorageBufferRange = UINT32_MAX,
          .nonCoherentAtomSize = 64,
+         .minUniformBufferOffsetAlignment = NVK_MIN_UBO_ALIGNMENT,
       },
 
       /* More properties */
