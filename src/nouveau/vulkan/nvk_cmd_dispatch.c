@@ -109,17 +109,11 @@ nvk_flush_compute_state(struct nvk_cmd_buffer *cmd,
                         uint64_t *root_desc_addr_out)
 {
    const struct nvk_compute_pipeline *pipeline = cmd->state.cs.pipeline;
-   const struct nvk_shader *shader =
-      &pipeline->base.shaders[MESA_SHADER_COMPUTE];
    const struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
    struct nvk_descriptor_state *desc = &cmd->state.cs.descriptors;
    VkResult result;
 
    nvk_cmd_buffer_flush_push_descriptors(cmd, desc);
-
-   desc->root.cs.block_size[0] = shader->cp.block_size[0];
-   desc->root.cs.block_size[1] = shader->cp.block_size[1];
-   desc->root.cs.block_size[2] = shader->cp.block_size[2];
 
    /* pre Pascal the constant buffer sizes need to be 0x100 aligned. As we simply allocated a
     * buffer and upload data to it, make sure its size is 0x100 aligned.

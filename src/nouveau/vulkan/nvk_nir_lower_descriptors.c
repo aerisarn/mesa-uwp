@@ -233,6 +233,9 @@ lower_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
    case nir_intrinsic_load_vulkan_descriptor:
       return lower_load_vulkan_descriptor(b, intrin, ctx);
 
+   case nir_intrinsic_load_workgroup_size:
+      unreachable("Should have been lowered by nir_lower_cs_intrinsics()");
+
    case nir_intrinsic_load_num_workgroups:
       return lower_num_workgroups(b, intrin, ctx);
 
