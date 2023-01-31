@@ -43,7 +43,7 @@ write_image_view_desc(struct nvk_descriptor_set *set,
    struct nvk_image_descriptor desc = { };
 
    if (descriptor_type != VK_DESCRIPTOR_TYPE_SAMPLER &&
-       info->imageView != VK_NULL_HANDLE) {
+       info && info->imageView != VK_NULL_HANDLE) {
       VK_FROM_HANDLE(nvk_image_view, view, info->imageView);
       if (descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
          assert(view->storage_desc_index > 0);
@@ -348,6 +348,18 @@ nvk_descriptor_set_create(struct nvk_device *device, struct nvk_descriptor_pool 
    pool->entries[pool->entry_count].set = set;
    pool->current_offset += layout->descriptor_buffer_size;
    pool->entry_count++;
+
+   for (uint32_t b = 0; b < layout->binding_count; b++) {
+      if (layout->binding[b].type != VK_DESCRIPTOR_TYPE_SAMPLER &&
+          layout->binding[b].type != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+         continue;
+
+      if (layout->binding[b].immutable_samplers == NULL)
+         continue;
+
+      for (uint32_t j = 0; j < layout->binding[b].array_size; j++)
+         write_image_view_desc(set, NULL, b, j, layout->binding[b].type);
+   }
 
    *out_set = set;
 
