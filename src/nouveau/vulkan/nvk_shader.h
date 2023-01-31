@@ -17,13 +17,41 @@ struct nvk_physical_device;
 #define NVC0_MAX_SHADER_HEADER_SIZE TU102_SHADER_HEADER_SIZE
 
 struct nvk_shader {
+   gl_shader_stage stage;
+
    uint8_t *code_ptr;
    uint32_t code_size;
 
-   uint32_t hdr[NVC0_MAX_SHADER_HEADER_SIZE/4];
    bool need_tls;
    uint8_t num_gprs;
    uint8_t num_barriers;
+
+   uint32_t hdr[NVC0_MAX_SHADER_HEADER_SIZE/4];
+   uint32_t flags[2];
+
+   struct {
+      uint32_t clip_mode; /* clip/cull selection */
+      uint8_t clip_enable; /* mask of defined clip planes */
+      uint8_t cull_enable; /* mask of defined cull distances */
+      uint8_t num_ucps; /* also set to max if ClipDistance is used */
+      uint8_t edgeflag; /* attribute index of edgeflag input */
+      bool need_vertex_id;
+      bool need_draw_parameters;
+      bool layer_viewport_relative; /* also applies go gp and tp */
+   } vs;
+
+   struct {
+      uint8_t early_z;
+      uint8_t colors;
+      uint8_t color_interp[2];
+      bool sample_mask_in;
+      bool force_persample_interp;
+      bool flatshade;
+      bool reads_framebuffer;
+      bool post_depth_coverage;
+      bool msaa;
+   } fs;
+
    struct {
       uint32_t lmem_size; /* local memory (TGSI PRIVATE resource) size */
       uint32_t smem_size; /* shared memory (TGSI LOCAL resource) size */
