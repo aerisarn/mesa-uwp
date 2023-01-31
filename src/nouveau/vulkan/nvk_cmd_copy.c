@@ -142,7 +142,7 @@ to_90b5_remap_num_comps(uint8_t num_comps)
 static void
 nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
 {
-   struct nouveau_ws_push *push = cmd->push;
+   struct nouveau_ws_push *p = cmd->push;
 
    uint32_t src_bw, dst_bw;
    if (copy->remap.comp_size > 0) {
@@ -156,7 +156,7 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
        */
       src_bw = dst_bw = 1;
 
-      P_IMMD(push, NV90B5, SET_REMAP_COMPONENTS, {
+      P_IMMD(p, NV90B5, SET_REMAP_COMPONENTS, {
          .dst_x = copy->remap.dst[0],
          .dst_y = copy->remap.dst[1],
          .dst_z = copy->remap.dst[2],
@@ -192,20 +192,20 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
       }
 
       for (unsigned z = 0; z < copy->extent_el.depth; z++) {
-         P_MTHD(push, NV90B5, OFFSET_IN_UPPER);
-         P_NV90B5_OFFSET_IN_UPPER(push, src_addr >> 32);
-         P_NV90B5_OFFSET_IN_LOWER(push, src_addr & 0xffffffff);
-         P_NV90B5_OFFSET_OUT_UPPER(push, dst_addr >> 32);
-         P_NV90B5_OFFSET_OUT_LOWER(push, dst_addr & 0xfffffff);
-         P_NV90B5_PITCH_IN(push, copy->src.row_stride);
-         P_NV90B5_PITCH_OUT(push, copy->dst.row_stride);
-         P_NV90B5_LINE_LENGTH_IN(push, copy->extent_el.width * src_bw);
-         P_NV90B5_LINE_COUNT(push, copy->extent_el.height);
+         P_MTHD(p, NV90B5, OFFSET_IN_UPPER);
+         P_NV90B5_OFFSET_IN_UPPER(p, src_addr >> 32);
+         P_NV90B5_OFFSET_IN_LOWER(p, src_addr & 0xffffffff);
+         P_NV90B5_OFFSET_OUT_UPPER(p, dst_addr >> 32);
+         P_NV90B5_OFFSET_OUT_LOWER(p, dst_addr & 0xfffffff);
+         P_NV90B5_PITCH_IN(p, copy->src.row_stride);
+         P_NV90B5_PITCH_OUT(p, copy->dst.row_stride);
+         P_NV90B5_LINE_LENGTH_IN(p, copy->extent_el.width * src_bw);
+         P_NV90B5_LINE_COUNT(p, copy->extent_el.height);
 
          uint32_t src_layout = 0, dst_layout = 0;
          if (copy->src.tiling.is_tiled) {
-            P_MTHD(push, NV90B5, SET_SRC_BLOCK_SIZE);
-            P_NV90B5_SET_SRC_BLOCK_SIZE(push, {
+            P_MTHD(p, NV90B5, SET_SRC_BLOCK_SIZE);
+            P_NV90B5_SET_SRC_BLOCK_SIZE(p, {
                .width = 0, /* Tiles are always 1 GOB wide */
                .height = copy->src.tiling.y_log2,
                .depth = copy->src.tiling.z_log2,
@@ -213,18 +213,18 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
                              GOB_HEIGHT_GOB_HEIGHT_FERMI_8 :
                              GOB_HEIGHT_GOB_HEIGHT_TESLA_4,
             });
-            P_NV90B5_SET_SRC_WIDTH(push, copy->src.extent_el.width * src_bw);
-            P_NV90B5_SET_SRC_HEIGHT(push, copy->src.extent_el.height);
-            P_NV90B5_SET_SRC_DEPTH(push, copy->src.extent_el.depth);
-            P_NV90B5_SET_SRC_LAYER(push, z + copy->src.offset_el.z);
+            P_NV90B5_SET_SRC_WIDTH(p, copy->src.extent_el.width * src_bw);
+            P_NV90B5_SET_SRC_HEIGHT(p, copy->src.extent_el.height);
+            P_NV90B5_SET_SRC_DEPTH(p, copy->src.extent_el.depth);
+            P_NV90B5_SET_SRC_LAYER(p, z + copy->src.offset_el.z);
 
             if (cmd->pool->dev->ctx->copy.cls >= 0xc1b5) {
-               P_MTHD(push, NVC1B5, SRC_ORIGIN_X);
-               P_NVC1B5_SRC_ORIGIN_X(push, copy->src.offset_el.x * src_bw);
-               P_NVC1B5_SRC_ORIGIN_Y(push, copy->src.offset_el.y);
+               P_MTHD(p, NVC1B5, SRC_ORIGIN_X);
+               P_NVC1B5_SRC_ORIGIN_X(p, copy->src.offset_el.x * src_bw);
+               P_NVC1B5_SRC_ORIGIN_Y(p, copy->src.offset_el.y);
             } else {
-               P_MTHD(push, NV90B5, SET_SRC_ORIGIN);
-               P_NV90B5_SET_SRC_ORIGIN(push, {
+               P_MTHD(p, NV90B5, SET_SRC_ORIGIN);
+               P_NV90B5_SET_SRC_ORIGIN(p, {
                   .x = copy->src.offset_el.x * src_bw,
                   .y = copy->src.offset_el.y
                });
@@ -237,8 +237,8 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
          }
 
          if (copy->dst.tiling.is_tiled) {
-            P_MTHD(push, NV90B5, SET_DST_BLOCK_SIZE);
-            P_NV90B5_SET_DST_BLOCK_SIZE(push, {
+            P_MTHD(p, NV90B5, SET_DST_BLOCK_SIZE);
+            P_NV90B5_SET_DST_BLOCK_SIZE(p, {
                .width = 0, /* Tiles are always 1 GOB wide */
                .height = copy->dst.tiling.y_log2,
                .depth = copy->dst.tiling.z_log2,
@@ -246,18 +246,18 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
                              GOB_HEIGHT_GOB_HEIGHT_FERMI_8 :
                              GOB_HEIGHT_GOB_HEIGHT_TESLA_4,
             });
-            P_NV90B5_SET_DST_WIDTH(push, copy->dst.extent_el.width * dst_bw);
-            P_NV90B5_SET_DST_HEIGHT(push, copy->dst.extent_el.height);
-            P_NV90B5_SET_DST_DEPTH(push, copy->dst.extent_el.depth);
-            P_NV90B5_SET_DST_LAYER(push, z + copy->dst.offset_el.z);
+            P_NV90B5_SET_DST_WIDTH(p, copy->dst.extent_el.width * dst_bw);
+            P_NV90B5_SET_DST_HEIGHT(p, copy->dst.extent_el.height);
+            P_NV90B5_SET_DST_DEPTH(p, copy->dst.extent_el.depth);
+            P_NV90B5_SET_DST_LAYER(p, z + copy->dst.offset_el.z);
 
             if (cmd->pool->dev->ctx->copy.cls >= 0xc1b5) {
-               P_MTHD(push, NVC1B5, DST_ORIGIN_X);
-               P_NVC1B5_DST_ORIGIN_X(push, copy->dst.offset_el.x * dst_bw);
-               P_NVC1B5_DST_ORIGIN_Y(push, copy->dst.offset_el.y);
+               P_MTHD(p, NVC1B5, DST_ORIGIN_X);
+               P_NVC1B5_DST_ORIGIN_X(p, copy->dst.offset_el.x * dst_bw);
+               P_NVC1B5_DST_ORIGIN_Y(p, copy->dst.offset_el.y);
             } else {
-               P_MTHD(push, NV90B5, SET_DST_ORIGIN);
-               P_NV90B5_SET_DST_ORIGIN(push, {
+               P_MTHD(p, NV90B5, SET_DST_ORIGIN);
+               P_NV90B5_SET_DST_ORIGIN(p, {
                   .x = copy->dst.offset_el.x * dst_bw,
                   .y = copy->dst.offset_el.y
                });
@@ -269,7 +269,7 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
             dst_layout = NV90B5_LAUNCH_DMA_DST_MEMORY_LAYOUT_PITCH;
          }
 
-         P_IMMD(push, NV90B5, LAUNCH_DMA, {
+         P_IMMD(p, NV90B5, LAUNCH_DMA, {
             .data_transfer_type = DATA_TRANSFER_TYPE_NON_PIPELINED,
             .multi_line_enable = MULTI_LINE_ENABLE_TRUE,
             .flush_enable = FLUSH_ENABLE_TRUE,
@@ -545,15 +545,15 @@ nvk_CmdClearColorImage(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_image, dst, image);
-   struct nouveau_ws_push *push = cmd->push;
+   struct nouveau_ws_push *p = cmd->push;
 
-   nvk_push_image_ref(push, dst, NOUVEAU_WS_BO_WR);
+   nvk_push_image_ref(p, dst, NOUVEAU_WS_BO_WR);
 
-   P_IMMD(push, NV902D, SET_OPERATION, V_SRCCOPY);
+   P_IMMD(p, NV902D, SET_OPERATION, V_SRCCOPY);
 
-   P_IMMD(push, NV902D, SET_CLIP_ENABLE, V_FALSE);
-   P_IMMD(push, NV902D, SET_COLOR_KEY_ENABLE, V_FALSE);
-   P_IMMD(push, NV902D, SET_RENDER_ENABLE_C, MODE_TRUE);
+   P_IMMD(p, NV902D, SET_CLIP_ENABLE, V_FALSE);
+   P_IMMD(p, NV902D, SET_COLOR_KEY_ENABLE, V_FALSE);
+   P_IMMD(p, NV902D, SET_RENDER_ENABLE_C, MODE_TRUE);
 
    uint32_t packed_color[4] = { };
    util_format_pack_rgba(vk_format_to_pipe_format(dst->vk.format),
@@ -561,36 +561,36 @@ nvk_CmdClearColorImage(VkCommandBuffer commandBuffer,
 
    switch (vk_format_get_blocksize(dst->vk.format)) {
    case 1:
-      P_IMMD(push, NV902D, SET_DST_FORMAT, V_Y8);
-      P_IMMD(push, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT, V_Y8);
+      P_IMMD(p, NV902D, SET_DST_FORMAT, V_Y8);
+      P_IMMD(p, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT, V_Y8);
       break;
    case 2:
-      P_IMMD(push, NV902D, SET_DST_FORMAT, V_Y16);
-      P_IMMD(push, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT, V_Y16);
+      P_IMMD(p, NV902D, SET_DST_FORMAT, V_Y16);
+      P_IMMD(p, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT, V_Y16);
       break;
    case 4:
-      P_IMMD(push, NV902D, SET_DST_FORMAT, V_A8B8G8R8);
-      P_IMMD(push, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT, V_A8B8G8R8);
+      P_IMMD(p, NV902D, SET_DST_FORMAT, V_A8B8G8R8);
+      P_IMMD(p, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT, V_A8B8G8R8);
       break;
    case 8:
-      P_IMMD(push, NV902D, SET_DST_FORMAT, V_RF16_GF16_BF16_AF16);
-      P_IMMD(push, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT, V_RF16_GF16_BF16_AF16);
+      P_IMMD(p, NV902D, SET_DST_FORMAT, V_RF16_GF16_BF16_AF16);
+      P_IMMD(p, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT, V_RF16_GF16_BF16_AF16);
       break;
    case 16:
-      P_IMMD(push, NV902D, SET_DST_FORMAT, V_RF32_GF32_BF32_AF32);
-      P_IMMD(push, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT, V_RF32_GF32_BF32_AF32);
+      P_IMMD(p, NV902D, SET_DST_FORMAT, V_RF32_GF32_BF32_AF32);
+      P_IMMD(p, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT, V_RF32_GF32_BF32_AF32);
       break;
    default:
       unreachable("TODO: More formats in CmdClearColorImage");
    }
 
-   P_MTHD(push, NV902D, SET_RENDER_SOLID_PRIM_COLOR0);
-   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR0(push, packed_color[0]);
-   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR1(push, packed_color[1]);
-   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR2(push, packed_color[2]);
-   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR3(push, packed_color[3]);
+   P_MTHD(p, NV902D, SET_RENDER_SOLID_PRIM_COLOR0);
+   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR0(p, packed_color[0]);
+   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR1(p, packed_color[1]);
+   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR2(p, packed_color[2]);
+   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR3(p, packed_color[3]);
 
-   P_IMMD(push, NV902D, RENDER_SOLID_PRIM_MODE, V_RECTS);
+   P_IMMD(p, NV902D, RENDER_SOLID_PRIM_MODE, V_RECTS);
 
    for (uint32_t r = 0; r < rangeCount; r++) {
       const uint32_t layer_count =
@@ -609,46 +609,46 @@ nvk_CmdClearColorImage(VkCommandBuffer commandBuffer,
                                           layer * dst->nil.array_stride_B +
                                           dst_level->offset_B;
 
-            P_MTHD(push, NV902D, SET_DST_OFFSET_UPPER);
-            P_NV902D_SET_DST_OFFSET_UPPER(push, dst_addr >> 32);
-            P_NV902D_SET_DST_OFFSET_LOWER(push, dst_addr & 0xffffffff);
+            P_MTHD(p, NV902D, SET_DST_OFFSET_UPPER);
+            P_NV902D_SET_DST_OFFSET_UPPER(p, dst_addr >> 32);
+            P_NV902D_SET_DST_OFFSET_LOWER(p, dst_addr & 0xffffffff);
 
             if (dst_level->tiling.is_tiled) {
-               P_MTHD(push, NV902D, SET_DST_MEMORY_LAYOUT);
-               P_NV902D_SET_DST_MEMORY_LAYOUT(push, V_BLOCKLINEAR);
-               P_NV902D_SET_DST_BLOCK_SIZE(push, {
+               P_MTHD(p, NV902D, SET_DST_MEMORY_LAYOUT);
+               P_NV902D_SET_DST_MEMORY_LAYOUT(p, V_BLOCKLINEAR);
+               P_NV902D_SET_DST_BLOCK_SIZE(p, {
                   .height = dst_level->tiling.y_log2,
                   .depth = dst_level->tiling.z_log2,
                });
             } else {
-               P_IMMD(push, NV902D, SET_DST_MEMORY_LAYOUT, V_PITCH);
+               P_IMMD(p, NV902D, SET_DST_MEMORY_LAYOUT, V_PITCH);
             }
 
             const VkExtent3D dst_level_extent =
                vk_image_mip_level_extent(&dst->vk, level);
 
-            P_MTHD(push, NV902D, SET_DST_DEPTH);
-            P_NV902D_SET_DST_DEPTH(push, dst_level_extent.depth);
+            P_MTHD(p, NV902D, SET_DST_DEPTH);
+            P_NV902D_SET_DST_DEPTH(p, dst_level_extent.depth);
 
-            P_MTHD(push, NV902D, SET_DST_PITCH);
-            P_NV902D_SET_DST_PITCH(push, dst_level->row_stride_B);
-            P_NV902D_SET_DST_WIDTH(push, dst_level_extent.width);
-            P_NV902D_SET_DST_HEIGHT(push, dst_level_extent.height);
+            P_MTHD(p, NV902D, SET_DST_PITCH);
+            P_NV902D_SET_DST_PITCH(p, dst_level->row_stride_B);
+            P_NV902D_SET_DST_WIDTH(p, dst_level_extent.width);
+            P_NV902D_SET_DST_HEIGHT(p, dst_level_extent.height);
 
             for (uint32_t z = 0; z < dst_level_extent.depth; z++) {
-               P_MTHD(push, NV902D, SET_DST_LAYER);
-               P_NV902D_SET_DST_LAYER(push, z);
+               P_MTHD(p, NV902D, SET_DST_LAYER);
+               P_NV902D_SET_DST_LAYER(p, z);
 
                const uint32_t x0 = 0;
                const uint32_t y0 = 0;
                const uint32_t x1 = dst_level_extent.width + 1;
                const uint32_t y1 = dst_level_extent.height + 1;
 
-               P_MTHD(push, NV902D, RENDER_SOLID_PRIM_POINT_SET_X(0));
-               P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 0, x0);
-               P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 0, y0);
-               P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 1, x1);
-               P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 1, y1);
+               P_MTHD(p, NV902D, RENDER_SOLID_PRIM_POINT_SET_X(0));
+               P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(p, 0, x0);
+               P_NV902D_RENDER_SOLID_PRIM_POINT_Y(p, 0, y0);
+               P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(p, 1, x1);
+               P_NV902D_RENDER_SOLID_PRIM_POINT_Y(p, 1, y1);
             }
          }
       }
@@ -665,7 +665,7 @@ nvk_CmdFillBuffer(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_buffer, dst, dstBuffer);
-   struct nouveau_ws_push *push = cmd->push;
+   struct nouveau_ws_push *p = cmd->push;
    fillSize = vk_buffer_range(&dst->vk, dstOffset, fillSize);
 
    VkDeviceSize dst_addr = nvk_buffer_address(dst, 0);
@@ -676,25 +676,25 @@ nvk_CmdFillBuffer(VkCommandBuffer commandBuffer,
    uint32_t pitch = 1 << 19;
    uint32_t line = pitch / 4;
 
-   nvk_push_buffer_ref(push, dst, NOUVEAU_WS_BO_WR);
+   nvk_push_buffer_ref(p, dst, NOUVEAU_WS_BO_WR);
 
-   P_IMMD(push, NV902D, SET_OPERATION, V_SRCCOPY);
+   P_IMMD(p, NV902D, SET_OPERATION, V_SRCCOPY);
 
-   P_MTHD(push, NV902D, SET_DST_FORMAT);
-   P_NV902D_SET_DST_FORMAT(push, V_A8B8G8R8);
-   P_NV902D_SET_DST_MEMORY_LAYOUT(push, V_PITCH);
+   P_MTHD(p, NV902D, SET_DST_FORMAT);
+   P_NV902D_SET_DST_FORMAT(p, V_A8B8G8R8);
+   P_NV902D_SET_DST_MEMORY_LAYOUT(p, V_PITCH);
 
-   P_MTHD(push, NV902D, SET_DST_PITCH);
-   P_NV902D_SET_DST_PITCH(push, pitch);
+   P_MTHD(p, NV902D, SET_DST_PITCH);
+   P_NV902D_SET_DST_PITCH(p, pitch);
 
-   P_MTHD(push, NV902D, SET_DST_OFFSET_UPPER);
-   P_NV902D_SET_DST_OFFSET_UPPER(push, dst_addr >> 32);
-   P_NV902D_SET_DST_OFFSET_LOWER(push, dst_addr & 0xffffffff);
+   P_MTHD(p, NV902D, SET_DST_OFFSET_UPPER);
+   P_NV902D_SET_DST_OFFSET_UPPER(p, dst_addr >> 32);
+   P_NV902D_SET_DST_OFFSET_LOWER(p, dst_addr & 0xffffffff);
 
-   P_MTHD(push, NV902D, RENDER_SOLID_PRIM_MODE);
-   P_NV902D_RENDER_SOLID_PRIM_MODE(push, V_LINES);
-   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR_FORMAT(push, V_A8B8G8R8);
-   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR(push, data);
+   P_MTHD(p, NV902D, RENDER_SOLID_PRIM_MODE);
+   P_NV902D_RENDER_SOLID_PRIM_MODE(p, V_LINES);
+   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR_FORMAT(p, V_A8B8G8R8);
+   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR(p, data);
 
    /*
     * In order to support CPU efficient fills, we'll draw up to three primitives:
@@ -709,30 +709,30 @@ nvk_CmdFillBuffer(VkCommandBuffer commandBuffer,
    uint32_t x_0 = start % line;
    uint32_t x_1 = end % line;
 
-   P_MTHD(push, NV902D, RENDER_SOLID_PRIM_POINT_SET_X(0));
-   P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 0, x_0);
-   P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 0, y_0);
-   P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 1, y_0 == y_1 ? x_1 : line);
-   P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 1, y_0);
+   P_MTHD(p, NV902D, RENDER_SOLID_PRIM_POINT_SET_X(0));
+   P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(p, 0, x_0);
+   P_NV902D_RENDER_SOLID_PRIM_POINT_Y(p, 0, y_0);
+   P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(p, 1, y_0 == y_1 ? x_1 : line);
+   P_NV902D_RENDER_SOLID_PRIM_POINT_Y(p, 1, y_0);
 
    if (y_0 + 1 < y_1) {
-      P_IMMD(push, NV902D, RENDER_SOLID_PRIM_MODE, V_RECTS);
+      P_IMMD(p, NV902D, RENDER_SOLID_PRIM_MODE, V_RECTS);
 
-      P_MTHD(push, NV902D, RENDER_SOLID_PRIM_POINT_SET_X(0));
-      P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 0, 0);
-      P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 0, y_0 + 1);
-      P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 1, line);
-      P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 1, y_1);
+      P_MTHD(p, NV902D, RENDER_SOLID_PRIM_POINT_SET_X(0));
+      P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(p, 0, 0);
+      P_NV902D_RENDER_SOLID_PRIM_POINT_Y(p, 0, y_0 + 1);
+      P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(p, 1, line);
+      P_NV902D_RENDER_SOLID_PRIM_POINT_Y(p, 1, y_1);
 
-      P_IMMD(push, NV902D, RENDER_SOLID_PRIM_MODE, V_LINES);
+      P_IMMD(p, NV902D, RENDER_SOLID_PRIM_MODE, V_LINES);
    }
 
    if (y_0 < y_1) {
-      P_MTHD(push, NV902D, RENDER_SOLID_PRIM_POINT_SET_X(0));
-      P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 0, 0);
-      P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 0, y_1);
-      P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 1, x_1);
-      P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 1, y_1);
+      P_MTHD(p, NV902D, RENDER_SOLID_PRIM_POINT_SET_X(0));
+      P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(p, 0, 0);
+      P_NV902D_RENDER_SOLID_PRIM_POINT_Y(p, 0, y_1);
+      P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(p, 1, x_1);
+      P_NV902D_RENDER_SOLID_PRIM_POINT_Y(p, 1, y_1);
    }
 }
 
@@ -745,43 +745,43 @@ nvk_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_buffer, dst, dstBuffer);
-   struct nouveau_ws_push *push = cmd->push;
+   struct nouveau_ws_push *p = cmd->push;
    uint32_t pitch = 65536;
 
    assert(dataSize <= 65536);
 
    VkDeviceSize dst_addr = nvk_buffer_address(dst, 0);
 
-   nvk_push_buffer_ref(push, dst, NOUVEAU_WS_BO_WR);
+   nvk_push_buffer_ref(p, dst, NOUVEAU_WS_BO_WR);
 
-   P_IMMD(push, NV902D, SET_OPERATION, V_SRCCOPY);
+   P_IMMD(p, NV902D, SET_OPERATION, V_SRCCOPY);
 
-   P_MTHD(push, NV902D, SET_DST_OFFSET_UPPER);
-   P_NV902D_SET_DST_OFFSET_UPPER(push, dst_addr >> 32);
-   P_NV902D_SET_DST_OFFSET_LOWER(push, dst_addr & 0xffffffff);
+   P_MTHD(p, NV902D, SET_DST_OFFSET_UPPER);
+   P_NV902D_SET_DST_OFFSET_UPPER(p, dst_addr >> 32);
+   P_NV902D_SET_DST_OFFSET_LOWER(p, dst_addr & 0xffffffff);
 
-   P_MTHD(push, NV902D, SET_DST_FORMAT);
-   P_NV902D_SET_DST_FORMAT(push, V_A8B8G8R8);
-   P_NV902D_SET_DST_MEMORY_LAYOUT(push, V_PITCH);
+   P_MTHD(p, NV902D, SET_DST_FORMAT);
+   P_NV902D_SET_DST_FORMAT(p, V_A8B8G8R8);
+   P_NV902D_SET_DST_MEMORY_LAYOUT(p, V_PITCH);
 
-   P_MTHD(push, NV902D, SET_DST_PITCH);
-   P_NV902D_SET_DST_PITCH(push, pitch);
+   P_MTHD(p, NV902D, SET_DST_PITCH);
+   P_NV902D_SET_DST_PITCH(p, pitch);
 
-   P_IMMD(push, NV902D, SET_PIXELS_FROM_CPU_DATA_TYPE, V_COLOR);
-   P_IMMD(push, NV902D, SET_PIXELS_FROM_CPU_COLOR_FORMAT, V_A8B8G8R8);
+   P_IMMD(p, NV902D, SET_PIXELS_FROM_CPU_DATA_TYPE, V_COLOR);
+   P_IMMD(p, NV902D, SET_PIXELS_FROM_CPU_COLOR_FORMAT, V_A8B8G8R8);
 
-   P_MTHD(push, NV902D, SET_PIXELS_FROM_CPU_SRC_WIDTH);
-   P_NV902D_SET_PIXELS_FROM_CPU_SRC_WIDTH(push, dataSize / 4);
-   P_NV902D_SET_PIXELS_FROM_CPU_SRC_HEIGHT(push, 1);
-   P_NV902D_SET_PIXELS_FROM_CPU_DX_DU_FRAC(push, 0);
-   P_NV902D_SET_PIXELS_FROM_CPU_DX_DU_INT(push, 1);
-   P_NV902D_SET_PIXELS_FROM_CPU_DY_DV_FRAC(push, 0);
-   P_NV902D_SET_PIXELS_FROM_CPU_DY_DV_INT(push, 1);
-   P_NV902D_SET_PIXELS_FROM_CPU_DST_X0_FRAC(push, 0);
-   P_NV902D_SET_PIXELS_FROM_CPU_DST_X0_INT(push, (dstOffset % pitch) / 4);
-   P_NV902D_SET_PIXELS_FROM_CPU_DST_Y0_FRAC(push, 0);
-   P_NV902D_SET_PIXELS_FROM_CPU_DST_Y0_INT(push, (dstOffset / pitch) / 4);
+   P_MTHD(p, NV902D, SET_PIXELS_FROM_CPU_SRC_WIDTH);
+   P_NV902D_SET_PIXELS_FROM_CPU_SRC_WIDTH(p, dataSize / 4);
+   P_NV902D_SET_PIXELS_FROM_CPU_SRC_HEIGHT(p, 1);
+   P_NV902D_SET_PIXELS_FROM_CPU_DX_DU_FRAC(p, 0);
+   P_NV902D_SET_PIXELS_FROM_CPU_DX_DU_INT(p, 1);
+   P_NV902D_SET_PIXELS_FROM_CPU_DY_DV_FRAC(p, 0);
+   P_NV902D_SET_PIXELS_FROM_CPU_DY_DV_INT(p, 1);
+   P_NV902D_SET_PIXELS_FROM_CPU_DST_X0_FRAC(p, 0);
+   P_NV902D_SET_PIXELS_FROM_CPU_DST_X0_INT(p, (dstOffset % pitch) / 4);
+   P_NV902D_SET_PIXELS_FROM_CPU_DST_Y0_FRAC(p, 0);
+   P_NV902D_SET_PIXELS_FROM_CPU_DST_Y0_INT(p, (dstOffset / pitch) / 4);
 
-   P_0INC(push, NV902D, PIXELS_FROM_CPU_DATA);
-   P_INLINE_ARRAY(push, pData, dataSize / 4);
+   P_0INC(p, NV902D, PIXELS_FROM_CPU_DATA);
+   P_INLINE_ARRAY(p, pData, dataSize / 4);
 }
