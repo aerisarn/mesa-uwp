@@ -5,6 +5,7 @@
 
 #include "nouveau_bo.h"
 #include "nouveau_context.h"
+#include "vk_pipeline.h"
 #include "vk_shader_module.h"
 
 #include "nir.h"
@@ -53,19 +54,18 @@ nvk_physical_device_nir_options(const struct nvk_physical_device *pdevice,
    return nv50_ir_nir_shader_compiler_options(pdevice->dev->chipset, p_stage);
 }
 
-static const struct spirv_to_nir_options spirv_options = {
-   .caps = {
-      .image_write_without_format = true,
-   },
-   .ssbo_addr_format = nir_address_format_64bit_global_32bit_offset,
-   .ubo_addr_format = nir_address_format_64bit_global_32bit_offset,
-   .shared_addr_format = nir_address_format_32bit_offset,
-};
-
-const struct spirv_to_nir_options *
-nvk_physical_device_spirv_options(const struct nvk_physical_device *pdevice)
+struct spirv_to_nir_options
+nvk_physical_device_spirv_options(const struct nvk_physical_device *pdevice,
+                                  const struct vk_pipeline_robustness_state *rs)
 {
-   return &spirv_options;
+   return (struct spirv_to_nir_options) {
+      .caps = {
+         .image_write_without_format = true,
+      },
+      .ssbo_addr_format = nvk_buffer_addr_format(rs->storage_buffers),
+      .ubo_addr_format = nvk_buffer_addr_format(rs->uniform_buffers),
+      .shared_addr_format = nir_address_format_32bit_offset,
+   };
 }
 
 static bool
@@ -181,6 +181,7 @@ assign_io_locations(nir_shader *nir)
 
 void
 nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
+              const struct vk_pipeline_robustness_state *rs,
               const struct vk_pipeline_layout *layout)
 {
    NIR_PASS(_, nir, nir_split_struct_vars, nir_var_function_temp);
@@ -217,11 +218,11 @@ nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_push_const,
             nir_address_format_32bit_offset);
 
-   NIR_PASS(_, nir, nvk_nir_lower_descriptors, layout, true);
+   NIR_PASS(_, nir, nvk_nir_lower_descriptors, rs, layout);
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ssbo,
-            spirv_options.ssbo_addr_format);
+            nvk_buffer_addr_format(rs->storage_buffers));
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ubo,
-            spirv_options.ubo_addr_format);
+            nvk_buffer_addr_format(rs->uniform_buffers));
    NIR_PASS(_, nir, nir_shader_instructions_pass,
             lower_load_global_constant_offset_instr,
             nir_metadata_block_index | nir_metadata_dominance, NULL);

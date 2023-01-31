@@ -2,10 +2,12 @@
 #include "nvk_device.h"
 #include "nvk_pipeline.h"
 #include "nvk_shader.h"
-
-#include "nouveau_bo.h"
 #include "vk_nir.h"
 #include "vk_pipeline.h"
+
+#include "nouveau_bo.h"
+
+#include "compiler/spirv/nir_spirv.h"
 
 #include "drf.h"
 #include "cla0c0qmd.h"
@@ -81,20 +83,25 @@ nvk_compute_pipeline_create(struct nvk_device *device,
 
    assert(pCreateInfo->stage.stage == VK_SHADER_STAGE_COMPUTE_BIT);
 
+   struct vk_pipeline_robustness_state robustness;
+   vk_pipeline_robustness_state_fill(&device->vk, &robustness,
+                                     pCreateInfo->pNext,
+                                     pCreateInfo->stage.pNext);
+
    const nir_shader_compiler_options *nir_options =
       nvk_physical_device_nir_options(pdevice, MESA_SHADER_COMPUTE);
-   const struct spirv_to_nir_options *spirv_options =
-      nvk_physical_device_spirv_options(pdevice);
+   const struct spirv_to_nir_options spirv_options =
+      nvk_physical_device_spirv_options(pdevice, &robustness);
 
    nir_shader *nir;
    result = vk_pipeline_shader_stage_to_nir(&device->vk,
                                             &pCreateInfo->stage,
-                                            spirv_options, nir_options,
+                                            &spirv_options, nir_options,
                                             NULL, &nir);
    if (result != VK_SUCCESS)
       goto fail;
 
-   nvk_lower_nir(device, nir, pipeline_layout);
+   nvk_lower_nir(device, nir, &robustness, pipeline_layout);
 
    result = nvk_compile_nir(pdevice, nir, &pipeline->base.shaders[MESA_SHADER_COMPUTE]);
    ralloc_free(nir);

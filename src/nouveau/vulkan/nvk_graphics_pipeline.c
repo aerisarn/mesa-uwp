@@ -8,6 +8,8 @@
 
 #include "nouveau_context.h"
 
+#include "compiler/spirv/nir_spirv.h"
+
 #include "nvk_cl9097.h"
 #include "nvk_clb197.h"
 #include "nvk_clc397.h"
@@ -214,19 +216,23 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
       const VkPipelineShaderStageCreateInfo *sinfo = &pCreateInfo->pStages[i];
       gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
 
+      struct vk_pipeline_robustness_state robustness;
+      vk_pipeline_robustness_state_fill(&device->vk, &robustness,
+                                        pCreateInfo->pNext, sinfo->pNext);
+
       const nir_shader_compiler_options *nir_options =
          nvk_physical_device_nir_options(pdevice, stage);
-      const struct spirv_to_nir_options *spirv_options =
-         nvk_physical_device_spirv_options(pdevice);
+      const struct spirv_to_nir_options spirv_options =
+         nvk_physical_device_spirv_options(pdevice, &robustness);
 
       nir_shader *nir;
       result = vk_pipeline_shader_stage_to_nir(&device->vk, sinfo,
-                                               spirv_options, nir_options,
+                                               &spirv_options, nir_options,
                                                NULL, &nir);
       if (result != VK_SUCCESS)
          goto fail;
 
-      nvk_lower_nir(device, nir, pipeline_layout);
+      nvk_lower_nir(device, nir, &robustness, pipeline_layout);
 
       result = nvk_compile_nir(pdevice, nir, &pipeline->base.shaders[stage]);
       ralloc_free(nir);

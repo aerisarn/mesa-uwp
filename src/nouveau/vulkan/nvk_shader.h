@@ -8,6 +8,7 @@
 #include "nouveau_bo.h"
 
 struct vk_shader_module;
+struct vk_pipeline_robustness_state;
 struct nvk_device;
 struct nvk_physical_device;
 
@@ -69,16 +70,32 @@ const nir_shader_compiler_options *
 nvk_physical_device_nir_options(const struct nvk_physical_device *pdevice,
                                 gl_shader_stage stage);
 
-const struct spirv_to_nir_options *
-nvk_physical_device_spirv_options(const struct nvk_physical_device *pdevice);
+static inline nir_address_format
+nvk_buffer_addr_format(VkPipelineRobustnessBufferBehaviorEXT robustness)
+{
+   switch (robustness) {
+   case VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT:
+      return nir_address_format_64bit_global_32bit_offset;
+   case VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS_EXT:
+   case VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_ROBUST_BUFFER_ACCESS_2_EXT:
+      return nir_address_format_64bit_bounded_global;
+   default:
+      unreachable("Invalid robust buffer access behavior");
+   }
+}
+
+struct spirv_to_nir_options
+nvk_physical_device_spirv_options(const struct nvk_physical_device *pdevice,
+                                  const struct vk_pipeline_robustness_state *rs);
 
 bool
 nvk_nir_lower_descriptors(nir_shader *nir,
-                          const struct vk_pipeline_layout *layout,
-                          bool robust_buffer_access);
+                          const struct vk_pipeline_robustness_state *rs,
+                          const struct vk_pipeline_layout *layout);
 
 void
 nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
+              const struct vk_pipeline_robustness_state *rs,
               const struct vk_pipeline_layout *layout);
 
 VkResult

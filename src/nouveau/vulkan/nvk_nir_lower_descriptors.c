@@ -2,6 +2,7 @@
 #include "nvk_descriptor_set.h"
 #include "nvk_descriptor_set_layout.h"
 #include "nvk_shader.h"
+#include "vk_pipeline.h"
 
 #include "nir_builder.h"
 #include "nir_deref.h"
@@ -304,17 +305,18 @@ lower_descriptors_instr(nir_builder *b, nir_instr *instr,
 
 bool
 nvk_nir_lower_descriptors(nir_shader *nir,
-                          const struct vk_pipeline_layout *layout,
-                          bool robust_buffer_access)
+                          const struct vk_pipeline_robustness_state *rs,
+                          const struct vk_pipeline_layout *layout)
 {
    struct lower_descriptors_ctx ctx = {
       .layout = layout,
-      .clamp_desc_array_bounds = robust_buffer_access,
+      .clamp_desc_array_bounds =
+         rs->storage_buffers != VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT ||
+         rs->uniform_buffers != VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT ||
+         rs->images != VK_PIPELINE_ROBUSTNESS_IMAGE_BEHAVIOR_DISABLED_EXT,
       .desc_addr_format = nir_address_format_32bit_index_offset,
-      .ubo_addr_format = nir_address_format_32bit_index_offset,
-      .ssbo_addr_format = robust_buffer_access ?
-                          nir_address_format_64bit_bounded_global :
-                          nir_address_format_64bit_global_32bit_offset,
+      .ssbo_addr_format = nvk_buffer_addr_format(rs->storage_buffers),
+      .ubo_addr_format = nvk_buffer_addr_format(rs->uniform_buffers),
    };
    return nir_shader_instructions_pass(nir, lower_descriptors_instr,
                                        nir_metadata_block_index |
