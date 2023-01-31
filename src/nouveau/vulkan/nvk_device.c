@@ -177,6 +177,12 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto fail_samplers;
 
+   result = nvk_heap_init(device, &device->event_heap,
+                          NOUVEAU_WS_BO_LOCAL, NOUVEAU_WS_BO_WR,
+                          0 /* overalloc */);
+   if (result != VK_SUCCESS)
+      goto fail_shader_heap;
+
    nvk_slm_area_init(&device->slm);
 
    if (pthread_mutex_init(&device->mutex, NULL) != 0) {
@@ -236,6 +242,8 @@ fail_mutex:
    pthread_mutex_destroy(&device->mutex);
 fail_slm:
    nvk_slm_area_finish(&device->slm);
+   nvk_heap_finish(device, &device->event_heap);
+fail_shader_heap:
    nvk_heap_finish(device, &device->shader_heap);
 fail_samplers:
    nvk_descriptor_table_finish(device, &device->samplers);
@@ -267,6 +275,7 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    nouveau_ws_bo_destroy(device->zero_page);
    vk_device_finish(&device->vk);
    nvk_slm_area_finish(&device->slm);
+   nvk_heap_finish(device, &device->event_heap);
    nvk_heap_finish(device, &device->shader_heap);
    nvk_descriptor_table_finish(device, &device->samplers);
    nvk_descriptor_table_finish(device, &device->images);

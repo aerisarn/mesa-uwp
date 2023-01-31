@@ -26,6 +26,8 @@ nvk_files = files(
   'nvk_device.h',
   'nvk_device_memory.c',
   'nvk_device_memory.h',
+  'nvk_event.c',
+  'nvk_event.h',
   'nvk_format.c',
   'nvk_format.h',
   'nvk_graphics_pipeline.c',
