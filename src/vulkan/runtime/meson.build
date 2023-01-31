@@ -32,6 +32,8 @@ vulkan_runtime_files = files(
   'vk_blend.h',
   'vk_buffer.c',
   'vk_buffer.h',
+  'vk_buffer_view.c',
+  'vk_buffer_view.h',
   'vk_cmd_copy.c',
   'vk_cmd_enqueue.c',
   'vk_command_buffer.c',
