@@ -531,20 +531,7 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
 
    device->instance = instance;
    device->dev = ndev;
-   device->info = (struct nv_device_info) {
-      .pci_domain       = drm_device->businfo.pci->domain,
-      .pci_bus          = drm_device->businfo.pci->bus,
-      .pci_dev          = drm_device->businfo.pci->dev,
-      .pci_func         = drm_device->businfo.pci->func,
-      .pci_device_id    = drm_device->deviceinfo.pci->device_id,
-      .pci_revision_id  = drm_device->deviceinfo.pci->revision_id,
-
-      .cls_copy = ndev->cls_copy,
-      .cls_eng2d = ndev->cls_eng2d,
-      .cls_eng3d = ndev->cls_eng3d,
-      .cls_m2mf = ndev->cls_m2mf,
-      .cls_compute = ndev->cls_compute,
-   };
+   device->info = ndev->info;
 
    device->mem_heaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
    device->mem_types[0].propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;

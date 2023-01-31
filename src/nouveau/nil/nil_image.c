@@ -368,9 +368,9 @@ nil_choose_pte_kind(struct nouveau_ws_device *dev,
                     enum pipe_format format,
                     uint32_t samples, bool compressed)
 {
-   if (dev->cls_eng3d >= TURING_A)
+   if (dev->info.cls_eng3d >= TURING_A)
       return tu102_choose_pte_kind(format, compressed);
-   else if (dev->cls_eng3d >= FERMI_A)
+   else if (dev->info.cls_eng3d >= FERMI_A)
       return nvc0_choose_pte_kind(format, samples, compressed);
    else
       unreachable("Unsupported 3D engine class");

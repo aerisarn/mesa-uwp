@@ -37,7 +37,7 @@ nvk_get_image_format_features(struct nvk_physical_device *pdevice,
 
    if (nil_format_supports_filtering(pdevice->dev, p_format)) {
       features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
-      if (pdevice->dev->cls_eng3d >= MAXWELL_B)
+      if (pdevice->info.cls_eng3d >= MAXWELL_B)
          features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT;
    }
 

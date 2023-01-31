@@ -378,7 +378,7 @@ nil_format_supports_texturing(struct nouveau_ws_device *dev,
    if (desc->layout == UTIL_FORMAT_LAYOUT_ETC ||
        desc->layout == UTIL_FORMAT_LAYOUT_ASTC) {
       return dev->device_type == NOUVEAU_WS_DEVICE_TYPE_SOC &&
-             dev->cls_eng3d >= KEPLER_C;
+             dev->info.cls_eng3d >= KEPLER_C;
    }
 
    return true;

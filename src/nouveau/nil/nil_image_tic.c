@@ -499,9 +499,9 @@ nil_image_fill_tic(struct nouveau_ws_device *dev,
                    uint64_t base_address,
                    void *desc_out)
 {
-   if (dev->cls_eng3d >= MAXWELL_A) {
+   if (dev->info.cls_eng3d >= MAXWELL_A) {
       nvb097_nil_image_fill_tic(dev, image, view, base_address, desc_out);
-   } else if (dev->cls_eng3d >= FERMI_A) {
+   } else if (dev->info.cls_eng3d >= FERMI_A) {
       nv9097_nil_image_fill_tic(dev, image, view, base_address, desc_out);
    } else {
       unreachable("Tesla and older not supported");
@@ -515,9 +515,9 @@ nil_buffer_fill_tic(struct nouveau_ws_device *dev,
                     uint32_t num_elements,
                     void *desc_out)
 {
-   if (dev->cls_eng3d >= MAXWELL_A) {
+   if (dev->info.cls_eng3d >= MAXWELL_A) {
       nvb097_nil_buffer_fill_tic(dev, base_address, format, num_elements, desc_out);
-   } else if (dev->cls_eng3d >= FERMI_A) {
+   } else if (dev->info.cls_eng3d >= FERMI_A) {
       nv9097_nil_buffer_fill_tic(dev, base_address, format, num_elements, desc_out);
    } else {
       unreachable("Tesla and older not supported");

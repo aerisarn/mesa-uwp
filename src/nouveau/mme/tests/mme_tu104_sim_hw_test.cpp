@@ -84,7 +84,7 @@ mme_tu104_sim_test::SetUp()
          if (dev == NULL)
             continue;
 
-         if (dev->cls_eng3d < TURING_A) {
+         if (dev->info.cls_eng3d < TURING_A) {
             nouveau_ws_device_destroy(dev);
             dev = NULL;
             continue;

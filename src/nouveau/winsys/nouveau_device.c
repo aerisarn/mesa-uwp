@@ -204,6 +204,15 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
    if (version < 0x01000301)
       goto out_err;
 
+   device->info = (struct nv_device_info) {
+      .pci_domain       = drm_device->businfo.pci->domain,
+      .pci_bus          = drm_device->businfo.pci->bus,
+      .pci_dev          = drm_device->businfo.pci->dev,
+      .pci_func         = drm_device->businfo.pci->func,
+      .pci_device_id    = drm_device->deviceinfo.pci->device_id,
+      .pci_revision_id  = drm_device->deviceinfo.pci->revision_id,
+   };
+
    if (nouveau_ws_device_alloc(fd, device))
       goto out_err;
 
@@ -240,11 +249,11 @@ nouveau_ws_device_new(drmDevicePtr drm_device)
    if (nouveau_ws_context_create(device, &tmp_ctx))
       goto out_err;
 
-   device->cls_copy     = tmp_ctx->copy.cls;
-   device->cls_eng2d    = tmp_ctx->eng2d.cls;
-   device->cls_eng3d    = tmp_ctx->eng3d.cls;
-   device->cls_m2mf     = tmp_ctx->m2mf.cls;
-   device->cls_compute  = tmp_ctx->compute.cls;
+   device->info.cls_copy = tmp_ctx->copy.cls;
+   device->info.cls_eng2d = tmp_ctx->eng2d.cls;
+   device->info.cls_eng3d = tmp_ctx->eng3d.cls;
+   device->info.cls_m2mf = tmp_ctx->m2mf.cls;
+   device->info.cls_compute = tmp_ctx->compute.cls;
 
    nouveau_ws_context_destroy(tmp_ctx);
 
