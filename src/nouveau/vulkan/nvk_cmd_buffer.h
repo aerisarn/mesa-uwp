@@ -223,6 +223,9 @@ void
 nvk_cmd_buffer_flush_push_descriptors(struct nvk_cmd_buffer *cmd,
                                       struct nvk_descriptor_state *desc);
 
+void nvk_meta_resolve_rendering(struct nvk_cmd_buffer *cmd,
+                                const VkRenderingInfo *pRenderingInfo);
+
 void nvk_cmd_buffer_dump(struct nvk_cmd_buffer *cmd, FILE *fp);
 
 #endif

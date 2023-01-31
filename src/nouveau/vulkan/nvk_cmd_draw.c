@@ -354,8 +354,6 @@ nvk_attachment_init(struct nvk_attachment *att,
 
    if (info->resolveMode != VK_RESOLVE_MODE_NONE) {
       VK_FROM_HANDLE(nvk_image_view, res_iview, info->resolveImageView);
-      assert(iview->vk.format == res_iview->vk.format);
-
       att->resolve_mode = info->resolveMode;
       att->resolve_iview = res_iview;
    }
@@ -610,12 +608,71 @@ nvk_CmdEndRendering(VkCommandBuffer commandBuffer)
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    struct nvk_rendering_state *render = &cmd->state.gfx.render;
 
-   if (!(render->flags & VK_RENDERING_SUSPENDING_BIT)) {
-      /* TODO: Attachment resolves */
+   bool need_resolve = false;
+
+   /* Translate render state back to VK for meta */
+   VkRenderingAttachmentInfo vk_color_att[NVK_MAX_RTS];
+   for (uint32_t i = 0; i < render->color_att_count; i++) {
+      if (render->color_att[i].resolve_mode != VK_RESOLVE_MODE_NONE)
+         need_resolve = true;
+
+      vk_color_att[i] = (VkRenderingAttachmentInfo) {
+         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+         .imageView = nvk_image_view_to_handle(render->color_att[i].iview),
+         .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+         .resolveMode = render->color_att[i].resolve_mode,
+         .resolveImageView =
+            nvk_image_view_to_handle(render->color_att[i].resolve_iview),
+         .resolveImageLayout = VK_IMAGE_LAYOUT_GENERAL,
+      };
    }
 
-   /* TODO: Tear down rendering if needed */
+   const VkRenderingAttachmentInfo vk_depth_att = {
+      .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+      .imageView = nvk_image_view_to_handle(render->depth_att.iview),
+      .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+      .resolveMode = render->depth_att.resolve_mode,
+      .resolveImageView =
+         nvk_image_view_to_handle(render->depth_att.resolve_iview),
+      .resolveImageLayout = VK_IMAGE_LAYOUT_GENERAL,
+   };
+   if (render->depth_att.resolve_mode != VK_RESOLVE_MODE_NONE)
+      need_resolve = true;
+
+   const VkRenderingAttachmentInfo vk_stencil_att = {
+      .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+      .imageView = nvk_image_view_to_handle(render->stencil_att.iview),
+      .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+      .resolveMode = render->stencil_att.resolve_mode,
+      .resolveImageView =
+         nvk_image_view_to_handle(render->stencil_att.resolve_iview),
+      .resolveImageLayout = VK_IMAGE_LAYOUT_GENERAL,
+   };
+   if (render->stencil_att.resolve_mode != VK_RESOLVE_MODE_NONE)
+      need_resolve = true;
+
+   const VkRenderingInfo vk_render = {
+      .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+      .renderArea = render->area,
+      .layerCount = render->layer_count,
+      .viewMask = render->view_mask,
+      .colorAttachmentCount = render->color_att_count,
+      .pColorAttachments = vk_color_att,
+      .pDepthAttachment = &vk_depth_att,
+      .pStencilAttachment = &vk_stencil_att,
+   };
+
+   if (render->flags & VK_RENDERING_SUSPENDING_BIT)
+      need_resolve = false;
+
    memset(render, 0, sizeof(*render));
+
+   if (need_resolve) {
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 2);
+      P_IMMD(p, NV9097, WAIT_FOR_IDLE, 0);
+
+      nvk_meta_resolve_rendering(cmd, &vk_render);
+   }
 }
 
 void

@@ -139,3 +139,32 @@ nvk_CmdBlitImage2(VkCommandBuffer commandBuffer,
 
    nvk_meta_end(cmd, &save);
 }
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdResolveImage2(VkCommandBuffer commandBuffer,
+                     const VkResolveImageInfo2 *pResolveImageInfo)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
+
+   struct nvk_meta_save save;
+   nvk_meta_begin(cmd, &save);
+
+   vk_meta_resolve_image2(&cmd->vk, &dev->meta, pResolveImageInfo);
+
+   nvk_meta_end(cmd, &save);
+}
+
+void
+nvk_meta_resolve_rendering(struct nvk_cmd_buffer *cmd,
+                           const VkRenderingInfo *pRenderingInfo)
+{
+   struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
+
+   struct nvk_meta_save save;
+   nvk_meta_begin(cmd, &save);
+
+   vk_meta_resolve_rendering(&cmd->vk, &dev->meta, pRenderingInfo);
+
+   nvk_meta_end(cmd, &save);
+}
