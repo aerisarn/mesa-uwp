@@ -175,7 +175,7 @@ nvk_cmd_buffer_upload_alloc(struct nvk_cmd_buffer *cmd,
     * upload BO on this one allocation and continuing on the current upload
     * BO.
     */
-   if (size < cmd->upload_offset) {
+   if (cmd->upload_bo == NULL || size < cmd->upload_offset) {
       cmd->upload_bo = bo;
       cmd->upload_offset = size;
    }
