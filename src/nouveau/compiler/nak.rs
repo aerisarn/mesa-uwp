@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+mod nak_ir;
+
 use nak_bindings::*;
 
 #[repr(C)]
