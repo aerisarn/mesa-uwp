@@ -11,7 +11,7 @@
 #include "clb197.h"
 
 VkFormatFeatureFlags2
-nvk_get_image_format_features(struct nvk_physical_device *pdevice,
+nvk_get_image_format_features(struct nvk_physical_device *pdev,
                               VkFormat vk_format, VkImageTiling tiling)
 {
    VkFormatFeatureFlags2 features = 0;
@@ -23,7 +23,7 @@ nvk_get_image_format_features(struct nvk_physical_device *pdevice,
    if (p_format == PIPE_FORMAT_NONE)
       return 0;
 
-   if (!nil_format_supports_texturing(pdevice->dev, p_format))
+   if (!nil_format_supports_texturing(&pdev->info, p_format))
       return 0;
 
    /* You can't tile a non-power-of-two */
@@ -35,9 +35,9 @@ nvk_get_image_format_features(struct nvk_physical_device *pdevice,
    features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
    features |= VK_FORMAT_FEATURE_2_BLIT_SRC_BIT;
 
-   if (nil_format_supports_filtering(pdevice->dev, p_format)) {
+   if (nil_format_supports_filtering(&pdev->info, p_format)) {
       features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
-      if (pdevice->info.cls_eng3d >= MAXWELL_B)
+      if (pdev->info.cls_eng3d >= MAXWELL_B)
          features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT;
    }
 
@@ -46,9 +46,9 @@ nvk_get_image_format_features(struct nvk_physical_device *pdevice,
       features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT;
    }
 
-   if (nil_format_supports_color_targets(pdevice->dev, p_format)) {
+   if (nil_format_supports_color_targets(&pdev->info, p_format)) {
       features |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT;
-      if (nil_format_supports_blending(pdevice->dev, p_format))
+      if (nil_format_supports_blending(&pdev->info, p_format))
          features |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT;
       features |= VK_FORMAT_FEATURE_2_BLIT_DST_BIT;
    }
@@ -57,13 +57,13 @@ nvk_get_image_format_features(struct nvk_physical_device *pdevice,
       if (vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT)
          return 0; /* TODO */
 
-      if (!nil_format_supports_depth_stencil(pdevice->dev, p_format))
+      if (!nil_format_supports_depth_stencil(&pdev->info, p_format))
          return 0;
 
       features |= VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT;
    }
 
-   if (nil_format_supports_storage(pdevice->dev, p_format)) {
+   if (nil_format_supports_storage(&pdev->info, p_format)) {
       features |= VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT |
                   VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
    }

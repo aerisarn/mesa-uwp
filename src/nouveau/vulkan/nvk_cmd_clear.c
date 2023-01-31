@@ -309,7 +309,7 @@ nvk_CmdClearColorImage(VkCommandBuffer commandBuffer,
    enum pipe_format p_format = vk_format_to_pipe_format(vk_format);
    assert(p_format != PIPE_FORMAT_NONE);
 
-   if (!nil_format_supports_color_targets(dev->pdev->dev, p_format)) {
+   if (!nil_format_supports_color_targets(&dev->pdev->info, p_format)) {
       memset(&clear_value, 0, sizeof(clear_value));
       util_format_pack_rgba(p_format, clear_value.color.uint32,
                             pColor->uint32, 1);

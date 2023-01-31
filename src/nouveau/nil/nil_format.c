@@ -357,7 +357,7 @@ static const struct nil_format_info nil_format_infos[PIPE_FORMAT_COUNT] =
 };
 
 bool
-nil_format_supports_texturing(struct nouveau_ws_device *dev,
+nil_format_supports_texturing(struct nv_device_info *dev,
                               enum pipe_format format)
 {
    assert(format < PIPE_FORMAT_COUNT);
@@ -377,15 +377,14 @@ nil_format_supports_texturing(struct nouveau_ws_device *dev,
    const struct util_format_description *desc = util_format_description(format);
    if (desc->layout == UTIL_FORMAT_LAYOUT_ETC ||
        desc->layout == UTIL_FORMAT_LAYOUT_ASTC) {
-      return dev->info.type == NV_DEVICE_TYPE_SOC &&
-             dev->info.cls_eng3d >= KEPLER_C;
+      return dev->type == NV_DEVICE_TYPE_SOC && dev->cls_eng3d >= KEPLER_C;
    }
 
    return true;
 }
 
 bool
-nil_format_supports_filtering(struct nouveau_ws_device *dev,
+nil_format_supports_filtering(struct nv_device_info *dev,
                               enum pipe_format format)
 {
    return nil_format_supports_texturing(dev, format) &&
@@ -393,7 +392,7 @@ nil_format_supports_filtering(struct nouveau_ws_device *dev,
 }
 
 bool
-nil_format_supports_buffer(struct nouveau_ws_device *dev,
+nil_format_supports_buffer(struct nv_device_info *dev,
                            enum pipe_format format)
 {
    assert(format < PIPE_FORMAT_COUNT);
@@ -402,7 +401,7 @@ nil_format_supports_buffer(struct nouveau_ws_device *dev,
 }
 
 bool
-nil_format_supports_storage(struct nouveau_ws_device *dev,
+nil_format_supports_storage(struct nv_device_info *dev,
                             enum pipe_format format)
 {
    assert(format < PIPE_FORMAT_COUNT);
@@ -411,7 +410,7 @@ nil_format_supports_storage(struct nouveau_ws_device *dev,
 }
 
 bool
-nil_format_supports_color_targets(struct nouveau_ws_device *dev,
+nil_format_supports_color_targets(struct nv_device_info *dev,
                                   enum pipe_format format)
 {
    assert(format < PIPE_FORMAT_COUNT);
@@ -420,7 +419,7 @@ nil_format_supports_color_targets(struct nouveau_ws_device *dev,
 }
 
 bool
-nil_format_supports_blending(struct nouveau_ws_device *dev,
+nil_format_supports_blending(struct nv_device_info *dev,
                              enum pipe_format format)
 {
    assert(format < PIPE_FORMAT_COUNT);
@@ -429,7 +428,7 @@ nil_format_supports_blending(struct nouveau_ws_device *dev,
 }
 
 bool
-nil_format_supports_depth_stencil(struct nouveau_ws_device *dev,
+nil_format_supports_depth_stencil(struct nv_device_info *dev,
                                   enum pipe_format format)
 {
    assert(format < PIPE_FORMAT_COUNT);

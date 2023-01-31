@@ -9,19 +9,19 @@
 #include "vulkan/util/vk_format.h"
 
 VkFormatFeatureFlags2
-nvk_get_buffer_format_features(struct nvk_physical_device *pdevice,
+nvk_get_buffer_format_features(struct nvk_physical_device *pdev,
                                VkFormat vk_format)
 {
    VkFormatFeatureFlags2 features = 0;
 
-   if (nvk_get_va_format(pdevice, vk_format))
+   if (nvk_get_va_format(pdev, vk_format))
       features |= VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT;
 
    enum pipe_format p_format = vk_format_to_pipe_format(vk_format);
-   if (nil_format_supports_buffer(pdevice->dev, p_format)) {
+   if (nil_format_supports_buffer(&pdev->info, p_format)) {
       features |= VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT;
 
-      if (nil_format_supports_storage(pdevice->dev, p_format)) {
+      if (nil_format_supports_storage(&pdev->info, p_format)) {
          features |= VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT |
                      VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
       }
