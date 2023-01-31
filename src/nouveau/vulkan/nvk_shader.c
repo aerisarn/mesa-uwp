@@ -1210,7 +1210,9 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
                          const struct nvk_fs_key *fs_key,
                          struct nvk_shader *shader)
 {
-   struct nak_shader_bin *bin = nak_compile_shader(nir, NULL);
+   struct nak_compiler *nak = nak_compiler_create(&pdev->info);
+
+   struct nak_shader_bin *bin = nak_compile_shader(nir, nak);
 
    shader->stage = nir->info.stage;
 
@@ -1236,6 +1238,8 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
 #ifndef NDEBUG
    nvk_shader_dump(shader);
 #endif
+
+   nak_compiler_destroy(nak);
 
    return VK_SUCCESS;
 }
