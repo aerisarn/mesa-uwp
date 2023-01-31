@@ -335,7 +335,11 @@ impl<'a> ShaderFromNir<'a> {
         for c in 0..load_const.def.num_components {
             assert!(load_const.def.bit_size == 32);
             let imm_u32 = unsafe { load_const.values()[c as usize].u32_ };
-            srcs.push(Src::new_imm_u32(imm_u32));
+            srcs.push(if imm_u32 == 0 {
+                Src::Zero
+            } else {
+                Src::new_imm_u32(imm_u32)
+            });
         }
         self.instrs.push(Instr::new_vec(dst, &srcs));
     }
