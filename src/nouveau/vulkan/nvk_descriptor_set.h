@@ -53,7 +53,7 @@ struct nvk_descriptor_set {
 VK_DEFINE_HANDLE_CASTS(nvk_descriptor_set, base, VkDescriptorSet,
                        VK_OBJECT_TYPE_DESCRIPTOR_SET)
 
-static void
+static inline void
 nvk_push_descriptor_set_ref(struct nouveau_ws_push *push,
                             const struct nvk_descriptor_set *set)
 {
