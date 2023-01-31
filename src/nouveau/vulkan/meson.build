@@ -14,6 +14,8 @@ nvk_files = files(
   'nvk_descriptor_set.c',
   'nvk_descriptor_set_layout.c',
   'nvk_descriptor_set_layout.h',
+  'nvk_descriptor_table.c',
+  'nvk_descriptor_table.h',
   'nvk_device.c',
   'nvk_device.h',
   'nvk_device_memory.c',
