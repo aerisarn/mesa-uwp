@@ -3,12 +3,50 @@
 #include "nvk_device.h"
 #include "nvk_image.h"
 #include "nvk_image_view.h"
+#include "nvk_mme.h"
 #include "nvk_physical_device.h"
 
 #include "nil_format.h"
 #include "vk_format.h"
 
 #include "nvk_cl9097.h"
+#include "drf.h"
+
+void nvk_mme_clear_views(struct nvk_device *dev,
+                         struct mme_builder *b)
+{
+   struct mme_value payload = mme_load(b);
+   struct mme_value view_mask = mme_load(b);
+   struct mme_value bit = mme_mov(b, mme_imm(1));
+
+   const uint32_t arr_idx = 1 << DRF_LO(NV9097_CLEAR_SURFACE_RT_ARRAY_INDEX);
+
+   mme_loop(b, mme_imm(32)) {
+      mme_if(b, ine, mme_and(b, view_mask, bit), mme_zero()) {
+         mme_mthd(b, NV9097_CLEAR_SURFACE);
+         mme_emit(b, payload);
+      }
+
+      mme_add_to(b, payload, payload, mme_imm(arr_idx));
+      mme_sll_to(b, bit, bit, mme_imm(1));
+   }
+}
+
+void nvk_mme_clear_layers(struct nvk_device *dev,
+                          struct mme_builder *b)
+{
+   struct mme_value payload = mme_load(b);
+   struct mme_value layer_count = mme_load(b);
+
+   const uint32_t arr_idx = 1 << DRF_LO(NV9097_CLEAR_SURFACE_RT_ARRAY_INDEX);
+
+   mme_loop(b, layer_count) {
+      mme_mthd(b, NV9097_CLEAR_SURFACE);
+      mme_emit(b, payload);
+
+      mme_add_to(b, payload, payload, mme_imm(arr_idx));
+   }
+}
 
 static void
 emit_clear_rects(struct nvk_cmd_buffer *cmd,
@@ -20,9 +58,9 @@ emit_clear_rects(struct nvk_cmd_buffer *cmd,
 {
    struct nvk_rendering_state *render = &cmd->state.gfx.render;
 
-   for (uint32_t r = 0; r < rect_count; r++) {
-      struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 3);
+   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, rect_count * 6);
 
+   for (uint32_t r = 0; r < rect_count; r++) {
       P_MTHD(p, NV9097, SET_CLEAR_RECT_HORIZONTAL);
       P_NV9097_SET_CLEAR_RECT_HORIZONTAL(p, {
          .xmin = rects[r].rect.offset.x,
@@ -34,36 +72,37 @@ emit_clear_rects(struct nvk_cmd_buffer *cmd,
       });
 
       if (render->view_mask) {
-         assert(rects[r].baseArrayLayer == 0);
-         assert(rects[r].layerCount == 1);
-         p = P_SPACE(cmd->push, 64);
+         uint32_t payload;
+         V_NV9097_CLEAR_SURFACE(payload, {
+            .z_enable       = clear_depth,
+            .stencil_enable = clear_stencil,
+            .r_enable       = color_att >= 0,
+            .g_enable       = color_att >= 0,
+            .b_enable       = color_att >= 0,
+            .a_enable       = color_att >= 0,
+            .mrt_select     = color_att >= 0 ? color_att : 0,
+            .rt_array_index = rects[r].baseArrayLayer,
+         });
 
-         u_foreach_bit(view, render->view_mask) {
-            P_IMMD(p, NV9097, CLEAR_SURFACE, {
-               .z_enable       = clear_depth,
-               .stencil_enable = clear_stencil,
-               .r_enable       = color_att >= 0,
-               .g_enable       = color_att >= 0,
-               .b_enable       = color_att >= 0,
-               .a_enable       = color_att >= 0,
-               .mrt_select     = color_att >= 0 ? color_att : 0,
-               .rt_array_index = view,
-            });
-         }
+         P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_CLEAR_LAYERS));
+         P_INLINE_DATA(p, payload);
+         P_INLINE_DATA(p, render->view_mask);
       } else {
-         for (uint32_t l = 0; l < rects[r].layerCount; l++) {
-            p = P_SPACE(cmd->push, 2);
-            P_IMMD(p, NV9097, CLEAR_SURFACE, {
-               .z_enable       = clear_depth,
-               .stencil_enable = clear_stencil,
-               .r_enable       = color_att >= 0,
-               .g_enable       = color_att >= 0,
-               .b_enable       = color_att >= 0,
-               .a_enable       = color_att >= 0,
-               .mrt_select     = color_att >= 0 ? color_att : 0,
-               .rt_array_index = rects[r].baseArrayLayer + l,
-            });
-         }
+         uint32_t payload;
+         V_NV9097_CLEAR_SURFACE(payload, {
+            .z_enable       = clear_depth,
+            .stencil_enable = clear_stencil,
+            .r_enable       = color_att >= 0,
+            .g_enable       = color_att >= 0,
+            .b_enable       = color_att >= 0,
+            .a_enable       = color_att >= 0,
+            .mrt_select     = color_att >= 0 ? color_att : 0,
+            .rt_array_index = rects[r].baseArrayLayer,
+         });
+
+         P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_CLEAR_LAYERS));
+         P_INLINE_DATA(p, payload);
+         P_INLINE_DATA(p, rects[r].layerCount);
       }
    }
 }

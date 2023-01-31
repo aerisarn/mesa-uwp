@@ -3,6 +3,8 @@
 #include "nvk_device.h"
 
 static const nvk_mme_builder_func mme_builders[NVK_MME_COUNT] = {
+   [NVK_MME_CLEAR_VIEWS]   = nvk_mme_clear_views,
+   [NVK_MME_CLEAR_LAYERS]  = nvk_mme_clear_layers,
 };
 
 uint32_t *
