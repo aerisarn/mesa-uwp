@@ -793,10 +793,6 @@ impl Instr {
         Instr::new(Opcode::NOOP, &[], &[])
     }
 
-    pub fn new_meta(instrs: Vec<Instr>) -> Instr {
-        Instr::new(Opcode::META(MetaInstr::new(instrs)), &[], &[])
-    }
-
     pub fn new_fadd(dst: Dst, x: Src, y: Src) -> Instr {
         Instr::new(Opcode::FADD, slice::from_ref(&dst), &[x, y])
     }
@@ -965,38 +961,15 @@ impl Instr {
             Opcode::LD(_) => None,
             Opcode::ST(_) => None,
             Opcode::EXIT => Some(15),
-            Opcode::NOOP
-            | Opcode::META(_)
-            | Opcode::VEC
-            | Opcode::SPLIT
-            | Opcode::FS_OUT => panic!("Not a hardware opcode"),
+            Opcode::NOOP | Opcode::VEC | Opcode::SPLIT | Opcode::FS_OUT => {
+                panic!("Not a hardware opcode")
+            }
         }
-    }
-}
-
-pub struct MetaInstr {
-    instrs: Vec<Instr>,
-}
-
-impl MetaInstr {
-    pub fn new(instrs: Vec<Instr>) -> MetaInstr {
-        MetaInstr { instrs: instrs }
-    }
-}
-
-impl fmt::Display for MetaInstr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{{\n")?;
-        for i in &self.instrs {
-            write!(f, "{}\n", i)?;
-        }
-        write!(f, "}}")
     }
 }
 
 pub enum Opcode {
     NOOP,
-    META(MetaInstr),
     FADD,
     FFMA,
     FMNMX,
@@ -1028,7 +1001,6 @@ impl fmt::Display for Opcode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Opcode::NOOP => write!(f, "NOOP"),
-            Opcode::META(m) => write!(f, "META {}", m),
             Opcode::FADD => write!(f, "FADD"),
             Opcode::FFMA => write!(f, "FFMA"),
             Opcode::FMNMX => write!(f, "FMNMX"),
@@ -1093,19 +1065,10 @@ impl BasicBlock {
         }
     }
 
-    pub fn map_instrs<F: Fn(Instr) -> Instr>(&mut self, map: &F) {
+    pub fn map_instrs<F: Fn(Instr) -> Vec<Instr>>(&mut self, map: &F) {
         let mut instrs = Vec::new();
         for i in self.instrs.drain(..) {
-            let new_instr = map(i);
-            match new_instr.op {
-                Opcode::NOOP => {}
-                Opcode::META(mut meta) => {
-                    instrs.append(&mut meta.instrs);
-                }
-                _ => {
-                    instrs.push(new_instr);
-                }
-            }
+            instrs.append(&mut map(i));
         }
         self.instrs = instrs;
     }
@@ -1142,7 +1105,7 @@ impl Function {
         Ref::new_ssa(file, idx, comps)
     }
 
-    pub fn map_instrs<F: Fn(Instr) -> Instr>(&mut self, map: &F) {
+    pub fn map_instrs<F: Fn(Instr) -> Vec<Instr>>(&mut self, map: &F) {
         for b in &mut self.blocks {
             b.map_instrs(map);
         }
@@ -1171,23 +1134,23 @@ impl Shader {
         }
     }
 
-    pub fn map_instrs<F: Fn(Instr) -> Instr>(&mut self, map: &F) {
+    pub fn map_instrs<F: Fn(Instr) -> Vec<Instr>>(&mut self, map: &F) {
         for f in &mut self.functions {
             f.map_instrs(map);
         }
     }
 
     pub fn lower_vec_split(&mut self) {
-        self.map_instrs(&|instr: Instr| -> Instr {
+        self.map_instrs(&|instr: Instr| -> Vec<Instr> {
             match instr.op {
                 Opcode::VEC => {
+                    let mut instrs = Vec::new();
                     let comps = u8::try_from(instr.num_srcs()).unwrap();
                     if comps == 1 {
                         let src = instr.src(0);
                         let dst = instr.dst(0);
-                        Instr::new_mov(*dst, *src)
+                        instrs.push(Instr::new_mov(*dst, *src));
                     } else {
-                        let mut instrs = Vec::new();
                         let vec_dst = instr.dst(0).as_reg().unwrap();
                         assert!(comps == vec_dst.comps());
                         for i in 0..comps {
@@ -1195,17 +1158,17 @@ impl Shader {
                             let dst = Dst::Reg(vec_dst.as_comp(i).unwrap());
                             instrs.push(Instr::new_mov(dst, *src));
                         }
-                        Instr::new_meta(instrs)
                     }
+                    instrs
                 }
                 Opcode::SPLIT => {
+                    let mut instrs = Vec::new();
                     let comps = u8::try_from(instr.num_dsts()).unwrap();
                     if comps == 1 {
                         let src = instr.src(0);
                         let dst = instr.dst(0);
-                        Instr::new_mov(*dst, *src)
+                        instrs.push(Instr::new_mov(*dst, *src));
                     } else {
-                        let mut instrs = Vec::new();
                         let vec_src = instr.src(0).as_reg().unwrap();
                         assert!(comps == vec_src.comps());
                         for i in 0..comps {
@@ -1216,8 +1179,8 @@ impl Shader {
                             }
                             instrs.push(Instr::new_mov(*dst, src));
                         }
-                        Instr::new_meta(instrs)
                     }
+                    instrs
                 }
                 Opcode::FS_OUT => {
                     let mut instrs = Vec::new();
@@ -1229,9 +1192,9 @@ impl Shader {
                         );
                         instrs.push(Instr::new_mov(dst, *src));
                     }
-                    Instr::new_meta(instrs)
+                    instrs
                 }
-                _ => instr,
+                _ => vec![instr],
             }
         })
     }

@@ -70,11 +70,11 @@ impl DeadCodePass {
         }
 
         if has_any_dead {
-            f.map_instrs(&|instr: Instr| -> Instr {
+            f.map_instrs(&|instr: Instr| -> Vec<Instr> {
                 if self.is_instr_live(&instr) {
-                    instr
+                    vec![instr]
                 } else {
-                    Instr::new_noop()
+                    Vec::new()
                 }
             })
         }
