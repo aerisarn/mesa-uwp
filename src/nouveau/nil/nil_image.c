@@ -188,8 +188,11 @@ nil_image_init(struct nouveau_ws_device *dev,
                       (uint64_t)lvl_ext_B.d;
    }
 
+   /* Align the image and array stride to a single level0 tile */
+   image->align_B = nil_tiling_size_B(image->levels[0].tiling);
+
    /* I have no idea why but hardware seems to align layer strides */
-   image->array_stride_B = ALIGN(layer_size_B, 0x800);
+   image->array_stride_B = ALIGN(layer_size_B, image->align_B);
 
    image->size_B = (uint64_t)image->array_stride_B * image->extent_px.a;
 

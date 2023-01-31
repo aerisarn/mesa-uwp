@@ -101,6 +101,7 @@ struct nil_image {
 
    uint32_t array_stride_B;
 
+   uint32_t align_B;
    uint64_t size_B;
 };
 
