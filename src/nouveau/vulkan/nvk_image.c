@@ -33,6 +33,7 @@ nvk_get_image_format_features(struct nvk_physical_device *pdevice,
    features |= VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT;
    features |= VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
    features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
+   features |= VK_FORMAT_FEATURE_2_BLIT_SRC_BIT;
 
    if (nil_format_supports_filtering(pdevice->dev, p_format)) {
       features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
@@ -46,6 +47,7 @@ nvk_get_image_format_features(struct nvk_physical_device *pdevice,
       features |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT;
       if (nil_format_supports_blending(pdevice->dev, p_format))
          features |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT;
+      features |= VK_FORMAT_FEATURE_2_BLIT_DST_BIT;
    }
 
    if (vk_format_is_depth_or_stencil(vk_format)) {
@@ -65,12 +67,6 @@ nvk_get_image_format_features(struct nvk_physical_device *pdevice,
 
    if (p_format == PIPE_FORMAT_R32_UINT)
       features |= VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT;
-
-   const struct nvk_format *nvk_format = nvk_get_format(vk_format);
-   if (nvk_format && nvk_format->supports_2d_blit) {
-      features |= VK_FORMAT_FEATURE_2_BLIT_SRC_BIT |
-                  VK_FORMAT_FEATURE_2_BLIT_DST_BIT;
-   }
 
    return features;
 }
@@ -219,6 +215,11 @@ nvk_image_init(struct nvk_device *device,
                const VkImageCreateInfo *pCreateInfo)
 {
    vk_image_init(&device->vk, &image->vk, pCreateInfo);
+
+   if (image->vk.usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
+      image->vk.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+   if (image->vk.usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+      image->vk.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
    /* TODO: Implement multisampling */
    assert(pCreateInfo->samples == VK_SAMPLE_COUNT_1_BIT);

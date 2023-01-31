@@ -124,8 +124,8 @@ build_blit_shader(const struct vk_meta_blit_key *key)
    nir_builder *b = &build;
 
    struct glsl_struct_field push_fields[] = {
-      { .type = glsl_vec4_type(), .name = "xy_xform" },
-      { .type = glsl_vec4_type(), .name = "z_xform" },
+      { .type = glsl_vec4_type(), .name = "xy_xform", .offset = 0 },
+      { .type = glsl_vec4_type(), .name = "z_xform", .offset = 16 },
    };
    const struct glsl_type *push_iface_type =
       glsl_interface_type(push_fields, ARRAY_SIZE(push_fields),
@@ -504,16 +504,19 @@ vk_meta_blit_image(struct vk_command_buffer *cmd,
 
       uint32_t dst_base_layer, dst_layer_count;
       if (src_image->image_type == VK_IMAGE_TYPE_3D) {
-         uint32_t start_layer, end_layer;
+         dst_base_layer = MIN2(regions[r].dstOffsets[0].z,
+                               regions[r].dstOffsets[1].z);
+
+         uint32_t layer0, layer1;
          compute_off_scale(src_extent.depth,
                            regions[r].srcOffsets[0].z,
                            regions[r].srcOffsets[1].z,
-                           regions[r].dstOffsets[0].z,
-                           regions[r].dstOffsets[1].z,
-                           &start_layer, &end_layer,
+                           regions[r].dstOffsets[0].z - dst_base_layer,
+                           regions[r].dstOffsets[1].z - dst_base_layer,
+                           &layer0, &layer1,
                            &push.z_off, &push.z_scale);
-         dst_base_layer = start_layer;
-         dst_layer_count = end_layer - start_layer;
+         assert(layer0 == 0);
+         dst_layer_count = layer1;
       } else {
          dst_base_layer = regions[r].dstSubresource.baseArrayLayer;
          dst_layer_count = regions[r].dstSubresource.layerCount;

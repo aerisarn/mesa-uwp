@@ -119,3 +119,18 @@ nvk_meta_end(struct nvk_cmd_buffer *cmd,
 
    memcpy(cmd->state.gfx.descriptors.root.push, save->push, sizeof(save->push));
 }
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdBlitImage2(VkCommandBuffer commandBuffer,
+                  const VkBlitImageInfo2 *pBlitImageInfo)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
+
+   struct nvk_meta_save save;
+   nvk_meta_begin(cmd, &save);
+
+   vk_meta_blit_image2(&cmd->vk, &dev->meta, pBlitImageInfo);
+
+   nvk_meta_end(cmd, &save);
+}

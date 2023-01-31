@@ -5,15 +5,6 @@
 
 struct nvk_physical_device;
 
-struct nvk_format {
-   VkFormat vk_format;
-   uint8_t hw_format;
-
-   bool supports_2d_blit:1;
-};
-
-const struct nvk_format *nvk_get_format(VkFormat vk_format);
-
 struct nvk_va_format {
    uint8_t bit_widths;
    uint8_t swap_rb:1;
