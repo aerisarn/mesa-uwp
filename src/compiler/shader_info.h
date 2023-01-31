@@ -386,10 +386,10 @@ typedef struct shader_info {
 
       struct {
          /** The output primitive type */
-         uint16_t output_primitive;
+         enum mesa_prim output_primitive;
 
          /** The input primitive type */
-         uint16_t input_primitive;
+         enum mesa_prim input_primitive;
 
          /** The maximum number of vertices the geometry shader might write. */
          uint16_t vertices_out;

@@ -13,9 +13,11 @@ mod nak_opt_dce;
 mod nir;
 mod util;
 
+use bitset::*;
 use nak_bindings::*;
 use nak_from_nir::*;
 use std::os::raw::c_void;
+use util::NextMultipleOf;
 
 #[repr(C)]
 struct ShaderBin {
@@ -42,6 +44,197 @@ pub extern "C" fn nak_shader_bin_destroy(bin: *mut nak_shader_bin) {
     unsafe {
         Box::from_raw(bin as *mut ShaderBin);
     };
+}
+
+fn encode_hdr_for_nir(nir: &nir_shader, tls_size: u32) -> [u32; 32] {
+    if nir.info.stage() == MESA_SHADER_COMPUTE {
+        return [0_u32; 32];
+    }
+
+    let mut hdr = [0_u32; 32];
+    let mut hdr_view = BitSetMutView::new(&mut hdr);
+
+    /* [0, 31]: CommonWord0 */
+    let mut cw0 = hdr_view.subset_mut(0..32);
+    let sph_type = if nir.info.stage() == MESA_SHADER_FRAGMENT {
+        2_u32 /* SPH_TYPE_01_PS */
+    } else {
+        1_u32 /* SPH_TYPE_01_VTG */
+    };
+    cw0.set_field(0..5, sph_type);
+    cw0.set_field(5..10, 3_u32);
+    let shader_type = match nir.info.stage() {
+        MESA_SHADER_VERTEX => 1_u32,
+        MESA_SHADER_TESS_CTRL => 2_u32,
+        MESA_SHADER_TESS_EVAL => 3_u32,
+        MESA_SHADER_GEOMETRY => 4_u32,
+        MESA_SHADER_FRAGMENT => 5_u32,
+        _ => panic!("Unknown shader stage"),
+    };
+    cw0.set_field(10..14, shader_type);
+    if nir.info.stage() == MESA_SHADER_FRAGMENT {
+        cw0.set_bit(14, nir.num_outputs > 1);
+        let info_fs = unsafe { &nir.info.__bindgen_anon_1.fs };
+        cw0.set_bit(15, info_fs.uses_discard());
+    }
+    cw0.set_bit(16, false /* TODO: DoesGlobalStore */);
+    cw0.set_field(17..21, 1_u32 /* SassVersion */);
+    cw0.set_field(21..26, 0_u32 /* Reserved */);
+    cw0.set_bit(26, false /* TODO: DoesLoadOrStore */);
+    cw0.set_bit(27, false /* TODO: DoesFp64 */);
+    cw0.set_field(28..32, 0_u32 /* StreamOutMask */);
+
+    /* [32, 63]: CommonWord1 */
+    let mut cw1 = hdr_view.subset_mut(32..64);
+    cw1.set_field(0..24, NextMultipleOf::next_multiple_of(&tls_size, 0x10));
+    if nir.info.stage() == MESA_SHADER_TESS_CTRL {
+        cw1.set_field(24..32, 0_u32 /* TODO: PerPatchAttributeCount */);
+    }
+
+    /* [64, 95]: CommonWord2 */
+    let mut cw2 = hdr_view.subset_mut(64..96);
+    cw2.set_field(0..24, 0_u32 /* ShaderLocalMemoryHighSize */);
+    cw2.set_field(24..32, 0_u32 /* TODO: ThreadsPerInputPrimitive */);
+
+    /* [96, 127]: CommonWord3 */
+    let mut cw3 = hdr_view.subset_mut(96..128);
+    cw3.set_field(0..24, 0_u32 /* ShaderLocalMemoryCrsSize */);
+    if nir.info.stage() == MESA_SHADER_GEOMETRY {
+        let info_gs = unsafe { &nir.info.__bindgen_anon_1.gs };
+        let output_topology = match u32::from(info_gs.output_primitive) {
+            SHADER_PRIM_POINTS => 1_u8,    /* POINTLIST */
+            SHADER_PRIM_LINES => 6_u8,     /* LINESTRIP */
+            SHADER_PRIM_TRIANGLES => 6_u8, /* TRIANGLESTRIP */
+            _ => panic!("Invalid geometry output primitive type"),
+        };
+        cw3.set_field(24..28, output_topology);
+    }
+    cw3.set_field(28..32, 0_u32 /* Reserved */);
+
+    /* [128, 159]: CommonWord4 */
+    let mut cw4 = hdr_view.subset_mut(128..160);
+    if nir.info.stage() == MESA_SHADER_GEOMETRY {
+        let info_gs = unsafe { &nir.info.__bindgen_anon_1.gs };
+        cw4.set_field(0..12, info_gs.vertices_out);
+    }
+    /* TODO */
+    if nir.info.stage() == MESA_SHADER_VERTEX {
+        cw4.set_field(12..20, 0xff_u32 /* TODO: StoreReqStart */);
+    }
+    cw4.set_field(20..24, 0_u32 /* Reserved */);
+    cw4.set_field(24..32, 0_u32 /* TODO: StoreReqEnd */);
+
+    let nir_sv = BitSetView::new(&nir.info.system_values_read);
+
+    if nir.info.stage() != MESA_SHADER_FRAGMENT {
+        assert!(sph_type == 1);
+
+        /* [160, 183]: ImapSystemValuesA */
+        /* [184, 191]: ImapSystemValuesB */
+        let mut imap_sv = hdr_view.subset_mut(160..192);
+        if nir.info.stage() == MESA_SHADER_TESS_CTRL { /* TODO */ }
+        let has_primitive_id =
+            nir_sv.get_bit(SYSTEM_VALUE_PRIMITIVE_ID.try_into().unwrap());
+        imap_sv.set_bit(24, has_primitive_id);
+        imap_sv.set_bit(25, false /* TODO: RtArrayIndex */);
+        imap_sv.set_bit(26, false /* TODO: ViewportIndex */);
+        imap_sv.set_bit(27, false /* TODO: PointSize */);
+
+        /* [192, 319]: ImapGenericVector[32] */
+        let mut imap_g = hdr_view.subset_mut(192..320);
+
+        let nir_ir = BitSetView::new(&nir.info.inputs_read);
+        let input0: usize = if nir.info.stage() == MESA_SHADER_VERTEX {
+            VERT_ATTRIB_GENERIC0.try_into().unwrap()
+        } else {
+            VARYING_SLOT_VAR0.try_into().unwrap()
+        };
+        for i in 0..32 {
+            if nir_ir.get_bit(input0 + i) {
+                imap_g.set_field((i * 4)..(i * 4 + 4), 0xf_u32);
+            }
+        }
+
+        /* [320, 335]: ImapColor */
+        /* [336, 352]: ImapSystemValuesC */
+        /* [352, 391]: ImapFixedFncTexture[10] */
+        /* [392, 399]: ImapReserved */
+
+        let nir_ow = BitSetView::new(&nir.info.outputs_written);
+
+        /* [400, 423]: TODO: OmapSystemValuesA */
+
+        /* [424, 431]: OmapSystemValuesB */
+        let mut omap_sv_b = hdr_view.subset_mut(424..432);
+        omap_sv_b.set_bit(0, false /* TODO: PrimitiveId */);
+        omap_sv_b.set_bit(1, false /* TODO: RtAttayIndex */);
+        let has_viewport =
+            nir_ow.get_bit(VARYING_SLOT_VIEWPORT.try_into().unwrap());
+        omap_sv_b.set_bit(2, has_viewport);
+        let has_point_size =
+            nir_ow.get_bit(VARYING_SLOT_PSIZ.try_into().unwrap());
+        omap_sv_b.set_bit(3, has_point_size);
+        if nir_ow.get_bit(VARYING_SLOT_POS.try_into().unwrap()) {
+            omap_sv_b.set_field(4..8, 0xf_u32);
+        }
+
+        /* [432, 559]: OmapGenericVector[32] */
+        let mut omap_g = hdr_view.subset_mut(432..560);
+        let output0 = usize::try_from(VARYING_SLOT_VAR0).unwrap();
+        for i in 0..32 {
+            if nir_ow.get_bit(output0 + i) {
+                omap_g.set_field((i * 4)..(i * 4 + 4), 0xf_u32);
+            }
+        }
+
+        /* [560, 575]: OmapColor */
+        /* [576, 591]: OmapSystemValuesC */
+        /* [592, 631]: OmapFixedFncTexture[10] */
+        /* [632, 639]: OmapReserved */
+    } else {
+        assert!(nir.info.stage() == MESA_SHADER_FRAGMENT);
+        assert!(sph_type == 2);
+
+        /* [160, 183]: ImapSystemValuesA */
+        /* [184, 191]: ImapSystemValuesB */
+        let mut imap_sv = hdr_view.subset_mut(160..192);
+        let has_frag_coord =
+            nir_sv.get_bit(SYSTEM_VALUE_FRAG_COORD.try_into().unwrap());
+        imap_sv.set_bit(28, has_frag_coord);
+        imap_sv.set_bit(29, has_frag_coord);
+        imap_sv.set_bit(30, has_frag_coord);
+        imap_sv.set_bit(31, true); //has_frag_coord);
+
+        /* [192, 447]: ImapGenericVector[32] */
+        /* [448, 463]: ImapColor */
+        /* [464, 479]: ImapSystemValuesC */
+        /* [480, 559]: ImapFixedFncTexture[10] */
+        /* [560, 575]: ImapReserved */
+
+        /* [576, 607]: OmapTarget[8] */
+        let mut omap_color = hdr_view.subset_mut(576..608);
+
+        let nir_ow = BitSetView::new(&nir.info.outputs_written);
+        let output0 = usize::try_from(FRAG_RESULT_DATA0).unwrap();
+        for i in 0..8 {
+            if nir_ow.get_bit(output0 + i) {
+                omap_color.set_field((i * 4)..(i * 4 + 4), 0xf_u32);
+            }
+        }
+
+        /* [608]: OmapSampleMask */
+        let has_sample_mask =
+            nir_ow.get_bit(FRAG_RESULT_SAMPLE_MASK.try_into().unwrap());
+        hdr_view.set_bit(608, has_sample_mask);
+
+        /* [609]: OmapDepth */
+        let has_depth = nir_ow.get_bit(FRAG_RESULT_DEPTH.try_into().unwrap());
+        hdr_view.set_bit(609, has_depth);
+
+        /* [610, 639]: Reserved */
+    }
+
+    hdr
 }
 
 #[no_mangle]
@@ -74,10 +267,14 @@ pub extern "C" fn nak_compile_shader(
         num_gprs: 255,
         tls_size: 0,
         cs: nak_shader_info__bindgen_ty_1 {
-            local_size: [0; 3],
-            smem_size: 0,
+            local_size: [
+                nir.info.workgroup_size[0].into(),
+                nir.info.workgroup_size[1].into(),
+                nir.info.workgroup_size[2].into(),
+            ],
+            smem_size: nir.info.shared_size.try_into().unwrap(),
         },
-        hdr: [0; 32],
+        hdr: encode_hdr_for_nir(nir, 0 /* tls_size */),
     };
 
     let code = nak_encode_tu102::encode_shader(&s);

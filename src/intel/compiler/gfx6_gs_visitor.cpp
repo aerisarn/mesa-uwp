@@ -177,7 +177,7 @@ gfx6_gs_visitor::gs_emit_vertex(int stream_id)
    dst_reg dst(this->vertex_output);
    dst.reladdr = ralloc(mem_ctx, src_reg);
    memcpy(dst.reladdr, &this->vertex_output_offset, sizeof(src_reg));
-   if (nir->info.gs.output_primitive == GL_POINTS) {
+   if (nir->info.gs.output_primitive == MESA_PRIM_POINTS) {
       /* If we are outputting points, then every vertex has PrimStart and
        * PrimEnd set.
        */
@@ -206,7 +206,7 @@ gfx6_gs_visitor::gs_end_primitive()
    /* Calling EndPrimitive() is optional for point output. In this case we set
     * the PrimEnd flag when we process EmitVertex().
     */
-   if (nir->info.gs.output_primitive == GL_POINTS)
+   if (nir->info.gs.output_primitive == MESA_PRIM_POINTS)
       return;
 
    /* Otherwise we know that the last vertex we have processed was the last

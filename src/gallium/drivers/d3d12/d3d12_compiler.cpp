@@ -397,7 +397,7 @@ needs_point_sprite_lowering(struct d3d12_context *ctx, const struct pipe_draw_in
 
    if (gs != NULL && !gs->is_variant) {
       /* There is an user GS; Check if it outputs points with PSIZE */
-      return (gs->initial->info.gs.output_primitive == GL_POINTS &&
+      return (gs->initial->info.gs.output_primitive == MESA_PRIM_POINTS &&
               (gs->initial->info.outputs_written & VARYING_BIT_PSIZ ||
                  ctx->gfx_pipeline_state.rast->base.point_size > 1.0) &&
               (gs->initial->info.gs.active_stream_mask == 1 ||
@@ -437,11 +437,6 @@ get_provoking_vertex(struct d3d12_selection_context *sel_ctx, bool *alternate, c
    struct d3d12_shader_selector *vs = sel_ctx->ctx->gfx_stages[PIPE_SHADER_VERTEX];
    struct d3d12_shader_selector *gs = sel_ctx->ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
    struct d3d12_shader_selector *last_vertex_stage = gs && !gs->is_variant ? gs : vs;
-
-   /* Make sure GL prims match Gallium prims */
-   STATIC_ASSERT(GL_POINTS == MESA_PRIM_POINTS);
-   STATIC_ASSERT(GL_LINES == MESA_PRIM_LINES);
-   STATIC_ASSERT(GL_LINE_STRIP == MESA_PRIM_LINE_STRIP);
 
    enum mesa_prim mode;
    switch (last_vertex_stage->stage) {
