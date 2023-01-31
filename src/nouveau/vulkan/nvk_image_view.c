@@ -37,6 +37,21 @@ vk_swizzle_to_pipe(VkComponentSwizzle swizzle)
    }
 }
 
+static void
+image_3d_view_as_2d_array(struct nil_image *image,
+                          struct nil_view *view,
+                          uint64_t *base_addr)
+{
+   assert(view->type == NIL_VIEW_TYPE_2D ||
+          view->type == NIL_VIEW_TYPE_2D_ARRAY);
+   assert(view->num_levels == 1);
+
+   uint64_t offset_B;
+   nil_image_3d_level_as_2d_array(image, view->base_level, image, &offset_B);
+   *base_addr += offset_B;
+   view->base_level = 0;
+}
+
 VkResult
 nvk_image_view_init(struct nvk_device *device,
                     struct nvk_image_view *view,
@@ -49,6 +64,9 @@ nvk_image_view_init(struct nvk_device *device,
    memset(view, 0, sizeof(*view));
 
    vk_image_view_init(&device->vk, &view->vk, driver_internal, pCreateInfo);
+
+   struct nil_image nil_image = image->nil;
+   uint64_t base_addr = nvk_image_base_address(image);
 
    struct nil_view nil_view = {
       .type = vk_image_view_type_to_nil_view_type(view->vk.view_type),
@@ -65,12 +83,15 @@ nvk_image_view_init(struct nvk_device *device,
       },
    };
 
+   if (nil_image.dim == NIL_IMAGE_DIM_3D &&
+       nil_view.type != NIL_VIEW_TYPE_3D)
+      image_3d_view_as_2d_array(&nil_image, &nil_view, &base_addr);
+
    if (view->vk.usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
                          VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
       uint32_t tic[8];
       nil_image_fill_tic(nvk_device_physical(device)->dev,
-                         &image->nil, &nil_view,
-                         nvk_image_base_address(image), tic);
+                         &nil_image, &nil_view, base_addr, tic);
 
       result = nvk_descriptor_table_add(device, &device->images,
                                         tic, sizeof(tic),
@@ -89,8 +110,7 @@ nvk_image_view_init(struct nvk_device *device,
 
       uint32_t tic[8];
       nil_image_fill_tic(nvk_device_physical(device)->dev,
-                         &image->nil, &nil_view,
-                         nvk_image_base_address(image), tic);
+                         &nil_image, &nil_view, base_addr, tic);
 
       result = nvk_descriptor_table_add(device, &device->images,
                                         tic, sizeof(tic),

@@ -227,6 +227,8 @@ nvk_image_init(struct nvk_device *device,
    enum nil_image_usage_flags usage = 0; /* TODO */
    if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR)
       usage |= NIL_IMAGE_USAGE_LINEAR_BIT;
+   if (pCreateInfo->flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT)
+      usage |= NIL_IMAGE_USAGE_2D_VIEW_BIT;
 
    struct nil_image_init_info nil_info = {
       .dim = vk_image_type_to_nil_dim(pCreateInfo->imageType),
