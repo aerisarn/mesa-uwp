@@ -10,13 +10,18 @@
 #include "nouveau_context.h"
 
 #include "nvtypes.h"
+#include "nvk_cl9097.h"
 #include "nvk_cl902d.h"
 #include "nvk_cl90b5.h"
+#include "nvk_cla097.h"
 #include "nvk_cla0b5.h"
-#include "nvk_clc1b5.h"
 #include "nvk_cla0c0.h"
+#include "nvk_clb197.h"
 #include "nvk_clc0c0.h"
+#include "nvk_clc1b5.h"
+#include "nvk_clc397.h"
 #include "nvk_clc3c0.h"
+#include "nvk_clc597.h"
 
 struct nouveau_ws_push*
 nouveau_ws_push_new(struct nouveau_ws_device *dev, uint64_t size)
@@ -144,6 +149,18 @@ nouveau_ws_push_dump(struct nouveau_ws_push *push, struct nouveau_ws_context *ct
       while (count--) {
          const char *mthd_name = "";
          switch (subchan) {
+         case 0:
+            if (ctx->compute.cls >= 0xc597)
+               mthd_name = P_PARSE_NVC597_MTHD(mthd);
+            else if (ctx->compute.cls >= 0xc397)
+               mthd_name = P_PARSE_NVC397_MTHD(mthd);
+            else if (ctx->compute.cls >= 0xb197)
+               mthd_name = P_PARSE_NVB197_MTHD(mthd);
+            else if (ctx->compute.cls >= 0xa097)
+               mthd_name = P_PARSE_NVA097_MTHD(mthd);
+            else
+               mthd_name = P_PARSE_NV9097_MTHD(mthd);
+            break;
          case 1:
             if (ctx->compute.cls >= 0xc3c0)
                mthd_name = P_PARSE_NVC3C0_MTHD(mthd);
@@ -173,6 +190,18 @@ nouveau_ws_push_dump(struct nouveau_ws_push *push, struct nouveau_ws_context *ct
 
          printf("\tmthd %04x %s\n", mthd, mthd_name);
          switch (subchan) {
+         case 0:
+            if (ctx->compute.cls >= 0xc597)
+               P_DUMP_NVC597_MTHD_DATA(mthd, value, "\t\t");
+            else if (ctx->compute.cls >= 0xc397)
+               P_DUMP_NVC397_MTHD_DATA(mthd, value, "\t\t");
+            else if (ctx->compute.cls >= 0xb197)
+               P_DUMP_NVB197_MTHD_DATA(mthd, value, "\t\t");
+            else if (ctx->compute.cls >= 0xa097)
+               P_DUMP_NVA097_MTHD_DATA(mthd, value, "\t\t");
+            else
+               P_DUMP_NV9097_MTHD_DATA(mthd, value, "\t\t");
+            break;
          case 1:
             if (ctx->compute.cls >= 0xc3c0)
                P_DUMP_NVC3C0_MTHD_DATA(mthd, value, "\t\t");

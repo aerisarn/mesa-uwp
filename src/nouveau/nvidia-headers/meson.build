@@ -5,12 +5,19 @@ idep_nvidia_headers = declare_dependency(
 nvk_classes = [
   'cl902d',
   'cl906f',
+  'cl9097',
   'cl90b5',
   'cla0b5',
+  'cla097',
+  'clb097',
+  'clb197',
+  'clc097',
   'clc1b5',
   'cla0c0',
   'clc0c0',
-  'clc3c0'
+  'clc397',
+  'clc3c0',
+  'clc597',
 ]
 
 nvk_cl_header_depend_files = [

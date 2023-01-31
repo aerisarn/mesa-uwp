@@ -33,6 +33,14 @@ unsigned nouveau_ws_push_num_refs(const struct nouveau_ws_push *push);
 void nouveau_ws_push_reset_refs(struct nouveau_ws_push *push,
                                 unsigned num_refs);
 
+#define SUBC_NV9097 0
+#define SUBC_NVA097 0
+#define SUBC_NVB097 0
+#define SUBC_NVB197 0
+#define SUBC_NVC097 0
+#define SUBC_NVC397 0
+#define SUBC_NVC597 0
+
 #define SUBC_NVA0C0 1
 #define SUBC_NVC0C0 1
 #define SUBC_NVC3C0 1
