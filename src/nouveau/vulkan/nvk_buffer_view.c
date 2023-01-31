@@ -2,6 +2,13 @@
 
 #include "nvk_device.h"
 
+VkFormatFeatureFlags2
+nvk_get_buffer_format_features(struct nvk_physical_device *pdevice,
+                               VkFormat format)
+{
+   return 0;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_CreateBufferView(VkDevice _device,
                      const VkBufferViewCreateInfo *pCreateInfo,

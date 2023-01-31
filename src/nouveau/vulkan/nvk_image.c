@@ -1,11 +1,107 @@
 #include "nvk_image.h"
 
-#include "vulkan/util/vk_format.h"
-
 #include "nvk_device.h"
 #include "nvk_device_memory.h"
 #include "nvk_format.h"
 #include "nvk_physical_device.h"
+
+#include "nil_format.h"
+#include "vulkan/util/vk_format.h"
+
+static bool
+is_storage_image_format(enum pipe_format p_format)
+{
+   /* TODO: This shouldn't be a fixed list */
+
+   switch (p_format) {
+   case PIPE_FORMAT_R32G32B32A32_UINT:
+   case PIPE_FORMAT_R32G32B32A32_SINT:
+   case PIPE_FORMAT_R32G32B32A32_FLOAT:
+   case PIPE_FORMAT_R32_UINT:
+   case PIPE_FORMAT_R32_SINT:
+   case PIPE_FORMAT_R32_FLOAT:
+   case PIPE_FORMAT_R16G16B16A16_UINT:
+   case PIPE_FORMAT_R16G16B16A16_SINT:
+   case PIPE_FORMAT_R16G16B16A16_FLOAT:
+   case PIPE_FORMAT_R32G32_UINT:
+   case PIPE_FORMAT_R32G32_SINT:
+   case PIPE_FORMAT_R32G32_FLOAT:
+   case PIPE_FORMAT_R8G8B8A8_UINT:
+   case PIPE_FORMAT_R8G8B8A8_SINT:
+   case PIPE_FORMAT_R16G16_UINT:
+   case PIPE_FORMAT_R16G16_SINT:
+   case PIPE_FORMAT_R16G16_FLOAT:
+   case PIPE_FORMAT_R8G8_UINT:
+   case PIPE_FORMAT_R8G8_SINT:
+   case PIPE_FORMAT_R16_UINT:
+   case PIPE_FORMAT_R16_FLOAT:
+   case PIPE_FORMAT_R16_SINT:
+   case PIPE_FORMAT_R8_UINT:
+   case PIPE_FORMAT_R8_SINT:
+   case PIPE_FORMAT_R10G10B10A2_UINT:
+   case PIPE_FORMAT_R10G10B10A2_UNORM:
+   case PIPE_FORMAT_R11G11B10_FLOAT:
+   case PIPE_FORMAT_R16G16B16A16_UNORM:
+   case PIPE_FORMAT_R16G16B16A16_SNORM:
+   case PIPE_FORMAT_R8G8B8A8_UNORM:
+   case PIPE_FORMAT_R8G8B8A8_SNORM:
+   case PIPE_FORMAT_R16G16_UNORM:
+   case PIPE_FORMAT_R16G16_SNORM:
+   case PIPE_FORMAT_R8G8_UNORM:
+   case PIPE_FORMAT_R8G8_SNORM:
+   case PIPE_FORMAT_R16_UNORM:
+   case PIPE_FORMAT_R16_SNORM:
+   case PIPE_FORMAT_R8_UNORM:
+   case PIPE_FORMAT_R8_SNORM:
+      return true;
+   default:
+      return false;
+   }
+}
+
+VkFormatFeatureFlags2
+nvk_get_image_format_features(struct nvk_physical_device *pdevice,
+                              VkFormat vk_format, VkImageTiling tiling)
+{
+   VkFormatFeatureFlags2 features = 0;
+
+   if (tiling != VK_IMAGE_TILING_OPTIMAL)
+      return 0;
+
+   enum pipe_format p_format = vk_format_to_pipe_format(vk_format);
+   if (p_format == PIPE_FORMAT_NONE)
+      return 0;
+
+   const struct nil_tic_format *tic_format = nil_tic_format_for_pipe(p_format);
+   if (tic_format == NULL)
+      return 0;
+
+   features |= VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT;
+   features |= VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
+   features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
+
+   if (util_format_is_float(p_format) ||
+       util_format_is_unorm(p_format) ||
+       util_format_is_snorm(p_format))
+      features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+
+   if (is_storage_image_format(p_format)) {
+      features |= VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT |
+                  VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
+                  VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
+   }
+
+   if (p_format == PIPE_FORMAT_R32_UINT)
+      features |= VK_FORMAT_FEATURE_2_STORAGE_IMAGE_ATOMIC_BIT;
+
+   const struct nvk_format *nvk_format = nvk_get_format(vk_format);
+   if (nvk_format && nvk_format->supports_2d_blit) {
+      features |= VK_FORMAT_FEATURE_2_BLIT_SRC_BIT |
+                  VK_FORMAT_FEATURE_2_BLIT_DST_BIT;
+   }
+
+   return features;
+}
 
 static enum nil_image_dim
 vk_image_type_to_nil_dim(VkImageType type)

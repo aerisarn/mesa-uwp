@@ -1,8 +1,13 @@
 #include "nvk_format.h"
 
+#include "nvk_buffer_view.h"
+#include "nvk_image.h"
+#include "nvk_physical_device.h"
+
 #include "nvtypes.h"
 #include "classes/cl902d.h"
 #include "classes/cl90c0.h"
+#include "vulkan/util/vk_enum_defines.h"
 #include "vulkan/util/vk_format.h"
 
 /*
@@ -180,4 +185,41 @@ nvk_get_format(VkFormat vk_format)
    }
 
    return NULL;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
+                                       VkFormat format,
+                                       VkFormatProperties2 *pFormatProperties)
+{
+   VK_FROM_HANDLE(nvk_physical_device, pdevice, physicalDevice);
+
+   VkFormatFeatureFlags2 linear2, optimal2, buffer2;
+   linear2 = nvk_get_image_format_features(pdevice, format,
+                                           VK_IMAGE_TILING_LINEAR);
+   optimal2 = nvk_get_image_format_features(pdevice, format,
+                                            VK_IMAGE_TILING_OPTIMAL);
+   buffer2 = nvk_get_buffer_format_features(pdevice, format);
+
+   pFormatProperties->formatProperties = (VkFormatProperties) {
+      .linearTilingFeatures = vk_format_features2_to_features(linear2),
+      .optimalTilingFeatures = vk_format_features2_to_features(optimal2),
+      .bufferFeatures = vk_format_features2_to_features(buffer2),
+   };
+
+   vk_foreach_struct(ext, pFormatProperties->pNext) {
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR: {
+         VkFormatProperties3KHR *props = (VkFormatProperties3KHR *)ext;
+         props->linearTilingFeatures = linear2;
+         props->optimalTilingFeatures = optimal2;
+         props->bufferFeatures = buffer2;
+         break;
+      }
+
+      default:
+         nvk_debug_ignored_stype(ext->sType);
+         break;
+      }
+   }
 }

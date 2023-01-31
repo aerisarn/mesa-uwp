@@ -9,6 +9,12 @@
 #include "nouveau_push.h"
 #include "vulkan/runtime/vk_image.h"
 
+struct nvk_physical_device;
+
+VkFormatFeatureFlags2
+nvk_get_image_format_features(struct nvk_physical_device *pdevice,
+                              VkFormat format, VkImageTiling tiling);
+
 struct nvk_image {
    struct vk_image vk;
    struct nvk_device_memory *mem;

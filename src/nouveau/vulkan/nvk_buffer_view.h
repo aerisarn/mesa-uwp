@@ -5,6 +5,12 @@
 
 #include "vulkan/runtime/vk_buffer_view.h"
 
+struct nvk_physical_device;
+
+VkFormatFeatureFlags2
+nvk_get_buffer_format_features(struct nvk_physical_device *pdevice,
+                               VkFormat format);
+
 struct nvk_buffer_view {
    struct vk_buffer_view vk;
 
