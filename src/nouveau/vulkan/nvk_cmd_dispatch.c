@@ -67,6 +67,7 @@ nvk_CmdDispatch(VkCommandBuffer commandBuffer,
    const struct nvk_shader *shader =
       &pipeline->base.shaders[MESA_SHADER_COMPUTE];
    struct nvk_descriptor_state *desc = &cmd->state.cs.descriptors;
+   VkResult result;
 
    desc->root.cs.block_size[0] = shader->cp.block_size[0];
    desc->root.cs.block_size[1] = shader->cp.block_size[1];
@@ -78,9 +79,12 @@ nvk_CmdDispatch(VkCommandBuffer commandBuffer,
    uint32_t root_table_size = sizeof(desc->root);
    void *root_table_map;
    uint64_t root_table_addr;
-   if (!nvk_cmd_buffer_upload_alloc(cmd, root_table_size, &root_table_addr,
-                                    &root_table_map))
-      return; /* TODO: Error */
+   result = nvk_cmd_buffer_upload_alloc(cmd, root_table_size,
+                                        &root_table_addr, &root_table_map);
+   if (unlikely(result != VK_SUCCESS)) {
+      vk_command_buffer_set_error(&cmd->vk, result);
+      return;
+   }
 
    struct nv_push *p = P_SPACE(cmd->push, 14 + root_table_size / 4);
 
@@ -100,8 +104,11 @@ nvk_CmdDispatch(VkCommandBuffer commandBuffer,
 
    uint32_t *qmd;
    uint64_t qmd_addr;
-   if (!nvk_cmd_buffer_upload_alloc(cmd, 512, &qmd_addr, (void **)&qmd))
-      return; /* TODO: Error */
+   result = nvk_cmd_buffer_upload_alloc(cmd, 512, &qmd_addr, (void **)&qmd);
+   if (unlikely(result != VK_SUCCESS)) {
+      vk_command_buffer_set_error(&cmd->vk, result);
+      return;
+   }
 
    memcpy(qmd, pipeline->qmd_template, 256);
    gv100_compute_setup_launch_desc(qmd, groupCountX, groupCountY, groupCountZ);

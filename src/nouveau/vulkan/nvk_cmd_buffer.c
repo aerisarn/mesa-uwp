@@ -151,8 +151,8 @@ nvk_cmd_buffer_resize_upload_buf(struct nvk_cmd_buffer *cmd,
    return true;
 }
 
-bool
-nvk_cmd_buffer_upload_alloc(struct nvk_cmd_buffer *cmd, unsigned size,
+VkResult
+nvk_cmd_buffer_upload_alloc(struct nvk_cmd_buffer *cmd, uint32_t size,
                             uint64_t *addr, void **ptr)
 {
    assert(size % 4 == 0);
@@ -160,15 +160,15 @@ nvk_cmd_buffer_upload_alloc(struct nvk_cmd_buffer *cmd, unsigned size,
    /* Align to the scalar cache line size if it results in this allocation
     * being placed in less of them.
     */
-   unsigned offset = cmd->upload.offset;
-   unsigned line_size = 256;//for compute dispatches
-   unsigned gap = align(offset, line_size) - offset;
+   uint32_t offset = cmd->upload.offset;
+   uint32_t line_size = 256;//for compute dispatches
+   uint32_t gap = align(offset, line_size) - offset;
    if ((size & ~(line_size - 1)) > gap)
       offset = align(offset, line_size);
 
    if (offset + size > cmd->upload.size) {
       if (!nvk_cmd_buffer_resize_upload_buf(cmd, size))
-         return false;
+         return vk_error(cmd, VK_ERROR_OUT_OF_DEVICE_MEMORY);
       offset = 0;
    }
 
@@ -176,7 +176,8 @@ nvk_cmd_buffer_upload_alloc(struct nvk_cmd_buffer *cmd, unsigned size,
    *ptr = cmd->upload.map + offset;
 
    cmd->upload.offset = offset + size;
-   return true;
+
+   return VK_SUCCESS;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL

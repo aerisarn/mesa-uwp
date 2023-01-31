@@ -11,11 +11,13 @@ nvk_cmd_bind_map_buffer(struct vk_command_buffer *vk_cmd,
    struct nvk_cmd_buffer *cmd =
       container_of(vk_cmd, struct nvk_cmd_buffer, vk);
    VK_FROM_HANDLE(nvk_buffer, buffer, _buffer);
+   VkResult result;
 
    uint64_t addr;
    assert(buffer->vk.size < UINT_MAX);
-   if (!nvk_cmd_buffer_upload_alloc(cmd, buffer->vk.size, &addr, map_out))
-      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+   result = nvk_cmd_buffer_upload_alloc(cmd, buffer->vk.size, &addr, map_out);
+   if (unlikely(result != VK_SUCCESS))
+      return result;
 
    buffer->addr = addr;
 

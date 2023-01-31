@@ -1035,13 +1035,17 @@ static void
 nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
 {
    const struct nvk_descriptor_state *desc = &cmd->state.gfx.descriptors;
+   VkResult result;
 
    uint32_t root_table_size = sizeof(desc->root);
    void *root_table_map;
    uint64_t root_table_addr;
-   if (!nvk_cmd_buffer_upload_alloc(cmd, root_table_size, &root_table_addr,
-                                    &root_table_map))
-      return; /* TODO: Error */
+   result = nvk_cmd_buffer_upload_alloc(cmd, root_table_size,
+                                        &root_table_addr, &root_table_map);
+   if (unlikely(result != VK_SUCCESS)) {
+      vk_command_buffer_set_error(&cmd->vk, result);
+      return;
+   }
 
    memcpy(root_table_map, &desc->root, sizeof(desc->root));
 
