@@ -46,7 +46,7 @@ struct nvk_image {
 
    VkDeviceSize min_size;
 
-   struct nvk_format *format;
+   const struct nvk_format *format;
    struct nvk_image_level level[NVK_MAX_MIP_LEVELS];
 };
 

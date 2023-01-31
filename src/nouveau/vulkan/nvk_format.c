@@ -20,7 +20,7 @@
  * TODO: O formats
  */
 
-struct nvk_format nvk_formats[NVK_FORMATS] = {
+struct nvk_format nvk_formats[] = {
    {
       .vk_format = VK_FORMAT_R8_UNORM,
       .hw_format = 0x0,
@@ -165,6 +165,17 @@ struct nvk_format nvk_formats[NVK_FORMATS] = {
       .supports_2d_blit = false,
    },
 };
+
+const struct nvk_format *
+nvk_get_format(VkFormat vk_format)
+{
+   for (unsigned i = 0; i < ARRAY_SIZE(nvk_formats); i++) {
+      if (nvk_formats[i].vk_format == vk_format)
+         return &nvk_formats[i];
+   }
+
+   return NULL;
+}
 
 #include "gallium/drivers/nouveau/nv50/g80_defs.xml.h"
 #include "gallium/drivers/nouveau/nv50/g80_texture.xml.h"

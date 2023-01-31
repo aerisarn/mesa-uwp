@@ -10,8 +10,7 @@ struct nvk_format {
    bool supports_2d_blit:1;
 };
 
-#define NVK_FORMATS 28
-extern struct nvk_format nvk_formats[NVK_FORMATS];
+const struct nvk_format *nvk_get_format(VkFormat vk_format);
 
 struct nvk_tic_format {
    unsigned comp_sizes:8;

@@ -465,44 +465,39 @@ nvk_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
    if (base_info->usage & ~(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT))
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
-   for (unsigned i = 0; i < ARRAY_SIZE(nvk_formats); i++) {
-      struct nvk_format *format = &nvk_formats[i];
+   const struct nvk_format *format = nvk_get_format(base_info->format);
+   if (format == NULL)
+      return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
-      if (format->vk_format != base_info->format)
-         continue;
+   if (base_info->type == VK_IMAGE_TYPE_1D)
+      base_props->imageFormatProperties.maxExtent = (VkExtent3D){32768, 1, 1};
+   else if (base_info->type == VK_IMAGE_TYPE_2D)
+      base_props->imageFormatProperties.maxExtent = (VkExtent3D){32768, 32768, 1};
+   else
+      return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
-      if (base_info->type == VK_IMAGE_TYPE_1D)
-         base_props->imageFormatProperties.maxExtent = (VkExtent3D){32768, 1, 1};
-      else if (base_info->type == VK_IMAGE_TYPE_2D)
-         base_props->imageFormatProperties.maxExtent = (VkExtent3D){32768, 32768, 1};
-      else
-         return VK_ERROR_FORMAT_NOT_SUPPORTED;
+   base_props->imageFormatProperties.maxMipLevels = NVK_MAX_MIP_LEVELS;
+   base_props->imageFormatProperties.maxArrayLayers = 2048;
+   base_props->imageFormatProperties.sampleCounts = 0;
+   base_props->imageFormatProperties.maxResourceSize = 0xffffffff; // TODO proper value
 
-      base_props->imageFormatProperties.maxMipLevels = NVK_MAX_MIP_LEVELS;
-      base_props->imageFormatProperties.maxArrayLayers = 2048;
-      base_props->imageFormatProperties.sampleCounts = 0;
-      base_props->imageFormatProperties.maxResourceSize = 0xffffffff; // TODO proper value
-
-      vk_foreach_struct(s, base_props->pNext) {
-         switch (s->sType) {
-         default:
-            nvk_debug_ignored_stype(s->sType);
-            break;
-         }
+   vk_foreach_struct(s, base_props->pNext) {
+      switch (s->sType) {
+      default:
+         nvk_debug_ignored_stype(s->sType);
+         break;
       }
-
-      vk_foreach_struct(ext, base_info->pNext)
-      {
-         /* Use unsigned since some cases are not in the VkStructureType enum. */
-         switch ((unsigned)ext->sType) {
-         default:
-            nvk_debug_ignored_stype(ext->sType);
-            break;
-         }
-      }
-
-      return VK_SUCCESS;
    }
 
-   return VK_ERROR_FORMAT_NOT_SUPPORTED;
+   vk_foreach_struct(ext, base_info->pNext)
+   {
+      /* Use unsigned since some cases are not in the VkStructureType enum. */
+      switch ((unsigned)ext->sType) {
+      default:
+         nvk_debug_ignored_stype(ext->sType);
+         break;
+      }
+   }
+
+   return VK_SUCCESS;
 }

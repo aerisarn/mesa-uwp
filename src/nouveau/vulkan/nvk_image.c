@@ -98,14 +98,7 @@ static VkResult nvk_image_init(struct nvk_device *device,
 
    vk_image_init(&device->vk, &image->vk, pCreateInfo);
 
-   for (unsigned i = 0; i < ARRAY_SIZE(nvk_formats); i++) {
-      struct nvk_format *format = &nvk_formats[i];
-
-      if (format->vk_format != pCreateInfo->format)
-         continue;
-
-      image->format = format;
-   }
+   image->format = nvk_get_format(pCreateInfo->format);
    assert(image->format);
 
    for (uint32_t l = 0; l < pCreateInfo->mipLevels; l++) {
