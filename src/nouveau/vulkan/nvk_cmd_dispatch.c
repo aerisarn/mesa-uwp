@@ -88,19 +88,24 @@ nvk_CmdDispatch(VkCommandBuffer commandBuffer,
 
    memcpy(root_table_map, &desc->root, sizeof(desc->root));
 
-   uint32_t *qmd;
+   uint32_t qmd[128];
+   memset(qmd, 0, sizeof(qmd));
+   memcpy(qmd, pipeline->qmd_template, sizeof(pipeline->qmd_template));
+
+   gv100_compute_setup_launch_desc(qmd, groupCountX, groupCountY, groupCountZ);
+
+   gp100_cp_launch_desc_set_cb(qmd, 0, root_table_size, root_table_addr);
+   gp100_cp_launch_desc_set_cb(qmd, 1, root_table_size, root_table_addr);
+
    uint64_t qmd_addr;
-   result = nvk_cmd_buffer_upload_alloc(cmd, 512, &qmd_addr, (void **)&qmd);
+   void *qmd_map;
+   result = nvk_cmd_buffer_upload_alloc(cmd, sizeof(qmd), &qmd_addr,&qmd_map);
    if (unlikely(result != VK_SUCCESS)) {
       vk_command_buffer_set_error(&cmd->vk, result);
       return;
    }
 
-   memcpy(qmd, pipeline->qmd_template, 256);
-   gv100_compute_setup_launch_desc(qmd, groupCountX, groupCountY, groupCountZ);
-
-   gp100_cp_launch_desc_set_cb(qmd, 0, root_table_size, root_table_addr);
-   gp100_cp_launch_desc_set_cb(qmd, 1, root_table_size, root_table_addr);
+   memcpy(qmd_map, qmd, sizeof(qmd));
 
    struct nv_push *p = P_SPACE(cmd->push, 6);
 
