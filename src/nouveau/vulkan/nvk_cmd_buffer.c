@@ -361,6 +361,14 @@ nvk_EndCommandBuffer(VkCommandBuffer commandBuffer)
 }
 
 VKAPI_ATTR void VKAPI_CALL
+nvk_CmdExecuteCommands(VkCommandBuffer commandBuffer,
+                       uint32_t commandBufferCount,
+                       const VkCommandBuffer *pCommandBuffers)
+{
+   unreachable("Secondary command buffers not yet supported");
+}
+
+VKAPI_ATTR void VKAPI_CALL
 nvk_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
                         const VkDependencyInfo *pDependencyInfo)
 { }
