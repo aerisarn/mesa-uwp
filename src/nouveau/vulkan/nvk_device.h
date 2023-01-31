@@ -36,6 +36,7 @@ struct nvk_device {
    struct nouveau_ws_context *ctx;
 
    struct nvk_descriptor_table images;
+   struct nvk_descriptor_table samplers;
 
    struct nvk_queue queue;
 

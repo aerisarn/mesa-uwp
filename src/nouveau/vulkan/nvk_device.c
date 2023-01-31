@@ -43,6 +43,13 @@ nvk_update_preamble_push(struct nvk_queue_state *qs, struct nvk_device *dev,
    P_NVA0C0_SET_SHADER_LOCAL_MEMORY_A(push, qs->tls_bo->offset >> 32);
    P_NVA0C0_SET_SHADER_LOCAL_MEMORY_B(push, qs->tls_bo->offset & 0xffffffff);
 
+   nvk_push_descriptor_table_ref(push, &dev->samplers);
+   uint64_t tsp_addr = nvk_descriptor_table_base_address(&dev->samplers);
+   P_MTHD(push, NVA0C0, SET_TEX_SAMPLER_POOL_A);
+   P_NVA0C0_SET_TEX_SAMPLER_POOL_A(push, tsp_addr >> 32);
+   P_NVA0C0_SET_TEX_SAMPLER_POOL_B(push, tsp_addr & 0xffffffff);
+   P_NVA0C0_SET_TEX_SAMPLER_POOL_C(push, dev->samplers.alloc - 1);
+
    nvk_push_descriptor_table_ref(push, &dev->images);
    uint64_t thp_addr = nvk_descriptor_table_base_address(&dev->images);
    P_MTHD(push, NVA0C0, SET_TEX_HEADER_POOL_A);
@@ -218,9 +225,15 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    assert(null_desc != NULL && null_image_index == 0);
    memset(null_desc, 0, 8 * 4);
 
-   result = vk_queue_init(&device->queue.vk, &device->vk, &pCreateInfo->pQueueCreateInfos[0], 0);
+   result = nvk_descriptor_table_init(device, &device->samplers,
+                                      8 * 4 /* tsc entry size */,
+                                      4096, 4096);
    if (result != VK_SUCCESS)
       goto fail_images;
+
+   result = vk_queue_init(&device->queue.vk, &device->vk, &pCreateInfo->pQueueCreateInfos[0], 0);
+   if (result != VK_SUCCESS)
+      goto fail_samplers;
 
    if (pthread_mutex_init(&device->mutex, NULL) != 0) {
       result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
@@ -256,6 +269,8 @@ fail_mutex:
    pthread_mutex_destroy(&device->mutex);
 fail_queue:
    vk_queue_finish(&device->queue.vk);
+fail_samplers:
+   nvk_descriptor_table_finish(device, &device->samplers);
 fail_images:
    nvk_descriptor_table_finish(device, &device->images);
 fail_ctx:
@@ -285,6 +300,7 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    pthread_mutex_destroy(&device->mutex);
    vk_queue_finish(&device->queue.vk);
    vk_device_finish(&device->vk);
+   nvk_descriptor_table_finish(device, &device->samplers);
    nvk_descriptor_table_finish(device, &device->images);
    nouveau_ws_context_destroy(device->ctx);
    vk_free(&device->vk.alloc, device);

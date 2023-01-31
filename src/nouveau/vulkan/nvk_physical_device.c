@@ -151,6 +151,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *device,
       .KHR_swapchain_mutable_format = true,
 #endif
       .KHR_variable_pointers = true,
+      .EXT_custom_border_color = true,
    };
 }
 
