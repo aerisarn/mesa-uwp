@@ -23,6 +23,7 @@
 
 #include "vk_meta.h"
 
+#include "vk_command_buffer.h"
 #include "vk_device.h"
 #include "vk_util.h"
 
@@ -336,5 +337,69 @@ vk_meta_create_compute_pipeline(struct vk_device *device,
                                                     key_data, key_size,
                                                     VK_OBJECT_TYPE_PIPELINE,
                                                     (uint64_t)pipeline);
+   return VK_SUCCESS;
+}
+
+void
+vk_meta_object_list_init(struct vk_meta_object_list *mol)
+{
+   util_dynarray_init(&mol->arr, NULL);
+}
+
+void
+vk_meta_object_list_reset(struct vk_device *device,
+                          struct vk_meta_object_list *mol)
+{
+   util_dynarray_foreach(&mol->arr, struct vk_object_base *, obj)
+      destroy_object(device, *obj);
+
+   util_dynarray_clear(&mol->arr);
+}
+
+void
+vk_meta_object_list_finish(struct vk_device *device,
+                           struct vk_meta_object_list *mol)
+{
+   vk_meta_object_list_reset(device, mol);
+   util_dynarray_fini(&mol->arr);
+}
+
+VkResult
+vk_meta_create_buffer(struct vk_command_buffer *cmd,
+                      struct vk_meta_device *meta,
+                      const VkBufferCreateInfo *info,
+                      VkBuffer *buffer_out)
+{
+   struct vk_device *device = cmd->base.device;
+   const struct vk_device_dispatch_table *disp = &device->dispatch_table;
+   VkDevice _device = vk_device_to_handle(device);
+
+   VkResult result = disp->CreateBuffer(_device, info, NULL, buffer_out);
+   if (unlikely(result != VK_SUCCESS))
+      return result;
+
+   vk_meta_object_list_add_handle(&cmd->meta_objects,
+                                  VK_OBJECT_TYPE_BUFFER,
+                                  (uint64_t)*buffer_out);
+   return VK_SUCCESS;
+}
+
+VkResult
+vk_meta_create_image_view(struct vk_command_buffer *cmd,
+                          struct vk_meta_device *meta,
+                          const VkImageViewCreateInfo *info,
+                          VkImageView *image_view_out)
+{
+   struct vk_device *device = cmd->base.device;
+   const struct vk_device_dispatch_table *disp = &device->dispatch_table;
+   VkDevice _device = vk_device_to_handle(device);
+
+   VkResult result = disp->CreateImageView(_device, info, NULL, image_view_out);
+   if (unlikely(result != VK_SUCCESS))
+      return result;
+
+   vk_meta_object_list_add_handle(&cmd->meta_objects,
+                                  VK_OBJECT_TYPE_IMAGE_VIEW,
+                                  (uint64_t)*image_view_out);
    return VK_SUCCESS;
 }
