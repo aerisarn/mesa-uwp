@@ -571,6 +571,7 @@ impl fmt::Display for FloatType {
     }
 }
 
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum FRndMode {
     NearestEven,
     NegInf,
@@ -756,6 +757,35 @@ pub struct AttrAccess {
     pub patch: bool,
     pub out_load: bool,
     pub flags: u8,
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpFAdd {
+    pub dst: Dst,
+    pub srcs: [Src; 2],
+    pub src_mods: [SrcMod; 2],
+    pub saturate: bool,
+    pub rnd_mode: FRndMode,
+}
+
+impl fmt::Display for OpFAdd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "FADD")?;
+        if self.saturate {
+            write!(f, ".SAT")?;
+        }
+        if self.rnd_mode != FRndMode::NearestEven {
+            write!(f, ".{}", self.rnd_mode)?;
+        }
+        write!(
+            f,
+            " {} {{ {}, {} }}",
+            self.dst,
+            self.mod_src(0),
+            self.mod_src(1),
+        )
+    }
 }
 
 #[repr(C)]
@@ -1115,6 +1145,7 @@ impl fmt::Display for OpFSOut {
 
 #[derive(Display, DstsAsSlice, SrcsAsSlice)]
 pub enum Op {
+    FAdd(OpFAdd),
     IAdd3(OpIAdd3),
     ISetP(OpISetP),
     Lop3(OpLop3),
@@ -1298,6 +1329,16 @@ impl Instr {
         }
     }
 
+    pub fn new_fadd(dst: Dst, x: ModSrc, y: ModSrc) -> Instr {
+        Instr::new(Op::FAdd(OpFAdd {
+            dst: dst,
+            srcs: [x.src, y.src],
+            src_mods: [x.src_mod, y.src_mod],
+            saturate: false,
+            rnd_mode: FRndMode::NearestEven,
+        }))
+    }
+
     pub fn new_iadd(dst: Dst, x: Src, y: Src) -> Instr {
         Instr::new(Op::IAdd3(OpIAdd3 {
             dst: dst,
@@ -1474,7 +1515,8 @@ impl Instr {
 
     pub fn get_latency(&self) -> Option<u32> {
         match self.op {
-            Op::IAdd3(_)
+            Op::FAdd(_)
+            | Op::IAdd3(_)
             | Op::Lop3(_)
             | Op::PLop3(_)
             | Op::ISetP(_)

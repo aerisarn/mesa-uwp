@@ -90,6 +90,13 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs
                     .push(Instr::new_sel(dst, srcs[0], srcs[1], srcs[2]));
             }
+            nir_op_fadd => {
+                self.instrs.push(Instr::new_fadd(
+                    dst,
+                    srcs[0].into(),
+                    srcs[1].into(),
+                ));
+            }
             nir_op_i2f32 => {
                 self.instrs.push(Instr::new_i2f(dst, srcs[0]));
             }

@@ -272,6 +272,32 @@ impl SM75Instr {
         self.set_field(122..126, deps.reuse_mask);
     }
 
+    fn set_rnd_mode(&mut self, range: Range<usize>, rnd_mode: FRndMode) {
+        assert!(range.len() == 2);
+        self.set_field(
+            range,
+            match rnd_mode {
+                FRndMode::NearestEven => 0_u8,
+                FRndMode::NegInf => 1_u8,
+                FRndMode::PosInf => 2_u8,
+                FRndMode::Zero => 3_u8,
+            },
+        );
+    }
+
+    fn encode_fadd(&mut self, op: &OpFAdd) {
+        self.encode_alu(
+            0x021,
+            Some(op.dst),
+            Some(op.mod_src(0)),
+            op.mod_src(1),
+            None,
+        );
+        self.set_bit(77, op.saturate);
+        self.set_rnd_mode(78..80, op.rnd_mode);
+        self.set_bit(80, false); /* TODO: Denorm mode */
+    }
+
     fn encode_iadd3(&mut self, op: &OpIAdd3) {
         self.encode_alu(
             0x010,
@@ -363,15 +389,7 @@ impl SM75Instr {
         self.set_field(60..62, 0_u8); /* TODO: subop */
         self.set_bit(74, op.src_type.is_signed());
         self.set_field(75..77, op.dst_type.bytes().trailing_zeros());
-        self.set_field(
-            78..80,
-            match op.rnd_mode {
-                FRndMode::NearestEven => 0_u8,
-                FRndMode::NegInf => 1_u8,
-                FRndMode::PosInf => 2_u8,
-                FRndMode::Zero => 3_u8,
-            },
-        );
+        self.set_rnd_mode(78..80, op.rnd_mode);
         self.set_field(84..86, op.src_type.bytes().trailing_zeros());
     }
 
@@ -529,6 +547,7 @@ impl SM75Instr {
         };
 
         match &instr.op {
+            Op::FAdd(op) => si.encode_fadd(&op),
             Op::IAdd3(op) => si.encode_iadd3(&op),
             Op::ISetP(op) => si.encode_isetp(&op),
             Op::Lop3(op) => si.encode_lop3(&op),
