@@ -77,7 +77,8 @@ nvk_allocate_memory(struct nvk_device *device,
    VkMemoryType *type = &device->pdev->mem_types[pAllocateInfo->memoryTypeIndex];
    struct nvk_device_memory *mem;
 
-   mem = vk_object_alloc(&device->vk, pAllocator, sizeof(*mem), VK_OBJECT_TYPE_DEVICE_MEMORY);
+   mem = vk_object_alloc(&device->vk, pAllocator, sizeof(*mem),
+                         VK_OBJECT_TYPE_DEVICE_MEMORY);
    if (!mem)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -157,11 +158,10 @@ nvk_free_memory(struct nvk_device *device,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_AllocateMemory(
-   VkDevice _device,
-   const VkMemoryAllocateInfo *pAllocateInfo,
-   const VkAllocationCallbacks *pAllocator,
-   VkDeviceMemory *pMem)
+nvk_AllocateMemory(VkDevice _device,
+                   const VkMemoryAllocateInfo *pAllocateInfo,
+                   const VkAllocationCallbacks *pAllocator,
+                   VkDeviceMemory *pMem)
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
    struct nvk_device_memory *mem;
@@ -191,13 +191,12 @@ nvk_FreeMemory(VkDevice _device,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_MapMemory(
-   VkDevice _device,
-   VkDeviceMemory _memory,
-   VkDeviceSize offset,
-   VkDeviceSize size,
-   VkMemoryMapFlags flags,
-   void **ppData)
+nvk_MapMemory(VkDevice _device,
+              VkDeviceMemory _memory,
+              VkDeviceSize offset,
+              VkDeviceSize size,
+              VkMemoryMapFlags flags,
+              void **ppData)
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
    VK_FROM_HANDLE(nvk_device_memory, mem, _memory);
@@ -231,12 +230,14 @@ nvk_MapMemory(
     *    "memory must not be currently host mapped"
     */
    if (mem->map != NULL) {
-      return vk_errorf(device, VK_ERROR_MEMORY_MAP_FAILED, "Memory object already mapped.");
+      return vk_errorf(device, VK_ERROR_MEMORY_MAP_FAILED,
+                       "Memory object already mapped.");
    }
 
    mem->map = nouveau_ws_bo_map(mem->bo, NOUVEAU_WS_BO_RDWR);
    if (mem->map == NULL) {
-      return vk_errorf(device, VK_ERROR_MEMORY_MAP_FAILED, "Memory object couldn't be mapped.");
+      return vk_errorf(device, VK_ERROR_MEMORY_MAP_FAILED,
+                       "Memory object couldn't be mapped.");
    }
 
    *ppData = mem->map + offset;
@@ -245,9 +246,8 @@ nvk_MapMemory(
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_UnmapMemory(
-   VkDevice _device,
-   VkDeviceMemory _memory)
+nvk_UnmapMemory(VkDevice _device,
+                VkDeviceMemory _memory)
 {
    VK_FROM_HANDLE(nvk_device_memory, mem, _memory);
 
@@ -259,27 +259,25 @@ nvk_UnmapMemory(
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_FlushMappedMemoryRanges(
-   VkDevice _device,
-   uint32_t memoryRangeCount,
-   const VkMappedMemoryRange *pMemoryRanges)
+nvk_FlushMappedMemoryRanges(VkDevice _device,
+                            uint32_t memoryRangeCount,
+                            const VkMappedMemoryRange *pMemoryRanges)
 {
    return VK_SUCCESS;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_InvalidateMappedMemoryRanges(
-   VkDevice _device,
-   uint32_t memoryRangeCount,
-   const VkMappedMemoryRange *pMemoryRanges)
+nvk_InvalidateMappedMemoryRanges(VkDevice _device,
+                                 uint32_t memoryRangeCount,
+                                 const VkMappedMemoryRange *pMemoryRanges)
 {
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR void VKAPI_CALL nvk_GetDeviceMemoryCommitment(
-   VkDevice device,
-   VkDeviceMemory _mem,
-   VkDeviceSize* pCommittedMemoryInBytes)
+VKAPI_ATTR void VKAPI_CALL
+nvk_GetDeviceMemoryCommitment(VkDevice device,
+                              VkDeviceMemory _mem,
+                              VkDeviceSize* pCommittedMemoryInBytes)
 {
    VK_FROM_HANDLE(nvk_device_memory, mem, _mem);
 
