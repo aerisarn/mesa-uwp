@@ -105,6 +105,7 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       /* Vulkan 1.3 features */
       .inlineUniformBlock = true,
       .privateData = true,
+      .dynamicRendering = true,
    };
 
    vk_foreach_struct(ext, pFeatures->pNext)
@@ -420,6 +421,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *pdev,
       .KHR_dedicated_allocation = true,
       .KHR_depth_stencil_resolve = true,
       .KHR_descriptor_update_template = true,
+      .KHR_dynamic_rendering = true,
       .KHR_format_feature_flags2 = true,
       .KHR_get_memory_requirements2 = true,
       .KHR_image_format_list = true,
