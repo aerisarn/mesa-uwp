@@ -37,38 +37,17 @@ vk_swizzle_to_pipe(VkComponentSwizzle swizzle)
    }
 }
 
-static void
-nvk_image_view_destroy(struct nvk_device *device,
-                       const VkAllocationCallbacks *pAllocator,
-                       struct nvk_image_view *view)
+VkResult
+nvk_image_view_init(struct nvk_device *device,
+                    struct nvk_image_view *view,
+                    bool driver_internal,
+                    const VkImageViewCreateInfo *pCreateInfo)
 {
-   if (view->sampled_desc_index) {
-      nvk_descriptor_table_free(device, &device->images,
-                                view->sampled_desc_index);
-   }
-
-   if (view->storage_desc_index) {
-      nvk_descriptor_table_free(device, &device->images,
-                                view->storage_desc_index);
-   }
-
-   vk_image_view_destroy(&device->vk, pAllocator, &view->vk);
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
-nvk_CreateImageView(VkDevice _device,
-                    const VkImageViewCreateInfo *pCreateInfo,
-                    const VkAllocationCallbacks *pAllocator,
-                    VkImageView *pView)
-{
-   VK_FROM_HANDLE(nvk_device, device, _device);
    VK_FROM_HANDLE(nvk_image, image, pCreateInfo->image);
-   struct nvk_image_view *view;
 
-   view = vk_image_view_create(&device->vk, false, pCreateInfo,
-                               pAllocator, sizeof(*view));
-   if (view == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+   memset(view, 0, sizeof(*view));
+
+   vk_image_view_init(&device->vk, &view->vk, driver_internal, pCreateInfo);
 
    struct nil_view nil_view = {
       .type = vk_image_view_type_to_nil_view_type(view->vk.view_type),
@@ -90,7 +69,7 @@ nvk_CreateImageView(VkDevice _device,
       uint32_t *desc_map = nvk_descriptor_table_alloc(device, &device->images,
                                                       &view->sampled_desc_index);
       if (desc_map == NULL) {
-         nvk_image_view_destroy(device, pAllocator, view);
+         nvk_image_view_finish(device, view);
          return vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
                           "Failed to allocate image descriptor");
       }
@@ -105,7 +84,7 @@ nvk_CreateImageView(VkDevice _device,
       uint32_t *desc_map = nvk_descriptor_table_alloc(device, &device->images,
                                                       &view->storage_desc_index);
       if (desc_map == NULL) {
-         nvk_image_view_destroy(device, pAllocator, view);
+         nvk_image_view_finish(device, view);
          return vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
                           "Failed to allocate image descriptor");
       }
@@ -119,6 +98,47 @@ nvk_CreateImageView(VkDevice _device,
                          &image->nil, &nil_view,
                          nvk_image_base_address(image),
                          desc_map);
+   }
+
+   return VK_SUCCESS;
+}
+
+void
+nvk_image_view_finish(struct nvk_device *device,
+                      struct nvk_image_view *view)
+{
+   if (view->sampled_desc_index) {
+      nvk_descriptor_table_free(device, &device->images,
+                                view->sampled_desc_index);
+   }
+
+   if (view->storage_desc_index) {
+      nvk_descriptor_table_free(device, &device->images,
+                                view->storage_desc_index);
+   }
+
+   vk_image_view_finish(&view->vk);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+nvk_CreateImageView(VkDevice _device,
+                    const VkImageViewCreateInfo *pCreateInfo,
+                    const VkAllocationCallbacks *pAllocator,
+                    VkImageView *pView)
+{
+   VK_FROM_HANDLE(nvk_device, device, _device);
+   struct nvk_image_view *view;
+   VkResult result;
+
+   view = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*view), 8,
+                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!view)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   result = nvk_image_view_init(device, view, false, pCreateInfo);
+   if (result != VK_SUCCESS) {
+      vk_free2(&device->vk.alloc, pAllocator, view);
+      return result;
    }
 
    *pView = nvk_image_view_to_handle(view);
@@ -137,5 +157,6 @@ nvk_DestroyImageView(VkDevice _device,
    if (!view)
       return;
 
-   nvk_image_view_destroy(device, pAllocator, view);
+   nvk_image_view_finish(device, view);
+   vk_free2(&device->vk.alloc, pAllocator, view);
 }
