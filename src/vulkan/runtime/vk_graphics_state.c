@@ -1882,14 +1882,18 @@ vk_dynamic_graphics_state_copy(struct vk_dynamic_graphics_state *dst,
 
    COPY_IF_SET(VP_VIEWPORT_COUNT, vp.viewport_count);
    if (IS_SET_IN_SRC(VP_VIEWPORTS)) {
-      assert(IS_SET_IN_SRC(VP_VIEWPORT_COUNT));
-      COPY_ARRAY(VP_VIEWPORTS, vp.viewports, src->vp.viewport_count);
+      if (likely(IS_SET_IN_SRC(VP_VIEWPORT_COUNT)))
+         COPY_ARRAY(VP_VIEWPORTS, vp.viewports, src->vp.viewport_count);
+      else
+         COPY_ARRAY(VP_VIEWPORTS, vp.viewports, MESA_VK_MAX_VIEWPORTS);
    }
 
    COPY_IF_SET(VP_SCISSOR_COUNT, vp.scissor_count);
    if (IS_SET_IN_SRC(VP_SCISSORS)) {
-      assert(IS_SET_IN_SRC(VP_SCISSOR_COUNT));
-      COPY_ARRAY(VP_SCISSORS, vp.scissors, src->vp.scissor_count);
+      if (likely(IS_SET_IN_SRC(VP_SCISSOR_COUNT)))
+         COPY_ARRAY(VP_SCISSORS, vp.scissors, src->vp.scissor_count);
+      else
+         COPY_ARRAY(VP_SCISSORS, vp.scissors, MESA_VK_MAX_SCISSORS);
    }
 
    COPY_IF_SET(VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE,
