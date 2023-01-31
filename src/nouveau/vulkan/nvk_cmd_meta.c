@@ -102,29 +102,6 @@ nvk_meta_end(struct nvk_cmd_buffer *cmd,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_CmdClearAttachments(VkCommandBuffer commandBuffer,
-                        uint32_t attachmentCount,
-                        const VkClearAttachment *pAttachments,
-                        uint32_t rectCount,
-                        const VkClearRect *pRects)
-{
-   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
-   struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
-
-   struct nvk_meta_save save;
-   nvk_meta_begin(cmd, &save);
-
-   struct vk_meta_rendering_info render;
-   nvk_meta_init_render(cmd, &render);
-
-   vk_meta_clear_attachments(&cmd->vk, &dev->meta, &render,
-                             attachmentCount, pAttachments,
-                             rectCount, pRects);
-
-   nvk_meta_end(cmd, &save);
-}
-
-VKAPI_ATTR void VKAPI_CALL
 nvk_CmdClearColorImage(VkCommandBuffer commandBuffer,
                        VkImage _image,
                        VkImageLayout imageLayout,

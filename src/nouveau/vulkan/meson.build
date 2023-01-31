@@ -9,6 +9,7 @@ nvk_files = files(
   'nvk_cmd_blit.c',
   'nvk_cmd_buffer.c',
   'nvk_cmd_buffer.h',
+  'nvk_cmd_clear.c',
   'nvk_cmd_copy.c',
   'nvk_cmd_dispatch.c',
   'nvk_cmd_draw.c',
