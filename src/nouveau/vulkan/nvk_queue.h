@@ -66,9 +66,11 @@ VkResult nvk_queue_submit_simple(struct nvk_queue *queue,
 VkResult nvk_queue_submit_simple_drm_nouveau(struct nvk_queue *queue,
                                              struct nouveau_ws_bo *push_bo,
                                              uint32_t push_dw_count,
-                                             struct nouveau_ws_bo *extra_bo);
+                                             struct nouveau_ws_bo *extra_bo,
+                                             bool sync);
 
 VkResult nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
-                                      struct vk_queue_submit *submit);
+                                      struct vk_queue_submit *submit,
+                                      bool sync);
 
 #endif

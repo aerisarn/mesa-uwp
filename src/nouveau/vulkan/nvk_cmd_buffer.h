@@ -11,6 +11,8 @@
 
 #include "vk_command_buffer.h"
 
+#include <stdio.h>
+
 struct nvk_cmd_bo;
 struct nvk_cmd_pool;
 struct nvk_image_view;
@@ -220,5 +222,7 @@ VkResult nvk_cmd_buffer_upload_data(struct nvk_cmd_buffer *cmd,
 void
 nvk_cmd_buffer_flush_push_descriptors(struct nvk_cmd_buffer *cmd,
                                       struct nvk_descriptor_state *desc);
+
+void nvk_cmd_buffer_dump(struct nvk_cmd_buffer *cmd, FILE *fp);
 
 #endif

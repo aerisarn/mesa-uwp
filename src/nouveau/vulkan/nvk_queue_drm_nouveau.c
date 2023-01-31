@@ -84,14 +84,27 @@ push_add_push(struct push_builder *pb, struct nouveau_ws_bo *bo,
 }
 
 static VkResult
-push_submit(struct push_builder *pb, struct nvk_queue *queue)
+push_submit(struct push_builder *pb, struct nvk_queue *queue, bool sync)
 {
-   int ret = drmCommandWriteRead(pb->dev->pdev->dev->fd,
+   int err = drmCommandWriteRead(pb->dev->pdev->dev->fd,
                                  DRM_NOUVEAU_GEM_PUSHBUF,
                                  &pb->req, sizeof(pb->req));
-   if (ret != 0) {
+   if (err) {
       return vk_errorf(queue, VK_ERROR_UNKNOWN,
                        "DRM_NOUVEAU_GEM_PUSHBUF failed: %m");
+   }
+
+   if (sync && pb->req.nr_buffers > 0) {
+      struct drm_nouveau_gem_cpu_prep req = {};
+      req.handle = pb->req_bo[0].handle;
+      req.flags = NOUVEAU_GEM_CPU_PREP_WRITE;
+      err = drmCommandWrite(pb->dev->pdev->dev->fd,
+                            DRM_NOUVEAU_GEM_CPU_PREP,
+                            &req, sizeof(req));
+      if (err) {
+         return vk_errorf(queue, VK_ERROR_UNKNOWN,
+                          "DRM_NOUVEAU_GEM_CPU_PREP failed: %m");
+      }
    }
 
    return VK_SUCCESS;
@@ -101,7 +114,8 @@ VkResult
 nvk_queue_submit_simple_drm_nouveau(struct nvk_queue *queue,
                                     struct nouveau_ws_bo *push_bo,
                                     uint32_t push_dw_count,
-                                    struct nouveau_ws_bo *extra_bo)
+                                    struct nouveau_ws_bo *extra_bo,
+                                    bool sync)
 {
    struct nvk_device *dev = nvk_queue_device(queue);
 
@@ -113,7 +127,7 @@ nvk_queue_submit_simple_drm_nouveau(struct nvk_queue *queue,
    if (extra_bo)
       push_add_bo(&pb, extra_bo, NOUVEAU_WS_BO_RDWR);
 
-   return push_submit(&pb, queue);
+   return push_submit(&pb, queue, sync);
 }
 
 static void
@@ -131,7 +145,8 @@ push_add_queue_state(struct push_builder *pb, struct nvk_queue_state *qs)
 
 VkResult
 nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
-                             struct vk_queue_submit *submit)
+                             struct vk_queue_submit *submit,
+                             bool sync)
 {
    struct nvk_device *dev = nvk_queue_device(queue);
    struct push_builder pb;
@@ -175,7 +190,7 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
 
    pthread_mutex_lock(&dev->mutex);
 
-   result = push_submit(&pb, queue);
+   result = push_submit(&pb, queue, sync);
    if (result == VK_SUCCESS) {
       for (uint32_t i = 0; i < submit->signal_count; i++) {
          struct nvk_bo_sync *bo_sync =

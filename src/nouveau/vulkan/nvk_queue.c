@@ -1,5 +1,6 @@
 #include "nvk_queue.h"
 
+#include "nvk_cmd_buffer.h"
 #include "nvk_device.h"
 #include "nvk_physical_device.h"
 #include "nv_push.h"
@@ -32,6 +33,17 @@ nvk_queue_state_finish(struct nvk_device *dev,
       nouveau_ws_bo_unmap(qs->push.bo, qs->push.bo_map);
       nouveau_ws_bo_destroy(qs->push.bo);
    }
+}
+
+static void
+nvk_queue_state_dump_push(struct nvk_device *dev,
+                          struct nvk_queue_state *qs, FILE *fp)
+{
+   struct nv_push push = {
+      .start = (uint32_t *)qs->push.bo_map,
+      .end = (uint32_t *)qs->push.bo_map + qs->push.dw_count,
+   };
+   vk_push_print(fp, &push, &dev->pdev->info);
 }
 
 VkResult
@@ -242,7 +254,22 @@ nvk_queue_submit(struct vk_queue *vk_queue,
                                            "pointers pushbuf");
    }
 
-   result = nvk_queue_submit_drm_nouveau(queue, submit);
+   const bool sync = dev->pdev->dev->debug_flags & NVK_DEBUG_PUSH_SYNC;
+
+   result = nvk_queue_submit_drm_nouveau(queue, submit, sync);
+
+   if ((sync && result != VK_SUCCESS) ||
+       (dev->pdev->dev->debug_flags & NVK_DEBUG_PUSH_DUMP)) {
+      nvk_queue_state_dump_push(dev, &queue->state, stderr);
+
+      for (unsigned i = 0; i < submit->command_buffer_count; i++) {
+         struct nvk_cmd_buffer *cmd =
+            container_of(submit->command_buffers[i], struct nvk_cmd_buffer, vk);
+
+         nvk_cmd_buffer_dump(cmd, stderr);
+      }
+   }
+
    if (result != VK_SUCCESS)
       return vk_queue_set_lost(&queue->vk, "Submit failed");
 
@@ -327,13 +354,25 @@ nvk_queue_submit_simple(struct nvk_queue *queue,
 
    memcpy(push_map, dw, dw_count * 4);
 
+   const bool sync = dev->pdev->dev->debug_flags & NVK_DEBUG_PUSH_SYNC;
+
    result = nvk_queue_submit_simple_drm_nouveau(queue, push_bo, dw_count,
-                                                extra_bo);
-   if (result != VK_SUCCESS)
-      result = vk_queue_set_lost(&queue->vk, "Submit failed");
+                                                extra_bo, sync);
+
+   if ((sync && result != VK_SUCCESS) ||
+       (dev->pdev->dev->debug_flags & NVK_DEBUG_PUSH_DUMP)) {
+      struct nv_push push = {
+         .start = (uint32_t *)dw,
+         .end = (uint32_t *)dw + dw_count,
+      };
+      vk_push_print(stderr, &push, &dev->pdev->info);
+   }
 
    nouveau_ws_bo_unmap(push_bo, push_map);
    nouveau_ws_bo_destroy(push_bo);
 
-   return result;
+   if (result != VK_SUCCESS)
+      return vk_queue_set_lost(&queue->vk, "Submit failed");
+
+   return VK_SUCCESS;
 }

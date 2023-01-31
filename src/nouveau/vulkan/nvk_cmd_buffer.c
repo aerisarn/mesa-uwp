@@ -401,3 +401,17 @@ nvk_cmd_buffer_flush_push_descriptors(struct nvk_cmd_buffer *cmd,
       desc->root.sets[set_idx] = push_set_addr;
    }
 }
+
+void
+nvk_cmd_buffer_dump(struct nvk_cmd_buffer *cmd, FILE *fp)
+{
+   struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
+
+   util_dynarray_foreach(&cmd->pushes, struct nvk_cmd_push, p) {
+      struct nv_push push = {
+         .start = (uint32_t *)p->bo->map + p->start_dw,
+         .end = (uint32_t *)p->bo->map + p->start_dw + p->dw_count,
+      };
+      vk_push_print(fp, &push, &dev->pdev->info);
+   }
+}
