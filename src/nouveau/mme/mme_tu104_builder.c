@@ -211,6 +211,7 @@ mme_value_alu_reg(struct mme_value val)
       else
          return MME_TU104_REG_IMM32;
    case MME_VALUE_TYPE_REG:
+      assert(val.reg <= 23);
       return MME_TU104_REG_R0 + val.reg;
    }
    unreachable("Invalid value type");
