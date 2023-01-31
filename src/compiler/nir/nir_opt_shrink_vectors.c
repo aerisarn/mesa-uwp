@@ -322,7 +322,7 @@ opt_shrink_vectors_load_const(nir_load_const_instr *instr)
       /* Otherwise, just append the value */
       if (j == num_components) {
          instr->value[num_components] = instr->value[i];
-	 if (i != num_components)
+         if (i != num_components)
             progress = true;
          reswizzle[i] = num_components++;
       }
