@@ -49,9 +49,9 @@ nouveau_copy_linear(struct nouveau_ws_push *push,
 
 struct nouveau_copy_buffer {
    uint64_t base_addr;
-   VkOffset3D offset;
+   VkOffset3D offset_el;
    uint32_t base_array_layer;
-   VkExtent3D extent;
+   VkExtent3D extent_el;
    uint32_t row_stride;
    uint32_t array_stride;
    struct nil_tiling tiling;
@@ -61,7 +61,7 @@ struct nouveau_copy {
    struct nouveau_copy_buffer src;
    struct nouveau_copy_buffer dst;
    uint32_t bpp;
-   VkExtent3D extent;
+   VkExtent3D extent_el;
    uint32_t layer_count;
 };
 
@@ -78,18 +78,50 @@ nouveau_copy_rect_buffer(
    };
 }
 
+static VkOffset3D
+vk_offset_px_to_el(VkOffset3D offset, VkFormat format)
+{
+   const struct util_format_description *desc = vk_format_description(format);
+
+   assert(offset.x % desc->block.width == 0);
+   assert(offset.y % desc->block.height == 0);
+   assert(offset.z % desc->block.depth == 0);
+
+   offset.x /= desc->block.width;
+   offset.y /= desc->block.height;
+   offset.z /= desc->block.depth;
+
+   return offset;
+}
+
+static VkExtent3D
+vk_extent_px_to_el(VkExtent3D extent, VkFormat format)
+{
+   const struct util_format_description *desc = vk_format_description(format);
+
+   extent.width = DIV_ROUND_UP(extent.width, desc->block.width);
+   extent.height = DIV_ROUND_UP(extent.height, desc->block.height);
+   extent.depth = DIV_ROUND_UP(extent.depth, desc->block.depth);
+
+   return extent;
+}
+
 static struct nouveau_copy_buffer
 nouveau_copy_rect_image(
    struct nvk_image *img,
-   VkOffset3D offset,
+   VkOffset3D offset_px,
    const VkImageSubresourceLayers *sub_res)
 {
+   const VkExtent3D lvl_extent_px =
+      vk_image_mip_level_extent(&img->vk, sub_res->mipLevel);
+   offset_px = vk_image_sanitize_offset(&img->vk, offset_px);
+
    struct nouveau_copy_buffer buf = {
       .base_addr = nvk_image_base_address(img) +
                    img->nil.levels[sub_res->mipLevel].offset_B,
-      .offset = vk_image_sanitize_offset(&img->vk, offset),
-      .extent = vk_image_mip_level_extent(&img->vk, sub_res->mipLevel),
+      .offset_el = vk_offset_px_to_el(offset_px, img->vk.format),
       .base_array_layer = sub_res->baseArrayLayer,
+      .extent_el = vk_extent_px_to_el(lvl_extent_px, img->vk.format),
       .row_stride = img->nil.levels[sub_res->mipLevel].row_stride_B,
       .array_stride = img->nil.array_stride_B,
       .tiling = img->nil.levels[sub_res->mipLevel].tiling,
@@ -111,16 +143,16 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
       dst_addr += (w + copy->dst.base_array_layer) * copy->dst.array_stride;
 
       if (!copy->src.tiling.is_tiled) {
-         src_addr += copy->src.offset.x * copy->bpp +
-                     copy->src.offset.y * copy->src.row_stride;
+         src_addr += copy->src.offset_el.x * copy->bpp +
+                     copy->src.offset_el.y * copy->src.row_stride;
       }
 
       if (!copy->dst.tiling.is_tiled) {
-         dst_addr += copy->dst.offset.x * copy->bpp +
-                     copy->dst.offset.y * copy->dst.row_stride;
+         dst_addr += copy->dst.offset_el.x * copy->bpp +
+                     copy->dst.offset_el.y * copy->dst.row_stride;
       }
 
-      for (unsigned z = 0; z < copy->extent.depth; z++) {
+      for (unsigned z = 0; z < copy->extent_el.depth; z++) {
          P_MTHD(push, NV90B5, OFFSET_IN_UPPER);
          P_NV90B5_OFFSET_IN_UPPER(push, src_addr >> 32);
          P_NV90B5_OFFSET_IN_LOWER(push, src_addr & 0xffffffff);
@@ -128,8 +160,8 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
          P_NV90B5_OFFSET_OUT_LOWER(push, dst_addr & 0xfffffff);
          P_NV90B5_PITCH_IN(push, copy->src.row_stride);
          P_NV90B5_PITCH_OUT(push, copy->dst.row_stride);
-         P_NV90B5_LINE_LENGTH_IN(push, copy->extent.width * copy->bpp);
-         P_NV90B5_LINE_COUNT(push, copy->extent.height);
+         P_NV90B5_LINE_LENGTH_IN(push, copy->extent_el.width * copy->bpp);
+         P_NV90B5_LINE_COUNT(push, copy->extent_el.height);
 
          uint32_t src_layout = 0, dst_layout = 0;
          if (copy->src.tiling.is_tiled) {
@@ -142,20 +174,20 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
                              GOB_HEIGHT_GOB_HEIGHT_FERMI_8 :
                              GOB_HEIGHT_GOB_HEIGHT_TESLA_4,
             });
-            P_NV90B5_SET_SRC_WIDTH(push, copy->src.extent.width * copy->bpp);
-            P_NV90B5_SET_SRC_HEIGHT(push, copy->src.extent.height);
-            P_NV90B5_SET_SRC_DEPTH(push, copy->src.extent.depth);
-            P_NV90B5_SET_SRC_LAYER(push, z + copy->src.offset.z);
+            P_NV90B5_SET_SRC_WIDTH(push, copy->src.extent_el.width * copy->bpp);
+            P_NV90B5_SET_SRC_HEIGHT(push, copy->src.extent_el.height);
+            P_NV90B5_SET_SRC_DEPTH(push, copy->src.extent_el.depth);
+            P_NV90B5_SET_SRC_LAYER(push, z + copy->src.offset_el.z);
 
             if (cmd->pool->dev->pdev->dev->cls >= 0xc1) {
                P_MTHD(push, NVC1B5, SRC_ORIGIN_X);
-               P_NVC1B5_SRC_ORIGIN_X(push, copy->src.offset.x * copy->bpp);
-               P_NVC1B5_SRC_ORIGIN_Y(push, copy->src.offset.y);
+               P_NVC1B5_SRC_ORIGIN_X(push, copy->src.offset_el.x * copy->bpp);
+               P_NVC1B5_SRC_ORIGIN_Y(push, copy->src.offset_el.y);
             } else {
                P_MTHD(push, NV90B5, SET_SRC_ORIGIN);
                P_NV90B5_SET_SRC_ORIGIN(push, {
-                  .x = copy->src.offset.x * copy->bpp,
-                  .y = copy->src.offset.y
+                  .x = copy->src.offset_el.x * copy->bpp,
+                  .y = copy->src.offset_el.y
                });
             }
 
@@ -175,20 +207,20 @@ nouveau_copy_rect(struct nvk_cmd_buffer *cmd, struct nouveau_copy *copy)
                              GOB_HEIGHT_GOB_HEIGHT_FERMI_8 :
                              GOB_HEIGHT_GOB_HEIGHT_TESLA_4,
             });
-            P_NV90B5_SET_DST_WIDTH(push, copy->dst.extent.width * copy->bpp);
-            P_NV90B5_SET_DST_HEIGHT(push, copy->dst.extent.height);
-            P_NV90B5_SET_DST_DEPTH(push, copy->dst.extent.depth);
-            P_NV90B5_SET_DST_LAYER(push, z + copy->dst.offset.z);
+            P_NV90B5_SET_DST_WIDTH(push, copy->dst.extent_el.width * copy->bpp);
+            P_NV90B5_SET_DST_HEIGHT(push, copy->dst.extent_el.height);
+            P_NV90B5_SET_DST_DEPTH(push, copy->dst.extent_el.depth);
+            P_NV90B5_SET_DST_LAYER(push, z + copy->dst.offset_el.z);
 
             if (cmd->pool->dev->pdev->dev->cls >= 0xc1) {
                P_MTHD(push, NVC1B5, DST_ORIGIN_X);
-               P_NVC1B5_DST_ORIGIN_X(push, copy->dst.offset.x * copy->bpp);
-               P_NVC1B5_DST_ORIGIN_Y(push, copy->dst.offset.y);
+               P_NVC1B5_DST_ORIGIN_X(push, copy->dst.offset_el.x * copy->bpp);
+               P_NVC1B5_DST_ORIGIN_Y(push, copy->dst.offset_el.y);
             } else {
                P_MTHD(push, NV90B5, SET_DST_ORIGIN);
                P_NV90B5_SET_DST_ORIGIN(push, {
-                  .x = copy->dst.offset.x * copy->bpp,
-                  .y = copy->dst.offset.y
+                  .x = copy->dst.offset_el.x * copy->bpp,
+                  .y = copy->dst.offset_el.y
                });
             }
 
@@ -243,13 +275,21 @@ nvk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
 
    for (unsigned r = 0; r < pCopyBufferToImageInfo->regionCount; r++) {
       const VkBufferImageCopy2 *region = &pCopyBufferToImageInfo->pRegions[r];
-      struct vk_image_buffer_layout buffer_layout = vk_image_buffer_copy_layout(&dst->vk, region);
+      struct vk_image_buffer_layout buffer_layout =
+         vk_image_buffer_copy_layout(&dst->vk, region);
+
+      const VkExtent3D extent_px =
+         vk_image_sanitize_extent(&dst->vk, region->imageExtent);
+      const VkExtent3D extent_el =
+         vk_extent_px_to_el(extent_px, dst->vk.format);
 
       struct nouveau_copy copy = {
-         .src = nouveau_copy_rect_buffer(src, region->bufferOffset, buffer_layout),
-         .dst = nouveau_copy_rect_image(dst, region->imageOffset, &region->imageSubresource),
+         .src = nouveau_copy_rect_buffer(src, region->bufferOffset,
+                                         buffer_layout),
+         .dst = nouveau_copy_rect_image(dst, region->imageOffset,
+                                        &region->imageSubresource),
          .bpp = buffer_layout.element_size_B,
-         .extent = vk_image_sanitize_extent(&dst->vk, region->imageExtent),
+         .extent_el = extent_el,
          .layer_count = region->imageSubresource.layerCount,
       };
 
@@ -286,13 +326,21 @@ nvk_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
 
    for (unsigned r = 0; r < pCopyImageToBufferInfo->regionCount; r++) {
       const VkBufferImageCopy2 *region = &pCopyImageToBufferInfo->pRegions[r];
-      struct vk_image_buffer_layout buffer_layout = vk_image_buffer_copy_layout(&src->vk, region);
+      struct vk_image_buffer_layout buffer_layout =
+         vk_image_buffer_copy_layout(&src->vk, region);
+
+      const VkExtent3D extent_px =
+         vk_image_sanitize_extent(&src->vk, region->imageExtent);
+      const VkExtent3D extent_el =
+         vk_extent_px_to_el(extent_px, src->vk.format);
 
       struct nouveau_copy copy = {
-         .src = nouveau_copy_rect_image(src, region->imageOffset, &region->imageSubresource),
-         .dst = nouveau_copy_rect_buffer(dst, region->bufferOffset, buffer_layout),
+         .src = nouveau_copy_rect_image(src, region->imageOffset,
+                                        &region->imageSubresource),
+         .dst = nouveau_copy_rect_buffer(dst, region->bufferOffset,
+                                         buffer_layout),
          .bpp = buffer_layout.element_size_B,
-         .extent = vk_image_sanitize_extent(&src->vk, region->imageExtent),
+         .extent_el = extent_el,
          .layer_count = region->imageSubresource.layerCount,
       };
 
@@ -334,11 +382,24 @@ nvk_CmdCopyImage2(VkCommandBuffer commandBuffer,
    for (unsigned r = 0; r < pCopyImageInfo->regionCount; r++) {
       const VkImageCopy2 *region = &pCopyImageInfo->pRegions[r];
 
+      /* From the Vulkan 1.3.217 spec:
+       *
+       *    "When copying between compressed and uncompressed formats the
+       *    extent members represent the texel dimensions of the source image
+       *    and not the destination."
+       */
+      const VkExtent3D extent_px =
+         vk_image_sanitize_extent(&src->vk, region->extent);
+      const VkExtent3D extent_el =
+         vk_extent_px_to_el(extent_px, src->vk.format);
+
       struct nouveau_copy copy = {
-         .src = nouveau_copy_rect_image(src, region->srcOffset, &region->srcSubresource),
-         .dst = nouveau_copy_rect_image(dst, region->dstOffset, &region->dstSubresource),
+         .src = nouveau_copy_rect_image(src, region->srcOffset,
+                                        &region->srcSubresource),
+         .dst = nouveau_copy_rect_image(dst, region->dstOffset,
+                                        &region->dstSubresource),
          .bpp = bpp,
-         .extent = vk_image_sanitize_extent(&src->vk, region->extent),
+         .extent_el = extent_el,
          .layer_count = region->srcSubresource.layerCount,
       };
 
