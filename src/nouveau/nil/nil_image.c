@@ -177,6 +177,7 @@ tu102_choose_pte_kind(enum pipe_format format, bool compressed)
       else
          return 0x04; // NV_MMU_PTE_KIND_ZF32_X24S8
    case PIPE_FORMAT_Z32_FLOAT:
+      return 0x06;
    default:
       return 0;
    }
