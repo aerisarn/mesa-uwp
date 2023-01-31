@@ -61,8 +61,10 @@ nvk_physical_device_spirv_options(const struct nvk_physical_device *pdevice,
    return (struct spirv_to_nir_options) {
       .caps = {
          .image_write_without_format = true,
+         .physical_storage_buffer_address = true,
       },
       .ssbo_addr_format = nvk_buffer_addr_format(rs->storage_buffers),
+      .phys_ssbo_addr_format = nir_address_format_64bit_global,
       .ubo_addr_format = nvk_buffer_addr_format(rs->uniform_buffers),
       .shared_addr_format = nir_address_format_32bit_offset,
    };
@@ -237,6 +239,8 @@ nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
             nir_address_format_32bit_offset);
 
    NIR_PASS(_, nir, nvk_nir_lower_descriptors, rs, layout);
+   NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_global,
+            nir_address_format_64bit_global);
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ssbo,
             nvk_buffer_addr_format(rs->storage_buffers));
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ubo,

@@ -79,3 +79,21 @@ nvk_BindBufferMemory2(VkDevice _device,
    }
    return VK_SUCCESS;
 }
+
+VKAPI_ATTR VkDeviceAddress VKAPI_CALL
+nvk_GetBufferDeviceAddress(UNUSED VkDevice device,
+                           const VkBufferDeviceAddressInfo *pInfo)
+{
+   VK_FROM_HANDLE(nvk_buffer, buffer, pInfo->buffer);
+
+   return nvk_buffer_address(buffer, 0);
+}
+
+VKAPI_ATTR uint64_t VKAPI_CALL
+nvk_GetBufferOpaqueCaptureAddress(UNUSED VkDevice device,
+                                  const VkBufferDeviceAddressInfo *pInfo)
+{
+   VK_FROM_HANDLE(nvk_buffer, buffer, pInfo->buffer);
+
+   return nvk_buffer_address(buffer, 0);
+}

@@ -301,3 +301,13 @@ nvk_GetMemoryFdKHR(VkDevice _device,
       return vk_error(device, VK_ERROR_FEATURE_NOT_PRESENT);
    }
 }
+
+VKAPI_ATTR uint64_t VKAPI_CALL
+nvk_GetDeviceMemoryOpaqueCaptureAddress(
+   UNUSED VkDevice device,
+   const VkDeviceMemoryOpaqueCaptureAddressInfo* pInfo)
+{
+   VK_FROM_HANDLE(nvk_device_memory, mem, pInfo->memory);
+
+   return mem->bo->offset;
+}

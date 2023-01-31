@@ -78,6 +78,9 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .imagelessFramebuffer = true,
       .separateDepthStencilLayouts = true,
       .hostQueryReset = true,
+      .bufferDeviceAddress = true,
+      .bufferDeviceAddressCaptureReplay = false,
+      .bufferDeviceAddressMultiDevice = false,
    };
 
    VkPhysicalDeviceVulkan13Features core_1_3 = {
@@ -107,6 +110,13 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceBorderColorSwizzleFeaturesEXT *f = (void *)ext;
          f->borderColorSwizzle = true;
          f->borderColorSwizzleFromImage = false;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT: {
+         VkPhysicalDeviceBufferDeviceAddressFeaturesEXT *f = (void *)ext;
+         f->bufferDeviceAddress = true;
+         f->bufferDeviceAddressCaptureReplay = false;
+         f->bufferDeviceAddressMultiDevice = false;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
@@ -349,6 +359,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *device,
                           struct vk_device_extension_table *ext)
 {
    *ext = (struct vk_device_extension_table) {
+      .KHR_buffer_device_address = true,
       .KHR_copy_commands2 = true,
       .KHR_create_renderpass2 = true,
       .KHR_dedicated_allocation = true,
@@ -369,6 +380,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *device,
 #endif
       .KHR_variable_pointers = true,
       .EXT_border_color_swizzle = true,
+      .EXT_buffer_device_address = true,
       .EXT_custom_border_color = true,
       .EXT_extended_dynamic_state = true,
       .EXT_extended_dynamic_state2 = true,
