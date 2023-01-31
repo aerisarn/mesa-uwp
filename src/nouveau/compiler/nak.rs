@@ -20,6 +20,41 @@ use nak_from_nir::*;
 use std::os::raw::c_void;
 use util::NextMultipleOf;
 
+fn nir_options(dev: &nv_device_info) -> nir_shader_compiler_options {
+    let mut op: nir_shader_compiler_options = unsafe { std::mem::zeroed() };
+
+    op.lower_fdiv = true;
+    op.lower_flrp16 = true;
+    op.lower_flrp32 = true;
+    op.lower_flrp64 = true;
+    op.lower_bitfield_extract = true;
+    op.lower_bitfield_insert = true;
+    op.lower_pack_half_2x16 = true;
+    op.lower_pack_unorm_2x16 = true;
+    op.lower_pack_snorm_2x16 = true;
+    op.lower_pack_unorm_4x8 = true;
+    op.lower_pack_snorm_4x8 = true;
+    op.lower_unpack_half_2x16 = true;
+    op.lower_unpack_unorm_2x16 = true;
+    op.lower_unpack_snorm_2x16 = true;
+    op.lower_unpack_unorm_4x8 = true;
+    op.lower_unpack_snorm_4x8 = true;
+    op.lower_extract_byte = true;
+    op.lower_extract_word = true;
+    op.lower_insert_byte = true;
+    op.lower_insert_word = true;
+    op.lower_cs_local_index_to_id = true;
+    op.lower_device_index_to_zero = true;
+    op.lower_uadd_sat = true; // TODO
+    op.lower_usub_sat = true; // TODO
+    op.lower_iadd_sat = true; // TODO
+    op.use_interpolated_input_intrinsics = true;
+    op.lower_mul_2x32_64 = true; // TODO
+    op.lower_int64_options = !0;
+
+    op
+}
+
 #[no_mangle]
 pub extern "C" fn nak_compiler_create(
     dev: *const nv_device_info,
@@ -27,7 +62,10 @@ pub extern "C" fn nak_compiler_create(
     assert!(!dev.is_null());
     let dev = unsafe { &*dev };
 
-    let nak = Box::new(nak_compiler { sm: dev.sm });
+    let nak = Box::new(nak_compiler {
+        sm: dev.sm,
+        nir_options: nir_options(dev),
+    });
 
     Box::into_raw(nak)
 }
@@ -35,6 +73,15 @@ pub extern "C" fn nak_compiler_create(
 #[no_mangle]
 pub extern "C" fn nak_compiler_destroy(nak: *mut nak_compiler) {
     unsafe { Box::from_raw(nak) };
+}
+
+#[no_mangle]
+pub extern "C" fn nak_nir_options(
+    nak: *const nak_compiler,
+) -> *const nir_shader_compiler_options {
+    assert!(!nak.is_null());
+    let nak = unsafe { &*nak };
+    &nak.nir_options
 }
 
 #[repr(C)]

@@ -22,6 +22,9 @@ struct nv_device_info;
 struct nak_compiler *nak_compiler_create(const struct nv_device_info *dev);
 void nak_compiler_destroy(struct nak_compiler *nak);
 
+const struct nir_shader_compiler_options *
+nak_nir_options(const struct nak_compiler *nak);
+
 void nak_optimize_nir(nir_shader *nir, const struct nak_compiler *nak);
 void nak_preprocess_nir(nir_shader *nir, const struct nak_compiler *nak);
 void nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak);

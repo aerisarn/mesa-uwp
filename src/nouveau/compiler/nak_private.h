@@ -16,6 +16,8 @@ extern "C" {
 
 struct nak_compiler {
    uint8_t sm;
+
+   struct nir_shader_compiler_options nir_options;
 };
 
 #ifdef __cplusplus
