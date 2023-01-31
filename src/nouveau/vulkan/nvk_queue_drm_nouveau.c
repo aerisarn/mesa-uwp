@@ -69,17 +69,19 @@ push_add_bo(struct push_builder *pb,
 
 static void
 push_add_push(struct push_builder *pb, struct nouveau_ws_bo *bo,
-              uint32_t dw_offset, uint32_t dw_count)
+              uint32_t offset, uint32_t range)
 {
-   if (dw_count == 0)
+   assert((offset % 4) == 0 && (range % 4) == 0);
+
+   if (range == 0)
       return;
 
    uint32_t bo_index = push_add_bo(pb, bo, NOUVEAU_WS_BO_RD);
 
    pb->req_push[pb->req.nr_push++] = (struct drm_nouveau_gem_pushbuf_push) {
       .bo_index = bo_index,
-      .offset = dw_offset * 4,
-      .length = dw_count * 4,
+      .offset = offset,
+      .length = range,
    };
 }
 
@@ -123,7 +125,7 @@ nvk_queue_submit_simple_drm_nouveau(struct nvk_queue *queue,
    struct push_builder pb;
    push_builder_init(dev, &pb);
 
-   push_add_push(&pb, push_bo, 0, push_dw_count);
+   push_add_push(&pb, push_bo, 0, push_dw_count * 4);
    for (uint32_t i = 0; i < extra_bo_count; i++)
       push_add_bo(&pb, extra_bos[i], NOUVEAU_WS_BO_RDWR);
 
@@ -140,7 +142,7 @@ push_add_queue_state(struct push_builder *pb, struct nvk_queue_state *qs)
    if (qs->slm.bo)
       push_add_bo(pb, qs->slm.bo, NOUVEAU_WS_BO_RDWR);
    if (qs->push.bo)
-      push_add_push(pb, qs->push.bo, 0, qs->push.dw_count);
+      push_add_push(pb, qs->push.bo, 0, qs->push.dw_count * 4);
 }
 
 static void
@@ -171,7 +173,7 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
    }
 
    if (submit->command_buffer_count == 0) {
-      push_add_push(&pb, queue->empty_push, 0, queue->empty_push_dw_count);
+      push_add_push(&pb, queue->empty_push, 0, queue->empty_push_dw_count * 4);
    } else {
       push_add_queue_state(&pb, &queue->state);
 
@@ -192,7 +194,7 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
             push_add_bo(&pb, bo->bo, NOUVEAU_WS_BO_RD);
 
          util_dynarray_foreach(&cmd->pushes, struct nvk_cmd_push, push)
-            push_add_push(&pb, push->bo->bo, push->start_dw, push->dw_count);
+            push_add_push(&pb, push->bo->bo, push->start_dw * 4, push->dw_count * 4);
 
          util_dynarray_foreach(&cmd->bo_refs, struct nvk_cmd_bo_ref, ref)
             push_add_bo(&pb, ref->bo, NOUVEAU_WS_BO_RDWR);
