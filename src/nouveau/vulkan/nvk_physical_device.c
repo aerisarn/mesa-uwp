@@ -76,6 +76,7 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .shaderUniformTexelBufferArrayDynamicIndexing = true,
       .shaderStorageTexelBufferArrayDynamicIndexing = true,
       .imagelessFramebuffer = true,
+      .separateDepthStencilLayouts = true,
       .hostQueryReset = true,
    };
 
@@ -293,6 +294,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *device,
       .KHR_format_feature_flags2 = true,
       .KHR_imageless_framebuffer = true,
       .KHR_push_descriptor = true,
+      .KHR_separate_depth_stencil_layouts = true,
 #ifdef NVK_USE_WSI_PLATFORM
       .KHR_swapchain = true,
       .KHR_swapchain_mutable_format = true,
