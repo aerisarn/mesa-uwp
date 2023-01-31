@@ -166,6 +166,17 @@ nvk_GetPhysicalDeviceImageFormatProperties2(
    return VK_SUCCESS;
 }
 
+VKAPI_ATTR void VKAPI_CALL
+nvk_GetPhysicalDeviceSparseImageFormatProperties2(
+    VkPhysicalDevice physicalDevice,
+    const VkPhysicalDeviceSparseImageFormatInfo2* pFormatInfo,
+    uint32_t *pPropertyCount,
+    VkSparseImageFormatProperties2 *pProperties)
+{
+   /* Sparse images are not yet supported. */
+   *pPropertyCount = 0;
+}
+
 static enum nil_image_dim
 vk_image_type_to_nil_dim(VkImageType type)
 {
