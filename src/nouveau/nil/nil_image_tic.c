@@ -186,7 +186,32 @@ nil_image_fill_tic(struct nouveau_ws_device *dev,
    TH_SET_U(th, NVB097, BL, WIDTH_MINUS_ONE, width - 1);
    TH_SET_U(th, NVB097, BL, HEIGHT_MINUS_ONE, height - 1);
    TH_SET_U(th, NVB097, BL, DEPTH_MINUS_ONE, depth - 1);
-   TH_SET_U(th, NVB097, BL, MAX_MIP_LEVEL, image->num_levels - 1);
+
+   if (view->type != NIL_VIEW_TYPE_3D && view->array_len == 1 &&
+       view->base_level == 0 && view->num_levels == 1) {
+      /* The Unnormalized coordinates bit in the sampler gets ignored if the
+       * referenced image has more than one miplevel.  Fortunately, Vulkan has
+       * restrictions requiring the view to be a single-layer single-LOD view
+       * in order to use nonnormalizedCoordinates = VK_TRUE in the sampler.
+       * From the Vulkan 1.3.255 spec:
+       *
+       *    "When unnormalizedCoordinates is VK_TRUE, images the sampler is
+       *    used with in the shader have the following requirements:
+       *
+       *     - The viewType must be either VK_IMAGE_VIEW_TYPE_1D or
+       *       VK_IMAGE_VIEW_TYPE_2D.
+       *     - The image view must have a single layer and a single mip
+       *       level."
+       *
+       * Under these conditions, the view is simply LOD 0 of a single array
+       * slice so we don't need to care about aray stride between slices so
+       * it's safe to set the number of miplevels to 0 regardless of how many
+       * the image actually has.
+       */
+      TH_SET_U(th, NVB097, BL, MAX_MIP_LEVEL, 0);
+   } else {
+      TH_SET_U(th, NVB097, BL, MAX_MIP_LEVEL, image->num_levels - 1);
+   }
 
    TH_SET_U(th, NVB097, BL, TEXTURE_TYPE,
             nil_to_nvb097_texture_type(view->type));
@@ -197,7 +222,14 @@ nil_image_fill_tic(struct nouveau_ws_device *dev,
    TH_SET_E(th, NVB097, BL, SECTOR_PROMOTION, PROMOTE_TO_2_V);
    TH_SET_E(th, NVB097, BL, BORDER_SIZE, BORDER_SAMPLER_COLOR);
 
-   /* TODO: Unnormalized? */
+   /* In the sampler, the two options for FLOAT_COORD_NORMALIZATION are:
+    *
+    *  - FORCE_UNNORMALIZED_COORDS
+    *  - USE_HEADER_SETTING
+    *
+    * So we set it to normalized in the header and let the sampler select
+    * that or force non-normalized.
+    */
    TH_SET_B(th, NVB097, BL, NORMALIZED_COORDS, true);
 
    TH_SET_E(th, NVB097, BL, ANISO_FINE_SPREAD_FUNC, SPREAD_FUNC_TWO);
