@@ -545,6 +545,94 @@ impl fmt::Display for LogicOp {
     }
 }
 
+pub enum FloatType {
+    F16,
+    F32,
+    F64,
+}
+
+impl FloatType {
+    pub fn bytes(&self) -> usize {
+        match self {
+            FloatType::F16 => 2,
+            FloatType::F32 => 4,
+            FloatType::F64 => 8,
+        }
+    }
+}
+
+impl fmt::Display for FloatType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FloatType::F16 => write!(f, "F16"),
+            FloatType::F32 => write!(f, "F32"),
+            FloatType::F64 => write!(f, "F64"),
+        }
+    }
+}
+
+pub enum FRndMode {
+    NearestEven,
+    NegInf,
+    PosInf,
+    Zero,
+}
+
+impl fmt::Display for FRndMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FRndMode::NearestEven => write!(f, "RE"),
+            FRndMode::NegInf => write!(f, "RM"),
+            FRndMode::PosInf => write!(f, "RP"),
+            FRndMode::Zero => write!(f, "RZ"),
+        }
+    }
+}
+
+pub enum IntType {
+    U8,
+    I8,
+    U16,
+    I16,
+    U32,
+    I32,
+    U64,
+    I64,
+}
+
+impl IntType {
+    pub fn is_signed(&self) -> bool {
+        match self {
+            IntType::U8 | IntType::U16 | IntType::U32 | IntType::U64 => false,
+            IntType::I8 | IntType::I16 | IntType::I32 | IntType::I64 => true,
+        }
+    }
+
+    pub fn bytes(&self) -> usize {
+        match self {
+            IntType::U8 | IntType::I8 => 1,
+            IntType::U16 | IntType::I16 => 2,
+            IntType::U32 | IntType::I32 => 4,
+            IntType::U64 | IntType::I64 => 8,
+        }
+    }
+}
+
+impl fmt::Display for IntType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            IntType::U8 => write!(f, "U8"),
+            IntType::I8 => write!(f, "I8"),
+            IntType::U16 => write!(f, "U16"),
+            IntType::I16 => write!(f, "I16"),
+            IntType::U32 => write!(f, "U32"),
+            IntType::I32 => write!(f, "I32"),
+            IntType::U64 => write!(f, "U64"),
+            IntType::I64 => write!(f, "I64"),
+        }
+    }
+}
+
 pub enum MemAddrType {
     A32,
     A64,
@@ -747,6 +835,26 @@ impl fmt::Display for OpShl {
             f,
             "SHL {} {{ {}, {} }}",
             self.dst, self.srcs[0], self.srcs[1],
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpI2F {
+    pub dst: Dst,
+    pub src: Src,
+    pub dst_type: FloatType,
+    pub src_type: IntType,
+    pub rnd_mode: FRndMode,
+}
+
+impl fmt::Display for OpI2F {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "I2F.{}.{}.{} {} {}",
+            self.dst_type, self.src_type, self.rnd_mode, self.dst, self.src,
         )
     }
 }
@@ -1011,6 +1119,7 @@ pub enum Op {
     ISetP(OpISetP),
     Lop3(OpLop3),
     Shl(OpShl),
+    I2F(OpI2F),
     Mov(OpMov),
     Sel(OpSel),
     PLop3(OpPLop3),
@@ -1198,6 +1307,16 @@ impl Instr {
         }))
     }
 
+    pub fn new_i2f(dst: Dst, src: Src) -> Instr {
+        Instr::new(Op::I2F(OpI2F {
+            dst: dst,
+            src: src,
+            dst_type: FloatType::F32,
+            src_type: IntType::I32,
+            rnd_mode: FRndMode::NearestEven,
+        }))
+    }
+
     pub fn new_isetp(
         dst: Dst,
         cmp_type: IntCmpType,
@@ -1360,7 +1479,7 @@ impl Instr {
             | Op::PLop3(_)
             | Op::ISetP(_)
             | Op::Shl(_) => Some(6),
-            Op::Mov(_) => Some(15),
+            Op::I2F(_) | Op::Mov(_) => Some(15),
             Op::Sel(_) => Some(15),
             Op::S2R(_) => None,
             Op::ALd(_) => None,

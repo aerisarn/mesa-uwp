@@ -357,6 +357,24 @@ impl SM75Instr {
         self.set_bit(80, false /* HI */);
     }
 
+    fn encode_i2f(&mut self, op: &OpI2F) {
+        self.encode_alu(0x106, Some(op.dst), None, op.src.into(), None);
+
+        self.set_field(60..62, 0_u8); /* TODO: subop */
+        self.set_bit(74, op.src_type.is_signed());
+        self.set_field(75..77, op.dst_type.bytes().trailing_zeros());
+        self.set_field(
+            78..80,
+            match op.rnd_mode {
+                FRndMode::NearestEven => 0_u8,
+                FRndMode::NegInf => 1_u8,
+                FRndMode::PosInf => 2_u8,
+                FRndMode::Zero => 3_u8,
+            },
+        );
+        self.set_field(84..86, op.src_type.bytes().trailing_zeros());
+    }
+
     fn encode_mov(&mut self, op: &OpMov) {
         self.encode_alu(0x002, Some(op.dst), None, op.src.into(), None);
         self.set_field(72..76, op.quad_lanes);
@@ -515,6 +533,7 @@ impl SM75Instr {
             Op::ISetP(op) => si.encode_isetp(&op),
             Op::Lop3(op) => si.encode_lop3(&op),
             Op::Shl(op) => si.encode_shl(&op),
+            Op::I2F(op) => si.encode_i2f(&op),
             Op::Mov(op) => si.encode_mov(&op),
             Op::Sel(op) => si.encode_sel(&op),
             Op::PLop3(op) => si.encode_plop3(&op),
