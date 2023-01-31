@@ -48,6 +48,20 @@ emit_pipeline_rs_state(struct nv_push *p,
 }
 
 static void
+nvk_populate_fs_key(struct nvk_fs_key *key,
+                    const struct vk_multisample_state *ms)
+{
+   memset(key, 0, sizeof(*key));
+   if (ms == NULL || ms->rasterization_samples <= 1)
+      return;
+
+   key->msaa = ms->rasterization_samples;
+   if (ms->sample_shading_enable &&
+       (ms->rasterization_samples * ms->min_sample_shading) > 1.0)
+      key->force_per_sample = true;
+}
+
+static void
 emit_pipeline_ms_state(struct nv_push *p,
                        const struct vk_multisample_state *ms)
 {
@@ -172,6 +186,12 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
 
    pipeline->base.type = NVK_PIPELINE_GRAPHICS;
 
+   struct vk_graphics_pipeline_all_state all;
+   struct vk_graphics_pipeline_state state = {};
+   result = vk_graphics_pipeline_state_fill(&device->vk, &state, pCreateInfo,
+                                            NULL, &all, NULL, 0, NULL);
+   assert(result == VK_SUCCESS);
+
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
       const VkPipelineShaderStageCreateInfo *sinfo = &pCreateInfo->pStages[i];
       gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
@@ -194,7 +214,14 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
 
       nvk_lower_nir(device, nir, &robustness, pipeline_layout);
 
-      result = nvk_compile_nir(pdevice, nir, &pipeline->base.shaders[stage]);
+      struct nvk_fs_key fs_key_tmp, *fs_key = NULL;
+      if (stage == MESA_SHADER_FRAGMENT) {
+         nvk_populate_fs_key(&fs_key_tmp, state.ms);
+         fs_key = &fs_key_tmp;
+      }
+
+      result = nvk_compile_nir(pdevice, nir, fs_key,
+                               &pipeline->base.shaders[stage]);
       ralloc_free(nir);
       if (result != VK_SUCCESS)
          goto fail;
@@ -292,12 +319,6 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
                  CONTROL_GEOMETRY_SHADER_SELECTS_LAYER :
                  CONTROL_V_SELECTS_LAYER,
    });
-
-   struct vk_graphics_pipeline_all_state all;
-   struct vk_graphics_pipeline_state state = {};
-   result = vk_graphics_pipeline_state_fill(&device->vk, &state, pCreateInfo,
-                                            NULL, &all, NULL, 0, NULL);
-   assert(result == VK_SUCCESS);
 
    if (state.ts) emit_pipeline_ts_state(&push, state.ts);
    if (state.vp) emit_pipeline_vp_state(&push, state.vp);

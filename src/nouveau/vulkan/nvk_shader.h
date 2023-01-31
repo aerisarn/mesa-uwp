@@ -16,6 +16,11 @@ struct nvk_physical_device;
 #define TU102_SHADER_HEADER_SIZE (32 * 4)
 #define NVC0_MAX_SHADER_HEADER_SIZE TU102_SHADER_HEADER_SIZE
 
+struct nvk_fs_key {
+   bool msaa;
+   bool force_per_sample;
+};
+
 struct nvk_shader {
    gl_shader_stage stage;
 
@@ -101,6 +106,7 @@ nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
 
 VkResult
 nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,
+                const struct nvk_fs_key *fs_key,
                 struct nvk_shader *shader);
 
 VkResult

@@ -640,6 +640,7 @@ nvk_fs_gen_header(struct nvk_shader *fs, struct nv50_ir_prog_info_out *info)
 
 VkResult
 nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,
+                const struct nvk_fs_key *fs_key,
                 struct nvk_shader *shader)
 {
    struct nv50_ir_prog_info *info;
@@ -671,6 +672,13 @@ nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,
    ret = nv50_ir_generate_code(info, &info_out);
    if (ret)
       return VK_ERROR_UNKNOWN;
+
+   if (info_out.bin.fixupData) {
+      nv50_ir_apply_fixups(info_out.bin.fixupData, info_out.bin.code,
+                           fs_key && fs_key->force_per_sample,
+                           false /* flatshade */, false /* alphatest */,
+                           fs_key && fs_key->msaa);
+   }
 
    shader->stage = nir->info.stage;
    shader->code_ptr = (uint8_t *)info_out.bin.code;
