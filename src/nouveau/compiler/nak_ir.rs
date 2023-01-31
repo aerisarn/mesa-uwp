@@ -1149,12 +1149,14 @@ impl fmt::Display for Function {
 }
 
 pub struct Shader {
+    pub sm: u8,
     pub functions: Vec<Function>,
 }
 
 impl Shader {
-    pub fn new() -> Shader {
+    pub fn new(sm: u8) -> Shader {
         Shader {
+            sm: sm,
             functions: Vec::new(),
         }
     }

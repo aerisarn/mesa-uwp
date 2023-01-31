@@ -363,8 +363,8 @@ impl<'a> ShaderFromNir<'a> {
         self.func.take().unwrap()
     }
 
-    pub fn parse_shader(&mut self) -> Shader {
-        let mut s = Shader::new();
+    pub fn parse_shader(&mut self, sm: u8) -> Shader {
+        let mut s = Shader::new(sm);
         for nf in self.nir.iter_functions() {
             if let Some(nfi) = nf.get_impl() {
                 let f = self.parse_function_impl(nfi);
@@ -375,6 +375,6 @@ impl<'a> ShaderFromNir<'a> {
     }
 }
 
-pub fn nak_shader_from_nir(ns: &nir_shader) -> Shader {
-    ShaderFromNir::new(ns).parse_shader()
+pub fn nak_shader_from_nir(ns: &nir_shader, sm: u8) -> Shader {
+    ShaderFromNir::new(ns).parse_shader(sm)
 }

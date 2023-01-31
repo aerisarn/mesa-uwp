@@ -261,8 +261,9 @@ pub extern "C" fn nak_compile_shader(
 ) -> *mut nak_shader_bin {
     unsafe { nak_postprocess_nir(nir, nak) };
     let nir = unsafe { &*nir };
+    let nak = unsafe { &*nak };
 
-    let mut s = nak_shader_from_nir(nir);
+    let mut s = nak_shader_from_nir(nir, nak.sm);
 
     println!("NAK IR:\n{}", &s);
 
