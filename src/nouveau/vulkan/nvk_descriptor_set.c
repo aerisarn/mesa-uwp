@@ -1,6 +1,7 @@
 #include "nvk_descriptor_set.h"
 
 #include "nvk_buffer.h"
+#include "nvk_buffer_view.h"
 #include "nvk_descriptor_set_layout.h"
 #include "nvk_device.h"
 #include "nvk_image_view.h"
@@ -75,7 +76,11 @@ write_buffer_view_desc(struct nvk_descriptor_set *set,
                        const VkBufferView bufferView,
                        uint32_t binding, uint32_t elem)
 {
-   /* TODO */
+   VK_FROM_HANDLE(nvk_buffer_view, view, bufferView);
+
+   struct nvk_image_descriptor *desc = desc_ubo_data(set, binding, elem);
+   assert(view->desc_index < (1 << 20));
+   desc->image_index = view->desc_index;
 }
 
 static void
