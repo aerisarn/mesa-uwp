@@ -4,10 +4,11 @@
 #include "nvk_device_memory.h"
 #include "nvk_physical_device.h"
 
-VKAPI_ATTR VkResult VKAPI_CALL nvk_CreateBuffer(VkDevice _device,
-   const VkBufferCreateInfo *pCreateInfo,
-   const VkAllocationCallbacks *pAllocator,
-   VkBuffer *pBuffer)
+VKAPI_ATTR VkResult VKAPI_CALL
+nvk_CreateBuffer(VkDevice _device,
+                 const VkBufferCreateInfo *pCreateInfo,
+                 const VkAllocationCallbacks *pAllocator,
+                 VkBuffer *pBuffer)
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
    struct nvk_buffer *buffer;
@@ -21,9 +22,10 @@ VKAPI_ATTR VkResult VKAPI_CALL nvk_CreateBuffer(VkDevice _device,
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR void VKAPI_CALL nvk_DestroyBuffer(VkDevice _device,
-   VkBuffer _buffer,
-   const VkAllocationCallbacks *pAllocator)
+VKAPI_ATTR void VKAPI_CALL
+nvk_DestroyBuffer(VkDevice _device,
+                  VkBuffer _buffer,
+                  const VkAllocationCallbacks *pAllocator)
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
    VK_FROM_HANDLE(nvk_buffer, buffer, _buffer);
@@ -34,10 +36,10 @@ VKAPI_ATTR void VKAPI_CALL nvk_DestroyBuffer(VkDevice _device,
    vk_buffer_destroy(&device->vk, pAllocator, &buffer->vk);
 }
 
-VKAPI_ATTR void VKAPI_CALL nvk_GetBufferMemoryRequirements2(
-    VkDevice _device,
-    const VkBufferMemoryRequirementsInfo2 *pInfo,
-    VkMemoryRequirements2 *pMemoryRequirements)
+VKAPI_ATTR void VKAPI_CALL
+nvk_GetBufferMemoryRequirements2(VkDevice _device,
+                                 const VkBufferMemoryRequirementsInfo2 *pInfo,
+                                 VkMemoryRequirements2 *pMemoryRequirements)
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
    VK_FROM_HANDLE(nvk_buffer, buffer, pInfo->buffer);
@@ -58,8 +60,9 @@ VKAPI_ATTR void VKAPI_CALL nvk_GetBufferMemoryRequirements2(
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_BindBufferMemory2(VkDevice _device, uint32_t bindInfoCount,
-                     const VkBindBufferMemoryInfo *pBindInfos)
+nvk_BindBufferMemory2(VkDevice _device,
+                      uint32_t bindInfoCount,
+                      const VkBindBufferMemoryInfo *pBindInfos)
 {
    for (uint32_t i = 0; i < bindInfoCount; ++i) {
       VK_FROM_HANDLE(nvk_device_memory, mem, pBindInfos[i].memory);
