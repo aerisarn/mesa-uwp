@@ -72,9 +72,15 @@ load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
          nir_iadd_imm(b, nir_imul_imm(b, index, sizeof(struct nvk_buffer_address)),
                       nvk_root_descriptor_offset(dynamic_buffers));
 
-      return nir_load_ubo(b, num_components, bit_size,
-                          nir_imm_int(b, 0), root_desc_offset,
-                          .align_mul = 16, .align_offset = 0, .range = ~0);
+      assert(num_components == 4 && bit_size == 32);
+      nir_def *desc =
+         nir_load_ubo(b, 4, 32, nir_imm_int(b, 0), root_desc_offset,
+                      .align_mul = 16, .align_offset = 0, .range = ~0);
+      /* We know a priori that the the .w compnent (offset) is zero */
+      return nir_vec4(b, nir_channel(b, desc, 0),
+                         nir_channel(b, desc, 1),
+                         nir_channel(b, desc, 2),
+                         nir_imm_int(b, 0));
    }
 
    case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK: {
@@ -103,10 +109,21 @@ load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
       desc_align = MIN2(desc_align, 16);
 
       nir_def *set_addr = load_descriptor_set_addr(b, set, ctx);
-      return nir_load_global_constant_offset(b, num_components, bit_size,
-                                             set_addr, desc_ubo_offset,
-                                             .align_mul = desc_align,
-                                             .align_offset = 0);
+      nir_def *desc =
+         nir_load_global_constant_offset(b, num_components, bit_size,
+                                         set_addr, desc_ubo_offset,
+                                         .align_mul = desc_align,
+                                         .align_offset = 0);
+      if (binding_layout->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
+          binding_layout->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
+         /* We know a priori that the the .w compnent (offset) is zero */
+         assert(num_components == 4 && bit_size == 32);
+         desc = nir_vec4(b, nir_channel(b, desc, 0),
+                            nir_channel(b, desc, 1),
+                            nir_channel(b, desc, 2),
+                            nir_imm_int(b, 0));
+      }
+      return desc;
    }
    }
 }
