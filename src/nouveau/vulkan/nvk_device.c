@@ -144,6 +144,7 @@ nvk_queue_submit(struct vk_queue *vkqueue, struct vk_queue_submit *submission)
    for (unsigned i = 0; i < submission->command_buffer_count; i++) {
       struct nvk_cmd_buffer *cmd = (struct nvk_cmd_buffer *)submission->command_buffers[i];
 
+      unsigned real_refs = nouveau_ws_push_num_refs(queue->empty_push);
       for (uint32_t i = 0; i < submission->signal_count; i++) {
          struct nvk_bo_sync *bo_sync = container_of(submission->signals[i].sync, struct nvk_bo_sync, sync);
          nouveau_ws_push_ref(cmd->push, bo_sync->bo, NOUVEAU_WS_BO_RDWR);
@@ -152,6 +153,8 @@ nvk_queue_submit(struct vk_queue *vkqueue, struct vk_queue_submit *submission)
       nouveau_ws_push_submit(cmd->push, device->pdev->dev, device->ctx);
       if (cmd->reset_on_submit)
          nvk_reset_cmd_buffer(cmd);
+
+      nouveau_ws_push_reset_refs(queue->empty_push, real_refs);
    }
 
    for (uint32_t i = 0; i < submission->signal_count; i++) {
