@@ -15,6 +15,28 @@ nouveau_ws_bo_new(struct nouveau_ws_device *dev,
 }
 
 struct nouveau_ws_bo *
+nouveau_ws_bo_new_mapped(struct nouveau_ws_device *dev,
+                         uint64_t size, uint64_t align,
+                         enum nouveau_ws_bo_flags flags,
+                         enum nouveau_ws_bo_map_flags map_flags,
+                         void **map_out)
+{
+   struct nouveau_ws_bo *bo = nouveau_ws_bo_new(dev, size, align,
+                                                flags | NOUVEAU_WS_BO_MAP);
+   if (!bo)
+      return NULL;
+
+   void *map = nouveau_ws_bo_map(bo, map_flags);
+   if (map == NULL) {
+      nouveau_ws_bo_destroy(bo);
+      return NULL;
+   }
+
+   *map_out = map;
+   return bo;
+}
+
+struct nouveau_ws_bo *
 nouveau_ws_bo_new_tiled(struct nouveau_ws_device *dev,
                         uint64_t size, uint64_t align,
                         uint8_t pte_kind, uint16_t tile_mode,

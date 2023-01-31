@@ -44,6 +44,11 @@ struct nouveau_ws_bo {
 struct nouveau_ws_bo *nouveau_ws_bo_new(struct nouveau_ws_device *,
                                         uint64_t size, uint64_t align,
                                         enum nouveau_ws_bo_flags);
+struct nouveau_ws_bo *nouveau_ws_bo_new_mapped(struct nouveau_ws_device *,
+                                               uint64_t size, uint64_t align,
+                                               enum nouveau_ws_bo_flags,
+                                               enum nouveau_ws_bo_map_flags map_flags,
+                                               void **map_out);
 struct nouveau_ws_bo *nouveau_ws_bo_new_tiled(struct nouveau_ws_device *,
                                               uint64_t size, uint64_t align,
                                               uint8_t pte_kind,
