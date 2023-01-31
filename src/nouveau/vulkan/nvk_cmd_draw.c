@@ -1406,7 +1406,8 @@ nvk_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
       P_NVC597_SET_INDEX_BUFFER_SIZE_A(p, range >> 32);
       P_NVC597_SET_INDEX_BUFFER_SIZE_B(p, range);
    } else {
-      uint64_t limit = addr + range;
+      /* TODO: What about robust zero-size buffers? */
+      const uint64_t limit = range > 0 ? addr + range - 1 : 0;
       P_MTHD(p, NV9097, SET_INDEX_BUFFER_C);
       P_NV9097_SET_INDEX_BUFFER_C(p, limit >> 32);
       P_NV9097_SET_INDEX_BUFFER_D(p, limit);
@@ -1430,7 +1431,9 @@ nvk_cmd_bind_vertex_buffer(struct nvk_cmd_buffer *cmd, uint32_t vb_idx,
       P_NVC597_SET_VERTEX_STREAM_SIZE_A(p, vb_idx, addr_range.range >> 32);
       P_NVC597_SET_VERTEX_STREAM_SIZE_B(p, vb_idx, addr_range.range);
    } else {
-      uint64_t limit = addr_range.addr + addr_range.range - 1;
+      /* TODO: What about robust zero-size buffers? */
+      const uint64_t limit = addr_range.range > 0 ?
+         addr_range.addr + addr_range.range - 1 : 0;
       P_MTHD(p, NV9097, SET_VERTEX_STREAM_LIMIT_A_A(vb_idx));
       P_NV9097_SET_VERTEX_STREAM_LIMIT_A_A(p, vb_idx, limit >> 32);
       P_NV9097_SET_VERTEX_STREAM_LIMIT_A_B(p, vb_idx, limit);
