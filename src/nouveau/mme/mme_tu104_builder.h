@@ -61,6 +61,10 @@ void mme_tu104_alu64_to(struct mme_builder *b,
                         struct mme_value64 x,
                         struct mme_value64 y);
 
+void mme_tu104_merge_to(struct mme_builder *b, struct mme_value dst,
+                        struct mme_value x, struct mme_value y,
+                        uint16_t dst_pos, uint16_t bits, uint16_t src_pos);
+
 void mme_tu104_load_barrier(struct mme_builder *b);
 
 void mme_tu104_load_to(struct mme_builder *b,

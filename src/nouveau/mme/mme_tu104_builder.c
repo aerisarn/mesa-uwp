@@ -303,7 +303,6 @@ mme_to_tu104_alu_op(enum mme_alu_op op)
    ALU_CASE(NAND)
    ALU_CASE(OR)
    ALU_CASE(XOR)
-   ALU_CASE(MERGE)
    ALU_CASE(SLT)
    ALU_CASE(SLTU)
    ALU_CASE(SLE)
@@ -350,6 +349,18 @@ mme_tu104_alu64_to(struct mme_builder *b,
 
    build_alu_to(b, dst.lo, mme_to_tu104_alu_op(op_lo), x.lo, y.lo, 0, true);
    build_alu_to(b, dst.hi, mme_to_tu104_alu_op(op_hi), x.hi, y.hi, 0, false);
+}
+
+void
+mme_tu104_merge_to(struct mme_builder *b, struct mme_value dst,
+                   struct mme_value x, struct mme_value y,
+                   uint16_t dst_pos, uint16_t bits, uint16_t src_pos)
+{
+   assert(dst_pos < 32);
+   assert(bits < 32);
+   assert(src_pos < 32);
+   uint32_t ctrl = (dst_pos << 10) | (bits << 5) | src_pos;
+   build_alu_to(b, dst, MME_TU104_ALU_OP_MERGE, x, y, ctrl, false);
 }
 
 void

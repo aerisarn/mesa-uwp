@@ -27,7 +27,6 @@ enum mme_alu_op {
    MME_ALU_OP_NAND,
    MME_ALU_OP_OR,
    MME_ALU_OP_XOR,
-   MME_ALU_OP_MERGE,
    MME_ALU_OP_SLT,
    MME_ALU_OP_SLTU,
    MME_ALU_OP_SLE,
@@ -293,11 +292,7 @@ mme_merge_to(struct mme_builder *b, struct mme_value dst,
              struct mme_value x, struct mme_value y,
              uint16_t dst_pos, uint16_t bits, uint16_t src_pos)
 {
-   assert(dst_pos < 32);
-   assert(bits < 32);
-   assert(src_pos < 32);
-   mme_alu_to(b, dst, MME_ALU_OP_MERGE, x, y,
-              (dst_pos << 10) | (bits << 5) | src_pos);
+   mme_tu104_merge_to(b, dst, x, y, dst_pos, bits, src_pos);
 }
 
 static inline struct mme_value
