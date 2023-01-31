@@ -6,25 +6,11 @@
 #include "nouveau_push.h"
 #include "nvk_descriptor_set.h"
 
-#include "vulkan/runtime/vk_command_buffer.h"
-#include "vulkan/runtime/vk_command_pool.h"
+#include "vk_command_buffer.h"
 
 struct nvk_image_view;
 
 #define NVK_CMD_BUF_SIZE 64*1024
-
-struct nvk_cmd_pool {
-   struct vk_command_pool vk;
-};
-
-VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_cmd_pool, vk.base, VkCommandPool,
-                               VK_OBJECT_TYPE_COMMAND_POOL)
-
-static inline struct nvk_device *
-nvk_cmd_pool_device(struct nvk_cmd_pool *pool)
-{
-   return (struct nvk_device *)pool->vk.base.device;
-}
 
 /** Root descriptor table.  This gets pushed to the GPU directly */
 struct nvk_root_descriptor_table {
