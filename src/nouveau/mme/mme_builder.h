@@ -158,6 +158,17 @@ mme_imm(uint32_t imm)
    return val;
 }
 
+static inline bool
+mme_is_zero(struct mme_value x)
+{
+   switch (x.type) {
+   case MME_VALUE_TYPE_ZERO:  return true;
+   case MME_VALUE_TYPE_IMM:   return x.imm == 0;
+   case MME_VALUE_TYPE_REG:   return false;
+   default: unreachable("Invalid MME value type");
+   }
+}
+
 static inline struct mme_value64
 mme_value64(struct mme_value lo, struct mme_value hi)
 {
@@ -379,6 +390,27 @@ mme_umul_32x32_64(struct mme_builder *b,
    return mme_tu104_alu64(b, MME_TU104_ALU_OP_MULU, MME_TU104_ALU_OP_MULH,
                           mme_value64(x, mme_zero()),
                           mme_value64(y, mme_zero()));
+}
+
+static inline struct mme_value64
+mme_mul64(struct mme_builder *b,
+          struct mme_value64 x, struct mme_value64 y)
+{
+   if (mme_is_zero(x.hi) && mme_is_zero(y.hi))
+      return mme_umul_32x32_64(b, x.lo, y.lo);
+
+   struct mme_value64 dst = mme_umul_32x32_64(b, x.lo, y.lo);
+   struct mme_value tmp = mme_alloc_reg(b);
+
+   mme_mul_to(b, tmp, x.lo, y.hi);
+   mme_add64_to(b, dst, dst, mme_value64(mme_zero(), tmp));
+
+   mme_mul_to(b, tmp, x.hi, y.lo);
+   mme_add64_to(b, dst, dst, mme_value64(mme_zero(), tmp));
+
+   mme_free_reg(b, tmp);
+
+   return dst;
 }
 
 static inline void
