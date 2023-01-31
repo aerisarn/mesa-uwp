@@ -276,7 +276,9 @@ mme_tu104_alus_have_dependency(const struct mme_tu104_alu *first,
                                const struct mme_tu104_alu *second)
 {
    if (first->dst != MME_TU104_REG_ZERO &&
-       (first->dst == second->src[0] || first->dst == second->src[1]))
+       (first->dst == second->dst ||
+        first->dst == second->src[0] ||
+        first->dst == second->src[1]))
       return true;
 
    /* TODO: This could be more detailed */
