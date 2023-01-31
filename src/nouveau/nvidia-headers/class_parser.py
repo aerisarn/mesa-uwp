@@ -37,6 +37,7 @@ METHOD_ARRAY_SIZES = {
     'SET_PIPELINE_*'            : 6,
     'SET_COLOR_TARGET_*'        : 8,
     'SET_COLOR_COMPRESSION'     : 8,
+    'SET_COLOR_CLEAR_VALUE'     : 4,
     'SET_CT_WRITE'              : 8,
     'SET_BLEND'                 : 8,
     'SET_BLEND_PER_TARGET_*'    : 8,
@@ -59,6 +60,7 @@ METHOD_IS_FLOAT = [
     'SET_VIEWPORT_OFFSET_*',
     'SET_VIEWPORT_CLIP_MIN_Z',
     'SET_VIEWPORT_CLIP_MAX_Z',
+    'SET_Z_CLEAR_VALUE',
 ]
 
 def glob_match(glob, name):
