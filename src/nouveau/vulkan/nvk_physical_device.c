@@ -88,6 +88,7 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    VkPhysicalDeviceVulkan12Features core_1_2 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
       /* Vulkan 1.2 features */
+      .samplerMirrorClampToEdge = true,
       .shaderInputAttachmentArrayDynamicIndexing = true,
       .shaderUniformTexelBufferArrayDynamicIndexing = true,
       .shaderStorageTexelBufferArrayDynamicIndexing = true,
