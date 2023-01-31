@@ -326,46 +326,6 @@ nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
    }
 }
 
-VKAPI_ATTR void VKAPI_CALL
-nvk_CmdClearAttachments(VkCommandBuffer commandBuffer,
-                        uint32_t attachmentCount,
-                        const VkClearAttachment *pAttachments,
-                        uint32_t rectCount,
-                        const VkClearRect *pRects)
-{
-   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
-   struct nvk_rendering_state *render = &cmd->state.gfx.render;
-
-   for (unsigned i = 0; i < attachmentCount; i++) {
-      assert(pAttachments[i].aspectMask == VK_IMAGE_ASPECT_COLOR_BIT);
-      if (pAttachments[i].colorAttachment == VK_ATTACHMENT_UNUSED)
-         return;
-
-      struct nvk_image_view *iview =
-         render->color_att[pAttachments[i].colorAttachment].iview;
-      for (unsigned r = 0; r < rectCount; r++) {
-         assert(pRects[r].rect.offset.x == 0);
-         assert(pRects[r].rect.offset.y == 0);
-         assert(pRects[r].rect.extent.width == iview->vk.extent.width);
-         assert(pRects[r].rect.extent.height == iview->vk.extent.height);
-
-         const VkImageSubresourceRange subres = {
-            .aspectMask = pAttachments[i].aspectMask,
-            .baseMipLevel = iview->vk.base_mip_level,
-            .levelCount = 1,
-            .baseArrayLayer = iview->vk.base_array_layer +
-                              pRects[r].baseArrayLayer,
-            .layerCount = pRects[r].layerCount,
-         };
-         nvk_CmdClearColorImage(commandBuffer,
-                                vk_image_to_handle(iview->vk.image),
-                                VK_IMAGE_LAYOUT_GENERAL,
-                                &pAttachments[i].clearValue.color,
-                                1, &subres);
-      }
-   }
-}
-
 static void
 nvk_attachment_init(struct nvk_attachment *att,
                     const VkRenderingAttachmentInfo *info)
@@ -1286,6 +1246,10 @@ nvk_CmdBindVertexBuffers2(VkCommandBuffer commandBuffer,
          addr_range.range = vk_buffer_range(&buffer->vk, pOffsets[i], size);
       }
 
+      /* Used for meta save/restore */
+      if (idx == 0)
+         cmd->state.gfx.vb0 = addr_range;
+
       nvk_cmd_bind_vertex_buffer(cmd, idx, addr_range);
    }
 }
@@ -1301,6 +1265,10 @@ vk_to_nv9097_primitive_topology(VkPrimitiveTopology prim)
    case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP:
       return NV9097_BEGIN_OP_LINE_STRIP;
    case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wswitch"
+   case VK_PRIMITIVE_TOPOLOGY_META_RECT_LIST_MESA:
+#pragma GCC diagnostic pop
       return NV9097_BEGIN_OP_TRIANGLES;
    case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:
       return NV9097_BEGIN_OP_TRIANGLE_STRIP;

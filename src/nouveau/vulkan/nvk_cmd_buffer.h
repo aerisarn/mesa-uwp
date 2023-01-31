@@ -82,6 +82,9 @@ struct nvk_graphics_state {
    struct nvk_graphics_pipeline *pipeline;
    struct nvk_descriptor_state descriptors;
 
+   /* Used for meta save/restore */
+   struct nvk_addr_range vb0;
+
    /* Needed by vk_command_buffer::dynamic_graphics_state */
    struct vk_vertex_input_state _dynamic_vi;
    struct vk_sample_locations_state _dynamic_ms_sl;

@@ -5,6 +5,7 @@
 
 #include "nvk_descriptor_table.h"
 #include "vulkan/runtime/vk_device.h"
+#include "vulkan/runtime/vk_meta.h"
 #include "vulkan/runtime/vk_queue.h"
 
 struct novueau_ws_context;
@@ -42,6 +43,8 @@ struct nvk_device {
 
    pthread_mutex_t mutex;
    pthread_cond_t queue_submit;
+
+   struct vk_meta_device meta;
 };
 
 VK_DEFINE_HANDLE_CASTS(nvk_device, vk.base, VkDevice, VK_OBJECT_TYPE_DEVICE)
@@ -51,5 +54,8 @@ nvk_device_physical(struct nvk_device *device)
 {
    return (struct nvk_physical_device *)device->vk.physical;
 }
+
+VkResult nvk_device_init_meta(struct nvk_device *dev);
+void nvk_device_finish_meta(struct nvk_device *dev);
 
 #endif

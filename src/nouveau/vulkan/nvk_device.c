@@ -261,10 +261,16 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
 
    device->pdev = physical_device;
 
+   result = nvk_device_init_meta(device);
+   if (result != VK_SUCCESS)
+      goto fail_queue_submit;
+
    *pDevice = nvk_device_to_handle(device);
 
    return VK_SUCCESS;
 
+fail_queue_submit:
+   pthread_cond_destroy(&device->queue_submit);
 fail_mutex:
    pthread_mutex_destroy(&device->mutex);
 fail_queue:
@@ -289,6 +295,8 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    if (!device)
       return;
+
+   nvk_device_finish_meta(device);
 
    if (device->queue.state.push)
       nouveau_ws_push_destroy(device->queue.state.push);
