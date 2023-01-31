@@ -25,34 +25,6 @@ static void
 emit_pipeline_vp_state(struct nv_push *p,
                        const struct vk_viewport_state *vp)
 {
-   P_IMMD(p, NV9097, SET_VIEWPORT_Z_CLIP, vp->depth_clip_negative_one_to_one ?
-                                          RANGE_NEGATIVE_W_TO_POSITIVE_W :
-                                          RANGE_ZERO_TO_POSITIVE_W);
-}
-
-static uint32_t
-vk_to_nv9097_polygon_mode(VkPolygonMode vk_mode)
-{
-   ASSERTED uint16_t vk_to_nv9097[] = {
-      [VK_POLYGON_MODE_FILL]  = NV9097_SET_FRONT_POLYGON_MODE_V_FILL,
-      [VK_POLYGON_MODE_LINE]  = NV9097_SET_FRONT_POLYGON_MODE_V_LINE,
-      [VK_POLYGON_MODE_POINT] = NV9097_SET_FRONT_POLYGON_MODE_V_POINT,
-   };
-   assert(vk_mode < ARRAY_SIZE(vk_to_nv9097));
-
-   uint32_t nv9097_mode = 0x1b00 | (2 - vk_mode);
-   assert(nv9097_mode == vk_to_nv9097[vk_mode]);
-   return nv9097_mode;
-}
-
-static uint32_t
-vk_to_nv9097_provoking_vertex(VkProvokingVertexModeEXT vk_mode)
-{
-   STATIC_ASSERT(VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT ==
-                 NV9097_SET_PROVOKING_VERTEX_V_FIRST);
-   STATIC_ASSERT(VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT ==
-                 NV9097_SET_PROVOKING_VERTEX_V_LAST);
-   return vk_mode;
 }
 
 static void
@@ -70,19 +42,9 @@ emit_pipeline_rs_state(struct nv_push *p,
       .geometry_guardband_z      = GEOMETRY_GUARDBAND_Z_SAME_AS_XY_GUARDBAND,
    });
 
-   const uint32_t polygon_mode = vk_to_nv9097_polygon_mode(rs->polygon_mode);
-   P_MTHD(p, NV9097, SET_FRONT_POLYGON_MODE);
-   P_NV9097_SET_FRONT_POLYGON_MODE(p, polygon_mode);
-   P_NV9097_SET_BACK_POLYGON_MODE(p, polygon_mode);
-
-   P_IMMD(p, NV9097, SET_PROVOKING_VERTEX,
-          vk_to_nv9097_provoking_vertex(rs->provoking_vertex));
-
    assert(rs->rasterization_stream == 0);
 
    assert(rs->line.mode == VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT);
-
-   P_IMMD(p, NV9097, SET_LINE_STIPPLE, rs->line.stipple.enable);
 }
 
 static void
@@ -154,8 +116,6 @@ emit_pipeline_cb_state(struct nv_push *p,
                        const struct vk_color_blend_state *cb)
 {
    P_IMMD(p, NV9097, SET_BLEND_STATE_PER_TARGET, ENABLE_TRUE);
-
-   P_IMMD(p, NV9097, SET_LOGIC_OP, cb->logic_op_enable);
 
    for (uint32_t a = 0; a < cb->attachment_count; a++) {
       const struct vk_color_blend_attachment_state *att = &cb->attachments[a];

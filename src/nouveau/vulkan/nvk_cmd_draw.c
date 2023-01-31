@@ -693,7 +693,7 @@ nvk_flush_vp_state(struct nvk_cmd_buffer *cmd)
       &cmd->vk.dynamic_graphics_state;
 
    struct nv_push *p =
-      nvk_cmd_buffer_push(cmd, 14 * dyn->vp.viewport_count + 4 * NVK_MAX_VIEWPORTS);
+      nvk_cmd_buffer_push(cmd, 16 * dyn->vp.viewport_count + 4 * NVK_MAX_VIEWPORTS);
 
    /* Nothing to do for MESA_VK_DYNAMIC_VP_VIEWPORT_COUNT */
 
@@ -739,6 +739,13 @@ nvk_flush_vp_state(struct nvk_cmd_buffer *cmd)
       }
    }
 
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE)) {
+      P_IMMD(p, NV9097, SET_VIEWPORT_Z_CLIP,
+             dyn->vp.depth_clip_negative_one_to_one ?
+             RANGE_NEGATIVE_W_TO_POSITIVE_W :
+             RANGE_ZERO_TO_POSITIVE_W);
+   }
+
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VP_SCISSOR_COUNT)) {
       for (unsigned i = dyn->vp.scissor_count; i < NVK_MAX_VIEWPORTS; i++)
          P_IMMD(p, NV9097, SET_SCISSOR_ENABLE(i), V_FALSE);
@@ -765,6 +772,21 @@ nvk_flush_vp_state(struct nvk_cmd_buffer *cmd)
          });
       }
    }
+}
+
+static uint32_t
+vk_to_nv9097_polygon_mode(VkPolygonMode vk_mode)
+{
+   ASSERTED uint16_t vk_to_nv9097[] = {
+      [VK_POLYGON_MODE_FILL]  = NV9097_SET_FRONT_POLYGON_MODE_V_FILL,
+      [VK_POLYGON_MODE_LINE]  = NV9097_SET_FRONT_POLYGON_MODE_V_LINE,
+      [VK_POLYGON_MODE_POINT] = NV9097_SET_FRONT_POLYGON_MODE_V_POINT,
+   };
+   assert(vk_mode < ARRAY_SIZE(vk_to_nv9097));
+
+   uint32_t nv9097_mode = 0x1b00 | (2 - vk_mode);
+   assert(nv9097_mode == vk_to_nv9097[vk_mode]);
+   return nv9097_mode;
 }
 
 static uint32_t
@@ -798,16 +820,33 @@ vk_to_nv9097_front_face(VkFrontFace vk_face)
    return nv9097_face;
 }
 
+static uint32_t
+vk_to_nv9097_provoking_vertex(VkProvokingVertexModeEXT vk_mode)
+{
+   STATIC_ASSERT(VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT ==
+                 NV9097_SET_PROVOKING_VERTEX_V_FIRST);
+   STATIC_ASSERT(VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT ==
+                 NV9097_SET_PROVOKING_VERTEX_V_LAST);
+   return vk_mode;
+}
+
 static void
 nvk_flush_rs_state(struct nvk_cmd_buffer *cmd)
 {
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 23);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 32);
 
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_RASTERIZER_DISCARD_ENABLE))
       P_IMMD(p, NV9097, SET_RASTER_ENABLE, !dyn->rs.rasterizer_discard_enable);
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_POLYGON_MODE)) {
+      uint32_t polygon_mode = vk_to_nv9097_polygon_mode(dyn->rs.polygon_mode);
+      P_MTHD(p, NV9097, SET_FRONT_POLYGON_MODE);
+      P_NV9097_SET_FRONT_POLYGON_MODE(p, polygon_mode);
+      P_NV9097_SET_BACK_POLYGON_MODE(p, polygon_mode);
+   }
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_CULL_MODE)) {
       P_IMMD(p, NV9097, OGL_SET_CULL, dyn->rs.cull_mode != VK_CULL_MODE_NONE);
@@ -821,6 +860,11 @@ nvk_flush_rs_state(struct nvk_cmd_buffer *cmd)
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_FRONT_FACE)) {
       P_IMMD(p, NV9097, OGL_SET_FRONT_FACE,
          vk_to_nv9097_front_face(dyn->rs.front_face));
+   }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_PROVOKING_VERTEX)) {
+      P_IMMD(p, NV9097, SET_PROVOKING_VERTEX,
+             vk_to_nv9097_provoking_vertex(dyn->rs.provoking_vertex));
    }
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_DEPTH_BIAS_ENABLE)) {
@@ -841,6 +885,9 @@ nvk_flush_rs_state(struct nvk_cmd_buffer *cmd)
       P_NV9097_SET_LINE_WIDTH_FLOAT(p, fui(dyn->rs.line.width));
       P_NV9097_SET_ALIASED_LINE_WIDTH_FLOAT(p, fui(dyn->rs.line.width));
    }
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_LINE_STIPPLE_ENABLE))
+      P_IMMD(p, NV9097, SET_LINE_STIPPLE, dyn->rs.line.stipple.enable);
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_RS_LINE_STIPPLE)) {
       P_IMMD(p, NV9097, SET_LINE_STIPPLE_PARAMETERS, {
@@ -986,10 +1033,13 @@ vk_to_nv9097_logic_op(VkLogicOp vk_op)
 static void
 nvk_flush_cb_state(struct nvk_cmd_buffer *cmd)
 {
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 7);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 9);
 
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
+
+   if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE))
+      P_IMMD(p, NV9097, SET_LOGIC_OP, dyn->cb.logic_op_enable);
 
    if (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_CB_LOGIC_OP)) {
       const uint32_t func = vk_to_nv9097_logic_op(dyn->cb.logic_op);
