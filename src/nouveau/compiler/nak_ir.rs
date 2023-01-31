@@ -440,6 +440,63 @@ impl InstrRefs {
     }
 }
 
+pub enum PredSetOp {
+    Set,
+    And,
+    Or,
+    Xor,
+    AndNot,
+    OrNot,
+    XorNot,
+}
+
+pub enum CmpOp {
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+}
+
+impl fmt::Display for CmpOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CmpOp::Eq => write!(f, "EQ"),
+            CmpOp::Ne => write!(f, "NE"),
+            CmpOp::Lt => write!(f, "LT"),
+            CmpOp::Le => write!(f, "LE"),
+            CmpOp::Gt => write!(f, "GT"),
+            CmpOp::Ge => write!(f, "GE"),
+        }
+    }
+}
+
+pub enum IntCmpType {
+    U32,
+    I32,
+}
+
+impl fmt::Display for IntCmpType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            IntCmpType::U32 => write!(f, "U32"),
+            IntCmpType::I32 => write!(f, "I32"),
+        }
+    }
+}
+
+pub struct IntCmpOp {
+    pub cmp_op: CmpOp,
+    pub cmp_type: IntCmpType,
+}
+
+impl fmt::Display for IntCmpOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}.{}", self.cmp_op, self.cmp_type)
+    }
+}
+
 pub struct LogicOp {
     pub lut: u8,
 }
@@ -745,6 +802,20 @@ impl Instr {
         Instr::new(Opcode::IADD3, slice::from_ref(&dst), &[Src::Zero, x, y])
     }
 
+    pub fn new_isetp(
+        dst: Dst,
+        cmp_type: IntCmpType,
+        cmp_op: CmpOp,
+        x: Src,
+        y: Src,
+    ) -> Instr {
+        let op = IntCmpOp {
+            cmp_type: cmp_type,
+            cmp_op: cmp_op,
+        };
+        Instr::new(Opcode::ISETP(op), slice::from_ref(&dst), &[x, y])
+    }
+
     pub fn new_lop3(dst: Dst, op: LogicOp, x: Src, y: Src, z: Src) -> Instr {
         Instr::new(Opcode::LOP3(op), slice::from_ref(&dst), &[x, y, z])
     }
@@ -872,6 +943,7 @@ impl Instr {
             | Opcode::FMUL
             | Opcode::IADD3
             | Opcode::LOP3(_)
+            | Opcode::ISETP(_)
             | Opcode::SHL => Some(6),
             Opcode::MOV => Some(15),
             Opcode::S2R(_) => None,
@@ -919,6 +991,7 @@ pub enum Opcode {
 
     IADD3,
     LOP3(LogicOp),
+    ISETP(IntCmpOp),
     SHL,
 
     S2R(u8),
@@ -947,6 +1020,7 @@ impl fmt::Display for Opcode {
             Opcode::FMUL => write!(f, "FMUL"),
             Opcode::IADD3 => write!(f, "IADD3"),
             Opcode::LOP3(op) => write!(f, "LOP3.{}", op),
+            Opcode::ISETP(op) => write!(f, "ISETP.{}", op),
             Opcode::SHL => write!(f, "SHL"),
             Opcode::S2R(i) => write!(f, "S2R({})", i),
             Opcode::MOV => write!(f, "MOV"),

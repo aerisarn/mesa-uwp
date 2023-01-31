@@ -232,6 +232,40 @@ fn encode_lop3(bs: &mut impl BitSetMut, instr: &Instr, op: &LogicOp) {
     bs.set_bit(90, true);
 }
 
+fn encode_cmp_op(bs: &mut impl BitSetMut, range: Range<usize>, op: &CmpOp) {
+    assert!(range.len() == 3);
+    bs.set_field(
+        range,
+        match op {
+            CmpOp::Eq => 2_u8,
+            CmpOp::Ne => 5_u8,
+            CmpOp::Lt => 1_u8,
+            CmpOp::Le => 3_u8,
+            CmpOp::Gt => 4_u8,
+            CmpOp::Ge => 6_u8,
+        },
+    );
+}
+
+fn encode_isetp(bs: &mut impl BitSetMut, instr: &Instr, op: &IntCmpOp) {
+    encode_alu(bs, instr, 0x00c);
+
+    bs.set_field(
+        73..74,
+        match op.cmp_type {
+            IntCmpType::U32 => 0_u32,
+            IntCmpType::I32 => 1_u32,
+        },
+    );
+    bs.set_field(74..76, 0_u32); /* pred combine op */
+    encode_cmp_op(bs, 76..79, &op.cmp_op);
+
+    bs.set_field(84..87, 7_u32); /* dst1 */
+
+    bs.set_field(87..90, 7_u32); /* src pred */
+    bs.set_bit(90, false); /* src pred neg */
+}
+
 fn encode_shl(bs: &mut impl BitSetMut, instr: &Instr) {
     encode_alu(bs, instr, 0x019);
 
@@ -345,6 +379,7 @@ pub fn encode_instr(instr: &Instr) -> [u32; 4] {
         Opcode::MOV => encode_mov(&mut bs, instr),
         Opcode::IADD3 => encode_iadd3(&mut bs, instr),
         Opcode::LOP3(op) => encode_lop3(&mut bs, instr, &op),
+        Opcode::ISETP(op) => encode_isetp(&mut bs, instr, &op),
         Opcode::SHL => encode_shl(&mut bs, instr),
         Opcode::ALD(a) => encode_ald(&mut bs, instr, &a),
         Opcode::AST(a) => encode_ast(&mut bs, instr, &a),

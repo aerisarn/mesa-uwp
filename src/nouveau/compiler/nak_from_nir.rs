@@ -101,6 +101,42 @@ impl<'a> ShaderFromNir<'a> {
                     Src::Zero,
                 ));
             }
+            nir_op_ieq => {
+                self.instrs.push(Instr::new_isetp(
+                    dst,
+                    IntCmpType::I32,
+                    CmpOp::Eq,
+                    srcs[0],
+                    srcs[1],
+                ));
+            }
+            nir_op_ige => {
+                self.instrs.push(Instr::new_isetp(
+                    dst,
+                    IntCmpType::I32,
+                    CmpOp::Ge,
+                    srcs[0],
+                    srcs[1],
+                ));
+            }
+            nir_op_ilt => {
+                self.instrs.push(Instr::new_isetp(
+                    dst,
+                    IntCmpType::I32,
+                    CmpOp::Lt,
+                    srcs[0],
+                    srcs[1],
+                ));
+            }
+            nir_op_ine => {
+                self.instrs.push(Instr::new_isetp(
+                    dst,
+                    IntCmpType::I32,
+                    CmpOp::Ne,
+                    srcs[0],
+                    srcs[1],
+                ));
+            }
             nir_op_inot => {
                 self.instrs.push(Instr::new_lop3(
                     dst,
@@ -127,6 +163,24 @@ impl<'a> ShaderFromNir<'a> {
             }
             nir_op_pack_64_2x32_split => {
                 self.instrs.push(Instr::new_vec(dst, &[srcs[0], srcs[1]]));
+            }
+            nir_op_uge => {
+                self.instrs.push(Instr::new_isetp(
+                    dst,
+                    IntCmpType::U32,
+                    CmpOp::Ge,
+                    srcs[0],
+                    srcs[1],
+                ));
+            }
+            nir_op_ult => {
+                self.instrs.push(Instr::new_isetp(
+                    dst,
+                    IntCmpType::U32,
+                    CmpOp::Lt,
+                    srcs[0],
+                    srcs[1],
+                ));
             }
             _ => panic!("Unsupported ALU instruction"),
         }
