@@ -11,6 +11,7 @@ struct nouveau_ws_device;
 #include "nvk_cl9097.h"
 
 #define DATA_BO_SIZE 4096
+#define DATA_DWORDS 1024
 
 class mme_runner {
 public:
@@ -19,6 +20,9 @@ public:
 
    virtual void run_macro(const std::vector<uint32_t>& macro,
                           const std::vector<uint32_t>& params) = 0;
+
+   void mme_store_data(mme_builder *b, uint32_t dw_idx,
+                       mme_value data, bool free_reg = false);
 
    const nv_device_info *devinfo;
    uint64_t data_addr;
@@ -47,6 +51,32 @@ private:
    struct nouveau_ws_bo *push_bo;
    void *push_map;
    struct nv_push push;
+};
+
+class mme_fermi_sim_runner : public mme_runner {
+public:
+   mme_fermi_sim_runner(uint64_t data_addr);
+   virtual ~mme_fermi_sim_runner();
+
+   virtual void run_macro(const std::vector<uint32_t>& macro,
+                          const std::vector<uint32_t>& params);
+
+private:
+   struct nv_device_info info;
+   uint32_t data_store[DATA_DWORDS];
+};
+
+class mme_tu104_sim_runner : public mme_runner {
+public:
+   mme_tu104_sim_runner(uint64_t data_addr);
+   virtual ~mme_tu104_sim_runner();
+
+   virtual void run_macro(const std::vector<uint32_t>& macro,
+                          const std::vector<uint32_t>& params);
+
+private:
+   struct nv_device_info info;
+   uint32_t data_store[DATA_DWORDS];
 };
 
 inline std::vector<uint32_t>

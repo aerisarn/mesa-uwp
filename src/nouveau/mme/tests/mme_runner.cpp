@@ -7,6 +7,8 @@
 #include "mme_fermi_sim.h"
 #include "mme_tu104_sim.h"
 
+#include "nvk_clc597.h"
+
 #include "nouveau_bo.h"
 #include "nouveau_context.h"
 
@@ -27,6 +29,13 @@ mme_hw_runner::mme_hw_runner() :
   data_bo(NULL), push_bo(NULL), push_map(NULL)
 {
    memset(&push, 0, sizeof(push));
+}
+
+void
+mme_runner::mme_store_data(mme_builder *b, uint32_t dw_idx,
+                           mme_value data, bool free_reg)
+{
+   mme_store_imm_addr(b, data_addr + dw_idx * 4, data, free_reg);
 }
 
 mme_hw_runner::~mme_hw_runner()
@@ -177,4 +186,70 @@ mme_hw_runner::run_macro(const std::vector<uint32_t>& macro,
    }
 
    submit_push();
+}
+
+mme_fermi_sim_runner::mme_fermi_sim_runner(uint64_t data_addr)
+{
+   memset(&info, 0, sizeof(info));
+   info.cls_eng3d = FERMI_A;
+
+   memset(data_store, 0, sizeof(data_store));
+
+   this->devinfo = &info;
+   this->data_addr = data_addr,
+   this->data = data_store;
+}
+
+mme_fermi_sim_runner::~mme_fermi_sim_runner()
+{ }
+
+void
+mme_fermi_sim_runner::run_macro(const std::vector<uint32_t>& macro,
+                                const std::vector<uint32_t>& params)
+{
+   std::vector<mme_fermi_inst> insts(macro.size());
+   mme_fermi_decode(&insts[0], &macro[0], macro.size());
+
+   /* First, make a copy of the data and simulate the macro */
+   mme_fermi_sim_mem sim_mem = {
+      .addr = data_addr,
+      .data = data,
+      .size = DATA_BO_SIZE,
+   };
+   mme_fermi_sim(insts.size(), &insts[0],
+                 params.size(), &params[0],
+                 1, &sim_mem);
+}
+
+mme_tu104_sim_runner::mme_tu104_sim_runner(uint64_t data_addr)
+{
+   memset(&info, 0, sizeof(info));
+   info.cls_eng3d = TURING_A;
+
+   memset(data_store, 0, sizeof(data_store));
+
+   this->devinfo = &info;
+   this->data_addr = data_addr,
+   this->data = data_store;
+}
+
+mme_tu104_sim_runner::~mme_tu104_sim_runner()
+{ }
+
+void
+mme_tu104_sim_runner::run_macro(const std::vector<uint32_t>& macro,
+                               const std::vector<uint32_t>& params)
+{
+   std::vector<mme_tu104_inst> insts(macro.size());
+   mme_tu104_decode(&insts[0], &macro[0], macro.size());
+
+   /* First, make a copy of the data and simulate the macro */
+   mme_tu104_sim_mem sim_mem = {
+      .addr = data_addr,
+      .data = data,
+      .size = DATA_BO_SIZE,
+   };
+   mme_tu104_sim(insts.size(), &insts[0],
+                 params.size(), &params[0],
+                 1, &sim_mem);
 }

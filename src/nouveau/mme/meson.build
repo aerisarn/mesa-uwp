@@ -109,6 +109,24 @@ idep_nouveau_mme = declare_dependency(
 )
 
 if with_tests and not with_platform_android
+  test('mme_builder',
+    executable(
+      'mme_builder_test',
+      files('tests/mme_runner.cpp', 'tests/mme_builder_test.cpp'),
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+      dependencies : [
+        dep_libdrm,
+        idep_gtest,
+        idep_mesautil,
+        idep_nvidia_headers,
+        idep_nouveau_mme,
+        idep_nouveau_ws
+      ],
+    ),
+    suite : ['nouveau'],
+  )
+
   executable(
     'mme_fermi_sim_hw_test',
     files('tests/mme_runner.cpp', 'tests/mme_fermi_sim_hw_test.cpp'),
