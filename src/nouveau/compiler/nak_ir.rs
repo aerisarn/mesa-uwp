@@ -454,7 +454,8 @@ pub enum PredSetOp {
     XorNot,
 }
 
-pub enum CmpOp {
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+pub enum IntCmpOp {
     Eq,
     Ne,
     Lt,
@@ -463,15 +464,15 @@ pub enum CmpOp {
     Ge,
 }
 
-impl fmt::Display for CmpOp {
+impl fmt::Display for IntCmpOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CmpOp::Eq => write!(f, "EQ"),
-            CmpOp::Ne => write!(f, "NE"),
-            CmpOp::Lt => write!(f, "LT"),
-            CmpOp::Le => write!(f, "LE"),
-            CmpOp::Gt => write!(f, "GT"),
-            CmpOp::Ge => write!(f, "GE"),
+            IntCmpOp::Eq => write!(f, "EQ"),
+            IntCmpOp::Ne => write!(f, "NE"),
+            IntCmpOp::Lt => write!(f, "LT"),
+            IntCmpOp::Le => write!(f, "LE"),
+            IntCmpOp::Gt => write!(f, "GT"),
+            IntCmpOp::Ge => write!(f, "GE"),
         }
     }
 }
@@ -817,7 +818,7 @@ impl fmt::Display for OpIAdd3 {
 pub struct OpISetP {
     pub dst: Dst,
 
-    pub cmp_op: CmpOp,
+    pub cmp_op: IntCmpOp,
     pub cmp_type: IntCmpType,
 
     pub srcs: [Src; 2],
@@ -1361,7 +1362,7 @@ impl Instr {
     pub fn new_isetp(
         dst: Dst,
         cmp_type: IntCmpType,
-        cmp_op: CmpOp,
+        cmp_op: IntCmpOp,
         x: Src,
         y: Src,
     ) -> Instr {

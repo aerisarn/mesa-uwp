@@ -311,17 +311,17 @@ impl SM75Instr {
         self.set_pred_src(84..87, op.carry[1]);
     }
 
-    fn set_cmp_op(&mut self, range: Range<usize>, op: &CmpOp) {
+    fn set_int_cmp_op(&mut self, range: Range<usize>, op: IntCmpOp) {
         assert!(range.len() == 3);
         self.set_field(
             range,
             match op {
-                CmpOp::Eq => 2_u8,
-                CmpOp::Ne => 5_u8,
-                CmpOp::Lt => 1_u8,
-                CmpOp::Le => 3_u8,
-                CmpOp::Gt => 4_u8,
-                CmpOp::Ge => 6_u8,
+                IntCmpOp::Eq => 2_u8,
+                IntCmpOp::Ne => 5_u8,
+                IntCmpOp::Lt => 1_u8,
+                IntCmpOp::Le => 3_u8,
+                IntCmpOp::Gt => 4_u8,
+                IntCmpOp::Ge => 6_u8,
             },
         );
     }
@@ -343,7 +343,7 @@ impl SM75Instr {
             },
         );
         self.set_field(74..76, 0_u32); /* pred combine op */
-        self.set_cmp_op(76..79, &op.cmp_op);
+        self.set_int_cmp_op(76..79, op.cmp_op);
 
         self.set_pred_dst(81..84, op.dst);
         self.set_field(84..87, 7_u32); /* dst1 */

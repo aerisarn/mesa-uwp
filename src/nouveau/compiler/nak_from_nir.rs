@@ -126,7 +126,7 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs.push(Instr::new_isetp(
                     dst,
                     IntCmpType::I32,
-                    CmpOp::Eq,
+                    IntCmpOp::Eq,
                     srcs[0],
                     srcs[1],
                 ));
@@ -135,7 +135,7 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs.push(Instr::new_isetp(
                     dst,
                     IntCmpType::I32,
-                    CmpOp::Ge,
+                    IntCmpOp::Ge,
                     srcs[0],
                     srcs[1],
                 ));
@@ -144,7 +144,7 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs.push(Instr::new_isetp(
                     dst,
                     IntCmpType::I32,
-                    CmpOp::Lt,
+                    IntCmpOp::Lt,
                     srcs[0],
                     srcs[1],
                 ));
@@ -153,7 +153,7 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs.push(Instr::new_isetp(
                     dst,
                     IntCmpType::I32,
-                    CmpOp::Ne,
+                    IntCmpOp::Ne,
                     srcs[0],
                     srcs[1],
                 ));
@@ -209,7 +209,7 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs.push(Instr::new_isetp(
                     dst,
                     IntCmpType::U32,
-                    CmpOp::Ge,
+                    IntCmpOp::Ge,
                     srcs[0],
                     srcs[1],
                 ));
@@ -218,7 +218,7 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs.push(Instr::new_isetp(
                     dst,
                     IntCmpType::U32,
-                    CmpOp::Lt,
+                    IntCmpOp::Lt,
                     srcs[0],
                     srcs[1],
                 ));
