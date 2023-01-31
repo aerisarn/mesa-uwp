@@ -1,5 +1,8 @@
 #include "nvk_cmd_buffer.h"
 
+#include "nvk_image.h"
+#include "nvk_image_view.h"
+
 #include "nvk_cl9097.h"
 
 static void
@@ -113,4 +116,144 @@ nvk_CmdClearAttachments(VkCommandBuffer commandBuffer,
    /* No color clears */
    if (clear_depth || clear_stencil)
       emit_clear_rects(cmd, -1, clear_depth, clear_stencil, rectCount, pRects);
+}
+
+static VkImageViewType
+render_view_type(VkImageType image_type, unsigned layer_count)
+{
+   switch (image_type) {
+   case VK_IMAGE_TYPE_1D:
+      return layer_count == 1 ? VK_IMAGE_VIEW_TYPE_1D :
+                                VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+   case VK_IMAGE_TYPE_2D:
+   case VK_IMAGE_TYPE_3D:
+      return layer_count == 1 ? VK_IMAGE_VIEW_TYPE_2D :
+                                VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+   default:
+      unreachable("Invalid image type");
+   }
+}
+
+static void
+clear_image(struct nvk_cmd_buffer *cmd,
+            struct nvk_image *image,
+            VkImageLayout image_layout,
+            VkFormat format,
+            const VkClearValue *clear_value,
+            uint32_t range_count,
+            const VkImageSubresourceRange *ranges)
+{
+   struct nvk_device *dev = nvk_cmd_buffer_device(cmd);
+   ASSERTED VkResult result;
+
+   for (uint32_t r = 0; r < range_count; r++) {
+      const uint32_t level_count =
+         vk_image_subresource_level_count(&image->vk, &ranges[r]);
+
+      for (uint32_t l = 0; l < level_count; l++) {
+         const uint32_t level = ranges[r].baseMipLevel + l;
+
+         const VkExtent3D level_extent =
+            vk_image_mip_level_extent(&image->vk, level);
+
+         uint32_t base_array_layer, layer_count;
+         if (image->vk.image_type == VK_IMAGE_TYPE_3D) {
+            base_array_layer = 0;
+            layer_count = level_extent.depth;
+         } else {
+            base_array_layer = ranges[r].baseArrayLayer;
+            layer_count = vk_image_subresource_layer_count(&image->vk,
+                                                           &ranges[r]);
+         }
+
+         const VkImageViewCreateInfo view_info = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image = nvk_image_to_handle(image),
+            .viewType = render_view_type(image->vk.image_type, layer_count),
+            .format = format,
+            .subresourceRange = {
+               .aspectMask = image->vk.aspects,
+               .baseMipLevel = level,
+               .levelCount = 1,
+               .baseArrayLayer = base_array_layer,
+               .layerCount = layer_count,
+            },
+         };
+
+         struct nvk_image_view view;
+         result = nvk_image_view_init(dev, &view, true, &view_info);
+         assert(result == VK_SUCCESS);
+
+         VkRenderingInfo render = {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+            .renderArea = {
+               .offset = { 0, 0 },
+               .extent = { level_extent.width, level_extent.height },
+            },
+            .layerCount = layer_count,
+         };
+
+         VkRenderingAttachmentInfo vk_att = {
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView = nvk_image_view_to_handle(&view),
+            .imageLayout = image_layout,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .clearValue = *clear_value,
+         };
+
+         if (ranges[r].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
+            render.colorAttachmentCount = 1;
+            render.pColorAttachments = &vk_att;
+         }
+         if (ranges[r].aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
+            render.pDepthAttachment = &vk_att;
+         if (ranges[r].aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
+            render.pStencilAttachment = &vk_att;
+
+         nvk_CmdBeginRendering(nvk_cmd_buffer_to_handle(cmd), &render);
+         nvk_CmdEndRendering(nvk_cmd_buffer_to_handle(cmd));
+
+         nvk_image_view_finish(dev, &view);
+      }
+   }
+}
+
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdClearColorImage(VkCommandBuffer commandBuffer,
+                       VkImage _image,
+                       VkImageLayout imageLayout,
+                       const VkClearColorValue *pColor,
+                       uint32_t rangeCount,
+                       const VkImageSubresourceRange *pRanges)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_image, image, _image);
+
+   const VkClearValue clear_value = {
+      .color = *pColor,
+   };
+
+   clear_image(cmd, image, imageLayout, image->vk.format,
+               &clear_value, rangeCount, pRanges);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
+                              VkImage _image,
+                              VkImageLayout imageLayout,
+                              const VkClearDepthStencilValue *pDepthStencil,
+                              uint32_t rangeCount,
+                              const VkImageSubresourceRange *pRanges)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_image, image, _image);
+
+   const VkClearValue clear_value = {
+      .depthStencil = *pDepthStencil,
+   };
+
+   clear_image(cmd, image, imageLayout, image->vk.format,
+               &clear_value, rangeCount, pRanges);
 }
