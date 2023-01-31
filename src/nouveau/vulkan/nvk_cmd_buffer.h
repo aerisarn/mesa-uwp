@@ -4,6 +4,7 @@
 #include "nvk_private.h"
 
 #include "nouveau_push.h"
+#include "nvk_descriptor_set.h"
 
 #include "vulkan/runtime/vk_command_buffer.h"
 #include "vulkan/runtime/vk_command_pool.h"
@@ -38,6 +39,7 @@ struct nvk_root_descriptor_table {
    uint64_t sets[NVK_MAX_SETS];
 
    /* TODO: Dynamic buffer bindings */
+   struct nvk_buffer_address dynamic_buffers[NVK_MAX_DYNAMIC_BUFFERS];
 };
 
 struct nvk_descriptor_state {

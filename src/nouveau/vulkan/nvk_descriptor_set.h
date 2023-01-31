@@ -51,6 +51,8 @@ struct nvk_descriptor_set {
    uint32_t bo_offset;
    struct nouveau_ws_bo *bo;
    void *mapped_ptr;
+
+   struct nvk_buffer_address dynamic_buffers[];
 };
 
 VK_DEFINE_HANDLE_CASTS(nvk_descriptor_set, base, VkDescriptorSet,

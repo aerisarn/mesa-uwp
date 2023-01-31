@@ -21,10 +21,13 @@ nvk_CreatePipelineLayout(VkDevice _device,
 
    layout->num_sets = pCreateInfo->setLayoutCount;
 
+   uint8_t dynamic_buffer_count = 0;
    for (uint32_t s = 0; s < pCreateInfo->setLayoutCount; s++) {
       VK_FROM_HANDLE(nvk_descriptor_set_layout, set_layout,
                      pCreateInfo->pSetLayouts[s]);
       layout->set[s].layout = nvk_descriptor_set_layout_ref(set_layout);
+      layout->set[s].dynamic_buffer_start = dynamic_buffer_count;
+      dynamic_buffer_count += set_layout->dynamic_buffer_count;
    }
 
    struct mesa_sha1 sha1_ctx;

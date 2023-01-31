@@ -24,7 +24,10 @@ struct nvk_descriptor_set_binding_layout {
    uint32_t offset;
 
    /* Stride between array elements in the descriptor buffer */
-   uint32_t stride;
+   uint8_t stride;
+
+   /* Index into the dynamic buffer binding array */
+   uint8_t dynamic_buffer_index;
 
    /* Immutable samplers (or NULL if no immutable samplers) */
    struct nvk_sampler **immutable_samplers;
@@ -39,6 +42,9 @@ struct nvk_descriptor_set_layout {
 
    /* Size of the descriptor buffer for this descriptor set */
    uint32_t descriptor_buffer_size;
+
+   /* Number of dynamic UBO bindings in this set */
+   uint8_t dynamic_buffer_count;
 
    /* Number of bindings in this descriptor set */
    uint32_t binding_count;

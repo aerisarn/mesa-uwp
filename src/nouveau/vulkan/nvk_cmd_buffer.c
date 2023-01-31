@@ -1,8 +1,10 @@
 #include "nvk_cmd_buffer.h"
 
 #include "nvk_descriptor_set.h"
+#include "nvk_descriptor_set_layout.h"
 #include "nvk_device.h"
 #include "nvk_pipeline.h"
+#include "nvk_pipeline_layout.h"
 #include "nvk_physical_device.h"
 
 #include "nouveau_push.h"
@@ -379,7 +381,7 @@ nvk_CmdBindPipeline(VkCommandBuffer commandBuffer,
 VKAPI_ATTR void VKAPI_CALL
 nvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
                           VkPipelineBindPoint pipelineBindPoint,
-                          VkPipelineLayout _layout,
+                          VkPipelineLayout layout,
                           uint32_t firstSet,
                           uint32_t descriptorSetCount,
                           const VkDescriptorSet *pDescriptorSets,
@@ -387,12 +389,16 @@ nvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
                           const uint32_t *pDynamicOffsets)
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_pipeline_layout, pipeline_layout, layout);
    struct nvk_descriptor_state *desc =
       nvk_get_descriptors_state(cmd, pipelineBindPoint);
 
-   for (unsigned i = 0; i < descriptorSetCount; ++i) {
+   uint32_t next_dyn_offset = 0;
+   for (uint32_t i = 0; i < descriptorSetCount; ++i) {
       unsigned set_idx = i + firstSet;
       VK_FROM_HANDLE(nvk_descriptor_set, set, pDescriptorSets[i]);
+      const struct nvk_descriptor_set_layout *set_layout =
+         pipeline_layout->set[set_idx].layout;
 
       if (desc->sets[set_idx] != set) {
          nvk_push_descriptor_set_ref(cmd->push, set);
@@ -401,6 +407,17 @@ nvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
          desc->sets_dirty |= BITFIELD_BIT(set_idx);
       }
 
-      /* TODO: Dynamic buffers */
+      if (set_layout->dynamic_buffer_count > 0) {
+         const uint32_t dynamic_buffer_start =
+            pipeline_layout->set[set_idx].dynamic_buffer_start;
+
+         for (uint32_t j = 0; j < set_layout->dynamic_buffer_count; j++) {
+            struct nvk_buffer_address addr = set->dynamic_buffers[j];
+            addr.base_addr += pDynamicOffsets[next_dyn_offset + j];
+            desc->root.dynamic_buffers[dynamic_buffer_start + j] = addr;
+         }
+         next_dyn_offset += set->layout->dynamic_buffer_count;
+      }
    }
+   assert(next_dyn_offset <= dynamicOffsetCount);
 }

@@ -38,9 +38,12 @@ nvk_descriptor_stride_align_for_type(VkDescriptorType type,
 
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+      *stride = *align = sizeof(struct nvk_buffer_address);
+      break;
+
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-      *stride = *align = sizeof(struct nvk_buffer_address);
+      *stride = *align = 0; /* These don't take up buffer space */
       break;
 
    case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
@@ -132,6 +135,7 @@ nvk_CreateDescriptorSetLayout(VkDevice _device,
                            MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE);
 
    uint32_t buffer_size = 0;
+   uint8_t dynamic_buffer_count = 0;
    for (uint32_t b = 0; b < num_bindings; b++) {
       /* We stashed the pCreateInfo->pBindings[] index (plus one) in the
      * immutable_samplers pointer.  Check for NULL (empty binding) and then
@@ -158,6 +162,16 @@ nvk_CreateDescriptorSetLayout(VkDevice _device,
 
       layout->binding[b].array_size = binding->descriptorCount;
 
+      switch (binding->descriptorType) {
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+         layout->binding[b].dynamic_buffer_index = dynamic_buffer_count;
+         dynamic_buffer_count += binding->descriptorCount;
+         break;
+      default:
+         break;
+      }
+
       const VkMutableDescriptorTypeListVALVE *type_list = NULL;
       if (binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE) {
          assert(mutable_info != NULL);
@@ -169,6 +183,7 @@ nvk_CreateDescriptorSetLayout(VkDevice _device,
       nvk_descriptor_stride_align_for_type(binding->descriptorType, type_list,
                                            &stride, &align);
 
+      assert(stride <= UINT8_MAX);
       layout->binding[b].offset = ALIGN_POT(buffer_size, align);
       layout->binding[b].stride = stride;
       buffer_size += stride * binding->descriptorCount;
@@ -184,12 +199,14 @@ nvk_CreateDescriptorSetLayout(VkDevice _device,
    }
 
    layout->descriptor_buffer_size = buffer_size;
+   layout->dynamic_buffer_count = dynamic_buffer_count;
 
    struct mesa_sha1 sha1_ctx;
    _mesa_sha1_init(&sha1_ctx);
 
 #define SHA1_UPDATE_VALUE(x) _mesa_sha1_update(&sha1_ctx, &(x), sizeof(x));
    SHA1_UPDATE_VALUE(layout->descriptor_buffer_size);
+   SHA1_UPDATE_VALUE(layout->dynamic_buffer_count);
    SHA1_UPDATE_VALUE(layout->binding_count);
 
    for (uint32_t b = 0; b < num_bindings; b++) {
@@ -198,6 +215,7 @@ nvk_CreateDescriptorSetLayout(VkDevice _device,
       SHA1_UPDATE_VALUE(layout->binding[b].array_size);
       SHA1_UPDATE_VALUE(layout->binding[b].offset);
       SHA1_UPDATE_VALUE(layout->binding[b].stride);
+      SHA1_UPDATE_VALUE(layout->binding[b].dynamic_buffer_index);
       /* Immutable samplers are ignored for now */
    }
 #undef SHA1_UPDATE_VALUE

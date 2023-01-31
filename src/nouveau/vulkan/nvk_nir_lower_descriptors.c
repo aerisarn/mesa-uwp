@@ -38,6 +38,21 @@ load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
    if (ctx->clamp_desc_array_bounds)
       index = nir_umin(b, index, nir_imm_int(b, binding_layout->array_size - 1));
 
+   if (binding_layout->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
+       binding_layout->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
+      /* Get the index in the root descriptor table dynamic_buffers array. */
+      index = nir_iadd_imm(b, index,
+                           ctx->layout->set[set].dynamic_buffer_start +
+                           binding_layout->dynamic_buffer_index);
+
+      nir_ssa_def *root_desc_offset =
+         nir_iadd_imm(b, nir_imul_imm(b, index, sizeof(struct nvk_buffer_address)),
+                      offsetof(struct nvk_root_descriptor_table, dynamic_buffers));
+
+      return nir_load_ubo(b, 4, 32, nir_imm_int(b, 0), root_desc_offset,
+                          .align_mul = 16, .align_offset = 0, .range = ~0);
+   }
+
    assert(binding_layout->stride > 0);
    nir_ssa_def *desc_ubo_offset =
       nir_iadd_imm(b, nir_imul_imm(b, index, binding_layout->stride),

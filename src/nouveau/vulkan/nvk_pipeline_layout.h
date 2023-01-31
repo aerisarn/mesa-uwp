@@ -16,6 +16,7 @@ struct nvk_pipeline_layout {
 
    struct {
       struct nvk_descriptor_set_layout *layout;
+      uint8_t dynamic_buffer_start;
    } set[NVK_MAX_SETS];
 };
 

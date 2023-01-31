@@ -83,6 +83,23 @@ write_buffer_desc(struct nvk_descriptor_set *set,
 }
 
 static void
+write_dynamic_buffer_desc(struct nvk_descriptor_set *set,
+                          const VkDescriptorBufferInfo *const info,
+                          uint32_t binding, uint32_t elem)
+{
+   VK_FROM_HANDLE(nvk_buffer, buffer, info->buffer);
+   const struct nvk_descriptor_set_binding_layout *binding_layout =
+      &set->layout->binding[binding];
+
+   struct nvk_buffer_address *desc =
+      &set->dynamic_buffers[binding_layout->dynamic_buffer_index + elem];
+   *desc = (struct nvk_buffer_address){
+      .base_addr = nvk_buffer_address(buffer, info->offset),
+      .size = vk_buffer_range(&buffer->vk, info->offset, info->range),
+   };
+}
+
+static void
 write_buffer_view_desc(struct nvk_descriptor_set *set,
                        const VkBufferView bufferView,
                        uint32_t binding, uint32_t elem)
@@ -164,7 +181,12 @@ nvk_UpdateDescriptorSets(VkDevice device,
 
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-         unreachable("Dynamic buffers not yet supported");
+         for (uint32_t j = 0; j < write->descriptorCount; j++) {
+            write_dynamic_buffer_desc(set, write->pBufferInfo + j,
+                                      write->dstBinding,
+                                      write->dstArrayElement + j);
+         }
+         break;
 
       case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK: {
          const VkWriteDescriptorSetInlineUniformBlock *write_inline =
@@ -308,8 +330,11 @@ nvk_descriptor_set_create(struct nvk_device *device, struct nvk_descriptor_pool 
                           struct nvk_descriptor_set **out_set)
 {
    struct nvk_descriptor_set *set;
-   uint32_t mem_size = sizeof(struct nvk_descriptor_set);
-   set = vk_zalloc2(&device->vk.alloc, NULL, mem_size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
+   uint32_t mem_size = sizeof(struct nvk_descriptor_set) +
+      layout->dynamic_buffer_count * sizeof(struct nvk_buffer_address);
+   set = vk_zalloc2(&device->vk.alloc, NULL, mem_size, 8,
+                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!set)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
