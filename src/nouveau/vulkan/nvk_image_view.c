@@ -106,7 +106,7 @@ nvk_image_view_init(struct nvk_device *device,
    if (view->vk.usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
                          VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
       uint32_t tic[8];
-      nil_image_fill_tic(nvk_device_physical(device)->dev,
+      nil_image_fill_tic(&nvk_device_physical(device)->info,
                          &nil_image, &nil_view, base_addr, tic);
 
       result = nvk_descriptor_table_add(device, &device->images,
@@ -138,7 +138,7 @@ nvk_image_view_init(struct nvk_device *device,
       }
 
       uint32_t tic[8];
-      nil_image_fill_tic(nvk_device_physical(device)->dev,
+      nil_image_fill_tic(&nvk_device_physical(device)->info,
                          &nil_image, &nil_view, base_addr, tic);
 
       result = nvk_descriptor_table_add(device, &device->images,

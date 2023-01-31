@@ -50,7 +50,7 @@ nvk_CreateBufferView(VkDevice _device,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    uint32_t desc[8];
-   nil_buffer_fill_tic(nvk_device_physical(device)->dev,
+   nil_buffer_fill_tic(&nvk_device_physical(device)->info,
                        nvk_buffer_address(buffer, view->vk.offset),
                        vk_format_to_pipe_format(view->vk.format),
                        view->vk.elements, desc);

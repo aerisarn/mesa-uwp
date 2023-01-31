@@ -262,7 +262,7 @@ nvk_image_init(struct nvk_device *device,
       .usage = usage,
    };
 
-   ASSERTED bool ok = nil_image_init(nvk_device_physical(device)->dev,
+   ASSERTED bool ok = nil_image_init(&nvk_device_physical(device)->info,
                                      &image->nil, &nil_info);
    assert(ok);
 

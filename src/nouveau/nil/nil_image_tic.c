@@ -281,8 +281,7 @@ nil_normalize_extent(const struct nil_image *image,
 }
 
 static void
-nv9097_nil_image_fill_tic(struct nouveau_ws_device *dev,
-                          const struct nil_image *image,
+nv9097_nil_image_fill_tic(const struct nil_image *image,
                           const struct nil_view *view,
                           uint64_t base_address,
                           void *desc_out)
@@ -357,8 +356,7 @@ nv9097_nil_image_fill_tic(struct nouveau_ws_device *dev,
 }
 
 static void
-nvb097_nil_image_fill_tic(struct nouveau_ws_device *dev,
-                          const struct nil_image *image,
+nvb097_nil_image_fill_tic(const struct nil_image *image,
                           const struct nil_view *view,
                           uint64_t base_address,
                           void *desc_out)
@@ -439,8 +437,7 @@ static const enum pipe_swizzle IDENTITY_SWIZZLE[4] = {
 };
 
 static void
-nv9097_nil_buffer_fill_tic(struct nouveau_ws_device *dev,
-                           uint64_t base_address,
+nv9097_nil_buffer_fill_tic(uint64_t base_address,
                            enum pipe_format format,
                            uint32_t num_elements,
                            void *desc_out)
@@ -464,8 +461,7 @@ nv9097_nil_buffer_fill_tic(struct nouveau_ws_device *dev,
 }
 
 static void
-nvb097_nil_buffer_fill_tic(struct nouveau_ws_device *dev,
-                           uint64_t base_address,
+nvb097_nil_buffer_fill_tic(uint64_t base_address,
                            enum pipe_format format,
                            uint32_t num_elements,
                            void *desc_out)
@@ -493,32 +489,32 @@ nvb097_nil_buffer_fill_tic(struct nouveau_ws_device *dev,
 }
 
 void
-nil_image_fill_tic(struct nouveau_ws_device *dev,
+nil_image_fill_tic(struct nv_device_info *dev,
                    const struct nil_image *image,
                    const struct nil_view *view,
                    uint64_t base_address,
                    void *desc_out)
 {
-   if (dev->info.cls_eng3d >= MAXWELL_A) {
-      nvb097_nil_image_fill_tic(dev, image, view, base_address, desc_out);
-   } else if (dev->info.cls_eng3d >= FERMI_A) {
-      nv9097_nil_image_fill_tic(dev, image, view, base_address, desc_out);
+   if (dev->cls_eng3d >= MAXWELL_A) {
+      nvb097_nil_image_fill_tic(image, view, base_address, desc_out);
+   } else if (dev->cls_eng3d >= FERMI_A) {
+      nv9097_nil_image_fill_tic(image, view, base_address, desc_out);
    } else {
       unreachable("Tesla and older not supported");
    }
 }
 
 void
-nil_buffer_fill_tic(struct nouveau_ws_device *dev,
+nil_buffer_fill_tic(struct nv_device_info *dev,
                     uint64_t base_address,
                     enum pipe_format format,
                     uint32_t num_elements,
                     void *desc_out)
 {
-   if (dev->info.cls_eng3d >= MAXWELL_A) {
-      nvb097_nil_buffer_fill_tic(dev, base_address, format, num_elements, desc_out);
-   } else if (dev->info.cls_eng3d >= FERMI_A) {
-      nv9097_nil_buffer_fill_tic(dev, base_address, format, num_elements, desc_out);
+   if (dev->cls_eng3d >= MAXWELL_A) {
+      nvb097_nil_buffer_fill_tic(base_address, format, num_elements, desc_out);
+   } else if (dev->cls_eng3d >= FERMI_A) {
+      nv9097_nil_buffer_fill_tic(base_address, format, num_elements, desc_out);
    } else {
       unreachable("Tesla and older not supported");
    }

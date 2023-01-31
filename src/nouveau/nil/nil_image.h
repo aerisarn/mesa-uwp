@@ -8,7 +8,7 @@
 #include "util/macros.h"
 #include "util/format/u_format.h"
 
-struct nouveau_ws_device;
+struct nv_device_info;
 
 enum PACKED nil_image_dim {
    NIL_IMAGE_DIM_1D = 1,
@@ -180,7 +180,7 @@ struct nil_view {
    enum pipe_swizzle swizzle[4];
 };
 
-bool nil_image_init(struct nouveau_ws_device *dev,
+bool nil_image_init(struct nv_device_info *dev,
                     struct nil_image *image,
                     const struct nil_image_init_info *restrict info);
 
@@ -205,13 +205,13 @@ void nil_image_3d_level_as_2d_array(const struct nil_image *image_3d,
                                     struct nil_image *image_2d_out,
                                     uint64_t *offset_B_out);
 
-void nil_image_fill_tic(struct nouveau_ws_device *dev,
+void nil_image_fill_tic(struct nv_device_info *dev,
                         const struct nil_image *image,
                         const struct nil_view *view,
                         uint64_t base_address,
                         void *desc_out);
 
-void nil_buffer_fill_tic(struct nouveau_ws_device *dev,
+void nil_buffer_fill_tic(struct nv_device_info *dev,
                          uint64_t base_address,
                          enum pipe_format format,
                          uint32_t num_elements,
