@@ -3,14 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// NOTE: We reserve R0 (zero register) and R1 (contains the first parameter at start)
-#define MME_FERMI_RESERVED_INST_MASK 0xFFFFFF03
-#define MME_FERMI_IMM_ADD_MAX_BITS 17
-#define MME_FERMI_IMM_ADD_MAX_SIZE ((1 << (MME_FERMI_IMM_ADD_MAX_BITS + 1)) - 1)
-
-// NOTE: As the add immediate operation work with sighed values, we drop the sign part.
-#define MME_FERMI_IMM_LOAD_MAX_BITS (MME_FERMI_IMM_ADD_MAX_BITS - 1)
-#define MME_FERMI_IMM_LOAD_MAX_SIZE ((1 << (MME_FERMI_IMM_LOAD_MAX_BITS + 1)) - 1)
+#include "util/u_math.h"
 
 void
 mme_fermi_builder_init(struct mme_builder *b)
@@ -204,15 +197,20 @@ mme_fermi_reg(uint32_t reg)
    return val;
 }
 
-static inline void
-mme_fermi_add_imm17(struct mme_fermi_builder *fb,
-                    struct mme_value dst_reg,
-                    struct mme_value src_reg,
-                    uint32_t val)
+static bool
+is_int18(uint32_t i)
 {
-   assert(dst_reg.type == MME_VALUE_TYPE_REG &&
-          mme_fermi_is_zero_or_reg(src_reg) &&
-          val <= MME_FERMI_IMM_ADD_MAX_SIZE);
+   return i == util_mask_sign_extend(i, 18);
+}
+
+static inline void
+mme_fermi_add_imm18(struct mme_fermi_builder *fb,
+                    struct mme_value dst,
+                    struct mme_value src,
+                    uint32_t imm)
+{
+   assert(dst.type == MME_VALUE_TYPE_REG &&
+          mme_fermi_is_zero_or_reg(src) && is_int18(imm));
 
    if (!mme_fermi_next_inst_can_fit_a_full_inst(fb)) {
       mme_fermi_new_inst(fb);
@@ -221,10 +219,10 @@ mme_fermi_add_imm17(struct mme_fermi_builder *fb,
    struct mme_fermi_inst *inst = mme_fermi_cur_inst(fb);
 
    inst->op = MME_FERMI_OP_ADD_IMM;
-   inst->src[0] = mme_value_alu_reg(src_reg);
-   inst->imm = val;
+   inst->src[0] = mme_value_alu_reg(src);
+   inst->imm = imm & BITFIELD_MASK(18);
    inst->assign_op = MME_FERMI_ASSIGN_OP_MOVE;
-   inst->dst = mme_value_alu_reg(dst_reg);
+   inst->dst = mme_value_alu_reg(dst);
 
    mme_fermi_set_inst_parts(fb, MME_FERMI_INSTR_PART_OP |
                                 MME_FERMI_INSTR_PART_ASSIGN);
@@ -327,19 +325,18 @@ mme_fermi_load_imm_to_reg(struct mme_builder *b, struct mme_value data)
 
       struct mme_value dst = mme_alloc_reg(b);
 
-      if (imm > MME_FERMI_IMM_LOAD_MAX_SIZE) {
+      if (is_int18(imm)) {
+         mme_fermi_add_imm18(fb, dst, mme_zero(), imm);
+      } else {
          /* TODO: a possible optimisation involve searching for the first bit
           * offset and see if it can fit in 16 bits.
           */
-         uint32_t high_bits = (imm >> (MME_FERMI_IMM_LOAD_MAX_BITS + 1)) & MME_FERMI_IMM_LOAD_MAX_SIZE;
-         uint32_t low_bits = imm & MME_FERMI_IMM_LOAD_MAX_SIZE;
+         uint32_t high_bits = imm >> 16;
+         uint32_t low_bits = imm & UINT16_MAX;
 
-         mme_fermi_add_imm17(fb, dst, mme_zero(), high_bits);
-         mme_fermi_sll_to(fb, dst, dst,
-                          mme_imm(MME_FERMI_IMM_LOAD_MAX_BITS + 1));
-         mme_fermi_add_imm17(fb, dst, dst, low_bits);
-      } else {
-         mme_fermi_add_imm17(fb, dst, mme_zero(), imm);
+         mme_fermi_add_imm18(fb, dst, mme_zero(), high_bits);
+         mme_fermi_sll_to(fb, dst, dst, mme_imm(16));
+         mme_fermi_add_imm18(fb, dst, dst, low_bits);
       }
 
       return dst;
@@ -637,6 +634,22 @@ mme_fermi_alu_to(struct mme_builder *b,
    struct mme_fermi_builder *fb = &b->fermi;
 
    switch (op) {
+   case MME_ALU_OP_ADD:
+      if (x.type == MME_VALUE_TYPE_IMM && x.imm != 0 && is_int18(x.imm)) {
+         mme_fermi_add_imm18(fb, dst, y, x.imm);
+         return;
+      }
+      if (y.type == MME_VALUE_TYPE_IMM && y.imm != 0 && is_int18(y.imm)) {
+         mme_fermi_add_imm18(fb, dst, x, y.imm);
+         return;
+      }
+      break;
+   case MME_ALU_OP_SUB:
+      if (y.type == MME_VALUE_TYPE_IMM && is_int18(-y.imm)) {
+         mme_fermi_add_imm18(fb, dst, x, -y.imm);
+         return;
+      }
+      break;
    case MME_ALU_OP_SLL:
       mme_fermi_sll_to(fb, dst, x, y);
       return;
