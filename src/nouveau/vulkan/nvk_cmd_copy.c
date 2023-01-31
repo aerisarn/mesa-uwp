@@ -18,37 +18,6 @@
 #include "nvk_cl90b5.h"
 #include "nvk_clc1b5.h"
 
-static void
-nouveau_copy_linear(struct nouveau_ws_push *push,
-                    uint64_t src_addr, uint64_t dst_addr, uint64_t size)
-{
-   while (size) {
-      unsigned bytes = MIN2(size, 1 << 17);
-
-      P_MTHD(push, NV90B5, OFFSET_IN_UPPER);
-      P_NV90B5_OFFSET_IN_UPPER(push, src_addr >> 32);
-      P_NV90B5_OFFSET_IN_LOWER(push, src_addr & 0xffffffff);
-      P_NV90B5_OFFSET_OUT_UPPER(push, dst_addr >> 32);
-      P_NV90B5_OFFSET_OUT_LOWER(push, dst_addr & 0xffffffff);
-
-      P_MTHD(push, NV90B5, LINE_LENGTH_IN);
-      P_NV90B5_LINE_LENGTH_IN(push, bytes);
-      P_NV90B5_LINE_COUNT(push, 1);
-
-      P_IMMD(push, NV90B5, LAUNCH_DMA, {
-             .data_transfer_type = DATA_TRANSFER_TYPE_NON_PIPELINED,
-             .multi_line_enable = MULTI_LINE_ENABLE_TRUE,
-             .flush_enable = FLUSH_ENABLE_TRUE,
-             .src_memory_layout = SRC_MEMORY_LAYOUT_PITCH,
-             .dst_memory_layout = DST_MEMORY_LAYOUT_PITCH,
-      });
-
-      src_addr += bytes;
-      dst_addr += bytes;
-      size -= bytes;
-   }
-}
-
 struct nouveau_copy_buffer {
    uint64_t base_addr;
    VkOffset3D offset_el;
@@ -326,10 +295,37 @@ nvk_CmdCopyBuffer2(VkCommandBuffer commandBuffer,
    for (unsigned r = 0; r < pCopyBufferInfo->regionCount; r++) {
       const VkBufferCopy2 *region = &pCopyBufferInfo->pRegions[r];
 
-      nouveau_copy_linear(cmd->push,
-                          nvk_buffer_address(src, region->srcOffset),
-                          nvk_buffer_address(dst, region->dstOffset),
-                          region->size);
+      uint64_t src_addr = nvk_buffer_address(src, region->srcOffset);
+      uint64_t dst_addr = nvk_buffer_address(dst, region->dstOffset);
+      uint64_t size = region->size;
+
+      while (size) {
+         struct nouveau_ws_push *p = cmd->push;
+
+         P_MTHD(p, NV90B5, OFFSET_IN_UPPER);
+         P_NV90B5_OFFSET_IN_UPPER(p, src_addr >> 32);
+         P_NV90B5_OFFSET_IN_LOWER(p, src_addr & 0xffffffff);
+         P_NV90B5_OFFSET_OUT_UPPER(p, dst_addr >> 32);
+         P_NV90B5_OFFSET_OUT_LOWER(p, dst_addr & 0xffffffff);
+
+         unsigned bytes = MIN2(size, 1 << 17);
+
+         P_MTHD(p, NV90B5, LINE_LENGTH_IN);
+         P_NV90B5_LINE_LENGTH_IN(p, bytes);
+         P_NV90B5_LINE_COUNT(p, 1);
+
+         P_IMMD(p, NV90B5, LAUNCH_DMA, {
+                .data_transfer_type = DATA_TRANSFER_TYPE_NON_PIPELINED,
+                .multi_line_enable = MULTI_LINE_ENABLE_TRUE,
+                .flush_enable = FLUSH_ENABLE_TRUE,
+                .src_memory_layout = SRC_MEMORY_LAYOUT_PITCH,
+                .dst_memory_layout = DST_MEMORY_LAYOUT_PITCH,
+         });
+
+         src_addr += bytes;
+         dst_addr += bytes;
+         size -= bytes;
+      }
    }
 }
 
