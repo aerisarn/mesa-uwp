@@ -322,7 +322,6 @@ nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
          render->area = (VkRect2D) { };
          render->layer_count = 0;
          render->view_mask = inheritance_info->viewMask;
-         render->samples = inheritance_info->rasterizationSamples;
 
          render->color_att_count = inheritance_info->colorAttachmentCount;
          for (uint32_t i = 0; i < render->color_att_count; i++) {
@@ -361,6 +360,23 @@ nvk_attachment_init(struct nvk_attachment *att,
    }
 }
 
+static uint32_t
+nil_to_nv9097_samples_mode(enum nil_sample_layout sample_layout)
+{
+#define MODE(S) [NIL_SAMPLE_LAYOUT_##S] = NV9097_SET_ANTI_ALIAS_SAMPLES_MODE_##S
+   uint16_t nil_to_nv9097[] = {
+      MODE(1X1),
+      MODE(2X1),
+      MODE(2X2),
+      MODE(4X2),
+      MODE(4X4),
+   };
+#undef MODE
+   assert(sample_layout < ARRAY_SIZE(nil_to_nv9097));
+
+   return nil_to_nv9097[sample_layout];
+}
+
 void
 nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
                       const VkRenderingInfo *pRenderingInfo)
@@ -374,7 +390,6 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    render->area = pRenderingInfo->renderArea;
    render->view_mask = pRenderingInfo->viewMask;
    render->layer_count = pRenderingInfo->layerCount;
-   render->samples = 0;
 
    const uint32_t layer_count =
       render->view_mask ? util_last_bit(render->view_mask) :
@@ -409,15 +424,19 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
       .height  = render->area.extent.height,
    });
 
+   enum nil_sample_layout sample_layout = NIL_SAMPLE_LAYOUT_INVALID;
    for (uint32_t i = 0; i < render->color_att_count; i++) {
       if (render->color_att[i].iview) {
          const struct nvk_image_view *iview = render->color_att[i].iview;
          const struct nvk_image *image = (struct nvk_image *)iview->vk.image;
          const struct nil_image_level *level =
             &image->nil.levels[iview->vk.base_mip_level];
+         struct nil_extent4d level_extent_sa =
+            nil_image_level_extent_sa(&image->nil, iview->vk.base_mip_level);
 
-         assert(render->samples == 0 || render->samples == image->vk.samples);
-         render->samples |= image->vk.samples;
+         assert(sample_layout == NIL_SAMPLE_LAYOUT_INVALID ||
+                sample_layout == image->nil.sample_layout);
+         sample_layout = image->nil.sample_layout;
 
          uint64_t addr = nvk_image_base_address(image) + level->offset_B;
 
@@ -425,8 +444,8 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
          P_NV9097_SET_COLOR_TARGET_A(p, i, addr >> 32);
          P_NV9097_SET_COLOR_TARGET_B(p, i, addr);
          assert(level->tiling.is_tiled);
-         P_NV9097_SET_COLOR_TARGET_WIDTH(p, i, iview->vk.extent.width);
-         P_NV9097_SET_COLOR_TARGET_HEIGHT(p, i, iview->vk.extent.height);
+         P_NV9097_SET_COLOR_TARGET_WIDTH(p, i, level_extent_sa.w);
+         P_NV9097_SET_COLOR_TARGET_HEIGHT(p, i, level_extent_sa.h);
          const enum pipe_format p_format =
             vk_format_to_pipe_format(iview->vk.format);
          const uint8_t ct_format = nil_format_to_color_target(p_format);
@@ -481,9 +500,12 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
       const struct nvk_image *image = (struct nvk_image *)iview->vk.image;
       const struct nil_image_level *level =
          &image->nil.levels[iview->vk.base_mip_level];
+      struct nil_extent4d level_extent_sa =
+         nil_image_level_extent_sa(&image->nil, iview->vk.base_mip_level);
 
-      assert(render->samples == 0 || render->samples == image->vk.samples);
-      render->samples |= image->vk.samples;
+      assert(sample_layout == NIL_SAMPLE_LAYOUT_INVALID ||
+             sample_layout == image->nil.sample_layout);
+      sample_layout = image->nil.sample_layout;
 
       uint64_t addr = nvk_image_base_address(image) + level->offset_B;
 
@@ -506,8 +528,8 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
       P_IMMD(p, NV9097, SET_ZT_SELECT, 1 /* target_count */);
 
       P_MTHD(p, NV9097, SET_ZT_SIZE_A);
-      P_NV9097_SET_ZT_SIZE_A(p, iview->vk.extent.width);
-      P_NV9097_SET_ZT_SIZE_B(p, iview->vk.extent.height);
+      P_NV9097_SET_ZT_SIZE_A(p, level_extent_sa.w);
+      P_NV9097_SET_ZT_SIZE_B(p, level_extent_sa.h);
       P_NV9097_SET_ZT_SIZE_C(p, {
          .third_dimension  = iview->vk.base_array_layer + layer_count,
          .control          = (image->nil.dim == NIL_IMAGE_DIM_3D) ?
@@ -526,7 +548,10 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
       P_IMMD(p, NV9097, SET_ZT_SELECT, 0 /* target_count */);
    }
 
-   P_IMMD(p, NV9097, SET_ANTI_ALIAS, ffs(MAX2(1, render->samples)) - 1);
+   if (sample_layout == NIL_SAMPLE_LAYOUT_INVALID)
+      sample_layout = NIL_SAMPLE_LAYOUT_1X1;
+
+   P_IMMD(p, NV9097, SET_ANTI_ALIAS, nil_to_nv9097_samples_mode(sample_layout));
 
    if (render->flags & VK_RENDERING_RESUMING_BIT)
       return;

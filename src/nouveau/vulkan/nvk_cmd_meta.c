@@ -83,7 +83,6 @@ nvk_meta_init_render(struct nvk_cmd_buffer *cmd,
 
    *info = (struct vk_meta_rendering_info) {
       .view_mask = render->view_mask,
-      .samples = render->samples,
       .color_attachment_count = render->color_att_count,
       .depth_attachment_format = render->depth_att.vk_format,
       .stencil_attachment_format = render->stencil_att.vk_format,
