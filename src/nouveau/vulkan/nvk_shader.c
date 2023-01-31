@@ -118,6 +118,10 @@ nvk_shader_compile_to_nir(struct nvk_device *device,
    /* Vulkan uses the separate-shader linking model */
    nir->info.separate_shader = true;
 
+   /* Lower push constants before lower_descriptors */
+   NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_push_const,
+            nir_address_format_32bit_offset);
+
    NIR_PASS(_, nir, nvk_nir_lower_descriptors, layout, true);
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ssbo,
             spirv_options.ssbo_addr_format);

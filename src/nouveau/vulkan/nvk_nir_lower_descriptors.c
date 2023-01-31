@@ -95,6 +95,32 @@ lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
    return true;
 }
 
+static bool
+lower_load_push_constant(nir_builder *b, nir_intrinsic_instr *load,
+                         const struct lower_descriptors_ctx *ctx)
+{
+   const uint32_t push_region_offset =
+      offsetof(struct nvk_root_descriptor_table, push);
+   const uint32_t base = nir_intrinsic_base(load);
+
+   b->cursor = nir_before_instr(&load->instr);
+
+   nir_ssa_def *offset = nir_iadd_imm(b, load->src[0].ssa,
+                                         push_region_offset + base);
+
+   nir_ssa_def *val =
+      nir_load_ubo(b, load->dest.ssa.num_components, load->dest.ssa.bit_size,
+                   nir_imm_int(b, 0), offset,
+                   .align_mul = load->dest.ssa.bit_size / 8,
+                   .align_offset = 0,
+                   .range = push_region_offset + base +
+                            nir_intrinsic_range(load));
+
+   nir_ssa_def_rewrite_uses(&load->dest.ssa, val);
+
+   return true;
+}
+
 static void
 get_resource_deref_binding(nir_builder *b, nir_deref_instr *deref,
                            uint32_t *set, uint32_t *binding,
@@ -145,6 +171,9 @@ lower_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_vulkan_descriptor:
       return lower_load_vulkan_descriptor(b, intrin, ctx);
+
+   case nir_intrinsic_load_push_constant:
+      return lower_load_push_constant(b, intrin, ctx);
 
    case nir_intrinsic_image_deref_load:
    case nir_intrinsic_image_deref_store:

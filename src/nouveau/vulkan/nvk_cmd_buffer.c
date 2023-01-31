@@ -421,3 +421,27 @@ nvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
    }
    assert(next_dyn_offset <= dynamicOffsetCount);
 }
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdPushConstants(VkCommandBuffer commandBuffer,
+                     VkPipelineLayout layout,
+                     VkShaderStageFlags stageFlags,
+                     uint32_t offset,
+                     uint32_t size,
+                     const void *pValues)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   if (stageFlags & VK_SHADER_STAGE_COMPUTE_BIT) {
+      struct nvk_descriptor_state *desc =
+         nvk_get_descriptors_state(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
+
+      memcpy(desc->root.push + offset, pValues, size);
+   }
+
+//   if (stageFlags & VK_SHADER_STAGE_ALL_GRAPHICS) {
+//      struct nvk_descriptor_state *desc =
+//         nvk_get_descriptors_state(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS);
+//
+//      memcpy(desc->root.push + offset, pValues, size);
+//   }
+}

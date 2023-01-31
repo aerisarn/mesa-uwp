@@ -33,7 +33,7 @@ struct nvk_root_descriptor_table {
    };
 
    /* Client push constants */
-   uint8_t push[128];
+   uint8_t push[NVK_MAX_PUSH_SIZE];
 
    /* Descriptor set base addresses */
    uint64_t sets[NVK_MAX_SETS];

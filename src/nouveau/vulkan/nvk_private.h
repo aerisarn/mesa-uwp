@@ -15,6 +15,7 @@
 #include <xf86drm.h>
 
 #define NVK_MAX_SETS 8
+#define NVK_MAX_PUSH_SIZE 128
 #define NVK_MAX_DYNAMIC_BUFFERS 64
 #define NVK_MIN_UBO_ALIGNMENT 16
 
