@@ -346,10 +346,8 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
                                     &supported_extensions, NULL,
                                     &dispatch_table);
 
-   if (result != VK_SUCCESS) {
-      vk_error(instance, result);
+   if (result != VK_SUCCESS)
       goto fail_alloc;
-   }
 
    device->instance = instance;
    device->dev = ndev;
@@ -384,19 +382,18 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
    device->vk.supported_sync_types = device->sync_types;
 
    result = nvk_init_wsi(device);
-   if (result != VK_SUCCESS) {
-      vk_error(instance, result);
-      goto fail_alloc;
-   }
+   if (result != VK_SUCCESS)
+      goto fail_init;
 
    *device_out = device;
 
    close(fd);
    return VK_SUCCESS;
 
+fail_init:
+   vk_physical_device_finish(&device->vk);
 fail_alloc:
    vk_free(&instance->vk.alloc, device);
-
 fail_dev_alloc:
    nouveau_ws_device_destroy(ndev);
    return result;
