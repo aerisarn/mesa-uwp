@@ -20,6 +20,8 @@ nvk_files = files(
   'nvk_instance.h',
   'nvk_physical_device.c',
   'nvk_physical_device.h',
+  'nvk_pipeline_layout.c',
+  'nvk_pipeline_layout.h',
   'nvk_private.h',
   'nvk_sampler.c',
   'nvk_sampler.h',

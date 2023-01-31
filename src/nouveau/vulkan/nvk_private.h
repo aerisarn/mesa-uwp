@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <xf86drm.h>
 
+#define NVK_MAX_SETS 8
 #define NVK_MIN_UBO_ALIGNMENT 16
 
 /**
