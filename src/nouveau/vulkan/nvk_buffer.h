@@ -13,7 +13,7 @@ struct nvk_device_memory;
 struct nvk_buffer {
    struct vk_buffer vk;
    struct nvk_device_memory *mem;
-   VkDeviceSize offset;
+   uint64_t addr;
 };
 
 VK_DEFINE_HANDLE_CASTS(nvk_buffer, vk.base, VkBuffer, VK_OBJECT_TYPE_BUFFER)
@@ -29,7 +29,7 @@ nvk_push_buffer_ref(struct nouveau_ws_push *push,
 static inline uint64_t
 nvk_buffer_address(const struct nvk_buffer *buffer, uint64_t offset)
 {
-   return buffer->mem->bo->offset + buffer->offset + offset;
+   return buffer->addr + offset;
 }
 
 #endif

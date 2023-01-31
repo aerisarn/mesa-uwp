@@ -75,7 +75,7 @@ nvk_BindBufferMemory2(VkDevice _device,
       VK_FROM_HANDLE(nvk_buffer, buffer, pBindInfos[i].buffer);
 
       buffer->mem = mem;
-      buffer->offset = pBindInfos[i].memoryOffset;
+      buffer->addr = mem->bo->offset + pBindInfos[i].memoryOffset;
    }
    return VK_SUCCESS;
 }
