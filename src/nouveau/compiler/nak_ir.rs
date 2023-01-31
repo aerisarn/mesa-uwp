@@ -1127,6 +1127,39 @@ impl fmt::Display for OpS2R {
 }
 
 #[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpFMov {
+    pub dst: Dst,
+    pub src: Src,
+    pub src_mod: SrcMod,
+    pub saturate: bool,
+}
+
+impl fmt::Display for OpFMov {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "FMOV")?;
+        if self.saturate {
+            write!(f, ".SAT")?;
+        }
+        write!(f, " {} {}", self.dst, self.mod_src(0))
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+pub struct OpIMov {
+    pub dst: Dst,
+    pub src: Src,
+    pub src_mod: SrcMod,
+}
+
+impl fmt::Display for OpIMov {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "IMOV {} {}", self.dst, self.mod_src(0))
+    }
+}
+
+#[repr(C)]
 #[derive(DstsAsSlice, SrcModsAsSlice)]
 pub struct OpVec {
     pub dst: Dst,
@@ -1224,6 +1257,8 @@ pub enum Op {
     ASt(OpASt),
     Exit(OpExit),
     S2R(OpS2R),
+    FMov(OpFMov),
+    IMov(OpIMov),
     Vec(OpVec),
     Split(OpSplit),
     FSOut(OpFSOut),
@@ -1608,7 +1643,11 @@ impl Instr {
             Op::Ld(_) => None,
             Op::St(_) => None,
             Op::Exit(_) => Some(15),
-            Op::Vec(_) | Op::Split(_) | Op::FSOut(_) => {
+            Op::FMov(_)
+            | Op::IMov(_)
+            | Op::Vec(_)
+            | Op::Split(_)
+            | Op::FSOut(_) => {
                 panic!("Not a hardware opcode")
             }
         }
@@ -1719,6 +1758,23 @@ impl Shader {
     pub fn lower_vec_split(&mut self) {
         self.map_instrs(&|instr: Instr| -> Vec<Instr> {
             match instr.op {
+                Op::FMov(mov) => {
+                    vec![Instr::new(Op::FAdd(OpFAdd {
+                        dst: mov.dst,
+                        srcs: [Src::Zero, mov.src],
+                        src_mods: [SrcMod::None, mov.src_mod],
+                        saturate: mov.saturate,
+                        rnd_mode: FRndMode::NearestEven,
+                    }))]
+                }
+                Op::IMov(mov) => {
+                    vec![Instr::new(Op::IAdd3(OpIAdd3 {
+                        dst: mov.dst,
+                        srcs: [Src::Zero, mov.src, Src::Zero],
+                        carry: [Src::Zero; 2],
+                        src_mods: [SrcMod::None, mov.src_mod, SrcMod::None],
+                    }))]
+                }
                 Op::Vec(vec) => {
                     let mut instrs = Vec::new();
                     let comps = u8::try_from(vec.srcs.len()).unwrap();

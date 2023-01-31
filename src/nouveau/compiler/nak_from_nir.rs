@@ -98,6 +98,14 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs
                     .push(Instr::new_sel(dst, srcs[0], srcs[1], srcs[2]));
             }
+            nir_op_fabs => {
+                self.instrs.push(Instr::new(Op::FMov(OpFMov {
+                    dst: dst,
+                    src: srcs[0],
+                    src_mod: SrcMod::FAbs,
+                    saturate: false,
+                })));
+            }
             nir_op_fadd => {
                 self.instrs.push(Instr::new_fadd(
                     dst,
@@ -137,8 +145,31 @@ impl<'a> ShaderFromNir<'a> {
                     srcs[1].into(),
                 ));
             }
+            nir_op_fneg => {
+                self.instrs.push(Instr::new(Op::FMov(OpFMov {
+                    dst: dst,
+                    src: srcs[0],
+                    src_mod: SrcMod::FNeg,
+                    saturate: false,
+                })));
+            }
+            nir_op_fsat => {
+                self.instrs.push(Instr::new(Op::FMov(OpFMov {
+                    dst: dst,
+                    src: srcs[0],
+                    src_mod: SrcMod::None,
+                    saturate: true,
+                })));
+            }
             nir_op_i2f32 => {
                 self.instrs.push(Instr::new_i2f(dst, srcs[0]));
+            }
+            nir_op_iabs => {
+                self.instrs.push(Instr::new(Op::IMov(OpIMov {
+                    dst: dst,
+                    src: srcs[0],
+                    src_mod: SrcMod::IAbs,
+                })));
             }
             nir_op_iadd => {
                 self.instrs.push(Instr::new_iadd(dst, srcs[0], srcs[1]));
@@ -197,6 +228,13 @@ impl<'a> ShaderFromNir<'a> {
                     srcs[0],
                     srcs[1],
                 ));
+            }
+            nir_op_ineg => {
+                self.instrs.push(Instr::new(Op::IMov(OpIMov {
+                    dst: dst,
+                    src: srcs[0],
+                    src_mod: SrcMod::INeg,
+                })));
             }
             nir_op_inot => {
                 if alu.def.bit_size() == 1 {
