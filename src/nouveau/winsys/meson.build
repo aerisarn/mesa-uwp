@@ -8,8 +8,6 @@ libnouveau_ws = static_library(
     'nouveau_device.h',
     'nouveau_device.c',
     'nouveau_private.h',
-    'nouveau_push.h',
-    'nouveau_push.c',
     cl_generated,
   ],
   include_directories : [
