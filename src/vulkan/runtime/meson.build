@@ -82,6 +82,8 @@ vulkan_runtime_files = files(
   'vk_physical_device.h',
   'vk_pipeline_layout.c',
   'vk_pipeline_layout.h',
+  'vk_query_pool.c',
+  'vk_query_pool.h',
   'vk_queue.c',
   'vk_queue.h',
   'vk_render_pass.c',
