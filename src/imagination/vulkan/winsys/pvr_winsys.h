@@ -485,6 +485,10 @@ struct pvr_winsys {
    struct vk_sync_type syncobj_type;
    struct vk_sync_timeline_type timeline_syncobj_type;
 
+   struct {
+      bool supports_threaded_submit : 1;
+   } features;
+
    const struct pvr_winsys_ops *ops;
 };
 

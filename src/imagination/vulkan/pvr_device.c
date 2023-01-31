@@ -1767,6 +1767,13 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
       goto err_close_master_fd;
    }
 
+   if (device->ws->features.supports_threaded_submit) {
+      /* Queue submission can be blocked if the kernel CCBs become full,
+       * so enable threaded submit to not block the submitter.
+       */
+      vk_device_enable_threaded_submit(&device->vk);
+   }
+
    device->ws->ops->get_heaps_info(device->ws, &device->heaps);
 
    result = pvr_bo_store_create(device);

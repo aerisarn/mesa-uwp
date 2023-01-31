@@ -75,6 +75,12 @@ static VkResult pvr_queue_init(struct pvr_device *device,
    if (result != VK_SUCCESS)
       return result;
 
+   if (device->ws->features.supports_threaded_submit) {
+      result = vk_queue_enable_submit_thread(&queue->vk);
+      if (result != VK_SUCCESS)
+         goto err_vk_queue_finish;
+   }
+
    result = pvr_transfer_ctx_create(device,
                                     PVR_WINSYS_CTX_PRIORITY_MEDIUM,
                                     &transfer_ctx);

@@ -684,6 +684,11 @@ struct pvr_winsys *pvr_srv_winsys_create(int master_fd,
    srv_ws->base.sync_types[1] = &srv_ws->base.timeline_syncobj_type.sync;
    srv_ws->base.sync_types[2] = NULL;
 
+   /* Threaded submit requires VK_SYNC_FEATURE_WAIT_PENDING which pvrsrv
+    * doesn't support.
+    */
+   srv_ws->base.features.supports_threaded_submit = false;
+
    result = pvr_srv_memctx_init(srv_ws);
    if (result != VK_SUCCESS)
       goto err_vk_free_srv_ws;
