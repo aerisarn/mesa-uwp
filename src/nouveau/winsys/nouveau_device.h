@@ -5,6 +5,10 @@
 
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum nvk_debug {
    /* dumps all push buffers after submission */
    NVK_DEBUG_PUSH_DUMP = 1ull << 0,
@@ -60,5 +64,9 @@ struct nouveau_ws_device {
 
 struct nouveau_ws_device *nouveau_ws_device_new(int fd);
 void nouveau_ws_device_destroy(struct nouveau_ws_device *);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -5,7 +5,18 @@
 
 #include "nouveau_device.h"
 
+#ifdef __cplusplus
+#include <atomic>
+using std::atomic_uint_fast32_t;
+#else
+#include <stdatomic.h>
+#endif
+
 #include <sys/mman.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 enum nouveau_ws_bo_flags {
    /* vram or gart depending on GPU */
@@ -27,7 +38,7 @@ struct nouveau_ws_bo {
    int fd;
    uint32_t handle;
    enum nouveau_ws_bo_flags flags;
-   _Atomic uint32_t refcnt;
+   atomic_uint_fast32_t refcnt;
 };
 
 struct nouveau_ws_bo *nouveau_ws_bo_new(struct nouveau_ws_device *,
@@ -53,5 +64,9 @@ nouveau_ws_bo_unmap(struct nouveau_ws_bo *bo, void *ptr)
 {
    munmap(ptr, bo->size);
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -1,10 +1,14 @@
-#ifndef NOUVEAU_CMD_BUF
-#define NOUVEAU_CMD_BUF 1
+#ifndef NOUVEAU_PUSH
+#define NOUVEAU_PUSH 1
 
 #include "nouveau_private.h"
 
 #include "nouveau_bo.h"
 #include "util/u_dynarray.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct nouveau_ws_context;
 struct nouveau_ws_device;
@@ -259,4 +263,8 @@ P_SPACE(struct nouveau_ws_push *push, uint32_t size)
    return nouveau_ws_push_space(push, size);
 }
 
+#ifdef __cplusplus
+}
 #endif
+
+#endif /* NOUVEAU_PUSH */
