@@ -1,6 +1,8 @@
 #ifndef NVK_SHADER_H
 #define NVK_SHADER_H 1
 
+#include "nvk_private.h"
+
 #include "nir.h"
 
 struct vk_shader_module;

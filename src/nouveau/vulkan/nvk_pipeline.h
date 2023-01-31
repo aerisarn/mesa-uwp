@@ -1,7 +1,9 @@
 #ifndef NVK_PIPELINE_H
 #define NVK_PIPELINE_H 1
 
+#include "nvk_private.h"
 #include "nvk_shader.h"
+
 #include "vk_object.h"
 
 struct vk_pipeline_cache;
