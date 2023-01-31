@@ -18,6 +18,8 @@ nvk_files = files(
   'nvk_image_view.h',
   'nvk_instance.c',
   'nvk_instance.h',
+  'nvk_nir.h',
+  'nvk_nir_lower_descriptors.c',
   'nvk_physical_device.c',
   'nvk_physical_device.h',
   'nvk_pipeline_layout.c',
@@ -59,6 +61,7 @@ nvk_entrypoints = custom_target(
 
 nvk_deps = [
   dep_libdrm,
+  idep_nir,
   idep_nouveau_ws,
   idep_nvidia_headers,
   idep_vulkan_runtime,
