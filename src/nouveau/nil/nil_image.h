@@ -161,4 +161,10 @@ void nil_image_fill_tic(struct nouveau_ws_device *dev,
                         uint64_t base_address,
                         void *desc_out);
 
+void nil_buffer_fill_tic(struct nouveau_ws_device *dev,
+                         uint64_t base_address,
+                         enum pipe_format format,
+                         uint32_t num_elements,
+                         void *desc_out);
+
 #endif /* NIL_H */

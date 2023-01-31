@@ -172,3 +172,34 @@ nil_image_fill_tic(struct nouveau_ws_device *dev,
 
    memcpy(desc_out, tic, sizeof(tic));
 }
+
+void
+nil_buffer_fill_tic(struct nouveau_ws_device *dev,
+                    uint64_t base_address,
+                    enum pipe_format format,
+                    uint32_t num_elements,
+                    void *desc_out)
+{
+   static const enum pipe_swizzle identity_swizzle[4] = {
+      PIPE_SWIZZLE_X,
+      PIPE_SWIZZLE_Y,
+      PIPE_SWIZZLE_Z,
+      PIPE_SWIZZLE_W,
+   };
+   uint32_t tic[8] = { };
+
+   assert(!util_format_is_compressed(format));
+   tic[0] |= gm107_tic2_0_format(format, identity_swizzle);
+   tic[1] |= base_address;
+   tic[2] |= base_address >> 32;
+   tic[2] |= GM107_TIC2_2_HEADER_VERSION_ONE_D_BUFFER;
+   tic[3] |= (num_elements - 1) >> 16;
+   tic[4] |= (num_elements - 1) & 0xffff;
+   tic[4] |= GM107_TIC2_4_TEXTURE_TYPE_ONE_D_BUFFER;
+
+   /* TODO: Do we need these two? */
+   tic[4] |= GM107_TIC2_4_SECTOR_PROMOTION_PROMOTE_TO_2_V;
+   tic[4] |= GM107_TIC2_4_BORDER_SIZE_SAMPLER_COLOR;
+
+   memcpy(desc_out, tic, sizeof(tic));
+}
