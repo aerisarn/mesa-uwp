@@ -8,6 +8,7 @@ mod nak_ir;
 mod nak_opt_copy_prop;
 mod nak_opt_dce;
 mod nir;
+mod util;
 
 use nak_bindings::*;
 use nak_from_nir::*;
