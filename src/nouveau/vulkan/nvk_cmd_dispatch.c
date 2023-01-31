@@ -90,6 +90,7 @@ nvk_CmdDispatch(VkCommandBuffer commandBuffer,
    const struct nvk_shader *shader =
       &pipeline->base.shaders[MESA_SHADER_COMPUTE];
    struct nvk_descriptor_state *desc = &cmd->state.cs.descriptors;
+   struct nouveau_ws_push *p = cmd->push;
 
    desc->root.cs.block_size[0] = shader->cp.block_size[0];
    desc->root.cs.block_size[1] = shader->cp.block_size[1];
@@ -105,18 +106,19 @@ nvk_CmdDispatch(VkCommandBuffer commandBuffer,
                                     &root_table_map))
       return; /* TODO: Error */
 
-   P_MTHD(cmd->push, NVA0C0, OFFSET_OUT_UPPER);
-   P_NVA0C0_OFFSET_OUT_UPPER(cmd->push, root_table_addr >> 32);
-   P_NVA0C0_OFFSET_OUT(cmd->push, root_table_addr & 0xffffffff);
-   P_MTHD(cmd->push, NVA0C0, LINE_LENGTH_IN);
-   P_NVA0C0_LINE_LENGTH_IN(cmd->push, root_table_size);
-   P_NVA0C0_LINE_COUNT(cmd->push, 0x1);
+   P_MTHD(p, NVA0C0, OFFSET_OUT_UPPER);
+   P_NVA0C0_OFFSET_OUT_UPPER(p, root_table_addr >> 32);
+   P_NVA0C0_OFFSET_OUT(p, root_table_addr & 0xffffffff);
+   P_MTHD(p, NVA0C0, LINE_LENGTH_IN);
+   P_NVA0C0_LINE_LENGTH_IN(p, root_table_size);
+   P_NVA0C0_LINE_COUNT(p, 0x1);
 
-   P_1INC(cmd->push, NVA0C0, LAUNCH_DMA);
-   P_NVA0C0_LAUNCH_DMA(cmd->push,
-                       { .dst_memory_layout = DST_MEMORY_LAYOUT_PITCH,
-                         .sysmembar_disable = SYSMEMBAR_DISABLE_TRUE });
-   P_INLINE_ARRAY(cmd->push, (uint32_t *)&desc->root, root_table_size / 4);
+   P_1INC(p, NVA0C0, LAUNCH_DMA);
+   P_NVA0C0_LAUNCH_DMA(p, {
+      .dst_memory_layout = DST_MEMORY_LAYOUT_PITCH,
+      .sysmembar_disable = SYSMEMBAR_DISABLE_TRUE
+   });
+   P_INLINE_ARRAY(p, (uint32_t *)&desc->root, root_table_size / 4);
 
    uint32_t *qmd;
    uint64_t qmd_addr;
@@ -129,12 +131,15 @@ nvk_CmdDispatch(VkCommandBuffer commandBuffer,
    gp100_cp_launch_desc_set_cb(qmd, 0, root_table_size, root_table_addr);
    gp100_cp_launch_desc_set_cb(qmd, 1, root_table_size, root_table_addr);
 
-   P_MTHD(cmd->push, NVA0C0, INVALIDATE_SHADER_CACHES_NO_WFI);
-   P_NVA0C0_INVALIDATE_SHADER_CACHES_NO_WFI(cmd->push, { .constant = CONSTANT_TRUE });
+   P_MTHD(p, NVA0C0, INVALIDATE_SHADER_CACHES_NO_WFI);
+   P_NVA0C0_INVALIDATE_SHADER_CACHES_NO_WFI(p, {
+      .constant = CONSTANT_TRUE
+   });
 
-   P_MTHD(cmd->push, NVA0C0, SEND_PCAS_A);
-   P_NVA0C0_SEND_PCAS_A(cmd->push, qmd_addr >> 8);
-   P_IMMD(cmd->push, NVA0C0, SEND_SIGNALING_PCAS_B,
-          { .invalidate = INVALIDATE_TRUE,
-            .schedule = SCHEDULE_TRUE });
+   P_MTHD(p, NVA0C0, SEND_PCAS_A);
+   P_NVA0C0_SEND_PCAS_A(p, qmd_addr >> 8);
+   P_IMMD(p, NVA0C0, SEND_SIGNALING_PCAS_B, {
+      .invalidate = INVALIDATE_TRUE,
+      .schedule = SCHEDULE_TRUE
+   });
 }
