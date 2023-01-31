@@ -23,4 +23,17 @@ nvk_buffer_address(const struct nvk_buffer *buffer, uint64_t offset)
    return buffer->addr + offset;
 }
 
+static inline struct nvk_addr_range
+nvk_buffer_addr_range(const struct nvk_buffer *buffer,
+                      uint64_t offset, uint64_t range)
+{
+   if (buffer == NULL)
+      return (struct nvk_addr_range) { .range = 0 };
+
+   return (struct nvk_addr_range) {
+      .addr = nvk_buffer_address(buffer, offset),
+      .range = vk_buffer_range(&buffer->vk, offset, range),
+   };
+}
+
 #endif

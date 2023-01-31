@@ -81,11 +81,6 @@ struct nvk_rendering_state {
    struct nvk_attachment stencil_att;
 };
 
-struct nvk_addr_range {
-   uint64_t addr;
-   uint64_t range;
-};
-
 struct nvk_graphics_state {
    struct nvk_rendering_state render;
    struct nvk_graphics_pipeline *pipeline;

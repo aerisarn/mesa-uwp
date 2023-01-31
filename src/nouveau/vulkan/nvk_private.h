@@ -26,6 +26,11 @@
 #define NVK_MAX_DESCRIPTOR_SIZE 16
 #define NVK_MAX_PUSH_DESCRIPTORS 32
 
+struct nvk_addr_range {
+   uint64_t addr;
+   uint64_t range;
+};
+
 /**
  * Warn on ignored extension structs.
  *

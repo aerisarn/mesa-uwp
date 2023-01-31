@@ -1453,11 +1453,8 @@ nvk_CmdBindVertexBuffers2(VkCommandBuffer commandBuffer,
       uint32_t idx = firstBinding + i;
 
       uint64_t size = pSizes ? pSizes[i] : VK_WHOLE_SIZE;
-      struct nvk_addr_range addr_range = { };
-      if (buffer) {
-         addr_range.addr = nvk_buffer_address(buffer, pOffsets[i]);
-         addr_range.range = vk_buffer_range(&buffer->vk, pOffsets[i], size);
-      }
+      const struct nvk_addr_range addr_range =
+         nvk_buffer_addr_range(buffer, pOffsets[i], size);
 
       /* Used for meta save/restore */
       if (idx == 0)
