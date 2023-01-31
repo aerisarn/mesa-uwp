@@ -108,17 +108,23 @@ nil_to_nvb097_texture_type(enum nil_view_type type)
 }
 
 static uint32_t
-uint_to_nvb097_multi_sample_count(uint32_t samples)
+nil_to_nvb097_multi_sample_count_mode(enum nil_sample_layout sample_layout)
 {
-   switch (samples) {
-   case 1:  return NVB097_TEXHEAD_BL_MULTI_SAMPLE_COUNT_MODE_1X1;
-   case 2:  return NVB097_TEXHEAD_BL_MULTI_SAMPLE_COUNT_MODE_2X1;
-   case 4:  return NVB097_TEXHEAD_BL_MULTI_SAMPLE_COUNT_MODE_2X2;
-   case 8:  return NVB097_TEXHEAD_BL_MULTI_SAMPLE_COUNT_MODE_4X2;
-   case 16: return NVB097_TEXHEAD_BL_MULTI_SAMPLE_COUNT_MODE_4X4;
+#define CASE(SIZE) \
+   case NIL_SAMPLE_LAYOUT_##SIZE: \
+      return NVB097_TEXHEAD_BL_MULTI_SAMPLE_COUNT_MODE_##SIZE
+
+   switch (sample_layout) {
+   CASE(1X1);
+   CASE(2X1);
+   CASE(2X2);
+   CASE(4X2);
+   CASE(4X4);
    default:
-      unreachable("Unsupported sample count");
+      unreachable("Invalid sample layout");
    }
+
+#undef CASE
 }
 
 void
@@ -240,7 +246,7 @@ nil_image_fill_tic(struct nouveau_ws_device *dev,
             view->num_levels + view->base_level - 1);
 
    TH_SET_U(th, NVB097, BL, MULTI_SAMPLE_COUNT,
-            uint_to_nvb097_multi_sample_count(image->num_samples));
+            nil_to_nvb097_multi_sample_count_mode(image->sample_layout));
 
    memcpy(desc_out, th, sizeof(th));
 }

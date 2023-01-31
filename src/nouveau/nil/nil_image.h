@@ -16,6 +16,17 @@ enum PACKED nil_image_dim {
    NIL_IMAGE_DIM_3D = 3,
 };
 
+enum PACKED nil_sample_layout {
+   NIL_SAMPLE_LAYOUT_1X1,
+   NIL_SAMPLE_LAYOUT_2X1,
+   NIL_SAMPLE_LAYOUT_2X2,
+   NIL_SAMPLE_LAYOUT_4X2,
+   NIL_SAMPLE_LAYOUT_4X4,
+   NIL_SAMPLE_LAYOUT_INVALID,
+};
+
+enum nil_sample_layout nil_choose_sample_layout(uint32_t samples);
+
 enum nil_image_usage_flags {
    NIL_IMAGE_USAGE_RENDER_TARGET_BIT   = BITFIELD_BIT(0),
    NIL_IMAGE_USAGE_DEPTH_BIT           = BITFIELD_BIT(1),
@@ -54,6 +65,11 @@ nil_extent4d(uint32_t w, uint32_t h, uint32_t d, uint32_t a)
    e.a = a;
    return e;
 }
+
+struct nil_extent4d
+nil_extent4d_px_to_el(struct nil_extent4d extent_px,
+                      enum pipe_format format,
+                      enum nil_sample_layout sample_layout);
 
 #define NIL_GOB_WIDTH_B 64
 #define NIL_GOB_HEIGHT(gob_height_8) ((gob_height_8) ? 8 : 4)
@@ -95,8 +111,8 @@ struct nil_image {
    enum pipe_format format;
 
    struct nil_extent4d extent_px;
+   enum nil_sample_layout sample_layout;
    uint8_t num_levels;
-   uint8_t num_samples;
 
    struct nil_image_level levels[NIL_MAX_LEVELS];
 
@@ -154,6 +170,8 @@ nil_image_level_layer_offset_B(const struct nil_image *image,
    return image->levels[level].offset_B + (layer * image->array_stride_B);
 }
 
+struct nil_extent4d nil_image_level_extent_sa(const struct nil_image *image,
+                                              uint32_t level);
 uint64_t nil_image_level_size_B(const struct nil_image *image,
                                 uint32_t level);
 uint64_t nil_image_level_depth_stride_B(const struct nil_image *image,

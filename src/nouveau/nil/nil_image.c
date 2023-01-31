@@ -30,6 +30,17 @@ nil_extent4d_div_round_up(struct nil_extent4d num, struct nil_extent4d denom)
 }
 
 static struct nil_extent4d
+nil_extent4d_mul(struct nil_extent4d a, struct nil_extent4d b)
+{
+   return (struct nil_extent4d) {
+      .w = a.w * b.w,
+      .h = a.h * b.h,
+      .d = a.d * b.d,
+      .a = a.a * b.a,
+   };
+}
+
+static struct nil_extent4d
 nil_extent4d_align(struct nil_extent4d ext, struct nil_extent4d align)
 {
    return (struct nil_extent4d) {
@@ -40,21 +51,49 @@ nil_extent4d_align(struct nil_extent4d ext, struct nil_extent4d align)
    };
 }
 
-static struct nil_extent4d
-nil_extent4d_px_to_el(struct nil_extent4d extent_px,
-                      enum pipe_format format)
+static inline struct nil_extent4d
+nil_px_extent_sa(enum nil_sample_layout sample_layout)
+{
+   switch (sample_layout) {
+   case NIL_SAMPLE_LAYOUT_1X1: return nil_extent4d(1, 1, 1, 1);
+   case NIL_SAMPLE_LAYOUT_2X1: return nil_extent4d(2, 1, 1, 1);
+   case NIL_SAMPLE_LAYOUT_2X2: return nil_extent4d(2, 2, 1, 1);
+   case NIL_SAMPLE_LAYOUT_4X2: return nil_extent4d(4, 2, 1, 1);
+   case NIL_SAMPLE_LAYOUT_4X4: return nil_extent4d(4, 4, 1, 1);
+   default: unreachable("Invalid sample layout");
+   }
+}
+
+static inline struct nil_extent4d
+nil_el_extent_sa(enum pipe_format format)
 {
    const struct util_format_description *fmt =
       util_format_description(format);
 
-   const struct nil_extent4d block_extent_px = {
+   return (struct nil_extent4d) {
       .w = fmt->block.width,
       .h = fmt->block.height,
       .d = fmt->block.depth,
       .a = 1,
    };
+}
 
-   return nil_extent4d_div_round_up(extent_px, block_extent_px);
+static struct nil_extent4d
+nil_extent4d_px_to_sa(struct nil_extent4d extent_px,
+                      enum nil_sample_layout sample_layout)
+{
+   return nil_extent4d_mul(extent_px, nil_px_extent_sa(sample_layout));
+}
+
+struct nil_extent4d
+nil_extent4d_px_to_el(struct nil_extent4d extent_px,
+                      enum pipe_format format,
+                      enum nil_sample_layout sample_layout)
+{
+   const struct nil_extent4d extent_sa =
+      nil_extent4d_px_to_sa(extent_px, sample_layout);
+
+   return nil_extent4d_div_round_up(extent_sa, nil_el_extent_sa(format));
 }
 
 static struct nil_extent4d
@@ -92,6 +131,20 @@ nil_tiling_extent_B(struct nil_tiling tiling)
       };
    } else {
       return nil_extent4d(1, 1, 1, 1);
+   }
+}
+
+enum nil_sample_layout
+nil_choose_sample_layout(uint32_t samples)
+{
+   switch (samples) {
+   case 1:  return NIL_SAMPLE_LAYOUT_1X1;
+   case 2:  return NIL_SAMPLE_LAYOUT_2X1;
+   case 4:  return NIL_SAMPLE_LAYOUT_2X2;
+   case 8:  return NIL_SAMPLE_LAYOUT_4X2;
+   case 16: return NIL_SAMPLE_LAYOUT_4X4;
+   default:
+      unreachable("Unsupported sample count");
    }
 }
 
@@ -136,13 +189,23 @@ nil_extent4d_B_to_tl(struct nil_extent4d extent_B,
    return nil_extent4d_div_round_up(extent_B, nil_tiling_extent_B(tiling));
 }
 
+struct nil_extent4d
+nil_image_level_extent_sa(const struct nil_image *image, uint32_t level)
+{
+   const struct nil_extent4d level_extent_px =
+      nil_minify_extent4d(image->extent_px, level);
+
+   return nil_extent4d_px_to_sa(level_extent_px, image->sample_layout);
+}
+
 static struct nil_extent4d
 image_level_extent_B(const struct nil_image *image, uint32_t level)
 {
    const struct nil_extent4d level_extent_px =
       nil_minify_extent4d(image->extent_px, level);
    const struct nil_extent4d level_extent_el =
-      nil_extent4d_px_to_el(level_extent_px, image->format);
+      nil_extent4d_px_to_el(level_extent_px, image->format,
+                            image->sample_layout);
    const uint32_t B_per_el = util_format_get_blocksize(image->format);
    return nil_extent4d_el_to_B(level_extent_el, B_per_el);
 }
@@ -304,8 +367,8 @@ nil_image_init(struct nouveau_ws_device *dev,
       .dim = info->dim,
       .format = info->format,
       .extent_px = info->extent_px,
+      .sample_layout = nil_choose_sample_layout(info->samples),
       .num_levels = info->levels,
-      .num_samples = info->samples,
    };
 
    uint64_t layer_size_B = 0;
@@ -384,7 +447,7 @@ nil_image_3d_level_as_2d_array(const struct nil_image *image_3d,
 {
    assert(image_3d->dim == NIL_IMAGE_DIM_3D);
    assert(level <= image_3d->num_levels);
-   assert(image_3d->num_samples == 1);
+   assert(image_3d->sample_layout == NIL_SAMPLE_LAYOUT_1X1);
    assert(!image_3d->levels[level].tiling.is_tiled ||
           image_3d->levels[level].tiling.z_log2 == 0);
 
@@ -407,7 +470,7 @@ nil_image_3d_level_as_2d_array(const struct nil_image *image_3d,
          .a = lvl_ext_px.d,
       },
       .num_levels = 1,
-      .num_samples = 1,
+      .sample_layout = NIL_SAMPLE_LAYOUT_1X1,
       .levels[0] = image_3d->levels[level],
       .array_stride_B = z_stride,
       .align_B = nil_tiling_size_B(image_3d->levels[level].tiling),
