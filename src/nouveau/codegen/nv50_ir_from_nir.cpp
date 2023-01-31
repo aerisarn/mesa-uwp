@@ -2857,11 +2857,13 @@ Converter::convert(glsl_sampler_dim dim, bool isArray, bool isShadow)
 {
    switch (dim) {
    CASE_SAMPLER(1D);
+   case GLSL_SAMPLER_DIM_SUBPASS:
    CASE_SAMPLER(2D);
    CASE_SAMPLER(CUBE);
    case GLSL_SAMPLER_DIM_3D:
       return TEX_TARGET_3D;
    case GLSL_SAMPLER_DIM_MS:
+   case GLSL_SAMPLER_DIM_SUBPASS_MS:
       if (isArray)
          return TEX_TARGET_2D_MS_ARRAY;
       return TEX_TARGET_2D_MS;
