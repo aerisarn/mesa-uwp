@@ -28,33 +28,44 @@ desc_ubo_data(struct nvk_descriptor_set *set, uint32_t binding,
 }
 
 static void
-write_sampler_desc(struct nvk_descriptor_set *set,
-                   const VkDescriptorImageInfo *const info,
-                   uint32_t binding, uint32_t elem)
+write_desc(struct nvk_descriptor_set *set, uint32_t binding, uint32_t elem,
+           const void *desc_data, size_t desc_size)
 {
-   const struct nvk_descriptor_set_binding_layout *binding_layout =
-      &set->layout->binding[binding];
-
-   if (binding_layout->immutable_samplers)
-      return;
-
-   VK_FROM_HANDLE(nvk_sampler, sampler, info->sampler);
-
-   struct nvk_image_descriptor *desc = desc_ubo_data(set, binding, elem);
-   assert(sampler->desc_index < (1 << 12));
-   desc->sampler_index = sampler->desc_index;
+   memcpy(desc_ubo_data(set, binding, elem), desc_data, desc_size);
 }
+
+#define IMAGE_VIEW 0x1
+#define SAMPLER 0x2
 
 static void
 write_image_view_desc(struct nvk_descriptor_set *set,
                       const VkDescriptorImageInfo *const info,
-                      uint32_t binding, uint32_t elem)
+                      uint32_t binding, uint32_t elem,
+                      int handles)
 {
-   VK_FROM_HANDLE(nvk_image_view, view, info->imageView);
+   struct nvk_image_descriptor desc = { };
 
-   struct nvk_image_descriptor *desc = desc_ubo_data(set, binding, elem);
-   assert(view->desc_index < (1 << 20));
-   desc->image_index = view->desc_index;
+   if ((handles & IMAGE_VIEW) && info->imageView != VK_NULL_HANDLE) {
+      VK_FROM_HANDLE(nvk_image_view, view, info->imageView);
+      assert(view->desc_index < (1 << 20));
+      desc.image_index = view->desc_index;
+   }
+
+   if (handles & SAMPLER) {
+      const struct nvk_descriptor_set_binding_layout *binding_layout =
+         &set->layout->binding[binding];
+
+      struct nvk_sampler *sampler;
+      if (binding_layout->immutable_samplers) {
+         sampler = binding_layout->immutable_samplers[elem];
+      } else {
+         sampler = nvk_sampler_from_handle(info->sampler);
+      }
+      assert(sampler->desc_index < (1 << 12));
+      desc.sampler_index = sampler->desc_index;
+   }
+
+   write_desc(set, binding, elem, &desc, sizeof(desc));
 }
 
 static void
@@ -64,11 +75,11 @@ write_buffer_desc(struct nvk_descriptor_set *set,
 {
    VK_FROM_HANDLE(nvk_buffer, buffer, info->buffer);
 
-   struct nvk_buffer_address *desc = desc_ubo_data(set, binding, elem);
-   *desc = (struct nvk_buffer_address){
+   const struct nvk_buffer_address desc = {
       .base_addr = nvk_buffer_address(buffer, info->offset),
       .size = vk_buffer_range(&buffer->vk, info->offset, info->range),
    };
+   write_desc(set, binding, elem, &desc, sizeof(desc));
 }
 
 static void
@@ -78,9 +89,11 @@ write_buffer_view_desc(struct nvk_descriptor_set *set,
 {
    VK_FROM_HANDLE(nvk_buffer_view, view, bufferView);
 
-   struct nvk_image_descriptor *desc = desc_ubo_data(set, binding, elem);
    assert(view->desc_index < (1 << 20));
-   desc->image_index = view->desc_index;
+   struct nvk_image_descriptor desc = {
+      .image_index = view->desc_index,
+   };
+   write_desc(set, binding, elem, &desc, sizeof(desc));
 }
 
 static void
@@ -88,8 +101,8 @@ write_inline_uniform_data(struct nvk_descriptor_set *set,
                           const VkWriteDescriptorSetInlineUniformBlock *info,
                           uint32_t binding, uint32_t offset)
 {
-   memcpy((char *)desc_ubo_data(set, binding, 0) + offset, info->pData,
-          info->dataSize);
+   assert(set->layout->binding[binding].stride == 1);
+   write_desc(set, binding, offset, info->pData, info->dataSize);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -106,17 +119,19 @@ nvk_UpdateDescriptorSets(VkDevice device,
       switch (write->descriptorType) {
       case VK_DESCRIPTOR_TYPE_SAMPLER:
          for (uint32_t j = 0; j < write->descriptorCount; j++) {
-            write_sampler_desc(set, write->pImageInfo + j, write->dstBinding,
-                               write->dstArrayElement + j);
+            write_image_view_desc(set, write->pImageInfo + j,
+                                  write->dstBinding,
+                                  write->dstArrayElement + j,
+                                  SAMPLER);
          }
          break;
 
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
          for (uint32_t j = 0; j < write->descriptorCount; j++) {
-            write_sampler_desc(set, write->pImageInfo + j, write->dstBinding,
-                               write->dstArrayElement + j);
-            write_image_view_desc(set, write->pImageInfo + j, write->dstBinding,
-                                  write->dstArrayElement + j);
+            write_image_view_desc(set, write->pImageInfo + j,
+                                  write->dstBinding,
+                                  write->dstArrayElement + j,
+                                  IMAGE_VIEW | SAMPLER);
          }
          break;
 
@@ -124,8 +139,10 @@ nvk_UpdateDescriptorSets(VkDevice device,
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
       case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
          for (uint32_t j = 0; j < write->descriptorCount; j++) {
-            write_image_view_desc(set, write->pImageInfo + j, write->dstBinding,
-                                  write->dstArrayElement + j);
+            write_image_view_desc(set, write->pImageInfo + j,
+                                  write->dstBinding,
+                                  write->dstArrayElement + j,
+                                  IMAGE_VIEW);
          }
          break;
 
