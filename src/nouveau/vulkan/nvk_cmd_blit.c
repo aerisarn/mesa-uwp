@@ -190,13 +190,3 @@ nvk_CmdBlitImage2(VkCommandBuffer commandBuffer,
       }
    }
 }
-
-VKAPI_ATTR void VKAPI_CALL
-nvk_CmdClearColorImage(VkCommandBuffer commandBuffer,
-                       VkImage _image,
-                       VkImageLayout imageLayout,
-                       const VkClearColorValue *pColor,
-                       uint32_t rangeCount,
-                       const VkImageSubresourceRange *pRanges)
-{
-}

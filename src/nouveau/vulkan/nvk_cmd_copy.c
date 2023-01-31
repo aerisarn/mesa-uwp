@@ -5,6 +5,7 @@
 #include "nvk_buffer.h"
 #include "nvk_device.h"
 #include "nvk_device_memory.h"
+#include "nvk_format.h"
 #include "nvk_image.h"
 #include "nvk_physical_device.h"
 
@@ -404,6 +405,118 @@ nvk_CmdCopyImage2(VkCommandBuffer commandBuffer,
       };
 
       nouveau_copy_rect(cmd, &copy);
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdClearColorImage(VkCommandBuffer commandBuffer,
+                       VkImage image,
+                       VkImageLayout imageLayout,
+                       const VkClearColorValue *pColor,
+                       uint32_t rangeCount,
+                       const VkImageSubresourceRange *pRanges)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_image, dst, image);
+   struct nouveau_ws_push *push = cmd->push;
+
+   nvk_push_image_ref(push, dst, NOUVEAU_WS_BO_WR);
+
+   P_IMMD(push, NV902D, SET_OPERATION, V_SRCCOPY);
+
+   P_IMMD(push, NV902D, SET_CLIP_ENABLE, V_FALSE);
+   P_IMMD(push, NV902D, SET_COLOR_KEY_ENABLE, V_FALSE);
+   P_IMMD(push, NV902D, SET_RENDER_ENABLE_C, MODE_TRUE);
+
+   uint32_t packed_color[4] = { };
+   util_format_pack_rgba(vk_format_to_pipe_format(dst->vk.format),
+                         packed_color, pColor, 1);
+
+   switch (vk_format_get_blocksize(dst->vk.format)) {
+   case 1:
+      P_IMMD(push, NV902D, SET_DST_FORMAT, V_Y8);
+      P_IMMD(push, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT, V_Y8);
+      break;
+   case 2:
+      P_IMMD(push, NV902D, SET_DST_FORMAT, V_Y16);
+      P_IMMD(push, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT, V_Y16);
+      break;
+   case 4:
+      P_IMMD(push, NV902D, SET_DST_FORMAT, V_A8B8G8R8);
+      P_IMMD(push, NV902D, SET_RENDER_SOLID_PRIM_COLOR_FORMAT, V_A8B8G8R8);
+      break;
+   default:
+      unreachable("TODO: More formats in CmdClearColorImage");
+   }
+
+   P_MTHD(push, NV902D, SET_RENDER_SOLID_PRIM_COLOR0);
+   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR0(push, packed_color[0]);
+   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR1(push, packed_color[1]);
+   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR2(push, packed_color[2]);
+   P_NV902D_SET_RENDER_SOLID_PRIM_COLOR3(push, packed_color[3]);
+
+   P_IMMD(push, NV902D, RENDER_SOLID_PRIM_MODE, V_RECTS);
+
+   for (uint32_t r = 0; r < rangeCount; r++) {
+      const uint32_t layer_count =
+         vk_image_subresource_layer_count(&dst->vk, &pRanges[r]);
+      const uint32_t level_count =
+         vk_image_subresource_level_count(&dst->vk, &pRanges[r]);
+
+      for (uint32_t w = 0; w < layer_count; w++) {
+         const uint32_t layer = w + pRanges[r].baseArrayLayer;
+
+         for (uint32_t l = 0; l < level_count; l++) {
+            const uint32_t level = l + pRanges[r].baseMipLevel;
+
+            const struct nil_image_level *dst_level = &dst->nil.levels[level];
+            const VkDeviceSize dst_addr = nvk_image_base_address(dst) +
+                                          layer * dst->nil.array_stride_B +
+                                          dst_level->offset_B;
+
+            P_MTHD(push, NV902D, SET_DST_OFFSET_UPPER);
+            P_NV902D_SET_DST_OFFSET_UPPER(push, dst_addr >> 32);
+            P_NV902D_SET_DST_OFFSET_LOWER(push, dst_addr & 0xffffffff);
+
+            if (dst_level->tiling.is_tiled) {
+               P_MTHD(push, NV902D, SET_DST_MEMORY_LAYOUT);
+               P_NV902D_SET_DST_MEMORY_LAYOUT(push, V_BLOCKLINEAR);
+               P_NV902D_SET_DST_BLOCK_SIZE(push, {
+                  .height = dst_level->tiling.y_log2,
+                  .depth = dst_level->tiling.z_log2,
+               });
+            } else {
+               P_IMMD(push, NV902D, SET_DST_MEMORY_LAYOUT, V_PITCH);
+            }
+
+            const VkExtent3D dst_level_extent =
+               vk_image_mip_level_extent(&dst->vk, level);
+
+            P_MTHD(push, NV902D, SET_DST_DEPTH);
+            P_NV902D_SET_DST_DEPTH(push, dst_level_extent.depth);
+
+            P_MTHD(push, NV902D, SET_DST_PITCH);
+            P_NV902D_SET_DST_PITCH(push, dst_level->row_stride_B);
+            P_NV902D_SET_DST_WIDTH(push, dst_level_extent.width);
+            P_NV902D_SET_DST_HEIGHT(push, dst_level_extent.height);
+
+            for (uint32_t z = 0; z < dst_level_extent.depth; z++) {
+               P_MTHD(push, NV902D, SET_DST_LAYER);
+               P_NV902D_SET_DST_LAYER(push, z);
+
+               const uint32_t x0 = 0;
+               const uint32_t y0 = 0;
+               const uint32_t x1 = dst_level_extent.width + 1;
+               const uint32_t y1 = dst_level_extent.height + 1;
+
+               P_MTHD(push, NV902D, RENDER_SOLID_PRIM_POINT_SET_X(0));
+               P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 0, x0);
+               P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 0, y0);
+               P_NV902D_RENDER_SOLID_PRIM_POINT_SET_X(push, 1, x1);
+               P_NV902D_RENDER_SOLID_PRIM_POINT_Y(push, 1, y1);
+            }
+         }
+      }
    }
 }
 
