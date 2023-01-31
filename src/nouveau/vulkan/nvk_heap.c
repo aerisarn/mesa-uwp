@@ -13,7 +13,7 @@ VkResult
 nvk_heap_init(struct nvk_device *device, struct nvk_heap *heap,
               enum nouveau_ws_bo_flags bo_flags,
               enum nouveau_ws_bo_map_flags map_flags,
-              uint32_t overalloc)
+              uint32_t overalloc, bool contiguous)
 {
    memset(heap, 0, sizeof(*heap));
 
@@ -22,6 +22,7 @@ nvk_heap_init(struct nvk_device *device, struct nvk_heap *heap,
       heap->bo_flags |= NOUVEAU_WS_BO_MAP;
    heap->map_flags = map_flags;
    heap->overalloc = overalloc;
+   heap->contiguous = contiguous;
 
    simple_mtx_init(&heap->mutex, mtx_plain);
    util_vma_heap_init(&heap->heap, 0, 0);
@@ -69,32 +70,115 @@ vma_bo_offset(uint64_t offset)
 static VkResult
 nvk_heap_grow_locked(struct nvk_device *dev, struct nvk_heap *heap)
 {
-   if (heap->bo_count >= NVK_HEAP_MAX_BO_COUNT) {
-      return vk_errorf(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                       "Heap has already hit its maximum size");
+   VkResult result;
+
+   if (heap->contiguous) {
+      if (heap->total_size >= NVK_HEAP_MAX_SIZE) {
+         return vk_errorf(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                          "Heap has already hit its maximum size");
+      }
+
+      const uint64_t new_bo_size =
+         MAX2(heap->total_size * 2, NVK_HEAP_MIN_SIZE);
+
+      void *new_bo_map;
+      struct nouveau_ws_bo *new_bo =
+         nouveau_ws_bo_new_mapped(dev->pdev->dev,
+                                  new_bo_size + heap->overalloc, 0,
+                                  heap->bo_flags, heap->map_flags,
+                                  &new_bo_map);
+      if (new_bo == NULL) {
+         return vk_errorf(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                          "Failed to allocate a heap BO: %m");
+      }
+
+      if (heap->bo_count > 0) {
+         assert(heap->bo_count == 1);
+         struct nouveau_ws_bo *old_bo = heap->bos[0].bo;
+
+         uint32_t push_dw[10];
+         struct nv_push push;
+         nv_push_init(&push, push_dw, ARRAY_SIZE(push_dw));
+         struct nv_push *p = &push;
+
+         P_MTHD(p, NV90B5, OFFSET_IN_UPPER);
+         P_NV90B5_OFFSET_IN_UPPER(p, old_bo->offset >> 32);
+         P_NV90B5_OFFSET_IN_LOWER(p, old_bo->offset & 0xffffffff);
+         P_NV90B5_OFFSET_OUT_UPPER(p, new_bo->offset >> 32);
+         P_NV90B5_OFFSET_OUT_LOWER(p, new_bo->offset & 0xffffffff);
+
+         assert(util_is_power_of_two_nonzero(heap->total_size));
+         assert(heap->total_size >= NVK_HEAP_MIN_SIZE);
+         assert(heap->total_size <= old_bo->size);
+         assert(heap->total_size < new_bo_size);
+
+         unsigned line_bytes = MIN2(heap->total_size, 1 << 17);
+         assert(heap->total_size % line_bytes == 0);
+
+         P_MTHD(p, NV90B5, LINE_LENGTH_IN);
+         P_NV90B5_LINE_LENGTH_IN(p, line_bytes);
+         P_NV90B5_LINE_COUNT(p, heap->total_size / line_bytes);
+
+         P_IMMD(p, NV90B5, LAUNCH_DMA, {
+            .data_transfer_type = DATA_TRANSFER_TYPE_NON_PIPELINED,
+            .multi_line_enable = MULTI_LINE_ENABLE_TRUE,
+            .flush_enable = FLUSH_ENABLE_TRUE,
+            .src_memory_layout = SRC_MEMORY_LAYOUT_PITCH,
+            .dst_memory_layout = DST_MEMORY_LAYOUT_PITCH,
+         });
+
+         struct nouveau_ws_bo *push_bos[] = { new_bo, old_bo, };
+         result = nvk_queue_submit_simple(&dev->queue,
+                                          nv_push_dw_count(&push), push_dw,
+                                          ARRAY_SIZE(push_bos), push_bos,
+                                          true /* sync */);
+         if (result != VK_SUCCESS) {
+            nouveau_ws_bo_unmap(new_bo, new_bo_map);
+            nouveau_ws_bo_destroy(new_bo);
+            return result;
+         }
+
+         nouveau_ws_bo_unmap(heap->bos[0].bo, heap->bos[0].map);
+         nouveau_ws_bo_destroy(heap->bos[0].bo);
+      }
+
+      uint64_t vma = encode_vma(0, heap->total_size);
+      util_vma_heap_free(&heap->heap, vma, new_bo_size - heap->total_size);
+
+      heap->total_size = new_bo_size;
+      heap->bo_count = 1;
+      heap->bos[0].bo = new_bo;
+      heap->bos[0].map = new_bo_map;
+
+      return VK_SUCCESS;
+   } else {
+      if (heap->bo_count >= NVK_HEAP_MAX_BO_COUNT) {
+         return vk_errorf(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                          "Heap has already hit its maximum size");
+      }
+
+      /* First two BOs are MIN_SIZE, double after that */
+      const uint64_t new_bo_size =
+         NVK_HEAP_MIN_SIZE << (MAX2(heap->bo_count, 1) - 1);
+
+      heap->bos[heap->bo_count].bo =
+         nouveau_ws_bo_new_mapped(dev->pdev->dev,
+                                  new_bo_size + heap->overalloc, 0,
+                                  heap->bo_flags, heap->map_flags,
+                                  &heap->bos[heap->bo_count].map);
+      if (heap->bos[heap->bo_count].bo == NULL) {
+         return vk_errorf(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                          "Failed to allocate a heap BO: %m");
+      }
+
+      uint64_t vma = encode_vma(heap->bo_count, 0);
+      util_vma_heap_free(&heap->heap, vma, new_bo_size);
+
+      heap->total_size += new_bo_size;
+      heap->bo_count++;
+
+      return VK_SUCCESS;
    }
-
-   /* First two BOs are MIN_SIZE, double after that */
-   const uint64_t new_bo_size =
-      NVK_HEAP_MIN_SIZE << (MAX2(heap->bo_count, 1) - 1);
-
-   heap->bos[heap->bo_count].bo =
-      nouveau_ws_bo_new_mapped(dev->pdev->dev,
-                               new_bo_size + heap->overalloc, 0,
-                               heap->bo_flags, heap->map_flags,
-                               &heap->bos[heap->bo_count].map);
-   if (heap->bos[heap->bo_count].bo == NULL) {
-      return vk_errorf(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY,
-                       "Failed to allocate a heap BO: %m");
-   }
-
-   uint64_t vma = encode_vma(heap->bo_count, 0);
-   util_vma_heap_free(&heap->heap, vma, new_bo_size);
-
-   heap->total_size += new_bo_size;
-   heap->bo_count++;
-
-   return VK_SUCCESS;
 }
 
 static VkResult
@@ -113,7 +197,12 @@ nvk_heap_alloc_locked(struct nvk_device *dev, struct nvk_heap *heap,
          assert(bo_offset + size + heap->overalloc <=
                 heap->bos[bo_idx].bo->size);
 
-         *addr_out = heap->bos[bo_idx].bo->offset + bo_offset;
+         if (heap->contiguous) {
+            assert(bo_idx == 0);
+            *addr_out = bo_offset;
+         } else {
+            *addr_out = heap->bos[bo_idx].bo->offset + bo_offset;
+         }
          *map_out = (char *)heap->bos[bo_idx].map + bo_offset;
 
          return VK_SUCCESS;
@@ -153,6 +242,12 @@ nvk_heap_alloc(struct nvk_device *dev, struct nvk_heap *heap,
                uint64_t size, uint32_t alignment,
                uint64_t *addr_out, void **map_out)
 {
+   /* We can't return maps from contiguous heaps because the the map may go
+    * away at any time when the lock isn't taken and we don't want to trust
+    * the caller with racy maps.
+    */
+   assert(!heap->contiguous);
+
    simple_mtx_lock(&heap->mutex);
    VkResult result = nvk_heap_alloc_locked(dev, heap, size, alignment,
                                            addr_out, map_out);

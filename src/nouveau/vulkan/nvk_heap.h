@@ -25,6 +25,7 @@ struct nvk_heap {
    enum nouveau_ws_bo_flags bo_flags;
    enum nouveau_ws_bo_map_flags map_flags;
    uint32_t overalloc;
+   bool contiguous;
 
    simple_mtx_t mutex;
    struct util_vma_heap heap;
@@ -38,7 +39,7 @@ struct nvk_heap {
 VkResult nvk_heap_init(struct nvk_device *dev, struct nvk_heap *heap,
                        enum nouveau_ws_bo_flags bo_flags,
                        enum nouveau_ws_bo_map_flags map_flags,
-                       uint32_t overalloc);
+                       uint32_t overalloc, bool contiguous);
 
 void nvk_heap_finish(struct nvk_device *dev, struct nvk_heap *heap);
 
@@ -52,5 +53,20 @@ VkResult nvk_heap_upload(struct nvk_device *dev, struct nvk_heap *heap,
 
 void nvk_heap_free(struct nvk_device *dev, struct nvk_heap *heap,
                    uint64_t addr, uint64_t size);
+
+static inline struct nouveau_ws_bo *
+nvk_heap_get_contiguous_bo_ref(struct nvk_heap *heap)
+{
+   assert(heap->contiguous);
+   assert(heap->bo_count <= 1);
+
+   simple_mtx_lock(&heap->mutex);
+   struct nouveau_ws_bo *bo = heap->bos[0].bo;
+   if (bo)
+      nouveau_ws_bo_ref(bo);
+   simple_mtx_unlock(&heap->mutex);
+
+   return bo;
+}
 
 #endif /* define NVK_HEAP_H */

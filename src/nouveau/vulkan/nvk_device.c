@@ -180,13 +180,13 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
     */
    result = nvk_heap_init(device, &device->shader_heap,
                           NOUVEAU_WS_BO_LOCAL, NOUVEAU_WS_BO_WR,
-                          4096 /* overalloc */);
+                          4096 /* overalloc */, false /* contiguous */);
    if (result != VK_SUCCESS)
       goto fail_samplers;
 
    result = nvk_heap_init(device, &device->event_heap,
                           NOUVEAU_WS_BO_LOCAL, NOUVEAU_WS_BO_WR,
-                          0 /* overalloc */);
+                          0 /* overalloc */, false /* contiguous */);
    if (result != VK_SUCCESS)
       goto fail_shader_heap;
 
