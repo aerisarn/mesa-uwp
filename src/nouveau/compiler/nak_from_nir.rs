@@ -86,6 +86,10 @@ impl<'a> ShaderFromNir<'a> {
         let dst = self.get_dst(&alu.def);
 
         match alu.op {
+            nir_op_bcsel => {
+                self.instrs
+                    .push(Instr::new_sel(dst, srcs[0], srcs[1], srcs[2]));
+            }
             nir_op_fadd => {
                 self.instrs.push(Instr::new_fadd(dst, srcs[0], srcs[1]));
             }

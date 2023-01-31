@@ -832,6 +832,10 @@ impl Instr {
         Instr::new(Opcode::MOV, slice::from_ref(&dst), &[Src::Zero, src])
     }
 
+    pub fn new_sel(dst: Dst, sel: Src, x: Src, y: Src) -> Instr {
+        Instr::new(Opcode::SEL, slice::from_ref(&dst), &[sel, x, y])
+    }
+
     pub fn new_vec(dst: Dst, srcs: &[Src]) -> Instr {
         Instr::new(Opcode::VEC, slice::from_ref(&dst), srcs)
     }
@@ -946,6 +950,7 @@ impl Instr {
             | Opcode::ISETP(_)
             | Opcode::SHL => Some(6),
             Opcode::MOV => Some(15),
+            Opcode::SEL => Some(15),
             Opcode::S2R(_) => None,
             Opcode::ALD(_) => None,
             Opcode::AST(_) => Some(15),
@@ -996,6 +1001,7 @@ pub enum Opcode {
 
     S2R(u8),
     MOV,
+    SEL,
     VEC,
     SPLIT,
 
@@ -1024,6 +1030,7 @@ impl fmt::Display for Opcode {
             Opcode::SHL => write!(f, "SHL"),
             Opcode::S2R(i) => write!(f, "S2R({})", i),
             Opcode::MOV => write!(f, "MOV"),
+            Opcode::SEL => write!(f, "SEL"),
             Opcode::VEC => write!(f, "VEC"),
             Opcode::SPLIT => write!(f, "SPLIT"),
             Opcode::ALD(_) => write!(f, "ALD"),

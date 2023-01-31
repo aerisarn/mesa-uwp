@@ -216,6 +216,14 @@ fn encode_mov(bs: &mut impl BitSetMut, instr: &Instr) {
     bs.set_field(72..76, 0xf_u32 /* TODO: Quad lanes */);
 }
 
+fn encode_sel(bs: &mut impl BitSetMut, instr: &Instr) {
+    let i = Instr::new(Opcode::SEL, instr.dsts(), &instr.srcs()[1..]);
+    encode_alu(bs, &i, 0x007);
+
+    encode_pred(bs, 87..90, *instr.src(0).as_reg().unwrap());
+    bs.set_bit(90, false); /* not */
+}
+
 fn encode_iadd3(bs: &mut impl BitSetMut, instr: &Instr) {
     encode_alu(bs, instr, 0x010);
 
@@ -377,6 +385,7 @@ pub fn encode_instr(instr: &Instr) -> [u32; 4] {
     match &instr.op {
         Opcode::S2R(i) => encode_s2r(&mut bs, instr, *i),
         Opcode::MOV => encode_mov(&mut bs, instr),
+        Opcode::SEL => encode_sel(&mut bs, instr),
         Opcode::IADD3 => encode_iadd3(&mut bs, instr),
         Opcode::LOP3(op) => encode_lop3(&mut bs, instr, &op),
         Opcode::ISETP(op) => encode_isetp(&mut bs, instr, &op),
