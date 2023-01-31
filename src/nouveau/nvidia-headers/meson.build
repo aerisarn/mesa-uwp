@@ -17,6 +17,7 @@ nvk_classes = [
   'clc397',
   'clc3c0',
   'clc597',
+  'clc5c0',
 ]
 
 nvk_cl_header_depend_files = [

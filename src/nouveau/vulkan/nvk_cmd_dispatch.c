@@ -56,7 +56,7 @@ nvc0c0_qmd_set_dispatch_size(UNUSED struct nvk_device *dev, uint32_t *qmd,
 static uint32_t
 qmd_dispatch_size_offset(struct nvk_device *dev)
 {
-   assert(dev->ctx->compute.cls >= VOLTA_COMPUTE_A);
+   assert(dev->pdev->info.cls_compute >= VOLTA_COMPUTE_A);
    uint32_t bit = DRF_LO(DRF_MW(NVC3C0_QMDV02_02_CTA_RASTER_WIDTH));
    assert(bit % 32 == 0);
    assert(DRF_LO(DRF_MW(NVC3C0_QMDV02_02_CTA_RASTER_HEIGHT)) == bit + 32);
@@ -278,7 +278,7 @@ mme_store_global_vec3(struct mme_builder *b,
 void
 nvk_mme_dispatch_indirect(struct nvk_device *dev, struct mme_builder *b)
 {
-   if (dev->ctx->eng3d.cls < TURING_A)
+   if (dev->pdev->info.cls_eng3d < TURING_A)
       return;
 
    struct mme_value local_size = mme_load(b);

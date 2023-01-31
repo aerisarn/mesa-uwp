@@ -26,3 +26,21 @@ nvk_build_mme(struct nvk_device *dev, enum nvk_mme mme, size_t *size_out)
 
    return mme_builder_finish(&b, size_out);
 }
+
+void
+nvk_test_build_all_mmes(const struct nv_device_info *devinfo)
+{
+   struct nvk_physical_device pdev = { .info = *devinfo };
+   vk_object_base_init(NULL, &pdev.vk.base, VK_OBJECT_TYPE_PHYSICAL_DEVICE);
+
+   struct nvk_device dev = { .pdev = &pdev };
+   vk_object_base_init(NULL, &dev.vk.base, VK_OBJECT_TYPE_DEVICE);
+   dev.vk.physical = &pdev.vk;
+
+   for (uint32_t mme = 0; mme < NVK_MME_COUNT; mme++) {
+      size_t size;
+      uint32_t *dw = nvk_build_mme(&dev, mme, &size);
+      assert(dw != NULL);
+      free(dw);
+   }
+}

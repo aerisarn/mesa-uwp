@@ -536,7 +536,7 @@ nvk_GetQueryPoolResults(VkDevice device,
 void
 nvk_mme_copy_queries(struct nvk_device *dev, struct mme_builder *b)
 {
-   if (dev->ctx->eng3d.cls < TURING_A)
+   if (dev->pdev->info.cls_eng3d < TURING_A)
       return;
 
    struct mme_value64 dst_addr = mme_load_addr64(b);

@@ -33,6 +33,8 @@ typedef void (*nvk_mme_builder_func)(struct nvk_device *dev,
 uint32_t *nvk_build_mme(struct nvk_device *dev, enum nvk_mme mme,
                         size_t *size_out);
 
+void nvk_test_build_all_mmes(const struct nv_device_info *devinfo);
+
 void nvk_mme_clear_views(struct nvk_device *dev, struct mme_builder *b);
 void nvk_mme_clear_layers(struct nvk_device *dev, struct mme_builder *b);
 void nvk_mme_draw(struct nvk_device *dev, struct mme_builder *b);
