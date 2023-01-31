@@ -175,9 +175,10 @@ render_view_type(VkImageType image_type, unsigned layer_count)
       return layer_count == 1 ? VK_IMAGE_VIEW_TYPE_1D :
                                 VK_IMAGE_VIEW_TYPE_1D_ARRAY;
    case VK_IMAGE_TYPE_2D:
-   case VK_IMAGE_TYPE_3D:
       return layer_count == 1 ? VK_IMAGE_VIEW_TYPE_2D :
                                 VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+   case VK_IMAGE_TYPE_3D:
+      return VK_IMAGE_VIEW_TYPE_3D;
    default:
       unreachable("Invalid image type");
    }
