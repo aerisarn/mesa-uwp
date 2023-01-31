@@ -36,7 +36,7 @@ mme_tu104_pred_to_str(enum mme_tu104_pred pred)
 }
 
 #define OP_TO_STR(OP) [MME_TU104_ALU_OP_##OP] = #OP
-const char *alu_op_to_str[] = {
+static const char *alu_op_to_str[] = {
    OP_TO_STR(ADD),
    OP_TO_STR(ADDC),
    OP_TO_STR(SUB),
