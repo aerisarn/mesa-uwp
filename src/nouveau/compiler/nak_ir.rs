@@ -215,21 +215,6 @@ pub enum Ref {
 }
 
 impl Ref {
-    pub fn new_zero() -> Ref {
-        Ref::Zero
-    }
-
-    pub fn new_imm_u32(u: u32) -> Ref {
-        Ref::Imm(Immediate { u: u })
-    }
-
-    pub fn new_cbuf(idx: u8, offset: u16) -> Ref {
-        Ref::CBuf(CBufRef {
-            buf: CBuf::Binding(idx),
-            offset: offset,
-        })
-    }
-
     pub fn new_ssa(file: RegFile, idx: u32, comps: u8) -> Ref {
         Ref::SSA(SSAValue::new(file, idx, comps))
     }
@@ -258,38 +243,23 @@ impl Ref {
 
     pub fn get_reg(&self) -> Option<&RegRef> {
         match self {
-            Src::Zero | Src::Imm(_) | Src::SSA(_) => None,
-            Src::CBuf(cb) => match &cb.buf {
+            Ref::Zero | Ref::Imm(_) | Ref::SSA(_) => None,
+            Ref::CBuf(cb) => match &cb.buf {
                 CBuf::Binding(_) | CBuf::BindlessSSA(_) => None,
                 CBuf::BindlessGPR(reg) => Some(reg),
             },
-            Src::Reg(reg) => Some(reg),
+            Ref::Reg(reg) => Some(reg),
         }
     }
 
     pub fn get_ssa(&self) -> Option<&SSAValue> {
         match self {
-            Src::Zero | Src::Imm(_) | Src::Reg(_) => None,
-            Src::CBuf(cb) => match &cb.buf {
+            Ref::Zero | Ref::Imm(_) | Ref::Reg(_) => None,
+            Ref::CBuf(cb) => match &cb.buf {
                 CBuf::Binding(_) | CBuf::BindlessGPR(_) => None,
                 CBuf::BindlessSSA(ssa) => Some(ssa),
             },
-            Src::SSA(ssa) => Some(ssa),
-        }
-    }
-
-    pub fn is_uniform(&self) -> bool {
-        match self {
-            Src::Zero | Src::Imm(_) | Src::CBuf(_) => true,
-            Src::SSA(ssa) => ssa.is_uniform(),
-            Src::Reg(reg) => reg.is_uniform(),
-        }
-    }
-
-    pub fn is_reg_or_zero(&self) -> bool {
-        match self {
-            Ref::Zero | Ref::SSA(_) | Ref::Reg(_) => true,
-            Ref::Imm(_) | Ref::CBuf(_) => false,
+            Ref::SSA(ssa) => Some(ssa),
         }
     }
 }
@@ -320,29 +290,15 @@ impl fmt::Display for Ref {
     }
 }
 
-pub type Src = Ref;
 pub type Dst = Ref;
-
-pub trait SrcsAsSlice {
-    fn srcs_as_slice(&self) -> &[Src];
-    fn srcs_as_mut_slice(&mut self) -> &mut [Src];
-}
-
-pub trait DstsAsSlice {
-    fn dsts_as_slice(&self) -> &[Dst];
-    fn dsts_as_mut_slice(&mut self) -> &mut [Dst];
-}
 
 #[derive(Clone, Copy)]
 pub enum SrcMod {
     None,
-    FAbs,
-    FNeg,
-    FNegAbs,
-    IAbs,
-    INeg,
-    INegAbs,
-    BNot,
+    Abs,
+    Neg,
+    NegAbs,
+    Not,
 }
 
 impl SrcMod {
@@ -353,117 +309,162 @@ impl SrcMod {
         }
     }
 
-    pub fn is_float(&self) -> bool {
-        match self {
-            SrcMod::None | SrcMod::FAbs | SrcMod::FNeg | SrcMod::FNegAbs => {
-                true
-            }
-            SrcMod::IAbs | SrcMod::INeg | SrcMod::INegAbs | SrcMod::BNot => {
-                false
-            }
-        }
-    }
-
-    pub fn is_int(&self) -> bool {
-        match self {
-            SrcMod::None | SrcMod::IAbs | SrcMod::INeg | SrcMod::INegAbs => {
-                true
-            }
-            SrcMod::FAbs | SrcMod::FNeg | SrcMod::FNegAbs | SrcMod::BNot => {
-                false
-            }
-        }
-    }
-
-    pub fn is_bitwise(&self) -> bool {
-        match self {
-            SrcMod::None | SrcMod::BNot => true,
-            _ => false,
-        }
-    }
-
     pub fn has_neg(&self) -> bool {
         match self {
-            SrcMod::None | SrcMod::FAbs | SrcMod::IAbs => false,
-            SrcMod::FNeg | SrcMod::FNegAbs | SrcMod::INeg | SrcMod::INegAbs => {
-                true
-            }
-            SrcMod::BNot => panic!("This is a binary modifier"),
+            SrcMod::None | SrcMod::Abs => false,
+            SrcMod::Neg | SrcMod::NegAbs => true,
+            SrcMod::Not => panic!("Not an ALU source modifier"),
         }
     }
 
     pub fn has_abs(&self) -> bool {
         match self {
-            SrcMod::None | SrcMod::FNeg | SrcMod::INeg => false,
-            SrcMod::FAbs | SrcMod::FNegAbs | SrcMod::IAbs | SrcMod::INegAbs => {
-                true
-            }
-            SrcMod::BNot => panic!("This is a binary modifier"),
+            SrcMod::None | SrcMod::Neg => false,
+            SrcMod::Abs | SrcMod::NegAbs => true,
+            SrcMod::Not => panic!("Not an ALU source modifier"),
         }
     }
 
     pub fn has_not(&self) -> bool {
         match self {
             SrcMod::None => false,
-            SrcMod::BNot => true,
-            _ => panic!("This is not a binary modifier"),
+            SrcMod::Not => true,
+            _ => panic!("Not a boolean source modifier"),
+        }
+    }
+
+    pub fn abs(&self) -> SrcMod {
+        match self {
+            SrcMod::None | SrcMod::Abs | SrcMod::Neg | SrcMod::NegAbs => {
+                SrcMod::Abs
+            }
+            SrcMod::Not => panic!("Not an ALU source modifier"),
+        }
+    }
+
+    pub fn neg(&self) -> SrcMod {
+        match self {
+            SrcMod::None => SrcMod::Neg,
+            SrcMod::Abs => SrcMod::NegAbs,
+            SrcMod::Neg => SrcMod::None,
+            SrcMod::NegAbs => SrcMod::Abs,
+            SrcMod::Not => panic!("Not an ALU source modifier"),
+        }
+    }
+
+    pub fn not(&self) -> SrcMod {
+        match self {
+            SrcMod::None => SrcMod::Not,
+            SrcMod::Not => SrcMod::None,
+            _ => panic!("Not a boolean source modifier"),
         }
     }
 }
 
-pub struct ModSrc {
-    pub src: Src,
+#[derive(Clone, Copy)]
+pub struct Src {
+    pub src_ref: Ref,
     pub src_mod: SrcMod,
 }
 
-impl From<Src> for ModSrc {
-    fn from(value: Src) -> ModSrc {
-        ModSrc {
-            src: value,
+impl Src {
+    pub fn new_zero() -> Src {
+        Ref::Zero.into()
+    }
+
+    pub fn new_imm_u32(u: u32) -> Src {
+        Ref::Imm(Immediate { u: u }).into()
+    }
+
+    pub fn new_cbuf(idx: u8, offset: u16) -> Src {
+        Ref::CBuf(CBufRef {
+            buf: CBuf::Binding(idx),
+            offset: offset,
+        })
+        .into()
+    }
+
+    pub fn abs(&self) -> Src {
+        Src {
+            src_ref: self.src_ref,
+            src_mod: self.src_mod.abs(),
+        }
+    }
+
+    pub fn neg(&self) -> Src {
+        Src {
+            src_ref: self.src_ref,
+            src_mod: self.src_mod.neg(),
+        }
+    }
+
+    pub fn not(&self) -> Src {
+        Src {
+            src_ref: self.src_ref,
+            src_mod: self.src_mod.not(),
+        }
+    }
+
+    pub fn get_reg(&self) -> Option<&RegRef> {
+        self.src_ref.get_reg()
+    }
+
+    pub fn get_ssa(&self) -> Option<&SSAValue> {
+        self.src_ref.get_ssa()
+    }
+
+    pub fn is_uniform(&self) -> bool {
+        match self.src_ref {
+            Ref::Zero | Ref::Imm(_) | Ref::CBuf(_) => true,
+            Ref::SSA(ssa) => ssa.is_uniform(),
+            Ref::Reg(reg) => reg.is_uniform(),
+        }
+    }
+
+    pub fn is_zero(&self) -> bool {
+        match self.src_ref {
+            Ref::Zero => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_reg_or_zero(&self) -> bool {
+        match self.src_ref {
+            Ref::Zero | Ref::SSA(_) | Ref::Reg(_) => true,
+            Ref::Imm(_) | Ref::CBuf(_) => false,
+        }
+    }
+}
+
+impl From<Ref> for Src {
+    fn from(src_ref: Ref) -> Src {
+        Src {
+            src_ref: src_ref,
             src_mod: SrcMod::None,
         }
     }
 }
 
-impl fmt::Display for ModSrc {
+impl fmt::Display for Src {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.src_mod {
-            SrcMod::None => write!(f, "{}", self.src),
-            SrcMod::FAbs | SrcMod::IAbs => write!(f, "|{}|", self.src),
-            SrcMod::FNeg | SrcMod::INeg => write!(f, "-{}", self.src),
-            SrcMod::FNegAbs | SrcMod::INegAbs => write!(f, "-|{}|", self.src),
-            SrcMod::BNot => write!(f, "!{}", self.src),
+            SrcMod::None => write!(f, "{}", self.src_ref),
+            SrcMod::Abs => write!(f, "|{}|", self.src_ref),
+            SrcMod::Neg => write!(f, "-{}", self.src_ref),
+            SrcMod::NegAbs => write!(f, "-|{}|", self.src_ref),
+            SrcMod::Not => write!(f, "!{}", self.src_ref),
         }
     }
 }
 
-pub trait SrcModsAsSlice: SrcsAsSlice {
-    fn src_mods_as_slice(&self) -> &[SrcMod];
-    fn src_mods_as_mut_slice(&mut self) -> &mut [SrcMod];
+pub trait SrcsAsSlice {
+    fn srcs_as_slice(&self) -> &[Src];
+    fn srcs_as_mut_slice(&mut self) -> &mut [Src];
+}
 
-    fn srcs_mods_as_slices(&self) -> (&[Src], &[SrcMod]) {
-        (self.srcs_as_slice(), self.src_mods_as_slice())
-    }
-
-    fn srcs_mods_as_mut_slices(&mut self) -> (&mut [Src], &mut [SrcMod]) {
-        unsafe {
-            /* It's safe to double-borrow here because sources and modifiers
-             * will never overlap within a given instruction struct.
-             */
-            let ptr = self as *mut Self;
-            let srcs = (*ptr).srcs_as_mut_slice();
-            let mods = self.src_mods_as_mut_slice();
-            assert!(mods.len() <= srcs.len());
-            (&mut srcs[..mods.len()], mods)
-        }
-    }
-
-    fn mod_src(&self, idx: usize) -> ModSrc {
-        ModSrc {
-            src: self.srcs_as_slice()[idx],
-            src_mod: self.src_mods_as_slice()[idx],
-        }
-    }
+pub trait DstsAsSlice {
+    fn dsts_as_slice(&self) -> &[Dst];
+    fn dsts_as_mut_slice(&mut self) -> &mut [Dst];
 }
 
 pub enum PredSetOp {
@@ -822,11 +823,10 @@ pub struct AttrAccess {
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpFAdd {
     pub dst: Dst,
     pub srcs: [Src; 2],
-    pub src_mods: [SrcMod; 2],
     pub saturate: bool,
     pub rnd_mode: FRndMode,
 }
@@ -840,23 +840,16 @@ impl fmt::Display for OpFAdd {
         if self.rnd_mode != FRndMode::NearestEven {
             write!(f, ".{}", self.rnd_mode)?;
         }
-        write!(
-            f,
-            " {} {{ {}, {} }}",
-            self.dst,
-            self.mod_src(0),
-            self.mod_src(1),
-        )
+        write!(f, " {} {{ {}, {} }}", self.dst, self.srcs[0], self.srcs[1],)
     }
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpFSet {
     pub dst: Dst,
     pub cmp_op: FloatCmpOp,
     pub srcs: [Src; 2],
-    pub src_mods: [SrcMod; 2],
 }
 
 impl fmt::Display for OpFSet {
@@ -864,21 +857,17 @@ impl fmt::Display for OpFSet {
         write!(
             f,
             "FSET.{} {} {{ {}, {} }}",
-            self.cmp_op,
-            self.dst,
-            self.mod_src(0),
-            self.mod_src(1),
+            self.cmp_op, self.dst, self.srcs[0], self.srcs[1],
         )
     }
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpFSetP {
     pub dst: Dst,
     pub cmp_op: FloatCmpOp,
     pub srcs: [Src; 2],
-    pub src_mods: [SrcMod; 2],
     /* TODO: Other predicates? Combine ops? */
 }
 
@@ -887,21 +876,17 @@ impl fmt::Display for OpFSetP {
         write!(
             f,
             "FSETP.{} {} {{ {}, {} }}",
-            self.cmp_op,
-            self.dst,
-            self.mod_src(0),
-            self.mod_src(1),
+            self.cmp_op, self.dst, self.srcs[0], self.srcs[1],
         )
     }
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpIAdd3 {
     pub dst: Dst,
     pub srcs: [Src; 3],
     pub carry: [Src; 2],
-    pub src_mods: [SrcMod; 3],
 }
 
 impl fmt::Display for OpIAdd3 {
@@ -910,9 +895,9 @@ impl fmt::Display for OpIAdd3 {
             f,
             "IADD3 {} {{ {}, {}, {}, {}, {} }}",
             self.dst,
-            self.mod_src(0),
-            self.mod_src(1),
-            self.mod_src(2),
+            self.srcs[0],
+            self.srcs[1],
+            self.srcs[2],
             self.carry[0],
             self.carry[1]
         )
@@ -920,7 +905,7 @@ impl fmt::Display for OpIAdd3 {
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpISetP {
     pub dst: Dst,
 
@@ -942,7 +927,7 @@ impl fmt::Display for OpISetP {
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpLop3 {
     pub dst: Dst,
     pub srcs: [Src; 3],
@@ -960,7 +945,7 @@ impl fmt::Display for OpLop3 {
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpShl {
     pub dst: Dst,
     pub srcs: [Src; 2],
@@ -977,7 +962,7 @@ impl fmt::Display for OpShl {
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpI2F {
     pub dst: Dst,
     pub src: Src,
@@ -997,7 +982,7 @@ impl fmt::Display for OpI2F {
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpMov {
     pub dst: Dst,
     pub src: Src,
@@ -1015,12 +1000,11 @@ impl fmt::Display for OpMov {
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpSel {
     pub dst: Dst,
     pub cond: Src,
     pub srcs: [Src; 2],
-    pub cond_mod: SrcMod,
 }
 
 impl fmt::Display for OpSel {
@@ -1028,20 +1012,16 @@ impl fmt::Display for OpSel {
         write!(
             f,
             "SEL {} {{ {}, {}, {} }}",
-            self.dst,
-            self.mod_src(0),
-            self.srcs[0],
-            self.srcs[1],
+            self.dst, self.cond, self.srcs[0], self.srcs[1],
         )
     }
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpPLop3 {
     pub dst: Dst,
     pub srcs: [Src; 3],
-    pub src_mods: [SrcMod; 3],
     pub op: LogicOp,
 }
 
@@ -1050,17 +1030,13 @@ impl fmt::Display for OpPLop3 {
         write!(
             f,
             "PLOP3.{} {} {{ {}, {}, {} }}",
-            self.op,
-            self.dst,
-            self.mod_src(0),
-            self.mod_src(1),
-            self.mod_src(2),
+            self.op, self.dst, self.srcs[0], self.srcs[1], self.srcs[2],
         )
     }
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpLd {
     pub dst: Dst,
     pub addr: Src,
@@ -1079,7 +1055,7 @@ impl fmt::Display for OpLd {
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpSt {
     pub addr: Src,
     pub data: Src,
@@ -1098,7 +1074,7 @@ impl fmt::Display for OpSt {
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpALd {
     pub dst: Dst,
     pub vtx: Src,
@@ -1109,21 +1085,19 @@ pub struct OpALd {
 impl fmt::Display for OpALd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ALD {} a", self.dst)?;
-        match self.vtx {
-            Src::Zero => (),
-            _ => write!(f, "[{}]", self.vtx)?,
+        if !self.vtx.is_zero() {
+            write!(f, "[{}]", self.vtx)?;
         }
         write!(f, "[{:#x}", self.access.addr)?;
-        match self.vtx {
-            Src::Zero => (),
-            _ => write!(f, "+{}", self.offset)?,
+        if !self.offset.is_zero() {
+            write!(f, "+{}", self.offset)?;
         }
         write!(f, "]")
     }
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpASt {
     pub vtx: Src,
     pub offset: Src,
@@ -1134,21 +1108,19 @@ pub struct OpASt {
 impl fmt::Display for OpASt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ALD a")?;
-        match self.vtx {
-            Src::Zero => (),
-            _ => write!(f, "[{}]", self.vtx)?,
+        if !self.vtx.is_zero() {
+            write!(f, "[{}]", self.vtx)?;
         }
         write!(f, "[{:#x}", self.access.addr)?;
-        match self.vtx {
-            Src::Zero => (),
-            _ => write!(f, "+{}", self.offset)?,
+        if !self.offset.is_zero() {
+            write!(f, "+{}", self.offset)?;
         }
         write!(f, "] {}", self.data)
     }
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpExit {}
 
 impl fmt::Display for OpExit {
@@ -1158,7 +1130,7 @@ impl fmt::Display for OpExit {
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpS2R {
     pub dst: Dst,
     pub idx: u8,
@@ -1171,11 +1143,10 @@ impl fmt::Display for OpS2R {
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpFMov {
     pub dst: Dst,
     pub src: Src,
-    pub src_mod: SrcMod,
     pub saturate: bool,
 }
 
@@ -1185,26 +1156,25 @@ impl fmt::Display for OpFMov {
         if self.saturate {
             write!(f, ".SAT")?;
         }
-        write!(f, " {} {}", self.dst, self.mod_src(0))
+        write!(f, " {} {}", self.dst, self.src)
     }
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpIMov {
     pub dst: Dst,
     pub src: Src,
-    pub src_mod: SrcMod,
 }
 
 impl fmt::Display for OpIMov {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "IMOV {} {}", self.dst, self.mod_src(0))
+        write!(f, "IMOV {} {}", self.dst, self.src)
     }
 }
 
 #[repr(C)]
-#[derive(DstsAsSlice, SrcModsAsSlice)]
+#[derive(DstsAsSlice)]
 pub struct OpVec {
     pub dst: Dst,
     pub srcs: Vec<Src>,
@@ -1231,7 +1201,7 @@ impl fmt::Display for OpVec {
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, SrcModsAsSlice)]
+#[derive(SrcsAsSlice)]
 pub struct OpSplit {
     pub dsts: Vec<Dst>,
     pub src: Src,
@@ -1258,7 +1228,7 @@ impl fmt::Display for OpSplit {
 }
 
 #[repr(C)]
-#[derive(DstsAsSlice, SrcModsAsSlice)]
+#[derive(DstsAsSlice)]
 pub struct OpFSOut {
     pub srcs: Vec<Src>,
 }
@@ -1473,50 +1443,36 @@ impl Instr {
         }
     }
 
-    pub fn new_fadd(dst: Dst, x: ModSrc, y: ModSrc) -> Instr {
+    pub fn new_fadd(dst: Dst, x: Src, y: Src) -> Instr {
         Instr::new(Op::FAdd(OpFAdd {
             dst: dst,
-            srcs: [x.src, y.src],
-            src_mods: [x.src_mod, y.src_mod],
+            srcs: [x, y],
             saturate: false,
             rnd_mode: FRndMode::NearestEven,
         }))
     }
 
-    pub fn new_fset(
-        dst: Dst,
-        cmp_op: FloatCmpOp,
-        x: ModSrc,
-        y: ModSrc,
-    ) -> Instr {
+    pub fn new_fset(dst: Dst, cmp_op: FloatCmpOp, x: Src, y: Src) -> Instr {
         Instr::new(Op::FSet(OpFSet {
             dst: dst,
             cmp_op: cmp_op,
-            srcs: [x.src, y.src],
-            src_mods: [x.src_mod, y.src_mod],
+            srcs: [x, y],
         }))
     }
 
-    pub fn new_fsetp(
-        dst: Dst,
-        cmp_op: FloatCmpOp,
-        x: ModSrc,
-        y: ModSrc,
-    ) -> Instr {
+    pub fn new_fsetp(dst: Dst, cmp_op: FloatCmpOp, x: Src, y: Src) -> Instr {
         Instr::new(Op::FSetP(OpFSetP {
             dst: dst,
             cmp_op: cmp_op,
-            srcs: [x.src, y.src],
-            src_mods: [x.src_mod, y.src_mod],
+            srcs: [x, y],
         }))
     }
 
     pub fn new_iadd(dst: Dst, x: Src, y: Src) -> Instr {
         Instr::new(Op::IAdd3(OpIAdd3 {
             dst: dst,
-            srcs: [Src::Zero, x, y],
-            carry: [Src::Zero; 2],
-            src_mods: [SrcMod::None; 3],
+            srcs: [Src::new_zero(), x, y],
+            carry: [Src::new_zero(); 2],
         }))
     }
 
@@ -1573,7 +1529,6 @@ impl Instr {
             dst: dst,
             cond: sel,
             srcs: [x, y],
-            cond_mod: SrcMod::None,
         }))
     }
 
@@ -1581,7 +1536,6 @@ impl Instr {
         Instr::new(Op::PLop3(OpPLop3 {
             dst: dst,
             srcs: [x, y, z],
-            src_mods: [SrcMod::None; 3],
             op: op,
         }))
     }
@@ -1626,7 +1580,7 @@ impl Instr {
             data: data,
             access: AttrAccess {
                 addr: attr_addr,
-                comps: data.as_ssa().unwrap().comps(),
+                comps: data.src_ref.as_ssa().unwrap().comps(),
                 patch: false,
                 out_load: false,
                 flags: 0,
@@ -1821,8 +1775,7 @@ impl Shader {
                 Op::FMov(mov) => {
                     vec![Instr::new(Op::FAdd(OpFAdd {
                         dst: mov.dst,
-                        srcs: [Src::Zero, mov.src],
-                        src_mods: [SrcMod::None, mov.src_mod],
+                        srcs: [Src::new_zero(), mov.src],
                         saturate: mov.saturate,
                         rnd_mode: FRndMode::NearestEven,
                     }))]
@@ -1830,9 +1783,8 @@ impl Shader {
                 Op::IMov(mov) => {
                     vec![Instr::new(Op::IAdd3(OpIAdd3 {
                         dst: mov.dst,
-                        srcs: [Src::Zero, mov.src, Src::Zero],
-                        carry: [Src::Zero; 2],
-                        src_mods: [SrcMod::None, mov.src_mod, SrcMod::None],
+                        srcs: [Src::new_zero(), mov.src, Src::new_zero()],
+                        carry: [Src::new_zero(); 2],
                     }))]
                 }
                 Op::Vec(vec) => {
@@ -1861,7 +1813,7 @@ impl Shader {
                         let dst = split.dsts[0];
                         instrs.push(Instr::new_mov(dst, src));
                     } else {
-                        let vec_src = split.src.as_reg().unwrap();
+                        let vec_src = split.src.src_ref.as_reg().unwrap();
                         assert!(comps == vec_src.comps());
                         for i in 0..comps {
                             let src = Dst::Reg(vec_src.as_comp(i).unwrap());
@@ -1869,7 +1821,7 @@ impl Shader {
                             if let Dst::Zero = dst {
                                 continue;
                             }
-                            instrs.push(Instr::new_mov(dst, src));
+                            instrs.push(Instr::new_mov(dst, src.into()));
                         }
                     }
                     instrs

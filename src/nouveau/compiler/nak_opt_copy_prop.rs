@@ -8,7 +8,7 @@ use crate::nak_ir::*;
 use std::collections::HashMap;
 
 struct CopyPropPass {
-    ssa_map: HashMap<SSAValue, Vec<Ref>>,
+    ssa_map: HashMap<SSAValue, Vec<Src>>,
 }
 
 impl CopyPropPass {
@@ -37,7 +37,8 @@ impl CopyPropPass {
                         );
                     }
                     Op::Split(split) => {
-                        let src_ssa = split.src.as_ssa().unwrap();
+                        assert!(split.src.src_mod.is_none());
+                        let src_ssa = split.src.src_ref.as_ssa().unwrap();
                         if let Some(src_vec) = self.get_copy(src_ssa).cloned() {
                             assert!(src_vec.len() == split.dsts.len());
                             for (i, dst) in split.dsts.iter().enumerate() {
@@ -52,16 +53,18 @@ impl CopyPropPass {
 
                 if let Pred::SSA(src_ssa) = &instr.pred {
                     if let Some(src_vec) = self.get_copy(&src_ssa) {
-                        if let Src::SSA(ssa) = src_vec[0] {
+                        assert!(src_vec[0].src_mod.is_none());
+                        if let Ref::SSA(ssa) = src_vec[0].src_ref {
                             instr.pred = Pred::SSA(ssa);
                         }
                     }
                 }
 
                 for src in instr.srcs_mut() {
-                    if let Ref::SSA(src_ssa) = src {
+                    if let Ref::SSA(src_ssa) = src.src_ref {
                         if src_ssa.comps() == 1 {
                             if let Some(src_vec) = self.get_copy(&src_ssa) {
+                                assert!(src_vec[0].src_mod.is_none());
                                 *src = src_vec[0];
                             }
                         }

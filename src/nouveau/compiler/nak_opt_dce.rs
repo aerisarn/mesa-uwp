@@ -28,7 +28,7 @@ impl DeadCodePass {
         }
 
         for src in instr.srcs() {
-            if let Src::SSA(ssa) = src {
+            if let Ref::SSA(ssa) = &src.src_ref {
                 self.mark_ssa_live(ssa);
             }
         }

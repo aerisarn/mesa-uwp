@@ -29,9 +29,9 @@ enum ALUSrc {
 }
 
 impl ALUSrc {
-    fn from_nonzero_src(src: ModSrc) -> ALUSrc {
-        match src.src {
-            Src::Reg(reg) => {
+    fn from_nonzero_src(src: &Src) -> ALUSrc {
+        match src.src_ref {
+            Ref::Reg(reg) => {
                 assert!(reg.comps() == 1);
                 let alu_ref = ALURegRef {
                     reg: reg,
@@ -44,11 +44,11 @@ impl ALUSrc {
                     _ => panic!("Invalid ALU register file"),
                 }
             }
-            Src::Imm(i) => {
+            Ref::Imm(i) => {
                 assert!(src.src_mod.is_none());
                 ALUSrc::Imm(i)
             }
-            Src::CBuf(cb) => {
+            Ref::CBuf(cb) => {
                 let alu_ref = ALUCBufRef {
                     cb: cb,
                     abs: src.src_mod.has_abs(),
@@ -61,25 +61,25 @@ impl ALUSrc {
     }
 
     fn zero(file: RegFile) -> ALUSrc {
-        let src = ModSrc {
-            src: Ref::Reg(RegRef::zero(file, 1)),
+        let src = Src {
+            src_ref: Ref::Reg(RegRef::zero(file, 1)),
             /* Modifiers don't matter for zero */
             src_mod: SrcMod::None,
         };
-        ALUSrc::from_nonzero_src(src)
+        ALUSrc::from_nonzero_src(&src)
     }
 
-    pub fn from_src(src: ModSrc) -> ALUSrc {
-        match src.src {
-            Src::Zero => ALUSrc::zero(RegFile::GPR),
+    pub fn from_src(src: &Src) -> ALUSrc {
+        match src.src_ref {
+            Ref::Zero => ALUSrc::zero(RegFile::GPR),
             _ => ALUSrc::from_nonzero_src(src),
         }
     }
 
-    pub fn from_usrc(src: ModSrc) -> ALUSrc {
-        assert!(src.src.is_uniform());
-        match src.src {
-            Src::Zero => ALUSrc::zero(RegFile::UGPR),
+    pub fn from_usrc(src: &Src) -> ALUSrc {
+        assert!(src.is_uniform());
+        match src.src_ref {
+            Ref::Zero => ALUSrc::zero(RegFile::UGPR),
             _ => ALUSrc::from_nonzero_src(src),
         }
     }
@@ -138,9 +138,10 @@ impl SM75Instr {
     }
 
     fn set_reg_src(&mut self, range: Range<usize>, src: Src) {
-        match src {
-            Src::Zero => self.set_reg(range, RegRef::zero(RegFile::GPR, 1)),
-            Src::Reg(reg) => self.set_reg(range, reg),
+        assert!(src.src_mod.is_none());
+        match src.src_ref {
+            Ref::Zero => self.set_reg(range, RegRef::zero(RegFile::GPR, 1)),
+            Ref::Reg(reg) => self.set_reg(range, reg),
             _ => panic!("Not a register"),
         }
     }
@@ -149,13 +150,18 @@ impl SM75Instr {
         self.set_pred_reg(range, *dst.as_reg().unwrap());
     }
 
-    fn set_pred_src(&mut self, range: Range<usize>, src: Src) {
-        match src {
-            Src::Zero => {
+    fn set_pred_src(&mut self, range: Range<usize>, not_bit: isize, src: Src) {
+        match src.src_ref {
+            Ref::Zero => {
                 self.set_pred_reg(range, RegRef::zero(RegFile::Pred, 1));
             }
-            Src::Reg(reg) => self.set_pred_reg(range, reg),
+            Ref::Reg(reg) => self.set_pred_reg(range, reg),
             _ => panic!("Not a register"),
+        }
+        if not_bit >= 0 {
+            self.set_bit(not_bit.try_into().unwrap(), src.src_mod.has_not());
+        } else {
+            assert!(src.src_mod.is_none());
         }
     }
 
@@ -345,8 +351,8 @@ impl SM75Instr {
         self.encode_alu(
             0x021,
             Some(op.dst),
-            ALUSrc::from_src(op.mod_src(0)),
-            ALUSrc::from_src(op.mod_src(1)),
+            ALUSrc::from_src(&op.srcs[0]),
+            ALUSrc::from_src(&op.srcs[1]),
             ALUSrc::None,
         );
         self.set_bit(77, op.saturate);
@@ -381,8 +387,8 @@ impl SM75Instr {
         self.encode_alu(
             0x00a,
             Some(op.dst),
-            ALUSrc::from_src(op.mod_src(0)),
-            ALUSrc::from_src(op.mod_src(1)),
+            ALUSrc::from_src(&op.srcs[0]),
+            ALUSrc::from_src(&op.srcs[1]),
             ALUSrc::None,
         );
         self.set_float_cmp_op(76..80, op.cmp_op);
@@ -394,8 +400,8 @@ impl SM75Instr {
         self.encode_alu(
             0x00b,
             None,
-            ALUSrc::from_src(op.mod_src(0)),
-            ALUSrc::from_src(op.mod_src(1)),
+            ALUSrc::from_src(&op.srcs[0]),
+            ALUSrc::from_src(&op.srcs[1]),
             ALUSrc::None,
         );
 
@@ -417,22 +423,22 @@ impl SM75Instr {
             self.encode_alu(
                 0x010,
                 Some(op.dst),
-                ALUSrc::from_src(op.mod_src(0)),
-                ALUSrc::from_src(op.mod_src(1)),
-                ALUSrc::from_src(op.mod_src(2)),
+                ALUSrc::from_src(&op.srcs[0]),
+                ALUSrc::from_src(&op.srcs[1]),
+                ALUSrc::from_src(&op.srcs[2]),
             );
         } else {
             self.encode_alu(
                 0x010,
                 Some(op.dst),
-                ALUSrc::from_src(op.mod_src(0)),
-                ALUSrc::from_src(op.mod_src(2)),
-                ALUSrc::from_src(op.mod_src(1)),
+                ALUSrc::from_src(&op.srcs[0]),
+                ALUSrc::from_src(&op.srcs[2]),
+                ALUSrc::from_src(&op.srcs[1]),
             );
         }
 
-        self.set_pred_src(81..84, op.carry[0]);
-        self.set_pred_src(84..87, op.carry[1]);
+        self.set_pred_src(81..84, -1, op.carry[0]);
+        self.set_pred_src(84..87, -1, op.carry[1]);
     }
 
     fn set_int_cmp_op(&mut self, range: Range<usize>, op: IntCmpOp) {
@@ -454,8 +460,8 @@ impl SM75Instr {
         self.encode_alu(
             0x00c,
             None,
-            ALUSrc::from_src(op.srcs[0].into()),
-            ALUSrc::from_src(op.srcs[1].into()),
+            ALUSrc::from_src(&op.srcs[0].into()),
+            ALUSrc::from_src(&op.srcs[1].into()),
             ALUSrc::None,
         );
 
@@ -480,9 +486,9 @@ impl SM75Instr {
         self.encode_alu(
             0x012,
             Some(op.dst),
-            ALUSrc::from_src(op.srcs[0].into()),
-            ALUSrc::from_src(op.srcs[1].into()),
-            ALUSrc::from_src(op.srcs[2].into()),
+            ALUSrc::from_src(&op.srcs[0].into()),
+            ALUSrc::from_src(&op.srcs[1].into()),
+            ALUSrc::from_src(&op.srcs[2].into()),
         );
 
         self.set_field(72..80, op.op.lut);
@@ -496,8 +502,8 @@ impl SM75Instr {
         self.encode_alu(
             0x019,
             Some(op.dst),
-            ALUSrc::from_src(op.srcs[0].into()),
-            ALUSrc::from_src(op.srcs[1].into()),
+            ALUSrc::from_src(&op.srcs[0].into()),
+            ALUSrc::from_src(&op.srcs[1].into()),
             ALUSrc::None,
         );
 
@@ -512,7 +518,7 @@ impl SM75Instr {
             0x106,
             Some(op.dst),
             ALUSrc::None,
-            ALUSrc::from_src(op.src.into()),
+            ALUSrc::from_src(&op.src.into()),
             ALUSrc::None,
         );
 
@@ -528,7 +534,7 @@ impl SM75Instr {
             0x002,
             Some(op.dst),
             ALUSrc::None,
-            ALUSrc::from_src(op.src.into()),
+            ALUSrc::from_src(&op.src.into()),
             ALUSrc::None,
         );
         self.set_field(72..76, op.quad_lanes);
@@ -538,13 +544,12 @@ impl SM75Instr {
         self.encode_alu(
             0x007,
             Some(op.dst),
-            ALUSrc::from_src(op.srcs[0].into()),
-            ALUSrc::from_src(op.srcs[1].into()),
+            ALUSrc::from_src(&op.srcs[0].into()),
+            ALUSrc::from_src(&op.srcs[1].into()),
             ALUSrc::None,
         );
 
-        self.set_pred_src(87..90, op.cond);
-        self.set_bit(90, op.cond_mod.has_not());
+        self.set_pred_src(87..90, 90, op.cond);
     }
 
     fn encode_plop3(&mut self, op: &OpPLop3) {
@@ -552,16 +557,13 @@ impl SM75Instr {
         self.set_field(64..67, op.op.lut & 0x7);
         self.set_field(72..77, op.op.lut >> 3);
 
-        self.set_pred_src(68..71, op.srcs[2]);
-        self.set_bit(71, op.src_mods[2].has_not());
+        self.set_pred_src(68..71, 71, op.srcs[2]);
 
-        self.set_pred_src(77..80, op.srcs[1]);
-        self.set_bit(80, op.src_mods[1].has_not());
+        self.set_pred_src(77..80, 80, op.srcs[1]);
         self.set_pred_dst(81..84, op.dst);
         self.set_field(84..87, 7_u8); /* Def1 */
 
-        self.set_pred_src(87..90, op.srcs[0]);
-        self.set_bit(90, op.src_mods[0].has_not());
+        self.set_pred_src(87..90, 90, op.srcs[0]);
     }
 
     fn set_mem_access(&mut self, access: &MemAccess) {

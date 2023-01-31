@@ -33,23 +33,23 @@ impl<'a> ShaderFromNir<'a> {
         }
     }
 
-    pub fn alloc_ssa(&mut self, file: RegFile, comps: u8) -> Src {
+    pub fn alloc_ssa(&mut self, file: RegFile, comps: u8) -> Ref {
         self.func.as_mut().unwrap().alloc_ssa(file, comps)
     }
 
-    fn ref_for_nir_def(&self, def: &nir_def) -> Src {
+    fn ref_for_nir_def(&self, def: &nir_def) -> Ref {
         if def.bit_size == 1 {
-            Src::new_ssa(RegFile::Pred, def.index, def.num_components)
+            Ref::new_ssa(RegFile::Pred, def.index, def.num_components)
         } else {
             assert!(def.bit_size == 32 || def.bit_size == 64);
             let dwords = (def.bit_size / 32) * def.num_components;
             //Src::new_ssa(def.index, dwords, !def.divergent)
-            Src::new_ssa(RegFile::GPR, def.index, dwords)
+            Ref::new_ssa(RegFile::GPR, def.index, dwords)
         }
     }
 
     fn get_src(&self, src: &nir_src) -> Src {
-        self.ref_for_nir_def(&src.as_def())
+        self.ref_for_nir_def(&src.as_def()).into()
     }
 
     fn get_dst(&self, def: &nir_def) -> Dst {
@@ -62,7 +62,8 @@ impl<'a> ShaderFromNir<'a> {
         } else {
             assert!(alu_src.src.bit_size() == 32);
             let vec_src = self.get_src(&alu_src.src);
-            let comp = self.alloc_ssa(vec_src.as_ssa().unwrap().file(), 1);
+            let comp =
+                self.alloc_ssa(vec_src.src_ref.as_ssa().unwrap().file(), 1);
             let mut dsts = Vec::new();
             for c in 0..alu_src.src.num_components() {
                 if c == alu_src.swizzle[0] {
@@ -72,7 +73,7 @@ impl<'a> ShaderFromNir<'a> {
                 }
             }
             self.instrs.push(Instr::new_split(&dsts, vec_src));
-            comp
+            comp.into()
         }
     }
 
@@ -89,9 +90,8 @@ impl<'a> ShaderFromNir<'a> {
             nir_op_b2f32 => {
                 self.instrs.push(Instr::new(Op::Sel(OpSel {
                     dst: dst,
-                    cond: srcs[0],
-                    srcs: [Src::Zero, Src::new_imm_u32(0x3f800000)],
-                    cond_mod: SrcMod::BNot,
+                    cond: srcs[0].not(),
+                    srcs: [Src::new_zero(), Src::new_imm_u32(0x3f800000)],
                 })));
             }
             nir_op_bcsel => {
@@ -101,55 +101,49 @@ impl<'a> ShaderFromNir<'a> {
             nir_op_fabs => {
                 self.instrs.push(Instr::new(Op::FMov(OpFMov {
                     dst: dst,
-                    src: srcs[0],
-                    src_mod: SrcMod::FAbs,
+                    src: srcs[0].abs(),
                     saturate: false,
                 })));
             }
             nir_op_fadd => {
-                self.instrs.push(Instr::new_fadd(
-                    dst,
-                    srcs[0].into(),
-                    srcs[1].into(),
-                ));
+                self.instrs.push(Instr::new_fadd(dst, srcs[0], srcs[1]));
             }
             nir_op_feq => {
                 self.instrs.push(Instr::new_fsetp(
                     dst,
                     FloatCmpOp::OrdEq,
-                    srcs[0].into(),
-                    srcs[1].into(),
+                    srcs[0],
+                    srcs[1],
                 ));
             }
             nir_op_fge => {
                 self.instrs.push(Instr::new_fsetp(
                     dst,
                     FloatCmpOp::OrdGe,
-                    srcs[0].into(),
-                    srcs[1].into(),
+                    srcs[0],
+                    srcs[1],
                 ));
             }
             nir_op_flt => {
                 self.instrs.push(Instr::new_fsetp(
                     dst,
                     FloatCmpOp::OrdLt,
-                    srcs[0].into(),
-                    srcs[1].into(),
+                    srcs[0],
+                    srcs[1],
                 ));
             }
             nir_op_fneu => {
                 self.instrs.push(Instr::new_fsetp(
                     dst,
                     FloatCmpOp::UnordNe,
-                    srcs[0].into(),
-                    srcs[1].into(),
+                    srcs[0],
+                    srcs[1],
                 ));
             }
             nir_op_fneg => {
                 self.instrs.push(Instr::new(Op::FMov(OpFMov {
                     dst: dst,
-                    src: srcs[0],
-                    src_mod: SrcMod::FNeg,
+                    src: srcs[0].neg(),
                     saturate: false,
                 })));
             }
@@ -157,7 +151,6 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs.push(Instr::new(Op::FMov(OpFMov {
                     dst: dst,
                     src: srcs[0],
-                    src_mod: SrcMod::None,
                     saturate: true,
                 })));
             }
@@ -166,25 +159,22 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs.push(Instr::new_fset(
                     lz,
                     FloatCmpOp::OrdLt,
-                    srcs[0].into(),
-                    Src::Zero.into(),
+                    srcs[0],
+                    Src::new_zero(),
                 ));
 
                 let gz = self.alloc_ssa(RegFile::GPR, 1);
                 self.instrs.push(Instr::new_fset(
                     gz,
                     FloatCmpOp::OrdGt,
-                    srcs[0].into(),
-                    Src::Zero.into(),
+                    srcs[0],
+                    Src::new_zero(),
                 ));
 
                 self.instrs.push(Instr::new_fadd(
                     dst,
                     gz.into(),
-                    ModSrc {
-                        src: lz,
-                        src_mod: SrcMod::FNeg,
-                    },
+                    Src::from(lz).neg(),
                 ));
             }
             nir_op_i2f32 => {
@@ -193,8 +183,7 @@ impl<'a> ShaderFromNir<'a> {
             nir_op_iabs => {
                 self.instrs.push(Instr::new(Op::IMov(OpIMov {
                     dst: dst,
-                    src: srcs[0],
-                    src_mod: SrcMod::IAbs,
+                    src: srcs[0].abs(),
                 })));
             }
             nir_op_iadd => {
@@ -207,7 +196,7 @@ impl<'a> ShaderFromNir<'a> {
                         LogicOp::new_lut(&|x, y, _| x & y),
                         srcs[0],
                         srcs[1],
-                        Src::Zero,
+                        Src::new_zero(),
                     ));
                 } else {
                     self.instrs.push(Instr::new_lop3(
@@ -215,7 +204,7 @@ impl<'a> ShaderFromNir<'a> {
                         LogicOp::new_lut(&|x, y, _| x & y),
                         srcs[0],
                         srcs[1],
-                        Src::Zero,
+                        Src::new_zero(),
                     ));
                 }
             }
@@ -258,8 +247,7 @@ impl<'a> ShaderFromNir<'a> {
             nir_op_ineg => {
                 self.instrs.push(Instr::new(Op::IMov(OpIMov {
                     dst: dst,
-                    src: srcs[0],
-                    src_mod: SrcMod::INeg,
+                    src: srcs[0].neg(),
                 })));
             }
             nir_op_inot => {
@@ -268,16 +256,16 @@ impl<'a> ShaderFromNir<'a> {
                         dst,
                         LogicOp::new_lut(&|x, _, _| !x),
                         srcs[0],
-                        Src::Zero,
-                        Src::Zero,
+                        Src::new_zero(),
+                        Src::new_zero(),
                     ));
                 } else {
                     self.instrs.push(Instr::new_lop3(
                         dst,
                         LogicOp::new_lut(&|x, _, _| !x),
                         srcs[0],
-                        Src::Zero,
-                        Src::Zero,
+                        Src::new_zero(),
+                        Src::new_zero(),
                     ));
                 }
             }
@@ -288,7 +276,7 @@ impl<'a> ShaderFromNir<'a> {
                         LogicOp::new_lut(&|x, y, _| x | y),
                         srcs[0],
                         srcs[1],
-                        Src::Zero,
+                        Src::new_zero(),
                     ));
                 } else {
                     self.instrs.push(Instr::new_lop3(
@@ -296,7 +284,7 @@ impl<'a> ShaderFromNir<'a> {
                         LogicOp::new_lut(&|x, y, _| x | y),
                         srcs[0],
                         srcs[1],
-                        Src::Zero,
+                        Src::new_zero(),
                     ));
                 }
             }
@@ -427,7 +415,7 @@ impl<'a> ShaderFromNir<'a> {
                     let mut dsts = Vec::new();
                     for c in 0..intrin.num_components {
                         let tmp = self.alloc_ssa(RegFile::GPR, 1);
-                        self.fs_out_regs[(base + c) as usize] = tmp;
+                        self.fs_out_regs[(base + c) as usize] = tmp.into();
                         dsts.push(tmp);
                     }
                     self.instrs.push(Instr::new_split(&dsts, data))
@@ -450,7 +438,7 @@ impl<'a> ShaderFromNir<'a> {
             assert!(load_const.def.bit_size == 32);
             let imm_u32 = unsafe { load_const.values()[c as usize].u32_ };
             srcs.push(if imm_u32 == 0 {
-                Src::Zero
+                Src::new_zero()
             } else {
                 Src::new_imm_u32(imm_u32)
             });

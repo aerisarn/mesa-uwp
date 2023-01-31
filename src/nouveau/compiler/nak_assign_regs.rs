@@ -85,7 +85,7 @@ impl TrivialRegAlloc {
                         *dst = self.rewrite_ref(*dst);
                     }
                     for src in instr.srcs_mut() {
-                        *src = self.rewrite_ref(*src);
+                        src.src_ref = self.rewrite_ref(src.src_ref);
                     }
                 }
             }

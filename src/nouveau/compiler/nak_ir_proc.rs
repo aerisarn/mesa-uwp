@@ -170,11 +170,6 @@ pub fn derive_dsts_as_slice(input: TokenStream) -> TokenStream {
     derive_as_slice(input, "DstsAsSlice", "dsts", "Dst")
 }
 
-#[proc_macro_derive(SrcModsAsSlice)]
-pub fn derive_src_mods_as_slice(input: TokenStream) -> TokenStream {
-    derive_as_slice(input, "SrcModsAsSlice", "src_mods", "SrcMod")
-}
-
 #[proc_macro_derive(Display)]
 pub fn enum_derive_display(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
