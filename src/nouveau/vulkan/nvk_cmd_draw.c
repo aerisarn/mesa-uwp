@@ -367,7 +367,6 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    struct nvk_rendering_state *render = &cmd->state.gfx.render;
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 23 + pRenderingInfo->colorAttachmentCount * 10);
 
    memset(render, 0, sizeof(*render));
 
@@ -380,16 +379,6 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    const uint32_t layer_count =
       render->view_mask ? util_last_bit(render->view_mask) :
                           render->layer_count;
-
-   P_MTHD(p, NV9097, SET_SURFACE_CLIP_HORIZONTAL);
-   P_NV9097_SET_SURFACE_CLIP_HORIZONTAL(p, {
-      .x       = render->area.offset.x,
-      .width   = render->area.extent.width,
-   });
-   P_NV9097_SET_SURFACE_CLIP_VERTICAL(p, {
-      .y       = render->area.offset.y,
-      .height  = render->area.extent.height,
-   });
 
    render->color_att_count = pRenderingInfo->colorAttachmentCount;
    for (uint32_t i = 0; i < render->color_att_count; i++) {
@@ -407,6 +396,18 @@ nvk_CmdBeginRendering(VkCommandBuffer commandBuffer,
        render->depth_att.iview == NULL &&
        render->stencil_att.iview == NULL)
       render->color_att_count = 1;
+
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, render->color_att_count * 10 + 23);
+
+   P_MTHD(p, NV9097, SET_SURFACE_CLIP_HORIZONTAL);
+   P_NV9097_SET_SURFACE_CLIP_HORIZONTAL(p, {
+      .x       = render->area.offset.x,
+      .width   = render->area.extent.width,
+   });
+   P_NV9097_SET_SURFACE_CLIP_VERTICAL(p, {
+      .y       = render->area.offset.y,
+      .height  = render->area.extent.height,
+   });
 
    for (uint32_t i = 0; i < render->color_att_count; i++) {
       if (render->color_att[i].iview) {
