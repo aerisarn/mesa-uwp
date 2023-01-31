@@ -284,6 +284,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *device,
       .KHR_dedicated_allocation = true,
       .KHR_get_memory_requirements2 = true,
       .KHR_format_feature_flags2 = true,
+      .KHR_push_descriptor = true,
 #ifdef NVK_USE_WSI_PLATFORM
       .KHR_swapchain = true,
       .KHR_swapchain_mutable_format = true,
@@ -447,6 +448,11 @@ nvk_GetPhysicalDeviceMemoryProperties2(VkPhysicalDevice physicalDevice,
    vk_foreach_struct(ext, pMemoryProperties->pNext)
    {
       switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
+         VkPhysicalDevicePushDescriptorPropertiesKHR *p = (void *)ext;
+         p->maxPushDescriptors = NVK_MAX_PUSH_DESCRIPTORS;
+         break;
+      }
       default:
          nvk_debug_ignored_stype(ext->sType);
          break;

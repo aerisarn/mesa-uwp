@@ -1034,8 +1034,10 @@ nvk_flush_dynamic_state(struct nvk_cmd_buffer *cmd)
 static void
 nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
 {
-   const struct nvk_descriptor_state *desc = &cmd->state.gfx.descriptors;
+   struct nvk_descriptor_state *desc = &cmd->state.gfx.descriptors;
    VkResult result;
+
+   nvk_cmd_buffer_flush_push_descriptors(cmd, desc);
 
    uint64_t root_table_addr;
    result = nvk_cmd_buffer_upload_data(cmd, &desc->root, sizeof(desc->root),

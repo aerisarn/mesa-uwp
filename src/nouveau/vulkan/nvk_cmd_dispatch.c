@@ -69,6 +69,8 @@ nvk_CmdDispatch(VkCommandBuffer commandBuffer,
    struct nvk_descriptor_state *desc = &cmd->state.cs.descriptors;
    VkResult result;
 
+   nvk_cmd_buffer_flush_push_descriptors(cmd, desc);
+
    desc->root.cs.block_size[0] = shader->cp.block_size[0];
    desc->root.cs.block_size[1] = shader->cp.block_size[1];
    desc->root.cs.block_size[2] = shader->cp.block_size[2];

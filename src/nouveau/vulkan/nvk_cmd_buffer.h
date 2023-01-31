@@ -14,6 +14,7 @@
 struct nvk_cmd_bo;
 struct nvk_cmd_pool;
 struct nvk_image_view;
+struct nvk_push_descriptor_set;
 
 /** Root descriptor table.  This gets pushed to the GPU directly */
 struct nvk_root_descriptor_table {
@@ -39,6 +40,9 @@ struct nvk_descriptor_state {
    struct nvk_root_descriptor_table root;
    struct nvk_descriptor_set *sets[NVK_MAX_SETS];
    uint32_t sets_dirty;
+
+   struct nvk_push_descriptor_set *push[NVK_MAX_SETS];
+   uint32_t push_dirty;
 };
 
 struct nvk_attachment {
@@ -212,5 +216,9 @@ VkResult nvk_cmd_buffer_upload_alloc(struct nvk_cmd_buffer *cmd,
 VkResult nvk_cmd_buffer_upload_data(struct nvk_cmd_buffer *cmd,
                                     const void *data, uint32_t size,
                                     uint32_t alignment, uint64_t *addr);
+
+void
+nvk_cmd_buffer_flush_push_descriptors(struct nvk_cmd_buffer *cmd,
+                                      struct nvk_descriptor_state *desc);
 
 #endif

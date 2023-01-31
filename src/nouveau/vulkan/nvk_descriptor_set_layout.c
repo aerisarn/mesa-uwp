@@ -69,6 +69,8 @@ nvk_descriptor_stride_align_for_type(VkDescriptorType type,
    default:
       unreachable("Invalid descriptor type");
    }
+
+   assert(*stride <= NVK_MAX_DESCRIPTOR_SIZE);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL

@@ -299,6 +299,9 @@ nvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
          desc->root.sets[set_idx] = nvk_descriptor_set_addr(set);
          desc->sets[set_idx] = set;
          desc->sets_dirty |= BITFIELD_BIT(set_idx);
+
+         /* Binding descriptors invalidates push descriptors */
+         desc->push_dirty &= ~BITFIELD_BIT(set_idx);
       }
 
       if (set_layout->dynamic_buffer_count > 0) {
@@ -338,5 +341,63 @@ nvk_CmdPushConstants(VkCommandBuffer commandBuffer,
          nvk_get_descriptors_state(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
 
       memcpy(desc->root.push + offset, pValues, size);
+   }
+}
+
+VKAPI_ATTR void VKAPI_CALL
+nvk_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
+                            VkPipelineBindPoint pipelineBindPoint,
+                            VkPipelineLayout layout,
+                            uint32_t set,
+                            uint32_t descriptorWriteCount,
+                            const VkWriteDescriptorSet *pDescriptorWrites)
+{
+   VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
+   VK_FROM_HANDLE(nvk_pipeline_layout, pipeline_layout, layout);
+   struct nvk_descriptor_state *desc =
+      nvk_get_descriptors_state(cmd, pipelineBindPoint);
+
+   assert(set < NVK_MAX_SETS);
+   if (unlikely(desc->push[set] == NULL)) {
+      desc->push[set] = vk_zalloc(&cmd->vk.pool->alloc,
+                                  sizeof(*desc->push[set]), 8,
+                                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      if (unlikely(desc->push[set] == NULL)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
+         return;
+      }
+   }
+
+   /* Pushing descriptors replaces whatever sets are bound */
+   desc->sets[set] = NULL;
+
+   nvk_push_descriptor_set_update(desc->push[set],
+                                  pipeline_layout->set[set].layout,
+                                  descriptorWriteCount, pDescriptorWrites);
+   desc->push_dirty |= BITFIELD_BIT(set);
+}
+
+void
+nvk_cmd_buffer_flush_push_descriptors(struct nvk_cmd_buffer *cmd,
+                                      struct nvk_descriptor_state *desc)
+{
+   VkResult result;
+
+   if (!desc->push_dirty)
+      return;
+
+   u_foreach_bit(set_idx, desc->push_dirty) {
+      struct nvk_push_descriptor_set *push_set = desc->push[set_idx];
+      uint64_t push_set_addr;
+      result = nvk_cmd_buffer_upload_data(cmd, push_set->data,
+                                          sizeof(push_set->data),
+                                          NVK_MIN_UBO_ALIGNMENT,
+                                          &push_set_addr);
+      if (unlikely(result != VK_SUCCESS)) {
+         vk_command_buffer_set_error(&cmd->vk, result);
+         return;
+      }
+
+      desc->root.sets[set_idx] = push_set_addr;
    }
 }

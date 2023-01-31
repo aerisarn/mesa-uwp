@@ -239,6 +239,58 @@ nvk_UpdateDescriptorSets(VkDevice device,
    }
 }
 
+void
+nvk_push_descriptor_set_update(struct nvk_push_descriptor_set *push_set,
+                               struct nvk_descriptor_set_layout *layout,
+                               uint32_t write_count,
+                               const VkWriteDescriptorSet *writes)
+{
+   assert(layout->descriptor_buffer_size < sizeof(push_set->data));
+   struct nvk_descriptor_set set = {
+      .layout = layout,
+      .mapped_ptr = push_set->data,
+   };
+
+   for (uint32_t w = 0; w < write_count; w++) {
+      const VkWriteDescriptorSet *write = &writes[w];
+      assert(write->dstSet == VK_NULL_HANDLE);
+
+      switch (write->descriptorType) {
+      case VK_DESCRIPTOR_TYPE_SAMPLER:
+      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+      case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+         for (uint32_t j = 0; j < write->descriptorCount; j++) {
+            write_image_view_desc(&set, write->pImageInfo + j,
+                                  write->dstBinding,
+                                  write->dstArrayElement + j,
+                                  write->descriptorType);
+         }
+         break;
+
+      case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+      case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+         for (uint32_t j = 0; j < write->descriptorCount; j++) {
+            write_buffer_view_desc(&set, write->pTexelBufferView[j],
+                                   write->dstBinding, write->dstArrayElement + j);
+         }
+         break;
+
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+         for (uint32_t j = 0; j < write->descriptorCount; j++) {
+            write_buffer_desc(&set, write->pBufferInfo + j, write->dstBinding,
+                              write->dstArrayElement + j);
+         }
+         break;
+
+      default:
+         break;
+      }
+   }
+}
+
 static void
 nvk_descriptor_set_destroy(struct nvk_device *device,
                            struct nvk_descriptor_pool *pool,

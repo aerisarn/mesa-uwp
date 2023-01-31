@@ -46,7 +46,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_descriptor_pool, base, VkDescriptorPool,
 struct nvk_descriptor_set {
    struct vk_object_base base;
    struct nvk_descriptor_set_layout *layout;
-   uint32_t buffer_count;
    uint32_t bo_offset;
    struct nouveau_ws_bo *bo;
    void *mapped_ptr;
@@ -65,5 +64,15 @@ nvk_descriptor_set_addr(const struct nvk_descriptor_set *set)
 
    return set->bo->offset + set->bo_offset;
 }
+
+struct nvk_push_descriptor_set {
+   uint32_t data[NVK_MAX_PUSH_DESCRIPTORS * NVK_MAX_DESCRIPTOR_SIZE];
+};
+
+void
+nvk_push_descriptor_set_update(struct nvk_push_descriptor_set *push_set,
+                               struct nvk_descriptor_set_layout *layout,
+                               uint32_t write_count,
+                               const VkWriteDescriptorSet *writes);
 
 #endif
