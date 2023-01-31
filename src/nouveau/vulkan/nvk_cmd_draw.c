@@ -27,6 +27,7 @@ magic_3d_init(struct nvk_cmd_buffer *cmd)
 {
    struct nouveau_ws_push *p = cmd->push;
 
+   P_IMMD(p, NV9097, SET_REDUCE_COLOR_THRESHOLDS_ENABLE, V_FALSE);
    P_IMMD(p, NV9097, SET_REDUCE_COLOR_THRESHOLDS_UNORM8, {
       .all_covered_all_hit_once = 0xff,
    });
@@ -107,6 +108,60 @@ magic_3d_init(struct nvk_cmd_buffer *cmd)
       P_IMMD(p, NVA097, SET_TEXTURE_INSTRUCTION_OPERAND,
                         ORDERING_KEPLER_ORDER);
    }
+
+   P_IMMD(p, NV9097, SET_ALPHA_TEST, ENABLE_FALSE);
+   P_IMMD(p, NV9097, SET_TWO_SIDED_LIGHT, ENABLE_FALSE);
+   P_IMMD(p, NV9097, SET_COLOR_CLAMP, ENABLE_TRUE);
+   P_IMMD(p, NV9097, SET_PS_SATURATE, {
+      .output0 = OUTPUT0_FALSE,
+      .output1 = OUTPUT1_FALSE,
+      .output2 = OUTPUT2_FALSE,
+      .output3 = OUTPUT3_FALSE,
+      .output4 = OUTPUT4_FALSE,
+      .output5 = OUTPUT5_FALSE,
+      .output6 = OUTPUT6_FALSE,
+      .output7 = OUTPUT7_FALSE,
+   });
+
+   P_IMMD(p, NV9097, SET_ATTRIBUTE_POINT_SIZE, {
+      .enable  = ENABLE_FALSE,
+      .slot    = 0,
+   });
+   P_IMMD(p, NV9097, SET_POINT_SIZE, fui(1.0));
+
+   P_IMMD(p, NV9097, SET_POINT_SPRITE_SELECT, {
+      .rmode      = RMODE_ZERO,
+      .origin     = ORIGIN_TOP,
+      .texture0   = TEXTURE0_PASSTHROUGH,
+      .texture1   = TEXTURE1_PASSTHROUGH,
+      .texture2   = TEXTURE2_PASSTHROUGH,
+      .texture3   = TEXTURE3_PASSTHROUGH,
+      .texture4   = TEXTURE4_PASSTHROUGH,
+      .texture5   = TEXTURE5_PASSTHROUGH,
+      .texture6   = TEXTURE6_PASSTHROUGH,
+      .texture7   = TEXTURE7_PASSTHROUGH,
+      .texture8   = TEXTURE8_PASSTHROUGH,
+      .texture9   = TEXTURE9_PASSTHROUGH,
+   });
+   P_IMMD(p, NV9097, SET_POINT_SPRITE, ENABLE_FALSE);
+   P_IMMD(p, NV9097, SET_ANTI_ALIASED_POINT, ENABLE_FALSE);
+
+   if (nvk_cmd_buffer_3d_cls(cmd) >= MAXWELL_B)
+      P_IMMD(p, NVB197, SET_FILL_VIA_TRIANGLE, MODE_DISABLED);
+
+   P_IMMD(p, NV9097, SET_POLY_SMOOTH, ENABLE_FALSE);
+
+   P_IMMD(p, NV9097, SET_VIEWPORT_PIXEL, CENTER_AT_HALF_INTEGERS);
+
+   P_IMMD(p, NV9097, SET_HYBRID_ANTI_ALIAS_CONTROL, {
+      .passes     = 1,
+      .centroid   = CENTROID_PER_FRAGMENT,
+   });
+
+   if (nvk_cmd_buffer_3d_cls(cmd) >= MAXWELL_B) {
+      P_IMMD(p, NVB197, SET_OFFSET_RENDER_TARGET_INDEX,
+                        BY_VIEWPORT_INDEX_FALSE);
+   }
 }
 
 void
@@ -133,17 +188,12 @@ nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
 //   P_MTHD(cmd->push, NVC0_3D, CSAA_ENABLE);
 //   P_INLINE_DATA(cmd->push, 0);
 
-   P_IMMD(p, NV9097, SET_ANTI_ALIAS_ENABLE, V_FALSE);
-   P_IMMD(p, NV9097, SET_ANTI_ALIAS, SAMPLES_MODE_1X1);
-   P_IMMD(p, NV9097, SET_ANTI_ALIAS_ALPHA_CONTROL, {
-      .alpha_to_coverage   = ALPHA_TO_COVERAGE_DISABLE,
-      .alpha_to_one        = ALPHA_TO_ONE_DISABLE,
-   });
    P_IMMD(p, NV9097, SET_ALIASED_LINE_WIDTH_ENABLE, V_TRUE);
 
    P_IMMD(p, NV9097, SET_DA_PRIMITIVE_RESTART_VERTEX_ARRAY, ENABLE_TRUE);
 
    P_IMMD(p, NV9097, SET_BLEND_SEPARATE_FOR_ALPHA, ENABLE_TRUE);
+   P_IMMD(p, NV9097, SET_SINGLE_CT_WRITE_CONTROL, ENABLE_TRUE);
    P_IMMD(p, NV9097, SET_SINGLE_ROP_CONTROL, ENABLE_FALSE);
 
    P_IMMD(p, NV9097, SET_SHADE_MODE, V_OGL_SMOOTH);
@@ -178,10 +228,10 @@ nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
    P_IMMD(p, NV9097, SET_WINDOW_CLIP_ENABLE, V_FALSE);
    P_IMMD(p, NV9097, SET_CLIP_ID_TEST, ENABLE_FALSE);
 
-   P_IMMD(p, NV9097, X_X_X_SET_CLEAR_CONTROL, {
-      .respect_stencil_mask   = RESPECT_STENCIL_MASK_FALSE,
-      .use_clear_rect         = USE_CLEAR_RECT_FALSE,
-   });
+//   P_IMMD(p, NV9097, X_X_X_SET_CLEAR_CONTROL, {
+//      .respect_stencil_mask   = RESPECT_STENCIL_MASK_FALSE,
+//      .use_clear_rect         = USE_CLEAR_RECT_FALSE,
+//   });
 
    P_IMMD(p, NV9097, SET_VIEWPORT_SCALE_OFFSET, ENABLE_TRUE);
 
@@ -200,20 +250,15 @@ nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
 
    /* TODO: Macros */
 
-   P_IMMD(p, NV9097, SET_RASTER_ENABLE, V_TRUE);
    P_IMMD(p, NV9097, SET_CT_MRT_ENABLE, V_TRUE);
-   P_IMMD(p, NV9097, SET_PIPELINE_SHADER(3), {
-      .enable  = ENABLE_FALSE,
-      .type    = TYPE_TESSELLATION,
-   });
-   P_IMMD(p, NV9097, SET_PIPELINE_SHADER(4), {
-      .enable  = ENABLE_FALSE,
-      .type    = TYPE_GEOMETRY,
-   });
-   P_IMMD(p, NV9097, SET_PIPELINE_SHADER(5), {
-      .enable  = ENABLE_FALSE,
-      .type    = TYPE_PIXEL,
-   });
+
+   for (uint32_t i = 0; i < 6; i++) {
+      P_IMMD(p, NV9097, SET_PIPELINE_SHADER(i), {
+         .enable  = ENABLE_FALSE,
+         .type    = i,
+      });
+   }
+
 //   P_MTHD(cmd->push, NVC0_3D, MACRO_GP_SELECT);
 //   P_INLINE_DATA(cmd->push, 0x40);
    P_IMMD(p, NV9097, SET_RT_LAYER, {
@@ -222,15 +267,6 @@ nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
    });
 //   P_MTHD(cmd->push, NVC0_3D, MACRO_TEP_SELECT;
 //   P_INLINE_DATA(cmd->push, 0x30);
-   P_IMMD(p, NV9097, SET_PATCH, 3);
-   P_IMMD(p, NV9097, SET_PIPELINE_SHADER(2), {
-      .enable  = ENABLE_FALSE,
-      .type    = TYPE_TESSELLATION_INIT,
-   });
-   P_IMMD(p, NV9097, SET_PIPELINE_SHADER(0), {
-      .enable  = ENABLE_FALSE,
-      .type    = TYPE_VERTEX_CULL_BEFORE_FETCH,
-   });
 
    P_IMMD(p, NV9097, SET_POINT_SPRITE_SELECT, {
       .rmode      = RMODE_ZERO,
