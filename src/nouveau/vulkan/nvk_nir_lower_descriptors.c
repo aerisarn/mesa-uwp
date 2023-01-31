@@ -38,8 +38,9 @@ load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
    if (ctx->clamp_desc_array_bounds)
       index = nir_umin(b, index, nir_imm_int(b, binding_layout->array_size - 1));
 
-   if (binding_layout->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
-       binding_layout->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
+   switch (binding_layout->type) {
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
       /* Get the index in the root descriptor table dynamic_buffers array. */
       index = nir_iadd_imm(b, index,
                            ctx->layout->set[set].dynamic_buffer_start +
@@ -54,19 +55,22 @@ load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
                           .align_mul = 16, .align_offset = 0, .range = ~0);
    }
 
-   assert(binding_layout->stride > 0);
-   nir_ssa_def *desc_ubo_offset =
-      nir_iadd_imm(b, nir_imul_imm(b, index, binding_layout->stride),
-                      binding_layout->offset);
+   default: {
+      assert(binding_layout->stride > 0);
+      nir_ssa_def *desc_ubo_offset =
+         nir_iadd_imm(b, nir_imul_imm(b, index, binding_layout->stride),
+                         binding_layout->offset);
 
-   unsigned desc_align = (1 << (ffs(binding_layout->stride) - 1));
-   desc_align = MIN2(desc_align, 16);
+      unsigned desc_align = (1 << (ffs(binding_layout->stride) - 1));
+      desc_align = MIN2(desc_align, 16);
 
-   nir_ssa_def *set_addr = load_descriptor_set_addr(b, set, ctx);
-   return nir_load_global_constant_offset(b, num_components, bit_size,
-                                          set_addr, desc_ubo_offset,
-                                          .align_mul = desc_align,
-                                          .align_offset = 0);
+      nir_ssa_def *set_addr = load_descriptor_set_addr(b, set, ctx);
+      return nir_load_global_constant_offset(b, num_components, bit_size,
+                                             set_addr, desc_ubo_offset,
+                                             .align_mul = desc_align,
+                                             .align_offset = 0);
+   }
+   }
 }
 
 static bool
