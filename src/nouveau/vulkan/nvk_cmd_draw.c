@@ -25,9 +25,52 @@ nvk_cmd_buffer_3d_cls(struct nvk_cmd_buffer *cmd)
    return nvk_cmd_buffer_device(cmd)->ctx->eng3d.cls;
 }
 
-static void
-magic_3d_init(struct nvk_cmd_buffer *cmd, struct nouveau_ws_push_buffer *p)
+VkResult
+nvk_device_init_context_draw_state(struct nvk_device *dev)
 {
+   struct nouveau_ws_push *pb =
+      nouveau_ws_push_new(dev->pdev->dev, NVK_CMD_BUF_SIZE);
+   if (pb == NULL)
+      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+
+   struct nouveau_ws_push_buffer *p = P_SPACE(pb, 0x1000);
+
+   P_MTHD(p, NV9097, SET_OBJECT);
+   P_NV9097_SET_OBJECT(p, {
+      .class_id = dev->ctx->eng3d.cls,
+      .engine_id = 0,
+   });
+
+   P_IMMD(p, NV9097, SET_RENDER_ENABLE_C, MODE_TRUE);
+
+   P_IMMD(p, NV9097, SET_Z_COMPRESSION, ENABLE_TRUE);
+   P_MTHD(p, NV9097, SET_COLOR_COMPRESSION(0));
+   for (unsigned i = 0; i < 8; i++)
+      P_NV9097_SET_COLOR_COMPRESSION(p, i, ENABLE_TRUE);
+
+   P_IMMD(p, NV9097, SET_CT_SELECT, { .target_count = 1 });
+
+//   P_MTHD(cmd->push, NVC0_3D, CSAA_ENABLE);
+//   P_INLINE_DATA(cmd->push, 0);
+
+   P_IMMD(p, NV9097, SET_ALIASED_LINE_WIDTH_ENABLE, V_TRUE);
+
+   P_IMMD(p, NV9097, SET_DA_PRIMITIVE_RESTART_VERTEX_ARRAY, ENABLE_TRUE);
+
+   P_IMMD(p, NV9097, SET_BLEND_SEPARATE_FOR_ALPHA, ENABLE_TRUE);
+   P_IMMD(p, NV9097, SET_SINGLE_CT_WRITE_CONTROL, ENABLE_TRUE);
+   P_IMMD(p, NV9097, SET_SINGLE_ROP_CONTROL, ENABLE_FALSE);
+   P_IMMD(p, NV9097, SET_TWO_SIDED_STENCIL_TEST, ENABLE_TRUE);
+
+   P_IMMD(p, NV9097, SET_SHADE_MODE, V_OGL_SMOOTH);
+
+   P_IMMD(p, NV9097, SET_API_VISIBLE_CALL_LIMIT, V__128);
+
+   P_IMMD(p, NV9097, SET_ZCULL_STATS, ENABLE_TRUE);
+
+   P_IMMD(p, NV9097, SET_L1_CONFIGURATION,
+                     DIRECTLY_ADDRESSABLE_MEMORY_SIZE_48KB);
+
    P_IMMD(p, NV9097, SET_REDUCE_COLOR_THRESHOLDS_ENABLE, V_FALSE);
    P_IMMD(p, NV9097, SET_REDUCE_COLOR_THRESHOLDS_UNORM8, {
       .all_covered_all_hit_once = 0xff,
@@ -48,7 +91,8 @@ magic_3d_init(struct nvk_cmd_buffer *cmd, struct nouveau_ws_push_buffer *p)
    P_NV9097_SET_REDUCE_COLOR_THRESHOLDS_SRGB8(p, {
       .all_covered_all_hit_once = 0xff,
    });
-   if (nvk_cmd_buffer_3d_cls(cmd) < VOLTA_A)
+
+   if (dev->ctx->eng3d.cls < VOLTA_A)
       P_IMMD(p, NV9097, SET_ALPHA_FRACTION, 0x3f);
 
    P_IMMD(p, NV9097, CHECK_SPH_VERSION, {
@@ -60,7 +104,7 @@ magic_3d_init(struct nvk_cmd_buffer *cmd, struct nouveau_ws_push_buffer *p)
       .oldest_supported = 2,
    });
 
-   if (nvk_cmd_buffer_3d_cls(cmd) < VOLTA_A)
+   if (dev->ctx->eng3d.cls < VOLTA_A)
       P_IMMD(p, NV9097, SET_SHADER_SCHEDULING, MODE_OLDEST_THREAD_FIRST);
 
    P_IMMD(p, NV9097, SET_L2_CACHE_CONTROL_FOR_ROP_PREFETCH_READ_REQUESTS,
@@ -95,17 +139,17 @@ magic_3d_init(struct nvk_cmd_buffer *cmd, struct nouveau_ws_push_buffer *p)
       .qualify_by_anti_alias_enable = QUALIFY_BY_ANTI_ALIAS_ENABLE_ENABLE,
    });
 
-   if (nvk_cmd_buffer_3d_cls(cmd) < VOLTA_A)
+   if (dev->ctx->eng3d.cls < VOLTA_A)
       P_IMMD(p, NV9097, SET_PRIM_CIRCULAR_BUFFER_THROTTLE, 0x3fffff);
 
    P_IMMD(p, NV9097, SET_BLEND_OPT_CONTROL, ALLOW_FLOAT_PIXEL_KILLS_TRUE);
    P_IMMD(p, NV9097, SET_BLEND_FLOAT_OPTION, ZERO_TIMES_ANYTHING_IS_ZERO_TRUE);
 
-   if (nvk_cmd_buffer_3d_cls(cmd) < VOLTA_A)
+   if (dev->ctx->eng3d.cls < VOLTA_A)
       P_IMMD(p, NV9097, SET_MAX_TI_WARPS_PER_BATCH, 3);
 
-   if (nvk_cmd_buffer_3d_cls(cmd) >= KEPLER_A &&
-       nvk_cmd_buffer_3d_cls(cmd) < VOLTA_A) {
+   if (dev->ctx->eng3d.cls >= KEPLER_A &&
+       dev->ctx->eng3d.cls < VOLTA_A) {
       P_IMMD(p, NVA097, SET_TEXTURE_INSTRUCTION_OPERAND,
                         ORDERING_KEPLER_ORDER);
    }
@@ -147,7 +191,7 @@ magic_3d_init(struct nvk_cmd_buffer *cmd, struct nouveau_ws_push_buffer *p)
    P_IMMD(p, NV9097, SET_POINT_SPRITE, ENABLE_FALSE);
    P_IMMD(p, NV9097, SET_ANTI_ALIASED_POINT, ENABLE_FALSE);
 
-   if (nvk_cmd_buffer_3d_cls(cmd) >= MAXWELL_B)
+   if (dev->ctx->eng3d.cls >= MAXWELL_B)
       P_IMMD(p, NVB197, SET_FILL_VIA_TRIANGLE, MODE_DISABLED);
 
    P_IMMD(p, NV9097, SET_POLY_SMOOTH, ENABLE_FALSE);
@@ -159,59 +203,12 @@ magic_3d_init(struct nvk_cmd_buffer *cmd, struct nouveau_ws_push_buffer *p)
       .centroid   = CENTROID_PER_FRAGMENT,
    });
 
-   if (nvk_cmd_buffer_3d_cls(cmd) >= MAXWELL_B) {
+   if (dev->ctx->eng3d.cls >= MAXWELL_B) {
       P_IMMD(p, NVB197, SET_OFFSET_RENDER_TARGET_INDEX,
                         BY_VIEWPORT_INDEX_FALSE);
    }
-}
-
-void
-nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
-                              const VkCommandBufferBeginInfo *pBeginInfo)
-{
-   /* TODO: proper size */
-   struct nouveau_ws_push_buffer *p = P_SPACE(cmd->push, 0x1000);
-
-   P_MTHD(p, NV9097, SET_OBJECT);
-   P_NV9097_SET_OBJECT(p, {
-      .class_id = nvk_cmd_buffer_3d_cls(cmd),
-      .engine_id = 0,
-   });
-
-   P_IMMD(p, NV9097, SET_RENDER_ENABLE_C, MODE_TRUE);
-
-   P_IMMD(p, NV9097, SET_Z_COMPRESSION, ENABLE_TRUE);
-   P_MTHD(p, NV9097, SET_COLOR_COMPRESSION(0));
-   for (unsigned i = 0; i < 8; i++)
-      P_NV9097_SET_COLOR_COMPRESSION(p, i, ENABLE_TRUE);
-
-   P_IMMD(p, NV9097, SET_CT_SELECT, { .target_count = 1 });
-
-//   P_MTHD(cmd->push, NVC0_3D, CSAA_ENABLE);
-//   P_INLINE_DATA(cmd->push, 0);
-
-   P_IMMD(p, NV9097, SET_ALIASED_LINE_WIDTH_ENABLE, V_TRUE);
-
-   P_IMMD(p, NV9097, SET_DA_PRIMITIVE_RESTART_VERTEX_ARRAY, ENABLE_TRUE);
-
-   P_IMMD(p, NV9097, SET_BLEND_SEPARATE_FOR_ALPHA, ENABLE_TRUE);
-   P_IMMD(p, NV9097, SET_SINGLE_CT_WRITE_CONTROL, ENABLE_TRUE);
-   P_IMMD(p, NV9097, SET_SINGLE_ROP_CONTROL, ENABLE_FALSE);
-   P_IMMD(p, NV9097, SET_TWO_SIDED_STENCIL_TEST, ENABLE_TRUE);
-
-   P_IMMD(p, NV9097, SET_SHADE_MODE, V_OGL_SMOOTH);
-
-   P_IMMD(p, NV9097, SET_API_VISIBLE_CALL_LIMIT, V__128);
-
-   P_IMMD(p, NV9097, SET_ZCULL_STATS, ENABLE_TRUE);
-
-   P_IMMD(p, NV9097, SET_L1_CONFIGURATION,
-                     DIRECTLY_ADDRESSABLE_MEMORY_SIZE_48KB);
-
-   magic_3d_init(cmd, p);
 
    /* TODO: Vertex runout */
-   /* TODO: temp */
 
    P_IMMD(p, NV9097, SET_WINDOW_ORIGIN, {
       .mode    = MODE_UPPER_LEFT,
@@ -284,6 +281,18 @@ nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
    P_IMMD(p, NV9097, SET_EDGE_FLAG, V_TRUE);
    P_IMMD(p, NV9097, SET_SAMPLER_BINDING, V_INDEPENDENTLY);
 
+   int ret = nouveau_ws_push_submit(pb, dev->pdev->dev, dev->ctx);
+   nouveau_ws_push_destroy(pb);
+   if (ret)
+      return vk_error(dev, VK_ERROR_INITIALIZATION_FAILED);
+
+   return VK_SUCCESS;
+}
+
+void
+nvk_cmd_buffer_begin_graphics(struct nvk_cmd_buffer *cmd,
+                              const VkCommandBufferBeginInfo *pBeginInfo)
+{
    if (cmd->vk.level != VK_COMMAND_BUFFER_LEVEL_PRIMARY &&
        (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT)) {
       char gcbiar_data[VK_GCBIARR_DATA_SIZE(NVK_MAX_RTS)];

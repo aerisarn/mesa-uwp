@@ -197,6 +197,10 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
 
    device->pdev = physical_device;
 
+   result = nvk_device_init_context_draw_state(device);
+   if (result != VK_SUCCESS)
+      goto fail_queue_submit;
+
    result = nvk_device_init_meta(device);
    if (result != VK_SUCCESS)
       goto fail_queue_submit;

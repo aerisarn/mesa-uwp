@@ -56,6 +56,8 @@ nvk_device_physical(struct nvk_device *device)
    return (struct nvk_physical_device *)device->vk.physical;
 }
 
+VkResult nvk_device_init_context_draw_state(struct nvk_device *dev);
+
 VkResult nvk_device_init_meta(struct nvk_device *dev);
 void nvk_device_finish_meta(struct nvk_device *dev);
 
