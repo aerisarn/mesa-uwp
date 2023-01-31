@@ -2533,6 +2533,7 @@ struct anv_cmd_graphics_state {
    uint32_t index_type; /**< 3DSTATE_INDEX_BUFFER.IndexFormat */
    uint32_t index_offset;
 
+   struct vk_vertex_input_state vertex_input;
    struct vk_sample_locations_state sample_locations;
 
    bool object_preemption;
@@ -3069,6 +3070,7 @@ struct anv_graphics_pipeline {
 
    VkShaderStageFlags                           active_stages;
 
+   struct vk_vertex_input_state                 vertex_input;
    struct vk_sample_locations_state             sample_locations;
    struct vk_dynamic_graphics_state             dynamic_state;
 
@@ -3084,8 +3086,6 @@ struct anv_graphics_pipeline {
    bool                                         kill_pixel;
    bool                                         force_fragment_thread_dispatch;
    bool                                         uses_xfb;
-
-   uint32_t                                     vb_used;
 
    /* Number of VERTEX_ELEMENT_STATE input elements used by the shader */
    uint32_t                                     vs_input_elements;

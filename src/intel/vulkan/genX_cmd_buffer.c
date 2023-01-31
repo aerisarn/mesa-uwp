@@ -3297,9 +3297,14 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
     */
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
-   uint32_t vb_emit = cmd_buffer->state.gfx.vb_dirty & pipeline->vb_used;
-   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE)
-      vb_emit |= pipeline->vb_used;
+   /* Check what vertex buffers have been rebound against the set of bindings
+    * being used by the current set of vertex attributes.
+    */
+   uint32_t vb_emit = cmd_buffer->state.gfx.vb_dirty & dyn->vi->bindings_valid;
+   /* If the pipeline changed, the we have to consider all the valid bindings. */
+   if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) ||
+       BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_VI_BINDING_STRIDES))
+      vb_emit |= dyn->vi->bindings_valid;
 
    if (vb_emit) {
       const uint32_t num_buffers = __builtin_popcount(vb_emit);

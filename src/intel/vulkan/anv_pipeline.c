@@ -2261,6 +2261,7 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
       assert(device->physical->vk.supported_extensions.NV_mesh_shader ||
              device->physical->vk.supported_extensions.EXT_mesh_shader);
 
+   pipeline->dynamic_state.vi = &pipeline->vertex_input;
    pipeline->dynamic_state.ms.sample_locations = &pipeline->sample_locations;
    vk_dynamic_graphics_state_fill(&pipeline->dynamic_state, state);
 
@@ -2276,12 +2277,6 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
 
    if (anv_pipeline_is_primitive(pipeline)) {
       const struct brw_vs_prog_data *vs_prog_data = get_vs_prog_data(pipeline);
-      const uint64_t inputs_read = vs_prog_data->inputs_read;
-
-      u_foreach_bit(a, state->vi->attributes_valid) {
-         if (inputs_read & BITFIELD64_BIT(VERT_ATTRIB_GENERIC0 + a))
-            pipeline->vb_used |= BITFIELD64_BIT(state->vi->attributes[a].binding);
-      }
 
       /* The total number of vertex elements we need to program. We might need
        * a couple more to implement some of the draw parameters.

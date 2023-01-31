@@ -183,11 +183,17 @@ genX(emit_vertex_input)(struct anv_batch *batch,
 
 static void
 emit_vertex_input(struct anv_graphics_pipeline *pipeline,
+                  const struct vk_graphics_pipeline_state *state,
                   const struct vk_vertex_input_state *vi)
 {
-   genX(emit_vertex_input)(&pipeline->base.batch,
-                           pipeline->vertex_input_data,
-                           pipeline, vi);
+   /* Only pack the VERTEX_ELEMENT_STATE if not dynamic so we can just memcpy
+    * everything in gfx8_cmd_buffer.c
+    */
+   if (!BITSET_TEST(state->dynamic, MESA_VK_DYNAMIC_VI)) {
+      genX(emit_vertex_input)(&pipeline->base.batch,
+                              pipeline->vertex_input_data,
+                              pipeline, vi);
+   }
 
    const struct brw_vs_prog_data *vs_prog_data = get_vs_prog_data(pipeline);
    const bool needs_svgs_elem = pipeline->svgs_count > 1 ||
@@ -195,6 +201,9 @@ emit_vertex_input(struct anv_graphics_pipeline *pipeline,
    const uint32_t id_slot = pipeline->vs_input_elements;
    const uint32_t drawid_slot = id_slot + needs_svgs_elem;
    if (pipeline->svgs_count > 0) {
+      assert(pipeline->vertex_input_elems >= pipeline->svgs_count);
+      uint32_t slot_offset =
+         pipeline->vertex_input_elems - pipeline->svgs_count;
       if (needs_svgs_elem) {
 #if GFX_VER < 11
          /* From the Broadwell PRM for the 3D_Vertex_Component_Control enum:
@@ -227,8 +236,9 @@ emit_vertex_input(struct anv_graphics_pipeline *pipeline,
             .Component3Control = VFCOMP_STORE_0,
          };
          GENX(VERTEX_ELEMENT_STATE_pack)(NULL,
-                                         &pipeline->vertex_input_data[id_slot * 2],
+                                         &pipeline->vertex_input_data[slot_offset * 2],
                                          &element);
+         slot_offset++;
 
          anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_VF_INSTANCING), vfi) {
             vfi.VertexElementIndex = id_slot;
@@ -251,8 +261,9 @@ emit_vertex_input(struct anv_graphics_pipeline *pipeline,
             .Component3Control = VFCOMP_STORE_0,
          };
          GENX(VERTEX_ELEMENT_STATE_pack)(NULL,
-                                         &pipeline->vertex_input_data[drawid_slot * 2],
+                                         &pipeline->vertex_input_data[slot_offset * 2],
                                          &element);
+         slot_offset++;
 
          anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_VF_INSTANCING), vfi) {
             vfi.VertexElementIndex = drawid_slot;
@@ -1872,7 +1883,7 @@ genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
 #endif
 
    if (anv_pipeline_is_primitive(pipeline)) {
-      emit_vertex_input(pipeline, state->vi);
+      emit_vertex_input(pipeline, state, state->vi);
 
       emit_3dstate_vs(pipeline);
       emit_3dstate_hs_ds(pipeline, state->ts);

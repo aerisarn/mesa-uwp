@@ -349,6 +349,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_tooling_info                      = true,
       .EXT_transform_feedback                = true,
       .EXT_vertex_attribute_divisor          = true,
+      .EXT_vertex_input_dynamic_state        = true,
       .EXT_ycbcr_image_arrays                = true,
 #ifdef ANDROID
       .ANDROID_external_memory_android_hardware_buffer = true,
@@ -1801,6 +1802,13 @@ void anv_GetPhysicalDeviceFeatures2(
          VkPhysicalDevicePresentWaitFeaturesKHR *features =
             (VkPhysicalDevicePresentWaitFeaturesKHR *) ext;
          features->presentWait = pdevice->vk.supported_extensions.KHR_present_wait;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT: {
+         VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT *features =
+            (VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT *) ext;
+         features->vertexInputDynamicState = true;
          break;
       }
 
