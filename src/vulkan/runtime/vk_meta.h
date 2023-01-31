@@ -199,6 +199,10 @@ void vk_meta_clear_attachments(struct vk_command_buffer *cmd,
                                uint32_t rect_count,
                                const VkClearRect *rects);
 
+void vk_meta_clear_rendering(struct vk_meta_device *meta,
+                             struct vk_command_buffer *cmd,
+                             const VkRenderingInfo *pRenderingInfo);
+
 #ifdef __cplusplus
 }
 #endif

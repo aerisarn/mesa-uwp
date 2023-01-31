@@ -335,3 +335,80 @@ vk_meta_clear_attachments(struct vk_command_buffer *cmd,
       STACK_ARRAY_FINISH(rects);
    }
 }
+
+void
+vk_meta_clear_rendering(struct vk_meta_device *meta,
+                        struct vk_command_buffer *cmd,
+                        const VkRenderingInfo *pRenderingInfo)
+{
+   assert(!(pRenderingInfo->flags & VK_RENDERING_RESUMING_BIT));
+
+   struct vk_meta_rendering_info render = {
+      .view_mask = pRenderingInfo->viewMask,
+      .color_attachment_count = pRenderingInfo->colorAttachmentCount,
+   };
+
+   uint32_t clear_count = 0;
+   VkClearAttachment clear_att[MESA_VK_MAX_COLOR_ATTACHMENTS + 1];
+   for (uint32_t i = 0; i < pRenderingInfo->colorAttachmentCount; i++) {
+      const VkRenderingAttachmentInfo *att_info =
+         &pRenderingInfo->pColorAttachments[i];
+      if (att_info->imageView == VK_NULL_HANDLE ||
+          att_info->loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR)
+         continue;
+
+      VK_FROM_HANDLE(vk_image_view, iview, att_info->imageView);
+      render.color_attachment_formats[i] = iview->format;
+      assert(render.samples == 0 || render.samples == iview->image->samples);
+      render.samples = MAX2(render.samples, iview->image->samples);
+
+      clear_att[clear_count++] = (VkClearAttachment) {
+         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+         .colorAttachment = i,
+         .clearValue = att_info->clearValue,
+      };
+   }
+
+   /* One more for depth/stencil, if needed */
+   clear_att[clear_count] = (VkClearAttachment) { .aspectMask = 0, };
+
+   const VkRenderingAttachmentInfo *d_att_info =
+      pRenderingInfo->pDepthAttachment;
+   if (d_att_info != NULL && d_att_info->imageView != VK_NULL_HANDLE &&
+       d_att_info->loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+      VK_FROM_HANDLE(vk_image_view, iview, d_att_info->imageView);
+      render.depth_attachment_format = iview->format;
+      render.samples = MAX2(render.samples, iview->image->samples);
+
+      clear_att[clear_count].aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+      clear_att[clear_count].clearValue.depthStencil.depth =
+         d_att_info->clearValue.depthStencil.depth;
+   }
+
+   const VkRenderingAttachmentInfo *s_att_info =
+      pRenderingInfo->pStencilAttachment;
+   if (s_att_info != NULL && s_att_info->imageView != VK_NULL_HANDLE &&
+       s_att_info->loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+      VK_FROM_HANDLE(vk_image_view, iview, s_att_info->imageView);
+      render.stencil_attachment_format = iview->format;
+      render.samples = MAX2(render.samples, iview->image->samples);
+
+      clear_att[clear_count].aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+      clear_att[clear_count].clearValue.depthStencil.stencil =
+         s_att_info->clearValue.depthStencil.depth;
+   }
+   if (clear_att[clear_count].aspectMask != 0)
+      clear_count++;
+
+   if (clear_count > 0) {
+      const VkClearRect clear_rect = {
+         .rect = pRenderingInfo->renderArea,
+         .baseArrayLayer = 0,
+         .layerCount = pRenderingInfo->viewMask ?
+                       1 : pRenderingInfo->layerCount,
+      };
+      vk_meta_clear_attachments(cmd, meta, &render,
+                                clear_count, clear_att,
+                                1, &clear_rect);
+   }
+}
