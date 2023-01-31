@@ -307,6 +307,15 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
    VkPhysicalDeviceVulkan12Properties core_1_2 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES,
       /* Vulkan 1.2 properties */
+      .supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT |
+                                    VK_RESOLVE_MODE_AVERAGE_BIT |
+                                    VK_RESOLVE_MODE_MIN_BIT |
+                                    VK_RESOLVE_MODE_MAX_BIT,
+      .supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT |
+                                      VK_RESOLVE_MODE_MIN_BIT |
+                                      VK_RESOLVE_MODE_MAX_BIT,
+      .independentResolveNone = true,
+      .independentResolve = true,
    };
 
    VkPhysicalDeviceVulkan13Properties core_1_3 = {
@@ -364,6 +373,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *pdev,
       .KHR_copy_commands2 = true,
       .KHR_create_renderpass2 = true,
       .KHR_dedicated_allocation = true,
+      .KHR_depth_stencil_resolve = true,
       .KHR_descriptor_update_template = true,
       .KHR_format_feature_flags2 = true,
       .KHR_get_memory_requirements2 = true,
