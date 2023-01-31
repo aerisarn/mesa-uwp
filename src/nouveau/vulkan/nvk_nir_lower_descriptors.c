@@ -49,7 +49,8 @@ load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
          nir_iadd_imm(b, nir_imul_imm(b, index, sizeof(struct nvk_buffer_address)),
                       offsetof(struct nvk_root_descriptor_table, dynamic_buffers));
 
-      return nir_load_ubo(b, 4, 32, nir_imm_int(b, 0), root_desc_offset,
+      return nir_load_ubo(b, num_components, bit_size,
+                          nir_imm_int(b, 0), root_desc_offset,
                           .align_mul = 16, .align_offset = 0, .range = ~0);
    }
 
@@ -62,8 +63,10 @@ load_descriptor(nir_builder *b, unsigned num_components, unsigned bit_size,
    desc_align = MIN2(desc_align, 16);
 
    nir_ssa_def *set_addr = load_descriptor_set_addr(b, set, ctx);
-   return nir_load_global_constant_offset(b, 4, 32, set_addr, desc_ubo_offset,
-                                          .align_mul = 16, .align_offset = 0);
+   return nir_load_global_constant_offset(b, num_components, bit_size,
+                                          set_addr, desc_ubo_offset,
+                                          .align_mul = desc_align,
+                                          .align_offset = 0);
 }
 
 static bool
