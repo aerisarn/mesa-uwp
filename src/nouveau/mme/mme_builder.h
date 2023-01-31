@@ -388,6 +388,12 @@ mme_merge(struct mme_builder *b,
    return dst;
 }
 
+#define mme_set_field(b, x, FIELD, val) \
+   mme_merge_to(b, x, x, val, DRF_LO(FIELD), DRF_BITS(FIELD), 0)
+
+#define mme_set_field_enum(b, x, FIELD, ENUM) \
+   mme_set_field(b, x, FIELD, mme_imm(FIELD##_##ENUM)) \
+
 static inline void
 mme_state_arr_to(struct mme_builder *b, struct mme_value dst,
                  uint16_t state, struct mme_value index)
