@@ -34,6 +34,10 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       /* More features */
       .shaderStorageImageExtendedFormats = true,
       .shaderStorageImageWriteWithoutFormat = true,
+      .shaderUniformBufferArrayDynamicIndexing = true,
+      .shaderSampledImageArrayDynamicIndexing = true,
+      .shaderStorageBufferArrayDynamicIndexing = true,
+      .shaderStorageImageArrayDynamicIndexing = true,
    };
 
    VkPhysicalDeviceVulkan11Features core_1_1 = {
@@ -44,6 +48,9 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    VkPhysicalDeviceVulkan12Features core_1_2 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
       /* Vulkan 1.2 features */
+      .shaderInputAttachmentArrayDynamicIndexing = true,
+      .shaderUniformTexelBufferArrayDynamicIndexing = true,
+      .shaderStorageTexelBufferArrayDynamicIndexing = true,
    };
 
    VkPhysicalDeviceVulkan13Features core_1_3 = {
