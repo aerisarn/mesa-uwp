@@ -307,6 +307,8 @@ nvk_descriptor_set_destroy(struct nvk_device *device,
       }
    }
 
+   nvk_descriptor_set_layout_unref(device, set->layout);
+
    vk_object_free(&device->vk, NULL, set);
 }
 
@@ -429,7 +431,6 @@ nvk_descriptor_set_create(struct nvk_device *device,
    if (!set)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   set->layout = layout;
    if (pool->entry_count == pool->max_entry_count)
       return VK_ERROR_OUT_OF_POOL_MEMORY;
 
@@ -448,6 +449,8 @@ nvk_descriptor_set_create(struct nvk_device *device,
    pool->current_offset += ALIGN(layout->descriptor_buffer_size,
                                  NVK_MIN_UBO_ALIGNMENT);
    pool->entry_count++;
+
+   set->layout = nvk_descriptor_set_layout_ref(layout);
 
    for (uint32_t b = 0; b < layout->binding_count; b++) {
       if (layout->binding[b].type != VK_DESCRIPTOR_TYPE_SAMPLER &&
