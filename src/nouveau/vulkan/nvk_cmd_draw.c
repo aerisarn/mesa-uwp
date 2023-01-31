@@ -1078,3 +1078,40 @@ nvk_flush_dynamic_state(struct nvk_cmd_buffer *cmd)
    nvk_flush_ds_state(cmd);
    nvk_flush_cb_state(cmd);
 }
+
+static void
+nvk_flush_descriptors(struct nvk_cmd_buffer *cmd)
+{
+   const struct nvk_descriptor_state *desc = &cmd->state.gfx.descriptors;
+   struct nouveau_ws_push *p = cmd->push;
+
+   uint32_t root_table_size = sizeof(desc->root);
+   void *root_table_map;
+   uint64_t root_table_addr;
+   if (!nvk_cmd_buffer_upload_alloc(cmd, root_table_size, &root_table_addr,
+                                    &root_table_map))
+      return; /* TODO: Error */
+
+   memcpy(root_table_map, &desc->root, sizeof(desc->root));
+
+   P_MTHD(p, NV9097, SET_CONSTANT_BUFFER_SELECTOR_A);
+   P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_A(p, root_table_size);
+   P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_B(p, root_table_addr >> 32);
+   P_NV9097_SET_CONSTANT_BUFFER_SELECTOR_C(p, root_table_addr);
+
+   for (uint32_t i = 0; i < 5; i++) {
+      P_IMMD(p, NV9097, BIND_GROUP_CONSTANT_BUFFER(i), {
+         .valid = VALID_TRUE,
+         .shader_slot = 0,
+      });
+      P_IMMD(p, NV9097, BIND_GROUP_CONSTANT_BUFFER(i), {
+         .valid = VALID_TRUE,
+         .shader_slot = 1,
+      });
+   }
+
+   assert(nvk_cmd_buffer_3d_cls(cmd) >= KEPLER_A);
+   P_IMMD(p, NVA097, INVALIDATE_SHADER_CACHES_NO_WFI, {
+      .constant = CONSTANT_TRUE,
+   });
+}
