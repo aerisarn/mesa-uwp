@@ -371,23 +371,22 @@ nvk_CmdBindPipeline(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(nvk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(nvk_pipeline, pipeline, _pipeline);
 
+   for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
+      if (!pipeline->shaders[s].bo)
+         continue;
+
+      nouveau_ws_push_ref(cmd->push, pipeline->shaders[s].bo,
+                          NOUVEAU_WS_BO_RD);
+   }
+
    switch (pipelineBindPoint) {
    case VK_PIPELINE_BIND_POINT_GRAPHICS:
-      for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
-         if (!pipeline->shaders[s].bo)
-            continue;
-
-         nouveau_ws_push_ref(cmd->push, pipeline->shaders[s].bo,
-                             NOUVEAU_WS_BO_RD);
-      }
-      cmd->state.gfx.pipeline = (struct nvk_graphics_pipeline *)pipeline;
+      assert(pipeline->type == NVK_PIPELINE_GRAPHICS);
+      nvk_cmd_bind_graphics_pipeline(cmd, (void *)pipeline);
       break;
    case VK_PIPELINE_BIND_POINT_COMPUTE:
       assert(pipeline->type == NVK_PIPELINE_COMPUTE);
-      nouveau_ws_push_ref(cmd->push,
-                          pipeline->shaders[MESA_SHADER_COMPUTE].bo,
-                          NOUVEAU_WS_BO_RD);
-      cmd->state.cs.pipeline = (struct nvk_compute_pipeline *)pipeline;
+      nvk_cmd_bind_compute_pipeline(cmd, (void *)pipeline);
       break;
    default:
       unreachable("Unhandled bind point");

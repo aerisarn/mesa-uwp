@@ -72,6 +72,13 @@ gp100_cp_launch_desc_set_cb(uint32_t *qmd, unsigned index,
    NVC0C0_QMDV02_01_DEF_SET(qmd, CONSTANT_BUFFER_VALID, index, TRUE);
 }
 
+void
+nvk_cmd_bind_compute_pipeline(struct nvk_cmd_buffer *cmd,
+                              struct nvk_compute_pipeline *pipeline)
+{
+   cmd->state.cs.pipeline = pipeline;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 nvk_CmdDispatch(VkCommandBuffer commandBuffer,
                 uint32_t groupCountX,
