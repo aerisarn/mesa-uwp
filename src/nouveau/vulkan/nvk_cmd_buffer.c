@@ -104,24 +104,6 @@ nvk_cmd_buffer_alloc_bo(struct nvk_cmd_buffer *cmd, struct nvk_cmd_bo **bo_out)
    return VK_SUCCESS;
 }
 
-void
-nvk_cmd_buffer_new_push(struct nvk_cmd_buffer *cmd)
-{
-   VkResult result;
-
-   result = nvk_cmd_buffer_alloc_bo(cmd, &cmd->push_bo);
-   if (unlikely(result != VK_SUCCESS)) {
-      STATIC_ASSERT(NVK_CMD_BUFFER_MAX_PUSH <= NVK_CMD_BO_SIZE / 4);
-      cmd->push_bo = NULL;
-      nv_push_init(&cmd->push, push_runout, 0);
-      cmd->push_bo_limit = &push_runout[NVK_CMD_BUFFER_MAX_PUSH];
-   } else {
-      nv_push_init(&cmd->push, cmd->push_bo->map, 0);
-      cmd->push_bo_limit =
-         (uint32_t *)((char *)cmd->push_bo->map + NVK_CMD_BO_SIZE);
-   }
-}
-
 static void
 nvk_cmd_buffer_flush_push(struct nvk_cmd_buffer *cmd)
 {
@@ -135,6 +117,24 @@ nvk_cmd_buffer_flush_push(struct nvk_cmd_buffer *cmd)
    }
 
    cmd->push.start = cmd->push.end;
+}
+
+void
+nvk_cmd_buffer_new_push(struct nvk_cmd_buffer *cmd)
+{
+   nvk_cmd_buffer_flush_push(cmd);
+
+   VkResult result = nvk_cmd_buffer_alloc_bo(cmd, &cmd->push_bo);
+   if (unlikely(result != VK_SUCCESS)) {
+      STATIC_ASSERT(NVK_CMD_BUFFER_MAX_PUSH <= NVK_CMD_BO_SIZE / 4);
+      cmd->push_bo = NULL;
+      nv_push_init(&cmd->push, push_runout, 0);
+      cmd->push_bo_limit = &push_runout[NVK_CMD_BUFFER_MAX_PUSH];
+   } else {
+      nv_push_init(&cmd->push, cmd->push_bo->map, 0);
+      cmd->push_bo_limit =
+         (uint32_t *)((char *)cmd->push_bo->map + NVK_CMD_BO_SIZE);
+   }
 }
 
 VkResult
