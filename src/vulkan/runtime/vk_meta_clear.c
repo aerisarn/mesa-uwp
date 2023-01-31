@@ -147,6 +147,10 @@ get_clear_pipeline(struct vk_device *device,
    VkPipelineDepthStencilStateCreateInfo ds_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
    };
+   const VkDynamicState dyn_stencil_ref = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
+   VkPipelineDynamicStateCreateInfo dyn_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+   };
    if (key->clear_depth) {
       ds_info.depthTestEnable = VK_TRUE;
       ds_info.depthWriteEnable = VK_TRUE;
@@ -159,6 +163,8 @@ get_clear_pipeline(struct vk_device *device,
       ds_info.front.compareMask = ~0u;
       ds_info.front.writeMask = ~0u;
       ds_info.back = ds_info.front;
+      dyn_info.dynamicStateCount = 1;
+      dyn_info.pDynamicStates = &dyn_stencil_ref;
    }
 
    const VkGraphicsPipelineCreateInfo info = {
@@ -166,6 +172,7 @@ get_clear_pipeline(struct vk_device *device,
       .stageCount = 1,
       .pStages = &fs_info,
       .pDepthStencilState = &ds_info,
+      .pDynamicState = &dyn_info,
       .layout = layout,
    };
 
