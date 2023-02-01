@@ -2219,7 +2219,7 @@ split_unaligned_store(nir_builder *b, nir_intrinsic_instr *intrin, unsigned alig
 }
 
 bool
-dxil_nir_split_unaligned_loads_stores(nir_shader *shader)
+dxil_nir_split_unaligned_loads_stores(nir_shader *shader, nir_variable_mode modes)
 {
    bool progress = false;
 
@@ -2239,6 +2239,8 @@ dxil_nir_split_unaligned_loads_stores(nir_shader *shader)
                 intrin->intrinsic != nir_intrinsic_store_deref)
                continue;
             nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+            if (!nir_deref_mode_may_be(deref, modes))
+               continue;
 
             unsigned align_mul = 0, align_offset = 0;
             nir_get_explicit_deref_align(deref, true, &align_mul, &align_offset);
@@ -2248,7 +2250,8 @@ dxil_nir_split_unaligned_loads_stores(nir_shader *shader)
             /* We can load anything at 4-byte alignment, except for
              * UBOs (AKA CBs where the granularity is 16 bytes).
              */
-            if (alignment >= (deref->modes == nir_var_mem_ubo ? 16 : 4))
+            unsigned req_align = (nir_deref_mode_is_one_of(deref, nir_var_mem_ubo | nir_var_mem_push_const) ? 16 : 4);
+            if (alignment >= req_align)
                continue;
 
             nir_ssa_def *val;
