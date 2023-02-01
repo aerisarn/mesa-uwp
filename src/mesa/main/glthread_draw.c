@@ -434,7 +434,8 @@ draw_arrays(GLenum mode, GLint first, GLsizei count, GLsizei instance_count,
    GET_CURRENT_CONTEXT(ctx);
 
    struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
-   unsigned user_buffer_mask = vao->UserPointerMask & vao->BufferEnabled;
+   unsigned user_buffer_mask =
+      ctx->API == API_OPENGL_CORE ? 0 : vao->UserPointerMask & vao->BufferEnabled;
 
    if (compiled_into_dlist && ctx->GLThread.ListMode) {
       _mesa_glthread_finish_before(ctx, "DrawArrays");
@@ -448,8 +449,7 @@ draw_arrays(GLenum mode, GLint first, GLsizei count, GLsizei instance_count,
     * This is also an error path. Zero counts should still call the driver
     * for possible GL errors.
     */
-   if (ctx->API == API_OPENGL_CORE || !user_buffer_mask ||
-       count <= 0 || instance_count <= 0 ||
+   if (!user_buffer_mask || count <= 0 || instance_count <= 0 ||
        /* This will just generate GL_INVALID_OPERATION, as it should. */
        (!compiled_into_dlist && ctx->GLThread.ListMode)) {
       draw_arrays_async(ctx, mode, first, count, instance_count, baseinstance);
@@ -555,12 +555,13 @@ _mesa_marshal_MultiDrawArrays(GLenum mode, const GLint *first,
 
    struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
    unsigned user_buffer_mask =
-      draw_count <= 0 ? 0 : vao->UserPointerMask & vao->BufferEnabled;
+      ctx->API == API_OPENGL_CORE || draw_count <= 0 ?
+            0 : vao->UserPointerMask & vao->BufferEnabled;
 
    if (ctx->GLThread.ListMode)
       goto sync;
 
-   if ((ctx->API == API_OPENGL_CORE || !user_buffer_mask) &&
+   if (!user_buffer_mask &&
        multi_draw_arrays_async(ctx, mode, first, count, draw_count, 0, NULL)) {
       return;
    }
@@ -899,8 +900,9 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
    GET_CURRENT_CONTEXT(ctx);
 
    struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
-   unsigned user_buffer_mask = vao->UserPointerMask & vao->BufferEnabled;
-   bool has_user_indices = vao->CurrentElementBufferName == 0;
+   unsigned user_buffer_mask =
+      ctx->API == API_OPENGL_CORE ? 0 : vao->UserPointerMask & vao->BufferEnabled;
+   bool has_user_indices = vao->CurrentElementBufferName == 0 && indices;
 
    if (compiled_into_dlist && ctx->GLThread.ListMode)
       goto sync;
@@ -910,8 +912,7 @@ draw_elements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices,
     * This is also an error path. Zero counts should still call the driver
     * for possible GL errors.
     */
-   if (ctx->API == API_OPENGL_CORE ||
-       count <= 0 || instance_count <= 0 || max_index < min_index ||
+   if (count <= 0 || instance_count <= 0 || max_index < min_index ||
        !is_index_type_valid(type) ||
        (!user_buffer_mask && !has_user_indices) ||
        /* This will just generate GL_INVALID_OPERATION, as it should. */
@@ -1152,7 +1153,8 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
    GET_CURRENT_CONTEXT(ctx);
 
    struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
-   unsigned user_buffer_mask = vao->UserPointerMask & vao->BufferEnabled;
+   unsigned user_buffer_mask =
+      ctx->API == API_OPENGL_CORE ? 0 : vao->UserPointerMask & vao->BufferEnabled;
    bool has_user_indices = vao->CurrentElementBufferName == 0;
 
    if (ctx->GLThread.ListMode)
@@ -1160,8 +1162,7 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
 
    /* Fast path when nothing needs to be done. */
    if (draw_count >= 0 &&
-       (ctx->API == API_OPENGL_CORE ||
-        !is_index_type_valid(type) ||
+       (!is_index_type_valid(type) ||
         (!user_buffer_mask && !has_user_indices))) {
       multi_draw_elements_async(ctx, mode, count, type, indices,
                                 draw_count, basevertex, NULL, 0, NULL);
