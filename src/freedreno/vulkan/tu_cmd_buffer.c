@@ -686,8 +686,7 @@ use_sysmem_rendering(struct tu_cmd_buffer *cmd,
       return true;
 
    /* can't fit attachments into gmem */
-   if (!cmd->state.pass->gmem_pixels[cmd->state.gmem_layout] ||
-       !cmd->state.tiling->possible)
+   if (!cmd->state.tiling->possible)
       return true;
 
    if (cmd->state.framebuffer->layers > 1)

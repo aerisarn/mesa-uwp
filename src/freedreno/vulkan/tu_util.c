@@ -174,8 +174,10 @@ tu_tiling_config_update_tile_layout(struct tu_framebuffer *fb,
    /* will force to sysmem, don't bother trying to have a valid tile config
     * TODO: just skip all GMEM stuff when sysmem is forced?
     */
-   if (!pass->gmem_pixels[gmem_layout])
+   if (!pass->gmem_pixels[gmem_layout]) {
+      tiling->possible = false;
       return;
+   }
 
    if (TU_DEBUG(FORCEBIN)) {
       /* start with 2x2 tiles */
