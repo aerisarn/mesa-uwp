@@ -3481,9 +3481,11 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
    if (pCreateInfo->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT)
       return VK_PIPELINE_COMPILE_REQUIRED;
 
-   if (pipeline->base.type == RADV_PIPELINE_GRAPHICS &&
-       !(radv_pipeline_to_graphics(&pipeline->base)->active_stages &
-         VK_SHADER_STAGE_FRAGMENT_BIT)) {
+   if ((pipeline->base.type == RADV_PIPELINE_GRAPHICS &&
+        !(radv_pipeline_to_graphics(&pipeline->base)->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT)) ||
+       (pipeline->base.type == RADV_PIPELINE_GRAPHICS_LIB &&
+        (lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
+        !(radv_pipeline_to_graphics_lib(&pipeline->base)->base.active_stages & VK_SHADER_STAGE_FRAGMENT_BIT))) {
       nir_builder fs_b = radv_meta_init_shader(device, MESA_SHADER_FRAGMENT, "noop_fs");
 
       stages[MESA_SHADER_FRAGMENT] = (struct radv_pipeline_stage) {
@@ -5165,7 +5167,11 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
          return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
 
-   if (pipeline->base.active_stages != 0) {
+   if (pipeline->base.active_stages != 0 ||
+       (imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)) {
+      const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
+         vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
+
       struct radv_pipeline_key key =
          radv_generate_graphics_pipeline_key(&pipeline->base, pCreateInfo, state);
 
@@ -5186,6 +5192,13 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
                                               &pipeline->base.last_vgt_api_stage);
       if (result != VK_SUCCESS)
          return result;
+
+      /* Force add the fragment shader stage when a noop FS has been compiled. */
+      if ((imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
+          !(pipeline->base.active_stages & VK_SHADER_STAGE_FRAGMENT_BIT)) {
+         assert(pipeline->base.base.shaders[MESA_SHADER_FRAGMENT]);
+         pipeline->base.active_stages |= VK_SHADER_STAGE_FRAGMENT_BIT;
+      }
    }
 
    return VK_SUCCESS;
