@@ -110,6 +110,78 @@ loop_builder(nir_builder *b, loop_builder_param p)
    return loop;
 }
 
+struct loop_builder_invert_param {
+   uint32_t init_value;
+   uint32_t incr_value;
+   uint32_t cond_value;
+   nir_ssa_def *(*cond_instr)(nir_builder *,
+                              nir_ssa_def *,
+                              nir_ssa_def *);
+   nir_ssa_def *(*incr_instr)(nir_builder *,
+                              nir_ssa_def *,
+                              nir_ssa_def *);
+};
+
+/**
+ * Build an "inverted" loop.
+ *
+ * Like \c loop_builder, but the exit condition for the loop is at the bottom
+ * of the loop instead of the top. In compiler literature, the optimization
+ * that moves the exit condition from the top to the bottom is called "loop
+ * inversion," hence the name of this function.
+ */
+static nir_loop *
+loop_builder_invert(nir_builder *b, loop_builder_invert_param p)
+{
+   /* Create IR:
+    *
+    *    auto i = init_value;
+    *    while (true) {
+    *       i = incr_instr(i, incr_value);
+    *
+    *       if (cond_instr(i, cond_value))
+    *          break;
+    *    }
+    */
+   nir_ssa_def *ssa_0 = nir_imm_int(b, p.init_value);
+   nir_ssa_def *ssa_1 = nir_imm_int(b, p.incr_value);
+   nir_ssa_def *ssa_2 = nir_imm_int(b, p.cond_value);
+
+   nir_phi_instr *const phi = nir_phi_instr_create(b->shader);
+
+   nir_loop *loop = nir_push_loop(b);
+   {
+      nir_ssa_dest_init(&phi->instr, &phi->dest,
+                        ssa_0->num_components, ssa_0->bit_size,
+                        NULL);
+
+      nir_phi_instr_add_src(phi, ssa_0->parent_instr->block,
+                            nir_src_for_ssa(ssa_0));
+
+      nir_ssa_def *ssa_5 = &phi->dest.ssa;
+
+      nir_ssa_def *ssa_3 = p.incr_instr(b, ssa_5, ssa_1);
+
+      nir_ssa_def *ssa_4 = p.cond_instr(b, ssa_3, ssa_2);
+
+      nir_if *nif = nir_push_if(b, ssa_4);
+      {
+         nir_jump_instr *jump = nir_jump_instr_create(b->shader, nir_jump_break);
+         nir_builder_instr_insert(b, &jump->instr);
+      }
+      nir_pop_if(b, nif);
+
+      nir_phi_instr_add_src(phi, nir_cursor_current_block(b->cursor),
+                            nir_src_for_ssa(ssa_3));
+   }
+   nir_pop_loop(b, loop);
+
+   b->cursor = nir_before_block(nir_loop_first_block(loop));
+   nir_builder_instr_insert(b, &phi->instr);
+
+   return loop;
+}
+
 TEST_F(nir_loop_analyze_test, infinite_loop_feq)
 {
    /* Create IR:
@@ -550,5 +622,133 @@ TEST_F(nir_loop_analyze_test, one_iteration_fneu)
 
    ASSERT_NE((void *)0, loop->info);
    EXPECT_EQ(1, loop->info->max_trip_count);
+   EXPECT_TRUE(loop->info->exact_trip_count_known);
+}
+
+TEST_F(nir_loop_analyze_test, zero_iterations_ine_inverted)
+{
+   /* Create IR:
+    *
+    *    uint i = 0;
+    *    while (true) {
+    *       i++;
+    *
+    *       if (i != 0)
+    *          break;
+    *    }
+    *
+    * This loop should have an iteration count of zero.
+    */
+   nir_loop *loop =
+      loop_builder_invert(&b, {.init_value = 0x00000000, .incr_value = 0x00000001,
+                               .cond_value = 0x00000000,
+                               .cond_instr = nir_ine, .incr_instr = nir_iadd});
+
+   /* At this point, we should have:
+    *
+    * impl main {
+    *         block block_0:
+    *         // preds:
+    *         vec1 32 ssa_0 = load_const (0x00000000 = 0.000000)
+    *         vec1 32 ssa_1 = load_const (0x00000001 = 0.000000)
+    *         vec1 32 ssa_2 = load_const (0x00000000 = 0.000000)
+    *         // succs: block_1
+    *         loop {
+    *                 block block_1:
+    *                 // preds: block_0 block_4
+    *                 vec1 32 ssa_5 = phi block_0: ssa_0, block_4: ssa_4
+    *                 vec1 32 ssa_3 = iadd ssa_5, ssa_1
+    *                 vec1  1 ssa_4 = ine ssa_3, ssa_2
+    *                 // succs: block_2 block_3
+    *                 if ssa_4 {
+    *                         block block_2:
+    *                         // preds: block_1
+    *                         break
+    *                         // succs: block_5
+    *                 } else {
+    *                         block block_3:
+    *                         // preds: block_1
+    *                         // succs: block_4
+    *                 }
+    *                 block block_4:
+    *                 // preds: block_3
+    *                 // succs: block_1
+    *         }
+    *         block block_5:
+    *         // preds: block_2
+    *         // succs: block_6
+    *         block block_6:
+    * }
+    */
+   nir_validate_shader(b.shader, "input");
+
+   nir_loop_analyze_impl(b.impl, nir_var_all, false);
+
+   ASSERT_NE((void *)0, loop->info);
+   EXPECT_EQ(0, loop->info->max_trip_count);
+   EXPECT_TRUE(loop->info->exact_trip_count_known);
+}
+
+TEST_F(nir_loop_analyze_test, five_iterations_ige_inverted)
+{
+   /* Create IR:
+    *
+    *    int i = 0;
+    *    while (true) {
+    *       i++;
+    *
+    *       if (i >= 6)
+    *          break;
+    *    }
+    *
+    * This loop should have an iteration count of 5.
+    */
+   nir_loop *loop =
+      loop_builder_invert(&b, {.init_value = 0x00000000, .incr_value = 0x00000001,
+                               .cond_value = 0x00000006,
+                               .cond_instr = nir_ige, .incr_instr = nir_iadd});
+
+   /* At this point, we should have:
+    *
+    * impl main {
+    *         block block_0:
+    *         // preds:
+    *         vec1 32 ssa_0 = load_const (0x00000000 = 0.000000)
+    *         vec1 32 ssa_1 = load_const (0x00000001 = 0.000000)
+    *         vec1 32 ssa_2 = load_const (0x00000006 = 0.000000)
+    *         // succs: block_1
+    *         loop {
+    *                 block block_1:
+    *                 // preds: block_0 block_4
+    *                 vec1 32 ssa_5 = phi block_0: ssa_0, block_4: ssa_4
+    *                 vec1 32 ssa_3 = iadd ssa_5, ssa_1
+    *                 vec1  1 ssa_4 = ilt ssa_3, ssa_2
+    *                 // succs: block_2 block_3
+    *                 if ssa_4 {
+    *                         block block_2:
+    *                         // preds: block_1
+    *                         break
+    *                         // succs: block_5
+    *                 } else {
+    *                         block block_3:
+    *                         // preds: block_1
+    *                         // succs: block_4
+    *                 }
+    *                 block block_4:
+    *                 // preds: block_3
+    *                 // succs: block_1
+    *         }
+    *         block block_5:
+    *         // preds: block_2
+    *         // succs: block_6
+    *         block block_6:
+    * }
+    */
+   nir_validate_shader(b.shader, "input");
+
+   nir_loop_analyze_impl(b.impl, nir_var_all, false);
+
+   ASSERT_NE((void *)0, loop->info);
+   EXPECT_EQ(5, loop->info->max_trip_count);
    EXPECT_TRUE(loop->info->exact_trip_count_known);
 }
