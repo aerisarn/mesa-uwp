@@ -2790,7 +2790,7 @@ lower_trace_ray_logical_send(const fs_builder &bld, fs_inst *inst)
    assert(synchronous_src.file == BRW_IMMEDIATE_VALUE);
    const bool synchronous = synchronous_src.ud;
 
-   const unsigned mlen = 1;
+   const unsigned mlen = reg_unit(devinfo);
    const fs_builder ubld = bld.exec_all().group(8, 0);
    fs_reg header = ubld.vgrf(BRW_REGISTER_TYPE_UD);
    ubld.MOV(header, brw_imm_ud(0));
