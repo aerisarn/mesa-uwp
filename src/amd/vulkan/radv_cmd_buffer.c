@@ -7856,9 +7856,11 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
                    sample_locs_info->sampleLocationsCount);
    }
 
-   /* Implicit transitions only happens if traditional render passes are used.
-    * Some meta shaders invoked during barrier handling could call CmdBeginRendering, and we need to
-    * take care to not call radv_describe_barrier_start recursively.
+   /* Dynamic rendering does not have implicit transitions, so limit the marker to
+    * when a render pass is used.
+    * Additionally, some internal meta operations called inside a barrier may issue
+    * render calls (with dynamic rendering), so this makes sure those case don't
+    * create a nested barrier scope.
     */
    if (cmd_buffer->vk.render_pass)
       radv_describe_barrier_start(cmd_buffer, RGP_BARRIER_EXTERNAL_RENDER_PASS_SYNC);

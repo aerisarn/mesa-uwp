@@ -1677,6 +1677,7 @@ struct radv_cmd_state {
    uint32_t current_event_type;
    uint32_t num_events;
    uint32_t num_layout_transitions;
+   bool in_barrier;
    bool pending_sqtt_barrier_end;
    enum rgp_flush_bits sqtt_flush_bits;
 
