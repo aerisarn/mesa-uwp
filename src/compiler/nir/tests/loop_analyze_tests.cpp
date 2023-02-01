@@ -905,3 +905,555 @@ TEST_F(nir_loop_analyze_test, five_iterations_ige_inverted)
       EXPECT_TRUE(nir_src_is_const(ivars[i].update_src->src));
    }
 }
+
+#define UNKNOWN_COUNT_TEST(_init_value, _cond_value, _incr_value, cond, incr) \
+   TEST_F(nir_loop_analyze_test, incr ## _ ## cond ## _unknown_count)   \
+   {                                                                    \
+      nir_loop *loop =                                                  \
+         loop_builder(&b, {.init_value = _init_value,                   \
+                           .cond_value = _cond_value,                   \
+                           .incr_value = _incr_value,                   \
+                           .cond_instr = nir_ ## cond,                  \
+                           .incr_instr = nir_ ## incr});                \
+                                                                        \
+      nir_validate_shader(b.shader, "input");                           \
+                                                                        \
+      nir_loop_analyze_impl(b.impl, nir_var_all, false);                \
+                                                                        \
+      ASSERT_NE((void *)0, loop->info);                                 \
+      EXPECT_EQ((void *)0, loop->info->limiting_terminator);            \
+      EXPECT_EQ(0, loop->info->max_trip_count);                         \
+      EXPECT_FALSE(loop->info->exact_trip_count_known);                 \
+   }
+
+#define INFINITE_LOOP_UNKNOWN_COUNT_TEST(_init_value, _cond_value, _incr_value, cond, incr) \
+   TEST_F(nir_loop_analyze_test, incr ## _ ## cond ## _infinite_loop_unknown_count)   \
+   {                                                                    \
+      nir_loop *loop =                                                  \
+         loop_builder(&b, {.init_value = _init_value,                   \
+                           .cond_value = _cond_value,                   \
+                           .incr_value = _incr_value,                   \
+                           .cond_instr = nir_ ## cond,                  \
+                           .incr_instr = nir_ ## incr});                \
+                                                                        \
+      nir_validate_shader(b.shader, "input");                           \
+                                                                        \
+      nir_loop_analyze_impl(b.impl, nir_var_all, false);                \
+                                                                        \
+      ASSERT_NE((void *)0, loop->info);                                 \
+      EXPECT_EQ((void *)0, loop->info->limiting_terminator);            \
+      EXPECT_EQ(0, loop->info->max_trip_count);                         \
+      EXPECT_FALSE(loop->info->exact_trip_count_known);                 \
+   }
+
+#define UNKNOWN_COUNT_TEST_INVERT(_init_value, _incr_value, _cond_value, cond, incr) \
+   TEST_F(nir_loop_analyze_test, incr ## _ ## cond ## _unknown_count_invert)   \
+   {                                                                    \
+      nir_loop *loop =                                                  \
+         loop_builder_invert(&b, {.init_value = _init_value,            \
+                                  .incr_value = _incr_value,            \
+                                  .cond_value = _cond_value,            \
+                                  .cond_instr = nir_ ## cond,           \
+                                  .incr_instr = nir_ ## incr});         \
+                                                                        \
+      nir_validate_shader(b.shader, "input");                           \
+                                                                        \
+      nir_loop_analyze_impl(b.impl, nir_var_all, false);                \
+                                                                        \
+      ASSERT_NE((void *)0, loop->info);                                 \
+      EXPECT_EQ((void *)0, loop->info->limiting_terminator);            \
+      EXPECT_EQ(0, loop->info->max_trip_count);                         \
+      EXPECT_FALSE(loop->info->exact_trip_count_known);                 \
+   }
+
+#define INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(_init_value, _incr_value, _cond_value, cond, incr) \
+   TEST_F(nir_loop_analyze_test, incr ## _ ## cond ## _infinite_loop_unknown_count_invert)   \
+   {                                                                    \
+      nir_loop *loop =                                                  \
+         loop_builder_invert(&b, {.init_value = _init_value,            \
+                                  .incr_value = _incr_value,            \
+                                  .cond_value = _cond_value,            \
+                                  .cond_instr = nir_ ## cond,           \
+                                  .incr_instr = nir_ ## incr});         \
+                                                                        \
+      nir_validate_shader(b.shader, "input");                           \
+                                                                        \
+      nir_loop_analyze_impl(b.impl, nir_var_all, false);                \
+                                                                        \
+      ASSERT_NE((void *)0, loop->info);                                 \
+      EXPECT_EQ((void *)0, loop->info->limiting_terminator);            \
+      EXPECT_EQ(0, loop->info->max_trip_count);                         \
+      EXPECT_FALSE(loop->info->exact_trip_count_known);                 \
+   }
+
+/*    uint i = 0;
+ *    while (true) {
+ *       if (i != 0)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x00000000, 0x00000000, 0x00000001, ine, ushr)
+
+/*    uint i = 0x80000000;
+ *    while (true) {
+ *       if (i == 0xDEADBEEF)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x80000000, 0xDEADBEEF, 0x00000001, ieq, ushr)
+
+/* There is no ult / ushr infinite loop test because, aside from the
+ * contradiction ult(x, 0), there isn't a way to construct such a loop with
+ * the loop induction variable on the left side of the comparison.
+ */
+/* INFINITE_LOOP_UNKNOWN_COUNT_TEST(0xBADDC0DE, 0xBADDC0DE, 0xBADDC0DE, ult, ushr) */
+
+/*    uint i = 0x40000000;
+ *    while (true) {
+ *       if (i >= 0x80000000)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x40000000, 0x80000000, 0x00000001, uge, ushr)
+
+/*    uint i = 0x00001234;
+ *    while (true) {
+ *       i >>= 16;
+ *
+ *       if (i != 0)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x00001234, 0x00000010, 0x00000000, ine, ushr)
+
+/*    uint i = 0x12345678;
+ *    while (true) {
+ *       i >>= 3;
+ *
+ *       if (i == 0x048d159e)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x12345678, 0x00000003, 0x048d159e, ieq, ushr)
+
+/* There is no ult / ushr infinite inverted loop test because, aside from the
+ * contradiction ult(x, 0), there isn't a way to construct such a loop with
+ * the loop induction variable on the left side of the comparison.
+ */
+/* INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0xBADDC0DE, 0xBADDC0DE, 0xBADDC0DE, ult, ushr) */
+
+/*    uint i = 0x80000000;
+ *    while (true) {
+ *       i >>= 3;
+ *
+ *       if (i >= 0x40000000)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000003, 0x40000000, uge, ushr)
+
+/*    uint i = 0x80000000;
+ *    while (true) {
+ *       if (i != 0x80000000)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x80000000, 0x80000000, 0x00000001, ine, ushr)
+
+/*    uint i = 0x80000000;
+ *    while (true) {
+ *       if (i == 0)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x80000000, 0x00000000, 0x00000001, ieq, ushr)
+
+/*    uint i = 0x80000000;
+ *    while (true) {
+ *       if (i < 2)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x80000000, 0x00000002, 0x00000001, ult, ushr)
+
+/*    uint i = 0x80000000;
+ *    while (true) {
+ *       if (i >= 0x80000000)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x80000000, 0x80000000, 0x00000001, uge, ushr)
+
+/*    uint i = 0x80000000;
+ *    while (true) {
+ *       i >>= 1;
+ *
+ *       if (i != 0x80000000)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x80000000, ine, ushr)
+
+/*    uint i = 0x80000000;
+ *    while (true) {
+ *       i >>= 1;
+ *
+ *       if (i == 0x00000000)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x00000000, ieq, ushr)
+
+/*    uint i = 0x80000000;
+ *    while (true) {
+ *       i >>= 1;
+ *
+ *       if (i < 0x80000000)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x80000000, ult, ushr)
+
+/*    uint i = 0x80000000;
+ *    while (true) {
+ *       i >>= 1;
+ *
+ *       if (i >= 0x00000000)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x00000000, uge, ushr)
+
+/*    int i = 0xffffffff;
+ *    while (true) {
+ *       if (i != 0xffffffff)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0xffffffff, 0xffffffff, 0x00000001, ine, ishr)
+
+/*    int i = 0x80000000;
+ *    while (true) {
+ *       if (i == 0)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x80000000, 0x00000000, 0x00000001, ieq, ishr)
+
+/*    int i = 0x7fffffff;
+ *    while (true) {
+ *       if (i < 0)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x7fffffff, 0x00000000, 0x00000001, ilt, ishr)
+
+/*    int i = 0x80000000;
+ *    while (true) {
+ *       if (i >= 0)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x80000000, 0x00000000, 0x00000001, ige, ishr)
+
+/*    int i = 0xffffffff;
+ *    while (true) {
+ *       i >>= 1;
+ *
+ *       if (i != 0xffffffff)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0xffffffff, 0x00000001, 0xffffffff, ine, ishr)
+
+/*    int i = 0xffffffff;
+ *    while (true) {
+ *       i >>= 1;
+ *
+ *       if (i == 0)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0xffffffff, 0x00000001, 0x00000000, ieq, ishr)
+
+/*    int i = 0x7fffffff;
+ *    while (true) {
+ *       i >>= 1;
+ *
+ *       if (i < 0)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000000, ilt, ishr)
+
+/*    int i = 0x80000000;
+ *    while (true) {
+ *       i >>= 1;
+ *
+ *       if (i >= 0)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x00000000, ige, ishr)
+
+/*    int i = 0x7fffffff;
+ *    while (true) {
+ *       if (i != 0)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x7fffffff, 0x00000000, 0x00000001, ine, ishr)
+
+/*    int i = 0x40000000;
+ *    while (true) {
+ *       if (i == 1)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x40000000, 0x00000001, 0x00000001, ieq, ishr)
+
+/*    int i = 0x7fffffff;
+ *    while (true) {
+ *       if (i < 1)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x7fffffff, 0x00000001, 0x00000001, ilt, ishr)
+
+/*    int i = 0x80000000;
+ *    while (true) {
+ *       if (i >= -1)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x80000000, 0xffffffff, 0x00000001, ige, ishr)
+
+/*    int i = 0x7fffffff;
+ *    while (true) {
+ *       i >>= 1;
+ *
+ *       if (i != 0)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000000, ine, ishr)
+
+/*    int i = 0x7fffffff;
+ *    while (true) {
+ *       i >>= 1;
+ *
+ *       if (i == 0)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000000, ieq, ishr)
+
+/*    int i = 0x7fffffff;
+ *    while (true) {
+ *       i >>= 1;
+ *
+ *       if (i < 1)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000001, ilt, ishr)
+
+/*    int i = 0xbfffffff;
+ *    while (true) {
+ *       i >>= 1;
+ *
+ *       if (i >= -2)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0xbfffffff, 0x00000001, 0xfffffffe, ige, ishr)
+
+/*    int i = 0;
+ *    while (true) {
+ *       if (i != 0)
+ *          break;
+ *
+ *       i <<= 1;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x00000000, 0x00000000, 0x00000001, ine, ishl)
+
+/*    int i = 1;
+ *    while (true) {
+ *       if (i == 3)
+ *          break;
+ *
+ *       i <<= 1;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x00000001, 0x00000003, 0x00000001, ieq, ishl)
+
+/*    int i = 1;
+ *    while (true) {
+ *       if (i < 0x80000001)
+ *          break;
+ *
+ *       i <<= 2;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x00000001, 0x80000001, 0x00000002, ilt, ishl)
+
+/*    int i = 1;
+ *    while (true) {
+ *       if (i >= 0x70000000)
+ *          break;
+ *
+ *       i <<= 1;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x00000001, 0x70000000, 0x00000001, ige, ishl)
+
+/*    int i = 0x80000000;
+ *    while (true) {
+ *       i <<= 1;
+ *
+ *       if (i != 0)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x00000000, ine, ishl)
+
+/*    int i = 0xf0f0f0f0;
+ *    while (true) {
+ *       i <<= 2;
+ *
+ *       if (i == 0xe1e1e1e0)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0xf0f0f0f0, 0x00000002, 0xe1e1e1e0, ieq, ishl)
+
+/*    int i = 1;
+ *    while (true) {
+ *       i <<= 2;
+ *
+ *       if (i < 0)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x00000001, 0x00000002, 0x00000000, ilt, ishl)
+
+/*    int i = 0x88888888;
+ *    while (true) {
+ *       i <<= 4;
+ *
+ *       if (i >= 1)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x88888888, 0x00000004, 0x00000001, ige, ishl)
+
+/*    int i = 1;
+ *    while (true) {
+ *       if (i != 1)
+ *          break;
+ *
+ *       i <<= 1;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x00000001, 0x00000001, 0x00000001, ine, ishl)
+
+/*    int i = 1;
+ *    while (true) {
+ *       if (i == 0x1000)
+ *          break;
+ *
+ *       i <<= 4;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x00000001, 0x00001000, 0x00000004, ieq, ishl)
+
+/*    int i = 1;
+ *    while (true) {
+ *       if (i < 1)
+ *          break;
+ *
+ *       i <<= 1;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x00000001, 0x00000001, 0x00000001, ilt, ishl)
+
+/*    int i = 0xf;
+ *    while (true) {
+ *       if (i >= 0x0000ffff)
+ *          break;
+ *
+ *       i <<= 3;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x0000000f, 0x0000ffff, 0x00000003, ige, ishl)
+
+/*    int i = 1;
+ *    while (true) {
+ *       i <<= 1;
+ *
+ *       if (i != 2)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0x00000001, 0x00000001, 0x00000002, ine, ishl)
+
+/*    int i = 1;
+ *    while (true) {
+ *       i <<= 8;
+ *
+ *       if (i == 0x01000000)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0x00000001, 0x00000008, 0x01000000, ieq, ishl)
+
+/*    int i = 0x7fffffff;
+ *    while (true) {
+ *       i <<= 1;
+ *
+ *       if (i < 1)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000001, ilt, ishl)
+
+/*    int i = 0xffff7fff;
+ *    while (true) {
+ *       i <<= 4;
+ *
+ *       if (i >= -2)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0xffff7fff, 0x00000004, 0xfffffffe, ige, ishl)
