@@ -4914,7 +4914,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
                             const VkGraphicsPipelineCreateInfo *pCreateInfo,
                             const struct radv_graphics_pipeline_create_info *extra)
 {
-   struct radv_pipeline_layout pipeline_layout = {0};
+   struct radv_pipeline_layout pipeline_layout;
    struct vk_graphics_pipeline_state state = {0};
    bool fast_linking_enabled = false;
    VkResult result;
