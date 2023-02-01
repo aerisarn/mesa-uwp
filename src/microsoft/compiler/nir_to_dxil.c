@@ -348,6 +348,9 @@ enum dxil_intr {
    DXIL_INTR_ATTRIBUTE_AT_VERTEX = 137,
    DXIL_INTR_VIEW_ID = 138,
 
+   DXIL_INTR_RAW_BUFFER_LOAD = 139,
+   DXIL_INTR_RAW_BUFFER_STORE = 140,
+
    DXIL_INTR_ANNOTATE_HANDLE = 216,
    DXIL_INTR_CREATE_HANDLE_FROM_BINDING = 217,
 
@@ -729,6 +732,29 @@ emit_groupid_call(struct ntd_context *ctx, const struct dxil_value *comp)
 }
 
 static const struct dxil_value *
+emit_raw_bufferload_call(struct ntd_context *ctx,
+                         const struct dxil_value *handle,
+                         const struct dxil_value *coord[2],
+                         enum overload_type overload,
+                         unsigned component_count,
+                         unsigned alignment)
+{
+   const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.rawBufferLoad", overload);
+   if (!func)
+      return NULL;
+
+   const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod,
+                                                                 DXIL_INTR_RAW_BUFFER_LOAD);
+   const struct dxil_value *args[] = {
+      opcode, handle, coord[0], coord[1],
+      dxil_module_get_int8_const(&ctx->mod, (1 << component_count) - 1),
+      dxil_module_get_int32_const(&ctx->mod, alignment),
+   };
+
+   return dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+}
+
+static const struct dxil_value *
 emit_bufferload_call(struct ntd_context *ctx,
                      const struct dxil_value *handle,
                      const struct dxil_value *coord[2],
@@ -743,6 +769,33 @@ emit_bufferload_call(struct ntd_context *ctx,
    const struct dxil_value *args[] = { opcode, handle, coord[0], coord[1] };
 
    return dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+}
+
+static bool
+emit_raw_bufferstore_call(struct ntd_context *ctx,
+                          const struct dxil_value *handle,
+                          const struct dxil_value *coord[2],
+                          const struct dxil_value *value[4],
+                          const struct dxil_value *write_mask,
+                          enum overload_type overload,
+                          unsigned alignment)
+{
+   const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.rawBufferStore", overload);
+
+   if (!func)
+      return false;
+
+   const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod,
+                                                                 DXIL_INTR_RAW_BUFFER_STORE);
+   const struct dxil_value *args[] = {
+      opcode, handle, coord[0], coord[1],
+      value[0], value[1], value[2], value[3],
+      write_mask,
+      dxil_module_get_int32_const(&ctx->mod, alignment),
+   };
+
+   return dxil_emit_call_void(&ctx->mod, func,
+                              args, ARRAY_SIZE(args));
 }
 
 static bool
@@ -3149,7 +3202,12 @@ emit_load_ssbo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       int32_undef
    };
 
-   const struct dxil_value *load = emit_bufferload_call(ctx, handle, coord, DXIL_I32);
+   const struct dxil_value *load = ctx->mod.minor_version >= 2 ?
+      emit_raw_bufferload_call(ctx, handle, coord,
+                               get_overload(nir_type_uint, nir_dest_bit_size(intr->dest)),
+                               nir_intrinsic_dest_components(intr),
+                               nir_intrinsic_align(intr)) :
+      emit_bufferload_call(ctx, handle, coord, get_overload(nir_type_uint, nir_dest_bit_size(intr->dest)));
    if (!load)
       return false;
 
@@ -3172,7 +3230,6 @@ emit_store_ssbo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    if (!handle || !offset)
       return false;
 
-   assert(nir_src_bit_size(intr->src[0]) == 32);
    unsigned num_components = nir_src_num_components(intr->src[0]);
    assert(num_components <= 4);
    const struct dxil_value *value[4];
@@ -3191,15 +3248,26 @@ emit_store_ssbo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       int32_undef
    };
 
-   for (int i = num_components; i < 4; ++i)
-      value[i] = int32_undef;
+   unsigned bit_size = nir_src_bit_size(intr->src[0]);
+   enum overload_type overload = get_overload(nir_type_uint, bit_size);
+   if (num_components < 4) {
+      const struct dxil_type *value_undef_type = dxil_module_get_int_type(&ctx->mod, bit_size);
+      const struct dxil_value *value_undef = dxil_module_get_undef(&ctx->mod, value_undef_type);
+      if (!value_undef)
+         return false;
+
+      for (int i = num_components; i < 4; ++i)
+         value[i] = value_undef;
+   }
 
    const struct dxil_value *write_mask =
       dxil_module_get_int8_const(&ctx->mod, (1u << num_components) - 1);
    if (!write_mask)
       return false;
 
-   return emit_bufferstore_call(ctx, handle, coord, value, write_mask, DXIL_I32);
+   return ctx->mod.minor_version >= 2 ?
+      emit_raw_bufferstore_call(ctx, handle, coord, value, write_mask, overload, nir_intrinsic_align(intr)) :
+      emit_bufferstore_call(ctx, handle, coord, value, write_mask, overload);
 }
 
 static bool
