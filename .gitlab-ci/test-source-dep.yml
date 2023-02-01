@@ -748,11 +748,11 @@
     - !reference [.turnip-rules, rules]
     - !reference [.zink-common-rules, rules]
 
-.zink-radv-rules:
+.zink-radv-manual-rules:
   stage: layered-backends
   rules:
-    - !reference [.radv-rules, rules]
-    - !reference [.zink-common-rules, rules]
+    - !reference [.radv-valve-manual-rules, rules]
+    - !reference [.zink-common-manual-rules, rules]
 
 # Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
 # rules duplication manually
