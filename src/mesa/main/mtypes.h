@@ -2521,6 +2521,22 @@ struct gl_shared_state
       struct util_idalloc free_idx;
       unsigned size;
    } small_dlist_store;
+
+   /* Global GLThread state. */
+   struct {
+      /* The last context that locked global mutexes. */
+      struct gl_context *LastExecutingCtx;
+
+      /* The last time LastExecutingCtx started executing after a different
+       * context (the time of multiple active contexts).
+       */
+      int64_t LastContextSwitchTime;
+
+      /* The time for which no context can lock global mutexes since
+       * LastContextSwitchTime.
+       */
+      int64_t NoLockDuration;
+   } GLThread;
 };
 
 

@@ -50,13 +50,70 @@ glthread_unmarshal_batch(void *job, void *gdata, int thread_index)
    unsigned pos = 0;
    unsigned used = batch->used;
    uint64_t *buffer = batch->buffer;
+   struct gl_shared_state *shared = ctx->Shared;
 
+   /* Determine if we should lock the global mutexes. */
+   simple_mtx_lock(&shared->Mutex);
+   int64_t current_time = os_time_get_nano();
+
+   /* We can only lock the mutexes after NoLockDuration nanoseconds have
+    * passed since multiple contexts were active.
+    */
+   bool lock_mutexes = shared->GLThread.LastContextSwitchTime +
+                       shared->GLThread.NoLockDuration < current_time;
+
+   /* Check if multiple contexts are active (the last executing context is
+    * different).
+    */
+   if (ctx != shared->GLThread.LastExecutingCtx) {
+      if (lock_mutexes) {
+         /* If we get here, we've been locking the global mutexes for a while
+          * and now we are switching contexts. */
+         if (shared->GLThread.LastContextSwitchTime +
+             120 * ONE_SECOND_IN_NS < current_time) {
+            /* If it's been more than 2 minutes of only one active context,
+             * indicating that there was no other active context for a long
+             * time, reset the no-lock time to its initial state of only 1
+             * second. This is most likely an infrequent situation of
+             * multi-context loading of game content and shaders.
+             * (this is a heuristic)
+             */
+            shared->GLThread.NoLockDuration = ONE_SECOND_IN_NS;
+         } else if (shared->GLThread.NoLockDuration < 32 * ONE_SECOND_IN_NS) {
+            /* Double the no-lock duration if we are transitioning from only
+             * one active context to multiple active contexts after a short
+             * time, up to a maximum of 32 seconds, indicating that multiple
+             * contexts are frequently executing. (this is a heuristic)
+             */
+            shared->GLThread.NoLockDuration *= 2;
+         }
+
+         lock_mutexes = false;
+      }
+
+      /* There are multiple active contexts. Update the last executing context
+       * and the last context switch time. We only start locking global mutexes
+       * after LastContextSwitchTime + NoLockDuration passes, so this
+       * effectively resets the non-locking stopwatch to 0, so that multiple
+       * contexts can execute simultaneously as long as they are not idle.
+       */
+      shared->GLThread.LastExecutingCtx = ctx;
+      shared->GLThread.LastContextSwitchTime = current_time;
+   }
+   simple_mtx_unlock(&shared->Mutex);
+
+   /* Execute the GL calls. */
    _glapi_set_dispatch(ctx->CurrentServerDispatch);
 
-   _mesa_HashLockMutex(ctx->Shared->BufferObjects);
-   ctx->BufferObjectsLocked = true;
-   simple_mtx_lock(&ctx->Shared->TexMutex);
-   ctx->TexturesLocked = true;
+   /* Here we lock the mutexes once globally if possible. If not, we just
+    * fallback to the individual API calls doing it.
+    */
+   if (lock_mutexes) {
+      _mesa_HashLockMutex(shared->BufferObjects);
+      ctx->BufferObjectsLocked = true;
+      simple_mtx_lock(&shared->TexMutex);
+      ctx->TexturesLocked = true;
+   }
 
    while (pos < used) {
       const struct marshal_cmd_base *cmd =
@@ -65,10 +122,12 @@ glthread_unmarshal_batch(void *job, void *gdata, int thread_index)
       pos += _mesa_unmarshal_dispatch[cmd->cmd_id](ctx, cmd);
    }
 
-   ctx->TexturesLocked = false;
-   simple_mtx_unlock(&ctx->Shared->TexMutex);
-   ctx->BufferObjectsLocked = false;
-   _mesa_HashUnlockMutex(ctx->Shared->BufferObjects);
+   if (lock_mutexes) {
+      ctx->TexturesLocked = false;
+      simple_mtx_unlock(&shared->TexMutex);
+      ctx->BufferObjectsLocked = false;
+      _mesa_HashUnlockMutex(shared->BufferObjects);
+   }
 
    assert(pos == used);
    batch->used = 0;
