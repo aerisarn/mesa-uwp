@@ -28,11 +28,10 @@
 #include "util/format/u_format.h"
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
+#include "util/u_process.h"
 #include "util/u_screen.h"
 #include "util/u_string.h"
 #include "util/u_math.h"
-
-#include "os/os_process.h"
 
 #include "svga_winsys.h"
 #include "svga_public.h"

@@ -37,7 +37,6 @@
 #include "zink_state.h"
 #include "nir_to_spirv/nir_to_spirv.h" // for SPIRV_VERSION
 
-#include "os/os_process.h"
 #include "util/u_debug.h"
 #include "util/u_dl.h"
 #include "util/os_file.h"
