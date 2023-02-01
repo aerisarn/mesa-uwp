@@ -1895,7 +1895,8 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
       }
    }
 
-   radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, pipeline->base.slab_bo);
+   if (pipeline->base.slab_bo)
+      radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, pipeline->base.slab_bo);
 
    /* With graphics pipeline library, binaries are uploaded from a library and they hold a pointer
     * to the slab BO.

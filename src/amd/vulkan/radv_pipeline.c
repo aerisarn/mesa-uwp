@@ -3427,6 +3427,64 @@ radv_pipeline_capture_shader_stats(const struct radv_device *device, VkPipelineC
           device->keep_shader_info;
 }
 
+static bool
+radv_skip_graphics_pipeline_compile(const struct radv_graphics_pipeline *pipeline,
+                                    VkGraphicsPipelineLibraryFlagBitsEXT lib_flags,
+                                    bool fast_linking_enabled)
+{
+   const struct radv_device *device = pipeline->base.device;
+   VkShaderStageFlagBits binary_stages = 0;
+
+   /* Do not skip when fast-linking isn't enabled. */
+   if (!fast_linking_enabled)
+      return false;
+
+   /* Do not skip when the linked pipeline needs a noop FS. */
+   if ((lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
+        pipeline->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT)
+      return false;
+
+   /* Do not skip when the PS epilog needs to be compiled. */
+   if (!radv_pipeline_needs_dynamic_ps_epilog(pipeline) &&
+       (pipeline->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT) &&
+       pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.has_epilog &&
+       !pipeline->ps_epilog)
+      return false;
+
+   /* Determine which shader stages have been imported. */
+   if (pipeline->base.shaders[MESA_SHADER_MESH]) {
+      binary_stages |= VK_SHADER_STAGE_MESH_BIT_EXT;
+      if (pipeline->base.shaders[MESA_SHADER_TASK]) {
+         binary_stages |= VK_SHADER_STAGE_TASK_BIT_EXT;
+      }
+   } else {
+      for (uint32_t i = 0; i < MESA_SHADER_COMPUTE; i++) {
+         if (!pipeline->base.shaders[i])
+            continue;
+
+         binary_stages |= mesa_to_vk_shader_stage(i);
+      }
+
+      if (device->physical_device->rad_info.gfx_level >= GFX9) {
+         /* On GFX9+, TES is merged with GS and VS is merged with TCS or GS. */
+         if (binary_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) {
+            binary_stages |= VK_SHADER_STAGE_VERTEX_BIT;
+         }
+
+         if (binary_stages & VK_SHADER_STAGE_GEOMETRY_BIT) {
+            if (binary_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) {
+               binary_stages |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+            } else {
+               binary_stages |= VK_SHADER_STAGE_VERTEX_BIT;
+            }
+         }
+      }
+   }
+
+   /* Only skip compilation when all binaries have been imported. */
+   return binary_stages == pipeline->active_stages;
+}
+
 static VkResult
 radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
                                const VkGraphicsPipelineCreateInfo *pCreateInfo,
@@ -4940,7 +4998,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    struct radv_pipeline_layout pipeline_layout;
    struct vk_graphics_pipeline_state state = {0};
    bool fast_linking_enabled = false;
-   VkResult result;
+   VkResult result = VK_SUCCESS;
 
    pipeline->last_vgt_api_stage = MESA_SHADER_NONE;
 
@@ -4987,15 +5045,19 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    if (!fast_linking_enabled)
       radv_pipeline_layout_hash(&pipeline_layout);
 
-   struct radv_pipeline_key key = radv_generate_graphics_pipeline_key(
-      pipeline, pCreateInfo, &state, (~imported_flags) & ALL_GRAPHICS_LIB_FLAGS);
 
-   result = radv_graphics_pipeline_compile(pipeline, pCreateInfo, &pipeline_layout, device, cache,
-                                           &key, (~imported_flags) & ALL_GRAPHICS_LIB_FLAGS,
-                                           fast_linking_enabled);
-   if (result != VK_SUCCESS) {
-      radv_pipeline_layout_finish(device, &pipeline_layout);
-      return result;
+   if (!radv_skip_graphics_pipeline_compile(pipeline, (~imported_flags) & ALL_GRAPHICS_LIB_FLAGS,
+                                            fast_linking_enabled)) {
+      struct radv_pipeline_key key = radv_generate_graphics_pipeline_key(
+         pipeline, pCreateInfo, &state, (~imported_flags) & ALL_GRAPHICS_LIB_FLAGS);
+
+      result = radv_graphics_pipeline_compile(pipeline, pCreateInfo, &pipeline_layout, device, cache,
+                                              &key, (~imported_flags) & ALL_GRAPHICS_LIB_FLAGS,
+                                              fast_linking_enabled);
+      if (result != VK_SUCCESS) {
+         radv_pipeline_layout_finish(device, &pipeline_layout);
+         return result;
+      }
    }
 
    uint32_t vgt_gs_out_prim_type = radv_pipeline_init_vgt_gs_out(pipeline, &state);
