@@ -7856,6 +7856,12 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
                    sample_locs_info->sampleLocationsCount);
    }
 
+   /* Implicit transitions only happens if traditional render passes are used.
+    * Some meta shaders invoked during barrier handling could call CmdBeginRendering, and we need to
+    * take care to not call radv_describe_barrier_start recursively.
+    */
+   if (cmd_buffer->vk.render_pass)
+      radv_describe_barrier_start(cmd_buffer, RGP_BARRIER_EXTERNAL_RENDER_PASS_SYNC);
    uint32_t color_samples = 0, ds_samples = 0;
    struct radv_attachment color_att[MAX_RTS];
    for (uint32_t i = 0; i < pRenderingInfo->colorAttachmentCount; i++) {
@@ -7951,6 +7957,8 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
                                                 &sample_locations);
       }
    }
+   if (cmd_buffer->vk.render_pass)
+      radv_describe_barrier_end(cmd_buffer);
 
    const VkRenderingFragmentShadingRateAttachmentInfoKHR *fsr_info =
       vk_find_struct_const(pRenderingInfo->pNext,
