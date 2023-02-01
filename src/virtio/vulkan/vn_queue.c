@@ -658,12 +658,12 @@ vn_fence_feedback_init(struct vn_device *dev,
    }
 
    for (uint32_t i = 0; i < dev->queue_family_count; i++) {
-      result = vn_feedback_fence_cmd_alloc(dev_handle, &dev->cmd_pools[i],
-                                           slot, &cmd_handles[i]);
+      result = vn_feedback_cmd_alloc(dev_handle, &dev->cmd_pools[i], slot,
+                                     NULL, &cmd_handles[i]);
       if (result != VK_SUCCESS) {
          for (uint32_t j = 0; j < i; j++) {
-            vn_feedback_fence_cmd_free(dev_handle, &dev->cmd_pools[j],
-                                       cmd_handles[j]);
+            vn_feedback_cmd_free(dev_handle, &dev->cmd_pools[j],
+                                 cmd_handles[j]);
          }
          break;
       }
@@ -692,8 +692,8 @@ vn_fence_feedback_fini(struct vn_device *dev,
       return;
 
    for (uint32_t i = 0; i < dev->queue_family_count; i++) {
-      vn_feedback_fence_cmd_free(dev_handle, &dev->cmd_pools[i],
-                                 fence->feedback.commands[i]);
+      vn_feedback_cmd_free(dev_handle, &dev->cmd_pools[i],
+                           fence->feedback.commands[i]);
    }
 
    vn_feedback_pool_free(&dev->feedback_pool, fence->feedback.slot);
