@@ -428,6 +428,11 @@ option(
   description : 'Android Platform SDK version. Default: Nougat version.'
 )
 option(
+   'allow-kcmp',
+   type : 'feature',
+   description : 'Allow using KCMP_FILE to compare file descriptions. auto = allowed everywhere except on Android'
+)
+option(
   'zstd',
   type : 'feature',
   description : 'Use ZSTD instead of ZLIB in some cases.'

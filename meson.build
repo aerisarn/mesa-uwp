@@ -851,6 +851,16 @@ if with_platform_android
   ]
 endif
 
+# On Android, seccomp kills the process on kernels without
+# CONFIG_KCMP/CONFIG_CHECKPOINT_RESTORE if it attemps to use KCMP.
+# Since we can't detect that, err on the side of caution and disable
+# KCMP by default on Android.
+if get_option('allow-kcmp') \
+    .disable_auto_if(with_platform_android) \
+    .allowed()
+  pre_args += '-DALLOW_KCMP'
+endif
+
 prog_python = import('python').find_installation('python3')
 has_mako = run_command(
   prog_python, '-c',
