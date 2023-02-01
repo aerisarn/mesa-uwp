@@ -21,9 +21,9 @@
  * IN THE SOFTWARE.
  */
 
-#include "radv_debug.h"
 #include "radv_rt_common.h"
-#include "radv_acceleration_structure.h"
+#include "bvh/bvh.h"
+#include "radv_debug.h"
 
 #ifdef LLVM_AVAILABLE
 #include <llvm/Config/llvm-config.h>
