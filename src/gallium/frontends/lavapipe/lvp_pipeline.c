@@ -79,9 +79,13 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroyPipeline(
    if (!_pipeline)
       return;
 
-   simple_mtx_lock(&device->queue.pipeline_lock);
-   util_dynarray_append(&device->queue.pipeline_destroys, struct lvp_pipeline*, pipeline);
-   simple_mtx_unlock(&device->queue.pipeline_lock);
+   if (pipeline->used) {
+      simple_mtx_lock(&device->queue.pipeline_lock);
+      util_dynarray_append(&device->queue.pipeline_destroys, struct lvp_pipeline*, pipeline);
+      simple_mtx_unlock(&device->queue.pipeline_lock);
+   } else {
+      lvp_pipeline_destroy(device, pipeline);
+   }
 }
 
 static void

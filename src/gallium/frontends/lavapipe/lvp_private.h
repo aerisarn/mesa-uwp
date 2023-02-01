@@ -457,6 +457,7 @@ struct lvp_pipeline {
    bool library;
    bool noop_fs;
    bool compiled;
+   bool used;
 };
 
 void

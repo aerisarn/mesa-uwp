@@ -1051,6 +1051,7 @@ static void handle_pipeline(struct vk_cmd_queue_entry *cmd,
                             struct rendering_state *state)
 {
    LVP_FROM_HANDLE(lvp_pipeline, pipeline, cmd->u.bind_pipeline.pipeline);
+   pipeline->used = true;
    if (pipeline->is_compute_pipeline) {
       handle_compute_pipeline(cmd, state);
       handle_pipeline_access(state, MESA_SHADER_COMPUTE);
