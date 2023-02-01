@@ -132,15 +132,14 @@ lower_load_deref(nir_builder *b, nir_intrinsic_instr *intr)
 
 static nir_ssa_def *
 ubo_load_select_32b_comps(nir_builder *b, nir_ssa_def *vec32,
-                          nir_ssa_def *offset, unsigned num_bytes)
+                          nir_ssa_def *offset, unsigned alignment)
 {
-   assert(num_bytes == 16 || num_bytes == 12 || num_bytes == 8 ||
-          num_bytes == 4 || num_bytes == 3 || num_bytes == 2 ||
-          num_bytes == 1);
+   assert(alignment >= 16 || alignment == 8 ||
+          alignment == 4 || alignment == 2 ||
+          alignment == 1);
    assert(vec32->num_components == 4);
 
-   /* 16 and 12 byte types are always aligned on 16 bytes. */
-   if (num_bytes > 8)
+   if (alignment > 8)
       return vec32;
 
    nir_ssa_def *comps[4];
@@ -149,7 +148,7 @@ ubo_load_select_32b_comps(nir_builder *b, nir_ssa_def *vec32,
    for (unsigned i = 0; i < 4; i++)
       comps[i] = nir_channel(b, vec32, i);
 
-   /* If we have 8bytes or less to load, select which half the vec4 should
+   /* If we have 8bytes alignment or less, select which half the vec4 should
     * be used.
     */
    cond = nir_ine(b, nir_iand(b, offset, nir_imm_int(b, 0x8)),
@@ -158,13 +157,11 @@ ubo_load_select_32b_comps(nir_builder *b, nir_ssa_def *vec32,
    comps[0] = nir_bcsel(b, cond, comps[2], comps[0]);
    comps[1] = nir_bcsel(b, cond, comps[3], comps[1]);
 
-   /* Thanks to the CL alignment constraints, if we want 8 bytes we're done. */
-   if (num_bytes == 8)
+   if (alignment == 8)
       return nir_vec(b, comps, 2);
 
-   /* 4 bytes or less needed, select which of the 32bit component should be
-    * used and return it. The sub-32bit split is handled in
-    * extract_comps_from_vec32().
+   /* 4 byte align or less needed, select which of the 32bit component should be
+    * used and return it. The sub-32bit split is handled in nir_extract_bits().
     */
    cond = nir_ine(b, nir_iand(b, offset, nir_imm_int(b, 0x4)),
                                  nir_imm_int(b, 0));
@@ -174,7 +171,7 @@ ubo_load_select_32b_comps(nir_builder *b, nir_ssa_def *vec32,
 nir_ssa_def *
 build_load_ubo_dxil(nir_builder *b, nir_ssa_def *buffer,
                     nir_ssa_def *offset, unsigned num_components,
-                    unsigned bit_size)
+                    unsigned bit_size, unsigned alignment)
 {
    nir_ssa_def *idx = nir_ushr(b, offset, nir_imm_int(b, 4));
    nir_ssa_def *comps[NIR_MAX_VEC_COMPONENTS];
@@ -193,12 +190,13 @@ build_load_ubo_dxil(nir_builder *b, nir_ssa_def *buffer,
          nir_load_ubo_dxil(b, 4, 32, buffer, nir_iadd(b, idx, nir_imm_int(b, i / (16 * 8))));
 
       /* First re-arrange the vec32 to account for intra 16-byte offset. */
-      vec32 = ubo_load_select_32b_comps(b, vec32, offset, subload_num_bits / 8);
+      assert(subload_num_bits / 8 <= alignment);
+      vec32 = ubo_load_select_32b_comps(b, vec32, offset, alignment);
 
       /* If we have 2 bytes or less to load we need to adjust the u32 value so
        * we can always extract the LSB.
        */
-      if (subload_num_bits <= 16) {
+      if (alignment <= 2) {
          nir_ssa_def *shift = nir_imul(b, nir_iand(b, offset,
                                                       nir_imm_int(b, 3)),
                                           nir_imm_int(b, 8));
@@ -680,7 +678,8 @@ lower_load_ubo(nir_builder *b, nir_intrinsic_instr *intr)
    nir_ssa_def *result =
       build_load_ubo_dxil(b, intr->src[0].ssa, intr->src[1].ssa,
                              nir_dest_num_components(intr->dest),
-                             nir_dest_bit_size(intr->dest));
+                             nir_dest_bit_size(intr->dest),
+                             nir_intrinsic_align(intr));
 
    nir_ssa_def_rewrite_uses(&intr->dest.ssa, result);
    nir_instr_remove(&intr->instr);
