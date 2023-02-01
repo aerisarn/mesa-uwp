@@ -47,6 +47,69 @@ nir_loop_analyze_test::~nir_loop_analyze_test()
    glsl_type_singleton_decref();
 }
 
+struct loop_builder_param {
+   uint32_t init_value;
+   uint32_t cond_value;
+   uint32_t incr_value;
+   nir_ssa_def *(*cond_instr)(nir_builder *,
+                              nir_ssa_def *,
+                              nir_ssa_def *);
+   nir_ssa_def *(*incr_instr)(nir_builder *,
+                              nir_ssa_def *,
+                              nir_ssa_def *);
+};
+
+static nir_loop *
+loop_builder(nir_builder *b, loop_builder_param p)
+{
+   /* Create IR:
+    *
+    *    auto i = init_value;
+    *    while (true) {
+    *       if (cond_instr(i, cond_value))
+    *          break;
+    *
+    *       i = incr_instr(i, incr_value);
+    *    }
+    */
+   nir_ssa_def *ssa_0 = nir_imm_int(b, p.init_value);
+   nir_ssa_def *ssa_1 = nir_imm_int(b, p.cond_value);
+   nir_ssa_def *ssa_2 = nir_imm_int(b, p.incr_value);
+
+   nir_phi_instr *const phi = nir_phi_instr_create(b->shader);
+
+   nir_loop *loop = nir_push_loop(b);
+   {
+      nir_ssa_dest_init(&phi->instr, &phi->dest,
+                        ssa_0->num_components, ssa_0->bit_size,
+                        NULL);
+
+      nir_phi_instr_add_src(phi, ssa_0->parent_instr->block,
+                            nir_src_for_ssa(ssa_0));
+
+      nir_ssa_def *ssa_5 = &phi->dest.ssa;
+      nir_ssa_def *ssa_3 = p.cond_instr(b, ssa_5, ssa_1);
+
+      nir_if *nif = nir_push_if(b, ssa_3);
+      {
+         nir_jump_instr *jump = nir_jump_instr_create(b->shader, nir_jump_break);
+         nir_builder_instr_insert(b, &jump->instr);
+      }
+      nir_pop_if(b, nif);
+
+      nir_ssa_def *ssa_4 = p.incr_instr(b, ssa_5, ssa_2);
+
+      nir_phi_instr_add_src(phi, ssa_4->parent_instr->block,
+                            nir_src_for_ssa(ssa_4));
+   }
+   nir_pop_loop(b, loop);
+
+   b->cursor = nir_before_block(nir_loop_first_block(loop));
+   nir_builder_instr_insert(b, &phi->instr);
+
+   return loop;
+}
+
 TEST_F(nir_loop_analyze_test, infinite_loop_feq)
 {
    /* Create IR:
@@ -59,40 +122,10 @@ TEST_F(nir_loop_analyze_test, infinite_loop_feq)
     *       i = i + 0.2;
     *    }
     */
-   nir_ssa_def *ssa_0 = nir_imm_int(&b, 0x00000000);
-   nir_ssa_def *ssa_1 = nir_imm_int(&b, 0x3e4ccccd);
-   nir_ssa_def *ssa_2 = nir_imm_int(&b, 0x3f666666);
-
-   nir_phi_instr *const phi = nir_phi_instr_create(b.shader);
-
-   nir_loop *loop = nir_push_loop(&b);
-   {
-      nir_ssa_dest_init(&phi->instr, &phi->dest,
-                        ssa_0->num_components, ssa_0->bit_size,
-                        NULL);
-
-      nir_phi_instr_add_src(phi, ssa_0->parent_instr->block,
-                            nir_src_for_ssa(ssa_0));
-
-      nir_ssa_def *ssa_5 = &phi->dest.ssa;
-      nir_ssa_def *ssa_3 = nir_feq(&b, ssa_5, ssa_1);
-
-      nir_if *nif = nir_push_if(&b, ssa_3);
-      {
-         nir_jump_instr *jump = nir_jump_instr_create(b.shader, nir_jump_break);
-         nir_builder_instr_insert(&b, &jump->instr);
-      }
-      nir_pop_if(&b, nif);
-
-      nir_ssa_def *ssa_4 = nir_fadd(&b, ssa_5, ssa_2);
-
-      nir_phi_instr_add_src(phi, ssa_4->parent_instr->block,
-                            nir_src_for_ssa(ssa_4));
-   }
-   nir_pop_loop(&b, loop);
-
-   b.cursor = nir_before_block(nir_loop_first_block(loop));
-   nir_builder_instr_insert(&b, &phi->instr);
+   nir_loop *loop =
+      loop_builder(&b, {.init_value = 0x00000000, .cond_value = 0x3e4ccccd,
+                        .incr_value = 0x3f666666,
+                        .cond_instr = nir_feq, .incr_instr = nir_fadd});
 
    /* At this point, we should have:
     *
@@ -155,55 +188,27 @@ TEST_F(nir_loop_analyze_test, zero_iterations_ine)
     * This loop should have an iteration count of zero.  See also
     * https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/19732#note_1648999
     */
-   nir_ssa_def *ssa_0 = nir_imm_int(&b, 0);
-   nir_ssa_def *ssa_1 = nir_imm_int(&b, 1);
-
-   nir_phi_instr *const phi = nir_phi_instr_create(b.shader);
-
-   nir_loop *loop = nir_push_loop(&b);
-   {
-      nir_ssa_dest_init(&phi->instr, &phi->dest,
-                        ssa_1->num_components, ssa_1->bit_size,
-                        NULL);
-
-      nir_phi_instr_add_src(phi, ssa_1->parent_instr->block,
-                            nir_src_for_ssa(ssa_1));
-
-      nir_ssa_def *ssa_4 = &phi->dest.ssa;
-      nir_ssa_def *ssa_2 = nir_ine(&b, ssa_4, ssa_0);
-
-      nir_if *nif = nir_push_if(&b, ssa_2);
-      {
-         nir_jump_instr *jump = nir_jump_instr_create(b.shader, nir_jump_break);
-         nir_builder_instr_insert(&b, &jump->instr);
-      }
-      nir_pop_if(&b, nif);
-
-      nir_ssa_def *ssa_3 = nir_iadd(&b, ssa_4, ssa_1);
-
-      nir_phi_instr_add_src(phi, ssa_3->parent_instr->block,
-                            nir_src_for_ssa(ssa_3));
-   }
-   nir_pop_loop(&b, loop);
-
-   b.cursor = nir_before_block(nir_loop_first_block(loop));
-   nir_builder_instr_insert(&b, &phi->instr);
+   nir_loop *loop =
+      loop_builder(&b, {.init_value = 0x00000001, .cond_value = 0x00000000,
+                        .incr_value = 0x00000001,
+                        .cond_instr = nir_ine, .incr_instr = nir_iadd});
 
    /* At this point, we should have:
     *
     * impl main {
     *         block block_0:
     *         // preds:
-    *         vec1 32 ssa_0 = load_const (0x00000000 = 0.000000)
-    *         vec1 32 ssa_1 = load_const (0x00000001 = 0.000000)
+    *         vec1 32 ssa_0 = load_const (0x00000001 = 0.000000)
+    *         vec1 32 ssa_1 = load_const (0x00000000 = 0.000000)
+    *         vec1 32 ssa_2 = load_const (0x00000001 = 0.000000)
     *         // succs: block_1
     *         loop {
     *                 block block_1:
     *                 // preds: block_0 block_4
-    *                 vec1 32 ssa_4 = phi block_0: ssa_1, block_4: ssa_3
-    *                 vec1  1 ssa_2 = ine ssa_4, ssa_0
+    *                 vec1 32 ssa_5 = phi block_0: ssa_0, block_4: ssa_4
+    *                 vec1  1 ssa_3 = ine ssa_5, ssa_1
     *                 // succs: block_2 block_3
-    *                 if ssa_2 {
+    *                 if ssa_3 {
     *                         block block_2:
     *                         // preds: block_1
     *                         break
@@ -215,7 +220,7 @@ TEST_F(nir_loop_analyze_test, zero_iterations_ine)
     *                 }
     *                 block block_4:
     *                 // preds: block_3
-    *                 vec1 32 ssa_3 = iadd ssa_4, ssa_1
+    *                 vec1 32 ssa_4 = iadd ssa_5, ssa_2
     *                 // succs: block_1
     *         }
     *         block block_5:
@@ -245,39 +250,10 @@ TEST_F(nir_loop_analyze_test, one_iteration_uge)
     *       i++;
     *    }
     */
-   nir_ssa_def *ssa_0 = nir_imm_int(&b, 0);
-   nir_ssa_def *ssa_1 = nir_imm_int(&b, 1);
-
-   nir_phi_instr *const phi = nir_phi_instr_create(b.shader);
-
-   nir_loop *loop = nir_push_loop(&b);
-   {
-      nir_ssa_dest_init(&phi->instr, &phi->dest,
-                        ssa_0->num_components, ssa_0->bit_size,
-                        NULL);
-
-      nir_phi_instr_add_src(phi, ssa_0->parent_instr->block,
-                            nir_src_for_ssa(ssa_0));
-
-      nir_ssa_def *ssa_4 = &phi->dest.ssa;
-      nir_ssa_def *ssa_2 = nir_uge(&b, ssa_4, ssa_1);
-
-      nir_if *nif = nir_push_if(&b, ssa_2);
-      {
-         nir_jump_instr *jump = nir_jump_instr_create(b.shader, nir_jump_break);
-         nir_builder_instr_insert(&b, &jump->instr);
-      }
-      nir_pop_if(&b, nif);
-
-      nir_ssa_def *ssa_3 = nir_iadd(&b, ssa_4, ssa_1);
-
-      nir_phi_instr_add_src(phi, ssa_3->parent_instr->block,
-                            nir_src_for_ssa(ssa_3));
-   }
-   nir_pop_loop(&b, loop);
-
-   b.cursor = nir_before_block(nir_loop_first_block(loop));
-   nir_builder_instr_insert(&b, &phi->instr);
+   nir_loop *loop =
+      loop_builder(&b, {.init_value = 0x00000000, .cond_value = 0x00000001,
+                        .incr_value = 0x00000001,
+                        .cond_instr = nir_uge, .incr_instr = nir_iadd});
 
    /* At this point, we should have:
     *
@@ -286,14 +262,15 @@ TEST_F(nir_loop_analyze_test, one_iteration_uge)
     *         // preds:
     *         vec1 32 ssa_0 = load_const (0x00000000 = 0.000000)
     *         vec1 32 ssa_1 = load_const (0x00000001 = 0.000000)
+    *         vec1 32 ssa_2 = load_const (0x00000001 = 0.000000)
     *         // succs: block_1
     *         loop {
     *                 block block_1:
     *                 // preds: block_0 block_4
-    *                 vec1 32 ssa_4 = phi block_0: ssa_0, block_4: ssa_3
-    *                 vec1  1 ssa_2 = uge ssa_4, ssa_1
+    *                 vec1 32 ssa_5 = phi block_0: ssa_0, block_4: ssa_4
+    *                 vec1  1 ssa_3 = uge ssa_5, ssa_1
     *                 // succs: block_2 block_3
-    *                 if ssa_2 {
+    *                 if ssa_3 {
     *                         block block_2:
     *                         // preds: block_1
     *                         break
@@ -305,7 +282,7 @@ TEST_F(nir_loop_analyze_test, one_iteration_uge)
     *                 }
     *                 block block_4:
     *                 // preds: block_3
-    *                 vec1 32 ssa_3 = iadd ssa_4, ssa_1
+    *                 vec1 32 ssa_4 = iadd ssa_5, ssa_2
     *                 // succs: block_1
     *         }
     *         block block_5:
@@ -335,39 +312,10 @@ TEST_F(nir_loop_analyze_test, one_iteration_ine)
     *       i++;
     *    }
     */
-   nir_ssa_def *ssa_0 = nir_imm_int(&b, 0);
-   nir_ssa_def *ssa_1 = nir_imm_int(&b, 1);
-
-   nir_phi_instr *const phi = nir_phi_instr_create(b.shader);
-
-   nir_loop *loop = nir_push_loop(&b);
-   {
-      nir_ssa_dest_init(&phi->instr, &phi->dest,
-                        ssa_0->num_components, ssa_0->bit_size,
-                        NULL);
-
-      nir_phi_instr_add_src(phi, ssa_0->parent_instr->block,
-                            nir_src_for_ssa(ssa_0));
-
-      nir_ssa_def *ssa_4 = &phi->dest.ssa;
-      nir_ssa_def *ssa_2 = nir_ine(&b, ssa_4, ssa_0);
-
-      nir_if *nif = nir_push_if(&b, ssa_2);
-      {
-         nir_jump_instr *jump = nir_jump_instr_create(b.shader, nir_jump_break);
-         nir_builder_instr_insert(&b, &jump->instr);
-      }
-      nir_pop_if(&b, nif);
-
-      nir_ssa_def *ssa_3 = nir_iadd(&b, ssa_4, ssa_1);
-
-      nir_phi_instr_add_src(phi, ssa_3->parent_instr->block,
-                            nir_src_for_ssa(ssa_3));
-   }
-   nir_pop_loop(&b, loop);
-
-   b.cursor = nir_before_block(nir_loop_first_block(loop));
-   nir_builder_instr_insert(&b, &phi->instr);
+   nir_loop *loop =
+      loop_builder(&b, {.init_value = 0x00000000, .cond_value = 0x00000000,
+                        .incr_value = 0x00000001,
+                        .cond_instr = nir_ine, .incr_instr = nir_iadd});
 
    /* At this point, we should have:
     *
@@ -375,15 +323,16 @@ TEST_F(nir_loop_analyze_test, one_iteration_ine)
     *         block block_0:
     *         // preds:
     *         vec1 32 ssa_0 = load_const (0x00000000 = 0.000000)
-    *         vec1 32 ssa_1 = load_const (0x00000001 = 0.000000)
+    *         vec1 32 ssa_1 = load_const (0x00000000 = 0.000000)
+    *         vec1 32 ssa_2 = load_const (0x00000001 = 0.000000)
     *         // succs: block_1
     *         loop {
     *                 block block_1:
     *                 // preds: block_0 block_4
-    *                 vec1 32 ssa_4 = phi block_0: ssa_0, block_4: ssa_3
-    *                 vec1  1 ssa_2 = ine ssa_4, ssa_0
+    *                 vec1 32 ssa_5 = phi block_0: ssa_0, block_4: ssa_4
+    *                 vec1  1 ssa_3 = ine ssa_5, ssa_1
     *                 // succs: block_2 block_3
-    *                 if ssa_2 {
+    *                 if ssa_3 {
     *                         block block_2:
     *                         // preds: block_1
     *                         break
@@ -395,7 +344,7 @@ TEST_F(nir_loop_analyze_test, one_iteration_ine)
     *                 }
     *                 block block_4:
     *                 // preds: block_3
-    *                 vec1 32 ssa_3 = iadd ssa_4, ssa_1
+    *                 vec1 32 ssa_4 = iadd ssa_5, ssa_2
     *                 // succs: block_1
     *         }
     *         block block_5:
@@ -425,39 +374,10 @@ TEST_F(nir_loop_analyze_test, one_iteration_ieq)
     *       i++;
     *    }
     */
-   nir_ssa_def *ssa_0 = nir_imm_int(&b, 0);
-   nir_ssa_def *ssa_1 = nir_imm_int(&b, 1);
-
-   nir_phi_instr *const phi = nir_phi_instr_create(b.shader);
-
-   nir_loop *loop = nir_push_loop(&b);
-   {
-      nir_ssa_dest_init(&phi->instr, &phi->dest,
-                        ssa_0->num_components, ssa_0->bit_size,
-                        NULL);
-
-      nir_phi_instr_add_src(phi, ssa_0->parent_instr->block,
-                            nir_src_for_ssa(ssa_0));
-
-      nir_ssa_def *ssa_4 = &phi->dest.ssa;
-      nir_ssa_def *ssa_2 = nir_ieq(&b, ssa_4, ssa_1);
-
-      nir_if *nif = nir_push_if(&b, ssa_2);
-      {
-         nir_jump_instr *jump = nir_jump_instr_create(b.shader, nir_jump_break);
-         nir_builder_instr_insert(&b, &jump->instr);
-      }
-      nir_pop_if(&b, nif);
-
-      nir_ssa_def *ssa_3 = nir_iadd(&b, ssa_4, ssa_1);
-
-      nir_phi_instr_add_src(phi, ssa_3->parent_instr->block,
-                            nir_src_for_ssa(ssa_3));
-   }
-   nir_pop_loop(&b, loop);
-
-   b.cursor = nir_before_block(nir_loop_first_block(loop));
-   nir_builder_instr_insert(&b, &phi->instr);
+   nir_loop *loop =
+      loop_builder(&b, {.init_value = 0x00000000, .cond_value = 0x00000001,
+                        .incr_value = 0x00000001,
+                        .cond_instr = nir_ieq, .incr_instr = nir_iadd});
 
    /* At this point, we should have:
     *
@@ -466,14 +386,15 @@ TEST_F(nir_loop_analyze_test, one_iteration_ieq)
     *         // preds:
     *         vec1 32 ssa_0 = load_const (0x00000000 = 0.000000)
     *         vec1 32 ssa_1 = load_const (0x00000001 = 0.000000)
+    *         vec1 32 ssa_2 = load_const (0x00000001 = 0.000000)
     *         // succs: block_1
     *         loop {
     *                 block block_1:
     *                 // preds: block_0 block_4
-    *                 vec1 32 ssa_4 = phi block_0: ssa_0, block_4: ssa_3
-    *                 vec1  1 ssa_2 = ine ssa_4, ssa_0
+    *                 vec1 32 ssa_5 = phi block_0: ssa_0, block_4: ssa_4
+    *                 vec1  1 ssa_3 = ieq ssa_5, ssa_1
     *                 // succs: block_2 block_3
-    *                 if ssa_2 {
+    *                 if ssa_3 {
     *                         block block_2:
     *                         // preds: block_1
     *                         break
@@ -485,7 +406,7 @@ TEST_F(nir_loop_analyze_test, one_iteration_ieq)
     *                 }
     *                 block block_4:
     *                 // preds: block_3
-    *                 vec1 32 ssa_3 = iadd ssa_4, ssa_1
+    *                 vec1 32 ssa_4 = iadd ssa_5, ssa_2
     *                 // succs: block_1
     *         }
     *         block block_5:
@@ -515,39 +436,10 @@ TEST_F(nir_loop_analyze_test, one_iteration_easy_fneu)
     *       i = i + 1.0;
     *    }
     */
-   nir_ssa_def *ssa_0 = nir_imm_int(&b, 0x00000000);
-   nir_ssa_def *ssa_1 = nir_imm_int(&b, 0x3f800000);
-
-   nir_phi_instr *const phi = nir_phi_instr_create(b.shader);
-
-   nir_loop *loop = nir_push_loop(&b);
-   {
-      nir_ssa_dest_init(&phi->instr, &phi->dest,
-                        ssa_0->num_components, ssa_0->bit_size,
-                        NULL);
-
-      nir_phi_instr_add_src(phi, ssa_0->parent_instr->block,
-                            nir_src_for_ssa(ssa_0));
-
-      nir_ssa_def *ssa_4 = &phi->dest.ssa;
-      nir_ssa_def *ssa_2 = nir_fneu(&b, ssa_4, ssa_0);
-
-      nir_if *nif = nir_push_if(&b, ssa_2);
-      {
-         nir_jump_instr *jump = nir_jump_instr_create(b.shader, nir_jump_break);
-         nir_builder_instr_insert(&b, &jump->instr);
-      }
-      nir_pop_if(&b, nif);
-
-      nir_ssa_def *ssa_3 = nir_fadd(&b, ssa_4, ssa_1);
-
-      nir_phi_instr_add_src(phi, ssa_3->parent_instr->block,
-                            nir_src_for_ssa(ssa_3));
-   }
-   nir_pop_loop(&b, loop);
-
-   b.cursor = nir_before_block(nir_loop_first_block(loop));
-   nir_builder_instr_insert(&b, &phi->instr);
+   nir_loop *loop =
+      loop_builder(&b, {.init_value = 0x00000000, .cond_value = 0x00000000,
+                        .incr_value = 0x3f800000,
+                        .cond_instr = nir_fneu, .incr_instr = nir_fadd});
 
    /* At this point, we should have:
     *
@@ -555,15 +447,16 @@ TEST_F(nir_loop_analyze_test, one_iteration_easy_fneu)
     *         block block_0:
     *         // preds:
     *         vec1 32 ssa_0 = load_const (0x00000000 = 0.000000)
-    *         vec1 32 ssa_1 = load_const (0x3f800000 = 1.000000)
+    *         vec1 32 ssa_1 = load_const (0x00000000 = 0.000000)
+    *         vec1 32 ssa_2 = load_const (0x3f800000 = 1.000000)
     *         // succs: block_1
     *         loop {
     *                 block block_1:
     *                 // preds: block_0 block_4
-    *                 vec1 32 ssa_4 = phi block_0: ssa_0, block_4: ssa_3
-    *                 vec1  1 ssa_2 = fneu ssa_4, ssa_0
+    *                 vec1 32 ssa_5 = phi block_0: ssa_0, block_4: ssa_4
+    *                 vec1  1 ssa_3 = fneu ssa_5, ssa_1
     *                 // succs: block_2 block_3
-    *                 if ssa_2 {
+    *                 if ssa_3 {
     *                         block block_2:
     *                         // preds: block_1
     *                         break
@@ -575,7 +468,7 @@ TEST_F(nir_loop_analyze_test, one_iteration_easy_fneu)
     *                 }
     *                 block block_4:
     *                 // preds: block_3
-    *                 vec1 32 ssa_3 = fadd ssa_4, ssa_1
+    *                 vec1 32 ssa_4 = fadd ssa_5, ssa_2
     *                 // succs: block_1
     *         }
     *         block block_5:
@@ -610,39 +503,10 @@ TEST_F(nir_loop_analyze_test, one_iteration_fneu)
     * than going towards a larger magnitude. For this reason, ssa_0 + ssa_1 !=
     * ssa_0, but ssa_0 - ssa_1 == ssa_0. Math class is tough.
     */
-   nir_ssa_def *ssa_0 = nir_imm_int(&b, 0xe7000000);
-   nir_ssa_def *ssa_1 = nir_imm_int(&b, 0x5b000000);
-
-   nir_phi_instr *const phi = nir_phi_instr_create(b.shader);
-
-   nir_loop *loop = nir_push_loop(&b);
-   {
-      nir_ssa_dest_init(&phi->instr, &phi->dest,
-                        ssa_0->num_components, ssa_0->bit_size,
-                        NULL);
-
-      nir_phi_instr_add_src(phi, ssa_0->parent_instr->block,
-                            nir_src_for_ssa(ssa_0));
-
-      nir_ssa_def *ssa_4 = &phi->dest.ssa;
-      nir_ssa_def *ssa_2 = nir_fneu(&b, ssa_4, ssa_0);
-
-      nir_if *nif = nir_push_if(&b, ssa_2);
-      {
-         nir_jump_instr *jump = nir_jump_instr_create(b.shader, nir_jump_break);
-         nir_builder_instr_insert(&b, &jump->instr);
-      }
-      nir_pop_if(&b, nif);
-
-      nir_ssa_def *ssa_3 = nir_fadd(&b, ssa_4, ssa_1);
-
-      nir_phi_instr_add_src(phi, ssa_3->parent_instr->block,
-                            nir_src_for_ssa(ssa_3));
-   }
-   nir_pop_loop(&b, loop);
-
-   b.cursor = nir_before_block(nir_loop_first_block(loop));
-   nir_builder_instr_insert(&b, &phi->instr);
+   nir_loop *loop =
+      loop_builder(&b, {.init_value = 0xe7000000, .cond_value = 0xe7000000,
+                        .incr_value = 0x5b000000,
+                        .cond_instr = nir_fneu, .incr_instr = nir_fadd});
 
    /* At this point, we should have:
     *
@@ -650,15 +514,16 @@ TEST_F(nir_loop_analyze_test, one_iteration_fneu)
     *         block block_0:
     *         // preds:
     *         vec1 32 ssa_0 = load_const (0xe7000000 = -604462909807314587353088.0)
-    *         vec1 32 ssa_1 = load_const (0x5b000000 = 36028797018963968.0)
+    *         vec1 32 ssa_1 = load_const (0xe7000000 = -604462909807314587353088.0)
+    *         vec1 32 ssa_2 = load_const (0x5b000000 = 36028797018963968.0)
     *         // succs: block_1
     *         loop {
     *                 block block_1:
     *                 // preds: block_0 block_4
-    *                 vec1 32 ssa_4 = phi block_0: ssa_0, block_4: ssa_3
-    *                 vec1  1 ssa_2 = fneu ssa_4, ssa_0
+    *                 vec1 32 ssa_5 = phi block_0: ssa_0, block_4: ssa_4
+    *                 vec1  1 ssa_3 = fneu ssa_5, ssa_1
     *                 // succs: block_2 block_3
-    *                 if ssa_2 {
+    *                 if ssa_3 {
     *                         block block_2:
     *                         // preds: block_1
     *                         break
@@ -670,7 +535,7 @@ TEST_F(nir_loop_analyze_test, one_iteration_fneu)
     *                 }
     *                 block block_4:
     *                 // preds: block_3
-    *                 vec1 32 ssa_3 = fadd ssa_4, ssa_1
+    *                 vec1 32 ssa_4 = fadd ssa_5, ssa_2
     *                 // succs: block_1
     *         }
     *         block block_5:
