@@ -641,6 +641,7 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
 {
    LVP_FROM_HANDLE(lvp_pipeline, pipeline, cmd->u.bind_pipeline.pipeline);
    const struct vk_graphics_pipeline_state *ps = &pipeline->graphics_state;
+   lvp_pipeline_shaders_compile(pipeline);
 
    for (enum pipe_shader_type sh = PIPE_SHADER_VERTEX; sh < PIPE_SHADER_COMPUTE; sh++) {
       state->iv_dirty[sh] |= state->num_shader_images[sh] &&

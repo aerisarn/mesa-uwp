@@ -870,7 +870,7 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
          pipeline->line_rectangular = true;
       lvp_pipeline_xfb_init(pipeline);
    }
-   if (!pipeline->library)
+   if (!libstate && !pipeline->library)
       lvp_pipeline_shaders_compile(pipeline);
 
    if (!pipeline->library && !pipeline->pipeline_nir[MESA_SHADER_FRAGMENT]) {
