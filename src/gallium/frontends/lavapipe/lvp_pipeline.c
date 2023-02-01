@@ -683,16 +683,20 @@ merge_layouts(struct vk_device *device, struct lvp_pipeline *dst, struct lvp_pip
 {
    if (!src)
       return;
+   if (dst->layout) {
+      /* these must match */
+      ASSERTED VkPipelineCreateFlags src_flag = src->vk.create_flags & VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT;
+      ASSERTED VkPipelineCreateFlags dst_flag = dst->layout->vk.create_flags & VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT;
+      assert(src_flag == dst_flag);
+   }
+   /* always try to reuse existing layout: independent sets bit doesn't guarantee independent sets */
    if (!dst->layout) {
-      dst->layout = vk_zalloc(&device->alloc, sizeof(struct lvp_pipeline_layout), 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-      memcpy(dst->layout, src, sizeof(struct lvp_pipeline_layout));
-      dst->layout->vk.ref_cnt = 1;
-      for (unsigned i = 0; i < dst->layout->vk.set_count; i++) {
-         if (dst->layout->vk.set_layouts[i])
-            vk_descriptor_set_layout_ref(dst->layout->vk.set_layouts[i]);
-      }
+      dst->layout = (struct lvp_pipeline_layout*)vk_pipeline_layout_ref(&src->vk);
       return;
    }
+   /* this is a big optimization when hit */
+   if (dst->layout == src)
+      return;
 #ifndef NDEBUG
    /* verify that layouts match */
    const struct lvp_pipeline_layout *smaller = dst->layout->vk.set_count < src->vk.set_count ? dst->layout : src;
@@ -712,6 +716,17 @@ merge_layouts(struct vk_device *device, struct lvp_pipeline *dst, struct lvp_pip
              layouts_equal(smaller_set_layout, bigger_set_layout));
    }
 #endif
+   /* must be independent sets with different layouts: reallocate to avoid modifying original layout */
+   struct lvp_pipeline_layout *old_layout = dst->layout;
+   dst->layout = vk_zalloc(&device->alloc, sizeof(struct lvp_pipeline_layout), 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   memcpy(dst->layout, old_layout, sizeof(struct lvp_pipeline_layout));
+   dst->layout->vk.ref_cnt = 1;
+   for (unsigned i = 0; i < dst->layout->vk.set_count; i++) {
+      if (dst->layout->vk.set_layouts[i])
+         vk_descriptor_set_layout_ref(dst->layout->vk.set_layouts[i]);
+   }
+   vk_pipeline_layout_unref(device, &old_layout->vk);
+
    for (unsigned i = 0; i < src->vk.set_count; i++) {
       if (!dst->layout->vk.set_layouts[i]) {
          dst->layout->vk.set_layouts[i] = src->vk.set_layouts[i];
@@ -754,11 +769,11 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
 
    if (!layout || !(layout->vk.create_flags & VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT))
       /* this is a regular pipeline with no partials: directly reuse */
-      pipeline->layout = layout;
+      pipeline->layout = layout ? (void*)vk_pipeline_layout_ref(&layout->vk) : NULL;
    else if (pipeline->stages & layout_stages) {
       if ((pipeline->stages & layout_stages) == layout_stages)
          /* this has all the layout stages: directly reuse */
-         pipeline->layout = layout;
+         pipeline->layout = (void*)vk_pipeline_layout_ref(&layout->vk);
       else {
          /* this is a partial: copy for later merging to avoid modifying another layout */
          merge_layouts(&device->vk, pipeline, layout);
@@ -787,9 +802,6 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
          pipeline->stages |= p->stages;
       }
    }
-
-   if (pipeline->layout == layout && layout)
-      vk_pipeline_layout_ref(&layout->vk);
 
    result = vk_graphics_pipeline_state_fill(&device->vk,
                                             &pipeline->graphics_state,
