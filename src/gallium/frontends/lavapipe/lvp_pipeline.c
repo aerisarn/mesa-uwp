@@ -846,25 +846,16 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
        for (unsigned i = 0; i < libstate->libraryCount; i++) {
           LVP_FROM_HANDLE(lvp_pipeline, p, libstate->pLibraries[i]);
           if (p->stages & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) {
-             if (p->pipeline_nir[MESA_SHADER_FRAGMENT]) {
-                pipeline->pipeline_nir[MESA_SHADER_FRAGMENT] = ralloc(NULL, struct lvp_pipeline_nir);
-                pipeline->pipeline_nir[MESA_SHADER_FRAGMENT]->nir = nir_shader_clone(pipeline->mem_ctx, p->pipeline_nir[MESA_SHADER_FRAGMENT]->nir);
-                pipeline->pipeline_nir[MESA_SHADER_FRAGMENT]->ref_cnt = 1;
-             }
+             if (p->pipeline_nir[MESA_SHADER_FRAGMENT])
+                lvp_pipeline_nir_ref(&pipeline->pipeline_nir[MESA_SHADER_FRAGMENT], p->pipeline_nir[MESA_SHADER_FRAGMENT]);
           }
           if (p->stages & VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT) {
              for (unsigned j = MESA_SHADER_VERTEX; j < MESA_SHADER_FRAGMENT; j++) {
-                if (p->pipeline_nir[j]) {
-                   pipeline->pipeline_nir[j] = ralloc(NULL, struct lvp_pipeline_nir);
-                   pipeline->pipeline_nir[j]->nir = nir_shader_clone(pipeline->mem_ctx, p->pipeline_nir[j]->nir);
-                   pipeline->pipeline_nir[j]->ref_cnt = 1;
-                }
+                if (p->pipeline_nir[j])
+                   lvp_pipeline_nir_ref(&pipeline->pipeline_nir[j], p->pipeline_nir[j]);
              }
-             if (p->tess_ccw) {
-                pipeline->tess_ccw = ralloc(NULL, struct lvp_pipeline_nir);
-                pipeline->tess_ccw->nir = nir_shader_clone(pipeline->mem_ctx, p->tess_ccw->nir);
-                pipeline->tess_ccw->ref_cnt = 1;
-             }
+             if (p->tess_ccw)
+                lvp_pipeline_nir_ref(&pipeline->tess_ccw, p->tess_ccw);
           }
        }
    } else if (pipeline->stages & VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT) {
