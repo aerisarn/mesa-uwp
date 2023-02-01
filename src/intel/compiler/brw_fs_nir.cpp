@@ -3877,9 +3877,10 @@ emit_rt_lsc_fence(const fs_builder &bld,
                              brw_vec8_grf(0, 0) /* payload */);
    send->sfid = GFX12_SFID_UGM;
    send->desc = lsc_fence_msg_desc(devinfo, scope, flush_type, true);
-   send->mlen = 1; /* g0 header */
+   send->mlen = reg_unit(devinfo); /* g0 header */
    send->ex_mlen = 0;
-   send->size_written = REG_SIZE; /* Temp write for scheduling */
+   /* Temp write for scheduling */
+   send->size_written = REG_SIZE * reg_unit(devinfo);
    send->send_has_side_effects = true;
 
    ubld.emit(FS_OPCODE_SCHEDULING_FENCE, ubld.null_reg_ud(), tmp);
