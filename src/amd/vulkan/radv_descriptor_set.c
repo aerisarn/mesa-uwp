@@ -541,8 +541,6 @@ void
 radv_pipeline_layout_add_set(struct radv_pipeline_layout *layout, uint32_t set_idx,
                              struct radv_descriptor_set_layout *set_layout)
 {
-   unsigned dynamic_offset_count = 0;
-
    if (layout->set[set_idx].layout)
       return;
 
@@ -551,13 +549,9 @@ radv_pipeline_layout_add_set(struct radv_pipeline_layout *layout, uint32_t set_i
    layout->set[set_idx].layout = set_layout;
    vk_descriptor_set_layout_ref(&set_layout->vk);
 
-   for (uint32_t b = 0; b < set_layout->binding_count; b++) {
-      dynamic_offset_count += set_layout->binding[b].array_size * set_layout->binding[b].dynamic_offset_count;
-   }
-
    layout->set[set_idx].dynamic_offset_start = layout->dynamic_offset_count;
 
-   layout->dynamic_offset_count += dynamic_offset_count;
+   layout->dynamic_offset_count += set_layout->dynamic_offset_count;
    layout->dynamic_shader_stages |= set_layout->dynamic_shader_stages;
 }
 
