@@ -62,7 +62,6 @@ lvp_pipeline_destroy(struct lvp_device *device, struct lvp_pipeline *pipeline)
    if (pipeline->layout)
       vk_pipeline_layout_unref(&device->vk, &pipeline->layout->vk);
 
-   ralloc_free(pipeline->mem_ctx);
    vk_free(&device->vk.alloc, pipeline->state_data);
    vk_object_base_finish(&pipeline->base);
    vk_free(&device->vk.alloc, pipeline);
@@ -747,7 +746,6 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
                          VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT |
                          VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT |
                          VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT;
-   pipeline->mem_ctx = ralloc_context(NULL);
 
    if (pCreateInfo->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR)
       pipeline->library = true;
@@ -999,7 +997,6 @@ lvp_compute_pipeline_init(struct lvp_pipeline *pipeline,
    vk_pipeline_layout_ref(&pipeline->layout->vk);
    pipeline->force_min_sample = false;
 
-   pipeline->mem_ctx = ralloc_context(NULL);
    pipeline->is_compute_pipeline = true;
 
    VkResult result = lvp_shader_compile_to_ir(pipeline, &pCreateInfo->stage);

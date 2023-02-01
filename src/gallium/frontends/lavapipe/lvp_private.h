@@ -432,7 +432,6 @@ struct lvp_pipeline {
 
    struct lvp_access_info access[MESA_SHADER_STAGES];
 
-   void *mem_ctx;
    void *state_data;
    bool is_compute_pipeline;
    bool force_min_sample;
