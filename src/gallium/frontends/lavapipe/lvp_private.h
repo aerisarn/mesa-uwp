@@ -456,7 +456,11 @@ struct lvp_pipeline {
    bool gs_output_lines;
    bool library;
    bool noop_fs;
+   bool compiled;
 };
+
+void
+lvp_pipeline_shaders_compile(struct lvp_pipeline *pipeline);
 
 struct lvp_event {
    struct vk_object_base base;

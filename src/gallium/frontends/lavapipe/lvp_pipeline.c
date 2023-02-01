@@ -870,31 +870,12 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
          pipeline->line_rectangular = true;
       lvp_pipeline_xfb_init(pipeline);
    }
+   if (!pipeline->library)
+      lvp_pipeline_shaders_compile(pipeline);
 
-   if (!pipeline->library) {
-      bool has_fragment_shader = false;
-      for (uint32_t i = 0; i < ARRAY_SIZE(pipeline->pipeline_nir); i++) {
-         if (!pipeline->pipeline_nir[i])
-            continue;
-
-         gl_shader_stage stage = i;
-         assert(stage == pipeline->pipeline_nir[i]->nir->info.stage);
-         enum pipe_shader_type pstage = pipe_shader_type_from_mesa(stage);
-         if (!pipeline->inlines[stage].can_inline) {
-            pipeline->shader_cso[pstage] = lvp_pipeline_compile(pipeline,
-                                                                nir_shader_clone(NULL, pipeline->pipeline_nir[stage]->nir));
-            if (pipeline->tess_ccw)
-               pipeline->tess_ccw_cso = lvp_pipeline_compile(pipeline,
-                                                             nir_shader_clone(NULL, pipeline->tess_ccw->nir));
-         }
-         if (stage == MESA_SHADER_FRAGMENT)
-            has_fragment_shader = true;
-      }
-
-      if (has_fragment_shader == false) {
-         pipeline->noop_fs = true;
-         pipeline->shader_cso[PIPE_SHADER_FRAGMENT] = device->noop_fs;
-      }
+   if (!pipeline->library && !pipeline->pipeline_nir[MESA_SHADER_FRAGMENT]) {
+      pipeline->noop_fs = true;
+      pipeline->shader_cso[PIPE_SHADER_FRAGMENT] = device->noop_fs;
    }
    return VK_SUCCESS;
 
@@ -905,6 +886,29 @@ fail:
    vk_free(&device->vk.alloc, pipeline->state_data);
 
    return result;
+}
+
+void
+lvp_pipeline_shaders_compile(struct lvp_pipeline *pipeline)
+{
+   if (pipeline->compiled)
+      return;
+   for (uint32_t i = 0; i < ARRAY_SIZE(pipeline->pipeline_nir); i++) {
+      if (!pipeline->pipeline_nir[i])
+         continue;
+
+      gl_shader_stage stage = i;
+      assert(stage == pipeline->pipeline_nir[i]->nir->info.stage);
+
+      if (!pipeline->inlines[stage].can_inline) {
+         pipeline->shader_cso[stage] = lvp_pipeline_compile(pipeline,
+                                                            nir_shader_clone(NULL, pipeline->pipeline_nir[stage]->nir));
+         if (pipeline->tess_ccw)
+            pipeline->tess_ccw_cso = lvp_pipeline_compile(pipeline,
+                                                          nir_shader_clone(NULL, pipeline->tess_ccw->nir));
+      }
+   }
+   pipeline->compiled = true;
 }
 
 static VkResult
@@ -1000,6 +1004,7 @@ lvp_compute_pipeline_init(struct lvp_pipeline *pipeline,
 
    if (!pipeline->inlines[MESA_SHADER_COMPUTE].can_inline)
       pipeline->shader_cso[PIPE_SHADER_COMPUTE] = lvp_pipeline_compile(pipeline, nir_shader_clone(NULL, pipeline->pipeline_nir[MESA_SHADER_COMPUTE]->nir));
+   pipeline->compiled = true;
    return VK_SUCCESS;
 }
 
