@@ -37,70 +37,27 @@ cl_type_size_align(const struct glsl_type *type, unsigned *size,
    *align = glsl_get_cl_alignment(type);
 }
 
-static void
-extract_comps_from_vec32(nir_builder *b, nir_ssa_def *vec32,
-                         unsigned dst_bit_size,
-                         nir_ssa_def **dst_comps,
-                         unsigned num_dst_comps)
-{
-   unsigned step = DIV_ROUND_UP(dst_bit_size, 32);
-   unsigned comps_per32b = 32 / dst_bit_size;
-   nir_ssa_def *tmp;
-
-   for (unsigned i = 0; i < vec32->num_components; i += step) {
-      switch (dst_bit_size) {
-      case 64:
-         tmp = nir_pack_64_2x32_split(b, nir_channel(b, vec32, i),
-                                         nir_channel(b, vec32, i + 1));
-         dst_comps[i / 2] = tmp;
-         break;
-      case 32:
-         dst_comps[i] = nir_channel(b, vec32, i);
-         break;
-      case 16:
-      case 8: {
-         unsigned dst_offs = i * comps_per32b;
-
-         tmp = nir_unpack_bits(b, nir_channel(b, vec32, i), dst_bit_size);
-         for (unsigned j = 0; j < comps_per32b && dst_offs + j < num_dst_comps; j++)
-            dst_comps[dst_offs + j] = nir_channel(b, tmp, j);
-         }
-
-         break;
-      }
-   }
-}
-
 static nir_ssa_def *
 load_comps_to_vec32(nir_builder *b, unsigned src_bit_size,
                     nir_ssa_def **src_comps, unsigned num_src_comps)
 {
+   if (src_bit_size == 32)
+      return nir_vec(b, src_comps, num_src_comps);
+   else if (src_bit_size > 32)
+      return nir_extract_bits(b, src_comps, num_src_comps, 0, src_bit_size * num_src_comps / 32, 32);
+
    unsigned num_vec32comps = DIV_ROUND_UP(num_src_comps * src_bit_size, 32);
-   unsigned step = DIV_ROUND_UP(src_bit_size, 32);
    unsigned comps_per32b = 32 / src_bit_size;
    nir_ssa_def *vec32comps[4];
 
-   for (unsigned i = 0; i < num_vec32comps; i += step) {
-      switch (src_bit_size) {
-      case 64:
-         vec32comps[i] = nir_unpack_64_2x32_split_x(b, src_comps[i / 2]);
-         vec32comps[i + 1] = nir_unpack_64_2x32_split_y(b, src_comps[i / 2]);
-         break;
-      case 32:
-         vec32comps[i] = src_comps[i];
-         break;
-      case 16:
-      case 8: {
-         unsigned src_offs = i * comps_per32b;
+   for (unsigned i = 0; i < num_vec32comps; i++) {
+      unsigned src_offs = i * comps_per32b;
 
-         vec32comps[i] = nir_u2u32(b, src_comps[src_offs]);
-         for (unsigned j = 1; j < comps_per32b && src_offs + j < num_src_comps; j++) {
-            nir_ssa_def *tmp = nir_ishl(b, nir_u2u32(b, src_comps[src_offs + j]),
-                                           nir_imm_int(b, j * src_bit_size));
-            vec32comps[i] = nir_ior(b, vec32comps[i], tmp);
-         }
-         break;
-      }
+      vec32comps[i] = nir_u2u32(b, src_comps[src_offs]);
+      for (unsigned j = 1; j < comps_per32b && src_offs + j < num_src_comps; j++) {
+         nir_ssa_def *tmp = nir_ishl(b, nir_u2u32(b, src_comps[src_offs + j]),
+                                          nir_imm_int(b, j * src_bit_size));
+         vec32comps[i] = nir_ior(b, vec32comps[i], tmp);
       }
    }
 
@@ -160,9 +117,9 @@ lower_load_deref(nir_builder *b, nir_intrinsic_instr *intr)
       }
 
       /* And now comes the pack/unpack step to match the original type. */
-      extract_comps_from_vec32(b, vec32, bit_size, &comps[comp_idx],
-                               subload_num_bits / bit_size);
-      comp_idx += subload_num_bits / bit_size;
+      nir_ssa_def *temp_vec = nir_extract_bits(b, &vec32, 1, 0, subload_num_bits / bit_size, bit_size);
+      for (unsigned comp = 0; comp < subload_num_bits / bit_size; ++comp, ++comp_idx)
+         comps[comp_idx] = nir_channel(b, temp_vec, comp);
    }
 
    nir_deref_path_finish(&path);
@@ -249,9 +206,9 @@ build_load_ubo_dxil(nir_builder *b, nir_ssa_def *buffer,
       }
 
       /* And now comes the pack/unpack step to match the original type. */
-      extract_comps_from_vec32(b, vec32, bit_size, &comps[comp_idx],
-                               subload_num_bits / bit_size);
-      comp_idx += subload_num_bits / bit_size;
+      nir_ssa_def *temp_vec = nir_extract_bits(b, &vec32, 1, 0, subload_num_bits / bit_size, bit_size);
+      for (unsigned comp = 0; comp < subload_num_bits / bit_size; ++comp, ++comp_idx)
+         comps[comp_idx] = nir_channel(b, temp_vec, comp);
    }
 
    assert(comp_idx == num_components);
@@ -305,9 +262,9 @@ lower_load_ssbo(nir_builder *b, nir_intrinsic_instr *intr)
       }
 
       /* And now comes the pack/unpack step to match the original type. */
-      extract_comps_from_vec32(b, vec32, bit_size, &comps[comp_idx],
-                               subload_num_bits / bit_size);
-      comp_idx += subload_num_bits / bit_size;
+      nir_ssa_def *temp_vec = nir_extract_bits(b, &vec32, 1, 0, subload_num_bits / bit_size, bit_size);
+      for (unsigned comp = 0; comp < subload_num_bits / bit_size; ++comp, ++comp_idx)
+         comps[comp_idx] = nir_channel(b, temp_vec, comp);
    }
 
    assert(comp_idx == num_components);
@@ -481,7 +438,9 @@ lower_32b_offset_load(nir_builder *b, nir_intrinsic_instr *intr)
 
       /* And now comes the pack/unpack step to match the original type. */
       unsigned dest_index = i * 32 / bit_size;
-      extract_comps_from_vec32(b, vec32, bit_size, &comps[dest_index], num_dest_comps);
+      nir_ssa_def *temp_vec = nir_extract_bits(b, &vec32, 1, 0, num_dest_comps, bit_size);
+      for (unsigned comp = 0; comp < num_dest_comps; ++comp, ++dest_index)
+         comps[dest_index] = nir_channel(b, temp_vec, comp);
    }
 
    nir_ssa_def *result = nir_vec(b, comps, num_components);
