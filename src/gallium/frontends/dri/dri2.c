@@ -859,6 +859,16 @@ static const struct dri2_format_mapping r8_g8b8_mapping = {
      { 1, 1, 1, __DRI_IMAGE_FORMAT_GR88 } }
 };
 
+static const struct dri2_format_mapping g8_b8r8_mapping = {
+   DRM_FORMAT_NV21,
+   __DRI_IMAGE_FORMAT_NONE,
+   __DRI_IMAGE_COMPONENTS_Y_UV,
+   PIPE_FORMAT_G8_B8R8_420_UNORM,
+   2,
+   { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8 },
+     { 1, 1, 1, __DRI_IMAGE_FORMAT_GR88 } }
+};
+
 static const struct dri2_format_mapping r8g8_r8b8_mapping = {
    DRM_FORMAT_YUYV,
    __DRI_IMAGE_FORMAT_NONE,
@@ -905,6 +915,14 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
        pscreen->is_format_supported(pscreen, PIPE_FORMAT_R8_G8B8_420_UNORM,
                                     screen->target, 0, 0, PIPE_BIND_SAMPLER_VIEW)) {
       map = &r8_g8b8_mapping;
+      tex_usage |= PIPE_BIND_SAMPLER_VIEW;
+   }
+
+   /* For NV21, see if we have support for sampling g8_b8r8 */
+   if (!tex_usage && map->pipe_format == PIPE_FORMAT_NV21 &&
+       pscreen->is_format_supported(pscreen, PIPE_FORMAT_G8_B8R8_420_UNORM,
+                                    screen->target, 0, 0, PIPE_BIND_SAMPLER_VIEW)) {
+      map = &g8_b8r8_mapping;
       tex_usage |= PIPE_BIND_SAMPLER_VIEW;
    }
 
