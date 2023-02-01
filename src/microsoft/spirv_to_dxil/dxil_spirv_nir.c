@@ -54,7 +54,10 @@ spirv_to_nir_options = {
       * instead of vulkan_resource_index. This makes it much easier to
       * get the DXIL handle for the SSBO.
       */
-   .use_deref_buffer_array_length = true
+   .use_deref_buffer_array_length = true,
+
+   .min_ubo_alignment = 256, /* D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT */
+   .min_ssbo_alignment = 16, /* D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT */
 };
 
 const struct spirv_to_nir_options*
