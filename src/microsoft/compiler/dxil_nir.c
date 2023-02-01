@@ -323,6 +323,14 @@ lower_store_ssbo(nir_builder *b, nir_intrinsic_instr *intr)
          ++num_src_comps_stored;
          substore_num_bits += bit_size;
       }
+      if (substore_num_bits == 48) {
+         /* Split this into two, one unmasked store of the first 32 bits,
+          * and then the second loop iteration will handle a masked store
+          * for the other 16. */
+         assert(num_src_comps_stored == 3);
+         --num_src_comps_stored;
+         substore_num_bits = 32;
+      }
       nir_ssa_def *local_offset = nir_iadd(b, offset, nir_imm_int(b, bit_offset / 8));
       nir_ssa_def *vec32 = load_comps_to_vec32(b, bit_size, &comps[comp_idx],
                                                num_src_comps_stored);
@@ -331,11 +339,8 @@ lower_store_ssbo(nir_builder *b, nir_intrinsic_instr *intr)
       if (substore_num_bits < 32) {
          nir_ssa_def *mask = nir_imm_int(b, (1 << substore_num_bits) - 1);
 
-        /* If we have 16 bits or less to store we need to place them
-         * correctly in the u32 component. Anything greater than 16 bits
-         * (including uchar3) is naturally aligned on 32bits.
-         */
-         if (substore_num_bits <= 16) {
+        /* If we have small alignments we need to place them correctly in the u32 component. */
+         if (nir_intrinsic_align(intr) <= 2) {
             nir_ssa_def *pos = nir_iand(b, intr->src[2].ssa, nir_imm_int(b, 3));
             nir_ssa_def *shift = nir_imul_imm(b, pos, 8);
 
@@ -451,7 +456,6 @@ lower_32b_offset_load(nir_builder *b, nir_intrinsic_instr *intr)
 static void
 lower_store_vec32(nir_builder *b, nir_ssa_def *index, nir_ssa_def *vec32, nir_intrinsic_op op)
 {
-
    for (unsigned i = 0; i < vec32->num_components; i++) {
       nir_intrinsic_instr *store =
          nir_intrinsic_instr_create(b->shader, op);
@@ -465,15 +469,12 @@ lower_store_vec32(nir_builder *b, nir_ssa_def *index, nir_ssa_def *vec32, nir_in
 
 static void
 lower_masked_store_vec32(nir_builder *b, nir_ssa_def *offset, nir_ssa_def *index,
-                         nir_ssa_def *vec32, unsigned num_bits, nir_intrinsic_op op)
+                         nir_ssa_def *vec32, unsigned num_bits, nir_intrinsic_op op, unsigned alignment)
 {
    nir_ssa_def *mask = nir_imm_int(b, (1 << num_bits) - 1);
 
-   /* If we have 16 bits or less to store we need to place them correctly in
-    * the u32 component. Anything greater than 16 bits (including uchar3) is
-    * naturally aligned on 32bits.
-    */
-   if (num_bits <= 16) {
+   /* If we have small alignments, we need to place them correctly in the u32 component. */
+   if (alignment <= 2) {
       nir_ssa_def *shift =
          nir_imul_imm(b, nir_iand(b, offset, nir_imm_int(b, 3)), 8);
 
@@ -522,20 +523,19 @@ lower_32b_offset_store(nir_builder *b, nir_intrinsic_instr *intr)
    for (unsigned i = 0; i < num_components; i++)
       comps[i] = nir_channel(b, intr->src[0].ssa, i);
 
-   for (unsigned i = 0; i < num_bits; i += 4 * 32) {
-      /* For each 4byte chunk (or smaller) we generate a 32bit scalar store.
-       */
-      unsigned substore_num_bits = MIN2(num_bits - i, 4 * 32);
+   unsigned step = MAX2(bit_size, 32);
+   for (unsigned i = 0; i < num_bits; i += step) {
+      /* For each 4byte chunk (or smaller) we generate a 32bit scalar store. */
+      unsigned substore_num_bits = MIN2(num_bits - i, step);
       nir_ssa_def *local_offset = nir_iadd(b, offset, nir_imm_int(b, i / 8));
       nir_ssa_def *vec32 = load_comps_to_vec32(b, bit_size, &comps[comp_idx],
                                                substore_num_bits / bit_size);
       nir_ssa_def *index = nir_ushr(b, local_offset, nir_imm_int(b, 2));
 
       /* For anything less than 32bits we need to use the masked version of the
-       * intrinsic to preserve data living in the same 32bit slot.
-       */
-      if (num_bits < 32) {
-         lower_masked_store_vec32(b, local_offset, index, vec32, num_bits, op);
+       * intrinsic to preserve data living in the same 32bit slot. */
+      if (substore_num_bits < 32) {
+         lower_masked_store_vec32(b, local_offset, index, vec32, num_bits, op, nir_intrinsic_align(intr));
       } else {
          lower_store_vec32(b, index, vec32, op);
       }
