@@ -1630,7 +1630,7 @@ fs_visitor::assign_curb_setup()
        * TODO: Support inline data and push at the same time.
        */
       assert(devinfo->verx10 >= 125);
-      assert(uniform_push_length <= 1);
+      assert(uniform_push_length <= reg_unit(devinfo));
    } else if (is_compute && devinfo->verx10 >= 125) {
       assert(devinfo->has_lsc);
       fs_builder ubld = bld.exec_all().group(1, 0).at(
