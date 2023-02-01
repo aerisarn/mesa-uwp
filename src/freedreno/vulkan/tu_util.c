@@ -164,11 +164,11 @@ tu_tiling_config_update_tile_layout(struct tu_framebuffer *fb,
     */
    if (!pass->gmem_pixels[gmem_layout]) {
       tiling->possible = false;
-      /* Some parts of the code do conditional gmem setup even when gmem is not
-       * possible.  Give them a dummy tiling layout.
+      /* Put in dummy values that will assertion fail in register setup using
+       * them, since you shouldn't be doing gmem work if gmem is not possible.
        */
       tiling->tile_count = (VkExtent2D) { 1, 1 };
-      tiling->tile0 = (VkExtent2D) { tile_align_w, tile_align_h };
+      tiling->tile0 = (VkExtent2D) { ~0, ~0 };
       return;
    }
 
