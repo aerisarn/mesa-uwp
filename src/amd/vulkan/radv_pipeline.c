@@ -2982,7 +2982,6 @@ radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo,
 
    if (sinfo->module != VK_NULL_HANDLE) {
       struct vk_shader_module *module = vk_shader_module_from_handle(sinfo->module);
-      STATIC_ASSERT(sizeof(out_stage->spirv.sha1) == sizeof(module->sha1));
 
       out_stage->spirv.data = module->data;
       out_stage->spirv.size = module->size;

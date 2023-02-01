@@ -2198,7 +2198,6 @@ struct radv_pipeline_stage {
       const struct vk_object_base *object;
       const char *data;
       uint32_t size;
-      unsigned char sha1[20];
    } spirv;
 
    const char *entrypoint;
