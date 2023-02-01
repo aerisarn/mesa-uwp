@@ -77,7 +77,7 @@ struct zink_fs_shadow_key {
 };
 
 struct zink_fs_key_base {
-   bool coord_replace_yinvert : 1;
+   bool point_coord_yinvert : 1;
    bool samples : 1;
    bool force_dual_color_blend : 1;
    bool force_persample_interp : 1;
