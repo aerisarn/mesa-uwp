@@ -59,9 +59,9 @@
     # We only want manual jobs to show up when it's not marge's pre-merge CI
     # run, otherwise she'll wait until her timeout.  The exception is
     # performance jobs, see below.
-    - if: ('$GITLAB_USER_LOGIN == "marge-bot" &&
-           $CI_PIPELINE_SOURCE == "merge_request_event"' &&
-           $CI_JOB_NAME !~ "/performance$/")
+    - if: '($GITLAB_USER_LOGIN == "marge-bot" &&
+           $CI_PIPELINE_SOURCE == "merge_request_event" &&
+           $CI_JOB_NAME !~ "/performance$/")'
       when: never
     - !reference [.scheduled_pipeline-rules, rules]
     - changes:
