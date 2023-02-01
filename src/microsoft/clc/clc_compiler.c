@@ -952,7 +952,10 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ubo,
               nir_address_format_32bit_index_offset);
    NIR_PASS_V(nir, clc_nir_lower_system_values, work_properties_var);
-   NIR_PASS_V(nir, dxil_nir_lower_loads_stores_to_dxil);
+   const struct dxil_nir_lower_loads_stores_options loads_stores_options = {
+      .use_16bit_ssbo = false,
+   };
+   NIR_PASS_V(nir, dxil_nir_lower_loads_stores_to_dxil, &loads_stores_options);
    NIR_PASS_V(nir, dxil_nir_opt_alu_deref_srcs);
    NIR_PASS_V(nir, dxil_nir_lower_atomics_to_dxil);
    NIR_PASS_V(nir, nir_lower_fp16_casts, nir_lower_fp16_all);

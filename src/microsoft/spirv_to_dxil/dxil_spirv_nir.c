@@ -1082,7 +1082,10 @@ dxil_spirv_nir_passes(nir_shader *nir,
 
    NIR_PASS_V(nir, dxil_nir_lower_atomics_to_dxil);
    NIR_PASS_V(nir, dxil_nir_split_clip_cull_distance);
-   NIR_PASS_V(nir, dxil_nir_lower_loads_stores_to_dxil);
+   const struct dxil_nir_lower_loads_stores_options loads_stores_options = {
+      .use_16bit_ssbo = false,
+   };
+   NIR_PASS_V(nir, dxil_nir_lower_loads_stores_to_dxil, &loads_stores_options);
    NIR_PASS_V(nir, dxil_nir_split_typed_samplers);
    NIR_PASS_V(nir, dxil_nir_lower_ubo_array_one_to_static);
    NIR_PASS_V(nir, nir_opt_dce);
