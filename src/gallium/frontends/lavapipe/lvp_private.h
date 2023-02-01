@@ -179,6 +179,7 @@ struct lvp_device {
    struct lvp_instance *                       instance;
    struct lvp_physical_device *physical_device;
    struct pipe_screen *pscreen;
+   void *noop_fs;
    bool poison_mem;
 };
 
@@ -433,6 +434,7 @@ struct lvp_pipeline {
    bool line_rectangular;
    bool gs_output_lines;
    bool library;
+   bool noop_fs;
 };
 
 struct lvp_event {

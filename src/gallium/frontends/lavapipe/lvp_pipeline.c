@@ -44,7 +44,7 @@ lvp_pipeline_destroy(struct lvp_device *device, struct lvp_pipeline *pipeline)
 {
    if (pipeline->shader_cso[PIPE_SHADER_VERTEX])
       device->queue.ctx->delete_vs_state(device->queue.ctx, pipeline->shader_cso[PIPE_SHADER_VERTEX]);
-   if (pipeline->shader_cso[PIPE_SHADER_FRAGMENT])
+   if (pipeline->shader_cso[PIPE_SHADER_FRAGMENT] && !pipeline->noop_fs)
       device->queue.ctx->delete_fs_state(device->queue.ctx, pipeline->shader_cso[PIPE_SHADER_FRAGMENT]);
    if (pipeline->shader_cso[PIPE_SHADER_GEOMETRY])
       device->queue.ctx->delete_gs_state(device->queue.ctx, pipeline->shader_cso[PIPE_SHADER_GEOMETRY]);
@@ -888,15 +888,8 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
       }
 
       if (has_fragment_shader == false) {
-         /* create a dummy fragment shader for this pipeline. */
-         nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT, NULL,
-                                                        "dummy_frag");
-
-         pipeline->pipeline_nir[MESA_SHADER_FRAGMENT] = b.shader;
-         struct pipe_shader_state shstate = {0};
-         shstate.type = PIPE_SHADER_IR_NIR;
-         shstate.ir.nir = nir_shader_clone(NULL, pipeline->pipeline_nir[MESA_SHADER_FRAGMENT]);
-         pipeline->shader_cso[PIPE_SHADER_FRAGMENT] = device->queue.ctx->create_fs_state(device->queue.ctx, &shstate);
+         pipeline->noop_fs = true;
+         pipeline->shader_cso[PIPE_SHADER_FRAGMENT] = device->noop_fs;
       }
    }
    return VK_SUCCESS;
