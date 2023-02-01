@@ -491,12 +491,12 @@ wsi_win32_image_init(VkDevice device_h,
 
    VkIcdSurfaceWin32 *win32_surface = (VkIcdSurfaceWin32 *)create_info->surface;
    chain->wnd = win32_surface->hwnd;
-   chain->chain_dc = GetDC(chain->wnd);
    image->chain = chain;
 
    if (chain->dxgi)
       return VK_SUCCESS;
 
+   chain->chain_dc = GetDC(chain->wnd);
    image->sw.dc = CreateCompatibleDC(chain->chain_dc);
    HBITMAP bmp = NULL;
 
