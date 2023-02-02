@@ -1726,19 +1726,19 @@ struct zink_context {
       struct zink_resource *descriptor_res[ZINK_DESCRIPTOR_BASE_TYPES][MESA_SHADER_STAGES][PIPE_MAX_SAMPLERS];
 
       struct {
-         struct util_idalloc tex_slots;
-         struct util_idalloc img_slots;
-         struct hash_table tex_handles;
-         struct hash_table img_handles;
+         struct util_idalloc tex_slots; //img, buffer
+         struct util_idalloc img_slots; //img, buffer
+         struct hash_table tex_handles; //img, buffer
+         struct hash_table img_handles; //img, buffer
          union {
             struct {
                VkBufferView *buffer_infos; //tex, img
             } t;
          };
          VkDescriptorImageInfo *img_infos; //tex, img
-         struct util_dynarray updates;
-         struct util_dynarray resident;
-      } bindless[2];  //img, buffer
+         struct util_dynarray updates; //texture, img
+         struct util_dynarray resident; //texture, img
+      } bindless[2];
       union {
          bool bindless_dirty[2]; //tex, img
          uint16_t any_bindless_dirty;
