@@ -713,6 +713,36 @@ static void emit_store_var(struct lp_build_nir_context *bld_base,
    }
 }
 
+/**
+ * Returns the address of the given constant array index and channel in a
+ * nir register.
+ */
+static LLVMValueRef reg_chan_pointer(struct lp_build_nir_context *bld_base,
+                                           struct lp_build_context *reg_bld,
+                                           const nir_register *reg,
+                                           LLVMValueRef reg_storage,
+                                           int array_index, int chan)
+{
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+   int nc = reg->num_components;
+
+   LLVMTypeRef chan_type = reg_bld->vec_type;
+   if (nc > 1)
+      chan_type = LLVMArrayType(chan_type, nc);
+
+   if (reg->num_array_elems > 0) {
+      LLVMTypeRef array_type = LLVMArrayType(chan_type, reg->num_array_elems);
+      reg_storage = lp_build_array_get_ptr2(gallivm, array_type, reg_storage,
+                                            lp_build_const_int32(gallivm, array_index));
+   }
+   if (nc > 1) {
+      reg_storage = lp_build_array_get_ptr2(gallivm, chan_type, reg_storage,
+                                            lp_build_const_int32(gallivm, chan));
+   }
+
+   return reg_storage;
+}
+
 static LLVMValueRef emit_load_reg(struct lp_build_nir_context *bld_base,
                                   struct lp_build_context *reg_bld,
                                   const nir_reg_src *reg,
@@ -762,13 +792,11 @@ static void emit_store_reg(struct lp_build_nir_context *bld_base,
    LLVMBuilderRef builder = gallivm->builder;
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
    int nc = reg->reg->num_components;
-   if (reg->reg->num_array_elems > 0) {
+   if (reg->indirect) {
       LLVMValueRef indirect_val = lp_build_const_int_vec(gallivm, uint_bld->type, reg->base_offset);
-      if (reg->indirect) {
-         LLVMValueRef max_index = lp_build_const_int_vec(gallivm, uint_bld->type, reg->reg->num_array_elems - 1);
-         indirect_val = LLVMBuildAdd(builder, indirect_val, indir_src, "");
-         indirect_val = lp_build_min(uint_bld, indirect_val, max_index);
-      }
+      LLVMValueRef max_index = lp_build_const_int_vec(gallivm, uint_bld->type, reg->reg->num_array_elems - 1);
+      indirect_val = LLVMBuildAdd(builder, indirect_val, indir_src, "");
+      indirect_val = lp_build_min(uint_bld, indirect_val, max_index);
       reg_storage = LLVMBuildBitCast(builder, reg_storage, LLVMPointerType(reg_bld->elem_type, 0), "");
       for (unsigned i = 0; i < nc; i++) {
          if (!(writemask & (1 << i)))
@@ -780,14 +808,13 @@ static void emit_store_reg(struct lp_build_nir_context *bld_base,
       return;
    }
 
-   LLVMTypeRef array_type = LLVMArrayType(reg_bld->vec_type, nc);
    for (unsigned i = 0; i < nc; i++) {
-      LLVMValueRef index = lp_build_const_int32(gallivm, i);
-      LLVMValueRef this_storage =
-            nc == 1 ? reg_storage
-                    : lp_build_array_get_ptr2(gallivm, array_type, reg_storage, index);
+      if (!(writemask & (1 << i)))
+         continue;
       dst[i] = LLVMBuildBitCast(builder, dst[i], reg_bld->vec_type, "");
-      lp_exec_mask_store(&bld->exec_mask, reg_bld, dst[i], this_storage);
+      lp_exec_mask_store(&bld->exec_mask, reg_bld, dst[i],
+                         reg_chan_pointer(bld_base, reg_bld, reg->reg, reg_storage,
+                                          reg->base_offset, i));
    }
 }
 
