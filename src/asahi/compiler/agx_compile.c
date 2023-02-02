@@ -1733,6 +1733,47 @@ agx_remap_varyings_vs(nir_shader *nir, struct agx_varyings_vs *varyings)
    varyings->nr_index = base;
 }
 
+/*
+ * Varyings that are used as texture coordinates should be kept at fp32, because
+ * fp16 does not have enough precision for large textures. It's technically
+ * conformant not to, but every app gets this wrong.
+ */
+static bool
+agx_gather_texcoords(nir_builder *b, nir_instr *instr, void *data)
+{
+   uint64_t *mask = data;
+
+   if (instr->type != nir_instr_type_tex)
+      return false;
+
+   nir_tex_instr *tex = nir_instr_as_tex(instr);
+
+   int coord_idx = nir_tex_instr_src_index(tex, nir_tex_src_coord);
+   if (coord_idx < 0)
+      return false;
+
+   nir_src src = tex->src[coord_idx].src;
+   nir_ssa_scalar x = nir_ssa_scalar_resolved(src.ssa, 0);
+   nir_ssa_scalar y = nir_ssa_scalar_resolved(src.ssa, 1);
+
+   if (x.def != y.def)
+      return false;
+
+   nir_instr *parent = x.def->parent_instr;
+
+   if (parent->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(parent);
+
+   if (intr->intrinsic != nir_intrinsic_load_interpolated_input)
+      return false;
+
+   nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+   *mask |= BITFIELD64_BIT(sem.location);
+   return false;
+}
+
 static bool
 agx_gather_flat(nir_builder *b, nir_instr *instr, void *data)
 {
@@ -1750,16 +1791,18 @@ agx_gather_flat(nir_builder *b, nir_instr *instr, void *data)
 }
 
 /*
- * Build a bit mask of varyings (by location) that are flatshaded. This
- * information is needed by lower_mediump_io.
+ * Build a bit mask of varyings (by location) that are flatshaded or used as
+ * texture coordinates. This information is needed by lower_mediump_io.
  */
 static uint64_t
-agx_flat_varying_mask(nir_shader *nir)
+agx_fp32_varying_mask(nir_shader *nir)
 {
    assert(nir->info.stage == MESA_SHADER_FRAGMENT);
 
    uint64_t mask = 0;
    nir_shader_instructions_pass(nir, agx_gather_flat, nir_metadata_all, &mask);
+   nir_shader_instructions_pass(nir, agx_gather_texcoords, nir_metadata_all,
+                                &mask);
    return mask;
 }
 
@@ -1910,7 +1953,7 @@ agx_preprocess_nir(nir_shader *nir)
        */
       NIR_PASS_V(nir, nir_lower_mediump_io,
                  nir_var_shader_in | nir_var_shader_out,
-                 ~agx_flat_varying_mask(nir), false);
+                 ~agx_fp32_varying_mask(nir), false);
    }
 
    NIR_PASS_V(nir, agx_nir_lower_ubo);
