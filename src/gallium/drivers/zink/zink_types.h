@@ -1730,7 +1730,11 @@ struct zink_context {
          struct util_idalloc img_slots;
          struct hash_table tex_handles;
          struct hash_table img_handles;
-         VkBufferView *buffer_infos; //tex, img
+         union {
+            struct {
+               VkBufferView *buffer_infos; //tex, img
+            } t;
+         };
          VkDescriptorImageInfo *img_infos; //tex, img
          struct util_dynarray updates;
          struct util_dynarray resident;

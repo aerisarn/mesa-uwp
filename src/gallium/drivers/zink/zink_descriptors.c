@@ -1561,7 +1561,7 @@ zink_descriptors_update_bindless(struct zink_context *ctx)
          wd.descriptorCount = 1;
          wd.descriptorType = type_from_bindless_index(wd.dstBinding);
          if (is_buffer)
-            wd.pTexelBufferView = &ctx->di.bindless[i].buffer_infos[wd.dstArrayElement];
+            wd.pTexelBufferView = &ctx->di.bindless[i].t.buffer_infos[wd.dstArrayElement];
          else
             wd.pImageInfo = &ctx->di.bindless[i].img_infos[handle];
          /* this sucks, but sets must be singly updated to be handled correctly */
