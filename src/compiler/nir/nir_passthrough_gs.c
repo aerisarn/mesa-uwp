@@ -128,18 +128,21 @@ array_size_for_prim(enum shader_prim prim)
 nir_shader *
 nir_create_passthrough_gs(const nir_shader_compiler_options *options,
                           const nir_shader *prev_stage,
-                          enum shader_prim primitive_type)
+                          enum shader_prim primitive_type,
+                          bool emulate_edgeflags)
 {
    unsigned int vertices_out = vertices_for_prim(primitive_type);
+   emulate_edgeflags = emulate_edgeflags && (prev_stage->info.outputs_written & VARYING_BIT_EDGE);
+   bool needs_closing = emulate_edgeflags && vertices_out >= 3;
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_GEOMETRY,
                                                   options,
                                                   "gs passthrough");
 
    nir_shader *nir = b.shader;
    nir->info.gs.input_primitive = gs_in_prim_for_topology(primitive_type);
-   nir->info.gs.output_primitive = gs_out_prim_for_topology(primitive_type);
+   nir->info.gs.output_primitive = emulate_edgeflags ? SHADER_PRIM_LINE_STRIP : gs_out_prim_for_topology(primitive_type);
    nir->info.gs.vertices_in = vertices_out;
-   nir->info.gs.vertices_out = vertices_out;
+   nir->info.gs.vertices_out = needs_closing ? vertices_out + 1 : vertices_out;
    nir->info.gs.invocations = 1;
    nir->info.gs.active_stream_mask = 1;
 
@@ -211,19 +214,29 @@ nir_create_passthrough_gs(const nir_shader_compiler_options *options,
       break;
    }
 
-   for (unsigned i = start_vert; i < end_vert; i += vert_step) {
+   nir_variable *edge_var = nir_find_variable_with_location(nir, nir_var_shader_in, VARYING_SLOT_EDGE);
+   for (unsigned i = start_vert; i < end_vert || needs_closing; i += vert_step) {
+      int idx = i < end_vert ? i : start_vert;
       /* Copy inputs to outputs. */
       for (unsigned j = 0, oj = 0; j < num_inputs; ++j) {
          if (in_vars[j]->data.location == VARYING_SLOT_EDGE) {
             continue;
          }
          /* no need to use copy_var to save a lower pass */
-         nir_ssa_def *value = nir_load_array_var_imm(&b, in_vars[j], i);
+         nir_ssa_def *value = nir_load_array_var_imm(&b, in_vars[j], idx);
          nir_store_var(&b, out_vars[oj], value,
                        (1u << value->num_components) - 1);
          ++oj;
       }
       nir_emit_vertex(&b, 0);
+      if (emulate_edgeflags) {
+         nir_ssa_def *edge_value = nir_channel(&b, nir_load_array_var_imm(&b, edge_var, idx), 0);
+         nir_if *edge_if = nir_push_if(&b, nir_fneu(&b, edge_value, nir_imm_float(&b, 1.0)));
+         nir_end_primitive(&b, 0);
+         nir_pop_if(&b, edge_if);
+      }
+      if (i >= end_vert)
+         break;
    }
 
    nir_end_primitive(&b, 0);
