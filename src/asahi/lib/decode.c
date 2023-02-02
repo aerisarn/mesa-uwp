@@ -330,7 +330,13 @@ static unsigned
 agxdecode_usc(const uint8_t *map, UNUSED uint64_t *link, UNUSED bool verbose,
               UNUSED void *data)
 {
+   enum agx_sampler_states *sampler_states = data;
    enum agx_usc_control type = map[0];
+
+   bool extended_samplers =
+      (sampler_states != NULL) &&
+      (((*sampler_states) == AGX_SAMPLER_STATES_8_EXTENDED) ||
+       ((*sampler_states) == AGX_SAMPLER_STATES_16_EXTENDED));
 
 #define USC_CASE(name, human)                                                  \
    case AGX_USC_CONTROL_##name: {                                              \
@@ -376,6 +382,11 @@ agxdecode_usc(const uint8_t *map, UNUSED uint64_t *link, UNUSED bool verbose,
       for (unsigned i = 0; i < temp.count; ++i) {
          DUMP_CL(SAMPLER, samp, "Sampler");
          samp += AGX_SAMPLER_LENGTH;
+
+         if (extended_samplers) {
+            DUMP_CL(BORDER, samp, "Border");
+            samp += AGX_BORDER_LENGTH;
+         }
       }
 
       return AGX_USC_SAMPLER_LENGTH;
@@ -462,7 +473,7 @@ agxdecode_record(uint64_t va, size_t size, bool verbose)
    if (hdr.fragment_shader) {
       agx_unpack(agxdecode_dump_stream, map, FRAGMENT_SHADER, frag);
       agxdecode_stateful(frag.pipeline, "Fragment pipeline", agxdecode_usc,
-                         verbose, NULL);
+                         verbose, &frag.sampler_state_register_count);
 
       if (frag.cf_bindings) {
          uint8_t *cf = agxdecode_fetch_gpu_mem(frag.cf_bindings, 128);
@@ -503,7 +514,7 @@ agxdecode_cdm(const uint8_t *map, uint64_t *link, bool verbose,
    case AGX_CDM_BLOCK_TYPE_COMPUTE_KERNEL: {
       agx_unpack(agxdecode_dump_stream, map, LAUNCH, cmd);
       agxdecode_stateful(cmd.pipeline, "Pipeline", agxdecode_usc, verbose,
-                         NULL);
+                         &cmd.sampler_state_register_count);
       DUMP_UNPACKED(LAUNCH, cmd, "Launch\n");
       return AGX_LAUNCH_LENGTH;
    }
@@ -563,6 +574,16 @@ agxdecode_vdm(const uint8_t *map, uint64_t *link, bool verbose,
    }
 
       VDM_PRINT(restart_index, RESTART_INDEX, "Restart index");
+
+      /* If word 1 is present but word 0 is not, fallback to compact samplers */
+      enum agx_sampler_states sampler_states = 0;
+
+      if (hdr.vertex_shader_word_0_present) {
+         agx_unpack(agxdecode_dump_stream, map, VDM_STATE_VERTEX_SHADER_WORD_0,
+                    word_0);
+         sampler_states = word_0.sampler_state_register_count;
+      }
+
       VDM_PRINT(vertex_shader_word_0, VERTEX_SHADER_WORD_0,
                 "Vertex shader word 0");
 
@@ -572,7 +593,7 @@ agxdecode_vdm(const uint8_t *map, uint64_t *link, bool verbose,
          fprintf(agxdecode_dump_stream, "Pipeline %X\n",
                  (uint32_t)word_1.pipeline);
          agxdecode_stateful(word_1.pipeline, "Pipeline", agxdecode_usc, verbose,
-                            NULL);
+                            &sampler_states);
       }
 
       VDM_PRINT(vertex_shader_word_1, VERTEX_SHADER_WORD_1,
