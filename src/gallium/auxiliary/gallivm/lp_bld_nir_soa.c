@@ -754,26 +754,21 @@ static LLVMValueRef emit_load_reg(struct lp_build_nir_context *bld_base,
    int nc = reg->reg->num_components;
    LLVMValueRef vals[NIR_MAX_VEC_COMPONENTS] = { NULL };
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
-   if (reg->reg->num_array_elems) {
+   if (reg->indirect) {
       LLVMValueRef indirect_val = lp_build_const_int_vec(gallivm, uint_bld->type, reg->base_offset);
-      if (reg->indirect) {
-         LLVMValueRef max_index = lp_build_const_int_vec(gallivm, uint_bld->type, reg->reg->num_array_elems - 1);
-         indirect_val = LLVMBuildAdd(builder, indirect_val, indir_src, "");
-         indirect_val = lp_build_min(uint_bld, indirect_val, max_index);
-      }
+      LLVMValueRef max_index = lp_build_const_int_vec(gallivm, uint_bld->type, reg->reg->num_array_elems - 1);
+      indirect_val = LLVMBuildAdd(builder, indirect_val, indir_src, "");
+      indirect_val = lp_build_min(uint_bld, indirect_val, max_index);
       reg_storage = LLVMBuildBitCast(builder, reg_storage, LLVMPointerType(reg_bld->elem_type, 0), "");
       for (unsigned i = 0; i < nc; i++) {
          LLVMValueRef indirect_offset = get_soa_array_offsets(uint_bld, indirect_val, nc, i, TRUE);
          vals[i] = build_gather(bld_base, reg_bld, reg_bld->elem_type, reg_storage, indirect_offset, NULL, NULL);
       }
    } else {
-      LLVMTypeRef array_type = LLVMArrayType(reg_bld->vec_type, nc);
       for (unsigned i = 0; i < nc; i++) {
-         LLVMValueRef index = lp_build_const_int32(gallivm, i);
-         LLVMValueRef this_storage =
-               nc == 1 ? reg_storage
-                       : lp_build_array_get_ptr2(gallivm, array_type, reg_storage, index);
-         vals[i] = LLVMBuildLoad2(builder, reg_bld->vec_type, this_storage, "");
+         vals[i] = LLVMBuildLoad2(builder, reg_bld->vec_type,
+                                  reg_chan_pointer(bld_base, reg_bld, reg->reg, reg_storage,
+                                                   reg->base_offset, i), "");
       }
    }
    return nc == 1 ? vals[0] : lp_nir_array_build_gather_values(builder, vals, nc);
