@@ -29,10 +29,6 @@ maxsize
 # Slow, not obviously fixable test
 spec@arb_compute_shader@local-id-explosion
 
-# Too slow, fixed in https://gitlab.freedesktop.org/mesa/piglit/-/merge_requests/624
-glsl-max-varyings
-longprim
-
 # Unreliable on shared runners due to timing
 ext_timer_query@time-elapsed
 spec@arb_timer_query@query gl_timestamp
