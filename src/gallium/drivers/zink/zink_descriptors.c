@@ -961,6 +961,8 @@ zink_descriptors_update_masked_buffer(struct zink_context *ctx, bool is_compute,
       return;
 
    u_foreach_bit(type, changed_sets | bind_sets) {
+      if (!pg->dd.pool_key[type])
+         continue;
       assert(type + 1 < pg->num_dsl);
       assert(type < ZINK_DESCRIPTOR_BASE_TYPES);
       bool changed = (changed_sets & BITFIELD_BIT(type)) > 0;
