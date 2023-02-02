@@ -5516,58 +5516,6 @@ visit_load_interpolated_input(isel_context* ctx, nir_intrinsic_instr* instr)
    }
 }
 
-bool
-check_vertex_fetch_size(isel_context* ctx, const ac_vtx_format_info* vtx_info, unsigned offset,
-                        unsigned binding_align, unsigned channels)
-{
-   if (!(vtx_info->has_hw_format & BITFIELD_BIT(channels - 1)))
-      return false;
-
-   /* Split typed vertex buffer loads on GFX6 and GFX10+ to avoid any
-    * alignment issues that triggers memory violations and eventually a GPU
-    * hang. This can happen if the stride (static or dynamic) is unaligned and
-    * also if the VBO offset is aligned to a scalar (eg. stride is 8 and VBO
-    * offset is 2 for R16G16B16A16_SNORM).
-    */
-   unsigned vertex_byte_size = vtx_info->chan_byte_size * channels;
-   return (ctx->options->gfx_level >= GFX7 && ctx->options->gfx_level <= GFX9) ||
-          (offset % vertex_byte_size == 0 && MAX2(binding_align, 1) % vertex_byte_size == 0);
-}
-
-uint8_t
-get_fetch_format(isel_context* ctx, const ac_vtx_format_info* vtx_info, unsigned offset,
-                 unsigned* channels, unsigned max_channels, unsigned binding_align)
-{
-   if (!vtx_info->chan_byte_size) {
-      *channels = vtx_info->num_channels;
-      return vtx_info->hw_format[0];
-   }
-
-   unsigned num_channels = *channels;
-   if (!check_vertex_fetch_size(ctx, vtx_info, offset, binding_align, *channels)) {
-      unsigned new_channels = num_channels + 1;
-      /* first, assume more loads is worse and try using a larger data format */
-      while (new_channels <= max_channels &&
-             !check_vertex_fetch_size(ctx, vtx_info, offset, binding_align, new_channels)) {
-         new_channels++;
-      }
-
-      if (new_channels > max_channels) {
-         /* then try decreasing load size (at the cost of more loads) */
-         new_channels = *channels;
-         while (new_channels > 1 &&
-                !check_vertex_fetch_size(ctx, vtx_info, offset, binding_align, new_channels))
-            new_channels--;
-      }
-
-      if (new_channels < *channels)
-         *channels = new_channels;
-      num_channels = new_channels;
-   }
-
-   return vtx_info->hw_format[num_channels - 1];
-}
-
 void
 visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
 {
@@ -5648,8 +5596,10 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
          bool use_mubuf = vtx_info->chan_byte_size == 4 && bitsize != 16;
          unsigned fetch_fmt = V_008F0C_BUF_DATA_FORMAT_INVALID;
          if (!use_mubuf) {
-            fetch_fmt = get_fetch_format(ctx, vtx_info, fetch_offset, &fetch_component,
-                                         vtx_info->num_channels - channel_start, binding_align);
+            fetch_component = ac_get_safe_fetch_size(ctx->program->gfx_level, vtx_info, fetch_offset,
+                                                     vtx_info->num_channels - channel_start, binding_align,
+                                                     fetch_component);
+            fetch_fmt = vtx_info->hw_format[fetch_component - 1];
          } else {
             /* GFX6 only supports loading vec3 with MTBUF, split to vec2,scalar. */
             if (fetch_component == 3 && ctx->options->gfx_level == GFX6)
