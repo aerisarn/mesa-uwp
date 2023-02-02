@@ -965,6 +965,7 @@ endif
 c_msvc_compat_args = []
 no_override_init_args = []
 cpp_msvc_compat_args = []
+ld_args_gc_sections = []
 if cc.get_argument_syntax() == 'msvc'
   _trial = [
     '/wd4018',  # signed/unsigned mismatch
@@ -1044,7 +1045,9 @@ else
   # own sections and GC the sections after linking.  This lets drivers
   # drop shared code unused by that specific driver (particularly
   # relevant for Vulkan drivers).
-  if cc.has_link_argument('-Wl,--gc-sections')
+  if cc.links('static char unused() { return 5; } int main() { return 0; }',
+              args : '-Wl,--gc-sections', name : 'gc-sections')
+    ld_args_gc_sections += '-Wl,--gc-sections'
     _trial_c += ['-ffunction-sections', '-fdata-sections']
     _trial_cpp += ['-ffunction-sections', '-fdata-sections']
   endif
@@ -1379,11 +1382,6 @@ endif
 ld_args_bsymbolic = []
 if cc.links('int main() { return 0; }', args : '-Wl,-Bsymbolic', name : 'Bsymbolic')
   ld_args_bsymbolic += '-Wl,-Bsymbolic'
-endif
-ld_args_gc_sections = []
-if cc.links('static char unused() { return 5; } int main() { return 0; }',
-            args : '-Wl,--gc-sections', name : 'gc-sections')
-  ld_args_gc_sections += '-Wl,--gc-sections'
 endif
 with_ld_version_script = false
 if cc.links('int main() { return 0; }',
