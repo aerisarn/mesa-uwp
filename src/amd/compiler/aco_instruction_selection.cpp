@@ -5178,30 +5178,6 @@ store_vmem_mubuf(isel_context* ctx, Temp src, Temp descriptor, Temp voffset, Tem
    }
 }
 
-void
-load_vmem_mubuf(isel_context* ctx, Temp dst, Temp descriptor, Temp voffset, Temp soffset, Temp idx,
-                unsigned base_const_offset, unsigned elem_size_bytes, unsigned num_components,
-                unsigned swizzle_element_size, bool glc, bool slc, memory_sync_info sync)
-{
-   assert(elem_size_bytes == 1 || elem_size_bytes == 2 || elem_size_bytes == 4 || elem_size_bytes == 8);
-   assert((num_components * elem_size_bytes) == dst.bytes());
-
-   Builder bld(ctx->program, ctx->block);
-
-   LoadEmitInfo info = {Operand(voffset), dst, num_components, elem_size_bytes, descriptor};
-   info.idx = idx;
-   info.component_stride = swizzle_element_size;
-   info.glc = glc;
-   info.slc = slc;
-   info.swizzle_component_size = swizzle_element_size ? 4 : 0;
-   info.align_mul = MIN2(elem_size_bytes, 4);
-   info.align_offset = 0;
-   info.soffset = soffset;
-   info.const_offset = base_const_offset;
-   info.sync = sync;
-   emit_load(ctx, bld, info, mubuf_load_params);
-}
-
 Temp
 wave_id_in_threadgroup(isel_context* ctx)
 {
@@ -7207,8 +7183,19 @@ visit_load_buffer(isel_context* ctx, nir_intrinsic_instr* intrin)
    nir_variable_mode mem_mode = nir_intrinsic_memory_modes(intrin);
    memory_sync_info sync(aco_storage_mode_from_nir_mem_mode(mem_mode));
 
-   load_vmem_mubuf(ctx, dst, descriptor, v_offset, s_offset, idx, const_offset, elem_size_bytes,
-                   num_components, swizzle_element_size, glc, slc, sync);
+   LoadEmitInfo info = {Operand(v_offset), dst, num_components, elem_size_bytes, descriptor};
+   info.idx = idx;
+   info.component_stride = swizzle_element_size;
+   info.glc = glc;
+   info.slc = slc;
+   info.swizzle_component_size = swizzle_element_size ? 4 : 0;
+   info.align_mul = MIN2(elem_size_bytes, 4);
+   info.align_offset = 0;
+   info.soffset = s_offset;
+   info.const_offset = const_offset;
+   info.sync = sync;
+
+   emit_load(ctx, bld, info, mubuf_load_params);
 }
 
 void
