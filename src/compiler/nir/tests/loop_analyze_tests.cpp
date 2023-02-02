@@ -906,6 +906,18 @@ TEST_F(nir_loop_analyze_test, five_iterations_ige_inverted)
    }
 }
 
+#define COMPARE_REVERSE(comp)                                           \
+   static nir_ssa_def *                                                 \
+   nir_ ## comp ## _rev(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y) \
+   {                                                                    \
+      return nir_ ## comp (b, y, x);                                    \
+   }
+
+COMPARE_REVERSE(ilt)
+COMPARE_REVERSE(ige)
+COMPARE_REVERSE(ult)
+COMPARE_REVERSE(uge)
+
 #define UNKNOWN_COUNT_TEST(_init_value, _cond_value, _incr_value, cond, incr) \
    TEST_F(nir_loop_analyze_test, incr ## _ ## cond ## _unknown_count)   \
    {                                                                    \
@@ -1014,6 +1026,16 @@ INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x80000000, 0xDEADBEEF, 0x00000001, ieq, ushr)
 
 /*    uint i = 0x40000000;
  *    while (true) {
+ *       if (0x43210000 < i)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x40000000, 0x43210000, 0x00000001, ult_rev, ushr)
+
+/*    uint i = 0x40000000;
+ *    while (true) {
  *       if (i >= 0x80000000)
  *          break;
  *
@@ -1021,6 +1043,11 @@ INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x80000000, 0xDEADBEEF, 0x00000001, ieq, ushr)
  *    }
  */
 INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x40000000, 0x80000000, 0x00000001, uge, ushr)
+
+/* There is no uge_rev / ushr infinite loop test because I could not think of
+ * a way to construct one.
+ */
+/* INFINITE_LOOP_UNKNOWN_COUNT_TEST(0xBADDC0DE, 0xBADDC0DE, 0xBADDC0DE, uge_rev, ushr) */
 
 /*    uint i = 0x00001234;
  *    while (true) {
@@ -1048,6 +1075,16 @@ INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x12345678, 0x00000003, 0x048d159e, ieq,
  */
 /* INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0xBADDC0DE, 0xBADDC0DE, 0xBADDC0DE, ult, ushr) */
 
+/*    uint i = 0x87654321;
+ *    while (true) {
+ *       i >>= 2;
+ *
+ *       if (0x77777777 < i)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x87654321, 0x00000002, 0x77777777, ult_rev, ushr)
+
 /*    uint i = 0x80000000;
  *    while (true) {
  *       i >>= 3;
@@ -1057,6 +1094,11 @@ INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x12345678, 0x00000003, 0x048d159e, ieq,
  *    }
  */
 INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000003, 0x40000000, uge, ushr)
+
+/* There is no uge_rev / ushr infinite loop test because I could not think of
+ * a way to construct one.
+ */
+/* INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0xBADDC0DE, 0xBADDC0DE, 0xBADDC0DE, uge_rev, ushr) */
 
 /*    uint i = 0x80000000;
  *    while (true) {
@@ -1090,6 +1132,16 @@ UNKNOWN_COUNT_TEST(0x80000000, 0x00000002, 0x00000001, ult, ushr)
 
 /*    uint i = 0x80000000;
  *    while (true) {
+ *       if (2 < i)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x80000000, 0x00000002, 0x00000001, ult_rev, ushr)
+
+/*    uint i = 0x80000000;
+ *    while (true) {
  *       if (i >= 0x80000000)
  *          break;
  *
@@ -1097,6 +1149,16 @@ UNKNOWN_COUNT_TEST(0x80000000, 0x00000002, 0x00000001, ult, ushr)
  *    }
  */
 UNKNOWN_COUNT_TEST(0x80000000, 0x80000000, 0x00000001, uge, ushr)
+
+/*    uint i = 0x80000000;
+ *    while (true) {
+ *       if (0x00008000 >= i)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x80000000, 0x00008000, 0x00000001, uge_rev, ushr)
 
 /*    uint i = 0x80000000;
  *    while (true) {
@@ -1128,6 +1190,16 @@ UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x00000000, ieq, ushr)
  */
 UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x80000000, ult, ushr)
 
+/*    uint i = 0xAAAAAAAA;
+ *    while (true) {
+ *       i >>= 1;
+ *
+ *       if (0x08000000 < i)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0xAAAAAAAA, 0x00000001, 0x08000000, ult_rev, ushr)
+
 /*    uint i = 0x80000000;
  *    while (true) {
  *       i >>= 1;
@@ -1137,6 +1209,16 @@ UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x80000000, ult, ushr)
  *    }
  */
 UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x00000000, uge, ushr)
+
+/*    uint i = 0x80000000;
+ *    while (true) {
+ *       i >>= 1;
+ *
+ *       if (0x00000008 >= i)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x00000008, uge_rev, ushr)
 
 /*    int i = 0xffffffff;
  *    while (true) {
@@ -1170,6 +1252,16 @@ INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x7fffffff, 0x00000000, 0x00000001, ilt, ishr)
 
 /*    int i = 0x80000000;
  *    while (true) {
+ *       if (0 < i)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x80000000, 0x00000000, 0x00000001, ilt_rev, ishr)
+
+/*    int i = 0x80000000;
+ *    while (true) {
  *       if (i >= 0)
  *          break;
  *
@@ -1177,6 +1269,16 @@ INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x7fffffff, 0x00000000, 0x00000001, ilt, ishr)
  *    }
  */
 INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x80000000, 0x00000000, 0x00000001, ige, ishr)
+
+/*    int i = 0x76543210;
+ *    while (true) {
+ *       if (-1 >= i)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x76543210, 0xffffffff, 0x00000001, ige_rev, ishr)
 
 /*    int i = 0xffffffff;
  *    while (true) {
@@ -1212,11 +1314,31 @@ INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000000, ilt,
  *    while (true) {
  *       i >>= 1;
  *
+ *       if (1 < i)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x00000001, ilt_rev, ishr)
+
+/*    int i = 0x80000000;
+ *    while (true) {
+ *       i >>= 1;
+ *
  *       if (i >= 0)
  *          break;
  *    }
  */
 INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0x00000000, ige, ishr)
+
+/*    int i = 0x76543210;
+ *    while (true) {
+ *       i >>= 7;
+ *
+ *       if (-1 >= i)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x76543210, 0x00000007, 0xffffffff, ige_rev, ishr)
 
 /*    int i = 0x7fffffff;
  *    while (true) {
@@ -1250,6 +1372,16 @@ UNKNOWN_COUNT_TEST(0x7fffffff, 0x00000001, 0x00000001, ilt, ishr)
 
 /*    int i = 0x80000000;
  *    while (true) {
+ *       if (0xffff0000 < i)
+ *          break;
+ *
+ *       i >>= 1;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x80000000, 0xffff0000, 0x00000001, ilt_rev, ishr)
+
+/*    int i = 0x80000000;
+ *    while (true) {
  *       if (i >= -1)
  *          break;
  *
@@ -1257,6 +1389,16 @@ UNKNOWN_COUNT_TEST(0x7fffffff, 0x00000001, 0x00000001, ilt, ishr)
  *    }
  */
 UNKNOWN_COUNT_TEST(0x80000000, 0xffffffff, 0x00000001, ige, ishr)
+
+/*    int i = 0x12345678;
+ *    while (true) {
+ *       if (1 >= i)
+ *          break;
+ *
+ *       i >>= 4;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x12345678, 0x00000001, 0x00000004, ige_rev, ishr)
 
 /*    int i = 0x7fffffff;
  *    while (true) {
@@ -1288,6 +1430,16 @@ UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000000, ieq, ishr)
  */
 UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000001, ilt, ishr)
 
+/*    int i = 0x80000000;
+ *    while (true) {
+ *       i >>= 1;
+ *
+ *       if (-2 < i)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000001, 0xfffffffe, ilt_rev, ishr)
+
 /*    int i = 0xbfffffff;
  *    while (true) {
  *       i >>= 1;
@@ -1297,6 +1449,16 @@ UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000001, ilt, ishr)
  *    }
  */
 UNKNOWN_COUNT_TEST_INVERT(0xbfffffff, 0x00000001, 0xfffffffe, ige, ishr)
+
+/*    int i = 0x7fffffff;
+ *    while (true) {
+ *       i >>= 1;
+ *
+ *       if (2 >= i)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000002, ige_rev, ishr)
 
 /*    int i = 0;
  *    while (true) {
@@ -1328,6 +1490,16 @@ INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x00000001, 0x00000003, 0x00000001, ieq, ishl)
  */
 INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x00000001, 0x80000001, 0x00000002, ilt, ishl)
 
+/*    int i = 0xffff0000;
+ *    while (true) {
+ *       if (1 < i)
+ *          break;
+ *
+ *       i <<= 2;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0xffff0000, 0x00000001, 0x00000002, ilt_rev, ishl)
+
 /*    int i = 1;
  *    while (true) {
  *       if (i >= 0x70000000)
@@ -1337,6 +1509,16 @@ INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x00000001, 0x80000001, 0x00000002, ilt, ishl)
  *    }
  */
 INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x00000001, 0x70000000, 0x00000001, ige, ishl)
+
+/*    int i = 1;
+ *    while (true) {
+ *       if (0xf0000000 >= i)
+ *          break;
+ *
+ *       i <<= 2;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x00000001, 0xf0000000, 0x00000002, ige_rev, ishl)
 
 /*    int i = 0x80000000;
  *    while (true) {
@@ -1368,6 +1550,16 @@ INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0xf0f0f0f0, 0x00000002, 0xe1e1e1e0, ieq,
  */
 INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x00000001, 0x00000002, 0x00000000, ilt, ishl)
 
+/*    int i = 0xffffffff;
+ *    while (true) {
+ *       i <<= 2;
+ *
+ *       if (0 < i)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0xffffffff, 0x00000002, 0x00000000, ilt_rev, ishl)
+
 /*    int i = 0x88888888;
  *    while (true) {
  *       i <<= 4;
@@ -1377,6 +1569,16 @@ INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x00000001, 0x00000002, 0x00000000, ilt,
  *    }
  */
 INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x88888888, 0x00000004, 0x00000001, ige, ishl)
+
+/*    int i = 0x77777777;
+ *    while (true) {
+ *       i <<= 4;
+ *
+ *       if (-1 >= i)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x77777777, 0x00000004, 0xffffffff, ige_rev, ishl)
 
 /*    int i = 1;
  *    while (true) {
@@ -1408,6 +1610,16 @@ UNKNOWN_COUNT_TEST(0x00000001, 0x00001000, 0x00000004, ieq, ishl)
  */
 UNKNOWN_COUNT_TEST(0x00000001, 0x00000001, 0x00000001, ilt, ishl)
 
+/*    int i = 0xffff0000;
+ *    while (true) {
+ *       if (-1 < i)
+ *          break;
+ *
+ *       i <<= 2;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0xffff0000, 0xffffffff, 0x00000002, ilt_rev, ishl)
+
 /*    int i = 0xf;
  *    while (true) {
  *       if (i >= 0x0000ffff)
@@ -1417,6 +1629,16 @@ UNKNOWN_COUNT_TEST(0x00000001, 0x00000001, 0x00000001, ilt, ishl)
  *    }
  */
 UNKNOWN_COUNT_TEST(0x0000000f, 0x0000ffff, 0x00000003, ige, ishl)
+
+/*    int i = 0x0000000f;
+ *    while (true) {
+ *       if (-196608 >= i)
+ *          break;
+ *
+ *       i <<= 4;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x0000000f, 0xfffd0000, 0x00000004, ige_rev, ishl)
 
 /*    int i = 1;
  *    while (true) {
@@ -1448,6 +1670,16 @@ UNKNOWN_COUNT_TEST_INVERT(0x00000001, 0x00000008, 0x01000000, ieq, ishl)
  */
 UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000001, ilt, ishl)
 
+/*    int i = 0x7fff;
+ *    while (true) {
+ *       i <<= 2;
+ *
+ *       if (0x1fffffff < i)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0x00007fff, 0x00000002, 0x1fffffff, ilt_rev, ishl)
+
 /*    int i = 0xffff7fff;
  *    while (true) {
  *       i <<= 4;
@@ -1457,3 +1689,13 @@ UNKNOWN_COUNT_TEST_INVERT(0x7fffffff, 0x00000001, 0x00000001, ilt, ishl)
  *    }
  */
 UNKNOWN_COUNT_TEST_INVERT(0xffff7fff, 0x00000004, 0xfffffffe, ige, ishl)
+
+/*    int i = 0x0000f0f0;
+ *    while (true) {
+ *       i <<= 4;
+ *
+ *       if (-2 >= i)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0x0000f0f0, 0x00000004, 0xfffffffe, ige_rev, ishl)
