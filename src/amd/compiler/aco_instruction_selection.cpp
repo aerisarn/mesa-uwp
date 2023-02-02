@@ -5574,47 +5574,41 @@ mtbuf_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsigne
 const EmitLoadParameters mtbuf_load_params{mtbuf_load_callback, false, true, 4096};
 
 void
-visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
+visit_load_fs_input(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    Builder bld(ctx->program, ctx->block);
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
    nir_src offset = *nir_get_io_offset_src(instr);
 
-   if (ctx->shader->info.stage == MESA_SHADER_FRAGMENT) {
-      if (!nir_src_is_const(offset) || nir_src_as_uint(offset))
-         isel_err(offset.ssa->parent_instr,
-                  "Unimplemented non-zero nir_intrinsic_load_input offset");
+   if (!nir_src_is_const(offset) || nir_src_as_uint(offset))
+      isel_err(offset.ssa->parent_instr, "Unimplemented non-zero nir_intrinsic_load_input offset");
 
-      Temp prim_mask = get_arg(ctx, ctx->args->prim_mask);
+   Temp prim_mask = get_arg(ctx, ctx->args->prim_mask);
 
-      unsigned idx = nir_intrinsic_base(instr);
-      unsigned component = nir_intrinsic_component(instr);
-      unsigned vertex_id = 0; /* P0 */
+   unsigned idx = nir_intrinsic_base(instr);
+   unsigned component = nir_intrinsic_component(instr);
+   unsigned vertex_id = 0; /* P0 */
 
-      if (instr->intrinsic == nir_intrinsic_load_input_vertex)
-         vertex_id = nir_src_as_uint(instr->src[0]);
+   if (instr->intrinsic == nir_intrinsic_load_input_vertex)
+      vertex_id = nir_src_as_uint(instr->src[0]);
 
-      if (instr->dest.ssa.num_components == 1 &&
-          instr->dest.ssa.bit_size != 64) {
-         emit_interp_mov_instr(ctx, idx, component, vertex_id, dst, prim_mask);
-      } else {
-         unsigned num_components = instr->dest.ssa.num_components;
-         if (instr->dest.ssa.bit_size == 64)
-            num_components *= 2;
-         aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(
-            aco_opcode::p_create_vector, Format::PSEUDO, num_components, 1)};
-         for (unsigned i = 0; i < num_components; i++) {
-            unsigned chan_component = (component + i) % 4;
-            unsigned chan_idx = idx + (component + i) / 4;
-            vec->operands[i] = Operand(bld.tmp(instr->dest.ssa.bit_size == 16 ? v2b : v1));
-            emit_interp_mov_instr(ctx, chan_idx, chan_component, vertex_id,
-                                  vec->operands[i].getTemp(), prim_mask);
-         }
-         vec->definitions[0] = Definition(dst);
-         bld.insert(std::move(vec));
-      }
+   if (instr->dest.ssa.num_components == 1 && instr->dest.ssa.bit_size != 64) {
+      emit_interp_mov_instr(ctx, idx, component, vertex_id, dst, prim_mask);
    } else {
-      unreachable("Shader stage not implemented");
+      unsigned num_components = instr->dest.ssa.num_components;
+      if (instr->dest.ssa.bit_size == 64)
+         num_components *= 2;
+      aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(
+         aco_opcode::p_create_vector, Format::PSEUDO, num_components, 1)};
+      for (unsigned i = 0; i < num_components; i++) {
+         unsigned chan_component = (component + i) % 4;
+         unsigned chan_idx = idx + (component + i) / 4;
+         vec->operands[i] = Operand(bld.tmp(instr->dest.ssa.bit_size == 16 ? v2b : v1));
+         emit_interp_mov_instr(ctx, chan_idx, chan_component, vertex_id, vec->operands[i].getTemp(),
+                               prim_mask);
+      }
+      vec->definitions[0] = Definition(dst);
+      bld.insert(std::move(vec));
    }
 }
 
@@ -8107,7 +8101,12 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_load_interpolated_input: visit_load_interpolated_input(ctx, instr); break;
    case nir_intrinsic_store_output: visit_store_output(ctx, instr); break;
    case nir_intrinsic_load_input:
-   case nir_intrinsic_load_input_vertex: visit_load_input(ctx, instr); break;
+   case nir_intrinsic_load_input_vertex:
+      if (ctx->program->stage == fragment_fs)
+         visit_load_fs_input(ctx, instr);
+      else
+         isel_err(&instr->instr, "Shader inputs should have been lowered in NIR.");
+      break;
    case nir_intrinsic_load_per_vertex_input: visit_load_per_vertex_input(ctx, instr); break;
    case nir_intrinsic_load_ubo: visit_load_ubo(ctx, instr); break;
    case nir_intrinsic_load_push_constant: visit_load_push_constant(ctx, instr); break;
