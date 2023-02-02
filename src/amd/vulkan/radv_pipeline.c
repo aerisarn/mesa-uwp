@@ -2118,10 +2118,10 @@ static bool
 radv_pipeline_needs_dynamic_ps_epilog(const struct radv_graphics_pipeline *pipeline)
 {
    /* These dynamic states need to compile PS epilogs on-demand. */
-   return pipeline->dynamic_states & (RADV_DYNAMIC_COLOR_BLEND_ENABLE |
-                                      RADV_DYNAMIC_COLOR_WRITE_MASK |
-                                      RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE |
-                                      RADV_DYNAMIC_COLOR_BLEND_EQUATION);
+   return !!(pipeline->dynamic_states & (RADV_DYNAMIC_COLOR_BLEND_ENABLE |
+                                         RADV_DYNAMIC_COLOR_WRITE_MASK |
+                                         RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE |
+                                         RADV_DYNAMIC_COLOR_BLEND_EQUATION));
 }
 
 struct radv_pipeline_key
