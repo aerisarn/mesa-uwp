@@ -1699,3 +1699,170 @@ UNKNOWN_COUNT_TEST_INVERT(0xffff7fff, 0x00000004, 0xfffffffe, ige, ishl)
  *    }
  */
 UNKNOWN_COUNT_TEST_INVERT(0x0000f0f0, 0x00000004, 0xfffffffe, ige_rev, ishl)
+
+/*    int i = 0;
+ *    while (true) {
+ *       if (i != 0)
+ *          break;
+ *
+ *       i = i * 7;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x00000000, 0x00000000, 0x00000007, ine, imul)
+
+/*    int i = 1;
+ *    while (true) {
+ *       if (i == 4)
+ *          break;
+ *
+ *       i = i * 3;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x00000001, 0x00000004, 0x00000003, ieq, imul)
+
+/*    int i = 1;
+ *    while (true) {
+ *       // The only value less than 0x80000001 is 0x80000000, but the result
+ *       // of the multiply can never be even.
+ *       if (i < 0x80000001)
+ *          break;
+ *
+ *       i = i * 5;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x00000001, 0x80000001, 0x00000005, ilt, imul)
+
+/*    int i = 2;
+ *    while (true) {
+ *       if (i >= 0x7f000000)
+ *          break;
+ *
+ *       i = i * 6;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST(0x00000002, 0x7f000000, 0x00000006, ige, imul)
+
+/*    int i = 0x80000000;
+ *    while (true) {
+ *       i = i * 6;
+ *
+ *       if (i != 0)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x80000000, 0x00000006, 0x00000000, ine, imul)
+
+/*    int i = 0xf0f0f0f0;
+ *    while (true) {
+ *       i = i * 6;
+ *
+ *       if (i == 0xe1e1e1e1)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0xf0f0f0f0, 0x00000006, 0xe1e1e1e1, ieq, imul)
+
+/*    int i = 3;
+ *    while (true) {
+ *       i = i * 3;
+ *
+ *       // The only value less than 0x80000001 is 0x80000000, but the result
+ *       // of the multiply can never be even.
+ *       if (i < 0x80000001)
+ *          break;
+ *    }
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x00000003, 0x00000003, 0x80000001, ilt, imul)
+
+/*    int i = 0x88888888;
+ *    while (true) {
+ *       i = i * 16;
+ *
+ *       if (i >= 1)
+ *          break;
+ *    }
+ *
+ * I'm not fond of this test because (i * 16) is the same as (i << 4), but I
+ * could not think of another way.
+ */
+INFINITE_LOOP_UNKNOWN_COUNT_TEST_INVERT(0x88888888, 0x00000010, 0x00000001, ige, imul)
+
+/*    int i = 1;
+ *    while (true) {
+ *       if (i != 1)
+ *          break;
+ *
+ *       i = i * 7;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x00000001, 0x00000001, 0x00000007, ine, imul)
+
+/*    int i = 2;
+ *    while (true) {
+ *       if (i == 54)
+ *          break;
+ *
+ *       i = i * 3;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x00000002, 0x00000036, 0x00000003, ieq, imul)
+
+/*    int i = 5;
+ *    while (true) {
+ *       if (i < 1)
+ *          break;
+ *
+ *       i = i * -3;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x00000005, 0x00000001, 0xfffffffd, ilt, imul)
+
+/*    int i = 0xf;
+ *    while (true) {
+ *       if (i >= 0x0000ffff)
+ *          break;
+ *
+ *       i = i * 11;
+ *    }
+ */
+UNKNOWN_COUNT_TEST(0x0000000f, 0x0000ffff, 0x0000000b, ige, imul)
+
+/*    int i = 3;
+ *    while (true) {
+ *       i = i * -5;
+ *
+ *       if (i != -15)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0x00000003, 0xfffffffb, 0xfffffff1, ine, imul)
+
+/*    int i = 3;
+ *    while (true) {
+ *       i = i * -7;
+ *
+ *       if (i == 0x562b3)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0x00000003, 0xfffffff9, 0x000562b3, ieq, imul)
+
+/*    int i = 0x7f;
+ *    while (true) {
+ *       i = i * 3;
+ *
+ *       if (i < 1)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0x0000007f, 0x00000003, 0x00000001, ilt, imul)
+
+/*    int i = 0xffff7fff;
+ *    while (true) {
+ *       i = i * 15;
+ *
+ *       if (i >= 0x34cce9b0)
+ *          break;
+ *    }
+ */
+UNKNOWN_COUNT_TEST_INVERT(0xffff7fff, 0x0000000f, 0x34cce9b0, ige, imul)
