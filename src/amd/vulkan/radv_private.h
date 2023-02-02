@@ -1706,6 +1706,11 @@ struct radv_dispatch_info {
    bool unaligned;
 
    /**
+    * Whether waves must be launched in order.
+    */
+   bool ordered;
+
+   /**
     * Indirect compute parameters resource.
     */
    struct radeon_winsys_bo *indirect;

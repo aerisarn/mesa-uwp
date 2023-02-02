@@ -9561,6 +9561,9 @@ radv_emit_dispatch_packets(struct radv_cmd_buffer *cmd_buffer,
       dispatch_initiator |= S_00B800_CS_W32_EN(1);
    }
 
+   if (info->ordered)
+      dispatch_initiator &= ~S_00B800_ORDER_MODE(1);
+
    if (info->va) {
       if (info->indirect)
          radv_cs_add_buffer(ws, cs, info->indirect);
