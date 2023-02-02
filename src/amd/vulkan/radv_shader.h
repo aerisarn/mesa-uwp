@@ -342,8 +342,10 @@ struct radv_shader_info {
       uint8_t depth_layout;
       bool allow_flat_shading;
       bool has_epilog;
+      bool mrt0_is_dual_src;
       unsigned spi_ps_input;
       unsigned colors_written;
+      unsigned spi_shader_col_format;
       uint8_t color0_written;
    } ps;
    struct {

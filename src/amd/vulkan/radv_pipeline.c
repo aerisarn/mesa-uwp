@@ -449,15 +449,35 @@ radv_can_enable_dual_src(const struct vk_color_blend_attachment_state *att)
    return false;
 }
 
+static bool
+radv_pipeline_needs_dynamic_ps_epilog(const struct radv_graphics_pipeline *pipeline)
+{
+   /* These dynamic states need to compile PS epilogs on-demand. */
+   return !!(pipeline->dynamic_states & (RADV_DYNAMIC_COLOR_BLEND_ENABLE |
+                                         RADV_DYNAMIC_COLOR_WRITE_MASK |
+                                         RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE |
+                                         RADV_DYNAMIC_COLOR_BLEND_EQUATION));
+}
+
 static struct radv_blend_state
 radv_pipeline_init_blend_state(struct radv_graphics_pipeline *pipeline,
-                               const struct vk_graphics_pipeline_state *state,
-                               const struct radv_pipeline_key *key)
+                               const struct vk_graphics_pipeline_state *state)
 {
+   const struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
    struct radv_blend_state blend = {0};
+   unsigned spi_shader_col_format = 0;
 
-   blend.cb_shader_mask = ac_get_cb_shader_mask(key->ps.epilog.spi_shader_col_format);
-   blend.spi_shader_col_format = key->ps.epilog.spi_shader_col_format;
+   if (radv_pipeline_needs_dynamic_ps_epilog(pipeline))
+      return blend;
+
+   if (ps->info.ps.has_epilog) {
+      spi_shader_col_format = pipeline->ps_epilog->spi_shader_col_format;
+   } else {
+      spi_shader_col_format = ps->info.ps.spi_shader_col_format;
+   }
+
+   blend.cb_shader_mask = ac_get_cb_shader_mask(spi_shader_col_format);
+   blend.spi_shader_col_format = spi_shader_col_format;
 
    return blend;
 }
@@ -2112,16 +2132,6 @@ radv_graphics_pipeline_link(const struct radv_graphics_pipeline *pipeline,
 
       next_stage = &stages[s];
    }
-}
-
-static bool
-radv_pipeline_needs_dynamic_ps_epilog(const struct radv_graphics_pipeline *pipeline)
-{
-   /* These dynamic states need to compile PS epilogs on-demand. */
-   return !!(pipeline->dynamic_states & (RADV_DYNAMIC_COLOR_BLEND_ENABLE |
-                                         RADV_DYNAMIC_COLOR_WRITE_MASK |
-                                         RADV_DYNAMIC_ALPHA_TO_COVERAGE_ENABLE |
-                                         RADV_DYNAMIC_COLOR_BLEND_EQUATION));
 }
 
 struct radv_pipeline_key
@@ -5003,13 +5013,13 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    if (device->physical_device->rad_info.gfx_level >= GFX10_3)
       gfx103_pipeline_init_vrs_state(pipeline, &state);
 
-   struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, &state, &key);
+   struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, &state);
 
    /* Copy the non-compacted SPI_SHADER_COL_FORMAT which is used to emit RBPLUS state. */
    pipeline->col_format_non_compacted = blend.spi_shader_col_format;
 
    struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
-   bool enable_mrt_compaction = !key.ps.epilog.mrt0_is_dual_src && !ps->info.ps.has_epilog;
+   bool enable_mrt_compaction = !ps->info.ps.has_epilog && !ps->info.ps.mrt0_is_dual_src;
    if (enable_mrt_compaction) {
       blend.spi_shader_col_format = radv_compact_spi_shader_col_format(ps, &blend);
 
