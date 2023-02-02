@@ -364,7 +364,7 @@ if with_platform_wayland
   #add this once aco and other places can build with it
   #cpp_args += '-DVK_USE_PLATFORM_WAYLAND_KHR'
 endif
-if with_platform_x11
+if with_platform_x11 and host_machine.system() != 'darwin'
   c_args += ['-DVK_USE_PLATFORM_XCB_KHR', '-DVK_USE_PLATFORM_XLIB_KHR']
   #add this once aco and other places can build with it
   #cpp_args += ['-DVK_USE_PLATFORM_XCB_KHR', '-DVK_USE_PLATFORM_XLIB_KHR']
