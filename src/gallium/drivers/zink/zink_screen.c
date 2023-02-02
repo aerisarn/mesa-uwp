@@ -478,6 +478,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    struct zink_screen *screen = zink_screen(pscreen);
 
    switch (param) {
+   case PIPE_CAP_NULL_TEXTURES:
+      return screen->info.rb_image_feats.robustImageAccess;
    case PIPE_CAP_TEXRECT:
    case PIPE_CAP_MULTI_DRAW_INDIRECT_PARTIAL_STRIDE:
       return 0;
