@@ -3085,7 +3085,7 @@ st_finalize_texture(struct gl_context *ctx,
 
    /* May need to create a new gallium texture:
     */
-   if (!tObj->pt) {
+   if (!tObj->pt && !tObj->NullTexture) {
       GLuint bindings = default_bindings(st, firstImageFormat);
 
       tObj->pt = st_texture_create(st,
@@ -3115,7 +3115,7 @@ st_finalize_texture(struct gl_context *ctx,
 
          /* Need to import images in main memory or held in other textures.
           */
-         if (stImage && tObj->pt != stImage->pt) {
+         if (stImage && !tObj->NullTexture && tObj->pt != stImage->pt) {
             GLuint height;
             GLuint depth;
 

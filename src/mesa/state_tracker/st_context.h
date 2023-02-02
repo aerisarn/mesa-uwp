@@ -207,6 +207,7 @@ struct st_context
    boolean has_hw_atomics;
 
    boolean validate_all_dirty_states;
+   boolean can_null_texture;
 
    /* driver supports scissored clears */
    boolean can_scissor_clear;

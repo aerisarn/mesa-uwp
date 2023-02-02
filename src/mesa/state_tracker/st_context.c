@@ -642,6 +642,9 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    st->validate_all_dirty_states =
       screen->get_param(screen, PIPE_CAP_VALIDATE_ALL_DIRTY_STATES)
       ? true : false;
+   st->can_null_texture =
+      screen->get_param(screen, PIPE_CAP_NULL_TEXTURES)
+      ? true : false;
 
    util_throttle_init(&st->throttle,
                       screen->get_param(screen,
