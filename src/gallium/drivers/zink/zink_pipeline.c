@@ -402,6 +402,8 @@ zink_create_compute_pipeline(struct zink_screen *screen, struct zink_compute_pro
    VkComputePipelineCreateInfo pci = {0};
    pci.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
    pci.layout = comp->base.layout;
+   if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB)
+      pci.flags |= VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
 
    VkPipelineShaderStageCreateInfo stage = {0};
    stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
