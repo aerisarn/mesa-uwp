@@ -2279,7 +2279,8 @@ radv_pipeline_generate_ps_epilog_key(const struct radv_graphics_pipeline *pipeli
 static struct radv_pipeline_key
 radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipeline,
                                     const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                                    const struct vk_graphics_pipeline_state *state)
+                                    const struct vk_graphics_pipeline_state *state,
+                                    VkGraphicsPipelineLibraryFlagBitsEXT lib_flags)
 {
    struct radv_device *device = pipeline->base.device;
    const struct radv_physical_device *pdevice = device->physical_device;
@@ -2288,6 +2289,12 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
    key.has_multiview_view_index = state->rp ? !!state->rp->view_mask : 0;
 
    if (pipeline->dynamic_states & RADV_DYNAMIC_VERTEX_INPUT) {
+      key.vs.has_prolog = true;
+   }
+
+   /* Compile the pre-rasterization stages only when the vertex input interface is missing. */
+   if ((lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT) &&
+       !(lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT)) {
       key.vs.has_prolog = true;
    }
 
@@ -2391,6 +2398,12 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
    key.ps.has_epilog =
       (!!(pipeline->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT) && !!pipeline->ps_epilog) ||
       key.ps.dynamic_ps_epilog;
+
+   /* Compile the main FS only when the fragment shader output interface is missing. */
+   if ((lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
+       !(lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT)) {
+      key.ps.has_epilog = true;
+   }
 
    key.dynamic_patch_control_points =
       !!(pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS);
@@ -4965,7 +4978,8 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    if (!fast_linking_enabled)
       radv_pipeline_layout_hash(&pipeline_layout);
 
-   struct radv_pipeline_key key = radv_generate_graphics_pipeline_key(pipeline, pCreateInfo, &state);
+   struct radv_pipeline_key key = radv_generate_graphics_pipeline_key(
+      pipeline, pCreateInfo, &state, (~imported_flags) & ALL_GRAPHICS_LIB_FLAGS);
 
    result = radv_graphics_pipeline_compile(pipeline, pCreateInfo, &pipeline_layout, device, cache,
                                            &key, (~imported_flags) & ALL_GRAPHICS_LIB_FLAGS,
@@ -5170,19 +5184,7 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
    if (pipeline->base.active_stages != 0 ||
        (imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)) {
       struct radv_pipeline_key key =
-         radv_generate_graphics_pipeline_key(&pipeline->base, pCreateInfo, state);
-
-      /* Compile the main FS only when the fragment shader output interface is missing. */
-      if ((imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
-          !(imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT)) {
-         key.ps.has_epilog = true;
-      }
-
-      /* Compile the pre-rasterization stages only when the vertex input interface is missing. */
-      if ((imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT) &&
-          !(imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT)) {
-         key.vs.has_prolog = true;
-      }
+         radv_generate_graphics_pipeline_key(&pipeline->base, pCreateInfo, state, imported_flags);
 
       result = radv_graphics_pipeline_compile(&pipeline->base, pCreateInfo, pipeline_layout, device,
                                               cache, &key, imported_flags, false,
