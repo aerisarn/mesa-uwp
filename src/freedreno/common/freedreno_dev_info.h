@@ -173,6 +173,8 @@ struct fd_dev_info {
          /* Corresponds to HLSQ_CONTROL_1_REG::PRIMALLOCTHRESHOLD */
          uint32_t prim_alloc_threshold;
 
+         uint32_t vs_max_inputs_count;
+
          struct {
             uint32_t PC_POWER_CNTL;
             uint32_t TPL1_DBG_ECO_CNTL;

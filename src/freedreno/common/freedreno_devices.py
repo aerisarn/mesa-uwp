@@ -158,6 +158,8 @@ class A6xxGPUInfo(GPUInfo):
 
         self.a6xx.prim_alloc_threshold = 0x7
 
+        self.a6xx.vs_max_inputs_count = 32
+
         for name, val in template.items():
             if name == "magic": # handled above
                 continue

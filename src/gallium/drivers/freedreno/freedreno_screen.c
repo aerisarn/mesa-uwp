@@ -671,7 +671,8 @@ fd_screen_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_MAX_INPUTS:
       if (shader == PIPE_SHADER_GEOMETRY && is_a6xx(screen))
          return 16;
-      return is_a6xx(screen) ? 32 : 16;
+      return is_a6xx(screen) ?
+         (screen->info->a6xx.vs_max_inputs_count) : 16;
    case PIPE_SHADER_CAP_MAX_OUTPUTS:
       return is_a6xx(screen) ? 32 : 16;
    case PIPE_SHADER_CAP_MAX_TEMPS:
