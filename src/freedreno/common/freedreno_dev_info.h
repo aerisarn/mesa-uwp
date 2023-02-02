@@ -70,6 +70,8 @@ struct fd_dev_info {
           */
          uint32_t instr_cache_size;
 
+         bool has_hw_multiview;
+
          /* Whether the PC_MULTIVIEW_MASK register exists. */
          bool supports_multiview_mask;
 
