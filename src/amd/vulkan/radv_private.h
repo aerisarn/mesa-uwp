@@ -2101,6 +2101,12 @@ struct radv_pipeline {
    uint32_t dynamic_offset_count;
 };
 
+struct radv_sqtt_shaders_reloc {
+   struct radeon_winsys_bo *bo;
+   union radv_shader_arena_block *alloc;
+   uint64_t va[MESA_VULKAN_SHADER_STAGES];
+};
+
 struct radv_graphics_pipeline {
    struct radv_pipeline base;
 
@@ -2176,6 +2182,9 @@ struct radv_graphics_pipeline {
    struct {
       nir_shader *nir;
    } retained_shaders[MESA_VULKAN_SHADER_STAGES];
+
+   /* For relocation of shaders with RGP. */
+   struct radv_sqtt_shaders_reloc *sqtt_shaders_reloc;
 };
 
 struct radv_compute_pipeline {
@@ -3068,6 +3077,9 @@ void radv_describe_barrier_end(struct radv_cmd_buffer *cmd_buffer);
 void radv_describe_barrier_end_delayed(struct radv_cmd_buffer *cmd_buffer);
 void radv_describe_layout_transition(struct radv_cmd_buffer *cmd_buffer,
                                      const struct radv_barrier_data *barrier);
+
+void radv_sqtt_emit_relocated_shaders(struct radv_cmd_buffer *cmd_buffer,
+                                      struct radv_graphics_pipeline *pipeline);
 
 struct radv_indirect_command_layout {
    struct vk_object_base base;

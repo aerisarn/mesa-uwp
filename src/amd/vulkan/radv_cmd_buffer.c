@@ -1898,6 +1898,11 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
       }
    }
 
+   if (pipeline->sqtt_shaders_reloc) {
+      /* Emit shaders relocation because RGP requires them to be contiguous in memory. */
+      radv_sqtt_emit_relocated_shaders(cmd_buffer, pipeline);
+   }
+
    for (unsigned s = 0; s < MESA_VULKAN_SHADER_STAGES; s++) {
       struct radv_shader *shader = pipeline->base.shaders[s];
 
