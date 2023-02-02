@@ -227,7 +227,7 @@ get_soa_array_offsets(struct lp_build_context *uint_bld,
       lp_build_const_int_vec(gallivm, uint_bld->type, uint_bld->type.length);
    LLVMValueRef index_vec;
 
-   /* index_vec = (indirect_index * 4 + chan_index) * length + offsets */
+   /* index_vec = (indirect_index * num_components + chan_index) * length + offsets */
    index_vec = lp_build_mul(uint_bld, indirect_index, lp_build_const_int_vec(uint_bld->gallivm, uint_bld->type, num_components));
    index_vec = lp_build_add(uint_bld, index_vec, chan_vec);
    index_vec = lp_build_mul(uint_bld, index_vec, length_vec);

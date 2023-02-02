@@ -2711,10 +2711,10 @@ get_register_type(struct lp_build_nir_context *bld_base,
       get_int_bld(bld_base, true, reg->bit_size == 1 ? 32 : reg->bit_size);
 
    LLVMTypeRef type = int_bld->vec_type;
-   if (reg->num_array_elems)
-      type = LLVMArrayType(type, reg->num_array_elems);
    if (reg->num_components > 1)
       type = LLVMArrayType(type, reg->num_components);
+   if (reg->num_array_elems)
+      type = LLVMArrayType(type, reg->num_array_elems);
 
    return type;
 }
