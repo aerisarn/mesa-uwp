@@ -589,6 +589,9 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
             sscreen->info.ip[AMD_IP_VCN_ENC].num_queues))
          return 0;
 
+      if (sscreen->info.family == CHIP_GFX940)
+	 return 0;
+
       switch (param) {
       case PIPE_VIDEO_CAP_SUPPORTED:
          return (
@@ -710,17 +713,20 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
             sscreen->info.family == CHIP_POLARIS11))
          return KERNEL_DEC_CAP(codec, valid);
       if (codec < PIPE_VIDEO_FORMAT_MPEG4_AVC &&
-          sscreen->info.family >= CHIP_NAVI24)
+          (sscreen->info.family >= CHIP_NAVI24 ||
+           sscreen->info.family == CHIP_GFX940))
          return false;
 
       switch (codec) {
       case PIPE_VIDEO_FORMAT_MPEG12:
-         if (sscreen->info.gfx_level >= GFX11)
+         if (sscreen->info.gfx_level >= GFX11 ||
+	     sscreen->info.family == CHIP_GFX940)
             return false;
          else
             return profile != PIPE_VIDEO_PROFILE_MPEG1;
       case PIPE_VIDEO_FORMAT_MPEG4:
-         if (sscreen->info.gfx_level >= GFX11)
+         if (sscreen->info.gfx_level >= GFX11 ||
+	     sscreen->info.family == CHIP_GFX940)
             return false;
          else
             return true;
@@ -732,7 +738,8 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
          }
          return true;
       case PIPE_VIDEO_FORMAT_VC1:
-         if (sscreen->info.gfx_level >= GFX11)
+         if (sscreen->info.gfx_level >= GFX11 ||
+	     sscreen->info.family == CHIP_GFX940)
             return false;
          else
             return true;
@@ -763,7 +770,8 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
             return false;
          return true;
       case PIPE_VIDEO_FORMAT_AV1:
-         if (sscreen->info.family < CHIP_NAVI21 || sscreen->info.family == CHIP_NAVI24)
+         if ((sscreen->info.family < CHIP_NAVI21 && sscreen->info.family != CHIP_GFX940) ||
+	      sscreen->info.family == CHIP_NAVI24)
             return false;
          return true;
       default:
