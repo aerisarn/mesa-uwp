@@ -9538,29 +9538,6 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
    radv_after_draw(cmd_buffer);
 }
 
-struct radv_dispatch_info {
-   /**
-    * Determine the layout of the grid (in block units) to be used.
-    */
-   uint32_t blocks[3];
-
-   /**
-    * A starting offset for the grid. If unaligned is set, the offset
-    * must still be aligned.
-    */
-   uint32_t offsets[3];
-   /**
-    * Whether it's an unaligned compute dispatch.
-    */
-   bool unaligned;
-
-   /**
-    * Indirect compute parameters resource.
-    */
-   struct radeon_winsys_bo *indirect;
-   uint64_t va;
-};
-
 static void
 radv_emit_dispatch_packets(struct radv_cmd_buffer *cmd_buffer,
                            struct radv_compute_pipeline *pipeline,
@@ -9801,7 +9778,7 @@ radv_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_inf
    radv_cmd_buffer_after_draw(cmd_buffer, RADV_CMD_FLAG_CS_PARTIAL_FLUSH);
 }
 
-static void
+void
 radv_compute_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_info *info)
 {
    radv_dispatch(cmd_buffer, info, cmd_buffer->state.compute_pipeline,

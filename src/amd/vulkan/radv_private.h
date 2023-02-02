@@ -1688,6 +1688,33 @@ struct radv_cmd_buffer {
 
 extern const struct vk_command_buffer_ops radv_cmd_buffer_ops;
 
+struct radv_dispatch_info {
+   /**
+    * Determine the layout of the grid (in block units) to be used.
+    */
+   uint32_t blocks[3];
+
+   /**
+    * A starting offset for the grid. If unaligned is set, the offset
+    * must still be aligned.
+    */
+   uint32_t offsets[3];
+
+   /**
+    * Whether it's an unaligned compute dispatch.
+    */
+   bool unaligned;
+
+   /**
+    * Indirect compute parameters resource.
+    */
+   struct radeon_winsys_bo *indirect;
+   uint64_t va;
+};
+
+void radv_compute_dispatch(struct radv_cmd_buffer *cmd_buffer,
+                           const struct radv_dispatch_info *info);
+
 struct radv_image;
 struct radv_image_view;
 
