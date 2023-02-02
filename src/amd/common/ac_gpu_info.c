@@ -934,7 +934,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
 
    /* unified ring */
    info->has_video_hw.vcn_decode
-                  = info->family >= CHIP_GFX1100
+                  = (info->family >= CHIP_GFX1100 || info->family == CHIP_GFX940)
                     ? info->ip[AMD_IP_VCN_UNIFIED].num_queues != 0
                     : info->ip[AMD_IP_VCN_DEC].num_queues != 0;
    info->has_userptr = true;
@@ -1572,7 +1572,8 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
       [AMD_IP_VCE] = "VCE",
       [AMD_IP_UVD_ENC] = "UVD_ENC",
       [AMD_IP_VCN_DEC] = "VCN_DEC",
-      [AMD_IP_VCN_ENC] = info->family >= CHIP_GFX1100 ? "VCN" : "VCN_ENC",
+      [AMD_IP_VCN_ENC] = (info->family >= CHIP_GFX1100 ||
+			  info->family == CHIP_GFX940) ? "VCN" : "VCN_ENC",
       [AMD_IP_VCN_JPEG] = "VCN_JPG",
    };
 
@@ -1663,7 +1664,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "Multimedia info:\n");
    fprintf(f, "    vce_encode = %u\n", info->ip[AMD_IP_VCE].num_queues);
 
-   if (info->family >= CHIP_GFX1100)
+   if (info->family >= CHIP_GFX1100 || info->family == CHIP_GFX940)
       fprintf(f, "    vcn_unified = %u\n", info->has_video_hw.vcn_decode);
    else {
       fprintf(f, "    vcn_decode = %u\n", info->has_video_hw.vcn_decode);
