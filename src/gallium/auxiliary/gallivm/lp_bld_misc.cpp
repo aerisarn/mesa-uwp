@@ -366,7 +366,7 @@ lp_build_create_jit_compiler_for_module(LLVMExecutionEngineRef *OutJIT,
           .setTargetOptions(options)
           .setOptLevel((CodeGenOpt::Level)OptLevel);
 
-#ifdef _WIN32
+#if DETECT_OS_WINDOWS
     /*
      * MCJIT works on Windows, but currently only through ELF object format.
      *
