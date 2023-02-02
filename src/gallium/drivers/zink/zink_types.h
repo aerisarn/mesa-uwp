@@ -394,8 +394,18 @@ struct zink_descriptor_data {
    struct zink_descriptor_layout *dummy_dsl;
 
    VkDescriptorSetLayout bindless_layout;
-   VkDescriptorPool bindless_pool;
-   VkDescriptorSet bindless_set;
+   union {
+      struct {
+         VkDescriptorPool bindless_pool;
+         VkDescriptorSet bindless_set;
+      } t;
+      struct {
+         struct zink_resource *bindless_db;
+         uint8_t *bindless_db_map;
+         struct pipe_transfer *bindless_db_xfer;
+         uint32_t db_offsets[4];
+      } db;
+   };
 
    struct zink_program *pg[2]; //gfx, compute
 
@@ -1510,11 +1520,18 @@ struct zink_viewport_state {
    uint8_t num_viewports;
 };
 
+struct zink_descriptor_db_info {
+   unsigned offset;
+   unsigned size;
+   enum pipe_format format;
+   struct pipe_resource *pres;
+};
 
 struct zink_descriptor_surface {
    union {
       struct zink_surface *surface;
       struct zink_buffer_view *bufferview;
+      struct zink_descriptor_db_info db;
    };
    bool is_buffer;
 };
@@ -1735,6 +1752,9 @@ struct zink_context {
             struct {
                VkBufferView *buffer_infos; //tex, img
             } t;
+            struct {
+               VkDescriptorAddressInfoEXT *buffer_infos;
+            } db;
          };
          VkDescriptorImageInfo *img_infos; //tex, img
          struct util_dynarray updates; //texture, img

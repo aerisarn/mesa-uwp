@@ -414,12 +414,19 @@ zink_batch_bind_db(struct zink_context *ctx)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_batch *batch = &ctx->batch;
    unsigned count = screen->compact_descriptors ? 3 : 5;
-   VkDescriptorBufferBindingInfoEXT infos[ZINK_DESCRIPTOR_NON_BINDLESS_TYPES] = {0};
+   VkDescriptorBufferBindingInfoEXT infos[ZINK_DESCRIPTOR_ALL_TYPES] = {0};
    for (unsigned i = 0; i < count; i++) {
       infos[i].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT;
       infos[i].address = batch->state->dd.db[i]->obj->bda;
       infos[i].usage = batch->state->dd.db[i]->obj->vkusage;
       assert(infos[i].usage);
+   }
+   if (ctx->dd.bindless_layout) {
+      infos[ZINK_DESCRIPTOR_BINDLESS].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT;
+      infos[ZINK_DESCRIPTOR_BINDLESS].address = ctx->dd.db.bindless_db->obj->bda;
+      infos[ZINK_DESCRIPTOR_BINDLESS].usage = ctx->dd.db.bindless_db->obj->vkusage;
+      assert(infos[ZINK_DESCRIPTOR_BINDLESS].usage);
+      count++;
    }
    VKSCR(CmdBindDescriptorBuffersEXT)(batch->state->cmdbuf, count, infos);
    batch->state->db_bound = true;
