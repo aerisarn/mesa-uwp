@@ -407,11 +407,26 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
    batch->has_work = false;
 }
 
+void
+zink_batch_bind_db(struct zink_context *ctx)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   struct zink_batch *batch = &ctx->batch;
+   unsigned count = screen->compact_descriptors ? 3 : 5;
+   VkDescriptorBufferBindingInfoEXT infos[ZINK_DESCRIPTOR_NON_BINDLESS_TYPES] = {0};
+   for (unsigned i = 0; i < count; i++) {
+      infos[i].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT;
+      infos[i].address = batch->state->dd.db[i]->obj->bda;
+      infos[i].usage = batch->state->dd.db[i]->obj->vkusage;
+      assert(infos[i].usage);
+   }
+   VKSCR(CmdBindDescriptorBuffersEXT)(batch->state->cmdbuf, count, infos);
+}
+
 /* called on context creation and after flushing an old batch */
 void
 zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
    zink_reset_batch(ctx, batch);
 
    batch->state->usage.unflushed = true;
@@ -435,6 +450,7 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
    }
 
 #ifdef HAVE_RENDERDOC_APP_H
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
    if (VKCTX(CmdInsertDebugUtilsLabelEXT) && screen->renderdoc_api) {
       VkDebugUtilsLabelEXT capture_label;
       /* Magic fallback which lets us bridge the Wine barrier over to Linux RenderDoc. */
@@ -458,17 +474,8 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
       zink_resume_queries(ctx, batch);
 
    /* descriptor buffers must always be bound at the start of a batch */
-   if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB && !(ctx->flags & ZINK_CONTEXT_COPY_ONLY)) {
-      unsigned count = screen->compact_descriptors ? 3 : 5;
-      VkDescriptorBufferBindingInfoEXT infos[ZINK_DESCRIPTOR_NON_BINDLESS_TYPES] = {0};
-      for (unsigned i = 0; i < count; i++) {
-         infos[i].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT;
-         infos[i].address = batch->state->dd.db[i]->obj->bda;
-         infos[i].usage = batch->state->dd.db[i]->obj->vkusage;
-         assert(infos[i].usage);
-      }
-      VKSCR(CmdBindDescriptorBuffersEXT)(batch->state->cmdbuf, count, infos);
-   }
+   if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB && !(ctx->flags & ZINK_CONTEXT_COPY_ONLY))
+      zink_batch_bind_db(ctx);
 }
 
 /* common operations to run post submit; split out for clarity */
