@@ -145,8 +145,6 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
    compiler->is_64bit = fd_dev_64b(dev_id);
    compiler->options = *options;
 
-   /* All known GPU's have 32k local memory (aka shared) */
-   compiler->local_mem_size = 32 * 1024;
    /* TODO see if older GPU's were different here */
    compiler->branchstack_size = 64;
    compiler->wave_granularity = 2;
@@ -155,6 +153,8 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
    compiler->max_variable_workgroup_size = 1024;
 
    const struct fd_dev_info *dev_info = fd_dev_info(compiler->dev_id);
+
+   compiler->local_mem_size = dev_info->cs_shared_mem_size;
 
    if (compiler->gen >= 6) {
       compiler->samgq_workaround = true;
