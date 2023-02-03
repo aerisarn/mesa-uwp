@@ -99,8 +99,11 @@ upload_multi_indices(struct gl_context *ctx, unsigned total_count,
    }
 
    for (unsigned i = 0, offset = 0; i < draw_count; i++) {
-      if (count[i] == 0)
+      if (!count[i]) {
+         /* Set some valid value so as not to leave it uninitialized. */
+         out_indices[i] = (const GLvoid*)(intptr_t)upload_offset;
          continue;
+      }
 
       unsigned size = count[i] * index_size;
 
