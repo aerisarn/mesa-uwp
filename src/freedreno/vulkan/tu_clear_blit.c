@@ -3076,6 +3076,9 @@ tu_emit_blit(struct tu_cmd_buffer *cmd,
                         A6XX_RB_BLIT_BASE_GMEM(tu_attachment_gmem_offset(cmd, attachment, i)));
       }
 
+      tu_cs_emit_pkt4(cs, REG_A6XX_RB_UNKNOWN_88D0, 1);
+      tu_cs_emit(cs, 0);
+
       tu6_emit_event_write(cmd, cs, BLIT);
    }
 }
