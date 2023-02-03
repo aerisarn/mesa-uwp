@@ -2253,7 +2253,8 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
                &screen->nir_options,
                ctx->gfx_stages[prev_vertex_stage]->nir,
                ctx->gfx_pipeline_state.gfx_prim_mode,
-               lower_edge_flags);
+               lower_edge_flags,
+               false);
 
             struct zink_shader *shader = zink_shader_create(screen, nir, NULL);
             ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode] = shader;
@@ -2287,7 +2288,8 @@ zink_create_primitive_emulation_gs(struct zink_context *ctx)
                &screen->nir_options,
                ctx->gfx_stages[prev_vertex_stage]->nir,
                ctx->gfx_pipeline_state.gfx_prim_mode,
-               lower_edge_flags);
+               lower_edge_flags,
+               false);
 
             struct zink_shader *shader = zink_shader_create(screen, nir, NULL);
             ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode] = shader;

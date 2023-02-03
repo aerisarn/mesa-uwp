@@ -129,18 +129,20 @@ nir_shader *
 nir_create_passthrough_gs(const nir_shader_compiler_options *options,
                           const nir_shader *prev_stage,
                           enum shader_prim primitive_type,
-                          bool emulate_edgeflags)
+                          bool emulate_edgeflags,
+                          bool force_line_strip_out)
 {
    unsigned int vertices_out = vertices_for_prim(primitive_type);
    emulate_edgeflags = emulate_edgeflags && (prev_stage->info.outputs_written & VARYING_BIT_EDGE);
-   bool needs_closing = emulate_edgeflags && vertices_out >= 3;
+   bool needs_closing = (force_line_strip_out || emulate_edgeflags) && vertices_out >= 3;
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_GEOMETRY,
                                                   options,
                                                   "gs passthrough");
 
    nir_shader *nir = b.shader;
    nir->info.gs.input_primitive = gs_in_prim_for_topology(primitive_type);
-   nir->info.gs.output_primitive = emulate_edgeflags ? SHADER_PRIM_LINE_STRIP : gs_out_prim_for_topology(primitive_type);
+   nir->info.gs.output_primitive = (force_line_strip_out || emulate_edgeflags) ?
+      SHADER_PRIM_LINE_STRIP : gs_out_prim_for_topology(primitive_type);
    nir->info.gs.vertices_in = vertices_out;
    nir->info.gs.vertices_out = needs_closing ? vertices_out + 1 : vertices_out;
    nir->info.gs.invocations = 1;

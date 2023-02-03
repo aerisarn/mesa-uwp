@@ -5087,7 +5087,8 @@ nir_shader * nir_create_passthrough_tcs(const nir_shader_compiler_options *optio
 nir_shader * nir_create_passthrough_gs(const nir_shader_compiler_options *options,
                                        const nir_shader *prev_stage,
                                        enum shader_prim primitive_type,
-                                       bool emulate_edgeflags);
+                                       bool emulate_edgeflags,
+                                       bool force_line_strip_out);
 
 bool nir_lower_fragcolor(nir_shader *shader, unsigned max_cbufs);
 bool nir_lower_fragcoord_wtrans(nir_shader *shader);
