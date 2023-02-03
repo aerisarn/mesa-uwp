@@ -343,7 +343,7 @@ can_use_DPP(const aco_ptr<Instruction>& instr, bool pre_ra, bool dpp8)
    if (instr->operands.size() && instr->operands[0].isLiteral())
       return false;
 
-   if (instr->isSDWA() || instr->isVOP3P())
+   if (instr->isSDWA() || instr->isVINTERP_INREG() || instr->isVOP3P())
       return false;
 
    if (!pre_ra && (instr->isVOPC() || instr->definitions.size() > 1) &&

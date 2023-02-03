@@ -1372,7 +1372,7 @@ struct Instruction {
 
    constexpr bool isVALU() const noexcept
    {
-      return isVOP1() || isVOP2() || isVOPC() || isVOP3() || isVOP3P();
+      return isVOP1() || isVOP2() || isVOPC() || isVOP3() || isVOP3P() || isVINTERP_INREG();
    }
 
    constexpr bool isSALU() const noexcept

@@ -568,7 +568,7 @@ num_encoded_alu_operands(const aco_ptr<Instruction>& instr)
       else if (instr->opcode == aco_opcode::v_writelane_b32_e64 ||
                instr->opcode == aco_opcode::v_writelane_b32)
          return 2; /* potentially VOP3, but reads VDST as SRC2 */
-      else if (instr->isVOP3() || instr->isVOP3P())
+      else if (instr->isVOP3() || instr->isVOP3P() || instr->isVINTERP_INREG())
          return instr->operands.size();
    }
 

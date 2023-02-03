@@ -284,7 +284,7 @@ validate_ir(Program* program)
                      instr.get());
          }
 
-         if (instr->isSALU() || instr->isVALU() || instr->isVINTERP_INREG()) {
+         if (instr->isSALU() || instr->isVALU()) {
             /* check literals */
             Operand literal(s1);
             for (unsigned i = 0; i < instr->operands.size(); i++) {
@@ -306,7 +306,7 @@ validate_ir(Program* program)
             }
 
             /* check num sgprs for VALU */
-            if (instr->isVALU() || instr->isVINTERP_INREG()) {
+            if (instr->isVALU()) {
                bool is_shift64 = instr->opcode == aco_opcode::v_lshlrev_b64 ||
                                  instr->opcode == aco_opcode::v_lshrrev_b64 ||
                                  instr->opcode == aco_opcode::v_ashrrev_i64;
@@ -929,7 +929,7 @@ get_subdword_bytes_written(Program* program, const aco_ptr<Instruction>& instr, 
 
    if (instr->isPseudo())
       return gfx_level >= GFX8 ? def.bytes() : def.size() * 4u;
-   if (instr->isVALU() || instr->isVINTERP_INREG()) {
+   if (instr->isVALU()) {
       assert(def.bytes() <= 2);
       if (instr->isSDWA())
          return instr->sdwa().dst_sel.size();
