@@ -1400,7 +1400,8 @@ static void *
 agx_create_shader_state(struct pipe_context *pctx,
                         const struct pipe_shader_state *cso)
 {
-   struct agx_uncompiled_shader *so = CALLOC_STRUCT(agx_uncompiled_shader);
+   struct agx_uncompiled_shader *so =
+      rzalloc(NULL, struct agx_uncompiled_shader);
    struct agx_device *dev = agx_device(pctx->screen);
 
    if (!so)
@@ -1411,6 +1412,11 @@ agx_create_shader_state(struct pipe_context *pctx,
    nir_shader *nir = cso->type == PIPE_SHADER_IR_NIR
                         ? cso->ir.nir
                         : tgsi_to_nir(cso->tokens, pctx->screen, false);
+
+   /* The driver gets ownership of the nir_shader for graphics. The NIR is
+    * ralloc'd. Free the NIR when we free the uncompiled shader.
+    */
+   ralloc_steal(so, nir);
 
    if (nir->info.stage == MESA_SHADER_VERTEX) {
       so->variants = _mesa_hash_table_create(NULL, asahi_vs_shader_key_hash,
@@ -1467,7 +1473,8 @@ static void *
 agx_create_compute_state(struct pipe_context *pctx,
                          const struct pipe_compute_state *cso)
 {
-   struct agx_uncompiled_shader *so = CALLOC_STRUCT(agx_uncompiled_shader);
+   struct agx_uncompiled_shader *so =
+      rzalloc(NULL, struct agx_uncompiled_shader);
 
    if (!so)
       return NULL;
@@ -1609,7 +1616,7 @@ agx_delete_shader_state(struct pipe_context *ctx, void *cso)
 {
    struct agx_uncompiled_shader *so = cso;
    _mesa_hash_table_destroy(so->variants, agx_delete_compiled_shader);
-   free(so);
+   ralloc_free(so);
 }
 
 static uint32_t
