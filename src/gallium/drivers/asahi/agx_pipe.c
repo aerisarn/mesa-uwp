@@ -1454,6 +1454,7 @@ agx_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
    pctx->priv = priv;
 
    util_dynarray_init(&ctx->writer, ctx);
+   util_dynarray_init(&ctx->global_buffers, ctx);
 
    pctx->stream_uploader = u_upload_create_default(pctx);
    if (!pctx->stream_uploader) {

@@ -3316,6 +3316,14 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
          &batch->pool, info->grid, sizeof(info->grid), 4);
    }
 
+   util_dynarray_foreach(&ctx->global_buffers, struct pipe_resource *, res) {
+      if (!*res)
+         continue;
+
+      struct agx_resource *buffer = agx_resource(*res);
+      agx_batch_writes(batch, buffer);
+   }
+
    struct agx_uncompiled_shader *uncompiled =
       ctx->stage[PIPE_SHADER_COMPUTE].shader;
 
@@ -3392,6 +3400,48 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    batch->uniforms.tables[AGX_SYSVAL_TABLE_GRID] = 0;
 }
 
+static void
+agx_set_global_binding(struct pipe_context *pipe, unsigned first,
+                       unsigned count, struct pipe_resource **resources,
+                       uint32_t **handles)
+{
+   struct agx_context *ctx = agx_context(pipe);
+   unsigned old_size =
+      util_dynarray_num_elements(&ctx->global_buffers, *resources);
+
+   if (old_size < first + count) {
+      /* we are screwed no matter what */
+      if (!util_dynarray_grow(&ctx->global_buffers, *resources,
+                              (first + count) - old_size))
+         unreachable("out of memory");
+
+      for (unsigned i = old_size; i < first + count; i++)
+         *util_dynarray_element(&ctx->global_buffers, struct pipe_resource *,
+                                i) = NULL;
+   }
+
+   for (unsigned i = 0; i < count; ++i) {
+      struct pipe_resource **res = util_dynarray_element(
+         &ctx->global_buffers, struct pipe_resource *, first + i);
+      if (resources && resources[i]) {
+         pipe_resource_reference(res, resources[i]);
+
+         /* The handle points to uint32_t, but space is allocated for 64
+          * bits. We need to respect the offset passed in. This interface
+          * is so bad.
+          */
+         uint64_t addr = 0;
+         struct agx_resource *rsrc = agx_resource(resources[i]);
+
+         memcpy(&addr, handles[i], sizeof(addr));
+         addr += rsrc->bo->ptr.gpu;
+         memcpy(handles[i], &addr, sizeof(addr));
+      } else {
+         pipe_resource_reference(res, NULL);
+      }
+   }
+}
+
 void agx_init_state_functions(struct pipe_context *ctx);
 
 void
@@ -3440,6 +3490,7 @@ agx_init_state_functions(struct pipe_context *ctx)
    ctx->surface_destroy = agx_surface_destroy;
    ctx->draw_vbo = agx_draw_vbo;
    ctx->launch_grid = agx_launch_grid;
+   ctx->set_global_binding = agx_set_global_binding;
    ctx->texture_barrier = agx_texture_barrier;
    ctx->get_compute_state_info = agx_get_compute_state_info;
 }

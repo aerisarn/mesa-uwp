@@ -445,6 +445,9 @@ struct agx_context {
     */
    struct util_dynarray writer;
 
+   /* Bound CL global buffers */
+   struct util_dynarray global_buffers;
+
    struct agx_meta_cache meta;
 
    uint32_t syncobj;
