@@ -572,6 +572,49 @@ get_variable_mode_str(nir_variable_mode mode, bool want_local_global_mode)
    }
 }
 
+static const char *
+get_location_str(unsigned location, gl_shader_stage stage,
+                 nir_variable_mode mode, char *buf)
+{
+   switch (stage) {
+   case MESA_SHADER_VERTEX:
+      if (mode == nir_var_shader_in)
+         return gl_vert_attrib_name(location);
+      else if (mode == nir_var_shader_out)
+         return gl_varying_slot_name_for_stage(location, stage);
+
+      break;
+   case MESA_SHADER_TASK:
+   case MESA_SHADER_MESH:
+   case MESA_SHADER_GEOMETRY:
+      if (mode == nir_var_shader_in || mode == nir_var_shader_out)
+         return gl_varying_slot_name_for_stage(location, stage);
+
+      break;
+   case MESA_SHADER_FRAGMENT:
+      if (mode == nir_var_shader_in)
+         return gl_varying_slot_name_for_stage(location, stage);
+      else if (mode == nir_var_shader_out)
+         return gl_frag_result_name(location);
+
+      break;
+   case MESA_SHADER_TESS_CTRL:
+   case MESA_SHADER_TESS_EVAL:
+   case MESA_SHADER_COMPUTE:
+   case MESA_SHADER_KERNEL:
+   default:
+      /* TODO */
+      break;
+   }
+
+   if (location == ~0) {
+      return "~0";
+   } else {
+      snprintf(buf, 4, "%u", location);
+      return buf;
+   }
+}
+
 static void
 print_var_decl(nir_variable *var, print_state *state)
 {
@@ -629,51 +672,10 @@ print_var_decl(nir_variable *var, print_state *state)
                          nir_var_mem_ubo |
                          nir_var_mem_ssbo |
                          nir_var_image)) {
-      const char *loc = NULL;
       char buf[4];
-
-      switch (state->shader->info.stage) {
-      case MESA_SHADER_VERTEX:
-         if (var->data.mode == nir_var_shader_in)
-            loc = gl_vert_attrib_name(var->data.location);
-         else if (var->data.mode == nir_var_shader_out)
-            loc = gl_varying_slot_name_for_stage(var->data.location,
-                                                 state->shader->info.stage);
-         break;
-      case MESA_SHADER_TASK:
-      case MESA_SHADER_MESH:
-      case MESA_SHADER_GEOMETRY:
-         if ((var->data.mode == nir_var_shader_in) ||
-             (var->data.mode == nir_var_shader_out)) {
-            loc = gl_varying_slot_name_for_stage(var->data.location,
-                                                 state->shader->info.stage);
-         }
-         break;
-      case MESA_SHADER_FRAGMENT:
-         if (var->data.mode == nir_var_shader_in) {
-            loc = gl_varying_slot_name_for_stage(var->data.location,
-                                                 state->shader->info.stage);
-         } else if (var->data.mode == nir_var_shader_out) {
-            loc = gl_frag_result_name(var->data.location);
-         }
-         break;
-      case MESA_SHADER_TESS_CTRL:
-      case MESA_SHADER_TESS_EVAL:
-      case MESA_SHADER_COMPUTE:
-      case MESA_SHADER_KERNEL:
-      default:
-         /* TODO */
-         break;
-      }
-
-      if (!loc) {
-         if (var->data.location == ~0) {
-            loc = "~0";
-         } else {
-            snprintf(buf, sizeof(buf), "%u", var->data.location);
-            loc = buf;
-         }
-      }
+      const char *loc = get_location_str(var->data.location,
+                                         state->shader->info.stage,
+                                         var->data.mode, buf);
 
       /* For shader I/O vars that have been split to components or packed,
        * print the fractional location within the input/output.
