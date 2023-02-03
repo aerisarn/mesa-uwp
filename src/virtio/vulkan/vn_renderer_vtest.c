@@ -1059,9 +1059,8 @@ vtest_init(struct vtest *vtest)
       return result;
 
    /* see virtgpu_init_shmem_blob_mem */
-   vtest->shmem_blob_mem = vtest->capset.data.supports_blob_id_0
-                              ? VCMD_BLOB_TYPE_HOST3D
-                              : VCMD_BLOB_TYPE_GUEST;
+   assert(vtest->capset.data.supports_blob_id_0);
+   vtest->shmem_blob_mem = VCMD_BLOB_TYPE_HOST3D;
 
    vn_renderer_shmem_cache_init(&vtest->shmem_cache, &vtest->base,
                                 vtest_shmem_destroy_now);

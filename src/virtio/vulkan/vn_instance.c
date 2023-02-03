@@ -19,13 +19,8 @@
 #include "vn_physical_device.h"
 #include "vn_renderer.h"
 
-#define VN_INSTANCE_LARGE_RING_SIZE (64 * 1024)
-#define VN_INSTANCE_LARGE_RING_DIRECT_THRESHOLD                              \
-   (VN_INSTANCE_LARGE_RING_SIZE / 16)
-
-/* this must not exceed 2KiB for the ring to fit in a 4K page */
-#define VN_INSTANCE_RING_SIZE (2 * 1024)
-#define VN_INSTANCE_RING_DIRECT_THRESHOLD (VN_INSTANCE_RING_SIZE / 8)
+#define VN_INSTANCE_RING_SIZE (64 * 1024)
+#define VN_INSTANCE_RING_DIRECT_THRESHOLD (VN_INSTANCE_RING_SIZE / 16)
 
 /*
  * Instance extensions add instance-level or physical-device-level
@@ -117,13 +112,10 @@ vn_instance_init_renderer_versions(struct vn_instance *instance)
 static VkResult
 vn_instance_init_ring(struct vn_instance *instance)
 {
-   const size_t buf_size = instance->experimental.largeRing
-                              ? VN_INSTANCE_LARGE_RING_SIZE
-                              : VN_INSTANCE_RING_SIZE;
    /* 32-bit seqno for renderer roundtrips */
    const size_t extra_size = sizeof(uint32_t);
    struct vn_ring_layout layout;
-   vn_ring_get_layout(buf_size, extra_size, &layout);
+   vn_ring_get_layout(VN_INSTANCE_RING_SIZE, extra_size, &layout);
 
    instance->ring.shmem =
       vn_renderer_shmem_create(instance->renderer, layout.shmem_size);
@@ -224,6 +216,9 @@ vn_instance_init_experimental_features(struct vn_instance *instance)
     */
    if (instance->renderer->info.supports_multiple_timelines)
       instance->experimental.globalFencing = VK_TRUE;
+
+   /* largeRing has been enforced by mandated render server config */
+   assert(instance->experimental.largeRing);
 
    if (VN_DEBUG(INIT)) {
       vn_log(instance,
@@ -475,14 +470,11 @@ vn_instance_submission_prepare(struct vn_instance_submission *submit,
    return VK_SUCCESS;
 }
 
-static bool
+static inline bool
 vn_instance_submission_can_direct(const struct vn_instance *instance,
                                   const struct vn_cs_encoder *cs)
 {
-   const size_t threshold = instance->experimental.largeRing
-                               ? VN_INSTANCE_LARGE_RING_DIRECT_THRESHOLD
-                               : VN_INSTANCE_RING_DIRECT_THRESHOLD;
-   return vn_cs_encoder_get_len(cs) <= threshold;
+   return vn_cs_encoder_get_len(cs) <= VN_INSTANCE_RING_DIRECT_THRESHOLD;
 }
 
 static struct vn_cs_encoder *
@@ -504,9 +496,6 @@ vn_instance_ring_cs_upload_locked(struct vn_instance *instance,
 
    vn_cs_encoder_write(upload, cs_size, cs_data, cs_size);
    vn_cs_encoder_commit(upload);
-
-   if (unlikely(!instance->renderer->info.supports_blob_id_0))
-      vn_instance_wait_roundtrip(instance, upload->current_buffer_roundtrip);
 
    return upload;
 }
@@ -597,9 +586,6 @@ vn_instance_get_reply_shmem_locked(struct vn_instance *instance,
        * created
        */
       if (likely(instance->ring.id)) {
-         if (unlikely(!instance->renderer->info.supports_blob_id_0))
-            vn_instance_roundtrip(instance);
-
          vn_instance_ring_submit_locked(instance, &local_enc, NULL, NULL);
       } else {
          vn_renderer_submit_simple(instance->renderer,
