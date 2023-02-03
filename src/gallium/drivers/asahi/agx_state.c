@@ -2458,7 +2458,7 @@ agx_init_state_functions(struct pipe_context *ctx)
    ctx->delete_rasterizer_state = agx_delete_state;
    ctx->delete_sampler_state = agx_delete_sampler_state;
    ctx->delete_vertex_elements_state = agx_delete_state;
-   ctx->delete_vs_state = agx_delete_state;
+   ctx->delete_vs_state = agx_delete_shader_state;
    ctx->set_blend_color = agx_set_blend_color;
    ctx->set_clip_state = agx_set_clip_state;
    ctx->set_constant_buffer = agx_set_constant_buffer;
