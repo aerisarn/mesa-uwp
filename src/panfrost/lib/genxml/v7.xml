@@ -683,6 +683,14 @@
     <field name="Surface stride" size="32" start="3:0" type="int"/>
   </struct>
 
+  <struct name="Multiplanar Surface" align="32">
+    <field name="Plane 0 Pointer" size="64" start="0:0" type="address"/>
+    <field name="Plane 0 Row Stride" size="32" start="2:0" type="int"/>
+    <field name="Plane 1/2 Row Stride" size="32" start="3:0" type="int"/>
+    <field name="Plane 1 Pointer" size="64" start="4:0" type="address"/>
+    <field name="Plane 2 Pointer" size="64" start="6:0" type="address"/>
+  </struct>
+
   <struct name="Sampler" size="8" align="32">
     <field name="Type" size="4" start="0:0" type="uint" default="1"/>
     <field name="Wrap Mode R" size="4" start="0:8" type="Wrap Mode" default="Clamp to Edge"/>
