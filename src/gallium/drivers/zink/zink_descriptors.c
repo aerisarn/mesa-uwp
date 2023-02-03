@@ -1252,6 +1252,8 @@ zink_batch_descriptor_deinit(struct zink_screen *screen, struct zink_batch_state
    }
 
    for (unsigned i = 0; i < ARRAY_SIZE(bs->dd.db); i++) {
+      if (bs->dd.db_xfer[i])
+         pipe_buffer_unmap(&bs->ctx->base, bs->dd.db_xfer[i]);
       if (bs->dd.db[i])
          screen->base.resource_destroy(&screen->base, &bs->dd.db[i]->base.b);
    }
