@@ -59,37 +59,19 @@ tu_vk_format_to_pipe_format(VkFormat vk_format)
    }
 }
 
-static struct tu_native_format
-tu6_format_color_unchecked(enum pipe_format format, enum a6xx_tile_mode tile_mode)
-{
-   struct tu_native_format fmt = {
-      .fmt = fd6_color_format(format, tile_mode),
-      .swap = fd6_color_swap(format, tile_mode),
-   };
-
-   switch (format) {
-   case PIPE_FORMAT_Z24X8_UNORM:
-   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-      fmt.fmt = FMT6_8_8_8_8_UNORM;
-      break;
-
-   default:
-      break;
-   }
-
-   return fmt;
-}
-
 static bool
 tu6_format_color_supported(enum pipe_format format)
 {
-   return tu6_format_color_unchecked(format, TILE6_LINEAR).fmt != FMT6_NONE;
+   return fd6_color_format(format, TILE6_LINEAR) != FMT6_NONE;
 }
 
 struct tu_native_format
 tu6_format_color(enum pipe_format format, enum a6xx_tile_mode tile_mode)
 {
-   struct tu_native_format fmt = tu6_format_color_unchecked(format, tile_mode);
+   struct tu_native_format fmt = {
+      .fmt = fd6_color_format(format, tile_mode),
+      .swap = fd6_color_swap(format, tile_mode),
+   };
    assert(fmt.fmt != FMT6_NONE);
    return fmt;
 }

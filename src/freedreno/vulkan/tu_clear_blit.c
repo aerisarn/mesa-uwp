@@ -86,6 +86,31 @@ blit_format_texture(enum pipe_format format, enum a6xx_tile_mode tile_mode)
    return fmt;
 }
 
+static struct tu_native_format
+blit_format_color(enum pipe_format format, enum a6xx_tile_mode tile_mode)
+{
+   struct tu_native_format fmt = tu6_format_color(format, tile_mode);
+
+   switch (format) {
+   case PIPE_FORMAT_Z24X8_UNORM:
+   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+      /* similar to blit_format_texture but for blit dst */
+      fmt.fmt = FMT6_8_8_8_8_UNORM;
+      break;
+   default:
+      break;
+   }
+
+   return fmt;
+}
+
+static enum a6xx_format
+blit_base_format(enum pipe_format format)
+{
+   /* note: tu6_format_color doesn't care about tiling for .fmt field */
+   return blit_format_color(format, TILE6_LINEAR).fmt;
+}
+
 static void
 r2d_coords(struct tu_cs *cs,
            const VkOffset2D *dst,
@@ -329,7 +354,7 @@ static void
 r2d_dst_buffer(struct tu_cs *cs, enum pipe_format format, uint64_t va, uint32_t pitch,
                enum pipe_format src_format)
 {
-   struct tu_native_format fmt = tu6_format_color(format, TILE6_LINEAR);
+   struct tu_native_format fmt = blit_format_color(format, TILE6_LINEAR);
    enum a6xx_format color_fmt = fmt.fmt;
    fixup_dst_format(src_format, &format, &color_fmt);
    fmt.fmt = color_fmt;
@@ -354,7 +379,7 @@ r2d_setup_common(struct tu_cmd_buffer *cmd,
                  bool ubwc,
                  bool scissor)
 {
-   enum a6xx_format fmt = tu6_base_format(dst_format);
+   enum a6xx_format fmt = blit_base_format(dst_format);
    fixup_dst_format(src_format, &dst_format, &fmt);
    enum a6xx_2d_ifmt ifmt = format_to_ifmt(dst_format);
 
@@ -1150,7 +1175,7 @@ static void
 r3d_dst_buffer(struct tu_cs *cs, enum pipe_format format, uint64_t va, uint32_t pitch,
                enum pipe_format src_format)
 {
-   struct tu_native_format fmt = tu6_format_color(format, TILE6_LINEAR);
+   struct tu_native_format fmt = blit_format_color(format, TILE6_LINEAR);
 
    enum a6xx_format color_fmt = fmt.fmt;
    fixup_dst_format(src_format, &format, &color_fmt);
@@ -1193,7 +1218,7 @@ r3d_setup(struct tu_cmd_buffer *cmd,
           bool ubwc,
           VkSampleCountFlagBits samples)
 {
-   enum a6xx_format fmt = tu6_base_format(dst_format);
+   enum a6xx_format fmt = blit_base_format(dst_format);
    fixup_dst_format(src_format, &dst_format, &fmt);
 
    if ((dst_format == PIPE_FORMAT_Z24_UNORM_S8_UINT ||
@@ -2725,7 +2750,7 @@ clear_gmem_attachment(struct tu_cmd_buffer *cmd,
                       const VkClearValue *value)
 {
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 1);
-   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(tu6_base_format(format)));
+   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(blit_base_format(format)));
 
    tu_cs_emit_regs(cs, A6XX_RB_BLIT_INFO(.gmem = 1, .clear_mask = clear_mask));
 
