@@ -1785,8 +1785,7 @@ agx_remap_varyings_vs(nir_shader *nir, struct agx_varyings_vs *varyings)
 
    u_foreach_bit64(loc, nir->info.outputs_written)
    {
-      if (loc == VARYING_SLOT_POS || loc == VARYING_SLOT_PSIZ ||
-          loc == VARYING_SLOT_CLIP_DIST0 || loc == VARYING_SLOT_CLIP_DIST1)
+      if (loc == VARYING_SLOT_POS || loc == VARYING_SLOT_PSIZ)
          continue;
 
       varyings->slots[loc] = base;
