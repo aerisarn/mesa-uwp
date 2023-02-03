@@ -16,7 +16,6 @@ struct tu_native_format
 {
    enum a6xx_format fmt : 8;
    enum a3xx_color_swap swap : 8;
-   enum a6xx_tile_mode tile_mode : 8;
 };
 
 enum pipe_format tu_vk_format_to_pipe_format(VkFormat vk_format);
