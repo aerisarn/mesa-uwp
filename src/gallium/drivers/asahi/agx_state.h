@@ -551,7 +551,15 @@ void agx_batch_writes(struct agx_batch *batch, struct agx_resource *rsrc);
 bool agx_any_batch_uses_resource(struct agx_context *ctx,
                                  struct agx_resource *rsrc);
 
+/* 16384 is the maximum framebuffer dimension, so we use a larger width (the
+ * maximum uint16_t) as a sentinel to identify the compute batch. This ensures
+ * compute batches don't mix with graphics. This is a bit of a hack but it
+ * works.
+ */
+#define AGX_COMPUTE_BATCH_WIDTH 0xFFFF
+
 struct agx_batch *agx_get_batch(struct agx_context *ctx);
+struct agx_batch *agx_get_compute_batch(struct agx_context *ctx);
 void agx_batch_cleanup(struct agx_context *ctx, struct agx_batch *batch);
 
 /* Blit shaders */
