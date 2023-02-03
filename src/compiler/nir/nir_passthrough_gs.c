@@ -24,6 +24,102 @@
 #include "nir.h"
 #include "nir_builder.h"
 
+static unsigned int
+gs_in_prim_for_topology(enum shader_prim prim)
+{
+   switch (prim) {
+   case SHADER_PRIM_QUADS:
+      return SHADER_PRIM_LINES_ADJACENCY;
+   default:
+      return prim;
+   }
+}
+
+static enum shader_prim
+gs_out_prim_for_topology(enum shader_prim prim)
+{
+   switch (prim) {
+   case SHADER_PRIM_POINTS:
+      return SHADER_PRIM_POINTS;
+   case SHADER_PRIM_LINES:
+   case SHADER_PRIM_LINE_LOOP:
+   case SHADER_PRIM_LINES_ADJACENCY:
+   case SHADER_PRIM_LINE_STRIP_ADJACENCY:
+   case SHADER_PRIM_LINE_STRIP:
+      return SHADER_PRIM_LINE_STRIP;
+   case SHADER_PRIM_TRIANGLES:
+   case SHADER_PRIM_TRIANGLE_STRIP:
+   case SHADER_PRIM_TRIANGLE_FAN:
+   case SHADER_PRIM_TRIANGLES_ADJACENCY:
+   case SHADER_PRIM_TRIANGLE_STRIP_ADJACENCY:
+   case SHADER_PRIM_POLYGON:
+      return SHADER_PRIM_TRIANGLE_STRIP;
+   case SHADER_PRIM_QUADS:
+   case SHADER_PRIM_QUAD_STRIP:
+   case SHADER_PRIM_PATCHES:
+   default:
+      return SHADER_PRIM_QUADS;
+   }
+}
+
+static unsigned int
+vertices_for_prim(enum shader_prim prim)
+{
+   switch (prim) {
+   case SHADER_PRIM_POINTS:
+      return 1;
+   case SHADER_PRIM_LINES:
+   case SHADER_PRIM_LINE_LOOP:
+   case SHADER_PRIM_LINES_ADJACENCY:
+   case SHADER_PRIM_LINE_STRIP_ADJACENCY:
+   case SHADER_PRIM_LINE_STRIP:
+      return 2;
+   case SHADER_PRIM_TRIANGLES:
+   case SHADER_PRIM_TRIANGLE_STRIP:
+   case SHADER_PRIM_TRIANGLE_FAN:
+   case SHADER_PRIM_TRIANGLES_ADJACENCY:
+   case SHADER_PRIM_TRIANGLE_STRIP_ADJACENCY:
+   case SHADER_PRIM_POLYGON:
+      return 3;
+   case SHADER_PRIM_QUADS:
+   case SHADER_PRIM_QUAD_STRIP:
+      return 4;
+   case SHADER_PRIM_PATCHES:
+   default:
+      unreachable("unsupported primitive for gs input");
+   }
+}
+
+static unsigned int
+array_size_for_prim(enum shader_prim prim)
+{
+   switch (prim) {
+   case SHADER_PRIM_POINTS:
+      return 1;
+   case SHADER_PRIM_LINES:
+   case SHADER_PRIM_LINE_LOOP:
+   case SHADER_PRIM_LINE_STRIP:
+      return 2;
+   case SHADER_PRIM_LINES_ADJACENCY:
+   case SHADER_PRIM_LINE_STRIP_ADJACENCY:
+      return 4;
+   case SHADER_PRIM_TRIANGLES:
+   case SHADER_PRIM_TRIANGLE_STRIP:
+   case SHADER_PRIM_TRIANGLE_FAN:
+   case SHADER_PRIM_POLYGON:
+      return 3;
+   case SHADER_PRIM_TRIANGLES_ADJACENCY:
+   case SHADER_PRIM_TRIANGLE_STRIP_ADJACENCY:
+      return 6;
+   case SHADER_PRIM_QUADS:
+   case SHADER_PRIM_QUAD_STRIP:
+      return 4;
+   case SHADER_PRIM_PATCHES:
+   default:
+      unreachable("unsupported primitive for gs input");
+   }
+}
+
 /*
  * A helper to create a passthrough GS shader for drivers that needs to lower
  * some rendering tasks to the GS.
@@ -32,18 +128,18 @@
 nir_shader *
 nir_create_passthrough_gs(const nir_shader_compiler_options *options,
                           const nir_shader *prev_stage,
-                          enum shader_prim primitive_type,
-                          unsigned vertices)
+                          enum shader_prim primitive_type)
 {
+   unsigned int vertices_out = vertices_for_prim(primitive_type);
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_GEOMETRY,
                                                   options,
                                                   "gs passthrough");
 
    nir_shader *nir = b.shader;
-   nir->info.gs.input_primitive = primitive_type;
-   nir->info.gs.output_primitive = primitive_type;
-   nir->info.gs.vertices_in = vertices;
-   nir->info.gs.vertices_out = vertices;
+   nir->info.gs.input_primitive = gs_in_prim_for_topology(primitive_type);
+   nir->info.gs.output_primitive = gs_out_prim_for_topology(primitive_type);
+   nir->info.gs.vertices_in = vertices_out;
+   nir->info.gs.vertices_out = vertices_out;
    nir->info.gs.invocations = 1;
    nir->info.gs.active_stream_mask = 1;
 
@@ -63,7 +159,7 @@ nir_create_passthrough_gs(const nir_shader_compiler_options *options,
 
       nir_variable *in = nir_variable_create(nir, nir_var_shader_in,
                                              glsl_array_type(var->type,
-                                                             vertices,
+                                                             array_size_for_prim(primitive_type),
                                                              false),
                                              name);
       in->data.location = var->data.location;
@@ -98,7 +194,7 @@ nir_create_passthrough_gs(const nir_shader_compiler_options *options,
    }
 
    unsigned int start_vert = 0;
-   unsigned int end_vert = vertices;
+   unsigned int end_vert = vertices_out;
    unsigned int vert_step = 1;
    switch (primitive_type) {
    case PIPE_PRIM_LINES_ADJACENCY:
