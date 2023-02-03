@@ -130,6 +130,7 @@ a530-traces:
   extends:
     - .lava-test:arm64
   variables:
+    FLAKES_CHANNEL: "#freedreno-ci"
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
     # Increase the hangcheck timer for our spilling tests which bump up against
