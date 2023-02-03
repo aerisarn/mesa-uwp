@@ -676,6 +676,7 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_load_scratch:
                case nir_intrinsic_load_invocation_id:
                case nir_intrinsic_load_primitive_id:
+               case nir_intrinsic_load_typed_buffer_amd:
                case nir_intrinsic_load_buffer_amd:
                case nir_intrinsic_load_initial_edgeflags_amd:
                case nir_intrinsic_gds_atomic_add_amd:

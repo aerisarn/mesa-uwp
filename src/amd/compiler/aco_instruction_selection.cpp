@@ -4052,9 +4052,11 @@ struct LoadEmitInfo {
    unsigned const_offset = 0;
    unsigned align_mul = 0;
    unsigned align_offset = 0;
+   pipe_format format;
 
    bool glc = false;
    bool slc = false;
+   bool split_by_component_stride = true;
    unsigned swizzle_component_size = 0;
    memory_sync_info sync;
    Temp soffset = Temp(0, s1);
@@ -4112,10 +4114,12 @@ emit_load(isel_context* ctx, Builder& bld, const LoadEmitInfo& info,
          }
       }
 
-      if (info.swizzle_component_size)
-         bytes_needed = MIN2(bytes_needed, info.swizzle_component_size);
-      if (info.component_stride)
-         bytes_needed = MIN2(bytes_needed, info.component_size);
+      if (info.split_by_component_stride) {
+         if (info.swizzle_component_size)
+            bytes_needed = MIN2(bytes_needed, info.swizzle_component_size);
+         if (info.component_stride)
+            bytes_needed = MIN2(bytes_needed, info.component_size);
+      }
 
       bool need_to_align_offset = byte_align && (align_mul % 4 || align_offset % 4);
 
@@ -4222,9 +4226,11 @@ emit_load(isel_context* ctx, Builder& bld, const LoadEmitInfo& info,
 
       /* add result to list and advance */
       if (info.component_stride) {
-         assert(val.bytes() == info.component_size && "unimplemented");
-         const_offset += info.component_stride;
-         align_offset = (align_offset + info.component_stride) % align_mul;
+         assert(val.bytes() % info.component_size == 0);
+         unsigned num_loaded_components = val.bytes() / info.component_size;
+         unsigned advance_bytes = info.component_stride * num_loaded_components;
+         const_offset += advance_bytes;
+         align_offset = (align_offset + advance_bytes) % align_mul;
       } else {
          const_offset += val.bytes();
          align_offset = (align_offset + val.bytes()) % align_mul;
@@ -5518,6 +5524,106 @@ visit_load_interpolated_input(isel_context* ctx, nir_intrinsic_instr* instr)
       ctx->block->instructions.emplace_back(std::move(vec));
    }
 }
+
+Temp
+mtbuf_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsigned bytes_needed,
+                    unsigned alignment, unsigned const_offset, Temp dst_hint)
+{
+   Operand vaddr = offset.type() == RegType::vgpr ? Operand(offset) : Operand(v1);
+   Operand soffset = offset.type() == RegType::sgpr ? Operand(offset) : Operand::c32(0);
+
+   if (info.soffset.id()) {
+      if (soffset.isTemp())
+         vaddr = bld.copy(bld.def(v1), soffset);
+      soffset = Operand(info.soffset);
+   }
+
+   const bool offen = !vaddr.isUndefined();
+   const bool idxen = info.idx.id();
+
+   if (offen && idxen)
+      vaddr = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), info.idx, vaddr);
+   else if (idxen)
+      vaddr = Operand(info.idx);
+
+   /* Determine number of fetched components.
+    * Note, ACO IR works with GFX6-8 nfmt + dfmt fields, these are later converted for GFX10+.
+    */
+   const struct ac_vtx_format_info* vtx_info =
+      ac_get_vtx_format_info(GFX8, CHIP_POLARIS10, info.format);
+   /* The number of channels in the format determines the memory range. */
+   const unsigned max_components = vtx_info->num_channels;
+   /* Calculate maximum number of components loaded according to alignment. */
+   unsigned max_fetched_components = bytes_needed / info.component_size;
+   max_fetched_components =
+      ac_get_safe_fetch_size(bld.program->gfx_level, vtx_info, const_offset, max_components,
+                             alignment, max_fetched_components);
+   const unsigned fetch_fmt = vtx_info->hw_format[max_fetched_components - 1];
+   /* Adjust bytes needed in case we need to do a smaller load due to aligment.
+    * If a larger format is selected, it's still OK to load a smaller amount from it.
+    */
+   bytes_needed = MIN2(bytes_needed, max_fetched_components * info.component_size);
+   unsigned bytes_size = 0;
+   const unsigned bit_size = info.component_size * 8;
+   aco_opcode op = aco_opcode::num_opcodes;
+
+   if (bytes_needed == 2) {
+      bytes_size = 2;
+      op = aco_opcode::tbuffer_load_format_d16_x;
+   } else if (bytes_needed <= 4) {
+      bytes_size = 4;
+      if (bit_size == 16)
+         op = aco_opcode::tbuffer_load_format_d16_xy;
+      else
+         op = aco_opcode::tbuffer_load_format_x;
+   } else if (bytes_needed <= 6) {
+      bytes_size = 6;
+      if (bit_size == 16)
+         op = aco_opcode::tbuffer_load_format_d16_xyz;
+      else
+         op = aco_opcode::tbuffer_load_format_xy;
+   } else if (bytes_needed <= 8) {
+      bytes_size = 8;
+      if (bit_size == 16)
+         op = aco_opcode::tbuffer_load_format_d16_xyzw;
+      else
+         op = aco_opcode::tbuffer_load_format_xy;
+   } else if (bytes_needed <= 12) {
+      bytes_size = 12;
+      op = aco_opcode::tbuffer_load_format_xyz;
+   } else {
+      bytes_size = 16;
+      op = aco_opcode::tbuffer_load_format_xyzw;
+   }
+
+   /* Abort when suitable opcode wasn't found so we don't compile buggy shaders. */
+   if (op == aco_opcode::num_opcodes) {
+      aco_err(bld.program, "unsupported bit size for typed buffer load");
+      abort();
+   }
+
+   aco_ptr<MTBUF_instruction> mtbuf{create_instruction<MTBUF_instruction>(op, Format::MTBUF, 3, 1)};
+   mtbuf->operands[0] = Operand(info.resource);
+   mtbuf->operands[1] = vaddr;
+   mtbuf->operands[2] = soffset;
+   mtbuf->offen = offen;
+   mtbuf->idxen = idxen;
+   mtbuf->glc = info.glc;
+   mtbuf->dlc = info.glc && (bld.program->gfx_level == GFX10 || bld.program->gfx_level == GFX10_3);
+   mtbuf->slc = info.slc;
+   mtbuf->sync = info.sync;
+   mtbuf->offset = const_offset;
+   mtbuf->dfmt = fetch_fmt & 0xf;
+   mtbuf->nfmt = fetch_fmt >> 4;
+   RegClass rc = RegClass::get(RegType::vgpr, bytes_size);
+   Temp val = dst_hint.id() && rc == dst_hint.regClass() ? dst_hint : bld.tmp(rc);
+   mtbuf->definitions[0] = Definition(val);
+   bld.insert(std::move(mtbuf));
+
+   return val;
+}
+
+const EmitLoadParameters mtbuf_load_params{mtbuf_load_callback, false, true, 4096};
 
 void
 visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
@@ -7203,24 +7309,50 @@ visit_load_buffer(isel_context* ctx, nir_intrinsic_instr* intrin)
    unsigned const_offset = nir_intrinsic_base(intrin);
    unsigned elem_size_bytes = intrin->dest.ssa.bit_size / 8u;
    unsigned num_components = intrin->dest.ssa.num_components;
-   unsigned swizzle_element_size = swizzled ? (ctx->program->gfx_level <= GFX8 ? 4 : 16) : 0;
 
    nir_variable_mode mem_mode = nir_intrinsic_memory_modes(intrin);
    memory_sync_info sync(aco_storage_mode_from_nir_mem_mode(mem_mode));
 
    LoadEmitInfo info = {Operand(v_offset), dst, num_components, elem_size_bytes, descriptor};
    info.idx = idx;
-   info.component_stride = swizzle_element_size;
    info.glc = glc;
    info.slc = slc;
-   info.swizzle_component_size = swizzle_element_size ? 4 : 0;
-   info.align_mul = MIN2(elem_size_bytes, 4);
-   info.align_offset = 0;
    info.soffset = s_offset;
    info.const_offset = const_offset;
    info.sync = sync;
 
-   emit_load(ctx, bld, info, mubuf_load_params);
+   if (intrin->intrinsic == nir_intrinsic_load_typed_buffer_amd) {
+      const pipe_format format = nir_intrinsic_format(intrin);
+      const struct ac_vtx_format_info* vtx_info =
+         ac_get_vtx_format_info(ctx->program->gfx_level, ctx->program->family, format);
+      const struct util_format_description* f = util_format_description(format);
+      const unsigned align_mul = nir_intrinsic_align_mul(intrin);
+      const unsigned align_offset = nir_intrinsic_align_offset(intrin);
+
+      /* Avoid splitting:
+       * - non-array formats because that would result in incorrect code
+       * - when element size is same as component size (to reduce instruction count)
+       */
+      const bool can_split = f->is_array && elem_size_bytes != vtx_info->chan_byte_size;
+
+      info.align_mul = align_mul;
+      info.align_offset = align_offset;
+      info.format = format;
+      info.component_stride = can_split ? vtx_info->chan_byte_size : 0;
+      info.split_by_component_stride = false;
+
+      emit_load(ctx, bld, info, mtbuf_load_params);
+   } else {
+      const unsigned swizzle_element_size =
+         swizzled ? (ctx->program->gfx_level <= GFX8 ? 4 : 16) : 0;
+
+      info.component_stride = swizzle_element_size;
+      info.swizzle_component_size = swizzle_element_size ? 4 : 0;
+      info.align_mul = MIN2(elem_size_bytes, 4);
+      info.align_offset = 0;
+
+      emit_load(ctx, bld, info, mubuf_load_params);
+   }
 }
 
 void
@@ -8276,6 +8408,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_bindless_image_atomic_fmax: visit_image_atomic(ctx, instr); break;
    case nir_intrinsic_load_ssbo: visit_load_ssbo(ctx, instr); break;
    case nir_intrinsic_store_ssbo: visit_store_ssbo(ctx, instr); break;
+   case nir_intrinsic_load_typed_buffer_amd:
    case nir_intrinsic_load_buffer_amd: visit_load_buffer(ctx, instr); break;
    case nir_intrinsic_store_buffer_amd: visit_store_buffer(ctx, instr); break;
    case nir_intrinsic_load_smem_amd: visit_load_smem(ctx, instr); break;
