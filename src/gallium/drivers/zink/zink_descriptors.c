@@ -1515,7 +1515,7 @@ zink_descriptors_init_bindless(struct zink_context *ctx)
    fci.bindingCount = num_bindings;
    fci.pBindingFlags = flags;
    for (unsigned i = 0; i < num_bindings; i++) {
-      flags[i] = VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT;
+      flags[i] = VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
       if (zink_descriptor_mode != ZINK_DESCRIPTOR_MODE_DB)
          flags[i] |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
    }
