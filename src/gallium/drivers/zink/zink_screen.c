@@ -2444,6 +2444,11 @@ init_driver_workarounds(struct zink_screen *screen)
       screen->driver_workarounds.no_linesmooth = true;
    }
 
+   screen->driver_workarounds.extra_swapchain_images = 0;
+   if (screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_VENUS) {
+      screen->driver_workarounds.extra_swapchain_images = 1;
+   }
+
    /* This is a workarround for the lack of
     * gl_PointSize + glPolygonMode(..., GL_LINE), in the imagination
     * proprietary driver.

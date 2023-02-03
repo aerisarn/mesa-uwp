@@ -1396,6 +1396,7 @@ struct zink_screen {
       bool lower_robustImageAccess2;
       unsigned z16_unscaled_bias;
       unsigned z24_unscaled_bias;
+      unsigned extra_swapchain_images;
    } driver_workarounds;
 };
 
