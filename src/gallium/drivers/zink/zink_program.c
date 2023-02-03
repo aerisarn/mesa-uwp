@@ -1563,6 +1563,22 @@ zink_get_compute_pipeline(struct zink_screen *screen,
 }
 
 static void
+bind_gfx_stage(struct zink_context *ctx, gl_shader_stage stage, struct zink_shader *shader);
+
+static void
+unbind_generated_gs(struct zink_context *ctx, gl_shader_stage stage, struct zink_shader *shader)
+{
+   for (int i = 0; i < ARRAY_SIZE(shader->non_fs.generated_gs); i++) {
+     if (ctx->gfx_stages[stage]->non_fs.generated_gs[i] &&
+         ctx->gfx_stages[MESA_SHADER_GEOMETRY] ==
+         ctx->gfx_stages[stage]->non_fs.generated_gs[i]) {
+        assert(stage != MESA_SHADER_GEOMETRY); /* let's not keep recursing! */
+        bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY, NULL);
+     }
+   }
+}
+
+static void
 bind_gfx_stage(struct zink_context *ctx, gl_shader_stage stage, struct zink_shader *shader)
 {
    if (shader && shader->nir->info.num_inlinable_uniforms)
@@ -1573,15 +1589,10 @@ bind_gfx_stage(struct zink_context *ctx, gl_shader_stage stage, struct zink_shad
    if (ctx->gfx_stages[stage]) {
       ctx->gfx_hash ^= ctx->gfx_stages[stage]->hash;
 
-      /* unbind the generated GS */
-      if (stage != MESA_SHADER_FRAGMENT &&
-          ctx->gfx_stages[stage]->non_fs.generated_gs &&
-          ctx->gfx_stages[MESA_SHADER_GEOMETRY] ==
-          ctx->gfx_stages[stage]->non_fs.generated_gs) {
-         assert(stage != MESA_SHADER_GEOMETRY); /* let's not keep recursing! */
-         bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY, NULL);
-      }
+      if (stage != MESA_SHADER_FRAGMENT)
+         unbind_generated_gs(ctx, stage, shader);
    }
+
    ctx->gfx_stages[stage] = shader;
    ctx->gfx_dirty = ctx->gfx_stages[MESA_SHADER_FRAGMENT] && ctx->gfx_stages[MESA_SHADER_VERTEX];
    ctx->gfx_pipeline_state.modules_changed = true;
@@ -2200,10 +2211,11 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
          ctx->gfx_stages[MESA_SHADER_TESS_EVAL] ?
             MESA_SHADER_TESS_EVAL : MESA_SHADER_VERTEX;
 
-      if (!ctx->gfx_stages[MESA_SHADER_GEOMETRY]) {
+      if (!ctx->gfx_stages[MESA_SHADER_GEOMETRY] ||
+          (ctx->gfx_stages[MESA_SHADER_GEOMETRY]->nir->info.gs.input_primitive != ctx->gfx_pipeline_state.gfx_prim_mode)) {
          assert(!screen->optimal_keys);
 
-         if (!ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs) {
+         if (!ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode]) {
             nir_shader *nir = nir_create_passthrough_gs(
                &screen->nir_options,
                ctx->gfx_stages[prev_vertex_stage]->nir,
@@ -2211,12 +2223,12 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
                (lower_line_stipple || lower_line_smooth) ? 2 : 1);
 
             struct zink_shader *shader = zink_shader_create(screen, nir, NULL);
-            ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs = shader;
+            ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode] = shader;
             shader->non_fs.is_generated = true;
          }
 
          bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY,
-                        ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs);
+                        ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode]);
       }
    } else if (ctx->gfx_stages[MESA_SHADER_GEOMETRY] &&
               ctx->gfx_stages[MESA_SHADER_GEOMETRY]->non_fs.is_generated)

@@ -4646,8 +4646,10 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
       /* only remove generated tcs during parent tes destruction */
       if (stage == MESA_SHADER_TESS_EVAL && shader->non_fs.generated_tcs)
          prog->shaders[MESA_SHADER_TESS_CTRL] = NULL;
-      if (stage != MESA_SHADER_FRAGMENT && shader->non_fs.generated_gs)
-         prog->shaders[MESA_SHADER_GEOMETRY] = NULL;
+      for (unsigned int i = 0; i < ARRAY_SIZE(shader->non_fs.generated_gs); i++) {
+         if (stage != MESA_SHADER_FRAGMENT && shader->non_fs.generated_gs[i])
+            prog->shaders[MESA_SHADER_GEOMETRY] = NULL;
+      }
       zink_gfx_program_reference(screen, &prog, NULL);
    }
    if (shader->nir->info.stage == MESA_SHADER_TESS_EVAL &&
@@ -4656,11 +4658,13 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
       zink_shader_free(screen, shader->non_fs.generated_tcs);
       shader->non_fs.generated_tcs = NULL;
    }
-   if (shader->nir->info.stage != MESA_SHADER_FRAGMENT &&
-       shader->non_fs.generated_gs) {
-      /* automatically destroy generated gs shaders when owner is destroyed */
-      zink_shader_free(screen, shader->non_fs.generated_gs);
-      shader->non_fs.generated_gs = NULL;
+   for (unsigned int i = 0; i < ARRAY_SIZE(shader->non_fs.generated_gs); i++) {
+      if (shader->nir->info.stage != MESA_SHADER_FRAGMENT &&
+          shader->non_fs.generated_gs[i]) {
+         /* automatically destroy generated gs shaders when owner is destroyed */
+         zink_shader_free(screen, shader->non_fs.generated_gs[i]);
+         shader->non_fs.generated_gs[i] = NULL;
+      }
    }
    _mesa_set_destroy(shader->programs, NULL);
    util_queue_fence_wait(&shader->precompile.fence);
