@@ -72,6 +72,8 @@ struct fd_dev_info {
 
          bool has_hw_multiview;
 
+         bool has_fs_tex_prefetch;
+
          /* Whether the PC_MULTIVIEW_MASK register exists. */
          bool supports_multiview_mask;
 

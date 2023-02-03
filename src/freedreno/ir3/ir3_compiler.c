@@ -204,6 +204,8 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
       compiler->shared_consts_base_offset = 504;
       compiler->shared_consts_size = 8;
       compiler->geom_shared_consts_size_quirk = 16;
+
+      compiler->has_fs_tex_prefetch = dev_info->a6xx.has_fs_tex_prefetch;
    } else {
       compiler->max_const_pipeline = 512;
       compiler->max_const_geom = 512;
