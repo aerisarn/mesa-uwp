@@ -353,9 +353,6 @@ ubwc_possible(struct tu_device *device,
     *
     * If we wish to get the border colors correct without knowing the format
     * when creating the sampler, we also have to use the A630 workaround.
-    *
-    * Additionally, the special AS_R8G8B8A8 format is broken without UBWC,
-    * so we have to fallback to 8_8_8_8_UNORM when UBWC is disabled
     */
    if (!use_z24uint_s8uint &&
        format == VK_FORMAT_D24_UNORM_S8_UINT &&
