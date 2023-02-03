@@ -474,18 +474,18 @@ zink_draw(struct pipe_context *pctx,
       zink_set_last_vertex_key(ctx)->push_drawid = drawid_broken;
 
    bool rast_prim_changed = false;
-   bool lines_changed = false;
-   bool points_changed = false;
+   bool prim_changed = false;
    bool rast_state_changed = ctx->rast_state_changed;
    if (mode_changed || ctx->gfx_pipeline_state.modules_changed ||
        rast_state_changed) {
       enum pipe_prim_type rast_prim = zink_rast_prim(ctx, dinfo);
       if (rast_prim != ctx->gfx_pipeline_state.rast_prim) {
-         points_changed =
+         bool points_changed =
             (ctx->gfx_pipeline_state.rast_prim == PIPE_PRIM_POINTS) !=
             (rast_prim == PIPE_PRIM_POINTS);
+         prim_changed = points_changed;
 
-         lines_changed =
+         prim_changed |=
             (ctx->gfx_pipeline_state.rast_prim == PIPE_PRIM_LINES) !=
             (rast_prim == PIPE_PRIM_LINES);
          static bool rect_warned = false;
@@ -497,6 +497,10 @@ zink_draw(struct pipe_context *pctx,
                warn_missing_feature(rect_warned, "rectangularLines");
          }
 
+         prim_changed |=
+            (ctx->gfx_pipeline_state.rast_prim == PIPE_PRIM_TRIANGLES) !=
+            (rast_prim == PIPE_PRIM_TRIANGLES);
+
          ctx->gfx_pipeline_state.rast_prim = rast_prim;
          rast_prim_changed = true;
 
@@ -506,7 +510,7 @@ zink_draw(struct pipe_context *pctx,
    }
    ctx->gfx_pipeline_state.gfx_prim_mode = mode;
 
-   if ((mode_changed || points_changed || lines_changed || rast_state_changed || ctx->gfx_pipeline_state.modules_changed)) {
+   if ((mode_changed || prim_changed || rast_state_changed || ctx->gfx_pipeline_state.modules_changed)) {
       if (screen->optimal_keys)
          zink_create_primitive_emulation_gs(ctx);
       else

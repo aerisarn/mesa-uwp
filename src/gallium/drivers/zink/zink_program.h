@@ -96,6 +96,9 @@ zink_primitive_topology(enum pipe_prim_type mode)
    case PIPE_PRIM_PATCHES:
       return VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
 
+   case PIPE_PRIM_QUADS:
+      return VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
+
    default:
       unreachable("unexpected enum pipe_prim_type");
    }

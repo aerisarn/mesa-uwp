@@ -1572,12 +1572,14 @@ static void
 unbind_generated_gs(struct zink_context *ctx, gl_shader_stage stage, struct zink_shader *shader)
 {
    for (int i = 0; i < ARRAY_SIZE(shader->non_fs.generated_gs); i++) {
-     if (ctx->gfx_stages[stage]->non_fs.generated_gs[i] &&
-         ctx->gfx_stages[MESA_SHADER_GEOMETRY] ==
-         ctx->gfx_stages[stage]->non_fs.generated_gs[i]) {
-        assert(stage != MESA_SHADER_GEOMETRY); /* let's not keep recursing! */
-        bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY, NULL);
-     }
+      for (int j = 0; j < ARRAY_SIZE(shader->non_fs.generated_gs[0]); j++) {
+         if (ctx->gfx_stages[stage]->non_fs.generated_gs[i][j] &&
+             ctx->gfx_stages[MESA_SHADER_GEOMETRY] ==
+             ctx->gfx_stages[stage]->non_fs.generated_gs[i][j]) {
+            assert(stage != MESA_SHADER_GEOMETRY); /* let's not keep recursing! */
+            bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY, NULL);
+         }
+      }
    }
 }
 
@@ -2200,6 +2202,20 @@ has_edge_flags(struct zink_context *ctx)
           ctx->gfx_stages[MESA_SHADER_VERTEX]->has_edgeflags;
 }
 
+static enum zink_rast_prim
+zink_rast_prim_for_pipe(enum pipe_prim_type prim)
+{
+   switch (prim) {
+   case PIPE_PRIM_POINTS:
+      return ZINK_PRIM_POINTS;
+   case PIPE_PRIM_LINES:
+      return ZINK_PRIM_LINES;
+   case PIPE_PRIM_TRIANGLES:
+   default:
+      return ZINK_PRIM_TRIANGLES;
+   }
+}
+
 void
 zink_set_primitive_emulation_keys(struct zink_context *ctx)
 {
@@ -2227,6 +2243,11 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
 
    bool lower_edge_flags = has_edge_flags(ctx);
 
+   bool lower_quad_prim = ctx->gfx_pipeline_state.gfx_prim_mode == PIPE_PRIM_QUADS;
+
+   bool lower_filled_quad =  lower_quad_prim &&
+      ctx->gfx_pipeline_state.rast_prim == PIPE_PRIM_TRIANGLES;
+
    if (zink_get_fs_key(ctx)->lower_line_smooth != lower_line_smooth) {
       assert(zink_get_gs_key(ctx)->lower_line_smooth ==
              zink_get_fs_key(ctx)->lower_line_smooth);
@@ -2238,31 +2259,44 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
       zink_set_fs_key(ctx)->lower_point_smooth = lower_point_smooth;
    }
 
-   if (lower_line_stipple || lower_line_smooth || lower_edge_flags ||
+   if (lower_line_stipple || lower_line_smooth ||
+       lower_edge_flags || lower_quad_prim ||
        zink_get_gs_key(ctx)->lower_gl_point) {
       enum pipe_shader_type prev_vertex_stage =
          ctx->gfx_stages[MESA_SHADER_TESS_EVAL] ?
             MESA_SHADER_TESS_EVAL : MESA_SHADER_VERTEX;
+      enum zink_rast_prim zink_prim_type =
+         zink_rast_prim_for_pipe(ctx->gfx_pipeline_state.rast_prim);
+
+      //when using transform feedback primitives must be tessellated
+      lower_filled_quad |= lower_quad_prim && ctx->gfx_stages[prev_vertex_stage]->nir->info.has_transform_feedback_varyings;
 
       if (!ctx->gfx_stages[MESA_SHADER_GEOMETRY] ||
           (ctx->gfx_stages[MESA_SHADER_GEOMETRY]->nir->info.gs.input_primitive != ctx->gfx_pipeline_state.gfx_prim_mode)) {
          assert(!screen->optimal_keys);
 
-         if (!ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode]) {
-            nir_shader *nir = nir_create_passthrough_gs(
-               &screen->nir_options,
-               ctx->gfx_stages[prev_vertex_stage]->nir,
-               ctx->gfx_pipeline_state.gfx_prim_mode,
-               lower_edge_flags,
-               lower_line_stipple);
+         if (!ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type]) {
+            nir_shader *nir;
+            if (lower_filled_quad) {
+               nir = zink_create_quads_emulation_gs(
+                  &screen->nir_options,
+                  ctx->gfx_stages[prev_vertex_stage]->nir);
+            } else {
+               nir = nir_create_passthrough_gs(
+                  &screen->nir_options,
+                  ctx->gfx_stages[prev_vertex_stage]->nir,
+                  ctx->gfx_pipeline_state.gfx_prim_mode,
+                  lower_edge_flags,
+                  lower_line_stipple || lower_quad_prim);
+            }
 
             struct zink_shader *shader = zink_shader_create(screen, nir, NULL);
-            ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode] = shader;
+            ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type] = shader;
             shader->non_fs.is_generated = true;
          }
 
          bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY,
-                        ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode]);
+                        ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type]);
       }
    } else if (ctx->gfx_stages[MESA_SHADER_GEOMETRY] &&
               ctx->gfx_stages[MESA_SHADER_GEOMETRY]->non_fs.is_generated)
@@ -2275,29 +2309,46 @@ zink_create_primitive_emulation_gs(struct zink_context *ctx)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    bool lower_edge_flags = has_edge_flags(ctx);
 
-   if (lower_edge_flags) {
+   bool lower_quad_prim = ctx->gfx_pipeline_state.gfx_prim_mode == PIPE_PRIM_QUADS;
+
+   bool lower_filled_quad =  lower_quad_prim &&
+      ctx->gfx_pipeline_state.rast_prim == PIPE_PRIM_TRIANGLES;
+
+   if (lower_edge_flags | lower_quad_prim) {
       enum pipe_shader_type prev_vertex_stage =
          ctx->gfx_stages[MESA_SHADER_TESS_EVAL] ?
             MESA_SHADER_TESS_EVAL : MESA_SHADER_VERTEX;
+      enum zink_rast_prim zink_prim_type =
+         zink_rast_prim_for_pipe(ctx->gfx_pipeline_state.rast_prim);
+
+      //when using transform feedback primitives must be tessellated
+      lower_filled_quad |= lower_quad_prim && ctx->gfx_stages[prev_vertex_stage]->nir->info.has_transform_feedback_varyings;
 
       if (!ctx->gfx_stages[MESA_SHADER_GEOMETRY] ||
           (ctx->gfx_stages[MESA_SHADER_GEOMETRY]->nir->info.gs.input_primitive != ctx->gfx_pipeline_state.gfx_prim_mode)) {
 
-         if (!ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode]) {
-            nir_shader *nir = nir_create_passthrough_gs(
-               &screen->nir_options,
-               ctx->gfx_stages[prev_vertex_stage]->nir,
-               ctx->gfx_pipeline_state.gfx_prim_mode,
-               lower_edge_flags,
-               false);
+         if (!ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type]) {
+            nir_shader *nir;
+            if (lower_filled_quad) {
+               nir = zink_create_quads_emulation_gs(
+                  &screen->nir_options,
+                  ctx->gfx_stages[prev_vertex_stage]->nir);
+            } else {
+               nir = nir_create_passthrough_gs(
+                  &screen->nir_options,
+                  ctx->gfx_stages[prev_vertex_stage]->nir,
+                  ctx->gfx_pipeline_state.gfx_prim_mode,
+                  lower_edge_flags,
+                  lower_quad_prim);
+            }
 
             struct zink_shader *shader = zink_shader_create(screen, nir, NULL);
-            ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode] = shader;
+            ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type] = shader;
             shader->non_fs.is_generated = true;
          }
 
          bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY,
-                        ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode]);
+                        ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type]);
       }
    } else if (ctx->gfx_stages[MESA_SHADER_GEOMETRY] &&
               ctx->gfx_stages[MESA_SHADER_GEOMETRY]->non_fs.is_generated)
