@@ -14,23 +14,6 @@
 #include "tu_device.h"
 #include "tu_image.h"
 
-struct tu_native_format
-tu6_format_vtx(enum pipe_format format)
-{
-   struct tu_native_format fmt = {
-      .fmt = fd6_vertex_format(format),
-      .swap = fd6_vertex_swap(format),
-   };
-   assert(fmt.fmt != FMT6_NONE);
-   return fmt;
-}
-
-static bool
-tu6_format_vtx_supported(enum pipe_format format)
-{
-   return fd6_vertex_format(format) != FMT6_NONE;
-}
-
 /* Map non-colorspace-converted YUV formats to RGB pipe formats where we can,
  * since our hardware doesn't support colorspace conversion.
  *
@@ -60,6 +43,23 @@ tu_vk_format_to_pipe_format(VkFormat vk_format)
 }
 
 static bool
+tu6_format_vtx_supported(enum pipe_format format)
+{
+   return fd6_vertex_format(format) != FMT6_NONE;
+}
+
+struct tu_native_format
+tu6_format_vtx(enum pipe_format format)
+{
+   struct tu_native_format fmt = {
+      .fmt = fd6_vertex_format(format),
+      .swap = fd6_vertex_swap(format),
+   };
+   assert(tu6_format_vtx_supported(format));
+   return fmt;
+}
+
+static bool
 tu6_format_color_supported(enum pipe_format format)
 {
    return fd6_color_format(format, TILE6_LINEAR) != FMT6_NONE;
@@ -76,6 +76,12 @@ tu6_format_color(enum pipe_format format, enum a6xx_tile_mode tile_mode)
    return fmt;
 }
 
+static bool
+tu6_format_texture_supported(enum pipe_format format)
+{
+   return fd6_texture_format(format, TILE6_LINEAR) != FMT6_NONE;
+}
+
 struct tu_native_format
 tu6_format_texture(enum pipe_format format, enum a6xx_tile_mode tile_mode)
 {
@@ -85,12 +91,6 @@ tu6_format_texture(enum pipe_format format, enum a6xx_tile_mode tile_mode)
    };
    assert(fmt.fmt != FMT6_NONE);
    return fmt;
-}
-
-static bool
-tu6_format_texture_supported(enum pipe_format format)
-{
-   return fd6_texture_format(format, TILE6_LINEAR) != FMT6_NONE;
 }
 
 enum tu6_ubwc_compat_type {
