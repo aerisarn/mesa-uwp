@@ -2332,15 +2332,14 @@ anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
    return pipe_bits;
 }
 
-#define VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV (         \
-   VK_IMAGE_ASPECT_COLOR_BIT | \
-   VK_IMAGE_ASPECT_PLANE_0_BIT | \
-   VK_IMAGE_ASPECT_PLANE_1_BIT | \
-   VK_IMAGE_ASPECT_PLANE_2_BIT)
 #define VK_IMAGE_ASPECT_PLANES_BITS_ANV ( \
    VK_IMAGE_ASPECT_PLANE_0_BIT | \
    VK_IMAGE_ASPECT_PLANE_1_BIT | \
    VK_IMAGE_ASPECT_PLANE_2_BIT)
+
+#define VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV (         \
+   VK_IMAGE_ASPECT_COLOR_BIT | \
+   VK_IMAGE_ASPECT_PLANES_BITS_ANV)
 
 struct anv_vertex_binding {
    struct anv_buffer *                          buffer;
