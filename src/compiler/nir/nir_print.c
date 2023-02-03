@@ -1053,7 +1053,33 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
 
       case NIR_INTRINSIC_IO_SEMANTICS: {
          struct nir_io_semantics io = nir_intrinsic_io_semantics(instr);
-         fprintf(fp, "io location=%u slots=%u", io.location, io.num_slots);
+
+         /* Try to figure out the mode so we can interpret the location */
+         nir_variable_mode mode = nir_var_mem_generic;
+         switch (instr->intrinsic) {
+         case nir_intrinsic_load_input:
+         case nir_intrinsic_load_interpolated_input:
+            mode = nir_var_shader_in;
+            break;
+
+         case nir_intrinsic_load_output:
+         case nir_intrinsic_store_output:
+         case nir_intrinsic_store_per_primitive_output:
+         case nir_intrinsic_store_per_vertex_output:
+            mode = nir_var_shader_out;
+            break;
+
+         default:
+            break;
+         }
+
+         /* Using that mode, we should be able to name the location */
+         char buf[4];
+         const char *loc = get_location_str(io.location,
+                                            state->shader->info.stage, mode,
+                                            buf);
+
+         fprintf(fp, "io location=%s slots=%u", loc, io.num_slots);
 
          if (io.dual_source_blend_index)
             fprintf(fp, " dualsrc");
