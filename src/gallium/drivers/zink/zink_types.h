@@ -1737,6 +1737,7 @@ struct zink_context {
       };
 
       VkDescriptorImageInfo fbfetch;
+      uint8_t fbfetch_db[64]; //max size from gpuinfo
 
       /* the current state of the shadow swizzle data */
       struct zink_fs_shadow_key shadow;

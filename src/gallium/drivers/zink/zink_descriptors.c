@@ -1140,14 +1140,20 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
                                                            bs->dd.db_map[ZINK_DESCRIPTOR_TYPE_UNIFORMS] + stage_offset);
             }
             if (!is_compute && ctx->dd.has_fbfetch) {
-               VkDescriptorGetInfoEXT info;
-               info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
-               info.pNext = NULL;
-               info.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-               info.data.pInputAttachmentImage = &ctx->di.fbfetch;
                uint64_t stage_offset = offset + ctx->dd.db_offset[MESA_SHADER_FRAGMENT + 1];
-               VKSCR(GetDescriptorEXT)(screen->dev, &info, screen->info.db_props.robustUniformBufferDescriptorSize,
-                                                           bs->dd.db_map[ZINK_DESCRIPTOR_TYPE_UNIFORMS] + stage_offset);
+               if (pg->dd.fbfetch) {
+                  /* real fbfetch descriptor */
+                  VkDescriptorGetInfoEXT info;
+                  info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
+                  info.pNext = NULL;
+                  info.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+                  info.data.pInputAttachmentImage = &ctx->di.fbfetch;
+                  VKSCR(GetDescriptorEXT)(screen->dev, &info, screen->info.db_props.inputAttachmentDescriptorSize,
+                                                            bs->dd.db_map[ZINK_DESCRIPTOR_TYPE_UNIFORMS] + stage_offset);
+               } else {
+                  /* reuse cached dummy descriptor */
+                  memcpy(bs->dd.db_map[ZINK_DESCRIPTOR_TYPE_UNIFORMS] + stage_offset, ctx->di.fbfetch_db, screen->info.db_props.inputAttachmentDescriptorSize);
+               }
             }
             bs->dd.cur_db_offset[ZINK_DESCRIPTOR_TYPE_UNIFORMS] = bs->dd.db_offset[ZINK_DESCRIPTOR_TYPE_UNIFORMS];
             bs->dd.db_offset[ZINK_DESCRIPTOR_TYPE_UNIFORMS] += ctx->dd.db_size[is_compute];
