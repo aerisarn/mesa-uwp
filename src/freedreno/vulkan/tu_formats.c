@@ -26,7 +26,7 @@ tu6_format_vtx(VkFormat vk_format)
    return fmt;
 }
 
-bool
+static bool
 tu6_format_vtx_supported(VkFormat vk_format)
 {
    enum pipe_format format = vk_format_to_pipe_format(vk_format);
@@ -82,7 +82,7 @@ tu6_format_color_unchecked(enum pipe_format format, enum a6xx_tile_mode tile_mod
    return fmt;
 }
 
-bool
+static bool
 tu6_format_color_supported(enum pipe_format format)
 {
    return tu6_format_color_unchecked(format, TILE6_LINEAR).fmt != FMT6_NONE;
@@ -129,7 +129,7 @@ tu6_format_texture(enum pipe_format format, enum a6xx_tile_mode tile_mode)
    return fmt;
 }
 
-bool
+static bool
 tu6_format_texture_supported(enum pipe_format format)
 {
    return tu6_format_texture_unchecked(format, TILE6_LINEAR).fmt != FMT6_NONE;
