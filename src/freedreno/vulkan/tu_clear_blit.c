@@ -105,8 +105,19 @@ blit_format_color(enum pipe_format format, enum a6xx_tile_mode tile_mode)
 }
 
 static enum a6xx_format
-blit_base_format(enum pipe_format format)
+blit_base_format(enum pipe_format format, bool ubwc)
 {
+   if (ubwc) {
+      switch (format) {
+      case PIPE_FORMAT_Z24X8_UNORM:
+      case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+         /* use the ubwc-compatible FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8 */
+         return FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
+      default:
+         break;
+      }
+   }
+
    /* note: tu6_format_color doesn't care about tiling for .fmt field */
    return blit_format_color(format, TILE6_LINEAR).fmt;
 }
@@ -379,16 +390,11 @@ r2d_setup_common(struct tu_cmd_buffer *cmd,
                  bool ubwc,
                  bool scissor)
 {
-   enum a6xx_format fmt = blit_base_format(dst_format);
+   enum a6xx_format fmt = blit_base_format(dst_format, ubwc);
    fixup_dst_format(src_format, &dst_format, &fmt);
    enum a6xx_2d_ifmt ifmt = format_to_ifmt(dst_format);
 
    uint32_t unknown_8c01 = 0;
-
-   if ((dst_format == PIPE_FORMAT_Z24_UNORM_S8_UINT ||
-       dst_format == PIPE_FORMAT_Z24X8_UNORM) && ubwc) {
-      fmt = FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
-   }
 
    /* note: the only format with partial clearing is D24S8 */
    if (dst_format == PIPE_FORMAT_Z24_UNORM_S8_UINT) {
@@ -1218,13 +1224,8 @@ r3d_setup(struct tu_cmd_buffer *cmd,
           bool ubwc,
           VkSampleCountFlagBits samples)
 {
-   enum a6xx_format fmt = blit_base_format(dst_format);
+   enum a6xx_format fmt = blit_base_format(dst_format, ubwc);
    fixup_dst_format(src_format, &dst_format, &fmt);
-
-   if ((dst_format == PIPE_FORMAT_Z24_UNORM_S8_UINT ||
-        dst_format == PIPE_FORMAT_Z24X8_UNORM) && ubwc) {
-      fmt = FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
-   }
 
    if (!cmd->state.pass) {
       tu_emit_cache_flush_ccu(cmd, cs, TU_CMD_CCU_SYSMEM);
@@ -2750,7 +2751,8 @@ clear_gmem_attachment(struct tu_cmd_buffer *cmd,
                       const VkClearValue *value)
 {
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 1);
-   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(blit_base_format(format)));
+   tu_cs_emit(cs, A6XX_RB_BLIT_DST_INFO_COLOR_FORMAT(
+            blit_base_format(format, false)));
 
    tu_cs_emit_regs(cs, A6XX_RB_BLIT_INFO(.gmem = 1, .clear_mask = clear_mask));
 
