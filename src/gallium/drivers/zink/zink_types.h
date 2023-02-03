@@ -310,6 +310,7 @@ struct zink_rasterizer_state {
    float line_width;
    VkFrontFace front_face;
    VkCullModeFlags cull_mode;
+   VkLineRasterizationModeEXT dynamic_line_mode;
    struct zink_rasterizer_hw_state hw_state;
 };
 
