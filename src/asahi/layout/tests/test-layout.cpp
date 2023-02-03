@@ -92,3 +92,40 @@ TEST(Miptree, SomeMipLevels)
 
    EXPECT_EQ(layout.size_B, 0x555680);
 }
+
+TEST(Miptree, SmallPartialMiptree2DArray)
+{
+   struct ail_layout layout = {
+      .width_px = 32,
+      .height_px = 16,
+      .depth_px = 64,
+      .sample_count_sa = 1,
+      .levels = 4,
+      .tiling = AIL_TILING_TWIDDLED,
+      .format = PIPE_FORMAT_R32_FLOAT,
+   };
+
+   ail_make_miptree(&layout);
+
+   EXPECT_EQ(layout.layer_stride_B, 0xc00);
+   EXPECT_EQ(layout.size_B, 0x30000);
+}
+
+TEST(Miptree, SmallPartialMiptree3D)
+{
+   struct ail_layout layout = {
+      .width_px = 32,
+      .height_px = 16,
+      .depth_px = 64,
+      .sample_count_sa = 1,
+      .levels = 4,
+      .mipmapped_z = true,
+      .tiling = AIL_TILING_TWIDDLED,
+      .format = PIPE_FORMAT_R32_FLOAT,
+   };
+
+   ail_make_miptree(&layout);
+
+   EXPECT_EQ(layout.layer_stride_B, 0xc80);
+   EXPECT_EQ(layout.size_B, 0x32000);
+}
