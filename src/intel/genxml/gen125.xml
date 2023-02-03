@@ -3450,6 +3450,15 @@
       <value name="EDSC_PSEXEC" value="1" />
       <value name="EDSC_PREPS" value="2" />
     </field>
+    <field name="Walker Direction" start="55" end="55" type="uint" default="1">
+      <value name="Snake Walk" value="0" />
+      <value name="Z Walk" value="1" />
+    </field>
+    <field name="Walking Granularity" start="56" end="57" type="uint" default="2">
+      <value name="16x16 granularity" value="0" />
+      <value name="32x32 granularity" value="1" />
+      <value name="64x64 granularity" value="2" />
+    </field>
     <field name="Legacy Diamond Line Rasterization" start="58" end="58" type="bool" />
     <field name="Legacy Hierarchical Depth Buffer Resolve Enable" start="59" end="59" type="bool" />
     <field name="Legacy Depth Buffer Resolve Enable" start="60" end="60" type="bool" />
