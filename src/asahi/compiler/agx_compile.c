@@ -423,8 +423,7 @@ agx_emit_store_vary(agx_builder *b, nir_intrinsic_instr *instr)
 
    unsigned imm_index = b->shader->out->varyings.vs.slots[sem.location];
    assert(imm_index < ~0);
-   imm_index += nir_intrinsic_component(instr);
-   imm_index += nir_src_as_uint(*offset);
+   imm_index += (nir_src_as_uint(*offset) * 4) + nir_intrinsic_component(instr);
 
    /* nir_lower_io_to_scalar */
    assert(nir_intrinsic_write_mask(instr) == 0x1);
