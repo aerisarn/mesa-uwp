@@ -2537,6 +2537,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       stats->cycles = perf.latency;
       stats->spills = shader_stats.spill_count;
       stats->fills = shader_stats.fill_count;
+      stats->max_live_registers = shader_stats.max_register_pressure;
    }
 
    return start_offset;
