@@ -94,35 +94,13 @@ tu6_format_color(enum pipe_format format, enum a6xx_tile_mode tile_mode)
    return fmt;
 }
 
-static struct tu_native_format
-tu6_format_texture_unchecked(enum pipe_format format, enum a6xx_tile_mode tile_mode)
+struct tu_native_format
+tu6_format_texture(enum pipe_format format, enum a6xx_tile_mode tile_mode)
 {
    struct tu_native_format fmt = {
       .fmt = fd6_texture_format(format, tile_mode),
       .swap = fd6_texture_swap(format, tile_mode),
    };
-
-   switch (format) {
-   case PIPE_FORMAT_Z24X8_UNORM:
-   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-      /* freedreno uses Z24_UNORM_S8_UINT (sampling) or
-       * FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8 (blits) for this format, while we use
-       * FMT6_8_8_8_8_UNORM or FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8
-       */
-      fmt.fmt = FMT6_8_8_8_8_UNORM;
-      break;
-
-   default:
-      break;
-   }
-
-   return fmt;
-}
-
-struct tu_native_format
-tu6_format_texture(enum pipe_format format, enum a6xx_tile_mode tile_mode)
-{
-   struct tu_native_format fmt = tu6_format_texture_unchecked(format, tile_mode);
    assert(fmt.fmt != FMT6_NONE);
    return fmt;
 }
@@ -130,7 +108,7 @@ tu6_format_texture(enum pipe_format format, enum a6xx_tile_mode tile_mode)
 static bool
 tu6_format_texture_supported(enum pipe_format format)
 {
-   return tu6_format_texture_unchecked(format, TILE6_LINEAR).fmt != FMT6_NONE;
+   return fd6_texture_format(format, TILE6_LINEAR) != FMT6_NONE;
 }
 
 enum tu6_ubwc_compat_type {
