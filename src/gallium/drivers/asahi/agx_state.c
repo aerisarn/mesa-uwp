@@ -1370,14 +1370,6 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
 
    nir_shader *nir = nir_shader_clone(NULL, so->nir);
 
-   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      struct asahi_fs_shader_key *key = &key_->fs;
-
-      if (key->clip_plane_enable) {
-         NIR_PASS_V(nir, nir_lower_clip_fs, key->clip_plane_enable, false);
-      }
-   }
-
    agx_preprocess_nir(nir);
 
    if (nir->info.stage == MESA_SHADER_VERTEX) {
@@ -1411,6 +1403,10 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
          NIR_PASS_V(nir, nir_lower_texcoord_replace_late,
                     key->sprite_coord_enable,
                     false /* point coord is sysval */);
+      }
+
+      if (key->clip_plane_enable) {
+         NIR_PASS_V(nir, nir_lower_clip_fs, key->clip_plane_enable, false);
       }
    }
 
