@@ -2172,6 +2172,34 @@ zink_driver_thread_add_job(struct pipe_screen *pscreen, void *data,
    util_queue_add_job(&screen->cache_get_thread, data, fence, execute, cleanup, job_size);
 }
 
+static bool
+has_edge_flags(struct zink_context *ctx)
+{
+   switch(ctx->gfx_pipeline_state.gfx_prim_mode) {
+   case PIPE_PRIM_POINTS:
+   case PIPE_PRIM_LINE_STRIP:
+   case PIPE_PRIM_LINE_STRIP_ADJACENCY:
+   case PIPE_PRIM_LINES:
+   case PIPE_PRIM_LINE_LOOP:
+   case PIPE_PRIM_LINES_ADJACENCY:
+   case PIPE_PRIM_TRIANGLE_STRIP:
+   case PIPE_PRIM_TRIANGLE_FAN:
+   case PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY:
+   case PIPE_PRIM_QUAD_STRIP:
+      return false;
+   case PIPE_PRIM_TRIANGLES:
+   case PIPE_PRIM_TRIANGLES_ADJACENCY:
+   case PIPE_PRIM_QUADS:
+   case PIPE_PRIM_POLYGON:
+   case PIPE_PRIM_PATCHES:
+   case PIPE_PRIM_MAX:
+   default:
+      break;
+   }
+   return ctx->gfx_pipeline_state.rast_prim == PIPE_PRIM_LINES &&
+          ctx->gfx_stages[MESA_SHADER_VERTEX]->has_edgeflags;
+}
+
 void
 zink_set_primitive_emulation_keys(struct zink_context *ctx)
 {
@@ -2197,6 +2225,8 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
                             ctx->rast_state->base.line_smooth &&
                             !ctx->num_so_targets;
 
+   bool lower_edge_flags = has_edge_flags(ctx);
+
    if (zink_get_fs_key(ctx)->lower_line_smooth != lower_line_smooth) {
       assert(zink_get_gs_key(ctx)->lower_line_smooth ==
              zink_get_fs_key(ctx)->lower_line_smooth);
@@ -2208,7 +2238,7 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
       zink_set_fs_key(ctx)->lower_point_smooth = lower_point_smooth;
    }
 
-   if (lower_line_stipple || lower_line_smooth ||
+   if (lower_line_stipple || lower_line_smooth || lower_edge_flags ||
        zink_get_gs_key(ctx)->lower_gl_point) {
       enum pipe_shader_type prev_vertex_stage =
          ctx->gfx_stages[MESA_SHADER_TESS_EVAL] ?
@@ -2222,8 +2252,42 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
             nir_shader *nir = nir_create_passthrough_gs(
                &screen->nir_options,
                ctx->gfx_stages[prev_vertex_stage]->nir,
-               (lower_line_stipple || lower_line_smooth) ? SHADER_PRIM_LINE_STRIP :  SHADER_PRIM_POINTS,
-               false);
+               ctx->gfx_pipeline_state.gfx_prim_mode,
+               lower_edge_flags);
+
+            struct zink_shader *shader = zink_shader_create(screen, nir, NULL);
+            ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode] = shader;
+            shader->non_fs.is_generated = true;
+         }
+
+         bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY,
+                        ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode]);
+      }
+   } else if (ctx->gfx_stages[MESA_SHADER_GEOMETRY] &&
+              ctx->gfx_stages[MESA_SHADER_GEOMETRY]->non_fs.is_generated)
+         bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY, NULL);
+}
+
+void
+zink_create_primitive_emulation_gs(struct zink_context *ctx)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   bool lower_edge_flags = has_edge_flags(ctx);
+
+   if (lower_edge_flags) {
+      enum pipe_shader_type prev_vertex_stage =
+         ctx->gfx_stages[MESA_SHADER_TESS_EVAL] ?
+            MESA_SHADER_TESS_EVAL : MESA_SHADER_VERTEX;
+
+      if (!ctx->gfx_stages[MESA_SHADER_GEOMETRY] ||
+          (ctx->gfx_stages[MESA_SHADER_GEOMETRY]->nir->info.gs.input_primitive != ctx->gfx_pipeline_state.gfx_prim_mode)) {
+
+         if (!ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode]) {
+            nir_shader *nir = nir_create_passthrough_gs(
+               &screen->nir_options,
+               ctx->gfx_stages[prev_vertex_stage]->nir,
+               ctx->gfx_pipeline_state.gfx_prim_mode,
+               lower_edge_flags);
 
             struct zink_shader *shader = zink_shader_create(screen, nir, NULL);
             ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode] = shader;

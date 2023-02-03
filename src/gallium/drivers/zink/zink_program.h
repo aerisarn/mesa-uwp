@@ -363,6 +363,9 @@ zink_set_fs_point_coord_key(struct zink_context *ctx)
 void
 zink_set_primitive_emulation_keys(struct zink_context *ctx);
 
+void
+zink_create_primitive_emulation_gs(struct zink_context *ctx);
+
 static inline const struct zink_shader_key_base *
 zink_get_shader_key_base(const struct zink_context *ctx, gl_shader_stage pstage)
 {

@@ -506,9 +506,12 @@ zink_draw(struct pipe_context *pctx,
    }
    ctx->gfx_pipeline_state.gfx_prim_mode = mode;
 
-   if (!screen->optimal_keys &&
-       (lines_changed || points_changed || rast_state_changed || ctx->gfx_pipeline_state.modules_changed))
-      zink_set_primitive_emulation_keys(ctx);
+   if ((mode_changed || points_changed || lines_changed || rast_state_changed || ctx->gfx_pipeline_state.modules_changed)) {
+      if (screen->optimal_keys)
+         zink_create_primitive_emulation_gs(ctx);
+      else
+         zink_set_primitive_emulation_keys(ctx);
+   }
 
    if (index_size) {
       const VkIndexType index_type[3] = {

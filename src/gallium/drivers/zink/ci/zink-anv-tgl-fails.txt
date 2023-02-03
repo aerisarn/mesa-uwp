@@ -132,9 +132,6 @@ shaders@point-vertex-id gl_vertexid gl_instanceid divisor,Fail
 shaders@point-vertex-id gl_vertexid gl_instanceid,Fail
 shaders@point-vertex-id gl_vertexid,Fail
 
-spec@!opengl 1.0@gl-1.0-edgeflag-quads,Fail
-spec@!opengl 1.0@gl-1.0-edgeflag,Fail
-
 spec@!opengl 1.0@gl-1.0-no-op-paths,Fail
 
 spec@!opengl 1.0@gl-1.0-spot-light,Fail
@@ -177,9 +174,6 @@ spec@!opengl 1.1@linestipple,Fail
 # At position 1, found prim GL_POINT instead of GL_FILL
 # (and more)
 spec@!opengl 1.1@polygon-mode,Fail
-
-spec@!opengl 2.0@gl-2.0-edgeflag-immediate,Fail
-spec@!opengl 2.0@gl-2.0-edgeflag,Fail
 
 spec@!opengl 2.0@vs-point_size-zero,Fail
 
