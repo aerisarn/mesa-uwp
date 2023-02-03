@@ -1913,7 +1913,14 @@ agx_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_type,
       RET((uint64_t[]){256});
 
    case PIPE_COMPUTE_CAP_MAX_GLOBAL_SIZE:
-      RET((uint64_t[]){1024 * 1024 * 512 /* Maybe get memory */});
+   case PIPE_COMPUTE_CAP_MAX_MEM_ALLOC_SIZE: {
+      uint64_t system_memory;
+
+      if (!os_get_total_physical_memory(&system_memory))
+         return 0;
+
+      RET((uint64_t[]){system_memory});
+   }
 
    case PIPE_COMPUTE_CAP_MAX_LOCAL_SIZE:
       RET((uint64_t[]){32768});
@@ -1921,9 +1928,6 @@ agx_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_type,
    case PIPE_COMPUTE_CAP_MAX_PRIVATE_SIZE:
    case PIPE_COMPUTE_CAP_MAX_INPUT_SIZE:
       RET((uint64_t[]){4096});
-
-   case PIPE_COMPUTE_CAP_MAX_MEM_ALLOC_SIZE:
-      RET((uint64_t[]){1024 * 1024 * 512 /* Maybe get memory */});
 
    case PIPE_COMPUTE_CAP_MAX_CLOCK_FREQUENCY:
       RET((uint32_t[]){800 /* MHz -- TODO */});
