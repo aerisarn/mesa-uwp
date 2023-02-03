@@ -15,9 +15,8 @@
 #include "tu_image.h"
 
 struct tu_native_format
-tu6_format_vtx(VkFormat vk_format)
+tu6_format_vtx(enum pipe_format format)
 {
-   enum pipe_format format = vk_format_to_pipe_format(vk_format);
    struct tu_native_format fmt = {
       .fmt = fd6_vertex_format(format),
       .swap = fd6_vertex_swap(format),
@@ -27,9 +26,8 @@ tu6_format_vtx(VkFormat vk_format)
 }
 
 static bool
-tu6_format_vtx_supported(VkFormat vk_format)
+tu6_format_vtx_supported(enum pipe_format format)
 {
-   enum pipe_format format = vk_format_to_pipe_format(vk_format);
    return fd6_vertex_format(format) != FMT6_NONE;
 }
 
@@ -247,7 +245,7 @@ tu_physical_device_get_format_properties(
    enum pipe_format format = tu_vk_format_to_pipe_format(vk_format);
    const struct util_format_description *desc = util_format_description(format);
 
-   bool supported_vtx = tu6_format_vtx_supported(vk_format);
+   bool supported_vtx = tu6_format_vtx_supported(format);
    bool supported_color = tu6_format_color_supported(format);
    bool supported_tex = tu6_format_texture_supported(format);
    bool is_npot = !util_is_power_of_two_or_zero(desc->block.bits);

@@ -20,7 +20,7 @@ struct tu_native_format
 
 enum pipe_format tu_vk_format_to_pipe_format(VkFormat vk_format);
 
-struct tu_native_format tu6_format_vtx(VkFormat format);
+struct tu_native_format tu6_format_vtx(enum pipe_format format);
 struct tu_native_format tu6_format_color(enum pipe_format format, enum a6xx_tile_mode tile_mode);
 struct tu_native_format tu6_format_texture(enum pipe_format format, enum a6xx_tile_mode tile_mode);
 
