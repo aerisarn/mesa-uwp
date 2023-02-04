@@ -199,8 +199,8 @@ agx_optimizer_copyprop(agx_instr **defs, agx_instr *I)
             (s != 0 || def->src[0].value >= 256)) ||
            (I->op == AGX_OPCODE_DEVICE_STORE &&
             (s != 1 || def->src[0].value >= 256)) ||
-           I->op == AGX_OPCODE_PHI || I->op == AGX_OPCODE_ZS_EMIT ||
-           I->op == AGX_OPCODE_ST_TILE || I->op == AGX_OPCODE_LD_TILE ||
+           I->op == AGX_OPCODE_ZS_EMIT || I->op == AGX_OPCODE_ST_TILE ||
+           I->op == AGX_OPCODE_LD_TILE ||
            I->op == AGX_OPCODE_BLOCK_IMAGE_STORE ||
            I->op == AGX_OPCODE_UNIFORM_STORE || I->op == AGX_OPCODE_ST_VARY))
          continue;
