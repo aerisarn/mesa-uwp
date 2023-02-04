@@ -561,18 +561,32 @@ static agx_instr *
 agx_emit_load_preamble(agx_builder *b, agx_index dst,
                        nir_intrinsic_instr *instr)
 {
-   assert(nir_dest_num_components(instr->dest) == 1 && "already scalarized");
-   return agx_mov_to(b, dst, agx_uniform(nir_intrinsic_base(instr), dst.size));
+   agx_index srcs[4] = {agx_null()};
+   unsigned dim = nir_dest_num_components(instr->dest);
+   assert(dim <= ARRAY_SIZE(srcs) && "shouldn't see larger vectors");
+
+   unsigned base = nir_intrinsic_base(instr);
+   unsigned stride = agx_size_align_16(dst.size);
+
+   for (unsigned i = 0; i < dim; ++i)
+      srcs[i] = agx_uniform(base + i * stride, dst.size);
+
+   return agx_emit_collect_to(b, dst, dim, srcs);
 }
 
 static agx_instr *
 agx_emit_store_preamble(agx_builder *b, nir_intrinsic_instr *instr)
 {
-   assert(nir_src_num_components(instr->src[0]) == 1 && "already scalarized");
+   agx_index vec = agx_src_index(&instr->src[0]);
+   unsigned base = nir_intrinsic_base(instr);
+   unsigned stride = agx_size_align_16(vec.size);
 
-   agx_index value = agx_src_index(&instr->src[0]);
-   agx_index offset = agx_immediate(nir_intrinsic_base(instr));
-   return agx_uniform_store(b, value, offset);
+   for (unsigned i = 0; i < nir_src_num_components(instr->src[0]); ++i) {
+      agx_uniform_store(b, agx_extract_nir_src(b, instr->src[0], i),
+                        agx_immediate(base + i * stride));
+   }
+
+   return NULL;
 }
 
 static enum agx_dim
