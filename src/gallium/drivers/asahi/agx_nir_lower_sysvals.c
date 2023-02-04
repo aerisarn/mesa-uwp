@@ -125,10 +125,13 @@ lay_out_uniforms(struct agx_compiled_shader *shader, struct state *state)
       do {
          uint8_t size = state->element_size[range_start];
 
-         /* Find a range of constant element size. [range_start, range_end) */
+         /* Find a range of constant element size. [range_start, range_end).
+          * Ranges may be at most 64 halfs.
+          */
          unsigned range_end;
          for (range_end = range_start + 1;
-              range_end < end && state->element_size[range_end] == size;
+              range_end < end && state->element_size[range_end] == size &&
+              range_end < range_start + 64;
               ++range_end)
             ;
 
