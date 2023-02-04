@@ -141,10 +141,10 @@ lay_out_uniforms(struct agx_compiled_shader *shader, struct state *state)
          assert((shader->push_range_count < ARRAY_SIZE(shader->push)) &&
                 "AGX_MAX_PUSH_RANGES must be an upper bound");
 
-         /* Offsets must be aligned to 8 bytes, this may require pushing a
+         /* Offsets must be aligned to 4 bytes, this may require pushing a
           * little more than intended (otherwise we would need extra copies)
           */
-         range_start = ROUND_DOWN_TO(range_start, 8 / 2);
+         range_start = ROUND_DOWN_TO(range_start, 4 / 2);
 
          shader->push[shader->push_range_count++] = (struct agx_push_range){
             .uniform = uniform,
