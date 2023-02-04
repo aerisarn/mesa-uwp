@@ -561,7 +561,7 @@
     <field name="Tag" size="8" start="0:0" type="USC Control" default="Uniform"/>
     <field name="Start (halfs)" size="8" start="0:8" type="uint"/>
     <!-- Exact split is unknown. -->
-    <field name="Size (halfs)" size="7" start="0:20" type="uint"/>
+    <field name="Size (halfs)" size="6" start="0:20" type="uint" modifier="groups(1)"/>
     <field name="Buffer" size="36" start="0:27" type="address" modifier="shr(3)"/>
   </struct>
 
@@ -569,7 +569,7 @@
     <field name="Tag" size="8" start="0:0" type="USC Control" default="Uniform High"/>
     <field name="Start (halfs)" size="8" start="0:8" type="uint"/>
     <!-- Exact split is unknown. -->
-    <field name="Size (halfs)" size="7" start="0:20" type="uint"/>
+    <field name="Size (halfs)" size="6" start="0:20" type="uint" modifier="groups(1)"/>
     <field name="Buffer" size="36" start="0:27" type="address" modifier="shr(3)"/>
   </struct>
 
