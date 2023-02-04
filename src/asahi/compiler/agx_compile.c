@@ -1899,12 +1899,22 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
       agx_dce(ctx);
       agx_optimizer(ctx);
       agx_opt_cse(ctx);
+
+      /* For correctness, lower uniform sources after copyprop (for correctness,
+       * as copyprop creates uniform sources). To keep register pressure in
+       * check, lower after CSE, since moves are cheaper than registers.
+       */
+      agx_lower_uniform_sources(ctx);
+
       /* Dead code eliminate after instruction combining to get the benefit */
       agx_dce(ctx);
       agx_validate(ctx, "Optimization");
 
       if (agx_should_dump(nir, AGX_DBG_SHADERS))
          agx_print_shader(ctx, stdout);
+   } else {
+      /* We need to lower regardless */
+      agx_lower_uniform_sources(ctx);
    }
 
    agx_ra(ctx);

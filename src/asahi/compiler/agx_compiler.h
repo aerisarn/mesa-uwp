@@ -784,6 +784,7 @@ void agx_print_block(agx_block *block, FILE *fp);
 void agx_print_shader(agx_context *ctx, FILE *fp);
 void agx_optimizer(agx_context *ctx);
 void agx_lower_pseudo(agx_context *ctx);
+void agx_lower_uniform_sources(agx_context *ctx);
 void agx_opt_cse(agx_context *ctx);
 void agx_dce(agx_context *ctx);
 void agx_ra(agx_context *ctx);
