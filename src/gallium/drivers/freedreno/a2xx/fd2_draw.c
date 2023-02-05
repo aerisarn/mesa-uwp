@@ -161,7 +161,7 @@ draw_impl(struct fd_context *ctx, const struct pipe_draw_info *info,
 
 static bool
 fd2_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *pinfo,
-			 unsigned drawid_offset,
+             unsigned drawid_offset,
              const struct pipe_draw_indirect_info *indirect,
              const struct pipe_draw_start_count_bias *pdraw,
              unsigned index_offset) assert_dt
@@ -199,7 +199,7 @@ fd2_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *pinfo,
       };
       /* clang-format on */
 
-		struct pipe_draw_start_count_bias draw = *pdraw;
+      struct pipe_draw_start_count_bias draw = *pdraw;
       unsigned count = draw.count;
       unsigned step = step_tbl[pinfo->mode];
       unsigned num_vertices = ctx->batch->num_vertices;
