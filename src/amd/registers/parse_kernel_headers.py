@@ -98,7 +98,9 @@ def register_filter(gfx_level, name, offset, already_added):
             offset // 4 not in (0x23B0, 0x23B1, 0x237F) and
             # Remove conflicts (multiple definitions for the same offset)
             not already_added and
-            'PREF_PRI_ACCUM' not in name)
+            'PREF_PRI_ACCUM' not in name and
+            # only define SPI and COMPUTE registers in the 0xB000 range.
+            (offset // 0x1000 != 0xB or name.startswith('SPI') or name.startswith('COMPUTE')))
 
 # Mapping from field names to enum types
 enum_map = {

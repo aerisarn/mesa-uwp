@@ -2755,16 +2755,6 @@
   },
   {
    "chips": ["gfx103"],
-   "map": {"at": 47616, "to": "mm"},
-   "name": "SH_RESERVED_REG0"
-  },
-  {
-   "chips": ["gfx103"],
-   "map": {"at": 47620, "to": "mm"},
-   "name": "SH_RESERVED_REG1"
-  },
-  {
-   "chips": ["gfx103"],
    "map": {"at": 163840, "to": "mm"},
    "name": "DB_RENDER_CONTROL",
    "type_ref": "DB_RENDER_CONTROL"
