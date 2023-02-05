@@ -1354,6 +1354,18 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
          fd6_user_consts_cmdstream_size(state->gs) +
          fd6_user_consts_cmdstream_size(state->fs);
 
+   unsigned num_dp = 0;
+   if (vs->need_driver_params)
+      num_dp++;
+   if (gs && gs->need_driver_params)
+      num_dp++;
+   if (hs && hs->need_driver_params)
+      num_dp++;
+   if (ds && ds->need_driver_params)
+      num_dp++;
+
+   state->num_driver_params = num_dp;
+
    return &state->base;
 }
 
