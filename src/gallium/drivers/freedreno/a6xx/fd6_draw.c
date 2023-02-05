@@ -183,6 +183,22 @@ get_program_state(struct fd_context *ctx, const struct pipe_draw_info *info)
 }
 
 static void
+flush_streamout(struct fd_context *ctx, struct fd6_emit *emit)
+   assert_dt
+{
+   if (!emit->streamout_mask)
+      return;
+
+   struct fd_ringbuffer *ring = ctx->batch->draw;
+
+   for (unsigned i = 0; i < PIPE_MAX_SO_BUFFERS; i++) {
+      if (emit->streamout_mask & (1 << i)) {
+         fd6_event_write(ctx->batch, ring, FLUSH_SO_0 + i, false);
+      }
+   }
+}
+
+static void
 fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
              unsigned drawid_offset,
              const struct pipe_draw_indirect_info *indirect,
@@ -347,15 +363,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
    emit_marker6(ring, 7);
    fd_reset_wfi(ctx->batch);
 
-   if (emit.streamout_mask) {
-      struct fd_ringbuffer *ring = ctx->batch->draw;
-
-      for (unsigned i = 0; i < PIPE_MAX_SO_BUFFERS; i++) {
-         if (emit.streamout_mask & (1 << i)) {
-            fd6_event_write(ctx->batch, ring, FLUSH_SO_0 + i, false);
-         }
-      }
-   }
+   flush_streamout(ctx, &emit);
 
    fd_context_all_clean(ctx);
 }
