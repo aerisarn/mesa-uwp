@@ -1814,8 +1814,11 @@ zink_set_shader_images(struct pipe_context *pctx,
                res->image_bind_count[p_stage == MESA_SHADER_COMPUTE]++;
                update_res_bind_count(ctx, res, p_stage == MESA_SHADER_COMPUTE, false);
                unbind_shader_image(ctx, p_stage, start_slot + i);
+               image_view->surface = surface;
+            } else {
+               /* create_image_surface will always increment ref */
+               zink_surface_reference(zink_screen(ctx->base.screen), &surface, NULL);
             }
-            image_view->surface = surface;
             finalize_image_bind(ctx, res, p_stage == MESA_SHADER_COMPUTE);
             zink_batch_resource_usage_set(&ctx->batch, res,
                                           zink_resource_access_is_write(access), false);
