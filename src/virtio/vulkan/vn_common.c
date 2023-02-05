@@ -87,6 +87,8 @@ vn_trace_init(void)
 {
 #ifdef ANDROID
    atrace_init();
+#else
+   util_perfetto_init();
 #endif
 }
 
