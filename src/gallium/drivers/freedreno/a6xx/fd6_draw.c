@@ -199,11 +199,13 @@ flush_streamout(struct fd_context *ctx, struct fd6_emit *emit)
 }
 
 static void
-fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
-             unsigned drawid_offset,
-             const struct pipe_draw_indirect_info *indirect,
-             const struct pipe_draw_start_count_bias *draw,
-             unsigned index_offset) assert_dt
+fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
+              unsigned drawid_offset,
+              const struct pipe_draw_indirect_info *indirect,
+              const struct pipe_draw_start_count_bias *draws,
+              unsigned num_draws,
+              unsigned index_offset)
+   assert_dt
 {
    struct fd6_context *fd6_ctx = fd6_context(ctx);
    struct fd6_emit emit;
@@ -226,7 +228,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
    if ((info->mode == PIPE_PRIM_PATCHES) || ctx->prog.gs) {
       ctx->gen_dirty |= BIT(FD6_GROUP_PRIMITIVE_PARAMS);
    } else if (!indirect) {
-      fd6_vsc_update_sizes(ctx->batch, info, draw);
+      fd6_vsc_update_sizes(ctx->batch, info, &draws[0]);
    }
 
    /* If PROG state (which will mark PROG_KEY dirty) or any state that the
@@ -256,7 +258,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
    emit.fs = fd6_emit_get_prog(&emit)->fs;
 
    if (emit.prog->num_driver_params || fd6_ctx->has_dp_state) {
-      emit.draw = draw;
+      emit.draw = &draws[0];
       emit.dirty_groups |= BIT(FD6_GROUP_DRIVER_PARAMS);
    }
 
@@ -315,7 +317,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
       ctx->batch->tessellation = true;
    }
 
-   uint32_t index_start = info->index_size ? draw->index_bias : draw->start;
+   uint32_t index_start = info->index_size ? draws[0].index_bias : draws[0].start;
    if (ctx->last.dirty || (ctx->last.index_start != index_start)) {
       OUT_PKT4(ring, REG_A6XX_VFD_INDEX_OFFSET, 1);
       OUT_RING(ring, index_start); /* VFD_INDEX_OFFSET */
@@ -351,13 +353,56 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
    emit_marker6(ring, 7);
 
    if (indirect) {
+      assert(num_draws == 1);  /* only >1 for direct draws */
       if (indirect->count_from_stream_output) {
          draw_emit_xfb(ring, &draw0, info, indirect);
       } else {
          draw_emit_indirect(ring, &draw0, info, indirect, index_offset);
       }
    } else {
-      draw_emit(ring, &draw0, info, draw, index_offset);
+      draw_emit(ring, &draw0, info, &draws[0], index_offset);
+
+      if (unlikely(num_draws > 1)) {
+
+         /*
+          * Most state won't need to be re-emitted, other than xfb and
+          * driver-params:
+          */
+         emit.dirty_groups = 0;
+
+         if (emit.prog->num_driver_params)
+            emit.dirty_groups |= BIT(FD6_GROUP_DRIVER_PARAMS);
+
+         if (emit.prog->stream_output)
+            emit.dirty_groups |= BIT(FD6_GROUP_SO);
+
+         uint32_t last_index_start = ctx->last.index_start;
+
+         for (unsigned i = 1; i < num_draws; i++) {
+            flush_streamout(ctx, &emit);
+
+            fd6_vsc_update_sizes(ctx->batch, info, &draws[i]);
+
+            uint32_t index_start = info->index_size ? draws[i].index_bias : draws[i].start;
+            if (last_index_start != index_start) {
+               OUT_PKT4(ring, REG_A6XX_VFD_INDEX_OFFSET, 1);
+               OUT_RING(ring, index_start); /* VFD_INDEX_OFFSET */
+               last_index_start = index_start;
+            }
+
+            if (emit.dirty_groups) {
+               emit.state.num_groups = 0;
+               emit.draw = &draws[i];
+               fd6_emit_3d_state(ring, &emit);
+            }
+
+            assert(!index_offset); /* handled by util_draw_multi() */
+
+            draw_emit(ring, &draw0, info, &draws[i], 0);
+         }
+
+         ctx->last.index_start = last_index_start;
+      }
    }
 
    emit_marker6(ring, 7);
@@ -366,19 +411,6 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
    flush_streamout(ctx, &emit);
 
    fd_context_all_clean(ctx);
-}
-
-static void
-fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
-              unsigned drawid_offset,
-              const struct pipe_draw_indirect_info *indirect,
-              const struct pipe_draw_start_count_bias *draws,
-              unsigned num_draws,
-              unsigned index_offset)
-   assert_dt
-{
-   for (unsigned i = 0; i < num_draws; i++)
-      fd6_draw_vbo(ctx, info, drawid_offset, indirect, &draws[i], index_offset);
 }
 
 static void
