@@ -4879,6 +4879,13 @@ zink_get_dummy_pipe_surface(struct zink_context *ctx, int samples_index)
 {
    if (!ctx->dummy_surface[samples_index]) {
       ctx->dummy_surface[samples_index] = zink_surface_create_null(ctx, PIPE_TEXTURE_2D, 1024, 1024, BITFIELD_BIT(samples_index));
+      /* This is possibly used with imageLoad which according to GL spec must return 0 */
+      if (!samples_index) {
+         union pipe_color_union color = {0};
+         struct pipe_box box;
+         u_box_2d(0, 0, 1024, 1024, &box);
+         ctx->base.clear_texture(&ctx->base, ctx->dummy_surface[samples_index]->texture, 0, &box, &color);
+      }
    }
    return ctx->dummy_surface[samples_index];
 }
