@@ -182,7 +182,7 @@ get_program_state(struct fd_context *ctx, const struct pipe_draw_info *info)
    return fd6_ctx->prog;
 }
 
-static bool
+static void
 fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
              unsigned drawid_offset,
              const struct pipe_draw_indirect_info *indirect,
@@ -205,7 +205,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
    emit.prog = NULL;
 
    if (!(ctx->prog.vs && ctx->prog.fs))
-      return false;
+      return;
 
    if ((info->mode == PIPE_PRIM_PATCHES) || ctx->prog.gs) {
       ctx->gen_dirty |= BIT(FD6_GROUP_PRIMITIVE_PARAMS);
@@ -226,7 +226,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 
    /* bail if compile failed: */
    if (!emit.prog)
-      return false;
+      return;
 
    fixup_draw_state(ctx, &emit);
 
@@ -358,8 +358,6 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
    }
 
    fd_context_all_clean(ctx);
-
-   return true;
 }
 
 static void
