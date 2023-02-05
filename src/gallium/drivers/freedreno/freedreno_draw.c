@@ -355,8 +355,6 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
    for (unsigned i = 0; i < num_draws; i++) {
       ctx->draw_vbo(ctx, info, drawid_offset, indirect, &draws[i], index_offset);
-
-      batch->num_vertices += draws[i].count * info->instance_count;
    }
 
    if (unlikely(ctx->stats_users > 0))

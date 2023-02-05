@@ -223,6 +223,8 @@ fd2_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *pinfo,
 
    fd_context_all_clean(ctx);
 
+   ctx->batch->num_vertices += pdraw->count * pinfo->instance_count;
+
    return true;
 }
 

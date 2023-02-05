@@ -195,7 +195,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
    emit.ctx = ctx;
    emit.info = info;
    emit.indirect = indirect;
-   emit.draw = draw;
+   emit.draw = NULL;
    emit.rasterflat = ctx->rasterizer->flatshade;
    emit.sprite_coord_enable = ctx->rasterizer->sprite_coord_enable;
    emit.sprite_coord_mode = ctx->rasterizer->sprite_coord_mode;
@@ -239,8 +239,10 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
    emit.gs = fd6_emit_get_prog(&emit)->gs;
    emit.fs = fd6_emit_get_prog(&emit)->fs;
 
-   if (emit.prog->num_driver_params || fd6_ctx->has_dp_state)
+   if (emit.prog->num_driver_params || fd6_ctx->has_dp_state) {
+      emit.draw = draw;
       emit.dirty_groups |= BIT(FD6_GROUP_DRIVER_PARAMS);
+   }
 
    /* If we are doing xfb, we need to emit the xfb state on every draw: */
    if (emit.prog->stream_output)
