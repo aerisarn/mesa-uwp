@@ -389,9 +389,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
    batch->cost += ctx->draw_cost;
 
-   for (unsigned i = 0; i < num_draws; i++) {
-      ctx->draw_vbo(ctx, info, drawid_offset, indirect, &draws[i], index_offset);
-   }
+   ctx->draw_vbos(ctx, info, drawid_offset, indirect, draws, num_draws, index_offset);
 
    if (unlikely(ctx->stats_users > 0))
       update_draw_stats(ctx, info, draws, num_draws);

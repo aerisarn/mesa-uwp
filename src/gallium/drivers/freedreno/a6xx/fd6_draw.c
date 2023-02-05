@@ -363,6 +363,19 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 }
 
 static void
+fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
+              unsigned drawid_offset,
+              const struct pipe_draw_indirect_info *indirect,
+              const struct pipe_draw_start_count_bias *draws,
+              unsigned num_draws,
+              unsigned index_offset)
+   assert_dt
+{
+   for (unsigned i = 0; i < num_draws; i++)
+      fd6_draw_vbo(ctx, info, drawid_offset, indirect, &draws[i], index_offset);
+}
+
+static void
 fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth) assert_dt
 {
    struct fd_ringbuffer *ring;
@@ -534,6 +547,6 @@ void
 fd6_draw_init(struct pipe_context *pctx) disable_thread_safety_analysis
 {
    struct fd_context *ctx = fd_context(pctx);
-   ctx->draw_vbo = fd6_draw_vbo;
+   ctx->draw_vbos = fd6_draw_vbos;
    ctx->clear = fd6_clear;
 }

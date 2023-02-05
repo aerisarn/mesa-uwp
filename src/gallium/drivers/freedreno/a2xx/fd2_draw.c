@@ -229,6 +229,19 @@ fd2_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *pinfo,
 }
 
 static void
+fd2_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
+              unsigned drawid_offset,
+              const struct pipe_draw_indirect_info *indirect,
+              const struct pipe_draw_start_count_bias *draws,
+              unsigned num_draws,
+              unsigned index_offset)
+   assert_dt
+{
+   for (unsigned i = 0; i < num_draws; i++)
+      fd2_draw_vbo(ctx, info, drawid_offset, indirect, &draws[i], index_offset);
+}
+
+static void
 clear_state(struct fd_batch *batch, struct fd_ringbuffer *ring,
             unsigned buffers, bool fast_clear) assert_dt
 {
@@ -651,6 +664,6 @@ void
 fd2_draw_init(struct pipe_context *pctx) disable_thread_safety_analysis
 {
    struct fd_context *ctx = fd_context(pctx);
-   ctx->draw_vbo = fd2_draw_vbo;
+   ctx->draw_vbos = fd2_draw_vbos;
    ctx->clear = fd2_clear;
 }
