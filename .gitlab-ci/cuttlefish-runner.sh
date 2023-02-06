@@ -60,7 +60,7 @@ $ADB push install/deqp-$DEQP_SUITE.toml /data/.
 
 # remove 32 bits libs from /vendor/lib
 
-$ADB shell rm /vendor/lib/dri/virtio_gpu_dri.so
+$ADB shell rm /vendor/lib/dri/${ANDROID_DRIVER}_dri.so
 $ADB shell rm /vendor/lib/libglapi.so
 $ADB shell rm /vendor/lib/egl/libEGL_mesa.so
 
@@ -73,7 +73,7 @@ $ADB shell rm /vendor/lib/egl/libGLESv2_emulation.so
 
 # replace on /vendor/lib64
 
-$ADB push install/lib/dri/virtio_gpu_dri.so /vendor/lib64/dri/virtio_gpu_dri.so
+$ADB push install/lib/dri/${ANDROID_DRIVER}_dri.so /vendor/lib64/dri/${ANDROID_DRIVER}_dri.so
 $ADB push install/lib/libglapi.so /vendor/lib64/libglapi.so
 $ADB push install/lib/libEGL.so /vendor/lib64/egl/libEGL_mesa.so
 
