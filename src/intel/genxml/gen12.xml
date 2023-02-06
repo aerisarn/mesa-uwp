@@ -5884,6 +5884,8 @@
     <field name="Force Media-Slice1 Awake" start="34" end="34" type="uint" />
     <field name="Force Media-Slice2 Awake" start="35" end="35" type="uint" />
     <field name="Force Media-Slice3 Awake" start="36" end="36" type="uint" />
+    <field name="HEVC Power Well Control" start="40" end="40" type="bool" />
+    <field name="MFX Power Well Control" start="41" end="41" type="bool" />
     <field name="Mask Bits" start="48" end="63" type="uint" />
   </instruction>
   <instruction name="MI_LOAD_REGISTER_IMM" bias="2" length="3">
