@@ -4826,8 +4826,8 @@ static void *si_create_sampler_state(struct pipe_context *ctx,
       rstate->val[2] |= S_008F38_LOD_BIAS(S_FIXED(CLAMP(state->lod_bias, -32, 31), 8)) |
                         S_008F38_ANISO_OVERRIDE_GFX10(1);
    } else {
-      rstate->val[2] |= S_008F30_COMPAT_MODE(sctx->gfx_level >= GFX8) |
-                        S_008F38_LOD_BIAS(S_FIXED(CLAMP(state->lod_bias, -16, 15), 8)) |
+      rstate->val[0] |= S_008F30_COMPAT_MODE(sctx->gfx_level >= GFX8);
+      rstate->val[2] |= S_008F38_LOD_BIAS(S_FIXED(CLAMP(state->lod_bias, -16, 15), 8)) |
                         S_008F38_DISABLE_LSB_CEIL(sctx->gfx_level <= GFX8) |
                         S_008F38_FILTER_PREC_FIX(1) |
                         S_008F38_ANISO_OVERRIDE_GFX8(sctx->gfx_level >= GFX8);
