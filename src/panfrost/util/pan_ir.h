@@ -185,7 +185,6 @@ struct panfrost_compile_inputs {
 
    enum pipe_format rt_formats[8];
    uint8_t raw_fmt_mask;
-   unsigned nr_cbufs;
 
    /* Used on Valhall.
     *
