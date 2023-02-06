@@ -31,100 +31,6 @@
 #include "lvp_private.h"
 
 static bool
-src_only_uses_uniforms(const nir_src *src, int component,
-                       uint32_t *uni_offsets, uint8_t *num_offsets)
-{
-   if (!src->is_ssa)
-      return false;
-
-   assert(component < src->ssa->num_components);
-
-   nir_instr *instr = src->ssa->parent_instr;
-
-   switch (instr->type) {
-   case nir_instr_type_alu: {
-      nir_alu_instr *alu = nir_instr_as_alu(instr);
-
-      /* Vector ops only need to check the corresponding component. */
-      if (nir_op_is_vec(alu->op)) {
-         nir_alu_src *alu_src = alu->src + component;
-         return src_only_uses_uniforms(&alu_src->src, alu_src->swizzle[0],
-                                       uni_offsets, num_offsets);
-      }
-
-      /* Return true if all sources return true. */
-      for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
-         nir_alu_src *alu_src = alu->src + i;
-         int input_sizes = nir_op_infos[alu->op].input_sizes[i];
-
-         if (input_sizes == 0) {
-            /* For ops which has no input size, each component of dest is
-             * only determined by the same component of srcs.
-             */
-            if (!src_only_uses_uniforms(&alu_src->src, alu_src->swizzle[component],
-                                        uni_offsets, num_offsets))
-               return false;
-         } else {
-            /* For ops which has input size, all components of dest are
-             * determined by all components of srcs (except vec ops).
-             */
-            for (unsigned j = 0; j < input_sizes; j++) {
-               if (!src_only_uses_uniforms(&alu_src->src, alu_src->swizzle[j],
-                                           uni_offsets, num_offsets))
-               return false;
-            }
-         }
-      }
-      return true;
-   }
-
-   case nir_instr_type_intrinsic: {
-      nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-      /* Return true if the intrinsic loads with a constant offset. */
-      if (intr->intrinsic == nir_intrinsic_load_ubo &&
-          nir_src_is_const(intr->src[0]) &&
-          nir_src_is_const(intr->src[1]) &&
-          /* TODO: Can't handle other bit sizes for now. */
-          intr->dest.ssa.bit_size == 32) {
-         /* num_offsets can be NULL if-and-only-if uni_offsets is NULL. */
-         assert((num_offsets == NULL) == (uni_offsets == NULL));
-
-         /* If we're just checking that it's a uniform load, don't check (or
-          * add to) the table.
-          */
-         if (uni_offsets == NULL)
-            return true;
-
-         uint32_t offset = nir_src_as_uint(intr->src[1]) + component * 4;
-
-         /* Already recorded by other one */
-         uint32_t ubo = nir_src_as_uint(intr->src[0]);
-         for (int i = 0; i < num_offsets[ubo]; i++) {
-            if (uni_offsets[ubo * PIPE_MAX_CONSTANT_BUFFERS + i] == offset)
-               return true;
-         }
-
-         /* Exceed uniform number limit */
-         if (num_offsets[ubo] == MAX_INLINABLE_UNIFORMS)
-            return false;
-
-         /* Record the uniform offset. */
-         uni_offsets[ubo * PIPE_MAX_CONSTANT_BUFFERS + num_offsets[ubo]++] = offset;
-         return true;
-      }
-      return false;
-   }
-
-   case nir_instr_type_load_const:
-      /* Always return true for constants. */
-      return true;
-
-   default:
-      return false;
-   }
-}
-
-static bool
 is_induction_variable(const nir_src *src, int component, nir_loop_info *info,
                       uint32_t *uni_offsets, uint8_t *num_offsets)
 {
@@ -150,16 +56,18 @@ is_induction_variable(const nir_src *src, int component, nir_loop_info *info,
           * We collect uniform "init" and "step" here.
           */
          if (var->init_src) {
-            if (!src_only_uses_uniforms(var->init_src, component,
-                                        uni_offsets, num_offsets))
+            if (!nir_collect_src_uniforms(var->init_src, component,
+                                          uni_offsets, num_offsets,
+                                          PIPE_MAX_CONSTANT_BUFFERS, UINT_MAX))
                return false;
          }
 
          if (var->update_src) {
             nir_alu_src *alu_src = var->update_src;
-            if (!src_only_uses_uniforms(&alu_src->src,
-                                        alu_src->swizzle[component],
-                                        uni_offsets, num_offsets))
+            if (!nir_collect_src_uniforms(&alu_src->src,
+                                          alu_src->swizzle[component],
+                                          uni_offsets, num_offsets,
+                                          PIPE_MAX_CONSTANT_BUFFERS, UINT_MAX))
                return false;
          }
 
@@ -223,7 +131,8 @@ add_inlinable_uniforms(const nir_src *cond, nir_loop_info *info,
     * unless uniform0, uniform1 and uniform2 can be inlined at once,
     * can the loop be unrolled.
     */
-   if (src_only_uses_uniforms(cond, component, uni_offsets, new_num))
+   if (nir_collect_src_uniforms(cond, component, uni_offsets, new_num,
+                                PIPE_MAX_CONSTANT_BUFFERS, UINT_MAX))
       memcpy(num_offsets, new_num, sizeof(new_num));
 }
 
@@ -232,7 +141,8 @@ is_src_uniform_load(nir_src src)
 {
    if (nir_src_bit_size(src) != 32 || nir_src_num_components(src) != 1 || nir_src_is_const(src))
       return false;
-   return src_only_uses_uniforms(&src, 0, NULL, NULL);
+   return nir_collect_src_uniforms(&src, 0, NULL, NULL,
+                                   PIPE_MAX_CONSTANT_BUFFERS, UINT_MAX);
 }
 
 static void
@@ -348,7 +258,12 @@ lvp_find_inlinable_uniforms(struct lvp_pipeline *pipeline, nir_shader *shader)
       if (counter >= threshold) {
          uint8_t new_num[PIPE_MAX_CONSTANT_BUFFERS];
          memcpy(new_num, pipeline->inlines[shader->info.stage].count, sizeof(new_num));
-         if (src_only_uses_uniforms(src, 0, (uint32_t*)pipeline->inlines[shader->info.stage].uniform_offsets, new_num)) {
+
+         uint32_t *uni_offsets =
+            (uint32_t *) pipeline->inlines[shader->info.stage].uniform_offsets;
+
+         if (nir_collect_src_uniforms(src, 0, uni_offsets, new_num,
+                                      PIPE_MAX_CONSTANT_BUFFERS, UINT_MAX)) {
             ret = true;
             memcpy(pipeline->inlines[shader->info.stage].count, new_num, sizeof(new_num));
          }

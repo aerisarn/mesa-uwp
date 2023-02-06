@@ -48,10 +48,29 @@
 
 #define MAX_NUM_BO 32
 
-static bool
-src_only_uses_uniforms(const nir_src *src, int component,
-                       uint32_t *uni_offsets, uint8_t *num_offsets,
-                       unsigned max_num_bo, unsigned max_offset)
+/**
+ * Collect uniforms used in a source
+ *
+ * Recursively collects all of the UBO loads with constant UBO index and
+ * constant offset (per the restictions of \c max_num_bo and \c
+ * max_offset). If any values are discovered that are non-constant, uniforms
+ * that don't meet the restrictions, or if more than \c
+ * MAX_INLINEABLE_UNIFORMS are discoverd for any one UBO, false is returned.
+ *
+ * When false is returned, the state of \c uni_offsets and \c num_offsets is
+ * undefined.
+ *
+ * \param max_num_bo Maximum number of uniform buffer objects
+ * \param max_offset Maximum offset within a UBO
+ * \param uni_offset Array of \c max_num_bo * \c MAX_INLINABLE_UNIFORMS values
+ *                   used to store offsets of discovered uniform loads.
+ * \param num_offsets Array of \c max_num_bo values used to store the number
+ *                    of uniforms collected from each UBO.
+ */
+bool
+nir_collect_src_uniforms(const nir_src *src, int component,
+                         uint32_t *uni_offsets, uint8_t *num_offsets,
+                         unsigned max_num_bo, unsigned max_offset)
 {
    if (!src->is_ssa)
       return false;
@@ -68,9 +87,9 @@ src_only_uses_uniforms(const nir_src *src, int component,
       /* Vector ops only need to check the corresponding component. */
       if (nir_op_is_vec(alu->op)) {
          nir_alu_src *alu_src = alu->src + component;
-         return src_only_uses_uniforms(&alu_src->src, alu_src->swizzle[0],
-                                       uni_offsets, num_offsets,
-                                       max_num_bo, max_offset);
+         return nir_collect_src_uniforms(&alu_src->src, alu_src->swizzle[0],
+                                         uni_offsets, num_offsets,
+                                         max_num_bo, max_offset);
       }
 
       /* Return true if all sources return true. */
@@ -82,18 +101,18 @@ src_only_uses_uniforms(const nir_src *src, int component,
             /* For ops which has no input size, each component of dest is
              * only determined by the same component of srcs.
              */
-            if (!src_only_uses_uniforms(&alu_src->src, alu_src->swizzle[component],
-                                        uni_offsets, num_offsets,
-                                        max_num_bo, max_offset))
+            if (!nir_collect_src_uniforms(&alu_src->src, alu_src->swizzle[component],
+                                          uni_offsets, num_offsets,
+                                          max_num_bo, max_offset))
                return false;
          } else {
             /* For ops which has input size, all components of dest are
              * determined by all components of srcs (except vec ops).
              */
             for (unsigned j = 0; j < input_sizes; j++) {
-               if (!src_only_uses_uniforms(&alu_src->src, alu_src->swizzle[j],
-                                           uni_offsets, num_offsets,
-                                           max_num_bo, max_offset))
+               if (!nir_collect_src_uniforms(&alu_src->src, alu_src->swizzle[j],
+                                             uni_offsets, num_offsets,
+                                             max_num_bo, max_offset))
                return false;
             }
          }
@@ -180,18 +199,18 @@ is_induction_variable(const nir_src *src, int component, nir_loop_info *info,
           * We collect uniform "init" and "step" here.
           */
          if (var->init_src) {
-            if (!src_only_uses_uniforms(var->init_src, component,
-                                        uni_offsets, num_offsets,
-                                        max_num_bo, max_offset))
+            if (!nir_collect_src_uniforms(var->init_src, component,
+                                          uni_offsets, num_offsets,
+                                          max_num_bo, max_offset))
                return false;
          }
 
          if (var->update_src) {
             nir_alu_src *alu_src = var->update_src;
-            if (!src_only_uses_uniforms(&alu_src->src,
-                                        alu_src->swizzle[component],
-                                        uni_offsets, num_offsets,
-                                        max_num_bo, max_offset))
+            if (!nir_collect_src_uniforms(&alu_src->src,
+                                          alu_src->swizzle[component],
+                                          uni_offsets, num_offsets,
+                                          max_num_bo, max_offset))
                return false;
          }
 
@@ -258,8 +277,8 @@ add_inlinable_uniforms(const nir_src *cond, nir_loop_info *info,
     * unless uniform0, uniform1 and uniform2 can be inlined at once,
     * can the loop be unrolled.
     */
-   if (src_only_uses_uniforms(cond, component, uni_offsets, new_num,
-                              max_num_bo, max_offset))
+   if (nir_collect_src_uniforms(cond, component, uni_offsets, new_num,
+                                max_num_bo, max_offset))
       memcpy(num_offsets, new_num, sizeof(new_num[0]) * max_num_bo);
 }
 
