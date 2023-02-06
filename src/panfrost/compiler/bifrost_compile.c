@@ -3366,11 +3366,9 @@ bi_tex_op(nir_texop op)
    case nir_texop_txb:
    case nir_texop_txl:
    case nir_texop_txd:
-   case nir_texop_tex_prefetch:
       return BIFROST_TEX_OP_TEX;
    case nir_texop_txf:
    case nir_texop_txf_ms:
-   case nir_texop_txf_ms_fb:
    case nir_texop_tg4:
       return BIFROST_TEX_OP_FETCH;
    case nir_texop_txs:
@@ -3870,21 +3868,11 @@ bi_is_simple_tex(nir_tex_instr *instr)
 static void
 bi_emit_tex(bi_builder *b, nir_tex_instr *instr)
 {
-   switch (instr->op) {
-   case nir_texop_txs:
+   if (instr->op == nir_texop_txs) {
       bi_load_sysval_to(b, bi_dest_index(&instr->dest),
                         panfrost_sysval_for_instr(&instr->instr, NULL),
                         nir_dest_num_components(instr->dest), 0);
       return;
-   case nir_texop_tex:
-   case nir_texop_txl:
-   case nir_texop_txb:
-   case nir_texop_txf:
-   case nir_texop_txf_ms:
-   case nir_texop_tg4:
-      break;
-   default:
-      unreachable("Invalid texture operation");
    }
 
    if (b->shader->arch >= 9)
