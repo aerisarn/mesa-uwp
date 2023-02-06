@@ -163,53 +163,19 @@ vn_instance_init_ring(struct vn_instance *instance)
    return VK_SUCCESS;
 }
 
-static struct vn_renderer_shmem *
-vn_instance_get_reply_shmem_locked(struct vn_instance *instance,
-                                   size_t size,
-                                   void **ptr);
-
-static VkResult
+static void
 vn_instance_init_experimental_features(struct vn_instance *instance)
 {
    if (instance->renderer->info.vk_mesa_venus_protocol_spec_version !=
        100000) {
       if (VN_DEBUG(INIT))
          vn_log(instance, "renderer supports no experimental features");
-      return VK_SUCCESS;
+      return;
    }
 
    size_t struct_size = sizeof(instance->experimental);
-
-   /* prepare the reply shmem */
-   const size_t reply_size =
-      vn_sizeof_vkGetVenusExperimentalFeatureData100000MESA_reply(
-         &struct_size, &instance->experimental);
-   void *reply_ptr;
-   struct vn_renderer_shmem *reply_shmem =
-      vn_instance_get_reply_shmem_locked(instance, reply_size, &reply_ptr);
-   if (!reply_shmem)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-   /* encode the command */
-   uint32_t local_data[16];
-   struct vn_cs_encoder local_enc =
-      VN_CS_ENCODER_INITIALIZER_LOCAL(local_data, sizeof(local_data));
-   vn_encode_vkGetVenusExperimentalFeatureData100000MESA(
-      &local_enc, VK_COMMAND_GENERATE_REPLY_BIT_EXT, &struct_size,
-      &instance->experimental);
-
-   VkResult result = vn_renderer_submit_simple_sync(
-      instance->renderer, local_data, vn_cs_encoder_get_len(&local_enc));
-   if (result != VK_SUCCESS) {
-      vn_renderer_shmem_unref(instance->renderer, reply_shmem);
-      return result;
-   }
-
-   struct vn_cs_decoder reply_dec =
-      VN_CS_DECODER_INITIALIZER(reply_ptr, reply_size);
-   vn_decode_vkGetVenusExperimentalFeatureData100000MESA_reply(
-      &reply_dec, &struct_size, &instance->experimental);
-   vn_renderer_shmem_unref(instance->renderer, reply_shmem);
+   vn_call_vkGetVenusExperimentalFeatureData100000MESA(
+      instance, &struct_size, &instance->experimental);
 
    /* if renderer supports multiple_timelines, the driver will use it and
     * globalFencing support can be assumed.
@@ -232,8 +198,6 @@ vn_instance_init_experimental_features(struct vn_instance *instance)
              instance->experimental.largeRing,
              instance->experimental.syncFdFencing);
    }
-
-   return VK_SUCCESS;
 }
 
 static VkResult
@@ -581,17 +545,7 @@ vn_instance_get_reply_shmem_locked(struct vn_instance *instance,
       };
       vn_encode_vkSetReplyCommandStreamMESA(&local_enc, 0, &stream);
       vn_cs_encoder_commit(&local_enc);
-
-      /* vn_instance_init_experimental_features calls this before the ring is
-       * created
-       */
-      if (likely(instance->ring.id)) {
-         vn_instance_ring_submit_locked(instance, &local_enc, NULL, NULL);
-      } else {
-         vn_renderer_submit_simple(instance->renderer,
-                                   set_reply_command_stream_data,
-                                   vn_cs_encoder_get_len(&local_enc));
-      }
+      vn_instance_ring_submit_locked(instance, &local_enc, NULL, NULL);
    }
 
    /* TODO avoid this seek command and go lock-free? */
@@ -600,17 +554,7 @@ vn_instance_get_reply_shmem_locked(struct vn_instance *instance,
       seek_reply_command_stream_data, sizeof(seek_reply_command_stream_data));
    vn_encode_vkSeekReplyCommandStreamMESA(&local_enc, 0, offset);
    vn_cs_encoder_commit(&local_enc);
-
-   /* vn_instance_init_experimental_features calls this before the ring is
-    * created
-    */
-   if (likely(instance->ring.id)) {
-      vn_instance_ring_submit_locked(instance, &local_enc, NULL, NULL);
-   } else {
-      vn_renderer_submit_simple(instance->renderer,
-                                seek_reply_command_stream_data,
-                                vn_cs_encoder_get_len(&local_enc));
-   }
+   vn_instance_ring_submit_locked(instance, &local_enc, NULL, NULL);
 
    return shmem;
 }
@@ -742,13 +686,11 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    vn_renderer_shmem_pool_init(instance->renderer,
                                &instance->reply_shmem_pool, 1u << 20);
 
-   result = vn_instance_init_experimental_features(instance);
-   if (result != VK_SUCCESS)
-      goto fail;
-
    result = vn_instance_init_ring(instance);
    if (result != VK_SUCCESS)
       goto fail;
+
+   vn_instance_init_experimental_features(instance);
 
    result = vn_instance_init_renderer_versions(instance);
    if (result != VK_SUCCESS)
