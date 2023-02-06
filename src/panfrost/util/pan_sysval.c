@@ -62,6 +62,15 @@ panfrost_sysval_for_image_size(nir_intrinsic_instr *instr)
    return PAN_SYSVAL(IMAGE_SIZE, PAN_TXS_SYSVAL_ID(uindex, dim, is_array));
 }
 
+static int
+panfrost_sysval_for_rt_conversion(nir_intrinsic_instr *instr)
+{
+   unsigned size = nir_alu_type_get_type_size(nir_intrinsic_src_type(instr));
+   unsigned rt = nir_intrinsic_base(instr);
+
+   return PAN_SYSVAL(RT_CONVERSION, rt | (size << 4));
+}
+
 static unsigned
 panfrost_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
 {
@@ -99,6 +108,8 @@ panfrost_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
       return panfrost_sysval_for_image_size(instr);
    case nir_intrinsic_load_blend_const_color_rgba:
       return PAN_SYSVAL_BLEND_CONSTANTS;
+   case nir_intrinsic_load_rt_conversion_pan:
+      return panfrost_sysval_for_rt_conversion(instr);
    default:
       return ~0;
    }

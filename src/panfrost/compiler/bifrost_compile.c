@@ -1557,15 +1557,8 @@ bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
    assert(loc >= FRAG_RESULT_DATA0);
    unsigned rt = (loc - FRAG_RESULT_DATA0);
 
-   bi_index desc =
-      b->shader->inputs->is_blend
-         ? bi_imm_u32(b->shader->inputs->blend.bifrost_blend_desc >> 32)
-      : b->shader->inputs->bifrost.static_rt_conv
-         ? bi_imm_u32(b->shader->inputs->bifrost.rt_conv[rt])
-         : bi_load_sysval(b, PAN_SYSVAL(RT_CONVERSION, rt | (size << 4)), 1, 0);
-
-   bi_ld_tile_to(b, dest, bi_pixel_indices(b, rt), bi_coverage(b), desc, regfmt,
-                 nr - 1);
+   bi_ld_tile_to(b, dest, bi_pixel_indices(b, rt), bi_coverage(b),
+                 bi_src_index(&instr->src[0]), regfmt, nr - 1);
    bi_emit_cached_split(b, dest, size * nr);
 }
 
@@ -1762,7 +1755,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
       bi_emit_load_frag_coord(b, instr);
       break;
 
-   case nir_intrinsic_load_output:
+   case nir_intrinsic_load_converted_output_pan:
       bi_emit_ld_tile(b, instr);
       break;
 
@@ -1784,6 +1777,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_first_vertex:
    case nir_intrinsic_load_draw_id:
    case nir_intrinsic_load_multisampled_pan:
+   case nir_intrinsic_load_rt_conversion_pan:
       bi_load_sysval_nir(b, instr, 1, 0);
       break;
 
@@ -4788,8 +4782,46 @@ bi_lower_sample_mask_writes(nir_builder *b, nir_instr *instr, void *data)
    return true;
 }
 
+static bool
+bi_lower_load_output(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_load_output)
+      return false;
+
+   unsigned loc = nir_intrinsic_io_semantics(intr).location;
+   assert(loc >= FRAG_RESULT_DATA0);
+   unsigned rt = loc - FRAG_RESULT_DATA0;
+
+   b->cursor = nir_before_instr(&intr->instr);
+
+   nir_ssa_def *conversion = nir_load_rt_conversion_pan(
+      b, .base = rt, .src_type = nir_intrinsic_dest_type(intr));
+
+   /* TODO: This should be optimized/lowered by the driver */
+   const struct panfrost_compile_inputs *inputs = data;
+
+   if (inputs->is_blend) {
+      conversion = nir_imm_int(b, inputs->blend.bifrost_blend_desc >> 32);
+   } else if (inputs->bifrost.static_rt_conv) {
+      conversion = nir_imm_int(b, inputs->bifrost.rt_conv[rt]);
+   }
+
+   nir_ssa_def *lowered = nir_load_converted_output_pan(
+      b, nir_dest_num_components(intr->dest), nir_dest_bit_size(intr->dest),
+      conversion, .dest_type = nir_intrinsic_dest_type(intr),
+      .io_semantics = nir_intrinsic_io_semantics(intr));
+
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, lowered);
+   return true;
+}
+
 static void
-bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
+bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend,
+                const struct panfrost_compile_inputs *inputs)
 {
    /* Lower gl_Position pre-optimisation, but after lowering vars to ssa
     * (so we don't accidentally duplicate the epilogue since mesa/st has
@@ -4843,6 +4875,10 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
 
       NIR_PASS_V(nir, nir_shader_instructions_pass, bi_lower_sample_mask_writes,
                  nir_metadata_block_index | nir_metadata_dominance, NULL);
+
+      NIR_PASS_V(nir, nir_shader_instructions_pass, bi_lower_load_output,
+                 nir_metadata_block_index | nir_metadata_dominance,
+                 (void *)inputs);
    } else if (nir->info.stage == MESA_SHADER_VERTEX) {
       if (gpu_id >= 0x9000) {
          NIR_PASS_V(nir, nir_lower_mediump_io, nir_var_shader_out,
@@ -5257,7 +5293,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
 {
    bifrost_debug = debug_get_option_bifrost_debug();
 
-   bi_finalize_nir(nir, inputs->gpu_id, inputs->is_blend);
+   bi_finalize_nir(nir, inputs->gpu_id, inputs->is_blend, inputs);
    struct hash_table_u64 *sysval_to_id =
       panfrost_init_sysvals(&info->sysvals, inputs->fixed_sysval_layout, NULL);
 
