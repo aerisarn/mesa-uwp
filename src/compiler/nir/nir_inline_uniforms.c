@@ -46,7 +46,7 @@
 /* Maximum value in shader_info::inlinable_uniform_dw_offsets[] */
 #define MAX_OFFSET (UINT16_MAX * 4)
 
-#define MAX_NUM_BO 1
+#define MAX_NUM_BO 32
 
 static bool
 src_only_uses_uniforms(const nir_src *src, int component,
@@ -116,18 +116,20 @@ src_only_uses_uniforms(const nir_src *src, int component,
          uint32_t offset = nir_src_as_uint(intr->src[1]) + component * 4;
          assert(offset < MAX_OFFSET);
 
+         const unsigned ubo = nir_src_as_uint(intr->src[0]);
+
          /* Already recorded by other one */
-         for (int i = 0; i < *num_offsets; i++) {
-            if (uni_offsets[i] == offset)
+         for (int i = 0; i < num_offsets[ubo]; i++) {
+            if (uni_offsets[ubo * MAX_NUM_BO + i] == offset)
                return true;
          }
 
          /* Exceed uniform number limit */
-         if (*num_offsets == MAX_INLINABLE_UNIFORMS)
+         if (num_offsets[ubo] == MAX_INLINABLE_UNIFORMS)
             return false;
 
          /* Record the uniform offset. */
-         uni_offsets[(*num_offsets)++] = offset;
+         uni_offsets[ubo * MAX_NUM_BO + num_offsets[ubo]++] = offset;
          return true;
       }
       return false;
@@ -196,7 +198,9 @@ add_inlinable_uniforms(const nir_src *cond, nir_loop_info *info,
                        uint32_t *uni_offsets, uint8_t *num_offsets,
                        unsigned max_num_bo, unsigned max_offset)
 {
-   uint8_t new_num = *num_offsets;
+   uint8_t new_num[MAX_NUM_BO];
+   memcpy(new_num, num_offsets, sizeof(new_num));
+
    /* If condition SSA is always scalar, so component is 0. */
    unsigned component = 0;
 
@@ -215,7 +219,7 @@ add_inlinable_uniforms(const nir_src *cond, nir_loop_info *info,
           */
          for (int i = 0; i < 2; i++) {
             if (is_induction_variable(&alu->src[i].src, alu->src[i].swizzle[0],
-                                      info, uni_offsets, &new_num,
+                                      info, uni_offsets, new_num,
                                       max_num_bo, max_offset)) {
                cond = &alu->src[1 - i].src;
                component = alu->src[1 - i].swizzle[0];
@@ -245,9 +249,9 @@ add_inlinable_uniforms(const nir_src *cond, nir_loop_info *info,
     * unless uniform0, uniform1 and uniform2 can be inlined at once,
     * can the loop be unrolled.
     */
-   if (src_only_uses_uniforms(cond, component, uni_offsets, &new_num,
+   if (src_only_uses_uniforms(cond, component, uni_offsets, new_num,
                               max_num_bo, max_offset))
-      *num_offsets = new_num;
+      memcpy(num_offsets, new_num, sizeof(new_num[0]) * max_num_bo);
 }
 
 static void
