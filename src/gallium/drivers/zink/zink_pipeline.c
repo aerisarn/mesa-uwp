@@ -453,10 +453,6 @@ zink_create_gfx_pipeline_output(struct zink_screen *screen, struct zink_gfx_pipe
    blend_state.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
    if (state->rast_attachment_order)
       blend_state.flags |= VK_PIPELINE_COLOR_BLEND_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_BIT_EXT;
-   if (!screen->have_full_ds3)
-      blend_state.attachmentCount = state->rendering_info.colorAttachmentCount;
-   if (state->blend_state)
-      blend_state.logicOp = state->blend_state->logicop_func;
 
    VkPipelineMultisampleStateCreateInfo ms_state = {0};
    ms_state.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
@@ -496,13 +492,8 @@ zink_create_gfx_pipeline_output(struct zink_screen *screen, struct zink_gfx_pipe
       }
    } else {
       if (state->blend_state) {
-         unsigned num_attachments = state->render_pass ?
-                                    state->render_pass->state.num_rts :
-                                    state->rendering_info.colorAttachmentCount;
-         if (state->render_pass && state->render_pass->state.have_zsbuf)
-            num_attachments--;
          blend_state.pAttachments = state->blend_state->attachments;
-         blend_state.attachmentCount = num_attachments;
+         blend_state.attachmentCount = state->rendering_info.colorAttachmentCount;
          blend_state.logicOpEnable = state->blend_state->logicop_enable;
          blend_state.logicOp = state->blend_state->logicop_func;
 
