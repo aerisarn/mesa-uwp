@@ -555,8 +555,14 @@ tu_cs_emit_draw_state(struct tu_cs *cs, uint32_t id, struct tu_draw_state state)
       enable_mask = CP_SET_DRAW_STATE__0_GMEM;
       break;
    case TU_DRAW_STATE_INPUT_ATTACHMENTS_SYSMEM:
-   case TU_DRAW_STATE_PRIM_MODE_SYSMEM:
       enable_mask = CP_SET_DRAW_STATE__0_SYSMEM;
+      break;
+   case TU_DRAW_STATE_PRIM_MODE_SYSMEM:
+      /* By also applying the state during binning we ensure that there
+       * is no rotation applied, by previous A6XX_GRAS_SC_CNTL::rotation.
+       */
+      enable_mask =
+         CP_SET_DRAW_STATE__0_SYSMEM | CP_SET_DRAW_STATE__0_BINNING;
       break;
    default:
       enable_mask = CP_SET_DRAW_STATE__0_GMEM |
