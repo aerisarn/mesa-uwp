@@ -230,7 +230,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
           !prog->inline_variants && likely(prog->last_pipeline[rp_idx][idx]) &&
           /* this data is too big to compare in the fast-path */
           likely(!prog->shaders[MESA_SHADER_FRAGMENT]->fs.legacy_shadow_mask)) {
-         state->pipeline = prog->last_pipeline[rp_idx][idx]->pipeline;
+         state->pipeline = prog->last_pipeline[rp_idx][idx];
          return state->pipeline;
       }
    }
@@ -290,7 +290,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    /* update states for fastpath */
    if (DYNAMIC_STATE >= ZINK_DYNAMIC_VERTEX_INPUT) {
       prog->last_finalized_hash[rp_idx][idx] = state->final_hash;
-      prog->last_pipeline[rp_idx][idx] = cache_entry;
+      prog->last_pipeline[rp_idx][idx] = cache_entry->pipeline;
    }
    return state->pipeline;
 }
