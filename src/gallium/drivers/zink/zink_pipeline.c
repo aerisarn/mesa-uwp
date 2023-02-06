@@ -771,16 +771,21 @@ zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_pro
 }
 
 VkPipeline
-zink_create_gfx_pipeline_combined(struct zink_screen *screen, struct zink_gfx_program *prog, VkPipeline input, VkPipeline library, VkPipeline output, bool optimized)
+zink_create_gfx_pipeline_combined(struct zink_screen *screen, struct zink_gfx_program *prog, VkPipeline input, VkPipeline *library, unsigned libcount, VkPipeline output, bool optimized)
 {
-   VkPipeline libraries[] = {input, library, output};
+   VkPipeline libraries[4];
+   libraries[0] = input;
+   libraries[2] = libraries[3] = output;
+   for (unsigned i = 0; i < libcount; i++)
+      libraries[1 + i] = library[i];
    VkPipelineLibraryCreateInfoKHR libstate = {0};
    libstate.sType = VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR;
-   libstate.libraryCount = 3;
+   libstate.libraryCount = 2 + libcount;
    libstate.pLibraries = libraries;
 
    VkGraphicsPipelineCreateInfo pci = {0};
    pci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+   pci.layout = prog->base.layout;
    if (optimized)
       pci.flags = VK_PIPELINE_CREATE_LINK_TIME_OPTIMIZATION_BIT_EXT;
    else

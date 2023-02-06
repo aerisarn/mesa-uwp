@@ -270,7 +270,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
          pc_entry->gkey = gkey;
          pc_entry->okey = okey;
          /* create the non-optimized pipeline first using fast-linking to avoid stuttering */
-         pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, gkey->pipeline, okey->pipeline, false);
+         pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, &gkey->pipeline, 1, okey->pipeline, false);
       } else {
          /* optimize by default only when expecting precompiles in order to reduce stuttering */
          pipeline = zink_create_gfx_pipeline(screen, prog, state, state->element_state->binding_map, vkmode, !HAVE_LIB);
