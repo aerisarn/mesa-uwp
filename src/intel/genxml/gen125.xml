@@ -3450,7 +3450,7 @@
       <value name="EDSC_PSEXEC" value="1" />
       <value name="EDSC_PREPS" value="2" />
     </field>
-    <field name="Walker Direction" start="55" end="55" type="uint" default="1">
+    <field name="Walker Direction" start="55" end="55" type="uint" default="0">
       <value name="Snake Walk" value="0" />
       <value name="Z Walk" value="1" />
     </field>
