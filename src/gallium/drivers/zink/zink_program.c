@@ -1713,6 +1713,13 @@ zink_update_fs_key_samples(struct zink_context *ctx)
    }
 }
 
+void zink_update_gs_key_rectangular_line(struct zink_context *ctx)
+{
+   bool line_rectangular = zink_get_gs_key(ctx)->line_rectangular;
+   if (line_rectangular != ctx->rast_state->base.line_rectangular)
+      zink_set_gs_key(ctx)->line_rectangular = ctx->rast_state->base.line_rectangular;
+}
+
 static void
 zink_bind_fs_state(struct pipe_context *pctx,
                    void *cso)

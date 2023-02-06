@@ -63,6 +63,7 @@ struct zink_gs_key {
    bool lower_line_stipple : 1;
    bool lower_line_smooth : 1;
    bool lower_gl_point : 1;
+   bool line_rectangular : 1;
    // not hashed
    unsigned size;
 };
