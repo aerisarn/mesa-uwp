@@ -27,8 +27,16 @@
 #include "util/anon_file.h"
 #include "anv_private.h"
 
+void
+anv_gem_close(struct anv_device *device, uint32_t gem_handle)
+{
+   close(gem_handle);
+}
+
 uint32_t
-anv_gem_create(struct anv_device *device, uint64_t size)
+anv_gem_create_regions(struct anv_device *device, uint64_t size,
+                       uint32_t flags, uint32_t num_regions,
+                       const struct intel_memory_class_instance **regions)
 {
    int fd = os_create_anonymous_file(size, "fake bo");
    if (fd == -1)
@@ -37,20 +45,6 @@ anv_gem_create(struct anv_device *device, uint64_t size)
    assert(fd != 0);
 
    return fd;
-}
-
-void
-anv_gem_close(struct anv_device *device, uint32_t gem_handle)
-{
-   close(gem_handle);
-}
-
-uint32_t
-anv_gem_create_regions(struct anv_device *device, uint64_t anv_bo_size,
-                       uint32_t flags, uint32_t num_regions,
-                       const struct intel_memory_class_instance **regions)
-{
-   return 0;
 }
 
 void*

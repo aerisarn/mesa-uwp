@@ -1345,7 +1345,6 @@ VkResult anv_queue_submit_simple_batch(struct anv_queue *queue,
 void* anv_gem_mmap(struct anv_device *device, struct anv_bo *bo,
                    uint64_t offset, uint64_t size, uint32_t flags);
 void anv_gem_munmap(struct anv_device *device, void *p, uint64_t size);
-uint32_t anv_gem_create(struct anv_device *device, uint64_t size);
 void anv_gem_close(struct anv_device *device, uint32_t gem_handle);
 uint32_t anv_gem_create_regions(struct anv_device *device, uint64_t anv_bo_size,
                                 uint32_t flags, uint32_t num_regions,

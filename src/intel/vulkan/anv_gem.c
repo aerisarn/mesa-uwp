@@ -32,27 +32,6 @@
 #include "anv_private.h"
 #include "common/intel_gem.h"
 
-/**
- * Wrapper around DRM_IOCTL_I915_GEM_CREATE.
- *
- * Return gem handle, or 0 on failure. Gem handles are never 0.
- */
-uint32_t
-anv_gem_create(struct anv_device *device, uint64_t size)
-{
-   struct drm_i915_gem_create gem_create = {
-      .size = size,
-   };
-
-   int ret = intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_CREATE, &gem_create);
-   if (ret != 0) {
-      /* FIXME: What do we do if this fails? */
-      return 0;
-   }
-
-   return gem_create.handle;
-}
-
 void
 anv_gem_close(struct anv_device *device, uint32_t gem_handle)
 {
@@ -68,8 +47,20 @@ anv_gem_create_regions(struct anv_device *device, uint64_t anv_bo_size,
                        uint32_t flags, uint32_t num_regions,
                        const struct intel_memory_class_instance **regions)
 {
-   struct drm_i915_gem_memory_class_instance i915_regions[2];
+   if (unlikely(!device->info->mem.use_class_instance)) {
+      assert(num_regions == 1 &&
+             device->physical->sys.region == regions[0] &&
+             flags == 0);
 
+      struct drm_i915_gem_create gem_create = {
+            .size = anv_bo_size,
+      };
+      if (intel_ioctl(device->fd, DRM_IOCTL_I915_GEM_CREATE, &gem_create))
+         return 0;
+      return gem_create.handle;
+   }
+
+   struct drm_i915_gem_memory_class_instance i915_regions[2];
    /* Check for invalid flags */
    assert((flags & ~I915_GEM_CREATE_EXT_FLAG_NEEDS_CPU_ACCESS) == 0);
    assert(num_regions <= ARRAY_SIZE(i915_regions));
