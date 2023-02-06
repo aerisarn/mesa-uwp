@@ -1837,26 +1837,14 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
       break;
 
    /* It appears vertex_id is zero-based with Bifrost geometry flows, but
-    * not with Valhall's memory-allocation IDVS geometry flow. Ostensibly
-    * we support the legacy geometry flow even on Valhall, so
-    * vertex_id_zero_based isn't a machine property for us. Don't set it,
-    * and lower here if needed.
+    * not with Valhall's memory-allocation IDVS geometry flow. We only support
+    * the new flow on Valhall so this is lowered in NIR.
     */
    case nir_intrinsic_load_vertex_id:
-      if (b->shader->malloc_idvs) {
-         bi_mov_i32_to(b, dst, bi_vertex_id(b));
-      } else {
-         bi_index first =
-            bi_load_sysval(b, PAN_SYSVAL_VERTEX_INSTANCE_OFFSETS, 1, 0);
-
-         bi_iadd_u32_to(b, dst, bi_vertex_id(b), first, false);
-      }
-
-      break;
-
-   /* We only use in our transform feedback lowering */
    case nir_intrinsic_load_vertex_id_zero_base:
-      assert(b->shader->nir->info.has_transform_feedback_varyings);
+      assert(b->shader->malloc_idvs ==
+             (instr->intrinsic == nir_intrinsic_load_vertex_id));
+
       bi_mov_i32_to(b, dst, bi_vertex_id(b));
       break;
 

@@ -55,6 +55,12 @@ void bifrost_compile_shader_nir(nir_shader *nir,
       .lower_insert_byte = true,                                               \
       .lower_rotate = true,                                                    \
                                                                                \
+      /* Vertex ID is zero based in the traditional geometry flows, but not in \
+       * the memory-allocated IDVS flow introduced and used exclusively in     \
+       * Valhall. So this is a machine property for us.                        \
+       */                                                                      \
+      .vertex_id_zero_based = (arch <= 7),                                     \
+                                                                               \
       .lower_pack_half_2x16 = true,                                            \
       .lower_pack_unorm_2x16 = true,                                           \
       .lower_pack_snorm_2x16 = true,                                           \
@@ -97,5 +103,6 @@ void bifrost_compile_shader_nir(nir_shader *nir,
    };
 
 DEFINE_OPTIONS(6);
+DEFINE_OPTIONS(9);
 
 #endif
