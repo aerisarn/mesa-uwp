@@ -1276,7 +1276,7 @@ panfrost_upload_multisampled_sysval(struct panfrost_batch *batch,
                                     struct sysval_uniform *uniform)
 {
    unsigned samples = util_framebuffer_get_num_samples(&batch->key);
-   uniform->u[0] = samples > 1;
+   uniform->u[0] = (samples > 1) ? ~0 : 0;
 }
 
 #if PAN_ARCH >= 6
