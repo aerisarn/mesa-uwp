@@ -630,9 +630,10 @@ GENX(pan_blend_create_shader)(const struct panfrost_device *dev,
    nir_lower_blend_options options = {
       .logicop_enable = state->logicop_enable,
       .logicop_func = state->logicop_func,
-      .rt[0].colormask = rt_state->equation.color_mask,
-      .format[0] = rt_state->format,
    };
+
+   options.rt[rt].colormask = rt_state->equation.color_mask;
+   options.format[rt] = rt_state->format;
 
    if (!rt_state->equation.blend_enable) {
       static const nir_lower_blend_channel replace = {
@@ -643,22 +644,22 @@ GENX(pan_blend_create_shader)(const struct panfrost_device *dev,
          .invert_dst_factor = false,
       };
 
-      options.rt[0].rgb = replace;
-      options.rt[0].alpha = replace;
+      options.rt[rt].rgb = replace;
+      options.rt[rt].alpha = replace;
    } else {
-      options.rt[0].rgb.func = rt_state->equation.rgb_func;
-      options.rt[0].rgb.src_factor = rt_state->equation.rgb_src_factor;
-      options.rt[0].rgb.invert_src_factor =
+      options.rt[rt].rgb.func = rt_state->equation.rgb_func;
+      options.rt[rt].rgb.src_factor = rt_state->equation.rgb_src_factor;
+      options.rt[rt].rgb.invert_src_factor =
          rt_state->equation.rgb_invert_src_factor;
-      options.rt[0].rgb.dst_factor = rt_state->equation.rgb_dst_factor;
-      options.rt[0].rgb.invert_dst_factor =
+      options.rt[rt].rgb.dst_factor = rt_state->equation.rgb_dst_factor;
+      options.rt[rt].rgb.invert_dst_factor =
          rt_state->equation.rgb_invert_dst_factor;
-      options.rt[0].alpha.func = rt_state->equation.alpha_func;
-      options.rt[0].alpha.src_factor = rt_state->equation.alpha_src_factor;
-      options.rt[0].alpha.invert_src_factor =
+      options.rt[rt].alpha.func = rt_state->equation.alpha_func;
+      options.rt[rt].alpha.src_factor = rt_state->equation.alpha_src_factor;
+      options.rt[rt].alpha.invert_src_factor =
          rt_state->equation.alpha_invert_src_factor;
-      options.rt[0].alpha.dst_factor = rt_state->equation.alpha_dst_factor;
-      options.rt[0].alpha.invert_dst_factor =
+      options.rt[rt].alpha.dst_factor = rt_state->equation.alpha_dst_factor;
+      options.rt[rt].alpha.invert_dst_factor =
          rt_state->equation.alpha_invert_dst_factor;
    }
 
@@ -696,9 +697,10 @@ GENX(pan_blend_create_shader)(const struct panfrost_device *dev,
    }
 
    /* Build a trivial blend shader */
-   nir_store_output(
-      &b, s_src[0], zero, .write_mask = BITFIELD_MASK(4), .src_type = nir_type,
-      .io_semantics.location = FRAG_RESULT_DATA0, .io_semantics.num_slots = 1);
+   nir_store_output(&b, s_src[0], zero, .write_mask = BITFIELD_MASK(4),
+                    .src_type = nir_type,
+                    .io_semantics.location = FRAG_RESULT_DATA0 + rt,
+                    .io_semantics.num_slots = 1);
 
    b.shader->info.io_lowered = true;
 
@@ -840,8 +842,9 @@ GENX(pan_blend_get_shader_locked)(const struct panfrost_device *dev,
       .blend.rt = shader->key.rt,
       .blend.nr_samples = key.nr_samples,
       .fixed_sysval_ubo = -1,
-      .rt_formats = {key.format},
    };
+
+   inputs.rt_formats[rt] = key.format;
 
 #if PAN_ARCH >= 6
    inputs.blend.bifrost_blend_desc =
