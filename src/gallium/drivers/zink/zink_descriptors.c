@@ -308,12 +308,11 @@ zink_descriptor_util_alloc_sets(struct zink_screen *screen, VkDescriptorSetLayou
 }
 
 static void
-init_db_template_entry(struct zink_context *ctx, struct zink_shader *shader, enum zink_descriptor_type type,
+init_db_template_entry(struct zink_screen *screen, struct zink_shader *shader, enum zink_descriptor_type type,
                        unsigned idx, struct zink_descriptor_template *entry, unsigned *entry_idx)
 {
     int index = shader->bindings[type][idx].index;
     gl_shader_stage stage = shader->nir->info.stage;
-    struct zink_screen *screen = zink_screen(ctx->base.screen);
     entry->count = shader->bindings[type][idx].size;
 
     switch (shader->bindings[type][idx].type) {
@@ -538,7 +537,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
             sizes[idx].descriptorCount += shader->bindings[j][k].size;
             sizes[idx].type = shader->bindings[j][k].type;
             if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB)
-               init_db_template_entry(ctx, shader, j, k, &pg->dd.db_template[desc_type][entry_idx[desc_type]], &entry_idx[desc_type]);
+               init_db_template_entry(screen, shader, j, k, &pg->dd.db_template[desc_type][entry_idx[desc_type]], &entry_idx[desc_type]);
             else
                init_template_entry(shader, j, k, &entries[desc_type][entry_idx[desc_type]], &entry_idx[desc_type]);
             num_bindings[desc_type]++;
