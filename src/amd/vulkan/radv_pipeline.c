@@ -5030,6 +5030,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
                             const VkGraphicsPipelineCreateInfo *pCreateInfo,
                             const struct radv_graphics_pipeline_create_info *extra)
 {
+   VkGraphicsPipelineLibraryFlagBitsEXT needed_lib_flags = ALL_GRAPHICS_LIB_FLAGS;
    bool fast_linking_enabled = radv_is_fast_linking_enabled(pCreateInfo);
    struct radv_pipeline_layout pipeline_layout;
    struct vk_graphics_pipeline_state state = {0};
@@ -5039,7 +5040,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
    const VkPipelineLibraryCreateInfoKHR *libs_info =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_LIBRARY_CREATE_INFO_KHR);
-   VkGraphicsPipelineLibraryFlagBitsEXT imported_flags = 0;
 
    radv_pipeline_layout_init(device, &pipeline_layout, false);
 
@@ -5063,13 +5063,13 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
          radv_graphics_pipeline_import_lib(pipeline, &state, &pipeline_layout, gfx_pipeline_lib,
                                            link_optimize);
 
-         imported_flags |= gfx_pipeline_lib->lib_flags;
+         needed_lib_flags &= ~gfx_pipeline_lib->lib_flags;
       }
    }
 
    /* Import graphics pipeline info that was not included in the libraries. */
    result = radv_pipeline_import_graphics_info(pipeline, &state, &pipeline_layout, pCreateInfo,
-                                               (~imported_flags) & ALL_GRAPHICS_LIB_FLAGS);
+                                               needed_lib_flags);
    if (result != VK_SUCCESS) {
       radv_pipeline_layout_finish(device, &pipeline_layout);
       return result;
@@ -5079,14 +5079,12 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       radv_pipeline_layout_hash(&pipeline_layout);
 
 
-   if (!radv_skip_graphics_pipeline_compile(pipeline, (~imported_flags) & ALL_GRAPHICS_LIB_FLAGS,
-                                            fast_linking_enabled)) {
+   if (!radv_skip_graphics_pipeline_compile(pipeline, needed_lib_flags, fast_linking_enabled)) {
       struct radv_pipeline_key key = radv_generate_graphics_pipeline_key(
-         pipeline, pCreateInfo, &state, (~imported_flags) & ALL_GRAPHICS_LIB_FLAGS);
+         pipeline, pCreateInfo, &state, needed_lib_flags);
 
       result = radv_graphics_pipeline_compile(pipeline, pCreateInfo, &pipeline_layout, device, cache,
-                                              &key, (~imported_flags) & ALL_GRAPHICS_LIB_FLAGS,
-                                              fast_linking_enabled);
+                                              &key, needed_lib_flags, fast_linking_enabled);
       if (result != VK_SUCCESS) {
          radv_pipeline_layout_finish(device, &pipeline_layout);
          return result;
@@ -5231,11 +5229,10 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
 
    const VkGraphicsPipelineLibraryCreateInfoEXT *lib_info =
       vk_find_struct_const(pCreateInfo->pNext, GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT);
-   const VkGraphicsPipelineLibraryFlagBitsEXT lib_flags = lib_info ? lib_info->flags : 0;
+   VkGraphicsPipelineLibraryFlagBitsEXT needed_lib_flags = lib_info ? lib_info->flags : 0;
    const VkPipelineLibraryCreateInfoKHR *libs_info =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_LIBRARY_CREATE_INFO_KHR);
    bool fast_linking_enabled = radv_is_fast_linking_enabled(pCreateInfo);
-   VkGraphicsPipelineLibraryFlagBitsEXT imported_flags = lib_flags;
 
    struct vk_graphics_pipeline_state *state = &pipeline->graphics_state;
    struct radv_pipeline_layout *pipeline_layout = &pipeline->layout;
@@ -5243,7 +5240,7 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
    pipeline->base.last_vgt_api_stage = MESA_SHADER_NONE;
    pipeline->base.retain_shaders =
       (pCreateInfo->flags & VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT) != 0;
-   pipeline->lib_flags = lib_flags;
+   pipeline->lib_flags = needed_lib_flags;
 
    radv_pipeline_layout_init(device, pipeline_layout, false);
 
@@ -5262,12 +5259,12 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
 
          pipeline->lib_flags |= gfx_pipeline_lib->lib_flags;
 
-         imported_flags &= ~gfx_pipeline_lib->lib_flags;
+         needed_lib_flags &= ~gfx_pipeline_lib->lib_flags;
       }
    }
 
    result = radv_pipeline_import_graphics_info(&pipeline->base, state, pipeline_layout, pCreateInfo,
-                                               imported_flags);
+                                               needed_lib_flags);
    if (result != VK_SUCCESS)
       return result;
 
@@ -5277,8 +5274,8 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
    /* Compile a PS epilog if the fragment shader output interface is present without the main
     * fragment shader.
     */
-   if ((imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) &&
-       !(imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
+   if ((needed_lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) &&
+       !(needed_lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
        !radv_pipeline_needs_dynamic_ps_epilog(&pipeline->base)) {
       struct radv_ps_epilog_key key = radv_pipeline_generate_ps_epilog_key(&pipeline->base, state, true);
 
@@ -5288,17 +5285,17 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
    }
 
    if (pipeline->base.active_stages != 0 ||
-       (imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)) {
+       (needed_lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)) {
       struct radv_pipeline_key key =
-         radv_generate_graphics_pipeline_key(&pipeline->base, pCreateInfo, state, imported_flags);
+         radv_generate_graphics_pipeline_key(&pipeline->base, pCreateInfo, state, needed_lib_flags);
 
       result = radv_graphics_pipeline_compile(&pipeline->base, pCreateInfo, pipeline_layout, device,
-                                              cache, &key, imported_flags, fast_linking_enabled);
+                                              cache, &key, needed_lib_flags, fast_linking_enabled);
       if (result != VK_SUCCESS)
          return result;
 
       /* Force add the fragment shader stage when a noop FS has been compiled. */
-      if ((imported_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
+      if ((needed_lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
           !(pipeline->base.active_stages & VK_SHADER_STAGE_FRAGMENT_BIT)) {
          assert(pipeline->base.base.shaders[MESA_SHADER_FRAGMENT]);
          pipeline->base.active_stages |= VK_SHADER_STAGE_FRAGMENT_BIT;
