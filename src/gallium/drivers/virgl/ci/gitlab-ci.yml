@@ -111,3 +111,4 @@ android-virgl-llvmpipe:
     - .virgl-rules
   variables:
     ANDROID_GPU_MODE: drm_virgl
+    GPU_VERSION: virgl-gl

@@ -54,7 +54,6 @@ MESA_ANDROID_ARTIFACT_URL=https://${PIPELINE_ARTIFACTS_BASE}/${MINIO_ARTIFACT_NA
 curl -L --retry 4 -f --retry-all-errors --retry-delay 60 -o ${MINIO_ARTIFACT_NAME}.tar.zst ${MESA_ANDROID_ARTIFACT_URL}
 tar -xvf ${MINIO_ARTIFACT_NAME}.tar.zst
 
-GPU_VERSION=virgl-gl
 $ADB push install/all-skips.txt /data/.
 $ADB push install/$GPU_VERSION-flakes.txt /data/.
 $ADB push install/deqp-android-virgl.toml /data/.
