@@ -109,8 +109,3 @@ android-virgl-llvmpipe:
   extends:
     - .test-android
     - .virgl-rules
-  script:
-    - ./install/cuttlefish-runner.sh
-  artifacts:
-    paths:
-      - results/
