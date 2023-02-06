@@ -3002,6 +3002,27 @@ invert_point_coord(nir_shader *nir)
    return nir_shader_instructions_pass(nir, invert_point_coord_instr, nir_metadata_dominance, NULL);
 }
 
+static VkShaderModule
+compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *nir)
+{
+   VkShaderModule mod = VK_NULL_HANDLE;
+   struct zink_shader_info *sinfo = &zs->sinfo;
+   prune_io(nir);
+
+   NIR_PASS_V(nir, nir_convert_from_ssa, true);
+
+   struct spirv_shader *spirv = nir_to_spirv(nir, sinfo, screen->spirv_version);
+   if (spirv)
+      mod = zink_shader_spirv_compile(screen, zs, spirv);
+
+   /* TODO: determine if there's any reason to cache spirv output? */
+   if (zs->nir->info.stage == MESA_SHADER_TESS_CTRL && zs->non_fs.is_generated)
+      zs->spirv = spirv;
+   else
+      ralloc_free(spirv);
+   return mod;
+}
+
 VkShaderModule
 zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
                     nir_shader *base_nir, const struct zink_shader_key *key, const void *extra_data)
@@ -3178,21 +3199,9 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
          zs->can_inline = false;
    } else if (need_optimize)
       optimize_nir(nir, zs);
-   prune_io(nir);
-
-   NIR_PASS_V(nir, nir_convert_from_ssa, true);
-
-   struct spirv_shader *spirv = nir_to_spirv(nir, sinfo, screen->spirv_version);
-   if (spirv)
-      mod = zink_shader_spirv_compile(screen, zs, spirv);
-
+   
+   mod = compile_module(screen, zs, nir);
    ralloc_free(nir);
-
-   /* TODO: determine if there's any reason to cache spirv output? */
-   if (zs->nir->info.stage == MESA_SHADER_TESS_CTRL && zs->non_fs.is_generated)
-      zs->spirv = spirv;
-   else
-      ralloc_free(spirv);
    return mod;
 }
 
