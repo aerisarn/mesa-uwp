@@ -179,11 +179,10 @@ equals_descriptor_pool_key(const void *a, const void *b)
 }
 
 static struct zink_descriptor_pool_key *
-descriptor_util_pool_key_get(struct zink_context *ctx, enum zink_descriptor_type type,
+descriptor_util_pool_key_get(struct zink_screen *screen, enum zink_descriptor_type type,
                                   struct zink_descriptor_layout_key *layout_key,
                                   VkDescriptorPoolSize *sizes, unsigned num_type_sizes)
 {
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
    uint32_t hash = 0;
    struct zink_descriptor_pool_key key;
    key.num_type_sizes = num_type_sizes;
@@ -593,7 +592,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
             if (!sz->descriptorCount)
                sz++;
          }
-         pg->dd.pool_key[desc_type] = descriptor_util_pool_key_get(ctx, desc_type, key, sz, num_type_sizes[desc_type]);
+         pg->dd.pool_key[desc_type] = descriptor_util_pool_key_get(screen, desc_type, key, sz, num_type_sizes[desc_type]);
          pg->dd.pool_key[desc_type]->use_count++;
          pg->dsl[pg->num_dsl] = pg->dd.layouts[pg->num_dsl]->layout;
          if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB)
