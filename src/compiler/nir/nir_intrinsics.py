@@ -1301,6 +1301,13 @@ load("sampler_lod_parameters_pan", [1], flags=[CAN_ELIMINATE, CAN_REORDER])
 # Loads the sample position array on Bifrost, in a packed Arm-specific format
 system_value("sample_positions_pan", 1, bit_sizes=[64])
 
+# In a fragment shader, is the framebuffer single-sampled? 0/~0 bool
+system_value("multisampled_pan", 1, bit_sizes=[32])
+
+# In a fragment shader, the current coverage mask. Affected by writes.
+intrinsic("load_coverage_mask_pan", [], 1, [], flags=[CAN_ELIMINATE],
+          sysval=True, bit_sizes=[32])
+
 # R600 specific instrincs
 #
 # location where the tesselation data is stored in LDS
