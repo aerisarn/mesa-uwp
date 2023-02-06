@@ -245,9 +245,6 @@ typedef struct compiler_context {
    struct pan_shader_info *info;
    gl_shader_stage stage;
 
-   /* Number of samples for a keyed blend shader. Depends on is_blend */
-   unsigned blend_sample_iterations;
-
    /* Index to precolour to r0 for an input blend colour */
    unsigned blend_input;
 

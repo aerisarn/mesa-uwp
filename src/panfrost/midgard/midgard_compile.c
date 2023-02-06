@@ -2028,13 +2028,28 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
       break;
 
    /* Special case of store_output for lowered blend shaders */
-   case nir_intrinsic_store_raw_output_pan:
+   case nir_intrinsic_store_raw_output_pan: {
       assert(ctx->stage == MESA_SHADER_FRAGMENT);
       reg = nir_src_index(ctx, &instr->src[0]);
-      for (unsigned s = 0; s < ctx->blend_sample_iterations; s++)
-         emit_fragment_store(ctx, reg, ~0, ~0,
-                             ctx->inputs->blend.rt + MIDGARD_COLOR_RT0, s);
+
+      nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
+      assert(sem.location >= FRAG_RESULT_DATA0);
+      unsigned rt = sem.location - FRAG_RESULT_DATA0;
+
+      unsigned nr_samples = MAX2(ctx->inputs->blend.nr_samples, 1);
+      const struct util_format_description *desc =
+         util_format_description(ctx->inputs->rt_formats[rt]);
+
+      /* We have to split writeout in 128 bit chunks */
+      unsigned blend_sample_iterations =
+         DIV_ROUND_UP(desc->block.bits * nr_samples, 128);
+
+      for (unsigned s = 0; s < blend_sample_iterations; s++) {
+         emit_fragment_store(ctx, reg, ~0, ~0, rt + MIDGARD_COLOR_RT0, s);
+      }
+
       break;
+   }
 
    case nir_intrinsic_store_global:
    case nir_intrinsic_store_shared:
@@ -3121,16 +3136,6 @@ midgard_compile_shader_nir(nir_shader *nir,
    ctx->nir = nir;
    ctx->info = info;
    ctx->stage = nir->info.stage;
-
-   if (inputs->is_blend) {
-      unsigned nr_samples = MAX2(inputs->blend.nr_samples, 1);
-      const struct util_format_description *desc =
-         util_format_description(inputs->rt_formats[inputs->blend.rt]);
-
-      /* We have to split writeout in 128 bit chunks */
-      ctx->blend_sample_iterations =
-         DIV_ROUND_UP(desc->block.bits * nr_samples, 128);
-   }
    ctx->blend_input = ~0;
    ctx->blend_src1 = ~0;
    ctx->quirks = midgard_get_quirks(inputs->gpu_id);
