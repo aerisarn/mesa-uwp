@@ -418,9 +418,11 @@ midgard_preprocess_nir(nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_flrp, 16 | 32 | 64, false /* always_precise */);
    NIR_PASS_V(nir, nir_lower_var_copies);
 
-   NIR_PASS_V(nir, pan_lower_framebuffer, inputs->rt_formats,
-              inputs->raw_fmt_mask, inputs->is_blend,
-              quirks & MIDGARD_BROKEN_BLEND_LOADS);
+   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS_V(nir, pan_lower_framebuffer, inputs->rt_formats,
+                 inputs->raw_fmt_mask, inputs->is_blend,
+                 quirks & MIDGARD_BROKEN_BLEND_LOADS);
+   }
 }
 
 static void

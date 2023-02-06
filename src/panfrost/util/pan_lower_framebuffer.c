@@ -573,8 +573,7 @@ pan_lower_framebuffer(nir_shader *shader, const enum pipe_format *rt_fmts,
                       uint8_t raw_fmt_mask, bool is_blend,
                       bool broken_ld_special)
 {
-   if (shader->info.stage != MESA_SHADER_FRAGMENT)
-      return false;
+   assert(shader->info.stage == MESA_SHADER_FRAGMENT);
 
    bool progress = false;
 
