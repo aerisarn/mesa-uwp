@@ -15,7 +15,7 @@ chown root.kvm /dev/kvm
 
 cd /cuttlefish
 
-launch_cvd --verbosity=DEBUG --report_anonymous_usage_stats=n --cpus=8 --memory_mb=8192 --gpu_mode=drm_virgl --daemon --enable_minimal_mode=true --guest_enforce_security=false --use_overlay=false
+launch_cvd --verbosity=DEBUG --report_anonymous_usage_stats=n --cpus=8 --memory_mb=8192 --gpu_mode="$ANDROID_GPU_MODE" --daemon --enable_minimal_mode=true --guest_enforce_security=false --use_overlay=false
 sleep 1
 
 cd -

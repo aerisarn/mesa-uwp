@@ -109,3 +109,5 @@ android-virgl-llvmpipe:
   extends:
     - .test-android
     - .virgl-rules
+  variables:
+    ANDROID_GPU_MODE: drm_virgl
