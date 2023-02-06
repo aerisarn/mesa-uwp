@@ -329,43 +329,82 @@ midgard_vectorize_filter(const nir_instr *instr, const void *data)
    return 4;
 }
 
-static void
-optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend, bool is_blit)
+void
+midgard_preprocess_nir(nir_shader *nir,
+                       const struct panfrost_compile_inputs *inputs)
 {
-   bool progress;
+   unsigned quirks = midgard_get_quirks(inputs->gpu_id);
 
-   NIR_PASS(progress, nir, nir_lower_regs_to_ssa);
+   /* Lower gl_Position pre-optimisation, but after lowering vars to ssa
+    * (so we don't accidentally duplicate the epilogue since mesa/st has
+    * messed with our I/O quite a bit already).
+    */
+   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+
+   if (nir->info.stage == MESA_SHADER_VERTEX) {
+      NIR_PASS_V(nir, nir_lower_viewport_transform);
+      NIR_PASS_V(nir, nir_lower_point_size, 1.0, 0.0);
+   }
+
+   NIR_PASS_V(nir, nir_lower_var_copies);
+   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+   NIR_PASS_V(nir, nir_split_var_copies);
+   NIR_PASS_V(nir, nir_lower_var_copies);
+   NIR_PASS_V(nir, nir_lower_global_vars_to_local);
+   NIR_PASS_V(nir, nir_lower_var_copies);
+   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+
+   NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
+              glsl_type_size, 0);
+
+   if (nir->info.stage == MESA_SHADER_VERTEX) {
+      /* nir_lower[_explicit]_io is lazy and emits mul+add chains even
+       * for offsets it could figure out are constant.  Do some
+       * constant folding before pan_nir_lower_store_component below.
+       */
+      NIR_PASS_V(nir, nir_opt_constant_folding);
+      NIR_PASS_V(nir, pan_nir_lower_store_component);
+   }
+
+   NIR_PASS_V(nir, nir_lower_ssbo);
+   NIR_PASS_V(nir, pan_nir_lower_zs_store);
+
+   NIR_PASS_V(nir, pan_nir_lower_64bit_intrin);
+
+   NIR_PASS_V(nir, midgard_nir_lower_global_load);
+
+   NIR_PASS_V(nir, nir_lower_regs_to_ssa);
    nir_lower_idiv_options idiv_options = {
       .allow_fp16 = true,
    };
-   NIR_PASS(progress, nir, nir_lower_idiv, &idiv_options);
+
+   NIR_PASS_V(nir, nir_lower_idiv, &idiv_options);
 
    nir_lower_tex_options lower_tex_options = {
       .lower_txs_lod = true,
       .lower_txp = ~0,
       .lower_tg4_broadcom_swizzle = true,
-      /* TODO: we have native gradient.. */
       .lower_txd = true,
       .lower_invalid_implicit_lod = true,
    };
 
-   NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_options);
+   NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
 
    /* TEX_GRAD fails to apply sampler descriptor settings on some
     * implementations, requiring a lowering. However, blit shaders do not
     * use the affected settings and should skip the workaround.
     */
-   if ((quirks & MIDGARD_BROKEN_LOD) && !is_blit)
+   if ((quirks & MIDGARD_BROKEN_LOD) && !inputs->is_blit)
       NIR_PASS_V(nir, midgard_nir_lod_errata);
 
    /* Midgard image ops coordinates are 16-bit instead of 32-bit */
-   NIR_PASS(progress, nir, midgard_nir_lower_image_bitsize);
+   NIR_PASS_V(nir, midgard_nir_lower_image_bitsize);
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
-      NIR_PASS(progress, nir, nir_lower_helper_writes, true);
+      NIR_PASS_V(nir, nir_lower_helper_writes, true);
 
-   NIR_PASS(progress, nir, pan_lower_helper_invocation);
-   NIR_PASS(progress, nir, pan_lower_sample_pos);
+   NIR_PASS_V(nir, pan_lower_helper_invocation);
+   NIR_PASS_V(nir, pan_lower_sample_pos);
 
    if (nir->xfb_info != NULL && nir->info.has_transform_feedback_varyings) {
       NIR_PASS_V(nir, nir_io_add_const_offset_to_base,
@@ -374,10 +413,20 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend, bool is_blit)
       NIR_PASS_V(nir, pan_lower_xfb);
    }
 
-   NIR_PASS(progress, nir, midgard_nir_lower_algebraic_early);
+   NIR_PASS_V(nir, midgard_nir_lower_algebraic_early);
    NIR_PASS_V(nir, nir_lower_alu_to_scalar, mdg_should_scalarize, NULL);
    NIR_PASS_V(nir, nir_lower_flrp, 16 | 32 | 64, false /* always_precise */);
    NIR_PASS_V(nir, nir_lower_var_copies);
+
+   NIR_PASS_V(nir, pan_lower_framebuffer, inputs->rt_formats,
+              inputs->raw_fmt_mask, inputs->is_blend,
+              quirks & MIDGARD_BROKEN_BLEND_LOADS);
+}
+
+static void
+optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
+{
+   bool progress;
 
    do {
       progress = false;
@@ -3126,54 +3175,13 @@ midgard_compile_shader_nir(nir_shader *nir,
 
    ctx->ssa_constants = _mesa_hash_table_u64_create(ctx);
 
-   /* Lower gl_Position pre-optimisation, but after lowering vars to ssa
-    * (so we don't accidentally duplicate the epilogue since mesa/st has
-    * messed with our I/O quite a bit already) */
-
-   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
-
-   if (ctx->stage == MESA_SHADER_VERTEX) {
-      NIR_PASS_V(nir, nir_lower_viewport_transform);
-      NIR_PASS_V(nir, nir_lower_point_size, 1.0, 0.0);
-   }
-
-   NIR_PASS_V(nir, nir_lower_var_copies);
-   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
-   NIR_PASS_V(nir, nir_split_var_copies);
-   NIR_PASS_V(nir, nir_lower_var_copies);
-   NIR_PASS_V(nir, nir_lower_global_vars_to_local);
-   NIR_PASS_V(nir, nir_lower_var_copies);
-   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
-
-   NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
-              glsl_type_size, 0);
-
-   if (ctx->stage == MESA_SHADER_VERTEX) {
-      /* nir_lower[_explicit]_io is lazy and emits mul+add chains even
-       * for offsets it could figure out are constant.  Do some
-       * constant folding before pan_nir_lower_store_component below.
-       */
-      NIR_PASS_V(nir, nir_opt_constant_folding);
-      NIR_PASS_V(nir, pan_nir_lower_store_component);
-   }
-
-   NIR_PASS_V(nir, nir_lower_ssbo);
-   NIR_PASS_V(nir, pan_nir_lower_zs_store);
-
-   NIR_PASS_V(nir, pan_nir_lower_64bit_intrin);
-
-   NIR_PASS_V(nir, midgard_nir_lower_global_load);
-
-   NIR_PASS_V(nir, pan_lower_framebuffer, inputs->rt_formats,
-              inputs->raw_fmt_mask, inputs->is_blend,
-              ctx->quirks & MIDGARD_BROKEN_BLEND_LOADS);
+   midgard_preprocess_nir(nir, inputs);
 
    /* Collect varyings after lowering I/O */
    pan_nir_collect_varyings(nir, info);
 
    /* Optimisation passes */
-
-   optimise_nir(nir, ctx->quirks, inputs->is_blend, inputs->is_blit);
+   optimise_nir(nir, ctx->quirks, inputs->is_blend);
 
    bool skip_internal = nir->info.internal;
    skip_internal &= !(midgard_debug & MIDGARD_DBG_INTERNAL);
