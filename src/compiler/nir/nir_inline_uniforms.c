@@ -46,13 +46,17 @@
 /* Maximum value in shader_info::inlinable_uniform_dw_offsets[] */
 #define MAX_OFFSET (UINT16_MAX * 4)
 
+#define MAX_NUM_BO 1
+
 static bool
 src_only_uses_uniforms(const nir_src *src, int component,
-                       uint32_t *uni_offsets, uint8_t *num_offsets)
+                       uint32_t *uni_offsets, uint8_t *num_offsets,
+                       unsigned max_num_bo, unsigned max_offset)
 {
    if (!src->is_ssa)
       return false;
 
+   assert(max_num_bo > 0 && max_num_bo <= MAX_NUM_BO);
    assert(component < src->ssa->num_components);
 
    nir_instr *instr = src->ssa->parent_instr;
@@ -65,7 +69,8 @@ src_only_uses_uniforms(const nir_src *src, int component,
       if (nir_op_is_vec(alu->op)) {
          nir_alu_src *alu_src = alu->src + component;
          return src_only_uses_uniforms(&alu_src->src, alu_src->swizzle[0],
-                                       uni_offsets, num_offsets);
+                                       uni_offsets, num_offsets,
+                                       max_num_bo, max_offset);
       }
 
       /* Return true if all sources return true. */
@@ -78,7 +83,8 @@ src_only_uses_uniforms(const nir_src *src, int component,
              * only determined by the same component of srcs.
              */
             if (!src_only_uses_uniforms(&alu_src->src, alu_src->swizzle[component],
-                                        uni_offsets, num_offsets))
+                                        uni_offsets, num_offsets,
+                                        max_num_bo, max_offset))
                return false;
          } else {
             /* For ops which has input size, all components of dest are
@@ -86,7 +92,8 @@ src_only_uses_uniforms(const nir_src *src, int component,
              */
             for (unsigned j = 0; j < input_sizes; j++) {
                if (!src_only_uses_uniforms(&alu_src->src, alu_src->swizzle[j],
-                                           uni_offsets, num_offsets))
+                                           uni_offsets, num_offsets,
+                                           max_num_bo, max_offset))
                return false;
             }
          }
@@ -101,9 +108,9 @@ src_only_uses_uniforms(const nir_src *src, int component,
        */
       if (intr->intrinsic == nir_intrinsic_load_ubo &&
           nir_src_is_const(intr->src[0]) &&
-          nir_src_as_uint(intr->src[0]) == 0 &&
+          nir_src_as_uint(intr->src[0]) < max_num_bo &&
           nir_src_is_const(intr->src[1]) &&
-          nir_src_as_uint(intr->src[1]) <= MAX_OFFSET &&
+          nir_src_as_uint(intr->src[1]) <= max_offset &&
           /* TODO: Can't handle other bit sizes for now. */
           intr->dest.ssa.bit_size == 32) {
          uint32_t offset = nir_src_as_uint(intr->src[1]) + component * 4;
@@ -137,7 +144,8 @@ src_only_uses_uniforms(const nir_src *src, int component,
 
 static bool
 is_induction_variable(const nir_src *src, int component, nir_loop_info *info,
-                      uint32_t *uni_offsets, uint8_t *num_offsets)
+                      uint32_t *uni_offsets, uint8_t *num_offsets,
+                      unsigned max_num_bo, unsigned max_offset)
 {
    if (!src->is_ssa)
       return false;
@@ -162,7 +170,8 @@ is_induction_variable(const nir_src *src, int component, nir_loop_info *info,
           */
          if (var->init_src) {
             if (!src_only_uses_uniforms(var->init_src, component,
-                                        uni_offsets, num_offsets))
+                                        uni_offsets, num_offsets,
+                                        max_num_bo, max_offset))
                return false;
          }
 
@@ -170,7 +179,8 @@ is_induction_variable(const nir_src *src, int component, nir_loop_info *info,
             nir_alu_src *alu_src = var->update_src;
             if (!src_only_uses_uniforms(&alu_src->src,
                                         alu_src->swizzle[component],
-                                        uni_offsets, num_offsets))
+                                        uni_offsets, num_offsets,
+                                        max_num_bo, max_offset))
                return false;
          }
 
@@ -183,7 +193,8 @@ is_induction_variable(const nir_src *src, int component, nir_loop_info *info,
 
 static void
 add_inlinable_uniforms(const nir_src *cond, nir_loop_info *info,
-                       uint32_t *uni_offsets, uint8_t *num_offsets)
+                       uint32_t *uni_offsets, uint8_t *num_offsets,
+                       unsigned max_num_bo, unsigned max_offset)
 {
    uint8_t new_num = *num_offsets;
    /* If condition SSA is always scalar, so component is 0. */
@@ -204,7 +215,8 @@ add_inlinable_uniforms(const nir_src *cond, nir_loop_info *info,
           */
          for (int i = 0; i < 2; i++) {
             if (is_induction_variable(&alu->src[i].src, alu->src[i].swizzle[0],
-                                      info, uni_offsets, &new_num)) {
+                                      info, uni_offsets, &new_num,
+                                      max_num_bo, max_offset)) {
                cond = &alu->src[1 - i].src;
                component = alu->src[1 - i].swizzle[0];
                break;
@@ -233,7 +245,8 @@ add_inlinable_uniforms(const nir_src *cond, nir_loop_info *info,
     * unless uniform0, uniform1 and uniform2 can be inlined at once,
     * can the loop be unrolled.
     */
-   if (src_only_uses_uniforms(cond, component, uni_offsets, &new_num))
+   if (src_only_uses_uniforms(cond, component, uni_offsets, &new_num,
+                              max_num_bo, max_offset))
       *num_offsets = new_num;
 }
 
@@ -245,7 +258,7 @@ process_node(nir_cf_node *node, nir_loop_info *info,
    case nir_cf_node_if: {
       nir_if *if_node = nir_cf_node_as_if(node);
       const nir_src *cond = &if_node->condition;
-      add_inlinable_uniforms(cond, info, uni_offsets, num_offsets);
+      add_inlinable_uniforms(cond, info, uni_offsets, num_offsets, 1, MAX_OFFSET);
 
       /* Do not pass loop info down so only alow induction variable
        * in loop terminator "if":
