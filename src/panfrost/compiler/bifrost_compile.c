@@ -859,12 +859,7 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
    /* By ISA convention, the coverage mask is stored in R60. The store
     * itself will be handled by a subsequent ATEST instruction */
    if (loc == FRAG_RESULT_SAMPLE_MASK) {
-      bi_index orig = bi_coverage(b);
-      bi_index msaa = bi_load_sysval(b, PAN_SYSVAL_MULTISAMPLED, 1, 0);
-      bi_index new =
-         bi_lshift_and_i32(b, orig, bi_extract(b, src0, 0), bi_imm_u8(0));
-
-      b->shader->coverage = bi_mux_i32(b, orig, new, msaa, BI_MUX_INT_ZERO);
+      b->shader->coverage = bi_extract(b, src0, 0);
       return;
    }
 
@@ -1788,6 +1783,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_num_vertices:
    case nir_intrinsic_load_first_vertex:
    case nir_intrinsic_load_draw_id:
+   case nir_intrinsic_load_multisampled_pan:
       bi_load_sysval_nir(b, instr, 1, 0);
       break;
 
@@ -1823,6 +1819,10 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_sample_mask_in:
       /* r61[0:15] contains the coverage bitmap */
       bi_u16_to_u32_to(b, dst, bi_half(bi_preload(b, 61), false));
+      break;
+
+   case nir_intrinsic_load_coverage_mask_pan:
+      bi_mov_i32_to(b, dst, bi_coverage(b));
       break;
 
    case nir_intrinsic_load_sample_id:
@@ -4762,6 +4762,32 @@ bi_fp32_varying_mask(nir_shader *nir)
    return mask;
 }
 
+static bool
+bi_lower_sample_mask_writes(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_store_output)
+      return false;
+
+   assert(b->shader->info.stage == MESA_SHADER_FRAGMENT);
+   if (nir_intrinsic_io_semantics(intr).location != FRAG_RESULT_SAMPLE_MASK)
+      return false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+
+   nir_ssa_def *orig = nir_load_coverage_mask_pan(b);
+
+   nir_instr_rewrite_src_ssa(
+      instr, &intr->src[0],
+      nir_b32csel(b, nir_load_multisampled_pan(b),
+                  nir_iand(b, orig, nir_ssa_for_src(b, intr->src[0], 1)),
+                  orig));
+   return true;
+}
+
 static void
 bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
 {
@@ -4814,6 +4840,9 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
       NIR_PASS_V(nir, nir_lower_mediump_io,
                  nir_var_shader_in | nir_var_shader_out,
                  ~bi_fp32_varying_mask(nir), false);
+
+      NIR_PASS_V(nir, nir_shader_instructions_pass, bi_lower_sample_mask_writes,
+                 nir_metadata_block_index | nir_metadata_dominance, NULL);
    } else if (nir->info.stage == MESA_SHADER_VERTEX) {
       if (gpu_id >= 0x9000) {
          NIR_PASS_V(nir, nir_lower_mediump_io, nir_var_shader_out,

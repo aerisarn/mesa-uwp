@@ -78,6 +78,8 @@ panfrost_nir_sysval_for_intrinsic(nir_intrinsic_instr *instr)
       return PAN_SYSVAL_WORK_DIM;
    case nir_intrinsic_load_sample_positions_pan:
       return PAN_SYSVAL_SAMPLE_POSITIONS;
+   case nir_intrinsic_load_multisampled_pan:
+      return PAN_SYSVAL_MULTISAMPLED;
    case nir_intrinsic_load_first_vertex:
    case nir_intrinsic_load_base_vertex:
    case nir_intrinsic_load_base_instance:
