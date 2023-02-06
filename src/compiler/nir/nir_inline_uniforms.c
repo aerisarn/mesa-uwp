@@ -48,7 +48,7 @@
 
 static bool
 src_only_uses_uniforms(const nir_src *src, int component,
-                       uint32_t *uni_offsets, unsigned *num_offsets)
+                       uint32_t *uni_offsets, uint8_t *num_offsets)
 {
    if (!src->is_ssa)
       return false;
@@ -137,7 +137,7 @@ src_only_uses_uniforms(const nir_src *src, int component,
 
 static bool
 is_induction_variable(const nir_src *src, int component, nir_loop_info *info,
-                      uint32_t *uni_offsets, unsigned *num_offsets)
+                      uint32_t *uni_offsets, uint8_t *num_offsets)
 {
    if (!src->is_ssa)
       return false;
@@ -183,9 +183,9 @@ is_induction_variable(const nir_src *src, int component, nir_loop_info *info,
 
 static void
 add_inlinable_uniforms(const nir_src *cond, nir_loop_info *info,
-                       uint32_t *uni_offsets, unsigned *num_offsets)
+                       uint32_t *uni_offsets, uint8_t *num_offsets)
 {
-   unsigned new_num = *num_offsets;
+   uint8_t new_num = *num_offsets;
    /* If condition SSA is always scalar, so component is 0. */
    unsigned component = 0;
 
@@ -239,7 +239,7 @@ add_inlinable_uniforms(const nir_src *cond, nir_loop_info *info,
 
 static void
 process_node(nir_cf_node *node, nir_loop_info *info,
-             uint32_t *uni_offsets, unsigned *num_offsets)
+             uint32_t *uni_offsets, uint8_t *num_offsets)
 {
    switch (node->type) {
    case nir_cf_node_if: {
@@ -317,7 +317,7 @@ void
 nir_find_inlinable_uniforms(nir_shader *shader)
 {
    uint32_t uni_offsets[MAX_INLINABLE_UNIFORMS];
-   unsigned num_offsets = 0;
+   uint8_t num_offsets = 0;
 
    nir_foreach_function(function, shader) {
       if (function->impl) {
