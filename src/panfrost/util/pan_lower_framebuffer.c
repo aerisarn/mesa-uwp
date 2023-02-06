@@ -518,8 +518,10 @@ pan_lower_fb_store(nir_shader *shader, nir_builder *b,
       unpacked = pan_pack_reorder(b, desc, unpacked);
 
    nir_ssa_def *packed = pan_pack(b, desc, unpacked);
+   nir_variable *var = nir_intrinsic_get_var(intr, 0);
 
-   nir_store_raw_output_pan(b, packed);
+   nir_store_raw_output_pan(b, packed,
+                            .io_semantics.location = var->data.location);
 }
 
 static nir_ssa_def *

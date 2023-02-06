@@ -1278,9 +1278,13 @@ intrinsic("shared_atomic_comp_swap_dxil", src_comp=[1, 1, 1], dest_comp=1)
 # One notable divergence is sRGB, which is asymmetric: raw_input_pan requires
 # an sRGB->linear conversion, but linear values should be written to
 # raw_output_pan and the hardware handles linear->sRGB.
+#
+# store_raw_output_pan is used only for blend shaders, and writes out only a
+# single 128-bit chunk. To support multisampling, the BASE index specifies the
+# bas sample index written out.
 
 # src[] = { value }
-store("raw_output_pan", [], [])
+store("raw_output_pan", [], [IO_SEMANTICS, BASE])
 store("combined_output_pan", [1, 1, 1, 4], [IO_SEMANTICS, COMPONENT, SRC_TYPE, DEST_TYPE])
 load("raw_output_pan", [1], [IO_SEMANTICS], [CAN_ELIMINATE, CAN_REORDER])
 
