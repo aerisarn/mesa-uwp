@@ -1255,8 +1255,6 @@ struct zink_screen {
    bool device_lost;
    int drm_fd;
 
-   struct hash_table framebuffer_cache;
-
    struct slab_parent_pool transfer_pool;
    struct disk_cache *disk_cache;
    struct util_queue cache_put_thread;
