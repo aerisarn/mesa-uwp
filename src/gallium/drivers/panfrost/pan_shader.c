@@ -77,6 +77,15 @@ panfrost_shader_compile(struct panfrost_screen *screen, const nir_shader *ir,
 
    nir_shader *s = nir_shader_clone(NULL, ir);
 
+   /* While graphics shaders are preprocessed at CSO create time, compute
+    * kernels are not preprocessed until they're cloned since the driver does
+    * not get ownership of the NIR from compute CSOs. Do this preprocessing now.
+    * Compute CSOs call this function during create time, so preprocessing
+    * happens at CSO create time regardless.
+    */
+   if (gl_shader_stage_is_compute(s->info.stage))
+      pan_shader_preprocess(s, dev->gpu_id);
+
    struct panfrost_compile_inputs inputs = {
       .debug = dbg,
       .gpu_id = dev->gpu_id,
@@ -109,6 +118,14 @@ panfrost_shader_compile(struct panfrost_screen *screen, const nir_shader *ir,
    }
 
    util_dynarray_init(&out->binary, NULL);
+   pan_shader_preprocess(s, inputs.gpu_id);
+
+   if (dev->arch <= 5 && s->info.stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS_V(s, pan_lower_framebuffer, key->fs.rt_formats,
+                 pan_raw_format_mask_midgard(key->fs.rt_formats), false,
+                 dev->gpu_id < 0x700);
+   }
+
    screen->vtbl.compile_shader(s, &inputs, &out->binary, &out->info);
 
    assert(req_local_mem >= out->info.wls_size);

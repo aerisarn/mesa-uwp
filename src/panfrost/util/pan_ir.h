@@ -184,7 +184,6 @@ struct panfrost_compile_inputs {
    bool no_ubo_to_push;
 
    enum pipe_format rt_formats[8];
-   uint8_t raw_fmt_mask;
 
    /* Used on Valhall.
     *
@@ -198,7 +197,6 @@ struct panfrost_compile_inputs {
 
    union {
       struct {
-         bool static_rt_conv;
          uint32_t rt_conv[8];
       } bifrost;
    };

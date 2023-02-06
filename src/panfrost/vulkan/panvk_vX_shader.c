@@ -153,10 +153,6 @@ panvk_lower_blend(struct panfrost_device *pdev,
       rt_state->equation.alpha_dst_factor = BLEND_FACTOR_ZERO;
       rt_state->equation.alpha_invert_dst_factor = false;
       lower_blend = true;
-
-      inputs->bifrost.static_rt_conv = true;
-      inputs->bifrost.rt_conv[rt] =
-         GENX(pan_blend_get_internal_desc)(pdev, fmt, rt, 32, false) >> 32;
    }
 
    if (lower_blend) {
@@ -369,6 +365,17 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
    if (unlikely(dev->physical_device->instance->debug_flags & PANVK_DEBUG_NIR)) {
       fprintf(stderr, "translated nir:\n");
       nir_print_shader(nir, stderr);
+   }
+
+   pan_shader_preprocess(nir, inputs.gpu_id);
+
+   if (stage == MESA_SHADER_FRAGMENT) {
+      enum pipe_format rt_formats[MAX_RTS] = {PIPE_FORMAT_NONE};
+
+      for (unsigned rt = 0; rt < MAX_RTS; ++rt)
+         rt_formats[rt] = blend_state->rts[rt].format;
+
+      NIR_PASS_V(nir, GENX(pan_inline_rt_conversion), pdev, rt_formats);
    }
 
    GENX(pan_shader_compile)(nir, &inputs, &shader->binary, &shader->info);

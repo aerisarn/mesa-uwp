@@ -4716,7 +4716,7 @@ bi_lower_sample_mask_writes(nir_builder *b, nir_instr *instr, void *data)
 }
 
 static bool
-bi_lower_load_output(nir_builder *b, nir_instr *instr, void *data)
+bi_lower_load_output(nir_builder *b, nir_instr *instr, UNUSED void *data)
 {
    if (instr->type != nir_instr_type_intrinsic)
       return false;
@@ -4734,15 +4734,6 @@ bi_lower_load_output(nir_builder *b, nir_instr *instr, void *data)
    nir_ssa_def *conversion = nir_load_rt_conversion_pan(
       b, .base = rt, .src_type = nir_intrinsic_dest_type(intr));
 
-   /* TODO: This should be optimized/lowered by the driver */
-   const struct panfrost_compile_inputs *inputs = data;
-
-   if (inputs->is_blend) {
-      conversion = nir_imm_int(b, inputs->blend.bifrost_blend_desc >> 32);
-   } else if (inputs->bifrost.static_rt_conv) {
-      conversion = nir_imm_int(b, inputs->bifrost.rt_conv[rt]);
-   }
-
    nir_ssa_def *lowered = nir_load_converted_output_pan(
       b, nir_dest_num_components(intr->dest), nir_dest_bit_size(intr->dest),
       conversion, .dest_type = nir_intrinsic_dest_type(intr),
@@ -4753,8 +4744,7 @@ bi_lower_load_output(nir_builder *b, nir_instr *instr, void *data)
 }
 
 void
-bifrost_preprocess_nir(nir_shader *nir,
-                       const struct panfrost_compile_inputs *inputs)
+bifrost_preprocess_nir(nir_shader *nir, unsigned gpu_id)
 {
    /* Lower gl_Position pre-optimisation, but after lowering vars to ssa
     * (so we don't accidentally duplicate the epilogue since mesa/st has
@@ -4781,7 +4771,7 @@ bifrost_preprocess_nir(nir_shader *nir,
     * (currently unconditional for Valhall), we force vec4 alignment for
     * scratch access.
     */
-   bool packed_tls = (inputs->gpu_id >= 0x9000);
+   bool packed_tls = (gpu_id >= 0x9000);
 
    /* Lower large arrays to scratch and small arrays to bcsel */
    NIR_PASS_V(nir, nir_lower_vars_to_scratch, nir_var_function_temp, 256,
@@ -4810,10 +4800,9 @@ bifrost_preprocess_nir(nir_shader *nir,
                  nir_metadata_block_index | nir_metadata_dominance, NULL);
 
       NIR_PASS_V(nir, nir_shader_instructions_pass, bi_lower_load_output,
-                 nir_metadata_block_index | nir_metadata_dominance,
-                 (void *)inputs);
+                 nir_metadata_block_index | nir_metadata_dominance, NULL);
    } else if (nir->info.stage == MESA_SHADER_VERTEX) {
-      if (inputs->gpu_id >= 0x9000) {
+      if (gpu_id >= 0x9000) {
          NIR_PASS_V(nir, nir_lower_mediump_io, nir_var_shader_out,
                     BITFIELD64_BIT(VARYING_SLOT_PSIZ), false);
       }
@@ -5251,7 +5240,6 @@ bifrost_compile_shader_nir(nir_shader *nir,
 {
    bifrost_debug = debug_get_option_bifrost_debug();
 
-   bifrost_preprocess_nir(nir, inputs);
    bi_optimize_nir(nir, inputs->gpu_id, inputs->is_blend);
 
    struct hash_table_u64 *sysval_to_id =

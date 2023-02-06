@@ -40,7 +40,6 @@
 #include "util/u_dynarray.h"
 #include "util/u_math.h"
 
-#include "panfrost/util/pan_lower_framebuffer.h"
 #include "compiler.h"
 #include "helpers.h"
 #include "midgard.h"
@@ -330,10 +329,9 @@ midgard_vectorize_filter(const nir_instr *instr, const void *data)
 }
 
 void
-midgard_preprocess_nir(nir_shader *nir,
-                       const struct panfrost_compile_inputs *inputs)
+midgard_preprocess_nir(nir_shader *nir, unsigned gpu_id)
 {
-   unsigned quirks = midgard_get_quirks(inputs->gpu_id);
+   unsigned quirks = midgard_get_quirks(gpu_id);
 
    /* Lower gl_Position pre-optimisation, but after lowering vars to ssa
     * (so we don't accidentally duplicate the epilogue since mesa/st has
@@ -391,10 +389,9 @@ midgard_preprocess_nir(nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
 
    /* TEX_GRAD fails to apply sampler descriptor settings on some
-    * implementations, requiring a lowering. However, blit shaders do not
-    * use the affected settings and should skip the workaround.
+    * implementations, requiring a lowering.
     */
-   if ((quirks & MIDGARD_BROKEN_LOD) && !inputs->is_blit)
+   if (quirks & MIDGARD_BROKEN_LOD)
       NIR_PASS_V(nir, midgard_nir_lod_errata);
 
    /* Midgard image ops coordinates are 16-bit instead of 32-bit */
@@ -417,12 +414,6 @@ midgard_preprocess_nir(nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_alu_to_scalar, mdg_should_scalarize, NULL);
    NIR_PASS_V(nir, nir_lower_flrp, 16 | 32 | 64, false /* always_precise */);
    NIR_PASS_V(nir, nir_lower_var_copies);
-
-   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      NIR_PASS_V(nir, pan_lower_framebuffer, inputs->rt_formats,
-                 inputs->raw_fmt_mask, inputs->is_blend,
-                 quirks & MIDGARD_BROKEN_BLEND_LOADS);
-   }
 }
 
 static void
@@ -3176,8 +3167,6 @@ midgard_compile_shader_nir(nir_shader *nir,
    /* Initialize at a global (not block) level hash tables */
 
    ctx->ssa_constants = _mesa_hash_table_u64_create(ctx);
-
-   midgard_preprocess_nir(nir, inputs);
 
    /* Collect varyings after lowering I/O */
    pan_nir_collect_varyings(nir, info);
