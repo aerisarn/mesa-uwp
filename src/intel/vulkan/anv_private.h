@@ -1865,6 +1865,7 @@ struct anv_descriptor_pool {
    struct vk_object_base base;
 
    struct anv_bo *bo;
+   void *host_bo;
    struct util_vma_heap bo_heap;
 
    struct anv_state_stream surface_state_stream;
@@ -1878,6 +1879,9 @@ struct anv_descriptor_pool {
 
    /** Allocated size of host_mem */
    uint32_t host_mem_size;
+
+   /** Allocated size of descriptor bo (should be equal to bo->size) */
+   uint32_t bo_mem_size;
 
    /**
     * VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_EXT. If set, then
