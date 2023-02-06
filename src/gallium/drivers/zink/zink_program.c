@@ -819,10 +819,11 @@ zink_update_compute_program(struct zink_context *ctx)
 }
 
 VkPipelineLayout
-zink_pipeline_layout_create(struct zink_screen *screen, VkDescriptorSetLayout *dsl, unsigned num_dsl, bool is_compute)
+zink_pipeline_layout_create(struct zink_screen *screen, VkDescriptorSetLayout *dsl, unsigned num_dsl, bool is_compute, VkPipelineLayoutCreateFlags flags)
 {
    VkPipelineLayoutCreateInfo plci = {0};
    plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+   plci.flags = flags;
 
    plci.pSetLayouts = dsl;
    plci.setLayoutCount = num_dsl;

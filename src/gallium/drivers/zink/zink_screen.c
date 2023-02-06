@@ -2596,7 +2596,7 @@ init_layouts(struct zink_screen *screen)
       }
    }
 
-   screen->gfx_push_constant_layout = zink_pipeline_layout_create(screen, NULL, 0, false);
+   screen->gfx_push_constant_layout = zink_pipeline_layout_create(screen, NULL, 0, false, 0);
    return !!screen->gfx_push_constant_layout;
 }
 
