@@ -29,9 +29,9 @@
 #include "compiler/shader_info.h"
 
 struct zink_vs_key_base {
+   bool last_vertex_stage : 1;
    bool clip_halfz : 1;
    bool push_drawid : 1;
-   bool last_vertex_stage : 1;
    bool robust_access : 1;
    uint8_t pad : 4;
 };
