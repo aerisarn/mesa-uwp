@@ -56,7 +56,7 @@ tar -xvf ${MINIO_ARTIFACT_NAME}.tar.zst
 
 $ADB push install/all-skips.txt /data/.
 $ADB push install/$GPU_VERSION-flakes.txt /data/.
-$ADB push install/deqp-android-virgl.toml /data/.
+$ADB push install/deqp-$DEQP_SUITE.toml /data/.
 
 # remove 32 bits libs from /vendor/lib
 
@@ -87,11 +87,10 @@ $ADB shell rm /vendor/lib64/egl/libGLESv2_emulation.so
 # run tests
 
 RESULTS=/data/results
-DEQP_SUITE=/data/deqp-android-virgl.toml
 
 $ADB shell "mkdir /data/results; cd /data; strace -o /data/results/out.strace -f -s 1000 ./deqp-runner \
     suite \
-    --suite $DEQP_SUITE \
+    --suite /data/deqp-$DEQP_SUITE.toml \
     --output $RESULTS \
     --skips /data/all-skips.txt $DEQP_SKIPS \
     --flakes /data/$GPU_VERSION-flakes.txt \
