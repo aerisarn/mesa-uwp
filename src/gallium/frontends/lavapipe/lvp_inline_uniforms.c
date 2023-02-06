@@ -86,22 +86,30 @@ src_only_uses_uniforms(const nir_src *src, int component,
           nir_src_is_const(intr->src[1]) &&
           /* TODO: Can't handle other bit sizes for now. */
           intr->dest.ssa.bit_size == 32) {
+         /* num_offsets can be NULL if-and-only-if uni_offsets is NULL. */
+         assert((num_offsets == NULL) == (uni_offsets == NULL));
+
+         /* If we're just checking that it's a uniform load, don't check (or
+          * add to) the table.
+          */
+         if (uni_offsets == NULL)
+            return true;
+
          uint32_t offset = nir_src_as_uint(intr->src[1]) + component * 4;
 
          /* Already recorded by other one */
          uint32_t ubo = nir_src_as_uint(intr->src[0]);
-         for (int i = 0; uni_offsets && i < num_offsets[ubo]; i++) {
+         for (int i = 0; i < num_offsets[ubo]; i++) {
             if (uni_offsets[ubo * PIPE_MAX_CONSTANT_BUFFERS + i] == offset)
                return true;
          }
 
          /* Exceed uniform number limit */
-         if (num_offsets && num_offsets[ubo] == MAX_INLINABLE_UNIFORMS)
+         if (num_offsets[ubo] == MAX_INLINABLE_UNIFORMS)
             return false;
 
          /* Record the uniform offset. */
-         if (uni_offsets)
-            uni_offsets[ubo * PIPE_MAX_CONSTANT_BUFFERS + num_offsets[ubo]++] = offset;
+         uni_offsets[ubo * PIPE_MAX_CONSTANT_BUFFERS + num_offsets[ubo]++] = offset;
          return true;
       }
       return false;
