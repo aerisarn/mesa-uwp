@@ -652,7 +652,7 @@ emit_conditional_ib(struct fd_batch *batch, const struct fd_tile *tile,
    OUT_PKT7(ring, CP_REG_TEST, 1);
    OUT_RING(ring, A6XX_CP_REG_TEST_0_REG(REG_A6XX_VSC_STATE_REG(tile->p)) |
                      A6XX_CP_REG_TEST_0_BIT(tile->n) |
-                     A6XX_CP_REG_TEST_0_WAIT_FOR_ME);
+                     A6XX_CP_REG_TEST_0_SKIP_WAIT_FOR_ME);
 
    OUT_PKT7(ring, CP_COND_REG_EXEC, 2);
    OUT_RING(ring, CP_COND_REG_EXEC_0_MODE(PRED_TEST));

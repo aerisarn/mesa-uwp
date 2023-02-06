@@ -734,13 +734,13 @@ use_sysmem_rendering(struct tu_cmd_buffer *cmd,
  */
 static void
 tu6_emit_cond_for_load_stores(struct tu_cmd_buffer *cmd, struct tu_cs *cs,
-                              uint32_t pipe, uint32_t slot, bool wfm)
+                              uint32_t pipe, uint32_t slot, bool skip_wfm)
 {
    if (cmd->state.tiling->binning_possible) {
       tu_cs_emit_pkt7(cs, CP_REG_TEST, 1);
       tu_cs_emit(cs, A6XX_CP_REG_TEST_0_REG(REG_A6XX_VSC_STATE_REG(pipe)) |
                      A6XX_CP_REG_TEST_0_BIT(slot) |
-                     COND(wfm, A6XX_CP_REG_TEST_0_WAIT_FOR_ME));
+                     COND(skip_wfm, A6XX_CP_REG_TEST_0_SKIP_WAIT_FOR_ME));
    } else {
       /* COND_REG_EXECs are not emitted in non-binning case */
    }

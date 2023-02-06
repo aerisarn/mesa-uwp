@@ -1721,8 +1721,8 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 		<bitfield name="REG" low="0" high="17"/>
 		<!-- the bit to test -->
 		<bitfield name="BIT" low="20" high="24" type="uint"/>
-		<!-- execute CP_WAIT_FOR_ME beforehand -->
-		<bitfield name="WAIT_FOR_ME" pos="25" type="boolean"/>
+		<!-- skip implied CP_WAIT_FOR_ME -->
+		<bitfield name="SKIP_WAIT_FOR_ME" pos="25" type="boolean"/>
 		<!--
 			Appears only in:
 				opcode: CP_REG_TEST (39) (4 dwords)
