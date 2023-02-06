@@ -503,8 +503,7 @@ static nir_ssa_def *pan_pack(nir_builder *b,
 }
 
 static void
-pan_lower_fb_store(nir_shader *shader, nir_builder *b,
-                   nir_intrinsic_instr *intr,
+pan_lower_fb_store(nir_builder *b, nir_intrinsic_instr *intr,
                    const struct util_format_description *desc,
                    bool reorder_comps)
 {
@@ -530,7 +529,7 @@ pan_sample_id(nir_builder *b, int sample)
 }
 
 static void
-pan_lower_fb_load(nir_shader *shader, nir_builder *b, nir_intrinsic_instr *intr,
+pan_lower_fb_load(nir_builder *b, nir_intrinsic_instr *intr,
                   const struct util_format_description *desc,
                   bool reorder_comps, int sample)
 {
@@ -568,6 +567,60 @@ pan_lower_fb_load(nir_shader *shader, nir_builder *b, nir_intrinsic_instr *intr,
    nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, unpacked, &intr->instr);
 }
 
+struct inputs {
+   const enum pipe_format *rt_fmts;
+   uint8_t raw_fmt_mask;
+   bool is_blend;
+   bool broken_ld_special;
+};
+
+static bool
+lower(nir_builder *b, nir_instr *instr, void *data)
+{
+   struct inputs *inputs = data;
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   bool is_load = intr->intrinsic == nir_intrinsic_load_output;
+   bool is_store = intr->intrinsic == nir_intrinsic_store_output;
+
+   if (!(is_load || (is_store && inputs->is_blend)))
+      return false;
+
+   nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+   if (sem.location < FRAG_RESULT_DATA0)
+      return false;
+
+   unsigned rt = sem.location - FRAG_RESULT_DATA0;
+   if (inputs->rt_fmts[rt] == PIPE_FORMAT_NONE)
+      return false;
+
+   const struct util_format_description *desc =
+      util_format_description(inputs->rt_fmts[rt]);
+
+   /* Don't lower */
+   if (pan_is_format_native(desc, inputs->broken_ld_special, is_store))
+      return false;
+
+   /* EXT_shader_framebuffer_fetch requires per-sample loads. MSAA blend
+    * shaders are not yet handled, so for now always load sample 0.
+    */
+   int sample = inputs->is_blend ? 0 : -1;
+   bool reorder_comps = inputs->raw_fmt_mask & BITFIELD_BIT(rt);
+
+   if (is_store) {
+      b->cursor = nir_before_instr(instr);
+      pan_lower_fb_store(b, intr, desc, reorder_comps);
+   } else {
+      b->cursor = nir_after_instr(instr);
+      pan_lower_fb_load(b, intr, desc, reorder_comps, sample);
+   }
+
+   nir_instr_remove(instr);
+   return true;
+}
+
 bool
 pan_lower_framebuffer(nir_shader *shader, const enum pipe_format *rt_fmts,
                       uint8_t raw_fmt_mask, bool is_blend,
@@ -575,64 +628,12 @@ pan_lower_framebuffer(nir_shader *shader, const enum pipe_format *rt_fmts,
 {
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
 
-   bool progress = false;
-
-   nir_foreach_function(func, shader) {
-      nir_foreach_block(block, func->impl) {
-         nir_foreach_instr_safe(instr, block) {
-            if (instr->type != nir_instr_type_intrinsic)
-               continue;
-
-            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-
-            bool is_load = intr->intrinsic == nir_intrinsic_load_output;
-            bool is_store = intr->intrinsic == nir_intrinsic_store_output;
-
-            if (!(is_load || (is_store && is_blend)))
-               continue;
-
-            nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
-            if (sem.location < FRAG_RESULT_DATA0)
-               continue;
-
-            unsigned rt = sem.location - FRAG_RESULT_DATA0;
-            if (rt_fmts[rt] == PIPE_FORMAT_NONE)
-               continue;
-
-            const struct util_format_description *desc =
-               util_format_description(rt_fmts[rt]);
-
-            /* Don't lower */
-            if (pan_is_format_native(desc, broken_ld_special, is_store))
-               continue;
-
-            /* EXT_shader_framebuffer_fetch requires
-             * per-sample loads.
-             * MSAA blend shaders are not yet handled, so
-             * for now always load sample 0. */
-            int sample = is_blend ? 0 : -1;
-            bool reorder_comps = raw_fmt_mask & BITFIELD_BIT(rt);
-
-            nir_builder b;
-            nir_builder_init(&b, func->impl);
-
-            if (is_store) {
-               b.cursor = nir_before_instr(instr);
-               pan_lower_fb_store(shader, &b, intr, desc, reorder_comps);
-            } else {
-               b.cursor = nir_after_instr(instr);
-               pan_lower_fb_load(shader, &b, intr, desc, reorder_comps, sample);
-            }
-
-            nir_instr_remove(instr);
-
-            progress = true;
-         }
-      }
-
-      nir_metadata_preserve(func->impl,
-                            nir_metadata_block_index | nir_metadata_dominance);
-   }
-
-   return progress;
+   return nir_shader_instructions_pass(
+      shader, lower, nir_metadata_block_index | nir_metadata_dominance,
+      &(struct inputs){
+         .rt_fmts = rt_fmts,
+         .raw_fmt_mask = raw_fmt_mask,
+         .is_blend = is_blend,
+         .broken_ld_special = broken_ld_special,
+      });
 }
