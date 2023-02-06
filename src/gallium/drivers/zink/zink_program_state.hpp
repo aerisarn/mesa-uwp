@@ -251,16 +251,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
       /* init the optimized background compile fence */
       util_queue_fence_init(&pc_entry->fence);
       entry = _mesa_hash_table_insert_pre_hashed(&prog->pipelines[rp_idx][idx], state->final_hash, pc_entry, pc_entry);
-      if (HAVE_LIB &&
-          /* TODO: if there's ever a dynamic render extension with input attachments */
-          !ctx->gfx_pipeline_state.render_pass &&
-          /* this is just terrible */
-          !zink_get_fs_base_key(ctx)->shadow_needs_shader_swizzle &&
-          /* TODO: is sample shading even possible to handle with GPL? */
-          !ctx->gfx_stages[MESA_SHADER_FRAGMENT]->nir->info.fs.uses_sample_shading &&
-          !zink_get_fs_base_key(ctx)->fbfetch_ms &&
-          !ctx->gfx_pipeline_state.force_persample_interp &&
-          !ctx->gfx_pipeline_state.min_samples) {
+      if (HAVE_LIB && zink_can_use_pipeline_libs(ctx)) {
          /* this is the graphics pipeline library path: find/construct all partial pipelines */
          struct set_entry *he = _mesa_set_search(&prog->libs, &ctx->gfx_pipeline_state.optimal_key);
          struct zink_gfx_library_key *gkey;
