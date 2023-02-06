@@ -4182,7 +4182,7 @@ struct zink_shader *
 zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                    const struct pipe_stream_output_info *so_info)
 {
-   struct zink_shader *ret = CALLOC_STRUCT(zink_shader);
+   struct zink_shader *ret = rzalloc(NULL, struct zink_shader);
    bool have_psiz = false;
 
    ret->sinfo.have_vulkan_memory_model = screen->info.have_KHR_vulkan_memory_model;
@@ -4483,7 +4483,7 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
    _mesa_set_destroy(shader->programs, NULL);
    ralloc_free(shader->nir);
    ralloc_free(shader->spirv);
-   FREE(shader);
+   ralloc_free(shader);
 }
 
 
@@ -4520,7 +4520,7 @@ void main()
 struct zink_shader *
 zink_shader_tcs_create(struct zink_screen *screen, struct zink_shader *vs, unsigned vertices_per_patch)
 {
-   struct zink_shader *ret = CALLOC_STRUCT(zink_shader);
+   struct zink_shader *ret = rzalloc(NULL, struct zink_shader);
    ret->hash = _mesa_hash_pointer(ret);
    ret->programs = _mesa_pointer_set_create(NULL);
    simple_mtx_init(&ret->lock, mtx_plain);
