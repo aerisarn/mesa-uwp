@@ -28,6 +28,9 @@
 #include "panfrost/util/pan_ir.h"
 #include "util/u_dynarray.h"
 
+void bifrost_preprocess_nir(nir_shader *nir,
+                            const struct panfrost_compile_inputs *inputs);
+
 void bifrost_compile_shader_nir(nir_shader *nir,
                                 const struct panfrost_compile_inputs *inputs,
                                 struct util_dynarray *binary,

@@ -4457,37 +4457,6 @@ bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
 {
    bool progress;
 
-   NIR_PASS(progress, nir, nir_lower_regs_to_ssa);
-
-   nir_lower_tex_options lower_tex_options = {
-      .lower_txs_lod = true,
-      .lower_txp = ~0,
-      .lower_tg4_broadcom_swizzle = true,
-      .lower_txd = true,
-      .lower_invalid_implicit_lod = true,
-      .lower_index_to_offset = true,
-   };
-
-   NIR_PASS(progress, nir, pan_nir_lower_64bit_intrin);
-   NIR_PASS(progress, nir, pan_lower_helper_invocation);
-
-   NIR_PASS(progress, nir, nir_lower_int64);
-
-   nir_lower_idiv_options idiv_options = {
-      .allow_fp16 = true,
-   };
-   NIR_PASS(progress, nir, nir_opt_idiv_const, 8);
-   NIR_PASS(progress, nir, nir_lower_idiv, &idiv_options);
-
-   NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_options);
-   NIR_PASS(progress, nir, nir_lower_alu_to_scalar, bi_scalarize_filter, NULL);
-   NIR_PASS(progress, nir, nir_lower_load_const_to_scalar);
-   NIR_PASS(progress, nir, nir_lower_phis_to_scalar, true);
-   NIR_PASS(progress, nir, nir_lower_flrp, 16 | 32 | 64,
-            false /* always_precise */);
-   NIR_PASS(progress, nir, nir_lower_var_copies);
-   NIR_PASS(progress, nir, nir_lower_alu);
-
    do {
       progress = false;
 
@@ -4783,9 +4752,9 @@ bi_lower_load_output(nir_builder *b, nir_instr *instr, void *data)
    return true;
 }
 
-static void
-bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend,
-                const struct panfrost_compile_inputs *inputs)
+void
+bifrost_preprocess_nir(nir_shader *nir,
+                       const struct panfrost_compile_inputs *inputs)
 {
    /* Lower gl_Position pre-optimisation, but after lowering vars to ssa
     * (so we don't accidentally duplicate the epilogue since mesa/st has
@@ -4812,7 +4781,7 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend,
     * (currently unconditional for Valhall), we force vec4 alignment for
     * scratch access.
     */
-   bool packed_tls = (gpu_id >= 0x9000);
+   bool packed_tls = (inputs->gpu_id >= 0x9000);
 
    /* Lower large arrays to scratch and small arrays to bcsel */
    NIR_PASS_V(nir, nir_lower_vars_to_scratch, nir_var_function_temp, 256,
@@ -4844,7 +4813,7 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend,
                  nir_metadata_block_index | nir_metadata_dominance,
                  (void *)inputs);
    } else if (nir->info.stage == MESA_SHADER_VERTEX) {
-      if (gpu_id >= 0x9000) {
+      if (inputs->gpu_id >= 0x9000) {
          NIR_PASS_V(nir, nir_lower_mediump_io, nir_var_shader_out,
                     BITFIELD64_BIT(VARYING_SLOT_PSIZ), false);
       }
@@ -4865,7 +4834,32 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend,
       NIR_PASS_V(nir, pan_lower_xfb);
    }
 
-   bi_optimize_nir(nir, gpu_id, is_blend);
+   NIR_PASS_V(nir, nir_lower_regs_to_ssa);
+
+   NIR_PASS_V(nir, pan_nir_lower_64bit_intrin);
+   NIR_PASS_V(nir, pan_lower_helper_invocation);
+   NIR_PASS_V(nir, nir_lower_int64);
+
+   NIR_PASS_V(nir, nir_opt_idiv_const, 8);
+   NIR_PASS_V(nir, nir_lower_idiv,
+              &(nir_lower_idiv_options){.allow_fp16 = true});
+
+   NIR_PASS_V(nir, nir_lower_tex,
+              &(nir_lower_tex_options){
+                 .lower_txs_lod = true,
+                 .lower_txp = ~0,
+                 .lower_tg4_broadcom_swizzle = true,
+                 .lower_txd = true,
+                 .lower_invalid_implicit_lod = true,
+                 .lower_index_to_offset = true,
+              });
+
+   NIR_PASS_V(nir, nir_lower_alu_to_scalar, bi_scalarize_filter, NULL);
+   NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
+   NIR_PASS_V(nir, nir_lower_phis_to_scalar, true);
+   NIR_PASS_V(nir, nir_lower_flrp, 16 | 32 | 64, false /* always_precise */);
+   NIR_PASS_V(nir, nir_lower_var_copies);
+   NIR_PASS_V(nir, nir_lower_alu);
 }
 
 static bi_context *
@@ -5257,7 +5251,9 @@ bifrost_compile_shader_nir(nir_shader *nir,
 {
    bifrost_debug = debug_get_option_bifrost_debug();
 
-   bi_finalize_nir(nir, inputs->gpu_id, inputs->is_blend, inputs);
+   bifrost_preprocess_nir(nir, inputs);
+   bi_optimize_nir(nir, inputs->gpu_id, inputs->is_blend);
+
    struct hash_table_u64 *sysval_to_id =
       panfrost_init_sysvals(&info->sysvals, inputs->fixed_sysval_layout, NULL);
 
