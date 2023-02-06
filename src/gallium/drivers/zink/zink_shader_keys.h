@@ -148,6 +148,9 @@ union zink_shader_key_optimal {
    uint32_t val;
 };
 
+/* the default key has only last_vertex_stage set*/
+#define ZINK_SHADER_KEY_OPTIMAL_DEFAULT (1<<0)
+
 static inline const struct zink_fs_key_base *
 zink_fs_key_base(const struct zink_shader_key *key)
 {
