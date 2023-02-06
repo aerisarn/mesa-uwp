@@ -386,6 +386,7 @@ struct zink_descriptor_template {
 /* ctx->dd; created at context creation */
 struct zink_descriptor_data {
    bool bindless_bound;
+   bool bindless_init;
    bool has_fbfetch;
    bool push_state_changed[2]; //gfx, compute
    uint8_t state_changed[2]; //gfx, compute
@@ -395,7 +396,6 @@ struct zink_descriptor_data {
 
    struct zink_descriptor_layout *dummy_dsl;
 
-   VkDescriptorSetLayout bindless_layout;
    union {
       struct {
          VkDescriptorPool bindless_pool;
@@ -1269,6 +1269,7 @@ struct zink_screen {
    struct util_live_shader_cache shaders;
 
    uint64_t db_size[ZINK_DESCRIPTOR_ALL_TYPES];
+   VkDescriptorSetLayout bindless_layout;
 
    struct {
       struct pb_cache bo_cache;

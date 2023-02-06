@@ -606,7 +606,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
    if (pg->dd.bindless) {
       unsigned desc_set = screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS];
       pg->num_dsl = desc_set + 1;
-      pg->dsl[desc_set] = ctx->dd.bindless_layout;
+      pg->dsl[desc_set] = screen->bindless_layout;
       /* separate handling for null set injection when only bindless descriptors are used */
       for (unsigned i = 0; i < desc_set; i++) {
          if (!pg->dsl[i]) {
@@ -649,7 +649,7 @@ zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg)
       bool is_push = i == 0;
       /* no need for empty templates */
       if (pg->dsl[i] == ctx->dd.dummy_dsl->layout ||
-          pg->dsl[i] == ctx->dd.bindless_layout ||
+          pg->dsl[i] == screen->bindless_layout ||
           (!is_push && pg->dd.templates[i]))
          continue;
       template[i].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO;
@@ -1477,83 +1477,33 @@ zink_descriptor_util_init_fbfetch(struct zink_context *ctx)
    }
 }
 
-/* bindless descriptor bindings have their own struct indexing */
-ALWAYS_INLINE static VkDescriptorType
-type_from_bindless_index(unsigned idx)
-{
-   switch (idx) {
-   case 0: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-   case 1: return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-   case 2: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-   case 3: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-   default:
-      unreachable("unknown index");
-   }
-}
-
 /* called when a shader that uses bindless is created */
 void
 zink_descriptors_init_bindless(struct zink_context *ctx)
 {
-   if (ctx->dd.bindless_layout)
+   if (ctx->dd.bindless_init)
       return;
-
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   VkDescriptorSetLayoutBinding bindings[4];
-   const unsigned num_bindings = 4;
-   VkDescriptorSetLayoutCreateInfo dcslci = {0};
-   dcslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-   dcslci.pNext = NULL;
-   VkDescriptorSetLayoutBindingFlagsCreateInfo fci = {0};
-   VkDescriptorBindingFlags flags[4];
-   dcslci.pNext = &fci;
-   if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB)
-      dcslci.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
-   else
-      dcslci.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
-   fci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-   fci.bindingCount = num_bindings;
-   fci.pBindingFlags = flags;
-   for (unsigned i = 0; i < num_bindings; i++) {
-      flags[i] = VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
-      if (zink_descriptor_mode != ZINK_DESCRIPTOR_MODE_DB)
-         flags[i] |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
-   }
-   /* there is exactly 1 bindless descriptor set per context, and it has 4 bindings, 1 for each descriptor type */
-   for (unsigned i = 0; i < num_bindings; i++) {
-      bindings[i].binding = i;
-      bindings[i].descriptorType = type_from_bindless_index(i);
-      bindings[i].descriptorCount = ZINK_MAX_BINDLESS_HANDLES;
-      bindings[i].stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_COMPUTE_BIT;
-      bindings[i].pImmutableSamplers = NULL;
-   }
-   
-   dcslci.bindingCount = num_bindings;
-   dcslci.pBindings = bindings;
-   VkResult result = VKSCR(CreateDescriptorSetLayout)(screen->dev, &dcslci, 0, &ctx->dd.bindless_layout);
-   if (result != VK_SUCCESS) {
-      mesa_loge("ZINK: vkCreateDescriptorSetLayout failed (%s)", vk_Result_to_str(result));
-      return;
-   }
+   assert(screen->bindless_layout);
 
    if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB) {
       unsigned bind = ZINK_BIND_RESOURCE_DESCRIPTOR | ZINK_BIND_SAMPLER_DESCRIPTOR;
       VkDeviceSize size;
-      VKSCR(GetDescriptorSetLayoutSizeEXT)(screen->dev, ctx->dd.bindless_layout, &size);
+      VKSCR(GetDescriptorSetLayoutSizeEXT)(screen->dev, screen->bindless_layout, &size);
       struct pipe_resource *pres = pipe_buffer_create(&screen->base, bind, 0, size);
       ctx->dd.db.bindless_db = zink_resource(pres);
       ctx->dd.db.bindless_db_map = pipe_buffer_map(&ctx->base, pres, PIPE_MAP_READ | PIPE_MAP_WRITE, &ctx->dd.db.bindless_db_xfer);
       zink_batch_bind_db(ctx);
-      for (unsigned i = 0; i < num_bindings; i++) {
+      for (unsigned i = 0; i < 4; i++) {
          VkDeviceSize offset;
-         VKSCR(GetDescriptorSetLayoutBindingOffsetEXT)(screen->dev, ctx->dd.bindless_layout, i, &offset);
+         VKSCR(GetDescriptorSetLayoutBindingOffsetEXT)(screen->dev, screen->bindless_layout, i, &offset);
          ctx->dd.db.db_offsets[i] = offset;
       }
    } else {
       VkDescriptorPoolCreateInfo dpci = {0};
       VkDescriptorPoolSize sizes[4];
       for (unsigned i = 0; i < 4; i++) {
-         sizes[i].type = type_from_bindless_index(i);
+         sizes[i].type = zink_descriptor_type_from_bindless_index(i);
          sizes[i].descriptorCount = ZINK_MAX_BINDLESS_HANDLES;
       }
       dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1561,14 +1511,15 @@ zink_descriptors_init_bindless(struct zink_context *ctx)
       dpci.poolSizeCount = 4;
       dpci.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
       dpci.maxSets = 1;
-      result = VKSCR(CreateDescriptorPool)(screen->dev, &dpci, 0, &ctx->dd.t.bindless_pool);
+      VkResult result = VKSCR(CreateDescriptorPool)(screen->dev, &dpci, 0, &ctx->dd.t.bindless_pool);
       if (result != VK_SUCCESS) {
          mesa_loge("ZINK: vkCreateDescriptorPool failed (%s)", vk_Result_to_str(result));
          return;
       }
 
-      zink_descriptor_util_alloc_sets(screen, ctx->dd.bindless_layout, ctx->dd.t.bindless_pool, &ctx->dd.t.bindless_set, 1);
+      zink_descriptor_util_alloc_sets(screen, screen->bindless_layout, ctx->dd.t.bindless_pool, &ctx->dd.t.bindless_set, 1);
    }
+   ctx->dd.bindless_init = true;
 }
 
 /* called on context destroy */
@@ -1576,8 +1527,6 @@ void
 zink_descriptors_deinit_bindless(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   if (ctx->dd.bindless_layout)
-      VKSCR(DestroyDescriptorSetLayout)(screen->dev, ctx->dd.bindless_layout, NULL);
    if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB) {
       if (ctx->dd.db.bindless_db_xfer)
          pipe_buffer_unmap(&ctx->base, ctx->dd.db.bindless_db_xfer);
@@ -1646,7 +1595,7 @@ zink_descriptors_update_bindless(struct zink_context *ctx)
             /* buffer handle ids are offset by ZINK_MAX_BINDLESS_HANDLES for internal tracking */
             wd.dstArrayElement = is_buffer ? handle - ZINK_MAX_BINDLESS_HANDLES : handle;
             wd.descriptorCount = 1;
-            wd.descriptorType = type_from_bindless_index(wd.dstBinding);
+            wd.descriptorType = zink_descriptor_type_from_bindless_index(wd.dstBinding);
             if (is_buffer)
                wd.pTexelBufferView = &ctx->di.bindless[i].t.buffer_infos[wd.dstArrayElement];
             else

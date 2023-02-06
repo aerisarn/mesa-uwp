@@ -118,6 +118,21 @@ zink_descriptor_type_to_size_idx_comp(enum zink_descriptor_type type)
    }
    unreachable("unknown type");
 }
+
+/* bindless descriptor bindings have their own struct indexing */
+ALWAYS_INLINE static VkDescriptorType
+zink_descriptor_type_from_bindless_index(unsigned idx)
+{
+   switch (idx) {
+   case 0: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+   case 1: return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+   case 2: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+   case 3: return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+   default:
+      unreachable("unknown index");
+   }
+}
+
 bool
 zink_descriptor_layouts_init(struct zink_screen *screen);
 

@@ -1446,6 +1446,8 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    simple_mtx_destroy(&screen->semaphores_lock);
    while (util_dynarray_contains(&screen->semaphores, VkSemaphore))
       VKSCR(DestroySemaphore)(screen->dev, util_dynarray_pop(&screen->semaphores, VkSemaphore), NULL);
+   if (screen->bindless_layout)
+      VKSCR(DestroyDescriptorSetLayout)(screen->dev, screen->bindless_layout, NULL);
 
    simple_mtx_destroy(&screen->queue_lock);
    VKSCR(DestroyDevice)(screen->dev, NULL);
@@ -2551,6 +2553,52 @@ zink_create_semaphore(struct zink_screen *screen)
    return ret == VK_SUCCESS ? sem : VK_NULL_HANDLE;
 }
 
+static bool
+init_layouts(struct zink_screen *screen)
+{
+   if (screen->info.have_EXT_descriptor_indexing) {
+      VkDescriptorSetLayoutBinding bindings[4];
+      const unsigned num_bindings = 4;
+      VkDescriptorSetLayoutCreateInfo dcslci = {0};
+      dcslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+      dcslci.pNext = NULL;
+      VkDescriptorSetLayoutBindingFlagsCreateInfo fci = {0};
+      VkDescriptorBindingFlags flags[4];
+      dcslci.pNext = &fci;
+      if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB)
+         dcslci.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+      else
+         dcslci.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+      fci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+      fci.bindingCount = num_bindings;
+      fci.pBindingFlags = flags;
+      for (unsigned i = 0; i < num_bindings; i++) {
+         flags[i] = VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+         if (zink_descriptor_mode != ZINK_DESCRIPTOR_MODE_DB)
+            flags[i] |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+      }
+      /* there is exactly 1 bindless descriptor set per context, and it has 4 bindings, 1 for each descriptor type */
+      for (unsigned i = 0; i < num_bindings; i++) {
+         bindings[i].binding = i;
+         bindings[i].descriptorType = zink_descriptor_type_from_bindless_index(i);
+         bindings[i].descriptorCount = ZINK_MAX_BINDLESS_HANDLES;
+         bindings[i].stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_COMPUTE_BIT;
+         bindings[i].pImmutableSamplers = NULL;
+      }
+
+      dcslci.bindingCount = num_bindings;
+      dcslci.pBindings = bindings;
+      VkResult result = VKSCR(CreateDescriptorSetLayout)(screen->dev, &dcslci, 0, &screen->bindless_layout);
+      if (result != VK_SUCCESS) {
+         mesa_loge("ZINK: vkCreateDescriptorSetLayout failed (%s)", vk_Result_to_str(result));
+         return false;
+      }
+   }
+
+   screen->gfx_push_constant_layout = zink_pipeline_layout_create(screen, NULL, 0, false);
+   return !!screen->gfx_push_constant_layout;
+}
+
 static struct zink_screen *
 zink_internal_create_screen(const struct pipe_screen_config *config)
 {
@@ -2882,8 +2930,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       screen->buffer_barrier = zink_resource_buffer_barrier;
    }
 
-   screen->gfx_push_constant_layout = zink_pipeline_layout_create(screen, NULL, 0, false);
-   if (screen->gfx_push_constant_layout == VK_NULL_HANDLE)
+
+   if (!init_layouts(screen))
       goto fail;
 
    if (!zink_descriptor_layouts_init(screen))
