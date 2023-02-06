@@ -645,8 +645,12 @@ create_gfx_pipeline_library(struct zink_screen *screen, VkShaderModule *modules,
    VkGraphicsPipelineLibraryCreateInfoEXT gplci = {
       VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT,
       &rendering_info,
-      VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT | VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT
+      0
    };
+   if (modules[MESA_SHADER_VERTEX])
+      gplci.flags |= VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT;
+   if (modules[MESA_SHADER_FRAGMENT])
+      gplci.flags |= VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT;
 
    VkPipelineViewportStateCreateInfo viewport_state = {0};
    viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -705,7 +709,7 @@ create_gfx_pipeline_library(struct zink_screen *screen, VkShaderModule *modules,
    VkGraphicsPipelineCreateInfo pci = {0};
    pci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
    pci.pNext = &gplci;
-   pci.flags = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR | VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT;
+   pci.flags = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
    if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB)
       pci.flags |= VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
    pci.layout = layout;
@@ -747,6 +751,9 @@ create_gfx_pipeline_library(struct zink_screen *screen, VkShaderModule *modules,
 
    pci.pStages = shader_stages;
    pci.stageCount = num_stages;
+   /* only add LTO for full pipeline libs */
+   if (num_stages > 1)
+      pci.flags |= VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT;
 
    VkPipeline pipeline;
    if (VKSCR(CreateGraphicsPipelines)(screen->dev, pipeline_cache, 1, &pci, NULL, &pipeline) != VK_SUCCESS) {
