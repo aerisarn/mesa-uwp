@@ -708,15 +708,6 @@ bi_load_sysval_nir(bi_builder *b, nir_intrinsic_instr *intr,
                      nr_components, offset);
 }
 
-static bi_index
-bi_load_sysval(bi_builder *b, int sysval, unsigned nr_components,
-               unsigned offset)
-{
-   bi_index tmp = bi_temp(b->shader);
-   bi_load_sysval_to(b, tmp, sysval, nr_components, offset);
-   return tmp;
-}
-
 static void
 bi_load_sample_id_to(bi_builder *b, bi_index dst)
 {
