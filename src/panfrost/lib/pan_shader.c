@@ -36,7 +36,7 @@ const nir_shader_compiler_options *
 GENX(pan_shader_get_compiler_options)(void)
 {
 #if PAN_ARCH >= 6
-   return &bifrost_nir_options;
+   return &bifrost_nir_options_v6;
 #else
    return &midgard_nir_options;
 #endif
