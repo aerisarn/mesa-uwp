@@ -662,6 +662,20 @@ fd6_emit_3d_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
       case FD6_GROUP_SO:
          fd6_emit_streamout(ring, emit);
          break;
+      case FD6_GROUP_PRIM_MODE_SYSMEM:
+         state = fd_submit_new_ringbuffer(emit->ctx->batch->submit, 2 * 4, FD_RINGBUFFER_STREAMING);
+         OUT_PKT4(ring, REG_A6XX_GRAS_SC_CNTL, 1);
+         OUT_RING(ring, A6XX_GRAS_SC_CNTL_CCUSINGLECACHELINESIZE(2) | 
+               emit->fs->fs.uses_fbfetch_output ? A6XX_GRAS_SC_CNTL_SINGLE_PRIM_MODE(FLUSH_PER_OVERLAP_AND_OVERWRITE) : 0);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_PRIM_MODE_SYSMEM);
+         break;
+      case FD6_GROUP_PRIM_MODE_GMEM:
+         state = fd_submit_new_ringbuffer(emit->ctx->batch->submit, 2 * 4, FD_RINGBUFFER_STREAMING);
+         OUT_PKT4(ring, REG_A6XX_GRAS_SC_CNTL, 1);
+         OUT_RING(ring, A6XX_GRAS_SC_CNTL_CCUSINGLECACHELINESIZE(2) |
+               emit->fs->fs.uses_fbfetch_output ? A6XX_GRAS_SC_CNTL_SINGLE_PRIM_MODE(FLUSH_PER_OVERLAP) : 0);
+         fd6_state_take_group(&emit->state, state, FD6_GROUP_PRIM_MODE_GMEM);
+         break;
       case FD6_GROUP_NON_GROUP:
          fd6_emit_non_ring(ring, emit);
          break;
