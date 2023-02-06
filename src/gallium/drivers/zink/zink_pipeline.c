@@ -803,3 +803,69 @@ zink_create_gfx_pipeline_combined(struct zink_screen *screen, struct zink_gfx_pr
 
    return pipeline;
 }
+
+
+/* vertex input pipeline library states with dynamic vertex input: only the topology matters */
+struct zink_gfx_input_key *
+zink_find_or_create_input_dynamic(struct zink_context *ctx, VkPrimitiveTopology vkmode)
+{
+   uint32_t hash = hash_gfx_input_dynamic(&ctx->gfx_pipeline_state.input);
+   struct set_entry *he = _mesa_set_search_pre_hashed(&ctx->gfx_inputs, hash, &ctx->gfx_pipeline_state.input);
+   if (!he) {
+      struct zink_gfx_input_key *ikey = rzalloc(ctx, struct zink_gfx_input_key);
+      ikey->idx = ctx->gfx_pipeline_state.idx;
+      ikey->pipeline = zink_create_gfx_pipeline_input(zink_screen(ctx->base.screen), &ctx->gfx_pipeline_state, NULL, vkmode);
+      he = _mesa_set_add_pre_hashed(&ctx->gfx_inputs, hash, ikey);
+   }
+   return (struct zink_gfx_input_key *)he->key;
+}
+
+/* vertex input pipeline library states without dynamic vertex input: everything is hashed */
+struct zink_gfx_input_key *
+zink_find_or_create_input(struct zink_context *ctx, VkPrimitiveTopology vkmode)
+{
+   uint32_t hash = hash_gfx_input(&ctx->gfx_pipeline_state.input);
+   struct set_entry *he = _mesa_set_search_pre_hashed(&ctx->gfx_inputs, hash, &ctx->gfx_pipeline_state.input);
+   if (!he) {
+      struct zink_gfx_input_key *ikey = rzalloc(ctx, struct zink_gfx_input_key);
+      if (ctx->gfx_pipeline_state.uses_dynamic_stride) {
+         memcpy(ikey, &ctx->gfx_pipeline_state.input, offsetof(struct zink_gfx_input_key, vertex_buffers_enabled_mask));
+         ikey->element_state = ctx->gfx_pipeline_state.element_state;
+      } else {
+         memcpy(ikey, &ctx->gfx_pipeline_state.input, offsetof(struct zink_gfx_input_key, pipeline));
+      }
+      ikey->pipeline = zink_create_gfx_pipeline_input(zink_screen(ctx->base.screen), &ctx->gfx_pipeline_state, ikey->element_state->binding_map, vkmode);
+      he = _mesa_set_add_pre_hashed(&ctx->gfx_inputs, hash, ikey);
+   }
+   return (struct zink_gfx_input_key*)he->key;
+}
+
+/* fragment output pipeline library states with dynamic state3 */
+struct zink_gfx_output_key *
+zink_find_or_create_output_ds3(struct zink_context *ctx)
+{
+   uint32_t hash = hash_gfx_output_ds3(&ctx->gfx_pipeline_state);
+   struct set_entry *he = _mesa_set_search_pre_hashed(&ctx->gfx_outputs, hash, &ctx->gfx_pipeline_state);
+   if (!he) {
+      struct zink_gfx_output_key *okey = rzalloc(ctx, struct zink_gfx_output_key);
+      memcpy(okey, &ctx->gfx_pipeline_state, sizeof(uint32_t));
+      okey->pipeline = zink_create_gfx_pipeline_output(zink_screen(ctx->base.screen), &ctx->gfx_pipeline_state);
+      he = _mesa_set_add_pre_hashed(&ctx->gfx_outputs, hash, okey);
+   }
+   return (struct zink_gfx_output_key*)he->key;
+}
+
+/* fragment output pipeline library states without dynamic state3 */
+struct zink_gfx_output_key *
+zink_find_or_create_output(struct zink_context *ctx)
+{
+   uint32_t hash = hash_gfx_output(&ctx->gfx_pipeline_state);
+   struct set_entry *he = _mesa_set_search_pre_hashed(&ctx->gfx_outputs, hash, &ctx->gfx_pipeline_state);
+   if (!he) {
+      struct zink_gfx_output_key *okey = rzalloc(ctx, struct zink_gfx_output_key);
+      memcpy(okey, &ctx->gfx_pipeline_state, offsetof(struct zink_gfx_output_key, pipeline));
+      okey->pipeline = zink_create_gfx_pipeline_output(zink_screen(ctx->base.screen), &ctx->gfx_pipeline_state);
+      he = _mesa_set_add_pre_hashed(&ctx->gfx_outputs, hash, okey);
+   }
+   return (struct zink_gfx_output_key*)he->key;
+}
