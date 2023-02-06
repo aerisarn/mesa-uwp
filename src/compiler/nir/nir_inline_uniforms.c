@@ -221,10 +221,10 @@ is_induction_variable(const nir_src *src, int component, nir_loop_info *info,
    return false;
 }
 
-static void
-add_inlinable_uniforms(const nir_src *cond, nir_loop_info *info,
-                       uint32_t *uni_offsets, uint8_t *num_offsets,
-                       unsigned max_num_bo, unsigned max_offset)
+void
+nir_add_inlinable_uniforms(const nir_src *cond, nir_loop_info *info,
+                           uint32_t *uni_offsets, uint8_t *num_offsets,
+                           unsigned max_num_bo, unsigned max_offset)
 {
    uint8_t new_num[MAX_NUM_BO];
    memcpy(new_num, num_offsets, sizeof(new_num));
@@ -290,7 +290,8 @@ process_node(nir_cf_node *node, nir_loop_info *info,
    case nir_cf_node_if: {
       nir_if *if_node = nir_cf_node_as_if(node);
       const nir_src *cond = &if_node->condition;
-      add_inlinable_uniforms(cond, info, uni_offsets, num_offsets, 1, MAX_OFFSET);
+      nir_add_inlinable_uniforms(cond, info, uni_offsets, num_offsets,
+                                 1, MAX_OFFSET);
 
       /* Do not pass loop info down so only alow induction variable
        * in loop terminator "if":

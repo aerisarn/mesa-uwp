@@ -4635,6 +4635,9 @@ void nir_inline_uniforms(nir_shader *shader, unsigned num_uniforms,
 bool nir_collect_src_uniforms(const nir_src *src, int component,
                               uint32_t *uni_offsets, uint8_t *num_offsets,
                               unsigned max_num_bo, unsigned max_offset);
+void nir_add_inlinable_uniforms(const nir_src *cond, nir_loop_info *info,
+                                uint32_t *uni_offsets, uint8_t *num_offsets,
+                                unsigned max_num_bo, unsigned max_offset);
 
 bool nir_propagate_invariant(nir_shader *shader, bool invariant_prim);
 

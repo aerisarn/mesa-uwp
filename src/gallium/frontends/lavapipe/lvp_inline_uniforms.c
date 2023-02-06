@@ -31,112 +31,6 @@
 #include "lvp_private.h"
 
 static bool
-is_induction_variable(const nir_src *src, int component, nir_loop_info *info,
-                      uint32_t *uni_offsets, uint8_t *num_offsets)
-{
-   if (!src->is_ssa)
-      return false;
-
-   assert(component < src->ssa->num_components);
-
-   /* Return true for induction variable (ie. i in for loop) */
-   for (int i = 0; i < info->num_induction_vars; i++) {
-      nir_loop_induction_variable *var = info->induction_vars + i;
-      if (var->def == src->ssa) {
-         /* Induction variable should have constant initial value (ie. i = 0),
-          * constant update value (ie. i++) and constant end condition
-          * (ie. i < 10), so that we know the exact loop count for unrolling
-          * the loop.
-          *
-          * Add uniforms need to be inlined for this induction variable's
-          * initial and update value to be constant, for example:
-          *
-          *     for (i = init; i < count; i += step)
-          *
-          * We collect uniform "init" and "step" here.
-          */
-         if (var->init_src) {
-            if (!nir_collect_src_uniforms(var->init_src, component,
-                                          uni_offsets, num_offsets,
-                                          PIPE_MAX_CONSTANT_BUFFERS, UINT_MAX))
-               return false;
-         }
-
-         if (var->update_src) {
-            nir_alu_src *alu_src = var->update_src;
-            if (!nir_collect_src_uniforms(&alu_src->src,
-                                          alu_src->swizzle[component],
-                                          uni_offsets, num_offsets,
-                                          PIPE_MAX_CONSTANT_BUFFERS, UINT_MAX))
-               return false;
-         }
-
-         return true;
-      }
-   }
-
-   return false;
-}
-
-static void
-add_inlinable_uniforms(const nir_src *cond, nir_loop_info *info,
-                       uint32_t *uni_offsets, uint8_t *num_offsets)
-{
-   uint8_t new_num[PIPE_MAX_CONSTANT_BUFFERS];
-   memcpy(new_num, num_offsets, sizeof(new_num));
-   /* If condition SSA is always scalar, so component is 0. */
-   unsigned component = 0;
-
-   /* Allow induction variable which means a loop terminator. */
-   if (info) {
-      nir_ssa_scalar cond_scalar = {cond->ssa, 0};
-
-      /* Limit terminator condition to loop unroll support case which is a simple
-       * comparison (ie. "i < count" is supported, but "i + 1 < count" is not).
-       */
-      if (nir_is_terminator_condition_with_two_inputs(cond_scalar)) {
-         nir_alu_instr *alu = nir_instr_as_alu(cond->ssa->parent_instr);
-
-         /* One side of comparison is induction variable, the other side is
-          * only uniform.
-          */
-         for (int i = 0; i < 2; i++) {
-            if (is_induction_variable(&alu->src[i].src, alu->src[i].swizzle[0],
-                                      info, uni_offsets, new_num)) {
-               cond = &alu->src[1 - i].src;
-               component = alu->src[1 - i].swizzle[0];
-               break;
-            }
-         }
-      }
-   }
-
-   /* Only update uniform number when all uniforms in the expression
-    * can be inlined. Partially inlines uniforms can't lower if/loop.
-    *
-    * For example, uniform can be inlined for a shader is limited to 4,
-    * and we have already added 3 uniforms, then want to deal with
-    *
-    *     if (uniform0 + uniform1 == 10)
-    *
-    * only uniform0 can be inlined due to we exceed the 4 limit. But
-    * unless both uniform0 and uniform1 are inlined, can we eliminate
-    * the if statement.
-    *
-    * This is even possible when we deal with loop if the induction
-    * variable init and update also contains uniform like
-    *
-    *    for (i = uniform0; i < uniform1; i+= uniform2)
-    *
-    * unless uniform0, uniform1 and uniform2 can be inlined at once,
-    * can the loop be unrolled.
-    */
-   if (nir_collect_src_uniforms(cond, component, uni_offsets, new_num,
-                                PIPE_MAX_CONSTANT_BUFFERS, UINT_MAX))
-      memcpy(num_offsets, new_num, sizeof(new_num));
-}
-
-static bool
 is_src_uniform_load(nir_src src)
 {
    if (nir_src_bit_size(src) != 32 || nir_src_num_components(src) != 1 || nir_src_is_const(src))
@@ -154,7 +48,8 @@ process_node(nir_cf_node *node, nir_loop_info *info,
    case nir_cf_node_if: {
       nir_if *if_node = nir_cf_node_as_if(node);
       const nir_src *cond = &if_node->condition;
-      add_inlinable_uniforms(cond, info, uni_offsets, num_offsets);
+      nir_add_inlinable_uniforms(cond, info, uni_offsets, num_offsets,
+                                 PIPE_MAX_CONSTANT_BUFFERS, UINT_MAX);
 
       /* Do not pass loop info down so only alow induction variable
        * in loop terminator "if":
