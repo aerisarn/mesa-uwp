@@ -634,8 +634,8 @@ zink_create_gfx_pipeline_input(struct zink_screen *screen,
    return pipeline;
 }
 
-VkPipeline
-zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_program *prog)
+static VkPipeline
+create_gfx_pipeline_library(struct zink_screen *screen, VkShaderModule *modules, VkPipelineLayout layout, VkPipelineCache pipeline_cache)
 {
    assert(screen->info.have_EXT_extended_dynamic_state && screen->info.have_EXT_extended_dynamic_state2);
    VkPipelineRenderingCreateInfo rendering_info;
@@ -708,7 +708,7 @@ zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_pro
    pci.flags = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR | VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT;
    if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB)
       pci.flags |= VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
-   pci.layout = prog->base.layout;
+   pci.layout = layout;
    pci.pRasterizationState = &rast_state;
    pci.pViewportState = &viewport_state;
    pci.pDepthStencilState = &depth_stencil_state;
@@ -716,7 +716,7 @@ zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_pro
 
    VkPipelineTessellationStateCreateInfo tci = {0};
    VkPipelineTessellationDomainOriginStateCreateInfo tdci = {0};
-   if (prog->modules[MESA_SHADER_TESS_CTRL] && prog->modules[MESA_SHADER_TESS_EVAL]) {
+   if (modules[MESA_SHADER_TESS_CTRL] && modules[MESA_SHADER_TESS_EVAL]) {
       tci.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
       //this is a wild guess; pray for extendedDynamicState2PatchControlPoints
       if (!screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints) {
@@ -733,13 +733,13 @@ zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_pro
    VkPipelineShaderStageCreateInfo shader_stages[ZINK_GFX_SHADER_COUNT];
    uint32_t num_stages = 0;
    for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
-      if (!prog->modules[i])
+      if (!modules[i])
          continue;
 
       VkPipelineShaderStageCreateInfo stage = {0};
       stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
       stage.stage = mesa_to_vk_shader_stage(i);
-      stage.module = prog->modules[i];
+      stage.module = modules[i];
       stage.pName = "main";
       shader_stages[num_stages++] = stage;
    }
@@ -749,13 +749,18 @@ zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_pro
    pci.stageCount = num_stages;
 
    VkPipeline pipeline;
-   if (VKSCR(CreateGraphicsPipelines)(screen->dev, prog->base.pipeline_cache, 1, &pci,
-                                      NULL, &pipeline) != VK_SUCCESS) {
+   if (VKSCR(CreateGraphicsPipelines)(screen->dev, pipeline_cache, 1, &pci, NULL, &pipeline) != VK_SUCCESS) {
       mesa_loge("ZINK: vkCreateGraphicsPipelines failed");
       return VK_NULL_HANDLE;
    }
 
    return pipeline;
+}
+
+VkPipeline
+zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_program *prog)
+{
+   return create_gfx_pipeline_library(screen, prog->modules, prog->base.layout, prog->base.pipeline_cache);
 }
 
 VkPipeline
