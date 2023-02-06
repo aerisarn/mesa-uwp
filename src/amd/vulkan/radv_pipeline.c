@@ -2413,15 +2413,15 @@ radv_generate_graphics_pipeline_key(const struct radv_graphics_pipeline *pipelin
    if (radv_pipeline_needs_dynamic_ps_epilog(pipeline))
       key.ps.dynamic_ps_epilog = true;
 
+   /* The fragment shader needs an epilog when both:
+    * - it's compiled without the fragment output interface with GPL
+    * - it's compiled on-demand because some dynamic states are enabled
+    */
    key.ps.has_epilog =
-      (!!(pipeline->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT) && !!pipeline->ps_epilog) ||
-      key.ps.dynamic_ps_epilog;
-
-   /* Compile the main FS only when the fragment shader output interface is missing. */
-   if ((lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
-       !(lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT)) {
-      key.ps.has_epilog = true;
-   }
+      (pipeline->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT) &&
+      (((lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
+       !(lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT)) ||
+       key.ps.dynamic_ps_epilog);
 
    key.dynamic_patch_control_points =
       !!(pipeline->dynamic_states & RADV_DYNAMIC_PATCH_CONTROL_POINTS);
