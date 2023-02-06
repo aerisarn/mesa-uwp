@@ -390,6 +390,10 @@ r2d_setup_common(struct tu_cmd_buffer *cmd,
                  bool ubwc,
                  bool scissor)
 {
+   if (!cmd->state.pass && cmd->device->dbg_renderpass_stomp_cs) {
+      tu_cs_emit_call(cs, cmd->device->dbg_renderpass_stomp_cs);
+   }
+
    enum a6xx_format fmt = blit_base_format(dst_format, ubwc);
    fixup_dst_format(src_format, &dst_format, &fmt);
    enum a6xx_2d_ifmt ifmt = format_to_ifmt(dst_format);
@@ -1224,6 +1228,10 @@ r3d_setup(struct tu_cmd_buffer *cmd,
           bool ubwc,
           VkSampleCountFlagBits samples)
 {
+   if (!cmd->state.pass && cmd->device->dbg_renderpass_stomp_cs) {
+      tu_cs_emit_call(cs, cmd->device->dbg_renderpass_stomp_cs);
+   }
+
    enum a6xx_format fmt = blit_base_format(dst_format, ubwc);
    fixup_dst_format(src_format, &dst_format, &fmt);
 

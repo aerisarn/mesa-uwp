@@ -939,6 +939,10 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu_cs_emit_wfi(cs);
 
+   if (dev->dbg_cmdbuf_stomp_cs) {
+      tu_cs_emit_call(cs, dev->dbg_cmdbuf_stomp_cs);
+   }
+
    cmd->state.cache.pending_flush_bits &=
       ~(TU_CMD_FLAG_WAIT_FOR_IDLE | TU_CMD_FLAG_CACHE_INVALIDATE);
 
@@ -4319,6 +4323,10 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    if (!cmd->state.attachments) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
       return;
+   }
+
+   if (cmd->device->dbg_renderpass_stomp_cs) {
+      tu_cs_emit_call(&cmd->cs, cmd->device->dbg_renderpass_stomp_cs);
    }
 
    for (unsigned i = 0; i < pass->attachment_count; i++) {
