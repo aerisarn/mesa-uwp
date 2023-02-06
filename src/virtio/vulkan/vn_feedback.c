@@ -418,7 +418,7 @@ vn_feedback_cmd_record(VkCommandBuffer cmd_handle,
    /* slot size is 8 bytes for timeline semaphore and 4 bytes fence.
     * src slot is non-null for timeline semaphore.
     */
-   VkDeviceSize buf_size = src_slot ? 8 : 4;
+   const VkDeviceSize buf_size = src_slot ? 8 : 4;
 
    static const VkCommandBufferBeginInfo begin_info = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -503,7 +503,7 @@ vn_feedback_cmd_record(VkCommandBuffer cmd_handle,
 VkResult
 vn_feedback_cmd_alloc(VkDevice dev_handle,
                       struct vn_feedback_cmd_pool *pool,
-                      struct vn_feedback_slot *slot,
+                      struct vn_feedback_slot *dst_slot,
                       struct vn_feedback_slot *src_slot,
                       VkCommandBuffer *out_cmd_handle)
 {
@@ -522,7 +522,7 @@ vn_feedback_cmd_alloc(VkDevice dev_handle,
    if (result != VK_SUCCESS)
       goto out_unlock;
 
-   result = vn_feedback_cmd_record(cmd_handle, slot, src_slot);
+   result = vn_feedback_cmd_record(cmd_handle, dst_slot, src_slot);
    if (result != VK_SUCCESS) {
       vn_FreeCommandBuffers(dev_handle, pool->pool, 1, &cmd_handle);
       goto out_unlock;
