@@ -1298,6 +1298,14 @@ load("raw_output_pan", [1], [IO_SEMANTICS], [CAN_ELIMINATE, CAN_REORDER])
 # src[] = { sampler_index }
 load("sampler_lod_parameters_pan", [1], flags=[CAN_ELIMINATE, CAN_REORDER])
 
+# Like load_output but using a specified render target conversion descriptor
+load("converted_output_pan", [1], indices=[DEST_TYPE, IO_SEMANTICS], flags=[CAN_ELIMINATE])
+
+# Load the render target conversion descriptor for a given render target given
+# in the BASE index. Converts to a type with size given by the source type.
+# Valid in fragment and blend stages.
+system_value("rt_conversion_pan", 1, indices=[BASE, SRC_TYPE], bit_sizes=[32])
+
 # Loads the sample position array on Bifrost, in a packed Arm-specific format
 system_value("sample_positions_pan", 1, bit_sizes=[64])
 
