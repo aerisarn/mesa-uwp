@@ -333,9 +333,6 @@ static void
 optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend, bool is_blit)
 {
    bool progress;
-   unsigned lower_flrp = (nir->options->lower_flrp16 ? 16 : 0) |
-                         (nir->options->lower_flrp32 ? 32 : 0) |
-                         (nir->options->lower_flrp64 ? 64 : 0);
 
    NIR_PASS(progress, nir, nir_lower_regs_to_ssa);
    nir_lower_idiv_options idiv_options = {
@@ -379,11 +376,12 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend, bool is_blit)
 
    NIR_PASS(progress, nir, midgard_nir_lower_algebraic_early);
    NIR_PASS_V(nir, nir_lower_alu_to_scalar, mdg_should_scalarize, NULL);
+   NIR_PASS_V(nir, nir_lower_flrp, 16 | 32 | 64, false /* always_precise */);
+   NIR_PASS_V(nir, nir_lower_var_copies);
 
    do {
       progress = false;
 
-      NIR_PASS(progress, nir, nir_lower_var_copies);
       NIR_PASS(progress, nir, nir_lower_vars_to_ssa);
 
       NIR_PASS(progress, nir, nir_copy_prop);
@@ -394,22 +392,6 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend, bool is_blit)
       NIR_PASS(progress, nir, nir_opt_peephole_select, 64, false, true);
       NIR_PASS(progress, nir, nir_opt_algebraic);
       NIR_PASS(progress, nir, nir_opt_constant_folding);
-
-      if (lower_flrp != 0) {
-         bool lower_flrp_progress = false;
-         NIR_PASS(lower_flrp_progress, nir, nir_lower_flrp, lower_flrp,
-                  false /* always_precise */);
-         if (lower_flrp_progress) {
-            NIR_PASS(progress, nir, nir_opt_constant_folding);
-            progress = true;
-         }
-
-         /* Nothing should rematerialize any flrps, so we only
-          * need to do this lowering once.
-          */
-         lower_flrp = 0;
-      }
-
       NIR_PASS(progress, nir, nir_opt_undef);
       NIR_PASS(progress, nir, nir_lower_undef_to_zero);
 
