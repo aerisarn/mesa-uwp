@@ -1705,7 +1705,8 @@ to upconvert to 32b float internally?
 		<bitfield name="RASTER_DIRECTION" low="6" high="7" type="a6xx_raster_direction"/>
 		<bitfield name="SEQUENCED_THREAD_DISTRIBUTION" pos="8" type="a6xx_sequenced_thread_dist"/>
 		<!-- CCUSINGLECACHELINESIZE is ignored unless bit 9 is set -->
-		<bitfield name="UNK9" low="9" high="11"/>
+		<bitfield name="UNK9" pos="9" type="boolean"/>
+		<bitfield name="ROTATION" low="10" high="11" type="uint"/>
 		<bitfield name="EARLYVIZOUTEN" pos="12" type="boolean"/>
 	</reg32>
 
