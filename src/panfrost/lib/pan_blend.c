@@ -831,7 +831,6 @@ GENX(pan_blend_get_shader_locked)(const struct panfrost_device *dev,
    struct panfrost_compile_inputs inputs = {
       .gpu_id = dev->gpu_id,
       .is_blend = true,
-      .blend.rt = shader->key.rt,
       .blend.nr_samples = key.nr_samples,
       .fixed_sysval_ubo = -1,
    };

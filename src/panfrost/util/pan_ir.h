@@ -175,7 +175,6 @@ struct panfrost_compile_inputs {
    unsigned gpu_id;
    bool is_blend, is_blit;
    struct {
-      unsigned rt;
       unsigned nr_samples;
       uint64_t bifrost_blend_desc;
    } blend;
