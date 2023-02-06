@@ -250,7 +250,7 @@ zink_set_fs_base_key(struct zink_context *ctx)
 }
 
 static inline const struct zink_fs_key_base *
-zink_get_fs_base_key(struct zink_context *ctx)
+zink_get_fs_base_key(const struct zink_context *ctx)
 {
    return zink_screen(ctx->base.screen)->optimal_keys ?
           &ctx->gfx_pipeline_state.shader_keys_optimal.key.fs :
@@ -266,7 +266,7 @@ zink_set_fs_key(struct zink_context *ctx)
 }
 
 static inline const struct zink_fs_key *
-zink_get_fs_key(struct zink_context *ctx)
+zink_get_fs_key(const struct zink_context *ctx)
 {
    assert(!zink_screen(ctx->base.screen)->optimal_keys);
    return &ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_FRAGMENT].key.fs;
@@ -281,7 +281,7 @@ zink_set_gs_key(struct zink_context *ctx)
 }
 
 static inline const struct zink_gs_key *
-zink_get_gs_key(struct zink_context *ctx)
+zink_get_gs_key(const struct zink_context *ctx)
 {
    return &ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_GEOMETRY].key.gs;
 }
@@ -300,7 +300,7 @@ zink_set_tcs_key_patches(struct zink_context *ctx, uint8_t patch_vertices)
 }
 
 static inline const struct zink_tcs_key *
-zink_get_tcs_key(struct zink_context *ctx)
+zink_get_tcs_key(const struct zink_context *ctx)
 {
    return zink_screen(ctx->base.screen)->optimal_keys ?
           &ctx->gfx_pipeline_state.shader_keys_optimal.key.tcs :
@@ -319,7 +319,7 @@ zink_set_vs_key(struct zink_context *ctx)
 }
 
 static inline const struct zink_vs_key *
-zink_get_vs_key(struct zink_context *ctx)
+zink_get_vs_key(const struct zink_context *ctx)
 {
    assert(!zink_screen(ctx->base.screen)->optimal_keys);
    return &ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_VERTEX].key.vs;
@@ -335,7 +335,7 @@ zink_set_last_vertex_key(struct zink_context *ctx)
 }
 
 static inline const struct zink_vs_key_base *
-zink_get_last_vertex_key(struct zink_context *ctx)
+zink_get_last_vertex_key(const struct zink_context *ctx)
 {
    return zink_screen(ctx->base.screen)->optimal_keys ?
           &ctx->gfx_pipeline_state.shader_keys_optimal.key.vs_base :
@@ -368,7 +368,7 @@ void
 zink_set_primitive_emulation_keys(struct zink_context *ctx);
 
 static inline const struct zink_shader_key_base *
-zink_get_shader_key_base(struct zink_context *ctx, gl_shader_stage pstage)
+zink_get_shader_key_base(const struct zink_context *ctx, gl_shader_stage pstage)
 {
    assert(!zink_screen(ctx->base.screen)->optimal_keys);
    return &ctx->gfx_pipeline_state.shader_keys.key[pstage].base;
