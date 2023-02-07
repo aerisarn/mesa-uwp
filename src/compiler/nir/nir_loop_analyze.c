@@ -423,7 +423,6 @@ compute_induction_information(loop_info_state *state)
       nir_phi_instr *phi = nir_instr_as_phi(var->def->parent_instr);
       nir_basic_induction_var *biv = rzalloc(state, nir_basic_induction_var);
 
-      nir_src *init_src = NULL;
       nir_loop_variable *alu_src_var = NULL;
       nir_foreach_phi_src(src, phi) {
          nir_loop_variable *src_var = get_loop_var(src->src.ssa, state);
@@ -448,9 +447,8 @@ compute_induction_information(loop_info_state *state)
             }
          }
 
-         if (!src_var->in_loop && !biv->def_outside_loop) {
-            biv->def_outside_loop = src_var->def;
-            init_src = &src->src;
+         if (!src_var->in_loop && !var->init_src) {
+            var->init_src = &src->src;
          } else if (is_var_alu(src_var) && !var->update_src) {
             alu_src_var = src_var;
             nir_alu_instr *alu = nir_instr_as_alu(src_var->def->parent_instr);
@@ -480,8 +478,8 @@ compute_induction_information(loop_info_state *state)
          }
       }
 
-      if (var->update_src && biv->def_outside_loop) {
-         nir_instr *inst = biv->def_outside_loop->parent_instr;
+      if (var->update_src && var->init_src) {
+         nir_instr *inst = var->init_src->ssa->parent_instr;
          if (inst->type == nir_instr_type_load_const)  {
             /* Initial value of induction variable is a constant */
             alu_src_var->init_src = var->init_src;
@@ -493,20 +491,20 @@ compute_induction_information(loop_info_state *state)
 
             found_induction_var = true;
             num_induction_vars += 2;
-         } else if (is_only_uniform_src(init_src)) {
+         } else if (is_only_uniform_src(var->init_src)) {
             /* Initial value of induction variable is a uniform */
-            var->init_src = init_src;
-
             alu_src_var->init_src = var->init_src;
             alu_src_var->update_src = var->update_src;
 
             num_induction_vars += 2;
             ralloc_free(biv);
          } else {
+            var->init_src = NULL;
             var->update_src = NULL;
             ralloc_free(biv);
          }
       } else {
+         var->init_src = NULL;
          var->update_src = NULL;
          ralloc_free(biv);
       }
@@ -1195,13 +1193,12 @@ find_trip_count(loop_info_state *state, unsigned execution_mode)
        */
 
       nir_loop_variable *lv = get_loop_var(basic_ind.def, state);
-      nir_basic_induction_var *ind_var = lv->ind;
 
       /* The basic induction var might be a vector but, because we guarantee
        * earlier that the phi source has a scalar swizzle, we can take the
        * component from basic_ind.
        */
-      nir_ssa_scalar initial_s = { ind_var->def_outside_loop, basic_ind.comp };
+      nir_ssa_scalar initial_s = { lv->init_src->ssa, basic_ind.comp };
       nir_ssa_scalar alu_s = {
          lv->update_src->src.ssa,
          lv->update_src->swizzle[basic_ind.comp]
