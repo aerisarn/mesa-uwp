@@ -751,7 +751,10 @@ create_gfx_pipeline_library(struct zink_screen *screen, VkShaderModule *modules,
 
    pci.pStages = shader_stages;
    pci.stageCount = num_stages;
-   /* only add LTO for full pipeline libs */
+   /* Only keep LTO information for full pipeline libs.  For separable shaders, they will only
+   * ever be used with fast linking, and to optimize them a new pipeline lib will be created with full
+   * link time information for the full set of shader stages (rather than linking in these single-stage libs).
+   */
    if (num_stages > 1)
       pci.flags |= VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT;
 
@@ -768,6 +771,12 @@ VkPipeline
 zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_program *prog)
 {
    return create_gfx_pipeline_library(screen, prog->modules, prog->base.layout, prog->base.pipeline_cache);
+}
+
+VkPipeline
+zink_create_gfx_pipeline_separate(struct zink_screen *screen, VkShaderModule *modules, VkPipelineLayout layout)
+{
+   return create_gfx_pipeline_library(screen, modules, layout, VK_NULL_HANDLE);
 }
 
 VkPipeline

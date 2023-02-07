@@ -24,6 +24,7 @@
 #include "nir_opcodes.h"
 #include "zink_context.h"
 #include "zink_compiler.h"
+#include "zink_descriptors.h"
 #include "zink_program.h"
 #include "zink_screen.h"
 #include "nir_to_spirv/nir_to_spirv.h"
@@ -3205,6 +3206,39 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
    return mod;
 }
 
+VkShaderModule
+zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs, nir_shader **ret_nir)
+{
+   nir_shader *nir = nir_shader_clone(NULL, zs->nir);
+   int set = nir->info.stage == MESA_SHADER_FRAGMENT;
+   unsigned offsets[4];
+   zink_descriptor_shader_get_binding_offsets(zs, offsets);
+   nir_foreach_variable_with_modes(var, nir, nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_uniform | nir_var_image) {
+      if (var->data.bindless)
+         continue;
+      var->data.descriptor_set = set;
+      switch (var->data.mode) {
+      case nir_var_mem_ubo:
+            var->data.binding = !!var->data.driver_location;
+            break;
+      case nir_var_uniform:
+         if (glsl_type_is_sampler(glsl_without_array(var->type)))
+            var->data.binding += offsets[1];
+         break;
+      case nir_var_mem_ssbo:
+         var->data.binding += offsets[2];
+         break;
+      case nir_var_image:
+         var->data.binding += offsets[3];
+         break;
+      default: break;
+      }
+   }
+   optimize_nir(nir, zs);
+   *ret_nir = nir;
+   return compile_module(screen, zs, nir);
+}
+
 static bool
 lower_baseinstance_instr(nir_builder *b, nir_instr *instr, void *data)
 {
@@ -4196,6 +4230,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
 
    ret->sinfo.have_vulkan_memory_model = screen->info.have_KHR_vulkan_memory_model;
 
+   util_queue_fence_init(&ret->precompile.fence);
    ret->hash = _mesa_hash_pointer(ret);
 
    ret->programs = _mesa_pointer_set_create(NULL);
@@ -4490,8 +4525,16 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
       shader->non_fs.generated_gs = NULL;
    }
    _mesa_set_destroy(shader->programs, NULL);
+   util_queue_fence_wait(&shader->precompile.fence);
+   util_queue_fence_destroy(&shader->precompile.fence);
+   zink_descriptor_shader_deinit(screen, shader);
+   if (shader->precompile.mod)
+      VKSCR(DestroyShaderModule)(screen->dev, shader->precompile.mod, NULL);
+   if (shader->precompile.gpl)
+      VKSCR(DestroyPipeline)(screen->dev, shader->precompile.gpl, NULL);
    ralloc_free(shader->nir);
    ralloc_free(shader->spirv);
+   free(shader->precompile.bindings);
    ralloc_free(shader);
 }
 
@@ -4530,6 +4573,7 @@ struct zink_shader *
 zink_shader_tcs_create(struct zink_screen *screen, struct zink_shader *vs, unsigned vertices_per_patch)
 {
    struct zink_shader *ret = rzalloc(NULL, struct zink_shader);
+   util_queue_fence_init(&ret->precompile.fence);
    ret->hash = _mesa_hash_pointer(ret);
    ret->programs = _mesa_pointer_set_create(NULL);
    simple_mtx_init(&ret->lock, mtx_plain);

@@ -190,10 +190,12 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
          /* this is the graphics pipeline library path: find/construct all partial pipelines */
          struct set_entry *he = _mesa_set_search(&prog->libs, &ctx->gfx_pipeline_state.optimal_key);
          struct zink_gfx_library_key *gkey;
-         if (he)
+         if (he) {
             gkey = (struct zink_gfx_library_key *)he->key;
-         else
+         } else {
+            assert(!prog->is_separable);
             gkey = zink_create_pipeline_lib(screen, prog, &ctx->gfx_pipeline_state);
+         }
          struct zink_gfx_input_key *ikey = DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT ?
                                              zink_find_or_create_input_dynamic(ctx, vkmode) :
                                              zink_find_or_create_input(ctx, vkmode);
@@ -215,7 +217,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
 
       zink_screen_update_pipeline_cache(screen, &prog->base, false);
       pc_entry->pipeline = pipeline;
-      if (HAVE_LIB)
+      if (HAVE_LIB && !prog->is_separable)
          /* trigger async optimized pipeline compile if this was the fast-linked unoptimized pipeline */
          zink_gfx_program_compile_queue(ctx, pc_entry);
    }

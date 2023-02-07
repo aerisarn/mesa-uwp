@@ -188,6 +188,8 @@ zink_is_parallel_shader_compilation_finished(struct pipe_screen *screen, void *s
    }
 
    struct zink_shader *zs = shader;
+   if (!util_queue_fence_is_signalled(&zs->precompile.fence))
+      return false;
    bool finished = true;
    set_foreach(zs->programs, entry) {
       struct zink_gfx_program *prog = (void*)entry->key;

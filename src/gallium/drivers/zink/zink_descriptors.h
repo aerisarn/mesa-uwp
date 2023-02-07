@@ -154,8 +154,12 @@ zink_descriptors_deinit_bindless(struct zink_context *ctx);
 void
 zink_descriptors_update_bindless(struct zink_context *ctx);
 
-
-
+void
+zink_descriptor_shader_get_binding_offsets(const struct zink_shader *shader, unsigned *offsets);
+void
+zink_descriptor_shader_init(struct zink_screen *screen, struct zink_shader *shader);
+void
+zink_descriptor_shader_deinit(struct zink_screen *screen, struct zink_shader *shader);
 
 bool
 zink_descriptor_program_init(struct zink_context *ctx, struct zink_program *pg);
