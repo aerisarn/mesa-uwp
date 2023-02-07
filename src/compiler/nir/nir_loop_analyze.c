@@ -451,7 +451,7 @@ compute_induction_information(loop_info_state *state)
          if (!src_var->in_loop && !biv->def_outside_loop) {
             biv->def_outside_loop = src_var->def;
             init_src = &src->src;
-         } else if (is_var_alu(src_var) && !biv->alu) {
+         } else if (is_var_alu(src_var) && !var->update_src) {
             alu_src_var = src_var;
             nir_alu_instr *alu = nir_instr_as_alu(src_var->def->parent_instr);
 
@@ -466,23 +466,21 @@ compute_induction_information(loop_info_state *state)
                    */
                   if (alu->src[1-i].src.ssa == &phi->dest.ssa &&
                       alu_src_has_identity_swizzle(alu, 1 - i)) {
-                     if (is_only_uniform_src(&alu->src[i].src)) {
+                     if (is_only_uniform_src(&alu->src[i].src))
                         var->update_src = alu->src + i;
-                        biv->alu = alu;
-                     }
                   }
                }
             }
 
-            if (!biv->alu)
+            if (!var->update_src)
                break;
          } else {
-            biv->alu = NULL;
+            var->update_src = NULL;
             break;
          }
       }
 
-      if (biv->alu && biv->def_outside_loop) {
+      if (var->update_src && biv->def_outside_loop) {
          nir_instr *inst = biv->def_outside_loop->parent_instr;
          if (inst->type == nir_instr_type_load_const)  {
             /* Initial value of induction variable is a constant */
@@ -1196,39 +1194,32 @@ find_trip_count(loop_info_state *state, unsigned execution_mode)
        * Thats all thats needed to calculate the trip-count
        */
 
-      nir_basic_induction_var *ind_var =
-         get_loop_var(basic_ind.def, state)->ind;
+      nir_loop_variable *lv = get_loop_var(basic_ind.def, state);
+      nir_basic_induction_var *ind_var = lv->ind;
 
       /* The basic induction var might be a vector but, because we guarantee
        * earlier that the phi source has a scalar swizzle, we can take the
        * component from basic_ind.
        */
       nir_ssa_scalar initial_s = { ind_var->def_outside_loop, basic_ind.comp };
-      nir_ssa_scalar alu_s = { &ind_var->alu->dest.dest.ssa, basic_ind.comp };
+      nir_ssa_scalar alu_s = {
+         lv->update_src->src.ssa,
+         lv->update_src->swizzle[basic_ind.comp]
+      };
 
       nir_const_value initial_val = nir_ssa_scalar_as_const_value(initial_s);
 
       /* We are not guaranteed by that at one of these sources is a constant.
        * Try to find one.
        */
-      nir_const_value step_val;
-      memset(&step_val, 0, sizeof(step_val));
-      bool found_step_value = false;
-      assert(nir_op_infos[ind_var->alu->op].num_inputs == 2);
-      for (unsigned i = 0; i < 2; i++) {
-         nir_ssa_scalar alu_src = nir_ssa_scalar_chase_alu_src(alu_s, i);
-         if (nir_ssa_scalar_is_const(alu_src)) {
-            found_step_value = true;
-            step_val = nir_ssa_scalar_as_const_value(alu_src);
-            break;
-         }
-      }
-
-      if (!found_step_value)
+      if (!nir_ssa_scalar_is_const(alu_s))
          continue;
 
+      nir_const_value step_val = nir_ssa_scalar_as_const_value(alu_s);
+
       int iterations = calculate_iterations(initial_val, step_val, limit_val,
-                                            ind_var->alu, cond,
+                                            nir_instr_as_alu(lv->update_src->src.parent_instr),
+                                            cond,
                                             alu_op, limit_rhs,
                                             terminator->continue_from_then,
                                             execution_mode);
