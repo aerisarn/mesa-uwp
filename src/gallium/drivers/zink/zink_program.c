@@ -452,16 +452,36 @@ generate_gfx_program_modules_optimal(struct zink_context *ctx, struct zink_scree
 }
 
 static uint32_t
-hash_pipeline_lib(const void *key)
+hash_pipeline_lib_generated_tcs(const void *key)
 {
    const struct zink_gfx_library_key *gkey = key;
    return gkey->optimal_key;
 }
 
+
 static bool
-equals_pipeline_lib_optimal(const void *a, const void *b)
+equals_pipeline_lib_generated_tcs(const void *a, const void *b)
 {
    return !memcmp(a, b, sizeof(uint32_t));
+}
+
+static uint32_t
+hash_pipeline_lib(const void *key)
+{
+   const struct zink_gfx_library_key *gkey = key;
+   /* remove generated tcs bits */
+   return zink_shader_key_optimal_no_tcs(gkey->optimal_key);
+}
+
+static bool
+equals_pipeline_lib(const void *a, const void *b)
+{
+   const struct zink_gfx_library_key *ak = a;
+   const struct zink_gfx_library_key *bk = b;
+   /* remove generated tcs bits */
+   uint32_t val_a = zink_shader_key_optimal_no_tcs(ak->optimal_key);
+   uint32_t val_b = zink_shader_key_optimal_no_tcs(bk->optimal_key);
+   return val_a == val_b;
 }
 
 uint32_t
@@ -890,11 +910,13 @@ zink_create_gfx_program(struct zink_context *ctx,
          prog->stages_present |= BITFIELD_BIT(i);
       }
    }
+   bool generated_tcs = false;
    if (stages[MESA_SHADER_TESS_EVAL] && !stages[MESA_SHADER_TESS_CTRL]) {
       prog->shaders[MESA_SHADER_TESS_EVAL]->non_fs.generated_tcs =
       prog->shaders[MESA_SHADER_TESS_CTRL] =
         zink_shader_tcs_create(screen, stages[MESA_SHADER_VERTEX], vertices_per_patch);
       prog->stages_present |= BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
+      generated_tcs = true;
    }
    prog->stages_remaining = prog->stages_present;
 
@@ -917,7 +939,10 @@ zink_create_gfx_program(struct zink_context *ctx,
       }
    }
 
-   _mesa_set_init(&prog->libs, prog, hash_pipeline_lib, equals_pipeline_lib_optimal);
+   if (generated_tcs)
+      _mesa_set_init(&prog->libs, prog, hash_pipeline_lib_generated_tcs, equals_pipeline_lib_generated_tcs);
+   else
+      _mesa_set_init(&prog->libs, prog, hash_pipeline_lib, equals_pipeline_lib);
 
    struct mesa_sha1 sctx;
    _mesa_sha1_init(&sctx);
@@ -1631,6 +1656,7 @@ zink_create_pipeline_lib(struct zink_screen *screen, struct zink_gfx_program *pr
 {
    struct zink_gfx_library_key *gkey = rzalloc(prog, struct zink_gfx_library_key);
    gkey->optimal_key = state->optimal_key;
+   assert(gkey->optimal_key);
    memcpy(gkey->modules, prog->modules, sizeof(gkey->modules));
    gkey->pipeline = zink_create_gfx_pipeline_library(screen, prog);
    _mesa_set_add(&prog->libs, gkey);
@@ -1726,6 +1752,8 @@ precompile_job(void *data, void *gdata, int thread_index)
 
    struct zink_gfx_pipeline_state state = {0};
    state.shader_keys_optimal.key.vs_base.last_vertex_stage = true;
+   state.shader_keys_optimal.key.tcs.patch_vertices = 3; //random guess, generated tcs precompile is hard
+   state.optimal_key = state.shader_keys_optimal.key.val;
    generate_gfx_program_modules_optimal(NULL, screen, prog, &state);
    zink_screen_get_pipeline_cache(screen, &prog->base, true);
    zink_create_pipeline_lib(screen, prog, &state);
