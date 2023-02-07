@@ -5067,6 +5067,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    }
    ctx->gfx_pipeline_state.rendering_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
    ctx->gfx_pipeline_state.rendering_info.pColorAttachmentFormats = ctx->gfx_pipeline_state.rendering_formats;
+   ctx->gfx_pipeline_state.feedback_loop = screen->driver_workarounds.always_feedback_loop;
 
    const uint32_t data[] = {0};
    if (!is_copy_only) {
