@@ -402,14 +402,6 @@ midgard_preprocess_nir(nir_shader *nir, unsigned gpu_id)
 
    NIR_PASS_V(nir, pan_lower_helper_invocation);
    NIR_PASS_V(nir, pan_lower_sample_pos);
-
-   if (nir->xfb_info != NULL && nir->info.has_transform_feedback_varyings) {
-      NIR_PASS_V(nir, nir_io_add_const_offset_to_base,
-                 nir_var_shader_in | nir_var_shader_out);
-      NIR_PASS_V(nir, nir_io_add_intrinsic_xfb_info);
-      NIR_PASS_V(nir, pan_lower_xfb);
-   }
-
    NIR_PASS_V(nir, midgard_nir_lower_algebraic_early);
    NIR_PASS_V(nir, nir_lower_alu_to_scalar, mdg_should_scalarize, NULL);
    NIR_PASS_V(nir, nir_lower_flrp, 16 | 32 | 64, false /* always_precise */);

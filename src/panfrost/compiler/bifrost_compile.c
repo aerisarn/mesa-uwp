@@ -4815,16 +4815,7 @@ bifrost_preprocess_nir(nir_shader *nir, unsigned gpu_id)
    NIR_PASS_V(nir, pan_lower_sample_pos);
    NIR_PASS_V(nir, nir_lower_bit_size, bi_lower_bit_size, NULL);
    NIR_PASS_V(nir, nir_lower_64bit_phis);
-
-   if (nir->xfb_info != NULL && nir->info.has_transform_feedback_varyings) {
-      NIR_PASS_V(nir, nir_io_add_const_offset_to_base,
-                 nir_var_shader_in | nir_var_shader_out);
-      NIR_PASS_V(nir, nir_io_add_intrinsic_xfb_info);
-      NIR_PASS_V(nir, pan_lower_xfb);
-   }
-
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
-
    NIR_PASS_V(nir, pan_nir_lower_64bit_intrin);
    NIR_PASS_V(nir, pan_lower_helper_invocation);
    NIR_PASS_V(nir, nir_lower_int64);

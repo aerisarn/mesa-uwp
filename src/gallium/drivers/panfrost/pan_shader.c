@@ -95,19 +95,21 @@ panfrost_shader_compile(struct panfrost_screen *screen, const nir_shader *ir,
    /* Lower this early so the backends don't have to worry about it */
    if (s->info.stage == MESA_SHADER_FRAGMENT) {
       inputs.fixed_varying_mask = key->fs.fixed_varying_mask;
-
-      if (s->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_COLOR)) {
-         NIR_PASS_V(s, nir_lower_fragcolor, 8);
-      }
    } else if (s->info.stage == MESA_SHADER_VERTEX) {
       inputs.fixed_varying_mask = fixed_varying_mask;
 
       /* No IDVS for internal XFB shaders */
       inputs.no_idvs = s->info.has_transform_feedback_varyings;
+
+      if (s->info.has_transform_feedback_varyings) {
+         NIR_PASS_V(s, nir_io_add_const_offset_to_base,
+                    nir_var_shader_in | nir_var_shader_out);
+         NIR_PASS_V(s, nir_io_add_intrinsic_xfb_info);
+         NIR_PASS_V(s, pan_lower_xfb);
+      }
    }
 
    util_dynarray_init(&out->binary, NULL);
-   pan_shader_preprocess(s, inputs.gpu_id);
 
    if (s->info.stage == MESA_SHADER_FRAGMENT) {
       if (key->fs.nr_cbufs_for_fragcolor) {
@@ -194,8 +196,11 @@ panfrost_shader_get(struct pipe_screen *pscreen,
 
 static void
 panfrost_build_key(struct panfrost_context *ctx,
-                   struct panfrost_shader_key *key, const nir_shader *nir)
+                   struct panfrost_shader_key *key,
+                   struct panfrost_uncompiled_shader *uncompiled)
 {
+   const nir_shader *nir = uncompiled->nir;
+
    /* We don't currently have vertex shader variants */
    if (nir->info.stage != MESA_SHADER_FRAGMENT)
       return;
@@ -206,7 +211,7 @@ panfrost_build_key(struct panfrost_context *ctx,
    struct panfrost_uncompiled_shader *vs = ctx->uncompiled[MESA_SHADER_VERTEX];
 
    /* gl_FragColor lowering needs the number of colour buffers */
-   if (nir->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_COLOR)) {
+   if (uncompiled->fragcolor_lowered) {
       key->fs.nr_cbufs_for_fragcolor = fb->nr_cbufs;
    }
 
@@ -299,7 +304,7 @@ panfrost_update_shader_variant(struct panfrost_context *ctx,
    simple_mtx_lock(&uncompiled->lock);
 
    struct panfrost_shader_key key = {0};
-   panfrost_build_key(ctx, &key, uncompiled->nir);
+   panfrost_build_key(ctx, &key, uncompiled);
 
    util_dynarray_foreach(&uncompiled->variants, struct panfrost_compiled_shader,
                          so) {
@@ -361,6 +366,18 @@ panfrost_create_shader_state(struct pipe_context *pctx,
          ~VARYING_BIT_POS & ~VARYING_BIT_PSIZ;
    }
 
+   /* gl_FragColor needs to be lowered before lowering I/O, do that now */
+   if (nir->info.stage == MESA_SHADER_FRAGMENT &&
+       nir->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_COLOR)) {
+
+      NIR_PASS_V(nir, nir_lower_fragcolor, 8);
+      so->fragcolor_lowered = true;
+   }
+
+   /* Then run the suite of lowering and optimization, including I/O lowering */
+   struct panfrost_device *dev = pan_device(pctx->screen);
+   pan_shader_preprocess(nir, dev->gpu_id);
+
    /* If this shader uses transform feedback, compile the transform
     * feedback program. This is a special shader variant.
     */
@@ -397,11 +414,8 @@ panfrost_create_shader_state(struct pipe_context *pctx,
     * gl_FragColor is used, there is only a single render target. The
     * implicit broadcast is neither especially useful nor required by GLES.
     */
-   if (so->nir->info.stage == MESA_SHADER_FRAGMENT &&
-       so->nir->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_COLOR)) {
-
+   if (so->fragcolor_lowered)
       key.fs.nr_cbufs_for_fragcolor = 1;
-   }
 
    /* Creating a CSO is single-threaded, so it's ok to use the
     * locked function without explicitly taking the lock. Creating a

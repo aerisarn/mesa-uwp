@@ -339,6 +339,9 @@ struct panfrost_uncompiled_shader {
     * shaders for desktop GL.
     */
    uint32_t fixed_varying_mask;
+
+   /* If gl_FragColor was lowered, we need to optimize the stores later */
+   bool fragcolor_lowered;
 };
 
 /* The binary artefacts of compiling a shader. This differs from
