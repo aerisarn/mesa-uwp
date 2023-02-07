@@ -33,11 +33,6 @@ typedef enum {
    basic_induction
 } nir_loop_variable_type;
 
-typedef struct nir_basic_induction_var {
-   nir_alu_instr *alu;                      /* The def of the alu-operation */
-   nir_ssa_def *def_outside_loop;           /* The phi-src outside the loop */
-} nir_basic_induction_var;
-
 typedef struct {
    /* A link for the work list */
    struct list_head process_link;
@@ -49,9 +44,6 @@ typedef struct {
 
    /* The type of this ssa_def */
    nir_loop_variable_type type;
-
-   /* If this is of type basic_induction */
-   struct nir_basic_induction_var *ind;
 
    /* True if variable is in an if branch */
    bool in_if_branch;
@@ -421,7 +413,6 @@ compute_induction_information(loop_info_state *state)
          continue;
 
       nir_phi_instr *phi = nir_instr_as_phi(var->def->parent_instr);
-      nir_basic_induction_var *biv = rzalloc(state, nir_basic_induction_var);
 
       nir_loop_variable *alu_src_var = NULL;
       nir_foreach_phi_src(src, phi) {
@@ -485,9 +476,7 @@ compute_induction_information(loop_info_state *state)
             alu_src_var->init_src = var->init_src;
             alu_src_var->update_src = var->update_src;
             alu_src_var->type = basic_induction;
-            alu_src_var->ind = biv;
             var->type = basic_induction;
-            var->ind = biv;
 
             found_induction_var = true;
             num_induction_vars += 2;
@@ -497,16 +486,13 @@ compute_induction_information(loop_info_state *state)
             alu_src_var->update_src = var->update_src;
 
             num_induction_vars += 2;
-            ralloc_free(biv);
          } else {
             var->init_src = NULL;
             var->update_src = NULL;
-            ralloc_free(biv);
          }
       } else {
          var->init_src = NULL;
          var->update_src = NULL;
-         ralloc_free(biv);
       }
    }
 
