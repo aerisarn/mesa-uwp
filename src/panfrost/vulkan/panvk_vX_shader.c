@@ -54,12 +54,20 @@ load_sysval_from_ubo(nir_builder *b, nir_intrinsic_instr *intr, unsigned offset)
       .range_base = offset, .range = nir_dest_bit_size(intr->dest) / 8);
 }
 
+struct sysval_options {
+   /* If non-null, a vec4 of blend constants known at pipeline compile time. If
+    * null, blend constants are dynamic.
+    */
+   float *static_blend_constants;
+};
+
 static bool
 panvk_lower_sysvals(nir_builder *b, nir_instr *instr, void *data)
 {
    if (instr->type != nir_instr_type_intrinsic)
       return false;
 
+   struct sysval_options *opts = data;
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    nir_ssa_def *val = NULL;
    b->cursor = nir_before_instr(instr);
@@ -88,7 +96,18 @@ panvk_lower_sysvals(nir_builder *b, nir_instr *instr, void *data)
       val = load_sysval_from_ubo(b, intr, SYSVAL(base_instance));
       break;
    case nir_intrinsic_load_blend_const_color_rgba:
-      val = load_sysval_from_ubo(b, intr, SYSVAL(blend_constants));
+      if (opts->static_blend_constants) {
+         const nir_const_value constants[4] = {
+            {.f32 = opts->static_blend_constants[0]},
+            {.f32 = opts->static_blend_constants[1]},
+            {.f32 = opts->static_blend_constants[2]},
+            {.f32 = opts->static_blend_constants[3]},
+         };
+
+         val = nir_build_imm(b, 4, 32, constants);
+      } else {
+         val = load_sysval_from_ubo(b, intr, SYSVAL(blend_constants));
+      }
       break;
    default:
       return false;
@@ -100,31 +119,10 @@ panvk_lower_sysvals(nir_builder *b, nir_instr *instr, void *data)
    return true;
 }
 
-static bool
-panvk_inline_blend_constants(nir_builder *b, nir_instr *instr, void *data)
-{
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   if (intr->intrinsic != nir_intrinsic_load_blend_const_color_rgba)
-      return false;
-
-   const nir_const_value *constants = data;
-
-   b->cursor = nir_after_instr(instr);
-   nir_ssa_def *constant = nir_build_imm(b, 4, 32, constants);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, constant);
-   nir_instr_remove(instr);
-   return true;
-}
-
 static void
-panvk_lower_blend(struct panfrost_device *pdev,
-                  nir_shader *nir,
+panvk_lower_blend(struct panfrost_device *pdev, nir_shader *nir,
                   struct panfrost_compile_inputs *inputs,
-                  struct pan_blend_state *blend_state,
-                  bool static_blend_constants)
+                  struct pan_blend_state *blend_state)
 {
    nir_lower_blend_options options = {
       .logicop_enable = blend_state->logicop_enable,
@@ -183,23 +181,8 @@ panvk_lower_blend(struct panfrost_device *pdev,
       lower_blend = true;
    }
 
-   if (lower_blend) {
+   if (lower_blend)
       NIR_PASS_V(nir, nir_lower_blend, &options);
-
-      if (static_blend_constants) {
-         const nir_const_value constants[4] = {
-            { .f32 = CLAMP(blend_state->constants[0], 0.0f, 1.0f) },
-            { .f32 = CLAMP(blend_state->constants[1], 0.0f, 1.0f) },
-            { .f32 = CLAMP(blend_state->constants[2], 0.0f, 1.0f) },
-            { .f32 = CLAMP(blend_state->constants[3], 0.0f, 1.0f) },
-         };
-         NIR_PASS_V(nir, nir_shader_instructions_pass,
-                    panvk_inline_blend_constants,
-                    nir_metadata_block_index |
-                    nir_metadata_dominance,
-                    (void *)constants);
-      }
-   }
 }
 
 static bool
@@ -374,7 +357,7 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
    if (stage == MESA_SHADER_FRAGMENT) {
       /* This is required for nir_lower_blend */
       NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, true);
-      panvk_lower_blend(pdev, nir, &inputs, blend_state, static_blend_constants);
+      panvk_lower_blend(pdev, nir, &inputs, blend_state);
    }
 
    nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs, stage);
@@ -393,8 +376,14 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
 
    pan_shader_preprocess(nir, inputs.gpu_id);
 
+   struct sysval_options sysval_options = {
+      .static_blend_constants =
+         static_blend_constants ? blend_state->constants : NULL,
+   };
+
    NIR_PASS_V(nir, nir_shader_instructions_pass, panvk_lower_sysvals,
-              nir_metadata_block_index | nir_metadata_dominance, NULL);
+              nir_metadata_block_index | nir_metadata_dominance,
+              &sysval_options);
 
    if (stage == MESA_SHADER_FRAGMENT) {
       enum pipe_format rt_formats[MAX_RTS] = {PIPE_FORMAT_NONE};
