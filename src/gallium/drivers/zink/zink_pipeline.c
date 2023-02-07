@@ -774,13 +774,14 @@ VkPipeline
 zink_create_gfx_pipeline_combined(struct zink_screen *screen, struct zink_gfx_program *prog, VkPipeline input, VkPipeline *library, unsigned libcount, VkPipeline output, bool optimized)
 {
    VkPipeline libraries[4];
-   libraries[0] = input;
-   libraries[2] = libraries[3] = output;
-   for (unsigned i = 0; i < libcount; i++)
-      libraries[1 + i] = library[i];
    VkPipelineLibraryCreateInfoKHR libstate = {0};
    libstate.sType = VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR;
-   libstate.libraryCount = 2 + libcount;
+   if (input)
+      libraries[libstate.libraryCount++] = input;
+   for (unsigned i = 0; i < libcount; i++)
+      libraries[libstate.libraryCount++] = library[i];
+   if (output)
+      libraries[libstate.libraryCount++] = output;
    libstate.pLibraries = libraries;
 
    VkGraphicsPipelineCreateInfo pci = {0};
@@ -793,6 +794,9 @@ zink_create_gfx_pipeline_combined(struct zink_screen *screen, struct zink_gfx_pr
    if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB)
       pci.flags |= VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
    pci.pNext = &libstate;
+
+   if (!input && !output)
+      pci.flags |= VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
 
    VkPipeline pipeline;
    if (VKSCR(CreateGraphicsPipelines)(screen->dev, prog->base.pipeline_cache, 1, &pci,
