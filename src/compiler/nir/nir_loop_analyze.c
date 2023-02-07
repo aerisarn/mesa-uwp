@@ -484,6 +484,8 @@ compute_induction_information(loop_info_state *state)
             /* Initial value of induction variable is a uniform */
             alu_src_var->init_src = var->init_src;
             alu_src_var->update_src = var->update_src;
+            alu_src_var->type = basic_induction;
+            var->type = basic_induction;
 
             num_induction_vars += 2;
          } else {
@@ -507,7 +509,7 @@ compute_induction_information(loop_info_state *state)
 
       list_for_each_entry(nir_loop_variable, var, &state->process_list,
                           process_link) {
-         if (var->type == basic_induction || var->init_src || var->update_src) {
+         if (var->type == basic_induction) {
             nir_loop_induction_variable *ivar =
                &info->induction_vars[info->num_induction_vars++];
              ivar->def = var->def;
@@ -1008,12 +1010,21 @@ get_induction_and_limit_vars(nir_ssa_scalar cond,
    lhs = nir_ssa_scalar_chase_alu_src(cond, 0);
    rhs = nir_ssa_scalar_chase_alu_src(cond, 1);
 
-   if (get_loop_var(lhs.def, state)->type == basic_induction) {
+   nir_loop_variable *src0_lv = get_loop_var(lhs.def, state);
+   nir_loop_variable *src1_lv = get_loop_var(rhs.def, state);
+
+   if (src0_lv->type == basic_induction) {
+      if (!nir_src_is_const(*src0_lv->init_src))
+         return false;
+
       *ind = lhs;
       *limit = rhs;
       *limit_rhs = true;
       return true;
-   } else if (get_loop_var(rhs.def, state)->type == basic_induction) {
+   } else if (src1_lv->type == basic_induction) {
+      if (!nir_src_is_const(*src1_lv->init_src))
+         return false;
+
       *ind = rhs;
       *limit = lhs;
       *limit_rhs = false;
@@ -1190,14 +1201,14 @@ find_trip_count(loop_info_state *state, unsigned execution_mode)
          lv->update_src->swizzle[basic_ind.comp]
       };
 
-      nir_const_value initial_val = nir_ssa_scalar_as_const_value(initial_s);
-
       /* We are not guaranteed by that at one of these sources is a constant.
        * Try to find one.
        */
-      if (!nir_ssa_scalar_is_const(alu_s))
+      if (!nir_ssa_scalar_is_const(initial_s) ||
+          !nir_ssa_scalar_is_const(alu_s))
          continue;
 
+      nir_const_value initial_val = nir_ssa_scalar_as_const_value(initial_s);
       nir_const_value step_val = nir_ssa_scalar_as_const_value(alu_s);
 
       int iterations = calculate_iterations(initial_val, step_val, limit_val,
