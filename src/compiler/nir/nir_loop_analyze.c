@@ -466,13 +466,7 @@ compute_induction_information(loop_info_state *state)
                    */
                   if (alu->src[1-i].src.ssa == &phi->dest.ssa &&
                       alu_src_has_identity_swizzle(alu, 1 - i)) {
-                     nir_src *src = &alu->src[i].src;
-                     if (nir_src_is_const(*src))
-                        biv->alu = alu;
-                     else if (is_only_uniform_src(src)) {
-                        /* Update value of induction variable is a statement
-                         * contains only uniform and constant
-                         */
+                     if (is_only_uniform_src(&alu->src[i].src)) {
                         var->update_src = alu->src + i;
                         biv->alu = alu;
                      }
@@ -492,17 +486,14 @@ compute_induction_information(loop_info_state *state)
          nir_instr *inst = biv->def_outside_loop->parent_instr;
          if (inst->type == nir_instr_type_load_const)  {
             /* Initial value of induction variable is a constant */
-            if (var->update_src) {
-               alu_src_var->update_src = var->update_src;
-               ralloc_free(biv);
-            } else {
-               alu_src_var->type = basic_induction;
-               alu_src_var->ind = biv;
-               var->type = basic_induction;
-               var->ind = biv;
+            alu_src_var->init_src = var->init_src;
+            alu_src_var->update_src = var->update_src;
+            alu_src_var->type = basic_induction;
+            alu_src_var->ind = biv;
+            var->type = basic_induction;
+            var->ind = biv;
 
-               found_induction_var = true;
-            }
+            found_induction_var = true;
             num_induction_vars += 2;
          } else if (is_only_uniform_src(init_src)) {
             /* Initial value of induction variable is a uniform */
@@ -1217,12 +1208,12 @@ find_trip_count(loop_info_state *state, unsigned execution_mode)
 
       nir_const_value initial_val = nir_ssa_scalar_as_const_value(initial_s);
 
-      /* We are guaranteed by earlier code that at least one of these sources
-       * is a constant but we don't know which.
+      /* We are not guaranteed by that at one of these sources is a constant.
+       * Try to find one.
        */
       nir_const_value step_val;
       memset(&step_val, 0, sizeof(step_val));
-      UNUSED bool found_step_value = false;
+      bool found_step_value = false;
       assert(nir_op_infos[ind_var->alu->op].num_inputs == 2);
       for (unsigned i = 0; i < 2; i++) {
          nir_ssa_scalar alu_src = nir_ssa_scalar_chase_alu_src(alu_s, i);
@@ -1232,7 +1223,9 @@ find_trip_count(loop_info_state *state, unsigned execution_mode)
             break;
          }
       }
-      assert(found_step_value);
+
+      if (!found_step_value)
+         continue;
 
       int iterations = calculate_iterations(initial_val, step_val, limit_val,
                                             ind_var->alu, cond,

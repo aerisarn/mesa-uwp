@@ -248,15 +248,17 @@ TEST_F(nir_loop_analyze_test, infinite_loop_feq)
    EXPECT_EQ(2, loop->info->num_induction_vars);
    ASSERT_NE((void *)0, loop->info->induction_vars);
 
-   /* Since the initializer and increments are constants, the init_src and
-    * update_src fields will be NULL. The def field should not be NULL.
+   /* Since the initializer is a constant, the init_src field will be
+    * NULL. The def field should not be NULL. The update_src field should
+    * point to a load_const.
     */
    const nir_loop_induction_variable *const ivars = loop->info->induction_vars;
 
    for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {
       EXPECT_NE((void *)0, ivars[i].def);
       EXPECT_EQ((void *)0, ivars[i].init_src);
-      EXPECT_EQ((void *)0, ivars[i].update_src);
+      ASSERT_NE((void *)0, ivars[i].update_src);
+      EXPECT_TRUE(nir_src_is_const(ivars[i].update_src->src));
    }
 }
 
@@ -328,15 +330,17 @@ TEST_F(nir_loop_analyze_test, zero_iterations_ine)
    EXPECT_EQ(2, loop->info->num_induction_vars);
    ASSERT_NE((void *)0, loop->info->induction_vars);
 
-   /* Since the initializer and increments are constants, the init_src and
-    * update_src fields will be NULL. The def field should not be NULL.
+   /* Since the initializer is a constant, the init_src field will be
+    * NULL. The def field should not be NULL. The update_src field should
+    * point to a load_const.
     */
    const nir_loop_induction_variable *const ivars = loop->info->induction_vars;
 
    for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {
       EXPECT_NE((void *)0, ivars[i].def);
       EXPECT_EQ((void *)0, ivars[i].init_src);
-      EXPECT_EQ((void *)0, ivars[i].update_src);
+      ASSERT_NE((void *)0, ivars[i].update_src);
+      EXPECT_TRUE(nir_src_is_const(ivars[i].update_src->src));
    }
 }
 
@@ -405,15 +409,17 @@ TEST_F(nir_loop_analyze_test, one_iteration_uge)
    EXPECT_EQ(2, loop->info->num_induction_vars);
    ASSERT_NE((void *)0, loop->info->induction_vars);
 
-   /* Since the initializer and increments are constants, the init_src and
-    * update_src fields will be NULL. The def field should not be NULL.
+   /* Since the initializer is a constant, the init_src field will be
+    * NULL. The def field should not be NULL. The update_src field should
+    * point to a load_const.
     */
    const nir_loop_induction_variable *const ivars = loop->info->induction_vars;
 
    for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {
       EXPECT_NE((void *)0, ivars[i].def);
       EXPECT_EQ((void *)0, ivars[i].init_src);
-      EXPECT_EQ((void *)0, ivars[i].update_src);
+      ASSERT_NE((void *)0, ivars[i].update_src);
+      EXPECT_TRUE(nir_src_is_const(ivars[i].update_src->src));
    }
 }
 
@@ -482,15 +488,17 @@ TEST_F(nir_loop_analyze_test, one_iteration_ine)
    EXPECT_EQ(2, loop->info->num_induction_vars);
    ASSERT_NE((void *)0, loop->info->induction_vars);
 
-   /* Since the initializer and increments are constants, the init_src and
-    * update_src fields will be NULL. The def field should not be NULL.
+   /* Since the initializer is a constant, the init_src field will be
+    * NULL. The def field should not be NULL. The update_src field should
+    * point to a load_const.
     */
    const nir_loop_induction_variable *const ivars = loop->info->induction_vars;
 
    for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {
       EXPECT_NE((void *)0, ivars[i].def);
       EXPECT_EQ((void *)0, ivars[i].init_src);
-      EXPECT_EQ((void *)0, ivars[i].update_src);
+      ASSERT_NE((void *)0, ivars[i].update_src);
+      EXPECT_TRUE(nir_src_is_const(ivars[i].update_src->src));
    }
 }
 
@@ -559,15 +567,17 @@ TEST_F(nir_loop_analyze_test, one_iteration_ieq)
    EXPECT_EQ(2, loop->info->num_induction_vars);
    ASSERT_NE((void *)0, loop->info->induction_vars);
 
-   /* Since the initializer and increments are constants, the init_src and
-    * update_src fields will be NULL. The def field should not be NULL.
+   /* Since the initializer is a constant, the init_src field will be
+    * NULL. The def field should not be NULL. The update_src field should
+    * point to a load_const.
     */
    const nir_loop_induction_variable *const ivars = loop->info->induction_vars;
 
    for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {
       EXPECT_NE((void *)0, ivars[i].def);
       EXPECT_EQ((void *)0, ivars[i].init_src);
-      EXPECT_EQ((void *)0, ivars[i].update_src);
+      ASSERT_NE((void *)0, ivars[i].update_src);
+      EXPECT_TRUE(nir_src_is_const(ivars[i].update_src->src));
    }
 }
 
@@ -636,15 +646,17 @@ TEST_F(nir_loop_analyze_test, one_iteration_easy_fneu)
    EXPECT_EQ(2, loop->info->num_induction_vars);
    ASSERT_NE((void *)0, loop->info->induction_vars);
 
-   /* Since the initializer and increments are constants, the init_src and
-    * update_src fields will be NULL. The def field should not be NULL.
+   /* Since the initializer is a constant, the init_src field will be
+    * NULL. The def field should not be NULL. The update_src field should
+    * point to a load_const.
     */
    const nir_loop_induction_variable *const ivars = loop->info->induction_vars;
 
    for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {
       EXPECT_NE((void *)0, ivars[i].def);
       EXPECT_EQ((void *)0, ivars[i].init_src);
-      EXPECT_EQ((void *)0, ivars[i].update_src);
+      ASSERT_NE((void *)0, ivars[i].update_src);
+      EXPECT_TRUE(nir_src_is_const(ivars[i].update_src->src));
    }
 }
 
@@ -718,15 +730,17 @@ TEST_F(nir_loop_analyze_test, one_iteration_fneu)
    EXPECT_EQ(2, loop->info->num_induction_vars);
    ASSERT_NE((void *)0, loop->info->induction_vars);
 
-   /* Since the initializer and increments are constants, the init_src and
-    * update_src fields will be NULL. The def field should not be NULL.
+   /* Since the initializer is a constant, the init_src field will be
+    * NULL. The def field should not be NULL. The update_src field should
+    * point to a load_const.
     */
    const nir_loop_induction_variable *const ivars = loop->info->induction_vars;
 
    for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {
       EXPECT_NE((void *)0, ivars[i].def);
       EXPECT_EQ((void *)0, ivars[i].init_src);
-      EXPECT_EQ((void *)0, ivars[i].update_src);
+      ASSERT_NE((void *)0, ivars[i].update_src);
+      EXPECT_TRUE(nir_src_is_const(ivars[i].update_src->src));
    }
 }
 
@@ -797,15 +811,17 @@ TEST_F(nir_loop_analyze_test, zero_iterations_ine_inverted)
    EXPECT_EQ(2, loop->info->num_induction_vars);
    ASSERT_NE((void *)0, loop->info->induction_vars);
 
-   /* Since the initializer and increments are constants, the init_src and
-    * update_src fields will be NULL. The def field should not be NULL.
+   /* Since the initializer is a constant, the init_src field will be
+    * NULL. The def field should not be NULL. The update_src field should
+    * point to a load_const.
     */
    const nir_loop_induction_variable *const ivars = loop->info->induction_vars;
 
    for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {
       EXPECT_NE((void *)0, ivars[i].def);
       EXPECT_EQ((void *)0, ivars[i].init_src);
-      EXPECT_EQ((void *)0, ivars[i].update_src);
+      ASSERT_NE((void *)0, ivars[i].update_src);
+      EXPECT_TRUE(nir_src_is_const(ivars[i].update_src->src));
    }
 }
 
@@ -876,14 +892,16 @@ TEST_F(nir_loop_analyze_test, five_iterations_ige_inverted)
    EXPECT_EQ(2, loop->info->num_induction_vars);
    ASSERT_NE((void *)0, loop->info->induction_vars);
 
-   /* Since the initializer and increments are constants, the init_src and
-    * update_src fields will be NULL. The def field should not be NULL.
+   /* Since the initializer is a constant, the init_src field will be
+    * NULL. The def field should not be NULL. The update_src field should
+    * point to a load_const.
     */
    const nir_loop_induction_variable *const ivars = loop->info->induction_vars;
 
    for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {
       EXPECT_NE((void *)0, ivars[i].def);
       EXPECT_EQ((void *)0, ivars[i].init_src);
-      EXPECT_EQ((void *)0, ivars[i].update_src);
+      ASSERT_NE((void *)0, ivars[i].update_src);
+      EXPECT_TRUE(nir_src_is_const(ivars[i].update_src->src));
    }
 }
