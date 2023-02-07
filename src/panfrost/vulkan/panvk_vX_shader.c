@@ -44,32 +44,60 @@
 
 #include "vk_util.h"
 
-static void
-panvk_init_sysvals(struct panfrost_sysvals *sysvals,
-                   gl_shader_stage stage)
+static nir_ssa_def *
+load_sysval_from_ubo(nir_builder *b, nir_intrinsic_instr *intr, unsigned offset)
 {
-   memset(sysvals, 0, sizeof(*sysvals));
+   return nir_load_ubo(
+      b, nir_dest_num_components(intr->dest), nir_dest_bit_size(intr->dest),
+      nir_imm_int(b, PANVK_SYSVAL_UBO_INDEX), nir_imm_int(b, offset),
+      .align_mul = nir_dest_bit_size(intr->dest) / 8, .align_offset = 0,
+      .range_base = offset, .range = nir_dest_bit_size(intr->dest) / 8);
+}
 
-#define SYSVAL_SLOT(name) \
-   (assert(offsetof(struct panvk_sysvals, name) % 16 == 0), \
-    offsetof(struct panvk_sysvals, name) / 16)
+static bool
+panvk_lower_sysvals(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
 
-#define INIT_SYSVAL(name, SYSVAL) \
-   sysvals->sysvals[SYSVAL_SLOT(name)] = PAN_SYSVAL_##SYSVAL
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   nir_ssa_def *val = NULL;
+   b->cursor = nir_before_instr(instr);
 
-   if (gl_shader_stage_is_compute(stage)) {
-      INIT_SYSVAL(num_work_groups, NUM_WORK_GROUPS);
-      INIT_SYSVAL(local_group_size, LOCAL_GROUP_SIZE);
-   } else {
-      INIT_SYSVAL(viewport_scale, VIEWPORT_SCALE);
-      INIT_SYSVAL(viewport_offset, VIEWPORT_OFFSET);
-      INIT_SYSVAL(vertex_instance_offsets, VERTEX_INSTANCE_OFFSETS);
-      INIT_SYSVAL(blend_constants, BLEND_CONSTANTS);
+#define SYSVAL(name) offsetof(struct panvk_sysvals, name)
+   switch (intr->intrinsic) {
+   case nir_intrinsic_load_num_workgroups:
+      val = load_sysval_from_ubo(b, intr, SYSVAL(num_work_groups));
+      break;
+   case nir_intrinsic_load_workgroup_size:
+      val = load_sysval_from_ubo(b, intr, SYSVAL(local_group_size));
+      break;
+   case nir_intrinsic_load_viewport_scale:
+      val = load_sysval_from_ubo(b, intr, SYSVAL(viewport_scale));
+      break;
+   case nir_intrinsic_load_viewport_offset:
+      val = load_sysval_from_ubo(b, intr, SYSVAL(viewport_offset));
+      break;
+   case nir_intrinsic_load_first_vertex:
+      val = load_sysval_from_ubo(b, intr, SYSVAL(first_vertex));
+      break;
+   case nir_intrinsic_load_base_vertex:
+      val = load_sysval_from_ubo(b, intr, SYSVAL(base_vertex));
+      break;
+   case nir_intrinsic_load_base_instance:
+      val = load_sysval_from_ubo(b, intr, SYSVAL(base_instance));
+      break;
+   case nir_intrinsic_load_blend_const_color_rgba:
+      val = load_sysval_from_ubo(b, intr, SYSVAL(blend_constants));
+      break;
+   default:
+      return false;
    }
-   sysvals->sysval_count = SYSVAL_SLOT(dyn_ssbos);
+#undef SYSVAL
 
-#undef SYSVAL_SLOT
-#undef INIT_SYSVAL
+   b->cursor = nir_after_instr(instr);
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, val);
+   return true;
 }
 
 static bool
@@ -258,15 +286,11 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
    NIR_PASS_V(nir, nir_lower_io_to_temporaries,
               nir_shader_get_entrypoint(nir), true, true);
 
-   struct panfrost_sysvals fixed_sysvals;
-   panvk_init_sysvals(&fixed_sysvals, stage);
-
    struct panfrost_compile_inputs inputs = {
       .gpu_id = pdev->gpu_id,
       .no_ubo_to_push = true,
       .no_idvs = true, /* TODO */
-      .fixed_sysval_ubo = sysval_ubo,
-      .fixed_sysval_layout = &fixed_sysvals,
+      .fixed_sysval_ubo = -1,
    };
 
    NIR_PASS_V(nir, nir_lower_indirect_derefs,
@@ -369,6 +393,9 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
 
    pan_shader_preprocess(nir, inputs.gpu_id);
 
+   NIR_PASS_V(nir, nir_shader_instructions_pass, panvk_lower_sysvals,
+              nir_metadata_block_index | nir_metadata_dominance, NULL);
+
    if (stage == MESA_SHADER_FRAGMENT) {
       enum pipe_format rt_formats[MAX_RTS] = {PIPE_FORMAT_NONE};
 
@@ -379,10 +406,6 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
    }
 
    GENX(pan_shader_compile)(nir, &inputs, &shader->binary, &shader->info);
-
-   /* System values shouldn't have changed */
-   assert(memcmp(&shader->info.sysvals, &fixed_sysvals,
-                 sizeof(fixed_sysvals)) == 0);
 
    /* Patch the descriptor count */
    shader->info.ubo_count = PANVK_NUM_BUILTIN_UBOS +
