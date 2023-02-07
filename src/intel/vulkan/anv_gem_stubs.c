@@ -33,10 +33,11 @@ anv_gem_close(struct anv_device *device, uint32_t gem_handle)
    close(gem_handle);
 }
 
-uint32_t
-anv_gem_create(struct anv_device *device, uint64_t size,
-               enum anv_bo_alloc_flags alloc_flags, uint32_t num_regions,
-               const struct intel_memory_class_instance **regions)
+static uint32_t
+stub_gem_create(struct anv_device *device,
+                const struct intel_memory_class_instance **regions,
+                uint16_t num_regions, uint64_t size,
+                enum anv_bo_alloc_flags alloc_flags)
 {
    int fd = os_create_anonymous_file(size, "fake bo");
    if (fd == -1)
@@ -122,4 +123,12 @@ anv_i915_query(int fd, uint64_t query_id, void *buffer,
                int32_t *buffer_len)
 {
    unreachable("Unused");
+}
+
+const struct anv_kmd_backend *anv_stub_kmd_backend_get(void)
+{
+   static const struct anv_kmd_backend stub_backend = {
+      .gem_create = stub_gem_create,
+   };
+   return &stub_backend;
 }

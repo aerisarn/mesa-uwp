@@ -31,6 +31,8 @@ anv_kmd_backend_get(enum intel_kmd_type type)
    switch (type) {
    case INTEL_KMD_TYPE_I915:
       return anv_i915_kmd_backend_get();
+   case INTEL_KMD_TYPE_STUB:
+      return anv_stub_kmd_backend_get();
    default:
       return NULL;
    }

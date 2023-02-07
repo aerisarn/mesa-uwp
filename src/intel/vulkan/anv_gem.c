@@ -42,15 +42,6 @@ anv_gem_close(struct anv_device *device, uint32_t gem_handle)
    intel_ioctl(device->fd, DRM_IOCTL_GEM_CLOSE, &close);
 }
 
-uint32_t
-anv_gem_create(struct anv_device *device, uint64_t anv_bo_size,
-               enum anv_bo_alloc_flags alloc_flags, uint32_t num_regions,
-               const struct intel_memory_class_instance **regions)
-{
-   return device->kmd_backend->gem_create(device, regions, num_regions,
-                                          anv_bo_size, alloc_flags);
-}
-
 /**
  * Wrapper around DRM_IOCTL_I915_GEM_MMAP. Returns MAP_FAILED on error.
  */
@@ -254,4 +245,9 @@ anv_gem_fd_to_handle(struct anv_device *device, int fd)
       return 0;
 
    return args.handle;
+}
+
+const struct anv_kmd_backend *anv_stub_kmd_backend_get(void)
+{
+   return NULL;
 }

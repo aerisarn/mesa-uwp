@@ -1478,8 +1478,10 @@ anv_device_alloc_bo(struct anv_device *device,
       regions[nregions++] = device->physical->sys.region;
    }
 
-   uint32_t gem_handle = anv_gem_create(device, size + ccs_size, alloc_flags,
-                                        nregions, regions);
+   uint32_t gem_handle = device->kmd_backend->gem_create(device, regions,
+                                                         nregions,
+                                                         size + ccs_size,
+                                                         alloc_flags);
    if (gem_handle == 0)
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
