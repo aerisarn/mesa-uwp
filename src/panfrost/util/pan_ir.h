@@ -183,8 +183,6 @@ struct panfrost_compile_inputs {
    bool no_idvs;
    bool no_ubo_to_push;
 
-   enum pipe_format rt_formats[8];
-
    /* Used on Valhall.
     *
     * Bit mask of special desktop-only varyings (e.g VARYING_SLOT_TEX0)

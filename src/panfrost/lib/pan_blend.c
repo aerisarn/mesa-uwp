@@ -871,7 +871,8 @@ GENX(pan_blend_get_shader_locked)(const struct panfrost_device *dev,
       .fixed_sysval_ubo = -1,
    };
 
-   inputs.rt_formats[rt] = key.format;
+   enum pipe_format rt_formats[8] = {0};
+   rt_formats[rt] = key.format;
 
 #if PAN_ARCH >= 6
    inputs.blend.bifrost_blend_desc =
@@ -882,7 +883,11 @@ GENX(pan_blend_get_shader_locked)(const struct panfrost_device *dev,
    pan_shader_preprocess(nir, inputs.gpu_id);
 
 #if PAN_ARCH >= 6
-   NIR_PASS_V(nir, GENX(pan_inline_rt_conversion), dev, inputs.rt_formats);
+   NIR_PASS_V(nir, GENX(pan_inline_rt_conversion), dev, rt_formats);
+#else
+   NIR_PASS_V(nir, pan_lower_framebuffer, rt_formats,
+              pan_raw_format_mask_midgard(rt_formats), MAX2(key.nr_samples, 1),
+              dev->gpu_id < 0x700);
 #endif
 
    GENX(pan_shader_compile)(nir, &inputs, &variant->binary, &info);

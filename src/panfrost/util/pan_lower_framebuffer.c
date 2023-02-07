@@ -505,7 +505,7 @@ static nir_ssa_def *pan_pack(nir_builder *b,
 static void
 pan_lower_fb_store(nir_builder *b, nir_intrinsic_instr *intr,
                    const struct util_format_description *desc,
-                   bool reorder_comps)
+                   bool reorder_comps, unsigned nr_samples)
 {
    /* For stores, add conversion before */
    nir_ssa_def *unpacked =
@@ -518,8 +518,14 @@ pan_lower_fb_store(nir_builder *b, nir_intrinsic_instr *intr,
 
    nir_ssa_def *packed = pan_pack(b, desc, unpacked);
 
-   nir_store_raw_output_pan(b, packed,
-                            .io_semantics = nir_intrinsic_io_semantics(intr));
+   /* We have to split writeout in 128 bit chunks */
+   unsigned iterations = DIV_ROUND_UP(desc->block.bits * nr_samples, 128);
+
+   for (unsigned s = 0; s < iterations; ++s) {
+      nir_store_raw_output_pan(b, packed,
+                               .io_semantics = nir_intrinsic_io_semantics(intr),
+                               .base = s);
+   }
 }
 
 static nir_ssa_def *
@@ -572,6 +578,7 @@ struct inputs {
    uint8_t raw_fmt_mask;
    bool is_blend;
    bool broken_ld_special;
+   unsigned nr_samples;
 };
 
 static bool
@@ -611,7 +618,7 @@ lower(nir_builder *b, nir_instr *instr, void *data)
 
    if (is_store) {
       b->cursor = nir_before_instr(instr);
-      pan_lower_fb_store(b, intr, desc, reorder_comps);
+      pan_lower_fb_store(b, intr, desc, reorder_comps, inputs->nr_samples);
    } else {
       b->cursor = nir_after_instr(instr);
       pan_lower_fb_load(b, intr, desc, reorder_comps, sample);
@@ -623,7 +630,7 @@ lower(nir_builder *b, nir_instr *instr, void *data)
 
 bool
 pan_lower_framebuffer(nir_shader *shader, const enum pipe_format *rt_fmts,
-                      uint8_t raw_fmt_mask, bool is_blend,
+                      uint8_t raw_fmt_mask, unsigned blend_shader_nr_samples,
                       bool broken_ld_special)
 {
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
@@ -633,7 +640,8 @@ pan_lower_framebuffer(nir_shader *shader, const enum pipe_format *rt_fmts,
       &(struct inputs){
          .rt_fmts = rt_fmts,
          .raw_fmt_mask = raw_fmt_mask,
-         .is_blend = is_blend,
+         .nr_samples = blend_shader_nr_samples,
+         .is_blend = blend_shader_nr_samples > 0,
          .broken_ld_special = broken_ld_special,
       });
 }

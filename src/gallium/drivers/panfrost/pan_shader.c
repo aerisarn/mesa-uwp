@@ -108,8 +108,6 @@ panfrost_shader_compile(struct panfrost_screen *screen, const nir_shader *ir,
       if (key->fs.clip_plane_enable) {
          NIR_PASS_V(s, nir_lower_clip_fs, key->fs.clip_plane_enable, false);
       }
-
-      memcpy(inputs.rt_formats, key->fs.rt_formats, sizeof(inputs.rt_formats));
    } else if (s->info.stage == MESA_SHADER_VERTEX) {
       inputs.fixed_varying_mask = fixed_varying_mask;
 
@@ -122,7 +120,7 @@ panfrost_shader_compile(struct panfrost_screen *screen, const nir_shader *ir,
 
    if (dev->arch <= 5 && s->info.stage == MESA_SHADER_FRAGMENT) {
       NIR_PASS_V(s, pan_lower_framebuffer, key->fs.rt_formats,
-                 pan_raw_format_mask_midgard(key->fs.rt_formats), false,
+                 pan_raw_format_mask_midgard(key->fs.rt_formats), 0,
                  dev->gpu_id < 0x700);
    }
 

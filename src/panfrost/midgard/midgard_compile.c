@@ -2060,18 +2060,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
       assert(sem.location >= FRAG_RESULT_DATA0);
       unsigned rt = sem.location - FRAG_RESULT_DATA0;
 
-      unsigned nr_samples = MAX2(ctx->inputs->blend.nr_samples, 1);
-      const struct util_format_description *desc =
-         util_format_description(ctx->inputs->rt_formats[rt]);
-
-      /* We have to split writeout in 128 bit chunks */
-      unsigned blend_sample_iterations =
-         DIV_ROUND_UP(desc->block.bits * nr_samples, 128);
-
-      for (unsigned s = 0; s < blend_sample_iterations; s++) {
-         emit_fragment_store(ctx, reg, ~0, ~0, rt + MIDGARD_COLOR_RT0, s);
-      }
-
+      emit_fragment_store(ctx, reg, ~0, ~0, rt + MIDGARD_COLOR_RT0,
+                          nir_intrinsic_base(instr));
       break;
    }
 
