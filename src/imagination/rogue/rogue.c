@@ -708,6 +708,27 @@ void rogue_link_instr_write(rogue_instr *instr)
       break;
    }
 
+   case ROGUE_INSTR_TYPE_BITWISE: {
+      rogue_bitwise_instr *bitwise = rogue_instr_as_bitwise(instr);
+      const unsigned num_dsts = rogue_bitwise_op_infos[bitwise->op].num_dsts;
+
+      for (unsigned i = 0; i < num_dsts; ++i) {
+         if (rogue_ref_is_reg(&bitwise->dst[i].ref)) {
+            rogue_reg_write *write = &bitwise->dst_write[i].reg;
+            rogue_reg *reg = bitwise->dst[i].ref.reg;
+            rogue_link_instr_write_reg(instr, write, reg, i);
+         } else if (rogue_ref_is_regarray(&bitwise->dst[i].ref)) {
+            rogue_regarray_write *writearray = &bitwise->dst_write[i].regarray;
+            rogue_regarray *regarray = bitwise->dst[i].ref.regarray;
+            rogue_link_instr_write_regarray(instr, writearray, regarray, i);
+         } else {
+            unreachable("Unsupported destination reference type.");
+         }
+      }
+
+      break;
+   }
+
    default:
       unreachable("Unsupported instruction type.");
    }
@@ -740,6 +761,8 @@ void rogue_link_instr_use(rogue_instr *instr)
                                instr,
                                i,
                                rogue_ref_get_imm(&alu->src[i].ref));
+         } else {
+            unreachable("Unsupported source reference type.");
          }
       }
 
@@ -763,6 +786,8 @@ void rogue_link_instr_use(rogue_instr *instr)
             rogue_link_drc_trxn(instr->block->shader,
                                 instr,
                                 rogue_ref_get_drc(&backend->src[i].ref));
+         } else {
+            unreachable("Unsupported source reference type.");
          }
       }
 
@@ -796,6 +821,33 @@ void rogue_link_instr_use(rogue_instr *instr)
                rogue_link_drc_trxn(instr->block->shader,
                                    instr,
                                    rogue_ref_get_drc(&ctrl->src[i].ref));
+         } else {
+            unreachable("Unsupported source reference type.");
+         }
+      }
+
+      break;
+   }
+
+   case ROGUE_INSTR_TYPE_BITWISE: {
+      rogue_bitwise_instr *bitwise = rogue_instr_as_bitwise(instr);
+      const unsigned num_srcs = rogue_bitwise_op_infos[bitwise->op].num_srcs;
+
+      for (unsigned i = 0; i < num_srcs; ++i) {
+         if (rogue_ref_is_reg(&bitwise->src[i].ref)) {
+            rogue_reg_use *use = &bitwise->src_use[i].reg;
+            rogue_reg *reg = bitwise->src[i].ref.reg;
+            rogue_link_instr_use_reg(instr, use, reg, i);
+         } else if (rogue_ref_is_regarray(&bitwise->src[i].ref)) {
+            rogue_regarray_use *usearray = &bitwise->src_use[i].regarray;
+            rogue_regarray *regarray = bitwise->src[i].ref.regarray;
+            rogue_link_instr_use_regarray(instr, usearray, regarray, i);
+         } else if (rogue_ref_is_drc(&bitwise->src[i].ref)) {
+            rogue_link_drc_trxn(instr->block->shader,
+                                instr,
+                                rogue_ref_get_drc(&bitwise->src[i].ref));
+         } else {
+            unreachable("Unsupported source reference type.");
          }
       }
 
@@ -874,6 +926,25 @@ void rogue_unlink_instr_write(rogue_instr *instr)
       break;
    }
 
+   case ROGUE_INSTR_TYPE_BITWISE: {
+      rogue_bitwise_instr *bitwise = rogue_instr_as_bitwise(instr);
+      const unsigned num_dsts = rogue_bitwise_op_infos[bitwise->op].num_dsts;
+
+      for (unsigned i = 0; i < num_dsts; ++i) {
+         if (rogue_ref_is_reg(&bitwise->dst[i].ref)) {
+            rogue_reg_write *write = &bitwise->dst_write[i].reg;
+            rogue_unlink_instr_write_reg(instr, write);
+         } else if (rogue_ref_is_regarray(&bitwise->dst[i].ref)) {
+            rogue_regarray_write *writearray = &bitwise->dst_write[i].regarray;
+            rogue_unlink_instr_write_regarray(instr, writearray);
+         } else {
+            unreachable("Invalid destination reference type.");
+         }
+      }
+
+      break;
+   }
+
    default:
       unreachable("Unsupported instruction type.");
    }
@@ -902,6 +973,8 @@ void rogue_unlink_instr_use(rogue_instr *instr)
          } else if (rogue_ref_is_imm(&alu->src[i].ref)) {
             rogue_unlink_imm_use(instr,
                                  &rogue_ref_get_imm(&alu->src[i].ref)->use);
+         } else {
+            unreachable("Unsupported source reference type.");
          }
       }
 
@@ -923,6 +996,8 @@ void rogue_unlink_instr_use(rogue_instr *instr)
             rogue_unlink_drc_trxn(instr->block->shader,
                                   instr,
                                   rogue_ref_get_drc(&backend->src[i].ref));
+         } else {
+            unreachable("Unsupported source reference type.");
          }
       }
 
@@ -952,6 +1027,31 @@ void rogue_unlink_instr_use(rogue_instr *instr)
                rogue_unlink_drc_trxn(instr->block->shader,
                                      instr,
                                      rogue_ref_get_drc(&ctrl->src[i].ref));
+         } else {
+            unreachable("Unsupported source reference type.");
+         }
+      }
+
+      break;
+   }
+
+   case ROGUE_INSTR_TYPE_BITWISE: {
+      rogue_bitwise_instr *bitwise = rogue_instr_as_bitwise(instr);
+      const unsigned num_srcs = rogue_bitwise_op_infos[bitwise->op].num_srcs;
+
+      for (unsigned i = 0; i < num_srcs; ++i) {
+         if (rogue_ref_is_reg(&bitwise->src[i].ref)) {
+            rogue_reg_use *use = &bitwise->src_use[i].reg;
+            rogue_unlink_instr_use_reg(instr, use);
+         } else if (rogue_ref_is_regarray(&bitwise->src[i].ref)) {
+            rogue_regarray_use *usearray = &bitwise->src_use[i].regarray;
+            rogue_unlink_instr_use_regarray(instr, usearray);
+         } else if (rogue_ref_is_drc(&bitwise->src[i].ref)) {
+            rogue_unlink_drc_trxn(instr->block->shader,
+                                  instr,
+                                  rogue_ref_get_drc(&bitwise->src[i].ref));
+         } else {
+            unreachable("Unsupported source reference type.");
          }
       }
 

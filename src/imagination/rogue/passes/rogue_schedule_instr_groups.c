@@ -198,6 +198,37 @@ static void rogue_lower_ctrl_io(rogue_ctrl_instr *ctrl,
    /* TODO: Support control instructions with I/O. */
 }
 
+static void rogue_lower_bitwise_io(rogue_bitwise_instr *bitwise,
+                                   rogue_instr_group *group)
+{
+   const rogue_bitwise_op_info *info = &rogue_bitwise_op_infos[bitwise->op];
+   enum rogue_instr_phase phase = bitwise->instr.index;
+
+   for (unsigned u = 0; u < info->num_dsts; ++u) {
+      if (info->phase_io[phase].dst[u] == ROGUE_IO_INVALID)
+         continue;
+
+      rogue_set_io_sel(&group->io_sel,
+                       group->header.alu,
+                       info->phase_io[phase].dst[u],
+                       &bitwise->dst[u].ref,
+                       true);
+      bitwise->dst[u].ref = rogue_ref_io(info->phase_io[phase].dst[u]);
+   }
+
+   for (unsigned u = 0; u < info->num_srcs; ++u) {
+      if (info->phase_io[phase].src[u] == ROGUE_IO_INVALID)
+         continue;
+
+      rogue_set_io_sel(&group->io_sel,
+                       group->header.alu,
+                       info->phase_io[phase].src[u],
+                       &bitwise->src[u].ref,
+                       false);
+      bitwise->src[u].ref = rogue_ref_io(info->phase_io[phase].src[u]);
+   }
+}
+
 static void rogue_lower_instr_group_io(rogue_instr *instr,
                                        rogue_instr_group *group)
 {
@@ -212,6 +243,10 @@ static void rogue_lower_instr_group_io(rogue_instr *instr,
 
    case ROGUE_INSTR_TYPE_CTRL:
       rogue_lower_ctrl_io(rogue_instr_as_ctrl(instr), group);
+      break;
+
+   case ROGUE_INSTR_TYPE_BITWISE:
+      rogue_lower_bitwise_io(rogue_instr_as_bitwise(instr), group);
       break;
 
    default:
@@ -577,6 +612,28 @@ static void rogue_calc_ctrl_instrs_size(rogue_instr_group *group,
    }
 }
 
+static void rogue_calc_bitwise_instrs_size(rogue_instr_group *group,
+                                           rogue_bitwise_instr *bitwise,
+                                           enum rogue_instr_phase phase)
+{
+   switch (bitwise->op) {
+   case ROGUE_BITWISE_OP_BYP0:
+      group->size.instrs[phase] = 1;
+
+      if (rogue_ref_is_val(&bitwise->src[1].ref)) {
+         group->size.instrs[phase] = 3;
+
+         /* If upper 16 bits aren't zero. */
+         if (rogue_ref_get_val(&bitwise->src[1].ref) & 0xffff0000)
+            group->size.instrs[phase] = 5;
+      }
+      break;
+
+   default:
+      unreachable("Invalid bitwise op.");
+   }
+}
+
 static void rogue_calc_instrs_size(rogue_instr_group *group)
 {
    rogue_foreach_phase_in_set (p, group->header.phases) {
@@ -595,6 +652,12 @@ static void rogue_calc_instrs_size(rogue_instr_group *group)
 
       case ROGUE_INSTR_TYPE_CTRL:
          rogue_calc_ctrl_instrs_size(group, rogue_instr_as_ctrl(instr), p);
+         break;
+
+      case ROGUE_INSTR_TYPE_BITWISE:
+         rogue_calc_bitwise_instrs_size(group,
+                                        rogue_instr_as_bitwise(instr),
+                                        p);
          break;
 
       default:
@@ -705,6 +768,10 @@ bool rogue_schedule_instr_groups(rogue_shader *shader, bool multi_instr_groups)
 
          case ROGUE_INSTR_TYPE_CTRL:
             group_alu = ROGUE_ALU_CONTROL;
+            break;
+
+         case ROGUE_INSTR_TYPE_BITWISE:
+            group_alu = ROGUE_ALU_BITWISE;
             break;
 
          default:

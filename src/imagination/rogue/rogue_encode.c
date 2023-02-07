@@ -181,6 +181,7 @@ typedef union rogue_instr_encoding {
    rogue_alu_instr_encoding alu;
    rogue_backend_instr_encoding backend;
    rogue_ctrl_instr_encoding ctrl;
+   rogue_bitwise_instr_encoding bitwise;
 } PACKED rogue_instr_encoding;
 
 #define SM(src_mod) ROGUE_ALU_SRC_MOD_##src_mod
@@ -394,7 +395,40 @@ static void rogue_encode_ctrl_instr(const rogue_ctrl_instr *ctrl,
    }
 }
 
-/* TODO: Add p2end where required. */
+static void rogue_encode_bitwise_instr(const rogue_bitwise_instr *bitwise,
+                                       unsigned instr_size,
+                                       rogue_instr_encoding *instr_encoding)
+{
+   switch (bitwise->op) {
+   case ROGUE_BITWISE_OP_BYP0: {
+      instr_encoding->bitwise.phase0 = 1;
+      instr_encoding->bitwise.ph0.shft = SHFT1_BYP;
+      instr_encoding->bitwise.ph0.cnt_byp = 1;
+
+      rogue_imm32 imm32;
+      if (rogue_ref_is_val(&bitwise->src[1].ref))
+         imm32._ = rogue_ref_get_val(&bitwise->src[1].ref);
+
+      if (instr_size > 1) {
+         instr_encoding->bitwise.ph0.ext = 1;
+         instr_encoding->bitwise.ph0.imm_7_0 = imm32._7_0;
+         instr_encoding->bitwise.ph0.imm_15_8 = imm32._15_8;
+      }
+
+      if (instr_size > 3) {
+         instr_encoding->bitwise.ph0.bm = 1;
+         instr_encoding->bitwise.ph0.imm_23_16 = imm32._23_16;
+         instr_encoding->bitwise.ph0.imm_31_24 = imm32._31_24;
+      }
+
+      break;
+   }
+
+   default:
+      unreachable("Invalid bitwise op.");
+   }
+}
+
 static void rogue_encode_instr_group_instrs(rogue_instr_group *group,
                                             struct util_dynarray *binary)
 {
@@ -425,6 +459,12 @@ static void rogue_encode_instr_group_instrs(rogue_instr_group *group,
          rogue_encode_ctrl_instr(rogue_instr_as_ctrl(instr),
                                  group->size.instrs[p],
                                  &instr_encoding);
+         break;
+
+      case ROGUE_INSTR_TYPE_BITWISE:
+         rogue_encode_bitwise_instr(rogue_instr_as_bitwise(instr),
+                                    group->size.instrs[p],
+                                    &instr_encoding);
          break;
 
       default:

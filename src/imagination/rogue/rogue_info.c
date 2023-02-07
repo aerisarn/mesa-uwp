@@ -297,11 +297,29 @@ const rogue_backend_op_mod_info rogue_backend_op_mod_infos[ROGUE_BACKEND_OP_MOD_
 	[ROGUE_BACKEND_OP_MOD_SAT] = { .str = "sat", },
 };
 
+#define P(type) BITFIELD64_BIT(ROGUE_INSTR_PHASE_##type)
+#define PH(type) ROGUE_INSTR_PHASE_##type
+#define IO(io) ROGUE_IO_##io
+#define T(type) BITFIELD64_BIT(ROGUE_REF_TYPE_##type - 1)
 const rogue_bitwise_op_info rogue_bitwise_op_infos[ROGUE_BITWISE_OP_COUNT] = {
    [ROGUE_BITWISE_OP_INVALID] = { .str = "", },
-   [ROGUE_BITWISE_OP_BYP] = { .str = "byp", .num_dsts = 2, .num_srcs = 2, },
-   [ROGUE_BITWISE_OP_MOV2] = { .str = "mov2", .num_dsts = 2, .num_srcs = 2, },
+   [ROGUE_BITWISE_OP_BYP0] = { .str = "byp", .num_dsts = 2, .num_srcs = 2,
+      .supported_phases = P(0_BITMASK),
+      .phase_io[PH(0_BITMASK)] = { .dst[1] = IO(FT1), },
+      .supported_dst_types = {
+         [0] = T(REG) | T(REGARRAY) | T(IO),
+         [1] = T(REG) | T(REGARRAY) | T(IO),
+      },
+      .supported_src_types = {
+         [0] = T(REG) | T(REGARRAY) | T(IO),
+         [1] = T(REG) | T(REGARRAY) | T(IO) | T(VAL),
+      },
+   },
 };
+#undef T
+#undef IO
+#undef PH
+#undef P
 
 const rogue_io_info rogue_io_infos[ROGUE_IO_COUNT] = {
 	[ROGUE_IO_INVALID] = { .str = "!INVALID!", },

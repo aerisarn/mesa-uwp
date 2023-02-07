@@ -993,6 +993,161 @@ enum ctrlop {
    CTRLOP_SBO = 0b1011,
 };
 
+/* Bitwise phase 0: logical */
+typedef struct rogue_bitwise_ph0_encoding {
+   /* Byte 0 */
+   struct {
+      unsigned bm : 1;
+      unsigned cnt_byp : 1;
+      unsigned shft : 2;
+      unsigned ext : 1;
+      unsigned cnt : 1;
+      unsigned csrc : 1;
+      unsigned : 1;
+   } PACKED;
+
+   /* Byte 1 */
+   struct {
+      unsigned imm_7_0 : 8;
+   } PACKED;
+
+   /* Byte 2 */
+   struct {
+      unsigned imm_15_8 : 8;
+   } PACKED;
+
+   /* Byte 3 */
+   struct {
+      unsigned imm_23_16 : 8;
+   } PACKED;
+
+   /* Byte 4 */
+   struct {
+      unsigned imm_31_24 : 8;
+   } PACKED;
+} PACKED rogue_bitwise_ph0_encoding;
+static_assert(sizeof(rogue_bitwise_ph0_encoding) == 5,
+              "sizeof(rogue_bitwise_ph0_encoding) != 5");
+
+enum shft1 {
+   SHFT1_BYP = 0b00,
+   SHFT1_SHFL = 0b01,
+   SHFT1_REV = 0b10,
+   SHFT1_LSL = 0b11,
+};
+
+enum cnt {
+   CNT_CBS = 0b0,
+   CNT_FTB = 0b1,
+};
+
+enum csrc {
+   CNT_S2 = 0b0,
+   CNT_FT2 = 0b1,
+};
+
+typedef struct rogue_imm32 {
+   union {
+      struct {
+         struct {
+            unsigned _7_0 : 8;
+         } PACKED;
+
+         struct {
+            unsigned _15_8 : 8;
+         } PACKED;
+
+         struct {
+            unsigned _23_16 : 8;
+         } PACKED;
+
+         struct {
+            unsigned _31_24 : 8;
+         } PACKED;
+      } PACKED;
+
+      uint32_t _;
+   } PACKED;
+} PACKED rogue_imm32;
+static_assert(sizeof(rogue_imm32) == 4, "sizeof(rogue_imm32) != 4");
+
+/* Bitwise phase 1: logical */
+typedef struct rogue_bitwise_ph1_encoding {
+   /* Byte 0 */
+   struct {
+      unsigned op : 3;
+      unsigned mska : 1;
+      unsigned : 1;
+      unsigned mskb : 1;
+      unsigned : 2;
+   } PACKED;
+} PACKED rogue_bitwise_ph1_encoding;
+static_assert(sizeof(rogue_bitwise_ph1_encoding) == 1,
+              "sizeof(rogue_bitwise_ph1_encoding) != 1");
+
+enum ph1op {
+   PH1OP_OR = 0b000,
+   PH1OP_AND = 0b001,
+   PH1OP_XOR = 0b010,
+   PH1OP_NOR = 0b100,
+   PH1OP_NAND = 0b101,
+   PH1OP_XNOR = 0b110,
+   PH1OP_BYP = 0b111,
+};
+
+/* Bitwise phase 2: shift2/test */
+typedef struct rogue_bitwise_ph2_encoding {
+   /* Byte 0 */
+   struct {
+      unsigned shft : 3;
+      unsigned top : 1;
+      unsigned tsrc : 1;
+      unsigned pwen : 1;
+      unsigned : 2;
+   } PACKED;
+} PACKED rogue_bitwise_ph2_encoding;
+static_assert(sizeof(rogue_bitwise_ph2_encoding) == 1,
+              "sizeof(rogue_bitwise_ph2_encoding) != 1");
+
+enum shft2 {
+   SHFT2_LSL = 0b000,
+   SHFT2_SHR = 0b001,
+   SHFT2_ROL = 0b010,
+   SHFT2_CPS = 0b011,
+   SHFT2_ASR_TWB = 0b100,
+   SHFT2_ASR_PWB = 0b101,
+   SHFT2_ASR_MTB = 0b110,
+   SHFT2_ASR_FTB = 0b111,
+};
+
+enum top {
+   TOP_TZ = 0b0,
+   TOP_TNZ = 0b1,
+};
+
+enum tsrc {
+   TSRC_FT5 = 0b0,
+   TSRC_FT3 = 0b1,
+};
+
+/* Common for all bitwise instructions. */
+typedef struct rogue_bitwise_instr_encoding {
+   union {
+      /* Bytes 0+ */
+      struct {
+         unsigned : 6;
+         unsigned phase1 : 1;
+         unsigned phase0 : 1;
+      } PACKED;
+
+      rogue_bitwise_ph0_encoding ph0;
+      rogue_bitwise_ph1_encoding ph1;
+      rogue_bitwise_ph2_encoding ph2;
+   } PACKED;
+} PACKED rogue_bitwise_instr_encoding;
+static_assert(sizeof(rogue_bitwise_instr_encoding) == 5,
+              "sizeof(rogue_bitwise_instr_encoding) != 5");
+
 typedef struct rogue_instr_group_header_encoding {
    /* Byte 0 */
    struct {

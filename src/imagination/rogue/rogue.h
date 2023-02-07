@@ -717,6 +717,11 @@ static inline bool rogue_ref_is_regarray(const rogue_ref *ref)
    return ref->type == ROGUE_REF_TYPE_REGARRAY;
 }
 
+static inline bool rogue_ref_is_reg_or_regarray(const rogue_ref *ref)
+{
+   return rogue_ref_is_reg(ref) || rogue_ref_is_regarray(ref);
+}
+
 static inline bool rogue_ref_is_io(const rogue_ref *ref)
 {
    return ref->type == ROGUE_REF_TYPE_IO;
@@ -1404,11 +1409,11 @@ enum rogue_bitwise_op {
    ROGUE_BITWISE_OP_INVALID = 0,
 
    /* Real instructions. */
-   ROGUE_BITWISE_OP_BYP,
+   ROGUE_BITWISE_OP_BYP0,
 
    /* Pseudo-instructions. */
    ROGUE_BITWISE_OP_PSEUDO,
-   ROGUE_BITWISE_OP_MOV2 = ROGUE_BITWISE_OP_PSEUDO,
+   ROGUE_BITWISE_OP_ = ROGUE_BITWISE_OP_PSEUDO,
 
    ROGUE_BITWISE_OP_COUNT,
 };
@@ -1421,6 +1426,9 @@ typedef struct rogue_bitwise_op_info {
 
    unsigned num_dsts;
    unsigned num_srcs;
+
+   uint64_t supported_phases;
+   rogue_alu_io_info phase_io[ROGUE_INSTR_PHASE_COUNT];
 
    uint64_t supported_op_mods;
    uint64_t supported_dst_mods[ROGUE_BITWISE_OP_MAX_DSTS];
@@ -1454,8 +1462,7 @@ typedef struct rogue_bitwise_instr {
 
    enum rogue_bitwise_op op;
 
-   /* TODO: op mods */
-   /* uint64_t mod; */
+   uint64_t mod;
 
    /* TODO NEXT: source/dest modifiers */
 
@@ -2108,6 +2115,10 @@ static inline bool rogue_dst_reg_replace(rogue_reg_write *write,
       ref = &rogue_instr_as_ctrl(instr)->dst[dst_index].ref;
       break;
 
+   case ROGUE_INSTR_TYPE_BITWISE:
+      ref = &rogue_instr_as_bitwise(instr)->dst[dst_index].ref;
+      break;
+
    default:
       unreachable("Unsupported instruction type.");
       return false;
@@ -2264,6 +2275,16 @@ static inline unsigned rogue_instr_supported_phases(const rogue_instr *instr)
          return 0;
 
       supported_phases = BITFIELD_BIT(ROGUE_INSTR_PHASE_CTRL);
+      break;
+   }
+
+   case ROGUE_INSTR_TYPE_BITWISE: {
+      rogue_bitwise_instr *bitwise = rogue_instr_as_bitwise(instr);
+      if (bitwise->op >= ROGUE_BITWISE_OP_PSEUDO)
+         return 0;
+
+      const rogue_bitwise_op_info *info = &rogue_bitwise_op_infos[bitwise->op];
+      supported_phases = info->supported_phases;
       break;
    }
 

@@ -378,6 +378,44 @@ static inline void rogue_print_ctrl_instr(FILE *fp,
    }
 }
 
+static inline void rogue_print_bitwise_dst(FILE *fp, const rogue_instr_dst *dst)
+{
+   rogue_print_ref(fp, &dst->ref);
+}
+
+static inline void rogue_print_bitwise_src(FILE *fp, const rogue_instr_src *src)
+{
+   rogue_print_ref(fp, &src->ref);
+}
+
+static inline void rogue_print_bitwise_instr(FILE *fp,
+                                             const rogue_bitwise_instr *bitwise)
+{
+   const rogue_bitwise_op_info *info = &rogue_bitwise_op_infos[bitwise->op];
+
+   fprintf(fp, "%s", info->str);
+
+   /* rogue_print_bitwise_mods(fp, bitwise); */
+
+   for (unsigned i = 0; i < info->num_dsts; ++i) {
+      if (i > 0)
+         fputs(",", fp);
+
+      fputs(" ", fp);
+
+      rogue_print_bitwise_dst(fp, &bitwise->dst[i]);
+   }
+
+   for (unsigned i = 0; i < info->num_srcs; ++i) {
+      if (i == 0 && !info->num_dsts)
+         fputs(" ", fp);
+      else
+         fputs(", ", fp);
+
+      rogue_print_bitwise_src(fp, &bitwise->src[i]);
+   }
+}
+
 PUBLIC
 void rogue_print_instr(FILE *fp, const rogue_instr *instr)
 {
@@ -396,6 +434,10 @@ void rogue_print_instr(FILE *fp, const rogue_instr *instr)
 
    case ROGUE_INSTR_TYPE_CTRL:
       rogue_print_ctrl_instr(fp, rogue_instr_as_ctrl(instr));
+      break;
+
+   case ROGUE_INSTR_TYPE_BITWISE:
+      rogue_print_bitwise_instr(fp, rogue_instr_as_bitwise(instr));
       break;
 
    default:
