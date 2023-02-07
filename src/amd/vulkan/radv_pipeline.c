@@ -3473,7 +3473,7 @@ radv_skip_graphics_pipeline_compile(const struct radv_graphics_pipeline *pipelin
 
    /* Do not skip when the linked pipeline needs a noop FS. */
    if ((lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
-        pipeline->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT)
+       !(pipeline->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT))
       return false;
 
    /* Do not skip when the PS epilog needs to be compiled. */
