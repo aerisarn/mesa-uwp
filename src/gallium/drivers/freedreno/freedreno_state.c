@@ -321,7 +321,6 @@ fd_set_framebuffer_state(struct pipe_context *pctx,
 
       fd_batch_reference(&ctx->batch, NULL);
       fd_context_all_dirty(ctx);
-      ctx->update_active_queries = true;
 
       fd_batch_reference(&old_batch, NULL);
    } else if (ctx->batch) {

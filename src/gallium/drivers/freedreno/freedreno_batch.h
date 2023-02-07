@@ -374,7 +374,7 @@ fd_batch_update_queries(struct fd_batch *batch) assert_dt
 {
    struct fd_context *ctx = batch->ctx;
 
-   if (!ctx->update_active_queries)
+   if (!(ctx->dirty & FD_DIRTY_QUERY))
       return;
 
    ctx->query_update_batch(batch, false);

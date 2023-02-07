@@ -185,6 +185,12 @@ batch_draw_tracking_for_dirty_bits(struct fd_batch *batch) assert_dt
             resource_written(batch, ctx->streamout.targets[i]->buffer);
    }
 
+   if (ctx->dirty & FD_DIRTY_QUERY) {
+      list_for_each_entry (struct fd_acc_query, aq, &ctx->acc_active_queries, node) {
+         resource_written(batch, aq->prsc);
+      }
+   }
+
    /* any buffers that haven't been cleared yet, we need to restore: */
    batch->restore |= restore_buffers & (FD_BUFFER_ALL & ~batch->invalidated);
    /* and any buffers used, need to be resolved: */
@@ -226,9 +232,6 @@ batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
    }
 
    resource_written(batch, batch->query_buf);
-
-   list_for_each_entry (struct fd_acc_query, aq, &ctx->acc_active_queries, node)
-      resource_written(batch, aq->prsc);
 
    fd_screen_unlock(ctx->screen);
 }

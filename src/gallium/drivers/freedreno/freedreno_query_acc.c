@@ -104,7 +104,7 @@ fd_acc_begin_query(struct fd_context *ctx, struct fd_query *q) assert_dt
    realloc_query_bo(ctx, aq);
 
    /* Signal that we need to update the active queries on the next draw */
-   ctx->update_active_queries = true;
+   fd_context_dirty(ctx, FD_DIRTY_QUERY);
 
    /* add to active list: */
    assert(list_is_empty(&aq->node));
@@ -312,7 +312,7 @@ fd_acc_query_update_batch(struct fd_batch *batch, bool disable_all)
 {
    struct fd_context *ctx = batch->ctx;
 
-   if (disable_all || ctx->update_active_queries) {
+   if (disable_all || (ctx->dirty & FD_DIRTY_QUERY)) {
       struct fd_acc_query *aq;
       LIST_FOR_EACH_ENTRY (aq, &ctx->acc_active_queries, node) {
          bool batch_change = aq->batch != batch;
@@ -326,8 +326,6 @@ fd_acc_query_update_batch(struct fd_batch *batch, bool disable_all)
             fd_acc_query_resume(aq, batch);
       }
    }
-
-   ctx->update_active_queries = false;
 }
 
 void

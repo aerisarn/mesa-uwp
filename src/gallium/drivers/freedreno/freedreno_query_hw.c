@@ -375,7 +375,7 @@ fd_hw_query_update_batch(struct fd_batch *batch, bool disable_all)
 {
    struct fd_context *ctx = batch->ctx;
 
-   if (disable_all || ctx->update_active_queries) {
+   if (disable_all || (ctx->dirty & FD_DIRTY_QUERY)) {
       struct fd_hw_query *hq;
       LIST_FOR_EACH_ENTRY (hq, &batch->ctx->hw_active_queries, list) {
          bool was_active = query_active_in_batch(batch, hq);
