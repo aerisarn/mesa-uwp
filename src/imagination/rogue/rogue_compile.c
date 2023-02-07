@@ -21,6 +21,7 @@
  * SOFTWARE.
  */
 
+#include "compiler/shader_enums.h"
 #include "compiler/spirv/nir_spirv.h"
 #include "nir/nir.h"
 #include "rogue.h"
@@ -271,19 +272,101 @@ static void trans_nir_intrinsic_store_output(rogue_builder *b,
    unreachable("Unimplemented NIR store_output variant.");
 }
 
+static inline gl_shader_stage
+pvr_stage_to_mesa(enum pvr_stage_allocation pvr_stage)
+{
+   switch (pvr_stage) {
+   case PVR_STAGE_ALLOCATION_VERTEX_GEOMETRY:
+      return MESA_SHADER_VERTEX;
+
+   case PVR_STAGE_ALLOCATION_FRAGMENT:
+      return MESA_SHADER_FRAGMENT;
+
+   case PVR_STAGE_ALLOCATION_COMPUTE:
+      return MESA_SHADER_COMPUTE;
+
+   default:
+      break;
+   }
+
+   unreachable("Unsupported pvr_stage_allocation.");
+}
+
+static inline enum pvr_stage_allocation
+mesa_stage_to_pvr(gl_shader_stage mesa_stage)
+{
+   switch (mesa_stage) {
+   case MESA_SHADER_VERTEX:
+      return PVR_STAGE_ALLOCATION_VERTEX_GEOMETRY;
+
+   case MESA_SHADER_FRAGMENT:
+      return PVR_STAGE_ALLOCATION_FRAGMENT;
+
+   case MESA_SHADER_COMPUTE:
+      return PVR_STAGE_ALLOCATION_COMPUTE;
+
+   default:
+      break;
+   }
+
+   unreachable("Unsupported gl_shader_stage.");
+}
+
 static void
 trans_nir_intrinsic_load_vulkan_descriptor(rogue_builder *b,
                                            nir_intrinsic_instr *intr)
 {
    rogue_instr *instr;
-   /* unsigned desc_set = nir_src_comp_as_uint(intr->src[0], 0); */
-   /* unsigned binding = nir_src_comp_as_uint(intr->src[0], 1); */
+   unsigned desc_set = nir_src_comp_as_uint(intr->src[0], 0);
+   unsigned binding = nir_src_comp_as_uint(intr->src[0], 1);
    ASSERTED VkDescriptorType desc_type = nir_src_comp_as_uint(intr->src[0], 2);
    assert(desc_type == nir_intrinsic_desc_type(intr));
 
+   struct pvr_pipeline_layout *pipeline_layout =
+      b->shader->ctx->pipeline_layout;
+
+   /* Defaults for offline compiler. */
+   /* TODO: Load these from an offline pipeline description
+    * if using the offline compiler.
+    */
+   unsigned desc_set_table_sh_reg = 0;
+   unsigned flat_desc_idx = binding;
+
+   if (pipeline_layout) {
+      /* Fetch shared registers containing descriptor set table address. */
+      enum pvr_stage_allocation pvr_stage = mesa_stage_to_pvr(b->shader->stage);
+      assert(pipeline_layout->sh_reg_layout_per_stage[pvr_stage]
+                .descriptor_set_addrs_table.present);
+      desc_set_table_sh_reg =
+         pipeline_layout->sh_reg_layout_per_stage[pvr_stage]
+            .descriptor_set_addrs_table.offset;
+
+      /* Lookup offsets for descriptor set and descriptor. */
+      assert(desc_set < pipeline_layout->set_count);
+
+      unsigned binding_count =
+         pipeline_layout->set_layout[desc_set]->binding_count;
+      assert(binding < binding_count);
+
+      flat_desc_idx = ~0U;
+      for (unsigned u = 0; u < binding_count; ++u) {
+         unsigned binding_number =
+            pipeline_layout->set_layout[desc_set]->bindings[u].binding_number;
+
+         if (binding_number == binding) {
+            flat_desc_idx = pipeline_layout->set_layout[desc_set]
+                               ->bindings[u]
+                               .descriptor_index;
+            assert(pipeline_layout->set_layout[desc_set]->bindings[u].type ==
+                   desc_type);
+            break;
+         }
+      }
+      assert(flat_desc_idx != ~0U);
+   }
+
    unsigned desc_set_table_addr_idx = b->shader->ctx->next_ssa_idx++;
-   rogue_regarray *desc_set_table_addr_64 =
-      rogue_ssa_vec_regarray(b->shader, 2, desc_set_table_addr_idx, 0);
+   rogue_ssa_vec_regarray(b->shader, 2, desc_set_table_addr_idx, 0);
    rogue_regarray *desc_set_table_addr_2x32[2] = {
       rogue_ssa_vec_regarray(b->shader, 1, desc_set_table_addr_idx, 0),
       rogue_ssa_vec_regarray(b->shader, 1, desc_set_table_addr_idx, 1),
@@ -291,27 +374,72 @@ trans_nir_intrinsic_load_vulkan_descriptor(rogue_builder *b,
 
    instr = &rogue_MOV(b,
                       rogue_ref_regarray(desc_set_table_addr_2x32[0]),
-                      rogue_ref_reg(rogue_shared_reg(b->shader, 0)))
+                      rogue_ref_reg(
+                         rogue_shared_reg(b->shader, desc_set_table_sh_reg)))
                ->instr;
    rogue_add_instr_comment(instr, "desc_set_table_addr_lo");
-   instr = &rogue_MOV(b,
-                      rogue_ref_regarray(desc_set_table_addr_2x32[1]),
-                      rogue_ref_reg(rogue_shared_reg(b->shader, 1)))
-               ->instr;
+   instr =
+      &rogue_MOV(
+          b,
+          rogue_ref_regarray(desc_set_table_addr_2x32[1]),
+          rogue_ref_reg(rogue_shared_reg(b->shader, desc_set_table_sh_reg + 1)))
+          ->instr;
    rogue_add_instr_comment(instr, "desc_set_table_addr_hi");
 
-   /* TODO NEXT: Just using offset 0 for both the descriptor table and the entry
-    * (UBO), but need to calculate this from desc_set and binding. */
+   /* TODO: Don't add offsets if the descriptor set/flat descriptor is 0. */
+
+   /* Offset the descriptor set table address to access the descriptor set. */
+   unsigned desc_set_table_addr_offset_idx = b->shader->ctx->next_ssa_idx++;
+   rogue_regarray *desc_set_table_addr_offset_64 =
+      rogue_ssa_vec_regarray(b->shader, 2, desc_set_table_addr_offset_idx, 0);
+   rogue_regarray *desc_set_table_addr_offset_2x32[2] = {
+      rogue_ssa_vec_regarray(b->shader, 1, desc_set_table_addr_offset_idx, 0),
+      rogue_ssa_vec_regarray(b->shader, 1, desc_set_table_addr_offset_idx, 1),
+   };
+
+   rogue_ADD64(b,
+               rogue_ref_regarray(desc_set_table_addr_offset_2x32[0]),
+               rogue_ref_regarray(desc_set_table_addr_offset_2x32[1]),
+               rogue_ref_io(ROGUE_IO_NONE),
+               rogue_ref_regarray(desc_set_table_addr_2x32[0]),
+               rogue_ref_regarray(desc_set_table_addr_2x32[1]),
+               rogue_ref_imm(desc_set * 4), /* TODO: use UMADD64 instead */
+               rogue_ref_imm(0),
+               rogue_ref_io(ROGUE_IO_NONE));
+
    unsigned desc_set_addr_idx = b->shader->ctx->next_ssa_idx++;
    rogue_regarray *desc_set_addr_64 =
       rogue_ssa_vec_regarray(b->shader, 2, desc_set_addr_idx, 0);
+   rogue_regarray *desc_set_addr_2x32[2] = {
+      rogue_ssa_vec_regarray(b->shader, 1, desc_set_addr_idx, 0),
+      rogue_ssa_vec_regarray(b->shader, 1, desc_set_addr_idx, 1),
+   };
    instr = &rogue_LD(b,
                      rogue_ref_regarray(desc_set_addr_64),
                      rogue_ref_drc(0),
                      rogue_ref_val(2),
-                     rogue_ref_regarray(desc_set_table_addr_64))
+                     rogue_ref_regarray(desc_set_table_addr_offset_64))
                ->instr;
    rogue_add_instr_comment(instr, "load descriptor set");
+
+   /* Offset the descriptor set address to access the descriptor. */
+   unsigned desc_addr_offset_idx = b->shader->ctx->next_ssa_idx++;
+   rogue_regarray *desc_addr_offset_64 =
+      rogue_ssa_vec_regarray(b->shader, 2, desc_addr_offset_idx, 0);
+   rogue_regarray *desc_addr_offset_2x32[2] = {
+      rogue_ssa_vec_regarray(b->shader, 1, desc_addr_offset_idx, 0),
+      rogue_ssa_vec_regarray(b->shader, 1, desc_addr_offset_idx, 1),
+   };
+
+   rogue_ADD64(b,
+               rogue_ref_regarray(desc_addr_offset_2x32[0]),
+               rogue_ref_regarray(desc_addr_offset_2x32[1]),
+               rogue_ref_io(ROGUE_IO_NONE),
+               rogue_ref_regarray(desc_set_addr_2x32[0]),
+               rogue_ref_regarray(desc_set_addr_2x32[1]),
+               rogue_ref_imm(flat_desc_idx * 4), /* TODO: use UMADD64 instead */
+               rogue_ref_imm(0),
+               rogue_ref_io(ROGUE_IO_NONE));
 
    unsigned desc_addr_idx = intr->dest.ssa.index;
    rogue_regarray *desc_addr_64 =
@@ -320,7 +448,7 @@ trans_nir_intrinsic_load_vulkan_descriptor(rogue_builder *b,
                      rogue_ref_regarray(desc_addr_64),
                      rogue_ref_drc(0),
                      rogue_ref_val(2),
-                     rogue_ref_regarray(desc_set_addr_64))
+                     rogue_ref_regarray(desc_addr_offset_64))
                ->instr;
    rogue_add_instr_comment(instr, "load descriptor");
 }

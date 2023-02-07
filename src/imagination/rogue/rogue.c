@@ -1209,7 +1209,9 @@ rogue_compiler *rogue_compiler_create(const struct pvr_device_info *dev_info)
  * \return A pointer to the new build context, or NULL on failure.
  */
 PUBLIC
-rogue_build_ctx *rogue_build_context_create(rogue_compiler *compiler)
+rogue_build_ctx *
+rogue_build_context_create(rogue_compiler *compiler,
+                           struct pvr_pipeline_layout *pipeline_layout)
 {
    rogue_build_ctx *ctx;
 
@@ -1218,6 +1220,7 @@ rogue_build_ctx *rogue_build_context_create(rogue_compiler *compiler)
       return NULL;
 
    ctx->compiler = compiler;
+   ctx->pipeline_layout = pipeline_layout;
 
    /* nir/rogue/binary shaders need to be default-zeroed;
     * this is taken care of by rzalloc_size.

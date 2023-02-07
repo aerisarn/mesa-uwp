@@ -647,23 +647,6 @@ static VkResult pvr_pds_descriptor_program_setup_buffers(
    return VK_SUCCESS;
 }
 
-/**
- * \brief Indicates the layout of shared registers allocated by the driver.
- *
- * 'present' fields indicate if a certain resource was allocated for, and
- * whether it will be present in the shareds.
- * 'offset' fields indicate at which shared reg the resource starts at.
- */
-struct pvr_sh_reg_layout {
-   /* If this is present, it will always take up 2 sh regs in size and contain
-    * the device address of the descriptor set addrs table.
-    */
-   struct {
-      bool present;
-      uint32_t offset;
-   } descriptor_set_addrs_table;
-};
-
 static VkResult pvr_pds_descriptor_program_create_and_upload(
    struct pvr_device *const device,
    const VkAllocationCallbacks *const allocator,
@@ -1150,11 +1133,13 @@ static VkResult pvr_compute_pipeline_compile(
    const VkAllocationCallbacks *const allocator,
    struct pvr_compute_pipeline *const compute_pipeline)
 {
+   struct pvr_pipeline_layout *layout = compute_pipeline->base.layout;
+   struct pvr_sh_reg_layout *sh_reg_layout =
+      &layout->sh_reg_layout_per_stage[PVR_STAGE_ALLOCATION_COMPUTE];
    struct rogue_compile_time_consts_data compile_time_consts_data;
    uint32_t work_group_input_regs[PVR_WORKGROUP_DIMENSIONS];
    struct pvr_explicit_constant_usage explicit_const_usage;
    uint32_t local_input_regs[PVR_WORKGROUP_DIMENSIONS];
-   struct pvr_sh_reg_layout sh_reg_layout;
    struct rogue_ubo_data ubo_data;
    uint32_t barrier_coefficient;
    uint32_t usc_temps;
@@ -1197,11 +1182,10 @@ static VkResult pvr_compute_pipeline_compile(
 
    } else {
       uint32_t sh_count;
-
       sh_count = pvr_pipeline_alloc_shareds(device,
-                                            compute_pipeline->base.layout,
+                                            layout,
                                             PVR_STAGE_ALLOCATION_COMPUTE,
-                                            &sh_reg_layout);
+                                            sh_reg_layout);
 
       compute_pipeline->shader_state.const_shared_reg_count = sh_count;
 
@@ -1216,9 +1200,9 @@ static VkResult pvr_compute_pipeline_compile(
       &compile_time_consts_data,
       &ubo_data,
       &explicit_const_usage,
-      compute_pipeline->base.layout,
+      layout,
       PVR_STAGE_ALLOCATION_COMPUTE,
-      &sh_reg_layout,
+      sh_reg_layout,
       &compute_pipeline->descriptor_state);
    if (result != VK_SUCCESS)
       goto err_free_shader;
@@ -1523,6 +1507,11 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
    };
    static uint32_t hard_code_pipeline_n = 0;
 
+   struct pvr_pipeline_layout *layout = gfx_pipeline->base.layout;
+   struct pvr_sh_reg_layout *sh_reg_layout_vert =
+      &layout->sh_reg_layout_per_stage[PVR_STAGE_ALLOCATION_VERTEX_GEOMETRY];
+   struct pvr_sh_reg_layout *sh_reg_layout_frag =
+      &layout->sh_reg_layout_per_stage[PVR_STAGE_ALLOCATION_FRAGMENT];
    const VkPipelineVertexInputStateCreateInfo *const vertex_input_state =
       pCreateInfo->pVertexInputState;
    const uint32_t cache_line_size =
@@ -1535,29 +1524,21 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
       pvr_hard_code_shader_required(&device->pdevice->dev_info);
 
    /* Vars needed for the new path. */
-   /* TODO: These need to be passed into the compiler so that it knows which
-    * shared regs to use to access specific resources.
-    */
-   struct pvr_sh_reg_layout vert_sh_reg_layout;
-   struct pvr_sh_reg_layout frag_sh_reg_layout;
-   uint32_t vert_sh_count = 0;
-   uint32_t frag_sh_count = 0;
+   uint32_t sh_count[PVR_STAGE_ALLOCATION_COUNT] = { 0 };
 
-   if (!old_path) {
-      vert_sh_count =
-         pvr_pipeline_alloc_shareds(device,
-                                    gfx_pipeline->base.layout,
-                                    PVR_STAGE_ALLOCATION_VERTEX_GEOMETRY,
-                                    &vert_sh_reg_layout);
-
-      frag_sh_count = pvr_pipeline_alloc_shareds(device,
-                                                 gfx_pipeline->base.layout,
-                                                 PVR_STAGE_ALLOCATION_FRAGMENT,
-                                                 &frag_sh_reg_layout);
-   }
+   if (!old_path)
+      for (enum pvr_stage_allocation pvr_stage =
+              PVR_STAGE_ALLOCATION_VERTEX_GEOMETRY;
+           pvr_stage < PVR_STAGE_ALLOCATION_COMPUTE;
+           ++pvr_stage)
+         sh_count[pvr_stage] = pvr_pipeline_alloc_shareds(
+            device,
+            layout,
+            pvr_stage,
+            &layout->sh_reg_layout_per_stage[pvr_stage]);
 
    /* Setup shared build context. */
-   ctx = rogue_build_context_create(compiler);
+   ctx = rogue_build_context_create(compiler, layout);
    if (!ctx)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -1667,7 +1648,8 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
           * returning the sh count since the driver is in charge of allocating
           * them.
           */
-         vertex_state->stage_state.const_shared_reg_count = vert_sh_count;
+         vertex_state->stage_state.const_shared_reg_count =
+            sh_count[PVR_STAGE_ALLOCATION_VERTEX_GEOMETRY];
       }
    }
 
@@ -1698,7 +1680,8 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
           * returning the sh count since the driver is in charge of allocating
           * them.
           */
-         fragment_state->stage_state.const_shared_reg_count = frag_sh_count;
+         fragment_state->stage_state.const_shared_reg_count =
+            sh_count[PVR_STAGE_ALLOCATION_FRAGMENT];
       }
    }
 
@@ -1752,9 +1735,9 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
       &ctx->common_data[MESA_SHADER_VERTEX].compile_time_consts_data,
       &ctx->common_data[MESA_SHADER_VERTEX].ubo_data,
       &vert_explicit_const_usage,
-      gfx_pipeline->base.layout,
+      layout,
       PVR_STAGE_ALLOCATION_VERTEX_GEOMETRY,
-      &vert_sh_reg_layout,
+      sh_reg_layout_vert,
       &gfx_pipeline->shader_state.vertex.descriptor_state);
    if (result != VK_SUCCESS)
       goto err_free_vertex_attrib_program;
@@ -1775,9 +1758,9 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
       &ctx->common_data[MESA_SHADER_FRAGMENT].compile_time_consts_data,
       &ctx->common_data[MESA_SHADER_FRAGMENT].ubo_data,
       &frag_explicit_const_usage,
-      gfx_pipeline->base.layout,
+      layout,
       PVR_STAGE_ALLOCATION_FRAGMENT,
-      &frag_sh_reg_layout,
+      sh_reg_layout_frag,
       &gfx_pipeline->shader_state.fragment.descriptor_state);
    if (result != VK_SUCCESS)
       goto err_free_vertex_descriptor_program;

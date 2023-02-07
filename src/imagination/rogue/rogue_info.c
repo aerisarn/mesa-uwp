@@ -424,8 +424,8 @@ const rogue_alu_op_info rogue_alu_op_infos[ROGUE_ALU_OP_COUNT] = {
       .supported_src_types = {
          [0] = T(REG) | T(REGARRAY),
          [1] = T(REG) | T(REGARRAY),
-         [2] = T(REG) | T(REGARRAY),
-         [3] = T(REG) | T(REGARRAY)| T(IO),
+         [2] = T(REG) | T(REGARRAY) | T(IMM),
+         [3] = T(REG) | T(REGARRAY)| T(IO) | T(IMM),
          [4] = T(IO),
       },
    },

@@ -324,6 +324,23 @@ struct pvr_descriptor_state {
    uint32_t valid_mask;
 };
 
+/**
+ * \brief Indicates the layout of shared registers allocated by the driver.
+ *
+ * 'present' fields indicate if a certain resource was allocated for, and
+ * whether it will be present in the shareds.
+ * 'offset' fields indicate at which shared reg the resource starts at.
+ */
+struct pvr_sh_reg_layout {
+   /* If this is present, it will always take up 2 sh regs in size and contain
+    * the device address of the descriptor set addrs table.
+    */
+   struct {
+      bool present;
+      uint32_t offset;
+   } descriptor_set_addrs_table;
+};
+
 struct pvr_pipeline_layout {
    struct vk_object_base base;
 
@@ -358,6 +375,9 @@ struct pvr_pipeline_layout {
    struct pvr_descriptor_set_layout_mem_layout
       register_layout_in_dwords_per_stage[PVR_STAGE_ALLOCATION_COUNT]
                                          [PVR_MAX_DESCRIPTOR_SETS];
+
+   /* TODO: Consider whether this needs to be here. */
+   struct pvr_sh_reg_layout sh_reg_layout_per_stage[PVR_STAGE_ALLOCATION_COUNT];
 
    /* All sizes in dwords. */
    struct pvr_pipeline_layout_reg_info {

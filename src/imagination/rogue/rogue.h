@@ -2773,10 +2773,13 @@ typedef struct rogue_build_ctx {
 
    rogue_common_build_data common_data[MESA_SHADER_FRAGMENT + 1];
    rogue_build_data stage_data;
+   struct pvr_pipeline_layout *pipeline_layout;
    unsigned next_ssa_idx;
 } rogue_build_ctx;
 
-rogue_build_ctx *rogue_build_context_create(rogue_compiler *compiler);
+rogue_build_ctx *
+rogue_build_context_create(rogue_compiler *compiler,
+                           struct pvr_pipeline_layout *pipeline_layout);
 
 void rogue_collect_io_data(rogue_build_ctx *ctx, nir_shader *nir);
 
