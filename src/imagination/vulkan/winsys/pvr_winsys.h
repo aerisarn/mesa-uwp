@@ -277,6 +277,17 @@ struct pvr_winsys_transfer_regs {
    uint32_t usc_pixel_output_ctrl;
 };
 
+struct pvr_winsys_transfer_cmd {
+   /* Firmware stream buffer. This is the maximum possible size taking into
+    * consideration all HW features.
+    */
+   uint8_t fw_stream[172];
+   uint32_t fw_stream_len;
+
+   /* Must be 0 or a combination of PVR_WINSYS_TRANSFER_FLAG_* flags. */
+   uint32_t flags;
+};
+
 struct pvr_winsys_transfer_submit_info {
    uint32_t frame_num;
    uint32_t job_num;
@@ -289,12 +300,7 @@ struct pvr_winsys_transfer_submit_info {
    uint32_t *stage_flags;
 
    uint32_t cmd_count;
-   struct {
-      struct pvr_winsys_transfer_regs regs;
-
-      /* Must be 0 or a combination of PVR_WINSYS_TRANSFER_FLAG_* flags. */
-      uint32_t flags;
-   } cmds[PVR_TRANSFER_MAX_PREPARES_PER_SUBMIT];
+   struct pvr_winsys_transfer_cmd cmds[PVR_TRANSFER_MAX_PREPARES_PER_SUBMIT];
 };
 
 #define PVR_WINSYS_COMPUTE_FLAG_PREVENT_ALL_OVERLAP BITFIELD_BIT(0U)
@@ -475,6 +481,7 @@ struct pvr_winsys_ops {
    VkResult (*transfer_submit)(
       const struct pvr_winsys_transfer_ctx *ctx,
       const struct pvr_winsys_transfer_submit_info *submit_info,
+      const struct pvr_device_info *dev_info,
       struct vk_sync *signal_sync);
 
    VkResult (*null_job_submit)(struct pvr_winsys *ws,
