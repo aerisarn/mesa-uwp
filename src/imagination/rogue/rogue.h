@@ -30,6 +30,17 @@
  * \brief Main header.
  */
 
+#define __pvr_address_type pvr_dev_addr_t
+#define __pvr_get_address(pvr_dev_addr) (pvr_dev_addr).addr
+/* clang-format off */
+#define __pvr_make_address(addr_u64) PVR_DEV_ADDR(addr_u64)
+/* clang-format on */
+
+#include "pvr_types.h"
+#include "csbgen/rogue_hwdefs.h"
+#include "vulkan/pvr_limits.h"
+#include "vulkan/pvr_common.h"
+
 #include "compiler/nir/nir.h"
 #include "compiler/shader_enums.h"
 #include "compiler/spirv/nir_spirv.h"
