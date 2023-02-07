@@ -63,8 +63,6 @@ static void radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer,
                                          const VkImageSubresourceRange *range,
                                          struct radv_sample_locations_state *sample_locs);
 
-static void radv_set_rt_stack_size(struct radv_cmd_buffer *cmd_buffer, uint32_t size);
-
 static void
 radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dynamic_state *src)
 {
@@ -6183,8 +6181,6 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
 
       cmd_buffer->state.rt_pipeline = rt_pipeline;
       cmd_buffer->push_constant_stages |= RADV_RT_STAGE_BITS;
-      if (rt_pipeline->dynamic_stack_size)
-         radv_set_rt_stack_size(cmd_buffer, cmd_buffer->state.rt_stack_size);
       break;
    }
    case VK_PIPELINE_BIND_POINT_GRAPHICS: {
@@ -9775,6 +9771,18 @@ radv_trace_rays(struct radv_cmd_buffer *cmd_buffer, const VkTraceRaysIndirectCom
    struct radv_compute_pipeline *pipeline = &cmd_buffer->state.rt_pipeline->base;
    uint32_t base_reg = pipeline->base.user_data_0[MESA_SHADER_COMPUTE];
 
+   /* Reserve scratch for dynamic stacks manually since it is not handled by the compute path. */
+   if (cmd_buffer->state.rt_pipeline->dynamic_stack_size) {
+      uint32_t scratch_bytes_per_wave = pipeline->base.scratch_bytes_per_wave;
+      uint32_t wave_size = pipeline->base.shaders[MESA_SHADER_COMPUTE]->info.wave_size;
+
+      /* The hardware register is specified as a multiple of 256 DWORDS. */
+      scratch_bytes_per_wave += align(cmd_buffer->state.rt_stack_size * wave_size, 1024);
+
+      cmd_buffer->compute_scratch_size_per_wave_needed =
+         MAX2(cmd_buffer->compute_scratch_size_per_wave_needed, scratch_bytes_per_wave);
+   }
+
    struct radv_dispatch_info info = {0};
    info.unaligned = true;
 
@@ -9906,31 +9914,10 @@ radv_CmdTraceRaysIndirect2KHR(VkCommandBuffer commandBuffer, VkDeviceAddress ind
    radv_trace_rays(cmd_buffer, NULL, indirectDeviceAddress, radv_rt_mode_indirect2);
 }
 
-static void
-radv_set_rt_stack_size(struct radv_cmd_buffer *cmd_buffer, uint32_t size)
-{
-   unsigned wave_size = 0;
-   unsigned scratch_bytes_per_wave = 0;
-
-   if (cmd_buffer->state.rt_pipeline) {
-      scratch_bytes_per_wave = cmd_buffer->state.rt_pipeline->base.base.scratch_bytes_per_wave;
-      wave_size =
-         cmd_buffer->state.rt_pipeline->base.base.shaders[MESA_SHADER_COMPUTE]->info.wave_size;
-   }
-
-   /* The hardware register is specified as a multiple of 256 DWORDS. */
-   scratch_bytes_per_wave += align(size * wave_size, 1024);
-
-   cmd_buffer->compute_scratch_size_per_wave_needed =
-      MAX2(cmd_buffer->compute_scratch_size_per_wave_needed, scratch_bytes_per_wave);
-}
-
 VKAPI_ATTR void VKAPI_CALL
 radv_CmdSetRayTracingPipelineStackSizeKHR(VkCommandBuffer commandBuffer, uint32_t size)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-
-   radv_set_rt_stack_size(cmd_buffer, size);
    cmd_buffer->state.rt_stack_size = size;
 }
 
