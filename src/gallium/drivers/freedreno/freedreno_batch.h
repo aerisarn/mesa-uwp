@@ -374,8 +374,10 @@ fd_batch_update_queries(struct fd_batch *batch) assert_dt
 {
    struct fd_context *ctx = batch->ctx;
 
-   if (ctx->query_update_batch)
-      ctx->query_update_batch(batch, false);
+   if (!ctx->update_active_queries)
+      return;
+
+   ctx->query_update_batch(batch, false);
 }
 
 static inline void
@@ -383,8 +385,7 @@ fd_batch_finish_queries(struct fd_batch *batch) assert_dt
 {
    struct fd_context *ctx = batch->ctx;
 
-   if (ctx->query_update_batch)
-      ctx->query_update_batch(batch, true);
+   ctx->query_update_batch(batch, true);
 }
 
 static inline void
