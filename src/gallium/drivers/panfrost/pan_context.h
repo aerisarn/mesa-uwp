@@ -369,6 +369,8 @@ bool panfrost_disk_cache_retrieve(
 
 void panfrost_disk_cache_init(struct panfrost_screen *screen);
 
+bool panfrost_nir_remove_fragcolor_stores(nir_shader *s, unsigned nr_cbufs);
+
 /** (Vertex buffer index, divisor) tuple that will become an Attribute Buffer
  * Descriptor at draw-time on Midgard
  */

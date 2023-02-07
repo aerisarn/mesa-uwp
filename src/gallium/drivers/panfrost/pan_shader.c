@@ -97,7 +97,7 @@ panfrost_shader_compile(struct panfrost_screen *screen, const nir_shader *ir,
       inputs.fixed_varying_mask = key->fs.fixed_varying_mask;
 
       if (s->info.outputs_written & BITFIELD_BIT(FRAG_RESULT_COLOR)) {
-         NIR_PASS_V(s, nir_lower_fragcolor, key->fs.nr_cbufs_for_fragcolor);
+         NIR_PASS_V(s, nir_lower_fragcolor, 8);
       }
    } else if (s->info.stage == MESA_SHADER_VERTEX) {
       inputs.fixed_varying_mask = fixed_varying_mask;
@@ -110,6 +110,11 @@ panfrost_shader_compile(struct panfrost_screen *screen, const nir_shader *ir,
    pan_shader_preprocess(s, inputs.gpu_id);
 
    if (s->info.stage == MESA_SHADER_FRAGMENT) {
+      if (key->fs.nr_cbufs_for_fragcolor) {
+         NIR_PASS_V(s, panfrost_nir_remove_fragcolor_stores,
+                    key->fs.nr_cbufs_for_fragcolor);
+      }
+
       if (key->fs.sprite_coord_enable) {
          NIR_PASS_V(s, nir_lower_texcoord_replace_late,
                     key->fs.sprite_coord_enable,

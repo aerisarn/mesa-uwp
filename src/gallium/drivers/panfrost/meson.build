@@ -34,6 +34,7 @@ files_panfrost = files(
   'pan_shader.c',
   'pan_mempool.c',
   'pan_mempool.h',
+  'pan_nir_remove_fragcolor_stores.c',
 )
 
 panfrost_includes = [
