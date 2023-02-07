@@ -913,7 +913,7 @@ zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
    nir->info.gs.input_primitive = SHADER_PRIM_LINES_ADJACENCY;
    nir->info.gs.output_primitive = SHADER_PRIM_TRIANGLE_STRIP;
    nir->info.gs.vertices_in = 4;
-   nir->info.gs.vertices_out = 4;
+   nir->info.gs.vertices_out = 6;
    nir->info.gs.invocations = 1;
    nir->info.gs.active_stream_mask = 1;
 
@@ -959,9 +959,10 @@ zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
       out_vars[num_vars++] = out;
    }
 
-   for (unsigned i = 0; i < 4; ++i) {
+   int mapping[] = {0, 1, 2, 0, 2, 3};
+   for (unsigned i = 0; i < 6; ++i) {
       /* swap indices 2 and 3 */
-      int idx = i == 2 ? 3 : (i == 3 ? 2 : i);
+      int idx = mapping[i];
       /* Copy inputs to outputs. */
       for (unsigned j = 0; j < num_vars; ++j) {
          if (in_vars[j]->data.location == VARYING_SLOT_EDGE) {
@@ -973,6 +974,8 @@ zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
                        (1u << value->num_components) - 1);
       }
       nir_emit_vertex(&b, 0);
+      if (i == 2)
+        nir_end_primitive(&b, 0);
    }
 
    nir_end_primitive(&b, 0);
