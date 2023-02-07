@@ -781,7 +781,7 @@ VOP2 = {
    (  -1,   -1,   -1, 0x34, 0x25, 0x25, "v_add_u32", False, False), # called v_add_nc_u32 in RDNA
    (  -1,   -1,   -1, 0x35, 0x26, 0x26, "v_sub_u32", False, False), # called v_sub_nc_u32 in RDNA
    (  -1,   -1,   -1, 0x36, 0x27, 0x27, "v_subrev_u32", False, False), # called v_subrev_nc_u32 in RDNA
-   (  -1,   -1,   -1,   -1, 0x36, 0x36, "v_fmac_f16", False, False),
+   (  -1,   -1,   -1,   -1, 0x36, 0x36, "v_fmac_f16", True, True),
    (  -1,   -1,   -1,   -1, 0x37, 0x37, "v_fmamk_f16", False, False),
    (  -1,   -1,   -1,   -1, 0x38, 0x38, "v_fmaak_f16", False, False),
    (  -1,   -1,   -1,   -1, 0x3c, 0x3c, "v_pk_fmac_f16", False, False),
