@@ -754,8 +754,8 @@ VOP2 = {
    (0x29, 0x29, 0x1d, 0x1d, 0x29, 0x21, "v_subb_co_u32", False, False), # v_sub_co_ci_u32 in RDNA
    (0x2a, 0x2a, 0x1e, 0x1e, 0x2a, 0x22, "v_subbrev_co_u32", False, False), # v_subrev_co_ci_u32 in RDNA
    (  -1,   -1,   -1,   -1, 0x2b, 0x2b, "v_fmac_f32", True, True),
-   (  -1,   -1,   -1,   -1, 0x2c, 0x2c, "v_fmamk_f32", True, True),
-   (  -1,   -1,   -1,   -1, 0x2d, 0x2d, "v_fmaak_f32", True, True),
+   (  -1,   -1,   -1,   -1, 0x2c, 0x2c, "v_fmamk_f32", False, False),
+   (  -1,   -1,   -1,   -1, 0x2d, 0x2d, "v_fmaak_f32", False, False),
    (0x2f, 0x2f,   -1,   -1, 0x2f, 0x2f, "v_cvt_pkrtz_f16_f32", True, False), #v_cvt_pk_rtz_f16_f32 in GFX11
    (  -1,   -1, 0x1f, 0x1f, 0x32, 0x32, "v_add_f16", True, True),
    (  -1,   -1, 0x20, 0x20, 0x33, 0x33, "v_sub_f16", True, True),
