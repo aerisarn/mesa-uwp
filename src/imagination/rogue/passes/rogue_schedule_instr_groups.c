@@ -34,34 +34,99 @@
  */
 
 static inline void rogue_set_io_sel(rogue_instr_group_io_sel *map,
+                                    enum rogue_alu alu,
                                     enum rogue_io io,
                                     rogue_ref *ref,
                                     bool is_dst)
 {
-   /* Hookup feedthrough outputs to W0 using IS4. */
-   if (is_dst && rogue_io_is_ft(io)) {
-      *(rogue_instr_group_io_sel_ref(map, ROGUE_IO_IS4)) = rogue_ref_io(io);
-      io = ROGUE_IO_W0;
+   /* Skip unassigned I/Os. */
+   if (rogue_ref_is_io_none(ref))
+      return;
+
+   /* Early skip I/Os that have already been assigned (e.g. for grouping). */
+   if (rogue_ref_is_io(ref) && rogue_ref_get_io(ref) == io)
+      return;
+
+   /* Leave source feedthroughs in place. */
+   if (!is_dst && rogue_io_is_ft(io))
+      return;
+
+   if (alu == ROGUE_ALU_MAIN) {
+      /* Hookup feedthrough outputs to W0 using IS4. */
+      if (is_dst && rogue_io_is_ft(io)) {
+         if (io == ROGUE_IO_FTE) {
+            *(rogue_instr_group_io_sel_ref(map, ROGUE_IO_IS5)) =
+               rogue_ref_io(io);
+            io = ROGUE_IO_W1;
+         } else {
+            *(rogue_instr_group_io_sel_ref(map, ROGUE_IO_IS4)) =
+               rogue_ref_io(io);
+            io = ROGUE_IO_W0;
+         }
+      }
+
+      /* Pack source */
+      if (!is_dst && io == ROGUE_IO_IS3) {
+         enum rogue_io src = ROGUE_IO_S0;
+         *(rogue_instr_group_io_sel_ref(map, ROGUE_IO_IS0)) = rogue_ref_io(src);
+         *(rogue_instr_group_io_sel_ref(map, ROGUE_IO_IS3)) =
+            rogue_ref_io(ROGUE_IO_FTE);
+         io = src;
+      }
+
+      /* Movc sources. */
+      if (!is_dst && rogue_io_is_dst(io)) {
+         enum rogue_io dst_ft =
+            (io == ROGUE_IO_W0 ? ROGUE_IO_IS4 : ROGUE_IO_IS5);
+         enum rogue_io src = ROGUE_IO_S0;
+         *(rogue_instr_group_io_sel_ref(map, dst_ft)) =
+            rogue_ref_io(ROGUE_IO_FTE);
+         *(rogue_instr_group_io_sel_ref(map, ROGUE_IO_IS0)) = rogue_ref_io(src);
+         io = src;
+      }
+
+      /* ADD64 fourth source */
+      if (!is_dst && io == ROGUE_IO_IS0) {
+         enum rogue_io src = ROGUE_IO_S3;
+         *(rogue_instr_group_io_sel_ref(map, io)) = rogue_ref_io(src);
+         io = src;
+      }
+
+      /* Test source(s). */
+      /* TODO: tidy up. */
+      if (!is_dst && io == ROGUE_IO_IS1) {
+         enum rogue_io src = ROGUE_IO_S0;
+         enum rogue_io ft = ROGUE_IO_FT0;
+
+         /* Already set up. */
+         if (io != ft)
+            *(rogue_instr_group_io_sel_ref(map, io)) = rogue_ref_io(ft);
+
+         io = src;
+      }
+
+      if (!is_dst && io == ROGUE_IO_IS2) {
+         enum rogue_io src = ROGUE_IO_S3;
+         enum rogue_io ft = ROGUE_IO_FTE;
+
+         *(rogue_instr_group_io_sel_ref(map, ROGUE_IO_IS0)) =
+            rogue_ref_io(ROGUE_IO_S3);
+
+         /* Already set up. */
+         if (io != ft)
+            *(rogue_instr_group_io_sel_ref(map, io)) = rogue_ref_io(ft);
+
+         io = src;
+      }
+   } else if (alu == ROGUE_ALU_BITWISE) {
+      /* TODO: This is temporary because we just have BYP0, do it properly. */
+      if (is_dst)
+         io = ROGUE_IO_W0;
    }
 
-   /* Pack source */
-   if (!is_dst && io == ROGUE_IO_IS3) {
-      enum rogue_io src = ROGUE_IO_S0;
-      *(rogue_instr_group_io_sel_ref(map, ROGUE_IO_IS0)) = rogue_ref_io(src);
-      *(rogue_instr_group_io_sel_ref(map, ROGUE_IO_IS3)) =
-         rogue_ref_io(ROGUE_IO_FTE);
-      io = src;
-   }
-
-   if (!is_dst && rogue_io_is_dst(io)) {
-      enum rogue_io dst_ft = (io == ROGUE_IO_W0 ? ROGUE_IO_IS4 : ROGUE_IO_IS5);
-      enum rogue_io src = ROGUE_IO_S0;
-      *(rogue_instr_group_io_sel_ref(map, dst_ft)) = rogue_ref_io(ROGUE_IO_FTE);
-      *(rogue_instr_group_io_sel_ref(map, ROGUE_IO_IS0)) = rogue_ref_io(src);
-      io = src;
-   }
-
-   *(rogue_instr_group_io_sel_ref(map, io)) = *ref;
+   /* Set if not already set. */
+   if (rogue_ref_is_null(rogue_instr_group_io_sel_ref(map, io)))
+      *(rogue_instr_group_io_sel_ref(map, io)) = *ref;
 }
 
 /* TODO NEXT: Abort if anything in sel map is already set. */
@@ -77,6 +142,7 @@ static void rogue_lower_alu_io(rogue_alu_instr *alu, rogue_instr_group *group)
          continue;
 
       rogue_set_io_sel(&group->io_sel,
+                       group->header.alu,
                        info->phase_io[phase].dst[u],
                        &alu->dst[u].ref,
                        true);
@@ -88,6 +154,7 @@ static void rogue_lower_alu_io(rogue_alu_instr *alu, rogue_instr_group *group)
          continue;
 
       rogue_set_io_sel(&group->io_sel,
+                       group->header.alu,
                        info->phase_io[phase].src[u],
                        &alu->src[u].ref,
                        false);
@@ -105,6 +172,7 @@ static void rogue_lower_backend_io(rogue_backend_instr *backend,
          continue;
 
       rogue_set_io_sel(&group->io_sel,
+                       group->header.alu,
                        info->phase_io.dst[u],
                        &backend->dst[u].ref,
                        true);
@@ -116,6 +184,7 @@ static void rogue_lower_backend_io(rogue_backend_instr *backend,
          continue;
 
       rogue_set_io_sel(&group->io_sel,
+                       group->header.alu,
                        info->phase_io.src[u],
                        &backend->src[u].ref,
                        false);
@@ -435,6 +504,18 @@ static void rogue_calc_alu_instrs_size(rogue_instr_group *group,
 
    case ROGUE_ALU_OP_PCK_U8888:
       group->size.instrs[phase] = 2;
+      break;
+
+   case ROGUE_ALU_OP_ADD64:
+      group->size.instrs[phase] = 1;
+
+      if (rogue_ref_is_io_p0(&alu->src[4].ref) ||
+          rogue_alu_src_mod_is_set(alu, 0, SM(ABS)) ||
+          rogue_alu_src_mod_is_set(alu, 0, SM(NEG)) ||
+          rogue_alu_src_mod_is_set(alu, 1, SM(ABS)) ||
+          rogue_alu_src_mod_is_set(alu, 1, SM(NEG)) ||
+          rogue_alu_src_mod_is_set(alu, 2, SM(ABS)))
+         group->size.instrs[phase] = 2;
       break;
 
    default:

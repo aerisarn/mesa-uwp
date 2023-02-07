@@ -376,6 +376,24 @@ const rogue_alu_op_info rogue_alu_op_infos[ROGUE_ALU_OP_COUNT] = {
    },
    /* TODO: Implement */
    [ROGUE_ALU_OP_TST] = { .str = "tst", .num_dsts = 2, .num_srcs = 2, },
+   [ROGUE_ALU_OP_ADD64] = { .str = "add64", .num_dsts = 3, .num_srcs = 5,
+      .supported_phases = P(0),
+      .phase_io[PH(0)] = { .dst[0] = IO(FT0), .dst[1] = IO(FTE), .src[0] = IO(S0), .src[1] = IO(S1), .src[2] = IO(S2), .src[3] = IO(IS0), },
+      .supported_src_mods = {
+         [0] = SM(ABS) | SM(NEG),
+         [1] = SM(ABS) | SM(NEG),
+         [2] = SM(ABS) | SM(NEG),
+         [3] = SM(ABS) | SM(NEG),
+      },
+      .supported_dst_types = { [0] = T(REG) | T(REGARRAY), [1] = T(REG) | T(REGARRAY) | T(IO), [2] = T(IO) },
+      .supported_src_types = {
+         [0] = T(REG) | T(REGARRAY),
+         [1] = T(REG) | T(REGARRAY),
+         [2] = T(REG) | T(REGARRAY),
+         [3] = T(REG) | T(REGARRAY)| T(IO),
+         [4] = T(IO),
+      },
+   },
    [ROGUE_ALU_OP_PCK_U8888] = { .str = "pck.u8888", .num_dsts = 1, .num_srcs = 1,
       .supported_phases = P(2_PCK),
       .phase_io[PH(2_PCK)] = { .dst[0] = IO(FT2), .src[0] = IO(IS3), },
@@ -399,7 +417,6 @@ const rogue_alu_op_info rogue_alu_op_infos[ROGUE_ALU_OP_COUNT] = {
 
    [ROGUE_ALU_OP_FMAX] = { .str = "fmax", .num_dsts = 1, .num_srcs = 2, }, /* TODO */
    [ROGUE_ALU_OP_FMIN] = { .str = "fmin", .num_dsts = 1, .num_srcs = 2, }, /* TODO */
-   [ROGUE_ALU_OP_SEL] = { .str = "sel", .num_dsts = 1, .num_srcs = 3, }, /* TODO */
 };
 #undef B
 #undef T

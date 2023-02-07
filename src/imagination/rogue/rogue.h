@@ -793,6 +793,20 @@ static inline enum rogue_io rogue_ref_get_io(const rogue_ref *ref)
    return ref->io;
 }
 
+static inline bool rogue_ref_is_io_p0(const rogue_ref *ref)
+{
+   return rogue_ref_get_io(ref) == ROGUE_IO_P0;
+}
+
+static inline bool rogue_ref_is_io_none(const rogue_ref *ref)
+{
+   /* Special case - never assert. */
+   if (!rogue_ref_is_io(ref))
+      return false;
+
+   return rogue_ref_get_io(ref) == ROGUE_IO_NONE;
+}
+
 static inline unsigned rogue_ref_get_drc_index(const rogue_ref *ref)
 {
    assert(rogue_ref_is_drc(ref));
@@ -927,6 +941,8 @@ enum rogue_alu_op {
    ROGUE_ALU_OP_FMUL,
    ROGUE_ALU_OP_FMAD,
 
+   ROGUE_ALU_OP_ADD64,
+
    ROGUE_ALU_OP_TST,
 
    ROGUE_ALU_OP_PCK_U8888,
@@ -941,8 +957,6 @@ enum rogue_alu_op {
 
    ROGUE_ALU_OP_FMAX,
    ROGUE_ALU_OP_FMIN,
-
-   ROGUE_ALU_OP_SEL,
 
    ROGUE_ALU_OP_COUNT,
 };
@@ -1075,9 +1089,9 @@ static inline bool rogue_ctrl_op_has_dsts(enum rogue_ctrl_op op)
    return info->has_dsts;
 }
 
-/* ALU instructions have at most 3 sources. */
-#define ROGUE_ALU_OP_MAX_SRCS 3
-#define ROGUE_ALU_OP_MAX_DSTS 2
+/* ALU instructions have at most 5 sources. */
+#define ROGUE_ALU_OP_MAX_SRCS 5
+#define ROGUE_ALU_OP_MAX_DSTS 3
 
 typedef struct rogue_alu_io_info {
    enum rogue_io dst[ROGUE_ALU_OP_MAX_DSTS];

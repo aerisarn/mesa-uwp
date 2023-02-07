@@ -115,6 +115,22 @@ static inline rogue_alu_instr *rogue_build_alu22(rogue_builder *b,
    return rogue_build_alu(b, op, 2, dsts, 2, srcs);
 }
 
+static inline rogue_alu_instr *rogue_build_alu35(rogue_builder *b,
+                                                 enum rogue_alu_op op,
+                                                 rogue_ref dst0,
+                                                 rogue_ref dst1,
+                                                 rogue_ref dst2,
+                                                 rogue_ref src0,
+                                                 rogue_ref src1,
+                                                 rogue_ref src2,
+                                                 rogue_ref src3,
+                                                 rogue_ref src4)
+{
+   rogue_ref dsts[] = { dst0, dst1, dst2 };
+   rogue_ref srcs[] = { src0, src1, src2, src3, src4 };
+   return rogue_build_alu(b, op, 3, dsts, 5, srcs);
+}
+
 /* TODO: Static inline in rogue.h? */
 #define ROGUE_BUILDER_DEFINE_ALU11(op)                             \
    PUBLIC                                                          \
@@ -163,6 +179,32 @@ static inline rogue_alu_instr *rogue_build_alu22(rogue_builder *b,
       assert(rogue_alu_op_infos[ROGUE_ALU_OP_##op].num_dsts == 2);            \
       assert(rogue_alu_op_infos[ROGUE_ALU_OP_##op].num_srcs == 2);            \
       return rogue_build_alu22(b, ROGUE_ALU_OP_##op, dst0, dst1, src0, src1); \
+   }
+
+#define ROGUE_BUILDER_DEFINE_ALU35(op)                             \
+   PUBLIC                                                          \
+   rogue_alu_instr *rogue_##op(rogue_builder *b,                   \
+                               rogue_ref dst0,                     \
+                               rogue_ref dst1,                     \
+                               rogue_ref dst2,                     \
+                               rogue_ref src0,                     \
+                               rogue_ref src1,                     \
+                               rogue_ref src2,                     \
+                               rogue_ref src3,                     \
+                               rogue_ref src4)                     \
+   {                                                               \
+      assert(rogue_alu_op_infos[ROGUE_ALU_OP_##op].num_dsts == 3); \
+      assert(rogue_alu_op_infos[ROGUE_ALU_OP_##op].num_srcs == 5); \
+      return rogue_build_alu35(b,                                  \
+                               ROGUE_ALU_OP_##op,                  \
+                               dst0,                               \
+                               dst1,                               \
+                               dst2,                               \
+                               src0,                               \
+                               src1,                               \
+                               src2,                               \
+                               src3,                               \
+                               src4);                              \
    }
 
 #include "rogue_alu_instrs.def"

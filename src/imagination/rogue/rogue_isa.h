@@ -636,6 +636,38 @@ typedef struct rogue_alu_mov_encoding {
 static_assert(sizeof(rogue_alu_mov_encoding) == 2,
               "sizeof(rogue_alu_mov_encoding) != 2");
 
+typedef struct rogue_alu_int32_64_encoding {
+   /* Byte 0 */
+   struct {
+      unsigned int32_64_op : 2;
+      unsigned s2neg : 1;
+      unsigned s : 1;
+      unsigned ext : 1;
+      unsigned : 3;
+   } PACKED;
+
+   /* Byte 1 */
+   struct {
+      unsigned s2abs : 1;
+      unsigned s1abs : 1;
+      unsigned s0abs : 1;
+      unsigned : 1;
+      unsigned s0neg : 1;
+      unsigned s1neg : 1;
+      unsigned cin : 1;
+      unsigned : 1;
+   } PACKED;
+} PACKED rogue_alu_int32_64_encoding;
+static_assert(sizeof(rogue_alu_int32_64_encoding) == 2,
+              "sizeof(rogue_alu_int32_64_encoding) != 2");
+
+enum int32_64_op {
+   INT32_64_OP_ADD6432 = 0b00,
+   /* No multiply or extension, only valid when s=0. */
+   INT32_64_OP_ADD64_NMX = 0b01,
+   INT32_64_OP_MADD32 = 0b10,
+   INT32_64_OP_MADD64 = 0b11,
+};
 typedef struct rogue_alu_instr_encoding {
    union {
       /* Byte 0 */
@@ -651,6 +683,7 @@ typedef struct rogue_alu_instr_encoding {
       rogue_alu_fmad_encoding fmad;
       rogue_alu_tst_encoding tst;
       rogue_alu_mov_encoding mov;
+      rogue_alu_int32_64_encoding int32_64;
    } PACKED;
 } PACKED rogue_alu_instr_encoding;
 static_assert(sizeof(rogue_alu_instr_encoding) == 2,

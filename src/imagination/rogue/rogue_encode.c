@@ -255,6 +255,31 @@ static void rogue_encode_alu_instr(const rogue_alu_instr *alu,
       instr_encoding->alu.sngl.pck.pck.format = PCK_FMT_U8888;
       break;
 
+   case ROGUE_ALU_OP_ADD64:
+      instr_encoding->alu.op = ALUOP_INT32_64;
+
+      instr_encoding->alu.int32_64.int32_64_op = INT32_64_OP_ADD64_NMX;
+      instr_encoding->alu.int32_64.s2neg =
+         rogue_alu_src_mod_is_set(alu, 2, SM(NEG));
+      instr_encoding->alu.int32_64.s = 0;
+
+      if (instr_size == 2) {
+         instr_encoding->alu.int32_64.ext = 1;
+         instr_encoding->alu.int32_64.s2abs =
+            rogue_alu_src_mod_is_set(alu, 2, SM(ABS));
+         instr_encoding->alu.int32_64.s1abs =
+            rogue_alu_src_mod_is_set(alu, 1, SM(ABS));
+         instr_encoding->alu.int32_64.s0abs =
+            rogue_alu_src_mod_is_set(alu, 0, SM(ABS));
+         instr_encoding->alu.int32_64.s0neg =
+            rogue_alu_src_mod_is_set(alu, 0, SM(NEG));
+         instr_encoding->alu.int32_64.s1neg =
+            rogue_alu_src_mod_is_set(alu, 1, SM(NEG));
+         instr_encoding->alu.int32_64.cin =
+            rogue_ref_is_io_p0(&alu->src[4].ref);
+      }
+      break;
+
    default:
       unreachable("Unsupported alu op.");
    }
