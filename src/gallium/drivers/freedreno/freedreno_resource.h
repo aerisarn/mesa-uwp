@@ -314,8 +314,7 @@ fd_resource_ubwc_offset(struct fd_resource *rsc, unsigned level, unsigned layer)
 static inline bool
 fd_resource_level_linear(const struct pipe_resource *prsc, int level)
 {
-   struct fd_screen *screen = fd_screen(prsc->screen);
-   assert(!is_a3xx(screen));
+   assert(!is_a3xx(fd_screen(prsc->screen)));
 
    return fdl_level_linear(&fd_resource_const(prsc)->layout, level);
 }

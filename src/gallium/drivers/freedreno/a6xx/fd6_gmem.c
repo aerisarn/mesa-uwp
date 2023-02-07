@@ -91,7 +91,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
       enum a3xx_color_swap swap = WZYX;
       bool sint = false, uint = false;
       struct fd_resource *rsc = NULL;
-      struct fdl_slice *slice = NULL;
+      ASSERTED struct fdl_slice *slice = NULL;
       uint32_t stride = 0;
       uint32_t array_stride = 0;
       uint32_t offset;
