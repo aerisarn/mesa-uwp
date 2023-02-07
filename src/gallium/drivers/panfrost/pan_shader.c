@@ -319,9 +319,6 @@ panfrost_update_shader_variant(struct panfrost_context *ctx,
 
    ctx->prog[type] = compiled;
 
-   /* TODO: it would be more efficient to release the lock before
-    * compiling instead of after, but that can race if thread A compiles a
-    * variant while thread B searches for that same variant */
    simple_mtx_unlock(&uncompiled->lock);
 }
 
