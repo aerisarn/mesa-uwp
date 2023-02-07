@@ -42,6 +42,13 @@
 #include "freedreno_state.h"
 #include "freedreno_util.h"
 
+static bool
+batch_references_resource(struct fd_batch *batch, struct pipe_resource *prsc)
+   assert_dt
+{
+   return fd_batch_references_resource(batch, fd_resource(prsc));
+}
+
 static void
 resource_read(struct fd_batch *batch, struct pipe_resource *prsc) assert_dt
 {
@@ -197,6 +204,29 @@ batch_draw_tracking_for_dirty_bits(struct fd_batch *batch) assert_dt
    batch->resolve |= buffers;
 }
 
+static bool
+needs_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
+                    const struct pipe_draw_indirect_info *indirect)
+   assert_dt
+{
+   struct fd_context *ctx = batch->ctx;
+
+   if (ctx->dirty & FD_DIRTY_RESOURCE)
+      return true;
+
+   if (info->index_size && !batch_references_resource(batch, info->index.resource))
+      return true;
+
+   if (indirect) {
+      if (indirect->buffer && !batch_references_resource(batch, indirect->buffer))
+         return true;
+      if (indirect->count_from_stream_output)
+         return true;
+   }
+
+   return false;
+}
+
 static void
 batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
                     const struct pipe_draw_indirect_info *indirect) assert_dt
@@ -207,6 +237,9 @@ batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
     * query_buf may not be created yet.
     */
    fd_batch_update_queries(batch);
+
+   if (!needs_draw_tracking(batch, info, indirect))
+      return;
 
    /*
     * Figure out the buffers/features we need:
