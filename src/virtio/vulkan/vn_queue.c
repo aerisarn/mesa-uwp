@@ -72,69 +72,60 @@ struct vn_queue_submission {
    } temp;
 };
 
-static uint32_t
+static inline uint32_t
 vn_get_wait_semaphore_count(struct vn_queue_submission *submit,
                             uint32_t batch_index)
 {
-   switch (submit->batch_type) {
-   case VK_STRUCTURE_TYPE_SUBMIT_INFO:
-      return submit->submit_batches[batch_index].waitSemaphoreCount;
-   case VK_STRUCTURE_TYPE_SUBMIT_INFO_2:
-      return submit->submit_batches2[batch_index].waitSemaphoreInfoCount;
-   default:
-      unreachable("unexpected batch type");
-   }
+   assert((submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO) ||
+          (submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO_2));
+
+   return submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO
+             ? submit->submit_batches[batch_index].waitSemaphoreCount
+             : submit->submit_batches2[batch_index].waitSemaphoreInfoCount;
 }
 
-static uint32_t
+static inline uint32_t
 vn_get_signal_semaphore_count(struct vn_queue_submission *submit,
                               uint32_t batch_index)
 {
-   switch (submit->batch_type) {
-   case VK_STRUCTURE_TYPE_SUBMIT_INFO:
-      return submit->submit_batches[batch_index].signalSemaphoreCount;
-   case VK_STRUCTURE_TYPE_SUBMIT_INFO_2:
-      return submit->submit_batches2[batch_index].signalSemaphoreInfoCount;
-   default:
-      unreachable("unexpected batch type");
-   }
+   assert((submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO) ||
+          (submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO_2));
+
+   return submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO
+             ? submit->submit_batches[batch_index].signalSemaphoreCount
+             : submit->submit_batches2[batch_index].signalSemaphoreInfoCount;
 }
 
-static VkSemaphore
+static inline VkSemaphore
 vn_get_wait_semaphore(struct vn_queue_submission *submit,
                       uint32_t batch_index,
                       uint32_t semaphore_index)
 {
+   assert((submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO) ||
+          (submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO_2));
 
-   switch (submit->batch_type) {
-   case VK_STRUCTURE_TYPE_SUBMIT_INFO:
-      return submit->submit_batches[batch_index]
-         .pWaitSemaphores[semaphore_index];
-   case VK_STRUCTURE_TYPE_SUBMIT_INFO_2:
-      return submit->submit_batches2[batch_index]
-         .pWaitSemaphoreInfos[semaphore_index]
-         .semaphore;
-   default:
-      unreachable("unexpected batch type");
-   }
+   return submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO
+             ? submit->submit_batches[batch_index]
+                  .pWaitSemaphores[semaphore_index]
+             : submit->submit_batches2[batch_index]
+                  .pWaitSemaphoreInfos[semaphore_index]
+                  .semaphore;
 }
 
-static VkSemaphore
+static inline VkSemaphore
 vn_get_signal_semaphore(struct vn_queue_submission *submit,
                         uint32_t batch_index,
                         uint32_t semaphore_index)
 {
-   switch (submit->batch_type) {
-   case VK_STRUCTURE_TYPE_SUBMIT_INFO:
-      return submit->submit_batches[batch_index]
-         .pSignalSemaphores[semaphore_index];
-   case VK_STRUCTURE_TYPE_SUBMIT_INFO_2:
-      return submit->submit_batches2[batch_index]
-         .pSignalSemaphoreInfos[semaphore_index]
-         .semaphore;
-   default:
-      unreachable("unexpected batch type");
-   }
+   assert((submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO) ||
+          (submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO_2));
+
+   return submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO
+             ? submit->submit_batches[batch_index]
+                  .pSignalSemaphores[semaphore_index]
+             : submit->submit_batches2[batch_index]
+                  .pSignalSemaphoreInfos[semaphore_index]
+                  .semaphore;
 }
 
 static VkResult
