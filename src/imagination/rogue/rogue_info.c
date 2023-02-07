@@ -256,6 +256,22 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
       .supported_dst_types = { [0] = T(REG), },
       .supported_src_types = { [0] = T(REG), },
    },
+   /* .src[1] and .src[2] can actually be S0-5. */
+   [ROGUE_BACKEND_OP_LD] = { .str = "ld", .num_dsts = 1, .num_srcs = 3,
+      .phase_io = { .dst[0] = IO(S3), .src[2] = IO(S0), },
+      .supported_dst_types = { [0] = T(REG) | T(REGARRAY), },
+      .supported_src_types = {
+         [0] = T(DRC),
+         [1] = T(VAL),
+         [2] = T(REGARRAY),
+      },
+      .dst_stride = {
+         [0] = ~0U,
+      },
+      .src_stride = {
+         [2] = 1,
+      },
+   },
 	[ROGUE_BACKEND_OP_FITRP_PIXEL] = { .str = "fitrp.pixel", .num_dsts = 1, .num_srcs = 4,
       .phase_io = { .dst[0] = IO(S3), .src[1] = IO(S0), .src[2] = IO(S2), },
       .supported_op_mods = OM(SAT),
@@ -268,7 +284,7 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
       },
       .src_stride = {
          [1] = 3,
-         [2] = 3,
+         [2] = ~0U,
       },
    },
 };

@@ -337,6 +337,42 @@ static void rogue_encode_backend_instr(const rogue_backend_instr *backend,
          rogue_ref_get_reg_index(&backend->dst[0].ref);
       break;
 
+   case ROGUE_BACKEND_OP_LD: {
+      instr_encoding->backend.op = BACKENDOP_DMA;
+      instr_encoding->backend.dma.dmaop = DMAOP_LD;
+      instr_encoding->backend.dma.ld.drc =
+         rogue_ref_get_drc_index(&backend->src[0].ref);
+      instr_encoding->backend.dma.ld.cachemode = CACHEMODE_LD_NORMAL;
+      instr_encoding->backend.dma.ld.srcseladd =
+         rogue_ref_get_io_src_index(&backend->src[2].ref);
+
+      bool imm_burstlen = rogue_ref_is_val(&backend->src[1].ref);
+      /* Only supporting immediate burst lengths for now. */
+      assert(imm_burstlen);
+
+      rogue_burstlen burstlen = {
+         ._ = imm_burstlen ? rogue_ref_get_val(&backend->src[1].ref) : 0
+      };
+
+      if (imm_burstlen) {
+         instr_encoding->backend.dma.ld.burstlen_2_0 = burstlen._2_0;
+      } else {
+         instr_encoding->backend.dma.ld.srcselbl =
+            rogue_ref_get_io_src_index(&backend->src[1].ref);
+      }
+
+      if (instr_size == 3) {
+         instr_encoding->backend.dma.ld.ext = 1;
+         instr_encoding->backend.dma.ld.slccachemode = SLCCACHEMODE_BYPASS;
+         instr_encoding->backend.dma.ld.notimmbl = !imm_burstlen;
+
+         if (imm_burstlen)
+            instr_encoding->backend.dma.ld.burstlen_3 = burstlen._3;
+      }
+
+      break;
+   }
+
    default:
       unreachable("Unsupported backend op.");
    }

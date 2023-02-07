@@ -546,6 +546,14 @@ static void rogue_calc_backend_instrs_size(rogue_instr_group *group,
       group->size.instrs[phase] = 1;
       break;
 
+   case ROGUE_BACKEND_OP_LD:
+      group->size.instrs[phase] = 2;
+
+      /* TODO: or, if slccachemode is being overridden */
+      if (rogue_ref_is_val(&backend->src[1].ref))
+         group->size.instrs[phase] = 3;
+      break;
+
    default:
       unreachable("Unsupported backend op.");
    }

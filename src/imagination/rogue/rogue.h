@@ -807,6 +807,11 @@ static inline bool rogue_ref_is_io_none(const rogue_ref *ref)
    return rogue_ref_get_io(ref) == ROGUE_IO_NONE;
 }
 
+static inline unsigned rogue_ref_get_io_src_index(const rogue_ref *ref)
+{
+   return rogue_ref_get_io(ref) - ROGUE_IO_S0;
+}
+
 static inline unsigned rogue_ref_get_drc_index(const rogue_ref *ref)
 {
    assert(rogue_ref_is_drc(ref));
@@ -1262,6 +1267,8 @@ enum rogue_backend_op {
    ROGUE_BACKEND_OP_UVSW_ENDTASK,
    ROGUE_BACKEND_OP_UVSW_EMITTHENENDTASK,
    ROGUE_BACKEND_OP_UVSW_WRITETHENEMITTHENENDTASK,
+
+   ROGUE_BACKEND_OP_LD,
 
    /* ROGUE_BACKEND_OP_FITR, */
    /* ROGUE_BACKEND_OP_SAMPLE, */

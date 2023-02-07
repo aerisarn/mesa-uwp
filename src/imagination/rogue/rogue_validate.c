@@ -163,7 +163,7 @@ static void validate_dst(rogue_validation_state *state,
    if (rogue_ref_is_null(&dst->ref))
       validate_log(state, "Destination has not been set.");
 
-   if (!state->shader->is_grouped) {
+   if (!state->shader->is_grouped && stride != ~0U) {
       unsigned dst_size = stride + 1;
       if (repeat_mask & (1 << i))
          dst_size *= repeat;
@@ -201,7 +201,7 @@ static void validate_src(rogue_validation_state *state,
    if (rogue_ref_is_null(&src->ref))
       validate_log(state, "Source has not been set.");
 
-   if (!state->shader->is_grouped) {
+   if (!state->shader->is_grouped && stride != ~0U) {
       unsigned src_size = stride + 1;
       if (repeat_mask & (1 << i))
          src_size *= repeat;

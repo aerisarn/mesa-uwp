@@ -778,6 +778,95 @@ enum uvsw_writeop {
    UVSW_WRITEOP_WRITE_EMIT_END = 0b110,
 };
 
+typedef struct rogue_burstlen {
+   union {
+      struct {
+         unsigned _2_0 : 3;
+         unsigned _3 : 1;
+         unsigned : 4;
+      } PACKED;
+
+      uint8_t _;
+   } PACKED;
+} PACKED rogue_burstlen;
+static_assert(sizeof(rogue_burstlen) == 1, "sizeof(rogue_burstlen) != 1");
+
+typedef struct rogue_backend_dma_ld_encoding {
+   /* Byte 0 */
+   struct {
+      unsigned : 3;
+      unsigned drc : 1;
+      unsigned ext : 1;
+      unsigned : 3;
+   } PACKED;
+
+   /* Byte 1 */
+   union {
+      struct {
+         unsigned cachemode : 2;
+         unsigned burstlen_2_0 : 3;
+         unsigned srcseladd : 3;
+      } PACKED;
+
+      struct {
+         unsigned : 2;
+         unsigned srcselbl : 3;
+         unsigned : 3;
+      } PACKED;
+   } PACKED;
+
+   /* Byte 2 */
+   struct {
+      unsigned burstlen_3 : 1;
+      unsigned slccachemode : 2;
+      unsigned notimmbl : 1; /* N.B. default is 1 if ext = 0. */
+      unsigned : 4;
+   } PACKED;
+} PACKED rogue_backend_dma_ld_encoding;
+static_assert(sizeof(rogue_backend_dma_ld_encoding) == 3,
+              "sizeof(rogue_backend_dma_ld_encoding) != 3");
+
+enum cachemode_ld {
+   CACHEMODE_LD_NORMAL = 0b00,
+   CACHEMODE_LD_BYPASS = 0b01,
+   CACHEMODE_LD_FORCE_LINE_FILL = 0b10,
+};
+
+enum cachemode_st {
+   CACHEMODE_ST_WRITE_THROUGH = 0b00,
+   CACHEMODE_ST_WRITE_BACK = 0b01,
+   CACHEMODE_ST_WRITE_BACK_LAZY = 0b10,
+};
+
+enum slccachemode {
+   SLCCACHEMODE_BYPASS = 0b00,
+   SLCCACHEMODE_WRITE_BACK = 0b01,
+   SLCCACHEMODE_WRITE_THROUGH = 0b10,
+   SLCCACHEMODE_CACHED_READS = 0b11,
+};
+
+typedef struct rogue_backend_dma_encoding {
+   union {
+      /* Byte 0 */
+      struct {
+         unsigned dmaop : 3;
+         unsigned : 5;
+      } PACKED;
+
+      rogue_backend_dma_ld_encoding ld;
+   } PACKED;
+} PACKED rogue_backend_dma_encoding;
+static_assert(sizeof(rogue_backend_dma_encoding) == 3,
+              "sizeof(rogue_backend_dma_encoding) != 3");
+
+enum dmaop {
+   DMAOP_IDF = 0b000,
+   DMAOP_LD = 0b001,
+   DMAOP_ST = 0b010,
+   DMAOP_SMP = 0b100,
+   DMAOP_ATOMIC = 0b101,
+};
+
 typedef struct rogue_backend_instr_encoding {
    union {
       /* Byte 0 */
@@ -789,10 +878,11 @@ typedef struct rogue_backend_instr_encoding {
       rogue_backend_uvsw_encoding uvsw;
       rogue_backend_fitr_encoding fitr;
       rogue_backend_emitpix_encoding emitpix;
+      rogue_backend_dma_encoding dma;
    } PACKED;
 } PACKED rogue_backend_instr_encoding;
-static_assert(sizeof(rogue_backend_instr_encoding) == 2,
-              "sizeof(rogue_backend_instr_encoding) != 2");
+static_assert(sizeof(rogue_backend_instr_encoding) == 3,
+              "sizeof(rogue_backend_instr_encoding) != 3");
 
 enum backendop {
    BACKENDOP_UVSW = 0b000,
