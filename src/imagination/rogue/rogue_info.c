@@ -50,6 +50,7 @@ const rogue_reg_info rogue_reg_infos[ROGUE_REG_CLASS_COUNT] = {
 
 const rogue_regalloc_info regalloc_info[ROGUE_REGALLOC_CLASS_COUNT] = {
    [ROGUE_REGALLOC_CLASS_TEMP_1] = { .class = ROGUE_REG_CLASS_TEMP, .stride = 1, },
+   [ROGUE_REGALLOC_CLASS_TEMP_2] = { .class = ROGUE_REG_CLASS_TEMP, .stride = 2, },
    [ROGUE_REGALLOC_CLASS_TEMP_4] = { .class = ROGUE_REG_CLASS_TEMP, .stride = 4, },
 };
 
@@ -364,7 +365,7 @@ const rogue_alu_op_info rogue_alu_op_infos[ROGUE_ALU_OP_COUNT] = {
       .supported_src_mods = {
          [0] = SM(ABS) | SM(NEG),
       },
-      .supported_dst_types = { [0] = T(REG), },
+      .supported_dst_types = { [0] = T(REG) | T(REGARRAY), },
       .supported_src_types = {
          [0] = T(REG),
       },
@@ -440,7 +441,7 @@ const rogue_alu_op_info rogue_alu_op_infos[ROGUE_ALU_OP_COUNT] = {
    },
    /* This mov is "fake" since it can be lowered to a MBYP, make a new instruction for real mov (call it MOVD?). */
    [ROGUE_ALU_OP_MOV] = { .str = "mov", .num_dsts = 1, .num_srcs = 1,
-      .supported_dst_types = { [0] = T(REG), },
+      .supported_dst_types = { [0] = T(REG) | T(REGARRAY), },
       .supported_src_types = {
          [0] = T(REG) | T(IMM),
       },

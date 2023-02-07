@@ -442,11 +442,11 @@ static void collect_ubo_data(struct rogue_common_build_data *common_data,
             if (intr->intrinsic != nir_intrinsic_load_ubo)
                continue;
 
-            assert(nir_src_num_components(intr->src[0]) == 2);
+            assert(nir_src_num_components(intr->src[0]) == 1);
+            assert(nir_src_num_components(intr->src[1]) == 1);
 
             unsigned load_desc_set = nir_src_comp_as_uint(intr->src[0], 0);
-            unsigned load_binding = nir_src_comp_as_uint(intr->src[0], 1);
-
+            unsigned load_binding = nir_src_comp_as_uint(intr->src[1], 0);
             if (load_desc_set != desc_set || load_binding != binding)
                continue;
 

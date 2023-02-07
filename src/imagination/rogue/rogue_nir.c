@@ -41,7 +41,7 @@ static const struct spirv_to_nir_options spirv_options = {
    .environment = NIR_SPIRV_VULKAN,
 
    /* Buffer address: (descriptor_set, binding), offset. */
-   .ubo_addr_format = nir_address_format_vec2_index_32bit_offset,
+   .ubo_addr_format = nir_address_format_32bit_index_offset,
 };
 
 static const nir_shader_compiler_options nir_options = {

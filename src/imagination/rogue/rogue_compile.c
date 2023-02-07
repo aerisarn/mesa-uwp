@@ -33,6 +33,62 @@
  * \brief Contains NIR to Rogue translation functions, and Rogue passes.
  */
 
+/* For ALU scalars */
+
+static rogue_ref nir_ssa_reg(rogue_shader *shader,
+                             unsigned index,
+                             unsigned num_components,
+                             unsigned component)
+{
+   if (num_components > 1) {
+      return rogue_ref_regarray(
+         rogue_ssa_vec_regarray(shader, 1, index, component));
+   }
+
+   return rogue_ref_reg(rogue_ssa_reg(shader, index));
+}
+
+static rogue_ref nir_ssa_regarray(rogue_shader *shader,
+                                  unsigned index,
+                                  unsigned num_components,
+                                  unsigned component)
+{
+   return rogue_ref_regarray(
+      rogue_ssa_vec_regarray(shader, num_components, index, component));
+}
+
+static rogue_ref nir_ssa_reg_alu_src(rogue_shader *shader,
+                                     const nir_alu_instr *alu,
+                                     unsigned src_num,
+                                     bool vec)
+{
+   unsigned index = alu->src[src_num].src.ssa->index;
+   unsigned num_components = alu->src[src_num].src.ssa->num_components;
+
+   unsigned write_mask = alu->dest.write_mask;
+   unsigned bit_pos = ffs(write_mask) - 1;
+   assert(util_is_power_of_two_nonzero(write_mask));
+
+   unsigned component = alu->src[src_num].swizzle[bit_pos];
+
+   return vec ? nir_ssa_regarray(shader, index, num_components, component)
+              : nir_ssa_reg(shader, index, num_components, component);
+}
+
+static rogue_ref
+nir_ssa_reg_alu_dst(rogue_shader *shader, const nir_alu_instr *alu, bool vec)
+{
+   unsigned num_components = alu->dest.dest.ssa.num_components;
+   unsigned index = alu->dest.dest.ssa.index;
+
+   unsigned write_mask = alu->dest.write_mask;
+   unsigned component = ffs(write_mask) - 1;
+   assert(util_is_power_of_two_nonzero(write_mask));
+
+   return vec ? nir_ssa_regarray(shader, index, num_components, component)
+              : nir_ssa_reg(shader, index, num_components, component);
+}
+
 static void trans_nir_jump_return(rogue_builder *b, nir_jump_instr *jump)
 {
    rogue_END(b);
@@ -198,7 +254,7 @@ static void trans_nir_intrinsic_load_ubo(rogue_builder *b,
       &b->shader->ctx->common_data[b->shader->stage].ubo_data;
 
    unsigned desc_set = nir_src_comp_as_uint(intr->src[0], 0);
-   unsigned binding = nir_src_comp_as_uint(intr->src[0], 1);
+   unsigned binding = nir_src_comp_as_uint(intr->src[1], 0);
    unsigned offset = nir_intrinsic_range_base(intr);
 
    unsigned sh_index = rogue_ubo_reg(ubo_data, desc_set, binding, offset);
@@ -231,49 +287,43 @@ static void trans_nir_intrinsic(rogue_builder *b, nir_intrinsic_instr *intr)
 
 static void trans_nir_alu_pack_unorm_4x8(rogue_builder *b, nir_alu_instr *alu)
 {
-   rogue_reg *dst = rogue_ssa_reg(b->shader, alu->dest.dest.ssa.index);
-   rogue_regarray *src_array =
-      rogue_ssa_vec_regarray(b->shader, 4, alu->src[0].src.ssa->index, 0);
+   rogue_ref dst = nir_ssa_reg_alu_dst(b->shader, alu, false);
+   rogue_ref src = nir_ssa_reg_alu_src(b->shader, alu, 0, true);
 
-   rogue_alu_instr *pck_u8888 =
-      rogue_PCK_U8888(b, rogue_ref_reg(dst), rogue_ref_regarray(src_array));
+   rogue_alu_instr *pck_u8888 = rogue_PCK_U8888(b, dst, src);
    rogue_set_instr_repeat(&pck_u8888->instr, 4);
    rogue_set_alu_op_mod(pck_u8888, ROGUE_ALU_OP_MOD_SCALE);
 }
 
 static void trans_nir_alu_fmul(rogue_builder *b, nir_alu_instr *alu)
 {
-   rogue_reg *dst = rogue_ssa_reg(b->shader, alu->dest.dest.ssa.index);
-   rogue_reg *src0 = rogue_ssa_reg(b->shader, alu->src[0].src.ssa->index);
-   rogue_reg *src1 = rogue_ssa_reg(b->shader, alu->src[1].src.ssa->index);
+   rogue_ref dst = nir_ssa_reg_alu_dst(b->shader, alu, false);
+   rogue_ref src0 = nir_ssa_reg_alu_src(b->shader, alu, 0, false);
+   rogue_ref src1 = nir_ssa_reg_alu_src(b->shader, alu, 1, false);
 
-   rogue_FMUL(b, rogue_ref_reg(dst), rogue_ref_reg(src0), rogue_ref_reg(src1));
+   rogue_FMUL(b, dst, src0, src1);
 }
 
 static void trans_nir_alu_ffma(rogue_builder *b, nir_alu_instr *alu)
 {
-   rogue_reg *dst = rogue_ssa_reg(b->shader, alu->dest.dest.ssa.index);
-   rogue_reg *src0 = rogue_ssa_reg(b->shader, alu->src[0].src.ssa->index);
-   rogue_reg *src1 = rogue_ssa_reg(b->shader, alu->src[1].src.ssa->index);
-   rogue_reg *src2 = rogue_ssa_reg(b->shader, alu->src[2].src.ssa->index);
+   rogue_ref dst = nir_ssa_reg_alu_dst(b->shader, alu, false);
+   rogue_ref src0 = nir_ssa_reg_alu_src(b->shader, alu, 0, false);
+   rogue_ref src1 = nir_ssa_reg_alu_src(b->shader, alu, 1, false);
+   rogue_ref src2 = nir_ssa_reg_alu_src(b->shader, alu, 2, false);
 
-   rogue_FMAD(b,
-              rogue_ref_reg(dst),
-              rogue_ref_reg(src0),
-              rogue_ref_reg(src1),
-              rogue_ref_reg(src2));
+   rogue_FMAD(b, dst, src0, src1, src2);
 }
 
 static void trans_nir_alu_vecN(rogue_builder *b, nir_alu_instr *alu, unsigned n)
 {
    unsigned dst_index = alu->dest.dest.ssa.index;
-   rogue_reg *dst;
+   rogue_regarray *dst;
    rogue_reg *src;
 
    for (unsigned u = 0; u < n; ++u) {
-      dst = rogue_ssa_vec_reg(b->shader, dst_index, u);
+      dst = rogue_ssa_vec_regarray(b->shader, 1, dst_index, u);
       src = rogue_ssa_reg(b->shader, alu->src[u].src.ssa->index);
-      rogue_MOV(b, rogue_ref_reg(dst), rogue_ref_reg(src));
+      rogue_MOV(b, rogue_ref_regarray(dst), rogue_ref_reg(src));
    }
 }
 
@@ -312,6 +362,23 @@ static inline void rogue_feedback_used_regs(rogue_build_ctx *ctx,
       BITSET_WORDS(rogue_reg_infos[ROGUE_REG_CLASS_INTERNAL].num));
 }
 
+static bool index_ssa_def_cb(nir_ssa_def *ssa, void *state)
+{
+   rogue_shader *shader = (rogue_shader *)state;
+
+   if (ssa->num_components == 1) {
+      if (ssa->bit_size == 32) {
+         rogue_ssa_reg(shader, ssa->index);
+      } else if (ssa->bit_size == 64) {
+         rogue_ssa_vec_regarray(shader, 2, ssa->index, 0);
+      }
+   } else {
+      rogue_ssa_vec_regarray(shader, ssa->num_components, ssa->index, 0);
+   }
+
+   return true;
+}
+
 /**
  * \brief Translates a NIR shader to Rogue.
  *
@@ -323,7 +390,7 @@ PUBLIC
 rogue_shader *rogue_nir_to_rogue(rogue_build_ctx *ctx, const nir_shader *nir)
 {
    gl_shader_stage stage = nir->info.stage;
-   struct rogue_shader *shader = rogue_shader_create(ctx, stage);
+   rogue_shader *shader = rogue_shader_create(ctx, stage);
    if (!shader)
       return NULL;
 
@@ -335,8 +402,17 @@ rogue_shader *rogue_nir_to_rogue(rogue_build_ctx *ctx, const nir_shader *nir)
    rogue_builder b;
    rogue_builder_init(&b, shader);
 
-   /* Translate shader entrypoint. */
    nir_function_impl *entry = nir_shader_get_entrypoint((nir_shader *)nir);
+
+   /* Go through SSA used by NIR and "reserve" them so that sub-arrays won't be
+    * declared before the parent arrays. */
+   nir_foreach_block_unstructured (block, entry) {
+      nir_foreach_instr (instr, block) {
+         nir_foreach_ssa_def(instr, index_ssa_def_cb, shader);
+      }
+   }
+
+   /* Translate shader entrypoint. */
    nir_foreach_block (block, entry) {
       rogue_push_block(&b);
 
