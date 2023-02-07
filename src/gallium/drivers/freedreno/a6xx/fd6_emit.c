@@ -530,6 +530,27 @@ fd6_emit_non_ring(struct fd_ringbuffer *ring, struct fd6_emit *emit) assert_dt
    }
 }
 
+static struct fd_ringbuffer*
+build_prim_mode(struct fd6_emit *emit, struct fd_context *ctx, bool gmem)
+   assert_dt
+{
+   struct fd_ringbuffer *ring =
+      fd_submit_new_ringbuffer(emit->ctx->batch->submit, 2 * 4, FD_RINGBUFFER_STREAMING);
+   uint32_t prim_mode = NO_FLUSH;
+   if (emit->fs->fs.uses_fbfetch_output) {
+      if (gmem) {
+         prim_mode = ctx->blend->blend_coherent ? FLUSH_PER_OVERLAP : NO_FLUSH;
+      } else {
+         prim_mode = FLUSH_PER_OVERLAP_AND_OVERWRITE;
+      }
+   } else {
+      prim_mode = NO_FLUSH;
+   }
+   OUT_REG(ring, A6XX_GRAS_SC_CNTL(.ccusinglecachelinesize = 2,
+                                   .single_prim_mode = prim_mode));
+   return ring;
+}
+
 void
 fd6_emit_3d_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 {
@@ -663,17 +684,11 @@ fd6_emit_3d_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
          fd6_emit_streamout(ring, emit);
          break;
       case FD6_GROUP_PRIM_MODE_SYSMEM:
-         state = fd_submit_new_ringbuffer(emit->ctx->batch->submit, 2 * 4, FD_RINGBUFFER_STREAMING);
-         OUT_PKT4(ring, REG_A6XX_GRAS_SC_CNTL, 1);
-         OUT_RING(ring, A6XX_GRAS_SC_CNTL_CCUSINGLECACHELINESIZE(2) | 
-               emit->fs->fs.uses_fbfetch_output ? A6XX_GRAS_SC_CNTL_SINGLE_PRIM_MODE(FLUSH_PER_OVERLAP_AND_OVERWRITE) : 0);
+         state = build_prim_mode(emit, ctx, false);
          fd6_state_take_group(&emit->state, state, FD6_GROUP_PRIM_MODE_SYSMEM);
          break;
       case FD6_GROUP_PRIM_MODE_GMEM:
-         state = fd_submit_new_ringbuffer(emit->ctx->batch->submit, 2 * 4, FD_RINGBUFFER_STREAMING);
-         OUT_PKT4(ring, REG_A6XX_GRAS_SC_CNTL, 1);
-         OUT_RING(ring, A6XX_GRAS_SC_CNTL_CCUSINGLECACHELINESIZE(2) |
-               emit->fs->fs.uses_fbfetch_output ? A6XX_GRAS_SC_CNTL_SINGLE_PRIM_MODE(FLUSH_PER_OVERLAP) : 0);
+         state = build_prim_mode(emit, ctx, true);
          fd6_state_take_group(&emit->state, state, FD6_GROUP_PRIM_MODE_GMEM);
          break;
       case FD6_GROUP_NON_GROUP:
