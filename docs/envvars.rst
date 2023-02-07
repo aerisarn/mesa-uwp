@@ -1168,6 +1168,8 @@ RADV driver environment variables
       enable optimizations to move more driver internal objects to VRAM.
    ``rtwave64``
       enable wave64 for ray tracing shaders (GFX10+)
+   ``video_decode``
+      enable experimental video decoding support
 
 .. envvar:: RADV_TEX_ANISO
 
