@@ -2762,6 +2762,7 @@ typedef struct rogue_build_ctx {
 
    rogue_common_build_data common_data[MESA_SHADER_FRAGMENT + 1];
    rogue_build_data stage_data;
+   unsigned next_ssa_idx;
 } rogue_build_ctx;
 
 rogue_build_ctx *rogue_build_context_create(rogue_compiler *compiler);
@@ -2792,7 +2793,7 @@ nir_shader *rogue_spirv_to_nir(rogue_build_ctx *ctx,
 /* Custom NIR passes. */
 void rogue_nir_pfo(nir_shader *shader);
 
-bool rogue_nir_lower_io(nir_shader *shader, void *layout);
+bool rogue_nir_lower_io(nir_shader *shader);
 
 rogue_shader *rogue_nir_to_rogue(rogue_build_ctx *ctx, const nir_shader *nir);
 

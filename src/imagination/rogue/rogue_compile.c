@@ -26,6 +26,8 @@
 #include "rogue.h"
 #include "rogue_builder.h"
 #include "util/macros.h"
+/* FIXME: Remove once the compiler/driver interface is finalised. */
+#include "vulkan/vulkan_core.h"
 
 /**
  * \file rogue_compile.c
@@ -34,7 +36,7 @@
  */
 
 /* For ALU scalars */
-
+/* TODO: expand and use these helpers. */
 static rogue_ref nir_ssa_reg(rogue_shader *shader,
                              unsigned index,
                              unsigned num_components,
@@ -110,11 +112,33 @@ static void trans_nir_jump(rogue_builder *b, nir_jump_instr *jump)
 static void trans_nir_load_const(rogue_builder *b,
                                  nir_load_const_instr *load_const)
 {
-   rogue_reg *dst = rogue_ssa_reg(b->shader, load_const->def.index);
-   if (load_const->def.bit_size == 32) {
+   unsigned dst_index = load_const->def.index;
+   unsigned bit_size = load_const->def.bit_size;
+   switch (bit_size) {
+   case 32: {
+      rogue_reg *dst = rogue_ssa_reg(b->shader, dst_index);
       uint32_t imm = nir_const_value_as_uint(load_const->value[0], 32);
       rogue_MOV(b, rogue_ref_reg(dst), rogue_ref_imm(imm));
-   } else {
+
+      break;
+   }
+
+   case 64: {
+      uint64_t imm = nir_const_value_as_uint(load_const->value[0], 64);
+      uint32_t imm_2x32[2] = { imm & 0xffffffff, (imm >> 32) & 0xffffffff };
+
+      rogue_regarray *dst[2] = {
+         rogue_ssa_vec_regarray(b->shader, 1, dst_index, 0),
+         rogue_ssa_vec_regarray(b->shader, 1, dst_index, 1),
+      };
+
+      rogue_MOV(b, rogue_ref_regarray(dst[0]), rogue_ref_imm(imm_2x32[0]));
+      rogue_MOV(b, rogue_ref_regarray(dst[1]), rogue_ref_imm(imm_2x32[1]));
+
+      break;
+   }
+
+   default:
       unreachable("Unimplemented NIR load_const bit size.");
    }
 }
@@ -247,23 +271,78 @@ static void trans_nir_intrinsic_store_output(rogue_builder *b,
    unreachable("Unimplemented NIR store_output variant.");
 }
 
-static void trans_nir_intrinsic_load_ubo(rogue_builder *b,
-                                         nir_intrinsic_instr *intr)
+static void
+trans_nir_intrinsic_load_vulkan_descriptor(rogue_builder *b,
+                                           nir_intrinsic_instr *intr)
 {
-   struct rogue_ubo_data *ubo_data =
-      &b->shader->ctx->common_data[b->shader->stage].ubo_data;
+   rogue_instr *instr;
+   /* unsigned desc_set = nir_src_comp_as_uint(intr->src[0], 0); */
+   /* unsigned binding = nir_src_comp_as_uint(intr->src[0], 1); */
+   ASSERTED VkDescriptorType desc_type = nir_src_comp_as_uint(intr->src[0], 2);
+   assert(desc_type == nir_intrinsic_desc_type(intr));
 
-   unsigned desc_set = nir_src_comp_as_uint(intr->src[0], 0);
-   unsigned binding = nir_src_comp_as_uint(intr->src[1], 0);
-   unsigned offset = nir_intrinsic_range_base(intr);
+   unsigned desc_set_table_addr_idx = b->shader->ctx->next_ssa_idx++;
+   rogue_regarray *desc_set_table_addr_64 =
+      rogue_ssa_vec_regarray(b->shader, 2, desc_set_table_addr_idx, 0);
+   rogue_regarray *desc_set_table_addr_2x32[2] = {
+      rogue_ssa_vec_regarray(b->shader, 1, desc_set_table_addr_idx, 0),
+      rogue_ssa_vec_regarray(b->shader, 1, desc_set_table_addr_idx, 1),
+   };
 
-   unsigned sh_index = rogue_ubo_reg(ubo_data, desc_set, binding, offset);
+   instr = &rogue_MOV(b,
+                      rogue_ref_regarray(desc_set_table_addr_2x32[0]),
+                      rogue_ref_reg(rogue_shared_reg(b->shader, 0)))
+               ->instr;
+   rogue_add_instr_comment(instr, "desc_set_table_addr_lo");
+   instr = &rogue_MOV(b,
+                      rogue_ref_regarray(desc_set_table_addr_2x32[1]),
+                      rogue_ref_reg(rogue_shared_reg(b->shader, 1)))
+               ->instr;
+   rogue_add_instr_comment(instr, "desc_set_table_addr_hi");
 
+   /* TODO NEXT: Just using offset 0 for both the descriptor table and the entry
+    * (UBO), but need to calculate this from desc_set and binding. */
+   unsigned desc_set_addr_idx = b->shader->ctx->next_ssa_idx++;
+   rogue_regarray *desc_set_addr_64 =
+      rogue_ssa_vec_regarray(b->shader, 2, desc_set_addr_idx, 0);
+   instr = &rogue_LD(b,
+                     rogue_ref_regarray(desc_set_addr_64),
+                     rogue_ref_drc(0),
+                     rogue_ref_val(2),
+                     rogue_ref_regarray(desc_set_table_addr_64))
+               ->instr;
+   rogue_add_instr_comment(instr, "load descriptor set");
+
+   unsigned desc_addr_idx = intr->dest.ssa.index;
+   rogue_regarray *desc_addr_64 =
+      rogue_ssa_vec_regarray(b->shader, 2, desc_addr_idx, 0);
+   instr = &rogue_LD(b,
+                     rogue_ref_regarray(desc_addr_64),
+                     rogue_ref_drc(0),
+                     rogue_ref_val(2),
+                     rogue_ref_regarray(desc_set_addr_64))
+               ->instr;
+   rogue_add_instr_comment(instr, "load descriptor");
+}
+
+static void trans_nir_intrinsic_load_global_constant(rogue_builder *b,
+                                                     nir_intrinsic_instr *intr)
+{
+   /* 64-bit source address. */
+   unsigned src_index = intr->src[0].ssa->index;
+   rogue_regarray *src = rogue_ssa_vec_regarray(b->shader, 2, src_index, 0);
+
+   /*** TODO NEXT: this could be either a reg or regarray. ***/
    rogue_reg *dst = rogue_ssa_reg(b->shader, intr->dest.ssa.index);
-   rogue_reg *src = rogue_shared_reg(b->shader, sh_index);
-   rogue_instr *instr =
-      &rogue_MOV(b, rogue_ref_reg(dst), rogue_ref_reg(src))->instr;
-   rogue_add_instr_comment(instr, "load_ubo");
+
+   /* TODO NEXT: src[1] should be depending on ssa vec size for burst loads */
+   rogue_instr *instr = &rogue_LD(b,
+                                  rogue_ref_reg(dst),
+                                  rogue_ref_drc(0),
+                                  rogue_ref_val(1),
+                                  rogue_ref_regarray(src))
+                            ->instr;
+   rogue_add_instr_comment(instr, "load_global_constant");
 }
 
 static void trans_nir_intrinsic(rogue_builder *b, nir_intrinsic_instr *intr)
@@ -275,8 +354,11 @@ static void trans_nir_intrinsic(rogue_builder *b, nir_intrinsic_instr *intr)
    case nir_intrinsic_store_output:
       return trans_nir_intrinsic_store_output(b, intr);
 
-   case nir_intrinsic_load_ubo:
-      return trans_nir_intrinsic_load_ubo(b, intr);
+   case nir_intrinsic_load_vulkan_descriptor:
+      return trans_nir_intrinsic_load_vulkan_descriptor(b, intr);
+
+   case nir_intrinsic_load_global_constant:
+      return trans_nir_intrinsic_load_global_constant(b, intr);
 
    default:
       break;
@@ -327,6 +409,55 @@ static void trans_nir_alu_vecN(rogue_builder *b, nir_alu_instr *alu, unsigned n)
    }
 }
 
+static void trans_nir_alu_iadd64(rogue_builder *b, nir_alu_instr *alu)
+{
+   unsigned dst_index = alu->dest.dest.ssa.index;
+   rogue_regarray *dst[2] = {
+      rogue_ssa_vec_regarray(b->shader, 1, dst_index, 0),
+      rogue_ssa_vec_regarray(b->shader, 1, dst_index, 1),
+   };
+
+   unsigned src_index[2] = { alu->src[0].src.ssa->index,
+                             alu->src[1].src.ssa->index };
+   rogue_regarray *src[2][2] = {
+      [0] = {
+         rogue_ssa_vec_regarray(b->shader, 1, src_index[0], 0),
+         rogue_ssa_vec_regarray(b->shader, 1, src_index[0], 1),
+      },
+      [1] = {
+         rogue_ssa_vec_regarray(b->shader, 1, src_index[1], 0),
+         rogue_ssa_vec_regarray(b->shader, 1, src_index[1], 1),
+      },
+   };
+
+   rogue_ADD64(b,
+               rogue_ref_regarray(dst[0]),
+               rogue_ref_regarray(dst[1]),
+               rogue_ref_io(ROGUE_IO_NONE),
+               rogue_ref_regarray(src[0][0]),
+               rogue_ref_regarray(src[0][1]),
+               rogue_ref_regarray(src[1][0]),
+               rogue_ref_regarray(src[1][1]),
+               rogue_ref_io(ROGUE_IO_NONE));
+}
+
+static void trans_nir_alu_iadd(rogue_builder *b, nir_alu_instr *alu)
+{
+   unsigned bit_size = alu->dest.dest.ssa.bit_size;
+
+   switch (bit_size) {
+      /* TODO: case 32: */
+
+   case 64:
+      return trans_nir_alu_iadd64(b, alu);
+
+   default:
+      break;
+   }
+
+   unreachable("Unsupported bit size.");
+}
+
 static void trans_nir_alu(rogue_builder *b, nir_alu_instr *alu)
 {
    switch (alu->op) {
@@ -342,6 +473,9 @@ static void trans_nir_alu(rogue_builder *b, nir_alu_instr *alu)
 
    case nir_op_vec4:
       return trans_nir_alu_vecN(b, alu, 4);
+
+   case nir_op_iadd:
+      return trans_nir_alu_iadd(b, alu);
 
    default:
       break;
@@ -362,7 +496,7 @@ static inline void rogue_feedback_used_regs(rogue_build_ctx *ctx,
       BITSET_WORDS(rogue_reg_infos[ROGUE_REG_CLASS_INTERNAL].num));
 }
 
-static bool index_ssa_def_cb(nir_ssa_def *ssa, void *state)
+static bool ssa_def_cb(nir_ssa_def *ssa, void *state)
 {
    rogue_shader *shader = (rogue_shader *)state;
 
@@ -375,6 +509,9 @@ static bool index_ssa_def_cb(nir_ssa_def *ssa, void *state)
    } else {
       rogue_ssa_vec_regarray(shader, ssa->num_components, ssa->index, 0);
    }
+
+   /* Keep track of the last SSA index so we can use more. */
+   shader->ctx->next_ssa_idx = MAX2(shader->ctx->next_ssa_idx, ssa->index);
 
    return true;
 }
@@ -408,9 +545,15 @@ rogue_shader *rogue_nir_to_rogue(rogue_build_ctx *ctx, const nir_shader *nir)
     * declared before the parent arrays. */
    nir_foreach_block_unstructured (block, entry) {
       nir_foreach_instr (instr, block) {
-         nir_foreach_ssa_def(instr, index_ssa_def_cb, shader);
+         if (instr->type == nir_instr_type_load_const) {
+            nir_load_const_instr *load_const = nir_instr_as_load_const(instr);
+            if (load_const->def.num_components > 1)
+               continue;
+         }
+         nir_foreach_ssa_def(instr, ssa_def_cb, shader);
       }
    }
+   ++shader->ctx->next_ssa_idx;
 
    /* Translate shader entrypoint. */
    nir_foreach_block (block, entry) {

@@ -198,22 +198,19 @@ bool rogue_regalloc(rogue_shader *shader)
       unreachable("Register allocation failed.");
 
    unsigned regarray_count = list_length(&shader->regarrays);
-   rogue_regarray **rogue_regarrays =
-      rzalloc_array_size(shader, sizeof(*rogue_regarrays), regarray_count);
-   unsigned u = 0;
+   rogue_regarray **parent_regarrays =
+      rzalloc_array_size(shader, sizeof(*parent_regarrays), regarray_count);
+
+   unsigned num_parent_regarrays = 0;
    rogue_foreach_regarray (regarray, shader) {
-      rogue_regarrays[u++] = regarray;
+      if (regarray->parent || regarray->regs[0]->class != ROGUE_REG_CLASS_SSA)
+         continue;
+
+      parent_regarrays[num_parent_regarrays++] = regarray;
    }
-   assert(u == regarray_count);
 
-   for (u = 0; u < regarray_count; ++u) {
-      rogue_regarray *regarray = rogue_regarrays[u];
-      enum rogue_reg_class class = regarray->regs[0]->class;
-      if (class != ROGUE_REG_CLASS_SSA)
-         continue;
-
-      if (regarray->parent)
-         continue;
+   for (unsigned u = 0; u < num_parent_regarrays; ++u) {
+      rogue_regarray *regarray = parent_regarrays[u];
 
       unsigned start_index = regarray->regs[0]->index;
       unsigned new_base_index = ra_get_node_reg(ra_graph, start_index);
@@ -238,7 +235,6 @@ bool rogue_regalloc(rogue_shader *shader)
                                                               new_class,
                                                               new_base_index);
          progress |= rogue_regarray_replace(regarray, new_regarray);
-         rogue_regarray_delete(regarray);
 
          /* Replace subarrays. */
          rogue_foreach_subarray_safe (subarray, regarray) {
@@ -251,6 +247,8 @@ bool rogue_regalloc(rogue_shader *shader)
             progress |= rogue_regarray_replace(subarray, new_regarray);
             rogue_regarray_delete(subarray);
          }
+
+         rogue_regarray_delete(regarray);
       }
    }
 
@@ -281,7 +279,7 @@ bool rogue_regalloc(rogue_shader *shader)
       assert(reg->index < num_temp_regs);
    }
 
-   ralloc_free(rogue_regarrays);
+   ralloc_free(parent_regarrays);
    ralloc_free(ssa_live_range);
    ralloc_free(ra_regs);
    return progress;
