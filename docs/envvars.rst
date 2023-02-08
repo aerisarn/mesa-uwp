@@ -1148,8 +1148,7 @@ RADV driver environment variables
    ``gewave32``
       enable wave32 for vertex/tess/geometry shaders (GFX10+)
    ``gpl``
-      enable experimental (and suboptimal) graphics pipeline library (still
-      under active development)
+      enable graphics pipeline library
    ``localbos``
       enable local BOs
    ``nosam``
