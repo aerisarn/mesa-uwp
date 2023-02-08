@@ -547,6 +547,9 @@ tu_render_pass_cond_config(struct tu_render_pass *pass)
          (att->load || att->load_stencil) && !att->clear_mask && !att->will_be_resolved;
       att->cond_store_allowed =
          (att->store || att->store_stencil) && !att->clear_mask;
+
+      pass->has_cond_load_store |=
+         att->cond_load_allowed | att->cond_store_allowed;
    }
 }
 
