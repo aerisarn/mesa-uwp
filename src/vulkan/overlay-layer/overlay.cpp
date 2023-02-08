@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 #include <vulkan/vk_layer.h>
 
 #include "git_sha1.h"

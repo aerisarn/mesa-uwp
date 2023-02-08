@@ -58,7 +58,7 @@ C_TEMPLATE = Template(textwrap.dedent(u"""\
      */
 
     #include <string.h>
-    #include <vulkan/vulkan.h>
+    #include <vulkan/vulkan_core.h>
     #include <vulkan/vk_android_native_buffer.h>
     #include <vulkan/vk_layer.h>
     #include "util/macros.h"
@@ -169,7 +169,7 @@ H_DEFINE_TEMPLATE = Template(textwrap.dedent(u"""\
     #ifndef MESA_VK_ENUM_DEFINES_H
     #define MESA_VK_ENUM_DEFINES_H
 
-    #include <vulkan/vulkan.h>
+    #include <vulkan/vulkan_core.h>
     #include <vulkan/vk_android_native_buffer.h>
 
     #ifdef __cplusplus

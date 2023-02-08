@@ -67,7 +67,7 @@ TEMPLATE_H = Template(COPYRIGHT + """\
 #include "util/list.h"
 
 #define VK_PROTOTYPES
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -189,7 +189,7 @@ TEMPLATE_C = Template(COPYRIGHT + """
 #include "${header}"
 
 #define VK_PROTOTYPES
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 
 #include "vk_alloc.h"
 #include "vk_cmd_enqueue_entrypoints.h"
