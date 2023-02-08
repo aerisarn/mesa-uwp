@@ -2,18 +2,10 @@ import copy
 import re
 import xml.etree.ElementTree as et
 
-def _bool_to_c_expr(b):
-    if b is True:
-        return 'true'
-    if b is False:
-        return 'false'
-    return b
-
 class Extension:
-    def __init__(self, name, ext_version, enable):
+    def __init__(self, name, ext_version):
         self.name = name
         self.ext_version = int(ext_version)
-        self.enable = _bool_to_c_expr(enable)
 
     def c_android_condition(self):
         # if it's an EXT or vendor extension, it's allowed
@@ -27,9 +19,8 @@ class Extension:
         return 'ANDROID_API_LEVEL >= %d' % (allowed_version)
 
 class ApiVersion:
-    def __init__(self, version, enable):
+    def __init__(self, version):
         self.version = version
-        self.enable = _bool_to_c_expr(enable)
 
 class VkVersion:
     def __init__(self, string):
@@ -105,7 +96,7 @@ def get_all_exts_from_xml(xml):
                 if 'value' in enum_elem.attrib:
                     assert version is None
                     version = int(enum_elem.attrib['value'])
-        extensions.append(Extension(name, version, True))
+        extensions.append(Extension(name, version))
 
     return sorted(extensions, key=extension_order)
 
