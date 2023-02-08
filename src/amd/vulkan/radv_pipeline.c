@@ -3571,10 +3571,12 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
    /* Skip the shaders cache when any of the below are true:
     * - fast-linking is enabled because it's useless to cache unoptimized pipelines
     * - shaders are captured because it's for debugging purposes
-    * - RADV_PERFTEST=gpl is enabled because it's unsupported
+    * - libraries are created with GPL
+    * - optimized (LTO) pipelines are created with GPL
     */
    if (fast_linking_enabled || keep_executable_info ||
-       (device->instance->perftest_flags & RADV_PERFTEST_GPL)) {
+       (pCreateInfo->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR) ||
+       (lib_flags & ALL_GRAPHICS_LIB_FLAGS) != ALL_GRAPHICS_LIB_FLAGS) {
       skip_shaders_cache = true;
    }
 
