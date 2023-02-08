@@ -1266,13 +1266,93 @@ bool combine_all_barriers(nir_intrinsic_instr *a,
    return true;
 }
 
+static nir_mem_access_size_align
+get_mem_access_size_align(nir_intrinsic_op intrin, uint8_t bytes,
+                          uint32_t align_mul, uint32_t align_offset,
+                          bool offset_is_const, const void *cb_data)
+{
+   assert(align_offset < align_mul);
+   const uint32_t align =
+      align_offset ? 1 << (ffs(align_offset) - 1) : align_mul;
+
+   switch (intrin) {
+   case nir_intrinsic_load_ssbo:
+   case nir_intrinsic_load_shared:
+   case nir_intrinsic_load_scratch:
+      /* The offset is constant so we can use a 32-bit load and just shift it
+       * around as needed.
+       */
+      if (align < 4 && offset_is_const) {
+         assert(util_is_power_of_two_nonzero(align_mul) && align_mul >= 4);
+         const unsigned pad = align_offset % 4;
+         const unsigned comps32 = DIV_ROUND_UP(bytes + pad, 4);
+         return (nir_mem_access_size_align) {
+            .bit_size = 32,
+            .num_components = comps32,
+            .align_mul = 4,
+         };
+      }
+      break;
+
+   case nir_intrinsic_load_task_payload:
+      if (bytes < 4 || align < 4) {
+         return (nir_mem_access_size_align) {
+            .bit_size = 32,
+            .num_components = 1,
+            .align_mul = 4,
+         };
+      }
+      break;
+
+   default:
+      break;
+   }
+
+   const bool is_load = nir_intrinsic_infos[intrin].has_dest;
+   const bool is_scratch = intrin == nir_intrinsic_load_scratch ||
+                           intrin == nir_intrinsic_store_scratch;
+
+   if (align < 4 || bytes < 4) {
+      /* Choose a byte, word, or dword */
+      bytes = MIN2(bytes, 4);
+      if (bytes == 3)
+         bytes = is_load ? 4 : 2;
+
+      if (is_scratch) {
+         /* The way scratch address swizzling works in the back-end, it
+          * happens at a DWORD granularity so we can't have a single load
+          * or store cross a DWORD boundary.
+          */
+         if ((align_offset % 4) + bytes > MIN2(align_mul, 4))
+            bytes = MIN2(align_mul, 4) - (align_offset % 4);
+
+         /* Must be a power of two */
+         if (bytes == 3)
+            bytes = 2;
+      }
+
+      return (nir_mem_access_size_align) {
+         .bit_size = bytes * 8,
+         .num_components = 1,
+         .align_mul = 1,
+      };
+   } else {
+      bytes = MIN2(bytes, 16);
+      return (nir_mem_access_size_align) {
+         .bit_size = 32,
+         .num_components = is_scratch ? 1 :
+                           is_load ? DIV_ROUND_UP(bytes, 4) : bytes / 4,
+         .align_mul = 4,
+      };
+   }
+}
+
 static void
 brw_vectorize_lower_mem_access(nir_shader *nir,
                                const struct brw_compiler *compiler,
                                bool is_scalar,
                                bool robust_buffer_access)
 {
-   const struct intel_device_info *devinfo = compiler->devinfo;
    bool progress = false;
 
    if (is_scalar) {
@@ -1292,7 +1372,7 @@ brw_vectorize_lower_mem_access(nir_shader *nir,
       OPT(nir_opt_load_store_vectorize, &options);
    }
 
-   OPT(brw_nir_lower_mem_access_bit_sizes, devinfo);
+   OPT(nir_lower_mem_access_bit_sizes, get_mem_access_size_align, NULL);
 
    while (progress) {
       progress = false;
