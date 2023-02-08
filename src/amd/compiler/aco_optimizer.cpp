@@ -2066,6 +2066,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    case aco_opcode::v_bcnt_u32_b32:
    case aco_opcode::v_and_b32:
    case aco_opcode::v_xor_b32:
+   case aco_opcode::v_not_b32:
       ctx.info[instr->definitions[0].tempId()].set_usedef(instr.get());
       break;
    case aco_opcode::v_min_f32:
@@ -2810,6 +2811,55 @@ combine_add_or_then_and_lshl(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    }
 
    return false;
+}
+
+/* v_xor(a, s_not(b)) -> v_xnor(a, b)
+ * v_xor(a, v_not(b)) -> v_xnor(a, b)
+ */
+bool
+combine_xor_not(opt_ctx& ctx, aco_ptr<Instruction>& instr)
+{
+   if (instr->usesModifiers())
+      return false;
+
+   for (unsigned i = 0; i < 2; i++) {
+      Instruction* op_instr = follow_operand(ctx, instr->operands[i], true);
+      if (!op_instr ||
+          (op_instr->opcode != aco_opcode::v_not_b32 &&
+           op_instr->opcode != aco_opcode::s_not_b32) ||
+          op_instr->usesModifiers() || op_instr->operands[0].isLiteral())
+         continue;
+
+      instr->opcode = aco_opcode::v_xnor_b32;
+      instr->operands[i] = copy_operand(ctx, op_instr->operands[0]);
+      decrease_uses(ctx, op_instr);
+      if (instr->operands[0].isOfType(RegType::vgpr))
+         std::swap(instr->operands[0], instr->operands[1]);
+      if (!instr->operands[1].isOfType(RegType::vgpr))
+         to_VOP3(ctx, instr);
+
+      return true;
+   }
+
+   return false;
+}
+
+/* v_not(v_xor(a, b)) -> v_xnor(a, b) */
+bool
+combine_not_xor(opt_ctx& ctx, aco_ptr<Instruction>& instr)
+{
+   if (instr->usesModifiers())
+      return false;
+
+   Instruction* op_instr = follow_operand(ctx, instr->operands[0]);
+   if (!op_instr || op_instr->opcode != aco_opcode::v_xor_b32 || op_instr->isSDWA())
+      return false;
+
+   ctx.uses[instr->operands[0].tempId()]--;
+   std::swap(instr->definitions[0], op_instr->definitions[0]);
+   op_instr->opcode = aco_opcode::v_xnor_b32;
+
+   return true;
 }
 
 bool
@@ -4467,7 +4517,10 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
                                 1 | 2)) {
       } else if (combine_three_valu_op(ctx, instr, aco_opcode::s_xor_b32, aco_opcode::v_xor3_b32,
                                        "012", 1 | 2)) {
+      } else if (combine_xor_not(ctx, instr)) {
       }
+   } else if (instr->opcode == aco_opcode::v_not_b32 && ctx.program->gfx_level >= GFX10) {
+      combine_not_xor(ctx, instr);
    } else if (instr->opcode == aco_opcode::v_add_u16) {
       combine_three_valu_op(
          ctx, instr, aco_opcode::v_mul_lo_u16,
