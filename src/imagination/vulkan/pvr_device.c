@@ -2676,6 +2676,7 @@ VkResult pvr_CreateFramebuffer(VkDevice _device,
 {
    PVR_FROM_HANDLE(pvr_render_pass, pass, pCreateInfo->renderPass);
    PVR_FROM_HANDLE(pvr_device, device, _device);
+   struct pvr_spm_bgobj_state *spm_bgobj_state_per_render;
    struct pvr_spm_eot_state *spm_eot_state_per_render;
    struct pvr_render_target *render_targets;
    struct pvr_framebuffer *framebuffer;
@@ -2702,6 +2703,10 @@ VkResult pvr_CreateFramebuffer(VkDevice _device,
    vk_multialloc_add(&ma,
                      &spm_eot_state_per_render,
                      __typeof__(*spm_eot_state_per_render),
+                     pass->hw_setup->render_count);
+   vk_multialloc_add(&ma,
+                     &spm_bgobj_state_per_render,
+                     __typeof__(*spm_bgobj_state_per_render),
                      pass->hw_setup->render_count);
 
    if (!vk_multialloc_zalloc2(&ma,
@@ -2749,20 +2754,42 @@ VkResult pvr_CreateFramebuffer(VkDevice _device,
       goto err_finish_render_targets;
 
    for (uint32_t i = 0; i < pass->hw_setup->render_count; i++) {
+      uint32_t emit_count;
+
       result = pvr_spm_init_eot_state(device,
                                       &spm_eot_state_per_render[i],
                                       framebuffer,
-                                      &pass->hw_setup->renders[i]);
-      if (result != VK_SUCCESS) {
-         for (uint32_t j = 0; j < i; j++)
-            pvr_spm_finish_eot_state(device, &spm_eot_state_per_render[j]);
+                                      &pass->hw_setup->renders[i],
+                                      &emit_count);
+      if (result != VK_SUCCESS)
+         goto err_finish_eot_state;
 
-         goto err_finish_render_targets;
-      }
+      result = pvr_spm_init_bgobj_state(device,
+                                        &spm_bgobj_state_per_render[i],
+                                        framebuffer,
+                                        &pass->hw_setup->renders[i],
+                                        emit_count);
+      if (result != VK_SUCCESS)
+         goto err_finish_bgobj_state;
+
+      continue;
+
+err_finish_bgobj_state:
+      pvr_spm_finish_eot_state(device, &spm_eot_state_per_render[i]);
+
+      for (uint32_t j = 0; j < i; j++)
+         pvr_spm_finish_bgobj_state(device, &spm_bgobj_state_per_render[j]);
+
+err_finish_eot_state:
+      for (uint32_t j = 0; j < i; j++)
+         pvr_spm_finish_eot_state(device, &spm_eot_state_per_render[j]);
+
+      goto err_finish_render_targets;
    }
 
+   framebuffer->render_count = pass->hw_setup->render_count;
    framebuffer->spm_eot_state_per_render = spm_eot_state_per_render;
-   framebuffer->spm_eot_state_count = pass->hw_setup->render_count;
+   framebuffer->spm_bgobj_state_per_render = spm_bgobj_state_per_render;
 
    *pFramebuffer = pvr_framebuffer_to_handle(framebuffer);
 
@@ -2791,7 +2818,10 @@ void pvr_DestroyFramebuffer(VkDevice _device,
    if (!framebuffer)
       return;
 
-   for (uint32_t i = 0; i < framebuffer->spm_eot_state_count; i++) {
+   for (uint32_t i = 0; i < framebuffer->render_count; i++) {
+      pvr_spm_finish_bgobj_state(device,
+                                 &framebuffer->spm_bgobj_state_per_render[i]);
+
       pvr_spm_finish_eot_state(device,
                                &framebuffer->spm_eot_state_per_render[i]);
    }

@@ -107,6 +107,7 @@ struct pvr_render_job {
                          [ROGUE_NUM_PBESTATE_REG_WORDS];
 
    uint64_t pds_bgnd_reg_values[ROGUE_NUM_CR_PDS_BGRND_WORDS];
+   uint64_t pds_pr_bgnd_reg_values[ROGUE_NUM_CR_PDS_BGRND_WORDS];
 };
 
 VkResult pvr_free_list_create(struct pvr_device *device,

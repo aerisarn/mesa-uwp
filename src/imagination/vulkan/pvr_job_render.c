@@ -1475,8 +1475,11 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
           sizeof(job->pds_bgnd_reg_values));
    stream_ptr += 3U * 2U;
 
-   /* Set pds_pr_bgnd array to 0 */
-   memset(stream_ptr, 0, 3U * sizeof(uint64_t));
+   STATIC_ASSERT(ARRAY_SIZE(job->pds_pr_bgnd_reg_values) == 3U);
+   STATIC_ASSERT(sizeof(job->pds_pr_bgnd_reg_values[0]) == sizeof(uint64_t));
+   memcpy(stream_ptr,
+          job->pds_pr_bgnd_reg_values,
+          sizeof(job->pds_pr_bgnd_reg_values));
    stream_ptr += 3U * 2U;
 
    /* Set usc_clear_register array to 0 */

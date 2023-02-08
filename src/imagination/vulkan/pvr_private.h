@@ -251,7 +251,7 @@ struct pvr_device {
       struct pvr_bo *usc_programs;
       struct pvr_bo *pds_programs;
 
-      struct {
+      struct pvr_spm_per_load_program_state {
          pvr_dev_addr_t pds_pixel_program_offset;
          pvr_dev_addr_t pds_uniform_program_offset;
 
@@ -988,8 +988,9 @@ struct pvr_framebuffer {
 
    struct pvr_spm_scratch_buffer *scratch_buffer;
 
-   uint32_t spm_eot_state_count;
+   uint32_t render_count;
    struct pvr_spm_eot_state *spm_eot_state_per_render;
+   struct pvr_spm_bgobj_state *spm_bgobj_state_per_render;
 };
 
 struct pvr_render_pass_attachment {
