@@ -1037,6 +1037,10 @@ anv_get_image_format_properties(
    if ((info->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) && format_list_info) {
       for (uint32_t i = 0; i < format_list_info->viewFormatCount; ++i) {
          VkFormat vk_view_format = format_list_info->pViewFormats[i];
+
+         if (vk_view_format == VK_FORMAT_UNDEFINED)
+            continue;
+
          const struct anv_format *anv_view_format = anv_get_format(vk_view_format);
          VkFormatFeatureFlags2 view_format_features =
             anv_get_image_format_features2(devinfo, vk_view_format,
