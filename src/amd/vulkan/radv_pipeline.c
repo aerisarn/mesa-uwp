@@ -3560,12 +3560,23 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
    VkPipelineCreationFeedback pipeline_feedback = {
       .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
    };
+   bool skip_shaders_cache = false;
    bool noop_fs = false;
    VkResult result = VK_SUCCESS;
    const bool retain_shaders =
       !!(pCreateInfo->flags & VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT);
 
    int64_t pipeline_start = os_time_get_nano();
+
+   /* Skip the shaders cache when any of the below are true:
+    * - fast-linking is enabled because it's useless to cache unoptimized pipelines
+    * - shaders are captured because it's for debugging purposes
+    * - RADV_PERFTEST=gpl is enabled because it's unsupported
+    */
+   if (fast_linking_enabled || keep_executable_info ||
+       (device->instance->perftest_flags & RADV_PERFTEST_GPL)) {
+      skip_shaders_cache = true;
+   }
 
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
       const VkPipelineShaderStageCreateInfo *sinfo = &pCreateInfo->pStages[i];
@@ -3601,7 +3612,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
    }
 
    bool found_in_application_cache = true;
-   if (!fast_linking_enabled && !keep_executable_info &&
+   if (!skip_shaders_cache &&
        radv_create_shaders_from_pipeline_cache(device, cache, hash, &pipeline->base, NULL, NULL,
                                                &found_in_application_cache)) {
       if (found_in_application_cache)
@@ -3728,7 +3739,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
    /* Upload shader binaries. */
    radv_upload_shaders(device, &pipeline->base, binaries, gs_copy_binary);
 
-   if (!fast_linking_enabled && !keep_executable_info) {
+   if (!skip_shaders_cache) {
       if (pipeline->base.gs_copy_shader) {
          assert(!binaries[MESA_SHADER_COMPUTE] && !pipeline->base.shaders[MESA_SHADER_COMPUTE]);
          binaries[MESA_SHADER_COMPUTE] = gs_copy_binary;
