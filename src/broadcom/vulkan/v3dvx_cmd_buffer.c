@@ -1499,8 +1499,10 @@ v3dX(cmd_buffer_emit_depth_bias)(struct v3dv_cmd_buffer *cmd_buffer)
    cl_emit(&job->bcl, DEPTH_OFFSET, bias) {
       bias.depth_offset_factor = dynamic->depth_bias.slope_factor;
       bias.depth_offset_units = dynamic->depth_bias.constant_factor;
+#if V3D_VERSION <= 42
       if (pipeline->depth_bias.is_z16)
          bias.depth_offset_units *= 256.0f;
+#endif
       bias.limit = dynamic->depth_bias.depth_bias_clamp;
    }
 
