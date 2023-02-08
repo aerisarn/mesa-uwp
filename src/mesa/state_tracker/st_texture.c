@@ -538,16 +538,16 @@ st_create_texture_handle_from_unit(struct st_context *st,
    struct pipe_context *pipe = st->pipe;
    struct pipe_sampler_view *view;
    struct pipe_sampler_state sampler = {0};
+   const bool glsl130 =
+      (prog->shader_program ? prog->shader_program->GLSL_Version : 0) >= 130;
 
    /* TODO: Clarify the interaction of ARB_bindless_texture and EXT_texture_sRGB_decode */
-   view = st_update_single_texture(st, texUnit, prog->sh.data->Version >= 130,
-                                   true, false);
+   view = st_update_single_texture(st, texUnit, glsl130, true, false);
    if (!view)
       return 0;
 
    if (view->target != PIPE_BUFFER)
-      st_convert_sampler_from_unit(st, &sampler, texUnit,
-                                   prog->sh.data && prog->sh.data->Version >= 130);
+      st_convert_sampler_from_unit(st, &sampler, texUnit, glsl130);
 
    assert(st->ctx->Texture.Unit[texUnit]._Current);
 
