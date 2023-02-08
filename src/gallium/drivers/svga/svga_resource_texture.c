@@ -209,7 +209,9 @@ svga_resource_get_handle(struct pipe_screen *screen,
    if (texture->target == PIPE_BUFFER)
       return false;
 
-   assert(svga_texture(texture)->key.cachable == 0);
+   SVGA_DBG(DEBUG_DMA, "%s: texture=%p cachable=%d\n", __FUNCTION__,
+            texture, svga_texture(texture)->key.cachable);
+
    svga_texture(texture)->key.cachable = 0;
 
    stride = util_format_get_nblocksx(texture->format, texture->width0) *
