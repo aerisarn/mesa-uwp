@@ -15,6 +15,7 @@ class Extension:
     def __init__(self, name, ext_version):
         self.name = name
         self.type = None
+        self.platform = None
         self.ext_version = int(ext_version)
         self.supported = []
 
@@ -39,6 +40,7 @@ class Extension:
         assert version is not None
         ext = Extension(name, version)
         ext.type = ext_elem.attrib['type']
+        ext.platform = ext_elem.attrib.get('platform', None)
         ext.supported = supported
 
         return ext

@@ -45,11 +45,11 @@ class EntrypointBase:
         return prefix + '_' + self.name
 
 class Entrypoint(EntrypointBase):
-    def __init__(self, name, return_type, params, guard=None):
+    def __init__(self, name, return_type, params):
         super(Entrypoint, self).__init__(name)
         self.return_type = return_type
         self.params = params
-        self.guard = guard
+        self.guard = None
         self.aliases = []
         self.disp_table_index = None
 
@@ -98,7 +98,7 @@ class EntrypointAlias(EntrypointBase):
     def call_params(self):
         return self.alias.call_params()
 
-def get_entrypoints(doc, entrypoints_to_defines):
+def get_entrypoints(doc, platform_guards):
     """Extract the entry points from the registry."""
     entrypoints = OrderedDict()
 
@@ -116,10 +116,9 @@ def get_entrypoints(doc, entrypoints_to_defines):
                 decl=''.join(p.itertext()),
                 len=p.attrib.get('altlen', p.attrib.get('len', None))
             ) for p in command.findall('./param')]
-            guard = entrypoints_to_defines.get(name)
             # They really need to be unique
             assert name not in entrypoints
-            entrypoints[name] = Entrypoint(name, ret_type, params, guard)
+            entrypoints[name] = Entrypoint(name, ret_type, params)
 
     for feature in doc.findall('./feature'):
         assert feature.attrib['api'] == 'vulkan'
@@ -130,47 +129,38 @@ def get_entrypoints(doc, entrypoints_to_defines):
             e.core_version = version
 
     for extension in doc.findall('.extensions/extension'):
-        if extension.attrib['supported'] != 'vulkan':
+        ext = Extension.from_xml(extension)
+        if 'vulkan' not in ext.supported:
             continue
-
-        ext_name = extension.attrib['name']
-
-        ext = Extension(ext_name, 1)
-        ext.type = extension.attrib['type']
 
         for command in extension.findall('./require/command'):
             e = entrypoints[command.attrib['name']]
             assert e.core_version is None
             e.extensions.append(ext)
+            if ext.platform in platform_guards:
+                guard = platform_guards[ext.platform]
+                if e.guard is None:
+                    e.guard = guard
+                else:
+                    assert e.guard == guard
 
     return entrypoints.values()
 
-
-def get_entrypoints_defines(doc):
-    """Maps entry points to extension defines."""
-    entrypoints_to_defines = {}
-
+def get_platform_defines(doc):
     platform_define = {}
     for platform in doc.findall('./platforms/platform'):
         name = platform.attrib['name']
         define = platform.attrib['protect']
         platform_define[name] = define
 
-    for extension in doc.findall('./extensions/extension[@platform]'):
-        platform = extension.attrib['platform']
-        define = platform_define[platform]
-
-        for entrypoint in extension.findall('./require/command'):
-            fullname = entrypoint.attrib['name']
-            entrypoints_to_defines[fullname] = define
-
-    return entrypoints_to_defines
+    return platform_define
 
 def get_entrypoints_from_xml(xml_files):
     entrypoints = []
 
     for filename in xml_files:
         doc = et.parse(filename)
-        entrypoints += get_entrypoints(doc, get_entrypoints_defines(doc))
+        guards = get_platform_defines(doc)
+        entrypoints += get_entrypoints(doc, guards)
 
     return entrypoints
