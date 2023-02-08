@@ -4880,38 +4880,49 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             continue;
          ssa_info info = ctx.info[instr->operands[i].tempId()];
 
+         if (!info.is_dpp() || info.instr->pass_flags != instr->pass_flags)
+            continue;
+
          aco_opcode swapped_op;
-         if (info.is_dpp() && info.instr->pass_flags == instr->pass_flags &&
-             (i == 0 || can_swap_operands(instr, &swapped_op)) &&
-             can_use_DPP(instr, true, info.is_dpp8()) && !instr->isDPP()) {
-            bool dpp8 = info.is_dpp8();
-            convert_to_DPP(instr, dpp8);
-            if (dpp8) {
-               DPP8_instruction* dpp = &instr->dpp8();
-               for (unsigned j = 0; j < 8; ++j)
-                  dpp->lane_sel[j] = info.instr->dpp8().lane_sel[j];
-               if (i) {
-                  instr->opcode = swapped_op;
-                  std::swap(instr->operands[0], instr->operands[1]);
-               }
-            } else {
-               DPP16_instruction* dpp = &instr->dpp16();
-               if (i) {
-                  instr->opcode = swapped_op;
-                  std::swap(instr->operands[0], instr->operands[1]);
-                  std::swap(dpp->neg[0], dpp->neg[1]);
-                  std::swap(dpp->abs[0], dpp->abs[1]);
-               }
-               dpp->dpp_ctrl = info.instr->dpp16().dpp_ctrl;
-               dpp->bound_ctrl = info.instr->dpp16().bound_ctrl;
-               dpp->neg[0] ^= info.instr->dpp16().neg[0] && !dpp->abs[0];
-               dpp->abs[0] |= info.instr->dpp16().abs[0];
+         if (i != 0 && !can_swap_operands(instr, &swapped_op))
+            continue;
+
+         if (instr->isDPP() || !can_use_DPP(instr, true, info.is_dpp8()))
+            continue;
+
+         bool dpp8 = info.is_dpp8();
+         bool input_mods = instr_info.can_use_input_modifiers[(int)instr->opcode] &&
+                           instr_info.operand_size[(int)instr->opcode] == 32;
+         if (!dpp8 && (info.instr->dpp16().neg[0] || info.instr->dpp16().abs[0]) && !input_mods)
+            continue;
+
+         convert_to_DPP(instr, dpp8);
+         if (dpp8) {
+            DPP8_instruction* dpp = &instr->dpp8();
+            for (unsigned j = 0; j < 8; ++j)
+               dpp->lane_sel[j] = info.instr->dpp8().lane_sel[j];
+            if (i) {
+               instr->opcode = swapped_op;
+               std::swap(instr->operands[0], instr->operands[1]);
             }
-            if (--ctx.uses[info.instr->definitions[0].tempId()])
-               ctx.uses[info.instr->operands[0].tempId()]++;
-            instr->operands[0].setTemp(info.instr->operands[0].getTemp());
-            break;
+         } else {
+            DPP16_instruction* dpp = &instr->dpp16();
+            if (i) {
+               instr->opcode = swapped_op;
+               std::swap(instr->operands[0], instr->operands[1]);
+               std::swap(dpp->neg[0], dpp->neg[1]);
+               std::swap(dpp->abs[0], dpp->abs[1]);
+            }
+            dpp->dpp_ctrl = info.instr->dpp16().dpp_ctrl;
+            dpp->bound_ctrl = info.instr->dpp16().bound_ctrl;
+            dpp->neg[0] ^= info.instr->dpp16().neg[0] && !dpp->abs[0];
+            dpp->abs[0] |= info.instr->dpp16().abs[0];
          }
+
+         if (--ctx.uses[info.instr->definitions[0].tempId()])
+            ctx.uses[info.instr->operands[0].tempId()]++;
+         instr->operands[0].setTemp(info.instr->operands[0].getTemp());
+         break;
       }
    }
 
