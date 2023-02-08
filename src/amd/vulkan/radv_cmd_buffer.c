@@ -8507,7 +8507,8 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
          if (cmd_buffer->state.graphics_pipeline->need_null_export_workaround &&
              !cmd_buffer->state.col_format_non_compacted)
             cmd_buffer->state.col_format_non_compacted = V_028714_SPI_SHADER_32_R;
-         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_RBPLUS;
+         if (device->physical_device->rad_info.rbplus_allowed)
+            cmd_buffer->state.dirty |= RADV_CMD_DIRTY_RBPLUS;
       }
 
       if (ps_epilog)
