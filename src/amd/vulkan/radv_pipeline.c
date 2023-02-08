@@ -225,9 +225,10 @@ radv_pipeline_init_scratch(const struct radv_device *device, struct radv_pipelin
 {
    unsigned scratch_bytes_per_wave = 0;
    unsigned max_waves = 0;
+   bool is_rt = pipeline->type == RADV_PIPELINE_RAY_TRACING;
 
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-      if (pipeline->shaders[i] && pipeline->shaders[i]->config.scratch_bytes_per_wave) {
+      if (pipeline->shaders[i] && (pipeline->shaders[i]->config.scratch_bytes_per_wave || is_rt)) {
          unsigned max_stage_waves = device->scratch_waves;
 
          scratch_bytes_per_wave =

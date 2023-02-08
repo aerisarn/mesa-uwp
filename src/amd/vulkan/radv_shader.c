@@ -1721,7 +1721,7 @@ radv_postprocess_config(const struct radv_device *device, const struct ac_shader
                         struct ac_shader_config *config_out)
 {
    const struct radv_physical_device *pdevice = device->physical_device;
-   bool scratch_enabled = config_in->scratch_bytes_per_wave > 0;
+   bool scratch_enabled = config_in->scratch_bytes_per_wave > 0 || info->cs.is_rt_shader;
    bool trap_enabled = !!device->trap_handler_shader;
    unsigned vgpr_comp_cnt = 0;
    unsigned num_input_vgprs = args->ac.num_vgprs_used;
