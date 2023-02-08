@@ -3503,11 +3503,9 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
     * - fast-linking is enabled because it's useless to cache unoptimized pipelines
     * - shaders are captured because it's for debugging purposes
     * - libraries are created with GPL
-    * - optimized (LTO) pipelines are created with GPL
     */
    if (fast_linking_enabled || keep_executable_info ||
-       (pCreateInfo->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR) ||
-       (lib_flags & ALL_GRAPHICS_LIB_FLAGS) != ALL_GRAPHICS_LIB_FLAGS) {
+       (pCreateInfo->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR)) {
       skip_shaders_cache = true;
    }
 
@@ -3543,6 +3541,11 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
                                                &found_in_application_cache)) {
       if (found_in_application_cache)
          pipeline_feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
+
+      /* TODO: Add PS epilogs to the cache. */
+      if (!radv_pipeline_create_ps_epilog(pipeline, pipeline_key, lib_flags, noop_fs))
+         return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+
       result = VK_SUCCESS;
       goto done;
    }
