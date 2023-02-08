@@ -852,6 +852,9 @@
   rules:
     - !reference [.radv-valve-manual-rules, rules]
     - !reference [.zink-common-manual-rules, rules]
+    - changes:
+      - .gitlab-ci/container/build-piglit.sh
+      when: manual
 
 # Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
 # rules duplication manually
