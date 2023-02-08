@@ -2,10 +2,46 @@ import copy
 import re
 import xml.etree.ElementTree as et
 
+def get_api_list(s):
+    apis = []
+    for a in s.split(','):
+        if a == 'disabled':
+            continue
+        assert a in ('vulkan', 'vulkansc')
+        apis.append(a)
+    return apis
+
 class Extension:
     def __init__(self, name, ext_version):
         self.name = name
+        self.type = None
         self.ext_version = int(ext_version)
+        self.supported = []
+
+    def from_xml(ext_elem):
+        name = ext_elem.attrib['name']
+        supported = get_api_list(ext_elem.attrib['supported'])
+        if name == 'VK_ANDROID_native_buffer':
+            assert not supported
+            supported = ['vulkan']
+
+        if not supported:
+            return Extension(name, 0)
+
+        version = None
+        for enum_elem in ext_elem.findall('.require/enum'):
+            if enum_elem.attrib['name'].endswith('_SPEC_VERSION'):
+                # Skip alias SPEC_VERSIONs
+                if 'value' in enum_elem.attrib:
+                    assert version is None
+                    version = int(enum_elem.attrib['value'])
+
+        assert version is not None
+        ext = Extension(name, version)
+        ext.type = ext_elem.attrib['type']
+        ext.supported = supported
+
+        return ext
 
     def c_android_condition(self):
         # if it's an EXT or vendor extension, it's allowed
@@ -78,25 +114,16 @@ def extension_order(ext):
             order.append(substring)
     return order
 
-def get_all_exts_from_xml(xml):
+def get_all_exts_from_xml(xml, api='vulkan'):
     """ Get a list of all Vulkan extensions. """
 
     xml = et.parse(xml)
 
     extensions = []
     for ext_elem in xml.findall('.extensions/extension'):
-        supported = ext_elem.attrib['supported'] == 'vulkan'
-        name = ext_elem.attrib['name']
-        if not supported and name != 'VK_ANDROID_native_buffer':
-            continue
-        version = None
-        for enum_elem in ext_elem.findall('.require/enum'):
-            if enum_elem.attrib['name'].endswith('_SPEC_VERSION'):
-                # Skip alias SPEC_VERSIONs
-                if 'value' in enum_elem.attrib:
-                    assert version is None
-                    version = int(enum_elem.attrib['value'])
-        extensions.append(Extension(name, version))
+        ext = Extension.from_xml(ext_elem)
+        if api in ext.supported:
+            extensions.append(ext)
 
     return sorted(extensions, key=extension_order)
 
