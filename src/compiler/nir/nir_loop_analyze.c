@@ -392,7 +392,6 @@ is_only_uniform_src(nir_src *src)
 static bool
 compute_induction_information(loop_info_state *state)
 {
-   bool found_induction_var = false;
    unsigned num_induction_vars = 0;
 
    list_for_each_entry_safe(nir_loop_variable, var, &state->process_list,
@@ -469,29 +468,14 @@ compute_induction_information(loop_info_state *state)
          }
       }
 
-      if (var->update_src && var->init_src) {
-         nir_instr *inst = var->init_src->ssa->parent_instr;
-         if (inst->type == nir_instr_type_load_const)  {
-            /* Initial value of induction variable is a constant */
-            alu_src_var->init_src = var->init_src;
-            alu_src_var->update_src = var->update_src;
-            alu_src_var->type = basic_induction;
-            var->type = basic_induction;
+      if (var->update_src && var->init_src &&
+          is_only_uniform_src(var->init_src)) {
+         alu_src_var->init_src = var->init_src;
+         alu_src_var->update_src = var->update_src;
+         alu_src_var->type = basic_induction;
+         var->type = basic_induction;
 
-            found_induction_var = true;
-            num_induction_vars += 2;
-         } else if (is_only_uniform_src(var->init_src)) {
-            /* Initial value of induction variable is a uniform */
-            alu_src_var->init_src = var->init_src;
-            alu_src_var->update_src = var->update_src;
-            alu_src_var->type = basic_induction;
-            var->type = basic_induction;
-
-            num_induction_vars += 2;
-         } else {
-            var->init_src = NULL;
-            var->update_src = NULL;
-         }
+         num_induction_vars += 2;
       } else {
          var->init_src = NULL;
          var->update_src = NULL;
@@ -521,7 +505,7 @@ compute_induction_information(loop_info_state *state)
       assert(info->num_induction_vars <= num_induction_vars);
    }
 
-   return found_induction_var;
+   return num_induction_vars != 0;
 }
 
 static bool
