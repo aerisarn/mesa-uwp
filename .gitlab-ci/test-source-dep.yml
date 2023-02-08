@@ -690,6 +690,24 @@
       - src/intel/**/*
       when: on_success
 
+.hasvk-rules:
+  stage: intel
+  rules:
+    - !reference [.anholt-farm-rules, rules]
+    - !reference [.vulkan-rules, rules]
+    - changes:
+      - src/intel/**/*
+      when: on_success
+
+.hasvk-manual-rules:
+  stage: intel
+  rules:
+    - !reference [.anholt-farm-rules, rules]
+    - !reference [.vulkan-manual-rules, rules]
+    - changes:
+      - src/intel/**/*
+      when: on_success
+
 .intel-rules:
   stage: intel
   rules:
