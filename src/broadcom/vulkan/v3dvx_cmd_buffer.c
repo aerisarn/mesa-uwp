@@ -1627,9 +1627,15 @@ v3dX(cmd_buffer_emit_color_write_mask)(struct v3dv_cmd_buffer *cmd_buffer)
 
    struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
+   uint32_t color_write_mask = ~dynamic->color_write_enable |
+                               pipeline->blend.color_write_masks;
+#if V3D_VERSION <= 42
+   /* Only 4 RTs */
+   color_write_mask &= 0xffff;
+#endif
+
    cl_emit(&job->bcl, COLOR_WRITE_MASKS, mask) {
-      mask.mask = (~dynamic->color_write_enable |
-                   pipeline->blend.color_write_masks) & 0xffff;
+      mask.mask = color_write_mask;
    }
 
    cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_COLOR_WRITE_ENABLE;
