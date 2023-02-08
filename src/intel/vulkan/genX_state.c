@@ -467,10 +467,10 @@ init_render_queue_state(struct anv_queue *queue)
       reg.HZDepthTestLEGEOptimizationDisable = true;
       reg.HZDepthTestLEGEOptimizationDisableMask = true;
    }
+#endif
 
-   /* Wa_1508744258
-    *
-    *    Disable RHWO by setting 0x7010[14] by default except during resolve
+#if INTEL_NEEDS_WA_1508744258
+   /*    Disable RHWO by setting 0x7010[14] by default except during resolve
     *    pass.
     *
     * We implement global disabling of the optimization here and we toggle it

@@ -1252,7 +1252,8 @@ exec_ccs_op(struct anv_cmd_buffer *cmd_buffer,
    case ISL_AUX_OP_FULL_RESOLVE:
    case ISL_AUX_OP_PARTIAL_RESOLVE: {
       /* Wa_1508744258: Enable RHWO optimization for resolves */
-      const bool enable_rhwo_opt = cmd_buffer->device->info->verx10 == 120;
+      const bool enable_rhwo_opt =
+         intel_needs_workaround(cmd_buffer->device->info, 1508744258);
 
       if (enable_rhwo_opt)
          cmd_buffer->state.pending_rhwo_optimization_enabled = true;
