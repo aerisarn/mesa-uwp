@@ -553,6 +553,12 @@ vn_MapMemory(VkDevice device,
     * cost unless a bo is really needed. However, that means
     * vn_renderer_bo_map will block until the renderer creates the resource
     * and injects the pages into the guest.
+    *
+    * XXX We also assume that a vn_renderer_bo can be created as long as the
+    * renderer VkDeviceMemory has a mappable memory type.  That is plain
+    * wrong.  It is impossible to fix though until some new extension is
+    * created and supported by the driver, and that the renderer switches to
+    * the extension.
     */
    if (need_bo) {
       result = vn_renderer_bo_create_from_device_memory(

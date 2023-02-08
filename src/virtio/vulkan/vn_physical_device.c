@@ -799,26 +799,26 @@ vn_physical_device_init_external_memory(
    struct vn_physical_device *physical_dev)
 {
    /* When a renderer VkDeviceMemory is exportable, we can create a
-    * vn_renderer_bo from it.  The vn_renderer_bo can be freely exported as an
+    * vn_renderer_bo from it. The vn_renderer_bo can be freely exported as an
     * opaque fd or a dma-buf.
     *
-    * However, to know if a rendender VkDeviceMemory is exportable, we have to
-    * start from VkPhysicalDeviceExternalImageFormatInfo (or
-    * vkGetPhysicalDeviceExternalBufferProperties).  That means we need to
-    * know the handle type that the renderer will use to make those queries.
+    * When an external memory can be imported as a vn_renderer_bo, that bo
+    * might be imported as a renderer side VkDeviceMemory.
     *
-    * XXX We also assume that a vn_renderer_bo can be created as long as the
-    * renderer VkDeviceMemory has a mappable memory type.  That is plain
-    * wrong.  It is impossible to fix though until some new extension is
-    * created and supported by the driver, and that the renderer switches to
-    * the extension.
-    */
-
-   if (!physical_dev->instance->renderer->info.has_dma_buf_import)
-      return;
-
-   /* TODO We assume the renderer uses dma-bufs here.  This should be
-    * negotiated by adding a new function to VK_MESA_venus_protocol.
+    * However, to know if a rendender VkDeviceMemory is exportable or if a bo
+    * can be imported as a renderer VkDeviceMemory. We have to start from
+    * physical device external image and external buffer properties queries,
+    * which requires to know the renderer supported external handle types. For
+    * such info, we can reliably retrieve from the external memory extensions
+    * advertised by the renderer.
+    *
+    * We require VK_EXT_external_memory_dma_buf to expose driver side external
+    * memory support for a renderer running on Linux. As a comparison, when
+    * the renderer runs on Windows, VK_KHR_external_memory_win32 might be
+    * required for the same.
+    *
+    * For vtest, the protocol does not support external memory import. So we
+    * only mask out the importable bit so that wsi over vtest can be supported.
     */
    if (physical_dev->renderer_extensions.EXT_external_memory_dma_buf) {
       physical_dev->external_memory.renderer_handle_type =
@@ -931,24 +931,38 @@ vn_physical_device_init_external_semaphore_handles(
 #endif
 }
 
+static inline bool
+vn_physical_device_get_external_memory_support(
+   const struct vn_physical_device *physical_dev)
+{
+   if (!physical_dev->external_memory.renderer_handle_type)
+      return false;
+
+   /* see vn_physical_device_init_external_memory */
+   if (physical_dev->external_memory.renderer_handle_type ==
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT) {
+      const struct vk_device_extension_table *renderer_exts =
+         &physical_dev->renderer_extensions;
+      return renderer_exts->EXT_image_drm_format_modifier &&
+             renderer_exts->EXT_queue_family_foreign;
+   }
+
+   /* expand support once the renderer can run on non-Linux platforms */
+   return false;
+}
+
 static void
 vn_physical_device_get_native_extensions(
    const struct vn_physical_device *physical_dev,
    struct vk_device_extension_table *exts)
 {
-   const struct vn_instance *instance = physical_dev->instance;
-   const struct vk_device_extension_table *renderer_exts =
-      &physical_dev->renderer_extensions;
-
    memset(exts, 0, sizeof(*exts));
 
-   /* see vn_physical_device_init_external_memory */
-   const bool can_external_mem = renderer_exts->EXT_external_memory_dma_buf &&
-                                 instance->renderer->info.has_dma_buf_import;
+   const bool can_external_mem =
+      vn_physical_device_get_external_memory_support(physical_dev);
 
 #ifdef ANDROID
-   if (can_external_mem && renderer_exts->EXT_image_drm_format_modifier &&
-       renderer_exts->EXT_queue_family_foreign) {
+   if (can_external_mem) {
       exts->ANDROID_external_memory_android_hardware_buffer = true;
 
       /* For wsi, we require renderer:
@@ -981,8 +995,7 @@ vn_physical_device_get_native_extensions(
 #endif /* ANDROID */
 
 #ifdef VN_USE_WSI_PLATFORM
-   if (renderer_exts->EXT_image_drm_format_modifier &&
-       renderer_exts->EXT_queue_family_foreign &&
+   if (can_external_mem &&
        physical_dev->renderer_sync_fd.semaphore_importable) {
       exts->KHR_incremental_present = true;
       exts->KHR_swapchain = true;
@@ -996,8 +1009,9 @@ vn_physical_device_get_native_extensions(
     * - For vtest, pci bus info must be queried from the renderer side physical
     *   device to be compared against the render node opened by common wsi.
     */
-   exts->EXT_pci_bus_info = instance->renderer->info.pci.has_bus_info ||
-                            renderer_exts->EXT_pci_bus_info;
+   exts->EXT_pci_bus_info =
+      physical_dev->instance->renderer->info.pci.has_bus_info ||
+      physical_dev->renderer_extensions.EXT_pci_bus_info;
 #endif
 
    exts->EXT_physical_device_drm = true;
@@ -2085,6 +2099,13 @@ vn_GetPhysicalDeviceImageFormatProperties2(
    VkExternalMemoryProperties *mem_props =
       &img_props->externalMemoryProperties;
 
+   if (renderer_handle_type ==
+          VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT &&
+       !physical_dev->instance->renderer->info.has_dma_buf_import) {
+      mem_props->externalMemoryFeatures &=
+         ~VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
+   }
+
    if (external_info->handleType ==
        VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID) {
       /* AHB backed image requires renderer to support import bit */
@@ -2164,6 +2185,13 @@ vn_GetPhysicalDeviceExternalBufferProperties(
    vn_call_vkGetPhysicalDeviceExternalBufferProperties(
       physical_dev->instance, physicalDevice, pExternalBufferInfo,
       pExternalBufferProperties);
+
+   if (renderer_handle_type ==
+          VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT &&
+       !physical_dev->instance->renderer->info.has_dma_buf_import) {
+      props->externalMemoryFeatures &=
+         ~VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
+   }
 
    if (is_ahb) {
       props->compatibleHandleTypes =
