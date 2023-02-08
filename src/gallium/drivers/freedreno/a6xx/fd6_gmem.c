@@ -1439,11 +1439,7 @@ prepare_tile_fini_ib(struct fd_batch *batch) assert_dt
 static void
 fd6_emit_tile(struct fd_batch *batch, const struct fd_tile *tile)
 {
-   if (!use_hw_binning(batch)) {
-      fd6_emit_ib(batch->gmem, batch->draw);
-   } else {
-      emit_conditional_ib(batch, tile, batch->draw);
-   }
+   fd6_emit_ib(batch->gmem, batch->draw);
 
    if (batch->tile_epilogue)
       fd6_emit_ib(batch->gmem, batch->tile_epilogue);
