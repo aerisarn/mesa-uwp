@@ -3478,7 +3478,7 @@ radv_skip_graphics_pipeline_compile(const struct radv_graphics_pipeline *pipelin
 
    /* Do not skip when the PS epilog needs to be compiled. */
    if (!radv_pipeline_needs_dynamic_ps_epilog(pipeline) &&
-       (pipeline->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT) &&
+       pipeline->base.shaders[MESA_SHADER_FRAGMENT] &&
        pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.has_epilog &&
        !pipeline->ps_epilog)
       return false;
