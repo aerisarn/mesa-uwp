@@ -362,38 +362,28 @@ with_xlib_lease = get_option('xlib-lease') \
   .require(with_platform_x11 and system_has_kms_drm, error_message : 'xlib-lease requires X11 and KMS/DRM support') \
   .allowed()
 
+vk_wsi_args = []
+
 if with_platform_wayland
-  c_args += '-DVK_USE_PLATFORM_WAYLAND_KHR'
-  #add this once aco and other places can build with it
-  #cpp_args += '-DVK_USE_PLATFORM_WAYLAND_KHR'
+  vk_wsi_args += '-DVK_USE_PLATFORM_WAYLAND_KHR'
 endif
 if with_platform_x11 and host_machine.system() != 'darwin'
-  c_args += ['-DVK_USE_PLATFORM_XCB_KHR', '-DVK_USE_PLATFORM_XLIB_KHR']
-  #add this once aco and other places can build with it
-  #cpp_args += ['-DVK_USE_PLATFORM_XCB_KHR', '-DVK_USE_PLATFORM_XLIB_KHR']
+  vk_wsi_args += ['-DVK_USE_PLATFORM_XCB_KHR', '-DVK_USE_PLATFORM_XLIB_KHR']
 endif
 if with_platform_windows
-  c_args += '-DVK_USE_PLATFORM_WIN32_KHR'
-  cpp_args += '-DVK_USE_PLATFORM_WIN32_KHR'
+  vk_wsi_args += '-DVK_USE_PLATFORM_WIN32_KHR'
 endif
 if with_platform_android
-  c_args += '-DVK_USE_PLATFORM_ANDROID_KHR'
-  cpp_args += '-DVK_USE_PLATFORM_ANDROID_KHR'
+  vk_wsi_args += '-DVK_USE_PLATFORM_ANDROID_KHR'
 endif
 if with_xlib_lease
-  c_args += '-DVK_USE_PLATFORM_XLIB_XRANDR_EXT'
-  #add this once aco and other places can build with it
-  #cpp_args += '-DVK_USE_PLATFORM_XLIB_XRANDR_EXT'
+  vk_wsi_args += '-DVK_USE_PLATFORM_XLIB_XRANDR_EXT'
 endif
 if system_has_kms_drm and not with_platform_android
-  c_args += '-DVK_USE_PLATFORM_DISPLAY_KHR'
-  cpp_args += '-DVK_USE_PLATFORM_DISPLAY_KHR'
+  vk_wsi_args += '-DVK_USE_PLATFORM_DISPLAY_KHR'
 endif
 if host_machine.system() == 'darwin'
-  c_args += '-DVK_USE_PLATFORM_MACOS_MVK'
-  cpp_args += '-DVK_USE_PLATFORM_MACOS_MVK'
-  c_args += '-DVK_USE_PLATFORM_METAL_EXT'
-  cpp_args += '-DVK_USE_PLATFORM_METAL_EXT'
+  vk_wsi_args += ['-DVK_USE_PLATFORM_MACOS_MVK', '-DVK_USE_PLATFORM_METAL_EXT']
 endif
 
 with_egl = get_option('egl') \
