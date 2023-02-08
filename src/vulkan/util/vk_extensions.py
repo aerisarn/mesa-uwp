@@ -151,6 +151,69 @@ def init_exts_from_xml(xml, extensions, platform_defines):
         ext = ext_name_map[ext_name]
         ext.type = ext_elem.attrib['type']
 
+class Requirements:
+    def __init__(self, core_version=None):
+        self.core_version = core_version
+        self.extensions = []
+        self.guard = None
+
+    def add_extension(self, ext):
+        for e in self.extensions:
+            if e == ext:
+                return;
+            assert e.name != ext.name
+
+        self.extensions.append(ext)
+
+def filter_api(elem, api):
+    if 'api' not in elem.attrib:
+        return True
+
+    return api in elem.attrib['api'].split(',')
+
+def get_all_required(xml, thing, api):
+    things = {}
+    for feature in xml.findall('./feature'):
+        if not filter_api(feature, api):
+            continue
+
+        version = VkVersion(feature.attrib['number'])
+        for t in feature.findall('./require/' + thing):
+            name = t.attrib['name']
+            assert name not in things
+            things[name] = Requirements(core_version=version)
+
+    for extension in xml.findall('.extensions/extension'):
+        ext = Extension.from_xml(extension)
+        if api not in ext.supported:
+            continue
+
+        for require in extension.findall('./require'):
+            if not filter_api(require, api):
+                continue
+
+            for t in require.findall('./' + thing):
+                name = t.attrib['name']
+                r = things.setdefault(name, Requirements())
+                r.add_extension(ext)
+
+    platform_defines = {}
+    for platform in xml.findall('./platforms/platform'):
+        name = platform.attrib['name']
+        define = platform.attrib['protect']
+        platform_defines[name] = define
+
+    for req in things.values():
+        if req.core_version is not None:
+            continue
+
+        for ext in req.extensions:
+            if ext.platform in platform_defines:
+                req.guard = platform_defines[ext.platform]
+                break
+
+    return things
+
 # Mapping between extension name and the android version in which the extension
 # was whitelisted in Android CTS's dEQP-VK.info.device_extensions and
 # dEQP-VK.api.info.android.no_unknown_extensions, excluding those blocked by
