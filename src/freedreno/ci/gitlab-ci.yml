@@ -58,7 +58,9 @@ a306_gl:
   variables:
     HWCI_START_XORG: 1
 
-a306_piglit_gl:
+# Something happened and now this hangchecks and doesn't recover.  Unkown when
+# it started.
+.a306_piglit_gl:
   extends:
     - .a306_piglit
   variables:
