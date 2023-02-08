@@ -190,16 +190,9 @@ glx@glx-multi-window-single-context,Crash
 glx@glx-swap-pixmap-bad,Fail
 glx@glx-tfp,Crash
 
-# errors like:
-# X Error of failed request:  BadWindow (invalid Window parameter)
-# ../src/gallium/drivers/zink/zink_resource.c:1215: resource_create: Assertion `res->obj->dt' failed.
-glx@glx-visuals-depth,Crash
-
 # ../src/gallium/drivers/zink/zink_kopper.c:859: zink_kopper_update: Assertion `pres->bind & PIPE_BIND_DISPLAY_TARGET' failed.
 glx@glx-visuals-depth -pixmap,Crash
-
 glx@glx-visuals-stencil -pixmap,Crash
-glx@glx-visuals-stencil,Crash
 
 shaders@point-vertex-id divisor,Fail
 shaders@point-vertex-id gl_instanceid divisor,Fail
@@ -223,9 +216,6 @@ spec@!opengl 1.1@depthstencil-default_fb-blit samples=2,Fail
 spec@!opengl 1.1@depthstencil-default_fb-blit samples=6,Fail
 spec@!opengl 1.1@depthstencil-default_fb-blit samples=8,Fail
 
-spec@!opengl 1.1@line-aa-width,Fail
-spec@!opengl 1.1@line-flat-clip-color,Fail
-spec@!opengl 1.1@line-smooth-coverage,Fail
 spec@!opengl 1.1@line-smooth-stipple,Fail
 
 spec@!opengl 1.1@polygon-mode-facing,Fail
@@ -293,6 +283,15 @@ spec@arb_point_sprite@arb_point_sprite-mipmap,Fail
 
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex@'vs_input2[1][0]' on GL_PROGRAM_INPUT,Fail
+
+# failing since at least e82369d0 (2023-02-03)
+spec@arb_query_buffer_object@qbo,Fail
+spec@arb_query_buffer_object@qbo@query-GL_CLIPPING_INPUT_PRIMITIVES-ASYNC_CPU_READ_BEFORE-GL_UNSIGNED_INT64_ARB,Fail
+spec@arb_query_buffer_object@qbo@query-GL_PRIMITIVES_SUBMITTED-ASYNC_CPU_READ_BEFORE-GL_UNSIGNED_INT64_ARB,Fail
+spec@arb_query_buffer_object@qbo@query-GL_SAMPLES_PASSED-ASYNC_CPU_READ_BEFORE-GL_UNSIGNED_INT64_ARB,Fail
+spec@arb_query_buffer_object@qbo@query-GL_VERTEX_SHADER_INVOCATIONS-ASYNC_CPU_READ_BEFORE-GL_UNSIGNED_INT64_ARB,Fail
+spec@arb_query_buffer_object@qbo@query-GL_VERTICES_SUBMITTED-ASYNC_CPU_READ_BEFORE-GL_INT,Fail
+spec@arb_query_buffer_object@qbo@query-GL_VERTICES_SUBMITTED-ASYNC_CPU_READ_BEFORE-GL_UNSIGNED_INT64_ARB,Fail
 
 spec@arb_sample_locations@test,Fail
 spec@arb_sample_locations@test@MSAA: 1- X: 0- Y: 0- Grid: false,Fail
