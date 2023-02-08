@@ -3076,6 +3076,8 @@ radv_pipeline_get_nir(struct radv_graphics_pipeline *pipeline, struct radv_pipel
       if (retain_shaders) {
          /* Clone the NIR shader because NIR passes after this step will change it. */
          pipeline->retained_shaders[s].nir = nir_shader_clone(NULL, stages[s].nir);
+         memcpy(pipeline->retained_shaders[s].shader_sha1, stages[s].shader_sha1,
+                sizeof(stages[s].shader_sha1));
       }
 
       stages[s].feedback.duration += os_time_get_nano() - stage_start;
@@ -3097,6 +3099,8 @@ radv_pipeline_load_retained_shaders(struct radv_graphics_pipeline *pipeline,
       stages[s].stage = s;
       stages[s].entrypoint =
          nir_shader_get_entrypoint(pipeline->retained_shaders[s].nir)->function->name;
+      memcpy(stages[s].shader_sha1, pipeline->retained_shaders[s].shader_sha1,
+             sizeof(stages[s].shader_sha1));
 
       stages[s].feedback.duration += os_time_get_nano() - stage_start;
       stages[s].feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
