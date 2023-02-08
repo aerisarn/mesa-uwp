@@ -258,7 +258,6 @@ anv_BindVideoSessionMemoryKHR(VkDevice _device,
    case VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR:
       for (unsigned i = 0; i < bind_mem_count; i++) {
          copy_bind(&vid->vid_mem[bind_mem[i].memoryBindIndex], &bind_mem[i]);
-         break;
       }
       break;
    default:
