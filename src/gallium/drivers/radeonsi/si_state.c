@@ -5634,9 +5634,9 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
       si_pm4_set_reg(pm4, R_028AC8_DB_PRELOAD_CONTROL, 0x0);
       si_pm4_set_reg(pm4, R_02800C_DB_RENDER_OVERRIDE, 0);
       si_pm4_set_reg(pm4, R_028A8C_VGT_PRIMITIVEID_RESET, 0x0);
-      si_pm4_set_reg(pm4, R_028B98_VGT_STRMOUT_BUFFER_CONFIG, 0x0);
 
       if (sctx->gfx_level < GFX11) {
+         si_pm4_set_reg(pm4, R_028B98_VGT_STRMOUT_BUFFER_CONFIG, 0x0);
          si_pm4_set_reg(pm4, R_028A5C_VGT_GS_PER_VS, 0x2);
          si_pm4_set_reg(pm4, R_028AB8_VGT_VTX_CNT_EN, 0x0);
       }
