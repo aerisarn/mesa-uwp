@@ -367,7 +367,7 @@ vk_wsi_args = []
 if with_platform_wayland
   vk_wsi_args += '-DVK_USE_PLATFORM_WAYLAND_KHR'
 endif
-if with_platform_x11 and host_machine.system() != 'darwin'
+if with_platform_x11
   vk_wsi_args += ['-DVK_USE_PLATFORM_XCB_KHR', '-DVK_USE_PLATFORM_XLIB_KHR']
 endif
 if with_platform_windows
