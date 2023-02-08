@@ -3433,16 +3433,29 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
 
 static bool
 radv_pipeline_create_ps_epilog(struct radv_graphics_pipeline *pipeline,
-                               const struct radv_pipeline_key *pipeline_key)
+                               const struct radv_pipeline_key *pipeline_key,
+                               VkGraphicsPipelineLibraryFlagBitsEXT lib_flags,
+                               bool noop_fs)
 {
    struct radv_device *device = pipeline->base.device;
+   bool needs_ps_epilog = false;
 
    /* Do not compile a PS epilog as part of the pipeline when it needs to be dynamic. */
    if (pipeline_key->ps.dynamic_ps_epilog)
       return true;
 
-   if (pipeline->base.shaders[MESA_SHADER_FRAGMENT] &&
-       pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.has_epilog && !pipeline->ps_epilog) {
+   if (pipeline->base.type == RADV_PIPELINE_GRAPHICS) {
+      needs_ps_epilog = !noop_fs && pipeline->base.shaders[MESA_SHADER_FRAGMENT] &&
+                        pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.has_epilog &&
+                        !pipeline->ps_epilog;
+   } else {
+      assert(pipeline->base.type == RADV_PIPELINE_GRAPHICS_LIB);
+      needs_ps_epilog =
+         (lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) &&
+         !(lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT);
+   }
+
+   if (needs_ps_epilog) {
       pipeline->ps_epilog = radv_create_ps_epilog(device, &pipeline_key->ps.epilog);
       if (!pipeline->ps_epilog)
          return false;
@@ -3684,6 +3697,9 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
    radv_pipeline_nir_to_asm(pipeline, stages, pipeline_key, pipeline_layout, keep_executable_info,
                             keep_statistic_info, binaries, &gs_copy_binary);
 
+   if (!radv_pipeline_create_ps_epilog(pipeline, pipeline_key, lib_flags, noop_fs))
+      return result;
+
    if (keep_executable_info) {
       for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
          struct radv_shader *shader = pipeline->base.shaders[i];
@@ -3706,12 +3722,6 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
          /* Discard the PS epilog when the pipeline doesn't use a FS because it makes no sense. */
          radv_shader_part_unref(device, graphics_pipeline->ps_epilog);
          graphics_pipeline->ps_epilog = NULL;
-      } else {
-         /* When the main FS is compiled inside a library, we need to compile a PS epilog if it
-          * hasn't been already imported.
-          */
-         if (!radv_pipeline_create_ps_epilog(graphics_pipeline, pipeline_key))
-            return result;
       }
    }
 
@@ -5278,35 +5288,19 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
    if (!fast_linking_enabled)
       radv_pipeline_layout_hash(pipeline_layout);
 
-   /* Compile a PS epilog if the fragment shader output interface is present without the main
-    * fragment shader.
-    */
-   if ((needed_lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) &&
-       !(needed_lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
-       !radv_pipeline_needs_dynamic_ps_epilog(&pipeline->base)) {
-      struct radv_ps_epilog_key key = radv_pipeline_generate_ps_epilog_key(&pipeline->base, state, true);
+   struct radv_pipeline_key key =
+      radv_generate_graphics_pipeline_key(&pipeline->base, pCreateInfo, state, needed_lib_flags);
 
-      pipeline->base.ps_epilog = radv_create_ps_epilog(device, &key);
-      if (!pipeline->base.ps_epilog)
-         return VK_ERROR_OUT_OF_HOST_MEMORY;
-   }
+   result = radv_graphics_pipeline_compile(&pipeline->base, pCreateInfo, pipeline_layout, device,
+                                           cache, &key, needed_lib_flags, fast_linking_enabled);
+   if (result != VK_SUCCESS)
+      return result;
 
-   if (pipeline->base.active_stages != 0 ||
-       (needed_lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)) {
-      struct radv_pipeline_key key =
-         radv_generate_graphics_pipeline_key(&pipeline->base, pCreateInfo, state, needed_lib_flags);
-
-      result = radv_graphics_pipeline_compile(&pipeline->base, pCreateInfo, pipeline_layout, device,
-                                              cache, &key, needed_lib_flags, fast_linking_enabled);
-      if (result != VK_SUCCESS)
-         return result;
-
-      /* Force add the fragment shader stage when a noop FS has been compiled. */
-      if ((needed_lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
-          !(pipeline->base.active_stages & VK_SHADER_STAGE_FRAGMENT_BIT)) {
-         assert(pipeline->base.base.shaders[MESA_SHADER_FRAGMENT]);
-         pipeline->base.active_stages |= VK_SHADER_STAGE_FRAGMENT_BIT;
-      }
+   /* Force add the fragment shader stage when a noop FS has been compiled. */
+   if ((needed_lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
+       !(pipeline->base.active_stages & VK_SHADER_STAGE_FRAGMENT_BIT)) {
+      assert(pipeline->base.base.shaders[MESA_SHADER_FRAGMENT]);
+      pipeline->base.active_stages |= VK_SHADER_STAGE_FRAGMENT_BIT;
    }
 
    return VK_SUCCESS;
