@@ -1655,6 +1655,8 @@ radv_emit_prefetch_L2(struct radv_cmd_buffer *cmd_buffer, struct radv_graphics_p
 static void
 radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
 {
+   assert(cmd_buffer->device->physical_device->rad_info.rbplus_allowed);
+
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    struct radv_rendering_state *render = &cmd_buffer->state.render;
 
