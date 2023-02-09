@@ -983,6 +983,13 @@ struct zink_gfx_pipeline_cache_entry {
    VkPipeline unoptimized_pipeline;
 };
 
+struct zink_gfx_lib_cache {
+   unsigned refcount;
+
+   simple_mtx_t lock;
+   struct set libs; //zink_gfx_library_key -> VkPipeline
+};
+
 struct zink_gfx_program {
    struct zink_program base;
 
@@ -1014,7 +1021,7 @@ struct zink_gfx_program {
    uint32_t last_finalized_hash[2][4]; //[dynamic, renderpass][primtype idx]
    VkPipeline last_pipeline[2][4]; //[dynamic, renderpass][primtype idx]
 
-   struct set libs; //zink_gfx_library_key -> VkPipeline
+   struct zink_gfx_lib_cache *libs;
 };
 
 struct zink_compute_program {

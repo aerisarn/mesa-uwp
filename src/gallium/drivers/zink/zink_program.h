@@ -155,7 +155,8 @@ zink_create_gfx_program(struct zink_context *ctx,
 void
 zink_destroy_gfx_program(struct zink_screen *screen,
                          struct zink_gfx_program *prog);
-
+void
+zink_gfx_lib_cache_unref(struct zink_screen *screen, struct zink_gfx_lib_cache *libs);
 void
 zink_program_init(struct zink_context *ctx);
 

@@ -930,6 +930,33 @@ assign_io(struct zink_screen *screen,
    }
 }
 
+void
+zink_gfx_lib_cache_unref(struct zink_screen *screen, struct zink_gfx_lib_cache *libs)
+{
+   if (!p_atomic_dec_zero(&libs->refcount))
+      return;
+
+   simple_mtx_destroy(&libs->lock);
+   set_foreach_remove(&libs->libs, he) {
+      struct zink_gfx_library_key *gkey = (void*)he->key;
+      VKSCR(DestroyPipeline)(screen->dev, gkey->pipeline, NULL);
+      FREE(gkey);
+   }
+   ralloc_free(libs);
+}
+
+static struct zink_gfx_lib_cache *
+create_lib_cache(struct zink_gfx_program *prog, bool generated_tcs)
+{
+   struct zink_gfx_lib_cache *libs = rzalloc(NULL, struct zink_gfx_lib_cache);
+   simple_mtx_init(&libs->lock, mtx_plain);
+   if (generated_tcs)
+      _mesa_set_init(&libs->libs, libs, hash_pipeline_lib_generated_tcs, equals_pipeline_lib_generated_tcs);
+   else
+      _mesa_set_init(&libs->libs, libs, hash_pipeline_lib, equals_pipeline_lib);
+   return libs;
+}
+
 struct zink_gfx_program *
 zink_create_gfx_program(struct zink_context *ctx,
                         struct zink_shader **stages,
@@ -983,10 +1010,8 @@ zink_create_gfx_program(struct zink_context *ctx,
       }
    }
 
-   if (generated_tcs)
-      _mesa_set_init(&prog->libs, prog, hash_pipeline_lib_generated_tcs, equals_pipeline_lib_generated_tcs);
-   else
-      _mesa_set_init(&prog->libs, prog, hash_pipeline_lib, equals_pipeline_lib);
+   prog->libs = create_lib_cache(prog, generated_tcs);
+   p_atomic_set(&prog->libs, 1);
 
    struct mesa_sha1 sctx;
    _mesa_sha1_init(&sctx);
@@ -1051,7 +1076,8 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
    prog->stages_remaining = prog->stages_present = shader_stages;
    prog->shaders[MESA_SHADER_FRAGMENT] = stages[MESA_SHADER_FRAGMENT];
    prog->last_vertex_stage = stages[MESA_SHADER_VERTEX];
-   _mesa_set_init(&prog->libs, prog, hash_pipeline_lib, equals_pipeline_lib);
+   prog->libs = create_lib_cache(prog, false);
+   p_atomic_set(&prog->libs->refcount, 1);
 
    unsigned refs = 0;
    for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
@@ -1108,7 +1134,7 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
    gkey->optimal_key = prog->last_variant_hash;
    assert(gkey->optimal_key);
    gkey->pipeline = zink_create_gfx_pipeline_combined(screen, prog, VK_NULL_HANDLE, libs, 2, VK_NULL_HANDLE, false);
-   _mesa_set_add(&prog->libs, gkey);
+   _mesa_set_add(&prog->libs->libs, gkey);
 
    util_queue_add_job(&screen->cache_get_thread, prog, &prog->base.cache_fence, create_linked_separable_job, NULL, 0);
 
@@ -1383,11 +1409,7 @@ zink_destroy_gfx_program(struct zink_screen *screen,
          ralloc_free(prog->nir[i]);
       }
    }
-
-   set_foreach_remove(&prog->libs, he) {
-      struct zink_gfx_library_key *gkey = (void*)he->key;
-      VKSCR(DestroyPipeline)(screen->dev, gkey->pipeline, NULL);
-   }
+   zink_gfx_lib_cache_unref(screen, prog->libs);
 
    ralloc_free(prog);
 }
@@ -1806,15 +1828,16 @@ zink_create_cached_shader_state(struct pipe_context *pctx, const struct pipe_sha
    return util_live_shader_cache_get(pctx, &screen->shaders, shader, &cache_hit);
 }
 
+/* caller must lock prog->libs->lock */
 struct zink_gfx_library_key *
 zink_create_pipeline_lib(struct zink_screen *screen, struct zink_gfx_program *prog, struct zink_gfx_pipeline_state *state)
 {
-   struct zink_gfx_library_key *gkey = rzalloc(prog, struct zink_gfx_library_key);
+   struct zink_gfx_library_key *gkey = CALLOC_STRUCT(zink_gfx_library_key);
    gkey->optimal_key = state->optimal_key;
    assert(gkey->optimal_key);
    memcpy(gkey->modules, prog->modules, sizeof(gkey->modules));
    gkey->pipeline = zink_create_gfx_pipeline_library(screen, prog);
-   _mesa_set_add(&prog->libs, gkey);
+   _mesa_set_add(&prog->libs->libs, gkey);
    return gkey;
 }
 
@@ -1911,7 +1934,9 @@ precompile_job(void *data, void *gdata, int thread_index)
    state.optimal_key = state.shader_keys_optimal.key.val;
    generate_gfx_program_modules_optimal(NULL, screen, prog, &state);
    zink_screen_get_pipeline_cache(screen, &prog->base, true);
+   simple_mtx_lock(&prog->libs->lock);
    zink_create_pipeline_lib(screen, prog, &state);
+   simple_mtx_unlock(&prog->libs->lock);
    zink_screen_update_pipeline_cache(screen, &prog->base, true);
 }
 
