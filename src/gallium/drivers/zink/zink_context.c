@@ -1755,7 +1755,7 @@ create_image_surface(struct zink_context *ctx, const struct pipe_image_view *vie
 
 static void
 zink_set_shader_images(struct pipe_context *pctx,
-                       gl_shader_stage p_stage,
+                       gl_shader_stage shader_type,
                        unsigned start_slot, unsigned count,
                        unsigned unbind_num_trailing_slots,
                        const struct pipe_image_view *images)
@@ -1763,91 +1763,92 @@ zink_set_shader_images(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    bool update = false;
    for (unsigned i = 0; i < count; i++) {
-      struct zink_image_view *image_view = &ctx->image_views[p_stage][start_slot + i];
-      if (images && images[i].resource) {
-         struct zink_resource *res = zink_resource(images[i].resource);
+      struct zink_image_view *a = &ctx->image_views[shader_type][start_slot + i];
+      const struct pipe_image_view *b = images ? &images[i] : NULL;
+      if (b && b->resource) {
+         struct zink_resource *res = zink_resource(b->resource);
          if (!zink_resource_object_init_storage(ctx, res)) {
             debug_printf("couldn't create storage image!");
             continue;
          }
          /* no refs */
          VkAccessFlags access = 0;
-         if (images[i].access & PIPE_IMAGE_ACCESS_WRITE) {
-            res->write_bind_count[p_stage == MESA_SHADER_COMPUTE]++;
+         if (b->access & PIPE_IMAGE_ACCESS_WRITE) {
+            res->write_bind_count[shader_type == MESA_SHADER_COMPUTE]++;
             access |= VK_ACCESS_SHADER_WRITE_BIT;
          }
-         if (images[i].access & PIPE_IMAGE_ACCESS_READ) {
+         if (b->access & PIPE_IMAGE_ACCESS_READ) {
             access |= VK_ACCESS_SHADER_READ_BIT;
          }
-         res->gfx_barrier |= zink_pipeline_flags_from_pipe_stage(p_stage);
-         res->barrier_access[p_stage == MESA_SHADER_COMPUTE] |= access;
-         if (images[i].resource->target == PIPE_BUFFER) {
+         res->gfx_barrier |= zink_pipeline_flags_from_pipe_stage(shader_type);
+         res->barrier_access[shader_type == MESA_SHADER_COMPUTE] |= access;
+         if (b->resource->target == PIPE_BUFFER) {
             if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB) {
                if (zink_resource_access_is_write(access))
                   util_range_add(&res->base.b, &res->valid_buffer_range,
-                                 images[i].u.buf.offset, images[i].u.buf.offset + images[i].u.buf.size);
-               if (image_view->base.format != images[i].format ||
-                   memcmp(&image_view->base.u.buf, &images[i].u.buf, sizeof(images[i].u.buf)) ||
-                   image_view->base.resource != &res->base.b ||
-                   zink_resource(image_view->base.resource)->obj != res->obj) {
-                  update_res_bind_count(ctx, res, p_stage == MESA_SHADER_COMPUTE, false);
-                  res->image_bind_count[p_stage == MESA_SHADER_COMPUTE]++;
-                  unbind_shader_image(ctx, p_stage, start_slot + i);
+                                 b->u.buf.offset, b->u.buf.offset + b->u.buf.size);
+               if (a->base.format != b->format ||
+                   memcmp(&a->base.u.buf, &b->u.buf, sizeof(b->u.buf)) ||
+                   a->base.resource != &res->base.b ||
+                   zink_resource(a->base.resource)->obj != res->obj) {
+                  update_res_bind_count(ctx, res, shader_type == MESA_SHADER_COMPUTE, false);
+                  res->image_bind_count[shader_type == MESA_SHADER_COMPUTE]++;
+                  unbind_shader_image(ctx, shader_type, start_slot + i);
                }
-               pipe_resource_reference(&image_view->base.resource, images[i].resource);
+               pipe_resource_reference(&a->base.resource, b->resource);
             } else {
-               struct zink_buffer_view *bv = create_image_bufferview(ctx, &images[i]);
+               struct zink_buffer_view *bv = create_image_bufferview(ctx, b);
                assert(bv);
-               if (image_view->buffer_view != bv) {
-                  update_res_bind_count(ctx, res, p_stage == MESA_SHADER_COMPUTE, false);
-                  res->image_bind_count[p_stage == MESA_SHADER_COMPUTE]++;
-                  unbind_shader_image(ctx, p_stage, start_slot + i);
+               if (a->buffer_view != bv) {
+                  update_res_bind_count(ctx, res, shader_type == MESA_SHADER_COMPUTE, false);
+                  res->image_bind_count[shader_type == MESA_SHADER_COMPUTE]++;
+                  unbind_shader_image(ctx, shader_type, start_slot + i);
                }
-               image_view->buffer_view = bv;
+               a->buffer_view = bv;
             }
             zink_screen(ctx->base.screen)->buffer_barrier(ctx, res, access,
                                          res->gfx_barrier);
             zink_batch_resource_usage_set(&ctx->batch, res,
                                           zink_resource_access_is_write(access), true);
          } else {
-            struct zink_surface *surface = create_image_surface(ctx, &images[i], p_stage == MESA_SHADER_COMPUTE);
+            struct zink_surface *surface = create_image_surface(ctx, b, shader_type == MESA_SHADER_COMPUTE);
             assert(surface);
-            if (image_view->surface != surface) {
-               res->image_bind_count[p_stage == MESA_SHADER_COMPUTE]++;
-               update_res_bind_count(ctx, res, p_stage == MESA_SHADER_COMPUTE, false);
-               unbind_shader_image(ctx, p_stage, start_slot + i);
-               image_view->surface = surface;
+            if (a->surface != surface) {
+               res->image_bind_count[shader_type == MESA_SHADER_COMPUTE]++;
+               update_res_bind_count(ctx, res, shader_type == MESA_SHADER_COMPUTE, false);
+               unbind_shader_image(ctx, shader_type, start_slot + i);
+               a->surface = surface;
             } else {
                /* create_image_surface will always increment ref */
                zink_surface_reference(zink_screen(ctx->base.screen), &surface, NULL);
             }
-            finalize_image_bind(ctx, res, p_stage == MESA_SHADER_COMPUTE);
+            finalize_image_bind(ctx, res, shader_type == MESA_SHADER_COMPUTE);
             zink_batch_resource_usage_set(&ctx->batch, res,
                                           zink_resource_access_is_write(access), false);
          }
-         memcpy(&image_view->base, images + i, sizeof(struct pipe_image_view));
+         memcpy(&a->base, images + i, sizeof(struct pipe_image_view));
          update = true;
-         update_descriptor_state_image(ctx, p_stage, start_slot + i, res);
+         update_descriptor_state_image(ctx, shader_type, start_slot + i, res);
          if (zink_resource_access_is_write(access) || !res->obj->is_buffer)
             res->obj->unordered_read = res->obj->unordered_write = false;
          else
             res->obj->unordered_read = false;
-         res->image_binds[p_stage] |= BITFIELD_BIT(start_slot + i);
-      } else if (image_view->base.resource) {
+         res->image_binds[shader_type] |= BITFIELD_BIT(start_slot + i);
+      } else if (a->base.resource) {
          update = true;
 
-         unbind_shader_image(ctx, p_stage, start_slot + i);
-         update_descriptor_state_image(ctx, p_stage, start_slot + i, NULL);
+         unbind_shader_image(ctx, shader_type, start_slot + i);
+         update_descriptor_state_image(ctx, shader_type, start_slot + i, NULL);
       }
    }
    for (unsigned i = 0; i < unbind_num_trailing_slots; i++) {
-      update |= !!ctx->image_views[p_stage][start_slot + count + i].base.resource;
-      unbind_shader_image(ctx, p_stage, start_slot + count + i);
-      update_descriptor_state_image(ctx, p_stage, start_slot + count + i, NULL);
+      update |= !!ctx->image_views[shader_type][start_slot + count + i].base.resource;
+      unbind_shader_image(ctx, shader_type, start_slot + count + i);
+      update_descriptor_state_image(ctx, shader_type, start_slot + count + i, NULL);
    }
-   ctx->di.num_images[p_stage] = start_slot + count;
+   ctx->di.num_images[shader_type] = start_slot + count;
    if (update)
-      zink_context_invalidate_descriptor_state(ctx, p_stage, ZINK_DESCRIPTOR_TYPE_IMAGE, start_slot, count);
+      zink_context_invalidate_descriptor_state(ctx, shader_type, ZINK_DESCRIPTOR_TYPE_IMAGE, start_slot, count);
 }
 
 ALWAYS_INLINE static void
