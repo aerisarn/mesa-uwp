@@ -707,6 +707,85 @@ agx_load_compute_dimension(agx_builder *b, agx_index dst,
    return agx_emit_collect_to(b, dst, dim, srcs);
 }
 
+static enum agx_atomic_opc
+translate_atomic_opcode(nir_intrinsic_op op)
+{
+   switch (op) {
+   case nir_intrinsic_global_atomic_add:
+   case nir_intrinsic_shared_atomic_add:
+      return AGX_ATOMIC_OPC_ADD;
+   case nir_intrinsic_global_atomic_imin:
+   case nir_intrinsic_shared_atomic_imin:
+      return AGX_ATOMIC_OPC_IMIN;
+   case nir_intrinsic_global_atomic_umin:
+   case nir_intrinsic_shared_atomic_umin:
+      return AGX_ATOMIC_OPC_UMIN;
+   case nir_intrinsic_global_atomic_imax:
+   case nir_intrinsic_shared_atomic_imax:
+      return AGX_ATOMIC_OPC_IMAX;
+   case nir_intrinsic_global_atomic_umax:
+   case nir_intrinsic_shared_atomic_umax:
+      return AGX_ATOMIC_OPC_UMAX;
+   case nir_intrinsic_global_atomic_and:
+   case nir_intrinsic_shared_atomic_and:
+      return AGX_ATOMIC_OPC_AND;
+   case nir_intrinsic_global_atomic_or:
+   case nir_intrinsic_shared_atomic_or:
+      return AGX_ATOMIC_OPC_OR;
+   case nir_intrinsic_global_atomic_xor:
+   case nir_intrinsic_shared_atomic_xor:
+      return AGX_ATOMIC_OPC_XOR;
+   case nir_intrinsic_global_atomic_exchange:
+   case nir_intrinsic_shared_atomic_exchange:
+      return AGX_ATOMIC_OPC_XCHG;
+   case nir_intrinsic_global_atomic_comp_swap:
+   case nir_intrinsic_shared_atomic_comp_swap:
+      return AGX_ATOMIC_OPC_CMPXCHG;
+   default:
+      unreachable("unknown atomic intrinsic");
+   }
+}
+
+/*
+ * The "base" of a local load/store/atomic can be zero but no other immediates.
+ * This would be a little silly to handle when inlining immediates, so we
+ * instead exclude these ops from immediate inlining and just handle 0 specially
+ * when translating.
+ */
+static agx_index
+agx_local_base(nir_src src)
+{
+   if (nir_src_is_const(src) && nir_src_as_uint(src) == 0)
+      return agx_zero();
+   else
+      return agx_src_index(&src);
+}
+
+static void
+agx_emit_atomic(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr,
+                bool local)
+{
+   enum agx_atomic_opc op = translate_atomic_opcode(instr->intrinsic);
+   agx_index base =
+      local ? agx_local_base(instr->src[0]) : agx_src_index(&instr->src[0]);
+   agx_index value = agx_src_index(&instr->src[1]);
+   agx_index index = agx_zero(); /* TODO: optimize address arithmetic? */
+
+   /* cmpxchg (only) takes 2 sources, passed in consecutive registers */
+   if (op == AGX_ATOMIC_OPC_CMPXCHG) {
+      agx_index value2 = agx_src_index(&instr->src[2]);
+      value = agx_vec2(b, value2, value);
+   }
+
+   if (local) {
+      assert(base.size == AGX_SIZE_16);
+      agx_local_atomic_to(b, dst, value, base, index, op);
+   } else {
+      assert(base.size == AGX_SIZE_64);
+      agx_atomic_to(b, dst, value, base, index, op, 0);
+   }
+}
+
 static agx_instr *
 agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 {
@@ -744,6 +823,32 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 
    case nir_intrinsic_store_agx:
       agx_emit_store(b, instr);
+      return NULL;
+
+   case nir_intrinsic_global_atomic_add:
+   case nir_intrinsic_global_atomic_imin:
+   case nir_intrinsic_global_atomic_umin:
+   case nir_intrinsic_global_atomic_imax:
+   case nir_intrinsic_global_atomic_umax:
+   case nir_intrinsic_global_atomic_and:
+   case nir_intrinsic_global_atomic_or:
+   case nir_intrinsic_global_atomic_xor:
+   case nir_intrinsic_global_atomic_exchange:
+   case nir_intrinsic_global_atomic_comp_swap:
+      agx_emit_atomic(b, dst, instr, false);
+      return NULL;
+
+   case nir_intrinsic_shared_atomic_add:
+   case nir_intrinsic_shared_atomic_imin:
+   case nir_intrinsic_shared_atomic_umin:
+   case nir_intrinsic_shared_atomic_imax:
+   case nir_intrinsic_shared_atomic_umax:
+   case nir_intrinsic_shared_atomic_and:
+   case nir_intrinsic_shared_atomic_or:
+   case nir_intrinsic_shared_atomic_xor:
+   case nir_intrinsic_shared_atomic_exchange:
+   case nir_intrinsic_shared_atomic_comp_swap:
+      agx_emit_atomic(b, dst, instr, true);
       return NULL;
 
    case nir_intrinsic_store_zs_agx:
