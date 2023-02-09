@@ -33,6 +33,7 @@
 #include "intel_device_info.h"
 #include "intel_wa.h"
 #include "i915/intel_device_info.h"
+#include "xe/intel_device_info.h"
 
 #include "util/u_debug.h"
 #include "util/log.h"
@@ -1544,7 +1545,22 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
       return true;
    }
 
-   intel_device_info_i915_get_info_from_fd(fd, devinfo);
+   bool ret;
+   switch (devinfo->kmd_type) {
+   case INTEL_KMD_TYPE_I915:
+      ret = intel_device_info_i915_get_info_from_fd(fd, devinfo);
+      break;
+   case INTEL_KMD_TYPE_XE:
+      ret = intel_device_info_xe_get_info_from_fd(fd, devinfo);
+      break;
+   default:
+      ret = false;
+      unreachable("Missing");
+   }
+   if (!ret) {
+      mesa_logw("Could not get intel_device_info.");
+      return false;
+   }
 
    if (devinfo->platform == INTEL_PLATFORM_ADL)
       fixup_adl_device_info(devinfo);
@@ -1571,8 +1587,19 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
 
 bool intel_device_info_update_memory_info(struct intel_device_info *devinfo, int fd)
 {
-   return intel_device_info_i915_query_regions(devinfo, fd, true) ||
-          intel_device_info_compute_system_memory(devinfo, true);
+   bool ret;
+
+   switch (devinfo->kmd_type) {
+   case INTEL_KMD_TYPE_I915:
+      ret = intel_device_info_i915_query_regions(devinfo, fd, true);
+      break;
+   case INTEL_KMD_TYPE_XE:
+      ret = intel_device_info_xe_query_regions(fd, devinfo, true);
+      break;
+   default:
+      ret = false;
+   }
+   return ret || intel_device_info_compute_system_memory(devinfo, true);
 }
 
 void
