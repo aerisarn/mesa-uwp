@@ -793,7 +793,15 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
 static VkResult
 anv_physical_device_get_parameters(struct anv_physical_device *device)
 {
-   return anv_i915_physical_device_get_parameters(device);
+   switch (device->info.kmd_type) {
+   case INTEL_KMD_TYPE_I915:
+      return anv_i915_physical_device_get_parameters(device);
+   case INTEL_KMD_TYPE_XE:
+      return anv_xe_physical_device_get_parameters(device);
+   default:
+      unreachable("Missing");
+      return VK_ERROR_UNKNOWN;
+   }
 }
 
 static VkResult

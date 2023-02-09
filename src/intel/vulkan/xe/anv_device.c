@@ -45,3 +45,13 @@ VkResult anv_xe_device_setup_vm(struct anv_device *device)
    device->vm_id = create.vm_id;
    return VK_SUCCESS;
 }
+
+VkResult
+anv_xe_physical_device_get_parameters(struct anv_physical_device *device)
+{
+   device->has_exec_timeline = true;
+   /* TODO: fetch max_context_priority */
+   device->max_context_priority = VK_QUEUE_GLOBAL_PRIORITY_LOW_KHR;
+
+   return VK_SUCCESS;
+}
