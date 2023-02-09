@@ -3266,6 +3266,19 @@ cmd_buffer_emit_streamout(struct anv_cmd_buffer *cmd_buffer)
 }
 
 ALWAYS_INLINE static void
+genX(emit_hs)(struct anv_cmd_buffer *cmd_buffer)
+{
+   struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
+   if (!anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL))
+      return;
+
+   uint32_t *dw =
+      anv_batch_emitn(&cmd_buffer->batch, GENX(3DSTATE_HS_length),
+                         GENX(3DSTATE_HS));
+   memcpy(dw, &pipeline->gfx8.hs, sizeof(pipeline->gfx8.hs));
+}
+
+ALWAYS_INLINE static void
 genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
@@ -3376,6 +3389,11 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
                                 &pipeline->base);
       descriptors_dirty |= push_descriptor_dirty;
       cmd_buffer->state.push_descriptors_dirty &= ~push_descriptor_dirty;
+   }
+
+   /* Wa_1306463417 - Send HS state for every primitive on gfx11. */
+   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE || GFX_VER == 11) {
+      genX(emit_hs)(cmd_buffer);
    }
 
    if (!cmd_buffer->state.gfx.dirty && !descriptors_dirty &&
@@ -3520,13 +3538,6 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_VF_TOPOLOGY), vft) {
          vft.PrimitiveTopologyType = topology;
       }
-   }
-
-   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) {
-      uint32_t *dw =
-         anv_batch_emitn(&cmd_buffer->batch, GENX(3DSTATE_HS_length),
-                         GENX(3DSTATE_HS));
-      memcpy(dw, &pipeline->gfx8.hs, sizeof(pipeline->gfx8.hs));
    }
 
    if (any_dynamic_state_dirty || cmd_buffer->state.gfx.dirty)
@@ -4189,6 +4200,13 @@ void genX(CmdDrawMultiEXT)(
    }
 #else
    vk_foreach_multi_draw(draw, i, pVertexInfo, drawCount, stride) {
+
+      /* Wa_1306463417 - Send HS state for every primitive, first
+       * one was handled by cmd_buffer_flush_gfx_state.
+       */
+      if (i && GFX_VER == 11)
+         genX(emit_hs)(cmd_buffer);
+
       anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE_EXTENDED), prim) {
          prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
          prim.VertexAccessType         = SEQUENTIAL;
@@ -4389,6 +4407,13 @@ void genX(CmdDrawMultiIndexedEXT)(
    }
 #else
    vk_foreach_multi_draw_indexed(draw, i, pIndexInfo, drawCount, stride) {
+
+      /* Wa_1306463417 - Send HS state for every primitive, first
+       * one was handled by cmd_buffer_flush_gfx_state.
+       */
+      if (i && GFX_VER == 11)
+         genX(emit_hs)(cmd_buffer);
+
       anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE_EXTENDED), prim) {
          prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
          prim.VertexAccessType         = RANDOM;
@@ -4633,6 +4658,12 @@ emit_indirect_draws(struct anv_cmd_buffer *cmd_buffer,
 
       load_indirect_parameters(cmd_buffer, draw, indexed, i);
 
+      /* Wa_1306463417 - Send HS state for every primitive HS, first
+       * one was handled by cmd_buffer_flush_gfx_state.
+       */
+      if (i && GFX_VER == 11)
+         genX(emit_hs)(cmd_buffer);
+
       anv_batch_emit(&cmd_buffer->batch,
 #if GFX_VER < 11
                      GENX(3DPRIMITIVE),
@@ -4860,6 +4891,12 @@ emit_indirect_count_draws(struct anv_cmd_buffer *cmd_buffer,
 #endif
 
       load_indirect_parameters(cmd_buffer, draw, indexed, i);
+
+      /* Wa_1306463417 - Send HS state for every primitive HS, first
+       * one was handled by cmd_buffer_flush_gfx_state.
+       */
+      if (i && GFX_VER == 11)
+         genX(emit_hs)(cmd_buffer);
 
       anv_batch_emit(&cmd_buffer->batch,
 #if GFX_VER < 11
