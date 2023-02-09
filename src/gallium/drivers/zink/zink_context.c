@@ -1766,6 +1766,7 @@ zink_set_shader_images(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
    bool update = false;
+   bool is_compute = shader_type == MESA_SHADER_COMPUTE;
    for (unsigned i = 0; i < count; i++) {
       struct zink_image_view *a = &ctx->image_views[shader_type][start_slot + i];
       const struct pipe_image_view *b = images ? &images[i] : NULL;
@@ -1789,11 +1790,11 @@ zink_set_shader_images(struct pipe_context *pctx,
             /* this needs a full unbind+bind */
             changed = true;
             unbind_shader_image(ctx, shader_type, start_slot + i);
-            update_res_bind_count(ctx, res, shader_type == MESA_SHADER_COMPUTE, false);
-            res->image_bind_count[shader_type == MESA_SHADER_COMPUTE]++;
+            update_res_bind_count(ctx, res, is_compute, false);
+            res->image_bind_count[is_compute]++;
             /* always increment write_bind_count on new bind */
             if (b->access & PIPE_IMAGE_ACCESS_WRITE)
-               res->write_bind_count[shader_type == MESA_SHADER_COMPUTE]++;
+               res->write_bind_count[is_compute]++;
             /* db mode refcounts these */
             if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB && b->resource->target == PIPE_BUFFER)
                pipe_resource_reference(&a->base.resource, b->resource);
@@ -1802,12 +1803,12 @@ zink_set_shader_images(struct pipe_context *pctx,
 
             /* previous bind didn't have write: increment */
             if ((b->access & PIPE_IMAGE_ACCESS_WRITE) && !(a->base.access & PIPE_IMAGE_ACCESS_WRITE))
-               res->write_bind_count[shader_type == MESA_SHADER_COMPUTE]++;
+               res->write_bind_count[is_compute]++;
             /* previous bind had write: decrement */
             else if (!(b->access & PIPE_IMAGE_ACCESS_WRITE) && (a->base.access & PIPE_IMAGE_ACCESS_WRITE)) {
-               res->write_bind_count[shader_type == MESA_SHADER_COMPUTE]--;
-               if (!res->write_bind_count[shader_type == MESA_SHADER_COMPUTE])
-                  res->barrier_access[shader_type == MESA_SHADER_COMPUTE] &= ~VK_ACCESS_SHADER_WRITE_BIT;
+               res->write_bind_count[is_compute]--;
+               if (!res->write_bind_count[is_compute])
+                  res->barrier_access[is_compute] &= ~VK_ACCESS_SHADER_WRITE_BIT;
             }
 
             /* this may need a partial rebind */
@@ -1841,7 +1842,7 @@ zink_set_shader_images(struct pipe_context *pctx,
                }
             } else {
                /* image rebind: get updated surface and unref old one */
-               struct zink_surface *surface = create_image_surface(ctx, b, shader_type == MESA_SHADER_COMPUTE);
+               struct zink_surface *surface = create_image_surface(ctx, b, is_compute);
                /* identical rebind was already checked above */
                assert(surface && surface != a->surface);
                zink_surface_reference(screen, &a->surface, NULL);
@@ -1852,14 +1853,14 @@ zink_set_shader_images(struct pipe_context *pctx,
 
          /* these operations occur regardless of binding/rebinding */
          res->gfx_barrier |= zink_pipeline_flags_from_pipe_stage(shader_type);
-         res->barrier_access[shader_type == MESA_SHADER_COMPUTE] |= access;
+         res->barrier_access[is_compute] |= access;
          if (b->resource->target == PIPE_BUFFER) {
             screen->buffer_barrier(ctx, res, access,
                                          res->gfx_barrier);
             zink_batch_resource_usage_set(&ctx->batch, res,
                                           zink_resource_access_is_write(access), true);
          } else {
-            finalize_image_bind(ctx, res, shader_type == MESA_SHADER_COMPUTE);
+            finalize_image_bind(ctx, res, is_compute);
             zink_batch_resource_usage_set(&ctx->batch, res,
                                           zink_resource_access_is_write(access), false);
          }
