@@ -56,6 +56,7 @@ hasvk-hsw-full:
     GPU_VERSION: hasvk-hsw
     DEQP_SUITE: hasvk-hsw
     VK_DRIVER: intel_hasvk
+    MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
   timeout: 2h
 
 hasvk-hsw:

@@ -688,12 +688,16 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    }
 
    bool is_alpha = true;
+   bool warn = !debug_get_bool_option("MESA_VK_IGNORE_CONFORMANCE_WARNING", false);
    if (devinfo.platform == INTEL_PLATFORM_HSW) {
-      mesa_logw("Haswell Vulkan support is incomplete");
+      if (warn)
+         mesa_logw("Haswell Vulkan support is incomplete");
    } else if (devinfo.platform == INTEL_PLATFORM_IVB) {
-      mesa_logw("Ivy Bridge Vulkan support is incomplete");
+      if (warn)
+         mesa_logw("Ivy Bridge Vulkan support is incomplete");
    } else if (devinfo.platform == INTEL_PLATFORM_BYT) {
-      mesa_logw("Bay Trail Vulkan support is incomplete");
+      if (warn)
+         mesa_logw("Bay Trail Vulkan support is incomplete");
    } else if (devinfo.ver == 8) {
       /* Gfx8 fully supported */
       is_alpha = false;
