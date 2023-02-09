@@ -109,7 +109,7 @@ compile_nir(struct d3d12_context *ctx, struct d3d12_shader_selector *sel,
 
    if (key->samples_int_textures)
       NIR_PASS_V(nir, dxil_lower_sample_to_txf_for_integer_tex,
-                 key->tex_wrap_states, key->swizzle_state,
+                 key->n_texture_states, key->tex_wrap_states, key->swizzle_state,
                  screen->base.get_paramf(&screen->base, PIPE_CAPF_MAX_TEXTURE_LOD_BIAS));
 
    if (key->stage == PIPE_SHADER_VERTEX && key->vs.needs_format_emulation)
@@ -546,6 +546,8 @@ static void
 fill_varyings(struct d3d12_varying_info *info, nir_shader *s,
               nir_variable_mode modes, uint64_t mask, bool patch)
 {
+   memset(info, 0, sizeof(d3d12_varying_info));
+
    nir_foreach_variable_with_modes(var, s, modes) {
       unsigned slot = var->data.location;
       bool is_generic_patch = slot >= VARYING_SLOT_PATCH0;
@@ -697,7 +699,7 @@ d3d12_compare_varying_info(const d3d12_varying_info *expect, const d3d12_varying
 }
 
 static bool
-d3d12_compare_shader_keys(const d3d12_shader_key *expect, const d3d12_shader_key *have)
+d3d12_compare_shader_keys(struct d3d12_selection_context* sel_ctx, const d3d12_shader_key *expect, const d3d12_shader_key *have)
 {
    assert(expect->stage == have->stage);
    assert(expect);
@@ -806,7 +808,7 @@ d3d12_compare_shader_keys(const d3d12_shader_key *expect, const d3d12_shader_key
 
       if (expect->vs.needs_format_emulation) {
          if (memcmp(expect->vs.format_conversion, have->vs.format_conversion,
-                    PIPE_MAX_ATTRIBS * sizeof (enum pipe_format)))
+                    sel_ctx->ctx->gfx_pipeline_state.ves->num_elements * sizeof (enum pipe_format)))
             return false;
       }
    }
@@ -876,8 +878,40 @@ d3d12_fill_shader_key(struct d3d12_selection_context *sel_ctx,
          VARYING_BIT_CLIP_DIST0 |
          VARYING_BIT_CLIP_DIST1;
 
-   memset(key, 0, sizeof(d3d12_shader_key));
+   key->hash = 0;
    key->stage = stage;
+   key->required_varying_inputs.mask = 0;
+   key->required_varying_outputs.mask = 0;
+   memset(&key->next_varying_inputs, 0, offsetof(d3d12_shader_key, vs) - offsetof(d3d12_shader_key, next_varying_inputs));
+
+   switch (stage)
+   {
+   case PIPE_SHADER_VERTEX:
+      key->vs.needs_format_emulation = 0;
+      break; 
+   case PIPE_SHADER_FRAGMENT:
+      key->fs.all = 0;
+      break;
+   case PIPE_SHADER_GEOMETRY:
+      key->gs.all = 0;
+      break;
+   case PIPE_SHADER_TESS_CTRL:
+      key->hs.all = 0;
+      key->hs.required_patch_outputs.mask = 0;
+      break;
+   case PIPE_SHADER_TESS_EVAL:
+      key->ds.tcs_vertices_out = 0;
+      key->ds.prev_patch_outputs = 0;
+      key->ds.required_patch_inputs.mask = 0;
+      break;
+   case PIPE_SHADER_COMPUTE:
+      memset(key->cs.workgroup_size, 0, sizeof(key->cs.workgroup_size));
+      break;
+   default: unreachable("Invalid stage type");
+   }
+
+   key->n_texture_states = 0;
+   key->n_images = 0;
 
    if (prev) {
       /* We require as inputs what the previous stage has written,
@@ -1036,8 +1070,14 @@ d3d12_fill_shader_key(struct d3d12_selection_context *sel_ctx,
    if (stage == PIPE_SHADER_VERTEX && sel_ctx->ctx->gfx_pipeline_state.ves) {
       key->vs.needs_format_emulation = sel_ctx->ctx->gfx_pipeline_state.ves->needs_format_emulation;
       if (key->vs.needs_format_emulation) {
+         unsigned num_elements = sel_ctx->ctx->gfx_pipeline_state.ves->num_elements;
+
+         memset(key->vs.format_conversion + num_elements,
+                  0, 
+                  sizeof(key->vs.format_conversion) - (num_elements * sizeof(enum pipe_format)));
+
          memcpy(key->vs.format_conversion, sel_ctx->ctx->gfx_pipeline_state.ves->format_conversion,
-                sel_ctx->ctx->gfx_pipeline_state.ves->num_elements * sizeof(enum pipe_format));
+                  num_elements * sizeof(enum pipe_format));
       }
    }
 
@@ -1077,7 +1117,7 @@ select_shader_variant(struct d3d12_selection_context *sel_ctx, d3d12_shader_sele
    for (d3d12_shader *variant = sel->first; variant;
         variant = variant->next_variant) {
 
-      if (d3d12_compare_shader_keys(&key, &variant->key)) {
+      if (d3d12_compare_shader_keys(sel_ctx, &key, &variant->key)) {
          sel->current = variant;
          return;
       }
@@ -1154,8 +1194,10 @@ select_shader_variant(struct d3d12_selection_context *sel_ctx, d3d12_shader_sele
          NIR_PASS_V(new_nir_variant, d3d12_lower_uint_cast, true);
    }
 
-   if (key.n_images)
-      NIR_PASS_V(new_nir_variant, d3d12_lower_image_casts, key.image_format_conversion);
+   if (key.n_images) {
+      d3d12_image_format_conversion_info_arr image_format_arr = { key.n_images, key.image_format_conversion };
+      NIR_PASS_V(new_nir_variant, d3d12_lower_image_casts, &image_format_arr);
+   }
 
    if (key.stage == PIPE_SHADER_COMPUTE && sel->workgroup_size_variable) {
       new_nir_variant->info.workgroup_size[0] = key.cs.workgroup_size[0];

@@ -81,6 +81,10 @@ struct d3d12_varying_info {
 struct d3d12_image_format_conversion_info {
    enum pipe_format view_format, emulated_format;
 };
+struct d3d12_image_format_conversion_info_arr {
+   int n_images;
+   struct d3d12_image_format_conversion_info* image_format_conversion;
+};
 
 struct d3d12_shader_key {
    uint32_t hash;
