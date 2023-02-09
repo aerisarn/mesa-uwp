@@ -25,6 +25,8 @@ files_libintel_common = files(
   'i915/intel_gem.h',
   'xe/intel_engine.c',
   'xe/intel_engine.h',
+  'xe/intel_gem.c',
+  'xe/intel_gem.h',
   'intel_aux_map.c',
   'intel_aux_map.h',
   'intel_buffer_alloc.h',
