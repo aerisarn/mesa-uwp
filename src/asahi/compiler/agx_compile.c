@@ -358,9 +358,9 @@ agx_emit_load_vary_flat(agx_builder *b, agx_index dest,
    /* Get all coefficient registers up front. This ensures the driver emits a
     * single vectorized binding.
     */
-   agx_index cf =
-      agx_get_cf(b->shader, false, false,
-                 sem.location + nir_src_as_uint(*offset), 0, components);
+   agx_index cf = agx_get_cf(b->shader, false, false,
+                             sem.location + nir_src_as_uint(*offset),
+                             nir_intrinsic_component(instr), components);
    agx_index dests[4] = {agx_null()};
 
    for (unsigned i = 0; i < components; ++i) {
