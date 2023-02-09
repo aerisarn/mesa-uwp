@@ -786,6 +786,39 @@ agx_emit_atomic(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr,
    }
 }
 
+static void
+agx_emit_local_load(agx_builder *b, agx_index dst, nir_intrinsic_instr *instr)
+{
+   agx_index base = agx_local_base(instr->src[0]);
+   agx_index index = agx_zero(); /* TODO: optimize address arithmetic */
+   assert(base.size == AGX_SIZE_16);
+
+   assert(nir_dest_bit_size(instr->dest) == 32 && "todo");
+   enum agx_format format = AGX_FORMAT_I32;
+
+   unsigned nr = nir_dest_num_components(instr->dest);
+   unsigned mask = BITFIELD_MASK(nr);
+
+   agx_local_load_to(b, dst, base, index, format, mask);
+   agx_emit_cached_split(b, dst, nr);
+}
+
+static void
+agx_emit_local_store(agx_builder *b, nir_intrinsic_instr *instr)
+{
+   agx_index value = agx_src_index(&instr->src[0]);
+   agx_index base = agx_local_base(instr->src[1]);
+   agx_index index = agx_zero(); /* TODO: optimize address arithmetic */
+   assert(base.size == AGX_SIZE_16);
+
+   assert(nir_src_bit_size(instr->src[0]) == 32 && "todo");
+   enum agx_format format = AGX_FORMAT_I32;
+   unsigned mask = BITFIELD_MASK(
+      nir_src_num_components(instr->src[0])); /* XXX: there's a write mask */
+
+   agx_local_store(b, value, base, index, format, mask);
+}
+
 static agx_instr *
 agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 {
@@ -823,6 +856,14 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 
    case nir_intrinsic_store_agx:
       agx_emit_store(b, instr);
+      return NULL;
+
+   case nir_intrinsic_store_shared:
+      agx_emit_local_store(b, instr);
+      return NULL;
+
+   case nir_intrinsic_load_shared:
+      agx_emit_local_load(b, dst, instr);
       return NULL;
 
    case nir_intrinsic_global_atomic_add:
