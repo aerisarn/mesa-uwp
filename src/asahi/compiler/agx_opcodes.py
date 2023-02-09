@@ -267,11 +267,22 @@ op("device_load",
       encoding_32 = (0x05, 0x7F, 6, 8),
       srcs = 2, imms = [FORMAT, MASK, SHIFT, SCOREBOARD], can_reorder = False)
 
+# sources are base (relative to workgroup memory), index
+op("local_load",
+      encoding_32 = (0b1101001, 0, 6, 8),
+      srcs = 2, imms = [FORMAT, MASK])
+
 # sources are value, base, index
 # TODO: Consider permitting the short form
 op("device_store",
       encoding_32 = (0x45 | (1 << 47), 0, 8, _),
       dests = 0, srcs = 3, imms = [FORMAT, MASK, SHIFT, SCOREBOARD], can_eliminate = False)
+
+# sources are value, base, index
+op("local_store",
+      encoding_32 = (0b0101001, 0, 6, 8),
+      dests = 0, srcs = 3, imms = [FORMAT, MASK],
+      can_eliminate=False)
 
 # sources are value, index
 # TODO: Consider permitting the short form

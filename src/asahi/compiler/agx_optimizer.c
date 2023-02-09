@@ -132,9 +132,12 @@ agx_optimizer_inline_imm(agx_instr **defs, agx_instr *I, unsigned srcs,
          continue;
       if (I->op == AGX_OPCODE_ZS_EMIT && s != 0)
          continue;
-      if ((I->op == AGX_OPCODE_DEVICE_STORE || I->op == AGX_OPCODE_ATOMIC ||
+      if ((I->op == AGX_OPCODE_DEVICE_STORE ||
+           I->op == AGX_OPCODE_LOCAL_STORE || I->op == AGX_OPCODE_ATOMIC ||
            I->op == AGX_OPCODE_LOCAL_ATOMIC) &&
           s != 2)
+         continue;
+      if (I->op == AGX_OPCODE_LOCAL_LOAD && s != 1)
          continue;
 
       if (float_src) {

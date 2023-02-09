@@ -58,6 +58,7 @@ agx_write_registers(agx_instr *I, unsigned d)
       return 4 * size;
 
    case AGX_OPCODE_DEVICE_LOAD:
+   case AGX_OPCODE_LOCAL_LOAD:
    case AGX_OPCODE_LD_TILE:
       return util_bitcount(I->mask) * size;
 
@@ -98,6 +99,7 @@ agx_read_registers(agx_instr *I, unsigned s)
       return I->nr_dests * agx_size_align_16(agx_split_width(I));
 
    case AGX_OPCODE_DEVICE_STORE:
+   case AGX_OPCODE_LOCAL_STORE:
    case AGX_OPCODE_ST_TILE:
       if (s == 0)
          return util_bitcount(I->mask) * size;
