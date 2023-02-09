@@ -1489,7 +1489,7 @@ zink_descriptors_init_bindless(struct zink_context *ctx)
       unsigned bind = ZINK_BIND_RESOURCE_DESCRIPTOR | ZINK_BIND_SAMPLER_DESCRIPTOR;
       VkDeviceSize size;
       VKSCR(GetDescriptorSetLayoutSizeEXT)(screen->dev, screen->bindless_layout, &size);
-      struct pipe_resource *pres = pipe_buffer_create(&screen->base, bind, 0, size);
+      struct pipe_resource *pres = pipe_buffer_create(&screen->base, bind, ZINK_USAGE_BINDLESS, size);
       ctx->dd.db.bindless_db = zink_resource(pres);
       ctx->dd.db.bindless_db_map = pipe_buffer_map(&ctx->base, pres, PIPE_MAP_READ | PIPE_MAP_WRITE, &ctx->dd.db.bindless_db_xfer);
       zink_batch_bind_db(ctx);
