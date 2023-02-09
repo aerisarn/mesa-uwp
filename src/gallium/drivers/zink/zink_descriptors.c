@@ -1483,6 +1483,7 @@ zink_descriptors_init_bindless(struct zink_context *ctx)
       return;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    assert(screen->bindless_layout);
+   ctx->dd.bindless_init = true;
 
    if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB) {
       unsigned bind = ZINK_BIND_RESOURCE_DESCRIPTOR | ZINK_BIND_SAMPLER_DESCRIPTOR;
@@ -1517,7 +1518,6 @@ zink_descriptors_init_bindless(struct zink_context *ctx)
 
       zink_descriptor_util_alloc_sets(screen, screen->bindless_layout, ctx->dd.t.bindless_pool, &ctx->dd.t.bindless_set, 1);
    }
-   ctx->dd.bindless_init = true;
 }
 
 /* called on context destroy */
