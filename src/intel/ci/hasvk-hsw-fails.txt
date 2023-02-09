@@ -1675,19 +1675,8 @@ dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.negat
 dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.negate_denorm_preserve_vert,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.radians_denorm_preserve_frag,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.radians_denorm_preserve_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.rounding_rtz_add_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.rounding_rtz_dot_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.rounding_rtz_mmulm_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.rounding_rtz_mmuls_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.rounding_rtz_mmulv_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.rounding_rtz_mul_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.rounding_rtz_out_prod_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.rounding_rtz_sub_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.rounding_rtz_vmulm_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.rounding_rtz_vmuls_vert,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.sign_denorm_preserve_frag,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.sign_denorm_preserve_vert,Fail
-dEQP-VK.spirv_assembly.instruction.graphics.float_controls.fp32.input_args.tanh_denorm_flush_to_zero_vert,Fail
 
 # ../src/intel/compiler/brw_inst.h:574: brw_inst_set_jip: Assertion `value >= -(1 << 15)' failed.
 dEQP-VK.spirv_assembly.instruction.graphics.spirv_ids_abuse.lots_ids_frag,Crash
