@@ -32,16 +32,6 @@
 #include "anv_private.h"
 #include "common/intel_gem.h"
 
-void
-anv_gem_close(struct anv_device *device, uint32_t gem_handle)
-{
-   struct drm_gem_close close = {
-      .handle = gem_handle,
-   };
-
-   intel_ioctl(device->fd, DRM_IOCTL_GEM_CLOSE, &close);
-}
-
 /**
  * Wrapper around DRM_IOCTL_I915_GEM_MMAP. Returns MAP_FAILED on error.
  */

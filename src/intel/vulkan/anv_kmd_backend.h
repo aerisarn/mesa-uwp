@@ -40,6 +40,7 @@ struct anv_kmd_backend {
                           const struct intel_memory_class_instance **regions,
                           uint16_t num_regions, uint64_t size,
                           enum anv_bo_alloc_flags alloc_flags);
+   void (*gem_close)(struct anv_device *device, uint32_t handle);
 };
 
 const struct anv_kmd_backend *anv_kmd_backend_get(enum intel_kmd_type type);

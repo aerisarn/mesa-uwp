@@ -1352,7 +1352,6 @@ VkResult anv_queue_submit_simple_batch(struct anv_queue *queue,
 void* anv_gem_mmap(struct anv_device *device, struct anv_bo *bo,
                    uint64_t offset, uint64_t size, uint32_t flags);
 void anv_gem_munmap(struct anv_device *device, void *p, uint64_t size);
-void anv_gem_close(struct anv_device *device, uint32_t gem_handle);
 uint32_t anv_gem_userptr(struct anv_device *device, void *mem, size_t size);
 int anv_gem_wait(struct anv_device *device, uint32_t gem_handle, int64_t *timeout_ns);
 int anv_gem_set_tiling(struct anv_device *device, uint32_t gem_handle,

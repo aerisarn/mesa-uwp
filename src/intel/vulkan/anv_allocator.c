@@ -1381,7 +1381,7 @@ anv_bo_finish(struct anv_device *device, struct anv_bo *bo)
       anv_device_unmap_bo(device, bo, bo->map, bo->size);
 
    assert(bo->gem_handle != 0);
-   anv_gem_close(device, bo->gem_handle);
+   device->kmd_backend->gem_close(device, bo->gem_handle);
 }
 
 static VkResult
@@ -1505,7 +1505,7 @@ anv_device_alloc_bo(struct anv_device *device,
       VkResult result = anv_device_map_bo(device, &new_bo, 0, size,
                                           0 /* gem_flags */, &new_bo.map);
       if (unlikely(result != VK_SUCCESS)) {
-         anv_gem_close(device, new_bo.gem_handle);
+         device->kmd_backend->gem_close(device, new_bo.gem_handle);
          return result;
       }
    }
@@ -1768,7 +1768,7 @@ anv_device_import_bo(struct anv_device *device,
    } else {
       off_t size = lseek(fd, 0, SEEK_END);
       if (size == (off_t)-1) {
-         anv_gem_close(device, gem_handle);
+         device->kmd_backend->gem_close(device, gem_handle);
          pthread_mutex_unlock(&cache->mutex);
          return vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
       }

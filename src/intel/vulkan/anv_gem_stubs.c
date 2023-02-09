@@ -27,8 +27,8 @@
 #include "util/anon_file.h"
 #include "anv_private.h"
 
-void
-anv_gem_close(struct anv_device *device, uint32_t gem_handle)
+static void
+stub_gem_close(struct anv_device *device, uint32_t gem_handle)
 {
    close(gem_handle);
 }
@@ -122,6 +122,7 @@ const struct anv_kmd_backend *anv_stub_kmd_backend_get(void)
 {
    static const struct anv_kmd_backend stub_backend = {
       .gem_create = stub_gem_create,
+      .gem_close = stub_gem_close,
    };
    return &stub_backend;
 }

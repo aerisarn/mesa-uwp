@@ -74,11 +74,22 @@ i915_gem_create(struct anv_device *device,
    return gem_create.handle;
 }
 
+static void
+i915_gem_close(struct anv_device *device, uint32_t handle)
+{
+   struct drm_gem_close close = {
+      .handle = handle,
+   };
+
+   intel_ioctl(device->fd, DRM_IOCTL_GEM_CLOSE, &close);
+}
+
 const struct anv_kmd_backend *
 anv_i915_kmd_backend_get(void)
 {
    static const struct anv_kmd_backend i915_backend = {
       .gem_create = i915_gem_create,
+      .gem_close = i915_gem_close,
    };
    return &i915_backend;
 }
