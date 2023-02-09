@@ -2424,6 +2424,8 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       batch->resolve |= ctx->zs->store;
    }
 
+   batch->any_draws = true;
+
    if (agx_update_vs(ctx))
       ctx->dirty |= AGX_DIRTY_VS | AGX_DIRTY_VS_PROG;
    else if (ctx->stage[PIPE_SHADER_VERTEX].dirty)

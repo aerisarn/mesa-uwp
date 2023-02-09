@@ -964,8 +964,8 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
 
    assert(agx_batch_is_active(batch));
 
-   /* Nothing to do */
-   if (!(batch->draw | batch->clear)) {
+   /* Make sure there's something to submit. */
+   if (!batch->clear && !batch->any_draws) {
       agx_batch_cleanup(ctx, batch);
       return;
    }
