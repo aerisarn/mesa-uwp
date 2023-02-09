@@ -49,8 +49,10 @@ struct agx_varyings_vs {
    unsigned slots[VARYING_SLOT_MAX];
 };
 
-/* Conservative bound */
-#define AGX_MAX_CF_BINDINGS (VARYING_SLOT_MAX)
+/* Conservative bound, * 4 due to offsets (TODO: maybe worth eliminating
+ * coefficient register aliasing?)
+ */
+#define AGX_MAX_CF_BINDINGS (VARYING_SLOT_MAX * 4)
 
 struct agx_varyings_fs {
    /* Number of coefficient registers used */
