@@ -20,7 +20,7 @@ variables:
    DEBIAN_X86_TEST_VK_TAG: "2023-02-03-uprev-piglit"
 
    ALPINE_X86_BUILD_TAG: "2023-01-20-all-in-1"
-   FEDORA_X86_BUILD_TAG: "2023-01-20-all-in-1"
+   FEDORA_X86_BUILD_TAG: "2023-02-09-f36"
    KERNEL_ROOTFS_TAG: "2023-02-03-uprev-piglit"
 
    WINDOWS_X64_VS_PATH: "windows/x64_vs"
