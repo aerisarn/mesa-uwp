@@ -25,6 +25,7 @@
 
 #include "common/intel_gem.h"
 #include "dev/intel_device_info.h"
+#include "dev/intel_hwconfig.h"
 
 #include "util/log.h"
 
@@ -141,6 +142,19 @@ xe_query_gts(int fd, struct intel_device_info *devinfo)
    return true;
 }
 
+static bool
+xe_query_hwconfig(int fd, struct intel_device_info *devinfo)
+{
+   int32_t len;
+   void *data = xe_query_alloc_fetch(fd, DRM_XE_DEVICE_QUERY_HWCONFIG, &len);
+   if (!data)
+      return false;
+
+   bool ret = intel_hwconfig_process_table(devinfo, data, len);
+   free(data);
+   return ret;
+}
+
 bool
 intel_device_info_xe_get_info_from_fd(int fd, struct intel_device_info *devinfo)
 {
@@ -152,6 +166,9 @@ intel_device_info_xe_get_info_from_fd(int fd, struct intel_device_info *devinfo)
 
    if (!xe_query_gts(fd, devinfo))
       return false;
+
+   if (xe_query_hwconfig(fd, devinfo))
+      intel_device_info_update_after_hwconfig(devinfo);
 
    devinfo->has_context_isolation = true;
    devinfo->has_mmap_offset = true;
