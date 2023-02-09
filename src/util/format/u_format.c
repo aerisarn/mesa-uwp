@@ -632,6 +632,7 @@ util_format_fits_8unorm(const struct util_format_description *format_desc)
       case PIPE_FORMAT_R1_UNORM:
       case PIPE_FORMAT_UYVY:
       case PIPE_FORMAT_YUYV:
+      case PIPE_FORMAT_YVYU:
       case PIPE_FORMAT_R8G8_B8G8_UNORM:
       case PIPE_FORMAT_G8R8_G8B8_UNORM:
          return true;

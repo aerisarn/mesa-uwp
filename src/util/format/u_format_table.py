@@ -100,6 +100,7 @@ def has_access(format):
         'xyuv',
         'ayuv',
         'r8g8_r8b8_unorm',
+        'r8b8_r8g8_unorm',
         'g8r8_b8r8_unorm',
         'g8r8_g8b8_unorm',
         'y8_400_unorm',

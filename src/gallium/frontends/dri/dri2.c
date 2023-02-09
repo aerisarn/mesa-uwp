@@ -878,6 +878,15 @@ static const struct dri2_format_mapping r8g8_r8b8_mapping = {
      { 0, 1, 0, __DRI_IMAGE_FORMAT_ARGB8888 } }
 };
 
+static const struct dri2_format_mapping r8b8_r8g8_mapping = {
+   DRM_FORMAT_YVYU,
+   __DRI_IMAGE_FORMAT_NONE,
+   __DRI_IMAGE_COMPONENTS_Y_XUXV,
+   PIPE_FORMAT_R8B8_R8G8_UNORM, 2,
+   { { 0, 0, 0, __DRI_IMAGE_FORMAT_GR88 },
+     { 0, 1, 0, __DRI_IMAGE_FORMAT_ARGB8888 } }
+};
+
 static const struct dri2_format_mapping g8r8_b8r8_mapping = {
    DRM_FORMAT_UYVY,
    __DRI_IMAGE_FORMAT_NONE,
@@ -933,6 +942,13 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
        pscreen->is_format_supported(pscreen, PIPE_FORMAT_R8G8_R8B8_UNORM,
                                     screen->target, 0, 0, PIPE_BIND_SAMPLER_VIEW)) {
       map = &r8g8_r8b8_mapping;
+      tex_usage |= PIPE_BIND_SAMPLER_VIEW;
+   }
+
+   if (!tex_usage && map->pipe_format == PIPE_FORMAT_YVYU &&
+       pscreen->is_format_supported(pscreen, PIPE_FORMAT_R8B8_R8G8_UNORM,
+                                    screen->target, 0, 0, PIPE_BIND_SAMPLER_VIEW)) {
+      map = &r8b8_r8g8_mapping;
       tex_usage |= PIPE_BIND_SAMPLER_VIEW;
    }
 
