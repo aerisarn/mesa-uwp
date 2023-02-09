@@ -1131,6 +1131,10 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    case nir_op_b2i16:
       return agx_icmpsel_to(b, dst, s0, i0, i0, i1, AGX_ICOND_UEQ);
 
+   case nir_op_b2b32:
+      return agx_icmpsel_to(b, dst, s0, i0, i0, agx_mov_imm(b, 32, ~0),
+                            AGX_ICOND_UEQ);
+
    case nir_op_b2f16:
    case nir_op_b2f32: {
       /* At this point, boolean is just zero/nonzero, so compare with zero */
