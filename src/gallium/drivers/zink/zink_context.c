@@ -1772,7 +1772,7 @@ zink_set_shader_images(struct pipe_context *pctx,
             debug_printf("couldn't create storage image!");
             continue;
          }
-         /* no refs */
+
          VkAccessFlags access = 0;
          if (b->access & PIPE_IMAGE_ACCESS_WRITE) {
             res->write_bind_count[shader_type == MESA_SHADER_COMPUTE]++;
