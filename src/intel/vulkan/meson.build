@@ -137,6 +137,7 @@ libanv_files = files(
   'i915/anv_kmd_backend.c',
   'layers/anv_doom64.c',
   'layers/anv_hitman3.c',
+  'xe/anv_kmd_backend.c',
   'anv_allocator.c',
   'anv_android.h',
   'anv_batch_chain.c',

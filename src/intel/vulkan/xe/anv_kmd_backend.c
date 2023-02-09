@@ -21,21 +21,34 @@
  * IN THE SOFTWARE.
  */
 
-#include <stdlib.h>
+#include "anv_private.h"
 
-#include "anv_kmd_backend.h"
+#include "drm-uapi/xe_drm.h"
+
+static uint32_t
+xe_gem_create(struct anv_device *device,
+              const struct intel_memory_class_instance **regions,
+              uint16_t regions_count, uint64_t size,
+              enum anv_bo_alloc_flags alloc_flags)
+{
+   struct drm_xe_gem_create gem_create = {
+     .vm_id = 0,/* TODO: create VM */
+     .size = size,
+   };
+   for (uint16_t i = 0; i < regions_count; i++)
+      gem_create.flags |= BITFIELD_BIT(regions[i]->instance);
+
+   if (intel_ioctl(device->fd, DRM_IOCTL_XE_GEM_CREATE, &gem_create))
+      return 0;
+
+   return gem_create.handle;
+}
 
 const struct anv_kmd_backend *
-anv_kmd_backend_get(enum intel_kmd_type type)
+anv_xe_kmd_backend_get(void)
 {
-   switch (type) {
-   case INTEL_KMD_TYPE_I915:
-      return anv_i915_kmd_backend_get();
-   case INTEL_KMD_TYPE_XE:
-      return anv_xe_kmd_backend_get();
-   case INTEL_KMD_TYPE_STUB:
-      return anv_stub_kmd_backend_get();
-   default:
-      return NULL;
-   }
+   static const struct anv_kmd_backend xe_backend = {
+      .gem_create = xe_gem_create,
+   };
+   return &xe_backend;
 }

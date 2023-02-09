@@ -70,4 +70,5 @@ const struct anv_kmd_backend *anv_kmd_backend_get(enum intel_kmd_type type);
 
 /* Internal functions, should only be called by anv_kmd_backend_get() */
 const struct anv_kmd_backend *anv_i915_kmd_backend_get(void);
+const struct anv_kmd_backend *anv_xe_kmd_backend_get(void);
 const struct anv_kmd_backend *anv_stub_kmd_backend_get(void);
