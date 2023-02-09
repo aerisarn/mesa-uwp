@@ -17,6 +17,7 @@ class Extension:
         self.type = None
         self.number = number
         self.platform = None
+        self.provisional = False
         self.ext_version = int(ext_version)
         self.supported = []
 
@@ -43,6 +44,7 @@ class Extension:
         ext = Extension(name, number, version)
         ext.type = ext_elem.attrib['type']
         ext.platform = ext_elem.attrib.get('platform', None)
+        ext.provisional = ext_elem.attrib.get('provisional', False)
         ext.supported = supported
 
         return ext
@@ -188,6 +190,9 @@ def get_all_required(xml, thing, api):
     for extension in xml.findall('.extensions/extension'):
         ext = Extension.from_xml(extension)
         if api not in ext.supported:
+            continue
+
+        if ext.provisional:
             continue
 
         for require in extension.findall('./require'):
