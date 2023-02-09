@@ -166,6 +166,41 @@ agx_pack_memory_index(agx_index index, bool *flag)
    }
 }
 
+static uint16_t
+agx_pack_local_base(agx_index index, unsigned *flags)
+{
+   assert(index.size == AGX_SIZE_16);
+
+   if (index.type == AGX_INDEX_IMMEDIATE) {
+      assert(index.value == 0);
+      *flags = 2;
+      return 0;
+   } else if (index.type == AGX_INDEX_UNIFORM) {
+      *flags = 1 | ((index.value >> 8) << 1);
+      return index.value & BITFIELD_MASK(7);
+   } else {
+      assert_register_is_aligned(index);
+      *flags = 0;
+      return index.value;
+   }
+}
+
+static uint16_t
+agx_pack_local_index(agx_index index, bool *flag)
+{
+   assert(index.size == AGX_SIZE_16);
+
+   if (index.type == AGX_INDEX_IMMEDIATE) {
+      assert(index.value < 0x10000);
+      *flag = 1;
+      return index.value;
+   } else {
+      assert_register_is_aligned(index);
+      *flag = 0;
+      return index.value;
+   }
+}
+
 static unsigned
 agx_pack_atomic_source(agx_index index)
 {
@@ -599,6 +634,30 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
          (L ? (1ull << 47) : 0) | (((uint64_t)(format >> 3)) << 48) |
          (((uint64_t)Rt) << 49) | (((uint64_t)u5) << 50) |
          (((uint64_t)mask) << 52) | (((uint64_t)(O >> 8)) << 56);
+
+      unsigned size = L ? 8 : 6;
+      memcpy(util_dynarray_grow_bytes(emission, 1, size), &raw, size);
+      break;
+   }
+
+   case AGX_OPCODE_LOCAL_LOAD:
+   case AGX_OPCODE_LOCAL_STORE: {
+      bool is_load = I->op == AGX_OPCODE_LOCAL_LOAD;
+      bool L = true; /* TODO: when would you want short? */
+      unsigned At;
+      bool Rt, Ot;
+
+      unsigned R = agx_pack_memory_reg(is_load ? I->dest[0] : I->src[0], &Rt);
+      unsigned A = agx_pack_local_base(is_load ? I->src[0] : I->src[1], &At);
+      unsigned O = agx_pack_local_index(is_load ? I->src[1] : I->src[2], &Ot);
+
+      uint64_t raw =
+         agx_opcodes_info[I->op].encoding.exact | (Rt ? BITFIELD64_BIT(8) : 0) |
+         ((R & BITFIELD_MASK(6)) << 9) | (L ? BITFIELD64_BIT(15) : 0) |
+         ((A & BITFIELD_MASK(6)) << 16) | (At << 22) | (I->format << 24) |
+         ((O & BITFIELD64_MASK(6)) << 28) | (Ot ? BITFIELD64_BIT(34) : 0) |
+         (((uint64_t)I->mask) << 36) | (((uint64_t)(O >> 6)) << 48) |
+         (((uint64_t)(A >> 6)) << 58) | (((uint64_t)(R >> 6)) << 60);
 
       unsigned size = L ? 8 : 6;
       memcpy(util_dynarray_grow_bytes(emission, 1, size), &raw, size);
