@@ -1575,6 +1575,9 @@ bind_gfx_stage(struct zink_context *ctx, gl_shader_stage stage, struct zink_shad
 static void
 unbind_generated_gs(struct zink_context *ctx, gl_shader_stage stage, struct zink_shader *shader)
 {
+   if (ctx->gfx_stages[stage]->non_fs.is_generated)
+      ctx->inlinable_uniforms_valid_mask &= ~BITFIELD_BIT(MESA_SHADER_GEOMETRY);
+
    for (int i = 0; i < ARRAY_SIZE(shader->non_fs.generated_gs); i++) {
       for (int j = 0; j < ARRAY_SIZE(shader->non_fs.generated_gs[0]); j++) {
          if (ctx->gfx_stages[stage]->non_fs.generated_gs[i][j] &&
@@ -1582,6 +1585,8 @@ unbind_generated_gs(struct zink_context *ctx, gl_shader_stage stage, struct zink
              ctx->gfx_stages[stage]->non_fs.generated_gs[i][j]) {
             assert(stage != MESA_SHADER_GEOMETRY); /* let's not keep recursing! */
             bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY, NULL);
+            ctx->is_generated_gs_bound = false;
+            ctx->inlinable_uniforms_valid_mask &= ~BITFIELD_BIT(MESA_SHADER_GEOMETRY);
          }
       }
    }
@@ -2220,6 +2225,25 @@ zink_rast_prim_for_pipe(enum pipe_prim_type prim)
    }
 }
 
+static inline void
+zink_add_inline_uniform(nir_shader *shader, int offset)
+{
+   shader->info.inlinable_uniform_dw_offsets[shader->info.num_inlinable_uniforms] = offset;
+   ++shader->info.num_inlinable_uniforms;
+}
+
+static uint32_t
+zink_flat_flags(struct nir_shader *shader)
+{
+   uint32_t flat_flags = 0, c = 0;
+   nir_foreach_shader_in_variable(var, shader) {
+      if (var->data.interpolation == INTERP_MODE_FLAT)
+         flat_flags |= 1u << (c++);
+   }
+
+   return flat_flags;
+}
+
 void
 zink_set_primitive_emulation_keys(struct zink_context *ctx)
 {
@@ -2290,20 +2314,26 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
                   &screen->nir_options,
                   ctx->gfx_stages[prev_vertex_stage]->nir,
                   ctx->gfx_pipeline_state.gfx_prim_mode,
+                  ZINK_INLINE_VAL_FLAT_MASK * sizeof(uint32_t),
                   lower_edge_flags,
                   lower_line_stipple || lower_quad_prim);
             }
 
-            struct zink_shader *shader = zink_shader_create(screen, nir, NULL);
+            zink_add_inline_uniform(nir, ZINK_INLINE_VAL_FLAT_MASK);
+            struct zink_shader *shader = zink_shader_create(screen, nir, &ctx->gfx_stages[prev_vertex_stage]->sinfo.so_info);
             shader->needs_inlining = true;
             ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type] = shader;
             shader->non_fs.is_generated = true;
+            shader->can_inline = true;
          }
 
          bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY,
                         ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type]);
          ctx->is_generated_gs_bound = true;
       }
+
+      ctx->base.set_inlinable_constants(&ctx->base, MESA_SHADER_GEOMETRY, 1,
+                                        (uint32_t []){zink_flat_flags(ctx->gfx_stages[MESA_SHADER_FRAGMENT]->nir)});
    } else if (ctx->gfx_stages[MESA_SHADER_GEOMETRY] &&
               ctx->gfx_stages[MESA_SHADER_GEOMETRY]->non_fs.is_generated)
          bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY, NULL);
@@ -2344,20 +2374,26 @@ zink_create_primitive_emulation_gs(struct zink_context *ctx)
                   &screen->nir_options,
                   ctx->gfx_stages[prev_vertex_stage]->nir,
                   ctx->gfx_pipeline_state.gfx_prim_mode,
+                  ZINK_INLINE_VAL_FLAT_MASK * 4,
                   lower_edge_flags,
                   lower_quad_prim);
             }
 
-            struct zink_shader *shader = zink_shader_create(screen, nir, NULL);
+            zink_add_inline_uniform(nir, ZINK_INLINE_VAL_FLAT_MASK);
+            struct zink_shader *shader = zink_shader_create(screen, nir, &ctx->gfx_stages[prev_vertex_stage]->sinfo.so_info);
             shader->needs_inlining = true;
             ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type] = shader;
             shader->non_fs.is_generated = true;
+            shader->can_inline = true;
          }
 
          bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY,
                         ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type]);
          ctx->is_generated_gs_bound = true;
       }
+
+      ctx->base.set_inlinable_constants(&ctx->base, MESA_SHADER_GEOMETRY, 1,
+                                        (uint32_t []){zink_flat_flags(ctx->gfx_stages[MESA_SHADER_FRAGMENT]->nir)});
    } else if (ctx->gfx_stages[MESA_SHADER_GEOMETRY] &&
               ctx->gfx_stages[MESA_SHADER_GEOMETRY]->non_fs.is_generated)
          bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY, NULL);

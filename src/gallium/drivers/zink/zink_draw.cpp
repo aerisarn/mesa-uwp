@@ -288,7 +288,7 @@ update_gfx_pipeline(struct zink_context *ctx, struct zink_batch_state *bs, enum 
 {
    VkPipeline prev_pipeline = ctx->gfx_pipeline_state.pipeline;
    const struct zink_screen *screen = zink_screen(ctx->base.screen);
-   if (screen->optimal_keys)
+   if (screen->optimal_keys && !ctx->is_generated_gs_bound)
       zink_gfx_program_update_optimal(ctx);
    else
       zink_gfx_program_update(ctx);

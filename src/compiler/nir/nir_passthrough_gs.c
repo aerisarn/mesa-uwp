@@ -129,6 +129,7 @@ nir_shader *
 nir_create_passthrough_gs(const nir_shader_compiler_options *options,
                           const nir_shader *prev_stage,
                           enum shader_prim primitive_type,
+                          int flat_interp_mask_offset,
                           bool emulate_edgeflags,
                           bool force_line_strip_out)
 {
@@ -217,15 +218,25 @@ nir_create_passthrough_gs(const nir_shader_compiler_options *options,
    }
 
    nir_variable *edge_var = nir_find_variable_with_location(nir, nir_var_shader_in, VARYING_SLOT_EDGE);
+   nir_ssa_def *flat_interp_mask_def = nir_load_ubo(&b, 1, 32,
+                                                    nir_imm_int(&b, 0), nir_imm_int(&b, flat_interp_mask_offset),
+                                                    .align_mul = 4, .align_offset = 0, .range_base = 0, .range = ~0);
    for (unsigned i = start_vert; i < end_vert || needs_closing; i += vert_step) {
       int idx = i < end_vert ? i : start_vert;
       /* Copy inputs to outputs. */
-      for (unsigned j = 0, oj = 0; j < num_inputs; ++j) {
+      for (unsigned j = 0, oj = 0, of = 0; j < num_inputs; ++j) {
          if (in_vars[j]->data.location == VARYING_SLOT_EDGE) {
             continue;
          }
          /* no need to use copy_var to save a lower pass */
-         nir_ssa_def *value = nir_load_array_var_imm(&b, in_vars[j], idx);
+         nir_ssa_def *index;
+         if (in_vars[j]->data.location == VARYING_SLOT_POS)
+            index = nir_imm_int(&b, idx);
+         else {
+            unsigned mask = 1u << (of++);
+            index = nir_bcsel(&b, nir_ieq_imm(&b, nir_iand_imm(&b, flat_interp_mask_def, mask), 0), nir_imm_int(&b, idx), nir_imm_int(&b, start_vert));
+         }
+         nir_ssa_def *value = nir_load_array_var(&b, in_vars[j], index);
          nir_store_var(&b, out_vars[oj], value,
                        (1u << value->num_components) - 1);
          ++oj;

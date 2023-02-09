@@ -1387,7 +1387,10 @@ zink_set_inlinable_constants(struct pipe_context *pctx,
    if (shader == MESA_SHADER_COMPUTE) {
       key = &ctx->compute_pipeline_state.key;
    } else {
-      assert(!zink_screen(pctx->screen)->optimal_keys);
+      assert(!zink_screen(pctx->screen)->optimal_keys ||
+             (shader == MESA_SHADER_GEOMETRY &&
+              ctx->gfx_stages[MESA_SHADER_GEOMETRY] &&
+              ctx->gfx_stages[MESA_SHADER_GEOMETRY]->non_fs.is_generated));
       key = &ctx->gfx_pipeline_state.shader_keys.key[shader];
    }
    inlinable_uniforms = key->base.inlined_uniform_values;

@@ -124,7 +124,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
       state->dirty = false;
    }
    /* extra safety asserts for optimal path to catch refactoring bugs */
-   if (screen->optimal_keys) {
+   if (prog->optimal_keys) {
       ASSERTED const union zink_shader_key_optimal *opt = (union zink_shader_key_optimal*)&prog->last_variant_hash;
       assert(opt->val == state->shader_keys_optimal.key.val);
       assert(state->optimal_key == state->shader_keys_optimal.key.val);
