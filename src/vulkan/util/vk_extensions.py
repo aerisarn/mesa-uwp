@@ -12,22 +12,24 @@ def get_api_list(s):
     return apis
 
 class Extension:
-    def __init__(self, name, ext_version):
+    def __init__(self, name, number, ext_version):
         self.name = name
         self.type = None
+        self.number = number
         self.platform = None
         self.ext_version = int(ext_version)
         self.supported = []
 
     def from_xml(ext_elem):
         name = ext_elem.attrib['name']
+        number = int(ext_elem.attrib['number'])
         supported = get_api_list(ext_elem.attrib['supported'])
         if name == 'VK_ANDROID_native_buffer':
             assert not supported
             supported = ['vulkan']
 
         if not supported:
-            return Extension(name, 0)
+            return Extension(name, number, 0)
 
         version = None
         for enum_elem in ext_elem.findall('.require/enum'):
@@ -38,7 +40,7 @@ class Extension:
                     version = int(enum_elem.attrib['value'])
 
         assert version is not None
-        ext = Extension(name, version)
+        ext = Extension(name, number, version)
         ext.type = ext_elem.attrib['type']
         ext.platform = ext_elem.attrib.get('platform', None)
         ext.supported = supported
