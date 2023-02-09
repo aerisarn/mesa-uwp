@@ -834,20 +834,22 @@ d3d12_shader_key_hash(const d3d12_shader_key *key)
        * hashing for now until this is shown to be worthwhile. */
        break;
    case PIPE_SHADER_GEOMETRY:
-      hash = _mesa_hash_data_with_seed(&key->gs, sizeof(key->gs), hash);
+      hash += key->gs.all;
       break;
    case PIPE_SHADER_FRAGMENT:
-      hash = _mesa_hash_data_with_seed(&key->fs, sizeof(key->fs), hash);
+      hash += key->fs.all;
       break;
    case PIPE_SHADER_COMPUTE:
       hash = _mesa_hash_data_with_seed(&key->cs, sizeof(key->cs), hash);
       break;
    case PIPE_SHADER_TESS_CTRL:
-      hash += key->hs.next_patch_inputs;
+      hash += key->hs.all;
+      hash += key->hs.required_patch_outputs.mask;
       break;
    case PIPE_SHADER_TESS_EVAL:
       hash += key->ds.tcs_vertices_out;
       hash += key->ds.prev_patch_outputs;
+      hash += key->ds.required_patch_inputs.mask;
       break;
    default:
       /* No type specific information to hash for other stages. */
