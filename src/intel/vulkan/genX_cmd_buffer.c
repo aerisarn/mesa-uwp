@@ -3522,6 +3522,13 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
       }
    }
 
+   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) {
+      uint32_t *dw =
+         anv_batch_emitn(&cmd_buffer->batch, GENX(3DSTATE_HS_length),
+                         GENX(3DSTATE_HS));
+      memcpy(dw, &pipeline->gfx8.hs, sizeof(pipeline->gfx8.hs));
+   }
+
    if (any_dynamic_state_dirty || cmd_buffer->state.gfx.dirty)
       genX(cmd_buffer_flush_dynamic_state)(cmd_buffer);
 }

@@ -1311,56 +1311,60 @@ emit_3dstate_hs_ds(struct anv_graphics_pipeline *pipeline,
    const struct brw_tcs_prog_data *tcs_prog_data = get_tcs_prog_data(pipeline);
    const struct brw_tes_prog_data *tes_prog_data = get_tes_prog_data(pipeline);
 
-   anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_HS), hs) {
-      hs.Enable = true;
-      hs.StatisticsEnable = true;
-      hs.KernelStartPointer = tcs_bin->kernel.offset;
-      /* Wa_1606682166 */
-      hs.SamplerCount = GFX_VER == 11 ? 0 : get_sampler_count(tcs_bin);
-      hs.BindingTableEntryCount = tcs_bin->bind_map.surface_count;
+   struct GENX(3DSTATE_HS) hs = {
+      GENX(3DSTATE_HS_header),
+   };
+
+   hs.Enable = true;
+   hs.StatisticsEnable = true;
+   hs.KernelStartPointer = tcs_bin->kernel.offset;
+   /* Wa_1606682166 */
+   hs.SamplerCount = GFX_VER == 11 ? 0 : get_sampler_count(tcs_bin);
+   hs.BindingTableEntryCount = tcs_bin->bind_map.surface_count;
 
 #if GFX_VER >= 12
-      /* Wa_1604578095:
-       *
-       *    Hang occurs when the number of max threads is less than 2 times
-       *    the number of instance count. The number of max threads must be
-       *    more than 2 times the number of instance count.
-       */
-      assert((devinfo->max_tcs_threads / 2) > tcs_prog_data->instances);
+   /* Wa_1604578095:
+    *
+    *    Hang occurs when the number of max threads is less than 2 times
+    *    the number of instance count. The number of max threads must be
+    *    more than 2 times the number of instance count.
+    */
+   assert((devinfo->max_tcs_threads / 2) > tcs_prog_data->instances);
 #endif
 
-      hs.MaximumNumberofThreads = devinfo->max_tcs_threads - 1;
-      hs.IncludeVertexHandles = true;
-      hs.InstanceCount = tcs_prog_data->instances - 1;
+   hs.MaximumNumberofThreads = devinfo->max_tcs_threads - 1;
+   hs.IncludeVertexHandles = true;
+   hs.InstanceCount = tcs_prog_data->instances - 1;
 
-      hs.VertexURBEntryReadLength = 0;
-      hs.VertexURBEntryReadOffset = 0;
-      hs.DispatchGRFStartRegisterForURBData =
-         tcs_prog_data->base.base.dispatch_grf_start_reg & 0x1f;
+   hs.VertexURBEntryReadLength = 0;
+   hs.VertexURBEntryReadOffset = 0;
+   hs.DispatchGRFStartRegisterForURBData =
+      tcs_prog_data->base.base.dispatch_grf_start_reg & 0x1f;
 #if GFX_VER >= 12
-      hs.DispatchGRFStartRegisterForURBData5 =
-         tcs_prog_data->base.base.dispatch_grf_start_reg >> 5;
+   hs.DispatchGRFStartRegisterForURBData5 =
+      tcs_prog_data->base.base.dispatch_grf_start_reg >> 5;
 #endif
 
 #if GFX_VERx10 >= 125
-      hs.ScratchSpaceBuffer =
-         get_scratch_surf(&pipeline->base, MESA_SHADER_TESS_CTRL, tcs_bin);
+   hs.ScratchSpaceBuffer =
+      get_scratch_surf(&pipeline->base, MESA_SHADER_TESS_CTRL, tcs_bin);
 #else
-      hs.PerThreadScratchSpace = get_scratch_space(tcs_bin);
-      hs.ScratchSpaceBasePointer =
-         get_scratch_address(&pipeline->base, MESA_SHADER_TESS_CTRL, tcs_bin);
+   hs.PerThreadScratchSpace = get_scratch_space(tcs_bin);
+   hs.ScratchSpaceBasePointer =
+      get_scratch_address(&pipeline->base, MESA_SHADER_TESS_CTRL, tcs_bin);
 #endif
 
 #if GFX_VER == 12
-      /*  Patch Count threshold specifies the maximum number of patches that
-       *  will be accumulated before a thread dispatch is forced.
-       */
-      hs.PatchCountThreshold = tcs_prog_data->patch_count_threshold;
+   /*  Patch Count threshold specifies the maximum number of patches that
+    *  will be accumulated before a thread dispatch is forced.
+    */
+   hs.PatchCountThreshold = tcs_prog_data->patch_count_threshold;
 #endif
 
-      hs.DispatchMode = tcs_prog_data->base.dispatch_mode;
-      hs.IncludePrimitiveID = tcs_prog_data->include_primitive_id;
-   }
+   hs.DispatchMode = tcs_prog_data->base.dispatch_mode;
+   hs.IncludePrimitiveID = tcs_prog_data->include_primitive_id;
+
+   GENX(3DSTATE_HS_pack)(NULL, pipeline->gfx8.hs, &hs);
 
    anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_DS), ds) {
       ds.Enable = true;
