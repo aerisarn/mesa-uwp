@@ -1769,8 +1769,8 @@ zink_set_shader_images(struct pipe_context *pctx,
    for (unsigned i = 0; i < count; i++) {
       struct zink_image_view *a = &ctx->image_views[shader_type][start_slot + i];
       const struct pipe_image_view *b = images ? &images[i] : NULL;
+      struct zink_resource *res = b ? zink_resource(b->resource) : NULL;
       if (b && b->resource) {
-         struct zink_resource *res = zink_resource(b->resource);
          if (!zink_resource_object_init_storage(ctx, res)) {
             debug_printf("couldn't create storage image!");
             continue;
@@ -1865,7 +1865,6 @@ zink_set_shader_images(struct pipe_context *pctx,
          }
          memcpy(&a->base, images + i, sizeof(struct pipe_image_view));
          update = true;
-         update_descriptor_state_image(ctx, shader_type, start_slot + i, res);
          if (zink_resource_access_is_write(access) || !res->obj->is_buffer)
             res->obj->unordered_read = res->obj->unordered_write = false;
          else
@@ -1873,10 +1872,9 @@ zink_set_shader_images(struct pipe_context *pctx,
          res->image_binds[shader_type] |= BITFIELD_BIT(start_slot + i);
       } else if (a->base.resource) {
          update = true;
-
          unbind_shader_image(ctx, shader_type, start_slot + i);
-         update_descriptor_state_image(ctx, shader_type, start_slot + i, NULL);
       }
+      update_descriptor_state_image(ctx, shader_type, start_slot + i, res);
    }
    for (unsigned i = 0; i < unbind_num_trailing_slots; i++) {
       update |= !!ctx->image_views[shader_type][start_slot + count + i].base.resource;
