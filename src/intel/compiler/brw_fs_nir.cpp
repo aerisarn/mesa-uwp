@@ -30,6 +30,8 @@
 #include "util/u_math.h"
 #include "util/bitscan.h"
 
+#include <vector>
+
 using namespace brw;
 
 void
@@ -319,11 +321,18 @@ fs_visitor::nir_emit_impl(nir_function_impl *impl)
    nir_ssa_values = reralloc(mem_ctx, nir_ssa_values, fs_reg,
                              impl->ssa_alloc);
 
+   nir_resource_insts = reralloc(mem_ctx, nir_resource_insts, fs_inst *,
+                                 impl->ssa_alloc);
+   memset(nir_resource_insts, 0, sizeof(nir_resource_insts[0]) * impl->ssa_alloc);
+
    nir_ssa_bind_infos = reralloc(mem_ctx, nir_ssa_bind_infos,
                                  struct brw_fs_bind_info,
                                  impl->ssa_alloc);
    memset(nir_ssa_bind_infos, 0,
           sizeof(nir_ssa_bind_infos[0]) * impl->ssa_alloc);
+
+   nir_resource_values = reralloc(mem_ctx, nir_resource_values, fs_reg,
+                                  impl->ssa_alloc);
 
    nir_emit_cf_list(&impl->body);
 }
@@ -1967,6 +1976,22 @@ fs_visitor::get_nir_src_block(const nir_src &src)
    return nir_ssa_bind_infos[src.ssa->index].valid ?
           nir_ssa_bind_infos[src.ssa->index].block :
           UINT32_MAX;
+}
+
+static bool
+is_resource_src(nir_src src)
+{
+   return src.is_ssa &&
+          src.ssa->parent_instr->type == nir_instr_type_intrinsic &&
+          nir_instr_as_intrinsic(src.ssa->parent_instr)->intrinsic == nir_intrinsic_resource_intel;
+}
+
+fs_reg
+fs_visitor::get_resource_nir_src(const nir_src &src)
+{
+   if (!is_resource_src(src))
+      return fs_reg();
+   return nir_resource_values[src.ssa->index];
 }
 
 fs_reg
@@ -3943,10 +3968,176 @@ brw_cond_mod_for_nir_reduction_op(nir_op op)
    }
 }
 
+struct rebuild_resource {
+   unsigned idx;
+   std::vector<nir_ssa_def *> array;
+};
+
+static bool
+add_rebuild_src(nir_src *src, void *state)
+{
+   struct rebuild_resource *res = (struct rebuild_resource *) state;
+
+   if (!src->is_ssa)
+      return false;
+
+   for (nir_ssa_def *def : res->array) {
+      if (def == src->ssa)
+         return true;
+   }
+
+   nir_foreach_src(src->ssa->parent_instr, add_rebuild_src, state);
+   res->array.push_back(src->ssa);
+   return true;
+}
+
+fs_reg
+fs_visitor::try_rebuild_resource(const brw::fs_builder &bld, nir_ssa_def *resource_def)
+{
+   /* Create a build at the location of the resource_intel intrinsic */
+   fs_builder ubld1 = bld.exec_all().group(1, 0);
+
+   struct rebuild_resource resources = {};
+   resources.idx = 0;
+
+   if (!nir_foreach_src(resource_def->parent_instr,
+                        add_rebuild_src, &resources))
+      return fs_reg();
+   resources.array.push_back(resource_def);
+
+   if (resources.array.size() == 1) {
+      nir_ssa_def *def = resources.array[0];
+
+      if (def->parent_instr->type == nir_instr_type_load_const) {
+         nir_load_const_instr *load_const =
+            nir_instr_as_load_const(def->parent_instr);
+         return brw_imm_ud(load_const->value[0].i32);
+      } else {
+         assert(def->parent_instr->type == nir_instr_type_intrinsic &&
+                (nir_instr_as_intrinsic(def->parent_instr)->intrinsic ==
+                 nir_intrinsic_load_uniform));
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(def->parent_instr);
+         unsigned base_offset = nir_intrinsic_base(intrin);
+         unsigned load_offset = nir_src_as_uint(intrin->src[0]);
+         fs_reg src(UNIFORM, base_offset / 4, BRW_REGISTER_TYPE_UD);
+         src.offset = load_offset + base_offset % 4;
+         return src;
+      }
+   }
+
+   for (unsigned i = 0; i < resources.array.size(); i++) {
+      nir_ssa_def *def = resources.array[i];
+
+      nir_instr *instr = def->parent_instr;
+      switch (instr->type) {
+      case nir_instr_type_load_const: {
+         nir_load_const_instr *load_const =
+            nir_instr_as_load_const(instr);
+         fs_reg dst = ubld1.vgrf(BRW_REGISTER_TYPE_UD);
+         ubld1.UNDEF(dst);
+         nir_resource_insts[def->index] =
+            ubld1.group(8, 0).MOV(dst, brw_imm_ud(load_const->value[0].i32));
+         break;
+      }
+
+      case nir_instr_type_alu: {
+         nir_alu_instr *alu = nir_instr_as_alu(instr);
+
+         if (nir_op_infos[alu->op].num_inputs != 2)
+            break;
+
+         if (alu->src[0].negate ||
+             alu->src[0].abs ||
+             alu->src[0].swizzle[0] != 0 ||
+             alu->src[1].negate ||
+             alu->src[1].abs ||
+             alu->src[1].swizzle[0] != 0)
+            break;
+
+         switch (alu->op) {
+         case nir_op_iadd: {
+            fs_reg dst = ubld1.vgrf(BRW_REGISTER_TYPE_UD);
+            ubld1.UNDEF(dst);
+            fs_reg src0 = nir_resource_insts[alu->src[0].src.ssa->index]->dst;
+            fs_reg src1 = nir_resource_insts[alu->src[1].src.ssa->index]->dst;
+            assert(src0.file != BAD_FILE && src1.file != BAD_FILE);
+            assert(src0.type == BRW_REGISTER_TYPE_UD);
+            nir_resource_insts[def->index] =
+               ubld1.ADD(dst,
+                         src0.file != IMM ? src0 : src1,
+                         src0.file != IMM ? src1 : src0);
+            break;
+         }
+         case nir_op_ushr: {
+            assert(ubld1.dispatch_width() == 1);
+            fs_reg dst = ubld1.vgrf(BRW_REGISTER_TYPE_UD);
+            ubld1.UNDEF(dst);
+            fs_reg src0 = nir_resource_insts[alu->src[0].src.ssa->index]->dst;
+            fs_reg src1 = nir_resource_insts[alu->src[1].src.ssa->index]->dst;
+            assert(src0.file != BAD_FILE && src1.file != BAD_FILE);
+            assert(src0.type == BRW_REGISTER_TYPE_UD);
+            nir_resource_insts[def->index] = ubld1.SHR(dst, src0, src1);
+            break;
+         }
+         case nir_op_mov: {
+            break;
+         }
+         default:
+            break;
+         }
+         break;
+      }
+
+      case nir_instr_type_intrinsic: {
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+         switch (intrin->intrinsic) {
+         case nir_intrinsic_resource_intel:
+            nir_resource_insts[def->index] =
+               nir_resource_insts[intrin->src[1].ssa->index];
+            break;
+
+         case nir_intrinsic_load_uniform: {
+            if (!nir_src_is_const(intrin->src[0]))
+               break;
+
+            unsigned base_offset = nir_intrinsic_base(intrin);
+            unsigned load_offset = nir_src_as_uint(intrin->src[0]);
+            fs_reg dst = ubld1.vgrf(BRW_REGISTER_TYPE_UD);
+            ubld1.UNDEF(dst);
+            fs_reg src(UNIFORM, base_offset / 4, BRW_REGISTER_TYPE_UD);
+            src.offset = load_offset + base_offset % 4;
+            nir_resource_insts[def->index] = ubld1.MOV(dst, src);
+            break;
+         }
+
+         default:
+            break;
+         }
+         break;
+      }
+
+      default:
+         break;
+      }
+
+      if (nir_resource_insts[def->index] == NULL)
+         return fs_reg();
+   }
+
+   assert(nir_resource_insts[resource_def->index] != NULL);
+   return component(nir_resource_insts[resource_def->index]->dst, 0);
+}
+
 fs_reg
 fs_visitor::get_nir_image_intrinsic_image(const brw::fs_builder &bld,
                                           nir_intrinsic_instr *instr)
 {
+   if (is_resource_src(instr->src[0])) {
+      fs_reg surf_index = get_resource_nir_src(instr->src[0]);
+      if (surf_index.file != BAD_FILE)
+         return surf_index;
+   }
+
    fs_reg image = retype(get_nir_src_imm(instr->src[0]), BRW_REGISTER_TYPE_UD);
    fs_reg surf_index = image;
 
@@ -3963,18 +4154,14 @@ fs_visitor::get_nir_buffer_intrinsic_index(const brw::fs_builder &bld,
       instr->intrinsic == nir_intrinsic_store_ssbo_block_intel;
    nir_src src = is_store ? instr->src[1] : instr->src[0];
 
-   if (src.is_ssa && src.ssa->parent_instr->type == nir_instr_type_intrinsic) {
-      nir_intrinsic_instr *intrin =
-         nir_instr_as_intrinsic(src.ssa->parent_instr);
-      if (intrin->intrinsic == nir_intrinsic_resource_intel)
-         src = intrin->src[1];
-   }
-
    if (nir_src_is_const(src)) {
       return brw_imm_ud(nir_src_as_uint(src));
-   } else {
-      return bld.emit_uniformize(get_nir_src(src));
+   } else if (is_resource_src(src)) {
+      fs_reg surf_index = get_resource_nir_src(src);
+      if (surf_index.file != BAD_FILE)
+         return surf_index;
    }
+   return bld.emit_uniformize(get_nir_src(src));
 }
 
 /**
@@ -4136,11 +4323,17 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          nir_intrinsic_desc_set(instr);
       nir_ssa_bind_infos[instr->dest.ssa.index].binding =
          nir_intrinsic_binding(instr);
-      nir_ssa_bind_infos[instr->dest.ssa.index].fs_block =
-         bld.get_block();
-      nir_ssa_bind_infos[instr->dest.ssa.index].fs_inst_anchor =
-         bld.MOV(retype(dest, BRW_REGISTER_TYPE_UD),
-                 retype(get_nir_src(instr->src[1]), BRW_REGISTER_TYPE_UD));
+
+      if ((nir_intrinsic_resource_access_intel(instr) &
+           nir_resource_intel_non_uniform) ||
+          !instr->src[1].is_ssa) {
+         nir_resource_values[instr->dest.ssa.index] = fs_reg();
+      } else {
+         nir_resource_values[instr->dest.ssa.index] =
+            try_rebuild_resource(bld, instr->src[1].ssa);
+      }
+      nir_ssa_values[instr->dest.ssa.index] =
+         nir_ssa_values[instr->src[1].ssa->index];
       break;
 
    case nir_intrinsic_image_load:
@@ -4168,7 +4361,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       default:
          /* Bindless */
          srcs[SURFACE_LOGICAL_SRC_SURFACE_HANDLE] =
-            bld.emit_uniformize(get_nir_src(instr->src[0]));
+            get_nir_image_intrinsic_image(bld, instr);
          break;
       }
 
@@ -6089,13 +6282,7 @@ fs_visitor::nir_emit_global_atomic(const fs_builder &bld,
 void
 fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
 {
-   unsigned texture = instr->texture_index;
-   unsigned sampler = instr->sampler_index;
-
    fs_reg srcs[TEX_LOGICAL_NUM_SRCS];
-
-   srcs[TEX_LOGICAL_SRC_SURFACE] = brw_imm_ud(texture);
-   srcs[TEX_LOGICAL_SRC_SAMPLER] = brw_imm_ud(sampler);
 
    int lod_components = 0;
 
@@ -6105,7 +6292,8 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
 
    uint32_t header_bits = 0;
    for (unsigned i = 0; i < instr->num_srcs; i++) {
-      fs_reg src = get_nir_src(instr->src[i].src);
+      nir_src nir_src = instr->src[i].src;
+      fs_reg src = get_nir_src(nir_src);
       switch (instr->src[i].src_type) {
       case nir_tex_src_bias:
          srcs[TEX_LOGICAL_SRC_LOD] =
@@ -6186,27 +6374,47 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
          unreachable("should be lowered");
 
       case nir_tex_src_texture_offset: {
-         assert(srcs[TEX_LOGICAL_SRC_SURFACE].is_zero());
-         srcs[TEX_LOGICAL_SRC_SURFACE] = bld.emit_uniformize(src);
+         assert(srcs[TEX_LOGICAL_SRC_SURFACE].file == BAD_FILE);
+         /* Emit code to evaluate the actual indexing expression */
+         if (instr->texture_index == 0 && is_resource_src(nir_src))
+            srcs[TEX_LOGICAL_SRC_SURFACE] = get_resource_nir_src(nir_src);
+         if (srcs[TEX_LOGICAL_SRC_SURFACE].file == BAD_FILE) {
+            fs_reg tmp = vgrf(glsl_type::uint_type);
+            bld.ADD(tmp, src, brw_imm_ud(instr->texture_index));
+            srcs[TEX_LOGICAL_SRC_SURFACE] = bld.emit_uniformize(tmp);
+         }
+         assert(srcs[TEX_LOGICAL_SRC_SURFACE].file != BAD_FILE);
          break;
       }
 
       case nir_tex_src_sampler_offset: {
-         assert(srcs[TEX_LOGICAL_SRC_SAMPLER].is_zero());
-         srcs[TEX_LOGICAL_SRC_SAMPLER] = bld.emit_uniformize(src);
+         /* Emit code to evaluate the actual indexing expression */
+         if (instr->sampler_index == 0 && is_resource_src(nir_src))
+            srcs[TEX_LOGICAL_SRC_SAMPLER] = get_resource_nir_src(nir_src);
+         if (srcs[TEX_LOGICAL_SRC_SAMPLER].file == BAD_FILE) {
+            fs_reg tmp = vgrf(glsl_type::uint_type);
+            bld.ADD(tmp, src, brw_imm_ud(instr->sampler_index));
+            srcs[TEX_LOGICAL_SRC_SAMPLER] = bld.emit_uniformize(tmp);
+         }
          break;
       }
 
       case nir_tex_src_texture_handle:
          assert(nir_tex_instr_src_index(instr, nir_tex_src_texture_offset) == -1);
          srcs[TEX_LOGICAL_SRC_SURFACE] = fs_reg();
-         srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE] = bld.emit_uniformize(src);
+         if (is_resource_src(nir_src))
+            srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE] = get_resource_nir_src(nir_src);
+         if (srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE].file == BAD_FILE)
+            srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE] = bld.emit_uniformize(src);
          break;
 
       case nir_tex_src_sampler_handle:
          assert(nir_tex_instr_src_index(instr, nir_tex_src_sampler_offset) == -1);
          srcs[TEX_LOGICAL_SRC_SAMPLER] = fs_reg();
-         srcs[TEX_LOGICAL_SRC_SAMPLER_HANDLE] = bld.emit_uniformize(src);
+         if (is_resource_src(nir_src))
+            srcs[TEX_LOGICAL_SRC_SAMPLER_HANDLE] = get_resource_nir_src(nir_src);
+         if (srcs[TEX_LOGICAL_SRC_SAMPLER_HANDLE].file == BAD_FILE)
+            srcs[TEX_LOGICAL_SRC_SAMPLER_HANDLE] = bld.emit_uniformize(src);
          break;
 
       case nir_tex_src_ms_mcs_intel:
@@ -6218,6 +6426,16 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
          unreachable("unknown texture source");
       }
    }
+
+   /* If the surface or sampler were not specified through sources, use the
+    * instruction index.
+    */
+   if (srcs[TEX_LOGICAL_SRC_SURFACE].file == BAD_FILE &&
+       srcs[TEX_LOGICAL_SRC_SURFACE_HANDLE].file == BAD_FILE)
+      srcs[TEX_LOGICAL_SRC_SURFACE] = brw_imm_ud(instr->texture_index);
+   if (srcs[TEX_LOGICAL_SRC_SAMPLER].file == BAD_FILE &&
+       srcs[TEX_LOGICAL_SRC_SAMPLER_HANDLE].file == BAD_FILE)
+      srcs[TEX_LOGICAL_SRC_SAMPLER] = brw_imm_ud(instr->sampler_index);
 
    if (srcs[TEX_LOGICAL_SRC_MCS].file == BAD_FILE &&
        (instr->op == nir_texop_txf_ms ||
@@ -6310,7 +6528,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
 
    if (instr->op == nir_texop_tg4) {
       if (instr->component == 1 &&
-          key_tex->gather_channel_quirk_mask & (1 << texture)) {
+          key_tex->gather_channel_quirk_mask & (1 << instr->texture_index)) {
          /* gather4 sampler is broken for green channel on RG32F --
           * we must ask for blue instead.
           */

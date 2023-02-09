@@ -181,8 +181,6 @@ struct brw_fs_bind_info {
    unsigned block;
    unsigned set;
    unsigned binding;
-   bblock_t *fs_block;
-   fs_inst *fs_inst_anchor;
 };
 
 /**
@@ -387,6 +385,9 @@ public:
    fs_reg get_nir_src(const nir_src &src);
    fs_reg get_nir_src_imm(const nir_src &src);
    fs_reg get_nir_dest(const nir_dest &dest);
+   fs_reg get_resource_nir_src(const nir_src &src);
+   fs_reg try_rebuild_resource(const brw::fs_builder &bld,
+                               nir_ssa_def *resource_def);
    fs_reg get_indirect_offset(nir_intrinsic_instr *instr);
    fs_reg get_tcs_single_patch_icp_handle(const brw::fs_builder &bld,
                                           nir_intrinsic_instr *instr);
@@ -477,7 +478,9 @@ public:
 
    fs_reg *nir_locals;
    fs_reg *nir_ssa_values;
+   fs_inst **nir_resource_insts;
    struct brw_fs_bind_info *nir_ssa_bind_infos;
+   fs_reg *nir_resource_values;
    fs_reg *nir_system_values;
 
    bool failed;
