@@ -647,6 +647,10 @@ static const struct dri2_format_mapping dri2_format_table[] = {
         __DRI_IMAGE_COMPONENTS_Y_UXVX,    PIPE_FORMAT_UYVY, 2,
         { { 0, 0, 0, __DRI_IMAGE_FORMAT_GR88 },
           { 0, 1, 0, __DRI_IMAGE_FORMAT_ABGR8888 } } },
+      { DRM_FORMAT_VYUY,          __DRI_IMAGE_FORMAT_NONE,
+        __DRI_IMAGE_COMPONENTS_Y_UXVX,    PIPE_FORMAT_VYUY, 2,
+        { { 0, 0, 0, __DRI_IMAGE_FORMAT_GR88 },
+          { 0, 1, 0, __DRI_IMAGE_FORMAT_ABGR8888 } } },
 
       /* The Y21x formats work in a similar fashion to the YUYV and UYVY
        * formats.

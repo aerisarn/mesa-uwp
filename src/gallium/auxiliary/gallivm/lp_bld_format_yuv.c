@@ -377,6 +377,26 @@ uyvy_to_rgba_aos(struct gallivm_state *gallivm,
    return rgba;
 }
 
+/**
+ * Convert from <n x i32> packed VYUY to <4n x i8> RGBA AoS
+ */
+static LLVMValueRef
+vyuy_to_rgba_aos(struct gallivm_state *gallivm,
+                 unsigned n,
+                 LLVMValueRef packed,
+                 LLVMValueRef i)
+{
+   LLVMValueRef y, u, v;
+   LLVMValueRef r, g, b;
+   LLVMValueRef rgba;
+
+   /* VYUY is UYVY with U/V swapped */
+   uyvy_to_yuv_soa(gallivm, n, packed, i, &y, &v, &u);
+   yuv_to_rgb_soa(gallivm, n, y, u, v, &r, &g, &b);
+   rgba = rgb_to_rgba_aos(gallivm, n, r, g, b);
+
+   return rgba;
+}
 
 /**
  * Convert from <n x i32> packed YUYV to <4n x i8> RGBA AoS
@@ -525,6 +545,9 @@ lp_build_fetch_subsampled_rgba_aos(struct gallivm_state *gallivm,
    switch (format_desc->format) {
    case PIPE_FORMAT_UYVY:
       rgba = uyvy_to_rgba_aos(gallivm, n, packed, i);
+      break;
+   case PIPE_FORMAT_VYUY:
+      rgba = vyuy_to_rgba_aos(gallivm, n, packed, i);
       break;
    case PIPE_FORMAT_YUYV:
       rgba = yuyv_to_rgba_aos(gallivm, n, packed, i);

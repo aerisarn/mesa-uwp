@@ -51,6 +51,7 @@ struct st_external_sampler_key
    GLuint lower_nv21;
    GLuint lower_iyuv;             /**< bitmask of 3 plane YUV samplers */
    GLuint lower_xy_uxvx;          /**< bitmask of 2 plane YUV samplers */
+   GLuint lower_xy_vxux;          /**< bitmask of 2 plane YUV samplers */
    GLuint lower_yx_xuxv;          /**< bitmask of 2 plane YUV samplers */
    GLuint lower_yx_xvxu;          /**< bitmask of 2 plane YUV samplers */
    GLuint lower_ayuv;
@@ -122,6 +123,13 @@ st_get_external_sampler_key(struct st_context *st, struct gl_program *prog)
             break;
          }
          key.lower_xy_uxvx |= (1 << unit);
+         break;
+      case PIPE_FORMAT_VYUY:
+         if (stObj->pt->format == PIPE_FORMAT_B8R8_G8R8_UNORM) {
+            key.lower_yv_yu |= (1 << unit);
+            break;
+         }
+         key.lower_xy_vxux |= (1 << unit);
          break;
       case PIPE_FORMAT_YVYU:
          if (stObj->pt->format == PIPE_FORMAT_R8B8_R8G8_UNORM) {

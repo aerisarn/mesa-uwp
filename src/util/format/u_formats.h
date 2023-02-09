@@ -188,6 +188,7 @@ enum pipe_format {
    PIPE_FORMAT_L8A8_UNORM,  /**< ubyte alpha, luminance */
    PIPE_FORMAT_L16_UNORM,   /**< ushort luminance */
    PIPE_FORMAT_UYVY,
+   PIPE_FORMAT_VYUY,
    PIPE_FORMAT_YUYV,
    PIPE_FORMAT_YVYU,
    PIPE_FORMAT_Z16_UNORM,
@@ -366,6 +367,7 @@ enum pipe_format {
    PIPE_FORMAT_R8G8_R8B8_UNORM,
    PIPE_FORMAT_R8B8_R8G8_UNORM,
    PIPE_FORMAT_G8R8_B8R8_UNORM,
+   PIPE_FORMAT_B8R8_G8R8_UNORM,
 
    PIPE_FORMAT_R8G8B8X8_SNORM,
    PIPE_FORMAT_R8G8B8X8_SRGB,
@@ -631,6 +633,7 @@ pipe_format_to_chroma_format(enum pipe_format format)
       case PIPE_FORMAT_Y16_U16_V16_420_UNORM:
          return PIPE_VIDEO_CHROMA_FORMAT_420;
       case PIPE_FORMAT_UYVY:
+      case PIPE_FORMAT_VYUY:
       case PIPE_FORMAT_YUYV:
       case PIPE_FORMAT_YVYU:
       case PIPE_FORMAT_YV16:

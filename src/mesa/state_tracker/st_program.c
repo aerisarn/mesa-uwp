@@ -1002,10 +1002,10 @@ st_create_fp_variant(struct st_context *st,
    if (unlikely(key->external.lower_nv12 || key->external.lower_nv21 ||
                   key->external.lower_iyuv ||
                   key->external.lower_xy_uxvx || key->external.lower_yx_xuxv ||
-                  key->external.lower_yx_xvxu || key->external.lower_ayuv ||
-                  key->external.lower_xyuv || key->external.lower_yuv ||
-                  key->external.lower_yu_yv || key->external.lower_yv_yu ||
-                  key->external.lower_y41x)) {
+                  key->external.lower_yx_xvxu || key->external.lower_xy_vxux ||
+                  key->external.lower_ayuv || key->external.lower_xyuv ||
+                  key->external.lower_yuv || key->external.lower_yu_yv ||
+                  key->external.lower_yv_yu || key->external.lower_y41x)) {
 
       st_nir_lower_samplers(st->screen, state.ir.nir,
                               fp->shader_program, fp);
@@ -1015,6 +1015,7 @@ st_create_fp_variant(struct st_context *st,
       options.lower_y_vu_external = key->external.lower_nv21;
       options.lower_y_u_v_external = key->external.lower_iyuv;
       options.lower_xy_uxvx_external = key->external.lower_xy_uxvx;
+      options.lower_xy_vxux_external = key->external.lower_xy_vxux;
       options.lower_yx_xuxv_external = key->external.lower_yx_xuxv;
       options.lower_yx_xvxu_external = key->external.lower_yx_xvxu;
       options.lower_ayuv_external = key->external.lower_ayuv;
@@ -1042,8 +1043,8 @@ st_create_fp_variant(struct st_context *st,
       NIR_PASS_V(state.ir.nir, st_nir_lower_tex_src_plane,
                   ~fp->SamplersUsed,
                   key->external.lower_nv12 | key->external.lower_nv21 |
-                     key->external.lower_xy_uxvx | key->external.lower_yx_xuxv |
-                     key->external.lower_yx_xvxu,
+                     key->external.lower_xy_uxvx | key->external.lower_xy_vxux |
+                     key->external.lower_yx_xuxv | key->external.lower_yx_xvxu,
                   key->external.lower_iyuv);
       finalize = true;
    }
