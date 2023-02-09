@@ -166,6 +166,31 @@ agx_pack_memory_index(agx_index index, bool *flag)
    }
 }
 
+static unsigned
+agx_pack_atomic_source(agx_index index)
+{
+   assert(index.size == AGX_SIZE_32 && "no 64-bit atomics yet");
+   assert_register_is_aligned(index);
+   return index.value;
+}
+
+static unsigned
+agx_pack_atomic_dest(agx_index index, bool *flag)
+{
+   assert(index.size == AGX_SIZE_32 && "no 64-bit atomics yet");
+
+   /* Atomic destinstions are optional (e.g. for update with no return) */
+   if (index.type == AGX_INDEX_NULL) {
+      *flag = 0;
+      return 0;
+   }
+
+   /* But are otherwise registers */
+   assert_register_is_aligned(index);
+   *flag = 1;
+   return index.value;
+}
+
 /* ALU goes through a common path */
 
 static unsigned
@@ -577,6 +602,28 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
 
       unsigned size = L ? 8 : 6;
       memcpy(util_dynarray_grow_bytes(emission, 1, size), &raw, size);
+      break;
+   }
+
+   case AGX_OPCODE_ATOMIC: {
+      bool At, Ot, Rt;
+      unsigned A = agx_pack_memory_base(I->src[1], &At);
+      unsigned O = agx_pack_memory_index(I->src[2], &Ot);
+      unsigned R = agx_pack_atomic_dest(I->dest[0], &Rt);
+      unsigned S = agx_pack_atomic_source(I->src[0]);
+
+      uint64_t raw =
+         agx_opcodes_info[I->op].encoding.exact |
+         (((uint64_t)I->atomic_opc) << 6) | ((R & BITFIELD_MASK(6)) << 10) |
+         ((A & BITFIELD_MASK(4)) << 16) | ((O & BITFIELD_MASK(4)) << 20) |
+         (Ot ? (1 << 24) : 0) | (I->src[2].abs ? (1 << 25) : 0) | (At << 27) |
+         (I->scoreboard << 30) |
+         (((uint64_t)((O >> 4) & BITFIELD_MASK(4))) << 32) |
+         (((uint64_t)((A >> 4) & BITFIELD_MASK(4))) << 36) |
+         (((uint64_t)(R >> 6)) << 40) | (Rt ? BITFIELD64_BIT(47) : 0) |
+         (((uint64_t)S) << 48) | (((uint64_t)(O >> 8)) << 56);
+
+      memcpy(util_dynarray_grow_bytes(emission, 1, 8), &raw, 8);
       break;
    }
 
