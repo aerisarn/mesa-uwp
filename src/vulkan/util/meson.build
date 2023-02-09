@@ -47,6 +47,7 @@ vk_cmd_queue_gen_depend_files = [
   vk_entrypoints_depend_files,
 ]
 vk_physical_device_features_gen_depend_files = [
+  files('vk_extensions.py'),
 ]
 
 vk_entrypoints_gen = files('vk_entrypoints_gen.py')
