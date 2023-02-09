@@ -4231,6 +4231,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    ret->sinfo.have_vulkan_memory_model = screen->info.have_KHR_vulkan_memory_model;
 
    util_queue_fence_init(&ret->precompile.fence);
+   util_dynarray_init(&ret->pipeline_libs, ret);
    ret->hash = _mesa_hash_pointer(ret);
 
    ret->programs = _mesa_pointer_set_create(NULL);
@@ -4500,6 +4501,17 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
          prog->base.removed = true;
          simple_mtx_unlock(&prog->ctx->program_lock[idx]);
          util_queue_fence_wait(&prog->base.cache_fence);
+
+         while (util_dynarray_contains(&shader->pipeline_libs, struct zink_gfx_lib_cache*)) {
+            struct zink_gfx_lib_cache *libs = util_dynarray_pop(&shader->pipeline_libs, struct zink_gfx_lib_cache*);
+            if (!libs->removed) {
+               libs->removed = true;
+               simple_mtx_lock(&screen->pipeline_libs_lock[idx]);
+               _mesa_set_remove_key(&screen->pipeline_libs[idx], libs);
+               simple_mtx_unlock(&screen->pipeline_libs_lock[idx]);
+            }
+            zink_gfx_lib_cache_unref(screen, libs);
+         }
       }
       if (stage == MESA_SHADER_FRAGMENT || !shader->non_fs.is_generated) {
          prog->shaders[stage] = NULL;

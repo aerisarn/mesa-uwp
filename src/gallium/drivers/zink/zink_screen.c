@@ -1435,6 +1435,12 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    }
 #endif
    disk_cache_destroy(screen->disk_cache);
+
+   for (unsigned i = 0; i < ARRAY_SIZE(screen->pipeline_libs); i++)
+      _mesa_set_clear(&screen->pipeline_libs[i], NULL);
+   for (unsigned i = 0; i < ARRAY_SIZE(screen->pipeline_libs_lock); i++)
+      simple_mtx_destroy(&screen->pipeline_libs_lock[i]);
+
    zink_bo_deinit(screen);
    util_live_shader_cache_deinit(&screen->shaders);
 
@@ -2938,6 +2944,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       screen->buffer_barrier = zink_resource_buffer_barrier;
    }
 
+   zink_init_screen_pipeline_libs(screen);
 
    if (!init_layouts(screen))
       goto fail;

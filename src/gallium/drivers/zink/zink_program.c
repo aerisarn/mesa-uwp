@@ -957,6 +957,42 @@ create_lib_cache(struct zink_gfx_program *prog, bool generated_tcs)
    return libs;
 }
 
+static struct zink_gfx_lib_cache *
+find_or_create_lib_cache(struct zink_screen *screen, struct zink_gfx_program *prog)
+{
+   unsigned stages_present = prog->stages_present;
+   bool generated_tcs = prog->shaders[MESA_SHADER_TESS_CTRL] && prog->shaders[MESA_SHADER_TESS_CTRL]->non_fs.is_generated;
+   if (generated_tcs)
+      stages_present &= ~BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
+   unsigned idx = zink_program_cache_stages(stages_present);
+   struct set *ht = &screen->pipeline_libs[idx];
+   const uint32_t hash = prog->gfx_hash;
+
+   simple_mtx_lock(&screen->pipeline_libs_lock[idx]);
+   bool found = false;
+   struct set_entry *entry = _mesa_set_search_or_add_pre_hashed(ht, hash, prog->shaders, &found);
+   struct zink_gfx_lib_cache *libs;
+   if (found) {
+      libs = (void*)entry->key;
+   } else {
+      libs = create_lib_cache(prog, generated_tcs);
+      memcpy(libs->shaders, prog->shaders, sizeof(prog->shaders));
+      entry->key = libs;
+      unsigned refs = 0;
+      for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++) {
+         if (prog->shaders[i] && (!generated_tcs || i != MESA_SHADER_TESS_CTRL)) {
+            simple_mtx_lock(&prog->shaders[i]->lock);
+            util_dynarray_append(&prog->shaders[i]->pipeline_libs, struct zink_gfx_lib_cache*, libs);
+            simple_mtx_unlock(&prog->shaders[i]->lock);
+            refs++;
+         }
+      }
+      p_atomic_set(&libs->refcount, refs);
+   }
+   simple_mtx_unlock(&screen->pipeline_libs_lock[idx]);
+   return libs;
+}
+
 struct zink_gfx_program *
 zink_create_gfx_program(struct zink_context *ctx,
                         struct zink_shader **stages,
@@ -981,13 +1017,11 @@ zink_create_gfx_program(struct zink_context *ctx,
          prog->stages_present |= BITFIELD_BIT(i);
       }
    }
-   bool generated_tcs = false;
    if (stages[MESA_SHADER_TESS_EVAL] && !stages[MESA_SHADER_TESS_CTRL]) {
       prog->shaders[MESA_SHADER_TESS_EVAL]->non_fs.generated_tcs =
       prog->shaders[MESA_SHADER_TESS_CTRL] =
         zink_shader_tcs_create(screen, stages[MESA_SHADER_VERTEX], vertices_per_patch);
       prog->stages_present |= BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
-      generated_tcs = true;
    }
    prog->stages_remaining = prog->stages_present;
 
@@ -1010,8 +1044,7 @@ zink_create_gfx_program(struct zink_context *ctx,
       }
    }
 
-   prog->libs = create_lib_cache(prog, generated_tcs);
-   p_atomic_set(&prog->libs, 1);
+   prog->libs = find_or_create_lib_cache(screen, prog);
 
    struct mesa_sha1 sctx;
    _mesa_sha1_init(&sctx);
@@ -1077,6 +1110,7 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
    prog->shaders[MESA_SHADER_FRAGMENT] = stages[MESA_SHADER_FRAGMENT];
    prog->last_vertex_stage = stages[MESA_SHADER_VERTEX];
    prog->libs = create_lib_cache(prog, false);
+   /* this libs cache is owned by the program */
    p_atomic_set(&prog->libs->refcount, 1);
 
    unsigned refs = 0;
@@ -1409,7 +1443,8 @@ zink_destroy_gfx_program(struct zink_screen *screen,
          ralloc_free(prog->nir[i]);
       }
    }
-   zink_gfx_lib_cache_unref(screen, prog->libs);
+   if (prog->is_separable)
+      zink_gfx_lib_cache_unref(screen, prog->libs);
 
    ralloc_free(prog);
 }

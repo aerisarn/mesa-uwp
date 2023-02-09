@@ -747,6 +747,7 @@ struct zink_shader {
 
    simple_mtx_t lock;
    struct set *programs;
+   struct util_dynarray pipeline_libs;
 
    union {
       struct {
@@ -984,7 +985,10 @@ struct zink_gfx_pipeline_cache_entry {
 };
 
 struct zink_gfx_lib_cache {
+   /* for hashing */
+   struct zink_shader *shaders[ZINK_GFX_SHADER_COUNT];
    unsigned refcount;
+   bool removed; //once removed from cache
 
    simple_mtx_t lock;
    struct set libs; //zink_gfx_library_key -> VkPipeline
@@ -1284,6 +1288,12 @@ struct zink_screen {
    struct disk_cache *disk_cache;
    struct util_queue cache_put_thread;
    struct util_queue cache_get_thread;
+
+   /* there are 5 gfx stages, but VS and FS are assumed to be always present,
+    * thus only 3 stages need to be considered, giving 2^3 = 8 program caches.
+    */
+   struct set pipeline_libs[8];
+   simple_mtx_t pipeline_libs_lock[8];
 
    simple_mtx_t desc_set_layouts_lock;
    struct hash_table desc_set_layouts[ZINK_DESCRIPTOR_BASE_TYPES];
