@@ -432,18 +432,9 @@ agx_emit_store_vary(agx_builder *b, nir_intrinsic_instr *instr)
                       agx_src_index(&instr->src[0]));
 }
 
-static agx_instr *
-agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
+static void
+agx_write_sample_mask_1(agx_builder *b)
 {
-   /* TODO: Reverse-engineer interactions with MRT */
-   if (b->shader->key->fs.ignore_tib_dependencies) {
-      assert(b->shader->nir->info.internal && "only for clear shaders");
-   } else if (b->shader->did_writeout) {
-      agx_writeout(b, 0x0004);
-   } else {
-      agx_writeout(b, 0x000C);
-   }
-
    if (b->shader->nir->info.fs.uses_discard && !b->shader->did_sample_mask) {
       /* If the shader uses discard, the sample mask must be written by the
        * shader on all exeuction paths. If we've reached the end of the shader,
@@ -458,6 +449,21 @@ agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
                 BITFIELD64_BIT(FRAG_RESULT_STENCIL))) &&
              "incompatible");
    }
+}
+
+static agx_instr *
+agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
+{
+   /* TODO: Reverse-engineer interactions with MRT */
+   if (b->shader->key->fs.ignore_tib_dependencies) {
+      assert(b->shader->nir->info.internal && "only for clear shaders");
+   } else if (b->shader->did_writeout) {
+      agx_writeout(b, 0x0004);
+   } else {
+      agx_writeout(b, 0x000C);
+   }
+
+   agx_write_sample_mask_1(b);
 
    /* Compact the registers according to the mask */
    agx_index compacted[4] = {agx_null()};
@@ -1906,6 +1912,7 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
     */
    agx_block *last_block = list_last_entry(&ctx->blocks, agx_block, link);
    agx_builder _b = agx_init_builder(ctx, agx_after_block(last_block));
+   agx_write_sample_mask_1(&_b);
    agx_logical_end(&_b);
    agx_stop(&_b);
 
