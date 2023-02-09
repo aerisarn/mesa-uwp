@@ -686,6 +686,34 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       break;
    }
 
+   case AGX_OPCODE_LOCAL_ATOMIC: {
+      bool L = true; /* TODO: Don't force */
+
+      unsigned At;
+      bool Rt = false, Ot;
+
+      bool Ra = I->dest[0].type != AGX_INDEX_NULL;
+      unsigned R = Ra ? agx_pack_memory_reg(I->dest[0], &Rt) : 0;
+      unsigned S = agx_pack_atomic_source(I->src[0]);
+      unsigned A = agx_pack_local_base(I->src[1], &At);
+      unsigned O = agx_pack_local_index(I->src[2], &Ot);
+
+      uint64_t raw =
+         agx_opcodes_info[I->op].encoding.exact | (Rt ? BITFIELD64_BIT(8) : 0) |
+         ((R & BITFIELD_MASK(6)) << 9) | (L ? BITFIELD64_BIT(15) : 0) |
+         ((A & BITFIELD_MASK(6)) << 16) | (At << 22) |
+         (((uint64_t)I->atomic_opc) << 24) | ((O & BITFIELD64_MASK(6)) << 28) |
+         (Ot ? BITFIELD64_BIT(34) : 0) | (Ra ? BITFIELD64_BIT(38) : 0) |
+         (((uint64_t)(O >> 6)) << 48) | (((uint64_t)(A >> 6)) << 58) |
+         (((uint64_t)(R >> 6)) << 60);
+
+      uint64_t raw2 = S;
+
+      memcpy(util_dynarray_grow_bytes(emission, 1, 8), &raw, 8);
+      memcpy(util_dynarray_grow_bytes(emission, 1, 2), &raw2, 2);
+      break;
+   }
+
    case AGX_OPCODE_TEXTURE_LOAD:
    case AGX_OPCODE_TEXTURE_SAMPLE: {
       assert(I->mask != 0);
