@@ -32,7 +32,7 @@
                     "customBorderColorWithoutFormat": true
                 },
                 "VkPhysicalDeviceLineRasterizationFeaturesEXT": {
-                    "rectangularLines": true,
+                    "rectangularLines": true
                 }
             }
         },
