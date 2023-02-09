@@ -27,9 +27,6 @@
 #include "compiler/nir/nir.h"
 #include "util/u_dynarray.h"
 
-/* Arbitrary */
-#define AGX_MAX_VARYINGS (32)
-
 struct agx_varyings_vs {
    /* The first index used for FP16 varyings. Indices less than this are treated
     * as FP32. This may require remapping slots to guarantee.
