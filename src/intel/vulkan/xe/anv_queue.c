@@ -27,6 +27,8 @@
 #include "common/xe/intel_engine.h"
 #include "common/intel_gem.h"
 
+#include "xe/anv_device.h"
+
 #include "drm-uapi/xe_drm.h"
 
 VkResult
@@ -62,7 +64,6 @@ anv_xe_create_engine(struct anv_device *device,
    }
 
    assert(device->vm_id != 0);
-   /* TODO: drm_xe_engine_set_property XE_ENGINE_PROPERTY_PRIORITY */
    struct drm_xe_engine_create create = {
          /* Allows KMD to pick one of those engines for the submission queue */
          .instances = (uintptr_t)instances,
@@ -76,7 +77,39 @@ anv_xe_create_engine(struct anv_device *device,
       return vk_errorf(device, VK_ERROR_UNKNOWN, "Unable to create engine");
 
    queue->engine_id = create.engine_id;
+
+   const VkDeviceQueueGlobalPriorityCreateInfoKHR *queue_priority =
+      vk_find_struct_const(pCreateInfo->pNext,
+                           DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_KHR);
+   const VkQueueGlobalPriorityKHR priority = queue_priority ?
+                                             queue_priority->globalPriority :
+                                             VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR;
+
+   /* As per spec, the driver implementation may deny requests to acquire
+    * a priority above the default priority (MEDIUM) if the caller does not
+    * have sufficient privileges. In this scenario VK_ERROR_NOT_PERMITTED_KHR
+    * is returned.
+    */
+   if (physical->max_context_priority >= VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR) {
+      if (priority > physical->max_context_priority)
+         goto priority_error;
+
+      struct drm_xe_engine_set_property engine_property = {
+         .engine_id = create.engine_id,
+         .property = XE_ENGINE_SET_PROPERTY_PRIORITY,
+         .value = anv_vk_priority_to_xe(priority),
+      };
+      ret = intel_ioctl(device->fd, DRM_IOCTL_XE_ENGINE_SET_PROPERTY,
+                        &engine_property);
+      if (ret && priority > VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR)
+         goto priority_error;
+   }
+
    return VK_SUCCESS;
+
+priority_error:
+   anv_xe_destroy_engine(device, queue);
+   return vk_error(device, VK_ERROR_NOT_PERMITTED_KHR);
 }
 
 void
