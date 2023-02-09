@@ -3538,6 +3538,27 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
 #include "genX_cmd_draw_generated_indirect.h"
 #endif
 
+#if GFX_HAS_GENERATED_CMDS
+ALWAYS_INLINE static bool
+anv_use_generated_draws(const struct anv_cmd_buffer *cmd_buffer, uint32_t count)
+{
+   const struct anv_device *device = cmd_buffer->device;
+
+#if GFX_VER == 11
+   /* Limit generated draws to pipelines without HS stage. This makes things
+    * simpler for implementing Wa_1306463417.
+    */
+   if (anv_pipeline_has_stage(cmd_buffer->state.gfx.pipeline,
+                             MESA_SHADER_TESS_CTRL)) {
+      return false;
+   }
+#endif
+
+   return device->physical->generated_indirect_draws &&
+          count >= device->physical->instance->generated_indirect_threshold;
+}
+#endif
+
 VkResult
 genX(BeginCommandBuffer)(
     VkCommandBuffer                             commandBuffer,
@@ -4657,7 +4678,7 @@ void genX(CmdDrawIndirect)(
    trace_intel_begin_draw_indirect(&cmd_buffer->trace);
 
 #if GFX_HAS_GENERATED_CMDS
-   if (anv_use_generated_draws(cmd_buffer->device, drawCount)) {
+   if (anv_use_generated_draws(cmd_buffer, drawCount)) {
       genX(cmd_buffer_emit_indirect_generated_draws)(
          cmd_buffer,
          anv_address_add(buffer->address, offset),
@@ -4698,7 +4719,7 @@ void genX(CmdDrawIndexedIndirect)(
    trace_intel_begin_draw_indexed_indirect(&cmd_buffer->trace);
 
 #if GFX_HAS_GENERATED_CMDS
-   if (anv_use_generated_draws(cmd_buffer->device, drawCount)) {
+   if (anv_use_generated_draws(cmd_buffer, drawCount)) {
       genX(cmd_buffer_emit_indirect_generated_draws)(
          cmd_buffer,
          anv_address_add(buffer->address, offset),
@@ -4894,7 +4915,7 @@ void genX(CmdDrawIndirectCount)(
    stride = MAX2(stride, sizeof(VkDrawIndirectCommand));
 
 #if GFX_HAS_GENERATED_CMDS
-   if (anv_use_generated_draws(cmd_buffer->device, maxDrawCount)) {
+   if (anv_use_generated_draws(cmd_buffer, maxDrawCount)) {
       genX(cmd_buffer_emit_indirect_generated_draws_count)(
          cmd_buffer,
          indirect_data_address,
@@ -4951,7 +4972,7 @@ void genX(CmdDrawIndexedIndirectCount)(
    stride = MAX2(stride, sizeof(VkDrawIndexedIndirectCommand));
 
 #if GFX_HAS_GENERATED_CMDS
-   if (anv_use_generated_draws(cmd_buffer->device, maxDrawCount)) {
+   if (anv_use_generated_draws(cmd_buffer, maxDrawCount)) {
       genX(cmd_buffer_emit_indirect_generated_draws_count)(
          cmd_buffer,
          indirect_data_address,

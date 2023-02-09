@@ -4208,13 +4208,6 @@ anv_device_init_generated_indirect_draws(struct anv_device *device);
 void
 anv_device_finish_generated_indirect_draws(struct anv_device *device);
 
-static inline bool anv_use_generated_draws(const struct anv_device *device,
-                                           uint32_t count)
-{
-   return device->physical->generated_indirect_draws &&
-          count >= device->physical->instance->generated_indirect_threshold;
-}
-
 struct anv_utrace_flush_copy {
    /* Needs to be the first field */
    struct intel_ds_flush_data ds;
