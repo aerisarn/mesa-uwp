@@ -5504,13 +5504,17 @@ typedef struct nir_lower_tex_options {
     * If true, convert yuv to rgb.
     */
    unsigned lower_y_uv_external;
+   unsigned lower_y_vu_external;
    unsigned lower_y_u_v_external;
    unsigned lower_yx_xuxv_external;
+   unsigned lower_yx_xvxu_external;
    unsigned lower_xy_uxvx_external;
+   unsigned lower_xy_vxux_external;
    unsigned lower_ayuv_external;
    unsigned lower_xyuv_external;
    unsigned lower_yuv_external;
    unsigned lower_yu_yv_external;
+   unsigned lower_yv_yu_external;
    unsigned lower_y41x_external;
    unsigned bt709_external;
    unsigned bt2020_external;
