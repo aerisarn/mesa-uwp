@@ -1673,6 +1673,7 @@ unbind_shader_image(struct zink_context *ctx, gl_shader_stage stage, unsigned sl
       zink_buffer_view_reference(zink_screen(ctx->base.screen), &image_view->buffer_view, NULL);
    } else {
       unbind_descriptor_stage(res, stage);
+      unbind_descriptor_reads(res, stage);
       if (!res->image_bind_count[is_compute])
          check_for_layout_update(ctx, res, is_compute);
       zink_surface_reference(zink_screen(ctx->base.screen), &image_view->surface, NULL);
