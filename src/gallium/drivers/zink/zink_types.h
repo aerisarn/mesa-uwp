@@ -991,6 +991,7 @@ struct zink_gfx_program {
 
    uint32_t stages_present; //mask of stages present in this program
    uint32_t stages_remaining; //mask of zink_shader remaining in this program
+   uint32_t gfx_hash; //from ctx->gfx_hash
 
    struct zink_shader *shaders[ZINK_GFX_SHADER_COUNT];
    struct zink_shader *last_vertex_stage;

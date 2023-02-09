@@ -149,7 +149,8 @@ get_primtype_idx(enum pipe_prim_type mode)
 struct zink_gfx_program *
 zink_create_gfx_program(struct zink_context *ctx,
                         struct zink_shader **stages,
-                        unsigned vertices_per_patch);
+                        unsigned vertices_per_patch,
+                        uint32_t gfx_hash);
 
 void
 zink_destroy_gfx_program(struct zink_screen *screen,
