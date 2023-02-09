@@ -32,7 +32,7 @@ xe_gem_create(struct anv_device *device,
               enum anv_bo_alloc_flags alloc_flags)
 {
    struct drm_xe_gem_create gem_create = {
-     .vm_id = 0,/* TODO: create VM */
+     .vm_id = device->vm_id,
      .size = size,
    };
    for (uint16_t i = 0; i < regions_count; i++)

@@ -24,6 +24,7 @@
 #include <stdlib.h>
 
 #include "anv_kmd_backend.h"
+#include "anv_private.h"
 
 const struct anv_kmd_backend *
 anv_kmd_backend_get(enum intel_kmd_type type)
@@ -38,4 +39,10 @@ anv_kmd_backend_get(enum intel_kmd_type type)
    default:
       return NULL;
    }
+}
+
+inline enum intel_kmd_type
+anv_kmd_type_get(struct anv_device *device)
+{
+   return device->info->kmd_type;
 }

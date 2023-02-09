@@ -1127,7 +1127,10 @@ struct anv_device {
     const struct intel_device_info *            info;
     const struct anv_kmd_backend *              kmd_backend;
     struct isl_device                           isl_dev;
-    uint32_t                                    context_id;
+    union {
+       uint32_t                                 context_id; /* i915 */
+       uint32_t                                 vm_id; /* Xe */
+    };
     int                                         fd;
 
     pthread_mutex_t                             vma_mutex;

@@ -59,6 +59,7 @@
 #include "perf/intel_perf.h"
 
 #include "i915/anv_device.h"
+#include "xe/anv_device.h"
 
 #include "genxml/gen7_pack.h"
 #include "genxml/genX_bits.h"
@@ -3163,6 +3164,36 @@ static struct intel_mapped_pinned_buffer_alloc aux_map_allocator = {
    .free = intel_aux_map_buffer_free,
 };
 
+static VkResult
+anv_device_setup_context_or_vm(struct anv_device *device,
+                               const VkDeviceCreateInfo *pCreateInfo,
+                               const uint32_t num_queues)
+{
+   switch (anv_kmd_type_get(device)) {
+   case INTEL_KMD_TYPE_I915:
+      return anv_i915_device_setup_context(device, pCreateInfo, num_queues);
+   case INTEL_KMD_TYPE_XE:
+      return anv_xe_device_setup_vm(device);
+   default:
+      unreachable("Missing");
+      return VK_ERROR_UNKNOWN;
+   }
+}
+
+static bool
+anv_device_destroy_context_or_vm(struct anv_device *device)
+{
+   switch (anv_kmd_type_get(device)) {
+   case INTEL_KMD_TYPE_I915:
+      return intel_gem_destroy_context(device->fd, device->context_id);
+   case INTEL_KMD_TYPE_XE:
+      return anv_xe_device_destroy_vm(device);
+   default:
+      unreachable("Missing");
+      return false;
+   }
+}
+
 VkResult anv_CreateDevice(
     VkPhysicalDevice                            physicalDevice,
     const VkDeviceCreateInfo*                   pCreateInfo,
@@ -3259,7 +3290,7 @@ VkResult anv_CreateDevice(
    for (uint32_t i = 0; i < pCreateInfo->queueCreateInfoCount; i++)
       num_queues += pCreateInfo->pQueueCreateInfos[i].queueCount;
 
-   result = anv_i915_device_setup_context(device, pCreateInfo, num_queues);
+   result = anv_device_setup_context_or_vm(device, pCreateInfo, num_queues);
    if (result != VK_SUCCESS)
       goto fail_fd;
 
@@ -3636,7 +3667,7 @@ VkResult anv_CreateDevice(
       anv_queue_finish(&device->queues[i]);
    vk_free(&device->vk.alloc, device->queues);
  fail_context_id:
-   intel_gem_destroy_context(device->fd, device->context_id);
+   anv_device_destroy_context_or_vm(device);
  fail_fd:
    close(device->fd);
  fail_device:
@@ -3728,7 +3759,7 @@ void anv_DestroyDevice(
       anv_queue_finish(&device->queues[i]);
    vk_free(&device->vk.alloc, device->queues);
 
-   intel_gem_destroy_context(device->fd, device->context_id);
+   anv_device_destroy_context_or_vm(device);
 
    if (INTEL_DEBUG(DEBUG_BATCH)) {
       for (unsigned i = 0; i < pdevice->queue.family_count; i++)
