@@ -152,6 +152,20 @@ SR = enum("sr", {
    82: 'thread_position_in_grid.z',
 })
 
+ATOMIC_OPC = enum("atomic_opc", {
+	0: 'add',
+	1: 'sub',
+	2: 'xchg',
+	3: 'cmpxchg',
+	4: 'umin',
+	5: 'imin',
+	6: 'umax',
+	7: 'imax',
+	8: 'and',
+	9: 'or',
+	10: 'xor',
+})
+
 FUNOP = lambda x: (x << 28)
 FUNOP_MASK = FUNOP((1 << 14) - 1)
 
@@ -264,6 +278,16 @@ op("device_store",
 op("uniform_store",
       encoding_32 = ((0b111 << 27) | 0b1000101 | (1 << 47), 0, 8, _),
       dests = 0, srcs = 2, can_eliminate = False)
+
+# sources are value, base, index
+op("atomic",
+      encoding_32 = (0x15 | (1 << 26) | (1 << 31) | (5 << 44), 0x3F | (1 << 26) | (1 << 31) | (5 << 44), 8, _),
+      dests = 1, srcs = 3, imms = [ATOMIC_OPC, SCOREBOARD], can_eliminate = False)
+
+# XXX: stop hardcoding the long form
+op("local_atomic",
+      encoding_32 = (0x19 | (1 << 15) | (1 << 36) | (1 << 47), 0x3F | (1 << 36) | (1 << 47), 10, _),
+      dests = 1, srcs = 3, imms = [ATOMIC_OPC], can_eliminate = False)
 
 op("wait", (0x38, 0xFF, 2, _), dests = 0,
       can_eliminate = False, imms = [SCOREBOARD])

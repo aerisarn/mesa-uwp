@@ -321,6 +321,7 @@ typedef struct {
       enum agx_icond icond;
       enum agx_fcond fcond;
       enum agx_round round;
+      enum agx_atomic_opc atomic_opc;
       enum agx_lod_mode lod_mode;
       struct agx_block *target;
    };

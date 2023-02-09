@@ -169,6 +169,13 @@ agx_read_registers(agx_instr *I, unsigned s)
          return size;
       }
 
+   case AGX_OPCODE_ATOMIC:
+   case AGX_OPCODE_LOCAL_ATOMIC:
+      if (s == 0 && I->atomic_opc == AGX_ATOMIC_OPC_CMPXCHG)
+         return size * 2;
+      else
+         return size;
+
    default:
       return size;
    }
