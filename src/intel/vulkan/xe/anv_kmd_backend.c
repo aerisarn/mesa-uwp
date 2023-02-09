@@ -21,6 +21,8 @@
  * IN THE SOFTWARE.
  */
 
+#include <sys/mman.h>
+
 #include "anv_private.h"
 
 #include "drm-uapi/xe_drm.h"
@@ -44,11 +46,36 @@ xe_gem_create(struct anv_device *device,
    return gem_create.handle;
 }
 
+static void
+xe_gem_close(struct anv_device *device, uint32_t handle)
+{
+   struct drm_gem_close close = {
+      .handle = handle,
+   };
+   intel_ioctl(device->fd, DRM_IOCTL_GEM_CLOSE, &close);
+}
+
+static void *
+xe_gem_mmap(struct anv_device *device, struct anv_bo *bo, uint64_t offset,
+            uint64_t size, VkMemoryPropertyFlags property_flags)
+{
+   struct drm_xe_gem_mmap_offset args = {
+      .handle = bo->gem_handle,
+   };
+   if (intel_ioctl(device->fd, DRM_IOCTL_XE_GEM_MMAP_OFFSET, &args))
+      return MAP_FAILED;
+
+   return mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED,
+               device->fd, args.offset);
+}
+
 const struct anv_kmd_backend *
 anv_xe_kmd_backend_get(void)
 {
    static const struct anv_kmd_backend xe_backend = {
       .gem_create = xe_gem_create,
+      .gem_close = xe_gem_close,
+      .gem_mmap = xe_gem_mmap,
    };
    return &xe_backend;
 }
