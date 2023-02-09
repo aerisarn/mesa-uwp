@@ -25,9 +25,12 @@
 
 #include <stdint.h>
 
+#include "vulkan/vulkan_core.h"
+
 #include "dev/intel_device_info.h"
 #include "dev/intel_kmd.h"
 
+struct anv_bo;
 enum anv_bo_alloc_flags;
 struct anv_device;
 
@@ -41,6 +44,10 @@ struct anv_kmd_backend {
                           uint16_t num_regions, uint64_t size,
                           enum anv_bo_alloc_flags alloc_flags);
    void (*gem_close)(struct anv_device *device, uint32_t handle);
+   /* Returns MAP_FAILED on error */
+   void *(*gem_mmap)(struct anv_device *device, struct anv_bo *bo,
+                     uint64_t offset, uint64_t size,
+                     VkMemoryPropertyFlags property_flags);
 };
 
 const struct anv_kmd_backend *anv_kmd_backend_get(enum intel_kmd_type type);

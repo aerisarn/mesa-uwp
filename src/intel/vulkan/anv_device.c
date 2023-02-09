@@ -4255,12 +4255,6 @@ VkResult anv_MapMemory(
                        "Memory object already mapped.");
    }
 
-   uint32_t gem_flags = 0;
-
-   if (!device->info->has_llc &&
-       (mem->type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
-      gem_flags |= I915_MMAP_WC;
-
    /* GEM will fail to map if the offset isn't 4k-aligned.  Round down. */
    uint64_t map_offset;
    if (!device->physical->info.has_mmap_offset)
@@ -4274,8 +4268,8 @@ VkResult anv_MapMemory(
    map_size = align64(map_size, 4096);
 
    void *map;
-   VkResult result = anv_device_map_bo(device, mem->bo, map_offset,
-                                       map_size, gem_flags, &map);
+   VkResult result = anv_device_map_bo(device, mem->bo, map_offset, map_size,
+                                       mem->type->propertyFlags, &map);
    if (result != VK_SUCCESS)
       return result;
 
