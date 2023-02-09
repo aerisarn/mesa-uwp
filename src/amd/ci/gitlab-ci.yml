@@ -330,7 +330,7 @@ vkcts-navi10-valve:
     B2C_KERNEL_URL: 'https://gitlab.freedesktop.org/mupuf/valve-infra/-/package_files/144/download'  # 5.17.1
 
 vkcts-navi21-valve:
-  parallel: 2
+  parallel: 3
   extends:
     - .vkcts-test-valve
     - .navi21-test-valve
