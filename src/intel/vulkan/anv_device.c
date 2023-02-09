@@ -3169,7 +3169,7 @@ anv_device_setup_context_or_vm(struct anv_device *device,
                                const VkDeviceCreateInfo *pCreateInfo,
                                const uint32_t num_queues)
 {
-   switch (anv_kmd_type_get(device)) {
+   switch (device->info->kmd_type) {
    case INTEL_KMD_TYPE_I915:
       return anv_i915_device_setup_context(device, pCreateInfo, num_queues);
    case INTEL_KMD_TYPE_XE:
@@ -3183,7 +3183,7 @@ anv_device_setup_context_or_vm(struct anv_device *device,
 static bool
 anv_device_destroy_context_or_vm(struct anv_device *device)
 {
-   switch (anv_kmd_type_get(device)) {
+   switch (device->info->kmd_type) {
    case INTEL_KMD_TYPE_I915:
       return intel_gem_destroy_context(device->fd, device->context_id);
    case INTEL_KMD_TYPE_XE:

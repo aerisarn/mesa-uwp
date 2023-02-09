@@ -22,6 +22,7 @@
  */
 
 #include <sys/mman.h>
+#include <xf86drm.h>
 
 #include "anv_private.h"
 
@@ -69,6 +70,59 @@ xe_gem_mmap(struct anv_device *device, struct anv_bo *bo, uint64_t offset,
                device->fd, args.offset);
 }
 
+static inline int
+xe_gem_vm_bind_op(struct anv_device *device, struct anv_bo *bo, uint32_t op)
+{
+   uint32_t syncobj_handle;
+   int ret = drmSyncobjCreate(device->fd, 0, &syncobj_handle);
+
+   if (ret)
+      return ret;
+
+   struct drm_xe_sync sync = {
+      .flags = DRM_XE_SYNC_SYNCOBJ | DRM_XE_SYNC_SIGNAL,
+      .handle = syncobj_handle,
+   };
+   struct drm_xe_vm_bind args = {
+      .vm_id = device->vm_id,
+      .num_binds = 1,
+      .bind.obj = op == XE_VM_BIND_OP_UNMAP ? 0 : bo->gem_handle,
+      .bind.obj_offset = 0,
+      .bind.range = bo->size + bo->_ccs_size,
+      .bind.addr = intel_48b_address(bo->offset),
+      .bind.op = op,
+      .num_syncs = 1,
+      .syncs = (uintptr_t)&sync,
+   };
+   ret = intel_ioctl(device->fd, DRM_IOCTL_XE_VM_BIND, &args);
+   if (ret)
+      goto bind_error;
+
+   struct drm_syncobj_wait wait = {
+      .handles = (uintptr_t)&syncobj_handle,
+      .timeout_nsec = INT64_MAX,
+      .count_handles = 1,
+      .flags = 0,
+      .first_signaled = 0,
+      .pad = 0,
+   };
+   intel_ioctl(device->fd, DRM_IOCTL_SYNCOBJ_WAIT, &wait);
+
+bind_error:
+   drmSyncobjDestroy(device->fd, syncobj_handle);
+   return ret;
+}
+
+static int xe_gem_vm_bind(struct anv_device *device, struct anv_bo *bo)
+{
+   return xe_gem_vm_bind_op(device, bo, XE_VM_BIND_OP_MAP);
+}
+
+static int xe_gem_vm_unbind(struct anv_device *device, struct anv_bo *bo)
+{
+   return xe_gem_vm_bind_op(device, bo, XE_VM_BIND_OP_UNMAP);
+}
+
 const struct anv_kmd_backend *
 anv_xe_kmd_backend_get(void)
 {
@@ -76,6 +130,8 @@ anv_xe_kmd_backend_get(void)
       .gem_create = xe_gem_create,
       .gem_close = xe_gem_close,
       .gem_mmap = xe_gem_mmap,
+      .gem_vm_bind = xe_gem_vm_bind,
+      .gem_vm_unbind = xe_gem_vm_unbind,
    };
    return &xe_backend;
 }

@@ -40,9 +40,3 @@ anv_kmd_backend_get(enum intel_kmd_type type)
       return NULL;
    }
 }
-
-inline enum intel_kmd_type
-anv_kmd_type_get(struct anv_device *device)
-{
-   return device->info->kmd_type;
-}
