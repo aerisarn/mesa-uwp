@@ -3036,8 +3036,18 @@ VkResult anv_CreateDevice(
       goto fail_device;
    }
 
+   switch (device->info->kmd_type) {
+   case INTEL_KMD_TYPE_I915:
+      device->vk.check_status = anv_i915_device_check_status;
+      break;
+   case INTEL_KMD_TYPE_XE:
+      device->vk.check_status = anv_xe_device_check_status;
+      break;
+   default:
+      unreachable("Missing");
+   }
+
    device->vk.command_buffer_ops = &anv_cmd_buffer_ops;
-   device->vk.check_status = anv_i915_device_check_status;
    device->vk.create_sync_for_memory = anv_create_sync_for_memory;
    vk_device_set_drm_fd(&device->vk, device->fd);
 

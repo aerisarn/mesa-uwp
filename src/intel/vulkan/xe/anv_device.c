@@ -55,3 +55,26 @@ anv_xe_physical_device_get_parameters(struct anv_physical_device *device)
 
    return VK_SUCCESS;
 }
+
+VkResult
+anv_xe_device_check_status(struct vk_device *vk_device)
+{
+   struct anv_device *device = container_of(vk_device, struct anv_device, vk);
+   VkResult result = VK_SUCCESS;
+
+   for (uint32_t i = 0; i < device->queue_count; i++) {
+      struct drm_xe_engine_get_property engine_get_property = {
+         .engine_id = device->queues[i].engine_id,
+         .property = XE_ENGINE_GET_PROPERTY_BAN,
+      };
+      int ret = intel_ioctl(device->fd, DRM_IOCTL_XE_ENGINE_GET_PROPERTY,
+                            &engine_get_property);
+
+      if (ret || engine_get_property.value) {
+         result = vk_device_set_lost(&device->vk, "One or more queues banned");
+         break;
+      }
+   }
+
+   return result;
+}
