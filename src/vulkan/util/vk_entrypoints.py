@@ -26,7 +26,7 @@ from collections import OrderedDict, namedtuple
 
 # Mesa-local imports must be declared in meson variable
 # '{file_without_suffix}_depend_files'.
-from vk_extensions import Extension, VkVersion
+from vk_extensions import get_all_required, filter_api
 
 EntrypointParam = namedtuple('EntrypointParam', 'type name decl len')
 
@@ -98,15 +98,20 @@ class EntrypointAlias(EntrypointBase):
     def call_params(self):
         return self.alias.call_params()
 
-def get_entrypoints(doc, platform_guards):
+def get_entrypoints(doc, api):
     """Extract the entry points from the registry."""
     entrypoints = OrderedDict()
 
+    required = get_all_required(doc, 'command', api)
+
     for command in doc.findall('./commands/command'):
+        if not filter_api(command, api):
+            continue
+
         if 'alias' in command.attrib:
-            alias = command.attrib['name']
+            name = command.attrib['name']
             target = command.attrib['alias']
-            entrypoints[alias] = EntrypointAlias(alias, entrypoints[target])
+            e = EntrypointAlias(name, entrypoints[target])
         else:
             name = command.find('./proto/name').text
             ret_type = command.find('./proto/type').text
@@ -115,52 +120,28 @@ def get_entrypoints(doc, platform_guards):
                 name=p.find('./name').text,
                 decl=''.join(p.itertext()),
                 len=p.attrib.get('altlen', p.attrib.get('len', None))
-            ) for p in command.findall('./param')]
+            ) for p in command.findall('./param') if filter_api(p, api)]
             # They really need to be unique
-            assert name not in entrypoints
-            entrypoints[name] = Entrypoint(name, ret_type, params)
+            e = Entrypoint(name, ret_type, params)
 
-    for feature in doc.findall('./feature'):
-        assert feature.attrib['api'] == 'vulkan'
-        version = VkVersion(feature.attrib['number'])
-        for command in feature.findall('./require/command'):
-            e = entrypoints[command.attrib['name']]
-            assert e.core_version is None
-            e.core_version = version
-
-    for extension in doc.findall('.extensions/extension'):
-        ext = Extension.from_xml(extension)
-        if 'vulkan' not in ext.supported:
+        if name not in required:
             continue
 
-        for command in extension.findall('./require/command'):
-            e = entrypoints[command.attrib['name']]
-            assert e.core_version is None
-            e.extensions.append(ext)
-            if ext.platform in platform_guards:
-                guard = platform_guards[ext.platform]
-                if e.guard is None:
-                    e.guard = guard
-                else:
-                    assert e.guard == guard
+        r = required[name]
+        e.core_version = r.core_version
+        e.extensions = r.extensions
+        e.guard = r.guard
+
+        assert name not in entrypoints, name
+        entrypoints[name] = e
 
     return entrypoints.values()
 
-def get_platform_defines(doc):
-    platform_define = {}
-    for platform in doc.findall('./platforms/platform'):
-        name = platform.attrib['name']
-        define = platform.attrib['protect']
-        platform_define[name] = define
-
-    return platform_define
-
-def get_entrypoints_from_xml(xml_files):
+def get_entrypoints_from_xml(xml_files, api='vulkan'):
     entrypoints = []
 
     for filename in xml_files:
         doc = et.parse(filename)
-        guards = get_platform_defines(doc)
-        entrypoints += get_entrypoints(doc, guards)
+        entrypoints += get_entrypoints(doc, api)
 
     return entrypoints
