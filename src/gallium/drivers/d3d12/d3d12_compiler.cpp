@@ -753,14 +753,12 @@ d3d12_compare_shader_keys(const d3d12_shader_key *expect, const d3d12_shader_key
           expect->hs.point_mode != have->hs.point_mode ||
           expect->hs.spacing != have->hs.spacing ||
           expect->hs.patch_vertices_in != have->hs.patch_vertices_in ||
-          memcmp(&expect->hs.required_patch_outputs, &have->hs.required_patch_outputs,
-                 sizeof(struct d3d12_varying_info)) ||
+          !d3d12_compare_varying_info(&expect->hs.required_patch_outputs, &have->hs.required_patch_outputs) ||
           expect->hs.next_patch_inputs != have->hs.next_patch_inputs)
          return false;
    } else if (expect->stage == PIPE_SHADER_TESS_EVAL) {
       if (expect->ds.tcs_vertices_out != have->ds.tcs_vertices_out ||
-          memcmp(&expect->ds.required_patch_inputs, &have->ds.required_patch_inputs,
-                 sizeof(struct d3d12_varying_info)) ||
+          !d3d12_compare_varying_info(&expect->ds.required_patch_inputs, &have->ds.required_patch_inputs) ||
           expect->ds.prev_patch_outputs != have ->ds.prev_patch_outputs)
          return false;
    }
