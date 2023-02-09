@@ -56,6 +56,28 @@ stub_gem_mmap(struct anv_device *device, struct anv_bo *bo, uint64_t offset,
                offset);
 }
 
+static VkResult
+stub_execute_simple_batch(struct anv_queue *queue,
+                          struct anv_bo *batch_bo,
+                          uint32_t batch_bo_size)
+{
+   return VK_ERROR_UNKNOWN;
+}
+
+static VkResult
+stub_queue_exec_locked(struct anv_queue *queue,
+                       uint32_t wait_count,
+                       const struct vk_sync_wait *waits,
+                       uint32_t cmd_buffer_count,
+                       struct anv_cmd_buffer **cmd_buffers,
+                       uint32_t signal_count,
+                       const struct vk_sync_signal *signals,
+                       struct anv_query_pool *perf_query_pool,
+                       uint32_t perf_query_pass)
+{
+   return VK_ERROR_UNKNOWN;
+}
+
 void *
 anv_gem_mmap(struct anv_device *device, struct anv_bo *bo, uint64_t offset,
              uint64_t size, VkMemoryPropertyFlags property_flags)
@@ -134,6 +156,8 @@ const struct anv_kmd_backend *anv_stub_kmd_backend_get(void)
       .gem_create = stub_gem_create,
       .gem_close = stub_gem_close,
       .gem_mmap = stub_gem_mmap,
+      .execute_simple_batch = stub_execute_simple_batch,
+      .queue_exec_locked = stub_queue_exec_locked,
    };
    return &stub_backend;
 }

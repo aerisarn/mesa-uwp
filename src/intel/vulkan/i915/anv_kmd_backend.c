@@ -25,6 +25,8 @@
 
 #include "anv_private.h"
 
+#include "i915/anv_batch_chain.h"
+
 #include "drm-uapi/i915_drm.h"
 
 static uint32_t
@@ -154,6 +156,8 @@ anv_i915_kmd_backend_get(void)
       .gem_create = i915_gem_create,
       .gem_close = i915_gem_close,
       .gem_mmap = i915_gem_mmap,
+      .execute_simple_batch = i915_execute_simple_batch,
+      .queue_exec_locked = i915_queue_exec_locked
    };
    return &i915_backend;
 }
