@@ -26,6 +26,8 @@
 
 #include "anv_private.h"
 
+#include "xe/anv_batch_chain.h"
+
 #include "drm-uapi/xe_drm.h"
 
 static uint32_t
@@ -137,6 +139,7 @@ anv_xe_kmd_backend_get(void)
       .gem_mmap = xe_gem_mmap,
       .gem_vm_bind = xe_gem_vm_bind,
       .gem_vm_unbind = xe_gem_vm_unbind,
+      .execute_simple_batch = xe_execute_simple_batch,
    };
    return &xe_backend;
 }
