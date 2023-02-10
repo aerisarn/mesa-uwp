@@ -32,6 +32,7 @@
 
 
 #include "pipe/p_compiler.h"
+#include "util/simple_mtx.h"
 #include "util/u_debug.h"
 #include "util/u_thread.h"
 #include "util/u_memory.h"
@@ -60,7 +61,7 @@
 
 #define EXEC_HEAP_SIZE (10*1024*1024)
 
-static mtx_t exec_mutex = _MTX_INITIALIZER_NP;
+static simple_mtx_t exec_mutex = SIMPLE_MTX_INITIALIZER;
 
 static struct mem_block *exec_heap = NULL;
 static unsigned char *exec_mem = NULL;
@@ -87,7 +88,7 @@ rtasm_exec_malloc(size_t size)
    struct mem_block *block = NULL;
    void *addr = NULL;
 
-   mtx_lock(&exec_mutex);
+   simple_mtx_lock(&exec_mutex);
 
    if (!init_heap())
       goto bail;
@@ -103,7 +104,7 @@ rtasm_exec_malloc(size_t size)
       debug_printf("rtasm_exec_malloc failed\n");
 
 bail:
-   mtx_unlock(&exec_mutex);
+   simple_mtx_unlock(&exec_mutex);
 
    return addr;
 }
@@ -112,7 +113,7 @@ bail:
 void
 rtasm_exec_free(void *addr)
 {
-   mtx_lock(&exec_mutex);
+   simple_mtx_lock(&exec_mutex);
 
    if (exec_heap) {
       struct mem_block *block = u_mmFindBlock(exec_heap, (unsigned char *)addr - exec_mem);
@@ -121,7 +122,7 @@ rtasm_exec_free(void *addr)
          u_mmFreeMem(block);
    }
 
-   mtx_unlock(&exec_mutex);
+   simple_mtx_unlock(&exec_mutex);
 }
 
 
