@@ -65,6 +65,7 @@
 #include "iris_bufmgr.h"
 #include "iris_context.h"
 #include "string.h"
+#include "iris_kmd_backend.h"
 
 #include "drm-uapi/i915_drm.h"
 
@@ -232,6 +233,7 @@ struct iris_bufmgr {
    int next_screen_id;
 
    struct intel_device_info devinfo;
+   const struct iris_kmd_backend *kmd_backend;
    bool bo_reuse:1;
    bool use_global_vm:1;
 
@@ -967,69 +969,6 @@ i915_gem_set_domain(struct iris_bufmgr *bufmgr, uint32_t handle,
                       DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd);
 }
 
-static uint32_t
-i915_gem_create(struct iris_bufmgr *bufmgr,
-                const struct intel_memory_class_instance **regions,
-                uint16_t regions_count, uint64_t size,
-                enum iris_heap heap_flags, unsigned alloc_flags)
-{
-   if (unlikely(!iris_bufmgr_get_device_info(bufmgr)->mem.use_class_instance)) {
-      struct drm_i915_gem_create create_legacy = { .size = size };
-
-      assert(regions_count == 1 &&
-             regions[0]->klass == I915_MEMORY_CLASS_SYSTEM);
-
-      /* All new BOs we get from the kernel are zeroed, so we don't need to
-       * worry about that here.
-       */
-      if (intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_I915_GEM_CREATE,
-                      &create_legacy))
-         return 0;
-
-      return create_legacy.handle;
-   }
-
-   struct drm_i915_gem_memory_class_instance i915_regions[2];
-   assert(regions_count <= ARRAY_SIZE(i915_regions));
-   for (uint16_t i = 0; i < regions_count; i++) {
-      i915_regions[i].memory_class = regions[i]->klass;
-      i915_regions[i].memory_instance = regions[i]->instance;
-   }
-
-   struct drm_i915_gem_create_ext create = {
-      .size = size,
-   };
-   struct drm_i915_gem_create_ext_memory_regions ext_regions = {
-      .base = { .name = I915_GEM_CREATE_EXT_MEMORY_REGIONS },
-      .num_regions = regions_count,
-      .regions = (uintptr_t)i915_regions,
-   };
-   intel_gem_add_ext(&create.extensions,
-                     I915_GEM_CREATE_EXT_MEMORY_REGIONS,
-                     &ext_regions.base);
-
-   if (iris_bufmgr_vram_size(bufmgr) > 0 &&
-       !intel_vram_all_mappable(iris_bufmgr_get_device_info(bufmgr)) &&
-       heap_flags == IRIS_HEAP_DEVICE_LOCAL_PREFERRED)
-      create.flags |= I915_GEM_CREATE_EXT_FLAG_NEEDS_CPU_ACCESS;
-
-   /* Protected param */
-   struct drm_i915_gem_create_ext_protected_content protected_param = {
-      .flags = 0,
-   };
-   if (alloc_flags & BO_ALLOC_PROTECTED) {
-      intel_gem_add_ext(&create.extensions,
-                        I915_GEM_CREATE_EXT_PROTECTED_CONTENT,
-                        &protected_param.base);
-   }
-
-   if (intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_I915_GEM_CREATE_EXT,
-                   &create))
-      return 0;
-
-   return create.handle;
-}
-
 static struct iris_bo *
 alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, unsigned flags)
 {
@@ -1062,8 +1001,9 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, unsigned flags)
       regions[num_regions++] = bufmgr->sys.region;
    }
 
-   bo->gem_handle = i915_gem_create(bufmgr, regions, num_regions, bo_size,
-                                    bo->real.heap, flags);
+   bo->gem_handle = bufmgr->kmd_backend->gem_create(bufmgr, regions,
+                                                    num_regions, bo_size,
+                                                    bo->real.heap, flags);
    if (bo->gem_handle == 0) {
       free(bo);
       return NULL;
@@ -2427,6 +2367,7 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
    devinfo = &bufmgr->devinfo;
    bufmgr->bo_reuse = bo_reuse;
    iris_bufmgr_get_meminfo(bufmgr, devinfo);
+   bufmgr->kmd_backend = iris_kmd_backend_get(devinfo->kmd_type);
 
    struct intel_query_engine_info *engine_info;
    engine_info = intel_engine_get_info(bufmgr->fd, bufmgr->devinfo.kmd_type);
