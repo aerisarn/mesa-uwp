@@ -41,10 +41,10 @@ struct lower_abi_state {
                      field##__SHIFT, util_bitcount(field##__MASK))
 
 static nir_ssa_def *load_internal_binding(nir_builder *b, struct si_shader_args *args,
-                                          unsigned slot)
+                                          unsigned slot, unsigned num_components)
 {
    nir_ssa_def *addr = ac_nir_load_arg(b, &args->ac, args->internal_bindings);
-   return nir_load_smem_amd(b, 4, addr, nir_imm_int(b, slot * 16));
+   return nir_load_smem_amd(b, num_components, addr, nir_imm_int(b, slot * 16));
 }
 
 static nir_ssa_def *get_num_vert_per_prim(nir_builder *b, struct si_shader *shader,
@@ -86,7 +86,7 @@ static nir_ssa_def *build_attr_ring_desc(nir_builder *b, struct si_shader *shade
 
    nir_ssa_def *attr_address =
       sel->stage == MESA_SHADER_VERTEX && sel->info.base.vs.blit_sgprs_amd ?
-      load_internal_binding(b, args, SI_GS_ATTRIBUTE_RING) :
+      load_internal_binding(b, args, SI_GS_ATTRIBUTE_RING, 4) :
       ac_nir_load_arg(b, &args->ac, args->gs_attr_address);
 
    unsigned stride = 16 * shader->info.nr_param_exports;
@@ -150,7 +150,7 @@ static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_s
    }
    case nir_intrinsic_load_tess_level_outer_default:
    case nir_intrinsic_load_tess_level_inner_default: {
-      nir_ssa_def *buf = load_internal_binding(b, args, SI_HS_CONST_DEFAULT_TESS_LEVELS);
+      nir_ssa_def *buf = load_internal_binding(b, args, SI_HS_CONST_DEFAULT_TESS_LEVELS, 4);
       unsigned num_components = intrin->dest.ssa.num_components;
       unsigned offset =
          intrin->intrinsic == nir_intrinsic_load_tess_level_inner_default ? 16 : 0;
@@ -254,19 +254,19 @@ static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_s
       replacement = nir_i2b(b, GET_FIELD_NIR(VS_STATE_CLAMP_VERTEX_COLOR));
       break;
    case nir_intrinsic_load_user_clip_plane: {
-      nir_ssa_def *buf = load_internal_binding(b, args, SI_VS_CONST_CLIP_PLANES);
+      nir_ssa_def *buf = load_internal_binding(b, args, SI_VS_CONST_CLIP_PLANES, 4);
       unsigned offset = nir_intrinsic_ucp_id(intrin) * 16;
       replacement = nir_load_smem_buffer_amd(b, 4, buf, nir_imm_int(b, offset));
       break;
    }
    case nir_intrinsic_load_streamout_buffer_amd: {
       unsigned slot = SI_VS_STREAMOUT_BUF0 + nir_intrinsic_base(intrin);
-      replacement = load_internal_binding(b, args, slot);
+      replacement = load_internal_binding(b, args, slot, 4);
       break;
    }
    case nir_intrinsic_atomic_add_gs_emit_prim_count_amd:
    case nir_intrinsic_atomic_add_gs_invocation_count_amd: {
-      nir_ssa_def *buf = load_internal_binding(b, args, SI_GS_QUERY_EMULATED_COUNTERS_BUF);
+      nir_ssa_def *buf = load_internal_binding(b, args, SI_GS_QUERY_EMULATED_COUNTERS_BUF, 4);
 
       enum pipe_statistics_query_index index =
          intrin->intrinsic == nir_intrinsic_atomic_add_gs_emit_prim_count_amd ?
@@ -279,7 +279,7 @@ static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_s
    }
    case nir_intrinsic_atomic_add_gen_prim_count_amd:
    case nir_intrinsic_atomic_add_xfb_prim_count_amd: {
-      nir_ssa_def *buf = load_internal_binding(b, args, SI_GS_QUERY_BUF);
+      nir_ssa_def *buf = load_internal_binding(b, args, SI_GS_QUERY_BUF, 4);
 
       unsigned stream = nir_intrinsic_stream_id(intrin);
       unsigned offset = intrin->intrinsic == nir_intrinsic_atomic_add_gen_prim_count_amd ?
@@ -346,7 +346,7 @@ static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_s
          /* offset = sample_id * 8  (8 = 2 floats containing samplepos.xy) */
          nir_ssa_def *offset = nir_ishl_imm(b, sample_id, 3);
 
-         nir_ssa_def *buf = load_internal_binding(b, args, SI_PS_CONST_SAMPLE_POSITIONS);
+         nir_ssa_def *buf = load_internal_binding(b, args, SI_PS_CONST_SAMPLE_POSITIONS, 4);
          nir_ssa_def *sample_pos = nir_load_smem_buffer_amd(b, 2, buf, offset);
 
          sample_pos = nir_fsub(b, sample_pos, nir_imm_float(b, 0.5));
