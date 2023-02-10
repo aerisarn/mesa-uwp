@@ -1051,6 +1051,10 @@ update_separable(struct zink_context *ctx, struct zink_program *pg)
       prog->shaders[MESA_SHADER_VERTEX],
       prog->shaders[MESA_SHADER_FRAGMENT],
    };
+
+   if (!bs->dd.db_bound)
+      zink_batch_bind_db(ctx);
+
    for (unsigned j = 0; j < pg->num_dsl; j++) {
       if (!shaders[j]->precompile.dsl)
          continue;
