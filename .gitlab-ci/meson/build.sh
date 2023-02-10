@@ -71,7 +71,9 @@ meson setup _build \
       -D buildtype=${BUILDTYPE:-debug} \
       -D build-tests=true \
       -D c_args="$(echo -n $C_ARGS)" \
+      -D c_link_args="$(echo -n $C_LINK_ARGS)" \
       -D cpp_args="$(echo -n $CPP_ARGS)" \
+      -D cpp_link_args="$(echo -n $CPP_LINK_ARGS)" \
       -D enable-glcpp-tests=false \
       -D libunwind=${UNWIND} \
       ${DRI_LOADERS} \
