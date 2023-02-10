@@ -23,7 +23,7 @@ r600_test_dep = declare_dependency(
 
 if with_tests
    foreach t : ['valuefactory', 'value', 'instr', 'instrfromstring', 'liverange',
-                'optimizer', 'shaderfromstring' ]
+                'optimizer', 'shaderfromstring', 'split_address_loads' ]
    test(
        t,
        executable('test-@0@-r600-sfn'.format(t),

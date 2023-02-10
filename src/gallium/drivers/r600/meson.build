@@ -174,6 +174,8 @@ files_r600 = files(
   'sfn/sfn_shader_tess.h',
   'sfn/sfn_shader_vs.cpp',
   'sfn/sfn_shader_vs.h',
+  'sfn/sfn_split_address_loads.cpp',
+  'sfn/sfn_split_address_loads.h',
   'sfn/sfn_valuefactory.cpp',
   'sfn/sfn_valuefactory.h',
   'sfn/sfn_virtualvalues.cpp',
