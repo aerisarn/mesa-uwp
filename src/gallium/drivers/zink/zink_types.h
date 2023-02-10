@@ -469,6 +469,8 @@ struct zink_descriptor_pool_multi {
 struct zink_batch_descriptor_data {
    /* pools have fbfetch initialized */
    bool has_fbfetch;
+   /* are descriptor buffers bound */
+   bool db_bound;
    /* real size of 'pools' */
    unsigned pool_size[ZINK_DESCRIPTOR_BASE_TYPES];
    /* this array is sized based on the max zink_descriptor_pool_key::id used by the batch; members may be NULL */
@@ -592,7 +594,6 @@ struct zink_batch_state {
 
    bool is_device_lost;
    bool has_barriers;
-   bool db_bound;
 };
 
 static inline struct zink_batch_state *

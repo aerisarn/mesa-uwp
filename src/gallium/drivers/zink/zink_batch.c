@@ -424,7 +424,7 @@ zink_batch_bind_db(struct zink_context *ctx)
       count++;
    }
    VKSCR(CmdBindDescriptorBuffersEXT)(batch->state->cmdbuf, count, infos);
-   batch->state->db_bound = true;
+   batch->state->dd.db_bound = true;
 }
 
 /* called on context creation and after flushing an old batch */
