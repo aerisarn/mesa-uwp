@@ -222,6 +222,13 @@ public:
 
    int inc_rat_emitted() { return ++m_emitted_rat_instr; }
 
+   void set_expected_ar_uses(uint32_t n) {m_expected_ar_uses = n;}
+   auto expected_ar_uses() const {return m_expected_ar_uses;}
+   void dec_expected_ar_uses() {
+      assert(m_expected_ar_uses > 0);
+      --m_expected_ar_uses;
+   }
+
    static void set_chipclass(r600_chip_class chip_class);
 
 private:
@@ -247,6 +254,7 @@ private:
    AluInstr *m_lds_group_start{nullptr};
    static unsigned s_max_kcache_banks;
    int m_emitted_rat_instr{0};
+   uint32_t m_expected_ar_uses{0};
 };
 
 class InstrWithResource : public Instr {
