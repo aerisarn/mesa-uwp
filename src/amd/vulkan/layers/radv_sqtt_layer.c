@@ -1278,6 +1278,9 @@ sqtt_CreateGraphicsPipelines(VkDevice _device, VkPipelineCache pipelineCache, ui
       if (!pipeline)
          continue;
 
+      if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR)
+         continue;
+
       result = radv_sqtt_reloc_graphics_shaders(device, radv_pipeline_to_graphics(pipeline));
       if (result != VK_SUCCESS)
          goto fail;
