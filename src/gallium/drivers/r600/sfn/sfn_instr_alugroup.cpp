@@ -151,6 +151,9 @@ AluGroup::add_trans_instructions(AluInstr *instr)
       }
    }
 
+   if (!instr->has_alu_flag(alu_is_trans) && !m_slots[instr->dest_chan()])
+      return false;
+
    for (AluBankSwizzle i = sq_alu_scl_201; i != sq_alu_scl_unknown; ++i) {
       AluReadportReservation readports_evaluator = m_readports_evaluator;
       if (readports_evaluator.schedule_trans_instruction(*instr, i)) {
@@ -161,8 +164,7 @@ AluGroup::add_trans_instructions(AluInstr *instr)
 
          /* We added a vector op in the trans channel, so we have to
           * make sure the corresponding vector channel is used */
-         if (!instr->has_alu_flag(alu_is_trans) && !m_slots[instr->dest_chan()])
-            m_slots[instr->dest_chan()] = new AluInstr(op0_nop, instr->dest_chan());
+         assert(instr->has_alu_flag(alu_is_trans) || m_slots[instr->dest_chan()]);
          return true;
       }
    }
