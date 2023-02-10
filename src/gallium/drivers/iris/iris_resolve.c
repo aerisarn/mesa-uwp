@@ -266,7 +266,8 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
                                       surf->view.array_len,
                                       aux_usage);
 
-         iris_cache_flush_for_render(batch, res->bo, aux_usage);
+         iris_emit_buffer_barrier_for(batch, res->bo,
+                                      IRIS_DOMAIN_RENDER_WRITE);
       }
    }
 }
@@ -420,15 +421,6 @@ flush_previous_aux_mode(struct iris_batch *batch,
                                    PIPE_CONTROL_CS_STALL);
       entry->data = v_aux_usage;
    }
-}
-
-void
-iris_cache_flush_for_render(struct iris_batch *batch,
-                            struct iris_bo *bo,
-                            enum isl_aux_usage aux_usage)
-{
-   iris_emit_buffer_barrier_for(batch, bo, IRIS_DOMAIN_RENDER_WRITE);
-   flush_previous_aux_mode(batch, bo, aux_usage);
 }
 
 static void
