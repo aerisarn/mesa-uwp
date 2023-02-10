@@ -1648,7 +1648,7 @@ zink_descriptors_init_bindless(struct zink_context *ctx)
       for (unsigned i = 0; i < 4; i++) {
          VkDeviceSize offset;
          VKSCR(GetDescriptorSetLayoutBindingOffsetEXT)(screen->dev, screen->bindless_layout, i, &offset);
-         ctx->dd.db.db_offsets[i] = offset;
+         ctx->dd.db.bindless_db_offsets[i] = offset;
       }
    } else {
       VkDescriptorPoolCreateInfo dpci = {0};
@@ -1712,13 +1712,13 @@ zink_descriptors_update_bindless(struct zink_context *ctx)
                size_t size = i ? screen->info.db_props.robustStorageTexelBufferDescriptorSize : screen->info.db_props.robustUniformTexelBufferDescriptorSize;
                info.type = i ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
                info.data.pSampler = (void*)&ctx->di.bindless[i].db.buffer_infos[handle];
-               VKSCR(GetDescriptorEXT)(screen->dev, &info, size, ctx->dd.db.bindless_db_map + ctx->dd.db.db_offsets[binding] + handle * size);
+               VKSCR(GetDescriptorEXT)(screen->dev, &info, size, ctx->dd.db.bindless_db_map + ctx->dd.db.bindless_db_offsets[binding] + handle * size);
             } else {
                info.type = i ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE : VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                if (screen->info.db_props.combinedImageSamplerDescriptorSingleArray || i) {
                   size_t size = i ? screen->info.db_props.storageImageDescriptorSize : screen->info.db_props.combinedImageSamplerDescriptorSize;
                   info.data.pSampler = (void*)&ctx->di.bindless[i].img_infos[handle];
-                  VKSCR(GetDescriptorEXT)(screen->dev, &info, size, ctx->dd.db.bindless_db_map + ctx->dd.db.db_offsets[binding] + handle * size);
+                  VKSCR(GetDescriptorEXT)(screen->dev, &info, size, ctx->dd.db.bindless_db_map + ctx->dd.db.bindless_db_offsets[binding] + handle * size);
                } else {
                   /* drivers that don't support combinedImageSamplerDescriptorSingleArray must have sampler arrays written in memory as
                    *
@@ -1730,10 +1730,10 @@ zink_descriptors_update_bindless(struct zink_context *ctx)
                   size_t size = screen->info.db_props.combinedImageSamplerDescriptorSize;
                   info.data.pSampler = (void*)&ctx->di.bindless[i].img_infos[handle];
                   VKSCR(GetDescriptorEXT)(screen->dev, &info, size, buf);
-                  memcpy(ctx->dd.db.bindless_db_map + ctx->dd.db.db_offsets[binding] + handle * screen->info.db_props.samplerDescriptorSize, buf, screen->info.db_props.samplerDescriptorSize);
+                  memcpy(ctx->dd.db.bindless_db_map + ctx->dd.db.bindless_db_offsets[binding] + handle * screen->info.db_props.samplerDescriptorSize, buf, screen->info.db_props.samplerDescriptorSize);
                   size_t offset = screen->info.db_props.samplerDescriptorSize * ZINK_MAX_BINDLESS_HANDLES;
                   offset += handle * screen->info.db_props.sampledImageDescriptorSize;
-                  memcpy(ctx->dd.db.bindless_db_map + ctx->dd.db.db_offsets[binding] + offset, &buf[screen->info.db_props.samplerDescriptorSize], screen->info.db_props.sampledImageDescriptorSize);
+                  memcpy(ctx->dd.db.bindless_db_map + ctx->dd.db.bindless_db_offsets[binding] + offset, &buf[screen->info.db_props.samplerDescriptorSize], screen->info.db_props.sampledImageDescriptorSize);
                }
             }
          } else {

@@ -405,7 +405,7 @@ struct zink_descriptor_data {
          struct zink_resource *bindless_db;
          uint8_t *bindless_db_map;
          struct pipe_transfer *bindless_db_xfer;
-         uint32_t db_offsets[4];
+         uint32_t bindless_db_offsets[4];
       } db;
    };
 
