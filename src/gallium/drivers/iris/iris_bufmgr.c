@@ -967,6 +967,69 @@ i915_gem_set_domain(struct iris_bufmgr *bufmgr, uint32_t handle,
                       DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd);
 }
 
+static uint32_t
+i915_gem_create(struct iris_bufmgr *bufmgr,
+                const struct intel_memory_class_instance **regions,
+                uint16_t regions_count, uint64_t size,
+                enum iris_heap heap_flags, unsigned alloc_flags)
+{
+   if (unlikely(!iris_bufmgr_get_device_info(bufmgr)->mem.use_class_instance)) {
+      struct drm_i915_gem_create create_legacy = { .size = size };
+
+      assert(regions_count == 1 &&
+             regions[0]->klass == I915_MEMORY_CLASS_SYSTEM);
+
+      /* All new BOs we get from the kernel are zeroed, so we don't need to
+       * worry about that here.
+       */
+      if (intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_I915_GEM_CREATE,
+                      &create_legacy))
+         return 0;
+
+      return create_legacy.handle;
+   }
+
+   struct drm_i915_gem_memory_class_instance i915_regions[2];
+   assert(regions_count <= ARRAY_SIZE(i915_regions));
+   for (uint16_t i = 0; i < regions_count; i++) {
+      i915_regions[i].memory_class = regions[i]->klass;
+      i915_regions[i].memory_instance = regions[i]->instance;
+   }
+
+   struct drm_i915_gem_create_ext create = {
+      .size = size,
+   };
+   struct drm_i915_gem_create_ext_memory_regions ext_regions = {
+      .base = { .name = I915_GEM_CREATE_EXT_MEMORY_REGIONS },
+      .num_regions = regions_count,
+      .regions = (uintptr_t)i915_regions,
+   };
+   intel_gem_add_ext(&create.extensions,
+                     I915_GEM_CREATE_EXT_MEMORY_REGIONS,
+                     &ext_regions.base);
+
+   if (iris_bufmgr_vram_size(bufmgr) > 0 &&
+       !intel_vram_all_mappable(iris_bufmgr_get_device_info(bufmgr)) &&
+       heap_flags == IRIS_HEAP_DEVICE_LOCAL_PREFERRED)
+      create.flags |= I915_GEM_CREATE_EXT_FLAG_NEEDS_CPU_ACCESS;
+
+   /* Protected param */
+   struct drm_i915_gem_create_ext_protected_content protected_param = {
+      .flags = 0,
+   };
+   if (alloc_flags & BO_ALLOC_PROTECTED) {
+      intel_gem_add_ext(&create.extensions,
+                        I915_GEM_CREATE_EXT_PROTECTED_CONTENT,
+                        &protected_param.base);
+   }
+
+   if (intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_I915_GEM_CREATE_EXT,
+                   &create))
+      return 0;
+
+   return create.handle;
+}
+
 static struct iris_bo *
 alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, unsigned flags)
 {
@@ -976,87 +1039,35 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, unsigned flags)
 
    bo->real.heap = flags_to_heap(bufmgr, flags);
 
-   /* If we have vram size, we have multiple memory regions and should choose
-    * one of them.
-    */
-   if (bufmgr->vram.size > 0 || flags & BO_ALLOC_PROTECTED) {
-      /* All new BOs we get from the kernel are zeroed, so we don't need to
-       * worry about that here.
-       */
-      struct drm_i915_gem_create_ext create = {
-         .size = bo_size,
-      };
+   const struct intel_memory_class_instance *regions[2];
+   uint16_t num_regions = 0;
 
-      struct drm_i915_gem_memory_class_instance regions[2];
-      struct drm_i915_gem_create_ext_memory_regions ext_regions = {
-         .base = { .name = I915_GEM_CREATE_EXT_MEMORY_REGIONS },
-         .num_regions = 0,
-         .regions = (uintptr_t)regions,
-      };
-
-      if (bufmgr->vram.size > 0) {
-         switch (bo->real.heap) {
-         case IRIS_HEAP_DEVICE_LOCAL_PREFERRED:
-            /* For vram allocations, still use system memory as a fallback. */
-            regions[ext_regions.num_regions].memory_class = bufmgr->vram.region->klass;
-            regions[ext_regions.num_regions++].memory_instance = bufmgr->vram.region->instance;
-            regions[ext_regions.num_regions].memory_class = bufmgr->sys.region->klass;
-            regions[ext_regions.num_regions++].memory_instance = bufmgr->sys.region->instance;
-            break;
-         case IRIS_HEAP_DEVICE_LOCAL:
-            regions[ext_regions.num_regions].memory_class = bufmgr->vram.region->klass;
-            regions[ext_regions.num_regions++].memory_instance = bufmgr->vram.region->instance;
-            break;
-         case IRIS_HEAP_SYSTEM_MEMORY:
-            regions[ext_regions.num_regions].memory_class = bufmgr->sys.region->klass;
-            regions[ext_regions.num_regions++].memory_instance = bufmgr->sys.region->instance;
-            break;
-         case IRIS_HEAP_MAX:
-            unreachable("invalid heap for BO");
-         }
-
-         intel_gem_add_ext(&create.extensions,
-                           I915_GEM_CREATE_EXT_MEMORY_REGIONS,
-                           &ext_regions.base);
-
-         if (!intel_vram_all_mappable(&bufmgr->devinfo) &&
-             bo->real.heap == IRIS_HEAP_DEVICE_LOCAL_PREFERRED) {
-            create.flags |= I915_GEM_CREATE_EXT_FLAG_NEEDS_CPU_ACCESS;
-         }
+   if (bufmgr->vram.size > 0) {
+      switch (bo->real.heap) {
+      case IRIS_HEAP_DEVICE_LOCAL_PREFERRED:
+         /* For vram allocations, still use system memory as a fallback. */
+         regions[num_regions++] = bufmgr->vram.region;
+         regions[num_regions++] = bufmgr->sys.region;
+         break;
+      case IRIS_HEAP_DEVICE_LOCAL:
+         regions[num_regions++] = bufmgr->vram.region;
+         break;
+      case IRIS_HEAP_SYSTEM_MEMORY:
+         regions[num_regions++] = bufmgr->sys.region;
+         break;
+      case IRIS_HEAP_MAX:
+         unreachable("invalid heap for BO");
       }
-
-      /* Protected param */
-      struct drm_i915_gem_create_ext_protected_content protected_param = {
-         .flags = 0,
-      };
-      if (flags & BO_ALLOC_PROTECTED) {
-         intel_gem_add_ext(&create.extensions,
-                           I915_GEM_CREATE_EXT_PROTECTED_CONTENT,
-                           &protected_param.base);
-      }
-
-      /* It should be safe to use GEM_CREATE_EXT without checking, since we are
-       * in the side of the branch where discrete memory is available. So we
-       * can assume GEM_CREATE_EXT is supported already.
-       */
-      if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CREATE_EXT, &create) != 0) {
-         free(bo);
-         return NULL;
-      }
-      bo->gem_handle = create.handle;
    } else {
-      struct drm_i915_gem_create create = { .size = bo_size };
-
-      /* All new BOs we get from the kernel are zeroed, so we don't need to
-       * worry about that here.
-       */
-      if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_CREATE, &create) != 0) {
-         free(bo);
-         return NULL;
-      }
-      bo->gem_handle = create.handle;
+      regions[num_regions++] = bufmgr->sys.region;
    }
 
+   bo->gem_handle = i915_gem_create(bufmgr, regions, num_regions, bo_size,
+                                    bo->real.heap, flags);
+   if (bo->gem_handle == 0) {
+      free(bo);
+      return NULL;
+   }
    bo->bufmgr = bufmgr;
    bo->size = bo_size;
    bo->idle = true;
