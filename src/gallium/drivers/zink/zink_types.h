@@ -488,10 +488,10 @@ struct zink_batch_descriptor_data {
    /* mask of push descriptor usage */
    unsigned push_usage[2]; //gfx, compute
 
-   struct zink_resource *db[ZINK_DESCRIPTOR_NON_BINDLESS_TYPES]; //the descriptor buffer for a given type
-   uint8_t *db_map[ZINK_DESCRIPTOR_NON_BINDLESS_TYPES]; //the host map for the buffer
-   struct pipe_transfer *db_xfer[ZINK_DESCRIPTOR_NON_BINDLESS_TYPES]; //the transfer map for the buffer
-   uint64_t db_offset[ZINK_DESCRIPTOR_NON_BINDLESS_TYPES]; //the "next" offset that will be used when the buffer is updated
+   struct zink_resource *db; //the descriptor buffer for a given type
+   uint8_t *db_map; //the host map for the buffer
+   struct pipe_transfer *db_xfer; //the transfer map for the buffer
+   uint64_t db_offset; //the "next" offset that will be used when the buffer is updated
 };
 
 /** batch types */
