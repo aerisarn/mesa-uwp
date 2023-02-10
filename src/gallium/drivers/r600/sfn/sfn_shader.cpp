@@ -330,7 +330,9 @@ Shader::allocate_registers_from_string(std::istream& is, Pin pin)
       if (reg_str.empty())
          break;
 
-      if (strchr(reg_str.c_str(), '@')) {
+      if (strchr(reg_str.c_str(), '@') ||
+          reg_str == "AR" ||
+          reg_str.substr(0,3) == "IDX") {
          value_factory().dest_from_string(reg_str);
       } else {
          RegisterVec4::Swizzle swz = {0, 1, 2, 3};
