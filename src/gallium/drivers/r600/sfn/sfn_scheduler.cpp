@@ -476,6 +476,10 @@ BlockScheduler::schedule_alu(Shader::ShaderBlocks& out_blocks)
    bool success = false;
    AluGroup *group = nullptr;
 
+   sfn_log << SfnLog::schedule << "Schedule alu with " <<
+              m_current_block->expected_ar_uses()
+           << " pending AR loads\n";
+
    bool has_alu_ready = !alu_vec_ready.empty() || !alu_trans_ready.empty();
 
    bool has_lds_ready =
@@ -494,20 +498,36 @@ BlockScheduler::schedule_alu(Shader::ShaderBlocks& out_blocks)
     * fetch + read from queue has to be in the same ALU CF block */
    if (!alu_groups_ready.empty() && !has_lds_ready) {
       group = *alu_groups_ready.begin();
-      if (!m_current_block->try_reserve_kcache(*group)) {
-         start_new_block(out_blocks, Block::alu);
-         m_current_block->set_instr_flag(Instr::force_cf);
-      }
 
-      if (!m_current_block->try_reserve_kcache(*group))
-         unreachable("Scheduling a group in a new block should always succeed");
-      alu_groups_ready.erase(alu_groups_ready.begin());
-      sfn_log << SfnLog::schedule << "Schedule ALU group\n";
-      success = true;
-   } else if (has_alu_ready) {
+      sfn_log << SfnLog::schedule << "try schedule " <<
+                 *group << "\n";
+
+      /* Only start a new CF if we have no pending AR reads */
+      if (m_current_block->try_reserve_kcache(*group)) {
+         alu_groups_ready.erase(alu_groups_ready.begin());
+         success = true;
+      } else {
+         if (m_current_block->expected_ar_uses() == 0) {
+            start_new_block(out_blocks, Block::alu);
+            m_current_block->set_instr_flag(Instr::force_cf);
+
+            if (!m_current_block->try_reserve_kcache(*group))
+               unreachable("Scheduling a group in a new block should always succeed");
+            alu_groups_ready.erase(alu_groups_ready.begin());
+            sfn_log << SfnLog::schedule << "Schedule ALU group\n";
+            success = true;
+         } else {
+            sfn_log << SfnLog::schedule << "Don't add group because of " <<
+                       m_current_block->expected_ar_uses()
+                    << "pending AR loads\n";
+         }
+      }
+   }
+
+   if (!group && has_alu_ready) {
       group = new AluGroup();
       sfn_log << SfnLog::schedule << "START new ALU group\n";
-   } else {
+   } else if (!success) {
       return false;
    }
 
@@ -540,6 +560,10 @@ BlockScheduler::schedule_alu(Shader::ShaderBlocks& out_blocks)
          // kcache constellations
          assert(!m_current_block->lds_group_active());
 
+         // AR is loaded but not all uses are done, we don't want
+         // to start a new CF here
+         assert(m_current_block->expected_ar_uses() ==0);
+
          // kcache reservation failed, so we have to start a new CF
          start_new_block(out_blocks, Block::alu);
          m_current_block->set_instr_flag(Instr::force_cf);
@@ -560,8 +584,9 @@ BlockScheduler::schedule_alu(Shader::ShaderBlocks& out_blocks)
    if (group->has_lds_group_end())
       m_current_block->lds_group_end();
 
-   if (group->has_kill_op()) {
+   if (group->index_mode_load() || group->has_kill_op()) {
       assert(!group->has_lds_group_start());
+      assert(m_current_block->expected_ar_uses() == 0);
       start_new_block(out_blocks, Block::alu);
       m_current_block->set_instr_flag(Instr::force_cf);
    }
@@ -669,6 +694,18 @@ BlockScheduler::schedule_alu_to_group_vec(AluGroup *group)
             --m_lds_addr_count;
          }
 
+         if ((*old_i)->num_ar_uses())
+            m_current_block->set_expected_ar_uses((*old_i)->num_ar_uses());
+         auto addr = std::get<0>((*old_i)->indirect_addr());
+         bool has_indirect_reg_load = addr != nullptr && addr->has_flag(Register::addr_or_idx);
+
+         if (std::get<0>((*old_i)->indirect_addr()) ||
+             (!(*old_i)->has_alu_flag(alu_is_lds) &&
+             ((*old_i)->opcode() == op1_set_cf_idx0 ||
+              (*old_i)->opcode() == op1_set_cf_idx1)))
+
+            m_current_block->dec_expected_ar_uses();
+
          alu_vec_ready.erase(old_i);
          success = true;
          sfn_log << SfnLog::schedule << " success\n";
@@ -700,6 +737,10 @@ BlockScheduler::schedule_alu_to_group_trans(AluGroup *group,
       if (group->add_trans_instructions(*i)) {
          auto old_i = i;
          ++i;
+         auto addr = std::get<0>((*old_i)->indirect_addr());
+         if (addr && addr->has_flag(Register::addr_or_idx))
+            m_current_block->dec_expected_ar_uses();
+
          readylist.erase(old_i);
          success = true;
          sfn_log << SfnLog::schedule << " success\n";
@@ -831,13 +872,16 @@ BlockScheduler::collect_ready_alu_vec(std::list<AluInstr *>& ready,
           * vec-only instructions when scheduling to the vector slots
           * for everything else we look at the register use */
 
-         if ((*i)->has_lds_access())
+         auto [addr, dummy1, dummy2] = (*i)->indirect_addr();
+
+         if ((*i)->has_lds_access()) {
             priority = 100000;
-         else if (AluGroup::has_t()) {
+         } else if (addr) {
+            priority = 10000;
+         } else if (AluGroup::has_t()) {
             auto opinfo = alu_ops.find((*i)->opcode());
             assert(opinfo != alu_ops.end());
-            if (opinfo->second.can_channel(AluOp::t, m_chip_class) &&
-                !std::get<0>((*i)->indirect_addr()))
+            if (opinfo->second.can_channel(AluOp::t, m_chip_class))
                priority = -1;
          }
 
@@ -861,7 +905,7 @@ BlockScheduler::collect_ready_alu_vec(std::list<AluInstr *>& ready,
    });
 
    for (auto& i : ready)
-      sfn_log << SfnLog::schedule << "V (S):  " << *i << "\n";
+      sfn_log << SfnLog::schedule << "V (S):  " << i->priority() << " " << *i << "\n";
 
    return !ready.empty();
 }

@@ -875,7 +875,8 @@ AluInstr::register_priority() const
 
       if (m_dest) {
          if (m_dest->has_flag(Register::ssa) && has_alu_flag(alu_write)) {
-            if (m_dest->pin() != pin_group && m_dest->pin() != pin_chgr)
+            if (m_dest->pin() != pin_group && m_dest->pin() != pin_chgr &&
+                !m_dest->addr())
                priority--;
          } else {
             // Arrays and registers are pre-allocated, hence scheduling
@@ -886,14 +887,18 @@ AluInstr::register_priority() const
 
       for (const auto s : m_src) {
          auto r = s->as_register();
-         if (r && r->has_flag(Register::ssa)) {
-            int pending = 0;
-            for (auto b : r->uses()) {
-               if (!b->is_scheduled())
-                  ++pending;
+         if (r) {
+            if (r->has_flag(Register::ssa)) {
+               int pending = 0;
+               for (auto b : r->uses()) {
+                  if (!b->is_scheduled())
+                     ++pending;
+               }
+               if (pending == 1)
+                  ++priority;
             }
-            if (pending == 1)
-               ++priority;
+            if (r->addr() && r->addr()->as_register())
+               priority += 2;
          }
          if (s->as_uniform())
             ++priority;
