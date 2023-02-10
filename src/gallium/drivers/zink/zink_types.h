@@ -79,10 +79,6 @@
 /* enum zink_descriptor_type */
 #define ZINK_MAX_DESCRIPTOR_SETS 6
 #define ZINK_MAX_DESCRIPTORS_PER_TYPE (32 * ZINK_GFX_SHADER_COUNT)
-/* the number of typed descriptors that can fit in a given batch;
- * sized based on max values seen in drawoverhead
- */
-#define ZINK_DESCRIPTOR_BUFFER_MULTIPLIER 25000
 
 /* suballocator defines */
 #define NUM_SLAB_ALLOCATORS 3
@@ -406,6 +402,7 @@ struct zink_descriptor_data {
          uint8_t *bindless_db_map;
          struct pipe_transfer *bindless_db_xfer;
          uint32_t bindless_db_offsets[4];
+         unsigned max_db_size;
       } db;
    };
 

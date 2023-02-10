@@ -180,8 +180,6 @@ create_bci(struct zink_screen *screen, const struct pipe_resource *templ, unsign
 
    if (bind & ZINK_BIND_DESCRIPTOR) {
       /* gallium sizes are all uint32_t, while the total size of this buffer may exceed that limit */
-      if (templ->usage != ZINK_USAGE_BINDLESS)
-         bci.size *= ZINK_DESCRIPTOR_BUFFER_MULTIPLIER;
       bci.usage = 0;
       if (bind & ZINK_BIND_SAMPLER_DESCRIPTOR)
          bci.usage |= VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT;
