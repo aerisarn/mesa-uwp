@@ -1362,11 +1362,11 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return PIPE_ENDIAN_LITTLE;
 
    case PIPE_CAP_MAX_TEXTURE_GATHER_COMPONENTS:
-      return is_deqp ? 4 : 0;
+      return 4;
    case PIPE_CAP_MIN_TEXTURE_GATHER_OFFSET:
-      return is_deqp ? -8 : 0;
+      return -8;
    case PIPE_CAP_MAX_TEXTURE_GATHER_OFFSET:
-      return is_deqp ? 7 : 0;
+      return 7;
    case PIPE_CAP_DRAW_INDIRECT:
       return true;
 

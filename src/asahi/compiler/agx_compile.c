@@ -1132,6 +1132,7 @@ agx_lod_mode_for_nir(nir_texop op)
 {
    switch (op) {
    case nir_texop_tex:
+   case nir_texop_tg4:
       return AGX_LOD_MODE_AUTO_LOD;
    case nir_texop_txb:
       return AGX_LOD_MODE_AUTO_LOD_BIAS;
@@ -1145,6 +1146,24 @@ agx_lod_mode_for_nir(nir_texop op)
       return AGX_LOD_MODE_AUTO_LOD; /* no mipmapping */
    default:
       unreachable("Unhandled texture op");
+   }
+}
+
+static enum agx_gather
+agx_gather_for_nir(nir_tex_instr *tex)
+{
+   if (tex->op == nir_texop_tg4) {
+      enum agx_gather components[] = {
+         AGX_GATHER_R,
+         AGX_GATHER_G,
+         AGX_GATHER_B,
+         AGX_GATHER_A,
+      };
+
+      assert(tex->component < ARRAY_SIZE(components));
+      return components[tex->component];
+   } else {
+      return AGX_GATHER_NONE;
    }
 }
 
@@ -1227,13 +1246,20 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
    unsigned nr_channels = nir_dest_num_components(instr->dest);
    nir_component_mask_t mask = nir_ssa_def_components_read(&instr->dest.ssa);
 
+   /* Destination masking doesn't seem to work properly for gathers (because
+    * it's mostly pointless), but it does show up in the lowering of
+    * textureGatherOffsets. Don't try to mask the destination for gathers.
+    */
+   if (instr->op == nir_texop_tg4)
+      mask = BITFIELD_MASK(nr_channels);
+
    agx_index tmp = agx_temp(b->shader, dst.size);
 
    agx_instr *I = agx_texture_sample_to(
       b, tmp, coords, lod, texture, sampler, compare_offset,
       agx_tex_dim(instr->sampler_dim, instr->is_array),
       agx_lod_mode_for_nir(instr->op), mask, 0, !agx_is_null(packed_offset),
-      !agx_is_null(compare), AGX_GATHER_NONE);
+      !agx_is_null(compare), agx_gather_for_nir(instr));
 
    if (txf)
       I->op = AGX_OPCODE_TEXTURE_LOAD;

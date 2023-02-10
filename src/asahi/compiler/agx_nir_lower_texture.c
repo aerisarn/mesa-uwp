@@ -241,6 +241,7 @@ agx_nir_lower_texture(nir_shader *s)
    nir_lower_tex_options lower_tex_options = {
       .lower_txp = ~0,
       .lower_invalid_implicit_lod = true,
+      .lower_tg4_offsets = true,
 
       /* XXX: Metal seems to handle just like 3D txd, so why doesn't it work?
        * TODO: Stop using this lowering
