@@ -1502,9 +1502,8 @@ zink_batch_descriptor_init(struct zink_screen *screen, struct zink_batch_state *
    }
 
    if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB && !(bs->ctx->flags & ZINK_CONTEXT_COPY_ONLY)) {
-      size_t max_size = MAX4(screen->db_size[0], screen->db_size[1], screen->db_size[2], screen->db_size[3]);
       unsigned bind = ZINK_BIND_RESOURCE_DESCRIPTOR | ZINK_BIND_SAMPLER_DESCRIPTOR;
-      struct pipe_resource *pres = pipe_buffer_create(&screen->base, bind, 0, max_size);
+      struct pipe_resource *pres = pipe_buffer_create(&screen->base, bind, 0, screen->base_descriptor_size);
       if (!pres)
          return false;
       bs->dd.db = zink_resource(pres);

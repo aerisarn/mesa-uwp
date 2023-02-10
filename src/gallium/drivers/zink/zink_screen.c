@@ -2921,6 +2921,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       }
       screen->db_size[ZINK_DESCRIPTOR_TYPE_UNIFORMS] = screen->info.db_props.robustUniformBufferDescriptorSize;
       screen->info.have_KHR_push_descriptor = false;
+      screen->base_descriptor_size = MAX4(screen->db_size[0], screen->db_size[1], screen->db_size[2], screen->db_size[3]);
    }
 
    simple_mtx_init(&screen->dt_lock, mtx_plain);

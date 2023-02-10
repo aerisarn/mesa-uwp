@@ -1303,6 +1303,7 @@ struct zink_screen {
    struct util_live_shader_cache shaders;
 
    uint64_t db_size[ZINK_DESCRIPTOR_ALL_TYPES];
+   unsigned base_descriptor_size;
    VkDescriptorSetLayout bindless_layout;
 
    struct {
