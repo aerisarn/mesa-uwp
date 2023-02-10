@@ -408,5 +408,132 @@ BLOCK_END
 }
 
 
+TEST_F(TestShaderFromNir, SplitLoadIndexConstOptAndSchedule)
+{
+   const char *input =
+R"(
+FS
+CHIPCLASS CAYMAN
+PROP MAX_COLOR_EXPORTS:1
+PROP COLOR_EXPORTS:1
+PROP COLOR_EXPORT_MASK:15
+PROP WRITE_ALL_COLORS:0
+OUTPUT LOC:0 NAME:1 MASK:15
+SHADER
+BLOCK_START
+  ALU MIN_UINT S3.w@free : KC0[0].x L[0x2] {WL}
+  ALU MOV S4.x@group : KC1[S3.w@free{s}][0].x {W}
+  ALU MOV S4.y@group : KC1[S3.w@free{s}][0].y {W}
+  ALU MOV S4.z@group : KC1[S3.w@free{s}][0].z {W}
+  ALU MOV S4.w@group : KC1[S3.w@free{s}][0].w {WL}
+  EXPORT_DONE PIXEL 0 S4.xyzw
+BLOCK_END
+)";
+
+   const char *expect =
+R"(
+FS
+CHIPCLASS CAYMAN
+PROP MAX_COLOR_EXPORTS:1
+PROP COLOR_EXPORTS:1
+PROP COLOR_EXPORT_MASK:15
+PROP WRITE_ALL_COLORS:0
+OUTPUT LOC:0 NAME:1 MASK:15
+SHADER
+BLOCK_START
+ALU_GROUP_BEGIN
+  ALU MIN_UINT S3.w@free : KC0[0].x L[0x2] {WL}
+ALU_GROUP_END
+ALU_GROUP_BEGIN
+  ALU MOVA_INT IDX0 : S3.w@free {L}
+ALU_GROUP_END
+BLOCK_END
+BLOCK_START
+ALU_GROUP_BEGIN
+  ALU MOV S4.x@chgr : KC1[IDX0][0].x {W}
+  ALU MOV S4.y@chgr : KC1[IDX0][0].y {W}
+  ALU MOV S4.z@chgr : KC1[IDX0][0].z {W}
+  ALU MOV S4.w@chgr : KC1[IDX0][0].w {WL}
+ALU_GROUP_END
+BLOCK_END
+BLOCK_START
+EXPORT_DONE PIXEL 0 S4.xyzw
+BLOCK_END
+)";
+   auto sh = from_string(input);
+   split_address_loads(*sh);
+   optimize(*sh);
+   check(schedule(sh), expect);
+}
+
+TEST_F(TestShaderFromNir, SplitLoadWithNonAlu)
+{
+   const char *input =
+R"(
+FS
+CHIPCLASS EVERGREEN
+PROP MAX_COLOR_EXPORTS:1
+PROP COLOR_EXPORTS:1
+PROP COLOR_EXPORT_MASK:15
+PROP WRITE_ALL_COLORS:0
+OUTPUT LOC:0 NAME:1 MASK:15
+SHADER
+BLOCK_START
+  ALU MOV S0.x@free : KC0[1].x {W}
+  ALU MOV S0.y@free : KC0[1].y {W}
+  ALU MOV S2.w@free : KC0[0].x {WL}
+  TEX SAMPLE S3.xyzw : S0.xy__ RID:0 SID:0 NNNN
+  ALU ADD S4.x@group : KC1[S2.w@free{s}][0].x S3.x {W}
+  ALU ADD S4.y@group : KC1[S2.w@free{s}][0].y S3.y {W}
+  ALU ADD S4.z@group : KC1[S2.w@free{s}][0].z S3.z {W}
+  ALU ADD S4.w@group : KC1[S2.w@free{s}][0].w S3.w {WL}
+  EXPORT_DONE PIXEL 0 S4.xyzw
+BLOCK_END
+)";
+
+   const char *expect =
+R"(
+FS
+CHIPCLASS EVERGREEN
+PROP MAX_COLOR_EXPORTS:1
+PROP COLOR_EXPORTS:1
+PROP COLOR_EXPORT_MASK:15
+PROP WRITE_ALL_COLORS:0
+OUTPUT LOC:0 NAME:1 MASK:15
+SHADER
+BLOCK_START
+ALU_GROUP_BEGIN
+  ALU MOV S0.x@free : KC0[1].x {W}
+  ALU MOV S0.y@free : KC0[1].y {WL}
+ALU_GROUP_END
+BLOCK_END
+BLOCK_START
+  TEX SAMPLE S3.xyzw : S0.xy__ RID:0 SID:0 NNNN
+BLOCK_END
+BLOCK_START
+ALU_GROUP_BEGIN
+  ALU MOVA_INT AR : KC0[0].x {L}
+ALU_GROUP_END
+ALU_GROUP_BEGIN
+  ALU SET_CF_IDX0 IDX0 : AR {L}
+ALU_GROUP_END
+BLOCK_END
+BLOCK_START
+ALU_GROUP_BEGIN
+  ALU ADD S4.x@chgr : KC1[IDX0][0].x S3.x {W}
+  ALU ADD S4.y@chgr : KC1[IDX0][0].y S3.y {W}
+  ALU ADD S4.z@chgr : KC1[IDX0][0].z S3.z {W}
+  ALU ADD S4.w@chgr : KC1[IDX0][0].w S3.w {WL}
+ALU_GROUP_END
+BLOCK_END
+BLOCK_START
+EXPORT_DONE PIXEL 0 S4.xyzw
+BLOCK_END
+)";
+   auto sh = from_string(input);
+   split_address_loads(*sh);
+   optimize(*sh);
+   check(schedule(sh), expect);
+}
 
 

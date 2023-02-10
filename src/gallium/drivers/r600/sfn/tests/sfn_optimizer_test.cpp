@@ -3,6 +3,7 @@
 #include "../sfn_ra.h"
 #include "../sfn_scheduler.h"
 #include "../sfn_shader.h"
+#include "../sfn_split_address_loads.h"
 #include "sfn_test_shaders.h"
 
 using namespace r600;
@@ -136,12 +137,14 @@ TEST_F(TestShaderFromNir, OptimizeWithDestArrayValue)
 TEST_F(TestShaderFromNir, ScheduleOPtimizedWithDestArrayValue)
 {
    auto sh = from_string(shader_with_dest_array_opt_expect);
+   split_address_loads(*sh);
    check(schedule(sh), shader_with_dest_array_opt_scheduled);
 }
 
 TEST_F(TestShaderFromNir, ScheduleWithArrayWriteAndRead)
 {
    auto sh = from_string(shader_with_dest_array2);
+   split_address_loads(*sh);
    check(schedule(sh), shader_with_dest_array2_scheduled);
 }
 
@@ -409,3 +412,62 @@ BLOCK_END
    optimize(*sh);
    check(sh, expect);
 };
+
+TEST_F(TestShaderFromNir, ScheduleSplitLoadIndexConst)
+{
+   const char *input =
+R"(
+FS
+CHIPCLASS CAYMAN
+PROP MAX_COLOR_EXPORTS:1
+PROP COLOR_EXPORTS:1
+PROP COLOR_EXPORT_MASK:15
+PROP WRITE_ALL_COLORS:0
+OUTPUT LOC:0 NAME:1 MASK:15
+SHADER
+BLOCK_START
+  ALU MIN_UINT S3.w@free{s} : KC0[0].x L[0x2] {WL}
+  ALU MOVA_INT IDX0 : S3.w@free{s} {}
+  ALU MOV S4.x@group{s} : KC1[IDX0][0].x {W}
+  ALU MOV S4.y@group{s} : KC1[IDX0][0].y {W}
+  ALU MOV S4.z@group{s} : KC1[IDX0][0].z {W}
+  ALU MOV S4.w@group{s} : KC1[IDX0][0].w {WL}
+  EXPORT_DONE PIXEL 0 S4.xyzw
+BLOCK_END
+)";
+
+   const char *expect =
+R"(
+FS
+CHIPCLASS CAYMAN
+PROP MAX_COLOR_EXPORTS:1
+PROP COLOR_EXPORTS:1
+PROP COLOR_EXPORT_MASK:15
+PROP WRITE_ALL_COLORS:0
+OUTPUT LOC:0 NAME:1 MASK:15
+SHADER
+BLOCK_START
+ALU_GROUP_BEGIN
+     ALU MIN_UINT S3.w@free{s} : KC0[0].x L[0x2] {WL}
+ALU_GROUP_END
+ALU_GROUP_BEGIN
+     ALU MOVA_INT IDX0 : S3.w@free{s} {L}
+ALU_GROUP_END
+BLOCK_END
+BLOCK_START
+ALU_GROUP_BEGIN
+     ALU MOV S4.x@chgr : KC1[IDX0][0].x {W}
+     ALU MOV S4.y@chgr : KC1[IDX0][0].y {W}
+     ALU MOV S4.z@chgr : KC1[IDX0][0].z {W}
+     ALU MOV S4.w@chgr : KC1[IDX0][0].w {WL}
+ALU_GROUP_END
+ALU_GROUP_BEGIN
+BLOCK_END
+BLOCK_START
+     EXPORT_DONE PIXEL 0 S4.xyzw
+BLOCK_END
+)";
+
+   auto sh = from_string(input);
+   check(schedule(sh), expect);
+}

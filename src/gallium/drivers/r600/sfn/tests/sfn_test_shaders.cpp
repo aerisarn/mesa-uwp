@@ -1908,9 +1908,9 @@ IF (( ALU PRED_SETGE_INT __.x@free : KC0[0].x L[0x4] {LEP} PUSH_BEFORE ))
   ALU MOV A2[S34.x].z : I[0] {W}
   ALU MOV A2[S34.x].w : L[0x3dcccccd] {WL}
 ELSE
-  ALU MOV S37.x : KC0[0].x {WL}
-  ALU MOV A2[S37.x].x : I[0] {W}
-  ALU MOV A2[S37.x].y : L[0x3dcccccd] {WL}
+     ALU MOV S37.x : KC0[0].x {WL}
+     ALU MOV A2[S37.x].x : I[0] {W}
+     ALU MOV A2[S37.x].y : L[0x3dcccccd] {WL}
 ENDIF
 EXPORT_DONE POS 0 S19.xyzw
 ALU MOV S46.x@group : A2[0].x {W}
@@ -2003,16 +2003,22 @@ IF (( ALU PRED_SETGE_INT __.x@free : KC0[0].x L[0x4] {LEP} PUSH_BEFORE ))
     ALU ADD_INT S34.x : KC0[0].x L[0xfffffffc] {WL}
   ALU_GROUP_END
   ALU_GROUP_BEGIN
-    ALU MOV A2[S34.x].z : I[0] {W}
-    ALU MOV A2[S34.x].w : L[0x3dcccccd] {WL}
+     ALU MOVA_INT AR : S34.x {L}
+  ALU_GROUP_END
+  ALU_GROUP_BEGIN
+    ALU MOV A2[AR].z : I[0] {W}
+    ALU MOV A2[AR].w : L[0x3dcccccd] {WL}
   ALU_GROUP_END
 ELSE
   ALU_GROUP_BEGIN
-    ALU MOV S37.x : KC0[0].x {WL}
+     ALU MOV S37.x : KC0[0].x {WL}
   ALU_GROUP_END
   ALU_GROUP_BEGIN
-    ALU MOV A2[S37.x].x : I[0] {W}
-    ALU MOV A2[S37.x].y : L[0x3dcccccd] {WL}
+     ALU MOVA_INT AR : S37.x {L}
+  ALU_GROUP_END
+  ALU_GROUP_BEGIN
+    ALU MOV A2[AR].x : I[0] {W}
+    ALU MOV A2[AR].y : L[0x3dcccccd] {WL}
   ALU_GROUP_END
 ENDIF
 ALU_GROUP_BEGIN
@@ -2098,8 +2104,11 @@ ALU_GROUP_BEGIN
   ALU MOV A0[1].y : KC0[1].y {WL}
 ALU_GROUP_END
 ALU_GROUP_BEGIN
-  ALU MOV A0[S1.x].x : I[1.0] {W}
-  ALU MOV A0[S1.x].y : L[2.0] {WL}
+  ALU MOVA_INT AR : S1.x {L}
+ALU_GROUP_END
+ALU_GROUP_BEGIN
+  ALU MOV A0[AR].x : I[1.0] {W}
+  ALU MOV A0[AR].y : L[2.0] {WL}
 ALU_GROUP_END
 ALU_GROUP_BEGIN
   ALU MOV S2.x : A0[0].x {W}
@@ -2136,8 +2145,11 @@ ALU_GROUP_BEGIN
   ALU MOV A0[1].y : KC0[1].y {WL}
 ALU_GROUP_END
 ALU_GROUP_BEGIN
-  ALU MOV A0[R2.x].x : I[1.0] {W}
-  ALU MOV A0[R2.x].y : L[2.0] {WL}
+  ALU MOVA_INT AR : R2.x {L}
+ALU_GROUP_END
+ALU_GROUP_BEGIN
+  ALU MOV A0[AR].x : I[1.0] {W}
+  ALU MOV A0[AR].y : L[2.0] {WL}
 ALU_GROUP_END
 ALU_GROUP_BEGIN
   ALU MOV R2.x : A0[0].x {W}
