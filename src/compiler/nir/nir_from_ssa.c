@@ -711,7 +711,7 @@ resolve_parallel_copy(nir_parallel_copy_instr *pcopy,
    /* Now we set everything up:
     *  - All values get assigned a temporary index
     *  - Current locations are set from sources
-    *  - Predicessors are recorded from sources and destinations
+    *  - Predecessors are recorded from sources and destinations
     */
    int num_vals = 0;
    nir_foreach_parallel_copy_entry(entry, pcopy) {
@@ -779,7 +779,7 @@ resolve_parallel_copy(nir_parallel_copy_instr *pcopy,
          /* The next bit only applies if the source and destination have the
           * same divergence.  If they differ (it must be convergent ->
           * divergent), then we can't guarantee we won't need the convergent
-          * version of again.
+          * version of it again.
           */
          if (nir_src_is_divergent(values[a]) ==
              nir_src_is_divergent(values[b])) {
