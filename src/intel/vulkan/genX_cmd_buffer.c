@@ -26,20 +26,15 @@
 
 #include "anv_private.h"
 #include "anv_measure.h"
-#include "vk_format.h"
 #include "vk_render_pass.h"
 #include "vk_util.h"
-#include "util/fast_idiv_by_const.h"
 
 #include "common/intel_aux_map.h"
-#include "common/intel_l3_config.h"
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
 #include "genxml/genX_rt_pack.h"
 #include "common/intel_guardband.h"
 #include "compiler/brw_prim.h"
-
-#include "nir/nir_xfb_info.h"
 
 #include "ds/intel_tracepoints.h"
 
