@@ -169,7 +169,11 @@ AluInstr::update_uses()
          u->buf_addr()->as_register()->add_use(this);
    }
 
-   if (m_dest && has_alu_flag(alu_write)) {
+   if (m_dest &&
+       (has_alu_flag(alu_write) ||
+        m_opcode == op1_mova_int ||
+        m_opcode == op1_set_cf_idx0 ||
+        m_opcode == op1_set_cf_idx1)) {
       m_dest->add_parent(this);
 
       if (m_dest->pin() == pin_array) {
@@ -254,13 +258,14 @@ AluInstr::do_print(std::ostream& os) const
          os << " CLAMP";
 
       if (m_dest) {
-         if (has_alu_flag(alu_write))
+         if (has_alu_flag(alu_write) || m_dest->has_flag(Register::addr_or_idx)) {
             os << " " << *m_dest;
-         else
+         } else {
             os << " __"
                << "." << swzchar[m_dest->chan()];
-         if (!has_alu_flag(alu_write) && m_dest->pin() != pin_none)
-            os << "@" << m_dest->pin();
+            if (m_dest->pin() != pin_none)
+               os << "@" << m_dest->pin();
+         }
          os << " : ";
       } else {
          os << "__." << swzchar[dest_chan()] << " : ";
