@@ -391,6 +391,15 @@ AluGroup::update_indirect_access(AluInstr *instr)
    return true;
 }
 
+bool AluGroup::index_mode_load()
+{
+   if (!m_slots[0] || !m_slots[0]->dest())
+      return false;
+
+   Register *dst = m_slots[0]->dest();
+   return dst->has_flag(Register::addr_or_idx) && dst->sel() > 0;
+}
+
 void
 AluGroup::accept(ConstInstrVisitor& visitor) const
 {
