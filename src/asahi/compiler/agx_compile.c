@@ -763,6 +763,14 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_back_face_agx:
       return agx_get_sr_to(b, dst, AGX_SR_BACKFACING);
 
+   case nir_intrinsic_load_helper_invocation:
+      /* Compare special register to zero. We could lower this in NIR (letting
+       * us fold in an inot) but meh?
+       */
+      return agx_icmpsel_to(b, dst, agx_get_sr(b, 32, AGX_SR_IS_ACTIVE_THREAD),
+                            agx_zero(), agx_immediate(1), agx_zero(),
+                            AGX_ICOND_UEQ);
+
    case nir_intrinsic_load_vertex_id:
       return agx_mov_to(b, dst, agx_abs(agx_vertex_id(b)));
 
