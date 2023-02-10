@@ -1314,7 +1314,7 @@ add_resource_bind(struct zink_context *ctx, struct zink_resource *res, unsigned 
    }
    struct zink_resource_object *new_obj = resource_object_create(screen, &res->base.b, NULL, &res->linear, res->modifiers, res->modifiers_count, NULL);
    if (!new_obj) {
-      debug_printf("new backing resource alloc failed!");
+      debug_printf("new backing resource alloc failed!\n");
       res->base.b.bind &= ~bind;
       return false;
    }
@@ -1663,7 +1663,7 @@ invalidate_buffer(struct zink_context *ctx, struct zink_resource *res)
 
    struct zink_resource_object *new_obj = resource_object_create(screen, &res->base.b, NULL, NULL, NULL, 0, NULL);
    if (!new_obj) {
-      debug_printf("new backing resource alloc failed!");
+      debug_printf("new backing resource alloc failed!\n");
       return false;
    }
    /* this ref must be transferred before rebind or else BOOM */
