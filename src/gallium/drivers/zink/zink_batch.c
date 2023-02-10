@@ -292,23 +292,20 @@ create_batch_state(struct zink_context *ctx)
       goto fail;
    }
 
+   VkCommandBuffer cmdbufs[2];
    VkCommandBufferAllocateInfo cbai = {0};
    cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
    cbai.commandPool = bs->cmdpool;
    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-   cbai.commandBufferCount = 1;
+   cbai.commandBufferCount = 2;
 
-   result = VKSCR(AllocateCommandBuffers)(screen->dev, &cbai, &bs->cmdbuf);
+   result = VKSCR(AllocateCommandBuffers)(screen->dev, &cbai, cmdbufs);
    if (result != VK_SUCCESS) {
       mesa_loge("ZINK: vkAllocateCommandBuffers failed (%s)", vk_Result_to_str(result));
       goto fail;
    }
-
-   result = VKSCR(AllocateCommandBuffers)(screen->dev, &cbai, &bs->barrier_cmdbuf);
-   if (result != VK_SUCCESS) {
-      mesa_loge("ZINK: vkAllocateCommandBuffers failed (%s)", vk_Result_to_str(result));
-      goto fail;
-   }
+   bs->cmdbuf = cmdbufs[0];
+   bs->barrier_cmdbuf = cmdbufs[1];
 
 #define SET_CREATE_OR_FAIL(ptr) \
    if (!_mesa_set_init(ptr, bs, _mesa_hash_pointer, _mesa_key_pointer_equal)) \
