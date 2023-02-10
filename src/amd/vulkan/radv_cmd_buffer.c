@@ -2118,8 +2118,12 @@ radv_get_pa_su_sc_mode_cntl(const struct radv_cmd_buffer *cmd_buffer)
                                                     VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT);
 
    if (gfx_level >= GFX10) {
-      pa_su_sc_mode_cntl |=
-         S_028814_KEEP_TOGETHER_ENABLE(d->vk.rs.polygon_mode != V_028814_X_DRAW_TRIANGLES);
+      /* Ensure that SC processes the primitive group in the same order as PA produced them.  Needed
+       * when either POLY_MODE or PERPENDICULAR_ENDCAP_ENA is set.
+       */
+      pa_su_sc_mode_cntl |= S_028814_KEEP_TOGETHER_ENABLE(
+         d->vk.rs.polygon_mode != V_028814_X_DRAW_TRIANGLES ||
+         d->vk.rs.line.mode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT);
    }
 
    return pa_su_sc_mode_cntl;
@@ -4243,6 +4247,19 @@ radv_emit_msaa_state(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
+radv_emit_line_rasterization_mode(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+
+   /* The DX10 diamond test is unnecessary with Vulkan and it decreases line rasterization
+    * performance.
+    */
+   radeon_set_context_reg(cmd_buffer->cs, R_028BDC_PA_SC_LINE_CNTL,
+                          S_028BDC_PERPENDICULAR_ENDCAP_ENA(
+                             d->vk.rs.line.mode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT));
+}
+
+static void
 radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
 {
    const uint64_t states =
@@ -4292,7 +4309,8 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
 
    if (states & (RADV_CMD_DIRTY_DYNAMIC_CULL_MODE | RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
                  RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE | RADV_CMD_DIRTY_DYNAMIC_POLYGON_MODE |
-                 RADV_CMD_DIRTY_DYNAMIC_PROVOKING_VERTEX_MODE))
+                 RADV_CMD_DIRTY_DYNAMIC_PROVOKING_VERTEX_MODE |
+                 RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE))
       radv_emit_culling(cmd_buffer);
 
    if (states & (RADV_CMD_DIRTY_DYNAMIC_PROVOKING_VERTEX_MODE |
@@ -4355,6 +4373,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
                  RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK |
                  RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_EQUATION))
       radv_emit_color_blend(cmd_buffer);
+
+   if (states & RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE)
+      radv_emit_line_rasterization_mode(cmd_buffer);
 
    if (states & (RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
                  RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE))

@@ -1623,7 +1623,7 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: {
          VkPhysicalDeviceLineRasterizationFeaturesEXT *features =
             (VkPhysicalDeviceLineRasterizationFeaturesEXT *)ext;
-         features->rectangularLines = false;
+         features->rectangularLines = true;
          features->bresenhamLines = true;
          features->smoothLines = false;
          features->stippledRectangularLines = false;
