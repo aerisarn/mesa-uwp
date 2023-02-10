@@ -188,6 +188,9 @@ public:
    uint8_t allowed_src_chan_mask() const override;
    uint8_t allowed_dest_chan_mask() const {return m_allowed_desk_mask;}
 
+   void inc_ar_uses() { ++m_num_ar_uses;}
+   auto num_ar_uses() const {return m_num_ar_uses;}
+
 private:
    friend class AluGroup;
 
@@ -223,6 +226,7 @@ private:
    std::set<PRegister, std::less<PRegister>, Allocator<PRegister>> m_extra_dependencies;
    AluGroup *m_parent_group{nullptr};
    unsigned m_allowed_desk_mask{0xf};
+   unsigned m_num_ar_uses{0};
 };
 
 class AluInstrVisitor : public InstrVisitor {
