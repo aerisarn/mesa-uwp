@@ -31,26 +31,6 @@ static LLVMValueRef si_get_sample_id(struct si_shader_context *ctx)
    return si_unpack_param(ctx, ctx->args->ac.ancillary, 8, 4);
 }
 
-static LLVMValueRef load_sample_position(struct ac_shader_abi *abi, LLVMValueRef sample_id)
-{
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-   LLVMValueRef buf_index = LLVMConstInt(ctx->ac.i32, SI_PS_CONST_SAMPLE_POSITIONS, 0);
-   LLVMValueRef resource = ac_build_load_to_sgpr(
-      &ctx->ac, ac_get_ptr_arg(&ctx->ac, &ctx->args->ac, ctx->args->internal_bindings), buf_index);
-
-   /* offset = sample_id * 8  (8 = 2 floats containing samplepos.xy) */
-   LLVMValueRef offset0 =
-      LLVMBuildMul(ctx->ac.builder, sample_id, LLVMConstInt(ctx->ac.i32, 8, 0), "");
-   LLVMValueRef offset1 =
-      LLVMBuildAdd(ctx->ac.builder, offset0, LLVMConstInt(ctx->ac.i32, 4, 0), "");
-
-   LLVMValueRef pos[4] = {si_buffer_load_const(ctx, resource, offset0),
-                          si_buffer_load_const(ctx, resource, offset1),
-                          LLVMConstReal(ctx->ac.f32, 0), LLVMConstReal(ctx->ac.f32, 0)};
-
-   return ac_build_gather_values(&ctx->ac, pos, 4);
-}
-
 static LLVMValueRef si_nir_emit_fbfetch(struct ac_shader_abi *abi)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
@@ -966,6 +946,5 @@ void si_llvm_build_monolithic_ps(struct si_shader_context *ctx, struct si_shader
 
 void si_llvm_init_ps_callbacks(struct si_shader_context *ctx)
 {
-   ctx->abi.load_sample_position = load_sample_position;
    ctx->abi.emit_fbfetch = si_nir_emit_fbfetch;
 }

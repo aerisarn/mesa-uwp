@@ -96,8 +96,6 @@ struct ac_shader_abi {
    LLVMValueRef (*load_sampler_desc)(struct ac_shader_abi *abi, LLVMValueRef index,
                                      enum ac_descriptor_type desc_type);
 
-   LLVMValueRef (*load_sample_position)(struct ac_shader_abi *abi, LLVMValueRef sample_id);
-
    LLVMValueRef (*emit_fbfetch)(struct ac_shader_abi *abi);
 
    LLVMValueRef (*intrinsic_load)(struct ac_shader_abi *abi, nir_intrinsic_instr *intrin);
@@ -105,7 +103,6 @@ struct ac_shader_abi {
    /* Whether to clamp the shadow reference value to [0,1]on GFX8. Radeonsi currently
     * uses it due to promoting D16 to D32, but radv needs it off. */
    bool clamp_shadow_reference;
-   bool interp_at_sample_force_center;
 
    /* Whether bounds checks are required */
    bool robust_buffer_access;

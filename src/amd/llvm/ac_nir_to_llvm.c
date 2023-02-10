@@ -3235,27 +3235,6 @@ static LLVMValueRef barycentric_centroid(struct ac_nir_context *ctx, unsigned mo
    return LLVMBuildBitCast(ctx->ac.builder, interp_param, ctx->ac.v2i32, "");
 }
 
-static LLVMValueRef barycentric_at_sample(struct ac_nir_context *ctx, unsigned mode,
-                                          LLVMValueRef sample_id)
-{
-   if (ctx->abi->interp_at_sample_force_center)
-      return barycentric_center(ctx, mode);
-
-   LLVMValueRef halfval = LLVMConstReal(ctx->ac.f32, 0.5f);
-
-   /* fetch sample ID */
-   LLVMValueRef sample_pos = ctx->abi->load_sample_position(ctx->abi, sample_id);
-
-   LLVMValueRef src_c0 = LLVMBuildExtractElement(ctx->ac.builder, sample_pos, ctx->ac.i32_0, "");
-   src_c0 = LLVMBuildFSub(ctx->ac.builder, src_c0, halfval, "");
-   LLVMValueRef src_c1 = LLVMBuildExtractElement(ctx->ac.builder, sample_pos, ctx->ac.i32_1, "");
-   src_c1 = LLVMBuildFSub(ctx->ac.builder, src_c1, halfval, "");
-   LLVMValueRef coords[] = {src_c0, src_c1};
-   LLVMValueRef offset = ac_build_gather_values(&ctx->ac, coords, 2);
-
-   return barycentric_offset(ctx, mode, offset);
-}
-
 static LLVMValueRef barycentric_sample(struct ac_nir_context *ctx, unsigned mode)
 {
    LLVMValueRef interp_param = lookup_interp_param(ctx, mode, INTERP_SAMPLE);
@@ -3824,11 +3803,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_load_barycentric_at_offset: {
       LLVMValueRef offset = ac_to_float(&ctx->ac, get_src(ctx, instr->src[0]));
       result = barycentric_offset(ctx, nir_intrinsic_interp_mode(instr), offset);
-      break;
-   }
-   case nir_intrinsic_load_barycentric_at_sample: {
-      LLVMValueRef sample_id = get_src(ctx, instr->src[0]);
-      result = barycentric_at_sample(ctx, nir_intrinsic_interp_mode(instr), sample_id);
       break;
    }
    case nir_intrinsic_load_interpolated_input: {

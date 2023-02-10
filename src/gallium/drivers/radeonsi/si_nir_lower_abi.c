@@ -336,6 +336,25 @@ static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_s
          replacement = nir_imm_int(b, (1 << 2) | (1 << 4));
       }
       break;
+   case nir_intrinsic_load_barycentric_at_sample: {
+      unsigned mode = nir_intrinsic_interp_mode(intrin);
+
+      if (key->ps.mono.interpolate_at_sample_force_center) {
+         replacement = nir_load_barycentric_pixel(b, 32, .interp_mode = mode);
+      } else {
+         nir_ssa_def *sample_id = intrin->src[0].ssa;
+         /* offset = sample_id * 8  (8 = 2 floats containing samplepos.xy) */
+         nir_ssa_def *offset = nir_ishl_imm(b, sample_id, 3);
+
+         nir_ssa_def *buf = load_internal_binding(b, args, SI_PS_CONST_SAMPLE_POSITIONS);
+         nir_ssa_def *sample_pos = nir_load_smem_buffer_amd(b, 2, buf, offset);
+
+         sample_pos = nir_fsub(b, sample_pos, nir_imm_float(b, 0.5));
+
+         replacement = nir_load_barycentric_at_offset(b, 32, sample_pos, .interp_mode = mode);
+      }
+      break;
+   }
    default:
       return false;
    }
