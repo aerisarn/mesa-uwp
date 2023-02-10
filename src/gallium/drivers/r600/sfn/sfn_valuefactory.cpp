@@ -788,7 +788,7 @@ ValueFactory::src_from_string(const std::string& s)
    case 'L':
       return LiteralConstant::from_string(s);
    case 'K':
-      return UniformValue::from_string(s);
+      return UniformValue::from_string(s, this);
    case 'P':
       return InlineConstant::param_from_string(s);
    case 'I':
