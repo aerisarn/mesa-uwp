@@ -959,6 +959,8 @@ radv_graphics_pipeline_import_lib(struct radv_graphics_pipeline *pipeline,
                                   struct radv_graphics_lib_pipeline *lib,
                                   bool link_optimize)
 {
+   bool import_nir = false;
+
    /* There should be no common blocks between a lib we import and the current
     * pipeline we're building.
     */
@@ -969,10 +971,14 @@ radv_graphics_pipeline_import_lib(struct radv_graphics_pipeline *pipeline,
 
    vk_graphics_pipeline_state_merge(state, &lib->graphics_state);
 
-   /* When link time optimization is enabled, import the retained NIR shaders from the library.
-    * Otherwise, import the compiled binaries (ie. fast link).
+   /* Import the NIR shaders when LTO is enabled or when a libary uses the retain bit.
+    * Otherwise, compiled binaries are imported for fast-linking.
     */
-   if (link_optimize) {
+   if (link_optimize || pipeline->retain_shaders) {
+      import_nir = true;
+   }
+
+   if (import_nir) {
       /* Import the NIR shaders (after SPIRV->NIR). */
       for (uint32_t s = 0; s < ARRAY_SIZE(lib->base.base.shaders); s++) {
          if (!lib->base.retained_shaders[s].nir)
