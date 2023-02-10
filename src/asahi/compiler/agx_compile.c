@@ -1166,6 +1166,10 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
          coords = index;
          break;
 
+      case nir_tex_src_backend2:
+         packed_offset = index;
+         break;
+
       case nir_tex_src_lod:
       case nir_tex_src_bias:
          lod = index;
@@ -1175,25 +1179,6 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
          assert(index.size == AGX_SIZE_32);
          compare = index;
          break;
-
-      case nir_tex_src_offset: {
-         assert(instr->src[i].src.is_ssa);
-         nir_ssa_def *def = instr->src[i].src.ssa;
-         uint32_t packed = 0;
-
-         for (unsigned c = 0; c < def->num_components; ++c) {
-            nir_ssa_scalar s = nir_ssa_scalar_resolved(def, c);
-            assert(nir_ssa_scalar_is_const(s) && "no nonconstant offsets");
-
-            int32_t val = nir_ssa_scalar_as_uint(s);
-            assert((val >= -8 && val <= 7) && "out of bounds offset");
-
-            packed |= (val & 0xF) << (4 * c);
-         }
-
-         packed_offset = agx_mov_imm(b, 32, packed);
-         break;
-      }
 
       case nir_tex_src_ddx: {
          int y_idx = nir_tex_instr_src_index(instr, nir_tex_src_ddy);

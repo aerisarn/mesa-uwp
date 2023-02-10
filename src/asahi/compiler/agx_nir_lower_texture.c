@@ -210,6 +210,26 @@ lower_regular_texture(nir_builder *b, nir_instr *instr, UNUSED void *data)
    }
 
    nir_tex_instr_add_src(tex, nir_tex_src_backend1, nir_src_for_ssa(coord));
+
+   /* Furthermore, if there is an offset vector, it must be packed */
+   nir_ssa_def *offset = steal_tex_src(tex, nir_tex_src_offset);
+
+   if (offset != NULL) {
+      nir_ssa_def *packed = NULL;
+
+      for (unsigned c = 0; c < offset->num_components; ++c) {
+         nir_ssa_def *nibble = nir_iand_imm(b, nir_channel(b, offset, c), 0xF);
+         nir_ssa_def *shifted = nir_ishl_imm(b, nibble, 4 * c);
+
+         if (packed != NULL)
+            packed = nir_ior(b, packed, shifted);
+         else
+            packed = shifted;
+      }
+
+      nir_tex_instr_add_src(tex, nir_tex_src_backend2, nir_src_for_ssa(packed));
+   }
+
    return true;
 }
 
