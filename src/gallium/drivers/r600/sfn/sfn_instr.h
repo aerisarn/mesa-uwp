@@ -191,6 +191,8 @@ public:
 
    void erase(iterator node);
 
+   iterator insert(const iterator pos, Instr *instr);
+
    bool is_equal_to(const Block& lhs) const;
 
    void accept(ConstInstrVisitor& visitor) const override;

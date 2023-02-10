@@ -342,6 +342,12 @@ Block::push_back(PInst instr)
    m_instructions.push_back(instr);
 }
 
+Block::iterator
+Block::insert(const iterator pos, Instr *instr)
+{
+   return m_instructions.insert(pos, instr);
+}
+
 bool
 Block::try_reserve_kcache(const AluGroup& group)
 {
