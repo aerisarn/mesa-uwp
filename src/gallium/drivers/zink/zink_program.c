@@ -708,10 +708,11 @@ zink_gfx_program_update_optimal(struct zink_context *ctx)
       } else {
          ctx->dirty_gfx_stages |= ctx->shader_stages;
          prog = create_gfx_program_separable(ctx, ctx->gfx_stages, ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch);
-         zink_screen_get_pipeline_cache(zink_screen(ctx->base.screen), &prog->base, false);
          _mesa_hash_table_insert_pre_hashed(ht, hash, prog->shaders, prog);
-         if (!prog->is_separable)
+         if (!prog->is_separable) {
+            zink_screen_get_pipeline_cache(zink_screen(ctx->base.screen), &prog->base, false);
             generate_gfx_program_modules_optimal(ctx, zink_screen(ctx->base.screen), prog, &ctx->gfx_pipeline_state);
+         }
       }
       simple_mtx_unlock(&ctx->program_lock[zink_program_cache_stages(ctx->shader_stages)]);
       if (prog && prog != ctx->curr_program)

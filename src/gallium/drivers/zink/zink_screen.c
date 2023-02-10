@@ -324,7 +324,7 @@ cache_put_job(void *data, void *gdata, int thread_index)
 void
 zink_screen_update_pipeline_cache(struct zink_screen *screen, struct zink_program *pg, bool in_thread)
 {
-   if (!screen->disk_cache)
+   if (!screen->disk_cache || !pg->pipeline_cache)
       return;
 
    if (in_thread)
