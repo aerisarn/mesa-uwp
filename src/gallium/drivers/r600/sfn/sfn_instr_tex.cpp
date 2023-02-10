@@ -428,6 +428,13 @@ TexInstr::replace_source(PRegister old_src, PVirtualValue new_src)
    return success;
 }
 
+void TexInstr::update_indirect_addr(PRegister addr)
+{
+   set_resource_offset(addr);
+   for (auto& p : m_prepare_instr)
+      p->update_indirect_addr(addr);
+}
+
 uint8_t
 TexInstr::allowed_src_chan_mask() const
 {

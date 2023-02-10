@@ -131,6 +131,11 @@ public:
    virtual AluInstr *as_alu() { return nullptr; }
    virtual uint8_t allowed_src_chan_mask() const { return 0; }
 
+   virtual void update_indirect_addr(PRegister addr) {
+      (void)addr;
+      unreachable("Instruction type has no indirect addess");
+   };
+
 protected:
    const InstrList& required_instr() const { return m_required_instr; }
 
@@ -302,6 +307,11 @@ public:
    bool resource_ready(int block_id, int index) const
    {
       return !m_offset || m_offset->ready(block_id, index);
+   }
+
+   void update_indirect_addr(PRegister addr) override
+   {
+      set_resource_offset(addr);
    }
 
 protected:

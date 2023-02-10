@@ -169,6 +169,7 @@ public:
    static const std::set<AluModifiers> last_write;
 
    std::tuple<PRegister, bool, PRegister> indirect_addr() const;
+   void update_indirect_addr(PRegister reg) override;
 
    void add_extra_dependency(PVirtualValue reg);
 

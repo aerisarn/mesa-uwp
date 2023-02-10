@@ -346,6 +346,51 @@ AluInstr::can_propagate_src() const
    return m_dest->pin() == pin_none || m_dest->pin() == pin_free;
 }
 
+class ReplaceIndirectArrayAddr : public RegisterVisitor {
+public:
+   void visit(Register& value) override { (void)value; }
+   void visit(LocalArray& value) override
+   {
+      (void)value;
+      unreachable("An array can't be used as address");
+   }
+   void visit(LocalArrayValue& value) override;
+   void visit(UniformValue& value) override;
+   void visit(LiteralConstant& value) override { (void)value; }
+   void visit(InlineConstant& value) override { (void)value; }
+
+   PRegister new_addr;
+};
+
+void ReplaceIndirectArrayAddr::visit(LocalArrayValue& value)
+{
+   if (new_addr->sel() == 0 && value.addr()->as_register())
+      value.set_addr(new_addr);
+}
+
+void ReplaceIndirectArrayAddr::visit(UniformValue& value)
+{
+   if (value.buf_addr() && value.buf_addr()->as_register() &&
+       (new_addr->sel() == 1 || new_addr->sel() == 2)) {
+      value.set_buf_addr(new_addr);
+   }
+}
+
+void AluInstr::update_indirect_addr(PRegister reg)
+{
+   ReplaceIndirectArrayAddr visitor;
+   visitor.new_addr = reg;
+   assert(reg->has_flag(Register::addr_or_idx));
+
+   if (m_dest)
+      m_dest->accept(visitor);
+
+   for (auto src : m_src)
+      src->accept(visitor);
+
+   reg->add_use(this);
+}
+
 bool
 AluInstr::can_propagate_dest() const
 {
