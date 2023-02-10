@@ -282,8 +282,13 @@ fedora-release:
     - .use-fedora/x86_build
   variables:
     BUILDTYPE: "release"
-    C_ARGS: >
+    C_LINK_ARGS: >
       -Wno-error=array-bounds
+      -Wno-error=stringop-overflow
+      -Wno-error=stringop-overread
+    CPP_LINK_ARGS: >
+      -Wno-error=array-bounds
+      -Wno-error=stringop-overflow
       -Wno-error=stringop-overread
     DRI_LOADERS: >
       -D glx=dri
@@ -292,6 +297,8 @@ fedora-release:
       -D glvnd=true
       -D platforms=x11,wayland
     EXTRA_OPTION: >
+      --native-file .gitlab-ci/build/meson-native-lto-wrappers.txt
+      -D b_lto=true
       -D osmesa=true
       -D selinux=true
       -D tools=drm-shim,etnaviv,freedreno,glsl,intel,nir,nouveau,lima,panfrost,imagination
@@ -318,7 +325,7 @@ fedora-release:
     UNWIND: "disabled"
     VULKAN_DRIVERS: "amd,broadcom,freedreno,imagination-experimental,intel,intel_hasvk"
   script:
-    - .gitlab-ci/meson/build.sh
+    - PATH=$PATH:$PWD/.gitlab-ci/build .gitlab-ci/meson/build.sh
 
 debian-android:
   extends:
