@@ -191,7 +191,7 @@ private:
 
    RegisterVec4 m_src;
    std::bitset<num_tex_flag> m_tex_flags;
-   int m_offset[3];
+   int m_coord_offset[3];
    int m_inst_mode;
    unsigned m_resource_id;
 
