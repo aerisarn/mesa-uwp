@@ -2455,15 +2455,9 @@ radv_fill_shader_info_ngg(struct radv_graphics_pipeline *pipeline,
          stages[MESA_SHADER_TESS_EVAL].info.is_ngg = false;
       }
 
-      gl_shader_stage last_xfb_stage = MESA_SHADER_VERTEX;
-
-      for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
-         if (stages[i].nir)
-            last_xfb_stage = i;
-      }
-
-      bool uses_xfb = stages[last_xfb_stage].nir &&
-                      stages[last_xfb_stage].nir->xfb_info;
+      bool uses_xfb = pipeline->last_vgt_api_stage != MESA_SHADER_NONE &&
+                      stages[pipeline->last_vgt_api_stage].nir &&
+                      stages[pipeline->last_vgt_api_stage].nir->xfb_info;
 
       if (!device->physical_device->use_ngg_streamout && uses_xfb) {
          /* GFX11+ requires NGG. */
