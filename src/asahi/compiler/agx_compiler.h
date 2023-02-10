@@ -335,9 +335,10 @@ typedef struct {
    bool invert_cond : 1;
 
    /* TODO: Handle tex ops more efficient */
-   enum agx_dim dim : 4;
-   bool offset      : 1;
-   bool shadow      : 1;
+   enum agx_dim dim       : 4;
+   bool offset            : 1;
+   bool shadow            : 1;
+   enum agx_gather gather : 3;
 
    /* Final st_vary op */
    bool last : 1;
@@ -356,7 +357,7 @@ typedef struct {
    bool saturate : 1;
    unsigned mask : 4;
 
-   unsigned padding : 11;
+   unsigned padding : 8;
 } agx_instr;
 
 static inline void

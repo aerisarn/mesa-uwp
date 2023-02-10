@@ -601,12 +601,11 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       unsigned q2 = 0;   // XXX
       unsigned q3 = 12;  // XXX
       unsigned kill = 0; // helper invocation kill bit
-      unsigned q6 = 0;   // XXX
 
       uint32_t extend = ((U & BITFIELD_MASK(5)) << 0) | (kill << 5) |
                         ((I->dim >> 3) << 7) | ((R >> 6) << 8) |
                         ((C >> 6) << 10) | ((D >> 6) << 12) | ((T >> 6) << 14) |
-                        ((O & BITFIELD_MASK(6)) << 16) | (q6 << 22) |
+                        ((O & BITFIELD_MASK(6)) << 16) | (I->gather << 23) |
                         (I->offset << 27) | ((S >> 6) << 28) | ((O >> 6) << 30);
 
       bool L = (extend != 0);

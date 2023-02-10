@@ -108,6 +108,14 @@ DIM = enum("dim", {
     8: '2d_ms_array',
 })
 
+GATHER = enum("gather", {
+	0b000: "none",
+	0b001: "r",
+	0b011: "g",
+	0b101: "b",
+	0b111: "a",
+})
+
 OFFSET = immediate("offset", "bool")
 SHADOW = immediate("shadow", "bool")
 SCOREBOARD = immediate("scoreboard")
@@ -234,7 +242,8 @@ op("fcmpsel",
 # TODO: anything else?
 op("texture_sample",
       encoding_32 = (0x31, 0x7F, 8, 10), # XXX WRONG SIZE
-      srcs = 5, imms = [DIM, LOD_MODE, MASK, SCOREBOARD, OFFSET, SHADOW])
+      srcs = 5, imms = [DIM, LOD_MODE, MASK, SCOREBOARD, OFFSET, SHADOW,
+								GATHER])
 op("texture_load",
       encoding_32 = (0x71, 0x7F, 8, 10), # XXX WRONG SIZE
       srcs = 5, imms = [DIM, LOD_MODE, MASK, SCOREBOARD, OFFSET])

@@ -1233,7 +1233,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
       b, tmp, coords, lod, texture, sampler, compare_offset,
       agx_tex_dim(instr->sampler_dim, instr->is_array),
       agx_lod_mode_for_nir(instr->op), mask, 0, !agx_is_null(packed_offset),
-      !agx_is_null(compare));
+      !agx_is_null(compare), AGX_GATHER_NONE);
 
    if (txf)
       I->op = AGX_OPCODE_TEXTURE_LOAD;
