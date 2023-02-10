@@ -3208,6 +3208,14 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
                nir_move_load_input | nir_move_const_undef | nir_move_copies);
    }
 
+   /* Lower VS inputs. We need to do this after nir_opt_sink, because
+    * load_input can be reordered, but buffer loads can't.
+    */
+   if (stage->stage == MESA_SHADER_VERTEX) {
+      NIR_PASS(_, stage->nir, radv_nir_lower_vs_inputs, stage, pipeline_key,
+               device->physical_device->rad_info.address32_hi);
+   }
+
    /* Lower I/O intrinsics to memory instructions. */
    bool io_to_mem = radv_lower_io_to_mem(device, stage);
    bool lowered_ngg = stage->info.is_ngg && stage->stage == last_vgt_api_stage;
