@@ -182,6 +182,7 @@ debian-build-testing:
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,d3d12,asahi,crocus"
     VULKAN_DRIVERS: swrast
     EXTRA_OPTION: >
+      --native-file .gitlab-ci/build/meson-native-lto-wrappers.txt
       -D spirv-to-dxil=true
       -D osmesa=true
       -D tools=drm-shim,etnaviv,freedreno,glsl,intel,intel-ui,nir,nouveau,lima,panfrost,asahi
@@ -195,7 +196,7 @@ debian-build-testing:
     section_switch yamllint "yamllint"
     .gitlab-ci/run-yamllint.sh
     section_switch meson "meson"
-    .gitlab-ci/meson/build.sh
+    PATH=$PATH:$PWD/.gitlab-ci/build .gitlab-ci/meson/build.sh
     section_switch shader-db "shader-db"
     .gitlab-ci/run-shader-db.sh
 
