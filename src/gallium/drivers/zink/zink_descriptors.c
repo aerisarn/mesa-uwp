@@ -1449,6 +1449,7 @@ zink_batch_descriptor_reset(struct zink_screen *screen, struct zink_batch_state 
 {
    if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB) {
       bs->dd.db_offset = 0;
+      bs->db_bound = false;
    } else {
       for (unsigned i = 0; i < ZINK_DESCRIPTOR_BASE_TYPES; i++) {
          struct zink_descriptor_pool_multi **mpools = bs->dd.pools[i].data;
