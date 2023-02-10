@@ -310,6 +310,17 @@ LLVMValueRef ac_build_struct_tbuffer_load(struct ac_llvm_context *ctx, LLVMValue
                                           unsigned dfmt, unsigned nfmt, unsigned cache_policy,
                                           bool can_speculate);
 
+LLVMValueRef ac_build_safe_tbuffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
+                                        LLVMValueRef vindex, LLVMValueRef voffset,
+                                        LLVMValueRef soffset, LLVMTypeRef channel_type,
+                                        const struct ac_vtx_format_info *vtx_info,
+                                        unsigned const_offset,
+                                        unsigned align_offset,
+                                        unsigned align_mul,
+                                        unsigned num_channels,
+                                        unsigned cache_policy,
+                                        bool can_speculate);
+
 LLVMValueRef ac_build_opencoded_load_format(struct ac_llvm_context *ctx, unsigned log_size,
                                             unsigned num_channels, unsigned format, bool reverse,
                                             bool known_aligned, LLVMValueRef rsrc,
