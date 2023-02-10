@@ -610,6 +610,7 @@ zink_gfx_program_update(struct zink_context *ctx)
          prog = zink_create_gfx_program(ctx, ctx->gfx_stages, ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch, hash);
          zink_screen_get_pipeline_cache(zink_screen(ctx->base.screen), &prog->base, false);
          _mesa_hash_table_insert_pre_hashed(ht, hash, prog->shaders, prog);
+         prog->base.removed = false;
          generate_gfx_program_modules(ctx, zink_screen(ctx->base.screen), prog, &ctx->gfx_pipeline_state);
       }
       simple_mtx_unlock(&ctx->program_lock[zink_program_cache_stages(ctx->shader_stages)]);
@@ -698,6 +699,7 @@ zink_gfx_program_update_optimal(struct zink_context *ctx)
             if (util_queue_fence_is_signalled(&prog->base.cache_fence)) {
                struct zink_gfx_program *real = prog->full_prog;
                entry->data = real;
+               real->base.removed = false;
                prog->full_prog = NULL;
                prog->base.removed = true;
                zink_gfx_program_reference(zink_screen(ctx->base.screen), &prog, NULL);
@@ -708,6 +710,7 @@ zink_gfx_program_update_optimal(struct zink_context *ctx)
       } else {
          ctx->dirty_gfx_stages |= ctx->shader_stages;
          prog = create_gfx_program_separable(ctx, ctx->gfx_stages, ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch);
+         prog->base.removed = false;
          _mesa_hash_table_insert_pre_hashed(ht, hash, prog->shaders, prog);
          if (!prog->is_separable) {
             zink_screen_get_pipeline_cache(zink_screen(ctx->base.screen), &prog->base, false);
@@ -734,6 +737,7 @@ zink_gfx_program_update_optimal(struct zink_context *ctx)
             struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(ht, hash, ctx->gfx_stages);
             struct zink_gfx_program *real = prog->full_prog;
             entry->data = real;
+            real->base.removed = false;
             prog->full_prog = NULL;
             prog->base.removed = true;
             zink_gfx_program_reference(zink_screen(ctx->base.screen), &prog, NULL);
@@ -1007,6 +1011,7 @@ zink_create_gfx_program(struct zink_context *ctx,
 
    prog->ctx = ctx;
    prog->gfx_hash = gfx_hash;
+   prog->base.removed = true;
 
    for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
       util_dynarray_init(&prog->shader_cache[i][0][0], NULL);
@@ -2033,6 +2038,7 @@ zink_link_gfx_shader(struct pipe_context *pctx, void **shaders)
    u_foreach_bit(i, shader_stages)
       assert(prog->shaders[i]);
    _mesa_hash_table_insert_pre_hashed(ht, hash, prog->shaders, prog);
+   prog->base.removed = false;
    simple_mtx_unlock(&ctx->program_lock[zink_program_cache_stages(shader_stages)]);
    if (zink_debug & ZINK_DEBUG_SHADERDB) {
       struct zink_screen *screen = zink_screen(pctx->screen);
