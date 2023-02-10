@@ -4496,7 +4496,7 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
          struct hash_table *ht = &prog->ctx->program_cache[idx];
          simple_mtx_lock(&prog->ctx->program_lock[idx]);
          struct hash_entry *he = _mesa_hash_table_search(ht, prog->shaders);
-         assert(he);
+         assert(he && he->data == prog);
          _mesa_hash_table_remove(ht, he);
          prog->base.removed = true;
          simple_mtx_unlock(&prog->ctx->program_lock[idx]);
