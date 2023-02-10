@@ -35,7 +35,11 @@ xe_gem_create(struct anv_device *device,
               enum anv_bo_alloc_flags alloc_flags)
 {
    struct drm_xe_gem_create gem_create = {
-     .vm_id = device->vm_id,
+     /* From xe_drm.h: If a VM is specified, this BO must:
+      * 1. Only ever be bound to that VM.
+      * 2. Cannot be exported as a PRIME fd.
+      */
+     .vm_id = alloc_flags & ANV_BO_ALLOC_EXTERNAL ? 0 : device->vm_id,
      .size = size,
      .flags = alloc_flags & ANV_BO_ALLOC_SCANOUT ? XE_GEM_CREATE_FLAG_SCANOUT : 0,
    };
