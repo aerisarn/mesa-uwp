@@ -646,18 +646,11 @@ debian-mingw32-x86_64:
     UNWIND: "disabled"
     C_ARGS: >
       -Wno-error=format
-      -Wno-error=format-extra-args
-      -Wno-error=deprecated-declarations
       -Wno-error=unused-function
       -Wno-error=unused-variable
       -Wno-error=unused-but-set-variable
-      -Wno-error=unused-value
-      -Wno-error=switch
-      -Wno-error=parentheses
-      -Wno-error=missing-prototypes
       -Wno-error=sign-compare
       -Wno-error=narrowing
-      -Wno-error=overflow
     CPP_ARGS: $C_ARGS
     GALLIUM_DRIVERS: "swrast,d3d12,zink"
     VULKAN_DRIVERS: "swrast,amd,microsoft-experimental"
