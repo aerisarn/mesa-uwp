@@ -363,11 +363,12 @@ void AddressSplitVisitor::visit(WriteTFInstr *instr)
 
 void AddressSplitVisitor::visit(LDSAtomicInstr *instr)
 {
-
+   (void)instr;
 }
+
 void AddressSplitVisitor::visit(LDSReadInstr *instr)
 {
-
+   (void)instr;
 }
 void AddressSplitVisitor::visit(RatInstr *instr)
 {

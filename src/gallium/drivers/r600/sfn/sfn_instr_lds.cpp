@@ -356,25 +356,34 @@ LDSAtomicInstr::replace_source(PRegister old_src, PVirtualValue new_src)
 {
    bool process = false;
 
-   if (new_src->as_uniform() && m_srcs.size() > 2) {
-      int nconst = 0;
-      for (auto& s : m_srcs) {
-         if (s->as_uniform() && !s->equal_to(*old_src))
-            ++nconst;
+   if (new_src->as_uniform()) {
+      if (m_srcs.size() > 2) {
+         int nconst = 0;
+         for (auto& s : m_srcs) {
+            if (s->as_uniform() && !s->equal_to(*old_src))
+               ++nconst;
+         }
+         /* Conservative check: with two kcache values can always live,
+          * tree might be a problem, don't care for now, just reject
+          */
+         if (nconst > 2)
+            return false;
       }
-      /* Conservative check: with two kcache values can always live,
-       * tree might be a problem, don't care for now, just reject
-       */
-      if (nconst > 2)
+
+      /* indirect constant buffer access means new CF, and this is something
+       * we can't do in the middle of an LDS read group */
+      auto u = new_src->as_uniform();
+      if (u->buf_addr())
          return false;
    }
 
-   /* If the old source is an array element, we assume that there
+   /* If the source is an array element, we assume that there
     * might have been an (untracked) indirect access, so don't replace
     * this source */
-   if (old_src->pin() == pin_array)
+   if (old_src->pin() == pin_array || new_src->pin() == pin_array)
       return false;
 
+<<<<<<< HEAD
    if (new_src->get_addr()) {
       for (auto& s : m_srcs) {
          auto addr = s->get_addr();
@@ -384,6 +393,8 @@ LDSAtomicInstr::replace_source(PRegister old_src, PVirtualValue new_src)
       }
    }
 
+=======
+>>>>>>> 74c0ddf158e (r600/sfn: Don't copy-propagate indirect access into LDS instr)
    for (unsigned i = 0; i < m_srcs.size(); ++i) {
       if (old_src->equal_to(*m_srcs[i])) {
          m_srcs[i] = new_src;
