@@ -294,8 +294,9 @@ public:
 
    auto buffer_index_mode() const -> EBufferIndexMode
    {
-      if (!m_offset)
+      if (!m_offset || !m_offset->has_flag(Register::addr_or_idx))
          return bim_none;
+
       switch (m_offset->sel()) {
       case 1:
          return bim_zero;
