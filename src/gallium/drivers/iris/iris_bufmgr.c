@@ -954,6 +954,19 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
    return bo;
 }
 
+static int
+i915_gem_set_domain(struct iris_bufmgr *bufmgr, uint32_t handle,
+                    uint32_t read_domains, uint32_t write_domains)
+{
+   struct drm_i915_gem_set_domain sd = {
+      .handle = handle,
+      .read_domains = read_domains,
+      .write_domain = write_domains,
+   };
+   return intel_ioctl(iris_bufmgr_get_fd(bufmgr),
+                      DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd);
+}
+
 static struct iris_bo *
 alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, unsigned flags)
 {
@@ -1048,19 +1061,12 @@ alloc_fresh_bo(struct iris_bufmgr *bufmgr, uint64_t bo_size, unsigned flags)
    bo->size = bo_size;
    bo->idle = true;
 
-   if (bufmgr->vram.size == 0) {
+   if (bufmgr->vram.size == 0)
       /* Calling set_domain() will allocate pages for the BO outside of the
        * struct mutex lock in the kernel, which is more efficient than waiting
        * to create them during the first execbuf that uses the BO.
        */
-      struct drm_i915_gem_set_domain sd = {
-         .handle = bo->gem_handle,
-         .read_domains = I915_GEM_DOMAIN_CPU,
-         .write_domain = 0,
-      };
-
-      intel_ioctl(bo->bufmgr->fd, DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd);
-   }
+      i915_gem_set_domain(bufmgr, bo->gem_handle, I915_GEM_DOMAIN_CPU, 0);
 
    return bo;
 }
@@ -1211,11 +1217,7 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
 
    if (!bufmgr->devinfo.has_userptr_probe) {
       /* Check the buffer for validity before we try and use it in a batch */
-      struct drm_i915_gem_set_domain sd = {
-         .handle = bo->gem_handle,
-         .read_domains = I915_GEM_DOMAIN_CPU,
-      };
-      if (intel_ioctl(bufmgr->fd, DRM_IOCTL_I915_GEM_SET_DOMAIN, &sd))
+      if (i915_gem_set_domain(bufmgr, bo->gem_handle, I915_GEM_DOMAIN_CPU, 0))
          goto err_close;
    }
 
