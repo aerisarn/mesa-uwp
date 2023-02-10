@@ -314,6 +314,8 @@ AluGroup::set_scheduled()
       if (m_slots[i])
          m_slots[i]->set_scheduled();
    }
+   if (m_origin)
+      m_origin->set_scheduled();
 }
 
 void

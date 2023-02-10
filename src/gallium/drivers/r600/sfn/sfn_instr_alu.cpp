@@ -809,6 +809,7 @@ AluInstr::split(ValueFactory& vf)
          r->del_use(this);
       }
    }
+   group->set_origin(this);
 
    return group;
 }
