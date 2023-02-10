@@ -3239,7 +3239,7 @@ radv_postprocess_nir(struct radv_pipeline *pipeline,
     */
    if (stage->stage == MESA_SHADER_VERTEX) {
       NIR_PASS(_, stage->nir, radv_nir_lower_vs_inputs, stage, pipeline_key,
-               device->physical_device->rad_info.address32_hi);
+               &device->physical_device->rad_info);
    }
 
    /* Lower I/O intrinsics to memory instructions. */

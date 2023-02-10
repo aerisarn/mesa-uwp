@@ -557,7 +557,8 @@ void radv_nir_lower_abi(nir_shader *shader, enum amd_gfx_level gfx_level,
                         const struct radv_pipeline_key *pl_key, uint32_t address32_hi);
 
 bool radv_nir_lower_vs_inputs(nir_shader *shader, const struct radv_pipeline_stage *vs_stage,
-                              const struct radv_pipeline_key *key, uint32_t address32_hi);
+                              const struct radv_pipeline_key *key,
+                              const struct radeon_info *rad_info);
 
 void radv_init_shader_arenas(struct radv_device *device);
 void radv_destroy_shader_arenas(struct radv_device *device);
