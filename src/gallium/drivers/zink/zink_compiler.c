@@ -4221,6 +4221,19 @@ type_images(nir_shader *nir, unsigned *sampler_mask)
    return progress;
 }
 
+/* attempt to assign io for separate shaders */
+static bool
+fixup_io_locations(nir_shader *nir)
+{
+   nir_variable_mode mode = nir->info.stage == MESA_SHADER_FRAGMENT ? nir_var_shader_in : nir_var_shader_out;
+   nir_foreach_variable_with_modes(var, nir, mode) {
+      if (nir_slot_is_varying(var->data.location))
+         /* these locations should always be consistent between stages...hopefully */
+         var->data.driver_location = var->data.location - VARYING_SLOT_VAR0;
+   }
+   return true;
+}
+
 struct zink_shader *
 zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                    const struct pipe_stream_output_info *so_info)
@@ -4254,6 +4267,10 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
 
    if (nir->info.stage < MESA_SHADER_FRAGMENT)
       have_psiz = check_psiz(nir);
+
+   if (!gl_shader_stage_is_compute(nir->info.stage) && nir->info.separate_shader)
+      NIR_PASS_V(nir, fixup_io_locations);
+
    NIR_PASS_V(nir, lower_basevertex);
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
    NIR_PASS_V(nir, lower_baseinstance);
