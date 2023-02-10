@@ -1406,11 +1406,11 @@ void
 zink_batch_descriptor_deinit(struct zink_screen *screen, struct zink_batch_state *bs)
 {
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_BASE_TYPES; i++) {
-      while (util_dynarray_contains(&bs->dd.pools[i], struct zink_descriptor_pool_multi *)) {
-         struct zink_descriptor_pool_multi *mpool = util_dynarray_pop(&bs->dd.pools[i], struct zink_descriptor_pool_multi *);
-         if (mpool) {
-            deinit_multi_pool_overflow(screen, mpool);
-            multi_pool_destroy(screen, mpool);
+      for (unsigned j = 0; j < bs->dd.pools[i].capacity / sizeof(struct zink_descriptor_pool_multi *); j++) {
+         struct zink_descriptor_pool_multi **mppool = util_dynarray_element(&bs->dd.pools[i], struct zink_descriptor_pool_multi *, j);
+         if (mppool && *mppool) {
+            deinit_multi_pool_overflow(screen, *mppool);
+            multi_pool_destroy(screen, *mppool);
          }
       }
       util_dynarray_fini(&bs->dd.pools[i]);
