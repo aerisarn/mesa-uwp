@@ -705,6 +705,10 @@ oa_metrics_available(struct intel_perf_config *perf, int fd,
    bool i915_perf_oa_available = false;
    struct stat sb;
 
+   /* TODO: Xe still don't have support for performance metrics */
+   if (devinfo->kmd_type != INTEL_KMD_TYPE_I915)
+      return false;
+
    perf->devinfo = *devinfo;
 
    /* Consider an invalid as supported. */
