@@ -2540,7 +2540,7 @@ radv_declare_pipeline_args(struct radv_device *device, struct radv_pipeline_stag
          active_stages |= (1 << i);
    }
 
-   for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
+   radv_foreach_stage(i, active_stages) {
       stages[i].args.is_gs_copy_shader = false;
       stages[i].args.explicit_scratch_args = !radv_use_llvm_for_stage(device, i);
       stages[i].args.remap_spi_ps_input = !radv_use_llvm_for_stage(device, i);
