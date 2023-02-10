@@ -132,7 +132,7 @@ typedef struct merge_set {
 static void
 merge_set_dump(merge_set *set, FILE *fp)
 {
-   nir_ssa_def *dom[set->size];
+   NIR_VLA(nir_ssa_def *, dom, set->size);
    int dom_idx = -1;
 
    foreach_list_typed(merge_node, node, node, &set->nodes) {
