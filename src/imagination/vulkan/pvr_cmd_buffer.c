@@ -2717,8 +2717,6 @@ static void pvr_perform_start_of_render_attachment_clear(
    VkImageAspectFlags image_aspect;
    struct pvr_image_view *iview;
    uint32_t view_idx;
-   uint32_t height;
-   uint32_t width;
 
    if (is_depth_stencil) {
       bool stencil_clear;
@@ -2749,8 +2747,6 @@ static void pvr_perform_start_of_render_attachment_clear(
    }
 
    iview = info->attachments[view_idx];
-   width = iview->vk.extent.width;
-   height = iview->vk.extent.height;
 
    /* FIXME: It would be nice if this function and pvr_sub_cmd_gfx_job_init()
     * were doing the same check (even if it's just an assert) to determine if a
@@ -2759,9 +2755,8 @@ static void pvr_perform_start_of_render_attachment_clear(
    /* If this is single-layer fullscreen, we already do the clears in
     * pvr_sub_cmd_gfx_job_init().
     */
-   if (info->render_area.offset.x == 0 && info->render_area.offset.y == 0 &&
-       info->render_area.extent.width == width &&
-       info->render_area.extent.height == height && framebuffer->layers == 1) {
+   if (pvr_is_render_area_tile_aligned(cmd_buffer, iview) &&
+       framebuffer->layers == 1) {
       return;
    }
 
