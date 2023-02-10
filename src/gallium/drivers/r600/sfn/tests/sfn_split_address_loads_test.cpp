@@ -466,6 +466,7 @@ BLOCK_END
    check(schedule(sh), expect);
 }
 
+
 TEST_F(TestShaderFromNir, SplitLoadWithNonAlu)
 {
    const char *input =

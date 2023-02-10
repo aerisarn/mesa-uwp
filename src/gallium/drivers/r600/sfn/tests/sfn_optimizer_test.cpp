@@ -818,7 +818,3 @@ BLOCK_END)";
    check(schedule(sh), expect);
 
 }
-
-
-
-
