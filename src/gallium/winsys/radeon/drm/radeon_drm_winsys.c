@@ -9,6 +9,7 @@
 #include "radeon_drm_cs.h"
 
 #include "util/os_file.h"
+#include "util/simple_mtx.h"
 #include "util/u_cpu_detect.h"
 #include "util/u_memory.h"
 #include "util/u_hash_table.h"
@@ -23,7 +24,7 @@
 #include <radeon_surface.h>
 
 static struct hash_table *fd_tab = NULL;
-static mtx_t fd_tab_mutex = _MTX_INITIALIZER_NP;
+static simple_mtx_t fd_tab_mutex = SIMPLE_MTX_INITIALIZER;
 
 /* Enable/disable feature access for one command stream.
  * If enable == true, return true on success.
@@ -806,7 +807,7 @@ static bool radeon_winsys_unref(struct radeon_winsys *ws)
     * This must happen while the mutex is locked, so that
     * radeon_drm_winsys_create in another thread doesn't get the winsys
     * from the table when the counter drops to 0. */
-   mtx_lock(&fd_tab_mutex);
+   simple_mtx_lock(&fd_tab_mutex);
 
    destroy = pipe_reference(&rws->reference, NULL);
    if (destroy && fd_tab) {
@@ -817,7 +818,7 @@ static bool radeon_winsys_unref(struct radeon_winsys *ws)
       }
    }
 
-   mtx_unlock(&fd_tab_mutex);
+   simple_mtx_unlock(&fd_tab_mutex);
    return destroy;
 }
 
@@ -857,7 +858,7 @@ radeon_drm_winsys_create(int fd, const struct pipe_screen_config *config,
 {
    struct radeon_drm_winsys *ws;
 
-   mtx_lock(&fd_tab_mutex);
+   simple_mtx_lock(&fd_tab_mutex);
    if (!fd_tab) {
       fd_tab = util_hash_table_create_fd_keys();
    }
@@ -865,13 +866,13 @@ radeon_drm_winsys_create(int fd, const struct pipe_screen_config *config,
    ws = util_hash_table_get(fd_tab, intptr_to_pointer(fd));
    if (ws) {
       pipe_reference(NULL, &ws->reference);
-      mtx_unlock(&fd_tab_mutex);
+      simple_mtx_unlock(&fd_tab_mutex);
       return &ws->base;
    }
 
    ws = CALLOC_STRUCT(radeon_drm_winsys);
    if (!ws) {
-      mtx_unlock(&fd_tab_mutex);
+      simple_mtx_unlock(&fd_tab_mutex);
       return NULL;
    }
 
@@ -947,7 +948,7 @@ radeon_drm_winsys_create(int fd, const struct pipe_screen_config *config,
    if (ws->va_start > 8 * 1024 * 1024) {
       /* Not enough 32-bit address space. */
       radeon_winsys_destroy(&ws->base);
-      mtx_unlock(&fd_tab_mutex);
+      simple_mtx_unlock(&fd_tab_mutex);
       return NULL;
    }
 
@@ -972,7 +973,7 @@ radeon_drm_winsys_create(int fd, const struct pipe_screen_config *config,
    ws->base.screen = screen_create(&ws->base, config);
    if (!ws->base.screen) {
       radeon_winsys_destroy(&ws->base);
-      mtx_unlock(&fd_tab_mutex);
+      simple_mtx_unlock(&fd_tab_mutex);
       return NULL;
    }
 
@@ -981,7 +982,7 @@ radeon_drm_winsys_create(int fd, const struct pipe_screen_config *config,
    /* We must unlock the mutex once the winsys is fully initialized, so that
     * other threads attempting to create the winsys from the same fd will
     * get a fully initialized winsys and not just half-way initialized. */
-   mtx_unlock(&fd_tab_mutex);
+   simple_mtx_unlock(&fd_tab_mutex);
 
    return &ws->base;
 
@@ -991,7 +992,7 @@ fail_slab:
 fail_cache:
    pb_cache_deinit(&ws->bo_cache);
 fail1:
-   mtx_unlock(&fd_tab_mutex);
+   simple_mtx_unlock(&fd_tab_mutex);
    if (ws->surf_man)
       radeon_surface_manager_free(ws->surf_man);
    if (ws->fd >= 0)
