@@ -1762,7 +1762,10 @@ agx_remap_varyings_vs(nir_shader *nir, struct agx_varyings_vs *varyings)
    for (unsigned i = 0; i < ARRAY_SIZE(varyings->slots); ++i)
       varyings->slots[i] = ~0;
 
-   assert(nir->info.outputs_written & VARYING_BIT_POS);
+   /* gl_Position is implicitly written, although it may validly be absent in
+    * vertex programs run only for transform feedback. Those ignore their
+    * varyings so it doesn't matter what we do here as long as we don't fail.
+    */
    varyings->slots[VARYING_SLOT_POS] = base;
    base += 4;
 
