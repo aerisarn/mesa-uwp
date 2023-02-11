@@ -53,6 +53,7 @@ struct acp_entry : public exec_node {
    enum opcode opcode;
    bool saturate;
    bool is_partial_write;
+   bool force_writemask_all;
 };
 
 struct block_data {
@@ -1097,6 +1098,7 @@ fs_visitor::opt_copy_propagation_local(void *copy_prop_ctx, bblock_t *block,
          entry->opcode = inst->opcode;
          entry->saturate = inst->saturate;
          entry->is_partial_write = inst->is_partial_write();
+         entry->force_writemask_all = inst->force_writemask_all;
          acp[entry->dst.nr % ACP_HASH_SIZE].push_tail(entry);
       } else if (inst->opcode == SHADER_OPCODE_LOAD_PAYLOAD &&
                  inst->dst.file == VGRF) {
@@ -1116,6 +1118,7 @@ fs_visitor::opt_copy_propagation_local(void *copy_prop_ctx, bblock_t *block,
                entry->size_written = size_written;
                entry->size_read = inst->size_read(i);
                entry->opcode = inst->opcode;
+               entry->force_writemask_all = inst->force_writemask_all;
                if (!entry->dst.equals(inst->src[i])) {
                   acp[entry->dst.nr % ACP_HASH_SIZE].push_tail(entry);
                } else {
