@@ -365,7 +365,7 @@ fd6_set_sampler_views(struct pipe_context *pctx, enum pipe_shader_type shader,
       return;
 
    for (unsigned i = 0; i < nr; i++) {
-      struct fd6_pipe_sampler_view *so = fd6_pipe_sampler_view(views[i]);
+      struct fd6_pipe_sampler_view *so = fd6_pipe_sampler_view(views[i + start]);
 
       if (!(so && so->needs_validate))
          continue;
