@@ -54,6 +54,9 @@ pre_args = [
   '-DPACKAGE_VERSION="@0@"'.format(meson.project_version()),
   '-DPACKAGE_BUGREPORT="https://gitlab.freedesktop.org/mesa/mesa/-/issues"',
 ]
+# Arguments for c or cpp compiler, can be compiler options
+c_cpp_args = []
+
 c_args = []
 cpp_args = []
 
@@ -741,7 +744,8 @@ if _power8.allowed()
         }''',
         args : '-mpower8-vector',
         name : 'POWER8 intrinsics')
-      pre_args += ['-D_ARCH_PWR8', '-mpower8-vector']
+      pre_args += ['-D_ARCH_PWR8']
+      c_cpp_args += '-mpower8-vector'
     elif _power8.enabled()
       error('POWER8 intrinsic support required but not found.')
     endif
@@ -2027,6 +2031,8 @@ if with_perfetto
 endif
 
 add_project_arguments(pre_args, language : ['c', 'cpp'])
+add_project_arguments(c_cpp_args, language : ['c', 'cpp'])
+
 add_project_arguments(c_args,   language : ['c'])
 add_project_arguments(cpp_args, language : ['cpp'])
 
