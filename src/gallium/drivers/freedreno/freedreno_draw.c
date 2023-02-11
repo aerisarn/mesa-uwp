@@ -390,9 +390,6 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       ctx->streamout.offsets[i] += draws[0].count;
    }
 
-   if (FD_DBG(DDRAW))
-      fd_context_all_dirty(ctx);
-
    assert(!batch->flushed);
 
    fd_batch_unlock_submit(batch);
@@ -401,6 +398,22 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
    if (info == &new_info)
       pipe_resource_reference(&indexbuf, NULL);
+}
+
+static void
+fd_draw_vbo_dbg(struct pipe_context *pctx, const struct pipe_draw_info *info,
+                unsigned drawid_offset,
+                const struct pipe_draw_indirect_info *indirect,
+                const struct pipe_draw_start_count_bias *draws, unsigned num_draws)
+   in_dt
+{
+   fd_draw_vbo(pctx, info, drawid_offset, indirect, draws, num_draws);
+
+   if (FD_DBG(DDRAW))
+      fd_context_all_dirty(fd_context(pctx));
+
+   if (FD_DBG(FLUSH))
+      pctx->flush(pctx, NULL, 0);
 }
 
 static void
@@ -609,7 +622,12 @@ fd_launch_grid(struct pipe_context *pctx,
 void
 fd_draw_init(struct pipe_context *pctx)
 {
-   pctx->draw_vbo = fd_draw_vbo;
+   if (FD_DBG(DDRAW) || FD_DBG(FLUSH)) {
+      pctx->draw_vbo = fd_draw_vbo_dbg;
+   } else {
+      pctx->draw_vbo = fd_draw_vbo;
+   }
+
    pctx->clear = fd_clear;
    pctx->clear_render_target = fd_clear_render_target;
    pctx->clear_depth_stencil = fd_clear_depth_stencil;

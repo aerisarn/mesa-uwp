@@ -535,11 +535,6 @@ fd_batch_resource_read_slowpath(struct fd_batch *batch, struct fd_resource *rsc)
 void
 fd_batch_check_size(struct fd_batch *batch)
 {
-   if (FD_DBG(FLUSH)) {
-      fd_batch_flush(batch);
-      return;
-   }
-
    if (batch->num_draws > 100000) {
       fd_batch_flush(batch);
       return;
