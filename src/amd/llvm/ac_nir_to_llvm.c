@@ -4312,6 +4312,27 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       ac_build_export(&ctx->ac, &args);
       break;
    }
+   case nir_intrinsic_bvh64_intersect_ray_amd: {
+      LLVMValueRef desc = get_src(ctx, instr->src[0]);
+      LLVMValueRef node_id =
+         LLVMBuildBitCast(ctx->ac.builder, get_src(ctx, instr->src[1]), ctx->ac.i64, "");
+      LLVMValueRef t_max =
+         LLVMBuildBitCast(ctx->ac.builder, get_src(ctx, instr->src[2]), ctx->ac.f32, "");
+      LLVMValueRef origin =
+         LLVMBuildBitCast(ctx->ac.builder, get_src(ctx, instr->src[3]), ctx->ac.v3f32, "");
+      LLVMValueRef dir =
+         LLVMBuildBitCast(ctx->ac.builder, get_src(ctx, instr->src[4]), ctx->ac.v3f32, "");
+      LLVMValueRef inv_dir =
+         LLVMBuildBitCast(ctx->ac.builder, get_src(ctx, instr->src[5]), ctx->ac.v3f32, "");
+
+      LLVMValueRef args[6] = {
+         node_id, t_max, origin, dir, inv_dir, desc,
+      };
+
+      result = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.image.bvh.intersect.ray.i64.v3f32",
+                                  ctx->ac.v4i32, args, ARRAY_SIZE(args), 0);
+      break;
+   }
    default:
       fprintf(stderr, "Unknown intrinsic: ");
       nir_print_instr(&instr->instr, stderr);
