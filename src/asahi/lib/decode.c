@@ -511,12 +511,38 @@ agxdecode_cdm(const uint8_t *map, uint64_t *link, bool verbose,
    enum agx_cdm_block_type block_type = (map[3] >> 5);
 
    switch (block_type) {
-   case AGX_CDM_BLOCK_TYPE_COMPUTE_KERNEL: {
-      agx_unpack(agxdecode_dump_stream, map, LAUNCH, cmd);
-      agxdecode_stateful(cmd.pipeline, "Pipeline", agxdecode_usc, verbose,
-                         &cmd.sampler_state_register_count);
-      DUMP_UNPACKED(LAUNCH, cmd, "Launch\n");
-      return AGX_LAUNCH_LENGTH;
+   case AGX_CDM_BLOCK_TYPE_HEADER: {
+      size_t length = AGX_CDM_HEADER_LENGTH;
+
+#define CDM_PRINT(STRUCT_NAME, human)                                          \
+   DUMP_CL(CDM_##STRUCT_NAME, map, human);                                     \
+   map += AGX_CDM_##STRUCT_NAME##_LENGTH;                                      \
+   length += AGX_CDM_##STRUCT_NAME##_LENGTH;
+
+      agx_unpack(agxdecode_dump_stream, map, CDM_HEADER, hdr);
+      agxdecode_stateful(hdr.pipeline, "Pipeline", agxdecode_usc, verbose,
+                         &hdr.sampler_state_register_count);
+      DUMP_UNPACKED(CDM_HEADER, hdr, "Compute\n");
+      map += AGX_CDM_HEADER_LENGTH;
+
+      switch (hdr.mode) {
+      case AGX_CDM_MODE_DIRECT:
+         CDM_PRINT(GLOBAL_SIZE, "Global size");
+         CDM_PRINT(LOCAL_SIZE, "Local size");
+         break;
+      case AGX_CDM_MODE_INDIRECT_GLOBAL:
+         CDM_PRINT(INDIRECT, "Indirect buffer");
+         CDM_PRINT(LOCAL_SIZE, "Local size");
+         break;
+      case AGX_CDM_MODE_INDIRECT_LOCAL:
+         CDM_PRINT(INDIRECT, "Indirect buffer");
+         break;
+      default:
+         fprintf(agxdecode_dump_stream, "Unknown CDM mode: %u\n", hdr.mode);
+         break;
+      }
+
+      return length;
    }
 
    case AGX_CDM_BLOCK_TYPE_STREAM_LINK: {
@@ -529,6 +555,11 @@ agxdecode_cdm(const uint8_t *map, uint64_t *link, bool verbose,
    case AGX_CDM_BLOCK_TYPE_STREAM_TERMINATE: {
       DUMP_CL(CDM_STREAM_TERMINATE, map, "Stream Terminate");
       return STATE_DONE;
+   }
+
+   case AGX_CDM_BLOCK_TYPE_LAUNCH: {
+      DUMP_CL(CDM_LAUNCH, map, "Launch");
+      return AGX_CDM_LAUNCH_LENGTH;
    }
 
    default:
