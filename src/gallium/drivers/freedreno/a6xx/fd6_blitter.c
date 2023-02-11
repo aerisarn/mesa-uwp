@@ -887,8 +887,7 @@ fd6_clear_texture(struct pipe_context *pctx, struct pipe_resource *prsc,
    fd_batch_resource_write(batch, rsc);
    fd_screen_unlock(ctx->screen);
 
-   ASSERTED bool ret = fd_batch_lock_submit(batch);
-   assert(ret);
+   assert(!batch->flushed);
 
    /* Marking the batch as needing flush must come after the batch
     * dependency tracking (resource_read()/resource_write()), as that
@@ -919,8 +918,6 @@ fd6_clear_texture(struct pipe_context *pctx, struct pipe_resource *prsc,
    fd6_event_write(batch, batch->draw, CACHE_FLUSH_TS, true);
    fd_wfi(batch, batch->draw);
    fd6_cache_inv(batch, batch->draw);
-
-   fd_batch_unlock_submit(batch);
 
    fd_batch_flush(batch);
    fd_batch_reference(&batch, NULL);
@@ -1034,8 +1031,7 @@ handle_rgba_blit(struct fd_context *ctx,
 
    fd_screen_unlock(ctx->screen);
 
-   ASSERTED bool ret = fd_batch_lock_submit(batch);
-   assert(ret);
+   assert(!batch->flushed);
 
    /* Marking the batch as needing flush must come after the batch
     * dependency tracking (resource_read()/resource_write()), as that
@@ -1071,8 +1067,6 @@ handle_rgba_blit(struct fd_context *ctx,
    fd6_event_write(batch, batch->draw, CACHE_FLUSH_TS, true);
    fd_wfi(batch, batch->draw);
    fd6_cache_inv(batch, batch->draw);
-
-   fd_batch_unlock_submit(batch);
 
    fd_batch_flush(batch);
    fd_batch_reference(&batch, NULL);

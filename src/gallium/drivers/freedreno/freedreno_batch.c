@@ -134,8 +134,6 @@ fd_batch_create(struct fd_context *ctx, bool nondraw)
    batch->ctx = ctx;
    batch->nondraw = nondraw;
 
-   simple_mtx_init(&batch->submit_lock, mtx_plain);
-
    batch->resources =
       _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
 
@@ -313,8 +311,6 @@ __fd_batch_destroy_locked(struct fd_batch *batch)
    util_copy_framebuffer_state(&batch->framebuffer, NULL);
    batch_fini(batch);
 
-   simple_mtx_destroy(&batch->submit_lock);
-
    free(batch->key);
    free(batch);
    fd_screen_lock(ctx->screen);
@@ -350,7 +346,7 @@ batch_flush(struct fd_batch *batch) assert_dt
 {
    DBG("%p: needs_flush=%d", batch, batch->needs_flush);
 
-   if (!fd_batch_lock_submit(batch))
+   if (batch->flushed)
       return;
 
    batch->needs_flush = false;
@@ -388,7 +384,6 @@ batch_flush(struct fd_batch *batch) assert_dt
    assert(batch->reference.count > 0);
 
    cleanup_submit(batch);
-   fd_batch_unlock_submit(batch);
 }
 
 /* NOTE: could drop the last ref to batch

@@ -114,9 +114,8 @@ fd_acc_begin_query(struct fd_context *ctx, struct fd_query *q) assert_dt
     * need to just emit the capture at this moment.
     */
    if (skip_begin_query(q->type)) {
-      struct fd_batch *batch = fd_context_batch_locked(ctx);
+      struct fd_batch *batch = fd_context_batch(ctx);
       fd_acc_query_resume(aq, batch);
-      fd_batch_unlock_submit(batch);
       fd_batch_reference(&batch, NULL);
    }
 }
@@ -134,7 +133,7 @@ fd_acc_end_query(struct fd_context *ctx, struct fd_query *q) assert_dt
    list_delinit(&aq->node);
 
    /* mark the result available: */
-   struct fd_batch *batch = fd_context_batch_locked(ctx);
+   struct fd_batch *batch = fd_context_batch(ctx);
    struct fd_ringbuffer *ring = batch->draw;
    struct fd_resource *rsc = fd_resource(aq->prsc);
 
@@ -150,7 +149,6 @@ fd_acc_end_query(struct fd_context *ctx, struct fd_query *q) assert_dt
       OUT_RING(ring, 0);     /* high 32b */
    }
 
-   fd_batch_unlock_submit(batch);
    fd_batch_reference(&batch, NULL);
 }
 
@@ -206,7 +204,7 @@ fd_acc_get_query_result_resource(struct fd_context *ctx, struct fd_query *q,
 {
    struct fd_acc_query *aq = fd_acc_query(q);
    const struct fd_acc_sample_provider *p = aq->provider;
-   struct fd_batch *batch = fd_context_batch_locked(ctx);
+   struct fd_batch *batch = fd_context_batch(ctx);
 
    assert(ctx->screen->gen >= 5);
 
@@ -242,8 +240,6 @@ fd_acc_get_query_result_resource(struct fd_context *ctx, struct fd_query *q,
    } else {
       p->result_resource(aq, ring, result_type, index, dst, offset);
    }
-
-   fd_batch_unlock_submit(batch);
 
    /* If we are told to wait for results, then we need to flush.  For an IMR
     * this would just be a wait on the GPU, but the expectation is that draws
