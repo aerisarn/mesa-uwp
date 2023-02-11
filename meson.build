@@ -1282,7 +1282,6 @@ endforeach
 functions_to_detect = {
   'strtof': '',
   'mkostemp': '',
-  'timespec_get': '#include <time.h>',
   'memfd_create': '',
   'random_r': '',
   'flock': '',
