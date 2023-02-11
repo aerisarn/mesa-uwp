@@ -35,6 +35,7 @@ files_panfrost = files(
   'pan_mempool.c',
   'pan_mempool.h',
   'pan_nir_remove_fragcolor_stores.c',
+  'pan_nir_lower_sysvals.c',
 )
 
 panfrost_includes = [
