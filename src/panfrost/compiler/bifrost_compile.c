@@ -684,30 +684,6 @@ bi_load_ubo_to(bi_builder *b, unsigned bitsize, bi_index dest0, bi_index src0,
    return I;
 }
 
-static bi_instr *
-bi_load_sysval_to(bi_builder *b, bi_index dest, int sysval,
-                  unsigned nr_components, unsigned offset)
-{
-   unsigned sysval_ubo = b->shader->inputs->fixed_sysval_ubo >= 0
-                            ? b->shader->inputs->fixed_sysval_ubo
-                            : b->shader->nir->info.num_ubos;
-   unsigned uniform = pan_lookup_sysval(b->shader->sysval_to_id,
-                                        b->shader->info.sysvals, sysval);
-   unsigned idx = (uniform * 16) + offset;
-
-   return bi_load_ubo_to(b, nr_components * 32, dest, bi_imm_u32(idx),
-                         bi_imm_u32(sysval_ubo));
-}
-
-static void
-bi_load_sysval_nir(bi_builder *b, nir_intrinsic_instr *intr,
-                   unsigned nr_components, unsigned offset)
-{
-   bi_load_sysval_to(b, bi_dest_index(&intr->dest),
-                     panfrost_sysval_for_instr(&intr->instr, NULL),
-                     nr_components, offset);
-}
-
 static void
 bi_load_sample_id_to(bi_builder *b, bi_index dst)
 {
@@ -1756,44 +1732,6 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
 
    case nir_intrinsic_discard:
       bi_discard_f32(b, bi_zero(), bi_zero(), BI_CMPF_EQ);
-      break;
-
-   case nir_intrinsic_load_ssbo_address:
-   case nir_intrinsic_load_xfb_address:
-      bi_load_sysval_nir(b, instr, 2, 0);
-      break;
-
-   case nir_intrinsic_load_work_dim:
-   case nir_intrinsic_load_num_vertices:
-   case nir_intrinsic_load_first_vertex:
-   case nir_intrinsic_load_draw_id:
-   case nir_intrinsic_load_multisampled_pan:
-   case nir_intrinsic_load_rt_conversion_pan:
-      bi_load_sysval_nir(b, instr, 1, 0);
-      break;
-
-   case nir_intrinsic_load_base_vertex:
-      bi_load_sysval_nir(b, instr, 1, 4);
-      break;
-
-   case nir_intrinsic_load_base_instance:
-   case nir_intrinsic_get_ssbo_size:
-      bi_load_sysval_nir(b, instr, 1, 8);
-      break;
-
-   case nir_intrinsic_load_viewport_scale:
-   case nir_intrinsic_load_viewport_offset:
-   case nir_intrinsic_load_num_workgroups:
-   case nir_intrinsic_load_workgroup_size:
-      bi_load_sysval_nir(b, instr, 3, 0);
-      break;
-
-   case nir_intrinsic_image_size:
-      bi_load_sysval_nir(b, instr, nir_dest_num_components(instr->dest), 0);
-      break;
-
-   case nir_intrinsic_load_blend_const_color_rgba:
-      bi_load_sysval_nir(b, instr, nir_dest_num_components(instr->dest), 0);
       break;
 
    case nir_intrinsic_load_sample_positions_pan:
@@ -3841,13 +3779,6 @@ bi_is_simple_tex(nir_tex_instr *instr)
 static void
 bi_emit_tex(bi_builder *b, nir_tex_instr *instr)
 {
-   if (instr->op == nir_texop_txs) {
-      bi_load_sysval_to(b, bi_dest_index(&instr->dest),
-                        panfrost_sysval_for_instr(&instr->instr, NULL),
-                        nir_dest_num_components(instr->dest), 0);
-      return;
-   }
-
    if (b->shader->arch >= 9)
       bi_emit_tex_valhall(b, instr);
    else if (bi_is_simple_tex(instr))
@@ -4846,7 +4777,6 @@ static bi_context *
 bi_compile_variant_nir(nir_shader *nir,
                        const struct panfrost_compile_inputs *inputs,
                        struct util_dynarray *binary,
-                       struct hash_table_u64 *sysval_to_id,
                        struct bi_shader_info info, enum bi_idvs_mode idvs)
 {
    bi_context *ctx = rzalloc(NULL, bi_context);
@@ -4854,7 +4784,6 @@ bi_compile_variant_nir(nir_shader *nir,
    /* There may be another program in the dynarray, start at the end */
    unsigned offset = binary->size;
 
-   ctx->sysval_to_id = sysval_to_id;
    ctx->inputs = inputs;
    ctx->nir = nir;
    ctx->stage = nir->info.stage;
@@ -5113,14 +5042,12 @@ static void
 bi_compile_variant(nir_shader *nir,
                    const struct panfrost_compile_inputs *inputs,
                    struct util_dynarray *binary,
-                   struct hash_table_u64 *sysval_to_id,
                    struct pan_shader_info *info, enum bi_idvs_mode idvs)
 {
    struct bi_shader_info local_info = {
       .push = &info->push,
       .bifrost = &info->bifrost,
       .tls_size = info->tls_size,
-      .sysvals = &info->sysvals,
       .push_offset = info->push.count,
    };
 
@@ -5138,8 +5065,8 @@ bi_compile_variant(nir_shader *nir,
     * offset, to keep the ABI simple. */
    assert((offset == 0) ^ (idvs == BI_IDVS_VARYING));
 
-   bi_context *ctx = bi_compile_variant_nir(nir, inputs, binary, sysval_to_id,
-                                            local_info, idvs);
+   bi_context *ctx =
+      bi_compile_variant_nir(nir, inputs, binary, local_info, idvs);
 
    /* A register is preloaded <==> it is live before the first block */
    bi_block *first_block = list_first_entry(&ctx->blocks, bi_block, link);
@@ -5233,21 +5160,16 @@ bifrost_compile_shader_nir(nir_shader *nir,
 
    bi_optimize_nir(nir, inputs->gpu_id, inputs->is_blend);
 
-   struct hash_table_u64 *sysval_to_id =
-      panfrost_init_sysvals(&info->sysvals, inputs->fixed_sysval_layout, NULL);
-
    info->tls_size = nir->scratch_size;
    info->vs.idvs = bi_should_idvs(nir, inputs);
 
    pan_nir_collect_varyings(nir, info);
 
    if (info->vs.idvs) {
-      bi_compile_variant(nir, inputs, binary, sysval_to_id, info,
-                         BI_IDVS_POSITION);
-      bi_compile_variant(nir, inputs, binary, sysval_to_id, info,
-                         BI_IDVS_VARYING);
+      bi_compile_variant(nir, inputs, binary, info, BI_IDVS_POSITION);
+      bi_compile_variant(nir, inputs, binary, info, BI_IDVS_VARYING);
    } else {
-      bi_compile_variant(nir, inputs, binary, sysval_to_id, info, BI_IDVS_NONE);
+      bi_compile_variant(nir, inputs, binary, info, BI_IDVS_NONE);
    }
 
    if (gl_shader_stage_is_compute(nir->info.stage)) {
@@ -5262,6 +5184,4 @@ bifrost_compile_shader_nir(nir_shader *nir,
    }
 
    info->ubo_mask &= (1 << nir->info.num_ubos) - 1;
-
-   _mesa_hash_table_u64_destroy(sysval_to_id);
 }

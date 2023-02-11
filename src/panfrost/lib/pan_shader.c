@@ -206,14 +206,9 @@ GENX(pan_shader_compile)(nir_shader *s, struct panfrost_compile_inputs *inputs,
    }
 
    info->outputs_written = s->info.outputs_written;
-
-   /* Sysvals have dedicated UBO */
-   info->ubo_count = s->info.num_ubos;
-   if (info->sysvals.sysval_count && inputs->fixed_sysval_ubo < 0)
-      info->ubo_count++;
-
    info->attribute_count += BITSET_LAST_BIT(s->info.images_used);
    info->writes_global = s->info.writes_memory;
+   info->ubo_count = s->info.num_ubos;
 
    info->sampler_count = info->texture_count =
       BITSET_LAST_BIT(s->info.textures_used);

@@ -1559,29 +1559,6 @@ emit_attr_read(compiler_context *ctx, unsigned dest, unsigned offset,
    emit_mir_instruction(ctx, ins);
 }
 
-static void
-emit_sysval_read(compiler_context *ctx, nir_instr *instr,
-                 unsigned nr_components, unsigned offset)
-{
-   nir_dest nir_dest;
-
-   /* Figure out which uniform this is */
-   unsigned sysval_ubo = ctx->inputs->fixed_sysval_ubo >= 0
-                            ? ctx->inputs->fixed_sysval_ubo
-                            : ctx->nir->info.num_ubos;
-   int sysval = panfrost_sysval_for_instr(instr, &nir_dest);
-   unsigned dest = nir_dest_index(&nir_dest);
-   unsigned uniform =
-      pan_lookup_sysval(ctx->sysval_to_id, &ctx->info->sysvals, sysval);
-
-   /* Emit the read itself -- this is never indirect */
-   midgard_instruction *ins =
-      emit_ubo_read(ctx, instr, dest, (uniform * 16) + offset, NULL, 0,
-                    sysval_ubo, nr_components);
-
-   ins->mask = mask_of(nr_components);
-}
-
 static unsigned
 compute_builtin_arg(nir_intrinsic_op op)
 {
@@ -1769,12 +1746,6 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
    case nir_intrinsic_image_store:
       emit_image_op(ctx, instr, false);
       break;
-
-   case nir_intrinsic_image_size: {
-      unsigned nr_comp = nir_intrinsic_dest_components(instr);
-      emit_sysval_read(ctx, &instr->instr, nr_comp, 0);
-      break;
-   }
 
    case nir_intrinsic_load_ubo:
    case nir_intrinsic_load_global:
@@ -2072,42 +2043,6 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
          seg = LDST_SCRATCH;
 
       emit_global(ctx, &instr->instr, false, reg, &instr->src[1], seg);
-      break;
-
-   case nir_intrinsic_load_ssbo_address:
-   case nir_intrinsic_load_xfb_address:
-      emit_sysval_read(ctx, &instr->instr, 2, 0);
-      break;
-
-   case nir_intrinsic_load_first_vertex:
-   case nir_intrinsic_load_work_dim:
-   case nir_intrinsic_load_num_vertices:
-      emit_sysval_read(ctx, &instr->instr, 1, 0);
-      break;
-
-   case nir_intrinsic_load_base_vertex:
-      emit_sysval_read(ctx, &instr->instr, 1, 4);
-      break;
-
-   case nir_intrinsic_load_base_instance:
-   case nir_intrinsic_get_ssbo_size:
-      emit_sysval_read(ctx, &instr->instr, 1, 8);
-      break;
-
-   case nir_intrinsic_load_sample_positions_pan:
-      emit_sysval_read(ctx, &instr->instr, 2, 0);
-      break;
-
-   case nir_intrinsic_load_viewport_scale:
-   case nir_intrinsic_load_viewport_offset:
-   case nir_intrinsic_load_num_workgroups:
-   case nir_intrinsic_load_sampler_lod_parameters_pan:
-   case nir_intrinsic_load_workgroup_size:
-      emit_sysval_read(ctx, &instr->instr, 3, 0);
-      break;
-
-   case nir_intrinsic_load_blend_const_color_rgba:
-      emit_sysval_read(ctx, &instr->instr, 4, 0);
       break;
 
    case nir_intrinsic_load_workgroup_id:
@@ -2501,9 +2436,6 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
    case nir_texop_txf:
    case nir_texop_txf_ms:
       emit_texop_native(ctx, instr, midgard_tex_op_fetch);
-      break;
-   case nir_texop_txs:
-      emit_sysval_read(ctx, &instr->instr, 4, 0);
       break;
    default: {
       fprintf(stderr, "Unhandled texture op: %d\n", instr->op);
@@ -3135,8 +3067,6 @@ midgard_compile_shader_nir(nir_shader *nir,
 
    /* TODO: Bound against what? */
    compiler_context *ctx = rzalloc(NULL, compiler_context);
-   ctx->sysval_to_id =
-      panfrost_init_sysvals(&info->sysvals, inputs->fixed_sysval_layout, ctx);
 
    ctx->inputs = inputs;
    ctx->nir = nir;
@@ -3350,7 +3280,5 @@ midgard_compile_shader_nir(nir_shader *nir,
    }
 
    _mesa_hash_table_u64_destroy(ctx->ssa_constants);
-   _mesa_hash_table_u64_destroy(ctx->sysval_to_id);
-
    ralloc_free(ctx);
 }

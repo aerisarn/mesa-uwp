@@ -123,7 +123,6 @@ pan_indirect_dispatch_init(struct panfrost_device *dev)
 
    struct panfrost_compile_inputs inputs = {
       .gpu_id = dev->gpu_id,
-      .fixed_sysval_ubo = -1,
       .no_ubo_to_push = true,
    };
    struct pan_shader_info shader_info;

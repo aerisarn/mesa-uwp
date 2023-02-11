@@ -160,15 +160,6 @@ struct panfrost_ubo_push {
 unsigned pan_lookup_pushed_ubo(struct panfrost_ubo_push *push, unsigned ubo,
                                unsigned offs);
 
-struct hash_table_u64 *
-panfrost_init_sysvals(struct panfrost_sysvals *sysvals,
-                      struct panfrost_sysvals *fixed_sysvals, void *memctx);
-
-unsigned pan_lookup_sysval(struct hash_table_u64 *sysval_to_id,
-                           struct panfrost_sysvals *sysvals, int sysval);
-
-int panfrost_sysval_for_instr(nir_instr *instr, nir_dest *dest);
-
 struct panfrost_compile_inputs {
    struct util_debug_callback *debug;
 
@@ -178,8 +169,6 @@ struct panfrost_compile_inputs {
       unsigned nr_samples;
       uint64_t bifrost_blend_desc;
    } blend;
-   int fixed_sysval_ubo;
-   struct panfrost_sysvals *fixed_sysval_layout;
    bool no_idvs;
    bool no_ubo_to_push;
 

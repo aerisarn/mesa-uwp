@@ -868,7 +868,6 @@ GENX(pan_blend_get_shader_locked)(const struct panfrost_device *dev,
       .gpu_id = dev->gpu_id,
       .is_blend = true,
       .blend.nr_samples = key.nr_samples,
-      .fixed_sysval_ubo = -1,
    };
 
    enum pipe_format rt_formats[8] = {0};

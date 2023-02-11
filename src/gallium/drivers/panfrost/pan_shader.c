@@ -89,7 +89,6 @@ panfrost_shader_compile(struct panfrost_screen *screen, const nir_shader *ir,
    struct panfrost_compile_inputs inputs = {
       .debug = dbg,
       .gpu_id = dev->gpu_id,
-      .fixed_sysval_ubo = -1,
    };
 
    /* Lower this early so the backends don't have to worry about it */
@@ -134,7 +133,11 @@ panfrost_shader_compile(struct panfrost_screen *screen, const nir_shader *ir,
                  dev->gpu_id < 0x700);
    }
 
+   struct panfrost_sysvals sysvals = {0};
+   NIR_PASS_V(s, panfrost_nir_lower_sysvals, &sysvals);
+
    screen->vtbl.compile_shader(s, &inputs, &out->binary, &out->info);
+   out->info.sysvals = sysvals;
 
    assert(req_local_mem >= out->info.wls_size);
    out->info.wls_size = req_local_mem;
