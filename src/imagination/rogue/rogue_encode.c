@@ -295,6 +295,18 @@ static void rogue_encode_backend_instr(const rogue_backend_instr *backend,
                                        rogue_instr_encoding *instr_encoding)
 {
    switch (backend->op) {
+   case ROGUE_BACKEND_OP_FITR_PIXEL:
+      instr_encoding->backend.op = BACKENDOP_FITR;
+      instr_encoding->backend.fitr.p = 0;
+      instr_encoding->backend.fitr.drc =
+         rogue_ref_get_drc_index(&backend->src[0].ref);
+      instr_encoding->backend.fitr.mode = FITR_MODE_PIXEL;
+      instr_encoding->backend.fitr.sat =
+         rogue_backend_op_mod_is_set(backend, OM(SAT));
+      instr_encoding->backend.fitr.count =
+         rogue_ref_get_val(&backend->src[2].ref);
+      break;
+
    case ROGUE_BACKEND_OP_FITRP_PIXEL:
       instr_encoding->backend.op = BACKENDOP_FITR;
       instr_encoding->backend.fitr.p = 1;

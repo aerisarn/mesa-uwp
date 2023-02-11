@@ -566,6 +566,7 @@ static void rogue_calc_backend_instrs_size(rogue_instr_group *group,
                                            enum rogue_instr_phase phase)
 {
    switch (backend->op) {
+   case ROGUE_BACKEND_OP_FITR_PIXEL:
    case ROGUE_BACKEND_OP_FITRP_PIXEL:
       group->size.instrs[phase] = 2;
       break;
