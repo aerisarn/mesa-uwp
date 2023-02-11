@@ -121,6 +121,7 @@ struct fd6_context {
 
    uint16_t tex_seqno;
    struct hash_table *tex_cache;
+   bool tex_cache_needs_invalidate;
 
    /**
     * Descriptor sets for 3d shader stages

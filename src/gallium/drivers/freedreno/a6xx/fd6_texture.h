@@ -131,6 +131,7 @@ struct fd6_texture_state {
    struct pipe_reference reference;
    struct fd6_texture_key key;
    struct fd_ringbuffer *stateobj;
+   bool invalidate;
 };
 
 struct fd6_texture_state *
