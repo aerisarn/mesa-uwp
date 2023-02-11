@@ -51,11 +51,7 @@
 #include "fd6_texture.h"
 #include "fd6_zsa.h"
 
-/* Helper to get tex stateobj.  Because resource rebind on other
- * contexts can race with us and cause the texture state to be
- * destroyed, a bit of extra care is needed to ensure we own the
- * state reference before dropping the tex reference.  This helper
- * handles that.
+/* Helper to get tex stateobj.
  */
 static struct fd_ringbuffer *
 tex_state(struct fd_context *ctx, enum pipe_shader_type type)
@@ -64,12 +60,7 @@ tex_state(struct fd_context *ctx, enum pipe_shader_type type)
    if (ctx->tex[type].num_textures == 0)
       return NULL;
 
-   struct fd6_texture_state *tex = fd6_texture_state(ctx, type, &ctx->tex[type]);
-   struct fd_ringbuffer *state = fd_ringbuffer_ref(tex->stateobj);
-
-   fd6_texture_state_reference(&tex, NULL);
-
-   return state;
+   return fd_ringbuffer_ref(fd6_texture_state(ctx, type, &ctx->tex[type])->stateobj);
 }
 
 static struct fd_ringbuffer *

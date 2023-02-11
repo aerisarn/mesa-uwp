@@ -40,12 +40,14 @@
 #include "fd6_screen.h"
 #include "fd6_texture.h"
 
+static void fd6_texture_state_destroy(struct fd6_texture_state *state);
+
 static void
 remove_tex_entry(struct fd6_context *fd6_ctx, struct hash_entry *entry)
 {
    struct fd6_texture_state *tex = entry->data;
    _mesa_hash_table_remove(fd6_ctx->tex_cache, entry);
-   fd6_texture_state_reference(&tex, NULL);
+   fd6_texture_state_destroy(tex);
 }
 
 static enum a6xx_tex_clamp
@@ -734,14 +736,12 @@ fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type,
       _mesa_hash_table_search_pre_hashed(fd6_ctx->tex_cache, hash, &key);
 
    if (entry) {
-      fd6_texture_state_reference(&state, entry->data);
+      state = entry->data;
       goto out_unlock;
    }
 
    state = CALLOC_STRUCT(fd6_texture_state);
 
-   /* NOTE: one ref for tex_cache, and second ref for returned state: */
-   pipe_reference_init(&state->reference, 2);
    state->key = key;
    state->stateobj = fd_ringbuffer_new_object(ctx->pipe, 32 * 4);
 
@@ -758,14 +758,8 @@ out_unlock:
    return state;
 }
 
-void
-__fd6_texture_state_describe(char *buf, const struct fd6_texture_state *tex)
-{
-   sprintf(buf, "fd6_texture_state<%p>", tex);
-}
-
-void
-__fd6_texture_state_destroy(struct fd6_texture_state *state)
+static void
+fd6_texture_state_destroy(struct fd6_texture_state *state)
 {
    fd_ringbuffer_del(state->stateobj);
    free(state);
