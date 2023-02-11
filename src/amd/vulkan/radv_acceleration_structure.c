@@ -96,8 +96,6 @@ struct scratch_layout {
    uint32_t ir_offset;
 };
 
-static VkResult radv_device_init_accel_struct_build_state(struct radv_device *device);
-
 static struct build_config
 build_config(uint32_t leaf_count, const VkAccelerationStructureBuildGeometryInfoKHR *build_info)
 {
@@ -562,7 +560,7 @@ radv_device_init_null_accel_struct(struct radv_device *device)
    return VK_SUCCESS;
 }
 
-static VkResult
+VkResult
 radv_device_init_accel_struct_build_state(struct radv_device *device)
 {
    VkResult result = VK_SUCCESS;
