@@ -285,6 +285,7 @@ struct fd_batch_key *fd_batch_key_clone(void *mem_ctx,
 
 /* not called directly: */
 void __fd_batch_describe(char *buf, const struct fd_batch *batch) assert_dt;
+void __fd_batch_destroy_locked(struct fd_batch *batch);
 void __fd_batch_destroy(struct fd_batch *batch);
 
 /*
@@ -314,7 +315,7 @@ fd_batch_reference_locked(struct fd_batch **ptr, struct fd_batch *batch)
    if (pipe_reference_described(
           &(*ptr)->reference, &batch->reference,
           (debug_reference_descriptor)__fd_batch_describe))
-      __fd_batch_destroy(old_batch);
+      __fd_batch_destroy_locked(old_batch);
 
    *ptr = batch;
 }
@@ -323,15 +324,13 @@ static inline void
 fd_batch_reference(struct fd_batch **ptr, struct fd_batch *batch)
 {
    struct fd_batch *old_batch = *ptr;
-   struct fd_context *ctx = old_batch ? old_batch->ctx : NULL;
 
-   if (ctx)
-      fd_screen_lock(ctx->screen);
+   if (pipe_reference_described(
+          &(*ptr)->reference, &batch->reference,
+          (debug_reference_descriptor)__fd_batch_describe))
+      __fd_batch_destroy(old_batch);
 
-   fd_batch_reference_locked(ptr, batch);
-
-   if (ctx)
-      fd_screen_unlock(ctx->screen);
+   *ptr = batch;
 }
 
 static inline void

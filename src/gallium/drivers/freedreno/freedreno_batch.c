@@ -291,7 +291,7 @@ fd_batch_reset(struct fd_batch *batch)
 }
 
 void
-__fd_batch_destroy(struct fd_batch *batch)
+__fd_batch_destroy_locked(struct fd_batch *batch)
 {
    struct fd_context *ctx = batch->ctx;
 
@@ -317,6 +317,15 @@ __fd_batch_destroy(struct fd_batch *batch)
    free(batch->key);
    free(batch);
    fd_screen_lock(ctx->screen);
+}
+
+void
+__fd_batch_destroy(struct fd_batch *batch)
+{
+   struct fd_screen *screen = batch->ctx->screen;
+   fd_screen_lock(screen);
+   __fd_batch_destroy_locked(batch);
+   fd_screen_unlock(screen);
 }
 
 void
