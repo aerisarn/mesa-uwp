@@ -107,16 +107,15 @@ build_vbo_state(struct fd6_emit *emit) assert_dt
 static enum a6xx_ztest_mode
 compute_ztest_mode(struct fd6_emit *emit, bool lrz_valid) assert_dt
 {
+   if (emit->prog->lrz_mask.z_mode != A6XX_INVALID_ZTEST)
+      return emit->prog->lrz_mask.z_mode;
+
    struct fd_context *ctx = emit->ctx;
    struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
    struct fd6_zsa_stateobj *zsa = fd6_zsa_stateobj(ctx->zsa);
    const struct ir3_shader_variant *fs = emit->fs;
 
-   if (fs->fs.early_fragment_tests)
-      return A6XX_EARLY_Z;
-
-   if (fs->no_earlyz || fs->writes_pos || !zsa->base.depth_enabled ||
-       fs->writes_stencilref) {
+   if (!zsa->base.depth_enabled) {
       return A6XX_LATE_Z;
    } else if ((fs->has_kill || zsa->alpha_test) &&
               (zsa->writes_zs || !pfb->zsbuf)) {
@@ -142,7 +141,6 @@ compute_lrz_state(struct fd6_emit *emit) assert_dt
 {
    struct fd_context *ctx = emit->ctx;
    struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
-   const struct ir3_shader_variant *fs = emit->fs;
    struct fd6_lrz_state lrz;
 
    if (!pfb->zsbuf) {
@@ -158,9 +156,10 @@ compute_lrz_state(struct fd6_emit *emit) assert_dt
 
    lrz = zsa->lrz;
 
+   lrz.val &= emit->prog->lrz_mask.val;
+
    /* normalize lrz state: */
-   if (reads_dest || fs->writes_pos || fs->no_earlyz || fs->has_kill ||
-       blend->base.alpha_to_coverage) {
+   if (reads_dest || blend->base.alpha_to_coverage) {
       lrz.write = false;
    }
 
@@ -222,12 +221,6 @@ compute_lrz_state(struct fd6_emit *emit) assert_dt
       memset(&lrz, 0, sizeof(lrz));
    }
 
-   if (fs->no_earlyz || fs->writes_pos) {
-      lrz.enable = false;
-      lrz.write = false;
-      lrz.test = false;
-   }
-
    lrz.z_mode = compute_ztest_mode(emit, rsc->lrz_valid);
 
    /* Once we start writing to the real depth buffer, we lock in the
@@ -255,8 +248,7 @@ build_lrz(struct fd6_emit *emit) assert_dt
    struct fd6_lrz_state lrz = compute_lrz_state(emit);
 
    /* If the LRZ state has not changed, we can skip the emit: */
-   if (!ctx->last.dirty &&
-       !memcmp(&fd6_ctx->last.lrz, &lrz, sizeof(lrz)))
+   if (!ctx->last.dirty && (fd6_ctx->last.lrz.val == lrz.val))
       return NULL;
 
    fd6_ctx->last.lrz = lrz;

@@ -75,6 +75,11 @@ struct fd6_program_state {
     * calculate it up-front.
     */
    uint32_t user_consts_cmdstream_size;
+
+   /**
+    * The FS contribution to LRZ state
+    */
+   struct fd6_lrz_state lrz_mask;
 };
 
 static inline struct fd6_program_state *

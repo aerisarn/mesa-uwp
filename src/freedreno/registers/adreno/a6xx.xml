@@ -954,6 +954,8 @@ to upconvert to 32b float internally?
 		know will definitely not be visible.
 	</doc>
 	<value value="0x2" name="A6XX_EARLY_LRZ_LATE_Z"/>
+	<doc>Not a real hw value, used internally by mesa</doc>
+	<value value="0x3" name="A6XX_INVALID_ZTEST"/>
 </enum>
 
 <domain name="A6XX" width="32">

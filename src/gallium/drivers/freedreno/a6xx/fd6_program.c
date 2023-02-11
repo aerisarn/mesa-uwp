@@ -1366,6 +1366,27 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
 
    state->num_driver_params = num_dp;
 
+   state->lrz_mask.val = ~0;
+
+   if (fs->has_kill) {
+      state->lrz_mask.write = false;
+   }
+
+   if (fs->no_earlyz || fs->writes_pos) {
+      state->lrz_mask.enable = false;
+      state->lrz_mask.write = false;
+      state->lrz_mask.test = false;
+   }
+
+   if (fs->fs.early_fragment_tests) {
+      state->lrz_mask.z_mode = A6XX_EARLY_Z;
+   } else if (fs->no_earlyz || fs->writes_pos || fs->writes_stencilref) {
+      state->lrz_mask.z_mode = A6XX_LATE_Z;
+   } else {
+      /* Wildcard indicates that we need to figure out at draw time: */
+      state->lrz_mask.z_mode = A6XX_INVALID_ZTEST;
+   }
+
    return &state->base;
 }
 

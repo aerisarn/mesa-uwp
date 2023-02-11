@@ -39,13 +39,18 @@
 #include "a6xx.xml.h"
 
 struct fd6_lrz_state {
-   bool enable : 1;
-   bool write : 1;
-   bool test : 1;
-   enum fd_lrz_direction direction : 2;
+   union {
+      struct {
+         bool enable : 1;
+         bool write : 1;
+         bool test : 1;
+         enum fd_lrz_direction direction : 2;
 
-   /* this comes from the fs program state, rather than zsa: */
-   enum a6xx_ztest_mode z_mode : 2;
+         /* this comes from the fs program state, rather than zsa: */
+         enum a6xx_ztest_mode z_mode : 2;
+      };
+      uint32_t val : 7;
+   };
 };
 
 /**
