@@ -317,8 +317,8 @@ fd6_sampler_state_delete(struct pipe_context *pctx, void *hwcso)
    hash_table_foreach (fd6_ctx->tex_cache, entry) {
       struct fd6_texture_state *state = entry->data;
 
-      for (unsigned i = 0; i < ARRAY_SIZE(state->key.samp); i++) {
-         if (samp->seqno == state->key.samp[i].seqno) {
+      for (unsigned i = 0; i < ARRAY_SIZE(state->key.samp_seqno); i++) {
+         if (samp->seqno == state->key.samp_seqno[i]) {
             remove_tex_entry(fd6_ctx, entry);
             break;
          }
@@ -479,8 +479,8 @@ fd6_sampler_view_destroy(struct pipe_context *pctx,
    hash_table_foreach (fd6_ctx->tex_cache, entry) {
       struct fd6_texture_state *state = entry->data;
 
-      for (unsigned i = 0; i < ARRAY_SIZE(state->key.view); i++) {
-         if (view->seqno == state->key.view[i].seqno) {
+      for (unsigned i = 0; i < ARRAY_SIZE(state->key.view_seqno); i++) {
+         if (view->seqno == state->key.view_seqno[i]) {
             remove_tex_entry(fd6_ctx, entry);
             break;
          }
@@ -705,13 +705,7 @@ fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type,
       struct fd6_pipe_sampler_view *view =
          fd6_pipe_sampler_view(tex->textures[i]);
 
-      /* NOTE that if the backing rsc was uncompressed between the
-       * time that the CSO was originally created and now, the rsc
-       * seqno would have changed, so we don't have to worry about
-       * getting a bogus cache hit.
-       */
-      key.view[i].rsc_seqno = fd_resource(view->base.texture)->seqno;
-      key.view[i].seqno = view->seqno;
+      key.view_seqno[i] = view->seqno;
    }
 
    for (unsigned i = 0; i < tex->num_samplers; i++) {
@@ -721,7 +715,7 @@ fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type,
       struct fd6_sampler_stateobj *sampler =
          fd6_sampler_stateobj(tex->samplers[i]);
 
-      key.samp[i].seqno = sampler->seqno;
+      key.samp_seqno[i] = sampler->seqno;
    }
 
    key.type = type;
@@ -737,10 +731,23 @@ fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type,
 
    if (entry) {
       state = entry->data;
+      for (unsigned i = 0; i < tex->num_textures; i++) {
+         uint16_t seqno = tex->textures[i] ?
+               fd_resource(tex->textures[i]->texture)->seqno : 0;
+
+         assert(state->view_rsc_seqno[i] == seqno);
+      }
       goto out_unlock;
    }
 
    state = CALLOC_STRUCT(fd6_texture_state);
+
+   for (unsigned i = 0; i < tex->num_textures; i++) {
+      if (!tex->textures[i])
+         continue;
+
+      state->view_rsc_seqno[i] = fd_resource(tex->textures[i]->texture)->seqno;
+   }
 
    state->key = key;
    state->stateobj = fd_ringbuffer_new_object(ctx->pipe, 32 * 4);
@@ -778,8 +785,10 @@ fd6_rebind_resource(struct fd_context *ctx, struct fd_resource *rsc) assert_dt
    hash_table_foreach (fd6_ctx->tex_cache, entry) {
       struct fd6_texture_state *state = entry->data;
 
-      for (unsigned i = 0; i < ARRAY_SIZE(state->key.view); i++) {
-         if (rsc->seqno == state->key.view[i].rsc_seqno) {
+      STATIC_ASSERT(ARRAY_SIZE(state->view_rsc_seqno) == ARRAY_SIZE(state->key.view_seqno));
+
+      for (unsigned i = 0; i < ARRAY_SIZE(state->view_rsc_seqno); i++) {
+         if (rsc->seqno == state->view_rsc_seqno[i]) {
             struct fd6_texture_state *tex = entry->data;
             tex->invalidate = true;
             fd6_ctx->tex_cache_needs_invalidate = true;
