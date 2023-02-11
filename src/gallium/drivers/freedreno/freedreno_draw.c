@@ -132,15 +132,6 @@ batch_draw_tracking_for_dirty_bits(struct fd_batch *batch) assert_dt
       }
    }
 
-   if (ctx->dirty & FD_DIRTY_BLEND) {
-      if (ctx->blend->logicop_enable)
-         batch->gmem_reason |= FD_GMEM_LOGICOP_ENABLED;
-      for (unsigned i = 0; i < pfb->nr_cbufs; i++) {
-         if (ctx->blend->rt[i].blend_enable)
-            batch->gmem_reason |= FD_GMEM_BLEND_ENABLED;
-      }
-   }
-
    u_foreach_bit (s, ctx->bound_shader_stages) {
       /* Mark constbuf as being read: */
       if (ctx->dirty_shader[s] & FD_DIRTY_SHADER_CONST) {

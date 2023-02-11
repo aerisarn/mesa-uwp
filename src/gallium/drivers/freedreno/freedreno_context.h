@@ -601,7 +601,7 @@ fd_stream_output_target(struct pipe_stream_output_target *target)
 static inline bool
 fd_context_dirty_resource(enum fd_dirty_3d_state dirty)
 {
-   return dirty & (FD_DIRTY_FRAMEBUFFER | FD_DIRTY_ZSA | FD_DIRTY_BLEND |
+   return dirty & (FD_DIRTY_FRAMEBUFFER | FD_DIRTY_ZSA |
                    FD_DIRTY_SSBO | FD_DIRTY_IMAGE | FD_DIRTY_VTXBUF |
                    FD_DIRTY_TEX | FD_DIRTY_STREAMOUT | FD_DIRTY_QUERY);
 }

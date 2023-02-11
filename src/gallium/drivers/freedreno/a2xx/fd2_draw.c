@@ -176,6 +176,8 @@ fd2_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *pinfo,
    if (ctx->dirty & FD_DIRTY_VTXBUF)
       emit_vertexbufs(ctx);
 
+   fd_blend_tracking(ctx);
+
    if (fd_binning_enabled)
       fd2_emit_state_binning(ctx, ctx->dirty);
 

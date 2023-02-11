@@ -105,6 +105,8 @@ fd5_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
    if (!emit.prog)
       return false;
 
+   fd_blend_tracking(ctx);
+
    const struct ir3_shader_variant *vp = fd5_emit_get_vp(&emit);
    const struct ir3_shader_variant *fp = fd5_emit_get_fp(&emit);
 
