@@ -139,8 +139,8 @@ struct fd_screen {
 
    bool reorder;
 
-   uint16_t rsc_seqno;
-   uint16_t ctx_seqno;
+   seqno_t rsc_seqno;
+   seqno_t ctx_seqno;
    struct util_idalloc_mt buffer_ids;
 
    unsigned num_supported_modifiers;

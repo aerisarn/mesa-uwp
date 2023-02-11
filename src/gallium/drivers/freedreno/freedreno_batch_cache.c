@@ -430,7 +430,7 @@ alloc_batch_locked(struct fd_batch_cache *cache, struct fd_context *ctx,
    if (!batch)
       return NULL;
 
-   batch->seqno = cache->cnt++;
+   batch->seqno = seqno_next(&cache->cnt);
    batch->idx = idx;
    cache->batch_mask |= (1 << idx);
 

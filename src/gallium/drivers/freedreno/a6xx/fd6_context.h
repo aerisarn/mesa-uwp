@@ -124,7 +124,7 @@ struct fd6_context {
    struct hash_table *bcolor_cache;
    struct fd_bo *bcolor_mem;
 
-   uint16_t tex_seqno;
+   seqno_t tex_seqno;
    struct hash_table *tex_cache;
    bool tex_cache_needs_invalidate;
 

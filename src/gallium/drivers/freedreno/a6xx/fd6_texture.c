@@ -263,7 +263,7 @@ fd6_sampler_state_create(struct pipe_context *pctx,
       return NULL;
 
    so->base = *cso;
-   so->seqno = ++fd6_context(ctx)->tex_seqno;
+   so->seqno = seqno_next_u16(&fd6_context(ctx)->tex_seqno);
 
    if (cso->min_mip_filter == PIPE_TEX_MIPFILTER_LINEAR)
       miplinear = true;
@@ -395,7 +395,7 @@ fd6_sampler_view_update(struct fd_context *ctx,
       format = rsc->b.b.format;
    }
 
-   so->seqno = ++fd6_context(ctx)->tex_seqno;
+   so->seqno = seqno_next_u16(&fd6_context(ctx)->tex_seqno);
    so->ptr1 = rsc;
    so->rsc_seqno = rsc->seqno;
 

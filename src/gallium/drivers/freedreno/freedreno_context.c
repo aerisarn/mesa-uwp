@@ -705,7 +705,7 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
    list_inithead(&ctx->acc_active_queries);
 
    fd_screen_lock(ctx->screen);
-   ctx->seqno = ++screen->ctx_seqno;
+   ctx->seqno = seqno_next_u16(&screen->ctx_seqno);
    list_add(&ctx->node, &ctx->screen->context_list);
    fd_screen_unlock(ctx->screen);
 
