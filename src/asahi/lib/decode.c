@@ -653,10 +653,11 @@ agxdecode_vdm(const uint8_t *map, uint64_t *link, bool verbose,
       IDX_PRINT(index_count, COUNT, "Index count");
       IDX_PRINT(instance_count, INSTANCES, "Instance count");
       IDX_PRINT(start, START, "Start");
+      IDX_PRINT(indirect_buffer, INDIRECT_BUFFER, "Indirect buffer");
       IDX_PRINT(index_buffer_size, BUFFER_SIZE, "Index buffer size");
 
 #undef IDX_PRINT
-      return ALIGN_POT(length, 8);
+      return length;
    }
 
    case AGX_VDM_BLOCK_TYPE_STREAM_LINK: {

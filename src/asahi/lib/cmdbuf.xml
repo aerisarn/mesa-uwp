@@ -735,6 +735,7 @@
     <field name="Index count present" size="1" start="22" type="bool" default="true"/>
     <field name="Instance count present" size="1" start="23" type="bool" default="true"/>
     <field name="Start present" size="1" start="24" type="bool" default="true"/>
+    <field name="Indirect buffer present" size="1" start="26" type="bool"/>
 
     <field name="Block Type" size="3" start="29" type="VDM Block Type" default="Index List"/>
   </struct>
@@ -760,6 +761,11 @@
 
   <struct name="Index List: Buffer size" size="4">
     <field name="Size" size="32" start="0" type="uint" modifier="shr(2)"/>
+  </struct>
+
+  <struct name="Index List: Indirect buffer" size="8">
+    <field name="Address hi" size="8" start="0" type="hex"/>
+    <field name="Address lo" size="32" start="32" type="hex"/>
   </struct>
 
   <!-- Conditional branching and function calls may be supported, see the
