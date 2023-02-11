@@ -1304,14 +1304,14 @@ static void rogue_encode_instr_group(rogue_instr_group *group,
 }
 
 PUBLIC
-void rogue_encode_shader(UNUSED rogue_build_ctx *ctx,
+void rogue_encode_shader(rogue_build_ctx *ctx,
                          rogue_shader *shader,
                          struct util_dynarray *binary)
 {
    if (!shader->is_grouped)
       unreachable("Can't encode shader with ungrouped instructions.");
 
-   util_dynarray_init(binary, shader);
+   util_dynarray_init(binary, ctx);
 
    rogue_foreach_instr_group_in_shader (group, shader)
       rogue_encode_instr_group(group, binary);

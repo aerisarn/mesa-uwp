@@ -67,6 +67,7 @@ pvr_files = files(
   'pvr_wsi.c',
 
   'usc/pvr_uscgen.c',
+  'usc/pvr_uscgen_tq.c',
 )
 
 pvr_includes = [

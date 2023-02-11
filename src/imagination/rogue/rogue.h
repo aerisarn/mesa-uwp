@@ -1887,6 +1887,8 @@ rogue_reg *rogue_const_reg(rogue_shader *shader, unsigned index);
 
 rogue_reg *rogue_pixout_reg(rogue_shader *shader, unsigned index);
 
+rogue_reg *rogue_special_reg(rogue_shader *shader, unsigned index);
+
 rogue_reg *rogue_vtxin_reg(rogue_shader *shader, unsigned index);
 
 rogue_reg *rogue_vtxout_reg(rogue_shader *shader, unsigned index);
@@ -1904,6 +1906,10 @@ rogue_temp_regarray(rogue_shader *shader, unsigned size, unsigned start_index);
 
 rogue_regarray *
 rogue_coeff_regarray(rogue_shader *shader, unsigned size, unsigned start_index);
+
+rogue_regarray *rogue_shared_regarray(rogue_shader *shader,
+                                      unsigned size,
+                                      unsigned start_index);
 
 rogue_regarray *rogue_ssa_vec_regarray(rogue_shader *shader,
                                        unsigned size,

@@ -581,7 +581,7 @@ const rogue_alu_op_info rogue_alu_op_infos[ROGUE_ALU_OP_COUNT] = {
       },
       .supported_dst_types = { [0] = T(REG) | T(REGARRAY) | T(IO), },
       .supported_src_types = {
-         [0] = T(REG),
+         [0] = T(REG) | T(REGARRAY),
       },
    },
    [ROGUE_ALU_OP_FADD] = { .str = "fadd", .num_dsts = 1, .num_srcs = 2,
@@ -685,7 +685,7 @@ const rogue_alu_op_info rogue_alu_op_infos[ROGUE_ALU_OP_COUNT] = {
    [ROGUE_ALU_OP_MOV] = { .str = "mov", .num_dsts = 1, .num_srcs = 1,
       .supported_dst_types = { [0] = T(REG) | T(REGARRAY), },
       .supported_src_types = {
-         [0] = T(REG) | T(IMM),
+         [0] = T(REG) | T(REGARRAY) | T(IMM),
       },
    },
    [ROGUE_ALU_OP_CMOV] = { .str = "cmov", .num_dsts = 1, .num_srcs = 3,

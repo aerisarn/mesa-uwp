@@ -682,11 +682,9 @@ static inline void rogue_feedback_used_regs(rogue_build_ctx *ctx,
 {
    /* TODO NEXT: Use this counting method elsewhere as well. */
    ctx->common_data[shader->stage].temps =
-      __bitset_count(shader->regs_used[ROGUE_REG_CLASS_TEMP],
-                     BITSET_WORDS(rogue_reg_infos[ROGUE_REG_CLASS_TEMP].num));
-   ctx->common_data[shader->stage].internals = __bitset_count(
-      shader->regs_used[ROGUE_REG_CLASS_INTERNAL],
-      BITSET_WORDS(rogue_reg_infos[ROGUE_REG_CLASS_INTERNAL].num));
+      rogue_count_used_regs(shader, ROGUE_REG_CLASS_TEMP);
+   ctx->common_data[shader->stage].internals =
+      rogue_count_used_regs(shader, ROGUE_REG_CLASS_INTERNAL);
 }
 
 static bool ssa_def_cb(nir_ssa_def *ssa, void *state)
