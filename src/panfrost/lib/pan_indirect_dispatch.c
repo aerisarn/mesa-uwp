@@ -136,7 +136,6 @@ pan_indirect_dispatch_init(struct panfrost_device *dev)
 
    assert(!shader_info.tls_size);
    assert(!shader_info.wls_size);
-   assert(!shader_info.sysvals.sysval_count);
 
    shader_info.push.count =
       DIV_ROUND_UP(sizeof(struct pan_indirect_dispatch_info), 4);

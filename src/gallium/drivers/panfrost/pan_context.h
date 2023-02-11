@@ -297,6 +297,7 @@ struct panfrost_compiled_shader {
    uint32_t partial_rsd[RSD_WORDS];
 
    struct pan_shader_info info;
+   struct panfrost_sysvals sysvals;
 
    struct pan_earlyzs_lut earlyzs;
 
@@ -353,6 +354,7 @@ struct panfrost_uncompiled_shader {
 struct panfrost_shader_binary {
    /* Collected information about the compiled shader */
    struct pan_shader_info info;
+   struct panfrost_sysvals sysvals;
 
    /* The binary itself */
    struct util_dynarray binary;

@@ -1314,8 +1314,8 @@ panfrost_upload_sysvals(struct panfrost_batch *batch, void *ptr_cpu,
 {
    struct sysval_uniform *uniforms = ptr_cpu;
 
-   for (unsigned i = 0; i < ss->info.sysvals.sysval_count; ++i) {
-      int sysval = ss->info.sysvals.sysvals[i];
+   for (unsigned i = 0; i < ss->sysvals.sysval_count; ++i) {
+      int sysval = ss->sysvals.sysvals[i];
 
       switch (PAN_SYSVAL_TYPE(sysval)) {
       case PAN_SYSVAL_VIEWPORT_SCALE:
@@ -1475,7 +1475,7 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
       return 0;
 
    /* Allocate room for the sysval and the uniforms */
-   size_t sys_size = sizeof(float) * 4 * ss->info.sysvals.sysval_count;
+   size_t sys_size = sizeof(float) * 4 * ss->sysvals.sysval_count;
    struct panfrost_ptr transfer =
       pan_pool_alloc_aligned(&batch->pool.base, sys_size, 16);
 
@@ -1538,7 +1538,7 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
          unsigned sysval_idx = src.offset / 16;
          unsigned sysval_comp = (src.offset % 16) / 4;
          unsigned sysval_type =
-            PAN_SYSVAL_TYPE(ss->info.sysvals.sysvals[sysval_idx]);
+            PAN_SYSVAL_TYPE(ss->sysvals.sysvals[sysval_idx]);
          mali_ptr ptr = push_transfer.gpu + (4 * i);
 
          if (sysval_type == PAN_SYSVAL_NUM_WORK_GROUPS)

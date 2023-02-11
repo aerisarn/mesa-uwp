@@ -242,7 +242,6 @@ panvk_pipeline_builder_init_sysvals(struct panvk_pipeline_builder *builder,
 {
    const struct panvk_shader *shader = builder->shaders[stage];
 
-   pipeline->sysvals[stage].ids = shader->info.sysvals;
    pipeline->sysvals[stage].ubo_idx = shader->sysval_ubo;
 }
 

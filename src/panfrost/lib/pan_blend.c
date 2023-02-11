@@ -891,9 +891,6 @@ GENX(pan_blend_get_shader_locked)(const struct panfrost_device *dev,
 
    GENX(pan_shader_compile)(nir, &inputs, &variant->binary, &info);
 
-   /* Blend shaders can't have sysvals */
-   assert(info.sysvals.sysval_count == 0);
-
    variant->work_reg_count = info.work_reg_count;
 
 #if PAN_ARCH <= 5

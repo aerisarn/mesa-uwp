@@ -348,8 +348,6 @@ struct pan_shader_info {
       struct pan_shader_varying output[PAN_MAX_VARYINGS];
    } varyings;
 
-   struct panfrost_sysvals sysvals;
-
    /* UBOs to push to Register Mapped Uniforms (Midgard) or Fast Access
     * Uniforms (Bifrost) */
    struct panfrost_ubo_push push;

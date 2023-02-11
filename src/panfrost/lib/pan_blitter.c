@@ -640,9 +640,6 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
 
    GENX(pan_shader_compile)(b.shader, &inputs, &binary, &shader->info);
 
-   /* Blit shaders shouldn't have sysvals */
-   assert(shader->info.sysvals.sysval_count == 0);
-
    shader->key = *key;
    shader->address =
       pan_pool_upload_aligned(dev->blitter.shaders.pool, binary.data,

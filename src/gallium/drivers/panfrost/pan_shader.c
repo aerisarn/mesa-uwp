@@ -133,11 +133,9 @@ panfrost_shader_compile(struct panfrost_screen *screen, const nir_shader *ir,
                  dev->gpu_id < 0x700);
    }
 
-   struct panfrost_sysvals sysvals = {0};
-   NIR_PASS_V(s, panfrost_nir_lower_sysvals, &sysvals);
+   NIR_PASS_V(s, panfrost_nir_lower_sysvals, &out->sysvals);
 
    screen->vtbl.compile_shader(s, &inputs, &out->binary, &out->info);
-   out->info.sysvals = sysvals;
 
    assert(req_local_mem >= out->info.wls_size);
    out->info.wls_size = req_local_mem;
@@ -176,6 +174,7 @@ panfrost_shader_get(struct pipe_screen *pscreen,
    }
 
    state->info = res.info;
+   state->sysvals = res.sysvals;
 
    if (res.binary.size) {
       state->bin = panfrost_pool_take_ref(
