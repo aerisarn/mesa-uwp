@@ -830,8 +830,6 @@ static bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shade
       break;
 
    case MESA_SHADER_FRAGMENT: {
-      si_llvm_init_ps_callbacks(ctx);
-
       unsigned colors_read = ctx->shader->selector->info.colors_read;
       LLVMValueRef main_fn = ctx->main_fn.value;
 

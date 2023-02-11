@@ -228,7 +228,6 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
                              bool separate_epilog);
 void si_llvm_build_monolithic_ps(struct si_shader_context *ctx, struct si_shader *shader);
 void si_llvm_ps_build_end(struct si_shader_context *ctx);
-void si_llvm_init_ps_callbacks(struct si_shader_context *ctx);
 
 /* si_shader_llvm_vs.c */
 void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part_key *key,

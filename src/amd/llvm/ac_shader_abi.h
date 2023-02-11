@@ -96,8 +96,6 @@ struct ac_shader_abi {
    LLVMValueRef (*load_sampler_desc)(struct ac_shader_abi *abi, LLVMValueRef index,
                                      enum ac_descriptor_type desc_type);
 
-   LLVMValueRef (*emit_fbfetch)(struct ac_shader_abi *abi);
-
    LLVMValueRef (*intrinsic_load)(struct ac_shader_abi *abi, nir_intrinsic_instr *intrin);
 
    /* Whether to clamp the shadow reference value to [0,1]on GFX8. Radeonsi currently

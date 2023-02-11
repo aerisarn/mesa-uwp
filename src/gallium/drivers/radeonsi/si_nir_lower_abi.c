@@ -107,6 +107,72 @@ static nir_ssa_def *build_attr_ring_desc(nir_builder *b, struct si_shader *shade
    return nir_vec(b, comp, 4);
 }
 
+static nir_ssa_def *
+fetch_framebuffer(nir_builder *b, struct si_shader_args *args,
+                  struct si_shader_selector *sel, union si_shader_key *key)
+{
+   /* Load the image descriptor. */
+   STATIC_ASSERT(SI_PS_IMAGE_COLORBUF0 % 2 == 0);
+   STATIC_ASSERT(SI_PS_IMAGE_COLORBUF0_FMASK % 2 == 0);
+
+   nir_ssa_def *zero = nir_imm_zero(b, 1, 32);
+   nir_ssa_def *undef = nir_ssa_undef(b, 1, 32);
+
+   unsigned chan = 0;
+   nir_ssa_def *vec[4] = {undef, undef, undef, undef};
+
+   vec[chan++] = ac_nir_unpack_arg(b, &args->ac, args->pos_fixed_pt, 0, 16);
+
+   if (!key->ps.mono.fbfetch_is_1D)
+      vec[chan++] = ac_nir_unpack_arg(b, &args->ac, args->pos_fixed_pt, 16, 16);
+
+   /* Get the current render target layer index. */
+   if (key->ps.mono.fbfetch_layered)
+      vec[chan++] = ac_nir_unpack_arg(b, &args->ac, args->ac.ancillary, 16, 11);
+
+   nir_ssa_def *coords = nir_vec(b, vec, 4);
+
+   enum glsl_sampler_dim dim;
+   if (key->ps.mono.fbfetch_msaa)
+      dim = GLSL_SAMPLER_DIM_MS;
+   else if (key->ps.mono.fbfetch_is_1D)
+      dim = GLSL_SAMPLER_DIM_1D;
+   else
+      dim = GLSL_SAMPLER_DIM_2D;
+
+   nir_ssa_def *sample_id;
+   if (key->ps.mono.fbfetch_msaa) {
+      sample_id = ac_nir_unpack_arg(b, &args->ac, args->ac.ancillary, 8, 4);
+
+      if (sel->screen->info.gfx_level < GFX11 &&
+          !(sel->screen->debug_flags & DBG(NO_FMASK))) {
+         nir_ssa_def *desc =
+            load_internal_binding(b, args, SI_PS_IMAGE_COLORBUF0_FMASK, 8);
+
+         nir_ssa_def *fmask =
+            nir_bindless_image_fragment_mask_load_amd(
+               b, desc, coords,
+               .image_dim = dim,
+               .image_array = key->ps.mono.fbfetch_layered,
+               .access = ACCESS_CAN_REORDER);
+
+         nir_ssa_def *offset = nir_ishl_imm(b, sample_id, 2);
+         /* 3 for EQAA handling, see lower_image_to_fragment_mask_load() */
+         nir_ssa_def *width = nir_imm_int(b, 3);
+         sample_id = nir_ubfe(b, fmask, offset, width);
+      }
+   } else {
+      sample_id = zero;
+   }
+
+   nir_ssa_def *desc = load_internal_binding(b, args, SI_PS_IMAGE_COLORBUF0, 8);
+
+   return nir_bindless_image_load(b, 4, 32, desc, coords, sample_id, zero,
+                                  .image_dim = dim,
+                                  .image_array = key->ps.mono.fbfetch_layered,
+                                  .access = ACCESS_CAN_REORDER);
+}
+
 static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_state *s)
 {
    if (instr->type != nir_instr_type_intrinsic)
@@ -353,6 +419,18 @@ static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_s
 
          replacement = nir_load_barycentric_at_offset(b, 32, sample_pos, .interp_mode = mode);
       }
+      break;
+   }
+   case nir_intrinsic_load_output: {
+      nir_io_semantics sem = nir_intrinsic_io_semantics(intrin);
+
+      /* not fbfetch */
+      if (!(stage == MESA_SHADER_FRAGMENT && sem.fb_fetch_output))
+         return false;
+
+      /* Ignore src0, because KHR_blend_func_extended disallows multiple render targets. */
+
+      replacement = fetch_framebuffer(b, args, sel, key);
       break;
    }
    default:
