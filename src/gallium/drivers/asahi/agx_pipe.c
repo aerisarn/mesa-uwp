@@ -1366,7 +1366,7 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAX_TEXTURE_GATHER_OFFSET:
       return is_deqp ? 7 : 0;
    case PIPE_CAP_DRAW_INDIRECT:
-      return is_deqp;
+      return true;
 
    case PIPE_CAP_VIDEO_MEMORY: {
       uint64_t system_memory;

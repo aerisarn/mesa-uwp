@@ -2505,9 +2505,14 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
    agx_pack(out, INDEX_LIST, cfg) {
       cfg.primitive = prim;
-      cfg.index_count_present = true;
       cfg.instance_count_present = true;
-      cfg.start_present = true;
+
+      if (indirect != NULL) {
+         cfg.indirect_buffer_present = true;
+      } else {
+         cfg.index_count_present = true;
+         cfg.start_present = true;
+      }
 
       if (idx_size) {
          cfg.restart_enable = info->primitive_restart;
@@ -2526,18 +2531,31 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       out += AGX_INDEX_LIST_BUFFER_LO_LENGTH;
    }
 
-   agx_pack(out, INDEX_LIST_COUNT, cfg)
-      cfg.count = draws->count;
-   out += AGX_INDEX_LIST_COUNT_LENGTH;
+   if (!indirect) {
+      agx_pack(out, INDEX_LIST_COUNT, cfg)
+         cfg.count = draws->count;
+      out += AGX_INDEX_LIST_COUNT_LENGTH;
+   }
 
    agx_pack(out, INDEX_LIST_INSTANCES, cfg)
       cfg.count = info->instance_count;
    out += AGX_INDEX_LIST_INSTANCES_LENGTH;
 
-   agx_pack(out, INDEX_LIST_START, cfg) {
-      cfg.start = idx_size ? draws->index_bias : draws->start;
+   if (indirect) {
+      struct agx_resource *indirect_rsrc = agx_resource(indirect->buffer);
+      uint64_t address = indirect_rsrc->bo->ptr.gpu + indirect->offset;
+
+      agx_pack(out, INDEX_LIST_INDIRECT_BUFFER, cfg) {
+         cfg.address_hi = address >> 32;
+         cfg.address_lo = address & BITFIELD_MASK(32);
+      }
+      out += AGX_INDEX_LIST_INDIRECT_BUFFER_LENGTH;
+   } else {
+      agx_pack(out, INDEX_LIST_START, cfg) {
+         cfg.start = idx_size ? draws->index_bias : draws->start;
+      }
+      out += AGX_INDEX_LIST_START_LENGTH;
    }
-   out += AGX_INDEX_LIST_START_LENGTH;
 
    if (idx_size) {
       agx_pack(out, INDEX_LIST_BUFFER_SIZE, cfg) {
