@@ -1016,10 +1016,10 @@ zink_create_gfx_program(struct zink_context *ctx,
    prog->base.removed = true;
 
    for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
-      util_dynarray_init(&prog->shader_cache[i][0][0], NULL);
-      util_dynarray_init(&prog->shader_cache[i][0][1], NULL);
-      util_dynarray_init(&prog->shader_cache[i][1][0], NULL);
-      util_dynarray_init(&prog->shader_cache[i][1][1], NULL);
+      util_dynarray_init(&prog->shader_cache[i][0][0], prog);
+      util_dynarray_init(&prog->shader_cache[i][0][1], prog);
+      util_dynarray_init(&prog->shader_cache[i][1][0], prog);
+      util_dynarray_init(&prog->shader_cache[i][1][1], prog);
       if (stages[i]) {
          prog->shaders[i] = stages[i];
          prog->stages_present |= BITFIELD_BIT(i);
@@ -1239,8 +1239,8 @@ precompile_compute_job(void *data, void *gdata, int thread_index)
    assert(comp->module);
    comp->module->shader = zink_shader_compile(screen, comp->shader, comp->shader->nir, NULL, NULL);
    assert(comp->module->shader);
-   util_dynarray_init(&comp->shader_cache[0], NULL);
-   util_dynarray_init(&comp->shader_cache[1], NULL);
+   util_dynarray_init(&comp->shader_cache[0], comp);
+   util_dynarray_init(&comp->shader_cache[1], comp);
 
    struct blob blob = {0};
    blob_init(&blob);
