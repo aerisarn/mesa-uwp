@@ -5426,12 +5426,13 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer, VkAccessFlags2 dst_fla
       case VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR:
       case VK_ACCESS_2_SHADER_READ_BIT:
       case VK_ACCESS_2_SHADER_STORAGE_READ_BIT:
-         flush_bits |= RADV_CMD_FLAG_INV_VCACHE;
          /* Unlike LLVM, ACO uses SMEM for SSBOs and we have to
           * invalidate the scalar cache. */
          if (!cmd_buffer->device->physical_device->use_llvm && !image)
             flush_bits |= RADV_CMD_FLAG_INV_SCACHE;
-
+         FALLTHROUGH;
+      case VK_ACCESS_2_SHADER_SAMPLED_READ_BIT:
+         flush_bits |= RADV_CMD_FLAG_INV_VCACHE;
          if (has_CB_meta || has_DB_meta)
             flush_bits |= RADV_CMD_FLAG_INV_L2_METADATA;
          if (!image_is_coherent)
