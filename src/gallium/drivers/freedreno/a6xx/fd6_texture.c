@@ -390,14 +390,15 @@ fd6_sampler_view_update(struct fd_context *ctx,
 
    fd6_validate_format(ctx, rsc, cso->format);
 
+   so->seqno = seqno_next_u16(&fd6_context(ctx)->tex_seqno);
+   so->rsc_seqno = rsc->seqno;
+
    if (format == PIPE_FORMAT_X32_S8X24_UINT) {
       rsc = rsc->stencil;
       format = rsc->b.b.format;
    }
 
-   so->seqno = seqno_next_u16(&fd6_context(ctx)->tex_seqno);
    so->ptr1 = rsc;
-   so->rsc_seqno = rsc->seqno;
 
    if (cso->target == PIPE_BUFFER) {
       uint8_t swiz[4] = {cso->swizzle_r, cso->swizzle_g, cso->swizzle_b,
