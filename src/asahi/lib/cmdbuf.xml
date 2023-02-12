@@ -659,6 +659,7 @@
   <!-- VDM commands start. VDM commands are padded out to 8b alignment. -->
   <enum name="VDM Block Type">
     <value name="PPP State Update" value="0"/>
+    <value name="Barrier" value="1"/>
     <value name="VDM State Update" value="2"/>
     <value name="Index List" value="3"/>
     <value name="Stream Link" value="4"/>
@@ -670,6 +671,11 @@
     <field name="Size (words)" size="8" start="8" type="uint"/>
     <field name="Block Type" size="3" start="29" type="VDM Block Type" default="PPP State Update"/>
     <field name="Pointer (lo)" size="32" start="32" type="address"/>
+  </struct>
+
+  <struct name="VDM Barrier">
+    <field name="Unknown" size="29" start="0" type="hex" default="0x1000960"/>
+    <field name="Block Type" size="3" start="29" type="VDM Block Type" default="Barrier"/>
   </struct>
 
   <enum name="Index size">
