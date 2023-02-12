@@ -699,6 +699,7 @@ zink_gfx_program_update_optimal(struct zink_context *ctx)
             if (util_queue_fence_is_signalled(&prog->base.cache_fence)) {
                struct zink_gfx_program *real = prog->full_prog;
                entry->data = real;
+               entry->key = real->shaders;
                real->base.removed = false;
                prog->full_prog = NULL;
                prog->base.removed = true;
@@ -737,6 +738,7 @@ zink_gfx_program_update_optimal(struct zink_context *ctx)
             struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(ht, hash, ctx->gfx_stages);
             struct zink_gfx_program *real = prog->full_prog;
             entry->data = real;
+            entry->key = real->shaders;
             real->base.removed = false;
             prog->full_prog = NULL;
             prog->base.removed = true;
