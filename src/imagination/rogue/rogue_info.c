@@ -301,6 +301,60 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
          [2] = ~0U,
       },
    },
+	[ROGUE_BACKEND_OP_SMP1D] = { .str = "smp1d", .num_dsts = 1, .num_srcs = 6,
+      .phase_io = { .dst[0] = IO(S4), .src[1] = IO(S0), .src[2] = IO(S1), .src[3] = IO(S2), },
+      .supported_op_mods = OM(PROJ) | OM(FCNORM) | OM(NNCOORDS) | OM(BIAS) | OM(REPLACE) |
+         OM(GRADIENT) | OM(PPLOD) | OM(TAO) | OM(SOO) | OM(SNO) | OM(WRT) | OM(DATA) |
+         OM(INFO) | OM(BOTH) | OM(BYPASS) | OM(FORCELINEFILL) | OM(WRITETHROUGH) |
+         OM(WRITEBACK) | OM(LAZYWRITEBACK) | OM(SLCBYPASS) | OM(SLCWRITEBACK) |
+         OM(SLCWRITETHROUGH) | OM(SLCNOALLOC) | OM(ARRAY) | OM(INTEGER) | OM(SCHEDSWAP) |
+         OM(F16),
+      .supported_dst_types = { [0] = T(REG) | T(REGARRAY), },
+      .supported_src_types = {
+         [0] = T(DRC),
+         [1] = T(REGARRAY),
+         [2] = T(REG) | T(REGARRAY),
+         [3] = T(REGARRAY),
+         [4] = T(REG) | T(IO),
+         [5] = T(VAL),
+      },
+   },
+	[ROGUE_BACKEND_OP_SMP2D] = { .str = "smp2d", .num_dsts = 1, .num_srcs = 6,
+      .phase_io = { .dst[0] = IO(S4), .src[1] = IO(S0), .src[2] = IO(S1), .src[3] = IO(S2), },
+      .supported_op_mods = OM(PROJ) | OM(FCNORM) | OM(NNCOORDS) | OM(BIAS) | OM(REPLACE) |
+         OM(GRADIENT) | OM(PPLOD) | OM(TAO) | OM(SOO) | OM(SNO) | OM(WRT) | OM(DATA) |
+         OM(INFO) | OM(BOTH) | OM(BYPASS) | OM(FORCELINEFILL) | OM(WRITETHROUGH) |
+         OM(WRITEBACK) | OM(LAZYWRITEBACK) | OM(SLCBYPASS) | OM(SLCWRITEBACK) |
+         OM(SLCWRITETHROUGH) | OM(SLCNOALLOC) | OM(ARRAY) | OM(INTEGER) | OM(SCHEDSWAP) |
+         OM(F16),
+      .supported_dst_types = { [0] = T(REG) | T(REGARRAY), },
+      .supported_src_types = {
+         [0] = T(DRC),
+         [1] = T(REGARRAY),
+         [2] = T(REG) | T(REGARRAY),
+         [3] = T(REGARRAY),
+         [4] = T(REG) | T(IO),
+         [5] = T(VAL),
+      },
+   },
+	[ROGUE_BACKEND_OP_SMP3D] = { .str = "smp3d", .num_dsts = 1, .num_srcs = 6,
+      .phase_io = { .dst[0] = IO(S4), .src[1] = IO(S0), .src[2] = IO(S1), .src[3] = IO(S2), },
+      .supported_op_mods = OM(PROJ) | OM(FCNORM) | OM(NNCOORDS) | OM(BIAS) | OM(REPLACE) |
+         OM(GRADIENT) | OM(PPLOD) | OM(TAO) | OM(SOO) | OM(SNO) | OM(WRT) | OM(DATA) |
+         OM(INFO) | OM(BOTH) | OM(BYPASS) | OM(FORCELINEFILL) | OM(WRITETHROUGH) |
+         OM(WRITEBACK) | OM(LAZYWRITEBACK) | OM(SLCBYPASS) | OM(SLCWRITEBACK) |
+         OM(SLCWRITETHROUGH) | OM(SLCNOALLOC) | OM(ARRAY) | OM(INTEGER) | OM(SCHEDSWAP) |
+         OM(F16),
+      .supported_dst_types = { [0] = T(REG) | T(REGARRAY), },
+      .supported_src_types = {
+         [0] = T(DRC),
+         [1] = T(REGARRAY),
+         [2] = T(REG) | T(REGARRAY),
+         [3] = T(REGARRAY),
+         [4] = T(REG) | T(IO),
+         [5] = T(VAL),
+      },
+   },
 };
 #undef B
 #undef T
@@ -308,7 +362,43 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
 #undef IO
 
 const rogue_backend_op_mod_info rogue_backend_op_mod_infos[ROGUE_BACKEND_OP_MOD_COUNT] = {
-	[ROGUE_BACKEND_OP_MOD_SAT] = { .str = "sat", },
+   [ROGUE_BACKEND_OP_MOD_PROJ]  = { .str = "proj", },
+   [ROGUE_BACKEND_OP_MOD_FCNORM]  = { .str = "fcnorm", },
+   [ROGUE_BACKEND_OP_MOD_NNCOORDS]  = { .str = "nncoords", },
+
+   [ROGUE_BACKEND_OP_MOD_BIAS]  = { .str = "bias", },
+   [ROGUE_BACKEND_OP_MOD_REPLACE]  = { .str = "replace", },
+   [ROGUE_BACKEND_OP_MOD_GRADIENT]  = { .str = "gradient", },
+
+   [ROGUE_BACKEND_OP_MOD_PPLOD]  = { .str = "pplod", },
+   [ROGUE_BACKEND_OP_MOD_TAO]  = { .str = "tao", },
+   [ROGUE_BACKEND_OP_MOD_SOO]  = { .str = "soo", },
+   [ROGUE_BACKEND_OP_MOD_SNO]  = { .str = "sno", },
+   [ROGUE_BACKEND_OP_MOD_WRT]  = { .str = "wrt", },
+
+   [ROGUE_BACKEND_OP_MOD_DATA]  = { .str = "data", },
+   [ROGUE_BACKEND_OP_MOD_INFO]  = { .str = "info", },
+   [ROGUE_BACKEND_OP_MOD_BOTH]  = { .str = "both", },
+
+   [ROGUE_BACKEND_OP_MOD_BYPASS]  = { .str = "bypass", },
+   [ROGUE_BACKEND_OP_MOD_FORCELINEFILL]  = { .str = "forcelinefill", },
+
+   [ROGUE_BACKEND_OP_MOD_WRITETHROUGH]  = { .str = "writethrough", },
+   [ROGUE_BACKEND_OP_MOD_WRITEBACK]  = { .str = "writeback", },
+   [ROGUE_BACKEND_OP_MOD_LAZYWRITEBACK]  = { .str = "lazywriteback", },
+
+   [ROGUE_BACKEND_OP_MOD_SLCBYPASS]  = { .str = "slcbypass", },
+   [ROGUE_BACKEND_OP_MOD_SLCWRITEBACK]  = { .str = "slcwriteback", },
+   [ROGUE_BACKEND_OP_MOD_SLCWRITETHROUGH]  = { .str = "slcwritethrough", },
+   [ROGUE_BACKEND_OP_MOD_SLCNOALLOC]  = { .str = "slcnoalloc", },
+
+   [ROGUE_BACKEND_OP_MOD_ARRAY]  = { .str = "array", },
+   [ROGUE_BACKEND_OP_MOD_INTEGER]  = { .str = "integer", },
+   [ROGUE_BACKEND_OP_MOD_SCHEDSWAP]  = { .str = "schedswap", },
+
+   [ROGUE_BACKEND_OP_MOD_F16]  = { .str = "f16", },
+
+   [ROGUE_BACKEND_OP_MOD_SAT]  = { .str = "sat", },
 };
 
 #define P(type) BITFIELD64_BIT(ROGUE_INSTR_PHASE_##type)

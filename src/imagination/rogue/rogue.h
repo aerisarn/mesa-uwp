@@ -1343,6 +1343,10 @@ enum rogue_backend_op {
    /* ROGUE_BACKEND_OP_FITRP_SAMPLE, */
    /* ROGUE_BACKEND_OP_FITRP_CENTROID, */
 
+   ROGUE_BACKEND_OP_SMP1D,
+   ROGUE_BACKEND_OP_SMP2D,
+   ROGUE_BACKEND_OP_SMP3D,
+
    ROGUE_BACKEND_OP_PSEUDO,
    ROGUE_BACKEND_OP_COUNT = ROGUE_BACKEND_OP_PSEUDO,
 };
@@ -1379,8 +1383,56 @@ typedef struct rogue_backend_op_info {
 extern const rogue_backend_op_info
    rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT];
 
+/* TODO: Some of these may not be used together; express that in op mod info. */
 enum rogue_backend_op_mod {
    /* In order of priority */
+   ROGUE_BACKEND_OP_MOD_PROJ, /* Projection (send T co-ordinate). */
+   ROGUE_BACKEND_OP_MOD_FCNORM, /* Fixed-point texture data (convert to float).
+                                 */
+   ROGUE_BACKEND_OP_MOD_NNCOORDS, /* Non-normalised co-ordinates. */
+
+   ROGUE_BACKEND_OP_MOD_BIAS, /* LOD mode: bias. */
+   ROGUE_BACKEND_OP_MOD_REPLACE, /* LOD mode: replace. */
+   ROGUE_BACKEND_OP_MOD_GRADIENT, /* LOD mode: gradient. */
+
+   ROGUE_BACKEND_OP_MOD_PPLOD, /* Per-pixel LOD. */
+   ROGUE_BACKEND_OP_MOD_TAO, /* Texture address override. */
+   ROGUE_BACKEND_OP_MOD_SOO, /* Sample offset supplied. */
+   ROGUE_BACKEND_OP_MOD_SNO, /* Sample number supplied. */
+   ROGUE_BACKEND_OP_MOD_WRT, /* SMP write. */
+
+   ROGUE_BACKEND_OP_MOD_DATA, /* Sample bypass mode: data. */
+   ROGUE_BACKEND_OP_MOD_INFO, /* Sample bypass mode: info. */
+   ROGUE_BACKEND_OP_MOD_BOTH, /* Sample bypass mode: both. */
+
+   ROGUE_BACKEND_OP_MOD_BYPASS, /* MCU cache mode (read): bypass. */
+   ROGUE_BACKEND_OP_MOD_FORCELINEFILL, /* MCU cache mode (read): force line
+                                        * fill.
+                                        */
+
+   ROGUE_BACKEND_OP_MOD_WRITETHROUGH, /* MCU cache mode (write): write through
+                                       * L1 & SLC.
+                                       */
+   ROGUE_BACKEND_OP_MOD_WRITEBACK, /* MCU cache mode (write): write back. */
+   ROGUE_BACKEND_OP_MOD_LAZYWRITEBACK, /* MCU cache mode (write): lazy write
+                                        * back.
+                                        */
+
+   ROGUE_BACKEND_OP_MOD_SLCBYPASS, /* SLC cache mode: bypass.*/
+   ROGUE_BACKEND_OP_MOD_SLCWRITEBACK, /* SLC cache mode: write back */
+   ROGUE_BACKEND_OP_MOD_SLCWRITETHROUGH, /* SLC cache mode: write through. */
+   ROGUE_BACKEND_OP_MOD_SLCNOALLOC, /* SLC cache mode: cached reads/no
+                                     * allocation on miss.
+                                     */
+
+   ROGUE_BACKEND_OP_MOD_ARRAY, /* Sample data contains array index/texture
+                                * arrays enabled.
+                                */
+   ROGUE_BACKEND_OP_MOD_INTEGER, /* Integer co-ordinates and sample data. */
+   ROGUE_BACKEND_OP_MOD_SCHEDSWAP, /* Deschedule slot after instruction. */
+
+   ROGUE_BACKEND_OP_MOD_F16, /* Return packed F16 data. */
+
    ROGUE_BACKEND_OP_MOD_SAT, /* Saturate output. */
 
    ROGUE_BACKEND_OP_MOD_COUNT,

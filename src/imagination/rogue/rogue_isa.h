@@ -845,6 +845,86 @@ enum slccachemode {
    SLCCACHEMODE_CACHED_READS = 0b11,
 };
 
+typedef struct rogue_backend_dma_smp_encoding {
+   /* Byte 0 */
+   struct {
+      unsigned : 3;
+      unsigned drc : 1;
+      unsigned fcnorm : 1;
+      unsigned : 3;
+   } PACKED;
+
+   /* Byte 1 */
+   struct {
+      unsigned lodm : 2;
+      unsigned chan : 2;
+      unsigned exta : 1;
+      unsigned dmn : 2;
+      unsigned extb : 1;
+   } PACKED;
+
+   /* Byte 2 */
+   struct {
+      unsigned tao : 1;
+      unsigned soo : 1;
+      unsigned sno : 1;
+      unsigned nncoords : 1;
+      unsigned sbmode : 2;
+      unsigned proj : 1;
+      unsigned pplod : 1;
+   } PACKED;
+
+   /* Byte 3 */
+   struct {
+      unsigned w : 1;
+      unsigned cachemode : 2;
+      unsigned swap : 1;
+      unsigned f16 : 1;
+      unsigned slccachemode : 2;
+      unsigned extc : 1;
+   } PACKED;
+
+   /* Byte 4 */
+   struct {
+      unsigned array : 1;
+      unsigned : 7;
+   } PACKED;
+} PACKED rogue_backend_dma_smp_encoding;
+static_assert(sizeof(rogue_backend_dma_smp_encoding) == 5,
+              "sizeof(rogue_backend_dma_smp_encoding) != 5");
+
+enum fcnorm {
+   FCNORM_INT_NOCONVFP = 0,
+   FCNORM_FIXED_CONVFP = 1,
+};
+
+enum lodm {
+   LODM_NORMAL = 0b00,
+   LODM_BIAS = 0b01,
+   LODM_REPLACE = 0b10,
+   LODM_GRADIENTS = 0b11,
+};
+
+enum smpchan {
+   SMPCHAN_1 = 0b00,
+   SMPCHAN_2 = 0b01,
+   SMPCHAN_3 = 0b10,
+   SMPCHAN_4 = 0b11,
+};
+
+enum dmn {
+   DMN_1D = 0b01,
+   DMN_2D = 0b10,
+   DMN_3D = 0b11,
+};
+
+enum sbmode {
+   SBMODE_NONE = 0b00,
+   SBMODE_DATA = 0b01,
+   SBMODE_INFO = 0b10,
+   SBMODE_BOTH = 0b11,
+};
+
 typedef struct rogue_backend_dma_encoding {
    union {
       /* Byte 0 */
@@ -853,11 +933,12 @@ typedef struct rogue_backend_dma_encoding {
          unsigned : 5;
       } PACKED;
 
+      rogue_backend_dma_smp_encoding smp;
       rogue_backend_dma_ld_encoding ld;
    } PACKED;
 } PACKED rogue_backend_dma_encoding;
-static_assert(sizeof(rogue_backend_dma_encoding) == 3,
-              "sizeof(rogue_backend_dma_encoding) != 3");
+static_assert(sizeof(rogue_backend_dma_encoding) == 5,
+              "sizeof(rogue_backend_dma_encoding) != 5");
 
 enum dmaop {
    DMAOP_IDF = 0b000,
@@ -881,8 +962,8 @@ typedef struct rogue_backend_instr_encoding {
       rogue_backend_dma_encoding dma;
    } PACKED;
 } PACKED rogue_backend_instr_encoding;
-static_assert(sizeof(rogue_backend_instr_encoding) == 3,
-              "sizeof(rogue_backend_instr_encoding) != 3");
+static_assert(sizeof(rogue_backend_instr_encoding) == 5,
+              "sizeof(rogue_backend_instr_encoding) != 5");
 
 enum backendop {
    BACKENDOP_UVSW = 0b000,

@@ -561,6 +561,7 @@ static void rogue_calc_alu_instrs_size(rogue_instr_group *group,
 #undef DM
 #undef SM
 
+#define OM(op_mod) ROGUE_BACKEND_OP_MOD_##op_mod
 static void rogue_calc_backend_instrs_size(rogue_instr_group *group,
                                            rogue_backend_instr *backend,
                                            enum rogue_instr_phase phase)
@@ -590,10 +591,44 @@ static void rogue_calc_backend_instrs_size(rogue_instr_group *group,
          group->size.instrs[phase] = 3;
       break;
 
+   case ROGUE_BACKEND_OP_SMP1D:
+   case ROGUE_BACKEND_OP_SMP2D:
+   case ROGUE_BACKEND_OP_SMP3D:
+      group->size.instrs[phase] = 2;
+
+      if (rogue_backend_op_mod_is_set(backend, OM(ARRAY))) {
+         group->size.instrs[phase] = 5;
+      } else if (rogue_backend_op_mod_is_set(backend, OM(WRT)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(BYPASS)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(FORCELINEFILL)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(WRITETHROUGH)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(WRITEBACK)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(LAZYWRITEBACK)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(SCHEDSWAP)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(F16)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(SLCBYPASS)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(SLCWRITEBACK)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(SLCWRITETHROUGH)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(SLCNOALLOC))) {
+         group->size.instrs[phase] = 4;
+      } else if (rogue_backend_op_mod_is_set(backend, OM(TAO)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(SOO)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(SNO)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(NNCOORDS)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(DATA)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(INFO)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(BOTH)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(PROJ)) ||
+                 rogue_backend_op_mod_is_set(backend, OM(PPLOD))) {
+         group->size.instrs[phase] = 3;
+      }
+      break;
+
    default:
       unreachable("Unsupported backend op.");
    }
 }
+#undef OM
 
 static void rogue_calc_ctrl_instrs_size(rogue_instr_group *group,
                                         rogue_ctrl_instr *ctrl,

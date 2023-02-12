@@ -386,6 +386,143 @@ static void rogue_encode_backend_instr(const rogue_backend_instr *backend,
       break;
    }
 
+   case ROGUE_BACKEND_OP_SMP1D:
+   case ROGUE_BACKEND_OP_SMP2D:
+   case ROGUE_BACKEND_OP_SMP3D:
+      instr_encoding->backend.op = BACKENDOP_DMA;
+      instr_encoding->backend.dma.dmaop = DMAOP_SMP;
+
+      instr_encoding->backend.dma.smp.drc =
+         rogue_ref_get_drc_index(&backend->src[0].ref);
+      instr_encoding->backend.dma.smp.fcnorm =
+         rogue_backend_op_mod_is_set(backend, OM(FCNORM));
+
+      if (rogue_backend_op_mod_is_set(backend, OM(BIAS)))
+         instr_encoding->backend.dma.smp.lodm = LODM_BIAS;
+      else if (rogue_backend_op_mod_is_set(backend, OM(REPLACE)))
+         instr_encoding->backend.dma.smp.lodm = LODM_REPLACE;
+      else if (rogue_backend_op_mod_is_set(backend, OM(GRADIENT)))
+         instr_encoding->backend.dma.smp.lodm = LODM_GRADIENTS;
+      else
+         instr_encoding->backend.dma.smp.lodm = LODM_NORMAL;
+
+      switch (rogue_ref_get_val(&backend->src[5].ref)) {
+      case 1:
+         instr_encoding->backend.dma.smp.chan = SMPCHAN_1;
+         break;
+
+      case 2:
+         instr_encoding->backend.dma.smp.chan = SMPCHAN_2;
+         break;
+
+      case 3:
+         instr_encoding->backend.dma.smp.chan = SMPCHAN_3;
+         break;
+
+      case 4:
+         instr_encoding->backend.dma.smp.chan = SMPCHAN_4;
+         break;
+
+      default:
+         unreachable("Unsupported number of channels.");
+      }
+
+      switch (backend->op) {
+      case ROGUE_BACKEND_OP_SMP1D:
+         instr_encoding->backend.dma.smp.dmn = DMN_1D;
+         break;
+
+      case ROGUE_BACKEND_OP_SMP2D:
+         instr_encoding->backend.dma.smp.dmn = DMN_2D;
+         break;
+
+      case ROGUE_BACKEND_OP_SMP3D:
+         instr_encoding->backend.dma.smp.dmn = DMN_3D;
+         break;
+
+      default:
+         unreachable("Unsupported sampler op.");
+      }
+
+      if (instr_size > 2) {
+         instr_encoding->backend.dma.smp.exta = 1;
+
+         instr_encoding->backend.dma.smp.tao =
+            rogue_backend_op_mod_is_set(backend, OM(TAO));
+         instr_encoding->backend.dma.smp.soo =
+            rogue_backend_op_mod_is_set(backend, OM(SOO));
+         instr_encoding->backend.dma.smp.sno =
+            rogue_backend_op_mod_is_set(backend, OM(SNO));
+         instr_encoding->backend.dma.smp.nncoords =
+            rogue_backend_op_mod_is_set(backend, OM(NNCOORDS));
+
+         if (rogue_backend_op_mod_is_set(backend, OM(DATA)))
+            instr_encoding->backend.dma.smp.sbmode = SBMODE_DATA;
+         else if (rogue_backend_op_mod_is_set(backend, OM(INFO)))
+            instr_encoding->backend.dma.smp.sbmode = SBMODE_INFO;
+         else if (rogue_backend_op_mod_is_set(backend, OM(BOTH)))
+            instr_encoding->backend.dma.smp.sbmode = SBMODE_BOTH;
+         else
+            instr_encoding->backend.dma.smp.sbmode = SBMODE_NONE;
+
+         instr_encoding->backend.dma.smp.proj =
+            rogue_backend_op_mod_is_set(backend, OM(PROJ));
+         instr_encoding->backend.dma.smp.pplod =
+            rogue_backend_op_mod_is_set(backend, OM(PPLOD));
+      }
+
+      if (instr_size >= 3) {
+         instr_encoding->backend.dma.smp.extb = 1;
+
+         instr_encoding->backend.dma.smp.w =
+            rogue_backend_op_mod_is_set(backend, OM(WRT));
+
+         if (rogue_backend_op_mod_is_set(backend, OM(BYPASS))) {
+            instr_encoding->backend.dma.smp.cachemode = CACHEMODE_LD_BYPASS;
+         } else if (rogue_backend_op_mod_is_set(backend, OM(FORCELINEFILL))) {
+            instr_encoding->backend.dma.smp.cachemode =
+               CACHEMODE_LD_FORCE_LINE_FILL;
+         } else if (rogue_backend_op_mod_is_set(backend, OM(WRITETHROUGH))) {
+            instr_encoding->backend.dma.smp.cachemode =
+               CACHEMODE_ST_WRITE_THROUGH;
+         } else if (rogue_backend_op_mod_is_set(backend, OM(WRITEBACK))) {
+            instr_encoding->backend.dma.smp.cachemode = CACHEMODE_ST_WRITE_BACK;
+         } else if (rogue_backend_op_mod_is_set(backend, OM(LAZYWRITEBACK))) {
+            instr_encoding->backend.dma.smp.cachemode =
+               CACHEMODE_ST_WRITE_BACK_LAZY;
+         } else {
+            instr_encoding->backend.dma.smp.cachemode =
+               CACHEMODE_LD_NORMAL; /* == CACHEMODE_ST_WRITE_THROUGH */
+         }
+
+         instr_encoding->backend.dma.smp.swap =
+            rogue_backend_op_mod_is_set(backend, OM(SCHEDSWAP));
+         instr_encoding->backend.dma.smp.f16 =
+            rogue_backend_op_mod_is_set(backend, OM(F16));
+
+         if (rogue_backend_op_mod_is_set(backend, OM(SLCWRITEBACK))) {
+            instr_encoding->backend.dma.smp.slccachemode =
+               SLCCACHEMODE_WRITE_BACK;
+         } else if (rogue_backend_op_mod_is_set(backend, OM(SLCWRITETHROUGH))) {
+            instr_encoding->backend.dma.smp.slccachemode =
+               SLCCACHEMODE_WRITE_THROUGH;
+         } else if (rogue_backend_op_mod_is_set(backend, OM(SLCNOALLOC))) {
+            instr_encoding->backend.dma.smp.slccachemode =
+               SLCCACHEMODE_CACHED_READS;
+         } else {
+            instr_encoding->backend.dma.smp.slccachemode = SLCCACHEMODE_BYPASS;
+         }
+      }
+
+      if (instr_size > 4) {
+         instr_encoding->backend.dma.smp.extc = 1;
+
+         instr_encoding->backend.dma.smp.array =
+            rogue_backend_op_mod_is_set(backend, OM(ARRAY));
+      }
+
+      break;
+
    default:
       unreachable("Unsupported backend op.");
    }
