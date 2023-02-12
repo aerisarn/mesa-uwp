@@ -1052,7 +1052,8 @@ zink_create_gfx_program(struct zink_context *ctx,
       }
    }
 
-   prog->libs = find_or_create_lib_cache(screen, prog);
+   if (screen->optimal_keys)
+      prog->libs = find_or_create_lib_cache(screen, prog);
 
    struct mesa_sha1 sctx;
    _mesa_sha1_init(&sctx);
