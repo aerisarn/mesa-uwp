@@ -289,7 +289,7 @@ static void rogue_encode_alu_instr(const rogue_alu_instr *alu,
 #undef DM
 #undef SM
 
-#define OM(op_mod) BITFIELD64_BIT(ROGUE_BACKEND_OP_MOD_##op_mod)
+#define OM(op_mod) ROGUE_BACKEND_OP_MOD_##op_mod
 static void rogue_encode_backend_instr(const rogue_backend_instr *backend,
                                        unsigned instr_size,
                                        rogue_instr_encoding *instr_encoding)
@@ -471,7 +471,7 @@ static void rogue_encode_backend_instr(const rogue_backend_instr *backend,
             rogue_backend_op_mod_is_set(backend, OM(PPLOD));
       }
 
-      if (instr_size >= 3) {
+      if (instr_size > 3) {
          instr_encoding->backend.dma.smp.extb = 1;
 
          instr_encoding->backend.dma.smp.w =

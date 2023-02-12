@@ -348,15 +348,16 @@ enum rogue_instr_phase {
    ROGUE_INSTR_PHASE_INVALID = ~0,
 };
 
-#define rogue_foreach_phase_in_set(p, phases)  \
-   for (uint64_t __phases = (phases), p;       \
-        ((p) = ffsll(__phases) - 1, __phases); \
-        __phases &= ~(1ull << (p)))
+/* TODO: put into bitscan.h */
+#define u_foreach_bit64_rev(b, dword)                  \
+   for (uint64_t __dword = (dword), b;                 \
+        ((b) = util_last_bit64(__dword) - 1, __dword); \
+        __dword &= ~(1ull << (b)))
 
-#define rogue_foreach_phase_in_set_rev(p, phases)        \
-   for (uint64_t __phases = (phases), p;                 \
-        ((p) = util_last_bit64(__phases) - 1, __phases); \
-        __phases &= ~(1ull << (p)))
+#define rogue_foreach_phase_in_set(p, phases) u_foreach_bit64(p, phases)
+#define rogue_foreach_phase_in_set_rev(p, phases) u_foreach_bit64_rev(p, phases)
+
+#define rogue_foreach_mod_in_set(m, mods) u_foreach_bit64(m, mods)
 
 /** Rogue basic block. */
 typedef struct rogue_block {
@@ -1046,6 +1047,8 @@ enum rogue_alu_op_mod {
 
 typedef struct rogue_alu_op_mod_info {
    const char *str;
+   uint64_t exclude; /* Can't use this op mod with any of these. */
+   uint64_t require; /* Required op mods for this to be used (OR). */
 } rogue_alu_op_mod_info;
 
 extern const rogue_alu_op_mod_info
@@ -1113,6 +1116,8 @@ enum rogue_ctrl_op_mod {
 
 typedef struct rogue_ctrl_op_mod_info {
    const char *str;
+   uint64_t exclude; /* Can't use this op mod with any of these. */
+   uint64_t require; /* Required op mods for this to be used (OR). */
 } rogue_ctrl_op_mod_info;
 
 extern const rogue_ctrl_op_mod_info
@@ -1383,7 +1388,6 @@ typedef struct rogue_backend_op_info {
 extern const rogue_backend_op_info
    rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT];
 
-/* TODO: Some of these may not be used together; express that in op mod info. */
 enum rogue_backend_op_mod {
    /* In order of priority */
    ROGUE_BACKEND_OP_MOD_PROJ, /* Projection (send T co-ordinate). */
@@ -1440,6 +1444,8 @@ enum rogue_backend_op_mod {
 
 typedef struct rogue_backend_op_mod_info {
    const char *str;
+   uint64_t exclude; /* Can't use this op mod with any of these. */
+   uint64_t require; /* Required op mods for this to be used (OR). */
 } rogue_backend_op_mod_info;
 
 extern const rogue_backend_op_mod_info
@@ -1531,6 +1537,25 @@ enum rogue_bitwise_op {
    ROGUE_BITWISE_OP_COUNT,
 };
 
+enum rogue_bitwise_op_mod {
+   /* In order of priority */
+   ROGUE_BITWISE_OP_MOD_TWB, /* Top word break. */
+   ROGUE_BITWISE_OP_MOD_PWB, /* Partial word break. */
+   ROGUE_BITWISE_OP_MOD_MTB, /* Mask top break. */
+   ROGUE_BITWISE_OP_MOD_FTB, /* Find top break. */
+
+   ROGUE_BITWISE_OP_MOD_COUNT,
+};
+
+typedef struct rogue_bitwise_op_mod_info {
+   const char *str;
+   uint64_t exclude; /* Can't use this op mod with any of these. */
+   uint64_t require; /* Required op mods for this to be used (OR). */
+} rogue_bitwise_op_mod_info;
+
+extern const rogue_bitwise_op_mod_info
+   rogue_bitwise_op_mod_infos[ROGUE_BITWISE_OP_MOD_COUNT];
+
 #define ROGUE_BITWISE_OP_MAX_SRCS 7
 #define ROGUE_BITWISE_OP_MAX_DSTS 2
 
@@ -1586,21 +1611,18 @@ typedef struct rogue_bitwise_instr {
    rogue_src_use src_use[ROGUE_BITWISE_OP_MAX_SRCS];
 } rogue_bitwise_instr;
 
-#if 0
-static inline
-void
-rogue_set_bitwise_op_mod(rogue_bitwise_instr *bitwise, enum rogue_bitwise_op_mod mod)
+static inline void rogue_set_bitwise_op_mod(rogue_bitwise_instr *bitwise,
+                                            enum rogue_bitwise_op_mod mod)
 {
-	bitwise->mod |= BITFIELD64_BIT(mod);
+   bitwise->mod |= BITFIELD64_BIT(mod);
 }
 
-static inline
-bool
-rogue_bitwise_op_mod_is_set(const rogue_bitwise_instr *bitwise, enum rogue_bitwise_op_mod mod)
+static inline bool
+rogue_bitwise_op_mod_is_set(const rogue_bitwise_instr *bitwise,
+                            enum rogue_bitwise_op_mod mod)
 {
-	return !!(bitwise->mod & BITFIELD64_BIT(mod));
+   return !!(bitwise->mod & BITFIELD64_BIT(mod));
 }
-#endif
 
 /**
  * \brief Allocates and initializes a new bitwise instruction.

@@ -282,8 +282,11 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
          [1] = T(REGARRAY),
          [2] = T(VAL),
       },
+      .dst_stride = {
+         [0] = ~0U,
+      },
       .src_stride = {
-         [1] = 3,
+         [1] = ~0U,
       },
    },
 	[ROGUE_BACKEND_OP_FITRP_PIXEL] = { .str = "fitrp.pixel", .num_dsts = 1, .num_srcs = 4,
@@ -318,6 +321,15 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
          [4] = T(REG) | T(IO),
          [5] = T(VAL),
       },
+      /* TODO: This may depend on the other options set. */
+      .src_stride = {
+         [1] = 3,
+         [2] = ~0U,
+         [3] = 3,
+      },
+      .dst_stride = {
+         [0] = ~0U,
+      },
    },
 	[ROGUE_BACKEND_OP_SMP2D] = { .str = "smp2d", .num_dsts = 1, .num_srcs = 6,
       .phase_io = { .dst[0] = IO(S4), .src[1] = IO(S0), .src[2] = IO(S1), .src[3] = IO(S2), },
@@ -335,6 +347,15 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
          [3] = T(REGARRAY),
          [4] = T(REG) | T(IO),
          [5] = T(VAL),
+      },
+      /* TODO: This may depend on the other options set. */
+      .src_stride = {
+         [1] = 3,
+         [2] = ~0U,
+         [3] = 3,
+      },
+      .dst_stride = {
+         [0] = ~0U,
       },
    },
 	[ROGUE_BACKEND_OP_SMP3D] = { .str = "smp3d", .num_dsts = 1, .num_srcs = 6,
@@ -354,6 +375,15 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
          [4] = T(REG) | T(IO),
          [5] = T(VAL),
       },
+      /* TODO: This may depend on the other options set. */
+      .src_stride = {
+         [1] = 3,
+         [2] = ~0U,
+         [3] = 3,
+      },
+      .dst_stride = {
+         [0] = ~0U,
+      },
    },
 };
 #undef B
@@ -361,36 +391,37 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
 #undef OM
 #undef IO
 
+#define OM(op_mod) BITFIELD64_BIT(ROGUE_BACKEND_OP_MOD_##op_mod)
 const rogue_backend_op_mod_info rogue_backend_op_mod_infos[ROGUE_BACKEND_OP_MOD_COUNT] = {
    [ROGUE_BACKEND_OP_MOD_PROJ]  = { .str = "proj", },
    [ROGUE_BACKEND_OP_MOD_FCNORM]  = { .str = "fcnorm", },
    [ROGUE_BACKEND_OP_MOD_NNCOORDS]  = { .str = "nncoords", },
 
-   [ROGUE_BACKEND_OP_MOD_BIAS]  = { .str = "bias", },
-   [ROGUE_BACKEND_OP_MOD_REPLACE]  = { .str = "replace", },
-   [ROGUE_BACKEND_OP_MOD_GRADIENT]  = { .str = "gradient", },
+   [ROGUE_BACKEND_OP_MOD_BIAS]  = { .str = "bias", .exclude = OM(REPLACE) | OM(GRADIENT) },
+   [ROGUE_BACKEND_OP_MOD_REPLACE]  = { .str = "replace", .exclude = OM(BIAS) | OM(GRADIENT) },
+   [ROGUE_BACKEND_OP_MOD_GRADIENT]  = { .str = "gradient", .exclude = OM(BIAS) | OM(REPLACE) },
 
-   [ROGUE_BACKEND_OP_MOD_PPLOD]  = { .str = "pplod", },
+   [ROGUE_BACKEND_OP_MOD_PPLOD]  = { .str = "pplod", .require = OM(BIAS) | OM(REPLACE) },
    [ROGUE_BACKEND_OP_MOD_TAO]  = { .str = "tao", },
    [ROGUE_BACKEND_OP_MOD_SOO]  = { .str = "soo", },
    [ROGUE_BACKEND_OP_MOD_SNO]  = { .str = "sno", },
    [ROGUE_BACKEND_OP_MOD_WRT]  = { .str = "wrt", },
 
-   [ROGUE_BACKEND_OP_MOD_DATA]  = { .str = "data", },
-   [ROGUE_BACKEND_OP_MOD_INFO]  = { .str = "info", },
-   [ROGUE_BACKEND_OP_MOD_BOTH]  = { .str = "both", },
+   [ROGUE_BACKEND_OP_MOD_DATA]  = { .str = "data", .exclude = OM(INFO) | OM(BOTH) },
+   [ROGUE_BACKEND_OP_MOD_INFO]  = { .str = "info", .exclude = OM(DATA) | OM(BOTH) },
+   [ROGUE_BACKEND_OP_MOD_BOTH]  = { .str = "both", .exclude = OM(DATA) | OM(INFO) },
 
-   [ROGUE_BACKEND_OP_MOD_BYPASS]  = { .str = "bypass", },
-   [ROGUE_BACKEND_OP_MOD_FORCELINEFILL]  = { .str = "forcelinefill", },
+   [ROGUE_BACKEND_OP_MOD_BYPASS]  = { .str = "bypass", .exclude = OM(FORCELINEFILL) | OM(WRITETHROUGH) | OM(WRITEBACK) | OM(LAZYWRITEBACK) },
+   [ROGUE_BACKEND_OP_MOD_FORCELINEFILL]  = { .str = "forcelinefill", .exclude = OM(BYPASS) | OM(WRITETHROUGH) | OM(WRITEBACK) | OM(LAZYWRITEBACK) },
 
-   [ROGUE_BACKEND_OP_MOD_WRITETHROUGH]  = { .str = "writethrough", },
-   [ROGUE_BACKEND_OP_MOD_WRITEBACK]  = { .str = "writeback", },
-   [ROGUE_BACKEND_OP_MOD_LAZYWRITEBACK]  = { .str = "lazywriteback", },
+   [ROGUE_BACKEND_OP_MOD_WRITETHROUGH]  = { .str = "writethrough", .exclude = OM(BYPASS) | OM(FORCELINEFILL) | OM(WRITEBACK) | OM(LAZYWRITEBACK) },
+   [ROGUE_BACKEND_OP_MOD_WRITEBACK]  = { .str = "writeback", .exclude = OM(BYPASS) | OM(FORCELINEFILL) | OM(WRITETHROUGH) | OM(LAZYWRITEBACK) },
+   [ROGUE_BACKEND_OP_MOD_LAZYWRITEBACK]  = { .str = "lazywriteback", .exclude = OM(BYPASS) | OM(FORCELINEFILL) | OM(WRITETHROUGH) | OM(WRITEBACK) },
 
-   [ROGUE_BACKEND_OP_MOD_SLCBYPASS]  = { .str = "slcbypass", },
-   [ROGUE_BACKEND_OP_MOD_SLCWRITEBACK]  = { .str = "slcwriteback", },
-   [ROGUE_BACKEND_OP_MOD_SLCWRITETHROUGH]  = { .str = "slcwritethrough", },
-   [ROGUE_BACKEND_OP_MOD_SLCNOALLOC]  = { .str = "slcnoalloc", },
+   [ROGUE_BACKEND_OP_MOD_SLCBYPASS]  = { .str = "slcbypass", .exclude = OM(SLCWRITEBACK) | OM(SLCWRITETHROUGH) | OM(SLCNOALLOC) },
+   [ROGUE_BACKEND_OP_MOD_SLCWRITEBACK]  = { .str = "slcwriteback", .exclude = OM(SLCBYPASS) | OM(SLCWRITETHROUGH) | OM(SLCNOALLOC) },
+   [ROGUE_BACKEND_OP_MOD_SLCWRITETHROUGH]  = { .str = "slcwritethrough", .exclude = OM(SLCBYPASS) | OM(SLCWRITEBACK) | OM(SLCNOALLOC) },
+   [ROGUE_BACKEND_OP_MOD_SLCNOALLOC]  = { .str = "slcnoalloc", .exclude = OM(SLCBYPASS) | OM(SLCWRITEBACK) | OM(SLCWRITETHROUGH) },
 
    [ROGUE_BACKEND_OP_MOD_ARRAY]  = { .str = "array", },
    [ROGUE_BACKEND_OP_MOD_INTEGER]  = { .str = "integer", },
@@ -400,6 +431,21 @@ const rogue_backend_op_mod_info rogue_backend_op_mod_infos[ROGUE_BACKEND_OP_MOD_
 
    [ROGUE_BACKEND_OP_MOD_SAT]  = { .str = "sat", },
 };
+#undef OM
+
+#define OM(op_mod) BITFIELD64_BIT(ROGUE_BITWISE_OP_MOD_##op_mod)
+const rogue_bitwise_op_mod_info
+   rogue_bitwise_op_mod_infos[ROGUE_BITWISE_OP_MOD_COUNT] = {
+      [ROGUE_BITWISE_OP_MOD_TWB] = { .str = "twb",
+                                     .exclude = OM(PWB) | OM(MTB) | OM(FTB) },
+      [ROGUE_BITWISE_OP_MOD_PWB] = { .str = "pwb",
+                                     .exclude = OM(TWB) | OM(MTB) | OM(FTB) },
+      [ROGUE_BITWISE_OP_MOD_MTB] = { .str = "mtb",
+                                     .exclude = OM(TWB) | OM(PWB) | OM(FTB) },
+      [ROGUE_BITWISE_OP_MOD_FTB] = { .str = "ftb",
+                                     .exclude = OM(TWB) | OM(PWB) | OM(MTB) },
+   };
+#undef OM
 
 #define P(type) BITFIELD64_BIT(ROGUE_INSTR_PHASE_##type)
 #define PH(type) ROGUE_INSTR_PHASE_##type
