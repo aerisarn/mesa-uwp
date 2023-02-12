@@ -1457,8 +1457,13 @@ zink_destroy_compute_program(struct zink_screen *screen,
 {
    deinit_program(screen, &comp->base);
 
-   if (comp->shader)
-      _mesa_set_remove_key(comp->shader->programs, comp);
+   assert(comp->shader);
+   assert(!comp->shader->spirv);
+
+   _mesa_set_destroy(comp->shader->programs, NULL);
+   ralloc_free(comp->shader->nir);
+   ralloc_free(comp->shader);
+
    destroy_shader_cache(screen, &comp->shader_cache[0]);
    destroy_shader_cache(screen, &comp->shader_cache[1]);
 
