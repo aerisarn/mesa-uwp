@@ -689,9 +689,9 @@ handle_invalidates(struct fd_context *ctx)
 }
 
 struct fd6_texture_state *
-fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type,
-                  struct fd_texture_stateobj *tex)
+fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type)
 {
+   struct fd_texture_stateobj *tex = &ctx->tex[type];
    struct fd6_context *fd6_ctx = fd6_context(ctx);
    struct fd6_texture_state *state = NULL;
    struct fd6_texture_key key;

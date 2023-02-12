@@ -130,7 +130,6 @@ struct fd6_texture_state {
 };
 
 struct fd6_texture_state *
-fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type,
-                  struct fd_texture_stateobj *tex) assert_dt;
+fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type) assert_dt;
 
 #endif /* FD6_TEXTURE_H_ */
