@@ -738,9 +738,9 @@
     <field name="Index buffer size present" size="1" start="21" type="bool"/>
 
     <!-- XXX: Might be mixed up, not sure how to check that -->
-    <field name="Index count present" size="1" start="22" type="bool" default="true"/>
-    <field name="Instance count present" size="1" start="23" type="bool" default="true"/>
-    <field name="Start present" size="1" start="24" type="bool" default="true"/>
+    <field name="Index count present" size="1" start="22" type="bool"/>
+    <field name="Instance count present" size="1" start="23" type="bool"/>
+    <field name="Start present" size="1" start="24" type="bool"/>
     <field name="Indirect buffer present" size="1" start="26" type="bool"/>
 
     <field name="Block Type" size="3" start="29" type="VDM Block Type" default="Index List"/>
