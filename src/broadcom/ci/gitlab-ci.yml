@@ -45,21 +45,16 @@ vc4-rpi3-egl:armhf:
     HWCI_START_WESTON: 1
     DEQP_SUITE: broadcom-rpi3-egl
 
-.vc4-rpi3-piglit:armhf:
+vc4-rpi3-piglit-quick_gl:armhf:
   extends:
     - .piglit-test
     - .vc4-rpi3-test:armhf
-  variables:
-    HWCI_START_XORG: 1
-    HWCI_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
-    PIGLIT_PLATFORM: mixed_glx_egl
-
-vc4-rpi3-piglit-quick_gl:armhf:
-  extends:
-    - .vc4-rpi3-piglit:armhf
   parallel: 4
   variables:
     FDO_CI_CONCURRENT: 1
+    HWCI_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
+    HWCI_START_XORG: 1
+    PIGLIT_PLATFORM: mixed_glx_egl
     PIGLIT_PROFILES: quick_gl
 
 .v3d-rpi4-test:armhf:
