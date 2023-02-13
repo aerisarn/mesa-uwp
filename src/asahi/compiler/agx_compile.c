@@ -956,6 +956,7 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_control_barrier:
       return agx_threadgroup_barrier(b);
 
+   case nir_intrinsic_group_memory_barrier:
    case nir_intrinsic_memory_barrier_shared:
       /* Always seen with a control_barrier */
       return NULL;
