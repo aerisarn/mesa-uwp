@@ -1097,6 +1097,7 @@ enum rogue_ctrl_op {
 
    /* Real instructions. */
    ROGUE_CTRL_OP_NOP,
+   ROGUE_CTRL_OP_WOP,
    ROGUE_CTRL_OP_BA,
    ROGUE_CTRL_OP_WDF,
 

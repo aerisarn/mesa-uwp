@@ -158,6 +158,10 @@ static void rogue_encode_instr_group_header(rogue_instr_group *group,
          h.miscctl = rogue_ctrl_op_mod_is_set(ctrl, ROGUE_CTRL_OP_MOD_END);
          break;
 
+      case ROGUE_CTRL_OP_WOP:
+         h.ctrlop = CTRLOP_WOP;
+         break;
+
       default:
          unreachable("Unsupported ctrl op.");
       }

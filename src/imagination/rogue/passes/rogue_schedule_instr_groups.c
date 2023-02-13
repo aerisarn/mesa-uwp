@@ -647,6 +647,10 @@ static void rogue_calc_ctrl_instrs_size(rogue_instr_group *group,
       group->size.instrs[phase] = 1;
       break;
 
+   case ROGUE_CTRL_OP_WOP:
+      group->size.instrs[phase] = 0;
+      break;
+
    default:
       unreachable("Unsupported ctrl op.");
    }

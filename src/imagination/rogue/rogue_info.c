@@ -229,6 +229,7 @@ const rogue_ctrl_op_info rogue_ctrl_op_infos[ROGUE_CTRL_OP_COUNT] = {
 	[ROGUE_CTRL_OP_NOP] = { .str = "nop",
 		.supported_op_mods = OM(END),
 	},
+	[ROGUE_CTRL_OP_WOP] = { .str = "wop", },
 	[ROGUE_CTRL_OP_BA] = { .str = "ba", .has_target = true, .ends_block = true, },
 	[ROGUE_CTRL_OP_WDF] = { .str = "wdf", .num_srcs = 1,
       .supported_src_types = { [0] = T(DRC), },
