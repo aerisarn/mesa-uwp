@@ -428,3 +428,6 @@ spec@arb_query_buffer_object@qbo@query-GL_PRIMITIVES_GENERATED-ASYNC_CPU_READ_AF
 
 # Should be fixed in the next glcts release (according to zmike)
 KHR-GL46.multi_bind.dispatch_bind_image_textures,Fail
+
+spec@ext_transform_feedback@tessellation quad_strip wireframe,Fail
+spec@ext_transform_feedback@tessellation quads wireframe,Fail

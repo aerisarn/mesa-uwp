@@ -688,6 +688,8 @@ spec@ext_framebuffer_multisample@interpolation 8 non-centroid-disabled,Fail
 spec@ext_packed_float@query-rgba-signed-components,Fail
 
 spec@ext_transform_feedback@tessellation triangle_fan flat_first,Fail
+spec@ext_transform_feedback@tessellation quad_strip wireframe,Fail
+spec@ext_transform_feedback@tessellation quads wireframe,Fail
 
 spec@glsl-1.50@execution@primitive-id-no-gs-quad-strip,Fail
 spec@glsl-1.50@execution@primitive-id-no-gs-quads,Fail
