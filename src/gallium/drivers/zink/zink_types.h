@@ -216,6 +216,7 @@ enum zink_debug {
    ZINK_DEBUG_GPL = (1<<7),
    ZINK_DEBUG_SHADERDB = (1<<8),
    ZINK_DEBUG_RP = (1<<9),
+   ZINK_DEBUG_NORP = (1<<10),
 };
 
 

@@ -2513,9 +2513,12 @@ init_driver_workarounds(struct zink_screen *screen)
       screen->info.rb_image_feats.robustImageAccess;
 
    /* once more testing has been done, use the #if 0 block */
-   if (zink_debug & ZINK_DEBUG_RP)
-      screen->driver_workarounds.track_renderpasses = true;
-#if 0
+   unsigned illegal = ZINK_DEBUG_RP | ZINK_DEBUG_NORP;
+   if ((zink_debug & illegal) == illegal) {
+      mesa_loge("Cannot specify ZINK_DEBUG=rp and ZINK_DEBUG=norp");
+      abort();
+   }
+
    /* these drivers benefit from renderpass optimization */
    switch (screen->info.driver_props.driverID) {
    //* llvmpipe is broken: #7489
@@ -2533,7 +2536,10 @@ init_driver_workarounds(struct zink_screen *screen)
    default:
       break;
    }
-#endif
+   if (zink_debug & ZINK_DEBUG_RP)
+      screen->driver_workarounds.track_renderpasses = true;
+   else if (zink_debug & ZINK_DEBUG_NORP)
+      screen->driver_workarounds.track_renderpasses = false;
 }
 
 static struct disk_cache *
