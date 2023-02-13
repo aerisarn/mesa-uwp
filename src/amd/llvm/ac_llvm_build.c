@@ -1462,17 +1462,6 @@ static LLVMValueRef ac_build_tbuffer_load(struct ac_llvm_context *ctx, LLVMValue
                              can_speculate ? AC_ATTR_INVARIANT_LOAD : 0);
 }
 
-LLVMValueRef ac_build_struct_tbuffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
-                                          LLVMValueRef vindex, LLVMValueRef voffset,
-                                          LLVMValueRef soffset, unsigned num_channels,
-                                          unsigned dfmt, unsigned nfmt, unsigned cache_policy,
-                                          bool can_speculate)
-{
-   unsigned fmt = ac_get_tbuffer_format(ctx->gfx_level, dfmt, nfmt);
-   return ac_build_tbuffer_load(ctx, rsrc, vindex, voffset, soffset, num_channels, fmt,
-                                ctx->i32, cache_policy, can_speculate);
-}
-
 LLVMValueRef ac_build_safe_tbuffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
                                         LLVMValueRef vidx, LLVMValueRef base_voffset,
                                         LLVMValueRef soffset, LLVMTypeRef channel_type,
