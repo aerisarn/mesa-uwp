@@ -89,7 +89,25 @@ nir_create_passthrough_gs(const nir_shader_compiler_options *options,
       out_vars[num_vars++] = out;
    }
 
-   for (unsigned i = 0; i < vertices; ++i) {
+   unsigned int start_vert = 0;
+   unsigned int end_vert = vertices;
+   unsigned int vert_step = 1;
+   switch (primitive_type) {
+   case PIPE_PRIM_LINES_ADJACENCY:
+   case PIPE_PRIM_LINE_STRIP_ADJACENCY:
+      start_vert = 1;
+      end_vert += 1;
+      break;
+   case PIPE_PRIM_TRIANGLES_ADJACENCY:
+   case PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY:
+      end_vert = 5;
+      vert_step = 2;
+      break;
+   default:
+      break;
+   }
+
+   for (unsigned i = start_vert; i < end_vert; i += vert_step) {
       /* Copy inputs to outputs. */
       for (unsigned j = 0; j < num_vars; ++j) {
          /* no need to use copy_var to save a lower pass */
