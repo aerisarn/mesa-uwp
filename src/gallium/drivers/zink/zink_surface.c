@@ -125,6 +125,22 @@ init_surface_info(struct zink_surface *surface, struct zink_resource *res, VkIma
    }
 }
 
+static void
+init_pipe_surface_info(struct pipe_context *pctx, struct pipe_surface *psurf, const struct pipe_surface *templ, const struct pipe_resource *pres)
+{
+   unsigned int level = templ->u.tex.level;
+   psurf->context = pctx;
+   psurf->format = templ->format;
+   psurf->width = u_minify(pres->width0, level);
+   assert(psurf->width);
+   psurf->height = u_minify(pres->height0, level);
+   assert(psurf->height);
+   psurf->nr_samples = templ->nr_samples;
+   psurf->u.tex.level = level;
+   psurf->u.tex.first_layer = templ->u.tex.first_layer;
+   psurf->u.tex.last_layer = templ->u.tex.last_layer;
+}
+
 static struct zink_surface *
 create_surface(struct pipe_context *pctx,
                struct pipe_resource *pres,
@@ -134,7 +150,6 @@ create_surface(struct pipe_context *pctx,
 {
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_resource *res = zink_resource(pres);
-   unsigned int level = templ->u.tex.level;
 
    struct zink_surface *surface = CALLOC_STRUCT(zink_surface);
    if (!surface)
@@ -163,16 +178,7 @@ create_surface(struct pipe_context *pctx,
 
    pipe_resource_reference(&surface->base.texture, pres);
    pipe_reference_init(&surface->base.reference, 1);
-   surface->base.context = pctx;
-   surface->base.format = templ->format;
-   surface->base.width = u_minify(pres->width0, level);
-   assert(surface->base.width);
-   surface->base.height = u_minify(pres->height0, level);
-   assert(surface->base.height);
-   surface->base.nr_samples = templ->nr_samples;
-   surface->base.u.tex.level = level;
-   surface->base.u.tex.first_layer = templ->u.tex.first_layer;
-   surface->base.u.tex.last_layer = templ->u.tex.last_layer;
+   init_pipe_surface_info(pctx, &surface->base, templ, pres);
    surface->obj = zink_resource(pres)->obj;
 
    init_surface_info(surface, res, ivci);
