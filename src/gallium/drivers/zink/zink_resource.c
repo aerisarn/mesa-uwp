@@ -105,6 +105,7 @@ zink_destroy_resource_object(struct zink_screen *screen, struct zink_resource_ob
       while (util_dynarray_contains(&obj->views, VkImageView))
          VKSCR(DestroyImageView)(screen->dev, util_dynarray_pop(&obj->views, VkImageView), NULL);
    }
+   util_dynarray_fini(&obj->views);
    if (obj->is_buffer) {
       VKSCR(DestroyBuffer)(screen->dev, obj->buffer, NULL);
       VKSCR(DestroyBuffer)(screen->dev, obj->storage_buffer, NULL);
