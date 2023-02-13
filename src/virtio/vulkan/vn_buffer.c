@@ -271,6 +271,48 @@ vn_buffer_create(struct vn_device *dev,
    return VK_SUCCESS;
 }
 
+struct vn_buffer_create_info {
+   VkBufferCreateInfo create;
+   VkExternalMemoryBufferCreateInfo external;
+   VkBufferOpaqueCaptureAddressCreateInfo capture;
+};
+
+static const VkBufferCreateInfo *
+vn_buffer_fix_create_info(
+   const VkBufferCreateInfo *create_info,
+   const VkExternalMemoryHandleTypeFlagBits renderer_handle_type,
+   struct vn_buffer_create_info *local_info)
+{
+   local_info->create = *create_info;
+   VkBaseOutStructure *cur = (void *)&local_info->create;
+
+   vk_foreach_struct_const(src, create_info->pNext) {
+      void *next = NULL;
+      switch (src->sType) {
+      case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO:
+         memcpy(&local_info->external, src, sizeof(local_info->external));
+         local_info->external.handleTypes = renderer_handle_type;
+         next = &local_info->external;
+         break;
+      case VK_STRUCTURE_TYPE_BUFFER_OPAQUE_CAPTURE_ADDRESS_CREATE_INFO:
+         memcpy(&local_info->capture, src, sizeof(local_info->capture));
+         next = &local_info->capture;
+         break;
+      default:
+         break;
+      }
+
+      if (next) {
+         cur->pNext = next;
+         cur = next;
+      }
+   }
+
+   cur->pNext = NULL;
+
+   return &local_info->create;
+}
+
 VkResult
 vn_CreateBuffer(VkDevice device,
                 const VkBufferCreateInfo *pCreateInfo,
@@ -281,24 +323,36 @@ vn_CreateBuffer(VkDevice device,
    struct vn_device *dev = vn_device_from_handle(device);
    const VkAllocationCallbacks *alloc =
       pAllocator ? pAllocator : &dev->base.base.alloc;
-   struct vn_buffer *buf = NULL;
-   VkResult result;
+   const VkExternalMemoryHandleTypeFlagBits renderer_handle_type =
+      dev->physical_device->external_memory.renderer_handle_type;
 
+   struct vn_buffer_create_info local_info;
    const VkExternalMemoryBufferCreateInfo *external_info =
       vk_find_struct_const(pCreateInfo->pNext,
                            EXTERNAL_MEMORY_BUFFER_CREATE_INFO);
-   const bool ahb_info =
-      external_info &&
-      external_info->handleTypes ==
-         VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
+   if (external_info && external_info->handleTypes &&
+       external_info->handleTypes != renderer_handle_type) {
+      pCreateInfo = vn_buffer_fix_create_info(
+         pCreateInfo, renderer_handle_type, &local_info);
+   }
 
-   if (ahb_info)
-      result = vn_android_buffer_from_ahb(dev, pCreateInfo, alloc, &buf);
-   else
-      result = vn_buffer_create(dev, pCreateInfo, alloc, &buf);
-
+   struct vn_buffer *buf;
+   VkResult result = vn_buffer_create(dev, pCreateInfo, alloc, &buf);
    if (result != VK_SUCCESS)
       return vn_error(dev->instance, result);
+
+   if (external_info &&
+       external_info->handleTypes ==
+          VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID) {
+      /* AHB backed buffer layers on top of renderer external memory, so here
+       * we combine the queried type bits from both buffer memory requirement
+       * and renderer external memory properties.
+       */
+      buf->requirements.memory.memoryRequirements.memoryTypeBits &=
+         dev->buffer_cache.ahb_mem_type_bits;
+
+      assert(buf->requirements.memory.memoryRequirements.memoryTypeBits);
+   }
 
    *pBuffer = vn_buffer_to_handle(buf);
 
