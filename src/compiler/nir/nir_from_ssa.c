@@ -783,11 +783,6 @@ resolve_parallel_copy(nir_parallel_copy_instr *pcopy,
           */
          if (nir_src_is_divergent(values[a]) ==
              nir_src_is_divergent(values[b])) {
-            /* If any other copies want a they can find it at b but only if the
-             * two have the same divergence.
-             */
-            loc[a] = b;
-
             /* If a needs to be filled... */
             if (pred[a] != -1) {
                /* If any other copies want a they can find it at b */
