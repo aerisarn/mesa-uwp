@@ -591,4 +591,8 @@ impl Program {
     pub fn is_binary(&self) -> bool {
         self.src.to_bytes().is_empty() && self.il.is_empty()
     }
+
+    pub fn is_src(&self) -> bool {
+        !self.src.to_bytes().is_empty()
+    }
 }
