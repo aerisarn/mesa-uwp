@@ -253,7 +253,7 @@ zink_get_surface(struct zink_context *ctx,
 
 /* wrap a surface for use as a framebuffer attachment */
 static struct pipe_surface *
-wrap_surface(struct pipe_context *pctx, struct pipe_surface *psurf)
+wrap_surface(struct pipe_context *pctx, const struct pipe_surface *psurf)
 {
    struct zink_ctx_surface *csurf = CALLOC_STRUCT(zink_ctx_surface);
    csurf->base = *psurf;
