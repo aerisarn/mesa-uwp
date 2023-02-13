@@ -30,57 +30,29 @@ vn_buffer_create_info_can_be_cached(const VkBufferCreateInfo *create_info,
           (create_info->sharingMode == VK_SHARING_MODE_EXCLUSIVE);
 }
 
-static VkResult
-vn_buffer_get_max_buffer_size(struct vn_device *dev,
-                              uint64_t *out_max_buffer_size)
+static inline uint64_t
+vn_buffer_get_max_buffer_size(struct vn_physical_device *physical_dev)
 {
-   const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
-   struct vn_physical_device *pdev = dev->physical_device;
-   VkDevice dev_handle = vn_device_to_handle(dev);
-   VkBuffer buf_handle;
-   VkBufferCreateInfo create_info = {
-      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-      .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-   };
-   uint64_t max_buffer_size = 0;
-   uint8_t begin = 0;
-   uint8_t end = 64;
-
-   if (pdev->features.vulkan_1_3.maintenance4) {
-      *out_max_buffer_size = pdev->properties.vulkan_1_3.maxBufferSize;
-      return VK_SUCCESS;
-   }
-
-   /* For drivers that don't support VK_KHR_maintenance4, we try to estimate
-    * the maxBufferSize using binary search.
-    * TODO remove all the search code after VK_KHR_maintenance4 becomes
-    * a requirement.
+   /* Without maintenance4, hardcode the min of supported drivers:
+    * - anv:  1ull << 30
+    * - radv: UINT32_MAX - 4
+    * - tu:   UINT32_MAX + 1
+    * - lvp:  UINT32_MAX
+    * - mali: UINT32_MAX
     */
-   while (begin < end) {
-      uint8_t mid = (begin + end) >> 1;
-      create_info.size = 1ull << mid;
-      if (vn_CreateBuffer(dev_handle, &create_info, alloc, &buf_handle) ==
-          VK_SUCCESS) {
-         vn_DestroyBuffer(dev_handle, buf_handle, alloc);
-         max_buffer_size = create_info.size;
-         begin = mid + 1;
-      } else {
-         end = mid;
-      }
-   }
-
-   *out_max_buffer_size = max_buffer_size;
-   return VK_SUCCESS;
+   static const uint64_t safe_max_buffer_size = 1ULL << 30;
+   return physical_dev->features.vulkan_1_3.maintenance4
+             ? physical_dev->properties.vulkan_1_3.maxBufferSize
+             : safe_max_buffer_size;
 }
 
 VkResult
 vn_buffer_cache_init(struct vn_device *dev)
 {
    uint32_t ahb_mem_type_bits = 0;
-   uint64_t max_buffer_size = 0;
    VkResult result;
 
+   /* TODO lazily initialize ahb buffer cache */
    if (dev->base.base.enabled_extensions
           .ANDROID_external_memory_android_hardware_buffer) {
       result =
@@ -89,14 +61,9 @@ vn_buffer_cache_init(struct vn_device *dev)
          return result;
    }
 
-   if (!VN_PERF(NO_ASYNC_BUFFER_CREATE)) {
-      result = vn_buffer_get_max_buffer_size(dev, &max_buffer_size);
-      if (result != VK_SUCCESS)
-         return result;
-   }
-
    dev->buffer_cache.ahb_mem_type_bits = ahb_mem_type_bits;
-   dev->buffer_cache.max_buffer_size = max_buffer_size;
+   dev->buffer_cache.max_buffer_size =
+      vn_buffer_get_max_buffer_size(dev->physical_device);
 
    simple_mtx_init(&dev->buffer_cache.mutex, mtx_plain);
    util_sparse_array_init(&dev->buffer_cache.entries,
