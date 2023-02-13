@@ -4742,7 +4742,8 @@ zink_resource_commit(struct pipe_context *pctx, struct pipe_resource *pres, unsi
 static void
 rebind_image(struct zink_context *ctx, struct zink_resource *res)
 {
-   zink_rebind_framebuffer(ctx, res);
+   if (res->fb_binds)
+      zink_rebind_framebuffer(ctx, res);
    if (!zink_resource_has_binds(res))
       return;
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
