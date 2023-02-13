@@ -874,7 +874,7 @@ struct anv_queue_family {
    enum intel_engine_class engine_class;
 };
 
-#define ANV_MAX_QUEUE_FAMILIES 3
+#define ANV_MAX_QUEUE_FAMILIES 4
 
 struct anv_memory_type {
    /* Standard bits passed on to the client */
