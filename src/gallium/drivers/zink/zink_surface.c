@@ -277,6 +277,14 @@ zink_create_surface(struct pipe_context *pctx,
    if (!res->obj->dt && pres->format != templ->format) {
       /* mutable not set by default */
       needs_mutable = !(res->base.b.bind & ZINK_BIND_MUTABLE);
+      /*
+         VUID-VkImageViewCreateInfo-image-07072
+         If image was created with the VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT flag and
+         format is a non-compressed format, the levelCount and layerCount members of
+         subresourceRange must both be 1
+       */
+      if (needs_mutable && util_format_is_compressed(pres->format) && templ->u.tex.first_layer != templ->u.tex.last_layer)
+         return NULL;
    }
 
    if (!zink_screen(pctx->screen)->threaded && needs_mutable) {
