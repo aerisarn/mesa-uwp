@@ -40,6 +40,7 @@ struct iris_kmd_backend {
                           enum iris_heap heap_flags, unsigned alloc_flags);
    bool (*bo_madvise)(struct iris_bo *bo, enum iris_madvice state);
    int (*bo_set_caching)(struct iris_bo *bo, bool cached);
+   void *(*gem_mmap)(struct iris_bufmgr *bufmgr, struct iris_bo *bo);
 };
 
 const struct iris_kmd_backend *

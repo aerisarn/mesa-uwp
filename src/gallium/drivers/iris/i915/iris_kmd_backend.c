@@ -22,11 +22,16 @@
  */
 #include "iris/iris_kmd_backend.h"
 
+#include <sys/mman.h>
+
 #include "common/intel_gem.h"
+#include "dev/intel_debug.h"
 
 #include "drm-uapi/i915_drm.h"
 
 #include "iris/iris_bufmgr.h"
+
+#define FILE_DEBUG_FLAG DEBUG_BUFMGR
 
 static uint32_t
 i915_gem_create(struct iris_bufmgr *bufmgr,
@@ -118,12 +123,103 @@ i915_bo_set_caching(struct iris_bo *bo, bool cached)
                       DRM_IOCTL_I915_GEM_SET_CACHING, &arg);
 }
 
+static void *
+i915_gem_mmap_offset(struct iris_bufmgr *bufmgr, struct iris_bo *bo)
+{
+   struct drm_i915_gem_mmap_offset mmap_arg = {
+      .handle = bo->gem_handle,
+   };
+
+   if (iris_bufmgr_get_device_info(bufmgr)->has_local_mem) {
+      /* On discrete memory platforms, we cannot control the mmap caching mode
+       * at mmap time.  Instead, it's fixed when the object is created (this
+       * is a limitation of TTM).
+       *
+       * On DG1, our only currently enabled discrete platform, there is no
+       * control over what mode we get.  For SMEM, we always get WB because
+       * it's fast (probably what we want) and when the device views SMEM
+       * across PCIe, it's always snooped.  The only caching mode allowed by
+       * DG1 hardware for LMEM is WC.
+       */
+      if (bo->real.heap != IRIS_HEAP_SYSTEM_MEMORY)
+         assert(bo->real.mmap_mode == IRIS_MMAP_WC);
+      else
+         assert(bo->real.mmap_mode == IRIS_MMAP_WB);
+
+      mmap_arg.flags = I915_MMAP_OFFSET_FIXED;
+   } else {
+      /* Only integrated platforms get to select a mmap caching mode here */
+      static const uint32_t mmap_offset_for_mode[] = {
+         [IRIS_MMAP_UC]    = I915_MMAP_OFFSET_UC,
+         [IRIS_MMAP_WC]    = I915_MMAP_OFFSET_WC,
+         [IRIS_MMAP_WB]    = I915_MMAP_OFFSET_WB,
+      };
+      assert(bo->real.mmap_mode != IRIS_MMAP_NONE);
+      assert(bo->real.mmap_mode < ARRAY_SIZE(mmap_offset_for_mode));
+      mmap_arg.flags = mmap_offset_for_mode[bo->real.mmap_mode];
+   }
+
+   /* Get the fake offset back */
+   if (intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_I915_GEM_MMAP_OFFSET,
+                   &mmap_arg)) {
+      DBG("%s:%d: Error preparing buffer %d (%s): %s .\n",
+          __FILE__, __LINE__, bo->gem_handle, bo->name, strerror(errno));
+      return NULL;
+   }
+
+   /* And map it */
+   void *map = mmap(0, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED,
+                    iris_bufmgr_get_fd(bufmgr), mmap_arg.offset);
+   if (map == MAP_FAILED) {
+      DBG("%s:%d: Error mapping buffer %d (%s): %s .\n",
+          __FILE__, __LINE__, bo->gem_handle, bo->name, strerror(errno));
+      return NULL;
+   }
+
+   return map;
+}
+
+static void *
+i915_gem_mmap_legacy(struct iris_bufmgr *bufmgr, struct iris_bo *bo)
+{
+   assert(iris_bufmgr_vram_size(bufmgr) == 0);
+   assert(bo->real.mmap_mode == IRIS_MMAP_WB ||
+          bo->real.mmap_mode == IRIS_MMAP_WC);
+
+   struct drm_i915_gem_mmap mmap_arg = {
+      .handle = bo->gem_handle,
+      .size = bo->size,
+      .flags = bo->real.mmap_mode == IRIS_MMAP_WC ? I915_MMAP_WC : 0,
+   };
+
+   if (intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_I915_GEM_MMAP,
+                   &mmap_arg)) {
+      DBG("%s:%d: Error mapping buffer %d (%s): %s .\n",
+          __FILE__, __LINE__, bo->gem_handle, bo->name, strerror(errno));
+      return NULL;
+   }
+
+   return (void *)(uintptr_t) mmap_arg.addr_ptr;
+}
+
+static void *
+i915_gem_mmap(struct iris_bufmgr *bufmgr, struct iris_bo *bo)
+{
+   assert(iris_bo_is_real(bo));
+
+   if (likely(iris_bufmgr_get_device_info(bufmgr)->has_mmap_offset))
+      return i915_gem_mmap_offset(bufmgr, bo);
+   else
+      return i915_gem_mmap_legacy(bufmgr, bo);
+}
+
 const struct iris_kmd_backend *i915_get_backend(void)
 {
    static const struct iris_kmd_backend i915_backend = {
       .gem_create = i915_gem_create,
       .bo_madvise = i915_bo_madvise,
       .bo_set_caching = i915_bo_set_caching,
+      .gem_mmap = i915_gem_mmap,
    };
    return &i915_backend;
 }
