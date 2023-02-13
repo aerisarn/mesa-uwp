@@ -814,16 +814,10 @@ resolve_parallel_copy(nir_parallel_copy_instr *pcopy,
       assert(num_vals < num_copies * 2);
       nir_register *reg = nir_local_reg_create(state->builder.impl);
       reg->num_array_elems = 0;
-      if (values[b].is_ssa) {
-         reg->num_components = values[b].ssa->num_components;
-         reg->bit_size = values[b].ssa->bit_size;
-      } else {
-         reg->num_components = values[b].reg.reg->num_components;
-         reg->bit_size = values[b].reg.reg->bit_size;
-      }
+      reg->num_components = nir_src_num_components(values[b]);
+      reg->bit_size = nir_src_bit_size(values[b]);
       reg->divergent = nir_src_is_divergent(values[b]);
-      values[num_vals].is_ssa = false;
-      values[num_vals].reg.reg = reg;
+      values[num_vals] = nir_src_for_reg(reg);
 
       emit_copy(&state->builder, values[b], values[num_vals]);
       loc[b] = num_vals;
