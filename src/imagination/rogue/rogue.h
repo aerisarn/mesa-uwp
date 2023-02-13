@@ -2379,10 +2379,14 @@ static inline bool rogue_src_regarray_replace(rogue_regarray_use *use,
    return true;
 }
 
-static inline bool rogue_regarray_replace(rogue_regarray *old_regarray,
+static inline bool rogue_regarray_replace(rogue_shader *shader,
+                                          rogue_regarray *old_regarray,
                                           rogue_regarray *new_regarray)
 {
    bool replaced = true;
+
+   assert(!old_regarray->parent);
+   assert(!new_regarray->parent);
 
    rogue_foreach_regarray_write_safe (write, old_regarray) {
       replaced &= rogue_dst_regarray_replace(write, new_regarray);
@@ -2392,8 +2396,31 @@ static inline bool rogue_regarray_replace(rogue_regarray *old_regarray,
       replaced &= rogue_src_regarray_replace(use, new_regarray);
    }
 
-   /* N.B. The old regarray isn't automatically deleted here, this needs to be
-    * done manually. */
+   enum rogue_reg_class new_class = new_regarray->regs[0]->class;
+   unsigned new_base_index = new_regarray->regs[0]->index;
+
+   /* Replace subarrays. */
+   rogue_foreach_subarray_safe (old_subarray, old_regarray) {
+      unsigned idx_offset =
+         old_subarray->regs[0]->index - old_regarray->regs[0]->index;
+      rogue_regarray *new_subarray =
+         rogue_regarray_cached(shader,
+                               old_subarray->size,
+                               new_class,
+                               new_base_index + idx_offset);
+
+      rogue_foreach_regarray_write_safe (write, old_subarray) {
+         replaced &= rogue_dst_regarray_replace(write, new_subarray);
+      }
+
+      rogue_foreach_regarray_use_safe (use, old_subarray) {
+         replaced &= rogue_src_regarray_replace(use, new_subarray);
+      }
+
+      rogue_regarray_delete(old_subarray);
+   }
+
+   rogue_regarray_delete(old_regarray);
 
    return replaced;
 }

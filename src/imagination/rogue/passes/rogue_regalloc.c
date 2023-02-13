@@ -23,10 +23,12 @@
 
 #include "rogue.h"
 #include "util/macros.h"
+#include "util/u_qsort.h"
 #include "util/ralloc.h"
 #include "util/register_allocate.h"
 
 #include <stdbool.h>
+#include <stdlib.h>
 
 /**
  * \file rogue_regalloc.c
@@ -40,6 +42,20 @@ typedef struct rogue_live_range {
    unsigned start;
    unsigned end;
 } rogue_live_range;
+
+static int regarray_cmp(const void *lhs, const void *rhs, UNUSED void *arg)
+{
+   const rogue_regarray *l = lhs;
+   const rogue_regarray *r = rhs;
+
+   /* Signs swapped for sorting largest->smallest. */
+   if (l->size > r->size)
+      return -1;
+   else if (l->size < r->size)
+      return 1;
+
+   return 0;
+}
 
 PUBLIC
 bool rogue_regalloc(rogue_shader *shader)
@@ -201,6 +217,7 @@ bool rogue_regalloc(rogue_shader *shader)
    rogue_regarray **parent_regarrays =
       rzalloc_array_size(shader, sizeof(*parent_regarrays), regarray_count);
 
+   /* Construct list of sorted parent regarrays. */
    unsigned num_parent_regarrays = 0;
    rogue_foreach_regarray (regarray, shader) {
       if (regarray->parent || regarray->regs[0]->class != ROGUE_REG_CLASS_SSA)
@@ -208,6 +225,12 @@ bool rogue_regalloc(rogue_shader *shader)
 
       parent_regarrays[num_parent_regarrays++] = regarray;
    }
+
+   util_qsort_r(parent_regarrays,
+                num_parent_regarrays,
+                sizeof(*parent_regarrays),
+                regarray_cmp,
+                NULL);
 
    for (unsigned u = 0; u < num_parent_regarrays; ++u) {
       rogue_regarray *regarray = parent_regarrays[u];
@@ -219,8 +242,12 @@ bool rogue_regalloc(rogue_shader *shader)
       enum rogue_reg_class new_class = regalloc_info[ra_class].class;
 
       bool used = false;
-      for (unsigned r = 0; r < regarray->size; ++r)
+      for (unsigned r = 0; r < regarray->size; ++r) {
          used |= rogue_reg_is_used(shader, new_class, new_base_index + r);
+
+         if (used)
+            break;
+      }
 
       /* First time using new regarray, modify in place. */
       if (!used) {
@@ -234,21 +261,7 @@ bool rogue_regalloc(rogue_shader *shader)
                                                               regarray->size,
                                                               new_class,
                                                               new_base_index);
-         progress |= rogue_regarray_replace(regarray, new_regarray);
-
-         /* Replace subarrays. */
-         rogue_foreach_subarray_safe (subarray, regarray) {
-            unsigned idx_offset =
-               subarray->regs[0]->index - regarray->regs[0]->index;
-            new_regarray = rogue_regarray_cached(shader,
-                                                 subarray->size,
-                                                 new_class,
-                                                 new_base_index + idx_offset);
-            progress |= rogue_regarray_replace(subarray, new_regarray);
-            rogue_regarray_delete(subarray);
-         }
-
-         rogue_regarray_delete(regarray);
+         progress |= rogue_regarray_replace(shader, regarray, new_regarray);
       }
    }
 
