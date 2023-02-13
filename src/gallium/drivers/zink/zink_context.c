@@ -3162,7 +3162,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
             struct zink_surface *b = zink_csurface(state->cbufs[i]);
             if (a == b)
                continue;
-            if (memcmp(&a->base.u.tex, &b->base.u.tex, sizeof(b->base.u.tex)) ||
+            if (!a || !b || memcmp(&a->base.u.tex, &b->base.u.tex, sizeof(b->base.u.tex)) ||
                 a->base.texture != b->base.texture)
                flush_clears = true;
             else if (a->base.format != b->base.format)
