@@ -1447,6 +1447,7 @@ struct zink_ctx_surface {
    struct zink_surface *surf; //the actual surface
    struct zink_ctx_surface *transient; //for use with EXT_multisample_render_to_texture
    bool transient_init; //whether the transient surface has data
+   bool needs_mutable;
 };
 
 /* use this cast for framebuffer surfaces */

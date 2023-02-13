@@ -3140,6 +3140,22 @@ zink_set_color_write_enables(struct zink_context *ctx)
 }
 
 static void
+check_framebuffer_surface_mutable(struct pipe_context *pctx, struct pipe_surface *psurf)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   struct zink_ctx_surface *csurf = (struct zink_ctx_surface *)psurf;
+   if (!csurf->needs_mutable)
+      return;
+   zink_resource_object_init_mutable(ctx, zink_resource(psurf->texture));
+   struct pipe_surface *psurf2 = pctx->create_surface(pctx, psurf->texture, psurf);
+   pipe_resource_reference(&psurf2->texture, NULL);
+   struct zink_ctx_surface *csurf2 = (struct zink_ctx_surface *)psurf2;
+   zink_surface_reference(zink_screen(pctx->screen), &csurf->surf, csurf2->surf);
+   pctx->surface_destroy(pctx, psurf2);
+   csurf->needs_mutable = false;
+}
+
+static void
 zink_set_framebuffer_state(struct pipe_context *pctx,
                            const struct pipe_framebuffer_state *state)
 {
@@ -3225,6 +3241,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
          if (!samples)
             samples = MAX3(transient ? transient->base.nr_samples : 1, psurf->texture->nr_samples, psurf->nr_samples ? psurf->nr_samples : 1);
          struct zink_resource *res = zink_resource(psurf->texture);
+         check_framebuffer_surface_mutable(pctx, psurf);
          if (zink_csurface(psurf)->info.layerCount > layers)
             ctx->fb_layer_mismatch |= BITFIELD_BIT(i);
          if (res->modifiers) {
@@ -3254,6 +3271,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    if (ctx->fb_state.zsbuf) {
       struct pipe_surface *psurf = ctx->fb_state.zsbuf;
       struct zink_surface *transient = zink_transient_surface(psurf);
+      check_framebuffer_surface_mutable(pctx, psurf);
       if (transient || psurf->nr_samples)
          ctx->transient_attachments |= BITFIELD_BIT(PIPE_MAX_COLOR_BUFS);
       if (!samples)
