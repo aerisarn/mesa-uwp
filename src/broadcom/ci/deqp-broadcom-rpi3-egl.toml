@@ -7,6 +7,7 @@ deqp_args = [
     "--deqp-surface-type=pbuffer", "--deqp-visibility=hidden",
     "--deqp-gl-config-name=rgba8888d24s8ms0",
 ]
+prefix = "x11-"
 
 # Disabled due to timeouts since wayland platform was enabled
 # See https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/20480#note_1702748

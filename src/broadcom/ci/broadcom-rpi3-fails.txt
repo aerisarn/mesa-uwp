@@ -7,7 +7,7 @@ KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_short_depth_com
 #  Creating OpenGL ES 3 context
 # Fail, context: 0x00000000, error: EGL_BAD_MATCH
 # https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3816
-dEQP-EGL.functional.create_context.no_config,Fail
+x11-dEQP-EGL.functional.create_context.no_config,Fail
 wayland-dEQP-EGL.functional.create_context.no_config,Fail
 
 # wide line outside the viewport incorrectly clipped out when ES wants it
