@@ -509,7 +509,9 @@ agx_create_sampler_state(struct pipe_context *pctx,
    struct agx_sampler_state *so = CALLOC_STRUCT(agx_sampler_state);
    so->base = *state;
 
-   assert(state->lod_bias == 0 && "todo: lod bias");
+   /* We report a max texture LOD bias of 16, so clamp appropriately */
+   float lod_bias = CLAMP(state->lod_bias, -16.0, 16.0);
+   so->lod_bias_as_fp16 = _mesa_float_to_half(lod_bias);
 
    agx_pack(&so->desc, SAMPLER, cfg) {
       cfg.minimum_lod = state->min_lod;
