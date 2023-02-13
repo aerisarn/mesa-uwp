@@ -618,6 +618,9 @@ LLVMValueRef ac_build_gather_values(struct ac_llvm_context *ctx, LLVMValueRef *v
 
 LLVMValueRef ac_build_concat(struct ac_llvm_context *ctx, LLVMValueRef a, LLVMValueRef b)
 {
+   if (!a)
+      return b;
+
    unsigned a_size = ac_get_llvm_num_components(a);
    unsigned b_size = ac_get_llvm_num_components(b);
 
@@ -1365,8 +1368,22 @@ LLVMValueRef ac_build_buffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc
       return ac_build_gather_values(ctx, result, num_channels);
    }
 
-   return ac_build_buffer_load_common(ctx, rsrc, vindex, voffset, soffset, num_channels,
-                                      channel_type, cache_policy, can_speculate, false);
+   /* LLVM is unable to select instructions for num_channels > 4, so we
+    * workaround that by manually splitting larger buffer loads.
+    */
+   LLVMValueRef result = NULL;
+   for (unsigned i = 0, fetch_num_channels; i < num_channels; i += fetch_num_channels) {
+      fetch_num_channels = MIN2(4, num_channels - i);
+      LLVMValueRef fetch_voffset =
+            LLVMBuildAdd(ctx->builder, voffset,
+                         LLVMConstInt(ctx->i32, i * ac_get_type_size(channel_type), 0), "");
+      LLVMValueRef item =
+         ac_build_buffer_load_common(ctx, rsrc, vindex, fetch_voffset, soffset, fetch_num_channels,
+                                     channel_type, cache_policy, can_speculate, false);
+      result = ac_build_concat(ctx, result, item);
+   }
+
+   return result;
 }
 
 LLVMValueRef ac_build_buffer_load_format(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
