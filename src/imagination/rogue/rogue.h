@@ -1339,6 +1339,8 @@ enum rogue_backend_op {
    ROGUE_BACKEND_OP_UVSW_EMITTHENENDTASK,
    ROGUE_BACKEND_OP_UVSW_WRITETHENEMITTHENENDTASK,
 
+   ROGUE_BACKEND_OP_EMITPIX,
+
    ROGUE_BACKEND_OP_LD,
 
    ROGUE_BACKEND_OP_FITR_PIXEL,
@@ -1438,6 +1440,8 @@ enum rogue_backend_op_mod {
    ROGUE_BACKEND_OP_MOD_F16, /* Return packed F16 data. */
 
    ROGUE_BACKEND_OP_MOD_SAT, /* Saturate output. */
+
+   ROGUE_BACKEND_OP_MOD_FREEP, /* Free partition. */
 
    ROGUE_BACKEND_OP_MOD_COUNT,
 };

@@ -523,6 +523,12 @@ static void rogue_encode_backend_instr(const rogue_backend_instr *backend,
 
       break;
 
+   case ROGUE_BACKEND_OP_EMITPIX:
+      instr_encoding->backend.op = BACKENDOP_EMIT;
+      instr_encoding->backend.emitpix.freep =
+         rogue_backend_op_mod_is_set(backend, OM(FREEP));
+      break;
+
    default:
       unreachable("Unsupported backend op.");
    }

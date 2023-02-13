@@ -257,6 +257,11 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
       .supported_dst_types = { [0] = T(REG), },
       .supported_src_types = { [0] = T(REG), },
    },
+   [ROGUE_BACKEND_OP_EMITPIX] = { .str = "emitpix", .num_srcs = 2,
+      .phase_io = { .src[0] = IO(S0), .src[1] = IO(S2), },
+      .supported_op_mods = OM(FREEP),
+      .supported_src_types = { [0] = T(REG), [1] = T(REG), },
+   },
    /* .src[1] and .src[2] can actually be S0-5. */
    [ROGUE_BACKEND_OP_LD] = { .str = "ld", .num_dsts = 1, .num_srcs = 3,
       .phase_io = { .dst[0] = IO(S3), .src[2] = IO(S0), },
@@ -396,40 +401,32 @@ const rogue_backend_op_mod_info rogue_backend_op_mod_infos[ROGUE_BACKEND_OP_MOD_
    [ROGUE_BACKEND_OP_MOD_PROJ]  = { .str = "proj", },
    [ROGUE_BACKEND_OP_MOD_FCNORM]  = { .str = "fcnorm", },
    [ROGUE_BACKEND_OP_MOD_NNCOORDS]  = { .str = "nncoords", },
-
    [ROGUE_BACKEND_OP_MOD_BIAS]  = { .str = "bias", .exclude = OM(REPLACE) | OM(GRADIENT) },
    [ROGUE_BACKEND_OP_MOD_REPLACE]  = { .str = "replace", .exclude = OM(BIAS) | OM(GRADIENT) },
    [ROGUE_BACKEND_OP_MOD_GRADIENT]  = { .str = "gradient", .exclude = OM(BIAS) | OM(REPLACE) },
-
    [ROGUE_BACKEND_OP_MOD_PPLOD]  = { .str = "pplod", .require = OM(BIAS) | OM(REPLACE) },
    [ROGUE_BACKEND_OP_MOD_TAO]  = { .str = "tao", },
    [ROGUE_BACKEND_OP_MOD_SOO]  = { .str = "soo", },
    [ROGUE_BACKEND_OP_MOD_SNO]  = { .str = "sno", },
    [ROGUE_BACKEND_OP_MOD_WRT]  = { .str = "wrt", },
-
    [ROGUE_BACKEND_OP_MOD_DATA]  = { .str = "data", .exclude = OM(INFO) | OM(BOTH) },
    [ROGUE_BACKEND_OP_MOD_INFO]  = { .str = "info", .exclude = OM(DATA) | OM(BOTH) },
    [ROGUE_BACKEND_OP_MOD_BOTH]  = { .str = "both", .exclude = OM(DATA) | OM(INFO) },
-
    [ROGUE_BACKEND_OP_MOD_BYPASS]  = { .str = "bypass", .exclude = OM(FORCELINEFILL) | OM(WRITETHROUGH) | OM(WRITEBACK) | OM(LAZYWRITEBACK) },
    [ROGUE_BACKEND_OP_MOD_FORCELINEFILL]  = { .str = "forcelinefill", .exclude = OM(BYPASS) | OM(WRITETHROUGH) | OM(WRITEBACK) | OM(LAZYWRITEBACK) },
-
    [ROGUE_BACKEND_OP_MOD_WRITETHROUGH]  = { .str = "writethrough", .exclude = OM(BYPASS) | OM(FORCELINEFILL) | OM(WRITEBACK) | OM(LAZYWRITEBACK) },
    [ROGUE_BACKEND_OP_MOD_WRITEBACK]  = { .str = "writeback", .exclude = OM(BYPASS) | OM(FORCELINEFILL) | OM(WRITETHROUGH) | OM(LAZYWRITEBACK) },
    [ROGUE_BACKEND_OP_MOD_LAZYWRITEBACK]  = { .str = "lazywriteback", .exclude = OM(BYPASS) | OM(FORCELINEFILL) | OM(WRITETHROUGH) | OM(WRITEBACK) },
-
    [ROGUE_BACKEND_OP_MOD_SLCBYPASS]  = { .str = "slcbypass", .exclude = OM(SLCWRITEBACK) | OM(SLCWRITETHROUGH) | OM(SLCNOALLOC) },
    [ROGUE_BACKEND_OP_MOD_SLCWRITEBACK]  = { .str = "slcwriteback", .exclude = OM(SLCBYPASS) | OM(SLCWRITETHROUGH) | OM(SLCNOALLOC) },
    [ROGUE_BACKEND_OP_MOD_SLCWRITETHROUGH]  = { .str = "slcwritethrough", .exclude = OM(SLCBYPASS) | OM(SLCWRITEBACK) | OM(SLCNOALLOC) },
    [ROGUE_BACKEND_OP_MOD_SLCNOALLOC]  = { .str = "slcnoalloc", .exclude = OM(SLCBYPASS) | OM(SLCWRITEBACK) | OM(SLCWRITETHROUGH) },
-
    [ROGUE_BACKEND_OP_MOD_ARRAY]  = { .str = "array", },
    [ROGUE_BACKEND_OP_MOD_INTEGER]  = { .str = "integer", },
    [ROGUE_BACKEND_OP_MOD_SCHEDSWAP]  = { .str = "schedswap", },
-
    [ROGUE_BACKEND_OP_MOD_F16]  = { .str = "f16", },
-
    [ROGUE_BACKEND_OP_MOD_SAT]  = { .str = "sat", },
+   [ROGUE_BACKEND_OP_MOD_FREEP] = { .str = "freep", },
 };
 #undef OM
 
