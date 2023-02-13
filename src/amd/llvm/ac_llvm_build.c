@@ -1435,8 +1435,8 @@ LLVMValueRef ac_build_buffer_load_format(struct ac_llvm_context *ctx, LLVMValueR
 static LLVMValueRef ac_build_tbuffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
                                           LLVMValueRef vindex, LLVMValueRef voffset,
                                           LLVMValueRef soffset, unsigned num_channels,
-                                          unsigned dfmt, unsigned nfmt, unsigned cache_policy,
-                                          bool can_speculate)
+                                          unsigned tbuffer_format, LLVMTypeRef channel_type,
+                                          unsigned cache_policy, bool can_speculate)
 {
    LLVMValueRef args[6];
    int idx = 0;
@@ -1445,14 +1445,14 @@ static LLVMValueRef ac_build_tbuffer_load(struct ac_llvm_context *ctx, LLVMValue
       args[idx++] = vindex;
    args[idx++] = voffset ? voffset : ctx->i32_0;
    args[idx++] = soffset ? soffset : ctx->i32_0;
-   args[idx++] = LLVMConstInt(ctx->i32, ac_get_tbuffer_format(ctx->gfx_level, dfmt, nfmt), 0);
+   args[idx++] = LLVMConstInt(ctx->i32, tbuffer_format, 0);
    args[idx++] = LLVMConstInt(ctx->i32, get_load_cache_policy(ctx, cache_policy), 0);
    unsigned func =
       !ac_has_vec3_support(ctx->gfx_level, true) && num_channels == 3 ? 4 : num_channels;
    const char *indexing_kind = vindex ? "struct" : "raw";
    char name[256], type_name[8];
 
-   LLVMTypeRef type = func > 1 ? LLVMVectorType(ctx->i32, func) : ctx->i32;
+   LLVMTypeRef type = func > 1 ? LLVMVectorType(channel_type, func) : channel_type;
    ac_build_type_name_for_intr(type, type_name, sizeof(type_name));
 
    snprintf(name, sizeof(name), "llvm.amdgcn.%s.tbuffer.load.%s", indexing_kind, type_name);
@@ -1467,8 +1467,9 @@ LLVMValueRef ac_build_struct_tbuffer_load(struct ac_llvm_context *ctx, LLVMValue
                                           unsigned dfmt, unsigned nfmt, unsigned cache_policy,
                                           bool can_speculate)
 {
-   return ac_build_tbuffer_load(ctx, rsrc, vindex, voffset, soffset, num_channels, dfmt,
-                                nfmt, cache_policy, can_speculate);
+   unsigned fmt = ac_get_tbuffer_format(ctx->gfx_level, dfmt, nfmt);
+   return ac_build_tbuffer_load(ctx, rsrc, vindex, voffset, soffset, num_channels, fmt,
+                                ctx->i32, cache_policy, can_speculate);
 }
 
 LLVMValueRef ac_build_buffer_load_short(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
