@@ -4742,32 +4742,32 @@ zink_resource_commit(struct pipe_context *pctx, struct pipe_resource *pres, unsi
 static void
 rebind_image(struct zink_context *ctx, struct zink_resource *res)
 {
-    zink_rebind_framebuffer(ctx, res);
-    if (!zink_resource_has_binds(res))
-       return;
-    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-       if (res->sampler_binds[i]) {
-          for (unsigned j = 0; j < ctx->di.num_sampler_views[i]; j++) {
-             struct zink_sampler_view *sv = zink_sampler_view(ctx->sampler_views[i][j]);
-             if (sv && sv->base.texture == &res->base.b) {
-                 struct pipe_surface *psurf = &sv->image_view->base;
-                 zink_rebind_surface(ctx, &psurf);
-                 sv->image_view = zink_surface(psurf);
-                 zink_context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, j, 1);
-                 update_descriptor_state_sampler(ctx, i, j, res);
-             }
-          }
-       }
-       if (!res->image_bind_count[i == MESA_SHADER_COMPUTE])
-          continue;
-       for (unsigned j = 0; j < ctx->di.num_images[i]; j++) {
-          if (zink_resource(ctx->image_views[i][j].base.resource) == res) {
-             zink_context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_IMAGE, j, 1);
-             update_descriptor_state_image(ctx, i, j, res);
-             _mesa_set_add(ctx->need_barriers[i == MESA_SHADER_COMPUTE], res);
-          }
-       }
-    }
+   zink_rebind_framebuffer(ctx, res);
+   if (!zink_resource_has_binds(res))
+      return;
+   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+      if (res->sampler_binds[i]) {
+         for (unsigned j = 0; j < ctx->di.num_sampler_views[i]; j++) {
+            struct zink_sampler_view *sv = zink_sampler_view(ctx->sampler_views[i][j]);
+            if (sv && sv->base.texture == &res->base.b) {
+               struct pipe_surface *psurf = &sv->image_view->base;
+               zink_rebind_surface(ctx, &psurf);
+               sv->image_view = zink_surface(psurf);
+               zink_context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, j, 1);
+               update_descriptor_state_sampler(ctx, i, j, res);
+            }
+         }
+      }
+      if (!res->image_bind_count[i == MESA_SHADER_COMPUTE])
+         continue;
+      for (unsigned j = 0; j < ctx->di.num_images[i]; j++) {
+         if (zink_resource(ctx->image_views[i][j].base.resource) == res) {
+            zink_context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_IMAGE, j, 1);
+            update_descriptor_state_image(ctx, i, j, res);
+            _mesa_set_add(ctx->need_barriers[i == MESA_SHADER_COMPUTE], res);
+         }
+      }
+   }
 }
 
 bool
