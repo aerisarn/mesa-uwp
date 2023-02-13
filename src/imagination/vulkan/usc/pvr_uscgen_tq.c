@@ -208,3 +208,37 @@ void pvr_uscgen_tq_frag(const struct pvr_tq_shader_properties *shader_props,
 
    ralloc_free(shader);
 }
+
+void pvr_uscgen_tq_eot(unsigned rt_count,
+                       const uint64_t *pbe_regs,
+                       struct util_dynarray *binary)
+{
+   rogue_builder b;
+   rogue_shader *shader = rogue_shader_create(NULL, MESA_SHADER_NONE);
+   rogue_set_shader_name(shader, "TQ (EOT)");
+   rogue_builder_init(&b, shader);
+   rogue_push_block(&b);
+
+   rogue_backend_instr *emitpix = NULL;
+   for (unsigned u = 0; u < rt_count; ++u) {
+      if (u > 0)
+         rogue_WOP(&b);
+
+      rogue_reg *state_word_0 = rogue_shared_reg(shader, pbe_regs[u]);
+      rogue_reg *state_word_1 = rogue_shared_reg(shader, pbe_regs[u] + 1);
+
+      emitpix = rogue_EMITPIX(&b,
+                              rogue_ref_reg(state_word_0),
+                              rogue_ref_reg(state_word_1));
+   }
+
+   assert(emitpix);
+
+   rogue_set_backend_op_mod(emitpix, ROGUE_BACKEND_OP_MOD_FREEP);
+   rogue_END(&b);
+
+   rogue_shader_passes(shader);
+   rogue_encode_shader(NULL, shader, binary);
+
+   ralloc_free(shader);
+}

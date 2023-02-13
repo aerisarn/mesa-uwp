@@ -152,4 +152,8 @@ void pvr_uscgen_tq_frag(const struct pvr_tq_shader_properties *shader_props,
                         unsigned *temps_used,
                         struct util_dynarray *binary);
 
+void pvr_uscgen_tq_eot(unsigned rt_count,
+                       const uint64_t *pbe_regs,
+                       struct util_dynarray *binary);
+
 #endif /* PVR_USCGEN_H */
