@@ -59,6 +59,7 @@ dnf install -y --setopt=install_weak_deps=False \
     "pkgconfig(xshmfence)" \
     "pkgconfig(xxf86vm)" \
     "pkgconfig(zlib)" \
+    procps-ng \
     python-unversioned-command \
     python3-devel \
     python3-mako \
