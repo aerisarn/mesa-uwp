@@ -1531,7 +1531,7 @@ agx_create_shader_state(struct pipe_context *pctx,
    blob_finish(&blob);
 
    so->nir = nir;
-   agx_preprocess_nir(nir);
+   agx_preprocess_nir(nir, true);
 
    /* For shader-db, precompile a shader with a default key. This could be
     * improved but hopefully this is acceptable for now.
@@ -1607,7 +1607,7 @@ agx_create_compute_state(struct pipe_context *pctx,
    blob_finish(&blob);
 
    so->nir = nir;
-   agx_preprocess_nir(nir);
+   agx_preprocess_nir(nir, true);
    agx_get_shader_variant(agx_screen(pctx->screen), so, &pctx->debug, &key);
 
    /* We're done with the NIR, throw it away */
