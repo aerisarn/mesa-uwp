@@ -3239,6 +3239,7 @@ nir_tex_instr_result_size(const nir_tex_instr *instr)
    case nir_texop_query_levels:
    case nir_texop_samples_identical:
    case nir_texop_fragment_mask_fetch_amd:
+   case nir_texop_lod_bias_agx:
       return 1;
 
    case nir_texop_descriptor_amd:
@@ -3265,6 +3266,7 @@ nir_tex_instr_is_query(const nir_tex_instr *instr)
    case nir_texop_query_levels:
    case nir_texop_descriptor_amd:
    case nir_texop_sampler_descriptor_amd:
+   case nir_texop_lod_bias_agx:
       return true;
    case nir_texop_tex:
    case nir_texop_txb:
