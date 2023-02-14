@@ -155,6 +155,25 @@ xe_gem_vm_unbind(struct iris_bo *bo)
    return xe_gem_vm_bind_op(bo, XE_VM_BIND_OP_UNMAP) == 0;
 }
 
+static bool
+xe_bo_madvise(struct iris_bo *bo, enum iris_madvice state)
+{
+   /* Only applicable if VM was created with DRM_XE_VM_CREATE_FAULT_MODE but
+    * that is not compatible with DRM_XE_VM_CREATE_SCRATCH_PAGE
+    *
+    * So returning as retained.
+    */
+   return true;
+}
+
+static int
+xe_bo_set_caching(struct iris_bo *bo, bool cached)
+{
+   /* Xe don't have caching UAPI so this function should never be called */
+   assert(0);
+   return -1;
+}
+
 const struct iris_kmd_backend *xe_get_backend(void)
 {
    static const struct iris_kmd_backend xe_backend = {
@@ -162,6 +181,8 @@ const struct iris_kmd_backend *xe_get_backend(void)
       .gem_mmap = xe_gem_mmap,
       .gem_vm_bind = xe_gem_vm_bind,
       .gem_vm_unbind = xe_gem_vm_unbind,
+      .bo_madvise = xe_bo_madvise,
+      .bo_set_caching = xe_bo_set_caching,
    };
    return &xe_backend;
 }
