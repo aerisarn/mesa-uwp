@@ -1,5 +1,5 @@
 /**********************************************************
- * Copyright 2008-2009 VMware, Inc.  All rights reserved.
+ * Copyright 2008-2023 VMware, Inc.  All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -357,7 +357,7 @@ svga_texture_transfer_map_direct(struct svga_context *svga,
    else {
       assert(usage & PIPE_MAP_WRITE);
       if ((usage & PIPE_MAP_UNSYNCHRONIZED) == 0) {
-         if (svga_is_texture_dirty(tex, st->slice, level)) {
+         if (svga_is_texture_level_dirty(tex, st->slice, level)) {
             /*
              * do a surface flush if the subresource has been modified
              * in this command buffer.
@@ -567,14 +567,15 @@ svga_texture_transfer_map(struct pipe_context *pipe,
                                !(st->base.usage & PIPE_MAP_READ);
       boolean was_rendered_to =
          svga_was_texture_rendered_to(svga_texture(texture));
+      boolean is_dirty = svga_is_texture_dirty(svga_texture(texture));
 
-      /* If the texture was already rendered to and upload buffer
-       * is supported, then we will use upload buffer to
+      /* If the texture was already rendered to or has pending changes and
+       * upload buffer is supported, then we will use upload buffer to
        * avoid the need to read back the texture content; otherwise,
        * we'll first try to map directly to the GB surface, if it is blocked,
        * then we'll try the upload buffer.
        */
-      if (was_rendered_to && can_use_upload) {
+      if ((was_rendered_to || is_dirty) && can_use_upload) {
          map = svga_texture_transfer_map_upload(svga, st);
       }
       else {
