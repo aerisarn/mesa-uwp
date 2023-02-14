@@ -947,8 +947,7 @@ vn_physical_device_get_native_extensions(
 
 #ifdef ANDROID
    if (can_external_mem && renderer_exts->EXT_image_drm_format_modifier &&
-       renderer_exts->EXT_queue_family_foreign &&
-       instance->experimental.memoryResourceAllocationSize == VK_TRUE) {
+       renderer_exts->EXT_queue_family_foreign) {
       exts->ANDROID_external_memory_android_hardware_buffer = true;
       exts->ANDROID_native_buffer = true;
    }

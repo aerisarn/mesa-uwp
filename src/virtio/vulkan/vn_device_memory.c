@@ -679,11 +679,10 @@ vn_get_memory_dma_buf_properties(struct vn_device *dev,
                                  uint32_t *out_mem_type_bits)
 {
    VkDevice device = vn_device_to_handle(dev);
-   struct vn_renderer_bo *bo = NULL;
-   VkResult result = VK_SUCCESS;
 
-   result = vn_renderer_bo_create_from_dma_buf(dev->renderer, 0 /* size */,
-                                               fd, 0 /* flags */, &bo);
+   struct vn_renderer_bo *bo;
+   VkResult result = vn_renderer_bo_create_from_dma_buf(
+      dev->renderer, 0 /* size */, fd, 0 /* flags */, &bo);
    if (result != VK_SUCCESS)
       return result;
 
@@ -692,16 +691,10 @@ vn_get_memory_dma_buf_properties(struct vn_device *dev,
    VkMemoryResourceAllocationSizeProperties100000MESA alloc_size_props = {
       .sType =
          VK_STRUCTURE_TYPE_MEMORY_RESOURCE_ALLOCATION_SIZE_PROPERTIES_100000_MESA,
-      .pNext = NULL,
-      .allocationSize = 0,
    };
    VkMemoryResourcePropertiesMESA props = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_RESOURCE_PROPERTIES_MESA,
-      .pNext =
-         dev->instance->experimental.memoryResourceAllocationSize == VK_TRUE
-            ? &alloc_size_props
-            : NULL,
-      .memoryTypeBits = 0,
+      .pNext = &alloc_size_props,
    };
    result = vn_call_vkGetMemoryResourcePropertiesMESA(dev->instance, device,
                                                       bo->res_id, &props);
