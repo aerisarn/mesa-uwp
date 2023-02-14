@@ -1999,6 +1999,9 @@ uint32_t radv_get_hash_flags(const struct radv_device *device, bool stats);
 
 bool radv_rt_pipeline_has_dynamic_stack_size(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo);
 
+unsigned compute_rt_stack_size(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
+                               const struct radv_pipeline_shader_stack_size *stack_sizes);
+
 bool radv_enable_rt(const struct radv_physical_device *pdevice, bool rt_pipelines);
 
 bool radv_emulate_rt(const struct radv_physical_device *pdevice);
@@ -2227,6 +2230,7 @@ struct radv_ray_tracing_pipeline {
    struct radv_pipeline_group_handle *group_handles;
    struct radv_pipeline_shader_stack_size *stack_sizes;
    uint32_t group_count;
+   uint32_t stack_size;
    bool dynamic_stack_size;
 };
 
