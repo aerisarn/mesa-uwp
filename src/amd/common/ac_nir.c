@@ -46,6 +46,31 @@ ac_nir_unpack_arg(nir_builder *b, const struct ac_shader_args *ac_args, struct a
 }
 
 void
+ac_nir_store_var_components(nir_builder *b, nir_variable *var, nir_ssa_def *value,
+                            unsigned component, unsigned writemask)
+{
+   /* component store */
+   if (value->num_components != 4) {
+      nir_ssa_def *undef = nir_ssa_undef(b, 1, value->bit_size);
+
+      /* add undef component before and after value to form a vec4 */
+      nir_ssa_def *comp[4];
+      for (int i = 0; i < 4; i++) {
+         comp[i] = (i >= component && i < component + value->num_components) ?
+            nir_channel(b, value, i - component) : undef;
+      }
+
+      value = nir_vec(b, comp, 4);
+      writemask <<= component;
+   } else {
+      /* if num_component==4, there should be no component offset */
+      assert(component == 0);
+   }
+
+   nir_store_var(b, var, value, writemask);
+}
+
+void
 ac_nir_export_primitive(nir_builder *b, nir_ssa_def *prim)
 {
    unsigned write_mask = BITFIELD_MASK(prim->num_components);
