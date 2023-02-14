@@ -826,6 +826,21 @@ iris_batch_name_to_string(enum iris_batch_name name)
    return names[name];
 }
 
+static inline bool
+context_or_engine_was_banned(struct iris_bufmgr *bufmgr, int ret)
+{
+   enum intel_kmd_type kmd_type = iris_bufmgr_get_device_info(bufmgr)->kmd_type;
+
+   /* In i915 EIO means our context is banned, while on Xe ECANCELED means
+    * our engine was banned
+    */
+   if ((kmd_type == INTEL_KMD_TYPE_I915 && ret == -EIO) ||
+       (kmd_type == INTEL_KMD_TYPE_XE && ret == -ECANCELED))
+      return true;
+
+   return false;
+}
+
 /**
  * Flush the batch buffer, submitting it to the GPU and resetting it so
  * we're ready to emit the next batch.
@@ -904,12 +919,12 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
    /* Start a new batch buffer. */
    iris_batch_reset(batch);
 
-   /* EIO means our context is banned.  In this case, try and replace it
+   /* Check if context or engine was banned, if yes try to replace it
     * with a new logical context, and inform iris_context that all state
     * has been lost and needs to be re-initialized.  If this succeeds,
     * dubiously claim success...
     */
-   if (ret == -EIO) {
+   if (ret && context_or_engine_was_banned(bufmgr, ret)) {
       enum pipe_reset_status status = iris_batch_check_for_reset(batch);
       if (batch->reset->reset) {
          /* Tell gallium frontends the device is lost and it was our fault. */

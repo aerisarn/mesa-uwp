@@ -193,6 +193,88 @@ xe_batch_check_for_reset(struct iris_batch *batch)
    return status;
 }
 
+static int
+xe_batch_submit(struct iris_batch *batch)
+{
+   struct iris_bufmgr *bufmgr = batch->screen->bufmgr;
+   simple_mtx_t *bo_deps_lock = iris_bufmgr_get_bo_deps_lock(bufmgr);
+   struct drm_xe_sync *syncs = NULL;
+   unsigned long sync_len;
+   int ret = 0;
+
+   iris_bo_unmap(batch->bo);
+
+   /* The decode operation may map and wait on the batch buffer, which could
+    * in theory try to grab bo_deps_lock. Let's keep it safe and decode
+    * outside the lock.
+    */
+   if (INTEL_DEBUG(DEBUG_BATCH))
+      iris_batch_decode_batch(batch);
+
+   simple_mtx_lock(bo_deps_lock);
+
+   iris_batch_update_syncobjs(batch);
+
+   sync_len = iris_batch_num_fences(batch);
+   if (sync_len) {
+      unsigned long i = 0;
+
+      syncs = calloc(sync_len, sizeof(*syncs));
+      if (!syncs) {
+         ret = -ENOMEM;
+         goto error_no_sync_mem;
+      }
+
+      util_dynarray_foreach(&batch->exec_fences, struct iris_batch_fence,
+                            fence) {
+         uint32_t flags = DRM_XE_SYNC_SYNCOBJ;
+
+         if (fence->flags & IRIS_BATCH_FENCE_SIGNAL)
+            flags |= DRM_XE_SYNC_SIGNAL;
+
+         syncs[i].handle = fence->handle;
+         syncs[i].flags = flags;
+         i++;
+      }
+   }
+
+   if (INTEL_DEBUG(DEBUG_BATCH | DEBUG_SUBMIT)) {
+      iris_dump_fence_list(batch);
+      iris_dump_bo_list(batch);
+   }
+
+   struct drm_xe_exec exec = {
+      .engine_id = batch->xe.engine_id,
+      .num_batch_buffer = 1,
+      .address = batch->exec_bos[0]->address,
+      .syncs = (uintptr_t)syncs,
+      .num_syncs = sync_len,
+   };
+   if (!batch->screen->devinfo->no_hw)
+       ret = intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_XE_EXEC, &exec);
+
+   simple_mtx_unlock(bo_deps_lock);
+
+   free(syncs);
+
+   for (int i = 0; i < batch->exec_count; i++) {
+      struct iris_bo *bo = batch->exec_bos[i];
+
+      bo->idle = false;
+      bo->index = -1;
+
+      iris_get_backing_bo(bo)->idle = false;
+
+      iris_bo_unreference(bo);
+   }
+
+   return ret;
+
+error_no_sync_mem:
+   simple_mtx_unlock(bo_deps_lock);
+   return ret;
+}
+
 const struct iris_kmd_backend *xe_get_backend(void)
 {
    static const struct iris_kmd_backend xe_backend = {
@@ -203,6 +285,7 @@ const struct iris_kmd_backend *xe_get_backend(void)
       .bo_madvise = xe_bo_madvise,
       .bo_set_caching = xe_bo_set_caching,
       .batch_check_for_reset = xe_batch_check_for_reset,
+      .batch_submit = xe_batch_submit,
    };
    return &xe_backend;
 }
