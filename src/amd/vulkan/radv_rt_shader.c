@@ -1527,10 +1527,7 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
 
    struct rt_variables vars = create_rt_variables(b.shader, pCreateInfo, stack_sizes, key);
    load_sbt_entry(&b, &vars, nir_imm_int(&b, 0), SBT_RAYGEN, SBT_GENERAL_IDX);
-   if (radv_rt_pipeline_has_dynamic_stack_size(pCreateInfo))
-      nir_store_var(&b, vars.stack_ptr, nir_load_rt_dynamic_callable_stack_base_amd(&b), 0x1);
-   else
-      nir_store_var(&b, vars.stack_ptr, nir_imm_int(&b, 0), 0x1);
+   nir_store_var(&b, vars.stack_ptr, nir_load_rt_dynamic_callable_stack_base_amd(&b), 0x1);
 
    nir_store_var(&b, vars.launch_id, nir_load_global_invocation_id(&b, 32), 0x7);
    nir_ssa_def *launch_size_addr = nir_load_ray_launch_size_addr_amd(&b);
@@ -1600,11 +1597,6 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
    }
 
    nir_pop_loop(&b, loop);
-
-   if (radv_rt_pipeline_has_dynamic_stack_size(pCreateInfo))
-      b.shader->scratch_size = 0; /* Stack size is set by the application. */
-   else
-      b.shader->scratch_size += compute_rt_stack_size(pCreateInfo, stack_sizes);
 
    /* Deal with all the inline functions. */
    nir_index_ssa_defs(nir_shader_get_entrypoint(b.shader));

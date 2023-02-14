@@ -236,10 +236,13 @@ radv_rt_pipeline_has_dynamic_stack_size(const VkRayTracingPipelineCreateInfoKHR 
    return false;
 }
 
-unsigned
+static unsigned
 compute_rt_stack_size(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                       const struct radv_pipeline_shader_stack_size *stack_sizes)
 {
+   if (radv_rt_pipeline_has_dynamic_stack_size(pCreateInfo))
+      return -1u;
+
    unsigned raygen_size = 0;
    unsigned callable_size = 0;
    unsigned chit_size = 0;
@@ -395,7 +398,6 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
       goto shader_fail;
    }
 
-   rt_pipeline->dynamic_stack_size = radv_rt_pipeline_has_dynamic_stack_size(pCreateInfo);
    rt_pipeline->stack_size = compute_rt_stack_size(pCreateInfo, rt_pipeline->stack_sizes);
 
    /* For General and ClosestHit shaders, we can use the shader ID directly as handle.
