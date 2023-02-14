@@ -225,6 +225,16 @@ clone_hw_context(struct iris_batch *batch)
    return new_ctx;
 }
 
+static void
+iris_destroy_kernel_context(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
+{
+   if (ctx_id != 0 &&
+       !intel_gem_destroy_context(iris_bufmgr_get_fd(bufmgr), ctx_id)) {
+      fprintf(stderr, "DRM_IOCTL_I915_GEM_CONTEXT_DESTROY failed: %s\n",
+              strerror(errno));
+   }
+}
+
 bool
 iris_i915_replace_batch(struct iris_batch *batch)
 {
@@ -256,6 +266,14 @@ iris_i915_replace_batch(struct iris_batch *batch)
    }
 
    return true;
+}
+
+void iris_i915_destroy_batch(struct iris_batch *batch)
+{
+   struct iris_screen *screen = batch->screen;
+   struct iris_bufmgr *bufmgr = screen->bufmgr;
+
+   iris_destroy_kernel_context(bufmgr, batch->ctx_id);
 }
 
 void iris_i915_init_batches(struct iris_context *ice)

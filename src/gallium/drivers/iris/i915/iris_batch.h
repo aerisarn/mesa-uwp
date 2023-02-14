@@ -29,3 +29,4 @@ struct iris_context;
 
 void iris_i915_init_batches(struct iris_context *ice);
 bool iris_i915_replace_batch(struct iris_batch *batch);
+void iris_i915_destroy_batch(struct iris_batch *batch);

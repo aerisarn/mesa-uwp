@@ -2039,16 +2039,6 @@ init_cache_buckets(struct iris_bufmgr *bufmgr, enum iris_heap heap)
    }
 }
 
-void
-iris_destroy_kernel_context(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
-{
-   if (ctx_id != 0 &&
-       !intel_gem_destroy_context(bufmgr->fd, ctx_id)) {
-      fprintf(stderr, "DRM_IOCTL_I915_GEM_CONTEXT_DESTROY failed: %s\n",
-              strerror(errno));
-   }
-}
-
 static struct intel_buffer *
 intel_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
 {

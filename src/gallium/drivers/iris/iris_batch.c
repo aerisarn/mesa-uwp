@@ -510,7 +510,7 @@ iris_batch_free(const struct iris_context *ice, struct iris_batch *batch)
     * context
     */
    if (!ice->has_engines_context || &ice->batches[0] == batch)
-      iris_destroy_kernel_context(bufmgr, batch->ctx_id);
+      iris_i915_destroy_batch(batch);
 
    iris_destroy_batch_measure(batch->measure);
    batch->measure = NULL;
