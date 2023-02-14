@@ -208,6 +208,10 @@ private:
    int m_lds_addr_count{0};
    int m_alu_groups_scheduled{0};
    r600_chip_class m_chip_class;
+   bool m_idx0_loading{false};
+   bool m_idx1_loading{false};
+   bool m_idx0_pending{false};
+   bool m_idx1_pending{false};
 };
 
 Shader *
@@ -574,7 +578,28 @@ BlockScheduler::schedule_alu(Shader::ShaderBlocks& out_blocks)
    group->set_scheduled();
    group->fix_last_flag();
    group->set_nesting_depth(m_current_block->nesting_depth());
+
+   auto [addr, is_index] = group->addr();
+   if (is_index) {
+      if (addr->sel() == AddressRegister::idx0 && m_idx0_pending) {
+         assert(!group->has_lds_group_start());
+         assert(m_current_block->expected_ar_uses() == 0);
+         start_new_block(out_blocks, Block::alu);
+      }
+      if (addr->sel() == AddressRegister::idx1 && m_idx1_pending) {
+         assert(!group->has_lds_group_start());
+         assert(m_current_block->expected_ar_uses() == 0);
+         start_new_block(out_blocks, Block::alu);
+      }
+   }
+
    m_current_block->push_back(group);
+
+   m_idx0_pending |= m_idx0_loading;
+   m_idx0_loading = false;
+
+   m_idx1_pending |= m_idx1_loading;
+   m_idx1_loading = false;
 
    if (group->has_lds_group_start())
       m_current_block->lds_group_start(*group->begin());
@@ -582,7 +607,7 @@ BlockScheduler::schedule_alu(Shader::ShaderBlocks& out_blocks)
    if (group->has_lds_group_end())
       m_current_block->lds_group_end();
 
-   if (group->index_mode_load() || group->has_kill_op()) {
+   if (group->has_kill_op()) {
       assert(!group->has_lds_group_start());
       assert(m_current_block->expected_ar_uses() == 0);
       start_new_block(out_blocks, Block::alu);
@@ -652,6 +677,7 @@ BlockScheduler::start_new_block(Shader::ShaderBlocks& out_blocks, Block::Type ty
       m_current_block =
          new Block(m_current_block->nesting_depth(), m_current_block->id());
       m_current_block->set_instr_flag(Instr::force_cf);
+      m_idx0_pending = m_idx1_pending = false;
    }
    m_current_block->set_type(type);
 }
@@ -697,11 +723,30 @@ BlockScheduler::schedule_alu_to_group_vec(AluGroup *group)
          auto addr = std::get<0>((*old_i)->indirect_addr());
          bool has_indirect_reg_load = addr != nullptr && addr->has_flag(Register::addr_or_idx);
 
-         if (std::get<0>((*old_i)->indirect_addr()) ||
-             (!(*old_i)->has_alu_flag(alu_is_lds) &&
-             ((*old_i)->opcode() == op1_set_cf_idx0 ||
-              (*old_i)->opcode() == op1_set_cf_idx1)))
+         bool is_idx_load_on_eg = false;
+         if (!(*old_i)->has_alu_flag(alu_is_lds)) {
+            bool load_idx0_eg = (*old_i)->opcode() == op1_set_cf_idx0;
+            bool load_idx0_ca = ((*old_i)->opcode() == op1_mova_int &&
+                                 (*old_i)->dest()->sel() == AddressRegister::idx0);
 
+            bool load_idx1_eg = (*old_i)->opcode() == op1_set_cf_idx1;
+            bool load_idx1_ca = ((*old_i)->opcode() == op1_mova_int &&
+                                 (*old_i)->dest()->sel() == AddressRegister::idx1);
+
+            is_idx_load_on_eg = load_idx0_eg || load_idx1_eg;
+
+            bool load_idx0 = load_idx0_eg || load_idx0_ca;
+            bool load_idx1 = load_idx1_eg || load_idx1_ca;
+
+
+            assert(!m_idx0_pending || !load_idx0);
+            assert(!m_idx1_pending || !load_idx1);
+
+            m_idx0_loading |= load_idx0;
+            m_idx1_loading |= load_idx1;
+         }
+
+         if (has_indirect_reg_load || is_idx_load_on_eg)
             m_current_block->dec_expected_ar_uses();
 
          alu_vec_ready.erase(old_i);
