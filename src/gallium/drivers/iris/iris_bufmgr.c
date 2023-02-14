@@ -67,6 +67,7 @@
 #include "string.h"
 #include "iris_kmd_backend.h"
 #include "i915/iris_bufmgr.h"
+#include "xe/iris_bufmgr.h"
 
 #include "drm-uapi/i915_drm.h"
 
@@ -2209,15 +2210,21 @@ iris_bufmgr_get_meminfo(struct iris_bufmgr *bufmgr,
    return true;
 }
 
-static void
+static bool
 iris_bufmgr_init_global_vm(struct iris_bufmgr *bufmgr)
 {
    switch (bufmgr->devinfo.kmd_type) {
    case INTEL_KMD_TYPE_I915:
       bufmgr->use_global_vm = iris_i915_init_global_vm(bufmgr, &bufmgr->global_vm_id);
-      break;
+      /* i915 don't require VM, so returning true even if use_global_vm is false */
+      return true;
+   case INTEL_KMD_TYPE_XE:
+      bufmgr->use_global_vm = iris_xe_init_global_vm(bufmgr, &bufmgr->global_vm_id);
+      /* Xe requires VM */
+      return bufmgr->use_global_vm;
    default:
       unreachable("missing");
+      return false;
    }
 }
 
@@ -2271,7 +2278,8 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
                                                             INTEL_ENGINE_CLASS_COMPUTE);
    free(engine_info);
 
-   iris_bufmgr_init_global_vm(bufmgr);
+   if (!iris_bufmgr_init_global_vm(bufmgr))
+      goto error_init_vm;
 
    STATIC_ASSERT(IRIS_MEMZONE_SHADER_START == 0ull);
    const uint64_t _4GB = 1ull << 32;
@@ -2364,6 +2372,7 @@ error_slabs_init:
 
       pb_slabs_deinit(&bufmgr->bo_slabs[i]);
    }
+error_init_vm:
 error_engine_info:
    close(bufmgr->fd);
 error_dup:
