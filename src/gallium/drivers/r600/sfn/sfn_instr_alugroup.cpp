@@ -102,9 +102,6 @@ AluGroup::add_trans_instructions(AluInstr *instr)
    if (m_slots[4] || s_max_slots < 5)
       return false;
 
-   if (!update_indirect_access(instr))
-      return false;
-
    /* LDS instructions have to be scheduled in X */
    if (instr->has_alu_flag(alu_is_lds))
       return false;
@@ -156,7 +153,8 @@ AluGroup::add_trans_instructions(AluInstr *instr)
 
    for (AluBankSwizzle i = sq_alu_scl_201; i != sq_alu_scl_unknown; ++i) {
       AluReadportReservation readports_evaluator = m_readports_evaluator;
-      if (readports_evaluator.schedule_trans_instruction(*instr, i)) {
+      if (readports_evaluator.schedule_trans_instruction(*instr, i) &&
+          update_indirect_access(instr)) {
          m_readports_evaluator = readports_evaluator;
          m_slots[4] = instr;
          instr->pin_sources_to_chan();
@@ -185,9 +183,6 @@ AluGroup::free_slots() const
 bool
 AluGroup::add_vec_instructions(AluInstr *instr)
 {
-   if (!update_indirect_access(instr))
-      return false;
-
    int param_src = -1;
    for (auto& s : instr->sources()) {
       auto is = s->as_inline_const();
@@ -261,7 +256,8 @@ AluGroup::try_readport(AluInstr *instr, AluBankSwizzle cycle)
 {
    int preferred_chan = instr->dest_chan();
    AluReadportReservation readports_evaluator = m_readports_evaluator;
-   if (readports_evaluator.schedule_vec_instruction(*instr, cycle)) {
+   if (readports_evaluator.schedule_vec_instruction(*instr, cycle) &&
+       update_indirect_access(instr)) {
       m_readports_evaluator = readports_evaluator;
       m_slots[preferred_chan] = instr;
       m_has_lds_op |= instr->has_lds_access();
