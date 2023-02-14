@@ -392,10 +392,10 @@ iris_cache_flush_for_render(struct iris_batch *batch,
     * but with a different aux usage.  If it has, flush the render cache so we
     * ensure that it's only in there with one aux usage at a time.
     *
-    * Even though it's not obvious, this can easily happen in practice.
+    * Even though it's not obvious, this could easily happen in practice.
     * Suppose a client is blending on a surface with sRGB encode enabled on
     * gfx9.  This implies that you get AUX_USAGE_CCS_D at best.  If the client
-    * then disables sRGB decode and continues blending we will flip on
+    * then disables sRGB decode and continues blending we could flip on
     * AUX_USAGE_CCS_E without doing any sort of resolve in-between (this is
     * perfectly valid since CCS_E is a subset of CCS_D).  However, this means
     * that we have fragments in-flight which are rendering with UNORM+CCS_E
