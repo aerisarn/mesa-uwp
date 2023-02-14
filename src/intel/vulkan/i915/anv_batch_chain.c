@@ -550,6 +550,29 @@ anv_queue_exec_utrace_locked(struct anv_queue *queue,
    return result;
 }
 
+static void
+anv_i915_debug_submit(const struct anv_execbuf *execbuf)
+{
+   uint32_t total_size_kb = 0;
+   for (uint32_t i = 0; i < execbuf->bo_count; i++) {
+      const struct anv_bo *bo = execbuf->bos[i];
+      total_size_kb += bo->size / 1024;
+   }
+
+   fprintf(stderr, "Batch offset=0x%x len=0x%x on queue 0 (%.1fMb aperture)\n",
+           execbuf->execbuf.batch_start_offset, execbuf->execbuf.batch_len,
+           (float)total_size_kb / 1024.0f);
+   for (uint32_t i = 0; i < execbuf->bo_count; i++) {
+      const struct anv_bo *bo = execbuf->bos[i];
+      uint64_t size = bo->size + bo->_ccs_size;
+
+      fprintf(stderr, "   BO: addr=0x%016"PRIx64"-0x%016"PRIx64" size=%7"PRIu64
+              "KB handle=%05u capture=%u name=%s\n",
+              bo->offset, bo->offset + size - 1, size / 1024, bo->gem_handle,
+              (bo->flags & EXEC_OBJECT_CAPTURE) != 0, bo->name);
+   }
+}
+
 VkResult
 i915_queue_exec_locked(struct anv_queue *queue,
                        uint32_t wait_count,
@@ -638,26 +661,8 @@ i915_queue_exec_locked(struct anv_queue *queue,
    const bool has_perf_query =
       perf_query_pool && perf_query_pass >= 0 && cmd_buffer_count;
 
-   if (INTEL_DEBUG(DEBUG_SUBMIT)) {
-      uint32_t total_size_kb = 0;
-      for (uint32_t i = 0; i < execbuf.bo_count; i++) {
-         const struct anv_bo *bo = execbuf.bos[i];
-         total_size_kb += bo->size / 1024;
-      }
-
-      fprintf(stderr, "Batch offset=0x%x len=0x%x on queue 0 (%.1fMb aperture)\n",
-              execbuf.execbuf.batch_start_offset, execbuf.execbuf.batch_len,
-              (float)total_size_kb / 1024.0f);
-      for (uint32_t i = 0; i < execbuf.bo_count; i++) {
-         const struct anv_bo *bo = execbuf.bos[i];
-         uint64_t size = bo->size + bo->_ccs_size;
-
-         fprintf(stderr, "   BO: addr=0x%016"PRIx64"-0x%016"PRIx64" size=%7"PRIu64
-                 "KB handle=%05u capture=%u name=%s\n",
-                 bo->offset, bo->offset + size - 1, size / 1024, bo->gem_handle,
-                 (bo->flags & EXEC_OBJECT_CAPTURE) != 0, bo->name);
-      }
-   }
+   if (INTEL_DEBUG(DEBUG_SUBMIT))
+      anv_i915_debug_submit(&execbuf);
 
    anv_cmd_buffer_exec_batch_debug(queue, cmd_buffer_count, cmd_buffers,
                                    perf_query_pool, perf_query_pass);
@@ -719,8 +724,10 @@ i915_queue_exec_locked(struct anv_queue *queue,
 
    int ret = queue->device->info->no_hw ? 0 :
       anv_gem_execbuffer(queue->device, &execbuf.execbuf);
-   if (ret)
+   if (ret) {
+      anv_i915_debug_submit(&execbuf);
       result = vk_queue_set_lost(&queue->vk, "execbuf2 failed: %m");
+   }
 
    if (result == VK_SUCCESS && queue->sync) {
       result = vk_sync_wait(&device->vk, queue->sync, 0,
