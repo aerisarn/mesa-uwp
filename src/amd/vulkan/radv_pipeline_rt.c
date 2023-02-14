@@ -221,7 +221,7 @@ fail:
    return VK_ERROR_OUT_OF_HOST_MEMORY;
 }
 
-bool
+static bool
 radv_rt_pipeline_has_dynamic_stack_size(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo)
 {
    if (!pCreateInfo->pDynamicState)
