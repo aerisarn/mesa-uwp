@@ -258,6 +258,12 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
       .supported_dst_types = { [0] = T(REG), },
       .supported_src_types = { [0] = T(REG), },
    },
+   [ROGUE_BACKEND_OP_IDF] = { .str = "idf", .num_dsts = 1, .num_srcs = 1,
+      .phase_io = { .src[0] = IO(S0), },
+      .supported_dst_types = { [0] = T(DRC), },
+      .supported_src_types = { [0] = T(REG), },
+   },
+
    [ROGUE_BACKEND_OP_EMITPIX] = { .str = "emitpix", .num_srcs = 2,
       .phase_io = { .src[0] = IO(S0), .src[1] = IO(S2), },
       .supported_op_mods = OM(FREEP),

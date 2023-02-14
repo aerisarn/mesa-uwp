@@ -527,6 +527,15 @@ static void rogue_encode_backend_instr(const rogue_backend_instr *backend,
 
       break;
 
+   case ROGUE_BACKEND_OP_IDF:
+      instr_encoding->backend.op = BACKENDOP_DMA;
+      instr_encoding->backend.dma.dmaop = DMAOP_IDF;
+      instr_encoding->backend.dma.idf.drc =
+         rogue_ref_get_drc_index(&backend->dst[0].ref);
+      instr_encoding->backend.dma.idf.srcseladd =
+         rogue_ref_get_io_src_index(&backend->src[0].ref);
+      break;
+
    case ROGUE_BACKEND_OP_EMITPIX:
       instr_encoding->backend.op = BACKENDOP_EMIT;
       instr_encoding->backend.emitpix.freep =

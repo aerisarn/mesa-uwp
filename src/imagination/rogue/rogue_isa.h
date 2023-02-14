@@ -925,6 +925,23 @@ enum sbmode {
    SBMODE_BOTH = 0b11,
 };
 
+typedef struct rogue_backend_dma_idf_encoding {
+   /* Byte 0 */
+   struct {
+      unsigned : 3;
+      unsigned drc : 1;
+      unsigned : 4;
+   } PACKED;
+
+   /* Byte 1 */
+   struct {
+      unsigned srcseladd : 3;
+      unsigned : 5;
+   } PACKED;
+} PACKED rogue_backend_dma_idf_encoding;
+static_assert(sizeof(rogue_backend_dma_idf_encoding) == 2,
+              "sizeof(rogue_backend_dma_idf_encoding) != 2");
+
 typedef struct rogue_backend_dma_encoding {
    union {
       /* Byte 0 */
@@ -934,6 +951,7 @@ typedef struct rogue_backend_dma_encoding {
       } PACKED;
 
       rogue_backend_dma_smp_encoding smp;
+      rogue_backend_dma_idf_encoding idf;
       rogue_backend_dma_ld_encoding ld;
    } PACKED;
 } PACKED rogue_backend_dma_encoding;

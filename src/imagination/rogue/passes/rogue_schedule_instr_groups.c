@@ -624,6 +624,10 @@ static void rogue_calc_backend_instrs_size(rogue_instr_group *group,
       }
       break;
 
+   case ROGUE_BACKEND_OP_IDF:
+      group->size.instrs[phase] = 2;
+      break;
+
    case ROGUE_BACKEND_OP_EMITPIX:
       group->size.instrs[phase] = 1;
       break;
