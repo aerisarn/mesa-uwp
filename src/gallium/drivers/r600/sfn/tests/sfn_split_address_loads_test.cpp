@@ -536,4 +536,84 @@ BLOCK_END
    check(schedule(sh), expect);
 }
 
+TEST_F(TestShaderFromNir, SplitLoadIndexTwoTimesOptAndSchedule)
+{
+   const char *input =
+R"(
+FS
+CHIPCLASS CAYMAN
+PROP MAX_COLOR_EXPORTS:1
+PROP COLOR_EXPORTS:1
+PROP COLOR_EXPORT_MASK:15
+PROP WRITE_ALL_COLORS:0
+OUTPUT LOC:0 NAME:1 MASK:15
+SHADER
+BLOCK_START
+  ALU MIN_UINT S3.x@free : KC0[0].x L[0x2] {W}
+  ALU MIN_UINT S3.y@free : KC0[0].y L[0x2] {W}
+  ALU MIN_UINT S3.z@free : KC0[0].z L[0x2] {W}
+  ALU MIN_UINT S3.w@free : KC0[0].w L[0x2] {WL}
+  ALU MOV S4.x@group : KC1[S3.x@free{s}][0].x {W}
+  ALU MOV S4.y@group : KC1[S3.y@free{s}][0].y {W}
+  ALU MOV S4.z@group : KC1[S3.z@free{s}][0].z {W}
+  ALU MOV S4.w@group : KC1[S3.w@free{s}][0].w {WL}
+  EXPORT_DONE PIXEL 0 S4.xyzw
+BLOCK_END
+)";
+
+   const char *expect =
+R"(
+FS
+CHIPCLASS CAYMAN
+PROP MAX_COLOR_EXPORTS:1
+PROP COLOR_EXPORTS:1
+PROP COLOR_EXPORT_MASK:15
+PROP WRITE_ALL_COLORS:0
+OUTPUT LOC:0 NAME:1 MASK:15
+SHADER
+BLOCK_START
+ALU_GROUP_BEGIN
+  ALU MIN_UINT S3.x@free : KC0[0].x L[0x2] {W}
+  ALU MIN_UINT S3.y@free : KC0[0].y L[0x2] {W}
+  ALU MIN_UINT S3.z@free : KC0[0].z L[0x2] {W}
+  ALU MIN_UINT S3.w@free : KC0[0].w L[0x2] {WL}
+ALU_GROUP_END
+ALU_GROUP_BEGIN
+  ALU MOVA_INT IDX0 : S3.x@free {L}
+ALU_GROUP_END
+BLOCK_END
+BLOCK_START
+ALU_GROUP_BEGIN
+  ALU MOVA_INT IDX1 : S3.y@free {L}
+ALU_GROUP_END
+BLOCK_END
+BLOCK_START
+ALU_GROUP_BEGIN
+  ALU MOV S4.x@chgr : KC1[IDX0][0].x {WL}
+ALU_GROUP_END
+ALU_GROUP_BEGIN
+  ALU MOVA_INT IDX0 : S3.z@free {}
+  ALU MOV S4.y@chgr : KC1[IDX1][0].y {WL}
+ALU_GROUP_END
+BLOCK_END
+BLOCK_START
+ALU_GROUP_BEGIN
+  ALU MOVA_INT IDX1 : S3.w@free {}
+  ALU MOV S4.z@chgr : KC1[IDX0][0].z {WL}
+ALU_GROUP_END
+BLOCK_END
+BLOCK_START
+ALU_GROUP_BEGIN
+  ALU MOV S4.w@chgr : KC1[IDX1][0].w {WL}
+ALU_GROUP_END
+BLOCK_END
+BLOCK_START
+EXPORT_DONE PIXEL 0 S4.xyzw
+BLOCK_END
+)";
+   auto sh = from_string(input);
+   split_address_loads(*sh);
+   optimize(*sh);
+   check(schedule(sh), expect);
+}
 
