@@ -19,6 +19,8 @@
 # SOFTWARE.
 
 files_libiris = files(
+  'i915/iris_batch.c',
+  'i915/iris_batch.h',
   'i915/iris_bufmgr.c',
   'i915/iris_bufmgr.h',
   'i915/iris_kmd_backend.c',

@@ -30,7 +30,7 @@
 #include "drm-uapi/i915_drm.h"
 
 #include "iris/iris_bufmgr.h"
-#include "iris_batch.h"
+#include "iris/iris_batch.h"
 
 #define FILE_DEBUG_FLAG DEBUG_BUFMGR
 

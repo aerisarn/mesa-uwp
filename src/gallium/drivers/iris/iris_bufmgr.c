@@ -2040,77 +2040,6 @@ init_cache_buckets(struct iris_bufmgr *bufmgr, enum iris_heap heap)
 }
 
 void
-iris_hw_context_set_unrecoverable(struct iris_bufmgr *bufmgr,
-                                  uint32_t ctx_id)
-{
-   /* Upon declaring a GPU hang, the kernel will zap the guilty context
-    * back to the default logical HW state and attempt to continue on to
-    * our next submitted batchbuffer.  However, our render batches assume
-    * the previous GPU state is preserved, and only emit commands needed
-    * to incrementally change that state.  In particular, we inherit the
-    * STATE_BASE_ADDRESS and PIPELINE_SELECT settings, which are critical.
-    * With default base addresses, our next batches will almost certainly
-    * cause more GPU hangs, leading to repeated hangs until we're banned
-    * or the machine is dead.
-    *
-    * Here we tell the kernel not to attempt to recover our context but
-    * immediately (on the next batchbuffer submission) report that the
-    * context is lost, and we will do the recovery ourselves.  Ideally,
-    * we'll have two lost batches instead of a continual stream of hangs.
-    */
-   intel_gem_set_context_param(bufmgr->fd, ctx_id,
-                               I915_CONTEXT_PARAM_RECOVERABLE, false);
-}
-
-void
-iris_hw_context_set_vm_id(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
-{
-   if (!bufmgr->use_global_vm)
-      return;
-
-   if (!intel_gem_set_context_param(bufmgr->fd, ctx_id,
-                                    I915_CONTEXT_PARAM_VM,
-                                    bufmgr->global_vm_id))
-      DBG("DRM_IOCTL_I915_GEM_CONTEXT_SETPARAM failed: %s\n",
-          strerror(errno));
-}
-
-uint32_t
-iris_create_hw_context(struct iris_bufmgr *bufmgr, bool protected)
-{
-   uint32_t ctx_id;
-
-   if (protected) {
-      if (!intel_gem_create_context_ext(bufmgr->fd,
-                                        INTEL_GEM_CREATE_CONTEXT_EXT_PROTECTED_FLAG,
-                                        &ctx_id)) {
-         DBG("DRM_IOCTL_I915_GEM_CONTEXT_CREATE_EXT failed: %s\n", strerror(errno));
-         return 0;
-      }
-   } else {
-      if (!intel_gem_create_context(bufmgr->fd, &ctx_id)) {
-         DBG("intel_gem_create_context failed: %s\n", strerror(errno));
-         return 0;
-      }
-      iris_hw_context_set_unrecoverable(bufmgr, ctx_id);
-   }
-
-   iris_hw_context_set_vm_id(bufmgr, ctx_id);
-
-   return ctx_id;
-}
-
-bool
-iris_hw_context_get_protected(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
-{
-   uint64_t protected_content = 0;
-   intel_gem_get_context_param(bufmgr->fd, ctx_id,
-                               I915_CONTEXT_PARAM_PROTECTED_CONTENT,
-                               &protected_content);
-   return protected_content;
-}
-
-void
 iris_destroy_kernel_context(struct iris_bufmgr *bufmgr, uint32_t ctx_id)
 {
    if (ctx_id != 0 &&
@@ -2483,4 +2412,10 @@ uint32_t
 iris_bufmgr_get_global_vm_id(struct iris_bufmgr *bufmgr)
 {
    return bufmgr->global_vm_id;
+}
+
+bool
+iris_bufmgr_use_global_vm_id(struct iris_bufmgr *bufmgr)
+{
+   return bufmgr->use_global_vm;
 }
