@@ -22,6 +22,8 @@
  */
 #include "iris_kmd_backend.h"
 
+#include <sys/mman.h>
+
 #include "common/intel_gem.h"
 #include "iris/iris_bufmgr.h"
 
@@ -51,10 +53,25 @@ xe_gem_create(struct iris_bufmgr *bufmgr,
    return gem_create.handle;
 }
 
+static void *
+xe_gem_mmap(struct iris_bufmgr *bufmgr, struct iris_bo *bo)
+{
+   struct drm_xe_gem_mmap_offset args = {
+      .handle = bo->gem_handle,
+   };
+   if (intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_XE_GEM_MMAP_OFFSET, &args))
+      return NULL;
+
+   void *map = mmap(NULL, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED,
+                    iris_bufmgr_get_fd(bufmgr), args.offset);
+   return map != MAP_FAILED ? map : NULL;
+}
+
 const struct iris_kmd_backend *xe_get_backend(void)
 {
    static const struct iris_kmd_backend xe_backend = {
       .gem_create = xe_gem_create,
+      .gem_mmap = xe_gem_mmap,
    };
    return &xe_backend;
 }
