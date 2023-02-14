@@ -1035,7 +1035,8 @@ static bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shade
       break;
 
    case MESA_SHADER_TESS_CTRL:
-      si_llvm_tcs_build_end(ctx);
+      if (!shader->is_monolithic)
+         si_llvm_tcs_build_end(ctx);
       break;
 
    case MESA_SHADER_TESS_EVAL:
@@ -1122,18 +1123,12 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
 
       if (sscreen->info.gfx_level >= GFX9) {
          struct si_shader_selector *ls = shader->key.ge.part.tcs.ls;
-         struct ac_llvm_pointer parts[4];
+         struct ac_llvm_pointer parts[3];
          bool vs_needs_prolog =
             si_vs_needs_prolog(ls, &shader->key.ge.part.tcs.ls_prolog);
 
          /* TCS main part */
          parts[2] = ctx.main_fn;
-
-         /* TCS epilog */
-         union si_shader_part_key tcs_epilog_key;
-         si_get_tcs_epilog_key(shader, &tcs_epilog_key);
-         si_llvm_build_tcs_epilog(&ctx, &tcs_epilog_key, false);
-         parts[3] = ctx.main_fn;
 
          struct si_shader shader_ls = {};
          shader_ls.selector = ls;
@@ -1176,26 +1171,10 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
          ctx.shader = shader;
          ctx.stage = MESA_SHADER_TESS_CTRL;
 
-         si_build_wrapper_function(&ctx, parts + !vs_needs_prolog, 4 - !vs_needs_prolog,
+         si_build_wrapper_function(&ctx, parts + !vs_needs_prolog, 3 - !vs_needs_prolog,
                                    vs_needs_prolog, vs_needs_prolog ? 2 : 1,
                                    main_arg_types,
                                    shader->key.ge.opt.same_patch_vertices);
-      } else {
-         struct ac_llvm_pointer parts[2];
-         union si_shader_part_key epilog_key;
-
-         parts[0] = ctx.main_fn;
-
-         for (int i = 0; i < ctx.args->ac.arg_count; i++)
-            main_arg_types[i] = ctx.args->ac.args[i].type;
-         main_arg_types[MIN2(AC_MAX_ARGS - 1, ctx.args->ac.arg_count)] = AC_ARG_INVALID;
-
-         memset(&epilog_key, 0, sizeof(epilog_key));
-         epilog_key.tcs_epilog.states = shader->key.ge.part.tcs.epilog;
-         si_llvm_build_tcs_epilog(&ctx, &epilog_key, false);
-         parts[1] = ctx.main_fn;
-
-         si_build_wrapper_function(&ctx, parts, 2, 0, 0, main_arg_types, false);
       }
    } else if (shader->is_monolithic && sel->stage == MESA_SHADER_GEOMETRY) {
       if (ctx.screen->info.gfx_level >= GFX9) {
