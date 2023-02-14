@@ -109,6 +109,7 @@ dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
       .KHR_multiview                         = true,
       .KHR_shader_draw_parameters            = true,
       .KHR_shader_float16_int8               = pdev->options4.Native16BitShaderOpsSupported,
+      .KHR_storage_buffer_storage_class      = true,
 #ifdef DZN_USE_WSI_PLATFORM
       .KHR_swapchain                         = true,
 #endif
