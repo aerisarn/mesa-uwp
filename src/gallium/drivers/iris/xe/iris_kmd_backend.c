@@ -42,8 +42,11 @@ xe_gem_create(struct iris_bufmgr *bufmgr,
    if (alloc_flags & BO_ALLOC_PROTECTED)
       return -EINVAL;
 
+   uint32_t vm_id = iris_bufmgr_get_global_vm_id(bufmgr);
+   vm_id = alloc_flags & BO_ALLOC_SHARED ? 0 : vm_id;
+
    struct drm_xe_gem_create gem_create = {
-     .vm_id = iris_bufmgr_get_global_vm_id(bufmgr),
+     .vm_id = vm_id,
      .size = align64(size, iris_bufmgr_get_device_info(bufmgr)->mem_alignment),
    };
    for (uint16_t i = 0; i < regions_count; i++)
