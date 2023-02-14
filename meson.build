@@ -115,12 +115,10 @@ with_opengl = get_option('opengl')
 
 with_gles1 = get_option('gles1') \
   .require(with_shared_glapi, error_message : 'OpengGL ES 1.x requires shared-glapi') \
-  .require(with_opengl, error_message : 'building OpenGL ES 1.x without OpenGL is not supported.') \
   .allowed()
 
 with_gles2 = get_option('gles2') \
   .require(with_shared_glapi, error_message : 'OpengGL ES 2.x requires shared-glapi') \
-  .require(with_opengl, error_message : 'building OpenGL ES 2.x without OpenGL is not supported.') \
   .allowed()
 
 with_any_opengl = with_opengl or with_gles1 or with_gles2
