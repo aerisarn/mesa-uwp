@@ -51,3 +51,4 @@ iris_kmd_backend_get(enum intel_kmd_type type);
 
 /* Internal functions, should not be called */
 const struct iris_kmd_backend *i915_get_backend(void);
+const struct iris_kmd_backend *xe_get_backend(void);

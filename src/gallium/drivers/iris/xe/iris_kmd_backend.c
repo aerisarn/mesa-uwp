@@ -20,20 +20,41 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-
 #include "iris_kmd_backend.h"
 
-#include <stdlib.h>
+#include "common/intel_gem.h"
+#include "iris/iris_bufmgr.h"
 
-const struct iris_kmd_backend *
-iris_kmd_backend_get(enum intel_kmd_type type)
+#include "drm-uapi/xe_drm.h"
+
+static uint32_t
+xe_gem_create(struct iris_bufmgr *bufmgr,
+              const struct intel_memory_class_instance **regions,
+              uint16_t regions_count, uint64_t size,
+              enum iris_heap heap_flags, unsigned alloc_flags)
 {
-   switch (type) {
-   case INTEL_KMD_TYPE_I915:
-      return i915_get_backend();
-   case INTEL_KMD_TYPE_XE:
-      return xe_get_backend();
-   default:
-      return NULL;
-   }
+   /* Xe still don't have support for protected content */
+   if (alloc_flags & BO_ALLOC_PROTECTED)
+      return -EINVAL;
+
+   struct drm_xe_gem_create gem_create = {
+     .vm_id = iris_bufmgr_get_global_vm_id(bufmgr),
+     .size = size,
+   };
+   for (uint16_t i = 0; i < regions_count; i++)
+      gem_create.flags |= BITFIELD_BIT(regions[i]->instance);
+
+   if (intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_XE_GEM_CREATE,
+                   &gem_create))
+      return 0;
+
+   return gem_create.handle;
+}
+
+const struct iris_kmd_backend *xe_get_backend(void)
+{
+   static const struct iris_kmd_backend xe_backend = {
+      .gem_create = xe_gem_create,
+   };
+   return &xe_backend;
 }
