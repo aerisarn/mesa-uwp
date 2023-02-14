@@ -1363,10 +1363,28 @@ v3dX(cmd_buffer_emit_viewport)(struct v3dv_cmd_buffer *cmd_buffer)
    v3dv_cmd_buffer_state_get_viewport_z_xform(&cmd_buffer->state, 0,
                                               &translate_z, &scale_z);
 
+#if V3D_VERSION == 42
    cl_emit(&job->bcl, CLIPPER_Z_SCALE_AND_OFFSET, clip) {
       clip.viewport_z_offset_zc_to_zs = translate_z;
       clip.viewport_z_scale_zc_to_zs = scale_z;
    }
+#endif
+
+#if V3D_VERSION >= 71
+   /* If the Z scale is too small guardband clipping may not clip correctly */
+   if (fabsf(scale_z) < 0.01f) {
+      cl_emit(&job->bcl, CLIPPER_Z_SCALE_AND_OFFSET_NO_GUARDBAND, clip) {
+         clip.viewport_z_offset_zc_to_zs = translate_z;
+         clip.viewport_z_scale_zc_to_zs = scale_z;
+      }
+   } else {
+      cl_emit(&job->bcl, CLIPPER_Z_SCALE_AND_OFFSET, clip) {
+         clip.viewport_z_offset_zc_to_zs = translate_z;
+         clip.viewport_z_scale_zc_to_zs = scale_z;
+      }
+   }
+#endif
+
    cl_emit(&job->bcl, CLIPPER_Z_MIN_MAX_CLIPPING_PLANES, clip) {
       /* Vulkan's default Z NDC is [0..1]. If 'negative_one_to_one' is enabled,
        * we are using OpenGL's [-1, 1] instead.
