@@ -27,6 +27,7 @@
 #define ACO_UTIL_H
 
 #include "util/bitscan.h"
+#include "util/macros.h"
 #include "util/u_math.h"
 
 #include <array>
@@ -35,6 +36,7 @@
 #include <functional>
 #include <iterator>
 #include <map>
+#include <type_traits>
 #include <unordered_map>
 #include <vector>
 
@@ -587,6 +589,435 @@ using map = std::map<Key, T, Compare, aco::monotonic_allocator<std::pair<const K
 template <class Key, class T, class Hash = std::hash<Key>, class Pred = std::equal_to<Key>>
 using unordered_map =
    std::unordered_map<Key, T, Hash, Pred, aco::monotonic_allocator<std::pair<const Key, T>>>;
+
+/*
+ * Helper class for a integer/bool (access_type) packed into
+ * a bigger integer (data_type) with an offset and size.
+ * It can be implicitly converted to access_type and supports
+ * all arithmetic assignment operators.
+ *
+ * When used together with a union, this allows storing
+ * multiple fields packed into a single integer.
+ *
+ * Example usage:
+ * union {
+ *    bitfield_uint<uint32_t, 0,  5,  uint8_t> int5;
+ *    bitfield_uint<uint32_t, 5,  26, uint32_t> int26;
+ *    bitfield_uint<uint32_t, 31, 1,  bool> bool1;
+ * };
+ *
+ */
+template <typename data_type, unsigned offset, unsigned size, typename access_type>
+class bitfield_uint {
+public:
+   static_assert(sizeof(data_type) >= sizeof(access_type), "");
+   static_assert(std::is_unsigned<access_type>::value, "");
+   static_assert(std::is_unsigned<data_type>::value, "");
+   static_assert(sizeof(data_type) * 8 >= offset + size, "");
+   static_assert(sizeof(access_type) * 8 >= size, "");
+   static_assert(size > 0, "");
+   static_assert(!std::is_same_v<access_type, bool> || size == 1, "");
+
+   bitfield_uint() = default;
+
+   constexpr bitfield_uint(const access_type& value) { *this = value; }
+
+   constexpr operator access_type() const { return (storage >> offset) & mask; }
+
+   constexpr bitfield_uint& operator=(const access_type& value)
+   {
+      storage &= ~(mask << offset);
+      storage |= data_type(value & mask) << offset;
+      return *this;
+   }
+
+   constexpr bitfield_uint& operator|=(const access_type& value)
+   {
+      storage |= data_type(value & mask) << offset;
+      return *this;
+   }
+
+   constexpr bitfield_uint& operator^=(const access_type& value)
+   {
+      storage ^= data_type(value & mask) << offset;
+      return *this;
+   }
+
+   constexpr bitfield_uint& operator&=(const access_type& value)
+   {
+      storage &= (data_type(value & mask) << offset) | ~(mask << offset);
+      return *this;
+   }
+
+   constexpr bitfield_uint& operator<<=(const access_type& shift)
+   {
+      static_assert(!std::is_same_v<access_type, bool>, "");
+      assert(shift < size);
+      return *this = access_type(*this) << shift;
+   }
+
+   constexpr bitfield_uint& operator>>=(const access_type& shift)
+   {
+      static_assert(!std::is_same_v<access_type, bool>, "");
+      assert(shift < size);
+      return *this = access_type(*this) >> shift;
+   }
+
+   constexpr bitfield_uint& operator*=(const access_type& op)
+   {
+      static_assert(!std::is_same_v<access_type, bool>, "");
+      return *this = access_type(*this) * op;
+   }
+
+   constexpr bitfield_uint& operator/=(const access_type& op)
+   {
+      static_assert(!std::is_same_v<access_type, bool>, "");
+      return *this = access_type(*this) / op;
+   }
+
+   constexpr bitfield_uint& operator%=(const access_type& op)
+   {
+      static_assert(!std::is_same_v<access_type, bool>, "");
+      return *this = access_type(*this) % op;
+   }
+
+   constexpr bitfield_uint& operator+=(const access_type& op)
+   {
+      static_assert(!std::is_same_v<access_type, bool>, "");
+      return *this = access_type(*this) + op;
+   }
+
+   constexpr bitfield_uint& operator-=(const access_type& op)
+   {
+      static_assert(!std::is_same_v<access_type, bool>, "");
+      return *this = access_type(*this) - op;
+   }
+
+   constexpr bitfield_uint& operator++()
+   {
+      static_assert(!std::is_same_v<access_type, bool>, "");
+      return *this += 1;
+   }
+
+   constexpr access_type operator++(int)
+   {
+      static_assert(!std::is_same_v<access_type, bool>, "");
+      access_type temp = *this;
+      ++*this;
+      return temp;
+   }
+
+   constexpr bitfield_uint& operator--()
+   {
+      static_assert(!std::is_same_v<access_type, bool>, "");
+      return *this -= 1;
+   }
+
+   constexpr access_type operator--(int)
+   {
+      static_assert(!std::is_same_v<access_type, bool>, "");
+      access_type temp = *this;
+      --*this;
+      return temp;
+   }
+
+   constexpr void swap(access_type& other)
+   {
+      access_type tmp = *this;
+      *this = other;
+      other = tmp;
+   }
+
+   template <typename other_dt, unsigned other_off, unsigned other_s>
+   constexpr void swap(bitfield_uint<other_dt, other_off, other_s, access_type>& other)
+   {
+      access_type tmp = *this;
+      *this = other;
+      other = tmp;
+   }
+
+protected:
+   static const data_type mask = BITFIELD64_MASK(size);
+
+   data_type storage;
+};
+
+/*
+ * Reference to a single bit in an integer that can be converted to a bool
+ * and supports bool (bitwise) assignment operators.
+ */
+template <typename T> struct bit_reference {
+   constexpr bit_reference(T& s, unsigned b) : storage(s), bit(b) {}
+
+   constexpr bit_reference& operator=(const bit_reference& other) { return *this = (bool)other; }
+
+   constexpr bit_reference& operator=(bool val)
+   {
+      storage &= ~(T(0x1) << bit);
+      storage |= T(val) << bit;
+      return *this;
+   }
+
+   constexpr bit_reference& operator^=(bool val)
+   {
+      storage ^= T(val) << bit;
+      return *this;
+   }
+
+   constexpr bit_reference& operator|=(bool val)
+   {
+      storage |= T(val) << bit;
+      return *this;
+   }
+
+   constexpr bit_reference& operator&=(bool val)
+   {
+      storage &= T(val) << bit;
+      return *this;
+   }
+
+   constexpr operator bool() const { return (storage >> bit) & 0x1; }
+
+   constexpr void swap(bool& other)
+   {
+      bool tmp = (bool)*this;
+      *this = other;
+      other = tmp;
+   }
+
+   template <typename other_T> constexpr void swap(bit_reference<other_T> other)
+   {
+      bool tmp = (bool)*this;
+      *this = (bool)other;
+      other = tmp;
+   }
+
+   T& storage;
+   unsigned bit;
+};
+
+/*
+ * Base template for (const) bit iterators over an integer.
+ * Only intended to be used with the two specializations
+ * bitfield_array::iterator and bitfield_array::const_iterator.
+ */
+template <typename T, typename refT, typename ptrT> struct bitfield_iterator {
+   using difference_type = int;
+   using value_type = bool;
+   using iterator_category = std::random_access_iterator_tag;
+   using reference = refT;
+   using const_reference = bool;
+   using pointer = ptrT;
+   using iterator = bitfield_iterator<T, refT, ptrT>;
+   using ncT = std::remove_const_t<T>;
+
+   constexpr bitfield_iterator() : bf(nullptr), index(0) {}
+   constexpr bitfield_iterator(T* p, unsigned i) : bf(p), index(i) {}
+
+   /* const iterator must be constructable from iterator */
+   constexpr bitfield_iterator(
+      const bitfield_iterator<ncT, bit_reference<ncT>, bit_reference<ncT>*>& x)
+       : bf(x.bf), index(x.index)
+   {}
+
+   constexpr bool operator==(const bitfield_iterator& other) const
+   {
+      return bf == other.bf && index == other.index;
+   }
+
+   constexpr bool operator<(const bitfield_iterator& other) const { return index < other.index; }
+
+   constexpr bool operator!=(const bitfield_iterator& other) const { return !(*this == other); }
+
+   constexpr bool operator>(const bitfield_iterator& other) const { return other < *this; }
+
+   constexpr bool operator<=(const bitfield_iterator& other) const { return !(other < *this); }
+
+   constexpr bool operator>=(const bitfield_iterator& other) const { return !(*this < other); }
+
+   constexpr reference operator*() const { return bit_reference<T>(*bf, index); }
+
+   constexpr iterator& operator++()
+   {
+      index++;
+      return *this;
+   }
+
+   constexpr iterator operator++(int)
+   {
+      iterator tmp = *this;
+      index++;
+      return tmp;
+   }
+
+   constexpr iterator& operator--()
+   {
+      index--;
+      return *this;
+   }
+
+   constexpr iterator operator--(int)
+   {
+      iterator tmp = *this;
+      index--;
+      return tmp;
+   }
+
+   constexpr iterator& operator+=(difference_type value)
+   {
+      index += value;
+      return *this;
+   }
+
+   constexpr iterator& operator-=(difference_type value)
+   {
+      *this += -value;
+      return *this;
+   }
+
+   constexpr iterator operator+(difference_type value) const
+   {
+      iterator tmp = *this;
+      return tmp += value;
+   }
+
+   constexpr iterator operator-(difference_type value) const
+   {
+      iterator tmp = *this;
+      return tmp -= value;
+   }
+
+   constexpr reference operator[](difference_type value) const { return *(*this + value); }
+
+   T* bf;
+   unsigned index;
+};
+
+template <typename T, typename refT, typename ptrT>
+constexpr inline bitfield_iterator<T, refT, ptrT>
+operator+(int n, const bitfield_iterator<T, refT, ptrT>& x)
+{
+   return x + n;
+}
+
+template <typename T, typename refT, typename ptrT>
+constexpr inline int
+operator-(const bitfield_iterator<T, refT, ptrT> x, const bitfield_iterator<T, refT, ptrT>& y)
+{
+   return x.index - y.index;
+}
+
+/*
+ * Extends bitfield_uint with operator[] and iterators that
+ * allow accessing single bits within the uint. Can be used
+ * as a more compact version of bool arrays that also still
+ * allows accessing the whole array as an integer.
+ */
+template <typename data_type, unsigned offset, unsigned size, typename access_type>
+class bitfield_array : public bitfield_uint<data_type, offset, size, access_type> {
+public:
+   using value_type = bool;
+   using size_type = unsigned;
+   using difference_type = int;
+   using reference = bit_reference<data_type>;
+   using const_reference = bool;
+   using pointer = bit_reference<data_type>*;
+   using const_pointer = const bool*;
+   using iterator =
+      bitfield_iterator<data_type, bit_reference<data_type>, bit_reference<data_type>*>;
+   using const_iterator = bitfield_iterator<const data_type, bool, const bool*>;
+   using reverse_iterator = std::reverse_iterator<iterator>;
+   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+   bitfield_array() = default;
+
+   constexpr bitfield_array(const access_type& value) { *this = value; }
+
+   constexpr bitfield_array& operator=(const access_type& value)
+   {
+      storage &= ~(mask << offset);
+      storage |= data_type(value & mask) << offset;
+      return *this;
+   }
+
+   constexpr reference operator[](unsigned index)
+   {
+      assert(index < size);
+      return reference(storage, offset + index);
+   }
+
+   constexpr bool operator[](unsigned index) const
+   {
+      assert(index < size);
+      return (storage >> (offset + index)) & 0x1;
+   }
+
+   constexpr iterator begin() noexcept { return iterator(&storage, offset); }
+
+   constexpr iterator end() noexcept { return std::next(begin(), size); }
+
+   constexpr const_iterator begin() const noexcept { return const_iterator(&storage, offset); }
+
+   constexpr const_iterator end() const noexcept { return std::next(begin(), size); }
+
+   constexpr const_iterator cbegin() const noexcept { return begin(); }
+
+   constexpr const_iterator cend() const noexcept { return std::next(begin(), size); }
+
+   constexpr reverse_iterator rbegin() noexcept { return reverse_iterator(end()); }
+
+   constexpr reverse_iterator rend() noexcept { return reverse_iterator(begin()); }
+
+   constexpr const_reverse_iterator rbegin() const noexcept
+   {
+      return const_reverse_iterator(end());
+   }
+
+   constexpr const_reverse_iterator rend() const noexcept
+   {
+      return const_reverse_iterator(begin());
+   }
+
+   constexpr const_reverse_iterator crbegin() const noexcept
+   {
+      return const_reverse_iterator(cend());
+   }
+
+   constexpr const_reverse_iterator crend() const noexcept
+   {
+      return const_reverse_iterator(cbegin());
+   }
+
+private:
+   using bitfield_uint<data_type, offset, size, access_type>::storage;
+   using bitfield_uint<data_type, offset, size, access_type>::mask;
+};
+
+template <typename T, unsigned offset> using bitfield_bool = bitfield_uint<T, offset, 1, bool>;
+
+template <typename T, unsigned offset, unsigned size>
+using bitfield_uint8 = bitfield_uint<T, offset, size, uint8_t>;
+
+template <typename T, unsigned offset, unsigned size>
+using bitfield_uint16 = bitfield_uint<T, offset, size, uint16_t>;
+
+template <typename T, unsigned offset, unsigned size>
+using bitfield_uint32 = bitfield_uint<T, offset, size, uint32_t>;
+
+template <typename T, unsigned offset, unsigned size>
+using bitfield_uint64 = bitfield_uint<T, offset, size, uint64_t>;
+
+template <typename T, unsigned offset, unsigned size>
+using bitfield_array8 = bitfield_array<T, offset, size, uint8_t>;
+
+template <typename T, unsigned offset, unsigned size>
+using bitfield_array16 = bitfield_array<T, offset, size, uint16_t>;
+
+template <typename T, unsigned offset, unsigned size>
+using bitfield_array32 = bitfield_array<T, offset, size, uint32_t>;
+
+template <typename T, unsigned offset, unsigned size>
+using bitfield_array64 = bitfield_array<T, offset, size, uint64_t>;
 
 } // namespace aco
 
