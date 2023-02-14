@@ -322,9 +322,10 @@ xe_batch_submit(struct iris_batch *batch)
 {
    struct iris_bufmgr *bufmgr = batch->screen->bufmgr;
    simple_mtx_t *bo_deps_lock = iris_bufmgr_get_bo_deps_lock(bufmgr);
+   struct iris_implicit_sync implicit_sync = {};
    struct drm_xe_sync *syncs = NULL;
    unsigned long sync_len;
-   int ret = 0;
+   int ret;
 
    iris_bo_unmap(batch->bo);
 
@@ -339,6 +340,10 @@ xe_batch_submit(struct iris_batch *batch)
    simple_mtx_lock(bo_deps_lock);
 
    iris_batch_update_syncobjs(batch);
+
+   ret = iris_implicit_sync_import(batch, &implicit_sync);
+   if (ret)
+      goto error_implicit_sync_import;
 
    sync_len = iris_batch_num_fences(batch);
    if (sync_len) {
@@ -380,8 +385,16 @@ xe_batch_submit(struct iris_batch *batch)
    if (!batch->screen->devinfo->no_hw)
        ret = intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_XE_EXEC, &exec);
 
-   if (ret)
+   if (ret) {
       ret = -errno;
+      goto error_exec;
+   }
+
+   if (!iris_implicit_sync_export(batch, &implicit_sync))
+      ret = -1;
+
+error_exec:
+   iris_implicit_sync_finish(batch, &implicit_sync);
 
    simple_mtx_unlock(bo_deps_lock);
 
@@ -401,6 +414,8 @@ xe_batch_submit(struct iris_batch *batch)
    return ret;
 
 error_no_sync_mem:
+   iris_implicit_sync_finish(batch, &implicit_sync);
+error_implicit_sync_import:
    simple_mtx_unlock(bo_deps_lock);
    return ret;
 }
