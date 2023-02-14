@@ -48,6 +48,10 @@ xe_gem_create(struct iris_bufmgr *bufmgr,
    struct drm_xe_gem_create gem_create = {
      .vm_id = vm_id,
      .size = align64(size, iris_bufmgr_get_device_info(bufmgr)->mem_alignment),
+     /* TODO: we might need to consider scanout for shared buffers too as we
+      * do not know what the process this is shared with will do with it
+      */
+     .flags = alloc_flags & BO_ALLOC_SCANOUT ? XE_GEM_CREATE_FLAG_SCANOUT : 0,
    };
    for (uint16_t i = 0; i < regions_count; i++)
       gem_create.flags |= BITFIELD_BIT(regions[i]->instance);

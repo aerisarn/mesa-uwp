@@ -315,10 +315,12 @@ bucket_for_size(struct iris_bufmgr *bufmgr, uint64_t size,
 {
 
    /* Protected bo needs special handling during allocation.
-    * Exported bo also need special handling during allocation in Xe KMD
+    * Exported and scanout bos also need special handling during allocation
+    * in Xe KMD.
     */
    if ((flags & BO_ALLOC_PROTECTED) ||
-       ((flags & BO_ALLOC_SHARED) && bufmgr->devinfo.kmd_type == INTEL_KMD_TYPE_XE))
+       ((flags & (BO_ALLOC_SHARED | BO_ALLOC_SCANOUT)) &&
+        bufmgr->devinfo.kmd_type == INTEL_KMD_TYPE_XE))
       return NULL;
 
    /* Calculating the pages and rounding up to the page size. */
