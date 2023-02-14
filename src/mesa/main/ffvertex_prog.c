@@ -44,7 +44,6 @@
 #include "program/prog_cache.h"
 #include "program/prog_instruction.h"
 #include "program/prog_parameter.h"
-#include "program/prog_print.h"
 #include "program/prog_statevars.h"
 #include "util/bitscan.h"
 
@@ -277,13 +276,6 @@ static void make_state_key( struct gl_context *ctx, struct state_key *key )
    }
 }
 
-
-
-/* Very useful debugging tool - produces annotated listing of
- * generated program with line/function references for each
- * instruction back into this file:
- */
-#define DISASSEM 0
 
 
 /* Use uregs to represent registers internally, translate to Mesa's
@@ -550,23 +542,6 @@ static void emit_dst( struct prog_dst_register *dst,
 }
 
 
-static void debug_insn( struct prog_instruction *inst, const char *fn,
-                        GLuint line )
-{
-   if (DISASSEM) {
-      static const char *last_fn;
-
-      if (fn != last_fn) {
-         last_fn = fn;
-         printf("%s:\n", fn);
-      }
-
-      printf("%d:\t", line);
-      _mesa_print_instruction(inst);
-   }
-}
-
-
 static void emit_op3fn(struct tnl_program *p,
                        enum prog_opcode op,
                        struct ureg dest,
@@ -614,8 +589,6 @@ static void emit_op3fn(struct tnl_program *p,
    emit_arg( &inst->SrcReg[2], src2 );
 
    emit_dst( &inst->DstReg, dest, mask );
-
-   debug_insn(inst, fn, line);
 }
 
 
@@ -1685,12 +1658,6 @@ static void build_tnl_program( struct tnl_program *p )
    /* Finish up:
     */
    emit_op1(p, OPCODE_END, undef, 0, undef);
-
-   /* Disassemble:
-    */
-   if (DISASSEM) {
-      printf ("\n");
-   }
 }
 
 
