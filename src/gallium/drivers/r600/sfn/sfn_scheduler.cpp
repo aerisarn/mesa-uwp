@@ -509,7 +509,6 @@ BlockScheduler::schedule_alu(Shader::ShaderBlocks& out_blocks)
       } else {
          if (m_current_block->expected_ar_uses() == 0) {
             start_new_block(out_blocks, Block::alu);
-            m_current_block->set_instr_flag(Instr::force_cf);
 
             if (!m_current_block->try_reserve_kcache(*group))
                unreachable("Scheduling a group in a new block should always succeed");
@@ -566,7 +565,6 @@ BlockScheduler::schedule_alu(Shader::ShaderBlocks& out_blocks)
 
          // kcache reservation failed, so we have to start a new CF
          start_new_block(out_blocks, Block::alu);
-         m_current_block->set_instr_flag(Instr::force_cf);
       } else {
          return false;
       }
@@ -588,7 +586,6 @@ BlockScheduler::schedule_alu(Shader::ShaderBlocks& out_blocks)
       assert(!group->has_lds_group_start());
       assert(m_current_block->expected_ar_uses() == 0);
       start_new_block(out_blocks, Block::alu);
-      m_current_block->set_instr_flag(Instr::force_cf);
    }
 
    return success;
@@ -654,6 +651,7 @@ BlockScheduler::start_new_block(Shader::ShaderBlocks& out_blocks, Block::Type ty
       out_blocks.push_back(m_current_block);
       m_current_block =
          new Block(m_current_block->nesting_depth(), m_current_block->id());
+      m_current_block->set_instr_flag(Instr::force_cf);
    }
    m_current_block->set_type(type);
 }
