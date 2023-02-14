@@ -31,11 +31,29 @@
 #include "common/xe/intel_engine.h"
 
 #include "drm-uapi/xe_drm.h"
+#include "drm-uapi/gpu_scheduler.h"
+
+static enum drm_sched_priority
+iris_context_priority_to_drm_sched_priority(enum iris_context_priority priority)
+{
+   switch (priority) {
+   case IRIS_CONTEXT_HIGH_PRIORITY:
+      return DRM_SCHED_PRIORITY_HIGH;
+   case IRIS_CONTEXT_LOW_PRIORITY:
+      return DRM_SCHED_PRIORITY_MIN;
+   case IRIS_CONTEXT_MEDIUM_PRIORITY:
+      FALLTHROUGH;
+   default:
+      return DRM_SCHED_PRIORITY_NORMAL;
+   }
+}
 
 static bool
 iris_xe_init_batch(struct iris_bufmgr *bufmgr,
                    struct intel_query_engine_info *engines_info,
-                   enum intel_engine_class engine_class, uint32_t *engine_id)
+                   enum intel_engine_class engine_class,
+                   enum iris_context_priority priority, uint32_t *engine_id)
+
 {
    struct drm_xe_engine_class_instance *instances;
 
@@ -62,14 +80,23 @@ iris_xe_init_batch(struct iris_bufmgr *bufmgr,
          .width = 1,
          .num_placements = count,
    };
+   struct drm_xe_engine_set_property engine_property = {
+      .property = XE_ENGINE_SET_PROPERTY_PRIORITY,
+      .value = iris_context_priority_to_drm_sched_priority(priority),
+   };
    int ret = intel_ioctl(iris_bufmgr_get_fd(bufmgr),
                          DRM_IOCTL_XE_ENGINE_CREATE, &create);
    free(instances);
-   if (ret == 0)
-      *engine_id = create.engine_id;
+   if (ret)
+      goto error_create_engine;
 
-   /* TODO: handle engine priority */
+   engine_property.engine_id = create.engine_id;
+   intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_XE_ENGINE_SET_PROPERTY,
+               &engine_property);
+
    /* TODO: handle "protected" context/engine */
+   *engine_id = create.engine_id;
+error_create_engine:
    return ret == 0;
 }
 
@@ -106,7 +133,7 @@ void iris_xe_init_batches(struct iris_context *ice)
       ASSERTED bool ret;
 
       ret = iris_xe_init_batch(bufmgr, engines_info, engine_classes[name],
-                               &batch->xe.engine_id);
+                               ice->priority, &batch->xe.engine_id);
       assert(ret);
    }
 
@@ -132,6 +159,7 @@ bool iris_xe_replace_batch(struct iris_batch *batch)
    enum intel_engine_class engine_classes[IRIS_BATCH_COUNT];
    struct iris_screen *screen = batch->screen;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
+   struct iris_context *ice = batch->ice;
    struct intel_query_engine_info *engines_info;
    uint32_t new_engine_id;
    bool ret;
@@ -143,7 +171,7 @@ bool iris_xe_replace_batch(struct iris_batch *batch)
    iris_xe_map_intel_engine_class(engines_info, engine_classes);
 
    ret = iris_xe_init_batch(bufmgr, engines_info, engine_classes[batch->name],
-                            &new_engine_id);
+                            ice->priority, &new_engine_id);
    if (ret) {
       iris_xe_destroy_batch(batch);
       batch->xe.engine_id = new_engine_id;
