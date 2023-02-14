@@ -555,7 +555,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_depth_bias_control                             DONE (anv, nvk, radv)
   VK_EXT_depth_clip_control                             DONE (anv, hasvk, lvp, nvk, radv, tu, v3dv, vn)
   VK_EXT_depth_clip_enable                              DONE (anv, hasvk, lvp, nvk, radv, tu, vn)
-  VK_EXT_depth_range_unrestricted                       DONE (radv, lvp)
+  VK_EXT_depth_range_unrestricted                       DONE (anv/gen20+, radv, lvp)
   VK_EXT_descriptor_buffer                              DONE (lvp, radv, tu)
   VK_EXT_device_memory_report                           DONE (vn)
   VK_EXT_direct_mode_display                            DONE (anv, lvp, radv, tu, v3dv)
