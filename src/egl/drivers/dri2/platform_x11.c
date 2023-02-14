@@ -878,10 +878,8 @@ dri2_copy_region(_EGLDisplay *disp,
    if (draw->Type == EGL_PIXMAP_BIT || draw->Type == EGL_PBUFFER_BIT)
       return EGL_TRUE;
 
-   if (dri2_dpy->flush)
-      dri2_dpy->flush->flush(dri2_surf->dri_drawable);
-   else
-      dri2_dpy->core->swapBuffers(dri2_surf->dri_drawable);
+   assert(!dri2_dpy->kopper);
+   dri2_dpy->flush->flush(dri2_surf->dri_drawable);
 
    if (dri2_surf->have_fake_front)
       render_attachment = XCB_DRI2_ATTACHMENT_BUFFER_FAKE_FRONT_LEFT;
