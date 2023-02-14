@@ -26,11 +26,93 @@
 #include "nir_range_analysis.h"
 #include "util/hash_table.h"
 #include "util/u_math.h"
+#include "util/u_dynarray.h"
 
 /**
  * Analyzes a sequence of operations to determine some aspects of the range of
  * the result.
  */
+
+struct analysis_query {
+   uint32_t pushed_queries;
+   uint32_t result_index;
+};
+
+struct analysis_state {
+   nir_shader *shader;
+   const nir_unsigned_upper_bound_config *config;
+   struct hash_table *range_ht;
+
+   struct util_dynarray query_stack;
+   struct util_dynarray result_stack;
+
+   size_t query_size;
+   uintptr_t (*get_key)(struct analysis_query *q);
+   void (*process_query)(struct analysis_state *state, struct analysis_query *q,
+                         uint32_t *result, const uint32_t *src);
+};
+
+static void *
+push_analysis_query(struct analysis_state *state, size_t size)
+{
+   struct analysis_query *q = util_dynarray_grow_bytes(&state->query_stack, 1, size);
+   q->pushed_queries = 0;
+   q->result_index = util_dynarray_num_elements(&state->result_stack, uint32_t);
+
+   util_dynarray_append(&state->result_stack, uint32_t, 0);
+
+   return q;
+}
+
+/* Helper for performing range analysis without recursion. */
+static uint32_t
+perform_analysis(struct analysis_state *state)
+{
+   while (state->query_stack.size) {
+      struct analysis_query *cur =
+         (struct analysis_query *)((char*)util_dynarray_end(&state->query_stack) - state->query_size);
+      uint32_t *result = util_dynarray_element(&state->result_stack, uint32_t, cur->result_index);
+
+      uintptr_t key = state->get_key(cur);
+      struct hash_entry *he = NULL;
+      /* There might be a cycle-resolving entry for loop header phis. Ignore this when finishing
+       * them by testing pushed_queries.
+       */
+      if (cur->pushed_queries == 0 && key &&
+          (he = _mesa_hash_table_search(state->range_ht, (void*)key))) {
+         *result = (uintptr_t)he->data;
+         state->query_stack.size -= state->query_size;
+         continue;
+      }
+
+      uint32_t *src = (uint32_t*)util_dynarray_end(&state->result_stack) - cur->pushed_queries;
+      state->result_stack.size -= sizeof(uint32_t) * cur->pushed_queries;
+
+      uint32_t prev_num_queries = state->query_stack.size;
+      state->process_query(state, cur, result, src);
+
+      uint32_t num_queries = state->query_stack.size;
+      if (num_queries > prev_num_queries) {
+         cur = (struct analysis_query *)util_dynarray_element(&state->query_stack, char,
+                                                              prev_num_queries - state->query_size);
+         cur->pushed_queries = (num_queries - prev_num_queries) / state->query_size;
+         continue;
+      }
+
+      if (key)
+         _mesa_hash_table_insert(state->range_ht, (void*)key, (void*)(uintptr_t)*result);
+
+      state->query_stack.size -= state->query_size;
+   }
+
+   assert(state->result_stack.size == sizeof(uint32_t));
+
+   uint32_t res = util_dynarray_top(&state->result_stack, uint32_t);
+   util_dynarray_fini(&state->query_stack);
+   util_dynarray_fini(&state->result_stack);
+
+   return res;
+}
 
 static bool
 is_not_negative(enum ssa_ranges r)
