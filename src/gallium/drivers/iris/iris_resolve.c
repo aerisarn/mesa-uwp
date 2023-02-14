@@ -381,16 +381,14 @@ iris_postdraw_update_resolve_tracking(struct iris_context *ice)
    }
 }
 
-void
-iris_cache_flush_for_render(struct iris_batch *batch,
-                            struct iris_bo *bo,
-                            enum isl_aux_usage aux_usage)
+static void
+flush_previous_aux_mode(struct iris_batch *batch,
+                        const struct iris_bo *bo,
+                        enum isl_aux_usage aux_usage)
 {
-   iris_emit_buffer_barrier_for(batch, bo, IRIS_DOMAIN_RENDER_WRITE);
-
-   /* Check to see if this bo has been used by a previous rendering operation
-    * but with a different aux usage.  If it has, flush the render cache so we
-    * ensure that it's only in there with one aux usage at a time.
+   /* Check to see if this BO has been put into caches by a previous operation
+    * but with a different aux usage.  If it has, flush those caches to ensure
+    * that it's only in there with one aux usage at a time.
     *
     * Even though it's not obvious, this could easily happen in practice.
     * Suppose a client is blending on a surface with sRGB encode enabled on
@@ -410,9 +408,9 @@ iris_cache_flush_for_render(struct iris_batch *batch,
     */
    void *v_aux_usage = (void *) (uintptr_t) aux_usage;
    struct hash_entry *entry =
-      _mesa_hash_table_search_pre_hashed(batch->cache.render, bo->hash, bo);
+      _mesa_hash_table_search_pre_hashed(batch->bo_aux_modes, bo->hash, bo);
    if (!entry) {
-      _mesa_hash_table_insert_pre_hashed(batch->cache.render, bo->hash, bo,
+      _mesa_hash_table_insert_pre_hashed(batch->bo_aux_modes, bo->hash, bo,
                                          v_aux_usage);
    } else if (entry->data != v_aux_usage) {
       iris_emit_pipe_control_flush(batch,
@@ -422,6 +420,15 @@ iris_cache_flush_for_render(struct iris_batch *batch,
                                    PIPE_CONTROL_CS_STALL);
       entry->data = v_aux_usage;
    }
+}
+
+void
+iris_cache_flush_for_render(struct iris_batch *batch,
+                            struct iris_bo *bo,
+                            enum isl_aux_usage aux_usage)
+{
+   iris_emit_buffer_barrier_for(batch, bo, IRIS_DOMAIN_RENDER_WRITE);
+   flush_previous_aux_mode(batch, bo, aux_usage);
 }
 
 static void
@@ -859,6 +866,8 @@ iris_resource_prepare_access(struct iris_context *ice,
          iris_resource_set_aux_state(ice, res, level, layer, 1, new_state);
       }
    }
+
+   flush_previous_aux_mode(batch, res->bo, aux_usage);
 }
 
 void
