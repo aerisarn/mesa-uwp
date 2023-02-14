@@ -304,8 +304,8 @@ convert_to_SDWA(amd_gfx_level gfx_level, aco_ptr<Instruction>& instr)
 
    if (tmp->isVOP3()) {
       VALU_instruction& vop3 = tmp->valu();
-      memcpy(sdwa.neg, vop3.neg, sizeof(sdwa.neg));
-      memcpy(sdwa.abs, vop3.abs, sizeof(sdwa.abs));
+      std::copy(std::cbegin(vop3.neg), std::cend(vop3.neg), std::begin(sdwa.neg));
+      std::copy(std::cbegin(vop3.abs), std::cend(vop3.abs), std::begin(sdwa.abs));
       sdwa.omod = vop3.omod;
       sdwa.clamp = vop3.clamp;
    }
@@ -406,8 +406,8 @@ convert_to_DPP(aco_ptr<Instruction>& instr, bool dpp8)
 
       if (tmp->isVOP3()) {
          const VALU_instruction* vop3 = &tmp->valu();
-         memcpy(dpp->neg, vop3->neg, sizeof(dpp->neg));
-         memcpy(dpp->abs, vop3->abs, sizeof(dpp->abs));
+         std::copy(std::cbegin(vop3->neg), std::cend(vop3->neg), std::begin(dpp->neg));
+         std::copy(std::cbegin(vop3->abs), std::cend(vop3->abs), std::begin(dpp->abs));
       }
    }
 

@@ -2368,8 +2368,8 @@ combine_comparison_ordering(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       VALU_instruction* new_vop3 =
          create_instruction<VALU_instruction>(new_op, asVOP3(Format::VOPC), 2, 1);
       VALU_instruction& cmp_vop3 = cmp->valu();
-      memcpy(new_vop3->abs, cmp_vop3.abs, sizeof(new_vop3->abs));
-      memcpy(new_vop3->neg, cmp_vop3.neg, sizeof(new_vop3->neg));
+      std::copy(std::cbegin(cmp_vop3.neg), std::cend(cmp_vop3.neg), std::begin(new_vop3->neg));
+      std::copy(std::cbegin(cmp_vop3.abs), std::cend(cmp_vop3.abs), std::begin(new_vop3->abs));
       new_vop3->clamp = cmp_vop3.clamp;
       new_vop3->omod = cmp_vop3.omod;
       new_vop3->opsel = cmp_vop3.opsel;
@@ -2569,8 +2569,8 @@ combine_constant_comparison_ordering(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       VALU_instruction* new_vop3 =
          create_instruction<VALU_instruction>(new_op, asVOP3(Format::VOPC), 2, 1);
       VALU_instruction& cmp_vop3 = cmp->valu();
-      memcpy(new_vop3->abs, cmp_vop3.abs, sizeof(new_vop3->abs));
-      memcpy(new_vop3->neg, cmp_vop3.neg, sizeof(new_vop3->neg));
+      std::copy(std::cbegin(cmp_vop3.neg), std::cend(cmp_vop3.neg), std::begin(new_vop3->neg));
+      std::copy(std::cbegin(cmp_vop3.abs), std::cend(cmp_vop3.abs), std::begin(new_vop3->abs));
       new_vop3->clamp = cmp_vop3.clamp;
       new_vop3->omod = cmp_vop3.omod;
       new_vop3->opsel = cmp_vop3.opsel;
@@ -2648,8 +2648,8 @@ match_op3_for_vop3(opt_ctx& ctx, aco_opcode op1, aco_opcode op2, Instruction* op
       return false;
 
    /* get operands and modifiers and check inbetween modifiers */
-   *op1_clamp = op1_vop3 ? op1_vop3->clamp : false;
-   *op1_omod = op1_vop3 ? op1_vop3->omod : 0u;
+   *op1_clamp = op1_vop3 ? (bool)op1_vop3->clamp : false;
+   *op1_omod = op1_vop3 ? (unsigned)op1_vop3->omod : 0u;
 
    if (inbetween_neg)
       *inbetween_neg = op1_vop3 ? op1_vop3->neg[swap] : false;
@@ -2696,12 +2696,12 @@ match_op3_for_vop3(opt_ctx& ctx, aco_opcode op1, aco_opcode op2, Instruction* op
 
 void
 create_vop3_for_op3(opt_ctx& ctx, aco_opcode opcode, aco_ptr<Instruction>& instr,
-                    Operand operands[3], bool neg[3], bool abs[3], uint8_t opsel, bool clamp,
+                    Operand operands[3], bool (&neg)[3], bool (&abs)[3], uint8_t opsel, bool clamp,
                     unsigned omod)
 {
    VALU_instruction* new_instr = create_instruction<VALU_instruction>(opcode, Format::VOP3, 3, 1);
-   memcpy(new_instr->abs, abs, sizeof(bool[3]));
-   memcpy(new_instr->neg, neg, sizeof(bool[3]));
+   std::copy(std::cbegin(neg), std::cend(neg), std::begin(new_instr->neg));
+   std::copy(std::cbegin(abs), std::cend(abs), std::begin(new_instr->abs));
    new_instr->clamp = clamp;
    new_instr->omod = omod;
    new_instr->opsel = opsel;
@@ -3840,8 +3840,8 @@ combine_vop3p(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             bool neg_hi = fneg->neg_hi[0] ^ fneg->neg_hi[1];
             vop3p->neg_lo[i] ^= opsel_lo ? neg_hi : neg_lo;
             vop3p->neg_hi[i] ^= opsel_hi ? neg_hi : neg_lo;
-            vop3p->opsel_lo ^= ((opsel_lo ? ~fneg->opsel_hi : fneg->opsel_lo) & 1) << i;
-            vop3p->opsel_hi ^= ((opsel_hi ? ~fneg->opsel_hi : fneg->opsel_lo) & 1) << i;
+            vop3p->opsel_lo ^= ((opsel_lo ? ~fneg->opsel_hi : (unsigned)fneg->opsel_lo) & 1) << i;
+            vop3p->opsel_hi ^= ((opsel_hi ? ~fneg->opsel_hi : (unsigned)fneg->opsel_lo) & 1) << i;
 
             if (--ctx.uses[fneg->definitions[0].tempId()])
                ctx.uses[fneg->operands[0].tempId()]++;
@@ -4882,8 +4882,8 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             if (i) {
                instr->opcode = swapped_op;
                std::swap(instr->operands[0], instr->operands[1]);
-               std::swap(dpp->neg[0], dpp->neg[1]);
-               std::swap(dpp->abs[0], dpp->abs[1]);
+               dpp->neg[0].swap(dpp->neg[1]);
+               dpp->abs[0].swap(dpp->abs[1]);
             }
             dpp->dpp_ctrl = info.instr->dpp16().dpp_ctrl;
             dpp->bound_ctrl = info.instr->dpp16().bound_ctrl;

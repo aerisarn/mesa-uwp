@@ -1391,22 +1391,20 @@ static_assert(sizeof(SMEM_instruction) == sizeof(Instruction) + 4, "Unexpected p
 
 struct VALU_instruction : public Instruction {
    union {
-      bool neg[3];    /* VOP3, SDWA, DPP16, v_fma_mix, VINTERP_inreg */
-      bool neg_lo[3]; /* VOP3P */
+      bitfield_array8<uint32_t, 0, 3> neg;    /* VOP3, SDWA, DPP16, v_fma_mix, VINTERP_inreg */
+      bitfield_array8<uint32_t, 0, 3> neg_lo; /* VOP3P */
+
+      bitfield_array8<uint32_t, 3, 3> abs;    /* VOP3, SDWA, DPP16, v_fma_mix */
+      bitfield_array8<uint32_t, 3, 3> neg_hi; /* VOP3P */
+
+      bitfield_array8<uint32_t, 6, 4> opsel;     /* VOP3, VOPC12(GFX11+), VINTERP_inreg */
+      bitfield_uint8<uint32_t, 10, 2> omod;      /* VOP3, SDWA(GFX9+) */
+      bitfield_array8<uint32_t, 12, 3> opsel_lo; /* VOP3P */
+      bitfield_array8<uint32_t, 15, 3> opsel_hi; /* VOP3P */
+      bitfield_bool<uint32_t, 18> clamp;         /* VOP3, VOP3P, SDWA, VINTERP_inreg */
    };
-   union {
-      bool abs[3];    /* VOP3, SDWA, DPP16, v_fma_mix */
-      bool neg_hi[3]; /* VOP3P */
-   };
-   uint8_t opsel : 4; /* VOP3, VOPC12(GFX11+), VINTERP_inreg */
-   uint8_t omod : 2;  /* VOP3, SDWA(GFX9+) */
-   uint8_t padding0 : 2;
-   uint8_t opsel_lo : 3; /* VOP3P */
-   uint8_t opsel_hi : 3; /* VOP3P */
-   bool clamp : 1; /* VOP3, VOP3P, SDWA, VINTERP_inreg */
-   uint8_t padding1 : 1;
 };
-static_assert(sizeof(VALU_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
+static_assert(sizeof(VALU_instruction) == sizeof(Instruction) + 4, "Unexpected padding");
 
 struct VINTERP_inreg_instruction : public VALU_instruction {
    uint8_t wait_exp : 3;
