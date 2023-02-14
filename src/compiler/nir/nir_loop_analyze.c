@@ -54,6 +54,16 @@ typedef struct {
    /* Could be a basic_induction if following uniforms are inlined */
    nir_src *init_src;
    nir_alu_src *update_src;
+
+   /**
+    * SSA def of the phi-node associated with this induction variable.
+    *
+    * Every loop induction variable has an associated phi node in the loop
+    * header. This may point to the same SSA def as \c def. If, however, \c def
+    * is the increment of the induction variable, this will point to the SSA
+    * def being incremented.
+    */
+   nir_ssa_def *basis;
 } nir_loop_variable;
 
 typedef struct {
@@ -472,13 +482,17 @@ compute_induction_information(loop_info_state *state)
           is_only_uniform_src(var->init_src)) {
          alu_src_var->init_src = var->init_src;
          alu_src_var->update_src = var->update_src;
+         alu_src_var->basis = var->def;
          alu_src_var->type = basic_induction;
+
+         var->basis = var->def;
          var->type = basic_induction;
 
          num_induction_vars += 2;
       } else {
          var->init_src = NULL;
          var->update_src = NULL;
+         var->basis = NULL;
       }
    }
 
