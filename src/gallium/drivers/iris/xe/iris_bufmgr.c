@@ -39,3 +39,13 @@ iris_xe_init_global_vm(struct iris_bufmgr *bufmgr, uint32_t *vm_id)
    *vm_id = create.vm_id;
    return true;
 }
+
+bool
+iris_xe_destroy_global_vm(struct iris_bufmgr *bufmgr)
+{
+   struct drm_xe_vm_destroy destroy = {
+      .vm_id = iris_bufmgr_get_global_vm_id(bufmgr),
+   };
+   return intel_ioctl(iris_bufmgr_get_fd(bufmgr), DRM_IOCTL_XE_VM_DESTROY,
+                      &destroy) == 0;
+}

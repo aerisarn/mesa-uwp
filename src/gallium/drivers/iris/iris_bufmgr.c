@@ -1618,6 +1618,21 @@ iris_bo_wait_rendering(struct iris_bo *bo)
 }
 
 static void
+iris_bufmgr_destroy_global_vm(struct iris_bufmgr *bufmgr)
+{
+   switch (bufmgr->devinfo.kmd_type) {
+   case INTEL_KMD_TYPE_I915:
+      /* Nothing to do in i915 */
+      break;
+   case INTEL_KMD_TYPE_XE:
+      iris_xe_destroy_global_vm(bufmgr);
+      break;
+   default:
+      unreachable("missing");
+   }
+}
+
+static void
 iris_bufmgr_destroy(struct iris_bufmgr *bufmgr)
 {
    iris_destroy_border_color_pool(&bufmgr->border_color_pool);
@@ -1676,6 +1691,8 @@ iris_bufmgr_destroy(struct iris_bufmgr *bufmgr)
 
    for (int z = 0; z < IRIS_MEMZONE_COUNT; z++)
          util_vma_heap_finish(&bufmgr->vma_allocator[z]);
+
+   iris_bufmgr_destroy_global_vm(bufmgr);
 
    close(bufmgr->fd);
 
@@ -2372,6 +2389,7 @@ error_slabs_init:
 
       pb_slabs_deinit(&bufmgr->bo_slabs[i]);
    }
+   iris_bufmgr_destroy_global_vm(bufmgr);
 error_init_vm:
 error_engine_info:
    close(bufmgr->fd);
@@ -2496,4 +2514,10 @@ const struct iris_kmd_backend *
 iris_bufmgr_get_kernel_driver_backend(struct iris_bufmgr *bufmgr)
 {
    return bufmgr->kmd_backend;
+}
+
+uint32_t
+iris_bufmgr_get_global_vm_id(struct iris_bufmgr *bufmgr)
+{
+   return bufmgr->global_vm_id;
 }
