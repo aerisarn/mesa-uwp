@@ -61,3 +61,18 @@ void pvr_uscgen_per_job_eot(uint32_t state0,
    ralloc_free(shader);
 }
 
+void pvr_uscgen_nop(struct util_dynarray *binary)
+{
+   rogue_builder b;
+   rogue_shader *shader = rogue_shader_create(NULL, MESA_SHADER_NONE);
+   rogue_set_shader_name(shader, "NOP");
+   rogue_builder_init(&b, shader);
+   rogue_push_block(&b);
+
+   rogue_END(&b);
+
+   rogue_shader_passes(shader);
+   rogue_encode_shader(NULL, shader, binary);
+
+   ralloc_free(shader);
+}

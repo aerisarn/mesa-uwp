@@ -28,9 +28,13 @@
 
 #include <stdint.h>
 
+/* TODO: Shader caching (not pipeline caching) support. */
+
 void pvr_uscgen_per_job_eot(uint32_t state0,
                             uint32_t state1,
                             unsigned *temps_used,
                             struct util_dynarray *binary);
+
+void pvr_uscgen_nop(struct util_dynarray *binary);
 
 #endif /* PVR_USCGEN_H */
