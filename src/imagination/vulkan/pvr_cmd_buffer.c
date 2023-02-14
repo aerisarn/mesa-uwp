@@ -494,7 +494,7 @@ static VkResult pvr_sub_cmd_gfx_per_job_fragment_programs_create_and_upload(
       .num_emit_word_pairs = 0,
    };
    const uint32_t staging_buffer_size =
-      cmd_buffer->device->pixel_event_data_size_in_dwords * sizeof(uint32_t);
+      PVR_DW_TO_BYTES(cmd_buffer->device->pixel_event_data_size_in_dwords);
    const VkAllocationCallbacks *const allocator = &cmd_buffer->vk.pool->alloc;
    struct pvr_device *const device = cmd_buffer->device;
    struct util_dynarray eot_program_bin;
@@ -810,7 +810,7 @@ static VkResult pvr_load_op_pds_data_create_and_upload(
 
    pvr_pds_set_sizes_pixel_shader_sa_texture_data(&program, dev_info);
 
-   staging_buffer_size = program.data_size * sizeof(*staging_buffer);
+   staging_buffer_size = PVR_DW_TO_BYTES(program.data_size);
 
    staging_buffer = vk_alloc(&cmd_buffer->vk.pool->alloc,
                              staging_buffer_size,
@@ -1624,7 +1624,7 @@ pvr_compute_generate_idfwdf(struct pvr_cmd_buffer *cmd_buffer,
       .usc_unified_size = 0U,
       .pds_temp_size = 0U,
       .pds_data_size =
-         DIV_ROUND_UP(program->data_size << 2,
+         DIV_ROUND_UP(PVR_DW_TO_BYTES(program->data_size),
                       PVRX(CDMCTRL_KERNEL0_PDS_DATA_SIZE_UNIT_SIZE)),
       .usc_target = PVRX(CDMCTRL_USC_TARGET_ALL),
       .is_fence = false,
@@ -1663,7 +1663,7 @@ void pvr_compute_generate_fence(struct pvr_cmd_buffer *cmd_buffer,
       .usc_unified_size = 0U,
       .pds_temp_size = 0U,
       .pds_data_size =
-         DIV_ROUND_UP(program->data_size << 2,
+         DIV_ROUND_UP(PVR_DW_TO_BYTES(program->data_size),
                       PVRX(CDMCTRL_KERNEL0_PDS_DATA_SIZE_UNIT_SIZE)),
       .usc_target = PVRX(CDMCTRL_USC_TARGET_ANY),
       .is_fence = true,
@@ -2975,11 +2975,12 @@ pvr_setup_vertex_buffers(struct pvr_cmd_buffer *cmd_buffer,
    struct pvr_bo *pvr_bo;
    VkResult result;
 
-   result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
-                                     cmd_buffer->device->heaps.pds_heap,
-                                     pds_info->data_size_in_dwords << 2,
-                                     PVR_BO_ALLOC_FLAG_CPU_MAPPED,
-                                     &pvr_bo);
+   result =
+      pvr_cmd_buffer_alloc_mem(cmd_buffer,
+                               cmd_buffer->device->heaps.pds_heap,
+                               PVR_DW_TO_BYTES(pds_info->data_size_in_dwords),
+                               PVR_BO_ALLOC_FLAG_CPU_MAPPED,
+                               &pvr_bo);
    if (result != VK_SUCCESS)
       return result;
 
@@ -3185,11 +3186,12 @@ static VkResult pvr_setup_descriptor_mappings_old(
    if (!pds_info->data_size_in_dwords)
       return VK_SUCCESS;
 
-   result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
-                                     cmd_buffer->device->heaps.pds_heap,
-                                     pds_info->data_size_in_dwords << 2,
-                                     PVR_BO_ALLOC_FLAG_CPU_MAPPED,
-                                     &pvr_bo);
+   result =
+      pvr_cmd_buffer_alloc_mem(cmd_buffer,
+                               cmd_buffer->device->heaps.pds_heap,
+                               PVR_DW_TO_BYTES(pds_info->data_size_in_dwords),
+                               PVR_BO_ALLOC_FLAG_CPU_MAPPED,
+                               &pvr_bo);
    if (result != VK_SUCCESS)
       return result;
 
@@ -3248,9 +3250,9 @@ static VkResult pvr_setup_descriptor_mappings_old(
          assert(descriptor->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
          assert(descriptor->buffer_desc_range ==
-                const_buffer_entry->size_in_dwords * sizeof(uint32_t));
+                PVR_DW_TO_BYTES(const_buffer_entry->size_in_dwords));
          assert(descriptor->buffer_whole_range ==
-                const_buffer_entry->size_in_dwords * sizeof(uint32_t));
+                PVR_DW_TO_BYTES(const_buffer_entry->size_in_dwords));
 
          buffer_addr =
             PVR_DEV_ADDR_OFFSET(descriptor->buffer_dev_addr,
@@ -3271,6 +3273,7 @@ static VkResult pvr_setup_descriptor_mappings_old(
          const uint32_t desc_set_num = desc_set_entry->descriptor_set;
          const struct pvr_descriptor_set *descriptor_set;
          pvr_dev_addr_t desc_set_addr;
+         uint64_t desc_portion_offset;
 
          assert(desc_set_num < PVR_MAX_DESCRIPTOR_SETS);
 
@@ -3320,22 +3323,22 @@ static VkResult pvr_setup_descriptor_mappings_old(
          desc_set_addr = descriptor_set->pvr_bo->vma->dev_addr;
 
          if (desc_set_entry->primary) {
-            desc_set_addr = PVR_DEV_ADDR_OFFSET(
-               desc_set_addr,
+            desc_portion_offset =
                descriptor_set->layout->memory_layout_in_dwords_per_stage[stage]
-                     .primary_offset
-                  << 2U);
+                  .primary_offset;
          } else {
-            desc_set_addr = PVR_DEV_ADDR_OFFSET(
-               desc_set_addr,
+            desc_portion_offset =
                descriptor_set->layout->memory_layout_in_dwords_per_stage[stage]
-                     .secondary_offset
-                  << 2U);
+                  .secondary_offset;
          }
+         desc_portion_offset = PVR_DW_TO_BYTES(desc_portion_offset);
+
+         desc_set_addr =
+            PVR_DEV_ADDR_OFFSET(desc_set_addr, desc_portion_offset);
 
          desc_set_addr = PVR_DEV_ADDR_OFFSET(
             desc_set_addr,
-            (uint64_t)desc_set_entry->offset_in_dwords << 2U);
+            PVR_DW_TO_BYTES((uint64_t)desc_set_entry->offset_in_dwords));
 
          PVR_WRITE(qword_buffer,
                    desc_set_addr.addr,
@@ -3483,9 +3486,9 @@ static VkResult pvr_cmd_buffer_upload_patched_desc_set(
 {
    const struct pvr_descriptor_set_layout *layout = desc_set->layout;
    const uint64_t normal_desc_set_size =
-      layout->total_size_in_dwords * sizeof(uint32_t);
+      PVR_DW_TO_BYTES(layout->total_size_in_dwords);
    const uint64_t dynamic_descs_size =
-      layout->total_dynamic_size_in_dwords * sizeof(uint32_t);
+      PVR_DW_TO_BYTES(layout->total_dynamic_size_in_dwords);
    struct pvr_descriptor_size_info dynamic_uniform_buffer_size_info;
    struct pvr_descriptor_size_info dynamic_storage_buffer_size_info;
    struct pvr_device *device = cmd_buffer->device;
@@ -3601,10 +3604,10 @@ static VkResult pvr_cmd_buffer_upload_patched_desc_set(
 
             memcpy(mem_ptr + primary_offset + size_info->primary * desc_idx,
                    &addr.addr,
-                   size_info->primary * sizeof(uint32_t));
+                   PVR_DW_TO_BYTES(size_info->primary));
             memcpy(mem_ptr + secondary_offset + size_info->secondary * desc_idx,
                    &range,
-                   size_info->secondary * sizeof(uint32_t));
+                   PVR_DW_TO_BYTES(size_info->secondary));
          }
       }
    }
@@ -3787,7 +3790,7 @@ static VkResult pvr_setup_descriptor_mappings_new(
 
    result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
                                      cmd_buffer->device->heaps.pds_heap,
-                                     pds_info->data_size_in_dwords << 2,
+                                     PVR_DW_TO_BYTES(pds_info->data_size_in_dwords),
                                      PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                                      &pvr_bo);
    if (result != VK_SUCCESS)
@@ -3974,7 +3977,7 @@ static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,
 
       info.pds_data_offset = state->pds_compute_descriptor_data_offset;
       info.pds_data_size =
-         DIV_ROUND_UP(pds_data_size_in_dwords << 2U,
+         DIV_ROUND_UP(PVR_DW_TO_BYTES(pds_data_size_in_dwords),
                       PVRX(CDMCTRL_KERNEL0_PDS_DATA_SIZE_UNIT_SIZE));
 
       /* Check that we have upload the code section. */
@@ -3985,7 +3988,7 @@ static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer,
 
       info.pds_data_offset = program->data_offset;
       info.pds_data_size =
-         DIV_ROUND_UP(program->data_size << 2U,
+         DIV_ROUND_UP(PVR_DW_TO_BYTES(program->data_size),
                       PVRX(CDMCTRL_KERNEL0_PDS_DATA_SIZE_UNIT_SIZE));
       info.pds_code_offset = program->code_offset;
    }
@@ -4022,7 +4025,7 @@ void pvr_compute_update_shared_private(
          DIV_ROUND_UP(const_shared_regs,
                       PVRX(CDMCTRL_KERNEL0_USC_COMMON_SIZE_UNIT_SIZE)),
       .pds_data_size =
-         DIV_ROUND_UP(pipeline->pds_shared_update_data_size_dw << 2U,
+         DIV_ROUND_UP(PVR_DW_TO_BYTES(pipeline->pds_shared_update_data_size_dw),
                       PVRX(CDMCTRL_KERNEL0_PDS_DATA_SIZE_UNIT_SIZE)),
       .usc_target = PVRX(CDMCTRL_USC_TARGET_ALL),
       .pds_data_offset = pipeline->pds_shared_update_data_offset,
@@ -4092,7 +4095,7 @@ void pvr_compute_update_kernel_private(
                       PVRX(CDMCTRL_KERNEL0_PDS_TEMP_SIZE_UNIT_SIZE)),
 
       .pds_data_size =
-         DIV_ROUND_UP(pipeline->pds_data_size_dw << 2U,
+         DIV_ROUND_UP(PVR_DW_TO_BYTES(pipeline->pds_data_size_dw),
                       PVRX(CDMCTRL_KERNEL0_PDS_DATA_SIZE_UNIT_SIZE)),
       .pds_data_offset = pipeline->pds_data_offset,
       .pds_code_offset = pipeline->pds_code_offset,
@@ -4177,7 +4180,7 @@ static void pvr_compute_update_kernel(
                       PVRX(CDMCTRL_KERNEL0_PDS_TEMP_SIZE_UNIT_SIZE)),
 
       .pds_data_size =
-         DIV_ROUND_UP(program_info->data_size_in_dwords << 2U,
+         DIV_ROUND_UP(PVR_DW_TO_BYTES(program_info->data_size_in_dwords),
                       PVRX(CDMCTRL_KERNEL0_PDS_DATA_SIZE_UNIT_SIZE)),
       .pds_data_offset = pipeline->primary_program.data_offset,
       .pds_code_offset = pipeline->primary_program.code_offset,
@@ -4453,7 +4456,7 @@ pvr_emit_dirty_pds_state(const struct pvr_cmd_buffer *const cmd_buffer,
                       PVRX(VDMCTRL_PDS_STATE0_USC_COMMON_SIZE_UNIT_SIZE));
 
       state0.pds_data_size = DIV_ROUND_UP(
-         vertex_descriptor_state->pds_info.data_size_in_dwords << 2,
+         PVR_DW_TO_BYTES(vertex_descriptor_state->pds_info.data_size_in_dwords),
          PVRX(VDMCTRL_PDS_STATE0_PDS_DATA_SIZE_UNIT_SIZE));
    }
 
@@ -5500,7 +5503,7 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
 
    result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
                                      cmd_buffer->device->heaps.general_heap,
-                                     ppp_state_words_count * sizeof(uint32_t),
+                                     PVR_DW_TO_BYTES(ppp_state_words_count),
                                      PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                                      &pvr_bo);
    if (result != VK_SUCCESS)
@@ -5508,7 +5511,7 @@ static VkResult pvr_emit_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
 
    memcpy(pvr_bo->bo->map,
           ppp_state_words,
-          ppp_state_words_count * sizeof(uint32_t));
+          PVR_DW_TO_BYTES(ppp_state_words_count));
 
    /* Write the VDM state update into the VDM control stream. */
    pvr_csb_emit (control_stream, VDMCTRL_PPP_STATE0, state0) {
@@ -5870,9 +5873,9 @@ static void pvr_emit_dirty_vdm_state(struct pvr_cmd_buffer *const cmd_buffer,
          state5.vs_pds_temp_size =
             DIV_ROUND_UP(state->pds_shader.info->temps_required << 2,
                          PVRX(VDMCTRL_VDM_STATE5_VS_PDS_TEMP_SIZE_UNIT_SIZE));
-         state5.vs_pds_data_size =
-            DIV_ROUND_UP(state->pds_shader.info->data_size_in_dwords << 2,
-                         PVRX(VDMCTRL_VDM_STATE5_VS_PDS_DATA_SIZE_UNIT_SIZE));
+         state5.vs_pds_data_size = DIV_ROUND_UP(
+            PVR_DW_TO_BYTES(state->pds_shader.info->data_size_in_dwords),
+            PVRX(VDMCTRL_VDM_STATE5_VS_PDS_DATA_SIZE_UNIT_SIZE));
       }
    }
 }
@@ -6155,9 +6158,8 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
                                                dev_info);
       }
 
-      pds_size = (pds_prog.program.data_size_aligned +
-                  pds_prog.program.code_size_aligned)
-                 << 2;
+      pds_size = PVR_DW_TO_BYTES(pds_prog.program.data_size_aligned +
+                                 pds_prog.program.code_size_aligned);
 
       result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
                                         cmd_buffer->device->heaps.pds_heap,
@@ -6170,7 +6172,7 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
       pds_base = pds_bo->bo->map;
       memcpy(pds_base,
              pds_prog.program.code,
-             pds_prog.program.code_size_aligned << 2);
+             PVR_DW_TO_BYTES(pds_prog.program.code_size_aligned));
 
       if (state->draw_state.draw_indexed) {
          pvr_pds_generate_draw_elements_indirect(
@@ -6193,17 +6195,18 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
          state0.usc_target = PVRX(VDMCTRL_USC_TARGET_ANY);
 
          state0.pds_temp_size =
-            DIV_ROUND_UP(pds_prog.program.temp_size_aligned << 2,
+            DIV_ROUND_UP(PVR_DW_TO_BYTES(pds_prog.program.temp_size_aligned),
                          PVRX(VDMCTRL_PDS_STATE0_PDS_TEMP_SIZE_UNIT_SIZE));
 
          state0.pds_data_size =
-            DIV_ROUND_UP(pds_prog.program.data_size_aligned << 2,
+            DIV_ROUND_UP(PVR_DW_TO_BYTES(pds_prog.program.data_size_aligned),
                          PVRX(VDMCTRL_PDS_STATE0_PDS_DATA_SIZE_UNIT_SIZE));
       }
 
       pvr_csb_emit (csb, VDMCTRL_PDS_STATE1, state1) {
          const uint32_t data_offset =
-            pds_bo->vma->dev_addr.addr + (pds_prog.program.code_size << 2) -
+            pds_bo->vma->dev_addr.addr +
+            PVR_DW_TO_BYTES(pds_prog.program.code_size) -
             cmd_buffer->device->heaps.pds_heap->base_addr.addr;
 
          state1.pds_data_addr = PVR_DEV_ADDR(data_offset);
@@ -7060,10 +7063,10 @@ static void pvr_insert_transparent_obj(struct pvr_cmd_buffer *const cmd_buffer,
    /* Emit VDM state. */
 
    static_assert(sizeof(device->static_clear_state.large_clear_vdm_words) >=
-                    PVR_CLEAR_VDM_STATE_DWORD_COUNT * sizeof(uint32_t),
+                    PVR_DW_TO_BYTES(PVR_CLEAR_VDM_STATE_DWORD_COUNT),
                  "Large clear VDM control stream word length mismatch");
    static_assert(sizeof(device->static_clear_state.vdm_words) ==
-                    PVR_CLEAR_VDM_STATE_DWORD_COUNT * sizeof(uint32_t),
+                    PVR_DW_TO_BYTES(PVR_CLEAR_VDM_STATE_DWORD_COUNT),
                  "Clear VDM control stream word length mismatch");
 
    pvr_emit_clear_words(cmd_buffer, sub_cmd);

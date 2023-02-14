@@ -31,6 +31,7 @@
 #include "pvr_hw_pass.h"
 #include "pvr_pds.h"
 #include "pvr_private.h"
+#include "pvr_types.h"
 #include "pvr_usc_fragment_shader.h"
 #include "util/macros.h"
 #include "rogue/rogue.h"
@@ -166,7 +167,7 @@ VkResult pvr_pds_unitex_state_program_create_and_upload(
 
    pvr_pds_set_sizes_pixel_shader_uniform_texture_code(&program);
 
-   staging_buffer_size = program.code_size * sizeof(*staging_buffer);
+   staging_buffer_size = PVR_DW_TO_BYTES(program.code_size);
 
    staging_buffer = vk_alloc2(&device->vk.alloc,
                               allocator,

@@ -89,8 +89,7 @@ static VkResult pvr_pds_coeff_program_create_and_upload(
       return VK_SUCCESS;
    }
 
-   staging_buffer_size =
-      (program.code_size + program.data_size) * sizeof(*staging_buffer);
+   staging_buffer_size = PVR_DW_TO_BYTES(program.code_size + program.data_size);
 
    staging_buffer = vk_alloc2(&device->vk.alloc,
                               allocator,
@@ -164,8 +163,7 @@ VkResult pvr_pds_fragment_program_create_and_upload(
 
    pvr_pds_kick_usc(&program, NULL, 0, false, PDS_GENERATE_SIZES);
 
-   staging_buffer_size =
-      (program.code_size + program.data_size) * sizeof(*staging_buffer);
+   staging_buffer_size = PVR_DW_TO_BYTES(program.code_size + program.data_size);
 
    staging_buffer = vk_alloc2(&device->vk.alloc,
                               allocator,
@@ -384,7 +382,7 @@ static VkResult pvr_pds_vertex_attrib_program_create_and_upload(
                                            &device->pdevice->dev_info);
 
    code_size_in_dwords = info->code_size_in_dwords;
-   staging_buffer_size = info->code_size_in_dwords * sizeof(*staging_buffer);
+   staging_buffer_size = PVR_DW_TO_BYTES(info->code_size_in_dwords);
 
    staging_buffer = vk_alloc2(&device->vk.alloc,
                               allocator,
@@ -824,8 +822,7 @@ static VkResult pvr_pds_descriptor_program_create_and_upload(
    pvr_pds_generate_descriptor_upload_program(&program, NULL, pds_info);
 
    code_size_in_dwords = pds_info->code_size_in_dwords;
-   staging_buffer_size =
-      pds_info->code_size_in_dwords * sizeof(*staging_buffer);
+   staging_buffer_size = PVR_DW_TO_BYTES(pds_info->code_size_in_dwords);
 
    if (!staging_buffer_size) {
       vk_free2(&device->vk.alloc, allocator, entries_buffer);
@@ -971,8 +968,7 @@ static VkResult pvr_pds_compute_program_create_and_upload(
    /* FIXME: According to pvr_device_init_compute_pds_program() the code size
     * is in bytes. Investigate this.
     */
-   staging_buffer_size =
-      (program.code_size + program.data_size) * sizeof(*staging_buffer);
+   staging_buffer_size = PVR_DW_TO_BYTES(program.code_size + program.data_size);
 
    staging_buffer = vk_alloc2(&device->vk.alloc,
                               allocator,
@@ -1062,7 +1058,7 @@ static VkResult pvr_pds_compute_base_workgroup_variant_program_init(
    /* FIXME: According to pvr_device_init_compute_pds_program() the code size
     * is in bytes. Investigate this.
     */
-   buffer_size = MAX2(program.code_size, program.data_size) * sizeof(*buffer);
+   buffer_size = PVR_DW_TO_BYTES(MAX2(program.code_size, program.data_size));
 
    buffer = vk_alloc2(&device->vk.alloc,
                       allocator,

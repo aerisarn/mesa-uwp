@@ -1091,8 +1091,7 @@ static VkResult pvr_pbe_setup_emit(const struct pvr_transfer_cmd *transfer_cmd,
 
    pvr_pds_set_sizes_pixel_event(&program, dev_info);
 
-   staging_buffer_size =
-      (program.code_size + program.data_size) * sizeof(*staging_buffer);
+   staging_buffer_size = PVR_DW_TO_BYTES(program.code_size + program.data_size);
 
    staging_buffer = vk_alloc(&device->vk.alloc,
                              staging_buffer_size,
@@ -2093,11 +2092,12 @@ pvr_pds_unitex(const struct pvr_device_info *dev_info,
       ALIGN_POT(program->data_size,
                 PVRX(TA_STATE_PDS_SIZEINFO1_PDS_TEXTURESTATESIZE_UNIT_SIZE));
 
-   result = pvr_cmd_buffer_alloc_mem(transfer_cmd->cmd_buffer,
-                                     ctx->device->heaps.pds_heap,
-                                     state->tex_state_data_size << 2U,
-                                     PVR_BO_ALLOC_FLAG_CPU_MAPPED,
-                                     &pvr_bo);
+   result =
+      pvr_cmd_buffer_alloc_mem(transfer_cmd->cmd_buffer,
+                               ctx->device->heaps.pds_heap,
+                               PVR_DW_TO_BYTES(state->tex_state_data_size),
+                               PVR_BO_ALLOC_FLAG_CPU_MAPPED,
+                               &pvr_bo);
    if (result != VK_SUCCESS)
       return result;
 
@@ -2825,7 +2825,7 @@ static VkResult pvr_3d_copy_blit_core(struct pvr_transfer_ctx *ctx,
 
       result = pvr_cmd_buffer_alloc_mem(transfer_cmd->cmd_buffer,
                                         device->heaps.general_heap,
-                                        tex_state_dma_size_dw << 2U,
+                                        PVR_DW_TO_BYTES(tex_state_dma_size_dw),
                                         PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                                         &pvr_bo);
       if (result != VK_SUCCESS)
@@ -3019,12 +3019,12 @@ pvr_pds_coeff_task(struct pvr_transfer_ctx *ctx,
 
    pvr_pds_set_sizes_coeff_loading(&program);
 
-   result =
-      pvr_cmd_buffer_alloc_mem(transfer_cmd->cmd_buffer,
-                               ctx->device->heaps.pds_heap,
-                               (program.data_size + program.code_size) << 2U,
-                               PVR_BO_ALLOC_FLAG_CPU_MAPPED,
-                               &pvr_bo);
+   result = pvr_cmd_buffer_alloc_mem(
+      transfer_cmd->cmd_buffer,
+      ctx->device->heaps.pds_heap,
+      PVR_DW_TO_BYTES(program.data_size + program.code_size),
+      PVR_BO_ALLOC_FLAG_CPU_MAPPED,
+      &pvr_bo);
    if (result != VK_SUCCESS)
       return result;
 
@@ -3700,8 +3700,8 @@ pvr_isp_primitive_block_size(const struct pvr_device_info *dev_info,
          src->surface.mem_layout == PVR_MEMLAYOUT_3DTWIDDLED ? 4U : 2U;
    }
 
-   tsp_data_size = num_isp_vertices * PVR_TRANSFER_NUM_LAYERS * 4U *
-                   num_tsp_vertices_per_isp_vertex;
+   tsp_data_size = PVR_DW_TO_BYTES(num_isp_vertices * PVR_TRANSFER_NUM_LAYERS *
+                                   num_tsp_vertices_per_isp_vertex);
 
    if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format)) {
       /* An XYZ vertex is 16/16/32 bits => 8 bytes. */
@@ -3731,10 +3731,10 @@ pvr_isp_primitive_block_size(const struct pvr_device_info *dev_info,
       pds_state_size_dw = 7U;
    }
 
-   stream_size = tsp_data_size + (idx_data_size_dw + tsp_comp_format_dw +
-                                  isp_vertex_data_size_dw + isp_state_size_dw +
-                                  pds_state_size_dw) *
-                                    4U;
+   stream_size =
+      tsp_data_size + PVR_DW_TO_BYTES(idx_data_size_dw + tsp_comp_format_dw +
+                                      isp_vertex_data_size_dw +
+                                      isp_state_size_dw + pds_state_size_dw);
 
    return stream_size;
 }
@@ -3770,8 +3770,9 @@ pvr_isp_primitive_block(const struct pvr_device_info *dev_info,
          src->surface.mem_layout == PVR_MEMLAYOUT_3DTWIDDLED ? 4U : 2U;
    }
 
-   tsp_data_size_in_bytes = num_isp_vertices * PVR_TRANSFER_NUM_LAYERS * 4U *
-                            num_tsp_vertices_per_isp_vert;
+   tsp_data_size_in_bytes =
+      PVR_DW_TO_BYTES(num_isp_vertices * PVR_TRANSFER_NUM_LAYERS *
+                      num_tsp_vertices_per_isp_vert);
 
    if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format)) {
       tsp_comp_format_in_dw = 0U;
@@ -3850,7 +3851,7 @@ pvr_isp_primitive_block(const struct pvr_device_info *dev_info,
       pvr_isp_prim_block_pds_state(dev_info, ctx, state, cs_ptr_out);
 
       /* Point the CS_PRIM_BASE here. */
-      *cs_start_offset = (*cs_ptr_out - cs_ptr_start) * sizeof(uint32_t);
+      *cs_start_offset = (*cs_ptr_out - cs_ptr_start) * sizeof(cs_ptr_start[0]);
 
       /* This includes:
        *    ISP state words.
@@ -3876,7 +3877,7 @@ pvr_isp_primitive_block(const struct pvr_device_info *dev_info,
          return result;
    }
 
-   assert((*cs_ptr_out - cs_ptr_start) * sizeof(uint32_t) ==
+   assert((*cs_ptr_out - cs_ptr_start) * sizeof(cs_ptr_start[0]) ==
           stream_size_in_bytes);
 
    return VK_SUCCESS;
@@ -3885,7 +3886,7 @@ pvr_isp_primitive_block(const struct pvr_device_info *dev_info,
 static inline uint32_t
 pvr_transfer_prim_blocks_per_alloc(const struct pvr_device_info *dev_info)
 {
-   uint32_t ret = PVRX(IPF_CONTROL_STREAM_SIZE_DWORDS) * sizeof(uint32_t);
+   uint32_t ret = PVR_DW_TO_BYTES(PVRX(IPF_CONTROL_STREAM_SIZE_DWORDS));
 
    if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format))
       return ret / sizeof(uint64_t) / 2U;
@@ -4284,7 +4285,7 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
                num_region_arrays++;
                next_region_array_vaddr.addr +=
                   num_region_arrays *
-                  (PVRX(IPF_CONTROL_STREAM_SIZE_DWORDS) * 4);
+                  PVR_DW_TO_BYTES(PVRX(IPF_CONTROL_STREAM_SIZE_DWORDS));
 
                if (PVR_HAS_FEATURE(dev_info,
                                    simple_internal_parameter_format_v2)) {
@@ -4301,7 +4302,8 @@ static VkResult pvr_isp_ctrl_stream(const struct pvr_device_info *dev_info,
                   pvr_isp_ctrl_stream_sipf_write_aligned(
                      (uint8_t *)cs_ptr,
                      link_addr,
-                     pvr_cmd_length(IPF_CONTROL_STREAM_LINK_SIPF2) * 4);
+                     PVR_DW_TO_BYTES(
+                        pvr_cmd_length(IPF_CONTROL_STREAM_LINK_SIPF2)));
                } else {
                   pvr_csb_pack (cs_ptr, IPF_CONTROL_STREAM, control_stream) {
                      control_stream.cs_type = PVRX(IPF_CS_TYPE_LINK);

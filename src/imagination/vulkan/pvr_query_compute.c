@@ -36,6 +36,7 @@
 #include "pvr_shader_factory.h"
 #include "pvr_static_shaders.h"
 #include "pvr_tex_state.h"
+#include "pvr_types.h"
 #include "vk_alloc.h"
 #include "vk_command_pool.h"
 #include "vk_util.h"
@@ -89,7 +90,7 @@ static VkResult pvr_create_compute_secondary_prog(
    staging_buffer_size = info->code_size_in_dwords;
 
    staging_buffer = vk_alloc(&device->vk.alloc,
-                             staging_buffer_size * sizeof(*staging_buffer),
+                             PVR_DW_TO_BYTES(staging_buffer_size),
                              8,
                              VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!staging_buffer) {
@@ -207,7 +208,7 @@ static VkResult pvr_write_compute_query_pds_data_section(
 
    result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
                                      cmd_buffer->device->heaps.pds_heap,
-                                     info->data_size_in_dwords << 2,
+                                     PVR_DW_TO_BYTES(info->data_size_in_dwords),
                                      PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                                      &pvr_bo);
    if (result != VK_SUCCESS)
@@ -222,7 +223,7 @@ static VkResult pvr_write_compute_query_pds_data_section(
     * not needed. If it's needed we should probably be using LITERAL entries for
     * this instead.
     */
-   memset(dword_buffer, 0xFE, info->data_size_in_dwords << 2);
+   memset(dword_buffer, 0xFE, PVR_DW_TO_BYTES(info->data_size_in_dwords));
 
    pipeline->pds_shared_update_data_size_dw = info->data_size_in_dwords;
 

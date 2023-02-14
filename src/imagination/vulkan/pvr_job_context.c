@@ -348,7 +348,7 @@ static VkResult pvr_pds_render_ctx_sr_program_create_and_upload(
                                               PDS_GENERATE_CODE_SEGMENT,
                                               dev_info);
 
-   assert((uint32_t)(buffer_end - staging_buffer) * 4 <
+   assert((uint32_t)(buffer_end - staging_buffer) * sizeof(staging_buffer[0]) <
           ROGUE_PDS_TASK_PROGRAM_SIZE);
 
    return pvr_gpu_upload_pds(device,
@@ -426,7 +426,7 @@ static VkResult pvr_pds_compute_ctx_sr_program_create_and_upload(
                                                  dev_info);
    }
 
-   assert((uint32_t)(buffer_ptr - staging_buffer) * 4 <
+   assert((uint32_t)(buffer_ptr - staging_buffer) * sizeof(staging_buffer[0]) <
           ROGUE_PDS_TASK_PROGRAM_SIZE);
 
    STATIC_ASSERT(PVRX(CR_CDM_CONTEXT_PDS0_DATA_ADDR_ALIGNMENT) ==
@@ -716,7 +716,7 @@ pvr_rogue_get_vdmctrl_pds_state_words(struct pvr_pds_upload *pds_program,
 {
    pvr_csb_pack (state0_out, VDMCTRL_PDS_STATE0, state) {
       /* Convert the data size from dwords to bytes. */
-      const uint32_t pds_data_size = pds_program->data_size * 4;
+      const uint32_t pds_data_size = PVR_DW_TO_BYTES(pds_program->data_size);
 
       state.dm_target = PVRX(VDMCTRL_DM_TARGET_VDM);
       state.usc_target = usc_target;
@@ -744,7 +744,7 @@ pvr_rogue_get_geom_state_stream_out_words(struct pvr_pds_upload *pds_program,
 {
    pvr_csb_pack (stream_out1_out, TA_STATE_STREAM_OUT1, state) {
       /* Convert the data size from dwords to bytes. */
-      const uint32_t pds_data_size = pds_program->data_size * 4;
+      const uint32_t pds_data_size = PVR_DW_TO_BYTES(pds_program->data_size);
 
       state.sync = true;
 
@@ -963,7 +963,7 @@ static VkResult pvr_pds_sr_fence_terminate_program_create_and_upload(
                                                PDS_GENERATE_CODE_SEGMENT,
                                                &device->pdevice->dev_info);
 
-   assert((uint64_t)(buffer_end - staging_buffer) * 4U <
+   assert((uint64_t)(buffer_end - staging_buffer) * sizeof(staging_buffer[0]) <
           ROGUE_PDS_TASK_PROGRAM_SIZE);
 
    return pvr_gpu_upload_pds(device,
@@ -1007,9 +1007,8 @@ static void pvr_compute_ctx_ws_static_state_init(
    pvr_csb_pack (&static_state->cdm_ctx_store_pds1,
                  CR_CDM_CONTEXT_PDS1,
                  state) {
-      /* Convert the data size from dwords to bytes. */
       const uint32_t store_program_data_size =
-         ctx_switch->sr[0].pds.store_program.data_size * 4U;
+         PVR_DW_TO_BYTES(ctx_switch->sr[0].pds.store_program.data_size);
 
       state.pds_seq_dep = true;
       state.usc_seq_dep = false;
@@ -1044,7 +1043,7 @@ static void pvr_compute_ctx_ws_static_state_init(
                  state) {
       /* Convert the data size from dwords to bytes. */
       const uint32_t fence_terminate_program_data_size =
-         ctx_switch->sr_fence_terminate_program.data_size * 4U;
+         PVR_DW_TO_BYTES(ctx_switch->sr_fence_terminate_program.data_size);
 
       state.pds_seq_dep = true;
       state.usc_seq_dep = false;

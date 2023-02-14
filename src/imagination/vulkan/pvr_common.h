@@ -228,7 +228,7 @@ CHECK_STRUCT_FIELD_SIZE(pvr_combined_image_sampler_descriptor,
                         ROGUE_NUM_TEXSTATE_IMAGE_WORDS * sizeof(uint64_t));
 CHECK_STRUCT_FIELD_SIZE(pvr_combined_image_sampler_descriptor,
                         image,
-                        PVR_IMAGE_DESCRIPTOR_SIZE * sizeof(uint32_t));
+                        PVR_DW_TO_BYTES(PVR_IMAGE_DESCRIPTOR_SIZE));
 #if 0
 /* TODO: Don't really want to include pvr_csb.h in here since this header is
  * shared with the compiler. Figure out a better place for these.

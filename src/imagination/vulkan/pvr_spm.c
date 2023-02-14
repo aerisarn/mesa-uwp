@@ -110,7 +110,8 @@ pvr_spm_scratch_buffer_calc_required_size(const struct pvr_render_pass *pass,
 
    buffer_size = ALIGN_POT((uint64_t)framebuffer_width,
                            PVRX(CR_PBE_WORD0_MRT0_LINESTRIDE_ALIGNMENT));
-   buffer_size *= (uint64_t)framebuffer_height * dwords_per_pixel * 4;
+   buffer_size *=
+      (uint64_t)framebuffer_height * PVR_DW_TO_BYTES(dwords_per_pixel);
 
    return buffer_size;
 }
@@ -325,15 +326,17 @@ VkResult pvr_device_init_spm_load_state(struct pvr_device *device)
 
       pds_texture_aligned_offsets[i] = pds_allocation_size;
       /* FIXME: Figure out the define for alignment of 16. */
-      pds_allocation_size += ALIGN_POT(pds_texture_program.code_size * 4, 16);
+      pds_allocation_size +=
+         ALIGN_POT(PVR_DW_TO_BYTES(pds_texture_program.code_size), 16);
 
       pvr_pds_set_sizes_pixel_shader(&pds_kick_program);
 
       pds_kick_aligned_offsets[i] = pds_allocation_size;
       /* FIXME: Figure out the define for alignment of 16. */
-      pds_allocation_size += ALIGN_POT(
-         (pds_kick_program.code_size + pds_kick_program.data_size) * 4,
-         16);
+      pds_allocation_size +=
+         ALIGN_POT(PVR_DW_TO_BYTES(pds_kick_program.code_size +
+                                   pds_kick_program.data_size),
+                   16);
    }
 
    /* FIXME: Figure out the define for alignment of 16. */
@@ -470,7 +473,7 @@ static uint64_t pvr_spm_setup_pbe_state(
                       pbe_reg_words_out);
 
    return (uint64_t)stride * framebuffer_size->height * sample_count *
-          dword_count * sizeof(uint32_t);
+          PVR_DW_TO_BYTES(dword_count);
 }
 
 static inline void pvr_set_pbe_all_valid_mask(struct usc_mrt_desc *desc)
@@ -536,10 +539,10 @@ static uint64_t pvr_spm_setup_pbe_eight_dword_write(
 
    mrt_resources[render_target_used] = (struct usc_mrt_resource){
       .mrt_desc = {
-         .intermediate_size = max_pbe_write_size_dw * sizeof(uint32_t),
+         .intermediate_size = PVR_DW_TO_BYTES(max_pbe_write_size_dw),
       },
       .type = source_type,
-      .intermediate_size = max_pbe_write_size_dw * sizeof(uint32_t),
+      .intermediate_size = PVR_DW_TO_BYTES(max_pbe_write_size_dw),
    };
 
    if (source_type == USC_MRT_RESOURCE_TYPE_MEMORY)
@@ -562,10 +565,10 @@ static uint64_t pvr_spm_setup_pbe_eight_dword_write(
 
    mrt_resources[render_target_used] = (struct usc_mrt_resource){
       .mrt_desc = {
-         .intermediate_size = max_pbe_write_size_dw * sizeof(uint32_t),
+         .intermediate_size = PVR_DW_TO_BYTES(max_pbe_write_size_dw),
       },
       .type = source_type,
-      .intermediate_size = max_pbe_write_size_dw * sizeof(uint32_t),
+      .intermediate_size = PVR_DW_TO_BYTES(max_pbe_write_size_dw),
    };
 
    if (source_type == USC_MRT_RESOURCE_TYPE_OUTPUT_REG) {
@@ -611,7 +614,7 @@ static VkResult pvr_pds_pixel_event_program_create_and_upload(
 
    staging_buffer =
       vk_alloc(&device->vk.alloc,
-               device->pixel_event_data_size_in_dwords * sizeof(uint32_t),
+               PVR_DW_TO_BYTES(device->pixel_event_data_size_in_dwords),
                8,
                VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!staging_buffer)
@@ -883,7 +886,7 @@ static VkResult pvr_spm_setup_texture_state_words(
    if (result != VK_SUCCESS)
       return result;
 
-   *mem_used_out = fb_area * dword_count * sizeof(uint32_t) * sample_count;
+   *mem_used_out = fb_area * PVR_DW_TO_BYTES(dword_count) * sample_count;
 
    return VK_SUCCESS;
 }
@@ -922,7 +925,7 @@ static VkResult pvr_pds_bgnd_program_create_and_upload(
    assert(texture_program_data_size_in_dwords == texture_program.data_size);
 #endif
 
-   staging_buffer_size = texture_program_data_size_in_dwords * sizeof(uint32_t);
+   staging_buffer_size = PVR_DW_TO_BYTES(texture_program_data_size_in_dwords);
 
    staging_buffer = vk_alloc(&device->vk.alloc,
                              staging_buffer_size,

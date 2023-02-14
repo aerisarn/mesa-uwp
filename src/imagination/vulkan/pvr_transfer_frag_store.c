@@ -260,13 +260,13 @@ static VkResult pvr_transfer_frag_store_entry_data_create(
 
    pvr_pds_kick_usc(&kick_usc_pds_prog, NULL, 0U, false, PDS_GENERATE_SIZES);
 
-   result = pvr_bo_alloc(
-      device,
-      device->heaps.pds_heap,
-      (kick_usc_pds_prog.data_size + kick_usc_pds_prog.code_size) * 4,
-      16,
-      PVR_BO_ALLOC_FLAG_CPU_MAPPED,
-      &entry_data->kick_usc_pds_upload);
+   result = pvr_bo_alloc(device,
+                         device->heaps.pds_heap,
+                         PVR_DW_TO_BYTES(kick_usc_pds_prog.data_size +
+                                         kick_usc_pds_prog.code_size),
+                         16,
+                         PVR_BO_ALLOC_FLAG_CPU_MAPPED,
+                         &entry_data->kick_usc_pds_upload);
    if (result != VK_SUCCESS)
       goto err_free_usc_upload;
 

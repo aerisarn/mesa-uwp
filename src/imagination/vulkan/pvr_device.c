@@ -1178,7 +1178,7 @@ VkResult pvr_pds_compute_shader_create_and_upload(
     */
    /* Code size is in bytes, data size in dwords. */
    staging_buffer_size =
-      program->data_size * sizeof(uint32_t) + program->code_size;
+      PVR_DW_TO_BYTES(program->data_size) + program->code_size;
 
    staging_buffer = vk_alloc(&device->vk.alloc,
                              staging_buffer_size,
@@ -1277,8 +1277,7 @@ static VkResult pvr_pds_idfwdf_programs_create_and_upload(
 
    pvr_pds_vertex_shader_sa(&program, NULL, PDS_GENERATE_SIZES, dev_info);
 
-   staging_buffer_size =
-      (program.code_size + program.data_size) * sizeof(*staging_buffer);
+   staging_buffer_size = PVR_DW_TO_BYTES(program.code_size + program.data_size);
 
    staging_buffer = vk_alloc(&device->vk.alloc,
                              staging_buffer_size,
@@ -1322,7 +1321,7 @@ static VkResult pvr_pds_idfwdf_programs_create_and_upload(
       pvr_pds_vertex_shader_sa(&program, NULL, PDS_GENERATE_SIZES, dev_info);
 
       staging_buffer_size =
-         (program.code_size + program.data_size) * sizeof(*staging_buffer);
+         PVR_DW_TO_BYTES(program.code_size + program.data_size);
 
       staging_buffer = vk_realloc(&device->vk.alloc,
                                   staging_buffer,
@@ -1574,8 +1573,7 @@ static VkResult pvr_device_init_nop_program(struct pvr_device *device)
 
    pvr_pds_set_sizes_pixel_shader(&program);
 
-   staging_buffer_size =
-      (program.code_size + program.data_size) * sizeof(*staging_buffer);
+   staging_buffer_size = PVR_DW_TO_BYTES(program.code_size + program.data_size);
 
    staging_buffer = vk_alloc(&device->vk.alloc,
                              staging_buffer_size,
@@ -2541,8 +2539,8 @@ VkResult pvr_gpu_upload_pds(struct pvr_device *device,
                             struct pvr_pds_upload *const pds_upload_out)
 {
    /* All alignment and sizes below are in bytes. */
-   const size_t data_size = data_size_dwords * sizeof(*data);
-   const size_t code_size = code_size_dwords * sizeof(*code);
+   const size_t data_size = PVR_DW_TO_BYTES(data_size_dwords);
+   const size_t code_size = PVR_DW_TO_BYTES(code_size_dwords);
    const uint64_t data_aligned_size = ALIGN_POT(data_size, data_alignment);
    const uint64_t code_aligned_size = ALIGN_POT(code_size, code_alignment);
    const uint32_t code_offset = ALIGN_POT(data_aligned_size, code_alignment);

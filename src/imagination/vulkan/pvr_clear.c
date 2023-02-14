@@ -31,6 +31,7 @@
 #include "pvr_private.h"
 #include "pvr_shader_factory.h"
 #include "pvr_static_shaders.h"
+#include "pvr_types.h"
 #include "vk_alloc.h"
 #include "vk_log.h"
 
@@ -170,7 +171,7 @@ VkResult pvr_emit_ppp_from_template(
 
    result = pvr_bo_alloc(device,
                          device->heaps.general_heap,
-                         dword_count * sizeof(uint32_t),
+                         PVR_DW_TO_BYTES(dword_count),
                          cache_line_size,
                          PVR_BO_ALLOC_FLAG_CPU_MAPPED,
                          &pvr_bo);
@@ -326,8 +327,8 @@ pvr_device_init_clear_attachment_programs(struct pvr_device *device)
       pvr_pds_set_sizes_pixel_shader_uniform_texture_code(&texture_pds_program);
 
       pds_texture_program_offsets[offset_idx] = alloc_size;
-      alloc_size +=
-         ALIGN_POT(texture_pds_program.code_size * 4, pds_prog_alignment);
+      alloc_size += ALIGN_POT(PVR_DW_TO_BYTES(texture_pds_program.code_size),
+                              pds_prog_alignment);
 
       /* Pixel program to load fragment shader. */
 
@@ -343,7 +344,7 @@ pvr_device_init_clear_attachment_programs(struct pvr_device *device)
 
       program_size = pixel_shader_pds_program.code_size +
                      pixel_shader_pds_program.data_size;
-      program_size *= sizeof(uint32_t);
+      program_size = PVR_DW_TO_BYTES(program_size);
 
       pds_pixel_program_offsets[offset_idx] = alloc_size;
       alloc_size += ALIGN_POT(program_size, pds_prog_alignment);
@@ -657,7 +658,7 @@ VkResult pvr_pds_clear_vertex_shader_program_create_and_upload(
    pvr_pds_vertex_shader(program, NULL, PDS_GENERATE_SIZES, dev_info);
 
    staging_buffer_size =
-      (program->code_size + program->data_size) * sizeof(*staging_buffer);
+      PVR_DW_TO_BYTES(program->code_size + program->data_size);
 
    staging_buffer = vk_alloc(&device->vk.alloc,
                              staging_buffer_size,
@@ -716,7 +717,7 @@ VkResult pvr_pds_clear_vertex_shader_program_create_and_upload_data(
 
    pvr_pds_vertex_shader(program, NULL, PDS_GENERATE_SIZES, dev_info);
 
-   staging_buffer_size = program->data_size * sizeof(*staging_buffer);
+   staging_buffer_size = PVR_DW_TO_BYTES(program->data_size);
 
    staging_buffer = vk_alloc(&cmd_buffer->device->vk.alloc,
                              staging_buffer_size,
@@ -792,7 +793,7 @@ VkResult pvr_pds_clear_rta_vertex_shader_program_create_and_upload_code(
 
    pvr_pds_vertex_shader(program, NULL, PDS_GENERATE_SIZES, dev_info);
 
-   staging_buffer_size = program->code_size * sizeof(*staging_buffer);
+   staging_buffer_size = PVR_DW_TO_BYTES(program->code_size);
 
    staging_buffer = vk_alloc(&cmd_buffer->device->vk.alloc,
                              staging_buffer_size,
@@ -900,7 +901,7 @@ void pvr_pack_clear_vdm_state(
          DIV_ROUND_UP(temps,
                       PVRX(VDMCTRL_VDM_STATE5_VS_PDS_TEMP_SIZE_UNIT_SIZE));
       state5.vs_pds_data_size =
-         DIV_ROUND_UP(program->data_size << 2,
+         DIV_ROUND_UP(PVR_DW_TO_BYTES(program->data_size),
                       PVRX(VDMCTRL_VDM_STATE5_VS_PDS_DATA_SIZE_UNIT_SIZE));
    }
    stream += pvr_cmd_length(VDMCTRL_VDM_STATE5);

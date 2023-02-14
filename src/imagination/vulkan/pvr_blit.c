@@ -1783,9 +1783,9 @@ static void pvr_clear_attachments(struct pvr_cmd_buffer *cmd_buffer,
       pvr_clear_needs_rt_id_output(dev_info, rect_count, rects);
 
    /* 4 because we're expecting the USC to output X, Y, Z, and W. */
-   vs_output_size_in_bytes = 4 * sizeof(uint32_t);
+   vs_output_size_in_bytes = PVR_DW_TO_BYTES(4);
    if (vs_has_rt_id_output)
-      vs_output_size_in_bytes += sizeof(uint32_t);
+      vs_output_size_in_bytes += PVR_DW_TO_BYTES(1);
 
    for (uint32_t i = 0; i < attachment_count; i++) {
       const VkClearAttachment *attachment = &attachments[i];
