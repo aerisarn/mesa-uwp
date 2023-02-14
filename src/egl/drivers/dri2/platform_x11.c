@@ -953,7 +953,12 @@ dri2_x11_swap_buffers(_EGLDisplay *disp, _EGLSurface *draw)
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(draw);
 
    if (dri2_dpy->kopper) {
-      dri2_dpy->kopper->swapBuffers(dri2_surf->dri_drawable);
+      /* From the EGL 1.4 spec (page 52):
+       *
+       *     "The contents of ancillary buffers are always undefined
+       *      after calling eglSwapBuffers."
+       */
+      dri2_dpy->kopper->swapBuffers(dri2_surf->dri_drawable, __DRI2_FLUSH_INVALIDATE_ANCILLARY);
       return EGL_TRUE;
    } else if (!dri2_dpy->flush) {
       /* aka the swrast path, which does the swap in the gallium driver. */
