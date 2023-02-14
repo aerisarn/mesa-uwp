@@ -2275,7 +2275,6 @@ anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
             pipe_bits |= ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT;
          }
          break;
-      case VK_ACCESS_2_SHADER_READ_BIT:
       case VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT:
       case VK_ACCESS_2_TRANSFER_READ_BIT:
       case VK_ACCESS_2_SHADER_SAMPLED_READ_BIT:
@@ -2283,6 +2282,17 @@ anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
           * invalidate the texture cache, we don't want any stale data.
           */
          pipe_bits |= ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT;
+         break;
+      case VK_ACCESS_2_SHADER_READ_BIT:
+         /* Same as VK_ACCESS_2_UNIFORM_READ_BIT and
+          * VK_ACCESS_2_SHADER_SAMPLED_READ_BIT cases above
+          */
+         pipe_bits |= ANV_PIPE_CONSTANT_CACHE_INVALIDATE_BIT |
+                      ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT;
+         if (!device->physical->compiler->indirect_ubos_use_sampler) {
+            pipe_bits |= ANV_PIPE_HDC_PIPELINE_FLUSH_BIT;
+            pipe_bits |= ANV_PIPE_UNTYPED_DATAPORT_CACHE_FLUSH_BIT;
+         }
          break;
       case VK_ACCESS_2_MEMORY_READ_BIT:
          /* Transitioning a buffer for generic read, invalidate all the
