@@ -1034,8 +1034,15 @@ dri2_x11_copy_buffers(_EGLDisplay *disp, _EGLSurface *surf, void *native_pixmap_
 
    if (dri2_dpy->flush)
       dri2_dpy->flush->flush(dri2_surf->dri_drawable);
-   else
+   else {
+      /* This should not be a swapBuffers, because it could present an
+       * incomplete frame, and it could invalidate the back buffer if it's not
+       * preserved.  We really do want to flush.  But it ends up working out
+       * okay-ish on swrast because those aren't invalidating the back buffer on
+       * swap.
+       */
       dri2_dpy->core->swapBuffers(dri2_surf->dri_drawable);
+   }
 
    gc = xcb_generate_id(dri2_dpy->conn);
    xcb_create_gc(dri2_dpy->conn, gc, target, 0, NULL);
