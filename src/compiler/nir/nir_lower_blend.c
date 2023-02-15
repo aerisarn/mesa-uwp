@@ -433,12 +433,13 @@ nir_blend(
 static int
 color_index_for_var(const nir_variable *var)
 {
-   if (var->data.location != FRAG_RESULT_COLOR &&
-       var->data.location < FRAG_RESULT_DATA0)
-      return -1;
+   assert(var->data.location != FRAG_RESULT_COLOR &&
+          "gl_FragColor must be lowered before nir_lower_blend");
 
-   return (var->data.location == FRAG_RESULT_COLOR) ? 0 :
-          (var->data.location - FRAG_RESULT_DATA0);
+   if (var->data.location < FRAG_RESULT_DATA0)
+      return -1;
+   else
+      return var->data.location - FRAG_RESULT_DATA0;
 }
 
 /*
