@@ -6820,6 +6820,14 @@ radv_create_buffer(struct radv_device *device, const VkBufferCreateInfo *pCreate
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
 
+#ifdef ANDROID
+   /* reject buffers that are larger than maxBufferSize on Android, which
+    * might not have VK_KHR_maintenance4
+    */
+   if (pCreateInfo->size > RADV_MAX_MEMORY_ALLOCATION_SIZE)
+      return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+#endif
+
    buffer = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*buffer), 8,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (buffer == NULL)
