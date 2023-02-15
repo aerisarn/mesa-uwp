@@ -1339,40 +1339,6 @@ VkResult pvr_FreeDescriptorSets(VkDevice _device,
    return VK_SUCCESS;
 }
 
-static int pvr_compare_layout_binding(const void *a, const void *b)
-{
-   uint32_t binding_a;
-   uint32_t binding_b;
-
-   binding_a = ((struct pvr_descriptor_set_layout_binding *)a)->binding_number;
-   binding_b = ((struct pvr_descriptor_set_layout_binding *)b)->binding_number;
-
-   if (binding_a < binding_b)
-      return -1;
-
-   if (binding_a > binding_b)
-      return 1;
-
-   return 0;
-}
-
-/* This function does not assume that the binding will always exist for a
- * particular binding_num. Caller should check before using the return pointer.
- */
-static struct pvr_descriptor_set_layout_binding *
-pvr_get_descriptor_binding(const struct pvr_descriptor_set_layout *layout,
-                           const uint32_t binding_num)
-{
-   struct pvr_descriptor_set_layout_binding binding;
-   binding.binding_number = binding_num;
-
-   return bsearch(&binding,
-                  layout->bindings,
-                  layout->binding_count,
-                  sizeof(binding),
-                  pvr_compare_layout_binding);
-}
-
 static void pvr_descriptor_update_buffer_info(
    const struct pvr_device *device,
    const VkWriteDescriptorSet *write_set,
