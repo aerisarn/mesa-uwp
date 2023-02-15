@@ -397,7 +397,7 @@ static inline bool
 _mesa_has_compute_shaders(const struct gl_context *ctx)
 {
    return _mesa_has_ARB_compute_shader(ctx) ||
-      (ctx->API == API_OPENGLES2 && ctx->Version >= 31);
+      _mesa_is_gles31(ctx);
 }
 
 /**

@@ -760,8 +760,7 @@ _mesa_get_shading_language_version(const struct gl_context *ctx,
       GLSL_VERSION("");
 
    /* GLSL es */
-   if ((ctx->API == API_OPENGLES2 && ctx->Version >= 32) ||
-        ctx->Extensions.ARB_ES3_2_compatibility)
+   if (_mesa_is_gles32(ctx) || ctx->Extensions.ARB_ES3_2_compatibility)
       GLSL_VERSION("320 es");
    if (_mesa_is_gles31(ctx) || ctx->Extensions.ARB_ES3_1_compatibility)
       GLSL_VERSION("310 es");
