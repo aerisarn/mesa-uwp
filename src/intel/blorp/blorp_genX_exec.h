@@ -631,8 +631,10 @@ blorp_emit_cc_viewport(struct blorp_batch *batch)
 {
    uint32_t cc_vp_offset;
    blorp_emit_dynamic(batch, GENX(CC_VIEWPORT), vp, 32, &cc_vp_offset) {
-      vp.MinimumDepth = 0.0;
-      vp.MaximumDepth = 1.0;
+      vp.MinimumDepth = batch->blorp->config.use_unrestricted_depth_range ?
+                           -FLT_MAX : 0.0;
+      vp.MaximumDepth = batch->blorp->config.use_unrestricted_depth_range ?
+                           FLT_MAX : 1.0;
    }
 
 #if GFX_VER >= 7

@@ -57,6 +57,7 @@ struct blorp_params;
 
 struct blorp_config {
    bool use_mesh_shading;
+   bool use_unrestricted_depth_range;
 };
 
 struct blorp_context {

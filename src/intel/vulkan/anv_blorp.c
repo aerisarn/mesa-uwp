@@ -93,6 +93,8 @@ anv_device_init_blorp(struct anv_device *device)
 {
    const struct blorp_config config = {
       .use_mesh_shading = device->vk.enabled_extensions.EXT_mesh_shader,
+      .use_unrestricted_depth_range =
+         device->vk.enabled_extensions.EXT_depth_range_unrestricted,
    };
 
    blorp_init(&device->blorp, device, &device->isl_dev, &config);
