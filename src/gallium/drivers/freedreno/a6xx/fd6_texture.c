@@ -608,11 +608,9 @@ build_texture_state(struct fd_context *ctx, enum pipe_shader_type type,
 
          if (tex->textures[i]) {
             view = fd6_pipe_sampler_view(tex->textures[i]);
-            if (unlikely(view->rsc_seqno !=
-                         fd_resource(view->base.texture)->seqno)) {
-               fd6_sampler_view_update(ctx,
-                                       fd6_pipe_sampler_view(tex->textures[i]));
-            }
+            struct fd_resource *rsc = fd_resource(view->base.texture);
+            fd6_assert_valid_format(rsc, view->base.format);
+            assert(view->rsc_seqno == rsc->seqno);
          } else {
             static const struct fd6_pipe_sampler_view dummy_view = {};
             view = &dummy_view;
@@ -683,13 +681,29 @@ handle_invalidates(struct fd_context *ctx)
 {
    struct fd6_context *fd6_ctx = fd6_context(ctx);
 
-   fd_screen_assert_locked(ctx->screen);
+   fd_screen_lock(ctx->screen);
 
    hash_table_foreach (fd6_ctx->tex_cache, entry) {
       struct fd6_texture_state *state = entry->data;
 
       if (state->invalidate)
          remove_tex_entry(fd6_ctx, entry);
+   }
+
+   fd_screen_unlock(ctx->screen);
+
+   for (unsigned type = 0; type < ARRAY_SIZE(ctx->tex); type++) {
+      struct fd_texture_stateobj *tex = &ctx->tex[type];
+
+      for (unsigned i = 0; i < tex->num_textures; i++) {
+         struct fd6_pipe_sampler_view *so =
+               fd6_pipe_sampler_view(tex->textures[i]);
+
+         if (!so)
+            continue;
+
+         fd6_sampler_view_update(ctx, so);
+      }
    }
 
    fd6_ctx->tex_cache_needs_invalidate = false;
@@ -702,6 +716,9 @@ fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type)
    struct fd6_context *fd6_ctx = fd6_context(ctx);
    struct fd6_texture_state *state = NULL;
    struct fd6_texture_key key;
+
+   if (unlikely(fd6_ctx->tex_cache_needs_invalidate))
+      handle_invalidates(ctx);
 
    memset(&key, 0, sizeof(key));
 
@@ -729,9 +746,6 @@ fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type)
 
    uint32_t hash = tex_key_hash(&key);
    fd_screen_lock(ctx->screen);
-
-   if (unlikely(fd6_ctx->tex_cache_needs_invalidate))
-      handle_invalidates(ctx);
 
    struct hash_entry *entry =
       _mesa_hash_table_search_pre_hashed(fd6_ctx->tex_cache, hash, &key);
