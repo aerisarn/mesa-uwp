@@ -2174,7 +2174,8 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
       TU_FROM_HANDLE(tu_descriptor_set, set, pDescriptorSets[i]);
 
       descriptors_state->sets[idx] = set;
-      descriptors_state->set_iova[idx] = set->va | BINDLESS_DESCRIPTOR_64B;
+      descriptors_state->set_iova[idx] = set ?
+         (set->va | BINDLESS_DESCRIPTOR_64B) : 0;
 
       if (!set)
          continue;
