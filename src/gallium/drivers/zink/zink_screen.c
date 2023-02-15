@@ -2521,8 +2521,7 @@ init_driver_workarounds(struct zink_screen *screen)
 
    /* these drivers benefit from renderpass optimization */
    switch (screen->info.driver_props.driverID) {
-   //* llvmpipe is broken: #7489
-   // case VK_DRIVER_ID_MESA_LLVMPIPE:
+   case VK_DRIVER_ID_MESA_LLVMPIPE:
    case VK_DRIVER_ID_MESA_TURNIP:
    case VK_DRIVER_ID_MESA_PANVK:
    case VK_DRIVER_ID_MESA_VENUS:
