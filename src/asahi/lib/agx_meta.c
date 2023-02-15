@@ -166,9 +166,16 @@ key_compare(const void *a, const void *b)
 }
 
 void
-agx_meta_init(struct agx_meta_cache *cache, struct agx_device *dev,
-              void *memctx)
+agx_meta_init(struct agx_meta_cache *cache, struct agx_device *dev)
 {
    agx_pool_init(&cache->pool, dev, AGX_BO_EXEC | AGX_BO_LOW_VA, true);
-   cache->ht = _mesa_hash_table_create(memctx, key_hash, key_compare);
+   cache->ht = _mesa_hash_table_create(NULL, key_hash, key_compare);
+}
+
+void
+agx_meta_cleanup(struct agx_meta_cache *cache)
+{
+   agx_pool_cleanup(&cache->pool);
+   _mesa_hash_table_destroy(cache->ht, NULL);
+   cache->ht = NULL;
 }
