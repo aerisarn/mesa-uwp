@@ -233,7 +233,8 @@ Shader::emit_instruction_from_string(const std::string& s)
       return;
    }
 
-   auto ir = m_instr_factory->from_string(s, m_current_block->nesting_depth());
+   auto ir = m_instr_factory->from_string(s, m_current_block->nesting_depth(),
+                                          m_chip_class == ISA_CC_CAYMAN);
    if (ir) {
       emit_instruction(ir);
       if (ir->end_block())

@@ -920,7 +920,7 @@ static std::map<std::string, OpDescr> s_alu_map_by_name;
 static std::map<std::string, OpDescr> s_lds_map_by_name;
 
 Instr::Pointer
-AluInstr::from_string(istream& is, ValueFactory& value_factory, AluGroup *group)
+AluInstr::from_string(istream& is, ValueFactory& value_factory, AluGroup *group, bool is_cayman)
 {
    vector<string> tokens;
 
@@ -992,9 +992,27 @@ AluInstr::from_string(istream& is, ValueFactory& value_factory, AluGroup *group)
       } else {
          op_descr = op->second;
       }
+      if (is_cayman) {
+         switch (op_descr.alu_opcode) {
+         case op1_cos:
+         case op1_exp_ieee:
+         case op1_log_clamped:
+         case op1_recip_ieee:
+         case op1_recipsqrt_ieee1:
+         case op1_sqrt_ieee:
+         case op1_sin:
+         case op2_mullo_int:
+         case op2_mulhi_int:
+         case op2_mulhi_uint:
+            flags.insert(alu_is_cayman_trans);
+         default:
+         ;
+         }
+      }
    }
 
    int slots = 0;
+
 
    SrcValues sources;
    do {
@@ -2900,8 +2918,6 @@ emit_alu_trans_op1_cayman(const nir_alu_instr& alu, EAluOp opcode, Shader& shade
             ir->set_alu_flag(alu_src0_neg);
          if (alu.dest.saturate)
             ir->set_alu_flag(alu_dst_clamp);
-
-         ir->set_alu_flag(alu_is_cayman_trans);
 
          shader.emit_instruction(ir);
       }
