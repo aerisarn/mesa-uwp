@@ -2880,6 +2880,8 @@ emit_alu_trans_op1_cayman(const nir_alu_instr& alu, EAluOp opcode, Shader& shade
 
    auto pin = pin_for_components(alu);
 
+   const std::set<AluModifiers> flags({alu_write, alu_last_instr, alu_is_cayman_trans});
+
    for (unsigned j = 0; j < nir_dest_num_components(alu.dest.dest); ++j) {
       if (alu.dest.write_mask & (1 << j)) {
          unsigned ncomp =  j == 3 ? 4 : 3;
@@ -2890,7 +2892,7 @@ emit_alu_trans_op1_cayman(const nir_alu_instr& alu, EAluOp opcode, Shader& shade
          for (unsigned i = 0; i < ncomp; ++i)
             srcs[i] = value_factory.src(src0, j);
 
-         auto ir = new AluInstr(opcode, dest, srcs, AluInstr::last_write, ncomp);
+         auto ir = new AluInstr(opcode, dest, srcs, flags, ncomp);
 
          if (alu.src[0].abs)
             ir->set_alu_flag(alu_src0_abs);
@@ -2952,6 +2954,8 @@ emit_alu_trans_op2_cayman(const nir_alu_instr& alu, EAluOp opcode, Shader& shade
 
    unsigned last_slot = 4;
 
+   const std::set<AluModifiers> flags({alu_write, alu_last_instr, alu_is_cayman_trans});
+
    for (unsigned k = 0; k < nir_dest_num_components(alu.dest.dest); ++k) {
       if (alu.dest.write_mask & (1 << k)) {
          AluInstr::SrcValues srcs(2 * last_slot);
@@ -2962,7 +2966,7 @@ emit_alu_trans_op2_cayman(const nir_alu_instr& alu, EAluOp opcode, Shader& shade
             srcs[2 * i + 1] = value_factory.src(src1, k);
          }
 
-         auto ir = new AluInstr(opcode, dest, srcs, AluInstr::last_write, last_slot);
+         auto ir = new AluInstr(opcode, dest, srcs, flags, last_slot);
 
          if (src0.negate)
             ir->set_alu_flag(alu_src0_neg);
