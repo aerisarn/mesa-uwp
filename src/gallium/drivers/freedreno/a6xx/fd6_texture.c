@@ -349,36 +349,9 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 }
 
 static void
-fd6_set_sampler_views(struct pipe_context *pctx, enum pipe_shader_type shader,
-                      unsigned start, unsigned nr,
-                      unsigned unbind_num_trailing_slots,
-                      bool take_ownership,
-                      struct pipe_sampler_view **views) in_dt
-{
-   struct fd_context *ctx = fd_context(pctx);
-
-   fd_set_sampler_views(pctx, shader, start, nr, unbind_num_trailing_slots,
-                        take_ownership, views);
-
-   if (!views)
-      return;
-
-   for (unsigned i = 0; i < nr; i++) {
-      struct fd6_pipe_sampler_view *so = fd6_pipe_sampler_view(views[i + start]);
-
-      if (!so)
-         continue;
-
-      struct fd_resource *rsc = fd_resource(so->base.texture);
-
-      fd6_validate_format(ctx, rsc, so->base.format);
-      fd6_sampler_view_update(ctx, so);
-   }
-}
-
-void
 fd6_sampler_view_update(struct fd_context *ctx,
                         struct fd6_pipe_sampler_view *so)
+   assert_dt
 {
    const struct pipe_sampler_view *cso = &so->base;
    struct pipe_resource *prsc = cso->texture;
@@ -462,6 +435,35 @@ fd6_sampler_view_update(struct fd_context *ctx,
             so->ptr2 = rsc;
          }
       }
+   }
+}
+
+static void
+fd6_set_sampler_views(struct pipe_context *pctx, enum pipe_shader_type shader,
+                      unsigned start, unsigned nr,
+                      unsigned unbind_num_trailing_slots,
+                      bool take_ownership,
+                      struct pipe_sampler_view **views)
+   in_dt
+{
+   struct fd_context *ctx = fd_context(pctx);
+
+   fd_set_sampler_views(pctx, shader, start, nr, unbind_num_trailing_slots,
+                        take_ownership, views);
+
+   if (!views)
+      return;
+
+   for (unsigned i = 0; i < nr; i++) {
+      struct fd6_pipe_sampler_view *so = fd6_pipe_sampler_view(views[i + start]);
+
+      if (!so)
+         continue;
+
+      struct fd_resource *rsc = fd_resource(so->base.texture);
+
+      fd6_validate_format(ctx, rsc, so->base.format);
+      fd6_sampler_view_update(ctx, so);
    }
 }
 
