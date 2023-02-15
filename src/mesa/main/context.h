@@ -273,6 +273,23 @@ _mesa_is_desktop_gl(const struct gl_context *ctx)
    return _mesa_is_desktop_gl_compat(ctx) || _mesa_is_desktop_gl_core(ctx);
 }
 
+/**
+ * Checks if the context is for GLES 1.0
+ */
+static inline bool
+_mesa_is_gles1(const struct gl_context *ctx)
+{
+   return ctx->API == API_OPENGLES;
+}
+
+/**
+ * Checks if the context is for GLES 2.0 or later
+ */
+static inline bool
+_mesa_is_gles2(const struct gl_context *ctx)
+{
+   return ctx->API == API_OPENGLES2;
+}
 
 /**
  * Checks if the context is for any GLES version
@@ -280,9 +297,8 @@ _mesa_is_desktop_gl(const struct gl_context *ctx)
 static inline bool
 _mesa_is_gles(const struct gl_context *ctx)
 {
-   return ctx->API == API_OPENGLES || ctx->API == API_OPENGLES2;
+   return _mesa_is_gles1(ctx) || _mesa_is_gles2(ctx);
 }
-
 
 /**
  * Checks if the context is for GLES 3.0 or later
@@ -290,7 +306,7 @@ _mesa_is_gles(const struct gl_context *ctx)
 static inline bool
 _mesa_is_gles3(const struct gl_context *ctx)
 {
-   return ctx->API == API_OPENGLES2 && ctx->Version >= 30;
+   return _mesa_is_gles2(ctx) && ctx->Version >= 30;
 }
 
 
@@ -300,7 +316,7 @@ _mesa_is_gles3(const struct gl_context *ctx)
 static inline bool
 _mesa_is_gles31(const struct gl_context *ctx)
 {
-   return ctx->API == API_OPENGLES2 && ctx->Version >= 31;
+   return _mesa_is_gles2(ctx) && ctx->Version >= 31;
 }
 
 
@@ -310,7 +326,7 @@ _mesa_is_gles31(const struct gl_context *ctx)
 static inline bool
 _mesa_is_gles32(const struct gl_context *ctx)
 {
-   return ctx->API == API_OPENGLES2 && ctx->Version >= 32;
+   return _mesa_is_gles2(ctx) && ctx->Version >= 32;
 }
 
 
