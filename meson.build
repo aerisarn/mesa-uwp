@@ -121,6 +121,10 @@ with_gles2 = get_option('gles2') \
   .require(with_shared_glapi, error_message : 'OpengGL ES 2.x requires shared-glapi') \
   .allowed()
 
+pre_args += '-DHAVE_OPENGL=@0@'.format(with_opengl ? '1' : '0')
+pre_args += '-DHAVE_OPENGL_ES_1=@0@'.format(with_gles1 ? '1' : '0')
+pre_args += '-DHAVE_OPENGL_ES_2=@0@'.format(with_gles2 ? '1' : '0')
+
 with_any_opengl = with_opengl or with_gles1 or with_gles2
 # Only build shared_glapi if at least one OpenGL API is enabled
 with_shared_glapi = with_shared_glapi and with_any_opengl

@@ -252,7 +252,11 @@ do {									\
 static inline bool
 _mesa_is_desktop_gl_compat(const struct gl_context *ctx)
 {
+#if HAVE_OPENGL
    return ctx->API == API_OPENGL_COMPAT;
+#else
+   return false;
+#endif
 }
 
 /**
@@ -261,7 +265,11 @@ _mesa_is_desktop_gl_compat(const struct gl_context *ctx)
 static inline bool
 _mesa_is_desktop_gl_core(const struct gl_context *ctx)
 {
+#if HAVE_OPENGL
    return ctx->API == API_OPENGL_CORE;
+#else
+   return false;
+#endif
 }
 
 /**
@@ -279,7 +287,11 @@ _mesa_is_desktop_gl(const struct gl_context *ctx)
 static inline bool
 _mesa_is_gles1(const struct gl_context *ctx)
 {
+#if HAVE_OPENGL_ES_1
    return ctx->API == API_OPENGLES;
+#else
+   return false;
+#endif
 }
 
 /**
@@ -288,7 +300,11 @@ _mesa_is_gles1(const struct gl_context *ctx)
 static inline bool
 _mesa_is_gles2(const struct gl_context *ctx)
 {
+#if HAVE_OPENGL_ES_2
    return ctx->API == API_OPENGLES2;
+#else
+   return false;
+#endif
 }
 
 /**
