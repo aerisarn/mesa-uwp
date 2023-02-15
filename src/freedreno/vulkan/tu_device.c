@@ -1977,6 +1977,7 @@ enum tu_reg_stomper_flags
    TU_DEBUG_REG_STOMP_RENDERPASS = 1 << 2,
 };
 
+/* See freedreno.rst for usage tips */
 static const struct debug_named_value tu_reg_stomper_options[] = {
    { "inverse", TU_DEBUG_REG_STOMP_INVERSE,
      "By default the range specifies the regs to stomp, with 'inverse' it "
