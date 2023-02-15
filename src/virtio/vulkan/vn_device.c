@@ -252,8 +252,9 @@ vn_device_fix_create_info(const struct vn_device *dev,
       }
 
       if (app_exts->ANDROID_native_buffer) {
-         if (!app_exts->KHR_external_fence_fd &&
-             physical_dev->renderer_sync_fd.fence_exportable) {
+         /* see vn_QueueSignalReleaseImageANDROID */
+         if (!app_exts->KHR_external_fence_fd) {
+            assert(physical_dev->renderer_sync_fd.fence_exportable);
             extra_exts[extra_count++] =
                VK_KHR_EXTERNAL_FENCE_FD_EXTENSION_NAME;
          }
@@ -297,8 +298,8 @@ vn_device_fix_create_info(const struct vn_device *dev,
    }
 
    /* see vn_queue_submission_count_batch_semaphores */
-   if (!app_exts->KHR_external_semaphore_fd &&
-       physical_dev->renderer_sync_fd.semaphore_importable) {
+   if (!app_exts->KHR_external_semaphore_fd && has_wsi) {
+      assert(physical_dev->renderer_sync_fd.semaphore_importable);
       extra_exts[extra_count++] = VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME;
    }
 

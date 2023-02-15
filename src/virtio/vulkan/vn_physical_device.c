@@ -950,7 +950,20 @@ vn_physical_device_get_native_extensions(
    if (can_external_mem && renderer_exts->EXT_image_drm_format_modifier &&
        renderer_exts->EXT_queue_family_foreign) {
       exts->ANDROID_external_memory_android_hardware_buffer = true;
-      exts->ANDROID_native_buffer = true;
+
+      /* For wsi, we require renderer:
+       * - semaphore sync fd import for queue submission to skip scrubbing the
+       *   wsi wait semaphores.
+       * - fence sync fd export for QueueSignalReleaseImageANDROID to export a
+       *   sync fd.
+       *
+       * TODO: relax these requirements by:
+       * - properly scrubbing wsi wait semaphores
+       * - not creating external fence but exporting sync fd directly
+       */
+      if (physical_dev->renderer_sync_fd.semaphore_importable &&
+          physical_dev->renderer_sync_fd.fence_exportable)
+         exts->ANDROID_native_buffer = true;
    }
 
    if (physical_dev->renderer_sync_fd.fence_exportable)
@@ -967,9 +980,6 @@ vn_physical_device_get_native_extensions(
    }
 #endif /* ANDROID */
 
-   /* Semaphore sync fd import required for WSI to skip scrubbing
-    * the wsi/external wait semaphores.
-    */
 #ifdef VN_USE_WSI_PLATFORM
    if (renderer_exts->EXT_image_drm_format_modifier &&
        renderer_exts->EXT_queue_family_foreign &&

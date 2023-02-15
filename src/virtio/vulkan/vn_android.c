@@ -782,19 +782,18 @@ vn_AcquireImageANDROID(VkDevice device,
    return vn_result(dev->instance, result);
 }
 
-static VkResult
-vn_android_sync_fence_create(struct vn_queue *queue, bool external)
+static inline VkResult
+vn_android_sync_fence_create(struct vn_queue *queue)
 {
    struct vn_device *dev = queue->device;
 
    const VkExportFenceCreateInfo export_info = {
       .sType = VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO,
-      .pNext = NULL,
       .handleTypes = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT,
    };
    const VkFenceCreateInfo create_info = {
       .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-      .pNext = external ? &export_info : NULL,
+      .pNext = &export_info,
       .flags = 0,
    };
    return vn_CreateFence(vn_device_to_handle(dev), &create_info, NULL,
@@ -812,8 +811,6 @@ vn_QueueSignalReleaseImageANDROID(VkQueue _queue,
    struct vn_queue *queue = vn_queue_from_handle(_queue);
    struct vn_device *dev = queue->device;
    const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
-   const bool has_sync_fd_fence_export =
-      dev->physical_device->renderer_sync_fd.fence_exportable;
    VkDevice device = vn_device_to_handle(dev);
    VkPipelineStageFlags local_stage_masks[8];
    VkPipelineStageFlags *stage_masks = local_stage_masks;
@@ -827,7 +824,7 @@ vn_QueueSignalReleaseImageANDROID(VkQueue _queue,
 
    /* lazily create sync fence for Android wsi */
    if (queue->sync_fence == VK_NULL_HANDLE) {
-      result = vn_android_sync_fence_create(queue, has_sync_fd_fence_export);
+      result = vn_android_sync_fence_create(queue);
       if (result != VK_SUCCESS)
          return result;
    }
@@ -845,14 +842,9 @@ vn_QueueSignalReleaseImageANDROID(VkQueue _queue,
 
    const VkSubmitInfo submit_info = {
       .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-      .pNext = NULL,
       .waitSemaphoreCount = waitSemaphoreCount,
       .pWaitSemaphores = pWaitSemaphores,
       .pWaitDstStageMask = stage_masks,
-      .commandBufferCount = 0,
-      .pCommandBuffers = NULL,
-      .signalSemaphoreCount = 0,
-      .pSignalSemaphores = NULL,
    };
    result = vn_QueueSubmit(_queue, 1, &submit_info, queue->sync_fence);
 
@@ -862,22 +854,12 @@ vn_QueueSignalReleaseImageANDROID(VkQueue _queue,
    if (result != VK_SUCCESS)
       return vn_error(dev->instance, result);
 
-   if (has_sync_fd_fence_export) {
-      const VkFenceGetFdInfoKHR fd_info = {
-         .sType = VK_STRUCTURE_TYPE_FENCE_GET_FD_INFO_KHR,
-         .pNext = NULL,
-         .fence = queue->sync_fence,
-         .handleType = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT,
-      };
-      result = vn_GetFenceFdKHR(device, &fd_info, &fd);
-   } else {
-      result =
-         vn_WaitForFences(device, 1, &queue->sync_fence, VK_TRUE, UINT64_MAX);
-      if (result != VK_SUCCESS)
-         return vn_error(dev->instance, result);
-
-      result = vn_ResetFences(device, 1, &queue->sync_fence);
-   }
+   const VkFenceGetFdInfoKHR fd_info = {
+      .sType = VK_STRUCTURE_TYPE_FENCE_GET_FD_INFO_KHR,
+      .fence = queue->sync_fence,
+      .handleType = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT,
+   };
+   result = vn_GetFenceFdKHR(device, &fd_info, &fd);
 
    if (result != VK_SUCCESS)
       return vn_error(dev->instance, result);
