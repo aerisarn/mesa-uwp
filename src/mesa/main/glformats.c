@@ -1805,14 +1805,14 @@ _mesa_error_check_format_and_type(const struct gl_context *ctx,
          break; /* OK */
       }
       if (type == GL_UNSIGNED_INT_2_10_10_10_REV && format == GL_RGB &&
-          ctx->API == API_OPENGLES2) {
+          _mesa_is_gles2(ctx)) {
          break; /* OK by GL_EXT_texture_type_2_10_10_10_REV */
       }
       return GL_INVALID_OPERATION;
 
    case GL_UNSIGNED_INT_24_8:
       /* Depth buffer OK to read in OpenGL ES (NV_read_depth). */
-      if (ctx->API == API_OPENGLES2 && format == GL_DEPTH_COMPONENT)
+      if (_mesa_is_gles2(ctx) && format == GL_DEPTH_COMPONENT)
          return GL_NO_ERROR;
 
       if (format != GL_DEPTH_STENCIL) {
@@ -1936,7 +1936,7 @@ _mesa_error_check_format_and_type(const struct gl_context *ctx,
                return GL_NO_ERROR;
             case GL_UNSIGNED_INT_2_10_10_10_REV:
                /* OK by GL_EXT_texture_type_2_10_10_10_REV */
-               return (ctx->API == API_OPENGLES2)
+               return _mesa_is_gles2(ctx)
                   ? GL_NO_ERROR : GL_INVALID_ENUM;
             case GL_UNSIGNED_INT_5_9_9_9_REV:
                return _mesa_has_texture_shared_exponent(ctx)
@@ -2287,7 +2287,7 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
 
    if (_mesa_has_ARB_ES2_compatibility(ctx) ||
        _mesa_has_OES_framebuffer_object(ctx) ||
-       ctx->API == API_OPENGLES2) {
+       _mesa_is_gles2(ctx)) {
       switch (internalFormat) {
       case GL_RGB565:
          return GL_RGB;

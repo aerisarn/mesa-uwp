@@ -169,7 +169,7 @@ _mesa_get_current_tex_object(struct gl_context *ctx, GLenum target)
       case GL_TEXTURE_3D:
          return texUnit->CurrentTex[TEXTURE_3D_INDEX];
       case GL_PROXY_TEXTURE_3D:
-         return !(ctx->API == API_OPENGLES2 && !ctx->Extensions.OES_texture_3D)
+         return !(_mesa_is_gles2(ctx) && !ctx->Extensions.OES_texture_3D)
              ? ctx->Texture.ProxyTex[TEXTURE_3D_INDEX] : NULL;
       case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
       case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
@@ -1605,7 +1605,7 @@ _mesa_tex_target_to_index(const struct gl_context *ctx, GLenum target)
       return TEXTURE_2D_INDEX;
    case GL_TEXTURE_3D:
       return (ctx->API != API_OPENGLES &&
-              !(ctx->API == API_OPENGLES2 && !ctx->Extensions.OES_texture_3D))
+              !(_mesa_is_gles2(ctx) && !ctx->Extensions.OES_texture_3D))
          ? TEXTURE_3D_INDEX : -1;
    case GL_TEXTURE_CUBE_MAP:
       return TEXTURE_CUBE_INDEX;

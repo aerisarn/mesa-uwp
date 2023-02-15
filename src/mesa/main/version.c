@@ -766,7 +766,7 @@ _mesa_get_shading_language_version(const struct gl_context *ctx,
       GLSL_VERSION("310 es");
    if (_mesa_is_gles3(ctx) || ctx->Extensions.ARB_ES3_compatibility)
       GLSL_VERSION("300 es");
-   if (ctx->API == API_OPENGLES2 || ctx->Extensions.ARB_ES2_compatibility)
+   if (_mesa_is_gles2(ctx) || ctx->Extensions.ARB_ES2_compatibility)
       GLSL_VERSION("100");
 
 #undef GLSL_VERSION

@@ -3808,7 +3808,7 @@ check_textarget(struct gl_context *ctx, int dims, GLenum target,
       break;
    case GL_TEXTURE_3D:
       err = dims != 3 ||
-            (ctx->API == API_OPENGLES2 && !ctx->Extensions.OES_texture_3D);
+            (_mesa_is_gles2(ctx) && !ctx->Extensions.OES_texture_3D);
       break;
    default:
       _mesa_error(ctx, GL_INVALID_ENUM,
@@ -4582,7 +4582,7 @@ get_framebuffer_attachment_parameter(struct gl_context *ctx,
     *  FRAMEBUFFER_ATTACHMENT_OBJECT_NAME will return zero, and all other
     *  queries will generate an INVALID_OPERATION error."
     */
-   err = ctx->API == API_OPENGLES2 && ctx->Version < 30 ?
+   err = _mesa_is_gles2(ctx) && ctx->Version < 30 ?
       GL_INVALID_ENUM : GL_INVALID_OPERATION;
 
    if (_mesa_is_winsys_fbo(buffer)) {

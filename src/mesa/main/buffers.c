@@ -459,7 +459,7 @@ draw_buffers(struct gl_context *ctx, struct gl_framebuffer *fb, GLsizei n,
        *  and the constant must be BACK or NONE."
        * (same restriction applies with GL_EXT_draw_buffers specification)
        */
-      if (ctx->API == API_OPENGLES2 && _mesa_is_winsys_fbo(fb) &&
+      if (_mesa_is_gles2(ctx) && _mesa_is_winsys_fbo(fb) &&
           (n != 1 || (buffers[0] != GL_NONE && buffers[0] != GL_BACK))) {
          _mesa_error(ctx, GL_INVALID_OPERATION, "%s(invalid buffers)", caller);
          return;
@@ -588,7 +588,7 @@ draw_buffers(struct gl_context *ctx, struct gl_framebuffer *fb, GLsizei n,
              * INVALID_OPERATION." (same restriction applies with
              * GL_EXT_draw_buffers specification)
              */
-            if (ctx->API == API_OPENGLES2 && _mesa_is_user_fbo(fb) &&
+            if (_mesa_is_gles2(ctx) && _mesa_is_user_fbo(fb) &&
                 buffers[output] != GL_NONE &&
                 buffers[output] != GL_COLOR_ATTACHMENT0 + output) {
                _mesa_error(ctx, GL_INVALID_OPERATION,

@@ -499,7 +499,7 @@ _mesa_max_texture_levels(const struct gl_context *ctx, GLenum target)
       return ffs(util_next_power_of_two(ctx->Const.MaxTextureSize));
    case GL_TEXTURE_3D:
    case GL_PROXY_TEXTURE_3D:
-      return !(ctx->API == API_OPENGLES2 && !ctx->Extensions.OES_texture_3D)
+      return !(_mesa_is_gles2(ctx) && !ctx->Extensions.OES_texture_3D)
          ? ctx->Const.Max3DTextureLevels : 0;
    case GL_TEXTURE_CUBE_MAP:
    case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
@@ -1826,7 +1826,7 @@ _mesa_legal_texture_base_format_for_target(struct gl_context *ctx,
             target == GL_TEXTURE_CUBE_MAP ||
             target == GL_PROXY_TEXTURE_CUBE_MAP) &&
            (ctx->Version >= 30 || ctx->Extensions.EXT_gpu_shader4
-            || (ctx->API == API_OPENGLES2 && ctx->Extensions.OES_depth_texture_cube_map))) &&
+            || (_mesa_is_gles2(ctx) && ctx->Extensions.OES_depth_texture_cube_map))) &&
           !((target == GL_TEXTURE_CUBE_MAP_ARRAY ||
              target == GL_PROXY_TEXTURE_CUBE_MAP_ARRAY) &&
             _mesa_has_texture_cube_map_array(ctx))) {

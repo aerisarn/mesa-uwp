@@ -402,7 +402,7 @@ _mesa_get_compressed_formats(struct gl_context *ctx, GLint *formats)
     * COMPRESSED_TEXTURE_FORMATS query returns the set of supported specific
     * compressed formats.
     */
-   if (ctx->API == API_OPENGLES2 &&
+   if (_mesa_is_gles2(ctx) &&
        ctx->Extensions.KHR_texture_compression_astc_ldr) {
       formats[n++] = GL_COMPRESSED_RGBA_ASTC_4x4_KHR;
       formats[n++] = GL_COMPRESSED_RGBA_ASTC_5x4_KHR;
