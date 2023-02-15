@@ -421,6 +421,13 @@ gather_shader_info_vs(struct radv_device *device, const nir_shader *nir,
    nir_foreach_shader_in_variable(var, nir)
       gather_info_input_decl_vs(nir, var->data.location - VERT_ATTRIB_GENERIC0, var->type,
                                 pipeline_key, info);
+
+   /* When the topology is unknown (with GPL), the number of vertices per primitive needs be passed
+    * through a user SGPR for NGG streamout with VS. Otherwise, the XFB offset is incorrectly
+    * computed because using the maximum number of vertices can't work.
+    */
+   info->vs.dynamic_num_verts_per_prim =
+      pipeline_key->vs.topology == V_008958_DI_PT_NONE && info->is_ngg && nir->xfb_info;
 }
 
 static void

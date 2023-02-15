@@ -159,7 +159,8 @@ enum radv_ud_index {
    AC_UD_NGG_VIEWPORT = 9,
    AC_UD_FORCE_VRS_RATES = 10,
    AC_UD_TASK_RING_ENTRY = 11,
-   AC_UD_SHADER_START = 12,
+   AC_UD_NUM_VERTS_PER_PRIM = 12,
+   AC_UD_SHADER_START = 13,
    AC_UD_VS_VERTEX_BUFFERS = AC_UD_SHADER_START,
    AC_UD_VS_BASE_VERTEX_START_INSTANCE,
    AC_UD_VS_PROLOG_INPUTS,
@@ -277,6 +278,7 @@ struct radv_shader_info {
       uint32_t input_slot_usage_mask;
       bool has_prolog;
       bool dynamic_inputs;
+      bool dynamic_num_verts_per_prim;
    } vs;
    struct {
       uint8_t output_usage_mask[VARYING_SLOT_VAR31 + 1];

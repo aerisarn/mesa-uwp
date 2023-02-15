@@ -2174,7 +2174,12 @@ radv_emit_provoking_vertex_mode(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_primitive_topology(struct radv_cmd_buffer *cmd_buffer)
 {
+   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   const struct radv_userdata_info *loc =
+      &pipeline->last_vgt_api_stage_locs[AC_UD_NUM_VERTS_PER_PRIM];
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   const unsigned stage = pipeline->last_vgt_api_stage;
+   uint32_t base_reg;
 
    assert(!cmd_buffer->state.mesh_shading);
 
@@ -2185,6 +2190,13 @@ radv_emit_primitive_topology(struct radv_cmd_buffer *cmd_buffer)
       radeon_set_config_reg(cmd_buffer->cs, R_008958_VGT_PRIMITIVE_TYPE,
                             d->vk.ia.primitive_topology);
    }
+
+   if (loc->sgpr_idx == -1)
+      return;
+
+   base_reg = pipeline->base.user_data_0[stage];
+   radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4,
+                     si_conv_prim_to_gs_out(d->vk.ia.primitive_topology) + 1);
 }
 
 static void
@@ -6340,6 +6352,11 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       /* Re-emit the rasterization samples state because the SGPR idx can be different. */
       if (graphics_pipeline->has_dynamic_samples) {
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
+      }
+
+      /* Re-emit the primitive topology because the SGPR idx can be different. */
+      if (graphics_pipeline->has_num_verts_per_prim) {
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
       }
 
       radv_bind_dynamic_state(cmd_buffer, &graphics_pipeline->dynamic_state);

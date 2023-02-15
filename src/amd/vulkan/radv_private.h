@@ -2202,6 +2202,7 @@ struct radv_graphics_pipeline {
    bool has_streamout;
    bool has_dynamic_samples;
    bool has_sample_positions;
+   bool has_num_verts_per_prim;
 
    uint8_t vtx_emit_num;
 

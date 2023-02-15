@@ -406,7 +406,12 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
       unsigned num_vertices;
 
       if (stage == MESA_SHADER_VERTEX) {
-         num_vertices = radv_get_num_vertices_per_prim(s->pl_key);
+         /* For dynamic primitive topology with streamout. */
+         if (s->info->vs.dynamic_num_verts_per_prim) {
+            replacement = ac_nir_load_arg(b, &s->args->ac, s->args->num_verts_per_prim);
+         } else {
+            replacement = nir_imm_int(b, radv_get_num_vertices_per_prim(s->pl_key));
+         }
       } else if (stage == MESA_SHADER_TESS_EVAL) {
          if (s->info->tes.point_mode) {
             num_vertices = 1;
@@ -415,6 +420,7 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
          } else {
             num_vertices = 3;
          }
+         replacement = nir_imm_int(b, num_vertices);
       } else {
          assert(stage == MESA_SHADER_GEOMETRY);
          switch (s->info->gs.output_prim) {
@@ -431,8 +437,8 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
             unreachable("invalid GS output primitive");
             break;
          }
+         replacement = nir_imm_int(b, num_vertices);
       }
-      replacement = nir_imm_int(b, num_vertices);
       break;
    }
    case nir_intrinsic_load_ordered_id_amd:
