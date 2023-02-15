@@ -143,9 +143,7 @@ struct pvr_transfer_ctx {
 
    struct pvr_winsys_transfer_ctx *ws_ctx;
 
-   /* Multiple on-chip render targets (MRT). */
-   pvr_dev_addr_t transfer_mrts[PVR_TRANSFER_MAX_RENDER_TARGETS];
-   struct pvr_bo *usc_eot_bo;
+   struct pvr_bo *usc_eot_bos[PVR_TRANSFER_MAX_RENDER_TARGETS];
 
    struct pvr_pds_upload pds_unitex_code[PVR_TRANSFER_MAX_TEXSTATE_DMA]
                                         [PVR_TRANSFER_MAX_UNIFORM_DMA];
