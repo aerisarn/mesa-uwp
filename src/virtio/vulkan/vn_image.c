@@ -296,9 +296,9 @@ vn_CreateImage(VkDevice device,
    VkResult result;
 
    const struct wsi_image_create_info *wsi_info =
-      vn_wsi_find_wsi_image_create_info(pCreateInfo);
+      vk_find_struct_const(pCreateInfo->pNext, WSI_IMAGE_CREATE_INFO_MESA);
    const VkNativeBufferANDROID *anb_info =
-      vn_android_find_native_buffer(pCreateInfo);
+      vk_find_struct_const(pCreateInfo->pNext, NATIVE_BUFFER_ANDROID);
    const VkExternalMemoryImageCreateInfo *external_info =
       vk_find_struct_const(pCreateInfo->pNext,
                            EXTERNAL_MEMORY_IMAGE_CREATE_INFO);
@@ -307,15 +307,10 @@ vn_CreateImage(VkDevice device,
       external_info->handleTypes ==
          VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
 
-#ifdef ANDROID
-   /* VkImageSwapchainCreateInfoKHR is not useful at all */
-   const VkImageSwapchainCreateInfoKHR *swapchain_info = NULL;
-#else
    const VkImageSwapchainCreateInfoKHR *swapchain_info = vk_find_struct_const(
       pCreateInfo->pNext, IMAGE_SWAPCHAIN_CREATE_INFO_KHR);
    if (swapchain_info && !swapchain_info->swapchain)
       swapchain_info = NULL;
-#endif
 
    if (wsi_info) {
       result = vn_wsi_create_image(dev, pCreateInfo, wsi_info, alloc, &img);

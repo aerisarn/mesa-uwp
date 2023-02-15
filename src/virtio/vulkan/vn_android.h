@@ -22,12 +22,6 @@
 
 #ifdef ANDROID
 
-static inline const VkNativeBufferANDROID *
-vn_android_find_native_buffer(const VkImageCreateInfo *create_info)
-{
-   return vk_find_struct_const(create_info->pNext, NATIVE_BUFFER_ANDROID);
-}
-
 VkResult
 vn_android_image_from_anb(struct vn_device *dev,
                           const VkImageCreateInfo *image_info,
@@ -81,12 +75,6 @@ uint32_t
 vn_android_gralloc_get_shared_present_usage(void);
 
 #else
-
-static inline const VkNativeBufferANDROID *
-vn_android_find_native_buffer(UNUSED const VkImageCreateInfo *create_info)
-{
-   return NULL;
-}
 
 static inline VkResult
 vn_android_image_from_anb(UNUSED struct vn_device *dev,
