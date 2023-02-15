@@ -42,13 +42,17 @@ libintel_dev = static_library(
   gnu_symbol_visibility : 'hidden',
 )
 
+idep_intel_dev = declare_dependency(
+  link_with : libintel_dev,
+)
+
 if with_tests
   test('intel_device_info_test',
        executable(
          'intel_device_info_test',
          'intel_device_info_test.c',
-         include_directories : [inc_include, inc_src],
-         link_with : libintel_dev,
+         include_directories : [inc_include, inc_src, inc_intel],
+         dependencies : idep_intel_dev,
        ),
        suite : ['intel'],
       )
@@ -66,9 +70,8 @@ if with_tests and with_tools.contains('drm-shim') and with_tools.contains('intel
   intel_devinfo_override_test = executable(
     'intel_device_info_override_test',
     'intel_device_info_override_test.c',
-    dependencies : [dep_libdrm],
-    include_directories : [inc_include, inc_src],
-    link_with : libintel_dev,
+    dependencies : [dep_libdrm, idep_intel_dev],
+    include_directories : [inc_include, inc_src, inc_intel],
   )
   intel_drm_ld_preload = join_paths(meson.current_build_dir(), '..', 'tools', 'libintel_noop_drm_shim.so')
   foreach _gens : platforms
@@ -92,9 +95,8 @@ if with_intel_tools
   intel_dev_info = executable(
     'intel_dev_info',
     files('intel_dev_info.c'),
-    dependencies : [dep_libdrm, dep_dl, dep_thread, dep_m],
+    dependencies : [dep_libdrm, dep_dl, dep_thread, dep_m, idep_intel_dev],
     include_directories : [inc_include, inc_src, inc_intel],
-    link_with : libintel_dev,
     c_args : [no_override_init_args],
     gnu_symbol_visibility : 'hidden',
     install : true

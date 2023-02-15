@@ -87,9 +87,9 @@ libiris = static_library(
   cpp_args : [sse2_args],
   gnu_symbol_visibility : 'hidden',
   dependencies : [dep_libdrm, dep_valgrind, idep_genxml, idep_nir_headers,
-                  idep_libintel_common, idep_intel_driver_ds, ],
+                  idep_libintel_common, idep_intel_driver_ds, idep_intel_dev],
   link_with : [
-    iris_per_hw_ver_libs, libintel_compiler, libintel_dev, libisl,
+    iris_per_hw_ver_libs, libintel_compiler, libisl,
     libblorp, libintel_perf
   ],
 )
