@@ -177,11 +177,15 @@ get_device_extensions(const struct tu_physical_device *device,
        * If the instance only enables surface extensions that unconditionally support present wait,
        * we can also expose the extension that way. */
       .KHR_present_id =
-         driQueryOptionb(&device->instance->dri_options, "vk_khr_present_wait") ||
-         wsi_common_vk_instance_supports_present_wait(&device->instance->vk),
+         TU_HAS_SURFACE && (driQueryOptionb(&device->instance->dri_options,
+                                            "vk_khr_present_wait") ||
+                            wsi_common_vk_instance_supports_present_wait(
+                               &device->instance->vk)),
       .KHR_present_wait =
-         driQueryOptionb(&device->instance->dri_options, "vk_khr_present_wait") ||
-         wsi_common_vk_instance_supports_present_wait(&device->instance->vk),
+         TU_HAS_SURFACE && (driQueryOptionb(&device->instance->dri_options,
+                                            "vk_khr_present_wait") ||
+                            wsi_common_vk_instance_supports_present_wait(
+                               &device->instance->vk)),
 #ifndef TU_USE_KGSL
       .KHR_timeline_semaphore = true,
 #endif
