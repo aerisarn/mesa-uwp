@@ -1587,7 +1587,8 @@ zink_set_shader_buffers(struct pipe_context *pctx,
          else
             new_res->obj->unordered_read = false;
       } else {
-         update = !!res;
+         if (res)
+            update = true;
          ssbo->buffer_offset = 0;
          ssbo->buffer_size = 0;
          if (res) {
