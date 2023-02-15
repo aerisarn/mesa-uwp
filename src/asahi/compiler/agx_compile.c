@@ -1907,8 +1907,19 @@ agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
 {
    agx_optimize_loop_nir(nir);
 
-   NIR_PASS_V(nir, agx_nir_lower_address);
-   NIR_PASS_V(nir, nir_lower_int64);
+   bool progress = false;
+   NIR_PASS(progress, nir, agx_nir_lower_address);
+
+   /* If address lowering made progress, clean up before forming preambles.
+    * Otherwise the optimized preambles might just be constants! Do it before
+    * lowering int64 too, to avoid lowering constant int64 arithmetic.
+    */
+   if (progress) {
+      NIR_PASS_V(nir, nir_opt_constant_folding);
+      NIR_PASS_V(nir, nir_opt_dce);
+   }
+
+   NIR_PASS(progress, nir, nir_lower_int64);
 
    if (likely(!(agx_debug & AGX_DBG_NOPREAMBLE)))
       NIR_PASS_V(nir, agx_nir_opt_preamble, preamble_size);
