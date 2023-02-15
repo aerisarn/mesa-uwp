@@ -86,8 +86,6 @@ struct fd6_pipe_sampler_view {
     * to uncompressed, which means the sampler state needs to be updated
     */
    uint16_t rsc_seqno;
-
-   bool needs_validate;
 };
 
 static inline struct fd6_pipe_sampler_view *

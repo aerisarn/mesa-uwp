@@ -344,7 +344,6 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
    so->base.texture = prsc;
    so->base.reference.count = 1;
    so->base.context = pctx;
-   so->needs_validate = true;
 
    return &so->base;
 }
@@ -367,15 +366,13 @@ fd6_set_sampler_views(struct pipe_context *pctx, enum pipe_shader_type shader,
    for (unsigned i = 0; i < nr; i++) {
       struct fd6_pipe_sampler_view *so = fd6_pipe_sampler_view(views[i + start]);
 
-      if (!(so && so->needs_validate))
+      if (!so)
          continue;
 
       struct fd_resource *rsc = fd_resource(so->base.texture);
 
       fd6_validate_format(ctx, rsc, so->base.format);
       fd6_sampler_view_update(ctx, so);
-
-      so->needs_validate = false;
    }
 }
 
@@ -388,7 +385,11 @@ fd6_sampler_view_update(struct fd_context *ctx,
    struct fd_resource *rsc = fd_resource(prsc);
    enum pipe_format format = cso->format;
 
-   fd6_validate_format(ctx, rsc, cso->format);
+   fd6_assert_valid_format(rsc, cso->format);
+
+   /* If texture has not had a layout change, then no update needed: */
+   if (so->rsc_seqno == rsc->seqno)
+      return;
 
    so->seqno = seqno_next_u16(&fd6_context(ctx)->tex_seqno);
    so->rsc_seqno = rsc->seqno;
