@@ -100,6 +100,9 @@ static token_list_t *
 _token_list_create(glcpp_parser_t *parser);
 
 static void
+_token_list_prepend(glcpp_parser_t *parser, token_list_t *list, token_t *token);
+
+static void
 _token_list_append(glcpp_parser_t *parser, token_list_t *list, token_t *token);
 
 static void
@@ -1088,6 +1091,18 @@ _token_list_create(glcpp_parser_t *parser)
    list->non_space_tail = NULL;
 
    return list;
+}
+
+void
+_token_list_prepend(glcpp_parser_t *parser, token_list_t *list, token_t *token)
+{
+   token_node_t *node;
+
+   node = linear_alloc_child(parser->linalloc, sizeof(token_node_t));
+   node->token = token;
+   node->next = list->head;
+
+   list->head = node;
 }
 
 void
