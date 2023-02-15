@@ -775,12 +775,6 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
                          &device->physical_device->nir_options[stage->stage]);
       nir->info.internal |= is_internal;
       assert(nir->info.stage == stage->stage);
-
-      /* Work around applications that declare shader_call_data variables inside ray generation
-       * shaders. */
-      if (nir->info.stage == MESA_SHADER_RAYGEN)
-         NIR_PASS(_, nir, nir_remove_dead_variables, nir_var_shader_call_data, NULL);
-
       nir_validate_shader(nir, "after spirv_to_nir");
 
       free(spec_entries);
