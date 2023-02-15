@@ -2115,6 +2115,15 @@ static void
 lower_explicit_io_deref(nir_builder *b, nir_deref_instr *deref,
                         nir_address_format addr_format)
 {
+   /* Ignore samplers/textures, because they are handled by other passes like `nir_lower_samplers`.
+    * Also do it only for those being uniforms, otherwise it will break GL bindless textures handles
+    * stored in UBOs.
+    */
+   if (nir_deref_mode_is_in_set(deref, nir_var_uniform) &&
+       (glsl_type_is_sampler(deref->type) ||
+        glsl_type_is_texture(deref->type)))
+      return;
+
    /* Just delete the deref if it's not used.  We can't use
     * nir_deref_instr_remove_if_unused here because it may remove more than
     * one deref which could break our list walking since we walk the list
