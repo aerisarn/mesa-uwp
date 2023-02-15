@@ -914,7 +914,7 @@ _mesa_initialize_dispatch_tables(struct gl_context *ctx)
       _mesa_init_dispatch_save(ctx);
 
    vbo_init_dispatch_begin_end(ctx);
-   if (ctx->API == API_OPENGL_COMPAT)
+   if (_mesa_is_desktop_gl_compat(ctx))
       _mesa_init_dispatch_save_begin_end(ctx);
 }
 
@@ -1403,7 +1403,7 @@ handle_first_current(struct gl_context *ctx)
        * context too.
        */
       ctx->_AttribZeroAliasesVertex = (ctx->API == API_OPENGLES
-                                       || (ctx->API == API_OPENGL_COMPAT
+                                       || (_mesa_is_desktop_gl_compat(ctx)
                                            && !is_forward_compatible_context));
    }
 

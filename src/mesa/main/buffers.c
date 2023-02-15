@@ -731,7 +731,7 @@ updated_drawbuffers(struct gl_context *ctx, struct gl_framebuffer *fb)
 {
    FLUSH_VERTICES(ctx, _NEW_BUFFERS, GL_COLOR_BUFFER_BIT);
 
-   if (ctx->API == API_OPENGL_COMPAT && !ctx->Extensions.ARB_ES2_compatibility) {
+   if (_mesa_is_desktop_gl_compat(ctx) && !ctx->Extensions.ARB_ES2_compatibility) {
       /* Flag the FBO as requiring validation. */
       if (_mesa_is_user_fbo(fb)) {
 	 fb->_Status = 0;

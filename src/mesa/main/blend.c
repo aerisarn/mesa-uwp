@@ -1210,7 +1210,7 @@ void _mesa_init_color( struct gl_context * ctx )
       ctx->Color.DrawBuffer[0] = GL_FRONT;
    }
 
-   ctx->Color.ClampFragmentColor = ctx->API == API_OPENGL_COMPAT ?
+   ctx->Color.ClampFragmentColor = _mesa_is_desktop_gl_compat(ctx) ?
                                    GL_FIXED_ONLY_ARB : GL_FALSE;
    ctx->Color._ClampFragmentColor = GL_FALSE;
    ctx->Color.ClampReadColor = GL_FIXED_ONLY_ARB;

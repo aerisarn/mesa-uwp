@@ -1465,7 +1465,7 @@ check_extra(struct gl_context *ctx, const char *func, const struct value_desc *d
          break;
       case EXTRA_API_GL_COMPAT:
          api_check = GL_TRUE;
-         if (ctx->API == API_OPENGL_COMPAT)
+         if (_mesa_is_desktop_gl_compat(ctx))
             api_found = GL_TRUE;
          break;
       case EXTRA_NEW_BUFFERS:
@@ -1550,7 +1550,7 @@ check_extra(struct gl_context *ctx, const char *func, const struct value_desc *d
          break;
       case EXTRA_EXT_PROVOKING_VERTEX_32:
          api_check = GL_TRUE;
-         if (ctx->API == API_OPENGL_COMPAT || version == 32)
+         if (_mesa_is_desktop_gl_compat(ctx) || version == 32)
             api_found = ctx->Extensions.EXT_provoking_vertex;
          break;
       case EXTRA_END:

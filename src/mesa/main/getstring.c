@@ -166,7 +166,7 @@ _mesa_GetString( GLenum name )
             break;
 	 return shading_language_version(ctx);
       case GL_PROGRAM_ERROR_STRING_ARB:
-         if (ctx->API == API_OPENGL_COMPAT &&
+         if (_mesa_is_desktop_gl_compat(ctx) &&
              (ctx->Extensions.ARB_fragment_program ||
               ctx->Extensions.ARB_vertex_program)) {
             return (const GLubyte *) ctx->Program.ErrorString;

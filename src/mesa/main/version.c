@@ -137,7 +137,7 @@ create_version_string(struct gl_context *ctx, const char *prefix)
 		     prefix,
 		     ctx->Version / 10, ctx->Version % 10,
 		     (ctx->API == API_OPENGL_CORE) ? " (Core Profile)" :
-                     (ctx->API == API_OPENGL_COMPAT && ctx->Version >= 32) ?
+                     (_mesa_is_desktop_gl_compat(ctx) && ctx->Version >= 32) ?
                         " (Compatibility Profile)" : ""
 		     );
    }
@@ -650,7 +650,7 @@ _mesa_compute_version(struct gl_context *ctx)
    }
 
 done:
-   if (ctx->API == API_OPENGL_COMPAT && ctx->Version >= 31)
+   if (_mesa_is_desktop_gl_compat(ctx) && ctx->Version >= 31)
       ctx->Extensions.ARB_compatibility = GL_TRUE;
 
    /* Precompute valid primitive types for faster draw time validation. */
@@ -663,7 +663,7 @@ done:
                            (1 << GL_TRIANGLE_STRIP) |
                            (1 << GL_TRIANGLE_FAN);
 
-   if (ctx->API == API_OPENGL_COMPAT) {
+   if (_mesa_is_desktop_gl_compat(ctx)) {
       ctx->SupportedPrimMask |= (1 << GL_QUADS) |
                                (1 << GL_QUAD_STRIP) |
                                (1 << GL_POLYGON);

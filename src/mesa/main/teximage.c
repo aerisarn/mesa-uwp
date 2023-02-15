@@ -6263,7 +6263,7 @@ _mesa_CompressedMultiTexSubImage3DEXT(GLenum texunit, GLenum target,
 mesa_format
 _mesa_get_texbuffer_format(const struct gl_context *ctx, GLenum internalFormat)
 {
-   if (ctx->API == API_OPENGL_COMPAT) {
+   if (_mesa_is_desktop_gl_compat(ctx)) {
       switch (internalFormat) {
       case GL_ALPHA8:
          return MESA_FORMAT_A_UNORM8;

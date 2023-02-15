@@ -72,7 +72,7 @@ validate_texture_wrap_mode(struct gl_context * ctx, GLenum target, GLenum wrap)
       /* GL_CLAMP was removed in the core profile, and it has never existed in
        * OpenGL ES.
        */
-      supported = (ctx->API == API_OPENGL_COMPAT)
+      supported = _mesa_is_desktop_gl_compat(ctx)
          && (target != GL_TEXTURE_EXTERNAL_OES);
       break;
 
@@ -513,7 +513,7 @@ set_tex_parameteri(struct gl_context *ctx,
       /* GL_DEPTH_TEXTURE_MODE_ARB is removed in core-profile and it has never
        * existed in OpenGL ES.
        */
-      if (ctx->API == API_OPENGL_COMPAT) {
+      if (_mesa_is_desktop_gl_compat(ctx)) {
          if (texObj->Attrib.DepthMode == params[0])
             return GL_FALSE;
          if (params[0] == GL_LUMINANCE ||
