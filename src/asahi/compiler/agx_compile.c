@@ -46,6 +46,7 @@ static const struct debug_named_value agx_debug_options[] = {
    {"novalidate",AGX_DBG_NOVALIDATE,"Skip IR validation in debug builds"},
    {"noopt",     AGX_DBG_NOOPT,     "Disable backend optimizations"},
    {"wait",      AGX_DBG_WAIT,      "Wait after all async instructions"},
+   {"nopreamble",AGX_DBG_NOPREAMBLE,"Do not use shader preambles"},
    DEBUG_NAMED_VALUE_END
 };
 /* clang-format on */
@@ -1909,7 +1910,8 @@ agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
    NIR_PASS_V(nir, agx_nir_lower_address);
    NIR_PASS_V(nir, nir_lower_int64);
 
-   NIR_PASS_V(nir, agx_nir_opt_preamble, preamble_size);
+   if (likely(!(agx_debug & AGX_DBG_NOPREAMBLE)))
+      NIR_PASS_V(nir, agx_nir_opt_preamble, preamble_size);
 
    /* Forming preambles may dramatically reduce the instruction count
     * in certain blocks, causing some if-else statements to become

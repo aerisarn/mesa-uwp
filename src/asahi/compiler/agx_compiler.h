@@ -48,6 +48,7 @@ enum agx_dbg {
    AGX_DBG_NOVALIDATE  = BITFIELD_BIT(5),
    AGX_DBG_NOOPT       = BITFIELD_BIT(6),
    AGX_DBG_WAIT        = BITFIELD_BIT(7),
+   AGX_DBG_NOPREAMBLE  = BITFIELD_BIT(8),
 };
 /* clang-format on */
 
