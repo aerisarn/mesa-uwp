@@ -1460,7 +1460,7 @@ check_extra(struct gl_context *ctx, const char *func, const struct value_desc *d
          break;
       case EXTRA_API_GL_CORE:
          api_check = GL_TRUE;
-         if (ctx->API == API_OPENGL_CORE)
+         if (_mesa_is_desktop_gl_core(ctx))
             api_found = GL_TRUE;
          break;
       case EXTRA_API_GL_COMPAT:

@@ -1777,7 +1777,7 @@ bind_renderbuffer(GLenum target, GLuint renderbuffer)
          newRb = NULL;
          isGenName = true;
       }
-      else if (!newRb && ctx->API == API_OPENGL_CORE) {
+      else if (!newRb && _mesa_is_desktop_gl_core(ctx)) {
          /* All RB IDs must be Gen'd */
          _mesa_error(ctx, GL_INVALID_OPERATION,
                      "glBindRenderbuffer(non-gen name)");
@@ -3262,7 +3262,7 @@ bind_framebuffer(GLenum target, GLuint framebuffer)
          newDrawFb = NULL;
          isGenName = true;
       }
-      else if (!newDrawFb && ctx->API == API_OPENGL_CORE) {
+      else if (!newDrawFb && _mesa_is_desktop_gl_core(ctx)) {
          /* All FBO IDs must be Gen'd */
          _mesa_error(ctx, GL_INVALID_OPERATION,
                      "glBindFramebuffer(non-gen name)");

@@ -136,7 +136,7 @@ create_version_string(struct gl_context *ctx, const char *prefix)
 		     "%s%u.%u%s Mesa " PACKAGE_VERSION MESA_GIT_SHA1,
 		     prefix,
 		     ctx->Version / 10, ctx->Version % 10,
-		     (ctx->API == API_OPENGL_CORE) ? " (Core Profile)" :
+		     _mesa_is_desktop_gl_core(ctx) ? " (Core Profile)" :
                      (_mesa_is_desktop_gl_compat(ctx) && ctx->Version >= 32) ?
                         " (Compatibility Profile)" : ""
 		     );

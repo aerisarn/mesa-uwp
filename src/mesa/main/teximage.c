@@ -941,7 +941,7 @@ _mesa_init_teximage_fields_ms(struct gl_context *ctx,
    img->Height = height;
    img->Depth = depth;
 
-   GLenum depth_mode = ctx->API == API_OPENGL_CORE ? GL_RED : GL_LUMINANCE;
+   GLenum depth_mode = _mesa_is_desktop_gl_core(ctx) ? GL_RED : GL_LUMINANCE;
 
    /* In ES 3.0, DEPTH_TEXTURE_MODE is expected to be GL_RED for textures
     * with depth component data specified with a sized internal format.
@@ -3042,7 +3042,7 @@ lookup_texture_ext_dsa(struct gl_context *ctx, GLenum target, GLuint texture,
       bool isGenName;
       texObj = _mesa_lookup_texture(ctx, texture);
       isGenName = texObj != NULL;
-      if (!texObj && ctx->API == API_OPENGL_CORE) {
+      if (!texObj && _mesa_is_desktop_gl_core(ctx)) {
          _mesa_error(ctx, GL_INVALID_OPERATION, "%s(non-gen name)", caller);
          return NULL;
       }
@@ -3285,7 +3285,7 @@ teximage(struct gl_context *ctx, GLboolean compressed, GLuint dims,
 
             _mesa_dirty_texobj(ctx, texObj);
             /* only apply depthMode swizzle if it was explicitly changed */
-            GLenum depth_mode = ctx->API == API_OPENGL_CORE ? GL_RED : GL_LUMINANCE;
+            GLenum depth_mode = _mesa_is_desktop_gl_core(ctx) ? GL_RED : GL_LUMINANCE;
             if (texObj->Attrib.DepthMode != depth_mode)
                _mesa_update_teximage_format_swizzle(ctx, texObj->Image[0][texObj->Attrib.BaseLevel], texObj->Attrib.DepthMode);
             _mesa_update_texture_object_swizzle(ctx, texObj);

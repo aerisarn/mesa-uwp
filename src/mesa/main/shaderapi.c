@@ -767,7 +767,7 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
     */
    const bool has_xfb =
       (_mesa_is_desktop_gl_compat(ctx) && ctx->Extensions.EXT_transform_feedback)
-      || ctx->API == API_OPENGL_CORE
+      || _mesa_is_desktop_gl_core(ctx)
       || _mesa_is_gles3(ctx);
 
    /* True if geometry shaders (of the form that was adopted into GLSL 1.50
@@ -781,7 +781,7 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
    const bool has_ubo =
       (_mesa_is_desktop_gl_compat(ctx) &&
        ctx->Extensions.ARB_uniform_buffer_object)
-      || ctx->API == API_OPENGL_CORE
+      || _mesa_is_desktop_gl_core(ctx)
       || _mesa_is_gles3(ctx);
 
    if (!shProg) {

@@ -1012,7 +1012,7 @@ validate_array(struct gl_context *ctx, const char *func,
     *
     * The check for VBOs is handled below.
     */
-   if (ctx->API == API_OPENGL_CORE && (vao == ctx->Array.DefaultVAO)) {
+   if (_mesa_is_desktop_gl_core(ctx) && (vao == ctx->Array.DefaultVAO)) {
       _mesa_error(ctx, GL_INVALID_OPERATION, "%s(no array object bound)",
                   func);
       return;
@@ -3305,7 +3305,7 @@ _mesa_BindVertexBuffer(GLuint bindingIndex, GLuint buffer, GLintptr offset,
     *    "An INVALID_OPERATION error is generated if no vertex array object
     *     is bound."
     */
-   if ((ctx->API == API_OPENGL_CORE || _mesa_is_gles31(ctx)) &&
+   if ((_mesa_is_desktop_gl_core(ctx) || _mesa_is_gles31(ctx)) &&
        ctx->Array.VAO == ctx->Array.DefaultVAO) {
       _mesa_error(ctx, GL_INVALID_OPERATION,
                   "glBindVertexBuffer(No array object bound)");
@@ -3527,7 +3527,7 @@ _mesa_BindVertexBuffers(GLuint first, GLsizei count, const GLuint *buffers,
     *    "An INVALID_OPERATION error is generated if no
     *     vertex array object is bound."
     */
-   if (ctx->API == API_OPENGL_CORE &&
+   if (_mesa_is_desktop_gl_core(ctx) &&
        ctx->Array.VAO == ctx->Array.DefaultVAO) {
       _mesa_error(ctx, GL_INVALID_OPERATION,
                   "glBindVertexBuffers(No array object bound)");
@@ -3638,7 +3638,7 @@ vertex_attrib_format(GLuint attribIndex, GLint size, GLenum type,
        * is an oversight.  In the OpenGL 4.3 (Core Profile) spec, it applies
        * to all three functions.
        */
-      if ((ctx->API == API_OPENGL_CORE || _mesa_is_gles31(ctx)) &&
+      if ((_mesa_is_desktop_gl_core(ctx) || _mesa_is_gles31(ctx)) &&
           ctx->Array.VAO == ctx->Array.DefaultVAO) {
          _mesa_error(ctx, GL_INVALID_OPERATION,
                      "%s(No array object bound)", func);
@@ -3886,7 +3886,7 @@ _mesa_VertexAttribBinding(GLuint attribIndex, GLuint bindingIndex)
     *    "An INVALID_OPERATION error is generated if no vertex array object
     *     is bound."
     */
-   if ((ctx->API == API_OPENGL_CORE || _mesa_is_gles31(ctx)) &&
+   if ((_mesa_is_desktop_gl_core(ctx) || _mesa_is_gles31(ctx)) &&
        ctx->Array.VAO == ctx->Array.DefaultVAO) {
       _mesa_error(ctx, GL_INVALID_OPERATION,
                   "glVertexAttribBinding(No array object bound)");
@@ -3996,7 +3996,7 @@ _mesa_VertexBindingDivisor(GLuint bindingIndex, GLuint divisor)
     *    "An INVALID_OPERATION error is generated if no vertex array object
     *     is bound."
     */
-   if ((ctx->API == API_OPENGL_CORE || _mesa_is_gles31(ctx)) &&
+   if ((_mesa_is_desktop_gl_core(ctx) || _mesa_is_gles31(ctx)) &&
        ctx->Array.VAO == ctx->Array.DefaultVAO) {
       _mesa_error(ctx, GL_INVALID_OPERATION,
                   "glVertexBindingDivisor(No array object bound)");

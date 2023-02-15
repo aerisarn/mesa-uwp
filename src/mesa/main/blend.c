@@ -1058,14 +1058,14 @@ _mesa_ClampColor(GLenum target, GLenum clamp)
 
    switch (target) {
    case GL_CLAMP_VERTEX_COLOR_ARB:
-      if (ctx->API == API_OPENGL_CORE)
+      if (_mesa_is_desktop_gl_core(ctx))
          goto invalid_enum;
       FLUSH_VERTICES(ctx, _NEW_LIGHT_STATE, GL_LIGHTING_BIT | GL_ENABLE_BIT);
       ctx->Light.ClampVertexColor = clamp;
       _mesa_update_clamp_vertex_color(ctx, ctx->DrawBuffer);
       break;
    case GL_CLAMP_FRAGMENT_COLOR_ARB:
-      if (ctx->API == API_OPENGL_CORE)
+      if (_mesa_is_desktop_gl_core(ctx))
          goto invalid_enum;
       if (ctx->Color.ClampFragmentColor != clamp) {
          FLUSH_VERTICES(ctx, 0, GL_COLOR_BUFFER_BIT | GL_ENABLE_BIT);
