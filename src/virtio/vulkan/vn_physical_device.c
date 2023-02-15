@@ -867,8 +867,9 @@ vn_physical_device_init_external_fence_handles(
          physical_dev->instance, vn_physical_device_to_handle(physical_dev),
          &info, &props);
 
-      physical_dev->renderer_sync_fd_fence_features =
-         props.externalFenceFeatures;
+      physical_dev->renderer_sync_fd.fence_exportable =
+         props.externalFenceFeatures &
+         VK_EXTERNAL_FENCE_FEATURE_EXPORTABLE_BIT;
    }
 
    physical_dev->external_fence_handles = 0;
@@ -913,8 +914,12 @@ vn_physical_device_init_external_semaphore_handles(
          physical_dev->instance, vn_physical_device_to_handle(physical_dev),
          &info, &props);
 
-      physical_dev->renderer_sync_fd_semaphore_features =
-         props.externalSemaphoreFeatures;
+      physical_dev->renderer_sync_fd.semaphore_exportable =
+         props.externalSemaphoreFeatures &
+         VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT;
+      physical_dev->renderer_sync_fd.semaphore_importable =
+         props.externalSemaphoreFeatures &
+         VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT;
    }
 
    physical_dev->external_binary_semaphore_handles = 0;
@@ -948,14 +953,11 @@ vn_physical_device_get_native_extensions(
       exts->ANDROID_native_buffer = true;
    }
 
-   if ((physical_dev->renderer_sync_fd_fence_features &
-        VK_EXTERNAL_FENCE_FEATURE_EXPORTABLE_BIT))
+   if (physical_dev->renderer_sync_fd.fence_exportable)
       exts->KHR_external_fence_fd = true;
 
-   if ((physical_dev->renderer_sync_fd_semaphore_features &
-        VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT) &&
-       (physical_dev->renderer_sync_fd_semaphore_features &
-        VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT))
+   if (physical_dev->renderer_sync_fd.semaphore_importable &&
+       physical_dev->renderer_sync_fd.semaphore_exportable)
       exts->KHR_external_semaphore_fd = true;
 
 #else  /* ANDROID */
@@ -971,8 +973,7 @@ vn_physical_device_get_native_extensions(
 #ifdef VN_USE_WSI_PLATFORM
    if (renderer_exts->EXT_image_drm_format_modifier &&
        renderer_exts->EXT_queue_family_foreign &&
-       (physical_dev->renderer_sync_fd_semaphore_features &
-        VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT)) {
+       physical_dev->renderer_sync_fd.semaphore_importable) {
       exts->KHR_incremental_present = true;
       exts->KHR_swapchain = true;
       exts->KHR_swapchain_mutable_format = true;
@@ -1058,8 +1059,7 @@ vn_physical_device_get_passthrough_extensions(
        * for VK_KHR_synchronization2.
        */
       .KHR_synchronization2 =
-         physical_dev->renderer_sync_fd_semaphore_features &
-         VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT,
+         physical_dev->renderer_sync_fd.semaphore_importable,
       .KHR_zero_initialize_workgroup_memory = true,
       .EXT_4444_formats = true,
       .EXT_extended_dynamic_state = true,

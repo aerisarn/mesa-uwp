@@ -212,8 +212,7 @@ vn_queue_submission_fix_batch_semaphores(struct vn_queue_submission *submit,
       if (!vn_semaphore_wait_external(dev, sem))
          return VK_ERROR_DEVICE_LOST;
 
-      assert(dev->physical_device->renderer_sync_fd_semaphore_features &
-             VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT);
+      assert(dev->physical_device->renderer_sync_fd.semaphore_importable);
 
       const VkImportSemaphoreResourceInfo100000MESA res_info = {
          .sType =
@@ -1398,8 +1397,7 @@ vn_GetFenceFdKHR(VkDevice device,
    VkResult result;
 
    assert(sync_file);
-   assert(dev->physical_device->renderer_sync_fd_fence_features &
-          VK_EXTERNAL_FENCE_FEATURE_EXPORTABLE_BIT);
+   assert(dev->physical_device->renderer_sync_fd.fence_exportable);
 
    int fd = -1;
    if (payload->type == VN_SYNC_TYPE_DEVICE_ONLY) {
@@ -1853,10 +1851,8 @@ vn_GetSemaphoreFdKHR(VkDevice device,
    struct vn_sync_payload *payload = sem->payload;
 
    assert(sync_file);
-   assert((dev->physical_device->renderer_sync_fd_semaphore_features &
-           VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT));
-   assert((dev->physical_device->renderer_sync_fd_semaphore_features &
-           VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT));
+   assert(dev->physical_device->renderer_sync_fd.semaphore_exportable);
+   assert(dev->physical_device->renderer_sync_fd.semaphore_importable);
 
    int fd = -1;
    if (payload->type == VN_SYNC_TYPE_DEVICE_ONLY) {

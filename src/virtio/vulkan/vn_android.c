@@ -813,8 +813,7 @@ vn_QueueSignalReleaseImageANDROID(VkQueue _queue,
    struct vn_device *dev = queue->device;
    const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
    const bool has_sync_fd_fence_export =
-      (dev->physical_device->renderer_sync_fd_fence_features &
-       VK_EXTERNAL_FENCE_FEATURE_EXPORTABLE_BIT);
+      dev->physical_device->renderer_sync_fd.fence_exportable;
    VkDevice device = vn_device_to_handle(dev);
    VkPipelineStageFlags local_stage_masks[8];
    VkPipelineStageFlags *stage_masks = local_stage_masks;
