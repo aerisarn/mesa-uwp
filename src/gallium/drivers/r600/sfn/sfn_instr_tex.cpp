@@ -122,6 +122,12 @@ TexInstr::propagate_death()
    return true;
 }
 
+void TexInstr::forward_set_blockid(int id, int index)
+{
+   for (auto p : m_prepare_instr)
+      p->set_blockid(id, index);
+}
+
 bool
 TexInstr::do_ready() const
 {

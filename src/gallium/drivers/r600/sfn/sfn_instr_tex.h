@@ -186,6 +186,8 @@ private:
    bool set_coord_offsets(nir_src *offset);
    void set_rect_coordinate_flags(nir_tex_instr *instr);
    void add_prepare_instr(TexInstr *ir) { m_prepare_instr.push_back(ir); };
+   void forward_set_blockid(int id, int index) override;
+
 
    Opcode m_opcode;
 
