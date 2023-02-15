@@ -1402,7 +1402,7 @@ handle_first_current(struct gl_context *ctx)
        * that will erroneously allow this usage in a 3.0 forward-compatible
        * context too.
        */
-      ctx->_AttribZeroAliasesVertex = (ctx->API == API_OPENGLES
+      ctx->_AttribZeroAliasesVertex = (_mesa_is_gles1(ctx)
                                        || (_mesa_is_desktop_gl_compat(ctx)
                                            && !is_forward_compatible_context));
    }

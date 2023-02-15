@@ -1175,7 +1175,7 @@ _mesa_VertexPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *ptr)
    GET_CURRENT_CONTEXT(ctx);
 
    GLenum format = GL_RGBA;
-   GLbitfield legalTypes = (ctx->API == API_OPENGLES)
+   GLbitfield legalTypes = _mesa_is_gles1(ctx)
       ? (BYTE_BIT | SHORT_BIT | FLOAT_BIT | FIXED_ES_BIT)
       : (SHORT_BIT | INT_BIT | FLOAT_BIT |
          DOUBLE_BIT | HALF_BIT |
@@ -1202,7 +1202,7 @@ _mesa_VertexArrayVertexOffsetEXT(GLuint vaobj, GLuint buffer, GLint size,
    GET_CURRENT_CONTEXT(ctx);
 
    GLenum format = GL_RGBA;
-   GLbitfield legalTypes = (ctx->API == API_OPENGLES)
+   GLbitfield legalTypes = _mesa_is_gles1(ctx)
       ? (BYTE_BIT | SHORT_BIT | FLOAT_BIT | FIXED_ES_BIT)
       : (SHORT_BIT | INT_BIT | FLOAT_BIT |
          DOUBLE_BIT | HALF_BIT |
@@ -1247,7 +1247,7 @@ _mesa_NormalPointer(GLenum type, GLsizei stride, const GLvoid *ptr )
    GET_CURRENT_CONTEXT(ctx);
 
    GLenum format = GL_RGBA;
-   const GLbitfield legalTypes = (ctx->API == API_OPENGLES)
+   const GLbitfield legalTypes = _mesa_is_gles1(ctx)
       ? (BYTE_BIT | SHORT_BIT | FLOAT_BIT | FIXED_ES_BIT)
       : (BYTE_BIT | SHORT_BIT | INT_BIT |
          HALF_BIT | FLOAT_BIT | DOUBLE_BIT |
@@ -1274,7 +1274,7 @@ _mesa_VertexArrayNormalOffsetEXT(GLuint vaobj, GLuint buffer, GLenum type,
    GET_CURRENT_CONTEXT(ctx);
 
    GLenum format = GL_RGBA;
-   const GLbitfield legalTypes = (ctx->API == API_OPENGLES)
+   const GLbitfield legalTypes = _mesa_is_gles1(ctx)
       ? (BYTE_BIT | SHORT_BIT | FLOAT_BIT | FIXED_ES_BIT)
       : (BYTE_BIT | SHORT_BIT | INT_BIT |
          HALF_BIT | FLOAT_BIT | DOUBLE_BIT |
@@ -1319,10 +1319,10 @@ void GLAPIENTRY
 _mesa_ColorPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *ptr)
 {
    GET_CURRENT_CONTEXT(ctx);
-   const GLint sizeMin = (ctx->API == API_OPENGLES) ? 4 : 3;
+   const GLint sizeMin = _mesa_is_gles1(ctx) ? 4 : 3;
 
    GLenum format = get_array_format(ctx, BGRA_OR_4, &size);
-   const GLbitfield legalTypes = (ctx->API == API_OPENGLES)
+   const GLbitfield legalTypes = _mesa_is_gles1(ctx)
       ? (UNSIGNED_BYTE_BIT | HALF_BIT | FLOAT_BIT | FIXED_ES_BIT)
       : (BYTE_BIT | UNSIGNED_BYTE_BIT |
          SHORT_BIT | UNSIGNED_SHORT_BIT |
@@ -1349,10 +1349,10 @@ _mesa_VertexArrayColorOffsetEXT(GLuint vaobj, GLuint buffer, GLint size,
                                 GLenum type, GLsizei stride, GLintptr offset)
 {
    GET_CURRENT_CONTEXT(ctx);
-   const GLint sizeMin = (ctx->API == API_OPENGLES) ? 4 : 3;
+   const GLint sizeMin = _mesa_is_gles1(ctx) ? 4 : 3;
 
    GLenum format = get_array_format(ctx, BGRA_OR_4, &size);
-   const GLbitfield legalTypes = (ctx->API == API_OPENGLES)
+   const GLbitfield legalTypes = _mesa_is_gles1(ctx)
       ? (UNSIGNED_BYTE_BIT | HALF_BIT | FLOAT_BIT | FIXED_ES_BIT)
       : (BYTE_BIT | UNSIGNED_BYTE_BIT |
          SHORT_BIT | UNSIGNED_SHORT_BIT |
@@ -1601,11 +1601,11 @@ _mesa_TexCoordPointer(GLint size, GLenum type, GLsizei stride,
                       const GLvoid *ptr)
 {
    GET_CURRENT_CONTEXT(ctx);
-   const GLint sizeMin = (ctx->API == API_OPENGLES) ? 2 : 1;
+   const GLint sizeMin = _mesa_is_gles1(ctx) ? 2 : 1;
    const GLuint unit = ctx->Array.ActiveTexture;
 
    GLenum format = GL_RGBA;
-   const GLbitfield legalTypes = (ctx->API == API_OPENGLES)
+   const GLbitfield legalTypes = _mesa_is_gles1(ctx)
       ? (BYTE_BIT | SHORT_BIT | FLOAT_BIT | FIXED_ES_BIT)
       : (SHORT_BIT | INT_BIT |
          HALF_BIT | FLOAT_BIT | DOUBLE_BIT |
@@ -1630,11 +1630,11 @@ _mesa_VertexArrayTexCoordOffsetEXT(GLuint vaobj, GLuint buffer, GLint size,
                                    GLenum type, GLsizei stride, GLintptr offset)
 {
    GET_CURRENT_CONTEXT(ctx);
-   const GLint sizeMin = (ctx->API == API_OPENGLES) ? 2 : 1;
+   const GLint sizeMin = _mesa_is_gles1(ctx) ? 2 : 1;
    const GLuint unit = ctx->Array.ActiveTexture;
 
    GLenum format = GL_RGBA;
-   const GLbitfield legalTypes = (ctx->API == API_OPENGLES)
+   const GLbitfield legalTypes = _mesa_is_gles1(ctx)
       ? (BYTE_BIT | SHORT_BIT | FLOAT_BIT | FIXED_ES_BIT)
       : (SHORT_BIT | INT_BIT |
          HALF_BIT | FLOAT_BIT | DOUBLE_BIT |
@@ -1668,11 +1668,11 @@ _mesa_VertexArrayMultiTexCoordOffsetEXT(GLuint vaobj, GLuint buffer, GLenum texu
                                         GLintptr offset)
 {
    GET_CURRENT_CONTEXT(ctx);
-   const GLint sizeMin = (ctx->API == API_OPENGLES) ? 2 : 1;
+   const GLint sizeMin = _mesa_is_gles1(ctx) ? 2 : 1;
    const GLuint unit = texunit - GL_TEXTURE0;
 
    GLenum format = GL_RGBA;
-   const GLbitfield legalTypes = (ctx->API == API_OPENGLES)
+   const GLbitfield legalTypes = _mesa_is_gles1(ctx)
       ? (BYTE_BIT | SHORT_BIT | FLOAT_BIT | FIXED_ES_BIT)
       : (SHORT_BIT | INT_BIT |
          HALF_BIT | FLOAT_BIT | DOUBLE_BIT |

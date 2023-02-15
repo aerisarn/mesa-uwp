@@ -1330,7 +1330,7 @@ _mesa_is_compressed_format(const struct gl_context *ctx, GLenum format)
    case GL_PALETTE8_R5_G6_B5_OES:
    case GL_PALETTE8_RGBA4_OES:
    case GL_PALETTE8_RGB5_A1_OES:
-      return ctx->API == API_OPENGLES;
+      return _mesa_is_gles1(ctx);
    }
 
    switch (_mesa_get_format_layout(m_format)) {

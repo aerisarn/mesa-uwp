@@ -297,7 +297,7 @@ get_attachment(struct gl_context *ctx, struct gl_framebuffer *fb,
        */
       i = attachment - GL_COLOR_ATTACHMENT0_EXT;
       if (i >= ctx->Const.MaxColorAttachments
-          || (i > 0 && ctx->API == API_OPENGLES)) {
+          || (i > 0 && _mesa_is_gles1(ctx))) {
          return NULL;
       }
       assert(BUFFER_COLOR0 + i < ARRAY_SIZE(fb->Attachment));
@@ -4745,7 +4745,7 @@ get_framebuffer_attachment_parameter(struct gl_context *ctx,
       }
       return;
    case GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_3D_ZOFFSET_EXT:
-      if (ctx->API == API_OPENGLES) {
+      if (_mesa_is_gles1(ctx)) {
          goto invalid_pname_enum;
       } else if (att->Type == GL_NONE) {
          _mesa_error(ctx, err, "%s(invalid pname %s)", caller,

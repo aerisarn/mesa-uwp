@@ -55,7 +55,7 @@ _mesa_is_valid_generate_texture_mipmap_target(struct gl_context *ctx,
       error = false;
       break;
    case GL_TEXTURE_3D:
-      error = ctx->API == API_OPENGLES;
+      error = _mesa_is_gles1(ctx);
       break;
    case GL_TEXTURE_CUBE_MAP:
       error = false;

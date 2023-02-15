@@ -347,7 +347,7 @@ _mesa_get_compressed_formats(struct gl_context *ctx, GLint *formats)
       formats[n++] = GL_COMPRESSED_SIGNED_RED_GREEN_RGTC2_EXT;
    }
 
-   if (ctx->API == API_OPENGLES) {
+   if (_mesa_is_gles1(ctx)) {
       formats[n++] = GL_PALETTE4_RGB8_OES;
       formats[n++] = GL_PALETTE4_RGBA8_OES;
       formats[n++] = GL_PALETTE4_R5_G6_B5_OES;

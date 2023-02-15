@@ -3146,7 +3146,7 @@ teximage(struct gl_context *ctx, GLboolean compressed, GLuint dims,
     * call by decompressing the texture.  If we really want to support cpal
     * textures in any driver this would have to be changed.
     */
-   if (ctx->API == API_OPENGLES && compressed && dims == 2) {
+   if (_mesa_is_gles1(ctx) && compressed && dims == 2) {
       switch (internalFormat) {
       case GL_PALETTE4_RGB8_OES:
       case GL_PALETTE4_RGBA8_OES:
