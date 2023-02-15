@@ -2318,6 +2318,12 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
                            get_fvec_constant(ctx, bit_size, num_components, 0));
       break;
 
+   case nir_op_uclz:
+      assert(nir_op_infos[alu->op].num_inputs == 1);
+      result = emit_unop(ctx, SpvOpUCountLeadingZerosINTEL, dest_type, src[0]);
+      spirv_builder_emit_cap(&ctx->builder, SpvCapabilityIntegerFunctions2INTEL);
+      spirv_builder_emit_extension(&ctx->builder, "SPV_INTEL_shader_integer_functions2");
+      break;
 #define BUILTIN_UNOP(nir_op, spirv_op) \
    case nir_op: \
       assert(nir_op_infos[alu->op].num_inputs == 1); \
@@ -2448,6 +2454,28 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    BUILTIN_BINOP(nir_op_umax, GLSLstd450UMax)
    BUILTIN_BINOP(nir_op_ldexp, GLSLstd450Ldexp)
 #undef BUILTIN_BINOP
+
+#define INTEL_BINOP(nir_op, spirv_op) \
+   case nir_op: \
+      assert(nir_op_infos[alu->op].num_inputs == 2); \
+      result = emit_binop(ctx, spirv_op, dest_type, src[0], src[1]); \
+      spirv_builder_emit_cap(&ctx->builder, SpvCapabilityIntegerFunctions2INTEL); \
+      spirv_builder_emit_extension(&ctx->builder, "SPV_INTEL_shader_integer_functions2"); \
+      break;
+
+   INTEL_BINOP(nir_op_uabs_isub, SpvOpAbsISubINTEL)
+   INTEL_BINOP(nir_op_uabs_usub, SpvOpAbsUSubINTEL)
+   INTEL_BINOP(nir_op_iadd_sat, SpvOpIAddSatINTEL)
+   INTEL_BINOP(nir_op_uadd_sat, SpvOpUAddSatINTEL)
+   INTEL_BINOP(nir_op_ihadd, SpvOpIAverageINTEL)
+   INTEL_BINOP(nir_op_uhadd, SpvOpUAverageINTEL)
+   INTEL_BINOP(nir_op_irhadd, SpvOpIAverageRoundedINTEL)
+   INTEL_BINOP(nir_op_urhadd, SpvOpUAverageRoundedINTEL)
+   INTEL_BINOP(nir_op_isub_sat, SpvOpISubSatINTEL)
+   INTEL_BINOP(nir_op_usub_sat, SpvOpUSubSatINTEL)
+   INTEL_BINOP(nir_op_imul_32x16, SpvOpIMul32x16INTEL)
+   INTEL_BINOP(nir_op_umul_32x16, SpvOpUMul32x16INTEL)
+#undef INTEL_BINOP
 
    case nir_op_fdot2:
    case nir_op_fdot3:
