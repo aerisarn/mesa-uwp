@@ -514,7 +514,6 @@ nir_lower_blend_store(nir_builder *b, nir_intrinsic_instr *store,
 
    /* Grow or shrink the store destination as needed */
    store->num_components = num_components;
-   store->dest.ssa.num_components = num_components;
    nir_intrinsic_set_write_mask(store, nir_intrinsic_write_mask(store) &
                                        nir_component_mask(num_components));
 
