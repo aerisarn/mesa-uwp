@@ -1024,7 +1024,6 @@ struct anv_device {
     uint32_t                                    context_id;
     int                                         fd;
     bool                                        can_chain_batches;
-    bool                                        robust_buffer_access;
 
     pthread_mutex_t                             vma_mutex;
     struct util_vma_heap                        vma_lo;

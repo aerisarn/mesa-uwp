@@ -2685,28 +2685,6 @@ VkResult anv_CreateDevice(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO);
 
-   /* Check enabled features */
-   bool robust_buffer_access = false;
-   if (pCreateInfo->pEnabledFeatures) {
-      if (pCreateInfo->pEnabledFeatures->robustBufferAccess)
-         robust_buffer_access = true;
-   }
-
-   vk_foreach_struct_const(ext, pCreateInfo->pNext) {
-      switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2: {
-         const VkPhysicalDeviceFeatures2 *features = (const void *)ext;
-         if (features->features.robustBufferAccess)
-            robust_buffer_access = true;
-         break;
-      }
-
-      default:
-         /* Don't warn */
-         break;
-      }
-   }
-
    /* Check requested queues and fail if we are requested to create any
     * queues with flags we don't support.
     */
@@ -2844,8 +2822,6 @@ VkResult anv_CreateDevice(
     * the batch.
     */
    device->can_chain_batches = device->info->ver >= 8;
-
-   device->robust_buffer_access = robust_buffer_access;
 
    if (pthread_mutex_init(&device->mutex, NULL) != 0) {
       result = vk_error(device, VK_ERROR_INITIALIZATION_FAILED);
@@ -3908,7 +3884,7 @@ anv_get_buffer_memory_requirements(struct anv_device *device,
     * This would ensure that not internal padding would be needed for
     * 16-bit types.
     */
-   if (device->robust_buffer_access &&
+   if (device->vk.enabled_features.robustBufferAccess &&
        (usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT ||
         usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
       pMemoryRequirements->memoryRequirements.size = align64(size, 4);
