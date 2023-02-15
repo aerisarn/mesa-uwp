@@ -918,6 +918,49 @@ COMPARE_REVERSE(ige)
 COMPARE_REVERSE(ult)
 COMPARE_REVERSE(uge)
 
+#define INOT_COMPARE(comp)                                              \
+   static nir_ssa_def *                                                 \
+   nir_inot_ ## comp (nir_builder *b, nir_ssa_def *x, nir_ssa_def *y)   \
+   {                                                                    \
+      return nir_inot(b, nir_ ## comp (b, x, y));                       \
+   }
+
+INOT_COMPARE(ilt_rev)
+
+#define KNOWN_COUNT_TEST(_init_value, _cond_value, _incr_value, cond, incr, count) \
+   TEST_F(nir_loop_analyze_test, incr ## _ ## cond ## _known_count_ ## count)    \
+   {                                                                    \
+      nir_loop *loop =                                                  \
+         loop_builder(&b, {.init_value = _init_value,                   \
+                           .cond_value = _cond_value,                   \
+                           .incr_value = _incr_value,                   \
+                           .cond_instr = nir_ ## cond,                  \
+                           .incr_instr = nir_ ## incr});                \
+                                                                        \
+      nir_validate_shader(b.shader, "input");                           \
+                                                                        \
+      nir_loop_analyze_impl(b.impl, nir_var_all, false);                \
+                                                                        \
+      ASSERT_NE((void *)0, loop->info);                                 \
+      EXPECT_NE((void *)0, loop->info->limiting_terminator);            \
+      EXPECT_EQ(count, loop->info->max_trip_count);                     \
+      EXPECT_TRUE(loop->info->exact_trip_count_known);                  \
+                                                                        \
+      EXPECT_EQ(2, loop->info->num_induction_vars);                     \
+      ASSERT_NE((void *)0, loop->info->induction_vars);                 \
+                                                                        \
+      const nir_loop_induction_variable *const ivars =                  \
+         loop->info->induction_vars;                                    \
+                                                                        \
+      for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {   \
+         EXPECT_NE((void *)0, ivars[i].def);                            \
+         ASSERT_NE((void *)0, ivars[i].init_src);                       \
+         EXPECT_TRUE(nir_src_is_const(*ivars[i].init_src));             \
+         ASSERT_NE((void *)0, ivars[i].update_src);                     \
+         EXPECT_TRUE(nir_src_is_const(ivars[i].update_src->src));       \
+      }                                                                 \
+   }
+
 #define UNKNOWN_COUNT_TEST(_init_value, _cond_value, _incr_value, cond, incr) \
    TEST_F(nir_loop_analyze_test, incr ## _ ## cond ## _unknown_count)   \
    {                                                                    \
@@ -997,6 +1040,16 @@ COMPARE_REVERSE(uge)
       EXPECT_EQ(0, loop->info->max_trip_count);                         \
       EXPECT_FALSE(loop->info->exact_trip_count_known);                 \
    }
+
+/*    uint i = 10;
+ *    while (true) {
+ *       if (!(5 < i))
+ *          break;
+ *
+ *       i += -1;
+ *    }
+ */
+KNOWN_COUNT_TEST(0x0000000a, 0x00000005, 0xffffffff, inot_ilt_rev, iadd, 5)
 
 /*    uint i = 0;
  *    while (true) {

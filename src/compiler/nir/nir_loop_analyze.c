@@ -1236,6 +1236,8 @@ find_trip_count(loop_info_state *state, unsigned execution_mode)
 
       nir_op alu_op = nir_ssa_scalar_alu_op(cond);
 
+      bool invert_cond = terminator->continue_from_then;
+
       bool limit_rhs;
       nir_ssa_scalar basic_ind = { NULL, 0 };
       nir_ssa_scalar limit;
@@ -1247,7 +1249,8 @@ find_trip_count(loop_info_state *state, unsigned execution_mode)
           * inverse of x or y (i.e. which ever contained the induction var) in
           * order to compute the trip count.
           */
-         alu_op = inverse_comparison(nir_ssa_scalar_alu_op(cond));
+         alu_op = nir_ssa_scalar_alu_op(cond);
+         invert_cond = !invert_cond;
          trip_count_known = false;
          terminator->exact_trip_count_unknown = true;
       }
@@ -1258,7 +1261,8 @@ find_trip_count(loop_info_state *state, unsigned execution_mode)
              */
             if (alu_op == nir_op_inot) {
                cond = nir_ssa_scalar_chase_alu_src(cond, 0);
-               alu_op = inverse_comparison(nir_ssa_scalar_alu_op(cond));
+               alu_op = nir_ssa_scalar_alu_op(cond);
+               invert_cond = !invert_cond;
             }
 
             get_induction_and_limit_vars(cond, &basic_ind,
@@ -1329,7 +1333,7 @@ find_trip_count(loop_info_state *state, unsigned execution_mode)
                                             nir_instr_as_alu(lv->update_src->src.parent_instr),
                                             cond,
                                             alu_op, limit_rhs,
-                                            terminator->continue_from_then,
+                                            invert_cond,
                                             execution_mode);
 
       /* Where we not able to calculate the iteration count */
