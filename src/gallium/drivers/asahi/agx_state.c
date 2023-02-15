@@ -1452,8 +1452,17 @@ agx_get_shader_variant(struct agx_screen *screen,
     * hash table key. The clone is logically owned by the hash table.
     */
    union asahi_shader_key *cloned_key =
-      ralloc(so->variants, union asahi_shader_key);
-   memcpy(cloned_key, key, sizeof(union asahi_shader_key));
+      rzalloc(so->variants, union asahi_shader_key);
+
+   if (so->type == PIPE_SHADER_FRAGMENT) {
+      memcpy(cloned_key, key, sizeof(struct asahi_fs_shader_key));
+   } else if (so->type == PIPE_SHADER_VERTEX) {
+      memcpy(cloned_key, key, sizeof(struct asahi_vs_shader_key));
+   } else {
+      assert(gl_shader_stage_is_compute(so->type));
+      /* No key */
+   }
+
    _mesa_hash_table_insert(so->variants, cloned_key, compiled);
 
    return compiled;
