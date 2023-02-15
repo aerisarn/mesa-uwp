@@ -725,28 +725,6 @@ vn_AcquireImageANDROID(VkDevice device,
    struct vn_device *dev = vn_device_from_handle(device);
    VkResult result = VK_SUCCESS;
 
-   if (dev->instance->experimental.globalFencing == VK_FALSE) {
-      /* Fallback when VkVenusExperimentalFeatures100000MESA::globalFencing is
-       * VK_FALSE, out semaphore and fence are filled with already signaled
-       * payloads, and the native fence fd is waited inside until signaled.
-       */
-      if (nativeFenceFd >= 0) {
-         int ret = sync_wait(nativeFenceFd, -1);
-         /* Android loader expects the ICD to always close the fd */
-         close(nativeFenceFd);
-         if (ret)
-            return vn_error(dev->instance, VK_ERROR_SURFACE_LOST_KHR);
-      }
-
-      if (semaphore != VK_NULL_HANDLE)
-         vn_semaphore_signal_wsi(dev, vn_semaphore_from_handle(semaphore));
-
-      if (fence != VK_NULL_HANDLE)
-         vn_fence_signal_wsi(dev, vn_fence_from_handle(fence));
-
-      return VK_SUCCESS;
-   }
-
    int semaphore_fd = -1;
    int fence_fd = -1;
    if (nativeFenceFd >= 0) {
@@ -835,7 +813,6 @@ vn_QueueSignalReleaseImageANDROID(VkQueue _queue,
    struct vn_device *dev = queue->device;
    const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
    const bool has_sync_fd_fence_export =
-      dev->instance->experimental.globalFencing == VK_TRUE &&
       (dev->physical_device->renderer_sync_fd_fence_features &
        VK_EXTERNAL_FENCE_FEATURE_EXPORTABLE_BIT);
    VkDevice device = vn_device_to_handle(dev);

@@ -273,8 +273,7 @@ vn_queue_submission_prepare(struct vn_queue_submission *submit)
     * - explicit fencing: sync file export
     * - implicit fencing: dma-fence attached to the wsi bo
     *
-    * Under globalFencing, we enforce above via a synchronous submission if
-    * any of the below applies:
+    * We enforce above via a synchronous submission if seeing any of below:
     * - struct wsi_memory_signal_submit_info
     * - fence is an external fence
     * - has an external signal semaphore
@@ -1371,7 +1370,6 @@ vn_ImportFenceFdKHR(VkDevice device,
                                    VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT;
    const int fd = pImportFenceFdInfo->fd;
 
-   assert(dev->instance->experimental.globalFencing);
    assert(sync_file);
 
    if (!vn_sync_valid_fd(fd))
@@ -1399,7 +1397,6 @@ vn_GetFenceFdKHR(VkDevice device,
    struct vn_sync_payload *payload = fence->payload;
    VkResult result;
 
-   assert(dev->instance->experimental.globalFencing);
    assert(sync_file);
    assert(dev->physical_device->renderer_sync_fd_fence_features &
           VK_EXTERNAL_FENCE_FEATURE_EXPORTABLE_BIT);
@@ -1829,7 +1826,6 @@ vn_ImportSemaphoreFdKHR(
       VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
    const int fd = pImportSemaphoreFdInfo->fd;
 
-   assert(dev->instance->experimental.globalFencing);
    assert(sync_file);
 
    if (!vn_sync_valid_fd(fd))
@@ -1856,7 +1852,6 @@ vn_GetSemaphoreFdKHR(VkDevice device,
       pGetFdInfo->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
    struct vn_sync_payload *payload = sem->payload;
 
-   assert(dev->instance->experimental.globalFencing);
    assert(sync_file);
    assert((dev->physical_device->renderer_sync_fd_semaphore_features &
            VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT));
