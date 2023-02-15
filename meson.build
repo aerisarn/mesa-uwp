@@ -320,7 +320,9 @@ with_platform_windows = _platforms.contains('windows')
 
 with_glx = get_option('glx')
 if with_glx == 'auto'
-  if with_platform_android
+  if not with_opengl
+    with_glx = 'disabled'
+  elif with_platform_android
     with_glx = 'disabled'
   elif with_dri
     with_glx = 'dri'
@@ -343,6 +345,10 @@ if with_glx == 'dri'
    if with_gallium
       with_dri = true
    endif
+endif
+
+if not with_opengl and with_glx != 'disabled'
+  error('Building GLX without OpenGL is not supported.') \
 endif
 
 if not (with_dri or with_gallium or with_glx != 'disabled')
