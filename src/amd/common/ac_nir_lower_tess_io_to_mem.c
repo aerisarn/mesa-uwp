@@ -443,6 +443,19 @@ lower_hs_output_store(nir_builder *b,
    bool write_to_lds = (is_tess_factor && !st->tcs_pass_tessfactors_by_reg) ||
       tcs_output_needs_lds(intrin, b->shader);
 
+   /* Remember tess factor location so that we can load them from LDS and/or
+    * store them to VMEM when hs_emit_write_tess_factors().
+    */
+   if (is_tess_factor) {
+      unsigned mapped_location =
+         st->map_io ? st->map_io(semantics.location) : nir_intrinsic_base(intrin);
+
+      if (semantics.location == VARYING_SLOT_TESS_LEVEL_INNER)
+         st->tcs_tess_lvl_in_loc = mapped_location * 16u;
+      else
+         st->tcs_tess_lvl_out_loc = mapped_location * 16u;
+   }
+
    if (write_to_vmem) {
       nir_ssa_def *vmem_off = intrin->intrinsic == nir_intrinsic_store_per_vertex_output
                             ? hs_per_vertex_output_vmem_offset(b, st, intrin)
@@ -457,12 +470,6 @@ lower_hs_output_store(nir_builder *b,
    }
 
    if (write_to_lds) {
-      /* Remember driver location of tess factors, so we can read them later */
-      if (semantics.location == VARYING_SLOT_TESS_LEVEL_INNER)
-         st->tcs_tess_lvl_in_loc = nir_intrinsic_base(intrin) * 16u;
-      else if (semantics.location == VARYING_SLOT_TESS_LEVEL_OUTER)
-         st->tcs_tess_lvl_out_loc = nir_intrinsic_base(intrin) * 16u;
-
       nir_ssa_def *lds_off = hs_output_lds_offset(b, st, intrin);
       nir_store_shared(b, store_val, lds_off, .write_mask = write_mask,
                        .align_mul = 16u, .align_offset = (component * 4u) % 16u);
