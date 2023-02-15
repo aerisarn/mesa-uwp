@@ -511,11 +511,12 @@ tex_key_equals(const void *_a, const void *_b)
    return memcmp(a, b, sizeof(struct fd6_texture_key)) == 0;
 }
 
-static void
-build_texture_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
-                    enum pipe_shader_type type, struct fd_texture_stateobj *tex)
+static struct fd_ringbuffer *
+build_texture_state(struct fd_context *ctx, enum pipe_shader_type type,
+                    struct fd_texture_stateobj *tex)
    assert_dt
 {
+   struct fd_ringbuffer *ring = fd_ringbuffer_new_object(ctx->pipe, 32 * 4);
    unsigned opcode, tex_samp_reg, tex_const_reg, tex_count_reg;
    enum a6xx_state_block sb;
 
@@ -663,6 +664,8 @@ build_texture_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
    OUT_PKT4(ring, tex_count_reg, 1);
    OUT_RING(ring, num_textures);
+
+   return ring;
 }
 
 /**
@@ -752,9 +755,7 @@ fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type)
    }
 
    state->key = key;
-   state->stateobj = fd_ringbuffer_new_object(ctx->pipe, 32 * 4);
-
-   build_texture_state(ctx, state->stateobj, type, tex);
+   state->stateobj = build_texture_state(ctx, type, tex);
 
    /* NOTE: uses copy of key in state obj, because pointer passed by caller
     * is probably on the stack
