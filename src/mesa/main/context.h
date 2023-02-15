@@ -247,12 +247,30 @@ do {									\
 
 
 /**
+ * Checks if the context is for Desktop GL Compatibility
+ */
+static inline bool
+_mesa_is_desktop_gl_compat(const struct gl_context *ctx)
+{
+   return ctx->API == API_OPENGL_COMPAT;
+}
+
+/**
+ * Checks if the context is for Desktop GL Core
+ */
+static inline bool
+_mesa_is_desktop_gl_core(const struct gl_context *ctx)
+{
+   return ctx->API == API_OPENGL_CORE;
+}
+
+/**
  * Checks if the context is for Desktop GL (Compatibility or Core)
  */
 static inline bool
 _mesa_is_desktop_gl(const struct gl_context *ctx)
 {
-   return ctx->API == API_OPENGL_COMPAT || ctx->API == API_OPENGL_CORE;
+   return _mesa_is_desktop_gl_compat(ctx) || _mesa_is_desktop_gl_core(ctx);
 }
 
 
