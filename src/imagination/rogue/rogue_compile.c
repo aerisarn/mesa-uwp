@@ -357,8 +357,6 @@ trans_nir_intrinsic_load_vulkan_descriptor(rogue_builder *b,
             flat_desc_idx = pipeline_layout->set_layout[desc_set]
                                ->bindings[u]
                                .descriptor_index;
-            assert(pipeline_layout->set_layout[desc_set]->bindings[u].type ==
-                   desc_type);
             break;
          }
       }
@@ -610,6 +608,28 @@ static void trans_nir_alu(rogue_builder *b, nir_alu_instr *alu)
    }
 
    unreachable("Unimplemented NIR ALU instruction.");
+}
+
+PUBLIC
+unsigned rogue_count_used_regs(const rogue_shader *shader,
+                               enum rogue_reg_class class)
+{
+   unsigned reg_count;
+   if (rogue_reg_infos[class].num) {
+      reg_count = __bitset_count(shader->regs_used[class],
+                                 BITSET_WORDS(rogue_reg_infos[class].num));
+   } else {
+      reg_count = list_length(&shader->regs[class]);
+   }
+
+#ifndef NDEBUG
+   /* Check that registers are contiguous. */
+   rogue_foreach_reg (reg, shader, class) {
+      assert(reg->index < reg_count);
+   }
+#endif /* NDEBUG */
+
+   return reg_count;
 }
 
 static inline void rogue_feedback_used_regs(rogue_build_ctx *ctx,

@@ -116,6 +116,9 @@ static inline enum reg_bank rogue_reg_bank_encoding(enum rogue_reg_class class)
    }
 }
 
+/* TODO: Do this dynamically by iterating
+ * through regarrays and matching sizes.
+ */
 enum rogue_regalloc_class {
    ROGUE_REGALLOC_CLASS_TEMP_1,
    ROGUE_REGALLOC_CLASS_TEMP_2,
@@ -2888,6 +2891,9 @@ rogue_build_context_create(rogue_compiler *compiler,
                            struct pvr_pipeline_layout *pipeline_layout);
 
 void rogue_collect_io_data(rogue_build_ctx *ctx, nir_shader *nir);
+
+unsigned rogue_count_used_regs(const rogue_shader *shader,
+                               enum rogue_reg_class class);
 
 unsigned rogue_coeff_index_fs(rogue_iterator_args *args,
                               gl_varying_slot location,
