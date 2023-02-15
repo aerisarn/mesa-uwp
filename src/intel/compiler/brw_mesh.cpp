@@ -1199,7 +1199,10 @@ emit_urb_indirect_vec4_write(const fs_builder &bld,
    for (unsigned q = 0; q < bld.dispatch_width() / 8; q++) {
       fs_builder bld8 = bld.group(8, q);
 
-      fs_reg off = bld8.vgrf(BRW_REGISTER_TYPE_UD, 1);
+      /* offset is always positive, so signedness doesn't matter */
+      assert(offset_src.type == BRW_REGISTER_TYPE_D ||
+             offset_src.type == BRW_REGISTER_TYPE_UD);
+      fs_reg off = bld8.vgrf(offset_src.type, 1);
       bld8.MOV(off, quarter(offset_src, q));
       bld8.ADD(off, off, brw_imm_ud(base));
       bld8.SHR(off, off, brw_imm_ud(2));
@@ -1276,7 +1279,10 @@ emit_urb_indirect_writes(const fs_builder &bld, nir_intrinsic_instr *instr,
       for (unsigned q = 0; q < bld.dispatch_width() / 8; q++) {
          fs_builder bld8 = bld.group(8, q);
 
-         fs_reg off = bld8.vgrf(BRW_REGISTER_TYPE_UD, 1);
+         /* offset is always positive, so signedness doesn't matter */
+         assert(offset_src.type == BRW_REGISTER_TYPE_D ||
+                offset_src.type == BRW_REGISTER_TYPE_UD);
+         fs_reg off = bld8.vgrf(offset_src.type, 1);
          bld8.MOV(off, quarter(offset_src, q));
          bld8.ADD(off, off, brw_imm_ud(c + base_in_dwords));
 
@@ -1381,7 +1387,10 @@ emit_urb_indirect_reads(const fs_builder &bld, nir_intrinsic_instr *instr,
       for (unsigned q = 0; q < bld.dispatch_width() / 8; q++) {
          fs_builder bld8 = bld.group(8, q);
 
-         fs_reg off = bld8.vgrf(BRW_REGISTER_TYPE_UD, 1);
+         /* offset is always positive, so signedness doesn't matter */
+         assert(offset_src.type == BRW_REGISTER_TYPE_D ||
+                offset_src.type == BRW_REGISTER_TYPE_UD);
+         fs_reg off = bld8.vgrf(offset_src.type, 1);
          bld8.MOV(off, quarter(offset_src, q));
          bld8.ADD(off, off, brw_imm_ud(base_in_dwords + c));
 
