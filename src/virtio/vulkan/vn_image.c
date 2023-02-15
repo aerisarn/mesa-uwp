@@ -295,22 +295,38 @@ vn_CreateImage(VkDevice device,
    struct vn_image *img;
    VkResult result;
 
-   const struct wsi_image_create_info *wsi_info =
-      vk_find_struct_const(pCreateInfo->pNext, WSI_IMAGE_CREATE_INFO_MESA);
-   const VkNativeBufferANDROID *anb_info =
-      vk_find_struct_const(pCreateInfo->pNext, NATIVE_BUFFER_ANDROID);
-   const VkExternalMemoryImageCreateInfo *external_info =
-      vk_find_struct_const(pCreateInfo->pNext,
-                           EXTERNAL_MEMORY_IMAGE_CREATE_INFO);
-   const bool ahb_info =
-      external_info &&
-      external_info->handleTypes ==
-         VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
+   const struct wsi_image_create_info *wsi_info = NULL;
+   const VkNativeBufferANDROID *anb_info = NULL;
+   const VkImageSwapchainCreateInfoKHR *swapchain_info = NULL;
+   const VkExternalMemoryImageCreateInfo *external_info = NULL;
+   bool ahb_info = false;
 
-   const VkImageSwapchainCreateInfoKHR *swapchain_info = vk_find_struct_const(
-      pCreateInfo->pNext, IMAGE_SWAPCHAIN_CREATE_INFO_KHR);
-   if (swapchain_info && !swapchain_info->swapchain)
-      swapchain_info = NULL;
+   vk_foreach_struct_const(pnext, pCreateInfo->pNext) {
+      switch ((uint32_t)pnext->sType) {
+      case VK_STRUCTURE_TYPE_WSI_IMAGE_CREATE_INFO_MESA:
+         wsi_info = (void *)pnext;
+         break;
+      case VK_STRUCTURE_TYPE_NATIVE_BUFFER_ANDROID:
+         anb_info = (void *)pnext;
+         break;
+      case VK_STRUCTURE_TYPE_IMAGE_SWAPCHAIN_CREATE_INFO_KHR:
+         swapchain_info = (void *)pnext;
+         if (!swapchain_info->swapchain)
+            swapchain_info = NULL;
+         break;
+      case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO:
+         external_info = (void *)pnext;
+         if (!external_info->handleTypes)
+            external_info = NULL;
+         else if (
+            external_info->handleTypes ==
+            VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID)
+            ahb_info = true;
+         break;
+      default:
+         break;
+      }
+   }
 
    if (wsi_info) {
       result = vn_wsi_create_image(dev, pCreateInfo, wsi_info, alloc, &img);
