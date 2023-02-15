@@ -204,21 +204,17 @@ agx_emit_collect_to(agx_builder *b, agx_index dst, unsigned nr_srcs,
 }
 
 static agx_index
-agx_vec4(agx_builder *b, agx_index s0, agx_index s1, agx_index s2, agx_index s3)
+agx_emit_collect(agx_builder *b, unsigned nr_srcs, agx_index *srcs)
 {
-   agx_index dst = agx_temp(b->shader, s0.size);
-   agx_index idx[4] = {s0, s1, s2, s3};
-   agx_emit_collect_to(b, dst, 4, idx);
+   agx_index dst = agx_temp(b->shader, srcs[0].size);
+   agx_emit_collect_to(b, dst, nr_srcs, srcs);
    return dst;
 }
 
 static agx_index
 agx_vec2(agx_builder *b, agx_index s0, agx_index s1)
 {
-   agx_index dst = agx_temp(b->shader, s0.size);
-   agx_index idx[2] = {s0, s1};
-   agx_emit_collect_to(b, dst, 2, idx);
-   return dst;
+   return agx_emit_collect(b, 2, (agx_index[]){s0, s1});
 }
 
 /*
