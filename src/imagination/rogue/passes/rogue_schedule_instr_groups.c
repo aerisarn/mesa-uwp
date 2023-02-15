@@ -561,6 +561,21 @@ static void rogue_calc_alu_instrs_size(rogue_instr_group *group,
 #undef DM
 #undef SM
 
+#define OM(op_mod) BITFIELD64_BIT(ROGUE_BACKEND_OP_MOD_##op_mod)
+static bool rogue_backend_cachemode_is_set(const rogue_backend_instr *backend)
+{
+   return !!(backend->mod & (OM(BYPASS) | OM(FORCELINEFILL) | OM(WRITETHROUGH) |
+                             OM(WRITEBACK) | OM(LAZYWRITEBACK)));
+}
+
+static bool
+rogue_backend_slccachemode_is_set(const rogue_backend_instr *backend)
+{
+   return !!(backend->mod & (OM(SLCBYPASS) | OM(SLCWRITEBACK) |
+                             OM(SLCWRITETHROUGH) | OM(SLCNOALLOC)));
+}
+#undef OM
+
 #define OM(op_mod) ROGUE_BACKEND_OP_MOD_##op_mod
 static void rogue_calc_backend_instrs_size(rogue_instr_group *group,
                                            rogue_backend_instr *backend,
@@ -586,9 +601,20 @@ static void rogue_calc_backend_instrs_size(rogue_instr_group *group,
    case ROGUE_BACKEND_OP_LD:
       group->size.instrs[phase] = 2;
 
-      /* TODO: or, if slccachemode is being overridden */
-      if (rogue_ref_is_val(&backend->src[1].ref))
+      if (rogue_ref_is_val(&backend->src[1].ref) ||
+          rogue_backend_slccachemode_is_set(backend)) {
          group->size.instrs[phase] = 3;
+      }
+      break;
+
+   case ROGUE_BACKEND_OP_ST:
+      group->size.instrs[phase] = 3;
+
+      if (rogue_backend_op_mod_is_set(backend, OM(TILED)) ||
+          rogue_backend_slccachemode_is_set(backend) ||
+          !rogue_ref_is_io_none(&backend->src[5].ref)) {
+         group->size.instrs[phase] = 4;
+      }
       break;
 
    case ROGUE_BACKEND_OP_SMP1D:
@@ -599,17 +625,10 @@ static void rogue_calc_backend_instrs_size(rogue_instr_group *group,
       if (rogue_backend_op_mod_is_set(backend, OM(ARRAY))) {
          group->size.instrs[phase] = 5;
       } else if (rogue_backend_op_mod_is_set(backend, OM(WRT)) ||
-                 rogue_backend_op_mod_is_set(backend, OM(BYPASS)) ||
-                 rogue_backend_op_mod_is_set(backend, OM(FORCELINEFILL)) ||
-                 rogue_backend_op_mod_is_set(backend, OM(WRITETHROUGH)) ||
-                 rogue_backend_op_mod_is_set(backend, OM(WRITEBACK)) ||
-                 rogue_backend_op_mod_is_set(backend, OM(LAZYWRITEBACK)) ||
                  rogue_backend_op_mod_is_set(backend, OM(SCHEDSWAP)) ||
                  rogue_backend_op_mod_is_set(backend, OM(F16)) ||
-                 rogue_backend_op_mod_is_set(backend, OM(SLCBYPASS)) ||
-                 rogue_backend_op_mod_is_set(backend, OM(SLCWRITEBACK)) ||
-                 rogue_backend_op_mod_is_set(backend, OM(SLCWRITETHROUGH)) ||
-                 rogue_backend_op_mod_is_set(backend, OM(SLCNOALLOC))) {
+                 rogue_backend_cachemode_is_set(backend) ||
+                 rogue_backend_slccachemode_is_set(backend)) {
          group->size.instrs[phase] = 4;
       } else if (rogue_backend_op_mod_is_set(backend, OM(TAO)) ||
                  rogue_backend_op_mod_is_set(backend, OM(SOO)) ||

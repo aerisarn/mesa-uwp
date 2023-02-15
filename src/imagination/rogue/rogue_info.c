@@ -272,6 +272,7 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
    /* .src[1] and .src[2] can actually be S0-5. */
    [ROGUE_BACKEND_OP_LD] = { .str = "ld", .num_dsts = 1, .num_srcs = 3,
       .phase_io = { .dst[0] = IO(S3), .src[2] = IO(S0), },
+      .supported_op_mods = OM(BYPASS) | OM(FORCELINEFILL) | OM(SLCBYPASS) | OM(SLCNOALLOC),
       .supported_dst_types = { [0] = T(REG) | T(REGARRAY), },
       .supported_src_types = {
          [0] = T(DRC),
@@ -283,6 +284,23 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
       },
       .src_stride = {
          [2] = 1,
+      },
+   },
+   /* .src[0] and .src[3] can actually be S0-5. */
+   [ROGUE_BACKEND_OP_ST] = { .str = "st", .num_srcs = 6,
+      .phase_io = { .src[0] = IO(S3), .src[3] = IO(S0), },
+      .supported_op_mods = OM(TILED) | OM(WRITETHROUGH) | OM(WRITEBACK) | OM(LAZYWRITEBACK) |
+         OM(SLCBYPASS) | OM(SLCWRITEBACK) | OM(SLCWRITETHROUGH) | OM(SLCNOALLOC),
+      .supported_src_types = {
+         [0] = T(REG) | T(REGARRAY),
+         [1] = T(VAL),
+         [2] = T(DRC),
+         [3] = T(VAL),
+         [4] = T(REGARRAY),
+         [5] = T(IO),
+      },
+      .src_stride = {
+         [4] = 1,
       },
    },
 	[ROGUE_BACKEND_OP_FITR_PIXEL] = { .str = "fitr.pixel", .num_dsts = 1, .num_srcs = 3,
@@ -419,6 +437,7 @@ const rogue_backend_op_mod_info rogue_backend_op_mod_infos[ROGUE_BACKEND_OP_MOD_
    [ROGUE_BACKEND_OP_MOD_DATA]  = { .str = "data", .exclude = OM(INFO) | OM(BOTH) },
    [ROGUE_BACKEND_OP_MOD_INFO]  = { .str = "info", .exclude = OM(DATA) | OM(BOTH) },
    [ROGUE_BACKEND_OP_MOD_BOTH]  = { .str = "both", .exclude = OM(DATA) | OM(INFO) },
+   [ROGUE_BACKEND_OP_MOD_TILED] = { .str = "tiled", },
    [ROGUE_BACKEND_OP_MOD_BYPASS]  = { .str = "bypass", .exclude = OM(FORCELINEFILL) | OM(WRITETHROUGH) | OM(WRITEBACK) | OM(LAZYWRITEBACK) },
    [ROGUE_BACKEND_OP_MOD_FORCELINEFILL]  = { .str = "forcelinefill", .exclude = OM(BYPASS) | OM(WRITETHROUGH) | OM(WRITEBACK) | OM(LAZYWRITEBACK) },
    [ROGUE_BACKEND_OP_MOD_WRITETHROUGH]  = { .str = "writethrough", .exclude = OM(BYPASS) | OM(FORCELINEFILL) | OM(WRITEBACK) | OM(LAZYWRITEBACK) },

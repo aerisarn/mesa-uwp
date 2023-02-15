@@ -294,6 +294,39 @@ static void rogue_encode_alu_instr(const rogue_alu_instr *alu,
 #undef SM
 
 #define OM(op_mod) ROGUE_BACKEND_OP_MOD_##op_mod
+static unsigned rogue_backend_get_cachemode(const rogue_backend_instr *backend)
+{
+   if (rogue_backend_op_mod_is_set(backend, OM(BYPASS)))
+      return CACHEMODE_LD_BYPASS;
+   else if (rogue_backend_op_mod_is_set(backend, OM(FORCELINEFILL)))
+      return CACHEMODE_LD_FORCE_LINE_FILL;
+   else if (rogue_backend_op_mod_is_set(backend, OM(WRITETHROUGH)))
+      return CACHEMODE_ST_WRITE_THROUGH;
+   else if (rogue_backend_op_mod_is_set(backend, OM(WRITEBACK)))
+      return CACHEMODE_ST_WRITE_BACK;
+   else if (rogue_backend_op_mod_is_set(backend, OM(LAZYWRITEBACK)))
+      return CACHEMODE_ST_WRITE_BACK_LAZY;
+
+   /* Default cache mode. */
+   return CACHEMODE_LD_NORMAL; /* == CACHEMODE_ST_WRITE_THROUGH */
+}
+
+static unsigned
+rogue_backend_get_slccachemode(const rogue_backend_instr *backend)
+{
+   if (rogue_backend_op_mod_is_set(backend, OM(SLCBYPASS)))
+      return SLCCACHEMODE_BYPASS;
+   else if (rogue_backend_op_mod_is_set(backend, OM(SLCWRITEBACK)))
+      return SLCCACHEMODE_WRITE_BACK;
+   else if (rogue_backend_op_mod_is_set(backend, OM(SLCWRITETHROUGH)))
+      return SLCCACHEMODE_WRITE_THROUGH;
+   else if (rogue_backend_op_mod_is_set(backend, OM(SLCNOALLOC)))
+      return SLCCACHEMODE_CACHED_READS;
+
+   /* Default SLC cache mode. */
+   return SLCCACHEMODE_BYPASS;
+}
+
 static void rogue_encode_backend_instr(const rogue_backend_instr *backend,
                                        unsigned instr_size,
                                        rogue_instr_encoding *instr_encoding)
@@ -359,13 +392,10 @@ static void rogue_encode_backend_instr(const rogue_backend_instr *backend,
       instr_encoding->backend.dma.dmaop = DMAOP_LD;
       instr_encoding->backend.dma.ld.drc =
          rogue_ref_get_drc_index(&backend->src[0].ref);
-      instr_encoding->backend.dma.ld.cachemode = CACHEMODE_LD_NORMAL;
-      instr_encoding->backend.dma.ld.srcseladd =
-         rogue_ref_get_io_src_index(&backend->src[2].ref);
+      instr_encoding->backend.dma.ld.cachemode =
+         rogue_backend_get_cachemode(backend);
 
       bool imm_burstlen = rogue_ref_is_val(&backend->src[1].ref);
-      /* Only supporting immediate burst lengths for now. */
-      assert(imm_burstlen);
 
       rogue_burstlen burstlen = {
          ._ = imm_burstlen ? rogue_ref_get_val(&backend->src[1].ref) : 0
@@ -378,13 +408,60 @@ static void rogue_encode_backend_instr(const rogue_backend_instr *backend,
             rogue_ref_get_io_src_index(&backend->src[1].ref);
       }
 
+      instr_encoding->backend.dma.ld.srcseladd =
+         rogue_ref_get_io_src_index(&backend->src[2].ref);
+
       if (instr_size == 3) {
          instr_encoding->backend.dma.ld.ext = 1;
-         instr_encoding->backend.dma.ld.slccachemode = SLCCACHEMODE_BYPASS;
-         instr_encoding->backend.dma.ld.notimmbl = !imm_burstlen;
-
          if (imm_burstlen)
             instr_encoding->backend.dma.ld.burstlen_3 = burstlen._3;
+
+         instr_encoding->backend.dma.ld.slccachemode =
+            rogue_backend_get_slccachemode(backend);
+         instr_encoding->backend.dma.ld.notimmbl = !imm_burstlen;
+      }
+
+      break;
+   }
+
+   case ROGUE_BACKEND_OP_ST: {
+      instr_encoding->backend.op = BACKENDOP_DMA;
+      instr_encoding->backend.dma.dmaop = DMAOP_ST;
+      instr_encoding->backend.dma.st.drc =
+         rogue_ref_get_drc_index(&backend->src[1].ref);
+
+      bool imm_burstlen = rogue_ref_is_val(&backend->src[3].ref);
+
+      instr_encoding->backend.dma.st.immbl = imm_burstlen;
+
+      if (imm_burstlen) {
+         rogue_burstlen burstlen = { ._ = rogue_ref_get_val(
+                                        &backend->src[3].ref) };
+         instr_encoding->backend.dma.st.burstlen_2_0 = burstlen._2_0;
+         instr_encoding->backend.dma.st.burstlen_3 = burstlen._3;
+      } else {
+         instr_encoding->backend.dma.st.srcselbl =
+            rogue_ref_get_io_src_index(&backend->src[3].ref);
+      }
+
+      instr_encoding->backend.dma.st.cachemode =
+         rogue_backend_get_cachemode(backend);
+      instr_encoding->backend.dma.st.srcseladd =
+         rogue_ref_get_io_src_index(&backend->src[4].ref);
+
+      instr_encoding->backend.dma.st.dsize =
+         rogue_ref_get_val(&backend->src[1].ref);
+      instr_encoding->backend.dma.st.srcseldata =
+         rogue_ref_get_io_src_index(&backend->src[0].ref);
+
+      if (instr_size == 4) {
+         instr_encoding->backend.dma.st.ext = 1;
+         instr_encoding->backend.dma.st.srcmask =
+            rogue_ref_get_io_src_index(&backend->src[5].ref);
+         instr_encoding->backend.dma.st.slccachemode =
+            rogue_backend_get_slccachemode(backend);
+         instr_encoding->backend.dma.st.nottiled =
+            !rogue_backend_op_mod_is_set(backend, OM(TILED));
       }
 
       break;
@@ -481,41 +558,16 @@ static void rogue_encode_backend_instr(const rogue_backend_instr *backend,
          instr_encoding->backend.dma.smp.w =
             rogue_backend_op_mod_is_set(backend, OM(WRT));
 
-         if (rogue_backend_op_mod_is_set(backend, OM(BYPASS))) {
-            instr_encoding->backend.dma.smp.cachemode = CACHEMODE_LD_BYPASS;
-         } else if (rogue_backend_op_mod_is_set(backend, OM(FORCELINEFILL))) {
-            instr_encoding->backend.dma.smp.cachemode =
-               CACHEMODE_LD_FORCE_LINE_FILL;
-         } else if (rogue_backend_op_mod_is_set(backend, OM(WRITETHROUGH))) {
-            instr_encoding->backend.dma.smp.cachemode =
-               CACHEMODE_ST_WRITE_THROUGH;
-         } else if (rogue_backend_op_mod_is_set(backend, OM(WRITEBACK))) {
-            instr_encoding->backend.dma.smp.cachemode = CACHEMODE_ST_WRITE_BACK;
-         } else if (rogue_backend_op_mod_is_set(backend, OM(LAZYWRITEBACK))) {
-            instr_encoding->backend.dma.smp.cachemode =
-               CACHEMODE_ST_WRITE_BACK_LAZY;
-         } else {
-            instr_encoding->backend.dma.smp.cachemode =
-               CACHEMODE_LD_NORMAL; /* == CACHEMODE_ST_WRITE_THROUGH */
-         }
+         instr_encoding->backend.dma.smp.cachemode =
+            rogue_backend_get_cachemode(backend);
 
          instr_encoding->backend.dma.smp.swap =
             rogue_backend_op_mod_is_set(backend, OM(SCHEDSWAP));
          instr_encoding->backend.dma.smp.f16 =
             rogue_backend_op_mod_is_set(backend, OM(F16));
 
-         if (rogue_backend_op_mod_is_set(backend, OM(SLCWRITEBACK))) {
-            instr_encoding->backend.dma.smp.slccachemode =
-               SLCCACHEMODE_WRITE_BACK;
-         } else if (rogue_backend_op_mod_is_set(backend, OM(SLCWRITETHROUGH))) {
-            instr_encoding->backend.dma.smp.slccachemode =
-               SLCCACHEMODE_WRITE_THROUGH;
-         } else if (rogue_backend_op_mod_is_set(backend, OM(SLCNOALLOC))) {
-            instr_encoding->backend.dma.smp.slccachemode =
-               SLCCACHEMODE_CACHED_READS;
-         } else {
-            instr_encoding->backend.dma.smp.slccachemode = SLCCACHEMODE_BYPASS;
-         }
+         instr_encoding->backend.dma.smp.slccachemode =
+            rogue_backend_get_slccachemode(backend);
       }
 
       if (instr_size > 4) {

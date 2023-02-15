@@ -832,6 +832,56 @@ enum cachemode_ld {
    CACHEMODE_LD_FORCE_LINE_FILL = 0b10,
 };
 
+typedef struct rogue_backend_dma_st_encoding {
+   /* Byte 0 */
+   struct {
+      unsigned : 3;
+      unsigned drc : 1;
+      unsigned immbl : 1;
+      unsigned : 3;
+   } PACKED;
+
+   /* Byte 1 */
+   union {
+      struct {
+         unsigned cachemode : 2;
+         unsigned burstlen_2_0 : 3;
+         unsigned srcseladd : 3;
+      } PACKED;
+
+      struct {
+         unsigned : 2;
+         unsigned srcselbl : 3;
+         unsigned : 3;
+      } PACKED;
+   } PACKED;
+
+   /* Byte 2 */
+   struct {
+      unsigned burstlen_3 : 1;
+      unsigned : 1;
+      unsigned dsize : 2;
+      unsigned srcseldata : 3;
+      unsigned ext : 1;
+   } PACKED;
+
+   /* Byte 3 */
+   struct {
+      unsigned srcmask : 3;
+      unsigned slccachemode : 2;
+      unsigned nottiled : 1; /* N.B. default is 1 if ext = 0. */
+      unsigned : 2;
+   } PACKED;
+} PACKED rogue_backend_dma_st_encoding;
+static_assert(sizeof(rogue_backend_dma_st_encoding) == 4,
+              "sizeof(rogue_backend_dma_st_encoding) != 4");
+
+enum dsize {
+   DSIZE_8 = 0b00,
+   DSIZE_16 = 0b01,
+   DSIZE_BURSTLEN = 0b10,
+};
+
 enum cachemode_st {
    CACHEMODE_ST_WRITE_THROUGH = 0b00,
    CACHEMODE_ST_WRITE_BACK = 0b01,
@@ -953,6 +1003,7 @@ typedef struct rogue_backend_dma_encoding {
       rogue_backend_dma_smp_encoding smp;
       rogue_backend_dma_idf_encoding idf;
       rogue_backend_dma_ld_encoding ld;
+      rogue_backend_dma_st_encoding st;
    } PACKED;
 } PACKED rogue_backend_dma_encoding;
 static_assert(sizeof(rogue_backend_dma_encoding) == 5,

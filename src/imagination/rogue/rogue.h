@@ -1348,6 +1348,7 @@ enum rogue_backend_op {
    ROGUE_BACKEND_OP_EMITPIX,
 
    ROGUE_BACKEND_OP_LD,
+   ROGUE_BACKEND_OP_ST,
 
    ROGUE_BACKEND_OP_FITR_PIXEL,
    /* ROGUE_BACKEND_OP_SAMPLE, */
@@ -1416,6 +1417,8 @@ enum rogue_backend_op_mod {
    ROGUE_BACKEND_OP_MOD_DATA, /* Sample bypass mode: data. */
    ROGUE_BACKEND_OP_MOD_INFO, /* Sample bypass mode: info. */
    ROGUE_BACKEND_OP_MOD_BOTH, /* Sample bypass mode: both. */
+
+   ROGUE_BACKEND_OP_MOD_TILED, /* Tiled LD/ST. */
 
    ROGUE_BACKEND_OP_MOD_BYPASS, /* MCU cache mode (read): bypass. */
    ROGUE_BACKEND_OP_MOD_FORCELINEFILL, /* MCU cache mode (read): force line
