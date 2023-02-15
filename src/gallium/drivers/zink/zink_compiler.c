@@ -4226,10 +4226,23 @@ static bool
 fixup_io_locations(nir_shader *nir)
 {
    nir_variable_mode mode = nir->info.stage == MESA_SHADER_FRAGMENT ? nir_var_shader_in : nir_var_shader_out;
-   nir_foreach_variable_with_modes(var, nir, mode) {
-      if (nir_slot_is_varying(var->data.location))
-         /* these locations should always be consistent between stages...hopefully */
-         var->data.driver_location = var->data.location - VARYING_SLOT_VAR0;
+   /* i/o interface blocks are required to be EXACT matches between stages:
+    * iterate over all locations and set locations incrementally
+    */
+   unsigned slot = 0;
+   for (unsigned i = 0; i < VARYING_SLOT_MAX; i++) {
+      if (nir_slot_is_sysval_output(i))
+         continue;
+      nir_variable *var = nir_find_variable_with_location(nir, mode, i);
+      if (!var)
+         continue;
+      unsigned size;
+      /* ensure variable is given enough slots */
+      if (nir_is_arrayed_io(var, nir->info.stage))
+         size = glsl_count_vec4_slots(glsl_get_array_element(var->type), false, false);
+      else
+         size = glsl_count_vec4_slots(var->type, false, false);
+      var->data.driver_location = slot += size;
    }
    return true;
 }
