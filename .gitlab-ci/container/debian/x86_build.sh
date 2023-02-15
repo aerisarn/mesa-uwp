@@ -92,7 +92,7 @@ ninja install
 popd
 rm -rf DirectX-Headers
 
-python3 -m pip install -r ${CI_PROJECT_DIR}/.gitlab-ci/lava/requirements.txt
+python3 -m pip install -r .gitlab-ci/lava/requirements.txt
 
 # install bindgen
 RUSTFLAGS='-L native=/usr/local/lib' cargo install \
