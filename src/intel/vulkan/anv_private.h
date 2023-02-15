@@ -1123,7 +1123,6 @@ struct anv_device {
     struct isl_device                           isl_dev;
     uint32_t                                    context_id;
     int                                         fd;
-    bool                                        robust_buffer_access;
 
     pthread_mutex_t                             vma_mutex;
     struct util_vma_heap                        vma_lo;
