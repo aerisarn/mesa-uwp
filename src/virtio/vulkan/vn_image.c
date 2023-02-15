@@ -157,12 +157,15 @@ vn_image_deferred_info_init(struct vn_image *img,
          memcpy(&info->stencil, src, sizeof(info->stencil));
          pnext = &info->stencil;
          break;
-      case VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID:
-         /* we should have translated the external format */
-         assert(create_info->format != VK_FORMAT_UNDEFINED);
-         info->from_external_format =
-            ((const VkExternalFormatANDROID *)src)->externalFormat;
-         break;
+      case VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID: {
+         const uint32_t drm_format =
+            (uint32_t)((const VkExternalFormatANDROID *)src)->externalFormat;
+         if (drm_format) {
+            info->create.format =
+               vn_android_drm_format_to_vk_format(drm_format);
+            info->from_external_format = true;
+         }
+      } break;
       default:
          break;
       }
@@ -252,7 +255,7 @@ vn_image_init_deferred(struct vn_device *dev,
    return result;
 }
 
-VkResult
+static VkResult
 vn_image_create_deferred(struct vn_device *dev,
                          const VkImageCreateInfo *create_info,
                          const VkAllocationCallbacks *alloc,
@@ -334,7 +337,7 @@ vn_CreateImage(VkDevice device,
       result =
          vn_android_image_from_anb(dev, pCreateInfo, anb_info, alloc, &img);
    } else if (ahb_info) {
-      result = vn_android_image_from_ahb(dev, pCreateInfo, alloc, &img);
+      result = vn_image_create_deferred(dev, pCreateInfo, alloc, &img);
    } else if (swapchain_info) {
       result = vn_wsi_create_image_from_swapchain(
          dev, pCreateInfo, swapchain_info, alloc, &img);
