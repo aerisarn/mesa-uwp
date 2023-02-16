@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "tu_drm.h"
+#include "tu_knl.h"
 
 #include <errno.h>
 #include <fcntl.h>

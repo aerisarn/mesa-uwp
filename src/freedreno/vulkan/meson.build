@@ -70,9 +70,9 @@ if with_freedreno_kgsl
   tu_flags += '-DTU_USE_KGSL'
   # Even if libdrm is available we shouldn't use it in KGSL build
   tu_flags += '-UHAVE_LIBDRM'
-  libtu_files += files('tu_kgsl.c')
+  libtu_files += files('tu_knl_kgsl.c')
 else
-  libtu_files += files('tu_drm.c')
+  libtu_files += files('tu_knl_drm_msm.c')
   tu_deps += dep_libdrm
 endif
 
