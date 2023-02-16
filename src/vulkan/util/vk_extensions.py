@@ -10,11 +10,10 @@ def _bool_to_c_expr(b):
     return b
 
 class Extension:
-    def __init__(self, name, ext_version, enable, requires):
+    def __init__(self, name, ext_version, enable):
         self.name = name
         self.ext_version = int(ext_version)
         self.enable = _bool_to_c_expr(enable)
-        self.requires = requires.split(',') if requires else []
 
     def c_android_condition(self):
         # if it's an EXT or vendor extension, it's allowed
@@ -99,7 +98,6 @@ def get_all_exts_from_xml(xml):
         name = ext_elem.attrib['name']
         if not supported and name != 'VK_ANDROID_native_buffer':
             continue
-        requires = ext_elem.attrib.get('requires')
         version = None
         for enum_elem in ext_elem.findall('.require/enum'):
             if enum_elem.attrib['name'].endswith('_SPEC_VERSION'):
@@ -107,7 +105,7 @@ def get_all_exts_from_xml(xml):
                 if 'value' in enum_elem.attrib:
                     assert version is None
                     version = int(enum_elem.attrib['value'])
-        extensions.append(Extension(name, version, True, requires))
+        extensions.append(Extension(name, version, True))
 
     return sorted(extensions, key=extension_order)
 
@@ -132,7 +130,6 @@ def init_exts_from_xml(xml, extensions, platform_defines):
 
         ext = ext_name_map[ext_name]
         ext.type = ext_elem.attrib['type']
-        ext.requires = [ext_name_map[req] for req in ext.requires]
 
 # Mapping between extension name and the android version in which the extension
 # was whitelisted in Android CTS's dEQP-VK.info.device_extensions and
