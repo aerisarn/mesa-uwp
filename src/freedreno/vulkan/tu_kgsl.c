@@ -239,7 +239,7 @@ tu_enumerate_devices(struct vk_instance *vk_instance)
    fd = open(path, O_RDWR | O_CLOEXEC);
    if (fd < 0) {
       if (errno == ENOENT)
-         return VK_SUCCESS;
+         return VK_ERROR_INCOMPATIBLE_DRIVER;
 
       return vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                        "failed to open device %s", path);
