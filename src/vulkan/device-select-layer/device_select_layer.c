@@ -30,6 +30,7 @@
  */
 
 #include <vulkan/vk_layer.h>
+#include <vulkan/vulkan.h>
 
 #include <assert.h>
 #include <stdio.h>
