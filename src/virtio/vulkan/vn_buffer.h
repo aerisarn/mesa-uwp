@@ -32,6 +32,12 @@ struct vn_buffer_cache {
    /* lazily cache memory requirements for native buffer infos */
    struct util_sparse_array entries;
    simple_mtx_t mutex;
+
+   struct {
+      uint32_t cache_skip_count;
+      uint32_t cache_hit_count;
+      uint32_t cache_miss_count;
+   } debug;
 };
 
 struct vn_buffer {

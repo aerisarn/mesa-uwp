@@ -105,11 +105,23 @@ vn_buffer_cache_init(struct vn_device *dev)
    return VK_SUCCESS;
 }
 
+static void
+vn_buffer_cache_debug_dump(struct vn_buffer_cache *cache)
+{
+   vn_log(NULL, "dumping buffer cache statistics");
+   vn_log(NULL, "  cache hit: %d", cache->debug.cache_hit_count);
+   vn_log(NULL, "  cache miss: %d", cache->debug.cache_miss_count);
+   vn_log(NULL, "  cache skip: %d", cache->debug.cache_skip_count);
+}
+
 void
 vn_buffer_cache_fini(struct vn_device *dev)
 {
    util_sparse_array_finish(&dev->buffer_cache.entries);
    simple_mtx_destroy(&dev->buffer_cache.mutex);
+
+   if (VN_DEBUG(CACHE))
+      vn_buffer_cache_debug_dump(&dev->buffer_cache);
 }
 
 static struct vn_buffer_cache_entry *
@@ -146,10 +158,16 @@ vn_buffer_get_cached_memory_requirements(
           */
          out->memory.memoryRequirements.size = align64(
             create_info->size, out->memory.memoryRequirements.alignment);
+
+         p_atomic_inc(&cache->debug.cache_hit_count);
+      } else {
+         p_atomic_inc(&cache->debug.cache_miss_count);
       }
 
       return entry;
    }
+
+   p_atomic_inc(&cache->debug.cache_skip_count);
 
    return NULL;
 }
