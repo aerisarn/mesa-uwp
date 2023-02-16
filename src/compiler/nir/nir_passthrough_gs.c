@@ -22,7 +22,9 @@
  */
 
 #include "nir.h"
+#include "nir_xfb_info.h"
 #include "nir_builder.h"
+#include "util/u_memory.h"
 
 static unsigned int
 gs_in_prim_for_topology(enum shader_prim prim)
@@ -150,6 +152,12 @@ nir_create_passthrough_gs(const nir_shader_compiler_options *options,
    nir->info.gs.invocations = 1;
    nir->info.gs.active_stream_mask = 1;
 
+   nir->info.has_transform_feedback_varyings = prev_stage->info.has_transform_feedback_varyings;
+   memcpy(nir->info.xfb_stride, prev_stage->info.xfb_stride, sizeof(prev_stage->info.xfb_stride));
+   if (prev_stage->xfb_info) {
+      nir->xfb_info = mem_dup(prev_stage->xfb_info, sizeof(nir_xfb_info));
+   }
+
    nir_variable *in_vars[VARYING_SLOT_MAX];
    nir_variable *out_vars[VARYING_SLOT_MAX];
    unsigned num_inputs = 0, num_outputs = 0;
@@ -196,6 +204,12 @@ nir_create_passthrough_gs(const nir_shader_compiler_options *options,
       out->data.driver_location = var->data.driver_location;
       out->data.interpolation = var->data.interpolation;
       out->data.compact = var->data.compact;
+      out->data.is_xfb = var->data.is_xfb;
+      out->data.is_xfb_only = var->data.is_xfb_only;
+      out->data.explicit_xfb_buffer = var->data.explicit_xfb_buffer;
+      out->data.explicit_xfb_stride = var->data.explicit_xfb_stride;
+      out->data.xfb = var->data.xfb;
+      out->data.offset = var->data.offset;
 
       out_vars[num_outputs++] = out;
    }
