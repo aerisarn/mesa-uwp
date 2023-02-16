@@ -7,6 +7,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
@@ -25,6 +26,7 @@ struct tu_syncobj {
    uint32_t timestamp;
    bool timestamp_valid;
 };
+#define tu_syncobj_from_handle(x) ((struct tu_syncobj*) (uintptr_t) (x))
 
 static int
 safe_ioctl(int fd, unsigned long request, void *arg)
@@ -38,10 +40,10 @@ safe_ioctl(int fd, unsigned long request, void *arg)
    return ret;
 }
 
-int
-tu_drm_submitqueue_new(const struct tu_device *dev,
-                       int priority,
-                       uint32_t *queue_id)
+static int
+kgsl_submitqueue_new(const struct tu_device *dev,
+                     int priority,
+                     uint32_t *queue_id)
 {
    struct kgsl_drawctxt_create req = {
       .flags = KGSL_CONTEXT_SAVE_GMEM |
@@ -58,8 +60,8 @@ tu_drm_submitqueue_new(const struct tu_device *dev,
    return 0;
 }
 
-void
-tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id)
+static void
+kgsl_submitqueue_close(const struct tu_device *dev, uint32_t queue_id)
 {
    struct kgsl_drawctxt_destroy req = {
       .drawctxt_id = queue_id,
@@ -68,13 +70,13 @@ tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id)
    safe_ioctl(dev->physical_device->local_fd, IOCTL_KGSL_DRAWCTXT_DESTROY, &req);
 }
 
-VkResult
-tu_bo_init_new_explicit_iova(struct tu_device *dev,
-                             struct tu_bo **out_bo,
-                             uint64_t size,
-                             uint64_t client_iova,
-                             enum tu_bo_alloc_flags flags,
-                             const char *name)
+static VkResult
+kgsl_bo_init(struct tu_device *dev,
+             struct tu_bo **out_bo,
+             uint64_t size,
+             uint64_t client_iova,
+             enum tu_bo_alloc_flags flags,
+             const char *name)
 {
    assert(client_iova == 0);
 
@@ -110,11 +112,11 @@ tu_bo_init_new_explicit_iova(struct tu_device *dev,
    return VK_SUCCESS;
 }
 
-VkResult
-tu_bo_init_dmabuf(struct tu_device *dev,
-                  struct tu_bo **out_bo,
-                  uint64_t size,
-                  int fd)
+static VkResult
+kgsl_bo_init_dmabuf(struct tu_device *dev,
+                    struct tu_bo **out_bo,
+                    uint64_t size,
+                    int fd)
 {
    struct kgsl_gpuobj_import_dma_buf import_dmabuf = {
       .fd = fd,
@@ -159,16 +161,16 @@ tu_bo_init_dmabuf(struct tu_device *dev,
    return VK_SUCCESS;
 }
 
-int
-tu_bo_export_dmabuf(struct tu_device *dev, struct tu_bo *bo)
+static int
+kgsl_bo_export_dmabuf(struct tu_device *dev, struct tu_bo *bo)
 {
    tu_stub();
 
    return -1;
 }
 
-VkResult
-tu_bo_map(struct tu_device *dev, struct tu_bo *bo)
+static VkResult
+kgsl_bo_map(struct tu_device *dev, struct tu_bo *bo)
 {
    if (bo->map)
       return VK_SUCCESS;
@@ -184,13 +186,13 @@ tu_bo_map(struct tu_device *dev, struct tu_bo *bo)
    return VK_SUCCESS;
 }
 
-void
-tu_bo_allow_dump(struct tu_device *dev, struct tu_bo *bo)
+static void
+kgsl_bo_allow_dump(struct tu_device *dev, struct tu_bo *bo)
 {
 }
 
-void
-tu_bo_finish(struct tu_device *dev, struct tu_bo *bo)
+static void
+kgsl_bo_finish(struct tu_device *dev, struct tu_bo *bo)
 {
    assert(bo->gem_handle);
 
@@ -683,33 +685,31 @@ tu_GetFenceStatus(VkDevice _device, VkFence _fence)
    return VK_SUCCESS;
 }
 
-VkResult
-tu_device_wait_u_trace(struct tu_device *dev, struct tu_u_trace_syncobj *syncobj)
+static VkResult
+kgsl_device_wait_u_trace(struct tu_device *dev, struct tu_u_trace_syncobj *syncobj)
 {
    tu_finishme("tu_device_wait_u_trace");
    return VK_SUCCESS;
 }
 
-int
-tu_device_get_gpu_timestamp(struct tu_device *dev, uint64_t *ts)
+static int
+kgsl_device_get_gpu_timestamp(struct tu_device *dev, uint64_t *ts)
 {
    tu_finishme("tu_device_get_gpu_timestamp");
    return 0;
 }
 
-int
-tu_device_get_suspend_count(struct tu_device *dev, uint64_t *suspend_count)
+static int
+kgsl_device_get_suspend_count(struct tu_device *dev, uint64_t *suspend_count)
 {
    /* kgsl doesn't have a way to get it */
    *suspend_count = 0;
    return 0;
 }
 
-VkResult
-tu_device_check_status(struct vk_device *vk_device)
+static VkResult
+kgsl_device_check_status(struct tu_device *device)
 {
-   struct tu_device *device = container_of(vk_device, struct tu_device, vk);
-
    for (unsigned i = 0; i < TU_MAX_QUEUE_FAMILIES; i++) {
       for (unsigned q = 0; q < device->queue_count[i]; q++) {
          /* KGSL's KGSL_PROP_GPU_RESET_STAT takes the u32 msm_queue_id and returns a
@@ -757,6 +757,22 @@ tu_QueueSignalReleaseImageANDROID(VkQueue _queue,
 }
 #endif
 
+static const struct tu_knl kgsl_knl_funcs = {
+      .name = "kgsl",
+
+      .device_get_gpu_timestamp = kgsl_device_get_gpu_timestamp,
+      .device_get_suspend_count = kgsl_device_get_suspend_count,
+      .device_check_status = kgsl_device_check_status,
+      .submitqueue_new = kgsl_submitqueue_new,
+      .submitqueue_close = kgsl_submitqueue_close,
+      .bo_init = kgsl_bo_init,
+      .bo_init_dmabuf = kgsl_bo_init_dmabuf,
+      .bo_export_dmabuf = kgsl_bo_export_dmabuf,
+      .bo_map = kgsl_bo_map,
+      .bo_allow_dump = kgsl_bo_allow_dump,
+      .bo_finish = kgsl_bo_finish,
+      .device_wait_u_trace = kgsl_device_wait_u_trace,
+};
 
 VkResult
 tu_enumerate_devices(struct vk_instance *vk_instance)
@@ -819,6 +835,8 @@ tu_enumerate_devices(struct vk_instance *vk_instance)
    device->heap.size = tu_get_system_heap_size();
    device->heap.used = 0u;
    device->heap.flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+
+   instance->knl = &kgsl_knl_funcs;
 
    if (tu_physical_device_init(device, instance) != VK_SUCCESS)
       goto fail;

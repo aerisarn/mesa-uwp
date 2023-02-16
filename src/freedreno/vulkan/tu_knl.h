@@ -12,13 +12,6 @@
 
 #include "tu_common.h"
 
-/* Keep tu_syncobj until porting to common code for kgsl too */
-#ifdef TU_USE_KGSL
-struct tu_syncobj;
-/* for TU_FROM_HANDLE with both VkFence and VkSemaphore: */
-#define tu_syncobj_from_handle(x) ((struct tu_syncobj*) (uintptr_t) (x))
-#endif
-
 struct tu_u_trace_syncobj;
 
 enum tu_bo_alloc_flags
@@ -45,8 +38,7 @@ enum tu_timeline_sync_state {
    TU_TIMELINE_SYNC_STATE_SIGNALED,
 };
 
-struct tu_bo
-{
+struct tu_bo {
    uint32_t gem_handle;
    uint64_t size;
    uint64_t iova;
@@ -59,6 +51,28 @@ struct tu_bo
 #endif
 
    bool implicit_sync : 1;
+};
+
+struct tu_knl {
+   const char *name;
+
+   int (*device_get_gpu_timestamp)(struct tu_device *dev, uint64_t *ts);
+   int (*device_get_suspend_count)(struct tu_device *dev, uint64_t *suspend_count);
+   VkResult (*device_check_status)(struct tu_device *dev);
+   int (*submitqueue_new)(const struct tu_device *dev, int priority, uint32_t *queue_id);
+   void (*submitqueue_close)(const struct tu_device *dev, uint32_t queue_id);
+   VkResult (*bo_init)(struct tu_device *dev, struct tu_bo **out_bo, uint64_t size,
+                       uint64_t client_iova, enum tu_bo_alloc_flags flags, const char *name);
+   VkResult (*bo_init_dmabuf)(struct tu_device *dev, struct tu_bo **out_bo,
+                              uint64_t size, int prime_fd);
+   int (*bo_export_dmabuf)(struct tu_device *dev, struct tu_bo *bo);
+   VkResult (*bo_map)(struct tu_device *dev, struct tu_bo *bo);
+   void (*bo_allow_dump)(struct tu_device *dev, struct tu_bo *bo);
+   void (*bo_finish)(struct tu_device *dev, struct tu_bo *bo);
+   VkResult (*device_wait_u_trace)(struct tu_device *dev,
+                                   struct tu_u_trace_syncobj *syncobj);
+   VkResult (*queue_submit)(struct tu_queue *queue,
+                            struct vk_queue_submit *submit);
 };
 
 struct tu_timeline_sync {

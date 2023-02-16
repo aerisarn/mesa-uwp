@@ -24,6 +24,7 @@ libtu_files = files(
   'tu_dynamic_rendering.c',
   'tu_formats.c',
   'tu_image.c',
+  'tu_knl.c',
   'tu_lrz.c',
   'tu_nir_lower_multiview.c',
   'tu_pass.c',

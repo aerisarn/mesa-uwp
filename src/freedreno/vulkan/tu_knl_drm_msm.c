@@ -140,23 +140,22 @@ tu_drm_get_priorities(const struct tu_physical_device *dev)
    return val;
 }
 
-int
-tu_device_get_gpu_timestamp(struct tu_device *dev, uint64_t *ts)
+static int
+msm_device_get_gpu_timestamp(struct tu_device *dev, uint64_t *ts)
 {
    return tu_drm_get_param(dev->physical_device, MSM_PARAM_TIMESTAMP, ts);
 }
 
-int
-tu_device_get_suspend_count(struct tu_device *dev, uint64_t *suspend_count)
+static int
+msm_device_get_suspend_count(struct tu_device *dev, uint64_t *suspend_count)
 {
    int ret = tu_drm_get_param(dev->physical_device, MSM_PARAM_SUSPENDS, suspend_count);
    return ret;
 }
 
-VkResult
-tu_device_check_status(struct vk_device *vk_device)
+static VkResult
+msm_device_check_status(struct tu_device *device)
 {
-   struct tu_device *device = container_of(vk_device, struct tu_device, vk);
    struct tu_physical_device *physical_device = device->physical_device;
 
    uint64_t last_fault_count = physical_device->fault_count;
@@ -170,10 +169,10 @@ tu_device_check_status(struct vk_device *vk_device)
    return VK_SUCCESS;
 }
 
-int
-tu_drm_submitqueue_new(const struct tu_device *dev,
-                       int priority,
-                       uint32_t *queue_id)
+static int
+msm_submitqueue_new(const struct tu_device *dev,
+                    int priority,
+                    uint32_t *queue_id)
 {
    assert(priority >= 0 &&
           priority < dev->physical_device->submitqueue_priority_count);
@@ -191,8 +190,8 @@ tu_drm_submitqueue_new(const struct tu_device *dev,
    return 0;
 }
 
-void
-tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id)
+static void
+msm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id)
 {
    drmCommandWrite(dev->fd, DRM_MSM_SUBMITQUEUE_CLOSE,
                    &queue_id, sizeof(uint32_t));
@@ -392,13 +391,13 @@ tu_bo_set_kernel_name(struct tu_device *dev, struct tu_bo *bo, const char *name)
    }
 }
 
-VkResult
-tu_bo_init_new_explicit_iova(struct tu_device *dev,
-                             struct tu_bo **out_bo,
-                             uint64_t size,
-                             uint64_t client_iova,
-                             enum tu_bo_alloc_flags flags,
-                             const char *name)
+static VkResult
+msm_bo_init(struct tu_device *dev,
+            struct tu_bo **out_bo,
+            uint64_t size,
+            uint64_t client_iova,
+            enum tu_bo_alloc_flags flags,
+            const char *name)
 {
    /* TODO: Choose better flags. As of 2018-11-12, freedreno/drm/msm_bo.c
     * always sets `flags = MSM_BO_WC`, and we copy that behavior here.
@@ -433,11 +432,11 @@ tu_bo_init_new_explicit_iova(struct tu_device *dev,
    return result;
 }
 
-VkResult
-tu_bo_init_dmabuf(struct tu_device *dev,
-                  struct tu_bo **out_bo,
-                  uint64_t size,
-                  int prime_fd)
+static VkResult
+msm_bo_init_dmabuf(struct tu_device *dev,
+                   struct tu_bo **out_bo,
+                   uint64_t size,
+                   int prime_fd)
 {
    /* lseek() to get the real size */
    off_t real_size = lseek(prime_fd, 0, SEEK_END);
@@ -484,8 +483,8 @@ tu_bo_init_dmabuf(struct tu_device *dev,
    return result;
 }
 
-int
-tu_bo_export_dmabuf(struct tu_device *dev, struct tu_bo *bo)
+static int
+msm_bo_export_dmabuf(struct tu_device *dev, struct tu_bo *bo)
 {
    int prime_fd;
    int ret = drmPrimeHandleToFD(dev->fd, bo->gem_handle,
@@ -494,8 +493,8 @@ tu_bo_export_dmabuf(struct tu_device *dev, struct tu_bo *bo)
    return ret == 0 ? prime_fd : -1;
 }
 
-VkResult
-tu_bo_map(struct tu_device *dev, struct tu_bo *bo)
+static VkResult
+msm_bo_map(struct tu_device *dev, struct tu_bo *bo)
 {
    if (bo->map)
       return VK_SUCCESS;
@@ -514,16 +513,16 @@ tu_bo_map(struct tu_device *dev, struct tu_bo *bo)
    return VK_SUCCESS;
 }
 
-void
-tu_bo_allow_dump(struct tu_device *dev, struct tu_bo *bo)
+static void
+msm_bo_allow_dump(struct tu_device *dev, struct tu_bo *bo)
 {
    mtx_lock(&dev->bo_mutex);
    dev->bo_list[bo->bo_list_idx].flags |= MSM_SUBMIT_BO_DUMP;
    mtx_unlock(&dev->bo_mutex);
 }
 
-void
-tu_bo_finish(struct tu_device *dev, struct tu_bo *bo)
+static void
+msm_bo_finish(struct tu_device *dev, struct tu_bo *bo)
 {
    assert(bo->gem_handle);
 
@@ -1074,8 +1073,8 @@ get_abs_timeout(struct drm_msm_timespec *tv, uint64_t ns)
    tv->tv_nsec = t.tv_nsec + ns % 1000000000;
 }
 
-VkResult
-tu_device_wait_u_trace(struct tu_device *dev, struct tu_u_trace_syncobj *syncobj)
+static VkResult
+msm_device_wait_u_trace(struct tu_device *dev, struct tu_u_trace_syncobj *syncobj)
 {
    struct drm_msm_wait_fence req = {
       .fence = syncobj->fence,
@@ -1094,11 +1093,10 @@ tu_device_wait_u_trace(struct tu_device *dev, struct tu_u_trace_syncobj *syncobj
    return VK_SUCCESS;
 }
 
-VkResult
-tu_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit)
+static VkResult
+msm_queue_submit(struct tu_queue *queue, struct vk_queue_submit *submit)
 {
    MESA_TRACE_FUNC();
-   struct tu_queue *queue = container_of(vk_queue, struct tu_queue, vk);
    uint32_t perf_pass_index = queue->device->perfcntrs_pass_cs ?
                               submit->perf_pass_index : ~0;
    struct tu_queue_submit submit_req;
@@ -1154,6 +1152,24 @@ tu_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit)
 
    return VK_SUCCESS;
 }
+
+static const struct tu_knl msm_knl_funcs = {
+      .name = "msm",
+
+      .device_get_gpu_timestamp = msm_device_get_gpu_timestamp,
+      .device_get_suspend_count = msm_device_get_suspend_count,
+      .device_check_status = msm_device_check_status,
+      .submitqueue_new = msm_submitqueue_new,
+      .submitqueue_close = msm_submitqueue_close,
+      .bo_init = msm_bo_init,
+      .bo_init_dmabuf = msm_bo_init_dmabuf,
+      .bo_export_dmabuf = msm_bo_export_dmabuf,
+      .bo_map = msm_bo_map,
+      .bo_allow_dump = msm_bo_allow_dump,
+      .bo_finish = msm_bo_finish,
+      .device_wait_u_trace = msm_device_wait_u_trace,
+      .queue_submit = msm_queue_submit,
+};
 
 const struct vk_sync_type tu_timeline_sync_type = {
    .size = sizeof(struct tu_timeline_sync),
@@ -1338,6 +1354,8 @@ tu_physical_device_try_create(struct vk_instance *vk_instance,
    device->heap.size = tu_get_system_heap_size();
    device->heap.used = 0u;
    device->heap.flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+
+   instance->knl = &msm_knl_funcs;
 
    result = tu_physical_device_init(device, instance);
 
