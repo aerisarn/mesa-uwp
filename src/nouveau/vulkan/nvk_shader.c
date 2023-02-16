@@ -67,6 +67,7 @@ nvk_physical_device_spirv_options(const struct nvk_physical_device *pdevice,
       .caps = {
          .draw_parameters = true,
          .image_write_without_format = true,
+         .multiview = true,
          .physical_storage_buffer_address = true,
          .min_lod = true,
          .transform_feedback = true,

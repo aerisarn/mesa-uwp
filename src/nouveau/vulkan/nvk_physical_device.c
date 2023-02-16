@@ -143,9 +143,11 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
    VkPhysicalDeviceVulkan11Properties core_1_1 = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES,
+      /* Vulkan 1.1 properties */
+      .maxMultiviewViewCount = NVK_MAX_MULTIVIEW_VIEW_COUNT,
+      .maxMultiviewInstanceIndex = UINT32_MAX,
       .maxPerSetDescriptors = UINT32_MAX,
       .maxMemoryAllocationSize = (1u << 31),
-      /* Vulkan 1.1 properties */
    };
 
    VkPhysicalDeviceVulkan12Properties core_1_2 = {
@@ -280,6 +282,7 @@ nvk_get_device_extensions(const struct nv_device_info *dev,
       .KHR_maintenance1 = true,
       .KHR_maintenance3 = true,
       .KHR_maintenance4 = true,
+      .KHR_multiview = true,
       .KHR_push_descriptor = true,
       .KHR_relaxed_block_layout = true,
       .KHR_sampler_mirror_clamp_to_edge = true,
@@ -377,6 +380,9 @@ nvk_get_device_features(const struct nv_device_info *dev,
       .inheritedQueries = true,
 
       /* Vulkan 1.1 */
+      .multiview = true,
+      .multiviewGeometryShader = false,
+      .multiviewTessellationShader = false,
       .shaderDrawParameters = true,
 
       /* Vulkan 1.2 */
