@@ -154,7 +154,7 @@ enum {
 /* Potential location for Mesh Shader outputs. */
 typedef enum {
    ms_out_mode_lds,
-   ms_out_mode_vram,
+   ms_out_mode_scratch_ring,
    ms_out_mode_var,
 } ms_out_mode;
 
@@ -175,11 +175,15 @@ typedef struct
       uint32_t cull_flags_addr;
       uint32_t total_size;
    } lds;
-   /* VRAM "mesh shader scratch ring" layout for outputs that don't fit into the LDS. */
+
+   /* VRAM "mesh shader scratch ring" layout for outputs that don't fit into the LDS.
+    * Not to be confused with scratch memory.
+    */
    struct {
       ms_out_part vtx_attr;
       ms_out_part prm_attr;
-   } vram;
+   } scratch_ring;
+
    /* Outputs without cross-invocation access can be stored in variables. */
    struct {
       ms_out_part vtx_attr;
@@ -3685,9 +3689,9 @@ ms_get_out_layout_part(unsigned location,
       if (mask & s->layout.lds.prm_attr.mask) {
          *out_mode = ms_out_mode_lds;
          return &s->layout.lds.prm_attr;
-      } else if (mask & s->layout.vram.prm_attr.mask) {
-         *out_mode = ms_out_mode_vram;
-         return &s->layout.vram.prm_attr;
+      } else if (mask & s->layout.scratch_ring.prm_attr.mask) {
+         *out_mode = ms_out_mode_scratch_ring;
+         return &s->layout.scratch_ring.prm_attr;
       } else if (mask & s->layout.var.prm_attr.mask) {
          *out_mode = ms_out_mode_var;
          return &s->layout.var.prm_attr;
@@ -3696,9 +3700,9 @@ ms_get_out_layout_part(unsigned location,
       if (mask & s->layout.lds.vtx_attr.mask) {
          *out_mode = ms_out_mode_lds;
          return &s->layout.lds.vtx_attr;
-      } else if (mask & s->layout.vram.vtx_attr.mask) {
-         *out_mode = ms_out_mode_vram;
-         return &s->layout.vram.vtx_attr;
+      } else if (mask & s->layout.scratch_ring.vtx_attr.mask) {
+         *out_mode = ms_out_mode_scratch_ring;
+         return &s->layout.scratch_ring.vtx_attr;
       } else if (mask & s->layout.var.vtx_attr.mask) {
          *out_mode = ms_out_mode_var;
          return &s->layout.var.vtx_attr;
@@ -3773,7 +3777,7 @@ ms_store_arrayed_output_intrin(nir_builder *b,
       nir_store_shared(b, store_val, addr, .base = const_off,
                      .write_mask = write_mask, .align_mul = 16,
                      .align_offset = const_off % 16);
-   } else if (out_mode == ms_out_mode_vram) {
+   } else if (out_mode == ms_out_mode_scratch_ring) {
       nir_ssa_def *ring = nir_load_ring_mesh_scratch_amd(b);
       nir_ssa_def *off = nir_load_ring_mesh_scratch_offset_amd(b);
       nir_ssa_def *zero = nir_imm_int(b, 0);
@@ -3828,7 +3832,7 @@ ms_load_arrayed_output(nir_builder *b,
       return nir_load_shared(b, num_components, load_bit_size, addr, .align_mul = 16,
                              .align_offset = component_addr_off % 16,
                              .base = const_off);
-   } else if (out_mode == ms_out_mode_vram) {
+   } else if (out_mode == ms_out_mode_scratch_ring) {
       nir_ssa_def *ring = nir_load_ring_mesh_scratch_amd(b);
       nir_ssa_def *off = nir_load_ring_mesh_scratch_offset_amd(b);
       nir_ssa_def *zero = nir_imm_int(b, 0);
@@ -4509,8 +4513,10 @@ ms_calculate_arrayed_output_layout(ms_out_mem_layout *l,
    l->lds.prm_attr.addr = ALIGN(l->lds.vtx_attr.addr + lds_vtx_attr_size, 16);
    l->lds.total_size = l->lds.prm_attr.addr + lds_prm_attr_size;
 
-   uint32_t vram_vtx_attr_size = util_bitcount64(l->vram.vtx_attr.mask) * max_vertices * 16;
-   l->vram.prm_attr.addr = ALIGN(l->vram.vtx_attr.addr + vram_vtx_attr_size, 16);
+   uint32_t scratch_ring_vtx_attr_size =
+      util_bitcount64(l->scratch_ring.vtx_attr.mask) * max_vertices * 16;
+   l->scratch_ring.prm_attr.addr =
+      ALIGN(l->scratch_ring.vtx_attr.addr + scratch_ring_vtx_attr_size, 16);
 }
 
 static ms_out_mem_layout
@@ -4564,9 +4570,9 @@ ms_calculate_output_layout(unsigned api_shared_size,
       (cross_invocation_cull_primitive || cross_invocation_indices) ? 30 : 31;
    while (l.lds.total_size >= usable_lds_kbytes * 1024) {
       if (l.lds.prm_attr.mask)
-         ms_move_output(&l.lds.prm_attr, &l.vram.prm_attr);
+         ms_move_output(&l.lds.prm_attr, &l.scratch_ring.prm_attr);
       else if (l.lds.vtx_attr.mask)
-         ms_move_output(&l.lds.vtx_attr, &l.vram.vtx_attr);
+         ms_move_output(&l.lds.vtx_attr, &l.scratch_ring.vtx_attr);
       else
          unreachable("API shader uses too much shared memory.");
 
@@ -4627,7 +4633,7 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
                                  cross_invocation_access, max_vertices, max_primitives, vertices_per_prim);
 
    shader->info.shared_size = layout.lds.total_size;
-   *out_needs_scratch_ring = layout.vram.vtx_attr.mask || layout.vram.prm_attr.mask;
+   *out_needs_scratch_ring = layout.scratch_ring.vtx_attr.mask || layout.scratch_ring.prm_attr.mask;
 
    /* The workgroup size that is specified by the API shader may be different
     * from the size of the workgroup that actually runs on the HW, due to the
