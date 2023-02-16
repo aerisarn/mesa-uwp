@@ -2367,6 +2367,18 @@ struct anv_vb_cache_range {
    uint64_t end;
 };
 
+static inline void
+anv_merge_vb_cache_range(struct anv_vb_cache_range *dirty,
+                         const struct anv_vb_cache_range *bound)
+{
+   if (dirty->start == dirty->end) {
+      *dirty = *bound;
+   } else if (bound->start != bound->end) {
+      dirty->start = MIN2(dirty->start, bound->start);
+      dirty->end = MAX2(dirty->end, bound->end);
+   }
+}
+
 /* Check whether we need to apply the Gfx8-9 vertex buffer workaround*/
 static inline bool
 anv_gfx8_9_vb_cache_range_needs_workaround(struct anv_vb_cache_range *bound,
@@ -2389,9 +2401,7 @@ anv_gfx8_9_vb_cache_range_needs_workaround(struct anv_vb_cache_range *bound,
    bound->start &= ~(64ull - 1ull);
    bound->end = align64(bound->end, 64);
 
-   /* Compute the dirty range */
-   dirty->start = MIN2(dirty->start, bound->start);
-   dirty->end = MAX2(dirty->end, bound->end);
+   anv_merge_vb_cache_range(dirty, bound);
 
    /* If our range is larger than 32 bits, we have to flush */
    assert(bound->end - bound->start <= (1ull << 32));
