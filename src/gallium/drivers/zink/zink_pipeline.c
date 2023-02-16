@@ -307,9 +307,9 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
             /* non-strictLine default lines are either parallelogram or bresenham which while not in GL spec,
              * in practice end up being within the two-pixel exception in the GL spec.
              */
-            else if (mode_idx || screen->info.props.limits.strictLines)
+            else if ((mode_idx != 1) || screen->info.props.limits.strictLines)
                warn_missing_feature(warned[mode_idx], features[hw_rast_state->line_mode][0]);
-         } else if (mode_idx || screen->info.props.limits.strictLines)
+         } else if ((mode_idx != 1) || screen->info.props.limits.strictLines)
             warn_missing_feature(warned[mode_idx], features[hw_rast_state->line_mode][hw_rast_state->line_stipple_enable]);
       }
 
