@@ -145,4 +145,28 @@ SOFTWARE.
 	<pattern low="55" high="58">0110</pattern>
 </bitset>
 
+<bitset name="lock" extends="#instruction-cat7">
+	<doc>
+		Are met at the end of compute shader:
+			(sy)(jp)lock;
+			unlock;
+			end ;
+	</doc>
+	<gen min="700"/>
+	<display>
+		{SY}{JP}{NAME}
+	</display>
+	<pattern low="45" high="54">1000010000</pattern>
+	<pattern low="55" high="58">0111</pattern>
+</bitset>
+
+<bitset name="unlock" extends="#instruction-cat7">
+	<gen min="700"/>
+	<display>
+		{SY}{JP}{NAME}
+	</display>
+	<pattern low="45" high="54">1001010000</pattern>
+	<pattern low="55" high="58">0111</pattern>
+</bitset>
+
 </isa>

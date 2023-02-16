@@ -367,6 +367,9 @@ typedef enum {
    OPC_DCINV           = _OPC(7, 5),
    OPC_DCFLU           = _OPC(7, 6),
 
+   OPC_LOCK            = _OPC(7, 7),
+   OPC_UNLOCK          = _OPC(7, 8),
+
    /* meta instructions (category 8): */
 #define OPC_META 8
    /* placeholder instr to mark shader inputs: */

@@ -403,6 +403,8 @@ static const struct opc_info {
 
    OPC(7, OPC_BAR,          bar),
    OPC(7, OPC_FENCE,        fence),
+   OPC(7, OPC_LOCK,         lock),
+   OPC(7, OPC_UNLOCK,       unlock),
 /* clang-format on */
 #undef OPC
 };

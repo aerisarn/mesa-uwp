@@ -626,6 +626,8 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_OP_DCCLN
 %token <tok> T_OP_DCINV
 %token <tok> T_OP_DCFLU
+%token <tok> T_OP_LOCK
+%token <tok> T_OP_UNLOCK
 
 %token <u64> T_RAW
 
@@ -1298,6 +1300,8 @@ cat7_instr:        cat7_barrier
 |                  cat7_data_cache
 |                  T_OP_SLEEP              { new_instr(OPC_SLEEP); }
 |                  T_OP_ICINV              { new_instr(OPC_ICINV); }
+|                  T_OP_LOCK               { new_instr(OPC_LOCK); }
+|                  T_OP_UNLOCK             { new_instr(OPC_UNLOCK); }
 
 raw_instr: T_RAW   {new_instr(OPC_META_RAW)->raw.value = $1;}
 

@@ -47,6 +47,7 @@
 #define INSTR_4XX(i, d, ...) { .gpu_id = 420, .instr = #i, .expected = d, __VA_ARGS__ }
 #define INSTR_5XX(i, d, ...) { .gpu_id = 540, .instr = #i, .expected = d, __VA_ARGS__ }
 #define INSTR_6XX(i, d, ...) { .gpu_id = 630, .instr = #i, .expected = d, __VA_ARGS__ }
+#define INSTR_7XX(i, d, ...) { .gpu_id = 730, .instr = #i, .expected = d, __VA_ARGS__ }
 /* clang-format on */
 
 static const struct test {
@@ -420,6 +421,8 @@ static const struct test {
    INSTR_6XX(f0420000_00000000, "(sy)bar.g"),
    INSTR_6XX(e1080000_00000000, "sleep.l"),
    INSTR_6XX(e2080000_00000000, "dccln.all"),
+
+   INSTR_7XX(e3c20000_00000000, "lock"),
 
    INSTR_6XX(ffffffff_ffffffff, "raw 0xFFFFFFFFFFFFFFFF"),
    /* clang-format on */

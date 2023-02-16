@@ -387,6 +387,8 @@ static int parse_reg(const char *str)
 "dccln.all"                       return TOKEN(T_OP_DCCLN);
 "dcinv.all"                       return TOKEN(T_OP_DCINV);
 "dcflu.all"                       return TOKEN(T_OP_DCFLU);
+"lock"                            return TOKEN(T_OP_LOCK);
+"unlock"                          return TOKEN(T_OP_UNLOCK);
 
 "f16"                             return TOKEN(T_TYPE_F16);
 "f32"                             return TOKEN(T_TYPE_F32);
