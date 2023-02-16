@@ -2687,8 +2687,8 @@ static void *find_ptr(const char *name)
    return NULL;
 }
 
-VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr(VkDevice dev,
-                                                                             const char *funcName)
+PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr(VkDevice dev,
+                                                                    const char *funcName)
 {
    void *ptr = find_ptr(funcName);
    if (ptr) return reinterpret_cast<PFN_vkVoidFunction>(ptr);
@@ -2700,8 +2700,8 @@ VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr(VkD
    return device_data->vtable.GetDeviceProcAddr(dev, funcName);
 }
 
-VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(VkInstance instance,
-                                                                               const char *funcName)
+PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(VkInstance instance,
+                                                                      const char *funcName)
 {
    void *ptr = find_ptr(funcName);
    if (ptr) return reinterpret_cast<PFN_vkVoidFunction>(ptr);

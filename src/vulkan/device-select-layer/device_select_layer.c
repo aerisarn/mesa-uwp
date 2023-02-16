@@ -624,7 +624,7 @@ static void  (*get_instance_proc_addr(VkInstance instance, const char* name))()
    return info->GetInstanceProcAddr(instance, name);
 }
 
-VK_LAYER_EXPORT VkResult vkNegotiateLoaderLayerInterfaceVersion(VkNegotiateLayerInterface *pVersionStruct)
+PUBLIC VkResult vkNegotiateLoaderLayerInterfaceVersion(VkNegotiateLayerInterface *pVersionStruct)
 {
    if (pVersionStruct->loaderLayerInterfaceVersion < 2)
       return VK_ERROR_INITIALIZATION_FAILED;
