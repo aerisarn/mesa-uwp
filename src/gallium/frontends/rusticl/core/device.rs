@@ -542,6 +542,10 @@ impl Device {
         )
     }
 
+    pub fn const_max_count(&self) -> cl_uint {
+        self.shader_param(pipe_shader_cap::PIPE_SHADER_CAP_MAX_CONST_BUFFERS) as cl_uint
+    }
+
     pub fn device_type(&self, internal: bool) -> cl_device_type {
         if let Some(env) = Self::parse_env_device_type() {
             return env;
