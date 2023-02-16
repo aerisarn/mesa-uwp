@@ -220,9 +220,6 @@ vk_device_init(struct vk_device *device,
    device->swapchain_private = NULL;
 #endif /* ANDROID */
 
-   assert_device_extensions_requirements(&physical_device->supported_extensions,
-                                         physical_device->instance->supported_extensions);
-
    return VK_SUCCESS;
 }
 

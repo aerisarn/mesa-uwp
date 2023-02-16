@@ -193,8 +193,6 @@ vk_instance_init(struct vk_instance *instance,
 
    glsl_type_singleton_init_or_ref();
 
-   assert_instance_extensions_requirements(instance->supported_extensions);
-
    return VK_SUCCESS;
 }
 
