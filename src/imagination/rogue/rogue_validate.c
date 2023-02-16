@@ -249,12 +249,6 @@ static void validate_alu_instr(rogue_validation_state *state,
 
    const rogue_alu_op_info *info = &rogue_alu_op_infos[alu->op];
 
-   if (!rogue_alu_comp_is_none(alu) && alu->op != ROGUE_ALU_OP_TST)
-      validate_log(state, "ALU comparison set for non-test op.");
-
-   if (rogue_alu_comp_is_none(alu) && alu->op == ROGUE_ALU_OP_TST)
-      validate_log(state, "ALU comparison not set for test op.");
-
    /* Check if instruction modifiers are valid. */
    if (!rogue_mods_supported(alu->mod, info->supported_op_mods))
       validate_log(state, "Unsupported ALU op modifiers.");

@@ -254,6 +254,73 @@ static void rogue_encode_alu_instr(const rogue_alu_instr *alu,
       }
       break;
 
+   case ROGUE_ALU_OP_TST: {
+      instr_encoding->alu.op = ALUOP_TST;
+      instr_encoding->alu.tst.pwen = rogue_ref_is_io_p0(&alu->dst[1].ref);
+
+      rogue_tstop tstop = { 0 };
+      if (rogue_alu_op_mod_is_set(alu, OM(Z)))
+         tstop._ = TSTOP_Z;
+      else if (rogue_alu_op_mod_is_set(alu, OM(GZ)))
+         tstop._ = TSTOP_GZ;
+      else if (rogue_alu_op_mod_is_set(alu, OM(GEZ)))
+         tstop._ = TSTOP_GEZ;
+      else if (rogue_alu_op_mod_is_set(alu, OM(C)))
+         tstop._ = TSTOP_C;
+      else if (rogue_alu_op_mod_is_set(alu, OM(E)))
+         tstop._ = TSTOP_E;
+      else if (rogue_alu_op_mod_is_set(alu, OM(G)))
+         tstop._ = TSTOP_G;
+      else if (rogue_alu_op_mod_is_set(alu, OM(GE)))
+         tstop._ = TSTOP_GE;
+      else if (rogue_alu_op_mod_is_set(alu, OM(NE)))
+         tstop._ = TSTOP_NE;
+      else if (rogue_alu_op_mod_is_set(alu, OM(L)))
+         tstop._ = TSTOP_L;
+      else if (rogue_alu_op_mod_is_set(alu, OM(LE)))
+         tstop._ = TSTOP_LE;
+      else
+         unreachable("Invalid comparison test.");
+
+      instr_encoding->alu.tst.tstop_2_0 = tstop._2_0;
+
+      if (instr_size == 2) {
+         instr_encoding->alu.tst.ext = 1;
+         instr_encoding->alu.tst.tstop_3 = tstop._3;
+
+         if (rogue_alu_src_mod_is_set(alu, 0, SM(E0)))
+            instr_encoding->alu.tst.elem = TST_E0;
+         else if (rogue_alu_src_mod_is_set(alu, 0, SM(E1)))
+            instr_encoding->alu.tst.elem = TST_E1;
+         else if (rogue_alu_src_mod_is_set(alu, 0, SM(E2)))
+            instr_encoding->alu.tst.elem = TST_E2;
+         else if (rogue_alu_src_mod_is_set(alu, 0, SM(E3)))
+            instr_encoding->alu.tst.elem = TST_E3;
+
+         instr_encoding->alu.tst.p2end =
+            !rogue_phase_occupied(ROGUE_INSTR_PHASE_2_PCK,
+                                  alu->instr.group->header.phases);
+
+         if (rogue_alu_op_mod_is_set(alu, OM(F32)))
+            instr_encoding->alu.tst.type = TSTTYPE_F32;
+         else if (rogue_alu_op_mod_is_set(alu, OM(U16)))
+            instr_encoding->alu.tst.type = TSTTYPE_U16;
+         else if (rogue_alu_op_mod_is_set(alu, OM(S16)))
+            instr_encoding->alu.tst.type = TSTTYPE_S16;
+         else if (rogue_alu_op_mod_is_set(alu, OM(U8)))
+            instr_encoding->alu.tst.type = TSTTYPE_U8;
+         else if (rogue_alu_op_mod_is_set(alu, OM(S8)))
+            instr_encoding->alu.tst.type = TSTTYPE_S8;
+         else if (rogue_alu_op_mod_is_set(alu, OM(U32)))
+            instr_encoding->alu.tst.type = TSTTYPE_U32;
+         else if (rogue_alu_op_mod_is_set(alu, OM(S32)))
+            instr_encoding->alu.tst.type = TSTTYPE_S32;
+         else
+            unreachable("Invalid comparison type.");
+      }
+      break;
+   }
+
    case ROGUE_ALU_OP_PCK_U8888:
       instr_encoding->alu.op = ALUOP_SNGL;
       instr_encoding->alu.sngl.snglop = SNGLOP_PCK;

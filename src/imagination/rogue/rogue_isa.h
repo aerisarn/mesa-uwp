@@ -607,13 +607,30 @@ enum tstop {
    TSTOP_Z = 0b0000,
    TSTOP_GZ = 0b0001,
    TSTOP_GEZ = 0b0010,
-   TSTOP_IC = 0b0011,
-   TSTOP_EQ = 0b0100,
-   TSTOP_GT = 0b0101,
+   TSTOP_C = 0b0011,
+   TSTOP_E = 0b0100,
+   TSTOP_G = 0b0101,
    TSTOP_GE = 0b0110,
    TSTOP_NE = 0b0111,
-   TSTOP_LT = 0b1000,
+   TSTOP_L = 0b1000,
    TSTOP_LE = 0b1001,
+};
+
+enum tsttype {
+   TSTTYPE_F32 = 0b000,
+   TSTTYPE_U16 = 0b001,
+   TSTTYPE_S16 = 0b010,
+   TSTTYPE_U8 = 0b011,
+   TSTTYPE_S8 = 0b100,
+   TSTTYPE_U32 = 0b101,
+   TSTTYPE_S32 = 0b110,
+};
+
+enum tstelem {
+   TST_E0 = 0b00,
+   TST_E1 = 0b01,
+   TST_E2 = 0b10,
+   TST_E3 = 0b11,
 };
 
 typedef struct rogue_alu_mov_encoding {

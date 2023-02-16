@@ -398,6 +398,8 @@ enum rogue_exec_cond {
    ROGUE_EXEC_COND_COUNT,
 };
 
+extern const char *rogue_exec_cond_str[ROGUE_EXEC_COND_COUNT];
+
 /** Rogue instruction type. */
 enum rogue_instr_type {
    ROGUE_INSTR_TYPE_INVALID = 0,
@@ -436,6 +438,7 @@ typedef struct rogue_instr_group rogue_instr_group;
 typedef struct rogue_instr {
    enum rogue_instr_type type; /** Instruction type. */
 
+   enum rogue_exec_cond exec_cond;
    unsigned repeat;
    bool end;
 
@@ -478,6 +481,12 @@ typedef struct rogue_instr {
 #define rogue_foreach_instr_in_shader_safe_rev(instr, shader) \
    rogue_foreach_block_safe_rev (_block, (shader))            \
       rogue_foreach_instr_in_block_safe_rev ((instr), _block)
+
+static inline void rogue_set_instr_exec_cond(rogue_instr *instr,
+                                             enum rogue_exec_cond exec_cond)
+{
+   instr->exec_cond = exec_cond;
+}
 
 static inline void rogue_set_instr_repeat(rogue_instr *instr, unsigned repeat)
 {
@@ -551,6 +560,9 @@ enum rogue_io {
    ROGUE_IO_FT3,
    ROGUE_IO_FT4,
    ROGUE_IO_FT5,
+
+   /* Test output feedthrough. */
+   ROGUE_IO_FTT,
 
    /* Predicate register. */
    ROGUE_IO_P0,
@@ -1045,6 +1057,25 @@ enum rogue_alu_op_mod {
    ROGUE_ALU_OP_MOD_SCALE, /* Scale to [0, 1]. */
    ROGUE_ALU_OP_MOD_ROUNDZERO, /* Round to zero. */
 
+   ROGUE_ALU_OP_MOD_Z, /** Test == 0. */
+   ROGUE_ALU_OP_MOD_GZ, /** Test > 0. */
+   ROGUE_ALU_OP_MOD_GEZ, /** Test >= 0. */
+   ROGUE_ALU_OP_MOD_C, /** Test integer carry-out. */
+   ROGUE_ALU_OP_MOD_E, /** Test a == b. */
+   ROGUE_ALU_OP_MOD_G, /** Test a > b. */
+   ROGUE_ALU_OP_MOD_GE, /** Test a >= b. */
+   ROGUE_ALU_OP_MOD_NE, /** Test a != b. */
+   ROGUE_ALU_OP_MOD_L, /** Test a < b. */
+   ROGUE_ALU_OP_MOD_LE, /** Test a <= b. */
+
+   ROGUE_ALU_OP_MOD_F32,
+   ROGUE_ALU_OP_MOD_U16,
+   ROGUE_ALU_OP_MOD_S16,
+   ROGUE_ALU_OP_MOD_U8,
+   ROGUE_ALU_OP_MOD_S8,
+   ROGUE_ALU_OP_MOD_U32,
+   ROGUE_ALU_OP_MOD_S32,
+
    ROGUE_ALU_OP_MOD_COUNT,
 };
 
@@ -1084,6 +1115,11 @@ enum rogue_alu_src_mod {
    ROGUE_ALU_SRC_MOD_FLR,
    ROGUE_ALU_SRC_MOD_ABS,
    ROGUE_ALU_SRC_MOD_NEG,
+
+   ROGUE_ALU_SRC_MOD_E0,
+   ROGUE_ALU_SRC_MOD_E1,
+   ROGUE_ALU_SRC_MOD_E2,
+   ROGUE_ALU_SRC_MOD_E3,
 
    ROGUE_ALU_SRC_MOD_COUNT,
 };
@@ -1210,54 +1246,11 @@ typedef struct rogue_alu_op_info {
 
 extern const rogue_alu_op_info rogue_alu_op_infos[ROGUE_ALU_OP_COUNT];
 
-enum rogue_comp_test {
-   ROGUE_COMP_TEST_NONE = 0,
-
-   /* 0-source */
-   /* ROGUE_COMP_TEST_IC, */ /* Integer carry-out, for INT64 pipeline only. */
-
-   /* 1-source */
-   /* ROGUE_COMP_TEST_Z, */
-   /* ROGUE_COMP_TEST_GZ, */
-   /* ROGUE_COMP_TEST_GEZ, */
-
-   /* 2-source */
-   ROGUE_COMP_TEST_EQ,
-   ROGUE_COMP_TEST_GT,
-   ROGUE_COMP_TEST_GE,
-   ROGUE_COMP_TEST_NE,
-   ROGUE_COMP_TEST_LT,
-   ROGUE_COMP_TEST_LE,
-
-   ROGUE_COMP_TEST_COUNT,
-};
-
-extern const char *const rogue_comp_test_str[ROGUE_COMP_TEST_COUNT];
-
-enum rogue_comp_type {
-   ROGUE_COMP_TYPE_NONE = 0,
-
-   ROGUE_COMP_TYPE_F32,
-   ROGUE_COMP_TYPE_U16,
-   ROGUE_COMP_TYPE_S16,
-   ROGUE_COMP_TYPE_U8,
-   ROGUE_COMP_TYPE_S8,
-   ROGUE_COMP_TYPE_U32,
-   ROGUE_COMP_TYPE_S32,
-
-   ROGUE_COMP_TYPE_COUNT,
-};
-
-extern const char *const rogue_comp_type_str[ROGUE_COMP_TYPE_COUNT];
-
 /** Rogue ALU instruction. */
 typedef struct rogue_alu_instr {
    rogue_instr instr;
 
    enum rogue_alu_op op;
-
-   enum rogue_comp_test comp_test;
-   enum rogue_comp_type comp_type;
 
    uint64_t mod;
 
@@ -1306,23 +1299,6 @@ static inline bool rogue_alu_src_mod_is_set(const rogue_alu_instr *alu,
                                             enum rogue_alu_src_mod mod)
 {
    return !!(alu->src[src_index].mod & BITFIELD64_BIT(mod));
-}
-
-static inline void rogue_set_alu_comp(rogue_alu_instr *alu,
-                                      enum rogue_comp_test test,
-                                      enum rogue_comp_type comp_type)
-{
-   if (alu->op != ROGUE_ALU_OP_TST)
-      unreachable("Can't set comparisons on non-test instructions.");
-
-   alu->comp_test = test;
-   alu->comp_type = comp_type;
-}
-
-static inline bool rogue_alu_comp_is_none(const rogue_alu_instr *alu)
-{
-   return (alu->comp_test == ROGUE_COMP_TEST_NONE) &&
-          (alu->comp_type == ROGUE_COMP_TYPE_NONE);
 }
 
 /**
@@ -2632,6 +2608,12 @@ rogue_get_supported_phase(uint64_t supported_phases, uint64_t occupied_phases)
    }
 
    return ROGUE_INSTR_PHASE_INVALID;
+}
+
+static inline bool rogue_phase_occupied(enum rogue_instr_phase phase,
+                                        uint64_t occupied_phases)
+{
+   return !!(BITFIELD_BIT(phase) & occupied_phases);
 }
 
 static inline bool rogue_can_replace_reg_use(rogue_reg_use *use,
