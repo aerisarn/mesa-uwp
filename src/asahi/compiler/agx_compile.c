@@ -470,9 +470,7 @@ agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
       compacted[compact_count++] = agx_extract_nir_src(b, instr->src[0], i);
    }
 
-   agx_index src0 = agx_src_index(&instr->src[0]);
-   agx_index collected = agx_temp(b->shader, src0.size);
-   agx_emit_collect_to(b, collected, compact_count, compacted);
+   agx_index collected = agx_emit_collect(b, compact_count, compacted);
 
    b->shader->did_writeout = true;
    return agx_st_tile(b, collected, agx_src_index(&instr->src[1]),
