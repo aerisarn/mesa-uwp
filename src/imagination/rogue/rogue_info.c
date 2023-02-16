@@ -217,9 +217,14 @@ const rogue_alu_src_mod_info rogue_alu_src_mod_infos[ROGUE_ALU_SRC_MOD_COUNT] = 
 	[ROGUE_ALU_SRC_MOD_NEG] = { .str = "neg", },
 };
 
+#define OM(op_mod) BITFIELD64_BIT(ROGUE_CTRL_OP_MOD_##op_mod)
 const rogue_ctrl_op_mod_info rogue_ctrl_op_mod_infos[ROGUE_CTRL_OP_MOD_COUNT] = {
-	[ROGUE_CTRL_OP_MOD_END] = { .str = "end", },
+   [ROGUE_CTRL_OP_MOD_LINK] = { .str = "link", },
+   [ROGUE_CTRL_OP_MOD_ALLINST] = { .str = "allinst", .exclude = OM(ANYINST) },
+   [ROGUE_CTRL_OP_MOD_ANYINST] = { .str = "anyinst", .exclude = OM(ALLINST) },
+   [ROGUE_CTRL_OP_MOD_END] = { .str = "end", },
 };
+#undef OM
 
 #define OM(op_mod) BITFIELD64_BIT(ROGUE_CTRL_OP_MOD_##op_mod)
 #define T(type) BITFIELD64_BIT(ROGUE_REF_TYPE_##type - 1)
@@ -230,7 +235,13 @@ const rogue_ctrl_op_info rogue_ctrl_op_infos[ROGUE_CTRL_OP_COUNT] = {
 		.supported_op_mods = OM(END),
 	},
 	[ROGUE_CTRL_OP_WOP] = { .str = "wop", },
-	[ROGUE_CTRL_OP_BA] = { .str = "ba", .has_target = true, .ends_block = true, },
+	[ROGUE_CTRL_OP_BR] = { .str = "br", .has_target = true, .ends_block = true,
+		.supported_op_mods = OM(LINK) | OM(ALLINST) | OM(ANYINST),
+   },
+	[ROGUE_CTRL_OP_BA] = { .str = "ba", .ends_block = true, .num_srcs = 1,
+		.supported_op_mods = OM(LINK) | OM(ALLINST) | OM(ANYINST),
+      .supported_src_types = { [0] = T(VAL), },
+   },
 	[ROGUE_CTRL_OP_WDF] = { .str = "wdf", .num_srcs = 1,
       .supported_src_types = { [0] = T(DRC), },
    },

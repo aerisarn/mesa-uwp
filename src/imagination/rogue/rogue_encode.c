@@ -145,26 +145,33 @@ static void rogue_encode_instr_group_header(rogue_instr_group *group,
 
    case ROGUE_ALU_CONTROL:
       h.alutype = ALUTYPE_CONTROL;
+#define OM(op_mod) ROGUE_CTRL_OP_MOD_##op_mod
       const rogue_instr *instr = group->instrs[ROGUE_INSTR_PHASE_CTRL];
       const rogue_ctrl_instr *ctrl = rogue_instr_as_ctrl(instr);
       switch (ctrl->op) {
-      case ROGUE_CTRL_OP_WDF:
-         h.ctrlop = CTRLOP_WDF;
-         h.miscctl = rogue_ref_get_drc_index(&ctrl->src[0].ref);
-         break;
-
       case ROGUE_CTRL_OP_NOP:
          h.ctrlop = CTRLOP_NOP;
-         h.miscctl = rogue_ctrl_op_mod_is_set(ctrl, ROGUE_CTRL_OP_MOD_END);
+         h.miscctl = rogue_ctrl_op_mod_is_set(ctrl, OM(END));
          break;
 
       case ROGUE_CTRL_OP_WOP:
          h.ctrlop = CTRLOP_WOP;
          break;
 
+      case ROGUE_CTRL_OP_BR:
+      case ROGUE_CTRL_OP_BA:
+         h.ctrlop = CTRLOP_BA;
+         break;
+
+      case ROGUE_CTRL_OP_WDF:
+         h.ctrlop = CTRLOP_WDF;
+         h.miscctl = rogue_ref_get_drc_index(&ctrl->src[0].ref);
+         break;
+
       default:
          unreachable("Unsupported ctrl op.");
       }
+#undef OM
       break;
 
    default:
@@ -600,6 +607,7 @@ static void rogue_encode_backend_instr(const rogue_backend_instr *backend,
 }
 #undef OM
 
+#define OM(op_mod) ROGUE_CTRL_OP_MOD_##op_mod
 static void rogue_encode_ctrl_instr(const rogue_ctrl_instr *ctrl,
                                     unsigned instr_size,
                                     rogue_instr_encoding *instr_encoding)
@@ -610,10 +618,42 @@ static void rogue_encode_ctrl_instr(const rogue_ctrl_instr *ctrl,
       memset(&instr_encoding->ctrl.nop, 0, sizeof(instr_encoding->ctrl.nop));
       break;
 
+   case ROGUE_CTRL_OP_BR:
+   case ROGUE_CTRL_OP_BA: {
+      bool branch_abs = (ctrl->op == ROGUE_CTRL_OP_BA);
+      rogue_offset32 offset;
+
+      instr_encoding->ctrl.ba.abs = branch_abs;
+      instr_encoding->ctrl.ba.allp =
+         rogue_ctrl_op_mod_is_set(ctrl, OM(ALLINST));
+      instr_encoding->ctrl.ba.anyp =
+         rogue_ctrl_op_mod_is_set(ctrl, OM(ANYINST));
+      instr_encoding->ctrl.ba.link = rogue_ctrl_op_mod_is_set(ctrl, OM(LINK));
+
+      if (branch_abs) {
+         offset._ = rogue_ref_get_val(&ctrl->src[0].ref);
+      } else {
+         rogue_instr_group *block_group =
+            list_entry(ctrl->target_block->instrs.next,
+                       rogue_instr_group,
+                       link);
+         offset._ = block_group->size.offset - (ctrl->instr.group->size.offset +
+                                                ctrl->instr.group->size.total);
+      }
+
+      instr_encoding->ctrl.ba.offset_7_1 = offset._7_1;
+      instr_encoding->ctrl.ba.offset_15_8 = offset._15_8;
+      instr_encoding->ctrl.ba.offset_23_16 = offset._23_16;
+      instr_encoding->ctrl.ba.offset_31_24 = offset._31_24;
+
+      break;
+   }
+
    default:
       unreachable("Unsupported ctrl op.");
    }
 }
+#undef OM
 
 static void rogue_encode_bitwise_instr(const rogue_bitwise_instr *bitwise,
                                        unsigned instr_size,

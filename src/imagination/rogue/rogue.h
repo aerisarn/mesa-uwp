@@ -1101,7 +1101,8 @@ enum rogue_ctrl_op {
    /* Real instructions. */
    ROGUE_CTRL_OP_NOP,
    ROGUE_CTRL_OP_WOP,
-   ROGUE_CTRL_OP_BA,
+   ROGUE_CTRL_OP_BR, /* Branch: relative (to block). */
+   ROGUE_CTRL_OP_BA, /* Branch: absolute (to address). */
    ROGUE_CTRL_OP_WDF,
 
    /* Pseudo-instructions. */
@@ -1113,6 +1114,11 @@ enum rogue_ctrl_op {
 
 enum rogue_ctrl_op_mod {
    /* In order of priority */
+   ROGUE_CTRL_OP_MOD_LINK,
+
+   ROGUE_CTRL_OP_MOD_ALLINST,
+   ROGUE_CTRL_OP_MOD_ANYINST,
+
    ROGUE_CTRL_OP_MOD_END,
 
    ROGUE_CTRL_OP_MOD_COUNT,

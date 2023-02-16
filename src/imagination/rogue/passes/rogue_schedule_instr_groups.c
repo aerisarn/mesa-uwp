@@ -662,15 +662,20 @@ static void rogue_calc_ctrl_instrs_size(rogue_instr_group *group,
                                         enum rogue_instr_phase phase)
 {
    switch (ctrl->op) {
-   case ROGUE_CTRL_OP_WDF:
-      group->size.instrs[phase] = 0;
-      break;
-
    case ROGUE_CTRL_OP_NOP:
       group->size.instrs[phase] = 1;
       break;
 
    case ROGUE_CTRL_OP_WOP:
+      group->size.instrs[phase] = 0;
+      break;
+
+   case ROGUE_CTRL_OP_BR:
+   case ROGUE_CTRL_OP_BA:
+      group->size.instrs[phase] = 5;
+      break;
+
+   case ROGUE_CTRL_OP_WDF:
       group->size.instrs[phase] = 0;
       break;
 
