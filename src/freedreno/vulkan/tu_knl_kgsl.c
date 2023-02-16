@@ -222,81 +222,6 @@ get_kgsl_prop(int fd, unsigned int type, void *value, size_t size)
    return safe_ioctl(fd, IOCTL_KGSL_DEVICE_GETPROPERTY, &getprop);
 }
 
-VkResult
-tu_enumerate_devices(struct vk_instance *vk_instance)
-{
-   struct tu_instance *instance =
-      container_of(vk_instance, struct tu_instance, vk);
-
-   static const char path[] = "/dev/kgsl-3d0";
-   int fd;
-
-   if (instance->vk.enabled_extensions.KHR_display) {
-      return vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
-                       "I can't KHR_display");
-   }
-
-   fd = open(path, O_RDWR | O_CLOEXEC);
-   if (fd < 0) {
-      if (errno == ENOENT)
-         return VK_ERROR_INCOMPATIBLE_DRIVER;
-
-      return vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
-                       "failed to open device %s", path);
-   }
-
-   struct tu_physical_device *device =
-      vk_zalloc(&instance->vk.alloc, sizeof(*device), 8,
-                VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
-   if (!device) {
-      close(fd);
-      return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-   }
-
-   struct kgsl_devinfo info;
-   if (get_kgsl_prop(fd, KGSL_PROP_DEVICE_INFO, &info, sizeof(info)))
-      goto fail;
-
-   uint64_t gmem_iova;
-   if (get_kgsl_prop(fd, KGSL_PROP_UCHE_GMEM_VADDR, &gmem_iova, sizeof(gmem_iova)))
-      goto fail;
-
-   /* kgsl version check? */
-
-   if (TU_DEBUG(STARTUP))
-      mesa_logi("Found compatible device '%s'.", path);
-
-   device->instance = instance;
-   device->master_fd = -1;
-   device->local_fd = fd;
-
-   device->dev_id.gpu_id =
-      ((info.chip_id >> 24) & 0xff) * 100 +
-      ((info.chip_id >> 16) & 0xff) * 10 +
-      ((info.chip_id >>  8) & 0xff);
-   device->dev_id.chip_id = info.chip_id;
-   device->gmem_size = debug_get_num_option("TU_GMEM", info.gmem_sizebytes);
-   device->gmem_base = gmem_iova;
-
-   device->submitqueue_priority_count = 1;
-
-   device->heap.size = tu_get_system_heap_size();
-   device->heap.used = 0u;
-   device->heap.flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
-
-   if (tu_physical_device_init(device, instance) != VK_SUCCESS)
-      goto fail;
-
-   list_addtail(&device->vk.link, &instance->vk.physical_devices.list);
-
-   return VK_SUCCESS;
-
-fail:
-   vk_free(&instance->vk.alloc, device);
-   close(fd);
-   return VK_ERROR_INITIALIZATION_FAILED;
-}
-
 static int
 timestamp_to_fd(struct tu_queue *queue, uint32_t timestamp)
 {
@@ -831,3 +756,79 @@ tu_QueueSignalReleaseImageANDROID(VkQueue _queue,
    return VK_SUCCESS;
 }
 #endif
+
+
+VkResult
+tu_enumerate_devices(struct vk_instance *vk_instance)
+{
+   struct tu_instance *instance =
+      container_of(vk_instance, struct tu_instance, vk);
+
+   static const char path[] = "/dev/kgsl-3d0";
+   int fd;
+
+   if (instance->vk.enabled_extensions.KHR_display) {
+      return vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                       "I can't KHR_display");
+   }
+
+   fd = open(path, O_RDWR | O_CLOEXEC);
+   if (fd < 0) {
+      if (errno == ENOENT)
+         return VK_ERROR_INCOMPATIBLE_DRIVER;
+
+      return vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                       "failed to open device %s", path);
+   }
+
+   struct tu_physical_device *device =
+      vk_zalloc(&instance->vk.alloc, sizeof(*device), 8,
+                VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+   if (!device) {
+      close(fd);
+      return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+   }
+
+   struct kgsl_devinfo info;
+   if (get_kgsl_prop(fd, KGSL_PROP_DEVICE_INFO, &info, sizeof(info)))
+      goto fail;
+
+   uint64_t gmem_iova;
+   if (get_kgsl_prop(fd, KGSL_PROP_UCHE_GMEM_VADDR, &gmem_iova, sizeof(gmem_iova)))
+      goto fail;
+
+   /* kgsl version check? */
+
+   if (TU_DEBUG(STARTUP))
+      mesa_logi("Found compatible device '%s'.", path);
+
+   device->instance = instance;
+   device->master_fd = -1;
+   device->local_fd = fd;
+
+   device->dev_id.gpu_id =
+      ((info.chip_id >> 24) & 0xff) * 100 +
+      ((info.chip_id >> 16) & 0xff) * 10 +
+      ((info.chip_id >>  8) & 0xff);
+   device->dev_id.chip_id = info.chip_id;
+   device->gmem_size = debug_get_num_option("TU_GMEM", info.gmem_sizebytes);
+   device->gmem_base = gmem_iova;
+
+   device->submitqueue_priority_count = 1;
+
+   device->heap.size = tu_get_system_heap_size();
+   device->heap.used = 0u;
+   device->heap.flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+
+   if (tu_physical_device_init(device, instance) != VK_SUCCESS)
+      goto fail;
+
+   list_addtail(&device->vk.link, &instance->vk.physical_devices.list);
+
+   return VK_SUCCESS;
+
+fail:
+   vk_free(&instance->vk.alloc, device);
+   close(fd);
+   return VK_ERROR_INITIALIZATION_FAILED;
+}

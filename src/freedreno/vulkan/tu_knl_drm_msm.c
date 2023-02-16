@@ -772,206 +772,6 @@ tu_timeline_sync_wait(struct vk_device *vk_device,
    return ret;
 }
 
-const struct vk_sync_type tu_timeline_sync_type = {
-   .size = sizeof(struct tu_timeline_sync),
-   .features = VK_SYNC_FEATURE_BINARY |
-               VK_SYNC_FEATURE_GPU_WAIT |
-               VK_SYNC_FEATURE_GPU_MULTI_WAIT |
-               VK_SYNC_FEATURE_CPU_WAIT |
-               VK_SYNC_FEATURE_CPU_RESET |
-               VK_SYNC_FEATURE_WAIT_ANY |
-               VK_SYNC_FEATURE_WAIT_PENDING,
-   .init = tu_timeline_sync_init,
-   .finish = tu_timeline_sync_finish,
-   .reset = tu_timeline_sync_reset,
-   .wait_many = tu_timeline_sync_wait,
-};
-
-VkResult
-tu_physical_device_try_create(struct vk_instance *vk_instance,
-                              struct _drmDevice *drm_device,
-                              struct vk_physical_device **out)
-{
-   struct tu_instance *instance =
-      container_of(vk_instance, struct tu_instance, vk);
-
-   if (!(drm_device->available_nodes & (1 << DRM_NODE_RENDER)) ||
-       drm_device->bustype != DRM_BUS_PLATFORM)
-      return VK_ERROR_INCOMPATIBLE_DRIVER;
-
-   const char *primary_path = drm_device->nodes[DRM_NODE_PRIMARY];
-   const char *path = drm_device->nodes[DRM_NODE_RENDER];
-   VkResult result = VK_SUCCESS;
-   drmVersionPtr version;
-   int fd;
-   int master_fd = -1;
-
-   fd = open(path, O_RDWR | O_CLOEXEC);
-   if (fd < 0) {
-      return vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-                               "failed to open device %s", path);
-   }
-
-   /* Version 1.6 added SYNCOBJ support. */
-   const int min_version_major = 1;
-   const int min_version_minor = 6;
-
-   version = drmGetVersion(fd);
-   if (!version) {
-      close(fd);
-      return vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-                               "failed to query kernel driver version for device %s",
-                               path);
-   }
-
-   if (strcmp(version->name, "msm")) {
-      drmFreeVersion(version);
-      close(fd);
-      return vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-                               "device %s does not use the msm kernel driver",
-                               path);
-   }
-
-   if (version->version_major != min_version_major ||
-       version->version_minor < min_version_minor) {
-      result = vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-                                 "kernel driver for device %s has version %d.%d, "
-                                 "but Vulkan requires version >= %d.%d",
-                                 path,
-                                 version->version_major, version->version_minor,
-                                 min_version_major, min_version_minor);
-      drmFreeVersion(version);
-      close(fd);
-      return result;
-   }
-
-   struct tu_physical_device *device =
-      vk_zalloc(&instance->vk.alloc, sizeof(*device), 8,
-                VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
-   if (!device) {
-      result = vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-      drmFreeVersion(version);
-      goto fail;
-   }
-
-   device->msm_major_version = version->version_major;
-   device->msm_minor_version = version->version_minor;
-
-   drmFreeVersion(version);
-
-   if (TU_DEBUG(STARTUP))
-      mesa_logi("Found compatible device '%s'.", path);
-
-   device->instance = instance;
-
-   if (instance->vk.enabled_extensions.KHR_display) {
-      master_fd = open(primary_path, O_RDWR | O_CLOEXEC);
-      if (master_fd >= 0) {
-         /* TODO: free master_fd is accel is not working? */
-      }
-   }
-
-   device->master_fd = master_fd;
-   device->local_fd = fd;
-
-   if (tu_drm_get_gpu_id(device, &device->dev_id.gpu_id)) {
-      result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
-                                 "could not get GPU ID");
-      goto fail;
-   }
-
-   if (tu_drm_get_param(device, MSM_PARAM_CHIP_ID, &device->dev_id.chip_id)) {
-      result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
-                                 "could not get CHIP ID");
-      goto fail;
-   }
-
-   if (tu_drm_get_gmem_size(device, &device->gmem_size)) {
-      result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
-                                "could not get GMEM size");
-      goto fail;
-   }
-   device->gmem_size = debug_get_num_option("TU_GMEM", device->gmem_size);
-
-   if (tu_drm_get_gmem_base(device, &device->gmem_base)) {
-      result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
-                                 "could not get GMEM size");
-      goto fail;
-   }
-
-   /*
-    * device->has_set_iova = !tu_drm_get_va_prop(device, &device->va_start,
-    *                                            &device->va_size);
-    *
-    * If BO is freed while kernel considers it busy, our VMA state gets
-    * desynchronized from kernel's VMA state, because kernel waits
-    * until BO stops being busy. And whether BO is busy decided at
-    * submission granularity.
-    *
-    * Disable this capability until solution is found.
-    */
-   device->has_set_iova = false;
-
-   struct stat st;
-
-   if (stat(primary_path, &st) == 0) {
-      device->has_master = true;
-      device->master_major = major(st.st_rdev);
-      device->master_minor = minor(st.st_rdev);
-   } else {
-      device->has_master = false;
-      device->master_major = 0;
-      device->master_minor = 0;
-   }
-
-   if (stat(path, &st) == 0) {
-      device->has_local = true;
-      device->local_major = major(st.st_rdev);
-      device->local_minor = minor(st.st_rdev);
-   } else {
-      result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
-                         "failed to stat DRM render node %s", path);
-      goto fail;
-   }
-
-   int ret = tu_drm_get_param(device, MSM_PARAM_FAULTS, &device->fault_count);
-   if (ret != 0) {
-      result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
-                                 "Failed to get initial fault count: %d", ret);
-      goto fail;
-   }
-
-   device->submitqueue_priority_count = tu_drm_get_priorities(device);
-
-   device->syncobj_type = vk_drm_syncobj_get_type(fd);
-   /* we don't support DRM_CAP_SYNCOBJ_TIMELINE, but drm-shim does */
-   if (!(device->syncobj_type.features & VK_SYNC_FEATURE_TIMELINE))
-      device->timeline_type = vk_sync_timeline_get_type(&tu_timeline_sync_type);
-
-   device->sync_types[0] = &device->syncobj_type;
-   device->sync_types[1] = &device->timeline_type.sync;
-   device->sync_types[2] = NULL;
-
-   device->heap.size = tu_get_system_heap_size();
-   device->heap.used = 0u;
-   device->heap.flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
-
-   result = tu_physical_device_init(device, instance);
-
-   if (result == VK_SUCCESS) {
-      *out = &device->vk;
-      return result;
-   }
-
-fail:
-   if (device)
-      vk_free(&instance->vk.alloc, device);
-   close(fd);
-   if (master_fd != -1)
-      close(master_fd);
-   return result;
-}
-
 static VkResult
 tu_queue_submit_create_locked(struct tu_queue *queue,
                               struct vk_queue_submit *vk_submit,
@@ -1353,4 +1153,204 @@ tu_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit)
    u_trace_context_process(&queue->device->trace_context, true);
 
    return VK_SUCCESS;
+}
+
+const struct vk_sync_type tu_timeline_sync_type = {
+   .size = sizeof(struct tu_timeline_sync),
+   .features = VK_SYNC_FEATURE_BINARY |
+               VK_SYNC_FEATURE_GPU_WAIT |
+               VK_SYNC_FEATURE_GPU_MULTI_WAIT |
+               VK_SYNC_FEATURE_CPU_WAIT |
+               VK_SYNC_FEATURE_CPU_RESET |
+               VK_SYNC_FEATURE_WAIT_ANY |
+               VK_SYNC_FEATURE_WAIT_PENDING,
+   .init = tu_timeline_sync_init,
+   .finish = tu_timeline_sync_finish,
+   .reset = tu_timeline_sync_reset,
+   .wait_many = tu_timeline_sync_wait,
+};
+
+VkResult
+tu_physical_device_try_create(struct vk_instance *vk_instance,
+                              struct _drmDevice *drm_device,
+                              struct vk_physical_device **out)
+{
+   struct tu_instance *instance =
+      container_of(vk_instance, struct tu_instance, vk);
+
+   if (!(drm_device->available_nodes & (1 << DRM_NODE_RENDER)) ||
+       drm_device->bustype != DRM_BUS_PLATFORM)
+      return VK_ERROR_INCOMPATIBLE_DRIVER;
+
+   const char *primary_path = drm_device->nodes[DRM_NODE_PRIMARY];
+   const char *path = drm_device->nodes[DRM_NODE_RENDER];
+   VkResult result = VK_SUCCESS;
+   drmVersionPtr version;
+   int fd;
+   int master_fd = -1;
+
+   fd = open(path, O_RDWR | O_CLOEXEC);
+   if (fd < 0) {
+      return vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                               "failed to open device %s", path);
+   }
+
+   /* Version 1.6 added SYNCOBJ support. */
+   const int min_version_major = 1;
+   const int min_version_minor = 6;
+
+   version = drmGetVersion(fd);
+   if (!version) {
+      close(fd);
+      return vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                               "failed to query kernel driver version for device %s",
+                               path);
+   }
+
+   if (strcmp(version->name, "msm")) {
+      drmFreeVersion(version);
+      close(fd);
+      return vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                               "device %s does not use the msm kernel driver",
+                               path);
+   }
+
+   if (version->version_major != min_version_major ||
+       version->version_minor < min_version_minor) {
+      result = vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                                 "kernel driver for device %s has version %d.%d, "
+                                 "but Vulkan requires version >= %d.%d",
+                                 path,
+                                 version->version_major, version->version_minor,
+                                 min_version_major, min_version_minor);
+      drmFreeVersion(version);
+      close(fd);
+      return result;
+   }
+
+   struct tu_physical_device *device =
+      vk_zalloc(&instance->vk.alloc, sizeof(*device), 8,
+                VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+   if (!device) {
+      result = vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      drmFreeVersion(version);
+      goto fail;
+   }
+
+   device->msm_major_version = version->version_major;
+   device->msm_minor_version = version->version_minor;
+
+   drmFreeVersion(version);
+
+   if (TU_DEBUG(STARTUP))
+      mesa_logi("Found compatible device '%s'.", path);
+
+   device->instance = instance;
+
+   if (instance->vk.enabled_extensions.KHR_display) {
+      master_fd = open(primary_path, O_RDWR | O_CLOEXEC);
+      if (master_fd >= 0) {
+         /* TODO: free master_fd is accel is not working? */
+      }
+   }
+
+   device->master_fd = master_fd;
+   device->local_fd = fd;
+
+   if (tu_drm_get_gpu_id(device, &device->dev_id.gpu_id)) {
+      result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                                 "could not get GPU ID");
+      goto fail;
+   }
+
+   if (tu_drm_get_param(device, MSM_PARAM_CHIP_ID, &device->dev_id.chip_id)) {
+      result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                                 "could not get CHIP ID");
+      goto fail;
+   }
+
+   if (tu_drm_get_gmem_size(device, &device->gmem_size)) {
+      result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                                "could not get GMEM size");
+      goto fail;
+   }
+   device->gmem_size = debug_get_num_option("TU_GMEM", device->gmem_size);
+
+   if (tu_drm_get_gmem_base(device, &device->gmem_base)) {
+      result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                                 "could not get GMEM size");
+      goto fail;
+   }
+
+   /*
+    * device->has_set_iova = !tu_drm_get_va_prop(device, &device->va_start,
+    *                                            &device->va_size);
+    *
+    * If BO is freed while kernel considers it busy, our VMA state gets
+    * desynchronized from kernel's VMA state, because kernel waits
+    * until BO stops being busy. And whether BO is busy decided at
+    * submission granularity.
+    *
+    * Disable this capability until solution is found.
+    */
+   device->has_set_iova = false;
+
+   struct stat st;
+
+   if (stat(primary_path, &st) == 0) {
+      device->has_master = true;
+      device->master_major = major(st.st_rdev);
+      device->master_minor = minor(st.st_rdev);
+   } else {
+      device->has_master = false;
+      device->master_major = 0;
+      device->master_minor = 0;
+   }
+
+   if (stat(path, &st) == 0) {
+      device->has_local = true;
+      device->local_major = major(st.st_rdev);
+      device->local_minor = minor(st.st_rdev);
+   } else {
+      result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                         "failed to stat DRM render node %s", path);
+      goto fail;
+   }
+
+   int ret = tu_drm_get_param(device, MSM_PARAM_FAULTS, &device->fault_count);
+   if (ret != 0) {
+      result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                                 "Failed to get initial fault count: %d", ret);
+      goto fail;
+   }
+
+   device->submitqueue_priority_count = tu_drm_get_priorities(device);
+
+   device->syncobj_type = vk_drm_syncobj_get_type(fd);
+   /* we don't support DRM_CAP_SYNCOBJ_TIMELINE, but drm-shim does */
+   if (!(device->syncobj_type.features & VK_SYNC_FEATURE_TIMELINE))
+      device->timeline_type = vk_sync_timeline_get_type(&tu_timeline_sync_type);
+
+   device->sync_types[0] = &device->syncobj_type;
+   device->sync_types[1] = &device->timeline_type.sync;
+   device->sync_types[2] = NULL;
+
+   device->heap.size = tu_get_system_heap_size();
+   device->heap.used = 0u;
+   device->heap.flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+
+   result = tu_physical_device_init(device, instance);
+
+   if (result == VK_SUCCESS) {
+      *out = &device->vk;
+      return result;
+   }
+
+fail:
+   if (device)
+      vk_free(&instance->vk.alloc, device);
+   close(fd);
+   if (master_fd != -1)
+      close(master_fd);
+   return result;
 }
