@@ -32,6 +32,7 @@
 #include "pipe/p_state.h"
 
 #include "nir.h"
+#include "nir_xfb_info.h"
 #include "nir/nir_draw_helpers.h"
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir/nir_builtin_builder.h"
@@ -918,6 +919,12 @@ zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
    nir->info.gs.invocations = 1;
    nir->info.gs.active_stream_mask = 1;
 
+   nir->info.has_transform_feedback_varyings = prev_stage->info.has_transform_feedback_varyings;
+   memcpy(nir->info.xfb_stride, prev_stage->info.xfb_stride, sizeof(prev_stage->info.xfb_stride));
+   if (prev_stage->xfb_info) {
+      nir->xfb_info = mem_dup(prev_stage->xfb_info, sizeof(nir_xfb_info));
+   }
+
    nir_variable *in_vars[VARYING_SLOT_MAX];
    nir_variable *out_vars[VARYING_SLOT_MAX];
    unsigned num_vars = 0;
@@ -932,29 +939,23 @@ zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
       else
          snprintf(name, sizeof(name), "in_%d", var->data.driver_location);
 
-      nir_variable *in = nir_variable_create(nir, nir_var_shader_in,
-                                             glsl_array_type(var->type,
-                                                             4,
-                                                             false),
-                                             name);
-      in->data.location = var->data.location;
-      in->data.location_frac = var->data.location_frac;
-      in->data.driver_location = var->data.driver_location;
-      in->data.interpolation = var->data.interpolation;
-      in->data.compact = var->data.compact;
+      nir_variable *in = nir_variable_clone(var, nir);
+      ralloc_free(in->name);
+      in->name = ralloc_strdup(in, name);
+      in->type = glsl_array_type(var->type, 4, false);
+      in->data.mode = nir_var_shader_in;
+      nir_shader_add_variable(nir, in);
 
       if (var->name)
          snprintf(name, sizeof(name), "out_%s", var->name);
       else
          snprintf(name, sizeof(name), "out_%d", var->data.driver_location);
 
-      nir_variable *out = nir_variable_create(nir, nir_var_shader_out,
-                                              var->type, name);
-      out->data.location = var->data.location;
-      out->data.location_frac = var->data.location_frac;
-      out->data.driver_location = var->data.driver_location;
-      out->data.interpolation = var->data.interpolation;
-      out->data.compact = var->data.compact;
+      nir_variable *out = nir_variable_clone(var, nir);
+      ralloc_free(out->name);
+      out->name = ralloc_strdup(out, name);
+      out->data.mode = nir_var_shader_out;
+      nir_shader_add_variable(nir, out);
 
       in_vars[num_vars] = in;
       out_vars[num_vars++] = out;
@@ -989,7 +990,6 @@ zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
    nir_end_primitive(&b, 0);
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
    nir_validate_shader(nir, "in zink_create_quads_emulation_gs");
-
    return nir;
 }
 
@@ -4633,8 +4633,9 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       NIR_PASS_V(nir, match_tex_dests, ret);
 
    ret->nir = nir;
-   nir_foreach_shader_out_variable(var, nir)
-      var->data.explicit_xfb_buffer = 0;
+   if (!nir->info.internal)
+      nir_foreach_shader_out_variable(var, nir)
+         var->data.explicit_xfb_buffer = 0;
    if (so_info && so_info->num_outputs)
       update_so_info(ret, so_info, nir->info.outputs_written, have_psiz);
    else if (have_psiz) {

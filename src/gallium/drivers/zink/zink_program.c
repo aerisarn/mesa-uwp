@@ -2328,6 +2328,7 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
             ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type] = shader;
             shader->non_fs.is_generated = true;
             shader->can_inline = true;
+            shader->sinfo.so_info = ctx->gfx_stages[prev_vertex_stage]->sinfo.so_info;
          }
 
          bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY,
