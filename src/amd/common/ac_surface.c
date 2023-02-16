@@ -2310,6 +2310,14 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
             break;
          }
 
+         /* On GFX11, the only allowed swizzle mode for VRS rate images is
+          * 64KB_R_X.
+          */
+         if (info->gfx_level >= GFX11 && surf->flags & RADEON_SURF_VRS_RATE) {
+            AddrSurfInfoIn.swizzleMode = ADDR_SW_64KB_R_X;
+            break;
+         }
+
          r = gfx9_get_preferred_swizzle_mode(addrlib->handle, info, surf, &AddrSurfInfoIn, false,
                                              &AddrSurfInfoIn.swizzleMode);
          if (r)
