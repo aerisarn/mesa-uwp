@@ -27,7 +27,7 @@
 #ifndef ZINK_TYPES_H
 #define ZINK_TYPES_H
 
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 
 #include "compiler/nir/nir.h"
 
