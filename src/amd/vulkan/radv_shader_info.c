@@ -543,15 +543,24 @@ gather_shader_info_mesh(const nir_shader *nir, struct radv_shader_info *info)
 }
 
 static void
-gather_shader_info_fs(const nir_shader *nir, const struct radv_pipeline_key *pipeline_key,
-                      struct radv_shader_info *info)
+gather_shader_info_fs(const struct radv_device *device, const nir_shader *nir,
+                      const struct radv_pipeline_key *pipeline_key, struct radv_shader_info *info)
 {
    uint64_t per_primitive_input_mask = nir->info.inputs_read & nir->info.per_primitive_inputs;
    unsigned num_per_primitive_inputs = util_bitcount64(per_primitive_input_mask);
    assert(num_per_primitive_inputs <= nir->num_inputs);
 
-   info->ps.num_interp = nir->num_inputs - num_per_primitive_inputs;
-   info->ps.num_prim_interp = num_per_primitive_inputs;
+   info->ps.num_interp = nir->num_inputs;
+   info->ps.num_prim_interp = 0;
+
+   if (device->physical_device->rad_info.gfx_level == GFX10_3) {
+      /* GFX10.3 distinguishes NUM_INTERP and NUM_PRIM_INTERP, but
+       * these are counted together in NUM_INTERP on GFX11.
+       */
+      info->ps.num_interp = nir->num_inputs - num_per_primitive_inputs;
+      info->ps.num_prim_interp = num_per_primitive_inputs;
+   }
+
    info->ps.can_discard = nir->info.fs.uses_discard;
    info->ps.early_fragment_test = nir->info.fs.early_fragment_tests ||
                                   (nir->info.fs.early_and_late_fragment_tests &&
@@ -844,7 +853,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       gather_shader_info_task(nir, info);
       break;
    case MESA_SHADER_FRAGMENT:
-      gather_shader_info_fs(nir, pipeline_key, info);
+      gather_shader_info_fs(device, nir, pipeline_key, info);
       break;
    case MESA_SHADER_GEOMETRY:
       gather_shader_info_gs(nir, info);
