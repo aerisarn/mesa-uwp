@@ -22,20 +22,58 @@
  */
 
 #include <stdarg.h>
-
-#ifdef ANDROID
-#include <android/log.h>
-#else
 #include <stdio.h>
-#endif
-
 #include <stdlib.h>
 #include <string.h>
+#include "c11/threads.h"
 #include "util/detect_os.h"
 #include "util/log.h"
 #include "util/ralloc.h"
+#include "util/u_debug.h"
 
-#ifndef ANDROID
+#if DETECT_OS_ANDROID
+#include <android/log.h>
+#endif
+
+enum mesa_log_control {
+   MESA_LOG_CONTROL_NULL = 1 << 0,
+   MESA_LOG_CONTROL_FILE = 1 << 1,
+   MESA_LOG_CONTROL_ANDROID = 1 << 2,
+   MESA_LOG_CONTROL_LOGGER_MASK = 0xff,
+};
+
+static const struct debug_control mesa_log_control_options[] = {
+   /* loggers */
+   { "null", MESA_LOG_CONTROL_NULL },
+   { "file", MESA_LOG_CONTROL_FILE },
+   { "android", MESA_LOG_CONTROL_ANDROID },
+   { NULL, 0 },
+};
+
+static uint32_t mesa_log_control;
+
+static void
+mesa_log_init_once(void)
+{
+   mesa_log_control = parse_debug_string(os_get_option("MESA_LOG"),
+         mesa_log_control_options);
+
+   if (!(mesa_log_control & MESA_LOG_CONTROL_LOGGER_MASK)) {
+      /* pick the default loggers */
+#if DETECT_OS_ANDROID
+      mesa_log_control |= MESA_LOG_CONTROL_ANDROID;
+#else
+      mesa_log_control |= MESA_LOG_CONTROL_FILE;
+#endif
+   }
+}
+
+static void
+mesa_log_init(void)
+{
+   static once_flag once = ONCE_FLAG_INIT;
+   call_once(&once, mesa_log_init_once);
+}
 
 static inline const char *
 level_to_str(enum mesa_log_level l)
@@ -70,9 +108,7 @@ logger_file(enum mesa_log_level level,
 #endif
 }
 
-#endif /* !ANDROID */
-
-#ifdef ANDROID
+#if DETECT_OS_ANDROID
 
 static inline android_LogPriority
 level_to_android(enum mesa_log_level l)
@@ -96,7 +132,7 @@ logger_android(enum mesa_log_level level,
    __android_log_vprint(level_to_android(level), tag, format, va);
 }
 
-#endif /* ANDROID */
+#endif /* DETECT_OS_ANDROID */
 
 void
 mesa_log(enum mesa_log_level level, const char *tag, const char *format, ...)
@@ -112,11 +148,29 @@ void
 mesa_log_v(enum mesa_log_level level, const char *tag, const char *format,
             va_list va)
 {
-#ifndef ANDROID
-   logger_file(level, tag, format, va);
-#else
-   logger_android(level, tag, format, va);
+   static const struct {
+      enum mesa_log_control bit;
+      void (*log)(enum mesa_log_level level,
+                  const char *tag,
+                  const char *format,
+                  va_list va);
+   } loggers[] = {
+      { MESA_LOG_CONTROL_FILE, logger_file },
+#if DETECT_OS_ANDROID
+      { MESA_LOG_CONTROL_ANDROID, logger_android },
 #endif
+   };
+
+   mesa_log_init();
+
+   for (uint32_t i = 0; i < ARRAY_SIZE(loggers); i++) {
+      if (mesa_log_control & loggers[i].bit) {
+         va_list copy;
+         va_copy(copy, va);
+         loggers[i].log(level, tag, format, copy);
+         va_end(copy);
+      }
+   }
 }
 
 struct log_stream *
