@@ -4234,15 +4234,22 @@ fixup_io_locations(nir_shader *nir)
       if (nir_slot_is_sysval_output(i))
          continue;
       nir_variable *var = nir_find_variable_with_location(nir, mode, i);
-      if (!var)
+      if (!var) {
+         /* locations used between stages are not required to be contiguous */
+         if (i >= VARYING_SLOT_VAR0)
+            slot++;
          continue;
+      }
       unsigned size;
       /* ensure variable is given enough slots */
       if (nir_is_arrayed_io(var, nir->info.stage))
          size = glsl_count_vec4_slots(glsl_get_array_element(var->type), false, false);
       else
          size = glsl_count_vec4_slots(var->type, false, false);
-      var->data.driver_location = slot += size;
+      var->data.driver_location = slot;
+      slot += size;
+      /* ensure the consumed slots aren't double iterated */
+      i += size - 1;
    }
    return true;
 }
