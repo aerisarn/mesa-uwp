@@ -3923,6 +3923,12 @@ struct anv_image_view {
       struct isl_view isl;
 
       /**
+       * A version of the image view for storage usage (can apply 3D image
+       * slicing).
+       */
+      struct isl_view isl_storage;
+
+      /**
        * RENDER_SURFACE_STATE when using image as a sampler surface with an
        * image layout of SHADER_READ_ONLY_OPTIMAL or
        * DEPTH_STENCIL_READ_ONLY_OPTIMAL.
