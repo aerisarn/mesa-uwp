@@ -243,6 +243,21 @@ TEST_F(nir_loop_analyze_test, infinite_loop_feq)
    EXPECT_FALSE(loop->info->guessed_trip_count);
    EXPECT_FALSE(loop->info->exact_trip_count_known);
    EXPECT_EQ((void *)0, loop->info->limiting_terminator);
+
+   /* Loop should have an induction variable for ssa_5 and ssa_4. */
+   EXPECT_EQ(2, loop->info->num_induction_vars);
+   ASSERT_NE((void *)0, loop->info->induction_vars);
+
+   /* Since the initializer and increments are constants, the init_src and
+    * update_src fields will be NULL. The def field should not be NULL.
+    */
+   const nir_loop_induction_variable *const ivars = loop->info->induction_vars;
+
+   for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {
+      EXPECT_NE((void *)0, ivars[i].def);
+      EXPECT_EQ((void *)0, ivars[i].init_src);
+      EXPECT_EQ((void *)0, ivars[i].update_src);
+   }
 }
 
 TEST_F(nir_loop_analyze_test, zero_iterations_ine)
@@ -308,6 +323,21 @@ TEST_F(nir_loop_analyze_test, zero_iterations_ine)
    ASSERT_NE((void *)0, loop->info);
    EXPECT_EQ(0, loop->info->max_trip_count);
    EXPECT_TRUE(loop->info->exact_trip_count_known);
+
+   /* Loop should have an induction variable for ssa_5 and ssa_4. */
+   EXPECT_EQ(2, loop->info->num_induction_vars);
+   ASSERT_NE((void *)0, loop->info->induction_vars);
+
+   /* Since the initializer and increments are constants, the init_src and
+    * update_src fields will be NULL. The def field should not be NULL.
+    */
+   const nir_loop_induction_variable *const ivars = loop->info->induction_vars;
+
+   for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {
+      EXPECT_NE((void *)0, ivars[i].def);
+      EXPECT_EQ((void *)0, ivars[i].init_src);
+      EXPECT_EQ((void *)0, ivars[i].update_src);
+   }
 }
 
 TEST_F(nir_loop_analyze_test, one_iteration_uge)
@@ -370,6 +400,21 @@ TEST_F(nir_loop_analyze_test, one_iteration_uge)
    ASSERT_NE((void *)0, loop->info);
    EXPECT_EQ(1, loop->info->max_trip_count);
    EXPECT_TRUE(loop->info->exact_trip_count_known);
+
+   /* Loop should have an induction variable for ssa_5 and ssa_4. */
+   EXPECT_EQ(2, loop->info->num_induction_vars);
+   ASSERT_NE((void *)0, loop->info->induction_vars);
+
+   /* Since the initializer and increments are constants, the init_src and
+    * update_src fields will be NULL. The def field should not be NULL.
+    */
+   const nir_loop_induction_variable *const ivars = loop->info->induction_vars;
+
+   for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {
+      EXPECT_NE((void *)0, ivars[i].def);
+      EXPECT_EQ((void *)0, ivars[i].init_src);
+      EXPECT_EQ((void *)0, ivars[i].update_src);
+   }
 }
 
 TEST_F(nir_loop_analyze_test, one_iteration_ine)
@@ -432,6 +477,21 @@ TEST_F(nir_loop_analyze_test, one_iteration_ine)
    ASSERT_NE((void *)0, loop->info);
    EXPECT_EQ(1, loop->info->max_trip_count);
    EXPECT_TRUE(loop->info->exact_trip_count_known);
+
+   /* Loop should have an induction variable for ssa_5 and ssa_4. */
+   EXPECT_EQ(2, loop->info->num_induction_vars);
+   ASSERT_NE((void *)0, loop->info->induction_vars);
+
+   /* Since the initializer and increments are constants, the init_src and
+    * update_src fields will be NULL. The def field should not be NULL.
+    */
+   const nir_loop_induction_variable *const ivars = loop->info->induction_vars;
+
+   for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {
+      EXPECT_NE((void *)0, ivars[i].def);
+      EXPECT_EQ((void *)0, ivars[i].init_src);
+      EXPECT_EQ((void *)0, ivars[i].update_src);
+   }
 }
 
 TEST_F(nir_loop_analyze_test, one_iteration_ieq)
@@ -494,6 +554,21 @@ TEST_F(nir_loop_analyze_test, one_iteration_ieq)
    ASSERT_NE((void *)0, loop->info);
    EXPECT_EQ(1, loop->info->max_trip_count);
    EXPECT_TRUE(loop->info->exact_trip_count_known);
+
+   /* Loop should have an induction variable for ssa_5 and ssa_4. */
+   EXPECT_EQ(2, loop->info->num_induction_vars);
+   ASSERT_NE((void *)0, loop->info->induction_vars);
+
+   /* Since the initializer and increments are constants, the init_src and
+    * update_src fields will be NULL. The def field should not be NULL.
+    */
+   const nir_loop_induction_variable *const ivars = loop->info->induction_vars;
+
+   for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {
+      EXPECT_NE((void *)0, ivars[i].def);
+      EXPECT_EQ((void *)0, ivars[i].init_src);
+      EXPECT_EQ((void *)0, ivars[i].update_src);
+   }
 }
 
 TEST_F(nir_loop_analyze_test, one_iteration_easy_fneu)
@@ -556,6 +631,21 @@ TEST_F(nir_loop_analyze_test, one_iteration_easy_fneu)
    ASSERT_NE((void *)0, loop->info);
    EXPECT_EQ(1, loop->info->max_trip_count);
    EXPECT_TRUE(loop->info->exact_trip_count_known);
+
+   /* Loop should have an induction variable for ssa_5 and ssa_4. */
+   EXPECT_EQ(2, loop->info->num_induction_vars);
+   ASSERT_NE((void *)0, loop->info->induction_vars);
+
+   /* Since the initializer and increments are constants, the init_src and
+    * update_src fields will be NULL. The def field should not be NULL.
+    */
+   const nir_loop_induction_variable *const ivars = loop->info->induction_vars;
+
+   for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {
+      EXPECT_NE((void *)0, ivars[i].def);
+      EXPECT_EQ((void *)0, ivars[i].init_src);
+      EXPECT_EQ((void *)0, ivars[i].update_src);
+   }
 }
 
 TEST_F(nir_loop_analyze_test, one_iteration_fneu)
@@ -623,6 +713,21 @@ TEST_F(nir_loop_analyze_test, one_iteration_fneu)
    ASSERT_NE((void *)0, loop->info);
    EXPECT_EQ(1, loop->info->max_trip_count);
    EXPECT_TRUE(loop->info->exact_trip_count_known);
+
+   /* Loop should have an induction variable for ssa_5 and ssa_4. */
+   EXPECT_EQ(2, loop->info->num_induction_vars);
+   ASSERT_NE((void *)0, loop->info->induction_vars);
+
+   /* Since the initializer and increments are constants, the init_src and
+    * update_src fields will be NULL. The def field should not be NULL.
+    */
+   const nir_loop_induction_variable *const ivars = loop->info->induction_vars;
+
+   for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {
+      EXPECT_NE((void *)0, ivars[i].def);
+      EXPECT_EQ((void *)0, ivars[i].init_src);
+      EXPECT_EQ((void *)0, ivars[i].update_src);
+   }
 }
 
 TEST_F(nir_loop_analyze_test, zero_iterations_ine_inverted)
@@ -687,6 +792,21 @@ TEST_F(nir_loop_analyze_test, zero_iterations_ine_inverted)
    ASSERT_NE((void *)0, loop->info);
    EXPECT_EQ(0, loop->info->max_trip_count);
    EXPECT_TRUE(loop->info->exact_trip_count_known);
+
+   /* Loop should have an induction variable for ssa_5 and ssa_3. */
+   EXPECT_EQ(2, loop->info->num_induction_vars);
+   ASSERT_NE((void *)0, loop->info->induction_vars);
+
+   /* Since the initializer and increments are constants, the init_src and
+    * update_src fields will be NULL. The def field should not be NULL.
+    */
+   const nir_loop_induction_variable *const ivars = loop->info->induction_vars;
+
+   for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {
+      EXPECT_NE((void *)0, ivars[i].def);
+      EXPECT_EQ((void *)0, ivars[i].init_src);
+      EXPECT_EQ((void *)0, ivars[i].update_src);
+   }
 }
 
 TEST_F(nir_loop_analyze_test, five_iterations_ige_inverted)
@@ -751,4 +871,19 @@ TEST_F(nir_loop_analyze_test, five_iterations_ige_inverted)
    ASSERT_NE((void *)0, loop->info);
    EXPECT_EQ(5, loop->info->max_trip_count);
    EXPECT_TRUE(loop->info->exact_trip_count_known);
+
+   /* Loop should have an induction variable for ssa_5 and ssa_3. */
+   EXPECT_EQ(2, loop->info->num_induction_vars);
+   ASSERT_NE((void *)0, loop->info->induction_vars);
+
+   /* Since the initializer and increments are constants, the init_src and
+    * update_src fields will be NULL. The def field should not be NULL.
+    */
+   const nir_loop_induction_variable *const ivars = loop->info->induction_vars;
+
+   for (unsigned i = 0; i < loop->info->num_induction_vars; i++) {
+      EXPECT_NE((void *)0, ivars[i].def);
+      EXPECT_EQ((void *)0, ivars[i].init_src);
+      EXPECT_EQ((void *)0, ivars[i].update_src);
+   }
 }
