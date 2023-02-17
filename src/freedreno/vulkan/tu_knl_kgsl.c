@@ -293,11 +293,11 @@ sync_merge(const VkSemaphore *syncobjs, uint32_t count, bool wait_all, bool rese
    return ret;
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_QueueSubmit2(VkQueue _queue,
-                uint32_t submitCount,
-                const VkSubmitInfo2 *pSubmits,
-                VkFence _fence)
+static VKAPI_ATTR VkResult VKAPI_CALL
+kgsl_QueueSubmit2(VkQueue _queue,
+                  uint32_t submitCount,
+                  const VkSubmitInfo2 *pSubmits,
+                  VkFence _fence)
 {
    MESA_TRACE_FUNC();
    TU_FROM_HANDLE(tu_queue, queue, _queue);
@@ -510,36 +510,36 @@ sync_create(VkDevice _device,
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_ImportSemaphoreFdKHR(VkDevice _device,
-                        const VkImportSemaphoreFdInfoKHR *pImportSemaphoreFdInfo)
+static VKAPI_ATTR VkResult VKAPI_CALL
+kgsl_ImportSemaphoreFdKHR(VkDevice _device,
+                          const VkImportSemaphoreFdInfoKHR *pImportSemaphoreFdInfo)
 {
    tu_finishme("ImportSemaphoreFdKHR");
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_GetSemaphoreFdKHR(VkDevice _device,
-                     const VkSemaphoreGetFdInfoKHR *pGetFdInfo,
-                     int *pFd)
+static VKAPI_ATTR VkResult VKAPI_CALL
+kgsl_GetSemaphoreFdKHR(VkDevice _device,
+                       const VkSemaphoreGetFdInfoKHR *pGetFdInfo,
+                       int *pFd)
 {
    tu_finishme("GetSemaphoreFdKHR");
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_CreateSemaphore(VkDevice device,
-                   const VkSemaphoreCreateInfo *pCreateInfo,
-                   const VkAllocationCallbacks *pAllocator,
-                   VkSemaphore *pSemaphore)
+static VKAPI_ATTR VkResult VKAPI_CALL
+kgsl_CreateSemaphore(VkDevice device,
+                     const VkSemaphoreCreateInfo *pCreateInfo,
+                     const VkAllocationCallbacks *pAllocator,
+                     VkSemaphore *pSemaphore)
 {
    return sync_create(device, false, false, pAllocator, (void**) pSemaphore);
 }
 
-VKAPI_ATTR void VKAPI_CALL
-tu_DestroySemaphore(VkDevice _device,
-                    VkSemaphore semaphore,
-                    const VkAllocationCallbacks *pAllocator)
+static VKAPI_ATTR void VKAPI_CALL
+kgsl_DestroySemaphore(VkDevice _device,
+                      VkSemaphore semaphore,
+                      const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_syncobj, sync, semaphore);
@@ -550,37 +550,37 @@ tu_DestroySemaphore(VkDevice _device,
    vk_object_free(&device->vk, pAllocator, sync);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_ImportFenceFdKHR(VkDevice _device,
-                    const VkImportFenceFdInfoKHR *pImportFenceFdInfo)
+static VKAPI_ATTR VkResult VKAPI_CALL
+kgsl_ImportFenceFdKHR(VkDevice _device,
+                      const VkImportFenceFdInfoKHR *pImportFenceFdInfo)
 {
    tu_stub();
 
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_GetFenceFdKHR(VkDevice _device,
-                 const VkFenceGetFdInfoKHR *pGetFdInfo,
-                 int *pFd)
+static VKAPI_ATTR VkResult VKAPI_CALL
+kgsl_GetFenceFdKHR(VkDevice _device,
+                   const VkFenceGetFdInfoKHR *pGetFdInfo,
+                   int *pFd)
 {
    tu_stub();
 
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_CreateFence(VkDevice device,
-               const VkFenceCreateInfo *info,
-               const VkAllocationCallbacks *pAllocator,
-               VkFence *pFence)
+static VKAPI_ATTR VkResult VKAPI_CALL
+kgsl_CreateFence(VkDevice device,
+                 const VkFenceCreateInfo *info,
+                 const VkAllocationCallbacks *pAllocator,
+                 VkFence *pFence)
 {
    return sync_create(device, info->flags & VK_FENCE_CREATE_SIGNALED_BIT, true,
                       pAllocator, (void**) pFence);
 }
 
-VKAPI_ATTR void VKAPI_CALL
-tu_DestroyFence(VkDevice _device, VkFence fence, const VkAllocationCallbacks *pAllocator)
+static VKAPI_ATTR void VKAPI_CALL
+kgsl_DestroyFence(VkDevice _device, VkFence fence, const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_syncobj, sync, fence);
@@ -628,12 +628,12 @@ wait_timestamp_safe(int fd,
    }
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_WaitForFences(VkDevice _device,
-                 uint32_t count,
-                 const VkFence *pFences,
-                 VkBool32 waitAll,
-                 uint64_t timeout)
+static VKAPI_ATTR VkResult VKAPI_CALL
+kgsl_WaitForFences(VkDevice _device,
+                   uint32_t count,
+                   const VkFence *pFences,
+                   VkBool32 waitAll,
+                   uint64_t timeout)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_syncobj s = sync_merge((const VkSemaphore*) pFences, count, waitAll, false);
@@ -653,8 +653,8 @@ tu_WaitForFences(VkDevice _device,
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_ResetFences(VkDevice _device, uint32_t count, const VkFence *pFences)
+static VKAPI_ATTR VkResult VKAPI_CALL
+kgsl_ResetFences(VkDevice _device, uint32_t count, const VkFence *pFences)
 {
    for (uint32_t i = 0; i < count; i++) {
       TU_FROM_HANDLE(tu_syncobj, sync, pFences[i]);
@@ -663,8 +663,8 @@ tu_ResetFences(VkDevice _device, uint32_t count, const VkFence *pFences)
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_GetFenceStatus(VkDevice _device, VkFence _fence)
+static VKAPI_ATTR VkResult VKAPI_CALL
+kgsl_GetFenceStatus(VkDevice _device, VkFence _fence)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_syncobj, sync, _fence);
@@ -733,12 +733,12 @@ kgsl_device_check_status(struct tu_device *device)
 }
 
 #ifdef ANDROID
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_QueueSignalReleaseImageANDROID(VkQueue _queue,
-                                  uint32_t waitSemaphoreCount,
-                                  const VkSemaphore *pWaitSemaphores,
-                                  VkImage image,
-                                  int *pNativeFenceFd)
+static VKAPI_ATTR VkResult VKAPI_CALL
+kgsl_QueueSignalReleaseImageANDROID(VkQueue _queue,
+                                    uint32_t waitSemaphoreCount,
+                                    const VkSemaphore *pWaitSemaphores,
+                                    VkImage image,
+                                    int *pNativeFenceFd)
 {
    TU_FROM_HANDLE(tu_queue, queue, _queue);
    if (!pNativeFenceFd)
@@ -757,6 +757,29 @@ tu_QueueSignalReleaseImageANDROID(VkQueue _queue,
 }
 #endif
 
+/**
+ * kgsl's sync primitives are not drm_syncobj, therefore we have to bypass
+ * a lot of the vk-common helpers and plug-in kgsl specific entrypoints
+ * instead.
+ */
+static const struct vk_device_entrypoint_table kgsl_device_entrypoints = {
+      .QueueSubmit2 = kgsl_QueueSubmit2,
+      .ImportSemaphoreFdKHR = kgsl_ImportSemaphoreFdKHR,
+      .GetSemaphoreFdKHR = kgsl_GetSemaphoreFdKHR,
+      .CreateSemaphore = kgsl_CreateSemaphore,
+      .DestroySemaphore = kgsl_DestroySemaphore,
+      .ImportFenceFdKHR = kgsl_ImportFenceFdKHR,
+      .GetFenceFdKHR = kgsl_GetFenceFdKHR,
+      .CreateFence = kgsl_CreateFence,
+      .DestroyFence = kgsl_DestroyFence,
+      .WaitForFences = kgsl_WaitForFences,
+      .ResetFences = kgsl_ResetFences,
+      .GetFenceStatus = kgsl_GetFenceStatus,
+#ifdef ANDROID
+      .QueueSignalReleaseImageANDROID = kgsl_QueueSignalReleaseImageANDROID,
+#endif
+};
+
 static const struct tu_knl kgsl_knl_funcs = {
       .name = "kgsl",
 
@@ -772,6 +795,8 @@ static const struct tu_knl kgsl_knl_funcs = {
       .bo_allow_dump = kgsl_bo_allow_dump,
       .bo_finish = kgsl_bo_finish,
       .device_wait_u_trace = kgsl_device_wait_u_trace,
+
+      .device_entrypoints = &kgsl_device_entrypoints,
 };
 
 VkResult

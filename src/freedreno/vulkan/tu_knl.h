@@ -73,6 +73,8 @@ struct tu_knl {
                                    struct tu_u_trace_syncobj *syncobj);
    VkResult (*queue_submit)(struct tu_queue *queue,
                             struct vk_queue_submit *submit);
+
+   const struct vk_device_entrypoint_table *device_entrypoints;
 };
 
 struct tu_timeline_sync {

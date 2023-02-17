@@ -2107,6 +2107,13 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    vk_device_dispatch_table_from_entrypoints(
       &dispatch_table, &wsi_device_entrypoints, false);
 
+   const struct vk_device_entrypoint_table *knl_device_entrypoints =
+         physical_device->instance->knl->device_entrypoints;
+   if (knl_device_entrypoints) {
+      vk_device_dispatch_table_from_entrypoints(
+         &dispatch_table, knl_device_entrypoints, false);
+   }
+
    result = vk_device_init(&device->vk, &physical_device->vk,
                            &dispatch_table, pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
