@@ -915,12 +915,6 @@
     <value name="FP32" value="3"/>
   </enum>
 
-  <enum name="Primitive Restart">
-    <value name="None" value="0"/>
-    <value name="Implicit" value="2"/>
-    <value name="Explicit" value="3"/>
-  </enum>
-
   <enum name="FIFO format">
     <value name="Auto" value="0"/>
     <value name="Basic" value="1"/>
@@ -937,7 +931,7 @@
     <field name="Low Depth Cull" size="1" start="0:16" type="bool" default="true"/>
     <field name="High Depth Cull" size="1" start="0:17" type="bool" default="true"/>
     <field name="Secondary Shader" size="1" start="0:18" type="bool"/>
-    <field name="Primitive restart" size="2" start="0:19" type="Primitive Restart"/>
+    <field name="Primitive restart" size="1" start="0:19" type="bool"/>
     <field name="Layer index enable" size="1" start="0:20" type="bool"/>
     <field name="Scissor array enable" size="1" start="0:21" type="bool"/>
     <field name="Position FIFO format" size="2" start="0:22" type="FIFO format"/>
@@ -954,7 +948,7 @@
     <field name="Low Depth Cull" size="1" start="0:16" type="bool" default="true"/>
     <field name="High Depth Cull" size="1" start="0:17" type="bool" default="true"/>
     <field name="Secondary Shader" size="1" start="0:18" type="bool"/>
-    <field name="Primitive restart" size="2" start="0:19" type="Primitive Restart"/>
+    <field name="Primitive restart" size="1" start="0:19" type="bool"/>
     <field name="Layer index enable" size="1" start="0:20" type="bool"/>
     <field name="Scissor array enable" size="1" start="0:21" type="bool"/>
 
