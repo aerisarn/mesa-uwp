@@ -574,7 +574,7 @@ const rogue_alu_op_info rogue_alu_op_infos[ROGUE_ALU_OP_COUNT] = {
       .supported_src_mods = {
          [0] = SM(ABS) | SM(NEG),
       },
-      .supported_dst_types = { [0] = T(REG) | T(REGARRAY), },
+      .supported_dst_types = { [0] = T(REG) | T(REGARRAY) | T(IO), },
       .supported_src_types = {
          [0] = T(REG),
       },

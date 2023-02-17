@@ -450,9 +450,16 @@ typedef struct rogue_instr {
 
    rogue_block *block; /** Basic block containing this instruction. */
 
+   bool group_next; /** Group next instruction with this one. */
    unsigned index; /** Instruction index. */
    char *comment; /** Comment string. */
 } rogue_instr;
+
+static inline void rogue_set_instr_group_next(rogue_instr *instr,
+                                              bool group_next)
+{
+   instr->group_next = group_next;
+}
 
 #define rogue_foreach_instr_in_block(instr, block) \
    list_for_each_entry (rogue_instr, instr, &(block)->instrs, link)

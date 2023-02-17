@@ -70,6 +70,52 @@ static unsigned rogue_calc_da(const rogue_instr_group *group)
    return da;
 }
 
+#define P(type) BITFIELD64_BIT(ROGUE_INSTR_PHASE_##type)
+static enum oporg rogue_calc_oporg(uint64_t alu_phases)
+{
+   bool P0 = !!(alu_phases & P(0));
+   bool P1 = !!(alu_phases & P(1));
+   bool P2 = !!(alu_phases & (P(2_PCK) | P(2_TST) | P(2_MOV)));
+   bool PBE = !!(alu_phases & P(BACKEND));
+
+   if (P0 && P1 && P2 && PBE)
+      return OPORG_P0_P1_P2_BE;
+   else if (P0 && !P1 && P2 && PBE)
+      return OPORG_P0_P2_BE;
+   else if (P0 && P1 && P2 && !PBE)
+      return OPORG_P0_P1_P2;
+   else if (P0 && !P1 && P2 && !PBE)
+      return OPORG_P0_P2;
+   else if (P0 && P1 && !P2 && !PBE)
+      return OPORG_P0_P1;
+   else if (!P0 && !P1 && !P2 && PBE)
+      return OPORG_BE;
+   else if (!P0 && !P1 && P2 && !PBE)
+      return OPORG_P2;
+   else if (P0 && !P1 && !P2 && !PBE)
+      return OPORG_P0;
+
+   unreachable("Invalid ALU phase combination.");
+}
+
+static enum opcnt rogue_calc_opcnt(uint64_t bitwise_phases)
+{
+   enum opcnt opcnt = 0;
+
+   if (bitwise_phases & P(0_BITMASK) || bitwise_phases & P(0_SHIFT1) ||
+       bitwise_phases & P(0_COUNT)) {
+      opcnt |= OPCNT_P0;
+   }
+
+   if (bitwise_phases & P(1_LOGICAL))
+      opcnt |= OPCNT_P1;
+
+   if (bitwise_phases & P(2_SHIFT2) || bitwise_phases & P(2_TEST))
+      opcnt |= OPCNT_P2;
+
+   return opcnt;
+}
+
 static void rogue_encode_instr_group_header(rogue_instr_group *group,
                                             struct util_dynarray *binary)
 {
@@ -116,31 +162,12 @@ static void rogue_encode_instr_group_header(rogue_instr_group *group,
    switch (group->header.alu) {
    case ROGUE_ALU_MAIN:
       h.alutype = ALUTYPE_MAIN;
-      /* TODO: Support multiple phase instructions. */
-#define P(type) BITFIELD64_BIT(ROGUE_INSTR_PHASE_##type)
-      if (group->header.phases & P(0))
-         h.oporg = OPORG_P0;
-      if (group->header.phases & P(2_PCK) || group->header.phases & P(2_TST) ||
-          group->header.phases & P(2_MOV))
-         h.oporg = OPORG_P2;
-      if (group->header.phases & P(BACKEND))
-         h.oporg = OPORG_BE;
-#undef P
+      h.oporg = rogue_calc_oporg(group->header.phases);
       break;
 
    case ROGUE_ALU_BITWISE:
       h.alutype = ALUTYPE_BITWISE;
-#define P(type) BITFIELD64_BIT(ROGUE_INSTR_PHASE_##type)
-      if (group->header.phases & P(0_BITMASK) ||
-          group->header.phases & P(0_SHIFT1) ||
-          group->header.phases & P(0_COUNT))
-         h.oporg |= OPCNT_P0;
-      if (group->header.phases & P(1_LOGICAL))
-         h.oporg |= OPCNT_P1;
-      if (group->header.phases & P(2_SHIFT2) ||
-          group->header.phases & P(2_TEST))
-         h.oporg |= OPCNT_P2;
-#undef P
+      h.opcnt = rogue_calc_opcnt(group->header.phases);
       break;
 
    case ROGUE_ALU_CONTROL:
@@ -180,13 +207,13 @@ static void rogue_encode_instr_group_header(rogue_instr_group *group,
 
    if (group->header.alu != ROGUE_ALU_CONTROL) {
       h.end = group->header.end;
-      /* h.crel = ; */ /* Unused for now */
       /* h.atom = ; */ /* Unused for now */
       h.rpt = group->header.repeat - 1;
    }
 
    util_dynarray_append_mem(binary, group->size.header, &h);
 }
+#undef P
 
 typedef union rogue_instr_encoding {
    rogue_alu_instr_encoding alu;

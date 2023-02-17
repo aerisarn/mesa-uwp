@@ -592,7 +592,7 @@ static inline void rogue_print_instr_group(FILE *fp,
    fputs("{ ", fp);
 
    CYAN(fp);
-   fprintf(fp, "%s ", rogue_alu_str[group->header.alu]);
+   fprintf(fp, "%s", rogue_alu_str[group->header.alu]);
    RESET(fp);
 
    /* Print each instruction. */
@@ -600,6 +600,7 @@ static inline void rogue_print_instr_group(FILE *fp,
       const rogue_instr *instr = group->instrs[p];
       assert(instr);
 
+      fputs(" ", fp);
       rogue_print_instr_phase(fp, group->header.alu, p);
       fputs(": ", fp);
       rogue_print_instr(fp, instr);

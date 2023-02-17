@@ -840,6 +840,8 @@ bool rogue_schedule_instr_groups(rogue_shader *shader, bool multi_instr_groups)
 
    rogue_lower_regs(shader);
 
+   rogue_instr_group *group;
+   bool grouping = false;
    unsigned g = 0;
    rogue_foreach_block (block, shader) {
       struct list_head instr_groups;
@@ -865,12 +867,20 @@ bool rogue_schedule_instr_groups(rogue_shader *shader, bool multi_instr_groups)
             unreachable("Unsupported instruction type.");
          }
 
-         rogue_instr_group *group = rogue_instr_group_create(block, group_alu);
-         group->index = g++;
+         if (!grouping) {
+            group = rogue_instr_group_create(block, group_alu);
+            group->index = g++;
+         }
 
+         assert(group_alu == group->header.alu);
          rogue_move_instr_to_group(instr, group);
-         rogue_finalise_instr_group(group);
-         list_addtail(&group->link, &instr_groups);
+
+         grouping = instr->group_next;
+
+         if (!grouping) {
+            rogue_finalise_instr_group(group);
+            list_addtail(&group->link, &instr_groups);
+         }
       }
 
       list_replace(&instr_groups, &block->instrs);

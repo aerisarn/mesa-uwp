@@ -1346,7 +1346,7 @@ typedef struct rogue_instr_group_header_encoding {
          unsigned ccext : 1;
          unsigned rpt : 2;
          unsigned atom : 1;
-         unsigned crel : 1;
+         unsigned : 1;
          unsigned alutype : 2;
          unsigned end : 1;
       } PACKED;
