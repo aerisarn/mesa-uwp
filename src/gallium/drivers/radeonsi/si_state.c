@@ -1621,7 +1621,7 @@ static void si_emit_db_render_state(struct si_context *sctx)
             radeon_opt_set_context_reg(sctx, R_028064_DB_VRS_OVERRIDE_CNTL,
                                        SI_TRACKED_DB_PA_SC_VRS_OVERRIDE_CNTL,
                                        S_028064_VRS_OVERRIDE_RATE_COMBINER_MODE(
-                                          V_028064_VRS_COMB_MODE_OVERRIDE) |
+                                          V_028064_SC_VRS_COMB_MODE_OVERRIDE) |
                                        S_028064_VRS_OVERRIDE_RATE_X(1) |
                                        S_028064_VRS_OVERRIDE_RATE_Y(1));
          }
@@ -1641,7 +1641,7 @@ static void si_emit_db_render_state(struct si_context *sctx)
                                        S_0283D0_VRS_RATE(V_0283D0_VRS_SHADING_RATE_1X1));
          } else {
             unsigned mode = sctx->screen->options.vrs2x2 && G_02880C_KILL_ENABLE(db_shader_control) ?
-               V_028064_VRS_COMB_MODE_MIN : V_028064_VRS_COMB_MODE_PASSTHRU;
+               V_028064_SC_VRS_COMB_MODE_MIN : V_028064_SC_VRS_COMB_MODE_PASSTHRU;
 
             radeon_opt_set_context_reg(sctx, R_028064_DB_VRS_OVERRIDE_CNTL,
                                        SI_TRACKED_DB_PA_SC_VRS_OVERRIDE_CNTL,
@@ -5923,8 +5923,8 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
        * (e.g. enabled sample shading overrides the vertex rate)
        */
       si_pm4_set_reg(pm4, R_028848_PA_CL_VRS_CNTL,
-                     S_028848_VERTEX_RATE_COMBINER_MODE(V_028848_VRS_COMB_MODE_OVERRIDE) |
-                     S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_VRS_COMB_MODE_OVERRIDE));
+                     S_028848_VERTEX_RATE_COMBINER_MODE(V_028848_SC_VRS_COMB_MODE_OVERRIDE) |
+                     S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_SC_VRS_COMB_MODE_OVERRIDE));
    }
 
    if (sctx->gfx_level >= GFX11) {

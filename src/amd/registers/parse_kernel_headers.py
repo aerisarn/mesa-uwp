@@ -407,11 +407,11 @@ IMG_DATA_FORMAT_STENCIL = {
 
 VRSCombinerModeSC = {
  "entries": [
-  {"name": "VRS_COMB_MODE_PASSTHRU", "value": 0},
-  {"name": "VRS_COMB_MODE_OVERRIDE", "value": 1},
-  {"name": "VRS_COMB_MODE_MIN", "value": 2},
-  {"name": "VRS_COMB_MODE_MAX", "value": 3},
-  {"name": "VRS_COMB_MODE_SATURATE", "value": 4},
+  {"name": "SC_VRS_COMB_MODE_PASSTHRU", "value": 0},
+  {"name": "SC_VRS_COMB_MODE_OVERRIDE", "value": 1},
+  {"name": "SC_VRS_COMB_MODE_MIN", "value": 2},
+  {"name": "SC_VRS_COMB_MODE_MAX", "value": 3},
+  {"name": "SC_VRS_COMB_MODE_SATURATE", "value": 4},
  ]
 }
 
