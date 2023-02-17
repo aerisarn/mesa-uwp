@@ -287,9 +287,13 @@ static inline void rogue_instr_group_put(rogue_instr *instr,
    /* Set end flag. */
    group->header.end = instr->end;
 
+   /* Ensure we're not mixing and matching execution conditions! */
+   assert(group->header.exec_cond == ROGUE_EXEC_COND_INVALID ||
+          group->header.exec_cond == instr->exec_cond);
+
    /* Set conditional execution flag. */
-   /* TODO: Set this from the instruction. */
-   group->header.exec_cond = ROGUE_EXEC_COND_PE_TRUE;
+   group->header.exec_cond = instr->exec_cond;
+   instr->exec_cond = ROGUE_EXEC_COND_INVALID;
 
    /* Lower I/O to sources/destinations/ISS. */
    rogue_lower_instr_group_io(instr, group);
@@ -366,8 +370,10 @@ static void rogue_calc_dsts_size(rogue_instr_group *group)
 {
    const rogue_instr_group_io_sel *io_sel = &group->io_sel;
 
-   unsigned num_dsts = !rogue_ref_is_null(&io_sel->dsts[0]) +
-                       !rogue_ref_is_null(&io_sel->dsts[1]);
+   unsigned num_dsts = (!rogue_ref_is_null(&io_sel->dsts[0]) &&
+                        !rogue_ref_is_io_none(&io_sel->dsts[0])) +
+                       (!rogue_ref_is_null(&io_sel->dsts[1]) &&
+                        !rogue_ref_is_io_none(&io_sel->dsts[1]));
    unsigned bank_bits[ROGUE_ISA_DSTS] = { 0 };
    unsigned index_bits[ROGUE_ISA_DSTS] = { 0 };
 

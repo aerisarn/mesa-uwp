@@ -806,6 +806,7 @@ void rogue_shader_passes(rogue_shader *shader)
    ROGUE_PASS_V(shader, rogue_schedule_uvsw, false);
    ROGUE_PASS_V(shader, rogue_trim);
    ROGUE_PASS_V(shader, rogue_regalloc);
+   ROGUE_PASS_V(shader, rogue_lower_late_ops);
    ROGUE_PASS_V(shader, rogue_dce);
    ROGUE_PASS_V(shader, rogue_schedule_instr_groups, false);
 

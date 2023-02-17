@@ -2738,6 +2738,8 @@ bool rogue_copy_prop(rogue_shader *shader);
 
 bool rogue_dce(rogue_shader *shader);
 
+bool rogue_lower_late_ops(rogue_shader *shader);
+
 bool rogue_lower_pseudo_ops(rogue_shader *shader);
 
 bool rogue_regalloc(rogue_shader *shader);

@@ -632,6 +632,7 @@ static inline void rogue_instr_init(rogue_instr *instr,
                                     rogue_block *block)
 {
    instr->type = type;
+   instr->exec_cond = ROGUE_EXEC_COND_PE_TRUE;
    instr->repeat = 1;
    instr->index = block->shader->next_instr++;
    instr->block = block;
