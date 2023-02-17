@@ -125,8 +125,12 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_ring_attr_amd:
       replacement = load_ring(b, RING_PS_ATTR, s);
 
+      /* Note, the HW always assumes there is at least 1 per-vertex param. */
+      const unsigned total_num_params =
+         MAX2(1, s->info->outinfo.param_exports) + s->info->outinfo.prim_param_exports;
+
       nir_ssa_def *dword1 = nir_channel(b, replacement, 1);
-      dword1 = nir_ior_imm(b, dword1, S_008F04_STRIDE(16 * s->info->outinfo.param_exports));
+      dword1 = nir_ior_imm(b, dword1, S_008F04_STRIDE(16 * total_num_params));
       replacement = nir_vector_insert_imm(b, replacement, dword1, 1);
       break;
 
