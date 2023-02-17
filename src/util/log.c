@@ -40,6 +40,8 @@ enum mesa_log_control {
    MESA_LOG_CONTROL_FILE = 1 << 1,
    MESA_LOG_CONTROL_ANDROID = 1 << 2,
    MESA_LOG_CONTROL_LOGGER_MASK = 0xff,
+
+   MESA_LOG_CONTROL_WAIT = 1 << 8,
 };
 
 static const struct debug_control mesa_log_control_options[] = {
@@ -47,6 +49,8 @@ static const struct debug_control mesa_log_control_options[] = {
    { "null", MESA_LOG_CONTROL_NULL },
    { "file", MESA_LOG_CONTROL_FILE },
    { "android", MESA_LOG_CONTROL_ANDROID },
+   /* flags */
+   { "wait", MESA_LOG_CONTROL_WAIT },
    { NULL, 0 },
 };
 
@@ -203,7 +207,25 @@ logger_android(enum mesa_log_level level,
                const char *format,
                va_list va)
 {
-   __android_log_vprint(level_to_android(level), tag, format, va);
+   /* Android can truncate/drop messages
+    *
+    *  - the internal buffer for vsnprintf has a fixed size (usually 1024)
+    *  - the socket to logd is non-blocking
+    *
+    * and provides no way to detect.  Try our best.
+    */
+   char local_msg[1024];
+   char *msg = logger_vasnprintf(local_msg, sizeof(local_msg), 0, level, tag,
+         format, va);
+
+   __android_log_write(level_to_android(level), tag, msg);
+
+   if (msg != local_msg)
+      free(msg);
+
+   /* increase the chance of logd doing its part */
+   if (mesa_log_control & MESA_LOG_CONTROL_WAIT)
+      thrd_yield();
 }
 
 #endif /* DETECT_OS_ANDROID */
