@@ -1941,8 +1941,8 @@ struct vn_physical_device_image_format_info {
 
 static const VkPhysicalDeviceImageFormatInfo2 *
 vn_physical_device_fix_image_format_info(
-   struct vn_physical_device *physical_dev,
    const VkPhysicalDeviceImageFormatInfo2 *info,
+   const VkExternalMemoryHandleTypeFlagBits renderer_handle_type,
    struct vn_physical_device_image_format_info *local_info)
 {
    local_info->format = *info;
@@ -1959,8 +1959,7 @@ vn_physical_device_fix_image_format_info(
          is_ahb =
             local_info->external.handleType ==
             VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
-         local_info->external.handleType =
-            physical_dev->external_memory.renderer_handle_type;
+         local_info->external.handleType = renderer_handle_type;
          pnext = &local_info->external;
          break;
       case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO:
@@ -2059,9 +2058,28 @@ vn_GetPhysicalDeviceImageFormatProperties2(
                          VK_ERROR_FORMAT_NOT_SUPPORTED);
       }
 
+      /* Check the image tiling against the renderer handle type:
+       * - No need to check for AHB since the tiling will either be forwarded
+       *   or overwritten based on the renderer external memory type.
+       * - For opaque fd and dma_buf fd handle types, passthrough tiling when
+       *   the renderer external memory is dma_buf. Then we can avoid
+       *   reconstructing the structs to support drm format modifier tiling
+       *   like how we support AHB.
+       */
+      if (external_info->handleType !=
+          VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID) {
+         if (renderer_handle_type ==
+                VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT &&
+             pImageFormatInfo->tiling !=
+                VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
+            return vn_error(physical_dev->instance,
+                            VK_ERROR_FORMAT_NOT_SUPPORTED);
+         }
+      }
+
       if (external_info->handleType != renderer_handle_type) {
          pImageFormatInfo = vn_physical_device_fix_image_format_info(
-            physical_dev, pImageFormatInfo, &local_info);
+            pImageFormatInfo, renderer_handle_type, &local_info);
          if (!pImageFormatInfo) {
             return vn_error(physical_dev->instance,
                             VK_ERROR_FORMAT_NOT_SUPPORTED);
