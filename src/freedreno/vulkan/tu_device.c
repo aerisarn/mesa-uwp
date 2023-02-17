@@ -115,6 +115,12 @@ static const struct vk_instance_extension_table tu_instance_extensions_supported
 #endif
 };
 
+static bool
+is_kgsl(struct tu_instance *instance)
+{
+   return strcmp(instance->knl->name, "kgsl") == 0;
+}
+
 static void
 get_device_extensions(const struct tu_physical_device *device,
                       struct vk_device_extension_table *ext)
@@ -187,9 +193,7 @@ get_device_extensions(const struct tu_physical_device *device,
                                             "vk_khr_present_wait") ||
                             wsi_common_vk_instance_supports_present_wait(
                                &device->instance->vk)),
-#ifndef TU_USE_KGSL
-      .KHR_timeline_semaphore = true,
-#endif
+      .KHR_timeline_semaphore = !is_kgsl(device->instance),
 #ifdef VK_USE_PLATFORM_DISPLAY_KHR
       .EXT_display_control = true,
 #endif
@@ -238,9 +242,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_attachment_feedback_loop_layout = true,
       .EXT_rasterization_order_attachment_access = true,
       .EXT_multi_draw = true,
-#ifndef TU_USE_KGSL
-      .EXT_physical_device_drm = true,
-#endif
+      .EXT_physical_device_drm = !is_kgsl(device->instance),
       /* For Graphics Flight Recorder (GFR) */
       .AMD_buffer_marker = true,
       .ARM_rasterization_order_attachment_access = true,
@@ -1683,9 +1685,8 @@ tu_queue_init(struct tu_device *device,
       return result;
 
    queue->device = device;
-#ifndef TU_USE_KGSL
-   queue->vk.driver_submit = tu_queue_submit;
-#endif
+   if (!is_kgsl(device->instance))
+      queue->vk.driver_submit = tu_queue_submit;
 
    int ret = tu_drm_submitqueue_new(device, priority, &queue->msm_queue_id);
    if (ret)
@@ -2137,9 +2138,9 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    if (TU_DEBUG(BOS))
       device->bo_sizes = _mesa_hash_table_create(NULL, _mesa_hash_string, _mesa_key_string_equal);
 
-#ifndef TU_USE_KGSL
-   vk_device_set_drm_fd(&device->vk, device->fd);
-#endif
+   /* kgsl is not a drm device: */
+   if (!is_kgsl(physical_device->instance))
+      vk_device_set_drm_fd(&device->vk, device->fd);
 
    for (unsigned i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
       const VkDeviceQueueCreateInfo *queue_create =
