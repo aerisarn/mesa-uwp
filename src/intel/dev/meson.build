@@ -33,17 +33,26 @@ files_libintel_dev = files(
   'intel_kmd.h',
 )
 
+intel_dev_wa_src = custom_target('intel_wa.[ch]',
+                                 input : ['gen_wa_helpers.py', 'mesa_defs.json'],
+                                 output : ['intel_wa.h', 'intel_wa.c'],
+                                 command : [prog_python, '@INPUT@', '@OUTPUT@'])
+
+# ensures intel_wa.h exists before implementation files are compiled
+idep_intel_dev_wa = declare_dependency(sources : [intel_dev_wa_src[0]])
+
 libintel_dev = static_library(
   'intel_dev',
-  [files_libintel_dev, sha1_h],
+  [files_libintel_dev, sha1_h, [intel_dev_wa_src]],
   include_directories : [inc_include, inc_src, inc_intel],
-  dependencies : [dep_libdrm, idep_mesautil],
+  dependencies : [dep_libdrm, idep_mesautil, idep_intel_dev_wa],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
 )
 
 idep_intel_dev = declare_dependency(
   link_with : libintel_dev,
+  dependencies : idep_intel_dev_wa,
 )
 
 if with_tests

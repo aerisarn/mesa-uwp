@@ -31,6 +31,7 @@
 #include <xf86drm.h>
 
 #include "intel_device_info.h"
+#include "intel_wa.h"
 #include "i915/intel_device_info.h"
 
 #include "util/u_debug.h"
@@ -1326,6 +1327,7 @@ intel_get_device_info_from_pci_id(int pci_id,
    }
 
    intel_device_info_update_cs_workgroup_threads(devinfo);
+   intel_device_info_init_was(devinfo);
 
    return true;
 }
@@ -1581,4 +1583,17 @@ intel_device_info_update_after_hwconfig(struct intel_device_info *devinfo)
       devinfo->max_eus_per_subslice * devinfo->num_thread_per_eu;
 
    intel_device_info_update_cs_workgroup_threads(devinfo);
+}
+
+enum intel_wa_steppings
+intel_device_info_wa_stepping(struct intel_device_info *devinfo)
+{
+   if (intel_device_info_is_mtl(devinfo)) {
+      if (devinfo->revision < 4)
+         return INTEL_STEPPING_A0;
+      return INTEL_STEPPING_B0;
+   }
+
+   /* all other platforms support only released steppings */
+   return INTEL_STEPPING_RELEASE;
 }
