@@ -67,12 +67,18 @@ if with_xlib_lease
   tu_deps += [dep_xlib_xrandr]
 endif
 
-if with_freedreno_kgsl
-  tu_flags += '-DTU_USE_KGSL'
-  # Even if libdrm is available we shouldn't use it in KGSL build
+if not system_has_kms_drm
+  # Even if libdrm is available we shouldn't use it in KGSL-only build
   tu_flags += '-UHAVE_LIBDRM'
+endif
+
+if freedreno_kmds.contains('kgsl')
+  tu_flags += '-DTU_HAS_KGSL'
   libtu_files += files('tu_knl_kgsl.c')
-else
+endif
+
+if freedreno_kmds.contains('msm')
+  tu_flags += '-DTU_HAS_MSM'
   libtu_files += files('tu_knl_drm_msm.c')
   tu_deps += dep_libdrm
 endif

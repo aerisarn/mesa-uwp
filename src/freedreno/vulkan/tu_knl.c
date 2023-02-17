@@ -119,7 +119,7 @@ tu_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit)
 VkResult
 tu_enumerate_devices(struct vk_instance *vk_instance)
 {
-#ifdef TU_USE_KGSL
+#ifdef TU_HAS_KGSL
    struct tu_instance *instance =
       container_of(vk_instance, struct tu_instance, vk);
 
@@ -168,7 +168,6 @@ tu_physical_device_try_create(struct vk_instance *vk_instance,
 
    const char *primary_path = drm_device->nodes[DRM_NODE_PRIMARY];
    const char *path = drm_device->nodes[DRM_NODE_RENDER];
-   VkResult result = VK_SUCCESS;
    drmVersionPtr version;
    int fd;
    int master_fd = -1;
@@ -189,8 +188,11 @@ tu_physical_device_try_create(struct vk_instance *vk_instance,
 
    struct tu_physical_device *device = NULL;
 
+   VkResult result = VK_ERROR_INCOMPATIBLE_DRIVER;
    if (strcmp(version->name, "msm") == 0) {
+#ifdef TU_HAS_MSM
       result = tu_knl_drm_msm_load(instance, fd, version, &device);
+#endif
    } else {
       result = vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
                                  "device %s (%s) is not compatible with turnip",

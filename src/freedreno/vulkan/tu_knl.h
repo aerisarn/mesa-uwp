@@ -46,9 +46,7 @@ struct tu_bo {
    const char *name; /* pointer to device->bo_sizes's entry's name */
    int32_t refcnt;
 
-#ifndef TU_USE_KGSL
    uint32_t bo_list_idx;
-#endif
 
    bool implicit_sync : 1;
 };
@@ -122,9 +120,7 @@ tu_bo_get_ref(struct tu_bo *bo)
    return bo;
 }
 
-#ifdef TU_USE_KGSL
 VkResult tu_knl_kgsl_load(struct tu_instance *instance, int fd);
-#endif
 
 struct _drmVersion;
 VkResult tu_knl_drm_msm_load(struct tu_instance *instance,

@@ -131,11 +131,6 @@ with_shared_glapi = with_shared_glapi and with_any_opengl
 
 system_has_kms_drm = ['openbsd', 'netbsd', 'freebsd', 'gnu/kfreebsd', 'dragonfly', 'linux', 'sunos', 'android'].contains(host_machine.system())
 
-with_freedreno_kgsl = get_option('freedreno-kgsl')
-if with_freedreno_kgsl
-  system_has_kms_drm = false
-endif
-
 gallium_drivers = get_option('gallium-drivers')
 if gallium_drivers.contains('auto')
   if system_has_kms_drm
@@ -193,6 +188,13 @@ foreach gallium_driver : gallium_drivers
   pre_args += '-DHAVE_@0@'.format(gallium_driver.to_upper())
 endforeach
 
+freedreno_kmds = get_option('freedreno-kmds')
+# If building only vulkan with only kgsl kmd support, there is no libdrm
+# dependency:
+if freedreno_kmds.length() == 1 and freedreno_kmds.contains('kgsl') and not with_gallium_freedreno
+  system_has_kms_drm = false
+endif
+
 with_gallium = gallium_drivers.length() != 0
 with_gallium_kmsro = system_has_kms_drm and [
   with_gallium_asahi,
@@ -244,7 +246,6 @@ with_freedreno_vk = _vulkan_drivers.contains('freedreno')
 with_panfrost_vk = _vulkan_drivers.contains('panfrost')
 with_swrast_vk = _vulkan_drivers.contains('swrast')
 with_virtio_vk = _vulkan_drivers.contains('virtio-experimental')
-with_freedreno_virtio = get_option('freedreno-virtio')
 with_broadcom_vk = _vulkan_drivers.contains('broadcom')
 with_imagination_vk = _vulkan_drivers.contains('imagination-experimental')
 with_imagination_srv = get_option('imagination-srv')
