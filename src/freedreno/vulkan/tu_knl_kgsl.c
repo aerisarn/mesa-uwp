@@ -293,6 +293,32 @@ sync_merge(const VkSemaphore *syncobjs, uint32_t count, bool wait_all, bool rese
    return ret;
 }
 
+/* Only used for kgsl since drm started using common implementation */
+static VKAPI_ATTR VkResult VKAPI_CALL
+kgsl_QueueWaitIdle(VkQueue _queue)
+{
+   TU_FROM_HANDLE(tu_queue, queue, _queue);
+
+   if (vk_device_is_lost(&queue->device->vk))
+      return VK_ERROR_DEVICE_LOST;
+
+   if (queue->fence < 0)
+      return VK_SUCCESS;
+
+   struct pollfd fds = { .fd = queue->fence, .events = POLLIN };
+   int ret;
+   do {
+      ret = poll(&fds, 1, -1);
+   } while (ret == -1 && (errno == EINTR || errno == EAGAIN));
+
+   /* TODO: otherwise set device lost ? */
+   assert(ret == 1 && !(fds.revents & (POLLERR | POLLNVAL)));
+
+   close(queue->fence);
+   queue->fence = -1;
+   return VK_SUCCESS;
+}
+
 static VKAPI_ATTR VkResult VKAPI_CALL
 kgsl_QueueSubmit2(VkQueue _queue,
                   uint32_t submitCount,
@@ -763,6 +789,7 @@ kgsl_QueueSignalReleaseImageANDROID(VkQueue _queue,
  * instead.
  */
 static const struct vk_device_entrypoint_table kgsl_device_entrypoints = {
+      .QueueWaitIdle = kgsl_QueueWaitIdle,
       .QueueSubmit2 = kgsl_QueueSubmit2,
       .ImportSemaphoreFdKHR = kgsl_ImportSemaphoreFdKHR,
       .GetSemaphoreFdKHR = kgsl_GetSemaphoreFdKHR,

@@ -2504,34 +2504,6 @@ tu_EnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
    return VK_SUCCESS;
 }
 
-/* Only used for kgsl since drm started using common implementation */
-#ifdef TU_USE_KGSL
-VKAPI_ATTR VkResult VKAPI_CALL
-tu_QueueWaitIdle(VkQueue _queue)
-{
-   TU_FROM_HANDLE(tu_queue, queue, _queue);
-
-   if (vk_device_is_lost(&queue->device->vk))
-      return VK_ERROR_DEVICE_LOST;
-
-   if (queue->fence < 0)
-      return VK_SUCCESS;
-
-   struct pollfd fds = { .fd = queue->fence, .events = POLLIN };
-   int ret;
-   do {
-      ret = poll(&fds, 1, -1);
-   } while (ret == -1 && (errno == EINTR || errno == EAGAIN));
-
-   /* TODO: otherwise set device lost ? */
-   assert(ret == 1 && !(fds.revents & (POLLERR | POLLNVAL)));
-
-   close(queue->fence);
-   queue->fence = -1;
-   return VK_SUCCESS;
-}
-#endif
-
 VKAPI_ATTR VkResult VKAPI_CALL
 tu_EnumerateInstanceExtensionProperties(const char *pLayerName,
                                         uint32_t *pPropertyCount,
