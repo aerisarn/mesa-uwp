@@ -3745,7 +3745,9 @@ radv_pipeline_emit_blend_state(struct radeon_cmdbuf *ctx_cs,
                                const struct radv_graphics_pipeline *pipeline,
                                const struct radv_blend_state *blend)
 {
-   if (pipeline->ps_epilog || radv_pipeline_needs_dynamic_ps_epilog(pipeline))
+   struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
+
+   if (ps->info.ps.has_epilog)
       return;
 
    radeon_set_context_reg(ctx_cs, R_028714_SPI_SHADER_COL_FORMAT, blend->spi_shader_col_format);
