@@ -29,9 +29,6 @@ do
     "https://github.com/KhronosGroup/VK-GL-CTS/commit/$commit.patch" | git am -
 done
 
-# https://github.com/KhronosGroup/VK-GL-CTS/pull/360
-sed -i -e 's#http://zlib.net/zlib-1.2.12.tar.gz#http://zlib.net/fossils/zlib-1.2.12.tar.gz#g' external/fetch_sources.py
-
 # --insecure is due to SSL cert failures hitting sourceforge for zlib and
 # libpng (sigh).  The archives get their checksums checked anyway, and git
 # always goes through ssh or https.
