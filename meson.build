@@ -1126,7 +1126,7 @@ if host_machine.cpu_family().startswith('x86')
         # XXX: We could have SSE without -mstackrealign if we always used
         # __attribute__((force_align_arg_pointer)), but that's not
         # always the case.
-        c_args += ['-msse2', '-mfpmath=sse', '-mstackrealign']
+        c_cpp_args += ['-msse2', '-mfpmath=sse', '-mstackrealign']
       else
         # GCC on x86 (not x86_64) with -msse* assumes a 16 byte aligned stack, but
         # that's not guaranteed
