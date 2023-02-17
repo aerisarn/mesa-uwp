@@ -635,6 +635,19 @@ const rogue_alu_op_info rogue_alu_op_infos[ROGUE_ALU_OP_COUNT] = {
          [1] = T(REG) | T(IO),
       },
    },
+   [ROGUE_ALU_OP_MOVC] = { .str = "movc", .num_dsts = 2, .num_srcs = 3,
+      .supported_phases = P(2_MOV),
+      .phase_io[PH(2_MOV)] = { .dst[0] = IO(W0), .dst[1] = IO(W1), .src[1] = IO(FT0), .src[2] = IO(FTE), }, /* TODO: SRC ONES ARE TEMPORARY, SHOULD BE MADE TO MATCH THE TST ONES INSTEAD? */
+      .supported_dst_mods = {
+         [0] = DM(E0) | DM(E1) | DM(E2) | DM(E3),
+      },
+      .supported_dst_types = { [0] = T(REG), [1] = T(REG) | T(IO), },
+      .supported_src_types = {
+         [0] = T(IO),
+         [1] = T(REG) | T(IO),
+         [2] = T(REG) | T(IO),
+      },
+   },
    [ROGUE_ALU_OP_ADD64] = { .str = "add64", .num_dsts = 3, .num_srcs = 5,
       .supported_phases = P(0),
       .phase_io[PH(0)] = { .dst[0] = IO(FT0), .dst[1] = IO(FTE), .src[0] = IO(S0), .src[1] = IO(S1), .src[2] = IO(S2), .src[3] = IO(IS0), },
@@ -663,11 +676,18 @@ const rogue_alu_op_info rogue_alu_op_infos[ROGUE_ALU_OP_COUNT] = {
       },
       .src_repeat_mask = B(0),
    },
-   /* This mov is "fake" since it can be lowered to a MBYP, make a new instruction for real mov (call it MOVD?). */
    [ROGUE_ALU_OP_MOV] = { .str = "mov", .num_dsts = 1, .num_srcs = 1,
       .supported_dst_types = { [0] = T(REG) | T(REGARRAY), },
       .supported_src_types = {
          [0] = T(REG) | T(IMM),
+      },
+   },
+   [ROGUE_ALU_OP_CMOV] = { .str = "cmov", .num_dsts = 1, .num_srcs = 3,
+      .supported_dst_types = { [0] = T(REG), },
+      .supported_src_types = {
+         [0] = T(IO),
+         [1] = T(REG),
+         [2] = T(REG),
       },
    },
    [ROGUE_ALU_OP_FABS] = { .str = "fabs", .num_dsts = 1, .num_srcs = 1, },

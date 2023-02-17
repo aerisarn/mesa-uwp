@@ -348,6 +348,74 @@ static void rogue_encode_alu_instr(const rogue_alu_instr *alu,
       break;
    }
 
+   case ROGUE_ALU_OP_MOVC: {
+      instr_encoding->alu.op = ALUOP_MOVC;
+
+      bool e0 = rogue_alu_dst_mod_is_set(alu, 0, DM(E0));
+      bool e1 = rogue_alu_dst_mod_is_set(alu, 0, DM(E1));
+      bool e2 = rogue_alu_dst_mod_is_set(alu, 0, DM(E2));
+      bool e3 = rogue_alu_dst_mod_is_set(alu, 0, DM(E3));
+      bool e_none = !e0 && !e1 && !e2 && !e3;
+
+      switch (rogue_ref_get_io(&alu->src[1].ref)) {
+      case ROGUE_IO_FT0:
+         instr_encoding->alu.movc.movw0 = MOVW_FT0;
+         break;
+      case ROGUE_IO_FT1:
+         instr_encoding->alu.movc.movw0 = MOVW_FT1;
+         break;
+      case ROGUE_IO_FT2:
+         instr_encoding->alu.movc.movw0 = MOVW_FT2;
+         break;
+      case ROGUE_IO_FTE:
+         instr_encoding->alu.movc.movw0 = MOVW_FTE;
+         break;
+      default:
+         unreachable("Invalid source.");
+      }
+
+      switch (rogue_ref_get_io(&alu->src[2].ref)) {
+      case ROGUE_IO_FT0:
+         instr_encoding->alu.movc.movw1 = MOVW_FT0;
+         break;
+      case ROGUE_IO_FT1:
+         instr_encoding->alu.movc.movw1 = MOVW_FT1;
+         break;
+      case ROGUE_IO_FT2:
+         instr_encoding->alu.movc.movw1 = MOVW_FT2;
+         break;
+      case ROGUE_IO_FTE:
+         instr_encoding->alu.movc.movw1 = MOVW_FTE;
+         break;
+      default:
+         unreachable("Invalid source.");
+      }
+
+      if (instr_size == 2) {
+         instr_encoding->alu.movc.ext = 1;
+         instr_encoding->alu.movc.p2end =
+            !rogue_phase_occupied(ROGUE_INSTR_PHASE_2_TST,
+                                  alu->instr.group->header.phases) &&
+            !rogue_phase_occupied(ROGUE_INSTR_PHASE_2_PCK,
+                                  alu->instr.group->header.phases);
+         instr_encoding->alu.movc.aw = !rogue_ref_is_io_ftt(&alu->src[0].ref);
+
+         if (e_none) {
+            instr_encoding->alu.movc.maskw0 = MASKW0_EALL;
+         } else {
+            if (e0)
+               instr_encoding->alu.movc.maskw0 |= MASKW0_E0;
+            if (e1)
+               instr_encoding->alu.movc.maskw0 |= MASKW0_E1;
+            if (e2)
+               instr_encoding->alu.movc.maskw0 |= MASKW0_E2;
+            if (e3)
+               instr_encoding->alu.movc.maskw0 |= MASKW0_E3;
+         }
+      }
+      break;
+   }
+
    case ROGUE_ALU_OP_PCK_U8888:
       instr_encoding->alu.op = ALUOP_SNGL;
       instr_encoding->alu.sngl.snglop = SNGLOP_PCK;

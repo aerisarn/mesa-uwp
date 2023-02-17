@@ -633,7 +633,7 @@ enum tstelem {
    TST_E3 = 0b11,
 };
 
-typedef struct rogue_alu_mov_encoding {
+typedef struct rogue_alu_movc_encoding {
    /* Byte 0 */
    struct {
       unsigned movw0 : 2;
@@ -649,9 +649,24 @@ typedef struct rogue_alu_mov_encoding {
       unsigned maskw0 : 4;
       unsigned : 2;
    } PACKED;
-} PACKED rogue_alu_mov_encoding;
-static_assert(sizeof(rogue_alu_mov_encoding) == 2,
-              "sizeof(rogue_alu_mov_encoding) != 2");
+} PACKED rogue_alu_movc_encoding;
+static_assert(sizeof(rogue_alu_movc_encoding) == 2,
+              "sizeof(rogue_alu_movc_encoding) != 2");
+
+enum movw {
+   MOVW_FT0 = 0b00,
+   MOVW_FT1 = 0b01,
+   MOVW_FT2 = 0b10,
+   MOVW_FTE = 0b11,
+};
+
+enum maskw0 {
+   MASKW0_E0 = 0b0001,
+   MASKW0_E1 = 0b0010,
+   MASKW0_E2 = 0b0100,
+   MASKW0_E3 = 0b1000,
+   MASKW0_EALL = 0b1111,
+};
 
 typedef struct rogue_alu_int32_64_encoding {
    /* Byte 0 */
@@ -699,7 +714,7 @@ typedef struct rogue_alu_instr_encoding {
       rogue_alu_fdual_encoding fmul;
       rogue_alu_fmad_encoding fmad;
       rogue_alu_tst_encoding tst;
-      rogue_alu_mov_encoding mov;
+      rogue_alu_movc_encoding movc;
       rogue_alu_int32_64_encoding int32_64;
    } PACKED;
 } PACKED rogue_alu_instr_encoding;
@@ -712,7 +727,7 @@ enum aluop {
    ALUOP_SNGL = 0b100, /** Phase 0, 1, 2. */
    ALUOP_INT8_16 = 0b101, /** Phase 0. */
    ALUOP_FMAD = 0b110, /** Phase 0, 1. */
-   ALUOP_MOV = 0b110, /** Phase 2. */
+   ALUOP_MOVC = 0b110, /** Phase 2. */
    ALUOP_INT32_64 = 0b111, /** Phase 0. */
    ALUOP_TST = 0b111, /** Phase 2. */
 };

@@ -552,6 +552,25 @@ static void rogue_calc_alu_instrs_size(rogue_instr_group *group,
       }
       break;
 
+   case ROGUE_ALU_OP_MOVC: {
+      group->size.instrs[phase] = 1;
+
+      bool e0 = rogue_alu_dst_mod_is_set(alu, 0, DM(E0));
+      bool e1 = rogue_alu_dst_mod_is_set(alu, 0, DM(E1));
+      bool e2 = rogue_alu_dst_mod_is_set(alu, 0, DM(E2));
+      bool e3 = rogue_alu_dst_mod_is_set(alu, 0, DM(E3));
+      bool eq = (e0 == e1) && (e0 == e2) && (e0 == e3);
+
+      if ((!rogue_phase_occupied(ROGUE_INSTR_PHASE_2_TST,
+                                 group->header.phases) &&
+           !rogue_phase_occupied(ROGUE_INSTR_PHASE_2_PCK,
+                                 group->header.phases)) ||
+          !rogue_ref_is_io_ftt(&alu->src[0].ref) || !eq) {
+         group->size.instrs[phase] = 2;
+      }
+      break;
+   }
+
    case ROGUE_ALU_OP_PCK_U8888:
       group->size.instrs[phase] = 2;
       break;

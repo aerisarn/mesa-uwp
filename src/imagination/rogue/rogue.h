@@ -887,6 +887,11 @@ static inline bool rogue_ref_is_io_p0(const rogue_ref *ref)
    return rogue_ref_get_io(ref) == ROGUE_IO_P0;
 }
 
+static inline bool rogue_ref_is_io_ftt(const rogue_ref *ref)
+{
+   return rogue_ref_get_io(ref) == ROGUE_IO_FTT;
+}
+
 static inline bool rogue_ref_is_io_none(const rogue_ref *ref)
 {
    /* Special case - never assert. */
@@ -1038,12 +1043,14 @@ enum rogue_alu_op {
    ROGUE_ALU_OP_ADD64,
 
    ROGUE_ALU_OP_TST,
+   ROGUE_ALU_OP_MOVC,
 
    ROGUE_ALU_OP_PCK_U8888,
 
    /* Pseudo-instructions. */
    ROGUE_ALU_OP_PSEUDO,
    ROGUE_ALU_OP_MOV = ROGUE_ALU_OP_PSEUDO,
+   ROGUE_ALU_OP_CMOV, /** Conditional move. */
 
    ROGUE_ALU_OP_FABS,
    ROGUE_ALU_OP_FNEG,
