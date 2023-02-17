@@ -384,6 +384,62 @@ vn_device_memory_alloc_generic(
    return VK_SUCCESS;
 }
 
+struct vn_device_memory_alloc_info {
+   VkMemoryAllocateInfo alloc;
+   VkExportMemoryAllocateInfo export;
+   VkMemoryAllocateFlagsInfo flags;
+   VkMemoryDedicatedAllocateInfo dedicated;
+   VkMemoryOpaqueCaptureAddressAllocateInfo capture;
+};
+
+static const VkMemoryAllocateInfo *
+vn_device_memory_fix_alloc_info(
+   const VkMemoryAllocateInfo *alloc_info,
+   const VkExternalMemoryHandleTypeFlagBits renderer_handle_type,
+   bool has_guest_vram,
+   struct vn_device_memory_alloc_info *local_info)
+{
+   local_info->alloc = *alloc_info;
+   VkBaseOutStructure *cur = (void *)&local_info->alloc;
+
+   vk_foreach_struct_const(src, alloc_info->pNext) {
+      void *next = NULL;
+      switch (src->sType) {
+      case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO:
+         /* guest vram turns export alloc into import, so drop export info */
+         if (has_guest_vram)
+            break;
+         memcpy(&local_info->export, src, sizeof(local_info->export));
+         local_info->export.handleTypes = renderer_handle_type;
+         next = &local_info->export;
+         break;
+      case VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO:
+         memcpy(&local_info->flags, src, sizeof(local_info->flags));
+         next = &local_info->flags;
+         break;
+      case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO:
+         memcpy(&local_info->dedicated, src, sizeof(local_info->dedicated));
+         next = &local_info->dedicated;
+         break;
+      case VK_STRUCTURE_TYPE_MEMORY_OPAQUE_CAPTURE_ADDRESS_ALLOCATE_INFO:
+         memcpy(&local_info->capture, src, sizeof(local_info->capture));
+         next = &local_info->capture;
+         break;
+      default:
+         break;
+      }
+
+      if (next) {
+         cur->pNext = next;
+         cur = next;
+      }
+   }
+
+   cur->pNext = NULL;
+
+   return &local_info->alloc;
+}
+
 static VkResult
 vn_device_memory_alloc(struct vn_device *dev,
                        struct vn_device_memory *mem,
@@ -392,6 +448,18 @@ vn_device_memory_alloc(struct vn_device *dev,
 {
    const struct vn_instance *instance = dev->physical_device->instance;
    const struct vn_renderer_info *renderer_info = &instance->renderer->info;
+
+   const VkExternalMemoryHandleTypeFlagBits renderer_handle_type =
+      dev->physical_device->external_memory.renderer_handle_type;
+   struct vn_device_memory_alloc_info local_info;
+   if (external_handles && external_handles != renderer_handle_type) {
+      alloc_info = vn_device_memory_fix_alloc_info(
+         alloc_info, renderer_handle_type, renderer_info->has_guest_vram,
+         &local_info);
+
+      /* ensure correct blob flags */
+      external_handles = renderer_handle_type;
+   }
 
    if (renderer_info->has_guest_vram) {
       return vn_device_memory_alloc_guest_vram(dev, mem, alloc_info,
