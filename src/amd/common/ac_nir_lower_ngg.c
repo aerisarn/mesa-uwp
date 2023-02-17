@@ -4245,6 +4245,36 @@ set_ms_final_output_counts(nir_builder *b,
 }
 
 static void
+ms_emit_attribute_ring_output_stores(nir_builder *b, const uint64_t outputs_mask,
+                                     lower_ngg_ms_state *s)
+{
+   nir_ssa_def *idx = nir_load_local_invocation_index(b);
+   nir_ssa_def *ring = nir_load_ring_attr_amd(b);
+   nir_ssa_def *off = nir_load_ring_attr_offset_amd(b);
+   nir_ssa_def *zero = nir_imm_int(b, 0);
+
+   u_foreach_bit64 (slot, outputs_mask) {
+      if (s->vs_output_param_offset[slot] > AC_EXP_PARAM_OFFSET_31)
+         continue;
+
+      nir_ssa_def *soffset = nir_iadd_imm(b, off, s->vs_output_param_offset[slot] * 16 * 32);
+      nir_ssa_def *store_val = nir_ssa_undef(b, 4, 32);
+      unsigned store_val_components = 0;
+      for (unsigned c = 0; c < 4; ++c) {
+         if (s->outputs[slot][c]) {
+            store_val = nir_vector_insert_imm(b, store_val, s->outputs[slot][c], c);
+            store_val_components = c + 1;
+         }
+      }
+
+      store_val = nir_trim_vector(b, store_val, store_val_components);
+      nir_store_buffer_amd(b, store_val, ring, zero, soffset, idx,
+                           .memory_modes = nir_var_shader_out,
+                           .access = ACCESS_COHERENT | ACCESS_IS_SWIZZLED_AMD);
+   }
+}
+
+static void
 ms_emit_primitive_export(nir_builder *b,
                          nir_ssa_def *prim_exp_arg_ch1,
                          uint64_t per_primitive_outputs,
@@ -4287,6 +4317,12 @@ ms_emit_primitive_export(nir_builder *b,
       if (per_primitive_outputs & VARYING_BIT_PRIMITIVE_SHADING_RATE) {
          nir_ssa_def *rate = s->outputs[VARYING_SLOT_PRIMITIVE_SHADING_RATE][0];
          prim_exp_arg_ch2 = nir_ior(b, prim_exp_arg_ch2, rate);
+      }
+
+      /* GFX11: also store these to the attribute ring so PS can load them. */
+      if (s->gfx_level >= GFX11) {
+         ms_emit_attribute_ring_output_stores(b, per_primitive_outputs & export_as_prim_arg_slots,
+                                              s);
       }
    }
 
@@ -4342,6 +4378,15 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
       if (s->has_param_exports && s->gfx_level == GFX10_3) {
          ac_nir_export_parameters(b, s->vs_output_param_offset, per_vertex_outputs, 0, s->outputs,
                                   NULL, NULL);
+      }
+
+      const uint64_t per_vertex_special = VARYING_BIT_CULL_DIST0 | VARYING_BIT_CULL_DIST1 |
+                                          VARYING_BIT_CLIP_DIST0 | VARYING_BIT_CLIP_DIST1 |
+                                          VARYING_BIT_PSIZ;
+
+      /* GFX11: also store special outputs to the attribute ring so PS can load them. */
+      if (s->gfx_level >= GFX11 && (per_vertex_outputs & per_vertex_special)) {
+         ms_emit_attribute_ring_output_stores(b, per_vertex_outputs & per_vertex_special, s);
       }
    }
    nir_pop_if(b, if_has_output_vertex);
