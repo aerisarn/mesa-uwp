@@ -155,6 +155,7 @@ enum {
 typedef enum {
    ms_out_mode_lds,
    ms_out_mode_scratch_ring,
+   ms_out_mode_attr_ring,
    ms_out_mode_var,
 } ms_out_mode;
 
@@ -183,6 +184,14 @@ typedef struct
       ms_out_part vtx_attr;
       ms_out_part prm_attr;
    } scratch_ring;
+
+   /* VRAM attributes ring (GFX11 only) for all non-position outputs.
+    * GFX11 doesn't have to reload attributes from this ring at the end of the shader.
+    */
+   struct {
+      ms_out_part vtx_attr;
+      ms_out_part prm_attr;
+   } attr_ring;
 
    /* Outputs without cross-invocation access can be stored in variables. */
    struct {
@@ -3692,6 +3701,9 @@ ms_get_out_layout_part(unsigned location,
       } else if (mask & s->layout.scratch_ring.prm_attr.mask) {
          *out_mode = ms_out_mode_scratch_ring;
          return &s->layout.scratch_ring.prm_attr;
+      } else if (mask & s->layout.attr_ring.prm_attr.mask) {
+         *out_mode = ms_out_mode_attr_ring;
+         return &s->layout.attr_ring.prm_attr;
       } else if (mask & s->layout.var.prm_attr.mask) {
          *out_mode = ms_out_mode_var;
          return &s->layout.var.prm_attr;
@@ -3703,6 +3715,9 @@ ms_get_out_layout_part(unsigned location,
       } else if (mask & s->layout.scratch_ring.vtx_attr.mask) {
          *out_mode = ms_out_mode_scratch_ring;
          return &s->layout.scratch_ring.vtx_attr;
+      } else if (mask & s->layout.attr_ring.vtx_attr.mask) {
+         *out_mode = ms_out_mode_attr_ring;
+         return &s->layout.attr_ring.vtx_attr;
       } else if (mask & s->layout.var.vtx_attr.mask) {
          *out_mode = ms_out_mode_var;
          return &s->layout.var.vtx_attr;
@@ -3786,6 +3801,20 @@ ms_store_arrayed_output_intrin(nir_builder *b,
                            .write_mask = write_mask,
                            .memory_modes = nir_var_shader_out,
                            .access = ACCESS_COHERENT);
+   } else if (out_mode == ms_out_mode_attr_ring) {
+      /* GFX11+: Store params straight to the attribute ring.
+       *
+       * Even though the access pattern may not be the most optimal,
+       * this is still much better than reserving LDS and losing waves.
+       * (Also much better than storing and reloading from the scratch ring.)
+       */
+      const nir_io_semantics io_sem = nir_intrinsic_io_semantics(intrin);
+      nir_ssa_def *ring = nir_load_ring_attr_amd(b);
+      nir_ssa_def *soffset = nir_load_ring_attr_offset_amd(b);
+      soffset = nir_iadd_imm(b, soffset, s->vs_output_param_offset[io_sem.location] * 16 * 32);
+      nir_store_buffer_amd(b, store_val, ring, base_addr_off, soffset, arr_index, .base = const_off,
+                           .memory_modes = nir_var_shader_out,
+                           .access = ACCESS_COHERENT | ACCESS_IS_SWIZZLED_AMD);
    } else if (out_mode == ms_out_mode_var) {
       if (store_val->bit_size > 32) {
          /* Split 64-bit store values to 32-bit components. */
@@ -3840,6 +3869,16 @@ ms_load_arrayed_output(nir_builder *b,
                                  .base = const_off,
                                  .memory_modes = nir_var_shader_out,
                                  .access = ACCESS_COHERENT);
+   } else if (out_mode == ms_out_mode_attr_ring) {
+      /* Loading from the attribute ring shouldn't be necessary,
+       * but we implement it for the sake of NV_mesh_shader.
+       */
+      nir_ssa_def *ring = nir_load_ring_attr_amd(b);
+      nir_ssa_def *soffset = nir_load_ring_attr_offset_amd(b);
+      soffset = nir_iadd_imm(b, soffset, s->vs_output_param_offset[driver_location] * 16 * 32);
+      return nir_load_buffer_amd(b, num_components, load_bit_size, ring, base_addr_off, soffset,
+                                 arr_index, .base = const_off, .memory_modes = nir_var_shader_out,
+                                 .access = ACCESS_COHERENT | ACCESS_IS_SWIZZLED_AMD);
    } else if (out_mode == ms_out_mode_var) {
       nir_ssa_def *arr[8] = {0};
       unsigned num_32bit_components = num_components * load_bit_size / 32;
@@ -4275,17 +4314,20 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
    nir_ssa_def *has_output_vertex = nir_ilt(b, invocation_index, num_vtx);
    nir_if *if_has_output_vertex = nir_push_if(b, has_output_vertex);
    {
-      /* All per-vertex attributes. */
-      ms_emit_arrayed_outputs(b, invocation_index, s->per_vertex_outputs, s);
+      const uint64_t per_vertex_outputs =
+         s->per_vertex_outputs & ~s->layout.attr_ring.vtx_attr.mask;
+      ms_emit_arrayed_outputs(b, invocation_index, per_vertex_outputs, s);
 
       ac_nir_export_position(b, s->gfx_level, s->clipdist_enable_mask,
                              !s->has_param_exports, false,
                              s->per_vertex_outputs, s->outputs);
 
-      if (s->has_param_exports) {
-         ac_nir_export_parameters(b, s->vs_output_param_offset,
-                                  s->per_vertex_outputs, 0,
-                                  s->outputs, NULL, NULL);
+      /* Export generic attributes on GFX10.3
+       * (On GFX11 they are already stored in the attribute ring.)
+       */
+      if (s->has_param_exports && s->gfx_level == GFX10_3) {
+         ac_nir_export_parameters(b, s->vs_output_param_offset, per_vertex_outputs, 0, s->outputs,
+                                  NULL, NULL);
       }
    }
    nir_pop_if(b, if_has_output_vertex);
@@ -4294,8 +4336,8 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
    nir_ssa_def *has_output_primitive = nir_ilt(b, invocation_index, num_prm);
    nir_if *if_has_output_primitive = nir_push_if(b, has_output_primitive);
    {
-      /* Generic per-primitive attributes. */
-      uint64_t per_primitive_outputs = s->per_primitive_outputs & ~SPECIAL_MS_OUT_MASK;
+      uint64_t per_primitive_outputs =
+         s->per_primitive_outputs & ~s->layout.attr_ring.prm_attr.mask & ~SPECIAL_MS_OUT_MASK;
       ms_emit_arrayed_outputs(b, invocation_index, per_primitive_outputs, s);
 
       /* Insert layer output store if the pipeline uses multiview but the API shader doesn't write it. */
@@ -4344,9 +4386,13 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
 
       ms_emit_primitive_export(b, prim_exp_arg, per_primitive_outputs, s);
 
-      ac_nir_export_parameters(b, s->vs_output_param_offset,
-                               per_primitive_outputs, 0,
-                               s->outputs, NULL, NULL);
+      /* Export generic attributes on GFX10.3
+       * (On GFX11 they are already stored in the attribute ring.)
+       */
+      if (s->has_param_exports && s->gfx_level == GFX10_3) {
+         ac_nir_export_parameters(b, s->vs_output_param_offset, per_primitive_outputs, 0,
+                                  s->outputs, NULL, NULL);
+      }
    }
    nir_pop_if(b, if_has_output_primitive);
 }
@@ -4520,18 +4566,32 @@ ms_calculate_arrayed_output_layout(ms_out_mem_layout *l,
 }
 
 static ms_out_mem_layout
-ms_calculate_output_layout(unsigned api_shared_size,
-                           uint64_t per_vertex_output_mask,
-                           uint64_t per_primitive_output_mask,
-                           uint64_t cross_invocation_output_access,
-                           unsigned max_vertices,
-                           unsigned max_primitives,
-                           unsigned vertices_per_prim)
+ms_calculate_output_layout(enum amd_gfx_level gfx_level, unsigned api_shared_size,
+                           uint64_t per_vertex_output_mask, uint64_t per_primitive_output_mask,
+                           uint64_t cross_invocation_output_access, unsigned max_vertices,
+                           unsigned max_primitives, unsigned vertices_per_prim)
 {
+   /* These outputs always need export instructions and can't use the attributes ring. */
+   const uint64_t always_export_mask =
+      VARYING_BIT_POS | VARYING_BIT_CULL_DIST0 | VARYING_BIT_CULL_DIST1 | VARYING_BIT_CLIP_DIST0 |
+      VARYING_BIT_CLIP_DIST1 | VARYING_BIT_PSIZ | VARYING_BIT_VIEWPORT |
+      VARYING_BIT_PRIMITIVE_SHADING_RATE | VARYING_BIT_LAYER |
+      BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_COUNT) |
+      BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_INDICES) | BITFIELD64_BIT(VARYING_SLOT_CULL_PRIMITIVE);
+
+   const bool use_attr_ring = gfx_level >= GFX11;
+   const uint64_t attr_ring_per_vertex_output_mask =
+      use_attr_ring ? per_vertex_output_mask & ~always_export_mask : 0;
+   const uint64_t attr_ring_per_primitive_output_mask =
+      use_attr_ring ? per_primitive_output_mask & ~always_export_mask : 0;
+
    const uint64_t lds_per_vertex_output_mask =
-      per_vertex_output_mask & cross_invocation_output_access & ~SPECIAL_MS_OUT_MASK;
+      per_vertex_output_mask & ~attr_ring_per_vertex_output_mask & cross_invocation_output_access &
+      ~SPECIAL_MS_OUT_MASK;
    const uint64_t lds_per_primitive_output_mask =
-      per_primitive_output_mask & cross_invocation_output_access & ~SPECIAL_MS_OUT_MASK;
+      per_primitive_output_mask & ~attr_ring_per_primitive_output_mask &
+      cross_invocation_output_access & ~SPECIAL_MS_OUT_MASK;
+
    const bool cross_invocation_indices =
       cross_invocation_output_access & BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_INDICES);
    const bool cross_invocation_cull_primitive =
@@ -4540,9 +4600,15 @@ ms_calculate_output_layout(unsigned api_shared_size,
    /* Shared memory used by the API shader. */
    ms_out_mem_layout l = { .lds = { .total_size = api_shared_size } };
 
+   /* GFX11+: use attribute ring for all generic attributes. */
+   l.attr_ring.vtx_attr.mask = attr_ring_per_vertex_output_mask;
+   l.attr_ring.prm_attr.mask = attr_ring_per_primitive_output_mask;
+
    /* Outputs without cross-invocation access can be stored in variables. */
-   l.var.vtx_attr.mask = per_vertex_output_mask & ~cross_invocation_output_access;
-   l.var.prm_attr.mask = per_primitive_output_mask & ~cross_invocation_output_access;
+   l.var.vtx_attr.mask =
+      per_vertex_output_mask & ~attr_ring_per_vertex_output_mask & ~cross_invocation_output_access;
+   l.var.prm_attr.mask = per_primitive_output_mask & ~attr_ring_per_primitive_output_mask &
+                         ~cross_invocation_output_access;
 
    /* Workgroup information, see ms_workgroup_* for the layout. */
    l.lds.workgroup_info_addr = ALIGN(l.lds.total_size, 16);
@@ -4628,9 +4694,9 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
    unsigned max_vertices = shader->info.mesh.max_vertices_out;
    unsigned max_primitives = shader->info.mesh.max_primitives_out;
 
-   ms_out_mem_layout layout =
-      ms_calculate_output_layout(shader->info.shared_size, per_vertex_outputs, per_primitive_outputs,
-                                 cross_invocation_access, max_vertices, max_primitives, vertices_per_prim);
+   ms_out_mem_layout layout = ms_calculate_output_layout(
+      gfx_level, shader->info.shared_size, per_vertex_outputs, per_primitive_outputs,
+      cross_invocation_access, max_vertices, max_primitives, vertices_per_prim);
 
    shader->info.shared_size = layout.lds.total_size;
    *out_needs_scratch_ring = layout.scratch_ring.vtx_attr.mask || layout.scratch_ring.prm_attr.mask;
