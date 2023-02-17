@@ -294,8 +294,7 @@ agx_emit_load_const(agx_builder *b, nir_load_const_instr *instr)
    assert(instr->def.num_components == 1);
 
    /* Emit move, later passes can inline/push if useful */
-   agx_mov_imm_to(b,
-                  agx_get_index(instr->def.index, agx_size_for_bits(bit_size)),
+   agx_mov_imm_to(b, agx_nir_ssa_index(&instr->def),
                   nir_const_value_as_uint(instr->value[0], bit_size));
 }
 
