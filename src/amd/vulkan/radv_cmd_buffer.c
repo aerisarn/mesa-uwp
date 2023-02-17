@@ -7748,7 +7748,6 @@ radv_cs_emit_indirect_mesh_draw_packet(struct radv_cmd_buffer *cmd_buffer, uint3
                                        uint64_t count_va, uint32_t stride)
 {
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
-   bool draw_id_enable = cmd_buffer->state.graphics_pipeline->uses_drawid;
    uint32_t base_reg = cmd_buffer->state.graphics_pipeline->vtx_base_sgpr;
    bool predicating = cmd_buffer->state.predicating;
    assert(base_reg);
@@ -7763,11 +7762,20 @@ radv_cs_emit_indirect_mesh_draw_packet(struct radv_cmd_buffer *cmd_buffer, uint3
    uint32_t xyz_dim_reg = (base_reg + 4 - SI_SH_REG_OFFSET) >> 2;
    uint32_t draw_id_reg = (base_reg + 16 - SI_SH_REG_OFFSET) >> 2;
 
+   uint32_t draw_id_enable = !!cmd_buffer->state.graphics_pipeline->uses_drawid;
+   uint32_t xyz_dim_enable = 1; /* TODO: disable XYZ_DIM when unneeded */
+   uint32_t mode1_enable = 1;   /* legacy fast launch mode */
+
    radeon_emit(cs, PKT3(PKT3_DISPATCH_MESH_INDIRECT_MULTI, 7, predicating));
    radeon_emit(cs, 0); /* data_offset */
    radeon_emit(cs, S_4C1_XYZ_DIM_REG(xyz_dim_reg) | S_4C1_DRAW_INDEX_REG(draw_id_reg));
-   radeon_emit(cs,
-               S_4C2_DRAW_INDEX_ENABLE(draw_id_enable) | S_4C2_COUNT_INDIRECT_ENABLE(!!count_va));
+   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11)
+      radeon_emit(cs, S_4C2_DRAW_INDEX_ENABLE(draw_id_enable) |
+                         S_4C2_COUNT_INDIRECT_ENABLE(!!count_va) |
+                         S_4C2_XYZ_DIM_ENABLE(xyz_dim_enable) | S_4C2_MODE1_ENABLE(mode1_enable));
+   else
+      radeon_emit(
+         cs, S_4C2_DRAW_INDEX_ENABLE(draw_id_enable) | S_4C2_COUNT_INDIRECT_ENABLE(!!count_va));
    radeon_emit(cs, draw_count);
    radeon_emit(cs, count_va & 0xFFFFFFFF);
    radeon_emit(cs, count_va >> 32);
@@ -7872,10 +7880,15 @@ radv_cs_emit_dispatch_taskmesh_gfx_packet(struct radv_cmd_buffer *cmd_buffer)
    uint32_t base_reg = cmd_buffer->state.graphics_pipeline->vtx_base_sgpr;
    uint32_t xyz_dim_reg = ((base_reg + 4) - SI_SH_REG_OFFSET) >> 2;
    uint32_t ring_entry_reg = ((base_reg + ring_entry_loc->sgpr_idx * 4) - SI_SH_REG_OFFSET) >> 2;
+   uint32_t xyz_dim_en = 1; /* TODO: disable XYZ_DIM when unneeded */
+   uint32_t mode1_en = 1;   /* legacy fast launch mode */
 
    radeon_emit(cs, PKT3(PKT3_DISPATCH_TASKMESH_GFX, 2, predicating));
    radeon_emit(cs, S_4D0_RING_ENTRY_REG(ring_entry_reg) | S_4D0_XYZ_DIM_REG(xyz_dim_reg));
-   radeon_emit(cs, 0);
+   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11)
+      radeon_emit(cs, S_4D1_XYZ_DIM_ENABLE(xyz_dim_en) | S_4D1_MODE1_ENABLE(mode1_en));
+   else
+      radeon_emit(cs, 0);
    radeon_emit(cs, V_0287F0_DI_SRC_SEL_AUTO_INDEX);
 }
 
