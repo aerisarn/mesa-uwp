@@ -105,6 +105,8 @@ zink_destroy_resource_object(struct zink_screen *screen, struct zink_resource_ob
          VKSCR(DestroyImageView)(screen->dev, util_dynarray_pop(&obj->views, VkImageView), NULL);
    }
    util_dynarray_fini(&obj->views);
+   for (unsigned i = 0; i < ARRAY_SIZE(obj->copies); i++)
+      util_dynarray_fini(&obj->copies[i]);
    if (obj->is_buffer) {
       VKSCR(DestroyBuffer)(screen->dev, obj->buffer, NULL);
       VKSCR(DestroyBuffer)(screen->dev, obj->storage_buffer, NULL);
@@ -603,6 +605,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
                        uint64_t *modifiers, int modifiers_count, const void *loader_private)
 {
    struct zink_resource_object *obj = CALLOC_STRUCT(zink_resource_object);
+   unsigned max_level = 0;
    if (!obj)
       return NULL;
    simple_mtx_init(&obj->view_lock, mtx_plain);
@@ -699,7 +702,9 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       obj->transfer_dst = true;
       obj->vkflags = bci.flags;
       obj->vkusage = bci.usage;
+      max_level = 1;
    } else {
+      max_level = templ->last_level + 1;
       bool winsys_modifier = (export_types & VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT) && whandle && whandle->modifier != DRM_FORMAT_MOD_INVALID;
       uint64_t mods[10];
       bool try_modifiers = false;
@@ -1135,6 +1140,8 @@ retry:
             }
       }
    }
+   for (unsigned i = 0; i < max_level; i++)
+      util_dynarray_init(&obj->copies[i], NULL);
    return obj;
 
 fail3:
@@ -2139,6 +2146,63 @@ zink_transfer_flush_region(struct pipe_context *pctx,
             zink_transfer_copy_bufimage(ctx, res, staging_res, trans);
       }
    }
+}
+
+/* used to determine whether to emit a TRANSFER_DST barrier on copies */
+bool
+zink_resource_copy_box_intersects(struct zink_resource *res, unsigned level, const struct pipe_box *box)
+{
+   /* if there are no valid copy rects tracked, this needs a barrier */
+   if (!res->obj->copies_valid)
+      return true;
+   /* untracked huge miplevel */
+   if (level >= ARRAY_SIZE(res->obj->copies))
+      return true;
+   struct pipe_box *b = res->obj->copies[level].data;
+   unsigned num_boxes = util_dynarray_num_elements(&res->obj->copies[level], struct pipe_box);
+   boolean (*intersect)(const struct pipe_box *, const struct pipe_box *);
+   /* determine intersection function based on dimensionality */
+   switch (res->base.b.target) {
+   case PIPE_BUFFER:
+   case PIPE_TEXTURE_1D:
+      intersect = u_box_test_intersection_1d;
+      break;
+
+   case PIPE_TEXTURE_1D_ARRAY:
+   case PIPE_TEXTURE_2D:
+      intersect = u_box_test_intersection_2d;
+      break;
+
+   default:
+      intersect = u_box_test_intersection_3d;
+      break;
+   }
+   /* if any of the tracked boxes intersect with this one, a barrier is needed */
+   for (unsigned i = 0; i < num_boxes; i++) {
+      if (intersect(box, b + i))
+         return true;
+   }
+   /* no intersection = no barrier */
+   return false;
+}
+
+/* track a new region for TRANSFER_DST barrier emission */
+void
+zink_resource_copy_box_add(struct zink_resource *res, unsigned level, const struct pipe_box *box)
+{
+   util_dynarray_append(&res->obj->copies[level], struct pipe_box, *box);
+   res->obj->copies_valid = true;
+}
+
+void
+zink_resource_copies_reset(struct zink_resource *res)
+{
+   if (!res->obj->copies_valid)
+      return;
+   unsigned max_level = res->base.b.target == PIPE_BUFFER ? 1 : (res->base.b.last_level + 1);
+   for (unsigned i = 0; i < max_level; i++)
+      util_dynarray_clear(&res->obj->copies[i]);
+   res->obj->copies_valid = false;
 }
 
 static void

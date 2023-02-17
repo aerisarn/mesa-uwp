@@ -1118,8 +1118,10 @@ struct zink_resource_object {
    VkAccessFlags access;
    bool unordered_read;
    bool unordered_write;
+   bool copies_valid;
 
    unsigned persistent_maps; //if nonzero, requires vkFlushMappedMemoryRanges during batch use
+   struct util_dynarray copies[16]; //regions being copied to; for barrier omission
 
    VkBuffer storage_buffer;
    simple_mtx_t view_lock;

@@ -3693,6 +3693,8 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
    res->obj->access = imb.dstAccessMask;
    res->obj->access_stage = pipeline;
    res->layout = new_layout;
+   if (new_layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+      zink_resource_copies_reset(res);
 }
 
 void
@@ -3736,6 +3738,8 @@ zink_resource_image_barrier2(struct zink_context *ctx, struct zink_resource *res
    res->obj->access = imb.dstAccessMask;
    res->obj->access_stage = pipeline;
    res->layout = new_layout;
+   if (new_layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+      zink_resource_copies_reset(res);
 }
 
 
