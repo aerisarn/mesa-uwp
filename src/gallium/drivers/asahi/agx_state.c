@@ -1370,6 +1370,8 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
 
    nir_shader *nir = nir_shader_clone(NULL, so->nir);
 
+   bool force_translucent = false;
+
    if (nir->info.stage == MESA_SHADER_VERTEX) {
       struct asahi_vs_shader_key *key = &key_->vs;
 
@@ -1393,9 +1395,25 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
          opts.format[i] = key->rt_formats[i];
 
       memcpy(opts.rt, key->blend.rt, sizeof(opts.rt));
-      NIR_PASS_V(nir, nir_lower_blend, &opts);
 
-      NIR_PASS_V(nir, agx_nir_lower_tilebuffer, &tib);
+      /* It's more efficient to use masked stores (with
+       * agx_nir_lower_tilebuffer) than to emulate colour masking with
+       * nir_lower_blend.
+       */
+      uint8_t colormasks[PIPE_MAX_COLOR_BUFS] = {0};
+
+      for (unsigned i = 0; i < PIPE_MAX_COLOR_BUFS; ++i) {
+         if (agx_tilebuffer_supports_mask(&tib, i)) {
+            colormasks[i] = key->blend.rt[i].colormask;
+            opts.rt[i].colormask = BITFIELD_MASK(4);
+         } else {
+            colormasks[i] = BITFIELD_MASK(4);
+         }
+      }
+
+      NIR_PASS_V(nir, nir_lower_blend, &opts);
+      NIR_PASS_V(nir, agx_nir_lower_tilebuffer, &tib, colormasks,
+                 &force_translucent);
 
       if (key->sprite_coord_enable) {
          NIR_PASS_V(nir, nir_lower_texcoord_replace_late,
@@ -1414,6 +1432,16 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
               &base_key.reserved_preamble);
 
    agx_compile_shader_nir(nir, &base_key, debug, &binary, &compiled->info);
+
+   /* reads_tib => Translucent pass type */
+   compiled->info.reads_tib |= force_translucent;
+
+   /* Could be optimized to use non-translucent pass types with the appropriate
+    * HSR configuration, but that mechanism is not yet understood. Warn that
+    * we're leaving perf on the table when used.
+    */
+   if (force_translucent)
+      perf_debug(dev, "Translucency forced due to colour masking");
 
    if (binary.size) {
       compiled->bo = agx_bo_create(dev, binary.size,
