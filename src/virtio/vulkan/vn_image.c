@@ -18,7 +18,10 @@
 #include "vn_android.h"
 #include "vn_device.h"
 #include "vn_device_memory.h"
+#include "vn_physical_device.h"
 #include "vn_wsi.h"
+
+/* image commands */
 
 static void
 vn_image_init_memory_requirements(struct vn_image *img,
@@ -283,7 +286,65 @@ vn_image_create_deferred(struct vn_device *dev,
    return VK_SUCCESS;
 }
 
-/* image commands */
+struct vn_image_create_info {
+   VkImageCreateInfo create;
+   VkExternalMemoryImageCreateInfo external;
+   VkImageFormatListCreateInfo format_list;
+   VkImageStencilUsageCreateInfo stencil;
+   VkImageDrmFormatModifierListCreateInfoEXT modifier_list;
+   VkImageDrmFormatModifierExplicitCreateInfoEXT modifier_explicit;
+};
+
+static const VkImageCreateInfo *
+vn_image_fix_create_info(
+   const VkImageCreateInfo *create_info,
+   const VkExternalMemoryHandleTypeFlagBits renderer_handle_type,
+   struct vn_image_create_info *local_info)
+{
+   local_info->create = *create_info;
+   VkBaseOutStructure *cur = (void *)&local_info->create;
+
+   vk_foreach_struct_const(src, create_info->pNext) {
+      void *next = NULL;
+      switch (src->sType) {
+      case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO:
+         memcpy(&local_info->external, src, sizeof(local_info->external));
+         local_info->external.handleTypes = renderer_handle_type;
+         next = &local_info->external;
+         break;
+      case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO:
+         memcpy(&local_info->format_list, src,
+                sizeof(local_info->format_list));
+         next = &local_info->format_list;
+         break;
+      case VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO:
+         memcpy(&local_info->stencil, src, sizeof(local_info->stencil));
+         next = &local_info->stencil;
+         break;
+      case VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT:
+         memcpy(&local_info->modifier_list, src,
+                sizeof(local_info->modifier_list));
+         next = &local_info->modifier_list;
+         break;
+      case VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT:
+         memcpy(&local_info->modifier_explicit, src,
+                sizeof(local_info->modifier_explicit));
+         next = &local_info->modifier_explicit;
+         break;
+      default:
+         break;
+      }
+
+      if (next) {
+         cur->pNext = next;
+         cur = next;
+      }
+   }
+
+   cur->pNext = NULL;
+
+   return &local_info->create;
+}
 
 VkResult
 vn_CreateImage(VkDevice device,
@@ -295,6 +356,8 @@ vn_CreateImage(VkDevice device,
    struct vn_device *dev = vn_device_from_handle(device);
    const VkAllocationCallbacks *alloc =
       pAllocator ? pAllocator : &dev->base.base.alloc;
+   const VkExternalMemoryHandleTypeFlagBits renderer_handle_type =
+      dev->physical_device->external_memory.renderer_handle_type;
    struct vn_image *img;
    VkResult result;
 
@@ -331,7 +394,19 @@ vn_CreateImage(VkDevice device,
       }
    }
 
+   /* No need to fix external handle type for:
+    * - common wsi image: dma_buf is hard-coded in wsi_configure_native_image
+    * - common wsi image alias: it aligns with wsi_info on external handle
+    * - Android wsi image: VK_ANDROID_native_buffer involves no external info
+    * - AHB external image: deferred creation reconstructs external info
+    *
+    * Must fix the external handle type for:
+    * - non-AHB external image requesting handle types different from renderer
+    *
+    * Will have to fix more when renderer handle type is no longer dma_buf.
+    */
    if (wsi_info) {
+      assert(external_info->handleTypes == renderer_handle_type);
       result = vn_wsi_create_image(dev, pCreateInfo, wsi_info, alloc, &img);
    } else if (anb_info) {
       result =
@@ -342,6 +417,13 @@ vn_CreateImage(VkDevice device,
       result = vn_wsi_create_image_from_swapchain(
          dev, pCreateInfo, swapchain_info, alloc, &img);
    } else {
+      struct vn_image_create_info local_info;
+      if (external_info &&
+          external_info->handleTypes != renderer_handle_type) {
+         pCreateInfo = vn_image_fix_create_info(
+            pCreateInfo, renderer_handle_type, &local_info);
+      }
+
       result = vn_image_create(dev, pCreateInfo, alloc, &img);
    }
 

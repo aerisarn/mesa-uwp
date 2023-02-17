@@ -186,7 +186,8 @@ vn_wsi_create_image_from_swapchain(
    const VkExternalMemoryImageCreateInfo local_external_info = {
       .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
       .pNext = local_create_info.pNext,
-      .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
+      .handleTypes =
+         dev->physical_device->external_memory.renderer_handle_type,
    };
    local_create_info.pNext = &local_external_info;
 
