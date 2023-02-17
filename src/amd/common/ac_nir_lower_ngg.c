@@ -4259,15 +4259,23 @@ ms_emit_primitive_export(nir_builder *b,
    if (per_primitive_outputs & export_as_prim_arg_slots) {
       /* When layer, viewport etc. are per-primitive, they need to be encoded in
        * the primitive export instruction's second channel. The encoding is:
+       *
+       * --- GFX10.3 ---
        * bits 31..30: VRS rate Y
        * bits 29..28: VRS rate X
        * bits 23..20: viewport
        * bits 19..17: layer
+       *
+       * --- GFX11 ---
+       * bits 31..28: VRS rate enum
+       * bits 23..20: viewport
+       * bits 12..00: layer
        */
       prim_exp_arg_ch2 = nir_imm_int(b, 0);
 
       if (per_primitive_outputs & VARYING_BIT_LAYER) {
-         nir_ssa_def *layer = nir_ishl_imm(b, s->outputs[VARYING_SLOT_LAYER][0], 17);
+         nir_ssa_def *layer =
+            nir_ishl_imm(b, s->outputs[VARYING_SLOT_LAYER][0], s->gfx_level >= GFX11 ? 0 : 17);
          prim_exp_arg_ch2 = nir_ior(b, prim_exp_arg_ch2, layer);
       }
 
