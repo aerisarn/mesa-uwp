@@ -1383,7 +1383,7 @@ void radv_lower_ngg(struct radv_device *device, struct radv_pipeline_stage *ngg_
    options.wave_size = info->wave_size;
    options.clipdist_enable_mask = info->outinfo.clip_dist_mask | info->outinfo.cull_dist_mask;
    options.vs_output_param_offset = info->outinfo.vs_output_param_offset;
-   options.has_param_exports = info->outinfo.param_exports;
+   options.has_param_exports = info->outinfo.param_exports || info->outinfo.prim_param_exports;
    options.can_cull = nir->info.stage != MESA_SHADER_GEOMETRY && info->has_ngg_culling;
    options.disable_streamout = !device->physical_device->use_ngg_streamout;
    options.has_gen_prim_query = info->has_ngg_prim_query;
