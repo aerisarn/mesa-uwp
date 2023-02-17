@@ -26,7 +26,8 @@ struct nvk_root_descriptor_table {
          uint32_t base_vertex;
          uint32_t base_instance;
          uint32_t draw_id;
-         uint32_t _pad[5];
+         uint32_t view_index;
+         uint32_t _pad[4];
       } draw;
       struct {
          uint32_t base_group[3];
