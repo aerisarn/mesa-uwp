@@ -319,20 +319,20 @@ gather_xfb_info(const nir_shader *nir, struct radv_shader_info *info)
 
 static void
 assign_outinfo_param(struct radv_vs_output_info *outinfo, gl_varying_slot idx,
-                     unsigned *total_param_exports)
+                     unsigned *total_param_exports, unsigned extra_offset)
 {
    if (outinfo->vs_output_param_offset[idx] == AC_EXP_PARAM_UNDEFINED)
-      outinfo->vs_output_param_offset[idx] = (*total_param_exports)++;
+      outinfo->vs_output_param_offset[idx] = extra_offset + (*total_param_exports)++;
 }
 
 static void
 assign_outinfo_params(struct radv_vs_output_info *outinfo, uint64_t mask,
-                      unsigned *total_param_exports)
+                      unsigned *total_param_exports, unsigned extra_offset)
 {
    u_foreach_bit64(idx, mask) {
       if (idx >= VARYING_SLOT_VAR0 || idx == VARYING_SLOT_LAYER ||
           idx == VARYING_SLOT_PRIMITIVE_ID || idx == VARYING_SLOT_VIEWPORT)
-         assign_outinfo_param(outinfo, idx, total_param_exports);
+         assign_outinfo_param(outinfo, idx, total_param_exports, extra_offset);
    }
 }
 
@@ -802,12 +802,18 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       unsigned total_param_exports = 0;
 
       /* Per-vertex outputs */
-      assign_outinfo_params(outinfo, per_vtx_mask, &total_param_exports);
+      assign_outinfo_params(outinfo, per_vtx_mask, &total_param_exports, 0);
 
       outinfo->param_exports = total_param_exports;
 
+      /* The HW always assumes that there is at least 1 per-vertex param.
+       * so if there aren't any, we have to offset per-primitive params by 1.
+       */
+      const unsigned extra_offset =
+         !!(total_param_exports == 0 && device->physical_device->rad_info.gfx_level >= GFX11);
+
       /* Per-primitive outputs: the HW needs these to be last. */
-      assign_outinfo_params(outinfo, per_prim_mask, &total_param_exports);
+      assign_outinfo_params(outinfo, per_prim_mask, &total_param_exports, extra_offset);
 
       outinfo->prim_param_exports = total_param_exports - outinfo->param_exports;
    }
