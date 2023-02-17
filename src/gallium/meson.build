@@ -236,7 +236,9 @@ if with_platform_windows
     winsys_d3d12_wgl = declare_dependency()
   endif
   subdir('targets/wgl')
-  subdir('targets/libgl-gdi')
+  if with_opengl
+    subdir('targets/libgl-gdi')
+  endif
 endif
 if with_tests
   subdir('tests')
