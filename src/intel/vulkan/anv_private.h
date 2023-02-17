@@ -538,6 +538,9 @@ struct anv_bo {
 
    /** True if this BO should be mapped with Write Combine enabled */
    bool map_wc:1;
+
+   /** True if this BO can only live in VRAM */
+   bool vram_only:1;
 };
 
 static inline struct anv_bo *

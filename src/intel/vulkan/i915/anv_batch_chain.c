@@ -553,23 +553,27 @@ anv_queue_exec_utrace_locked(struct anv_queue *queue,
 static void
 anv_i915_debug_submit(const struct anv_execbuf *execbuf)
 {
-   uint32_t total_size_kb = 0;
+   uint32_t total_size_kb = 0, total_vram_only_size_kb = 0;
    for (uint32_t i = 0; i < execbuf->bo_count; i++) {
       const struct anv_bo *bo = execbuf->bos[i];
       total_size_kb += bo->size / 1024;
+      if (bo->vram_only)
+         total_vram_only_size_kb += bo->size / 1024;
    }
 
-   fprintf(stderr, "Batch offset=0x%x len=0x%x on queue 0 (%.1fMb aperture)\n",
+   fprintf(stderr, "Batch offset=0x%x len=0x%x on queue 0 (aperture: %.1fMb, %.1fMb VRAM only)\n",
            execbuf->execbuf.batch_start_offset, execbuf->execbuf.batch_len,
-           (float)total_size_kb / 1024.0f);
+           (float)total_size_kb / 1024.0f,
+           (float)total_vram_only_size_kb / 1024.0f);
    for (uint32_t i = 0; i < execbuf->bo_count; i++) {
       const struct anv_bo *bo = execbuf->bos[i];
       uint64_t size = bo->size + bo->_ccs_size;
 
       fprintf(stderr, "   BO: addr=0x%016"PRIx64"-0x%016"PRIx64" size=%7"PRIu64
-              "KB handle=%05u capture=%u name=%s\n",
+              "KB handle=%05u capture=%u vram_only=%u name=%s\n",
               bo->offset, bo->offset + size - 1, size / 1024, bo->gem_handle,
-              (bo->flags & EXEC_OBJECT_CAPTURE) != 0, bo->name);
+              (bo->flags & EXEC_OBJECT_CAPTURE) != 0,
+              bo->vram_only, bo->name);
    }
 }
 

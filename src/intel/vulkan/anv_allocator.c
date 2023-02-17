@@ -1499,6 +1499,8 @@ anv_device_alloc_bo(struct anv_device *device,
       .has_implicit_ccs = ccs_size > 0 ||
                           (device->info->verx10 >= 125 && !(alloc_flags & ANV_BO_ALLOC_NO_LOCAL_MEM)),
       .map_wc = alloc_flags & ANV_BO_ALLOC_WRITE_COMBINE,
+      .vram_only = nregions == 1 &&
+                   regions[0] == device->physical->vram_non_mappable.region,
    };
 
    if (alloc_flags & ANV_BO_ALLOC_MAPPED) {
