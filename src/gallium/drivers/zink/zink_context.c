@@ -4544,7 +4544,11 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
          if (!zink_kopper_acquire(ctx, img, UINT64_MAX))
             return;
       }
-      zink_screen(ctx->base.screen)->image_barrier(ctx, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
+      struct pipe_box box = *src_box;
+      box.x = dstx;
+      box.y = dsty;
+      box.z = dstz;
+      zink_resource_image_transfer_dst_barrier(ctx, img, dst_level, &box);
       zink_screen(ctx->base.screen)->buffer_barrier(ctx, buf, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
    } else {
       if (zink_is_swapchain(img))
