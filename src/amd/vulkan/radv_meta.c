@@ -503,7 +503,7 @@ radv_device_init_meta(struct radv_device *device)
        * Work around it by forcing ACO for now.
        */
       bool use_llvm = device->physical_device->use_llvm;
-      if (use_llvm) {
+      if (loaded_cache || use_llvm) {
          device->physical_device->use_llvm = false;
          result = radv_device_init_accel_struct_build_state(device);
          device->physical_device->use_llvm = use_llvm;
