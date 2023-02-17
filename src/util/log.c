@@ -35,22 +35,8 @@
 #include "util/log.h"
 #include "util/ralloc.h"
 
-#ifdef ANDROID
-static inline android_LogPriority
-level_to_android(enum mesa_log_level l)
-{
-   switch (l) {
-   case MESA_LOG_ERROR: return ANDROID_LOG_ERROR;
-   case MESA_LOG_WARN: return ANDROID_LOG_WARN;
-   case MESA_LOG_INFO: return ANDROID_LOG_INFO;
-   case MESA_LOG_DEBUG: return ANDROID_LOG_DEBUG;
-   }
-
-   unreachable("bad mesa_log_level");
-}
-#endif
-
 #ifndef ANDROID
+
 static inline const char *
 level_to_str(enum mesa_log_level l)
 {
@@ -63,7 +49,54 @@ level_to_str(enum mesa_log_level l)
 
    unreachable("bad mesa_log_level");
 }
+
+static void
+logger_file(enum mesa_log_level level,
+            const char *tag,
+            const char *format,
+            va_list va)
+{
+#if !DETECT_OS_WINDOWS
+   flockfile(stderr);
 #endif
+
+   fprintf(stderr, "%s: %s: ", tag, level_to_str(level));
+   vfprintf(stderr, format, va);
+   if (format[strlen(format) - 1] != '\n')
+      fprintf(stderr, "\n");
+
+#if !DETECT_OS_WINDOWS
+   funlockfile(stderr);
+#endif
+}
+
+#endif /* !ANDROID */
+
+#ifdef ANDROID
+
+static inline android_LogPriority
+level_to_android(enum mesa_log_level l)
+{
+   switch (l) {
+   case MESA_LOG_ERROR: return ANDROID_LOG_ERROR;
+   case MESA_LOG_WARN: return ANDROID_LOG_WARN;
+   case MESA_LOG_INFO: return ANDROID_LOG_INFO;
+   case MESA_LOG_DEBUG: return ANDROID_LOG_DEBUG;
+   }
+
+   unreachable("bad mesa_log_level");
+}
+
+static void
+logger_android(enum mesa_log_level level,
+               const char *tag,
+               const char *format,
+               va_list va)
+{
+   __android_log_vprint(level_to_android(level), tag, format, va);
+}
+
+#endif /* ANDROID */
 
 void
 mesa_log(enum mesa_log_level level, const char *tag, const char *format, ...)
@@ -79,19 +112,10 @@ void
 mesa_log_v(enum mesa_log_level level, const char *tag, const char *format,
             va_list va)
 {
-#ifdef ANDROID
-   __android_log_vprint(level_to_android(level), tag, format, va);
+#ifndef ANDROID
+   logger_file(level, tag, format, va);
 #else
-#if !DETECT_OS_WINDOWS
-   flockfile(stderr);
-#endif
-   fprintf(stderr, "%s: %s: ", tag, level_to_str(level));
-   vfprintf(stderr, format, va);
-   if (format[strlen(format) - 1] != '\n')
-      fprintf(stderr, "\n");
-#if !DETECT_OS_WINDOWS
-   funlockfile(stderr);
-#endif
+   logger_android(level, tag, format, va);
 #endif
 }
 
