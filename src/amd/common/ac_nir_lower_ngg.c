@@ -4048,10 +4048,8 @@ ms_emit_arrayed_outputs(nir_builder *b,
 }
 
 static void
-emit_ms_prelude(nir_builder *b, lower_ngg_ms_state *s)
+ms_create_same_invocation_vars(nir_builder *b, lower_ngg_ms_state *s)
 {
-   b->cursor = nir_before_cf_list(&b->impl->body);
-
    /* Initialize NIR variables for same-invocation outputs. */
    uint64_t same_invocation_output_mask = s->layout.var.prm_attr.mask | s->layout.var.vtx_attr.mask;
 
@@ -4061,15 +4059,23 @@ emit_ms_prelude(nir_builder *b, lower_ngg_ms_state *s)
          s->out_variables[idx] = nir_local_variable_create(b->impl, glsl_uint_type(), "ms_var_output");
       }
    }
+}
 
-   bool uses_workgroup_id =
-      BITSET_TEST(b->shader->info.system_values_read, SYSTEM_VALUE_WORKGROUP_ID) ||
-      BITSET_TEST(b->shader->info.system_values_read, SYSTEM_VALUE_WORKGROUP_INDEX);
+static void
+ms_emit_legacy_workgroup_index(nir_builder *b, lower_ngg_ms_state *s)
+{
+   /* Workgroup ID should have been lowered to workgroup index. */
+   assert(!BITSET_TEST(b->shader->info.system_values_read, SYSTEM_VALUE_WORKGROUP_ID));
 
-   if (!uses_workgroup_id)
+   /* No need to do anything if the shader doesn't use the workgroup index. */
+   if (!BITSET_TEST(b->shader->info.system_values_read, SYSTEM_VALUE_WORKGROUP_INDEX))
       return;
 
-   /* The HW doesn't support a proper workgroup index for vertex processing stages,
+   b->cursor = nir_before_cf_list(&b->impl->body);
+
+   /* Legacy fast launch mode (FAST_LAUNCH=1):
+    *
+    * The HW doesn't support a proper workgroup index for vertex processing stages,
     * so we use the vertex ID which is equivalent to the index of the current workgroup
     * within the current dispatch.
     *
@@ -4745,7 +4751,8 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
    b->cursor = nir_before_cf_list(&impl->body);
 
    handle_smaller_ms_api_workgroup(b, &state);
-   emit_ms_prelude(b, &state);
+   ms_emit_legacy_workgroup_index(b, &state);
+   ms_create_same_invocation_vars(b, &state);
    nir_metadata_preserve(impl, nir_metadata_none);
 
    lower_ms_intrinsics(shader, &state);
