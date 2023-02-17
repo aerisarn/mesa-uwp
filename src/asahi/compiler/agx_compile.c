@@ -1534,6 +1534,16 @@ agx_emit_phis_deferred(agx_context *ctx)
 }
 
 static void
+agx_emit_undef(agx_builder *b, nir_ssa_undef_instr *instr)
+{
+   /* For now, just lower undefs to zero. This doesn't matter too much, since
+    * the lowering happens in NIR and this just allows for late lowering passes
+    * to result in undefs.
+    */
+   agx_mov_imm_to(b, agx_nir_ssa_index(&instr->def), 0);
+}
+
+static void
 agx_emit_instr(agx_builder *b, struct nir_instr *instr)
 {
    switch (instr->type) {
@@ -1559,6 +1569,10 @@ agx_emit_instr(agx_builder *b, struct nir_instr *instr)
 
    case nir_instr_type_phi:
       agx_emit_phi(b, nir_instr_as_phi(instr));
+      break;
+
+   case nir_instr_type_ssa_undef:
+      agx_emit_undef(b, nir_instr_as_ssa_undef(instr));
       break;
 
    default:
