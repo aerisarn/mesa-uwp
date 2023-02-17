@@ -468,12 +468,9 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
       return vk_error(NULL, result);
    }
 
-#ifndef TU_USE_KGSL
    instance->vk.physical_devices.try_create_for_drm =
       tu_physical_device_try_create;
-#else
    instance->vk.physical_devices.enumerate = tu_enumerate_devices;
-#endif
    instance->vk.physical_devices.destroy = tu_destroy_physical_device;
 
    if (TU_DEBUG(STARTUP))

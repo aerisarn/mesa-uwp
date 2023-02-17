@@ -7,6 +7,18 @@
  * Copyright © 2015 Intel Corporation
  */
 
+#include <fcntl.h>
+#ifdef HAVE_LIBDRM
+#include <xf86drm.h>
+#endif
+
+#ifdef MAJOR_IN_MKDEV
+#include <sys/mkdev.h>
+#endif
+#ifdef MAJOR_IN_SYSMACROS
+#include <sys/sysmacros.h>
+#endif
+
 #include "tu_device.h"
 #include "tu_knl.h"
 
@@ -99,4 +111,146 @@ tu_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit)
 {
    struct tu_queue *queue = container_of(vk_queue, struct tu_queue, vk);
    return queue->device->instance->knl->queue_submit(queue, submit);
+}
+
+/**
+ * Enumeration entrypoint specific to non-drm devices (ie. kgsl)
+ */
+VkResult
+tu_enumerate_devices(struct vk_instance *vk_instance)
+{
+#ifdef TU_USE_KGSL
+   struct tu_instance *instance =
+      container_of(vk_instance, struct tu_instance, vk);
+
+   static const char path[] = "/dev/kgsl-3d0";
+   int fd;
+
+   fd = open(path, O_RDWR | O_CLOEXEC);
+   if (fd < 0) {
+      if (errno == ENOENT)
+         return VK_ERROR_INCOMPATIBLE_DRIVER;
+
+      return vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                       "failed to open device %s", path);
+   }
+
+   VkResult result = tu_knl_kgsl_load(instance, fd);
+   if (result != VK_SUCCESS) {
+      close(fd);
+      return result;
+   }
+
+   if (TU_DEBUG(STARTUP))
+      mesa_logi("Found compatible device '%s'.", path);
+
+   return result;
+#else
+   return VK_ERROR_INCOMPATIBLE_DRIVER;
+#endif
+}
+
+/**
+ * Enumeration entrypoint for drm devices
+ */
+VkResult
+tu_physical_device_try_create(struct vk_instance *vk_instance,
+                              struct _drmDevice *drm_device,
+                              struct vk_physical_device **out)
+{
+#ifdef HAVE_LIBDRM
+   struct tu_instance *instance =
+      container_of(vk_instance, struct tu_instance, vk);
+
+   if (!(drm_device->available_nodes & (1 << DRM_NODE_RENDER)) ||
+       drm_device->bustype != DRM_BUS_PLATFORM)
+      return VK_ERROR_INCOMPATIBLE_DRIVER;
+
+   const char *primary_path = drm_device->nodes[DRM_NODE_PRIMARY];
+   const char *path = drm_device->nodes[DRM_NODE_RENDER];
+   VkResult result = VK_SUCCESS;
+   drmVersionPtr version;
+   int fd;
+   int master_fd = -1;
+
+   fd = open(path, O_RDWR | O_CLOEXEC);
+   if (fd < 0) {
+      return vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                               "failed to open device %s", path);
+   }
+
+   version = drmGetVersion(fd);
+   if (!version) {
+      close(fd);
+      return vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                               "failed to query kernel driver version for device %s",
+                               path);
+   }
+
+   struct tu_physical_device *device = NULL;
+
+   if (strcmp(version->name, "msm") == 0) {
+      result = tu_knl_drm_msm_load(instance, fd, version, &device);
+   } else {
+      result = vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                                 "device %s (%s) is not compatible with turnip",
+                                 path, version->name);
+   }
+
+   if (result != VK_SUCCESS)
+      goto out;
+
+   assert(device);
+
+   if (instance->vk.enabled_extensions.KHR_display) {
+      master_fd = open(primary_path, O_RDWR | O_CLOEXEC);
+   }
+
+   device->master_fd = master_fd;
+
+   struct stat st;
+
+   if (stat(primary_path, &st) == 0) {
+      device->has_master = true;
+      device->master_major = major(st.st_rdev);
+      device->master_minor = minor(st.st_rdev);
+   } else {
+      device->has_master = false;
+      device->master_major = 0;
+      device->master_minor = 0;
+   }
+
+   if (stat(path, &st) == 0) {
+      device->has_local = true;
+      device->local_major = major(st.st_rdev);
+      device->local_minor = minor(st.st_rdev);
+   } else {
+      result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                         "failed to stat DRM render node %s", path);
+      goto out;
+   }
+
+   result = tu_physical_device_init(device, instance);
+   if (result != VK_SUCCESS)
+      goto out;
+
+   if (TU_DEBUG(STARTUP))
+      mesa_logi("Found compatible device '%s' (%s).", path, version->name);
+
+   *out = &device->vk;
+
+out:
+   if (result != VK_SUCCESS) {
+      if (master_fd != -1)
+         close(master_fd);
+      close(fd);
+      vk_free(&instance->vk.alloc, device);
+   }
+
+   drmFreeVersion(version);
+
+   return result;
+#else
+   return VK_ERROR_INCOMPATIBLE_DRIVER;
+#endif
 }

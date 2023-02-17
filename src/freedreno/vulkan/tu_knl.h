@@ -123,14 +123,20 @@ tu_bo_get_ref(struct tu_bo *bo)
 }
 
 #ifdef TU_USE_KGSL
+VkResult tu_knl_kgsl_load(struct tu_instance *instance, int fd);
+#endif
+
+struct _drmVersion;
+VkResult tu_knl_drm_msm_load(struct tu_instance *instance,
+                             int fd, struct _drmVersion *version,
+                             struct tu_physical_device **out);
+
 VkResult
 tu_enumerate_devices(struct vk_instance *vk_instance);
-#else
 VkResult
 tu_physical_device_try_create(struct vk_instance *vk_instance,
                               struct _drmDevice *drm_device,
                               struct vk_physical_device **out);
-#endif
 
 int
 tu_device_get_gpu_timestamp(struct tu_device *dev,

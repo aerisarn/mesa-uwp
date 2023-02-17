@@ -12,13 +12,6 @@
 #include <sys/mman.h>
 #include <xf86drm.h>
 
-#ifdef MAJOR_IN_MKDEV
-#include <sys/mkdev.h>
-#endif
-#ifdef MAJOR_IN_SYSMACROS
-#include <sys/sysmacros.h>
-#endif
-
 #include "vk_util.h"
 
 #include "drm-uapi/msm_drm.h"
@@ -1187,60 +1180,24 @@ const struct vk_sync_type tu_timeline_sync_type = {
 };
 
 VkResult
-tu_physical_device_try_create(struct vk_instance *vk_instance,
-                              struct _drmDevice *drm_device,
-                              struct vk_physical_device **out)
+tu_knl_drm_msm_load(struct tu_instance *instance,
+                    int fd, struct _drmVersion *version,
+                    struct tu_physical_device **out)
 {
-   struct tu_instance *instance =
-      container_of(vk_instance, struct tu_instance, vk);
-
-   if (!(drm_device->available_nodes & (1 << DRM_NODE_RENDER)) ||
-       drm_device->bustype != DRM_BUS_PLATFORM)
-      return VK_ERROR_INCOMPATIBLE_DRIVER;
-
-   const char *primary_path = drm_device->nodes[DRM_NODE_PRIMARY];
-   const char *path = drm_device->nodes[DRM_NODE_RENDER];
    VkResult result = VK_SUCCESS;
-   drmVersionPtr version;
-   int fd;
-   int master_fd = -1;
-
-   fd = open(path, O_RDWR | O_CLOEXEC);
-   if (fd < 0) {
-      return vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-                               "failed to open device %s", path);
-   }
 
    /* Version 1.6 added SYNCOBJ support. */
    const int min_version_major = 1;
    const int min_version_minor = 6;
-
-   version = drmGetVersion(fd);
-   if (!version) {
-      close(fd);
-      return vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-                               "failed to query kernel driver version for device %s",
-                               path);
-   }
-
-   if (strcmp(version->name, "msm")) {
-      drmFreeVersion(version);
-      close(fd);
-      return vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-                               "device %s does not use the msm kernel driver",
-                               path);
-   }
 
    if (version->version_major != min_version_major ||
        version->version_minor < min_version_minor) {
       result = vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
                                  "kernel driver for device %s has version %d.%d, "
                                  "but Vulkan requires version >= %d.%d",
-                                 path,
+                                 version->name,
                                  version->version_major, version->version_minor,
                                  min_version_major, min_version_minor);
-      drmFreeVersion(version);
-      close(fd);
       return result;
    }
 
@@ -1249,28 +1206,13 @@ tu_physical_device_try_create(struct vk_instance *vk_instance,
                 VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
    if (!device) {
       result = vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-      drmFreeVersion(version);
       goto fail;
    }
 
    device->msm_major_version = version->version_major;
    device->msm_minor_version = version->version_minor;
 
-   drmFreeVersion(version);
-
-   if (TU_DEBUG(STARTUP))
-      mesa_logi("Found compatible device '%s'.", path);
-
    device->instance = instance;
-
-   if (instance->vk.enabled_extensions.KHR_display) {
-      master_fd = open(primary_path, O_RDWR | O_CLOEXEC);
-      if (master_fd >= 0) {
-         /* TODO: free master_fd is accel is not working? */
-      }
-   }
-
-   device->master_fd = master_fd;
    device->local_fd = fd;
 
    if (tu_drm_get_gpu_id(device, &device->dev_id.gpu_id)) {
@@ -1311,28 +1253,6 @@ tu_physical_device_try_create(struct vk_instance *vk_instance,
     */
    device->has_set_iova = false;
 
-   struct stat st;
-
-   if (stat(primary_path, &st) == 0) {
-      device->has_master = true;
-      device->master_major = major(st.st_rdev);
-      device->master_minor = minor(st.st_rdev);
-   } else {
-      device->has_master = false;
-      device->master_major = 0;
-      device->master_minor = 0;
-   }
-
-   if (stat(path, &st) == 0) {
-      device->has_local = true;
-      device->local_major = major(st.st_rdev);
-      device->local_minor = minor(st.st_rdev);
-   } else {
-      result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
-                         "failed to stat DRM render node %s", path);
-      goto fail;
-   }
-
    int ret = tu_drm_get_param(device, MSM_PARAM_FAULTS, &device->fault_count);
    if (ret != 0) {
       result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
@@ -1357,18 +1277,11 @@ tu_physical_device_try_create(struct vk_instance *vk_instance,
 
    instance->knl = &msm_knl_funcs;
 
-   result = tu_physical_device_init(device, instance);
+   *out = device;
 
-   if (result == VK_SUCCESS) {
-      *out = &device->vk;
-      return result;
-   }
+   return VK_SUCCESS;
 
 fail:
-   if (device)
-      vk_free(&instance->vk.alloc, device);
-   close(fd);
-   if (master_fd != -1)
-      close(master_fd);
+   vk_free(&instance->vk.alloc, device);
    return result;
 }

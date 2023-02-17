@@ -827,26 +827,11 @@ static const struct tu_knl kgsl_knl_funcs = {
 };
 
 VkResult
-tu_enumerate_devices(struct vk_instance *vk_instance)
+tu_knl_kgsl_load(struct tu_instance *instance, int fd)
 {
-   struct tu_instance *instance =
-      container_of(vk_instance, struct tu_instance, vk);
-
-   static const char path[] = "/dev/kgsl-3d0";
-   int fd;
-
    if (instance->vk.enabled_extensions.KHR_display) {
       return vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                        "I can't KHR_display");
-   }
-
-   fd = open(path, O_RDWR | O_CLOEXEC);
-   if (fd < 0) {
-      if (errno == ENOENT)
-         return VK_ERROR_INCOMPATIBLE_DRIVER;
-
-      return vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
-                       "failed to open device %s", path);
    }
 
    struct tu_physical_device *device =
@@ -866,9 +851,6 @@ tu_enumerate_devices(struct vk_instance *vk_instance)
       goto fail;
 
    /* kgsl version check? */
-
-   if (TU_DEBUG(STARTUP))
-      mesa_logi("Found compatible device '%s'.", path);
 
    device->instance = instance;
    device->master_fd = -1;
