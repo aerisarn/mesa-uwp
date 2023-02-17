@@ -670,7 +670,7 @@ static VkResult pvr_render_ctx_switch_init(struct pvr_device *device,
    for (uint32_t i = 0; i < ARRAY_SIZE(ctx_switch->programs); i++) {
       result =
          pvr_render_ctx_switch_programs_setup(device, &ctx_switch->programs[i]);
-      if (result)
+      if (result != VK_SUCCESS)
          goto err_programs_cleanup;
    }
 
