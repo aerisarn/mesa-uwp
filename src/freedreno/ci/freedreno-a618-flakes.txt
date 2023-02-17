@@ -194,3 +194,7 @@ spec@ext_texture_lod_bias@lodbias
 KHR-GL45.buffer_storage.map_persistent_dispatch
 # recent flakes, first occurence 09-02-2023
 KHR-GL45.buffer_storage.map_persistent_flush
+
+# Flakes from CTS 1.3.5.0
+dEQP-VK.image.queue_transfer.*
+gmem-dEQP-VK.image.queue_transfer.*
