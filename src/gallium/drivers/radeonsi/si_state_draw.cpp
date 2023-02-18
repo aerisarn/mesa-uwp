@@ -836,7 +836,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx)
 
       /* Set userdata SGPRs for merged LS-HS. */
       radeon_set_sh_reg_seq(
-         R_00B430_SPI_SHADER_USER_DATA_LS_0 + GFX9_SGPR_TCS_OFFCHIP_LAYOUT * 4, 3);
+         R_00B430_SPI_SHADER_USER_DATA_HS_0 + GFX9_SGPR_TCS_OFFCHIP_LAYOUT * 4, 3);
       radeon_emit(offchip_layout);
       radeon_emit(tcs_out_offsets);
       radeon_emit(tcs_out_layout);

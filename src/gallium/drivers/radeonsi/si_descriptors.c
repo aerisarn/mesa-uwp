@@ -2713,7 +2713,7 @@ void si_init_all_descriptors(struct si_context *sctx)
       if (is_2nd) {
          if (i == PIPE_SHADER_TESS_CTRL) {
             rel_dw_offset =
-               (hs_sgpr0 - R_00B430_SPI_SHADER_USER_DATA_LS_0) / 4;
+               (hs_sgpr0 - R_00B430_SPI_SHADER_USER_DATA_HS_0) / 4;
          } else if (sctx->gfx_level >= GFX10) { /* PIPE_SHADER_GEOMETRY */
             rel_dw_offset =
                (gs_sgpr0 - R_00B230_SPI_SHADER_USER_DATA_GS_0) / 4;
@@ -2733,7 +2733,7 @@ void si_init_all_descriptors(struct si_context *sctx)
       if (is_2nd) {
          if (i == PIPE_SHADER_TESS_CTRL) {
             rel_dw_offset =
-               (hs_sgpr0 + 4 - R_00B430_SPI_SHADER_USER_DATA_LS_0) / 4;
+               (hs_sgpr0 + 4 - R_00B430_SPI_SHADER_USER_DATA_HS_0) / 4;
          } else if (sctx->gfx_level >= GFX10) { /* PIPE_SHADER_GEOMETRY */
             rel_dw_offset =
                (gs_sgpr0 + 4 - R_00B230_SPI_SHADER_USER_DATA_GS_0) / 4;
