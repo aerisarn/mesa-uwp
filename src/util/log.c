@@ -31,6 +31,11 @@
 #include "util/ralloc.h"
 #include "util/u_debug.h"
 
+#if DETECT_OS_UNIX
+#include <syslog.h>
+#include "util/u_process.h"
+#endif
+
 #if DETECT_OS_ANDROID
 #include <android/log.h>
 #endif
@@ -38,7 +43,8 @@
 enum mesa_log_control {
    MESA_LOG_CONTROL_NULL = 1 << 0,
    MESA_LOG_CONTROL_FILE = 1 << 1,
-   MESA_LOG_CONTROL_ANDROID = 1 << 2,
+   MESA_LOG_CONTROL_SYSLOG = 1 << 2,
+   MESA_LOG_CONTROL_ANDROID = 1 << 3,
    MESA_LOG_CONTROL_LOGGER_MASK = 0xff,
 
    MESA_LOG_CONTROL_WAIT = 1 << 8,
@@ -48,6 +54,7 @@ static const struct debug_control mesa_log_control_options[] = {
    /* loggers */
    { "null", MESA_LOG_CONTROL_NULL },
    { "file", MESA_LOG_CONTROL_FILE },
+   { "syslog", MESA_LOG_CONTROL_SYSLOG },
    { "android", MESA_LOG_CONTROL_ANDROID },
    /* flags */
    { "wait", MESA_LOG_CONTROL_WAIT },
@@ -70,6 +77,11 @@ mesa_log_init_once(void)
       mesa_log_control |= MESA_LOG_CONTROL_FILE;
 #endif
    }
+
+#if DETECT_OS_UNIX
+   if (mesa_log_control & MESA_LOG_CONTROL_SYSLOG)
+      openlog(util_get_process_name(), LOG_NDELAY | LOG_PID, LOG_USER);
+#endif
 }
 
 static void
@@ -186,6 +198,39 @@ logger_file(enum mesa_log_level level,
       free(msg);
 }
 
+#if DETECT_OS_UNIX
+
+static inline int
+level_to_syslog(enum mesa_log_level l)
+{
+   switch (l) {
+   case MESA_LOG_ERROR: return LOG_ERR;
+   case MESA_LOG_WARN: return LOG_WARNING;
+   case MESA_LOG_INFO: return LOG_INFO;
+   case MESA_LOG_DEBUG: return LOG_DEBUG;
+   }
+
+   unreachable("bad mesa_log_level");
+}
+
+static void
+logger_syslog(enum mesa_log_level level,
+              const char *tag,
+              const char *format,
+              va_list va)
+{
+   char local_msg[1024];
+   char *msg = logger_vasnprintf(local_msg, sizeof(local_msg),
+         LOGGER_VASNPRINTF_AFFIX_TAG, level, tag, format, va);
+
+   syslog(level_to_syslog(level), "%s", msg);
+
+   if (msg != local_msg)
+      free(msg);
+}
+
+#endif /* DETECT_OS_UNIX */
+
 #if DETECT_OS_ANDROID
 
 static inline android_LogPriority
@@ -252,6 +297,9 @@ mesa_log_v(enum mesa_log_level level, const char *tag, const char *format,
                   va_list va);
    } loggers[] = {
       { MESA_LOG_CONTROL_FILE, logger_file },
+#if DETECT_OS_UNIX
+      { MESA_LOG_CONTROL_SYSLOG, logger_syslog },
+#endif
 #if DETECT_OS_ANDROID
       { MESA_LOG_CONTROL_ANDROID, logger_android },
 #endif
