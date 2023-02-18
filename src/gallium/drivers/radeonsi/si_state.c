@@ -2433,7 +2433,7 @@ static bool si_is_format_supported(struct pipe_screen *screen, enum pipe_format 
       /* Chips with 1 RB don't increment occlusion queries at 16x MSAA sample rate,
        * so don't expose 16 samples there.
        */
-      const unsigned max_eqaa_samples = util_bitcount(sscreen->info.enabled_rb_mask) <= 1 ? 8 : 16;
+      const unsigned max_eqaa_samples = util_bitcount64(sscreen->info.enabled_rb_mask) <= 1 ? 8 : 16;
       const unsigned max_samples = 8;
 
       /* MSAA support without framebuffer attachments. */
@@ -5540,11 +5540,11 @@ static void si_set_raster_config(struct si_context *sctx, struct si_pm4_state *p
 {
    struct si_screen *sscreen = sctx->screen;
    unsigned num_rb = MIN2(sscreen->info.max_render_backends, 16);
-   unsigned rb_mask = sscreen->info.enabled_rb_mask;
+   uint64_t rb_mask = sscreen->info.enabled_rb_mask;
    unsigned raster_config = sscreen->pa_sc_raster_config;
    unsigned raster_config_1 = sscreen->pa_sc_raster_config_1;
 
-   if (!rb_mask || util_bitcount(rb_mask) >= num_rb) {
+   if (!rb_mask || util_bitcount64(rb_mask) >= num_rb) {
       /* Always use the default config when all backends are enabled
        * (or when we failed to determine the enabled backends).
        */

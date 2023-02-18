@@ -257,7 +257,7 @@ struct radeon_info {
    uint32_t max_render_backends;  /* number of render backends incl. disabled ones */
    uint32_t num_tile_pipes; /* pipe count from PIPE_CONFIG */
    uint32_t pipe_interleave_bytes;
-   uint32_t enabled_rb_mask; /* GCN harvest config */
+   uint64_t enabled_rb_mask; /* bitmask of enabled physical RBs, up to max_render_backends bits */
    uint64_t max_alignment;   /* from addrlib */
    uint32_t pbb_max_alloc_count;
 

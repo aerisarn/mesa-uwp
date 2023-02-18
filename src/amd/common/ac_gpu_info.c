@@ -1222,7 +1222,10 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
       (info->num_cu / (info->num_se * info->max_sa_per_se * cu_group)) * cu_group;
 
    memcpy(info->si_tile_mode_array, amdinfo.gb_tile_mode, sizeof(amdinfo.gb_tile_mode));
-   info->enabled_rb_mask = amdinfo.enabled_rb_pipes_mask;
+
+   info->enabled_rb_mask = device_info.enabled_rb_pipes_mask;
+   if (info->drm_minor >= 52)
+      info->enabled_rb_mask |= (uint64_t)device_info.enabled_rb_pipes_mask_hi << 32;
 
    memcpy(info->cik_macrotile_mode_array, amdinfo.gb_macro_tile_mode,
           sizeof(amdinfo.gb_macro_tile_mode));
@@ -1324,7 +1327,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
                                     info->family == CHIP_NAVI24 ||
                                     info->family == CHIP_REMBRANDT ||
                                     info->family == CHIP_VANGOGH) &&
-                                   util_bitcount(info->enabled_rb_mask) !=
+                                   util_bitcount64(info->enabled_rb_mask) !=
                                    info->max_render_backends;
 
    /* On GFX10.3, the polarity of AUTO_FLUSH_MODE is inverted. */
@@ -1374,7 +1377,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
    const unsigned max_waves_per_tg = 32; /* 1024 threads in Wave32 */
    info->max_scratch_waves = MAX2(32 * info->min_good_cu_per_sa * info->max_sa_per_se * info->num_se,
                                   max_waves_per_tg);
-   info->num_rb = util_bitcount(info->enabled_rb_mask);
+   info->num_rb = util_bitcount64(info->enabled_rb_mask);
    info->max_gflops = (info->gfx_level >= GFX11 ? 256 : 128) * info->num_cu * info->max_gpu_freq_mhz / 1000;
    info->memory_bandwidth_gbps = DIV_ROUND_UP(info->memory_freq_mhz_effective * info->memory_bus_width / 8, 1000);
    info->has_pcie_bandwidth_info = info->drm_minor >= 51;
@@ -1697,7 +1700,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    max_render_backends = %i\n", info->max_render_backends);
    fprintf(f, "    num_tile_pipes = %i\n", info->num_tile_pipes);
    fprintf(f, "    pipe_interleave_bytes = %i\n", info->pipe_interleave_bytes);
-   fprintf(f, "    enabled_rb_mask = 0x%x\n", info->enabled_rb_mask);
+   fprintf(f, "    enabled_rb_mask = 0x%" PRIx64 "\n", info->enabled_rb_mask);
    fprintf(f, "    max_alignment = %u\n", (unsigned)info->max_alignment);
    fprintf(f, "    pbb_max_alloc_count = %u\n", info->pbb_max_alloc_count);
 

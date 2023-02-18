@@ -175,7 +175,7 @@ static void
 si_set_raster_config(struct radv_physical_device *physical_device, struct radeon_cmdbuf *cs)
 {
    unsigned num_rb = MIN2(physical_device->rad_info.max_render_backends, 16);
-   unsigned rb_mask = physical_device->rad_info.enabled_rb_mask;
+   uint64_t rb_mask = physical_device->rad_info.enabled_rb_mask;
    unsigned raster_config, raster_config_1;
 
    ac_get_raster_config(&physical_device->rad_info, &raster_config, &raster_config_1, NULL);
@@ -183,7 +183,7 @@ si_set_raster_config(struct radv_physical_device *physical_device, struct radeon
    /* Always use the default config when all backends are enabled
     * (or when we failed to determine the enabled backends).
     */
-   if (!rb_mask || util_bitcount(rb_mask) >= num_rb) {
+   if (!rb_mask || util_bitcount64(rb_mask) >= num_rb) {
       radeon_set_context_reg(cs, R_028350_PA_SC_RASTER_CONFIG, raster_config);
       if (physical_device->rad_info.gfx_level >= GFX7)
          radeon_set_context_reg(cs, R_028354_PA_SC_RASTER_CONFIG_1, raster_config_1);

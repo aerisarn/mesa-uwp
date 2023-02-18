@@ -90,7 +90,7 @@ build_occlusion_query_shader(struct radv_device *device)
     * 	uint64_t dst_offset = dst_stride * global_id.x;
     * 	bool available = true;
     * 	for (int i = 0; i < db_count; ++i) {
-    *		if (enabled_rb_mask & (1 << i)) {
+    *		if (enabled_rb_mask & BITFIELD64_BIT(i)) {
     *			uint64_t start = src_buf[src_offset + 16 * i];
     *			uint64_t end = src_buf[src_offset + 16 * i + 8];
     *			if ((start & (1ull << 63)) && (end & (1ull << 63)))
@@ -120,7 +120,7 @@ build_occlusion_query_shader(struct radv_device *device)
    nir_variable *start = nir_local_variable_create(b.impl, glsl_uint64_t_type(), "start");
    nir_variable *end = nir_local_variable_create(b.impl, glsl_uint64_t_type(), "end");
    nir_variable *available = nir_local_variable_create(b.impl, glsl_bool_type(), "available");
-   unsigned enabled_rb_mask = device->physical_device->rad_info.enabled_rb_mask;
+   uint64_t enabled_rb_mask = device->physical_device->rad_info.enabled_rb_mask;
    unsigned db_count = device->physical_device->rad_info.max_render_backends;
 
    nir_ssa_def *flags = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .range = 4);
@@ -145,7 +145,8 @@ build_occlusion_query_shader(struct radv_device *device)
    radv_break_on_count(&b, outer_counter, nir_imm_int(&b, db_count));
 
    nir_ssa_def *enabled_cond =
-      nir_iand_imm(&b, nir_ishl(&b, nir_imm_int(&b, 1), current_outer_count), enabled_rb_mask);
+      nir_iand_imm(&b, nir_ishl(&b, nir_imm_int64(&b, 1), current_outer_count),
+                   enabled_rb_mask);
 
    nir_push_if(&b, nir_i2b(&b, enabled_cond));
 
@@ -1242,14 +1243,14 @@ radv_GetQueryPoolResults(VkDevice _device, VkQueryPool queryPool, uint32_t first
       case VK_QUERY_TYPE_OCCLUSION: {
          uint64_t const *src64 = (uint64_t const *)src;
          uint32_t db_count = device->physical_device->rad_info.max_render_backends;
-         uint32_t enabled_rb_mask = device->physical_device->rad_info.enabled_rb_mask;
+         uint64_t enabled_rb_mask = device->physical_device->rad_info.enabled_rb_mask;
          uint64_t sample_count = 0;
          available = 1;
 
          for (int i = 0; i < db_count; ++i) {
             uint64_t start, end;
 
-            if (!(enabled_rb_mask & (1 << i)))
+            if (!(enabled_rb_mask & (1ull << i)))
                continue;
 
             do {
@@ -1534,8 +1535,8 @@ radv_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer, VkQueryPool queryPoo
    switch (pool->type) {
    case VK_QUERY_TYPE_OCCLUSION:
       if (flags & VK_QUERY_RESULT_WAIT_BIT) {
-         unsigned enabled_rb_mask = cmd_buffer->device->physical_device->rad_info.enabled_rb_mask;
-         uint32_t rb_avail_offset = 16 * util_last_bit(enabled_rb_mask) - 4;
+         uint64_t enabled_rb_mask = cmd_buffer->device->physical_device->rad_info.enabled_rb_mask;
+         uint32_t rb_avail_offset = 16 * util_last_bit64(enabled_rb_mask) - 4;
          for (unsigned i = 0; i < queryCount; ++i, dest_va += stride) {
             unsigned query = firstQuery + i;
             uint64_t src_va = va + query * pool->stride + rb_avail_offset;
