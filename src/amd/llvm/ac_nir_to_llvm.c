@@ -2353,12 +2353,6 @@ static LLVMValueRef visit_load_ubo_buffer(struct ac_nir_context *ctx, nir_intrin
    return exit_waterfall(ctx, &wctx, ret);
 }
 
-static unsigned type_scalar_size_bytes(const struct glsl_type *type)
-{
-   assert(glsl_type_is_vector_or_scalar(type) || glsl_type_is_matrix(type));
-   return glsl_type_is_boolean(type) ? 4 : glsl_get_bit_size(type) / 8;
-}
-
 static void visit_store_output(struct ac_nir_context *ctx, nir_intrinsic_instr *instr)
 {
    if (ctx->ac.postponed_kill) {
@@ -4335,13 +4329,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    return true;
 }
 
-static LLVMValueRef get_sampler_desc(struct ac_nir_context *ctx,
-                                     enum ac_descriptor_type desc_type, const nir_instr *instr,
-                                     LLVMValueRef index, bool image, bool write)
-{
-   return ctx->abi->load_sampler_desc(ctx->abi, index, desc_type);
-}
-
 /* Disable anisotropic filtering if BASE_LEVEL == LAST_LEVEL.
  *
  * GFX6-GFX7:
@@ -4829,66 +4816,6 @@ static bool visit_jump(struct ac_llvm_context *ctx, const nir_jump_instr *instr)
       return false;
    }
    return true;
-}
-
-static LLVMTypeRef glsl_base_to_llvm_type(struct ac_llvm_context *ac, enum glsl_base_type type)
-{
-   switch (type) {
-   case GLSL_TYPE_INT:
-   case GLSL_TYPE_UINT:
-   case GLSL_TYPE_BOOL:
-   case GLSL_TYPE_SUBROUTINE:
-      return ac->i32;
-   case GLSL_TYPE_INT8:
-   case GLSL_TYPE_UINT8:
-      return ac->i8;
-   case GLSL_TYPE_INT16:
-   case GLSL_TYPE_UINT16:
-      return ac->i16;
-   case GLSL_TYPE_FLOAT:
-      return ac->f32;
-   case GLSL_TYPE_FLOAT16:
-      return ac->f16;
-   case GLSL_TYPE_INT64:
-   case GLSL_TYPE_UINT64:
-      return ac->i64;
-   case GLSL_TYPE_DOUBLE:
-      return ac->f64;
-   default:
-      unreachable("unknown GLSL type");
-   }
-}
-
-static LLVMTypeRef glsl_to_llvm_type(struct ac_llvm_context *ac, const struct glsl_type *type)
-{
-   if (glsl_type_is_scalar(type)) {
-      return glsl_base_to_llvm_type(ac, glsl_get_base_type(type));
-   }
-
-   if (glsl_type_is_vector(type)) {
-      return LLVMVectorType(glsl_base_to_llvm_type(ac, glsl_get_base_type(type)),
-                            glsl_get_vector_elements(type));
-   }
-
-   if (glsl_type_is_matrix(type)) {
-      return LLVMArrayType(glsl_to_llvm_type(ac, glsl_get_column_type(type)),
-                           glsl_get_matrix_columns(type));
-   }
-
-   if (glsl_type_is_array(type)) {
-      return LLVMArrayType(glsl_to_llvm_type(ac, glsl_get_array_element(type)),
-                           glsl_get_length(type));
-   }
-
-   assert(glsl_type_is_struct_or_ifc(type));
-
-   LLVMTypeRef *const member_types = alloca(glsl_get_length(type) * sizeof(LLVMTypeRef));
-
-   for (unsigned i = 0; i < glsl_get_length(type); i++) {
-      member_types[i] = glsl_to_llvm_type(ac, glsl_get_struct_field(type, i));
-   }
-
-   return LLVMStructTypeInContext(ac->context, member_types, glsl_get_length(type), false);
 }
 
 static bool visit_cf_list(struct ac_nir_context *ctx, struct exec_list *list);

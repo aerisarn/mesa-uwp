@@ -42,6 +42,7 @@ static const char scratch_rsrc_dword0_symbol[] = "SCRATCH_RSRC_DWORD0";
 static const char scratch_rsrc_dword1_symbol[] = "SCRATCH_RSRC_DWORD1";
 
 static void si_dump_shader_key(const struct si_shader *shader, FILE *f);
+static void si_fix_resource_usage(struct si_screen *sscreen, struct si_shader *shader);
 
 /* Get the number of all interpolated inputs */
 unsigned si_get_ps_num_interp(struct si_shader *ps)
@@ -2781,7 +2782,7 @@ void si_multiwave_lds_size_workaround(struct si_screen *sscreen, unsigned *lds_s
       *lds_size = MAX2(*lds_size, 8);
 }
 
-void si_fix_resource_usage(struct si_screen *sscreen, struct si_shader *shader)
+static void si_fix_resource_usage(struct si_screen *sscreen, struct si_shader *shader)
 {
    unsigned min_sgprs = shader->info.num_input_sgprs + 2; /* VCC */
 

@@ -26,7 +26,7 @@
 #include "si_shader_internal.h"
 #include "sid.h"
 
-LLVMValueRef si_get_sample_id(struct si_shader_context *ctx)
+static LLVMValueRef si_get_sample_id(struct si_shader_context *ctx)
 {
    return si_unpack_param(ctx, ctx->args->ac.ancillary, 8, 4);
 }

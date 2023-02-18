@@ -171,10 +171,8 @@ bool si_need_ps_prolog(const union si_shader_part_key *key);
 void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *key,
                           bool separate_prolog);
 void si_get_ps_epilog_key(struct si_shader *shader, union si_shader_part_key *key);
-void si_fix_resource_usage(struct si_screen *sscreen, struct si_shader *shader);
 
 /* gfx10_shader_ngg.c */
-LLVMValueRef gfx10_get_thread_id_in_tg(struct si_shader_context *ctx);
 unsigned gfx10_ngg_get_vertices_per_prim(struct si_shader *shader);
 bool gfx10_ngg_export_prim_early(struct si_shader *shader);
 unsigned gfx10_ngg_get_scratch_dw_size(struct si_shader *shader);
@@ -213,14 +211,11 @@ LLVMValueRef si_prolog_get_internal_bindings(struct si_shader_context *ctx);
 void si_llvm_declare_esgs_ring(struct si_shader_context *ctx);
 LLVMValueRef si_unpack_param(struct si_shader_context *ctx, struct ac_arg param, unsigned rshift,
                              unsigned bitwidth);
-LLVMValueRef si_get_primitive_id(struct si_shader_context *ctx, unsigned swizzle);
 void si_build_wrapper_function(struct si_shader_context *ctx, struct ac_llvm_pointer *parts,
                                unsigned num_parts, unsigned main_part,
                                unsigned next_shader_first_part,
                                enum ac_arg_type *main_arg_types,
                                bool same_thread_count);
-bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shader,
-                           struct nir_shader *nir, bool free_nir);
 bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
                             struct si_shader *shader, struct si_shader_args *args,
                             struct util_debug_callback *debug, struct nir_shader *nir);
@@ -244,7 +239,6 @@ void si_llvm_tcs_build_end(struct si_shader_context *ctx);
 void si_llvm_init_tcs_callbacks(struct si_shader_context *ctx);
 
 /* si_shader_llvm_ps.c */
-LLVMValueRef si_get_sample_id(struct si_shader_context *ctx);
 void si_llvm_build_ps_prolog(struct si_shader_context *ctx, union si_shader_part_key *key,
                              bool separate_prolog);
 void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part_key *key,

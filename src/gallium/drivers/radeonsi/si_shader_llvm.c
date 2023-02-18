@@ -379,28 +379,6 @@ LLVMValueRef si_unpack_param(struct si_shader_context *ctx, struct ac_arg param,
    return unpack_llvm_param(ctx, value, rshift, bitwidth);
 }
 
-LLVMValueRef si_get_primitive_id(struct si_shader_context *ctx, unsigned swizzle)
-{
-   if (swizzle > 0)
-      return ctx->ac.i32_0;
-
-   switch (ctx->stage) {
-   case MESA_SHADER_VERTEX:
-      return ac_get_arg(&ctx->ac, ctx->args->ac.vs_prim_id);
-   case MESA_SHADER_TESS_CTRL:
-      return ac_get_arg(&ctx->ac, ctx->args->ac.tcs_patch_id);
-   case MESA_SHADER_TESS_EVAL:
-      return ctx->abi.tes_patch_id_replaced ?
-         ctx->abi.tes_patch_id_replaced :
-         ac_get_arg(&ctx->ac, ctx->args->ac.tes_patch_id);
-   case MESA_SHADER_GEOMETRY:
-      return ac_get_arg(&ctx->ac, ctx->args->ac.gs_prim_id);
-   default:
-      assert(0);
-      return ctx->ac.i32_0;
-   }
-}
-
 static void si_llvm_declare_compute_memory(struct si_shader_context *ctx)
 {
    struct si_shader_selector *sel = ctx->shader->selector;
@@ -774,8 +752,8 @@ static LLVMValueRef si_llvm_load_sampler_desc(struct ac_shader_abi *abi, LLVMVal
    return index;
 }
 
-bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shader,
-                           struct nir_shader *nir, bool free_nir)
+static bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shader,
+                                  struct nir_shader *nir, bool free_nir)
 {
    struct si_shader_selector *sel = shader->selector;
    const struct si_shader_info *info = &sel->info;
