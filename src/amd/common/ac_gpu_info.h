@@ -39,7 +39,7 @@
 extern "C" {
 #endif
 
-#define AMD_MAX_SE         8
+#define AMD_MAX_SE         32
 #define AMD_MAX_SA_PER_SE  2
 
 struct amdgpu_gpu_info;
@@ -210,7 +210,7 @@ struct radeon_info {
    bool kernel_has_modifiers;
 
    /* Shader cores. */
-   uint32_t cu_mask[AMD_MAX_SE][AMD_MAX_SA_PER_SE];
+   uint16_t cu_mask[AMD_MAX_SE][AMD_MAX_SA_PER_SE];
    uint32_t r600_max_quad_pipes; /* wave size / 16 */
    uint32_t max_good_cu_per_sa;
    uint32_t min_good_cu_per_sa; /* min != max if SAs have different # of CUs */
