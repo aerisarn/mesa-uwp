@@ -178,9 +178,9 @@ enum si_clear_code
    GFX11_DCC_CLEAR_1111_UNORM = DCC_CODE(0x02), /* all bits are 1 */
    GFX11_DCC_CLEAR_1111_FP16  = DCC_CODE(0x04), /* all 16-bit words are 0x3c00, max 64bpp */
    GFX11_DCC_CLEAR_1111_FP32  = DCC_CODE(0x06), /* all 32-bit words are 0x3f800000 */
-   /* Color bits are 0, alpha bits are 1; only 88, 8888, 16161616 with alpha_on_msb=1 */
+   /* Color bits are 0, alpha bits are 1; only 88, 8888, 16161616 */
    GFX11_DCC_CLEAR_0001_UNORM = DCC_CODE(0x08),
-   /* Color bits are 1, alpha bits are 0, only 88, 8888, 16161616 with alpha_on_msb=1 */
+   /* Color bits are 1, alpha bits are 0, only 88, 8888, 16161616 */
    GFX11_DCC_CLEAR_1110_UNORM = DCC_CODE(0x0A),
 };
 
