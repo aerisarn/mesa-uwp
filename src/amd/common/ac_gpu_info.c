@@ -990,42 +990,64 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
 
    info->tcc_rb_non_coherent = !util_is_power_of_two_or_zero(info->num_tcc_blocks);
 
-   switch (info->family) {
-   case CHIP_TAHITI:
-   case CHIP_PITCAIRN:
-   case CHIP_OLAND:
-   case CHIP_HAWAII:
-   case CHIP_KABINI:
-   case CHIP_TONGA:
-   case CHIP_STONEY:
-   case CHIP_RAVEN2:
-      info->l2_cache_size = info->num_tcc_blocks * 64 * 1024;
-      break;
-   case CHIP_VERDE:
-   case CHIP_HAINAN:
-   case CHIP_BONAIRE:
-   case CHIP_KAVERI:
-   case CHIP_ICELAND:
-   case CHIP_CARRIZO:
-   case CHIP_FIJI:
-   case CHIP_POLARIS12:
-   case CHIP_VEGAM:
-   case CHIP_GFX1036:
-      info->l2_cache_size = info->num_tcc_blocks * 128 * 1024;
-      break;
-   default:
-      info->l2_cache_size = info->num_tcc_blocks * 256 * 1024;
-      break;
-   case CHIP_REMBRANDT:
-   case CHIP_GFX1103_R1:
-      info->l2_cache_size = info->num_tcc_blocks * 512 * 1024;
-      break;
+   if (info->drm_minor >= 52) {
+      info->sqc_inst_cache_size = device_info.sqc_inst_cache_size;
+      info->sqc_scalar_cache_size = device_info.sqc_data_cache_size;
+      info->num_sqc_per_wgp = device_info.num_sqc_per_wgp;
    }
 
-   if (info->gfx_level >= GFX11)
-      info->l1_cache_size = 32768;
-   else
-      info->l1_cache_size = 16384;
+   if (info->gfx_level >= GFX11 && info->drm_minor >= 52) {
+      info->tcp_cache_size = device_info.tcp_cache_size;
+      info->l1_cache_size = device_info.gl1c_cache_size;
+      info->l2_cache_size = device_info.gl2c_cache_size;
+      info->l3_cache_size_mb = DIV_ROUND_UP(device_info.mall_size, 1024 * 1024);
+   } else {
+      if (info->gfx_level >= GFX11) {
+         info->tcp_cache_size = 32768;
+         info->l1_cache_size = 256 * 1024;
+      } else {
+         info->tcp_cache_size = 16384;
+         info->l1_cache_size = 128 * 1024;
+      }
+
+      if (info->gfx_level >= GFX10_3 && info->has_dedicated_vram) {
+         info->l3_cache_size_mb = info->num_tcc_blocks *
+                                  (info->family == CHIP_NAVI21 ||
+                                   info->family == CHIP_NAVI22 ? 8 : 4);
+      }
+
+      switch (info->family) {
+      case CHIP_TAHITI:
+      case CHIP_PITCAIRN:
+      case CHIP_OLAND:
+      case CHIP_HAWAII:
+      case CHIP_KABINI:
+      case CHIP_TONGA:
+      case CHIP_STONEY:
+      case CHIP_RAVEN2:
+         info->l2_cache_size = info->num_tcc_blocks * 64 * 1024;
+         break;
+      case CHIP_VERDE:
+      case CHIP_HAINAN:
+      case CHIP_BONAIRE:
+      case CHIP_KAVERI:
+      case CHIP_ICELAND:
+      case CHIP_CARRIZO:
+      case CHIP_FIJI:
+      case CHIP_POLARIS12:
+      case CHIP_VEGAM:
+      case CHIP_GFX1036:
+         info->l2_cache_size = info->num_tcc_blocks * 128 * 1024;
+         break;
+      default:
+         info->l2_cache_size = info->num_tcc_blocks * 256 * 1024;
+         break;
+      case CHIP_REMBRANDT:
+      case CHIP_GFX1103_R1:
+         info->l2_cache_size = info->num_tcc_blocks * 512 * 1024;
+         break;
+      }
+   }
 
    info->mc_arb_ramcfg = amdinfo.mc_arb_ramcfg;
    info->gb_addr_config = amdinfo.gb_addr_cfg;
@@ -1412,12 +1434,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
       }
    }
 
-   if (info->gfx_level >= GFX10_3 && info->has_dedicated_vram) {
-      info->l3_cache_size_mb = info->num_tcc_blocks *
-                               (info->family == CHIP_NAVI21 ||
-                                info->family == CHIP_NAVI22 ? 8 : 4);
-   }
-
    if (info->gfx_level >= GFX11) {
       switch (info->family) {
       case CHIP_GFX1103_R1:
@@ -1517,12 +1533,19 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    max_gpu_freq = %i MHz\n", info->max_gpu_freq_mhz);
    fprintf(f, "    max_gflops = %u GFLOPS\n", info->max_gflops);
 
-   if (info->gfx_level >= GFX10) {
-      fprintf(f, "    l0_cache_size = %i KB\n", DIV_ROUND_UP(info->l1_cache_size, 1024));
-      fprintf(f, "    l1_cache_size = %i KB\n", info->gfx_level >= GFX11 ? 256 : 128);
-   } else {
-      fprintf(f, "    l1_cache_size = %i KB\n", DIV_ROUND_UP(info->l1_cache_size, 1024));
+   if (info->sqc_inst_cache_size) {
+      fprintf(f, "    sqc_inst_cache_size = %i KB (%u per WGP)\n",
+              DIV_ROUND_UP(info->sqc_inst_cache_size, 1024), info->num_sqc_per_wgp);
    }
+   if (info->sqc_scalar_cache_size) {
+      fprintf(f, "    sqc_scalar_cache_size = %i KB (%u per WGP)\n",
+              DIV_ROUND_UP(info->sqc_scalar_cache_size, 1024), info->num_sqc_per_wgp);
+   }
+
+   fprintf(f, "    tcp_cache_size = %i KB\n", DIV_ROUND_UP(info->tcp_cache_size, 1024));
+
+   if (info->gfx_level >= GFX10)
+      fprintf(f, "    l1_cache_size = %i KB\n", DIV_ROUND_UP(info->l1_cache_size, 1024));
 
    fprintf(f, "    l2_cache_size = %i KB\n", DIV_ROUND_UP(info->l2_cache_size, 1024));
 

@@ -60,6 +60,10 @@ struct radeon_info {
    uint32_t num_cu;           /* only enabled CUs */
    uint32_t max_gpu_freq_mhz; /* also known as the shader clock */
    uint32_t max_gflops;
+   uint32_t sqc_inst_cache_size;
+   uint32_t sqc_scalar_cache_size;
+   uint32_t num_sqc_per_wgp;
+   uint32_t tcp_cache_size;
    uint32_t l1_cache_size;
    uint32_t l2_cache_size;
    uint32_t l3_cache_size_mb;
