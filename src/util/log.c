@@ -40,11 +40,16 @@
 #include <android/log.h>
 #endif
 
+#if DETECT_OS_WINDOWS
+#include <windows.h>
+#endif
+
 enum mesa_log_control {
    MESA_LOG_CONTROL_NULL = 1 << 0,
    MESA_LOG_CONTROL_FILE = 1 << 1,
    MESA_LOG_CONTROL_SYSLOG = 1 << 2,
    MESA_LOG_CONTROL_ANDROID = 1 << 3,
+   MESA_LOG_CONTROL_WINDBG = 1 << 4,
    MESA_LOG_CONTROL_LOGGER_MASK = 0xff,
 
    MESA_LOG_CONTROL_WAIT = 1 << 8,
@@ -56,6 +61,7 @@ static const struct debug_control mesa_log_control_options[] = {
    { "file", MESA_LOG_CONTROL_FILE },
    { "syslog", MESA_LOG_CONTROL_SYSLOG },
    { "android", MESA_LOG_CONTROL_ANDROID },
+   { "windbg", MESA_LOG_CONTROL_WINDBG },
    /* flags */
    { "wait", MESA_LOG_CONTROL_WAIT },
    { NULL, 0 },
@@ -76,6 +82,12 @@ mesa_log_init_once(void)
       mesa_log_control |= MESA_LOG_CONTROL_ANDROID;
 #else
       mesa_log_control |= MESA_LOG_CONTROL_FILE;
+#endif
+
+#if DETECT_OS_WINDOWS
+      /* stderr from windows applications without console is not usually
+       * visible, so communicate with the debugger instead */
+      mesa_log_control |= MESA_LOG_CONTROL_WINDBG;
 #endif
    }
 
@@ -292,6 +304,29 @@ logger_android(enum mesa_log_level level,
 
 #endif /* DETECT_OS_ANDROID */
 
+#if DETECT_OS_WINDOWS
+
+static void
+logger_windbg(enum mesa_log_level level,
+              const char *tag,
+              const char *format,
+              va_list va)
+{
+   char local_msg[1024];
+   char *msg = logger_vasnprintf(local_msg, sizeof(local_msg),
+         LOGGER_VASNPRINTF_AFFIX_TAG |
+         LOGGER_VASNPRINTF_AFFIX_LEVEL |
+         LOGGER_VASNPRINTF_AFFIX_NEWLINE,
+         level, tag, format, va);
+
+   OutputDebugStringA(msg);
+
+   if (msg != local_msg)
+      free(msg);
+}
+
+#endif /* DETECT_OS_WINDOWS */
+
 /* This is for use with debug functions that take a FILE, such as
  * nir_print_shader, although switching to nir_log_shader* is preferred.
  */
@@ -329,6 +364,9 @@ mesa_log_v(enum mesa_log_level level, const char *tag, const char *format,
 #endif
 #if DETECT_OS_ANDROID
       { MESA_LOG_CONTROL_ANDROID, logger_android },
+#endif
+#if DETECT_OS_WINDOWS
+      { MESA_LOG_CONTROL_WINDBG, logger_windbg },
 #endif
    };
 
