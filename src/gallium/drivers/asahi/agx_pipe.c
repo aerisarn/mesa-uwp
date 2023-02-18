@@ -1517,7 +1517,7 @@ agx_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_type shader,
       return (1 << PIPE_SHADER_IR_NIR);
 
    case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
-      return (is_deqp && allow_side_effects) ? 16 : 0;
+      return (is_deqp && allow_side_effects) ? PIPE_MAX_SHADER_BUFFERS : 0;
 
    case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
       return (is_deqp && allow_side_effects) ? PIPE_MAX_SHADER_IMAGES : 0;
