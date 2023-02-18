@@ -1593,18 +1593,9 @@ static void si_emit_db_render_state(struct si_context *sctx)
 
    db_shader_control = sctx->ps_db_shader_control;
 
-   /* Bug workaround for smoothing (overrasterization) on GFX6. */
-   if (sctx->gfx_level == GFX6 && sctx->smoothing_enabled) {
-      db_shader_control &= C_02880C_Z_ORDER;
-      db_shader_control |= S_02880C_Z_ORDER(V_02880C_LATE_Z);
-   }
-
    /* Disable the gl_SampleMask fragment shader output if MSAA is disabled. */
    if (!rs->multisample_enable)
       db_shader_control &= C_02880C_MASK_EXPORT_ENABLE;
-
-   if (sctx->screen->info.has_rbplus && !sctx->screen->info.rbplus_allowed)
-      db_shader_control |= S_02880C_DUAL_QUAD_DISABLE(1);
 
    if (sctx->screen->info.has_export_conflict_bug &&
        sctx->queued.named.blend->blend_enable_4bit &&

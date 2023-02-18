@@ -1919,6 +1919,15 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
    if (info->base.fs.post_depth_coverage)
       db_shader_control |= S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(1);
 
+   /* Bug workaround for smoothing (overrasterization) on GFX6. */
+   if (sscreen->info.gfx_level == GFX6 && shader->key.ps.mono.poly_line_smoothing) {
+      db_shader_control &= C_02880C_Z_ORDER;
+      db_shader_control |= S_02880C_Z_ORDER(V_02880C_LATE_Z);
+   }
+
+   if (sscreen->info.has_rbplus && !sscreen->info.rbplus_allowed)
+      db_shader_control |= S_02880C_DUAL_QUAD_DISABLE(1);
+
    shader->ctx_reg.ps.db_shader_control = db_shader_control;
 
    pm4 = si_get_shader_pm4_state(shader);
