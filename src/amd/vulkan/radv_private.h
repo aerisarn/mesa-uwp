@@ -2215,6 +2215,8 @@ struct radv_library_pipeline {
    struct {
       uint8_t sha1[SHA1_DIGEST_LENGTH];
    } *hashes;
+
+   struct radv_pipeline_group_handle *group_handles;
 };
 
 struct radv_graphics_lib_pipeline {

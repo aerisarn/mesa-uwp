@@ -227,6 +227,11 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
    if (!local_create_info.pStages || !local_create_info.pGroups)
       goto fail;
 
+   VkResult result =
+      radv_create_group_handles(device, &local_create_info, &pipeline->group_handles);
+   if (result != VK_SUCCESS)
+      goto fail;
+
    if (local_create_info.stageCount) {
       pipeline->stage_count = local_create_info.stageCount;
 
@@ -326,6 +331,7 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
    free((void *)local_create_info.pStages);
    return VK_SUCCESS;
 fail:
+   free(pipeline->groups);
    ralloc_free(pipeline->ctx);
    free((void *)local_create_info.pGroups);
    free((void *)local_create_info.pStages);
@@ -567,16 +573,20 @@ radv_GetRayTracingShaderGroupHandlesKHR(VkDevice device, VkPipeline _pipeline, u
                                         uint32_t groupCount, size_t dataSize, void *pData)
 {
    RADV_FROM_HANDLE(radv_pipeline, pipeline, _pipeline);
-   struct radv_ray_tracing_pipeline *rt_pipeline = radv_pipeline_to_ray_tracing(pipeline);
+   struct radv_pipeline_group_handle *handles;
+   if (pipeline->type == RADV_PIPELINE_LIBRARY) {
+      handles = radv_pipeline_to_library(pipeline)->group_handles;
+   } else {
+      handles = radv_pipeline_to_ray_tracing(pipeline)->group_handles;
+   }
    char *data = pData;
 
-   STATIC_ASSERT(sizeof(*rt_pipeline->group_handles) <= RADV_RT_HANDLE_SIZE);
+   STATIC_ASSERT(sizeof(*handles) <= RADV_RT_HANDLE_SIZE);
 
    memset(data, 0, groupCount * RADV_RT_HANDLE_SIZE);
 
    for (uint32_t i = 0; i < groupCount; ++i) {
-      memcpy(data + i * RADV_RT_HANDLE_SIZE, &rt_pipeline->group_handles[firstGroup + i],
-             sizeof(*rt_pipeline->group_handles));
+      memcpy(data + i * RADV_RT_HANDLE_SIZE, &handles[firstGroup + i], sizeof(*handles));
    }
 
    return VK_SUCCESS;

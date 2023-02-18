@@ -1,0 +1,1 @@
+VK_EXT_pipeline_library_group_handles on RADV
