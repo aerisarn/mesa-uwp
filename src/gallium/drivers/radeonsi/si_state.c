@@ -3857,7 +3857,7 @@ static void si_emit_msaa_config(struct si_context *sctx)
        sctx->smoothing_enabled) {
       if (sctx->framebuffer.state.zsbuf) {
          z_samples = sctx->framebuffer.state.zsbuf->texture->nr_samples;
-         z_samples = MIN2(MAX2(1, z_samples), coverage_samples);
+         z_samples = MAX2(1, z_samples);
       } else {
          z_samples = coverage_samples;
       }
