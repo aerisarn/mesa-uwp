@@ -2701,9 +2701,10 @@ lower_btd_logical_send(const fs_builder &bld, fs_inst *inst)
    fs_reg global_addr = inst->src[0];
    const fs_reg btd_record = inst->src[1];
 
-   const unsigned mlen = 2;
-   const fs_builder ubld = bld.exec_all().group(8, 0);
-   fs_reg header = ubld.vgrf(BRW_REGISTER_TYPE_UD, 2);
+   const unsigned unit = reg_unit(devinfo);
+   const unsigned mlen = 2 * unit;
+   const fs_builder ubld = bld.exec_all();
+   fs_reg header = ubld.vgrf(BRW_REGISTER_TYPE_UD, 2 * unit);
 
    ubld.MOV(header, brw_imm_ud(0));
    switch (inst->opcode) {
@@ -2726,9 +2727,9 @@ lower_btd_logical_send(const fs_builder &bld, fs_inst *inst)
    /* Stack IDs are always in R1 regardless of whether we're coming from a
     * bindless shader or a regular compute shader.
     */
-   fs_reg stack_ids =
-      retype(byte_offset(header, REG_SIZE), BRW_REGISTER_TYPE_UW);
-   bld.MOV(stack_ids, retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UW));
+   fs_reg stack_ids = retype(offset(header, bld, 1), BRW_REGISTER_TYPE_UW);
+   bld.exec_all().MOV(stack_ids, retype(brw_vec8_grf(1 * unit, 0),
+                                        BRW_REGISTER_TYPE_UW));
 
    unsigned ex_mlen = 0;
    fs_reg payload;
@@ -2790,8 +2791,9 @@ lower_trace_ray_logical_send(const fs_builder &bld, fs_inst *inst)
    assert(synchronous_src.file == BRW_IMMEDIATE_VALUE);
    const bool synchronous = synchronous_src.ud;
 
-   const unsigned mlen = reg_unit(devinfo);
-   const fs_builder ubld = bld.exec_all().group(8, 0);
+   const unsigned unit = reg_unit(devinfo);
+   const unsigned mlen = unit;
+   const fs_builder ubld = bld.exec_all();
    fs_reg header = ubld.vgrf(BRW_REGISTER_TYPE_UD);
    ubld.MOV(header, brw_imm_ud(0));
    ubld.group(2, 0).MOV(header, globals_addr);
@@ -2819,7 +2821,7 @@ lower_trace_ray_logical_send(const fs_builder &bld, fs_inst *inst)
     */
    if (!synchronous) {
       bld.AND(subscript(payload, BRW_REGISTER_TYPE_UW, 1),
-              retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UW),
+              retype(brw_vec8_grf(1 * unit, 0), BRW_REGISTER_TYPE_UW),
               brw_imm_uw(0x7ff));
    }
 
