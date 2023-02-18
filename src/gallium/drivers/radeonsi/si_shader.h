@@ -870,15 +870,6 @@ struct si_shader {
 
    bool uses_base_instance;
 
-   struct {
-      uint16_t ngg_emit_size; /* in dwords */
-      uint16_t hw_max_esverts;
-      uint16_t max_gsprims;
-      uint16_t max_out_verts;
-      uint16_t prim_amp_factor;
-      bool max_vert_out_per_gs_instance;
-   } ngg;
-
    /* Shader key + LLVM IR + disassembly + statistics.
     * Generated for debug contexts only.
     */
@@ -908,6 +899,14 @@ struct si_shader {
       } gs;
 
       struct {
+         /* Computed by gfx10_ngg_calculate_subgroup_info. */
+         uint16_t ngg_emit_size; /* in dwords */
+         uint16_t hw_max_esverts;
+         uint16_t max_gsprims;
+         uint16_t max_out_verts;
+         uint16_t prim_amp_factor;
+         bool max_vert_out_per_gs_instance;
+         /* Register values. */
          unsigned ge_max_output_per_subgroup;
          unsigned ge_ngg_subgrp_cntl;
          unsigned vgt_primitiveid_en;
@@ -947,9 +946,9 @@ struct si_shader {
          unsigned db_shader_control;
          unsigned num_interp;
       } ps;
-   } ctx_reg;
+   };
 
-   /*For save precompute registers value */
+   /* Precomputed register values. */
    unsigned vgt_tf_param;                /* VGT_TF_PARAM */
    unsigned vgt_vertex_reuse_block_cntl; /* VGT_VERTEX_REUSE_BLOCK_CNTL */
    unsigned pa_cl_vs_out_cntl;

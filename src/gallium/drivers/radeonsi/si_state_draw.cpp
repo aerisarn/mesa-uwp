@@ -236,7 +236,7 @@ static bool si_update_shaders(struct si_context *sctx)
    if (HAS_GS)
       key.u.gs = 1;
    if (NGG) {
-      key.index |= si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->ctx_reg.ngg.vgt_stages.index;
+      key.index |= si_get_vs_inline(sctx, HAS_TESS, HAS_GS)->current->ngg.vgt_stages.index;
    } else if (GFX_VERSION >= GFX10) {
       if (HAS_GS) {
          key.u.gs_wave32 = sctx->shader.gs.current->wave_size == 32;
@@ -266,7 +266,7 @@ static bool si_update_shaders(struct si_context *sctx)
       return false;
    si_pm4_bind_state(sctx, ps, sctx->shader.ps.current);
 
-   unsigned db_shader_control = sctx->shader.ps.current->ctx_reg.ps.db_shader_control;
+   unsigned db_shader_control = sctx->shader.ps.current->ps.db_shader_control;
    if (sctx->ps_db_shader_control != db_shader_control) {
       sctx->ps_db_shader_control = db_shader_control;
       si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
@@ -277,7 +277,7 @@ static bool si_update_shaders(struct si_context *sctx)
    if (si_pm4_state_changed(sctx, ps) ||
        (!NGG && si_pm4_state_changed(sctx, vs)) ||
        (NGG && si_pm4_state_changed(sctx, gs))) {
-      sctx->atoms.s.spi_map.emit = sctx->emit_spi_map[sctx->shader.ps.current->ctx_reg.ps.num_interp];
+      sctx->atoms.s.spi_map.emit = sctx->emit_spi_map[sctx->shader.ps.current->ps.num_interp];
       si_mark_atom_dirty(sctx, &sctx->atoms.s.spi_map);
    }
 
@@ -1316,7 +1316,7 @@ static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
          primgroup_size = num_patches; /* must be a multiple of NUM_PATCHES */
          vertgroup_size = 0;
       } else if (HAS_GS) {
-         unsigned vgt_gs_onchip_cntl = sctx->shader.gs.current->ctx_reg.gs.vgt_gs_onchip_cntl;
+         unsigned vgt_gs_onchip_cntl = sctx->shader.gs.current->gs.vgt_gs_onchip_cntl;
          primgroup_size = G_028A44_GS_PRIMS_PER_SUBGRP(vgt_gs_onchip_cntl);
          vertgroup_size = G_028A44_ES_VERTS_PER_SUBGRP(vgt_gs_onchip_cntl);
       } else {
