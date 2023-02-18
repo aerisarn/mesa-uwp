@@ -4088,6 +4088,8 @@ emit_load(isel_context* ctx, Builder& bld, const LoadEmitInfo& info,
          Temp offset_tmp = offset.isTemp() ? offset.getTemp() : Temp();
          if (offset.isConstant()) {
             offset = Operand::c32(offset.constantValue() + to_add);
+         } else if (offset.isUndefined()) {
+            offset = Operand::c32(to_add);
          } else if (offset_tmp.regClass() == s1) {
             offset = bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc), offset_tmp,
                               Operand::c32(to_add));
@@ -4122,6 +4124,8 @@ emit_load(isel_context* ctx, Builder& bld, const LoadEmitInfo& info,
          Temp offset_tmp = offset.isTemp() ? offset.getTemp() : Temp();
          if (offset.isConstant()) {
             aligned_offset = Operand::c32(offset.constantValue() & 0xfffffffcu);
+         } else if (offset.isUndefined()) {
+            aligned_offset = Operand::zero();
          } else if (offset_tmp.regClass() == s1) {
             aligned_offset = bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc),
                                       Operand::c32(0xfffffffcu), offset_tmp);
@@ -4139,7 +4143,8 @@ emit_load(isel_context* ctx, Builder& bld, const LoadEmitInfo& info,
          }
       }
       Temp aligned_offset_tmp =
-         aligned_offset.isTemp() ? aligned_offset.getTemp() : bld.copy(bld.def(s1), aligned_offset);
+         aligned_offset.isTemp() ? aligned_offset.getTemp() :
+         aligned_offset.isConstant() ? bld.copy(bld.def(s1), aligned_offset) : Temp(0, s1);
 
       Temp val = params.callback(bld, info, aligned_offset_tmp, bytes_needed, align,
                                  reduced_const_offset, byte_align ? Temp() : info.dst);
@@ -4157,6 +4162,8 @@ emit_load(isel_context* ctx, Builder& bld, const LoadEmitInfo& info,
          if (byte_align == -1) {
             if (offset.isConstant())
                byte_align_off = Operand::c32(offset.constantValue() % 4u);
+            else if (offset.isUndefined())
+               byte_align_off = Operand::zero();
             else if (offset.size() == 2)
                byte_align_off = Operand(emit_extract_vector(ctx, offset.getTemp(), 0,
                                                             RegClass(offset.getTemp().type(), 1)));
@@ -7032,11 +7039,13 @@ visit_load_buffer(isel_context* ctx, nir_intrinsic_instr* intrin)
    Builder bld(ctx->program, ctx->block);
 
    bool idxen = !nir_src_is_const(intrin->src[3]) || nir_src_as_uint(intrin->src[3]);
+   bool v_offset_zero = nir_src_is_const(intrin->src[1]) && !nir_src_as_uint(intrin->src[1]);
    bool s_offset_zero = nir_src_is_const(intrin->src[2]) && !nir_src_as_uint(intrin->src[2]);
 
    Temp dst = get_ssa_temp(ctx, &intrin->dest.ssa);
    Temp descriptor = bld.as_uniform(get_ssa_temp(ctx, intrin->src[0].ssa));
-   Temp v_offset = as_vgpr(ctx, get_ssa_temp(ctx, intrin->src[1].ssa));
+   Temp v_offset =
+      v_offset_zero ? Temp(0, v1) : as_vgpr(ctx, get_ssa_temp(ctx, intrin->src[1].ssa));
    Temp s_offset =
       s_offset_zero ? Temp(0, s1) : bld.as_uniform(get_ssa_temp(ctx, intrin->src[2].ssa));
    Temp idx = idxen ? as_vgpr(ctx, get_ssa_temp(ctx, intrin->src[3].ssa)) : Temp();
@@ -7100,11 +7109,15 @@ visit_store_buffer(isel_context* ctx, nir_intrinsic_instr* intrin)
    Builder bld(ctx->program, ctx->block);
 
    bool idxen = !nir_src_is_const(intrin->src[4]) || nir_src_as_uint(intrin->src[4]);
+   bool v_offset_zero = nir_src_is_const(intrin->src[2]) && !nir_src_as_uint(intrin->src[2]);
+   bool s_offset_zero = nir_src_is_const(intrin->src[3]) && !nir_src_as_uint(intrin->src[3]);
 
    Temp store_src = get_ssa_temp(ctx, intrin->src[0].ssa);
    Temp descriptor = bld.as_uniform(get_ssa_temp(ctx, intrin->src[1].ssa));
-   Temp v_offset = as_vgpr(ctx, get_ssa_temp(ctx, intrin->src[2].ssa));
-   Temp s_offset = bld.as_uniform(get_ssa_temp(ctx, intrin->src[3].ssa));
+   Temp v_offset =
+      v_offset_zero ? Temp(0, v1) : as_vgpr(ctx, get_ssa_temp(ctx, intrin->src[2].ssa));
+   Temp s_offset =
+      s_offset_zero ? Temp(0, s1) : bld.as_uniform(get_ssa_temp(ctx, intrin->src[3].ssa));
    Temp idx = idxen ? as_vgpr(ctx, get_ssa_temp(ctx, intrin->src[4].ssa)) : Temp();
 
    bool swizzled = nir_intrinsic_access(intrin) & ACCESS_IS_SWIZZLED_AMD;
