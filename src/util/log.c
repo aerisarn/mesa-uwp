@@ -62,6 +62,7 @@ static const struct debug_control mesa_log_control_options[] = {
 };
 
 static uint32_t mesa_log_control;
+static FILE *mesa_log_file;
 
 static void
 mesa_log_init_once(void)
@@ -77,6 +78,21 @@ mesa_log_init_once(void)
       mesa_log_control |= MESA_LOG_CONTROL_FILE;
 #endif
    }
+
+   mesa_log_file = stderr;
+
+#if !DETECT_OS_WINDOWS
+   if (geteuid() == getuid()) {
+      const char *log_file = os_get_option("MESA_LOG_FILE");
+      if (log_file) {
+         FILE *fp = fopen(log_file, "w");
+         if (fp) {
+            mesa_log_file = fp;
+            mesa_log_control |= MESA_LOG_CONTROL_FILE;
+         }
+      }
+   }
+#endif
 
 #if DETECT_OS_UNIX
    if (mesa_log_control & MESA_LOG_CONTROL_SYSLOG)
@@ -184,7 +200,7 @@ logger_file(enum mesa_log_level level,
             const char *format,
             va_list va)
 {
-   FILE *fp = stderr;
+   FILE *fp = mesa_log_file;
    char local_msg[1024];
    char *msg = logger_vasnprintf(local_msg, sizeof(local_msg),
          LOGGER_VASNPRINTF_AFFIX_TAG |
@@ -193,6 +209,7 @@ logger_file(enum mesa_log_level level,
          level, tag, format, va);
 
    fprintf(fp, "%s", msg);
+   fflush(fp);
 
    if (msg != local_msg)
       free(msg);
@@ -274,6 +291,16 @@ logger_android(enum mesa_log_level level,
 }
 
 #endif /* DETECT_OS_ANDROID */
+
+/* This is for use with debug functions that take a FILE, such as
+ * nir_print_shader, although switching to nir_log_shader* is preferred.
+ */
+FILE *
+mesa_log_get_file(void)
+{
+   mesa_log_init();
+   return mesa_log_file;
+}
 
 void
 mesa_log(enum mesa_log_level level, const char *tag, const char *format, ...)
