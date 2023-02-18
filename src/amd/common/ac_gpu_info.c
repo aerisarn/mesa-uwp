@@ -184,6 +184,16 @@ struct drm_amdgpu_info_device {
 	uint64_t tcc_disabled_mask;
 	uint64_t min_engine_clock;
 	uint64_t min_memory_clock;
+	/* The following fields are only set on gfx11+, older chips set 0. */
+	uint32_t tcp_cache_size;       /* AKA GL0, VMEM cache */
+	uint32_t num_sqc_per_wgp;
+	uint32_t sqc_data_cache_size;  /* AKA SMEM cache */
+	uint32_t sqc_inst_cache_size;
+	uint32_t gl1c_cache_size;
+	uint32_t gl2c_cache_size;
+	uint64_t mall_size;            /* AKA infinity cache */
+	/* high 32 bits of the rb pipes mask */
+	uint32_t enabled_rb_pipes_mask_hi;
 };
 struct drm_amdgpu_info_hw_ip {
    uint32_t hw_ip_version_major;
