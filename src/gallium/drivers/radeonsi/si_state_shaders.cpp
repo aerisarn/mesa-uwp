@@ -1484,8 +1484,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 
    shader->ngg.ge_max_output_per_subgroup =
       S_0287FC_MAX_VERTS_PER_SUBGROUP(shader->ngg.max_out_verts);
-   shader->ngg.ge_ngg_subgrp_cntl = S_028B4C_PRIM_AMP_FACTOR(shader->ngg.prim_amp_factor) |
-                                    S_028B4C_THDS_PER_SUBGRP(0); /* for fast launch */
+   shader->ngg.ge_ngg_subgrp_cntl = S_028B4C_PRIM_AMP_FACTOR(shader->ngg.prim_amp_factor);
    shader->ngg.vgt_gs_instance_cnt =
       S_028B90_CNT(gs_num_invocations) | S_028B90_ENABLE(gs_num_invocations > 1) |
       S_028B90_EN_MAX_VERT_OUT_PER_GS_INSTANCE(shader->ngg.max_vert_out_per_gs_instance);
