@@ -8,6 +8,7 @@ KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_short_depth_com
 # Fail, context: 0x00000000, error: EGL_BAD_MATCH
 # https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3816
 dEQP-EGL.functional.create_context.no_config,Fail
+wayland-dEQP-EGL.functional.create_context.no_config,Fail
 
 # wide line outside the viewport incorrectly clipped out when ES wants it
 # rendered as a quad and clipped appropriately.  I think by expanding
@@ -1203,13 +1204,6 @@ spec@oes_compressed_etc1_rgb8_texture@miptree,Fail
 spec@!opengl 1.0@depth-clear-precision-check,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth16,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth32,Fail
-
-# Creating OpenGL ES 2 context
-# Pass
-# Creating OpenGL ES 3 context
-# Fail, context: 0x00000000, error: EGL_BAD_MATCH
-# eglBindAPI(EGL_OPENVG_API) failed, skipping
-wayland-dEQP-EGL.functional.create_context.no_config,Fail
 
 # EGL_BAD_DISPLAY is generated if display is not an EGL display connection
 # eglCreatePixmapSurface(0, 0x00000000, 0x00000000, { EGL_NONE });
