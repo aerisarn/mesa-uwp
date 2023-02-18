@@ -892,11 +892,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
       return false;
    }
 
-   info->smart_access_memory = info->all_vram_visible &&
-                               info->gfx_level >= GFX10_3 &&
-                               util_get_cpu_caps()->family >= CPU_AMD_ZEN3 &&
-                               util_get_cpu_caps()->family < CPU_AMD_LAST;
-
    info->family_id = device_info.family;
    info->chip_external_rev = device_info.external_rev;
    info->chip_rev = device_info.chip_rev;
@@ -1638,7 +1633,6 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    address32_hi = 0x%x\n", info->address32_hi);
    fprintf(f, "    has_dedicated_vram = %u\n", info->has_dedicated_vram);
    fprintf(f, "    all_vram_visible = %u\n", info->all_vram_visible);
-   fprintf(f, "    smart_access_memory = %u\n", info->smart_access_memory);
    fprintf(f, "    max_tcc_blocks = %i\n", info->max_tcc_blocks);
    fprintf(f, "    tcc_cache_line_size = %u\n", info->tcc_cache_line_size);
    fprintf(f, "    tcc_rb_non_coherent = %u\n", info->tcc_rb_non_coherent);

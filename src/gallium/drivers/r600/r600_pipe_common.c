@@ -1212,7 +1212,7 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 	struct utsname uname_data;
 	const char *chip_name;
 
-	ws->query_info(ws, &rscreen->info, false, false);
+	ws->query_info(ws, &rscreen->info);
 	rscreen->ws = ws;
 
 	chip_name = r600_get_family_name(rscreen);
