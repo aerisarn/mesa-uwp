@@ -3628,7 +3628,7 @@ static void si_bind_ps_shader(struct pipe_context *ctx, void *state)
       if (!old_sel || old_sel->info.colors_written != sel->info.colors_written)
          si_mark_atom_dirty(sctx, &sctx->atoms.s.cb_render_state);
 
-      if (sctx->screen->has_out_of_order_rast &&
+      if (sctx->screen->info.has_out_of_order_rast &&
           (!old_sel || old_sel->info.base.writes_memory != sel->info.base.writes_memory ||
            old_sel->info.base.fs.early_fragment_tests !=
               sel->info.base.fs.early_fragment_tests))

@@ -578,7 +578,6 @@ struct si_screen {
    unsigned pbb_context_states_per_bin;
    unsigned pbb_persistent_states_per_bin;
    bool has_draw_indirect_multi;
-   bool has_out_of_order_rast;
    bool dpbb_allowed;
    bool use_ngg;
    bool use_ngg_culling;

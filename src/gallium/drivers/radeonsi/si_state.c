@@ -763,7 +763,7 @@ static void si_bind_blend_state(struct pipe_context *ctx, void *state)
         old_blend->cb_target_enabled_4bit != blend->cb_target_enabled_4bit))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.dpbb_state);
 
-   if (sctx->screen->has_out_of_order_rast &&
+   if (sctx->screen->info.has_out_of_order_rast &&
        ((old_blend->blend_enable_4bit != blend->blend_enable_4bit ||
          old_blend->cb_target_enabled_4bit != blend->cb_target_enabled_4bit ||
          old_blend->commutative_4bit != blend->commutative_4bit ||
@@ -1446,7 +1446,7 @@ static void si_bind_dsa_state(struct pipe_context *ctx, void *state)
                                        old_dsa->db_can_write != dsa->db_can_write)))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.dpbb_state);
 
-   if (sctx->screen->has_out_of_order_rast &&
+   if (sctx->screen->info.has_out_of_order_rast &&
        (memcmp(old_dsa->order_invariance, dsa->order_invariance,
                sizeof(old_dsa->order_invariance))))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_config);
@@ -3134,7 +3134,7 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
    if (sctx->framebuffer.any_dst_linear != old_any_dst_linear)
       si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_config);
 
-   if (sctx->screen->has_out_of_order_rast &&
+   if (sctx->screen->info.has_out_of_order_rast &&
        (sctx->framebuffer.colorbuf_enabled_4bit != old_colorbuf_enabled_4bit ||
         !!sctx->framebuffer.state.zsbuf != old_has_zsbuf ||
         (zstex && zstex->surface.has_stencil != old_has_stencil)))
@@ -3702,7 +3702,7 @@ static bool si_out_of_order_rasterization(struct si_context *sctx)
    struct si_state_blend *blend = sctx->queued.named.blend;
    struct si_state_dsa *dsa = sctx->queued.named.dsa;
 
-   if (!sctx->screen->has_out_of_order_rast)
+   if (!sctx->screen->info.has_out_of_order_rast)
       return false;
 
    unsigned colormask = sctx->framebuffer.colorbuf_enabled_4bit;
