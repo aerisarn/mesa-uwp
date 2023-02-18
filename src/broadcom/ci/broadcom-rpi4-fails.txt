@@ -354,6 +354,9 @@ spec@!opengl 1.0@depth-clear-precision-check@depth24,Fail
 spec@!opengl 2.0@max-samplers,Fail
 spec@!opengl 2.0@max-samplers border,Fail
 
+wayland-dEQP-EGL.functional.wide_color.window_888_colorspace_default,Fail
+wayland-dEQP-EGL.functional.wide_color.window_fp16_default_colorspace,Fail
+
 # https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3759
 dEQP-VK.pipeline.monolithic.color_write_enable_maxa.cwe_after_bind.attachments4_more0,Crash
 
