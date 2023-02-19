@@ -1429,6 +1429,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
       info->conformant_trunc_coord =
          info->drm_minor >= 52 &&
          device_info.ids_flags & AMDGPU_IDS_FLAGS_CONFORMANT_TRUNC_COORD;
+   } else {
+      /* This should be non-zero for SI_FORCE_FAMILY not to crash. */
+      info->attribute_ring_size_per_se = 64 * 1024;
    }
 
    set_custom_cu_en_mask(info);
