@@ -202,28 +202,28 @@ crashdec = executable(
 )
 
 if with_tests
-  crashdec_output = custom_target('crashdec.txt',
-    output: 'crashdec.txt',
-    command: [crashdec, '-sf', files('../.gitlab-ci/traces/crash.devcore')],
-    capture: true
-  )
-  test('crashdec',
-    diff,
-    args: ['-u', files('../.gitlab-ci/reference/crash.log'), crashdec_output],
-    suite: 'freedreno',
-    workdir: dir_source_root
-  )
-  crashdec_prefetch_output = custom_target('crashdec_prefetch.txt',
-    output: 'crashdec_prefetch.txt',
-    command: [crashdec, '-sf', files('../.gitlab-ci/traces/crash_prefetch.devcore')],
-    capture: true
-  )
-  test('crashdec with prefetch',
-    diff,
-    args: ['-u', files('../.gitlab-ci/reference/crash_prefetch.log'), crashdec_prefetch_output],
-    suite: 'freedreno',
-    workdir: meson.source_root()
-  )
+  crashdec_tests = [
+    ['crash', ['-sf']],
+    ['crash_prefetch', ['-sf']],
+  ]
+  foreach crashdec_test: crashdec_tests
+    name = crashdec_test[0]
+    args = crashdec_test[1]
+
+    log = custom_target(name + '.log',
+      output: name + '.log',
+      command: [crashdec, args, files('../.gitlab-ci/traces/' + name + '.devcore')],
+      capture: true,
+    )
+
+    test('crashdec-' + name,
+      diff,
+      args: ['-u', files('../.gitlab-ci/reference/' + name + '.log'), log],
+      suite: 'freedreno',
+      workdir: dir_source_root
+    )
+
+  endforeach
 endif
 
 if dep_libarchive.found()
