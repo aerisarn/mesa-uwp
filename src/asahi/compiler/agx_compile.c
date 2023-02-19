@@ -2316,7 +2316,8 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       out->no_colour_output = !(nir->info.outputs_written >> FRAG_RESULT_DATA0);
       out->disable_tri_merging = nir->info.fs.needs_all_helper_invocations ||
-                                 nir->info.fs.needs_quad_helper_invocations;
+                                 nir->info.fs.needs_quad_helper_invocations ||
+                                 nir->info.writes_memory;
 
       /* Report a canonical depth layout */
       enum gl_frag_depth_layout layout = nir->info.fs.depth_layout;
