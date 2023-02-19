@@ -153,14 +153,14 @@ static void si_emit_cb_render_state(struct si_context *sctx)
          }
 
          format = sctx->gfx_level >= GFX11 ? G_028C70_FORMAT_GFX11(surf->cb_color_info):
-                                              G_028C70_FORMAT_GFX6(surf->cb_color_info);
+                                             G_028C70_FORMAT_GFX6(surf->cb_color_info);
          swap = G_028C70_COMP_SWAP(surf->cb_color_info);
          spi_format = (spi_shader_col_format >> (i * 4)) & 0xf;
          colormask = (cb_target_mask >> (i * 4)) & 0xf;
 
          /* Set if RGB and A are present. */
          has_alpha = !(sctx->gfx_level >= GFX11 ? G_028C74_FORCE_DST_ALPHA_1_GFX11(surf->cb_color_attrib):
-                                                   G_028C74_FORCE_DST_ALPHA_1_GFX6(surf->cb_color_attrib));
+                                                  G_028C74_FORCE_DST_ALPHA_1_GFX6(surf->cb_color_attrib));
 
          if (format == V_028C70_COLOR_8 || format == V_028C70_COLOR_16 ||
              format == V_028C70_COLOR_32)
@@ -475,19 +475,20 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
       color_control |= S_028808_ROP3(0xcc);
    }
 
+   unsigned db_alpha_to_mask;
    if (state->alpha_to_coverage && state->alpha_to_coverage_dither) {
-      si_pm4_set_reg(pm4, R_028B70_DB_ALPHA_TO_MASK,
-                     S_028B70_ALPHA_TO_MASK_ENABLE(state->alpha_to_coverage) |
-                        S_028B70_ALPHA_TO_MASK_OFFSET0(3) | S_028B70_ALPHA_TO_MASK_OFFSET1(1) |
-                        S_028B70_ALPHA_TO_MASK_OFFSET2(0) | S_028B70_ALPHA_TO_MASK_OFFSET3(2) |
-                        S_028B70_OFFSET_ROUND(1));
+      db_alpha_to_mask = S_028B70_ALPHA_TO_MASK_ENABLE(state->alpha_to_coverage) |
+                         S_028B70_ALPHA_TO_MASK_OFFSET0(3) | S_028B70_ALPHA_TO_MASK_OFFSET1(1) |
+                         S_028B70_ALPHA_TO_MASK_OFFSET2(0) | S_028B70_ALPHA_TO_MASK_OFFSET3(2) |
+                         S_028B70_OFFSET_ROUND(1);
    } else {
-      si_pm4_set_reg(pm4, R_028B70_DB_ALPHA_TO_MASK,
-                     S_028B70_ALPHA_TO_MASK_ENABLE(state->alpha_to_coverage) |
-                        S_028B70_ALPHA_TO_MASK_OFFSET0(2) | S_028B70_ALPHA_TO_MASK_OFFSET1(2) |
-                        S_028B70_ALPHA_TO_MASK_OFFSET2(2) | S_028B70_ALPHA_TO_MASK_OFFSET3(2) |
-                        S_028B70_OFFSET_ROUND(0));
+      db_alpha_to_mask = S_028B70_ALPHA_TO_MASK_ENABLE(state->alpha_to_coverage) |
+                         S_028B70_ALPHA_TO_MASK_OFFSET0(2) | S_028B70_ALPHA_TO_MASK_OFFSET1(2) |
+                         S_028B70_ALPHA_TO_MASK_OFFSET2(2) | S_028B70_ALPHA_TO_MASK_OFFSET3(2) |
+                         S_028B70_OFFSET_ROUND(0);
    }
+
+   si_pm4_set_reg(pm4, R_028B70_DB_ALPHA_TO_MASK, db_alpha_to_mask);
 
    blend->cb_target_mask = 0;
    blend->cb_target_enabled_4bit = 0;
@@ -973,10 +974,9 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
    rs->polygon_mode_is_points =
       (state->fill_front == PIPE_POLYGON_MODE_POINT && !(state->cull_face & PIPE_FACE_FRONT)) ||
       (state->fill_back == PIPE_POLYGON_MODE_POINT && !(state->cull_face & PIPE_FACE_BACK));
-   rs->pa_sc_line_stipple = state->line_stipple_enable
-                               ? S_028A0C_LINE_PATTERN(state->line_stipple_pattern) |
-                                    S_028A0C_REPEAT_COUNT(state->line_stipple_factor)
-                               : 0;
+   rs->pa_sc_line_stipple = state->line_stipple_enable ?
+                               S_028A0C_LINE_PATTERN(state->line_stipple_pattern) |
+                               S_028A0C_REPEAT_COUNT(state->line_stipple_factor) : 0;
    /* TODO: implement line stippling with perpendicular end caps. */
    /* Line width > 2 is an internal recommendation. */
    rs->perpendicular_end_caps = state->multisample &&
@@ -1022,14 +1022,16 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
       }
    }
 
-   si_pm4_set_reg(
-      pm4, R_0286D4_SPI_INTERP_CONTROL_0,
-      S_0286D4_FLAT_SHADE_ENA(1) | S_0286D4_PNT_SPRITE_ENA(state->point_quad_rasterization) |
-         S_0286D4_PNT_SPRITE_OVRD_X(V_0286D4_SPI_PNT_SPRITE_SEL_S) |
-         S_0286D4_PNT_SPRITE_OVRD_Y(V_0286D4_SPI_PNT_SPRITE_SEL_T) |
-         S_0286D4_PNT_SPRITE_OVRD_Z(V_0286D4_SPI_PNT_SPRITE_SEL_0) |
-         S_0286D4_PNT_SPRITE_OVRD_W(V_0286D4_SPI_PNT_SPRITE_SEL_1) |
-         S_0286D4_PNT_SPRITE_TOP_1(state->sprite_coord_mode != PIPE_SPRITE_COORD_UPPER_LEFT));
+   unsigned spi_interp_control_0 =
+      S_0286D4_FLAT_SHADE_ENA(1) |
+      S_0286D4_PNT_SPRITE_ENA(state->point_quad_rasterization) |
+      S_0286D4_PNT_SPRITE_OVRD_X(V_0286D4_SPI_PNT_SPRITE_SEL_S) |
+      S_0286D4_PNT_SPRITE_OVRD_Y(V_0286D4_SPI_PNT_SPRITE_SEL_T) |
+      S_0286D4_PNT_SPRITE_OVRD_Z(V_0286D4_SPI_PNT_SPRITE_SEL_0) |
+      S_0286D4_PNT_SPRITE_OVRD_W(V_0286D4_SPI_PNT_SPRITE_SEL_1) |
+      S_0286D4_PNT_SPRITE_TOP_1(state->sprite_coord_mode != PIPE_SPRITE_COORD_UPPER_LEFT);
+
+   si_pm4_set_reg(pm4, R_0286D4_SPI_INTERP_CONTROL_0, spi_interp_control_0);
 
    /* point size 12.4 fixed point */
    tmp = (unsigned)(state->point_size * 8.0);
@@ -1048,16 +1050,16 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
    /* Divide by two, because 0.5 = 1 pixel. */
    si_pm4_set_reg(pm4, R_028A04_PA_SU_POINT_MINMAX,
                   S_028A04_MIN_SIZE(si_pack_float_12p4(psize_min / 2)) |
-                     S_028A04_MAX_SIZE(si_pack_float_12p4(psize_max / 2)));
-
+                  S_028A04_MAX_SIZE(si_pack_float_12p4(psize_max / 2)));
    si_pm4_set_reg(pm4, R_028A08_PA_SU_LINE_CNTL,
                   S_028A08_WIDTH(si_pack_float_12p4(state->line_width / 2)));
-   si_pm4_set_reg(
-      pm4, R_028A48_PA_SC_MODE_CNTL_0,
-      S_028A48_LINE_STIPPLE_ENABLE(state->line_stipple_enable) |
-         S_028A48_MSAA_ENABLE(state->multisample || state->poly_smooth || state->line_smooth) |
-         S_028A48_VPORT_SCISSOR_ENABLE(1) |
-         S_028A48_ALTERNATE_RBS_PER_TILE(sscreen->info.gfx_level >= GFX9));
+
+   si_pm4_set_reg(pm4, R_028A48_PA_SC_MODE_CNTL_0,
+                  S_028A48_LINE_STIPPLE_ENABLE(state->line_stipple_enable) |
+                  S_028A48_MSAA_ENABLE(state->multisample || state->poly_smooth ||
+                                       state->line_smooth) |
+                  S_028A48_VPORT_SCISSOR_ENABLE(1) |
+                  S_028A48_ALTERNATE_RBS_PER_TILE(sscreen->info.gfx_level >= GFX9));
 
    bool polygon_mode_enabled =
       (state->fill_front != PIPE_POLYGON_MODE_FILL && !(state->cull_face & PIPE_FACE_FRONT)) ||
@@ -1065,19 +1067,19 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
 
    si_pm4_set_reg(pm4, R_028814_PA_SU_SC_MODE_CNTL,
                   S_028814_PROVOKING_VTX_LAST(!state->flatshade_first) |
-                     S_028814_CULL_FRONT((state->cull_face & PIPE_FACE_FRONT) ? 1 : 0) |
-                     S_028814_CULL_BACK((state->cull_face & PIPE_FACE_BACK) ? 1 : 0) |
-                     S_028814_FACE(!state->front_ccw) |
-                     S_028814_POLY_OFFSET_FRONT_ENABLE(util_get_offset(state, state->fill_front)) |
-                     S_028814_POLY_OFFSET_BACK_ENABLE(util_get_offset(state, state->fill_back)) |
-                     S_028814_POLY_OFFSET_PARA_ENABLE(state->offset_point || state->offset_line) |
-                     S_028814_POLY_MODE(polygon_mode_enabled) |
-                     S_028814_POLYMODE_FRONT_PTYPE(si_translate_fill(state->fill_front)) |
-                     S_028814_POLYMODE_BACK_PTYPE(si_translate_fill(state->fill_back)) |
-                     /* this must be set if POLY_MODE or PERPENDICULAR_ENDCAP_ENA is set */
-                     S_028814_KEEP_TOGETHER_ENABLE(sscreen->info.gfx_level >= GFX10 ?
-                                                      polygon_mode_enabled ||
-                                                      rs->perpendicular_end_caps : 0));
+                  S_028814_CULL_FRONT((state->cull_face & PIPE_FACE_FRONT) ? 1 : 0) |
+                  S_028814_CULL_BACK((state->cull_face & PIPE_FACE_BACK) ? 1 : 0) |
+                  S_028814_FACE(!state->front_ccw) |
+                  S_028814_POLY_OFFSET_FRONT_ENABLE(util_get_offset(state, state->fill_front)) |
+                  S_028814_POLY_OFFSET_BACK_ENABLE(util_get_offset(state, state->fill_back)) |
+                  S_028814_POLY_OFFSET_PARA_ENABLE(state->offset_point || state->offset_line) |
+                  S_028814_POLY_MODE(polygon_mode_enabled) |
+                  S_028814_POLYMODE_FRONT_PTYPE(si_translate_fill(state->fill_front)) |
+                  S_028814_POLYMODE_BACK_PTYPE(si_translate_fill(state->fill_back)) |
+                  /* this must be set if POLY_MODE or PERPENDICULAR_ENDCAP_ENA is set */
+                  S_028814_KEEP_TOGETHER_ENABLE(sscreen->info.gfx_level >= GFX10 ?
+                                                   polygon_mode_enabled ||
+                                                   rs->perpendicular_end_caps : 0));
 
    if (state->bottom_edge_rule) {
       /* OpenGL windows should set this. */
