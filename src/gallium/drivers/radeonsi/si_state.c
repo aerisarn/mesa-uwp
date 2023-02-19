@@ -2684,7 +2684,6 @@ static void si_init_depth_surface(struct si_context *sctx, struct si_surface *su
    struct si_texture *tex = (struct si_texture *)surf->base.texture;
    unsigned level = surf->base.u.tex.level;
    unsigned format, stencil_format;
-   uint32_t z_info, s_info;
 
    format = si_translate_dbformat(tex->db_render_format);
    stencil_format = tex->surface.has_stencil ? V_028044_STENCIL_8 : V_028044_STENCIL_INVALID;
@@ -2693,51 +2692,51 @@ static void si_init_depth_surface(struct si_context *sctx, struct si_surface *su
    if (format == V_028040_Z_INVALID)
       PRINT_ERR("Invalid DB format: %d, disabling DB.\n", tex->buffer.b.b.format);
 
-   surf->db_depth_view = S_028008_SLICE_START(surf->base.u.tex.first_layer) |
-                         S_028008_SLICE_MAX(surf->base.u.tex.last_layer);
-   surf->db_htile_data_base = 0;
-   surf->db_htile_surface = 0;
-
-   if (sctx->gfx_level >= GFX10) {
-      surf->db_depth_view |= S_028008_SLICE_START_HI(surf->base.u.tex.first_layer >> 11) |
-                             S_028008_SLICE_MAX_HI(surf->base.u.tex.last_layer >> 11);
-   }
-
    if (sctx->gfx_level >= GFX9) {
+      surf->db_htile_data_base = 0;
+      surf->db_htile_surface = 0;
+      surf->db_depth_view = S_028008_SLICE_START(surf->base.u.tex.first_layer) |
+                            S_028008_SLICE_MAX(surf->base.u.tex.last_layer);
+      if (sctx->gfx_level >= GFX10) {
+         surf->db_depth_view |= S_028008_SLICE_START_HI(surf->base.u.tex.first_layer >> 11) |
+                                S_028008_SLICE_MAX_HI(surf->base.u.tex.last_layer >> 11);
+      }
+
       assert(tex->surface.u.gfx9.surf_offset == 0);
       surf->db_depth_base = tex->buffer.gpu_address >> 8;
       surf->db_stencil_base = (tex->buffer.gpu_address + tex->surface.u.gfx9.zs.stencil_offset) >> 8;
-      z_info = S_028038_FORMAT(format) |
-               S_028038_NUM_SAMPLES(util_logbase2(tex->buffer.b.b.nr_samples)) |
-               S_028038_SW_MODE(tex->surface.u.gfx9.swizzle_mode) |
-               S_028038_MAXMIP(tex->buffer.b.b.last_level) |
-               S_028040_ITERATE_256(sctx->gfx_level >= GFX11);
-      s_info = S_02803C_FORMAT(stencil_format) |
-               S_02803C_SW_MODE(tex->surface.u.gfx9.zs.stencil_swizzle_mode) |
-               S_028044_ITERATE_256(sctx->gfx_level >= GFX11);
+      surf->db_z_info = S_028038_FORMAT(format) |
+                        S_028038_NUM_SAMPLES(util_logbase2(tex->buffer.b.b.nr_samples)) |
+                        S_028038_SW_MODE(tex->surface.u.gfx9.swizzle_mode) |
+                        S_028038_MAXMIP(tex->buffer.b.b.last_level) |
+                        S_028040_ITERATE_256(sctx->gfx_level >= GFX11);
+      surf->db_stencil_info = S_02803C_FORMAT(stencil_format) |
+                              S_02803C_SW_MODE(tex->surface.u.gfx9.zs.stencil_swizzle_mode) |
+                              S_028044_ITERATE_256(sctx->gfx_level >= GFX11);
 
       if (sctx->gfx_level == GFX9) {
          surf->db_z_info2 = S_028068_EPITCH(tex->surface.u.gfx9.epitch);
          surf->db_stencil_info2 = S_02806C_EPITCH(tex->surface.u.gfx9.zs.stencil_epitch);
       }
       surf->db_depth_view |= S_028008_MIPID(level);
-      surf->db_depth_size =
-         S_02801C_X_MAX(tex->buffer.b.b.width0 - 1) | S_02801C_Y_MAX(tex->buffer.b.b.height0 - 1);
+      surf->db_depth_size = S_02801C_X_MAX(tex->buffer.b.b.width0 - 1) |
+                            S_02801C_Y_MAX(tex->buffer.b.b.height0 - 1);
 
       if (si_htile_enabled(tex, level, PIPE_MASK_ZS)) {
-         z_info |= S_028038_TILE_SURFACE_ENABLE(1) | S_028038_ALLOW_EXPCLEAR(1);
-         s_info |= S_02803C_TILE_STENCIL_DISABLE(tex->htile_stencil_disabled);
+         surf->db_z_info |= S_028038_TILE_SURFACE_ENABLE(1) |
+                            S_028038_ALLOW_EXPCLEAR(1);
+         surf->db_stencil_info |= S_02803C_TILE_STENCIL_DISABLE(tex->htile_stencil_disabled);
 
          if (tex->surface.has_stencil && !tex->htile_stencil_disabled) {
             /* Stencil buffer workaround ported from the GFX6-GFX8 code.
              * See that for explanation.
              */
-            s_info |= S_02803C_ALLOW_EXPCLEAR(tex->buffer.b.b.nr_samples <= 1);
+            surf->db_stencil_info |= S_02803C_ALLOW_EXPCLEAR(tex->buffer.b.b.nr_samples <= 1);
          }
 
          surf->db_htile_data_base = (tex->buffer.gpu_address + tex->surface.meta_offset) >> 8;
-         surf->db_htile_surface =
-            S_028ABC_FULL_CACHE(1) | S_028ABC_PIPE_ALIGNED(1);
+         surf->db_htile_surface = S_028ABC_FULL_CACHE(1) |
+                                  S_028ABC_PIPE_ALIGNED(1);
          if (sctx->gfx_level == GFX9) {
             surf->db_htile_surface |= S_028ABC_RB_ALIGNED(1);
          }
@@ -2752,10 +2751,13 @@ static void si_init_depth_surface(struct si_context *sctx, struct si_surface *su
          (tex->buffer.gpu_address >> 8) + tex->surface.u.legacy.level[level].offset_256B;
       surf->db_stencil_base =
          (tex->buffer.gpu_address >> 8) + tex->surface.u.legacy.zs.stencil_level[level].offset_256B;
-
-      z_info =
-         S_028040_FORMAT(format) | S_028040_NUM_SAMPLES(util_logbase2(tex->buffer.b.b.nr_samples));
-      s_info = S_028044_FORMAT(stencil_format);
+      surf->db_htile_data_base = 0;
+      surf->db_htile_surface = 0;
+      surf->db_depth_view = S_028008_SLICE_START(surf->base.u.tex.first_layer) |
+                            S_028008_SLICE_MAX(surf->base.u.tex.last_layer);
+      surf->db_z_info = S_028040_FORMAT(format) |
+                        S_028040_NUM_SAMPLES(util_logbase2(tex->buffer.b.b.nr_samples));
+      surf->db_stencil_info = S_028044_FORMAT(stencil_format);
       surf->db_depth_info = 0;
 
       if (sctx->gfx_level >= GFX7) {
@@ -2773,13 +2775,13 @@ static void si_init_depth_surface(struct si_context *sctx, struct si_surface *su
                                 S_02803C_BANK_HEIGHT(G_009990_BANK_HEIGHT(macro_mode)) |
                                 S_02803C_MACRO_TILE_ASPECT(G_009990_MACRO_TILE_ASPECT(macro_mode)) |
                                 S_02803C_NUM_BANKS(G_009990_NUM_BANKS(macro_mode));
-         z_info |= S_028040_TILE_SPLIT(G_009910_TILE_SPLIT(tile_mode));
-         s_info |= S_028044_TILE_SPLIT(G_009910_TILE_SPLIT(stencil_tile_mode));
+         surf->db_z_info |= S_028040_TILE_SPLIT(G_009910_TILE_SPLIT(tile_mode));
+         surf->db_stencil_info |= S_028044_TILE_SPLIT(G_009910_TILE_SPLIT(stencil_tile_mode));
       } else {
          unsigned tile_mode_index = si_tile_mode_index(tex, level, false);
-         z_info |= S_028040_TILE_MODE_INDEX(tile_mode_index);
+         surf->db_z_info |= S_028040_TILE_MODE_INDEX(tile_mode_index);
          tile_mode_index = si_tile_mode_index(tex, level, true);
-         s_info |= S_028044_TILE_MODE_INDEX(tile_mode_index);
+         surf->db_stencil_info |= S_028044_TILE_MODE_INDEX(tile_mode_index);
       }
 
       surf->db_depth_size = S_028058_PITCH_TILE_MAX((levelinfo->nblk_x / 8) - 1) |
@@ -2788,8 +2790,9 @@ static void si_init_depth_surface(struct si_context *sctx, struct si_surface *su
          S_02805C_SLICE_TILE_MAX((levelinfo->nblk_x * levelinfo->nblk_y) / 64 - 1);
 
       if (si_htile_enabled(tex, level, PIPE_MASK_ZS)) {
-         z_info |= S_028040_TILE_SURFACE_ENABLE(1) | S_028040_ALLOW_EXPCLEAR(1);
-         s_info |= S_028044_TILE_STENCIL_DISABLE(tex->htile_stencil_disabled);
+         surf->db_z_info |= S_028040_TILE_SURFACE_ENABLE(1) |
+                            S_028040_ALLOW_EXPCLEAR(1);
+         surf->db_stencil_info |= S_028044_TILE_STENCIL_DISABLE(tex->htile_stencil_disabled);
 
          if (tex->surface.has_stencil) {
             /* Workaround: For a not yet understood reason, the
@@ -2804,16 +2807,13 @@ static void si_init_depth_surface(struct si_context *sctx, struct si_surface *su
              * test if you want to try changing this.
              */
             if (tex->buffer.b.b.nr_samples <= 1)
-               s_info |= S_028044_ALLOW_EXPCLEAR(1);
+               surf->db_stencil_info |= S_028044_ALLOW_EXPCLEAR(1);
          }
 
          surf->db_htile_data_base = (tex->buffer.gpu_address + tex->surface.meta_offset) >> 8;
          surf->db_htile_surface = S_028ABC_FULL_CACHE(1);
       }
    }
-
-   surf->db_z_info = z_info;
-   surf->db_stencil_info = s_info;
 
    surf->depth_initialized = true;
 }
