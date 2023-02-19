@@ -2142,11 +2142,16 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    agx_validate(ctx, "IR translation");
 
    if (likely(!(agx_compiler_debug & AGX_DBG_NOOPT))) {
-      /* Dead code eliminate before instruction combining so use counts are
-       * right */
-      agx_dce(ctx, true);
-      agx_optimizer(ctx);
+      /* Eliminate dead instructions before CSE to avoid silly scheduling */
+      agx_dce(ctx, false);
+
+      /* CSE before eliminating dead destinations so that subdivision is
+       * optimized properly.
+       */
       agx_opt_cse(ctx);
+
+      /* After DCE, use counts are right so we can run the optimizer. */
+      agx_optimizer(ctx);
 
       /* For correctness, lower uniform sources after copyprop (for correctness,
        * as copyprop creates uniform sources). To keep register pressure in
