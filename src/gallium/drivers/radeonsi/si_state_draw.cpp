@@ -1489,7 +1489,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
          index_type = (((index_size >> 2) | (index_size << 1)) & 0x3) |
                       S_028A7C_DISABLE_INSTANCE_PACKING(disable_instance_packing);
 
-         if (GFX_VERSION <= GFX7 && SI_BIG_ENDIAN) {
+         if (GFX_VERSION <= GFX7 && UTIL_ARCH_BIG_ENDIAN) {
             /* GFX7 doesn't support ubyte indices. */
             index_type |= index_size == 2 ? V_028A7C_VGT_DMA_SWAP_16_BIT
                                           : V_028A7C_VGT_DMA_SWAP_32_BIT;

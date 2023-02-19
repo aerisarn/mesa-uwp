@@ -39,12 +39,6 @@
 extern "C" {
 #endif
 
-#if UTIL_ARCH_BIG_ENDIAN
-#define SI_BIG_ENDIAN 1
-#else
-#define SI_BIG_ENDIAN 0
-#endif
-
 #define ATI_VENDOR_ID         0x1002
 #define SI_NOT_QUERY          0xffffffff
 

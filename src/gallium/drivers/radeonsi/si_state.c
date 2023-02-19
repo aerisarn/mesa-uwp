@@ -1755,7 +1755,7 @@ uint32_t si_translate_colorformat(enum amd_gfx_level gfx_level,
 
 static uint32_t si_colorformat_endian_swap(uint32_t colorformat)
 {
-   if (SI_BIG_ENDIAN) {
+   if (UTIL_ARCH_BIG_ENDIAN) {
       switch (colorformat) {
       /* 8-bit buffers. */
       case V_028C70_COLOR_8:
@@ -2587,7 +2587,7 @@ static void si_initialize_color_surface(struct si_context *sctx, struct si_surfa
       S_028C70_NUMBER_TYPE(ntype);
 
    if (sctx->gfx_level >= GFX11) {
-      assert(!SI_BIG_ENDIAN);
+      assert(!UTIL_ARCH_BIG_ENDIAN);
       color_info |= S_028C70_FORMAT_GFX11(format);
    } else {
       color_info |= S_028C70_FORMAT_GFX6(format) | S_028C70_ENDIAN(endian);
