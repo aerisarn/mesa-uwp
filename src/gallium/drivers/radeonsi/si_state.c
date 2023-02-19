@@ -3192,15 +3192,17 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
    unsigned i, nr_cbufs = state->nr_cbufs;
    struct si_texture *tex = NULL;
    struct si_surface *cb = NULL;
-   unsigned cb_color_info = 0;
+   bool is_msaa_resolve = state->nr_cbufs == 2 &&
+                          state->cbufs[0] && state->cbufs[0]->texture->nr_samples > 1 &&
+                          state->cbufs[1] && state->cbufs[1]->texture->nr_samples <= 1;
+
+   /* CB can't do MSAA resolve on gfx11. */
+   assert(!is_msaa_resolve || sctx->gfx_level < GFX11);
 
    radeon_begin(cs);
 
    /* Colorbuffers. */
    for (i = 0; i < nr_cbufs; i++) {
-      uint64_t cb_color_base, cb_color_fmask, cb_color_cmask, cb_dcc_base;
-      unsigned cb_color_attrib;
-
       if (!(sctx->framebuffer.dirty_cbufs & (1 << i)))
          continue;
 
@@ -3239,47 +3241,35 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
       }
 
       /* Compute mutable surface parameters. */
-      cb_color_base = tex->buffer.gpu_address >> 8;
-      cb_color_fmask = 0;
-      cb_color_cmask = tex->cmask_base_address_reg;
-      cb_dcc_base = 0;
-      cb_color_info = cb->cb_color_info | tex->cb_color_info;
-      cb_color_attrib = cb->cb_color_attrib;
+      uint64_t cb_color_base = tex->buffer.gpu_address >> 8;
+      uint64_t cb_dcc_base = 0;
+      unsigned cb_color_info = cb->cb_color_info | tex->cb_color_info;
 
-      if (tex->swap_rgb_to_bgr) {
-         /* Swap R and B channels. */
-         static unsigned rgb_to_bgr[4] = {
-            [V_028C70_SWAP_STD] = V_028C70_SWAP_ALT,
-            [V_028C70_SWAP_ALT] = V_028C70_SWAP_STD,
-            [V_028C70_SWAP_STD_REV] = V_028C70_SWAP_ALT_REV,
-            [V_028C70_SWAP_ALT_REV] = V_028C70_SWAP_STD_REV,
-         };
-         unsigned swap = rgb_to_bgr[G_028C70_COMP_SWAP(cb_color_info)];
+      if (sctx->gfx_level < GFX11) {
+         if (tex->swap_rgb_to_bgr) {
+            /* Swap R and B channels. */
+            static unsigned rgb_to_bgr[4] = {
+               [V_028C70_SWAP_STD] = V_028C70_SWAP_ALT,
+               [V_028C70_SWAP_ALT] = V_028C70_SWAP_STD,
+               [V_028C70_SWAP_STD_REV] = V_028C70_SWAP_ALT_REV,
+               [V_028C70_SWAP_ALT_REV] = V_028C70_SWAP_STD_REV,
+            };
+            unsigned swap = rgb_to_bgr[G_028C70_COMP_SWAP(cb_color_info)];
 
-         cb_color_info &= C_028C70_COMP_SWAP;
-         cb_color_info |= S_028C70_COMP_SWAP(swap);
-      }
+            cb_color_info &= C_028C70_COMP_SWAP;
+            cb_color_info |= S_028C70_COMP_SWAP(swap);
+         }
 
-      if (sctx->gfx_level < GFX11 && cb->base.u.tex.level > 0)
-         cb_color_info &= C_028C70_FAST_CLEAR;
+         if (cb->base.u.tex.level > 0)
+            cb_color_info &= C_028C70_FAST_CLEAR;
 
-      if (tex->surface.fmask_offset) {
-         cb_color_fmask = (tex->buffer.gpu_address + tex->surface.fmask_offset) >> 8;
-         cb_color_fmask |= tex->surface.fmask_tile_swizzle;
+
+         if (vi_dcc_enabled(tex, cb->base.u.tex.level) && (i != 1 || !is_msaa_resolve))
+            cb_color_info |= S_028C70_DCC_ENABLE(1);
       }
 
       /* Set up DCC. */
       if (vi_dcc_enabled(tex, cb->base.u.tex.level)) {
-         bool is_msaa_resolve_dst = state->cbufs[0] && state->cbufs[0]->texture->nr_samples > 1 &&
-                                    state->cbufs[1] == &cb->base &&
-                                    state->cbufs[1]->texture->nr_samples <= 1;
-
-         /* CB can't do MSAA resolve on gfx11. */
-         assert(!is_msaa_resolve_dst || sctx->gfx_level < GFX11);
-
-         if (!is_msaa_resolve_dst && sctx->gfx_level < GFX11)
-            cb_color_info |= S_028C70_DCC_ENABLE(1);
-
          cb_dcc_base = (tex->buffer.gpu_address + tex->surface.meta_offset) >> 8;
 
          unsigned dcc_tile_swizzle = tex->surface.tile_swizzle;
@@ -3306,28 +3296,38 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
                                S_028C78_MAX_COMP_FRAGS(cb->base.texture->nr_samples >= 4);
          }
 
+         radeon_set_context_reg(R_028C60_CB_COLOR0_BASE + i * 0x3C, cb_color_base);
+
          radeon_set_context_reg_seq(R_028C6C_CB_COLOR0_VIEW + i * 0x3C, 4);
          radeon_emit(cb->cb_color_view);                      /* CB_COLOR0_VIEW */
          radeon_emit(cb_color_info);                          /* CB_COLOR0_INFO */
-         radeon_emit(cb_color_attrib);                        /* CB_COLOR0_ATTRIB */
+         radeon_emit(cb->cb_color_attrib);                    /* CB_COLOR0_ATTRIB */
          radeon_emit(cb_fdcc_control);                        /* CB_COLOR0_FDCC_CONTROL */
 
-         radeon_set_context_reg(R_028C60_CB_COLOR0_BASE + i * 0x3C, cb_color_base);
-         radeon_set_context_reg(R_028E40_CB_COLOR0_BASE_EXT + i * 4, cb_color_base >> 32);
          radeon_set_context_reg(R_028C94_CB_COLOR0_DCC_BASE + i * 0x3C, cb_dcc_base);
+         radeon_set_context_reg(R_028E40_CB_COLOR0_BASE_EXT + i * 4, cb_color_base >> 32);
          radeon_set_context_reg(R_028EA0_CB_COLOR0_DCC_BASE_EXT + i * 4, cb_dcc_base >> 32);
          radeon_set_context_reg(R_028EC0_CB_COLOR0_ATTRIB2 + i * 4, cb->cb_color_attrib2);
          radeon_set_context_reg(R_028EE0_CB_COLOR0_ATTRIB3 + i * 4, cb_color_attrib3);
       } else if (sctx->gfx_level >= GFX10) {
          unsigned cb_color_attrib3;
+         uint64_t cb_color_fmask, cb_color_cmask;
 
          /* Set mutable surface parameters. */
          cb_color_base += tex->surface.u.gfx9.surf_offset >> 8;
          cb_color_base |= tex->surface.tile_swizzle;
-         if (!tex->surface.fmask_offset)
+
+         if (tex->surface.fmask_offset) {
+            cb_color_fmask = (tex->buffer.gpu_address + tex->surface.fmask_offset) >> 8;
+            cb_color_fmask |= tex->surface.fmask_tile_swizzle;
+         } else {
             cb_color_fmask = cb_color_base;
+         }
+
          if (cb->base.u.tex.level > 0)
             cb_color_cmask = cb_color_base;
+         else
+            cb_color_cmask = tex->cmask_base_address_reg;
 
          cb_color_attrib3 = cb->cb_color_attrib3 |
                             S_028EE0_COLOR_SW_MODE(tex->surface.u.gfx9.swizzle_mode) |
@@ -3341,7 +3341,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          radeon_emit(0);                         /* hole */
          radeon_emit(cb->cb_color_view);         /* CB_COLOR0_VIEW */
          radeon_emit(cb_color_info);             /* CB_COLOR0_INFO */
-         radeon_emit(cb_color_attrib);           /* CB_COLOR0_ATTRIB */
+         radeon_emit(cb->cb_color_attrib);       /* CB_COLOR0_ATTRIB */
          radeon_emit(cb->cb_dcc_control);        /* CB_COLOR0_DCC_CONTROL */
          radeon_emit(cb_color_cmask);            /* CB_COLOR0_CMASK */
          radeon_emit(0);                         /* hole */
@@ -3364,6 +3364,8 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
             .rb_aligned = 1,
             .pipe_aligned = 1,
          };
+         unsigned cb_color_attrib = cb->cb_color_attrib;
+         uint64_t cb_color_fmask, cb_color_cmask;
 
          if (!tex->is_depth && tex->surface.meta_offset)
             meta = tex->surface.u.gfx9.color.dcc;
@@ -3371,10 +3373,19 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          /* Set mutable surface parameters. */
          cb_color_base += tex->surface.u.gfx9.surf_offset >> 8;
          cb_color_base |= tex->surface.tile_swizzle;
-         if (!tex->surface.fmask_offset)
+
+         if (tex->surface.fmask_offset) {
+            cb_color_fmask = (tex->buffer.gpu_address + tex->surface.fmask_offset) >> 8;
+            cb_color_fmask |= tex->surface.fmask_tile_swizzle;
+         } else {
             cb_color_fmask = cb_color_base;
+         }
+
          if (cb->base.u.tex.level > 0)
             cb_color_cmask = cb_color_base;
+         else
+            cb_color_cmask = tex->cmask_base_address_reg;
+
          cb_color_attrib |= S_028C74_COLOR_SW_MODE(tex->surface.u.gfx9.swizzle_mode) |
                             S_028C74_FMASK_SW_MODE(tex->surface.u.gfx9.color.fmask_swizzle_mode) |
                             S_028C74_RB_ALIGNED(meta.rb_aligned) |
@@ -3405,16 +3416,26 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
             &tex->surface.u.legacy.level[cb->base.u.tex.level];
          unsigned pitch_tile_max, slice_tile_max, tile_mode_index;
          unsigned cb_color_pitch, cb_color_slice, cb_color_fmask_slice;
+         unsigned cb_color_attrib = cb->cb_color_attrib;
+         uint64_t cb_color_fmask, cb_color_cmask;
 
          cb_color_base += level_info->offset_256B;
          /* Only macrotiled modes can set tile swizzle. */
          if (level_info->mode == RADEON_SURF_MODE_2D)
             cb_color_base |= tex->surface.tile_swizzle;
 
-         if (!tex->surface.fmask_offset)
+         if (tex->surface.fmask_offset) {
+            cb_color_fmask = (tex->buffer.gpu_address + tex->surface.fmask_offset) >> 8;
+            cb_color_fmask |= tex->surface.fmask_tile_swizzle;
+         } else {
             cb_color_fmask = cb_color_base;
+         }
+
          if (cb->base.u.tex.level > 0)
             cb_color_cmask = cb_color_base;
+         else
+            cb_color_cmask = tex->cmask_base_address_reg;
+
          if (cb_dcc_base)
             cb_dcc_base += tex->surface.u.legacy.color.dcc_level[cb->base.u.tex.level].dcc_offset >> 8;
 
