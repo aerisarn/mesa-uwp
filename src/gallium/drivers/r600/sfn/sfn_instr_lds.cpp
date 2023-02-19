@@ -383,18 +383,6 @@ LDSAtomicInstr::replace_source(PRegister old_src, PVirtualValue new_src)
    if (old_src->pin() == pin_array || new_src->pin() == pin_array)
       return false;
 
-<<<<<<< HEAD
-   if (new_src->get_addr()) {
-      for (auto& s : m_srcs) {
-         auto addr = s->get_addr();
-         /* can't have two different indirect addresses in the same instr */
-         if (addr && !addr->equal_to(*new_src->get_addr()))
-            return false;
-      }
-   }
-
-=======
->>>>>>> 74c0ddf158e (r600/sfn: Don't copy-propagate indirect access into LDS instr)
    for (unsigned i = 0; i < m_srcs.size(); ++i) {
       if (old_src->equal_to(*m_srcs[i])) {
          m_srcs[i] = new_src;

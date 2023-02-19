@@ -268,7 +268,7 @@ AluInstr::do_print(std::ostream& os) const
          }
          os << " : ";
       } else {
-         os << "__." << swzchar[dest_chan()] << " : ";
+         os << " __." << swzchar[dest_chan()] << " : ";
       }
    }
 

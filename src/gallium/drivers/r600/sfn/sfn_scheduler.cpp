@@ -26,6 +26,9 @@
 
 #include "sfn_scheduler.h"
 
+#include "amd_family.h"
+#include "r600_isa.h"
+#include "sfn_alu_defines.h"
 #include "sfn_debug.h"
 #include "sfn_instr_alugroup.h"
 #include "sfn_instr_controlflow.h"
@@ -135,9 +138,21 @@ public:
    AluInstr *m_last_lds_instr{nullptr};
 };
 
+struct ArrayChanHash
+{
+    std::size_t operator()(std::pair<int, int> const& s) const noexcept
+    {
+       return std::hash<size_t>{}((size_t(s.first) << 3) | s.second);
+    }
+};
+
+using ArrayCheckSet = std::unordered_set<std::pair<int, int>, ArrayChanHash>;
+
 class BlockScheduler {
 public:
-   BlockScheduler(r600_chip_class chip_class);
+   BlockScheduler(r600_chip_class chip_class,
+                  radeon_family family);
+
    void run(Shader *shader);
 
    void finalize();
@@ -176,6 +191,10 @@ private:
 
    template <typename I> bool schedule_block(std::list<I *>& ready_list);
 
+   void update_array_writes(const AluGroup& group);
+   bool check_array_reads(const AluInstr& instr);
+   bool check_array_reads(const AluGroup& group);
+
    std::list<AluInstr *> alu_vec_ready;
    std::list<AluInstr *> alu_trans_ready;
    std::list<AluGroup *> alu_groups_ready;
@@ -208,10 +227,17 @@ private:
    int m_lds_addr_count{0};
    int m_alu_groups_scheduled{0};
    r600_chip_class m_chip_class;
+   radeon_family m_chip_family;
    bool m_idx0_loading{false};
    bool m_idx1_loading{false};
    bool m_idx0_pending{false};
    bool m_idx1_pending{false};
+
+   bool m_nop_after_rel_dest{false};
+   bool m_nop_befor_rel_src{false};
+
+   ArrayCheckSet m_last_indirect_array_write;
+   ArrayCheckSet m_last_direct_array_write;
 };
 
 Shader *
@@ -231,7 +257,9 @@ schedule(Shader *original)
    // to be able to re-start scheduling
 
    auto scheduled_shader = original;
-   BlockScheduler s(original->chip_class());
+
+   BlockScheduler s(original->chip_class(), original->chip_family());
+
    s.run(scheduled_shader);
    s.finalize();
 
@@ -245,7 +273,8 @@ schedule(Shader *original)
    return scheduled_shader;
 }
 
-BlockScheduler::BlockScheduler(r600_chip_class chip_class):
+BlockScheduler::BlockScheduler(r600_chip_class chip_class,
+                               radeon_family chip_family):
     current_shed(sched_alu),
     m_last_pos(nullptr),
     m_last_pixel(nullptr),
@@ -253,6 +282,12 @@ BlockScheduler::BlockScheduler(r600_chip_class chip_class):
     m_current_block(nullptr),
     m_chip_class(chip_class)
 {
+   m_nop_after_rel_dest = chip_family == CHIP_RV770;
+
+   m_nop_befor_rel_src = m_chip_class == ISA_CC_R600 &&
+                         chip_family != CHIP_RV670 &&
+                         chip_family != CHIP_RS780 &&
+                         chip_family != CHIP_RS880;
 }
 
 void
@@ -503,26 +538,31 @@ BlockScheduler::schedule_alu(Shader::ShaderBlocks& out_blocks)
    if (!alu_groups_ready.empty() && !has_lds_ready) {
       group = *alu_groups_ready.begin();
 
-      sfn_log << SfnLog::schedule << "try schedule " <<
-                 *group << "\n";
+      if (!check_array_reads(*group)) {
 
-      /* Only start a new CF if we have no pending AR reads */
-      if (m_current_block->try_reserve_kcache(*group)) {
-         alu_groups_ready.erase(alu_groups_ready.begin());
-         success = true;
-      } else {
-         if (m_current_block->expected_ar_uses() == 0) {
-            start_new_block(out_blocks, Block::alu);
 
-            if (!m_current_block->try_reserve_kcache(*group))
-               unreachable("Scheduling a group in a new block should always succeed");
+         sfn_log << SfnLog::schedule << "try schedule " <<
+                    *group << "\n";
+
+         /* Only start a new CF if we have no pending AR reads */
+         if (m_current_block->try_reserve_kcache(*group)) {
             alu_groups_ready.erase(alu_groups_ready.begin());
-            sfn_log << SfnLog::schedule << "Schedule ALU group\n";
             success = true;
          } else {
-            sfn_log << SfnLog::schedule << "Don't add group because of " <<
-                       m_current_block->expected_ar_uses()
-                    << "pending AR loads\n";
+            if (m_current_block->expected_ar_uses() == 0) {
+               start_new_block(out_blocks, Block::alu);
+
+               if (!m_current_block->try_reserve_kcache(*group))
+                  unreachable("Scheduling a group in a new block should always succeed");
+               alu_groups_ready.erase(alu_groups_ready.begin());
+               sfn_log << SfnLog::schedule << "Schedule ALU group\n";
+               success = true;
+            } else {
+               sfn_log << SfnLog::schedule << "Don't add group because of " <<
+                          m_current_block->expected_ar_uses()
+                       << "pending AR loads\n";
+               group = nullptr;
+            }
          }
       }
    }
@@ -570,9 +610,19 @@ BlockScheduler::schedule_alu(Shader::ShaderBlocks& out_blocks)
          // kcache reservation failed, so we have to start a new CF
          start_new_block(out_blocks, Block::alu);
       } else {
-         return false;
+         // Ready is not empty, but we didn't schedule anything, this
+         // means we had a indirect array read or write conflict that we
+         // can resolve with an extra group that has a NOP instruction
+         if (!alu_trans_ready.empty()  || !alu_vec_ready.empty()) {
+            group->add_vec_instructions(new AluInstr(op0_nop, 0));
+            break;
+         } else {
+            return false;
+         }
       }
    }
+
+
 
    sfn_log << SfnLog::schedule << "Finalize ALU group\n";
    group->set_scheduled();
@@ -594,6 +644,8 @@ BlockScheduler::schedule_alu(Shader::ShaderBlocks& out_blocks)
    }
 
    m_current_block->push_back(group);
+
+   update_array_writes(*group);
 
    m_idx0_pending |= m_idx0_loading;
    m_idx0_loading = false;
@@ -705,6 +757,11 @@ BlockScheduler::schedule_alu_to_group_vec(AluGroup *group)
    while (i != e) {
       sfn_log << SfnLog::schedule << "Try schedule to vec " << **i;
 
+      if (check_array_reads(**i)) {
+         ++i;
+         continue;
+      }
+
       if (!m_current_block->try_reserve_kcache(**i)) {
          sfn_log << SfnLog::schedule << " failed (kcache)\n";
          ++i;
@@ -770,6 +827,12 @@ BlockScheduler::schedule_alu_to_group_trans(AluGroup *group,
    auto i = readylist.begin();
    auto e = readylist.end();
    while (i != e) {
+
+      if (check_array_reads(**i)) {
+         ++i;
+         continue;
+      }
+
       sfn_log << SfnLog::schedule << "Try schedule to trans " << **i;
       if (!m_current_block->try_reserve_kcache(**i)) {
          sfn_log << SfnLog::schedule << " failed (kcache)\n";
@@ -1019,5 +1082,119 @@ BlockScheduler::collect_ready_type(std::list<T *>& ready, std::list<T *>& availa
 
    return !ready.empty();
 }
+
+class CheckArrayAccessVisitor : public  ConstRegisterVisitor {
+public:
+   void visit(const Register& value) override {(void)value;}
+   void visit(const LocalArray& value) override {(void)value;}
+   void visit(const UniformValue& value) override {(void)value;}
+   void visit(const LiteralConstant& value) override {(void)value;}
+   void visit(const InlineConstant& value) override {(void)value;}
+};
+
+class UpdateArrayWrite : public CheckArrayAccessVisitor {
+public:
+   UpdateArrayWrite(ArrayCheckSet& indirect_arrays,
+                    ArrayCheckSet& direct_arrays,
+                    bool tdw):
+      last_indirect_array_write(indirect_arrays),
+      last_direct_array_write(direct_arrays),
+      track_direct_writes(tdw)
+   {
+   }
+
+   void visit(const LocalArrayValue& value) override {
+      int array_base = value.array().base_sel();
+      auto entry = std::make_pair(array_base, value.chan());
+      if (value.addr())
+         last_indirect_array_write.insert(entry);
+      else if (track_direct_writes)
+         last_direct_array_write.insert(entry);
+   }
+private:
+   ArrayCheckSet& last_indirect_array_write;
+   ArrayCheckSet& last_direct_array_write;
+   bool track_direct_writes {false};
+};
+
+
+void BlockScheduler::update_array_writes(const AluGroup& group)
+{
+   if (m_nop_after_rel_dest || m_nop_befor_rel_src) {
+      m_last_direct_array_write.clear();
+      m_last_indirect_array_write.clear();
+
+      UpdateArrayWrite visitor(m_last_indirect_array_write,
+                               m_last_direct_array_write,
+                               m_nop_befor_rel_src);
+
+      for (auto alu : group) {
+         if (alu && alu->dest())
+            alu->dest()->accept(visitor);
+      }
+   }
+}
+
+class CheckArrayRead : public CheckArrayAccessVisitor {
+public:
+   CheckArrayRead(const ArrayCheckSet& indirect_arrays,
+                  const ArrayCheckSet& direct_arrays):
+      last_indirect_array_write(indirect_arrays),
+      last_direct_array_write(direct_arrays)
+   {
+   }
+
+   void visit(const LocalArrayValue& value) override {
+      int array_base = value.array().base_sel();
+      auto entry = std::make_pair(array_base, value.chan());
+
+      if (last_indirect_array_write.find(entry) !=
+          last_indirect_array_write.end())
+         need_extra_group = true;
+
+      if (value.addr() && last_direct_array_write.find(entry) !=
+          last_indirect_array_write.end()) {
+         need_extra_group = true;
+      }
+   }
+
+   const ArrayCheckSet& last_indirect_array_write;
+   const ArrayCheckSet& last_direct_array_write;
+   bool need_extra_group {false};
+};
+
+
+bool BlockScheduler::check_array_reads(const AluInstr& instr)
+{
+   if (m_nop_after_rel_dest || m_nop_befor_rel_src) {
+
+      CheckArrayRead visitor(m_last_indirect_array_write,
+                             m_last_direct_array_write);
+
+      for (auto& s : instr.sources()) {
+         s->accept(visitor);
+      }
+      return visitor.need_extra_group;
+   }
+   return false;
+}
+
+bool BlockScheduler::check_array_reads(const AluGroup& group)
+{
+   if (m_nop_after_rel_dest || m_nop_befor_rel_src) {
+
+      CheckArrayRead visitor(m_last_indirect_array_write,
+                             m_last_direct_array_write);
+
+      for (auto alu : group) {
+         for (auto& s : alu->sources()) {
+            s->accept(visitor);
+         }
+      }
+      return visitor.need_extra_group;
+   }
+   return false;
+}
+
 
 } // namespace r600

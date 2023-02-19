@@ -453,6 +453,8 @@ public:
    Values::const_iterator begin() const { return m_values.begin(); }
    Values::const_iterator end() const { return m_values.end(); }
 
+   uint32_t base_sel() const { return m_base_sel;}
+
 private:
    uint32_t m_base_sel;
    uint32_t m_nchannels;
