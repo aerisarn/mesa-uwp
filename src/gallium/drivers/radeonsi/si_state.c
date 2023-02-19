@@ -2512,7 +2512,6 @@ static void si_choose_spi_color_formats(struct si_surface *surf, unsigned format
 static void si_initialize_color_surface(struct si_context *sctx, struct si_surface *surf)
 {
    struct si_texture *tex = (struct si_texture *)surf->base.texture;
-   unsigned color_info, color_attrib;
    unsigned format, swap, ntype, endian;
    const struct util_format_description *desc;
    int firstchan;
@@ -2573,47 +2572,14 @@ static void si_initialize_color_surface(struct si_context *sctx, struct si_surfa
          surf->color_is_int10 = true;
    }
 
-   color_info =
-      S_028C70_COMP_SWAP(swap) | S_028C70_BLEND_CLAMP(blend_clamp) |
-      S_028C70_BLEND_BYPASS(blend_bypass) | S_028C70_SIMPLE_FLOAT(1) |
-      S_028C70_ROUND_MODE(ntype != V_028C70_NUMBER_UNORM && ntype != V_028C70_NUMBER_SNORM &&
-                          ntype != V_028C70_NUMBER_SRGB && format != V_028C70_COLOR_8_24 &&
-                          format != V_028C70_COLOR_24_8) |
-      S_028C70_NUMBER_TYPE(ntype);
-
-   if (sctx->gfx_level >= GFX11) {
-      assert(!UTIL_ARCH_BIG_ENDIAN);
-      color_info |= S_028C70_FORMAT_GFX11(format);
-   } else {
-      color_info |= S_028C70_FORMAT_GFX6(format) | S_028C70_ENDIAN(endian);
-   }
-
+   unsigned log_samples = util_logbase2(tex->buffer.b.b.nr_samples);
+   unsigned log_fragments = util_logbase2(tex->buffer.b.b.nr_storage_samples);
    /* Intensity is implemented as Red, so treat it that way. */
-   color_attrib = sctx->gfx_level >= GFX11 ?
-      S_028C74_FORCE_DST_ALPHA_1_GFX11(desc->swizzle[3] == PIPE_SWIZZLE_1 || util_format_is_intensity(surf->base.format)):
-      S_028C74_FORCE_DST_ALPHA_1_GFX6(desc->swizzle[3] == PIPE_SWIZZLE_1 || util_format_is_intensity(surf->base.format));
-
-   if (tex->buffer.b.b.nr_samples > 1) {
-      unsigned log_samples = util_logbase2(tex->buffer.b.b.nr_samples);
-      unsigned log_fragments = util_logbase2(tex->buffer.b.b.nr_storage_samples);
-
-      if (sctx->gfx_level >= GFX11) {
-         color_attrib |= S_028C74_NUM_FRAGMENTS_GFX11(log_fragments);
-      } else {
-         color_attrib |= S_028C74_NUM_SAMPLES(log_samples) | S_028C74_NUM_FRAGMENTS_GFX6(log_fragments);
-
-         if (tex->surface.fmask_offset) {
-            color_info |= S_028C70_COMPRESSION(1);
-            unsigned fmask_bankh = util_logbase2(tex->surface.u.legacy.color.fmask.bankh);
-
-            if (sctx->gfx_level == GFX6) {
-               /* due to a hw bug, FMASK_BANK_HEIGHT must be set on GFX6 too */
-               color_attrib |= S_028C74_FMASK_BANK_HEIGHT(fmask_bankh);
-            }
-         }
-      }
-   }
-
+   bool force_dst_alpha_1 = desc->swizzle[3] == PIPE_SWIZZLE_1 ||
+                            util_format_is_intensity(surf->base.format);
+   bool round_mode = ntype != V_028C70_NUMBER_UNORM && ntype != V_028C70_NUMBER_SNORM &&
+                     ntype != V_028C70_NUMBER_SRGB &&
+                     format != V_028C70_COLOR_8_24 && format != V_028C70_COLOR_24_8;
    /* amdvlk: [min-compressed-block-size] should be set to 32 for dGPU and
     * 64 for APU because all of our APUs to date use DIMMs which have
     * a request granularity size of 64B while all other chips have a
@@ -2622,64 +2588,90 @@ static void si_initialize_color_surface(struct si_context *sctx, struct si_surfa
    if (!sctx->screen->info.has_dedicated_vram)
       min_compressed_block_size = V_028C78_MIN_BLOCK_SIZE_64B;
 
+   surf->cb_color_info = S_028C70_COMP_SWAP(swap) |
+                         S_028C70_BLEND_CLAMP(blend_clamp) |
+                         S_028C70_BLEND_BYPASS(blend_bypass) |
+                         S_028C70_SIMPLE_FLOAT(1) |
+                         S_028C70_ROUND_MODE(round_mode) |
+                         S_028C70_NUMBER_TYPE(ntype);
+
    if (sctx->gfx_level >= GFX10) {
+      /* Gfx10-11. */
+      surf->cb_color_view = S_028C6C_SLICE_START(surf->base.u.tex.first_layer) |
+                            S_028C6C_SLICE_MAX_GFX10(surf->base.u.tex.last_layer) |
+                            S_028C6C_MIP_LEVEL_GFX10(surf->base.u.tex.level);
+      surf->cb_color_attrib = 0;
+      surf->cb_color_attrib2 = S_028C68_MIP0_WIDTH(surf->width0 - 1) |
+                               S_028C68_MIP0_HEIGHT(surf->height0 - 1) |
+                               S_028C68_MAX_MIP(tex->buffer.b.b.last_level);
+      surf->cb_color_attrib3 = S_028EE0_MIP0_DEPTH(util_max_layer(&tex->buffer.b.b, 0)) |
+                               S_028EE0_RESOURCE_TYPE(tex->surface.u.gfx9.resource_type) |
+                               S_028EE0_RESOURCE_LEVEL(sctx->gfx_level >= GFX11 ? 0 : 1);
       surf->cb_dcc_control = S_028C78_MAX_UNCOMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_256B) |
                              S_028C78_MAX_COMPRESSED_BLOCK_SIZE(tex->surface.u.gfx9.color.dcc.max_compressed_block_size) |
                              S_028C78_MIN_COMPRESSED_BLOCK_SIZE(min_compressed_block_size) |
                              S_028C78_INDEPENDENT_64B_BLOCKS(tex->surface.u.gfx9.color.dcc.independent_64B_blocks);
-      if (sctx->gfx_level >= GFX11)
-         surf->cb_dcc_control |= S_028C78_INDEPENDENT_128B_BLOCKS_GFX11(tex->surface.u.gfx9.color.dcc.independent_128B_blocks);
-      else
-         surf->cb_dcc_control |= S_028C78_INDEPENDENT_128B_BLOCKS_GFX10(tex->surface.u.gfx9.color.dcc.independent_128B_blocks);
-   } else if (sctx->gfx_level >= GFX8) {
-      unsigned max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_256B;
 
-      if (tex->buffer.b.b.nr_storage_samples > 1) {
-         if (tex->surface.bpe == 1)
-            max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_64B;
-         else if (tex->surface.bpe == 2)
-            max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_128B;
+      if (sctx->gfx_level >= GFX11) {
+         assert(!UTIL_ARCH_BIG_ENDIAN);
+         surf->cb_color_info |= S_028C70_FORMAT_GFX11(format);
+         surf->cb_color_attrib |= S_028C74_NUM_FRAGMENTS_GFX11(log_fragments) |
+                                  S_028C74_FORCE_DST_ALPHA_1_GFX11(force_dst_alpha_1);
+         surf->cb_dcc_control |= S_028C78_INDEPENDENT_128B_BLOCKS_GFX11(tex->surface.u.gfx9.color.dcc.independent_128B_blocks);
+      } else {
+         surf->cb_color_info |= S_028C70_ENDIAN(endian) |
+                                S_028C70_FORMAT_GFX6(format) |
+                                S_028C70_COMPRESSION(!!tex->surface.fmask_offset);
+         surf->cb_color_attrib |= S_028C74_NUM_SAMPLES(log_samples) |
+                                  S_028C74_NUM_FRAGMENTS_GFX6(log_fragments) |
+                                  S_028C74_FORCE_DST_ALPHA_1_GFX6(force_dst_alpha_1);
+         surf->cb_dcc_control |= S_028C78_INDEPENDENT_128B_BLOCKS_GFX10(tex->surface.u.gfx9.color.dcc.independent_128B_blocks);
+      }
+   } else {
+      /* Gfx6-9. */
+      surf->cb_color_info |= S_028C70_ENDIAN(endian) |
+                             S_028C70_FORMAT_GFX6(format) |
+                             S_028C70_COMPRESSION(!!tex->surface.fmask_offset);
+      surf->cb_color_view = S_028C6C_SLICE_START(surf->base.u.tex.first_layer) |
+                            S_028C6C_SLICE_MAX_GFX6(surf->base.u.tex.last_layer);
+      surf->cb_color_attrib = S_028C74_NUM_SAMPLES(log_samples) |
+                              S_028C74_NUM_FRAGMENTS_GFX6(log_fragments) |
+                              S_028C74_FORCE_DST_ALPHA_1_GFX6(force_dst_alpha_1);
+      surf->cb_color_attrib2 = 0;
+      surf->cb_dcc_control = 0;
+
+      if (sctx->gfx_level == GFX9) {
+         surf->cb_color_view |= S_028C6C_MIP_LEVEL_GFX9(surf->base.u.tex.level);
+         surf->cb_color_attrib |= S_028C74_MIP0_DEPTH(util_max_layer(&tex->buffer.b.b, 0)) |
+                                  S_028C74_RESOURCE_TYPE(tex->surface.u.gfx9.resource_type);
+         surf->cb_color_attrib2 |= S_028C68_MIP0_WIDTH(surf->width0 - 1) |
+                                   S_028C68_MIP0_HEIGHT(surf->height0 - 1) |
+                                   S_028C68_MAX_MIP(tex->buffer.b.b.last_level);
       }
 
-      surf->cb_dcc_control = S_028C78_MAX_UNCOMPRESSED_BLOCK_SIZE(max_uncompressed_block_size) |
-                             S_028C78_MIN_COMPRESSED_BLOCK_SIZE(min_compressed_block_size) |
-                             S_028C78_INDEPENDENT_64B_BLOCKS(1);
+      if (sctx->gfx_level >= GFX8) {
+         unsigned max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_256B;
+
+         if (tex->buffer.b.b.nr_storage_samples > 1) {
+            if (tex->surface.bpe == 1)
+               max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_64B;
+            else if (tex->surface.bpe == 2)
+               max_uncompressed_block_size = V_028C78_MAX_BLOCK_SIZE_128B;
+         }
+
+         surf->cb_dcc_control |= S_028C78_MAX_UNCOMPRESSED_BLOCK_SIZE(max_uncompressed_block_size) |
+                                 S_028C78_MIN_COMPRESSED_BLOCK_SIZE(min_compressed_block_size) |
+                                 S_028C78_INDEPENDENT_64B_BLOCKS(1);
+      }
+
+      if (sctx->gfx_level == GFX6) {
+         /* Due to a hw bug, FMASK_BANK_HEIGHT must still be set on GFX6. (inherited from GFX5) */
+         /* This must also be set for fast clear to work without FMASK. */
+         unsigned fmask_bankh = tex->surface.fmask_offset ? tex->surface.u.legacy.color.fmask.bankh
+                                                          : tex->surface.u.legacy.bankh;
+         surf->cb_color_attrib |= S_028C74_FMASK_BANK_HEIGHT(util_logbase2(fmask_bankh));
+      }
    }
-
-   /* This must be set for fast clear to work without FMASK. */
-   if (!tex->surface.fmask_size && sctx->gfx_level == GFX6) {
-      unsigned bankh = util_logbase2(tex->surface.u.legacy.bankh);
-      color_attrib |= S_028C74_FMASK_BANK_HEIGHT(bankh);
-   }
-
-   /* GFX10 field has the same base shift as the GFX6 field */
-   unsigned color_view = S_028C6C_SLICE_START(surf->base.u.tex.first_layer) |
-                         S_028C6C_SLICE_MAX_GFX10(surf->base.u.tex.last_layer);
-   unsigned mip0_width = surf->width0 - 1;
-   unsigned mip0_height = surf->height0 - 1;
-   unsigned mip0_depth = util_max_layer(&tex->buffer.b.b, 0);
-
-   if (sctx->gfx_level >= GFX10) {
-      color_view |= S_028C6C_MIP_LEVEL_GFX10(surf->base.u.tex.level);
-
-      surf->cb_color_attrib3 = S_028EE0_MIP0_DEPTH(mip0_depth) |
-                               S_028EE0_RESOURCE_TYPE(tex->surface.u.gfx9.resource_type) |
-                               S_028EE0_RESOURCE_LEVEL(sctx->gfx_level >= GFX11 ? 0 : 1);
-   } else if (sctx->gfx_level == GFX9) {
-      color_view |= S_028C6C_MIP_LEVEL_GFX9(surf->base.u.tex.level);
-      color_attrib |= S_028C74_MIP0_DEPTH(mip0_depth) |
-                      S_028C74_RESOURCE_TYPE(tex->surface.u.gfx9.resource_type);
-   }
-
-   if (sctx->gfx_level >= GFX9) {
-      surf->cb_color_attrib2 = S_028C68_MIP0_WIDTH(mip0_width) |
-                               S_028C68_MIP0_HEIGHT(mip0_height) |
-                               S_028C68_MAX_MIP(tex->buffer.b.b.last_level);
-   }
-
-   surf->cb_color_view = color_view;
-   surf->cb_color_info = color_info;
-   surf->cb_color_attrib = color_attrib;
 
    /* Determine pixel shader export format */
    si_choose_spi_color_formats(surf, format, swap, ntype, tex->is_depth);
