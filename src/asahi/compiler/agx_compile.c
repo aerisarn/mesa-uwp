@@ -2107,9 +2107,6 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
 
    agx_validate(ctx, "IR translation");
 
-   if (agx_should_dump(nir, AGX_DBG_SHADERS))
-      agx_print_shader(ctx, stdout);
-
    if (likely(!(agx_debug & AGX_DBG_NOOPT))) {
       /* Dead code eliminate before instruction combining so use counts are
        * right */
