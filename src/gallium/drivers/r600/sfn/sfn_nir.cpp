@@ -31,6 +31,7 @@
 #include "nir.h"
 #include "nir_builder.h"
 #include "nir_intrinsics.h"
+#include "r600_asm.h"
 #include "sfn_assembler.h"
 #include "sfn_debug.h"
 #include "sfn_instr_tex.h"
@@ -1040,6 +1041,11 @@ r600_shader_from_nir(struct r600_context *rctx,
                       rscreen->b.gfx_level,
                       rscreen->b.family,
                       rscreen->has_compressed_msaa_texturing);
+
+   /* We already schedule the code with this in mind, no need to handle this
+    * in the backend assembler */
+   pipeshader->shader.bc.ar_handling = AR_HANDLE_NORMAL;
+   pipeshader->shader.bc.r6xx_nop_after_rel_dst = 0;
 
 
    r600::sfn_log << r600::SfnLog::shader_info << "pipeshader->shader.processor_type = "

@@ -750,6 +750,75 @@ BLOCK_END)";
 
 }
 
+TEST_F(TestShaderFromNir, ScheduleSplitLoadAddrAndNOPAfterIndirectDestRV770_2)
+{
+   const char *input =
+R"(FS
+CHIPCLASS R700
+FAMILY RV770
+PROP MAX_COLOR_EXPORTS:1
+PROP COLOR_EXPORTS:1
+PROP COLOR_EXPORT_MASK:15
+PROP WRITE_ALL_COLORS:0
+OUTPUT LOC:0 NAME:1 MASK:15
+ARRAYS A1[2].x
+SHADER
+BLOCK_START
+  ALU MOV S1.x : KC0[0].x {W}
+  ALU MOV S1.y : KC0[0].y {W}
+  ALU ADD S1.z : KC0[0].z KC0[2].z {W}
+  ALU ADD S1.w : KC0[0].w KC0[2].w {W}
+  ALU MOV A1[S1.x].x : KC0[1].y {WL}
+  ALU ADD S2.x : A1[1].x S1.y {W}
+  ALU ADD S2.y : KC0[1].y S1.z {W}
+  ALU ADD S2.z : KC0[1].z S1.w {W}
+  ALU ADD S2.w : KC0[1].w S1.w {WL}
+  EXPORT_DONE PIXEL 0 S2.xyzw
+BLOCK_END)";
+
+
+   const char *expect =
+R"(FS
+CHIPCLASS R700
+FAMILY RV770
+PROP MAX_COLOR_EXPORTS:1
+PROP COLOR_EXPORTS:1
+PROP COLOR_EXPORT_MASK:15
+PROP WRITE_ALL_COLORS:0
+OUTPUT LOC:0 NAME:1 MASK:15
+ARRAYS A1[2].x
+SHADER
+BLOCK_START
+ALU_GROUP_BEGIN
+   ALU MOVA_INT AR : KC0[0].x {L}
+ALU_GROUP_END
+ALU_GROUP_BEGIN
+    ALU MOV A1[AR].x : KC0[1].y {WL}
+ALU_GROUP_END
+ALU_GROUP_BEGIN
+   ALU ADD S1.z : KC0[0].z KC0[2].z {W}
+   ALU ADD S1.w : KC0[0].w KC0[2].w {WL}
+ALU_GROUP_END
+ALU_GROUP_BEGIN
+   ALU ADD S2.x@chgr : A1[1].x KC0[0].y {W}
+   ALU ADD S2.y@chgr : KC0[1].y S1.z{s} {WL}
+ALU_GROUP_END
+ALU_GROUP_BEGIN
+   ALU ADD S2.z@chgr : KC0[1].z S1.w{s} {W}
+   ALU ADD S2.w@chgr : KC0[1].w S1.w{s} {WL}
+ALU_GROUP_END
+BLOCK_END
+BLOCK_START
+  EXPORT_DONE PIXEL 0 S2.xyzw
+BLOCK_END)";
+
+   auto sh = from_string(input);
+   split_address_loads(*sh);
+   optimize(*sh);
+   check(schedule(sh), expect);
+
+}
+
 
 
 
