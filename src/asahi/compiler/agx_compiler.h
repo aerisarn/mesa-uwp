@@ -783,9 +783,9 @@ agx_builder_insert(agx_cursor *cursor, agx_instr *I)
 
 /* Routines defined for AIR */
 
-void agx_print_instr(agx_instr *I, FILE *fp);
-void agx_print_block(agx_block *block, FILE *fp);
-void agx_print_shader(agx_context *ctx, FILE *fp);
+void agx_print_instr(const agx_instr *I, FILE *fp);
+void agx_print_block(const agx_block *block, FILE *fp);
+void agx_print_shader(const agx_context *ctx, FILE *fp);
 void agx_optimizer(agx_context *ctx);
 void agx_lower_pseudo(agx_context *ctx);
 void agx_lower_uniform_sources(agx_context *ctx);
