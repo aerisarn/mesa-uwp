@@ -2239,7 +2239,9 @@ agx_preprocess_nir(nir_shader *nir, bool support_lod_bias)
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);
    NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
               glsl_type_size, 0);
+   NIR_PASS_V(nir, nir_lower_ssbo);
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS_V(nir, agx_nir_lower_frag_sidefx);
       NIR_PASS_V(nir, agx_nir_lower_zs_emit);
 
       /* Interpolate varyings at fp16 and write to the tilebuffer at fp16. As an
@@ -2293,7 +2295,6 @@ agx_preprocess_nir(nir_shader *nir, bool support_lod_bias)
    NIR_PASS_V(nir, nir_opt_move, move_all);
    NIR_PASS_V(nir, agx_nir_lower_ubo);
    NIR_PASS_V(nir, agx_nir_lower_shared_bitsize);
-   NIR_PASS_V(nir, nir_lower_ssbo);
 }
 
 void

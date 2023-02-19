@@ -834,6 +834,7 @@ bool agx_nir_lower_load_mask(nir_shader *shader);
 bool agx_nir_lower_address(nir_shader *shader);
 bool agx_nir_lower_ubo(nir_shader *shader);
 bool agx_nir_lower_shared_bitsize(nir_shader *shader);
+bool agx_nir_lower_frag_sidefx(nir_shader *s);
 
 #ifdef __cplusplus
 } /* extern C */
