@@ -200,6 +200,8 @@ Shader::add_info_from_string(std::istream& is)
 
    if (type == "CHIPCLASS")
       return read_chipclass(is);
+   if (type == "FAMILY")
+      return read_family(is);
    if (type == "OUTPUT")
       return read_output(is);
    if (type == "INPUT")
@@ -386,6 +388,47 @@ Shader::read_chipclass(std::istream& is)
    return true;
 }
 
+bool
+Shader::read_family(std::istream& is)
+{
+   string name;
+   is >> name;
+#define CHECK_FAMILY(F) if (name == #F) m_chip_family = CHIP_ ## F
+
+   CHECK_FAMILY(R600);
+   else CHECK_FAMILY(R600);
+   else CHECK_FAMILY(RV610);
+   else CHECK_FAMILY(RV630);
+   else CHECK_FAMILY(RV670);
+   else CHECK_FAMILY(RV620);
+   else CHECK_FAMILY(RV635);
+   else CHECK_FAMILY(RS780);
+   else CHECK_FAMILY(RS880);
+   /* GFX3 (R7xx) */
+   else CHECK_FAMILY(RV770);
+   else CHECK_FAMILY(RV730);
+   else CHECK_FAMILY(RV710);
+   else CHECK_FAMILY(RV740);
+   /* GFX4 (Evergreen) */
+   else CHECK_FAMILY(CEDAR);
+   else CHECK_FAMILY(REDWOOD);
+   else CHECK_FAMILY(JUNIPER);
+   else CHECK_FAMILY(CYPRESS);
+   else CHECK_FAMILY(HEMLOCK);
+   else CHECK_FAMILY(PALM);
+   else CHECK_FAMILY(SUMO);
+   else CHECK_FAMILY(SUMO2);
+   else CHECK_FAMILY(BARTS);
+   else CHECK_FAMILY(TURKS);
+   else CHECK_FAMILY(CAICOS);
+   /* GFX5 (Northern Islands) */
+   else CHECK_FAMILY(CAYMAN);
+   else CHECK_FAMILY(ARUBA);
+   else
+      return false;
+   return true;
+}
+
 void
 Shader::allocate_reserved_registers()
 {
@@ -434,7 +477,8 @@ Shader::translate_from_nir(nir_shader *nir,
                            const pipe_stream_output_info *so_info,
                            struct r600_shader *gs_shader,
                            r600_shader_key& key,
-                           r600_chip_class chip_class)
+                           r600_chip_class chip_class,
+                           radeon_family family)
 {
    Shader *shader = nullptr;
 
@@ -468,6 +512,8 @@ Shader::translate_from_nir(nir_shader *nir,
    shader->set_info(nir);
 
    shader->set_chip_class(chip_class);
+   shader->set_chip_family(family);
+
    if (!shader->process(nir))
       return nullptr;
 

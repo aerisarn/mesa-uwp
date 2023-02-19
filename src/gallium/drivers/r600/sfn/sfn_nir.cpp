@@ -978,7 +978,8 @@ r600_shader_from_nir(struct r600_context *rctx,
    r600_screen *rscreen = rctx->screen;
 
    r600::Shader *shader =
-      r600::Shader::translate_from_nir(sh, &sel->so, gs_shader, *key, rctx->isa->hw_class);
+      r600::Shader::translate_from_nir(sh, &sel->so, gs_shader, *key,
+                                       rctx->isa->hw_class, rscreen->b.family);
 
    assert(shader);
    if (!shader)
