@@ -5804,6 +5804,7 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
       si_pm4_set_reg(pm4, R_028C4C_PA_SC_CONSERVATIVE_RASTERIZATION_CNTL,
                      S_028C4C_NULL_SQUAD_AA_MASK_ENABLE(1));
 
+      si_pm4_set_reg(pm4, R_028AAC_VGT_ESGS_RING_ITEMSIZE, 1);
       si_pm4_set_reg(pm4, R_030968_VGT_INSTANCE_BASE_ID, 0);
 
       if (sctx->gfx_level < GFX11) {

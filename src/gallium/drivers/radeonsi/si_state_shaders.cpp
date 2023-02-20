@@ -934,6 +934,11 @@ static void si_emit_shader_gs(struct si_context *sctx)
 {
    struct si_shader *shader = sctx->queued.named.gs;
 
+   if (sctx->gfx_level >= GFX9) {
+      SET_FIELD(sctx->current_gs_state, GS_STATE_ESGS_VERTEX_STRIDE,
+                shader->key.ge.part.gs.es->info.esgs_vertex_stride / 4);
+   }
+
    radeon_begin(&sctx->gfx_cs);
 
    /* R_028A60_VGT_GSVS_RING_OFFSET_1, R_028A64_VGT_GSVS_RING_OFFSET_2
@@ -971,10 +976,6 @@ static void si_emit_shader_gs(struct si_context *sctx)
       radeon_opt_set_context_reg(sctx, R_028A94_VGT_GS_MAX_PRIMS_PER_SUBGROUP,
                                  SI_TRACKED_VGT_GS_MAX_PRIMS_PER_SUBGROUP,
                                  shader->gs.vgt_gs_max_prims_per_subgroup);
-      /* R_028AAC_VGT_ESGS_RING_ITEMSIZE */
-      radeon_opt_set_context_reg(sctx, R_028AAC_VGT_ESGS_RING_ITEMSIZE,
-                                 SI_TRACKED_VGT_ESGS_RING_ITEMSIZE,
-                                 shader->gs.vgt_esgs_ring_itemsize);
 
       if (shader->key.ge.part.gs.es->stage == MESA_SHADER_TESS_EVAL)
          radeon_opt_set_context_reg(sctx, R_028B6C_VGT_TF_PARAM, SI_TRACKED_VGT_TF_PARAM,
@@ -1175,6 +1176,9 @@ bool gfx10_is_ngg_passthrough(struct si_shader *shader)
 /* Common tail code for NGG primitive shaders. */
 static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader *shader)
 {
+   SET_FIELD(sctx->current_gs_state, GS_STATE_ESGS_VERTEX_STRIDE,
+             shader->ngg.esgs_vertex_stride);
+
    radeon_begin(&sctx->gfx_cs);
    radeon_opt_set_context_reg(sctx, R_0287FC_GE_MAX_OUTPUT_PER_SUBGROUP,
                               SI_TRACKED_GE_MAX_OUTPUT_PER_SUBGROUP,
@@ -1189,9 +1193,6 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader
    }
    radeon_opt_set_context_reg(sctx, R_028B90_VGT_GS_INSTANCE_CNT, SI_TRACKED_VGT_GS_INSTANCE_CNT,
                               shader->ngg.vgt_gs_instance_cnt);
-   radeon_opt_set_context_reg(sctx, R_028AAC_VGT_ESGS_RING_ITEMSIZE,
-                              SI_TRACKED_VGT_ESGS_RING_ITEMSIZE,
-                              shader->ngg.vgt_esgs_ring_itemsize);
    radeon_opt_set_context_reg(sctx, R_0286C4_SPI_VS_OUT_CONFIG, SI_TRACKED_SPI_VS_OUT_CONFIG,
                               shader->ngg.spi_vs_out_config);
    radeon_opt_set_context_reg2(
@@ -1441,10 +1442,10 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
                                         gs_sel->info.writes_primid);
 
    if (gs_stage == MESA_SHADER_GEOMETRY) {
-      shader->ngg.vgt_esgs_ring_itemsize = es_sel->info.esgs_vertex_stride / 4;
+      shader->ngg.esgs_vertex_stride = es_sel->info.esgs_vertex_stride / 4;
       shader->ngg.vgt_gs_max_vert_out = gs_sel->info.base.gs.vertices_out;
    } else {
-      shader->ngg.vgt_esgs_ring_itemsize = 1;
+      shader->ngg.esgs_vertex_stride = 1;
    }
 
    if (es_stage == MESA_SHADER_TESS_EVAL)
