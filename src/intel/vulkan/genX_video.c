@@ -249,8 +249,8 @@ anv_h264_decode_video(struct anv_cmd_buffer *cmd_buffer,
 
       avc_img.WeightedBiPredictionIDC = pps->weighted_bipred_idc;
       avc_img.WeightedPredictionEnable = pps->flags.weighted_pred_flag;
-      avc_img.FirstChromaQPOffset = pps->chroma_qp_index_offset & 0x1f;
-      avc_img.SecondChromaQPOffset = pps->second_chroma_qp_index_offset & 0x1f;
+      avc_img.FirstChromaQPOffset = pps->chroma_qp_index_offset;
+      avc_img.SecondChromaQPOffset = pps->second_chroma_qp_index_offset;
       avc_img.FieldPicture = h264_pic_info->pStdPictureInfo->flags.field_pic_flag;
       avc_img.MBAFFMode = (sps->flags.mb_adaptive_frame_field_flag &&
                            !h264_pic_info->pStdPictureInfo->flags.field_pic_flag);
