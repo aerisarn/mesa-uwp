@@ -4674,6 +4674,16 @@ bi_lower_load_output(nir_builder *b, nir_instr *instr, UNUSED void *data)
    return true;
 }
 
+bool
+bifrost_nir_lower_load_output(nir_shader *nir)
+{
+   assert(nir->info.stage == MESA_SHADER_FRAGMENT);
+
+   return nir_shader_instructions_pass(
+      nir, bi_lower_load_output,
+      nir_metadata_block_index | nir_metadata_dominance, NULL);
+}
+
 void
 bifrost_preprocess_nir(nir_shader *nir, unsigned gpu_id)
 {
@@ -4730,8 +4740,7 @@ bifrost_preprocess_nir(nir_shader *nir, unsigned gpu_id)
       NIR_PASS_V(nir, nir_shader_instructions_pass, bi_lower_sample_mask_writes,
                  nir_metadata_block_index | nir_metadata_dominance, NULL);
 
-      NIR_PASS_V(nir, nir_shader_instructions_pass, bi_lower_load_output,
-                 nir_metadata_block_index | nir_metadata_dominance, NULL);
+      NIR_PASS_V(nir, bifrost_nir_lower_load_output);
    } else if (nir->info.stage == MESA_SHADER_VERTEX) {
       if (gpu_id >= 0x9000) {
          NIR_PASS_V(nir, nir_lower_mediump_io, nir_var_shader_out,
