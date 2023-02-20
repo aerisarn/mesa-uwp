@@ -259,8 +259,6 @@ enum
  * in the shader via vs_state_bits in LS/HS.
  */
 /* bit gap */
-#define VS_STATE_LS_OUT_PATCH_SIZE__SHIFT    11
-#define VS_STATE_LS_OUT_PATCH_SIZE__MASK     0x1fff
 #define VS_STATE_LS_OUT_VERTEX_SIZE__SHIFT   24
 #define VS_STATE_LS_OUT_VERTEX_SIZE__MASK    0xff
 

@@ -782,7 +782,6 @@ static void si_emit_derived_tess_state(struct si_context *sctx)
    /* Compute userdata SGPRs. */
    assert(((input_vertex_size / 4) & ~0xff) == 0);
    assert(((output_vertex_size / 4) & ~0xff) == 0);
-   assert(((input_patch_size / 4) & ~0x1fff) == 0);
    assert(((output_patch_size / 4) & ~0x1fff) == 0);
    assert(((output_patch0_offset / 4) & ~0xffff) == 0);
    assert(((perpatch_output_offset / 4) & ~0xffff) == 0);
@@ -813,7 +812,6 @@ static void si_emit_derived_tess_state(struct si_context *sctx)
    }
 
    /* Set SI_SGPR_VS_STATE_BITS. */
-   SET_FIELD(sctx->current_vs_state, VS_STATE_LS_OUT_PATCH_SIZE, input_patch_size / 4);
    SET_FIELD(sctx->current_vs_state, VS_STATE_LS_OUT_VERTEX_SIZE, input_vertex_size / 4);
 
    /* We should be able to support in-shader LDS use with LLVM >= 9
@@ -1197,9 +1195,7 @@ static void si_emit_vs_state(struct si_context *sctx, unsigned index_size)
       vs_state |= ENCODE_FIELD(VS_STATE_INDEXED, 1);
 
    /* Copy all state bits from vs_state to gs_state except the LS bits. */
-   gs_state |= vs_state &
-               CLEAR_FIELD(VS_STATE_LS_OUT_PATCH_SIZE) &
-               CLEAR_FIELD(VS_STATE_LS_OUT_VERTEX_SIZE);
+   gs_state |= vs_state & CLEAR_FIELD(VS_STATE_LS_OUT_VERTEX_SIZE);
 
    if (vs_state != sctx->last_vs_state ||
        ((HAS_GS || NGG) && gs_state != sctx->last_gs_state)) {

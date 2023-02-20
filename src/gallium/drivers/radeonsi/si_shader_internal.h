@@ -63,8 +63,6 @@ struct si_shader_args {
     *            Expand to FP32 like this: ((0x70 | value) << 23);
     *            With 0x70 = 112, we get 2^(112 + value - 127) = 2^(value - 15)
     *            = 1/2^(15 - value) in FP32
-    *   [11:23] = stride between patches in DW = num_inputs * num_vertices * 4
-    *             max = 32*32*4 + 32*4
     *   [24:31] = stride between vertices in DW = num_inputs * 4
     *             max = 32*4
     */
