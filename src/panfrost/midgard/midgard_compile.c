@@ -363,7 +363,10 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend, bool is_blit)
 
    /* Midgard image ops coordinates are 16-bit instead of 32-bit */
    NIR_PASS(progress, nir, midgard_nir_lower_image_bitsize);
-   NIR_PASS(progress, nir, midgard_nir_lower_helper_writes);
+
+   if (nir->info.stage == MESA_SHADER_FRAGMENT)
+      NIR_PASS(progress, nir, nir_lower_helper_writes, true);
+
    NIR_PASS(progress, nir, pan_lower_helper_invocation);
    NIR_PASS(progress, nir, pan_lower_sample_pos);
 
