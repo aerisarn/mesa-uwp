@@ -5088,6 +5088,7 @@ nir_shader * nir_create_passthrough_gs(const nir_shader_compiler_options *option
                                        const nir_shader *prev_stage,
                                        enum shader_prim primitive_type,
                                        int flat_interp_mask_offset,
+                                       int last_pv_vert_offset,
                                        bool emulate_edgeflags,
                                        bool force_line_strip_out);
 
