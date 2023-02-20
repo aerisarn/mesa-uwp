@@ -2942,6 +2942,22 @@ nir_binding nir_chase_binding(nir_src rsrc)
    if (!intrin)
       return (nir_binding){0};
 
+   /* Intel resource, similar to load_vulkan_descriptor after it has been
+    * lowered.
+    */
+   if (intrin->intrinsic == nir_intrinsic_resource_intel) {
+      res.success = true;
+      res.desc_set = nir_intrinsic_desc_set(intrin);
+      res.binding = nir_intrinsic_binding(intrin);
+      /* nir_intrinsic_resource_intel has 3 sources, but src[2] is included in
+       * src[1], it is kept around for other purposes.
+       */
+      res.num_indices = 2;
+      res.indices[0] = intrin->src[0];
+      res.indices[1] = intrin->src[1];
+      return res;
+   }
+
    /* skip load_vulkan_descriptor */
    if (intrin->intrinsic == nir_intrinsic_load_vulkan_descriptor) {
       intrin = nir_src_as_intrinsic(intrin->src[0]);
