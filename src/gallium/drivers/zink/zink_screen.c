@@ -2905,6 +2905,10 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
          mesa_loge("Cannot use db descriptor mode without robustness2.nullDescriptor");
          goto fail;
       }
+      if (ZINK_FBFETCH_DESCRIPTOR_SIZE < screen->info.db_props.inputAttachmentDescriptorSize) {
+         mesa_loge("Cannot use db descriptor mode with inputAttachmentDescriptorSize(%u) > %u", (unsigned)screen->info.db_props.inputAttachmentDescriptorSize, ZINK_FBFETCH_DESCRIPTOR_SIZE);
+         goto fail;
+      }
       if (screen->compact_descriptors) {
          /* TODO: bindless */
          if (screen->info.db_props.maxDescriptorBufferBindings < 3) {
