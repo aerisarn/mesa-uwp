@@ -83,6 +83,7 @@ zink_debug_options[] = {
    { "gpl", ZINK_DEBUG_GPL, "Force using Graphics Pipeline Library for all shaders" },
    { "shaderdb", ZINK_DEBUG_SHADERDB, "Do stuff to make shader-db work" },
    { "rp", ZINK_DEBUG_RP, "Enable renderpass tracking/optimizations" },
+   { "norp", ZINK_DEBUG_NORP, "Disable renderpass tracking/optimizations" },
    DEBUG_NAMED_VALUE_END
 };
 
