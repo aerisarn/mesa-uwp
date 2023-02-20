@@ -39,8 +39,9 @@
 #include "util/mesa-sha1.h"
 #include "vk_shader_module.h"
 
-#include "pan_shader.h"
+#include "compiler/bifrost_nir.h"
 #include "util/pan_lower_framebuffer.h"
+#include "pan_shader.h"
 
 #include "vk_util.h"
 
@@ -181,8 +182,10 @@ panvk_lower_blend(struct panfrost_device *pdev, nir_shader *nir,
       lower_blend = true;
    }
 
-   if (lower_blend)
+   if (lower_blend) {
       NIR_PASS_V(nir, nir_lower_blend, &options);
+      NIR_PASS_V(nir, bifrost_nir_lower_load_output);
+   }
 }
 
 static bool
@@ -350,15 +353,6 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
    NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_lower_var_copies);
 
-   /* We have to run nir_lower_blend() after we've gotten rid of copies (it
-    * requires load/store) and before we assign output locations.
-    */
-   if (stage == MESA_SHADER_FRAGMENT) {
-      /* This is required for nir_lower_blend */
-      NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, true);
-      panvk_lower_blend(pdev, nir, &inputs, blend_state);
-   }
-
    nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs, stage);
    nir_assign_io_var_locations(nir, nir_var_shader_out, &nir->num_outputs, stage);
 
@@ -374,6 +368,10 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
    }
 
    pan_shader_preprocess(nir, inputs.gpu_id);
+
+   if (stage == MESA_SHADER_FRAGMENT) {
+      panvk_lower_blend(pdev, nir, &inputs, blend_state);
+   }
 
    struct sysval_options sysval_options = {
       .static_blend_constants =
