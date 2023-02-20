@@ -50,22 +50,7 @@ struct si_shader_args {
    /* API VS */
    struct ac_arg vb_descriptors[5];
    struct ac_arg vertex_index0;
-   /* VS states and layout of LS outputs / TCS inputs at the end
-    *   [0] = clamp vertex color
-    *   [1] = indexed
-    *   [2:3] = NGG: output primitive type
-    *   [4:5] = NGG: provoking vertex index
-    *   [6]   = NGG: streamout queries enabled
-    *   [7:10] = NGG: small prim filter precision = num_samples / quant_mode,
-    *            but in reality it's: 1/2^n, from 1/16 to 1/4096 = 1/2^4 to 1/2^12
-    *            Only the first 4 bits of the exponent are stored.
-    *            Set it like this: (fui(num_samples / quant_mode) >> 23)
-    *            Expand to FP32 like this: ((0x70 | value) << 23);
-    *            With 0x70 = 112, we get 2^(112 + value - 127) = 2^(value - 15)
-    *            = 1/2^(15 - value) in FP32
-    *   [24:31] = stride between vertices in DW = num_inputs * 4
-    *             max = 32*4
-    */
+   /* VS state bits. See the VS_STATE_* and GS_STATE_* definitions. */
    struct ac_arg vs_state_bits;
    struct ac_arg vs_blit_inputs;
 

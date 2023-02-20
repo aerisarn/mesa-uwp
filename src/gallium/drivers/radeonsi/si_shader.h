@@ -260,12 +260,19 @@ enum
  */
 /* bit gap */
 #define VS_STATE_LS_OUT_VERTEX_SIZE__SHIFT   24
-#define VS_STATE_LS_OUT_VERTEX_SIZE__MASK    0xff
+#define VS_STATE_LS_OUT_VERTEX_SIZE__MASK    0xff /* max 32 * 4 + 1 */
 
 /* These fields are only set in current_gs_state in si_context, and they are accessible
  * in the shader via vs_state_bits in legacy GS, the GS copy shader, and any NGG shader.
  */
 /* bit gap */
+/* Small prim filter precision = num_samples / quant_mode, which can only be equal to 1/2^n
+ * where n is between 4 and 12. Knowing that, we only need to store 4 bits of the FP32 exponent.
+ * Set it like this: value = (fui(num_samples / quant_mode) >> 23) & 0xf;
+ * Expand to FP32 like this: ((0x70 | value) << 23);
+ * With 0x70 = 112, we get 2^(112 + value - 127) = 2^(value - 15), which is always a negative
+ * exponent and it's equal to 1/2^(15 - value).
+ */
 #define GS_STATE_SMALL_PRIM_PRECISION_NO_AA__SHIFT 18
 #define GS_STATE_SMALL_PRIM_PRECISION_NO_AA__MASK  0xf
 #define GS_STATE_SMALL_PRIM_PRECISION__SHIFT    22
