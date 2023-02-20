@@ -4751,7 +4751,6 @@ bifrost_preprocess_nir(nir_shader *nir, unsigned gpu_id)
    }
 
    NIR_PASS_V(nir, nir_lower_ssbo);
-   NIR_PASS_V(nir, pan_nir_lower_zs_store);
    NIR_PASS_V(nir, pan_lower_sample_pos);
    NIR_PASS_V(nir, nir_lower_bit_size, bi_lower_bit_size, NULL);
    NIR_PASS_V(nir, nir_lower_64bit_phis);
@@ -5166,6 +5165,11 @@ bifrost_compile_shader_nir(nir_shader *nir,
                            struct pan_shader_info *info)
 {
    bifrost_debug = debug_get_option_bifrost_debug();
+
+   /* Combine stores late, to give the driver a chance to lower dual-source
+    * blending as regular store_output intrinsics.
+    */
+   NIR_PASS_V(nir, pan_nir_lower_zs_store);
 
    bi_optimize_nir(nir, inputs->gpu_id, inputs->is_blend);
 
