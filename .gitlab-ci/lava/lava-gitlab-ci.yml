@@ -115,25 +115,25 @@
 
 .lava-piglit-traces:amd64:
   extends:
-    - .lava-test-deqp:amd64
+    - .lava-test:amd64
     - .lava-piglit
     - .lava-traces-base
 
 .lava-piglit-traces:armhf:
   extends:
-    - .lava-test-deqp:armhf
+    - .lava-test:armhf
     - .lava-piglit
     - .lava-traces-base
 
 .lava-piglit-traces:arm64:
   extends:
-    - .lava-test-deqp:arm64
+    - .lava-test:arm64
     - .lava-piglit
     - .lava-traces-base
 
 .lava-piglit:amd64:
   extends:
-    - .lava-test-deqp:amd64
+    - .lava-test:amd64
     - .lava-piglit
 
 .lava-piglit:arm64:
