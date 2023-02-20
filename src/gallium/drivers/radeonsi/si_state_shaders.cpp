@@ -771,7 +771,7 @@ static void si_emit_shader_es(struct si_context *sctx)
    radeon_begin(&sctx->gfx_cs);
    radeon_opt_set_context_reg(sctx, R_028AAC_VGT_ESGS_RING_ITEMSIZE,
                               SI_TRACKED_VGT_ESGS_RING_ITEMSIZE,
-                              shader->selector->info.esgs_itemsize / 4);
+                              shader->selector->info.esgs_vertex_stride / 4);
 
    if (shader->selector->stage == MESA_SHADER_TESS_EVAL)
       radeon_opt_set_context_reg(sctx, R_028B6C_VGT_TF_PARAM, SI_TRACKED_VGT_TF_PARAM,
@@ -843,7 +843,7 @@ void gfx9_get_gs_info(struct si_shader_selector *es, struct si_shader_selector *
    /* We can't allow using the whole LDS, because GS waves compete with
     * other shader stages for LDS space. */
    const unsigned max_lds_size = 8 * 1024;
-   const unsigned esgs_itemsize = es->info.esgs_itemsize / 4;
+   const unsigned esgs_itemsize = es->info.esgs_vertex_stride / 4;
    unsigned esgs_lds_size;
 
    /* All these are per subgroup: */
@@ -1136,7 +1136,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
          S_028A44_GS_INST_PRIMS_IN_SUBGRP(shader->gs_info.gs_inst_prims_in_subgroup);
       shader->gs.vgt_gs_max_prims_per_subgroup =
          S_028A94_MAX_PRIMS_PER_SUBGROUP(shader->gs_info.max_prims_per_subgroup);
-      shader->gs.vgt_esgs_ring_itemsize = shader->key.ge.part.gs.es->info.esgs_itemsize / 4;
+      shader->gs.vgt_esgs_ring_itemsize = shader->key.ge.part.gs.es->info.esgs_vertex_stride / 4;
 
       if (es_stage == MESA_SHADER_TESS_EVAL)
          si_set_tesseval_regs(sscreen, shader->key.ge.part.gs.es, shader);
@@ -1472,7 +1472,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
                                         gs_sel->info.writes_primid);
 
    if (gs_stage == MESA_SHADER_GEOMETRY) {
-      shader->ngg.vgt_esgs_ring_itemsize = es_sel->info.esgs_itemsize / 4;
+      shader->ngg.vgt_esgs_ring_itemsize = es_sel->info.esgs_vertex_stride / 4;
       shader->ngg.vgt_gs_max_vert_out = gs_sel->info.base.gs.vertices_out;
    } else {
       shader->ngg.vgt_esgs_ring_itemsize = 1;
@@ -3825,11 +3825,11 @@ bool si_update_gs_ring_buffers(struct si_context *sctx)
    unsigned max_size = ((unsigned)(63.999 * 1024 * 1024) & ~255) * num_se;
 
    /* Calculate the minimum size. */
-   unsigned min_esgs_ring_size = align(es->info.esgs_itemsize * gs_vertex_reuse * wave_size, alignment);
+   unsigned min_esgs_ring_size = align(es->info.esgs_vertex_stride * gs_vertex_reuse * wave_size, alignment);
 
    /* These are recommended sizes, not minimum sizes. */
    unsigned esgs_ring_size =
-      max_gs_waves * 2 * wave_size * es->info.esgs_itemsize * gs->info.gs_input_verts_per_prim;
+      max_gs_waves * 2 * wave_size * es->info.esgs_vertex_stride * gs->info.gs_input_verts_per_prim;
    unsigned gsvs_ring_size = max_gs_waves * 2 * wave_size * gs->info.max_gsvs_emit_size;
 
    min_esgs_ring_size = align(min_esgs_ring_size, alignment);

@@ -140,7 +140,7 @@ retry_select_mode:
          max_out_verts_per_gsprim = gs_sel->info.base.gs.vertices_out;
       }
 
-      esvert_lds_size = es_sel->info.esgs_itemsize / 4;
+      esvert_lds_size = es_sel->info.esgs_vertex_stride / 4;
       gsprim_lds_size = (gs_sel->info.gsvs_vertex_size / 4 + 1) * max_out_verts_per_gsprim;
 
       if (gsprim_lds_size > target_lds_size && !force_multi_cycling) {

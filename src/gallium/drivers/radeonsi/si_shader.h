@@ -405,7 +405,7 @@ struct si_shader_info {
    ubyte culldist_mask;
 
    uint16_t lshs_vertex_stride;
-   uint16_t esgs_itemsize; /* vertex stride */
+   uint16_t esgs_vertex_stride;
    uint16_t gsvs_vertex_size;
    ubyte gs_input_verts_per_prim;
    unsigned max_gsvs_emit_size;
