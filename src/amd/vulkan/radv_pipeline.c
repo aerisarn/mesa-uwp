@@ -3977,9 +3977,6 @@ radv_pipeline_emit_hw_ngg(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf *cs
                           S_028A84_PRIMITIVEID_EN(es_enable_prim_id) |
                              S_028A84_NGG_DISABLE_PROVOK_REUSE(outinfo->export_prim_id));
 
-   radeon_set_context_reg(ctx_cs, R_028AAC_VGT_ESGS_RING_ITEMSIZE,
-                          ngg_state->vgt_esgs_ring_itemsize);
-
    /* NGG specific registers. */
    struct radv_shader *gs = pipeline->base.shaders[MESA_SHADER_GEOMETRY];
    uint32_t gs_num_invocations = gs ? gs->info.gs.invocations : 1;
@@ -4180,8 +4177,13 @@ radv_pipeline_emit_hw_gs(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf *cs,
       ctx_cs, R_028B90_VGT_GS_INSTANCE_CNT,
       S_028B90_CNT(MIN2(gs_num_invocations, 127)) | S_028B90_ENABLE(gs_num_invocations > 0));
 
-   radeon_set_context_reg(ctx_cs, R_028AAC_VGT_ESGS_RING_ITEMSIZE,
-                          gs_state->vgt_esgs_ring_itemsize);
+   if (pdevice->rad_info.gfx_level <= GFX8) {
+      /* GFX6-8: ESGS offchip ring buffer is allocated according to VGT_ESGS_RING_ITEMSIZE.
+       * GFX9+: Only used to set the GS input VGPRs, emulated in shaders.
+       */
+      radeon_set_context_reg(ctx_cs, R_028AAC_VGT_ESGS_RING_ITEMSIZE,
+                             gs_state->vgt_esgs_ring_itemsize);
+   }
 
    va = radv_shader_get_va(gs);
 

@@ -214,6 +214,10 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
    if (physical_device->rad_info.gfx_level <= GFX8)
       si_set_raster_config(physical_device, cs);
 
+   /* Emulated in shader code on GFX9+. */
+   if (physical_device->rad_info.gfx_level >= GFX9)
+      radeon_set_context_reg(cs, R_028AAC_VGT_ESGS_RING_ITEMSIZE, 1);
+
    radeon_set_context_reg(cs, R_028A18_VGT_HOS_MAX_TESS_LEVEL, fui(64));
    if (!has_clear_state)
       radeon_set_context_reg(cs, R_028A1C_VGT_HOS_MIN_TESS_LEVEL, fui(0));
