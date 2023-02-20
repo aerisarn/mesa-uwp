@@ -2308,7 +2308,8 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
             if (lower_filled_quad) {
                nir = zink_create_quads_emulation_gs(
                   &screen->nir_options,
-                  ctx->gfx_stages[prev_vertex_stage]->nir);
+                  ctx->gfx_stages[prev_vertex_stage]->nir,
+                  ZINK_INLINE_VAL_PV_LAST_VERT * 4);
             } else {
                nir = nir_create_passthrough_gs(
                   &screen->nir_options,
@@ -2371,7 +2372,8 @@ zink_create_primitive_emulation_gs(struct zink_context *ctx)
             if (lower_filled_quad) {
                nir = zink_create_quads_emulation_gs(
                   &screen->nir_options,
-                  ctx->gfx_stages[prev_vertex_stage]->nir);
+                  ctx->gfx_stages[prev_vertex_stage]->nir,
+                  ZINK_INLINE_VAL_PV_LAST_VERT * 4);
             } else {
                nir = nir_create_passthrough_gs(
                   &screen->nir_options,

@@ -903,7 +903,8 @@ lower_64bit_pack(nir_shader *shader)
 
 nir_shader *
 zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
-                               const nir_shader *prev_stage)
+                               const nir_shader *prev_stage,
+                               int last_pv_vert_offset)
 {
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_GEOMETRY,
                                                   options,
@@ -959,17 +960,24 @@ zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
       out_vars[num_vars++] = out;
    }
 
-   int mapping[] = {0, 1, 2, 0, 2, 3};
+   int mapping_first[] = {0, 1, 2, 0, 2, 3};
+   int mapping_last[] = {0, 1, 3, 1, 2, 3};
+   nir_ssa_def *last_pv_vert_def = nir_load_ubo(&b, 1, 32,
+                                                nir_imm_int(&b, 0), nir_imm_int(&b, last_pv_vert_offset),
+                                                .align_mul = 4, .align_offset = 0, .range_base = 0, .range = ~0);
+   last_pv_vert_def = nir_ine_imm(&b, last_pv_vert_def, 0);
    for (unsigned i = 0; i < 6; ++i) {
       /* swap indices 2 and 3 */
-      int idx = mapping[i];
+      nir_ssa_def *idx = nir_bcsel(&b, last_pv_vert_def,
+                                   nir_imm_int(&b, mapping_last[i]),
+                                   nir_imm_int(&b, mapping_first[i]));
       /* Copy inputs to outputs. */
       for (unsigned j = 0; j < num_vars; ++j) {
          if (in_vars[j]->data.location == VARYING_SLOT_EDGE) {
             continue;
          }
          /* no need to use copy_var to save a lower pass */
-         nir_ssa_def *value = nir_load_array_var_imm(&b, in_vars[j], idx);
+         nir_ssa_def *value = nir_load_array_var(&b, in_vars[j], idx);
          nir_store_var(&b, out_vars[j], value,
                        (1u << value->num_components) - 1);
       }
