@@ -46,6 +46,7 @@
 #include "util/log.h"
 #include "util/macros.h"
 #include "util/ralloc.h"
+#include "util/u_dynarray.h"
 #include "util/u_math.h"
 #include "vk_alloc.h"
 #include "vk_graphics_state.h"
@@ -1789,11 +1790,12 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
       }
    }
 
-   result = pvr_gpu_upload_usc(device,
-                               ctx->binary[MESA_SHADER_VERTEX].data,
-                               ctx->binary[MESA_SHADER_VERTEX].size,
-                               cache_line_size,
-                               &gfx_pipeline->shader_state.vertex.bo);
+   result =
+      pvr_gpu_upload_usc(device,
+                         util_dynarray_begin(&ctx->binary[MESA_SHADER_VERTEX]),
+                         ctx->binary[MESA_SHADER_VERTEX].size,
+                         cache_line_size,
+                         &gfx_pipeline->shader_state.vertex.bo);
    if (result != VK_SUCCESS)
       goto err_free_build_context;
 
@@ -1821,11 +1823,12 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
       }
    }
 
-   result = pvr_gpu_upload_usc(device,
-                               ctx->binary[MESA_SHADER_FRAGMENT].data,
-                               ctx->binary[MESA_SHADER_FRAGMENT].size,
-                               cache_line_size,
-                               &gfx_pipeline->shader_state.fragment.bo);
+   result = pvr_gpu_upload_usc(
+      device,
+      util_dynarray_begin(&ctx->binary[MESA_SHADER_FRAGMENT]),
+      ctx->binary[MESA_SHADER_FRAGMENT].size,
+      cache_line_size,
+      &gfx_pipeline->shader_state.fragment.bo);
    if (result != VK_SUCCESS)
       goto err_free_vertex_bo;
 
