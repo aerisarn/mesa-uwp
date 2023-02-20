@@ -1164,12 +1164,16 @@ genX(cmd_buffer_flush_gfx_runtime_state)(struct anv_cmd_buffer *cmd_buffer)
          SET_VP(VIEWPORT_SF_CLIP, vp_sf_clip.elem[i], YMaxViewPort);
 #undef SET_VP
 
+         const bool depth_range_unrestricted =
+            cmd_buffer->device->vk.enabled_extensions.EXT_depth_range_unrestricted;
+
+         float min_depth_limit = depth_range_unrestricted ? -FLT_MAX : 0.0;
+         float max_depth_limit = depth_range_unrestricted ? FLT_MAX : 1.0;
+
          float min_depth = dyn->rs.depth_clamp_enable ?
-                           MIN2(vp->minDepth, vp->maxDepth) :
-                           0.0f;
+                           MIN2(vp->minDepth, vp->maxDepth) : min_depth_limit;
          float max_depth = dyn->rs.depth_clamp_enable ?
-                           MAX2(vp->minDepth, vp->maxDepth) :
-                           1.0f;
+                           MAX2(vp->minDepth, vp->maxDepth) : max_depth_limit;
 
          SET(VIEWPORT_CC, vp_cc.elem[i].MinimumDepth, min_depth);
          SET(VIEWPORT_CC, vp_cc.elem[i].MaximumDepth, max_depth);
