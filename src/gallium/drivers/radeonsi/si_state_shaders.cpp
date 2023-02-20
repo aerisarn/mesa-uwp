@@ -1127,9 +1127,8 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 
       shader->gs.spi_shader_pgm_rsrc3_gs = S_00B21C_CU_EN(0xffff) |
                                            S_00B21C_WAVE_LIMIT(0x3F);
-      shader->gs.spi_shader_pgm_rsrc4_gs =
-         (sscreen->info.gfx_level >= GFX11 ? S_00B204_CU_EN_GFX11(1) : S_00B204_CU_EN_GFX10(0xffff)) |
-         S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(0);
+      shader->gs.spi_shader_pgm_rsrc4_gs = S_00B204_CU_EN_GFX10(0xffff) |
+                                           S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(0);
 
       shader->gs.vgt_gs_onchip_cntl =
          S_028A44_ES_VERTS_PER_SUBGRP(shader->gs_info.es_verts_per_subgroup) |
