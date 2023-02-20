@@ -179,6 +179,9 @@ static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_s
       else
          unreachable("no nir_load_lshs_vertex_stride_amd");
       break;
+   case nir_intrinsic_load_esgs_vertex_stride_amd:
+      replacement = nir_imm_int(b, 1);
+      break;
    case nir_intrinsic_load_tcs_num_patches_amd: {
       nir_ssa_def *tmp = ac_nir_unpack_arg(b, &args->ac, args->tcs_offchip_layout, 0, 6);
       replacement = nir_iadd_imm(b, tmp, 1);
