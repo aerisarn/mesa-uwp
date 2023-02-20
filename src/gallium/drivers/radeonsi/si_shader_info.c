@@ -784,11 +784,10 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
       /* Add 1 dword to reduce LDS bank conflicts, so that each vertex
        * will start on a different bank. (except for the maximum 32*16).
        */
-      if (info->lshs_vertex_stride < 32 * 16)
-         info->lshs_vertex_stride += 4;
+      info->lshs_vertex_stride += 4;
 
       /* For the ESGS ring in LDS, add 1 dword to reduce LDS bank
-       * conflicts, i.e. each vertex will start at a different bank.
+       * conflicts, i.e. each vertex will start on a different bank.
        */
       if (sscreen->info.gfx_level >= GFX9)
          info->esgs_itemsize += 4;
