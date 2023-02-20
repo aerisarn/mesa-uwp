@@ -702,6 +702,10 @@ zink_bo_map(struct zink_screen *screen, struct zink_bo *bo)
             simple_mtx_unlock(&real->lock);
             return NULL;
          }
+         if (unlikely(zink_debug & ZINK_DEBUG_MAP)) {
+            p_atomic_add(&screen->mapped_vram, real->base.size);
+            mesa_loge("NEW MAP(%"PRIu64") TOTAL(%"PRIu64")", real->base.size, screen->mapped_vram);
+         }
          p_atomic_set(&real->u.real.cpu_ptr, cpu);
       }
       simple_mtx_unlock(&real->lock);
@@ -720,6 +724,10 @@ zink_bo_unmap(struct zink_screen *screen, struct zink_bo *bo)
 
    if (p_atomic_dec_zero(&real->u.real.map_count)) {
       p_atomic_set(&real->u.real.cpu_ptr, NULL);
+      if (unlikely(zink_debug & ZINK_DEBUG_MAP)) {
+         p_atomic_add(&screen->mapped_vram, -real->base.size);
+         mesa_loge("UNMAP(%"PRIu64") TOTAL(%"PRIu64")", real->base.size, screen->mapped_vram);
+      }
       VKSCR(UnmapMemory)(screen->dev, real->mem);
    }
 }

@@ -84,6 +84,7 @@ zink_debug_options[] = {
    { "shaderdb", ZINK_DEBUG_SHADERDB, "Do stuff to make shader-db work" },
    { "rp", ZINK_DEBUG_RP, "Enable renderpass tracking/optimizations" },
    { "norp", ZINK_DEBUG_NORP, "Disable renderpass tracking/optimizations" },
+   { "map", ZINK_DEBUG_MAP, "Track amount of mapped VRAM" },
    DEBUG_NAMED_VALUE_END
 };
 

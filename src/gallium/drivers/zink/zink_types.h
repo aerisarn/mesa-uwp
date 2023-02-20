@@ -219,6 +219,7 @@ enum zink_debug {
    ZINK_DEBUG_SHADERDB = (1<<8),
    ZINK_DEBUG_RP = (1<<9),
    ZINK_DEBUG_NORP = (1<<10),
+   ZINK_DEBUG_MAP = (1<<11),
 };
 
 
@@ -1319,6 +1320,7 @@ struct zink_screen {
    uint64_t total_video_mem;
    uint64_t clamp_video_mem;
    uint64_t total_mem;
+   uint64_t mapped_vram;
 
    VkInstance instance;
    struct zink_instance_info instance_info;
