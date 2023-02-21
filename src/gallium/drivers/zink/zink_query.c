@@ -22,6 +22,7 @@ struct zink_query_pool {
    VkQueryPipelineStatisticFlags pipeline_stats;
    VkQueryPool query_pool;
    unsigned last_range;
+   bool overflow;
 };
 
 struct zink_query_buffer {
@@ -124,11 +125,17 @@ static void
 reset_vk_query_pool(struct zink_context *ctx, struct zink_vk_query *vkq)
 {
    struct zink_batch *batch = &ctx->batch;
-   if (vkq->needs_reset) {
+   if (vkq->pool->overflow) {
       zink_batch_no_rp(ctx);
-      VKCTX(CmdResetQueryPool)(batch->state->cmdbuf, vkq->pool->query_pool, vkq->query_id, 1);
-      vkq->needs_reset = false;
+      /* this pool has overflowed: reset all queries once to avoid splitting renderpasses later */
+      VKCTX(CmdResetQueryPool)(batch->state->cmdbuf, vkq->pool->query_pool, 0, NUM_QUERIES);
+
+   } else if (vkq->needs_reset) {
+      VKCTX(CmdResetQueryPool)(batch->state->barrier_cmdbuf, vkq->pool->query_pool, vkq->query_id, 1);
+      batch->state->has_barriers = true;
    }
+   vkq->pool->overflow = false;
+   vkq->needs_reset = false;
 }
 
 void
@@ -429,8 +436,10 @@ query_pool_get_range(struct zink_context *ctx, struct zink_query *q)
          vkq->query_id = pool->last_range;
 
          pool->last_range++;
-         if (pool->last_range == NUM_QUERIES)
+         if (pool->last_range == NUM_QUERIES) {
             pool->last_range = 0;
+            pool->overflow = true;
+         }
       }
       if (start->vkq[i])
          FREE(start->vkq[i]);
