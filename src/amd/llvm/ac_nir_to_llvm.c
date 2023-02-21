@@ -4168,16 +4168,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, visit_first_invocation(ctx),
                              ac_get_thread_id(&ctx->ac), "");
       break;
-   case nir_intrinsic_byte_permute_amd:
-      if (LLVM_VERSION_MAJOR < 13) {
-         assert("unimplemented byte_permute, LLVM 12 doesn't have amdgcn.perm");
-         break;
-      }
-      result = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.perm", ctx->ac.i32,
-                                  (LLVMValueRef[]){get_src(ctx, instr->src[0]),
-                                                   get_src(ctx, instr->src[1]),
-                                                   get_src(ctx, instr->src[2])}, 3, 0);
-      break;
    case nir_intrinsic_lane_permute_16_amd:
       result = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.permlane16", ctx->ac.i32,
                                   (LLVMValueRef[]){get_src(ctx, instr->src[0]),
