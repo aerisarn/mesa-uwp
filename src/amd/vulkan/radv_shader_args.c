@@ -638,10 +638,6 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
    case MESA_SHADER_TASK:
       declare_global_input_sgprs(info, &user_sgpr_info, args);
 
-      if (info->cs.is_rt_shader) {
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_PTR, &args->ac.sbt_descriptors);
-      }
-
       if (info->cs.uses_grid_size) {
          if (args->load_grid_size_from_user_sgpr)
             ac_add_arg(&args->ac, AC_ARG_SGPR, 3, AC_ARG_INT, &args->ac.num_work_groups);
@@ -649,15 +645,13 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
             ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_PTR, &args->ac.num_work_groups);
       }
 
-      if (info->cs.uses_ray_launch_size) {
+      if (info->cs.is_rt_shader) {
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_DESC_PTR, &args->ac.sbt_descriptors);
          ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_PTR, &args->ac.ray_launch_size_addr);
-      }
-
-      if (info->cs.uses_dynamic_rt_callable_stack) {
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT,
-                    &args->ac.rt_dynamic_callable_stack_base);
          ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_PTR,
                     &args->ac.rt_traversal_shader_addr);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT,
+                    &args->ac.rt_dynamic_callable_stack_base);
       }
 
       if (info->vs.needs_draw_id) {
@@ -934,11 +928,11 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
       if (args->ac.ray_launch_size_addr.used) {
          set_loc_shader_ptr(args, AC_UD_CS_RAY_LAUNCH_SIZE_ADDR, &user_sgpr_idx);
       }
-      if (args->ac.rt_dynamic_callable_stack_base.used) {
-         set_loc_shader(args, AC_UD_CS_RAY_DYNAMIC_CALLABLE_STACK_BASE, &user_sgpr_idx, 1);
-      }
       if (args->ac.rt_traversal_shader_addr.used) {
          set_loc_shader_ptr(args, AC_UD_CS_TRAVERSAL_SHADER_ADDR, &user_sgpr_idx);
+      }
+      if (args->ac.rt_dynamic_callable_stack_base.used) {
+         set_loc_shader(args, AC_UD_CS_RAY_DYNAMIC_CALLABLE_STACK_BASE, &user_sgpr_idx, 1);
       }
       if (args->ac.draw_id.used) {
          set_loc_shader(args, AC_UD_CS_TASK_DRAW_ID, &user_sgpr_idx, 1);

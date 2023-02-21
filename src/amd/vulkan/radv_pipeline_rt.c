@@ -611,7 +611,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    VkPipelineShaderStageCreateInfo stage = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
       .pNext = NULL,
-      .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+      .stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR,
       .module = vk_shader_module_to_handle(&module),
       .pName = "main",
    };
@@ -664,13 +664,18 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
          goto shader_fail;
    }
 
-   radv_compute_pipeline_init(&rt_pipeline->base, pipeline_layout);
-
    rt_pipeline->stack_size = compute_rt_stack_size(pCreateInfo, rt_pipeline->groups);
    rt_pipeline->base.base.shaders[MESA_SHADER_COMPUTE] = radv_create_rt_prolog(device);
 
-   *pPipeline = radv_pipeline_to_handle(&rt_pipeline->base.base);
+   combine_config(&rt_pipeline->base.base.shaders[MESA_SHADER_COMPUTE]->config,
+                  &rt_pipeline->base.base.shaders[MESA_SHADER_RAYGEN]->config);
 
+   postprocess_rt_config(&rt_pipeline->base.base.shaders[MESA_SHADER_COMPUTE]->config,
+                         device->physical_device->rt_wave_size);
+
+   radv_compute_pipeline_init(&rt_pipeline->base, pipeline_layout);
+
+   *pPipeline = radv_pipeline_to_handle(&rt_pipeline->base.base);
 shader_fail:
    ralloc_free(shader);
 pipeline_fail:
