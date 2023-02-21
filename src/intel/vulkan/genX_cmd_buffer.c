@@ -7488,18 +7488,29 @@ void genX(CmdBeginRendering)(
    gfx->dirty |= ANV_CMD_DIRTY_PIPELINE;
 
 #if GFX_VER >= 11
-   /* The PIPE_CONTROL command description says:
-    *
-    *    "Whenever a Binding Table Index (BTI) used by a Render Target Message
-    *     points to a different RENDER_SURFACE_STATE, SW must issue a Render
-    *     Target Cache Flush by enabling this bit. When render target flush
-    *     is set due to new association of BTI, PS Scoreboard Stall bit must
-    *     be set in this packet."
-    */
-   anv_add_pending_pipe_bits(cmd_buffer,
-                             ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
-                             ANV_PIPE_STALL_AT_SCOREBOARD_BIT,
-                             "change RT");
+   bool has_color_att = false;
+   for (uint32_t i = 0; i < gfx->color_att_count; i++) {
+      if (pRenderingInfo->pColorAttachments[i].imageView != VK_NULL_HANDLE)
+         has_color_att = true;
+   }
+   if (has_color_att) {
+      /* The PIPE_CONTROL command description says:
+      *
+      *    "Whenever a Binding Table Index (BTI) used by a Render Target Message
+      *     points to a different RENDER_SURFACE_STATE, SW must issue a Render
+      *     Target Cache Flush by enabling this bit. When render target flush
+      *     is set due to new association of BTI, PS Scoreboard Stall bit must
+      *     be set in this packet."
+      *
+      * We assume that a new BeginRendering is always changing the RTs, which
+      * may not be true and cause excessive flushing.  We can trivially skip it
+      * in the case that there are no RTs (depth-only rendering), though.
+      */
+      anv_add_pending_pipe_bits(cmd_buffer,
+                              ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
+                              ANV_PIPE_STALL_AT_SCOREBOARD_BIT,
+                              "change RT");
+   }
 #endif
 
    cmd_buffer_emit_depth_stencil(cmd_buffer);
