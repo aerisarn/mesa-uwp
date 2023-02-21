@@ -716,6 +716,13 @@ struct zink_shader_info {
    bool have_vulkan_memory_model;
 };
 
+enum zink_rast_prim {
+   ZINK_PRIM_POINTS,
+   ZINK_PRIM_LINES,
+   ZINK_PRIM_TRIANGLES,
+   ZINK_PRIM_MAX,
+};
+
 struct zink_shader {
    struct util_live_shader base;
    uint32_t hash;
