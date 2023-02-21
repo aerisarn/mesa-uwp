@@ -62,7 +62,6 @@ struct zink_query {
     */
    struct util_dynarray starts;
 
-   unsigned last_start_idx;
    VkQueryType vkqtype;
    unsigned index;
    bool precise;
@@ -806,7 +805,7 @@ reset_qbos(struct zink_context *ctx, struct zink_query *q)
 static inline unsigned
 get_buffer_offset(struct zink_query *q)
 {
-   return (get_num_starts(q) - q->last_start_idx - 1) * get_num_results(q) * sizeof(uint64_t);
+   return (get_num_starts(q) - 1) * get_num_results(q) * sizeof(uint64_t);
 }
 
 static void
@@ -918,8 +917,6 @@ zink_begin_query(struct pipe_context *pctx,
    reset_qbo(query);
 
    util_dynarray_clear(&query->starts);
-
-   query->last_start_idx = get_num_starts(query);
 
    /* A query must either begin and end inside the same subpass of a render pass
       instance, or must both begin and end outside of a render pass instance
@@ -1267,7 +1264,7 @@ zink_get_query_result_resource(struct pipe_context *pctx,
    struct zink_resource *res = zink_resource(pres);
    unsigned result_size = result_type <= PIPE_QUERY_TYPE_U32 ? sizeof(uint32_t) : sizeof(uint64_t);
    VkQueryResultFlagBits size_flags = result_type <= PIPE_QUERY_TYPE_U32 ? 0 : VK_QUERY_RESULT_64_BIT;
-   unsigned num_queries = (get_num_starts(query) - query->last_start_idx);
+   unsigned num_queries = get_num_starts(query);
    struct zink_query_start *start = util_dynarray_top_ptr(&query->starts, struct zink_query_start);
    unsigned query_id = start->vkq[0]->query_id;
 
