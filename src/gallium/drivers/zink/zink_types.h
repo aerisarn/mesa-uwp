@@ -736,6 +736,7 @@ struct zink_shader {
    bool bindless;
    bool can_inline;
    bool has_uniforms;
+   bool has_edgeflags;
    struct spirv_shader *spirv;
 
    struct {
@@ -1022,6 +1023,7 @@ struct zink_gfx_program {
    unsigned inlined_variant_count[ZINK_GFX_SHADER_COUNT];
    uint32_t default_variant_hash;
    uint8_t inline_variants; //which stages are using inlined uniforms
+   bool has_edgeflags;
 
    /* separable */
    struct zink_gfx_program *full_prog;

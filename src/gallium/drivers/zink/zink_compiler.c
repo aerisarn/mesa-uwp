@@ -4330,6 +4330,9 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    struct zink_shader *ret = rzalloc(NULL, struct zink_shader);
    bool have_psiz = false;
 
+   ret->has_edgeflags = nir->info.stage == MESA_SHADER_VERTEX &&
+                        nir_find_variable_with_location(nir, nir_var_shader_out, VARYING_SLOT_EDGE);
+
    ret->sinfo.have_vulkan_memory_model = screen->info.have_KHR_vulkan_memory_model;
 
    util_queue_fence_init(&ret->precompile.fence);
