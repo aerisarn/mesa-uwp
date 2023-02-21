@@ -125,6 +125,7 @@ reset_vk_query_pool(struct zink_context *ctx, struct zink_vk_query *vkq)
 {
    struct zink_batch *batch = &ctx->batch;
    if (vkq->needs_reset) {
+      zink_batch_no_rp(ctx);
       VKCTX(CmdResetQueryPool)(batch->state->cmdbuf, vkq->pool->query_pool, vkq->query_id, 1);
       vkq->needs_reset = false;
    }
@@ -751,7 +752,6 @@ static void
 reset_query_range(struct zink_context *ctx, struct zink_query *q)
 {
    int num_queries = get_num_queries(q);
-   zink_batch_no_rp(ctx);
    struct zink_query_start *start = util_dynarray_top_ptr(&q->starts, struct zink_query_start);
    for (unsigned i = 0; i < num_queries; i++) {
       reset_vk_query_pool(ctx, start->vkq[i]);
