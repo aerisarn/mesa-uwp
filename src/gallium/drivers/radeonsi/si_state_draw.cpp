@@ -1325,7 +1325,9 @@ static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
                 S_03096C_BREAK_WAVE_AT_EOI(key.u.uses_tess && key.u.tess_uses_prim_id);
    }
 
-   ge_cntl |= S_03096C_PACKET_TO_ONE_PA(si_is_line_stipple_enabled(sctx));
+   /* Note: GE_CNTL.PACKET_TO_ONE_PA should only be set if LINE_STIPPLE_TEX_ENA == 1.
+    * Since we don't use that, we don't have to do anything.
+    */
 
    if (ge_cntl != sctx->last_multi_vgt_param) {
       struct radeon_cmdbuf *cs = &sctx->gfx_cs;

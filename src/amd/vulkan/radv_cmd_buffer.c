@@ -5157,7 +5157,7 @@ gfx10_emit_ge_cntl(struct radv_cmd_buffer *cmd_buffer)
 
    ge_cntl = S_03096C_PRIM_GRP_SIZE_GFX10(primgroup_size) |
              S_03096C_VERT_GRP_SIZE(256) | /* disable vertex grouping */
-             S_03096C_PACKET_TO_ONE_PA(0) /* line stipple */ |
+             S_03096C_PACKET_TO_ONE_PA(0) /* this should only be set if LINE_STIPPLE_TEX_ENA == 1 */ |
              S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi);
 
    if (state->last_ge_cntl != ge_cntl) {
