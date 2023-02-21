@@ -384,6 +384,7 @@ update_gfx_shader_modules(struct zink_context *ctx,
       state->modules[i] = zm->shader;
       if (prog->modules[i] == zm->shader)
          continue;
+      prog->optimal_keys &= !prog->shaders[i]->non_fs.is_generated;
       variant_hash ^= prog->module_hash[i];
       hash_changed = true;
       default_variants &= zm->default_variant;
@@ -565,7 +566,7 @@ ALWAYS_INLINE static void
 update_gfx_program_nonseamless(struct zink_context *ctx, struct zink_gfx_program *prog, bool has_nonseamless)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   if (screen->driconf.inline_uniforms)
+   if (screen->driconf.inline_uniforms || prog->needs_inlining)
       update_gfx_shader_modules(ctx, screen, prog,
                                 ctx->dirty_gfx_stages & prog->stages_present, &ctx->gfx_pipeline_state,
                                 true, has_nonseamless);
@@ -1034,6 +1035,7 @@ zink_create_gfx_program(struct zink_context *ctx,
    prog->ctx = ctx;
    prog->gfx_hash = gfx_hash;
    prog->base.removed = true;
+   prog->optimal_keys = screen->optimal_keys;
 
    prog->has_edgeflags = prog->shaders[MESA_SHADER_VERTEX] &&
                          prog->shaders[MESA_SHADER_VERTEX]->has_edgeflags;
@@ -1045,6 +1047,7 @@ zink_create_gfx_program(struct zink_context *ctx,
       if (stages[i]) {
          prog->shaders[i] = stages[i];
          prog->stages_present |= BITFIELD_BIT(i);
+         prog->optimal_keys &= !prog->shaders[i]->non_fs.is_generated;
       }
    }
    if (stages[MESA_SHADER_TESS_EVAL] && !stages[MESA_SHADER_TESS_CTRL]) {
@@ -2297,6 +2300,7 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
 
          bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY,
                         ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type]);
+         ctx->is_generated_gs_bound = true;
       }
    } else if (ctx->gfx_stages[MESA_SHADER_GEOMETRY] &&
               ctx->gfx_stages[MESA_SHADER_GEOMETRY]->non_fs.is_generated)
@@ -2349,6 +2353,7 @@ zink_create_primitive_emulation_gs(struct zink_context *ctx)
 
          bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY,
                         ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type]);
+         ctx->is_generated_gs_bound = true;
       }
    } else if (ctx->gfx_stages[MESA_SHADER_GEOMETRY] &&
               ctx->gfx_stages[MESA_SHADER_GEOMETRY]->non_fs.is_generated)
