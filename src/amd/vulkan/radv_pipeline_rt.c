@@ -642,6 +642,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    radv_compute_pipeline_init(&rt_pipeline->base, pipeline_layout);
 
    rt_pipeline->stack_size = compute_rt_stack_size(pCreateInfo, rt_pipeline->groups);
+   rt_pipeline->base.base.shaders[MESA_SHADER_COMPUTE] = radv_create_rt_prolog(device);
 
    *pPipeline = radv_pipeline_to_handle(&rt_pipeline->base.base);
 
