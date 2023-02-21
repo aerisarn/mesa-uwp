@@ -460,6 +460,42 @@ SOFTWARE.
 	</encode>
 </bitset>
 
+<bitset name="stsc" extends="#instruction-cat6-a3xx">
+	<doc>
+		STore Shared Const - loads SIZE dwords from HLSQ_SHARED_CONSTS_IMM
+		starting from HLSQ_SHARED_CONSTS_IMM[SRC] and writing them to c[DST]
+	</doc>
+	<display>
+		{SY}{JP}{NAME}.{TYPE} c[{DST}], {SRC}, {SIZE}
+	</display>
+	<gen min="700"/>
+	<pattern pos="0"           >x</pattern>
+	<field   low="1"  high="8" name="SRC" type="#cat6-src">
+		<param name="SRC_IM"/>
+	</field>
+	<derived name="SRC_IM" expr="#true" type="bool"/>
+	<field low="9"  high="13" name="DST_HI" type="uint"/>
+	<pattern low="14"  high="21">xxxxxxxx</pattern>
+	<pattern low="22" high="23">11</pattern>
+	<field   low="24" high="31" name="SIZE" type="uint"/>
+	<field   low="32" high="39" name="DST_LO" type="uint"/>
+	<assert pos="40">0</assert>
+	<pattern low="41" high="48">xxxxxxxx</pattern>
+	<pattern low="52" high="53">xx</pattern>
+	<pattern low="54" high="58">11101</pattern>  <!-- OPC -->
+
+	<derived name="DST" width="13" type="uint">
+		<expr>({DST_HI} &lt;&lt; 8) | {DST_LO}</expr>
+	</derived>
+
+	<encode>
+		<map name="DST_LO">extract_reg_uim(src->srcs[0]) &amp; 0xff</map>
+		<map name="DST_HI">extract_reg_uim(src->srcs[0]) >> 8</map>
+		<map name="SRC">src->srcs[1]</map>
+		<map name="SIZE">src->cat6.iim_val</map>
+	</encode>
+</bitset>
+
 <bitset name="resinfo" extends="#instruction-cat6-a3xx">
 	<display>
 		{SY}{JP}{NAME}.{TYPE}.{D}d {DST}, g[{SSBO}]

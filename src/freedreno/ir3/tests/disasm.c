@@ -241,6 +241,12 @@ static const struct test {
    /* dEQP-VK.image.image_size.cube_array.readonly_writeonly_1x1x12 */
    INSTR_6XX(c7060020_03800000, "stc.u32 c[32], r0.x, 3"), /* stc c[32], r0.x, 3 */
 
+   /* dEQP-VK.pipeline.monolithic.extended_dynamic_state.two_draws_static.stencil_state_face_both_single_gt_replace_clear_102_ref_103_depthfail */
+   INSTR_7XX(c7420000_0cc00000, "stsc.f32 c[0], 0, 12"),
+   /* dEQP-VK.pipeline.monolithic.push_constant.graphics_pipeline.overlap_4_shaders_vert_tess_frag */
+   INSTR_7XX(c7420000_08c00020, "stsc.f32 c[0], 16, 8"),
+   INSTR_7XX(c742006e_08c00220, "stsc.f32 c[366], 16, 8"),
+
    /* custom */
    INSTR_6XX(c7060100_03800000, "stc.u32 c[a1.x], r0.x, 3"), /* stc c[a1.x], r0.x, 3 */
    INSTR_6XX(c7060120_03800000, "stc.u32 c[a1.x+32], r0.x, 3"), /* stc c[a1.x+32], r0.x, 3 */

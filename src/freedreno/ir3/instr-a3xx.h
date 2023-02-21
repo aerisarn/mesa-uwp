@@ -357,6 +357,7 @@ typedef enum {
    OPC_RELOAD_MACRO    = _OPC(6, 80),
 
    OPC_LDC_K           = _OPC(6, 81),
+   OPC_STSC            = _OPC(6, 82),
 
    /* category 7: */
    OPC_BAR             = _OPC(7, 0),
