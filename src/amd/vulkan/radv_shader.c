@@ -762,7 +762,6 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
          .push_const_addr_format = nir_address_format_logical,
          .shared_addr_format = nir_address_format_32bit_offset,
          .constant_addr_format = nir_address_format_64bit_global,
-         .use_deref_buffer_array_length = true,
          .debug =
             {
                .func = radv_spirv_nir_debug,

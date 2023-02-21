@@ -241,7 +241,6 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
       .caps = {
          .variable_pointers = true,
       },
-      .use_deref_buffer_array_length = true,
       .ubo_addr_format = nir_address_format_32bit_index_offset,
       .ssbo_addr_format = dev->vk.enabled_features.robustBufferAccess ?
                           nir_address_format_64bit_bounded_global :

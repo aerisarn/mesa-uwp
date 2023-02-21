@@ -114,7 +114,6 @@ anv_shader_stage_to_nir(struct anv_device *device,
          .vk_memory_model_device_scope = true,
          .workgroup_memory_explicit_layout = true,
       },
-      .use_deref_buffer_array_length = true,
       .ubo_addr_format =
          anv_nir_ubo_addr_format(pdevice, device->vk.enabled_features.robustBufferAccess),
       .ssbo_addr_format =
