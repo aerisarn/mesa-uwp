@@ -176,6 +176,7 @@ static const struct spirv_to_nir_options default_spirv_options =  {
       .workgroup_memory_explicit_layout = true,
       .image_read_without_format = true,
     },
+   .use_deref_buffer_array_length = true,
    .ubo_addr_format = nir_address_format_32bit_index_offset,
    .ssbo_addr_format = nir_address_format_32bit_index_offset,
    .phys_ssbo_addr_format = nir_address_format_2x32bit_global,
