@@ -376,6 +376,16 @@ fail:
 }
 
 static void
+unref_vk_query(struct zink_vk_query *vkq)
+{
+   if (!vkq)
+      return;
+   vkq->refcount--;
+   if (vkq->refcount == 0)
+      FREE(vkq);
+}
+
+static void
 destroy_query(struct zink_screen *screen, struct zink_query *query)
 {
    assert(zink_screen_usage_check_completion(screen, query->batch_uses));
@@ -385,11 +395,7 @@ destroy_query(struct zink_screen *screen, struct zink_query *query)
    unsigned num_starts = query->starts.capacity / sizeof(struct zink_query_start);
    for (unsigned j = 0; j < num_starts; j++) {
       for (unsigned i = 0; i < PIPE_MAX_VERTEX_STREAMS; i++) {
-         if (!starts[j].vkq[i])
-            continue;
-         starts[j].vkq[i]->refcount--;
-         if (starts[j].vkq[i]->refcount == 0)
-            FREE(starts[j].vkq[i]);
+         unref_vk_query(starts[j].vkq[i]);
       }
    }
 
@@ -454,8 +460,7 @@ query_pool_get_range(struct zink_context *ctx, struct zink_query *q)
             pool->overflow = true;
          }
       }
-      if (start->vkq[i])
-         FREE(start->vkq[i]);
+      unref_vk_query(start->vkq[i]);
       start->vkq[i] = vkq;
    }
 }
