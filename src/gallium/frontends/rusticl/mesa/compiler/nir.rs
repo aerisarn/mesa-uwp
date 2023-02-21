@@ -40,6 +40,75 @@ impl<'a, T: 'a> Iterator for ExecListIter<'a, T> {
     }
 }
 
+#[macro_export]
+#[cfg(debug_assertions)]
+macro_rules! nir_pass_impl {
+    ($nir:ident, $pass:ident, $func:ident $(,$arg:expr)* $(,)?) => {
+        {
+            let func_str = ::std::stringify!($func);
+            let func_cstr = ::std::ffi::CString::new(func_str).unwrap();
+            let res = if unsafe { should_skip_nir(func_cstr.as_ptr()) } {
+                println!("skipping {}", func_str);
+                false
+            } else {
+                $nir.metadata_set_validation_flag();
+                if $nir.should_print() {
+                    println!("{}", func_str);
+                }
+                if $nir.$pass($func $(,$arg)*) {
+                    $nir.validate(&format!("after {} in {}:{}", func_str, file!(), line!()));
+                    if $nir.should_print() {
+                        $nir.print();
+                    }
+                    $nir.metadata_check_validation_flag();
+                    true
+                } else {
+                    false
+                }
+            };
+
+            // SAFETY: mutable static can't be read safely, but this value isn't going to change
+            let ndebug = unsafe { nir_debug };
+            if ndebug & NIR_DEBUG_CLONE != 0 {
+                $nir.validate_clone();
+            }
+
+            if ndebug & NIR_DEBUG_SERIALIZE != 0 {
+                $nir.validate_serialize_deserialize();
+            }
+
+            res
+        }
+    };
+}
+
+#[macro_export]
+#[cfg(not(debug_assertions))]
+macro_rules! nir_pass_impl {
+    ($nir:ident, $pass:ident, $func:ident $(,$arg:expr)* $(,)?) => {
+        $nir.$pass($func $(,$arg)*)
+    };
+}
+
+#[macro_export]
+macro_rules! nir_pass {
+    ($nir:ident, $func:ident $(,)?) => {
+        $crate::nir_pass_impl!($nir, pass0, $func)
+    };
+
+    ($nir:ident, $func:ident, $a:expr $(,)?) => {
+        $crate::nir_pass_impl!($nir, pass1, $func, $a)
+    };
+
+    ($nir:ident, $func:ident, $a:expr, $b:expr $(,)?) => {
+        $crate::nir_pass_impl!($nir, pass2, $func, $a, $b)
+    };
+
+    ($nir:ident, $func:ident, $a:expr, $b:expr, $c:expr $(,)?) => {
+        $crate::nir_pass_impl!($nir, pass3, $func, $a, $b, $c)
+    };
+}
+
 pub struct NirPrintfInfo {
     count: usize,
     printf_info: *mut u_printf_info,
