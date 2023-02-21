@@ -590,6 +590,8 @@ radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *nir,
 
 struct radv_shader *radv_create_trap_handler_shader(struct radv_device *device);
 
+struct radv_shader *radv_create_rt_prolog(struct radv_device *device);
+
 struct radv_shader_part *radv_create_vs_prolog(struct radv_device *device,
                                                const struct radv_vs_prolog_key *key);
 

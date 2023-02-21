@@ -2510,6 +2510,75 @@ static void radv_aco_build_shader_part(void **bin,
    *binary = part_binary;
 }
 
+struct radv_shader *
+radv_create_rt_prolog(struct radv_device *device)
+{
+   struct radv_shader *prolog;
+   struct radv_shader_args in_args = {0};
+   struct radv_shader_args out_args = {0};
+   struct radv_nir_compiler_options options = {0};
+   radv_fill_nir_compiler_options(&options, device, NULL, false,
+                                  device->instance->debug_flags & RADV_DEBUG_DUMP_PROLOGS, false,
+                                  device->instance->debug_flags & RADV_DEBUG_HANG, false);
+   struct radv_shader_info info = {0};
+   info.loads_push_constants = true;
+   info.desc_set_used_mask = -1; /* just to force indirection */
+   info.wave_size = device->physical_device->rt_wave_size;
+   info.workgroup_size = info.wave_size;
+   info.cs.is_rt_shader = true;
+   info.cs.uses_ray_launch_size = true;
+   info.cs.uses_dynamic_rt_callable_stack = true;
+   info.cs.block_size[0] = 8;
+   info.cs.block_size[1] = device->physical_device->rt_wave_size == 64 ? 8 : 4;
+   info.cs.block_size[2] = 1;
+   info.cs.uses_thread_id[0] = true;
+   info.cs.uses_thread_id[1] = true;
+   for (unsigned i = 0; i < 3; i++)
+      info.cs.uses_block_id[i] = true;
+
+   struct radv_pipeline_key pipeline_key = {0};
+
+   in_args.explicit_scratch_args = true;
+   radv_declare_shader_args(device, &pipeline_key, &info, MESA_SHADER_COMPUTE, false,
+                            MESA_SHADER_NONE, &in_args);
+   radv_declare_rt_shader_args(options.gfx_level, &out_args);
+   info.user_sgprs_locs = in_args.user_sgprs_locs;
+
+#ifdef LLVM_AVAILABLE
+   if (options.dump_shader || options.record_ir)
+      ac_init_llvm_once();
+#endif
+
+   struct radv_shader_binary *binary = NULL;
+   struct aco_shader_info ac_info;
+   struct aco_compiler_options ac_opts;
+   radv_aco_convert_shader_info(&ac_info, &info, &in_args);
+   radv_aco_convert_opts(&ac_opts, &options, &in_args);
+   aco_compile_rt_prolog(&ac_opts, &ac_info, &in_args.ac, &out_args.ac,
+                         &radv_aco_build_shader_binary, (void **)&binary);
+   binary->info = info;
+
+   prolog = radv_shader_create(device, binary, device->keep_shader_info, false, &in_args);
+   if (!prolog)
+      goto fail_create;
+
+   if (!radv_shader_binary_upload(device, binary, prolog))
+      goto fail_alloc;
+
+   if (options.dump_shader) {
+      fprintf(stderr, "Raytracing prolog");
+      fprintf(stderr, "\ndisasm:\n%s\n", prolog->disasm_string);
+   }
+
+   return prolog;
+
+fail_alloc:
+   radv_shader_destroy(device, prolog);
+fail_create:
+   free(binary);
+   return NULL;
+}
+
 struct radv_shader_part *
 radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_key *key)
 {
