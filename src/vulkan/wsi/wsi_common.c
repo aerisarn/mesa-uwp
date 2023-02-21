@@ -81,6 +81,7 @@ wsi_device_init(struct wsi_device *wsi,
    wsi->supports_scanout = true;
    wsi->sw = device_options->sw_device || (WSI_DEBUG & WSI_DEBUG_SW);
    wsi->wants_linear = (WSI_DEBUG & WSI_DEBUG_LINEAR) != 0;
+   wsi->x11.extra_xwayland_image = device_options->extra_xwayland_image;
 #define WSI_GET_CB(func) \
    PFN_vk##func func = (PFN_vk##func)proc_addr(pdevice, "vk" #func)
    WSI_GET_CB(GetPhysicalDeviceExternalSemaphoreProperties);
