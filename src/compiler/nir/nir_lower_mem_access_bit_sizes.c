@@ -285,9 +285,42 @@ lower_mem_store(nir_builder *b, nir_intrinsic_instr *intrin,
 }
 
 struct lower_mem_access_state {
+   nir_variable_mode modes;
    nir_lower_mem_access_bit_sizes_cb cb;
    const void *cb_data;
 };
+
+static nir_variable_mode
+intrin_to_variable_mode(nir_intrinsic_op intrin)
+{
+   switch (intrin) {
+   case nir_intrinsic_load_global:
+   case nir_intrinsic_store_global:
+      return nir_var_mem_global;
+
+   case nir_intrinsic_load_global_constant:
+      return nir_var_mem_constant;
+
+   case nir_intrinsic_load_ssbo:
+   case nir_intrinsic_store_ssbo:
+      return nir_var_mem_ssbo;
+
+   case nir_intrinsic_load_shared:
+   case nir_intrinsic_store_shared:
+      return nir_var_mem_shared;
+
+   case nir_intrinsic_load_scratch:
+   case nir_intrinsic_store_scratch:
+      return nir_var_shader_temp | nir_var_function_temp;
+
+   case nir_intrinsic_load_task_payload:
+   case nir_intrinsic_store_task_payload:
+      return nir_var_mem_task_payload;
+
+   default:
+      return 0;
+   }
+}
 
 static bool
 lower_mem_access_instr(nir_builder *b, nir_instr *instr, void *_data)
@@ -297,9 +330,12 @@ lower_mem_access_instr(nir_builder *b, nir_instr *instr, void *_data)
    if (instr->type != nir_instr_type_intrinsic)
       return false;
 
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   if (!(state->modes & intrin_to_variable_mode(intrin->intrinsic)))
+      return false;
+
    b->cursor = nir_after_instr(instr);
 
-   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_global:
    case nir_intrinsic_load_global_constant:
@@ -323,10 +359,12 @@ lower_mem_access_instr(nir_builder *b, nir_instr *instr, void *_data)
 
 bool
 nir_lower_mem_access_bit_sizes(nir_shader *shader,
+                               nir_variable_mode modes,
                                nir_lower_mem_access_bit_sizes_cb cb,
                                const void *cb_data)
 {
    struct lower_mem_access_state state = {
+      .modes = modes,
       .cb = cb,
       .cb_data = cb_data
    };

@@ -4947,6 +4947,7 @@ typedef nir_mem_access_size_align
                                         const void *cb_data);
 
 bool nir_lower_mem_access_bit_sizes(nir_shader *shader,
+                                    nir_variable_mode modes,
                                     nir_lower_mem_access_bit_sizes_cb cb,
                                     const void *cb_data);
 
