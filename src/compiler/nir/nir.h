@@ -4814,10 +4814,10 @@ typedef enum {
     * An address format which is a 64-bit global base address and a 32-bit
     * offset.
     *
-    * The address is comprised as a 32-bit vec4 where .xy are a uint64_t base
-    * address stored with the low bits in .x and high bits in .y, .z is
-    * undefined, and .w is an offset.  This is intended to match
-    * 64bit_bounded_global but without the bounds checking.
+    * This is identical to 64bit_bounded_global except that bounds checking
+    * is not applied when lowering to global access.  Even though the size is
+    * never used for an actual bounds check, it needs to be valid so we can
+    * lower deref_buffer_array_length properly.
     */
    nir_address_format_64bit_global_32bit_offset,
 
