@@ -104,11 +104,13 @@ void si_pm4_set_reg(struct si_pm4_state *state, unsigned reg, uint32_t val)
    si_pm4_set_reg_custom(state, reg, val, opcode, 0);
 }
 
-void si_pm4_set_reg_idx3(struct si_pm4_state *state, unsigned reg, uint32_t val)
+void si_pm4_set_reg_idx3(struct si_screen *sscreen, struct si_pm4_state *state,
+                         unsigned reg, uint32_t val)
 {
    SI_CHECK_SHADOWED_REGS(reg, 1);
 
-   si_pm4_set_reg_custom(state, reg - SI_SH_REG_OFFSET, val, PKT3_SET_SH_REG_INDEX, 3);
+   si_pm4_set_reg_custom(state, reg - SI_SH_REG_OFFSET, val, PKT3_SET_SH_REG_INDEX,
+                         sscreen->info.gfx_level >= GFX10 ? 3 : 0);
 }
 
 void si_pm4_clear_state(struct si_pm4_state *state)

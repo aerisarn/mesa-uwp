@@ -353,34 +353,35 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
       if (physical_device->rad_info.gfx_level >= GFX10 &&
           physical_device->rad_info.gfx_level < GFX11) {
          /* Logical CUs 16 - 31 */
-         ac_set_reg_cu_en(cs, R_00B104_SPI_SHADER_PGM_RSRC4_VS, S_00B104_CU_EN(0xffff),
-                          C_00B104_CU_EN, 16, &physical_device->rad_info,
-                          (void*)gfx10_set_sh_reg_idx3);
+         radeon_set_sh_reg_idx(physical_device, cs, R_00B104_SPI_SHADER_PGM_RSRC4_VS, 3,
+                               ac_apply_cu_en(S_00B104_CU_EN(0xffff),
+                                              C_00B104_CU_EN, 16, &physical_device->rad_info));
       }
 
       if (physical_device->rad_info.gfx_level >= GFX10) {
-         ac_set_reg_cu_en(cs, R_00B404_SPI_SHADER_PGM_RSRC4_HS, S_00B404_CU_EN(0xffff),
-                          C_00B404_CU_EN, 16, &physical_device->rad_info,
-                          (void*)gfx10_set_sh_reg_idx3);
-         ac_set_reg_cu_en(cs, R_00B004_SPI_SHADER_PGM_RSRC4_PS, S_00B004_CU_EN(cu_mask_ps >> 16),
-                          C_00B004_CU_EN, 16, &physical_device->rad_info,
-                          (void*)gfx10_set_sh_reg_idx3);
+         radeon_set_sh_reg_idx(physical_device, cs, R_00B404_SPI_SHADER_PGM_RSRC4_HS, 3,
+                               ac_apply_cu_en(S_00B404_CU_EN(0xffff),
+                                              C_00B404_CU_EN, 16, &physical_device->rad_info));
+         radeon_set_sh_reg_idx(physical_device, cs, R_00B004_SPI_SHADER_PGM_RSRC4_PS, 3,
+                               ac_apply_cu_en(S_00B004_CU_EN(cu_mask_ps >> 16),
+                                              C_00B004_CU_EN, 16, &physical_device->rad_info));
       }
 
-      if (physical_device->rad_info.gfx_level >= GFX10) {
-         ac_set_reg_cu_en(cs, R_00B41C_SPI_SHADER_PGM_RSRC3_HS,
-                          S_00B41C_CU_EN(0xffff) | S_00B41C_WAVE_LIMIT(0x3F),
-                          C_00B41C_CU_EN, 0, &physical_device->rad_info,
-                          (void*)gfx10_set_sh_reg_idx3);
-      } else if (physical_device->rad_info.gfx_level == GFX9) {
+      if (physical_device->rad_info.gfx_level >= GFX9) {
          radeon_set_sh_reg_idx(physical_device, cs, R_00B41C_SPI_SHADER_PGM_RSRC3_HS, 3,
-                               S_00B41C_CU_EN(0xffff) | S_00B41C_WAVE_LIMIT(0x3F));
+                               ac_apply_cu_en(S_00B41C_CU_EN(0xffff) |
+                                              S_00B41C_WAVE_LIMIT(0x3F),
+                                              C_00B41C_CU_EN, 0, &physical_device->rad_info));
       } else {
          radeon_set_sh_reg(cs, R_00B51C_SPI_SHADER_PGM_RSRC3_LS,
-                           S_00B51C_CU_EN(0xffff) | S_00B51C_WAVE_LIMIT(0x3F));
+                           ac_apply_cu_en(S_00B51C_CU_EN(0xffff) |
+                                          S_00B51C_WAVE_LIMIT(0x3F),
+                                          C_00B51C_CU_EN, 0, &physical_device->rad_info));
          radeon_set_sh_reg(cs, R_00B41C_SPI_SHADER_PGM_RSRC3_HS, S_00B41C_WAVE_LIMIT(0x3F));
          radeon_set_sh_reg(cs, R_00B31C_SPI_SHADER_PGM_RSRC3_ES,
-                           S_00B31C_CU_EN(0xffff) | S_00B31C_WAVE_LIMIT(0x3F));
+                           ac_apply_cu_en(S_00B31C_CU_EN(0xffff) |
+                                          S_00B31C_WAVE_LIMIT(0x3F),
+                                          C_00B31C_CU_EN, 0, &physical_device->rad_info));
          /* If this is 0, Bonaire can hang even if GS isn't being used.
           * Other chips are unaffected. These are suboptimal values,
           * but we don't use on-chip GS.
@@ -389,16 +390,11 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
                                 S_028A44_ES_VERTS_PER_SUBGRP(64) | S_028A44_GS_PRIMS_PER_SUBGRP(4));
       }
 
-      if (physical_device->rad_info.gfx_level >= GFX10) {
-         ac_set_reg_cu_en(cs, R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
-                          S_00B01C_CU_EN(cu_mask_ps) | S_00B01C_WAVE_LIMIT(0x3F) |
-                          S_00B01C_LDS_GROUP_SIZE(physical_device->rad_info.gfx_level >= GFX11),
-                          C_00B01C_CU_EN, 0, &physical_device->rad_info,
-                          (void*)gfx10_set_sh_reg_idx3);
-      } else {
-         radeon_set_sh_reg_idx(physical_device, cs, R_00B01C_SPI_SHADER_PGM_RSRC3_PS, 3,
-                               S_00B01C_CU_EN(cu_mask_ps) | S_00B01C_WAVE_LIMIT(0x3F));
-      }
+      radeon_set_sh_reg_idx(physical_device, cs, R_00B01C_SPI_SHADER_PGM_RSRC3_PS, 3,
+                            ac_apply_cu_en(S_00B01C_CU_EN(cu_mask_ps) |
+                                           S_00B01C_WAVE_LIMIT(0x3F) |
+                                           S_00B01C_LDS_GROUP_SIZE(physical_device->rad_info.gfx_level >= GFX11),
+                                           C_00B01C_CU_EN, 0, &physical_device->rad_info));
    }
 
    if (physical_device->rad_info.gfx_level >= GFX10) {
