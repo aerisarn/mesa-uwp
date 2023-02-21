@@ -543,6 +543,7 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_load_push_constant:
                case nir_intrinsic_load_workgroup_id:
                case nir_intrinsic_load_num_workgroups:
+               case nir_intrinsic_load_ray_launch_size:
                case nir_intrinsic_load_ray_launch_size_addr_amd:
                case nir_intrinsic_load_sbt_base_amd:
                case nir_intrinsic_load_subgroup_id:
@@ -579,6 +580,7 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_load_local_invocation_id:
                case nir_intrinsic_load_local_invocation_index:
                case nir_intrinsic_load_subgroup_invocation:
+               case nir_intrinsic_load_ray_launch_id:
                case nir_intrinsic_load_tess_coord:
                case nir_intrinsic_write_invocation_amd:
                case nir_intrinsic_mbcnt_amd:
