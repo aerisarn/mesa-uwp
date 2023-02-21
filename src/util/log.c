@@ -88,24 +88,98 @@ level_to_str(enum mesa_log_level l)
    unreachable("bad mesa_log_level");
 }
 
+enum logger_vasnprintf_affix {
+   LOGGER_VASNPRINTF_AFFIX_TAG = 1 << 0,
+   LOGGER_VASNPRINTF_AFFIX_LEVEL = 1 << 1,
+   LOGGER_VASNPRINTF_AFFIX_NEWLINE = 1 << 2,
+};
+
+/* Try vsnprintf first and fall back to vasprintf if buf is too small.  This
+ * function handles all errors and never fails.
+ */
+static char *
+logger_vasnprintf(char *buf,
+                  int size,
+                  int affixes,
+                  enum mesa_log_level level,
+                  const char *tag,
+                  const char *format,
+                  va_list va)
+{
+   struct {
+      char *cur;
+      int rem;
+      int total;
+      bool invalid;
+   } state = {
+      .cur = buf,
+      .rem = size,
+   };
+
+#define APPEND(state, func, ...)                                     \
+   do {                                                              \
+      int ret = func(state.cur, state.rem, __VA_ARGS__);             \
+      if (ret < 0) {                                                 \
+         state.invalid = true;                                       \
+      }  else {                                                      \
+         state.total += ret;                                         \
+         if (ret >= state.rem)                                       \
+            ret = state.rem;                                         \
+         state.cur += ret;                                           \
+         state.rem -= ret;                                           \
+      }                                                              \
+   } while (false)
+
+   if (affixes & LOGGER_VASNPRINTF_AFFIX_TAG)
+      APPEND(state, snprintf, "%s: ", tag);
+   if (affixes & LOGGER_VASNPRINTF_AFFIX_LEVEL)
+      APPEND(state, snprintf, "%s: ", level_to_str(level));
+
+   APPEND(state, vsnprintf, format, va);
+
+   if (affixes & LOGGER_VASNPRINTF_AFFIX_NEWLINE) {
+      if (state.cur == buf || state.cur[-1] != '\n')
+         APPEND(state, snprintf, "\n");
+   }
+#undef APPEND
+
+   assert(size >= 64);
+   if (state.invalid) {
+      strncpy(buf, "invalid message format", size);
+   } else if (state.total >= size) {
+      /* print again into alloc to avoid truncation */
+      void *alloc = malloc(state.total + 1);
+      if (alloc) {
+         buf = logger_vasnprintf(alloc, state.total + 1, affixes, level, tag,
+               format, va);
+         assert(buf == alloc);
+      } else {
+         /* pretty-truncate the message */
+         strncpy(buf + size - 4, "...", 4);
+      }
+   }
+
+   return buf;
+}
+
 static void
 logger_file(enum mesa_log_level level,
             const char *tag,
             const char *format,
             va_list va)
 {
-#if !DETECT_OS_WINDOWS
-   flockfile(stderr);
-#endif
+   FILE *fp = stderr;
+   char local_msg[1024];
+   char *msg = logger_vasnprintf(local_msg, sizeof(local_msg),
+         LOGGER_VASNPRINTF_AFFIX_TAG |
+         LOGGER_VASNPRINTF_AFFIX_LEVEL |
+         LOGGER_VASNPRINTF_AFFIX_NEWLINE,
+         level, tag, format, va);
 
-   fprintf(stderr, "%s: %s: ", tag, level_to_str(level));
-   vfprintf(stderr, format, va);
-   if (format[strlen(format) - 1] != '\n')
-      fprintf(stderr, "\n");
+   fprintf(fp, "%s", msg);
 
-#if !DETECT_OS_WINDOWS
-   funlockfile(stderr);
-#endif
+   if (msg != local_msg)
+      free(msg);
 }
 
 #if DETECT_OS_ANDROID
