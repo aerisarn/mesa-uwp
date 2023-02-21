@@ -211,6 +211,9 @@ static const struct test {
    INSTR_6XX(c0d61104_01800228, "stg.a.u32 g[r2.x+(r1.x+1)<<2], r5.x, 1"),
    INSTR_6XX(c0d61104_01802628, "stg.a.u32 g[r2.x+r1.x<<4+3<<2], r5.x, 1"),
 
+   INSTR_7XX(c0d20505_07bfc006, "stg.a.f32 g[r0.z+r1.y+255], r0.w, 7"),
+   INSTR_7XX(c0d20507_04812006, "stg.a.f32 g[c0.z+r1.w+4], r0.w, 4"),
+
    INSTR_6XX(c0020011_04c08023, "ldg.a.f32 r4.y, g[r0.z+(r4.y)<<2], 4"), /* ldg.a.f32 r4.y, g[r0.z+(r4.y<<2)], 4 */
    INSTR_6XX(c0060006_01c18017, "ldg.a.u32 r1.z, g[r1.z+(r2.w)<<2], 1"), /* ldg.a.u32 r1.z, g[r1.z+(r2.w<<2)], 1 */
    INSTR_6XX(c0060006_0181800f, "ldg.u32 r1.z, g[r1.z+7], 1"),
@@ -229,6 +232,9 @@ static const struct test {
    INSTR_6XX(c0000006_01c18017, "ldg.a.f16 hr1.z, g[r1.z+(r2.w)<<2], 1"),
    INSTR_6XX(c0060006_0181800f, "ldg.u32 r1.z, g[r1.z+7], 1"),
    INSTR_6XX(c0060006_01818001, "ldg.u32 r1.z, g[r1.z], 1"),
+
+   INSTR_7XX(c0020411_04c08023, "ldg.a.f32 r4.y, g[r0.z+r4.y+2], 4"),
+   INSTR_7XX(c0004006_01c1a017, "ldg.a.f16 hr1.z, g[c1.z+r2.w+32], 1"),
 
    /* dEQP-GLES3.functional.ubo.random.basic_arrays.0 */
    INSTR_6XX(c7020020_01800000, "stc.f32 c[32], r0.x, 1"), /* stc c[32], r0.x, 1 */
