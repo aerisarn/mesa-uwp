@@ -270,6 +270,7 @@ rusticl_mesa_bindings_rs = rust.bindgen(
     '--bitfield-enum',          'nir_lower_int64_options',
     '--bitfield-enum',          'nir_opt_if_options',
     '--bitfield-enum',          'nir_variable_mode',
+    '--allowlist-function',     'should_.*_nir',
     '--allowlist-function',     'spirv_.*',
 
     # gallium

@@ -150,6 +150,38 @@ impl NirShader {
         unsafe { pass(self.nir.as_ptr(), a, b, c) }
     }
 
+    #[cfg(debug_assertions)]
+    pub fn metadata_check_validation_flag(&self) {
+        unsafe { nir_metadata_check_validation_flag(self.nir.as_ptr()) }
+    }
+
+    #[cfg(debug_assertions)]
+    pub fn metadata_set_validation_flag(&mut self) {
+        unsafe { nir_metadata_set_validation_flag(self.nir.as_ptr()) }
+    }
+
+    #[cfg(debug_assertions)]
+    pub fn validate(&self, when: &str) {
+        let cstr = CString::new(when).unwrap();
+        unsafe { nir_validate_shader(self.nir.as_ptr(), cstr.as_ptr()) }
+    }
+
+    pub fn should_print(&self) -> bool {
+        unsafe { should_print_nir(self.nir.as_ptr()) }
+    }
+
+    pub fn validate_serialize_deserialize(&self) {
+        unsafe { nir_shader_serialize_deserialize(self.nir.as_ptr()) }
+    }
+
+    pub fn validate_clone(&mut self) {
+        unsafe {
+            let nir_ptr = self.nir.as_ptr();
+            let clone = nir_shader_clone(ralloc_parent(nir_ptr.cast()), nir_ptr);
+            nir_shader_replace(nir_ptr, clone)
+        }
+    }
+
     pub fn entrypoint(&self) -> *mut nir_function_impl {
         unsafe { nir_shader_get_entrypoint(self.nir.as_ptr()) }
     }
