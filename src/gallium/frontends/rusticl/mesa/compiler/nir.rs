@@ -256,18 +256,23 @@ impl NirShader {
     }
 
     pub fn structurize(&mut self) {
-        self.pass0(nir_lower_goto_ifs);
-        self.pass0(nir_opt_dead_cf);
+        nir_pass!(self, nir_lower_goto_ifs);
+        nir_pass!(self, nir_opt_dead_cf);
     }
 
     pub fn inline(&mut self, libclc: &NirShader) {
-        self.pass1(
+        nir_pass!(
+            self,
             nir_lower_variable_initializers,
             nir_variable_mode::nir_var_function_temp,
         );
-        self.pass0(nir_lower_returns);
-        self.pass1(nir_lower_libclc, libclc.nir.as_ptr());
-        self.pass0(nir_inline_functions);
+        nir_pass!(self, nir_lower_returns);
+        nir_pass!(self, nir_lower_libclc, libclc.nir.as_ptr());
+        nir_pass!(self, nir_inline_functions);
+    }
+
+    pub fn gather_info(&mut self) {
+        unsafe { nir_shader_gather_info(self.nir.as_ptr(), self.entrypoint()) }
     }
 
     pub fn remove_non_entrypoints(&mut self) {
