@@ -224,7 +224,7 @@ validate_ir(Program* program)
 
          /* check opsel */
          if (instr->isVOP3()) {
-            VOP3_instruction& vop3 = instr->vop3();
+            VALU_instruction& vop3 = instr->valu();
             check(vop3.opsel == 0 || program->gfx_level >= GFX9, "Opsel is only supported on GFX9+",
                   instr.get());
 
@@ -244,7 +244,7 @@ validate_ir(Program* program)
                      (instr->opcode == aco_opcode::v_fma_mix_f32 ? v1 : v2b),
                   "v_fma_mix_f32/v_fma_mix_f16 must have v1/v2b definition", instr.get());
          } else if (instr->isVOP3P()) {
-            VOP3P_instruction& vop3p = instr->vop3p();
+            VALU_instruction& vop3p = instr->valu();
             for (unsigned i = 0; i < instr->operands.size(); i++) {
                if (instr->operands[i].hasRegClass() &&
                    instr->operands[i].regClass().is_subdword() && !instr->operands[i].isFixed())
@@ -866,8 +866,8 @@ validate_subdword_operand(amd_gfx_level gfx_level, const aco_ptr<Instruction>& i
       bool fma_mix = instr->opcode == aco_opcode::v_fma_mixlo_f16 ||
                      instr->opcode == aco_opcode::v_fma_mixhi_f16 ||
                      instr->opcode == aco_opcode::v_fma_mix_f32;
-      return ((instr->vop3p().opsel_lo >> index) & 1) == (byte >> 1) &&
-             ((instr->vop3p().opsel_hi >> index) & 1) == (fma_mix || (byte >> 1));
+      return ((instr->valu().opsel_lo >> index) & 1) == (byte >> 1) &&
+             ((instr->valu().opsel_hi >> index) & 1) == (fma_mix || (byte >> 1));
    }
    if (byte == 2 && can_use_opsel(gfx_level, instr->opcode, index))
       return true;

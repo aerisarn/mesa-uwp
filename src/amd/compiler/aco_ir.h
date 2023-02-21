@@ -1014,12 +1014,7 @@ struct Pseudo_branch_instruction;
 struct Pseudo_barrier_instruction;
 struct Pseudo_reduction_instruction;
 struct VALU_instruction;
-typedef VALU_instruction VOP3P_instruction;
 struct VINTERP_inreg_instruction;
-typedef VALU_instruction VOP1_instruction;
-typedef VALU_instruction VOP2_instruction;
-typedef VALU_instruction VOPC_instruction;
-typedef VALU_instruction VOP3_instruction;
 struct VINTRP_instruction;
 struct DPP16_instruction;
 struct DPP8_instruction;
@@ -1253,16 +1248,6 @@ struct Instruction {
       return *(Pseudo_reduction_instruction*)this;
    }
    constexpr bool isReduction() const noexcept { return format == Format::PSEUDO_REDUCTION; }
-   VOP3P_instruction& vop3p() noexcept
-   {
-      assert(isVOP3P());
-      return *(VOP3P_instruction*)this;
-   }
-   const VOP3P_instruction& vop3p() const noexcept
-   {
-      assert(isVOP3P());
-      return *(VOP3P_instruction*)this;
-   }
    constexpr bool isVOP3P() const noexcept { return format == Format::VOP3P; }
    VINTERP_inreg_instruction& vinterp_inreg() noexcept
    {
@@ -1275,49 +1260,9 @@ struct Instruction {
       return *(VINTERP_inreg_instruction*)this;
    }
    constexpr bool isVINTERP_INREG() const noexcept { return format == Format::VINTERP_INREG; }
-   VOP1_instruction& vop1() noexcept
-   {
-      assert(isVOP1());
-      return *(VOP1_instruction*)this;
-   }
-   const VOP1_instruction& vop1() const noexcept
-   {
-      assert(isVOP1());
-      return *(VOP1_instruction*)this;
-   }
    constexpr bool isVOP1() const noexcept { return (uint16_t)format & (uint16_t)Format::VOP1; }
-   VOP2_instruction& vop2() noexcept
-   {
-      assert(isVOP2());
-      return *(VOP2_instruction*)this;
-   }
-   const VOP2_instruction& vop2() const noexcept
-   {
-      assert(isVOP2());
-      return *(VOP2_instruction*)this;
-   }
    constexpr bool isVOP2() const noexcept { return (uint16_t)format & (uint16_t)Format::VOP2; }
-   VOPC_instruction& vopc() noexcept
-   {
-      assert(isVOPC());
-      return *(VOPC_instruction*)this;
-   }
-   const VOPC_instruction& vopc() const noexcept
-   {
-      assert(isVOPC());
-      return *(VOPC_instruction*)this;
-   }
    constexpr bool isVOPC() const noexcept { return (uint16_t)format & (uint16_t)Format::VOPC; }
-   VOP3_instruction& vop3() noexcept
-   {
-      assert(isVOP3());
-      return *(VOP3_instruction*)this;
-   }
-   const VOP3_instruction& vop3() const noexcept
-   {
-      assert(isVOP3());
-      return *(VOP3_instruction*)this;
-   }
    constexpr bool isVOP3() const noexcept { return (uint16_t)format & (uint16_t)Format::VOP3; }
    VINTRP_instruction& vintrp() noexcept
    {
@@ -1814,7 +1759,7 @@ Instruction::usesModifiers() const noexcept
       return true;
 
    if (isVOP3P()) {
-      const VOP3P_instruction& vop3p = this->vop3p();
+      const VALU_instruction& vop3p = this->valu();
       for (unsigned i = 0; i < operands.size(); i++) {
          if (vop3p.neg_lo[i] || vop3p.neg_hi[i])
             return true;
@@ -1825,7 +1770,7 @@ Instruction::usesModifiers() const noexcept
       }
       return vop3p.opsel_lo || vop3p.clamp;
    } else if (isVOP3()) {
-      const VOP3_instruction& vop3 = this->vop3();
+      const VALU_instruction& vop3 = this->valu();
       for (unsigned i = 0; i < operands.size(); i++) {
          if (vop3.abs[i] || vop3.neg[i])
             return true;

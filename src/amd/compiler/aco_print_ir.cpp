@@ -749,7 +749,7 @@ aco_print_instr(enum amd_gfx_level gfx_level, const Instruction* instr, FILE* ou
             opsel[i] = valu.opsel & (1 << i);
          }
       } else if (instr->isVOP3P() && is_mad_mix) {
-         const VOP3P_instruction& vop3p = instr->vop3p();
+         const VALU_instruction& vop3p = instr->valu();
          for (unsigned i = 0; i < MIN2(num_operands, 3); ++i) {
             abs[i] = vop3p.neg_hi[i];
             neg[i] = vop3p.neg_lo[i];
@@ -778,7 +778,7 @@ aco_print_instr(enum amd_gfx_level gfx_level, const Instruction* instr, FILE* ou
             fprintf(output, "|");
 
          if (instr->isVOP3P() && !is_mad_mix) {
-            const VOP3P_instruction& vop3 = instr->vop3p();
+            const VALU_instruction& vop3 = instr->valu();
             if ((vop3.opsel_lo & (1 << i)) || !(vop3.opsel_hi & (1 << i))) {
                fprintf(output, ".%c%c", vop3.opsel_lo & (1 << i) ? 'y' : 'x',
                        vop3.opsel_hi & (1 << i) ? 'y' : 'x');
