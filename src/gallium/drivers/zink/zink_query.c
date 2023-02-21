@@ -4,6 +4,7 @@
 #include "zink_clear.h"
 #include "zink_program.h"
 #include "zink_resource.h"
+#include "zink_screen.h"
 
 #include "util/u_dump.h"
 #include "util/u_inlines.h"
@@ -1322,6 +1323,7 @@ zink_get_timestamp(struct pipe_screen *pscreen)
          mesa_loge("ZINK: vkGetCalibratedTimestampsEXT failed (%s)", vk_Result_to_str(result));
       }
    } else {
+      zink_screen_lock_context(screen);
       struct pipe_context *pctx = &screen->copy_context->base;
       struct pipe_query *pquery = pctx->create_query(pctx, PIPE_QUERY_TIMESTAMP, 0);
       if (!pquery)
@@ -1331,6 +1333,7 @@ zink_get_timestamp(struct pipe_screen *pscreen)
       pctx->end_query(pctx, pquery);
       pctx->get_query_result(pctx, pquery, true, &result);
       pctx->destroy_query(pctx, pquery);
+      zink_screen_unlock_context(screen);
       timestamp = result.u64;
    }
    timestamp_to_nanoseconds(screen, &timestamp);

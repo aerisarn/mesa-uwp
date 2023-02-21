@@ -1276,6 +1276,7 @@ struct zink_screen {
    VkSemaphore sem;
    VkFence fence;
    struct util_queue flush_queue;
+   simple_mtx_t copy_context_lock;
    struct zink_context *copy_context;
 
    simple_mtx_t semaphores_lock;

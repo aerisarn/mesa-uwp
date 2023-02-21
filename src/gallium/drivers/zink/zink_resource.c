@@ -1486,10 +1486,14 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
             unsigned bind = ZINK_BIND_DMABUF;
             if (!(res->base.b.bind & PIPE_BIND_SHARED))
                bind |= PIPE_BIND_SHARED;
-            if (!add_resource_bind(screen->copy_context, res, bind))
+            zink_screen_lock_context(screen);
+            if (!add_resource_bind(screen->copy_context, res, bind)) {
+               zink_screen_unlock_context(screen);
                return false;
+            }
             p_atomic_inc(&screen->image_rebind_counter);
             screen->copy_context->base.flush(&screen->copy_context->base, NULL, 0);
+            zink_screen_unlock_context(screen);
             obj = res->obj;
          }
 
