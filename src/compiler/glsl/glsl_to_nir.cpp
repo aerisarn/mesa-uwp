@@ -2381,8 +2381,12 @@ nir_visitor::visit(ir_expression *ir)
    case ir_binop_dot:
       result = nir_fdot(&b, srcs[0], srcs[1]);
       break;
+
    case ir_binop_vector_extract:
       result = nir_vector_extract(&b, srcs[0], srcs[1]);
+      break;
+   case ir_triop_vector_insert:
+      result = nir_vector_insert(&b, srcs[0], srcs[1], srcs[2]);
       break;
 
    case ir_binop_atan2:
