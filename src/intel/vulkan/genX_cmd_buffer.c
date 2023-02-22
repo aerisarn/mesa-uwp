@@ -4210,17 +4210,10 @@ void genX(CmdDrawMultiEXT)(
     uint32_t                                    stride)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
-   struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
+   UNUSED struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
 
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
-
-   const uint32_t count =
-      drawCount * instanceCount * pipeline->instance_multiplier;
-   anv_measure_snapshot(cmd_buffer,
-                        INTEL_SNAPSHOT_DRAW,
-                        "draw_multi", count);
-   trace_intel_begin_draw_multi(&cmd_buffer->trace);
 
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
 
@@ -4235,6 +4228,13 @@ void genX(CmdDrawMultiEXT)(
                                                  draw->firstVertex,
                                                  firstInstance, i, !i);
 
+      const uint32_t count =
+         draw->vertexCount * instanceCount * pipeline->instance_multiplier;
+      anv_measure_snapshot(cmd_buffer,
+                           INTEL_SNAPSHOT_DRAW,
+                           "draw multi", count);
+      trace_intel_begin_draw_multi(&cmd_buffer->trace);
+
       anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
          prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
          prim.VertexAccessType         = SEQUENTIAL;
@@ -4245,6 +4245,7 @@ void genX(CmdDrawMultiEXT)(
          prim.StartInstanceLocation    = firstInstance;
          prim.BaseVertexLocation       = 0;
       }
+      trace_intel_end_draw_multi(&cmd_buffer->trace, count);
    }
 #else
    vk_foreach_multi_draw(draw, i, pVertexInfo, drawCount, stride) {
@@ -4254,6 +4255,12 @@ void genX(CmdDrawMultiEXT)(
        */
       if (i && (INTEL_NEEDS_WA_1409433168 || INTEL_NEEDS_WA_16011107343))
          genX(emit_hs)(cmd_buffer);
+
+      const uint32_t count = draw->vertexCount * instanceCount;
+      anv_measure_snapshot(cmd_buffer,
+                           INTEL_SNAPSHOT_DRAW,
+                           "draw multi", count);
+      trace_intel_begin_draw_multi(&cmd_buffer->trace);
 
       anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE_EXTENDED), prim) {
          prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
@@ -4268,6 +4275,7 @@ void genX(CmdDrawMultiEXT)(
          prim.ExtendedParameter1       = firstInstance;
          prim.ExtendedParameter2       = i;
       }
+      trace_intel_end_draw_multi(&cmd_buffer->trace, count);
    }
 #endif
 
@@ -4276,10 +4284,7 @@ void genX(CmdDrawMultiEXT)(
                                  drawCount == 0 ? 0 :
                                  pVertexInfo[drawCount - 1].vertexCount);
 #endif
-
    update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, SEQUENTIAL);
-
-   trace_intel_end_draw_multi(&cmd_buffer->trace, count);
 }
 
 void genX(CmdDrawIndexed)(
@@ -4369,14 +4374,6 @@ void genX(CmdDrawMultiIndexedEXT)(
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
 
-   const uint32_t count =
-      drawCount * instanceCount * pipeline->instance_multiplier;
-   anv_measure_snapshot(cmd_buffer,
-                        INTEL_SNAPSHOT_DRAW,
-                        "draw indexed_multi",
-                        count);
-   trace_intel_begin_draw_indexed_multi(&cmd_buffer->trace);
-
    genX(cmd_buffer_flush_gfx_state)(cmd_buffer);
 
    if (cmd_buffer->state.conditional_render_enabled)
@@ -4404,6 +4401,14 @@ void genX(CmdDrawMultiIndexedEXT)(
             if (emitted)
                genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
+            const uint32_t count =
+               draw->indexCount * instanceCount * pipeline->instance_multiplier;
+            anv_measure_snapshot(cmd_buffer,
+                                 INTEL_SNAPSHOT_DRAW,
+                                 "draw indexed multi",
+                                 count);
+            trace_intel_begin_draw_indexed_multi(&cmd_buffer->trace);
+
             anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
                prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
                prim.VertexAccessType         = RANDOM;
@@ -4414,6 +4419,7 @@ void genX(CmdDrawMultiIndexedEXT)(
                prim.StartInstanceLocation    = firstInstance;
                prim.BaseVertexLocation       = *pVertexOffset;
             }
+            trace_intel_end_draw_indexed_multi(&cmd_buffer->trace, count);
             emitted = false;
          }
       } else {
@@ -4426,6 +4432,14 @@ void genX(CmdDrawMultiIndexedEXT)(
             genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
          }
          vk_foreach_multi_draw_indexed(draw, i, pIndexInfo, drawCount, stride) {
+            const uint32_t count =
+               draw->indexCount * instanceCount * pipeline->instance_multiplier;
+            anv_measure_snapshot(cmd_buffer,
+                                 INTEL_SNAPSHOT_DRAW,
+                                 "draw indexed multi",
+                                 count);
+            trace_intel_begin_draw_indexed_multi(&cmd_buffer->trace);
+
             anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
                prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
                prim.VertexAccessType         = RANDOM;
@@ -4436,6 +4450,7 @@ void genX(CmdDrawMultiIndexedEXT)(
                prim.StartInstanceLocation    = firstInstance;
                prim.BaseVertexLocation       = *pVertexOffset;
             }
+            trace_intel_end_draw_indexed_multi(&cmd_buffer->trace, count);
          }
       }
    } else {
@@ -4443,6 +4458,14 @@ void genX(CmdDrawMultiIndexedEXT)(
          cmd_buffer_emit_vertex_constants_and_flush(cmd_buffer, vs_prog_data,
                                                     draw->vertexOffset,
                                                     firstInstance, i, i != 0);
+
+         const uint32_t count =
+            draw->indexCount * instanceCount * pipeline->instance_multiplier;
+         anv_measure_snapshot(cmd_buffer,
+                              INTEL_SNAPSHOT_DRAW,
+                              "draw indexed multi",
+                              count);
+         trace_intel_begin_draw_indexed_multi(&cmd_buffer->trace);
 
          anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
             prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
@@ -4454,6 +4477,7 @@ void genX(CmdDrawMultiIndexedEXT)(
             prim.StartInstanceLocation    = firstInstance;
             prim.BaseVertexLocation       = draw->vertexOffset;
          }
+         trace_intel_end_draw_indexed_multi(&cmd_buffer->trace, count);
       }
    }
 #else
@@ -4464,6 +4488,14 @@ void genX(CmdDrawMultiIndexedEXT)(
        */
       if (i && (INTEL_NEEDS_WA_1409433168 || INTEL_NEEDS_WA_16011107343))
          genX(emit_hs)(cmd_buffer);
+
+      const uint32_t count =
+         draw->indexCount * instanceCount * pipeline->instance_multiplier;
+      anv_measure_snapshot(cmd_buffer,
+                           INTEL_SNAPSHOT_DRAW,
+                           "draw indexed multi",
+                           count);
+      trace_intel_begin_draw_indexed_multi(&cmd_buffer->trace);
 
       anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE_EXTENDED), prim) {
          prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
@@ -4479,6 +4511,7 @@ void genX(CmdDrawMultiIndexedEXT)(
          prim.ExtendedParameter1       = firstInstance;
          prim.ExtendedParameter2       = i;
       }
+      trace_intel_end_draw_indexed_multi(&cmd_buffer->trace, count);
    }
 #endif
 
@@ -4487,10 +4520,7 @@ void genX(CmdDrawMultiIndexedEXT)(
                                  drawCount == 0 ? 0 :
                                  pIndexInfo[drawCount - 1].indexCount);
 #endif
-
    update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, RANDOM);
-
-   trace_intel_end_draw_indexed_multi(&cmd_buffer->trace, count);
 }
 
 /* Auto-Draw / Indirect Registers */
