@@ -126,6 +126,8 @@ anv_create_cmd_buffer(struct vk_command_pool *pool,
                          &device->dynamic_state_pool, 16384);
    anv_state_stream_init(&cmd_buffer->general_state_stream,
                          &device->general_state_pool, 16384);
+   anv_state_stream_init(&cmd_buffer->push_descriptor_stream,
+                         &device->push_descriptor_pool, 4096);
 
    int success = u_vector_init_pow2(&cmd_buffer->dynamic_bos, 8,
                                     sizeof(struct anv_bo *));
@@ -175,6 +177,7 @@ anv_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
    anv_state_stream_finish(&cmd_buffer->surface_state_stream);
    anv_state_stream_finish(&cmd_buffer->dynamic_state_stream);
    anv_state_stream_finish(&cmd_buffer->general_state_stream);
+   anv_state_stream_finish(&cmd_buffer->push_descriptor_stream);
 
    while (u_vector_length(&cmd_buffer->dynamic_bos) > 0) {
       struct anv_bo **bo = u_vector_remove(&cmd_buffer->dynamic_bos);
@@ -219,6 +222,10 @@ anv_cmd_buffer_reset(struct vk_command_buffer *vk_cmd_buffer,
    anv_state_stream_finish(&cmd_buffer->general_state_stream);
    anv_state_stream_init(&cmd_buffer->general_state_stream,
                          &cmd_buffer->device->general_state_pool, 16384);
+
+   anv_state_stream_finish(&cmd_buffer->push_descriptor_stream);
+   anv_state_stream_init(&cmd_buffer->push_descriptor_stream,
+                         &cmd_buffer->device->push_descriptor_pool, 4096);
 
    while (u_vector_length(&cmd_buffer->dynamic_bos) > 0) {
       struct anv_bo **bo = u_vector_remove(&cmd_buffer->dynamic_bos);
@@ -950,11 +957,17 @@ anv_cmd_buffer_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
    if (layout->descriptor_buffer_size &&
        ((*push_set)->set_used_on_gpu ||
         set->desc_mem.alloc_size < layout->descriptor_buffer_size)) {
+      struct anv_physical_device *pdevice = cmd_buffer->device->physical;
+      struct anv_state_stream *push_stream =
+         pdevice->indirect_descriptors ?
+         &cmd_buffer->push_descriptor_stream :
+         &cmd_buffer->surface_state_stream;
+
       /* The previous buffer is either actively used by some GPU command (so
        * we can't modify it) or is too small.  Allocate a new one.
        */
       struct anv_state desc_mem =
-         anv_state_stream_alloc(&cmd_buffer->dynamic_state_stream,
+         anv_state_stream_alloc(push_stream,
                                 anv_descriptor_set_layout_descriptor_buffer_size(layout, 0),
                                 ANV_UBO_ALIGNMENT);
       if (set->desc_mem.alloc_size) {
@@ -964,10 +977,9 @@ anv_cmd_buffer_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
       }
       set->desc_mem = desc_mem;
 
-      set->desc_addr = (struct anv_address) {
-         .bo = cmd_buffer->dynamic_state_stream.state_pool->block_pool.bo,
-         .offset = set->desc_mem.offset,
-      };
+      set->desc_addr = anv_state_pool_state_address(
+         push_stream->state_pool,
+         set->desc_mem);
    }
 
    return set;

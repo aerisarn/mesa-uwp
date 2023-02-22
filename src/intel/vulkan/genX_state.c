@@ -261,18 +261,39 @@ init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
       sba.InstructionBaseAddressModifyEnable = true;
       sba.InstructionBuffersizeModifyEnable = true;
 
-      sba.BindlessSurfaceStateBaseAddress =
-         (struct anv_address) { .offset =
-         device->physical->va.bindless_surface_state_pool.addr, };
-      sba.BindlessSurfaceStateSize =
-         anv_physical_device_bindless_heap_size(device->physical) / ANV_SURFACE_STATE_SIZE - 1;
-      sba.BindlessSurfaceStateMOCS = mocs;
-      sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
+      if (device->physical->indirect_descriptors) {
+         sba.BindlessSurfaceStateBaseAddress =
+            (struct anv_address) { .offset =
+            device->physical->va.bindless_surface_state_pool.addr,
+         };
+         sba.BindlessSurfaceStateSize =
+            anv_physical_device_bindless_heap_size(device->physical) / ANV_SURFACE_STATE_SIZE - 1;
+         sba.BindlessSurfaceStateMOCS = mocs;
+         sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
 
-      sba.BindlessSamplerStateBaseAddress = (struct anv_address) { NULL, 0 };
-      sba.BindlessSamplerStateMOCS = mocs;
-      sba.BindlessSamplerStateBaseAddressModifyEnable = true;
-      sba.BindlessSamplerStateBufferSize = 0;
+         sba.BindlessSamplerStateBaseAddress = (struct anv_address) { NULL, 0 };
+         sba.BindlessSamplerStateMOCS = mocs;
+         sba.BindlessSamplerStateBaseAddressModifyEnable = true;
+         sba.BindlessSamplerStateBufferSize = 0;
+      } else {
+         /* Bindless Surface State & Bindless Sampler State are aligned to the
+          * same heap
+          */
+         sba.BindlessSurfaceStateBaseAddress =
+            sba.BindlessSamplerStateBaseAddress =
+            (struct anv_address) { .offset = device->physical->va.binding_table_pool.addr, };
+         sba.BindlessSurfaceStateSize =
+            (device->physical->va.binding_table_pool.size +
+             device->physical->va.internal_surface_state_pool.size +
+             device->physical->va.descriptor_pool.size) - 1;
+         sba.BindlessSamplerStateBufferSize =
+            (device->physical->va.binding_table_pool.size +
+             device->physical->va.internal_surface_state_pool.size +
+             device->physical->va.descriptor_pool.size) / 4096 - 1;
+         sba.BindlessSurfaceStateMOCS = sba.BindlessSamplerStateMOCS = mocs;
+         sba.BindlessSurfaceStateBaseAddressModifyEnable =
+            sba.BindlessSamplerStateBaseAddressModifyEnable = true;
+      }
 
 #if GFX_VERx10 >= 125
       sba.L1CacheControl = L1CC_WB;

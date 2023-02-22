@@ -183,20 +183,47 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       sba.IndirectObjectBufferSizeModifyEnable  = true;
       sba.DynamicStateBufferSizeModifyEnable    = true;
       sba.InstructionBuffersizeModifyEnable     = true;
-      sba.BindlessSurfaceStateBaseAddress =
-         (struct anv_address) { .offset =
-         device->physical->va.bindless_surface_state_pool.addr,
-      };
-      sba.BindlessSurfaceStateSize =
-         anv_physical_device_bindless_heap_size(device->physical) / ANV_SURFACE_STATE_SIZE - 1;
-      sba.BindlessSurfaceStateMOCS = mocs;
-      sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
-#if GFX_VER >= 11
-      sba.BindlessSamplerStateBaseAddress = (struct anv_address) { NULL, 0 };
-      sba.BindlessSamplerStateMOCS = mocs;
-      sba.BindlessSamplerStateBaseAddressModifyEnable = true;
-      sba.BindlessSamplerStateBufferSize = 0;
+
+      if (!device->physical->indirect_descriptors) {
+#if GFX_VERx10 >= 125
+         /* Bindless Surface State & Bindless Sampler State are aligned to the
+          * same heap
+          */
+         sba.BindlessSurfaceStateBaseAddress =
+            sba.BindlessSamplerStateBaseAddress =
+            (struct anv_address) { .offset =
+            device->physical->va.binding_table_pool.addr, };
+         sba.BindlessSurfaceStateSize =
+            (device->physical->va.binding_table_pool.size +
+             device->physical->va.internal_surface_state_pool.size +
+             device->physical->va.descriptor_pool.size) - 1;
+         sba.BindlessSamplerStateBufferSize =
+            (device->physical->va.binding_table_pool.size +
+             device->physical->va.internal_surface_state_pool.size +
+             device->physical->va.descriptor_pool.size) / 4096 - 1;
+         sba.BindlessSurfaceStateMOCS = sba.BindlessSamplerStateMOCS = mocs;
+         sba.BindlessSurfaceStateBaseAddressModifyEnable =
+            sba.BindlessSamplerStateBaseAddressModifyEnable = true;
+#else
+         unreachable("Direct descriptor not supported");
 #endif
+      } else {
+         sba.BindlessSurfaceStateBaseAddress =
+            (struct anv_address) { .offset =
+            device->physical->va.bindless_surface_state_pool.addr,
+         };
+         sba.BindlessSurfaceStateSize =
+            anv_physical_device_bindless_heap_size(device->physical) / ANV_SURFACE_STATE_SIZE - 1;
+         sba.BindlessSurfaceStateMOCS = mocs;
+         sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
+#if GFX_VER >= 11
+         sba.BindlessSamplerStateBaseAddress = (struct anv_address) { NULL, 0 };
+         sba.BindlessSamplerStateMOCS = mocs;
+         sba.BindlessSamplerStateBaseAddressModifyEnable = true;
+         sba.BindlessSamplerStateBufferSize = 0;
+#endif
+      }
+
 #if GFX_VERx10 >= 125
       sba.L1CacheControl = L1CC_WB;
 #endif

@@ -384,6 +384,9 @@ enum anv_bo_alloc_flags {
 
    /** This buffer will be scanout to display */
    ANV_BO_ALLOC_SCANOUT = (1 << 12),
+
+   /** For descriptor pools */
+   ANV_BO_ALLOC_DESCRIPTOR_POOL = (1 << 13),
 };
 
 struct anv_bo {
@@ -956,6 +959,8 @@ struct anv_physical_device {
        struct anv_va_range                      scratch_surface_state_pool;
        struct anv_va_range                      bindless_surface_state_pool;
        struct anv_va_range                      instruction_state_pool;
+       struct anv_va_range                      descriptor_pool;
+       struct anv_va_range                      push_descriptor_pool;
        struct anv_va_range                      client_visible_heap;
        struct anv_va_range                      high_heap;
     } va;
@@ -1123,6 +1128,7 @@ struct anv_device {
     struct util_vma_heap                        vma_lo;
     struct util_vma_heap                        vma_cva;
     struct util_vma_heap                        vma_hi;
+    struct util_vma_heap                        vma_desc;
 
     /** List of all anv_device_memory objects */
     struct list_head                            memory_objects;
@@ -1142,6 +1148,7 @@ struct anv_device {
     struct anv_state_pool                       scratch_surface_state_pool;
     struct anv_state_pool                       internal_surface_state_pool;
     struct anv_state_pool                       bindless_surface_state_pool;
+    struct anv_state_pool                       push_descriptor_pool;
 
     struct anv_state_reserved_pool              custom_border_colors;
 
@@ -2827,6 +2834,7 @@ struct anv_cmd_buffer {
    struct anv_state_stream                      surface_state_stream;
    struct anv_state_stream                      dynamic_state_stream;
    struct anv_state_stream                      general_state_stream;
+   struct anv_state_stream                      push_descriptor_stream;
 
    VkCommandBufferUsageFlags                    usage_flags;
 
