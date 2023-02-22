@@ -3735,7 +3735,7 @@ static VkResult pvr_setup_descriptor_mappings(
    uint32_t *const descriptor_data_offset_out)
 {
    const bool old_path =
-      pvr_hard_code_shader_required(&cmd_buffer->device->pdevice->dev_info);
+      pvr_has_hard_coded_shaders(&cmd_buffer->device->pdevice->dev_info);
 
    if (old_path) {
       return pvr_setup_descriptor_mappings_old(cmd_buffer,

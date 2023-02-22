@@ -668,8 +668,7 @@ static VkResult pvr_pds_descriptor_program_create_and_upload(
    uint32_t *staging_buffer;
    VkResult result;
 
-   const bool old_path =
-      pvr_hard_code_shader_required(&device->pdevice->dev_info);
+   const bool old_path = pvr_has_hard_coded_shaders(&device->pdevice->dev_info);
 
    assert(stage != PVR_STAGE_ALLOCATION_COUNT);
 
@@ -1159,7 +1158,7 @@ static VkResult pvr_compute_pipeline_compile(
    uint32_t usc_temps;
    VkResult result;
 
-   if (pvr_hard_code_shader_required(&device->pdevice->dev_info)) {
+   if (pvr_has_hard_coded_shaders(&device->pdevice->dev_info)) {
       struct pvr_hard_code_compute_build_info build_info;
 
       result = pvr_hard_code_compute_pipeline(device,
@@ -1647,8 +1646,7 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
    struct rogue_build_ctx *ctx;
    VkResult result;
 
-   const bool old_path =
-      pvr_hard_code_shader_required(&device->pdevice->dev_info);
+   const bool old_path = pvr_has_hard_coded_shaders(&device->pdevice->dev_info);
 
    /* Vars needed for the new path. */
    uint32_t sh_count[PVR_STAGE_ALLOCATION_COUNT] = { 0 };
@@ -1675,7 +1673,7 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
       const VkPipelineShaderStageCreateInfo *create_info;
       size_t stage_index = gfx_pipeline->stage_indices[stage];
 
-      if (pvr_hard_code_shader_required(&device->pdevice->dev_info)) {
+      if (pvr_has_hard_coded_shaders(&device->pdevice->dev_info)) {
          if (pvr_hard_code_graphics_get_flags(&device->pdevice->dev_info) &
              BITFIELD_BIT(stage)) {
             continue;
@@ -1705,7 +1703,7 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
    /* Back-end translation. */
    for (gl_shader_stage stage = MESA_SHADER_FRAGMENT; stage > MESA_SHADER_NONE;
         stage--) {
-      if (pvr_hard_code_shader_required(&device->pdevice->dev_info) &&
+      if (pvr_has_hard_coded_shaders(&device->pdevice->dev_info) &&
           pvr_hard_code_graphics_get_flags(&device->pdevice->dev_info) &
              BITFIELD_BIT(stage)) {
          const struct pvr_device_info *const dev_info =
@@ -1756,7 +1754,7 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
       }
    }
 
-   if (pvr_hard_code_shader_required(&device->pdevice->dev_info) &&
+   if (pvr_has_hard_coded_shaders(&device->pdevice->dev_info) &&
        pvr_hard_code_graphics_get_flags(&device->pdevice->dev_info) &
           BITFIELD_BIT(MESA_SHADER_VERTEX)) {
       pvr_hard_code_graphics_vertex_state(&device->pdevice->dev_info,
@@ -1788,7 +1786,7 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
    if (result != VK_SUCCESS)
       goto err_free_build_context;
 
-   if (pvr_hard_code_shader_required(&device->pdevice->dev_info) &&
+   if (pvr_has_hard_coded_shaders(&device->pdevice->dev_info) &&
        pvr_hard_code_graphics_get_flags(&device->pdevice->dev_info) &
           BITFIELD_BIT(MESA_SHADER_FRAGMENT)) {
       pvr_hard_code_graphics_fragment_state(
