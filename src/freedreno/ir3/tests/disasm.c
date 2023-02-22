@@ -240,6 +240,9 @@ static const struct test {
    INSTR_6XX(c7020020_01800000, "stc.f32 c[32], r0.x, 1"), /* stc c[32], r0.x, 1 */
    /* dEQP-VK.image.image_size.cube_array.readonly_writeonly_1x1x12 */
    INSTR_6XX(c7060020_03800000, "stc.u32 c[32], r0.x, 3"), /* stc c[32], r0.x, 3 */
+   /* A660 EQP-VK.robustness.robustness2.push.notemplate.r32i.unroll.nonvolatile.sampled_image.no_fmt_qual.img.samples_1.1d.frag */
+   /* TODO: stc has a similar to stsc DST range */
+   /* INSTR_6XX(c702026e_0480025c, "stc.u32 c[366], r11.z, 4"), */ /* stc c[366], r11.z, 4 */
 
    /* dEQP-VK.pipeline.monolithic.extended_dynamic_state.two_draws_static.stencil_state_face_both_single_gt_replace_clear_102_ref_103_depthfail */
    INSTR_7XX(c7420000_0cc00000, "stsc.f32 c[0], 0, 12"),
