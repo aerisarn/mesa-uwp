@@ -322,11 +322,6 @@ ir_algebraic_visitor::handle_expression(ir_expression *ir)
 #undef HANDLE_PACK_UNPACK_INVERSE
 
    case ir_binop_add:
-      if (is_vec_zero(op_const[0]))
-	 return ir->operands[1];
-      if (is_vec_zero(op_const[1]))
-	 return ir->operands[0];
-
       /* Replace (x + (-x)) with constant 0 */
       for (int i = 0; i < 2; i++) {
          if (op_expr[i]) {
@@ -400,13 +395,6 @@ ir_algebraic_visitor::handle_expression(ir_expression *ir)
          }
       }
 
-      break;
-
-   case ir_binop_sub:
-      if (is_vec_zero(op_const[0]))
-	 return neg(ir->operands[1]);
-      if (is_vec_zero(op_const[1]))
-	 return ir->operands[0];
       break;
 
    case ir_binop_mul:
