@@ -882,7 +882,12 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
           * address space but means we can do something more efficient in the
           * shader.
           */
-         ubld1.MOV(component(header, 3), sampler_handle);
+         if (compiler->use_bindless_sampler_offset) {
+            assert(devinfo->ver >= 11);
+            ubld1.OR(component(header, 3), sampler_handle, brw_imm_ud(1));
+         } else {
+            ubld1.MOV(component(header, 3), sampler_handle);
+         }
       } else if (is_high_sampler(devinfo, sampler)) {
          fs_reg sampler_state_ptr =
             retype(brw_vec1_grf(0, 3), BRW_REGISTER_TYPE_UD);
