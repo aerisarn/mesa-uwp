@@ -1109,6 +1109,9 @@ intrinsic("store_stack", [0],
 intrinsic("load_frag_shading_rate", dest_comp=1, bit_sizes=[32],
           flags=[CAN_ELIMINATE, CAN_REORDER])
 
+# Whether the rasterized fragment is fully covered by the generating primitive.
+system_value("fully_covered", dest_comp=1, bit_sizes=[1])
+
 # OpenCL printf instruction
 # First source is a deref to the format string
 # Second source is a deref to a struct containing the args
