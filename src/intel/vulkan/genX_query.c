@@ -1688,7 +1688,9 @@ genX(CmdWriteAccelerationStructuresPropertiesKHR)(
       }
    }
 
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_END_OF_PIPE_SYNC_BIT;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_END_OF_PIPE_SYNC_BIT,
+                             "after write acceleration struct props");
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    for (uint32_t i = 0; i < accelerationStructureCount; i++)
