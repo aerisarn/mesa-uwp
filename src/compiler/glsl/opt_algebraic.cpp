@@ -696,26 +696,6 @@ ir_algebraic_visitor::handle_expression(ir_expression *ir)
 
       break;
 
-   case ir_unop_rcp:
-      if (op_expr[0] && op_expr[0]->operation == ir_unop_rcp)
-	 return op_expr[0]->operands[0];
-
-      if (op_expr[0] && (op_expr[0]->operation == ir_unop_exp2 ||
-                         op_expr[0]->operation == ir_unop_exp)) {
-         return new(mem_ctx) ir_expression(op_expr[0]->operation, ir->type,
-                                           neg(op_expr[0]->operands[0]));
-      }
-
-      if (op_expr[0] && op_expr[0]->operation == ir_unop_rsq)
-         return sqrt(op_expr[0]->operands[0]);
-
-      /* As far as we know, all backends are OK with rsq. */
-      if (op_expr[0] && op_expr[0]->operation == ir_unop_sqrt) {
-	 return rsq(op_expr[0]->operands[0]);
-      }
-
-      break;
-
    case ir_triop_fma:
       /* Operands are op0 * op1 + op2. */
       if (is_vec_zero(op_const[0]) || is_vec_zero(op_const[1])) {
