@@ -22,6 +22,7 @@ struct zink_query_pool {
    VkQueryPipelineStatisticFlags pipeline_stats;
    VkQueryPool query_pool;
    unsigned last_range;
+   unsigned refcount;
    bool overflow;
 };
 
@@ -54,8 +55,6 @@ struct zink_query_start {
 struct zink_query {
    struct threaded_query base;
    enum pipe_query_type type;
-
-   struct zink_query_pool *pool[2];
 
    /* Everytime the gallium query needs
     * another vulkan query, add a new start.
@@ -390,10 +389,22 @@ fail:
 }
 
 static void
-unref_vk_query(struct zink_vk_query *vkq)
+unref_vk_pool(struct zink_screen *screen, struct zink_query_pool *pool)
+{
+   if (!pool || --pool->refcount)
+      return;
+   VKSCR(DestroyQueryPool)(screen->dev, pool->query_pool, NULL);
+   if (list_is_linked(&pool->list))
+      list_del(&pool->list);
+   FREE(pool);
+}
+
+static void
+unref_vk_query(struct zink_screen *screen, struct zink_vk_query *vkq)
 {
    if (!vkq)
       return;
+   unref_vk_pool(screen, vkq->pool);
    vkq->refcount--;
    if (vkq->refcount == 0)
       FREE(vkq);
@@ -409,7 +420,7 @@ destroy_query(struct zink_screen *screen, struct zink_query *query)
    unsigned num_starts = query->starts.capacity / sizeof(struct zink_query_start);
    for (unsigned j = 0; j < num_starts; j++) {
       for (unsigned i = 0; i < PIPE_MAX_VERTEX_STREAMS; i++) {
-         unref_vk_query(starts[j].vkq[i]);
+         unref_vk_query(screen, starts[j].vkq[i]);
       }
    }
 
@@ -449,8 +460,9 @@ query_pool_get_range(struct zink_context *ctx, struct zink_query *q)
    }
    start->data = 0;
 
+   unsigned num_pools = get_num_query_pools(q);
    for (unsigned i = 0; i < num_queries; i++) {
-      int pool_idx = q->pool[1] ? i : 0;
+      int pool_idx = num_pools > 1 ? i : 0;
       /* try and find the active query for this */
       struct zink_vk_query *vkq;
       int xfb_idx = num_queries == 4 ? i : q->index;
@@ -458,8 +470,10 @@ query_pool_get_range(struct zink_context *ctx, struct zink_query *q)
            (pool_idx == 1)) && ctx->curr_xfb_queries[xfb_idx]) {
          vkq = ctx->curr_xfb_queries[xfb_idx];
          vkq->refcount++;
+         vkq->pool->refcount++;
       } else {
-         struct zink_query_pool *pool = q->pool[pool_idx];
+         struct zink_query_pool *pool = find_or_allocate_qp(ctx, q, pool_idx);
+         pool->refcount++;
          vkq = CALLOC_STRUCT(zink_vk_query);
 
          vkq->refcount = 1;
@@ -474,7 +488,7 @@ query_pool_get_range(struct zink_context *ctx, struct zink_query *q)
             pool->overflow = true;
          }
       }
-      unref_vk_query(start->vkq[i]);
+      unref_vk_query(zink_screen(ctx->base.screen), start->vkq[i]);
       start->vkq[i] = vkq;
    }
 }
@@ -511,14 +525,6 @@ zink_create_query(struct pipe_context *pctx,
       query->needs_rast_discard_workaround = !screen->info.primgen_feats.primitivesGeneratedQueryWithRasterizerDiscard;
    } else if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED) {
       query->needs_rast_discard_workaround = true;
-   }
-
-   int num_pools = get_num_query_pools(query);
-   for (unsigned i = 0; i < num_pools; i++) {
-      query->pool[i] = find_or_allocate_qp(zink_context(pctx), query, i);
-
-      if (!query->pool[i])
-         goto fail;
    }
 
    if (!qbo_append(pctx->screen, query))
