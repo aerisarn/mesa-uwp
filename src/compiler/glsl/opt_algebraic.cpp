@@ -327,31 +327,9 @@ ir_algebraic_visitor::handle_expression(ir_expression *ir)
       }
       break;
 
-   case ir_unop_exp:
-      if (op_expr[0] == NULL)
-	 break;
-
-      if (op_expr[0]->operation == ir_unop_log) {
-         return op_expr[0]->operands[0];
-      }
-      break;
-
-   case ir_unop_log:
-      if (op_expr[0] == NULL)
-	 break;
-
-      if (op_expr[0]->operation == ir_unop_exp) {
-         return op_expr[0]->operands[0];
-      }
-      break;
-
    case ir_unop_exp2:
       if (op_expr[0] == NULL)
 	 break;
-
-      if (op_expr[0]->operation == ir_unop_log2) {
-         return op_expr[0]->operands[0];
-      }
 
       if (op_expr[0]->operation == ir_binop_mul) {
          for (int log2_pos = 0; log2_pos < 2; log2_pos++) {
@@ -365,15 +343,6 @@ ir_algebraic_visitor::handle_expression(ir_expression *ir)
                                                  op_expr[0]->operands[1 - log2_pos]);
             }
          }
-      }
-      break;
-
-   case ir_unop_log2:
-      if (op_expr[0] == NULL)
-	 break;
-
-      if (op_expr[0]->operation == ir_unop_exp2) {
-         return op_expr[0]->operands[0];
       }
       break;
 
