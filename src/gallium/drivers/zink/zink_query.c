@@ -72,6 +72,7 @@ struct zink_query {
    bool dead; /* query should be destroyed when its fence finishes */
    bool needs_update; /* query needs to update its qbos */
    bool needs_rast_discard_workaround; /* query needs discard disabled */
+   bool suspended;
 
    struct list_head active_list;
 
@@ -1087,11 +1088,13 @@ zink_suspend_queries(struct zink_context *ctx, struct zink_batch *batch)
 {
    set_foreach(&batch->state->active_queries, entry) {
       struct zink_query *query = (void*)entry->key;
-      if (query->active && !is_time_query(query))
+      if (query->active && !is_time_query(query)) {
          /* the fence is going to steal the set off the batch, so we have to copy
           * the active queries onto a list
           */
          list_addtail(&query->active_list, &ctx->suspended_queries);
+         query->suspended = true;
+      }
       suspend_query(ctx, query);
    }
 }
@@ -1102,6 +1105,7 @@ zink_resume_queries(struct zink_context *ctx, struct zink_batch *batch)
    struct zink_query *query, *next;
    LIST_FOR_EACH_ENTRY_SAFE(query, next, &ctx->suspended_queries, active_list) {
       list_delinit(&query->active_list);
+      query->suspended = false;
       begin_query(ctx, batch, query);
    }
 }
