@@ -372,6 +372,33 @@ typedef struct rogue_mux {
 } PACKED rogue_mux;
 static_assert(sizeof(rogue_mux) == 1, "sizeof(rogue_mux) != 1");
 
+typedef struct rogue_idx_offset {
+   union {
+      struct {
+         unsigned bank : 3;
+         unsigned offset : 8;
+         unsigned : 5;
+      } PACKED;
+
+      uint16_t _;
+   } PACKED;
+} PACKED rogue_idx_offset;
+static_assert(sizeof(rogue_idx_offset) == 2, "sizeof(rogue_idx_offset) != 2");
+
+typedef struct rogue_idx_dim_offset {
+   union {
+      struct {
+         unsigned bank : 3;
+         unsigned dim_offset : 5;
+         unsigned : 8;
+      } PACKED;
+
+      uint16_t _;
+   } PACKED;
+} PACKED rogue_idx_dim_offset;
+static_assert(sizeof(rogue_idx_dim_offset) == 2,
+              "sizeof(rogue_idx_dim_offset) != 2");
+
 enum reg_bank {
    BANK_SPECIAL = 0b000,
    BANK_TEMP = 0b001,
@@ -381,6 +408,17 @@ enum reg_bank {
    BANK_COEFF_ALT = 0b101,
    BANK_IDX0 = 0b110,
    BANK_IDX1 = 0b111,
+};
+
+enum idx_bank {
+   IDX_BANK_TEMP = 0b000,
+   IDX_BANK_VTXIN = 0b001,
+   IDX_BANK_COEFF = 0b010,
+   IDX_BANK_SHARED = 0b011,
+   IDX_BANK_DC = 0b100,
+   IDX_BANK_IDX = 0b101,
+   IDX_BANK_COEFF_ALT = 0b110,
+   IDX_BANK_PIXOUT = 0b111,
 };
 
 enum is0 {
