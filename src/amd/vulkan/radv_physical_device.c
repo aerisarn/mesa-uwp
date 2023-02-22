@@ -1840,7 +1840,7 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->conservativePointAndLineRasterization = false;
          properties->degenerateTrianglesRasterized = true;
          properties->degenerateLinesRasterized = false;
-         properties->fullyCoveredFragmentShaderInputVariable = false;
+         properties->fullyCoveredFragmentShaderInputVariable = true;
          properties->conservativeRasterizationPostDepthCoverage = false;
          break;
       }
