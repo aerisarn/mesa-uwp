@@ -575,16 +575,6 @@ ir_algebraic_visitor::handle_expression(ir_expression *ir)
                                            ir->operands[1]);
       break;
 
-   case ir_binop_rshift:
-   case ir_binop_lshift:
-      /* 0 >> x == 0 */
-      if (is_vec_zero(op_const[0]))
-         return ir->operands[0];
-      /* x >> 0 == x */
-      if (is_vec_zero(op_const[1]))
-         return ir->operands[0];
-      break;
-
    case ir_binop_logic_and:
       if (is_vec_one(op_const[0])) {
 	 return ir->operands[1];
