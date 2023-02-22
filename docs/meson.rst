@@ -105,11 +105,9 @@ To review the options which Meson chose, run:
 
    meson configure build/
 
-Meson does not currently support listing configuration options before
-running ``meson setup build/`` but this feature is being discussed upstream. For
-now, we have a ``bin/meson-options.py`` script that prints the options
-for you. If that script doesn't work for some reason, you can always
-look in the
+Recent version of Meson can print the available options and their
+default values by running ``meson configure`` in the source directory.
+If your Meson version is too old, you can always look in the
 `meson_options.txt <https://gitlab.freedesktop.org/mesa/mesa/-/blob/main/meson_options.txt>`__
 file at the root of the project.
 
