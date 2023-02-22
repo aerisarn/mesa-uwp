@@ -4224,13 +4224,15 @@ radv_emit_msaa_state(struct radv_cmd_buffer *cmd_buffer)
       unsigned ps_iter_samples = radv_get_ps_iter_samples(cmd_buffer);
       unsigned log_z_samples = util_logbase2(z_samples);
       unsigned log_ps_iter_samples = util_logbase2(ps_iter_samples);
+      bool uses_underestimate =
+         d->vk.rs.conservative_mode == VK_CONSERVATIVE_RASTERIZATION_MODE_UNDERESTIMATE_EXT;
 
       db_eqaa |= S_028804_MAX_ANCHOR_SAMPLES(log_z_samples) |
                  S_028804_PS_ITER_SAMPLES(log_ps_iter_samples) |
                  S_028804_MASK_EXPORT_NUM_SAMPLES(log_samples) |
                  S_028804_ALPHA_TO_MASK_NUM_SAMPLES(log_samples);
 
-      pa_sc_aa_config |= S_028BE0_MSAA_NUM_SAMPLES(log_samples) |
+      pa_sc_aa_config |= S_028BE0_MSAA_NUM_SAMPLES(uses_underestimate ? 0 : log_samples) |
                          S_028BE0_MAX_SAMPLE_DIST(max_sample_dist) |
                          S_028BE0_MSAA_EXPOSED_SAMPLES(log_samples) |
                          S_028BE0_COVERED_CENTROID_IS_CENTER(pdevice->rad_info.gfx_level >= GFX10_3);
