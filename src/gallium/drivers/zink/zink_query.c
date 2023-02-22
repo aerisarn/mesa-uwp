@@ -1020,6 +1020,10 @@ zink_end_query(struct pipe_context *pctx,
 
    if (needs_stats_list(query))
       list_delinit(&query->stats_list);
+   if (query->suspended) {
+      list_delinit(&query->active_list);
+      query->suspended = false;
+   }
    if (is_time_query(query)) {
       update_query_id(ctx, query);
       if (query->needs_reset)
