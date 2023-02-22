@@ -1163,7 +1163,7 @@ zink_resume_cs_query(struct zink_context *ctx)
 }
 
 void
-zink_query_update_gs_states(struct zink_context *ctx, bool was_line_loop)
+zink_query_update_gs_states(struct zink_context *ctx)
 {
    struct zink_query *query;
    bool suspendall = false;
@@ -1185,7 +1185,7 @@ zink_query_update_gs_states(struct zink_context *ctx, bool was_line_loop)
       query = ctx->vertices_query;
       struct zink_query_start *last_start = util_dynarray_top_ptr(&query->starts, struct zink_query_start);
       assert(query->active);
-      if (last_start->was_line_loop != was_line_loop) {
+      if (last_start->was_line_loop != ctx->was_line_loop) {
          suspendall = true;
       }
    }
@@ -1203,7 +1203,7 @@ zink_query_update_gs_states(struct zink_context *ctx, bool was_line_loop)
    if (ctx->vertices_query) {
       query = ctx->vertices_query;
       struct zink_query_start *last_start = util_dynarray_top_ptr(&query->starts, struct zink_query_start);
-      last_start->was_line_loop = was_line_loop;
+      last_start->was_line_loop = ctx->was_line_loop;
       query->has_draws = true;
    }
 }

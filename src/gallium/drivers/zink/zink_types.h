@@ -1737,6 +1737,7 @@ struct zink_context {
    struct list_head primitives_generated_queries;
    struct zink_query *vertices_query;
    bool disable_color_writes;
+   bool was_line_loop;
    bool primitives_generated_active;
    bool queries_disabled, render_condition_active;
    struct {
