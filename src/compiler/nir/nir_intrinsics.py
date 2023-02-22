@@ -1467,6 +1467,7 @@ system_value("rt_dynamic_callable_stack_base_amd", 1)
 system_value("sbt_offset_amd", 1)
 system_value("sbt_stride_amd", 1)
 system_value("accel_struct_amd", 1, bit_sizes=[64])
+system_value("cull_mask_and_flags_amd", 1)
 
 #   0. SBT Index
 #   1. Ray Tmax
