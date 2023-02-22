@@ -305,19 +305,6 @@ ir_algebraic_visitor::handle_expression(ir_expression *ir)
       this->mem_ctx = ralloc_parent(ir);
 
    switch (ir->operation) {
-   case ir_unop_abs:
-      if (op_expr[0] == NULL)
-	 break;
-
-      switch (op_expr[0]->operation) {
-      case ir_unop_abs:
-      case ir_unop_neg:
-         return abs(op_expr[0]->operands[0]);
-      default:
-         break;
-      }
-      break;
-
    case ir_unop_neg:
       if (op_expr[0] == NULL)
 	 break;
