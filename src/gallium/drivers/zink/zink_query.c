@@ -177,10 +177,22 @@ zink_context_destroy_query_pools(struct zink_context *ctx)
 }
 
 static struct zink_query_pool *
-find_or_allocate_qp(struct zink_context *ctx,
-                    VkQueryType vk_query_type,
-                    VkQueryPipelineStatisticFlags pipeline_stats)
+find_or_allocate_qp(struct zink_context *ctx, struct zink_query *q, unsigned idx)
 {
+   VkQueryPipelineStatisticFlags pipeline_stats = 0;
+   if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED && q->vkqtype != VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT)
+      pipeline_stats = VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT |
+                       VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT;
+   else if (q->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE)
+      pipeline_stats = pipeline_statistic_convert(q->index);
+
+   VkQueryType vk_query_type = q->vkqtype;
+   /* if xfb is active, we need to use an xfb query, otherwise we need pipeline statistics */
+   if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED && idx == 1) {
+      vk_query_type = VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT;
+      pipeline_stats = 0;
+   }
+
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    list_for_each_entry(struct zink_query_pool, pool, &ctx->query_pools, list) {
       if (pool->vk_query_type == vk_query_type) {
@@ -495,27 +507,16 @@ zink_create_query(struct pipe_context *pctx,
        !screen->info.primgen_feats.primitivesGeneratedQueryWithNonZeroStreams)
       query->vkqtype = VK_QUERY_TYPE_PIPELINE_STATISTICS;
 
-   VkQueryPipelineStatisticFlags pipeline_stats = 0;
    if (query->vkqtype == VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT) {
       query->needs_rast_discard_workaround = !screen->info.primgen_feats.primitivesGeneratedQueryWithRasterizerDiscard;
    } else if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED) {
-      pipeline_stats = VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT |
-         VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT;
       query->needs_rast_discard_workaround = true;
-   } else if (query_type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE)
-      pipeline_stats = pipeline_statistic_convert(index);
+   }
 
    int num_pools = get_num_query_pools(query);
    for (unsigned i = 0; i < num_pools; i++) {
-      VkQueryType vkqtype = query->vkqtype;
-      /* if xfb is active, we need to use an xfb query, otherwise we need pipeline statistics */
-      if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED && i == 1) {
-         vkqtype = VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT;
-         pipeline_stats = 0;
-      }
-      query->pool[i] = find_or_allocate_qp(zink_context(pctx),
-                                           vkqtype,
-                                           pipeline_stats);
+      query->pool[i] = find_or_allocate_qp(zink_context(pctx), query, i);
+
       if (!query->pool[i])
          goto fail;
    }
