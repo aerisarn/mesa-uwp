@@ -207,10 +207,12 @@ tc_parse_draw(struct threaded_context *tc)
       info->cbuf_invalidate = 0;
       info->zsbuf_invalidate = false;
       info->has_draw = true;
+      info->has_query_ends |= tc->query_ended;
    }
 
    tc->in_renderpass = true;
    tc->seen_fb_state = true;
+   tc->query_ended = false;
 }
 
 static void *
@@ -596,6 +598,7 @@ _tc_sync(struct threaded_context *tc, UNUSED const char *info, UNUSED const char
          tc->renderpass_info_recording->data32[0] = 0;
       }
       tc->seen_fb_state = false;
+      tc->query_ended = false;
    }
 
    MESA_TRACE_END();
@@ -1120,6 +1123,7 @@ tc_end_query(struct pipe_context *_pipe, struct pipe_query *query)
    call->query = query;
 
    tq->flushed = false;
+   tc->query_ended = true;
 
    return true; /* we don't care about the return value for this call */
 }
@@ -3459,6 +3463,7 @@ out_of_memory:
    if (!(flags & PIPE_FLUSH_DEFERRED)) {
       tc_flush_queries(tc);
       tc->seen_fb_state = false;
+      tc->query_ended = false;
    }
    tc_set_driver_thread(tc);
    pipe->flush(pipe, fence, flags);
