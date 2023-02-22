@@ -1112,10 +1112,10 @@ suspend_query(struct zink_context *ctx, struct zink_query *query)
       update_qbo(ctx, query);
 }
 
-void
-zink_suspend_queries(struct zink_context *ctx, struct zink_batch *batch)
+static void
+suspend_queries(struct zink_context *ctx)
 {
-   set_foreach(&batch->state->active_queries, entry) {
+   set_foreach(&ctx->batch.state->active_queries, entry) {
       struct zink_query *query = (void*)entry->key;
       if (query->suspended)
          continue;
@@ -1128,6 +1128,12 @@ zink_suspend_queries(struct zink_context *ctx, struct zink_batch *batch)
       }
       suspend_query(ctx, query);
    }
+}
+
+void
+zink_suspend_queries(struct zink_context *ctx, struct zink_batch *batch)
+{
+   suspend_queries(ctx);
 }
 
 void
