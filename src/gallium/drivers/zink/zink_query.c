@@ -1127,6 +1127,8 @@ zink_resume_queries(struct zink_context *ctx, struct zink_batch *batch)
    LIST_FOR_EACH_ENTRY_SAFE(query, next, &ctx->suspended_queries, active_list) {
       list_delinit(&query->active_list);
       query->suspended = false;
+      if (query->needs_update && !ctx->batch.in_rp)
+         update_qbo(ctx, query);
       begin_query(ctx, batch, query);
    }
 }
