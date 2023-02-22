@@ -1113,6 +1113,16 @@ static const struct intel_device_info intel_device_info_dg2_g12 = {
    .platform = INTEL_PLATFORM_DG2_G12,
 };
 
+static const struct intel_device_info intel_device_info_atsm_g10 = {
+   DG2_FEATURES,
+   .platform = INTEL_PLATFORM_ATSM_G10,
+};
+
+static const struct intel_device_info intel_device_info_atsm_g11 = {
+   DG2_FEATURES,
+   .platform = INTEL_PLATFORM_ATSM_G11,
+};
+
 #define MTL_FEATURES                                            \
    /* (Sub)slice info comes from the kernel topology info */    \
    XEHP_FEATURES(0, 1, 0),                                      \
