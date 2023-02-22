@@ -103,8 +103,7 @@ struct rt_variables {
 
    /* trace_ray arguments */
    nir_variable *accel_struct;
-   nir_variable *flags;
-   nir_variable *cull_mask;
+   nir_variable *cull_mask_and_flags;
    nir_variable *sbt_offset;
    nir_variable *sbt_stride;
    nir_variable *miss_index;
@@ -167,8 +166,8 @@ create_rt_variables(nir_shader *shader, const VkRayTracingPipelineCreateInfoKHR 
    const struct glsl_type *vec3_type = glsl_vector_type(GLSL_TYPE_FLOAT, 3);
    vars.accel_struct =
       nir_variable_create(shader, nir_var_shader_temp, glsl_uint64_t_type(), "accel_struct");
-   vars.flags = nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "ray_flags");
-   vars.cull_mask = nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "cull_mask");
+   vars.cull_mask_and_flags =
+      nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "cull_mask_and_flags");
    vars.sbt_offset =
       nir_variable_create(shader, nir_var_shader_temp, glsl_uint_type(), "sbt_offset");
    vars.sbt_stride =
@@ -215,8 +214,7 @@ map_rt_variables(struct hash_table *var_remap, struct rt_variables *src,
    _mesa_hash_table_insert(var_remap, src->launch_id, dst->launch_id);
 
    _mesa_hash_table_insert(var_remap, src->accel_struct, dst->accel_struct);
-   _mesa_hash_table_insert(var_remap, src->flags, dst->flags);
-   _mesa_hash_table_insert(var_remap, src->cull_mask, dst->cull_mask);
+   _mesa_hash_table_insert(var_remap, src->cull_mask_and_flags, dst->cull_mask_and_flags);
    _mesa_hash_table_insert(var_remap, src->sbt_offset, dst->sbt_offset);
    _mesa_hash_table_insert(var_remap, src->sbt_stride, dst->sbt_stride);
    _mesa_hash_table_insert(var_remap, src->miss_index, dst->miss_index);
@@ -377,9 +375,10 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
 
                /* Per the SPIR-V extension spec we have to ignore some bits for some arguments. */
                nir_store_var(&b_shader, vars->accel_struct, intr->src[0].ssa, 0x1);
-               nir_store_var(&b_shader, vars->flags, intr->src[1].ssa, 0x1);
-               nir_store_var(&b_shader, vars->cull_mask,
-                             nir_iand_imm(&b_shader, intr->src[2].ssa, 0xff), 0x1);
+               nir_store_var(&b_shader, vars->cull_mask_and_flags,
+                             nir_ior(&b_shader, nir_iand_imm(&b_shader, intr->src[2].ssa, 0xff),
+                                     nir_ishl_imm(&b_shader, intr->src[1].ssa, 8)),
+                             0x1);
                nir_store_var(&b_shader, vars->sbt_offset,
                              nir_iand_imm(&b_shader, intr->src[3].ssa, 0xf), 0x1);
                nir_store_var(&b_shader, vars->sbt_stride,
@@ -481,7 +480,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                break;
             }
             case nir_intrinsic_load_ray_flags: {
-               ret = nir_load_var(&b_shader, vars->flags);
+               ret = nir_ishr_imm(&b_shader, nir_load_var(&b_shader, vars->cull_mask_and_flags), 8);
                break;
             }
             case nir_intrinsic_load_ray_hit_kind: {
@@ -536,7 +535,8 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                break;
             }
             case nir_intrinsic_load_cull_mask: {
-               ret = nir_load_var(&b_shader, vars->cull_mask);
+               ret =
+                  nir_iand_imm(&b_shader, nir_load_var(&b_shader, vars->cull_mask_and_flags), 0xff);
                break;
             }
             case nir_intrinsic_ignore_ray_intersection: {
@@ -585,6 +585,10 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                ret = nir_load_var(&b_shader, vars->accel_struct);
                break;
             }
+            case nir_intrinsic_load_cull_mask_and_flags_amd: {
+               ret = nir_load_var(&b_shader, vars->cull_mask_and_flags);
+               break;
+            }
             case nir_intrinsic_execute_closest_hit_amd: {
                nir_store_var(&b_shader, vars->tmax, intr->src[1].ssa, 0x1);
                nir_store_var(&b_shader, vars->primitive_id, intr->src[2].ssa, 0x1);
@@ -594,8 +598,8 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                load_sbt_entry(&b_shader, vars, intr->src[0].ssa, SBT_HIT, SBT_CLOSEST_HIT_IDX);
 
                nir_ssa_def *should_return =
-                  nir_test_mask(&b_shader, nir_load_var(&b_shader, vars->flags),
-                                SpvRayFlagsSkipClosestHitShaderKHRMask);
+                  nir_test_mask(&b_shader, nir_load_var(&b_shader, vars->cull_mask_and_flags),
+                                SpvRayFlagsSkipClosestHitShaderKHRMask << 8);
 
                if (!(vars->create_info->flags &
                      VK_PIPELINE_CREATE_RAY_TRACING_NO_NULL_CLOSEST_HIT_SHADERS_BIT_KHR)) {
@@ -1337,8 +1341,8 @@ build_traversal_shader(struct radv_device *device,
 
    /* initialize trace_ray arguments */
    nir_ssa_def *accel_struct = nir_load_accel_struct_amd(&b);
-   nir_store_var(&b, vars.flags, nir_load_ray_flags(&b), 0x1);
-   nir_store_var(&b, vars.cull_mask, nir_load_cull_mask(&b), 0x1);
+   nir_ssa_def *cull_mask_and_flags = nir_load_cull_mask_and_flags_amd(&b);
+   nir_store_var(&b, vars.cull_mask_and_flags, cull_mask_and_flags, 0x1);
    nir_store_var(&b, vars.sbt_offset, nir_load_sbt_offset_amd(&b), 0x1);
    nir_store_var(&b, vars.sbt_stride, nir_load_sbt_stride_amd(&b), 0x1);
    nir_store_var(&b, vars.origin, nir_load_ray_world_origin(&b), 0x7);
@@ -1410,8 +1414,8 @@ build_traversal_shader(struct radv_device *device,
 
    struct radv_ray_traversal_args args = {
       .root_bvh_base = root_bvh_base,
-      .flags = nir_load_var(&b, vars.flags),
-      .cull_mask = nir_load_var(&b, vars.cull_mask),
+      .flags = nir_ishr_imm(&b, cull_mask_and_flags, 8),
+      .cull_mask = cull_mask_and_flags,
       .origin = nir_load_var(&b, vars.origin),
       .tmin = nir_load_var(&b, vars.tmin),
       .dir = nir_load_var(&b, vars.direction),
