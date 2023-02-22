@@ -6494,28 +6494,6 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
     */
    if (pipeline == GPGPU)
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CC_STATE_POINTERS), t);
-
-   if (pipeline == _3D) {
-      /* There is a mid-object preemption workaround which requires you to
-       * re-emit MEDIA_VFE_STATE after switching from GPGPU to 3D.  However,
-       * even without preemption, we have issues with geometry flickering when
-       * GPGPU and 3D are back-to-back and this seems to fix it.  We don't
-       * really know why.
-       */
-      anv_batch_emit(&cmd_buffer->batch, GENX(MEDIA_VFE_STATE), vfe) {
-         vfe.MaximumNumberofThreads =
-            devinfo->max_cs_threads * devinfo->subslice_total - 1;
-         vfe.NumberofURBEntries     = 2;
-         vfe.URBEntryAllocationSize = 2;
-      }
-
-      /* We just emitted a dummy MEDIA_VFE_STATE so now that packet is
-       * invalid. Set the compute pipeline to dirty to force a re-emit of the
-       * pipeline in case we get back-to-back dispatch calls with the same
-       * pipeline and a PIPELINE_SELECT in between.
-       */
-      cmd_buffer->state.compute.pipeline_dirty = true;
-   }
 #endif
 
 #if GFX_VER >= 12
@@ -6570,6 +6548,37 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
                              "flush and invalidate for PIPELINE_SELECT");
 #endif
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+
+#if GFX_VER == 9
+   if (pipeline == _3D) {
+      /* There is a mid-object preemption workaround which requires you to
+       * re-emit MEDIA_VFE_STATE after switching from GPGPU to 3D.  However,
+       * even without preemption, we have issues with geometry flickering when
+       * GPGPU and 3D are back-to-back and this seems to fix it.  We don't
+       * really know why.
+       *
+       * Also, from the Sky Lake PRM Vol 2a, MEDIA_VFE_STATE:
+       *
+       *    "A stalling PIPE_CONTROL is required before MEDIA_VFE_STATE unless
+       *    the only bits that are changed are scoreboard related ..."
+       *
+       * This is satisfied by applying pre-PIPELINE_SELECT pipe flushes above.
+       */
+      anv_batch_emit(&cmd_buffer->batch, GENX(MEDIA_VFE_STATE), vfe) {
+         vfe.MaximumNumberofThreads =
+            devinfo->max_cs_threads * devinfo->subslice_total - 1;
+         vfe.NumberofURBEntries     = 2;
+         vfe.URBEntryAllocationSize = 2;
+      }
+
+      /* We just emitted a dummy MEDIA_VFE_STATE so now that packet is
+       * invalid. Set the compute pipeline to dirty to force a re-emit of the
+       * pipeline in case we get back-to-back dispatch calls with the same
+       * pipeline and a PIPELINE_SELECT in between.
+       */
+      cmd_buffer->state.compute.pipeline_dirty = true;
+   }
+#endif
 
    genX(emit_pipeline_select)(&cmd_buffer->batch, pipeline);
 
