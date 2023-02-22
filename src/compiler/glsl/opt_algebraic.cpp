@@ -101,24 +101,6 @@ ir_algebraic_visitor::visit_enter(ir_assignment *ir)
 }
 
 static inline bool
-is_vec_zero(ir_constant *ir)
-{
-   return (ir == NULL) ? false : ir->is_zero();
-}
-
-static inline bool
-is_vec_one(ir_constant *ir)
-{
-   return (ir == NULL) ? false : ir->is_one();
-}
-
-static inline bool
-is_vec_negative_one(ir_constant *ir)
-{
-   return (ir == NULL) ? false : ir->is_negative_one();
-}
-
-static inline bool
 is_valid_vec_const(ir_constant *ir)
 {
    if (ir == NULL)
@@ -358,24 +340,6 @@ ir_algebraic_visitor::handle_expression(ir_expression *ir)
       break;
 
    case ir_binop_mul:
-      if (is_vec_one(op_const[0]))
-	 return ir->operands[1];
-      if (is_vec_one(op_const[1]))
-	 return ir->operands[0];
-
-      if (is_vec_zero(op_const[0]) || is_vec_zero(op_const[1]))
-	 return ir_constant::zero(ir, ir->type);
-
-      if (is_vec_negative_one(op_const[0]))
-         return neg(ir->operands[1]);
-      if (is_vec_negative_one(op_const[1]))
-         return neg(ir->operands[0]);
-
-      if (op_expr[0] && op_expr[0]->operation == ir_unop_b2f &&
-          op_expr[1] && op_expr[1]->operation == ir_unop_b2f) {
-         return b2f(logic_and(op_expr[0]->operands[0], op_expr[1]->operands[0]));
-      }
-
       /* Reassociate multiplication of constants so that we can do
        * constant folding.
        */
