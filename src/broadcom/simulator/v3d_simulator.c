@@ -92,6 +92,9 @@ static struct v3d_simulator_state {
         /** Last performance monitor ID. */
         uint32_t last_perfid;
 
+        /** Total performance counters */
+        uint32_t perfcnt_total;
+
         struct util_dynarray bin_oom;
         int refcount;
 } sim_state = {
@@ -751,7 +754,7 @@ v3d_simulator_perfmon_create_ioctl(int fd, struct drm_v3d_perfmon_create *args)
 
         perfmon->ncounters = args->ncounters;
         for (int i = 0; i < args->ncounters; i++) {
-                if (args->counters[i] >= V3D_PERFCNT_NUM) {
+                if (args->counters[i] >= sim_state.perfcnt_total) {
                         ralloc_free(perfmon);
                         return -EINVAL;
                 } else {
@@ -918,13 +921,16 @@ v3d_simulator_init_global()
         switch(sim_state.ver) {
         case 33:
                 v3d33_simulator_init_regs(sim_state.v3d);
+                sim_state.perfcnt_total = 0;
                 break;
         case 41:
         case 42:
                 v3d41_simulator_init_regs(sim_state.v3d);
+                sim_state.perfcnt_total = 87;
                 break;
         case 71:
                 v3d71_simulator_init_regs(sim_state.v3d);
+                sim_state.perfcnt_total = 93;
                 break;
         default:
                 unreachable("Not supported V3D version\n");

@@ -324,6 +324,12 @@ v3dX(create_default_attribute_values)(struct v3dv_device *device,
 void
 v3dX(job_emit_noop)(struct v3dv_job *job);
 
+/* Used at v3dv_query */
+VkResult
+v3dX(enumerate_performance_query_counters)(uint32_t *pCounterCount,
+                                           VkPerformanceCounterKHR *pCounters,
+                                           VkPerformanceCounterDescriptionKHR *pCounterDescriptions);
+
 /* Used at v3dv_descriptor_set, and other descriptor set utils */
 uint32_t v3dX(descriptor_bo_size)(VkDescriptorType type);
 

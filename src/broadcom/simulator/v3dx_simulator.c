@@ -50,7 +50,7 @@
 #include "libs/core/v3d/registers/7.1.6.0/v3d.h"
 #else
 #if V3D_VERSION == 41 || V3D_VERSION == 42
-#include "libs/core/v3d/registers/4.1.35.0/v3d.h"
+#include "libs/core/v3d/registers/4.2.14.0/v3d.h"
 #else
 #include "libs/core/v3d/registers/3.3.0.0/v3d.h"
 #endif

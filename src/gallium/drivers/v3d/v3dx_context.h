@@ -61,3 +61,13 @@ bool v3dX(tfu)(struct pipe_context *pctx,
                unsigned int src_layer,
                unsigned int dst_layer,
                bool for_mipmap);
+
+int v3dX(get_driver_query_group_info_perfcnt)(struct v3d_screen *screen,
+                                              unsigned index,
+                                              struct pipe_driver_query_group_info *info);
+int v3dX(get_driver_query_info_perfcnt)(struct v3d_screen *screen,
+                                        unsigned index,
+                                        struct pipe_driver_query_info *info);
+struct pipe_query *v3dX(create_batch_query_perfcnt)(struct v3d_context *v3d,
+                                                    unsigned num_queries,
+                                                    unsigned *query_types);

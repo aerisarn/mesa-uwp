@@ -129,6 +129,9 @@ struct v3d_simulator_file;
 /* Minimum required by the Vulkan 1.1 spec */
 #define MAX_MEMORY_ALLOCATION_SIZE (1ull << 30)
 
+/* Maximum performance counters number */
+#define V3D_MAX_PERFCNT 93
+
 struct v3dv_physical_device {
    struct vk_physical_device vk;
 
@@ -1209,7 +1212,7 @@ struct v3dv_timestamp_query_cpu_job_info {
 };
 
 /* Number of perfmons required to handle all supported performance counters */
-#define V3DV_MAX_PERFMONS DIV_ROUND_UP(V3D_PERFCNT_NUM, \
+#define V3DV_MAX_PERFMONS DIV_ROUND_UP(V3D_MAX_PERFCNT, \
                                        DRM_V3D_MAX_PERF_COUNTERS)
 
 struct v3dv_perf_query {
@@ -1680,7 +1683,7 @@ struct v3dv_query_pool {
    /* Only used with performance queries */
    struct {
       uint32_t ncounters;
-      uint8_t counters[V3D_PERFCNT_NUM];
+      uint8_t counters[V3D_MAX_PERFCNT];
 
       /* V3D has a limit on the number of counters we can track in a
        * single performance monitor, so if too many counters are requested
