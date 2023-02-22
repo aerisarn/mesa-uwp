@@ -447,6 +447,11 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_force_vrs_rates_amd:
       replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ac.force_vrs_rates);
       break;
+   case nir_intrinsic_load_fully_covered: {
+      nir_ssa_def *sample_coverage = ac_nir_load_arg(b, &s->args->ac, s->args->ac.sample_coverage);
+      replacement = nir_ine_imm(b, sample_coverage, 0);
+      break;
+   }
    default:
       progress = false;
       break;
