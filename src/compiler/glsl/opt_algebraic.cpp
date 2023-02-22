@@ -646,13 +646,6 @@ ir_algebraic_visitor::handle_expression(ir_expression *ir)
       }
       break;
 
-   case ir_triop_csel:
-      if (is_vec_one(op_const[0]))
-	 return ir->operands[1];
-      if (is_vec_zero(op_const[0]))
-	 return ir->operands[2];
-      break;
-
    /* Remove interpolateAt* instructions for demoted inputs. They are
     * assigned a constant expression to facilitate this.
     */
