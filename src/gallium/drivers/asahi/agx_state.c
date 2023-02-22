@@ -2488,8 +2488,6 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       batch->resolve |= ctx->zs->store;
    }
 
-   batch->any_draws = true;
-
    if (agx_update_vs(ctx))
       ctx->dirty |= AGX_DIRTY_VS | AGX_DIRTY_VS_PROG;
    else if (ctx->stage[PIPE_SHADER_VERTEX].dirty)
@@ -2515,6 +2513,7 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
          AGX_VDM_STATE_VERTEX_SHADER_WORD_1_LENGTH +
          AGX_VDM_STATE_VERTEX_OUTPUTS_LENGTH +
          AGX_VDM_STATE_VERTEX_UNKNOWN_LENGTH + 4 /* padding */ +
+         ((!batch->any_draws) ? AGX_VDM_BARRIER_LENGTH : 0) +
          AGX_INDEX_LIST_LENGTH + AGX_INDEX_LIST_BUFFER_LO_LENGTH +
          AGX_INDEX_LIST_COUNT_LENGTH + AGX_INDEX_LIST_INSTANCES_LENGTH +
          AGX_INDEX_LIST_START_LENGTH + AGX_INDEX_LIST_BUFFER_SIZE_LENGTH);
@@ -2551,6 +2550,15 @@ agx_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       }
       out += AGX_VDM_STATE_RESTART_INDEX_LENGTH;
    }
+
+   if (!batch->any_draws) {
+      agx_pack(out, VDM_BARRIER, cfg) {
+         cfg.usc_cache_inval = true;
+      }
+      out += AGX_VDM_BARRIER_LENGTH;
+   }
+
+   batch->any_draws = true;
 
    agx_pack(out, INDEX_LIST, cfg) {
       cfg.primitive = prim;
