@@ -113,18 +113,6 @@ is_vec_one(ir_constant *ir)
 }
 
 static inline bool
-is_vec_two(ir_constant *ir)
-{
-   return (ir == NULL) ? false : ir->is_value(2.0, 2);
-}
-
-static inline bool
-is_vec_four(ir_constant *ir)
-{
-   return (ir == NULL) ? false : ir->is_value(4.0, 4);
-}
-
-static inline bool
 is_vec_negative_one(ir_constant *ir)
 {
    return (ir == NULL) ? false : ir->is_negative_one();
@@ -633,43 +621,6 @@ ir_algebraic_visitor::handle_expression(ir_expression *ir)
          /* (a || a) == a */
          return ir->operands[0];
       }
-      break;
-
-   case ir_binop_pow:
-      /* 1^x == 1 */
-      if (is_vec_one(op_const[0]))
-         return op_const[0];
-
-      /* x^1 == x */
-      if (is_vec_one(op_const[1]))
-         return ir->operands[0];
-
-      /* pow(2,x) == exp2(x) */
-      if (is_vec_two(op_const[0]))
-         return expr(ir_unop_exp2, ir->operands[1]);
-
-      if (is_vec_two(op_const[1])) {
-         ir_variable *x = new(ir) ir_variable(ir->operands[1]->type, "x",
-                                              ir_var_temporary);
-         base_ir->insert_before(x);
-         base_ir->insert_before(assign(x, ir->operands[0]));
-         return mul(x, x);
-      }
-
-      if (is_vec_four(op_const[1])) {
-         ir_variable *x = new(ir) ir_variable(ir->operands[1]->type, "x",
-                                              ir_var_temporary);
-         base_ir->insert_before(x);
-         base_ir->insert_before(assign(x, ir->operands[0]));
-
-         ir_variable *squared = new(ir) ir_variable(ir->operands[1]->type,
-                                                    "squared",
-                                                    ir_var_temporary);
-         base_ir->insert_before(squared);
-         base_ir->insert_before(assign(squared, mul(x, x)));
-         return mul(squared, squared);
-      }
-
       break;
 
    case ir_binop_min:
