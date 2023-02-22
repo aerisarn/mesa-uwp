@@ -473,18 +473,6 @@ ir_algebraic_visitor::handle_expression(ir_expression *ir)
       }
       break;
 
-   case ir_binop_div:
-      if (is_vec_one(op_const[0]) && (
-                ir->type->is_float() || ir->type->is_double())) {
-	 return new(mem_ctx) ir_expression(ir_unop_rcp,
-					   ir->operands[1]->type,
-					   ir->operands[1],
-					   NULL);
-      }
-      if (is_vec_one(op_const[1]))
-	 return ir->operands[0];
-      break;
-
    case ir_binop_dot:
       if (is_vec_zero(op_const[0]) || is_vec_zero(op_const[1]))
 	 return ir_constant::zero(mem_ctx, ir->type);
