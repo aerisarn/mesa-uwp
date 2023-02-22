@@ -563,66 +563,6 @@ ir_algebraic_visitor::handle_expression(ir_expression *ir)
                                            ir->operands[1]);
       break;
 
-   case ir_binop_logic_and:
-      if (is_vec_one(op_const[0])) {
-	 return ir->operands[1];
-      } else if (is_vec_one(op_const[1])) {
-	 return ir->operands[0];
-      } else if (is_vec_zero(op_const[0]) || is_vec_zero(op_const[1])) {
-	 return ir_constant::zero(mem_ctx, ir->type);
-      } else if (op_expr[0] && op_expr[0]->operation == ir_unop_logic_not &&
-                 op_expr[1] && op_expr[1]->operation == ir_unop_logic_not) {
-         /* De Morgan's Law:
-          *    (not A) and (not B) === not (A or B)
-          */
-         return logic_not(logic_or(op_expr[0]->operands[0],
-                                   op_expr[1]->operands[0]));
-      } else if (ir->operands[0]->equals(ir->operands[1])) {
-         /* (a && a) == a */
-         return ir->operands[0];
-      }
-      break;
-
-   case ir_binop_logic_xor:
-      if (is_vec_zero(op_const[0])) {
-	 return ir->operands[1];
-      } else if (is_vec_zero(op_const[1])) {
-	 return ir->operands[0];
-      } else if (is_vec_one(op_const[0])) {
-	 return logic_not(ir->operands[1]);
-      } else if (is_vec_one(op_const[1])) {
-	 return logic_not(ir->operands[0]);
-      } else if (ir->operands[0]->equals(ir->operands[1])) {
-         /* (a ^^ a) == false */
-	 return ir_constant::zero(mem_ctx, ir->type);
-      }
-      break;
-
-   case ir_binop_logic_or:
-      if (is_vec_zero(op_const[0])) {
-	 return ir->operands[1];
-      } else if (is_vec_zero(op_const[1])) {
-	 return ir->operands[0];
-      } else if (is_vec_one(op_const[0]) || is_vec_one(op_const[1])) {
-	 ir_constant_data data;
-
-	 for (unsigned i = 0; i < 16; i++)
-	    data.b[i] = true;
-
-	 return new(mem_ctx) ir_constant(ir->type, &data);
-      } else if (op_expr[0] && op_expr[0]->operation == ir_unop_logic_not &&
-                 op_expr[1] && op_expr[1]->operation == ir_unop_logic_not) {
-         /* De Morgan's Law:
-          *    (not A) or (not B) === not (A and B)
-          */
-         return logic_not(logic_and(op_expr[0]->operands[0],
-                                    op_expr[1]->operands[0]));
-      } else if (ir->operands[0]->equals(ir->operands[1])) {
-         /* (a || a) == a */
-         return ir->operands[0];
-      }
-      break;
-
    case ir_binop_min:
    case ir_binop_max:
       if (!ir->type->is_float())
