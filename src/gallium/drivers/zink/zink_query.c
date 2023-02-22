@@ -1092,7 +1092,7 @@ suspend_query(struct zink_context *ctx, struct zink_query *query)
    /* if a query isn't active here then we don't need to reactivate it on the next batch */
    if (query->active && !is_time_query(query))
       end_query(ctx, &ctx->batch, query);
-   if (query->needs_update)
+   if (query->needs_update && !ctx->batch.in_rp)
       update_qbo(ctx, query);
 }
 
