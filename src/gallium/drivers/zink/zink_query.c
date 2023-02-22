@@ -40,10 +40,15 @@ struct zink_vk_query {
 };
 
 struct zink_query_start {
+   union {
+      struct {
+         bool have_gs;
+         bool have_xfb;
+         bool was_line_loop;
+      };
+      uint32_t data;
+   };
    struct zink_vk_query *vkq[PIPE_MAX_VERTEX_STREAMS];
-   bool have_gs;
-   bool have_xfb;
-   bool was_line_loop;
 };
 
 struct zink_query {
