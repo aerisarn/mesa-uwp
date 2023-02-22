@@ -23,7 +23,6 @@ struct zink_query_pool {
    VkQueryPool query_pool;
    unsigned last_range;
    unsigned refcount;
-   bool overflow;
 };
 
 struct zink_query_buffer {
@@ -151,16 +150,10 @@ static void
 reset_vk_query_pool(struct zink_context *ctx, struct zink_vk_query *vkq)
 {
    struct zink_batch *batch = &ctx->batch;
-   if (vkq->pool->overflow) {
-      zink_batch_no_rp(ctx);
-      /* this pool has overflowed: reset all queries once to avoid splitting renderpasses later */
-      VKCTX(CmdResetQueryPool)(batch->state->cmdbuf, vkq->pool->query_pool, 0, NUM_QUERIES);
-
-   } else if (vkq->needs_reset) {
+   if (vkq->needs_reset) {
       VKCTX(CmdResetQueryPool)(batch->state->barrier_cmdbuf, vkq->pool->query_pool, vkq->query_id, 1);
       batch->state->has_barriers = true;
    }
-   vkq->pool->overflow = false;
    vkq->needs_reset = false;
 }
 
@@ -474,6 +467,11 @@ query_pool_get_range(struct zink_context *ctx, struct zink_query *q)
       } else {
          struct zink_query_pool *pool = find_or_allocate_qp(ctx, q, pool_idx);
          pool->refcount++;
+         pool->last_range++;
+         if (pool->last_range == NUM_QUERIES) {
+            list_del(&pool->list);
+            pool = find_or_allocate_qp(ctx, q, pool_idx);
+         }
          vkq = CALLOC_STRUCT(zink_vk_query);
 
          vkq->refcount = 1;
@@ -482,11 +480,6 @@ query_pool_get_range(struct zink_context *ctx, struct zink_query *q)
          vkq->started = false;
          vkq->query_id = pool->last_range;
 
-         pool->last_range++;
-         if (pool->last_range == NUM_QUERIES) {
-            pool->last_range = 0;
-            pool->overflow = true;
-         }
       }
       unref_vk_query(zink_screen(ctx->base.screen), start->vkq[i]);
       start->vkq[i] = vkq;
