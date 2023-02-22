@@ -657,6 +657,9 @@ get_query_result(struct pipe_context *pctx,
    util_query_clear_result(result, query->type);
 
    int num_starts = get_num_starts(query);
+   /* no results: return zero */
+   if (!num_starts)
+      return true;
    int result_size = get_num_results(query) * sizeof(uint64_t);
    int num_maps = get_num_queries(query);
 
@@ -1299,8 +1302,14 @@ zink_get_query_result_resource(struct pipe_context *pctx,
    unsigned result_size = result_type <= PIPE_QUERY_TYPE_U32 ? sizeof(uint32_t) : sizeof(uint64_t);
    VkQueryResultFlagBits size_flags = result_type <= PIPE_QUERY_TYPE_U32 ? 0 : VK_QUERY_RESULT_64_BIT;
    unsigned num_queries = get_num_starts(query);
-   struct zink_query_start *start = util_dynarray_top_ptr(&query->starts, struct zink_query_start);
-   unsigned query_id = start->vkq[0]->query_id;
+
+   /* it's possible that a query may have no data at all: write out zeroes to the buffer and return */
+   uint64_t u64[4] = {0};
+   unsigned src_offset = result_size * get_num_results(query);
+   if (!num_queries) {
+      tc_buffer_write(pctx, pres, offset, result_size, (unsigned char*)u64 + src_offset);
+      return;
+   }
 
    if (index == -1) {
       /* VK_QUERY_RESULT_WITH_AVAILABILITY_BIT will ALWAYS write some kind of result data
@@ -1312,9 +1321,9 @@ zink_get_query_result_resource(struct pipe_context *pctx,
        */
 
       VkQueryResultFlags flag = is_time_query(query) ? 0 : VK_QUERY_RESULT_PARTIAL_BIT;
-      unsigned src_offset = result_size * get_num_results(query);
       if (zink_batch_usage_check_completion(ctx, query->batch_uses)) {
-         uint64_t u64[4] = {0};
+         struct zink_query_start *start = util_dynarray_top_ptr(&query->starts, struct zink_query_start);
+         unsigned query_id = start->vkq[0]->query_id;
          VkResult result = VKCTX(GetQueryPoolResults)(screen->dev, start->vkq[0]->pool->query_pool, query_id, 1,
                                    sizeof(u64), u64, 0, size_flags | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT | flag);
          if (result == VK_SUCCESS) {
