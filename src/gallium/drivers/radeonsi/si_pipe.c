@@ -753,9 +753,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    /* The remainder of this function initializes the gfx CS and must be last. */
    assert(sctx->gfx_cs.current.cdw == 0);
 
-   if (sctx->has_graphics) {
-      si_init_cp_reg_shadowing(sctx);
-   }
+   si_init_cp_reg_shadowing(sctx);
 
    /* Set immutable fields of shader keys. */
    if (sctx->gfx_level >= GFX9) {

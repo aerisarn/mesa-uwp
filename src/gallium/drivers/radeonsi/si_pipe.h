@@ -734,7 +734,6 @@ struct si_cs_shader_state {
    struct si_compute *emitted_program;
    unsigned offset;
    uint32_t variable_shared_size;
-   bool initialized;
 };
 
 struct si_samplers {
