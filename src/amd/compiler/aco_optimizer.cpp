@@ -1296,6 +1296,33 @@ is_scratch_offset_valid(opt_ctx& ctx, Instruction* instr, int64_t offset0, int64
    return offset >= min && offset <= max;
 }
 
+bool
+detect_clamp(Instruction* instr, unsigned* clamped_idx)
+{
+   VALU_instruction& valu = instr->valu();
+   if (valu.omod != 0 || valu.opsel != 0)
+      return false;
+
+   unsigned idx = 0;
+   bool found_zero = false, found_one = false;
+   bool is_fp16 = instr->opcode == aco_opcode::v_med3_f16;
+   for (unsigned i = 0; i < 3; i++) {
+      if (!valu.neg[i] && instr->operands[i].constantEquals(0))
+         found_zero = true;
+      else if (!valu.neg[i] &&
+               instr->operands[i].constantEquals(is_fp16 ? 0x3c00 : 0x3f800000)) /* 1.0 */
+         found_one = true;
+      else
+         idx = i;
+   }
+   if (found_zero && found_one && instr->operands[idx].isTemp()) {
+      *clamped_idx = idx;
+      return true;
+   } else {
+      return false;
+   }
+}
+
 void
 label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
@@ -1882,22 +1909,8 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       break;
    case aco_opcode::v_med3_f16:
    case aco_opcode::v_med3_f32: { /* clamp */
-      VALU_instruction& vop3 = instr->valu();
-      if (vop3.abs != 0 || vop3.neg != 0 || vop3.omod != 0 || vop3.opsel != 0)
-         break;
-
-      unsigned idx = 0;
-      bool found_zero = false, found_one = false;
-      bool is_fp16 = instr->opcode == aco_opcode::v_med3_f16;
-      for (unsigned i = 0; i < 3; i++) {
-         if (instr->operands[i].constantEquals(0))
-            found_zero = true;
-         else if (instr->operands[i].constantEquals(is_fp16 ? 0x3c00 : 0x3f800000)) /* 1.0 */
-            found_one = true;
-         else
-            idx = i;
-      }
-      if (found_zero && found_one && instr->operands[idx].isTemp())
+      unsigned idx;
+      if (detect_clamp(instr.get(), &idx) && !instr->valu().abs && !instr->valu().neg)
          ctx.info[instr->operands[idx].tempId()].set_clamp(instr.get());
       break;
    }
@@ -4503,6 +4516,19 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
        */
       ctx.mad_infos.emplace_back(nullptr, 0);
       ctx.info[instr->definitions[0].tempId()].set_mad(ctx.mad_infos.size() - 1);
+   } else if (instr->opcode == aco_opcode::v_med3_f32 || instr->opcode == aco_opcode::v_med3_f16) {
+      unsigned idx;
+      if (detect_clamp(instr.get(), &idx)) {
+         instr->format = asVOP3(Format::VOP2);
+         instr->operands[0] = instr->operands[idx];
+         instr->operands[1] = Operand::zero();
+         instr->opcode =
+            instr->opcode == aco_opcode::v_med3_f32 ? aco_opcode::v_add_f32 : aco_opcode::v_add_f16;
+         instr->valu().clamp = true;
+         instr->valu().abs = (uint8_t)instr->valu().abs[idx];
+         instr->valu().neg = (uint8_t)instr->valu().neg[idx];
+         instr->operands.pop_back();
+      }
    } else {
       aco_opcode min, max, min3, max3, med3, minmax;
       bool some_gfx9_only;
