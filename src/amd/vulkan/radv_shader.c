@@ -3219,7 +3219,7 @@ radv_compute_spi_ps_input(const struct radv_pipeline_key *pipeline_key,
       spi_ps_input |= S_0286CC_ANCILLARY_ENA(1);
    }
 
-   if (info->ps.reads_sample_mask_in) {
+   if (info->ps.reads_sample_mask_in || info->ps.reads_fully_covered) {
       spi_ps_input |= S_0286CC_SAMPLE_COVERAGE_ENA(1);
    }
 

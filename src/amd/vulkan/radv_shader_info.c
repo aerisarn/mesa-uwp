@@ -574,6 +574,8 @@ gather_shader_info_fs(const nir_shader *nir, const struct radv_pipeline_key *pip
    info->ps.reads_frag_shading_rate = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_FRAG_SHADING_RATE);
    info->ps.reads_front_face = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_FRONT_FACE);
    info->ps.reads_barycentric_model = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_BARYCENTRIC_PULL_MODEL);
+   info->ps.reads_fully_covered =
+      BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_FULLY_COVERED);
 
    bool uses_persp_or_linear_interp = info->ps.reads_persp_center ||
                                       info->ps.reads_persp_centroid ||
