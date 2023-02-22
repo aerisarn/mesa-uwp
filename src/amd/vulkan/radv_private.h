@@ -2190,6 +2190,12 @@ struct radv_graphics_pipeline {
    bool use_per_attribute_vb_descs;
    bool can_use_simple_input;
    bool uses_user_sample_locations;
+
+   /* Whether the pipeline uses inner coverage which means that a fragment has all of its pixel
+    * squares fully covered by the generating primitive.
+    */
+   bool uses_inner_coverage;
+
    bool need_null_export_workaround;
    /* Whether the pipeline forces per-vertex VRS (GFX10.3+). */
    bool force_vrs_per_vertex;

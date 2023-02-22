@@ -4973,6 +4973,8 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    pipeline->force_vrs_per_vertex =
       pipeline->base.shaders[pipeline->last_vgt_api_stage]->info.force_vrs_per_vertex;
    pipeline->uses_user_sample_locations = state.ms && state.ms->sample_locations_enable;
+   pipeline->uses_inner_coverage =
+      pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.reads_fully_covered;
    pipeline->rast_prim = vgt_gs_out_prim_type;
    pipeline->last_vgt_api_stage_locs = pipeline->base.shaders[pipeline->last_vgt_api_stage]->info.user_sgprs_locs.shader_data;
 

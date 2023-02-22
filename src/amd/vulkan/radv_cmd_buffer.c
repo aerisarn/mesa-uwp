@@ -1877,6 +1877,9 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
           cmd_buffer->state.emitted_graphics_pipeline->db_render_control != pipeline->db_render_control ||
           cmd_buffer->state.emitted_graphics_pipeline->rast_prim != pipeline->rast_prim)
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
+
+      if (cmd_buffer->state.emitted_graphics_pipeline->uses_inner_coverage != pipeline->uses_inner_coverage)
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE;
    }
 
    radeon_emit_array(cmd_buffer->cs, pipeline->base.cs.buf, pipeline->base.cs.cdw);
@@ -2473,6 +2476,7 @@ radv_emit_patch_control_points(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_conservative_rast_mode(struct radv_cmd_buffer *cmd_buffer)
 {
+   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
@@ -2483,13 +2487,13 @@ radv_emit_conservative_rast_mode(struct radv_cmd_buffer *cmd_buffer)
          pa_sc_conservative_rast = S_028C4C_PREZ_AA_MASK_ENABLE(1) | S_028C4C_POSTZ_AA_MASK_ENABLE(1) |
                                    S_028C4C_CENTROID_SAMPLE_OVERRIDE(1);
 
-         if (d->vk.rs.conservative_mode == VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT) {
+         /* Inner coverage requires underestimate conservative rasterization. */
+         if (d->vk.rs.conservative_mode == VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT &&
+             !pipeline->uses_inner_coverage) {
             pa_sc_conservative_rast |= S_028C4C_OVER_RAST_ENABLE(1) |
                                        S_028C4C_UNDER_RAST_SAMPLE_SELECT(1) |
                                        S_028C4C_PBB_UNCERTAINTY_REGION_ENABLE(1);
          } else {
-            assert(d->vk.rs.conservative_mode ==
-                   VK_CONSERVATIVE_RASTERIZATION_MODE_UNDERESTIMATE_EXT);
             pa_sc_conservative_rast |=
                S_028C4C_OVER_RAST_SAMPLE_SELECT(1) | S_028C4C_UNDER_RAST_ENABLE(1);
          }
@@ -4224,6 +4228,7 @@ lookup_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_msaa_state(struct radv_cmd_buffer *cmd_buffer)
 {
+   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
    unsigned rasterization_samples = radv_get_rasterization_samples(cmd_buffer);
    const struct radv_rendering_state *render = &cmd_buffer->state.render;
@@ -4282,6 +4287,8 @@ radv_emit_msaa_state(struct radv_cmd_buffer *cmd_buffer)
                          S_028BE0_MSAA_EXPOSED_SAMPLES(log_samples) |
                          S_028BE0_COVERED_CENTROID_IS_CENTER(pdevice->rad_info.gfx_level >= GFX10_3);
    }
+
+   pa_sc_aa_config |= S_028BE0_COVERAGE_TO_SHADER_SELECT(pipeline->uses_inner_coverage);
 
    radeon_set_context_reg(cmd_buffer->cs, R_028804_DB_EQAA, db_eqaa);
    radeon_set_context_reg(cmd_buffer->cs, R_028BE0_PA_SC_AA_CONFIG, pa_sc_aa_config);
