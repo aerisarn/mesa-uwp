@@ -449,41 +449,6 @@ ir_algebraic_visitor::handle_expression(ir_expression *ir)
       }
       break;
 
-   case ir_binop_dot:
-      if (is_vec_zero(op_const[0]) || is_vec_zero(op_const[1]))
-	 return ir_constant::zero(mem_ctx, ir->type);
-
-      for (int i = 0; i < 2; i++) {
-         if (!op_const[i])
-            continue;
-
-         unsigned components[4] = { 0 }, count = 0;
-
-         for (unsigned c = 0; c < op_const[i]->type->vector_elements; c++) {
-            if (op_const[i]->is_zero())
-               continue;
-
-            components[count] = c;
-            count++;
-         }
-
-         /* No channels had zero values; bail. */
-         if (count >= op_const[i]->type->vector_elements)
-            break;
-
-         ir_expression_operation op = count == 1 ?
-            ir_binop_mul : ir_binop_dot;
-
-         /* Swizzle both operands to remove the channels that were zero. */
-         return new(mem_ctx)
-            ir_expression(op, ir->type,
-                          new(mem_ctx) ir_swizzle(ir->operands[0],
-                                                  components, count),
-                          new(mem_ctx) ir_swizzle(ir->operands[1],
-                                                  components, count));
-      }
-      break;
-
    case ir_binop_equal:
    case ir_binop_nequal:
       for (int add_pos = 0; add_pos < 2; add_pos++) {
