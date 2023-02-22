@@ -127,7 +127,21 @@ vlVaGetConfigAttributes(VADriverContextP ctx, VAProfile profile, VAEntrypoint en
           (vl_codec_supported(pscreen, ProfileToPipe(profile), false))) {
          switch (attrib_list[i].type) {
          case VAConfigAttribRTFormat:
-            value = VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV422;
+            /*
+            * Different gallium drivers will have different supported formats
+            * If modifying this, please query the driver like below
+            */
+            value = 0;
+            if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_NV12,
+                                                   ProfileToPipe(profile),
+                                                   PIPE_VIDEO_ENTRYPOINT_BITSTREAM) ||
+                pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_YV12,
+                                                   ProfileToPipe(profile),
+                                                   PIPE_VIDEO_ENTRYPOINT_BITSTREAM) ||
+                pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_IYUV,
+                                                   ProfileToPipe(profile),
+                                                   PIPE_VIDEO_ENTRYPOINT_BITSTREAM))
+               value |= VA_RT_FORMAT_YUV420;
             if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_P010,
                                                    ProfileToPipe(profile),
                                                    PIPE_VIDEO_ENTRYPOINT_BITSTREAM) ||
@@ -143,6 +157,13 @@ vlVaGetConfigAttributes(VADriverContextP ctx, VAProfile profile, VAEntrypoint en
                                                    ProfileToPipe(profile),
                                                    PIPE_VIDEO_ENTRYPOINT_BITSTREAM))
                value |= VA_RT_FORMAT_YUV444;
+            if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_UYVY,
+                                                   ProfileToPipe(profile),
+                                                   PIPE_VIDEO_ENTRYPOINT_BITSTREAM) ||
+                pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_YUYV,
+                                                   ProfileToPipe(profile),
+                                                   PIPE_VIDEO_ENTRYPOINT_BITSTREAM))
+               value |= VA_RT_FORMAT_YUV422;
             break;
          default:
             value = VA_ATTRIB_NOT_SUPPORTED;
@@ -152,7 +173,21 @@ vlVaGetConfigAttributes(VADriverContextP ctx, VAProfile profile, VAEntrypoint en
                  (vl_codec_supported(pscreen, ProfileToPipe(profile), true))) {
          switch (attrib_list[i].type) {
          case VAConfigAttribRTFormat:
-            value = VA_RT_FORMAT_YUV420;
+            /*
+            * Different gallium drivers will have different supported formats
+            * If modifying this, please query the driver like below
+            */
+            value = 0;
+            if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_NV12,
+                                                   ProfileToPipe(profile),
+                                                   PIPE_VIDEO_ENTRYPOINT_ENCODE) ||
+                pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_YV12,
+                                                   ProfileToPipe(profile),
+                                                   PIPE_VIDEO_ENTRYPOINT_ENCODE) ||
+                pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_IYUV,
+                                                   ProfileToPipe(profile),
+                                                   PIPE_VIDEO_ENTRYPOINT_ENCODE))
+               value |= VA_RT_FORMAT_YUV420;
             if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_P010,
                                                    ProfileToPipe(profile),
                                                    PIPE_VIDEO_ENTRYPOINT_ENCODE) ||
@@ -338,9 +373,41 @@ vlVaGetConfigAttributes(VADriverContextP ctx, VAProfile profile, VAEntrypoint en
       } else if (entrypoint == VAEntrypointVideoProc) {
          switch (attrib_list[i].type) {
          case VAConfigAttribRTFormat:
-            value = (VA_RT_FORMAT_YUV420 |
-                     VA_RT_FORMAT_YUV420_10BPP |
-                     VA_RT_FORMAT_RGB32);
+            /*
+            * Different gallium drivers will have different supported formats
+            * If modifying this, please query the driver like below
+            */
+            value = 0;
+            if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_NV12,
+                                                   PIPE_VIDEO_PROFILE_UNKNOWN,
+                                                   PIPE_VIDEO_ENTRYPOINT_PROCESSING) ||
+                pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_YV12,
+                                                   PIPE_VIDEO_PROFILE_UNKNOWN,
+                                                   PIPE_VIDEO_ENTRYPOINT_PROCESSING) ||
+                pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_IYUV,
+                                                   PIPE_VIDEO_PROFILE_UNKNOWN,
+                                                   PIPE_VIDEO_ENTRYPOINT_PROCESSING))
+               value |= VA_RT_FORMAT_YUV420;
+            if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_P010,
+                                                   PIPE_VIDEO_PROFILE_UNKNOWN,
+                                                   PIPE_VIDEO_ENTRYPOINT_PROCESSING) ||
+                pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_P016,
+                                                   PIPE_VIDEO_PROFILE_UNKNOWN,
+                                                   PIPE_VIDEO_ENTRYPOINT_PROCESSING))
+               value |= VA_RT_FORMAT_YUV420_10BPP;
+            if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_R8G8B8A8_UNORM,
+                                                   PIPE_VIDEO_PROFILE_UNKNOWN,
+                                                   PIPE_VIDEO_ENTRYPOINT_PROCESSING) ||
+                pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_R8G8B8A8_UINT,
+                                                   PIPE_VIDEO_PROFILE_UNKNOWN,
+                                                   PIPE_VIDEO_ENTRYPOINT_PROCESSING) ||
+                pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_R8G8B8X8_UNORM,
+                                                   PIPE_VIDEO_PROFILE_UNKNOWN,
+                                                   PIPE_VIDEO_ENTRYPOINT_PROCESSING) ||
+                pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_R8G8B8X8_UINT,
+                                                   PIPE_VIDEO_PROFILE_UNKNOWN,
+                                                   PIPE_VIDEO_ENTRYPOINT_PROCESSING))
+               value |= VA_RT_FORMAT_RGB32;
             break;
          default:
             value = VA_ATTRIB_NOT_SUPPORTED;
@@ -369,6 +436,7 @@ vlVaCreateConfig(VADriverContextP ctx, VAProfile profile, VAEntrypoint entrypoin
       return VA_STATUS_ERROR_INVALID_CONTEXT;
 
    drv = VL_VA_DRIVER(ctx);
+   pscreen = VL_VA_PSCREEN(ctx);
 
    if (!drv)
       return VA_STATUS_ERROR_INVALID_CONTEXT;
@@ -385,9 +453,41 @@ vlVaCreateConfig(VADriverContextP ctx, VAProfile profile, VAEntrypoint entrypoin
 
       config->entrypoint = PIPE_VIDEO_ENTRYPOINT_PROCESSING;
       config->profile = PIPE_VIDEO_PROFILE_UNKNOWN;
-      supported_rt_formats = VA_RT_FORMAT_YUV420 |
-                             VA_RT_FORMAT_YUV420_10BPP |
-                             VA_RT_FORMAT_RGB32;
+      /*
+      * Different gallium drivers will have different supported formats
+      * If modifying this, please query the driver like below
+      */
+      supported_rt_formats = 0;
+      if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_NV12,
+                                             PIPE_VIDEO_PROFILE_UNKNOWN,
+                                             PIPE_VIDEO_ENTRYPOINT_PROCESSING) ||
+            pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_YV12,
+                                             PIPE_VIDEO_PROFILE_UNKNOWN,
+                                             PIPE_VIDEO_ENTRYPOINT_PROCESSING) ||
+            pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_IYUV,
+                                             PIPE_VIDEO_PROFILE_UNKNOWN,
+                                             PIPE_VIDEO_ENTRYPOINT_PROCESSING))
+         supported_rt_formats |= VA_RT_FORMAT_YUV420;
+      if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_P010,
+                                             PIPE_VIDEO_PROFILE_UNKNOWN,
+                                             PIPE_VIDEO_ENTRYPOINT_PROCESSING) ||
+            pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_P016,
+                                             PIPE_VIDEO_PROFILE_UNKNOWN,
+                                             PIPE_VIDEO_ENTRYPOINT_PROCESSING))
+         supported_rt_formats |= VA_RT_FORMAT_YUV420_10BPP;
+      if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_R8G8B8A8_UNORM,
+                                             PIPE_VIDEO_PROFILE_UNKNOWN,
+                                             PIPE_VIDEO_ENTRYPOINT_PROCESSING) ||
+            pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_R8G8B8A8_UINT,
+                                             PIPE_VIDEO_PROFILE_UNKNOWN,
+                                             PIPE_VIDEO_ENTRYPOINT_PROCESSING) ||
+            pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_R8G8B8X8_UNORM,
+                                             PIPE_VIDEO_PROFILE_UNKNOWN,
+                                             PIPE_VIDEO_ENTRYPOINT_PROCESSING) ||
+            pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_R8G8B8X8_UINT,
+                                             PIPE_VIDEO_PROFILE_UNKNOWN,
+                                             PIPE_VIDEO_ENTRYPOINT_PROCESSING))
+         supported_rt_formats |= VA_RT_FORMAT_RGB32;
       for (int i = 0; i < num_attribs; i++) {
          if (attrib_list[i].type == VAConfigAttribRTFormat) {
             if (attrib_list[i].value & supported_rt_formats) {
@@ -421,11 +521,8 @@ vlVaCreateConfig(VADriverContextP ctx, VAProfile profile, VAEntrypoint entrypoin
       return VA_STATUS_ERROR_UNSUPPORTED_PROFILE;
    }
 
-   pscreen = VL_VA_PSCREEN(ctx);
-
    switch (entrypoint) {
    case VAEntrypointVLD:
-      supported_rt_formats = VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV422;
       if (!vl_codec_supported(pscreen, p, false)) {
          FREE(config);
          if (!vl_codec_supported(pscreen, p, true))
@@ -438,7 +535,6 @@ vlVaCreateConfig(VADriverContextP ctx, VAProfile profile, VAEntrypoint entrypoin
       break;
 
    case VAEntrypointEncSlice:
-      supported_rt_formats = VA_RT_FORMAT_YUV420;
       if (!vl_codec_supported(pscreen, p, true)) {
          FREE(config);
          if (!vl_codec_supported(pscreen, p, false))
@@ -460,6 +556,18 @@ vlVaCreateConfig(VADriverContextP ctx, VAProfile profile, VAEntrypoint entrypoin
    }
 
    config->profile = p;
+   /*
+   * Different gallium drivers will have different supported formats
+   * If modifying this, please query the driver like below
+   */
+   supported_rt_formats = 0;
+   if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_NV12, p,
+         config->entrypoint) ||
+       pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_YV12, p,
+         config->entrypoint)||
+       pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_IYUV, p,
+         config->entrypoint))
+      supported_rt_formats |= VA_RT_FORMAT_YUV420;
    if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_P010, p,
          config->entrypoint) ||
        pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_P016, p,
@@ -473,6 +581,11 @@ vlVaCreateConfig(VADriverContextP ctx, VAProfile profile, VAEntrypoint entrypoin
                                           ProfileToPipe(profile),
                                           config->entrypoint))
       supported_rt_formats |= VA_RT_FORMAT_YUV444;
+   if (pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_UYVY, p,
+         config->entrypoint) ||
+       pscreen->is_video_format_supported(pscreen, PIPE_FORMAT_YUYV, p,
+         config->entrypoint))
+      supported_rt_formats |= VA_RT_FORMAT_YUV422;
 
    for (int i = 0; i <num_attribs ; i++) {
       if (attrib_list[i].type != VAConfigAttribRTFormat &&
