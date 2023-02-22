@@ -1092,6 +1092,8 @@ zink_suspend_queries(struct zink_context *ctx, struct zink_batch *batch)
 {
    set_foreach(&batch->state->active_queries, entry) {
       struct zink_query *query = (void*)entry->key;
+      if (query->suspended)
+         continue;
       if (query->active && !is_time_query(query)) {
          /* the fence is going to steal the set off the batch, so we have to copy
           * the active queries onto a list
