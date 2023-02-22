@@ -4194,7 +4194,7 @@ radv_emit_msaa_state(struct radv_cmd_buffer *cmd_buffer)
    if (pdevice->rad_info.gfx_level >= GFX9 &&
        d->vk.rs.conservative_mode != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT) {
       /* Adjust MSAA state if conservative rasterization is enabled. */
-      db_eqaa |= S_028804_ENABLE_POSTZ_OVERRASTERIZATION(1) | S_028804_OVERRASTERIZATION_AMOUNT(4);
+      db_eqaa |= S_028804_OVERRASTERIZATION_AMOUNT(4);
       pa_sc_aa_config |= S_028BE0_AA_MASK_CENTROID_DTMN(1);
    }
 
