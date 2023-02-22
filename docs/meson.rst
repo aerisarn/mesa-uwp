@@ -96,7 +96,8 @@ Basic configuration is done with:
 
 This will create the build directory. If any dependencies are missing,
 you can install them, or try to remove the dependency with a Meson
-configuration option (see below).
+configuration option (see below). Meson will print a summary of the
+build options at the end.
 
 To review the options which Meson chose, run:
 
