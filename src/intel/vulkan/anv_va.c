@@ -98,7 +98,9 @@ anv_physical_device_init_va_ranges(struct anv_physical_device *device)
                     _1Gb - address);
 
    address = va_add(&device->va.low_heap, address, _1Gb);
-   address = va_add(&device->va.dynamic_state_pool, address, _1Gb);
+   /* The STATE_BASE_ADDRESS can only express up to 4Gb - 4Kb */
+   address = va_add(&device->va.dynamic_state_pool, address, 4 * _1Gb - 4096);
+   address = align64(address, _1Gb);
 
    /* The following addresses have to be located in a 4Gb range so that the
     * binding tables can address internal surface states & bindless surface
