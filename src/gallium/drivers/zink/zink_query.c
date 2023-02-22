@@ -415,11 +415,17 @@ query_pool_get_range(struct zink_context *ctx, struct zink_query *q)
    struct zink_query_start *start;
    int num_queries = get_num_queries(q);
    if (!is_timestamp || get_num_starts(q) == 0) {
+      size_t size = q->starts.capacity;
       start = util_dynarray_grow(&q->starts, struct zink_query_start, 1);
-      memset(start, 0, sizeof(*start));
+      if (size != q->starts.capacity) {
+         /* when resizing, always zero the new data to avoid garbage */
+         uint8_t *data = q->starts.data;
+         memset(data + size, 0, q->starts.capacity - size);
+      }
    } else {
       start = util_dynarray_top_ptr(&q->starts, struct zink_query_start);
    }
+   start->data = 0;
 
    for (unsigned i = 0; i < num_queries; i++) {
       int pool_idx = q->pool[1] ? i : 0;
