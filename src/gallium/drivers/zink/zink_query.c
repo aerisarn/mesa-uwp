@@ -1043,7 +1043,7 @@ zink_end_query(struct pipe_context *pctx,
    threaded_context_unwrap_sync(pctx);
    zink_batch_no_rp(ctx);
 
-   if (needs_stats_list(query))
+   if (list_is_linked(&query->stats_list))
       list_delinit(&query->stats_list);
    if (query->suspended) {
       list_delinit(&query->active_list);
