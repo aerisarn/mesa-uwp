@@ -4726,6 +4726,10 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
 
          while (util_dynarray_contains(&shader->pipeline_libs, struct zink_gfx_lib_cache*)) {
             struct zink_gfx_lib_cache *libs = util_dynarray_pop(&shader->pipeline_libs, struct zink_gfx_lib_cache*);
+            //this condition is equivalent to verifying that, for each bit stages_present_i in stages_present,
+            //stages_present_i implies libs->stages_present_i
+            if ((stages_present & ~(libs->stages_present & stages_present)) != 0)
+               continue;
             if (!libs->removed) {
                libs->removed = true;
                simple_mtx_lock(&screen->pipeline_libs_lock[idx]);

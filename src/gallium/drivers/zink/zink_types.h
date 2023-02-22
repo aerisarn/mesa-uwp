@@ -1005,6 +1005,7 @@ struct zink_gfx_lib_cache {
    struct zink_shader *shaders[ZINK_GFX_SHADER_COUNT];
    unsigned refcount;
    bool removed; //once removed from cache
+   uint8_t stages_present;
 
    simple_mtx_t lock;
    struct set libs; //zink_gfx_library_key -> VkPipeline
