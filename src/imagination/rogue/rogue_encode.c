@@ -597,7 +597,7 @@ static void rogue_encode_backend_instr(const rogue_backend_instr *backend,
       instr_encoding->backend.op = BACKENDOP_DMA;
       instr_encoding->backend.dma.dmaop = DMAOP_ST;
       instr_encoding->backend.dma.st.drc =
-         rogue_ref_get_drc_index(&backend->src[1].ref);
+         rogue_ref_get_drc_index(&backend->src[2].ref);
 
       bool imm_burstlen = rogue_ref_is_val(&backend->src[3].ref);
 
@@ -752,9 +752,9 @@ static void rogue_encode_backend_instr(const rogue_backend_instr *backend,
       instr_encoding->backend.op = BACKENDOP_DMA;
       instr_encoding->backend.dma.dmaop = DMAOP_IDF;
       instr_encoding->backend.dma.idf.drc =
-         rogue_ref_get_drc_index(&backend->dst[0].ref);
+         rogue_ref_get_drc_index(&backend->src[0].ref);
       instr_encoding->backend.dma.idf.srcseladd =
-         rogue_ref_get_io_src_index(&backend->src[0].ref);
+         rogue_ref_get_io_src_index(&backend->src[1].ref);
       break;
 
    case ROGUE_BACKEND_OP_EMITPIX:

@@ -321,6 +321,20 @@ rogue_build_backend14(rogue_builder *b,
 }
 
 static inline rogue_backend_instr *
+rogue_build_backend06(rogue_builder *b,
+                      enum rogue_backend_op op,
+                      rogue_ref src0,
+                      rogue_ref src1,
+                      rogue_ref src2,
+                      rogue_ref src3,
+                      rogue_ref src4,
+                      rogue_ref src5)
+{
+   rogue_ref srcs[] = { src0, src1, src2, src3, src4, src5 };
+   return rogue_build_backend(b, op, 0, NULL, 6, srcs);
+}
+
+static inline rogue_backend_instr *
 rogue_build_backend16(rogue_builder *b,
                       enum rogue_backend_op op,
                       rogue_ref dst0,
@@ -403,6 +417,28 @@ rogue_build_backend16(rogue_builder *b,
                                    src1,                                   \
                                    src2,                                   \
                                    src3);                                  \
+   }
+
+#define ROGUE_BUILDER_DEFINE_BACKEND06(op)                                 \
+   PUBLIC                                                                  \
+   rogue_backend_instr *rogue_##op(rogue_builder *b,                       \
+                                   rogue_ref src0,                         \
+                                   rogue_ref src1,                         \
+                                   rogue_ref src2,                         \
+                                   rogue_ref src3,                         \
+                                   rogue_ref src4,                         \
+                                   rogue_ref src5)                         \
+   {                                                                       \
+      assert(rogue_backend_op_infos[ROGUE_BACKEND_OP_##op].num_dsts == 0); \
+      assert(rogue_backend_op_infos[ROGUE_BACKEND_OP_##op].num_srcs == 6); \
+      return rogue_build_backend06(b,                                      \
+                                   ROGUE_BACKEND_OP_##op,                  \
+                                   src0,                                   \
+                                   src1,                                   \
+                                   src2,                                   \
+                                   src3,                                   \
+                                   src4,                                   \
+                                   src5);                                  \
    }
 
 #define ROGUE_BUILDER_DEFINE_BACKEND16(op)                                 \

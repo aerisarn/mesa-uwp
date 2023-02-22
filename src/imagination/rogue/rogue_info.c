@@ -294,10 +294,12 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
       .supported_dst_types = { [0] = T(REG), },
       .supported_src_types = { [0] = T(REG), },
    },
-   [ROGUE_BACKEND_OP_IDF] = { .str = "idf", .num_dsts = 1, .num_srcs = 1,
-      .phase_io = { .src[0] = IO(S0), },
-      .supported_dst_types = { [0] = T(DRC), },
-      .supported_src_types = { [0] = T(REG), },
+   [ROGUE_BACKEND_OP_IDF] = { .str = "idf", .num_srcs = 2,
+      .phase_io = { .src[1] = IO(S0), },
+      .supported_src_types = { [0] = T(DRC), [1] = T(REGARRAY), },
+      .src_stride = {
+         [1] = 1,
+      },
    },
 
    [ROGUE_BACKEND_OP_EMITPIX] = { .str = "emitpix", .num_srcs = 2,
@@ -322,9 +324,9 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
          [2] = 1,
       },
    },
-   /* .src[0] and .src[3] can actually be S0-5. */
+   /* .src[0] and .src[4] can actually be S0-5. */
    [ROGUE_BACKEND_OP_ST] = { .str = "st", .num_srcs = 6,
-      .phase_io = { .src[0] = IO(S3), .src[3] = IO(S0), },
+      .phase_io = { .src[0] = IO(S3), .src[4] = IO(S0), },
       .supported_op_mods = OM(TILED) | OM(WRITETHROUGH) | OM(WRITEBACK) | OM(LAZYWRITEBACK) |
          OM(SLCBYPASS) | OM(SLCWRITEBACK) | OM(SLCWRITETHROUGH) | OM(SLCNOALLOC),
       .supported_src_types = {
@@ -384,7 +386,7 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
          [1] = T(REGARRAY),
          [2] = T(REG) | T(REGARRAY),
          [3] = T(REGARRAY),
-         [4] = T(REG) | T(IO),
+         [4] = T(REGARRAY) | T(IO),
          [5] = T(VAL),
       },
       /* TODO: This may depend on the other options set. */
@@ -392,6 +394,7 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
          [1] = 3,
          [2] = ~0U,
          [3] = 3,
+         [4] = 1,
       },
       .dst_stride = {
          [0] = ~0U,
@@ -411,7 +414,7 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
          [1] = T(REGARRAY),
          [2] = T(REG) | T(REGARRAY),
          [3] = T(REGARRAY),
-         [4] = T(REG) | T(IO),
+         [4] = T(REGARRAY) | T(IO),
          [5] = T(VAL),
       },
       /* TODO: This may depend on the other options set. */
@@ -419,6 +422,7 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
          [1] = 3,
          [2] = ~0U,
          [3] = 3,
+         [4] = 1,
       },
       .dst_stride = {
          [0] = ~0U,
@@ -438,7 +442,7 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
          [1] = T(REGARRAY),
          [2] = T(REG) | T(REGARRAY),
          [3] = T(REGARRAY),
-         [4] = T(REG) | T(IO),
+         [4] = T(REGARRAY) | T(IO),
          [5] = T(VAL),
       },
       /* TODO: This may depend on the other options set. */
@@ -446,6 +450,7 @@ const rogue_backend_op_info rogue_backend_op_infos[ROGUE_BACKEND_OP_COUNT] = {
          [1] = 3,
          [2] = ~0U,
          [3] = 3,
+         [4] = 1,
       },
       .dst_stride = {
          [0] = ~0U,
