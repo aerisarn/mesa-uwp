@@ -41,7 +41,7 @@ one cross-compiling the turnip driver for a stock Pixel phone)
 
 .. code-block:: console
 
-    meson build-android-aarch64 \
+    meson setup build-android-aarch64 \
         --cross-file android-aarch64 \
 	-Dplatforms=android \
 	-Dplatform-sdk-version=26 \
