@@ -40,6 +40,7 @@
  */
 
 #include "pvr_limits.h"
+#include "pvr_types.h"
 #include "util/list.h"
 #include "vk_object.h"
 #include "vk_sync.h"
