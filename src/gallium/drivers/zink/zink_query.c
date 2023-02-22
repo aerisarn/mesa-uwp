@@ -71,6 +71,7 @@ struct zink_query {
    bool needs_update; /* query needs to update its qbos */
    bool needs_rast_discard_workaround; /* query needs discard disabled */
    bool suspended;
+   bool started_in_rp; //needs to be stopped in rp
 
    struct list_head active_list;
 
@@ -891,6 +892,13 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
    if (is_time_query(q))
       return;
 
+   /* A query must either begin and end inside the same subpass of a render pass
+      instance, or must both begin and end outside of a render pass instance
+      (i.e. contain entire render pass instances).
+      - 18.2. Query Operation
+    */
+   q->started_in_rp = ctx->batch.in_rp;
+
    if (q->precise)
       flags |= VK_QUERY_CONTROL_PRECISE_BIT;
 
@@ -977,6 +985,7 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
    assert(qbo);
    assert(!is_time_query(q));
    q->active = false;
+   assert(q->started_in_rp == batch->in_rp);
    struct zink_query_start *start = util_dynarray_top_ptr(&q->starts, struct zink_query_start);
 
    if (q->type == PIPE_QUERY_PRIMITIVES_EMITTED ||
