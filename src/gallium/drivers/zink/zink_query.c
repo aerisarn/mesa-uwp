@@ -61,6 +61,7 @@ struct zink_query {
     * another vulkan query, add a new start.
     */
    struct util_dynarray starts;
+   unsigned start_offset;
 
    VkQueryType vkqtype;
    unsigned index;
@@ -812,32 +813,40 @@ static void
 update_qbo(struct zink_context *ctx, struct zink_query *q)
 {
    struct zink_query_buffer *qbo = q->curr_qbo;
-   struct zink_query_start *start = util_dynarray_top_ptr(&q->starts, struct zink_query_start);
+   unsigned num_starts = get_num_starts(q);
+   struct zink_query_start *starts = q->starts.data;
    bool is_timestamp = q->type == PIPE_QUERY_TIMESTAMP;
    /* timestamp queries just write to offset 0 always */
    int num_queries = get_num_queries(q);
-   for (unsigned i = 0; i < num_queries; i++) {
-      unsigned offset = is_timestamp ? 0 : get_buffer_offset(q);
-      copy_pool_results_to_buffer(ctx, q, start->vkq[i]->pool->query_pool, start->vkq[i]->query_id,
-                                  zink_resource(qbo->buffers[i]),
-                                  offset,
-                                  1,
-                                  /*
-                                     there is an implicit execution dependency from
-                                     each such query command to all query commands previously submitted to the same queue. There
-                                     is one significant exception to this; if the flags parameter of vkCmdCopyQueryPoolResults does not
-                                     include VK_QUERY_RESULT_WAIT_BIT, execution of vkCmdCopyQueryPoolResults may happen-before
-                                     the results of vkCmdEndQuery are available.
+   for (unsigned j = q->start_offset; j < num_starts; j++) {
+      unsigned cur_offset = q->curr_qbo->num_results * get_num_results(q) * sizeof(uint64_t);
+      for (unsigned i = 0; i < num_queries; i++) {
+         unsigned offset = is_timestamp ? 0 : cur_offset;
+         copy_pool_results_to_buffer(ctx, q, starts[j].vkq[i]->pool->query_pool, starts[j].vkq[i]->query_id,
+                                    zink_resource(qbo->buffers[i]),
+                                    offset,
+                                    1,
+                                    /*
+                                       there is an implicit execution dependency from
+                                       each such query command to all query commands previously submitted to the same queue. There
+                                       is one significant exception to this; if the flags parameter of vkCmdCopyQueryPoolResults does not
+                                       include VK_QUERY_RESULT_WAIT_BIT, execution of vkCmdCopyQueryPoolResults may happen-before
+                                       the results of vkCmdEndQuery are available.
 
-                                   * - Chapter 18. Queries
-                                   */
-                                  VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
+                                    * - Chapter 18. Queries
+                                    */
+                                    VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
+      }
+      if (!is_timestamp) {
+         q->curr_qbo->num_results++;
+         q->start_offset++;
+      }
    }
 
-   if (!is_timestamp)
-      q->curr_qbo->num_results++;
-   else
+
+   if (is_timestamp)
       q->curr_qbo->num_results = 1;
+
    q->needs_update = false;
 }
 
@@ -917,6 +926,7 @@ zink_begin_query(struct pipe_context *pctx,
    reset_qbo(query);
 
    util_dynarray_clear(&query->starts);
+   query->start_offset = 0;
 
    /* A query must either begin and end inside the same subpass of a render pass
       instance, or must both begin and end outside of a render pass instance
