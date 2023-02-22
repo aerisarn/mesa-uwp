@@ -2747,6 +2747,10 @@ zink_batch_rp(struct zink_context *ctx)
    else
       clear_buffers = begin_rendering(ctx);
    assert(!ctx->rp_changed);
+   if (!ctx->queries_disabled) {
+      zink_resume_queries(ctx, &ctx->batch);
+      zink_query_update_gs_states(ctx);
+   }
    if (in_rp || !ctx->batch.in_rp)
       return; //dead swapchain or continued renderpass
    if (ctx->render_condition.query)
@@ -2761,6 +2765,11 @@ zink_batch_no_rp(struct zink_context *ctx)
       return;
    if (ctx->render_condition.query)
       zink_stop_conditional_render(ctx);
+   /* suspend all queries that were started in a renderpass
+    * they can then be resumed upon beginning a new renderpass
+    */
+   if (!ctx->queries_disabled)
+      zink_query_renderpass_suspend(ctx);
    if (ctx->gfx_pipeline_state.render_pass)
       zink_end_render_pass(ctx);
    else {

@@ -39,6 +39,9 @@ void
 zink_resume_queries(struct zink_context *ctx, struct zink_batch *batch);
 
 void
+zink_query_renderpass_suspend(struct zink_context *ctx);
+
+void
 zink_resume_cs_query(struct zink_context *ctx);
 
 void

@@ -953,16 +953,13 @@ zink_begin_query(struct pipe_context *pctx,
    util_dynarray_clear(&query->starts);
    query->start_offset = 0;
 
-   /* A query must either begin and end inside the same subpass of a render pass
-      instance, or must both begin and end outside of a render pass instance
-      (i.e. contain entire render pass instances).
-      - 18.2. Query Operation
-
-    * tilers prefer out-of-renderpass queries for perf reasons, so force all queries
-    * out of renderpasses
-    */
-   zink_batch_no_rp(ctx);
-   begin_query(ctx, batch, query);
+   if (batch->in_rp) {
+      begin_query(ctx, batch, query);
+   } else {
+      /* never directly start queries out of renderpass, always defer */
+      list_addtail(&query->active_list, &ctx->suspended_queries);
+      query->suspended = true;
+   }
 
    return true;
 }
@@ -1041,7 +1038,6 @@ zink_end_query(struct pipe_context *pctx,
 
    /* FIXME: this can be called from a thread, but it needs to write to the cmdbuf */
    threaded_context_unwrap_sync(pctx);
-   zink_batch_no_rp(ctx);
 
    if (list_is_linked(&query->stats_list))
       list_delinit(&query->stats_list);
@@ -1113,11 +1109,11 @@ suspend_query(struct zink_context *ctx, struct zink_query *query)
 }
 
 static void
-suspend_queries(struct zink_context *ctx)
+suspend_queries(struct zink_context *ctx, bool rp_only)
 {
    set_foreach(&ctx->batch.state->active_queries, entry) {
       struct zink_query *query = (void*)entry->key;
-      if (query->suspended)
+      if (query->suspended || (rp_only && !query->started_in_rp))
          continue;
       if (query->active && !is_time_query(query)) {
          /* the fence is going to steal the set off the batch, so we have to copy
@@ -1133,7 +1129,7 @@ suspend_queries(struct zink_context *ctx)
 void
 zink_suspend_queries(struct zink_context *ctx, struct zink_batch *batch)
 {
-   suspend_queries(ctx);
+   suspend_queries(ctx, false);
 }
 
 void
@@ -1160,6 +1156,12 @@ zink_resume_cs_query(struct zink_context *ctx)
          begin_query(ctx, &ctx->batch, query);
       }
    }
+}
+
+void
+zink_query_renderpass_suspend(struct zink_context *ctx)
+{
+   suspend_queries(ctx, true);
 }
 
 void
