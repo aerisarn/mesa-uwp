@@ -2736,6 +2736,13 @@ zink_batch_rp(struct zink_context *ctx)
    }
    update_tc_info(ctx, ctx->rp_tc_info_updated);
    ctx->rp_tc_info_updated = false;
+   bool maybe_has_query_ends = !ctx->tc || !zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses || ctx->dynamic_fb.tc_info.has_query_ends;
+   ctx->queries_in_rp = maybe_has_query_ends;
+   /* if possible, out-of-renderpass resume any queries that were stopped when previous rp ended */
+   if (!ctx->queries_disabled && !maybe_has_query_ends) {
+      zink_resume_queries(ctx, &ctx->batch);
+      zink_query_update_gs_states(ctx);
+   }
    unsigned clear_buffers;
    /* use renderpass for multisample-to-singlesample or fbfetch:
     * - msrtss is TODO
@@ -2747,7 +2754,8 @@ zink_batch_rp(struct zink_context *ctx)
    else
       clear_buffers = begin_rendering(ctx);
    assert(!ctx->rp_changed);
-   if (!ctx->queries_disabled) {
+   /* unable to previously determine that queries didn't split renderpasses: ensure queries start inside renderpass */
+   if (!ctx->queries_disabled && maybe_has_query_ends) {
       zink_resume_queries(ctx, &ctx->batch);
       zink_query_update_gs_states(ctx);
    }

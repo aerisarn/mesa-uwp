@@ -1740,6 +1740,7 @@ struct zink_context {
    bool was_line_loop;
    bool primitives_generated_active;
    bool queries_disabled, render_condition_active;
+   bool queries_in_rp;
    struct {
       struct zink_query *query;
       bool inverted;

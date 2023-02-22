@@ -1056,8 +1056,12 @@ zink_end_query(struct pipe_context *pctx,
       zink_batch_usage_set(&query->batch_uses, batch->state);
       _mesa_set_add(&batch->state->active_queries, query);
       query->needs_update = true;
-   } else if (query->active)
+   } else if (query->active) {
+      /* this should be a tc-optimized query end that doesn't split a renderpass */
+      if (!query->started_in_rp)
+         zink_batch_no_rp(ctx);
       end_query(ctx, batch, query);
+   }
 
    return true;
 }
