@@ -859,6 +859,14 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
    if (q->type == PIPE_QUERY_TIMESTAMP_DISJOINT)
       return;
 
+   if (q->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE && q->index == PIPE_STAT_QUERY_CS_INVOCATIONS && ctx->batch.in_rp) {
+      /* refuse to start CS queries in renderpasses */
+      if (!list_is_linked(&q->active_list))
+         list_addtail(&q->active_list, &ctx->suspended_queries);
+      q->suspended = true;
+      return;
+   }
+
    update_query_id(ctx, q);
    q->predicate_dirty = true;
    if (q->needs_reset)
@@ -877,6 +885,7 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
    /* ignore the rest of begin_query for timestamps */
    if (is_time_query(q))
       return;
+
    if (q->precise)
       flags |= VK_QUERY_CONTROL_PRECISE_BIT;
 
@@ -1113,6 +1122,19 @@ zink_resume_queries(struct zink_context *ctx, struct zink_batch *batch)
       list_delinit(&query->active_list);
       query->suspended = false;
       begin_query(ctx, batch, query);
+   }
+}
+
+void
+zink_resume_cs_query(struct zink_context *ctx)
+{
+   struct zink_query *query, *next;
+   LIST_FOR_EACH_ENTRY_SAFE(query, next, &ctx->suspended_queries, active_list) {
+      if (query->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE && query->index == PIPE_STAT_QUERY_CS_INVOCATIONS) {
+         list_delinit(&query->active_list);
+         query->suspended = false;
+         begin_query(ctx, &ctx->batch, query);
+      }
    }
 }
 

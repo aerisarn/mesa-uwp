@@ -39,6 +39,9 @@ void
 zink_resume_queries(struct zink_context *ctx, struct zink_batch *batch);
 
 void
+zink_resume_cs_query(struct zink_context *ctx);
+
+void
 zink_prune_query(struct zink_screen *screen, struct zink_batch_state *bs, struct zink_query *query);
 
 void

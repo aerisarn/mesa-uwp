@@ -999,6 +999,8 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
 
    batch->work_count++;
    zink_batch_no_rp(ctx);
+   if (!ctx->queries_disabled)
+      zink_resume_cs_query(ctx);
    if (info->indirect) {
       VKCTX(CmdDispatchIndirect)(batch->state->cmdbuf, zink_resource(info->indirect)->obj->buffer, info->indirect_offset);
       zink_batch_reference_resource_rw(batch, zink_resource(info->indirect), false);
