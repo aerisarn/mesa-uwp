@@ -950,14 +950,6 @@ update_query_id(struct zink_context *ctx, struct zink_query *q)
    q->has_draws = false;
 }
 
-static void check_update(struct zink_context *ctx, struct zink_query *q)
-{
-   if (ctx->batch.in_rp)
-      q->needs_update = true;
-   else
-      update_qbo(ctx, q);
-}
-
 static void
 end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query *q)
 {
@@ -997,7 +989,7 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
    if (needs_stats_list(q))
       list_delinit(&q->stats_list);
 
-   check_update(ctx, q);
+   q->needs_update = true;
    if (q->needs_rast_discard_workaround) {
       ctx->primitives_generated_active = false;
       if (zink_set_rasterizer_discard(ctx, false))
@@ -1037,7 +1029,7 @@ zink_end_query(struct pipe_context *pctx,
                                start->vkq[0]->pool->query_pool, start->vkq[0]->query_id);
       zink_batch_usage_set(&query->batch_uses, batch->state);
       _mesa_set_add(&batch->state->active_queries, query);
-      check_update(ctx, query);
+      query->needs_update = true;
    } else if (query->active)
       end_query(ctx, batch, query);
 
