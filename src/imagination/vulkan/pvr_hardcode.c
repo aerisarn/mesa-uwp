@@ -56,9 +56,6 @@ enum pvr_hard_code_shader_type {
    PVR_HARD_CODE_SHADER_TYPE_GRAPHICS,
 };
 
-#define util_dynarray_append_mem(buf, size, mem) \
-   memcpy(util_dynarray_grow_bytes((buf), 1, size), mem, size)
-
 static const struct pvr_hard_coding_data {
    const char *const name;
    uint64_t bvnc;
