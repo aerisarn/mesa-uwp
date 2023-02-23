@@ -698,23 +698,33 @@ anv_graphics_pipeline_stage_fragment_dynamic(const struct anv_pipeline_stage *st
 }
 
 static void
+anv_pipeline_hash_common(struct mesa_sha1 *ctx,
+                         const struct anv_pipeline *pipeline)
+{
+   struct anv_device *device = pipeline->device;
+
+   _mesa_sha1_update(ctx, pipeline->layout.sha1, sizeof(pipeline->layout.sha1));
+
+   const bool indirect_descriptors = device->physical->indirect_descriptors;
+   _mesa_sha1_update(ctx, &indirect_descriptors, sizeof(indirect_descriptors));
+
+   const bool rba = device->robust_buffer_access;
+   _mesa_sha1_update(ctx, &rba, sizeof(rba));
+}
+
+static void
 anv_pipeline_hash_graphics(struct anv_graphics_base_pipeline *pipeline,
                            struct anv_pipeline_stage *stages,
                            uint32_t view_mask,
                            unsigned char *sha1_out)
 {
+   const struct anv_device *device = pipeline->base.device;
    struct mesa_sha1 ctx;
    _mesa_sha1_init(&ctx);
 
+   anv_pipeline_hash_common(&ctx, &pipeline->base);
+
    _mesa_sha1_update(&ctx, &view_mask, sizeof(view_mask));
-
-   _mesa_sha1_update(&ctx, pipeline->base.layout.sha1,
-                     sizeof(pipeline->base.layout.sha1));
-
-   const struct anv_device *device = pipeline->base.device;
-
-   const bool rba = device->robust_buffer_access;
-   _mesa_sha1_update(&ctx, &rba, sizeof(rba));
 
    for (uint32_t s = 0; s < ANV_GRAPHICS_SHADER_STAGE_COUNT; s++) {
       if (pipeline->base.active_stages & BITFIELD_BIT(s)) {
@@ -737,16 +747,11 @@ anv_pipeline_hash_compute(struct anv_compute_pipeline *pipeline,
                           struct anv_pipeline_stage *stage,
                           unsigned char *sha1_out)
 {
+   const struct anv_device *device = pipeline->base.device;
    struct mesa_sha1 ctx;
    _mesa_sha1_init(&ctx);
 
-   _mesa_sha1_update(&ctx, pipeline->base.layout.sha1,
-                     sizeof(pipeline->base.layout.sha1));
-
-   const struct anv_device *device = pipeline->base.device;
-
-   const bool rba = device->robust_buffer_access;
-   _mesa_sha1_update(&ctx, &rba, sizeof(rba));
+   anv_pipeline_hash_common(&ctx, &pipeline->base);
 
    const bool afs = device->physical->instance->assume_full_subgroups;
    _mesa_sha1_update(&ctx, &afs, sizeof(afs));
@@ -766,11 +771,7 @@ anv_pipeline_hash_ray_tracing_shader(struct anv_ray_tracing_pipeline *pipeline,
    struct mesa_sha1 ctx;
    _mesa_sha1_init(&ctx);
 
-   _mesa_sha1_update(&ctx, pipeline->base.layout.sha1,
-                     sizeof(pipeline->base.layout.sha1));
-
-   const bool rba = pipeline->base.device->robust_buffer_access;
-   _mesa_sha1_update(&ctx, &rba, sizeof(rba));
+   anv_pipeline_hash_common(&ctx, &pipeline->base);
 
    _mesa_sha1_update(&ctx, stage->shader_sha1, sizeof(stage->shader_sha1));
    _mesa_sha1_update(&ctx, &stage->key, sizeof(stage->key.bs));

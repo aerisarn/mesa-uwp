@@ -77,6 +77,7 @@ static const driOptionDescription anv_dri_options[] = {
       DRI_CONF_ANV_GENERATED_INDIRECT_THRESHOLD(4)
       DRI_CONF_NO_16BIT(false)
       DRI_CONF_ANV_QUERY_CLEAR_WITH_BLORP_THRESHOLD(6)
+      DRI_CONF_ANV_FORCE_INDIRECT_DESCRIPTORS(false)
    DRI_CONF_SECTION_END
 
    DRI_CONF_SECTION_DEBUG
@@ -1324,6 +1325,13 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    device->video_decode_enabled = debug_get_bool_option("ANV_VIDEO_DECODE", false);
 
    device->uses_ex_bso = device->info.verx10 >= 125;
+
+   /* For now always use indirect descriptors. We'll update this
+    * to !uses_ex_bso when all the infrastructure is built up.
+    */
+   device->indirect_descriptors =
+      true ||
+      driQueryOptionb(&instance->dri_options, "force_indirect_descriptors");
 
    /* Check if we can read the GPU timestamp register from the CPU */
    uint64_t u64_ignore;

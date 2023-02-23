@@ -912,6 +912,26 @@ struct anv_physical_device {
      */
     bool                                        generated_indirect_draws;
 
+    /**
+     * True if the descriptors buffers are holding one of the following :
+     *    - anv_sampled_image_descriptor
+     *    - anv_storage_image_descriptor
+     *    - anv_address_range_descriptor
+     *
+     * Accessing the descriptors in a bindless fashion from the shader
+     * requires an indirection in the shader, first fetch one of the structure
+     * listed above from the descriptor buffer, then emit the send message to
+     * the fixed function (sampler, dataport, etc...) with the handle fetched
+     * above.
+     *
+     * We need to do things this way prior to DG2 because the bindless surface
+     * state space is limited to 64Mb and some application will allocate more
+     * than what HW can support. On DG2+ we get 4Gb of bindless surface state
+     * and so we can reference directly RENDER_SURFACE_STATE/SAMPLER_STATE
+     * structures instead.
+     */
+    bool                                        indirect_descriptors;
+
     struct {
       uint32_t                                  family_count;
       struct anv_queue_family                   families[ANV_MAX_QUEUE_FAMILIES];

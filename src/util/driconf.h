@@ -677,6 +677,10 @@
    DRI_CONF_OPT_I(query_clear_with_blorp_threshold, def, 0, INT32_MAX, \
                   "Indirect threshold count above which we start generating commands")
 
+#define DRI_CONF_ANV_FORCE_INDIRECT_DESCRIPTORS(def) \
+   DRI_CONF_OPT_B(force_indirect_descriptors, def, \
+                  "Use an indirection to access buffer/image/texture/sampler handles")
+
 /**
  * \brief DZN specific configuration options
  */
