@@ -216,6 +216,7 @@ if with_tests
       output: name + '.log',
       command: [crashdec, args, files('../.gitlab-ci/traces/' + name + '.devcore')],
       capture: true,
+      env: {'GALLIUM_DUMP_CPU': 'false'},
     )
 
     test('crashdec-' + name,
