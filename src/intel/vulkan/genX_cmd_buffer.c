@@ -1965,7 +1965,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          const enum isl_format format =
             anv_isl_format_for_descriptor_type(cmd_buffer->device,
                                                VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-         anv_fill_buffer_surface_state(cmd_buffer->device, surface_state,
+         anv_fill_buffer_surface_state(cmd_buffer->device, surface_state.map,
                                        format, ISL_SWIZZLE_IDENTITY,
                                        ISL_SURF_USAGE_CONSTANT_BUFFER_BIT,
                                        cmd_buffer->state.compute.num_workgroups,
@@ -2055,8 +2055,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             if (desc->image_view) {
                struct anv_surface_state sstate =
                   (desc->layout == VK_IMAGE_LAYOUT_GENERAL) ?
-                  desc->image_view->planes[binding->plane].general_sampler_surface_state :
-                  desc->image_view->planes[binding->plane].optimal_sampler_surface_state;
+                  desc->image_view->planes[binding->plane].general_sampler :
+                  desc->image_view->planes[binding->plane].optimal_sampler;
                surface_state =
                   anv_bindless_state_for_binding_table(cmd_buffer->device, sstate.state);
                assert(surface_state.alloc_size);
@@ -2072,7 +2072,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
             if (desc->image_view) {
                struct anv_surface_state sstate =
-                  desc->image_view->planes[binding->plane].storage_surface_state;
+                  desc->image_view->planes[binding->plane].storage;
                surface_state = anv_bindless_state_for_binding_table(
                   cmd_buffer->device, sstate.state);
                assert(surface_state.alloc_size);
@@ -2087,7 +2087,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
             if (desc->set_buffer_view) {
-               surface_state = desc->set_buffer_view->surface_state;
+               surface_state = desc->set_buffer_view->general.state;
                assert(surface_state.alloc_size);
             } else {
                surface_state = anv_bindless_state_for_binding_table(
@@ -2100,7 +2100,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             if (desc->buffer_view) {
                surface_state = anv_bindless_state_for_binding_table(
                   cmd_buffer->device,
-                  desc->buffer_view->surface_state);
+                  desc->buffer_view->general.state);
                assert(surface_state.alloc_size);
             } else {
                surface_state = anv_bindless_state_for_binding_table(
@@ -2139,7 +2139,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                   ISL_SURF_USAGE_CONSTANT_BUFFER_BIT :
                   ISL_SURF_USAGE_STORAGE_BIT;
 
-               anv_fill_buffer_surface_state(cmd_buffer->device, surface_state,
+               anv_fill_buffer_surface_state(cmd_buffer->device,
+                                             surface_state.map,
                                              format, ISL_SWIZZLE_IDENTITY,
                                              usage, address, range, 1);
             } else {
@@ -2155,7 +2156,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             if (desc->buffer_view) {
                surface_state = anv_bindless_state_for_binding_table(
                   cmd_buffer->device,
-                  desc->buffer_view->storage_surface_state);
+                  desc->buffer_view->storage.state);
                assert(surface_state.alloc_size);
             } else {
                surface_state = anv_bindless_state_for_binding_table(
@@ -2316,9 +2317,10 @@ flush_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
          struct anv_buffer_view *bview = desc->set_buffer_view;
 
          if (bview != NULL) {
-            bview->surface_state = anv_cmd_buffer_alloc_surface_state(cmd_buffer);
+            bview->general.state =
+               anv_cmd_buffer_alloc_surface_state(cmd_buffer);
             anv_descriptor_write_surface_state(cmd_buffer->device, desc,
-                                               bview->surface_state);
+                                               bview->general.state);
          }
       }
    }
@@ -2330,7 +2332,7 @@ flush_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
 
       set->desc_surface_state = anv_cmd_buffer_alloc_surface_state(cmd_buffer);
       anv_fill_buffer_surface_state(cmd_buffer->device,
-                                    set->desc_surface_state,
+                                    set->desc_surface_state.map,
                                     format, ISL_SWIZZLE_IDENTITY,
                                     ISL_SURF_USAGE_CONSTANT_BUFFER_BIT,
                                     set->desc_addr,

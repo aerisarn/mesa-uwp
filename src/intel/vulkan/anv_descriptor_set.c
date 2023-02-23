@@ -1244,7 +1244,7 @@ anv_descriptor_set_create(struct anv_device *device,
 
       if (!pool->host_only) {
          set->desc_surface_state = anv_descriptor_pool_alloc_state(pool);
-         anv_fill_buffer_surface_state(device, set->desc_surface_state,
+         anv_fill_buffer_surface_state(device, set->desc_surface_state.map,
                                        format, ISL_SWIZZLE_IDENTITY,
                                        ISL_SURF_USAGE_CONSTANT_BUFFER_BIT,
                                        set->desc_addr,
@@ -1296,24 +1296,27 @@ anv_descriptor_set_create(struct anv_device *device,
       }
    }
 
-   /* Allocate surface states for real descriptor sets. For host only sets, we
-    * just store the surface state data in malloc memory.
+   /* Allocate surface states for real descriptor sets if we're using indirect
+    * descriptors. For host only sets, we just store the surface state data in
+    * malloc memory.
     */
-   if (!pool->host_only) {
-      for (uint32_t b = 0; b < set->buffer_view_count; b++) {
-         set->buffer_views[b].surface_state =
-            anv_descriptor_pool_alloc_state(pool);
-      }
-   } else {
-      void *host_surface_states =
-         set->buffer_views + set->buffer_view_count;
-      memset(host_surface_states, 0,
-             set->buffer_view_count * ANV_SURFACE_STATE_SIZE);
-      for (uint32_t b = 0; b < set->buffer_view_count; b++) {
-         set->buffer_views[b].surface_state = (struct anv_state) {
-            .alloc_size = ANV_SURFACE_STATE_SIZE,
-            .map = host_surface_states + b * ANV_SURFACE_STATE_SIZE,
-         };
+   if (device->physical->indirect_descriptors) {
+      if (!pool->host_only) {
+         for (uint32_t b = 0; b < set->buffer_view_count; b++) {
+            set->buffer_views[b].general.state =
+               anv_descriptor_pool_alloc_state(pool);
+         }
+      } else {
+         void *host_surface_states =
+            set->buffer_views + set->buffer_view_count;
+         memset(host_surface_states, 0,
+                set->buffer_view_count * ANV_SURFACE_STATE_SIZE);
+         for (uint32_t b = 0; b < set->buffer_view_count; b++) {
+            set->buffer_views[b].general.state = (struct anv_state) {
+               .alloc_size = ANV_SURFACE_STATE_SIZE,
+               .map = host_surface_states + b * ANV_SURFACE_STATE_SIZE,
+            };
+         }
       }
    }
 
@@ -1339,10 +1342,14 @@ anv_descriptor_set_destroy(struct anv_device *device,
          anv_descriptor_pool_free_state(pool, set->desc_surface_state);
    }
 
-   if (!pool->host_only) {
-      for (uint32_t b = 0; b < set->buffer_view_count; b++) {
-         if (set->buffer_views[b].surface_state.alloc_size)
-            anv_descriptor_pool_free_state(pool, set->buffer_views[b].surface_state);
+   if (device->physical->indirect_descriptors) {
+      if (!pool->host_only) {
+         for (uint32_t b = 0; b < set->buffer_view_count; b++) {
+            if (set->buffer_views[b].general.state.alloc_size) {
+               anv_descriptor_pool_free_state(
+                  pool, set->buffer_views[b].general.state);
+            }
+         }
       }
    }
 
@@ -1517,8 +1524,8 @@ anv_descriptor_set_write_image_view(struct anv_device *device,
          for (unsigned p = 0; p < image_view->n_planes; p++) {
             struct anv_surface_state sstate =
                (desc->layout == VK_IMAGE_LAYOUT_GENERAL) ?
-               image_view->planes[p].general_sampler_surface_state :
-               image_view->planes[p].optimal_sampler_surface_state;
+               image_view->planes[p].general_sampler :
+               image_view->planes[p].optimal_sampler;
             desc_data[p].image =
                anv_surface_state_to_handle(device->physical, sstate.state);
          }
@@ -1545,7 +1552,7 @@ anv_descriptor_set_write_image_view(struct anv_device *device,
       struct anv_storage_image_descriptor desc_data = {
          .vanilla = anv_surface_state_to_handle(
             device->physical,
-            image_view->planes[0].storage_surface_state.state),
+            image_view->planes[0].storage.state),
       };
       memcpy(desc_map, &desc_data, sizeof(desc_data));
    }
@@ -1588,8 +1595,7 @@ anv_descriptor_set_write_buffer_view(struct anv_device *device,
    if (data & ANV_DESCRIPTOR_SAMPLED_IMAGE) {
       struct anv_sampled_image_descriptor desc_data = {
          .image = anv_surface_state_to_handle(
-            device->physical,
-            buffer_view->surface_state),
+            device->physical, buffer_view->general.state),
       };
       memcpy(desc_map, &desc_data, sizeof(desc_data));
    }
@@ -1597,8 +1603,7 @@ anv_descriptor_set_write_buffer_view(struct anv_device *device,
    if (data & ANV_DESCRIPTOR_STORAGE_IMAGE) {
       struct anv_storage_image_descriptor desc_data = {
          .vanilla = anv_surface_state_to_handle(
-            device->physical,
-            buffer_view->storage_surface_state),
+            device->physical, buffer_view->storage.state),
       };
       memcpy(desc_map, &desc_data, sizeof(desc_data));
    }
@@ -1609,11 +1614,11 @@ anv_descriptor_write_surface_state(struct anv_device *device,
                                    struct anv_descriptor *desc,
                                    struct anv_state surface_state)
 {
+   assert(surface_state.alloc_size);
+
    struct anv_buffer_view *bview = desc->buffer_view;
 
-   bview->surface_state = surface_state;
-
-   assert(bview->surface_state.alloc_size);
+   bview->general.state = surface_state;
 
    isl_surf_usage_flags_t usage =
       (desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
@@ -1623,7 +1628,7 @@ anv_descriptor_write_surface_state(struct anv_device *device,
 
    enum isl_format format =
       anv_isl_format_for_descriptor_type(device, desc->type);
-   anv_fill_buffer_surface_state(device, bview->surface_state,
+   anv_fill_buffer_surface_state(device, bview->general.state.map,
                                  format, ISL_SWIZZLE_IDENTITY,
                                  usage, bview->address, bview->range, 1);
 }
@@ -1699,7 +1704,7 @@ anv_descriptor_set_write_buffer(struct anv_device *device,
    if (set->is_push)
       set->generate_surface_states |= BITFIELD_BIT(descriptor_index);
    else
-      anv_descriptor_write_surface_state(device, desc, bview->surface_state);
+      anv_descriptor_write_surface_state(device, desc, bview->general.state);
 }
 
 void
@@ -1908,8 +1913,8 @@ void anv_UpdateDescriptorSets(
             dst_bview->range = src_bview->range;
             dst_bview->address = src_bview->address;
 
-            memcpy(dst_bview->surface_state.map,
-                   src_bview->surface_state.map,
+            memcpy(dst_bview->general.state.map,
+                   src_bview->general.state.map,
                    ANV_SURFACE_STATE_SIZE);
          }
       }

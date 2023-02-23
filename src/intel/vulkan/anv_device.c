@@ -4442,14 +4442,15 @@ uint64_t anv_GetDeviceMemoryOpaqueCaptureAddress(
 }
 
 void
-anv_fill_buffer_surface_state(struct anv_device *device, struct anv_state state,
+anv_fill_buffer_surface_state(struct anv_device *device,
+                              void *surface_state_ptr,
                               enum isl_format format,
                               struct isl_swizzle swizzle,
                               isl_surf_usage_flags_t usage,
                               struct anv_address address,
                               uint32_t range, uint32_t stride)
 {
-   isl_buffer_fill_state(&device->isl_dev, state.map,
+   isl_buffer_fill_state(&device->isl_dev, surface_state_ptr,
                          .address = anv_address_physical(address),
                          .mocs = isl_mocs(&device->isl_dev, usage,
                                           address.bo && address.bo->is_external),
