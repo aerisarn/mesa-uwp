@@ -542,6 +542,17 @@ static bool lower_resource_tex(nir_builder *b, nir_tex_instr *tex,
       return true;
    }
 
+   if (tex->op == nir_texop_sampler_descriptor_amd) {
+      nir_ssa_def *sampler;
+      if (sampler_deref)
+         sampler = load_deref_sampler_desc(b, sampler_deref, AC_DESC_SAMPLER, s, true);
+      else
+         sampler = load_bindless_sampler_desc(b, sampler_handle, AC_DESC_SAMPLER, s);
+      nir_ssa_def_rewrite_uses(&tex->dest.ssa, sampler);
+      nir_instr_remove(&tex->instr);
+      return true;
+   }
+
    nir_ssa_def *image = texture_deref ?
       load_deref_sampler_desc(b, texture_deref, desc_type, s, false) :
       load_bindless_sampler_desc(b, texture_handle, desc_type, s);
