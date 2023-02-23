@@ -4445,6 +4445,10 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                else
                   ret->bindings[ztype][ret->num_bindings[ztype]].size = 1;
                ret->num_bindings[ztype]++;
+            } else if (var->data.mode == nir_var_uniform) {
+               /* this is a dead uniform */
+               var->data.mode = 0;
+               exec_node_remove(&var->node);
             }
          }
       }
