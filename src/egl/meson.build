@@ -95,7 +95,6 @@ if with_dri2
   )
   files_egl += sha1_h
   deps_for_egl += idep_xmlconfig
-  deps_for_egl += idep_vulkan_wsi_defines
   link_for_egl += libloader
   incs_for_egl += inc_loader
   incs_for_egl += inc_gallium
