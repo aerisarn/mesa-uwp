@@ -1122,7 +1122,20 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 		<bitfield name="MH_MMU_SCLK_PM_OVERRIDE" pos="30" type="boolean"/>
 		<bitfield name="MH_TCROQ_SCLK_PM_OVERRIDE" pos="31" type="boolean"/>
 	</reg32>
-	<reg32 offset="0x039d" name="RBBM_PM_OVERRIDE2"/>
+	<reg32 offset="0x039d" name="RBBM_PM_OVERRIDE2">
+		<bitfield name="PA_REG_SCLK_PM_OVERRIDE" pos="0" type="boolean"/>
+		<bitfield name="PA_PA_SCLK_PM_OVERRIDE" pos="1" type="boolean"/>
+		<bitfield name="PA_AG_SCLK_PM_OVERRIDE" pos="2" type="boolean"/>
+		<bitfield name="VGT_REG_SCLK_PM_OVERRIDE" pos="3" type="boolean"/>
+		<bitfield name="VGT_FIFOS_SCLK_PM_OVERRIDE" pos="4" type="boolean"/>
+		<bitfield name="VGT_VGT_SCLK_PM_OVERRIDE" pos="5" type="boolean"/>
+		<bitfield name="DEBUG_PERF_SCLK_PM_OVERRIDE" pos="6" type="boolean"/>
+		<bitfield name="PERM_SCLK_PM_OVERRIDE" pos="7" type="boolean"/>
+		<bitfield name="GC_GA_GMEM0_PM_OVERRIDE" pos="8" type="boolean"/>
+		<bitfield name="GC_GA_GMEM1_PM_OVERRIDE" pos="9" type="boolean"/>
+		<bitfield name="GC_GA_GMEM2_PM_OVERRIDE" pos="10" type="boolean"/>
+		<bitfield name="GC_GA_GMEM3_PM_OVERRIDE" pos="11" type="boolean"/>
+	</reg32>
 	<reg32 offset="0x03a0" name="RBBM_DEBUG_OUT"/>
 	<reg32 offset="0x03a1" name="RBBM_DEBUG_CNTL"/>
 	<reg32 offset="0x03b3" name="RBBM_READ_ERROR"/>
