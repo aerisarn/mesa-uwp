@@ -460,6 +460,15 @@ debian-arm64-build-test:
   script:
     - .gitlab-ci/meson/build.sh
 
+debian-arm64-release:
+  extends:
+    - debian-arm64
+  variables:
+    MINIO_ARTIFACT_NAME: mesa-arm64-rel
+    BUILDTYPE: "release"
+    C_ARGS: >
+      -Wno-error=stringop-truncation
+
 debian-clang:
   extends: .meson-build
   variables:
