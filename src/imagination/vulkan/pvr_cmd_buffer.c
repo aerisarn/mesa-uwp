@@ -3030,6 +3030,36 @@ pvr_setup_vertex_buffers(struct pvr_cmd_buffer *cmd_buffer,
          break;
       }
 
+      case PVR_PDS_CONST_MAP_ENTRY_TYPE_ROBUST_VERTEX_ATTRIBUTE_ADDRESS: {
+         const struct pvr_const_map_entry_robust_vertex_attribute_address
+            *const attribute =
+               (struct pvr_const_map_entry_robust_vertex_attribute_address *)
+                  entries;
+         const struct pvr_vertex_binding *const binding =
+            &state->vertex_bindings[attribute->binding_index];
+         pvr_dev_addr_t addr;
+
+         if (binding->buffer->vk.size <
+             (attribute->offset + attribute->component_size_in_bytes)) {
+            /* Replace with load from robustness buffer when no attribute is in range
+             */
+            addr = PVR_DEV_ADDR_OFFSET(
+               cmd_buffer->device->robustness_buffer->vma->dev_addr,
+               attribute->robustness_buffer_offset);
+         } else {
+            addr = PVR_DEV_ADDR_OFFSET(binding->buffer->dev_addr,
+                                       binding->offset + attribute->offset);
+         }
+
+         PVR_WRITE(qword_buffer,
+                   addr.addr,
+                   attribute->const_offset,
+                   pds_info->data_size_in_dwords);
+
+         entries += sizeof(*attribute);
+         break;
+      }
+
       default:
          unreachable("Unsupported data section map");
          break;
