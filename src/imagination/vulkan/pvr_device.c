@@ -609,8 +609,7 @@ void pvr_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    PVR_FROM_HANDLE(pvr_physical_device, pdevice, physicalDevice);
 
    pFeatures->features = (VkPhysicalDeviceFeatures){
-      .robustBufferAccess =
-         PVR_HAS_FEATURE(&pdevice->dev_info, robust_buffer_access),
+      .robustBufferAccess = true,
       .fullDrawIndexUint32 = true,
       .imageCubeArray = true,
       .independentBlend = false,
