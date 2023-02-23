@@ -1033,7 +1033,7 @@ lower_load_constant(nir_builder *b, nir_intrinsic_instr *intrin,
       nir_iadd(b,
          nir_load_reloc_const_intel(b, BRW_SHADER_RELOC_CONST_DATA_ADDR_LOW),
          offset),
-      nir_imm_int(b, INSTRUCTION_STATE_POOL_MIN_ADDRESS >> 32));
+      nir_load_reloc_const_intel(b, BRW_SHADER_RELOC_CONST_DATA_ADDR_HIGH));
 
    nir_ssa_def *data =
       nir_load_global_constant(b, const_data_addr,
