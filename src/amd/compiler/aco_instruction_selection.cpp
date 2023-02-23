@@ -253,10 +253,10 @@ emit_masked_swizzle(isel_context* ctx, Builder& bld, Temp src, unsigned mask)
        * because DPP16 supports modifiers and v_permlane
        * can't be folded into valu instructions.
        */
-      if (and_mask == 0x1f && or_mask < 4 && xor_mask < 4) {
+      if ((and_mask & 0x1c) == 0x1c && or_mask < 4 && xor_mask < 4) {
          unsigned res[4] = {0, 1, 2, 3};
          for (unsigned i = 0; i < 4; i++)
-            res[i] = ((res[i] | or_mask) ^ xor_mask) & 0x3;
+            res[i] = (((res[i] & and_mask) | or_mask) ^ xor_mask) & 0x3;
          dpp_ctrl = dpp_quad_perm(res[0], res[1], res[2], res[3]);
       } else if (and_mask == 0x1f && !or_mask && xor_mask == 8) {
          dpp_ctrl = dpp_row_rr(8);
