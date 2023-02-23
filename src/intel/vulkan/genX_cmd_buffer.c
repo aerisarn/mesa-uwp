@@ -6040,7 +6040,7 @@ mi_build_sbt_entry(struct mi_builder *b,
 {
    return mi_ior(b,
                  mi_iand(b, mi_mem64(anv_address_from_u64(addr_field_addr)),
-                            mi_imm(0xffffffffff)),
+                            mi_imm(BITFIELD64_BIT(49) - 1)),
                  mi_ishl_imm(b, mi_mem32(anv_address_from_u64(stride_field_addr)),
                                 48));
 }
