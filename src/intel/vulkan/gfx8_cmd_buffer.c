@@ -724,10 +724,14 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          anv_pipeline_has_stage(pipeline, MESA_SHADER_FRAGMENT) &&
          (color_writes & ((1u << state->color_att_count) - 1)) != 0;
 
-      uint32_t blend_dws[GENX(BLEND_STATE_length) +
-                         MAX_RTS * GENX(BLEND_STATE_ENTRY_length)];
-      uint32_t *dws = blend_dws;
-      memset(blend_dws, 0, sizeof(blend_dws));
+      uint32_t num_dwords = GENX(BLEND_STATE_length) +
+         GENX(BLEND_STATE_ENTRY_length) * MAX_RTS;
+      struct anv_state blend_states =
+         anv_cmd_buffer_alloc_dynamic_state(cmd_buffer,
+                                            num_dwords * 4,
+                                            64);
+
+      uint32_t *dws = blend_states.map;
 
       struct GENX(BLEND_STATE) blend_state = {
          .AlphaToCoverageEnable = dyn->ms.alpha_to_coverage_enable,
@@ -756,10 +760,29 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
             .WriteDisableBlue  = write_disabled ||
                                  (dyn->cb.attachments[i].write_mask &
                                   VK_COLOR_COMPONENT_B_BIT) == 0,
+            /* Vulkan specification 1.2.168, VkLogicOp:
+             *
+             *   "Logical operations are controlled by the logicOpEnable and
+             *   logicOp members of VkPipelineColorBlendStateCreateInfo. If
+             *   logicOpEnable is VK_TRUE, then a logical operation selected
+             *   by logicOp is applied between each color attachment and the
+             *   fragment’s corresponding output value, and blending of all
+             *   attachments is treated as if it were disabled."
+             *
+             * From the Broadwell PRM Volume 2d: Command Reference:
+             * Structures: BLEND_STATE_ENTRY:
+             *
+             *   "Enabling LogicOp and Color Buffer Blending at the same time
+             *   is UNDEFINED"
+             */
             .LogicOpFunction   = genX(vk_to_intel_logic_op)[dyn->cb.logic_op],
             .LogicOpEnable     = dyn->cb.logic_op_enable,
             .ColorBufferBlendEnable =
                !dyn->cb.logic_op_enable && dyn->cb.attachments[i].blend_enable,
+
+            .ColorClampRange = COLORCLAMP_RTFORMAT,
+            .PreBlendColorClampEnable = true,
+            .PostBlendColorClampEnable = true,
          };
 
          /* Setup blend equation. */
@@ -827,7 +850,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       }
 
       /* Generate blend state after entries. */
-      GENX(BLEND_STATE_pack)(NULL, blend_dws, &blend_state);
+      GENX(BLEND_STATE_pack)(NULL, blend_states.map, &blend_state);
 
       /* 3DSTATE_PS_BLEND to be consistent with the rest of the
        * BLEND_STATE_ENTRY.
@@ -844,12 +867,6 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          blend.AlphaToCoverageEnable         = dyn->ms.alpha_to_coverage_enable;
       }
 
-      uint32_t num_dwords = GENX(BLEND_STATE_length) +
-         GENX(BLEND_STATE_ENTRY_length) * MAX_RTS;
-
-      struct anv_state blend_states =
-         anv_cmd_buffer_merge_dynamic(cmd_buffer, blend_dws,
-                                      pipeline->gfx8.blend_state, num_dwords, 64);
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_BLEND_STATE_POINTERS), bsp) {
          bsp.BlendStatePointer      = blend_states.offset;
          bsp.BlendStatePointerValid = true;

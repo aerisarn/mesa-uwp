@@ -3143,7 +3143,6 @@ struct anv_graphics_pipeline {
       uint32_t                                  sf[4];
       uint32_t                                  raster[5];
       uint32_t                                  wm[2];
-      uint32_t                                  blend_state[1 + MAX_RTS * 2];
       uint32_t                                  streamout_state[5];
       uint32_t                                  hs[9];
    } gfx8;
