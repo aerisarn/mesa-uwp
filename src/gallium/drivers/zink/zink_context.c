@@ -3733,6 +3733,7 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
       imb.dstQueueFamilyIndex = zink_screen(ctx->base.screen)->gfx_queue;
       res->dmabuf_acquire = false;
    }
+   bool marker = zink_cmd_debug_marker_begin(ctx, "image_barrier(%s->%s)", vk_ImageLayout_to_str(res->layout), vk_ImageLayout_to_str(new_layout));
    VKCTX(CmdPipelineBarrier)(
       cmdbuf,
       res->obj->access_stage ? res->obj->access_stage : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -3742,6 +3743,7 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
       0, NULL,
       1, &imb
    );
+   zink_cmd_debug_marker_end(ctx, marker);
 
    resource_check_defer_image_barrier(ctx, res, new_layout, pipeline);
 
@@ -3786,7 +3788,9 @@ zink_resource_image_barrier2(struct zink_context *ctx, struct zink_resource *res
       1,
       &imb
    };
+   bool marker = zink_cmd_debug_marker_begin(ctx, "image_barrier(%s->%s)", vk_ImageLayout_to_str(res->layout), vk_ImageLayout_to_str(new_layout));
    VKCTX(CmdPipelineBarrier2)(cmdbuf, &dep);
+   zink_cmd_debug_marker_end(ctx, marker);
 
    resource_check_defer_image_barrier(ctx, res, new_layout, pipeline);
 
@@ -3877,6 +3881,7 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_resource *res
       bool is_write = zink_resource_access_is_write(flags);
       VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
 
+      bool marker = zink_cmd_debug_marker_begin(ctx, "buffer_barrier");
       VKCTX(CmdPipelineBarrier)(
          cmdbuf,
          res->obj->access_stage ? res->obj->access_stage : pipeline_access_stage(res->obj->access),
@@ -3886,6 +3891,7 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_resource *res
          0, NULL,
          0, NULL
       );
+      zink_cmd_debug_marker_end(ctx, marker);
    }
 
    resource_check_defer_buffer_barrier(ctx, res, pipeline);
@@ -3924,7 +3930,9 @@ zink_resource_buffer_barrier2(struct zink_context *ctx, struct zink_resource *re
          0,
          NULL
       };
+      bool marker = zink_cmd_debug_marker_begin(ctx, "buffer_barrier");
       VKCTX(CmdPipelineBarrier2)(cmdbuf, &dep);
+      zink_cmd_debug_marker_end(ctx, marker);
    }
 
    resource_check_defer_buffer_barrier(ctx, res, pipeline);
