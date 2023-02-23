@@ -3742,6 +3742,15 @@ zink_resource_image_barrier2(struct zink_context *ctx, struct zink_resource *res
       zink_resource_copies_reset(res);
 }
 
+void
+zink_resource_image_transfer_dst_barrier(struct zink_context *ctx, struct zink_resource *res, unsigned level, const struct pipe_box *box)
+{
+   /* skip TRANSFER_DST barrier if no intersection from previous copies */
+   if (res->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL || zink_resource_copy_box_intersects(res, level, box))
+      zink_screen(ctx->base.screen)->image_barrier(ctx, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+   zink_resource_copy_box_add(res, level, box);
+
+}
 
 VkPipelineStageFlags
 zink_pipeline_flags_from_stage(VkShaderStageFlagBits stage)
