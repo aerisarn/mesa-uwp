@@ -101,6 +101,7 @@ static const struct debug_control debug_control[] = {
    { "capture-all", DEBUG_CAPTURE_ALL },
    { "perf-symbol-names", DEBUG_PERF_SYMBOL_NAMES },
    { "swsb-stall",  DEBUG_SWSB_STALL },
+   { "heaps",       DEBUG_HEAPS },
    { NULL,    0 }
 };
 

@@ -117,7 +117,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       &cmd_buffer->batch, GENX(3DSTATE_BINDING_TABLE_POOL_ALLOC), btpa) {
       btpa.BindingTablePoolBaseAddress =
          anv_cmd_buffer_surface_base_address(cmd_buffer);
-      btpa.BindingTablePoolBufferSize = BINDING_TABLE_POOL_BLOCK_SIZE / 4096;
+      btpa.BindingTablePoolBufferSize = device->physical->va.binding_table_pool.size / 4096;
       btpa.MOCS = mocs;
    }
 #else /* GFX_VERx10 < 125 */
@@ -177,8 +177,8 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 
       sba.GeneralStateBufferSize       = 0xfffff;
       sba.IndirectObjectBufferSize     = 0xfffff;
-      sba.DynamicStateBufferSize       = DYNAMIC_STATE_POOL_SIZE / 4096;
-      sba.InstructionBufferSize        = INSTRUCTION_STATE_POOL_SIZE / 4096;
+      sba.DynamicStateBufferSize       = device->physical->va.dynamic_state_pool.size / 4096;
+      sba.InstructionBufferSize        = device->physical->va.instruction_state_pool.size / 4096;
       sba.GeneralStateBufferSizeModifyEnable    = true;
       sba.IndirectObjectBufferSizeModifyEnable  = true;
       sba.DynamicStateBufferSizeModifyEnable    = true;
@@ -2018,6 +2018,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
 
             if (shader->push_desc_info.fully_promoted_ubo_descriptors & BITFIELD_BIT(desc_idx)) {
                surface_state = anv_bindless_state_for_binding_table(
+                  cmd_buffer->device,
                   cmd_buffer->device->null_surface_state);
                break;
             }
@@ -2045,11 +2046,12 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                   desc->image_view->planes[binding->plane].general_sampler_surface_state :
                   desc->image_view->planes[binding->plane].optimal_sampler_surface_state;
                surface_state =
-                  anv_bindless_state_for_binding_table(sstate.state);
+                  anv_bindless_state_for_binding_table(cmd_buffer->device, sstate.state);
                assert(surface_state.alloc_size);
             } else {
                surface_state =
                   anv_bindless_state_for_binding_table(
+                     cmd_buffer->device,
                      cmd_buffer->device->null_surface_state);
             }
             break;
@@ -2059,10 +2061,12 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             if (desc->image_view) {
                struct anv_surface_state sstate =
                   desc->image_view->planes[binding->plane].storage_surface_state;
-               surface_state = anv_bindless_state_for_binding_table(sstate.state);
+               surface_state = anv_bindless_state_for_binding_table(
+                  cmd_buffer->device, sstate.state);
                assert(surface_state.alloc_size);
             } else {
                surface_state = anv_bindless_state_for_binding_table(
+                  cmd_buffer->device,
                   cmd_buffer->device->null_surface_state);
             }
             break;
@@ -2075,6 +2079,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                assert(surface_state.alloc_size);
             } else {
                surface_state = anv_bindless_state_for_binding_table(
+                  cmd_buffer->device,
                   cmd_buffer->device->null_surface_state);
             }
             break;
@@ -2082,10 +2087,12 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
             if (desc->buffer_view) {
                surface_state = anv_bindless_state_for_binding_table(
+                  cmd_buffer->device,
                   desc->buffer_view->surface_state);
                assert(surface_state.alloc_size);
             } else {
                surface_state = anv_bindless_state_for_binding_table(
+                  cmd_buffer->device,
                   cmd_buffer->device->null_surface_state);
             }
             break;
@@ -2126,6 +2133,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             } else {
                surface_state =
                   anv_bindless_state_for_binding_table(
+                     cmd_buffer->device,
                      cmd_buffer->device->null_surface_state);
             }
             break;
@@ -2134,10 +2142,12 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
             if (desc->buffer_view) {
                surface_state = anv_bindless_state_for_binding_table(
+                  cmd_buffer->device,
                   desc->buffer_view->storage_surface_state);
                assert(surface_state.alloc_size);
             } else {
                surface_state = anv_bindless_state_for_binding_table(
+                  cmd_buffer->device,
                   cmd_buffer->device->null_surface_state);
             }
             break;

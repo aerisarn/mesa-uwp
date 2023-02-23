@@ -175,6 +175,7 @@ libanv_files = files(
   'anv_queue.c',
   'anv_util.c',
   'anv_utrace.c',
+  'anv_va.c',
   'anv_video.c',
   'anv_wsi.c',
 )

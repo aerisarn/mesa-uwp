@@ -1414,6 +1414,8 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    if (result != VK_SUCCESS)
       goto fail_compiler;
 
+   anv_physical_device_init_va_ranges(device);
+
    anv_physical_device_init_disk_cache(device);
 
    if (instance->vk.enabled_extensions.KHR_display) {
@@ -3064,9 +3066,9 @@ VkResult anv_CreateDevice(
                                      decode_get_bo, NULL, device);
 
          decoder->engine = physical_device->queue.families[i].engine_class;
-         decoder->dynamic_base = DYNAMIC_STATE_POOL_MIN_ADDRESS;
-         decoder->surface_base = INTERNAL_SURFACE_STATE_POOL_MIN_ADDRESS;
-         decoder->instruction_base = INSTRUCTION_STATE_POOL_MIN_ADDRESS;
+         decoder->dynamic_base = physical_device->va.dynamic_state_pool.addr;
+         decoder->surface_base = physical_device->va.internal_surface_state_pool.addr;
+         decoder->instruction_base = physical_device->va.instruction_state_pool.addr;
       }
    }
 
@@ -3142,18 +3144,16 @@ VkResult anv_CreateDevice(
 
    /* keep the page with address zero out of the allocator */
    util_vma_heap_init(&device->vma_lo,
-                      LOW_HEAP_MIN_ADDRESS, LOW_HEAP_SIZE);
+                      device->physical->va.low_heap.addr,
+                      device->physical->va.low_heap.size);
 
-   util_vma_heap_init(&device->vma_cva, CLIENT_VISIBLE_HEAP_MIN_ADDRESS,
-                      CLIENT_VISIBLE_HEAP_SIZE);
+   util_vma_heap_init(&device->vma_cva,
+                      device->physical->va.client_visible_heap.addr,
+                      device->physical->va.client_visible_heap.size);
 
-   /* Leave the last 4GiB out of the high vma range, so that no state
-    * base address + size can overflow 48 bits. For more information see
-    * the comment about Wa32bitGeneralStateOffset in anv_allocator.c
-    */
-   util_vma_heap_init(&device->vma_hi, HIGH_HEAP_MIN_ADDRESS,
-                      physical_device->gtt_size - (1ull << 32) -
-                      HIGH_HEAP_MIN_ADDRESS);
+   util_vma_heap_init(&device->vma_hi,
+                      device->physical->va.high_heap.addr,
+                      device->physical->va.high_heap.size);
 
    list_inithead(&device->memory_objects);
 
@@ -3191,13 +3191,13 @@ VkResult anv_CreateDevice(
     */
    result = anv_state_pool_init(&device->general_state_pool, device,
                                 "general pool",
-                                0, GENERAL_STATE_POOL_MIN_ADDRESS, 16384);
+                                0, device->physical->va.general_state_pool.addr, 16384);
    if (result != VK_SUCCESS)
       goto fail_batch_bo_pool;
 
    result = anv_state_pool_init(&device->dynamic_state_pool, device,
                                 "dynamic pool",
-                                DYNAMIC_STATE_POOL_MIN_ADDRESS, 0, 16384);
+                                device->physical->va.dynamic_state_pool.addr, 0, 16384);
    if (result != VK_SUCCESS)
       goto fail_general_state_pool;
 
@@ -3214,7 +3214,8 @@ VkResult anv_CreateDevice(
 
    result = anv_state_pool_init(&device->instruction_state_pool, device,
                                 "instruction pool",
-                                INSTRUCTION_STATE_POOL_MIN_ADDRESS, 0, 16384);
+                                device->physical->va.instruction_state_pool.addr,
+                                0, 16384);
    if (result != VK_SUCCESS)
       goto fail_dynamic_state_pool;
 
@@ -3224,25 +3225,29 @@ VkResult anv_CreateDevice(
        */
       result = anv_state_pool_init(&device->scratch_surface_state_pool, device,
                                    "scratch surface state pool",
-                                   SCRATCH_SURFACE_STATE_POOL_MIN_ADDRESS, 0, 4096);
+                                   device->physical->va.scratch_surface_state_pool.addr,
+                                   0, 4096);
       if (result != VK_SUCCESS)
          goto fail_instruction_state_pool;
 
       result = anv_state_pool_init(&device->internal_surface_state_pool, device,
                                    "internal surface state pool",
-                                   INTERNAL_SURFACE_STATE_POOL_MIN_ADDRESS,
-                                   SCRATCH_SURFACE_STATE_POOL_SIZE, 4096);
+                                   device->physical->va.internal_surface_state_pool.addr,
+                                   device->physical->va.scratch_surface_state_pool.size,
+                                   4096);
    } else {
       result = anv_state_pool_init(&device->internal_surface_state_pool, device,
                                    "internal surface state pool",
-                                   INTERNAL_SURFACE_STATE_POOL_MIN_ADDRESS, 0, 4096);
+                                   device->physical->va.internal_surface_state_pool.addr,
+                                   0, 4096);
    }
    if (result != VK_SUCCESS)
       goto fail_scratch_surface_state_pool;
 
    result = anv_state_pool_init(&device->bindless_surface_state_pool, device,
                                 "bindless surface state pool",
-                                BINDLESS_SURFACE_STATE_POOL_MIN_ADDRESS, 0, 4096);
+                                device->physical->va.bindless_surface_state_pool.addr,
+                                0, 4096);
    if (result != VK_SUCCESS)
       goto fail_internal_surface_state_pool;
 
@@ -3252,15 +3257,21 @@ VkResult anv_CreateDevice(
        */
       result = anv_state_pool_init(&device->binding_table_pool, device,
                                    "binding table pool",
-                                   BINDING_TABLE_POOL_MIN_ADDRESS, 0,
+                                   device->physical->va.binding_table_pool.addr, 0,
                                    BINDING_TABLE_POOL_BLOCK_SIZE);
    } else {
-      int64_t bt_pool_offset = (int64_t)BINDING_TABLE_POOL_MIN_ADDRESS -
-                               (int64_t)INTERNAL_SURFACE_STATE_POOL_MIN_ADDRESS;
+      /* The binding table should be in front of the surface states in virtual
+       * address space so that all surface states can be express as relative
+       * offsets from the binding table location.
+       */
+      assert(device->physical->va.binding_table_pool.addr <
+             device->physical->va.internal_surface_state_pool.addr);
+      int64_t bt_pool_offset = (int64_t)device->physical->va.binding_table_pool.addr -
+                               (int64_t)device->physical->va.internal_surface_state_pool.addr;
       assert(INT32_MIN < bt_pool_offset && bt_pool_offset < 0);
       result = anv_state_pool_init(&device->binding_table_pool, device,
                                    "binding table pool",
-                                   INTERNAL_SURFACE_STATE_POOL_MIN_ADDRESS,
+                                   device->physical->va.internal_surface_state_pool.addr,
                                    bt_pool_offset,
                                    BINDING_TABLE_POOL_BLOCK_SIZE);
    }

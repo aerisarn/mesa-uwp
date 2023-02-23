@@ -132,69 +132,7 @@ struct intel_perf_query_result;
 
 #define NSEC_PER_SEC 1000000000ull
 
-/* anv Virtual Memory Layout
- * =========================
- *
- * When the anv driver is determining the virtual graphics addresses of memory
- * objects itself using the softpin mechanism, the following memory ranges
- * will be used.
- *
- * Three special considerations to notice:
- *
- * (1) the dynamic state pool is located within the same 4 GiB as the low
- * heap. This is to work around a VF cache issue described in a comment in
- * anv_physical_device_init_heaps.
- *
- * (2) the binding table pool is located at lower addresses than the BT
- * (binding table) surface state pool, within a 4 GiB range which also
- * contains the bindless surface state pool. This allows surface state base
- * addresses to cover both binding tables (16 bit offsets), the internal
- * surface states (32 bit offsets) and the bindless surface states.
- *
- * (3) the last 4 GiB of the address space is withheld from the high
- * heap. Various hardware units will read past the end of an object for
- * various reasons. This healthy margin prevents reads from wrapping around
- * 48-bit addresses.
- */
-#define GENERAL_STATE_POOL_MIN_ADDRESS             0x000000200000ULL /* 2 MiB */
-#define GENERAL_STATE_POOL_MAX_ADDRESS             0x00003fffffffULL
-#define LOW_HEAP_MIN_ADDRESS                       0x000040000000ULL /* 1 GiB */
-#define LOW_HEAP_MAX_ADDRESS                       0x00007fffffffULL
-#define DYNAMIC_STATE_POOL_MIN_ADDRESS             0x0000c0000000ULL /* 3 GiB */
-#define DYNAMIC_STATE_POOL_MAX_ADDRESS             0x0000ffffffffULL
-#define BINDING_TABLE_POOL_MIN_ADDRESS             0x000100000000ULL /* 4 GiB */
-#define BINDING_TABLE_POOL_MAX_ADDRESS             0x00013fffffffULL
-#define INTERNAL_SURFACE_STATE_POOL_MIN_ADDRESS    0x000140000000ULL /* 5 GiB */
-#define INTERNAL_SURFACE_STATE_POOL_MAX_ADDRESS    0x0001bfffffffULL
-#define SCRATCH_SURFACE_STATE_POOL_MIN_ADDRESS     0x000140000000ULL /* 5 GiB (8MiB overlaps surface state pool) */
-#define SCRATCH_SURFACE_STATE_POOL_MAX_ADDRESS     0x0001407fffffULL
-#define BINDLESS_SURFACE_STATE_POOL_MIN_ADDRESS    0x0001c0000000ULL /* 7 GiB (64MiB) */
-#define BINDLESS_SURFACE_STATE_POOL_MAX_ADDRESS    0x0001c3ffffffULL
-#define INSTRUCTION_STATE_POOL_MIN_ADDRESS         0x000200000000ULL /* 8 GiB */
-#define INSTRUCTION_STATE_POOL_MAX_ADDRESS         0x00023fffffffULL
-#define CLIENT_VISIBLE_HEAP_MIN_ADDRESS            0x000240000000ULL /* 9 GiB */
-#define CLIENT_VISIBLE_HEAP_MAX_ADDRESS            0x000a3fffffffULL
-#define HIGH_HEAP_MIN_ADDRESS                      0x000a40000000ULL /* 41 GiB */
-
-#define GENERAL_STATE_POOL_SIZE     \
-   (GENERAL_STATE_POOL_MAX_ADDRESS - GENERAL_STATE_POOL_MIN_ADDRESS + 1)
-#define LOW_HEAP_SIZE               \
-   (LOW_HEAP_MAX_ADDRESS - LOW_HEAP_MIN_ADDRESS + 1)
-#define DYNAMIC_STATE_POOL_SIZE     \
-   (DYNAMIC_STATE_POOL_MAX_ADDRESS - DYNAMIC_STATE_POOL_MIN_ADDRESS + 1)
-#define BINDING_TABLE_POOL_SIZE     \
-   (BINDING_TABLE_POOL_MAX_ADDRESS - BINDING_TABLE_POOL_MIN_ADDRESS + 1)
 #define BINDING_TABLE_POOL_BLOCK_SIZE (65536)
-#define SCRATCH_SURFACE_STATE_POOL_SIZE \
-   (SCRATCH_SURFACE_STATE_POOL_MAX_ADDRESS - SCRATCH_SURFACE_STATE_POOL_MIN_ADDRESS + 1)
-#define BINDLESS_SURFACE_STATE_POOL_SIZE \
-   (BINDLESS_SURFACE_STATE_POOL_MAX_ADDRESS - BINDLESS_SURFACE_STATE_POOL_MIN_ADDRESS + 1)
-#define INTERNAL_SURFACE_STATE_POOL_SIZE \
-   (INTERNAL_SURFACE_STATE_POOL_MAX_ADDRESS - INTERNAL_SURFACE_STATE_POOL_MIN_ADDRESS + 1)
-#define INSTRUCTION_STATE_POOL_SIZE \
-   (INSTRUCTION_STATE_POOL_MAX_ADDRESS - INSTRUCTION_STATE_POOL_MIN_ADDRESS + 1)
-#define CLIENT_VISIBLE_HEAP_SIZE               \
-   (CLIENT_VISIBLE_HEAP_MAX_ADDRESS - CLIENT_VISIBLE_HEAP_MIN_ADDRESS + 1)
 
 /* Allowing different clear colors requires us to perform a depth resolve at
  * the end of certain render passes. This is because while slow clears store
@@ -598,6 +536,12 @@ anv_address_map(struct anv_address addr)
    return addr.bo->map + addr.offset;
 }
 
+/* Represent a virtual address range */
+struct anv_va_range {
+   uint64_t addr;
+   uint64_t size;
+};
+
 /* Represents a lock-free linked list of "free" things.  This is used by
  * both the block pool and the state pools.  Unfortunately, in order to
  * solve the ABA problem, we can't use a single uint32_t head.
@@ -985,6 +929,19 @@ struct anv_physical_device {
 #endif
     } memory;
 
+    struct {
+       struct anv_va_range                      general_state_pool;
+       struct anv_va_range                      low_heap;
+       struct anv_va_range                      dynamic_state_pool;
+       struct anv_va_range                      binding_table_pool;
+       struct anv_va_range                      internal_surface_state_pool;
+       struct anv_va_range                      scratch_surface_state_pool;
+       struct anv_va_range                      bindless_surface_state_pool;
+       struct anv_va_range                      instruction_state_pool;
+       struct anv_va_range                      client_visible_heap;
+       struct anv_va_range                      high_heap;
+    } va;
+
     /* Either we have a single vram region and it's all mappable, or we have
      * both mappable & non-mappable parts. System memory is always available.
      */
@@ -1276,10 +1233,11 @@ anv_binding_table_pool_free(struct anv_device *device, struct anv_state state)
 }
 
 static inline struct anv_state
-anv_bindless_state_for_binding_table(struct anv_state state)
+anv_bindless_state_for_binding_table(struct anv_device *device,
+                                     struct anv_state state)
 {
-   state.offset += BINDLESS_SURFACE_STATE_POOL_MIN_ADDRESS -
-                   INTERNAL_SURFACE_STATE_POOL_MIN_ADDRESS;
+   state.offset += device->physical->va.bindless_surface_state_pool.addr -
+                   device->physical->va.internal_surface_state_pool.addr;
    return state;
 }
 
@@ -4401,6 +4359,7 @@ struct anv_performance_configuration_intel {
    uint64_t                   config_id;
 };
 
+void anv_physical_device_init_va_ranges(struct anv_physical_device *device);
 void anv_physical_device_init_perf(struct anv_physical_device *device, int fd);
 void anv_device_perf_init(struct anv_device *device);
 void anv_perf_write_pass_results(struct intel_perf_config *perf,

@@ -486,6 +486,8 @@ Intel driver environment variables
       dump shader assembly for fragment shaders
    ``gs``
       dump shader assembly for geometry shaders
+   ``heaps``
+      print information about the driver's heaps (Anv only)
    ``hex``
       print instruction hex dump with the disassembly
    ``l3``
