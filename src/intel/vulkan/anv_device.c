@@ -828,18 +828,6 @@ anv_compute_sys_heap_size(struct anv_physical_device *device,
     */
    available_ram = MIN2(available_ram, device->gtt_size * 3 / 4);
 
-   if (available_ram > (2ull << 30) && !device->supports_48bit_addresses) {
-      /* When running with an overridden PCI ID, we may get a GTT size from
-       * the kernel that is greater than 2 GiB but the execbuf check for 48bit
-       * address support can still fail.  Just clamp the address space size to
-       * 2 GiB if we don't have 48-bit support.
-       */
-      mesa_logw("%s:%d: The kernel reported a GTT size larger than 2 GiB but "
-                "not support for 48-bit addresses",
-                __FILE__, __LINE__);
-      available_ram = 2ull << 30;
-   }
-
    return available_ram;
 }
 
@@ -1324,11 +1312,11 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    device->gtt_size = device->info.gtt_size ? device->info.gtt_size :
                                               device->info.aperture_bytes;
 
-   /* We only allow 48-bit addresses with softpin because knowing the actual
-    * address is required for the vertex cache flush workaround.
-    */
-   device->supports_48bit_addresses =
-      device->gtt_size > (4ULL << 30 /* GiB */);
+   if (device->gtt_size < (4ULL << 30 /* GiB */)) {
+      vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                "GTT size too small: 0x%016"PRIu64, device->gtt_size);
+      goto fail_base;
+   }
 
    /* We currently only have the right bits for instructions in Gen12+. If the
     * kernel ever starts supporting that feature on previous generations,
@@ -2949,7 +2937,6 @@ intel_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
       return NULL;
 
    struct anv_device *device = (struct anv_device*)driver_ctx;
-   assert(device->physical->supports_48bit_addresses);
 
    struct anv_state_pool *pool = &device->dynamic_state_pool;
    buf->state = anv_state_pool_alloc(pool, size, size);

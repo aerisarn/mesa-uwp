@@ -1351,8 +1351,7 @@ anv_bo_alloc_flags_to_bo_flags(struct anv_device *device,
 
    uint64_t bo_flags = EXEC_OBJECT_PINNED;
 
-   if (!(alloc_flags & ANV_BO_ALLOC_32BIT_ADDRESS) &&
-       pdevice->supports_48bit_addresses)
+   if (!(alloc_flags & ANV_BO_ALLOC_32BIT_ADDRESS))
       bo_flags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
 
    if (((alloc_flags & ANV_BO_ALLOC_CAPTURE) ||

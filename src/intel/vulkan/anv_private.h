@@ -913,7 +913,7 @@ struct anv_physical_device {
     struct anv_instance *                       instance;
     char                                        path[20];
     struct intel_device_info                      info;
-    bool                                        supports_48bit_addresses;
+
     bool                                        video_decode_enabled;
     bool                                        gpl_enabled;
 
