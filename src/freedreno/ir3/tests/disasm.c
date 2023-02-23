@@ -439,6 +439,11 @@ static const struct test {
 
    INSTR_7XX(e3c20000_00000000, "lock"),
 
+   /* dEQP-VK.pipeline.monolithic.sampler.border_swizzle.r4g4b4a4_unorm_pack16.rg1a.opaque_white.gather_1.no_swizzle_hint */
+   INSTR_7XX(e45401a0_bfba7736, "alias.tex.b32.1 r40.x, (-1.456763)"),
+   /* dEQP-VK.synchronization.op.single_queue.event.write_draw_indexed_read_image_geometry.image_128x128_r32g32b32a32_sfloat */
+   INSTR_7XX(e44c0009_00000007, "alias.tex.b32.0 r2.y, c1.w"),
+
    INSTR_6XX(ffffffff_ffffffff, "raw 0xFFFFFFFFFFFFFFFF"),
    /* clang-format on */
 };

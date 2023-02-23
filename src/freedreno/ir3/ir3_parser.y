@@ -629,6 +629,7 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_OP_DCFLU
 %token <tok> T_OP_LOCK
 %token <tok> T_OP_UNLOCK
+%token <tok> T_OP_ALIAS
 
 %token <u64> T_RAW
 
@@ -679,6 +680,11 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <num> T_P0
 %token <num> T_W
 %token <str> T_CAT1_TYPE_TYPE
+%token <str> T_INSTR_TYPE
+
+%token <tok> T_MOD_TEX
+%token <tok> T_MOD_MEM
+%token <tok> T_MOD_RT
 
 %type <num> integer offset
 %type <num> flut_immed
@@ -1307,12 +1313,25 @@ cat7_data_cache:   T_OP_DCCLN              { new_instr(OPC_DCCLN); }
 |                  T_OP_DCINV              { new_instr(OPC_DCINV); }
 |                  T_OP_DCFLU              { new_instr(OPC_DCFLU); }
 
+cat7_alias_src:    src_reg_or_const
+|                  immediate_cat1
+
+cat7_alias_scope: T_MOD_TEX	{ instr->cat7.alias_scope = ALIAS_TEX; }
+|                 T_MOD_MEM	{ instr->cat7.alias_scope = ALIAS_MEM; }
+|                 T_MOD_RT	{ instr->cat7.alias_scope = ALIAS_RT; }
+
 cat7_instr:        cat7_barrier
 |                  cat7_data_cache
 |                  T_OP_SLEEP              { new_instr(OPC_SLEEP); }
 |                  T_OP_ICINV              { new_instr(OPC_ICINV); }
 |                  T_OP_LOCK               { new_instr(OPC_LOCK); }
 |                  T_OP_UNLOCK             { new_instr(OPC_UNLOCK); }
+|                  T_OP_ALIAS {
+                       /* TODO: handle T_INSTR_TYPE */
+                       new_instr(OPC_ALIAS);
+                   } '.' cat7_alias_scope '.' T_INSTR_TYPE '.' integer dst_reg ',' cat7_alias_src {
+                       new_src(0, IR3_REG_IMMED)->uim_val = $8;
+                   }
 
 raw_instr: T_RAW   {new_instr(OPC_META_RAW)->raw.value = $1;}
 

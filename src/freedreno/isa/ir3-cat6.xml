@@ -446,7 +446,7 @@ SOFTWARE.
 	<pattern pos="0"           >x</pattern>
 	<field   low="1"  high="8" name="SRC" type="#reg-gpr"/>
 	<pattern low="9"  high="13">xxxxx</pattern> <!-- DST_HI -->
-	<pattern low="14" high="22">xxxxxxxxxxxxxx</pattern>
+	<pattern low="14" high="22">xxxxxxxxx</pattern>
 	<pattern pos="23"          >1</pattern>
 	<field   low="24" high="26" name="SIZE" type="uint"/>
 	<pattern low="27" high="31">xxxxx</pattern>

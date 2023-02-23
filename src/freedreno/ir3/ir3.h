@@ -260,6 +260,12 @@ typedef enum {
    REDUCE_OP_XOR_B,
 } reduce_op_t;
 
+typedef enum {
+   ALIAS_TEX = 0,
+   ALIAS_RT = 3,
+   ALIAS_MEM = 4,
+} ir3_alias_scope;
+
 typedef enum ir3_instruction_flags {
    /* (sy) flag is set on first instruction, and after sample
     * instructions (probably just on RAW hazard).
@@ -393,6 +399,8 @@ struct ir3_instruction {
          unsigned r : 1; /* read */
          unsigned l : 1; /* local */
          unsigned g : 1; /* global */
+
+         ir3_alias_scope alias_scope;
       } cat7;
       /* for meta-instructions, just used to hold extra data
        * before instruction scheduling, etc

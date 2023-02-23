@@ -371,6 +371,8 @@ typedef enum {
    OPC_LOCK            = _OPC(7, 7),
    OPC_UNLOCK          = _OPC(7, 8),
 
+   OPC_ALIAS           = _OPC(7, 9),
+
    /* meta instructions (category 8): */
 #define OPC_META 8
    /* placeholder instr to mark shader inputs: */

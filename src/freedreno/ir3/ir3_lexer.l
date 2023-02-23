@@ -380,6 +380,8 @@ static int parse_reg(const char *str)
 "stc"                             return TOKEN(T_OP_STC);
 "stsc"                            return TOKEN(T_OP_STSC);
 
+("b16"|"b32"){1} ir3_yylval.str = yytext; return T_INSTR_TYPE;
+
                                   /* category 7: */
 "bar"                             return TOKEN(T_OP_BAR);
 "fence"                           return TOKEN(T_OP_FENCE);
@@ -390,6 +392,7 @@ static int parse_reg(const char *str)
 "dcflu.all"                       return TOKEN(T_OP_DCFLU);
 "lock"                            return TOKEN(T_OP_LOCK);
 "unlock"                          return TOKEN(T_OP_UNLOCK);
+"alias"                           return TOKEN(T_OP_ALIAS);
 
 "f16"                             return TOKEN(T_TYPE_F16);
 "f32"                             return TOKEN(T_TYPE_F32);
@@ -431,6 +434,10 @@ static int parse_reg(const char *str)
 "uniform"                         return T_UNIFORM;
 "nonuniform"                      return T_NONUNIFORM;
 "imm"                             return T_IMM;
+
+"tex"                             return T_MOD_TEX;
+"mem"                             return T_MOD_MEM;
+"rt"                              return T_MOD_RT;
 
 "h"                               return 'h';
 "="                               return '=';
