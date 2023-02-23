@@ -428,7 +428,7 @@ if with_tests
       dependencies : [dep_thread, idep_gtest, idep_nir, idep_mesautil],
     ),
     suite : ['compiler', 'nir'],
-    protocol : gtest_test_protocol,
+    protocol : 'gtest',
   )
 
   test(
@@ -453,7 +453,7 @@ if with_tests
     suite : ['compiler', 'nir'],
     # TODO: Use a negative filter for gtest instead of the expect failure here.
     should_fail : meson.get_external_property('xfail', '').contains('load_store_vectorizer'),
-    protocol : gtest_test_protocol,
+    protocol : 'gtest',
   )
 
   test(
