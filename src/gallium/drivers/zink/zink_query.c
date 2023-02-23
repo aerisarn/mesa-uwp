@@ -881,7 +881,8 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
    struct zink_query_start *start = util_dynarray_top_ptr(&q->starts, struct zink_query_start);
    if (q->type == PIPE_QUERY_TIME_ELAPSED) {
       VKCTX(CmdWriteTimestamp)(batch->state->cmdbuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, start->vkq[0]->pool->query_pool, start->vkq[0]->query_id);
-      update_qbo(ctx, q);
+      if (!batch->in_rp)
+         update_qbo(ctx, q);
       zink_batch_usage_set(&q->batch_uses, batch->state);
       _mesa_set_add(&batch->state->active_queries, q);
    }
