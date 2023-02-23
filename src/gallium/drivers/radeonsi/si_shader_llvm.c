@@ -1134,7 +1134,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
       si_get_vs_prolog_key(&sel->info, shader->info.num_input_sgprs,
                            &shader->key.ge.part.vs.prolog, shader, &prolog_key);
       prolog_key.vs_prolog.is_monolithic = true;
-      si_llvm_build_vs_prolog(&ctx, &prolog_key);
+      si_llvm_build_vs_prolog(&ctx, &prolog_key, false);
       parts[0] = ctx.main_fn;
 
       si_build_wrapper_function(&ctx, parts, 2, 1, 0, main_arg_types, false);
@@ -1154,7 +1154,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
          /* TCS epilog */
          union si_shader_part_key tcs_epilog_key;
          si_get_tcs_epilog_key(shader, &tcs_epilog_key);
-         si_llvm_build_tcs_epilog(&ctx, &tcs_epilog_key);
+         si_llvm_build_tcs_epilog(&ctx, &tcs_epilog_key, false);
          parts[3] = ctx.main_fn;
 
          struct si_shader shader_ls = {};
@@ -1190,7 +1190,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
             si_get_vs_prolog_key(&ls->info, shader_ls.info.num_input_sgprs,
                                  &shader->key.ge.part.tcs.ls_prolog, shader, &vs_prolog_key);
             vs_prolog_key.vs_prolog.is_monolithic = true;
-            si_llvm_build_vs_prolog(&ctx, &vs_prolog_key);
+            si_llvm_build_vs_prolog(&ctx, &vs_prolog_key, false);
             parts[0] = ctx.main_fn;
          }
 
@@ -1214,7 +1214,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
 
          memset(&epilog_key, 0, sizeof(epilog_key));
          epilog_key.tcs_epilog.states = shader->key.ge.part.tcs.epilog;
-         si_llvm_build_tcs_epilog(&ctx, &epilog_key);
+         si_llvm_build_tcs_epilog(&ctx, &epilog_key, false);
          parts[1] = ctx.main_fn;
 
          si_build_wrapper_function(&ctx, parts, 2, 0, 0, main_arg_types, false);
@@ -1266,7 +1266,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
             si_get_vs_prolog_key(&es->info, shader_es.info.num_input_sgprs,
                                  &shader->key.ge.part.gs.vs_prolog, shader, &vs_prolog_key);
             vs_prolog_key.vs_prolog.is_monolithic = true;
-            si_llvm_build_vs_prolog(&ctx, &vs_prolog_key);
+            si_llvm_build_vs_prolog(&ctx, &vs_prolog_key, false);
             es_prolog = ctx.main_fn;
          }
 
