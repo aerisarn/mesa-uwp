@@ -938,6 +938,8 @@ zink_begin_query(struct pipe_context *pctx,
    /* drop all past results */
    reset_qbo(query);
 
+   query->predicate_dirty = true;
+
    util_dynarray_clear(&query->starts);
    query->start_offset = 0;
 
@@ -1269,12 +1271,17 @@ zink_render_condition(struct pipe_context *pctx,
 
       flags |= VK_QUERY_RESULT_64_BIT;
       int num_results = get_num_starts(query);
-      if (!is_emulated_primgen(query) &&
-          !is_so_overflow_query(query)) {
-         copy_results_to_buffer(ctx, query, res, 0, num_results, flags);
+      if (num_results) {
+         if (!is_emulated_primgen(query) &&
+            !is_so_overflow_query(query)) {
+            copy_results_to_buffer(ctx, query, res, 0, num_results, flags);
+         } else {
+            /* these need special handling */
+            force_cpu_read(ctx, pquery, PIPE_QUERY_TYPE_U32, &res->base.b, 0);
+         }
       } else {
-         /* these need special handling */
-         force_cpu_read(ctx, pquery, PIPE_QUERY_TYPE_U32, &res->base.b, 0);
+         uint64_t zero = 0;
+         tc_buffer_write(pctx, &res->base.b, 0, sizeof(zero), &zero);
       }
       zink_screen(ctx->base.screen)->buffer_barrier(ctx, res, VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT, VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT);
       query->predicate_dirty = false;
