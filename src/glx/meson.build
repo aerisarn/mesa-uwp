@@ -135,7 +135,7 @@ libglx = static_library(
     extra_libs_libglx,
   ],
   dependencies : [
-    idep_mesautil, idep_xmlconfig, idep_vulkan_wsi_defines,
+    idep_mesautil, idep_xmlconfig,
     dep_libdrm, dep_dri2proto, dep_glproto, dep_x11, dep_glvnd, dep_xxf86vm, dep_xshmfence
   ],
 )
