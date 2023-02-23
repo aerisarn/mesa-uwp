@@ -1419,7 +1419,7 @@ anv_nir_apply_pipeline_layout(nir_shader *shader,
       if (binding->dynamic_offset_index >= 0)
          state.has_dynamic_buffers = true;
 
-      if (binding->data & ANV_DESCRIPTOR_SURFACE_STATE) {
+      if (binding->data & ANV_DESCRIPTOR_BTI_SURFACE_STATE) {
          if (map->surface_count + array_size > MAX_BINDING_TABLE_SIZE ||
              anv_descriptor_requires_bindless(pdevice, binding, false) ||
              brw_shader_stage_requires_bindless_resources(shader->info.stage)) {
@@ -1460,7 +1460,7 @@ anv_nir_apply_pipeline_layout(nir_shader *shader,
          assert(map->surface_count <= MAX_BINDING_TABLE_SIZE);
       }
 
-      if (binding->data & ANV_DESCRIPTOR_SAMPLER_STATE) {
+      if (binding->data & ANV_DESCRIPTOR_BTI_SAMPLER_STATE) {
          if (map->sampler_count + array_size > MAX_SAMPLER_TABLE_SIZE ||
              anv_descriptor_requires_bindless(pdevice, binding, true) ||
              brw_shader_stage_requires_bindless_resources(shader->info.stage)) {

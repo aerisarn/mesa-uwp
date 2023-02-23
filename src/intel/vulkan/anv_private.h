@@ -218,6 +218,7 @@ struct intel_perf_query_result;
  * and we can't put anything else there we use 64b.
  */
 #define ANV_SURFACE_STATE_SIZE (64)
+#define ANV_SAMPLER_STATE_SIZE (32)
 
 /* For gfx12 we set the streamout buffers using 4 separate commands
  * (3DSTATE_SO_BUFFER_INDEX_*) instead of 3DSTATE_SO_BUFFER. However the layout
@@ -1653,19 +1654,25 @@ struct anv_address_range_descriptor {
 
 enum anv_descriptor_data {
    /** The descriptor contains a BTI reference to a surface state */
-   ANV_DESCRIPTOR_SURFACE_STATE  = (1 << 0),
+   ANV_DESCRIPTOR_BTI_SURFACE_STATE       = BITFIELD_BIT(0),
    /** The descriptor contains a BTI reference to a sampler state */
-   ANV_DESCRIPTOR_SAMPLER_STATE  = (1 << 1),
+   ANV_DESCRIPTOR_BTI_SAMPLER_STATE       = BITFIELD_BIT(1),
    /** The descriptor contains an actual buffer view */
-   ANV_DESCRIPTOR_BUFFER_VIEW    = (1 << 2),
+   ANV_DESCRIPTOR_BUFFER_VIEW             = BITFIELD_BIT(2),
    /** The descriptor contains inline uniform data */
-   ANV_DESCRIPTOR_INLINE_UNIFORM = (1 << 3),
+   ANV_DESCRIPTOR_INLINE_UNIFORM          = BITFIELD_BIT(3),
    /** anv_address_range_descriptor with a buffer address and range */
-   ANV_DESCRIPTOR_ADDRESS_RANGE  = (1 << 4),
-   /** Bindless surface handle */
-   ANV_DESCRIPTOR_SAMPLED_IMAGE  = (1 << 5),
-   /** Storage image handles */
-   ANV_DESCRIPTOR_STORAGE_IMAGE  = (1 << 6),
+   ANV_DESCRIPTOR_INDIRECT_ADDRESS_RANGE  = BITFIELD_BIT(4),
+   /** Bindless surface handle (through anv_sampled_image_descriptor) */
+   ANV_DESCRIPTOR_INDIRECT_SAMPLED_IMAGE  = BITFIELD_BIT(5),
+   /** Storage image handles (through anv_storage_image_descriptor) */
+   ANV_DESCRIPTOR_INDIRECT_STORAGE_IMAGE  = BITFIELD_BIT(6),
+   /** The descriptor contains a single RENDER_SURFACE_STATE */
+   ANV_DESCRIPTOR_SURFACE                 = BITFIELD_BIT(7),
+   /** The descriptor contains a SAMPLER_STATE */
+   ANV_DESCRIPTOR_SAMPLER                 = BITFIELD_BIT(8),
+   /** A tuple of RENDER_SURFACE_STATE & SAMPLER_STATE */
+   ANV_DESCRIPTOR_SURFACE_SAMPLER         = BITFIELD_BIT(9),
 };
 
 struct anv_descriptor_set_binding_layout {
@@ -1700,7 +1707,8 @@ struct anv_descriptor_set_binding_layout {
    /* Offset into the descriptor buffer where this descriptor lives */
    uint32_t descriptor_offset;
 
-   /* Pre computed stride */
+   /* Pre computed stride (with multiplane descriptor, the descriptor includes
+    * all the planes) */
    unsigned descriptor_stride;
 
    /* Immutable samplers (or NULL if no immutable samplers) */
