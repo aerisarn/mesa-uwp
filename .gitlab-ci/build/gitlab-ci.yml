@@ -224,8 +224,10 @@ debian-release:
       -D tools=all
       -D intel-clc=enabled
       -D imagination-srv=true
+    MINIO_ARTIFACT_NAME: "mesa-amd64-rel"
   script:
     - .gitlab-ci/meson/build.sh
+    - .gitlab-ci/prepare-artifacts.sh
 
 alpine-build-testing:
   extends:
