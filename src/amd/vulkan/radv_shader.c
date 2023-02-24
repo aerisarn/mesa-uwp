@@ -33,6 +33,7 @@
 #include "util/memstream.h"
 #include "util/mesa-sha1.h"
 #include "util/u_atomic.h"
+#include "util/streaming-load-memcpy.h"
 #include "radv_debug.h"
 #include "radv_meta.h"
 #include "radv_private.h"
@@ -2040,6 +2041,14 @@ radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_b
 
    dest_ptr = shader->alloc->arena->ptr + shader->alloc->offset;
 
+   if (device->thread_trace.bo) {
+      shader->code = calloc(shader->code_size, 1);
+      if (!shader->code) {
+         radv_shader_unref(device, shader);
+         return false;
+      }
+   }
+
    if (binary->type == RADV_BINARY_TYPE_RTLD) {
 #if !defined(USE_LIBELF)
       return false;
@@ -2063,8 +2072,14 @@ radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_b
          return false;
       }
 
-      shader->code_ptr = dest_ptr;
       ac_rtld_close(&rtld_binary);
+
+      if (shader->code) {
+         /* Instead of running RTLD twice, just copy the relocated binary back from VRAM.
+          * Use streaming memcpy to reduce penalty of copying from uncachable memory.
+          */
+         util_streaming_load_memcpy(shader->code, dest_ptr, shader->code_size);
+      }
 #endif
    } else {
       struct radv_shader_binary_legacy *bin = (struct radv_shader_binary_legacy *)binary;
@@ -2075,7 +2090,9 @@ radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_b
       for (unsigned i = 0; i < DEBUGGER_NUM_MARKERS; i++)
          ptr32[i] = DEBUGGER_END_OF_CODE_MARKER;
 
-      shader->code_ptr = dest_ptr;
+      if (shader->code) {
+         memcpy(shader->code, bin->data + bin->stats_size, bin->code_size);
+      }
    }
 
    return true;
@@ -2667,6 +2684,7 @@ radv_shader_destroy(struct radv_device *device, struct radv_shader *shader)
 
    radv_free_shader_memory(device, shader->alloc);
 
+   free(shader->code);
    free(shader->spirv);
    free(shader->nir_string);
    free(shader->disasm_string);

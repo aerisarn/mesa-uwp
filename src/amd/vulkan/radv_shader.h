@@ -492,10 +492,12 @@ struct radv_shader {
    uint64_t va;
 
    struct ac_shader_config config;
-   uint8_t *code_ptr;
    uint32_t code_size;
    uint32_t exec_size;
    struct radv_shader_info info;
+
+   /* sqtt only */
+   void *code;
 
    /* debug only */
    char *spirv;

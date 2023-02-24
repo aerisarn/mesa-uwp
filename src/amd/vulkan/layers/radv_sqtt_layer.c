@@ -182,7 +182,7 @@ radv_sqtt_reloc_graphics_shaders(struct radv_device *device,
       reloc->va[i] = slab_va + slab_offset;
 
       void *dest_ptr = slab_ptr + slab_offset;
-      memcpy(dest_ptr, shader->code_ptr, shader->code_size);
+      memcpy(dest_ptr, shader->code, shader->code_size);
 
       slab_offset += align(shader->code_size, RADV_SHADER_ALLOC_ALIGNMENT);
    }
@@ -1133,7 +1133,7 @@ radv_add_code_object(struct radv_device *device, struct radv_pipeline *pipeline)
          free(record);
          return VK_ERROR_OUT_OF_HOST_MEMORY;
       }
-      memcpy(code, shader->code_ptr, shader->code_size);
+      memcpy(code, shader->code, shader->code_size);
 
       va = radv_sqtt_shader_get_va_reloc(pipeline, i);
 
