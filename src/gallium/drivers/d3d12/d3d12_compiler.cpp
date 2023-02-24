@@ -549,7 +549,8 @@ static void
 fill_varyings(struct d3d12_varying_info *info, nir_shader *s,
               nir_variable_mode modes, uint64_t mask, bool patch)
 {
-   memset(info, 0, sizeof(d3d12_varying_info));
+   info->max = 0;
+   info->mask = 0;
 
    nir_foreach_variable_with_modes(var, s, modes) {
       unsigned slot = var->data.location;
@@ -562,6 +563,11 @@ fill_varyings(struct d3d12_varying_info *info, nir_shader *s,
 
       if (!(mask & slot_bit))
          continue;
+
+      if ((info->mask & slot_bit) == 0) {
+         memset(info->slots + slot, 0, sizeof(info->slots[0]));
+         info->max = MAX2(info->max, slot);
+      }
 
       const struct glsl_type *type = var->type;
       if ((s->info.stage == MESA_SHADER_GEOMETRY ||
@@ -579,6 +585,13 @@ fill_varyings(struct d3d12_varying_info *info, nir_shader *s,
       info->mask |= slot_bit;
       info->slots[slot].location_frac_mask |= (1 << var->data.location_frac);
    }
+
+   for (uint32_t i = 0; i < info->max; ++i) {
+      if (((1llu << i) & info->mask) == 0) {
+         memset(info->slots + i, 0, sizeof(info->slots[0]));
+      }
+   }
+
 }
 
 static void
@@ -592,6 +605,32 @@ fill_flat_varyings(struct d3d12_gs_variant_key *key, d3d12_shader_selector *fs)
       if (input->data.interpolation == INTERP_MODE_FLAT)
          key->flat_varyings |= BITFIELD64_BIT(input->data.location);
    }
+}
+
+bool
+d3d12_compare_varying_info(const d3d12_varying_info *expect, const d3d12_varying_info *have)
+{
+   if (expect->mask != have->mask
+      || expect->max != have->max)
+      return false;
+
+   if (!expect->mask)
+      return true;
+
+   /* 6 is a rough (wild) guess for a bulk memcmp cross-over point.  When there
+    * are a small number of slots present, individual   is much faster. */
+   if (util_bitcount64(expect->mask) < 6) {
+      uint64_t mask = expect->mask;
+      while (mask) {
+         int slot = u_bit_scan64(&mask);
+         if (memcmp(&expect->slots[slot], &have->slots[slot], sizeof(have->slots[slot])))
+            return false;
+      }
+
+      return true;
+   }
+
+   return !memcmp(expect->slots, have->slots, sizeof(expect->slots[0]) * expect->max);
 }
 
 static void
@@ -674,31 +713,6 @@ validate_tess_ctrl_shader_variant(struct d3d12_selection_context *sel_ctx)
    /* Find/create the proper variant and bind it */
    tcs = variant_needed ? d3d12_get_tcs_variant(ctx, &key) : NULL;
    ctx->gfx_stages[PIPE_SHADER_TESS_CTRL] = tcs;
-}
-
-static bool
-d3d12_compare_varying_info(const d3d12_varying_info *expect, const d3d12_varying_info *have)
-{
-   if (expect->mask != have->mask)
-      return false;
-
-   if (!expect->mask)
-      return true;
-
-   /* 6 is a rough (wild) guess for a bulk memcmp cross-over point.  When there
-    * are a small number of slots present, individual memcmp is much faster. */
-   if (util_bitcount64(expect->mask) < 6) {
-      uint64_t mask = expect->mask;
-      while (mask) {
-         int slot = u_bit_scan64(&mask);
-         if (memcmp(&expect->slots[slot], &have->slots[slot], sizeof(have->slots[slot])))
-            return false;
-      }
-
-      return true;
-   }
-
-   return !memcmp(expect, have, sizeof(struct d3d12_varying_info));
 }
 
 static bool

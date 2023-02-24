@@ -76,6 +76,7 @@ struct d3d12_varying_info {
       } vars[4];
    } slots[VARYING_SLOT_MAX];
    uint64_t mask;
+   uint32_t max;
 };
 
 struct d3d12_image_format_conversion_info {
