@@ -82,6 +82,7 @@ lower_mem_load(nir_builder *b, nir_intrinsic_instr *intrin,
    const unsigned bytes_read = num_components * (bit_size / 8);
    const uint32_t align_mul = nir_intrinsic_align_mul(intrin);
    const uint32_t align_offset = nir_intrinsic_align_offset(intrin);
+   const uint32_t align = nir_intrinsic_align(intrin);
    nir_src *offset_src = nir_get_io_offset_src(intrin);
    const bool offset_is_const = nir_src_is_const(*offset_src);
    assert(offset_src->is_ssa);
@@ -96,7 +97,7 @@ lower_mem_load(nir_builder *b, nir_intrinsic_instr *intrin,
    assert(util_is_power_of_two_nonzero(requested.align_mul));
    if (requested.num_components == num_components &&
        requested.bit_size == bit_size &&
-       requested.align_mul <= align_mul)
+       requested.align_mul <= align)
       return false;
 
    /* Otherwise, we have to break it into chunks.  We could end up with as
@@ -208,6 +209,7 @@ lower_mem_store(nir_builder *b, nir_intrinsic_instr *intrin,
    const unsigned bytes_written = num_components * byte_size;
    const uint32_t align_mul = nir_intrinsic_align_mul(intrin);
    const uint32_t align_offset = nir_intrinsic_align_offset(intrin);
+   const uint32_t align = nir_intrinsic_align(intrin);
    nir_src *offset_src = nir_get_io_offset_src(intrin);
    const bool offset_is_const = nir_src_is_const(*offset_src);
    assert(offset_src->is_ssa);
@@ -225,7 +227,7 @@ lower_mem_store(nir_builder *b, nir_intrinsic_instr *intrin,
    assert(util_is_power_of_two_nonzero(requested.align_mul));
    if (requested.num_components == num_components &&
        requested.bit_size == bit_size &&
-       requested.align_mul <= align_mul &&
+       requested.align_mul <= align &&
        writemask == BITFIELD_MASK(num_components))
       return false;
 
