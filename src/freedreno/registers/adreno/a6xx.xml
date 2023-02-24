@@ -2493,6 +2493,13 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x8e05" name="RB_ADDR_MODE_CNTL" pos="0" type="a5xx_address_mode"/>
 	<!-- 0x8e06 invalid -->
 	<reg32 offset="0x8e07" name="RB_CCU_CNTL">
+		<!-- concurrent resolves are apparently a 2-bit enum on a650+ -->
+		<bitfield name="CONCURRENT_RESOLVE" pos="2" type="boolean"/>
+		<bitfield name="DEPTH_OFFSET_HI" pos="7" type="hex"/>
+		<bitfield name="COLOR_OFFSET_HI" pos="9" type="hex"/>
+		<!-- GMEM offset of CCU depth cache -->
+		<bitfield name="DEPTH_OFFSET" low="12" high="20" shr="12" type="hex"/>
+		<bitfield name="GMEM" pos="22" type="boolean"/> <!-- set for GMEM path -->
 		<!-- GMEM offset of CCU color cache
 			for GMEM rendering, we set it to GMEM size minus the minimum
 			CCU color cache size. CCU color cache will be needed in some
@@ -2500,11 +2507,6 @@ to upconvert to 32b float internally?
 			of GMEM for color cache.
 		-->
 		<bitfield name="COLOR_OFFSET" low="23" high="31" shr="12" type="hex"/>
-		<!-- GMEM offset of CCU depth cache -->
-		<bitfield name="DEPTH_OFFSET" low="12" high="20" shr="12" type="hex"/>
-		<bitfield name="GMEM" pos="22" type="boolean"/> <!-- set for GMEM path -->
-		<!-- concurrent resolves are apparently a 2-bit enum on a650+ -->
-		<bitfield name="CONCURRENT_RESOLVE" pos="2" type="boolean"/>
 		<!--TODO: valid mask 0xfffffc1f -->
 	</reg32>
 	<reg32 offset="0x8e08" name="RB_NC_MODE_CNTL">

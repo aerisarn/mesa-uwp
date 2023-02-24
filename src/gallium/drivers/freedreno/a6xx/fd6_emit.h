@@ -341,6 +341,7 @@ struct fd6_compute_state;
 void fd6_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
                        struct fd6_compute_state *cs) assert_dt;
 
+void fd6_emit_ccu_cntl(struct fd_ringbuffer *ring, struct fd_screen *screen, bool gmem);
 void fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring);
 
 void fd6_emit_init_screen(struct pipe_screen *pscreen);

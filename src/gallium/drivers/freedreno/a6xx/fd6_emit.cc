@@ -733,6 +733,21 @@ fd6_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
    fd6_state_emit(&state, ring);
 }
 
+void
+fd6_emit_ccu_cntl(struct fd_ringbuffer *ring, struct fd_screen *screen, bool gmem)
+{
+   uint32_t offset = gmem ? screen->ccu_offset_gmem : screen->ccu_offset_bypass;
+   uint32_t offset_hi = offset >> 21;
+   offset &= 0x1fffff;
+
+   OUT_REG(ring, A6XX_RB_CCU_CNTL(
+         .concurrent_resolve = gmem && screen->info->a6xx.concurrent_resolve,
+         .color_offset_hi = offset_hi,
+         .gmem = gmem,
+         .color_offset = offset,
+   ));
+}
+
 /* emit setup at begin of new cmdstream buffer (don't rely on previous
  * state, there could have been a context switch between ioctls):
  */
