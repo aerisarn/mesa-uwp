@@ -662,7 +662,8 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
    case MESA_SHADER_FRAGMENT:
       declare_global_desc_pointers(args);
       declare_per_stage_desc_pointers(args, shader, true);
-      si_add_arg_checked(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, NULL, SI_PARAM_ALPHA_REF);
+      si_add_arg_checked(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->alpha_reference,
+                         SI_PARAM_ALPHA_REF);
       si_add_arg_checked(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.prim_mask,
                          SI_PARAM_PRIM_MASK);
 

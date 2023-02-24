@@ -1598,6 +1598,9 @@ system_value("lds_ngg_gs_out_vertex_base_amd", 1)
 # FLAGS = AC_EXP_FLAG_*
 intrinsic("export_amd", [0], indices=[BASE, WRITE_MASK, FLAGS])
 
+# Alpha test reference value
+system_value("alpha_reference_amd", 1)
+
 # V3D-specific instrinc for tile buffer color reads.
 #
 # The hardware requires that we read the samples and components of a pixel
