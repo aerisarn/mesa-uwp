@@ -1343,6 +1343,8 @@ anv_descriptor_set_create(struct anv_device *device,
          .bo = pool->bo,
          .offset = set->desc_mem.offset,
       };
+      set->desc_offset = anv_address_physical(set->desc_addr) -
+                         device->physical->va.internal_surface_state_pool.addr;
 
       enum isl_format format =
          anv_isl_format_for_descriptor_type(device,
@@ -1875,19 +1877,19 @@ anv_descriptor_set_write_buffer(struct anv_device *device,
    }
 
    struct anv_address bind_addr = anv_address_add(buffer->address, offset);
-   uint64_t bind_range = vk_buffer_range(&buffer->vk, offset, range);
+   desc->bind_range = vk_buffer_range(&buffer->vk, offset, range);
 
    /* We report a bounds checking alignment of 32B for the sake of block
     * messages which read an entire register worth at a time.
     */
    if (type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
        type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
-      bind_range = align64(bind_range, ANV_UBO_ALIGNMENT);
+      desc->bind_range = align64(desc->bind_range, ANV_UBO_ALIGNMENT);
 
    if (data & ANV_DESCRIPTOR_INDIRECT_ADDRESS_RANGE) {
       struct anv_address_range_descriptor desc_data = {
          .address = anv_address_physical(bind_addr),
-         .range = bind_range,
+         .range = desc->bind_range,
       };
       memcpy(desc_map, &desc_data, sizeof(desc_data));
    }
@@ -1905,7 +1907,7 @@ anv_descriptor_set_write_buffer(struct anv_device *device,
                             .address = anv_address_physical(bind_addr),
                             .mocs = isl_mocs(&device->isl_dev, usage,
                                              bind_addr.bo && bind_addr.bo->is_external),
-                            .size_B = desc->range,
+                            .size_B = desc->bind_range,
                             .format = format,
                             .swizzle = ISL_SWIZZLE_IDENTITY,
                             .stride_B = 1);
@@ -1921,7 +1923,7 @@ anv_descriptor_set_write_buffer(struct anv_device *device,
 
       desc->set_buffer_view = bview;
 
-      bview->range = bind_range;
+      bview->range = desc->bind_range;
       bview->address = bind_addr;
 
       if (set->is_push)

@@ -1815,6 +1815,7 @@ struct anv_descriptor {
          struct anv_buffer *buffer;
          uint64_t offset;
          uint64_t range;
+         uint64_t bind_range;
       };
 
       struct anv_buffer_view *buffer_view;
@@ -1849,6 +1850,14 @@ struct anv_descriptor_set {
 
    /* Descriptor set address. */
    struct anv_address desc_addr;
+
+   /* Descriptor offset from the
+    * device->va.internal_surface_state_pool.addr
+    *
+    * It just needs to be added to the binding table offset to be put into the
+    * HW BTI entry.
+    */
+   uint32_t desc_offset;
 
    uint32_t buffer_view_count;
    struct anv_buffer_view *buffer_views;
@@ -2034,6 +2043,14 @@ struct anv_pipeline_binding {
     * ANV_DESCRIPTOR_SET_*
     */
    uint32_t binding;
+
+   /** Offset in the descriptor buffer
+    *
+    * Relative to anv_descriptor_set::desc_addr. This is useful for
+    * ANV_PIPELINE_DESCRIPTOR_SET_LAYOUT_TYPE_DIRECT, to generate the binding
+    * table entry.
+    */
+   uint32_t set_offset;
 
    /** The descriptor set this surface corresponds to.
     *

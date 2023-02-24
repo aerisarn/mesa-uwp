@@ -964,6 +964,9 @@ anv_cmd_buffer_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
          pdevice->indirect_descriptors ?
          &cmd_buffer->push_descriptor_stream :
          &cmd_buffer->surface_state_stream;
+      uint64_t push_base_address = pdevice->indirect_descriptors ?
+         pdevice->va.push_descriptor_pool.addr :
+         pdevice->va.internal_surface_state_pool.addr;
 
       /* The previous buffer is either actively used by some GPU command (so
        * we can't modify it) or is too small.  Allocate a new one.
@@ -982,6 +985,8 @@ anv_cmd_buffer_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
       set->desc_addr = anv_state_pool_state_address(
          push_stream->state_pool,
          set->desc_mem);
+      set->desc_offset = anv_address_physical(set->desc_addr) -
+                         push_base_address;
    }
 
    return set;

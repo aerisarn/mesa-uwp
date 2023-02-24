@@ -117,13 +117,6 @@ addr_format_for_desc_type(VkDescriptorType desc_type,
    }
 }
 
-static bool
-image_binding_needs_lowered_surface(nir_variable *var)
-{
-   return !(var->data.access & ACCESS_NON_READABLE) &&
-          var->data.image.format != PIPE_FORMAT_NONE;
-}
-
 static void
 add_binding(struct apply_pipeline_layout_state *state,
             uint32_t set, uint32_t binding)
@@ -1387,6 +1380,9 @@ add_bti_entry(struct anv_pipeline_bind_map *map,
          .set = set,
          .binding = binding,
          .index = bind_layout->descriptor_index + element,
+         .set_offset = bind_layout->descriptor_offset +
+                       element * bind_layout->descriptor_stride +
+                       plane * ANV_SURFACE_STATE_SIZE,
          .plane = plane,
    };
    assert(map->surface_count <= MAX_BINDING_TABLE_SIZE);
@@ -1405,6 +1401,8 @@ add_dynamic_bti_entry(struct anv_pipeline_bind_map *map,
          .set = set,
          .binding = binding,
          .index = bind_layout->descriptor_index + element,
+         .set_offset = bind_layout->descriptor_offset +
+                       element * bind_layout->descriptor_stride,
          .dynamic_offset_index = bind_layout->dynamic_offset_index + element,
    };
    assert(map->surface_count <= MAX_BINDING_TABLE_SIZE);
