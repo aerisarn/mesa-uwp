@@ -1119,6 +1119,8 @@ lower_tex_deref(nir_builder *b, nir_tex_instr *tex,
 
    unsigned set = var->data.descriptor_set;
    unsigned binding = var->data.binding;
+   unsigned max_plane_count =
+      MAX2(1, state->layout->set[set].layout->binding[binding].max_plane_count);
    unsigned array_size =
       state->layout->set[set].layout->binding[binding].array_size;
 
@@ -1163,20 +1165,7 @@ lower_tex_deref(nir_builder *b, nir_tex_instr *tex,
 
          if (nir_src_is_const(deref->arr.index)) {
             unsigned arr_index = MIN2(nir_src_as_uint(deref->arr.index), array_size - 1);
-            struct anv_sampler **immutable_samplers =
-               state->layout->set[set].layout->binding[binding].immutable_samplers;
-            if (immutable_samplers) {
-               /* Array of YCbCr samplers are tightly packed in the binding
-                * tables, compute the offset of an element in the array by
-                * adding the number of planes of all preceding elements.
-                */
-               unsigned desc_arr_index = 0;
-               for (int i = 0; i < arr_index; i++)
-                  desc_arr_index += immutable_samplers[i]->n_planes;
-               *base_index += desc_arr_index;
-            } else {
-               *base_index += arr_index;
-            }
+            *base_index += arr_index * max_plane_count;
          } else {
             /* From VK_KHR_sampler_ycbcr_conversion:
              *
@@ -1365,6 +1354,16 @@ binding_is_promotable_to_bti(const struct anv_descriptor_set_layout *set_layout,
    return ((set_layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR) == 0 ||
            pdevice->uses_ex_bso) &&
           (bind_layout->flags & non_pushable_binding_flags) == 0;
+}
+
+static void
+add_null_bti_entry(struct anv_pipeline_bind_map *map)
+{
+   map->surface_to_descriptor[map->surface_count++] =
+      (struct anv_pipeline_binding) {
+         .set = ANV_DESCRIPTOR_SET_NULL,
+   };
+   assert(map->surface_count <= MAX_BINDING_TABLE_SIZE);
 }
 
 static void
@@ -1570,10 +1569,15 @@ anv_nir_apply_pipeline_layout(nir_shader *shader,
             state.set[set].binding[b].surface_offset = map->surface_count;
             if (binding->dynamic_offset_index < 0) {
                struct anv_sampler **samplers = binding->immutable_samplers;
+               uint8_t max_planes = bti_multiplier(&state, set, b);
                for (unsigned i = 0; i < binding->array_size; i++) {
                   uint8_t planes = samplers ? samplers[i]->n_planes : 1;
-                  for (uint8_t p = 0; p < planes; p++) {
-                     add_bti_entry(map, set, b, i, p, binding);
+                  for (uint8_t p = 0; p < max_planes; p++) {
+                     if (p < planes) {
+                        add_bti_entry(map, set, b, i, p, binding);
+                     } else {
+                        add_null_bti_entry(map);
+                     }
                   }
                }
             } else {
@@ -1599,10 +1603,9 @@ anv_nir_apply_pipeline_layout(nir_shader *shader,
             state.set[set].binding[b].sampler_offset = BINDLESS_OFFSET;
          } else {
             state.set[set].binding[b].sampler_offset = map->sampler_count;
-            struct anv_sampler **samplers = binding->immutable_samplers;
+            uint8_t max_planes = bti_multiplier(&state, set, b);
             for (unsigned i = 0; i < binding->array_size; i++) {
-               uint8_t planes = samplers ? samplers[i]->n_planes : 1;
-               for (uint8_t p = 0; p < planes; p++) {
+               for (uint8_t p = 0; p < max_planes; p++) {
                   add_sampler_entry(map, set, b, i, p, layout, binding);
                }
             }
