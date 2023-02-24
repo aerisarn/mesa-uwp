@@ -30,7 +30,7 @@
 class spirv_test : public ::testing::Test {
 protected:
    spirv_test()
-   : shader(NULL)
+   : shader(NULL), break_on_failure(false)
    {
       glsl_type_singleton_init_or_ref();
    }
@@ -54,6 +54,7 @@ protected:
       spirv_options.push_const_addr_format = nir_address_format_32bit_offset;
       spirv_options.shared_addr_format = nir_address_format_32bit_offset;
       spirv_options.task_payload_addr_format = nir_address_format_32bit_offset;
+      spirv_options.skip_os_break_in_debug_build = !break_on_failure;
 
       nir_shader_compiler_options nir_options;
       memset(&nir_options, 0, sizeof(nir_options));
@@ -82,6 +83,7 @@ protected:
    }
 
    nir_shader *shader;
+   bool break_on_failure;
 };
 
 #endif /* SPIRV_TEST_HELPERS_H */
