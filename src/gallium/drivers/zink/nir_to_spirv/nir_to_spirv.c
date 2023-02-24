@@ -1015,7 +1015,7 @@ get_image_type(struct ntv_context *ctx, struct nir_variable *var, bool is_sample
 }
 
 static SpvId
-emit_image(struct ntv_context *ctx, struct nir_variable *var, SpvId image_type, bool bindless)
+emit_image(struct ntv_context *ctx, struct nir_variable *var, SpvId image_type)
 {
    if (var->data.bindless)
       return 0;
@@ -1029,7 +1029,7 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var, SpvId image_type, 
    assert(!is_sampler || !ctx->sampler_types[index]);
    assert(is_sampler || !ctx->image_types[index]);
 
-   if (!bindless && glsl_type_is_array(var->type)) {
+   if (glsl_type_is_array(var->type)) {
       var_type = spirv_builder_type_array(&ctx->builder, var_type,
                                               emit_uint_const(ctx, 32, glsl_get_aoa_size(var->type)));
       spirv_builder_emit_array_stride(&ctx->builder, var_type, sizeof(void*));
@@ -1051,9 +1051,6 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var, SpvId image_type, 
 
    if (var->data.fb_fetch_output)
       spirv_builder_emit_input_attachment_index(&ctx->builder, var_id, var->data.index);
-
-   if (bindless)
-      return var_id;
 
    _mesa_hash_table_insert(ctx->vars, var, (void *)(intptr_t)var_id);
    if (is_sampler) {
@@ -4563,9 +4560,9 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
    nir_foreach_variable_with_modes(var, s, nir_var_image | nir_var_uniform) {
       const struct glsl_type *type = glsl_without_array(var->type);
       if (glsl_type_is_sampler(type))
-         emit_image(&ctx, var, get_bare_image_type(&ctx, var, true), false);
+         emit_image(&ctx, var, get_bare_image_type(&ctx, var, true));
       else if (glsl_type_is_image(type))
-         emit_image(&ctx, var, get_bare_image_type(&ctx, var, false), false);
+         emit_image(&ctx, var, get_bare_image_type(&ctx, var, false));
    }
 
    switch (s->info.stage) {
