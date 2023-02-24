@@ -978,11 +978,13 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
    stage->push_desc_info.used_descriptors =
       anv_nir_compute_used_push_descriptors(nir, layout);
 
+   struct anv_pipeline_push_map push_map = {};
+
    /* Apply the actual pipeline layout to UBOs, SSBOs, and textures */
    NIR_PASS_V(nir, anv_nir_apply_pipeline_layout,
               pdevice, pipeline->device->robust_buffer_access,
               layout->independent_sets,
-              layout, &stage->bind_map);
+              layout, &stage->bind_map, &push_map, mem_ctx);
 
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ubo,
             anv_nir_ubo_addr_format(pdevice, pipeline->device->robust_buffer_access));
@@ -993,8 +995,14 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
     * calculations often create and then constant-fold so that, when we
     * get to anv_nir_lower_ubo_loads, we can detect constant offsets.
     */
-   NIR_PASS(_, nir, nir_copy_prop);
-   NIR_PASS(_, nir, nir_opt_constant_folding);
+   bool progress;
+   do {
+      progress = false;
+      NIR_PASS(progress, nir, nir_opt_algebraic);
+      NIR_PASS(progress, nir, nir_copy_prop);
+      NIR_PASS(progress, nir, nir_opt_constant_folding);
+      NIR_PASS(progress, nir, nir_opt_dce);
+   } while (progress);
 
    /* Required for nir_divergence_analysis() which is needed for
     * anv_nir_lower_ubo_loads.
@@ -1007,7 +1015,9 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
    NIR_PASS(_, nir, nir_opt_remove_phis);
 
    enum nir_lower_non_uniform_access_type lower_non_uniform_access_types =
-      nir_lower_non_uniform_texture_access | nir_lower_non_uniform_image_access;
+      nir_lower_non_uniform_texture_access |
+      nir_lower_non_uniform_image_access |
+      nir_lower_non_uniform_get_ssbo_size;
 
    /* In practice, most shaders do not have non-uniform-qualified
     * accesses (see
@@ -1038,7 +1048,7 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
    NIR_PASS_V(nir, anv_nir_compute_push_layout,
               pdevice, pipeline->device->robust_buffer_access,
               anv_graphics_pipeline_stage_fragment_dynamic(stage),
-              prog_data, &stage->bind_map, mem_ctx);
+              prog_data, &stage->bind_map, &push_map, mem_ctx);
 
    NIR_PASS_V(nir, anv_nir_lower_resource_intel, pdevice,
               pipeline->layout.type);
@@ -3193,6 +3203,15 @@ VkResult anv_CreateGraphicsPipelines(
    return result;
 }
 
+static bool
+should_remat_cb(nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   return nir_instr_as_intrinsic(instr)->intrinsic == nir_intrinsic_resource_intel;
+}
+
 static VkResult
 compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
                          struct vk_pipeline_cache *cache,
@@ -3214,6 +3233,7 @@ compile_upload_rt_shader(struct anv_ray_tracing_pipeline *pipeline,
          .localized_loads = true,
          .vectorizer_callback = brw_nir_should_vectorize_mem,
          .vectorizer_data = NULL,
+         .should_remat_callback = should_remat_cb,
       };
 
       NIR_PASS(_, nir, nir_lower_shader_calls, &opts,

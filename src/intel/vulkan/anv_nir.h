@@ -31,6 +31,18 @@
 extern "C" {
 #endif
 
+/* This map is represent a mapping where the key is the NIR
+ * nir_intrinsic_resource_intel::block index. It allows mapping bindless UBOs
+ * accesses to descriptor entry.
+ *
+ * This map only temporary lives between the anv_nir_apply_pipeline_layout()
+ * and anv_nir_compute_push_layout() passes.
+ */
+struct anv_pipeline_push_map {
+   uint32_t                     block_count;
+   struct anv_pipeline_binding *block_to_descriptor;
+};
+
 bool anv_check_for_primitive_replication(struct anv_device *device,
                                          VkShaderStageFlags stages,
                                          nir_shader **shaders,
@@ -71,7 +83,9 @@ void anv_nir_apply_pipeline_layout(nir_shader *shader,
                                    bool robust_buffer_access,
                                    bool independent_sets,
                                    const struct anv_pipeline_sets_layout *layout,
-                                   struct anv_pipeline_bind_map *map);
+                                   struct anv_pipeline_bind_map *map,
+                                   struct anv_pipeline_push_map *push_map,
+                                   void *push_map_mem_ctx);
 
 void anv_nir_compute_push_layout(nir_shader *nir,
                                  const struct anv_physical_device *pdevice,
@@ -79,6 +93,7 @@ void anv_nir_compute_push_layout(nir_shader *nir,
                                  bool fragment_dynamic,
                                  struct brw_stage_prog_data *prog_data,
                                  struct anv_pipeline_bind_map *map,
+                                 const struct anv_pipeline_push_map *push_map,
                                  void *mem_ctx);
 
 void anv_nir_validate_push_layout(struct brw_stage_prog_data *prog_data,

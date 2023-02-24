@@ -35,6 +35,7 @@ anv_nir_compute_push_layout(nir_shader *nir,
                             bool fragment_dynamic,
                             struct brw_stage_prog_data *prog_data,
                             struct anv_pipeline_bind_map *map,
+                            const struct anv_pipeline_push_map *push_map,
                             void *mem_ctx)
 {
    const struct brw_compiler *compiler = pdevice->compiler;
@@ -257,8 +258,9 @@ anv_nir_compute_push_layout(nir_shader *nir,
             continue;
          }
 
+         assert(ubo_range->block < push_map->block_count);
          const struct anv_pipeline_binding *binding =
-            &map->surface_to_descriptor[ubo_range->block];
+            &push_map->block_to_descriptor[ubo_range->block];
 
          map->push_ranges[n++] = (struct anv_push_range) {
             .set = binding->set,
@@ -298,6 +300,16 @@ anv_nir_compute_push_layout(nir_shader *nir,
       wm_prog_data->msaa_flags_param =
          (fs_msaa_flags_offset - push_start) / 4;
    }
+
+#if 0
+   fprintf(stderr, "stage=%s push ranges:\n", gl_shader_stage_name(nir->info.stage));
+   for (unsigned i = 0; i < ARRAY_SIZE(map->push_ranges); i++)
+      fprintf(stderr, "   range%i: %03u-%03u set=%u index=%u\n", i,
+              map->push_ranges[i].start,
+              map->push_ranges[i].length,
+              map->push_ranges[i].set,
+              map->push_ranges[i].index);
+#endif
 
    /* Now that we're done computing the push constant portion of the
     * bind map, hash it.  This lets us quickly determine if the actual
