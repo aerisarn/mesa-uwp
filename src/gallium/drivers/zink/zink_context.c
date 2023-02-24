@@ -1504,18 +1504,17 @@ zink_set_constant_buffer(struct pipe_context *pctx,
 }
 
 ALWAYS_INLINE static void
-unbind_descriptor_reads(struct zink_resource *res, gl_shader_stage pstage)
+unbind_descriptor_reads(struct zink_resource *res, bool is_compute)
 {
-   bool is_compute = pstage == MESA_SHADER_COMPUTE;
    if (!res->sampler_bind_count[is_compute] && !res->image_bind_count[is_compute])
       res->barrier_access[is_compute] &= ~VK_ACCESS_SHADER_READ_BIT;
 }
 
 ALWAYS_INLINE static void
-unbind_buffer_descriptor_reads(struct zink_resource *res, gl_shader_stage pstage)
+unbind_buffer_descriptor_reads(struct zink_resource *res, bool is_compute)
 {
-   if (!res->ssbo_bind_count[pstage == MESA_SHADER_COMPUTE])
-      unbind_descriptor_reads(res, pstage);
+   if (!res->ssbo_bind_count[is_compute])
+      unbind_descriptor_reads(res, is_compute);
 }
 
 ALWAYS_INLINE static void
@@ -1526,7 +1525,7 @@ unbind_ssbo(struct zink_context *ctx, struct zink_resource *res, gl_shader_stage
    res->ssbo_bind_mask[pstage] &= ~BITFIELD_BIT(slot);
    res->ssbo_bind_count[pstage == MESA_SHADER_COMPUTE]--;
    unbind_buffer_descriptor_stage(res, pstage);
-   unbind_buffer_descriptor_reads(res, pstage);
+   unbind_buffer_descriptor_reads(res, pstage == MESA_SHADER_COMPUTE);
    update_res_bind_count(ctx, res, pstage == MESA_SHADER_COMPUTE, true);
    if (writable)
       res->write_bind_count[pstage == MESA_SHADER_COMPUTE]--;
@@ -1670,13 +1669,13 @@ unbind_shader_image(struct zink_context *ctx, gl_shader_stage stage, unsigned sl
    
    if (image_view->base.resource->target == PIPE_BUFFER) {
       unbind_buffer_descriptor_stage(res, stage);
-      unbind_buffer_descriptor_reads(res, stage);
+      unbind_buffer_descriptor_reads(res, stage == MESA_SHADER_COMPUTE);
       zink_buffer_view_reference(zink_screen(ctx->base.screen), &image_view->buffer_view, NULL);
       if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB)
          pipe_resource_reference(&image_view->base.resource, NULL);
    } else {
       unbind_descriptor_stage(res, stage);
-      unbind_descriptor_reads(res, stage);
+      unbind_descriptor_reads(res, stage == MESA_SHADER_COMPUTE);
       if (!res->image_bind_count[is_compute])
          check_for_layout_update(ctx, res, is_compute);
       zink_surface_reference(zink_screen(ctx->base.screen), &image_view->surface, NULL);
@@ -1921,10 +1920,10 @@ unbind_samplerview(struct zink_context *ctx, gl_shader_stage stage, unsigned slo
    res->sampler_binds[stage] &= ~BITFIELD_BIT(slot);
    if (res->obj->is_buffer) {
       unbind_buffer_descriptor_stage(res, stage);
-      unbind_buffer_descriptor_reads(res, stage);
+      unbind_buffer_descriptor_reads(res, stage == MESA_SHADER_COMPUTE);
    } else {
       unbind_descriptor_stage(res, stage);
-      unbind_descriptor_reads(res, stage);
+      unbind_descriptor_reads(res, stage == MESA_SHADER_COMPUTE);
    }
 }
 
