@@ -824,14 +824,25 @@ update_qbo(struct zink_context *ctx, struct zink_query *q)
    bool is_timestamp = q->type == PIPE_QUERY_TIMESTAMP;
    /* timestamp queries just write to offset 0 always */
    int num_queries = get_num_queries(q);
-   for (unsigned j = q->start_offset; j < num_starts; j++) {
-      unsigned cur_offset = q->curr_qbo->num_results * get_num_results(q) * sizeof(uint64_t);
-      for (unsigned i = 0; i < num_queries; i++) {
+   unsigned num_results = qbo->num_results;
+   for (unsigned i = 0; i < num_queries; i++) {
+      unsigned start_offset = q->start_offset;
+      while (start_offset < num_starts) {
+         unsigned num_merged_copies = 0;
+         VkQueryPool qp = starts[start_offset].vkq[i]->pool->query_pool;
+         unsigned base_id = starts[start_offset].vkq[i]->query_id;
+         /* iterate over all the starts to see how many can be merged */
+         for (unsigned j = start_offset; j < num_starts; j++, num_merged_copies++) {
+            if (starts[j].vkq[i]->pool->query_pool != qp || starts[j].vkq[i]->query_id != base_id + num_merged_copies)
+               break;
+         }
+         assert(num_merged_copies);
+         unsigned cur_offset = start_offset * get_num_results(q) * sizeof(uint64_t);
          unsigned offset = is_timestamp ? 0 : cur_offset;
-         copy_pool_results_to_buffer(ctx, q, starts[j].vkq[i]->pool->query_pool, starts[j].vkq[i]->query_id,
+         copy_pool_results_to_buffer(ctx, q, starts[start_offset].vkq[i]->pool->query_pool, starts[start_offset].vkq[i]->query_id,
                                     zink_resource(qbo->buffers[i]),
                                     offset,
-                                    1,
+                                    num_merged_copies,
                                     /*
                                        there is an implicit execution dependency from
                                        each such query command to all query commands previously submitted to the same queue. There
@@ -842,12 +853,12 @@ update_qbo(struct zink_context *ctx, struct zink_query *q)
                                     * - Chapter 18. Queries
                                     */
                                     VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
-      }
-      if (!is_timestamp) {
-         q->curr_qbo->num_results++;
-         q->start_offset++;
+         if (!is_timestamp)
+            q->curr_qbo->num_results += num_merged_copies;
+         start_offset += num_merged_copies;
       }
    }
+   q->start_offset += q->curr_qbo->num_results - num_results;
 
 
    if (is_timestamp)
