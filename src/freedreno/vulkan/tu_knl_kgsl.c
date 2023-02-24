@@ -842,6 +842,8 @@ tu_knl_kgsl_load(struct tu_instance *instance, int fd)
       return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
+   VkResult result = VK_ERROR_INITIALIZATION_FAILED;
+
    struct kgsl_devinfo info;
    if (get_kgsl_prop(fd, KGSL_PROP_DEVICE_INFO, &info, sizeof(info)))
       goto fail;
@@ -872,7 +874,8 @@ tu_knl_kgsl_load(struct tu_instance *instance, int fd)
 
    instance->knl = &kgsl_knl_funcs;
 
-   if (tu_physical_device_init(device, instance) != VK_SUCCESS)
+   result = tu_physical_device_init(device, instance);
+   if (result != VK_SUCCESS)
       goto fail;
 
    list_addtail(&device->vk.link, &instance->vk.physical_devices.list);
@@ -882,5 +885,5 @@ tu_knl_kgsl_load(struct tu_instance *instance, int fd)
 fail:
    vk_free(&instance->vk.alloc, device);
    close(fd);
-   return VK_ERROR_INITIALIZATION_FAILED;
+   return result;
 }
