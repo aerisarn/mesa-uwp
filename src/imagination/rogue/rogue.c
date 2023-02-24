@@ -144,7 +144,6 @@ bool rogue_regarray_set(rogue_shader *shader,
    *regarray_cached = regarray;
    regarray->cached = regarray_cached;
 
-   assert(updated);
    return updated;
 }
 
