@@ -907,6 +907,7 @@ static void handle_graphics_pipeline(struct lvp_pipeline *pipeline,
       }
    } else if (ps->rp->color_attachment_count == 0) {
       memset(&state->blend_state, 0, sizeof(state->blend_state));
+      state->blend_state.rt[0].colormask = 0xf;
       state->blend_dirty = true;
    }
 
