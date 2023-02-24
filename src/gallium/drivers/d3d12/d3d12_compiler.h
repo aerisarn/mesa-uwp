@@ -91,8 +91,8 @@ struct d3d12_shader_key {
    uint32_t hash;
    enum pipe_shader_type stage;
 
-   struct d3d12_varying_info required_varying_inputs;
-   struct d3d12_varying_info required_varying_outputs;
+   struct d3d12_varying_info *required_varying_inputs;
+   struct d3d12_varying_info *required_varying_outputs;
    uint64_t next_varying_inputs;
    uint64_t prev_varying_outputs;
    unsigned last_vertex_processing_stage : 1;
@@ -136,13 +136,13 @@ struct d3d12_shader_key {
             };
             uint64_t all;
          };
-         struct d3d12_varying_info required_patch_outputs;
+         struct d3d12_varying_info *required_patch_outputs;
       } hs;
 
       struct {
          unsigned tcs_vertices_out;
          uint32_t prev_patch_outputs;
-         struct d3d12_varying_info required_patch_inputs;
+         struct d3d12_varying_info *required_patch_inputs;
       } ds;
 
       union {
@@ -179,6 +179,15 @@ struct d3d12_shader {
    size_t bytecode_length;
 
    nir_shader *nir;
+   struct d3d12_varying_info *output_vars_gs;
+   struct d3d12_varying_info *output_vars_fs;
+   struct d3d12_varying_info *output_vars_default;
+
+   struct d3d12_varying_info *input_vars_vs;
+   struct d3d12_varying_info *input_vars_default;
+
+   struct d3d12_varying_info *tess_eval_output_vars;
+   struct d3d12_varying_info *tess_ctrl_input_vars;
 
    struct {
       unsigned binding;
@@ -223,18 +232,20 @@ struct d3d12_gs_variant_key
    unsigned edge_flag_fix:1;
    unsigned flatshade_first:1;
    uint64_t flat_varyings;
-   struct d3d12_varying_info varyings;
+   struct d3d12_varying_info *varyings;
 };
 
 struct d3d12_tcs_variant_key
 {
    unsigned vertices_out;
-   struct d3d12_varying_info varyings;
+   struct d3d12_varying_info *varyings;
 };
 
 struct d3d12_shader_selector {
    enum pipe_shader_type stage;
-   nir_shader *initial;
+   const nir_shader *initial;
+   struct d3d12_varying_info *initial_output_vars;
+
    struct d3d12_shader *first;
    struct d3d12_shader *current;
 
@@ -296,6 +307,9 @@ missing_dual_src_outputs(struct d3d12_context* ctx);
 
 bool
 has_flat_varyings(struct d3d12_context* ctx);
+
+bool
+d3d12_compare_varying_info(const struct d3d12_varying_info *expect, const struct d3d12_varying_info *have);
 
 #ifdef __cplusplus
 }
