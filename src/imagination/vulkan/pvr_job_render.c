@@ -938,7 +938,8 @@ static void pvr_geom_state_stream_init(struct pvr_render_ctx *ctx,
                                        struct pvr_render_job *job,
                                        struct pvr_winsys_geometry_state *state)
 {
-   const struct pvr_device_info *dev_info = &ctx->device->pdevice->dev_info;
+   const struct pvr_device *const device = ctx->device;
+   const struct pvr_device_info *const dev_info = &device->pdevice->dev_info;
 
    uint32_t *stream_ptr = (uint32_t *)state->fw_stream;
 
@@ -950,7 +951,8 @@ static void pvr_geom_state_stream_init(struct pvr_render_ctx *ctx,
    pvr_csb_pack ((uint64_t *)stream_ptr,
                  CR_TPU_BORDER_COLOUR_TABLE_VDM,
                  value) {
-      value.border_colour_table_address = job->border_colour_table_addr;
+      value.border_colour_table_address =
+         device->border_color_table.table->vma->dev_addr;
    }
    stream_ptr += pvr_cmd_length(CR_TPU_BORDER_COLOUR_TABLE_VDM);
 
@@ -1058,7 +1060,8 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
                                        struct pvr_render_job *job,
                                        struct pvr_winsys_fragment_state *state)
 {
-   const struct pvr_physical_device *const pdevice = ctx->device->pdevice;
+   const struct pvr_device *const device = ctx->device;
+   const struct pvr_physical_device *const pdevice = device->pdevice;
    const struct pvr_device_runtime_info *dev_runtime_info =
       &pdevice->dev_runtime_info;
    const struct pvr_device_info *dev_info = &pdevice->dev_info;
@@ -1203,7 +1206,8 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
    pvr_csb_pack ((uint64_t *)stream_ptr,
                  CR_TPU_BORDER_COLOUR_TABLE_PDM,
                  value) {
-      value.border_colour_table_address = job->border_colour_table_addr;
+      value.border_colour_table_address =
+         device->border_color_table.table->vma->dev_addr;
    }
    stream_ptr += pvr_cmd_length(CR_TPU_BORDER_COLOUR_TABLE_PDM);
 

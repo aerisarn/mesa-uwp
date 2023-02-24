@@ -88,7 +88,6 @@ struct pvr_render_job {
 
    pvr_dev_addr_t ctrl_stream_addr;
 
-   pvr_dev_addr_t border_colour_table_addr;
    pvr_dev_addr_t depth_bias_table_addr;
    pvr_dev_addr_t scissor_table_addr;
 
