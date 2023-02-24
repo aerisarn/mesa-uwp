@@ -111,6 +111,7 @@ struct zink_cs_key {
 };
 
 struct zink_shader_key_base {
+   bool needs_zs_shader_swizzle;
    uint32_t nonseamless_cube_mask;
    uint32_t inlined_uniform_values[MAX_INLINABLE_UNIFORMS];
 };
