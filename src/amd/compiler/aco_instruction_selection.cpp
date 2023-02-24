@@ -3543,11 +3543,30 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
    }
    case nir_op_pack_unorm_2x16:
    case nir_op_pack_snorm_2x16: {
+      unsigned bit_size = instr->src[0].src.ssa->bit_size;
+      /* Only support 16 and 32bit. */
+      assert(bit_size == 32 || bit_size == 16);
+
+      RegClass src_rc = bit_size == 32 ? v1 : v2b;
       Temp src = get_alu_src(ctx, instr->src[0], 2);
-      Temp src0 = emit_extract_vector(ctx, src, 0, v1);
-      Temp src1 = emit_extract_vector(ctx, src, 1, v1);
-      aco_opcode opcode = instr->op == nir_op_pack_unorm_2x16 ? aco_opcode::v_cvt_pknorm_u16_f32
-                                                              : aco_opcode::v_cvt_pknorm_i16_f32;
+      Temp src0 = emit_extract_vector(ctx, src, 0, src_rc);
+      Temp src1 = emit_extract_vector(ctx, src, 1, src_rc);
+
+      /* Work around for pre-GFX9 GPU which don't have fp16 pknorm instruction. */
+      if (bit_size == 16 && ctx->program->gfx_level < GFX9) {
+         src0 = bld.vop1(aco_opcode::v_cvt_f32_f16, bld.def(v1), src0);
+         src1 = bld.vop1(aco_opcode::v_cvt_f32_f16, bld.def(v1), src1);
+         bit_size = 32;
+      }
+
+      aco_opcode opcode;
+      if (bit_size == 32) {
+         opcode = instr->op == nir_op_pack_unorm_2x16 ? aco_opcode::v_cvt_pknorm_u16_f32
+                                                      : aco_opcode::v_cvt_pknorm_i16_f32;
+      } else {
+         opcode = instr->op == nir_op_pack_unorm_2x16 ? aco_opcode::v_cvt_pknorm_u16_f16
+                                                      : aco_opcode::v_cvt_pknorm_i16_f16;
+      }
       bld.vop3(opcode, Definition(dst), src0, src1);
       break;
    }
