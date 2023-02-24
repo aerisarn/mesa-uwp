@@ -1506,8 +1506,9 @@ zink_set_constant_buffer(struct pipe_context *pctx,
 ALWAYS_INLINE static void
 unbind_descriptor_reads(struct zink_resource *res, gl_shader_stage pstage)
 {
-   if (!res->sampler_binds[pstage] && !res->image_binds[pstage])
-      res->barrier_access[pstage == MESA_SHADER_COMPUTE] &= ~VK_ACCESS_SHADER_READ_BIT;
+   bool is_compute = pstage == MESA_SHADER_COMPUTE;
+   if (!res->sampler_bind_count[is_compute] && !res->image_bind_count[is_compute])
+      res->barrier_access[is_compute] &= ~VK_ACCESS_SHADER_READ_BIT;
 }
 
 ALWAYS_INLINE static void
