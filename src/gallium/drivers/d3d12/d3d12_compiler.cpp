@@ -677,10 +677,6 @@ validate_geometry_shader_variant(struct d3d12_selection_context *sel_ctx)
                     vs->initial->info.outputs_written, false);
    }
 
-   /* Check if the currently bound geometry shader variant is correct */
-   if (gs && memcmp(&gs->gs_key, &key, sizeof(key)) == 0)
-      return;
-
    /* Find/create the proper variant and bind it */
    gs = variant_needed ? d3d12_get_gs_variant(ctx, &key) : NULL;
    ctx->gfx_stages[PIPE_SHADER_GEOMETRY] = gs;
@@ -708,10 +704,6 @@ validate_tess_ctrl_shader_variant(struct d3d12_selection_context *sel_ctx)
                     vs->initial->info.outputs_written, false);
       key.vertices_out = ctx->patch_vertices;
    }
-
-   /* Check if the currently bound tessellation control shader variant is correct */
-   if (tcs && memcmp(&tcs->tcs_key, &key, sizeof(key)) == 0)
-      return;
 
    /* Find/create the proper variant and bind it */
    tcs = variant_needed ? d3d12_get_tcs_variant(ctx, &key) : NULL;
