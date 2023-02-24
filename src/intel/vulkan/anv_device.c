@@ -1330,7 +1330,7 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
     * to !uses_ex_bso when all the infrastructure is built up.
     */
    device->indirect_descriptors =
-      true ||
+      !device->uses_ex_bso ||
       driQueryOptionb(&instance->dri_options, "force_indirect_descriptors");
 
    /* Check if we can read the GPU timestamp register from the CPU */
