@@ -381,13 +381,15 @@ destroy_query(struct zink_screen *screen, struct zink_query *query)
    assert(zink_screen_usage_check_completion(screen, query->batch_uses));
    struct zink_query_buffer *qbo, *next;
 
-   util_dynarray_foreach(&query->starts, struct zink_query_start, start) {
+   struct zink_query_start *starts = query->starts.data;
+   unsigned num_starts = query->starts.capacity / sizeof(struct zink_query_start);
+   for (unsigned j = 0; j < num_starts; j++) {
       for (unsigned i = 0; i < PIPE_MAX_VERTEX_STREAMS; i++) {
-         if (!start->vkq[i])
+         if (!starts[j].vkq[i])
             continue;
-         start->vkq[i]->refcount--;
-         if (start->vkq[i]->refcount == 0)
-            FREE(start->vkq[i]);
+         starts[j].vkq[i]->refcount--;
+         if (starts[j].vkq[i]->refcount == 0)
+            FREE(starts[j].vkq[i]);
       }
    }
 
