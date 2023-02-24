@@ -1909,6 +1909,47 @@ cmd_buffer_alloc_gfx_push_constants(struct anv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.push_constants_dirty |= stages;
 }
 
+static inline struct anv_state
+emit_dynamic_buffer_binding_table_entry(struct anv_cmd_buffer *cmd_buffer,
+                                        struct anv_cmd_pipeline_state *pipe_state,
+                                        struct anv_pipeline_binding *binding,
+                                        const struct anv_descriptor *desc)
+{
+   /* Compute the offset within the buffer */
+   uint32_t dynamic_offset =
+      pipe_state->dynamic_offsets[
+         binding->set].offsets[binding->dynamic_offset_index];
+   uint64_t offset = desc->offset + dynamic_offset;
+   /* Clamp to the buffer size */
+   offset = MIN2(offset, desc->buffer->vk.size);
+   /* Clamp the range to the buffer size */
+   uint32_t range = MIN2(desc->range, desc->buffer->vk.size - offset);
+
+   /* Align the range for consistency */
+   if (desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+      range = align(range, ANV_UBO_ALIGNMENT);
+
+   struct anv_address address =
+      anv_address_add(desc->buffer->address, offset);
+
+   struct anv_state surface_state = anv_cmd_buffer_alloc_surface_state(cmd_buffer);
+   enum isl_format format =
+      anv_isl_format_for_descriptor_type(cmd_buffer->device,
+                                         desc->type);
+
+   isl_surf_usage_flags_t usage =
+      desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ?
+      ISL_SURF_USAGE_CONSTANT_BUFFER_BIT :
+      ISL_SURF_USAGE_STORAGE_BIT;
+
+   anv_fill_buffer_surface_state(cmd_buffer->device,
+                                 surface_state.map,
+                                 format, ISL_SWIZZLE_IDENTITY,
+                                 usage, address, range, 1);
+
+   return surface_state;
+}
+
 static VkResult
 emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                    struct anv_cmd_pipeline_state *pipe_state,
@@ -2106,37 +2147,10 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
             if (desc->buffer) {
-               /* Compute the offset within the buffer */
-               uint32_t dynamic_offset =
-                  pipe_state->dynamic_offsets[
-                     binding->set].offsets[binding->dynamic_offset_index];
-               uint64_t offset = desc->offset + dynamic_offset;
-               /* Clamp to the buffer size */
-               offset = MIN2(offset, desc->buffer->vk.size);
-               /* Clamp the range to the buffer size */
-               uint32_t range = MIN2(desc->range, desc->buffer->vk.size - offset);
-
-               /* Align the range for consistency */
-               if (desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
-                  range = align(range, ANV_UBO_ALIGNMENT);
-
-               struct anv_address address =
-                  anv_address_add(desc->buffer->address, offset);
-
-               surface_state = anv_cmd_buffer_alloc_surface_state(cmd_buffer);
-               enum isl_format format =
-                  anv_isl_format_for_descriptor_type(cmd_buffer->device,
-                                                     desc->type);
-
-               isl_surf_usage_flags_t usage =
-                  desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ?
-                  ISL_SURF_USAGE_CONSTANT_BUFFER_BIT :
-                  ISL_SURF_USAGE_STORAGE_BIT;
-
-               anv_fill_buffer_surface_state(cmd_buffer->device,
-                                             surface_state.map,
-                                             format, ISL_SWIZZLE_IDENTITY,
-                                             usage, address, range, 1);
+               surface_state =
+                  emit_dynamic_buffer_binding_table_entry(cmd_buffer,
+                                                          pipe_state,
+                                                          binding, desc);
             } else {
                surface_state =
                   anv_null_surface_state_for_binding_table(cmd_buffer->device);
