@@ -294,6 +294,9 @@ static nir_variable_mode
 intrin_to_variable_mode(nir_intrinsic_op intrin)
 {
    switch (intrin) {
+   case nir_intrinsic_load_ubo:
+      return nir_var_mem_ubo;
+
    case nir_intrinsic_load_global:
    case nir_intrinsic_store_global:
       return nir_var_mem_global;
@@ -337,6 +340,7 @@ lower_mem_access_instr(nir_builder *b, nir_instr *instr, void *_data)
    b->cursor = nir_after_instr(instr);
 
    switch (intrin->intrinsic) {
+   case nir_intrinsic_load_ubo:
    case nir_intrinsic_load_global:
    case nir_intrinsic_load_global_constant:
    case nir_intrinsic_load_ssbo:
