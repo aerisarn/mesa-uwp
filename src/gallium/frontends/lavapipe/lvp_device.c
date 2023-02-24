@@ -167,6 +167,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_extended_dynamic_state3           = true,
    .EXT_external_memory_host              = true,
    .EXT_graphics_pipeline_library         = true,
+   .EXT_host_image_copy                   = true,
    .EXT_host_query_reset                  = true,
    .EXT_image_2d_view_of_3d               = true,
    .EXT_image_sliced_view_of_3d           = true,
@@ -576,6 +577,9 @@ lvp_get_features(const struct lvp_physical_device *pdevice,
       .multiviewMeshShader = false,
       .primitiveFragmentShadingRateMeshShader = false,
       .meshShaderQueries = true,
+
+      /* host_image_copy */
+      .hostImageCopy = true,
    };
 }
 
@@ -1107,6 +1111,45 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          VkPhysicalDevicePointClippingProperties *properties =
             (VkPhysicalDevicePointClippingProperties*)ext;
          properties->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_PROPERTIES_EXT: {
+         VkPhysicalDeviceHostImageCopyPropertiesEXT *props =
+            (VkPhysicalDeviceHostImageCopyPropertiesEXT *)ext;
+         VkImageLayout layouts[] = {
+            VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_LAYOUT_GENERAL,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_LAYOUT_PREINITIALIZED,
+            VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
+            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL,
+            VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL,
+            VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL,
+            VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL,
+            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            VK_IMAGE_LAYOUT_VIDEO_DECODE_DST_KHR,
+            VK_IMAGE_LAYOUT_VIDEO_DECODE_SRC_KHR,
+            VK_IMAGE_LAYOUT_VIDEO_DECODE_DPB_KHR,
+            VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR,
+            VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT,
+            VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR,
+         };
+         if (props->copySrcLayoutCount)
+            typed_memcpy(props->pCopySrcLayouts, layouts, props->copySrcLayoutCount);
+         props->copySrcLayoutCount = ARRAY_SIZE(layouts);
+         if (props->copyDstLayoutCount)
+            typed_memcpy(props->pCopyDstLayouts, layouts, props->copyDstLayoutCount);
+         props->copyDstLayoutCount = ARRAY_SIZE(layouts);
+         lvp_device_get_cache_uuid(props->optimalTilingLayoutUUID);
+         props->identicalMemoryTypeRequirements = VK_FALSE;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {

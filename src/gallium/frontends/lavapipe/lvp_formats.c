@@ -193,6 +193,10 @@ lvp_physical_device_get_format_properties(struct lvp_physical_device *physical_d
    out_properties->linearTilingFeatures = features;
    out_properties->optimalTilingFeatures = features;
    out_properties->bufferFeatures = buffer_features;
+   if (out_properties->linearTilingFeatures)
+      out_properties->linearTilingFeatures |= VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT_EXT;
+   if (out_properties->optimalTilingFeatures)
+      out_properties->optimalTilingFeatures |= VK_FORMAT_FEATURE_2_HOST_IMAGE_TRANSFER_BIT_EXT;
 }
 
 
