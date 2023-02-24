@@ -290,6 +290,12 @@ d3d12_tcs_variant_cache_destroy(struct d3d12_context *ctx);
 struct d3d12_shader_selector *
 d3d12_get_tcs_variant(struct d3d12_context *ctx, struct d3d12_tcs_variant_key *key);
 
+unsigned
+missing_dual_src_outputs(struct d3d12_context* ctx);
+
+bool
+has_flat_varyings(struct d3d12_context* ctx);
+
 #ifdef __cplusplus
 }
 #endif

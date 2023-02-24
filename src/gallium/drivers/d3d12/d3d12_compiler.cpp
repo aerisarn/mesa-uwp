@@ -250,14 +250,17 @@ struct d3d12_selection_context {
    const unsigned *variable_workgroup_size;
 };
 
-static unsigned
+unsigned
 missing_dual_src_outputs(struct d3d12_context *ctx)
 {
-   if (!ctx->gfx_pipeline_state.blend->is_dual_src)
+   if (!ctx->gfx_pipeline_state.blend || !ctx->gfx_pipeline_state.blend->is_dual_src)
       return 0;
 
    struct d3d12_shader_selector *fs = ctx->gfx_stages[PIPE_SHADER_FRAGMENT];
-   nir_shader *s = fs->initial;
+   if (!fs)
+      return 0;
+
+   const nir_shader *s = fs->initial;
 
    unsigned indices_seen = 0;
    nir_foreach_function(function, s) {
@@ -457,7 +460,7 @@ get_provoking_vertex(struct d3d12_selection_context *sel_ctx, bool *alternate, c
    return flatshade_first ? 0 : u_prim_vertex_count(mode)->min - 1;
 }
 
-static bool
+bool
 has_flat_varyings(struct d3d12_context *ctx)
 {
    struct d3d12_shader_selector *fs = ctx->gfx_stages[PIPE_SHADER_FRAGMENT];
@@ -481,7 +484,7 @@ static bool
 needs_vertex_reordering(struct d3d12_selection_context *sel_ctx, const struct pipe_draw_info *dinfo)
 {
    struct d3d12_context *ctx = sel_ctx->ctx;
-   bool flat = has_flat_varyings(ctx);
+   bool flat = ctx->has_flat_varyings;
    bool xfb = ctx->gfx_pipeline_state.num_so_targets > 0;
 
    if (fill_mode_lowered(ctx, dinfo) != PIPE_POLYGON_MODE_FILL)
@@ -1531,7 +1534,7 @@ d3d12_select_shader_variants(struct d3d12_context *ctx, const struct pipe_draw_i
    sel_ctx.cull_mode_lowered = cull_mode_lowered(ctx, sel_ctx.fill_mode_lowered);
    sel_ctx.provoking_vertex = get_provoking_vertex(&sel_ctx, &sel_ctx.alternate_tri, dinfo);
    sel_ctx.needs_vertex_reordering = needs_vertex_reordering(&sel_ctx, dinfo);
-   sel_ctx.missing_dual_src_outputs = missing_dual_src_outputs(ctx);
+   sel_ctx.missing_dual_src_outputs = ctx->missing_dual_src_outputs;
    sel_ctx.frag_result_color_lowering = frag_result_color_lowering(ctx);
    sel_ctx.manual_depth_range = manual_depth_range(ctx);
 
