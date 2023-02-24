@@ -2462,12 +2462,8 @@ vtn_mem_semantics_to_nir_var_modes(struct vtn_builder *b,
    }
 
    nir_variable_mode modes = 0;
-   if (semantics & SpvMemorySemanticsUniformMemoryMask) {
-      modes |= nir_var_uniform |
-               nir_var_mem_ubo |
-               nir_var_mem_ssbo |
-               nir_var_mem_global;
-   }
+   if (semantics & SpvMemorySemanticsUniformMemoryMask)
+      modes |= nir_var_mem_ssbo | nir_var_mem_global;
    if (semantics & SpvMemorySemanticsImageMemoryMask)
       modes |= nir_var_image;
    if (semantics & SpvMemorySemanticsWorkgroupMemoryMask)
