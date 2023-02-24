@@ -2029,9 +2029,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             assert(desc_idx < MAX_PUSH_DESCRIPTORS);
 
             if (shader->push_desc_info.fully_promoted_ubo_descriptors & BITFIELD_BIT(desc_idx)) {
-               surface_state = anv_bindless_state_for_binding_table(
-                  cmd_buffer->device,
-                  cmd_buffer->device->null_surface_state);
+               surface_state =
+                  anv_null_surface_state_for_binding_table(cmd_buffer->device);
                break;
             }
          }
@@ -2062,9 +2061,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                assert(surface_state.alloc_size);
             } else {
                surface_state =
-                  anv_bindless_state_for_binding_table(
-                     cmd_buffer->device,
-                     cmd_buffer->device->null_surface_state);
+                  anv_null_surface_state_for_binding_table(cmd_buffer->device);
             }
             break;
          }
@@ -2077,9 +2074,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                   cmd_buffer->device, sstate.state);
                assert(surface_state.alloc_size);
             } else {
-               surface_state = anv_bindless_state_for_binding_table(
-                  cmd_buffer->device,
-                  cmd_buffer->device->null_surface_state);
+               surface_state =
+                  anv_null_surface_state_for_binding_table(cmd_buffer->device);
             }
             break;
          }
@@ -2090,9 +2086,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                surface_state = desc->set_buffer_view->general.state;
                assert(surface_state.alloc_size);
             } else {
-               surface_state = anv_bindless_state_for_binding_table(
-                  cmd_buffer->device,
-                  cmd_buffer->device->null_surface_state);
+               surface_state =
+                  anv_null_surface_state_for_binding_table(cmd_buffer->device);
             }
             break;
 
@@ -2103,9 +2098,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                   desc->buffer_view->general.state);
                assert(surface_state.alloc_size);
             } else {
-               surface_state = anv_bindless_state_for_binding_table(
-                  cmd_buffer->device,
-                  cmd_buffer->device->null_surface_state);
+               surface_state =
+                  anv_null_surface_state_for_binding_table(cmd_buffer->device);
             }
             break;
 
@@ -2145,9 +2139,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                                              usage, address, range, 1);
             } else {
                surface_state =
-                  anv_bindless_state_for_binding_table(
-                     cmd_buffer->device,
-                     cmd_buffer->device->null_surface_state);
+                  anv_null_surface_state_for_binding_table(cmd_buffer->device);
             }
             break;
          }
@@ -2159,9 +2151,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                   desc->buffer_view->storage.state);
                assert(surface_state.alloc_size);
             } else {
-               surface_state = anv_bindless_state_for_binding_table(
-                  cmd_buffer->device,
-                  cmd_buffer->device->null_surface_state);
+               surface_state =
+                  anv_null_surface_state_for_binding_table(cmd_buffer->device);
             }
             break;
 

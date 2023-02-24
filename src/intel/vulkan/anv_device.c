@@ -3324,17 +3324,31 @@ VkResult anv_CreateDevice(
       anv_genX(device->info, init_cps_device_state)(device);
    }
 
-   /* Allocate a null surface state at surface state offset 0.  This makes
-    * NULL descriptor handling trivial because we can just memset structures
-    * to zero and they have a valid descriptor.
-    */
-   device->null_surface_state =
-      anv_state_pool_alloc(&device->bindless_surface_state_pool,
-                           device->isl_dev.ss.size,
-                           device->isl_dev.ss.align);
-   isl_null_fill_state(&device->isl_dev, device->null_surface_state.map,
-                       .size = isl_extent3d(1, 1, 1) /* This shouldn't matter */);
-   assert(device->null_surface_state.offset == 0);
+   if (device->physical->indirect_descriptors) {
+      /* Allocate a null surface state at surface state offset 0. This makes
+       * NULL descriptor handling trivial because we can just memset
+       * structures to zero and they have a valid descriptor.
+       */
+      device->null_surface_state =
+         anv_state_pool_alloc(&device->bindless_surface_state_pool,
+                              device->isl_dev.ss.size,
+                              device->isl_dev.ss.align);
+      isl_null_fill_state(&device->isl_dev, device->null_surface_state.map,
+                          .size = isl_extent3d(1, 1, 1) /* This shouldn't matter */);
+      assert(device->null_surface_state.offset == 0);
+   } else {
+      /* When using direct descriptors, those can hold the null surface state
+       * directly. We still need a null surface for the binding table entries
+       * though but this one can live anywhere the internal surface state
+       * pool.
+       */
+      device->null_surface_state =
+         anv_state_pool_alloc(&device->internal_surface_state_pool,
+                              device->isl_dev.ss.size,
+                              device->isl_dev.ss.align);
+      isl_null_fill_state(&device->isl_dev, device->null_surface_state.map,
+                          .size = isl_extent3d(1, 1, 1) /* This shouldn't matter */);
+   }
 
    anv_scratch_pool_init(device, &device->scratch_pool);
 
