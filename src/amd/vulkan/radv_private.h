@@ -850,6 +850,18 @@ void radv_queue_finish(struct radv_queue *queue);
 enum radeon_ctx_priority
 radv_get_queue_global_priority(const VkDeviceQueueGlobalPriorityCreateInfoKHR *pObj);
 
+struct radv_shader_dma_submission {
+   struct list_head list;
+
+   struct radeon_cmdbuf *cs;
+   struct radeon_winsys_bo *bo;
+   uint64_t bo_size;
+   char *ptr;
+
+   /* The semaphore value to wait for before reusing this submission. */
+   uint64_t seq;
+};
+
 #define RADV_BORDER_COLOR_COUNT       4096
 #define RADV_BORDER_COLOR_BUFFER_SIZE (sizeof(VkClearColorValue) * RADV_BORDER_COLOR_COUNT)
 
@@ -981,6 +993,17 @@ struct radv_device {
    struct list_head shader_free_lists[RADV_SHADER_ALLOC_NUM_FREE_LISTS];
    struct list_head shader_block_obj_pool;
    mtx_t shader_arena_mutex;
+
+   mtx_t shader_upload_hw_ctx_mutex;
+   struct radeon_winsys_ctx *shader_upload_hw_ctx;
+   VkSemaphore shader_upload_sem;
+   uint64_t shader_upload_seq;
+   struct list_head shader_dma_submissions;
+   mtx_t shader_dma_submission_list_mutex;
+   cnd_t shader_dma_submission_list_cond;
+
+   /* Whether to DMA shaders to invisible VRAM or to upload directly through BAR. */
+   bool shader_use_invisible_vram;
 
    /* For detecting VM faults reported by dmesg. */
    uint64_t dmesg_timestamp;

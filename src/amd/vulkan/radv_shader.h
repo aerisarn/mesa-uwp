@@ -563,6 +563,8 @@ bool radv_nir_lower_vs_inputs(nir_shader *shader, const struct radv_pipeline_sta
 
 void radv_init_shader_arenas(struct radv_device *device);
 void radv_destroy_shader_arenas(struct radv_device *device);
+VkResult radv_init_shader_upload_queue(struct radv_device *device);
+void radv_destroy_shader_upload_queue(struct radv_device *device);
 
 struct radv_shader_args;
 
@@ -575,7 +577,25 @@ struct radv_shader *radv_shader_nir_to_asm(
    int shader_count, const struct radv_pipeline_key *key, bool keep_shader_info, bool keep_statistic_info,
    struct radv_shader_binary **binary_out);
 
-void radv_shader_part_binary_upload(const struct radv_shader_part_binary *binary, void *dest_ptr);
+VkResult radv_shader_wait_for_upload(struct radv_device *device, uint64_t seq);
+
+bool radv_shader_part_binary_upload(struct radv_device *device,
+                                    struct radv_shader_part *shader_part);
+
+struct radv_shader_dma_submission *
+radv_shader_dma_pop_submission(struct radv_device *device);
+
+void radv_shader_dma_push_submission(struct radv_device *device,
+                                     struct radv_shader_dma_submission *submission,
+                                     uint64_t seq);
+
+struct radv_shader_dma_submission *radv_shader_dma_get_submission(struct radv_device *device,
+                                                                  struct radeon_winsys_bo *bo,
+                                                                  uint64_t va, uint64_t size);
+
+bool radv_shader_dma_submit(struct radv_device *device,
+                            struct radv_shader_dma_submission *submission,
+                            uint64_t *upload_seq_out);
 
 union radv_shader_arena_block *radv_alloc_shader_memory(struct radv_device *device, uint32_t size,
                                                         void *ptr);
