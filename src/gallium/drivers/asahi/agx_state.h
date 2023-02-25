@@ -68,7 +68,11 @@ agx_so_target(struct pipe_stream_output_target *target)
  * compiler. The layout is up to us and handled by our code lowering system
  * values to uniforms.
  */
-enum agx_sysval_table { AGX_SYSVAL_TABLE_ROOT, AGX_NUM_SYSVAL_TABLES };
+enum agx_sysval_table {
+   AGX_SYSVAL_TABLE_ROOT,
+   AGX_SYSVAL_TABLE_GRID,
+   AGX_NUM_SYSVAL_TABLES
+};
 
 /* Root system value table */
 struct PACKED agx_draw_uniforms {
@@ -136,6 +140,9 @@ struct agx_uncompiled_shader {
    const struct nir_shader *nir;
    uint8_t nir_sha1[20];
    struct hash_table *variants;
+
+   /* For compute kernels */
+   unsigned static_shared_mem;
 
    /* Set on VS, passed to FS for linkage */
    unsigned base_varying;
@@ -312,6 +319,14 @@ struct agx_context {
    struct agx_streamout streamout;
    uint16_t sample_mask;
    struct pipe_framebuffer_state framebuffer;
+
+   /* During a launch_grid call, a GPU pointer to
+    *
+    *    uint32_t num_workgroups[3];
+    *
+    * When indirect dispatch is used, that's just the indirect dispatch buffer.
+    */
+   uint64_t grid_info;
 
    struct pipe_query *cond_query;
    bool cond_cond;

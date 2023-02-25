@@ -109,6 +109,8 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr)
    case nir_intrinsic_get_ssbo_size:
       return load_sysval_indirect(b, 1, 32, AGX_SYSVAL_TABLE_ROOT,
                                   &u->ssbo_size, intr->src[0].ssa);
+   case nir_intrinsic_load_num_workgroups:
+      return load_sysval(b, 3, 32, AGX_SYSVAL_TABLE_GRID, 0);
    default:
       return NULL;
    }
