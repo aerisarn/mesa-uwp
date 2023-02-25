@@ -114,6 +114,12 @@ void si_pm4_set_reg_idx3(struct si_screen *sscreen, struct si_pm4_state *state,
                          sscreen->info.gfx_level >= GFX10 ? 3 : 0);
 }
 
+void si_pm4_set_reg_va(struct si_pm4_state *state, unsigned reg, uint32_t val)
+{
+   si_pm4_set_reg(state, reg, val);
+   state->reg_va_low_idx = state->ndw - 1;
+}
+
 void si_pm4_clear_state(struct si_pm4_state *state)
 {
    state->ndw = 0;
