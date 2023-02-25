@@ -54,6 +54,11 @@ enum agx_bo_flags {
 
    /* BO should be mapped write-back on the CPU (else, write combine) */
    AGX_BO_WRITEBACK = 1 << 3,
+
+   /* BO could potentially be shared (imported or exported) and therefore cannot
+    * be allocated as private
+    */
+   AGX_BO_SHAREABLE = 1 << 4,
 };
 
 struct agx_ptr {

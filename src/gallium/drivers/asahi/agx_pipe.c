@@ -547,6 +547,10 @@ agx_resource_create_with_modifiers(struct pipe_screen *screen,
       create_flags |= AGX_BO_WRITEBACK;
    }
 
+   /* Create buffers that might be shared with the SHAREABLE flag */
+   if (bind & (PIPE_BIND_SCANOUT | PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SHARED))
+      create_flags |= AGX_BO_SHAREABLE;
+
    nresource->bo =
       agx_bo_create(dev, nresource->layout.size_B, create_flags, label);
 
