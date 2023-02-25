@@ -98,4 +98,7 @@ d3d12_context_state_table_destroy(struct d3d12_context *ctx);
 bool
 d3d12_context_state_resolve_submission(struct d3d12_context *ctx, struct d3d12_batch *batch);
 
+void
+d3d12_destroy_context_state_table_entry(d3d12_context_state_table_entry* entry);
+
 #endif // D3D12_RESOURCE_STATE_H
