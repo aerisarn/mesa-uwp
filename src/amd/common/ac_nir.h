@@ -286,6 +286,30 @@ typedef struct {
 
 bool ac_nir_lower_subdword_loads(nir_shader *nir, ac_nir_lower_subdword_options options);
 
+typedef struct {
+   enum radeon_family family;
+   enum amd_gfx_level gfx_level;
+
+   bool uses_discard;
+   bool alpha_to_coverage_via_mrtz;
+   bool dual_src_blend_swizzle;
+   unsigned spi_shader_col_format;
+   unsigned color_is_int8;
+   unsigned color_is_int10;
+
+   /* OpenGL only */
+   bool clamp_color;
+   bool alpha_to_one;
+   enum pipe_compare_func alpha_func;
+   unsigned broadcast_last_cbuf;
+
+   /* Vulkan only */
+   unsigned enable_mrt_output_nan_fixup;
+} ac_nir_lower_ps_options;
+
+void
+ac_nir_lower_ps(nir_shader *nir, const ac_nir_lower_ps_options *options);
+
 #ifdef __cplusplus
 }
 #endif
