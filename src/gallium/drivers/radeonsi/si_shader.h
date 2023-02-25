@@ -1058,7 +1058,7 @@ static inline bool gfx10_ngg_writes_user_edgeflags(struct si_shader *shader)
           shader->selector->info.writes_edgeflag;
 }
 
-static inline bool si_shader_uses_streamout(struct si_shader *shader)
+static inline bool si_shader_uses_streamout(const struct si_shader *shader)
 {
    return shader->selector->stage <= MESA_SHADER_GEOMETRY &&
           shader->selector->info.enabled_streamout_buffer_mask &&

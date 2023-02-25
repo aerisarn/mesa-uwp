@@ -117,8 +117,9 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
       gs_sel->screen->info.gfx_level >= GFX11 ? 3 : /* gfx11 requires at least 1 primitive per TG */
       gs_sel->screen->info.gfx_level >= GFX10_3 ? 29 : (24 - 1 + max_verts_per_prim);
    bool max_vert_out_per_gs_instance = false;
-   unsigned max_gsprims_base = gs_sel->screen->ngg_subgroup_size; /* default prim group size clamp */
-   unsigned max_esverts_base = gs_sel->screen->ngg_subgroup_size;
+   unsigned max_gsprims_base, max_esverts_base;
+
+   max_gsprims_base = max_esverts_base = si_get_max_workgroup_size(shader);
 
    if (gs_stage == MESA_SHADER_GEOMETRY) {
       bool force_multi_cycling = false;

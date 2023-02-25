@@ -1413,8 +1413,6 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
       }
    }
 
-   sscreen->ngg_subgroup_size = 128;
-
    if (sscreen->info.gfx_level >= GFX11) {
       unsigned attr_ring_size = sscreen->info.attribute_ring_size_per_se * sscreen->info.max_se;
       sscreen->attribute_ring = si_aligned_buffer_create(&sscreen->b,
