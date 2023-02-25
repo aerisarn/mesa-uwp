@@ -376,8 +376,8 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                /* Per the SPIR-V extension spec we have to ignore some bits for some arguments. */
                nir_store_var(&b_shader, vars->accel_struct, intr->src[0].ssa, 0x1);
                nir_store_var(&b_shader, vars->cull_mask_and_flags,
-                             nir_ior(&b_shader, nir_iand_imm(&b_shader, intr->src[2].ssa, 0xff),
-                                     nir_ishl_imm(&b_shader, intr->src[1].ssa, 8)),
+                             nir_ior(&b_shader, nir_ishl_imm(&b_shader, intr->src[2].ssa, 24),
+                                     intr->src[1].ssa),
                              0x1);
                nir_store_var(&b_shader, vars->sbt_offset,
                              nir_iand_imm(&b_shader, intr->src[3].ssa, 0xf), 0x1);
@@ -480,7 +480,8 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                break;
             }
             case nir_intrinsic_load_ray_flags: {
-               ret = nir_ishr_imm(&b_shader, nir_load_var(&b_shader, vars->cull_mask_and_flags), 8);
+               ret = nir_iand_imm(&b_shader, nir_load_var(&b_shader, vars->cull_mask_and_flags),
+                                  0xFFFFFF);
                break;
             }
             case nir_intrinsic_load_ray_hit_kind: {
@@ -536,7 +537,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
             }
             case nir_intrinsic_load_cull_mask: {
                ret =
-                  nir_iand_imm(&b_shader, nir_load_var(&b_shader, vars->cull_mask_and_flags), 0xff);
+                  nir_ishr_imm(&b_shader, nir_load_var(&b_shader, vars->cull_mask_and_flags), 24);
                break;
             }
             case nir_intrinsic_ignore_ray_intersection: {
@@ -599,7 +600,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
 
                nir_ssa_def *should_return =
                   nir_test_mask(&b_shader, nir_load_var(&b_shader, vars->cull_mask_and_flags),
-                                SpvRayFlagsSkipClosestHitShaderKHRMask << 8);
+                                SpvRayFlagsSkipClosestHitShaderKHRMask);
 
                if (!(vars->create_info->flags &
                      VK_PIPELINE_CREATE_RAY_TRACING_NO_NULL_CLOSEST_HIT_SHADERS_BIT_KHR)) {
@@ -1414,7 +1415,7 @@ build_traversal_shader(struct radv_device *device,
 
    struct radv_ray_traversal_args args = {
       .root_bvh_base = root_bvh_base,
-      .flags = nir_ishr_imm(&b, cull_mask_and_flags, 8),
+      .flags = cull_mask_and_flags,
       .cull_mask = cull_mask_and_flags,
       .origin = nir_load_var(&b, vars.origin),
       .tmin = nir_load_var(&b, vars.tmin),
