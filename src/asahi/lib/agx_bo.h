@@ -59,6 +59,10 @@ enum agx_bo_flags {
     * be allocated as private
     */
    AGX_BO_SHAREABLE = 1 << 4,
+
+   /* BO is read-only from the GPU side
+    */
+   AGX_BO_READONLY = 1 << 5,
 };
 
 struct agx_ptr {
