@@ -717,60 +717,54 @@ static void si_shader_ls(struct si_screen *sscreen, struct si_shader *shader)
 
 static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
 {
-   struct si_pm4_state *pm4;
-   uint64_t va;
-
-   pm4 = si_get_shader_pm4_state(shader, NULL);
+   struct si_pm4_state *pm4 = si_get_shader_pm4_state(shader, NULL);
    if (!pm4)
       return;
 
-   va = shader->bo->gpu_address;
+   uint64_t va = shader->bo->gpu_address;
+   unsigned num_user_sgprs = sscreen->info.gfx_level >= GFX9 ?
+                                si_get_num_vs_user_sgprs(shader, GFX9_TCS_NUM_USER_SGPR) :
+                                GFX6_TCS_NUM_USER_SGPR;
 
-   if (sscreen->info.gfx_level >= GFX9) {
-      if (sscreen->info.gfx_level >= GFX11) {
-         si_pm4_set_reg_idx3(sscreen, pm4, R_00B404_SPI_SHADER_PGM_RSRC4_HS,
-                             ac_apply_cu_en(S_00B404_INST_PREF_SIZE(si_get_shader_prefetch_size(shader)) |
-                                            S_00B404_CU_EN(0xffff),
-                                            C_00B404_CU_EN, 16, &sscreen->info));
-      }
-      if (sscreen->info.gfx_level >= GFX10) {
-         si_pm4_set_reg_va(pm4, R_00B520_SPI_SHADER_PGM_LO_LS, va >> 8);
-      } else {
-         si_pm4_set_reg_va(pm4, R_00B410_SPI_SHADER_PGM_LO_LS, va >> 8);
-      }
+   if (sscreen->info.gfx_level >= GFX11) {
+      si_pm4_set_reg_idx3(sscreen, pm4, R_00B404_SPI_SHADER_PGM_RSRC4_HS,
+                          ac_apply_cu_en(S_00B404_INST_PREF_SIZE(si_get_shader_prefetch_size(shader)) |
+                                         S_00B404_CU_EN(0xffff),
+                                         C_00B404_CU_EN, 16, &sscreen->info));
 
-      unsigned num_user_sgprs = si_get_num_vs_user_sgprs(shader, GFX9_TCS_NUM_USER_SGPR);
-
-      shader->config.rsrc2 = S_00B42C_USER_SGPR(num_user_sgprs) |
-                             S_00B42C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0);
-
-      if (sscreen->info.gfx_level >= GFX10)
-         shader->config.rsrc2 |= S_00B42C_USER_SGPR_MSB_GFX10(num_user_sgprs >> 5);
-      else
-         shader->config.rsrc2 |= S_00B42C_USER_SGPR_MSB_GFX9(num_user_sgprs >> 5);
+      si_pm4_set_reg_va(pm4, R_00B520_SPI_SHADER_PGM_LO_LS, va >> 8);
+   } else if (sscreen->info.gfx_level >= GFX10) {
+      si_pm4_set_reg_va(pm4, R_00B520_SPI_SHADER_PGM_LO_LS, va >> 8);
+   } else if (sscreen->info.gfx_level >= GFX9) {
+      si_pm4_set_reg_va(pm4, R_00B410_SPI_SHADER_PGM_LO_LS, va >> 8);
    } else {
       si_pm4_set_reg_va(pm4, R_00B420_SPI_SHADER_PGM_LO_HS, va >> 8);
       si_pm4_set_reg(pm4, R_00B424_SPI_SHADER_PGM_HI_HS,
                      S_00B424_MEM_BASE(sscreen->info.address32_hi >> 8));
-
-      shader->config.rsrc2 = S_00B42C_USER_SGPR(GFX6_TCS_NUM_USER_SGPR) | S_00B42C_OC_LDS_EN(1) |
-                             S_00B42C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0);
    }
 
-   si_pm4_set_reg(
-      pm4, R_00B428_SPI_SHADER_PGM_RSRC1_HS,
-      S_00B428_VGPRS(si_shader_encode_vgprs(shader)) |
-      S_00B428_SGPRS(si_shader_encode_sgprs(shader)) |
-         S_00B428_DX10_CLAMP(1) | S_00B428_MEM_ORDERED(si_shader_mem_ordered(shader)) |
-         S_00B428_WGP_MODE(sscreen->info.gfx_level >= GFX10) |
-         S_00B428_FLOAT_MODE(shader->config.float_mode) |
-         S_00B428_LS_VGPR_COMP_CNT(sscreen->info.gfx_level >= GFX9
-                                      ? si_get_vs_vgpr_comp_cnt(sscreen, shader, false)
-                                      : 0));
+   si_pm4_set_reg(pm4, R_00B428_SPI_SHADER_PGM_RSRC1_HS,
+                  S_00B428_VGPRS(si_shader_encode_vgprs(shader)) |
+                  S_00B428_SGPRS(si_shader_encode_sgprs(shader)) |
+                  S_00B428_DX10_CLAMP(1) |
+                  S_00B428_MEM_ORDERED(si_shader_mem_ordered(shader)) |
+                  S_00B428_WGP_MODE(sscreen->info.gfx_level >= GFX10) |
+                  S_00B428_FLOAT_MODE(shader->config.float_mode) |
+                  S_00B428_LS_VGPR_COMP_CNT(sscreen->info.gfx_level >= GFX9 ?
+                                            si_get_vs_vgpr_comp_cnt(sscreen, shader, false) : 0));
 
-   if (sscreen->info.gfx_level <= GFX8) {
+   shader->config.rsrc2 = S_00B42C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0) |
+                          S_00B42C_USER_SGPR(num_user_sgprs);
+
+   if (sscreen->info.gfx_level >= GFX10)
+      shader->config.rsrc2 |= S_00B42C_USER_SGPR_MSB_GFX10(num_user_sgprs >> 5);
+   else if (sscreen->info.gfx_level >= GFX9)
+      shader->config.rsrc2 |= S_00B42C_USER_SGPR_MSB_GFX9(num_user_sgprs >> 5);
+   else
+      shader->config.rsrc2 |= S_00B42C_OC_LDS_EN(1);
+
+   if (sscreen->info.gfx_level <= GFX8)
       si_pm4_set_reg(pm4, R_00B42C_SPI_SHADER_PGM_RSRC2_HS, shader->config.rsrc2);
-   }
 }
 
 static void si_emit_shader_es(struct si_context *sctx)
