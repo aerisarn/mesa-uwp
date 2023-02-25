@@ -2063,8 +2063,7 @@ static void si_shader_init_pm4_state(struct si_screen *sscreen, struct si_shader
       assert(0);
    }
 
-   if (unlikely(sscreen->debug_flags & DBG(SQTT)))
-      assert(shader->pm4.reg_va_low_idx != 0);
+   assert(shader->pm4.reg_va_low_idx != 0);
 }
 
 static void si_clear_vs_key_inputs(struct si_context *sctx, union si_shader_key *key,
