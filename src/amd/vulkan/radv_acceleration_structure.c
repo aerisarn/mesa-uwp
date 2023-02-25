@@ -175,9 +175,10 @@ get_build_layout(struct radv_device *device, uint32_t leaf_count,
       uint32_t offset = 0;
       offset += sizeof(struct radv_accel_struct_header);
 
-      accel_struct->geometry_info_offset = offset;
-      offset += sizeof(struct radv_accel_struct_geometry_info) * build_info->geometryCount;
-
+      if (device->rra_trace.accel_structs) {
+         accel_struct->geometry_info_offset = offset;
+         offset += sizeof(struct radv_accel_struct_geometry_info) * build_info->geometryCount;
+      }
       /* Parent links, which have to go directly before bvh_offset as we index them using negative
        * offsets from there. */
       offset += bvh_size / 64 * 4;
@@ -1157,7 +1158,8 @@ radv_CmdBuildAccelerationStructuresKHR(
 
    init_header(commandBuffer, infoCount, pInfos, bvh_states);
 
-   init_geometry_infos(commandBuffer, infoCount, pInfos, bvh_states, ppBuildRangeInfos);
+   if (cmd_buffer->device->rra_trace.accel_structs)
+      init_geometry_infos(commandBuffer, infoCount, pInfos, bvh_states, ppBuildRangeInfos);
 
    free(bvh_states);
    radv_meta_restore(&saved_state, cmd_buffer);
