@@ -1838,11 +1838,13 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
    /* Must only upload uniforms after uploading textures so we can implement the
     * AGX_PUSH_TEXTURE_BASE sysval correctly.
     */
-   uint64_t uniforms = agx_upload_uniforms(batch, T_tex.gpu, stage);
+   uint64_t uniform_tables[AGX_NUM_SYSVAL_TABLES] = {
+      agx_upload_uniforms(batch, T_tex.gpu, stage),
+   };
 
    for (unsigned i = 0; i < cs->push_range_count; ++i) {
       agx_usc_uniform(&b, cs->push[i].uniform, cs->push[i].length,
-                      uniforms + cs->push[i].offset);
+                      uniform_tables[cs->push[i].table] + cs->push[i].offset);
    }
 
    if (stage == PIPE_SHADER_FRAGMENT)

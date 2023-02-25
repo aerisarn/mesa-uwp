@@ -68,7 +68,13 @@ agx_so_target(struct pipe_stream_output_target *target)
  * compiler. The layout is up to us and handled by our code lowering system
  * values to uniforms.
  */
+enum agx_sysval_table { AGX_SYSVAL_TABLE_ROOT, AGX_NUM_SYSVAL_TABLES };
+
+/* Root system value table */
 struct PACKED agx_draw_uniforms {
+   /* Pointers to the system value tables themselves (for indirection) */
+   uint64_t tables[AGX_NUM_SYSVAL_TABLES];
+
    /* Pointer to binding table for texture descriptor, or 0 if none */
    uint64_t texture_base;
 
@@ -102,11 +108,14 @@ struct agx_push_range {
    /* Base 16-bit uniform to push to */
    uint16_t uniform;
 
-   /* Offset into agx_draw_uniforms to push in bytes */
+   /* Offset into the table to push in bytes */
    uint16_t offset;
 
+   /* Which table to push from */
+   uint8_t table;
+
    /* Number of consecutive 16-bit uniforms to push */
-   size_t length;
+   uint8_t length;
 };
 
 struct agx_compiled_shader {
