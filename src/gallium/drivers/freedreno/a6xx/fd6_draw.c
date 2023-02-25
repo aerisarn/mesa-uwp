@@ -541,7 +541,7 @@ is_z32(enum pipe_format format)
 }
 
 static bool
-fd6_clear(struct fd_context *ctx, unsigned buffers,
+fd6_clear(struct fd_context *ctx, enum fd_buffer_mask buffers,
           const union pipe_color_union *color, double depth,
           unsigned stencil) assert_dt
 {
@@ -556,7 +556,7 @@ fd6_clear(struct fd_context *ctx, unsigned buffers,
    if (ctx->batch->num_draws > 0)
       return false;
 
-   if (has_depth && (buffers & PIPE_CLEAR_DEPTH)) {
+   if (has_depth && (buffers & FD_BUFFER_DEPTH)) {
       struct fd_resource *zsbuf = fd_resource(pfb->zsbuf->texture);
       if (zsbuf->lrz && !is_z32(pfb->zsbuf->format)) {
          zsbuf->lrz_valid = true;
@@ -571,9 +571,9 @@ fd6_clear(struct fd_context *ctx, unsigned buffers,
 
    u_foreach_bit (i, color_buffers)
       ctx->batch->clear_color[i] = *color;
-   if (buffers & PIPE_CLEAR_DEPTH)
+   if (buffers & FD_BUFFER_DEPTH)
       ctx->batch->clear_depth = depth;
-   if (buffers & PIPE_CLEAR_STENCIL)
+   if (buffers & FD_BUFFER_STENCIL)
       ctx->batch->clear_stencil = stencil;
 
    ctx->batch->fast_cleared |= buffers;
