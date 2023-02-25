@@ -34,16 +34,8 @@
 
 #define UNKNOWN_RESOURCE_STATE (D3D12_RESOURCE_STATES) 0x8000u
 
-/* Stores the current desired state of either an entire resource, or each subresource. */
-struct desired_resource_state
-{
-   bool homogenous;
-   uint32_t num_subresources;
-   D3D12_RESOURCE_STATES *subresource_states;
-};
-
 static bool
-desired_resource_state_init(desired_resource_state *state, uint32_t subresource_count)
+desired_resource_state_init(d3d12_desired_resource_state *state, uint32_t subresource_count)
 {
    state->homogenous = true;
    state->num_subresources = subresource_count;
@@ -52,13 +44,13 @@ desired_resource_state_init(desired_resource_state *state, uint32_t subresource_
 }
 
 static void
-desired_resource_state_cleanup(desired_resource_state *state)
+desired_resource_state_cleanup(d3d12_desired_resource_state *state)
 {
    free(state->subresource_states);
 }
 
 static D3D12_RESOURCE_STATES
-get_desired_subresource_state(const desired_resource_state *state, uint32_t subresource_index)
+get_desired_subresource_state(const d3d12_desired_resource_state *state, uint32_t subresource_index)
 {
    if (state->homogenous)
       subresource_index = 0;
@@ -78,14 +70,14 @@ update_subresource_state(D3D12_RESOURCE_STATES *existing_state, D3D12_RESOURCE_S
 }
 
 static void
-set_desired_resource_state(desired_resource_state *state_obj, D3D12_RESOURCE_STATES state)
+set_desired_resource_state(d3d12_desired_resource_state *state_obj, D3D12_RESOURCE_STATES state)
 {
    state_obj->homogenous = true;
    update_subresource_state(&state_obj->subresource_states[0], state);
 }
 
 static void
-set_desired_subresource_state(desired_resource_state *state_obj,
+set_desired_subresource_state(d3d12_desired_resource_state *state_obj,
                                     uint32_t subresource,
                                     D3D12_RESOURCE_STATES state)
 {
@@ -100,7 +92,7 @@ set_desired_subresource_state(desired_resource_state *state_obj,
 }
 
 static void
-reset_desired_resource_state(desired_resource_state *state_obj)
+reset_desired_resource_state(d3d12_desired_resource_state *state_obj)
 {
    set_desired_resource_state(state_obj, UNKNOWN_RESOURCE_STATE);
 }
@@ -194,12 +186,6 @@ copy_resource_state(d3d12_resource_state *dest, d3d12_resource_state *src)
          dest->subresource_states[i] = src->subresource_states[i];
    }
 }
-
-struct d3d12_context_state_table_entry
-{
-   struct desired_resource_state desired;
-   struct d3d12_resource_state batch_begin, batch_end;
-};
 
 static void
 destroy_context_state_table_entry(d3d12_context_state_table_entry *entry)
@@ -524,7 +510,7 @@ d3d12_apply_resource_states(struct d3d12_context *ctx, bool is_implicit_dispatch
       d3d12_bo *bo = (d3d12_bo *)entry->key;
 
       d3d12_context_state_table_entry *state_entry = find_or_create_state_entry(ctx->bo_state_table, bo);
-      desired_resource_state *destination_state = &state_entry->desired;
+      d3d12_desired_resource_state *destination_state = &state_entry->desired;
       d3d12_resource_state *current_state = &state_entry->batch_end;
 
       // Figure out the set of subresources that are transitioning
