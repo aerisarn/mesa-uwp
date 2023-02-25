@@ -709,10 +709,10 @@ static void si_shader_ls(struct si_screen *sscreen, struct si_shader *shader)
    shader->config.rsrc1 = S_00B528_VGPRS(si_shader_encode_vgprs(shader)) |
                           S_00B528_SGPRS(si_shader_encode_sgprs(shader)) |
                           S_00B528_VGPR_COMP_CNT(si_get_vs_vgpr_comp_cnt(sscreen, shader, false)) |
-                          S_00B528_DX10_CLAMP(1) | S_00B528_FLOAT_MODE(shader->config.float_mode);
-   shader->config.rsrc2 =
-      S_00B52C_USER_SGPR(si_get_num_vs_user_sgprs(shader, SI_VS_NUM_USER_SGPR)) |
-      S_00B52C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0);
+                          S_00B528_DX10_CLAMP(1) |
+                          S_00B528_FLOAT_MODE(shader->config.float_mode);
+   shader->config.rsrc2 = S_00B52C_USER_SGPR(si_get_num_vs_user_sgprs(shader, SI_VS_NUM_USER_SGPR)) |
+                          S_00B52C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0);
 }
 
 static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
@@ -826,11 +826,12 @@ static void si_shader_es(struct si_screen *sscreen, struct si_shader *shader)
    si_pm4_set_reg(pm4, R_00B328_SPI_SHADER_PGM_RSRC1_ES,
                   S_00B328_VGPRS(si_shader_encode_vgprs(shader)) |
                   S_00B328_SGPRS(si_shader_encode_sgprs(shader)) |
-                     S_00B328_VGPR_COMP_CNT(vgpr_comp_cnt) | S_00B328_DX10_CLAMP(1) |
-                     S_00B328_FLOAT_MODE(shader->config.float_mode));
+                  S_00B328_VGPR_COMP_CNT(vgpr_comp_cnt) |
+                  S_00B328_DX10_CLAMP(1) |
+                  S_00B328_FLOAT_MODE(shader->config.float_mode));
    si_pm4_set_reg(pm4, R_00B32C_SPI_SHADER_PGM_RSRC2_ES,
                   S_00B32C_USER_SGPR(num_user_sgprs) | S_00B32C_OC_LDS_EN(oc_lds_en) |
-                     S_00B32C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0));
+                  S_00B32C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0));
 
    if (shader->selector->stage == MESA_SHADER_TESS_EVAL)
       si_set_tesseval_regs(sscreen, shader->selector, shader);
@@ -1144,10 +1145,11 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
       si_pm4_set_reg(pm4, R_00B228_SPI_SHADER_PGM_RSRC1_GS,
                      S_00B228_VGPRS(si_shader_encode_vgprs(shader)) |
                      S_00B228_SGPRS(si_shader_encode_sgprs(shader)) |
-                        S_00B228_DX10_CLAMP(1) | S_00B228_FLOAT_MODE(shader->config.float_mode));
+                     S_00B228_DX10_CLAMP(1) |
+                     S_00B228_FLOAT_MODE(shader->config.float_mode));
       si_pm4_set_reg(pm4, R_00B22C_SPI_SHADER_PGM_RSRC2_GS,
                      S_00B22C_USER_SGPR(GFX6_GS_NUM_USER_SGPR) |
-                        S_00B22C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0));
+                     S_00B22C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0));
    }
 }
 
@@ -1706,7 +1708,8 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
    uint32_t rsrc1 =
       S_00B128_VGPRS(si_shader_encode_vgprs(shader)) |
       S_00B128_SGPRS(si_shader_encode_sgprs(shader)) |
-      S_00B128_VGPR_COMP_CNT(vgpr_comp_cnt) | S_00B128_DX10_CLAMP(1) |
+      S_00B128_VGPR_COMP_CNT(vgpr_comp_cnt) |
+      S_00B128_DX10_CLAMP(1) |
       S_00B128_MEM_ORDERED(si_shader_mem_ordered(shader)) |
       S_00B128_FLOAT_MODE(shader->config.float_mode);
    uint32_t rsrc2 = S_00B12C_USER_SGPR(num_user_sgprs) | S_00B12C_OC_LDS_EN(oc_lds_en) |
