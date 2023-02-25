@@ -1190,9 +1190,10 @@ static void gfx10_emit_shader_ngg_tail(struct si_context *sctx, struct si_shader
                               shader->ngg.vgt_gs_instance_cnt);
    radeon_opt_set_context_reg(sctx, R_0286C4_SPI_VS_OUT_CONFIG, SI_TRACKED_SPI_VS_OUT_CONFIG,
                               shader->ngg.spi_vs_out_config);
-   radeon_opt_set_context_reg2(
-      sctx, R_028708_SPI_SHADER_IDX_FORMAT, SI_TRACKED_SPI_SHADER_IDX_FORMAT,
-      shader->ngg.spi_shader_idx_format, shader->ngg.spi_shader_pos_format);
+   radeon_opt_set_context_reg2(sctx, R_028708_SPI_SHADER_IDX_FORMAT,
+                               SI_TRACKED_SPI_SHADER_IDX_FORMAT,
+                               shader->ngg.spi_shader_idx_format,
+                               shader->ngg.spi_shader_pos_format);
    radeon_opt_set_context_reg(sctx, R_028818_PA_CL_VTE_CNTL, SI_TRACKED_PA_CL_VTE_CNTL,
                               shader->ngg.pa_cl_vte_cntl);
    radeon_opt_set_context_reg(sctx, R_028838_PA_CL_NGG_CNTL, SI_TRACKED_PA_CL_NGG_CNTL,
@@ -1315,7 +1316,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    const struct si_shader_info *es_info = &es_sel->info;
    const gl_shader_stage es_stage = es_sel->stage;
    unsigned num_user_sgprs;
-   unsigned nparams, es_vgpr_comp_cnt, gs_vgpr_comp_cnt;
+   unsigned num_params, es_vgpr_comp_cnt, gs_vgpr_comp_cnt;
    uint64_t va;
    bool window_space = gs_sel->stage == MESA_SHADER_VERTEX ?
                           gs_info->base.vs.window_space_position : 0;
@@ -1324,16 +1325,17 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
                                     MAX2(gs_info->base.gs.invocations, 1) : 0;
    unsigned input_prim = si_get_input_prim(gs_sel, &shader->key);
    bool break_wave_at_eoi = false;
+
    struct si_pm4_state *pm4 = si_get_shader_pm4_state(shader, NULL);
    if (!pm4)
       return;
 
    if (es_stage == MESA_SHADER_TESS_EVAL) {
       pm4->atom.emit = gs_stage == MESA_SHADER_GEOMETRY ? gfx10_emit_shader_ngg_tess_gs
-                                                       : gfx10_emit_shader_ngg_tess_nogs;
+                                                        : gfx10_emit_shader_ngg_tess_nogs;
    } else {
       pm4->atom.emit = gs_stage == MESA_SHADER_GEOMETRY ? gfx10_emit_shader_ngg_notess_gs
-                                                       : gfx10_emit_shader_ngg_notess_nogs;
+                                                        : gfx10_emit_shader_ngg_notess_nogs;
    }
 
    va = shader->bo->gpu_address;
@@ -1374,54 +1376,26 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    else
       gs_vgpr_comp_cnt = 0; /* VGPR0 contains offsets 0, 1 */
 
-   unsigned late_alloc_wave64, cu_mask;
-
-   ac_compute_late_alloc(&sscreen->info, true, shader->key.ge.opt.ngg_culling,
-                         shader->config.scratch_bytes_per_wave > 0,
-                         &late_alloc_wave64, &cu_mask);
-
    si_pm4_set_reg_va(pm4, R_00B320_SPI_SHADER_PGM_LO_ES, va >> 8);
-   si_pm4_set_reg(
-      pm4, R_00B228_SPI_SHADER_PGM_RSRC1_GS,
-      S_00B228_VGPRS(si_shader_encode_vgprs(shader)) |
-         S_00B228_FLOAT_MODE(shader->config.float_mode) | S_00B228_DX10_CLAMP(1) |
-         S_00B228_MEM_ORDERED(si_shader_mem_ordered(shader)) |
-         /* Disable the WGP mode on gfx10.3 because it can hang. (it happened on VanGogh)
-          * Let's disable it on all chips that disable exactly 1 CU per SA for GS. */
-         S_00B228_WGP_MODE(sscreen->info.gfx_level == GFX10) |
-         S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt));
+   si_pm4_set_reg(pm4, R_00B228_SPI_SHADER_PGM_RSRC1_GS,
+                  S_00B228_VGPRS(si_shader_encode_vgprs(shader)) |
+                  S_00B228_FLOAT_MODE(shader->config.float_mode) |
+                  S_00B228_DX10_CLAMP(1) |
+                  S_00B228_MEM_ORDERED(si_shader_mem_ordered(shader)) |
+                  /* Disable the WGP mode on gfx10.3 because it can hang. (it happened on VanGogh)
+                   * Let's disable it on all chips that disable exactly 1 CU per SA for GS. */
+                  S_00B228_WGP_MODE(sscreen->info.gfx_level == GFX10) |
+                  S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt));
    si_pm4_set_reg(pm4, R_00B22C_SPI_SHADER_PGM_RSRC2_GS,
                   S_00B22C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0) |
-                     S_00B22C_USER_SGPR(num_user_sgprs) |
-                     S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |
-                     S_00B22C_USER_SGPR_MSB_GFX10(num_user_sgprs >> 5) |
-                     S_00B22C_OC_LDS_EN(es_stage == MESA_SHADER_TESS_EVAL) |
-                     S_00B22C_LDS_SIZE(shader->config.lds_size));
+                  S_00B22C_USER_SGPR(num_user_sgprs) |
+                  S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |
+                  S_00B22C_USER_SGPR_MSB_GFX10(num_user_sgprs >> 5) |
+                  S_00B22C_OC_LDS_EN(es_stage == MESA_SHADER_TESS_EVAL) |
+                  S_00B22C_LDS_SIZE(shader->config.lds_size));
 
-   shader->ngg.spi_shader_pgm_rsrc3_gs =
-      ac_apply_cu_en(S_00B21C_CU_EN(cu_mask) |
-                     S_00B21C_WAVE_LIMIT(0x3F),
-                     C_00B21C_CU_EN, 0, &sscreen->info);
-   if (sscreen->info.gfx_level >= GFX11) {
-      shader->ngg.spi_shader_pgm_rsrc4_gs =
-         ac_apply_cu_en(S_00B204_CU_EN_GFX11(0x1) |
-                        S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_wave64) |
-                        S_00B204_INST_PREF_SIZE(si_get_shader_prefetch_size(shader)),
-                        C_00B204_CU_EN_GFX11, 16, &sscreen->info);
-   } else {
-      shader->ngg.spi_shader_pgm_rsrc4_gs =
-         ac_apply_cu_en(S_00B204_CU_EN_GFX10(0xffff) |
-                        S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_wave64),
-                        C_00B204_CU_EN_GFX10, 16, &sscreen->info);
-   }
-
-   nparams = MAX2(shader->info.nr_param_exports, 1);
-   shader->ngg.spi_vs_out_config =
-      S_0286C4_VS_EXPORT_COUNT(nparams - 1) |
-      S_0286C4_NO_PC_EXPORT(shader->info.nr_param_exports == 0);
-
-   shader->ngg.spi_shader_idx_format =
-      S_028708_IDX0_EXPORT_FORMAT(V_028708_SPI_SHADER_1COMP);
+   /* Set register values emitted conditionally in gfx10_emit_shader_ngg_*. */
+   shader->ngg.spi_shader_idx_format = S_028708_IDX0_EXPORT_FORMAT(V_028708_SPI_SHADER_1COMP);
    shader->ngg.spi_shader_pos_format =
       S_02870C_POS0_EXPORT_FORMAT(V_02870C_SPI_SHADER_4COMP) |
       S_02870C_POS1_EXPORT_FORMAT(shader->info.nr_pos_exports > 1 ? V_02870C_SPI_SHADER_4COMP
@@ -1430,11 +1404,21 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
                                                                   : V_02870C_SPI_SHADER_NONE) |
       S_02870C_POS3_EXPORT_FORMAT(shader->info.nr_pos_exports > 3 ? V_02870C_SPI_SHADER_4COMP
                                                                   : V_02870C_SPI_SHADER_NONE);
+   shader->ngg.ge_max_output_per_subgroup = S_0287FC_MAX_VERTS_PER_SUBGROUP(shader->ngg.max_out_verts);
+   shader->ngg.ge_ngg_subgrp_cntl = S_028B4C_PRIM_AMP_FACTOR(shader->ngg.prim_amp_factor);
+   shader->ngg.vgt_gs_instance_cnt =
+      S_028B90_ENABLE(gs_num_invocations > 1) |
+      S_028B90_CNT(gs_num_invocations) |
+      S_028B90_EN_MAX_VERT_OUT_PER_GS_INSTANCE(shader->ngg.max_vert_out_per_gs_instance);
 
-   shader->ngg.vgt_primitiveid_en =
-      S_028A84_PRIMITIVEID_EN(es_enable_prim_id) |
-      S_028A84_NGG_DISABLE_PROVOK_REUSE(shader->key.ge.mono.u.vs_export_prim_id ||
-                                        gs_sel->info.writes_primid);
+   /* Output hw-generated edge flags if needed and pass them via the prim
+    * export to prevent drawing lines on internal edges of decomposed
+    * primitives (such as quads) with polygon mode = lines.
+    */
+   shader->ngg.pa_cl_ngg_cntl =
+      S_028838_INDEX_BUF_EDGE_FLAG_ENA(gfx10_edgeflags_have_effect(shader)) |
+      S_028838_VERTEX_REUSE_DEPTH(sscreen->info.gfx_level >= GFX10_3 ? 30 : 0);
+   shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(shader->selector, shader, true);
 
    if (gs_stage == MESA_SHADER_GEOMETRY) {
       shader->ngg.esgs_vertex_stride = es_sel->info.esgs_vertex_stride / 4;
@@ -1446,25 +1430,20 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    if (es_stage == MESA_SHADER_TESS_EVAL)
       si_set_tesseval_regs(sscreen, es_sel, shader);
 
-   shader->ngg.ge_max_output_per_subgroup =
-      S_0287FC_MAX_VERTS_PER_SUBGROUP(shader->ngg.max_out_verts);
-   shader->ngg.ge_ngg_subgrp_cntl = S_028B4C_PRIM_AMP_FACTOR(shader->ngg.prim_amp_factor);
-   shader->ngg.vgt_gs_instance_cnt =
-      S_028B90_CNT(gs_num_invocations) | S_028B90_ENABLE(gs_num_invocations > 1) |
-      S_028B90_EN_MAX_VERT_OUT_PER_GS_INSTANCE(shader->ngg.max_vert_out_per_gs_instance);
+   num_params = MAX2(shader->info.nr_param_exports, 1);
 
-   /* Output hw-generated edge flags if needed and pass them via the prim
-    * export to prevent drawing lines on internal edges of decomposed
-    * primitives (such as quads) with polygon mode = lines.
-    */
-   shader->ngg.pa_cl_ngg_cntl =
-      S_028838_INDEX_BUF_EDGE_FLAG_ENA(gfx10_edgeflags_have_effect(shader)) |
-      /* Reuse for NGG. */
-      S_028838_VERTEX_REUSE_DEPTH(sscreen->info.gfx_level >= GFX10_3 ? 30 : 0);
-   shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(shader->selector, shader, true);
+   shader->ngg.vgt_primitiveid_en =
+      S_028A84_NGG_DISABLE_PROVOK_REUSE(shader->key.ge.mono.u.vs_export_prim_id ||
+                                        gs_sel->info.writes_primid);
+
+   unsigned late_alloc_wave64, cu_mask;
+
+   ac_compute_late_alloc(&sscreen->info, true, shader->key.ge.opt.ngg_culling,
+                         shader->config.scratch_bytes_per_wave > 0,
+                         &late_alloc_wave64, &cu_mask);
 
    /* Oversubscribe PC. This improves performance when there are too many varyings. */
-   unsigned oversub_pc_factor = 1;
+   unsigned oversub_pc_lines, oversub_pc_factor = 1;
 
    if (shader->key.ge.opt.ngg_culling) {
       /* Be more aggressive with NGG culling. */
@@ -1475,11 +1454,28 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
       else
          oversub_pc_factor = 2;
    }
-
-   unsigned oversub_pc_lines =
-      late_alloc_wave64 ? (sscreen->info.pc_lines / 4) * oversub_pc_factor : 0;
+   oversub_pc_lines = late_alloc_wave64 ? (sscreen->info.pc_lines / 4) * oversub_pc_factor : 0;
    shader->ngg.ge_pc_alloc = S_030980_OVERSUB_EN(oversub_pc_lines > 0) |
                              S_030980_NUM_PC_LINES(oversub_pc_lines - 1);
+   shader->ngg.vgt_primitiveid_en |= S_028A84_PRIMITIVEID_EN(es_enable_prim_id);
+   shader->ngg.spi_shader_pgm_rsrc3_gs =
+      ac_apply_cu_en(S_00B21C_CU_EN(cu_mask) |
+                     S_00B21C_WAVE_LIMIT(0x3F),
+                     C_00B21C_CU_EN, 0, &sscreen->info);
+   shader->ngg.spi_shader_pgm_rsrc4_gs = S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_wave64);
+   shader->ngg.spi_vs_out_config = S_0286C4_VS_EXPORT_COUNT(num_params - 1) |
+                                   S_0286C4_NO_PC_EXPORT(shader->info.nr_param_exports == 0);
+
+   if (sscreen->info.gfx_level >= GFX11) {
+      shader->ngg.spi_shader_pgm_rsrc4_gs |=
+         ac_apply_cu_en(S_00B204_CU_EN_GFX11(0x1) |
+                        S_00B204_INST_PREF_SIZE(si_get_shader_prefetch_size(shader)),
+                        C_00B204_CU_EN_GFX11, 16, &sscreen->info);
+   } else {
+      shader->ngg.spi_shader_pgm_rsrc4_gs |=
+         ac_apply_cu_en(S_00B204_CU_EN_GFX10(0xffff),
+                        C_00B204_CU_EN_GFX10, 16, &sscreen->info);
+   }
 
    if (sscreen->info.gfx_level >= GFX11) {
       shader->ge_cntl = S_03096C_PRIMS_PER_SUBGRP(shader->ngg.max_gsprims) |
@@ -1487,8 +1483,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
                         S_03096C_BREAK_PRIMGRP_AT_EOI(break_wave_at_eoi) |
                         /* This should be <= 252 for performance. 256 works too but is slower. */
                         S_03096C_PRIM_GRP_SIZE_GFX11(
-                           CLAMP(252 / MAX2(shader->ngg.prim_amp_factor, 1),
-                                 1, 256));
+                           CLAMP(252 / MAX2(shader->ngg.prim_amp_factor, 1), 1, 256));
    } else {
       shader->ge_cntl = S_03096C_PRIM_GRP_SIZE_GFX10(shader->ngg.max_gsprims) |
                         S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts) |
@@ -1498,34 +1493,34 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
          S_028A44_ES_VERTS_PER_SUBGRP(shader->ngg.hw_max_esverts) |
          S_028A44_GS_PRIMS_PER_SUBGRP(shader->ngg.max_gsprims) |
          S_028A44_GS_INST_PRIMS_IN_SUBGRP(shader->ngg.max_gsprims * gs_num_invocations);
-   }
 
-   /* On gfx10, the GE only checks against the maximum number of ES verts after
-    * allocating a full GS primitive. So we need to ensure that whenever
-    * this check passes, there is enough space for a full primitive without
-    * vertex reuse. VERT_GRP_SIZE=256 doesn't need this. We should always get 256
-    * if we have enough LDS.
-    *
-    * Tessellation is unaffected because it always sets GE_CNTL.VERT_GRP_SIZE = 0.
-    */
-   if ((sscreen->info.gfx_level == GFX10) &&
-       (es_stage == MESA_SHADER_VERTEX || gs_stage == MESA_SHADER_VERTEX) && /* = no tess */
-       shader->ngg.hw_max_esverts != 256 &&
-       shader->ngg.hw_max_esverts > 5) {
-      /* This could be based on the input primitive type. 5 is the worst case
-       * for primitive types with adjacency.
+      /* On gfx10, the GE only checks against the maximum number of ES verts after
+       * allocating a full GS primitive. So we need to ensure that whenever
+       * this check passes, there is enough space for a full primitive without
+       * vertex reuse. VERT_GRP_SIZE=256 doesn't need this. We should always get 256
+       * if we have enough LDS.
+       *
+       * Tessellation is unaffected because it always sets GE_CNTL.VERT_GRP_SIZE = 0.
        */
-      shader->ge_cntl &= C_03096C_VERT_GRP_SIZE;
-      shader->ge_cntl |= S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts - 5);
+      if ((sscreen->info.gfx_level == GFX10) &&
+          (es_stage == MESA_SHADER_VERTEX || gs_stage == MESA_SHADER_VERTEX) && /* = no tess */
+          shader->ngg.hw_max_esverts != 256 &&
+          shader->ngg.hw_max_esverts > 5) {
+         /* This could be based on the input primitive type. 5 is the worst case
+          * for primitive types with adjacency.
+          */
+         shader->ge_cntl &= C_03096C_VERT_GRP_SIZE;
+         shader->ge_cntl |= S_03096C_VERT_GRP_SIZE(shader->ngg.hw_max_esverts - 5);
+      }
    }
 
    if (window_space) {
       shader->ngg.pa_cl_vte_cntl = S_028818_VTX_XY_FMT(1) | S_028818_VTX_Z_FMT(1);
    } else {
-      shader->ngg.pa_cl_vte_cntl =
-         S_028818_VTX_W0_FMT(1) | S_028818_VPORT_X_SCALE_ENA(1) | S_028818_VPORT_X_OFFSET_ENA(1) |
-         S_028818_VPORT_Y_SCALE_ENA(1) | S_028818_VPORT_Y_OFFSET_ENA(1) |
-         S_028818_VPORT_Z_SCALE_ENA(1) | S_028818_VPORT_Z_OFFSET_ENA(1);
+      shader->ngg.pa_cl_vte_cntl = S_028818_VTX_W0_FMT(1) |
+                                   S_028818_VPORT_X_SCALE_ENA(1) | S_028818_VPORT_X_OFFSET_ENA(1) |
+                                   S_028818_VPORT_Y_SCALE_ENA(1) | S_028818_VPORT_Y_OFFSET_ENA(1) |
+                                   S_028818_VPORT_Z_SCALE_ENA(1) | S_028818_VPORT_Z_OFFSET_ENA(1);
    }
 
    shader->ngg.vgt_stages.u.ngg = 1;
