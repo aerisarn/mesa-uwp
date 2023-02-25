@@ -1762,8 +1762,9 @@ zink_bind_fs_state(struct pipe_context *pctx,
             ctx->gfx_pipeline_state.dirty = true;
          ctx->gfx_pipeline_state.rast_attachment_order = nir->info.fs.uses_fbfetch_output;
       }
-      zink_set_fs_shadow_needs_shader_swizzle_key(ctx, false);
-      if (shadow_mask != ctx->gfx_stages[MESA_SHADER_FRAGMENT]->fs.legacy_shadow_mask)
+      zink_set_zs_needs_shader_swizzle_key(ctx, MESA_SHADER_FRAGMENT, false);
+      if (shadow_mask != ctx->gfx_stages[MESA_SHADER_FRAGMENT]->fs.legacy_shadow_mask &&
+          !zink_screen(pctx->screen)->driver_workarounds.needs_zs_shader_swizzle)
          zink_update_shadow_samplerviews(ctx, shadow_mask | ctx->gfx_stages[MESA_SHADER_FRAGMENT]->fs.legacy_shadow_mask);
    }
    zink_update_fbfetch(ctx);

@@ -529,11 +529,15 @@ get_imageview_for_binding(struct zink_context *ctx, gl_shader_stage stage, enum 
       if (!sampler_view || !sampler_view->base.texture)
          return NULL;
       /* if this is a non-seamless cube sampler, return the cube array view */
-      return (ctx->di.emulate_nonseamless[stage] & ctx->di.cubes[stage] & BITFIELD_BIT(idx)) ?
-             sampler_view->cube_array :
-             sampler_view->shadow && stage == MESA_SHADER_FRAGMENT && ctx->gfx_stages[MESA_SHADER_FRAGMENT] &&
-             (ctx->di.shadow[MESA_SHADER_FRAGMENT].mask & ctx->gfx_stages[MESA_SHADER_FRAGMENT]->fs.legacy_shadow_mask & BITFIELD_BIT(idx)) ? sampler_view->shadow :
-             sampler_view->image_view;
+      if (ctx->di.emulate_nonseamless[stage] & ctx->di.cubes[stage] & BITFIELD_BIT(idx))
+         return sampler_view->cube_array;
+      bool needs_zs_shader_swizzle = (ctx->di.shadow[stage].mask & BITFIELD_BIT(idx)) &&
+                                     zink_screen(ctx->base.screen)->driver_workarounds.needs_zs_shader_swizzle;
+      bool needs_shadow_shader_swizzle = (stage == MESA_SHADER_FRAGMENT) && ctx->gfx_stages[MESA_SHADER_FRAGMENT] &&
+                                         (ctx->di.shadow[MESA_SHADER_FRAGMENT].mask & ctx->gfx_stages[MESA_SHADER_FRAGMENT]->fs.legacy_shadow_mask & BITFIELD_BIT(idx));
+      if (sampler_view->shadow && (needs_zs_shader_swizzle || needs_shadow_shader_swizzle))
+         return sampler_view->shadow;
+      return sampler_view->image_view;
    }
    case ZINK_DESCRIPTOR_TYPE_IMAGE: {
       struct zink_image_view *image_view = &ctx->image_views[stage][idx];
@@ -1026,11 +1030,13 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
          ivci.components.g = zink_component_mapping(clamp_zs_swizzle(sampler_view->base.swizzle_g));
          ivci.components.b = zink_component_mapping(clamp_zs_swizzle(sampler_view->base.swizzle_b));
          ivci.components.a = zink_component_mapping(clamp_zs_swizzle(sampler_view->base.swizzle_a));
-         if (ivci.subresourceRange.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT) {
+         if (ivci.subresourceRange.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT ||
+             zink_screen(ctx->base.screen)->driver_workarounds.needs_zs_shader_swizzle) {
             VkComponentSwizzle *swizzle = (VkComponentSwizzle*)&ivci.components;
             for (unsigned i = 0; i < 4; i++) {
                /* these require shader rewrites to correctly emulate */
-               if (swizzle[i] == VK_COMPONENT_SWIZZLE_ONE || swizzle[i] == VK_COMPONENT_SWIZZLE_ZERO)
+               if (swizzle[i] == VK_COMPONENT_SWIZZLE_ONE ||
+                   (swizzle[i] == VK_COMPONENT_SWIZZLE_ZERO && ivci.subresourceRange.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT))
                   shadow_needs_shader_swizzle = true;
             }
             /* this is the data that will be used in shader rewrites */
@@ -2051,8 +2057,8 @@ zink_set_sampler_views(struct pipe_context *pctx,
       zink_context_invalidate_descriptor_state(ctx, shader_type, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot, num_views);
       if (!screen->info.have_EXT_non_seamless_cube_map)
          update_nonseamless_shader_key(ctx, shader_type);
-	  shadow_update |= shadow_mask != ctx->di.shadow[shader_type].mask;
-      zink_set_fs_shadow_needs_shader_swizzle_key(ctx, shadow_update);
+      shadow_update |= shadow_mask != ctx->di.shadow[shader_type].mask;
+      zink_set_zs_needs_shader_swizzle_key(ctx, shader_type, shadow_update);
    }
 }
 
