@@ -1279,7 +1279,7 @@ get_mem_access_size_align(nir_intrinsic_op intrin, uint8_t bytes,
       if (align < 4 && offset_is_const) {
          assert(util_is_power_of_two_nonzero(align_mul) && align_mul >= 4);
          const unsigned pad = align_offset % 4;
-         const unsigned comps32 = DIV_ROUND_UP(bytes + pad, 4);
+         const unsigned comps32 = MIN2(DIV_ROUND_UP(bytes + pad, 4), 4);
          return (nir_mem_access_size_align) {
             .bit_size = 32,
             .num_components = comps32,
