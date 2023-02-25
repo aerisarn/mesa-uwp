@@ -623,10 +623,12 @@ static void polaris_set_vgt_vertex_reuse(struct si_screen *sscreen, struct si_sh
    }
 }
 
-static struct si_pm4_state *si_get_shader_pm4_state(struct si_shader *shader)
+static struct si_pm4_state *si_get_shader_pm4_state(struct si_shader *shader,
+                                                    void (*emit_func)(struct si_context *ctx))
 {
    si_pm4_clear_state(&shader->pm4);
    shader->pm4.is_shader = true;
+   shader->pm4.atom.emit = emit_func;
    return &shader->pm4;
 }
 
@@ -697,7 +699,7 @@ static void si_shader_ls(struct si_screen *sscreen, struct si_shader *shader)
 
    assert(sscreen->info.gfx_level <= GFX8);
 
-   pm4 = si_get_shader_pm4_state(shader);
+   pm4 = si_get_shader_pm4_state(shader, NULL);
    if (!pm4)
       return;
 
@@ -718,7 +720,7 @@ static void si_shader_hs(struct si_screen *sscreen, struct si_shader *shader)
    struct si_pm4_state *pm4;
    uint64_t va;
 
-   pm4 = si_get_shader_pm4_state(shader);
+   pm4 = si_get_shader_pm4_state(shader, NULL);
    if (!pm4)
       return;
 
@@ -801,11 +803,10 @@ static void si_shader_es(struct si_screen *sscreen, struct si_shader *shader)
 
    assert(sscreen->info.gfx_level <= GFX8);
 
-   pm4 = si_get_shader_pm4_state(shader);
+   pm4 = si_get_shader_pm4_state(shader, si_emit_shader_es);
    if (!pm4)
       return;
 
-   pm4->atom.emit = si_emit_shader_es;
    va = shader->bo->gpu_address;
 
    if (shader->selector->stage == MESA_SHADER_VERTEX) {
@@ -1014,11 +1015,9 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 
    assert(sscreen->info.gfx_level < GFX11); /* gfx11 doesn't have the legacy pipeline */
 
-   pm4 = si_get_shader_pm4_state(shader);
+   pm4 = si_get_shader_pm4_state(shader, si_emit_shader_gs);
    if (!pm4)
       return;
-
-   pm4->atom.emit = si_emit_shader_gs;
 
    offset = num_components[0] * sel->info.base.gs.vertices_out;
    shader->gs.vgt_gsvs_ring_offset_1 = offset;
@@ -1329,7 +1328,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
                                     MAX2(gs_info->base.gs.invocations, 1) : 0;
    unsigned input_prim = si_get_input_prim(gs_sel, &shader->key);
    bool break_wave_at_eoi = false;
-   struct si_pm4_state *pm4 = si_get_shader_pm4_state(shader);
+   struct si_pm4_state *pm4 = si_get_shader_pm4_state(shader, NULL);
    if (!pm4)
       return;
 
@@ -1614,11 +1613,9 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
 
    assert(sscreen->info.gfx_level < GFX11);
 
-   pm4 = si_get_shader_pm4_state(shader);
+   pm4 = si_get_shader_pm4_state(shader, si_emit_shader_vs);
    if (!pm4)
       return;
-
-   pm4->atom.emit = si_emit_shader_vs;
 
    /* We always write VGT_GS_MODE in the VS state, because every switch
     * between different shader pipelines involving a different GS or no
@@ -1890,7 +1887,7 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
 
    shader->ps.db_shader_control = db_shader_control;
 
-   pm4 = si_get_shader_pm4_state(shader);
+   pm4 = si_get_shader_pm4_state(shader, si_emit_shader_ps);
    if (!pm4)
       return;
 
@@ -1901,8 +1898,6 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
       si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 0, 0));
       si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_BREAK_BATCH) | EVENT_INDEX(0));
    }
-
-   pm4->atom.emit = si_emit_shader_ps;
 
    /* SPI_BARYC_CNTL.POS_FLOAT_LOCATION
     * Possible vaules:
