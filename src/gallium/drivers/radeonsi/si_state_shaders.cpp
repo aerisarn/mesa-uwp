@@ -4169,8 +4169,9 @@ struct si_pm4_state *si_build_vgt_shader_config(struct si_screen *screen, union 
                 S_028B54_PRIMGEN_PASSTHRU_EN(key.u.ngg_passthrough) |
                 S_028B54_PRIMGEN_PASSTHRU_NO_MSG(key.u.ngg_passthrough &&
                                                  screen->info.family >= CHIP_NAVI23);
-   } else if (key.u.gs)
+   } else if (key.u.gs) {
       stages |= S_028B54_VS_EN(V_028B54_VS_STAGE_COPY_SHADER);
+   }
 
    if (screen->info.gfx_level >= GFX9)
       stages |= S_028B54_MAX_PRIMGRP_IN_WAVE(2);
@@ -4178,7 +4179,7 @@ struct si_pm4_state *si_build_vgt_shader_config(struct si_screen *screen, union 
    if (screen->info.gfx_level >= GFX10) {
       stages |= S_028B54_HS_W32_EN(key.u.hs_wave32) |
                 S_028B54_GS_W32_EN(key.u.gs_wave32) |
-                S_028B54_VS_W32_EN(key.u.vs_wave32);
+                S_028B54_VS_W32_EN(screen->info.gfx_level < GFX11 && key.u.vs_wave32);
       /* Legacy GS only supports Wave64. Read it as an implication. */
       assert(!(key.u.gs && !key.u.ngg) || !key.u.gs_wave32);
    }
