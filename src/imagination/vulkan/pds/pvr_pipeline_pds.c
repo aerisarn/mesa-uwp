@@ -1292,8 +1292,8 @@ void pvr_pds_generate_vertex_primary_program(
                                    /* cc    */ 0,
                                    /* end   */ 0,
                                    /* src0  */ R32_C(const_base + 3),
-                                   /* src2  */ (index),
-                                   /* src1  */ R64_C((const_base + 4) >> 1),
+                                   /* src1  */ (index),
+                                   /* src2  */ R64_C((const_base + 4) >> 1),
                                    /* src3  */ (const_base + 6) >> 1));
          }
       }
