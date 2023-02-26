@@ -871,8 +871,10 @@ fd6_clear_texture(struct pipe_context *pctx, struct pipe_resource *prsc,
       fprintf(stderr, "\n");
    }
 
-   if (!can_do_clear(prsc, level, box))
-      goto fallback;
+   if (!can_do_clear(prsc, level, box)) {
+      util_clear_texture(pctx, prsc, level, box, data);
+      return;
+   }
 
    union pipe_color_union color;
 
@@ -942,11 +944,6 @@ fd6_clear_texture(struct pipe_context *pctx, struct pipe_resource *prsc,
     * the ctx->batch may need to turn its queries back on.
     */
    fd_context_dirty(ctx, FD_DIRTY_QUERY);
-
-   return;
-
-fallback:
-   util_clear_texture(pctx, prsc, level, box, data);
 }
 
 void
