@@ -3723,11 +3723,11 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
 
    if (!zink_resource_image_barrier_init(&imb, res, new_layout, flags, pipeline))
       return;
-   /* only barrier if we're changing layout or doing something besides read -> read */
    bool is_write = zink_resource_access_is_write(imb.dstAccessMask);
    VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
    assert(new_layout);
-   if (!res->obj->access_stage)
+   enum zink_resource_access rw = is_write ? ZINK_RESOURCE_ACCESS_RW : ZINK_RESOURCE_ACCESS_WRITE;
+   if (!res->obj->access_stage || zink_resource_usage_check_completion_fast(zink_screen(ctx->base.screen), res, rw))
       imb.srcAccessMask = 0;
    if (res->obj->needs_zs_evaluate)
       imb.pNext = &res->obj->zs_evaluate;
@@ -3767,11 +3767,11 @@ zink_resource_image_barrier2(struct zink_context *ctx, struct zink_resource *res
 
    if (!zink_resource_image_barrier2_init(&imb, res, new_layout, flags, pipeline))
       return;
-   /* only barrier if we're changing layout or doing something besides read -> read */
    bool is_write = zink_resource_access_is_write(imb.dstAccessMask);
    VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
    assert(new_layout);
-   if (!res->obj->access_stage)
+   enum zink_resource_access rw = is_write ? ZINK_RESOURCE_ACCESS_RW : ZINK_RESOURCE_ACCESS_WRITE;
+   if (!res->obj->access_stage || zink_resource_usage_check_completion_fast(zink_screen(ctx->base.screen), res, rw))
       imb.srcAccessMask = 0;
    if (res->obj->needs_zs_evaluate)
       imb.pNext = &res->obj->zs_evaluate;
