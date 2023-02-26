@@ -5365,6 +5365,12 @@ typedef struct nir_lower_tex_options {
     */
    bool lower_array_layer_round_even;
 
+   /* If true, texture_index (sampler_index) will be zero if a texture_offset
+    * (sampler_offset) source is present. This is convenient for backends that
+    * support indirect indexing of textures (samplers) but not offsetting it.
+    */
+   bool lower_index_to_offset;
+
    /**
     * Payload data to be sent to callback / filter functions.
     */
