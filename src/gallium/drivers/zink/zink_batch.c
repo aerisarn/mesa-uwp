@@ -832,6 +832,18 @@ zink_screen_usage_check_completion(struct zink_screen *screen, const struct zink
    return zink_screen_timeline_wait(screen, u->usage, 0);
 }
 
+/* an even faster check that doesn't ioctl */
+bool
+zink_screen_usage_check_completion_fast(struct zink_screen *screen, const struct zink_batch_usage *u)
+{
+   if (!zink_batch_usage_exists(u))
+      return true;
+   if (zink_batch_usage_is_unflushed(u))
+      return false;
+
+   return zink_screen_check_last_finished(screen, u->usage);
+}
+
 bool
 zink_batch_usage_check_completion(struct zink_context *ctx, const struct zink_batch_usage *u)
 {
