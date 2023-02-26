@@ -76,7 +76,7 @@ struct fd6_descriptor_set {
    struct fd_bo *bo;
 };
 
-static void
+static inline void
 fd6_descriptor_set_invalidate(struct fd6_descriptor_set *set)
 {
    if (!set->bo)
