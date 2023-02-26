@@ -3875,14 +3875,15 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_resource *res
    if (!zink_resource_buffer_needs_barrier(res, flags, pipeline))
       return;
 
-   if (res->obj->access) {
+   bool is_write = zink_resource_access_is_write(flags);
+   enum zink_resource_access rw = is_write ? ZINK_RESOURCE_ACCESS_RW : ZINK_RESOURCE_ACCESS_WRITE;
+   if (res->obj->access && !zink_resource_usage_check_completion_fast(zink_screen(ctx->base.screen), res, rw)) {
       VkMemoryBarrier bmb;
       bmb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
       bmb.pNext = NULL;
       bmb.srcAccessMask = res->obj->access;
       bmb.dstAccessMask = flags;
       assert(res->obj->access_stage);
-      bool is_write = zink_resource_access_is_write(flags);
       VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
 
       bool marker = zink_cmd_debug_marker_begin(ctx, "buffer_barrier");
@@ -3912,7 +3913,9 @@ zink_resource_buffer_barrier2(struct zink_context *ctx, struct zink_resource *re
    if (!zink_resource_buffer_needs_barrier(res, flags, pipeline))
       return;
 
-   if (res->obj->access) {
+   bool is_write = zink_resource_access_is_write(flags);
+   enum zink_resource_access rw = is_write ? ZINK_RESOURCE_ACCESS_RW : ZINK_RESOURCE_ACCESS_WRITE;
+   if (res->obj->access && !zink_resource_usage_check_completion_fast(zink_screen(ctx->base.screen), res, rw)) {
       VkMemoryBarrier2 bmb;
       bmb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
       bmb.pNext = NULL;
@@ -3921,7 +3924,6 @@ zink_resource_buffer_barrier2(struct zink_context *ctx, struct zink_resource *re
       bmb.dstStageMask = pipeline;
       bmb.dstAccessMask = flags;
       assert(res->obj->access_stage);
-      bool is_write = zink_resource_access_is_write(flags);
       VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
       VkDependencyInfo dep = {
          VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
