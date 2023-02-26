@@ -141,7 +141,7 @@ si_emit_compute(struct radv_device *device, struct radeon_cmdbuf *cs)
 
       assert(device->physical_device->rad_info.gfx_level == GFX8);
 
-      tba_va = radv_trap_handler_shader_get_va(device->trap_handler_shader);
+      tba_va = radv_shader_get_va(device->trap_handler_shader);
       tma_va = radv_buffer_get_va(device->tma_bo);
 
       radeon_set_sh_reg_seq(cs, R_00B838_COMPUTE_TBA_LO, 4);
@@ -604,7 +604,7 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
 
       assert(device->physical_device->rad_info.gfx_level == GFX8);
 
-      tba_va = radv_trap_handler_shader_get_va(device->trap_handler_shader);
+      tba_va = radv_shader_get_va(device->trap_handler_shader);
       tma_va = radv_buffer_get_va(device->tma_bo);
 
       uint32_t regs[] = {R_00B000_SPI_SHADER_TBA_LO_PS, R_00B100_SPI_SHADER_TBA_LO_VS,
