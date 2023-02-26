@@ -940,9 +940,64 @@ agx_clear(struct pipe_context *pctx, unsigned buffers,
 }
 
 static void
-agx_flush_resource(struct pipe_context *ctx, struct pipe_resource *resource)
+agx_flush_resource(struct pipe_context *pctx, struct pipe_resource *pres)
 {
-   agx_flush_writer(agx_context(ctx), agx_resource(resource), "flush_resource");
+   struct agx_resource *rsrc = agx_resource(pres);
+
+   /* flush_resource is used to prepare resources for sharing, so if this is not
+    * already a shareabe resource, make it so
+    */
+   struct agx_bo *old = rsrc->bo;
+   if (!(old->flags & AGX_BO_SHAREABLE)) {
+      assert(rsrc->layout.levels == 1 &&
+             "Shared resources must not be mipmapped");
+      assert(rsrc->layout.sample_count_sa == 1 &&
+             "Shared resources must not be multisampled");
+      assert(rsrc->bo);
+      assert(!(pres->bind & PIPE_BIND_SHARED));
+
+      struct pipe_resource templ = *pres;
+      templ.bind |= PIPE_BIND_SHARED;
+
+      /* Create a new shareable resource */
+      struct agx_resource *new_res =
+         agx_resource(pctx->screen->resource_create(pctx->screen, &templ));
+
+      assert(new_res);
+
+      /* Blit it over */
+      struct pipe_blit_info blit = {0};
+
+      u_box_3d(0, 0, 0, rsrc->layout.width_px, rsrc->layout.height_px,
+               rsrc->layout.depth_px, &blit.dst.box);
+      blit.src.box = blit.dst.box;
+
+      blit.dst.resource = &new_res->base;
+      blit.dst.format = new_res->base.format;
+      blit.dst.level = 0;
+      blit.src.resource = pres;
+      blit.src.format = pres->format;
+      blit.src.level = 0;
+      blit.mask = util_format_get_mask(blit.src.format);
+      blit.filter = PIPE_TEX_FILTER_NEAREST;
+      agx_blit(pctx, &blit);
+
+      /* Flush the blit out, to make sure the old resource is no longer used */
+      agx_flush_writer(agx_context(pctx), new_res, "flush_resource");
+
+      /* Copy the bind flags and swap the BOs */
+      rsrc->base.bind = new_res->base.bind;
+      rsrc->bo = new_res->bo;
+      new_res->bo = old;
+
+      /* Free the new resource, which now owns the old BO */
+      pipe_resource_reference((struct pipe_resource **)&new_res, NULL);
+   } else {
+      /* Otherwise just claim it's already shared */
+      pres->bind |= PIPE_BIND_SHARED;
+      agx_flush_writer(agx_context(pctx), rsrc, "flush_resource");
+   }
+
 }
 
 /*
