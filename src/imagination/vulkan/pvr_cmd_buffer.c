@@ -35,7 +35,6 @@
 #include "pvr_csb.h"
 #include "pvr_csb_enum_helpers.h"
 #include "pvr_device_info.h"
-#include "pvr_end_of_tile.h"
 #include "pvr_formats.h"
 #include "pvr_hardcode.h"
 #include "pvr_hw_pass.h"
@@ -46,6 +45,7 @@
 #include "pvr_private.h"
 #include "pvr_tex_state.h"
 #include "pvr_types.h"
+#include "pvr_uscgen.h"
 #include "pvr_winsys.h"
 #include "util/bitscan.h"
 #include "util/bitset.h"
@@ -489,33 +489,27 @@ static VkResult pvr_sub_cmd_gfx_per_job_fragment_programs_create_and_upload(
       cmd_buffer->device->pixel_event_data_size_in_dwords * sizeof(uint32_t);
    const VkAllocationCallbacks *const allocator = &cmd_buffer->vk.pool->alloc;
    struct pvr_device *const device = cmd_buffer->device;
-   /* FIXME: This should come from the compiler for the USC pixel program. */
-   const uint32_t usc_temp_count = 0;
-   struct pvr_bo *usc_eot_program;
-   uint8_t *usc_eot_program_ptr;
+   struct util_dynarray eot_program_bin;
+   struct pvr_bo *usc_eot_program = NULL;
    uint32_t *staging_buffer;
+   uint32_t usc_temp_count;
    VkResult result;
 
+   pvr_uscgen_per_job_eot(pbe_cs_words[0],
+                          pbe_cs_words[1],
+                          &usc_temp_count,
+                          &eot_program_bin);
+
    result = pvr_cmd_buffer_upload_usc(cmd_buffer,
-                                      pvr_end_of_tile_program,
-                                      sizeof(pvr_end_of_tile_program),
+                                      eot_program_bin.data,
+                                      eot_program_bin.size,
                                       4,
                                       &usc_eot_program);
+
+   util_dynarray_fini(&eot_program_bin);
+
    if (result != VK_SUCCESS)
       return result;
-
-   assert((pbe_cs_words[1] & 0x3F) == 0x20);
-
-   /* FIXME: Stop patching the framebuffer address (this will require the
-    * end-of-tile program to be generated at run-time).
-    */
-   pvr_bo_cpu_map(device, usc_eot_program);
-   usc_eot_program_ptr = usc_eot_program->bo->map;
-   usc_eot_program_ptr[6] = (pbe_cs_words[0] >> 0) & 0xFF;
-   usc_eot_program_ptr[7] = (pbe_cs_words[0] >> 8) & 0xFF;
-   usc_eot_program_ptr[8] = (pbe_cs_words[0] >> 16) & 0xFF;
-   usc_eot_program_ptr[9] = (pbe_cs_words[0] >> 24) & 0xFF;
-   pvr_bo_cpu_unmap(device, usc_eot_program);
 
    pvr_pds_setup_doutu(&pixel_event_program.task_control,
                        usc_eot_program->vma->dev_addr.addr,
