@@ -2097,6 +2097,13 @@ summary(
 
 summary(
   {
+    'c_cpp_args': c_cpp_args,
+  },
+  section: 'Common C and C++ arguments'
+)
+
+summary(
+  {
     'OpenGL': with_opengl,
     'ES1': with_gles1,
     'ES2': with_gles2,
