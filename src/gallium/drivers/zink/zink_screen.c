@@ -51,6 +51,7 @@
 #include "util/u_cpu_detect.h"
 
 static int num_screens = 0;
+bool zink_tracing = false;
 
 #if DETECT_OS_WINDOWS
 #include <io.h>
@@ -3029,6 +3030,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       screen->info.have_EXT_graphics_pipeline_library = false;
 
    screen->screen_id = p_atomic_inc_return(&num_screens);
+   zink_tracing = screen->instance_info.have_EXT_debug_utils &&
+                  (u_trace_is_enabled(U_TRACE_TYPE_PERFETTO) || u_trace_is_enabled(U_TRACE_TYPE_MARKERS));
 
    return screen;
 

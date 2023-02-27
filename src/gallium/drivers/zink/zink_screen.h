@@ -32,6 +32,8 @@ extern "C" {
 #endif
 
 extern uint32_t zink_debug;
+extern bool zink_tracing;
+
 struct util_dl_library;
 
 void

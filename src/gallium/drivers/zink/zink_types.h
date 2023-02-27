@@ -222,7 +222,6 @@ enum zink_debug {
    ZINK_DEBUG_MAP = (1<<11),
 };
 
-
 /** fence types */
 struct tc_unflushed_batch_token;
 

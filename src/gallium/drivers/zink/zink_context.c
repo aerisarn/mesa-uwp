@@ -5481,10 +5481,7 @@ zink_update_barriers(struct zink_context *ctx, bool is_compute,
 bool
 zink_cmd_debug_marker_begin(struct zink_context *ctx, const char *fmt, ...)
 {
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
-
-   if (!screen->instance_info.have_EXT_debug_utils ||
-       !(u_trace_is_enabled(U_TRACE_TYPE_PERFETTO) || u_trace_is_enabled(U_TRACE_TYPE_MARKERS)))
+   if (!zink_tracing)
       return false;
 
    char *name;
