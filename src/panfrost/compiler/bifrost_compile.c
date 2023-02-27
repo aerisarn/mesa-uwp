@@ -1655,11 +1655,15 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
       break;
 
    case nir_intrinsic_scoped_barrier:
-      assert(b->shader->stage != MESA_SHADER_FRAGMENT);
-      assert(nir_intrinsic_memory_scope(instr) > NIR_SCOPE_SUBGROUP &&
-             "todo: subgroup barriers (different divergence rules)");
-
-      bi_barrier(b);
+      if (nir_intrinsic_execution_scope(instr) != NIR_SCOPE_NONE) {
+         assert(b->shader->stage != MESA_SHADER_FRAGMENT);
+         assert(nir_intrinsic_execution_scope(instr) > NIR_SCOPE_SUBGROUP &&
+                "todo: subgroup barriers (different divergence rules)");
+         bi_barrier(b);
+      }
+      /* Blob doesn't seem to do anything for memory barriers, so no need to
+       * check nir_intrinsic_memory_scope().
+       */
       break;
 
    case nir_intrinsic_shared_atomic_add:
