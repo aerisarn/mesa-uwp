@@ -18,6 +18,8 @@
 #include "venus-protocol/vn_protocol_driver_info.h"
 #include "vk_enum_to_str.h"
 
+#include "vn_ring.h"
+
 #define VN_RELAX_MIN_BASE_SLEEP_US (160)
 
 static const struct debug_control vn_debug_options[] = {
@@ -122,7 +124,7 @@ vn_extension_get_spec_version(const char *name)
 }
 
 void
-vn_relax(uint32_t *iter, const char *reason)
+vn_relax(const struct vn_ring *ring, uint32_t *iter, const char *reason)
 {
    /* Yield for the first 2^busy_wait_order times and then sleep for
     * base_sleep_us microseconds for the same number of times.  After that,
