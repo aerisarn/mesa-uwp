@@ -1267,9 +1267,7 @@ get_mem_access_size_align(nir_intrinsic_op intrin, uint8_t bytes,
                           uint32_t align_mul, uint32_t align_offset,
                           bool offset_is_const, const void *cb_data)
 {
-   assert(align_offset < align_mul);
-   const uint32_t align =
-      align_offset ? 1 << (ffs(align_offset) - 1) : align_mul;
+   const uint32_t align = nir_combined_align(align_mul, align_offset);
 
    switch (intrin) {
    case nir_intrinsic_load_ssbo:

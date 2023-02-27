@@ -1958,6 +1958,22 @@ nir_intrinsic_set_align(nir_intrinsic_instr *intrin,
    nir_intrinsic_set_align_offset(intrin, align_offset);
 }
 
+/** Returns a simple alignment for an align_mul/offset pair
+ *
+ * This helper converts from the full mul+offset alignment scheme used by
+ * most NIR intrinsics to a simple alignment.  The returned value is the
+ * largest power of two which divides both align_mul and align_offset.
+ * For any offset X which satisfies the complex alignment described by
+ * align_mul/offset, X % align == 0.
+ */
+static inline uint32_t
+nir_combined_align(uint32_t align_mul, uint32_t align_offset)
+{
+   assert(util_is_power_of_two_nonzero(align_mul));
+   assert(align_offset < align_mul);
+   return align_offset ? 1 << (ffs(align_offset) - 1) : align_mul;
+}
+
 /** Returns a simple alignment for a load/store intrinsic offset
  *
  * Instead of the full mul+offset alignment scheme provided by the ALIGN_MUL
@@ -1968,10 +1984,8 @@ nir_intrinsic_set_align(nir_intrinsic_instr *intrin,
 static inline unsigned
 nir_intrinsic_align(const nir_intrinsic_instr *intrin)
 {
-   const unsigned align_mul = nir_intrinsic_align_mul(intrin);
-   const unsigned align_offset = nir_intrinsic_align_offset(intrin);
-   assert(align_offset < align_mul);
-   return align_offset ? 1 << (ffs(align_offset) - 1) : align_mul;
+   return nir_combined_align(nir_intrinsic_align_mul(intrin),
+                             nir_intrinsic_align_offset(intrin));
 }
 
 static inline bool
