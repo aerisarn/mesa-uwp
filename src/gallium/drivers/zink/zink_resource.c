@@ -1939,6 +1939,7 @@ overwrite:
       res->obj->access = 0;
       res->obj->access_stage = 0;
       res->obj->last_write = 0;
+      zink_resource_copies_reset(res);
    }
 
    if (!ptr) {

@@ -3821,6 +3821,16 @@ zink_resource_image_barrier2(struct zink_context *ctx, struct zink_resource *res
       zink_resource_copies_reset(res);
 }
 
+bool
+zink_check_transfer_dst_barrier(struct zink_resource *res, unsigned level, const struct pipe_box *box)
+{
+   /* always barrier against previous non-transfer writes */
+   bool non_transfer_write = res->obj->last_write && res->obj->last_write != VK_ACCESS_TRANSFER_WRITE_BIT;
+   /* must barrier if clobbering a previous write */
+   bool transfer_clobber = res->obj->last_write == VK_ACCESS_TRANSFER_WRITE_BIT && zink_resource_copy_box_intersects(res, level, box);
+   return non_transfer_write || transfer_clobber;
+}
+
 void
 zink_resource_image_transfer_dst_barrier(struct zink_context *ctx, struct zink_resource *res, unsigned level, const struct pipe_box *box)
 {
@@ -3833,7 +3843,22 @@ zink_resource_image_transfer_dst_barrier(struct zink_context *ctx, struct zink_r
       res->obj->access_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
    }
    zink_resource_copy_box_add(res, level, box);
+}
 
+void
+zink_resource_buffer_transfer_dst_barrier(struct zink_context *ctx, struct zink_resource *res, unsigned offset, unsigned size)
+{
+   struct pipe_box box = {offset, 0, 0, size, 0, 0};
+   /* must barrier if something read the valid buffer range */
+   bool valid_read = res->obj->access && util_ranges_intersect(&res->valid_buffer_range, offset, offset + size) && !unordered_res_exec(ctx, res, true);
+   if (zink_check_transfer_dst_barrier(res, 0, &box) || valid_read) {
+      zink_screen(ctx->base.screen)->buffer_barrier(ctx, res, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+   } else {
+      res->obj->access = VK_ACCESS_TRANSFER_WRITE_BIT;
+      res->obj->last_write = VK_ACCESS_TRANSFER_WRITE_BIT;
+      res->obj->access_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+   }
+   zink_resource_copy_box_add(res, 0, &box);
 }
 
 VkPipelineStageFlags
@@ -3939,6 +3964,8 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_resource *res
 
    res->obj->access = flags;
    res->obj->access_stage = pipeline;
+   if (pipeline != VK_PIPELINE_STAGE_TRANSFER_BIT && is_write)
+      zink_resource_copies_reset(res);
 }
 
 void
@@ -3996,6 +4023,8 @@ zink_resource_buffer_barrier2(struct zink_context *ctx, struct zink_resource *re
 
    res->obj->access = flags;
    res->obj->access_stage = pipeline;
+   if (pipeline != VK_PIPELINE_STAGE_TRANSFER_BIT && is_write)
+      zink_resource_copies_reset(res);
 }
 
 bool
@@ -5027,6 +5056,7 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
    /* don't be too creative */
    zink_resource_object_reference(screen, &d->obj, s->obj);
    d->valid_buffer_range = s->valid_buffer_range;
+   zink_resource_copies_reset(d);
    /* force counter buffer reset */
    d->so_valid = false;
    if (num_rebinds && rebind_buffer(ctx, d, rebind_mask, num_rebinds) < num_rebinds)
