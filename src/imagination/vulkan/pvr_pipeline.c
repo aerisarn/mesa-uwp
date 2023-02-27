@@ -1848,17 +1848,23 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
    /* Vars needed for the new path. */
    struct pvr_pds_vertex_dma vtx_dma_descriptions[PVR_MAX_VERTEX_ATTRIB_DMAS];
    uint32_t vtx_dma_count = 0;
-   /* TODO: This should be used by the compiler for compiler the vertex shader.
-    */
-   rogue_vertex_inputs vertex_input_layout;
-   unsigned vertex_input_reg_count = 0;
+   rogue_vertex_inputs *vertex_input_layout;
+   unsigned *vertex_input_reg_count;
 
    uint32_t sh_count[PVR_STAGE_ALLOCATION_COUNT] = { 0 };
 
+   /* Setup shared build context. */
+   ctx = rogue_build_context_create(compiler, layout);
+   if (!ctx)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   vertex_input_layout = &ctx->stage_data.vs.inputs;
+   vertex_input_reg_count = &ctx->stage_data.vs.num_vertex_input_regs;
+
    if (!old_path) {
       pvr_graphics_pipeline_alloc_vertex_inputs(vertex_input_state,
-                                                &vertex_input_layout,
-                                                &vertex_input_reg_count,
+                                                vertex_input_layout,
+                                                vertex_input_reg_count,
                                                 &vtx_dma_descriptions,
                                                 &vtx_dma_count);
 
@@ -1872,11 +1878,6 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
             pvr_stage,
             &layout->sh_reg_layout_per_stage[pvr_stage]);
    }
-
-   /* Setup shared build context. */
-   ctx = rogue_build_context_create(compiler, layout);
-   if (!ctx)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    /* NIR middle-end translation. */
    for (gl_shader_stage stage = MESA_SHADER_FRAGMENT; stage > MESA_SHADER_NONE;
@@ -1974,7 +1975,7 @@ pvr_graphics_pipeline_compile(struct pvr_device *const device,
    } else {
       pvr_vertex_state_init(gfx_pipeline,
                             &ctx->common_data[MESA_SHADER_VERTEX],
-                            vertex_input_reg_count,
+                            *vertex_input_reg_count,
                             &ctx->stage_data.vs);
 
       if (!old_path) {
