@@ -1255,12 +1255,6 @@ void pvr_calculate_vertex_cam_size(const struct pvr_device_info *dev_info,
                                    uint32_t *const cam_size_out,
                                    uint32_t *const vs_max_instances_out);
 
-VkResult
-pvr_copy_or_resolve_color_image_region(struct pvr_cmd_buffer *cmd_buffer,
-                                       const struct pvr_image *src,
-                                       const struct pvr_image *dst,
-                                       const VkImageCopy2 *region);
-
 void pvr_get_image_subresource_layout(const struct pvr_image *image,
                                       const VkImageSubresource *subresource,
                                       VkSubresourceLayout *layout);

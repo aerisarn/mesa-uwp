@@ -31,6 +31,7 @@
 
 #include "hwdef/rogue_hw_defs.h"
 #include "hwdef/rogue_hw_utils.h"
+#include "pvr_blit.h"
 #include "pvr_bo.h"
 #include "pvr_clear.h"
 #include "pvr_common.h"
