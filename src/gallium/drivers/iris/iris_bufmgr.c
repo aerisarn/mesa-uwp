@@ -2396,6 +2396,8 @@ iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
     * fd so that its namespace does not clash with another.
     */
    bufmgr->fd = os_dupfd_cloexec(fd);
+   if (bufmgr->fd == -1)
+      goto error_dup;
 
    p_atomic_set(&bufmgr->refcount, 1);
 
@@ -2512,6 +2514,7 @@ error_slabs_init:
    }
 error_engine_info:
    close(bufmgr->fd);
+error_dup:
    free(bufmgr);
    return NULL;
 }
