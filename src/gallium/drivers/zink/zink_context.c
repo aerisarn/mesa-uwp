@@ -3761,6 +3761,9 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
 
    resource_check_defer_image_barrier(ctx, res, new_layout, pipeline);
 
+   if (is_write)
+      res->obj->last_write = imb.dstAccessMask;
+
    res->obj->access = imb.dstAccessMask;
    res->obj->access_stage = pipeline;
    res->layout = new_layout;
@@ -3808,6 +3811,9 @@ zink_resource_image_barrier2(struct zink_context *ctx, struct zink_resource *res
 
    resource_check_defer_image_barrier(ctx, res, new_layout, pipeline);
 
+   if (is_write)
+      res->obj->last_write = imb.dstAccessMask;
+
    res->obj->access = imb.dstAccessMask;
    res->obj->access_stage = pipeline;
    res->layout = new_layout;
@@ -3823,6 +3829,7 @@ zink_resource_image_transfer_dst_barrier(struct zink_context *ctx, struct zink_r
       zink_screen(ctx->base.screen)->image_barrier(ctx, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
    } else {
       res->obj->access = VK_ACCESS_TRANSFER_WRITE_BIT;
+      res->obj->last_write = VK_ACCESS_TRANSFER_WRITE_BIT;
       res->obj->access_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
    }
    zink_resource_copy_box_add(res, level, box);
@@ -3927,6 +3934,9 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_resource *res
 
    resource_check_defer_buffer_barrier(ctx, res, pipeline);
 
+   if (is_write)
+      res->obj->last_write = flags;
+
    res->obj->access = flags;
    res->obj->access_stage = pipeline;
 }
@@ -3980,6 +3990,9 @@ zink_resource_buffer_barrier2(struct zink_context *ctx, struct zink_resource *re
    }
 
    resource_check_defer_buffer_barrier(ctx, res, pipeline);
+
+   if (is_write)
+      res->obj->last_write = flags;
 
    res->obj->access = flags;
    res->obj->access_stage = pipeline;

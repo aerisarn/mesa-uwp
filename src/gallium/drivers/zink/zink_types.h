@@ -1114,7 +1114,9 @@ struct zink_resource_object {
    struct pipe_reference reference;
 
    VkPipelineStageFlagBits access_stage;
-   VkAccessFlags access;
+   VkAccessFlagBits access;
+   VkAccessFlagBits last_write;
+
    bool unordered_read;
    bool unordered_write;
    bool copies_valid;

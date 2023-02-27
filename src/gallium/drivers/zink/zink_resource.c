@@ -1938,6 +1938,7 @@ overwrite:
          zink_resource_usage_wait(ctx, res, ZINK_RESOURCE_ACCESS_WRITE);
       res->obj->access = 0;
       res->obj->access_stage = 0;
+      res->obj->last_write = 0;
    }
 
    if (!ptr) {
