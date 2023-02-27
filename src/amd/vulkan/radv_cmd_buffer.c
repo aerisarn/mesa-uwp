@@ -7213,6 +7213,8 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
       primary->state.last_vrs_rates_sgpr_idx = secondary->state.last_vrs_rates_sgpr_idx;
 
       primary->state.last_pa_sc_binner_cntl_0 = secondary->state.last_pa_sc_binner_cntl_0;
+
+      primary->state.rb_noncoherent_dirty |= secondary->state.rb_noncoherent_dirty;
    }
 
    /* After executing commands from secondary buffers we have to dirty
