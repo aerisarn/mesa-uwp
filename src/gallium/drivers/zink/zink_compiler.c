@@ -2925,14 +2925,14 @@ rewrite_tex_dest(nir_builder *b, nir_tex_instr *tex, nir_variable *var, void *da
 struct lower_zs_swizzle_state {
    bool shadow_only;
    unsigned base_sampler_id;
-   const struct zink_fs_shadow_key *swizzle;
+   const struct zink_zs_swizzle_key *swizzle;
 };
 
 static bool
 lower_zs_swizzle_tex_instr(nir_builder *b, nir_instr *instr, void *data)
 {
    struct lower_zs_swizzle_state *state = data;
-   const struct zink_fs_shadow_key *swizzle_key = state->swizzle;
+   const struct zink_zs_swizzle_key *swizzle_key = state->swizzle;
    assert(state->shadow_only || swizzle_key);
    if (instr->type != nir_instr_type_tex)
       return false;

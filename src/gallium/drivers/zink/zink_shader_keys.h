@@ -68,13 +68,13 @@ struct zink_gs_key {
    unsigned size;
 };
 
-struct zink_fs_shadow_swizzle {
+struct zink_zs_swizzle {
    uint8_t s[4];
 };
 
-struct zink_fs_shadow_key {
+struct zink_zs_swizzle_key {
    uint32_t mask;
-   struct zink_fs_shadow_swizzle swizzle[32];
+   struct zink_zs_swizzle swizzle[32];
 };
 
 struct zink_fs_key_base {
@@ -83,7 +83,7 @@ struct zink_fs_key_base {
    bool force_dual_color_blend : 1;
    bool force_persample_interp : 1;
    bool fbfetch_ms : 1;
-   bool shadow_needs_shader_swizzle : 1; //append zink_fs_shadow_key after the key data
+   bool shadow_needs_shader_swizzle : 1; //append zink_zs_swizzle_key after the key data
    uint8_t pad : 2;
    uint8_t coord_replace_bits;
 };

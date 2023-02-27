@@ -385,12 +385,12 @@ zink_set_zs_needs_shader_swizzle_key(struct zink_context *ctx, gl_shader_stage p
       if (pstage != MESA_SHADER_FRAGMENT)
          return;
       const struct zink_fs_key_base *fs = zink_get_fs_base_key(ctx);
-      bool enable = ctx->gfx_stages[MESA_SHADER_FRAGMENT] && (ctx->gfx_stages[MESA_SHADER_FRAGMENT]->fs.legacy_shadow_mask & ctx->di.shadow[pstage].mask) > 0;
+      bool enable = ctx->gfx_stages[MESA_SHADER_FRAGMENT] && (ctx->gfx_stages[MESA_SHADER_FRAGMENT]->fs.legacy_shadow_mask & ctx->di.zs_swizzle[pstage].mask) > 0;
       if (enable != fs->shadow_needs_shader_swizzle || (enable && swizzle_update))
          zink_set_fs_base_key(ctx)->shadow_needs_shader_swizzle = enable;
       return;
    }
-   bool enable = !!ctx->di.shadow[pstage].mask;
+   bool enable = !!ctx->di.zs_swizzle[pstage].mask;
    const struct zink_shader_key_base *key = zink_get_shader_key_base(ctx, pstage);
    if (enable != key->needs_zs_shader_swizzle || (enable && swizzle_update))
       zink_set_shader_key_base(ctx, pstage)->needs_zs_shader_swizzle = enable;
