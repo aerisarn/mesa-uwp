@@ -1304,31 +1304,32 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
 
    /* Setup depth/stencil job information. */
    if (hw_render->ds_attach_idx != VK_ATTACHMENT_UNUSED) {
-      struct pvr_image_view *iview =
+      struct pvr_image_view *ds_iview =
          render_pass_info->attachments[hw_render->ds_attach_idx];
-      const struct pvr_image *image = pvr_image_view_get_image(iview);
+      const struct pvr_image *ds_image = pvr_image_view_get_image(ds_iview);
 
-      job->has_depth_attachment = vk_format_has_depth(image->vk.format);
-      job->has_stencil_attachment = vk_format_has_stencil(image->vk.format);
+      job->has_depth_attachment = vk_format_has_depth(ds_image->vk.format);
+      job->has_stencil_attachment = vk_format_has_stencil(ds_image->vk.format);
 
       if (job->has_depth_attachment || job->has_stencil_attachment) {
          uint32_t level_pitch =
-            image->mip_levels[iview->vk.base_mip_level].pitch;
+            ds_image->mip_levels[ds_iview->vk.base_mip_level].pitch;
          const bool render_area_is_tile_aligned =
-            pvr_is_render_area_tile_aligned(cmd_buffer, iview);
+            pvr_is_render_area_tile_aligned(cmd_buffer, ds_iview);
          bool store_was_optimised_out = false;
          bool d_store = false, s_store = false;
          bool d_load = false, s_load = false;
 
-         job->ds.addr = image->dev_addr;
+         job->ds.addr = ds_image->dev_addr;
 
-         job->ds.stride = pvr_stride_from_pitch(level_pitch, iview->vk.format);
-         job->ds.height = iview->vk.extent.height;
-         job->ds.physical_width =
-            u_minify(image->physical_extent.width, iview->vk.base_mip_level);
-         job->ds.physical_height =
-            u_minify(image->physical_extent.height, iview->vk.base_mip_level);
-         job->ds.layer_size = image->layer_size;
+         job->ds.stride =
+            pvr_stride_from_pitch(level_pitch, ds_iview->vk.format);
+         job->ds.height = ds_iview->vk.extent.height;
+         job->ds.physical_width = u_minify(ds_image->physical_extent.width,
+                                           ds_iview->vk.base_mip_level);
+         job->ds.physical_height = u_minify(ds_image->physical_extent.height,
+                                            ds_iview->vk.base_mip_level);
+         job->ds.layer_size = ds_image->layer_size;
 
          job->ds_clear_value = default_ds_clear_value;
 
@@ -1344,8 +1345,8 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
                job->ds_clear_value.stencil = clear_values->stencil;
          }
 
-         job->ds.vk_format = iview->vk.format;
-         job->ds.memlayout = image->memlayout;
+         job->ds.vk_format = ds_iview->vk.format;
+         job->ds.memlayout = ds_image->memlayout;
 
          if (job->has_depth_attachment) {
             if (hw_render->depth_store || sub_cmd->barrier_store) {
