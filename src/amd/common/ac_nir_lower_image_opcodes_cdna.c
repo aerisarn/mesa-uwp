@@ -94,7 +94,7 @@ static nir_ssa_def *lower_image_coords(nir_builder *b, nir_ssa_def *desc, nir_ss
    }
    if (z) {
       nir_ssa_def *slice_elements = nir_channel(b, desc, 7);
-      index = nir_imul(b, slice_elements, z);
+      index = nir_iadd(b, index, nir_imul(b, slice_elements, z));
    }
 
    /* Determine whether the coordinates are out of bounds. */
