@@ -4510,40 +4510,51 @@ static bool
 emit_load_vulkan_descriptor(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    nir_intrinsic_instr* index = nir_src_as_intrinsic(intr->src[0]);
-   /* We currently do not support reindex */
-   assert(index && index->intrinsic == nir_intrinsic_vulkan_resource_index);
-
-   unsigned binding = nir_intrinsic_binding(index);
-   unsigned space = nir_intrinsic_desc_set(index);
-
-   /* The descriptor_set field for variables is only 5 bits. We shouldn't have intrinsics trying to go beyond that. */
-   assert(space < 32);
-
-   nir_variable *var = nir_get_binding_variable(ctx->shader, nir_chase_binding(intr->src[0]));
-
    const struct dxil_value *handle = NULL;
-   enum dxil_resource_class resource_class;
 
+   enum dxil_resource_class resource_class;
+   enum dxil_resource_kind resource_kind;
    switch (nir_intrinsic_desc_type(intr)) {
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
       resource_class = DXIL_RESOURCE_CLASS_CBV;
+      resource_kind = DXIL_RESOURCE_KIND_CBUFFER;
       break;
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-      if (var->data.access & ACCESS_NON_WRITEABLE)
-         resource_class = DXIL_RESOURCE_CLASS_SRV;
-      else
-         resource_class = DXIL_RESOURCE_CLASS_UAV;
+      resource_class = DXIL_RESOURCE_CLASS_UAV;
+      resource_kind = DXIL_RESOURCE_KIND_RAW_BUFFER;
       break;
    default:
       unreachable("unknown descriptor type");
       return false;
    }
 
-   const struct dxil_value *index_value = get_src(ctx, &intr->src[0], 0, nir_type_uint32);
-   if (!index_value)
-      return false;
+   if (index && index->intrinsic == nir_intrinsic_vulkan_resource_index) {
+      unsigned binding = nir_intrinsic_binding(index);
+      unsigned space = nir_intrinsic_desc_set(index);
 
-   handle = emit_createhandle_call_dynamic(ctx, resource_class, space, binding, index_value, false);
+      /* The descriptor_set field for variables is only 5 bits. We shouldn't have intrinsics trying to go beyond that. */
+      assert(space < 32);
+
+      nir_variable *var = nir_get_binding_variable(ctx->shader, nir_chase_binding(intr->src[0]));
+      if (resource_class == DXIL_RESOURCE_CLASS_UAV &&
+          (var->data.access & ACCESS_NON_WRITEABLE))
+         resource_class = DXIL_RESOURCE_CLASS_SRV;
+
+      const struct dxil_value *index_value = get_src(ctx, &intr->src[0], 0, nir_type_uint32);
+      if (!index_value)
+         return false;
+
+      handle = emit_createhandle_call_dynamic(ctx, resource_class, space, binding, index_value, false);
+   } else {
+      const struct dxil_value *heap_index_value = get_src(ctx, &intr->src[0], 0, nir_type_uint32);
+      if (!heap_index_value)
+         return false;
+      const struct dxil_value *unannotated_handle = emit_createhandle_heap(ctx, heap_index_value, false, true);
+      const struct dxil_value *res_props = dxil_module_get_buffer_res_props_const(&ctx->mod, resource_class, resource_kind);
+      if (!unannotated_handle || !res_props)
+         return false;
+      handle = emit_annotate_handle(ctx, unannotated_handle, res_props);
+   }
 
    store_dest_value(ctx, &intr->dest, 0, handle);
    store_dest(ctx, &intr->dest, 1, get_src(ctx, &intr->src[0], 1, nir_type_uint32), nir_type_uint32);
