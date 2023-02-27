@@ -44,11 +44,6 @@ KHR-GL43.shader_image_load_store.basic-allFormats-loadGeometryStages,Fail
 KHR-GL43.shader_image_load_store.basic-allFormats-storeGeometryStages,Fail
 KHR-GL43.shader_image_load_store.basic-allTargets-store,Fail
 KHR-GL43.shader_image_load_store.incomplete_textures,Fail
-KHR-GL43.shader_storage_buffer_object.advanced-indirectAddressing-case2,Fail
-KHR-GL43.shader_storage_buffer_object.advanced-usage-case1,Fail
-KHR-GL43.shader_storage_buffer_object.advanced-usage-sync,Fail
-KHR-GL43.shader_storage_buffer_object.basic-atomic-case1,Fail
-KHR-GL43.shader_storage_buffer_object.basic-atomic-case2,Fail
 KHR-GL43.shader_subroutine.ssbo_atomic_image_load_store,Fail
 
 KHR-Single-GL43.arrays_of_arrays_gl.InteractionArgumentAliasing1,Fail

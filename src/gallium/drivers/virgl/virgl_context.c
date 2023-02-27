@@ -714,7 +714,9 @@ static void *virgl_shader_encoder(struct pipe_context *ctx,
    if (shader->type == PIPE_SHADER_IR_NIR) {
       struct nir_to_tgsi_options options = {
          .unoptimized_ra = true,
-         .lower_fabs = true
+         .lower_fabs = true,
+         .lower_ssbo_bindings =
+               rs->caps.caps.v2.host_feature_check_version >= 16
       };
 
       if (!(rs->caps.caps.v2.capability_bits_v2 & VIRGL_CAP_V2_TEXTURE_SHADOW_LOD) &&
