@@ -956,13 +956,34 @@ emit_createhandle_call_pre_6_6(struct ntd_context *ctx,
 
 static const struct dxil_value *
 emit_annotate_handle(struct ntd_context *ctx,
-                     enum dxil_resource_class resource_class,
-                     unsigned resource_range_id,
-                     const struct dxil_value *unannotated_handle)
+                     const struct dxil_value *unannotated_handle,
+                     const struct dxil_value *res_props)
 {
    const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod, DXIL_INTR_ANNOTATE_HANDLE);
    if (!opcode)
       return NULL;
+
+   const struct dxil_value *args[] = {
+      opcode,
+      unannotated_handle,
+      res_props
+   };
+
+   const struct dxil_func *func =
+      dxil_get_function(&ctx->mod, "dx.op.annotateHandle", DXIL_NONE);
+
+   if (!func)
+      return NULL;
+
+   return dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+}
+
+static const struct dxil_value *
+emit_annotate_handle_from_metadata(struct ntd_context *ctx,
+                                   enum dxil_resource_class resource_class,
+                                   unsigned resource_range_id,
+                                   const struct dxil_value *unannotated_handle)
+{
 
    const struct util_dynarray *mdnodes;
    switch (resource_class) {
@@ -987,19 +1008,7 @@ emit_annotate_handle(struct ntd_context *ctx,
    if (!res_props)
       return NULL;
 
-   const struct dxil_value *args[] = {
-      opcode,
-      unannotated_handle,
-      res_props
-   };
-
-   const struct dxil_func *func =
-      dxil_get_function(&ctx->mod, "dx.op.annotateHandle", DXIL_NONE);
-
-   if (!func)
-      return NULL;
-
-   return dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+   return emit_annotate_handle(ctx, unannotated_handle, res_props);
 }
 
 static const struct dxil_value *
@@ -1035,7 +1044,7 @@ emit_createhandle_and_annotate(struct ntd_context *ctx,
    if (!unannotated_handle)
       return NULL;
 
-   return emit_annotate_handle(ctx, resource_class, resource_range_id, unannotated_handle);
+   return emit_annotate_handle_from_metadata(ctx, resource_class, resource_range_id, unannotated_handle);
 }
 
 static const struct dxil_value *
