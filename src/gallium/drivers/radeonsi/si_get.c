@@ -897,6 +897,12 @@ static bool si_vid_is_format_supported(struct pipe_screen *screen, enum pipe_for
             return true;
          else
             return false;
+      case PIPE_FORMAT_R8G8B8A8_UNORM:
+      case PIPE_FORMAT_A8R8G8B8_UNORM:
+         if (sscreen->info.family == CHIP_GFX940)
+            return true;
+         else
+            return false;
       default:
          return false;
       }
