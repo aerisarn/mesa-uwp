@@ -947,6 +947,9 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
       op = is_float ? (mixed ? midgard_alu_op_fcsel_v : midgard_alu_op_fcsel)
                     : (mixed ? midgard_alu_op_icsel_v : midgard_alu_op_icsel);
 
+      int index = nir_src_index(ctx, &instr->src[0].src);
+      emit_explicit_constant(ctx, index, index);
+
       break;
    }
 
