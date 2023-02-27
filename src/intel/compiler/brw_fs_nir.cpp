@@ -6181,18 +6181,14 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
          unreachable("should be lowered");
 
       case nir_tex_src_texture_offset: {
-         /* Emit code to evaluate the actual indexing expression */
-         fs_reg tmp = vgrf(glsl_type::uint_type);
-         bld.ADD(tmp, src, brw_imm_ud(texture));
-         srcs[TEX_LOGICAL_SRC_SURFACE] = bld.emit_uniformize(tmp);
+         assert(srcs[TEX_LOGICAL_SRC_SURFACE].is_zero());
+         srcs[TEX_LOGICAL_SRC_SURFACE] = bld.emit_uniformize(src);
          break;
       }
 
       case nir_tex_src_sampler_offset: {
-         /* Emit code to evaluate the actual indexing expression */
-         fs_reg tmp = vgrf(glsl_type::uint_type);
-         bld.ADD(tmp, src, brw_imm_ud(sampler));
-         srcs[TEX_LOGICAL_SRC_SAMPLER] = bld.emit_uniformize(tmp);
+         assert(srcs[TEX_LOGICAL_SRC_SAMPLER].is_zero());
+         srcs[TEX_LOGICAL_SRC_SAMPLER] = bld.emit_uniformize(src);
          break;
       }
 
