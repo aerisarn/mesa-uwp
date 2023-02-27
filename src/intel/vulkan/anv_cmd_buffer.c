@@ -570,25 +570,37 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
          anv_descriptor_set_is_push(set)) {
       pipe_state->descriptors[set_index] = set;
 
-      /* Those stages don't have access to HW binding tables.
-       * This means that we have to upload the descriptor set
-       * as an 64-bit address in the push constants.
+      /* When using indirect descriptors, stages that have access to the HW
+       * binding tables, never need to access the
+       * anv_push_constants::desc_offsets fields, because any data they need
+       * from the descriptor buffer is accessible through a binding table
+       * entry. For stages that are "bindless" (Mesh/Task/RT), we need to
+       * provide anv_push_constants::desc_offsets matching the bound
+       * descriptor so that shaders can access the descriptor buffer through
+       * A64 messages.
+       *
+       * With direct descriptors, the shaders can use the
+       * anv_push_constants::desc_offsets to build bindless offsets. So it's
+       * we always need to update the push constant data.
        */
-      bool update_desc_sets = stages & (VK_SHADER_STAGE_TASK_BIT_EXT |
-                                        VK_SHADER_STAGE_MESH_BIT_EXT |
-                                        VK_SHADER_STAGE_RAYGEN_BIT_KHR |
-                                        VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
-                                        VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
-                                        VK_SHADER_STAGE_MISS_BIT_KHR |
-                                        VK_SHADER_STAGE_INTERSECTION_BIT_KHR |
-                                        VK_SHADER_STAGE_CALLABLE_BIT_KHR);
+      bool update_desc_sets =
+         !cmd_buffer->device->physical->indirect_descriptors ||
+         (stages & (VK_SHADER_STAGE_TASK_BIT_EXT |
+                    VK_SHADER_STAGE_MESH_BIT_EXT |
+                    VK_SHADER_STAGE_RAYGEN_BIT_KHR |
+                    VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
+                    VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
+                    VK_SHADER_STAGE_MISS_BIT_KHR |
+                    VK_SHADER_STAGE_INTERSECTION_BIT_KHR |
+                    VK_SHADER_STAGE_CALLABLE_BIT_KHR));
 
       if (update_desc_sets) {
          struct anv_push_constants *push = &pipe_state->push_constants;
 
          struct anv_address set_addr = anv_descriptor_set_address(set);
-         uint64_t addr = anv_address_physical(set_addr);
-         uint32_t offset = addr & 0xffffffff;
+         uint64_t offset =
+            anv_address_physical(set_addr) -
+            cmd_buffer->device->physical->va.binding_table_pool.addr;
          assert((offset & ~ANV_DESCRIPTOR_SET_OFFSET_MASK) == 0);
          push->desc_offsets[set_index] &= ~ANV_DESCRIPTOR_SET_OFFSET_MASK;
          push->desc_offsets[set_index] |= offset;
