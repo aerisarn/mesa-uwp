@@ -131,6 +131,40 @@ nvk_query_report_map(struct nvk_query_pool *pool, uint32_t query)
    return (void *)((char *)pool->bo_map + nvk_query_offset(pool, query));
 }
 
+/**
+ * Goes through a series of consecutive query indices in the given pool,
+ * setting all element values to 0 and emitting them as available.
+ */
+static void
+emit_zero_queries(struct nvk_cmd_buffer *cmd, struct nvk_query_pool *pool,
+                  uint32_t first_index, uint32_t num_queries)
+{
+   switch (pool->vk.query_type) {
+   case VK_QUERY_TYPE_OCCLUSION:
+   case VK_QUERY_TYPE_TIMESTAMP:
+   case VK_QUERY_TYPE_PIPELINE_STATISTICS: {
+      for (uint32_t i = 0; i < num_queries; i++) {
+         uint64_t addr = nvk_query_available_addr(pool, first_index + i);
+
+         struct nv_push *p = nvk_cmd_buffer_push(cmd, 5);
+         P_MTHD(p, NV9097, SET_REPORT_SEMAPHORE_A);
+         P_NV9097_SET_REPORT_SEMAPHORE_A(p, addr >> 32);
+         P_NV9097_SET_REPORT_SEMAPHORE_B(p, addr);
+         P_NV9097_SET_REPORT_SEMAPHORE_C(p, 1);
+         P_NV9097_SET_REPORT_SEMAPHORE_D(p, {
+            .operation = OPERATION_RELEASE,
+            .release = RELEASE_AFTER_ALL_PRECEEDING_WRITES_COMPLETE,
+            .pipeline_location = PIPELINE_LOCATION_ALL,
+            .structure_size = STRUCTURE_SIZE_ONE_WORD,
+         });
+      }
+      break;
+   }
+   default:
+      unreachable("Unsupported query type");
+   }
+}
+
 VKAPI_ATTR void VKAPI_CALL
 nvk_ResetQueryPool(VkDevice device,
                    VkQueryPool queryPool,
@@ -226,6 +260,29 @@ nvk_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
       .pipeline_location = PIPELINE_LOCATION_ALL,
       .structure_size = STRUCTURE_SIZE_ONE_WORD,
    });
+
+   /* From the Vulkan spec:
+    *
+    *   "If vkCmdWriteTimestamp2 is called while executing a render pass
+    *    instance that has multiview enabled, the timestamp uses N consecutive
+    *    query indices in the query pool (starting at query) where N is the
+    *    number of bits set in the view mask of the subpass the command is
+    *    executed in. The resulting query values are determined by an
+    *    implementation-dependent choice of one of the following behaviors:"
+    *
+    * In our case, only the first query is used, so we emit zeros for the
+    * remaining queries, as described in the first behavior listed in the
+    * Vulkan spec:
+    *
+    *   "The first query is a timestamp value and (if more than one bit is set
+    *   in the view mask) zero is written to the remaining queries."
+    */
+   if (cmd->state.gfx.render.view_mask != 0) {
+      const uint32_t num_queries =
+         util_bitcount(cmd->state.gfx.render.view_mask);
+      if (num_queries > 1)
+         emit_zero_queries(cmd, pool, query + 1, num_queries - 1);
+   }
 }
 
 struct nvk_3d_stat_query {
@@ -439,6 +496,25 @@ nvk_CmdEndQueryIndexedEXT(VkCommandBuffer commandBuffer,
    nvk_cmd_buffer_ref_bo(cmd, pool->bo);
 
    nvk_cmd_begin_end_query(cmd, pool, query, index, true);
+
+   /* From the Vulkan spec:
+    *
+    *   "If queries are used while executing a render pass instance that has
+    *    multiview enabled, the query uses N consecutive query indices in
+    *    the query pool (starting at query) where N is the number of bits set
+    *    in the view mask in the subpass the query is used in. How the
+    *    numerical results of the query are distributed among the queries is
+    *    implementation-dependent."
+    *
+    * In our case, only the first query is used, so we emit zeros for the
+    * remaining queries.
+    */
+   if (cmd->state.gfx.render.view_mask != 0) {
+      const uint32_t num_queries =
+         util_bitcount(cmd->state.gfx.render.view_mask);
+      if (num_queries > 1)
+         emit_zero_queries(cmd, pool, query + 1, num_queries - 1);
+   }
 }
 
 static bool
