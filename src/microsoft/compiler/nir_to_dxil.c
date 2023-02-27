@@ -356,6 +356,7 @@ enum dxil_intr {
 
    DXIL_INTR_ANNOTATE_HANDLE = 216,
    DXIL_INTR_CREATE_HANDLE_FROM_BINDING = 217,
+   DXIL_INTR_CREATE_HANDLE_FROM_HEAP = 218,
 
    DXIL_INTR_IS_HELPER_LANE = 221,
    DXIL_INTR_SAMPLE_CMP_LEVEL = 224,
@@ -1081,6 +1082,39 @@ emit_createhandle_call_const_index(struct ntd_context *ctx,
    return emit_createhandle_call(ctx, resource_class, lower_bound, upper_bound, space,
                                  resource_range_id, resource_range_index_value,
                                  non_uniform_resource_index);
+}
+
+static const struct dxil_value *
+emit_createhandle_heap(struct ntd_context *ctx,
+                       const struct dxil_value *resource_range_index,
+                       bool is_sampler,
+                       bool non_uniform_resource_index)
+{
+   if (is_sampler)
+      ctx->mod.feats.sampler_descriptor_heap_indexing = true;
+   else
+      ctx->mod.feats.resource_descriptor_heap_indexing = true;
+
+   const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod, DXIL_INTR_CREATE_HANDLE_FROM_HEAP);
+   const struct dxil_value *sampler = dxil_module_get_int1_const(&ctx->mod, is_sampler);
+   const struct dxil_value *non_uniform_resource_index_value = dxil_module_get_int1_const(&ctx->mod, non_uniform_resource_index);
+   if (!opcode || !sampler || !non_uniform_resource_index_value)
+      return NULL;
+
+   const struct dxil_value *args[] = {
+      opcode,
+      resource_range_index,
+      sampler,
+      non_uniform_resource_index_value
+   };
+
+   const struct dxil_func *func =
+      dxil_get_function(&ctx->mod, "dx.op.createHandleFromHeap", DXIL_NONE);
+
+   if (!func)
+      return NULL;
+
+   return dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
 }
 
 static void
@@ -3188,6 +3222,48 @@ get_resource_handle(struct ntd_context *ctx, nir_src *src, enum dxil_resource_cl
    return handle;
 }
 
+static const struct dxil_value *
+create_image_handle(struct ntd_context *ctx, nir_intrinsic_instr *image_intr)
+{
+   const struct dxil_value *unannotated_handle =
+      emit_createhandle_heap(ctx, get_src(ctx, &image_intr->src[0], 0, nir_type_uint32), false, true /*TODO: divergence*/);
+   const struct dxil_value *res_props =
+      dxil_module_get_uav_res_props_const(&ctx->mod, image_intr);
+
+   if (!unannotated_handle || !res_props)
+      return NULL;
+
+   return emit_annotate_handle(ctx, unannotated_handle, res_props);
+}
+
+static const struct dxil_value *
+create_srv_handle(struct ntd_context *ctx, nir_tex_instr *tex, nir_src *src)
+{
+   const struct dxil_value *unannotated_handle =
+      emit_createhandle_heap(ctx, get_src(ctx, src, 0, nir_type_uint32), false, true /*TODO: divergence*/);
+   const struct dxil_value *res_props =
+      dxil_module_get_srv_res_props_const(&ctx->mod, tex);
+
+   if (!unannotated_handle || !res_props)
+      return NULL;
+
+   return emit_annotate_handle(ctx, unannotated_handle, res_props);
+}
+
+static const struct dxil_value *
+create_sampler_handle(struct ntd_context *ctx, bool is_shadow, nir_src *src)
+{
+   const struct dxil_value *unannotated_handle =
+      emit_createhandle_heap(ctx, get_src(ctx, src, 0, nir_type_uint32), true, true /*TODO: divergence*/);
+   const struct dxil_value *res_props =
+      dxil_module_get_sampler_res_props_const(&ctx->mod, is_shadow);
+
+   if (!unannotated_handle || !res_props)
+      return NULL;
+
+   return emit_annotate_handle(ctx, unannotated_handle, res_props);
+}
+
 static bool
 emit_load_ssbo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
@@ -3953,7 +4029,9 @@ emit_end_primitive(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 static bool
 emit_image_store(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   const struct dxil_value *handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_TEXTURE2D);
+   const struct dxil_value *handle = intr->intrinsic == nir_intrinsic_bindless_image_store ?
+      create_image_handle(ctx, intr) :
+      get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_TEXTURE2D);
    if (!handle)
       return false;
 
@@ -3968,9 +4046,9 @@ emit_image_store(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return false;
 
    const struct dxil_value *coord[3] = { int32_undef, int32_undef, int32_undef };
-   enum glsl_sampler_dim image_dim = intr->intrinsic == nir_intrinsic_image_store ?
-      nir_intrinsic_image_dim(intr) :
-      glsl_get_sampler_dim(nir_src_as_deref(intr->src[0])->type);
+   enum glsl_sampler_dim image_dim = intr->intrinsic == nir_intrinsic_image_deref_store ?
+      glsl_get_sampler_dim(nir_src_as_deref(intr->src[0])->type) :
+      nir_intrinsic_image_dim(intr);
    unsigned num_coords = glsl_get_sampler_dim_coordinate_components(image_dim);
    if (is_array)
       ++num_coords;
@@ -4013,7 +4091,9 @@ emit_image_store(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 static bool
 emit_image_load(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   const struct dxil_value *handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_TEXTURE2D);
+   const struct dxil_value *handle = intr->intrinsic == nir_intrinsic_bindless_image_load ?
+      create_image_handle(ctx, intr) :
+      get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_TEXTURE2D);
    if (!handle)
       return false;
 
@@ -4028,9 +4108,9 @@ emit_image_load(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return false;
 
    const struct dxil_value *coord[3] = { int32_undef, int32_undef, int32_undef };
-   enum glsl_sampler_dim image_dim = intr->intrinsic == nir_intrinsic_image_load ?
-      nir_intrinsic_image_dim(intr) :
-      glsl_get_sampler_dim(nir_src_as_deref(intr->src[0])->type);
+   enum glsl_sampler_dim image_dim = intr->intrinsic == nir_intrinsic_image_deref_load ?
+      glsl_get_sampler_dim(nir_src_as_deref(intr->src[0])->type) :
+      nir_intrinsic_image_dim(intr);
    unsigned num_coords = glsl_get_sampler_dim_coordinate_components(image_dim);
    if (is_array)
       ++num_coords;
@@ -4075,12 +4155,15 @@ static bool
 emit_image_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr,
                   enum dxil_atomic_op op, nir_alu_type type)
 {
-   const struct dxil_value *handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_TEXTURE2D);
+   nir_deref_instr *src_as_deref = nir_src_as_deref(intr->src[0]);
+   bool is_bindless = !src_as_deref && !nir_intrinsic_has_range_base(intr);
+   const struct dxil_value *handle = is_bindless ?
+      create_image_handle(ctx, intr) :
+      get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_TEXTURE2D);
    if (!handle)
       return false;
 
    bool is_array = false;
-   nir_deref_instr *src_as_deref = nir_src_as_deref(intr->src[0]);
    if (src_as_deref)
       is_array = glsl_sampler_type_is_array(src_as_deref->type);
    else
@@ -4122,7 +4205,9 @@ emit_image_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr,
 static bool
 emit_image_atomic_comp_swap(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   const struct dxil_value *handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_TEXTURE2D);
+   const struct dxil_value *handle = intr->intrinsic == nir_intrinsic_bindless_image_atomic_comp_swap ?
+      create_image_handle(ctx, intr) :
+      get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_TEXTURE2D);
    if (!handle)
       return false;
 
@@ -4137,9 +4222,9 @@ emit_image_atomic_comp_swap(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return false;
 
    const struct dxil_value *coord[3] = { int32_undef, int32_undef, int32_undef };
-   enum glsl_sampler_dim image_dim = intr->intrinsic == nir_intrinsic_image_atomic_comp_swap ?
-      nir_intrinsic_image_dim(intr) :
-      glsl_get_sampler_dim(nir_src_as_deref(intr->src[0])->type);
+   enum glsl_sampler_dim image_dim = intr->intrinsic == nir_intrinsic_image_deref_atomic_comp_swap ?
+      glsl_get_sampler_dim(nir_src_as_deref(intr->src[0])->type) :
+      nir_intrinsic_image_dim(intr);
    unsigned num_coords = glsl_get_sampler_dim_coordinate_components(image_dim);
    if (is_array)
       ++num_coords;
@@ -4194,7 +4279,9 @@ emit_texture_size(struct ntd_context *ctx, struct texop_parameters *params)
 static bool
 emit_image_size(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   const struct dxil_value *handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_TEXTURE2D);
+   const struct dxil_value *handle = intr->intrinsic == nir_intrinsic_bindless_image_size ?
+      create_image_handle(ctx, intr) :
+      get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_TEXTURE2D);
    if (!handle)
       return false;
 
@@ -4853,42 +4940,55 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_shared_atomic_comp_swap(ctx, intr);
    case nir_intrinsic_image_deref_atomic_add:
    case nir_intrinsic_image_atomic_add:
+   case nir_intrinsic_bindless_image_atomic_add:
       return emit_image_atomic(ctx, intr, DXIL_ATOMIC_ADD, nir_type_int);
    case nir_intrinsic_image_deref_atomic_imin:
    case nir_intrinsic_image_atomic_imin:
+   case nir_intrinsic_bindless_image_atomic_imin:
       return emit_image_atomic(ctx, intr, DXIL_ATOMIC_IMIN, nir_type_int);
    case nir_intrinsic_image_deref_atomic_umin:
    case nir_intrinsic_image_atomic_umin:
+   case nir_intrinsic_bindless_image_atomic_umin:
       return emit_image_atomic(ctx, intr, DXIL_ATOMIC_UMIN, nir_type_uint);
    case nir_intrinsic_image_deref_atomic_imax:
    case nir_intrinsic_image_atomic_imax:
+   case nir_intrinsic_bindless_image_atomic_imax:
       return emit_image_atomic(ctx, intr, DXIL_ATOMIC_IMAX, nir_type_int);
    case nir_intrinsic_image_deref_atomic_umax:
    case nir_intrinsic_image_atomic_umax:
+   case nir_intrinsic_bindless_image_atomic_umax:
       return emit_image_atomic(ctx, intr, DXIL_ATOMIC_UMAX, nir_type_uint);
    case nir_intrinsic_image_deref_atomic_and:
    case nir_intrinsic_image_atomic_and:
+   case nir_intrinsic_bindless_image_atomic_and:
       return emit_image_atomic(ctx, intr, DXIL_ATOMIC_AND, nir_type_uint);
    case nir_intrinsic_image_deref_atomic_or:
    case nir_intrinsic_image_atomic_or:
+   case nir_intrinsic_bindless_image_atomic_or:
       return emit_image_atomic(ctx, intr, DXIL_ATOMIC_OR, nir_type_uint);
    case nir_intrinsic_image_deref_atomic_xor:
    case nir_intrinsic_image_atomic_xor:
+   case nir_intrinsic_bindless_image_atomic_xor:
       return emit_image_atomic(ctx, intr, DXIL_ATOMIC_XOR, nir_type_uint);
    case nir_intrinsic_image_deref_atomic_exchange:
    case nir_intrinsic_image_atomic_exchange:
+   case nir_intrinsic_bindless_image_atomic_exchange:
       return emit_image_atomic(ctx, intr, DXIL_ATOMIC_EXCHANGE, nir_type_uint);
    case nir_intrinsic_image_deref_atomic_comp_swap:
    case nir_intrinsic_image_atomic_comp_swap:
+   case nir_intrinsic_bindless_image_atomic_comp_swap:
       return emit_image_atomic_comp_swap(ctx, intr);
    case nir_intrinsic_image_store:
    case nir_intrinsic_image_deref_store:
+   case nir_intrinsic_bindless_image_store:
       return emit_image_store(ctx, intr);
    case nir_intrinsic_image_load:
    case nir_intrinsic_image_deref_load:
+   case nir_intrinsic_bindless_image_load:
       return emit_image_load(ctx, intr);
    case nir_intrinsic_image_size:
    case nir_intrinsic_image_deref_size:
+   case nir_intrinsic_bindless_image_size:
       return emit_image_size(ctx, intr);
    case nir_intrinsic_get_ssbo_size:
       return emit_get_ssbo_size(ctx, intr);
@@ -5536,6 +5636,15 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
                   dxil_module_get_int32_const(&ctx->mod, instr->sampler_index), 0),
                instr->sampler_non_uniform);
          }
+         break;
+
+      case nir_tex_src_texture_handle:
+         params.tex = create_srv_handle(ctx, instr, &instr->src[i].src);
+         break;
+
+      case nir_tex_src_sampler_handle:
+         if (nir_tex_instr_need_sampler(instr))
+            params.sampler = create_sampler_handle(ctx, instr->is_shadow, &instr->src[i].src);
          break;
 
       case nir_tex_src_projector:
