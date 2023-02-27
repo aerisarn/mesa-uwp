@@ -1087,33 +1087,180 @@ pvr_pass_get_pixel_output_width(const struct pvr_render_pass *pass,
  * to the nearest power-of-two (which will be tile-aligned). If the attachment
  * is not twiddled, we don't need to worry about tile-alignment at all.
  */
-static void
-pvr_sub_cmd_gfx_align_zls_subtiles(const struct pvr_device_info *dev_info,
-                                   const struct pvr_render_job *job,
-                                   const struct pvr_image *image)
+static bool pvr_sub_cmd_gfx_requires_ds_subtile_alignment(
+   const struct pvr_device_info *dev_info,
+   const struct pvr_render_job *job)
 {
+   const struct pvr_image *const ds_image =
+      pvr_image_view_get_image(job->ds.iview);
    uint32_t zls_tile_size_x;
    uint32_t zls_tile_size_y;
 
    rogue_get_zls_tile_size_xy(dev_info, &zls_tile_size_x, &zls_tile_size_y);
 
-   if (image->physical_extent.width >= zls_tile_size_x &&
-       image->physical_extent.height >= zls_tile_size_y) {
-      return;
+   if (ds_image->physical_extent.width >= zls_tile_size_x &&
+       ds_image->physical_extent.height >= zls_tile_size_y) {
+      return false;
    }
 
+   /* If we have the zls_subtile feature, we can skip the alignment iff:
+    *  - The attachment is not multisampled, and
+    *  - The depth and stencil attachments are the same.
+    */
    if (PVR_HAS_FEATURE(dev_info, zls_subtile) &&
-       image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
-       (job->has_stencil_attachment || !job->has_depth_attachment)) {
-      return;
+       ds_image->vk.samples == VK_SAMPLE_COUNT_1_BIT &&
+       job->has_stencil_attachment == job->has_depth_attachment) {
+      return false;
    }
 
-   pvr_finishme("Unaligned ZLS subtile");
-   mesa_logd("Image: %ux%u   ZLS tile: %ux%u\n",
-             image->physical_extent.width,
-             image->physical_extent.height,
-             zls_tile_size_x,
-             zls_tile_size_y);
+   /* No ZLS functions enabled; nothing to do. */
+   if ((!job->has_depth_attachment && !job->has_stencil_attachment) ||
+       (!job->ds.load && !job->ds.store)) {
+      return false;
+   }
+
+   return true;
+}
+
+static VkResult
+pvr_sub_cmd_gfx_align_ds_subtiles(struct pvr_cmd_buffer *const cmd_buffer,
+                                  struct pvr_sub_cmd_gfx *const gfx_sub_cmd)
+{
+   struct pvr_sub_cmd *const prev_sub_cmd =
+      container_of(gfx_sub_cmd, struct pvr_sub_cmd, gfx);
+   struct pvr_ds_attachment *const ds = &gfx_sub_cmd->job.ds;
+   const struct pvr_image *const ds_image = pvr_image_view_get_image(ds->iview);
+   const VkFormat copy_format = pvr_get_raw_copy_format(ds_image->vk.format);
+
+   struct pvr_suballoc_bo *buffer;
+   uint32_t buffer_layer_size;
+   VkBufferImageCopy2 region;
+   VkExtent2D zls_tile_size;
+   VkExtent2D rounded_size;
+   uint32_t buffer_size;
+   VkExtent2D scale;
+   VkResult result;
+
+   /* The operations below assume the last command in the buffer was the target
+    * gfx subcommand. Assert that this is the case.
+    */
+   assert(list_last_entry(&cmd_buffer->sub_cmds, struct pvr_sub_cmd, link) ==
+          prev_sub_cmd);
+
+   if (!ds->load && !ds->store)
+      return VK_SUCCESS;
+
+   rogue_get_zls_tile_size_xy(&cmd_buffer->device->pdevice->dev_info,
+                              &zls_tile_size.width,
+                              &zls_tile_size.height);
+   rogue_get_isp_scale_xy_from_samples(ds_image->vk.samples,
+                                       &scale.width,
+                                       &scale.height);
+
+   rounded_size = (VkExtent2D){
+      .width = ALIGN_POT(ds_image->physical_extent.width, zls_tile_size.width),
+      .height =
+         ALIGN_POT(ds_image->physical_extent.height, zls_tile_size.height),
+   };
+
+   buffer_layer_size = vk_format_get_blocksize(ds_image->vk.format) *
+                       rounded_size.width * rounded_size.height * scale.width *
+                       scale.height;
+
+   if (ds->iview->vk.layer_count > 1)
+      buffer_layer_size = ALIGN_POT(buffer_layer_size, ds_image->alignment);
+
+   buffer_size = buffer_layer_size * ds->iview->vk.layer_count;
+
+   result = pvr_cmd_buffer_alloc_mem(cmd_buffer,
+                                     cmd_buffer->device->heaps.general_heap,
+                                     buffer_size,
+                                     0,
+                                     &buffer);
+   if (result != VK_SUCCESS)
+      return result;
+
+   region = (VkBufferImageCopy2){
+      .sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2,
+      .pNext = NULL,
+      .bufferOffset = 0,
+      .bufferRowLength = rounded_size.width,
+      .bufferImageHeight = 0,
+      .imageSubresource = {
+         .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
+         .mipLevel = ds->iview->vk.base_mip_level,
+         .baseArrayLayer = ds->iview->vk.base_array_layer,
+         .layerCount = ds->iview->vk.layer_count,
+      },
+      .imageOffset = { 0 },
+      .imageExtent = {
+         .width = ds->iview->vk.extent.width,
+         .height = ds->iview->vk.extent.height,
+         .depth = 1,
+      },
+   };
+
+   if (ds->load) {
+      result =
+         pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_TRANSFER);
+      if (result != VK_SUCCESS)
+         return result;
+
+      result = pvr_copy_image_to_buffer_region_format(cmd_buffer,
+                                                      ds_image,
+                                                      buffer->dev_addr,
+                                                      &region,
+                                                      copy_format,
+                                                      copy_format);
+      if (result != VK_SUCCESS)
+         return result;
+
+      cmd_buffer->state.current_sub_cmd->transfer.serialize_with_frag = true;
+
+      result = pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
+      if (result != VK_SUCCESS)
+         return result;
+
+      /* Now we have to fiddle with cmd_buffer to place this transfer command
+       * *before* the target gfx subcommand.
+       */
+      list_move_to(&cmd_buffer->state.current_sub_cmd->link,
+                   &prev_sub_cmd->link);
+   }
+
+   if (ds->store) {
+      result =
+         pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_TRANSFER);
+      if (result != VK_SUCCESS)
+         return result;
+
+      result = pvr_copy_buffer_to_image_region_format(cmd_buffer,
+                                                      buffer->dev_addr,
+                                                      ds_image,
+                                                      &region,
+                                                      copy_format,
+                                                      copy_format,
+                                                      0);
+      if (result != VK_SUCCESS)
+         return result;
+
+      cmd_buffer->state.current_sub_cmd->transfer.serialize_with_frag = true;
+
+      result = pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   /* Finally, patch up the target graphics sub_cmd to use the correctly-strided
+    * buffer.
+    */
+   ds->has_alignment_transfers = true;
+   ds->addr = buffer->dev_addr;
+   ds->physical_extent = rounded_size;
+
+   gfx_sub_cmd->wait_on_previous_transfer = true;
+
+   return VK_SUCCESS;
 }
 
 struct pvr_emit_state {
@@ -1320,15 +1467,18 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
          bool d_store = false, s_store = false;
          bool d_load = false, s_load = false;
 
+         job->ds.iview = ds_iview;
          job->ds.addr = ds_image->dev_addr;
 
          job->ds.stride =
             pvr_stride_from_pitch(level_pitch, ds_iview->vk.format);
          job->ds.height = ds_iview->vk.extent.height;
-         job->ds.physical_width = u_minify(ds_image->physical_extent.width,
-                                           ds_iview->vk.base_mip_level);
-         job->ds.physical_height = u_minify(ds_image->physical_extent.height,
-                                            ds_iview->vk.base_mip_level);
+         job->ds.physical_extent = (VkExtent2D){
+            .width = u_minify(ds_image->physical_extent.width,
+                              ds_iview->vk.base_mip_level),
+            .height = u_minify(ds_image->physical_extent.height,
+                               ds_iview->vk.base_mip_level),
+         };
          job->ds.layer_size = ds_image->layer_size;
 
          job->ds_clear_value = default_ds_clear_value;
@@ -1409,9 +1559,13 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
 
          if (job->ds.load || job->ds.store || store_was_optimised_out)
             job->process_empty_tiles = true;
-      }
 
-      pvr_sub_cmd_gfx_align_zls_subtiles(dev_info, job, image);
+         if (pvr_sub_cmd_gfx_requires_ds_subtile_alignment(dev_info, job)) {
+            result = pvr_sub_cmd_gfx_align_ds_subtiles(cmd_buffer, sub_cmd);
+            if (result != VK_SUCCESS)
+               return result;
+         }
+      }
    } else {
       job->has_depth_attachment = false;
       job->has_stencil_attachment = false;

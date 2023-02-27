@@ -1340,21 +1340,29 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
 
    pvr_csb_pack ((uint64_t *)stream_ptr, CR_ISP_ZLSCTL, value) {
       if (job->has_depth_attachment) {
-         uint32_t aligned_width =
-            ALIGN_POT(job->ds.physical_width, ROGUE_IPF_TILE_SIZE_PIXELS);
-         uint32_t aligned_height =
-            ALIGN_POT(job->ds.physical_height, ROGUE_IPF_TILE_SIZE_PIXELS);
+         uint32_t alignment_x;
+         uint32_t alignment_y;
 
-         rogue_get_isp_num_tiles_xy(dev_info,
-                                    job->samples,
-                                    aligned_width,
-                                    aligned_height,
-                                    &value.zlsextent_x_z,
-                                    &value.zlsextent_y_z);
+         if (job->ds.has_alignment_transfers) {
+            rogue_get_zls_tile_size_xy(dev_info, &alignment_x, &alignment_y);
+         } else {
+            alignment_x = ROGUE_IPF_TILE_SIZE_PIXELS;
+            alignment_y = ROGUE_IPF_TILE_SIZE_PIXELS;
+         }
+
+         rogue_get_isp_num_tiles_xy(
+            dev_info,
+            job->samples,
+            ALIGN_POT(job->ds.physical_extent.width, alignment_x),
+            ALIGN_POT(job->ds.physical_extent.height, alignment_y),
+            &value.zlsextent_x_z,
+            &value.zlsextent_y_z);
+
          value.zlsextent_x_z -= 1;
          value.zlsextent_y_z -= 1;
 
-         if (job->ds.memlayout == PVR_MEMLAYOUT_TWIDDLED) {
+         if (job->ds.memlayout == PVR_MEMLAYOUT_TWIDDLED &&
+             !job->ds.has_alignment_transfers) {
             value.loadtwiddled = true;
             value.storetwiddled = true;
          }
@@ -1380,10 +1388,10 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
          }
 
          value.zloaden = job->ds.load;
-         value.forcezload = job->ds.load;
+         value.forcezload = value.zloaden;
 
          value.zstoreen = job->ds.store;
-         value.forcezstore = job->ds.store;
+         value.forcezstore = value.zstoreen;
 
          zload_format = value.zloadformat;
       } else {
@@ -1392,10 +1400,10 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
 
       if (job->has_stencil_attachment) {
          value.sstoreen = job->ds.store;
-         value.forcezstore = job->ds.store;
+         value.forcezstore = value.sstoreen;
 
          value.sloaden = job->ds.load;
-         value.forcezload = job->ds.load;
+         value.forcezload = value.sloaden;
       }
    }
    stream_ptr += pvr_cmd_length(CR_ISP_ZLSCTL);
@@ -1570,8 +1578,13 @@ static void pvr_frag_state_stream_init(struct pvr_render_ctx *ctx,
    if (PVR_HAS_FEATURE(dev_info, zls_subtile)) {
       pvr_csb_pack (stream_ptr, CR_ISP_ZLS_PIXELS, value) {
          if (job->has_depth_attachment) {
-            value.x = job->ds.stride - 1;
-            value.y = job->ds.height - 1;
+            if (job->ds.has_alignment_transfers) {
+               value.x = job->ds.physical_extent.width - 1;
+               value.y = job->ds.physical_extent.height - 1;
+            } else {
+               value.x = job->ds.stride - 1;
+               value.y = job->ds.height - 1;
+            }
          }
       }
       stream_ptr += pvr_cmd_length(CR_ISP_ZLS_PIXELS);
