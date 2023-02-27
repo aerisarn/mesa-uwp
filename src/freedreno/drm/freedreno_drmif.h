@@ -286,6 +286,7 @@ struct fd_bo *fd_bo_from_handle(struct fd_device *dev, uint32_t handle,
                                 uint32_t size);
 struct fd_bo *fd_bo_from_name(struct fd_device *dev, uint32_t name);
 struct fd_bo *fd_bo_from_dmabuf(struct fd_device *dev, int fd);
+struct fd_bo *fd_bo_from_dmabuf_drm(struct fd_device *dev, int fd);
 void fd_bo_mark_for_dump(struct fd_bo *bo);
 
 static inline uint64_t
@@ -302,6 +303,7 @@ void fd_bo_del_array(struct fd_bo **bos, int count);
 void fd_bo_del_list_nocache(struct list_head *list);
 int fd_bo_get_name(struct fd_bo *bo, uint32_t *name);
 uint32_t fd_bo_handle(struct fd_bo *bo);
+int fd_bo_dmabuf_drm(struct fd_bo *bo);
 int fd_bo_dmabuf(struct fd_bo *bo);
 uint32_t fd_bo_size(struct fd_bo *bo);
 void *fd_bo_map(struct fd_bo *bo);

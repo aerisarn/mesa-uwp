@@ -42,6 +42,8 @@ virtio_device_destroy(struct fd_device *dev)
 static const struct fd_device_funcs funcs = {
    .bo_new = virtio_bo_new,
    .bo_from_handle = virtio_bo_from_handle,
+   .bo_from_dmabuf = fd_bo_from_dmabuf_drm,
+   .bo_close_handle = fd_bo_close_handle_drm,
    .pipe_new = virtio_pipe_new,
    .flush = virtio_execbuf_flush,
    .destroy = virtio_device_destroy,
