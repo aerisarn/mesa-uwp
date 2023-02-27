@@ -3886,7 +3886,19 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_resource *res
       assert(res->obj->access_stage);
       VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
 
-      bool marker = zink_cmd_debug_marker_begin(ctx, "buffer_barrier");
+      bool marker = false;
+      if (unlikely(zink_tracing)) {
+         char buf[4096];
+         bool first = true;
+         unsigned idx = 0;
+         u_foreach_bit64(bit, flags) {
+            if (!first)
+               buf[idx++] = '|';
+            idx += snprintf(&buf[idx], sizeof(buf) - idx, "%s", vk_AccessFlagBits_to_str(1ul<<bit));
+            first = false;
+         }
+         marker = zink_cmd_debug_marker_begin(ctx, "buffer_barrier(%s)", buf);
+      }
       VKCTX(CmdPipelineBarrier)(
          cmdbuf,
          res->obj->access_stage ? res->obj->access_stage : pipeline_access_stage(res->obj->access),
@@ -3936,7 +3948,19 @@ zink_resource_buffer_barrier2(struct zink_context *ctx, struct zink_resource *re
          0,
          NULL
       };
-      bool marker = zink_cmd_debug_marker_begin(ctx, "buffer_barrier");
+      bool marker = false;
+      if (unlikely(zink_tracing)) {
+         char buf[4096];
+         bool first = true;
+         unsigned idx = 0;
+         u_foreach_bit64(bit, flags) {
+            if (!first)
+               buf[idx++] = '|';
+            idx += snprintf(&buf[idx], sizeof(buf) - idx, "%s", vk_AccessFlagBits_to_str(1ul<<bit));
+            first = false;
+         }
+         marker = zink_cmd_debug_marker_begin(ctx, "buffer_barrier(%s)", buf);
+      }
       VKCTX(CmdPipelineBarrier2)(cmdbuf, &dep);
       zink_cmd_debug_marker_end(ctx, marker);
    }
