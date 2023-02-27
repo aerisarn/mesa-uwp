@@ -603,10 +603,10 @@ _mesa_Materialfv(GLenum face, GLenum pname, const GLfloat *params)
       updateMats = ALL_MATERIAL_BITS;
    }
 
-   if (ctx->API == API_OPENGL_COMPAT && face == GL_FRONT) {
+   if (_mesa_is_desktop_gl_compat(ctx) && face == GL_FRONT) {
       updateMats &= FRONT_MATERIAL_BITS;
    }
-   else if (ctx->API == API_OPENGL_COMPAT && face == GL_BACK) {
+   else if (_mesa_is_desktop_gl_compat(ctx) && face == GL_BACK) {
       updateMats &= BACK_MATERIAL_BITS;
    }
    else if (face != GL_FRONT_AND_BACK) {

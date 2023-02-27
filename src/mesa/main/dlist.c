@@ -14094,7 +14094,7 @@ void
 _mesa_init_dispatch_save_begin_end(struct gl_context *ctx)
 {
    struct _glapi_table *tab = ctx->Dispatch.Save;
-   assert(ctx->API == API_OPENGL_COMPAT);
+   assert(_mesa_is_desktop_gl_compat(ctx));
 
 #define NAME_AE(x) _mesa_##x
 #define NAME_CALLLIST(x) save_##x

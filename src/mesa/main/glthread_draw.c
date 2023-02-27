@@ -436,7 +436,7 @@ draw_arrays(GLuint drawid, GLenum mode, GLint first, GLsizei count,
    }
 
    unsigned user_buffer_mask =
-      ctx->API == API_OPENGL_CORE ? 0 : get_user_buffer_mask(ctx);
+      _mesa_is_desktop_gl_core(ctx) ? 0 : get_user_buffer_mask(ctx);
 
    /* Fast path when nothing needs to be done.
     *
@@ -556,7 +556,7 @@ _mesa_marshal_MultiDrawArrays(GLenum mode, const GLint *first,
 
    struct glthread_attrib_binding buffers[VERT_ATTRIB_MAX];
    unsigned user_buffer_mask =
-      ctx->API == API_OPENGL_CORE || draw_count <= 0 ||
+      _mesa_is_desktop_gl_core(ctx) || draw_count <= 0 ||
       ctx->Dispatch.Current == ctx->Dispatch.ContextLost ||
       ctx->GLThread.inside_begin_end ? 0 : get_user_buffer_mask(ctx);
 
@@ -852,7 +852,7 @@ draw_elements(GLuint drawid, GLenum mode, GLsizei count, GLenum type,
 
    struct glthread_vao *vao = ctx->GLThread.CurrentVAO;
    unsigned user_buffer_mask =
-      ctx->API == API_OPENGL_CORE ? 0 : get_user_buffer_mask(ctx);
+      _mesa_is_desktop_gl_core(ctx) ? 0 : get_user_buffer_mask(ctx);
    bool has_user_indices = vao->CurrentElementBufferName == 0 && indices;
 
    /* Fast path when nothing needs to be done.
@@ -1136,7 +1136,7 @@ _mesa_marshal_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
    if (draw_count > 0 && is_index_type_valid(type) &&
        ctx->Dispatch.Current != ctx->Dispatch.ContextLost &&
        !ctx->GLThread.inside_begin_end) {
-      user_buffer_mask = ctx->API == API_OPENGL_CORE ? 0 : get_user_buffer_mask(ctx);
+      user_buffer_mask = _mesa_is_desktop_gl_core(ctx) ? 0 : get_user_buffer_mask(ctx);
       has_user_indices = vao->CurrentElementBufferName == 0;
    }
 

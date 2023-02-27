@@ -2316,7 +2316,7 @@ _mesa_DrawArraysIndirect(GLenum mode, const GLvoid *indirect)
     *    DrawElementsIndirect are to source their arguments directly from the
     *    pointer passed as their <indirect> parameters."
     */
-   if (ctx->API == API_OPENGL_COMPAT &&
+   if (_mesa_is_desktop_gl_compat(ctx) &&
        !ctx->DrawIndirectBuffer) {
       DrawArraysIndirectCommand *cmd = (DrawArraysIndirectCommand *) indirect;
 
@@ -2351,7 +2351,7 @@ _mesa_DrawElementsIndirect(GLenum mode, GLenum type, const GLvoid *indirect)
     *    DrawElementsIndirect are to source their arguments directly from the
     *    pointer passed as their <indirect> parameters."
     */
-   if (ctx->API == API_OPENGL_COMPAT &&
+   if (_mesa_is_desktop_gl_compat(ctx) &&
        !ctx->DrawIndirectBuffer) {
       /*
        * Unlike regular DrawElementsInstancedBaseVertex commands, the indices
@@ -2416,7 +2416,7 @@ _mesa_MultiDrawArraysIndirect(GLenum mode, const GLvoid *indirect,
     *    DrawElementsIndirect are to source their arguments directly from the
     *    pointer passed as their <indirect> parameters."
     */
-   if (ctx->API == API_OPENGL_COMPAT &&
+   if (_mesa_is_desktop_gl_compat(ctx) &&
        !ctx->DrawIndirectBuffer) {
 
       if (!_mesa_is_no_error_enabled(ctx) &&
@@ -2489,7 +2489,7 @@ _mesa_MultiDrawElementsIndirect(GLenum mode, GLenum type,
     *    DrawElementsIndirect are to source their arguments directly from the
     *    pointer passed as their <indirect> parameters."
     */
-   if (ctx->API == API_OPENGL_COMPAT &&
+   if (_mesa_is_desktop_gl_compat(ctx) &&
        !ctx->DrawIndirectBuffer) {
       /*
        * Unlike regular DrawElementsInstancedBaseVertex commands, the indices

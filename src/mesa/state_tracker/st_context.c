@@ -154,7 +154,7 @@ st_invalidate_state(struct gl_context *ctx)
    /* Update the vertex shader if ctx->Light._ClampVertexColor was changed. */
    if (st->clamp_vert_color_in_shader && (new_state & _NEW_LIGHT_STATE)) {
       ctx->NewDriverState |= ST_NEW_VS_STATE;
-      if (st->ctx->API == API_OPENGL_COMPAT && ctx->Version >= 32) {
+      if (_mesa_is_desktop_gl_compat(st->ctx) && ctx->Version >= 32) {
          ctx->NewDriverState |= ST_NEW_GS_STATE | ST_NEW_TES_STATE;
       }
    }
@@ -684,7 +684,7 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
       /* For drivers which cannot do color clamping, it's better to just
        * disable ARB_color_buffer_float in the core profile, because
        * the clamping is deprecated there anyway. */
-      if (ctx->API == API_OPENGL_CORE &&
+      if (_mesa_is_desktop_gl_core(ctx) &&
           (st->clamp_frag_color_in_shader || st->clamp_vert_color_in_shader)) {
          st->clamp_vert_color_in_shader = GL_FALSE;
          st->clamp_frag_color_in_shader = GL_FALSE;
