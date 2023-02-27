@@ -4678,7 +4678,7 @@ zink_copy_buffer(struct zink_context *ctx, struct zink_resource *dst, struct zin
    struct zink_batch *batch = &ctx->batch;
    util_range_add(&dst->base.b, &dst->valid_buffer_range, dst_offset, dst_offset + size);
    zink_screen(ctx->base.screen)->buffer_barrier(ctx, src, VK_ACCESS_TRANSFER_READ_BIT, 0);
-   zink_screen(ctx->base.screen)->buffer_barrier(ctx, dst, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
+   zink_resource_buffer_transfer_dst_barrier(ctx, dst, dst_offset, size);
    VkCommandBuffer cmdbuf = zink_get_cmdbuf(ctx, src, dst);
    zink_batch_reference_resource_rw(batch, src, false);
    zink_batch_reference_resource_rw(batch, dst, true);
@@ -4712,7 +4712,7 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
       if (zink_is_swapchain(img))
          needs_present_readback = zink_kopper_acquire_readback(ctx, img);
       zink_screen(ctx->base.screen)->image_barrier(ctx, img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
-      zink_screen(ctx->base.screen)->buffer_barrier(ctx, buf, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+      zink_resource_buffer_transfer_dst_barrier(ctx, buf, dstx, src_box->width);
       util_range_add(&dst->base.b, &dst->valid_buffer_range, dstx, dstx + src_box->width);
    }
 
