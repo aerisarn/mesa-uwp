@@ -76,7 +76,7 @@
   rules:
     - !reference [.no_scheduled_pipelines-rules, rules]
     # Run only on pre-merge pipelines from Marge
-    - if: '$GITLAB_USER_LOGIN != "marge-bot" || $CI_COMMIT_BRANCH'
+    - if: $MESA_CI_PERFORMANCE_ENABLED == null
       when: never
   # Allow the merge to complete even before the job completes (since it won't
   # even start until the separate script triggers on it).
