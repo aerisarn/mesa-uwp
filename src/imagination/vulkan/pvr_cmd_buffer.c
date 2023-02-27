@@ -925,7 +925,7 @@ static void pvr_setup_pbe_state(
    uint32_t pbe_cs_words[static const ROGUE_NUM_PBESTATE_STATE_WORDS],
    uint64_t pbe_reg_words[static const ROGUE_NUM_PBESTATE_REG_WORDS])
 {
-   const struct pvr_image *image = vk_to_pvr_image(iview->vk.image);
+   const struct pvr_image *image = pvr_image_view_get_image(iview);
    uint32_t level_pitch = image->mip_levels[iview->vk.base_mip_level].pitch;
 
    struct pvr_pbe_surf_params surface_params;
@@ -1305,7 +1305,7 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
    if (hw_render->ds_attach_idx != VK_ATTACHMENT_UNUSED) {
       struct pvr_image_view *iview =
          render_pass_info->attachments[hw_render->ds_attach_idx];
-      const struct pvr_image *image = vk_to_pvr_image(iview->vk.image);
+      const struct pvr_image *image = pvr_image_view_get_image(iview);
 
       job->has_depth_attachment = vk_format_has_depth(image->vk.format);
       job->has_stencil_attachment = vk_format_has_stencil(image->vk.format);
@@ -1419,7 +1419,7 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
    if (hw_render->ds_attach_idx != VK_ATTACHMENT_UNUSED) {
       struct pvr_image_view *iview =
          render_pass_info->attachments[hw_render->ds_attach_idx];
-      const struct pvr_image *image = vk_to_pvr_image(iview->vk.image);
+      const struct pvr_image *image = pvr_image_view_get_image(iview);
 
       /* If the HW render pass has a valid depth/stencil surface, determine the
        * sample count from the attachment's image.

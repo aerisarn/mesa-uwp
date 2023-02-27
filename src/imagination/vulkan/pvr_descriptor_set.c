@@ -1493,7 +1493,7 @@ pvr_write_image_descriptor_secondaries(const struct pvr_device_info *dev_info,
       iview->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
 
    if (!PVR_HAS_FEATURE(dev_info, tpu_array_textures)) {
-      const struct pvr_image *image = vk_to_pvr_image(iview->vk.image);
+      const struct pvr_image *image = pvr_image_view_get_image(iview);
       uint64_t addr =
          image->dev_addr.addr + iview->vk.base_array_layer * image->layer_size;
 

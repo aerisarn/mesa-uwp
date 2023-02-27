@@ -1285,6 +1285,12 @@ vk_to_pvr_image(const struct vk_image *image)
    return container_of(image, const struct pvr_image, vk);
 }
 
+static inline const struct pvr_image *
+pvr_image_view_get_image(const struct pvr_image_view *const iview)
+{
+   return vk_to_pvr_image(iview->vk.image);
+}
+
 static enum pvr_pipeline_stage_bits
 pvr_stage_mask(VkPipelineStageFlags2 stage_mask)
 {
