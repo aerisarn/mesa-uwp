@@ -3849,23 +3849,27 @@ zink_resource_image_transfer_dst_barrier(struct zink_context *ctx, struct zink_r
    zink_resource_copy_box_add(res, level, box);
 }
 
-void
+bool
 zink_resource_buffer_transfer_dst_barrier(struct zink_context *ctx, struct zink_resource *res, unsigned offset, unsigned size)
 {
    if (res->obj->copies_need_reset)
       zink_resource_copies_reset(res);
+   bool unordered = true;
    struct pipe_box box = {offset, 0, 0, size, 0, 0};
    /* must barrier if something read the valid buffer range */
    bool valid_read = res->obj->access && util_ranges_intersect(&res->valid_buffer_range, offset, offset + size) && !unordered_res_exec(ctx, res, true);
    if (zink_screen(ctx->base.screen)->driver_workarounds.broken_cache_semantics ||
        zink_check_transfer_dst_barrier(res, 0, &box) || valid_read) {
       zink_screen(ctx->base.screen)->buffer_barrier(ctx, res, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+      unordered = res->obj->unordered_write;
    } else {
       res->obj->access = VK_ACCESS_TRANSFER_WRITE_BIT;
       res->obj->last_write = VK_ACCESS_TRANSFER_WRITE_BIT;
       res->obj->access_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
    }
    zink_resource_copy_box_add(res, 0, &box);
+   /* this return value implies that the caller could do an unordered op on this resource */
+   return unordered;
 }
 
 VkPipelineStageFlags
