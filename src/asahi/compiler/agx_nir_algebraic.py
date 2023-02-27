@@ -21,6 +21,14 @@ for s in [8, 16, 32, 64]:
         lower_sm5_shift += [((shift, f'a@{s}', b),
                              (shift, a, ('iand', b, s - 1)))]
 
+lower_half_pack = [
+    (('pack_half_2x16_split', a, b),
+     ('pack_32_2x16_split', ('f2f16', a), ('f2f16', b))),
+
+    (('unpack_half_2x16_split_x', a), ('f2f32', ('unpack_32_2x16_split_x', a))),
+    (('unpack_half_2x16_split_y', a), ('f2f32', ('unpack_32_2x16_split_y', a))),
+]
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--import-path', required=True)
@@ -34,7 +42,7 @@ def run():
     print('#include "agx_nir.h"')
 
     print(nir_algebraic.AlgebraicPass("agx_nir_lower_algebraic_late",
-                                      lower_sm5_shift).render())
+                                      lower_sm5_shift + lower_half_pack).render())
 
 
 if __name__ == '__main__':

@@ -1250,15 +1250,18 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
       return agx_convert_to(b, dst, agx_immediate(mode), s0, AGX_ROUND_RTE);
    }
 
+   case nir_op_pack_32_2x16_split:
    case nir_op_pack_64_2x32_split: {
       agx_index idx[] = {s0, s1};
       return agx_emit_collect_to(b, dst, 2, idx);
    }
 
    case nir_op_unpack_64_2x32_split_x:
+   case nir_op_unpack_32_2x16_split_x:
       return agx_subdivide_to(b, dst, s0, 0);
 
    case nir_op_unpack_64_2x32_split_y:
+   case nir_op_unpack_32_2x16_split_y:
       return agx_subdivide_to(b, dst, s0, 1);
 
    case nir_op_vec2:
