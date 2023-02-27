@@ -3679,7 +3679,8 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
    struct threaded_context *tc = threaded_context(_pipe);
    unsigned index_size = info->index_size;
    bool has_user_indices = info->has_user_indices;
-   tc_parse_draw(tc);
+   if (tc->options.parse_renderpass_info)
+      tc_parse_draw(tc);
 
    if (unlikely(indirect)) {
       assert(!has_user_indices);
@@ -3999,7 +4000,8 @@ tc_draw_vertex_state(struct pipe_context *_pipe,
                      unsigned num_draws)
 {
    struct threaded_context *tc = threaded_context(_pipe);
-   tc_parse_draw(tc);
+   if (tc->options.parse_renderpass_info)
+      tc_parse_draw(tc);
 
    if (num_draws == 1) {
       /* Single draw. */
