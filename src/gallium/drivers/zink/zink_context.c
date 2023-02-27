@@ -2853,6 +2853,9 @@ zink_prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, uns
          else
             zink_init_zs_attachment(ctx, &rt);
          layout = zink_render_pass_attachment_get_barrier_info(&rt, i < ctx->fb_state.nr_cbufs, &pipeline, &access);
+         /* avoid unnecessary read-only layout change */
+         if (layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL && res->layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+            layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
       }
    }
    /*
