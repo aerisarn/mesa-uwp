@@ -4680,9 +4680,16 @@ zink_copy_buffer(struct zink_context *ctx, struct zink_resource *dst, struct zin
    region.size = size;
 
    struct zink_batch *batch = &ctx->batch;
+
+   struct pipe_box box = {src_offset, 0, 0, size, 0, 0};
+   /* must barrier if something wrote the valid buffer range */
+   bool valid_write = src->obj->access && util_ranges_intersect(&src->valid_buffer_range, src_offset, src_offset + size) && !unordered_res_exec(ctx, src, false);
+   bool unordered_src = !valid_write && !zink_check_unordered_transfer_access(src, 0, &box);
    zink_screen(ctx->base.screen)->buffer_barrier(ctx, src, VK_ACCESS_TRANSFER_READ_BIT, 0);
-   zink_resource_buffer_transfer_dst_barrier(ctx, dst, dst_offset, size);
-   VkCommandBuffer cmdbuf = zink_get_cmdbuf(ctx, src, dst);
+   bool unordered_dst = zink_resource_buffer_transfer_dst_barrier(ctx, dst, dst_offset, size);
+   bool can_unorder = unordered_dst && unordered_src && !(zink_debug & ZINK_DEBUG_NOREORDER);
+   VkCommandBuffer cmdbuf = can_unorder ? ctx->batch.state->barrier_cmdbuf : zink_get_cmdbuf(ctx, src, dst);
+   ctx->batch.state->has_barriers |= can_unorder;
    zink_batch_reference_resource_rw(batch, src, false);
    zink_batch_reference_resource_rw(batch, dst, true);
    VKCTX(CmdCopyBuffer)(cmdbuf, src->obj->buffer, dst->obj->buffer, 1, &region);
