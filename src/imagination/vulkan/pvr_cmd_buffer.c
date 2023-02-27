@@ -3038,6 +3038,19 @@ pvr_setup_vertex_buffers(struct pvr_cmd_buffer *cmd_buffer,
          break;
       }
 
+      case PVR_PDS_CONST_MAP_ENTRY_TYPE_BASE_VERTEX: {
+         const struct pvr_const_map_entry_base_instance *const base_instance =
+            (struct pvr_const_map_entry_base_instance *)entries;
+
+         PVR_WRITE(dword_buffer,
+                   state->draw_state.base_vertex,
+                   base_instance->const_offset,
+                   pds_info->data_size_in_dwords);
+
+         entries += sizeof(*base_instance);
+         break;
+      }
+
       case PVR_PDS_CONST_MAP_ENTRY_TYPE_VERTEX_ATTRIBUTE_ADDRESS: {
          const struct pvr_const_map_entry_vertex_attribute_address
             *const attribute =
@@ -3093,6 +3106,49 @@ pvr_setup_vertex_buffers(struct pvr_cmd_buffer *cmd_buffer,
                    pds_info->data_size_in_dwords);
 
          entries += sizeof(*attribute);
+         break;
+      }
+
+      case PVR_PDS_CONST_MAP_ENTRY_TYPE_VERTEX_ATTRIBUTE_MAX_INDEX: {
+         const struct pvr_const_map_entry_vertex_attribute_max_index *attribute =
+            (struct pvr_const_map_entry_vertex_attribute_max_index *)entries;
+         const struct pvr_vertex_binding *const binding =
+            &state->vertex_bindings[attribute->binding_index];
+         const uint64_t bound_size = binding->buffer->vk.size - binding->offset;
+         const uint32_t attribute_end =
+            attribute->offset + attribute->component_size_in_bytes;
+         uint32_t max_index;
+
+         if (PVR_HAS_FEATURE(&cmd_buffer->device->pdevice->dev_info,
+                             pds_ddmadt)) {
+            /* TODO: PVR_PDS_CONST_MAP_ENTRY_TYPE_VERTEX_ATTRIBUTE_MAX_INDEX
+             * has the same define value as
+             * PVR_PDS_CONST_MAP_ENTRY_TYPE_VERTEX_ATTR_DDMADT_OOB_BUFFER_SIZE
+             * so maybe we want to remove one of the defines or change the
+             * values.
+             */
+            pvr_finishme("Unimplemented robust buffer access with DDMADT");
+            assert(false);
+         }
+
+         /* If the stride is 0 then all attributes use the same single element
+          * from the binding so the index can only be up to 0.
+          */
+         if (bound_size < attribute_end || attribute->stride == 0) {
+            max_index = 0;
+         } else {
+            max_index = (uint32_t)(bound_size / attribute->stride) - 1;
+
+            /* There's one last attribute that can fit in. */
+            if (bound_size % attribute->stride >= attribute_end)
+               max_index++;
+         }
+
+         PVR_WRITE(dword_buffer,
+                   max_index,
+                   attribute->const_offset,
+                   pds_info->data_size_in_dwords);
+
          break;
       }
 
