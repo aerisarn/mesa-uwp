@@ -108,7 +108,7 @@ lower_mem_load(nir_builder *b, nir_intrinsic_instr *intrin,
    unsigned chunk_start = 0;
    while (chunk_start < bytes_read) {
       const unsigned bytes_left = bytes_read - chunk_start;
-      uint32_t chunk_align_offset =
+      const uint32_t chunk_align_offset =
          (whole_align_offset + chunk_start) % align_mul;
       requested = mem_access_size_align_cb(intrin->intrinsic, bytes_left,
                                            align_mul, chunk_align_offset,
@@ -142,14 +142,15 @@ lower_mem_load(nir_builder *b, nir_intrinsic_instr *intrin,
       } else if (chunk_align_offset % requested.align) {
          /* In this case, we know how much to adjust the offset */
          uint32_t delta = chunk_align_offset % requested.align;
-         nir_ssa_def *chunk_offset =
+         nir_ssa_def *load_offset =
             nir_iadd_imm(b, offset, chunk_start - (int)delta);
 
-         chunk_align_offset = (chunk_align_offset - delta) % align_mul;
+         const uint32_t load_align_offset =
+            (chunk_align_offset - delta) % align_mul;
 
          nir_intrinsic_instr *load =
-            dup_mem_intrinsic(b, intrin, chunk_offset,
-                              align_mul, chunk_align_offset, NULL,
+            dup_mem_intrinsic(b, intrin, load_offset,
+                              align_mul, load_align_offset, NULL,
                               requested.num_components, requested.bit_size);
 
          assert(requested.bit_size >= 8);
