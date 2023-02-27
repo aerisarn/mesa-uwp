@@ -1317,6 +1317,14 @@ intel_get_device_info_from_pci_id(int pci_id,
    if (devinfo->display_ver == 0)
       devinfo->display_ver = devinfo->ver;
 
+   if (devinfo->has_mesh_shading) {
+      /* Half of push constant space matches the size used in the simplest
+       * primitive pipeline (VS + FS). Tweaking this affects performance.
+       */
+      devinfo->mesh_max_constant_urb_size_kb =
+            devinfo->max_constant_urb_size_kb / 2;
+   }
+
    intel_device_info_update_cs_workgroup_threads(devinfo);
 
    return true;

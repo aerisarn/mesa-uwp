@@ -1920,8 +1920,13 @@ cmd_buffer_alloc_gfx_push_constants(struct anv_cmd_buffer *cmd_buffer)
    if (stages == cmd_buffer->state.gfx.push_constant_stages)
       return;
 
-   const unsigned push_constant_kb =
-      cmd_buffer->device->info->max_constant_urb_size_kb;
+   unsigned push_constant_kb;
+
+   const struct intel_device_info *devinfo = cmd_buffer->device->info;
+   if (anv_pipeline_is_mesh(cmd_buffer->state.gfx.pipeline))
+      push_constant_kb = devinfo->mesh_max_constant_urb_size_kb;
+   else
+      push_constant_kb = devinfo->max_constant_urb_size_kb;
 
    const unsigned num_stages =
       util_bitcount(stages & VK_SHADER_STAGE_ALL_GRAPHICS);

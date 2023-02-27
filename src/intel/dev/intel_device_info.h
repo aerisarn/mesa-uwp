@@ -369,6 +369,12 @@ struct intel_device_info
     */
    unsigned max_constant_urb_size_kb;
 
+   /* Maximum size that can be allocated to constants in mesh pipeline.
+    * This essentially applies to fragment shaders only, since mesh stages
+    * don't need to allocate space for push constants.
+    */
+   unsigned mesh_max_constant_urb_size_kb;
+
    /**
     * Size of the command streamer prefetch. This is important to know for
     * self modifying batches.
