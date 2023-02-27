@@ -227,7 +227,7 @@ debian-release:
     MINIO_ARTIFACT_NAME: "mesa-amd64-rel"
   script:
     - .gitlab-ci/meson/build.sh
-    - .gitlab-ci/prepare-artifacts.sh
+    - 'if [ -n "$MESA_CI_PERFORMANCE_ENABLED" ]; then .gitlab-ci/prepare-artifacts.sh; fi'
 
 alpine-build-testing:
   extends:
@@ -468,6 +468,9 @@ debian-arm64-release:
     BUILDTYPE: "release"
     C_ARGS: >
       -Wno-error=stringop-truncation
+  script:
+    - .gitlab-ci/meson/build.sh
+    - 'if [ -n "$MESA_CI_PERFORMANCE_ENABLED" ]; then .gitlab-ci/prepare-artifacts.sh; fi'
 
 debian-clang:
   extends: .meson-build

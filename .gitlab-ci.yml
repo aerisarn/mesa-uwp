@@ -1,3 +1,10 @@
+workflow:
+  rules:
+    - if: $GITLAB_USER_LOGIN == "marge-bot" && $CI_COMMIT_BRANCH == null
+      variables:
+        MESA_CI_PERFORMANCE_ENABLED: 1
+    - when: always
+
 variables:
   FDO_UPSTREAM_REPO: mesa/mesa
   MESA_TEMPLATES_COMMIT: &ci-templates-commit d5aa3941aa03c2f716595116354fb81eb8012acb
