@@ -694,33 +694,27 @@ static VkResult pvr_process_cmd_buffer(struct pvr_device *device,
                              link) {
       switch (sub_cmd->type) {
       case PVR_SUB_CMD_TYPE_GRAPHICS: {
+         /* If the fragment job utilizes occlusion queries, for data integrity
+          * it needs to wait for the occlusion query to be processed.
+          */
          if (sub_cmd->gfx.has_occlusion_query) {
-            struct pvr_sub_cmd_event_barrier occlusion_to_frag_barrier = {
+            struct pvr_sub_cmd_event_barrier barrier = {
                .wait_for_stage_mask = PVR_PIPELINE_STAGE_OCCLUSION_QUERY_BIT,
                .wait_at_stage_mask = PVR_PIPELINE_STAGE_FRAG_BIT,
             };
 
-            /* If the fragment job utilizes occlusion queries, for data
-             * integrity it needs to wait for the occlusion query to be
-             * processed.
-             */
-
-            result = pvr_process_event_cmd_barrier(device,
-                                                   queue,
-                                                   &occlusion_to_frag_barrier);
+            result = pvr_process_event_cmd_barrier(device, queue, &barrier);
             if (result != VK_SUCCESS)
                break;
          }
 
          if (sub_cmd->gfx.wait_on_previous_transfer) {
-            struct pvr_sub_cmd_event_barrier transfer_to_frag_barrier = {
+            struct pvr_sub_cmd_event_barrier barrier = {
                .wait_for_stage_mask = PVR_PIPELINE_STAGE_TRANSFER_BIT,
                .wait_at_stage_mask = PVR_PIPELINE_STAGE_FRAG_BIT,
             };
 
-            result = pvr_process_event_cmd_barrier(device,
-                                                   queue,
-                                                   &transfer_to_frag_barrier);
+            result = pvr_process_event_cmd_barrier(device, queue, &barrier);
             if (result != VK_SUCCESS)
                break;
          }
@@ -738,14 +732,12 @@ static VkResult pvr_process_cmd_buffer(struct pvr_device *device,
          const bool serialize_with_frag = sub_cmd->transfer.serialize_with_frag;
 
          if (serialize_with_frag) {
-            struct pvr_sub_cmd_event_barrier frag_to_transfer_barrier = {
+            struct pvr_sub_cmd_event_barrier barrier = {
                .wait_for_stage_mask = PVR_PIPELINE_STAGE_FRAG_BIT,
                .wait_at_stage_mask = PVR_PIPELINE_STAGE_TRANSFER_BIT,
             };
 
-            result = pvr_process_event_cmd_barrier(device,
-                                                   queue,
-                                                   &frag_to_transfer_barrier);
+            result = pvr_process_event_cmd_barrier(device, queue, &barrier);
             if (result != VK_SUCCESS)
                break;
          }
@@ -753,7 +745,7 @@ static VkResult pvr_process_cmd_buffer(struct pvr_device *device,
          result = pvr_process_transfer_cmds(device, queue, &sub_cmd->transfer);
 
          if (serialize_with_frag) {
-            struct pvr_sub_cmd_event_barrier transfer_to_frag_barrier = {
+            struct pvr_sub_cmd_event_barrier barrier = {
                .wait_for_stage_mask = PVR_PIPELINE_STAGE_TRANSFER_BIT,
                .wait_at_stage_mask = PVR_PIPELINE_STAGE_FRAG_BIT,
             };
@@ -761,9 +753,7 @@ static VkResult pvr_process_cmd_buffer(struct pvr_device *device,
             if (result != VK_SUCCESS)
                break;
 
-            result = pvr_process_event_cmd_barrier(device,
-                                                   queue,
-                                                   &transfer_to_frag_barrier);
+            result = pvr_process_event_cmd_barrier(device, queue, &barrier);
          }
 
          break;
