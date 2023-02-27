@@ -1119,7 +1119,7 @@ pvr_pds_vertex_shader(struct pvr_pds_vertex_shader_program *restrict program,
                if (shift < -31) {
                   /* >> (31) */
                   shift_2s_comp = 0xFFFE1;
-                  *buffer++ = pvr_pds_inst_encode_stflp64(
+                  *buffer++ = pvr_pds_inst_encode_sftlp64(
                      /* cc */ 0,
                      /* LOP */ PVR_ROGUE_PDSINST_LOP_NONE,
                      /* IM */ 1, /*  enable immediate */
@@ -1136,7 +1136,7 @@ pvr_pds_vertex_shader(struct pvr_pds_vertex_shader_program *restrict program,
                 * new: >> (shift + 31)
                 */
                shift_2s_comp = *((uint32_t *)&shift);
-               *buffer++ = pvr_pds_inst_encode_stflp64(
+               *buffer++ = pvr_pds_inst_encode_sftlp64(
                   /* cc */ 0,
                   /* LOP */ PVR_ROGUE_PDSINST_LOP_NONE,
                   /* IM */ 1, /*enable immediate */
@@ -1168,7 +1168,7 @@ pvr_pds_vertex_shader(struct pvr_pds_vertex_shader_program *restrict program,
                /* 2's complement of shift as this will be a right shift. */
                shift_2s_comp = ~(vertex_stream->shift) + 1;
 
-               *buffer++ = pvr_pds_inst_encode_stflp32(
+               *buffer++ = pvr_pds_inst_encode_sftlp32(
                   /* IM */ 1, /*  enable immediate. */
                   /* cc */ 0,
                   /* LOP */ PVR_ROGUE_PDSINST_LOP_NONE,
@@ -1257,7 +1257,7 @@ pvr_pds_vertex_shader(struct pvr_pds_vertex_shader_program *restrict program,
                }
 
                if (temp != pre_index_temp) {
-                  *buffer++ = pvr_pds_inst_encode_stflp32(
+                  *buffer++ = pvr_pds_inst_encode_sftlp32(
                      /* IM */ 1, /*  enable immediate. */
                      /* cc */ 0,
                      /* LOP */ PVR_ROGUE_PDSINST_LOP_NONE,
@@ -1267,7 +1267,7 @@ pvr_pds_vertex_shader(struct pvr_pds_vertex_shader_program *restrict program,
                      /* DST */ index_temp64);
                }
 
-               *buffer++ = pvr_pds_inst_encode_stflp32(
+               *buffer++ = pvr_pds_inst_encode_sftlp32(
                   /* IM */ 1, /*  enable immediate. */
                   /* cc */ 0,
                   /* LOP */ PVR_ROGUE_PDSINST_LOP_OR,
@@ -2276,7 +2276,7 @@ pvr_pds_compute_shader(struct pvr_pds_compute_shader_program *restrict program,
             APPEND(pvr_pds_inst_encode_wdf(0));
 
             for (uint32_t i = 0; i < 4; i++) {
-               APPEND(pvr_pds_inst_encode_stflp32(
+               APPEND(pvr_pds_inst_encode_sftlp32(
                   1, /* enable immediate */
                   0, /* cc */
                   PVR_ROGUE_PDSINST_LOP_AND, /* LOP */
@@ -2286,7 +2286,7 @@ pvr_pds_compute_shader(struct pvr_pds_compute_shader_program *restrict program,
                   cond_render_pred_temp + i)); /* DST */
 
                APPEND(
-                  pvr_pds_inst_encode_stflp32(1, /* enable immediate */
+                  pvr_pds_inst_encode_sftlp32(1, /* enable immediate */
                                               0, /* cc */
                                               PVR_ROGUE_PDSINST_LOP_OR, /* LOP
                                                                          */
@@ -2303,7 +2303,7 @@ pvr_pds_compute_shader(struct pvr_pds_compute_shader_program *restrict program,
                                             0, /* SRC0 */
                                             0)); /* GLOBALREG */
 
-            APPEND(pvr_pds_inst_encode_stflp32(1, /* enable immediate */
+            APPEND(pvr_pds_inst_encode_sftlp32(1, /* enable immediate */
                                                0, /* cc */
                                                PVR_ROGUE_PDSINST_LOP_XOR, /* LOP
                                                                            */

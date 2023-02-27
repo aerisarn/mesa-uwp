@@ -686,7 +686,7 @@ void pvr_pds_generate_vertex_primary_program(
 
          PVR_PDS_MODE_TOGGLE(code,
                              instruction,
-                             pvr_pds_inst_encode_stflp64(
+                             pvr_pds_inst_encode_sftlp64(
                                 0, /* cc */
                                 PVR_ROGUE_PDSINST_LOP_XOR, /* LOP */
                                 1, /* IM */
@@ -699,7 +699,7 @@ void pvr_pds_generate_vertex_primary_program(
                                 ));
          PVR_PDS_MODE_TOGGLE(code,
                              instruction,
-                             pvr_pds_inst_encode_stflp64(
+                             pvr_pds_inst_encode_sftlp64(
                                 0, /* cc */
                                 PVR_ROGUE_PDSINST_LOP_NONE, /* LOP */
                                 1, /* IM */
@@ -712,7 +712,7 @@ void pvr_pds_generate_vertex_primary_program(
                                 ));
          PVR_PDS_MODE_TOGGLE(code,
                              instruction,
-                             pvr_pds_inst_encode_stflp64(
+                             pvr_pds_inst_encode_sftlp64(
                                 0, /* cc */
                                 PVR_ROGUE_PDSINST_LOP_NONE, /* LOP */
                                 1, /* IM */
@@ -885,7 +885,7 @@ void pvr_pds_generate_vertex_primary_program(
                shift_2s_comp = 0xFFFE1;
                PVR_PDS_MODE_TOGGLE(code,
                                    instruction,
-                                   pvr_pds_inst_encode_stflp64(
+                                   pvr_pds_inst_encode_sftlp64(
                                       /* cc */ 0,
                                       /* LOP */ PVR_ROGUE_PDSINST_LOP_NONE,
                                       /* IM */ 1, /*  enable immediate */
@@ -902,7 +902,7 @@ void pvr_pds_generate_vertex_primary_program(
             shift_2s_comp = *((uint32_t *)&shift);
             PVR_PDS_MODE_TOGGLE(code,
                                 instruction,
-                                pvr_pds_inst_encode_stflp64(
+                                pvr_pds_inst_encode_sftlp64(
                                    /* cc */ 0,
                                    /* LOP */ PVR_ROGUE_PDSINST_LOP_NONE,
                                    /* IM */ 1, /*  enable immediate */
@@ -1235,7 +1235,7 @@ void pvr_pds_generate_vertex_primary_program(
 
             PVR_PDS_MODE_TOGGLE(code,
                                 instruction,
-                                pvr_pds_inst_encode_stflp32(
+                                pvr_pds_inst_encode_sftlp32(
                                    1, /* IM */
                                    0, /* cc */
                                    PVR_ROGUE_PDSINST_LOP_NONE, /* LOP */
@@ -1261,7 +1261,7 @@ void pvr_pds_generate_vertex_primary_program(
 
             PVR_PDS_MODE_TOGGLE(code,
                                 instruction,
-                                pvr_pds_inst_encode_stflp32(
+                                pvr_pds_inst_encode_sftlp32(
                                    1, /* IM */
                                    1, /* cc */
                                    PVR_ROGUE_PDSINST_LOP_NONE, /* LOP */
