@@ -228,11 +228,11 @@ GL 4.5, GLSL 4.50 -- all DONE: freedreno/a6xx, nvc0, r600, radeonsi, llvmpipe, z
 GL 4.6, GLSL 4.60 -- all DONE: radeonsi, zink
 
   GL_ARB_gl_spirv                                       DONE (freedreno, i965/gen7+, llvmpipe)
-  GL_ARB_indirect_parameters                            DONE (i965/gen7+, nvc0, llvmpipe, virgl, d3d12)
+  GL_ARB_indirect_parameters                            DONE (freedreno/a6xx+, i965/gen7+, nvc0, llvmpipe, virgl, d3d12)
   GL_ARB_pipeline_statistics_query                      DONE (i965, nvc0, r600, llvmpipe, softpipe, )
   GL_ARB_polygon_offset_clamp                           DONE (freedreno, i965, nv50, nvc0, r600, llvmpipe, v3d, virgl)
   GL_ARB_shader_atomic_counter_ops                      DONE (freedreno/a5xx+, i965/gen7+, nvc0, r600, llvmpipe, softpipe, virgl, v3d)
-  GL_ARB_shader_draw_parameters                         DONE (i965, llvmpipe, nvc0, d3d12)
+  GL_ARB_shader_draw_parameters                         DONE (freedreno/a6xx+, i965, llvmpipe, nvc0, d3d12)
   GL_ARB_shader_group_vote                              DONE (freedreno/a6xx, i965, nvc0, llvmpipe)
   GL_ARB_spirv_extensions                               DONE (freedreno, i965/gen7+, llvmpipe)
   GL_ARB_texture_filter_anisotropic                     DONE (etnaviv/HALTI0, freedreno, i965, nv50, nvc0, r600, softpipe, llvmpipe, d3d12, virgl, v3d, panfrost/g72+, asahi)

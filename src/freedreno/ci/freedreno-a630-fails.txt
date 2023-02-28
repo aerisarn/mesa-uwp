@@ -131,6 +131,11 @@ spec@arb_vertex_type_2_10_10_10_rev@attrib-p-type-size-match,Fail
 spec@arb_enhanced_layouts@execution@component-layout@vs-fs-array-dvec3,Crash
 spec@arb_enhanced_layouts@gs-stream-location-aliasing,Fail
 
+# fails on gen1 (a618/a630) with both fd and zink, but passes on gen4..
+# maybe gen1 sqe doesn't handle the count==0 case?
+spec@arb_indirect_parameters@tf-count-arrays,Fail
+spec@arb_indirect_parameters@tf-count-elements,Fail
+
 spec@egl 1.4@eglterminate then unbind context,Fail
 spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_msc_and_sbc_test,Fail
 spec@egl_chromium_sync_control@conformance,Fail

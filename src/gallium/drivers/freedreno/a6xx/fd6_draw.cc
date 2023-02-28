@@ -83,7 +83,26 @@ draw_emit_indirect(struct fd_context *ctx,
 {
    struct fd_resource *ind = fd_resource(indirect->buffer);
 
-   if (info->index_size) {
+   if (indirect->indirect_draw_count && info->index_size) {
+      //On some firmwares CP_DRAW_INDIRECT_MULTI waits for WFIs before
+      //reading the draw parameters but after reading the count, so commands
+      //that use indirect draw count need a WFM anyway.
+      OUT_PKT7(ring, CP_WAIT_FOR_ME, 0);
+      OUT_PKT7(ring, CP_DRAW_INDIRECT_MULTI, 11);
+      OUT_RING(ring, pack_CP_DRAW_INDX_OFFSET_0(*draw0).value);
+      OUT_RING(ring,
+         (A6XX_CP_DRAW_INDIRECT_MULTI_1_OPCODE(INDIRECT_OP_INDIRECT_COUNT_INDEXED)
+         | A6XX_CP_DRAW_INDIRECT_MULTI_1_DST_OFF(driver_param)));
+      struct fd_resource *count_buf = fd_resource(indirect->indirect_draw_count);
+      struct pipe_resource *idx = info->index.resource;
+      unsigned max_indices = (idx->width0 - index_offset) / info->index_size;
+      OUT_RING(ring, indirect->draw_count);
+      OUT_RELOC(ring, fd_resource(idx)->bo, index_offset, 0, 0);
+      OUT_RING(ring, max_indices);
+      OUT_RELOC(ring, ind->bo, indirect->offset, 0, 0);
+      OUT_RELOC(ring, count_buf->bo, indirect->indirect_draw_count_offset, 0, 0);
+      OUT_RING(ring, indirect->stride);
+   } else if (info->index_size) {
       OUT_PKT7(ring, CP_DRAW_INDIRECT_MULTI, 9);
       OUT_RING(ring, pack_CP_DRAW_INDX_OFFSET_0(*draw0).value);
       OUT_RING(ring,
@@ -97,6 +116,18 @@ draw_emit_indirect(struct fd_context *ctx,
       //max indices
       OUT_RING(ring, max_indices);
       OUT_RELOC(ring, ind->bo, indirect->offset, 0, 0);
+      OUT_RING(ring, indirect->stride);
+   }  else if(indirect->indirect_draw_count) {
+      OUT_PKT7(ring, CP_WAIT_FOR_ME, 0);
+      OUT_PKT7(ring, CP_DRAW_INDIRECT_MULTI, 8);
+      OUT_RING(ring, pack_CP_DRAW_INDX_OFFSET_0(*draw0).value);
+      OUT_RING(ring,
+         (A6XX_CP_DRAW_INDIRECT_MULTI_1_OPCODE(INDIRECT_OP_INDIRECT_COUNT)
+         | A6XX_CP_DRAW_INDIRECT_MULTI_1_DST_OFF(driver_param)));
+      struct fd_resource *count_buf = fd_resource(indirect->indirect_draw_count);
+      OUT_RING(ring, indirect->draw_count);
+      OUT_RELOC(ring, ind->bo, indirect->offset, 0, 0);
+      OUT_RELOC(ring, count_buf->bo, indirect->indirect_draw_count_offset, 0, 0);
       OUT_RING(ring, indirect->stride);
    } else {
       OUT_PKT7(ring, CP_DRAW_INDIRECT_MULTI, 6);
