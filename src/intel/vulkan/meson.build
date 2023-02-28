@@ -206,6 +206,7 @@ libanv_common = static_library(
   [
     libanv_files, anv_entrypoints, sha1_h,
     gen_xml_pack, float64_spv_h,
+    generated_draws_spv_h, generated_draws_count_spv_h
   ],
   include_directories : [
     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_intel, inc_compiler,
