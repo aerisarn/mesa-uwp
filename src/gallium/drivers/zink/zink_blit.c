@@ -56,11 +56,6 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info, bool *
    if (src->format != dst->format)
       return false;
 
-   bool marker = zink_cmd_debug_marker_begin(ctx, "blit_resolve(%s->%s, %dx%d->%dx%d)",
-                                             util_format_short_name(info->src.format),
-                                             util_format_short_name(info->src.format),
-                                             info->src.box.width, info->src.box.height,
-                                             info->dst.box.width, info->dst.box.height);
 
    apply_dst_clears(ctx, info, false);
    zink_fb_clears_apply_region(ctx, info->src.resource, zink_rect_from_box(&info->src.box));
@@ -76,6 +71,11 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info, bool *
    zink_batch_reference_resource_rw(batch, src, false);
    zink_batch_reference_resource_rw(batch, dst, true);
 
+   bool marker = zink_cmd_debug_marker_begin(ctx, "blit_resolve(%s->%s, %dx%d->%dx%d)",
+                                             util_format_short_name(info->src.format),
+                                             util_format_short_name(info->src.format),
+                                             info->src.box.width, info->src.box.height,
+                                             info->dst.box.width, info->dst.box.height);
    VkImageResolve region = {0};
 
    region.srcSubresource.aspectMask = src->aspect;
@@ -166,11 +166,6 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info, bool *n
        !(src->obj->vkfeats & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
       return false;
 
-   bool marker = zink_cmd_debug_marker_begin(ctx, "blit_native(%s->%s, %dx%d->%dx%d)",
-                                             util_format_short_name(info->src.format),
-                                             util_format_short_name(info->src.format),
-                                             info->src.box.width, info->src.box.height,
-                                             info->dst.box.width, info->dst.box.height);
 
    apply_dst_clears(ctx, info, false);
    zink_fb_clears_apply_region(ctx, info->src.resource, zink_rect_from_box(&info->src.box));
@@ -186,6 +181,11 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info, bool *n
    zink_batch_reference_resource_rw(batch, src, false);
    zink_batch_reference_resource_rw(batch, dst, true);
 
+   bool marker = zink_cmd_debug_marker_begin(ctx, "blit_native(%s->%s, %dx%d->%dx%d)",
+                                             util_format_short_name(info->src.format),
+                                             util_format_short_name(info->src.format),
+                                             info->src.box.width, info->src.box.height,
+                                             info->dst.box.width, info->dst.box.height);
    VkImageBlit region = {0};
    region.srcSubresource.aspectMask = src->aspect;
    region.srcSubresource.mipLevel = info->src.level;
