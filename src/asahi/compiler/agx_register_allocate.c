@@ -310,14 +310,24 @@ pick_regs(struct ra_ctx *rctx, agx_instr *I, unsigned d)
             return our_reg;
       }
 
+      unsigned collect_align = agx_size_align_16(collect->dest[0].size);
+      unsigned offset = our_source * align;
+
+      /* Prefer ranges of the register file that leave room for all sources of
+       * the collect contiguously.
+       */
+      for (unsigned base = 0; base + (collect->nr_srcs * align) <= rctx->bound;
+           base += collect_align) {
+         if (!BITSET_TEST_RANGE(rctx->used_regs, base,
+                                base + (collect->nr_srcs * align) - 1))
+            return base + offset;
+      }
+
       /* Try to respect the alignment requirement of the collect destination,
        * which may be greater than the sources (e.g. pack_64_2x32_split). Look
        * for a register for the source such that the collect base is aligned.
        */
-      unsigned collect_align = agx_size_align_16(collect->dest[0].size);
       if (collect_align > align) {
-         unsigned offset = our_source * align;
-
          for (unsigned reg = offset; reg < rctx->bound; reg += collect_align) {
             if (!BITSET_TEST_RANGE(rctx->used_regs, reg, reg + count - 1))
                return reg;
