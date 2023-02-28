@@ -1655,7 +1655,9 @@ invalidate_buffer(struct zink_context *ctx, struct zink_resource *res)
    if (res->base.b.flags & PIPE_RESOURCE_FLAG_SPARSE)
       return false;
 
-   if (res->valid_buffer_range.start > res->valid_buffer_range.end)
+   struct pipe_box box = {0, 0, 0, res->base.b.width0, 0, 0};
+   if (res->valid_buffer_range.start > res->valid_buffer_range.end &&
+       !zink_resource_copy_box_intersects(res, 0, &box))
       return false;
 
    if (res->so_valid)
@@ -1820,7 +1822,8 @@ zink_buffer_map(struct pipe_context *pctx,
     * in which case it can be mapped unsynchronized. */
    if (!(usage & (PIPE_MAP_UNSYNCHRONIZED | TC_TRANSFER_MAP_NO_INFER_UNSYNCHRONIZED)) &&
        usage & PIPE_MAP_WRITE && !res->base.is_shared &&
-       !util_ranges_intersect(&res->valid_buffer_range, box->x, box->x + box->width)) {
+       !util_ranges_intersect(&res->valid_buffer_range, box->x, box->x + box->width) &&
+       !zink_resource_copy_box_intersects(res, 0, box)) {
       usage |= PIPE_MAP_UNSYNCHRONIZED;
    }
 
@@ -2361,6 +2364,13 @@ zink_resource_copies_reset(struct zink_resource *res)
    if (!res->obj->copies_valid)
       return;
    unsigned max_level = res->base.b.target == PIPE_BUFFER ? 1 : (res->base.b.last_level + 1);
+   if (res->base.b.target == PIPE_BUFFER) {
+      /* flush transfer regions back to valid range on reset */
+      struct pipe_box *b = res->obj->copies[0].data;
+      unsigned num_boxes = util_dynarray_num_elements(&res->obj->copies[0], struct pipe_box);
+      for (unsigned i = 0; i < num_boxes; i++)
+         util_range_add(&res->base.b, &res->valid_buffer_range, b->x, b->x + b->width);
+   }
    for (unsigned i = 0; i < max_level; i++)
       util_dynarray_clear(&res->obj->copies[i]);
    res->obj->copies_valid = false;

@@ -511,7 +511,6 @@ zink_clear_buffer(struct pipe_context *pctx,
          - size is the number of bytes to fill, and must be either a multiple of 4,
            or VK_WHOLE_SIZE to fill the range from offset to the end of the buffer
        */
-      util_range_add(&res->base.b, &res->valid_buffer_range, offset, offset + size);
       zink_resource_buffer_transfer_dst_barrier(ctx, res, offset, size);
       VkCommandBuffer cmdbuf = zink_get_cmdbuf(ctx, NULL, res);
       zink_batch_reference_resource_rw(&ctx->batch, res, true);
