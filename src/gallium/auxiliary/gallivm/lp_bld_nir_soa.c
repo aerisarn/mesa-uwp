@@ -930,6 +930,9 @@ static void emit_load_global(struct lp_build_nir_context *bld_base,
 
    res_bld = get_int_bld(bld_base, true, bit_size);
 
+   /* Note, we don't use first_active_invocation here, since we aren't
+    * guaranteed that there is actually an active invocation.
+    */
    if (offset_is_uniform && invocation_0_must_be_active(bld_base)) {
       /* If the offset is uniform, then use the address from invocation 0 to
        * load, and broadcast to all invocations.
@@ -1418,7 +1421,9 @@ static void emit_store_mem(struct lp_build_nir_context *bld_base,
    offset = lp_build_shr_imm(uint_bld, offset, shift_val);
 
    /* If the address is uniform, then just store the value from the first
-    * channel instead of making LLVM unroll the invocation loop.
+    * channel instead of making LLVM unroll the invocation loop.  Note that we
+    * don't use first_active_uniform(), since we aren't guaranteed that there is
+    * actually an active invocation.
     */
    if (index_and_offset_are_uniform && invocation_0_must_be_active(bld_base)) {
       LLVMValueRef ssbo_limit;
