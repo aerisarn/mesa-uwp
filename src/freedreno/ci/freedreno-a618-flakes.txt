@@ -192,3 +192,5 @@ spec@ext_texture_lod_bias@lodbias
 
 # recent flakes, first occurence 03-02-2023
 KHR-GL45.buffer_storage.map_persistent_dispatch
+# recent flakes, first occurence 09-02-2023
+KHR-GL45.buffer_storage.map_persistent_flush
