@@ -456,3 +456,6 @@ spec@ext_packed_depth_stencil@fbo-clear-formats stencil,Fail
 spec@ext_packed_depth_stencil@fbo-clear-formats stencil@GL_DEPTH_STENCIL,Fail
 spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-drawpixels-float-and-ushort,Fail
 spec@ext_packed_depth_stencil@fbo-stencil-gl_depth24_stencil8-drawpixels,Fail
+
+# Polygon smoothing isn't supported in Vulkan.
+spec@!opengl 1.0@gl-1.0-polygon-line-aa,Fail

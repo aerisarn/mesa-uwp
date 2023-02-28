@@ -795,7 +795,7 @@ radv_physical_device_get_features(const struct radv_physical_device *pdevice,
       /* VK_EXT_line_rasterization */
       .rectangularLines = true,
       .bresenhamLines = true,
-      .smoothLines = false,
+      .smoothLines = true,
       .stippledRectangularLines = false,
       /* FIXME: Some stippled Bresenham CTS fails on Vega10
        * but work on Raven.
