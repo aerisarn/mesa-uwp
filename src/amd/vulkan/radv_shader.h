@@ -77,6 +77,7 @@ struct radv_pipeline_key {
    uint32_t dynamic_rasterization_samples : 1;
    uint32_t dynamic_color_write_mask : 1;
    uint32_t dynamic_provoking_vtx_mode : 1;
+   uint32_t dynamic_line_rast_mode : 1;
    uint32_t tex_non_uniform : 1;
    uint32_t enable_remove_point_size : 1;
 
@@ -111,6 +112,8 @@ struct radv_pipeline_key {
 
       bool dynamic_ps_epilog;
       bool has_epilog;
+
+      bool line_smooth_enabled;
    } ps;
 
    struct {

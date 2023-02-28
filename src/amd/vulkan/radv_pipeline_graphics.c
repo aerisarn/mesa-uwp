@@ -2113,6 +2113,15 @@ radv_generate_graphics_pipeline_key(const struct radv_device *device,
       key.enable_remove_point_size = true;
    }
 
+   if (device->smooth_lines) {
+      if (pipeline->dynamic_states & RADV_DYNAMIC_LINE_RASTERIZATION_MODE) {
+         key.dynamic_line_rast_mode = true;
+      } else {
+         key.ps.line_smooth_enabled =
+            state->rs && state->rs->line.mode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
+      }
+   }
+
    return key;
 }
 
