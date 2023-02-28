@@ -537,6 +537,11 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
 {
    VkResult result;
 
+   if (!(drm_device->available_nodes & (1 << DRM_NODE_RENDER)) ||
+       drm_device->bustype != DRM_BUS_PCI ||
+       drm_device->deviceinfo.pci->vendor_id != 0x10de)
+      return VK_ERROR_INCOMPATIBLE_DRIVER;
+
    struct nouveau_ws_device *ndev = nouveau_ws_device_new(drm_device);
    if (!ndev)
       return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
