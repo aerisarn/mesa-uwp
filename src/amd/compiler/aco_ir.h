@@ -152,11 +152,11 @@ enum memory_semantics : uint8_t {
    semantic_none = 0x0,
    /* for loads: don't move any access after this load to before this load (even other loads)
     * for barriers: don't move any access after the barrier to before any
-    * atomics/control_barriers/sendmsg_gs_done before the barrier */
+    * atomics/control_barriers/sendmsg_gs_done/position-primitive-export before the barrier */
    semantic_acquire = 0x1,
    /* for stores: don't move any access before this store to after this store
     * for barriers: don't move any access before the barrier to after any
-    * atomics/control_barriers/sendmsg_gs_done after the barrier */
+    * atomics/control_barriers/sendmsg_gs_done/position-primitive-export after the barrier */
    semantic_release = 0x2,
 
    /* the rest are for load/stores/atomics only */
