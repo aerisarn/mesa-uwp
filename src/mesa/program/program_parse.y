@@ -468,6 +468,7 @@ SAMPLE_instruction: SAMPLE_OP maskedDstReg ',' swizzleSrcReg ',' texImageUnit ',
                      != shadow_tex))) {
             yyerror(& @8, state,
                     "multiple targets used on one texture image unit");
+            free($$);
             YYERROR;
          }
 
@@ -519,6 +520,7 @@ TXD_instruction: TXD_OP maskedDstReg ',' swizzleSrcReg ',' swizzleSrcReg ',' swi
                      != shadow_tex))) {
             yyerror(& @12, state,
                "multiple targets used on one texture image unit");
+            free($$);
             YYERROR;
          }
 
