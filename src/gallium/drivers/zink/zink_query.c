@@ -765,7 +765,8 @@ copy_pool_results_to_buffer(struct zink_context *ctx, struct zink_query *query, 
    zink_batch_no_rp(ctx);
    /* if it's a single query that doesn't need special handling, we can copy it and be done */
    zink_batch_reference_resource_rw(batch, res, true);
-   zink_screen(ctx->base.screen)->buffer_barrier(ctx, res, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
+   res->obj->access = VK_ACCESS_TRANSFER_WRITE_BIT;
+   res->obj->access_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
    util_range_add(&res->base.b, &res->valid_buffer_range, offset, offset + result_size);
    assert(query_id < NUM_QUERIES);
    res->obj->unordered_read = res->obj->unordered_write = false;
