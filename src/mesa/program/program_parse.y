@@ -684,6 +684,7 @@ extSwizSel: INTEGER
 
       if (strlen($1) > 1) {
          yyerror(& @1, state, "invalid extended swizzle selector");
+         free($1);
          YYERROR;
       }
 
