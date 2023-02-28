@@ -109,5 +109,9 @@ _mesa_shader_enum_to_shader_stage(GLenum v)
  */
 void initialize_context_to_defaults(struct gl_context *ctx, gl_api api);
 
+struct gl_shader_program *
+standalone_create_shader_program(void);
+void
+standalone_destroy_shader_program(struct gl_shader_program *whole_program);
 
 #endif /* STANDALONE_SCAFFOLDING_H */

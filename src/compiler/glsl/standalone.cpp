@@ -35,7 +35,6 @@
 #include "program.h"
 #include "standalone_scaffolding.h"
 #include "standalone.h"
-#include "string_to_uint_map.h"
 #include "util/set.h"
 #include "linker.h"
 #include "glsl_parser_extras.h"
@@ -441,18 +440,7 @@ standalone_compile_shader(const struct standalone_options *_options,
       }
    }
 
-   struct gl_shader_program *whole_program;
-
-   whole_program = rzalloc (NULL, struct gl_shader_program);
-   assert(whole_program != NULL);
-   whole_program->data = rzalloc(whole_program, struct gl_shader_program_data);
-   assert(whole_program->data != NULL);
-   whole_program->data->InfoLog = ralloc_strdup(whole_program->data, "");
-
-   /* Created just to avoid segmentation faults */
-   whole_program->AttributeBindings = new string_to_uint_map;
-   whole_program->FragDataBindings = new string_to_uint_map;
-   whole_program->FragDataIndexBindings = new string_to_uint_map;
+   struct gl_shader_program *whole_program = standalone_create_shader_program();
 
    for (unsigned i = 0; i < num_files; i++) {
       whole_program->Shaders =
@@ -604,16 +592,7 @@ fail:
 extern "C" void
 standalone_compiler_cleanup(struct gl_shader_program *whole_program)
 {
-   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      if (whole_program->_LinkedShaders[i])
-         _mesa_delete_linked_shader(NULL, whole_program->_LinkedShaders[i]);
-   }
+   standalone_destroy_shader_program(whole_program);
 
-   delete whole_program->AttributeBindings;
-   delete whole_program->FragDataBindings;
-   delete whole_program->FragDataIndexBindings;
-   delete whole_program->UniformHash;
-
-   ralloc_free(whole_program);
    _mesa_glsl_builtin_functions_decref();
 }

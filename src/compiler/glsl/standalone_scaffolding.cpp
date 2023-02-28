@@ -35,6 +35,7 @@
 #include "util/ralloc.h"
 #include "util/strtod.h"
 #include "main/mtypes.h"
+#include "string_to_uint_map.h"
 
 void
 _mesa_warning(struct gl_context *ctx, const char *fmt, ...)
@@ -270,4 +271,39 @@ void initialize_context_to_defaults(struct gl_context *ctx, gl_api api)
       memcpy(&ctx->Const.ShaderCompilerOptions[sh], &options, sizeof(options));
 
    _mesa_locale_init();
+}
+
+struct gl_shader_program *
+standalone_create_shader_program(void)
+{
+   struct gl_shader_program *whole_program;
+
+   whole_program = rzalloc (NULL, struct gl_shader_program);
+   assert(whole_program != NULL);
+   whole_program->data = rzalloc(whole_program, struct gl_shader_program_data);
+   assert(whole_program->data != NULL);
+   whole_program->data->InfoLog = ralloc_strdup(whole_program->data, "");
+
+   /* Created just to avoid segmentation faults */
+   whole_program->AttributeBindings = new string_to_uint_map;
+   whole_program->FragDataBindings = new string_to_uint_map;
+   whole_program->FragDataIndexBindings = new string_to_uint_map;
+
+   return whole_program;
+}
+
+void
+standalone_destroy_shader_program(struct gl_shader_program *whole_program)
+{
+   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+      if (whole_program->_LinkedShaders[i])
+         _mesa_delete_linked_shader(NULL, whole_program->_LinkedShaders[i]);
+   }
+
+   delete whole_program->AttributeBindings;
+   delete whole_program->FragDataBindings;
+   delete whole_program->FragDataIndexBindings;
+   delete whole_program->UniformHash;
+
+   ralloc_free(whole_program);
 }
