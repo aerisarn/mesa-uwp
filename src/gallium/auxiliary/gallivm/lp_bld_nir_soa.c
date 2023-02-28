@@ -1304,15 +1304,19 @@ static void emit_load_mem(struct lp_build_nir_context *bld_base,
 
    offset = LLVMBuildAShr(gallivm->builder, offset, lp_build_const_int_vec(gallivm, uint_bld->type, shift_val), "");
 
-   /* If the address is uniform, then use the address from invocation 0 to load,
-    * and broadcast to all invocations.
+   /* If the address is uniform, then use the address from the first active
+    * invocation 0 to load, and broadcast to all invocations.  We can't do
+    * computed first active invocation for shared accesses (index == NULL),
+    * though, since those don't do bounds checking and we could use an invalid
+    * offset if exec_mask == 0.
     */
-   if (index_and_offset_are_uniform && invocation_0_must_be_active(bld_base)) {
+   if (index_and_offset_are_uniform && (invocation_0_must_be_active(bld_base) || index)) {
       LLVMValueRef ssbo_limit;
+      LLVMValueRef first_active = first_active_invocation(bld_base);
       LLVMValueRef mem_ptr = mem_access_base_pointer(bld_base, load_bld, bit_size, index,
-                                                     lp_build_const_int32(gallivm, 0), &ssbo_limit);
+                                                     first_active, &ssbo_limit);
 
-      offset = LLVMBuildExtractElement(gallivm->builder, offset, lp_build_const_int32(gallivm, 0), "");
+      offset = LLVMBuildExtractElement(gallivm->builder, offset, first_active, "");
 
       for (unsigned c = 0; c < nc; c++) {
          LLVMValueRef chan_offset = LLVMBuildAdd(builder, offset, lp_build_const_int32(gallivm, c), "");
