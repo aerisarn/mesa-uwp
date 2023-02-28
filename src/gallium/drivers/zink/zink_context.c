@@ -4715,7 +4715,9 @@ zink_copy_buffer(struct zink_context *ctx, struct zink_resource *dst, struct zin
    ctx->batch.state->has_barriers |= can_unorder;
    zink_batch_reference_resource_rw(batch, src, false);
    zink_batch_reference_resource_rw(batch, dst, true);
+   bool marker = zink_cmd_debug_marker_begin(ctx, cmdbuf, "copy_buffer(%d)", size);
    VKCTX(CmdCopyBuffer)(cmdbuf, src->obj->buffer, dst->obj->buffer, 1, &region);
+   zink_cmd_debug_marker_end(ctx, cmdbuf, marker);
 }
 
 void
@@ -4822,10 +4824,23 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
        * - vkCmdCopyBufferToImage spec
        */
       assert(img->base.b.nr_samples <= 1);
-      if (buf2img)
+      bool marker;
+      if (buf2img) {
+         marker = zink_cmd_debug_marker_begin(ctx, cmdbuf, "copy_buffer2image(%s, %dx%dx%d)",
+                                                   util_format_short_name(dst->base.b.format),
+                                                   region.imageExtent.width,
+                                                   region.imageExtent.height,
+                                                   MAX2(region.imageSubresource.layerCount, region.imageExtent.depth));
          VKCTX(CmdCopyBufferToImage)(cmdbuf, buf->obj->buffer, img->obj->image, img->layout, 1, &region);
-      else
+      } else {
+         marker = zink_cmd_debug_marker_begin(ctx, cmdbuf, "copy_image2buffer(%s, %dx%dx%d)",
+                                                   util_format_short_name(src->base.b.format),
+                                                   region.imageExtent.width,
+                                                   region.imageExtent.height,
+                                                   MAX2(region.imageSubresource.layerCount, region.imageExtent.depth));
          VKCTX(CmdCopyImageToBuffer)(cmdbuf, img->obj->image, img->layout, buf->obj->buffer, 1, &region);
+      }
+      zink_cmd_debug_marker_end(ctx, cmdbuf, marker);
    }
    if (needs_present_readback)
       zink_kopper_present_readback(ctx, img);
@@ -4934,9 +4949,16 @@ zink_resource_copy_region(struct pipe_context *pctx,
       zink_batch_reference_resource_rw(batch, src, false);
       zink_batch_reference_resource_rw(batch, dst, true);
 
+      bool marker = zink_cmd_debug_marker_begin(ctx, cmdbuf, "copy_image(%s->%s, %dx%dx%d)",
+                                                util_format_short_name(psrc->format),
+                                                util_format_short_name(pdst->format),
+                                                region.extent.width,
+                                                region.extent.height,
+                                                MAX2(region.srcSubresource.layerCount, region.extent.depth));
       VKCTX(CmdCopyImage)(cmdbuf, src->obj->image, src->layout,
                      dst->obj->image, dst->layout,
                      1, &region);
+      zink_cmd_debug_marker_end(ctx, cmdbuf, marker);
    } else if (dst->base.b.target == PIPE_BUFFER &&
               src->base.b.target == PIPE_BUFFER) {
       zink_copy_buffer(ctx, dst, src, dstx, src_box->x, src_box->width);
