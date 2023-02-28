@@ -1465,7 +1465,8 @@ zink_set_constant_buffer(struct pipe_context *pctx,
          zink_screen(ctx->base.screen)->buffer_barrier(ctx, new_res, VK_ACCESS_UNIFORM_READ_BIT,
                                       new_res->gfx_barrier);
          zink_batch_resource_usage_set(&ctx->batch, new_res, false, true);
-         new_res->obj->unordered_read = false;
+         if (!ctx->unordered_blitting)
+            new_res->obj->unordered_read = false;
       }
       update |= ctx->ubos[shader][index].buffer_offset != offset ||
                 !!res != !!buffer || (res && res->obj->buffer != new_res->obj->buffer) ||
@@ -1553,6 +1554,7 @@ zink_set_shader_buffers(struct pipe_context *pctx,
 
    unsigned modified_bits = u_bit_consecutive(start_slot, count);
    unsigned old_writable_mask = ctx->writable_ssbos[p_stage];
+   assert(!ctx->unordered_blitting);
    ctx->writable_ssbos[p_stage] &= ~modified_bits;
    ctx->writable_ssbos[p_stage] |= writable_bitmask << start_slot;
 
@@ -1780,6 +1782,7 @@ zink_set_shader_images(struct pipe_context *pctx,
    struct zink_screen *screen = zink_screen(pctx->screen);
    bool update = false;
    bool is_compute = shader_type == MESA_SHADER_COMPUTE;
+   assert(!ctx->unordered_blitting);
    for (unsigned i = 0; i < count; i++) {
       struct zink_image_view *a = &ctx->image_views[shader_type][start_slot + i];
       const struct pipe_image_view *b = images ? &images[i] : NULL;
@@ -2033,7 +2036,8 @@ zink_set_sampler_views(struct pipe_context *pctx,
             }
          }
          res->sampler_binds[shader_type] |= BITFIELD_BIT(start_slot + i);
-         res->obj->unordered_read = false;
+         if (!ctx->unordered_blitting)
+            res->obj->unordered_read = false;
       } else if (a) {
          unbind_samplerview(ctx, shader_type, start_slot + i);
          update = true;
@@ -3735,11 +3739,12 @@ zink_get_cmdbuf(struct zink_context *ctx, struct zink_resource *src, struct zink
       src->obj->unordered_read = unordered_exec;
    if (dst)
       dst->obj->unordered_write = unordered_exec;
+   if (!unordered_exec || ctx->unordered_blitting)
+      zink_batch_no_rp(ctx);
    if (unordered_exec) {
       ctx->batch.state->has_barriers = true;
       return ctx->batch.state->barrier_cmdbuf;
    }
-   zink_batch_no_rp(ctx);
    return ctx->batch.state->cmdbuf;
 }
 

@@ -1237,6 +1237,9 @@ static void
 zink_set_active_query_state(struct pipe_context *pctx, bool enable)
 {
    struct zink_context *ctx = zink_context(pctx);
+   /* unordered blits already disable queries */
+   if (ctx->unordered_blitting)
+      return;
    ctx->queries_disabled = !enable;
 
    struct zink_batch *batch = &ctx->batch;
