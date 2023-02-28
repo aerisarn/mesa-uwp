@@ -520,6 +520,9 @@ static bool lower_intrinsic(nir_builder *b, nir_instr *instr, struct lower_abi_s
                                                 .component = 2);
       break;
    }
+   case nir_intrinsic_load_poly_line_smooth_enabled:
+      replacement = nir_imm_bool(b, key->ps.mono.poly_line_smoothing);
+      break;
    default:
       return false;
    }
