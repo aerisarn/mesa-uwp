@@ -3398,7 +3398,7 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
 
    /* Wa_1306463417, Wa_16011107343 - Send HS state for every primitive. */
    if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE ||
-       (GFX_VER == 11 || GFX_VER == 12)) {
+       (GFX_VER == 11 || GFX_VERx10 == 120)) {
       genX(emit_hs)(cmd_buffer);
    }
 
@@ -3561,7 +3561,7 @@ anv_use_generated_draws(const struct anv_cmd_buffer *cmd_buffer, uint32_t count)
 {
    const struct anv_device *device = cmd_buffer->device;
 
-#if GFX_VER == 11 || GFX_VER == 12
+#if GFX_VER == 11 || GFX_VERx10 == 120
    /* Limit generated draws to pipelines without HS stage. This makes things
     * simpler for implementing Wa_1306463417, Wa_16011107343.
     */
@@ -4210,7 +4210,7 @@ void genX(CmdDrawMultiEXT)(
       /* Wa_1306463417, Wa_16011107343 - Send HS state for every primitive,
        * first one was handled by cmd_buffer_flush_gfx_state.
        */
-      if (i && (GFX_VER == 11 || GFX_VER == 12))
+      if (i && (GFX_VER == 11 || GFX_VERx10 == 120))
          genX(emit_hs)(cmd_buffer);
 
       anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE_EXTENDED), prim) {
@@ -4417,7 +4417,7 @@ void genX(CmdDrawMultiIndexedEXT)(
       /* Wa_1306463417, Wa_16011107343 - Send HS state for every primitive,
        * first one was handled by cmd_buffer_flush_gfx_state.
        */
-      if (i && (GFX_VER == 11 || GFX_VER == 12))
+      if (i && (GFX_VER == 11 || GFX_VERx10 == 120))
          genX(emit_hs)(cmd_buffer);
 
       anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE_EXTENDED), prim) {
@@ -4667,7 +4667,7 @@ emit_indirect_draws(struct anv_cmd_buffer *cmd_buffer,
       /* Wa_1306463417, Wa_16011107343 - Send HS state for every primitive,
        * first one was handled by cmd_buffer_flush_gfx_state.
        */
-      if (i && (GFX_VER == 11 || GFX_VER == 12))
+      if (i && (GFX_VER == 11 || GFX_VERx10 == 120))
          genX(emit_hs)(cmd_buffer);
 
       anv_batch_emit(&cmd_buffer->batch,
@@ -4901,7 +4901,7 @@ emit_indirect_count_draws(struct anv_cmd_buffer *cmd_buffer,
       /* Wa_1306463417, Wa_16011107343 - Send HS state for every primitive,
        * first one was handled by cmd_buffer_flush_gfx_state.
        */
-      if (i && (GFX_VER == 11 || GFX_VER == 12))
+      if (i && (GFX_VER == 11 || GFX_VERx10 == 120))
          genX(emit_hs)(cmd_buffer);
 
       anv_batch_emit(&cmd_buffer->batch,
