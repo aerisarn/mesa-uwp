@@ -9111,14 +9111,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       }
       break;
    }
-   case nir_intrinsic_memory_barrier_buffer: {
-      wait_imm wait;
-      wait.lgkm = 0;
-      wait.vm = 0;
-      bld.sopp(aco_opcode::s_waitcnt, -1, wait.pack(bld.program->gfx_level));
-      bld.sopk(aco_opcode::s_waitcnt_vscnt, Definition(sgpr_null, s1), 0);
-      break;
-   }
    case nir_intrinsic_export_amd: {
       unsigned flags = nir_intrinsic_flags(instr);
       unsigned target = nir_intrinsic_base(instr);
