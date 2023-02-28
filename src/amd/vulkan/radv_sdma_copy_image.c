@@ -25,42 +25,6 @@
 #include "util/u_memory.h"
 #include "radv_cs.h"
 #include "radv_private.h"
-#include "sid.h"
-
-static bool
-radv_translate_format_to_hw(struct radeon_info *info, VkFormat format, unsigned *hw_fmt,
-                            unsigned *hw_type)
-{
-   const struct util_format_description *desc = vk_format_description(format);
-   *hw_fmt = radv_translate_colorformat(format);
-
-   int firstchan = vk_format_get_first_non_void_channel(format);
-   if (firstchan == -1 || desc->channel[firstchan].type == UTIL_FORMAT_TYPE_FLOAT) {
-      *hw_type = V_028C70_NUMBER_FLOAT;
-   } else {
-      *hw_type = V_028C70_NUMBER_UNORM;
-      if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
-         *hw_type = V_028C70_NUMBER_SRGB;
-      else if (desc->channel[firstchan].type == UTIL_FORMAT_TYPE_SIGNED) {
-         if (desc->channel[firstchan].pure_integer) {
-            *hw_type = V_028C70_NUMBER_SINT;
-         } else {
-            assert(desc->channel[firstchan].normalized);
-            *hw_type = V_028C70_NUMBER_SNORM;
-         }
-      } else if (desc->channel[firstchan].type == UTIL_FORMAT_TYPE_UNSIGNED) {
-         if (desc->channel[firstchan].pure_integer) {
-            *hw_type = V_028C70_NUMBER_UINT;
-         } else {
-            assert(desc->channel[firstchan].normalized);
-            *hw_type = V_028C70_NUMBER_UNORM;
-         }
-      } else {
-         return false;
-      }
-   }
-   return true;
-}
 
 static bool
 radv_sdma_v4_v5_copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
@@ -147,17 +111,20 @@ radv_sdma_v4_v5_copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct 
       radeon_emit(cmd_buffer->cs, 0);
 
       if (dcc) {
-         unsigned hw_fmt, hw_type;
          uint64_t md_address = tiled_address + image->planes[0].surface.meta_offset;
+         const struct util_format_description *desc;
+         VkFormat format = image->vk.format;
+         unsigned hw_fmt, hw_type;
 
-         radv_translate_format_to_hw(&device->physical_device->rad_info, image->vk.format, &hw_fmt,
-                                     &hw_type);
+         desc = vk_format_description(image->vk.format);
+         hw_fmt = radv_translate_colorformat(format);
+         hw_type = radv_translate_buffer_numformat(desc, vk_format_get_first_non_void_channel(format));
 
          /* Add metadata */
          radeon_emit(cmd_buffer->cs, (uint32_t)md_address);
          radeon_emit(cmd_buffer->cs, (uint32_t)(md_address >> 32));
          radeon_emit(cmd_buffer->cs,
-                     hw_fmt | vi_alpha_is_on_msb(device, image->vk.format) << 8 | hw_type << 9 |
+                     hw_fmt | vi_alpha_is_on_msb(device, format) << 8 | hw_type << 9 |
                         image->planes[0].surface.u.gfx9.color.dcc.max_compressed_block_size << 24 |
                         V_028C78_MAX_BLOCK_SIZE_256B << 26 | tmz << 29 |
                         image->planes[0].surface.u.gfx9.color.dcc.pipe_aligned << 31);
