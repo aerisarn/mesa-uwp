@@ -71,7 +71,7 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info, bool *
    zink_batch_reference_resource_rw(batch, src, false);
    zink_batch_reference_resource_rw(batch, dst, true);
 
-   bool marker = zink_cmd_debug_marker_begin(ctx, "blit_resolve(%s->%s, %dx%d->%dx%d)",
+   bool marker = zink_cmd_debug_marker_begin(ctx, cmdbuf, "blit_resolve(%s->%s, %dx%d->%dx%d)",
                                              util_format_short_name(info->src.format),
                                              util_format_short_name(info->src.format),
                                              info->src.box.width, info->src.box.height,
@@ -181,7 +181,7 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info, bool *n
    zink_batch_reference_resource_rw(batch, src, false);
    zink_batch_reference_resource_rw(batch, dst, true);
 
-   bool marker = zink_cmd_debug_marker_begin(ctx, "blit_native(%s->%s, %dx%d->%dx%d)",
+   bool marker = zink_cmd_debug_marker_begin(ctx, cmdbuf, "blit_native(%s->%s, %dx%d->%dx%d)",
                                              util_format_short_name(info->src.format),
                                              util_format_short_name(info->src.format),
                                              info->src.box.width, info->src.box.height,
@@ -330,7 +330,7 @@ zink_blit(struct pipe_context *pctx,
    bool stencil_blit = false;
    if (!util_blitter_is_blit_supported(ctx->blitter, info)) {
       if (util_format_is_depth_or_stencil(info->src.resource->format)) {
-         bool marker = zink_cmd_debug_marker_begin(ctx, "zink_blit(Z %s->%s, %dx%d->%dx%d)",
+         bool marker = zink_cmd_debug_marker_begin(ctx, VK_NULL_HANDLE, "zink_blit(Z %s->%s, %dx%d->%dx%d)",
                                                    util_format_short_name(info->src.format),
                                                    util_format_short_name(info->dst.format),
                                                    info->src.box.width, info->src.box.height,
@@ -370,7 +370,7 @@ zink_blit(struct pipe_context *pctx,
    zink_blit_begin(ctx, ZINK_BLIT_SAVE_FB | ZINK_BLIT_SAVE_FS | ZINK_BLIT_SAVE_TEXTURES);
 
    if (stencil_blit) {
-      bool marker = zink_cmd_debug_marker_begin(ctx, "zink_blit(S fallback %s->%s, %dx%d->%dx%d)",
+      bool marker = zink_cmd_debug_marker_begin(ctx, VK_NULL_HANDLE, "zink_blit(S fallback %s->%s, %dx%d->%dx%d)",
                                                 util_format_short_name(info->src.format),
                                                 util_format_short_name(info->dst.format),
                                                 info->src.box.width, info->src.box.height,
@@ -396,7 +396,7 @@ zink_blit(struct pipe_context *pctx,
 
       zink_cmd_debug_marker_end(ctx, marker);
    } else {
-      bool marker = zink_cmd_debug_marker_begin(ctx, "zink_blit(%s->%s, %dx%d->%dx%d)",
+      bool marker = zink_cmd_debug_marker_begin(ctx, VK_NULL_HANDLE, "zink_blit(%s->%s, %dx%d->%dx%d)",
                                                 util_format_short_name(info->src.format),
                                                 util_format_short_name(info->dst.format),
                                                 info->src.box.width, info->src.box.height,

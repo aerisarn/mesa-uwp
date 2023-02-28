@@ -253,7 +253,7 @@ struct zink_surface *
 zink_get_dummy_surface(struct zink_context *ctx, int samples_index);
 
 bool
-zink_cmd_debug_marker_begin(struct zink_context *ctx, const char *fmt, ...);
+zink_cmd_debug_marker_begin(struct zink_context *ctx, VkCommandBuffer cmdbuf, const char *fmt, ...);
 void
 zink_cmd_debug_marker_end(struct zink_context *ctx, bool emitted);
 

@@ -760,7 +760,7 @@ copy_pool_results_to_buffer(struct zink_context *ctx, struct zink_query *query, 
    if (flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)
       result_size += type_size;
 
-   bool marker = zink_cmd_debug_marker_begin(ctx, "update_qbo(%s: id=%u, num_results=%d)", vk_QueryType_to_str(query->vkqtype), query_id, num_results);
+   bool marker = zink_cmd_debug_marker_begin(ctx, VK_NULL_HANDLE, "update_qbo(%s: id=%u, num_results=%d)", vk_QueryType_to_str(query->vkqtype), query_id, num_results);
 
    zink_batch_no_rp(ctx);
    /* if it's a single query that doesn't need special handling, we can copy it and be done */

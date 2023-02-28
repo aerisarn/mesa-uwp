@@ -3737,7 +3737,7 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
       imb.dstQueueFamilyIndex = zink_screen(ctx->base.screen)->gfx_queue;
       res->dmabuf_acquire = false;
    }
-   bool marker = zink_cmd_debug_marker_begin(ctx, "image_barrier(%s->%s)", vk_ImageLayout_to_str(res->layout), vk_ImageLayout_to_str(new_layout));
+   bool marker = zink_cmd_debug_marker_begin(ctx, cmdbuf, "image_barrier(%s->%s)", vk_ImageLayout_to_str(res->layout), vk_ImageLayout_to_str(new_layout));
    VKCTX(CmdPipelineBarrier)(
       cmdbuf,
       res->obj->access_stage ? res->obj->access_stage : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -3792,7 +3792,7 @@ zink_resource_image_barrier2(struct zink_context *ctx, struct zink_resource *res
       1,
       &imb
    };
-   bool marker = zink_cmd_debug_marker_begin(ctx, "image_barrier(%s->%s)", vk_ImageLayout_to_str(res->layout), vk_ImageLayout_to_str(new_layout));
+   bool marker = zink_cmd_debug_marker_begin(ctx, cmdbuf, "image_barrier(%s->%s)", vk_ImageLayout_to_str(res->layout), vk_ImageLayout_to_str(new_layout));
    VKCTX(CmdPipelineBarrier2)(cmdbuf, &dep);
    zink_cmd_debug_marker_end(ctx, marker);
 
@@ -3897,7 +3897,7 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_resource *res
             idx += snprintf(&buf[idx], sizeof(buf) - idx, "%s", vk_AccessFlagBits_to_str(1ul<<bit));
             first = false;
          }
-         marker = zink_cmd_debug_marker_begin(ctx, "buffer_barrier(%s)", buf);
+         marker = zink_cmd_debug_marker_begin(ctx, cmdbuf, "buffer_barrier(%s)", buf);
       }
       VKCTX(CmdPipelineBarrier)(
          cmdbuf,
@@ -3959,7 +3959,7 @@ zink_resource_buffer_barrier2(struct zink_context *ctx, struct zink_resource *re
             idx += snprintf(&buf[idx], sizeof(buf) - idx, "%s", vk_AccessFlagBits_to_str(1ul<<bit));
             first = false;
          }
-         marker = zink_cmd_debug_marker_begin(ctx, "buffer_barrier(%s)", buf);
+         marker = zink_cmd_debug_marker_begin(ctx, cmdbuf, "buffer_barrier(%s)", buf);
       }
       VKCTX(CmdPipelineBarrier2)(cmdbuf, &dep);
       zink_cmd_debug_marker_end(ctx, marker);
@@ -5503,7 +5503,7 @@ zink_update_barriers(struct zink_context *ctx, bool is_compute,
  * execution on the GPU.
  */
 bool
-zink_cmd_debug_marker_begin(struct zink_context *ctx, const char *fmt, ...)
+zink_cmd_debug_marker_begin(struct zink_context *ctx, VkCommandBuffer cmdbuf, const char *fmt, ...)
 {
    if (!zink_tracing)
       return false;
@@ -5521,7 +5521,7 @@ zink_cmd_debug_marker_begin(struct zink_context *ctx, const char *fmt, ...)
    info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
    info.pLabelName = name;
 
-   VKCTX(CmdBeginDebugUtilsLabelEXT)(ctx->batch.state->cmdbuf, &info);
+   VKCTX(CmdBeginDebugUtilsLabelEXT)(cmdbuf ? cmdbuf : ctx->batch.state->cmdbuf, &info);
 
    free(name);
    return true;
