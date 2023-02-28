@@ -844,12 +844,8 @@ static void emit_load_kernel_arg(struct lp_build_nir_context *bld_base,
    LLVMTypeRef ptr_type = LLVMPointerType(bld_broad->elem_type, 0);
    kernel_args_ptr = LLVMBuildBitCast(builder, kernel_args_ptr, ptr_type, "");
 
-   if (!invocation_0_must_be_active(bld_base)) {
-      mesa_logw_once("Treating load_kernel_arg in control flow as uniform, results may be incorrect.");
-   }
-
    if (offset_is_uniform) {
-      offset = LLVMBuildExtractElement(builder, offset, lp_build_const_int32(gallivm, 0), "");
+      offset = LLVMBuildExtractElement(builder, offset, first_active_invocation(bld_base), "");
 
       for (unsigned c = 0; c < nc; c++) {
          LLVMValueRef this_offset = LLVMBuildAdd(builder, offset, offset_bit_size == 64 ? lp_build_const_int64(gallivm, c) : lp_build_const_int32(gallivm, c), "");
@@ -857,6 +853,8 @@ static void emit_load_kernel_arg(struct lp_build_nir_context *bld_base,
          LLVMValueRef scalar = lp_build_pointer_get2(builder, bld_broad->elem_type, kernel_args_ptr, this_offset);
          result[c] = lp_build_broadcast_scalar(bld_broad, scalar);
       }
+   } else {
+      unreachable("load_kernel_arg must have a uniform offset.");
    }
 }
 
@@ -1169,8 +1167,8 @@ static void emit_load_ubo(struct lp_build_nir_context *bld_base,
    LLVMTypeRef ptr_type = LLVMPointerType(bld_broad->elem_type, 0);
    consts_ptr = LLVMBuildBitCast(builder, consts_ptr, ptr_type, "");
 
-   if (offset_is_uniform && invocation_0_must_be_active(bld_base)) {
-      offset = LLVMBuildExtractElement(builder, offset, lp_build_const_int32(gallivm, 0), "");
+   if (offset_is_uniform) {
+      offset = LLVMBuildExtractElement(builder, offset, first_active_invocation(bld_base), "");
       struct lp_build_context *load_bld = get_int_bld(bld_base, true, bit_size);
       switch (bit_size) {
       case 8:
