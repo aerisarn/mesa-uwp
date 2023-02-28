@@ -398,7 +398,7 @@ create_build_pipeline_spv(struct radv_device *device, const uint32_t *spv, uint3
    };
 
    result = radv_compute_pipeline_create(radv_device_to_handle(device), device->meta_state.cache,
-                                         &pipeline_info, &device->meta_state.alloc, pipeline, true);
+                                         &pipeline_info, &device->meta_state.alloc, pipeline);
 
 cleanup:
    device->vk.dispatch_table.DestroyShaderModule(radv_device_to_handle(device), module,

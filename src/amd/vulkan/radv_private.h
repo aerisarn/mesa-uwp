@@ -2325,13 +2325,12 @@ void radv_pipeline_init(struct radv_device *device, struct radv_pipeline *pipeli
 VkResult radv_graphics_pipeline_create(VkDevice device, VkPipelineCache cache,
                                        const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                        const struct radv_graphics_pipeline_create_info *extra,
-                                       const VkAllocationCallbacks *alloc, VkPipeline *pPipeline,
-                                       bool is_internal);
+                                       const VkAllocationCallbacks *alloc, VkPipeline *pPipeline);
 
 VkResult radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
                                       const VkComputePipelineCreateInfo *pCreateInfo,
                                       const VkAllocationCallbacks *pAllocator,
-                                      VkPipeline *pPipeline, bool is_internal);
+                                      VkPipeline *pPipeline);
 
 bool radv_pipeline_capture_shader_stats(const struct radv_device *device,
                                         VkPipelineCreateFlags flags);

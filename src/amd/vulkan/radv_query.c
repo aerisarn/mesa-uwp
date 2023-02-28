@@ -819,7 +819,7 @@ radv_device_init_meta_query_state_internal(struct radv_device *device)
 
    result = radv_compute_pipeline_create(radv_device_to_handle(device), device->meta_state.cache,
                                          &occlusion_vk_pipeline_info, NULL,
-                                         &device->meta_state.query.occlusion_query_pipeline, true);
+                                         &device->meta_state.query.occlusion_query_pipeline);
    if (result != VK_SUCCESS)
       goto fail;
 
@@ -841,7 +841,7 @@ radv_device_init_meta_query_state_internal(struct radv_device *device)
    result = radv_compute_pipeline_create(
       radv_device_to_handle(device), device->meta_state.cache,
       &pipeline_statistics_vk_pipeline_info, NULL,
-      &device->meta_state.query.pipeline_statistics_query_pipeline, true);
+      &device->meta_state.query.pipeline_statistics_query_pipeline);
    if (result != VK_SUCCESS)
       goto fail;
 
@@ -862,7 +862,7 @@ radv_device_init_meta_query_state_internal(struct radv_device *device)
 
    result = radv_compute_pipeline_create(radv_device_to_handle(device), device->meta_state.cache,
                                          &tfb_pipeline_info, NULL,
-                                         &device->meta_state.query.tfb_query_pipeline, true);
+                                         &device->meta_state.query.tfb_query_pipeline);
    if (result != VK_SUCCESS)
       goto fail;
 
@@ -883,7 +883,7 @@ radv_device_init_meta_query_state_internal(struct radv_device *device)
 
    result = radv_compute_pipeline_create(radv_device_to_handle(device), device->meta_state.cache,
                                          &timestamp_pipeline_info, NULL,
-                                         &device->meta_state.query.timestamp_query_pipeline, true);
+                                         &device->meta_state.query.timestamp_query_pipeline);
    if (result != VK_SUCCESS)
       goto fail;
 
@@ -904,7 +904,7 @@ radv_device_init_meta_query_state_internal(struct radv_device *device)
 
    result = radv_compute_pipeline_create(radv_device_to_handle(device), device->meta_state.cache,
                                          &pg_pipeline_info, NULL,
-                                         &device->meta_state.query.pg_query_pipeline, true);
+                                         &device->meta_state.query.pg_query_pipeline);
 
 fail:
    ralloc_free(occlusion_cs);

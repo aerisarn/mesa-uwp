@@ -5126,8 +5126,7 @@ VkResult
 radv_graphics_pipeline_create(VkDevice _device, VkPipelineCache _cache,
                               const VkGraphicsPipelineCreateInfo *pCreateInfo,
                               const struct radv_graphics_pipeline_create_info *extra,
-                              const VkAllocationCallbacks *pAllocator, VkPipeline *pPipeline,
-                              bool is_internal)
+                              const VkAllocationCallbacks *pAllocator, VkPipeline *pPipeline)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
    RADV_FROM_HANDLE(radv_pipeline_cache, cache, _cache);
@@ -5140,7 +5139,7 @@ radv_graphics_pipeline_create(VkDevice _device, VkPipelineCache _cache,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    radv_pipeline_init(device, &pipeline->base, RADV_PIPELINE_GRAPHICS);
-   pipeline->base.is_internal = is_internal;
+   pipeline->base.is_internal = _cache == device->meta_state.cache;
 
    result = radv_graphics_pipeline_init(pipeline, device, cache, pCreateInfo, extra);
    if (result != VK_SUCCESS) {
@@ -5149,7 +5148,8 @@ radv_graphics_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    }
 
    *pPipeline = radv_pipeline_to_handle(&pipeline->base);
-   radv_rmv_log_graphics_pipeline_create(device, pCreateInfo->flags, &pipeline->base, is_internal);
+   radv_rmv_log_graphics_pipeline_create(device, pCreateInfo->flags, &pipeline->base,
+                                         pipeline->base.is_internal);
    return VK_SUCCESS;
 }
 
@@ -5265,7 +5265,7 @@ radv_CreateGraphicsPipelines(VkDevice _device, VkPipelineCache pipelineCache, ui
                                                pAllocator, &pPipelines[i]);
       } else {
          r = radv_graphics_pipeline_create(_device, pipelineCache, &pCreateInfos[i], NULL,
-                                           pAllocator, &pPipelines[i], false);
+                                           pAllocator, &pPipelines[i]);
       }
       if (r != VK_SUCCESS) {
          result = r;
@@ -5520,8 +5520,7 @@ done:
 VkResult
 radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
                              const VkComputePipelineCreateInfo *pCreateInfo,
-                             const VkAllocationCallbacks *pAllocator, VkPipeline *pPipeline,
-                             bool is_internal)
+                             const VkAllocationCallbacks *pAllocator, VkPipeline *pPipeline)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
    RADV_FROM_HANDLE(radv_pipeline_cache, cache, _cache);
@@ -5536,7 +5535,7 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    }
 
    radv_pipeline_init(device, &pipeline->base, RADV_PIPELINE_COMPUTE);
-   pipeline->base.is_internal = is_internal;
+   pipeline->base.is_internal = _cache == device->meta_state.cache;
 
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
@@ -5554,7 +5553,8 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    radv_compute_pipeline_init(pipeline, pipeline_layout);
 
    *pPipeline = radv_pipeline_to_handle(&pipeline->base);
-   radv_rmv_log_compute_pipeline_create(device, pCreateInfo->flags, &pipeline->base, is_internal);
+   radv_rmv_log_compute_pipeline_create(device, pCreateInfo->flags, &pipeline->base,
+                                        pipeline->base.is_internal);
    return VK_SUCCESS;
 }
 
@@ -5569,7 +5569,7 @@ radv_create_compute_pipelines(VkDevice _device, VkPipelineCache pipelineCache, u
    for (; i < count; i++) {
       VkResult r;
       r = radv_compute_pipeline_create(_device, pipelineCache, &pCreateInfos[i], pAllocator,
-                                       &pPipelines[i], false);
+                                       &pPipelines[i]);
       if (r != VK_SUCCESS) {
          result = r;
          pPipelines[i] = VK_NULL_HANDLE;
