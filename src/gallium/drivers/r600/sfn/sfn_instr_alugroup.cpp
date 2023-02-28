@@ -310,6 +310,62 @@ AluGroup::try_readport(AluInstr *instr, AluBankSwizzle cycle)
    return false;
 }
 
+bool AluGroup::replace_source(PRegister old_src, PVirtualValue new_src)
+{
+   AluReadportReservation rpr_sum;
+
+   // At this point we should not have anything in slot 4
+   assert(s_max_slots == 4 || !m_slots[4]);
+
+   for (int slot = 0; slot < 4; ++slot) {
+      if (!m_slots[slot])
+         continue;
+
+      assert(m_slots[slot]->alu_slots() == 1);
+
+      if (!m_slots[slot]->can_replace_source(old_src, new_src))
+         return false;
+
+      auto& srcs = m_slots[slot]->sources();
+
+      PVirtualValue test_src[3];
+      std::transform(srcs.begin(), srcs.end(), test_src,
+                     [old_src, new_src](PVirtualValue s) {
+         return old_src->equal_to(*s) ? new_src : s;
+      });
+
+      AluBankSwizzle bs = alu_vec_012;
+      while (bs != alu_vec_unknown) {
+         AluReadportReservation rpr = rpr_sum;
+         if (rpr.schedule_vec_src(test_src,srcs.size(), bs)) {
+            rpr_sum = rpr;
+            break;
+         }
+         ++bs;
+      }
+
+      if (bs == alu_vec_unknown)
+         return false;
+   }
+
+   bool success = false;
+
+   for (int slot = 0; slot < 4; ++slot) {
+      if (!m_slots[slot])
+         continue;
+      success |= m_slots[slot]->do_replace_source(old_src, new_src);
+      for (auto& s : m_slots[slot]->sources()) {
+         if (s->pin() == pin_free)
+            s->set_pin(pin_chan);
+         else if (s->pin() == pin_group)
+               s->set_pin(pin_chgr);
+      }
+   }
+
+   m_readports_evaluator = rpr_sum;
+   return success;
+}
+
 bool
 AluGroup::update_indirect_access(AluInstr *instr)
 {
