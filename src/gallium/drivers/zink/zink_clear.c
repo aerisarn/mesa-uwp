@@ -539,6 +539,7 @@ zink_clear_texture(struct pipe_context *pctx,
       surf = create_clear_surface(pctx, pres, level, box);
       util_blitter_save_framebuffer(ctx->blitter, &ctx->fb_state);
       set_clear_fb(pctx, surf, NULL);
+      zink_blit_barriers(ctx, NULL, res, false);
       ctx->blitting = true;
       ctx->queries_disabled = true;
       pctx->clear(pctx, PIPE_CLEAR_COLOR0, &scissor, &color, 0, 0);
@@ -562,6 +563,7 @@ zink_clear_texture(struct pipe_context *pctx,
          flags |= PIPE_CLEAR_STENCIL;
       surf = create_clear_surface(pctx, pres, level, box);
       util_blitter_save_framebuffer(ctx->blitter, &ctx->fb_state);
+      zink_blit_barriers(ctx, NULL, res, false);
       ctx->blitting = true;
       set_clear_fb(pctx, NULL, surf);
       ctx->queries_disabled = true;
@@ -633,6 +635,7 @@ zink_clear_render_target(struct pipe_context *pctx, struct pipe_surface *dst,
    util_blitter_save_framebuffer(ctx->blitter, &ctx->fb_state);
    set_clear_fb(pctx, dst, NULL);
    struct pipe_scissor_state scissor = {dstx, dsty, dstx + width, dsty + height};
+   zink_blit_barriers(ctx, NULL, zink_resource(dst->texture), false);
    ctx->blitting = true;
    pctx->clear(pctx, PIPE_CLEAR_COLOR0, &scissor, color, 0, 0);
    util_blitter_restore_fb_state(ctx->blitter);
@@ -662,6 +665,7 @@ zink_clear_depth_stencil(struct pipe_context *pctx, struct pipe_surface *dst,
    if (!cur_attachment) {
       util_blitter_save_framebuffer(ctx->blitter, &ctx->fb_state);
       set_clear_fb(pctx, NULL, dst);
+      zink_blit_barriers(ctx, NULL, zink_resource(dst->texture), false);
       ctx->blitting = true;
    }
    struct pipe_scissor_state scissor = {dstx, dsty, dstx + width, dsty + height};

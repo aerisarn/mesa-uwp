@@ -648,7 +648,7 @@ update_descriptor_state_sampler(struct zink_context *ctx, gl_shader_stage shader
          }
       } else {
          struct zink_surface *surface = get_imageview_for_binding(ctx, shader, type, slot);
-         ctx->di.textures[shader][slot].imageLayout = get_layout_for_binding(ctx, res, type, shader == MESA_SHADER_COMPUTE);
+         ctx->di.textures[shader][slot].imageLayout = ctx->blitting ? res->layout : get_layout_for_binding(ctx, res, type, shader == MESA_SHADER_COMPUTE);
          ctx->di.textures[shader][slot].imageView = surface->image_view;
          if (!screen->have_D24_UNORM_S8_UINT &&
              ctx->sampler_states[shader][slot] && ctx->sampler_states[shader][slot]->sampler_clamped) {
@@ -2862,6 +2862,8 @@ zink_prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, uns
       if (!i)
          zink_update_fbfetch(ctx);
    }
+   if (ctx->blitting)
+      return surf->image_view;
    VkImageLayout layout;
    if (ctx->tc && zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses && !ctx->blitting) {
       layout = zink_tc_renderpass_info_parse(ctx, &ctx->dynamic_fb.tc_info, i < ctx->fb_state.nr_cbufs ? i : PIPE_MAX_COLOR_BUFS, &pipeline, &access);
@@ -3205,7 +3207,7 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, unsigned 
       check_resource_for_batch_ref(ctx, res);
       if (res->sampler_bind_count[0]) {
          update_res_sampler_layouts(ctx, res);
-         if (res->layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+         if (res->layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && !ctx->blitting)
             _mesa_set_add(ctx->need_barriers[0], res);
       }
    }
@@ -3727,6 +3729,7 @@ static void
 resource_check_defer_image_barrier(struct zink_context *ctx, struct zink_resource *res, VkImageLayout layout, VkPipelineStageFlags pipeline)
 {
    assert(!res->obj->is_buffer);
+   assert(!ctx->blitting);
 
    bool is_compute = pipeline == VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
    /* if this is a non-shader barrier and there are binds, always queue a shader barrier */
@@ -4093,6 +4096,13 @@ zink_flush(struct pipe_context *pctx,
       if (fbfetch_outputs) {
          ctx->fbfetch_outputs = 0;
          ctx->rp_changed = true;
+      }
+      if (ctx->fb_state.zsbuf)
+         zink_blit_barriers(ctx, NULL, zink_resource(ctx->fb_state.zsbuf->texture), false);
+
+      for (unsigned i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+         if (ctx->fb_state.cbufs[i])
+            zink_blit_barriers(ctx, NULL, zink_resource(ctx->fb_state.cbufs[i]->texture), false);
       }
       ctx->blitting = true;
       /* start rp to do all the clears */
@@ -5034,6 +5044,7 @@ zink_resource_commit(struct pipe_context *pctx, struct pipe_resource *pres, unsi
 static void
 rebind_image(struct zink_context *ctx, struct zink_resource *res)
 {
+   assert(!ctx->blitting);
    if (res->fb_binds)
       zink_rebind_framebuffer(ctx, res);
    if (!zink_resource_has_binds(res))
@@ -5111,6 +5122,7 @@ zink_rebind_all_buffers(struct zink_context *ctx)
 void
 zink_rebind_all_images(struct zink_context *ctx)
 {
+   assert(!ctx->blitting);
    rebind_fb_state(ctx, NULL, false);
     for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       for (unsigned j = 0; j < ctx->di.num_sampler_views[i]; j++) {
@@ -5628,6 +5640,7 @@ void
 zink_update_barriers(struct zink_context *ctx, bool is_compute,
                      struct pipe_resource *index, struct pipe_resource *indirect, struct pipe_resource *indirect_draw_count)
 {
+   assert(!ctx->blitting);
    if (!ctx->need_barriers[is_compute]->entries)
       return;
    struct set *need_barriers = ctx->need_barriers[is_compute];

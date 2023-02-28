@@ -364,15 +364,15 @@ zink_draw(struct pipe_context *pctx,
    unsigned work_count = ctx->batch.work_count;
    enum pipe_prim_type mode = (enum pipe_prim_type)dinfo->mode;
 
-   if (ctx->memory_barrier)
+   if (ctx->memory_barrier && !ctx->blitting)
       zink_flush_memory_barrier(ctx, false);
 
-   if (unlikely(ctx->buffer_rebind_counter < screen->buffer_rebind_counter)) {
+   if (unlikely(ctx->buffer_rebind_counter < screen->buffer_rebind_counter && !ctx->blitting)) {
       ctx->buffer_rebind_counter = screen->buffer_rebind_counter;
       zink_rebind_all_buffers(ctx);
    }
 
-   if (unlikely(ctx->image_rebind_counter < screen->image_rebind_counter)) {
+   if (unlikely(ctx->image_rebind_counter < screen->image_rebind_counter && !ctx->blitting)) {
       ctx->image_rebind_counter = screen->image_rebind_counter;
       zink_rebind_all_images(ctx);
    }
@@ -423,7 +423,8 @@ zink_draw(struct pipe_context *pctx,
 
    barrier_draw_buffers(ctx, dinfo, dindirect, index_buffer);
    /* this may re-emit draw buffer barriers, but such synchronization is harmless */
-   zink_update_barriers(ctx, false, index_buffer, dindirect ? dindirect->buffer : NULL, dindirect ? dindirect->indirect_draw_count : NULL);
+   if (!ctx->blitting)
+      zink_update_barriers(ctx, false, index_buffer, dindirect ? dindirect->buffer : NULL, dindirect ? dindirect->indirect_draw_count : NULL);
 
    /* ensure synchronization between doing streamout with counter buffer
     * and using counter buffer for indirect draw

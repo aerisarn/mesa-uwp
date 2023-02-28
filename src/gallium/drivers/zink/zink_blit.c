@@ -356,12 +356,36 @@ zink_blit(struct pipe_context *pctx,
     */
    apply_dst_clears(ctx, info, true);
    zink_fb_clears_apply_region(ctx, info->src.resource, zink_rect_from_box(&info->src.box));
+   unsigned rp_clears_enabled = ctx->rp_clears_enabled;
+   unsigned clears_enabled = ctx->clears_enabled;
+   if (!dst->fb_bind_count) {
+      /* avoid applying clears from fb unbind by storing and re-setting them after the blit */
+      ctx->rp_clears_enabled = 0;
+      ctx->clears_enabled = 0;
+   } else {
+      unsigned bit;
+      /* convert to PIPE_CLEAR_XYZ */
+      if (dst->fb_binds & BITFIELD_BIT(PIPE_MAX_COLOR_BUFS))
+         bit = PIPE_CLEAR_DEPTHSTENCIL;
+      else
+         bit = dst->fb_binds << 2;
+      rp_clears_enabled &= ~bit;
+      clears_enabled &= ~bit;
+      ctx->rp_clears_enabled &= bit;
+      ctx->clears_enabled &= bit;
+   }
 
    /* this will draw a full-resource quad, so ignore existing data */
-   if (util_blit_covers_whole_resource(info))
+   bool whole = util_blit_covers_whole_resource(info);
+   if (whole)
       pctx->invalidate_resource(pctx, info->dst.resource);
-   ctx->blitting = true;
    zink_blit_begin(ctx, ZINK_BLIT_SAVE_FB | ZINK_BLIT_SAVE_FS | ZINK_BLIT_SAVE_TEXTURES);
+   if (info->src.format != info->src.resource->format)
+      zink_resource_object_init_mutable(ctx, src);
+   if (info->dst.format != info->dst.resource->format)
+      zink_resource_object_init_mutable(ctx, dst);
+   zink_blit_barriers(ctx, src, dst, whole);
+   ctx->blitting = true;
 
    if (stencil_blit) {
       struct pipe_surface *dst_view, dst_templ;
@@ -386,6 +410,8 @@ zink_blit(struct pipe_context *pctx,
       util_blitter_blit(ctx->blitter, info);
    }
    ctx->blitting = false;
+   ctx->rp_clears_enabled = rp_clears_enabled;
+   ctx->clears_enabled = clears_enabled;
 end:
    if (needs_present_readback)
       zink_kopper_present_readback(ctx, src);

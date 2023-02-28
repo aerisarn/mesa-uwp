@@ -786,6 +786,7 @@ zink_begin_render_pass(struct zink_context *ctx)
          src_view = ctx->base.create_sampler_view(&ctx->base, src, &src_templ);
 
          zink_blit_begin(ctx, ZINK_BLIT_SAVE_FB | ZINK_BLIT_SAVE_FS | ZINK_BLIT_SAVE_TEXTURES);
+         zink_blit_barriers(ctx, zink_resource(src), zink_resource(dst_view->texture), false);
          ctx->blitting = true;
          util_blitter_blit_generic(ctx->blitter, dst_view, &dstbox,
                                    src_view, &dstbox, ctx->fb_state.width, ctx->fb_state.height,
