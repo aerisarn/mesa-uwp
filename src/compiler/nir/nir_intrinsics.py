@@ -849,6 +849,8 @@ system_value("xfb_index_buffer", 1, bit_sizes=[32,64])
 
 system_value("frag_size", 2)
 system_value("frag_invocation_count", 1)
+# Whether smooth lines or polygon smoothing is enabled
+system_value("poly_line_smooth_enabled", 1, bit_sizes=[1])
 
 # System values for ray tracing.
 system_value("ray_launch_id", 3)
