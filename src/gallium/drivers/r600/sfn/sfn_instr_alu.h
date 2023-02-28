@@ -179,6 +179,7 @@ public:
    void inc_priority() { ++m_priority; }
 
    void set_parent_group(AluGroup *group) { m_parent_group = group; }
+   AluGroup *parent_group() { return m_parent_group;}
 
    AluInstr *as_alu() override { return this; }
 
