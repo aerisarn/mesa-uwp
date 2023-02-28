@@ -9132,6 +9132,9 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       emit_split_vector(ctx, dst, instr->num_components);
       break;
    }
+   case nir_intrinsic_xfb_counter_sub_amd:
+      /* TODO: implement this */
+      break;
    case nir_intrinsic_memory_barrier_buffer: {
       wait_imm wait;
       wait.lgkm = 0;

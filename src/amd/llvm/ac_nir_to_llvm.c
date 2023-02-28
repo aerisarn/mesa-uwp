@@ -4232,6 +4232,27 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = ac_build_gather_values(&ctx->ac, global_count, instr->num_components);
       break;
    }
+   case nir_intrinsic_xfb_counter_sub_amd: {
+      /* must be called in a single lane of a workgroup. */
+      LLVMTypeRef gdsptr = LLVMPointerType(ctx->ac.i32, AC_ADDR_SPACE_GDS);
+      LLVMValueRef gdsbase = LLVMBuildIntToPtr(ctx->ac.builder, ctx->ac.i32_0, gdsptr, "");
+      LLVMValueRef sub_vec = get_src(ctx, instr->src[0]);
+      unsigned write_mask = nir_intrinsic_write_mask(instr);
+
+      for (unsigned i = 0; i < instr->num_components; i++) {
+         if (write_mask & (1 << i)) {
+            LLVMValueRef value =
+               LLVMBuildExtractElement(ctx->ac.builder, sub_vec,
+                                       LLVMConstInt(ctx->ac.i32, i, false), "");
+
+            LLVMValueRef gds_ptr =
+               ac_build_gep_ptr(&ctx->ac, ctx->ac.i32, gdsbase, LLVMConstInt(ctx->ac.i32, i, 0));
+            LLVMBuildAtomicRMW(ctx->ac.builder, LLVMAtomicRMWBinOpSub, gds_ptr, value,
+                               LLVMAtomicOrderingMonotonic, false);
+         }
+      }
+      break;
+   }
    case nir_intrinsic_export_amd: {
       unsigned flags = nir_intrinsic_flags(instr);
       unsigned target = nir_intrinsic_base(instr);
