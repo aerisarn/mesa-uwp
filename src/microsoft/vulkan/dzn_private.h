@@ -201,6 +201,7 @@ struct dzn_physical_device {
    mtx_t dev_lock;
    ID3D12Device4 *dev;
    ID3D12Device10 *dev10;
+   ID3D12Device11 *dev11;
    D3D_FEATURE_LEVEL feature_level;
    D3D_SHADER_MODEL shader_model;
    D3D_ROOT_SIGNATURE_VERSION root_sig_version;
@@ -262,6 +263,7 @@ struct dzn_device {
 
    ID3D12Device4 *dev;
    ID3D12Device10 *dev10;
+   ID3D12Device11 *dev11;
    ID3D12DeviceConfiguration *dev_config;
 
    struct dzn_meta_indirect_draw indirect_draws[DZN_NUM_INDIRECT_DRAW_TYPES];
@@ -379,8 +381,6 @@ struct dzn_buffer_desc {
 #define MAX_DESCS_PER_CBV_SRV_UAV_HEAP 1000000u
 
 struct dzn_descriptor_heap {
-   ID3D12Device4 *dev;
-   ID3D12Device11 *dev11;
    ID3D12DescriptorHeap *heap;
    D3D12_DESCRIPTOR_HEAP_TYPE type;
    SIZE_T cpu_base;
@@ -396,20 +396,23 @@ D3D12_GPU_DESCRIPTOR_HANDLE
 dzn_descriptor_heap_get_gpu_handle(const struct dzn_descriptor_heap *heap, uint32_t slot);
 
 void
-dzn_descriptor_heap_write_image_view_desc(struct dzn_descriptor_heap *heap,
+dzn_descriptor_heap_write_image_view_desc(struct dzn_device *device,
+                                          struct dzn_descriptor_heap *heap,
                                           uint32_t heap_offset,
                                           bool writeable,
                                           bool cube_as_2darray,
                                           const struct dzn_image_view *iview);
 
 void
-dzn_descriptor_heap_write_buffer_desc(struct dzn_descriptor_heap *heap,
+dzn_descriptor_heap_write_buffer_desc(struct dzn_device *device,
+                                      struct dzn_descriptor_heap *heap,
                                       uint32_t heap_offset,
                                       bool writeable,
                                       const struct dzn_buffer_desc *bdesc);
 
 void
-dzn_descriptor_heap_copy(struct dzn_descriptor_heap *dst_heap, uint32_t dst_heap_offset,
+dzn_descriptor_heap_copy(struct dzn_device *device,
+                         struct dzn_descriptor_heap *dst_heap, uint32_t dst_heap_offset,
                          const struct dzn_descriptor_heap *src_heap, uint32_t src_heap_offset,
                          uint32_t desc_count);
 

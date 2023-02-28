@@ -2664,7 +2664,7 @@ dzn_cmd_buffer_blit_prepare_src_view(struct dzn_cmd_buffer *cmdbuf,
 
    struct dzn_image_view iview;
    dzn_image_view_init(device, &iview, &iview_info);
-   dzn_descriptor_heap_write_image_view_desc(heap, heap_slot, false, false, &iview);
+   dzn_descriptor_heap_write_image_view_desc(device, heap, heap_slot, false, false, &iview);
    dzn_image_view_finish(&iview);
 
    D3D12_GPU_DESCRIPTOR_HANDLE handle =
@@ -3083,7 +3083,7 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
          uint32_t set_desc_count = pipeline->sets[s].range_desc_count[type];
          if (set_desc_count) {
             mtx_lock(&set->pool->defragment_lock);
-            dzn_descriptor_heap_copy(dst_heap, dst_heap_offset + set_heap_offset,
+            dzn_descriptor_heap_copy(device, dst_heap, dst_heap_offset + set_heap_offset,
                                      &set->pool->heaps[type], set->heap_offsets[type],
                                      set_desc_count);
             mtx_unlock(&set->pool->defragment_lock);
@@ -3097,13 +3097,13 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
                struct dzn_buffer_desc bdesc = set->dynamic_buffers[o];
                bdesc.offset += desc_state->sets[s].dynamic_offsets[o];
 
-               dzn_descriptor_heap_write_buffer_desc(dst_heap,
+               dzn_descriptor_heap_write_buffer_desc(device, dst_heap,
                                                      dst_heap_offset + set_heap_offset + desc_heap_offset,
                                                      false, &bdesc);
 
                if (pipeline->sets[s].dynamic_buffer_heap_offsets[o].uav != ~0) {
                   desc_heap_offset = pipeline->sets[s].dynamic_buffer_heap_offsets[o].uav;
-                  dzn_descriptor_heap_write_buffer_desc(dst_heap,
+                  dzn_descriptor_heap_write_buffer_desc(device, dst_heap,
                                                         dst_heap_offset + set_heap_offset + desc_heap_offset,
                                                         true, &bdesc);
                }

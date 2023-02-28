@@ -159,6 +159,9 @@ dzn_physical_device_destroy(struct vk_physical_device *physical)
    if (pdev->dev10)
       ID3D12Device1_Release(pdev->dev10);
 
+   if (pdev->dev11)
+      ID3D12Device1_Release(pdev->dev11);
+
    if (pdev->adapter)
       IUnknown_Release(pdev->adapter);
 
@@ -633,6 +636,8 @@ dzn_physical_device_get_d3d12_dev(struct dzn_physical_device *pdev)
 
       if (FAILED(ID3D12Device1_QueryInterface(pdev->dev, &IID_ID3D12Device10, (void **)&pdev->dev10)))
          pdev->dev10 = NULL;
+      if (FAILED(ID3D12Device1_QueryInterface(pdev->dev, &IID_ID3D12Device11, (void **)&pdev->dev11)))
+         pdev->dev11 = NULL;
       dzn_physical_device_cache_caps(pdev);
       dzn_physical_device_init_memory(pdev);
       dzn_physical_device_init_uuids(pdev);
@@ -2172,6 +2177,9 @@ dzn_device_destroy(struct dzn_device *device, const VkAllocationCallbacks *pAllo
    if (device->dev10)
       ID3D12Device1_Release(device->dev10);
 
+   if (device->dev11)
+      ID3D12Device1_Release(device->dev11);
+
    vk_device_finish(&device->vk);
    vk_free2(&instance->vk.alloc, pAllocator, device);
 }
@@ -2266,6 +2274,10 @@ dzn_device_create(struct dzn_physical_device *pdev,
    if (pdev->dev10) {
       device->dev10 = pdev->dev10;
       ID3D12Device1_AddRef(device->dev10);
+   }
+   if (pdev->dev11) {
+      device->dev11 = pdev->dev11;
+      ID3D12Device1_AddRef(device->dev11);
    }
 
    ID3D12InfoQueue *info_queue;
