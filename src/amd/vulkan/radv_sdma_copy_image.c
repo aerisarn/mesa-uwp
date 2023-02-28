@@ -77,18 +77,13 @@ radv_sdma_v4_v5_copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct 
    unsigned copy_height = DIV_ROUND_UP(image->info.height, image->planes[0].surface.blk_h);
    bool tmz = false;
 
-   uint32_t ib_pad_dw_mask = cmd_buffer->device->physical_device->rad_info.ib_pad_dw_mask[AMD_IP_SDMA];
-
    /* Linear -> linear sub-window copy. */
    if (image->planes[0].surface.is_linear) {
-      ASSERTED unsigned cdw_max =
-         radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, align(8, ib_pad_dw_mask + 1));
+      ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 7);
       unsigned bytes = src_pitch * copy_height * bpp;
 
       if (!(bytes < (1u << 22)))
          return false;
-
-      radeon_emit(cmd_buffer->cs, 0x00000000);
 
       src_address += image->planes[0].surface.u.gfx9.offset[0];
 
@@ -100,9 +95,6 @@ radv_sdma_v4_v5_copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct 
       radeon_emit(cmd_buffer->cs, src_address >> 32);
       radeon_emit(cmd_buffer->cs, dst_address);
       radeon_emit(cmd_buffer->cs, dst_address >> 32);
-
-      while (cmd_buffer->cs->cdw & ib_pad_dw_mask)
-         radeon_emit(cmd_buffer->cs, SDMA_NOP_PAD);
 
       assert(cmd_buffer->cs->cdw <= cdw_max);
 
@@ -125,10 +117,9 @@ radv_sdma_v4_v5_copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct 
             linear_slice_pitch < (1 << 28) && copy_width < (1 << 14) && copy_height < (1 << 14)))
          return false;
 
-      ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs,
-                                                     align(15 + dcc * 3, ib_pad_dw_mask + 1));
+      ASSERTED unsigned cdw_max =
+         radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 14 + (dcc ? 3 : 0));
 
-      radeon_emit(cmd_buffer->cs, 0x00000000);
       radeon_emit(cmd_buffer->cs,
                   CIK_SDMA_PACKET(CIK_SDMA_OPCODE_COPY, CIK_SDMA_COPY_SUB_OPCODE_TILED_SUB_WINDOW,
                                   (tmz ? 4 : 0)) |
@@ -171,9 +162,6 @@ radv_sdma_v4_v5_copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct 
                         V_028C78_MAX_BLOCK_SIZE_256B << 26 | tmz << 29 |
                         image->planes[0].surface.u.gfx9.color.dcc.pipe_aligned << 31);
       }
-
-      while (cmd_buffer->cs->cdw & ib_pad_dw_mask)
-         radeon_emit(cmd_buffer->cs, SDMA_NOP_PAD);
 
       assert(cmd_buffer->cs->cdw <= cdw_max);
 
