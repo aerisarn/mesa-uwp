@@ -94,7 +94,16 @@ invocation_0_must_be_active(struct lp_build_nir_context *bld_base)
    return true;
 }
 
-/** Returns a scalar value of the first active invocation in the exec_mask. */
+/**
+ * Returns a scalar value of the first active invocation in the exec_mask.
+ *
+ * Note that gallivm doesn't generally jump when exec_mask is 0 (such as if/else
+ * branches thare are all false, or portions of a loop after a break/continue
+ * has ended the last invocation that had been active in the loop).  In that
+ * case, we return a 0 value so that unconditional LLVMBuildExtractElement of
+ * the first_active_invocation (such as in memory loads, texture unit index
+ * lookups, etc) will use a valid index
+ */
 static LLVMValueRef first_active_invocation(struct lp_build_nir_context *bld_base)
 {
    struct gallivm_state *gallivm = bld_base->base.gallivm;
@@ -114,11 +123,12 @@ static LLVMValueRef first_active_invocation(struct lp_build_nir_context *bld_bas
    bitmask = LLVMBuildBitCast(builder, bitmask, LLVMIntTypeInContext(gallivm->context, uint_bld->type.length), "exec_bitmask");
    bitmask = LLVMBuildZExt(builder, bitmask, bld_base->int_bld.elem_type, "");
 
-   /* We know that exec mask always has a set bit (otherwise we would have
-    * jumped), so we can set is_zero_poison to true.
-    */
-   return lp_build_intrinsic_binary(builder, "llvm.cttz.i32", bld_base->int_bld.elem_type, bitmask,
-                                    LLVMConstInt(LLVMInt1TypeInContext(gallivm->context), true, false));
+   LLVMValueRef any_active = LLVMBuildICmp(builder, LLVMIntNE, bitmask, lp_build_const_int32(gallivm, 0), "any_active");
+
+   LLVMValueRef first_active = lp_build_intrinsic_binary(builder, "llvm.cttz.i32", bld_base->int_bld.elem_type, bitmask,
+                                                         LLVMConstInt(LLVMInt1TypeInContext(gallivm->context), false, false));
+
+   return LLVMBuildSelect(builder, any_active, first_active, lp_build_const_int32(gallivm, 0), "first_active_or_0");
 }
 
 static LLVMValueRef
