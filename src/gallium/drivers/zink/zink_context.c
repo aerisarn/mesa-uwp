@@ -5008,6 +5008,7 @@ zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resou
       zink_batch_reference_resource(&ctx->batch, d);
    /* don't be too creative */
    zink_resource_object_reference(screen, &d->obj, s->obj);
+   d->valid_buffer_range = s->valid_buffer_range;
    /* force counter buffer reset */
    d->so_valid = false;
    if (num_rebinds && rebind_buffer(ctx, d, rebind_mask, num_rebinds) < num_rebinds)
