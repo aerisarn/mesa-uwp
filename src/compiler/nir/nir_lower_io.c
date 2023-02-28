@@ -3122,6 +3122,10 @@ type_size_vec4(const struct glsl_type *type, bool bindless)
    return glsl_count_attribute_slots(type, false);
 }
 
+/**
+ * This runs all compiler passes needed to lower IO, lower indirect IO access,
+ * set transform feedback info in IO intrinsics, and clean up the IR.
+ */
 void
 nir_lower_io_passes(nir_shader *nir)
 {
@@ -3155,6 +3159,20 @@ nir_lower_io_passes(nir_shader *nir)
 
    NIR_PASS_V(nir, nir_lower_io, nir_var_shader_out | nir_var_shader_in,
               type_size_vec4, nir_lower_io_lower_64bit_to_32);
+
+   /* If IO is lowered before var->data.driver_location is assigned, driver
+    * locations are all 0, which means IO bases are all 0. It's not necessary
+    * to set driver_location before lowering IO because the only thing that
+    * identifies outputs is their semantic, and IO bases can always be
+    * computed from the semantics.
+    *
+    * This assigns IO bases from scratch, using IO semantics to tell which
+    * intrinsics refer to the same IO. If the bases already exist, they
+    * will be reassigned, sorted by the semantic, and all holes removed.
+    * This kind of canonicalizes all bases.
+    */
+   NIR_PASS_V(nir, nir_recompute_io_bases,
+              nir_var_shader_in | nir_var_shader_out);
 
    /* nir_io_add_const_offset_to_base needs actual constants. */
    NIR_PASS_V(nir, nir_opt_constant_folding);
