@@ -526,6 +526,7 @@ zink_create_query(struct pipe_context *pctx,
    struct zink_batch *batch = &zink_context(pctx)->batch;
    batch->has_work = true;
    query->needs_reset = true;
+   query->predicate_dirty = true;
    if (query->type == PIPE_QUERY_TIMESTAMP) {
       query->active = true;
       /* defer pool reset until end_query since we're guaranteed to be threadsafe then */
