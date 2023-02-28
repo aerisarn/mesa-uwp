@@ -3839,7 +3839,7 @@ zink_resource_image_transfer_dst_barrier(struct zink_context *ctx, struct zink_r
    /* skip TRANSFER_DST barrier if no intersection from previous copies */
    if (res->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ||
        zink_screen(ctx->base.screen)->driver_workarounds.broken_cache_semantics ||
-       zink_resource_copy_box_intersects(res, level, box)) {
+       zink_check_transfer_dst_barrier(res, level, box)) {
       zink_screen(ctx->base.screen)->image_barrier(ctx, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
    } else {
       res->obj->access = VK_ACCESS_TRANSFER_WRITE_BIT;
