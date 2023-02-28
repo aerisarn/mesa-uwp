@@ -74,26 +74,39 @@ draw_emit_xfb(struct fd_ringbuffer *ring, struct CP_DRAW_INDX_OFFSET_0 *draw0,
 }
 
 static void
-draw_emit_indirect(struct fd_ringbuffer *ring,
+draw_emit_indirect(struct fd_context *ctx,
+                   struct fd_ringbuffer *ring,
                    struct CP_DRAW_INDX_OFFSET_0 *draw0,
                    const struct pipe_draw_info *info,
                    const struct pipe_draw_indirect_info *indirect,
-                   unsigned index_offset)
+                   unsigned index_offset, uint32_t driver_param)
 {
    struct fd_resource *ind = fd_resource(indirect->buffer);
 
    if (info->index_size) {
+      OUT_PKT7(ring, CP_DRAW_INDIRECT_MULTI, 9);
+      OUT_RING(ring, pack_CP_DRAW_INDX_OFFSET_0(*draw0).value);
+      OUT_RING(ring,
+         (A6XX_CP_DRAW_INDIRECT_MULTI_1_OPCODE(INDIRECT_OP_INDEXED)
+         | A6XX_CP_DRAW_INDIRECT_MULTI_1_DST_OFF(driver_param)));
       struct pipe_resource *idx = info->index.resource;
       unsigned max_indices = (idx->width0 - index_offset) / info->index_size;
-
-      OUT_PKT(ring, CP_DRAW_INDX_INDIRECT, pack_CP_DRAW_INDX_OFFSET_0(*draw0),
-              A5XX_CP_DRAW_INDX_INDIRECT_INDX_BASE(fd_resource(idx)->bo,
-                                                   index_offset),
-              A5XX_CP_DRAW_INDX_INDIRECT_3(.max_indices = max_indices),
-              A5XX_CP_DRAW_INDX_INDIRECT_INDIRECT(ind->bo, indirect->offset));
+      OUT_RING(ring, indirect->draw_count);
+      //index va
+      OUT_RELOC(ring, fd_resource(idx)->bo, index_offset, 0, 0);
+      //max indices
+      OUT_RING(ring, max_indices);
+      OUT_RELOC(ring, ind->bo, indirect->offset, 0, 0);
+      OUT_RING(ring, indirect->stride);
    } else {
-      OUT_PKT(ring, CP_DRAW_INDIRECT, pack_CP_DRAW_INDX_OFFSET_0(*draw0),
-              A5XX_CP_DRAW_INDIRECT_INDIRECT(ind->bo, indirect->offset));
+      OUT_PKT7(ring, CP_DRAW_INDIRECT_MULTI, 6);
+      OUT_RING(ring, pack_CP_DRAW_INDX_OFFSET_0(*draw0).value);
+      OUT_RING(ring,
+         (A6XX_CP_DRAW_INDIRECT_MULTI_1_OPCODE(INDIRECT_OP_NORMAL)
+         | A6XX_CP_DRAW_INDIRECT_MULTI_1_DST_OFF(driver_param)));
+      OUT_RING(ring, indirect->draw_count);
+      OUT_RELOC(ring, ind->bo, indirect->offset, 0, 0);
+      OUT_RING(ring, indirect->stride);
    }
 }
 
@@ -228,6 +241,7 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
    emit.state.num_groups = 0;
    emit.streamout_mask = 0;
    emit.prog = NULL;
+   emit.draw_id = 0;
 
    if (!(ctx->prog.vs && ctx->prog.fs))
       return;
@@ -365,7 +379,14 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
       if (indirect->count_from_stream_output) {
          draw_emit_xfb(ring, &draw0, info, indirect);
       } else {
-         draw_emit_indirect(ring, &draw0, info, indirect, index_offset);
+         const struct ir3_const_state *const_state = ir3_const_state(emit.vs);
+         uint32_t dst_offset_dp = const_state->offsets.driver_param;
+
+         /* If unused, pass 0 for DST_OFF: */
+         if (dst_offset_dp > emit.vs->constlen)
+            dst_offset_dp = 0;
+
+         draw_emit_indirect(ctx, ring, &draw0, info, indirect, index_offset, dst_offset_dp);
       }
    } else {
       draw_emit(ring, &draw0, info, &draws[0], index_offset);
@@ -401,6 +422,7 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
             if (emit.dirty_groups) {
                emit.state.num_groups = 0;
                emit.draw = &draws[i];
+               emit.draw_id = info->increment_draw_id ? i : 0;
                fd6_emit_3d_state<CHIP>(ring, &emit);
             }
 

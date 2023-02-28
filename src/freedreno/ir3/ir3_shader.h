@@ -69,11 +69,12 @@ enum ir3_driver_param {
    IR3_DP_VTXID_BASE = 1,
    IR3_DP_INSTID_BASE = 2,
    IR3_DP_VTXCNT_MAX = 3,
+   IR3_DP_IS_INDEXED_DRAW = 4,  /* Note: boolean, ie. 0 or ~0 */
    /* user-clip-plane components, up to 8x vec4's: */
-   IR3_DP_UCP0_X = 4,
+   IR3_DP_UCP0_X = 5,
    /* .... */
-   IR3_DP_UCP7_W = 35,
-   IR3_DP_VS_COUNT = 36, /* must be aligned to vec4 */
+   IR3_DP_UCP7_W = 36,
+   IR3_DP_VS_COUNT = 40, /* must be aligned to vec4 */
 
    /* TCS driver params: */
    IR3_DP_HS_DEFAULT_OUTER_LEVEL_X = 0,

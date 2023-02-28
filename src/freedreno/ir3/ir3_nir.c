@@ -864,6 +864,10 @@ ir3_nir_scan_driver_consts(struct ir3_compiler *compiler, nir_shader *shader, st
                layout->num_driver_params =
                   MAX2(layout->num_driver_params, IR3_DP_VTXID_BASE + 1);
                break;
+            case nir_intrinsic_load_is_indexed_draw:
+               layout->num_driver_params =
+                  MAX2(layout->num_driver_params, IR3_DP_IS_INDEXED_DRAW + 1);
+               break;
             case nir_intrinsic_load_base_instance:
                layout->num_driver_params =
                   MAX2(layout->num_driver_params, IR3_DP_INSTID_BASE + 1);

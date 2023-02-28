@@ -183,6 +183,7 @@ struct fd6_emit {
    bool rasterflat : 1;
    bool primitive_restart : 1;
    uint8_t streamout_mask;
+   uint32_t draw_id;
 
    /* cached to avoid repeated lookups: */
    const struct fd6_program_state *prog;

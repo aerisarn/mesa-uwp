@@ -570,6 +570,10 @@ ir3_screen_init(struct pipe_screen *pscreen)
       .bindless_fb_read_slot = IR3_BINDLESS_IMAGE_OFFSET +
                                IR3_BINDLESS_IMAGE_COUNT - 1 - screen->max_rts,
    };
+
+   if (screen->gen >= 6) {
+      options.lower_base_vertex = true;
+   }
    screen->compiler = ir3_compiler_create(screen->dev, screen->dev_id, &options);
 
    /* TODO do we want to limit things to # of fast cores, or just limit

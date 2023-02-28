@@ -67,6 +67,9 @@ struct ir3_compiler_options {
 
    /* True if 16-bit descriptors are used for both 16-bit and 32-bit access. */
    bool storage_16bit;
+
+  /* If base_vertex should be lowered in nir */
+  bool lower_base_vertex;
 };
 
 struct ir3_compiler {
