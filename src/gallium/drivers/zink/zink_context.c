@@ -1928,6 +1928,8 @@ unbind_samplerview(struct zink_context *ctx, gl_shader_stage stage, unsigned slo
    } else {
       unbind_descriptor_stage(res, stage);
       unbind_descriptor_reads(res, stage == MESA_SHADER_COMPUTE);
+      if (!res->sampler_bind_count[stage == MESA_SHADER_COMPUTE])
+         check_for_layout_update(ctx, res, stage == MESA_SHADER_COMPUTE);
    }
 }
 
