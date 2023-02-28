@@ -33,8 +33,6 @@
  *
  * This is based on the logic in emit_wpos()/emit_wpos_adjustment() in TGSI
  * compiler.
- *
- * Run before nir_lower_io.
  */
 
 typedef struct {
@@ -256,24 +254,28 @@ lower_fddy(lower_wpos_ytransform_state *state, nir_alu_instr *fddy)
       fddy->src[0].swizzle[i] = MIN2(i, pt->num_components - 1);
 }
 
-/* Multiply interp_deref_at_offset's offset by transform.x to flip it. */
+/* Multiply interp_deref_at_offset's or load_barycentric_at_offset's offset
+ * by transform.x to flip it.
+ */
 static void
-lower_interp_deref_at_offset(lower_wpos_ytransform_state *state,
-                           nir_intrinsic_instr *interp)
+lower_interp_deref_or_load_baryc_at_offset(lower_wpos_ytransform_state *state,
+                                           nir_intrinsic_instr *intr,
+                                           unsigned offset_src)
 {
    nir_builder *b = &state->b;
    nir_ssa_def *offset;
    nir_ssa_def *flip_y;
 
-   b->cursor = nir_before_instr(&interp->instr);
+   b->cursor = nir_before_instr(&intr->instr);
 
-   offset = nir_ssa_for_src(b, interp->src[1], 2);
+   offset = nir_ssa_for_src(b, intr->src[offset_src], 2);
    flip_y = nir_fmul(b, nir_channel(b, offset, 1),
                         nir_channel(b, get_transform(state), 0));
-   nir_instr_rewrite_src(&interp->instr, &interp->src[1],
+   nir_instr_rewrite_src(&intr->instr, &intr->src[offset_src],
                          nir_src_for_ssa(nir_vec2(b, nir_channel(b, offset, 0),
                                                      flip_y)));
 }
+
 
 static void
 lower_load_sample_pos(lower_wpos_ytransform_state *state,
@@ -320,7 +322,9 @@ lower_wpos_ytransform_block(lower_wpos_ytransform_state *state, nir_block *block
          } else if (intr->intrinsic == nir_intrinsic_load_sample_pos) {
             lower_load_sample_pos(state, intr);
          } else if (intr->intrinsic == nir_intrinsic_interp_deref_at_offset) {
-            lower_interp_deref_at_offset(state, intr);
+            lower_interp_deref_or_load_baryc_at_offset(state, intr, 1);
+         } else if (intr->intrinsic == nir_intrinsic_load_barycentric_at_offset) {
+            lower_interp_deref_or_load_baryc_at_offset(state, intr, 0);
          }
       } else if (instr->type == nir_instr_type_alu) {
          nir_alu_instr *alu = nir_instr_as_alu(instr);
