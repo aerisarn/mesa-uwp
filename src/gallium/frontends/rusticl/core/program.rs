@@ -40,9 +40,13 @@ static mut DISK_CACHE: Option<DiskCache> = None;
 static DISK_CACHE_ONCE: Once = Once::new();
 
 fn get_disk_cache() -> &'static Option<DiskCache> {
+    let func_ptrs = [
+        // ourselves
+        get_disk_cache as _,
+    ];
     unsafe {
         DISK_CACHE_ONCE.call_once(|| {
-            DISK_CACHE = DiskCache::new("rusticl", "rusticl", 0);
+            DISK_CACHE = DiskCache::new("rusticl", &func_ptrs, 0);
         });
         &DISK_CACHE
     }
