@@ -2761,6 +2761,10 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
       stages[i].feedback.duration += os_time_get_nano() - stage_start;
    }
 
+   if (stages[MESA_SHADER_FRAGMENT].nir) {
+      radv_nir_lower_poly_line_smooth(stages[MESA_SHADER_FRAGMENT].nir, pipeline_key);
+   }
+
    radv_fill_shader_info(device, pipeline, pipeline_layout, pipeline_key, stages,
                          active_nir_stages);
 

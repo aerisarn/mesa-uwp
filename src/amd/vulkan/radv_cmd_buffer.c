@@ -970,6 +970,11 @@ radv_get_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
       return 1;
    }
 
+   if (d->vk.rs.line.mode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT &&
+       radv_rast_prim_is_line(radv_get_rasterization_prim(cmd_buffer))) {
+      return RADV_NUM_SMOOTH_AA_SAMPLES;
+   }
+
    return MAX2(1, d->vk.ms.rasterization_samples);
 }
 
@@ -4479,6 +4484,9 @@ radv_emit_msaa_state(struct radv_cmd_buffer *cmd_buffer)
                          S_028BE0_MAX_SAMPLE_DIST(max_sample_dist) |
                          S_028BE0_MSAA_EXPOSED_SAMPLES(log_samples) |
                          S_028BE0_COVERED_CENTROID_IS_CENTER(pdevice->rad_info.gfx_level >= GFX10_3);
+
+      if (d->vk.rs.line.mode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT)
+         db_eqaa |= S_028804_OVERRASTERIZATION_AMOUNT(log_samples);
    }
 
    pa_sc_aa_config |= S_028BE0_COVERAGE_TO_SHADER_SELECT(ps && ps->info.ps.reads_fully_covered);
@@ -4509,6 +4517,7 @@ radv_emit_msaa_state(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_line_rasterization_mode(struct radv_cmd_buffer *cmd_buffer)
 {
+   const struct radv_shader *ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
    /* The DX10 diamond test is unnecessary with Vulkan and it decreases line rasterization
@@ -4517,6 +4526,15 @@ radv_emit_line_rasterization_mode(struct radv_cmd_buffer *cmd_buffer)
    radeon_set_context_reg(cmd_buffer->cs, R_028BDC_PA_SC_LINE_CNTL,
                           S_028BDC_PERPENDICULAR_ENDCAP_ENA(
                              d->vk.rs.line.mode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT));
+
+   if (cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT]) {
+      const struct radv_userdata_info *loc = radv_get_user_sgpr(
+         cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT], AC_UD_PS_LINE_RAST_MODE);
+      if (loc->sgpr_idx != -1) {
+         uint32_t base_reg = ps->info.user_data_0;
+         radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, d->vk.rs.line.mode);
+      }
+   }
 }
 
 static void
@@ -6638,6 +6656,11 @@ radv_bind_fragment_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_
    /* Re-emit the rasterization samples state because the SGPR idx can be different. */
    if (radv_get_user_sgpr(ps, AC_UD_PS_NUM_SAMPLES)->sgpr_idx != -1) {
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
+   }
+
+   /* Re-emit the line rasterization mode state because the SGPR idx can be different. */
+   if (radv_get_user_sgpr(ps, AC_UD_PS_LINE_RAST_MODE)->sgpr_idx != -1) {
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE;
    }
 
    /* Re-emit the conservative rasterization mode because inner coverage is different. */
