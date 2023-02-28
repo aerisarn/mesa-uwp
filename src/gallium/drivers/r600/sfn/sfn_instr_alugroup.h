@@ -86,6 +86,8 @@ public:
       m_readports_evaluator = rr;
    };
 
+   void update_readport_reserver();
+
    static bool has_t() { return s_max_slots == 5; }
 
    bool addr_for_src() const { return m_addr_for_src; }

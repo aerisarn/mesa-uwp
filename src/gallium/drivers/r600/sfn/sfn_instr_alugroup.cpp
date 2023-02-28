@@ -251,6 +251,41 @@ AluGroup::add_vec_instructions(AluInstr *instr)
    return false;
 }
 
+void AluGroup::update_readport_reserver()
+{
+   AluReadportReservation readports_evaluator;
+   for (int i = 0; i < 4;  ++i) {
+      if (!m_slots[i])
+         continue;
+
+      AluReadportReservation re = readports_evaluator;
+      AluBankSwizzle bs = alu_vec_012;
+      while (bs != alu_vec_unknown) {
+         if (re.schedule_vec_instruction(*m_slots[i], bs)) {
+            readports_evaluator = re;
+            break;
+         }
+         ++bs;
+      }
+      if (bs == alu_vec_unknown)
+         unreachable("Bank swizzle should have been checked before");
+   }
+
+   if (s_max_slots == 5 && m_slots[4]) {
+      AluReadportReservation re = readports_evaluator;
+      AluBankSwizzle bs = sq_alu_scl_201;
+      while (bs != sq_alu_scl_unknown) {
+         if (re.schedule_vec_instruction(*m_slots[4], bs)) {
+            readports_evaluator = re;
+            break;
+         }
+         ++bs;
+      }
+      if (bs == sq_alu_scl_unknown)
+         unreachable("Bank swizzle should have been checked before");
+   }
+}
+
 bool
 AluGroup::try_readport(AluInstr *instr, AluBankSwizzle cycle)
 {
