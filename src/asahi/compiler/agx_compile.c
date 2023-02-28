@@ -1913,7 +1913,23 @@ agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
       NIR_PASS_V(nir, nir_opt_dce);
    }
 
+   /* Only lower int64 after optimizing address arithmetic, so that u2u64/i2i64
+    * conversions remain.
+    */
+   progress = false;
    NIR_PASS(progress, nir, nir_lower_int64);
+
+   /* If we lowered actual int64 arithmetic (not folded into the address
+    * calculations), then clean up after the lowering.
+    */
+   if (progress) {
+      do {
+         progress = false;
+
+         NIR_PASS(progress, nir, nir_opt_algebraic);
+         NIR_PASS(progress, nir, nir_opt_dce);
+      } while (progress);
+   }
 
    if (likely(!(agx_debug & AGX_DBG_NOPREAMBLE)))
       NIR_PASS_V(nir, agx_nir_opt_preamble, preamble_size);
@@ -2250,7 +2266,6 @@ agx_preprocess_nir(nir_shader *nir, bool support_lod_bias)
    };
 
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
-   NIR_PASS_V(nir, nir_lower_int64);
    NIR_PASS_V(nir, nir_lower_idiv, &idiv_options);
    NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
    NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
