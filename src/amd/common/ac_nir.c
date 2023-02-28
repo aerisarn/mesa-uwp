@@ -250,10 +250,11 @@ ac_nir_export_position(nir_builder *b,
     * the pixel shader starts.
     */
    if (gfx_level >= GFX10 && no_param_export && b->shader->info.writes_memory) {
-      nir_intrinsic_instr *wait_instr =
-         nir_intrinsic_instr_create(b->shader, nir_intrinsic_memory_barrier_buffer);
-
-      nir_instr_insert_before(&final_exp->instr, &wait_instr->instr);
+      nir_cursor cursor = b->cursor;
+      b->cursor = nir_before_instr(&final_exp->instr);
+      nir_scoped_memory_barrier(b, NIR_SCOPE_DEVICE, NIR_MEMORY_RELEASE,
+                                nir_var_mem_ssbo | nir_var_mem_global | nir_var_image);
+      b->cursor = cursor;
    }
 }
 
