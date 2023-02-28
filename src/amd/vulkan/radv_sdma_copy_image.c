@@ -142,3 +142,43 @@ radv_sdma_copy_image(struct radv_device *device, struct radeon_cmdbuf *cs, struc
    assert(device->physical_device->rad_info.gfx_level >= GFX9);
    return radv_sdma_v4_v5_copy_image_to_buffer(device, cs, image, buffer, region);
 }
+
+void
+radv_sdma_copy_buffer(struct radv_device *device, struct radeon_cmdbuf *cs, uint64_t src_va,
+                      uint64_t dst_va, uint64_t size)
+{
+   if (size == 0)
+      return;
+
+   enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
+   unsigned max_size_per_packet =
+      gfx_level >= GFX10_3 ? GFX103_SDMA_COPY_MAX_SIZE : CIK_SDMA_COPY_MAX_SIZE;
+   unsigned align = ~0u;
+   unsigned ncopy = DIV_ROUND_UP(size, max_size_per_packet);
+   bool tmz = false;
+
+   assert(gfx_level >= GFX7);
+
+   /* Align copy size to dw if src/dst address are dw aligned */
+   if ((src_va & 0x3) == 0 && (src_va & 0x3) == 0 && size > 4 && (size & 3) != 0) {
+      align = ~0x3u;
+      ncopy++;
+   }
+
+   radeon_check_space(device->ws, cs, ncopy * 7);
+
+   for (unsigned i = 0; i < ncopy; i++) {
+      unsigned csize = size >= 4 ? MIN2(size & align, max_size_per_packet) : size;
+      radeon_emit(cs, CIK_SDMA_PACKET(CIK_SDMA_OPCODE_COPY, CIK_SDMA_COPY_SUB_OPCODE_LINEAR,
+                                      (tmz ? 1u : 0) << 2));
+      radeon_emit(cs, gfx_level >= GFX9 ? csize - 1 : csize);
+      radeon_emit(cs, 0); /* src/dst endian swap */
+      radeon_emit(cs, src_va);
+      radeon_emit(cs, src_va >> 32);
+      radeon_emit(cs, dst_va);
+      radeon_emit(cs, dst_va >> 32);
+      dst_va += csize;
+      src_va += csize;
+      size -= csize;
+   }
+}

@@ -3016,6 +3016,8 @@ void radv_rra_trace_finish(VkDevice vk_device, struct radv_rra_trace_data *data)
 bool radv_sdma_copy_image(struct radv_device *device, struct radeon_cmdbuf *cs,
                           struct radv_image *image, struct radv_buffer *buffer,
                           const VkBufferImageCopy2 *region);
+void radv_sdma_copy_buffer(struct radv_device *device, struct radeon_cmdbuf *cs, uint64_t src_va,
+                           uint64_t dst_va, uint64_t size);
 
 void radv_memory_trace_init(struct radv_device *device);
 void radv_rmv_log_bo_allocate(struct radv_device *device, struct radeon_winsys_bo *bo,
