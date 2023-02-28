@@ -3064,6 +3064,7 @@ reapply_color_write(struct zink_context *ctx)
       const VkBool32 disables[PIPE_MAX_COLOR_BUFS] = {0};
       const unsigned max_att = MIN2(PIPE_MAX_COLOR_BUFS, screen->info.props.limits.maxColorAttachments);
       VKCTX(CmdSetColorWriteEnableEXT)(ctx->batch.state->cmdbuf, max_att, ctx->disable_color_writes ? disables : enables);
+      VKCTX(CmdSetColorWriteEnableEXT)(ctx->batch.state->barrier_cmdbuf, max_att, enables);
    }
    if (screen->info.have_EXT_extended_dynamic_state && ctx->dsa_state)
       VKCTX(CmdSetDepthWriteEnableEXT)(ctx->batch.state->cmdbuf, ctx->disable_color_writes ? VK_FALSE : ctx->dsa_state->hw_state.depth_write);
