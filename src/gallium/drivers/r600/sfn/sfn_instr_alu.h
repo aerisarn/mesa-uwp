@@ -105,6 +105,9 @@ public:
    bool replace_source(PRegister old_src, PVirtualValue new_src) override;
    bool replace_dest(PRegister new_dest, AluInstr *move_instr) override;
 
+   bool can_replace_source(PRegister old_src, PVirtualValue new_src);
+   bool do_replace_source(PRegister old_src, PVirtualValue new_src);
+
    void set_op(EAluOp op) { m_opcode = op; }
 
    PRegister dest() const { return m_dest; }
