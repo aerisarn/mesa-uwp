@@ -777,47 +777,22 @@ d3d12_compare_shader_keys(struct d3d12_selection_context* sel_ctx, const d3d12_s
       }
       break;
    case PIPE_SHADER_GEOMETRY:
-      if (expect->gs.writes_psize) {
-         if (!have->gs.writes_psize ||
-             expect->gs.point_pos_stream_out != have->gs.point_pos_stream_out ||
-             expect->gs.sprite_coord_enable != have->gs.sprite_coord_enable ||
-             expect->gs.sprite_origin_upper_left != have->gs.sprite_origin_upper_left ||
-             expect->gs.point_size_per_vertex != have->gs.point_size_per_vertex)
-            return false;
-      } else if (have->gs.writes_psize)
-         return false;
-      
-      if (expect->gs.primitive_id != have->gs.primitive_id ||
-          expect->gs.triangle_strip != have->gs.triangle_strip)
+      if (expect->gs.all != have->gs.all)
          return false;
       break;
    case PIPE_SHADER_TESS_CTRL:
-      if (expect->hs.primitive_mode != have->hs.primitive_mode ||
-          expect->hs.ccw != have->hs.ccw ||
-          expect->hs.point_mode != have->hs.point_mode ||
-          expect->hs.spacing != have->hs.spacing ||
-          expect->hs.patch_vertices_in != have->hs.patch_vertices_in ||
-          !d3d12_compare_varying_info(expect->hs.required_patch_outputs, have->hs.required_patch_outputs) ||
-          expect->hs.next_patch_inputs != have->hs.next_patch_inputs)
+      if (expect->hs.all != have->hs.all ||
+          !d3d12_compare_varying_info(expect->hs.required_patch_outputs, have->hs.required_patch_outputs))
          return false;
       break;
    case PIPE_SHADER_TESS_EVAL:
       if (expect->ds.tcs_vertices_out != have->ds.tcs_vertices_out ||
-          !d3d12_compare_varying_info(expect->ds.required_patch_inputs, have->ds.required_patch_inputs) ||
-          expect->ds.prev_patch_outputs != have ->ds.prev_patch_outputs)
+          expect->ds.prev_patch_outputs != have->ds.prev_patch_outputs ||
+          !d3d12_compare_varying_info(expect->ds.required_patch_inputs, have->ds.required_patch_inputs))
          return false;
       break;
    case PIPE_SHADER_FRAGMENT:
-      if (expect->fs.frag_result_color_lowering != have->fs.frag_result_color_lowering ||
-          expect->fs.manual_depth_range != have->fs.manual_depth_range ||
-          expect->fs.polygon_stipple != have->fs.polygon_stipple ||
-          expect->fs.cast_to_uint != have->fs.cast_to_uint ||
-          expect->fs.cast_to_int != have->fs.cast_to_int ||
-          expect->fs.remap_front_facing != have->fs.remap_front_facing ||
-          expect->fs.missing_dual_src_outputs != have->fs.missing_dual_src_outputs ||
-          expect->fs.multisample_disabled != have->fs.multisample_disabled)
-         return false;
-      if (expect->fs.provoking_vertex != have->fs.provoking_vertex)
+      if (expect->fs.all != have->fs.all)
          return false;
       break;
    case PIPE_SHADER_COMPUTE:
