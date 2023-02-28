@@ -1099,6 +1099,9 @@ struct radv_device {
 
    bool uses_device_generated_commands;
 
+   /* Whether smooth lines is enabled. */
+   bool smooth_lines;
+
    bool uses_shadow_regs;
 
    struct hash_table *rt_handles;

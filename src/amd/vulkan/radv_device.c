@@ -646,6 +646,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    bool primitives_generated_query = false;
    bool use_perf_counters = false;
    bool use_dgc = false;
+   bool smooth_lines = false;
 
    /* Check enabled features */
    if (pCreateInfo->pEnabledFeatures) {
@@ -753,6 +754,12 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
             ps_epilogs = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: {
+         const VkPhysicalDeviceLineRasterizationFeaturesEXT *features = (const void *)ext;
+         if (features->smoothLines)
+            smooth_lines = true;
+         break;
+      }
       default:
          break;
       }
@@ -808,6 +815,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
 
    device->primitives_generated_query = primitives_generated_query;
    device->uses_device_generated_commands = use_dgc;
+   device->smooth_lines = smooth_lines;
 
    radv_init_shader_arenas(device);
 
