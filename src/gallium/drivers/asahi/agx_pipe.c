@@ -79,6 +79,9 @@ static const struct debug_named_value agx_debug_options[] = {
 #endif
    {"precompile",AGX_DBG_PRECOMPILE,"Precompile shaders for shader-db"},
    {"nocompress",AGX_DBG_NOCOMPRESS,"Disable lossless compression"},
+   {"nocluster", AGX_DBG_NOCLUSTER,"Disable vertex clustering"},
+   {"sync",      AGX_DBG_SYNC,     "Synchronously wait for all submissions"},
+   {"stats",     AGX_DBG_STATS,    "Show command execution statistics"},
    DEBUG_NAMED_VALUE_END
 };
 /* clang-format on */

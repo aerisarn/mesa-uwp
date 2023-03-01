@@ -38,6 +38,9 @@ enum agx_dbg {
    AGX_DBG_PRECOMPILE = BITFIELD_BIT(4),
    AGX_DBG_PERF = BITFIELD_BIT(5),
    AGX_DBG_NOCOMPRESS = BITFIELD_BIT(6),
+   AGX_DBG_NOCLUSTER = BITFIELD_BIT(7),
+   AGX_DBG_SYNC = BITFIELD_BIT(8),
+   AGX_DBG_STATS = BITFIELD_BIT(9),
 };
 
 /* How many power-of-two levels in the BO cache do we want? 2^14 minimum chosen
