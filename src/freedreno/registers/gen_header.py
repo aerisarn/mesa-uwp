@@ -13,6 +13,12 @@ class Enum(object):
 		self.name = name
 		self.values = []
 
+	def has_name(self, name):
+		for (n, value) in self.values:
+			if n == name:
+				return True
+		return False
+
 	def dump(self):
 		prev = 0
 		use_hex = False
@@ -282,15 +288,6 @@ class Reg(object):
 			self.bitset.dump_pack_struct(self.full_name, not self.array == None, self.bit_size)
 
 
-def parse_variants(attrs):
-		if not "variants" in attrs:
-				return None
-		variant = attrs["variants"].split(",")[0]
-		if "-" in variant:
-			variant = variant[:variant.index("-")]
-
-		return variant
-
 class Parser(object):
 	def __init__(self):
 		self.current_array = None
@@ -300,6 +297,9 @@ class Parser(object):
 		self.current_stripe = None
 		self.current_bitset = None
 		self.current_bitsize = 32
+		# The varset attribute on the domain specifies the enum which
+		# specifies all possible hw variants:
+		self.current_varset = None
 		self.bitsets = {}
 		self.enums = {}
 		self.file = []
@@ -333,7 +333,7 @@ class Parser(object):
 				type = attrs["type"]
 			else:
 				type = None
-	
+
 			if "shr" in attrs:
 				shr = int(attrs["shr"], 0)
 			else:
@@ -347,6 +347,26 @@ class Parser(object):
 			self.current_bitset.fields.append(b)
 		except ValueError as e:
 			raise self.error(e);
+
+	def parse_varset(self, attrs):
+		# Inherit the varset from the enclosing domain if not overriden:
+		varset = self.current_varset
+		if "varset" in attrs:
+			varset = self.enums[attrs["varset"]]
+		return varset
+
+	def parse_variants(self, attrs):
+		if not "variants" in attrs:
+				return None
+		variant = attrs["variants"].split(",")[0]
+		if "-" in variant:
+			variant = variant[:variant.index("-")]
+
+		varset = self.parse_varset(attrs)
+
+		assert varset.has_name(variant)
+
+		return variant
 
 	def do_validate(self, schemafile):
 		try:
@@ -410,7 +430,7 @@ class Parser(object):
 			if "type" in attrs:
 				self.parse_field(None, attrs)
 
-		variant = parse_variants(attrs)
+		variant = self.parse_variants(attrs)
 		self.current_reg = Reg(attrs, self.prefix(variant), self.current_array, bit_size)
 		self.current_reg.bitset = self.current_bitset
 
@@ -424,13 +444,15 @@ class Parser(object):
 		elif name == "domain":
 			self.current_domain = attrs["name"]
 			if "prefix" in attrs:
-				self.current_prefix = parse_variants(attrs)
+				self.current_prefix = self.parse_variants(attrs)
 				self.current_prefix_type = attrs["prefix"]
 			else:
 				self.current_prefix = None
 				self.current_prefix_type = None
+			if "varset" in attrs:
+				self.current_varset = self.enums[attrs["varset"]]
 		elif name == "stripe":
-			self.current_stripe = parse_variants(attrs)
+			self.current_stripe = self.parse_variants(attrs)
 		elif name == "enum":
 			self.current_enum_value = 0
 			self.current_enum = Enum(attrs["name"])
@@ -450,7 +472,7 @@ class Parser(object):
 			self.parse_reg(attrs, 64)
 		elif name == "array":
 			self.current_bitsize = 32
-			variant = parse_variants(attrs)
+			variant = self.parse_variants(attrs)
 			self.current_array = Array(attrs, self.prefix(variant))
 			if len(self.stack) == 1:
 				self.file.append(self.current_array)
@@ -471,6 +493,7 @@ class Parser(object):
 			self.current_domain = None
 			self.current_prefix = None
 			self.current_prefix_type = None
+			self.current_domain = None
 		elif name == "stripe":
 			self.current_stripe = None
 		elif name == "bitset":
