@@ -5640,7 +5640,7 @@ radv_update_preambles(struct radv_queue_state *queue, struct radv_device *device
          ? MIN2(needs.compute_scratch_waves, UINT32_MAX / needs.compute_scratch_size_per_wave)
          : 0;
 
-   if (device->physical_device->rad_info.gfx_level >= GFX11) {
+   if (device->physical_device->rad_info.gfx_level >= GFX11 && queue->qf == RADV_QUEUE_GENERAL) {
       needs.attr_ring_size = device->physical_device->rad_info.attribute_ring_size_per_se *
                              device->physical_device->rad_info.max_se;
    }
