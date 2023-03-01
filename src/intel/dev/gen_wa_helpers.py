@@ -98,6 +98,11 @@ PRAGMA_POISON(INTEL_NEEDS_WA_${a})
     % endif
 % endfor
 
+#define INTEL_ALL_WA ${"\\\\"}
+% for wa_id in wa_def:
+  INTEL_WA(${wa_id}), ${"\\\\"}
+% endfor
+
 #ifdef __cplusplus
 }
 #endif
@@ -162,7 +167,6 @@ void intel_device_info_init_was(struct intel_device_info *devinfo)
          break;
    };
 }
-
 """)
 
 def stepping_enums(wa_def):
