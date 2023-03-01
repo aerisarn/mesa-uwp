@@ -930,7 +930,7 @@ static inline uint32_t pvr_stride_from_pitch(uint32_t pitch, VkFormat vk_format)
 
 static void pvr_setup_pbe_state(
    const struct pvr_device_info *dev_info,
-   struct pvr_framebuffer *framebuffer,
+   const struct pvr_framebuffer *framebuffer,
    uint32_t mrt_index,
    const struct usc_mrt_resource *mrt_resource,
    const struct pvr_image_view *const iview,
@@ -1138,34 +1138,38 @@ pvr_sub_cmd_gfx_align_zls_subtiles(const struct pvr_device_info *dev_info,
              zls_tile_size_y);
 }
 
-static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
-                                         struct pvr_cmd_buffer *cmd_buffer,
-                                         struct pvr_sub_cmd_gfx *sub_cmd)
-{
-   static const VkClearDepthStencilValue default_ds_clear_value = {
-      .depth = 1.0f,
-      .stencil = 0xFFFFFFFF,
-   };
-
-   const struct vk_dynamic_graphics_state *dynamic_state =
-      &cmd_buffer->vk.dynamic_graphics_state;
-   struct pvr_render_pass_info *render_pass_info =
-      &cmd_buffer->state.render_pass_info;
-   const struct pvr_renderpass_hwsetup_render *hw_render =
-      &render_pass_info->pass->hw_setup->renders[sub_cmd->hw_render_idx];
-   struct pvr_render_job *job = &sub_cmd->job;
-   struct pvr_pds_upload pds_pixel_event_program;
+struct pvr_emit_state {
    uint32_t pbe_cs_words[PVR_MAX_COLOR_ATTACHMENTS]
-                        [ROGUE_NUM_PBESTATE_STATE_WORDS] = { 0 };
-   struct pvr_framebuffer *framebuffer = render_pass_info->framebuffer;
-   struct pvr_spm_bgobj_state *spm_bgobj_state =
-      &framebuffer->spm_bgobj_state_per_render[sub_cmd->hw_render_idx];
-   struct pvr_render_target *render_target;
-   VkResult result;
+                        [ROGUE_NUM_PBESTATE_STATE_WORDS];
 
-   assert(hw_render->eot_surface_count < ARRAY_SIZE(pbe_cs_words));
+   uint64_t pbe_reg_words[PVR_MAX_COLOR_ATTACHMENTS]
+                         [ROGUE_NUM_PBESTATE_REG_WORDS];
+
+   uint32_t emit_count;
+};
+
+static void
+pvr_setup_emit_state(const struct pvr_device_info *dev_info,
+                     const struct pvr_renderpass_hwsetup_render *hw_render,
+                     struct pvr_render_pass_info *render_pass_info,
+                     struct pvr_emit_state *emit_state)
+{
+   assert(hw_render->eot_surface_count < PVR_MAX_COLOR_ATTACHMENTS);
+
+   if (hw_render->eot_surface_count == 0) {
+      emit_state->emit_count = 1;
+      pvr_csb_pack (&emit_state->pbe_cs_words[0][1],
+                    PBESTATE_STATE_WORD1,
+                    state) {
+         state.emptytile = true;
+      }
+      return;
+   }
+
+   emit_state->emit_count = hw_render->eot_surface_count;
 
    for (uint32_t i = 0; i < hw_render->eot_surface_count; i++) {
+      const struct pvr_framebuffer *framebuffer = render_pass_info->framebuffer;
       const struct pvr_renderpass_hwsetup_eot_surface *surface =
          &hw_render->eot_surfaces[i];
       const struct pvr_image_view *iview =
@@ -1178,8 +1182,8 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
          const struct pvr_image_view *resolve_src =
             render_pass_info->attachments[surface->src_attachment_idx];
 
-         /* Attachments that are the destination of resolve operations must be
-          * loaded before their next use.
+         /* Attachments that are the destination of resolve operations must
+          * be loaded before their next use.
           */
          render_pass_info->enable_bg_tag = true;
          render_pass_info->process_empty_tiles = true;
@@ -1198,15 +1202,46 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
                           &render_pass_info->render_area,
                           surface->need_resolve,
                           samples,
-                          pbe_cs_words[i],
-                          job->pbe_reg_words[i]);
+                          emit_state->pbe_cs_words[i],
+                          emit_state->pbe_reg_words[i]);
    }
+}
+
+static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
+                                         struct pvr_cmd_buffer *cmd_buffer,
+                                         struct pvr_sub_cmd_gfx *sub_cmd)
+{
+   static const VkClearDepthStencilValue default_ds_clear_value = {
+      .depth = 1.0f,
+      .stencil = 0xFFFFFFFF,
+   };
+
+   const struct vk_dynamic_graphics_state *dynamic_state =
+      &cmd_buffer->vk.dynamic_graphics_state;
+   struct pvr_render_pass_info *render_pass_info =
+      &cmd_buffer->state.render_pass_info;
+   const struct pvr_renderpass_hwsetup_render *hw_render =
+      &render_pass_info->pass->hw_setup->renders[sub_cmd->hw_render_idx];
+   struct pvr_render_job *job = &sub_cmd->job;
+   struct pvr_pds_upload pds_pixel_event_program;
+   struct pvr_framebuffer *framebuffer = render_pass_info->framebuffer;
+   struct pvr_spm_bgobj_state *spm_bgobj_state =
+      &framebuffer->spm_bgobj_state_per_render[sub_cmd->hw_render_idx];
+   struct pvr_emit_state emit_state = { 0 };
+   struct pvr_render_target *render_target;
+   VkResult result;
+
+   pvr_setup_emit_state(dev_info, hw_render, render_pass_info, &emit_state);
+
+   memcpy(job->pbe_reg_words,
+          emit_state.pbe_reg_words,
+          sizeof(emit_state.pbe_reg_words));
 
    /* FIXME: The fragment program only supports a single surface at present. */
-   assert(hw_render->eot_surface_count == 1);
+   assert(emit_state.emit_count == 1);
    result = pvr_sub_cmd_gfx_per_job_fragment_programs_create_and_upload(
       cmd_buffer,
-      pbe_cs_words[0],
+      emit_state.pbe_cs_words[0],
       &pds_pixel_event_program);
    if (result != VK_SUCCESS)
       return result;
