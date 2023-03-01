@@ -1326,8 +1326,6 @@ add_resource_bind(struct zink_context *ctx, struct zink_resource *res, unsigned 
    staging.obj = old_obj;
    staging.all_binds = 0;
    res->layout = VK_IMAGE_LAYOUT_UNDEFINED;
-   res->obj->access = 0;
-   res->obj->access_stage = 0;
    res->obj = new_obj;
    for (unsigned i = 0; i <= res->base.b.last_level; i++) {
       struct pipe_box box = {0, 0, 0,
