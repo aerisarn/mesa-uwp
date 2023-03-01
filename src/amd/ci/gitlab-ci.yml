@@ -366,6 +366,7 @@ vkcts-navi21-valve:
     - .navi21-test-valve
   variables:
     GPU_VERSION: radv-navi21-aco
+    RADV_PERFTEST: rt
 
 # Disabled due to its extremelly-broken nature
 .vkcts-navi21-llvm-valve:
