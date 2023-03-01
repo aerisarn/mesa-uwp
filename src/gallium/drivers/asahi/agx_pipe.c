@@ -797,8 +797,11 @@ agx_transfer_map(struct pipe_context *pctx, struct pipe_resource *resource,
          agx_flush_writer(ctx, staging, "GPU read staging blit");
       }
 
+      agx_bo_mmap(staging->bo);
       return staging->bo->ptr.cpu;
    }
+
+   agx_bo_mmap(rsrc->bo);
 
    if (rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED) {
       transfer->base.stride =
