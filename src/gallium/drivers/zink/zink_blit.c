@@ -355,6 +355,7 @@ zink_blit(struct pipe_context *pctx,
     * flush all pending clears anyway
     */
    apply_dst_clears(ctx, info, true);
+   zink_fb_clears_apply_region(ctx, info->src.resource, zink_rect_from_box(&info->src.box));
 
    /* this will draw a full-resource quad, so ignore existing data */
    if (util_blit_covers_whole_resource(info))
