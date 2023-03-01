@@ -338,3 +338,39 @@ agx_submit_single(struct agx_device *dev, enum drm_asahi_cmd_type cmd_type,
 {
    unreachable("Linux UAPI not yet upstream");
 }
+
+int
+agx_import_sync_file(struct agx_device *dev, struct agx_bo *bo, int fd)
+{
+   struct dma_buf_import_sync_file import_sync_file_ioctl = {
+      .flags = DMA_BUF_SYNC_WRITE,
+      .fd = fd,
+   };
+
+   assert(fd >= 0);
+   assert(bo->prime_fd != -1);
+
+   int ret = drmIoctl(bo->prime_fd, DMA_BUF_IOCTL_IMPORT_SYNC_FILE,
+                      &import_sync_file_ioctl);
+   assert(ret >= 0);
+
+   return ret;
+}
+
+int
+agx_export_sync_file(struct agx_device *dev, struct agx_bo *bo)
+{
+   struct dma_buf_export_sync_file export_sync_file_ioctl = {
+      .flags = DMA_BUF_SYNC_RW,
+      .fd = -1,
+   };
+
+   assert(bo->prime_fd != -1);
+
+   int ret = drmIoctl(bo->prime_fd, DMA_BUF_IOCTL_EXPORT_SYNC_FILE,
+                      &export_sync_file_ioctl);
+   assert(ret >= 0);
+   assert(export_sync_file_ioctl.fd >= 0);
+
+   return ret >= 0 ? export_sync_file_ioctl.fd : ret;
+}

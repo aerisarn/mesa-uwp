@@ -140,4 +140,7 @@ int agx_submit_single(struct agx_device *dev, enum drm_asahi_cmd_type cmd_type,
                       uint32_t result_handle, uint32_t result_off,
                       uint32_t result_size);
 
+int agx_import_sync_file(struct agx_device *dev, struct agx_bo *bo, int fd);
+int agx_export_sync_file(struct agx_device *dev, struct agx_bo *bo);
+
 #endif
