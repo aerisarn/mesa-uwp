@@ -30,12 +30,6 @@
 #include "agx_formats.h"
 #include "agx_bo.h"
 
-#if __APPLE__
-#include "agx_iokit.h"
-#include <IOKit/IOKitLib.h>
-#include <mach/mach.h>
-#endif
-
 enum agx_dbg {
    AGX_DBG_TRACE = BITFIELD_BIT(0),
    AGX_DBG_DEQP = BITFIELD_BIT(1),
@@ -55,25 +49,13 @@ enum agx_dbg {
 /* Fencepost problem, hence the off-by-one */
 #define NR_BO_CACHE_BUCKETS (MAX_BO_CACHE_BUCKET - MIN_BO_CACHE_BUCKET + 1)
 
-#ifndef __APPLE__
-struct agx_command_queue {
-
-};
-#endif
-
 struct agx_device {
    uint32_t debug;
 
    uint64_t next_global_id, last_global_id;
-   struct agx_command_queue queue;
 
-#if __APPLE__
-   io_connect_t fd;
-   struct agx_bo cmdbuf, memmap;
-#else
    /* Device handle */
    int fd;
-#endif
    struct renderonly *ro;
 
    pthread_mutex_t bo_map_lock;
@@ -110,17 +92,9 @@ agx_lookup_bo(struct agx_device *dev, uint32_t handle)
    return util_sparse_array_get(&dev->bo_map, handle);
 }
 
-struct agx_bo agx_shmem_alloc(struct agx_device *dev, size_t size, bool cmdbuf);
-
-void agx_shmem_free(struct agx_device *dev, unsigned handle);
-
 uint64_t agx_get_global_id(struct agx_device *dev);
-
-struct agx_command_queue agx_create_command_queue(struct agx_device *dev);
 
 void agx_submit_cmdbuf(struct agx_device *dev, unsigned cmdbuf,
                        unsigned mappings, uint64_t scalar);
-
-void agx_wait_queue(struct agx_command_queue queue);
 
 #endif

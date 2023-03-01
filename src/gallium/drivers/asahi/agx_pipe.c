@@ -29,6 +29,7 @@
 #include "asahi/layout/layout.h"
 #include "asahi/lib/agx_formats.h"
 #include "asahi/lib/decode.h"
+#include "drm-uapi/drm_fourcc.h"
 #include "frontend/sw_winsys.h"
 #include "frontend/winsys_handle.h"
 #include "gallium/auxiliary/renderonly/renderonly.h"
@@ -52,25 +53,17 @@
 #include "agx_disk_cache.h"
 #include "agx_public.h"
 #include "agx_state.h"
-#include "magic.h"
 
-/* drm_fourcc cannot be built on macOS */
-#ifndef __APPLE__
-#include "drm-uapi/drm_fourcc.h"
-#endif
-
-/* In case of macOS, pick some fake modifier values so we still build */
+/* Fake values, pending UAPI upstreaming */
 #ifndef DRM_FORMAT_MOD_LINEAR
 #define DRM_FORMAT_MOD_LINEAR 1
 #endif
 #ifndef DRM_FORMAT_MOD_INVALID
 #define DRM_FORMAT_MOD_INVALID ((1ULL << 56) - 1)
 #endif
-
 #ifndef DRM_FORMAT_MOD_APPLE_TWIDDLED
 #define DRM_FORMAT_MOD_APPLE_TWIDDLED (2)
 #endif
-
 #ifndef DRM_FORMAT_MOD_APPLE_TWIDDLED_COMPRESSED
 #define DRM_FORMAT_MOD_APPLE_TWIDDLED_COMPRESSED (3)
 #endif
@@ -190,13 +183,11 @@ agx_resource_from_handle(struct pipe_screen *pscreen,
 
    ail_make_miptree(&rsc->layout);
 
-#ifndef __APPLE__
    if (dev->ro) {
       rsc->scanout =
          renderonly_create_gpu_import_for_resource(prsc, dev->ro, NULL);
       /* failure is expected in some cases.. */
    }
-#endif
 
    return prsc;
 }
@@ -581,10 +572,8 @@ agx_resource_destroy(struct pipe_screen *screen, struct pipe_resource *prsrc)
       winsys->displaytarget_destroy(winsys, rsrc->dt);
    }
 
-#ifndef __APPLE__
    if (rsrc->scanout)
       renderonly_scanout_destroy(rsrc->scanout, agx_screen->dev.ro);
-#endif
 
    agx_bo_unreference(rsrc->bo);
    FREE(rsrc);
@@ -1057,30 +1046,6 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
    /* Size calculation should've been exact */
    assert(handle_i == handle_count);
 
-#ifdef __APPLE__
-   unsigned cmdbuf_id = agx_get_global_id(dev);
-   unsigned encoder_id = agx_get_global_id(dev);
-
-   unsigned cmdbuf_size = demo_cmdbuf(
-      dev->cmdbuf.ptr.cpu, dev->cmdbuf.size, &batch->pool, &batch->key,
-      batch->encoder->ptr.gpu, encoder_id, scissor, zbias,
-      batch->occlusion_buffer.gpu, pipeline_background,
-      pipeline_background_partial, pipeline_store, clear_pipeline_textures,
-      batch->clear, batch->clear_depth, batch->clear_stencil);
-
-   /* Generate the mapping table from the BO list */
-   demo_mem_map(dev->memmap.ptr.cpu, dev->memmap.size, handles, handle_count,
-                cmdbuf_id, encoder_id, cmdbuf_size);
-
-   free(handles);
-
-   agx_wait_queue(dev->queue);
-
-   if (dev->debug & AGX_DBG_TRACE) {
-      agxdecode_cmdstream(dev->cmdbuf.handle, dev->memmap.handle, true);
-      agxdecode_next_frame();
-   }
-#else
    /* TODO: Linux UAPI submission */
    (void)dev;
    (void)zbias;
@@ -1089,7 +1054,6 @@ agx_flush_batch(struct agx_context *ctx, struct agx_batch *batch)
    (void)pipeline_store;
    (void)pipeline_background;
    (void)pipeline_background_partial;
-#endif
 
    agx_batch_cleanup(ctx, batch);
 }

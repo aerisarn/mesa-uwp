@@ -127,7 +127,6 @@ agx_open_device(void *memctx, struct agx_device *dev)
    for (unsigned i = 0; i < ARRAY_SIZE(dev->bo_cache.buckets); ++i)
       list_inithead(&dev->bo_cache.buckets[i]);
 
-   dev->queue = agx_create_command_queue(dev);
    agx_get_global_ids(dev);
 
    return true;
@@ -140,19 +139,8 @@ agx_close_device(struct agx_device *dev)
    util_sparse_array_finish(&dev->bo_map);
 }
 
-struct agx_command_queue
-agx_create_command_queue(struct agx_device *dev)
-{
-   return (struct agx_command_queue){};
-}
-
 void
 agx_submit_cmdbuf(struct agx_device *dev, unsigned cmdbuf, unsigned mappings,
                   uint64_t scalar)
-{
-}
-
-void
-agx_wait_queue(struct agx_command_queue queue)
 {
 }
