@@ -96,24 +96,6 @@ private:
    set *variables;
 };
 
-static void
-init_gl_program(struct gl_program *prog, bool is_arb_asm, gl_shader_stage stage)
-{
-   prog->RefCount = 1;
-   prog->Format = GL_PROGRAM_FORMAT_ASCII_ARB;
-   prog->info.use_legacy_math_rules = is_arb_asm;
-   prog->info.stage = stage;
-}
-
-static struct gl_program *
-new_program(UNUSED struct gl_context *ctx, gl_shader_stage stage,
-            UNUSED GLuint id, bool is_arb_asm)
-{
-   struct gl_program *prog = rzalloc(NULL, struct gl_program);
-   init_gl_program(prog, is_arb_asm, stage);
-   return prog;
-}
-
 static const struct standalone_options *options;
 
 static void
@@ -327,8 +309,6 @@ initialize_context(struct gl_context *ctx, gl_api api)
    /* GL_ARB_explicit_uniform_location, GL_MAX_UNIFORM_LOCATIONS */
    ctx->Const.MaxUserAssignableUniformLocations =
       4 * MESA_SHADER_STAGES * MAX_UNIFORMS;
-
-   ctx->Driver.NewProgram = new_program;
 }
 
 /* Returned string will have 'ctx' as its ralloc owner. */

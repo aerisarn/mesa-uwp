@@ -178,6 +178,25 @@ _mesa_clear_shader_program_data(struct gl_context *ctx,
    shProg->data->NumAtomicBuffers = 0;
 }
 
+
+static void
+init_gl_program(struct gl_program *prog, bool is_arb_asm, gl_shader_stage stage)
+{
+   prog->RefCount = 1;
+   prog->Format = GL_PROGRAM_FORMAT_ASCII_ARB;
+   prog->info.use_legacy_math_rules = is_arb_asm;
+   prog->info.stage = stage;
+}
+
+static struct gl_program *
+standalone_new_program(UNUSED struct gl_context *ctx, gl_shader_stage stage,
+                       UNUSED GLuint id, bool is_arb_asm)
+{
+   struct gl_program *prog = rzalloc(NULL, struct gl_program);
+   init_gl_program(prog, is_arb_asm, stage);
+   return prog;
+}
+
 void initialize_context_to_defaults(struct gl_context *ctx, gl_api api)
 {
    memset(ctx, 0, sizeof(*ctx));
@@ -271,6 +290,8 @@ void initialize_context_to_defaults(struct gl_context *ctx, gl_api api)
       memcpy(&ctx->Const.ShaderCompilerOptions[sh], &options, sizeof(options));
 
    _mesa_locale_init();
+
+   ctx->Driver.NewProgram = standalone_new_program;
 }
 
 struct gl_shader_program *
