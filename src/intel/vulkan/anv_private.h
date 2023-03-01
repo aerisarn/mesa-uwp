@@ -4011,7 +4011,7 @@ anv_line_rasterization_mode(VkLineRasterizationModeEXT line_mode,
 
 /* Fill provoking vertex mode to packet. */
 #define ANV_SETUP_PROVOKING_VERTEX(cmd, mode)         \
-   switch (dyn->rs.provoking_vertex) {                \
+   switch (mode) {                                    \
    case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:    \
       cmd.TriangleStripListProvokingVertexSelect = 0; \
       cmd.LineStripListProvokingVertexSelect = 0;     \
