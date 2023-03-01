@@ -2754,16 +2754,17 @@ zink_batch_rp(struct zink_context *ctx)
    else
       clear_buffers = begin_rendering(ctx);
    assert(!ctx->rp_changed);
+   if (!in_rp && ctx->batch.in_rp) {
+      /* only hit this for valid swapchain and new renderpass */
+      if (ctx->render_condition.query)
+         zink_start_conditional_render(ctx);
+      zink_clear_framebuffer(ctx, clear_buffers);
+   }
    /* unable to previously determine that queries didn't split renderpasses: ensure queries start inside renderpass */
    if (!ctx->queries_disabled && maybe_has_query_ends) {
       zink_resume_queries(ctx, &ctx->batch);
       zink_query_update_gs_states(ctx);
    }
-   if (in_rp || !ctx->batch.in_rp)
-      return; //dead swapchain or continued renderpass
-   if (ctx->render_condition.query)
-      zink_start_conditional_render(ctx);
-   zink_clear_framebuffer(ctx, clear_buffers);
 }
 
 void
