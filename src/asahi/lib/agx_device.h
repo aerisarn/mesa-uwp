@@ -28,7 +28,6 @@
 #include "util/sparse_array.h"
 #include "agx_bo.h"
 #include "agx_formats.h"
-#include "agx_bo.h"
 
 enum agx_dbg {
    AGX_DBG_TRACE = BITFIELD_BIT(0),
@@ -42,6 +41,9 @@ enum agx_dbg {
    AGX_DBG_SYNC = BITFIELD_BIT(8),
    AGX_DBG_STATS = BITFIELD_BIT(9),
 };
+
+enum drm_asahi_cmd_type { DRM_ASAHI_CMD_TYPE_PLACEHOLDER_FOR_DOWNSTREAM_UAPI };
+struct drm_asahi_sync {};
 
 /* How many power-of-two levels in the BO cache do we want? 2^14 minimum chosen
  * as it is the page size that all allocations are rounded to
@@ -97,7 +99,11 @@ agx_lookup_bo(struct agx_device *dev, uint32_t handle)
 
 uint64_t agx_get_global_id(struct agx_device *dev);
 
-void agx_submit_cmdbuf(struct agx_device *dev, unsigned cmdbuf,
-                       unsigned mappings, uint64_t scalar);
+int agx_submit_single(struct agx_device *dev, enum drm_asahi_cmd_type cmd_type,
+                      uint32_t barriers, struct drm_asahi_sync *in_syncs,
+                      unsigned in_sync_count, struct drm_asahi_sync *out_syncs,
+                      unsigned out_sync_count, void *cmdbuf,
+                      uint32_t result_handle, uint32_t result_off,
+                      uint32_t result_size);
 
 #endif

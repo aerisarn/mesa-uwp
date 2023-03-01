@@ -139,8 +139,12 @@ agx_close_device(struct agx_device *dev)
    util_sparse_array_finish(&dev->bo_map);
 }
 
-void
-agx_submit_cmdbuf(struct agx_device *dev, unsigned cmdbuf, unsigned mappings,
-                  uint64_t scalar)
+int
+agx_submit_single(struct agx_device *dev, enum drm_asahi_cmd_type cmd_type,
+                  uint32_t barriers, struct drm_asahi_sync *in_syncs,
+                  unsigned in_sync_count, struct drm_asahi_sync *out_syncs,
+                  unsigned out_sync_count, void *cmdbuf, uint32_t result_handle,
+                  uint32_t result_off, uint32_t result_size)
 {
+   unreachable("Linux UAPI not yet upstream");
 }
