@@ -2538,7 +2538,7 @@ init_driver_workarounds(struct zink_screen *screen)
    case VK_DRIVER_ID_QUALCOMM_PROPRIETARY:
    case VK_DRIVER_ID_BROADCOM_PROPRIETARY:
    case VK_DRIVER_ID_ARM_PROPRIETARY:
-      screen->driver_workarounds.track_renderpasses = true;
+      screen->driver_workarounds.track_renderpasses = screen->info.primgen_feats.primitivesGeneratedQueryWithRasterizerDiscard || screen->info.have_EXT_color_write_enable;
       break;
    default:
       break;

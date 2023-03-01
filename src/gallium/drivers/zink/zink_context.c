@@ -2740,8 +2740,19 @@ zink_batch_rp(struct zink_context *ctx)
    ctx->queries_in_rp = maybe_has_query_ends;
    /* if possible, out-of-renderpass resume any queries that were stopped when previous rp ended */
    if (!ctx->queries_disabled && !maybe_has_query_ends) {
+      if (ctx->primitives_generated_suspended && ctx->clears_enabled) {
+         /* this is a driver that doesn't need dummy surfaces but does need rasterization discard, so flush clears first */
+         ctx->queries_disabled = true;
+         zink_batch_rp(ctx);
+         zink_batch_no_rp(ctx);
+         ctx->queries_disabled = false;
+      }
       zink_resume_queries(ctx, &ctx->batch);
       zink_query_update_gs_states(ctx);
+   }
+   if (!ctx->queries_disabled && ctx->primitives_generated_suspended && !zink_screen(ctx->base.screen)->info.have_EXT_color_write_enable) {
+      if (zink_set_rasterizer_discard(ctx, true))
+         zink_set_color_write_enables(ctx);
    }
    unsigned clear_buffers;
    /* use renderpass for multisample-to-singlesample or fbfetch:
@@ -3167,18 +3178,17 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, unsigned 
 void
 zink_set_color_write_enables(struct zink_context *ctx)
 {
-   bool disable_color_writes = ctx->rast_state && ctx->rast_state->base.rasterizer_discard && ctx->primitives_generated_active;
+   bool disable_color_writes = ctx->rast_state && ctx->rast_state->base.rasterizer_discard &&
+                               (ctx->primitives_generated_active || (!ctx->queries_disabled && ctx->primitives_generated_suspended));
    if (ctx->disable_color_writes == disable_color_writes)
       return;
-   /* flush all pending clears: these have already occurred */
-   if (disable_color_writes && ctx->clears_enabled)
-      zink_batch_rp(ctx);
+   /* this should have been handled already */
+   assert(!disable_color_writes || !ctx->clears_enabled);
    ctx->disable_color_writes = disable_color_writes;
    if (!zink_screen(ctx->base.screen)->info.have_EXT_color_write_enable) {
       /* use dummy color buffers instead of the more sane option */
-      zink_batch_no_rp(ctx);
       ctx->rp_changed = true;
-      zink_update_framebuffer_state(ctx);
+      ctx->fb_changed = true;
    } else {
       reapply_color_write(ctx);
    }
