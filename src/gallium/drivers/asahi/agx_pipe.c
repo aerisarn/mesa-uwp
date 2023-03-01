@@ -1198,7 +1198,9 @@ agx_get_device_vendor(struct pipe_screen *pscreen)
 static const char *
 agx_get_name(struct pipe_screen *pscreen)
 {
-   return "Apple M1 (G13G B0)";
+   struct agx_device *dev = agx_device(pscreen);
+
+   return dev->name;
 }
 
 static int
