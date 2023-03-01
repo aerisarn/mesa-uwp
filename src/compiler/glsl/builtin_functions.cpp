@@ -1022,6 +1022,7 @@ private:
    ir_variable *out_var(const glsl_type *type, const char *name);
    ir_variable *out_lowp_var(const glsl_type *type, const char *name);
    ir_variable *out_highp_var(const glsl_type *type, const char *name);
+   ir_variable *as_highp(ir_factory &body, ir_variable *var);
    ir_constant *imm(float f, unsigned vector_elements=1);
    ir_constant *imm(bool b, unsigned vector_elements=1);
    ir_constant *imm(int i, unsigned vector_elements=1);
@@ -5696,6 +5697,14 @@ builtin_builder::out_highp_var(const glsl_type *type, const char *name)
    return var;
 }
 
+ir_variable *
+builtin_builder::as_highp(ir_factory &body, ir_variable *var)
+{
+   ir_variable *t = body.make_temp(var->type, "highp_tmp");
+   body.emit(assign(t, var));
+   return t;
+}
+
 ir_constant *
 builtin_builder::imm(bool b, unsigned vector_elements)
 {
@@ -6260,7 +6269,7 @@ builtin_builder::_floatBitsToInt(const glsl_type *type)
 {
    ir_variable *x = in_var(type, "x");
    MAKE_SIG(glsl_type::ivec(type->vector_elements), shader_bit_encoding, 1, x);
-   body.emit(ret(bitcast_f2i(x)));
+   body.emit(ret(bitcast_f2i(as_highp(body, x))));
    return sig;
 }
 
@@ -6269,7 +6278,7 @@ builtin_builder::_floatBitsToUint(const glsl_type *type)
 {
    ir_variable *x = in_var(type, "x");
    MAKE_SIG(glsl_type::uvec(type->vector_elements), shader_bit_encoding, 1, x);
-   body.emit(ret(bitcast_f2u(x)));
+   body.emit(ret(bitcast_f2u(as_highp(body, x))));
    return sig;
 }
 
@@ -6278,7 +6287,7 @@ builtin_builder::_intBitsToFloat(const glsl_type *type)
 {
    ir_variable *x = in_var(type, "x");
    MAKE_SIG(glsl_type::vec(type->vector_elements), shader_bit_encoding, 1, x);
-   body.emit(ret(bitcast_i2f(x)));
+   body.emit(ret(bitcast_i2f(as_highp(body, x))));
    return sig;
 }
 
@@ -6287,7 +6296,7 @@ builtin_builder::_uintBitsToFloat(const glsl_type *type)
 {
    ir_variable *x = in_var(type, "x");
    MAKE_SIG(glsl_type::vec(type->vector_elements), shader_bit_encoding, 1, x);
-   body.emit(ret(bitcast_u2f(x)));
+   body.emit(ret(bitcast_u2f(as_highp(body, x))));
    return sig;
 }
 
