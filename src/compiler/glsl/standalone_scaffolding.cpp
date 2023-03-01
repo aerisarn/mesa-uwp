@@ -307,3 +307,21 @@ standalone_destroy_shader_program(struct gl_shader_program *whole_program)
 
    ralloc_free(whole_program);
 }
+
+struct gl_shader *
+standalone_add_shader_source(struct gl_context *ctx, struct gl_shader_program *whole_program, GLenum type, const char *source)
+{
+   struct gl_shader *shader = rzalloc(whole_program, gl_shader);
+   shader->Type = type;
+   shader->Stage = _mesa_shader_enum_to_shader_stage(type);
+   shader->Source = source;
+
+   whole_program->Shaders = reralloc(whole_program, whole_program->Shaders,
+                                     struct gl_shader *, whole_program->NumShaders + 1);
+   assert(whole_program->Shaders != NULL);
+
+   whole_program->Shaders[whole_program->NumShaders] = shader;
+   whole_program->NumShaders++;
+
+   return shader;
+}

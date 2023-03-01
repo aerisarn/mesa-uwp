@@ -443,43 +443,35 @@ standalone_compile_shader(const struct standalone_options *_options,
    struct gl_shader_program *whole_program = standalone_create_shader_program();
 
    for (unsigned i = 0; i < num_files; i++) {
-      whole_program->Shaders =
-            reralloc(whole_program, whole_program->Shaders,
-                  struct gl_shader *, whole_program->NumShaders + 1);
-      assert(whole_program->Shaders != NULL);
-
-      struct gl_shader *shader = rzalloc(whole_program, gl_shader);
-
-      whole_program->Shaders[whole_program->NumShaders] = shader;
-      whole_program->NumShaders++;
-
       const unsigned len = strlen(files[i]);
       if (len < 6)
          goto fail;
 
       const char *const ext = & files[i][len - 5];
       /* TODO add support to read a .shader_test */
+      GLenum type;
       if (strncmp(".vert", ext, 5) == 0 || strncmp(".glsl", ext, 5) == 0)
-	 shader->Type = GL_VERTEX_SHADER;
+         type = GL_VERTEX_SHADER;
       else if (strncmp(".tesc", ext, 5) == 0)
-	 shader->Type = GL_TESS_CONTROL_SHADER;
+         type = GL_TESS_CONTROL_SHADER;
       else if (strncmp(".tese", ext, 5) == 0)
-	 shader->Type = GL_TESS_EVALUATION_SHADER;
+         type = GL_TESS_EVALUATION_SHADER;
       else if (strncmp(".geom", ext, 5) == 0)
-	 shader->Type = GL_GEOMETRY_SHADER;
+         type = GL_GEOMETRY_SHADER;
       else if (strncmp(".frag", ext, 5) == 0)
-	 shader->Type = GL_FRAGMENT_SHADER;
+         type = GL_FRAGMENT_SHADER;
       else if (strncmp(".comp", ext, 5) == 0)
-         shader->Type = GL_COMPUTE_SHADER;
+         type = GL_COMPUTE_SHADER;
       else
          goto fail;
-      shader->Stage = _mesa_shader_enum_to_shader_stage(shader->Type);
 
-      shader->Source = load_text_file(whole_program, files[i]);
-      if (shader->Source == NULL) {
+      const char *source = load_text_file(whole_program, files[i]);
+      if (source == NULL) {
          printf("File \"%s\" does not exist.\n", files[i]);
          exit(EXIT_FAILURE);
       }
+
+      struct gl_shader *shader = standalone_add_shader_source(ctx, whole_program, type, source);
 
       compile_shader(ctx, shader);
 
