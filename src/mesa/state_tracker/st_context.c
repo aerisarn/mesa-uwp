@@ -371,6 +371,7 @@ st_destroy_context_priv(struct st_context *st, bool destroy_pipe)
    if (st->pipe && destroy_pipe)
       st->pipe->destroy(st->pipe);
 
+   st->ctx->st = NULL;
    FREE(st);
 }
 
