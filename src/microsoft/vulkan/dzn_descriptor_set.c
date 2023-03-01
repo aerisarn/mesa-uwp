@@ -243,8 +243,10 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
       vk_create_sorted_bindings(pCreateInfo->pBindings,
                                 pCreateInfo->bindingCount,
                                 &ordered_bindings);
-   if (ret != VK_SUCCESS)
+   if (ret != VK_SUCCESS) {
+      vk_descriptor_set_layout_destroy(&device->vk, &set_layout->vk);
       return ret;
+   }
 
    assert(binding_count ==
           (pCreateInfo->bindingCount ?
