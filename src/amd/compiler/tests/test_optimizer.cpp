@@ -1583,7 +1583,7 @@ BEGIN_TEST(optimize.mad_mix.fma.precision)
       Temp b16 = inputs[4];
 
       /* the optimization is precise for 32-bit on GFX9 */
-      //~gfx9! v1: %res0 = v_fma_mix_f32 lo(%a16), %b, %c
+      //~gfx9! v1: (precise)%res0 = v_fma_mix_f32 lo(%a16), %b, %c
       //~gfx10! v1: (precise)%res0_tmp = v_fma_mix_f32 lo(%a16), %b, -0
       //~gfx10! v1: %res0 = v_add_f32 %res0_tmp, %c
       //! p_unit_test 0, %res0

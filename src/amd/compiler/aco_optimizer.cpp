@@ -4475,6 +4475,8 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             instr = std::move(mad);
          }
          instr->definitions[0] = add_instr->definitions[0];
+         instr->definitions[0].setPrecise(add_instr->definitions[0].isPrecise() ||
+                                          mul_instr->definitions[0].isPrecise());
 
          /* mark this ssa_def to be re-checked for profitability and literals */
          ctx.mad_infos.emplace_back(std::move(add_instr), mul_instr->definitions[0].tempId());
