@@ -156,6 +156,9 @@ struct agx_stage {
    uint32_t valid_samplers;
 };
 
+union agx_batch_result {
+};
+
 struct agx_batch {
    struct agx_context *ctx;
    struct pipe_framebuffer_state key;
@@ -198,6 +201,10 @@ struct agx_batch {
     */
    struct util_dynarray occlusion_queries;
    struct agx_ptr occlusion_buffer;
+
+   /* Result buffer where the kernel places command execution information */
+   union agx_batch_result *result;
+   size_t result_off;
 };
 
 struct agx_zsa {
@@ -279,6 +286,7 @@ struct agx_context {
    } batches;
 
    struct agx_batch *batch;
+   struct agx_bo *result_buf;
 
    struct pipe_vertex_buffer vertex_buffers[PIPE_MAX_ATTRIBS];
    uint32_t vb_mask;

@@ -1076,6 +1076,8 @@ agx_destroy_context(struct pipe_context *pctx)
 
    agx_meta_cleanup(&ctx->meta);
 
+   agx_bo_unreference(ctx->result_buf);
+
    ralloc_free(ctx);
 }
 
@@ -1143,6 +1145,11 @@ agx_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
    agx_meta_init(&ctx->meta, agx_device(screen));
 
    ctx->blitter = util_blitter_create(pctx);
+
+   ctx->result_buf = agx_bo_create(
+      agx_device(screen), sizeof(union agx_batch_result) * AGX_MAX_BATCHES, 0,
+      "Batch result buffer");
+   assert(ctx->result_buf);
 
    return pctx;
 }
