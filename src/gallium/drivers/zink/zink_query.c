@@ -1223,7 +1223,7 @@ zink_set_active_query_state(struct pipe_context *pctx, bool enable)
    struct zink_batch *batch = &ctx->batch;
    if (ctx->queries_disabled)
       zink_suspend_queries(ctx, batch);
-   else
+   else if (ctx->batch.in_rp)
       zink_resume_queries(ctx, batch);
 }
 
