@@ -1283,7 +1283,7 @@ get_mem_access_size_align(nir_intrinsic_op intrin, uint8_t bytes,
          return (nir_mem_access_size_align) {
             .bit_size = 32,
             .num_components = comps32,
-            .align_mul = 4,
+            .align = 4,
          };
       }
       break;
@@ -1293,7 +1293,7 @@ get_mem_access_size_align(nir_intrinsic_op intrin, uint8_t bytes,
          return (nir_mem_access_size_align) {
             .bit_size = 32,
             .num_components = 1,
-            .align_mul = 4,
+            .align = 4,
          };
       }
       break;
@@ -1328,7 +1328,7 @@ get_mem_access_size_align(nir_intrinsic_op intrin, uint8_t bytes,
       return (nir_mem_access_size_align) {
          .bit_size = bytes * 8,
          .num_components = 1,
-         .align_mul = 1,
+         .align = 1,
       };
    } else {
       bytes = MIN2(bytes, 16);
@@ -1336,7 +1336,7 @@ get_mem_access_size_align(nir_intrinsic_op intrin, uint8_t bytes,
          .bit_size = 32,
          .num_components = is_scratch ? 1 :
                            is_load ? DIV_ROUND_UP(bytes, 4) : bytes / 4,
-         .align_mul = 4,
+         .align = 4,
       };
    }
 }

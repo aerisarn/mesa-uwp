@@ -4949,7 +4949,7 @@ bool nir_lower_explicit_io(nir_shader *shader,
 typedef struct {
    uint8_t num_components;
    uint8_t bit_size;
-   uint16_t align_mul;
+   uint16_t align;
 } nir_mem_access_size_align;
 
 typedef nir_mem_access_size_align
