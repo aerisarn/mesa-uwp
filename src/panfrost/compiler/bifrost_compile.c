@@ -1640,11 +1640,6 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
       bi_emit_store(b, instr, BI_SEG_WLS);
       break;
 
-   case nir_intrinsic_control_barrier:
-      assert(b->shader->stage != MESA_SHADER_FRAGMENT);
-      bi_barrier(b);
-      break;
-
    case nir_intrinsic_scoped_barrier:
       if (nir_intrinsic_execution_scope(instr) != NIR_SCOPE_NONE) {
          assert(b->shader->stage != MESA_SHADER_FRAGMENT);
