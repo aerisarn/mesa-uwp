@@ -1799,14 +1799,17 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
          radeon_emit(cs, PIXEL_PIPE_STATE_CNTL_INSTANCE_EN_HI(rb_mask));
       }
 
-      radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 2, 0));
-
-      if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
-         radeon_emit(cs, EVENT_TYPE(V_028A90_PIXEL_PIPE_STAT_DUMP) | EVENT_INDEX(1));
+      if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11 &&
+          cmd_buffer->device->physical_device->rad_info.pfp_fw_version >= EVENT_WRITE_ZPASS_PFP_VERSION) {
+         radeon_emit(cs, PKT3(PKT3_EVENT_WRITE_ZPASS, 1, 0));
       } else {
-         radeon_emit(cs, EVENT_TYPE(V_028A90_ZPASS_DONE) | EVENT_INDEX(1));
+         radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 2, 0));
+         if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
+            radeon_emit(cs, EVENT_TYPE(V_028A90_PIXEL_PIPE_STAT_DUMP) | EVENT_INDEX(1));
+         } else {
+            radeon_emit(cs, EVENT_TYPE(V_028A90_ZPASS_DONE) | EVENT_INDEX(1));
+         }
       }
-
       radeon_emit(cs, va);
       radeon_emit(cs, va >> 32);
       break;
@@ -1931,11 +1934,16 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
          cmd_buffer->state.perfect_occlusion_queries_enabled = false;
       }
 
-      radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 2, 0));
-      if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
-         radeon_emit(cs, EVENT_TYPE(V_028A90_PIXEL_PIPE_STAT_DUMP) | EVENT_INDEX(1));
+      if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11 &&
+          cmd_buffer->device->physical_device->rad_info.pfp_fw_version >= EVENT_WRITE_ZPASS_PFP_VERSION) {
+         radeon_emit(cs, PKT3(PKT3_EVENT_WRITE_ZPASS, 1, 0));
       } else {
-         radeon_emit(cs, EVENT_TYPE(V_028A90_ZPASS_DONE) | EVENT_INDEX(1));
+         radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 2, 0));
+         if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
+            radeon_emit(cs, EVENT_TYPE(V_028A90_PIXEL_PIPE_STAT_DUMP) | EVENT_INDEX(1));
+         } else {
+            radeon_emit(cs, EVENT_TYPE(V_028A90_ZPASS_DONE) | EVENT_INDEX(1));
+         }
       }
       radeon_emit(cs, va + 8);
       radeon_emit(cs, (va + 8) >> 32);
