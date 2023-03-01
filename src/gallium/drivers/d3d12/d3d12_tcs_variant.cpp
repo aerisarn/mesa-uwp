@@ -150,10 +150,6 @@ create_tess_ctrl_shader_variant(struct d3d12_context *ctx, struct d3d12_tcs_vari
    if (tcs) {
       tcs->is_variant = true;
       tcs->tcs_key = *key;
-      if (key->varyings) {
-         tcs->tcs_key.varyings = ralloc(tcs, struct d3d12_varying_info);
-         *tcs->tcs_key.varyings = *key->varyings;
-      }
    }
    return tcs;
 }
