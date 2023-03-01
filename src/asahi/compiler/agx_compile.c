@@ -949,16 +949,34 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       return agx_load_compute_dimension(
          b, dst, instr, AGX_SR_THREAD_POSITION_IN_THREADGROUP_X);
 
-   case nir_intrinsic_memory_barrier_buffer:
-      return agx_memory_barrier(b);
+   case nir_intrinsic_scoped_barrier: {
+      bool needs_threadgroup_barrier = false;
 
-   case nir_intrinsic_control_barrier:
-      return agx_threadgroup_barrier(b);
+      if (nir_intrinsic_execution_scope(instr) != NIR_SCOPE_NONE) {
+         assert(nir_intrinsic_execution_scope(instr) > NIR_SCOPE_SUBGROUP &&
+                "todo: subgroup barriers");
 
-   case nir_intrinsic_group_memory_barrier:
-   case nir_intrinsic_memory_barrier_shared:
-      /* Always seen with a control_barrier */
+         needs_threadgroup_barrier = true;
+      }
+
+      if (nir_intrinsic_memory_scope(instr) != NIR_SCOPE_NONE) {
+         nir_variable_mode modes = nir_intrinsic_memory_modes(instr);
+
+         if (modes & nir_var_mem_global)
+            agx_memory_barrier(b);
+
+         if (modes & nir_var_mem_shared)
+            needs_threadgroup_barrier = true;
+
+         if (nir_intrinsic_memory_scope(instr) >= NIR_SCOPE_WORKGROUP)
+            needs_threadgroup_barrier = true;
+      }
+
+      if (needs_threadgroup_barrier)
+         agx_threadgroup_barrier(b);
+
       return NULL;
+   }
 
    default:
       fprintf(stderr, "Unhandled intrinsic %s\n",
@@ -1914,6 +1932,18 @@ agx_optimize_loop_nir(nir_shader *nir)
    } while (progress);
 }
 
+static bool
+combine_all_barriers(nir_intrinsic_instr *a, nir_intrinsic_instr *b, void *_)
+{
+   nir_intrinsic_set_memory_modes(
+      a, nir_intrinsic_memory_modes(a) | nir_intrinsic_memory_modes(b));
+   nir_intrinsic_set_memory_semantics(
+      a, nir_intrinsic_memory_semantics(a) | nir_intrinsic_memory_semantics(b));
+   nir_intrinsic_set_memory_scope(
+      a, MAX2(nir_intrinsic_memory_scope(a), nir_intrinsic_memory_scope(b)));
+   return true;
+}
+
 static void
 agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
 {
@@ -1962,6 +1992,7 @@ agx_optimize_nir(nir_shader *nir, unsigned *preamble_size)
    NIR_PASS_V(nir, nir_opt_algebraic_late);
    NIR_PASS_V(nir, agx_nir_lower_algebraic_late);
    NIR_PASS_V(nir, nir_opt_constant_folding);
+   NIR_PASS_V(nir, nir_opt_combine_barriers, combine_all_barriers, NULL);
 
    /* Must run after uses are fixed but before a last round of copyprop + DCE */
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
