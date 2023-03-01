@@ -374,3 +374,43 @@ agx_export_sync_file(struct agx_device *dev, struct agx_bo *bo)
 
    return ret >= 0 ? export_sync_file_ioctl.fd : ret;
 }
+
+void
+agx_debug_fault(struct agx_device *dev, uint64_t addr)
+{
+   pthread_mutex_lock(&dev->bo_map_lock);
+
+   struct agx_bo *best = NULL;
+
+   for (uint32_t handle = 0; handle < dev->max_handle; handle++) {
+      struct agx_bo *bo = agx_lookup_bo(dev, handle);
+      if (!bo->dev || bo->ptr.gpu > addr)
+         continue;
+
+      if (!best || bo->ptr.gpu > best->ptr.gpu)
+         best = bo;
+   }
+
+   if (!best) {
+      mesa_logw("Address 0x%" PRIx64 " is unknown\n", addr);
+   } else {
+      uint64_t start = best->ptr.gpu;
+      uint64_t end = best->ptr.gpu + best->size;
+      if (addr > (end + 1024 * 1024 * 1024)) {
+         /* 1GiB max as a sanity check */
+         mesa_logw("Address 0x%" PRIx64 " is unknown\n", addr);
+      } else if (addr > end) {
+         mesa_logw("Address 0x%" PRIx64 " is 0x%" PRIx64
+                   " bytes beyond an object at 0x%" PRIx64 "..0x%" PRIx64
+                   " (%s)\n",
+                   addr, addr - end, start, end - 1, best->label);
+      } else {
+         mesa_logw("Address 0x%" PRIx64 " is 0x%" PRIx64
+                   " bytes into an object at 0x%" PRIx64 "..0x%" PRIx64
+                   " (%s)\n",
+                   addr, addr - start, start, end - 1, best->label);
+      }
+   }
+
+   pthread_mutex_unlock(&dev->bo_map_lock);
+}

@@ -143,4 +143,6 @@ int agx_submit_single(struct agx_device *dev, enum drm_asahi_cmd_type cmd_type,
 int agx_import_sync_file(struct agx_device *dev, struct agx_bo *bo, int fd);
 int agx_export_sync_file(struct agx_device *dev, struct agx_bo *bo);
 
+void agx_debug_fault(struct agx_device *dev, uint64_t addr);
+
 #endif
