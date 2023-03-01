@@ -382,7 +382,6 @@ struct dzn_buffer_desc {
 
 struct dzn_descriptor_heap {
    ID3D12DescriptorHeap *heap;
-   D3D12_DESCRIPTOR_HEAP_TYPE type;
    SIZE_T cpu_base;
    uint64_t gpu_base;
    uint32_t desc_count;
@@ -414,7 +413,7 @@ void
 dzn_descriptor_heap_copy(struct dzn_device *device,
                          struct dzn_descriptor_heap *dst_heap, uint32_t dst_heap_offset,
                          const struct dzn_descriptor_heap *src_heap, uint32_t src_heap_offset,
-                         uint32_t desc_count);
+                         uint32_t desc_count, D3D12_DESCRIPTOR_HEAP_TYPE type);
 
 struct dzn_descriptor_heap_pool_entry {
    struct list_head link;

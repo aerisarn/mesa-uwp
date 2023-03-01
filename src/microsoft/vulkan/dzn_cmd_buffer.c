@@ -3085,7 +3085,7 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
             mtx_lock(&set->pool->defragment_lock);
             dzn_descriptor_heap_copy(device, dst_heap, dst_heap_offset + set_heap_offset,
                                      &set->pool->heaps[type], set->heap_offsets[type],
-                                     set_desc_count);
+                                     set_desc_count, type);
             mtx_unlock(&set->pool->defragment_lock);
          }
 

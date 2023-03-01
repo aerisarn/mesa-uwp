@@ -833,7 +833,6 @@ dzn_descriptor_heap_init(struct dzn_descriptor_heap *heap,
                          bool shader_visible)
 {
    heap->desc_count = desc_count;
-   heap->type = type;
    heap->desc_sz = ID3D12Device1_GetDescriptorHandleIncrementSize(device->dev, type);
 
    D3D12_DESCRIPTOR_HEAP_DESC desc = {
@@ -1008,7 +1007,8 @@ dzn_descriptor_heap_copy(struct dzn_device *device,
                          uint32_t dst_offset,
                          const struct dzn_descriptor_heap *src_heap,
                          uint32_t src_offset,
-                         uint32_t desc_count)
+                         uint32_t desc_count,
+                         D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
    D3D12_CPU_DESCRIPTOR_HANDLE dst_handle =
       dzn_descriptor_heap_get_cpu_handle(dst_heap, dst_offset);
@@ -1018,7 +1018,7 @@ dzn_descriptor_heap_copy(struct dzn_device *device,
    ID3D12Device1_CopyDescriptorsSimple(device->dev, desc_count,
                                        dst_handle,
                                        src_handle,
-                                       dst_heap->type);
+                                       type);
 }
 
 struct dzn_descriptor_set_ptr {
@@ -1487,7 +1487,8 @@ dzn_descriptor_pool_defragment_heap(struct dzn_device *device,
                                &new_heap, heap_offset,
                                &pool->heaps[type],
                                pool->sets[s].heap_offsets[type],
-                               pool->sets[s].heap_sizes[type]);
+                               pool->sets[s].heap_sizes[type],
+                               type);
       pool->sets[s].heap_offsets[type] = heap_offset;
       heap_offset += pool->sets[s].heap_sizes[type];
    }
@@ -1908,7 +1909,7 @@ dzn_descriptor_set_copy(struct dzn_device *device,
                                      dst_set->heap_offsets[type] + dst_heap_offset,
                                      &src_set->pool->heaps[type],
                                      src_set->heap_offsets[type] + src_heap_offset,
-                                     count);
+                                     count, type);
 
             if (dzn_descriptor_type_depends_on_shader_usage(src_type)) {
                src_heap_offset =
@@ -1922,7 +1923,7 @@ dzn_descriptor_set_copy(struct dzn_device *device,
                                         dst_set->heap_offsets[type] + dst_heap_offset,
                                         &src_set->pool->heaps[type],
                                         src_set->heap_offsets[type] + src_heap_offset,
-                                        count);
+                                        count, type);
             }
             mtx_unlock(&dst_set->pool->defragment_lock);
             mtx_unlock(&src_set->pool->defragment_lock);
