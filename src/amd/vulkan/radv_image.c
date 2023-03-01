@@ -383,6 +383,11 @@ radv_use_tc_compat_cmask_for_image(struct radv_device *device, struct radv_image
    if (device->physical_device->rad_info.gfx_level < GFX8)
       return false;
 
+   /* GFX9 has issues when sample count is greater than 2 */
+   if (device->physical_device->rad_info.gfx_level == GFX9 &&
+       image->info.samples > 2)
+      return false;
+
    if (device->instance->debug_flags & RADV_DEBUG_NO_TC_COMPAT_CMASK)
       return false;
 
