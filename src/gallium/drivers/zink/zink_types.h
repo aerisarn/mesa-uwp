@@ -1739,6 +1739,7 @@ struct zink_context {
    bool disable_color_writes;
    bool was_line_loop;
    bool primitives_generated_active;
+   bool primitives_generated_suspended;
    bool queries_disabled, render_condition_active;
    bool queries_in_rp;
    struct {

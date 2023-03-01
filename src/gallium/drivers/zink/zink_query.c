@@ -959,6 +959,8 @@ zink_begin_query(struct pipe_context *pctx,
       /* never directly start queries out of renderpass, always defer */
       list_addtail(&query->active_list, &ctx->suspended_queries);
       query->suspended = true;
+      if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED)
+         ctx->primitives_generated_suspended = query->needs_rast_discard_workaround;
    }
 
    return true;
@@ -1125,6 +1127,8 @@ suspend_queries(struct zink_context *ctx, bool rp_only)
           */
          list_addtail(&query->active_list, &ctx->suspended_queries);
          query->suspended = true;
+         if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED)
+            ctx->primitives_generated_suspended = query->needs_rast_discard_workaround;
       }
       suspend_query(ctx, query);
    }
@@ -1143,6 +1147,8 @@ zink_resume_queries(struct zink_context *ctx, struct zink_batch *batch)
    LIST_FOR_EACH_ENTRY_SAFE(query, next, &ctx->suspended_queries, active_list) {
       list_delinit(&query->active_list);
       query->suspended = false;
+      if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED)
+         ctx->primitives_generated_suspended = false;
       if (query->needs_update && !ctx->batch.in_rp)
          update_qbo(ctx, query);
       begin_query(ctx, batch, query);
