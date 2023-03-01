@@ -95,6 +95,9 @@ struct agx_bo {
    /* Index unique only up to type, process-local */
    uint32_t handle;
 
+   /* DMA-BUF fd clone for adding fences to imports/exports */
+   int prime_fd;
+
    /* Globally unique value (system wide) for tracing. Exists for resources,
     * command buffers, GPU submissions, segments, segmentent lists, encoders,
     * accelerators, and channels. Corresponds to Instruments' magic table

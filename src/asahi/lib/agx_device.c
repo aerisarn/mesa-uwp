@@ -27,17 +27,58 @@
 #include "agx_bo.h"
 #include "decode.h"
 
-unsigned AGX_FAKE_HANDLE = 0;
-uint64_t AGX_FAKE_LO = 0;
-uint64_t AGX_FAKE_HI = (1ull << 32);
+#include <fcntl.h>
+#include <xf86drm.h>
+#include "drm-uapi/dma-buf.h"
+#include "util/log.h"
+#include "util/os_mman.h"
+#include "util/simple_mtx.h"
+
+/* TODO: Linux UAPI. Dummy defines to get some things to compile. */
+#define ASAHI_BIND_READ  0
+#define ASAHI_BIND_WRITE 0
 
 void
 agx_bo_free(struct agx_device *dev, struct agx_bo *bo)
 {
-   free(bo->ptr.cpu);
+   const uint64_t handle = bo->handle;
 
-   /* Reset the handle */
+   if (bo->ptr.cpu)
+      munmap(bo->ptr.cpu, bo->size);
+
+   if (bo->ptr.gpu) {
+      struct util_vma_heap *heap;
+
+      if (bo->flags & AGX_BO_LOW_VA)
+         heap = &dev->usc_heap;
+      else
+         heap = &dev->main_heap;
+
+      simple_mtx_lock(&dev->vma_lock);
+      util_vma_heap_free(heap, bo->ptr.gpu, bo->size + dev->guard_size);
+      simple_mtx_unlock(&dev->vma_lock);
+
+      /* No need to unmap the BO, as the kernel will take care of that when we
+       * close it. */
+   }
+
+   if (bo->prime_fd != -1)
+      close(bo->prime_fd);
+
+   /* Reset the handle. This has to happen before the GEM close to avoid a race.
+    */
    memset(bo, 0, sizeof(*bo));
+   __sync_synchronize();
+
+   struct drm_gem_close args = {.handle = handle};
+   drmIoctl(dev->fd, DRM_IOCTL_GEM_CLOSE, &args);
+}
+
+static int
+agx_bo_bind(struct agx_device *dev, struct agx_bo *bo, uint64_t addr,
+            uint32_t flags)
+{
+   unreachable("Linux UAPI not yet upstream");
 }
 
 struct agx_bo *
@@ -46,55 +87,164 @@ agx_bo_alloc(struct agx_device *dev, size_t size, enum agx_bo_flags flags)
    struct agx_bo *bo;
    unsigned handle = 0;
 
+   size = ALIGN_POT(size, dev->params.vm_page_size);
+
    /* executable implies low va */
    assert(!(flags & AGX_BO_EXEC) || (flags & AGX_BO_LOW_VA));
 
-   /* Faked software path until we have a DRM driver */
-   handle = (++AGX_FAKE_HANDLE);
+   unreachable("Linux UAPI not yet upstream");
 
    pthread_mutex_lock(&dev->bo_map_lock);
    bo = agx_lookup_bo(dev, handle);
+   dev->max_handle = MAX2(dev->max_handle, handle);
    pthread_mutex_unlock(&dev->bo_map_lock);
 
    /* Fresh handle */
    assert(!memcmp(bo, &((struct agx_bo){}), sizeof(*bo)));
 
    bo->type = AGX_ALLOC_REGULAR;
-   bo->size = size;
+   bo->size = size; /* TODO: gem_create.size */
    bo->flags = flags;
    bo->dev = dev;
    bo->handle = handle;
+   bo->prime_fd = -1;
 
    ASSERTED bool lo = (flags & AGX_BO_LOW_VA);
 
-   if (lo) {
-      bo->ptr.gpu = AGX_FAKE_LO;
-      AGX_FAKE_LO += bo->size;
-   } else {
-      bo->ptr.gpu = AGX_FAKE_HI;
-      AGX_FAKE_HI += bo->size;
+   struct util_vma_heap *heap;
+   if (lo)
+      heap = &dev->usc_heap;
+   else
+      heap = &dev->main_heap;
+
+   simple_mtx_lock(&dev->vma_lock);
+   bo->ptr.gpu = util_vma_heap_alloc(heap, size + dev->guard_size,
+                                     dev->params.vm_page_size);
+   simple_mtx_unlock(&dev->vma_lock);
+   if (!bo->ptr.gpu) {
+      fprintf(stderr, "Failed to allocate BO VMA\n");
+      agx_bo_free(dev, bo);
+      return NULL;
    }
 
-   bo->ptr.gpu = (((uint64_t)bo->handle) << (lo ? 16 : 24));
-   bo->ptr.cpu = calloc(1, bo->size);
+   bo->guid = bo->handle; /* TODO: We don't care about guids */
+
+   uint32_t bind = ASAHI_BIND_READ;
+   if (!(flags & AGX_BO_READONLY)) {
+      bind |= ASAHI_BIND_WRITE;
+   }
+
+   int ret = agx_bo_bind(dev, bo, bo->ptr.gpu, bind);
+   if (ret) {
+      agx_bo_free(dev, bo);
+      return NULL;
+   }
+
+   agx_bo_mmap(bo);
+
+   if (flags & AGX_BO_LOW_VA)
+      bo->ptr.gpu -= dev->shader_base;
 
    assert(bo->ptr.gpu < (1ull << (lo ? 32 : 40)));
 
    return bo;
 }
 
+void
+agx_bo_mmap(struct agx_bo *bo)
+{
+   unreachable("Linux UAPI not yet upstream");
+}
+
 struct agx_bo *
 agx_bo_import(struct agx_device *dev, int fd)
 {
-   unreachable("Linux UAPI not yet upstream");
+   struct agx_bo *bo;
+   ASSERTED int ret;
+   unsigned gem_handle;
+
+   pthread_mutex_lock(&dev->bo_map_lock);
+
+   ret = drmPrimeFDToHandle(dev->fd, fd, &gem_handle);
+   assert(!ret);
+
+   bo = agx_lookup_bo(dev, gem_handle);
+   dev->max_handle = MAX2(dev->max_handle, gem_handle);
+
+   if (!bo->dev) {
+      bo->dev = dev;
+      bo->size = lseek(fd, 0, SEEK_END);
+
+      /* Sometimes this can fail and return -1. size of -1 is not
+       * a nice thing for mmap to try mmap. Be more robust also
+       * for zero sized maps and fail nicely too
+       */
+      if ((bo->size == 0) || (bo->size == (size_t)-1)) {
+         pthread_mutex_unlock(&dev->bo_map_lock);
+         return NULL;
+      }
+      if (bo->size & (dev->params.vm_page_size - 1)) {
+         fprintf(
+            stderr,
+            "import failed: BO is not a multiple of the page size (0x%llx bytes)\n",
+            (long long)bo->size);
+         pthread_mutex_unlock(&dev->bo_map_lock);
+         return NULL;
+      }
+      bo->flags = AGX_BO_SHARED | AGX_BO_SHAREABLE;
+      bo->handle = gem_handle;
+      bo->prime_fd = dup(fd);
+      bo->label = "Imported BO";
+      assert(bo->prime_fd >= 0);
+
+      p_atomic_set(&bo->refcnt, 1);
+
+      simple_mtx_lock(&dev->vma_lock);
+      bo->ptr.gpu = util_vma_heap_alloc(
+         &dev->main_heap, bo->size + dev->guard_size, dev->params.vm_page_size);
+      simple_mtx_unlock(&dev->vma_lock);
+
+      ret =
+         agx_bo_bind(dev, bo, bo->ptr.gpu, ASAHI_BIND_READ | ASAHI_BIND_WRITE);
+      assert(!ret);
+
+   } else {
+      /* bo->refcnt == 0 can happen if the BO
+       * was being released but agx_bo_import() acquired the
+       * lock before agx_bo_unreference(). In that case, refcnt
+       * is 0 and we can't use agx_bo_reference() directly, we
+       * have to re-initialize the refcnt().
+       * Note that agx_bo_unreference() checks
+       * refcnt value just after acquiring the lock to
+       * make sure the object is not freed if agx_bo_import()
+       * acquired it in the meantime.
+       */
+      if (p_atomic_read(&bo->refcnt) == 0)
+         p_atomic_set(&bo->refcnt, 1);
+      else
+         agx_bo_reference(bo);
+   }
+   pthread_mutex_unlock(&dev->bo_map_lock);
+
+   return bo;
 }
 
 int
 agx_bo_export(struct agx_bo *bo)
 {
-   bo->flags |= AGX_BO_SHARED;
+   int fd;
 
-   unreachable("Linux UAPI not yet upstream");
+   assert(bo->flags & AGX_BO_SHAREABLE);
+
+   if (drmPrimeHandleToFD(bo->dev->fd, bo->handle, DRM_CLOEXEC, &fd))
+      return -1;
+
+   bo->flags |= AGX_BO_SHARED;
+   if (bo->prime_fd == -1)
+      bo->prime_fd = dup(fd);
+   assert(bo->prime_fd >= 0);
+
+   return fd;
 }
 
 static void
@@ -114,12 +264,33 @@ agx_get_global_id(struct agx_device *dev)
    return dev->next_global_id++;
 }
 
-/* Tries to open an AGX device, returns true if successful */
+static ssize_t
+agx_get_params(struct agx_device *dev, void *buf, size_t size)
+{
+   /* TODO: Linux UAPI */
+   unreachable("Linux UAPI not yet upstream");
+}
 
 bool
 agx_open_device(void *memctx, struct agx_device *dev)
 {
+   ssize_t params_size = -1;
+
+   /* TODO: Linux UAPI */
+   return false;
+
+   params_size = agx_get_params(dev, &dev->params, sizeof(dev->params));
+   if (params_size <= 0) {
+      assert(0);
+      return false;
+   }
+   assert(params_size >= sizeof(dev->params));
+
+   /* TODO: Linux UAPI: Params */
+   unreachable("Linux UAPI not yet upstream");
+
    util_sparse_array_init(&dev->bo_map, sizeof(struct agx_bo), 512);
+   pthread_mutex_init(&dev->bo_map_lock, NULL);
 
    simple_mtx_init(&dev->bo_cache.lock, mtx_plain);
    list_inithead(&dev->bo_cache.lru);
@@ -127,6 +298,16 @@ agx_open_device(void *memctx, struct agx_device *dev)
    for (unsigned i = 0; i < ARRAY_SIZE(dev->bo_cache.buckets); ++i)
       list_inithead(&dev->bo_cache.buckets[i]);
 
+   /* TODO: Linux UAPI: Create VM */
+
+   simple_mtx_init(&dev->vma_lock, mtx_plain);
+   util_vma_heap_init(&dev->main_heap, dev->params.vm_user_start,
+                      dev->params.vm_user_end - dev->params.vm_user_start + 1);
+   util_vma_heap_init(
+      &dev->usc_heap, dev->params.vm_shader_start,
+      dev->params.vm_shader_end - dev->params.vm_shader_start + 1);
+
+   dev->queue_id = agx_create_command_queue(dev, 0 /* TODO: CAPS */);
    agx_get_global_ids(dev);
 
    return true;
@@ -137,6 +318,15 @@ agx_close_device(struct agx_device *dev)
 {
    agx_bo_cache_evict_all(dev);
    util_sparse_array_finish(&dev->bo_map);
+
+   util_vma_heap_finish(&dev->main_heap);
+   util_vma_heap_finish(&dev->usc_heap);
+}
+
+uint32_t
+agx_create_command_queue(struct agx_device *dev, uint32_t caps)
+{
+   unreachable("Linux UAPI not yet upstream");
 }
 
 int
