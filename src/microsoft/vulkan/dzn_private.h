@@ -676,7 +676,6 @@ struct dzn_descriptor_pool {
    uint32_t desc_count[NUM_POOL_TYPES];
    uint32_t used_desc_count[NUM_POOL_TYPES];
    uint32_t free_offset[NUM_POOL_TYPES];
-   mtx_t defragment_lock;
 };
 
 #define MAX_SHADER_VISIBILITIES (D3D12_SHADER_VISIBILITY_PIXEL + 1)
@@ -751,8 +750,7 @@ struct dzn_descriptor_set {
    struct vk_object_base base;
    struct dzn_buffer_desc dynamic_buffers[MAX_DYNAMIC_BUFFERS];
    struct dzn_descriptor_pool *pool;
-   /* The offset in the current active staging descriptor heap for the set's pool.
-    * This offset is guarded by the pool's defrag lock and is updated when defrag happens. */
+   /* The offset in the current active staging descriptor heap for the set's pool. */
    uint32_t heap_offsets[NUM_POOL_TYPES];
    /* The number of descriptors needed for this set */
    uint32_t heap_sizes[NUM_POOL_TYPES];

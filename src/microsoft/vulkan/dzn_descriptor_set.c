@@ -1136,12 +1136,10 @@ dzn_descriptor_set_write_sampler_desc(struct dzn_device *device,
 
    D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
 
-   mtx_lock(&set->pool->defragment_lock);
    dzn_descriptor_heap_write_sampler_desc(device,
                                           &set->pool->heaps[type],
                                           set->heap_offsets[type] + heap_offset,
                                           sampler);
-    mtx_unlock(&set->pool->defragment_lock);
 }
 
 static void
@@ -1221,7 +1219,6 @@ dzn_descriptor_set_write_image_view_desc(struct dzn_device *device,
 
    bool primary_writable = desc_type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 
-   mtx_lock(&set->pool->defragment_lock);
    dzn_descriptor_heap_write_image_view_desc(device,
                                              &set->pool->heaps[type],
                                              set->heap_offsets[type] + heap_offset,
@@ -1236,7 +1233,6 @@ dzn_descriptor_set_write_image_view_desc(struct dzn_device *device,
                                                 false, cube_as_2darray,
                                                 iview);
    }
-   mtx_unlock(&set->pool->defragment_lock);
 }
 
 static void
@@ -1271,7 +1267,6 @@ dzn_descriptor_set_write_buffer_view_desc(struct dzn_device *device,
    D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
    bool primary_writable = desc_type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
 
-   mtx_lock(&set->pool->defragment_lock);
    dzn_descriptor_heap_write_buffer_view_desc(device,
                                               &set->pool->heaps[type],
                                               set->heap_offsets[type] +
@@ -1286,7 +1281,6 @@ dzn_descriptor_set_write_buffer_view_desc(struct dzn_device *device,
                                                  alt_heap_offset,
                                                  false, bview);
    }
-   mtx_unlock(&set->pool->defragment_lock);
 }
 
 static void
@@ -1319,7 +1313,6 @@ dzn_descriptor_set_write_buffer_desc(struct dzn_device *device,
 
    bool primary_writable = desc_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
-   mtx_lock(&set->pool->defragment_lock);
    dzn_descriptor_heap_write_buffer_desc(device, &set->pool->heaps[type],
                                          set->heap_offsets[type] + heap_offset,
                                          primary_writable, bdesc);
@@ -1331,7 +1324,6 @@ dzn_descriptor_set_write_buffer_desc(struct dzn_device *device,
                                             alt_heap_offset,
                                             false, bdesc);
    }
-   mtx_unlock(&set->pool->defragment_lock);
 }
 
 static void
@@ -1354,20 +1346,21 @@ static void
 dzn_descriptor_set_init(struct dzn_descriptor_set *set,
                         struct dzn_device *device,
                         struct dzn_descriptor_pool *pool,
-                        struct dzn_descriptor_set_layout *layout)
+                        struct dzn_descriptor_set_layout *layout,
+                        bool reuse)
 {
    vk_object_base_init(&device->vk, &set->base, VK_OBJECT_TYPE_DESCRIPTOR_SET);
 
    set->pool = pool;
    set->layout = layout;
 
-   mtx_lock(&pool->defragment_lock);
-   dzn_foreach_pool_type(type) {
-      set->heap_offsets[type] = pool->free_offset[type];
-      set->heap_sizes[type] = layout->range_desc_count[type];
-      set->pool->free_offset[type] += layout->range_desc_count[type];
+   if (!reuse) {
+      dzn_foreach_pool_type(type) {
+         set->heap_offsets[type] = pool->free_offset[type];
+         set->heap_sizes[type] = layout->range_desc_count[type];
+         set->pool->free_offset[type] += layout->range_desc_count[type];
+      }
    }
-   mtx_unlock(&pool->defragment_lock);
 
    /* Pre-fill the immutable samplers */
    if (layout->immutable_sampler_count) {
@@ -1434,7 +1427,6 @@ dzn_descriptor_pool_create(struct dzn_device *device,
    pool->alloc = pAllocator ? *pAllocator : device->vk.alloc;
    pool->sets = sets;
    pool->set_count = pCreateInfo->maxSets;
-   mtx_init(&pool->defragment_lock, mtx_plain);
 
    vk_object_base_init(&device->vk, &pool->base, VK_OBJECT_TYPE_DESCRIPTOR_POOL);
 
@@ -1486,43 +1478,6 @@ dzn_descriptor_pool_create(struct dzn_device *device,
    return VK_SUCCESS;
 }
 
-static VkResult
-dzn_descriptor_pool_defragment_heap(struct dzn_device *device,
-                                    struct dzn_descriptor_pool *pool,
-                                    D3D12_DESCRIPTOR_HEAP_TYPE type)
-{
-   struct dzn_descriptor_heap new_heap;
-
-   VkResult result =
-      dzn_descriptor_heap_init(&new_heap, device, type,
-                               pool->heaps[type].desc_count,
-                               false);
-   if (result != VK_SUCCESS)
-      return result;
-
-   mtx_lock(&pool->defragment_lock);
-   uint32_t heap_offset = 0;
-   for (uint32_t s = 0; s < pool->set_count; s++) {
-      if (!pool->sets[s].layout)
-         continue;
-
-      dzn_descriptor_heap_copy(device,
-                               &new_heap, heap_offset,
-                               &pool->heaps[type],
-                               pool->sets[s].heap_offsets[type],
-                               pool->sets[s].heap_sizes[type],
-                               type);
-      pool->sets[s].heap_offsets[type] = heap_offset;
-      heap_offset += pool->sets[s].heap_sizes[type];
-   }
-   mtx_unlock(&pool->defragment_lock);
-
-   dzn_descriptor_heap_finish(&pool->heaps[type]);
-   pool->heaps[type] = new_heap;
-
-   return VK_SUCCESS;
-}
-
 VKAPI_ATTR VkResult VKAPI_CALL
 dzn_CreateDescriptorPool(VkDevice device,
                          const VkDescriptorPoolCreateInfo *pCreateInfo,
@@ -1552,8 +1507,11 @@ dzn_ResetDescriptorPool(VkDevice device,
    for (uint32_t s = 0; s < pool->set_count; s++)
       dzn_descriptor_set_finish(&pool->sets[s]);
 
-   dzn_foreach_pool_type(type)
+   dzn_foreach_pool_type(type) {
       pool->free_offset[type] = 0;
+      pool->used_desc_count[type] = 0;
+   }
+   pool->used_set_count = 0;
 
    return VK_SUCCESS;
 }
@@ -1669,14 +1627,9 @@ dzn_AllocateDescriptorSets(VkDevice dev,
 {
    VK_FROM_HANDLE(dzn_descriptor_pool, pool, pAllocateInfo->descriptorPool);
    VK_FROM_HANDLE(dzn_device, device, dev);
-   VkResult result;
-   unsigned i;
-
-   if (pAllocateInfo->descriptorSetCount > (pool->set_count - pool->used_set_count))
-      return VK_ERROR_OUT_OF_POOL_MEMORY;
 
    uint32_t set_idx = 0;
-   for (i = 0; i < pAllocateInfo->descriptorSetCount; i++) {
+   for (unsigned i = 0; i < pAllocateInfo->descriptorSetCount; i++) {
       VK_FROM_HANDLE(dzn_descriptor_set_layout, layout, pAllocateInfo->pSetLayouts[i]);
 
       dzn_foreach_pool_type(type) {
@@ -1684,25 +1637,53 @@ dzn_AllocateDescriptorSets(VkDevice dev,
             dzn_FreeDescriptorSets(dev, pAllocateInfo->descriptorPool, i, pDescriptorSets);
             return vk_error(device, VK_ERROR_OUT_OF_POOL_MEMORY);
          }
+      }
 
-         if (pool->free_offset[type] + layout->range_desc_count[type] > pool->desc_count[type]) {
-            result = dzn_descriptor_pool_defragment_heap(device, pool, type);
-            if (result != VK_SUCCESS) {
+      struct dzn_descriptor_set *set = NULL;
+      bool is_reuse = false;
+      bool found_any_unused = false;
+      for (; set_idx < pool->set_count; set_idx++) {
+         /* Find a free set */
+         if (!pool->sets[set_idx].layout) {
+            /* Found one. If it's re-use, check if it has enough space */
+            if (set_idx < pool->used_set_count) {
+               is_reuse = true;
+               found_any_unused = true;
+               dzn_foreach_pool_type(type) {
+                  if (pool->sets[set_idx].heap_sizes[type] < layout->range_desc_count[type]) {
+                     /* No, not enough space */
+                     is_reuse = false;
+                     break;
+                  }
+               }
+               if (!is_reuse)
+                  continue;
+            }
+            set = &pool->sets[set_idx];
+            break;
+         }
+      }
+
+      /* Either all occupied, or no free space large enough */
+      if (!set) {
+         dzn_FreeDescriptorSets(dev, pAllocateInfo->descriptorPool, i, pDescriptorSets);
+         return vk_error(device, found_any_unused ? VK_ERROR_FRAGMENTED_POOL : VK_ERROR_OUT_OF_POOL_MEMORY);
+      }
+
+      /* Couldn't find one for re-use, check if there's enough space at the end */
+      if (!is_reuse) {
+         dzn_foreach_pool_type(type) {
+            if (pool->free_offset[type] + layout->range_desc_count[type] > pool->desc_count[type]) {
                dzn_FreeDescriptorSets(dev, pAllocateInfo->descriptorPool, i, pDescriptorSets);
                return vk_error(device, VK_ERROR_FRAGMENTED_POOL);
             }
          }
       }
 
-      struct dzn_descriptor_set *set = NULL;
-      for (; set_idx < pool->set_count; set_idx++) {
-         if (!pool->sets[set_idx].layout) {
-            set = &pool->sets[set_idx];
-            break;
-         }
-      }
-
-      dzn_descriptor_set_init(set, device, pool, layout);
+      dzn_descriptor_set_init(set, device, pool, layout, is_reuse);
+      pool->used_set_count = MAX2(pool->used_set_count, set_idx + 1);
+      dzn_foreach_pool_type(type)
+         pool->used_desc_count[type] += layout->range_desc_count[type];
       pDescriptorSets[i] = dzn_descriptor_set_to_handle(set);
    }
 
@@ -1724,11 +1705,13 @@ dzn_FreeDescriptorSets(VkDevice dev,
          continue;
 
       assert(set->pool == pool);
+      dzn_foreach_pool_type(type)
+         pool->used_desc_count[type] -= set->layout->range_desc_count[type];
 
       dzn_descriptor_set_finish(set);
    }
 
-   mtx_lock(&pool->defragment_lock);
+   pool->used_set_count = 0;
    dzn_foreach_pool_type(type)
       pool->free_offset[type] = 0;
 
@@ -1736,15 +1719,15 @@ dzn_FreeDescriptorSets(VkDevice dev,
       const struct dzn_descriptor_set *set = &pool->sets[s];
 
       if (set->layout) {
+         pool->used_set_count = MAX2(pool->used_set_count, s + 1);
          dzn_foreach_pool_type (type) {
             pool->free_offset[type] =
                MAX2(pool->free_offset[type],
                     set->heap_offsets[type] +
-                    set->layout->range_desc_count[type]);
+                    set->heap_sizes[type]);
          }
       }
    }
-   mtx_unlock(&pool->defragment_lock);
 
    return VK_SUCCESS;
 }
@@ -1928,8 +1911,6 @@ dzn_descriptor_set_copy(struct dzn_device *device,
                continue;
             }
 
-            mtx_lock(&src_set->pool->defragment_lock);
-            mtx_lock(&dst_set->pool->defragment_lock);
             dzn_descriptor_heap_copy(device,
                                      &dst_set->pool->heaps[type],
                                      dst_set->heap_offsets[type] + dst_heap_offset,
@@ -1951,8 +1932,6 @@ dzn_descriptor_set_copy(struct dzn_device *device,
                                         src_set->heap_offsets[type] + src_heap_offset,
                                         count, type);
             }
-            mtx_unlock(&dst_set->pool->defragment_lock);
-            mtx_unlock(&src_set->pool->defragment_lock);
          }
       }
 
