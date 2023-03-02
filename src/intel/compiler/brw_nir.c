@@ -1243,10 +1243,15 @@ brw_nir_should_vectorize_mem(unsigned align_mul, unsigned align_offset,
 }
 
 static
-bool combine_all_barriers(nir_intrinsic_instr *a,
-                          nir_intrinsic_instr *b,
-                          void *data)
+bool combine_all_memory_barriers(nir_intrinsic_instr *a,
+                                 nir_intrinsic_instr *b,
+                                 void *data)
 {
+   /* Only combine pure memory barriers */
+   if ((nir_intrinsic_execution_scope(a) != NIR_SCOPE_NONE) ||
+       (nir_intrinsic_execution_scope(b) != NIR_SCOPE_NONE))
+      return false;
+
    /* Translation to backend IR will get rid of modes we don't care about, so
     * no harm in always combining them.
     *
@@ -1418,7 +1423,7 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
    OPT(nir_lower_bit_size, lower_bit_size_callback, (void *)compiler);
 
    OPT(brw_nir_lower_scoped_barriers);
-   OPT(nir_opt_combine_memory_barriers, combine_all_barriers, NULL);
+   OPT(nir_opt_combine_barriers, combine_all_memory_barriers, NULL);
 
    do {
       progress = false;
