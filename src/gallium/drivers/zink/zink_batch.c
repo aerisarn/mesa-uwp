@@ -423,6 +423,7 @@ zink_batch_bind_db(struct zink_context *ctx)
       count++;
    }
    VKSCR(CmdBindDescriptorBuffersEXT)(batch->state->cmdbuf, count, infos);
+   VKSCR(CmdBindDescriptorBuffersEXT)(batch->state->barrier_cmdbuf, count, infos);
    batch->state->dd.db_bound = true;
 }
 
