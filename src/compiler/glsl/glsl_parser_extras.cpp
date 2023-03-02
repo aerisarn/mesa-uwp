@@ -2402,7 +2402,6 @@ do_common_optimization(exec_list *ir, bool linked,
       OPT(do_constant_variable, ir);
    else
       OPT(do_constant_variable_unlinked, ir);
-   OPT(do_constant_folding, ir);
    OPT(do_minmax_prune, ir);
    OPT(do_rebalance_tree, ir);
    OPT(do_algebraic, ir, native_integers, options);
