@@ -2274,6 +2274,19 @@ TESTS = [
          }
          """,
          r'\(constant uint \(3'), # should be uint16_t
+
+    Test("vec4 constructor from float",
+         """
+         uniform highp float a;
+         uniform mediump float b;
+
+         void main()
+         {
+                 gl_FragColor = vec4(a) * b;
+         }
+         """,
+         r'\(expression vec4 \* \(swiz xxxx \(var_ref a\) \)\(expression float f162f \(var_ref b\) \) \)'),
+
 ]
 
 

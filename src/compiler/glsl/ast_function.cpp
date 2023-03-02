@@ -1455,15 +1455,7 @@ emit_inline_vector_constructor(const glsl_type *type,
    const unsigned lhs_components = type->components();
    if (single_scalar_parameter(parameters)) {
       ir_rvalue *first_param = (ir_rvalue *)parameters->get_head_raw();
-      ir_rvalue *rhs = new(ctx) ir_swizzle(first_param, 0, 0, 0, 0,
-                                           lhs_components);
-      ir_dereference_variable *lhs = new(ctx) ir_dereference_variable(var);
-      const unsigned mask = (1U << lhs_components) - 1;
-
-      assert(rhs->type == lhs->type);
-
-      ir_instruction *inst = new(ctx) ir_assignment(lhs, rhs, mask);
-      instructions->push_tail(inst);
+      return new(ctx) ir_swizzle(first_param, 0, 0, 0, 0, lhs_components);
    } else {
       unsigned base_component = 0;
       unsigned base_lhs_component = 0;
