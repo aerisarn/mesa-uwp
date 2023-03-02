@@ -3112,8 +3112,10 @@ flush_batch(struct zink_context *ctx, bool sync)
       ctx->dd.bindless_bound = false;
       ctx->di.bindless_refs_dirty = true;
       ctx->sample_locations_changed = ctx->gfx_pipeline_state.sample_locations_enabled;
-      if (zink_screen(ctx->base.screen)->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
+      if (zink_screen(ctx->base.screen)->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints) {
          VKCTX(CmdSetPatchControlPointsEXT)(ctx->batch.state->cmdbuf, ctx->gfx_pipeline_state.dyn_state2.vertices_per_patch);
+         VKCTX(CmdSetPatchControlPointsEXT)(ctx->batch.state->barrier_cmdbuf, 1);
+      }
       if (conditional_render_active)
          zink_start_conditional_render(ctx);
       reapply_color_write(ctx);
@@ -5317,8 +5319,10 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       /* set on startup just to avoid validation errors if a draw comes through without
       * a tess shader later
       */
-      if (screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
+      if (screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints) {
          VKCTX(CmdSetPatchControlPointsEXT)(ctx->batch.state->cmdbuf, 1);
+         VKCTX(CmdSetPatchControlPointsEXT)(ctx->batch.state->barrier_cmdbuf, 1);
+      }
    }
    if (!is_copy_only) {
       for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
