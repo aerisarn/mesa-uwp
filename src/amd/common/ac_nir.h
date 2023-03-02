@@ -306,6 +306,10 @@ typedef struct {
 
    bool bc_optimize_for_persp;
    bool bc_optimize_for_linear;
+   bool force_persp_sample_interp;
+   bool force_linear_sample_interp;
+   bool force_persp_center_interp;
+   bool force_linear_center_interp;
 
    /* OpenGL only */
    bool clamp_color;
