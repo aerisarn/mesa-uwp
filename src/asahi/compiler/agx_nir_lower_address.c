@@ -143,6 +143,17 @@ match_address(nir_builder *b, nir_ssa_scalar base, int8_t format_shift)
          if (new_shift <= 2) {
             match.offset = shifted;
             match.shift = new_shift;
+         } else if (new_shift > 0) {
+            /* For large shifts, we do need an ishl instruction but we can
+             * shrink the shift to avoid generating an ishr.
+             */
+            assert(new_shift >= 3);
+
+            nir_ssa_def *rewrite =
+               nir_ishl_imm(b, nir_vec_scalars(b, &shifted, 1), new_shift);
+
+            match.offset = nir_get_ssa_scalar(rewrite, 0);
+            match.shift = 0;
          }
       }
    } else {
