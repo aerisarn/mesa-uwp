@@ -482,6 +482,12 @@ static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_s
    case nir_intrinsic_load_alpha_reference_amd:
       replacement = ac_nir_load_arg(b, &args->ac, args->alpha_reference);
       break;
+   case nir_intrinsic_load_barycentric_optimize_amd: {
+      nir_ssa_def *prim_mask = ac_nir_load_arg(b, &args->ac, args->ac.prim_mask);
+      /* enabled when bit 31 is set */
+      replacement = nir_ilt(b, prim_mask, nir_imm_int(b, 0));
+      break;
+   }
    default:
       return false;
    }
