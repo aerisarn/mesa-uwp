@@ -2299,6 +2299,24 @@ TESTS = [
          """,
          r'expression float \* \(expression float f162f \(var_ref a\) \) \(expression float f162f \(var_ref b\) \) '), # should be uint16_t
 
+    Test("conversion constructor precision",
+         """
+         #version 300 es
+         uniform mediump uint a;
+         out highp float result;
+
+         void main()
+         {
+            /* Constructors don't have a precision qualifier themselves, but
+             * constructors are an operation, and so they do the usual "get
+             * precision from my operands, or default to the precision of the
+             * lvalue" rule.  So, the u2f is done at mediump due to a's precision.
+             */
+            result = float(a);
+         }
+         """,
+         r'expression float16_t u2f \(expression uint16_t u2ump \(var_ref a\) \)'), # should be uint16_t
+
 ]
 
 
