@@ -19,9 +19,68 @@ struct match {
    int8_t shift;
 };
 
+/*
+ * Try to rewrite (a << (#b + #c)) + #d as ((a << #b) + #d') << #c,
+ * assuming that #d is a multiple of 1 << #c. This takes advantage of
+ * the hardware's implicit << #c and avoids a right-shift.
+ *
+ * This pattern occurs with a struct-of-array layout.
+ */
+static bool
+match_soa(nir_builder *b, struct match *match, unsigned format_shift)
+{
+   if (!nir_ssa_scalar_is_alu(match->offset) ||
+       nir_ssa_scalar_alu_op(match->offset) != nir_op_iadd)
+      return false;
+
+   nir_ssa_scalar summands[] = {
+      nir_ssa_scalar_chase_alu_src(match->offset, 0),
+      nir_ssa_scalar_chase_alu_src(match->offset, 1),
+   };
+
+   for (unsigned i = 0; i < ARRAY_SIZE(summands); ++i) {
+      if (!nir_ssa_scalar_is_const(summands[i]))
+         continue;
+
+      unsigned offset = nir_ssa_scalar_as_uint(summands[i]);
+      unsigned offset_shifted = offset >> format_shift;
+
+      /* If the constant offset is not aligned, we can't rewrite safely */
+      if (offset != (offset_shifted << format_shift))
+         return false;
+
+      /* The other operand must be ishl */
+      if (!nir_ssa_scalar_is_alu(summands[1 - i]) ||
+          nir_ssa_scalar_alu_op(summands[1 - i]) != nir_op_ishl)
+         return false;
+
+      nir_ssa_scalar shifted = nir_ssa_scalar_chase_alu_src(summands[1 - i], 0);
+      nir_ssa_scalar shift = nir_ssa_scalar_chase_alu_src(summands[1 - i], 1);
+
+      /* The explicit shift must be at least as big as the implicit shift */
+      if (!nir_ssa_scalar_is_const(shift) ||
+          nir_ssa_scalar_as_uint(shift) < format_shift)
+         return false;
+
+      /* All conditions met, rewrite! */
+      nir_ssa_def *shifted_ssa = nir_vec_scalars(b, &shifted, 1);
+      uint32_t shift_u32 = nir_ssa_scalar_as_uint(shift);
+
+      nir_ssa_def *rewrite =
+         nir_iadd_imm(b, nir_ishl_imm(b, shifted_ssa, shift_u32 - format_shift),
+                      offset_shifted);
+
+      match->offset = nir_get_ssa_scalar(rewrite, 0);
+      match->shift = 0;
+      return true;
+   }
+
+   return false;
+}
+
 /* Try to pattern match address calculation */
 static struct match
-match_address(nir_ssa_scalar base, int8_t format_shift)
+match_address(nir_builder *b, nir_ssa_scalar base, int8_t format_shift)
 {
    struct match match = {.base = base};
 
@@ -86,6 +145,9 @@ match_address(nir_ssa_scalar base, int8_t format_shift)
             match.shift = new_shift;
          }
       }
+   } else {
+      /* Try to match struct-of-arrays pattern, updating match if possible */
+      match_soa(b, &match, format_shift);
    }
 
    return match;
@@ -118,7 +180,7 @@ pass(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
 
    nir_src *orig_offset = nir_get_io_offset_src(intr);
    nir_ssa_scalar base = nir_ssa_scalar_resolved(orig_offset->ssa, 0);
-   struct match match = match_address(base, format_shift);
+   struct match match = match_address(b, base, format_shift);
 
    nir_ssa_def *offset =
       match.offset.def != NULL
