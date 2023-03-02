@@ -2287,6 +2287,18 @@ TESTS = [
          """,
          r'\(expression vec4 \* \(swiz xxxx \(var_ref a\) \)\(expression float f162f \(var_ref b\) \) \)'),
 
+    Test("respect copies",
+         """
+         uniform mediump float a, b;
+
+         void main()
+         {
+            highp float x = a;
+            gl_FragColor.x = x * b;
+         }
+         """,
+         r'expression float \* \(expression float f162f \(var_ref a\) \) \(expression float f162f \(var_ref b\) \) '), # should be uint16_t
+
 ]
 
 
