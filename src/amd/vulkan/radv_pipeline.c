@@ -133,10 +133,6 @@ radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline
          radv_shader_part_unref(device, graphics_pipeline->ps_epilog);
 
       vk_free(&device->vk.alloc, graphics_pipeline->state_data);
-   } else if (pipeline->type == RADV_PIPELINE_RAY_TRACING) {
-      struct radv_ray_tracing_pipeline *rt_pipeline = radv_pipeline_to_ray_tracing(pipeline);
-
-      free(rt_pipeline->stack_sizes);
    } else if (pipeline->type == RADV_PIPELINE_LIBRARY) {
       struct radv_library_pipeline *library_pipeline = radv_pipeline_to_library(pipeline);
 
@@ -3514,7 +3510,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
 
    bool found_in_application_cache = true;
    if (!skip_shaders_cache &&
-       radv_create_shaders_from_pipeline_cache(device, cache, hash, &pipeline->base, NULL, NULL,
+       radv_create_shaders_from_pipeline_cache(device, cache, hash, &pipeline->base, NULL, 0,
                                                &found_in_application_cache)) {
       if (found_in_application_cache)
          pipeline_feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
@@ -5381,8 +5377,7 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline,
                               const VkPipelineShaderStageCreateInfo *pStage,
                               const VkPipelineCreateFlags flags, const uint8_t *custom_hash,
                               const VkPipelineCreationFeedbackCreateInfo *creation_feedback,
-                              struct radv_pipeline_shader_stack_size **stack_sizes,
-                              uint32_t *num_stack_sizes)
+                              struct radv_ray_tracing_module *rt_groups, uint32_t num_rt_groups)
 {
    struct radv_shader_binary *binaries[MESA_VULKAN_SHADER_STAGES] = {NULL};
    unsigned char hash[20];
@@ -5409,8 +5404,8 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline,
 
    bool found_in_application_cache = true;
    if (!keep_executable_info &&
-       radv_create_shaders_from_pipeline_cache(device, cache, hash, &pipeline->base, stack_sizes,
-                                               num_stack_sizes, &found_in_application_cache)) {
+       radv_create_shaders_from_pipeline_cache(device, cache, hash, &pipeline->base, rt_groups,
+                                               num_rt_groups, &found_in_application_cache)) {
       if (found_in_application_cache)
          pipeline_feedback.flags |=
             VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
@@ -5476,9 +5471,8 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline,
    }
 
    if (!keep_executable_info) {
-      radv_pipeline_cache_insert_shaders(device, cache, hash, &pipeline->base, binaries,
-                                         stack_sizes ? *stack_sizes : NULL,
-                                         num_stack_sizes ? *num_stack_sizes : 0);
+      radv_pipeline_cache_insert_shaders(device, cache, hash, &pipeline->base, binaries, rt_groups,
+                                         num_rt_groups);
    }
 
    free(binaries[MESA_SHADER_COMPUTE]);
@@ -5529,7 +5523,7 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
 
    result = radv_compute_pipeline_compile(pipeline, pipeline_layout, device, cache, &key,
                                           &pCreateInfo->stage, pCreateInfo->flags, NULL,
-                                          creation_feedback, NULL, NULL);
+                                          creation_feedback, NULL, 0);
    if (result != VK_SUCCESS) {
       radv_pipeline_destroy(device, &pipeline->base, pAllocator);
       return result;

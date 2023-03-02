@@ -354,7 +354,7 @@ radv_rt_pipeline_has_dynamic_stack_size(const VkRayTracingPipelineCreateInfoKHR 
 
 static unsigned
 compute_rt_stack_size(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
-                      const struct radv_pipeline_shader_stack_size *stack_sizes)
+                      const struct radv_ray_tracing_module *groups)
 {
    if (radv_rt_pipeline_has_dynamic_stack_size(pCreateInfo))
       return -1u;
@@ -366,11 +366,11 @@ compute_rt_stack_size(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
    unsigned non_recursive_size = 0;
 
    for (unsigned i = 0; i < pCreateInfo->groupCount; ++i) {
-      non_recursive_size = MAX2(stack_sizes[i].non_recursive_size, non_recursive_size);
+      non_recursive_size = MAX2(groups[i].stack_size.non_recursive_size, non_recursive_size);
 
       const VkRayTracingShaderGroupCreateInfoKHR *group_info = &pCreateInfo->pGroups[i];
       uint32_t shader_id = VK_SHADER_UNUSED_KHR;
-      unsigned size = stack_sizes[i].recursive_size;
+      unsigned size = groups[i].stack_size.recursive_size;
 
       switch (group_info->type) {
       case VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR:
@@ -482,9 +482,9 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
 
    /* First check if we can get things from the cache before we take the expensive step of
     * generating the nir. */
-   result = radv_compute_pipeline_compile(&rt_pipeline->base, pipeline_layout, device, cache,
-                                          &key, &stage, flags, hash, creation_feedback,
-                                          &rt_pipeline->stack_sizes, &rt_pipeline->group_count);
+   result = radv_compute_pipeline_compile(&rt_pipeline->base, pipeline_layout, device, cache, &key,
+                                          &stage, flags, hash, creation_feedback,
+                                          rt_pipeline->groups, rt_pipeline->group_count);
 
    if (result != VK_SUCCESS && result != VK_PIPELINE_COMPILE_REQUIRED)
       goto pipeline_fail;
@@ -493,26 +493,18 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
       if (pCreateInfo->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT)
          goto pipeline_fail;
 
-      rt_pipeline->stack_sizes =
-         calloc(sizeof(*rt_pipeline->stack_sizes), local_create_info.groupCount);
-      if (!rt_pipeline->stack_sizes) {
-         result = VK_ERROR_OUT_OF_HOST_MEMORY;
-         goto pipeline_fail;
-      }
-
-      shader = create_rt_shader(device, &local_create_info, rt_pipeline->stack_sizes,
-                                rt_pipeline->groups, &key);
+      shader = create_rt_shader(device, &local_create_info, rt_pipeline->groups, &key);
       module.nir = shader;
       result = radv_compute_pipeline_compile(
-         &rt_pipeline->base, pipeline_layout, device, cache, &key, &stage, pCreateInfo->flags,
-         hash, creation_feedback, &rt_pipeline->stack_sizes, &rt_pipeline->group_count);
+         &rt_pipeline->base, pipeline_layout, device, cache, &key, &stage, pCreateInfo->flags, hash,
+         creation_feedback, rt_pipeline->groups, rt_pipeline->group_count);
       if (result != VK_SUCCESS)
          goto shader_fail;
    }
 
    radv_compute_pipeline_init(&rt_pipeline->base, pipeline_layout);
 
-   rt_pipeline->stack_size = compute_rt_stack_size(pCreateInfo, rt_pipeline->stack_sizes);
+   rt_pipeline->stack_size = compute_rt_stack_size(pCreateInfo, rt_pipeline->groups);
 
    *pPipeline = radv_pipeline_to_handle(&rt_pipeline->base.base);
 
@@ -598,7 +590,8 @@ radv_GetRayTracingShaderGroupStackSizeKHR(VkDevice device, VkPipeline _pipeline,
 {
    RADV_FROM_HANDLE(radv_pipeline, pipeline, _pipeline);
    struct radv_ray_tracing_pipeline *rt_pipeline = radv_pipeline_to_ray_tracing(pipeline);
-   const struct radv_pipeline_shader_stack_size *stack_size = &rt_pipeline->stack_sizes[group];
+   const struct radv_pipeline_shader_stack_size *stack_size =
+      &rt_pipeline->groups[group].stack_size;
 
    if (groupShader == VK_SHADER_GROUP_SHADER_ANY_HIT_KHR ||
        groupShader == VK_SHADER_GROUP_SHADER_INTERSECTION_KHR)

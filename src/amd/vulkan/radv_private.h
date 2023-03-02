@@ -412,13 +412,15 @@ struct radv_pipeline_shader_stack_size;
 
 bool radv_create_shaders_from_pipeline_cache(
    struct radv_device *device, struct radv_pipeline_cache *cache, const unsigned char *sha1,
-   struct radv_pipeline *pipeline, struct radv_pipeline_shader_stack_size **stack_sizes,
-   uint32_t *num_stack_sizes, bool *found_in_application_cache);
+   struct radv_pipeline *pipeline, struct radv_ray_tracing_module *rt_groups,
+   uint32_t num_rt_groups, bool *found_in_application_cache);
 
-void radv_pipeline_cache_insert_shaders(
-   struct radv_device *device, struct radv_pipeline_cache *cache, const unsigned char *sha1,
-   struct radv_pipeline *pipeline, struct radv_shader_binary *const *binaries,
-   const struct radv_pipeline_shader_stack_size *stack_sizes, uint32_t num_stack_sizes);
+void radv_pipeline_cache_insert_shaders(struct radv_device *device,
+                                        struct radv_pipeline_cache *cache,
+                                        const unsigned char *sha1, struct radv_pipeline *pipeline,
+                                        struct radv_shader_binary *const *binaries,
+                                        const struct radv_ray_tracing_module *rt_groups,
+                                        uint32_t num_rt_groups);
 
 enum radv_blit_ds_layout {
    RADV_BLIT_DS_LAYOUT_TILE_ENABLE,
@@ -2206,6 +2208,7 @@ struct radv_compute_pipeline {
 
 struct radv_ray_tracing_module {
    struct radv_pipeline_group_handle handle;
+   struct radv_pipeline_shader_stack_size stack_size;
 };
 
 struct radv_library_pipeline {
@@ -2239,7 +2242,6 @@ struct radv_graphics_lib_pipeline {
 struct radv_ray_tracing_pipeline {
    struct radv_compute_pipeline base;
 
-   struct radv_pipeline_shader_stack_size *stack_sizes;
    uint32_t group_count;
    uint32_t stack_size;
    struct radv_ray_tracing_module groups[];

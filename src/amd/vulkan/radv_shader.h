@@ -565,7 +565,7 @@ VkResult radv_compute_pipeline_compile(
    const struct radv_pipeline_key *pipeline_key, const VkPipelineShaderStageCreateInfo *pStage,
    const VkPipelineCreateFlags flags, const uint8_t *custom_hash,
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback,
-   struct radv_pipeline_shader_stack_size **stack_sizes, uint32_t *num_stack_sizes);
+   struct radv_ray_tracing_module *rt_groups, uint32_t num_rt_groups);
 
 struct radv_shader_args;
 
@@ -750,8 +750,7 @@ bool radv_lower_fs_intrinsics(nir_shader *nir, const struct radv_pipeline_stage 
 
 nir_shader *create_rt_shader(struct radv_device *device,
                              const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
-                             struct radv_pipeline_shader_stack_size *stack_sizes,
-                             const struct radv_ray_tracing_module *groups,
+                             struct radv_ray_tracing_module *groups,
                              const struct radv_pipeline_key *key);
 
 #endif

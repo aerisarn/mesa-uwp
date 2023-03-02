@@ -124,7 +124,7 @@ struct rt_variables {
    nir_variable *ahit_terminate;
 
    /* Array of stack size struct for recording the max stack size for each group. */
-   struct radv_pipeline_shader_stack_size *stack_sizes;
+   struct radv_ray_tracing_module *groups;
    unsigned stage_idx;
 };
 
@@ -135,19 +135,18 @@ reserve_stack_size(struct rt_variables *vars, uint32_t size)
       const VkRayTracingShaderGroupCreateInfoKHR *group = vars->create_info->pGroups + group_idx;
 
       if (vars->stage_idx == group->generalShader || vars->stage_idx == group->closestHitShader)
-         vars->stack_sizes[group_idx].recursive_size =
-            MAX2(vars->stack_sizes[group_idx].recursive_size, size);
+         vars->groups[group_idx].stack_size.recursive_size =
+            MAX2(vars->groups[group_idx].stack_size.recursive_size, size);
 
       if (vars->stage_idx == group->anyHitShader || vars->stage_idx == group->intersectionShader)
-         vars->stack_sizes[group_idx].non_recursive_size =
-            MAX2(vars->stack_sizes[group_idx].non_recursive_size, size);
+         vars->groups[group_idx].stack_size.non_recursive_size =
+            MAX2(vars->groups[group_idx].stack_size.non_recursive_size, size);
    }
 }
 
 static struct rt_variables
 create_rt_variables(nir_shader *shader, const VkRayTracingPipelineCreateInfoKHR *create_info,
-                    struct radv_pipeline_shader_stack_size *stack_sizes,
-                    const struct radv_pipeline_key *key)
+                    struct radv_ray_tracing_module *groups, const struct radv_pipeline_key *key)
 {
    struct rt_variables vars = {
       .create_info = create_info,
@@ -193,7 +192,7 @@ create_rt_variables(nir_shader *shader, const VkRayTracingPipelineCreateInfoKHR 
    vars.ahit_terminate =
       nir_variable_create(shader, nir_var_shader_temp, glsl_bool_type(), "ahit_terminate");
 
-   vars.stack_sizes = stack_sizes;
+   vars.groups = groups;
    return vars;
 }
 
@@ -231,7 +230,7 @@ map_rt_variables(struct hash_table *var_remap, struct rt_variables *src,
    _mesa_hash_table_insert(var_remap, src->ahit_accept, dst->ahit_accept);
    _mesa_hash_table_insert(var_remap, src->ahit_terminate, dst->ahit_terminate);
 
-   src->stack_sizes = dst->stack_sizes;
+   src->groups = dst->groups;
    src->stage_idx = dst->stage_idx;
 }
 
@@ -828,7 +827,7 @@ insert_rt_case(nir_builder *b, nir_shader *shader, struct rt_variables *vars, ni
    nir_opt_dead_cf(shader);
 
    struct rt_variables src_vars =
-      create_rt_variables(shader, vars->create_info, vars->stack_sizes, vars->key);
+      create_rt_variables(shader, vars->create_info, vars->groups, vars->key);
    map_rt_variables(var_remap, &src_vars, vars);
 
    NIR_PASS_V(shader, lower_rt_instructions, &src_vars, call_idx_base);
@@ -1379,9 +1378,7 @@ load_stack_entry(nir_builder *b, nir_ssa_def *index, const struct radv_ray_trave
 static nir_shader *
 build_traversal_shader(struct radv_device *device,
                        const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
-                       struct radv_pipeline_shader_stack_size *stack_sizes,
-                       const struct radv_ray_tracing_module *groups,
-                       const struct radv_pipeline_key *key)
+                       struct radv_ray_tracing_module *groups, const struct radv_pipeline_key *key)
 {
    /* Create the traversal shader as an intersection shader to prevent validation failures due to
     * invalid variable modes.*/
@@ -1391,7 +1388,7 @@ build_traversal_shader(struct radv_device *device,
    b.shader->info.workgroup_size[1] = device->physical_device->rt_wave_size == 64 ? 8 : 4;
    b.shader->info.shared_size =
       device->physical_device->rt_wave_size * MAX_STACK_ENTRY_COUNT * sizeof(uint32_t);
-   struct rt_variables vars = create_rt_variables(b.shader, pCreateInfo, stack_sizes, key);
+   struct rt_variables vars = create_rt_variables(b.shader, pCreateInfo, groups, key);
 
    /* Register storage for hit attributes */
    nir_variable *hit_attribs[RADV_MAX_HIT_ATTRIB_SIZE / sizeof(uint32_t)];
@@ -1578,8 +1575,7 @@ move_rt_instructions(nir_shader *shader)
 
 nir_shader *
 create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
-                 struct radv_pipeline_shader_stack_size *stack_sizes,
-                 const struct radv_ray_tracing_module *groups, const struct radv_pipeline_key *key)
+                 struct radv_ray_tracing_module *groups, const struct radv_pipeline_key *key)
 {
    nir_builder b = radv_meta_init_shader(device, MESA_SHADER_COMPUTE, "rt_combined");
    b.shader->info.internal = false;
@@ -1587,7 +1583,7 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
    b.shader->info.workgroup_size[1] = device->physical_device->rt_wave_size == 64 ? 8 : 4;
    b.shader->info.shared_size = device->physical_device->rt_wave_size * RADV_MAX_HIT_ATTRIB_SIZE;
 
-   struct rt_variables vars = create_rt_variables(b.shader, pCreateInfo, stack_sizes, key);
+   struct rt_variables vars = create_rt_variables(b.shader, pCreateInfo, groups, key);
    load_sbt_entry(&b, &vars, nir_imm_int(&b, 0), SBT_RAYGEN, SBT_GENERAL_IDX);
    nir_store_var(&b, vars.stack_ptr, nir_load_rt_dynamic_callable_stack_base_amd(&b), 0x1);
 
@@ -1611,7 +1607,7 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
    nir_ssa_def *idx = nir_load_var(&b, vars.idx);
 
    /* Insert traversal shader */
-   nir_shader *traversal = build_traversal_shader(device, pCreateInfo, stack_sizes, groups, key);
+   nir_shader *traversal = build_traversal_shader(device, pCreateInfo, groups, key);
    b.shader->info.shared_size = MAX2(b.shader->info.shared_size, traversal->info.shared_size);
    assert(b.shader->info.shared_size <= 32768);
    insert_rt_case(&b, traversal, &vars, idx, 0, 1);
