@@ -537,7 +537,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
             }
             case nir_intrinsic_load_cull_mask: {
                ret =
-                  nir_ishr_imm(&b_shader, nir_load_var(&b_shader, vars->cull_mask_and_flags), 24);
+                  nir_ushr_imm(&b_shader, nir_load_var(&b_shader, vars->cull_mask_and_flags), 24);
                break;
             }
             case nir_intrinsic_ignore_ray_intersection: {
