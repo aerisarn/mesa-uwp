@@ -8084,7 +8084,7 @@ genX(batch_emit_dummy_post_sync_op)(struct anv_batch *batch,
         primitive_topology == _3DPRIM_POINTLIST_BF ||
         primitive_topology == _3DPRIM_LINESTRIP_CONT ||
         primitive_topology == _3DPRIM_LINESTRIP_BF ||
-        primitive_topology == _3DPRIM_LINESTRIP_CONT_BF) ||
+        primitive_topology == _3DPRIM_LINESTRIP_CONT_BF) &&
        (vertex_count == 1 || vertex_count == 2)) {
       anv_batch_emit(batch, GENX(PIPE_CONTROL), pc) {
          pc.PostSyncOperation = WriteImmediateData;
