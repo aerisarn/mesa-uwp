@@ -3033,6 +3033,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    zink_tracing = screen->instance_info.have_EXT_debug_utils &&
                   (u_trace_is_enabled(U_TRACE_TYPE_PERFETTO) || u_trace_is_enabled(U_TRACE_TYPE_MARKERS));
 
+   screen->frame_marker_emitted = zink_screen_debug_marker_begin(screen, "frame");
+
    return screen;
 
 fail:
@@ -3079,4 +3081,36 @@ void zink_stub_function_not_loaded()
     */
    mesa_loge("ZINK: a Vulkan function was called without being loaded");
    abort();
+}
+
+bool
+zink_screen_debug_marker_begin(struct zink_screen *screen, const char *fmt, ...)
+{
+   if (!zink_tracing)
+      return false;
+
+   char *name;
+   va_list va;
+   va_start(va, fmt);
+   int ret = vasprintf(&name, fmt, va);
+   va_end(va);
+
+   if (ret == -1)
+      return false;
+
+   VkDebugUtilsLabelEXT info = { 0 };
+   info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+   info.pLabelName = name;
+
+   VKSCR(QueueBeginDebugUtilsLabelEXT)(screen->queue, &info);
+
+   free(name);
+   return true;
+}
+
+void
+zink_screen_debug_marker_end(struct zink_screen *screen, bool emitted)
+{
+   if (emitted)
+      VKSCR(QueueEndDebugUtilsLabelEXT)(screen->queue);
 }
