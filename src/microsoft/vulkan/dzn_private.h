@@ -716,17 +716,19 @@ struct dzn_descriptor_set {
    const struct dzn_descriptor_set_layout *layout;
 };
 
+struct dzn_pipeline_layout_set {
+   /* The offset from the start of a descriptor table where the set should be copied */
+   uint32_t heap_offsets[NUM_POOL_TYPES];
+   struct {
+      uint32_t primary, alt;
+   } dynamic_buffer_heap_offsets[MAX_DYNAMIC_BUFFERS];
+   uint32_t dynamic_buffer_count;
+   uint32_t range_desc_count[NUM_POOL_TYPES];
+};
+
 struct dzn_pipeline_layout {
    struct vk_pipeline_layout vk;
-   struct {
-      /* The offset from the start of a descriptor table where the set should be copied */
-      uint32_t heap_offsets[NUM_POOL_TYPES];
-      struct {
-         uint32_t srv, uav;
-      } dynamic_buffer_heap_offsets[MAX_DYNAMIC_BUFFERS];
-      uint32_t dynamic_buffer_count;
-      uint32_t range_desc_count[NUM_POOL_TYPES];
-   } sets[MAX_SETS];
+   struct dzn_pipeline_layout_set sets[MAX_SETS];
    struct {
       uint32_t binding_count;
       /* A mapping from a binding value, which can be shared among multiple descriptors
@@ -757,7 +759,7 @@ struct dzn_descriptor_update_template_entry {
       struct {
          uint32_t cbv_srv_uav;
          union {
-            uint32_t sampler, extra_uav;
+            uint32_t sampler, extra_srv;
          };
       } heap_offsets;
       uint32_t dynamic_buffer_idx;
@@ -820,14 +822,7 @@ struct dzn_pipeline {
       D3D12_DESCRIPTOR_HEAP_TYPE type[MAX_SHADER_VISIBILITIES];
       ID3D12RootSignature *sig;
    } root;
-   struct {
-      uint32_t heap_offsets[NUM_POOL_TYPES];
-      struct {
-         uint32_t srv, uav;
-      } dynamic_buffer_heap_offsets[MAX_DYNAMIC_BUFFERS];
-      uint32_t dynamic_buffer_count;
-      uint32_t range_desc_count[NUM_POOL_TYPES];
-   } sets[MAX_SETS];
+   struct dzn_pipeline_layout_set sets[MAX_SETS];
    uint32_t desc_count[NUM_POOL_TYPES];
    ID3D12PipelineState *state;
 };

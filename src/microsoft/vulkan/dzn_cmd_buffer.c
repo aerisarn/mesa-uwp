@@ -3092,20 +3092,21 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
          if (type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
             uint32_t dynamic_buffer_count = pipeline->sets[s].dynamic_buffer_count;
             for (uint32_t o = 0; o < dynamic_buffer_count; o++) {
-               uint32_t desc_heap_offset =
-                  pipeline->sets[s].dynamic_buffer_heap_offsets[o].srv;
                struct dzn_buffer_desc bdesc = set->dynamic_buffers[o];
                bdesc.offset += desc_state->sets[s].dynamic_offsets[o];
 
+               bool primary_is_writable = bdesc.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+               uint32_t desc_heap_offset = pipeline->sets[s].dynamic_buffer_heap_offsets[o].primary;
                dzn_descriptor_heap_write_buffer_desc(device, dst_heap,
                                                      dst_heap_offset + set_heap_offset + desc_heap_offset,
-                                                     false, &bdesc);
+                                                     primary_is_writable, &bdesc);
 
-               if (pipeline->sets[s].dynamic_buffer_heap_offsets[o].uav != ~0) {
-                  desc_heap_offset = pipeline->sets[s].dynamic_buffer_heap_offsets[o].uav;
+               if (pipeline->sets[s].dynamic_buffer_heap_offsets[o].alt != ~0) {
+                  assert(!primary_is_writable);
+                  desc_heap_offset = pipeline->sets[s].dynamic_buffer_heap_offsets[o].alt;
                   dzn_descriptor_heap_write_buffer_desc(device, dst_heap,
                                                         dst_heap_offset + set_heap_offset + desc_heap_offset,
-                                                        true, &bdesc);
+                                                        false, &bdesc);
                }
             }
          }
