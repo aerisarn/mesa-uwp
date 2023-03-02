@@ -408,17 +408,6 @@ find_lowerable_rvalues_visitor::visit_enter(ir_expression *ir)
    return visit_continue;
 }
 
-static bool
-function_always_returns_mediump_or_lowp(const char *name)
-{
-   return !strcmp(name, "bitCount") ||
-          !strcmp(name, "findLSB") ||
-          !strcmp(name, "findMSB") ||
-          !strcmp(name, "unpackHalf2x16") ||
-          !strcmp(name, "unpackUnorm4x8") ||
-          !strcmp(name, "unpackSnorm4x8");
-}
-
 static unsigned
 handle_call(ir_call *ir, const struct set *lowerable_rvalues)
 {
@@ -896,13 +885,17 @@ find_precision_visitor::map_builtin(ir_function_signature *sig)
    ir_function_signature *lowered_sig =
       sig->clone(lowered_builtin_mem_ctx, clone_ht);
 
-   /* Functions that always return mediump or lowp should keep their
-    * parameters intact, because they can be highp. NIR can lower
-    * the up-conversion for parameters if needed.
+   /* If we're lowering the output precision of the function, then also lower
+    * the precision of its inputs unless they have a specific qualifier.  The
+    * exception is bitCount, which doesn't declare its arguments highp but
+    * should not be lowering the args to mediump just because the output is
+    * lowp.
     */
-   if (!function_always_returns_mediump_or_lowp(sig->function_name())) {
+   if (strcmp(sig->function_name(), "bitCount") != 0) {
       foreach_in_list(ir_variable, param, &lowered_sig->parameters) {
-         param->data.precision = GLSL_PRECISION_MEDIUM;
+         /* Demote the precision of unqualified function arguments. */
+         if (param->data.precision == GLSL_PRECISION_NONE)
+            param->data.precision = GLSL_PRECISION_MEDIUM;
       }
    }
 
