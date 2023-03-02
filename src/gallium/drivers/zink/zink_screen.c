@@ -72,6 +72,10 @@ bool zink_tracing = false;
 #include "MoltenVK/vk_mvk_moltenvk.h"
 #endif
 
+#ifdef HAVE_LIBDRM
+#include <xf86drm.h>
+#endif
+
 static const struct debug_named_value
 zink_debug_options[] = {
    { "nir", ZINK_DEBUG_NIR, "Dump NIR during program compile" },
@@ -961,9 +965,15 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return MIN2(screen->info.props.limits.maxVertexOutputComponents / 4 / 2, 16);
 
    case PIPE_CAP_DMABUF:
+#if defined(HAVE_LIBDRM) && (DETECT_OS_LINUX || DETECT_OS_BSD)
       return screen->info.have_KHR_external_memory_fd &&
              screen->info.have_EXT_external_memory_dma_buf &&
-             screen->info.have_EXT_queue_family_foreign;
+             screen->info.have_EXT_queue_family_foreign
+             ? DRM_PRIME_CAP_IMPORT | DRM_PRIME_CAP_EXPORT
+             : 0;
+#else
+      return 0;
+#endif
 
    case PIPE_CAP_DEPTH_BOUNDS_TEST:
       return screen->info.feats.features.depthBounds;
@@ -2667,6 +2677,14 @@ init_layouts(struct zink_screen *screen)
 
    screen->gfx_push_constant_layout = zink_pipeline_layout_create(screen, NULL, 0, false, 0);
    return !!screen->gfx_push_constant_layout;
+}
+
+static int
+zink_screen_get_fd(struct pipe_screen *pscreen)
+{
+   struct zink_screen *screen = zink_screen(pscreen);
+
+   return screen->drm_fd;
 }
 
 static struct zink_screen *
