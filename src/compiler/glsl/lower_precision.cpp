@@ -485,9 +485,7 @@ handle_call(ir_call *ir, const struct set *lowerable_rvalues)
        !strcmp(ir->callee_name(), "floatBitsToInt") ||
        !strcmp(ir->callee_name(), "floatBitsToUint") ||
        !strcmp(ir->callee_name(), "intBitsToFloat") ||
-       !strcmp(ir->callee_name(), "uintBitsToFloat") ||
-       /* Atomic functions are not lowered. */
-       strstr(ir->callee_name(), "atomic") == ir->callee_name())
+       !strcmp(ir->callee_name(), "uintBitsToFloat"))
       return GLSL_PRECISION_HIGH;
 
    /* Number of parameters to check if they are lowerable. */

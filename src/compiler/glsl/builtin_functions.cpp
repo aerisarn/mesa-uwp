@@ -7991,11 +7991,16 @@ builtin_builder::_interpolateAtSample(const glsl_type *type)
    return sig;
 }
 
+/* The highp isn't specified in the built-in function descriptions, but in the
+ * atomic counter description: "The default precision of all atomic types is
+ * highp. It is an error to declare an atomic type with a different precision or
+ * to specify the default precision for an atomic type to be lowp or mediump."
+ */
 ir_function_signature *
 builtin_builder::_atomic_counter_intrinsic(builtin_available_predicate avail,
                                            enum ir_intrinsic_id id)
 {
-   ir_variable *counter = in_var(glsl_type::atomic_uint_type, "counter");
+   ir_variable *counter = in_highp_var(glsl_type::atomic_uint_type, "counter");
    MAKE_INTRINSIC(glsl_type::uint_type, id, avail, 1, counter);
    return sig;
 }
@@ -8004,7 +8009,7 @@ ir_function_signature *
 builtin_builder::_atomic_counter_intrinsic1(builtin_available_predicate avail,
                                             enum ir_intrinsic_id id)
 {
-   ir_variable *counter = in_var(glsl_type::atomic_uint_type, "counter");
+   ir_variable *counter = in_highp_var(glsl_type::atomic_uint_type, "counter");
    ir_variable *data = in_var(glsl_type::uint_type, "data");
    MAKE_INTRINSIC(glsl_type::uint_type, id, avail, 2, counter, data);
    return sig;
@@ -8014,7 +8019,7 @@ ir_function_signature *
 builtin_builder::_atomic_counter_intrinsic2(builtin_available_predicate avail,
                                             enum ir_intrinsic_id id)
 {
-   ir_variable *counter = in_var(glsl_type::atomic_uint_type, "counter");
+   ir_variable *counter = in_highp_var(glsl_type::atomic_uint_type, "counter");
    ir_variable *compare = in_var(glsl_type::uint_type, "compare");
    ir_variable *data = in_var(glsl_type::uint_type, "data");
    MAKE_INTRINSIC(glsl_type::uint_type, id, avail, 3, counter, compare, data);
@@ -8048,7 +8053,7 @@ ir_function_signature *
 builtin_builder::_atomic_counter_op(const char *intrinsic,
                                     builtin_available_predicate avail)
 {
-   ir_variable *counter = in_var(glsl_type::atomic_uint_type, "atomic_counter");
+   ir_variable *counter = in_highp_var(glsl_type::atomic_uint_type, "atomic_counter");
    MAKE_SIG(glsl_type::uint_type, avail, 1, counter);
 
    ir_variable *retval = body.make_temp(glsl_type::uint_type, "atomic_retval");
@@ -8062,7 +8067,7 @@ ir_function_signature *
 builtin_builder::_atomic_counter_op1(const char *intrinsic,
                                      builtin_available_predicate avail)
 {
-   ir_variable *counter = in_var(glsl_type::atomic_uint_type, "atomic_counter");
+   ir_variable *counter = in_highp_var(glsl_type::atomic_uint_type, "atomic_counter");
    ir_variable *data = in_var(glsl_type::uint_type, "data");
    MAKE_SIG(glsl_type::uint_type, avail, 2, counter, data);
 
@@ -8103,7 +8108,7 @@ ir_function_signature *
 builtin_builder::_atomic_counter_op2(const char *intrinsic,
                                     builtin_available_predicate avail)
 {
-   ir_variable *counter = in_var(glsl_type::atomic_uint_type, "atomic_counter");
+   ir_variable *counter = in_highp_var(glsl_type::atomic_uint_type, "atomic_counter");
    ir_variable *compare = in_var(glsl_type::uint_type, "compare");
    ir_variable *data = in_var(glsl_type::uint_type, "data");
    MAKE_SIG(glsl_type::uint_type, avail, 3, counter, compare, data);
