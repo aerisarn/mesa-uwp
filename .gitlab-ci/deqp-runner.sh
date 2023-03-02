@@ -129,13 +129,6 @@ report_load() {
     echo "# of CPU cores: $(cat /proc/cpuinfo | grep processor | wc -l)"
 }
 
-# wrapper to supress +x to avoid spamming the log
-quiet() {
-    set +x
-    "$@"
-    set -x
-}
-
 if [ "$GALLIUM_DRIVER" = "virpipe" ]; then
     # deqp is to use virpipe, and virgl_test_server llvmpipe
     export GALLIUM_DRIVER="$GALLIUM_DRIVER"
