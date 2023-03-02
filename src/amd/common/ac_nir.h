@@ -304,6 +304,9 @@ typedef struct {
    unsigned color_is_int8;
    unsigned color_is_int10;
 
+   bool bc_optimize_for_persp;
+   bool bc_optimize_for_linear;
+
    /* OpenGL only */
    bool clamp_color;
    bool alpha_to_one;
