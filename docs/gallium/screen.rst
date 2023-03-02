@@ -565,6 +565,11 @@ The integer capabilities:
   execution. 0 = throttling is disabled.
 * ``PIPE_CAP_DMABUF``: Whether Linux DMABUF handles are supported by
   resource_from_handle and resource_get_handle.
+  Possible bit field values:
+
+    1. ``DRM_PRIME_CAP_IMPORT``: resource_from_handle is supported
+    2. ``DRM_PRIME_CAP_EXPORT``: resource_get_handle is supported
+
 * ``PIPE_CAP_PREFER_COMPUTE_FOR_MULTIMEDIA``: Whether VDPAU, VAAPI, and
   OpenMAX should use a compute-based blit instead of pipe_context::blit and compute pipeline for compositing images.
 * ``PIPE_CAP_FRAGMENT_SHADER_INTERLOCK``: True if fragment shader interlock
