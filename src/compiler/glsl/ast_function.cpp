@@ -651,6 +651,7 @@ generate_call(exec_list *instructions, ir_function_signature *sig,
       ir_variable *var;
 
       var = new(ctx) ir_variable(sig->return_type, name, ir_var_temporary);
+      var->data.precision = sig->return_precision;
       instructions->push_tail(var);
 
       ralloc_free(name);
