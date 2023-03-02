@@ -2764,10 +2764,15 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
               brw_imm_d(tcs_key->input_vertices));
       break;
 
+   case nir_intrinsic_scoped_barrier:
    case nir_intrinsic_control_barrier: {
-      if (tcs_prog_data->instances == 1)
-         break;
-      emit_tcs_barrier();
+      const bool scoped = instr->intrinsic == nir_intrinsic_scoped_barrier;
+      if (scoped && nir_intrinsic_memory_scope(instr) != NIR_SCOPE_NONE)
+         nir_emit_intrinsic(bld, instr);
+      if (!scoped || nir_intrinsic_execution_scope(instr) == NIR_SCOPE_WORKGROUP) {
+         if (tcs_prog_data->instances != 1)
+            emit_tcs_barrier();
+      }
       break;
    }
 
@@ -3690,20 +3695,27 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
       dest = get_nir_dest(instr->dest);
 
    switch (instr->intrinsic) {
-   case nir_intrinsic_control_barrier:
-      /* The whole workgroup fits in a single HW thread, so all the
-       * invocations are already executed lock-step.  Instead of an actual
-       * barrier just emit a scheduling fence, that will generate no code.
-       */
-      if (!nir->info.workgroup_size_variable &&
-          workgroup_size() <= dispatch_width) {
-         bld.exec_all().group(1, 0).emit(FS_OPCODE_SCHEDULING_FENCE);
-         break;
-      }
+   case nir_intrinsic_scoped_barrier:
+   case nir_intrinsic_control_barrier: {
+      const bool scoped = instr->intrinsic == nir_intrinsic_scoped_barrier;
+      if (scoped && nir_intrinsic_memory_scope(instr) != NIR_SCOPE_NONE)
+         nir_emit_intrinsic(bld, instr);
+      if (!scoped || nir_intrinsic_execution_scope(instr) == NIR_SCOPE_WORKGROUP) {
+         /* The whole workgroup fits in a single HW thread, so all the
+          * invocations are already executed lock-step.  Instead of an actual
+          * barrier just emit a scheduling fence, that will generate no code.
+          */
+         if (!nir->info.workgroup_size_variable &&
+             workgroup_size() <= dispatch_width) {
+            bld.exec_all().group(1, 0).emit(FS_OPCODE_SCHEDULING_FENCE);
+            break;
+         }
 
-      emit_barrier();
-      cs_prog_data->uses_barrier = true;
+         emit_barrier();
+         cs_prog_data->uses_barrier = true;
+      }
       break;
+   }
 
    case nir_intrinsic_load_subgroup_id:
       cs_payload().load_subgroup_id(bld, dest);
@@ -4358,7 +4370,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    case nir_intrinsic_begin_invocation_interlock:
    case nir_intrinsic_end_invocation_interlock: {
       bool ugm_fence, slm_fence, tgm_fence, urb_fence;
-      enum opcode opcode;
+      enum opcode opcode = BRW_OPCODE_NOP;
 
       /* Handling interlock intrinsics here will allow the logic for IVB
        * render cache (see below) to be reused.
@@ -4366,13 +4378,17 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
       switch (instr->intrinsic) {
       case nir_intrinsic_scoped_barrier: {
-         assert(nir_intrinsic_execution_scope(instr) == NIR_SCOPE_NONE);
+         /* Note we only care about the memory part of the
+          * barrier.  The execution part will be taken care
+          * of by the stage specific intrinsic handler functions.
+          */
          nir_variable_mode modes = nir_intrinsic_memory_modes(instr);
          ugm_fence = modes & (nir_var_mem_ssbo | nir_var_mem_global);
          slm_fence = modes & nir_var_mem_shared;
          tgm_fence = modes & nir_var_image;
          urb_fence = modes & (nir_var_shader_out | nir_var_mem_task_payload);
-         opcode = SHADER_OPCODE_MEMORY_FENCE;
+         if (nir_intrinsic_memory_scope(instr) != NIR_SCOPE_NONE)
+            opcode = SHADER_OPCODE_MEMORY_FENCE;
          break;
       }
 
@@ -4406,6 +4422,9 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       default:
          unreachable("invalid intrinsic");
       }
+
+      if (opcode == BRW_OPCODE_NOP)
+         break;
 
       if (nir->info.shared_size > 0) {
          assert(gl_shader_stage_uses_workgroup(stage));
