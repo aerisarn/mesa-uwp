@@ -728,6 +728,7 @@ lp_storage_image_format_supported(enum pipe_format format)
    case PIPE_FORMAT_R16_SNORM:
    case PIPE_FORMAT_R8_SNORM:
    case PIPE_FORMAT_B8G8R8A8_UNORM:
+   case PIPE_FORMAT_A8_UNORM:
       return true;
    default:
       return false;
