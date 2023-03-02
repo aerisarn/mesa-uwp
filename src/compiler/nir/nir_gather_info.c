@@ -173,8 +173,10 @@ set_io_mask(nir_shader *shader, nir_variable *var, int offset, int len,
 
          if (var->data.fb_fetch_output) {
             shader->info.outputs_read |= bitfield;
-            if (shader->info.stage == MESA_SHADER_FRAGMENT)
+            if (shader->info.stage == MESA_SHADER_FRAGMENT) {
                shader->info.fs.uses_fbfetch_output = true;
+               shader->info.fs.fbfetch_coherent = var->data.access & ACCESS_COHERENT;
+            }
          }
 
          if (shader->info.stage == MESA_SHADER_FRAGMENT &&

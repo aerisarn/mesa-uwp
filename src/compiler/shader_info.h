@@ -403,6 +403,7 @@ typedef struct shader_info {
          bool uses_discard:1;
          bool uses_demote:1;
          bool uses_fbfetch_output:1;
+         bool fbfetch_coherent:1;
          bool color_is_dual_source:1;
 
          /**
