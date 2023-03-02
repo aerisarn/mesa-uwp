@@ -108,6 +108,17 @@ def tab_to(name, value):
 def mask(low, high):
 	return ((0xffffffffffffffff >> (64 - (high + 1 - low))) << low)
 
+def field_name(prefix, f):
+	if f.name:
+		name = f.name.lower()
+	else:
+		name = prefix.lower()
+
+	if (name in [ "double", "float", "int" ]) or not (name[0].isalpha()):
+			name = "_" + name
+
+	return name
+
 class Bitset(object):
 	def __init__(self, name, template):
 		self.name = name
@@ -117,38 +128,66 @@ class Bitset(object):
 		else:
 			self.fields = []
 
-	def dump_pack_struct(self, prefix=None, array=None, bit_size=32):
-		def field_name(prefix, name):
-			if f.name:
-				name = f.name.lower()
+	def dump_regpair_builder(self, prefix, array, bit_size, address):
+		print("#ifndef NDEBUG")
+		known_mask = 0
+		for f in self.fields:
+			known_mask |= mask(f.low, f.high)
+			if f.type in [ "boolean", "address", "waddress" ]:
+				continue
+			type, val = f.ctype("fields.%s" % field_name(prefix, f))
+			print("    assert((%-40s & 0x%08x) == 0);" % (val, 0xffffffff ^ mask(0 , f.high - f.low)))
+		print("    assert((%-40s & 0x%08x) == 0);" % ("fields.unknown", known_mask))
+		print("#endif\n")
+
+		print("    return (struct fd_reg_pair) {")
+		if array:
+			print("        .reg = REG_%s(i)," % prefix)
+		else:
+			print("        .reg = REG_%s," % prefix)
+
+		print("        .value =")
+		for f in self.fields:
+			if f.type in [ "address", "waddress" ]:
+				continue
 			else:
-				name = prefix.lower()
+				type, val = f.ctype("fields.%s" % field_name(prefix, f))
+				print("            (%-40s << %2d) |" % (val, f.low))
+		value_name = "dword"
+		if bit_size == 64:
+			value_name = "qword"
+		print("            fields.unknown | fields.%s," % (value_name,))
 
-			if (name in [ "double", "float", "int" ]) or not (name[0].isalpha()):
-					name = "_" + name
+		if address:
+			print("        .bo = fields.bo,")
+			print("        .is_address = true,")
+			if f.type == "waddress":
+				print("        .bo_write = true,")
+			print("        .bo_offset = fields.bo_offset,")
+			print("        .bo_shift = %d," % address.shr)
+			print("        .bo_low = %d," % address.low)
 
-			return name
+		print("    };")
+
+	def dump_pack_struct(self, prefix=None, array=None, bit_size=32):
 
 		if not prefix:
 			return
 		if prefix == None:
 			prefix = self.name
 
-		value_name = "dword"
 		print("struct %s {" % prefix)
 		for f in self.fields:
 			if f.type in [ "address", "waddress" ]:
 				tab_to("    __bo_type", "bo;")
 				tab_to("    uint32_t", "bo_offset;")
-				if bit_size == 64:
-					value_name = "qword"
 				continue
-			name = field_name(prefix, f.name)
+			name = field_name(prefix, f)
 
 			type, val = f.ctype("var")
 
 			tab_to("    %s" % type, "%s;" % name)
-		if value_name == "qword":
+		if bit_size == 64:
 			tab_to("    uint64_t", "unknown;")
 			tab_to("    uint64_t", "qword;")
 		else:
@@ -167,42 +206,9 @@ class Bitset(object):
 			print("static inline struct fd_reg_pair\npack_%s(struct %s fields)\n{" %
 				  (prefix, prefix));
 
-		print("#ifndef NDEBUG")
-		known_mask = 0
-		for f in self.fields:
-			known_mask |= mask(f.low, f.high)
-			if f.type in [ "boolean", "address", "waddress" ]:
-				continue
-			type, val = f.ctype("fields.%s" % field_name(prefix, f.name))
-			print("    assert((%-40s & 0x%08x) == 0);" % (val, 0xffffffff ^ mask(0 , f.high - f.low)))
-		print("    assert((%-40s & 0x%08x) == 0);" % ("fields.unknown", known_mask))
-		print("#endif\n")
+		self.dump_regpair_builder(prefix, array, bit_size, address)
 
-		print("    return (struct fd_reg_pair) {")
-		if array:
-			print("        .reg = REG_%s(i)," % prefix)
-		else:
-			print("        .reg = REG_%s," % prefix)
-
-		print("        .value =")
-		for f in self.fields:
-			if f.type in [ "address", "waddress" ]:
-				continue
-			else:
-				type, val = f.ctype("fields.%s" % field_name(prefix, f.name))
-				print("            (%-40s << %2d) |" % (val, f.low))
-		print("            fields.unknown | fields.%s," % (value_name,))
-
-		if address:
-			print("        .bo = fields.bo,")
-			print("        .is_address = true,")
-			if f.type == "waddress":
-				print("        .bo_write = true,")
-			print("        .bo_offset = fields.bo_offset,")
-			print("        .bo_shift = %d," % address.shr)
-			print("        .bo_low = %d," % address.low)
-
-		print("    };\n}\n")
+		print("\n}\n")
 
 		if address:
 			skip = ", { .reg = 0 }"
