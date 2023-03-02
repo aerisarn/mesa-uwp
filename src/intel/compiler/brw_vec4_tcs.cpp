@@ -304,10 +304,16 @@ vec4_tcs_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       break;
    }
 
+   case nir_intrinsic_scoped_barrier:
    case nir_intrinsic_control_barrier: {
-      dst_reg header = dst_reg(this, glsl_type::uvec4_type);
-      emit(TCS_OPCODE_CREATE_BARRIER_HEADER, header);
-      emit(SHADER_OPCODE_BARRIER, dst_null_ud(), src_reg(header));
+      const bool scoped = instr->intrinsic == nir_intrinsic_scoped_barrier;
+      if (scoped && nir_intrinsic_memory_scope(instr) != NIR_SCOPE_NONE)
+         vec4_visitor::nir_emit_intrinsic(instr);
+      if (!scoped || nir_intrinsic_execution_scope(instr) == NIR_SCOPE_WORKGROUP) {
+         dst_reg header = dst_reg(this, glsl_type::uvec4_type);
+         emit(TCS_OPCODE_CREATE_BARRIER_HEADER, header);
+         emit(SHADER_OPCODE_BARRIER, dst_null_ud(), src_reg(header));
+      }
       break;
    }
 
