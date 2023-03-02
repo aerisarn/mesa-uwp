@@ -1607,6 +1607,9 @@ intrinsic("export_amd", [0], indices=[BASE, WRITE_MASK, FLAGS])
 # Alpha test reference value
 system_value("alpha_reference_amd", 1)
 
+# Whether to enable barycentric optimization
+system_value("barycentric_optimize_amd", dest_comp=1, bit_sizes=[1])
+
 # V3D-specific instrinc for tile buffer color reads.
 #
 # The hardware requires that we read the samples and components of a pixel
