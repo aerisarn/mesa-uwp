@@ -310,6 +310,7 @@ typedef struct {
    bool force_linear_sample_interp;
    bool force_persp_center_interp;
    bool force_linear_center_interp;
+   unsigned samplemask_log_ps_iter;
 
    /* OpenGL only */
    bool clamp_color;

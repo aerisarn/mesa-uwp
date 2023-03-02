@@ -239,6 +239,50 @@ gather_ps_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ps_sta
 }
 
 static bool
+lower_ps_load_sample_mask_in(nir_builder *b, nir_intrinsic_instr *intrin, lower_ps_state *s)
+{
+   /* Section 15.2.2 (Shader Inputs) of the OpenGL 4.5 (Core Profile) spec
+    * says:
+    *
+    *    "When per-sample shading is active due to the use of a fragment
+    *     input qualified by sample or due to the use of the gl_SampleID
+    *     or gl_SamplePosition variables, only the bit for the current
+    *     sample is set in gl_SampleMaskIn. When state specifies multiple
+    *     fragment shader invocations for a given fragment, the sample
+    *     mask for any single fragment shader invocation may specify a
+    *     subset of the covered samples for the fragment. In this case,
+    *     the bit corresponding to each covered sample will be set in
+    *     exactly one fragment shader invocation."
+    *
+    * The samplemask loaded by hardware is always the coverage of the
+    * entire pixel/fragment, so mask bits out based on the sample ID.
+    */
+
+   b->cursor = nir_before_instr(&intrin->instr);
+
+   /* The bit pattern matches that used by fixed function fragment
+    * processing.
+    */
+   static const uint16_t ps_iter_masks[] = {
+      0xffff, /* not used */
+      0x5555, 0x1111, 0x0101, 0x0001,
+   };
+   assert(s->options->samplemask_log_ps_iter < ARRAY_SIZE(ps_iter_masks));
+   uint32_t ps_iter_mask = ps_iter_masks[s->options->samplemask_log_ps_iter];
+
+   nir_ssa_def *sampleid = nir_load_sample_id(b);
+   nir_ssa_def *submask = nir_ishl(b, nir_imm_int(b, ps_iter_mask), sampleid);
+
+   nir_ssa_def *sample_mask = nir_load_sample_mask_in(b);
+   nir_ssa_def *replacement = nir_iand(b, sample_mask, submask);
+
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, replacement);
+
+   nir_instr_remove(&intrin->instr);
+   return true;
+}
+
+static bool
 lower_ps_intrinsic(nir_builder *b, nir_instr *instr, void *state)
 {
    lower_ps_state *s = (lower_ps_state *)state;
@@ -256,6 +300,10 @@ lower_ps_intrinsic(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_barycentric_sample:
       if (s->lower_load_barycentric)
          return lower_ps_load_barycentric(b, intrin, s);
+      break;
+   case nir_intrinsic_load_sample_mask_in:
+      if (s->options->samplemask_log_ps_iter)
+         return lower_ps_load_sample_mask_in(b, intrin, s);
       break;
    default:
       break;
