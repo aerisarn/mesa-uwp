@@ -181,7 +181,7 @@ radv_create_merged_rt_create_info(const VkRayTracingPipelineCreateInfoKHR *pCrea
             stages[total_stages + j] = library_pipeline->stages[j];
          for (unsigned j = 0; j < library_pipeline->group_count; ++j) {
             VkRayTracingShaderGroupCreateInfoKHR *dst = &groups[total_groups + j];
-            *dst = library_pipeline->groups[j];
+            *dst = library_pipeline->group_infos[j];
             if (dst->generalShader != VK_SHADER_UNUSED_KHR)
                dst->generalShader += total_stages;
             if (dst->closestHitShader != VK_SHADER_UNUSED_KHR)
@@ -319,10 +319,10 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
    if (local_create_info.groupCount) {
       size_t size = sizeof(VkRayTracingShaderGroupCreateInfoKHR) * local_create_info.groupCount;
       pipeline->group_count = local_create_info.groupCount;
-      pipeline->groups = ralloc_size(pipeline->ctx, size);
-      if (!pipeline->groups)
+      pipeline->group_infos = ralloc_size(pipeline->ctx, size);
+      if (!pipeline->group_infos)
          goto fail;
-      memcpy(pipeline->groups, local_create_info.pGroups, size);
+      memcpy(pipeline->group_infos, local_create_info.pGroups, size);
    }
 
    *pPipeline = radv_pipeline_to_handle(&pipeline->base);
@@ -331,7 +331,7 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
    free((void *)local_create_info.pStages);
    return VK_SUCCESS;
 fail:
-   free(pipeline->groups);
+   free(pipeline->group_infos);
    ralloc_free(pipeline->ctx);
    free((void *)local_create_info.pGroups);
    free((void *)local_create_info.pStages);

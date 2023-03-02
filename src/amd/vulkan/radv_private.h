@@ -2213,7 +2213,7 @@ struct radv_library_pipeline {
    unsigned stage_count;
    VkPipelineShaderStageCreateInfo *stages;
    unsigned group_count;
-   VkRayTracingShaderGroupCreateInfoKHR *groups;
+   VkRayTracingShaderGroupCreateInfoKHR *group_infos;
    VkPipelineShaderStageModuleIdentifierCreateInfoEXT *identifiers;
    struct {
       uint8_t sha1[SHA1_DIGEST_LENGTH];
