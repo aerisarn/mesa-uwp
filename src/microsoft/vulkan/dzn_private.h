@@ -644,10 +644,10 @@ struct dzn_descriptor_set_layout_binding {
    uint32_t base_shader_register;
    uint32_t range_idx[NUM_POOL_TYPES];
    union {
-      struct {
-         uint32_t static_sampler_idx;
-         uint32_t immutable_sampler_idx;
-      };
+      /* For sampler types, index into the set layout's immutable sampler list,
+       * or ~0 for static samplers or dynamic samplers. */
+      uint32_t immutable_sampler_idx;
+      /* For dynamic buffer types, index into the set's dynamic buffer list */
       uint32_t dynamic_buffer_idx;
    };
 };
@@ -676,20 +676,29 @@ static const D3D_ROOT_SIGNATURE_VERSION D3D_ROOT_SIGNATURE_VERSION_1_2 = 0x3;
 
 struct dzn_descriptor_set_layout {
    struct vk_descriptor_set_layout vk;
+
+   /* Ranges are bucketed by shader visibility so that each visibility can have
+    * a single descriptor table in the root signature, with all ranges concatenated. */
    uint32_t range_count[MAX_SHADER_VISIBILITIES][NUM_POOL_TYPES];
    const D3D12_DESCRIPTOR_RANGE1 *ranges[MAX_SHADER_VISIBILITIES][NUM_POOL_TYPES];
+
+   /* The number of descriptors across all ranges/visibilities for this type */
    uint32_t range_desc_count[NUM_POOL_TYPES];
+
+   /* Static samplers actually go into the D3D12 root signature.
+    * Immutable samplers are only stored here to be copied into descriptor tables later. */
    uint32_t static_sampler_count;
    const D3D12_STATIC_SAMPLER_DESC1 *static_samplers;
    uint32_t immutable_sampler_count;
    const struct dzn_sampler **immutable_samplers;
+
    struct {
       uint32_t bindings[MAX_DYNAMIC_BUFFERS];
       uint32_t count;
-      uint32_t desc_count;
       uint32_t range_offset;
    } dynamic_buffers;
    uint32_t stages;
+
    uint32_t binding_count;
    const struct dzn_descriptor_set_layout_binding *bindings;
 };
@@ -698,14 +707,19 @@ struct dzn_descriptor_set {
    struct vk_object_base base;
    struct dzn_buffer_desc dynamic_buffers[MAX_DYNAMIC_BUFFERS];
    struct dzn_descriptor_pool *pool;
+   /* The offset in the current active staging descriptor heap for the set's pool.
+    * This offset is guarded by the pool's defrag lock and is updated when defrag happens. */
    uint32_t heap_offsets[NUM_POOL_TYPES];
+   /* The number of descriptors needed for this set */
    uint32_t heap_sizes[NUM_POOL_TYPES];
+   /* Layout (and pool) is null for a freed descriptor set */
    const struct dzn_descriptor_set_layout *layout;
 };
 
 struct dzn_pipeline_layout {
    struct vk_pipeline_layout vk;
    struct {
+      /* The offset from the start of a descriptor table where the set should be copied */
       uint32_t heap_offsets[NUM_POOL_TYPES];
       struct {
          uint32_t srv, uav;
@@ -715,9 +729,13 @@ struct dzn_pipeline_layout {
    } sets[MAX_SETS];
    struct {
       uint32_t binding_count;
+      /* A mapping from a binding value, which can be shared among multiple descriptors
+       * in an array, to unique 0-based registers. This mapping is applied to the shaders
+       * during pipeline creation. */
       uint32_t *base_reg;
    } binding_translation[MAX_SETS];
    uint32_t set_count;
+   /* How much space needs to be allocated to copy descriptors during cmdbuf recording? */
    uint32_t desc_count[NUM_POOL_TYPES];
    struct {
       uint32_t param_count;

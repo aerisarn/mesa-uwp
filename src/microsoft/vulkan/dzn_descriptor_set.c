@@ -258,7 +258,6 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
    uint32_t base_register = 0;
 
    for (uint32_t i = 0; i < binding_count; i++) {
-      binfos[i].static_sampler_idx = ~0;
       binfos[i].immutable_sampler_idx = ~0;
       binfos[i].dynamic_buffer_idx = ~0;
       dzn_foreach_pool_type (type)
@@ -292,7 +291,6 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
 
          /* Not all border colors are supported. */
          if (sampler->static_border_color != -1) {
-            binfos[binding].static_sampler_idx = static_sampler_idx;
             D3D12_STATIC_SAMPLER_DESC1 *desc = (D3D12_STATIC_SAMPLER_DESC1 *)
                &static_samplers[static_sampler_idx];
 
@@ -371,9 +369,8 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
          if (is_dynamic) {
             range->OffsetInDescriptorsFromTableStart =
                set_layout->dynamic_buffers.range_offset +
-               set_layout->dynamic_buffers.desc_count;
+               set_layout->dynamic_buffers.count;
             set_layout->dynamic_buffers.count += range->NumDescriptors;
-            set_layout->dynamic_buffers.desc_count += range->NumDescriptors;
          } else {
             range->OffsetInDescriptorsFromTableStart = set_layout->range_desc_count[type];
             set_layout->range_desc_count[type] += range->NumDescriptors;
@@ -390,8 +387,7 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
          if (is_dynamic) {
             range->OffsetInDescriptorsFromTableStart =
                set_layout->dynamic_buffers.range_offset +
-               set_layout->dynamic_buffers.desc_count;
-            set_layout->dynamic_buffers.desc_count += range->NumDescriptors;
+               set_layout->dynamic_buffers.count;
          } else {
             range->OffsetInDescriptorsFromTableStart = set_layout->range_desc_count[type];
             set_layout->range_desc_count[type] += range->NumDescriptors;
@@ -609,8 +605,7 @@ dzn_pipeline_layout_create(struct dzn_device *device,
             range_count += set_layout->range_count[i][type];
       }
 
-      layout->desc_count[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] +=
-         set_layout->dynamic_buffers.desc_count;
+      layout->desc_count[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] += set_layout->dynamic_buffers.count;
       for (uint32_t o = 0, elem = 0; o < set_layout->dynamic_buffers.count; o++, elem++) {
          uint32_t b = set_layout->dynamic_buffers.bindings[o];
 
