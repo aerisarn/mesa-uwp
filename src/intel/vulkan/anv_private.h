@@ -1712,6 +1712,9 @@ struct anv_descriptor_set_binding_layout {
     */
    int16_t dynamic_offset_index;
 
+   /* Computed size from data */
+   uint16_t descriptor_data_size;
+
    /* Index into the descriptor set buffer views */
    int32_t buffer_view_index;
 

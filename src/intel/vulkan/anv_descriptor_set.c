@@ -657,6 +657,8 @@ VkResult anv_CreateDescriptorSetLayout(
          break;
       }
 
+      set_layout->binding[b].descriptor_data_size =
+         anv_descriptor_data_size(set_layout->binding[b].data);
       set_layout->binding[b].descriptor_stride =
          binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_EXT ?
          anv_descriptor_size_for_mutable_type(device->physical, mutable_info, b) :
