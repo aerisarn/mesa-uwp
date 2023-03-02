@@ -491,13 +491,25 @@ handle_call(ir_call *ir, const struct set *lowerable_rvalues)
    /* Number of parameters to check if they are lowerable. */
    unsigned check_parameters = ir->actual_parameters.length();
 
-   /* Interpolation functions only consider the precision of the interpolant. */
-   /* Bitfield functions ignore the precision of "offset" and "bits". */
+   /* "For the interpolateAt* functions, the call will return a precision
+    *  qualification matching the precision of the interpolant argument to the
+    *  function call."
+    *
+    * and
+    *
+    * "The precision qualification of the value returned from bitfieldExtract()
+    *  matches the precision qualification of the call's input argument
+    *  “value”."
+    */
    if (!strcmp(ir->callee_name(), "interpolateAtOffset") ||
        !strcmp(ir->callee_name(), "interpolateAtSample") ||
        !strcmp(ir->callee_name(), "bitfieldExtract")) {
       check_parameters = 1;
    } else if (!strcmp(ir->callee_name(), "bitfieldInsert")) {
+      /* "The precision qualification of the value returned from bitfieldInsert
+       * matches the highest precision qualification of the call's input
+       * arguments “base” and “insert”."
+       */
       check_parameters = 2;
    }
 
