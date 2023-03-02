@@ -2765,16 +2765,13 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       break;
 
    case nir_intrinsic_scoped_barrier:
-   case nir_intrinsic_control_barrier: {
-      const bool scoped = instr->intrinsic == nir_intrinsic_scoped_barrier;
-      if (scoped && nir_intrinsic_memory_scope(instr) != NIR_SCOPE_NONE)
+      if (nir_intrinsic_memory_scope(instr) != NIR_SCOPE_NONE)
          nir_emit_intrinsic(bld, instr);
-      if (!scoped || nir_intrinsic_execution_scope(instr) == NIR_SCOPE_WORKGROUP) {
+      if (nir_intrinsic_execution_scope(instr) == NIR_SCOPE_WORKGROUP) {
          if (tcs_prog_data->instances != 1)
             emit_tcs_barrier();
       }
       break;
-   }
 
    case nir_intrinsic_load_input:
       unreachable("nir_lower_io should never give us these.");
@@ -3696,11 +3693,9 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
 
    switch (instr->intrinsic) {
    case nir_intrinsic_scoped_barrier:
-   case nir_intrinsic_control_barrier: {
-      const bool scoped = instr->intrinsic == nir_intrinsic_scoped_barrier;
-      if (scoped && nir_intrinsic_memory_scope(instr) != NIR_SCOPE_NONE)
+      if (nir_intrinsic_memory_scope(instr) != NIR_SCOPE_NONE)
          nir_emit_intrinsic(bld, instr);
-      if (!scoped || nir_intrinsic_execution_scope(instr) == NIR_SCOPE_WORKGROUP) {
+      if (nir_intrinsic_execution_scope(instr) == NIR_SCOPE_WORKGROUP) {
          /* The whole workgroup fits in a single HW thread, so all the
           * invocations are already executed lock-step.  Instead of an actual
           * barrier just emit a scheduling fence, that will generate no code.
@@ -3715,7 +3710,6 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
          cs_prog_data->uses_barrier = true;
       }
       break;
-   }
 
    case nir_intrinsic_load_subgroup_id:
       cs_payload().load_subgroup_id(bld, dest);
@@ -4358,14 +4352,6 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       break;
    }
 
-   case nir_intrinsic_group_memory_barrier:
-   case nir_intrinsic_memory_barrier_shared:
-   case nir_intrinsic_memory_barrier_buffer:
-   case nir_intrinsic_memory_barrier_image:
-   case nir_intrinsic_memory_barrier:
-   case nir_intrinsic_memory_barrier_atomic_counter:
-      unreachable("unexpected barrier, expecting only nir_intrinsic_scoped_barrier");
-
    case nir_intrinsic_scoped_barrier:
    case nir_intrinsic_begin_invocation_interlock:
    case nir_intrinsic_end_invocation_interlock: {
@@ -4615,9 +4601,6 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
       break;
    }
-
-   case nir_intrinsic_memory_barrier_tcs_patch:
-      break;
 
    case nir_intrinsic_shader_clock: {
       /* We cannot do anything if there is an event, so ignore it for now */
