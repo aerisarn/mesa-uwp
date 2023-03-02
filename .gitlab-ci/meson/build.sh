@@ -84,7 +84,7 @@ meson setup _build \
 cd _build
 meson configure
 
-section_switch meson-build "meson: build"
+uncollapsed_section_switch meson-build "meson: build"
 
 if command -V mold &> /dev/null ; then
     mold --run ninja
@@ -93,7 +93,7 @@ else
 fi
 
 
-section_switch meson-test "meson: test"
+uncollapsed_section_switch meson-test "meson: test"
 LC_ALL=C.UTF-8 meson test --num-processes ${FDO_CI_CONCURRENT:-4} --print-errorlogs ${MESON_TEST_ARGS}
 if command -V mold &> /dev/null ; then
     mold --run ninja install
