@@ -72,8 +72,6 @@ do_optimization(struct exec_list *ir, const char *optimization,
       return do_constant_variable(ir);
    } else if (strcmp(optimization, "do_constant_variable_unlinked") == 0) {
       return do_constant_variable_unlinked(ir);
-   } else if (strcmp(optimization, "do_constant_propagation") == 0) {
-      return do_constant_propagation(ir);
    } else if (strcmp(optimization, "do_dead_code") == 0) {
       return do_dead_code(ir);
    } else if (strcmp(optimization, "do_dead_code_local") == 0) {

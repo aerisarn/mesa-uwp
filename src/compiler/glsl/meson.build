@@ -215,7 +215,6 @@ files_libglsl = files(
   'lower_vector_derefs.cpp',
   'opt_algebraic.cpp',
   'opt_constant_folding.cpp',
-  'opt_constant_propagation.cpp',
   'opt_constant_variable.cpp',
   'opt_dead_builtin_variables.cpp',
   'opt_dead_code.cpp',
