@@ -160,10 +160,14 @@ radv_create_merged_rt_create_info(const VkRayTracingPipelineCreateInfoKHR *pCrea
    local_create_info.groupCount = total_groups;
    local_create_info.pStages = stages =
       malloc(sizeof(VkPipelineShaderStageCreateInfo) * total_stages);
+   if (!local_create_info.pStages)
+      return local_create_info;
    local_create_info.pGroups = groups =
       malloc(sizeof(VkRayTracingShaderGroupCreateInfoKHR) * total_groups);
-   if (!local_create_info.pStages || !local_create_info.pGroups)
+   if (!local_create_info.pGroups) {
+      free((void *)local_create_info.pStages);
       return local_create_info;
+   }
 
    total_stages = pCreateInfo->stageCount;
    total_groups = pCreateInfo->groupCount;
@@ -213,6 +217,11 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
    RADV_FROM_HANDLE(radv_device, device, _device);
    struct radv_library_pipeline *pipeline;
 
+   VkRayTracingPipelineCreateInfoKHR local_create_info =
+      radv_create_merged_rt_create_info(pCreateInfo);
+   if (!local_create_info.pStages || !local_create_info.pGroups)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
    pipeline = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*pipeline), 8,
                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (pipeline == NULL)
@@ -221,11 +230,6 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
    radv_pipeline_init(device, &pipeline->base, RADV_PIPELINE_LIBRARY);
 
    pipeline->ctx = ralloc_context(NULL);
-
-   VkRayTracingPipelineCreateInfoKHR local_create_info =
-      radv_create_merged_rt_create_info(pCreateInfo);
-   if (!local_create_info.pStages || !local_create_info.pGroups)
-      goto fail;
 
    VkResult result =
       radv_create_group_handles(device, &local_create_info, &pipeline->group_handles);
@@ -442,10 +446,8 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
 
    VkRayTracingPipelineCreateInfoKHR local_create_info =
       radv_create_merged_rt_create_info(pCreateInfo);
-   if (!local_create_info.pStages || !local_create_info.pGroups) {
-      result = VK_ERROR_OUT_OF_HOST_MEMORY;
-      goto fail;
-   }
+   if (!local_create_info.pStages || !local_create_info.pGroups)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    struct vk_shader_module module = {.base.type = VK_OBJECT_TYPE_SHADER_MODULE};
 
