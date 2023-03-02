@@ -256,6 +256,23 @@ struct dzn_queue {
    uint64_t fence_point;
 };
 
+struct dzn_descriptor_heap {
+   ID3D12DescriptorHeap *heap;
+   SIZE_T cpu_base;
+   uint64_t gpu_base;
+   uint32_t desc_count;
+   uint32_t desc_sz;
+};
+
+struct dzn_device_descriptor_heap {
+   struct dzn_descriptor_heap heap;
+   mtx_t lock;
+   struct util_dynarray slot_freelist;
+   uint32_t next_alloc_slot;
+};
+
+#define NUM_POOL_TYPES D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER + 1
+
 struct dzn_device {
    struct vk_device vk;
    struct vk_device_extension_table enabled_extensions;
@@ -283,6 +300,9 @@ struct dzn_device {
     */
    bool need_swapchain_blits;
    struct dzn_queue *swapchain_queue;
+
+   bool bindless;
+   struct dzn_device_descriptor_heap device_heaps[NUM_POOL_TYPES];
 };
 
 void dzn_meta_finish(struct dzn_device *device);
@@ -345,7 +365,6 @@ enum dzn_cmd_dirty {
 #define MAX_PUSH_CONSTANT_DWORDS 32
 
 #define NUM_BIND_POINT VK_PIPELINE_BIND_POINT_COMPUTE + 1
-#define NUM_POOL_TYPES D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER + 1
 
 #define dzn_foreach_pool_type(type) \
    for (D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV; \
@@ -369,6 +388,7 @@ struct dzn_descriptor_state {
 
 struct dzn_sampler;
 struct dzn_image_view;
+struct dzn_buffer_view;
 
 struct dzn_buffer_desc {
    VkDescriptorType type;
@@ -380,13 +400,15 @@ struct dzn_buffer_desc {
 #define MAX_DESCS_PER_SAMPLER_HEAP 2048u
 #define MAX_DESCS_PER_CBV_SRV_UAV_HEAP 1000000u
 
-struct dzn_descriptor_heap {
-   ID3D12DescriptorHeap *heap;
-   SIZE_T cpu_base;
-   uint64_t gpu_base;
-   uint32_t desc_count;
-   uint32_t desc_sz;
-};
+VkResult
+dzn_descriptor_heap_init(struct dzn_descriptor_heap *heap,
+                         struct dzn_device *device,
+                         D3D12_DESCRIPTOR_HEAP_TYPE type,
+                         uint32_t desc_count,
+                         bool shader_visible);
+
+void
+dzn_descriptor_heap_finish(struct dzn_descriptor_heap *heap);
 
 D3D12_CPU_DESCRIPTOR_HANDLE
 dzn_descriptor_heap_get_cpu_handle(const struct dzn_descriptor_heap *heap, uint32_t slot);
@@ -403,11 +425,24 @@ dzn_descriptor_heap_write_image_view_desc(struct dzn_device *device,
                                           const struct dzn_image_view *iview);
 
 void
+dzn_descriptor_heap_write_buffer_view_desc(struct dzn_device *device,
+                                           struct dzn_descriptor_heap *heap,
+                                           uint32_t heap_offset,
+                                           bool writeable,
+                                           const struct dzn_buffer_view *bview);
+
+void
 dzn_descriptor_heap_write_buffer_desc(struct dzn_device *device,
                                       struct dzn_descriptor_heap *heap,
                                       uint32_t heap_offset,
                                       bool writeable,
                                       const struct dzn_buffer_desc *bdesc);
+
+void
+dzn_descriptor_heap_write_sampler_desc(struct dzn_device *device,
+                                       struct dzn_descriptor_heap *heap,
+                                       uint32_t desc_offset,
+                                       const struct dzn_sampler *sampler);
 
 void
 dzn_descriptor_heap_copy(struct dzn_device *device,
@@ -448,6 +483,15 @@ dzn_descriptor_heap_pool_alloc_slots(struct dzn_descriptor_heap_pool *pool,
                                      uint32_t num_slots,
                                      struct dzn_descriptor_heap **heap,
                                      uint32_t *first_slot);
+
+int
+dzn_device_descriptor_heap_alloc_slot(struct dzn_device *device,
+                                      D3D12_DESCRIPTOR_HEAP_TYPE type);
+
+void
+dzn_device_descriptor_heap_free_slot(struct dzn_device *device,
+                                     D3D12_DESCRIPTOR_HEAP_TYPE type,
+                                     int slot);
 
 struct dzn_cmd_buffer_query_range {
    struct dzn_query_pool *qpool;
@@ -1025,6 +1069,8 @@ struct dzn_image_view {
    D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc;
    D3D12_RENDER_TARGET_VIEW_DESC rtv_desc;
    D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc;
+   int srv_bindless_slot;
+   int uav_bindless_slot;
 };
 
 void
@@ -1048,6 +1094,9 @@ struct dzn_buffer {
 
    D3D12_BARRIER_ACCESS valid_access;
    D3D12_GPU_VIRTUAL_ADDRESS gpuva;
+
+   int cbv_bindless_slot;
+   int uav_bindless_slot;
 };
 
 DXGI_FORMAT
@@ -1075,12 +1124,15 @@ struct dzn_buffer_view {
 
    D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc;
    D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc;
+   int srv_bindless_slot;
+   int uav_bindless_slot;
 };
 
 struct dzn_sampler {
    struct vk_object_base base;
    D3D12_SAMPLER_DESC2 desc;
    D3D12_STATIC_BORDER_COLOR static_border_color;
+   int bindless_slot;
 };
 
 /* This is defined as a macro so that it works for both

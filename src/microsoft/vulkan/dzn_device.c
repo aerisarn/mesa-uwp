@@ -2168,6 +2168,12 @@ dzn_device_destroy(struct dzn_device *device, const VkAllocationCallbacks *pAllo
    dzn_device_query_finish(device);
    dzn_meta_finish(device);
 
+   dzn_foreach_pool_type(type) {
+      dzn_descriptor_heap_finish(&device->device_heaps[type].heap);
+      util_dynarray_fini(&device->device_heaps[type].slot_freelist);
+      mtx_destroy(&device->device_heaps[type].lock);
+   }
+
    if (device->dev_config)
       ID3D12DeviceConfiguration_Release(device->dev_config);
 
@@ -2355,6 +2361,23 @@ dzn_device_create(struct dzn_physical_device *pdev,
       }
       device->swapchain_queue = &queues[qindex++];
       device->need_swapchain_blits = true;
+   }
+
+   if (device->bindless) {
+      dzn_foreach_pool_type(type) {
+         uint32_t descriptor_count = type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER ?
+            D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE :
+            D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_1;
+         result = dzn_descriptor_heap_init(&device->device_heaps[type].heap, device, type, descriptor_count, true);
+         if (result != VK_SUCCESS) {
+            dzn_device_destroy(device, pAllocator);
+            return result;
+         }
+
+         mtx_init(&device->device_heaps[type].lock, mtx_plain);
+         util_dynarray_init(&device->device_heaps[type].slot_freelist, NULL);
+         device->device_heaps[type].next_alloc_slot = 0;
+      }
    }
 
    assert(queue_count == qindex);
@@ -2705,6 +2728,9 @@ dzn_buffer_destroy(struct dzn_buffer *buf, const VkAllocationCallbacks *pAllocat
    if (buf->res)
       ID3D12Resource_Release(buf->res);
 
+   dzn_device_descriptor_heap_free_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, buf->cbv_bindless_slot);
+   dzn_device_descriptor_heap_free_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, buf->uav_bindless_slot);
+
    vk_object_base_finish(&buf->base);
    vk_free2(&device->vk.alloc, pAllocator, buf);
 }
@@ -2760,6 +2786,24 @@ dzn_buffer_create(struct dzn_device *device,
         VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)) {
       buf->desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
       buf->valid_access |= D3D12_BARRIER_ACCESS_UNORDERED_ACCESS;
+   }
+
+   buf->cbv_bindless_slot = buf->uav_bindless_slot = -1;
+   if (device->bindless) {
+      if (buf->usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) {
+         buf->cbv_bindless_slot = dzn_device_descriptor_heap_alloc_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+         if (buf->cbv_bindless_slot < 0) {
+            dzn_buffer_destroy(buf, pAllocator);
+            return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         }
+      }
+      if (buf->usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) {
+         buf->uav_bindless_slot = dzn_device_descriptor_heap_alloc_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+         if (buf->uav_bindless_slot < 0) {
+            dzn_buffer_destroy(buf, pAllocator);
+            return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         }
+      }
    }
 
    *out = dzn_buffer_to_handle(buf);
@@ -2958,6 +3002,30 @@ dzn_BindBufferMemory2(VkDevice _device,
          return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
       buffer->gpuva = ID3D12Resource_GetGPUVirtualAddress(buffer->res);
+
+      if (device->bindless) {
+         struct dzn_buffer_desc buf_desc = {
+            .buffer = buffer,
+            .offset = 0,
+            .range = VK_WHOLE_SIZE,
+         };
+         if (buffer->cbv_bindless_slot >= 0) {
+            buf_desc.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            dzn_descriptor_heap_write_buffer_desc(device,
+                                                  &device->device_heaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].heap,
+                                                  buffer->cbv_bindless_slot,
+                                                  false,
+                                                  &buf_desc);
+         }
+         if (buffer->uav_bindless_slot >= 0) {
+            buf_desc.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            dzn_descriptor_heap_write_buffer_desc(device,
+                                                  &device->device_heaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].heap,
+                                                  buffer->uav_bindless_slot,
+                                                  true,
+                                                  &buf_desc);
+         }
+      }
    }
 
    return VK_SUCCESS;
@@ -3103,6 +3171,8 @@ dzn_sampler_destroy(struct dzn_sampler *sampler,
    struct dzn_device *device =
       container_of(sampler->base.device, struct dzn_device, vk);
 
+   dzn_device_descriptor_heap_free_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, sampler->bindless_slot);
+
    vk_object_base_finish(&sampler->base);
    vk_free2(&device->vk.alloc, pAllocator, sampler);
 }
@@ -3203,6 +3273,20 @@ dzn_sampler_create(struct dzn_device *device,
       sampler->desc.Flags |= D3D12_SAMPLER_FLAG_NON_NORMALIZED_COORDINATES;
 #endif
 
+   sampler->bindless_slot = -1;
+   if (device->bindless) {
+      sampler->bindless_slot = dzn_device_descriptor_heap_alloc_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+      if (sampler->bindless_slot < 0) {
+         dzn_sampler_destroy(sampler, pAllocator);
+         return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      }
+
+      dzn_descriptor_heap_write_sampler_desc(device,
+                                             &device->device_heaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER].heap,
+                                             sampler->bindless_slot,
+                                             sampler);
+   }
+
    *out = dzn_sampler_to_handle(sampler);
    return VK_SUCCESS;
 }
@@ -3223,6 +3307,39 @@ dzn_DestroySampler(VkDevice device,
                    const VkAllocationCallbacks *pAllocator)
 {
    dzn_sampler_destroy(dzn_sampler_from_handle(sampler), pAllocator);
+}
+
+int
+dzn_device_descriptor_heap_alloc_slot(struct dzn_device *device,
+                                      D3D12_DESCRIPTOR_HEAP_TYPE type)
+{
+   struct dzn_device_descriptor_heap *heap = &device->device_heaps[type];
+   mtx_lock(&heap->lock);
+
+   int ret = -1;
+   if (heap->slot_freelist.size)
+      ret = util_dynarray_pop(&heap->slot_freelist, int);
+   else if (heap->next_alloc_slot < heap->heap.desc_count)
+      ret = heap->next_alloc_slot++;
+
+   mtx_unlock(&heap->lock);
+   return ret;
+}
+
+void
+dzn_device_descriptor_heap_free_slot(struct dzn_device *device,
+                                     D3D12_DESCRIPTOR_HEAP_TYPE type,
+                                     int slot)
+{
+   struct dzn_device_descriptor_heap *heap = &device->device_heaps[type];
+   assert(slot < 0 || slot < heap->heap.desc_count);
+
+   if (slot < 0)
+      return;
+
+   mtx_lock(&heap->lock);
+   util_dynarray_append(&heap->slot_freelist, int, slot);
+   mtx_unlock(&heap->lock);
 }
 
 VKAPI_ATTR void VKAPI_CALL

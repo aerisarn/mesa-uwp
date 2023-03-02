@@ -1362,6 +1362,9 @@ dzn_image_view_destroy(struct dzn_image_view *iview,
 
    struct dzn_device *device = container_of(iview->vk.base.device, struct dzn_device, vk);
 
+   dzn_device_descriptor_heap_free_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, iview->srv_bindless_slot);
+   dzn_device_descriptor_heap_free_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, iview->uav_bindless_slot);
+
    vk_image_view_finish(&iview->vk);
    vk_free2(&device->vk.alloc, pAllocator, iview);
 }
@@ -1372,6 +1375,7 @@ dzn_image_view_create(struct dzn_device *device,
                       const VkAllocationCallbacks *pAllocator,
                       VkImageView *out)
 {
+   VK_FROM_HANDLE(dzn_image, image, pCreateInfo->image);
    struct dzn_image_view *iview =
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*iview), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -1379,6 +1383,36 @@ dzn_image_view_create(struct dzn_device *device,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    dzn_image_view_init(device, iview, pCreateInfo);
+
+   iview->srv_bindless_slot = iview->uav_bindless_slot = -1;
+   if (device->bindless) {
+      if (!(image->desc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE)) {
+         iview->srv_bindless_slot = dzn_device_descriptor_heap_alloc_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+         if (iview->srv_bindless_slot < 0) {
+            dzn_image_view_destroy(iview, pAllocator);
+            return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         }
+
+         dzn_descriptor_heap_write_image_view_desc(device,
+                                                   &device->device_heaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].heap,
+                                                   iview->srv_bindless_slot,
+                                                   false, false,
+                                                   iview);
+      }
+      if (iview->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT) {
+         iview->uav_bindless_slot = dzn_device_descriptor_heap_alloc_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+         if (iview->uav_bindless_slot < 0) {
+            dzn_image_view_destroy(iview, pAllocator);
+            return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         }
+
+         dzn_descriptor_heap_write_image_view_desc(device,
+                                                   &device->device_heaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].heap,
+                                                   iview->uav_bindless_slot,
+                                                   true, true,
+                                                   iview);
+      }
+   }
 
    *out = dzn_image_view_to_handle(iview);
    return VK_SUCCESS;
@@ -1411,6 +1445,9 @@ dzn_buffer_view_destroy(struct dzn_buffer_view *bview,
 
    struct dzn_device *device = container_of(bview->base.device, struct dzn_device, vk);
 
+   dzn_device_descriptor_heap_free_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, bview->srv_bindless_slot);
+   dzn_device_descriptor_heap_free_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, bview->uav_bindless_slot);
+
    vk_object_base_finish(&bview->base);
    vk_free2(&device->vk.alloc, pAllocator, bview);
 }
@@ -1438,6 +1475,7 @@ dzn_buffer_view_create(struct dzn_device *device,
       buf->size - pCreateInfo->offset : pCreateInfo->range;
 
    bview->buffer = buf;
+   bview->srv_bindless_slot = bview->uav_bindless_slot = -1;
    if (buf->usage &
        (VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
         VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)) {
@@ -1452,6 +1490,16 @@ dzn_buffer_view_create(struct dzn_device *device,
             .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
          },
       };
+
+      if (device->bindless) {
+         bview->srv_bindless_slot = dzn_device_descriptor_heap_alloc_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+         if (bview->srv_bindless_slot < 0) {
+            dzn_buffer_view_destroy(bview, pAllocator);
+            return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         }
+         dzn_descriptor_heap_write_buffer_view_desc(device, &device->device_heaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].heap,
+                                                    bview->srv_bindless_slot, false, bview);
+      }
    }
 
    if (buf->usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) {
@@ -1464,6 +1512,16 @@ dzn_buffer_view_create(struct dzn_device *device,
             .Flags = D3D12_BUFFER_UAV_FLAG_NONE,
          },
       };
+
+      if (device->bindless) {
+         bview->uav_bindless_slot = dzn_device_descriptor_heap_alloc_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+         if (bview->uav_bindless_slot < 0) {
+            dzn_buffer_view_destroy(bview, pAllocator);
+            return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         }
+         dzn_descriptor_heap_write_buffer_view_desc(device, &device->device_heaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].heap,
+                                                    bview->uav_bindless_slot, true, bview);
+      }
    }
 
    *out = dzn_buffer_view_to_handle(bview);

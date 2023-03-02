@@ -815,14 +815,14 @@ desc_type_to_heap_type(VkDescriptorType in)
    }
 }
 
-static void
+void
 dzn_descriptor_heap_finish(struct dzn_descriptor_heap *heap)
 {
    if (heap->heap)
       ID3D12DescriptorHeap_Release(heap->heap);
 }
 
-static VkResult
+VkResult
 dzn_descriptor_heap_init(struct dzn_descriptor_heap *heap,
                          struct dzn_device *device,
                          D3D12_DESCRIPTOR_HEAP_TYPE type,
@@ -874,7 +874,7 @@ dzn_descriptor_heap_get_gpu_handle(const struct dzn_descriptor_heap *heap, uint3
    };
 }
 
-static void
+void
 dzn_descriptor_heap_write_sampler_desc(struct dzn_device *device,
                                        struct dzn_descriptor_heap *heap,
                                        uint32_t desc_offset,
@@ -933,7 +933,7 @@ dzn_descriptor_heap_write_image_view_desc(struct dzn_device *device,
    }
 }
 
-static void
+void
 dzn_descriptor_heap_write_buffer_view_desc(struct dzn_device *device,
                                            struct dzn_descriptor_heap *heap,
                                            uint32_t desc_offset,
@@ -969,7 +969,7 @@ dzn_descriptor_heap_write_buffer_desc(struct dzn_device *device,
       assert(!writeable);
       D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_desc = {
          .BufferLocation = info->buffer->gpuva + info->offset,
-         .SizeInBytes = ALIGN_POT(size, 256),
+         .SizeInBytes = MIN2(ALIGN_POT(size, 256), D3D12_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 4 * sizeof(float)),
       };
       ID3D12Device1_CreateConstantBufferView(device->dev, &cbv_desc, view_handle);
    } else if (writeable) {
