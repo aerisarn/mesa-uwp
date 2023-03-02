@@ -47,7 +47,7 @@ struct radv_physical_device;
 struct radv_device;
 struct radv_pipeline;
 struct radv_pipeline_cache;
-struct radv_pipeline_group_handle;
+struct radv_ray_tracing_module;
 struct radv_pipeline_key;
 struct radv_shader_args;
 struct radv_vs_input_state;
@@ -751,7 +751,7 @@ bool radv_lower_fs_intrinsics(nir_shader *nir, const struct radv_pipeline_stage 
 nir_shader *create_rt_shader(struct radv_device *device,
                              const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                              struct radv_pipeline_shader_stack_size *stack_sizes,
-                             const struct radv_pipeline_group_handle *handles,
+                             const struct radv_ray_tracing_module *groups,
                              const struct radv_pipeline_key *key);
 
 #endif

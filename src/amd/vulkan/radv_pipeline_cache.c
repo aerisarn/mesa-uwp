@@ -178,7 +178,7 @@ radv_hash_rt_stages(struct mesa_sha1 *ctx, const VkPipelineShaderStageCreateInfo
 void
 radv_hash_rt_shaders(unsigned char *hash, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                      const struct radv_pipeline_key *key,
-                     const struct radv_pipeline_group_handle *group_handles, uint32_t flags)
+                     const struct radv_ray_tracing_module *groups, uint32_t flags)
 {
    RADV_FROM_HANDLE(radv_pipeline_layout, layout, pCreateInfo->layout);
    struct mesa_sha1 ctx;
@@ -191,9 +191,6 @@ radv_hash_rt_shaders(unsigned char *hash, const VkRayTracingPipelineCreateInfoKH
 
    radv_hash_rt_stages(&ctx, pCreateInfo->pStages, pCreateInfo->stageCount);
 
-   _mesa_sha1_update(&ctx, group_handles,
-                     sizeof(struct radv_pipeline_group_handle) * pCreateInfo->groupCount);
-
    for (uint32_t i = 0; i < pCreateInfo->groupCount; i++) {
       _mesa_sha1_update(&ctx, &pCreateInfo->pGroups[i].type,
                         sizeof(pCreateInfo->pGroups[i].type));
@@ -205,6 +202,7 @@ radv_hash_rt_shaders(unsigned char *hash, const VkRayTracingPipelineCreateInfoKH
                         sizeof(pCreateInfo->pGroups[i].closestHitShader));
       _mesa_sha1_update(&ctx, &pCreateInfo->pGroups[i].intersectionShader,
                         sizeof(pCreateInfo->pGroups[i].intersectionShader));
+      _mesa_sha1_update(&ctx, &groups[i].handle, sizeof(struct radv_pipeline_group_handle));
    }
 
    const uint32_t pipeline_flags =

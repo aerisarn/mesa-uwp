@@ -1147,7 +1147,7 @@ struct traversal_data {
    struct rt_traversal_vars *trav_vars;
    nir_variable *barycentrics;
 
-   const struct radv_pipeline_group_handle *handles;
+   const struct radv_ray_tracing_module *groups;
 };
 
 static void
@@ -1177,7 +1177,7 @@ visit_any_hit_shaders(struct radv_device *device,
       /* Avoid emitting stages with the same shaders/handles multiple times. */
       bool is_dup = false;
       for (unsigned j = 0; j < i; ++j)
-         if (data->handles[j].any_hit_index == data->handles[i].any_hit_index)
+         if (data->groups[j].handle.any_hit_index == data->groups[i].handle.any_hit_index)
             is_dup = true;
 
       if (is_dup)
@@ -1187,7 +1187,7 @@ visit_any_hit_shaders(struct radv_device *device,
       nir_shader *nir_stage = parse_rt_stage(device, stage, vars->key);
 
       vars->stage_idx = shader_id;
-      insert_rt_case(b, nir_stage, vars, sbt_idx, 0, data->handles[i].any_hit_index);
+      insert_rt_case(b, nir_stage, vars, sbt_idx, 0, data->groups[i].handle.any_hit_index);
    }
 
    if (!(vars->create_info->flags & VK_PIPELINE_CREATE_RAY_TRACING_NO_NULL_ANY_HIT_SHADERS_BIT_KHR))
@@ -1313,7 +1313,7 @@ handle_candidate_aabb(nir_builder *b, struct radv_leaf_intersection *intersectio
       /* Avoid emitting stages with the same shaders/handles multiple times. */
       bool is_dup = false;
       for (unsigned j = 0; j < i; ++j)
-         if (data->handles[j].intersection_index == data->handles[i].intersection_index)
+         if (data->groups[j].handle.intersection_index == data->groups[i].handle.intersection_index)
             is_dup = true;
 
       if (is_dup)
@@ -1333,7 +1333,7 @@ handle_candidate_aabb(nir_builder *b, struct radv_leaf_intersection *intersectio
 
       inner_vars.stage_idx = shader_id;
       insert_rt_case(b, nir_stage, &inner_vars, nir_load_var(b, inner_vars.idx), 0,
-                     data->handles[i].intersection_index);
+                     data->groups[i].handle.intersection_index);
    }
 
    if (!(data->vars->create_info->flags &
@@ -1380,7 +1380,7 @@ static nir_shader *
 build_traversal_shader(struct radv_device *device,
                        const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                        struct radv_pipeline_shader_stack_size *stack_sizes,
-                       const struct radv_pipeline_group_handle *handles,
+                       const struct radv_ray_tracing_module *groups,
                        const struct radv_pipeline_key *key)
 {
    /* Create the traversal shader as an intersection shader to prevent validation failures due to
@@ -1474,7 +1474,7 @@ build_traversal_shader(struct radv_device *device,
       .vars = &vars,
       .trav_vars = &trav_vars,
       .barycentrics = barycentrics,
-      .handles = handles,
+      .groups = groups,
    };
 
    struct radv_ray_traversal_args args = {
@@ -1579,8 +1579,7 @@ move_rt_instructions(nir_shader *shader)
 nir_shader *
 create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                  struct radv_pipeline_shader_stack_size *stack_sizes,
-                 const struct radv_pipeline_group_handle *handles,
-                 const struct radv_pipeline_key *key)
+                 const struct radv_ray_tracing_module *groups, const struct radv_pipeline_key *key)
 {
    nir_builder b = radv_meta_init_shader(device, MESA_SHADER_COMPUTE, "rt_combined");
    b.shader->info.internal = false;
@@ -1612,7 +1611,7 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
    nir_ssa_def *idx = nir_load_var(&b, vars.idx);
 
    /* Insert traversal shader */
-   nir_shader *traversal = build_traversal_shader(device, pCreateInfo, stack_sizes, handles, key);
+   nir_shader *traversal = build_traversal_shader(device, pCreateInfo, stack_sizes, groups, key);
    b.shader->info.shared_size = MAX2(b.shader->info.shared_size, traversal->info.shared_size);
    assert(b.shader->info.shared_size <= 32768);
    insert_rt_case(&b, traversal, &vars, idx, 0, 1);
@@ -1631,7 +1630,7 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
       /* Avoid emitting stages with the same shaders/handles multiple times. */
       bool is_dup = false;
       for (unsigned j = 0; j < i; ++j)
-         if (handles[j].general_index == handles[i].general_index)
+         if (groups[j].handle.general_index == groups[i].handle.general_index)
             is_dup = true;
 
       if (is_dup)
@@ -1660,7 +1659,7 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
       nir_lower_shader_calls(nir_stage, &opts, &resume_shaders, &num_resume_shaders, nir_stage);
 
       vars.stage_idx = stage_idx;
-      insert_rt_case(&b, nir_stage, &vars, idx, call_idx_base, handles[i].general_index);
+      insert_rt_case(&b, nir_stage, &vars, idx, call_idx_base, groups[i].handle.general_index);
       for (unsigned j = 0; j < num_resume_shaders; ++j) {
          insert_rt_case(&b, resume_shaders[j], &vars, idx, call_idx_base, call_idx_base + 1 + j);
       }
