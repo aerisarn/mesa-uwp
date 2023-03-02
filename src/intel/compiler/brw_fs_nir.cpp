@@ -6182,7 +6182,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
        * bindless shader or a regular compute shader.
        */
       bld.MOV(retype(dest, BRW_REGISTER_TYPE_UD),
-              retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UW));
+              retype(brw_vec8_grf(1 * reg_unit(devinfo), 0), BRW_REGISTER_TYPE_UW));
       break;
 
    case nir_intrinsic_btd_spawn_intel:
