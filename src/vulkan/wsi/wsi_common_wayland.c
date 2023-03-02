@@ -1157,17 +1157,17 @@ wsi_wl_surface_destroy(VkIcdSurfaceBase *icd_surface, VkInstance _instance,
    struct wsi_wl_surface *wsi_wl_surface =
       wl_container_of((VkIcdSurfaceWayland *)icd_surface, wsi_wl_surface, base);
 
-   if (wsi_wl_surface->surface)
-      wl_proxy_wrapper_destroy(wsi_wl_surface->surface);
-
-   if (wsi_wl_surface->display)
-      wsi_wl_display_destroy(wsi_wl_surface->display);
-
    if (wsi_wl_surface->wl_dmabuf_feedback) {
       zwp_linux_dmabuf_feedback_v1_destroy(wsi_wl_surface->wl_dmabuf_feedback);
       dmabuf_feedback_fini(&wsi_wl_surface->dmabuf_feedback);
       dmabuf_feedback_fini(&wsi_wl_surface->pending_dmabuf_feedback);
    }
+
+   if (wsi_wl_surface->surface)
+      wl_proxy_wrapper_destroy(wsi_wl_surface->surface);
+
+   if (wsi_wl_surface->display)
+      wsi_wl_display_destroy(wsi_wl_surface->display);
 
    vk_free2(&instance->alloc, pAllocator, wsi_wl_surface);
 }
