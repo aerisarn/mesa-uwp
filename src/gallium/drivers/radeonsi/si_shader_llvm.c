@@ -1177,8 +1177,6 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
       } else {
          /* Nothing to do for gfx6-8. The shader has only 1 part and it's ctx.main_fn. */
       }
-   } else if (shader->is_monolithic && sel->stage == MESA_SHADER_FRAGMENT) {
-      si_llvm_build_monolithic_ps(&ctx, shader);
    }
 
    si_llvm_optimize_module(&ctx);

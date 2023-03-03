@@ -701,18 +701,18 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
       si_add_arg_checked(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->pos_fixed_pt,
                          SI_PARAM_POS_FIXED_PT);
 
-      /* Color inputs from the prolog. */
-      if (shader->selector->info.colors_read) {
-         unsigned num_color_elements = util_bitcount(shader->selector->info.colors_read);
-
-         for (i = 0; i < num_color_elements; i++)
-            ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, i ? NULL : &args->color_start);
-
-         num_prolog_vgprs += num_color_elements;
-      }
-
-      /* Monolithic PS emit epilog in NIR directly. */
+      /* Monolithic PS emit prolog and epilog in NIR directly. */
       if (!shader->is_monolithic) {
+         /* Color inputs from the prolog. */
+         if (shader->selector->info.colors_read) {
+            unsigned num_color_elements = util_bitcount(shader->selector->info.colors_read);
+
+            for (i = 0; i < num_color_elements; i++)
+               ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, i ? NULL : &args->color_start);
+
+            num_prolog_vgprs += num_color_elements;
+         }
+
          /* Outputs for the epilog. */
          num_return_sgprs = SI_SGPR_ALPHA_REF + 1;
          num_returns =
@@ -2148,6 +2148,10 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
    } else if (is_legacy_gs) {
       NIR_PASS_V(nir, ac_nir_lower_legacy_gs, false, sel->screen->use_ngg, output_info);
    } else if (sel->stage == MESA_SHADER_FRAGMENT && shader->is_monolithic) {
+      /* two-side color selection and interpolation */
+      if (sel->info.colors_read)
+         NIR_PASS_V(nir, si_nir_lower_ps_color_input, shader);
+
       ac_nir_lower_ps_options options = {
          .gfx_level = sel->screen->info.gfx_level,
          .family = sel->screen->info.family,
@@ -2161,9 +2165,22 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
          .alpha_to_one = key->ps.part.epilog.alpha_to_one,
          .alpha_func = key->ps.part.epilog.alpha_func,
          .broadcast_last_cbuf = key->ps.part.epilog.last_cbuf,
+
+         .bc_optimize_for_persp = key->ps.part.prolog.bc_optimize_for_persp,
+         .bc_optimize_for_linear = key->ps.part.prolog.bc_optimize_for_linear,
+         .force_persp_sample_interp = key->ps.part.prolog.force_persp_sample_interp,
+         .force_linear_sample_interp = key->ps.part.prolog.force_linear_sample_interp,
+         .force_persp_center_interp = key->ps.part.prolog.force_persp_center_interp,
+         .force_linear_center_interp = key->ps.part.prolog.force_linear_center_interp,
+         .samplemask_log_ps_iter = key->ps.part.prolog.samplemask_log_ps_iter,
       };
 
       NIR_PASS_V(nir, ac_nir_lower_ps, &options);
+
+      if (key->ps.part.prolog.poly_stipple)
+         NIR_PASS_V(nir, si_nir_emit_polygon_stipple, args);
+
+      progress2 = true;
    }
 
    NIR_PASS(progress2, nir, si_nir_lower_abi, shader, args);
