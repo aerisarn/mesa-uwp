@@ -627,6 +627,8 @@ static rvcn_dec_message_avc_t get_h264_msg(struct radv_video_session *vid,
 
    *width_in_samples = (sps->pic_width_in_mbs_minus1 + 1) * 16;
    *height_in_samples = (sps->pic_height_in_map_units_minus1 + 1) * 16;
+   if (!sps->flags.frame_mbs_only_flag)
+      *height_in_samples *= 2;
    result.level = sps->level_idc;
 
    result.sps_info_flags = 0;
@@ -1088,6 +1090,8 @@ static struct ruvd_h264 get_uvd_h264_msg(struct radv_video_session *vid,
 
    *width_in_samples = (sps->pic_width_in_mbs_minus1 + 1) * 16;
    *height_in_samples = (sps->pic_height_in_map_units_minus1 + 1) * 16;
+   if (!sps->flags.frame_mbs_only_flag)
+      *height_in_samples *= 2;
    result.level = sps->level_idc;
 
    result.sps_info_flags = 0;
