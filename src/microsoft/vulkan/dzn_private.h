@@ -597,6 +597,7 @@ struct dzn_cmd_buffer_state {
    uint32_t dirty;
    struct {
       struct dzn_pipeline *pipeline;
+      ID3D12RootSignature *root_sig;
       struct dzn_descriptor_state desc_state;
       uint32_t dirty;
    } bindpoint[NUM_BIND_POINT];
