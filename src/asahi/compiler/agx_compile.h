@@ -206,7 +206,6 @@ static const nir_shader_compiler_options agx_nir_options = {
    .lower_pack_half_2x16 = true,
    .lower_unpack_half_2x16 = true,
    .lower_extract_byte = true,
-   .lower_extract_word = true,
    .lower_insert_byte = true,
    .lower_insert_word = true,
    .lower_cs_local_index_to_id = true,
