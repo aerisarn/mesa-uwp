@@ -1603,6 +1603,7 @@ dzn_pipeline_init(struct dzn_pipeline *pipeline,
    pipeline->root.sets_param_count = layout->root.sets_param_count;
    pipeline->root.sysval_cbv_param_idx = layout->root.sysval_cbv_param_idx;
    pipeline->root.push_constant_cbv_param_idx = layout->root.push_constant_cbv_param_idx;
+   pipeline->root.dynamic_buffer_bindless_param_idx = layout->root.dynamic_buffer_bindless_param_idx;
    STATIC_ASSERT(sizeof(pipeline->root.type) == sizeof(layout->root.type));
    memcpy(pipeline->root.type, layout->root.type, sizeof(pipeline->root.type));
    pipeline->root.sig = layout->root.sig;
@@ -1613,6 +1614,7 @@ dzn_pipeline_init(struct dzn_pipeline *pipeline,
 
    STATIC_ASSERT(sizeof(layout->sets) == sizeof(pipeline->sets));
    memcpy(pipeline->sets, layout->sets, sizeof(pipeline->sets));
+   pipeline->dynamic_buffer_count = layout->dynamic_buffer_count;
    vk_object_base_init(&device->vk, &pipeline->base, VK_OBJECT_TYPE_PIPELINE);
 
    ASSERTED uint32_t max_streamsz =

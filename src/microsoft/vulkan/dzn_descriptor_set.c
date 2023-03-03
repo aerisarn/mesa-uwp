@@ -27,6 +27,8 @@
 #include "vk_descriptors.h"
 #include "vk_util.h"
 
+#include "dxil_spirv_nir.h"
+
 #include "util/mesa-sha1.h"
 
 static uint32_t
@@ -90,6 +92,13 @@ is_dynamic_desc_type(VkDescriptorType desc_type)
 }
 
 static bool
+is_buffer_desc_type_without_view(VkDescriptorType desc_type)
+{
+   return (desc_type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
+           desc_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+}
+
+static bool
 dzn_descriptor_type_depends_on_shader_usage(VkDescriptorType type, bool bindless)
 {
    if (bindless)
@@ -144,6 +153,7 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
    const VkDescriptorSetLayoutBinding *bindings = pCreateInfo->pBindings;
    uint32_t binding_count = 0, static_sampler_count = 0, total_ranges = 0;
    uint32_t dynamic_ranges_offset = 0, immutable_sampler_count = 0;
+   uint32_t dynamic_buffer_count = 0;
    uint32_t range_count[MAX_SHADER_VISIBILITIES][NUM_POOL_TYPES] = { 0 };
 
    for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
@@ -152,7 +162,8 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
       if (!bindings[i].descriptorCount)
          continue;
 
-      D3D12_SHADER_VISIBILITY visibility =
+      D3D12_SHADER_VISIBILITY visibility = device->bindless ?
+         D3D12_SHADER_VISIBILITY_ALL :
          translate_desc_visibility(bindings[i].stageFlags);
       VkDescriptorType desc_type = bindings[i].descriptorType;
       bool has_sampler = dzn_desc_type_has_sampler(desc_type);
@@ -183,7 +194,8 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
       if (static_sampler) {
          static_sampler_count += bindings[i].descriptorCount;
       } else if (has_sampler) {
-         range_count[visibility][D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER]++;
+         unsigned type = device->bindless ? D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV : D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
+         range_count[visibility][type]++;
          total_ranges++;
 
          if (immutable_samplers)
@@ -199,11 +211,12 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
             total_ranges++;
          }
 
-         if (!is_dynamic_desc_type(desc_type)) {
-            uint32_t factor =
-               dzn_descriptor_type_depends_on_shader_usage(desc_type, device->bindless) ? 2 : 1;
+         uint32_t factor =
+            dzn_descriptor_type_depends_on_shader_usage(desc_type, device->bindless) ? 2 : 1;
+         if (is_dynamic_desc_type(desc_type))
+            dynamic_buffer_count += bindings[i].descriptorCount * factor;
+         else
             dynamic_ranges_offset += bindings[i].descriptorCount * factor;
-         }
       }
    }
 
@@ -232,6 +245,7 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
    set_layout->bindings = binfos;
    set_layout->binding_count = binding_count;
    set_layout->dynamic_buffers.range_offset = dynamic_ranges_offset;
+   set_layout->buffer_count = dynamic_buffer_count;
 
    for (uint32_t i = 0; i < MAX_SHADER_VISIBILITIES; i++) {
       dzn_foreach_pool_type (type) {
@@ -264,7 +278,7 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
 
    for (uint32_t i = 0; i < binding_count; i++) {
       binfos[i].immutable_sampler_idx = ~0;
-      binfos[i].dynamic_buffer_idx = ~0;
+      binfos[i].buffer_idx = ~0;
       dzn_foreach_pool_type (type)
          binfos[i].range_idx[type] = ~0;
    }
@@ -280,7 +294,8 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
       bool has_static_sampler = has_immutable_samplers && desc_count == 1;
       bool is_dynamic = is_dynamic_desc_type(desc_type);
 
-      D3D12_SHADER_VISIBILITY visibility =
+      D3D12_SHADER_VISIBILITY visibility = device->bindless ?
+         D3D12_SHADER_VISIBILITY_ALL :
          translate_desc_visibility(ordered_bindings[i].stageFlags);
       binfos[binding].type = desc_type;
       binfos[binding].stages =
@@ -312,6 +327,13 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
             desc->ShaderRegister = binfos[binding].base_shader_register;
             desc->ShaderVisibility = translate_desc_visibility(ordered_bindings[i].stageFlags);
             desc->Flags = sampler->desc.Flags;
+            if (device->bindless && desc_type == VK_DESCRIPTOR_TYPE_SAMPLER) {
+               /* Avoid using space in the descriptor set buffer for pure static samplers. The meaning
+                * of base register index is different for them - it's just an ID to map to the root
+                * signature, as opposed to all other bindings where it's an offset into the buffer. */
+               binfos[binding].base_shader_register = desc->ShaderRegister = static_sampler_idx;
+               base_register--;
+            }
             static_sampler_idx++;
          } else {
             has_static_sampler = false;
@@ -328,11 +350,14 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
       }
 
       if (is_dynamic) {
-         binfos[binding].dynamic_buffer_idx = dynamic_buffer_idx;
+         binfos[binding].buffer_idx = dynamic_buffer_idx;
          for (uint32_t d = 0; d < desc_count; d++)
             set_layout->dynamic_buffers.bindings[dynamic_buffer_idx + d] = binding;
          dynamic_buffer_idx += desc_count;
          assert(dynamic_buffer_idx <= MAX_DYNAMIC_BUFFERS);
+      } else if (is_buffer_desc_type_without_view(desc_type)) {
+         binfos[binding].buffer_idx = set_layout->buffer_count;
+         set_layout->buffer_count += desc_count;
       }
 
       if (!ordered_bindings[i].descriptorCount)
@@ -346,9 +371,9 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
 
       bool has_range[NUM_POOL_TYPES] = { 0 };
       has_range[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER] =
-         has_sampler && !has_static_sampler;
+         has_sampler && !has_static_sampler && !device->bindless;
       has_range[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] =
-         desc_type != VK_DESCRIPTOR_TYPE_SAMPLER;
+         desc_type != VK_DESCRIPTOR_TYPE_SAMPLER || (device->bindless && !has_static_sampler);
 
       dzn_foreach_pool_type (type) {
          if (!has_range[type]) continue;
@@ -418,6 +443,9 @@ dzn_descriptor_set_layout_get_heap_offset(const struct dzn_descriptor_set_layout
    assert(visibility < ARRAY_SIZE(layout->ranges));
    assert(type < NUM_POOL_TYPES);
 
+   if (bindless)
+      type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+
    uint32_t range_idx = layout->bindings[b].range_idx[type];
 
    if (range_idx == ~0)
@@ -483,9 +511,9 @@ dzn_GetDescriptorSetLayoutSupport(VkDevice _device,
          other_desc_count += bindings[i].descriptorCount;
    }
 
-   pSupport->supported =
-      sampler_count <= MAX_DESCS_PER_SAMPLER_HEAP &&
-      other_desc_count <= MAX_DESCS_PER_CBV_SRV_UAV_HEAP;
+   pSupport->supported = device->bindless ||
+      (sampler_count <= MAX_DESCS_PER_SAMPLER_HEAP &&
+       other_desc_count <= MAX_DESCS_PER_CBV_SRV_UAV_HEAP);
 }
 
 static void
@@ -616,20 +644,25 @@ dzn_pipeline_layout_create(struct dzn_device *device,
          layout->desc_count[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] += set_layout->dynamic_buffers.count;
 
       for (uint32_t o = 0, elem = 0; o < set_layout->dynamic_buffers.count; o++, elem++) {
-         uint32_t b = set_layout->dynamic_buffers.bindings[o];
+         if (device->bindless) {
+            layout->sets[j].dynamic_buffer_heap_offsets[o].primary = layout->dynamic_buffer_count++;
+            layout->sets[j].dynamic_buffer_heap_offsets[o].alt = ~0;
+         } else {
+            uint32_t b = set_layout->dynamic_buffers.bindings[o];
 
-         if (o > 0 && set_layout->dynamic_buffers.bindings[o - 1] != b)
-            elem = 0;
+            if (o > 0 && set_layout->dynamic_buffers.bindings[o - 1] != b)
+               elem = 0;
 
-         uint32_t heap_offset =
-            dzn_descriptor_set_layout_get_heap_offset(set_layout, b, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-                                                      false, device->bindless);
-         uint32_t alt_heap_offset =
-            dzn_descriptor_set_layout_get_heap_offset(set_layout, b, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-                                                      true, device->bindless);
+            uint32_t heap_offset =
+               dzn_descriptor_set_layout_get_heap_offset(set_layout, b, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+                                                         false, false);
+            uint32_t alt_heap_offset =
+               dzn_descriptor_set_layout_get_heap_offset(set_layout, b, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+                                                         true, false);
 
-         layout->sets[j].dynamic_buffer_heap_offsets[o].primary = heap_offset != ~0 ? heap_offset + elem : ~0;
-         layout->sets[j].dynamic_buffer_heap_offsets[o].alt = alt_heap_offset != ~0 ? alt_heap_offset + elem : ~0;
+            layout->sets[j].dynamic_buffer_heap_offsets[o].primary = heap_offset != ~0 ? heap_offset + elem : ~0;
+            layout->sets[j].dynamic_buffer_heap_offsets[o].alt = alt_heap_offset != ~0 ? alt_heap_offset + elem : ~0;
+         }
       }
    }
 
@@ -659,37 +692,61 @@ dzn_pipeline_layout_create(struct dzn_device *device,
    D3D12_ROOT_PARAMETER1 *root_param;
    ASSERTED uint32_t root_dwords = 0;
 
-   for (uint32_t i = 0; i < MAX_SHADER_VISIBILITIES; i++) {
-      dzn_foreach_pool_type (type) {
-         root_param = &root_params[layout->root.param_count];
-         root_param->ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-         root_param->DescriptorTable.pDescriptorRanges = range_ptr;
-         root_param->DescriptorTable.NumDescriptorRanges = 0;
-         root_param->ShaderVisibility = (D3D12_SHADER_VISIBILITY)i;
+   if (device->bindless) {
+      for (uint32_t j = 0; j < pCreateInfo->setLayoutCount; j++) {
+         root_param = &root_params[layout->root.param_count++];
+         root_param->ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+         root_param->Descriptor.RegisterSpace = 0;
+         root_param->Descriptor.ShaderRegister = j;
+         root_param->Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE;
+         root_param->ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+         root_dwords += 2;
+      }
+   } else {
+      for (uint32_t i = 0; i < MAX_SHADER_VISIBILITIES; i++) {
+         dzn_foreach_pool_type(type) {
+            root_param = &root_params[layout->root.param_count];
+            root_param->ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+            root_param->DescriptorTable.pDescriptorRanges = range_ptr;
+            root_param->DescriptorTable.NumDescriptorRanges = 0;
+            root_param->ShaderVisibility = (D3D12_SHADER_VISIBILITY)i;
 
-         for (uint32_t j = 0; j < pCreateInfo->setLayoutCount; j++) {
-            VK_FROM_HANDLE(dzn_descriptor_set_layout, set_layout, pCreateInfo->pSetLayouts[j]);
-            uint32_t range_count = set_layout->range_count[i][type];
+            for (uint32_t j = 0; j < pCreateInfo->setLayoutCount; j++) {
+               VK_FROM_HANDLE(dzn_descriptor_set_layout, set_layout, pCreateInfo->pSetLayouts[j]);
+               uint32_t range_count = set_layout->range_count[i][type];
 
-            memcpy(range_ptr, set_layout->ranges[i][type],
-                   range_count * sizeof(D3D12_DESCRIPTOR_RANGE1));
-            for (uint32_t k = 0; k < range_count; k++) {
-               range_ptr[k].RegisterSpace = j;
-               range_ptr[k].OffsetInDescriptorsFromTableStart +=
-                  layout->sets[j].heap_offsets[type];
+               memcpy(range_ptr, set_layout->ranges[i][type],
+                      range_count * sizeof(D3D12_DESCRIPTOR_RANGE1));
+               for (uint32_t k = 0; k < range_count; k++) {
+                  range_ptr[k].RegisterSpace = j;
+                  range_ptr[k].OffsetInDescriptorsFromTableStart +=
+                     layout->sets[j].heap_offsets[type];
+               }
+               root_param->DescriptorTable.NumDescriptorRanges += range_count;
+               range_ptr += range_count;
             }
-            root_param->DescriptorTable.NumDescriptorRanges += range_count;
-            range_ptr += range_count;
-         }
 
-         if (root_param->DescriptorTable.NumDescriptorRanges) {
-            layout->root.type[layout->root.param_count++] = (D3D12_DESCRIPTOR_HEAP_TYPE)type;
-            root_dwords++;
+            if (root_param->DescriptorTable.NumDescriptorRanges) {
+               layout->root.type[layout->root.param_count++] = (D3D12_DESCRIPTOR_HEAP_TYPE)type;
+               root_dwords++;
+            }
          }
       }
    }
 
    layout->root.sets_param_count = layout->root.param_count;
+
+   if (layout->dynamic_buffer_count > 0 && device->bindless) {
+      layout->root.dynamic_buffer_bindless_param_idx = layout->root.param_count;
+      D3D12_ROOT_PARAMETER1 *root_param = &root_params[layout->root.param_count++];
+
+      root_param->ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+      root_param->Descriptor.RegisterSpace = 0;
+      root_param->Descriptor.ShaderRegister = layout->root.sets_param_count;
+      root_param->Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC;
+      root_param->ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+      root_dwords += 2;
+   }
 
    /* Add our sysval CBV, and make it visible to all shaders */
    layout->root.sysval_cbv_param_idx = layout->root.param_count;
@@ -759,6 +816,9 @@ dzn_pipeline_layout_create(struct dzn_device *device,
    };
    /* TODO Only enable this flag when needed (optimization) */
    D3D12_ROOT_SIGNATURE_FLAGS root_flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+   if (device->bindless)
+      root_flags |= D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED |
+                    D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED;
 #if D3D12_SDK_VERSION >= 609
    if (pdev->root_sig_version >= D3D_ROOT_SIGNATURE_VERSION_1_2) {
       root_sig_desc.Desc_1_2 = (D3D12_ROOT_SIGNATURE_DESC2){
@@ -987,6 +1047,111 @@ dzn_descriptor_heap_write_buffer_desc(struct dzn_device *device,
    }
 }
 
+static void
+dzn_bindless_descriptor_set_write_sampler_desc(struct dxil_spirv_bindless_entry *map,
+                                               uint32_t desc_offset,
+                                               const struct dzn_sampler *sampler)
+{
+   map[desc_offset].sampler_idx = sampler->bindless_slot;
+}
+
+static void
+dzn_bindless_descriptor_set_write_image_view_desc(struct dxil_spirv_bindless_entry *map,
+                                                  VkDescriptorType type,
+                                                  uint32_t desc_offset,
+                                                  const struct dzn_image_view *iview)
+{
+   switch (type) {
+   case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      map[desc_offset].texture_idx = iview->uav_bindless_slot;
+      break;
+   case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+   case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+   case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+      map[desc_offset].texture_idx = iview->srv_bindless_slot;
+      break;
+   default:
+      unreachable("Unexpected descriptor type");
+   }
+}
+
+static void
+dzn_bindless_descriptor_set_write_buffer_view_desc(struct dxil_spirv_bindless_entry *map,
+                                                   VkDescriptorType type,
+                                                   uint32_t desc_offset,
+                                                   const struct dzn_buffer_view *bview)
+{
+   switch (type) {
+   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+      map[desc_offset].texture_idx = bview->srv_bindless_slot;
+      break;
+   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+      map[desc_offset].texture_idx = bview->uav_bindless_slot;
+      break;
+   default:
+      unreachable("Unexpected descriptor type");
+   }
+}
+
+static bool
+need_custom_buffer_descriptor(struct dzn_device *device, const struct dzn_buffer_desc *info)
+{
+   if (info->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
+       info->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) {
+      uint64_t upper_bound = info->range == VK_WHOLE_SIZE ? info->buffer->size :
+         info->offset + info->range;
+      /* The buffer's default CBV only addresses the first 64KiB. If this view needs a higher
+       * upper bound, then we need a custom descriptor. */
+      if (upper_bound > D3D12_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 4 * sizeof(float)) {
+         /* It's invalid to use WHOLE_SIZE if it would address more than 64KiB, so if they're
+          * using it on a buffer that large, it better have an offset. */
+         assert(info->range != VK_WHOLE_SIZE || info->offset > 0);
+         return true;
+      }
+   }
+   /* Addressing the whole buffer, no custom descriptor needed. */
+   if (info->range == VK_WHOLE_SIZE ||
+       info->offset + info->range == info->buffer->size)
+      return false;
+   /* We need proper out-of-bounds behavior, we need a descriptor with the right size. */
+   if (device->vk.enabled_features.robustBufferAccess ||
+       device->vk.enabled_features.robustBufferAccess2)
+      return true;
+   /* We can just apply an offset in the shader */
+   return false;
+}
+
+static void
+dzn_bindless_descriptor_set_write_buffer_desc(struct dzn_device *device,
+                                              struct dxil_spirv_bindless_entry *map,
+                                              uint32_t desc_offset,
+                                              const struct dzn_buffer_desc *info)
+{
+   if (!need_custom_buffer_descriptor(device, info)) {
+      switch (info->type) {
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+         map[desc_offset].buffer_idx = info->buffer->cbv_bindless_slot;
+         break;
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+         map[desc_offset].buffer_idx = info->buffer->uav_bindless_slot;
+         break;
+      default:
+         unreachable("Unexpected descriptor type");
+      }
+      map[desc_offset].buffer_offset = info->offset;
+      if (*info->bindless_descriptor_slot >= 0)
+         dzn_device_descriptor_heap_free_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, *info->bindless_descriptor_slot);
+   } else {
+      if (*info->bindless_descriptor_slot < 0)
+         *info->bindless_descriptor_slot =
+            dzn_device_descriptor_heap_alloc_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+      dzn_descriptor_heap_write_buffer_desc(device, &device->device_heaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].heap,
+                                            *info->bindless_descriptor_slot, info->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, info);
+      map[desc_offset].buffer_idx = *info->bindless_descriptor_slot;
+      map[desc_offset].buffer_offset = 0;
+   }
+}
+
 void
 dzn_descriptor_heap_copy(struct dzn_device *device,
                          struct dzn_descriptor_heap *dst_heap,
@@ -1113,11 +1278,16 @@ dzn_descriptor_set_write_sampler_desc(struct dzn_device *device,
       return;
 
    D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
-
-   dzn_descriptor_heap_write_sampler_desc(device,
-                                          &set->pool->heaps[type],
-                                          set->heap_offsets[type] + heap_offset,
-                                          sampler);
+   if (device->bindless) {
+      dzn_bindless_descriptor_set_write_sampler_desc(set->pool->bindless.map,
+                                                     set->heap_offsets[0] + heap_offset,
+                                                     sampler);
+   } else {
+      dzn_descriptor_heap_write_sampler_desc(device,
+                                             &set->pool->heaps[type],
+                                             set->heap_offsets[type] + heap_offset,
+                                             sampler);
+   }
 }
 
 static void
@@ -1134,13 +1304,13 @@ dzn_descriptor_set_ptr_write_sampler_desc(struct dzn_device *device,
 }
 
 static uint32_t
-dzn_descriptor_set_ptr_get_dynamic_buffer_idx(const struct dzn_descriptor_set_layout *layout,
-                                              const struct dzn_descriptor_set_ptr *ptr)
+dzn_descriptor_set_ptr_get_buffer_idx(const struct dzn_descriptor_set_layout *layout,
+                                      const struct dzn_descriptor_set_ptr *ptr)
 {
    if (ptr->binding == ~0)
       return ~0;
 
-   uint32_t base = layout->bindings[ptr->binding].dynamic_buffer_idx;
+   uint32_t base = layout->bindings[ptr->binding].buffer_idx;
 
    if (base == ~0)
       return ~0;
@@ -1149,26 +1319,41 @@ dzn_descriptor_set_ptr_get_dynamic_buffer_idx(const struct dzn_descriptor_set_la
 }
 
 static void
-dzn_descriptor_set_write_dynamic_buffer_desc(struct dzn_descriptor_set *set,
+dzn_descriptor_set_write_dynamic_buffer_desc(struct dzn_device *device,
+                                             struct dzn_descriptor_set *set,
                                              uint32_t dynamic_buffer_idx,
                                              const struct dzn_buffer_desc *info)
 {
    if (dynamic_buffer_idx == ~0)
       return;
 
+   if (device->bindless) {
+      if (!need_custom_buffer_descriptor(device, info)) {
+         if (*info->bindless_descriptor_slot >= 0)
+            dzn_device_descriptor_heap_free_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, *info->bindless_descriptor_slot);
+      } else {
+         if (*info->bindless_descriptor_slot < 0)
+            *info->bindless_descriptor_slot =
+            dzn_device_descriptor_heap_alloc_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+         dzn_descriptor_heap_write_buffer_desc(device, &device->device_heaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].heap,
+                                               *info->bindless_descriptor_slot, info->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, info);
+      }
+   }
+
    assert(dynamic_buffer_idx < set->layout->dynamic_buffers.count);
    set->dynamic_buffers[dynamic_buffer_idx] = *info;
 }
 
 static void
-dzn_descriptor_set_ptr_write_dynamic_buffer_desc(struct dzn_descriptor_set *set,
+dzn_descriptor_set_ptr_write_dynamic_buffer_desc(struct dzn_device *device,
+                                                 struct dzn_descriptor_set *set,
                                                  const struct dzn_descriptor_set_ptr *ptr,
                                                  const struct dzn_buffer_desc *info)
 {
    uint32_t dynamic_buffer_idx =
-      dzn_descriptor_set_ptr_get_dynamic_buffer_idx(set->layout, ptr);
+      dzn_descriptor_set_ptr_get_buffer_idx(set->layout, ptr);
 
-   dzn_descriptor_set_write_dynamic_buffer_desc(set, dynamic_buffer_idx, info);
+   dzn_descriptor_set_write_dynamic_buffer_desc(device, set, dynamic_buffer_idx, info);
 }
 
 static VkDescriptorType
@@ -1194,6 +1379,14 @@ dzn_descriptor_set_write_image_view_desc(struct dzn_device *device,
 
    if (heap_offset == ~0)
       return;
+
+   if (device->bindless) {
+      dzn_bindless_descriptor_set_write_image_view_desc(set->pool->bindless.map,
+                                                        desc_type,
+                                                        set->heap_offsets[0] + heap_offset,
+                                                        iview);
+      return;
+   }
 
    bool primary_writable = desc_type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 
@@ -1242,6 +1435,14 @@ dzn_descriptor_set_write_buffer_view_desc(struct dzn_device *device,
    if (heap_offset == ~0)
       return;
 
+   if (device->bindless) {
+      dzn_bindless_descriptor_set_write_buffer_view_desc(set->pool->bindless.map,
+                                                         desc_type,
+                                                         set->heap_offsets[0] + heap_offset,
+                                                         bview);
+      return;
+   }
+
    D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
    bool primary_writable = desc_type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
 
@@ -1289,6 +1490,14 @@ dzn_descriptor_set_write_buffer_desc(struct dzn_device *device,
    if (heap_offset == ~0)
       return;
 
+   if (device->bindless) {
+      dzn_bindless_descriptor_set_write_buffer_desc(device,
+                                                    set->pool->bindless.map,
+                                                    set->heap_offsets[0] + heap_offset,
+                                                    bdesc);
+      return;
+   }
+
    bool primary_writable = desc_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
    dzn_descriptor_heap_write_buffer_desc(device, &set->pool->heaps[type],
@@ -1320,7 +1529,7 @@ dzn_descriptor_set_ptr_write_buffer_desc(struct dzn_device *device,
    dzn_descriptor_set_write_buffer_desc(device, desc_type, set, heap_offset, alt_heap_offset, bdesc);
 }
 
-static void
+static VkResult
 dzn_descriptor_set_init(struct dzn_descriptor_set *set,
                         struct dzn_device *device,
                         struct dzn_descriptor_pool *pool,
@@ -1328,6 +1537,15 @@ dzn_descriptor_set_init(struct dzn_descriptor_set *set,
                         bool reuse)
 {
    vk_object_base_init(&device->vk, &set->base, VK_OBJECT_TYPE_DESCRIPTOR_SET);
+
+   if (device->bindless && layout->buffer_count) {
+      set->buffer_heap_slots = malloc(sizeof(int) * layout->buffer_count);
+      if (!set->buffer_heap_slots) {
+         vk_object_base_finish(&set->base);
+         return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
+      memset(set->buffer_heap_slots, 0xff, sizeof(int) * layout->buffer_count);
+   }
 
    set->pool = pool;
    set->layout = layout;
@@ -1360,12 +1578,21 @@ dzn_descriptor_set_init(struct dzn_descriptor_set *set,
          }
       }
    }
+   return VK_SUCCESS;
 }
 
 static void
 dzn_descriptor_set_finish(struct dzn_descriptor_set *set)
 {
    vk_object_base_finish(&set->base);
+   if (set->buffer_heap_slots) {
+      struct dzn_device *device = container_of(set->base.device, struct dzn_device, vk);
+      for (uint32_t i = 0; i < set->layout->buffer_count; ++i)
+         dzn_device_descriptor_heap_free_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+                                              set->buffer_heap_slots[i]);
+   }
+   free(set->buffer_heap_slots);
+   set->buffer_heap_slots = NULL;
    set->pool = NULL;
    set->layout = NULL;
 }
@@ -1379,9 +1606,14 @@ dzn_descriptor_pool_destroy(struct dzn_descriptor_pool *pool,
 
    struct dzn_device *device = container_of(pool->base.device, struct dzn_device, vk);
 
-   dzn_foreach_pool_type (type) {
-      if (pool->desc_count[type])
-         dzn_descriptor_heap_finish(&pool->heaps[type]);
+   if (device->bindless) {
+      if (pool->bindless.buf)
+         ID3D12Resource_Release(pool->bindless.buf);
+   } else {
+      dzn_foreach_pool_type(type) {
+         if (pool->desc_count[type])
+            dzn_descriptor_heap_finish(&pool->heaps[type]);
+      }
    }
 
    vk_object_base_finish(&pool->base);
@@ -1412,43 +1644,75 @@ dzn_descriptor_pool_create(struct dzn_device *device,
       VkDescriptorType type = pCreateInfo->pPoolSizes[p].type;
       uint32_t num_desc = pCreateInfo->pPoolSizes[p].descriptorCount;
 
-      switch (type) {
-      case VK_DESCRIPTOR_TYPE_SAMPLER:
-         pool->desc_count[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER] += num_desc;
-         break;
-      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-         pool->desc_count[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] += num_desc;
-         pool->desc_count[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER] += num_desc;
-         break;
-      case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-      case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-      case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-         pool->desc_count[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] += num_desc;
-         break;
-      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-      case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-         /* Reserve one UAV and one SRV slot for those. */
-         pool->desc_count[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] += num_desc * 2;
-         break;
-      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-         break;
-      default:
-         unreachable("Unsupported desc type");
+      if (device->bindless) {
+         switch (type) {
+         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+            break;
+         default:
+            pool->desc_count[0] += num_desc;
+            break;
+         }
+      } else {
+         switch (type) {
+         case VK_DESCRIPTOR_TYPE_SAMPLER:
+            pool->desc_count[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER] += num_desc;
+            break;
+         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+            pool->desc_count[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] += num_desc;
+            pool->desc_count[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER] += num_desc;
+            break;
+         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+            pool->desc_count[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] += num_desc;
+            break;
+         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+            /* Reserve one UAV and one SRV slot for those. */
+            pool->desc_count[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] += num_desc * 2;
+            break;
+         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+            break;
+         default:
+            unreachable("Unsupported desc type");
+         }
       }
    }
 
-   dzn_foreach_pool_type (type) {
-      if (!pool->desc_count[type])
-         continue;
+   if (device->bindless) {
+      if (pool->desc_count[0]) {
+         /* Going to raw APIs to avoid allocating descriptors for this */
+         D3D12_RESOURCE_DESC buf_desc = {
+            .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+            .Width = pool->desc_count[0] * sizeof(struct dxil_spirv_bindless_entry),
+            .Height = 1, .DepthOrArraySize = 1,
+            .MipLevels = 1, .SampleDesc = {.Count = 1},
+            .Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR
+         };
+         D3D12_HEAP_PROPERTIES heap_props = { .Type = D3D12_HEAP_TYPE_UPLOAD };
+         if (FAILED(ID3D12Device_CreateCommittedResource(device->dev, &heap_props, 0, &buf_desc, D3D12_RESOURCE_STATE_GENERIC_READ,
+                                                         NULL, &IID_ID3D12Resource, (void **)&pool->bindless.buf))) {
+            dzn_descriptor_pool_destroy(pool, pAllocator);
+            return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         }
+         pool->bindless.gpuva = ID3D12Resource_GetGPUVirtualAddress(pool->bindless.buf);
+         ID3D12Resource_Map(pool->bindless.buf, 0, NULL, (void **)&pool->bindless.map);
+      }
+   } else {
+      dzn_foreach_pool_type(type) {
+         if (!pool->desc_count[type])
+            continue;
 
-      VkResult result =
-         dzn_descriptor_heap_init(&pool->heaps[type], device, type, pool->desc_count[type], false);
-      if (result != VK_SUCCESS) {
-         dzn_descriptor_pool_destroy(pool, pAllocator);
-         return result;
+         VkResult result =
+            dzn_descriptor_heap_init(&pool->heaps[type], device, type, pool->desc_count[type], false);
+         if (result != VK_SUCCESS) {
+            dzn_descriptor_pool_destroy(pool, pAllocator);
+            return result;
+         }
       }
    }
 
@@ -1658,7 +1922,12 @@ dzn_AllocateDescriptorSets(VkDevice dev,
          }
       }
 
-      dzn_descriptor_set_init(set, device, pool, layout, is_reuse);
+      VkResult result = dzn_descriptor_set_init(set, device, pool, layout, is_reuse);
+      if (result != VK_SUCCESS) {
+         dzn_FreeDescriptorSets(dev, pAllocateInfo->descriptorPool, i, pDescriptorSets);
+         return result;
+      }
+
       pool->used_set_count = MAX2(pool->used_set_count, set_idx + 1);
       dzn_foreach_pool_type(type)
          pool->used_desc_count[type] += layout->range_desc_count[type];
@@ -1785,7 +2054,8 @@ dzn_descriptor_set_write(struct dzn_device *device,
          struct dzn_buffer_desc desc = {
             pDescriptorWrite->descriptorType,
             dzn_buffer_from_handle(binfo->buffer),
-            binfo->range, binfo->offset
+            binfo->range, binfo->offset,
+            &set->buffer_heap_slots[dzn_descriptor_set_ptr_get_buffer_idx(set->layout, &ptr)]
          };
 
          if (desc.buffer)
@@ -1804,11 +2074,12 @@ dzn_descriptor_set_write(struct dzn_device *device,
          struct dzn_buffer_desc desc = {
             pDescriptorWrite->descriptorType,
             dzn_buffer_from_handle(binfo->buffer),
-            binfo->range, binfo->offset
+            binfo->range, binfo->offset,
+            &set->buffer_heap_slots[set->layout->bindings[ptr.binding].buffer_idx]
          };
 
          if (desc.buffer)
-            dzn_descriptor_set_ptr_write_dynamic_buffer_desc(set, &ptr, &desc);
+            dzn_descriptor_set_ptr_write_dynamic_buffer_desc(device, set, &ptr, &desc);
 
          d++;
       }
@@ -1870,9 +2141,9 @@ dzn_descriptor_set_copy(struct dzn_device *device,
       if (src_type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
           src_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
          uint32_t src_idx =
-            dzn_descriptor_set_ptr_get_dynamic_buffer_idx(src_set->layout, &src_ptr);
+            dzn_descriptor_set_ptr_get_buffer_idx(src_set->layout, &src_ptr);
          uint32_t dst_idx =
-            dzn_descriptor_set_ptr_get_dynamic_buffer_idx(dst_set->layout, &dst_ptr);
+            dzn_descriptor_set_ptr_get_buffer_idx(dst_set->layout, &dst_ptr);
 
          memcpy(&dst_set->dynamic_buffers[dst_idx],
                 &src_set->dynamic_buffers[src_idx],
@@ -1889,25 +2160,36 @@ dzn_descriptor_set_copy(struct dzn_device *device,
                continue;
             }
 
-            dzn_descriptor_heap_copy(device,
-                                     &dst_set->pool->heaps[type],
-                                     dst_set->heap_offsets[type] + dst_heap_offset,
-                                     &src_set->pool->heaps[type],
-                                     src_set->heap_offsets[type] + src_heap_offset,
-                                     count, type);
+            src_heap_offset += src_set->heap_offsets[type];
+            dst_heap_offset += dst_set->heap_offsets[type];
+
+            if (device->bindless) {
+               memcpy(&dst_set->pool->bindless.map[dst_heap_offset],
+                      &src_set->pool->bindless.map[src_heap_offset],
+                      sizeof(src_set->pool->bindless.map[0]) * count);
+               /* There's never a reason to loop and memcpy again for bindless */
+               break;
+            } else {
+               dzn_descriptor_heap_copy(device,
+                                        &dst_set->pool->heaps[type],
+                                        dst_heap_offset,
+                                        &src_set->pool->heaps[type],
+                                        src_heap_offset,
+                                        count, type);
+            }
 
             if (dzn_descriptor_type_depends_on_shader_usage(src_type, device->bindless)) {
-               src_heap_offset =
+               src_heap_offset = dst_set->heap_offsets[type] +
                   dzn_descriptor_set_ptr_get_heap_offset(src_set->layout, type, &src_ptr, true, device->bindless);
-               dst_heap_offset =
+               dst_heap_offset = src_set->heap_offsets[type] +
                   dzn_descriptor_set_ptr_get_heap_offset(dst_set->layout, type, &dst_ptr, true, device->bindless);
                assert(src_heap_offset != ~0);
                assert(dst_heap_offset != ~0);
                dzn_descriptor_heap_copy(device,
                                         &dst_set->pool->heaps[type],
-                                        dst_set->heap_offsets[type] + dst_heap_offset,
+                                        dst_heap_offset,
                                         &src_set->pool->heaps[type],
-                                        src_set->heap_offsets[type] + src_heap_offset,
+                                        src_heap_offset,
                                         count, type);
             }
          }
@@ -2024,11 +2306,12 @@ dzn_descriptor_update_template_create(struct dzn_device *device,
                                                       &ptr, false, device->bindless);
          }
 
-         if (type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
-             type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
-            entry->dynamic_buffer_idx =
-               dzn_descriptor_set_ptr_get_dynamic_buffer_idx(set_layout, &ptr);
+         if (is_dynamic_desc_type(type)) {
+            entry->buffer_idx = dzn_descriptor_set_ptr_get_buffer_idx(set_layout, &ptr);
          } else if (type != VK_DESCRIPTOR_TYPE_SAMPLER) {
+            if (is_buffer_desc_type_without_view(type))
+               entry->buffer_idx = dzn_descriptor_set_ptr_get_buffer_idx(set_layout, &ptr);
+
             entry->heap_offsets.cbv_srv_uav =
                dzn_descriptor_set_ptr_get_heap_offset(set_layout,
                                                       D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
@@ -2157,11 +2440,13 @@ dzn_UpdateDescriptorSetWithTemplate(VkDevice _device,
             struct dzn_buffer_desc desc = {
                entry->type,
                dzn_buffer_from_handle(info->buffer),
-               info->range, info->offset
+               info->range, info->offset,
+               &set->buffer_heap_slots[entry->buffer_idx],
             };
 
             if (desc.buffer)
-               dzn_descriptor_set_write_buffer_desc(device, entry->type, set, heap_offset, alt_heap_offset, &desc);
+               dzn_descriptor_set_write_buffer_desc(device, entry->type, set, heap_offset,
+                                                    alt_heap_offset, &desc);
          }
          break;
 
@@ -2170,16 +2455,17 @@ dzn_UpdateDescriptorSetWithTemplate(VkDevice _device,
          for (uint32_t d = 0; d < entry->desc_count; d++) {
             const VkDescriptorBufferInfo *info = (const VkDescriptorBufferInfo *)
                dzn_descriptor_update_template_get_desc_data(templ, e, d, pData);
-            uint32_t dyn_buf_idx = entry->dynamic_buffer_idx + d;
+            uint32_t dyn_buf_idx = entry->buffer_idx + d;
 
             struct dzn_buffer_desc desc = {
                entry->type,
                dzn_buffer_from_handle(info->buffer),
-               info->range, info->offset
+               info->range, info->offset,
+               &set->buffer_heap_slots[entry->buffer_idx]
             };
 
             if (desc.buffer)
-               dzn_descriptor_set_write_dynamic_buffer_desc(set, dyn_buf_idx, &desc);
+               dzn_descriptor_set_write_dynamic_buffer_desc(device, set, dyn_buf_idx, &desc);
          }
          break;
 

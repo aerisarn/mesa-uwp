@@ -395,6 +395,9 @@ struct dzn_buffer_desc {
    const struct dzn_buffer *buffer;
    VkDeviceSize range;
    VkDeviceSize offset;
+   /* Points to an array owned by the descriptor set.
+    * Value is -1 if the buffer's pre-allocated descriptor is used. */
+   int *bindless_descriptor_slot;
 };
 
 #define MAX_DESCS_PER_SAMPLER_HEAP 2048u
@@ -665,6 +668,7 @@ struct dzn_cmd_buffer {
    D3D12_BARRIER_ACCESS valid_access;
 };
 
+struct dxil_spirv_bindless_entry;
 struct dzn_descriptor_pool {
    struct vk_object_base base;
    VkAllocationCallbacks alloc;
@@ -672,7 +676,14 @@ struct dzn_descriptor_pool {
    uint32_t set_count;
    uint32_t used_set_count;
    struct dzn_descriptor_set *sets;
-   struct dzn_descriptor_heap heaps[NUM_POOL_TYPES];
+   union {
+      struct dzn_descriptor_heap heaps[NUM_POOL_TYPES];
+      struct {
+         ID3D12Resource *buf;
+         struct dxil_spirv_bindless_entry *map;
+         uint64_t gpuva;
+      } bindless;
+   };
    uint32_t desc_count[NUM_POOL_TYPES];
    uint32_t used_desc_count[NUM_POOL_TYPES];
    uint32_t free_offset[NUM_POOL_TYPES];
@@ -690,8 +701,9 @@ struct dzn_descriptor_set_layout_binding {
       /* For sampler types, index into the set layout's immutable sampler list,
        * or ~0 for static samplers or dynamic samplers. */
       uint32_t immutable_sampler_idx;
-      /* For dynamic buffer types, index into the set's dynamic buffer list */
-      uint32_t dynamic_buffer_idx;
+      /* For dynamic buffer types, index into the set's dynamic buffer list.
+       * For non-dynamic buffer types, index into the set's buffer descriptor slot list when bindless. */
+      uint32_t buffer_idx;
    };
 };
 
@@ -740,6 +752,7 @@ struct dzn_descriptor_set_layout {
       uint32_t count;
       uint32_t range_offset;
    } dynamic_buffers;
+   uint32_t buffer_count;
    uint32_t stages;
 
    uint32_t binding_count;
@@ -756,6 +769,8 @@ struct dzn_descriptor_set {
    uint32_t heap_sizes[NUM_POOL_TYPES];
    /* Layout (and pool) is null for a freed descriptor set */
    const struct dzn_descriptor_set_layout *layout;
+   /* When bindless, stores dynamically-allocated heap slots for buffers */
+   int *buffer_heap_slots;
 };
 
 struct dzn_pipeline_layout_set {
@@ -781,11 +796,13 @@ struct dzn_pipeline_layout {
    uint32_t set_count;
    /* How much space needs to be allocated to copy descriptors during cmdbuf recording? */
    uint32_t desc_count[NUM_POOL_TYPES];
+   uint32_t dynamic_buffer_count;
    struct {
       uint32_t param_count;
       uint32_t sets_param_count;
       uint32_t sysval_cbv_param_idx;
       uint32_t push_constant_cbv_param_idx;
+      uint32_t dynamic_buffer_bindless_param_idx;
       D3D12_DESCRIPTOR_HEAP_TYPE type[MAX_SHADER_VISIBILITIES];
       ID3D12RootSignature *sig;
    } root;
@@ -797,15 +814,13 @@ struct dzn_pipeline_layout {
 struct dzn_descriptor_update_template_entry {
    VkDescriptorType type;
    uint32_t desc_count;
-   union {
-      struct {
-         uint32_t cbv_srv_uav;
-         union {
-            uint32_t sampler, extra_srv;
-         };
-      } heap_offsets;
-      uint32_t dynamic_buffer_idx;
-   };
+   uint32_t buffer_idx;
+   struct {
+      uint32_t cbv_srv_uav;
+      union {
+         uint32_t sampler, extra_srv;
+      };
+   } heap_offsets;
    struct {
       size_t offset;
       size_t stride;
@@ -861,11 +876,13 @@ struct dzn_pipeline {
       uint32_t sets_param_count;
       uint32_t sysval_cbv_param_idx;
       uint32_t push_constant_cbv_param_idx;
+      uint32_t dynamic_buffer_bindless_param_idx;
       D3D12_DESCRIPTOR_HEAP_TYPE type[MAX_SHADER_VISIBILITIES];
       ID3D12RootSignature *sig;
    } root;
    struct dzn_pipeline_layout_set sets[MAX_SETS];
    uint32_t desc_count[NUM_POOL_TYPES];
+   uint32_t dynamic_buffer_count;
    ID3D12PipelineState *state;
 };
 
