@@ -1567,9 +1567,11 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 	</reg32>
 </domain>
 
-<domain name="CP_EVENT_WRITE" width="32">
+<domain varset="chip" name="CP_EVENT_WRITE" width="32">
 	<reg32 offset="0" name="0">
 		<bitfield name="EVENT" low="0" high="7" type="vgt_event_type"/>
+		<!-- write seqno, not applicable to all events, leads to a hang on unsupported ones -->
+		<bitfield name="SEQNO" pos="27" type="boolean" variants="A7XX-"/>
 		<!-- when set, write back timestamp instead of value from packet: -->
 		<bitfield name="TIMESTAMP" pos="30" type="boolean"/>
 		<bitfield name="IRQ" pos="31" type="boolean"/>
