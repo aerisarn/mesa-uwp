@@ -11858,12 +11858,11 @@ calc_nontrivial_instance_id(Builder& bld, const struct radv_shader_args* args, u
 }
 
 void
-select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shader_config* config,
-                 const struct aco_compiler_options* options,
-                 const struct aco_shader_info* info,
+select_vs_prolog(Program* program, const struct aco_vs_prolog_info* pinfo, ac_shader_config* config,
+                 const struct aco_compiler_options* options, const struct aco_shader_info* info,
                  const struct radv_shader_args* args, unsigned* num_preserved_sgprs)
 {
-   assert(key->num_attributes > 0);
+   assert(pinfo->num_attributes > 0);
 
    /* This should be enough for any shader/stage. */
    unsigned max_user_sgprs = options->gfx_level >= GFX9 ? 32 : 16;
@@ -11881,12 +11880,12 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
 
    Builder bld(program, block);
 
-   block->instructions.reserve(16 + key->num_attributes * 4);
+   block->instructions.reserve(16 + pinfo->num_attributes * 4);
 
    bld.sopp(aco_opcode::s_setprio, -1u, 0x3u);
 
-   uint32_t attrib_mask = BITFIELD_MASK(key->num_attributes);
-   bool has_nontrivial_divisors = key->state.nontrivial_divisors & attrib_mask;
+   uint32_t attrib_mask = BITFIELD_MASK(pinfo->num_attributes);
+   bool has_nontrivial_divisors = pinfo->state.nontrivial_divisors & attrib_mask;
 
    wait_imm lgkm_imm;
    lgkm_imm.lgkm = 0;
@@ -11902,11 +11901,11 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
 
    PhysReg attributes_start(256 + args->ac.num_vgprs_used);
    /* choose vgprs that won't be used for anything else until the last attribute load */
-   PhysReg vertex_index(attributes_start.reg() + key->num_attributes * 4 - 1);
-   PhysReg instance_index(attributes_start.reg() + key->num_attributes * 4 - 2);
-   PhysReg start_instance_vgpr(attributes_start.reg() + key->num_attributes * 4 - 3);
-   PhysReg nontrivial_tmp_vgpr0(attributes_start.reg() + key->num_attributes * 4 - 4);
-   PhysReg nontrivial_tmp_vgpr1(attributes_start.reg() + key->num_attributes * 4);
+   PhysReg vertex_index(attributes_start.reg() + pinfo->num_attributes * 4 - 1);
+   PhysReg instance_index(attributes_start.reg() + pinfo->num_attributes * 4 - 2);
+   PhysReg start_instance_vgpr(attributes_start.reg() + pinfo->num_attributes * 4 - 3);
+   PhysReg nontrivial_tmp_vgpr0(attributes_start.reg() + pinfo->num_attributes * 4 - 4);
+   PhysReg nontrivial_tmp_vgpr1(attributes_start.reg() + pinfo->num_attributes * 4);
 
    bld.sop1(aco_opcode::s_mov_b32, Definition(vertex_buffers, s1),
             get_arg_fixed(args, args->ac.vertex_buffers));
@@ -11920,7 +11919,7 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
 
    /* calculate vgpr requirements */
    unsigned num_vgprs = attributes_start.reg() - 256;
-   num_vgprs += key->num_attributes * 4;
+   num_vgprs += pinfo->num_attributes * 4;
    if (has_nontrivial_divisors && program->gfx_level <= GFX8)
       num_vgprs++; /* make space for nontrivial_tmp_vgpr1 */
    unsigned num_sgprs = 0;
@@ -11928,14 +11927,14 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
    const struct ac_vtx_format_info* vtx_info_table =
       ac_get_vtx_format_info_table(GFX8, CHIP_POLARIS10);
 
-   for (unsigned loc = 0; loc < key->num_attributes;) {
+   for (unsigned loc = 0; loc < pinfo->num_attributes;) {
       unsigned num_descs =
-         load_vb_descs(bld, desc, Operand(vertex_buffers, s2), loc, key->num_attributes - loc);
+         load_vb_descs(bld, desc, Operand(vertex_buffers, s2), loc, pinfo->num_attributes - loc);
       num_sgprs = MAX2(num_sgprs, desc.advance(num_descs * 16u).reg());
 
       if (loc == 0) {
          /* perform setup while we load the descriptors */
-         if (key->is_ngg || key->next_stage != MESA_SHADER_VERTEX) {
+         if (pinfo->is_ngg || pinfo->next_stage != MESA_SHADER_VERTEX) {
             Operand count = get_arg_fixed(args, args->ac.merged_wave_info);
             bld.sop2(aco_opcode::s_bfm_b64, Definition(exec, s2), count, Operand::c32(0u));
             if (program->wave_size == 64) {
@@ -11948,12 +11947,11 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
 
          bool needs_instance_index = false;
          bool needs_start_instance = false;
-         u_foreach_bit(i, key->state.instance_rate_inputs & attrib_mask)
-         {
-            needs_instance_index |= key->state.divisors[i] == 1;
-            needs_start_instance |= key->state.divisors[i] == 0;
+         u_foreach_bit (i, pinfo->state.instance_rate_inputs & attrib_mask) {
+            needs_instance_index |= pinfo->state.divisors[i] == 1;
+            needs_start_instance |= pinfo->state.divisors[i] == 0;
          }
-         bool needs_vertex_index = ~key->state.instance_rate_inputs & attrib_mask;
+         bool needs_vertex_index = ~pinfo->state.instance_rate_inputs & attrib_mask;
          if (needs_vertex_index)
             bld.vadd32(Definition(vertex_index, v1), get_arg_fixed(args, args->ac.base_vertex),
                        get_arg_fixed(args, args->ac.vertex_id), false, Operand(s2), true);
@@ -11971,13 +11969,13 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
 
          /* calculate index */
          Operand fetch_index = Operand(vertex_index, v1);
-         if (key->state.instance_rate_inputs & (1u << loc)) {
-            uint32_t divisor = key->state.divisors[loc];
+         if (pinfo->state.instance_rate_inputs & (1u << loc)) {
+            uint32_t divisor = pinfo->state.divisors[loc];
             if (divisor) {
                fetch_index = instance_id;
-               if (key->state.nontrivial_divisors & (1u << loc)) {
+               if (pinfo->state.nontrivial_divisors & (1u << loc)) {
                   unsigned index =
-                     util_bitcount(key->state.nontrivial_divisors & BITFIELD_MASK(loc));
+                     util_bitcount(pinfo->state.nontrivial_divisors & BITFIELD_MASK(loc));
                   fetch_index = calc_nontrivial_instance_id(
                      bld, args, index, instance_id, start_instance, prolog_input,
                      nontrivial_tmp_vgpr0, nontrivial_tmp_vgpr1);
@@ -11991,15 +11989,15 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
 
          /* perform load */
          PhysReg cur_desc = desc.advance(i * 16);
-         if ((key->misaligned_mask & (1u << loc))) {
-            const struct ac_vtx_format_info* vtx_info = &vtx_info_table[key->state.formats[loc]];
+         if ((pinfo->misaligned_mask & (1u << loc))) {
+            const struct ac_vtx_format_info* vtx_info = &vtx_info_table[pinfo->state.formats[loc]];
 
             assert(vtx_info->has_hw_format & 0x1);
             unsigned dfmt = vtx_info->hw_format[0] & 0xf;
             unsigned nfmt = vtx_info->hw_format[0] >> 4;
 
             for (unsigned j = 0; j < vtx_info->num_channels; j++) {
-               bool post_shuffle = key->state.post_shuffle & (1u << loc);
+               bool post_shuffle = pinfo->state.post_shuffle & (1u << loc);
                unsigned offset = vtx_info->chan_byte_size * (post_shuffle && j < 3 ? 2 - j : j);
 
                /* Use MUBUF to workaround hangs for byte-aligned dword loads. The Vulkan spec
@@ -12045,7 +12043,7 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
       }
    }
 
-   if (key->state.alpha_adjust_lo | key->state.alpha_adjust_hi) {
+   if (pinfo->state.alpha_adjust_lo | pinfo->state.alpha_adjust_hi) {
       wait_imm vm_imm;
       vm_imm.vm = 0;
       bld.sopp(aco_opcode::s_waitcnt, -1, vm_imm.pack(program->gfx_level));
@@ -12053,12 +12051,11 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
 
    /* For 2_10_10_10 formats the alpha is handled as unsigned by pre-vega HW.
     * so we may need to fix it up. */
-   u_foreach_bit(loc, (key->state.alpha_adjust_lo | key->state.alpha_adjust_hi))
-   {
+   u_foreach_bit (loc, (pinfo->state.alpha_adjust_lo | pinfo->state.alpha_adjust_hi)) {
       PhysReg alpha(attributes_start.reg() + loc * 4u + 3);
 
-      unsigned alpha_adjust = (key->state.alpha_adjust_lo >> loc) & 0x1;
-      alpha_adjust |= ((key->state.alpha_adjust_hi >> loc) & 0x1) << 1;
+      unsigned alpha_adjust = (pinfo->state.alpha_adjust_lo >> loc) & 0x1;
+      alpha_adjust |= ((pinfo->state.alpha_adjust_hi >> loc) & 0x1) << 1;
 
       if (alpha_adjust == AC_ALPHA_ADJUST_SSCALED)
          bld.vop1(aco_opcode::v_cvt_u32_f32, Definition(alpha, v1), Operand(alpha, v1));
@@ -12104,9 +12101,8 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shade
 }
 
 void
-select_ps_epilog(Program* program, const struct aco_ps_epilog_key* key, ac_shader_config* config,
-                 const struct aco_compiler_options* options,
-                 const struct aco_shader_info* info,
+select_ps_epilog(Program* program, const struct aco_ps_epilog_info* einfo, ac_shader_config* config,
+                 const struct aco_compiler_options* options, const struct aco_shader_info* info,
                  const struct radv_shader_args* args)
 {
    isel_context ctx = setup_isel_context(program, 0, NULL, config, options, info, args, true);
@@ -12123,7 +12119,7 @@ select_ps_epilog(Program* program, const struct aco_ps_epilog_key* key, ac_shade
    uint8_t exported_mrts = 0;
 
    for (unsigned i = 0; i < 8; i++) {
-      unsigned col_format = (key->spi_shader_col_format >> (i * 4)) & 0xf;
+      unsigned col_format = (einfo->spi_shader_col_format >> (i * 4)) & 0xf;
 
       if (col_format == V_028714_SPI_SHADER_ZERO)
          continue;
@@ -12133,9 +12129,9 @@ select_ps_epilog(Program* program, const struct aco_ps_epilog_key* key, ac_shade
       out.slot = i;
       out.write_mask = 0xf;
       out.col_format = col_format;
-      out.is_int8 = (key->color_is_int8 >> i) & 1;
-      out.is_int10 = (key->color_is_int10 >> i) & 1;
-      out.enable_mrt_output_nan_fixup = (key->enable_mrt_output_nan_fixup >> i) & 1;
+      out.is_int8 = (einfo->color_is_int8 >> i) & 1;
+      out.is_int10 = (einfo->color_is_int10 >> i) & 1;
+      out.enable_mrt_output_nan_fixup = (einfo->enable_mrt_output_nan_fixup >> i) & 1;
 
       Temp inputs = get_arg(&ctx, ctx.args->ps_epilog_inputs[i]);
       for (unsigned c = 0; c < 4; ++c) {
@@ -12148,7 +12144,7 @@ select_ps_epilog(Program* program, const struct aco_ps_epilog_key* key, ac_shade
    }
 
    if (exported_mrts) {
-      if (ctx.options->gfx_level >= GFX11 && key->mrt0_is_dual_src) {
+      if (ctx.options->gfx_level >= GFX11 && einfo->mrt0_is_dual_src) {
          struct aco_export_mrt* mrt0 = (exported_mrts & BITFIELD_BIT(0)) ? &mrts[0] : NULL;
          struct aco_export_mrt* mrt1 = (exported_mrts & BITFIELD_BIT(1)) ? &mrts[1] : NULL;
          create_fs_dual_src_export_gfx11(&ctx, mrt0, mrt1);

@@ -96,8 +96,8 @@ radv_aco_convert_shader_info(struct aco_shader_info *aco_info,
 #define ASSIGN_VS_STATE_FIELD(x) aco_info->state.x = radv->state->x
 #define ASSIGN_VS_STATE_FIELD_CP(x) memcpy(&aco_info->state.x, &radv->state->x, sizeof(radv->state->x))
 static inline void
-radv_aco_convert_vs_prolog_key(struct aco_vs_prolog_key *aco_info,
-			       const struct radv_vs_prolog_key *radv)
+radv_aco_convert_vs_prolog_key(struct aco_vs_prolog_info *aco_info,
+                               const struct radv_vs_prolog_key *radv)
 {
    ASSIGN_VS_STATE_FIELD(instance_rate_inputs);
    ASSIGN_VS_STATE_FIELD(nontrivial_divisors);
@@ -113,8 +113,8 @@ radv_aco_convert_vs_prolog_key(struct aco_vs_prolog_key *aco_info,
 }
 
 static inline void
-radv_aco_convert_ps_epilog_key(struct aco_ps_epilog_key *aco_info,
-			       const struct radv_ps_epilog_key *radv)
+radv_aco_convert_ps_epilog_key(struct aco_ps_epilog_info *aco_info,
+                               const struct radv_ps_epilog_key *radv)
 {
    ASSIGN_FIELD(spi_shader_col_format);
    ASSIGN_FIELD(color_is_int8);

@@ -270,11 +270,9 @@ aco_compile_shader(const struct aco_compiler_options* options,
 
 void
 aco_compile_vs_prolog(const struct aco_compiler_options* options,
-                      const struct aco_shader_info* info,
-                      const struct aco_vs_prolog_key* key,
-                      const struct radv_shader_args* args,
-                      aco_shader_part_callback *build_prolog,
-                      void **binary)
+                      const struct aco_shader_info* info, const struct aco_vs_prolog_info* pinfo,
+                      const struct radv_shader_args* args, aco_shader_part_callback* build_prolog,
+                      void** binary)
 {
    aco::init();
 
@@ -287,7 +285,7 @@ aco_compile_vs_prolog(const struct aco_compiler_options* options,
 
    /* create IR */
    unsigned num_preserved_sgprs;
-   aco::select_vs_prolog(program.get(), key, &config, options, info, args, &num_preserved_sgprs);
+   aco::select_vs_prolog(program.get(), pinfo, &config, options, info, args, &num_preserved_sgprs);
    aco::insert_NOPs(program.get());
 
    if (options->dump_shader)
@@ -316,10 +314,8 @@ aco_compile_vs_prolog(const struct aco_compiler_options* options,
 
 void
 aco_compile_ps_epilog(const struct aco_compiler_options* options,
-                      const struct aco_shader_info* info,
-                      const struct aco_ps_epilog_key* key,
-                      const struct radv_shader_args* args,
-                      aco_shader_part_callback* build_epilog,
+                      const struct aco_shader_info* info, const struct aco_ps_epilog_info* pinfo,
+                      const struct radv_shader_args* args, aco_shader_part_callback* build_epilog,
                       void** binary)
 {
    aco::init();
@@ -335,7 +331,7 @@ aco_compile_ps_epilog(const struct aco_compiler_options* options,
    program->debug.private_data = options->debug.private_data;
 
    /* Instruction selection */
-   aco::select_ps_epilog(program.get(), key, &config, options, info, args);
+   aco::select_ps_epilog(program.get(), pinfo, &config, options, info, args);
 
    aco_postprocess_shader(options, info, program);
 

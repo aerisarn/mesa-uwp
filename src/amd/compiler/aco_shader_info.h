@@ -52,7 +52,7 @@ struct aco_vs_input_state {
    uint8_t formats[ACO_MAX_VERTEX_ATTRIBS];
 };
 
-struct aco_vs_prolog_key {
+struct aco_vs_prolog_info {
    struct aco_vs_input_state state;
    unsigned num_attributes;
    uint32_t misaligned_mask;
@@ -131,7 +131,7 @@ enum aco_compiler_debug_level {
    ACO_COMPILER_DEBUG_LEVEL_ERROR,
 };
 
-struct aco_ps_epilog_key {
+struct aco_ps_epilog_info {
    uint32_t spi_shader_col_format;
 
    /* Bitmasks, each bit represents one of the 8 MRTs. */
@@ -160,7 +160,7 @@ struct aco_stage_input {
    } tcs;
 
    struct {
-      struct aco_ps_epilog_key epilog;
+      struct aco_ps_epilog_info epilog;
 
       /* Used to export alpha through MRTZ for alpha-to-coverage (GFX11+). */
       bool alpha_to_coverage_via_mrtz;
