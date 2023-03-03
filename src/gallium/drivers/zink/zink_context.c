@@ -4108,14 +4108,6 @@ zink_resource_buffer_barrier2(struct zink_context *ctx, struct zink_resource *re
       zink_resource_copies_reset(res);
 }
 
-bool
-zink_resource_needs_barrier(struct zink_resource *res, VkImageLayout layout, VkAccessFlags flags, VkPipelineStageFlags pipeline)
-{
-   if (res->base.b.target == PIPE_BUFFER)
-      return zink_resource_buffer_needs_barrier(res, flags, pipeline);
-   return zink_resource_image_needs_barrier(res, layout, flags, pipeline);
-}
-
 static void
 zink_flush(struct pipe_context *pctx,
            struct pipe_fence_handle **pfence,
