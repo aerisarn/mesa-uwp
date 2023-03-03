@@ -630,6 +630,11 @@ agx_translate_tex_dim(enum pipe_texture_target dim, unsigned samples)
    assert(samples >= 1);
 
    switch (dim) {
+   case PIPE_BUFFER:
+      /* Lowered to 2D */
+      assert(samples == 1);
+      return AGX_TEXTURE_DIMENSION_2D;
+
    case PIPE_TEXTURE_1D:
       assert(samples == 1);
       return AGX_TEXTURE_DIMENSION_1D;
@@ -721,10 +726,27 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
       cfg.swizzle_g = agx_channel_from_pipe(out_swizzle[1]);
       cfg.swizzle_b = agx_channel_from_pipe(out_swizzle[2]);
       cfg.swizzle_a = agx_channel_from_pipe(out_swizzle[3]);
-      cfg.width = rsrc->base.width0;
-      cfg.height = rsrc->base.height0;
-      cfg.first_level = state->u.tex.first_level;
-      cfg.last_level = state->u.tex.last_level;
+
+      if (state->target == PIPE_BUFFER) {
+         unsigned size_el =
+            state->u.buf.size / util_format_get_blocksize(format);
+
+         /* Use a 2D texture to increase the maximum size */
+         cfg.width = 1024;
+         cfg.height = DIV_ROUND_UP(size_el, cfg.width);
+         cfg.first_level = cfg.last_level = 0;
+
+         /* Stash the actual size in an unused part of the texture descriptor,
+          * which we'll read later to implement txs.
+          */
+         cfg.acceleration_buffer = (size_el << 4);
+      } else {
+         cfg.width = rsrc->base.width0;
+         cfg.height = rsrc->base.height0;
+         cfg.first_level = state->u.tex.first_level;
+         cfg.last_level = state->u.tex.last_level;
+      }
+
       cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
       cfg.unk_mipmapped = rsrc->mipmapped;
       cfg.srgb_2_channel = cfg.srgb && util_format_colormask(desc) == 0x3;
@@ -735,7 +757,10 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
       }
 
       if (include_bo) {
-         cfg.address = agx_map_texture_gpu(rsrc, state->u.tex.first_layer);
+         cfg.address = agx_map_texture_gpu(rsrc, first_layer);
+
+         if (state->target == PIPE_BUFFER)
+            cfg.address += state->u.buf.offset;
 
          if (ail_is_compressed(&rsrc->layout)) {
             cfg.acceleration_buffer =
@@ -746,6 +771,8 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
 
       if (state->target == PIPE_TEXTURE_3D) {
          cfg.depth = rsrc->base.depth0;
+      } else if (state->target == PIPE_BUFFER) {
+         cfg.depth = 1;
       } else {
          unsigned layers =
             state->u.tex.last_layer - state->u.tex.first_layer + 1;
@@ -768,7 +795,9 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
       if (rsrc->base.nr_samples > 1)
          cfg.samples = agx_translate_sample_count(rsrc->base.nr_samples);
 
-      if (rsrc->layout.tiling == AIL_TILING_LINEAR) {
+      if (state->target == PIPE_BUFFER) {
+         cfg.stride = (cfg.width * util_format_get_blocksize(format)) - 16;
+      } else if (rsrc->layout.tiling == AIL_TILING_LINEAR) {
          cfg.stride = ail_get_linear_stride_B(&rsrc->layout, 0) - 16;
       } else {
          assert(rsrc->layout.tiling == AIL_TILING_TWIDDLED ||
@@ -1779,7 +1808,11 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
          continue;
       }
 
-      agx_batch_reads(batch, agx_resource(tex->base.texture));
+      struct agx_resource *rsrc = tex->rsrc;
+      agx_batch_reads(batch, tex->rsrc);
+
+      unsigned first_layer =
+         (tex->base.target == PIPE_BUFFER) ? 0 : tex->base.u.tex.first_layer;
 
       /* Without the address */
       struct agx_texture_packed texture = tex->desc;
@@ -1787,12 +1820,15 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
       /* Just the address */
       struct agx_texture_packed texture2;
       agx_pack(&texture2, TEXTURE, cfg) {
-         cfg.address =
-            agx_map_texture_gpu(tex->rsrc, tex->base.u.tex.first_layer);
+         cfg.address = agx_map_texture_gpu(rsrc, first_layer);
 
-         if (ail_is_compressed(&tex->rsrc->layout)) {
+         if (rsrc->base.target == PIPE_BUFFER)
+            cfg.address += tex->base.u.buf.offset;
+
+         if (ail_is_compressed(&rsrc->layout)) {
             cfg.acceleration_buffer =
-               cfg.address + tex->rsrc->layout.metadata_offset_B;
+               agx_map_texture_gpu(rsrc, 0) + rsrc->layout.metadata_offset_B +
+               (first_layer * rsrc->layout.compression_layer_stride_B);
          }
       }
 

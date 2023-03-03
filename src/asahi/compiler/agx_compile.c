@@ -597,7 +597,6 @@ agx_tex_dim(enum glsl_sampler_dim dim, bool array)
 {
    switch (dim) {
    case GLSL_SAMPLER_DIM_1D:
-   case GLSL_SAMPLER_DIM_BUF:
       return array ? AGX_DIM_1D_ARRAY : AGX_DIM_1D;
 
    case GLSL_SAMPLER_DIM_2D:
@@ -614,6 +613,9 @@ agx_tex_dim(enum glsl_sampler_dim dim, bool array)
 
    case GLSL_SAMPLER_DIM_CUBE:
       return array ? AGX_DIM_CUBE_ARRAY : AGX_DIM_CUBE;
+
+   case GLSL_SAMPLER_DIM_BUF:
+      unreachable("Buffer textures should have been lowered");
 
    default:
       unreachable("Invalid sampler dim\n");

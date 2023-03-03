@@ -1275,12 +1275,12 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CONDITIONAL_RENDER_INVERTED:
    case PIPE_CAP_SEAMLESS_CUBE_MAP:
    case PIPE_CAP_SEAMLESS_CUBE_MAP_PER_TEXTURE:
+   case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
       return 1;
 
    case PIPE_CAP_TEXTURE_MULTISAMPLE:
    case PIPE_CAP_SURFACE_SAMPLE_COUNT:
    case PIPE_CAP_SAMPLE_SHADING:
-   case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
    case PIPE_CAP_IMAGE_LOAD_FORMATTED:
    case PIPE_CAP_IMAGE_STORE_FORMATTED:
    case PIPE_CAP_COMPUTE:
@@ -1313,8 +1313,9 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
       return 16;
 
+   /* Texel buffers lowered to (at most) 1024x16384 2D textures */
    case PIPE_CAP_MAX_TEXEL_BUFFER_ELEMENTS_UINT:
-      return 65536;
+      return 1024 * 16384;
 
    case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
       return 64;
@@ -1643,6 +1644,11 @@ agx_is_format_supported(struct pipe_screen *pscreen, enum pipe_format format,
       struct agx_pixel_format_entry ent = agx_pixel_format[tex_format];
 
       if (!agx_is_valid_pixel_format(tex_format))
+         return false;
+
+      /* RGB32 is emulated for texture buffers only */
+      if (ent.channels == AGX_CHANNELS_R32G32B32_EMULATED &&
+          target != PIPE_BUFFER)
          return false;
 
       if ((usage & PIPE_BIND_RENDER_TARGET) && !ent.renderable)
