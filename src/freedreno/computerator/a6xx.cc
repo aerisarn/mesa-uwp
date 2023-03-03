@@ -109,6 +109,7 @@ a6xx_disassemble(struct kernel *kernel, FILE *out)
    ir3_asm_disassemble(to_ir3_kernel(kernel), out);
 }
 
+template<chip CHIP>
 static void
 cs_program_emit(struct fd_ringbuffer *ring, struct kernel *kernel)
 {
@@ -226,6 +227,7 @@ cs_program_emit(struct fd_ringbuffer *ring, struct kernel *kernel)
    }
 }
 
+template<chip CHIP>
 static void
 emit_const(struct fd_ringbuffer *ring, uint32_t regid, uint32_t sizedwords,
            const uint32_t *dwords)
@@ -255,6 +257,7 @@ emit_const(struct fd_ringbuffer *ring, uint32_t regid, uint32_t sizedwords,
    }
 }
 
+template<chip CHIP>
 static void
 cs_const_emit(struct fd_ringbuffer *ring, struct kernel *kernel,
               uint32_t grid[3])
@@ -296,10 +299,11 @@ cs_const_emit(struct fd_ringbuffer *ring, struct kernel *kernel,
    size *= 4;
 
    if (size > 0) {
-      emit_const(ring, base, size, const_state->immediates);
+      emit_const<CHIP>(ring, base, size, const_state->immediates);
    }
 }
 
+template<chip CHIP>
 static void
 cs_ibo_emit(struct fd_ringbuffer *ring, struct fd_submit *submit,
             struct kernel *kernel)
@@ -351,6 +355,7 @@ cs_ibo_emit(struct fd_ringbuffer *ring, struct fd_submit *submit,
    fd_ringbuffer_del(state);
 }
 
+template<chip CHIP>
 static inline unsigned
 event_write(struct fd_ringbuffer *ring, struct kernel *kernel,
             enum vgt_event_type evt, bool timestamp)
@@ -370,6 +375,7 @@ event_write(struct fd_ringbuffer *ring, struct kernel *kernel,
    return seqno;
 }
 
+template<chip CHIP>
 static inline void
 cache_flush(struct fd_ringbuffer *ring, struct kernel *kernel)
 {
@@ -377,7 +383,7 @@ cache_flush(struct fd_ringbuffer *ring, struct kernel *kernel)
    struct a6xx_backend *a6xx_backend = to_a6xx_backend(ir3_kernel->backend);
    unsigned seqno;
 
-   seqno = event_write(ring, kernel, RB_DONE_TS, true);
+   seqno = event_write<CHIP>(ring, kernel, RB_DONE_TS, true);
 
    OUT_PKT7(ring, CP_WAIT_REG_MEM, 6);
    OUT_RING(ring, CP_WAIT_REG_MEM_0_FUNCTION(WRITE_EQ) |
@@ -387,7 +393,7 @@ cache_flush(struct fd_ringbuffer *ring, struct kernel *kernel)
    OUT_RING(ring, CP_WAIT_REG_MEM_4_MASK(~0));
    OUT_RING(ring, CP_WAIT_REG_MEM_5_DELAY_LOOP_CYCLES(16));
 
-   seqno = event_write(ring, kernel, CACHE_FLUSH_TS, true);
+   seqno = event_write<CHIP>(ring, kernel, CACHE_FLUSH_TS, true);
 
    OUT_PKT7(ring, CP_WAIT_MEM_GTE, 4);
    OUT_RING(ring, CP_WAIT_MEM_GTE_0_RESERVED(0));
@@ -395,6 +401,7 @@ cache_flush(struct fd_ringbuffer *ring, struct kernel *kernel)
    OUT_RING(ring, CP_WAIT_MEM_GTE_3_REF(seqno));
 }
 
+template<chip CHIP>
 static void
 a6xx_emit_grid(struct kernel *kernel, uint32_t grid[3],
                struct fd_submit *submit)
@@ -405,9 +412,9 @@ a6xx_emit_grid(struct kernel *kernel, uint32_t grid[3],
       submit, 0,
       (enum fd_ringbuffer_flags)(FD_RINGBUFFER_PRIMARY | FD_RINGBUFFER_GROWABLE));
 
-   cs_program_emit(ring, kernel);
-   cs_const_emit(ring, kernel, grid);
-   cs_ibo_emit(ring, submit, kernel);
+   cs_program_emit<CHIP>(ring, kernel);
+   cs_const_emit<CHIP>(ring, kernel, grid);
+   cs_ibo_emit<CHIP>(ring, submit, kernel);
 
    OUT_PKT7(ring, CP_SET_MARKER, 1);
    OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_COMPUTE));
@@ -501,7 +508,7 @@ a6xx_emit_grid(struct kernel *kernel, uint32_t grid[3],
       }
    }
 
-   cache_flush(ring, kernel);
+   cache_flush<CHIP>(ring, kernel);
 }
 
 static void
@@ -528,6 +535,7 @@ a6xx_read_perfcntrs(struct backend *b, uint64_t *results)
    }
 }
 
+template<chip CHIP>
 struct backend *
 a6xx_init(struct fd_device *dev, const struct fd_dev_id *dev_id)
 {
@@ -537,7 +545,7 @@ a6xx_init(struct fd_device *dev, const struct fd_dev_id *dev_id)
    a6xx_backend->base = (struct backend){
       .assemble = a6xx_assemble,
       .disassemble = a6xx_disassemble,
-      .emit_grid = a6xx_emit_grid,
+      .emit_grid = a6xx_emit_grid<CHIP>,
       .set_perfcntrs = a6xx_set_perfcntrs,
       .read_perfcntrs = a6xx_read_perfcntrs,
    };
@@ -553,3 +561,9 @@ a6xx_init(struct fd_device *dev, const struct fd_dev_id *dev_id)
 
    return &a6xx_backend->base;
 }
+
+template
+struct backend *a6xx_init<A6XX>(struct fd_device *dev, const struct fd_dev_id *dev_id);
+
+template
+struct backend *a6xx_init<A7XX>(struct fd_device *dev, const struct fd_dev_id *dev_id);
