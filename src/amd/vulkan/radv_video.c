@@ -709,7 +709,9 @@ static rvcn_dec_message_avc_t get_h264_msg(struct radv_video_session *vid,
          result.used_for_reference_flags |= (1 << (2 * idx));
       if (dpb_slot->pStdReferenceInfo->flags.bottom_field_flag)
          result.used_for_reference_flags |= (1 << (2 * idx + 1));
-      else
+
+      if (!dpb_slot->pStdReferenceInfo->flags.top_field_flag &&
+          !dpb_slot->pStdReferenceInfo->flags.bottom_field_flag)
          result.used_for_reference_flags |= (3 << (2 * idx));
 
       if (dpb_slot->pStdReferenceInfo->flags.used_for_long_term_reference)
