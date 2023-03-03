@@ -123,6 +123,9 @@ struct vn_instance_submit_command {
    /* when reply_size is non-zero, NULL can be returned on errors */
    struct vn_renderer_shmem *reply_shmem;
    struct vn_cs_decoder reply;
+
+   bool ring_seqno_valid;
+   uint32_t ring_seqno;
 };
 
 static inline struct vn_cs_encoder *

@@ -599,16 +599,20 @@ vn_instance_submit_command(struct vn_instance *instance,
          goto fail;
    }
 
-   uint32_t ring_seqno;
-   VkResult result = vn_instance_ring_submit_locked(
-      instance, &submit->command, submit->reply_shmem, &ring_seqno);
+   submit->ring_seqno_valid =
+      VK_SUCCESS == vn_instance_ring_submit_locked(instance, &submit->command,
+                                                   submit->reply_shmem,
+                                                   &submit->ring_seqno);
 
    mtx_unlock(&instance->ring.mutex);
 
-   submit->reply = VN_CS_DECODER_INITIALIZER(reply_ptr, submit->reply_size);
+   if (submit->reply_size) {
+      submit->reply =
+         VN_CS_DECODER_INITIALIZER(reply_ptr, submit->reply_size);
 
-   if (submit->reply_size && result == VK_SUCCESS)
-      vn_ring_wait(&instance->ring.ring, ring_seqno);
+      if (submit->ring_seqno_valid)
+         vn_ring_wait(&instance->ring.ring, submit->ring_seqno);
+   }
 
    return;
 

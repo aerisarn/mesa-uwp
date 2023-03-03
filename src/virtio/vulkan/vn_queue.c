@@ -847,14 +847,19 @@ vn_queue_submit(struct vn_queue_submission *submit)
          return vn_error(dev->instance, result);
       }
    } else {
+      struct vn_instance_submit_command instance_submit;
       if (submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO_2) {
-         vn_async_vkQueueSubmit2(instance, submit->queue_handle,
-                                 submit->batch_count, submit->submit_batches2,
-                                 submit->fence_handle);
+         vn_submit_vkQueueSubmit2(
+            instance, 0, submit->queue_handle, submit->batch_count,
+            submit->submit_batches2, submit->fence_handle, &instance_submit);
       } else {
-         vn_async_vkQueueSubmit(instance, submit->queue_handle,
-                                submit->batch_count, submit->submit_batches,
-                                submit->fence_handle);
+         vn_submit_vkQueueSubmit(instance, 0, submit->queue_handle,
+                                 submit->batch_count, submit->submit_batches,
+                                 submit->fence_handle, &instance_submit);
+      }
+      if (!instance_submit.ring_seqno_valid) {
+         vn_queue_submission_cleanup(submit);
+         return vn_error(dev->instance, VK_ERROR_DEVICE_LOST);
       }
    }
 
