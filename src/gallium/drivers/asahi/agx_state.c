@@ -947,9 +947,10 @@ agx_set_viewport_states(struct pipe_context *pctx, unsigned start_slot,
 }
 
 static void
-agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
-                            uint8_t **out, const struct pipe_viewport_state *vp,
-                            const struct pipe_scissor_state *ss, unsigned zbias)
+agx_get_scissor_extents(const struct pipe_viewport_state *vp,
+                        const struct pipe_scissor_state *ss,
+                        const struct pipe_framebuffer_state *fb, unsigned *minx,
+                        unsigned *miny, unsigned *maxx, unsigned *maxy)
 {
    float trans_x = vp->translate[0], trans_y = vp->translate[1];
    float abs_scale_x = fabsf(vp->scale[0]), abs_scale_y = fabsf(vp->scale[1]);
@@ -958,17 +959,27 @@ agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
     * the viewport is an odd number of pixels, both the translate and the scale
     * will have a fractional part of 0.5, so adding and subtracting them yields
     * an integer. Therefore we don't need to round explicitly */
-   unsigned minx = CLAMP((int)(trans_x - abs_scale_x), 0, batch->key.width);
-   unsigned miny = CLAMP((int)(trans_y - abs_scale_y), 0, batch->key.height);
-   unsigned maxx = CLAMP((int)(trans_x + abs_scale_x), 0, batch->key.width);
-   unsigned maxy = CLAMP((int)(trans_y + abs_scale_y), 0, batch->key.height);
+   *minx = CLAMP((int)(trans_x - abs_scale_x), 0, fb->width);
+   *miny = CLAMP((int)(trans_y - abs_scale_y), 0, fb->height);
+   *maxx = CLAMP((int)(trans_x + abs_scale_x), 0, fb->width);
+   *maxy = CLAMP((int)(trans_y + abs_scale_y), 0, fb->height);
 
    if (ss) {
-      minx = MAX2(ss->minx, minx);
-      miny = MAX2(ss->miny, miny);
-      maxx = MIN2(ss->maxx, maxx);
-      maxy = MIN2(ss->maxy, maxy);
+      *minx = MAX2(ss->minx, *minx);
+      *miny = MAX2(ss->miny, *miny);
+      *maxx = MIN2(ss->maxx, *maxx);
+      *maxy = MIN2(ss->maxy, *maxy);
    }
+}
+
+static void
+agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
+                            uint8_t **out, const struct pipe_viewport_state *vp,
+                            const struct pipe_scissor_state *ss, unsigned zbias)
+{
+   unsigned minx, miny, maxx, maxy;
+
+   agx_get_scissor_extents(vp, ss, &batch->key, &minx, &miny, &maxx, &maxy);
 
    assert(maxx > minx && maxy > miny);
 
@@ -2398,10 +2409,12 @@ agx_index_buffer_direct_ptr(struct agx_batch *batch,
 static bool
 agx_scissor_culls_everything(struct agx_context *ctx)
 {
-   const struct pipe_scissor_state ss = ctx->scissor;
+   unsigned minx, miny, maxx, maxy;
+   agx_get_scissor_extents(&ctx->viewport,
+                           ctx->rast->base.scissor ? &ctx->scissor : NULL,
+                           &ctx->framebuffer, &minx, &miny, &maxx, &maxy);
 
-   return ctx->rast->base.scissor &&
-          ((ss.minx == ss.maxx) || (ss.miny == ss.maxy));
+   return (minx == maxx) || (miny == maxy);
 }
 
 static void
