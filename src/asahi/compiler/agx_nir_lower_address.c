@@ -97,12 +97,16 @@ match_address(nir_builder *b, nir_ssa_scalar base, int8_t format_shift)
 
    for (unsigned i = 0; i < ARRAY_SIZE(summands); ++i) {
       /* We can add a small constant to the 64-bit base for free */
-      if (nir_ssa_scalar_is_const(summands[i])) {
+      if (nir_ssa_scalar_is_const(summands[i]) &&
+          nir_ssa_scalar_as_uint(summands[i]) < (1ull << 32)) {
+
+         uint32_t value = nir_ssa_scalar_as_uint(summands[i]);
+
          return (struct match){
             .base = summands[1 - i],
-            .offset = summands[i],
+            .offset = nir_get_ssa_scalar(nir_imm_int(b, value), 0),
             .shift = -format_shift,
-            .sign_extend = true,
+            .sign_extend = false,
          };
       }
 
