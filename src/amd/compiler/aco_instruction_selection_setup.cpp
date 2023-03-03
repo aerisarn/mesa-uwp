@@ -26,7 +26,6 @@
 
 #include "common/ac_nir.h"
 #include "common/sid.h"
-#include "vulkan/radv_descriptor_set.h"
 
 #include "nir_control_flow.h"
 
@@ -399,7 +398,7 @@ init_context(isel_context* ctx, nir_shader* shader)
    ctx->ub_config.max_workgroup_size[0] = 2048;
    ctx->ub_config.max_workgroup_size[1] = 2048;
    ctx->ub_config.max_workgroup_size[2] = 2048;
-   for (unsigned i = 0; i < MAX_VERTEX_ATTRIBS; i++) {
+   for (unsigned i = 0; i < ACO_MAX_VERTEX_ATTRIBS; i++) {
       pipe_format format = (pipe_format)ctx->options->key.vs.vertex_attribute_formats[i];
       const struct util_format_description* desc = util_format_description(format);
 

@@ -25,14 +25,14 @@
 #ifndef ACO_IR_H
 #define ACO_IR_H
 
-#include "aco_opcodes.h"
-#include "aco_util.h"
 #include "aco_interface.h"
+#include "aco_opcodes.h"
 #include "aco_shader_info.h"
-#include "vulkan/radv_shader.h"
+#include "aco_util.h"
 
 #include "nir.h"
 
+#include "ac_binary.h"
 #include <algorithm>
 #include <bitset>
 #include <memory>

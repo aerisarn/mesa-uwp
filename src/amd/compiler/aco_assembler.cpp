@@ -29,6 +29,7 @@
 
 #include "util/memstream.h"
 
+#include "ac_shader_util.h"
 #include <algorithm>
 #include <map>
 #include <vector>
