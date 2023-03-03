@@ -3722,8 +3722,8 @@ resource_check_defer_buffer_barrier(struct zink_context *ctx, struct zink_resour
 {
    assert(res->obj->is_buffer);
    if (res->bind_count[0] - res->so_bind_count > 0) {
-      if ((res->obj->is_buffer && res->vbo_bind_mask && !(pipeline & VK_PIPELINE_STAGE_VERTEX_INPUT_BIT)) ||
-          ((!res->obj->is_buffer || util_bitcount(res->vbo_bind_mask) != res->bind_count[0]) && !is_shader_pipline_stage(pipeline)))
+      if ((res->vbo_bind_mask && !(pipeline & VK_PIPELINE_STAGE_VERTEX_INPUT_BIT)) ||
+          (util_bitcount(res->vbo_bind_mask) != res->bind_count[0] && !is_shader_pipline_stage(pipeline)))
          /* gfx rebind */
          _mesa_set_add(ctx->need_barriers[0], res);
    }
