@@ -460,6 +460,9 @@ enum anv_bo_alloc_flags {
     * Should be faster for bo pools, which write but do not read
     */
    ANV_BO_ALLOC_WRITE_COMBINE = (1 << 12),
+
+   /** This buffer will be scanout to display */
+   ANV_BO_ALLOC_SCANOUT = (1 << 13),
 };
 
 struct anv_bo {

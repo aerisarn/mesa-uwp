@@ -3959,11 +3959,20 @@ VkResult anv_AllocateMemory(
       }
 
       default:
-         if (ext->sType != VK_STRUCTURE_TYPE_WSI_MEMORY_ALLOCATE_INFO_MESA)
-            /* this isn't a real enum value,
-             * so use conditional to avoid compiler warn
+         /* VK_STRUCTURE_TYPE_WSI_MEMORY_ALLOCATE_INFO_MESA isn't a real
+          * enum value, so use conditional to avoid compiler warn
+          */
+         if (ext->sType == VK_STRUCTURE_TYPE_WSI_MEMORY_ALLOCATE_INFO_MESA) {
+            /* TODO: Android, ChromeOS and other applications may need another
+             * way to allocate buffers that can be scanout to display but it
+             * should pretty easy to catch those as Xe KMD driver will print
+             * warnings in dmesg when scanning buffers allocated without
+             * proper flag set.
              */
+            alloc_flags |= ANV_BO_ALLOC_SCANOUT;
+         } else {
             anv_debug_ignored_stype(ext->sType);
+         }
          break;
       }
    }

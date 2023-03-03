@@ -37,6 +37,7 @@ xe_gem_create(struct anv_device *device,
    struct drm_xe_gem_create gem_create = {
      .vm_id = device->vm_id,
      .size = size,
+     .flags = alloc_flags & ANV_BO_ALLOC_SCANOUT ? XE_GEM_CREATE_FLAG_SCANOUT : 0,
    };
    for (uint16_t i = 0; i < regions_count; i++)
       gem_create.flags |= BITFIELD_BIT(regions[i]->instance);
