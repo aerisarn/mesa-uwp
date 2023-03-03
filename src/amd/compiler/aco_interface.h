@@ -71,20 +71,20 @@ extern const struct aco_compiler_statistic_info* aco_statistic_infos;
 void aco_compile_shader(const struct aco_compiler_options* options,
                         const struct aco_shader_info* info,
                         unsigned shader_count, struct nir_shader* const* shaders,
-                        const struct radv_shader_args *args,
+                        const struct ac_shader_args *args,
                         aco_callback *build_binary,
                         void **binary);
 
 void aco_compile_vs_prolog(const struct aco_compiler_options* options,
                            const struct aco_shader_info* info,
                            const struct aco_vs_prolog_info* prolog_info,
-                           const struct radv_shader_args* args,
+                           const struct ac_shader_args* args,
                            aco_shader_part_callback* build_prolog, void** binary);
 
 void aco_compile_ps_epilog(const struct aco_compiler_options* options,
                            const struct aco_shader_info* info,
                            const struct aco_ps_epilog_info* epilog_info,
-                           const struct radv_shader_args* args,
+                           const struct ac_shader_args* args,
                            aco_shader_part_callback* build_epilog, void** binary);
 
 uint64_t aco_get_codegen_flags();

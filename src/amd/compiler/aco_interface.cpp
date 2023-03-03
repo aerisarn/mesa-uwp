@@ -26,8 +26,6 @@
 
 #include "aco_ir.h"
 
-#include "vulkan/radv_shader_args.h"
-
 #include "util/memstream.h"
 
 #include <array>
@@ -213,7 +211,7 @@ void
 aco_compile_shader(const struct aco_compiler_options* options,
                    const struct aco_shader_info* info,
                    unsigned shader_count, struct nir_shader* const* shaders,
-                   const struct radv_shader_args *args,
+                   const struct ac_shader_args *args,
                    aco_callback *build_binary,
                    void **binary)
 {
@@ -271,7 +269,7 @@ aco_compile_shader(const struct aco_compiler_options* options,
 void
 aco_compile_vs_prolog(const struct aco_compiler_options* options,
                       const struct aco_shader_info* info, const struct aco_vs_prolog_info* pinfo,
-                      const struct radv_shader_args* args, aco_shader_part_callback* build_prolog,
+                      const struct ac_shader_args* args, aco_shader_part_callback* build_prolog,
                       void** binary)
 {
    aco::init();
@@ -315,7 +313,7 @@ aco_compile_vs_prolog(const struct aco_compiler_options* options,
 void
 aco_compile_ps_epilog(const struct aco_compiler_options* options,
                       const struct aco_shader_info* info, const struct aco_ps_epilog_info* pinfo,
-                      const struct radv_shader_args* args, aco_shader_part_callback* build_epilog,
+                      const struct ac_shader_args* args, aco_shader_part_callback* build_epilog,
                       void** binary)
 {
    aco::init();
