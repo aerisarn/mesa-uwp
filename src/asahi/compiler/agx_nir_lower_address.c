@@ -164,6 +164,21 @@ match_address(nir_builder *b, nir_ssa_scalar base, int8_t format_shift)
    return match;
 }
 
+static enum pipe_format
+format_for_bitsize(unsigned bitsize)
+{
+   switch (bitsize) {
+   case 8:
+      return PIPE_FORMAT_R8_UINT;
+   case 16:
+      return PIPE_FORMAT_R16_UINT;
+   case 32:
+      return PIPE_FORMAT_R32_UINT;
+   default:
+      unreachable("should have been lowered");
+   }
+}
+
 static bool
 pass(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
 {
@@ -181,12 +196,7 @@ pass(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
    unsigned bitsize = intr->intrinsic == nir_intrinsic_store_global
                          ? nir_src_bit_size(intr->src[0])
                          : nir_dest_bit_size(intr->dest);
-
-   /* TODO: Handle more sizes */
-   assert(bitsize == 16 || bitsize == 32);
-   enum pipe_format format =
-      bitsize == 32 ? PIPE_FORMAT_R32_UINT : PIPE_FORMAT_R16_UINT;
-
+   enum pipe_format format = format_for_bitsize(bitsize);
    unsigned format_shift = util_logbase2(util_format_get_blocksize(format));
 
    nir_src *orig_offset = nir_get_io_offset_src(intr);
