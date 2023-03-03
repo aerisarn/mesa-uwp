@@ -28,6 +28,8 @@
 #include "vk_format.h"
 #include "vk_util.h"
 
+#include "dxil_spirv_nir.h"
+
 #if D3D12_SDK_VERSION >= 608
 static const D3D12_BARRIER_SYNC D3D12_BARRIER_SYNC_INPUT_ASSEMBLER = D3D12_BARRIER_SYNC_INDEX_INPUT;
 #endif
@@ -3061,63 +3063,66 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
       cmdbuf->state.bindpoint[bindpoint].pipeline;
 
    if (!(cmdbuf->state.bindpoint[bindpoint].dirty & DZN_CMD_BINDPOINT_DIRTY_HEAPS))
-      goto set_heaps;
+      return;
 
    dzn_foreach_pool_type (type) {
-      uint32_t desc_count = pipeline->desc_count[type];
-      if (!desc_count)
-         continue;
+      if (device->bindless) {
+         new_heaps[type] = &device->device_heaps[type].heap;
+      } else {
+         uint32_t desc_count = pipeline->desc_count[type];
+         if (!desc_count)
+            continue;
 
-      struct dzn_descriptor_heap_pool *pool =
-         type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ?
-         &cmdbuf->cbv_srv_uav_pool : &cmdbuf->sampler_pool;
-      struct dzn_descriptor_heap *dst_heap = NULL;
-      uint32_t dst_heap_offset = 0;
+         struct dzn_descriptor_heap_pool *pool =
+            type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ?
+            &cmdbuf->cbv_srv_uav_pool : &cmdbuf->sampler_pool;
+         struct dzn_descriptor_heap *dst_heap = NULL;
+         uint32_t dst_heap_offset = 0;
 
-      dzn_descriptor_heap_pool_alloc_slots(pool, device, desc_count,
-                                           &dst_heap, &dst_heap_offset);
-      new_heap_offsets[type] = dst_heap_offset;
-      update_root_desc_table[type] = true;
+         dzn_descriptor_heap_pool_alloc_slots(pool, device, desc_count,
+                                              &dst_heap, &dst_heap_offset);
+         new_heap_offsets[type] = dst_heap_offset;
+         update_root_desc_table[type] = true;
 
-      for (uint32_t s = 0; s < MAX_SETS; s++) {
-         const struct dzn_descriptor_set *set = desc_state->sets[s].set;
-         if (!set) continue;
+         for (uint32_t s = 0; s < MAX_SETS; s++) {
+            const struct dzn_descriptor_set *set = desc_state->sets[s].set;
+            if (!set) continue;
 
-         uint32_t set_heap_offset = pipeline->sets[s].heap_offsets[type];
-         uint32_t set_desc_count = pipeline->sets[s].range_desc_count[type];
-         if (set_desc_count) {
-            dzn_descriptor_heap_copy(device, dst_heap, dst_heap_offset + set_heap_offset,
-                                     &set->pool->heaps[type], set->heap_offsets[type],
-                                     set_desc_count, type);
-         }
+            uint32_t set_heap_offset = pipeline->sets[s].heap_offsets[type];
+            uint32_t set_desc_count = pipeline->sets[s].range_desc_count[type];
+            if (set_desc_count) {
+               dzn_descriptor_heap_copy(device, dst_heap, dst_heap_offset + set_heap_offset,
+                                        &set->pool->heaps[type], set->heap_offsets[type],
+                                        set_desc_count, type);
+            }
 
-         if (type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
-            uint32_t dynamic_buffer_count = pipeline->sets[s].dynamic_buffer_count;
-            for (uint32_t o = 0; o < dynamic_buffer_count; o++) {
-               struct dzn_buffer_desc bdesc = set->dynamic_buffers[o];
-               bdesc.offset += desc_state->sets[s].dynamic_offsets[o];
+            if (type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
+               uint32_t dynamic_buffer_count = pipeline->sets[s].dynamic_buffer_count;
+               for (uint32_t o = 0; o < dynamic_buffer_count; o++) {
+                  struct dzn_buffer_desc bdesc = set->dynamic_buffers[o];
+                  bdesc.offset += desc_state->sets[s].dynamic_offsets[o];
 
-               bool primary_is_writable = bdesc.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-               uint32_t desc_heap_offset = pipeline->sets[s].dynamic_buffer_heap_offsets[o].primary;
-               dzn_descriptor_heap_write_buffer_desc(device, dst_heap,
-                                                     dst_heap_offset + set_heap_offset + desc_heap_offset,
-                                                     primary_is_writable, &bdesc);
-
-               if (pipeline->sets[s].dynamic_buffer_heap_offsets[o].alt != ~0) {
-                  assert(!primary_is_writable);
-                  desc_heap_offset = pipeline->sets[s].dynamic_buffer_heap_offsets[o].alt;
+                  bool primary_is_writable = bdesc.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+                  uint32_t desc_heap_offset = pipeline->sets[s].dynamic_buffer_heap_offsets[o].primary;
                   dzn_descriptor_heap_write_buffer_desc(device, dst_heap,
                                                         dst_heap_offset + set_heap_offset + desc_heap_offset,
-                                                        false, &bdesc);
+                                                        primary_is_writable, &bdesc);
+
+                  if (pipeline->sets[s].dynamic_buffer_heap_offsets[o].alt != ~0) {
+                     assert(!primary_is_writable);
+                     desc_heap_offset = pipeline->sets[s].dynamic_buffer_heap_offsets[o].alt;
+                     dzn_descriptor_heap_write_buffer_desc(device, dst_heap,
+                                                           dst_heap_offset + set_heap_offset + desc_heap_offset,
+                                                           false, &bdesc);
+                  }
                }
             }
          }
-      }
 
-      new_heaps[type] = dst_heap;
+         new_heaps[type] = dst_heap;
+      }
    }
 
-set_heaps:
    if (new_heaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] != cmdbuf->state.heaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] ||
        new_heaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER] != cmdbuf->state.heaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER]) {
       ID3D12DescriptorHeap *desc_heaps[2];
@@ -3145,6 +3150,68 @@ set_heaps:
          ID3D12GraphicsCommandList1_SetGraphicsRootDescriptorTable(cmdbuf->cmdlist, r, handle);
       else
          ID3D12GraphicsCommandList1_SetComputeRootDescriptorTable(cmdbuf->cmdlist, r, handle);
+   }
+
+   if (device->bindless) {
+      for (uint32_t s = 0; s < MAX_SETS; ++s) {
+         const struct dzn_descriptor_set *set = desc_state->sets[s].set;
+         if (!set || !set->pool->bindless.buf)
+            continue;
+
+         uint32_t dirty_bit = DZN_CMD_BINDPOINT_DIRTY_DESC_SET0 << s;
+         if (cmdbuf->state.bindpoint[bindpoint].dirty & dirty_bit) {
+            uint64_t gpuva = set->pool->bindless.gpuva + (set->heap_offsets[0] * sizeof(struct dxil_spirv_bindless_entry));
+            if (bindpoint == VK_PIPELINE_BIND_POINT_GRAPHICS)
+               ID3D12GraphicsCommandList1_SetGraphicsRootShaderResourceView(cmdbuf->cmdlist, s, gpuva);
+            else
+               ID3D12GraphicsCommandList1_SetComputeRootShaderResourceView(cmdbuf->cmdlist, s, gpuva);
+         }
+      }
+      if (pipeline->dynamic_buffer_count &&
+          (cmdbuf->state.bindpoint[bindpoint].dirty & DZN_CMD_BINDPOINT_DIRTY_DYNAMIC_BUFFERS)) {
+         ID3D12Resource *dynamic_buffer_buf = NULL;
+         VkResult result =
+            dzn_cmd_buffer_alloc_internal_buf(cmdbuf, sizeof(struct dxil_spirv_bindless_entry) * pipeline->dynamic_buffer_count,
+                                              D3D12_HEAP_TYPE_UPLOAD,
+                                              D3D12_RESOURCE_STATE_GENERIC_READ,
+                                              &dynamic_buffer_buf);
+         if (result != VK_SUCCESS)
+            return;
+
+         uint64_t gpuva = ID3D12Resource_GetGPUVirtualAddress(dynamic_buffer_buf);
+         struct dxil_spirv_bindless_entry *map;
+         ID3D12Resource_Map(dynamic_buffer_buf, 0, NULL, (void **)&map);
+
+         for (uint32_t s = 0; s < MAX_SETS; ++s) {
+            const struct dzn_descriptor_set *set = desc_state->sets[s].set;
+            if (!set)
+               continue;
+
+            uint32_t dynamic_buffer_count = pipeline->sets[s].dynamic_buffer_count;
+            for (uint32_t o = 0; o < dynamic_buffer_count; o++) {
+               const struct dzn_buffer_desc *bdesc = &set->dynamic_buffers[o];
+               struct dxil_spirv_bindless_entry *map_entry = &map[pipeline->sets[s].dynamic_buffer_heap_offsets[o].primary];
+               if (*bdesc->bindless_descriptor_slot >= 0) {
+                  map_entry->buffer_idx = *bdesc->bindless_descriptor_slot;
+                  map_entry->buffer_offset = desc_state->sets[s].dynamic_offsets[o];
+               } else {
+                  map_entry->buffer_idx = bdesc->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ?
+                     bdesc->buffer->uav_bindless_slot : bdesc->buffer->cbv_bindless_slot;
+                  map_entry->buffer_offset = bdesc->offset + desc_state->sets[s].dynamic_offsets[o];
+               }
+            }
+         }
+
+         ID3D12Resource_Unmap(dynamic_buffer_buf, 0, NULL);
+         if (bindpoint == VK_PIPELINE_BIND_POINT_GRAPHICS)
+            ID3D12GraphicsCommandList1_SetGraphicsRootShaderResourceView(cmdbuf->cmdlist,
+                                                                         pipeline->root.dynamic_buffer_bindless_param_idx,
+                                                                         gpuva);
+         else
+            ID3D12GraphicsCommandList1_SetComputeRootShaderResourceView(cmdbuf->cmdlist,
+                                                                        pipeline->root.dynamic_buffer_bindless_param_idx,
+                                                                        gpuva);
+      }
    }
 }
 
