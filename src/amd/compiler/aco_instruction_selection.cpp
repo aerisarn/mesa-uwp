@@ -5674,17 +5674,13 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
          }
 
          if (use_mubuf) {
-            Instruction* mubuf = bld.mubuf(opcode, Definition(fetch_dst), list, fetch_index,
-                                           soffset, fetch_offset, false, false, true)
-                                    .instr;
-            mubuf->mubuf().vtx_binding = attrib_binding + 1;
+            bld.mubuf(opcode, Definition(fetch_dst), list, fetch_index,
+                                           soffset, fetch_offset, false, false, true);
          } else {
             unsigned dfmt = fetch_fmt & 0xf;
             unsigned nfmt = fetch_fmt >> 4;
-            Instruction* mtbuf = bld.mtbuf(opcode, Definition(fetch_dst), list, fetch_index,
-                                           soffset, dfmt, nfmt, fetch_offset, false, true)
-                                    .instr;
-            mtbuf->mtbuf().vtx_binding = attrib_binding + 1;
+            bld.mtbuf(opcode, Definition(fetch_dst), list, fetch_index,
+                                           soffset, dfmt, nfmt, fetch_offset, false, true);
          }
 
          emit_split_vector(ctx, fetch_dst, fetch_dst.bytes() * 8 / bitsize);
