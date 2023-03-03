@@ -1943,6 +1943,37 @@ static void si_nir_lower_ps_color_input(nir_shader *nir, struct si_shader *shade
                                 colors);
 }
 
+static void si_nir_emit_polygon_stipple(nir_shader *nir, struct si_shader_args *args)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+
+   nir_builder builder;
+   nir_builder *b = &builder;
+   nir_builder_init(b, impl);
+
+   b->cursor = nir_before_cf_list(&impl->body);
+
+   /* Load the buffer descriptor. */
+   nir_ssa_def *desc =
+      si_nir_load_internal_binding(b, args, SI_PS_CONST_POLY_STIPPLE, 4);
+
+   /* Use the fixed-point gl_FragCoord input.
+    * Since the stipple pattern is 32x32 and it repeats, just get 5 bits
+    * per coordinate to get the repeating effect.
+    */
+   nir_ssa_def *pos_x = ac_nir_unpack_arg(b, &args->ac, args->pos_fixed_pt, 0, 5);
+   nir_ssa_def *pos_y = ac_nir_unpack_arg(b, &args->ac, args->pos_fixed_pt, 16, 5);
+
+   nir_ssa_def *zero = nir_imm_int(b, 0);
+   /* The stipple pattern is 32x32, each row has 32 bits. */
+   nir_ssa_def *offset = nir_ishl_imm(b, pos_y, 2);
+   nir_ssa_def *row = nir_load_buffer_amd(b, 1, 32, desc, offset, zero, zero);
+   nir_ssa_def *bit = nir_ubfe(b, row, pos_x, nir_imm_int(b, 1));
+
+   nir_ssa_def *pass = nir_i2b(b, bit);
+   nir_discard_if(b, nir_inot(b, pass));
+}
+
 struct nir_shader *si_get_nir_shader(struct si_shader *shader,
                                      struct si_shader_args *args,
                                      bool *free_nir,
