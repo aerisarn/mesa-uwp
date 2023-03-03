@@ -472,7 +472,7 @@ vk_image_view_init(struct vk_device *device,
              <= image->array_layers);
       break;
    case VK_IMAGE_TYPE_3D:
-      if (sliced_info) {
+      if (sliced_info && image_view->view_type == VK_IMAGE_VIEW_TYPE_3D) {
          unsigned total = image_view->extent.depth;
          image_view->storage.z_slice_offset = sliced_info->sliceOffset;
          assert(image_view->storage.z_slice_offset < total);
@@ -481,9 +481,12 @@ vk_image_view_init(struct vk_device *device,
          } else {
             image_view->storage.z_slice_count = sliced_info->sliceCount;
          }
-         assert(image_view->storage.z_slice_offset + image_view->storage.z_slice_count
-                <= image->extent.depth);
+      } else if (image_view->view_type != VK_IMAGE_VIEW_TYPE_3D) {
+         image_view->storage.z_slice_offset = image_view->base_array_layer;
+         image_view->storage.z_slice_count = image_view->layer_count;
       }
+      assert(image_view->storage.z_slice_offset + image_view->storage.z_slice_count
+             <= image->extent.depth);
       assert(image_view->base_array_layer + image_view->layer_count
              <= image_view->extent.depth);
       break;
