@@ -164,7 +164,8 @@ emit_const(struct fd_ringbuffer *ring, struct kernel *kernel, uint32_t constid, 
    assert((constid % 4) == 0);
 
    /* Overwrite appropriate entries with buffer addresses */
-   struct fd_bo **replacements = calloc(sizedwords, sizeof(struct fd_bo *));
+   struct fd_bo **replacements =
+      (struct fd_bo **)calloc(sizedwords, sizeof(struct fd_bo *));
    for (int i = 0; i < MAX_BUFS; i++) {
       if (kernel->buf_addr_regs[i] != INVALID_REG) {
          int idx = kernel->buf_addr_regs[i];
@@ -278,7 +279,8 @@ a4xx_emit_grid(struct kernel *kernel, uint32_t grid[3],
                struct fd_submit *submit)
 {
    struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(
-      submit, 0, FD_RINGBUFFER_PRIMARY | FD_RINGBUFFER_GROWABLE);
+      submit, 0,
+      (enum fd_ringbuffer_flags)(FD_RINGBUFFER_PRIMARY | FD_RINGBUFFER_GROWABLE));
 
    cs_program_emit(ring, kernel);
    cs_const_emit(ring, kernel, grid);
@@ -333,7 +335,8 @@ a4xx_emit_grid(struct kernel *kernel, uint32_t grid[3],
 struct backend *
 a4xx_init(struct fd_device *dev, const struct fd_dev_id *dev_id)
 {
-   struct a4xx_backend *a4xx_backend = calloc(1, sizeof(*a4xx_backend));
+   struct a4xx_backend *a4xx_backend =
+      (struct a4xx_backend *)calloc(1, sizeof(*a4xx_backend));
 
    a4xx_backend->base = (struct backend){
       .assemble = a4xx_assemble,
@@ -341,8 +344,8 @@ a4xx_init(struct fd_device *dev, const struct fd_dev_id *dev_id)
       .emit_grid = a4xx_emit_grid,
    };
 
-   a4xx_backend->compiler = ir3_compiler_create(dev, dev_id,
-                                                &(struct ir3_compiler_options) {});
+   struct ir3_compiler_options compiler_options = {};
+   a4xx_backend->compiler = ir3_compiler_create(dev, dev_id, &compiler_options);
    a4xx_backend->dev = dev;
 
    return &a4xx_backend->base;

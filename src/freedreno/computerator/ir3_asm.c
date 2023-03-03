@@ -29,7 +29,7 @@
 struct ir3_kernel *
 ir3_asm_assemble(struct ir3_compiler *c, FILE *in)
 {
-   struct ir3_kernel *kernel = calloc(1, sizeof(*kernel));
+   struct ir3_kernel *kernel = (struct ir3_kernel *)calloc(1, sizeof(*kernel));
    struct ir3_shader *shader = ir3_parse_asm(c, &kernel->info, in);
    if (!shader)
       errx(-1, "assembler failed");
@@ -62,5 +62,5 @@ ir3_asm_assemble(struct ir3_compiler *c, FILE *in)
 void
 ir3_asm_disassemble(struct ir3_kernel *k, FILE *out)
 {
-   ir3_shader_disasm(k->v, k->bin, out);
+   ir3_shader_disasm(k->v, (uint32_t *)k->bin, out);
 }

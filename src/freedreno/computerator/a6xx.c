@@ -315,7 +315,7 @@ cs_ibo_emit(struct fd_ringbuffer *ring, struct fd_submit *submit,
       unsigned width = sz & MASK(15);
       unsigned height = sz >> 15;
 
-      OUT_RING(state, A6XX_TEX_CONST_0_FMT(FMT6_32_UINT) | A6XX_TEX_CONST_0_TILE_MODE(0));
+      OUT_RING(state, A6XX_TEX_CONST_0_FMT(FMT6_32_UINT) | A6XX_TEX_CONST_0_TILE_MODE(TILE6_LINEAR));
       OUT_RING(state, A6XX_TEX_CONST_1_WIDTH(width) | A6XX_TEX_CONST_1_HEIGHT(height));
       OUT_RING(state, A6XX_TEX_CONST_2_PITCH(0) |
                       A6XX_TEX_CONST_2_STRUCTSIZETEXELS(1) |
@@ -402,7 +402,8 @@ a6xx_emit_grid(struct kernel *kernel, uint32_t grid[3],
    struct ir3_kernel *ir3_kernel = to_ir3_kernel(kernel);
    struct a6xx_backend *a6xx_backend = to_a6xx_backend(ir3_kernel->backend);
    struct fd_ringbuffer *ring = fd_submit_new_ringbuffer(
-      submit, 0, FD_RINGBUFFER_PRIMARY | FD_RINGBUFFER_GROWABLE);
+      submit, 0,
+      (enum fd_ringbuffer_flags)(FD_RINGBUFFER_PRIMARY | FD_RINGBUFFER_GROWABLE));
 
    cs_program_emit(ring, kernel);
    cs_const_emit(ring, kernel, grid);
@@ -519,7 +520,8 @@ a6xx_read_perfcntrs(struct backend *b, uint64_t *results)
    struct a6xx_backend *a6xx_backend = to_a6xx_backend(b);
 
    fd_bo_cpu_prep(a6xx_backend->query_mem, NULL, FD_BO_PREP_READ);
-   struct fd6_query_sample *samples = fd_bo_map(a6xx_backend->query_mem);
+   struct fd6_query_sample *samples =
+      (struct fd6_query_sample *)fd_bo_map(a6xx_backend->query_mem);
 
    for (unsigned i = 0; i < a6xx_backend->num_perfcntrs; i++) {
       results[i] = samples[i].result;
@@ -529,7 +531,8 @@ a6xx_read_perfcntrs(struct backend *b, uint64_t *results)
 struct backend *
 a6xx_init(struct fd_device *dev, const struct fd_dev_id *dev_id)
 {
-   struct a6xx_backend *a6xx_backend = calloc(1, sizeof(*a6xx_backend));
+   struct a6xx_backend *a6xx_backend =
+      (struct a6xx_backend *)calloc(1, sizeof(*a6xx_backend));
 
    a6xx_backend->base = (struct backend){
       .assemble = a6xx_assemble,
@@ -539,8 +542,8 @@ a6xx_init(struct fd_device *dev, const struct fd_dev_id *dev_id)
       .read_perfcntrs = a6xx_read_perfcntrs,
    };
 
-   a6xx_backend->compiler = ir3_compiler_create(dev, dev_id,
-                                                &(struct ir3_compiler_options){});
+   struct ir3_compiler_options compiler_options = {};
+   a6xx_backend->compiler = ir3_compiler_create(dev, dev_id, &compiler_options);
    a6xx_backend->dev = dev;
 
    a6xx_backend->info = fd_dev_info(dev_id);
