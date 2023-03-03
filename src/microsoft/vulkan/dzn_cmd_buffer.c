@@ -4700,7 +4700,7 @@ dzn_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
       if (desc_state->sets[idx].set != set) {
          desc_state->sets[idx].set = set;
-         dirty |= DZN_CMD_BINDPOINT_DIRTY_HEAPS;
+         dirty |= DZN_CMD_BINDPOINT_DIRTY_DESC_SET0 << idx;
       }
 
       uint32_t dynamic_buffer_count = playout->sets[idx].dynamic_buffer_count;
@@ -4712,7 +4712,7 @@ dzn_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
          dynamicOffsetCount -= dynamic_buffer_count;
          pDynamicOffsets += dynamic_buffer_count;
-         dirty |= DZN_CMD_BINDPOINT_DIRTY_HEAPS;
+         dirty |= DZN_CMD_BINDPOINT_DIRTY_DYNAMIC_BUFFERS;
       }
    }
 
