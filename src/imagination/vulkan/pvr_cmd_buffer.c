@@ -476,9 +476,13 @@ pvr_cmd_buffer_upload_pds_data(struct pvr_cmd_buffer *const cmd_buffer,
                                     pds_upload_out);
 }
 
+/* pbe_cs_words must be an array of length emit_count with
+ * ROGUE_NUM_PBESTATE_STATE_WORDS entries
+ */
 static VkResult pvr_sub_cmd_gfx_per_job_fragment_programs_create_and_upload(
    struct pvr_cmd_buffer *const cmd_buffer,
-   const uint32_t pbe_cs_words[static const ROGUE_NUM_PBESTATE_STATE_WORDS],
+   const uint32_t emit_count,
+   const uint32_t *pbe_cs_words,
    struct pvr_pds_upload *const pds_upload_out)
 {
    struct pvr_pds_event_program pixel_event_program = {
@@ -495,8 +499,10 @@ static VkResult pvr_sub_cmd_gfx_per_job_fragment_programs_create_and_upload(
    uint32_t usc_temp_count;
    VkResult result;
 
-   pvr_uscgen_per_job_eot(pbe_cs_words[0],
-                          pbe_cs_words[1],
+   assert(emit_count > 0);
+
+   pvr_uscgen_per_job_eot(emit_count,
+                          pbe_cs_words,
                           &usc_temp_count,
                           &eot_program_bin);
 
@@ -1237,10 +1243,9 @@ static VkResult pvr_sub_cmd_gfx_job_init(const struct pvr_device_info *dev_info,
           emit_state.pbe_reg_words,
           sizeof(emit_state.pbe_reg_words));
 
-   /* FIXME: The fragment program only supports a single surface at present. */
-   assert(emit_state.emit_count == 1);
    result = pvr_sub_cmd_gfx_per_job_fragment_programs_create_and_upload(
       cmd_buffer,
+      emit_state.emit_count,
       emit_state.pbe_cs_words[0],
       &pds_pixel_event_program);
    if (result != VK_SUCCESS)
