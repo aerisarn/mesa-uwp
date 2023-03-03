@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 set -e
 
@@ -13,6 +13,7 @@ mount -t devpts devpts /dev/pts
 mount -t tmpfs tmpfs /tmp
 
 . ${VM_TEMP_DIR}/crosvm-env.sh
+. ${VM_TEMP_DIR}/setup-test-env.sh
 
 # Required by the wayland platform
 export XDG_RUNTIME_DIR=$(mktemp -d)
@@ -34,7 +35,7 @@ DMESG_PID=$!
 # Transfer the errors and crosvm-script output via a pair of virtio-vsocks
 socat -d -u pipe:${STDERR_FIFO} vsock-listen:${VSOCK_STDERR} &
 socat -d -U vsock-listen:${VSOCK_STDOUT} \
-    system:"stdbuf -eL sh ${VM_TEMP_DIR}/crosvm-script.sh 2> ${STDERR_FIFO}; echo \$? > ${VM_TEMP_DIR}/exit_code",nofork
+    system:"stdbuf -eL bash ${VM_TEMP_DIR}/crosvm-script.sh 2> ${STDERR_FIFO}; echo \$? > ${VM_TEMP_DIR}/exit_code",nofork
 
 kill ${DMESG_PID}
 wait
