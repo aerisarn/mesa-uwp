@@ -224,6 +224,18 @@ pass(struct nir_builder *b, nir_instr *instr, UNUSED void *data)
       match.shift = 0;
    }
 
+   /* Hardware offsets must be 32-bits. Upconvert if the source code used
+    * smaller integers.
+    */
+   if (offset->bit_size != 32) {
+      assert(offset->bit_size < 32);
+
+      if (match.sign_extend)
+         offset = nir_i2i32(b, offset);
+      else
+         offset = nir_u2u32(b, offset);
+   }
+
    assert(match.shift >= 0);
    nir_ssa_def *new_base = nir_channel(b, match.base.def, match.base.comp);
 
