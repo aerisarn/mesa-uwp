@@ -310,7 +310,10 @@ nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
       NIR_PASS(_, nir, nir_shader_instructions_pass, lower_fragcoord_instr,
                nir_metadata_block_index | nir_metadata_dominance, NULL);
       NIR_PASS(_, nir, nir_lower_input_attachments,
-               &(nir_input_attachment_options) { });
+               &(nir_input_attachment_options) {
+                  .use_layer_id_sysval = true,
+                  .use_view_id_for_layer = true,
+               });
    }
 
    nir_lower_compute_system_values_options csv_options = {
