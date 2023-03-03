@@ -34,6 +34,9 @@
 #include "ir3_asm.h"
 #include "main.h"
 
+#define FD_BO_NO_HARDPIN 1
+#include "common/fd6_pack.h"
+
 struct a6xx_backend {
    struct backend base;
 
@@ -128,18 +131,18 @@ cs_program_emit(struct fd_ringbuffer *ring, struct kernel *kernel)
    OUT_PKT4(ring, REG_A6XX_SP_FLOAT_CNTL, 1);
    OUT_RING(ring, 0);
 
-   OUT_PKT4(ring, REG_A6XX_HLSQ_INVALIDATE_CMD, 1);
-   OUT_RING(
-      ring,
-      A6XX_HLSQ_INVALIDATE_CMD_VS_STATE | A6XX_HLSQ_INVALIDATE_CMD_HS_STATE |
-         A6XX_HLSQ_INVALIDATE_CMD_DS_STATE | A6XX_HLSQ_INVALIDATE_CMD_GS_STATE |
-         A6XX_HLSQ_INVALIDATE_CMD_FS_STATE | A6XX_HLSQ_INVALIDATE_CMD_CS_STATE |
-         A6XX_HLSQ_INVALIDATE_CMD_CS_IBO | A6XX_HLSQ_INVALIDATE_CMD_GFX_IBO);
+   OUT_REG(ring, HLSQ_INVALIDATE_CMD(CHIP,
+      .vs_state = true,
+      .hs_state = true,
+      .ds_state = true,
+      .gs_state = true,
+      .fs_state = true,
+      .cs_state = true,
+      .gfx_ibo = true,
+   ));
 
    unsigned constlen = align(v->constlen, 4);
-   OUT_PKT4(ring, REG_A6XX_HLSQ_CS_CNTL, 1);
-   OUT_RING(ring,
-            A6XX_HLSQ_CS_CNTL_CONSTLEN(constlen) | A6XX_HLSQ_CS_CNTL_ENABLED);
+   OUT_REG(ring, HLSQ_CS_CNTL(CHIP, .constlen = constlen, .enabled = true, ));
 
    OUT_PKT4(ring, REG_A6XX_SP_CS_CONFIG, 2);
    OUT_RING(ring, A6XX_SP_CS_CONFIG_ENABLED |
@@ -158,9 +161,10 @@ cs_program_emit(struct fd_ringbuffer *ring, struct kernel *kernel)
                A6XX_SP_CS_CTRL_REG0_BRANCHSTACK(ir3_shader_branchstack_hw(v)));
 
    OUT_PKT4(ring, REG_A6XX_SP_CS_UNKNOWN_A9B1, 1);
-   OUT_RING(ring, 0x41);
+   OUT_RING(ring, A6XX_SP_CS_UNKNOWN_A9B1_SHARED_SIZE(1) |
+                  A6XX_SP_CS_UNKNOWN_A9B1_UNK6);
 
-   if (a6xx_backend->info->a6xx.has_lpac) {
+   if (CHIP == A6XX && a6xx_backend->info->a6xx.has_lpac) {
       OUT_PKT4(ring, REG_A6XX_HLSQ_CS_UNKNOWN_B9D0, 1);
       OUT_RING(ring, A6XX_HLSQ_CS_UNKNOWN_B9D0_SHARED_SIZE(1) |
                         A6XX_HLSQ_CS_UNKNOWN_B9D0_UNK6);
@@ -171,15 +175,17 @@ cs_program_emit(struct fd_ringbuffer *ring, struct kernel *kernel)
       ir3_find_sysval_regid(v, SYSTEM_VALUE_LOCAL_INVOCATION_ID);
    work_group_id = ir3_find_sysval_regid(v, SYSTEM_VALUE_WORKGROUP_ID);
 
-   OUT_PKT4(ring, REG_A6XX_HLSQ_CS_CNTL_0, 2);
-   OUT_RING(ring, A6XX_HLSQ_CS_CNTL_0_WGIDCONSTID(work_group_id) |
-                     A6XX_HLSQ_CS_CNTL_0_WGSIZECONSTID(regid(63, 0)) |
-                     A6XX_HLSQ_CS_CNTL_0_WGOFFSETCONSTID(regid(63, 0)) |
-                     A6XX_HLSQ_CS_CNTL_0_LOCALIDREGID(local_invocation_id));
-   OUT_RING(ring, A6XX_HLSQ_CS_CNTL_1_LINEARLOCALIDREGID(regid(63, 0)) |
-                     A6XX_HLSQ_CS_CNTL_1_THREADSIZE(thrsz));
+   if (CHIP == A6XX) {
+      OUT_PKT4(ring, REG_A6XX_HLSQ_CS_CNTL_0, 2);
+      OUT_RING(ring, A6XX_HLSQ_CS_CNTL_0_WGIDCONSTID(work_group_id) |
+                        A6XX_HLSQ_CS_CNTL_0_WGSIZECONSTID(regid(63, 0)) |
+                        A6XX_HLSQ_CS_CNTL_0_WGOFFSETCONSTID(regid(63, 0)) |
+                        A6XX_HLSQ_CS_CNTL_0_LOCALIDREGID(local_invocation_id));
+      OUT_RING(ring, A6XX_HLSQ_CS_CNTL_1_LINEARLOCALIDREGID(regid(63, 0)) |
+                        A6XX_HLSQ_CS_CNTL_1_THREADSIZE(thrsz));
+   }
 
-   if (a6xx_backend->info->a6xx.has_lpac) {
+   if (CHIP == A7XX || a6xx_backend->info->a6xx.has_lpac) {
       OUT_PKT4(ring, REG_A6XX_SP_CS_CNTL_0, 2);
       OUT_RING(ring, A6XX_SP_CS_CNTL_0_WGIDCONSTID(work_group_id) |
                         A6XX_SP_CS_CNTL_0_WGSIZECONSTID(regid(63, 0)) |
@@ -363,7 +369,8 @@ event_write(struct fd_ringbuffer *ring, struct kernel *kernel,
    unsigned seqno = 0;
 
    OUT_PKT7(ring, CP_EVENT_WRITE, timestamp ? 4 : 1);
-   OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(evt));
+   OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(evt) |
+                     COND(timestamp && CHIP == A7XX, CP_EVENT_WRITE_0_SEQNO));
    if (timestamp) {
       struct ir3_kernel *ir3_kernel = to_ir3_kernel(kernel);
       struct a6xx_backend *a6xx_backend = to_a6xx_backend(ir3_kernel->backend);
@@ -393,12 +400,16 @@ cache_flush(struct fd_ringbuffer *ring, struct kernel *kernel)
    OUT_RING(ring, CP_WAIT_REG_MEM_4_MASK(~0));
    OUT_RING(ring, CP_WAIT_REG_MEM_5_DELAY_LOOP_CYCLES(16));
 
-   seqno = event_write<CHIP>(ring, kernel, CACHE_FLUSH_TS, true);
+   if (CHIP == A6XX) {
+      seqno = event_write<CHIP>(ring, kernel, CACHE_FLUSH_TS, true);
 
-   OUT_PKT7(ring, CP_WAIT_MEM_GTE, 4);
-   OUT_RING(ring, CP_WAIT_MEM_GTE_0_RESERVED(0));
-   OUT_RELOC(ring, control_ptr(a6xx_backend, seqno));
-   OUT_RING(ring, CP_WAIT_MEM_GTE_3_REF(seqno));
+      OUT_PKT7(ring, CP_WAIT_MEM_GTE, 4);
+      OUT_RING(ring, CP_WAIT_MEM_GTE_0_RESERVED(0));
+      OUT_RELOC(ring, control_ptr(a6xx_backend, seqno));
+      OUT_RING(ring, CP_WAIT_MEM_GTE_3_REF(seqno));
+   } else {
+      event_write<CHIP>(ring, kernel, CACHE_FLUSH7, false);
+   }
 }
 
 template<chip CHIP>
@@ -429,25 +440,28 @@ a6xx_emit_grid(struct kernel *kernel, uint32_t grid[3],
       work_dim++;
    }
 
-   OUT_PKT4(ring, REG_A6XX_HLSQ_CS_NDRANGE_0, 7);
-   OUT_RING(ring, A6XX_HLSQ_CS_NDRANGE_0_KERNELDIM(work_dim) |
-                     A6XX_HLSQ_CS_NDRANGE_0_LOCALSIZEX(local_size[0] - 1) |
-                     A6XX_HLSQ_CS_NDRANGE_0_LOCALSIZEY(local_size[1] - 1) |
-                     A6XX_HLSQ_CS_NDRANGE_0_LOCALSIZEZ(local_size[2] - 1));
-   OUT_RING(ring,
-            A6XX_HLSQ_CS_NDRANGE_1_GLOBALSIZE_X(local_size[0] * num_groups[0]));
-   OUT_RING(ring, 0); /* HLSQ_CS_NDRANGE_2_GLOBALOFF_X */
-   OUT_RING(ring,
-            A6XX_HLSQ_CS_NDRANGE_3_GLOBALSIZE_Y(local_size[1] * num_groups[1]));
-   OUT_RING(ring, 0); /* HLSQ_CS_NDRANGE_4_GLOBALOFF_Y */
-   OUT_RING(ring,
-            A6XX_HLSQ_CS_NDRANGE_5_GLOBALSIZE_Z(local_size[2] * num_groups[2]));
-   OUT_RING(ring, 0); /* HLSQ_CS_NDRANGE_6_GLOBALOFF_Z */
+   OUT_REG(ring, HLSQ_CS_NDRANGE_0(CHIP,
+                    .kerneldim = work_dim,
+                    .localsizex = local_size[0] - 1,
+                    .localsizey = local_size[1] - 1,
+                    .localsizez = local_size[2] - 1,
+                 ));
+   OUT_REG(ring, HLSQ_CS_NDRANGE_1(CHIP,
+                    .globalsize_x = local_size[0] * num_groups[0],
+                 ));
+   OUT_REG(ring, HLSQ_CS_NDRANGE_2(CHIP, 0));
+   OUT_REG(ring, HLSQ_CS_NDRANGE_3(CHIP,
+                    .globalsize_y = local_size[1] * num_groups[1],
+                 ));
+   OUT_REG(ring, HLSQ_CS_NDRANGE_4(CHIP, 0));
+   OUT_REG(ring, HLSQ_CS_NDRANGE_5(CHIP,
+                    .globalsize_z = local_size[2] * num_groups[2],
+                 ));
+   OUT_REG(ring, HLSQ_CS_NDRANGE_6(CHIP, 0));
 
-   OUT_PKT4(ring, REG_A6XX_HLSQ_CS_KERNEL_GROUP_X, 3);
-   OUT_RING(ring, 1); /* HLSQ_CS_KERNEL_GROUP_X */
-   OUT_RING(ring, 1); /* HLSQ_CS_KERNEL_GROUP_Y */
-   OUT_RING(ring, 1); /* HLSQ_CS_KERNEL_GROUP_Z */
+   OUT_REG(ring, HLSQ_CS_KERNEL_GROUP_X(CHIP, 1));
+   OUT_REG(ring, HLSQ_CS_KERNEL_GROUP_Y(CHIP, 1));
+   OUT_REG(ring, HLSQ_CS_KERNEL_GROUP_Z(CHIP, 1));
 
    if (a6xx_backend->num_perfcntrs > 0) {
       a6xx_backend->query_mem = fd_bo_new(
