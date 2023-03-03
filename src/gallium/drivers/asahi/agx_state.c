@@ -1753,6 +1753,10 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
    unsigned nr_textures = ctx->stage[stage].texture_count;
    unsigned nr_samplers = ctx->stage[stage].sampler_count;
    bool custom_borders = ctx->stage[stage].custom_borders;
+   bool dummy_sampler = cs->info.needs_dummy_sampler && (nr_samplers == 0);
+
+   if (dummy_sampler)
+      nr_samplers = 1;
 
    struct agx_ptr T_tex = agx_pool_alloc_aligned(
       &batch->pool, AGX_TEXTURE_LENGTH * nr_textures, 64);
@@ -1798,24 +1802,31 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
 
    /* TODO: Dirty track me to save some CPU cycles and maybe improve caching */
    uint8_t *out_sampler = T_samp.cpu;
-   for (unsigned i = 0; i < nr_samplers; ++i) {
-      struct agx_sampler_state *sampler = ctx->stage[stage].samplers[i];
-      struct agx_sampler_packed *out = (struct agx_sampler_packed *)out_sampler;
+   if (dummy_sampler) {
+      /* Configuration is irrelevant for the dummy sampler */
+      agx_pack(out_sampler, SAMPLER, cfg)
+         ;
+   } else {
+      for (unsigned i = 0; i < nr_samplers; ++i) {
+         struct agx_sampler_state *sampler = ctx->stage[stage].samplers[i];
+         struct agx_sampler_packed *out =
+            (struct agx_sampler_packed *)out_sampler;
 
-      if (sampler) {
-         *out = sampler->desc;
+         if (sampler) {
+            *out = sampler->desc;
 
-         if (custom_borders) {
-            memcpy(out_sampler + AGX_SAMPLER_LENGTH, &sampler->border,
-                   AGX_BORDER_LENGTH);
+            if (custom_borders) {
+               memcpy(out_sampler + AGX_SAMPLER_LENGTH, &sampler->border,
+                      AGX_BORDER_LENGTH);
+            } else {
+               assert(!sampler->uses_custom_border && "invalid combination");
+            }
          } else {
-            assert(!sampler->uses_custom_border && "invalid combination");
+            memset(out, 0, sampler_length);
          }
-      } else {
-         memset(out, 0, sampler_length);
-      }
 
-      out_sampler += sampler_length;
+         out_sampler += sampler_length;
+      }
    }
 
    struct agx_usc_builder b =

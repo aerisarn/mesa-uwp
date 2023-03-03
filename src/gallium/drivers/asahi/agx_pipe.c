@@ -1281,7 +1281,6 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_SURFACE_SAMPLE_COUNT:
    case PIPE_CAP_SAMPLE_SHADING:
    case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
-   case PIPE_CAP_TEXTURE_BUFFER_SAMPLER:
    case PIPE_CAP_IMAGE_LOAD_FORMATTED:
    case PIPE_CAP_IMAGE_STORE_FORMATTED:
    case PIPE_CAP_COMPUTE:

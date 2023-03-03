@@ -124,6 +124,9 @@ struct agx_shader_info {
    /* Shader is incompatible with triangle merging */
    bool disable_tri_merging;
 
+   /* Shader needs a dummy sampler (for txf reads) */
+   bool needs_dummy_sampler;
+
    /* Number of 16-bit registers used by the main shader and preamble
     * respectively.
     */

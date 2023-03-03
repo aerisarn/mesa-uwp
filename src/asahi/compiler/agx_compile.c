@@ -1326,6 +1326,12 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 
    bool txf = (instr->op == nir_texop_txf || instr->op == nir_texop_txf_ms);
 
+   /* txf loads a texture without an associated sampler, but in the hardware
+    * there is an associated load of a sampler. This requires that the driver
+    * upload a dummy sampler.
+    */
+   b->shader->out->needs_dummy_sampler |= txf;
+
    for (unsigned i = 0; i < instr->num_srcs; ++i) {
       agx_index index = agx_src_index(&instr->src[i].src);
 
