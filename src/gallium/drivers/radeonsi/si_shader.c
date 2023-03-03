@@ -1837,6 +1837,112 @@ static unsigned si_get_nr_pos_exports(const struct si_shader_selector *sel,
    return nr_pos_exports;
 }
 
+static bool lower_ps_load_color_intrinsic(nir_builder *b, nir_instr *instr, void *state)
+{
+   nir_ssa_def **colors = (nir_ssa_def **)state;
+
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+   if (intrin->intrinsic != nir_intrinsic_load_color0 &&
+       intrin->intrinsic != nir_intrinsic_load_color1)
+      return false;
+
+   unsigned index = intrin->intrinsic == nir_intrinsic_load_color0 ? 0 : 1;
+   assert(colors[index]);
+
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, colors[index]);
+
+   nir_instr_remove(&intrin->instr);
+   return true;
+}
+
+static void si_nir_lower_ps_color_input(nir_shader *nir, struct si_shader *shader)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+
+   nir_builder builder;
+   nir_builder *b = &builder;
+   nir_builder_init(b, impl);
+
+   b->cursor = nir_before_cf_list(&impl->body);
+
+   const struct si_shader_selector *sel = shader->selector;
+   const union si_shader_key *key = &shader->key;
+
+   /* Build ready to be used colors at the beginning of the shader. */
+   nir_ssa_def *colors[2] = {0};
+   for (int i = 0; i < 2; i++) {
+      if (!(sel->info.colors_read & (0xf << (i * 4))))
+         continue;
+
+      unsigned color_base = sel->info.color_attr_index[i];
+      /* If BCOLOR0 is used, BCOLOR1 is at offset "num_inputs + 1",
+       * otherwise it's at offset "num_inputs".
+       */
+      unsigned back_color_base = sel->info.num_inputs;
+      if (i == 1 && (sel->info.colors_read & 0xf))
+         back_color_base += 1;
+
+      enum glsl_interp_mode interp_mode = sel->info.color_interpolate[i];
+      if (interp_mode == INTERP_MODE_COLOR) {
+         interp_mode = key->ps.part.prolog.flatshade_colors ?
+            INTERP_MODE_FLAT : INTERP_MODE_SMOOTH;
+      }
+
+      nir_ssa_def *back_color = NULL;
+      if (interp_mode == INTERP_MODE_FLAT) {
+         colors[i] = nir_load_input(b, 4, 32, nir_imm_int(b, 0),
+                                   .base = color_base);
+
+         if (key->ps.part.prolog.color_two_side) {
+            back_color = nir_load_input(b, 4, 32, nir_imm_int(b, 0),
+                                        .base = back_color_base);
+         }
+      } else {
+         nir_intrinsic_op op = 0;
+         switch (sel->info.color_interpolate_loc[i]) {
+         case TGSI_INTERPOLATE_LOC_CENTER:
+            op = nir_intrinsic_load_barycentric_pixel;
+            break;
+         case TGSI_INTERPOLATE_LOC_CENTROID:
+            op = nir_intrinsic_load_barycentric_centroid;
+            break;
+         case TGSI_INTERPOLATE_LOC_SAMPLE:
+            op = nir_intrinsic_load_barycentric_sample;
+            break;
+         default:
+            unreachable("invalid color interpolate location");
+            break;
+         }
+
+         nir_ssa_def *barycentric = nir_load_barycentric(b, op, interp_mode);
+
+         colors[i] =
+            nir_load_interpolated_input(b, 4, 32, barycentric, nir_imm_int(b, 0),
+                                        .base = color_base);
+
+         if (key->ps.part.prolog.color_two_side) {
+            back_color =
+               nir_load_interpolated_input(b, 4, 32, barycentric, nir_imm_int(b, 0),
+                                           .base = back_color_base);
+         }
+      }
+
+      if (back_color) {
+         nir_ssa_def *is_front_face = nir_load_front_face(b, 1);
+         colors[i] = nir_bcsel(b, is_front_face, colors[i], back_color);
+      }
+   }
+
+   /* lower nir_load_color0/1 to use the color value. */
+   nir_shader_instructions_pass(nir, lower_ps_load_color_intrinsic,
+                                nir_metadata_block_index | nir_metadata_dominance,
+                                colors);
+}
+
 struct nir_shader *si_get_nir_shader(struct si_shader *shader,
                                      struct si_shader_args *args,
                                      bool *free_nir,
