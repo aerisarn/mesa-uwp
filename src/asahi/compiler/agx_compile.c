@@ -23,12 +23,12 @@
  * SOFTWARE.
  */
 
+#include "agx_compile.h"
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir_types.h"
 #include "util/glheader.h"
 #include "util/u_debug.h"
 #include "agx_builder.h"
-#include "agx_compile.h"
 #include "agx_compiler.h"
 #include "agx_internal_formats.h"
 
@@ -1122,7 +1122,8 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
       return agx_asr_to(b, dst, s0, s1);
 
    case nir_op_extr_agx:
-      return agx_extr_to(b, dst, s0, s1, s2, nir_src_as_uint(instr->src[3].src));
+      return agx_extr_to(b, dst, s0, s1, s2,
+                         nir_src_as_uint(instr->src[3].src));
 
    case nir_op_bcsel:
       return agx_icmpsel_to(b, dst, s0, i0, s2, s1, AGX_ICOND_UEQ);

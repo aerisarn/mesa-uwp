@@ -23,6 +23,7 @@
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+#include "agx_state.h"
 #include <errno.h>
 #include <stdio.h>
 #include "asahi/compiler/agx_compile.h"
@@ -51,7 +52,6 @@
 #include "util/u_prim.h"
 #include "util/u_resource.h"
 #include "util/u_transfer.h"
-#include "agx_state.h"
 #include "agx_disk_cache.h"
 
 static struct pipe_stream_output_target *
@@ -108,18 +108,18 @@ agx_set_stream_output_targets(struct pipe_context *pctx, unsigned num_targets,
 }
 
 static void
-agx_set_shader_images(
-        struct pipe_context *pctx,
-        enum pipe_shader_type shader,
-        unsigned start_slot, unsigned count, unsigned unbind_num_trailing_slots,
-        const struct pipe_image_view *iviews)
+agx_set_shader_images(struct pipe_context *pctx, enum pipe_shader_type shader,
+                      unsigned start_slot, unsigned count,
+                      unsigned unbind_num_trailing_slots,
+                      const struct pipe_image_view *iviews)
 {
    struct agx_context *ctx = agx_context(pctx);
    ctx->stage[shader].dirty = ~0;
 
    /* Unbind start_slot...start_slot+count */
    if (!iviews) {
-      for (int i = start_slot; i < start_slot + count + unbind_num_trailing_slots; i++) {
+      for (int i = start_slot;
+           i < start_slot + count + unbind_num_trailing_slots; i++) {
          pipe_resource_reference(&ctx->stage[shader].images[i].resource, NULL);
       }
 
@@ -137,34 +137,33 @@ agx_set_shader_images(
          ctx->stage[shader].image_mask &= ~BITFIELD_BIT(start_slot + i);
 
       if (!image->resource) {
-         util_copy_image_view(&ctx->stage[shader].images[start_slot+i], NULL);
+         util_copy_image_view(&ctx->stage[shader].images[start_slot + i], NULL);
          continue;
       }
 
       /* FIXME: Decompress here once we have texture compression */
-      util_copy_image_view(&ctx->stage[shader].images[start_slot+i], image);
+      util_copy_image_view(&ctx->stage[shader].images[start_slot + i], image);
    }
 
    /* Unbind start_slot+count...start_slot+count+unbind_num_trailing_slots */
    for (int i = 0; i < unbind_num_trailing_slots; i++) {
       ctx->stage[shader].image_mask &= ~BITFIELD_BIT(start_slot + count + i);
-      util_copy_image_view(&ctx->stage[shader].images[start_slot+count+i], NULL);
+      util_copy_image_view(&ctx->stage[shader].images[start_slot + count + i],
+                           NULL);
    }
 }
 
 static void
-agx_set_shader_buffers(
-        struct pipe_context *pctx,
-        enum pipe_shader_type shader,
-        unsigned start, unsigned count,
-        const struct pipe_shader_buffer *buffers,
-        unsigned writable_bitmask)
+agx_set_shader_buffers(struct pipe_context *pctx, enum pipe_shader_type shader,
+                       unsigned start, unsigned count,
+                       const struct pipe_shader_buffer *buffers,
+                       unsigned writable_bitmask)
 {
    struct agx_context *ctx = agx_context(pctx);
 
    util_set_shader_buffers_mask(ctx->stage[shader].ssbo,
-                                &ctx->stage[shader].ssbo_mask,
-                                buffers, start, count);
+                                &ctx->stage[shader].ssbo_mask, buffers, start,
+                                count);
 
    ctx->stage[shader].dirty = ~0;
 }
@@ -1245,12 +1244,14 @@ asahi_fs_shader_key_equal(const void *a, const void *b)
 }
 
 /* No compute variants */
-static uint32_t asahi_cs_shader_key_hash(const void *key)
+static uint32_t
+asahi_cs_shader_key_hash(const void *key)
 {
    return 0;
 }
 
-static bool asahi_cs_shader_key_equal(const void *a, const void *b)
+static bool
+asahi_cs_shader_key_equal(const void *a, const void *b)
 {
    return true;
 }
@@ -1604,7 +1605,7 @@ agx_create_compute_state(struct pipe_context *pctx,
    so->variants = _mesa_hash_table_create(NULL, asahi_cs_shader_key_hash,
                                           asahi_cs_shader_key_equal);
 
-   union asahi_shader_key key = { 0 };
+   union asahi_shader_key key = {0};
 
    assert(cso->ir_type == PIPE_SHADER_IR_NIR && "TGSI kernels unsupported");
    nir_shader *nir = nir_shader_clone(NULL, cso->prog);

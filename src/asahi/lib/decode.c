@@ -34,11 +34,12 @@
 
 #include "decode.h"
 #include "hexdump.h"
-#ifdef  __APPLE__
+#ifdef __APPLE__
 #include "agx_iokit.h"
 #endif
 
-UNUSED static const char *agx_alloc_types[AGX_NUM_ALLOC] = {"mem", "map", "cmd"};
+UNUSED static const char *agx_alloc_types[AGX_NUM_ALLOC] = {"mem", "map",
+                                                            "cmd"};
 
 static void
 agx_disassemble(void *_code, size_t maxlen, FILE *fp)
