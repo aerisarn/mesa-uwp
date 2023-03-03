@@ -565,6 +565,10 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
    vk_physical_device_dispatch_table_from_entrypoints(
       &dispatch_table, &wsi_physical_device_entrypoints, false);
 
+   device->instance = instance;
+   device->dev = ndev;
+   device->info = ndev->info;
+
    struct vk_device_extension_table supported_extensions;
    nvk_get_device_extensions(device, &supported_extensions);
 
@@ -574,10 +578,6 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
 
    if (result != VK_SUCCESS)
       goto fail_alloc;
-
-   device->instance = instance;
-   device->dev = ndev;
-   device->info = ndev->info;
 
    device->mem_heaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
    device->mem_types[0].propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
