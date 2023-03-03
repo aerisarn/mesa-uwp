@@ -804,28 +804,6 @@ dzn_CreatePipelineLayout(VkDevice device,
                                      pCreateInfo, pAllocator, pPipelineLayout);
 }
 
-static D3D12_DESCRIPTOR_HEAP_TYPE
-desc_type_to_heap_type(VkDescriptorType in)
-{
-   switch (in) {
-   case VK_DESCRIPTOR_TYPE_SAMPLER:
-     return D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
-   case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-   case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-   case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-   case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-     return D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-   default:
-      unreachable("Unsupported desc type");
-   }
-}
-
 void
 dzn_descriptor_heap_finish(struct dzn_descriptor_heap *heap)
 {
