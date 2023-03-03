@@ -1707,6 +1707,9 @@ agx_destroy_screen(struct pipe_screen *pscreen)
 {
    struct agx_screen *screen = agx_screen(pscreen);
 
+   if (screen->dev.ro)
+      screen->dev.ro->destroy(screen->dev.ro);
+
    u_transfer_helper_destroy(pscreen->transfer_helper);
    agx_close_device(&screen->dev);
    disk_cache_destroy(screen->disk_cache);
