@@ -202,6 +202,7 @@ flush_streamout(struct fd_context *ctx, struct fd6_emit *emit)
    }
 }
 
+template <chip CHIP>
 static void
 fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
               unsigned drawid_offset,
@@ -344,7 +345,7 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
    }
 
    if (emit.dirty_groups)
-      fd6_emit_3d_state(ring, &emit);
+      fd6_emit_3d_state<CHIP>(ring, &emit);
 
    if (ctx->batch->barrier)
       fd6_barrier_flush(ctx->batch);
@@ -398,7 +399,7 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
             if (emit.dirty_groups) {
                emit.state.num_groups = 0;
                emit.draw = &draws[i];
-               fd6_emit_3d_state(ring, &emit);
+               fd6_emit_3d_state<CHIP>(ring, &emit);
             }
 
             assert(!index_offset); /* handled by util_draw_multi() */
@@ -418,6 +419,7 @@ fd6_draw_vbos(struct fd_context *ctx, const struct pipe_draw_info *info,
    fd_context_all_clean(ctx);
 }
 
+template <chip CHIP>
 static void
 fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth) assert_dt
 {
@@ -436,7 +438,7 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth) a
    fd6_emit_ccu_cntl(ring, screen, false);
 
    OUT_REG(ring,
-           A6XX_HLSQ_INVALIDATE_CMD(.vs_state = true, .hs_state = true,
+           HLSQ_INVALIDATE_CMD(CHIP, .vs_state = true, .hs_state = true,
                                     .ds_state = true, .gs_state = true,
                                     .fs_state = true, .cs_state = true,
                                     .cs_ibo = true, .gfx_ibo = true,
@@ -451,23 +453,19 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth) a
    OUT_PKT4(ring, REG_A6XX_RB_2D_UNKNOWN_8C01, 1);
    OUT_RING(ring, 0x0);
 
-   OUT_PKT4(ring, REG_A6XX_SP_PS_2D_SRC_INFO, 13);
-   OUT_RING(ring, 0x00000000);
-   OUT_RING(ring, 0x00000000);
-   OUT_RING(ring, 0x00000000);
-   OUT_RING(ring, 0x00000000);
-   OUT_RING(ring, 0x00000000);
-   OUT_RING(ring, 0x00000000);
-   OUT_RING(ring, 0x00000000);
-   OUT_RING(ring, 0x00000000);
-   OUT_RING(ring, 0x00000000);
-   OUT_RING(ring, 0x00000000);
-   OUT_RING(ring, 0x00000000);
-   OUT_RING(ring, 0x00000000);
-   OUT_RING(ring, 0x00000000);
+   OUT_REG(ring,
+           SP_PS_2D_SRC_INFO(CHIP),
+           SP_PS_2D_SRC_SIZE(CHIP),
+           SP_PS_2D_SRC(CHIP),
+           SP_PS_2D_SRC_PITCH(CHIP),
+   );
 
-   OUT_PKT4(ring, REG_A6XX_SP_2D_DST_FORMAT, 1);
-   OUT_RING(ring, 0x0000f410);
+   OUT_REG(ring, SP_2D_DST_FORMAT(
+         CHIP,
+         // TODO probably FMT6_16_UNORM, but this matches what we used to emit:
+         .color_format = FMT6_32_32_32_32_FLOAT,
+         .mask = 0xf,
+   ));
 
    OUT_PKT4(ring, REG_A6XX_GRAS_2D_BLIT_CNTL, 1);
    OUT_RING(ring,
@@ -545,6 +543,7 @@ is_z32(enum pipe_format format)
    }
 }
 
+template <chip CHIP>
 static bool
 fd6_clear(struct fd_context *ctx, enum fd_buffer_mask buffers,
           const union pipe_color_union *color, double depth,
@@ -566,7 +565,7 @@ fd6_clear(struct fd_context *ctx, enum fd_buffer_mask buffers,
       if (zsbuf->lrz && !is_z32(pfb->zsbuf->format)) {
          zsbuf->lrz_valid = true;
          zsbuf->lrz_direction = FD_LRZ_UNKNOWN;
-         fd6_clear_lrz(ctx->batch, zsbuf, depth);
+         fd6_clear_lrz<CHIP>(ctx->batch, zsbuf, depth);
       }
    }
 
@@ -586,10 +585,16 @@ fd6_clear(struct fd_context *ctx, enum fd_buffer_mask buffers,
    return true;
 }
 
+template <chip CHIP>
 void
-fd6_draw_init(struct pipe_context *pctx) disable_thread_safety_analysis
+fd6_draw_init(struct pipe_context *pctx)
+   disable_thread_safety_analysis
 {
    struct fd_context *ctx = fd_context(pctx);
-   ctx->draw_vbos = fd6_draw_vbos;
-   ctx->clear = fd6_clear;
+   ctx->clear = fd6_clear<CHIP>;
+   ctx->draw_vbos = fd6_draw_vbos<CHIP>;
 }
+
+/* Teach the compiler about needed variants: */
+template void fd6_draw_init<A6XX>(struct pipe_context *pctx);
+template void fd6_draw_init<A7XX>(struct pipe_context *pctx);
