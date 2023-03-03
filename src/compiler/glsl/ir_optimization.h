@@ -44,8 +44,6 @@ bool do_common_optimization(exec_list *ir, bool linked,
 bool do_rebalance_tree(exec_list *instructions);
 bool do_algebraic(exec_list *instructions, bool native_integers,
                   const struct gl_shader_compiler_options *options);
-bool do_constant_variable(exec_list *instructions);
-bool do_constant_variable_unlinked(exec_list *instructions);
 bool do_dead_code(exec_list *instructions);
 bool do_dead_code_local(exec_list *instructions);
 bool do_dead_code_unlinked(exec_list *instructions);
