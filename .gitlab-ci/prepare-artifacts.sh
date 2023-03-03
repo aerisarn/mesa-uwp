@@ -38,6 +38,7 @@ cp -Rp .gitlab-ci/*.txt install/
 cp -Rp .gitlab-ci/report-flakes.py install/
 cp -Rp .gitlab-ci/valve install/
 cp -Rp .gitlab-ci/vkd3d-proton install/
+cp -Rp .gitlab-ci/setup-test-env.sh install/
 cp -Rp .gitlab-ci/*-runner.sh install/
 find . -path \*/ci/\*.txt \
     -o -path \*/ci/\*.toml \
