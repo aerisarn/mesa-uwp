@@ -2389,8 +2389,9 @@ agx_index_buffer_direct_ptr(struct agx_batch *batch,
    } else {
       *extent = ALIGN_POT(draw->count * info->index_size, 4);
 
-      return agx_pool_upload_aligned(
-         &batch->pool, ((uint8_t *)info->index.user) + offset, *extent, 64);
+      return agx_pool_upload_aligned(&batch->pool,
+                                     ((uint8_t *)info->index.user) + offset,
+                                     draw->count * info->index_size, 64);
    }
 }
 
