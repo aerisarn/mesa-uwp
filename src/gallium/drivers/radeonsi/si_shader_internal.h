@@ -132,6 +132,9 @@ static inline struct si_shader_context *si_shader_context_from_abi(struct ac_sha
 struct ac_nir_gs_output_info;
 typedef struct ac_nir_gs_output_info ac_nir_gs_output_info;
 
+struct nir_builder;
+typedef struct nir_builder nir_builder;
+
 /* si_shader.c */
 bool si_is_multi_part_shader(struct si_shader *shader);
 bool si_is_merged_shader(struct si_shader *shader);
@@ -160,6 +163,8 @@ unsigned gfx10_ngg_get_scratch_dw_size(struct si_shader *shader);
 bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader);
 
 /* si_nir_lower_abi.c */
+nir_ssa_def *si_nir_load_internal_binding(nir_builder *b, struct si_shader_args *args,
+                                          unsigned slot, unsigned num_components);
 bool si_nir_lower_abi(nir_shader *nir, struct si_shader *shader, struct si_shader_args *args);
 
 /* si_nir_lower_resource.c */
