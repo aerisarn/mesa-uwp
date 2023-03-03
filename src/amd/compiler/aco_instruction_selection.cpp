@@ -11271,10 +11271,15 @@ add_startpgm(struct isel_context* ctx)
          ctx->arg_temps[i] = create_vec_from_array(ctx, elems, size, RegType::sgpr, 4);
       } else {
          Temp dst = ctx->program->allocateTmp(type);
+         Definition def(dst);
+         def.setFixed(PhysReg{file == AC_ARG_SGPR ? reg : reg + 256});
          ctx->arg_temps[i] = dst;
-         startpgm->definitions[arg] = Definition(dst);
-         startpgm->definitions[arg].setFixed(PhysReg{file == AC_ARG_SGPR ? reg : reg + 256});
-         arg++;
+         startpgm->definitions[arg++] = def;
+
+         if (ctx->args->ac.args[i].pending_vmem) {
+            assert(file == AC_ARG_VGPR);
+            ctx->program->args_pending_vmem.push_back(def);
+         }
       }
    }
 
@@ -11291,18 +11296,6 @@ add_startpgm(struct isel_context* ctx)
          Builder bld(ctx->program, ctx->block);
          bld.pseudo(aco_opcode::p_init_scratch, bld.def(s2), bld.def(s1, scc),
                     ctx->program->private_segment_buffer, scratch_offset);
-      }
-   }
-
-   if (ctx->stage.has(SWStage::VS) && ctx->program->info.vs.dynamic_inputs) {
-      unsigned num_attributes = util_last_bit(ctx->program->info.vs.input_slot_usage_mask);
-      for (unsigned i = 0; i < num_attributes; i++) {
-         Definition def(get_arg(ctx, ctx->args->vs_inputs[i]));
-
-         unsigned idx = ctx->args->vs_inputs[i].arg_index;
-         def.setFixed(PhysReg(256 + ctx->args->ac.args[idx].offset));
-
-         ctx->program->vs_inputs.push_back(def);
       }
    }
 

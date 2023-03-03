@@ -2120,7 +2120,7 @@ public:
    unsigned next_divergent_if_logical_depth = 0;
    unsigned next_uniform_if_depth = 0;
 
-   std::vector<Definition> vs_inputs;
+   std::vector<Definition> args_pending_vmem;
 
    struct {
       FILE* output = stderr;
