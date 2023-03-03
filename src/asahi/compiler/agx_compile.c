@@ -2144,7 +2144,7 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    if (likely(!(agx_compiler_debug & AGX_DBG_NOOPT))) {
       /* Dead code eliminate before instruction combining so use counts are
        * right */
-      agx_dce(ctx);
+      agx_dce(ctx, true);
       agx_optimizer(ctx);
       agx_opt_cse(ctx);
 
@@ -2155,7 +2155,7 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
       agx_lower_uniform_sources(ctx);
 
       /* Dead code eliminate after instruction combining to get the benefit */
-      agx_dce(ctx);
+      agx_dce(ctx, true);
       agx_validate(ctx, "Optimization");
 
       if (agx_should_dump(nir, AGX_DBG_SHADERS))
