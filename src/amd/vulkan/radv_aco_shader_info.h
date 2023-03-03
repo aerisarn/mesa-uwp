@@ -97,7 +97,8 @@ radv_aco_convert_shader_info(struct aco_shader_info *aco_info,
 #define ASSIGN_VS_STATE_FIELD_CP(x) memcpy(&aco_info->state.x, &radv->state->x, sizeof(radv->state->x))
 static inline void
 radv_aco_convert_vs_prolog_key(struct aco_vs_prolog_info *aco_info,
-                               const struct radv_vs_prolog_key *radv)
+                               const struct radv_vs_prolog_key *radv,
+                               const struct radv_shader_args *radv_args)
 {
    ASSIGN_VS_STATE_FIELD(instance_rate_inputs);
    ASSIGN_VS_STATE_FIELD(nontrivial_divisors);
@@ -110,24 +111,30 @@ radv_aco_convert_vs_prolog_key(struct aco_vs_prolog_info *aco_info,
    ASSIGN_FIELD(misaligned_mask);
    ASSIGN_FIELD(is_ngg);
    ASSIGN_FIELD(next_stage);
+
+   aco_info->inputs = radv_args->prolog_inputs;
 }
 
 static inline void
 radv_aco_convert_ps_epilog_key(struct aco_ps_epilog_info *aco_info,
-                               const struct radv_ps_epilog_key *radv)
+                               const struct radv_ps_epilog_key *radv,
+                               const struct radv_shader_args *radv_args)
 {
    ASSIGN_FIELD(spi_shader_col_format);
    ASSIGN_FIELD(color_is_int8);
    ASSIGN_FIELD(color_is_int10);
    ASSIGN_FIELD(enable_mrt_output_nan_fixup);
    ASSIGN_FIELD(mrt0_is_dual_src);
+
+   memcpy(aco_info->inputs, radv_args->ps_epilog_inputs, sizeof(aco_info->inputs));
+   aco_info->pc = radv_args->ps_epilog_pc;
 }
 
 static inline void
-radv_aco_convert_pipe_key(struct aco_stage_input *aco_info,
-                          const struct radv_pipeline_key *radv)
+radv_aco_convert_pipe_key(struct aco_stage_input *aco_info, const struct radv_pipeline_key *radv,
+                          const struct radv_shader_args *radv_args)
 {
-   radv_aco_convert_ps_epilog_key(&aco_info->ps.epilog, &radv->ps.epilog);
+   radv_aco_convert_ps_epilog_key(&aco_info->ps.epilog, &radv->ps.epilog, radv_args);
    ASSIGN_FIELD(optimisations_disabled);
    ASSIGN_FIELD(image_2d_view_of_3d);
    ASSIGN_FIELD(vs.instance_rate_inputs);
@@ -146,7 +153,7 @@ radv_aco_convert_opts(struct aco_compiler_options *aco_info,
                       const struct radv_nir_compiler_options *radv,
                       const struct radv_shader_args *radv_args)
 {
-   radv_aco_convert_pipe_key(&aco_info->key, &radv->key);
+   radv_aco_convert_pipe_key(&aco_info->key, &radv->key, radv_args);
    ASSIGN_FIELD(robust_buffer_access);
    ASSIGN_FIELD(dump_shader);
    ASSIGN_FIELD(dump_preoptir);

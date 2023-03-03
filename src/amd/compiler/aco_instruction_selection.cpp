@@ -11114,7 +11114,7 @@ create_fs_jump_to_epilog(isel_context* ctx)
       }
    }
 
-   Temp continue_pc = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->args->ps_epilog_pc));
+   Temp continue_pc = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->options->key.ps.epilog.pc));
 
    aco_ptr<Pseudo_instruction> jump{create_instruction<Pseudo_instruction>(
       aco_opcode::p_jump_to_epilog, Format::PSEUDO, 1 + color_exports.size(), 0)};
@@ -11797,12 +11797,13 @@ load_vb_descs(Builder& bld, PhysReg dest, Operand base, unsigned start, unsigned
 }
 
 Operand
-calc_nontrivial_instance_id(Builder& bld, const struct radv_shader_args* args, unsigned index,
+calc_nontrivial_instance_id(Builder& bld, const struct radv_shader_args* args,
+                            const struct aco_vs_prolog_info* pinfo, unsigned index,
                             Operand instance_id, Operand start_instance, PhysReg tmp_sgpr,
                             PhysReg tmp_vgpr0, PhysReg tmp_vgpr1)
 {
    bld.smem(aco_opcode::s_load_dwordx2, Definition(tmp_sgpr, s2),
-            get_arg_fixed(args, args->prolog_inputs), Operand::c32(8u + index * 8u));
+            get_arg_fixed(args, pinfo->inputs), Operand::c32(8u + index * 8u));
 
    wait_imm lgkm_imm;
    lgkm_imm.lgkm = 0;
@@ -11977,7 +11978,7 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_info* pinfo, ac_sh
                   unsigned index =
                      util_bitcount(pinfo->state.nontrivial_divisors & BITFIELD_MASK(loc));
                   fetch_index = calc_nontrivial_instance_id(
-                     bld, args, index, instance_id, start_instance, prolog_input,
+                     bld, args, pinfo, index, instance_id, start_instance, prolog_input,
                      nontrivial_tmp_vgpr0, nontrivial_tmp_vgpr1);
                } else {
                   fetch_index = Operand(instance_index, v1);
@@ -12083,10 +12084,10 @@ select_vs_prolog(Program* program, const struct aco_vs_prolog_info* pinfo, ac_sh
    block->kind |= block_kind_uniform;
 
    /* continue on to the main shader */
-   Operand continue_pc = get_arg_fixed(args, args->prolog_inputs);
+   Operand continue_pc = get_arg_fixed(args, pinfo->inputs);
    if (has_nontrivial_divisors) {
       bld.smem(aco_opcode::s_load_dwordx2, Definition(prolog_input, s2),
-               get_arg_fixed(args, args->prolog_inputs), Operand::c32(0u));
+               get_arg_fixed(args, pinfo->inputs), Operand::c32(0u));
       bld.sopp(aco_opcode::s_waitcnt, -1, lgkm_imm.pack(program->gfx_level));
       continue_pc = Operand(prolog_input, s2);
    }
@@ -12133,7 +12134,7 @@ select_ps_epilog(Program* program, const struct aco_ps_epilog_info* einfo, ac_sh
       out.is_int10 = (einfo->color_is_int10 >> i) & 1;
       out.enable_mrt_output_nan_fixup = (einfo->enable_mrt_output_nan_fixup >> i) & 1;
 
-      Temp inputs = get_arg(&ctx, ctx.args->ps_epilog_inputs[i]);
+      Temp inputs = get_arg(&ctx, einfo->inputs[i]);
       for (unsigned c = 0; c < 4; ++c) {
          out.values[c] = Operand(emit_extract_vector(&ctx, inputs, c, v1));
       }

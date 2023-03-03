@@ -27,6 +27,7 @@
 #ifndef ACO_SHADER_INFO_H
 #define ACO_SHADER_INFO_H
 
+#include "ac_shader_args.h"
 #include "shader_enums.h"
 
 #ifdef __cplusplus
@@ -53,6 +54,7 @@ struct aco_vs_input_state {
 };
 
 struct aco_vs_prolog_info {
+   struct ac_arg inputs;
    struct aco_vs_input_state state;
    unsigned num_attributes;
    uint32_t misaligned_mask;
@@ -132,6 +134,9 @@ enum aco_compiler_debug_level {
 };
 
 struct aco_ps_epilog_info {
+   struct ac_arg inputs[8];
+   struct ac_arg pc;
+
    uint32_t spi_shader_col_format;
 
    /* Bitmasks, each bit represents one of the 8 MRTs. */
