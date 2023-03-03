@@ -340,11 +340,59 @@ struct agx_context {
 
    struct blitter_context *blitter;
 
-   /* Map of agx_resource to agx_batch that writes that resource */
-   struct hash_table *writer;
+   /* Map of GEM handle to (batch index + 1) that (conservatively) writes that
+    * BO, or 0 if no writer.
+    */
+   struct util_dynarray writer;
 
    struct agx_meta_cache meta;
 };
+
+static void
+agx_writer_add(struct agx_context *ctx, uint8_t batch_index, unsigned handle)
+{
+   assert(batch_index < AGX_MAX_BATCHES && "invariant");
+   static_assert(AGX_MAX_BATCHES < 0xFF, "no overflow on addition");
+
+   /* If we need to grow, double the capacity so insertion is amortized O(1). */
+   if (unlikely(handle >= ctx->writer.size)) {
+      unsigned new_size =
+         MAX2(ctx->writer.capacity * 2, util_next_power_of_two(handle + 1));
+      unsigned grow = new_size - ctx->writer.size;
+
+      memset(util_dynarray_grow(&ctx->writer, uint8_t, grow), 0,
+             grow * sizeof(uint8_t));
+   }
+
+   /* There is now room */
+   uint8_t *value = util_dynarray_element(&ctx->writer, uint8_t, handle);
+   assert((*value) == 0 && "there should be no existing writer");
+   *value = batch_index + 1;
+}
+
+static struct agx_batch *
+agx_writer_get(struct agx_context *ctx, unsigned handle)
+{
+   if (handle >= ctx->writer.size)
+      return NULL;
+
+   uint8_t value = *util_dynarray_element(&ctx->writer, uint8_t, handle);
+
+   if (value > 0)
+      return &ctx->batches.slots[value - 1];
+   else
+      return NULL;
+}
+
+static void
+agx_writer_remove(struct agx_context *ctx, unsigned handle)
+{
+   if (handle >= ctx->writer.size)
+      return;
+
+   uint8_t *value = util_dynarray_element(&ctx->writer, uint8_t, handle);
+   *value = 0;
+}
 
 static inline struct agx_context *
 agx_context(struct pipe_context *pctx)

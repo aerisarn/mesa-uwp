@@ -94,14 +94,14 @@ agx_batch_cleanup(struct agx_context *ctx, struct agx_batch *batch)
    batch->occlusion_buffer.cpu = NULL;
    batch->occlusion_buffer.gpu = 0;
 
-   /* There is no more writer for anything we wrote recorded on this context */
-   hash_table_foreach(ctx->writer, ent) {
-      if (ent->data == batch)
-         _mesa_hash_table_remove(ctx->writer, ent);
-   }
-
    int handle;
    AGX_BATCH_FOREACH_BO_HANDLE(batch, handle) {
+      /* There is no more writer on this context for anything we wrote */
+      struct agx_batch *writer = agx_writer_get(ctx, handle);
+      assert((writer == NULL || writer == batch) &&
+             "cannot read while another batch writes");
+
+      agx_writer_remove(ctx, handle);
       agx_bo_unreference(agx_lookup_bo(dev, handle));
    }
 
@@ -229,11 +229,11 @@ static void
 agx_flush_writer_except(struct agx_context *ctx, struct agx_resource *rsrc,
                         struct agx_batch *except, const char *reason)
 {
-   struct hash_entry *ent = _mesa_hash_table_search(ctx->writer, rsrc);
+   struct agx_batch *writer = agx_writer_get(ctx, rsrc->bo->handle);
 
-   if (ent && ent->data != except) {
+   if (writer && writer != except) {
       perf_debug_ctx(ctx, "Flush writer due to: %s\n", reason);
-      agx_flush_batch(ctx, ent->data);
+      agx_flush_batch(ctx, writer);
    }
 }
 
@@ -281,24 +281,23 @@ void
 agx_batch_writes(struct agx_batch *batch, struct agx_resource *rsrc)
 {
    struct agx_context *ctx = batch->ctx;
-   struct hash_entry *ent = _mesa_hash_table_search(ctx->writer, rsrc);
+   struct agx_batch *writer = agx_writer_get(ctx, rsrc->bo->handle);
 
    agx_flush_readers_except(ctx, rsrc, batch, "Write from other batch");
 
    /* Nothing to do if we're already writing */
-   if (ent && ent->data == batch)
+   if (writer == batch)
       return;
 
    /* Hazard: writer-after-write, write-after-read */
-   if (ent)
+   if (writer)
       agx_flush_writer(ctx, rsrc, "Multiple writers");
 
    /* Write is strictly stronger than a read */
    agx_batch_reads(batch, rsrc);
 
    /* We are now the new writer */
-   assert(!_mesa_hash_table_search(ctx->writer, rsrc));
-   _mesa_hash_table_insert(ctx->writer, rsrc, batch);
+   agx_writer_add(ctx, agx_batch_idx(batch), rsrc->bo->handle);
 }
 
 /*

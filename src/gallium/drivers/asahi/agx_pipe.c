@@ -1119,7 +1119,7 @@ agx_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
    pctx->screen = screen;
    pctx->priv = priv;
 
-   ctx->writer = _mesa_pointer_hash_table_create(ctx);
+   util_dynarray_init(&ctx->writer, ctx);
 
    pctx->stream_uploader = u_upload_create_default(pctx);
    if (!pctx->stream_uploader) {
