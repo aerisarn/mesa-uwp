@@ -383,6 +383,8 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
          const VkPipelineShaderStageModuleIdentifierCreateInfoEXT *iinfo =
             vk_find_struct_const(local_create_info.pStages[i].pNext,
                                  PIPELINE_SHADER_STAGE_MODULE_IDENTIFIER_CREATE_INFO_EXT);
+         const VkShaderModuleCreateInfo *minfo =
+            vk_find_struct_const(local_create_info.pStages[i].pNext, SHADER_MODULE_CREATE_INFO);
 
          if (module) {
             struct vk_shader_module *new_module =
@@ -398,6 +400,16 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
             new_module->size = module->size;
             memcpy(new_module->data, module->data, module->size);
 
+            module = new_module;
+         } else if (minfo) {
+            module = ralloc_size(pipeline->ctx, sizeof(struct vk_shader_module) + minfo->codeSize);
+            if (!module)
+               goto fail;
+
+            vk_shader_module_init(&device->vk, module, minfo);
+         }
+
+         if (module) {
             const VkSpecializationInfo *spec = pipeline->stages[i].pSpecializationInfo;
             if (spec) {
                VkSpecializationInfo *new_spec = ralloc(pipeline->ctx, VkSpecializationInfo);
@@ -420,7 +432,7 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
                pipeline->stages[i].pSpecializationInfo = new_spec;
             }
 
-            pipeline->stages[i].module = vk_shader_module_to_handle(new_module);
+            pipeline->stages[i].module = vk_shader_module_to_handle(module);
             pipeline->stages[i].pName = ralloc_strdup(pipeline->ctx, pipeline->stages[i].pName);
             if (!pipeline->stages[i].pName)
                goto fail;
