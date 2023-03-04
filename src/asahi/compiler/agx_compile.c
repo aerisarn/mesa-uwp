@@ -2186,23 +2186,20 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
 
       /* After DCE, use counts are right so we can run the optimizer. */
       agx_optimizer(ctx);
-
-      /* For correctness, lower uniform sources after copyprop (for correctness,
-       * as copyprop creates uniform sources). To keep register pressure in
-       * check, lower after CSE, since moves are cheaper than registers.
-       */
-      agx_lower_uniform_sources(ctx);
-
-      /* Dead code eliminate after instruction combining to get the benefit */
-      agx_dce(ctx, true);
-      agx_validate(ctx, "Optimization");
-
-      if (agx_should_dump(nir, AGX_DBG_SHADERS))
-         agx_print_shader(ctx, stdout);
-   } else {
-      /* We need to lower regardless */
-      agx_lower_uniform_sources(ctx);
    }
+
+   /* For correctness, lower uniform sources after copyprop (for correctness,
+    * as copyprop creates uniform sources). To keep register pressure in
+    * check, lower after CSE, since moves are cheaper than registers.
+    */
+   agx_lower_uniform_sources(ctx);
+
+   /* RA correctness depends on DCE */
+   agx_dce(ctx, true);
+   agx_validate(ctx, "Pre-RA passes");
+
+   if (agx_should_dump(nir, AGX_DBG_SHADERS))
+      agx_print_shader(ctx, stdout);
 
    agx_ra(ctx);
    agx_lower_64bit_postra(ctx);
