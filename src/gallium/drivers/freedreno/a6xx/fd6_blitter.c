@@ -266,7 +266,7 @@ emit_setup(struct fd_batch *batch)
 static void
 emit_blit_setup(struct fd_ringbuffer *ring, enum pipe_format pfmt,
                 bool scissor_enable, union pipe_color_union *color,
-                uint32_t unknown_8c01)
+                uint32_t unknown_8c01, enum a6xx_rotation rotate)
 {
    enum a6xx_format fmt = fd6_color_format(pfmt, TILE6_LINEAR);
    bool is_srgb = util_format_is_srgb(pfmt);
@@ -280,6 +280,7 @@ emit_blit_setup(struct fd_ringbuffer *ring, enum pipe_format pfmt,
    uint32_t blit_cntl = A6XX_RB_2D_BLIT_CNTL_MASK(0xf) |
                         A6XX_RB_2D_BLIT_CNTL_COLOR_FORMAT(fmt) |
                         A6XX_RB_2D_BLIT_CNTL_IFMT(ifmt) |
+                        A6XX_RB_2D_BLIT_CNTL_ROTATE(rotate) |
                         COND(color, A6XX_RB_2D_BLIT_CNTL_SOLID_COLOR) |
                         COND(scissor_enable, A6XX_RB_2D_BLIT_CNTL_SCISSOR);
 
@@ -379,7 +380,7 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
    sshift = sbox->x & 0x3f;
    dshift = dbox->x & 0x3f;
 
-   emit_blit_setup(ring, PIPE_FORMAT_R8_UNORM, false, NULL, 0);
+   emit_blit_setup(ring, PIPE_FORMAT_R8_UNORM, false, NULL, 0, ROTATE_0);
 
    for (unsigned off = 0; off < sbox->width; off += (0x4000 - 0x40)) {
       unsigned soff, doff, w, p;
@@ -460,7 +461,7 @@ fd6_clear_ubwc(struct fd_batch *batch, struct fd_resource *rsc) assert_dt
    struct fd_ringbuffer *ring = fd_batch_get_prologue(batch);
    union pipe_color_union color = {};
 
-   emit_blit_setup(ring, PIPE_FORMAT_R8_UNORM, false, &color, 0);
+   emit_blit_setup(ring, PIPE_FORMAT_R8_UNORM, false, &color, 0, ROTATE_0);
 
    OUT_REG(ring,
            A6XX_SP_PS_2D_SRC_INFO(),
@@ -655,24 +656,36 @@ emit_blit_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
    sx1 = sbox->x * nr_samples;
    sy1 = sbox->y;
-   sx2 = (sbox->x + sbox->width) * nr_samples - 1;
-   sy2 = sbox->y + sbox->height - 1;
-
-   OUT_REG(ring,
-           A6XX_GRAS_2D_SRC_TL_X(sx1),
-           A6XX_GRAS_2D_SRC_BR_X(sx2),
-           A6XX_GRAS_2D_SRC_TL_Y(sy1),
-           A6XX_GRAS_2D_SRC_BR_Y(sy2),
-   );
+   sx2 = (sbox->x + sbox->width) * nr_samples;
+   sy2 = sbox->y + sbox->height;
 
    dx1 = dbox->x * nr_samples;
    dy1 = dbox->y;
-   dx2 = (dbox->x + dbox->width) * nr_samples - 1;
-   dy2 = dbox->y + dbox->height - 1;
+   dx2 = (dbox->x + dbox->width) * nr_samples;
+   dy2 = dbox->y + dbox->height;
 
-   OUT_PKT4(ring, REG_A6XX_GRAS_2D_DST_TL, 2);
-   OUT_RING(ring, A6XX_GRAS_2D_DST_TL_X(dx1) | A6XX_GRAS_2D_DST_TL_Y(dy1));
-   OUT_RING(ring, A6XX_GRAS_2D_DST_BR_X(dx2) | A6XX_GRAS_2D_DST_BR_Y(dy2));
+   static const enum a6xx_rotation rotates[2][2] = {
+      {ROTATE_0, ROTATE_HFLIP},
+      {ROTATE_VFLIP, ROTATE_180},
+   };
+   bool mirror_x = (sx2 < sx1) != (dx2 < dx1);
+   bool mirror_y = (sy2 < sy1) != (dy2 < dy1);
+
+   enum a6xx_rotation rotate = rotates[mirror_y][mirror_x];
+
+   OUT_REG(ring,
+           A6XX_GRAS_2D_SRC_TL_X(MIN2(sx1, sx2)),
+           A6XX_GRAS_2D_SRC_BR_X(MAX2(sx1, sx2) - 1),
+           A6XX_GRAS_2D_SRC_TL_Y(MIN2(sy1, sy2)),
+           A6XX_GRAS_2D_SRC_BR_Y(MAX2(sy1, sy2) - 1),
+   );
+
+   OUT_REG(ring,
+           A6XX_GRAS_2D_DST_TL(.x = MIN2(dx1, dx2),
+                               .y = MIN2(dy1, dy2)),
+           A6XX_GRAS_2D_DST_BR(.x = MAX2(dx1, dx2) - 1,
+                               .y = MAX2(dy1, dy2) - 1),
+   );
 
    if (info->scissor_enable) {
       OUT_PKT4(ring, REG_A6XX_GRAS_2D_RESOLVE_CNTL_1, 2);
@@ -682,7 +695,7 @@ emit_blit_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
                         A6XX_GRAS_2D_RESOLVE_CNTL_1_Y(info->scissor.maxy - 1));
    }
 
-   emit_blit_setup(ring, info->dst.format, info->scissor_enable, NULL, 0);
+   emit_blit_setup(ring, info->dst.format, info->scissor_enable, NULL, 0, rotate);
 
    for (unsigned i = 0; i < info->dst.box.depth; i++) {
 
@@ -813,7 +826,7 @@ fd6_clear_surface(struct fd_context *ctx, struct fd_ringbuffer *ring,
    union pipe_color_union clear_color = convert_color(psurf->format, color);
 
    emit_clear_color(ring, psurf->format, &clear_color);
-   emit_blit_setup(ring, psurf->format, false, &clear_color, unknown_8c01);
+   emit_blit_setup(ring, psurf->format, false, &clear_color, unknown_8c01, ROTATE_0);
 
    for (unsigned i = psurf->u.tex.first_layer; i <= psurf->u.tex.last_layer;
         i++) {
@@ -955,7 +968,7 @@ fd6_resolve_tile(struct fd_batch *batch, struct fd_ringbuffer *ring,
    /* Enable scissor bit, which will take into account the window scissor
     * which is set per-tile
     */
-   emit_blit_setup(ring, psurf->format, true, NULL, unknown_8c01);
+   emit_blit_setup(ring, psurf->format, true, NULL, unknown_8c01, ROTATE_0);
 
    /* We shouldn't be using GMEM in the layered rendering case: */
    assert(psurf->u.tex.first_layer == psurf->u.tex.last_layer);
