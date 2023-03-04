@@ -105,7 +105,6 @@ radeonsi-stoney-traces:amd64:
     DRIVER_NAME: radeonsi
     GPU_VERSION: amd-raven
     VK_DRIVER: radeon
-    HWCI_START_XORG: 1
 
 radv-raven-vkcts:amd64:
   extends:
@@ -123,13 +122,13 @@ amd-raven-skqp:amd64:
     - .amd-raven-test:amd64
     - .lava-lenovo-TPad-C13-Yoga-zork:amd64
   variables:
+    HWCI_START_WESTON: 1
     DEQP_SUITE: amd-raven-skqp
 
 .radv-traces:
   extends:
     - .lava-piglit-traces:amd64
   variables:
-    HWCI_START_XORG: 1
     PIGLIT_PLATFORM: mixed_glx_egl  # TODO, take wine/VK in account
     PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-amd.yml"
     PIGLIT_REPLAY_EXTRA_ARGS: --keep-image
@@ -140,6 +139,7 @@ radv-raven-traces:amd64:
     - .radv-raven-test:amd64
     - .lava-lenovo-TPad-C13-Yoga-zork:amd64
   variables:
+    HWCI_START_XORG: 1
     PIGLIT_REPLAY_DEVICE_NAME: "vk-${GPU_VERSION}"
 
 radeonsi-raven-piglit-quick_gl:amd64:
@@ -169,7 +169,7 @@ radeonsi-raven-va:amd64:
     HWCI_TEST_SCRIPT: "/install/gtest-runner.sh"
     # While the tests don't need Xorg, it's an easy way to keep DRM open so we don't
     # spend all our time in drm_lastclose()'s modesetting.
-    HWCI_START_XORG: 1
+    HWCI_START_WESTON: 1
     GTEST: test_va_api
     # The big 10-surface 10k allocations oomkill us at around 2.5G of GPU memory
     # allocated if we run at the normal 4 threads.
