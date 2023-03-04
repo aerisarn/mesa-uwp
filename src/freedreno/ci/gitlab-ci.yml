@@ -215,6 +215,7 @@ a618_skqp:
     HWCI_START_XORG: 1
     DEQP_SUITE: freedreno-a618-skqp
 
+# FIXME: this job runs gles2 deqp, rename or fix!
 a618_piglit:
   extends:
     - .piglit-test
@@ -225,6 +226,7 @@ a618_piglit:
     - .freedreno-turnip-rules
   variables:
     HWCI_START_XORG: 1
+    DEQP_VER: gles2
     PIGLIT_PROFILES: gpu
 
 .a630-test:
