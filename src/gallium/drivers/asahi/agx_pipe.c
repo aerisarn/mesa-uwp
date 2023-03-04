@@ -289,6 +289,10 @@ agx_linear_allowed(const struct agx_resource *pres)
    if (pres->base.last_level != 0)
       return false;
 
+   /* Depth/stencil buffers must not be linear */
+   if (pres->base.bind & PIPE_BIND_DEPTH_STENCIL)
+      return false;
+
    switch (pres->base.target) {
    /* 1D is always linear */
    case PIPE_BUFFER:
