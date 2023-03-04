@@ -26,11 +26,8 @@ function error {
     [ "$state_x" -eq 0 ] || set -x
 }
 
-function trap_exit {
-    local ret=$1
-    shift
-    error $CURRENT_SECTION: $*
-    exit $ret
+function trap_err {
+    error ${CURRENT_SECTION:-'unknown-section'}: ret code: $*
 }
 
 function build_section_start {
@@ -88,7 +85,7 @@ function uncollapsed_section_switch {
 
 export -f x_off
 export -f error
-export -f trap_exit
+export -f trap_err
 export -f build_section_start
 export -f section_start
 export -f build_section_end
@@ -97,4 +94,4 @@ export -f section_switch
 export -f uncollapsed_section_switch
 
 set -E
-trap 'trap_exit $?' ERR
+trap 'trap_err $?' ERR
