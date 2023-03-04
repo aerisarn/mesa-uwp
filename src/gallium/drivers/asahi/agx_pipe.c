@@ -1620,6 +1620,13 @@ agx_is_format_supported(struct pipe_screen *pscreen, enum pipe_format format,
    if (MAX2(sample_count, 1) != MAX2(storage_sample_count, 1))
       return false;
 
+   if ((usage & PIPE_BIND_VERTEX_BUFFER) && !agx_vbo_supports_format(format))
+      return false;
+
+   /* For framebuffer_no_attachments, fake support for "none" images */
+   if (format == PIPE_FORMAT_NONE)
+      return true;
+
    if (usage & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW)) {
       enum pipe_format tex_format = format;
 
@@ -1638,9 +1645,6 @@ agx_is_format_supported(struct pipe_screen *pscreen, enum pipe_format format,
       if ((usage & PIPE_BIND_RENDER_TARGET) && !ent.renderable)
          return false;
    }
-
-   if ((usage & PIPE_BIND_VERTEX_BUFFER) && !agx_vbo_supports_format(format))
-      return false;
 
    if (usage & PIPE_BIND_DEPTH_STENCIL) {
       switch (format) {
