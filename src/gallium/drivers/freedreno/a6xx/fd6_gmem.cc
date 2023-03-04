@@ -686,11 +686,33 @@ set_scissor(struct fd_ringbuffer *ring, uint32_t x1, uint32_t y1, uint32_t x2,
            A6XX_GRAS_2D_RESOLVE_CNTL_2(.x = x2, .y = y2));
 }
 
+struct bin_size_params {
+   enum a6xx_render_mode render_mode;
+   bool force_lrz_write_dis;
+   enum a6xx_buffers_location buffers_location;
+   unsigned lrz_feedback_zmode_mask;
+};
+
 static void
-set_bin_size(struct fd_ringbuffer *ring, uint32_t w, uint32_t h, uint32_t flag)
+set_bin_size(struct fd_ringbuffer *ring, const struct fd_gmem_stateobj *gmem,
+             struct bin_size_params p)
 {
-   OUT_REG(ring, A6XX_GRAS_BIN_CONTROL(.binw = w, .binh = h, .dword = flag));
-   OUT_REG(ring, A6XX_RB_BIN_CONTROL(.binw = w, .binh = h, .dword = flag));
+   unsigned w = gmem ? gmem->bin_w : 0;
+   unsigned h = gmem ? gmem->bin_h : 0;
+   OUT_REG(ring, A6XX_GRAS_BIN_CONTROL(
+         .binw = w, .binh = h,
+         .render_mode = p.render_mode,
+         .force_lrz_write_dis = p.force_lrz_write_dis,
+         .buffers_location = p.buffers_location,
+         .lrz_feedback_zmode_mask = p.lrz_feedback_zmode_mask,
+   ));
+   OUT_REG(ring, A6XX_RB_BIN_CONTROL(
+         .binw = w, .binh = h,
+         .render_mode = p.render_mode,
+         .force_lrz_write_dis = p.force_lrz_write_dis,
+         .buffers_location = p.buffers_location,
+         .lrz_feedback_zmode_mask = p.lrz_feedback_zmode_mask,
+   ));
    /* no flag for RB_BIN_CONTROL2... */
    OUT_REG(ring, A6XX_RB_BIN_CONTROL2(.binw = w, .binh = h));
 }
@@ -850,9 +872,11 @@ fd6_emit_tile_init(struct fd_batch *batch) assert_dt
       /* enable stream-out during binning pass: */
       OUT_REG(ring, A6XX_VPC_SO_DISABLE(false));
 
-      set_bin_size(ring, gmem->bin_w, gmem->bin_h,
-                   A6XX_RB_BIN_CONTROL_RENDER_MODE(BINNING_PASS) |
-                   A6XX_RB_BIN_CONTROL_LRZ_FEEDBACK_ZMODE_MASK(0x6));
+      set_bin_size(ring, gmem, {
+            .render_mode = BINNING_PASS,
+            .buffers_location = BUFFERS_IN_GMEM,
+            .lrz_feedback_zmode_mask = 0x6,
+      });
       update_render_cntl(batch, pfb, true);
       emit_binning_pass(batch);
 
@@ -866,9 +890,12 @@ fd6_emit_tile_init(struct fd_batch *batch) assert_dt
        */
 
       // NOTE a618 not setting .FORCE_LRZ_WRITE_DIS .. 
-      set_bin_size(ring, gmem->bin_w, gmem->bin_h,
-                   A6XX_RB_BIN_CONTROL_FORCE_LRZ_WRITE_DIS |
-                   A6XX_RB_BIN_CONTROL_LRZ_FEEDBACK_ZMODE_MASK(0x6));
+      set_bin_size(ring, gmem, {
+            .render_mode = RENDERING_PASS,
+            .force_lrz_write_dis = true,
+            .buffers_location = BUFFERS_IN_GMEM,
+            .lrz_feedback_zmode_mask = 0x6,
+      });
 
       OUT_PKT4(ring, REG_A6XX_VFD_MODE_CNTL, 1);
       OUT_RING(ring, 0x0);
@@ -885,7 +912,11 @@ fd6_emit_tile_init(struct fd_batch *batch) assert_dt
       /* no binning pass, so enable stream-out for draw pass:: */
       OUT_REG(ring, A6XX_VPC_SO_DISABLE(false));
 
-      set_bin_size(ring, gmem->bin_w, gmem->bin_h, 0x6000000);
+      set_bin_size(ring, gmem, {
+            .render_mode = RENDERING_PASS,
+            .buffers_location = BUFFERS_IN_GMEM,
+            .lrz_feedback_zmode_mask = 0x6,
+      });
    }
 
    update_render_cntl(batch, pfb, false);
@@ -956,7 +987,11 @@ fd6_emit_tile_prep(struct fd_batch *batch, const struct fd_tile *tile)
       set_window_offset(ring, x1, y1);
 
       const struct fd_gmem_stateobj *gmem = batch->gmem_state;
-      set_bin_size(ring, gmem->bin_w, gmem->bin_h, 0x6000000);
+      set_bin_size(ring, gmem, {
+            .render_mode = RENDERING_PASS,
+            .buffers_location = BUFFERS_IN_GMEM,
+            .lrz_feedback_zmode_mask = 0x6,
+      });
 
       OUT_PKT7(ring, CP_SET_MODE, 1);
       OUT_RING(ring, 0x0);
@@ -1605,7 +1640,10 @@ fd6_emit_sysmem_prep(struct fd_batch *batch) assert_dt
 
    set_window_offset(ring, 0, 0);
 
-   set_bin_size(ring, 0, 0, 0xc00000); /* 0xc00000 = BYPASS? */
+   set_bin_size(ring, NULL, {
+         .render_mode = RENDERING_PASS,
+         .buffers_location = BUFFERS_IN_SYSMEM,
+   });
 
    emit_sysmem_clears(batch, ring);
 
