@@ -2087,7 +2087,10 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
     */
    agx_block *last_block = list_last_entry(&ctx->blocks, agx_block, link);
    agx_builder _b = agx_init_builder(ctx, agx_after_block(last_block));
-   agx_write_sample_mask_1(&_b);
+
+   if (ctx->stage == MESA_SHADER_FRAGMENT && !impl->function->is_preamble)
+      agx_write_sample_mask_1(&_b);
+
    agx_logical_end(&_b);
    agx_stop(&_b);
 
