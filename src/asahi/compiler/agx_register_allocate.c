@@ -25,7 +25,7 @@ struct ra_ctx {
 
 /** Returns number of registers written by an instruction */
 unsigned
-agx_write_registers(agx_instr *I, unsigned d)
+agx_write_registers(const agx_instr *I, unsigned d)
 {
    unsigned size = agx_size_align_16(I->dest[d].size);
 
@@ -72,7 +72,7 @@ agx_split_width(const agx_instr *I)
 }
 
 unsigned
-agx_read_registers(agx_instr *I, unsigned s)
+agx_read_registers(const agx_instr *I, unsigned s)
 {
    unsigned size = agx_size_align_16(I->src[s].size);
 

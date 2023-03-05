@@ -772,8 +772,8 @@ agx_validate(UNUSED agx_context *ctx, UNUSED const char *after_str)
 }
 #endif
 
-unsigned agx_read_registers(agx_instr *I, unsigned s);
-unsigned agx_write_registers(agx_instr *I, unsigned d);
+unsigned agx_read_registers(const agx_instr *I, unsigned s);
+unsigned agx_write_registers(const agx_instr *I, unsigned d);
 bool agx_allows_16bit_immediate(agx_instr *I);
 
 struct agx_copy {
