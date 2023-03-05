@@ -137,24 +137,30 @@ fd6_state_emit(struct fd6_state *state, struct fd_ringbuffer *ring)
    }
 }
 
+static inline unsigned
+enable_mask(enum fd6_state_id group_id)
+{
+   switch (group_id) {
+   case FD6_GROUP_PROG: return ENABLE_DRAW;
+   case FD6_GROUP_PROG_BINNING: return CP_SET_DRAW_STATE__0_BINNING;
+   case FD6_GROUP_PROG_INTERP: return ENABLE_DRAW;
+   case FD6_GROUP_FS_TEX: return ENABLE_DRAW;
+   case FD6_GROUP_FS_BINDLESS: return ENABLE_DRAW;
+   case FD6_GROUP_PRIM_MODE_SYSMEM: return CP_SET_DRAW_STATE__0_SYSMEM | CP_SET_DRAW_STATE__0_BINNING;
+   case FD6_GROUP_PRIM_MODE_GMEM: return CP_SET_DRAW_STATE__0_GMEM;
+   default: return ENABLE_ALL;
+   }
+}
+
 static inline void
 fd6_state_take_group(struct fd6_state *state, struct fd_ringbuffer *stateobj,
                      enum fd6_state_id group_id)
 {
-   static const unsigned enable_mask[32] = {
-         [FD6_GROUP_PROG] = ENABLE_DRAW,
-         [FD6_GROUP_PROG_BINNING] = CP_SET_DRAW_STATE__0_BINNING,
-         [FD6_GROUP_PROG_INTERP] = ENABLE_DRAW,
-         [FD6_GROUP_FS_TEX] = ENABLE_DRAW,
-         [FD6_GROUP_FS_BINDLESS] = ENABLE_DRAW,
-         [FD6_GROUP_PRIM_MODE_SYSMEM] = CP_SET_DRAW_STATE__0_SYSMEM | CP_SET_DRAW_STATE__0_BINNING,
-         [FD6_GROUP_PRIM_MODE_GMEM] = CP_SET_DRAW_STATE__0_GMEM,
-   };
    assert(state->num_groups < ARRAY_SIZE(state->groups));
    struct fd6_state_group *g = &state->groups[state->num_groups++];
    g->stateobj = stateobj;
    g->group_id = group_id;
-   g->enable_mask = enable_mask[group_id] ? enable_mask[group_id] : ENABLE_ALL;
+   g->enable_mask = enable_mask(group_id);
 }
 
 static inline void

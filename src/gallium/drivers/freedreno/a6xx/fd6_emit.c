@@ -751,10 +751,10 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
            A6XX_HLSQ_INVALIDATE_CMD(.vs_state = true, .hs_state = true,
                                     .ds_state = true, .gs_state = true,
                                     .fs_state = true, .cs_state = true,
-                                    .gfx_ibo = true, .cs_ibo = true,
-                                    .gfx_shared_const = true,
+                                    .cs_ibo = true, .gfx_ibo = true,
                                     .cs_shared_const = true,
-                                    .gfx_bindless = 0x1f, .cs_bindless = 0x1f));
+                                    .gfx_shared_const = true,
+                                    .cs_bindless = 0x1f, .gfx_bindless = 0x1f));
 
    OUT_WFI5(ring);
 

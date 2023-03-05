@@ -313,7 +313,7 @@ setup_config_stateobj(struct fd_context *ctx, struct fd6_program_state *state)
    OUT_REG(ring, A6XX_HLSQ_INVALIDATE_CMD(.vs_state = true, .hs_state = true,
                                           .ds_state = true, .gs_state = true,
                                           .fs_state = true, .cs_state = true,
-                                          .gfx_ibo = true, .cs_ibo = true, ));
+                                          .cs_ibo = true, .gfx_ibo = true, ));
 
    assert(state->vs->constlen >= state->bs->constlen);
 
@@ -422,8 +422,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 
    static const struct ir3_shader_variant dummy_fs = {
          .info = {
-               .max_half_reg = -1,
                .max_reg = -1,
+               .max_half_reg = -1,
                .max_const = -1,
          },
    };

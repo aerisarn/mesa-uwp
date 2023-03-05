@@ -332,8 +332,8 @@ patch_fb_read_sysmem(struct fd_batch *batch)
       .base_array_layer = psurf->u.tex.first_layer,
       .layer_count = 1,
 
-      .format = psurf->format,
       .swiz = {PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W},
+      .format = psurf->format,
 
       .type = FDL_VIEW_TYPE_2D,
       .chroma_offsets = {FDL_CHROMA_LOCATION_COSITED_EVEN,
@@ -1026,9 +1026,13 @@ emit_blit(struct fd_batch *batch, struct fd_ringbuffer *ring, uint32_t base,
    enum a3xx_msaa_samples samples = fd_msaa_samples(rsc->b.b.nr_samples);
 
    OUT_REG(ring,
-           A6XX_RB_BLIT_DST_INFO(.tile_mode = tile_mode, .samples = samples,
-                                 .color_format = format, .color_swap = swap,
-                                 .flags = ubwc_enabled),
+           A6XX_RB_BLIT_DST_INFO(
+                 .tile_mode = tile_mode,
+                 .flags = ubwc_enabled,
+                 .samples = samples,
+                 .color_swap = swap,
+                 .color_format = format,
+           ),
            A6XX_RB_BLIT_DST(.bo = rsc->bo, .bo_offset = offset),
            A6XX_RB_BLIT_DST_PITCH(.a6xx_rb_blit_dst_pitch = stride),
            A6XX_RB_BLIT_DST_ARRAY_PITCH(.a6xx_rb_blit_dst_array_pitch = array_stride));
@@ -1050,10 +1054,14 @@ emit_restore_blit(struct fd_batch *batch, struct fd_ringbuffer *ring,
 {
    bool stencil = (buffer == FD_BUFFER_STENCIL);
 
-   OUT_REG(ring, A6XX_RB_BLIT_INFO(.gmem = true, .unk0 = true,
-                                   .depth = (buffer == FD_BUFFER_DEPTH),
-                                   .sample_0 = util_format_is_pure_integer(
-                                      psurf->format)));
+   OUT_REG(ring,
+           A6XX_RB_BLIT_INFO(
+                 .unk0 = true,
+                 .gmem = true,
+                 .sample_0 = util_format_is_pure_integer(psurf->format),
+                 .depth = (buffer == FD_BUFFER_DEPTH),
+           ),
+   );
 
    emit_blit(batch, ring, base, psurf, stencil);
 }

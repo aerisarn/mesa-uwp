@@ -52,19 +52,26 @@ __fd6_setup_rasterizer_stateobj(struct fd_context *ctx,
       psize_max = cso->point_size;
    }
 
-   OUT_REG(ring, A6XX_GRAS_CL_CNTL(.znear_clip_disable = !cso->depth_clip_near,
-                                   .zfar_clip_disable = !cso->depth_clip_far,
-                                   .z_clamp_enable = cso->depth_clamp,
-                                   .vp_clip_code_ignore = 1,
-                                   .zero_gb_scale_z = cso->clip_halfz));
+   OUT_REG(ring,
+           A6XX_GRAS_CL_CNTL(
+                 .znear_clip_disable = !cso->depth_clip_near,
+                 .zfar_clip_disable = !cso->depth_clip_far,
+                 .z_clamp_enable = cso->depth_clamp,
+                 .zero_gb_scale_z = cso->clip_halfz,
+                 .vp_clip_code_ignore = 1,
+           ),
+   );
 
    OUT_REG(ring,
-           A6XX_GRAS_SU_CNTL(.linehalfwidth = cso->line_width / 2.0f,
-                             .poly_offset = cso->offset_tri,
-                             .line_mode = cso->multisample ? RECTANGULAR : BRESENHAM,
-                             .cull_front = cso->cull_face & PIPE_FACE_FRONT,
-                             .cull_back = cso->cull_face & PIPE_FACE_BACK,
-                             .front_cw = !cso->front_ccw, ));
+           A6XX_GRAS_SU_CNTL(
+                 .cull_front = cso->cull_face & PIPE_FACE_FRONT,
+                 .cull_back = cso->cull_face & PIPE_FACE_BACK,
+                 .front_cw = !cso->front_ccw,
+                 .linehalfwidth = cso->line_width / 2.0f,
+                 .poly_offset = cso->offset_tri,
+                 .line_mode = cso->multisample ? RECTANGULAR : BRESENHAM,
+           ),
+   );
 
    OUT_REG(ring,
            A6XX_GRAS_SU_POINT_MINMAX(.min = psize_min, .max = psize_max, ),
@@ -75,8 +82,11 @@ __fd6_setup_rasterizer_stateobj(struct fd_context *ctx,
            A6XX_GRAS_SU_POLY_OFFSET_OFFSET_CLAMP(cso->offset_clamp));
 
    OUT_REG(ring,
-           A6XX_PC_PRIMITIVE_CNTL_0(.provoking_vtx_last = !cso->flatshade_first,
-                                    .primitive_restart = primitive_restart, ));
+           A6XX_PC_PRIMITIVE_CNTL_0(
+                 .primitive_restart = primitive_restart,
+                 .provoking_vtx_last = !cso->flatshade_first,
+           ),
+   );
 
    enum a6xx_polygon_mode mode = POLYMODE6_TRIANGLES;
    switch (cso->fill_front) {

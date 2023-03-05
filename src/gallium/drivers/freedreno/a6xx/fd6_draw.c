@@ -439,9 +439,9 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth) a
            A6XX_HLSQ_INVALIDATE_CMD(.vs_state = true, .hs_state = true,
                                     .ds_state = true, .gs_state = true,
                                     .fs_state = true, .cs_state = true,
-                                    .gfx_ibo = true, .cs_ibo = true,
+                                    .cs_ibo = true, .gfx_ibo = true,
                                     .gfx_shared_const = true,
-                                    .gfx_bindless = 0x1f, .cs_bindless = 0x1f));
+                                    .cs_bindless = 0x1f, .gfx_bindless = 0x1f));
 
    emit_marker6(ring, 7);
    OUT_PKT7(ring, CP_SET_MARKER, 1);

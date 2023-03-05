@@ -81,9 +81,9 @@ fd6_image_descriptor(struct fd_context *ctx, const struct pipe_image_view *buf,
          .base_array_layer = buf->u.tex.first_layer,
          .layer_count = buf->u.tex.last_layer - buf->u.tex.first_layer + 1,
 
-         .format = buf->format,
          .swiz = {PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z,
                   PIPE_SWIZZLE_W},
+         .format = buf->format,
 
          .type = fdl_type_from_pipe_target(buf->resource->target),
          .chroma_offsets = {FDL_CHROMA_LOCATION_COSITED_EVEN,

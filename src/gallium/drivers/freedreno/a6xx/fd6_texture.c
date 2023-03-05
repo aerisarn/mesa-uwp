@@ -398,9 +398,9 @@ fd6_sampler_view_update(struct fd_context *ctx,
          .base_array_layer = cso->u.tex.first_layer,
          .layer_count = cso->u.tex.last_layer - cso->u.tex.first_layer + 1,
 
-         .format = format,
          .swiz = {cso->swizzle_r, cso->swizzle_g, cso->swizzle_b,
                   cso->swizzle_a},
+         .format = format,
 
          .type = fdl_type_from_pipe_target(cso->target),
          .chroma_offsets = {FDL_CHROMA_LOCATION_COSITED_EVEN,

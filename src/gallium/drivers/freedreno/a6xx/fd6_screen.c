@@ -133,11 +133,14 @@ fd6_screen_is_format_supported(struct pipe_screen *pscreen,
 static const enum pc_di_primtype primtypes[] = {
    [PIPE_PRIM_POINTS]                      = DI_PT_POINTLIST,
    [PIPE_PRIM_LINES]                       = DI_PT_LINELIST,
-   [PIPE_PRIM_LINE_STRIP]                  = DI_PT_LINESTRIP,
    [PIPE_PRIM_LINE_LOOP]                   = DI_PT_LINELOOP,
+   [PIPE_PRIM_LINE_STRIP]                  = DI_PT_LINESTRIP,
    [PIPE_PRIM_TRIANGLES]                   = DI_PT_TRILIST,
    [PIPE_PRIM_TRIANGLE_STRIP]              = DI_PT_TRISTRIP,
    [PIPE_PRIM_TRIANGLE_FAN]                = DI_PT_TRIFAN,
+   [PIPE_PRIM_QUADS]                       = DI_PT_NONE,   /* unsupported */
+   [PIPE_PRIM_QUAD_STRIP]                  = DI_PT_NONE,   /* unsupported */
+   [PIPE_PRIM_POLYGON]                     = DI_PT_NONE,   /* unsupported */
    [PIPE_PRIM_LINES_ADJACENCY]             = DI_PT_LINE_ADJ,
    [PIPE_PRIM_LINE_STRIP_ADJACENCY]        = DI_PT_LINESTRIP_ADJ,
    [PIPE_PRIM_TRIANGLES_ADJACENCY]         = DI_PT_TRI_ADJ,

@@ -98,11 +98,16 @@ __fd6_setup_blend_variant(struct fd6_blend_stateobj *blend,
                  .alpha_blend_opcode = blend_func(rt->alpha_func),
                  .alpha_dest_factor = fd_blend_factor(rt->alpha_dst_factor), ));
 
-      OUT_REG(ring, A6XX_RB_MRT_CONTROL(i, .rop_code = rop,
-                                        .rop_enable = cso->logicop_enable,
-                                        .component_enable = rt->colormask,
-                                        .blend = rt->blend_enable,
-                                        .blend2 = rt->blend_enable, ));
+      OUT_REG(ring,
+              A6XX_RB_MRT_CONTROL(
+                    i,
+                    .blend = rt->blend_enable,
+                    .blend2 = rt->blend_enable,
+                    .rop_enable = cso->logicop_enable,
+                    .rop_code = rop,
+                    .component_enable = rt->colormask,
+              )
+      );
 
       if (rt->blend_enable) {
          mrt_blend |= (1 << i);
@@ -126,19 +131,25 @@ __fd6_setup_blend_variant(struct fd6_blend_stateobj *blend,
             .dither_mode_mrt7 =
                cso->dither ? DITHER_ALWAYS : DITHER_DISABLE, ));
 
-   OUT_REG(ring, A6XX_SP_BLEND_CNTL(.enable_blend = mrt_blend,
-                                    .unk8 = true,
-                                    .alpha_to_coverage = cso->alpha_to_coverage,
-                                    .dual_color_in_enable =
-                                       blend->use_dual_src_blend, ));
+   OUT_REG(ring,
+           A6XX_SP_BLEND_CNTL(
+                 .enable_blend = mrt_blend,
+                 .unk8 = true,
+                 .dual_color_in_enable = blend->use_dual_src_blend,
+                 .alpha_to_coverage = cso->alpha_to_coverage,
+           ),
+   );
 
    OUT_REG(ring,
-      A6XX_RB_BLEND_CNTL(.enable_blend = mrt_blend,
-                         .alpha_to_coverage = cso->alpha_to_coverage,
-                         .alpha_to_one = cso->alpha_to_one,
-                         .independent_blend = cso->independent_blend_enable,
-                         .sample_mask = sample_mask,
-                         .dual_color_in_enable = blend->use_dual_src_blend, ));
+           A6XX_RB_BLEND_CNTL(
+                 .enable_blend = mrt_blend,
+                 .independent_blend = cso->independent_blend_enable,
+                 .dual_color_in_enable = blend->use_dual_src_blend,
+                 .alpha_to_coverage = cso->alpha_to_coverage,
+                 .alpha_to_one = cso->alpha_to_one,
+                 .sample_mask = sample_mask,
+           ),
+   );
 
    so->sample_mask = sample_mask;
 
