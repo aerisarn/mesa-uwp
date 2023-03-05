@@ -330,8 +330,9 @@
     # Ensure that we are using the release build artifact
     MINIO_ARTIFACT_NAME: mesa-arm64-release
   needs:
-    - job: debian/arm64_test
+    - debian/arm64_test
     - debian-arm64-release
+  dependencies: null
 
 .nouveau-rules:
   stage: nouveau
