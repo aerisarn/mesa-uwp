@@ -15,6 +15,7 @@
 #include "venus-protocol/vn_protocol_driver_fence.h"
 #include "venus-protocol/vn_protocol_driver_queue.h"
 #include "venus-protocol/vn_protocol_driver_semaphore.h"
+#include "venus-protocol/vn_protocol_driver_transport.h"
 
 #include "vn_device.h"
 #include "vn_device_memory.h"
@@ -62,6 +63,9 @@ struct vn_queue_submission {
    bool has_feedback_semaphore;
    const struct vn_device_memory *wsi_mem;
    uint32_t sem_cmd_buffer_count;
+
+   bool ring_seqno_valid;
+   uint32_t ring_seqno;
 
    /* Temporary storage allocation for submission
     * A single alloc for storage is performed and the offsets inside
@@ -272,12 +276,19 @@ vn_queue_submission_prepare(struct vn_queue_submission *submit)
     * - explicit fencing: sync file export
     * - implicit fencing: dma-fence attached to the wsi bo
     *
-    * We enforce above via a synchronous submission if seeing any of below:
+    * We enforce above via an asynchronous vkQueueSubmit(2) via ring followed
+    * by an asynchronous renderer submission to wait for the ring submission:
     * - struct wsi_memory_signal_submit_info
+    *
+    * We enforce above via a synchronous submission if seeing any of below:
     * - fence is an external fence
     * - has an external signal semaphore
     */
-   submit->synchronous = has_external_fence || submit->wsi_mem;
+   struct vn_queue *queue = vn_queue_from_handle(submit->queue_handle);
+   submit->synchronous =
+      has_external_fence ||
+      (!queue->device->instance->experimental.asyncRoundtrip &&
+       submit->wsi_mem);
 
    for (uint32_t i = 0; i < submit->batch_count; i++) {
       VkResult result = vn_queue_submission_fix_batch_semaphores(submit, i);
@@ -793,16 +804,27 @@ vn_queue_wsi_present(struct vn_queue_submission *submit)
       return;
 
    if (dev->instance->renderer->info.has_implicit_fencing) {
-      vn_renderer_submit(dev->renderer,
-                         &(const struct vn_renderer_submit){
-                            .bos = &submit->wsi_mem->base_bo,
-                            .bo_count = 1,
-                            .batches =
-                               &(struct vn_renderer_submit_batch){
-                                  .ring_idx = queue->ring_idx,
-                               },
-                            .batch_count = 1,
-                         });
+      struct vn_renderer_submit_batch batch = {
+         .ring_idx = queue->ring_idx,
+      };
+
+      uint32_t local_data[8];
+      struct vn_cs_encoder local_enc =
+         VN_CS_ENCODER_INITIALIZER_LOCAL(local_data, sizeof(local_data));
+      if (submit->ring_seqno_valid) {
+         vn_encode_vkWaitRingSeqno100000MESA(&local_enc, 0, instance->ring.id,
+                                             submit->ring_seqno);
+         batch.cs_data = local_data;
+         batch.cs_size = vn_cs_encoder_get_len(&local_enc);
+      }
+
+      const struct vn_renderer_submit renderer_submit = {
+         .bos = &submit->wsi_mem->base_bo,
+         .bo_count = 1,
+         .batches = &batch,
+         .batch_count = 1,
+      };
+      vn_renderer_submit(dev->renderer, &renderer_submit);
    } else {
       if (VN_DEBUG(WSI)) {
          static uint32_t num_rate_limit_warning = 0;
@@ -861,6 +883,8 @@ vn_queue_submit(struct vn_queue_submission *submit)
          vn_queue_submission_cleanup(submit);
          return vn_error(dev->instance, VK_ERROR_DEVICE_LOST);
       }
+      submit->ring_seqno_valid = true;
+      submit->ring_seqno = instance_submit.ring_seqno;
    }
 
    /* If external fence, track the submission's ring_idx to facilitate
