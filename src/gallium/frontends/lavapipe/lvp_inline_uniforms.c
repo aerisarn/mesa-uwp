@@ -138,7 +138,7 @@ lvp_find_inlinable_uniforms(struct lvp_pipeline *pipeline, nir_shader *shader)
          nir_metadata_require(function->impl, nir_metadata_loop_analysis, nir_var_all);
 
          foreach_list_typed(nir_cf_node, node, node, &function->impl->body)
-            process_node(node, NULL, (uint32_t*)pipeline->inlines[shader->info.stage].uniform_offsets, pipeline->inlines[shader->info.stage].count, stores);
+            process_node(node, NULL, (uint32_t*)pipeline->shaders[shader->info.stage].inlines.uniform_offsets, pipeline->shaders[shader->info.stage].inlines.count, stores);
       }
    }
    const unsigned threshold = 5;
@@ -152,21 +152,21 @@ lvp_find_inlinable_uniforms(struct lvp_pipeline *pipeline, nir_shader *shader)
       }
       if (counter >= threshold) {
          uint8_t new_num[PIPE_MAX_CONSTANT_BUFFERS];
-         memcpy(new_num, pipeline->inlines[shader->info.stage].count, sizeof(new_num));
+         memcpy(new_num, pipeline->shaders[shader->info.stage].inlines.count, sizeof(new_num));
 
          uint32_t *uni_offsets =
-            (uint32_t *) pipeline->inlines[shader->info.stage].uniform_offsets;
+            (uint32_t *) pipeline->shaders[shader->info.stage].inlines.uniform_offsets;
 
          if (nir_collect_src_uniforms(src, 0, uni_offsets, new_num,
                                       PIPE_MAX_CONSTANT_BUFFERS, UINT_MAX)) {
             ret = true;
-            memcpy(pipeline->inlines[shader->info.stage].count, new_num, sizeof(new_num));
+            memcpy(pipeline->shaders[shader->info.stage].inlines.count, new_num, sizeof(new_num));
          }
       }
    }
    for (unsigned i = 0; i < PIPE_MAX_CONSTANT_BUFFERS; i++) {
-      if (pipeline->inlines[shader->info.stage].count[i]) {
-         pipeline->inlines[shader->info.stage].can_inline |= BITFIELD_BIT(i);
+      if (pipeline->shaders[shader->info.stage].inlines.count[i]) {
+         pipeline->shaders[shader->info.stage].inlines.can_inline |= BITFIELD_BIT(i);
          break;
       }
    }
@@ -176,7 +176,7 @@ lvp_find_inlinable_uniforms(struct lvp_pipeline *pipeline, nir_shader *shader)
 void
 lvp_inline_uniforms(nir_shader *shader, const struct lvp_pipeline *pipeline, const uint32_t *uniform_values, uint32_t ubo)
 {
-   if (!pipeline->inlines[shader->info.stage].can_inline)
+   if (!pipeline->shaders[shader->info.stage].inlines.can_inline)
       return;
 
    nir_foreach_function(function, shader) {
@@ -199,8 +199,8 @@ lvp_inline_uniforms(nir_shader *shader, const struct lvp_pipeline *pipeline, con
                    intr->dest.ssa.bit_size == 32) {
                   int num_components = intr->dest.ssa.num_components;
                   uint32_t offset = nir_src_as_uint(intr->src[1]);
-                  const unsigned num_uniforms = pipeline->inlines[shader->info.stage].count[ubo];
-                  const unsigned *uniform_dw_offsets = pipeline->inlines[shader->info.stage].uniform_offsets[ubo];
+                  const unsigned num_uniforms = pipeline->shaders[shader->info.stage].inlines.count[ubo];
+                  const unsigned *uniform_dw_offsets = pipeline->shaders[shader->info.stage].inlines.uniform_offsets[ubo];
 
                   if (num_components == 1) {
                      /* Just replace the uniform load to constant load. */
