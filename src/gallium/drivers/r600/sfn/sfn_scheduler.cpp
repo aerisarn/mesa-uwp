@@ -480,6 +480,19 @@ BlockScheduler::schedule_block(Block& in_block,
       fail = true;
    }
 
+   if (fail) {
+      std::cerr << "Failing block:\n";
+      for (auto& i : in_block)
+         std::cerr << "[" << i->block_id() << ":" << i->index() << "] "
+                   << (i->is_scheduled() ? "S " : "")
+                   << *i << "\n";
+      std::cerr << "\nSo far scheduled: ";
+
+      for (auto i : *m_current_block)
+         std::cerr << "[" << i->block_id() << ":" << i->index() << "] " << *i << "\n";
+      std::cerr << "\n\n: ";
+   }
+
    assert(cir.tex.empty());
    assert(cir.exports.empty());
    assert(cir.fetches.empty());
