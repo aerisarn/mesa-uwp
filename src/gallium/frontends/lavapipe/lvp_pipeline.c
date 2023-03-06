@@ -101,7 +101,7 @@ shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 }
 
 static void
-set_image_access(struct lvp_pipeline *pipeline, nir_shader *nir,
+set_image_access(struct lvp_shader *shader, struct lvp_pipeline_layout *layout, nir_shader *nir,
                    nir_intrinsic_instr *instr,
                    bool reads, bool writes)
 {
@@ -109,23 +109,23 @@ set_image_access(struct lvp_pipeline *pipeline, nir_shader *nir,
    /* calculate the variable's offset in the layout */
    uint64_t value = 0;
    const struct lvp_descriptor_set_binding_layout *binding =
-      get_binding_layout(pipeline->layout, var->data.descriptor_set, var->data.binding);
+      get_binding_layout(layout, var->data.descriptor_set, var->data.binding);
    for (unsigned s = 0; s < var->data.descriptor_set; s++) {
-     if (pipeline->layout->vk.set_layouts[s])
-        value += get_set_layout(pipeline->layout, s)->stage[nir->info.stage].image_count;
+     if (layout->vk.set_layouts[s])
+        value += get_set_layout(layout, s)->stage[nir->info.stage].image_count;
    }
    value += binding->stage[nir->info.stage].image_index;
    const unsigned size = glsl_type_is_array(var->type) ? glsl_get_aoa_size(var->type) : 1;
    uint64_t mask = BITFIELD64_MASK(MAX2(size, 1)) << value;
 
    if (reads)
-      pipeline->shaders[nir->info.stage].access.images_read |= mask;
+      shader->access.images_read |= mask;
    if (writes)
-      pipeline->shaders[nir->info.stage].access.images_written |= mask;
+      shader->access.images_written |= mask;
 }
 
 static void
-set_buffer_access(struct lvp_pipeline *pipeline, nir_shader *nir,
+set_buffer_access(struct lvp_shader *shader, struct lvp_pipeline_layout *layout, nir_shader *nir,
                     nir_intrinsic_instr *instr)
 {
    nir_variable *var = nir_intrinsic_get_var(instr, 0);
@@ -143,30 +143,30 @@ set_buffer_access(struct lvp_pipeline *pipeline, nir_shader *nir,
    /* calculate the variable's offset in the layout */
    uint64_t value = 0;
    const struct lvp_descriptor_set_binding_layout *binding =
-      get_binding_layout(pipeline->layout, var->data.descriptor_set, var->data.binding);
+      get_binding_layout(layout, var->data.descriptor_set, var->data.binding);
    for (unsigned s = 0; s < var->data.descriptor_set; s++) {
-     if (pipeline->layout->vk.set_layouts[s])
-        value += get_set_layout(pipeline->layout, s)->stage[nir->info.stage].shader_buffer_count;
+     if (layout->vk.set_layouts[s])
+        value += get_set_layout(layout, s)->stage[nir->info.stage].shader_buffer_count;
    }
    value += binding->stage[nir->info.stage].shader_buffer_index;
    /* Structs have been lowered already, so get_aoa_size is sufficient. */
    const unsigned size = glsl_type_is_array(var->type) ? glsl_get_aoa_size(var->type) : 1;
    uint64_t mask = BITFIELD64_MASK(MAX2(size, 1)) << value;
-   pipeline->shaders[nir->info.stage].access.buffers_written |= mask;
+   shader->access.buffers_written |= mask;
 }
 
 static void
-scan_intrinsic(struct lvp_pipeline *pipeline, nir_shader *nir, nir_intrinsic_instr *instr)
+scan_intrinsic(struct lvp_shader *shader, struct lvp_pipeline_layout *layout, nir_shader *nir, nir_intrinsic_instr *instr)
 {
    switch (instr->intrinsic) {
    case nir_intrinsic_image_deref_sparse_load:
    case nir_intrinsic_image_deref_load:
    case nir_intrinsic_image_deref_size:
    case nir_intrinsic_image_deref_samples:
-      set_image_access(pipeline, nir, instr, true, false);
+      set_image_access(shader, layout, nir, instr, true, false);
       break;
    case nir_intrinsic_image_deref_store:
-      set_image_access(pipeline, nir, instr, false, true);
+      set_image_access(shader, layout, nir, instr, false, true);
       break;
    case nir_intrinsic_image_deref_atomic_add:
    case nir_intrinsic_image_deref_atomic_imin:
@@ -179,7 +179,7 @@ scan_intrinsic(struct lvp_pipeline *pipeline, nir_shader *nir, nir_intrinsic_ins
    case nir_intrinsic_image_deref_atomic_exchange:
    case nir_intrinsic_image_deref_atomic_comp_swap:
    case nir_intrinsic_image_deref_atomic_fadd:
-      set_image_access(pipeline, nir, instr, true, true);
+      set_image_access(shader, layout, nir, instr, true, true);
       break;
    case nir_intrinsic_deref_atomic_add:
    case nir_intrinsic_deref_atomic_and:
@@ -196,21 +196,21 @@ scan_intrinsic(struct lvp_pipeline *pipeline, nir_shader *nir, nir_intrinsic_ins
    case nir_intrinsic_deref_atomic_umin:
    case nir_intrinsic_deref_atomic_xor:
    case nir_intrinsic_store_deref:
-      set_buffer_access(pipeline, nir, instr);
+      set_buffer_access(shader, layout, nir, instr);
       break;
    default: break;
    }
 }
 
 static void
-scan_pipeline_info(struct lvp_pipeline *pipeline, nir_shader *nir)
+scan_pipeline_info(struct lvp_shader *shader, struct lvp_pipeline_layout *layout, nir_shader *nir)
 {
    nir_foreach_function(function, nir) {
       if (function->impl)
          nir_foreach_block(block, function->impl) {
             nir_foreach_instr(instr, block) {
                if (instr->type == nir_instr_type_intrinsic)
-                  scan_intrinsic(pipeline, nir, nir_instr_as_intrinsic(instr));
+                  scan_intrinsic(shader, layout, nir, nir_instr_as_intrinsic(instr));
             }
          }
    }
@@ -426,6 +426,7 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
    struct lvp_device *pdevice = pipeline->device;
    gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
    assert(stage <= MESA_SHADER_COMPUTE && stage != MESA_SHADER_NONE);
+   struct lvp_shader *shader = &pipeline->shaders[stage];
    nir_shader *nir;
    VkResult result = compile_spirv(pdevice, sinfo, &nir);
    if (result != VK_SUCCESS)
@@ -456,7 +457,7 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
    NIR_PASS_V(nir, nir_remove_dead_variables,
               nir_var_uniform | nir_var_image, NULL);
 
-   scan_pipeline_info(pipeline, nir);
+   scan_pipeline_info(shader, pipeline->layout, nir);
 
    optimize(nir);
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
