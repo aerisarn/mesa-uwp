@@ -191,7 +191,6 @@ struct rendering_state {
    struct pipe_stream_output_target *so_targets[PIPE_MAX_SO_BUFFERS];
    uint32_t so_offsets[PIPE_MAX_SO_BUFFERS];
 
-   struct lvp_pipeline *pipeline[2];
    struct lvp_shader *shaders[MESA_SHADER_STAGES];
 
    bool tess_ccw;
@@ -280,14 +279,12 @@ update_pcbuf(struct rendering_state *state, enum pipe_shader_type pstage)
 static void
 update_inline_shader_state(struct rendering_state *state, enum pipe_shader_type sh, bool pcbuf_dirty, bool constbuf_dirty)
 {
-   bool is_compute = sh == PIPE_SHADER_COMPUTE;
    uint32_t inline_uniforms[MAX_INLINABLE_UNIFORMS];
    unsigned stage = tgsi_processor_to_shader_stage(sh);
    state->inlines_dirty[sh] = false;
-   if (!state->pipeline[is_compute]->shaders[stage].inlines.can_inline)
+   struct lvp_shader *shader = state->shaders[stage];
+   if (!shader || !shader->inlines.can_inline)
       return;
-   struct lvp_shader *shader = &state->pipeline[is_compute]->shaders[stage];
-   struct lvp_pipeline *pipeline = state->pipeline[is_compute];
    /* these buffers have already been flushed in llvmpipe, so they're safe to read */
    nir_shader *base_nir = shader->pipeline_nir->nir;
    if (stage == PIPE_SHADER_TESS_EVAL && state->tess_ccw)
@@ -342,10 +339,10 @@ update_inline_shader_state(struct rendering_state *state, enum pipe_shader_type 
       /* not enough change; don't inline further */
       shader->inlines.can_inline = 0;
       ralloc_free(nir);
-      shader->shader_cso = lvp_shader_compile(pipeline->device, shader, nir_shader_clone(NULL, shader->pipeline_nir->nir));
+      shader->shader_cso = lvp_shader_compile(state->device, shader, nir_shader_clone(NULL, shader->pipeline_nir->nir));
       shader_state = shader->shader_cso;
    } else {
-      shader_state = lvp_shader_compile(pipeline->device, shader, nir);
+      shader_state = lvp_shader_compile(state->device, shader, nir);
    }
    switch (sh) {
    case PIPE_SHADER_VERTEX:
@@ -1075,7 +1072,6 @@ static void handle_pipeline(struct vk_cmd_queue_entry *cmd,
          handle_pipeline_access(state, i);
    }
    state->push_size[pipeline->is_compute_pipeline] = pipeline->layout->push_constant_size;
-   state->pipeline[pipeline->is_compute_pipeline] = pipeline;
 }
 
 static void handle_vertex_buffers2(struct vk_cmd_queue_entry *cmd,
