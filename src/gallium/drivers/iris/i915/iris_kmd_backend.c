@@ -91,10 +91,27 @@ i915_gem_create(struct iris_bufmgr *bufmgr,
    return create.handle;
 }
 
+static bool
+i915_bo_madvise(struct iris_bo *bo, enum iris_madvice state)
+{
+   uint32_t i915_state = state == IRIS_MADVICE_WILL_NEED ?
+                                  I915_MADV_WILLNEED : I915_MADV_DONTNEED;
+   struct drm_i915_gem_madvise madv = {
+      .handle = bo->gem_handle,
+      .madv = i915_state,
+      .retained = 1,
+   };
+
+   intel_ioctl(iris_bufmgr_get_fd(bo->bufmgr), DRM_IOCTL_I915_GEM_MADVISE, &madv);
+
+   return madv.retained;
+}
+
 const struct iris_kmd_backend *i915_get_backend(void)
 {
    static const struct iris_kmd_backend i915_backend = {
       .gem_create = i915_gem_create,
+      .bo_madvise = i915_bo_madvise,
    };
    return &i915_backend;
 }

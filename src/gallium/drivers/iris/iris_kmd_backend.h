@@ -28,14 +28,17 @@
 #include "dev/intel_device_info.h"
 #include "dev/intel_kmd.h"
 
+struct iris_bo;
 struct iris_bufmgr;
 enum iris_heap;
+enum iris_madvice;
 
 struct iris_kmd_backend {
    uint32_t (*gem_create)(struct iris_bufmgr *bufmgr,
                           const struct intel_memory_class_instance **regions,
                           uint16_t regions_count, uint64_t size,
                           enum iris_heap heap_flags, unsigned alloc_flags);
+   bool (*bo_madvise)(struct iris_bo *bo, enum iris_madvice state);
 };
 
 const struct iris_kmd_backend *

@@ -27,22 +27,6 @@
 
 #include "drm-uapi/i915_drm.h"
 
-bool
-iris_i915_bo_madvise(struct iris_bo *bo, enum iris_madvice state)
-{
-   uint32_t i915_state = state == IRIS_MADVICE_WILL_NEED ?
-                                  I915_MADV_WILLNEED : I915_MADV_DONTNEED;
-   struct drm_i915_gem_madvise madv = {
-      .handle = bo->gem_handle,
-      .madv = i915_state,
-      .retained = 1,
-   };
-
-   intel_ioctl(iris_bufmgr_get_fd(bo->bufmgr), DRM_IOCTL_I915_GEM_MADVISE, &madv);
-
-   return madv.retained;
-}
-
 int iris_i915_bo_set_caching(struct iris_bo *bo, bool cached)
 {
    struct drm_i915_gem_caching arg = {

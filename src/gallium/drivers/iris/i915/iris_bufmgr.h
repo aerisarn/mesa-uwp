@@ -25,7 +25,5 @@
 #include <stdbool.h>
 
 struct iris_bo;
-enum iris_madvice;
 
-bool iris_i915_bo_madvise(struct iris_bo *bo, enum iris_madvice state);
 int iris_i915_bo_set_caching(struct iris_bo *bo, bool cached);

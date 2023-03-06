@@ -540,19 +540,13 @@ iris_bo_busy(struct iris_bo *bo)
  * Returns true if the buffer was retained, or false if it was discarded
  * whilst marked as IRIS_MADVICE_DONT_NEED.
  */
-static bool
+static inline bool
 iris_bo_madvise(struct iris_bo *bo, enum iris_madvice state)
 {
    /* We can't madvise suballocated BOs. */
    assert(iris_bo_is_real(bo));
 
-   switch (iris_bufmgr_get_device_info(bo->bufmgr)->kmd_type) {
-   case INTEL_KMD_TYPE_I915:
-      return iris_i915_bo_madvise(bo, state);
-   default:
-      unreachable("missing");
-      return false;
-   }
+   return bo->bufmgr->kmd_backend->bo_madvise(bo, state);
 }
 
 static struct iris_bo *
