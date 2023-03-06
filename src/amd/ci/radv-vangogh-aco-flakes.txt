@@ -1,3 +1,5 @@
+dEQP-VK.api.device_init.create_instance_device_intentional_alloc_fail.basic
+
 dEQP-VK.dynamic_rendering.basic.*
 
 # This fail is 100% reproducible when running vkcts in parallel mode,
