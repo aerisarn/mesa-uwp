@@ -860,6 +860,12 @@
     - !reference [.turnip-manual-rules, rules]
     - !reference [.zink-common-manual-rules, rules]
 
+.zink-radv-rules:
+  stage: layered-backends
+  rules:
+    - !reference [.radv-valve-rules, rules]
+    - !reference [.zink-common-rules, rules]
+
 .zink-radv-manual-rules:
   stage: layered-backends
   rules:
