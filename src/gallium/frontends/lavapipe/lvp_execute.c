@@ -85,10 +85,10 @@ struct rendering_state {
    bool blend_color_dirty;
    bool ve_dirty;
    bool vb_dirty;
-   bool constbuf_dirty[PIPE_SHADER_TYPES];
-   bool pcbuf_dirty[PIPE_SHADER_TYPES];
-   bool has_pcbuf[PIPE_SHADER_TYPES];
-   bool inlines_dirty[PIPE_SHADER_TYPES];
+   bool constbuf_dirty[MESA_SHADER_STAGES];
+   bool pcbuf_dirty[MESA_SHADER_STAGES];
+   bool has_pcbuf[MESA_SHADER_STAGES];
+   bool inlines_dirty[MESA_SHADER_STAGES];
    bool vp_dirty;
    bool scissor_dirty;
    bool ib_dirty;
@@ -128,29 +128,29 @@ struct rendering_state {
    ubyte index_size;
    unsigned index_offset;
    struct pipe_resource *index_buffer;
-   struct pipe_constant_buffer const_buffer[PIPE_SHADER_TYPES][16];
-   int num_const_bufs[PIPE_SHADER_TYPES];
+   struct pipe_constant_buffer const_buffer[MESA_SHADER_STAGES][16];
+   int num_const_bufs[MESA_SHADER_STAGES];
    int num_vb;
    unsigned start_vb;
    struct pipe_vertex_buffer vb[PIPE_MAX_ATTRIBS];
    struct cso_velems_state velem;
 
    struct lvp_access_info access[MESA_SHADER_STAGES];
-   struct pipe_sampler_view *sv[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_SAMPLER_VIEWS];
-   int num_sampler_views[PIPE_SHADER_TYPES];
-   struct pipe_sampler_state ss[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
+   struct pipe_sampler_view *sv[MESA_SHADER_STAGES][PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   int num_sampler_views[MESA_SHADER_STAGES];
+   struct pipe_sampler_state ss[MESA_SHADER_STAGES][PIPE_MAX_SAMPLERS];
    /* cso_context api is stupid */
-   const struct pipe_sampler_state *cso_ss_ptr[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
-   int num_sampler_states[PIPE_SHADER_TYPES];
-   bool sv_dirty[PIPE_SHADER_TYPES];
-   bool ss_dirty[PIPE_SHADER_TYPES];
+   const struct pipe_sampler_state *cso_ss_ptr[MESA_SHADER_STAGES][PIPE_MAX_SAMPLERS];
+   int num_sampler_states[MESA_SHADER_STAGES];
+   bool sv_dirty[MESA_SHADER_STAGES];
+   bool ss_dirty[MESA_SHADER_STAGES];
 
-   struct pipe_image_view iv[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
-   int num_shader_images[PIPE_SHADER_TYPES];
-   struct pipe_shader_buffer sb[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_BUFFERS];
-   int num_shader_buffers[PIPE_SHADER_TYPES];
-   bool iv_dirty[PIPE_SHADER_TYPES];
-   bool sb_dirty[PIPE_SHADER_TYPES];
+   struct pipe_image_view iv[MESA_SHADER_STAGES][PIPE_MAX_SHADER_IMAGES];
+   int num_shader_images[MESA_SHADER_STAGES];
+   struct pipe_shader_buffer sb[MESA_SHADER_STAGES][PIPE_MAX_SHADER_BUFFERS];
+   int num_shader_buffers[MESA_SHADER_STAGES];
+   bool iv_dirty[MESA_SHADER_STAGES];
+   bool sb_dirty[MESA_SHADER_STAGES];
    bool disable_multisample;
    enum gs_output gs_output_lines : 2;
 
@@ -165,7 +165,7 @@ struct rendering_state {
       void *block[MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS * MAX_SETS];
       uint16_t size[MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS * MAX_SETS];
       uint16_t count;
-   } uniform_blocks[PIPE_SHADER_TYPES];
+   } uniform_blocks[MESA_SHADER_STAGES];
 
    VkRect2D render_area;
    bool suspending;
@@ -231,7 +231,7 @@ static void finish_fence(struct rendering_state *state)
 static unsigned
 get_pcbuf_size(struct rendering_state *state, enum pipe_shader_type pstage)
 {
-   bool is_compute = pstage == PIPE_SHADER_COMPUTE;
+   bool is_compute = pstage == MESA_SHADER_COMPUTE;
    return state->has_pcbuf[pstage] ? state->push_size[is_compute] : 0;
 }
 
@@ -287,7 +287,7 @@ update_inline_shader_state(struct rendering_state *state, enum pipe_shader_type 
       return;
    /* these buffers have already been flushed in llvmpipe, so they're safe to read */
    nir_shader *base_nir = shader->pipeline_nir->nir;
-   if (stage == PIPE_SHADER_TESS_EVAL && state->tess_ccw)
+   if (stage == MESA_SHADER_TESS_EVAL && state->tess_ccw)
       base_nir = shader->tess_ccw->nir;
    nir_shader *nir = nir_shader_clone(shader->pipeline_nir->nir, base_nir);
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
@@ -345,22 +345,22 @@ update_inline_shader_state(struct rendering_state *state, enum pipe_shader_type 
       shader_state = lvp_shader_compile(state->device, shader, nir);
    }
    switch (sh) {
-   case PIPE_SHADER_VERTEX:
+   case MESA_SHADER_VERTEX:
       state->pctx->bind_vs_state(state->pctx, shader_state);
       break;
-   case PIPE_SHADER_TESS_CTRL:
+   case MESA_SHADER_TESS_CTRL:
       state->pctx->bind_tcs_state(state->pctx, shader_state);
       break;
-   case PIPE_SHADER_TESS_EVAL:
+   case MESA_SHADER_TESS_EVAL:
       state->pctx->bind_tes_state(state->pctx, shader_state);
       break;
-   case PIPE_SHADER_GEOMETRY:
+   case MESA_SHADER_GEOMETRY:
       state->pctx->bind_gs_state(state->pctx, shader_state);
       break;
-   case PIPE_SHADER_FRAGMENT:
+   case MESA_SHADER_FRAGMENT:
       state->pctx->bind_fs_state(state->pctx, shader_state);
       break;
-   case PIPE_SHADER_COMPUTE:
+   case MESA_SHADER_COMPUTE:
       state->pctx->bind_compute_state(state->pctx, shader_state);
       break;
    default: break;
@@ -369,44 +369,44 @@ update_inline_shader_state(struct rendering_state *state, enum pipe_shader_type 
 
 static void emit_compute_state(struct rendering_state *state)
 {
-   if (state->iv_dirty[PIPE_SHADER_COMPUTE]) {
-      state->pctx->set_shader_images(state->pctx, PIPE_SHADER_COMPUTE,
-                                     0, state->num_shader_images[PIPE_SHADER_COMPUTE],
-                                     0, state->iv[PIPE_SHADER_COMPUTE]);
-      state->iv_dirty[PIPE_SHADER_COMPUTE] = false;
+   if (state->iv_dirty[MESA_SHADER_COMPUTE]) {
+      state->pctx->set_shader_images(state->pctx, MESA_SHADER_COMPUTE,
+                                     0, state->num_shader_images[MESA_SHADER_COMPUTE],
+                                     0, state->iv[MESA_SHADER_COMPUTE]);
+      state->iv_dirty[MESA_SHADER_COMPUTE] = false;
    }
 
-   bool pcbuf_dirty = state->pcbuf_dirty[PIPE_SHADER_COMPUTE];
-   if (state->pcbuf_dirty[PIPE_SHADER_COMPUTE])
-      update_pcbuf(state, PIPE_SHADER_COMPUTE);
+   bool pcbuf_dirty = state->pcbuf_dirty[MESA_SHADER_COMPUTE];
+   if (state->pcbuf_dirty[MESA_SHADER_COMPUTE])
+      update_pcbuf(state, MESA_SHADER_COMPUTE);
 
-   bool constbuf_dirty = state->constbuf_dirty[PIPE_SHADER_COMPUTE];
-   if (state->constbuf_dirty[PIPE_SHADER_COMPUTE]) {
-      for (unsigned i = 0; i < state->num_const_bufs[PIPE_SHADER_COMPUTE]; i++)
-         state->pctx->set_constant_buffer(state->pctx, PIPE_SHADER_COMPUTE,
-                                          i + 1, false, &state->const_buffer[PIPE_SHADER_COMPUTE][i]);
-      state->constbuf_dirty[PIPE_SHADER_COMPUTE] = false;
+   bool constbuf_dirty = state->constbuf_dirty[MESA_SHADER_COMPUTE];
+   if (state->constbuf_dirty[MESA_SHADER_COMPUTE]) {
+      for (unsigned i = 0; i < state->num_const_bufs[MESA_SHADER_COMPUTE]; i++)
+         state->pctx->set_constant_buffer(state->pctx, MESA_SHADER_COMPUTE,
+                                          i + 1, false, &state->const_buffer[MESA_SHADER_COMPUTE][i]);
+      state->constbuf_dirty[MESA_SHADER_COMPUTE] = false;
    }
 
-   if (state->inlines_dirty[PIPE_SHADER_COMPUTE])
-      update_inline_shader_state(state, PIPE_SHADER_COMPUTE, pcbuf_dirty, constbuf_dirty);
+   if (state->inlines_dirty[MESA_SHADER_COMPUTE])
+      update_inline_shader_state(state, MESA_SHADER_COMPUTE, pcbuf_dirty, constbuf_dirty);
 
-   if (state->sb_dirty[PIPE_SHADER_COMPUTE]) {
-      state->pctx->set_shader_buffers(state->pctx, PIPE_SHADER_COMPUTE,
-                                      0, state->num_shader_buffers[PIPE_SHADER_COMPUTE],
-                                      state->sb[PIPE_SHADER_COMPUTE], state->access[MESA_SHADER_COMPUTE].buffers_written);
-      state->sb_dirty[PIPE_SHADER_COMPUTE] = false;
+   if (state->sb_dirty[MESA_SHADER_COMPUTE]) {
+      state->pctx->set_shader_buffers(state->pctx, MESA_SHADER_COMPUTE,
+                                      0, state->num_shader_buffers[MESA_SHADER_COMPUTE],
+                                      state->sb[MESA_SHADER_COMPUTE], state->access[MESA_SHADER_COMPUTE].buffers_written);
+      state->sb_dirty[MESA_SHADER_COMPUTE] = false;
    }
 
-   if (state->sv_dirty[PIPE_SHADER_COMPUTE]) {
-      state->pctx->set_sampler_views(state->pctx, PIPE_SHADER_COMPUTE, 0, state->num_sampler_views[PIPE_SHADER_COMPUTE],
-                                     0, false, state->sv[PIPE_SHADER_COMPUTE]);
-      state->sv_dirty[PIPE_SHADER_COMPUTE] = false;
+   if (state->sv_dirty[MESA_SHADER_COMPUTE]) {
+      state->pctx->set_sampler_views(state->pctx, MESA_SHADER_COMPUTE, 0, state->num_sampler_views[MESA_SHADER_COMPUTE],
+                                     0, false, state->sv[MESA_SHADER_COMPUTE]);
+      state->sv_dirty[MESA_SHADER_COMPUTE] = false;
    }
 
-   if (state->ss_dirty[PIPE_SHADER_COMPUTE]) {
-      cso_set_samplers(state->cso, PIPE_SHADER_COMPUTE, state->num_sampler_states[PIPE_SHADER_COMPUTE], state->cso_ss_ptr[PIPE_SHADER_COMPUTE]);
-      state->ss_dirty[PIPE_SHADER_COMPUTE] = false;
+   if (state->ss_dirty[MESA_SHADER_COMPUTE]) {
+      cso_set_samplers(state->cso, MESA_SHADER_COMPUTE, state->num_sampler_states[MESA_SHADER_COMPUTE], state->cso_ss_ptr[MESA_SHADER_COMPUTE]);
+      state->ss_dirty[MESA_SHADER_COMPUTE] = false;
    }
 }
 
@@ -491,9 +491,9 @@ static void emit_state(struct rendering_state *state)
       state->ve_dirty = false;
    }
 
-   bool constbuf_dirty[PIPE_SHADER_TYPES] = {false};
-   bool pcbuf_dirty[PIPE_SHADER_TYPES] = {false};
-   for (sh = 0; sh < PIPE_SHADER_COMPUTE; sh++) {
+   bool constbuf_dirty[MESA_SHADER_STAGES] = {false};
+   bool pcbuf_dirty[MESA_SHADER_STAGES] = {false};
+   for (sh = 0; sh < MESA_SHADER_COMPUTE; sh++) {
       constbuf_dirty[sh] = state->constbuf_dirty[sh];
       if (state->constbuf_dirty[sh]) {
          for (unsigned idx = 0; idx < state->num_const_bufs[sh]; idx++)
@@ -503,18 +503,18 @@ static void emit_state(struct rendering_state *state)
       state->constbuf_dirty[sh] = false;
    }
 
-   for (sh = 0; sh < PIPE_SHADER_COMPUTE; sh++) {
+   for (sh = 0; sh < MESA_SHADER_COMPUTE; sh++) {
       pcbuf_dirty[sh] = state->pcbuf_dirty[sh];
       if (state->pcbuf_dirty[sh])
          update_pcbuf(state, sh);
    }
 
-   for (sh = 0; sh < PIPE_SHADER_COMPUTE; sh++) {
+   for (sh = 0; sh < MESA_SHADER_COMPUTE; sh++) {
       if (state->inlines_dirty[sh])
          update_inline_shader_state(state, sh, pcbuf_dirty[sh], constbuf_dirty[sh]);
    }
 
-   for (sh = 0; sh < PIPE_SHADER_COMPUTE; sh++) {
+   for (sh = 0; sh < MESA_SHADER_COMPUTE; sh++) {
       if (state->sb_dirty[sh]) {
          state->pctx->set_shader_buffers(state->pctx, sh,
                                          0, state->num_shader_buffers[sh],
@@ -522,7 +522,7 @@ static void emit_state(struct rendering_state *state)
       }
    }
 
-   for (sh = 0; sh < PIPE_SHADER_COMPUTE; sh++) {
+   for (sh = 0; sh < MESA_SHADER_COMPUTE; sh++) {
       if (state->iv_dirty[sh]) {
          state->pctx->set_shader_images(state->pctx, sh,
                                         0, state->num_shader_images[sh], 0,
@@ -530,7 +530,7 @@ static void emit_state(struct rendering_state *state)
       }
    }
 
-   for (sh = 0; sh < PIPE_SHADER_COMPUTE; sh++) {
+   for (sh = 0; sh < MESA_SHADER_COMPUTE; sh++) {
       if (state->sv_dirty[sh]) {
          state->pctx->set_sampler_views(state->pctx, sh, 0, state->num_sampler_views[sh],
                                         0, false, state->sv[sh]);
@@ -538,7 +538,7 @@ static void emit_state(struct rendering_state *state)
       }
    }
 
-   for (sh = 0; sh < PIPE_SHADER_COMPUTE; sh++) {
+   for (sh = 0; sh < MESA_SHADER_COMPUTE; sh++) {
       if (state->ss_dirty[sh]) {
          cso_set_samplers(state->cso, sh, state->num_sampler_states[sh], state->cso_ss_ptr[sh]);
          state->ss_dirty[sh] = false;
@@ -562,12 +562,12 @@ handle_compute_shader(struct rendering_state *state, struct lvp_shader *shader, 
    state->shaders[MESA_SHADER_COMPUTE] = shader;
 
    if ((layout->push_constant_stages & VK_SHADER_STAGE_COMPUTE_BIT) > 0)
-      state->has_pcbuf[PIPE_SHADER_COMPUTE] = layout->push_constant_size > 0;
-   state->uniform_blocks[PIPE_SHADER_COMPUTE].count = layout->stage[MESA_SHADER_COMPUTE].uniform_block_count;
+      state->has_pcbuf[MESA_SHADER_COMPUTE] = layout->push_constant_size > 0;
+   state->uniform_blocks[MESA_SHADER_COMPUTE].count = layout->stage[MESA_SHADER_COMPUTE].uniform_block_count;
    for (unsigned j = 0; j < layout->stage[MESA_SHADER_COMPUTE].uniform_block_count; j++)
-      state->uniform_blocks[PIPE_SHADER_COMPUTE].size[j] = layout->stage[MESA_SHADER_COMPUTE].uniform_block_sizes[j];
-   if (!state->has_pcbuf[PIPE_SHADER_COMPUTE] && !layout->stage[MESA_SHADER_COMPUTE].uniform_block_count)
-      state->pcbuf_dirty[PIPE_SHADER_COMPUTE] = false;
+      state->uniform_blocks[MESA_SHADER_COMPUTE].size[j] = layout->stage[MESA_SHADER_COMPUTE].uniform_block_sizes[j];
+   if (!state->has_pcbuf[MESA_SHADER_COMPUTE] && !layout->stage[MESA_SHADER_COMPUTE].uniform_block_count)
+      state->pcbuf_dirty[MESA_SHADER_COMPUTE] = false;
 
    state->iv_dirty[MESA_SHADER_COMPUTE] |= state->num_shader_images[MESA_SHADER_COMPUTE] &&
                           (state->access[MESA_SHADER_COMPUTE].images_read != shader->access.images_read ||
@@ -579,7 +579,7 @@ handle_compute_shader(struct rendering_state *state, struct lvp_shader *shader, 
    state->dispatch_info.block[0] = shader->pipeline_nir->nir->info.workgroup_size[0];
    state->dispatch_info.block[1] = shader->pipeline_nir->nir->info.workgroup_size[1];
    state->dispatch_info.block[2] = shader->pipeline_nir->nir->info.workgroup_size[2];
-   state->inlines_dirty[PIPE_SHADER_COMPUTE] = shader->inlines.can_inline;
+   state->inlines_dirty[MESA_SHADER_COMPUTE] = shader->inlines.can_inline;
    if (!shader->inlines.can_inline)
       state->pctx->bind_compute_state(state->pctx, shader->shader_cso);
 }
@@ -653,10 +653,10 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    LVP_FROM_HANDLE(lvp_pipeline, pipeline, cmd->u.bind_pipeline.pipeline);
    const struct vk_graphics_pipeline_state *ps = &pipeline->graphics_state;
    lvp_pipeline_shaders_compile(pipeline);
-   for (enum pipe_shader_type sh = PIPE_SHADER_VERTEX; sh < PIPE_SHADER_COMPUTE; sh++)
+   for (enum pipe_shader_type sh = MESA_SHADER_VERTEX; sh < MESA_SHADER_COMPUTE; sh++)
       state->shaders[sh] = &pipeline->shaders[sh];
 
-   for (enum pipe_shader_type sh = PIPE_SHADER_VERTEX; sh < PIPE_SHADER_COMPUTE; sh++) {
+   for (enum pipe_shader_type sh = MESA_SHADER_VERTEX; sh < MESA_SHADER_COMPUTE; sh++) {
       state->iv_dirty[sh] |= state->num_shader_images[sh] &&
                              (state->access[sh].images_read != state->shaders[sh]->access.images_read ||
                               state->access[sh].images_written != state->shaders[sh]->access.images_written);
@@ -674,7 +674,7 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
          state->pcbuf_dirty[sh] = false;
    }
 
-   bool has_stage[PIPE_SHADER_TYPES] = { false };
+   bool has_stage[MESA_SHADER_STAGES] = { false };
 
    state->pctx->bind_gs_state(state->pctx, NULL);
    if (state->pctx->bind_tcs_state)
@@ -689,44 +689,44 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
          VkShaderStageFlagBits vk_stage = (1 << b);
          switch (vk_stage) {
          case VK_SHADER_STAGE_FRAGMENT_BIT:
-            state->inlines_dirty[PIPE_SHADER_FRAGMENT] = pipeline->shaders[MESA_SHADER_FRAGMENT].inlines.can_inline;
+            state->inlines_dirty[MESA_SHADER_FRAGMENT] = pipeline->shaders[MESA_SHADER_FRAGMENT].inlines.can_inline;
             if (!pipeline->shaders[MESA_SHADER_FRAGMENT].inlines.can_inline)
-               state->pctx->bind_fs_state(state->pctx, pipeline->shaders[PIPE_SHADER_FRAGMENT].shader_cso);
-            has_stage[PIPE_SHADER_FRAGMENT] = true;
+               state->pctx->bind_fs_state(state->pctx, pipeline->shaders[MESA_SHADER_FRAGMENT].shader_cso);
+            has_stage[MESA_SHADER_FRAGMENT] = true;
             break;
          case VK_SHADER_STAGE_VERTEX_BIT:
-            state->inlines_dirty[PIPE_SHADER_VERTEX] = pipeline->shaders[MESA_SHADER_VERTEX].inlines.can_inline;
+            state->inlines_dirty[MESA_SHADER_VERTEX] = pipeline->shaders[MESA_SHADER_VERTEX].inlines.can_inline;
             if (!pipeline->shaders[MESA_SHADER_VERTEX].inlines.can_inline)
-               state->pctx->bind_vs_state(state->pctx, pipeline->shaders[PIPE_SHADER_VERTEX].shader_cso);
-            has_stage[PIPE_SHADER_VERTEX] = true;
+               state->pctx->bind_vs_state(state->pctx, pipeline->shaders[MESA_SHADER_VERTEX].shader_cso);
+            has_stage[MESA_SHADER_VERTEX] = true;
             break;
          case VK_SHADER_STAGE_GEOMETRY_BIT:
-            state->inlines_dirty[PIPE_SHADER_GEOMETRY] = pipeline->shaders[MESA_SHADER_GEOMETRY].inlines.can_inline;
+            state->inlines_dirty[MESA_SHADER_GEOMETRY] = pipeline->shaders[MESA_SHADER_GEOMETRY].inlines.can_inline;
             if (!pipeline->shaders[MESA_SHADER_GEOMETRY].inlines.can_inline)
-               state->pctx->bind_gs_state(state->pctx, pipeline->shaders[PIPE_SHADER_GEOMETRY].shader_cso);
+               state->pctx->bind_gs_state(state->pctx, pipeline->shaders[MESA_SHADER_GEOMETRY].shader_cso);
             state->gs_output_lines = pipeline->gs_output_lines ? GS_OUTPUT_LINES : GS_OUTPUT_NOT_LINES;
-            has_stage[PIPE_SHADER_GEOMETRY] = true;
+            has_stage[MESA_SHADER_GEOMETRY] = true;
             break;
          case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
-            state->inlines_dirty[PIPE_SHADER_TESS_CTRL] = pipeline->shaders[MESA_SHADER_TESS_CTRL].inlines.can_inline;
+            state->inlines_dirty[MESA_SHADER_TESS_CTRL] = pipeline->shaders[MESA_SHADER_TESS_CTRL].inlines.can_inline;
             if (!pipeline->shaders[MESA_SHADER_TESS_CTRL].inlines.can_inline)
-               state->pctx->bind_tcs_state(state->pctx, pipeline->shaders[PIPE_SHADER_TESS_CTRL].shader_cso);
-            has_stage[PIPE_SHADER_TESS_CTRL] = true;
+               state->pctx->bind_tcs_state(state->pctx, pipeline->shaders[MESA_SHADER_TESS_CTRL].shader_cso);
+            has_stage[MESA_SHADER_TESS_CTRL] = true;
             break;
          case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
-            state->inlines_dirty[PIPE_SHADER_TESS_EVAL] = pipeline->shaders[MESA_SHADER_TESS_EVAL].inlines.can_inline;
+            state->inlines_dirty[MESA_SHADER_TESS_EVAL] = pipeline->shaders[MESA_SHADER_TESS_EVAL].inlines.can_inline;
             if (!pipeline->shaders[MESA_SHADER_TESS_EVAL].inlines.can_inline) {
                if (BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN)) {
-                  state->tess_states[0] = pipeline->shaders[PIPE_SHADER_TESS_EVAL].shader_cso;
+                  state->tess_states[0] = pipeline->shaders[MESA_SHADER_TESS_EVAL].shader_cso;
                   state->tess_states[1] = pipeline->shaders[MESA_SHADER_TESS_EVAL].tess_ccw_cso;
                   state->pctx->bind_tes_state(state->pctx, state->tess_states[state->tess_ccw]);
                } else {
-                  state->pctx->bind_tes_state(state->pctx, pipeline->shaders[PIPE_SHADER_TESS_EVAL].shader_cso);
+                  state->pctx->bind_tes_state(state->pctx, pipeline->shaders[MESA_SHADER_TESS_EVAL].shader_cso);
                }
             }
             if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN))
                state->tess_ccw = false;
-            has_stage[PIPE_SHADER_TESS_EVAL] = true;
+            has_stage[MESA_SHADER_TESS_EVAL] = true;
             break;
          default:
             assert(0);
@@ -736,13 +736,13 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    }
 
    /* there should always be a dummy fs. */
-   if (!has_stage[PIPE_SHADER_FRAGMENT])
-      state->pctx->bind_fs_state(state->pctx, pipeline->shaders[PIPE_SHADER_FRAGMENT].shader_cso);
-   if (state->pctx->bind_gs_state && !has_stage[PIPE_SHADER_GEOMETRY])
+   if (!has_stage[MESA_SHADER_FRAGMENT])
+      state->pctx->bind_fs_state(state->pctx, pipeline->shaders[MESA_SHADER_FRAGMENT].shader_cso);
+   if (state->pctx->bind_gs_state && !has_stage[MESA_SHADER_GEOMETRY])
       state->pctx->bind_gs_state(state->pctx, NULL);
-   if (state->pctx->bind_tcs_state && !has_stage[PIPE_SHADER_TESS_CTRL])
+   if (state->pctx->bind_tcs_state && !has_stage[MESA_SHADER_TESS_CTRL])
       state->pctx->bind_tcs_state(state->pctx, NULL);
-   if (state->pctx->bind_tes_state && !has_stage[PIPE_SHADER_TESS_EVAL])
+   if (state->pctx->bind_tes_state && !has_stage[MESA_SHADER_TESS_EVAL])
       state->pctx->bind_tes_state(state->pctx, NULL);
 
    /* rasterization state */
@@ -1317,7 +1317,7 @@ static void handle_compute_descriptor_sets(struct vk_cmd_queue_entry *cmd,
       const struct lvp_descriptor_set *set = lvp_descriptor_set_from_handle(bds->descriptor_sets[i]);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_COMPUTE_BIT)
-         handle_set_stage(state, dyn_info, set, MESA_SHADER_COMPUTE, PIPE_SHADER_COMPUTE);
+         handle_set_stage(state, dyn_info, set, MESA_SHADER_COMPUTE, MESA_SHADER_COMPUTE);
       increment_dyn_info(dyn_info, layout->vk.set_layouts[bds->first_set + i], true);
    }
 }
@@ -1359,19 +1359,19 @@ static void handle_descriptor_sets(struct vk_cmd_queue_entry *cmd,
              set->layout->dynamic_offset_count <= dyn_info.dynamic_offset_count - dyn_info.dyn_index);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_VERTEX_BIT)
-         handle_set_stage(state, &dyn_info, set, MESA_SHADER_VERTEX, PIPE_SHADER_VERTEX);
+         handle_set_stage(state, &dyn_info, set, MESA_SHADER_VERTEX, MESA_SHADER_VERTEX);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_GEOMETRY_BIT)
-         handle_set_stage(state, &dyn_info, set, MESA_SHADER_GEOMETRY, PIPE_SHADER_GEOMETRY);
+         handle_set_stage(state, &dyn_info, set, MESA_SHADER_GEOMETRY, MESA_SHADER_GEOMETRY);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)
-         handle_set_stage(state, &dyn_info, set, MESA_SHADER_TESS_CTRL, PIPE_SHADER_TESS_CTRL);
+         handle_set_stage(state, &dyn_info, set, MESA_SHADER_TESS_CTRL, MESA_SHADER_TESS_CTRL);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
-         handle_set_stage(state, &dyn_info, set, MESA_SHADER_TESS_EVAL, PIPE_SHADER_TESS_EVAL);
+         handle_set_stage(state, &dyn_info, set, MESA_SHADER_TESS_EVAL, MESA_SHADER_TESS_EVAL);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_FRAGMENT_BIT)
-         handle_set_stage(state, &dyn_info, set, MESA_SHADER_FRAGMENT, PIPE_SHADER_FRAGMENT);
+         handle_set_stage(state, &dyn_info, set, MESA_SHADER_FRAGMENT, MESA_SHADER_FRAGMENT);
 
       increment_dyn_info(&dyn_info, layout->vk.set_layouts[bds->first_set + i], true);
    }
@@ -2763,18 +2763,18 @@ static void handle_push_constants(struct vk_cmd_queue_entry *cmd,
    memcpy(state->push_constants + cmd->u.push_constants.offset, cmd->u.push_constants.values, cmd->u.push_constants.size);
 
    VkShaderStageFlags stage_flags = cmd->u.push_constants.stage_flags;
-   state->pcbuf_dirty[PIPE_SHADER_VERTEX] |= (stage_flags & VK_SHADER_STAGE_VERTEX_BIT) > 0;
-   state->pcbuf_dirty[PIPE_SHADER_FRAGMENT] |= (stage_flags & VK_SHADER_STAGE_FRAGMENT_BIT) > 0;
-   state->pcbuf_dirty[PIPE_SHADER_GEOMETRY] |= (stage_flags & VK_SHADER_STAGE_GEOMETRY_BIT) > 0;
-   state->pcbuf_dirty[PIPE_SHADER_TESS_CTRL] |= (stage_flags & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) > 0;
-   state->pcbuf_dirty[PIPE_SHADER_TESS_EVAL] |= (stage_flags & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) > 0;
-   state->pcbuf_dirty[PIPE_SHADER_COMPUTE] |= (stage_flags & VK_SHADER_STAGE_COMPUTE_BIT) > 0;
-   state->inlines_dirty[PIPE_SHADER_VERTEX] |= (stage_flags & VK_SHADER_STAGE_VERTEX_BIT) > 0;
-   state->inlines_dirty[PIPE_SHADER_FRAGMENT] |= (stage_flags & VK_SHADER_STAGE_FRAGMENT_BIT) > 0;
-   state->inlines_dirty[PIPE_SHADER_GEOMETRY] |= (stage_flags & VK_SHADER_STAGE_GEOMETRY_BIT) > 0;
-   state->inlines_dirty[PIPE_SHADER_TESS_CTRL] |= (stage_flags & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) > 0;
-   state->inlines_dirty[PIPE_SHADER_TESS_EVAL] |= (stage_flags & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) > 0;
-   state->inlines_dirty[PIPE_SHADER_COMPUTE] |= (stage_flags & VK_SHADER_STAGE_COMPUTE_BIT) > 0;
+   state->pcbuf_dirty[MESA_SHADER_VERTEX] |= (stage_flags & VK_SHADER_STAGE_VERTEX_BIT) > 0;
+   state->pcbuf_dirty[MESA_SHADER_FRAGMENT] |= (stage_flags & VK_SHADER_STAGE_FRAGMENT_BIT) > 0;
+   state->pcbuf_dirty[MESA_SHADER_GEOMETRY] |= (stage_flags & VK_SHADER_STAGE_GEOMETRY_BIT) > 0;
+   state->pcbuf_dirty[MESA_SHADER_TESS_CTRL] |= (stage_flags & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) > 0;
+   state->pcbuf_dirty[MESA_SHADER_TESS_EVAL] |= (stage_flags & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) > 0;
+   state->pcbuf_dirty[MESA_SHADER_COMPUTE] |= (stage_flags & VK_SHADER_STAGE_COMPUTE_BIT) > 0;
+   state->inlines_dirty[MESA_SHADER_VERTEX] |= (stage_flags & VK_SHADER_STAGE_VERTEX_BIT) > 0;
+   state->inlines_dirty[MESA_SHADER_FRAGMENT] |= (stage_flags & VK_SHADER_STAGE_FRAGMENT_BIT) > 0;
+   state->inlines_dirty[MESA_SHADER_GEOMETRY] |= (stage_flags & VK_SHADER_STAGE_GEOMETRY_BIT) > 0;
+   state->inlines_dirty[MESA_SHADER_TESS_CTRL] |= (stage_flags & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) > 0;
+   state->inlines_dirty[MESA_SHADER_TESS_EVAL] |= (stage_flags & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) > 0;
+   state->inlines_dirty[MESA_SHADER_COMPUTE] |= (stage_flags & VK_SHADER_STAGE_COMPUTE_BIT) > 0;
 }
 
 static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
@@ -3225,7 +3225,7 @@ static void handle_compute_push_descriptor_set(struct lvp_cmd_push_descriptor_se
          union lvp_descriptor_info *info = &pds->infos[info_idx + j];
 
          handle_descriptor(state, dyn_info, binding,
-                           MESA_SHADER_COMPUTE, PIPE_SHADER_COMPUTE,
+                           MESA_SHADER_COMPUTE, MESA_SHADER_COMPUTE,
                            j, desc->descriptor_type,
                            info);
       }
@@ -3377,27 +3377,27 @@ static void handle_push_descriptor_set_generic(struct vk_cmd_push_descriptor_set
 
          if (layout->shader_stages & VK_SHADER_STAGE_VERTEX_BIT)
             handle_descriptor(state, &dyn_info, binding,
-                              MESA_SHADER_VERTEX, PIPE_SHADER_VERTEX,
+                              MESA_SHADER_VERTEX, MESA_SHADER_VERTEX,
                               j, desc->descriptor_type,
                               info);
          if (layout->shader_stages & VK_SHADER_STAGE_FRAGMENT_BIT)
             handle_descriptor(state, &dyn_info, binding,
-                              MESA_SHADER_FRAGMENT, PIPE_SHADER_FRAGMENT,
+                              MESA_SHADER_FRAGMENT, MESA_SHADER_FRAGMENT,
                               j, desc->descriptor_type,
                               info);
          if (layout->shader_stages & VK_SHADER_STAGE_GEOMETRY_BIT)
             handle_descriptor(state, &dyn_info, binding,
-                              MESA_SHADER_GEOMETRY, PIPE_SHADER_GEOMETRY,
+                              MESA_SHADER_GEOMETRY, MESA_SHADER_GEOMETRY,
                               j, desc->descriptor_type,
                               info);
          if (layout->shader_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)
             handle_descriptor(state, &dyn_info, binding,
-                              MESA_SHADER_TESS_CTRL, PIPE_SHADER_TESS_CTRL,
+                              MESA_SHADER_TESS_CTRL, MESA_SHADER_TESS_CTRL,
                               j, desc->descriptor_type,
                               info);
          if (layout->shader_stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
             handle_descriptor(state, &dyn_info, binding,
-                              MESA_SHADER_TESS_EVAL, PIPE_SHADER_TESS_EVAL,
+                              MESA_SHADER_TESS_EVAL, MESA_SHADER_TESS_EVAL,
                               j, desc->descriptor_type,
                               info);
       }
@@ -4412,7 +4412,7 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
    state->min_samples_dirty = true;
    state->sample_mask = UINT32_MAX;
    state->poison_mem = device->poison_mem;
-   for (enum pipe_shader_type s = PIPE_SHADER_VERTEX; s < PIPE_SHADER_TYPES; s++) {
+   for (enum pipe_shader_type s = MESA_SHADER_VERTEX; s < MESA_SHADER_STAGES; s++) {
       for (unsigned i = 0; i < ARRAY_SIZE(state->cso_ss_ptr[s]); i++)
          state->cso_ss_ptr[s][i] = &state->ss[s][i];
    }

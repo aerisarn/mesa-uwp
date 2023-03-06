@@ -42,18 +42,18 @@
 void
 lvp_pipeline_destroy(struct lvp_device *device, struct lvp_pipeline *pipeline)
 {
-   if (pipeline->shaders[PIPE_SHADER_VERTEX].shader_cso)
-      device->queue.ctx->delete_vs_state(device->queue.ctx, pipeline->shaders[PIPE_SHADER_VERTEX].shader_cso);
-   if (pipeline->shaders[PIPE_SHADER_FRAGMENT].shader_cso && !pipeline->noop_fs)
-      device->queue.ctx->delete_fs_state(device->queue.ctx, pipeline->shaders[PIPE_SHADER_FRAGMENT].shader_cso);
-   if (pipeline->shaders[PIPE_SHADER_GEOMETRY].shader_cso)
-      device->queue.ctx->delete_gs_state(device->queue.ctx, pipeline->shaders[PIPE_SHADER_GEOMETRY].shader_cso);
-   if (pipeline->shaders[PIPE_SHADER_TESS_CTRL].shader_cso)
-      device->queue.ctx->delete_tcs_state(device->queue.ctx, pipeline->shaders[PIPE_SHADER_TESS_CTRL].shader_cso);
-   if (pipeline->shaders[PIPE_SHADER_TESS_EVAL].shader_cso)
-      device->queue.ctx->delete_tes_state(device->queue.ctx, pipeline->shaders[PIPE_SHADER_TESS_EVAL].shader_cso);
-   if (pipeline->shaders[PIPE_SHADER_COMPUTE].shader_cso)
-      device->queue.ctx->delete_compute_state(device->queue.ctx, pipeline->shaders[PIPE_SHADER_COMPUTE].shader_cso);
+   if (pipeline->shaders[MESA_SHADER_VERTEX].shader_cso)
+      device->queue.ctx->delete_vs_state(device->queue.ctx, pipeline->shaders[MESA_SHADER_VERTEX].shader_cso);
+   if (pipeline->shaders[MESA_SHADER_FRAGMENT].shader_cso && !pipeline->noop_fs)
+      device->queue.ctx->delete_fs_state(device->queue.ctx, pipeline->shaders[MESA_SHADER_FRAGMENT].shader_cso);
+   if (pipeline->shaders[MESA_SHADER_GEOMETRY].shader_cso)
+      device->queue.ctx->delete_gs_state(device->queue.ctx, pipeline->shaders[MESA_SHADER_GEOMETRY].shader_cso);
+   if (pipeline->shaders[MESA_SHADER_TESS_CTRL].shader_cso)
+      device->queue.ctx->delete_tcs_state(device->queue.ctx, pipeline->shaders[MESA_SHADER_TESS_CTRL].shader_cso);
+   if (pipeline->shaders[MESA_SHADER_TESS_EVAL].shader_cso)
+      device->queue.ctx->delete_tes_state(device->queue.ctx, pipeline->shaders[MESA_SHADER_TESS_EVAL].shader_cso);
+   if (pipeline->shaders[MESA_SHADER_COMPUTE].shader_cso)
+      device->queue.ctx->delete_compute_state(device->queue.ctx, pipeline->shaders[MESA_SHADER_COMPUTE].shader_cso);
 
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       lvp_pipeline_nir_ref(&pipeline->shaders[i].pipeline_nir, NULL);
@@ -908,7 +908,7 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
 
    if (!pipeline->library && !pipeline->shaders[MESA_SHADER_FRAGMENT].pipeline_nir) {
       pipeline->noop_fs = true;
-      pipeline->shaders[PIPE_SHADER_FRAGMENT].shader_cso = device->noop_fs;
+      pipeline->shaders[MESA_SHADER_FRAGMENT].shader_cso = device->noop_fs;
    }
    return VK_SUCCESS;
 
