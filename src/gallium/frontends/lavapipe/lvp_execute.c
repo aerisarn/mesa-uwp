@@ -191,6 +191,7 @@ struct rendering_state {
    uint32_t so_offsets[PIPE_MAX_SO_BUFFERS];
 
    struct lvp_pipeline *pipeline[2];
+   struct lvp_shader *shaders[MESA_SHADER_STAGES];
 
    bool tess_ccw;
    void *tess_states[2];
@@ -562,6 +563,8 @@ static void handle_compute_pipeline(struct vk_cmd_queue_entry *cmd,
 {
    LVP_FROM_HANDLE(lvp_pipeline, pipeline, cmd->u.bind_pipeline.pipeline);
 
+   state->shaders[MESA_SHADER_COMPUTE] = &pipeline->shaders[MESA_SHADER_COMPUTE];
+
    if ((pipeline->layout->push_constant_stages & VK_SHADER_STAGE_COMPUTE_BIT) > 0)
       state->has_pcbuf[PIPE_SHADER_COMPUTE] = pipeline->layout->push_constant_size > 0;
    state->uniform_blocks[PIPE_SHADER_COMPUTE].count = pipeline->layout->stage[MESA_SHADER_COMPUTE].uniform_block_count;
@@ -656,8 +659,10 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    for (unsigned i = 0; i < ARRAY_SIZE(state->access); i++)
       memcpy(&state->access[i], &pipeline->shaders[i].access, sizeof(struct lvp_access_info));
 
-   for (enum pipe_shader_type sh = PIPE_SHADER_VERTEX; sh < PIPE_SHADER_COMPUTE; sh++)
+   for (enum pipe_shader_type sh = PIPE_SHADER_VERTEX; sh < PIPE_SHADER_COMPUTE; sh++) {
       state->has_pcbuf[sh] = false;
+      state->shaders[sh] = &pipeline->shaders[sh];
+   }
 
    for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++) {
       enum pipe_shader_type sh = pipe_shader_type_from_mesa(i);
