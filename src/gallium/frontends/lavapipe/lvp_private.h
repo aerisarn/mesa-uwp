@@ -635,9 +635,9 @@ lvp_shader_optimize(nir_shader *nir);
 void *
 lvp_pipeline_compile_stage(struct lvp_pipeline *pipeline, nir_shader *nir);
 bool
-lvp_find_inlinable_uniforms(struct lvp_pipeline *pipeline, nir_shader *shader);
+lvp_find_inlinable_uniforms(struct lvp_pipeline *pipeline, nir_shader *nir);
 void
-lvp_inline_uniforms(nir_shader *shader, const struct lvp_pipeline *pipeline, const uint32_t *uniform_values, uint32_t ubo);
+lvp_inline_uniforms(nir_shader *nir, const struct lvp_pipeline *pipeline, const uint32_t *uniform_values, uint32_t ubo);
 void *
 lvp_pipeline_compile(struct lvp_pipeline *pipeline, nir_shader *base_nir);
 #ifdef __cplusplus
