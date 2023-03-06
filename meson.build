@@ -1567,11 +1567,17 @@ foreach d : _libdrm_checks
 endforeach
 
 with_gallium_drisw_kms = false
-dep_libdrm = dependency(
-  'libdrm', version : '>=' + _drm_ver,
-  # GNU/Hurd includes egl_dri2, without drm.
-  required : (with_dri2 and host_machine.system() != 'gnu') or with_dri3
-)
+if system_has_kms_drm
+  dep_libdrm = dependency(
+    'libdrm', version : '>=' + _drm_ver,
+    # GNU/Hurd includes egl_dri2, without drm.
+    required : (with_dri2 and host_machine.system() != 'gnu') or with_dri3
+  )
+else
+  # We should prevent libdrm from being available when the target doesn't have it to avoid transitive
+  # dependencies (such as vk-runtime) linking to it
+  dep_libdrm = null_dep
+endif
 if dep_libdrm.found()
   pre_args += '-DHAVE_LIBDRM'
   if with_dri_platform == 'drm' and with_dri
