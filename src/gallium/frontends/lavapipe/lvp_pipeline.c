@@ -625,8 +625,7 @@ lvp_pipeline_compile_stage(struct lvp_pipeline *pipeline, nir_shader *nir)
       struct pipe_shader_state shstate = {0};
       shstate.type = PIPE_SHADER_IR_NIR;
       shstate.ir.nir = nir;
-      if (nir->info.stage == pipeline->last_vertex)
-         memcpy(&shstate.stream_output, &pipeline->shaders[pipeline->last_vertex].stream_output, sizeof(shstate.stream_output));
+      memcpy(&shstate.stream_output, &pipeline->shaders[pipeline->last_vertex].stream_output, sizeof(shstate.stream_output));
 
       switch (nir->info.stage) {
       case MESA_SHADER_FRAGMENT:
