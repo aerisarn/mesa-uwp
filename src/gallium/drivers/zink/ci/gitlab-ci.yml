@@ -149,7 +149,7 @@ zink-radv-navi10-valve:
     GPU_VERSION: zink-radv-navi10
 
 zink-radv-vangogh-valve:
-  parallel: 2
+  parallel: 3
   extends:
     - .radv-zink-test-valve
     - .vangogh-test-valve
