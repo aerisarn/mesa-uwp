@@ -3177,7 +3177,8 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, unsigned 
       check_resource_for_batch_ref(ctx, res);
       if (res->sampler_bind_count[0]) {
          update_res_sampler_layouts(ctx, res);
-         _mesa_set_add(ctx->need_barriers[0], res);
+         if (res->layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            _mesa_set_add(ctx->need_barriers[0], res);
       }
    }
 }
