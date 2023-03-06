@@ -1388,6 +1388,7 @@ struct zink_screen {
       bool dual_color_blend_by_location;
       bool glsl_correct_derivatives_after_discard;
       bool inline_uniforms;
+      bool emulate_point_smooth;
    } driconf;
 
    VkFormatProperties format_props[PIPE_FORMAT_COUNT];
