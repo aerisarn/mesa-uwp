@@ -556,34 +556,40 @@ static void emit_state(struct rendering_state *state)
    }
 }
 
+static void
+handle_compute_shader(struct rendering_state *state, struct lvp_shader *shader, struct lvp_pipeline_layout *layout)
+{
+   state->shaders[MESA_SHADER_COMPUTE] = shader;
+
+   if ((layout->push_constant_stages & VK_SHADER_STAGE_COMPUTE_BIT) > 0)
+      state->has_pcbuf[PIPE_SHADER_COMPUTE] = layout->push_constant_size > 0;
+   state->uniform_blocks[PIPE_SHADER_COMPUTE].count = layout->stage[MESA_SHADER_COMPUTE].uniform_block_count;
+   for (unsigned j = 0; j < layout->stage[MESA_SHADER_COMPUTE].uniform_block_count; j++)
+      state->uniform_blocks[PIPE_SHADER_COMPUTE].size[j] = layout->stage[MESA_SHADER_COMPUTE].uniform_block_sizes[j];
+   if (!state->has_pcbuf[PIPE_SHADER_COMPUTE] && !layout->stage[MESA_SHADER_COMPUTE].uniform_block_count)
+      state->pcbuf_dirty[PIPE_SHADER_COMPUTE] = false;
+
+   state->iv_dirty[MESA_SHADER_COMPUTE] |= state->num_shader_images[MESA_SHADER_COMPUTE] &&
+                          (state->access[MESA_SHADER_COMPUTE].images_read != shader->access.images_read ||
+                           state->access[MESA_SHADER_COMPUTE].images_written != shader->access.images_written);
+   state->sb_dirty[MESA_SHADER_COMPUTE] |= state->num_shader_buffers[MESA_SHADER_COMPUTE] &&
+                                           state->access[MESA_SHADER_COMPUTE].buffers_written != shader->access.buffers_written;
+   memcpy(&state->access[MESA_SHADER_COMPUTE], &shader->access, sizeof(struct lvp_access_info));
+
+   state->dispatch_info.block[0] = shader->pipeline_nir->nir->info.workgroup_size[0];
+   state->dispatch_info.block[1] = shader->pipeline_nir->nir->info.workgroup_size[1];
+   state->dispatch_info.block[2] = shader->pipeline_nir->nir->info.workgroup_size[2];
+   state->inlines_dirty[PIPE_SHADER_COMPUTE] = shader->inlines.can_inline;
+   if (!shader->inlines.can_inline)
+      state->pctx->bind_compute_state(state->pctx, shader->shader_cso);
+}
+
 static void handle_compute_pipeline(struct vk_cmd_queue_entry *cmd,
                                     struct rendering_state *state)
 {
    LVP_FROM_HANDLE(lvp_pipeline, pipeline, cmd->u.bind_pipeline.pipeline);
 
-   state->shaders[MESA_SHADER_COMPUTE] = &pipeline->shaders[MESA_SHADER_COMPUTE];
-
-   if ((pipeline->layout->push_constant_stages & VK_SHADER_STAGE_COMPUTE_BIT) > 0)
-      state->has_pcbuf[PIPE_SHADER_COMPUTE] = pipeline->layout->push_constant_size > 0;
-   state->uniform_blocks[PIPE_SHADER_COMPUTE].count = pipeline->layout->stage[MESA_SHADER_COMPUTE].uniform_block_count;
-   for (unsigned j = 0; j < pipeline->layout->stage[MESA_SHADER_COMPUTE].uniform_block_count; j++)
-      state->uniform_blocks[PIPE_SHADER_COMPUTE].size[j] = pipeline->layout->stage[MESA_SHADER_COMPUTE].uniform_block_sizes[j];
-   if (!state->has_pcbuf[PIPE_SHADER_COMPUTE] && !pipeline->layout->stage[MESA_SHADER_COMPUTE].uniform_block_count)
-      state->pcbuf_dirty[PIPE_SHADER_COMPUTE] = false;
-
-   state->iv_dirty[MESA_SHADER_COMPUTE] |= state->num_shader_images[MESA_SHADER_COMPUTE] &&
-                          (state->access[MESA_SHADER_COMPUTE].images_read != pipeline->shaders[MESA_SHADER_COMPUTE].access.images_read ||
-                           state->access[MESA_SHADER_COMPUTE].images_written != pipeline->shaders[MESA_SHADER_COMPUTE].access.images_written);
-   state->sb_dirty[MESA_SHADER_COMPUTE] |= state->num_shader_buffers[MESA_SHADER_COMPUTE] &&
-                                           state->access[MESA_SHADER_COMPUTE].buffers_written != pipeline->shaders[MESA_SHADER_COMPUTE].access.buffers_written;
-   memcpy(&state->access[MESA_SHADER_COMPUTE], &pipeline->shaders[MESA_SHADER_COMPUTE].access, sizeof(struct lvp_access_info));
-
-   state->dispatch_info.block[0] = pipeline->shaders[MESA_SHADER_COMPUTE].pipeline_nir->nir->info.workgroup_size[0];
-   state->dispatch_info.block[1] = pipeline->shaders[MESA_SHADER_COMPUTE].pipeline_nir->nir->info.workgroup_size[1];
-   state->dispatch_info.block[2] = pipeline->shaders[MESA_SHADER_COMPUTE].pipeline_nir->nir->info.workgroup_size[2];
-   state->inlines_dirty[PIPE_SHADER_COMPUTE] = pipeline->shaders[MESA_SHADER_COMPUTE].inlines.can_inline;
-   if (!pipeline->shaders[MESA_SHADER_COMPUTE].inlines.can_inline)
-      state->pctx->bind_compute_state(state->pctx, pipeline->shaders[PIPE_SHADER_COMPUTE].shader_cso);
+   handle_compute_shader(state, &pipeline->shaders[MESA_SHADER_COMPUTE], pipeline->layout);
 }
 
 static void
