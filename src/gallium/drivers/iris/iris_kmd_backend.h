@@ -39,6 +39,7 @@ struct iris_kmd_backend {
                           uint16_t regions_count, uint64_t size,
                           enum iris_heap heap_flags, unsigned alloc_flags);
    bool (*bo_madvise)(struct iris_bo *bo, enum iris_madvice state);
+   int (*bo_set_caching)(struct iris_bo *bo, bool cached);
 };
 
 const struct iris_kmd_backend *

@@ -26,4 +26,3 @@
 
 struct iris_bo;
 
-int iris_i915_bo_set_caching(struct iris_bo *bo, bool cached);

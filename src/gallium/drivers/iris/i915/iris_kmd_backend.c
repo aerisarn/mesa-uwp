@@ -107,11 +107,23 @@ i915_bo_madvise(struct iris_bo *bo, enum iris_madvice state)
    return madv.retained;
 }
 
+static int
+i915_bo_set_caching(struct iris_bo *bo, bool cached)
+{
+   struct drm_i915_gem_caching arg = {
+      .handle = bo->gem_handle,
+      .caching = cached ? I915_CACHING_CACHED : I915_CACHING_NONE,
+   };
+   return intel_ioctl(iris_bufmgr_get_fd(bo->bufmgr),
+                      DRM_IOCTL_I915_GEM_SET_CACHING, &arg);
+}
+
 const struct iris_kmd_backend *i915_get_backend(void)
 {
    static const struct iris_kmd_backend i915_backend = {
       .gem_create = i915_gem_create,
       .bo_madvise = i915_bo_madvise,
+      .bo_set_caching = i915_bo_set_caching,
    };
    return &i915_backend;
 }

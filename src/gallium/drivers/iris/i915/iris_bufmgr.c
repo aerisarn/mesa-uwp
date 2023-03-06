@@ -27,12 +27,3 @@
 
 #include "drm-uapi/i915_drm.h"
 
-int iris_i915_bo_set_caching(struct iris_bo *bo, bool cached)
-{
-   struct drm_i915_gem_caching arg = {
-      .handle = bo->gem_handle,
-      .caching = cached ? I915_CACHING_CACHED : I915_CACHING_NONE,
-   };
-   return intel_ioctl(iris_bufmgr_get_fd(bo->bufmgr),
-                      DRM_IOCTL_I915_GEM_SET_CACHING, &arg);
-}
