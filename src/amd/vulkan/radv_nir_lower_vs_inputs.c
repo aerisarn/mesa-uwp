@@ -152,6 +152,60 @@ count_format_bytes(const struct util_format_description *f, const unsigned first
    return bits / 8;
 }
 
+static bool
+format_needs_swizzle(const struct util_format_description *f)
+{
+   for (unsigned i = 0; i < f->nr_channels; ++i) {
+      if (f->swizzle[i] != PIPE_SWIZZLE_X + i)
+         return true;
+   }
+
+   return false;
+}
+
+static unsigned
+first_used_swizzled_channel(const struct util_format_description *f, const unsigned mask,
+                            const bool backwards)
+{
+   unsigned first_used = backwards ? 0 : f->nr_channels;
+   const unsigned it_mask = mask & BITFIELD_MASK(f->nr_channels);
+
+   u_foreach_bit (b, it_mask) {
+      assert(f->swizzle[b] != PIPE_SWIZZLE_0 && f->swizzle[b] != PIPE_SWIZZLE_1);
+      const unsigned c = f->swizzle[b] - PIPE_SWIZZLE_X;
+      first_used = backwards ? MAX2(first_used, c) : MIN2(first_used, c);
+   }
+
+   return first_used;
+}
+
+static nir_ssa_def *
+adjust_vertex_fetch_alpha(nir_builder *b, enum ac_vs_input_alpha_adjust alpha_adjust,
+                          nir_ssa_def *alpha)
+{
+   if (alpha_adjust == AC_ALPHA_ADJUST_SSCALED)
+      alpha = nir_f2u32(b, alpha);
+
+   /* For the integer-like cases, do a natural sign extension.
+    *
+    * For the SNORM case, the values are 0.0, 0.333, 0.666, 1.0 and happen to contain 0, 1, 2, 3 as
+    * the two LSBs of the exponent.
+    */
+   unsigned offset = alpha_adjust == AC_ALPHA_ADJUST_SNORM ? 23u : 0u;
+
+   alpha = nir_ibfe_imm(b, alpha, offset, 2u);
+
+   /* Convert back to the right type. */
+   if (alpha_adjust == AC_ALPHA_ADJUST_SNORM) {
+      alpha = nir_i2f32(b, alpha);
+      alpha = nir_fmax(b, alpha, nir_imm_float(b, -1.0f));
+   } else if (alpha_adjust == AC_ALPHA_ADJUST_SSCALED) {
+      alpha = nir_i2f32(b, alpha);
+   }
+
+   return alpha;
+}
+
 static nir_ssa_def *
 lower_load_vs_input(nir_builder *b, nir_intrinsic_instr *intrin, lower_vs_inputs_state *s)
 {
@@ -190,6 +244,8 @@ lower_load_vs_input(nir_builder *b, nir_intrinsic_instr *intrin, lower_vs_inputs
    const uint32_t attrib_stride = s->pl_key->vs.vertex_attribute_strides[location];
    const enum pipe_format attrib_format = s->pl_key->vs.vertex_attribute_formats[location];
    const struct util_format_description *f = util_format_description(attrib_format);
+   const struct ac_vtx_format_info *vtx_info =
+      ac_get_vtx_format_info(s->rad_info->gfx_level, s->rad_info->family, attrib_format);
    const unsigned binding_index =
       s->info->vs.use_per_attribute_vb_descs ? location : attrib_binding;
    const unsigned desc_index =
@@ -203,18 +259,31 @@ lower_load_vs_input(nir_builder *b, nir_intrinsic_instr *intrin, lower_vs_inputs
    nir_ssa_def *base_index = calc_vs_input_index(b, location, s);
    nir_ssa_def *zero = nir_imm_int(b, 0);
 
+   /* We currently implement swizzling for all formats in shaders.
+    * Note, it is possible to specify swizzling in the DST_SEL fields of descriptors,
+    * but we don't use that because typed loads using the MTBUF instruction format
+    * don't support DST_SEL, so it's simpler to just handle it all in shaders.
+    */
+   const bool needs_swizzle = format_needs_swizzle(f);
+
+   /* We need to adjust the alpha channel as loaded by the HW,
+    * for example sign extension and normalization may be necessary.
+    */
+   const enum ac_vs_input_alpha_adjust alpha_adjust = vtx_info->alpha_adjust;
+
    /* Try to shrink the load format by skipping unused components from the start.
     * Beneficial because the backend may be able to emit fewer HW instructions.
     * Only possible with array formats.
     */
-   const unsigned first_used_channel = ffs(dest_use_mask) - 1;
+   const unsigned first_used_channel = first_used_swizzled_channel(f, dest_use_mask, false);
    const unsigned skipped_start = f->is_array ? first_used_channel : 0;
 
    /* Number of channels we actually use and load.
     * Don't shrink the format here because this might allow the backend to
     * emit fewer (but larger than needed) HW instructions.
     */
-   const unsigned first_trailing_unused_channel = util_last_bit(dest_use_mask);
+   const unsigned first_trailing_unused_channel =
+      first_used_swizzled_channel(f, dest_use_mask, true) + 1;
    const unsigned max_loaded_channels = MIN2(first_trailing_unused_channel, f->nr_channels);
    const unsigned fetch_num_channels =
       skipped_start >= max_loaded_channels ? 0 : max_loaded_channels - skipped_start;
@@ -294,10 +363,12 @@ lower_load_vs_input(nir_builder *b, nir_intrinsic_instr *intrin, lower_vs_inputs
 
    /* Return early if possible to avoid generating unnecessary IR. */
    if (num_loads > 0 && first_used_channel == component &&
-       load->num_components == dest_num_components)
+       load->num_components == dest_num_components && !needs_swizzle &&
+       alpha_adjust == AC_ALPHA_ADJUST_NONE)
       return load;
 
    /* Fill unused and OOB components.
+    * Apply swizzle and alpha adjust according to the format.
     */
    const nir_alu_type dst_type = nir_alu_type_get_base_type(nir_intrinsic_dest_type(intrin));
    nir_ssa_def *channels[NIR_MAX_VEC_COMPONENTS] = {0};
@@ -308,8 +379,12 @@ lower_load_vs_input(nir_builder *b, nir_intrinsic_instr *intrin, lower_vs_inputs
          channels[i] = nir_imm_zero(b, 1, bit_size);
       } else if (c < max_loaded_channels) {
          /* Use channels that were loaded from VRAM. */
-         assert(c >= first_used_channel);
-         channels[i] = nir_channel(b, load, c - first_used_channel);
+         const unsigned sw = f->swizzle[c];
+         assert(sw >= first_used_channel);
+         channels[i] = nir_channel(b, load, sw - first_used_channel);
+
+         if (alpha_adjust != AC_ALPHA_ADJUST_NONE && c == 3)
+            channels[i] = adjust_vertex_fetch_alpha(b, alpha_adjust, channels[i]);
       } else {
          /* Handle input loads that are larger than their format. */
          channels[i] = oob_input_load_value(b, c, bit_size, dst_type == nir_type_float);

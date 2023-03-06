@@ -2789,122 +2789,6 @@ non_uniform_access_callback(const nir_src *src, void *_)
    return nir_chase_binding(*src).success ? 0x2 : 0x3;
 }
 
-static nir_ssa_def *
-radv_adjust_vertex_fetch_alpha(nir_builder *b, enum ac_vs_input_alpha_adjust alpha_adjust,
-                               nir_ssa_def *alpha)
-{
-   if (alpha_adjust == AC_ALPHA_ADJUST_SSCALED)
-      alpha = nir_f2u32(b, alpha);
-
-   /* For the integer-like cases, do a natural sign extension.
-    *
-    * For the SNORM case, the values are 0.0, 0.333, 0.666, 1.0 and happen to contain 0, 1, 2, 3 as
-    * the two LSBs of the exponent.
-    */
-   unsigned offset = alpha_adjust == AC_ALPHA_ADJUST_SNORM ? 23u : 0u;
-
-   alpha = nir_ibfe_imm(b, alpha, offset, 2u);
-
-   /* Convert back to the right type. */
-   if (alpha_adjust == AC_ALPHA_ADJUST_SNORM) {
-      alpha = nir_i2f32(b, alpha);
-      alpha = nir_fmax(b, alpha, nir_imm_float(b, -1.0f));
-   } else if (alpha_adjust == AC_ALPHA_ADJUST_SSCALED) {
-      alpha = nir_i2f32(b, alpha);
-   }
-
-   return alpha;
-}
-
-static bool
-radv_lower_vs_input(nir_shader *nir, const struct radv_physical_device *pdevice,
-                    const struct radv_pipeline_key *pipeline_key)
-{
-   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
-   bool progress = false;
-
-   if (pipeline_key->vs.has_prolog)
-      return false;
-
-   nir_builder b;
-   nir_builder_init(&b, impl);
-
-   nir_foreach_block(block, impl) {
-      nir_foreach_instr(instr, block) {
-         if (instr->type != nir_instr_type_intrinsic)
-            continue;
-
-         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-         if (intrin->intrinsic != nir_intrinsic_load_input)
-            continue;
-
-         unsigned location = nir_intrinsic_base(intrin) - VERT_ATTRIB_GENERIC0;
-
-         unsigned component = nir_intrinsic_component(intrin);
-         unsigned num_components = intrin->dest.ssa.num_components;
-
-         enum pipe_format attrib_format = pipeline_key->vs.vertex_attribute_formats[location];
-         const struct ac_vtx_format_info *desc = ac_get_vtx_format_info(
-            pdevice->rad_info.gfx_level, pdevice->rad_info.family, attrib_format);
-         bool is_float =
-            nir_alu_type_get_base_type(nir_intrinsic_dest_type(intrin)) == nir_type_float;
-
-         unsigned mask = nir_ssa_def_components_read(&intrin->dest.ssa) << component;
-         unsigned num_channels = MIN2(util_last_bit(mask), desc->num_channels);
-
-         static const unsigned swizzle_normal[4] = {0, 1, 2, 3};
-         static const unsigned swizzle_post_shuffle[4] = {2, 1, 0, 3};
-         bool post_shuffle = G_008F0C_DST_SEL_X(desc->dst_sel) == V_008F0C_SQ_SEL_Z;
-         const unsigned *swizzle = post_shuffle ? swizzle_post_shuffle : swizzle_normal;
-
-         b.cursor = nir_after_instr(instr);
-         nir_ssa_def *channels[4];
-
-         if (post_shuffle) {
-            /* Expand to load 3 components because it's shuffled like X<->Z. */
-            intrin->num_components = MAX2(component + num_components, 3);
-            intrin->dest.ssa.num_components = intrin->num_components;
-
-            nir_intrinsic_set_component(intrin, 0);
-
-            num_channels = MAX2(num_channels, 3);
-         }
-
-         for (uint32_t i = 0; i < num_components; i++) {
-            unsigned idx = i + (post_shuffle ? component : 0);
-
-            if (swizzle[i + component] < num_channels) {
-               channels[i] = nir_channel(&b, &intrin->dest.ssa, swizzle[idx]);
-            } else if (i + component == 3) {
-               channels[i] = is_float ? nir_imm_floatN_t(&b, 1.0f, intrin->dest.ssa.bit_size)
-                                      : nir_imm_intN_t(&b, 1u, intrin->dest.ssa.bit_size);
-            } else {
-               channels[i] = nir_imm_zero(&b, 1, intrin->dest.ssa.bit_size);
-            }
-         }
-
-         if (desc->alpha_adjust != AC_ALPHA_ADJUST_NONE && component + num_components == 4) {
-            unsigned idx = num_components - 1;
-            channels[idx] = radv_adjust_vertex_fetch_alpha(&b, desc->alpha_adjust, channels[idx]);
-         }
-
-         nir_ssa_def *new_dest = nir_vec(&b, channels, num_components);
-
-         nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa, new_dest,
-                                        new_dest->parent_instr);
-
-         progress = true;
-      }
-   }
-
-   if (progress)
-      nir_metadata_preserve(impl, nir_metadata_block_index | nir_metadata_dominance);
-   else
-      nir_metadata_preserve(impl, nir_metadata_all);
-
-   return progress;
-}
-
 void
 radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo,
                          struct radv_pipeline_stage *out_stage, gl_shader_stage stage)
@@ -3609,11 +3493,6 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
       radv_lower_io(device, stages[i].nir);
 
       stages[i].feedback.duration += os_time_get_nano() - stage_start;
-   }
-
-   if (stages[MESA_SHADER_VERTEX].nir) {
-      NIR_PASS(_, stages[MESA_SHADER_VERTEX].nir, radv_lower_vs_input, device->physical_device,
-               pipeline_key);
    }
 
    radv_fill_shader_info(pipeline, pipeline_layout, pipeline_key, stages, noop_fs, active_nir_stages);
