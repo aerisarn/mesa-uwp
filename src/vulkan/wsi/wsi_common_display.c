@@ -987,10 +987,10 @@ wsi_display_surface_get_capabilities2(VkIcdSurfaceBase *icd_surface,
 
       case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_EXT: {
          /* We only support FIFO. */
-         assert(present_mode);
          VkSurfacePresentModeCompatibilityEXT *compat = (void *)ext;
          if (compat->pPresentModes) {
             if (compat->presentModeCount) {
+               assert(present_mode);
                compat->pPresentModes[0] = present_mode->presentMode;
                compat->presentModeCount = 1;
             }

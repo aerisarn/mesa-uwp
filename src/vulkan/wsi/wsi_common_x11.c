@@ -771,10 +771,10 @@ x11_surface_get_capabilities2(VkIcdSurfaceBase *icd_surface,
       case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_EXT: {
          /* To be able to toggle between FIFO and non-FIFO, we would need a rewrite to always use FIFO thread
           * mechanism. For now, only return the input, making this effectively unsupported. */
-         assert(present_mode);
          VkSurfacePresentModeCompatibilityEXT *compat = (void *)ext;
          if (compat->pPresentModes) {
             if (compat->presentModeCount) {
+               assert(present_mode);
                compat->pPresentModes[0] = present_mode->presentMode;
                compat->presentModeCount = 1;
             }

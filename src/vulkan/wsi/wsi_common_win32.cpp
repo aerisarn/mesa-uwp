@@ -257,11 +257,11 @@ wsi_win32_surface_get_capabilities2(VkIcdSurfaceBase *surface,
 
       case VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_EXT: {
          /* Unsupported, just report the input present mode. */
-         assert(present_mode);
          VkSurfacePresentModeCompatibilityEXT *compat =
             (VkSurfacePresentModeCompatibilityEXT *)ext;
          if (compat->pPresentModes) {
             if (compat->presentModeCount) {
+               assert(present_mode);
                compat->pPresentModes[0] = present_mode->presentMode;
                compat->presentModeCount = 1;
             }
