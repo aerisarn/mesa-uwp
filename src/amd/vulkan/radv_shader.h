@@ -583,6 +583,10 @@ nir_shader *radv_parse_rt_stage(struct radv_device *device,
                                 const VkPipelineShaderStageCreateInfo *sinfo,
                                 const struct radv_pipeline_key *key);
 
+void radv_nir_lower_rt_abi(nir_shader *shader, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
+                           const struct radv_shader_args *args, const struct radv_pipeline_key *key,
+                           uint32_t *stack_size);
+
 struct radv_pipeline_stage;
 
 nir_shader *radv_shader_spirv_to_nir(struct radv_device *device,
