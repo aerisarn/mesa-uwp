@@ -3121,6 +3121,13 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
          } else if (zink_fs_key(key)->lower_line_stipple)
                NIR_PASS_V(nir, lower_line_stipple_fs);
 
+         if (zink_fs_key(key)->lower_point_smooth) {
+            NIR_PASS_V(nir, nir_lower_point_smooth);
+            NIR_PASS_V(nir, nir_lower_discard_if, nir_lower_discard_if_to_cf);
+            nir->info.fs.uses_discard = true;
+            need_optimize = true;
+         }
+
          if (zink_fs_key(key)->robust_access)
             NIR_PASS(need_optimize, nir, lower_txf_lod_robustness);
 
