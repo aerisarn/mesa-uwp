@@ -73,6 +73,7 @@ struct lvp_render_attachment {
 
 struct rendering_state {
    struct pipe_context *pctx;
+   struct lvp_device *device; //for uniform inlining only
    struct u_upload_mgr *uploader;
    struct cso_context *cso;
 
@@ -4403,6 +4404,7 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
    struct rendering_state *state = queue->state;
    memset(state, 0, sizeof(*state));
    state->pctx = queue->ctx;
+   state->device = device;
    state->uploader = queue->uploader;
    state->cso = queue->cso;
    state->blend_dirty = true;
