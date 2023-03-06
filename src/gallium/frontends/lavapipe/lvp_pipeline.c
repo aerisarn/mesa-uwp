@@ -612,9 +612,8 @@ lvp_pipeline_xfb_init(struct lvp_pipeline *pipeline)
 }
 
 void *
-lvp_pipeline_compile_stage(struct lvp_pipeline *pipeline, nir_shader *nir)
+lvp_shader_compile_stage(struct lvp_device *device, struct lvp_shader *shader, nir_shader *nir)
 {
-   struct lvp_device *device = pipeline->device;
    if (nir->info.stage == MESA_SHADER_COMPUTE) {
       struct pipe_compute_state shstate = {0};
       shstate.prog = nir;
@@ -625,7 +624,7 @@ lvp_pipeline_compile_stage(struct lvp_pipeline *pipeline, nir_shader *nir)
       struct pipe_shader_state shstate = {0};
       shstate.type = PIPE_SHADER_IR_NIR;
       shstate.ir.nir = nir;
-      memcpy(&shstate.stream_output, &pipeline->shaders[pipeline->last_vertex].stream_output, sizeof(shstate.stream_output));
+      memcpy(&shstate.stream_output, &shader->stream_output, sizeof(shstate.stream_output));
 
       switch (nir->info.stage) {
       case MESA_SHADER_FRAGMENT:
@@ -647,11 +646,10 @@ lvp_pipeline_compile_stage(struct lvp_pipeline *pipeline, nir_shader *nir)
 }
 
 void *
-lvp_pipeline_compile(struct lvp_pipeline *pipeline, nir_shader *nir)
+lvp_shader_compile(struct lvp_device *device, struct lvp_shader *shader, nir_shader *nir)
 {
-   struct lvp_device *device = pipeline->device;
    device->physical_device->pscreen->finalize_nir(device->physical_device->pscreen, nir);
-   return lvp_pipeline_compile_stage(pipeline, nir);
+   return lvp_shader_compile_stage(device, shader, nir);
 }
 
 #ifndef NDEBUG
@@ -936,10 +934,10 @@ lvp_pipeline_shaders_compile(struct lvp_pipeline *pipeline)
       assert(stage == pipeline->shaders[i].pipeline_nir->nir->info.stage);
 
       if (!pipeline->shaders[stage].inlines.can_inline) {
-         pipeline->shaders[stage].shader_cso = lvp_pipeline_compile(pipeline,
+         pipeline->shaders[stage].shader_cso = lvp_shader_compile(pipeline->device, &pipeline->shaders[stage],
                                                             nir_shader_clone(NULL, pipeline->shaders[stage].pipeline_nir->nir));
          if (pipeline->shaders[MESA_SHADER_TESS_EVAL].tess_ccw)
-            pipeline->shaders[MESA_SHADER_TESS_EVAL].tess_ccw_cso = lvp_pipeline_compile(pipeline,
+            pipeline->shaders[MESA_SHADER_TESS_EVAL].tess_ccw_cso = lvp_shader_compile(pipeline->device, &pipeline->shaders[stage],
                                                           nir_shader_clone(NULL, pipeline->shaders[MESA_SHADER_TESS_EVAL].tess_ccw->nir));
       }
    }
@@ -1036,8 +1034,9 @@ lvp_compute_pipeline_init(struct lvp_pipeline *pipeline,
    if (result != VK_SUCCESS)
       return result;
 
-   if (!pipeline->shaders[MESA_SHADER_COMPUTE].inlines.can_inline)
-      pipeline->shaders[PIPE_SHADER_COMPUTE].shader_cso = lvp_pipeline_compile(pipeline, nir_shader_clone(NULL, pipeline->shaders[MESA_SHADER_COMPUTE].pipeline_nir->nir));
+   struct lvp_shader *shader = &pipeline->shaders[MESA_SHADER_COMPUTE];
+   if (!shader->inlines.can_inline)
+      shader->shader_cso = lvp_shader_compile(pipeline->device, shader, nir_shader_clone(NULL, shader->pipeline_nir->nir));
    pipeline->compiled = true;
    return VK_SUCCESS;
 }

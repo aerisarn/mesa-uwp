@@ -634,13 +634,13 @@ queue_thread_noop(void *data, void *gdata, int thread_index);
 void
 lvp_shader_optimize(nir_shader *nir);
 void *
-lvp_pipeline_compile_stage(struct lvp_pipeline *pipeline, nir_shader *nir);
+lvp_shader_compile_stage(struct lvp_device *device, struct lvp_shader *shader, nir_shader *nir);
 bool
 lvp_find_inlinable_uniforms(struct lvp_shader *shader, nir_shader *nir);
 void
 lvp_inline_uniforms(nir_shader *nir, const struct lvp_shader *shader, const uint32_t *uniform_values, uint32_t ubo);
 void *
-lvp_pipeline_compile(struct lvp_pipeline *pipeline, nir_shader *base_nir);
+lvp_shader_compile(struct lvp_device *device, struct lvp_shader *shader, nir_shader *nir);
 #ifdef __cplusplus
 }
 #endif

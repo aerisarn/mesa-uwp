@@ -340,10 +340,10 @@ update_inline_shader_state(struct rendering_state *state, enum pipe_shader_type 
       /* not enough change; don't inline further */
       shader->inlines.can_inline = 0;
       ralloc_free(nir);
-      pipeline->shaders[sh].shader_cso = lvp_pipeline_compile(pipeline, nir_shader_clone(NULL, shader->pipeline_nir->nir));
-      shader_state = pipeline->shaders[sh].shader_cso;
+      shader->shader_cso = lvp_shader_compile(pipeline->device, shader, nir_shader_clone(NULL, shader->pipeline_nir->nir));
+      shader_state = shader->shader_cso;
    } else {
-      shader_state = lvp_pipeline_compile(pipeline, nir);
+      shader_state = lvp_shader_compile(pipeline->device, shader, nir);
    }
    switch (sh) {
    case PIPE_SHADER_VERTEX:
