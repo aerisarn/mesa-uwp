@@ -169,7 +169,6 @@ if [ -n "$HWCI_START_WESTON" ]; then
   while [ ! -S "$WESTON_X11_SOCK" ]; do sleep 1; done
 fi
 
-RESULT=fail
 set +e
 bash -c ". $SCRIPTS_DIR/setup-test-env.sh && $HWCI_TEST_SCRIPT"
 EXIT_CODE=$?
@@ -193,7 +192,7 @@ fi
 
 # We still need to echo the hwci: mesa message, as some scripts rely on it, such
 # as the python ones inside the bare-metal folder
-[ ${EXIT_CODE} -eq 0 ] && RESULT=pass
+[ ${EXIT_CODE} -eq 0 ] && RESULT=pass || RESULT=fail
 
 set +x
 echo "hwci: mesa: $RESULT"
