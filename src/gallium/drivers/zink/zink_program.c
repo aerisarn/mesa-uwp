@@ -2139,6 +2139,10 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
                              ctx->rast_state->base.line_stipple_enable &&
                              !ctx->num_so_targets;
 
+   bool lower_point_smooth = ctx->gfx_pipeline_state.rast_prim == PIPE_PRIM_POINTS &&
+                             screen->driconf.emulate_point_smooth &&
+                             ctx->rast_state->base.point_smooth;
+
    if (zink_get_fs_key(ctx)->lower_line_stipple != lower_line_stipple) {
       assert(zink_get_gs_key(ctx)->lower_line_stipple ==
              zink_get_fs_key(ctx)->lower_line_stipple);
@@ -2156,6 +2160,10 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
              zink_get_fs_key(ctx)->lower_line_smooth);
       zink_set_fs_key(ctx)->lower_line_smooth = lower_line_smooth;
       zink_set_gs_key(ctx)->lower_line_smooth = lower_line_smooth;
+   }
+
+   if (zink_get_fs_key(ctx)->lower_point_smooth != lower_point_smooth) {
+      zink_set_fs_key(ctx)->lower_point_smooth = lower_point_smooth;
    }
 
    if (lower_line_stipple || lower_line_smooth ||

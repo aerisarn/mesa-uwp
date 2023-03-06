@@ -92,8 +92,9 @@ struct zink_fs_key {
    /* non-optimal bits after this point */
    bool lower_line_stipple : 1;
    bool lower_line_smooth : 1;
+   bool lower_point_smooth : 1;
    bool robust_access : 1;
-   uint16_t pad2 : 13;
+   uint16_t pad2 : 12;
 };
 
 struct zink_tcs_key {
