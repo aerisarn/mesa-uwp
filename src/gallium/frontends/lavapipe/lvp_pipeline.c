@@ -852,10 +852,6 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
          goto fail;
 
       switch (stage) {
-      case MESA_SHADER_GEOMETRY:
-         pipeline->gs_output_lines = pipeline->shaders[MESA_SHADER_GEOMETRY].pipeline_nir &&
-                                     pipeline->shaders[MESA_SHADER_GEOMETRY].pipeline_nir->nir->info.gs.output_primitive == SHADER_PRIM_LINES;
-         break;
       case MESA_SHADER_FRAGMENT:
          if (pipeline->shaders[MESA_SHADER_FRAGMENT].pipeline_nir->nir->info.fs.uses_sample_shading)
             pipeline->force_min_sample = true;

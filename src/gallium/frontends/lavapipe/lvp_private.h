@@ -456,7 +456,6 @@ struct lvp_pipeline {
    bool line_smooth;
    bool disable_multisample;
    bool line_rectangular;
-   bool gs_output_lines;
    bool library;
    bool noop_fs;
    bool compiled;
