@@ -60,6 +60,8 @@ Instr::print(std::ostream& os) const
 bool
 Instr::ready() const
 {
+   if (is_scheduled())
+      return true;
    for (auto& i : m_required_instr)
       if (!i->ready())
          return false;
