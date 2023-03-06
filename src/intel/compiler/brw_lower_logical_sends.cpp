@@ -1373,6 +1373,46 @@ setup_surface_descriptors(const fs_builder &bld, fs_inst *inst, uint32_t desc,
 }
 
 static void
+setup_lsc_surface_descriptors(const fs_builder &bld, fs_inst *inst,
+                              uint32_t desc, const fs_reg &surface)
+{
+   const ASSERTED intel_device_info *devinfo = bld.shader->devinfo;
+
+   inst->src[0] = brw_imm_ud(0); /* desc */
+
+   enum lsc_addr_surface_type surf_type = lsc_msg_desc_addr_type(devinfo, desc);
+   switch (surf_type) {
+   case LSC_ADDR_SURFTYPE_BSS:
+   case LSC_ADDR_SURFTYPE_SS:
+      assert(surface.file != BAD_FILE);
+      /* We assume that the driver provided the handle in the top 20 bits so
+       * we can use the surface handle directly as the extended descriptor.
+       */
+      inst->src[1] = retype(surface, BRW_REGISTER_TYPE_UD);
+      break;
+
+   case LSC_ADDR_SURFTYPE_BTI:
+      assert(surface.file != BAD_FILE);
+      if (surface.file == IMM) {
+         inst->src[1] = brw_imm_ud(lsc_bti_ex_desc(devinfo, surface.ud));
+      } else {
+         const fs_builder ubld = bld.exec_all().group(1, 0);
+         fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+         ubld.SHL(tmp, surface, brw_imm_ud(24));
+         inst->src[1] = component(tmp, 0);
+      }
+      break;
+
+   case LSC_ADDR_SURFTYPE_FLAT:
+      inst->src[1] = brw_imm_ud(0);
+      break;
+
+   default:
+      unreachable("Invalid LSC surface address type");
+   }
+}
+
+static void
 lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 {
    const intel_device_info *devinfo = bld.shader->devinfo;
@@ -1755,34 +1795,6 @@ lower_lsc_surface_logical_send(const fs_builder &bld, fs_inst *inst)
       unreachable("Unknown surface logical instruction");
    }
 
-   inst->src[0] = brw_imm_ud(0);
-
-   /* Set up extended descriptors */
-   switch (surf_type) {
-   case LSC_ADDR_SURFTYPE_FLAT:
-      inst->src[1] = brw_imm_ud(0);
-      break;
-   case LSC_ADDR_SURFTYPE_SS:
-   case LSC_ADDR_SURFTYPE_BSS:
-      /* We assume that the driver provided the handle in the top 20 bits so
-       * we can use the surface handle directly as the extended descriptor.
-       */
-      inst->src[1] = retype(surface_handle, BRW_REGISTER_TYPE_UD);
-      break;
-   case LSC_ADDR_SURFTYPE_BTI:
-      if (surface.file == IMM) {
-         inst->src[1] = brw_imm_ud(lsc_bti_ex_desc(devinfo, surface.ud));
-      } else {
-         const fs_builder ubld = bld.exec_all().group(1, 0);
-         fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD);
-         ubld.SHL(tmp, surface, brw_imm_ud(24));
-         inst->src[1] = component(tmp, 0);
-      }
-      break;
-   default:
-      unreachable("Unknown surface type");
-   }
-
    /* Update the original instruction. */
    inst->opcode = SHADER_OPCODE_SEND;
    inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
@@ -1792,6 +1804,15 @@ lower_lsc_surface_logical_send(const fs_builder &bld, fs_inst *inst)
    inst->send_is_volatile = !has_side_effects;
 
    inst->resize_sources(4);
+
+   if (non_bindless) {
+      inst->src[0] = brw_imm_ud(0);     /* desc */
+      inst->src[1] = surface_handle;    /* ex_desc */
+   } else {
+      setup_lsc_surface_descriptors(bld, inst, inst->desc,
+                                    surface.file != BAD_FILE ?
+                                    surface : surface_handle);
+   }
 
    /* Finally, the payload */
    inst->src[2] = payload;
@@ -1823,12 +1844,12 @@ lower_lsc_block_logical_send(const fs_builder &bld, fs_inst *inst)
    const bool write = inst->opcode == SHADER_OPCODE_OWORD_BLOCK_WRITE_LOGICAL;
 
    fs_builder ubld = bld.exec_all().group(1, 0);
-   fs_reg ex_desc = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+   fs_reg stateless_ex_desc;
    if (is_stateless) {
-      ubld.AND(ex_desc, retype(brw_vec1_grf(0, 5), BRW_REGISTER_TYPE_UD),
-                        brw_imm_ud(INTEL_MASK(31, 10)));
-   } else {
-      ubld.MOV(ex_desc, surface_handle);
+      stateless_ex_desc = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+      ubld.AND(stateless_ex_desc,
+               retype(brw_vec1_grf(0, 5), BRW_REGISTER_TYPE_UD),
+               brw_imm_ud(INTEL_MASK(31, 10)));
    }
 
    fs_reg data;
@@ -1842,11 +1863,15 @@ lower_lsc_block_logical_send(const fs_builder &bld, fs_inst *inst)
       inst->sfid = GFX12_SFID_SLM;
    else
       inst->sfid = GFX12_SFID_UGM;
+   const enum lsc_addr_surface_type surf_type =
+      inst->sfid == GFX12_SFID_SLM ?
+      LSC_ADDR_SURFTYPE_FLAT :
+      surface.file == BAD_FILE ?
+      LSC_ADDR_SURFTYPE_BSS : LSC_ADDR_SURFTYPE_BTI;
    inst->desc = lsc_msg_desc(devinfo,
                              write ? LSC_OP_STORE : LSC_OP_LOAD,
                              1 /* exec_size */,
-                             inst->sfid == GFX12_SFID_SLM ?
-                             LSC_ADDR_SURFTYPE_FLAT : LSC_ADDR_SURFTYPE_BSS,
+                             surf_type,
                              LSC_ADDR_SIZE_A32,
                              1 /* num_coordinates */,
                              LSC_DATA_SIZE_D32,
@@ -1865,8 +1890,14 @@ lower_lsc_block_logical_send(const fs_builder &bld, fs_inst *inst)
 
    inst->resize_sources(4);
 
-   inst->src[0] = brw_imm_ud(0); /* desc */
-   inst->src[1] = ex_desc;       /* ex_desc */
+   if (stateless_ex_desc.file != BAD_FILE) {
+      inst->src[0] = brw_imm_ud(0);     /* desc */
+      inst->src[1] = stateless_ex_desc; /* ex_desc */
+   } else {
+      setup_lsc_surface_descriptors(bld, inst, inst->desc,
+                                    surface.file != BAD_FILE ?
+                                    surface : surface_handle);
+   }
    inst->src[2] = addr;          /* payload */
    inst->src[3] = data;          /* payload2 */
 }
@@ -2264,7 +2295,7 @@ lower_lsc_varying_pull_constant_logical_send(const fs_builder &bld,
    const intel_device_info *devinfo = bld.shader->devinfo;
    ASSERTED const brw_compiler *compiler = bld.shader->compiler;
 
-   fs_reg index = inst->src[0];
+   fs_reg surface = inst->src[0];
 
    /* We are switching the instruction from an ALU-like instruction to a
     * send-from-grf instruction.  Since sends can't handle strides or
@@ -2278,16 +2309,6 @@ lower_lsc_varying_pull_constant_logical_send(const fs_builder &bld,
    inst->opcode = SHADER_OPCODE_SEND;
    inst->sfid = GFX12_SFID_UGM;
    inst->resize_sources(3);
-   inst->src[0] = brw_imm_ud(0);
-
-   if (index.file == IMM) {
-      inst->src[1] = brw_imm_ud(lsc_bti_ex_desc(devinfo, index.ud));
-   } else {
-      const fs_builder ubld = bld.exec_all().group(1, 0);
-      fs_reg tmp = ubld.vgrf(BRW_REGISTER_TYPE_UD);
-      ubld.SHL(tmp, index, brw_imm_ud(24));
-      inst->src[1] = component(tmp, 0);
-   }
 
    assert(!compiler->indirect_ubos_use_sampler);
 
@@ -2302,6 +2323,8 @@ lower_lsc_varying_pull_constant_logical_send(const fs_builder &bld,
                                 LSC_CACHE_LOAD_L1STATE_L3MOCS,
                                 true /* has_dest */);
       inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
+
+      setup_lsc_surface_descriptors(bld, inst, inst->desc, surface);
    } else {
       inst->desc = lsc_msg_desc(devinfo, LSC_OP_LOAD, inst->exec_size,
                                 LSC_ADDR_SURFTYPE_BTI, LSC_ADDR_SIZE_A32,
@@ -2312,6 +2335,9 @@ lower_lsc_varying_pull_constant_logical_send(const fs_builder &bld,
                                 LSC_CACHE_LOAD_L1STATE_L3MOCS,
                                 true /* has_dest */);
       inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
+
+      setup_lsc_surface_descriptors(bld, inst, inst->desc, surface);
+
       /* The byte scattered messages can only read one dword at a time so
        * we have to duplicate the message 4 times to read the full vec4.
        * Hopefully, dead code will clean up the mess if some of them aren't
@@ -2918,17 +2944,6 @@ fs_visitor::lower_uniform_pull_constant_loads()
                                    LSC_CACHE_LOAD_L1STATE_L3MOCS,
                                    true /* has_dest */);
 
-         fs_reg ex_desc;
-         if (surface.file == IMM) {
-            ex_desc = brw_imm_ud(lsc_bti_ex_desc(devinfo, surface.ud));
-         } else {
-            /* We only need the first component for the payload so we can use
-             * one of the other components for the extended descriptor
-             */
-            ex_desc = component(payload, 1);
-            ubld.group(1, 0).SHL(ex_desc, surface, brw_imm_ud(24));
-         }
-
          /* Update the original instruction. */
          inst->opcode = SHADER_OPCODE_SEND;
          inst->mlen = lsc_msg_desc_src0_len(devinfo, inst->desc);
@@ -2939,9 +2954,9 @@ fs_visitor::lower_uniform_pull_constant_loads()
          inst->exec_size = 1;
 
          /* Finally, the payload */
+
          inst->resize_sources(3);
-         inst->src[0] = brw_imm_ud(0); /* desc */
-         inst->src[1] = ex_desc;
+         setup_lsc_surface_descriptors(ubld, inst, inst->desc, surface);
          inst->src[2] = payload;
 
          invalidate_analysis(DEPENDENCY_INSTRUCTIONS | DEPENDENCY_VARIABLES);
