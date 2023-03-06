@@ -653,26 +653,19 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    LVP_FROM_HANDLE(lvp_pipeline, pipeline, cmd->u.bind_pipeline.pipeline);
    const struct vk_graphics_pipeline_state *ps = &pipeline->graphics_state;
    lvp_pipeline_shaders_compile(pipeline);
+   for (enum pipe_shader_type sh = PIPE_SHADER_VERTEX; sh < PIPE_SHADER_COMPUTE; sh++)
+      state->shaders[sh] = &pipeline->shaders[sh];
 
    for (enum pipe_shader_type sh = PIPE_SHADER_VERTEX; sh < PIPE_SHADER_COMPUTE; sh++) {
       state->iv_dirty[sh] |= state->num_shader_images[sh] &&
-                             (state->access[sh].images_read != pipeline->shaders[sh].access.images_read ||
-                              state->access[sh].images_written != pipeline->shaders[sh].access.images_written);
-      state->sb_dirty[sh] |= state->num_shader_buffers[sh] && state->access[sh].buffers_written != pipeline->shaders[sh].access.buffers_written;
-   }
-   for (unsigned i = 0; i < ARRAY_SIZE(state->access); i++)
-      memcpy(&state->access[i], &pipeline->shaders[i].access, sizeof(struct lvp_access_info));
-
-   for (enum pipe_shader_type sh = PIPE_SHADER_VERTEX; sh < PIPE_SHADER_COMPUTE; sh++) {
+                             (state->access[sh].images_read != state->shaders[sh]->access.images_read ||
+                              state->access[sh].images_written != state->shaders[sh]->access.images_written);
+      state->sb_dirty[sh] |= state->num_shader_buffers[sh] && state->access[sh].buffers_written != state->shaders[sh]->access.buffers_written;
+      memcpy(&state->access[sh], &state->shaders[sh]->access, sizeof(struct lvp_access_info));
       state->has_pcbuf[sh] = false;
-      state->shaders[sh] = &pipeline->shaders[sh];
-   }
-
-   for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++) {
-      enum pipe_shader_type sh = pipe_shader_type_from_mesa(i);
-      state->uniform_blocks[sh].count = pipeline->layout->stage[i].uniform_block_count;
-      for (unsigned j = 0; j < pipeline->layout->stage[i].uniform_block_count; j++)
-         state->uniform_blocks[sh].size[j] = pipeline->layout->stage[i].uniform_block_sizes[j];
+      state->uniform_blocks[sh].count = pipeline->layout->stage[sh].uniform_block_count;
+      for (unsigned j = 0; j < pipeline->layout->stage[sh].uniform_block_count; j++)
+         state->uniform_blocks[sh].size[j] = pipeline->layout->stage[sh].uniform_block_sizes[j];
    }
    u_foreach_bit(stage, pipeline->layout->push_constant_stages) {
       enum pipe_shader_type sh = pipe_shader_type_from_mesa(stage);
