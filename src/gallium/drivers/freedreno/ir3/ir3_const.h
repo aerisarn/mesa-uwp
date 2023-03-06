@@ -632,14 +632,24 @@ ir3_emit_cs_driver_params(const struct ir3_shader_variant *v,
 
          pipe_resource_reference(&indirect, NULL);
       } else {
+         // TODO some of these are not part of the indirect state.. so we
+         // need to emit some of this directly in both cases.
          uint32_t compute_params[IR3_DP_CS_COUNT] = {
             [IR3_DP_NUM_WORK_GROUPS_X] = info->grid[0],
             [IR3_DP_NUM_WORK_GROUPS_Y] = info->grid[1],
             [IR3_DP_NUM_WORK_GROUPS_Z] = info->grid[2],
             [IR3_DP_WORK_DIM]          = info->work_dim,
+            [IR3_DP_BASE_GROUP_X]      = info->grid_base[0],
+            [IR3_DP_BASE_GROUP_Y]      = info->grid_base[1],
+            [IR3_DP_BASE_GROUP_Z]      = info->grid_base[2],
+            [IR3_DP_CS_SUBGROUP_SIZE]  = v->info.subgroup_size,
             [IR3_DP_LOCAL_GROUP_SIZE_X] = info->block[0],
             [IR3_DP_LOCAL_GROUP_SIZE_Y] = info->block[1],
             [IR3_DP_LOCAL_GROUP_SIZE_Z] = info->block[2],
+            [IR3_DP_SUBGROUP_ID_SHIFT] = util_logbase2(v->info.subgroup_size),
+            [IR3_DP_WORKGROUP_ID_X]    = 0,  // TODO
+            [IR3_DP_WORKGROUP_ID_Y]    = 0,  // TODO
+            [IR3_DP_WORKGROUP_ID_Z]    = 0,  // TODO
          };
          uint32_t size =
             MIN2(const_state->num_driver_params, v->constlen * 4 - offset * 4);
