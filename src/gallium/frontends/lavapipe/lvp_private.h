@@ -399,6 +399,12 @@ struct lvp_pipeline_layout {
    } stage[MESA_SHADER_STAGES];
 };
 
+
+struct lvp_pipeline_layout *
+lvp_pipeline_layout_create(struct lvp_device *device,
+                           const VkPipelineLayoutCreateInfo*           pCreateInfo,
+                           const VkAllocationCallbacks*                pAllocator);
+
 struct lvp_access_info {
    uint64_t images_read;
    uint64_t images_written;
