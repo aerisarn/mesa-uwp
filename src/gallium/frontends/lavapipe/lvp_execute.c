@@ -653,6 +653,7 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    LVP_FROM_HANDLE(lvp_pipeline, pipeline, cmd->u.bind_pipeline.pipeline);
    const struct vk_graphics_pipeline_state *ps = &pipeline->graphics_state;
    lvp_pipeline_shaders_compile(pipeline);
+   bool dynamic_tess_origin = BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN);
    for (enum pipe_shader_type sh = MESA_SHADER_VERTEX; sh < MESA_SHADER_COMPUTE; sh++)
       state->shaders[sh] = &pipeline->shaders[sh];
 
@@ -716,7 +717,7 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
          case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
             state->inlines_dirty[MESA_SHADER_TESS_EVAL] = state->shaders[MESA_SHADER_TESS_EVAL]->inlines.can_inline;
             if (!state->shaders[MESA_SHADER_TESS_EVAL]->inlines.can_inline) {
-               if (BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN)) {
+               if (dynamic_tess_origin) {
                   state->tess_states[0] = state->shaders[MESA_SHADER_TESS_EVAL]->shader_cso;
                   state->tess_states[1] = state->shaders[MESA_SHADER_TESS_EVAL]->tess_ccw_cso;
                   state->pctx->bind_tes_state(state->pctx, state->tess_states[state->tess_ccw]);
@@ -724,7 +725,7 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
                   state->pctx->bind_tes_state(state->pctx, state->shaders[MESA_SHADER_TESS_EVAL]->shader_cso);
                }
             }
-            if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN))
+            if (!dynamic_tess_origin)
                state->tess_ccw = false;
             has_stage[MESA_SHADER_TESS_EVAL] = true;
             break;
