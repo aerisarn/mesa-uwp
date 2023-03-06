@@ -72,6 +72,7 @@ struct ir3_info {
     * assuming that they are all executing this shader.
     */
    int8_t max_waves;
+   uint8_t subgroup_size;
    bool double_threadsize;
    bool multi_dword_ldp_stp;
 
