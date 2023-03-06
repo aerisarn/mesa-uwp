@@ -516,10 +516,10 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
 
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    if (impl->ssa_alloc > 100) //skip for small shaders
-      pipeline->shaders[stage].inlines.must_inline = lvp_find_inlinable_uniforms(pipeline, nir);
-   pipeline->shaders[stage].pipeline_nir = ralloc(NULL, struct lvp_pipeline_nir);
-   pipeline->shaders[stage].pipeline_nir->nir = nir;
-   pipeline->shaders[stage].pipeline_nir->ref_cnt = 1;
+      shader->inlines.must_inline = lvp_find_inlinable_uniforms(pipeline, nir);
+   shader->pipeline_nir = ralloc(NULL, struct lvp_pipeline_nir);
+   shader->pipeline_nir->nir = nir;
+   shader->pipeline_nir->ref_cnt = 1;
 
    return VK_SUCCESS;
 }
