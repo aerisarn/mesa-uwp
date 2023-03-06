@@ -1301,11 +1301,25 @@ brw_nir_should_vectorize_mem(unsigned align_mul, unsigned align_offset,
    if (bit_size > 32)
       return false;
 
-   /* We can handle at most a vec4 right now.  Anything bigger would get
-    * immediately split by brw_nir_lower_mem_access_bit_sizes anyway.
-    */
-   if (num_components > 4)
-      return false;
+   if (low->intrinsic == nir_intrinsic_load_ssbo_uniform_block_intel ||
+       low->intrinsic == nir_intrinsic_load_shared_uniform_block_intel) {
+      if (num_components > 4) {
+         if (!util_is_power_of_two_nonzero(num_components))
+            return false;
+
+         if (bit_size != 32)
+            return false;
+
+         if (num_components > 32)
+            return false;
+      }
+   } else {
+      /* We can handle at most a vec4 right now.  Anything bigger would get
+       * immediately split by brw_nir_lower_mem_access_bit_sizes anyway.
+       */
+      if (num_components > 4)
+         return false;
+   }
 
 
    uint32_t align;
@@ -1447,6 +1461,31 @@ brw_vectorize_lower_mem_access(nir_shader *nir,
       }
 
       OPT(nir_opt_load_store_vectorize, &options);
+
+      /* Only run the blockify optimization on Gfx9+ because although prior HW
+       * versions have support for block loads, they do have limitations on
+       * alignment as well as requiring split sends which are not supported
+       * there.
+       */
+      if (compiler->devinfo->ver >= 9) {
+         /* Required for nir_divergence_analysis() */
+         OPT(nir_convert_to_lcssa, true, true);
+
+         /* When HW supports block loads, using the divergence analysis, try
+          * to find uniform SSBO loads and turn them into block loads.
+          *
+          * Rerun the vectorizer after that to make the largest possible block
+          * loads.
+          *
+          * This is a win on 2 fronts :
+          *   - fewer send messages
+          *   - reduced register pressure
+          */
+         nir_divergence_analysis(nir);
+         if (OPT(brw_nir_blockify_uniform_loads, compiler->devinfo))
+            OPT(nir_opt_load_store_vectorize, &options);
+         OPT(nir_opt_remove_phis);
+      }
    }
 
    OPT(nir_lower_mem_access_bit_sizes,

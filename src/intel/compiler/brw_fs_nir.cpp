@@ -4938,6 +4938,62 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       break;
    }
 
+   case nir_intrinsic_load_ssbo_uniform_block_intel:
+   case nir_intrinsic_load_shared_uniform_block_intel: {
+      fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
+
+      const bool is_ssbo =
+         instr->intrinsic == nir_intrinsic_load_ssbo_uniform_block_intel;
+      srcs[SURFACE_LOGICAL_SRC_SURFACE] = is_ssbo ?
+         get_nir_ssbo_intrinsic_index(bld, instr) : fs_reg(brw_imm_ud(GFX7_BTI_SLM));
+
+      const unsigned total_dwords = ALIGN(instr->num_components, REG_SIZE / 4);
+      unsigned loaded_dwords = 0;
+
+      const fs_builder ubld1 = bld.exec_all().group(1, 0);
+      const fs_builder ubld8 = bld.exec_all().group(8, 0);
+      const fs_builder ubld16 = bld.exec_all().group(16, 0);
+
+      const fs_reg packed_consts =
+         ubld1.vgrf(BRW_REGISTER_TYPE_UD, total_dwords);
+
+      const nir_src load_offset = is_ssbo ? instr->src[1] : instr->src[0];
+      if (nir_src_is_const(load_offset)) {
+         fs_reg addr = ubld8.vgrf(BRW_REGISTER_TYPE_UD);
+         ubld8.MOV(addr, brw_imm_ud(nir_src_as_uint(load_offset)));
+         srcs[SURFACE_LOGICAL_SRC_ADDRESS] = component(addr, 0);
+      } else {
+         srcs[SURFACE_LOGICAL_SRC_ADDRESS] =
+            bld.emit_uniformize(get_nir_src(load_offset));
+      }
+
+      while (loaded_dwords < total_dwords) {
+         const unsigned block =
+            choose_oword_block_size_dwords(devinfo,
+                                           total_dwords - loaded_dwords);
+         const unsigned block_bytes = block * 4;
+
+         srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(block);
+
+         const fs_builder &ubld = block <= 8 ? ubld8 : ubld16;
+         ubld.emit(SHADER_OPCODE_UNALIGNED_OWORD_BLOCK_READ_LOGICAL,
+                   retype(byte_offset(packed_consts, loaded_dwords * 4), BRW_REGISTER_TYPE_UD),
+                   srcs, SURFACE_LOGICAL_NUM_SRCS)->size_written = align(block_bytes, REG_SIZE);
+
+         loaded_dwords += block;
+
+         ubld1.ADD(srcs[SURFACE_LOGICAL_SRC_ADDRESS],
+                   srcs[SURFACE_LOGICAL_SRC_ADDRESS],
+                   brw_imm_ud(block_bytes));
+      }
+
+      for (unsigned c = 0; c < instr->num_components; c++)
+         bld.MOV(retype(offset(dest, bld, c), BRW_REGISTER_TYPE_UD),
+                 component(packed_consts, c));
+
+      break;
+   }
+
    case nir_intrinsic_store_output: {
       assert(nir_src_bit_size(instr->src[0]) == 32);
       fs_reg src = get_nir_src(instr->src[0]);
