@@ -647,16 +647,9 @@ update_samples(struct rendering_state *state, VkSampleCountFlags samples)
    }
 }
 
-static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
-                                     struct rendering_state *state)
+static void
+handle_graphics_stages(struct rendering_state *state, VkShaderStageFlagBits shader_stages, bool dynamic_tess_origin)
 {
-   LVP_FROM_HANDLE(lvp_pipeline, pipeline, cmd->u.bind_pipeline.pipeline);
-   const struct vk_graphics_pipeline_state *ps = &pipeline->graphics_state;
-   lvp_pipeline_shaders_compile(pipeline);
-   bool dynamic_tess_origin = BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN);
-   for (enum pipe_shader_type sh = MESA_SHADER_VERTEX; sh < MESA_SHADER_COMPUTE; sh++)
-      state->shaders[sh] = &pipeline->shaders[sh];
-
    for (enum pipe_shader_type sh = MESA_SHADER_VERTEX; sh < MESA_SHADER_COMPUTE; sh++) {
       state->iv_dirty[sh] |= state->num_shader_images[sh] &&
                              (state->access[sh].images_read != state->shaders[sh]->access.images_read ||
@@ -664,15 +657,6 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
       state->sb_dirty[sh] |= state->num_shader_buffers[sh] && state->access[sh].buffers_written != state->shaders[sh]->access.buffers_written;
       memcpy(&state->access[sh], &state->shaders[sh]->access, sizeof(struct lvp_access_info));
       state->has_pcbuf[sh] = false;
-      state->uniform_blocks[sh].count = pipeline->layout->stage[sh].uniform_block_count;
-      for (unsigned j = 0; j < pipeline->layout->stage[sh].uniform_block_count; j++)
-         state->uniform_blocks[sh].size[j] = pipeline->layout->stage[sh].uniform_block_sizes[j];
-   }
-   u_foreach_bit(stage, pipeline->layout->push_constant_stages) {
-      enum pipe_shader_type sh = pipe_shader_type_from_mesa(stage);
-      state->has_pcbuf[sh] = pipeline->layout->push_constant_size > 0;
-      if (!state->has_pcbuf[sh] && !state->uniform_blocks[sh].count)
-         state->pcbuf_dirty[sh] = false;
    }
 
    bool has_stage[MESA_SHADER_STAGES] = { false };
@@ -686,7 +670,7 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    state->tess_states[1] = NULL;
    state->gs_output_lines = GS_OUTPUT_NONE;
    {
-      u_foreach_bit(b, pipeline->graphics_state.shader_stages) {
+      u_foreach_bit(b, shader_stages) {
          VkShaderStageFlagBits vk_stage = (1 << b);
          switch (vk_stage) {
          case VK_SHADER_STAGE_FRAGMENT_BIT:
@@ -705,7 +689,7 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
             state->inlines_dirty[MESA_SHADER_GEOMETRY] = state->shaders[MESA_SHADER_GEOMETRY]->inlines.can_inline;
             if (!state->shaders[MESA_SHADER_GEOMETRY]->inlines.can_inline)
                state->pctx->bind_gs_state(state->pctx, state->shaders[MESA_SHADER_GEOMETRY]->shader_cso);
-            state->gs_output_lines = pipeline->gs_output_lines ? GS_OUTPUT_LINES : GS_OUTPUT_NOT_LINES;
+            state->gs_output_lines = state->shaders[MESA_SHADER_GEOMETRY]->pipeline_nir->nir->info.gs.output_primitive == SHADER_PRIM_LINES ? GS_OUTPUT_LINES : GS_OUTPUT_NOT_LINES;
             has_stage[MESA_SHADER_GEOMETRY] = true;
             break;
          case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
@@ -745,6 +729,34 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
       state->pctx->bind_tcs_state(state->pctx, NULL);
    if (state->pctx->bind_tes_state && !has_stage[MESA_SHADER_TESS_EVAL])
       state->pctx->bind_tes_state(state->pctx, NULL);
+}
+
+static void
+handle_graphics_layout(struct rendering_state *state, gl_shader_stage stage, struct lvp_pipeline_layout *layout)
+{
+   state->uniform_blocks[stage].count = layout->stage[stage].uniform_block_count;
+   for (unsigned j = 0; j < layout->stage[stage].uniform_block_count; j++)
+      state->uniform_blocks[stage].size[j] = layout->stage[stage].uniform_block_sizes[j];
+   if (layout->push_constant_stages & BITFIELD_BIT(stage)) {
+      state->has_pcbuf[stage] = layout->push_constant_size > 0;
+      if (!state->has_pcbuf[stage] && !state->uniform_blocks[stage].count)
+         state->pcbuf_dirty[stage] = false;
+   }
+}
+
+static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
+                                     struct rendering_state *state)
+{
+   LVP_FROM_HANDLE(lvp_pipeline, pipeline, cmd->u.bind_pipeline.pipeline);
+   const struct vk_graphics_pipeline_state *ps = &pipeline->graphics_state;
+   lvp_pipeline_shaders_compile(pipeline);
+   bool dynamic_tess_origin = BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN);
+   for (enum pipe_shader_type sh = MESA_SHADER_VERTEX; sh < MESA_SHADER_COMPUTE; sh++)
+      state->shaders[sh] = &pipeline->shaders[sh];
+
+   handle_graphics_stages(state, pipeline->graphics_state.shader_stages, dynamic_tess_origin);
+   for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++)
+      handle_graphics_layout(state, i, pipeline->layout);
 
    /* rasterization state */
    if (ps->rs) {
