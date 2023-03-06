@@ -108,11 +108,13 @@ def tab_to(name, value):
 def mask(low, high):
 	return ((0xffffffffffffffff >> (64 - (high + 1 - low))) << low)
 
-def field_name(prefix, f):
+def field_name(reg, f):
 	if f.name:
 		name = f.name.lower()
 	else:
-		name = prefix.lower()
+		# We hit this path when a reg is defined with no bitset fields, ie.
+		# 	<reg32 offset="0x88db" name="RB_BLIT_DST_ARRAY_PITCH" low="0" high="28" shr="6" type="uint"/>
+		name = reg.name.lower()
 
 	if (name in [ "double", "float", "int" ]) or not (name[0].isalpha()):
 			name = "_" + name
@@ -136,30 +138,29 @@ class Bitset(object):
 		return None
 
 	def dump_regpair_builder(self, reg):
-		prefix = reg.full_name
 		print("#ifndef NDEBUG")
 		known_mask = 0
 		for f in self.fields:
 			known_mask |= mask(f.low, f.high)
 			if f.type in [ "boolean", "address", "waddress" ]:
 				continue
-			type, val = f.ctype("fields.%s" % field_name(prefix, f))
+			type, val = f.ctype("fields.%s" % field_name(reg, f))
 			print("    assert((%-40s & 0x%08x) == 0);" % (val, 0xffffffff ^ mask(0 , f.high - f.low)))
 		print("    assert((%-40s & 0x%08x) == 0);" % ("fields.unknown", known_mask))
 		print("#endif\n")
 
 		print("    return (struct fd_reg_pair) {")
 		if reg.array:
-			print("        .reg = REG_%s(__i)," % prefix)
+			print("        .reg = REG_%s(__i)," % reg.full_name)
 		else:
-			print("        .reg = REG_%s," % prefix)
+			print("        .reg = REG_%s," % reg.full_name)
 
 		print("        .value =")
 		for f in self.fields:
 			if f.type in [ "address", "waddress" ]:
 				continue
 			else:
-				type, val = f.ctype("fields.%s" % field_name(prefix, f))
+				type, val = f.ctype("fields.%s" % field_name(reg, f))
 				print("            (%-40s << %2d) |" % (val, f.low))
 		value_name = "dword"
 		if reg.bit_size == 64:
@@ -190,7 +191,7 @@ class Bitset(object):
 				tab_to("    __bo_type", "bo;")
 				tab_to("    uint32_t", "bo_offset;")
 				continue
-			name = field_name(prefix, f)
+			name = field_name(reg, f)
 
 			type, val = f.ctype("var")
 
@@ -575,7 +576,7 @@ class Parser(object):
 			bit_size = reg.bit_size
 			array = reg.array
 			for f in reg.bitset.fields:
-				fld_name = field_name(reg.full_name, f)
+				fld_name = field_name(reg, f)
 				if fld_name in seen_fields:
 					continue
 				seen_fields.append(fld_name)

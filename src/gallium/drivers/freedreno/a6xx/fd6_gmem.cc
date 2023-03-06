@@ -129,10 +129,10 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
          ring,
          A6XX_RB_MRT_BUF_INFO(i, .color_format = format,
                               .color_tile_mode = tile_mode, .color_swap = swap),
-         A6XX_RB_MRT_PITCH(i, .a6xx_rb_mrt_pitch = stride),
-         A6XX_RB_MRT_ARRAY_PITCH(i, .a6xx_rb_mrt_array_pitch = array_stride),
+         A6XX_RB_MRT_PITCH(i, stride),
+         A6XX_RB_MRT_ARRAY_PITCH(i, array_stride),
          A6XX_RB_MRT_BASE(i, .bo = rsc->bo, .bo_offset = offset),
-         A6XX_RB_MRT_BASE_GMEM(i, .unknown = base));
+         A6XX_RB_MRT_BASE_GMEM(i, base));
 
       OUT_REG(ring, A6XX_SP_FS_MRT_REG(i, .color_format = format,
                                        .color_sint = sint, .color_uint = uint));
@@ -170,11 +170,10 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 
       OUT_REG(
          ring, A6XX_RB_DEPTH_BUFFER_INFO(.depth_format = fmt),
-         A6XX_RB_DEPTH_BUFFER_PITCH(.a6xx_rb_depth_buffer_pitch = stride),
-         A6XX_RB_DEPTH_BUFFER_ARRAY_PITCH(.a6xx_rb_depth_buffer_array_pitch =
-                                             array_stride),
+         A6XX_RB_DEPTH_BUFFER_PITCH(stride),
+         A6XX_RB_DEPTH_BUFFER_ARRAY_PITCH(array_stride),
          A6XX_RB_DEPTH_BUFFER_BASE(.bo = rsc->bo, .bo_offset = offset),
-         A6XX_RB_DEPTH_BUFFER_BASE_GMEM(.dword = base));
+         A6XX_RB_DEPTH_BUFFER_BASE_GMEM(base));
 
       OUT_REG(ring, A6XX_GRAS_SU_DEPTH_BUFFER_INFO(.depth_format = fmt));
 
@@ -211,12 +210,10 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
             fd_resource_offset(rsc->stencil, zsbuf->u.tex.level, zsbuf->u.tex.first_layer);
 
          OUT_REG(ring, A6XX_RB_STENCIL_INFO(.separate_stencil = true),
-                 A6XX_RB_STENCIL_BUFFER_PITCH(.a6xx_rb_stencil_buffer_pitch =
-                                                 stride),
-                 A6XX_RB_STENCIL_BUFFER_ARRAY_PITCH(
-                       .a6xx_rb_stencil_buffer_array_pitch = array_stride),
+                 A6XX_RB_STENCIL_BUFFER_PITCH(stride),
+                 A6XX_RB_STENCIL_BUFFER_ARRAY_PITCH(array_stride),
                  A6XX_RB_STENCIL_BUFFER_BASE(.bo = rsc->stencil->bo, .bo_offset = offset),
-                 A6XX_RB_STENCIL_BUFFER_BASE_GMEM(.dword = base));
+                 A6XX_RB_STENCIL_BUFFER_BASE_GMEM(base));
       } else {
          OUT_REG(ring, A6XX_RB_STENCIL_INFO(0));
       }
@@ -1034,8 +1031,8 @@ emit_blit(struct fd_batch *batch, struct fd_ringbuffer *ring, uint32_t base,
                  .color_format = format,
            ),
            A6XX_RB_BLIT_DST(.bo = rsc->bo, .bo_offset = offset),
-           A6XX_RB_BLIT_DST_PITCH(.a6xx_rb_blit_dst_pitch = stride),
-           A6XX_RB_BLIT_DST_ARRAY_PITCH(.a6xx_rb_blit_dst_array_pitch = array_stride));
+           A6XX_RB_BLIT_DST_PITCH(stride),
+           A6XX_RB_BLIT_DST_ARRAY_PITCH(array_stride));
 
    OUT_REG(ring, A6XX_RB_BLIT_BASE_GMEM(.dword = base));
 
