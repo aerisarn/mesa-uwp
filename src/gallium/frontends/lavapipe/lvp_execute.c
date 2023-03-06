@@ -689,39 +689,39 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
          VkShaderStageFlagBits vk_stage = (1 << b);
          switch (vk_stage) {
          case VK_SHADER_STAGE_FRAGMENT_BIT:
-            state->inlines_dirty[MESA_SHADER_FRAGMENT] = pipeline->shaders[MESA_SHADER_FRAGMENT].inlines.can_inline;
-            if (!pipeline->shaders[MESA_SHADER_FRAGMENT].inlines.can_inline)
-               state->pctx->bind_fs_state(state->pctx, pipeline->shaders[MESA_SHADER_FRAGMENT].shader_cso);
+            state->inlines_dirty[MESA_SHADER_FRAGMENT] = state->shaders[MESA_SHADER_FRAGMENT]->inlines.can_inline;
+            if (!state->shaders[MESA_SHADER_FRAGMENT]->inlines.can_inline)
+               state->pctx->bind_fs_state(state->pctx, state->shaders[MESA_SHADER_FRAGMENT]->shader_cso);
             has_stage[MESA_SHADER_FRAGMENT] = true;
             break;
          case VK_SHADER_STAGE_VERTEX_BIT:
-            state->inlines_dirty[MESA_SHADER_VERTEX] = pipeline->shaders[MESA_SHADER_VERTEX].inlines.can_inline;
-            if (!pipeline->shaders[MESA_SHADER_VERTEX].inlines.can_inline)
-               state->pctx->bind_vs_state(state->pctx, pipeline->shaders[MESA_SHADER_VERTEX].shader_cso);
+            state->inlines_dirty[MESA_SHADER_VERTEX] = state->shaders[MESA_SHADER_VERTEX]->inlines.can_inline;
+            if (!state->shaders[MESA_SHADER_VERTEX]->inlines.can_inline)
+               state->pctx->bind_vs_state(state->pctx, state->shaders[MESA_SHADER_VERTEX]->shader_cso);
             has_stage[MESA_SHADER_VERTEX] = true;
             break;
          case VK_SHADER_STAGE_GEOMETRY_BIT:
-            state->inlines_dirty[MESA_SHADER_GEOMETRY] = pipeline->shaders[MESA_SHADER_GEOMETRY].inlines.can_inline;
-            if (!pipeline->shaders[MESA_SHADER_GEOMETRY].inlines.can_inline)
-               state->pctx->bind_gs_state(state->pctx, pipeline->shaders[MESA_SHADER_GEOMETRY].shader_cso);
+            state->inlines_dirty[MESA_SHADER_GEOMETRY] = state->shaders[MESA_SHADER_GEOMETRY]->inlines.can_inline;
+            if (!state->shaders[MESA_SHADER_GEOMETRY]->inlines.can_inline)
+               state->pctx->bind_gs_state(state->pctx, state->shaders[MESA_SHADER_GEOMETRY]->shader_cso);
             state->gs_output_lines = pipeline->gs_output_lines ? GS_OUTPUT_LINES : GS_OUTPUT_NOT_LINES;
             has_stage[MESA_SHADER_GEOMETRY] = true;
             break;
          case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
-            state->inlines_dirty[MESA_SHADER_TESS_CTRL] = pipeline->shaders[MESA_SHADER_TESS_CTRL].inlines.can_inline;
-            if (!pipeline->shaders[MESA_SHADER_TESS_CTRL].inlines.can_inline)
-               state->pctx->bind_tcs_state(state->pctx, pipeline->shaders[MESA_SHADER_TESS_CTRL].shader_cso);
+            state->inlines_dirty[MESA_SHADER_TESS_CTRL] = state->shaders[MESA_SHADER_TESS_CTRL]->inlines.can_inline;
+            if (!state->shaders[MESA_SHADER_TESS_CTRL]->inlines.can_inline)
+               state->pctx->bind_tcs_state(state->pctx, state->shaders[MESA_SHADER_TESS_CTRL]->shader_cso);
             has_stage[MESA_SHADER_TESS_CTRL] = true;
             break;
          case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
-            state->inlines_dirty[MESA_SHADER_TESS_EVAL] = pipeline->shaders[MESA_SHADER_TESS_EVAL].inlines.can_inline;
-            if (!pipeline->shaders[MESA_SHADER_TESS_EVAL].inlines.can_inline) {
+            state->inlines_dirty[MESA_SHADER_TESS_EVAL] = state->shaders[MESA_SHADER_TESS_EVAL]->inlines.can_inline;
+            if (!state->shaders[MESA_SHADER_TESS_EVAL]->inlines.can_inline) {
                if (BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN)) {
-                  state->tess_states[0] = pipeline->shaders[MESA_SHADER_TESS_EVAL].shader_cso;
-                  state->tess_states[1] = pipeline->shaders[MESA_SHADER_TESS_EVAL].tess_ccw_cso;
+                  state->tess_states[0] = state->shaders[MESA_SHADER_TESS_EVAL]->shader_cso;
+                  state->tess_states[1] = state->shaders[MESA_SHADER_TESS_EVAL]->tess_ccw_cso;
                   state->pctx->bind_tes_state(state->pctx, state->tess_states[state->tess_ccw]);
                } else {
-                  state->pctx->bind_tes_state(state->pctx, pipeline->shaders[MESA_SHADER_TESS_EVAL].shader_cso);
+                  state->pctx->bind_tes_state(state->pctx, state->shaders[MESA_SHADER_TESS_EVAL]->shader_cso);
                }
             }
             if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN))
@@ -737,7 +737,7 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
 
    /* there should always be a dummy fs. */
    if (!has_stage[MESA_SHADER_FRAGMENT])
-      state->pctx->bind_fs_state(state->pctx, pipeline->shaders[MESA_SHADER_FRAGMENT].shader_cso);
+      state->pctx->bind_fs_state(state->pctx, state->shaders[MESA_SHADER_FRAGMENT]->shader_cso);
    if (state->pctx->bind_gs_state && !has_stage[MESA_SHADER_GEOMETRY])
       state->pctx->bind_gs_state(state->pctx, NULL);
    if (state->pctx->bind_tcs_state && !has_stage[MESA_SHADER_TESS_CTRL])
