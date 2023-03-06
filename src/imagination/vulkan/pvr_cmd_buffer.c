@@ -963,16 +963,8 @@ static void pvr_setup_pbe_state(
    /* Setup surface parameters. */
 
    if (PVR_HAS_FEATURE(dev_info, usc_f16sop_u8)) {
-      switch (iview->vk.format) {
-      case VK_FORMAT_B8G8R8A8_UNORM:
-         with_packed_usc_channel = true;
-         break;
-      case VK_FORMAT_D32_SFLOAT:
-         with_packed_usc_channel = false;
-         break;
-      default:
-         unreachable("Unsupported Vulkan image format");
-      }
+      with_packed_usc_channel = vk_format_is_unorm(iview->vk.format) ||
+                                vk_format_is_snorm(iview->vk.format);
    } else {
       with_packed_usc_channel = false;
    }
