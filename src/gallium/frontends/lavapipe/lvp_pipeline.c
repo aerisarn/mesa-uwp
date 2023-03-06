@@ -564,6 +564,39 @@ merge_tess_info(struct shader_info *tes_info,
 }
 
 static void
+lvp_shader_xfb_init(struct lvp_shader *shader)
+{
+   nir_xfb_info *xfb_info = shader->pipeline_nir->nir->xfb_info;
+   if (xfb_info) {
+      uint8_t output_mapping[VARYING_SLOT_TESS_MAX];
+      memset(output_mapping, 0, sizeof(output_mapping));
+
+      nir_foreach_shader_out_variable(var, shader->pipeline_nir->nir) {
+         unsigned slots = var->data.compact ? DIV_ROUND_UP(glsl_get_length(var->type), 4)
+                                            : glsl_count_attribute_slots(var->type, false);
+         for (unsigned i = 0; i < slots; i++)
+            output_mapping[var->data.location + i] = var->data.driver_location + i;
+      }
+
+      shader->stream_output.num_outputs = xfb_info->output_count;
+      for (unsigned i = 0; i < PIPE_MAX_SO_BUFFERS; i++) {
+         if (xfb_info->buffers_written & (1 << i)) {
+            shader->stream_output.stride[i] = xfb_info->buffers[i].stride / 4;
+         }
+      }
+      for (unsigned i = 0; i < xfb_info->output_count; i++) {
+         shader->stream_output.output[i].output_buffer = xfb_info->outputs[i].buffer;
+         shader->stream_output.output[i].dst_offset = xfb_info->outputs[i].offset / 4;
+         shader->stream_output.output[i].register_index = output_mapping[xfb_info->outputs[i].location];
+         shader->stream_output.output[i].num_components = util_bitcount(xfb_info->outputs[i].component_mask);
+         shader->stream_output.output[i].start_component = ffs(xfb_info->outputs[i].component_mask) - 1;
+         shader->stream_output.output[i].stream = xfb_info->buffer_to_stream[xfb_info->outputs[i].buffer];
+      }
+
+   }
+}
+
+static void
 lvp_pipeline_xfb_init(struct lvp_pipeline *pipeline)
 {
    gl_shader_stage stage = MESA_SHADER_VERTEX;
@@ -572,35 +605,7 @@ lvp_pipeline_xfb_init(struct lvp_pipeline *pipeline)
    else if (pipeline->shaders[MESA_SHADER_TESS_EVAL].pipeline_nir)
       stage = MESA_SHADER_TESS_EVAL;
    pipeline->last_vertex = stage;
-
-   nir_xfb_info *xfb_info = pipeline->shaders[stage].pipeline_nir->nir->xfb_info;
-   if (xfb_info) {
-      uint8_t output_mapping[VARYING_SLOT_TESS_MAX];
-      memset(output_mapping, 0, sizeof(output_mapping));
-
-      nir_foreach_shader_out_variable(var, pipeline->shaders[stage].pipeline_nir->nir) {
-         unsigned slots = var->data.compact ? DIV_ROUND_UP(glsl_get_length(var->type), 4)
-                                            : glsl_count_attribute_slots(var->type, false);
-         for (unsigned i = 0; i < slots; i++)
-            output_mapping[var->data.location + i] = var->data.driver_location + i;
-      }
-
-      pipeline->shaders[pipeline->last_vertex].stream_output.num_outputs = xfb_info->output_count;
-      for (unsigned i = 0; i < PIPE_MAX_SO_BUFFERS; i++) {
-         if (xfb_info->buffers_written & (1 << i)) {
-            pipeline->shaders[pipeline->last_vertex].stream_output.stride[i] = xfb_info->buffers[i].stride / 4;
-         }
-      }
-      for (unsigned i = 0; i < xfb_info->output_count; i++) {
-         pipeline->shaders[pipeline->last_vertex].stream_output.output[i].output_buffer = xfb_info->outputs[i].buffer;
-         pipeline->shaders[pipeline->last_vertex].stream_output.output[i].dst_offset = xfb_info->outputs[i].offset / 4;
-         pipeline->shaders[pipeline->last_vertex].stream_output.output[i].register_index = output_mapping[xfb_info->outputs[i].location];
-         pipeline->shaders[pipeline->last_vertex].stream_output.output[i].num_components = util_bitcount(xfb_info->outputs[i].component_mask);
-         pipeline->shaders[pipeline->last_vertex].stream_output.output[i].start_component = ffs(xfb_info->outputs[i].component_mask) - 1;
-         pipeline->shaders[pipeline->last_vertex].stream_output.output[i].stream = xfb_info->buffer_to_stream[xfb_info->outputs[i].buffer];
-      }
-
-   }
+   lvp_shader_xfb_init(&pipeline->shaders[stage]);
 }
 
 void *
