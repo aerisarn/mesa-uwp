@@ -2614,6 +2614,7 @@ fs_visitor::opt_algebraic()
          /* a * 1.0 = a */
          if (inst->src[1].is_one()) {
             inst->opcode = BRW_OPCODE_MOV;
+            inst->sources = 1;
             inst->src[1] = reg_undef;
             progress = true;
             break;
@@ -2622,6 +2623,7 @@ fs_visitor::opt_algebraic()
          /* a * -1.0 = -a */
          if (inst->src[1].is_negative_one()) {
             inst->opcode = BRW_OPCODE_MOV;
+            inst->sources = 1;
             inst->src[0].negate = !inst->src[0].negate;
             inst->src[1] = reg_undef;
             progress = true;
@@ -2636,6 +2638,7 @@ fs_visitor::opt_algebraic()
          if (brw_reg_type_is_integer(inst->src[1].type) &&
              inst->src[1].is_zero()) {
             inst->opcode = BRW_OPCODE_MOV;
+            inst->sources = 1;
             inst->src[1] = reg_undef;
             progress = true;
             break;
@@ -2644,6 +2647,7 @@ fs_visitor::opt_algebraic()
          if (inst->src[0].file == IMM) {
             assert(inst->src[0].type == BRW_REGISTER_TYPE_F);
             inst->opcode = BRW_OPCODE_MOV;
+            inst->sources = 1;
             inst->src[0].f += inst->src[1].f;
             inst->src[1] = reg_undef;
             progress = true;
@@ -2659,9 +2663,11 @@ fs_visitor::opt_algebraic()
              */
             if (inst->src[0].negate) {
                inst->opcode = BRW_OPCODE_NOT;
+               inst->sources = 1;
                inst->src[0].negate = false;
             } else {
                inst->opcode = BRW_OPCODE_MOV;
+               inst->sources = 1;
             }
             inst->src[1] = reg_undef;
             progress = true;
@@ -2708,6 +2714,7 @@ fs_visitor::opt_algebraic()
          }
          if (inst->src[0].equals(inst->src[1])) {
             inst->opcode = BRW_OPCODE_MOV;
+            inst->sources = 1;
             inst->src[1] = reg_undef;
             inst->predicate = BRW_PREDICATE_NONE;
             inst->predicate_inverse = false;
@@ -2720,6 +2727,7 @@ fs_visitor::opt_algebraic()
                case BRW_REGISTER_TYPE_F:
                   if (inst->src[1].f >= 1.0f) {
                      inst->opcode = BRW_OPCODE_MOV;
+                     inst->sources = 1;
                      inst->src[1] = reg_undef;
                      inst->conditional_mod = BRW_CONDITIONAL_NONE;
                      progress = true;
@@ -2735,6 +2743,7 @@ fs_visitor::opt_algebraic()
                case BRW_REGISTER_TYPE_F:
                   if (inst->src[1].f <= 0.0f) {
                      inst->opcode = BRW_OPCODE_MOV;
+                     inst->sources = 1;
                      inst->src[1] = reg_undef;
                      inst->conditional_mod = BRW_CONDITIONAL_NONE;
                      progress = true;
@@ -2755,11 +2764,13 @@ fs_visitor::opt_algebraic()
             break;
          if (inst->src[1].is_one()) {
             inst->opcode = BRW_OPCODE_ADD;
+            inst->sources = 2;
             inst->src[1] = inst->src[2];
             inst->src[2] = reg_undef;
             progress = true;
          } else if (inst->src[2].is_one()) {
             inst->opcode = BRW_OPCODE_ADD;
+            inst->sources = 2;
             inst->src[2] = reg_undef;
             progress = true;
          }
