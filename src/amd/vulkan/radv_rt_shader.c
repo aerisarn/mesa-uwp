@@ -815,7 +815,7 @@ insert_rt_case(nir_builder *b, nir_shader *shader, struct rt_variables *vars, ni
    if (shader->info.stage == MESA_SHADER_CLOSEST_HIT || call_idx == 1)
       NIR_PASS_V(shader, lower_hit_attribs, NULL, workgroup_size);
 
-   vars->stack_size = MAX2(vars->stack_size, shader->scratch_size);
+   src_vars.stack_size = MAX2(src_vars.stack_size, shader->scratch_size);
 
    nir_push_if(b, nir_ieq_imm(b, idx, call_idx));
    nir_inline_function_impl(b, nir_shader_get_entrypoint(shader), NULL, var_remap);
