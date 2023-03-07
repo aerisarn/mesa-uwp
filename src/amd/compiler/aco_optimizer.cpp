@@ -632,31 +632,6 @@ can_apply_sgprs(opt_ctx& ctx, aco_ptr<Instruction>& instr)
           instr->opcode != aco_opcode::v_interp_p2_rtz_f16_f32_inreg;
 }
 
-void
-to_VOP3(opt_ctx& ctx, aco_ptr<Instruction>& instr)
-{
-   if (instr->isVOP3())
-      return;
-
-   aco_ptr<Instruction> tmp = std::move(instr);
-   Format format = asVOP3(tmp->format);
-   instr.reset(create_instruction<VALU_instruction>(tmp->opcode, format, tmp->operands.size(),
-                                                    tmp->definitions.size()));
-   std::copy(tmp->operands.cbegin(), tmp->operands.cend(), instr->operands.begin());
-   for (unsigned i = 0; i < instr->definitions.size(); i++) {
-      instr->definitions[i] = tmp->definitions[i];
-      if (instr->definitions[i].isTemp()) {
-         ssa_info& info = ctx.info[instr->definitions[i].tempId()];
-         if (info.label & instr_usedef_labels && info.instr == tmp.get())
-            info.instr = instr.get();
-      }
-   }
-   /* we don't need to update any instr_mod_labels because they either haven't
-    * been applied yet or this instruction isn't dead and so they've been ignored */
-
-   instr->pass_flags = tmp->pass_flags;
-}
-
 bool
 is_operand_vgpr(Operand op)
 {
@@ -1421,7 +1396,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          } else if (info.is_neg() && can_use_mod && mod_bitsize_compat &&
                     can_eliminate_fcanonicalize(ctx, instr, info.temp)) {
             if (!instr->isDPP() && !instr->isSDWA())
-               to_VOP3(ctx, instr);
+               instr->format = asVOP3(instr->format);
             instr->operands[i].setTemp(info.temp);
             if (!instr->valu().abs[i])
                instr->valu().neg[i] = true;
@@ -1429,7 +1404,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          if (info.is_abs() && can_use_mod && mod_bitsize_compat &&
              can_eliminate_fcanonicalize(ctx, instr, info.temp)) {
             if (!instr->isDPP() && !instr->isSDWA())
-               to_VOP3(ctx, instr);
+               instr->format = asVOP3(instr->format);
             instr->operands[i] = Operand(info.temp);
             instr->valu().abs[i] = true;
             continue;
@@ -1455,7 +1430,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
                instr->operands[0] = op;
                continue;
             } else if (can_use_VOP3(ctx, instr)) {
-               to_VOP3(ctx, instr);
+               instr->format = asVOP3(instr->format);
                instr->operands[i] = op;
                continue;
             }
@@ -2828,7 +2803,7 @@ combine_xor_not(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       if (instr->operands[0].isOfType(RegType::vgpr))
          std::swap(instr->operands[0], instr->operands[1]);
       if (!instr->operands[1].isOfType(RegType::vgpr))
-         to_VOP3(ctx, instr);
+         instr->format = asVOP3(instr->format);
 
       return true;
    }
@@ -3484,7 +3459,7 @@ apply_sgprs(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          uint32_t swapped = (0x3120 >> (operand_mask & 0x3)) & 0xf;
          operand_mask = (operand_mask & ~0x3) | swapped;
       } else if (can_use_VOP3(ctx, instr) && !info.is_extract()) {
-         to_VOP3(ctx, instr);
+         instr->format = asVOP3(instr->format);
          instr->operands[sgpr_idx] = Operand(sgpr);
       } else {
          continue;
@@ -3542,7 +3517,7 @@ apply_omod_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    assert(!ctx.info[instr->definitions[0].tempId()].is_mad());
 
    if (!instr->isSDWA() && !instr->isVOP3P())
-      to_VOP3(ctx, instr);
+      instr->format = asVOP3(instr->format);
 
    if (!def_info.is_clamp() && (instr->valu().clamp || instr->valu().omod))
       return false;
@@ -5208,7 +5183,7 @@ apply_literals(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             Operand literal = Operand::literal32(ctx.info[op.tempId()].val);
             instr->format = withoutDPP(instr->format);
             if (instr->isVALU() && i > 0 && instr->format != Format::VOP3P)
-               to_VOP3(ctx, instr);
+               instr->format = asVOP3(instr->format);
             instr->operands[i] = literal;
          }
       }
