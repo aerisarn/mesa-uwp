@@ -71,6 +71,7 @@ libradv_files = files(
   'radv_device_generated_commands.c',
   'radv_formats.c',
   'radv_image.c',
+  'radv_instance.c',
   'radv_meta.c',
   'radv_meta.h',
   'radv_meta_blit.c',

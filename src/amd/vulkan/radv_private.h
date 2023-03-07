@@ -127,6 +127,12 @@ extern "C"
 #define RADV_USE_WSI_PLATFORM
 #endif
 
+#ifdef ANDROID
+#define RADV_API_VERSION VK_MAKE_VERSION(1, 1, VK_HEADER_VERSION)
+#else
+#define RADV_API_VERSION VK_MAKE_VERSION(1, 3, VK_HEADER_VERSION)
+#endif
+
 #ifdef _WIN32
 #define RADV_SUPPORT_CALIBRATED_TIMESTAMPS 0
 #else
@@ -364,6 +370,13 @@ struct radv_physical_device {
 };
 
 uint32_t radv_find_memory_index(struct radv_physical_device *pdevice, VkMemoryPropertyFlags flags);
+
+VkResult create_null_physical_device(struct vk_instance *vk_instance);
+
+VkResult create_drm_physical_device(struct vk_instance *vk_instance, struct _drmDevice *device,
+                                    struct vk_physical_device **out);
+
+void radv_physical_device_destroy(struct vk_physical_device *vk_device);
 
 struct radv_instance {
    struct vk_instance vk;
