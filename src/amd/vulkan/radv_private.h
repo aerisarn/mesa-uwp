@@ -2547,8 +2547,14 @@ bool radv_layout_can_fast_clear(const struct radv_device *device, const struct r
 bool radv_layout_dcc_compressed(const struct radv_device *device, const struct radv_image *image,
                                 unsigned level, VkImageLayout layout, unsigned queue_mask);
 
-bool radv_layout_fmask_compressed(const struct radv_device *device, const struct radv_image *image,
-                                  VkImageLayout layout, unsigned queue_mask);
+enum radv_fmask_compression {
+   RADV_FMASK_COMPRESSION_NONE,
+   RADV_FMASK_COMPRESSION_FULL,
+};
+
+enum radv_fmask_compression radv_layout_fmask_compression(
+      const struct radv_device *device, const struct radv_image *image, VkImageLayout layout,
+      unsigned queue_mask);
 
 /**
  * Return whether the image has CMASK metadata for color surfaces.

@@ -2665,10 +2665,10 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer, int index,
       }
    }
 
-   if (!radv_layout_fmask_compressed(
-          cmd_buffer->device, image, layout,
-          radv_image_queue_family_mask(image, cmd_buffer->qf,
-                                       cmd_buffer->qf))) {
+   const enum radv_fmask_compression fmask_comp =
+      radv_layout_fmask_compression(cmd_buffer->device, image, layout,
+            radv_image_queue_family_mask(image, cmd_buffer->qf, cmd_buffer->qf));
+   if (fmask_comp == RADV_FMASK_COMPRESSION_NONE) {
       cb_color_info &= C_028C70_COMPRESSION;
    }
 
@@ -10301,10 +10301,14 @@ radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffer, struct ra
    }
 
    /* MSAA color decompress. */
-   if (radv_image_has_fmask(image) &&
-       (image->vk.usage & (VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)) &&
-       radv_layout_fmask_compressed(cmd_buffer->device, image, src_layout, src_queue_mask) &&
-       !radv_layout_fmask_compressed(cmd_buffer->device, image, dst_layout, dst_queue_mask)) {
+   const enum radv_fmask_compression src_fmask_comp = radv_layout_fmask_compression(cmd_buffer->device,
+         image, src_layout, src_queue_mask);
+   const enum radv_fmask_compression dst_fmask_comp = radv_layout_fmask_compression(cmd_buffer->device,
+         image, dst_layout, dst_queue_mask);
+   if (src_fmask_comp <= dst_fmask_comp)
+      return;
+
+   if (src_fmask_comp == RADV_FMASK_COMPRESSION_FULL) {
       if (radv_dcc_enabled(image, range->baseMipLevel) &&
           !radv_image_use_dcc_image_stores(cmd_buffer->device, image) && !dcc_decompressed) {
          /* A DCC decompress is required before expanding FMASK
@@ -10319,7 +10323,9 @@ radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffer, struct ra
           */
          radv_fast_clear_flush_image_inplace(cmd_buffer, image, range);
       }
+   }
 
+   if (dst_fmask_comp == RADV_FMASK_COMPRESSION_NONE) {
       struct radv_barrier_data barrier = {0};
       barrier.layout_transitions.fmask_color_expand = 1;
       radv_describe_layout_transition(cmd_buffer, &barrier);
