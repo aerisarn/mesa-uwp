@@ -162,6 +162,7 @@ struct rendering_state {
 
    uint8_t push_constants[128 * 4];
    uint16_t push_size[2]; //gfx, compute
+   uint16_t gfx_push_sizes[MESA_SHADER_COMPUTE];
    struct {
       void *block[MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS * MAX_SETS];
       uint16_t size[MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS * MAX_SETS];
@@ -183,6 +184,7 @@ struct rendering_state {
 
    uint32_t sample_mask;
    unsigned min_samples;
+   unsigned rast_samples;
    float min_sample_shading;
    bool force_min_sample;
    bool sample_shading;
@@ -634,6 +636,7 @@ get_viewport_xform(struct rendering_state *state,
 static void
 update_samples(struct rendering_state *state, VkSampleCountFlags samples)
 {
+   state->rast_samples = samples;
    state->rs_dirty |= state->rs_state.multisample != (samples > 1);
    state->rs_state.multisample = samples > 1;
    state->min_samples = 1;
@@ -3991,6 +3994,68 @@ static void handle_set_color_blend_equation(struct vk_cmd_queue_entry *cmd,
    }
 }
 
+static void
+handle_shaders(struct vk_cmd_queue_entry *cmd, struct rendering_state *state)
+{
+   struct vk_cmd_bind_shaders_ext *bind = &cmd->u.bind_shaders_ext;
+
+   bool gfx = false;
+   VkShaderStageFlagBits vkstages = 0;
+   unsigned new_stages = 0;
+   unsigned null_stages = 0;
+   for (unsigned i = 0; i < bind->stage_count; i++) {
+      gl_shader_stage stage = vk_to_mesa_shader_stage(bind->stages[i]);
+      assert(stage <= MESA_SHADER_COMPUTE && stage != MESA_SHADER_NONE);
+      LVP_FROM_HANDLE(lvp_shader, shader, bind->shaders ? bind->shaders[i] : VK_NULL_HANDLE);
+      if (stage == MESA_SHADER_FRAGMENT) {
+         if (shader) {
+            state->force_min_sample = shader->pipeline_nir->nir->info.fs.uses_sample_shading;
+            state->sample_shading = state->force_min_sample;
+            update_samples(state, state->rast_samples);
+         } else {
+            state->force_min_sample = false;
+            state->sample_shading = false;
+         }
+      }
+      if (shader) {
+         vkstages |= bind->stages[i];
+         new_stages |= BITFIELD_BIT(stage);
+         state->shaders[stage] = shader;
+      } else {
+         if (state->shaders[stage])
+            null_stages |= bind->stages[i];
+      }
+
+      if (stage != MESA_SHADER_COMPUTE) {
+         state->gfx_push_sizes[i] = shader ? shader->layout->push_constant_size : 0;
+         gfx = true;
+      } else {
+         state->push_size[1] = shader ? shader->layout->push_constant_size : 0;
+      }
+   }
+
+   if ((new_stages | null_stages) & BITFIELD_MASK(MESA_SHADER_COMPUTE)) {
+      unbind_graphics_stages(state, null_stages & VK_SHADER_STAGE_ALL_GRAPHICS);
+      handle_graphics_stages(state, vkstages & VK_SHADER_STAGE_ALL_GRAPHICS, true);
+      u_foreach_bit(i, new_stages) {
+         handle_graphics_layout(state, i, state->shaders[i]->layout);
+         handle_pipeline_access(state, i);
+      }
+   }
+   /* ignore compute unbinds */
+   if (new_stages & BITFIELD_BIT(MESA_SHADER_COMPUTE)) {
+      handle_compute_shader(state, state->shaders[MESA_SHADER_COMPUTE], state->shaders[MESA_SHADER_COMPUTE]->layout);
+      handle_pipeline_access(state, MESA_SHADER_COMPUTE);
+   }
+
+   if (gfx) {
+      state->blend_state.independent_blend_enable = true;
+      state->push_size[0] = 0;
+      for (unsigned i = 0; i < ARRAY_SIZE(state->gfx_push_sizes); i++)
+         state->push_size[0] += state->gfx_push_sizes[i];
+   }
+}
+
 void lvp_add_enqueue_cmd_entrypoints(struct vk_device_dispatch_table *disp)
 {
    struct vk_device_dispatch_table cmd_enqueue_dispatch;
@@ -4097,6 +4162,19 @@ void lvp_add_enqueue_cmd_entrypoints(struct vk_device_dispatch_table *disp)
    ENQUEUE_CMD(CmdSetColorBlendEnableEXT)
    ENQUEUE_CMD(CmdSetColorBlendEquationEXT)
    ENQUEUE_CMD(CmdSetColorWriteMaskEXT)
+
+   ENQUEUE_CMD(CmdBindShadersEXT)
+   /* required for EXT_shader_object */
+   ENQUEUE_CMD(CmdSetCoverageModulationModeNV)
+   ENQUEUE_CMD(CmdSetCoverageModulationTableEnableNV)
+   ENQUEUE_CMD(CmdSetCoverageModulationTableNV)
+   ENQUEUE_CMD(CmdSetCoverageReductionModeNV)
+   ENQUEUE_CMD(CmdSetCoverageToColorEnableNV)
+   ENQUEUE_CMD(CmdSetCoverageToColorLocationNV)
+   ENQUEUE_CMD(CmdSetRepresentativeFragmentTestEnableNV)
+   ENQUEUE_CMD(CmdSetShadingRateImageEnableNV)
+   ENQUEUE_CMD(CmdSetViewportSwizzleNV)
+   ENQUEUE_CMD(CmdSetViewportWScalingEnableNV)
 
 #undef ENQUEUE_CMD
 }
@@ -4412,6 +4490,9 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
          break;
       case VK_CMD_SET_COLOR_BLEND_EQUATION_EXT:
          handle_set_color_blend_equation(cmd, state);
+         break;
+      case VK_CMD_BIND_SHADERS_EXT:
+         handle_shaders(cmd, state);
          break;
 
       default:

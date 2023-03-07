@@ -181,6 +181,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_shader_atomic_float               = true,
    .EXT_shader_atomic_float2              = true,
    .EXT_shader_demote_to_helper_invocation= true,
+   .EXT_shader_object                     = false,
    .EXT_shader_stencil_export             = true,
    .EXT_shader_subgroup_ballot            = true,
    .EXT_shader_subgroup_vote              = true,
@@ -852,6 +853,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          features->depthClipControl = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_FEATURES_EXT: {
+         VkPhysicalDeviceShaderObjectFeaturesEXT *features =
+            (VkPhysicalDeviceShaderObjectFeaturesEXT *)ext;
+         features->shaderObject = true;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES: {
          VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures *features =
             (VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures *)ext;
@@ -1375,6 +1382,13 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT *props = (VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT *)ext;
          props->graphicsPipelineLibraryFastLinking = VK_TRUE;
          props->graphicsPipelineLibraryIndependentInterpolationDecoration = VK_TRUE;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_OBJECT_PROPERTIES_EXT: {
+         VkPhysicalDeviceShaderObjectPropertiesEXT *props = (VkPhysicalDeviceShaderObjectPropertiesEXT *)ext;
+         /* this is basically unsupported */
+         lvp_device_get_cache_uuid(props->shaderBinaryUUID);
+         props->shaderBinaryVersion = 1;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {

@@ -29,6 +29,7 @@
 #include "util/os_time.h"
 #include "spirv/nir_spirv.h"
 #include "nir/nir_builder.h"
+#include "nir/nir_serialize.h"
 #include "lvp_lower_vulkan_resource.h"
 #include "pipe/p_state.h"
 #include "pipe/p_context.h"
@@ -1121,4 +1122,166 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateComputePipelines(
 
 
    return result;
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_DestroyShaderEXT(
+    VkDevice                                    _device,
+    VkShaderEXT                                 _shader,
+    const VkAllocationCallbacks*                pAllocator)
+{
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_shader, shader, _shader);
+
+   if (!shader)
+      return;
+   shader_destroy(device, shader);
+
+   vk_pipeline_layout_unref(&device->vk, &shader->layout->vk);
+   blob_finish(&shader->blob);
+   vk_object_base_finish(&shader->base);
+   vk_free2(&device->vk.alloc, pAllocator, shader);
+}
+
+static VkShaderEXT
+create_shader_object(struct lvp_device *device, const VkShaderCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator)
+{
+   nir_shader *nir = NULL;
+   gl_shader_stage stage = vk_to_mesa_shader_stage(pCreateInfo->stage);
+   assert(stage <= MESA_SHADER_COMPUTE && stage != MESA_SHADER_NONE);
+   if (pCreateInfo->codeType == VK_SHADER_CODE_TYPE_SPIRV_EXT) {
+      VkShaderModuleCreateInfo minfo = {
+         VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+         NULL,
+         0,
+         pCreateInfo->codeSize,
+         pCreateInfo->pCode,
+      };
+      VkPipelineShaderStageCreateFlagBits flags = 0;
+      if (pCreateInfo->flags & VK_SHADER_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT)
+         flags |= VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT;
+      if (pCreateInfo->flags & VK_SHADER_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT)
+         flags |= VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT;
+      VkPipelineShaderStageCreateInfo sinfo = {
+         VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+         &minfo,
+         flags,
+         pCreateInfo->stage,
+         VK_NULL_HANDLE,
+         pCreateInfo->pName,
+         pCreateInfo->pSpecializationInfo,
+      };
+      VkResult result = compile_spirv(device, &sinfo, &nir);
+      if (result != VK_SUCCESS)
+         goto fail;
+   } else {
+      assert(pCreateInfo->codeType == VK_SHADER_CODE_TYPE_BINARY_EXT);
+      if (pCreateInfo->codeSize < SHA1_DIGEST_LENGTH + 1)
+         return VK_NULL_HANDLE;
+      struct blob_reader blob;
+      const uint8_t *data = pCreateInfo->pCode;
+      size_t size = pCreateInfo->codeSize - SHA1_DIGEST_LENGTH;
+      unsigned char sha1[20];
+
+      struct mesa_sha1 sctx;
+      _mesa_sha1_init(&sctx);
+      _mesa_sha1_update(&sctx, data + SHA1_DIGEST_LENGTH, size);
+      _mesa_sha1_final(&sctx, sha1);
+      if (memcmp(sha1, data, SHA1_DIGEST_LENGTH))
+         return VK_NULL_HANDLE;
+
+      blob_reader_init(&blob, data + SHA1_DIGEST_LENGTH, size);
+      nir = nir_deserialize(NULL, device->pscreen->get_compiler_options(device->pscreen, PIPE_SHADER_IR_NIR, stage), &blob);
+      if (!nir)
+         goto fail;
+   }
+   if (!nir_shader_get_entrypoint(nir))
+      goto fail;
+   struct lvp_shader *shader = vk_object_zalloc(&device->vk, pAllocator, sizeof(struct lvp_shader), VK_OBJECT_TYPE_SHADER_EXT);
+   if (!shader)
+      goto fail;
+   blob_init(&shader->blob);
+   VkPipelineLayoutCreateInfo pci = {
+      VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+      NULL,
+      0,
+      pCreateInfo->setLayoutCount,
+      pCreateInfo->pSetLayouts,
+      pCreateInfo->pushConstantRangeCount,
+      pCreateInfo->pPushConstantRanges,
+   };
+   shader->layout = lvp_pipeline_layout_create(device, &pci, pAllocator);
+   lvp_shader_lower(device, nir, shader, shader->layout);
+   lvp_shader_xfb_init(shader);
+   if (stage == MESA_SHADER_TESS_EVAL) {
+      /* spec requires that all tess modes are set in both shaders */
+      nir_lower_patch_vertices(shader->pipeline_nir->nir, shader->pipeline_nir->nir->info.tess.tcs_vertices_out, NULL);
+      shader->tess_ccw = create_pipeline_nir(nir_shader_clone(NULL, shader->pipeline_nir->nir));
+      shader->tess_ccw->nir->info.tess.ccw = !shader->pipeline_nir->nir->info.tess.ccw;
+      shader->tess_ccw_cso = lvp_shader_compile(device, shader, nir_shader_clone(NULL, shader->tess_ccw->nir));
+   } else if (stage == MESA_SHADER_FRAGMENT && nir->info.fs.uses_fbfetch_output) {
+      /* this is (currently) illegal */
+      assert(!nir->info.fs.uses_fbfetch_output);
+      shader_destroy(device, shader);
+
+      vk_object_base_finish(&shader->base);
+      vk_free2(&device->vk.alloc, pAllocator, shader);
+      return VK_NULL_HANDLE;
+   }
+   nir_serialize(&shader->blob, nir, true);
+   shader->shader_cso = lvp_shader_compile(device, shader, nir_shader_clone(NULL, nir));
+   return lvp_shader_to_handle(shader);
+fail:
+   ralloc_free(nir);
+   return VK_NULL_HANDLE;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateShadersEXT(
+    VkDevice                                    _device,
+    uint32_t                                    createInfoCount,
+    const VkShaderCreateInfoEXT*                pCreateInfos,
+    const VkAllocationCallbacks*                pAllocator,
+    VkShaderEXT*                                pShaders)
+{
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   unsigned i;
+   for (i = 0; i < createInfoCount; i++) {
+      pShaders[i] = create_shader_object(device, &pCreateInfos[i], pAllocator);
+      if (!pShaders[i]) {
+         if (pCreateInfos[i].codeType == VK_SHADER_CODE_TYPE_BINARY_EXT) {
+            if (i < createInfoCount - 1)
+               memset(&pShaders[i + 1], 0, (createInfoCount - i - 1) * sizeof(VkShaderEXT));
+            return vk_error(device, VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT);
+         }
+         return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
+   }
+   return VK_SUCCESS;
+}
+
+
+VKAPI_ATTR VkResult VKAPI_CALL lvp_GetShaderBinaryDataEXT(
+    VkDevice                                    device,
+    VkShaderEXT                                 _shader,
+    size_t*                                     pDataSize,
+    void*                                       pData)
+{
+   LVP_FROM_HANDLE(lvp_shader, shader, _shader);
+   VkResult ret = VK_SUCCESS;
+   if (pData) {
+      if (*pDataSize < shader->blob.size + SHA1_DIGEST_LENGTH) {
+         ret = VK_INCOMPLETE;
+         *pDataSize = 0;
+      } else {
+         *pDataSize = MIN2(*pDataSize, shader->blob.size + SHA1_DIGEST_LENGTH);
+         struct mesa_sha1 sctx;
+         _mesa_sha1_init(&sctx);
+         _mesa_sha1_update(&sctx, shader->blob.data, shader->blob.size);
+         _mesa_sha1_final(&sctx, pData);
+         uint8_t *data = pData;
+         memcpy(data + SHA1_DIGEST_LENGTH, shader->blob.data, shader->blob.size);
+      }
+   } else {
+      *pDataSize = shader->blob.size + SHA1_DIGEST_LENGTH;
+   }
+   return ret;
 }
