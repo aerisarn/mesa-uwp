@@ -349,7 +349,7 @@ validate_alu_dest(nir_alu_instr *instr, validate_state *state)
     * validate that the instruction doesn't write to components not in the
     * register/SSA value
     */
-   validate_assert(state, !(dest->write_mask & ~((1 << dest_size) - 1)));
+   validate_assert(state, !(dest->write_mask & ~nir_component_mask(dest_size)));
 
    /* validate that saturate is only ever used on instructions with
     * destinations of type float
