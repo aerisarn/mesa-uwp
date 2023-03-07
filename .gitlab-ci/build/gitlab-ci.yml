@@ -329,19 +329,13 @@ debian-android:
       -Wno-error=constant-conversion
       -Wno-error=enum-conversion
       -Wno-error=initializer-overrides
-      -Wno-error=missing-braces
       -Wno-error=sometimes-uninitialized
-      -Wno-error=unused-function
       -Wno-error=implicit-const-int-float-conversion
-      -Wno-error=bitwise-instead-of-logical
     CPP_ARGS: >
-      -Wno-error=deprecated-declarations
-      -Wno-error=non-virtual-dtor
       -Wno-error=c99-designator
       -Wno-error=unused-variable
       -Wno-error=unused-but-set-variable
       -Wno-error=self-assign
-      -Wno-error=bitwise-instead-of-logical
     DRI_LOADERS: >
       -D glx=disabled
       -D gbm=disabled
