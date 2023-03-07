@@ -1398,6 +1398,10 @@ struct zink_screen {
 
    struct {
       bool broken_l4a4;
+      /* https://gitlab.khronos.org/vulkan/vulkan/-/issues/3306
+       * HI TURNIP
+       */
+      bool broken_cache_semantics;
       bool implicit_sync;
       bool always_feedback_loop;
       bool always_feedback_loop_zs;
