@@ -1894,8 +1894,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    case aco_opcode::v_med3_f16:
    case aco_opcode::v_med3_f32: { /* clamp */
       VALU_instruction& vop3 = instr->valu();
-      if (vop3.abs[0] || vop3.abs[1] || vop3.abs[2] || vop3.neg[0] || vop3.neg[1] || vop3.neg[2] ||
-          vop3.omod != 0 || vop3.opsel != 0)
+      if (vop3.abs != 0 || vop3.neg != 0 || vop3.omod != 0 || vop3.opsel != 0)
          break;
 
       unsigned idx = 0;
@@ -2343,8 +2342,8 @@ combine_comparison_ordering(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       VALU_instruction* new_vop3 =
          create_instruction<VALU_instruction>(new_op, asVOP3(Format::VOPC), 2, 1);
       VALU_instruction& cmp_vop3 = cmp->valu();
-      std::copy(std::cbegin(cmp_vop3.neg), std::cend(cmp_vop3.neg), std::begin(new_vop3->neg));
-      std::copy(std::cbegin(cmp_vop3.abs), std::cend(cmp_vop3.abs), std::begin(new_vop3->abs));
+      new_vop3->neg = cmp_vop3.neg;
+      new_vop3->abs = cmp_vop3.abs;
       new_vop3->clamp = cmp_vop3.clamp;
       new_vop3->omod = cmp_vop3.omod;
       new_vop3->opsel = cmp_vop3.opsel;
@@ -2544,8 +2543,8 @@ combine_constant_comparison_ordering(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       VALU_instruction* new_vop3 =
          create_instruction<VALU_instruction>(new_op, asVOP3(Format::VOPC), 2, 1);
       VALU_instruction& cmp_vop3 = cmp->valu();
-      std::copy(std::cbegin(cmp_vop3.neg), std::cend(cmp_vop3.neg), std::begin(new_vop3->neg));
-      std::copy(std::cbegin(cmp_vop3.abs), std::cend(cmp_vop3.abs), std::begin(new_vop3->abs));
+      new_vop3->neg = cmp_vop3.neg;
+      new_vop3->abs = cmp_vop3.abs;
       new_vop3->clamp = cmp_vop3.clamp;
       new_vop3->omod = cmp_vop3.omod;
       new_vop3->opsel = cmp_vop3.opsel;
