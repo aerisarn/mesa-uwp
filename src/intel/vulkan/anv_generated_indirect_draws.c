@@ -270,7 +270,7 @@ compile_upload_spirv(struct anv_device *device,
    if (wm_prog_data.dispatch_32) {
       assert(stats[stat_idx].spills == 0);
       assert(stats[stat_idx].fills == 0);
-      assert(stats[stat_idx].sends == sends_count_expectation);
+      assert(stats[stat_idx].sends == sends_count_expectation * 2);
       stat_idx++;
    }
 
