@@ -707,7 +707,13 @@ nir_visitor::visit(ir_variable *ir)
       var->state_slots = NULL;
    }
 
-   var->constant_initializer = constant_copy(ir->constant_initializer, var);
+   /* Values declared const will have ir->constant_value instead of
+    * ir->constant_initializer.
+    */
+   if (ir->constant_initializer)
+      var->constant_initializer = constant_copy(ir->constant_initializer, var);
+   else
+      var->constant_initializer = constant_copy(ir->constant_value, var);
 
    if (var->data.mode == nir_var_function_temp)
       nir_function_impl_add_variable(impl, var);
