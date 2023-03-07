@@ -301,7 +301,7 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->stream_uploader = u_upload_create_default(ctx);
    if (!ctx->stream_uploader) {
-      free(ctx);
+      ralloc_free(ice);
       return NULL;
    }
    ctx->const_uploader = u_upload_create(ctx, 1024 * 1024,
@@ -310,7 +310,7 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
                                          IRIS_RESOURCE_FLAG_DEVICE_MEM);
    if (!ctx->const_uploader) {
       u_upload_destroy(ctx->stream_uploader);
-      free(ctx);
+      ralloc_free(ice);
       return NULL;
    }
 
