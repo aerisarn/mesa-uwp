@@ -39,26 +39,36 @@
 
 #define MAX_DYNAMIC_STATES 72
 
+typedef void (*cso_destroy_func)(struct pipe_context*, void*);
+
+static void
+shader_destroy(struct lvp_device *device, struct lvp_shader *shader)
+{
+   if (!shader->pipeline_nir)
+      return;
+   gl_shader_stage stage = shader->pipeline_nir->nir->info.stage;
+   cso_destroy_func destroy[] = {
+      device->queue.ctx->delete_vs_state,
+      device->queue.ctx->delete_tcs_state,
+      device->queue.ctx->delete_tes_state,
+      device->queue.ctx->delete_gs_state,
+      device->queue.ctx->delete_fs_state,
+      device->queue.ctx->delete_compute_state,
+   };
+   if (shader->shader_cso)
+      destroy[stage](device->queue.ctx, shader->shader_cso);
+   if (shader->tess_ccw_cso)
+      destroy[stage](device->queue.ctx, shader->tess_ccw_cso);
+
+   lvp_pipeline_nir_ref(&shader->pipeline_nir, NULL);
+   lvp_pipeline_nir_ref(&shader->tess_ccw, NULL);
+}
+
 void
 lvp_pipeline_destroy(struct lvp_device *device, struct lvp_pipeline *pipeline)
 {
-   if (pipeline->shaders[MESA_SHADER_VERTEX].shader_cso)
-      device->queue.ctx->delete_vs_state(device->queue.ctx, pipeline->shaders[MESA_SHADER_VERTEX].shader_cso);
-   if (pipeline->shaders[MESA_SHADER_FRAGMENT].shader_cso && !pipeline->noop_fs)
-      device->queue.ctx->delete_fs_state(device->queue.ctx, pipeline->shaders[MESA_SHADER_FRAGMENT].shader_cso);
-   if (pipeline->shaders[MESA_SHADER_GEOMETRY].shader_cso)
-      device->queue.ctx->delete_gs_state(device->queue.ctx, pipeline->shaders[MESA_SHADER_GEOMETRY].shader_cso);
-   if (pipeline->shaders[MESA_SHADER_TESS_CTRL].shader_cso)
-      device->queue.ctx->delete_tcs_state(device->queue.ctx, pipeline->shaders[MESA_SHADER_TESS_CTRL].shader_cso);
-   if (pipeline->shaders[MESA_SHADER_TESS_EVAL].shader_cso)
-      device->queue.ctx->delete_tes_state(device->queue.ctx, pipeline->shaders[MESA_SHADER_TESS_EVAL].shader_cso);
-   if (pipeline->shaders[MESA_SHADER_COMPUTE].shader_cso)
-      device->queue.ctx->delete_compute_state(device->queue.ctx, pipeline->shaders[MESA_SHADER_COMPUTE].shader_cso);
-
-   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      lvp_pipeline_nir_ref(&pipeline->shaders[i].pipeline_nir, NULL);
-      lvp_pipeline_nir_ref(&pipeline->shaders[i].tess_ccw, NULL);
-   }
+   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++)
+      shader_destroy(device, &pipeline->shaders[i]);
 
    if (pipeline->layout)
       vk_pipeline_layout_unref(&device->vk, &pipeline->layout->vk);
