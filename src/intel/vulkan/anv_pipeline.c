@@ -1631,6 +1631,8 @@ anv_graphics_pipeline_load_nir(struct anv_graphics_pipeline *pipeline,
          return vk_error(pipeline, VK_ERROR_UNKNOWN);
       }
 
+      nir_shader_gather_info(stages[s].nir, nir_shader_get_entrypoint(stages[s].nir));
+
       stages[s].feedback.duration += os_time_get_nano() - stage_start;
    }
 
