@@ -5108,40 +5108,29 @@ apply_literals(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          has_dead_literal |= ctx.uses[instr->operands[i].tempId()] == 0;
 
       if (has_dead_literal && info->fp16_mask) {
-         aco_ptr<Instruction> fma_mix(
-            create_instruction<VALU_instruction>(aco_opcode::v_fma_mix_f32, Format::VOP3P, 3, 1));
-
-         fma_mix->valu().clamp = instr->valu().clamp;
-         std::copy(std::cbegin(instr->valu().abs), std::cend(instr->valu().abs),
-                   std::begin(fma_mix->valu().neg_hi));
-         std::copy(std::cbegin(instr->valu().neg), std::cend(instr->valu().neg),
-                   std::begin(fma_mix->valu().neg_lo));
+         instr->format = Format::VOP3P;
+         instr->opcode = aco_opcode::v_fma_mix_f32;
 
          uint32_t literal = 0;
          bool second = false;
          u_foreach_bit (i, info->fp16_mask) {
             float value = uif(ctx.info[instr->operands[i].tempId()].val);
             literal |= _mesa_float_to_half(value) << (second * 16);
-            fma_mix->valu().opsel_lo |= second << i;
-            fma_mix->valu().opsel_hi |= 1 << i;
+            instr->valu().opsel_lo |= second << i;
+            instr->valu().opsel_hi |= 1 << i;
             second = true;
          }
 
          for (unsigned i = 0; i < 3; i++) {
             if (info->fp16_mask & (1 << i))
-               fma_mix->operands[i] = Operand::literal32(literal);
-            else
-               fma_mix->operands[i] = instr->operands[i];
+               instr->operands[i] = Operand::literal32(literal);
          }
 
-         fma_mix->definitions[0] = instr->definitions[0];
-         ctx.instructions.emplace_back(std::move(fma_mix));
+         ctx.instructions.emplace_back(std::move(instr));
          return;
       }
 
       if (has_dead_literal || madak) {
-         aco_ptr<Instruction> new_mad;
-
          aco_opcode new_op = madak ? aco_opcode::v_madak_f32 : aco_opcode::v_madmk_f32;
          if (instr->opcode == aco_opcode::v_fma_f32)
             new_op = madak ? aco_opcode::v_fmaak_f32 : aco_opcode::v_fmamk_f32;
@@ -5152,24 +5141,22 @@ apply_literals(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             new_op = madak ? aco_opcode::v_fmaak_f16 : aco_opcode::v_fmamk_f16;
 
          uint32_t literal = ctx.info[instr->operands[ffs(info->literal_mask) - 1].tempId()].val;
-         new_mad.reset(create_instruction<VALU_instruction>(new_op, Format::VOP2, 3, 1));
+         instr->format = Format::VOP2;
+         instr->opcode = new_op;
          for (unsigned i = 0; i < 3; i++) {
             if (info->literal_mask & (1 << i))
-               new_mad->operands[i] = Operand::literal32(literal);
-            else
-               new_mad->operands[i] = instr->operands[i];
+               instr->operands[i] = Operand::literal32(literal);
          }
          if (madak) { /* add literal -> madak */
-            if (!new_mad->operands[1].isTemp() ||
-                new_mad->operands[1].getTemp().type() == RegType::sgpr)
-               std::swap(new_mad->operands[0], new_mad->operands[1]);
+            if (!instr->operands[1].isTemp() ||
+                instr->operands[1].getTemp().type() == RegType::sgpr)
+               std::swap(instr->operands[0], instr->operands[1]);
          } else { /* mul literal -> madmk */
             if (!(info->literal_mask & 0b10))
-               std::swap(new_mad->operands[0], new_mad->operands[1]);
-            std::swap(new_mad->operands[1], new_mad->operands[2]);
+               std::swap(instr->operands[0], instr->operands[1]);
+            std::swap(instr->operands[1], instr->operands[2]);
          }
-         new_mad->definitions[0] = instr->definitions[0];
-         ctx.instructions.emplace_back(std::move(new_mad));
+         ctx.instructions.emplace_back(std::move(instr));
          return;
       }
    }
