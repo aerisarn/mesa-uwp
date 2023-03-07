@@ -559,6 +559,31 @@ radv_generate_rt_pipeline_key(const struct radv_ray_tracing_pipeline *pipeline,
    return key;
 }
 
+static void
+combine_config(struct ac_shader_config *config, struct ac_shader_config *other)
+{
+   config->num_sgprs = MAX2(config->num_sgprs, other->num_sgprs);
+   config->num_vgprs = MAX2(config->num_vgprs, other->num_vgprs);
+   config->num_shared_vgprs = MAX2(config->num_shared_vgprs, other->num_shared_vgprs);
+   config->spilled_sgprs = MAX2(config->spilled_sgprs, other->spilled_sgprs);
+   config->spilled_vgprs = MAX2(config->spilled_vgprs, other->spilled_vgprs);
+   config->lds_size = MAX2(config->lds_size, other->lds_size);
+   config->scratch_bytes_per_wave =
+      MAX2(config->scratch_bytes_per_wave, other->scratch_bytes_per_wave);
+
+   assert(config->float_mode == other->float_mode);
+}
+
+static void
+postprocess_rt_config(struct ac_shader_config *config, unsigned wave_size)
+{
+   config->rsrc1 = (config->rsrc1 & C_00B848_VGPRS) |
+                   S_00B848_VGPRS((config->num_vgprs - 1) / (wave_size == 32 ? 8 : 4));
+   config->rsrc2 = (config->rsrc2 & C_00B84C_LDS_SIZE) | S_00B84C_LDS_SIZE(config->lds_size);
+   config->rsrc3 = (config->rsrc3 & C_00B8A0_SHARED_VGPR_CNT) |
+                   S_00B8A0_SHARED_VGPR_CNT(config->num_shared_vgprs / 8);
+}
+
 static VkResult
 radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
                         const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
