@@ -2317,7 +2317,6 @@ agx_preprocess_nir(nir_shader *nir, bool support_lod_bias)
    NIR_PASS_V(nir, nir_lower_ssbo);
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       NIR_PASS_V(nir, agx_nir_lower_frag_sidefx);
-      NIR_PASS_V(nir, agx_nir_lower_zs_emit);
 
       /* Interpolate varyings at fp16 and write to the tilebuffer at fp16. As an
        * exception, interpolate flat shaded at fp32. This works around a
@@ -2404,6 +2403,11 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
          out->depth_layout = FRAG_DEPTH_LAYOUT_ANY;
       else
          out->depth_layout = layout;
+   }
+
+   /* Late clip plane lowering created discards */
+   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS_V(nir, agx_nir_lower_zs_emit);
    }
 
    /* Late sysval lowering creates large loads. Load lowering creates unpacks */
