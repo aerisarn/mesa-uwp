@@ -1038,8 +1038,7 @@ emit_idot_instruction(isel_context* ctx, nir_alu_instr* instr, aco_opcode op, Te
    VALU_instruction& vop3p =
       bld.vop3p(op, Definition(dst), src[0], src[1], src[2], 0x0, 0x7)->valu();
    vop3p.clamp = clamp;
-   u_foreach_bit (i, neg_lo)
-      vop3p.neg_lo[i] = true;
+   vop3p.neg_lo = neg_lo;
 }
 
 void

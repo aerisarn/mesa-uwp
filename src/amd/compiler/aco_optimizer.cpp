@@ -3741,17 +3741,15 @@ propagate_swizzles(VALU_instruction* instr, uint8_t opsel_lo, uint8_t opsel_hi)
    assert((opsel_hi & 1) == opsel_hi);
    uint8_t tmp_lo = instr->opsel_lo;
    uint8_t tmp_hi = instr->opsel_hi;
-   bool neg_lo[3] = {instr->neg_lo[0], instr->neg_lo[1], instr->neg_lo[2]};
-   bool neg_hi[3] = {instr->neg_hi[0], instr->neg_hi[1], instr->neg_hi[2]};
+   uint8_t neg_lo = instr->neg_lo;
+   uint8_t neg_hi = instr->neg_hi;
    if (opsel_lo == 1) {
       instr->opsel_lo = tmp_hi;
-      for (unsigned i = 0; i < 3; i++)
-         instr->neg_lo[i] = neg_hi[i];
+      instr->neg_lo = neg_hi;
    }
    if (opsel_hi == 0) {
       instr->opsel_hi = tmp_lo;
-      for (unsigned i = 0; i < 3; i++)
-         instr->neg_hi[i] = neg_lo[i];
+      instr->neg_hi = neg_lo;
    }
 }
 
