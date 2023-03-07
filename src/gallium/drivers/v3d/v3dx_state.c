@@ -1296,9 +1296,12 @@ v3d_set_stream_output_targets(struct pipe_context *pctx,
         if (num_targets == 0 && so->num_targets > 0)
                 v3d_update_primitive_counters(ctx);
 
+        /* If offset is (unsigned) -1, it means continue appending to the
+         * buffer at the existing offset.
+         */
         for (i = 0; i < num_targets; i++) {
-                if (offsets[i] != -1)
-                        so->offsets[i] = offsets[i];
+                if (offsets[i] != (unsigned)-1)
+                        v3d_stream_output_target(targets[i])->offset = offsets[i];
 
                 pipe_so_target_reference(&so->targets[i], targets[i]);
         }

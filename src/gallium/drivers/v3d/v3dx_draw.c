@@ -1261,7 +1261,8 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
          * needs some clamping to the buffer size.
          */
         for (int i = 0; i < v3d->streamout.num_targets; i++)
-                v3d->streamout.offsets[i] += draws[0].count;
+                v3d_stream_output_target(v3d->streamout.targets[i])->offset +=
+                        draws[0].count;
 
         if (v3d->zsa && job->zsbuf && v3d->zsa->base.depth_enabled) {
                 struct v3d_resource *rsc = v3d_resource(job->zsbuf->texture);
