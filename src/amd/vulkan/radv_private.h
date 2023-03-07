@@ -2343,6 +2343,7 @@ VkResult radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
                                       const VkAllocationCallbacks *pAllocator,
                                       VkPipeline *pPipeline);
 
+bool radv_pipeline_capture_shaders(const struct radv_device *device, VkPipelineCreateFlags flags);
 bool radv_pipeline_capture_shader_stats(const struct radv_device *device,
                                         VkPipelineCreateFlags flags);
 

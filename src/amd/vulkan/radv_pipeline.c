@@ -3358,7 +3358,7 @@ radv_pipeline_create_ps_epilog(struct radv_graphics_pipeline *pipeline,
    return true;
 }
 
-static bool
+bool
 radv_pipeline_capture_shaders(const struct radv_device *device, VkPipelineCreateFlags flags)
 {
    return (flags & VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR) ||
