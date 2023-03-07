@@ -3834,6 +3834,8 @@ zink_check_transfer_dst_barrier(struct zink_resource *res, unsigned level, const
 void
 zink_resource_image_transfer_dst_barrier(struct zink_context *ctx, struct zink_resource *res, unsigned level, const struct pipe_box *box)
 {
+   if (res->obj->copies_need_reset)
+      zink_resource_copies_reset(res);
    /* skip TRANSFER_DST barrier if no intersection from previous copies */
    if (res->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL || zink_resource_copy_box_intersects(res, level, box)) {
       zink_screen(ctx->base.screen)->image_barrier(ctx, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
@@ -3848,6 +3850,8 @@ zink_resource_image_transfer_dst_barrier(struct zink_context *ctx, struct zink_r
 void
 zink_resource_buffer_transfer_dst_barrier(struct zink_context *ctx, struct zink_resource *res, unsigned offset, unsigned size)
 {
+   if (res->obj->copies_need_reset)
+      zink_resource_copies_reset(res);
    struct pipe_box box = {offset, 0, 0, size, 0, 0};
    /* must barrier if something read the valid buffer range */
    bool valid_read = res->obj->access && util_ranges_intersect(&res->valid_buffer_range, offset, offset + size) && !unordered_res_exec(ctx, res, true);

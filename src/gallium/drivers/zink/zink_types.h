@@ -1120,6 +1120,7 @@ struct zink_resource_object {
    bool unordered_read;
    bool unordered_write;
    bool copies_valid;
+   bool copies_need_reset; //for use with batch state resets
 
    unsigned persistent_maps; //if nonzero, requires vkFlushMappedMemoryRanges during batch use
    struct util_dynarray copies[16]; //regions being copied to; for barrier omission

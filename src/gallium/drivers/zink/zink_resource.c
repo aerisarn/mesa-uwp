@@ -2364,6 +2364,7 @@ zink_resource_copies_reset(struct zink_resource *res)
    for (unsigned i = 0; i < max_level; i++)
       util_dynarray_clear(&res->obj->copies[i]);
    res->obj->copies_valid = false;
+   res->obj->copies_need_reset = false;
 }
 
 static void

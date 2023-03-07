@@ -33,6 +33,7 @@ reset_obj(struct zink_screen *screen, struct zink_batch_state *bs, struct zink_r
       obj->access = 0;
       obj->last_write = 0;
       obj->access_stage = 0;
+      obj->copies_need_reset = true;
       /* also prune dead view objects */
       simple_mtx_lock(&obj->view_lock);
       if (obj->is_buffer) {
