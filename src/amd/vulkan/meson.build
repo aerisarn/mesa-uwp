@@ -60,6 +60,7 @@ libradv_files = files(
   'winsys/null/radv_null_winsys_public.h',
   'radv_acceleration_structure.c',
   'radv_android.c',
+  'radv_buffer.c',
   'radv_cmd_buffer.c',
   'radv_cp_reg_shadowing.c',
   'radv_cs.h',
