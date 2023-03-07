@@ -2549,6 +2549,7 @@ bool radv_layout_dcc_compressed(const struct radv_device *device, const struct r
 
 enum radv_fmask_compression {
    RADV_FMASK_COMPRESSION_NONE,
+   RADV_FMASK_COMPRESSION_PARTIAL,
    RADV_FMASK_COMPRESSION_FULL,
 };
 

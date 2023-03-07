@@ -2465,6 +2465,12 @@ radv_layout_fmask_compression(const struct radv_device *device, const struct rad
    if (layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && (queue_mask & (1u << RADV_QUEUE_COMPUTE)))
       return RADV_FMASK_COMPRESSION_NONE;
 
+   if (layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ||
+       layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+      return radv_image_is_tc_compat_cmask(image) ? RADV_FMASK_COMPRESSION_FULL :
+         RADV_FMASK_COMPRESSION_PARTIAL;
+   }
+
    /* Only compress concurrent images if TC-compat CMASK is enabled (no FMASK decompression). */
    return (queue_mask == (1u << RADV_QUEUE_GENERAL) || radv_image_is_tc_compat_cmask(image)) ?
       RADV_FMASK_COMPRESSION_FULL : RADV_FMASK_COMPRESSION_NONE;
