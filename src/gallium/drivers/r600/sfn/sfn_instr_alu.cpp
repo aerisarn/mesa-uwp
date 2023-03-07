@@ -509,6 +509,13 @@ bool AluInstr::can_replace_source(PRegister old_src, PVirtualValue new_src)
              addr_reg->has_flag(Register::addr_or_idx))
             return false;
       }
+      if (m_dest->has_flag(Register::addr_or_idx)) {
+         if (new_src->pin() == pin_array) {
+            auto s = static_cast<const LocalArrayValue *>(new_src)->addr();
+            if (!s->as_inline_const() || !s->as_literal())
+               return false;
+         }
+      }
    }
    return true;
 }
