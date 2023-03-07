@@ -244,6 +244,7 @@ enum sbt_type {
 };
 
 enum sbt_entry {
+   SBT_RECURSIVE_PTR = offsetof(struct radv_pipeline_group_handle, recursive_shader_ptr),
    SBT_GENERAL_IDX = offsetof(struct radv_pipeline_group_handle, general_index),
    SBT_CLOSEST_HIT_IDX = offsetof(struct radv_pipeline_group_handle, closest_hit_index),
    SBT_INTERSECTION_IDX = offsetof(struct radv_pipeline_group_handle, intersection_index),

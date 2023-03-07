@@ -2197,6 +2197,8 @@ enum radv_pipeline_type {
 };
 
 struct radv_pipeline_group_handle {
+   uint64_t recursive_shader_ptr;
+
    union {
       uint32_t general_index;
       uint32_t closest_hit_index;

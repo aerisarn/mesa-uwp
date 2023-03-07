@@ -178,6 +178,8 @@ radv_rt_fill_group_info(struct radv_device *device,
                dst->any_hit_shader += stage_count;
             if (dst->intersection_shader != VK_SHADER_UNUSED_KHR)
                dst->intersection_shader += stage_count;
+            /* Don't set the shader VA since the handles are part of the pipeline hash */
+            dst->handle.recursive_shader_ptr = 0;
          }
          idx += library_pipeline->group_count;
          stage_count += library_pipeline->stage_count;
