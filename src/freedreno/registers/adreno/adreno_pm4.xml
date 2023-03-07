@@ -1918,6 +1918,8 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 	<reg32 offset="0" name="0">
 		<bitfield name="TRACKER" low="0" high="3" type="reg_tracker"/>
 	</reg32>
+	<reg32 offset="1" name="1"/>
+	<reg32 offset="2" name="2"/>
 </domain>
 
 <domain name="CP_SMMU_TABLE_UPDATE" width="32">
