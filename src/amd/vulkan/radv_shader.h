@@ -528,6 +528,7 @@ struct radv_shader_part {
 };
 
 struct radv_pipeline_layout;
+struct radv_pipeline_stage;
 
 void radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively);
 void radv_optimize_nir_algebraic(nir_shader *shader, bool opt_offsets);
@@ -538,6 +539,11 @@ void radv_nir_apply_pipeline_layout(nir_shader *shader, struct radv_device *devi
                                     const struct radv_pipeline_layout *layout,
                                     const struct radv_shader_info *info,
                                     const struct radv_shader_args *args);
+
+void radv_postprocess_nir(struct radv_pipeline *pipeline,
+                          const struct radv_pipeline_layout *pipeline_layout,
+                          const struct radv_pipeline_key *pipeline_key, unsigned last_vgt_api_stage,
+                          struct radv_pipeline_stage *stage);
 
 struct radv_pipeline_stage;
 

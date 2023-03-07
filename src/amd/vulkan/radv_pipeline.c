@@ -3101,11 +3101,10 @@ ycbcr_conversion_lookup(const void *data, uint32_t set, uint32_t binding, uint32
    return ycbcr_samplers + array_index;
 }
 
-static void
+void
 radv_postprocess_nir(struct radv_pipeline *pipeline,
                      const struct radv_pipeline_layout *pipeline_layout,
-                     const struct radv_pipeline_key *pipeline_key,
-                     unsigned last_vgt_api_stage,
+                     const struct radv_pipeline_key *pipeline_key, unsigned last_vgt_api_stage,
                      struct radv_pipeline_stage *stage)
 {
    struct radv_device *device = pipeline->device;
