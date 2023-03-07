@@ -6189,17 +6189,10 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
             bld.OR(dst, dst, raw_id);
          }
 
-         /* LaneID[0:3] << 0 (We build up LaneID by putting the right number
-          *                   in each lane)
-          */
-         fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_UW);
-         const fs_builder ubld8 = bld.exec_all().group(8, 0);
-         ubld8.MOV(quarter(tmp, 0), brw_imm_v(0x76543210));
-         if (bld.dispatch_width() == 16) {
-            /* Sets 0xfedcba98 to the upper part of the register. */
-            ubld8.ADD(quarter(tmp, 1), quarter(tmp, 0), brw_imm_ud(8));
-         }
-         bld.ADD(dst, dst, tmp);
+         /* LaneID[0:3] << 0 (Use nir SYSTEM_VALUE_SUBGROUP_INVOCATION) */
+         assert(bld.dispatch_width() <= 16); /* Limit to 4 bits */
+         bld.ADD(dst, dst,
+                 nir_system_values[SYSTEM_VALUE_SUBGROUP_INVOCATION]);
          break;
       }
       default:
