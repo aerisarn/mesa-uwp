@@ -62,7 +62,7 @@ struct BitmaskEnum {
    FOREACH_TYPE(BOP, &)
 #undef BOP
 
-#if defined(__GNUC__) && !defined(__clang) && (__GNUC__ <= 10)
+#if defined(__GNUC__) && !defined(__clang)
 /*
  * Silence:
  *
