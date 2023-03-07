@@ -215,6 +215,7 @@ reserve_live_in(struct ra_ctx *rctx)
 static void
 assign_regs(struct ra_ctx *rctx, agx_index v, unsigned reg)
 {
+   assert(reg < rctx->bound && "must not overflow register file");
    assert(v.type == AGX_INDEX_NORMAL && "only SSA gets registers allocated");
    rctx->ssa_to_reg[v.value] = reg;
 
