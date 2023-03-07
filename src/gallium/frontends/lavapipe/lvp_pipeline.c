@@ -365,6 +365,15 @@ lvp_shader_optimize(nir_shader *nir)
    nir_sweep(nir);
 }
 
+static struct lvp_pipeline_nir *
+create_pipeline_nir(nir_shader *nir)
+{
+   struct lvp_pipeline_nir *pipeline_nir = ralloc(NULL, struct lvp_pipeline_nir);
+   pipeline_nir->nir = nir;
+   pipeline_nir->ref_cnt = 1;
+   return pipeline_nir;
+}
+
 static VkResult
 compile_spirv(struct lvp_device *pdevice, const VkPipelineShaderStageCreateInfo *sinfo, nir_shader **nir)
 {
@@ -517,9 +526,7 @@ lvp_shader_lower(struct lvp_device *pdevice, nir_shader *nir, struct lvp_shader 
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    if (impl->ssa_alloc > 100) //skip for small shaders
       shader->inlines.must_inline = lvp_find_inlinable_uniforms(shader, nir);
-   shader->pipeline_nir = ralloc(NULL, struct lvp_pipeline_nir);
-   shader->pipeline_nir->nir = nir;
-   shader->pipeline_nir->ref_cnt = 1;
+   shader->pipeline_nir = create_pipeline_nir(nir);
 }
 
 static VkResult
@@ -874,9 +881,7 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
       merge_tess_info(&pipeline->shaders[MESA_SHADER_TESS_EVAL].pipeline_nir->nir->info, &pipeline->shaders[MESA_SHADER_TESS_CTRL].pipeline_nir->nir->info);
       if (BITSET_TEST(pipeline->graphics_state.dynamic,
                       MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN)) {
-         pipeline->shaders[MESA_SHADER_TESS_EVAL].tess_ccw = ralloc(NULL, struct lvp_pipeline_nir);
-         pipeline->shaders[MESA_SHADER_TESS_EVAL].tess_ccw->ref_cnt = 1;
-         pipeline->shaders[MESA_SHADER_TESS_EVAL].tess_ccw->nir = nir_shader_clone(NULL, pipeline->shaders[MESA_SHADER_TESS_EVAL].pipeline_nir->nir);
+         pipeline->shaders[MESA_SHADER_TESS_EVAL].tess_ccw = create_pipeline_nir(nir_shader_clone(NULL, pipeline->shaders[MESA_SHADER_TESS_EVAL].pipeline_nir->nir));
          pipeline->shaders[MESA_SHADER_TESS_EVAL].tess_ccw->nir->info.tess.ccw = !pipeline->shaders[MESA_SHADER_TESS_EVAL].pipeline_nir->nir->info.tess.ccw;
       } else if (pipeline->graphics_state.ts->domain_origin == VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT) {
          pipeline->shaders[MESA_SHADER_TESS_EVAL].pipeline_nir->nir->info.tess.ccw = !pipeline->shaders[MESA_SHADER_TESS_EVAL].pipeline_nir->nir->info.tess.ccw;
