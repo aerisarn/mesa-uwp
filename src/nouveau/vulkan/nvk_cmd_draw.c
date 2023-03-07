@@ -78,7 +78,7 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
 {
    struct nvk_device *dev = nvk_queue_device(queue);
 
-   uint32_t push_data[1024 + 512];
+   uint32_t push_data[2048];
    struct nv_push push;
    nv_push_init(&push, push_data, ARRAY_SIZE(push_data));
    struct nv_push *p = &push;
@@ -1582,6 +1582,7 @@ nvk_mme_build_set_draw_params(struct mme_builder *b,
    mme_emit(b, p->first_vertex);
    mme_emit(b, p->first_instance);
    mme_emit(b, p->draw_idx);
+   mme_emit(b, mme_zero() /* view_index */);
 
    mme_mthd(b, NV9097_SET_GLOBAL_BASE_VERTEX_INDEX);
    mme_emit(b, p->base_vertex);
@@ -1639,8 +1640,46 @@ nvk_mme_build_draw(struct mme_builder *b,
    if (b->devinfo->cls_eng3d < TURING_A)
       nvk_mme_spill(b, DRAW_IDX, draw_idx);
 
-   nvk_mme_build_draw_loop(b, instance_count,
-                           first_vertex, vertex_count);
+   struct mme_value view_mask = nvk_mme_load_scratch(b, VIEW_MASK);
+   mme_if(b, ieq, view_mask, mme_zero()) {
+      mme_free_reg(b, view_mask);
+
+      nvk_mme_build_draw_loop(b, instance_count,
+                              first_vertex, vertex_count);
+   }
+
+   view_mask = nvk_mme_load_scratch(b, VIEW_MASK);
+   mme_if(b, ine, view_mask, mme_zero()) {
+      mme_free_reg(b, view_mask);
+
+      struct mme_value view = mme_mov(b, mme_zero());
+      mme_while(b, ine, view, mme_imm(32)) {
+         view_mask = nvk_mme_load_scratch(b, VIEW_MASK);
+         struct mme_value has_view = mme_bfe(b, view_mask, view, 1);
+         mme_free_reg(b, view_mask);
+         mme_if(b, ine, has_view, mme_zero()) {
+            mme_free_reg(b, has_view);
+
+            /* Set the push constant */
+            mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
+            mme_emit(b, mme_imm(nvk_root_descriptor_offset(draw.view_index)));
+            mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
+            mme_emit(b, view);
+
+            /* Set the layer to the view index */
+            STATIC_ASSERT(DRF_LO(NV9097_SET_RT_LAYER_V) == 0);
+            STATIC_ASSERT(NV9097_SET_RT_LAYER_CONTROL_V_SELECTS_LAYER == 0);
+            mme_mthd(b, NV9097_SET_RT_LAYER);
+            mme_emit(b, view);
+
+            nvk_mme_build_draw_loop(b, instance_count,
+                                    first_vertex, vertex_count);
+         }
+
+         mme_add_to(b, view, view, mme_imm(1));
+      }
+      mme_free_reg(b, view);
+   }
 
    mme_free_reg(b, instance_count);
    mme_free_reg(b, first_vertex);
@@ -1654,6 +1693,7 @@ void
 nvk_mme_draw(struct mme_builder *b)
 {
    nvk_mme_load_to_scratch(b, DRAW_BEGIN);
+   nvk_mme_load_to_scratch(b, VIEW_MASK);
 
    nvk_mme_build_draw(b, mme_zero());
 }
@@ -1679,9 +1719,10 @@ nvk_CmdDraw(VkCommandBuffer commandBuffer,
       .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
    });
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 6);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 7);
    P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW));
    P_INLINE_DATA(p, begin);
+   P_INLINE_DATA(p, cmd->state.gfx.render.view_mask);
    P_INLINE_DATA(p, vertexCount);
    P_INLINE_DATA(p, instanceCount);
    P_INLINE_DATA(p, firstVertex);
@@ -1738,8 +1779,46 @@ nvk_mme_build_draw_indexed(struct mme_builder *b,
    if (b->devinfo->cls_eng3d < TURING_A)
       nvk_mme_spill(b, DRAW_IDX, draw_idx);
 
-   nvk_mme_build_draw_indexed_loop(b, instance_count,
-                                   first_index, index_count);
+   struct mme_value view_mask = nvk_mme_load_scratch(b, VIEW_MASK);
+   mme_if(b, ieq, view_mask, mme_zero()) {
+      mme_free_reg(b, view_mask);
+
+      nvk_mme_build_draw_indexed_loop(b, instance_count,
+                                      first_index, index_count);
+   }
+
+   view_mask = nvk_mme_load_scratch(b, VIEW_MASK);
+   mme_if(b, ine, view_mask, mme_zero()) {
+      mme_free_reg(b, view_mask);
+
+      struct mme_value view = mme_mov(b, mme_zero());
+      mme_while(b, ine, view, mme_imm(32)) {
+         view_mask = nvk_mme_load_scratch(b, VIEW_MASK);
+         struct mme_value has_view = mme_bfe(b, view_mask, view, 1);
+         mme_free_reg(b, view_mask);
+         mme_if(b, ine, has_view, mme_zero()) {
+            mme_free_reg(b, has_view);
+
+            /* Set the push constant */
+            mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
+            mme_emit(b, mme_imm(nvk_root_descriptor_offset(draw.view_index)));
+            mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
+            mme_emit(b, view);
+
+            /* Set the layer to the view index */
+            STATIC_ASSERT(DRF_LO(NV9097_SET_RT_LAYER_V) == 0);
+            STATIC_ASSERT(NV9097_SET_RT_LAYER_CONTROL_V_SELECTS_LAYER == 0);
+            mme_mthd(b, NV9097_SET_RT_LAYER);
+            mme_emit(b, view);
+
+            nvk_mme_build_draw_indexed_loop(b, instance_count,
+                                            first_index, index_count);
+         }
+
+         mme_add_to(b, view, view, mme_imm(1));
+      }
+      mme_free_reg(b, view);
+   }
 
    mme_free_reg(b, instance_count);
    mme_free_reg(b, first_index);
@@ -1753,6 +1832,7 @@ void
 nvk_mme_draw_indexed(struct mme_builder *b)
 {
    nvk_mme_load_to_scratch(b, DRAW_BEGIN);
+   nvk_mme_load_to_scratch(b, VIEW_MASK);
 
    nvk_mme_build_draw_indexed(b, mme_zero());
 }
@@ -1779,9 +1859,10 @@ nvk_CmdDrawIndexed(VkCommandBuffer commandBuffer,
       .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
    });
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 7);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 8);
    P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDEXED));
    P_INLINE_DATA(p, begin);
+   P_INLINE_DATA(p, cmd->state.gfx.render.view_mask);
    P_INLINE_DATA(p, indexCount);
    P_INLINE_DATA(p, instanceCount);
    P_INLINE_DATA(p, firstIndex);
@@ -1793,6 +1874,7 @@ void
 nvk_mme_draw_indirect(struct mme_builder *b)
 {
    nvk_mme_load_to_scratch(b, DRAW_BEGIN);
+   nvk_mme_load_to_scratch(b, VIEW_MASK);
 
    if (b->devinfo->cls_eng3d >= TURING_A) {
       struct mme_value64 draw_addr = mme_load_addr64(b);
@@ -1871,10 +1953,11 @@ nvk_CmdDrawIndirect(VkCommandBuffer commandBuffer,
    });
 
    if (nvk_cmd_buffer_3d_cls(cmd) >= TURING_A) {
-      struct nv_push *p = nvk_cmd_buffer_push(cmd, 8);
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 9);
       P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
       P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDIRECT));
       P_INLINE_DATA(p, begin);
+      P_INLINE_DATA(p, cmd->state.gfx.render.view_mask);
       uint64_t draw_addr = nvk_buffer_address(buffer, offset);
       P_INLINE_DATA(p, draw_addr >> 32);
       P_INLINE_DATA(p, draw_addr);
@@ -1890,9 +1973,10 @@ nvk_CmdDrawIndirect(VkCommandBuffer commandBuffer,
       while (drawCount) {
          const uint32_t count = MIN2(drawCount, max_draws_per_push);
 
-         struct nv_push *p = nvk_cmd_buffer_push(cmd, 4);
+         struct nv_push *p = nvk_cmd_buffer_push(cmd, 5);
          P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDIRECT));
          P_INLINE_DATA(p, begin);
+         P_INLINE_DATA(p, cmd->state.gfx.render.view_mask);
          P_INLINE_DATA(p, count);
          P_INLINE_DATA(p, (stride - sizeof(VkDrawIndirectCommand)) / 4);
 
@@ -1910,6 +1994,7 @@ void
 nvk_mme_draw_indexed_indirect(struct mme_builder *b)
 {
    nvk_mme_load_to_scratch(b, DRAW_BEGIN);
+   nvk_mme_load_to_scratch(b, VIEW_MASK);
 
    if (b->devinfo->cls_eng3d >= TURING_A) {
       struct mme_value64 draw_addr = mme_load_addr64(b);
@@ -1988,10 +2073,11 @@ nvk_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    });
 
    if (nvk_cmd_buffer_3d_cls(cmd) >= TURING_A) {
-      struct nv_push *p = nvk_cmd_buffer_push(cmd, 8);
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 9);
       P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
       P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDEXED_INDIRECT));
       P_INLINE_DATA(p, begin);
+      P_INLINE_DATA(p, cmd->state.gfx.render.view_mask);
       uint64_t draw_addr = nvk_buffer_address(buffer, offset);
       P_INLINE_DATA(p, draw_addr >> 32);
       P_INLINE_DATA(p, draw_addr);
@@ -2007,9 +2093,10 @@ nvk_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
       while (drawCount) {
          const uint32_t count = MIN2(drawCount, max_draws_per_push);
 
-         struct nv_push *p = nvk_cmd_buffer_push(cmd, 4);
+         struct nv_push *p = nvk_cmd_buffer_push(cmd, 5);
          P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDEXED_INDIRECT));
          P_INLINE_DATA(p, begin);
+         P_INLINE_DATA(p, cmd->state.gfx.render.view_mask);
          P_INLINE_DATA(p, count);
          P_INLINE_DATA(p, (stride - sizeof(VkDrawIndexedIndirectCommand)) / 4);
 
@@ -2030,6 +2117,7 @@ nvk_mme_draw_indirect_count(struct mme_builder *b)
       return;
 
    nvk_mme_load_to_scratch(b, DRAW_BEGIN);
+   nvk_mme_load_to_scratch(b, VIEW_MASK);
 
    struct mme_value64 draw_addr = mme_load_addr64(b);
    struct mme_value64 draw_count_addr = mme_load_addr64(b);
@@ -2085,10 +2173,11 @@ nvk_CmdDrawIndirectCount(VkCommandBuffer commandBuffer,
       .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
    });
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 10);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 11);
    P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
    P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDIRECT_COUNT));
    P_INLINE_DATA(p, begin);
+   P_INLINE_DATA(p, cmd->state.gfx.render.view_mask);
    uint64_t draw_addr = nvk_buffer_address(buffer, offset);
    P_INLINE_DATA(p, draw_addr >> 32);
    P_INLINE_DATA(p, draw_addr);
@@ -2107,6 +2196,7 @@ nvk_mme_draw_indexed_indirect_count(struct mme_builder *b)
       return;
 
    nvk_mme_load_to_scratch(b, DRAW_BEGIN);
+   nvk_mme_load_to_scratch(b, VIEW_MASK);
 
    struct mme_value64 draw_addr = mme_load_addr64(b);
    struct mme_value64 draw_count_addr = mme_load_addr64(b);
@@ -2162,10 +2252,11 @@ nvk_CmdDrawIndexedIndirectCount(VkCommandBuffer commandBuffer,
       .split_mode = SPLIT_MODE_NORMAL_BEGIN_NORMAL_END,
    });
 
-   struct nv_push *p = nvk_cmd_buffer_push(cmd, 10);
+   struct nv_push *p = nvk_cmd_buffer_push(cmd, 11);
    P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
    P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_DRAW_INDEXED_INDIRECT_COUNT));
    P_INLINE_DATA(p, begin);
+   P_INLINE_DATA(p, cmd->state.gfx.render.view_mask);
    uint64_t draw_addr = nvk_buffer_address(buffer, offset);
    P_INLINE_DATA(p, draw_addr >> 32);
    P_INLINE_DATA(p, draw_addr);
@@ -2204,6 +2295,7 @@ void
 nvk_mme_xfb_draw_indirect(struct mme_builder *b)
 {
    nvk_mme_load_to_scratch(b, DRAW_BEGIN);
+   nvk_mme_load_to_scratch(b, VIEW_MASK);
 
    struct mme_value instance_count = mme_load(b);
    struct mme_value first_instance = mme_load(b);
@@ -2223,7 +2315,43 @@ nvk_mme_xfb_draw_indirect(struct mme_builder *b)
 
    mme_free_reg(b, first_instance);
 
-   nvk_mme_xfb_draw_indirect_loop(b, instance_count, counter);
+   struct mme_value view_mask = nvk_mme_load_scratch(b, VIEW_MASK);
+   mme_if(b, ieq, view_mask, mme_zero()) {
+      mme_free_reg(b, view_mask);
+
+      nvk_mme_xfb_draw_indirect_loop(b, instance_count, counter);
+   }
+
+   view_mask = nvk_mme_load_scratch(b, VIEW_MASK);
+   mme_if(b, ine, view_mask, mme_zero()) {
+      mme_free_reg(b, view_mask);
+
+      struct mme_value view = mme_mov(b, mme_zero());
+      mme_while(b, ine, view, mme_imm(32)) {
+         view_mask = nvk_mme_load_scratch(b, VIEW_MASK);
+         struct mme_value has_view = mme_bfe(b, view_mask, view, 1);
+         mme_free_reg(b, view_mask);
+         mme_if(b, ine, has_view, mme_zero()) {
+            mme_free_reg(b, has_view);
+
+            /* Set the push constant */
+            mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
+            mme_emit(b, mme_imm(nvk_root_descriptor_offset(draw.view_index)));
+            mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
+            mme_emit(b, view);
+
+            /* Set the layer to the view index */
+            STATIC_ASSERT(DRF_LO(NV9097_SET_RT_LAYER_V) == 0);
+            STATIC_ASSERT(NV9097_SET_RT_LAYER_CONTROL_V_SELECTS_LAYER == 0);
+            mme_mthd(b, NV9097_SET_RT_LAYER);
+            mme_emit(b, view);
+
+            nvk_mme_xfb_draw_indirect_loop(b, instance_count, counter);
+         }
+
+         mme_add_to(b, view, view, mme_imm(1));
+      }
+   }
 
    mme_free_reg(b, instance_count);
    mme_free_reg(b, counter);
@@ -2254,13 +2382,14 @@ nvk_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
    });
 
    if (nvk_cmd_buffer_3d_cls(cmd) >= TURING_A) {
-      struct nv_push *p = nvk_cmd_buffer_push(cmd, 12);
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 13);
       P_IMMD(p, NV9097, SET_DRAW_AUTO_START, counterOffset);
       P_IMMD(p, NV9097, SET_DRAW_AUTO_STRIDE, vertexStride);
       P_IMMD(p, NVC597, SET_MME_DATA_FIFO_CONFIG, FIFO_SIZE_SIZE_4KB);
 
       P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_XFB_DRAW_INDIRECT));
       P_INLINE_DATA(p, begin);
+      P_INLINE_DATA(p, cmd->state.gfx.render.view_mask);
       P_INLINE_DATA(p, instanceCount);
       P_INLINE_DATA(p, firstInstance);
       uint64_t counter_addr = nvk_buffer_address(counter_buffer,
@@ -2268,7 +2397,7 @@ nvk_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
       P_INLINE_DATA(p, counter_addr >> 32);
       P_INLINE_DATA(p, counter_addr);
    } else {
-      struct nv_push *p = nvk_cmd_buffer_push(cmd, 10);
+      struct nv_push *p = nvk_cmd_buffer_push(cmd, 11);
       /* Stall the command streamer */
       __push_immd(p, SUBC_NV9097, NV906F_SET_REFERENCE, 0);
       P_IMMD(p, NV9097, SET_DRAW_AUTO_START, counterOffset);
@@ -2276,6 +2405,7 @@ nvk_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
 
       P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_XFB_DRAW_INDIRECT));
       P_INLINE_DATA(p, begin);
+      P_INLINE_DATA(p, cmd->state.gfx.render.view_mask);
       P_INLINE_DATA(p, instanceCount);
       P_INLINE_DATA(p, firstInstance);
       nv_push_update_count(p, 1);
