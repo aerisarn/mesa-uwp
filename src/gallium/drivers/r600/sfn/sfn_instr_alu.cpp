@@ -417,6 +417,9 @@ AluInstr::can_propagate_dest() const
    if (!src_reg->has_flag(Register::ssa))
       return false;
 
+   if (!m_dest->has_flag(Register::ssa))
+      return false;
+
    if (src_reg->pin() == pin_chan)
       return m_dest->pin() == pin_none || m_dest->pin() == pin_free ||
              ((m_dest->pin() == pin_chan || m_dest->pin() == pin_group) &&
@@ -472,10 +475,10 @@ bool AluInstr::can_replace_source(PRegister old_src, PVirtualValue new_src)
    if (!check_readport_validation(old_src, new_src))
       return false;
 
-   /* If the old source is an array element, we assume that there
+   /* If the old or new source is an array element, we assume that there
     * might have been an (untracked) indirect access, so don't replace
     * this source */
-   if (old_src->pin() == pin_array)
+   if (old_src->pin() == pin_array || new_src->pin() == pin_array)
       return false;
 
    auto [addr, dummy, index] = indirect_addr();

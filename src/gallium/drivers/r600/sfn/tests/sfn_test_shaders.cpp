@@ -1912,27 +1912,27 @@ ELSE
      ALU MOV A2[S37.x].x : I[0] {W}
      ALU MOV A2[S37.x].y : L[0x3dcccccd] {WL}
 ENDIF
+ALU MOV S1025.x@group{s} : A2[0].x {W}
+ALU MOV S1025.y@group{s} : A2[0].y {WL}
+ALU MOV S1025.z@group{s} : A2[1].x {W}
+ALU MOV S1025.w@group{s} : A2[1].y {WL}
+ALU MOV S1027.x@group{s} : A2[2].x {W}
+ALU MOV S1027.y@group{s} : A2[2].y {WL}
+ALU MOV S1027.z@group{s} : A2[3].x {W}
+ALU MOV S1027.w@group{s} : A2[3].y {WL}
+ALU MOV S1029.x@group{s} : A2[0].z {W}
+ALU MOV S1029.y@group{s} : A2[0].w {WL}
+ALU MOV S1029.z@group{s} : A2[1].z {W}
+ALU MOV S1029.w@group{s} : A2[1].w {WL}
+ALU MOV S1031.x@group{s} : A2[2].z {W}
+ALU MOV S1031.y@group{s} : A2[2].w {WL}
+ALU MOV S1031.z@group{s} : A2[3].z {W}
+ALU MOV S1031.w@group{s} : A2[3].w {WL}
 EXPORT_DONE POS 0 S19.xyzw
-ALU MOV S46.x@group : A2[0].x {W}
-ALU MOV S46.y@group : A2[0].y {W}
-ALU MOV S46.z@group : A2[1].x {W}
-ALU MOV S46.w@group : A2[1].y {WL}
-EXPORT PARAM 0 S46.xyzw
-ALU MOV S47.x@group : A2[2].x {W}
-ALU MOV S47.y@group : A2[2].y {W}
-ALU MOV S47.z@group : A2[3].x {W}
-ALU MOV S47.w@group : A2[3].y {WL}
-EXPORT PARAM 1 S47.xyzw
-ALU MOV S48.x@group : A2[0].z {W}
-ALU MOV S48.y@group : A2[0].w {W}
-ALU MOV S48.z@group : A2[1].z {W}
-ALU MOV S48.w@group : A2[1].w {WL}
-EXPORT PARAM 2 S48.xyzw
-ALU MOV S49.x@group : A2[2].z {W}
-ALU MOV S49.y@group : A2[2].w {W}
-ALU MOV S49.z@group : A2[3].z {W}
-ALU MOV S49.w@group : A2[3].w {WL}
-EXPORT_DONE PARAM 3 S49.xyzw
+EXPORT PARAM 0 S1025.xyzw
+EXPORT PARAM 1 S1027.xyzw
+EXPORT PARAM 2 S1029.xyzw
+EXPORT_DONE PARAM 3 S1031.xyzw
 )";
 
 const char *shader_with_dest_array_opt_scheduled =
@@ -2021,38 +2021,38 @@ ELSE
     ALU MOV A2[AR].y : L[0x3dcccccd] {WL}
   ALU_GROUP_END
 ENDIF
-ALU_GROUP_BEGIN
-  ALU MOV S46.x@group : A2[0].x {W}
-  ALU MOV S46.y@group : A2[0].y {W}
-  ALU MOV S46.z@group : A2[1].x {W}
-  ALU MOV S46.w@group : A2[1].y {W}
-  ALU MOV S47.x@group : A2[2].x {WL}
-ALU_GROUP_END
-ALU_GROUP_BEGIN
-  ALU MOV S48.x@group : A2[0].z {W}
-  ALU MOV S47.y@group : A2[2].y {W}
-  ALU MOV S47.z@group : A2[3].x {W}
-  ALU MOV S47.w@group : A2[3].y {W}
-  ALU MOV S48.y@group : A2[0].w {WL}
-ALU_GROUP_END
-ALU_GROUP_BEGIN
-  ALU MOV S49.x@group : A2[2].z {W}
-  ALU MOV S49.y@group : A2[2].w {W}
-  ALU MOV S48.z@group : A2[1].z {W}
-  ALU MOV S48.w@group : A2[1].w {W}
-  ALU MOV S49.z@group : A2[3].z {WL}
-ALU_GROUP_END
-ALU_GROUP_BEGIN
-  ALU MOV S49.w@group : A2[3].w {WL}
+  ALU_GROUP_BEGIN
+    ALU MOV S1025.x@chgr : A2[0].x {W}
+    ALU MOV S1025.y@chgr : A2[0].y {W}
+    ALU MOV S1025.z@chgr : A2[1].x {W}
+    ALU MOV S1025.w@chgr : A2[1].y {W}
+    ALU MOV S1027.x@group : A2[2].x {WL}
+ ALU_GROUP_END
+ ALU_GROUP_BEGIN
+   ALU MOV S1029.x@chgr : A2[0].z {W}
+   ALU MOV S1027.y@chgr : A2[2].y {W}
+   ALU MOV S1027.z@chgr : A2[3].x {W}
+   ALU MOV S1027.w@chgr : A2[3].y {W}
+   ALU MOV S1029.y@group : A2[0].w {WL}
+ ALU_GROUP_END
+ ALU_GROUP_BEGIN
+  ALU MOV S1031.x@chgr : A2[2].z {W}
+  ALU MOV S1031.y@chgr : A2[2].w {W}
+  ALU MOV S1029.z@chgr : A2[1].z {W}
+  ALU MOV S1029.w@chgr : A2[1].w {W}
+  ALU MOV S1031.z@group : A2[3].z {WL}
+ ALU_GROUP_END
+ ALU_GROUP_BEGIN
+   ALU MOV S1031.w@chgr : A2[3].w {WL}
 ALU_GROUP_END
 BLOCK_END
 BLOCK_START
 EXPORT_DONE POS 0 S19.xyzw
-EXPORT PARAM 0 S46.xyzw
-EXPORT PARAM 1 S47.xyzw
-EXPORT PARAM 2 S48.xyzw
-EXPORT_DONE PARAM 3 S49.xyzw
-BLOCK_END
+EXPORT PARAM 0 S1025.xyzw
+EXPORT PARAM 1 S1027.xyzw
+EXPORT PARAM 2 S1029.xyzw
+EXPORT_DONE PARAM 3 S1031.xyzw
+BLOCK END\n
 )";
 
 const char *shader_with_dest_array2 =
