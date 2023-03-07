@@ -341,9 +341,9 @@ tu_bo_init(struct tu_device *dev,
       .gem_handle = gem_handle,
       .size = size,
       .iova = iova,
+      .name = name,
       .refcnt = 1,
       .bo_list_idx = idx,
-      .name = name,
    };
 
    mtx_unlock(&dev->bo_mutex);
@@ -968,11 +968,11 @@ tu_queue_submit_locked(struct tu_queue *queue, struct tu_queue_submit *submit)
 
    struct drm_msm_gem_submit req = {
       .flags = flags,
-      .queueid = queue->msm_queue_id,
-      .bos = (uint64_t)(uintptr_t) queue->device->bo_list,
       .nr_bos = submit->entry_count ? queue->device->bo_count : 0,
-      .cmds = (uint64_t)(uintptr_t)submit->cmds,
       .nr_cmds = submit->entry_count,
+      .bos = (uint64_t)(uintptr_t) queue->device->bo_list,
+      .cmds = (uint64_t)(uintptr_t)submit->cmds,
+      .queueid = queue->msm_queue_id,
       .in_syncobjs = (uint64_t)(uintptr_t)submit->in_syncobjs,
       .out_syncobjs = (uint64_t)(uintptr_t)submit->out_syncobjs,
       .nr_in_syncobjs = submit->nr_in_syncobjs,

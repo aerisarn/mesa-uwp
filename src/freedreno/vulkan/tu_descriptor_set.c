@@ -1503,8 +1503,8 @@ tu_CreateDescriptorUpdateTemplate(
             templ->entry[j++] = (struct tu_descriptor_update_template_entry) {
                .descriptor_type = entry->descriptorType,
                .descriptor_count = count,
-               .src_offset = src_offset,
                .dst_offset = dst_offset,
+               .src_offset = src_offset,
             };
             remaining -= count;
             src_offset += count;
@@ -1532,11 +1532,11 @@ tu_CreateDescriptorUpdateTemplate(
       templ->entry[j++] = (struct tu_descriptor_update_template_entry) {
          .descriptor_type = entry->descriptorType,
          .descriptor_count = entry->descriptorCount,
-         .src_offset = entry->offset,
-         .src_stride = entry->stride,
          .dst_offset = dst_offset,
          .dst_stride = dst_stride,
          .has_sampler = !binding_layout->immutable_samplers_offset,
+         .src_offset = entry->offset,
+         .src_stride = entry->stride,
          .immutable_samplers = immutable_samplers,
       };
    }

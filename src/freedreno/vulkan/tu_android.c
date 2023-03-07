@@ -256,8 +256,8 @@ tu_import_memory_from_gralloc_handle(VkDevice device_h,
    const VkMemoryDedicatedAllocateInfo ded_alloc = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
       .pNext = NULL,
+      .image = image_h,
       .buffer = VK_NULL_HANDLE,
-      .image = image_h
    };
 
    const VkImportMemoryFdInfoKHR import_info = {

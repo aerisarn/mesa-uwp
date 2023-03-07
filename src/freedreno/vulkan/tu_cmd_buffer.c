@@ -167,8 +167,8 @@ tu6_emit_flushes(struct tu_cmd_buffer *cmd_buffer,
       tu6_emit_event_write(cmd_buffer, cs, CACHE_INVALIDATE);
    if (flushes & TU_CMD_FLAG_BINDLESS_DESCRIPTOR_INVALIDATE) {
       tu_cs_emit_regs(cs, A6XX_HLSQ_INVALIDATE_CMD(
-            .gfx_bindless = 0x1f,
             .cs_bindless = 0x1f,
+            .gfx_bindless = 0x1f,
       ));
    }
    if (flushes & TU_CMD_FLAG_WAIT_MEM_WRITES)
@@ -205,9 +205,9 @@ rb_ccu_cntl(uint32_t color_offset, bool gmem)
    uint32_t color_offset_hi = color_offset >> 21;
    color_offset &= 0x1fffff;
    return A6XX_RB_CCU_CNTL(
-         .color_offset = color_offset,
          .color_offset_hi = color_offset_hi,
          .gmem = gmem,
+         .color_offset = color_offset,
    );
 }
 
@@ -941,12 +941,12 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
          .gs_state = true,
          .fs_state = true,
          .cs_state = true,
-         .gfx_ibo = true,
          .cs_ibo = true,
-         .gfx_shared_const = true,
+         .gfx_ibo = true,
          .cs_shared_const = true,
-         .gfx_bindless = 0x1f,
-         .cs_bindless = 0x1f));
+         .gfx_shared_const = true,
+         .cs_bindless = 0x1f,
+         .gfx_bindless = 0x1f,));
 
    tu_cs_emit_wfi(cs);
 
@@ -5661,10 +5661,14 @@ tu_emit_compute_driver_params(struct tu_cmd_buffer *cmd,
          [IR3_DP_NUM_WORK_GROUPS_X] = info->blocks[0],
          [IR3_DP_NUM_WORK_GROUPS_Y] = info->blocks[1],
          [IR3_DP_NUM_WORK_GROUPS_Z] = info->blocks[2],
+         [IR3_DP_WORK_DIM] = 0,
          [IR3_DP_BASE_GROUP_X] = info->offsets[0],
          [IR3_DP_BASE_GROUP_Y] = info->offsets[1],
          [IR3_DP_BASE_GROUP_Z] = info->offsets[2],
          [IR3_DP_CS_SUBGROUP_SIZE] = subgroup_size,
+         [IR3_DP_LOCAL_GROUP_SIZE_X] = 0,
+         [IR3_DP_LOCAL_GROUP_SIZE_Y] = 0,
+         [IR3_DP_LOCAL_GROUP_SIZE_Z] = 0,
          [IR3_DP_SUBGROUP_ID_SHIFT] = subgroup_shift,
       };
 

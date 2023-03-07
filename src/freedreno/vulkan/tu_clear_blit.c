@@ -413,11 +413,11 @@ r2d_setup_common(struct tu_cmd_buffer *cmd,
    tu_cs_emit(cs, unknown_8c01);
 
    uint32_t blit_cntl = A6XX_RB_2D_BLIT_CNTL(
-         .scissor = scissor,
          .rotate = (enum a6xx_rotation) blit_param,
          .solid_color = clear,
-         .d24s8 = fmt == FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8 && !clear,
          .color_format = fmt,
+         .scissor = scissor,
+         .d24s8 = fmt == FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8 && !clear,
          .mask = 0xf,
          .ifmt = util_format_is_srgb(dst_format) ? R2D_UNORM8_SRGB : ifmt,
       ).value;
@@ -722,9 +722,9 @@ compile_shader(struct tu_device *dev, struct nir_shader *nir,
 
    struct ir3_shader *sh =
       ir3_shader_from_nir(dev->compiler, nir, &(struct ir3_shader_options) {
+                              .reserved_user_consts = align(consts, 4),
                               .api_wavesize = IR3_SINGLE_OR_DOUBLE,
                               .real_wavesize = IR3_SINGLE_OR_DOUBLE,
-                              .reserved_user_consts = align(consts, 4),
                           }, NULL);
 
    struct ir3_shader_key key = {};
@@ -800,11 +800,11 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit,
          .gs_state = true,
          .fs_state = true,
          .cs_state = true,
-         .gfx_ibo = true,
          .cs_ibo = true,
+         .gfx_ibo = true,
          .gfx_shared_const = true,
-         .gfx_bindless = 0x1f,
-         .cs_bindless = 0x1f));
+         .cs_bindless = 0x1f,
+         .gfx_bindless = 0x1f,));
 
    tu6_emit_xs_config(cs, MESA_SHADER_VERTEX, vs);
    tu6_emit_xs_config(cs, MESA_SHADER_TESS_CTRL, NULL);
@@ -843,10 +843,10 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit,
 
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_CL_CNTL(
-                      .persp_division_disable = 1,
-                      .vp_xform_disable = 1,
+                      .clip_disable = 1,
                       .vp_clip_code_ignore = 1,
-                      .clip_disable = 1));
+                      .vp_xform_disable = 1,
+                      .persp_division_disable = 1,));
    tu_cs_emit_regs(cs, A6XX_GRAS_SU_CNTL()); // XXX msaa enable?
 
    tu_cs_emit_regs(cs, A6XX_PC_RASTER_CNTL());
@@ -1551,14 +1551,14 @@ tu_image_view_copy_blit(struct fdl6_view *iview,
 
    fdl6_view_init(iview, &layout, &(struct fdl_view_args) {
       .iova = image->iova,
-      .base_array_layer = subres->baseArrayLayer + layer,
-      .layer_count = 1,
       .base_miplevel = subres->mipLevel,
       .level_count = 1,
-      .format = tu_format_for_aspect(format, aspect_mask),
+      .base_array_layer = subres->baseArrayLayer + layer,
+      .layer_count = 1,
       .swiz = {
          PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W
       },
+      .format = tu_format_for_aspect(format, aspect_mask),
       .type = z_scale ? FDL_VIEW_TYPE_3D : FDL_VIEW_TYPE_2D,
    }, false);
 }
@@ -2076,12 +2076,12 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       const struct fdl_layout *staging_layout_ptr = &staging_layout;
       fdl6_view_init(&staging, &staging_layout_ptr, &(struct fdl_view_args) {
          .iova = staging_bo->iova,
-         .base_array_layer = 0,
-         .layer_count = 1,
          .base_miplevel = 0,
          .level_count = info->srcSubresource.layerCount,
-         .format = tu_format_for_aspect(src_format, VK_IMAGE_ASPECT_COLOR_BIT),
+         .base_array_layer = 0,
+         .layer_count = 1,
          .swiz = { PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W },
+         .format = tu_format_for_aspect(src_format, VK_IMAGE_ASPECT_COLOR_BIT),
          .type = FDL_VIEW_TYPE_2D,
       }, false);
 
@@ -2104,12 +2104,12 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
 
       fdl6_view_init(&staging, &staging_layout_ptr, &(struct fdl_view_args) {
          .iova = staging_bo->iova,
-         .base_array_layer = 0,
-         .layer_count = 1,
          .base_miplevel = 0,
          .level_count = info->srcSubresource.layerCount,
-         .format = tu_format_for_aspect(dst_format, VK_IMAGE_ASPECT_COLOR_BIT),
+         .base_array_layer = 0,
+         .layer_count = 1,
          .swiz = { PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W },
+         .format = tu_format_for_aspect(dst_format, VK_IMAGE_ASPECT_COLOR_BIT),
          .type = FDL_VIEW_TYPE_2D,
       }, false);
 
@@ -3066,9 +3066,9 @@ tu_emit_blit(struct tu_cmd_buffer *cmd,
    tu_cs_emit_regs(cs, A6XX_RB_BLIT_INFO(
       .unk0 = !resolve,
       .gmem = !resolve,
-      .depth = vk_format_is_depth_or_stencil(attachment->format),
       .sample_0 = vk_format_is_int(attachment->format) ||
-         vk_format_is_depth_or_stencil(attachment->format)));
+         vk_format_is_depth_or_stencil(attachment->format),
+      .depth = vk_format_is_depth_or_stencil(attachment->format),));
 
    for_each_layer(i, attachment->clear_views, cmd->state.framebuffer->layers) {
       tu_cs_emit_pkt4(cs, REG_A6XX_RB_BLIT_DST_INFO, 4);
@@ -3263,8 +3263,8 @@ store_cp_blit(struct tu_cmd_buffer *cmd,
    tu_cs_emit_regs(cs,
                    A6XX_SP_PS_2D_SRC_INFO(
                       .color_format = fmt,
-                      .color_swap = WZYX,
                       .tile_mode = TILE6_2,
+                      .color_swap = WZYX,
                       .srgb = util_format_is_srgb(src_format),
                       .samples = tu_msaa_samples(samples),
                       .samples_average = !util_format_is_pure_integer(dst_format) &&

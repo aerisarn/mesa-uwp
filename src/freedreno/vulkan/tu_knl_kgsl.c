@@ -100,8 +100,8 @@ kgsl_bo_init(struct tu_device *dev,
       .gem_handle = req.id,
       .size = req.mmapsize,
       .iova = req.gpuaddr,
-      .refcnt = 1,
       .name = tu_debug_bos_add(dev, req.mmapsize, name),
+      .refcnt = 1,
    };
 
    *out_bo = bo;
@@ -149,8 +149,8 @@ kgsl_bo_init_dmabuf(struct tu_device *dev,
       .gem_handle = req.id,
       .size = info_req.size,
       .iova = info_req.gpuaddr,
-      .refcnt = 1,
       .name = tu_debug_bos_add(dev, info_req.size, "dmabuf"),
+      .refcnt = 1,
    };
 
    *out_bo = bo;
@@ -277,8 +277,8 @@ timestamp_to_fd(struct tu_queue *queue, uint32_t timestamp)
    int fd;
    struct kgsl_timestamp_event event = {
       .type = KGSL_TIMESTAMP_EVENT_FENCE,
-      .context_id = queue->msm_queue_id,
       .timestamp = timestamp,
+      .context_id = queue->msm_queue_id,
       .priv = &fd,
       .len = sizeof(fd),
    };
@@ -1012,13 +1012,13 @@ kgsl_queue_submit(struct tu_queue *queue, struct vk_queue_submit *vk_submit)
 
    struct kgsl_gpu_command req = {
       .flags = KGSL_CMDBATCH_SUBMIT_IB_LIST,
-      .context_id = queue->msm_queue_id,
       .cmdlist = (uintptr_t) cmds,
-      .numcmds = entry_idx,
       .cmdsize = sizeof(struct kgsl_command_object),
+      .numcmds = entry_idx,
       .synclist = (uintptr_t) &sync,
       .syncsize = sizeof(sync),
       .numsyncs = has_sync != 0 ? 1 : 0,
+      .context_id = queue->msm_queue_id,
    };
 
    int ret = safe_ioctl(queue->device->physical_device->local_fd,

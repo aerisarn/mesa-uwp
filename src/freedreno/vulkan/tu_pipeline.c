@@ -470,54 +470,54 @@ tu6_emit_xs(struct tu_cs *cs,
    switch (stage) {
    case MESA_SHADER_VERTEX:
       tu_cs_emit_regs(cs, A6XX_SP_VS_CTRL_REG0(
-               .fullregfootprint = xs->info.max_reg + 1,
                .halfregfootprint = xs->info.max_half_reg + 1,
+               .fullregfootprint = xs->info.max_reg + 1,
                .branchstack = ir3_shader_branchstack_hw(xs),
                .mergedregs = xs->mergedregs,
       ));
       break;
    case MESA_SHADER_TESS_CTRL:
       tu_cs_emit_regs(cs, A6XX_SP_HS_CTRL_REG0(
-               .fullregfootprint = xs->info.max_reg + 1,
                .halfregfootprint = xs->info.max_half_reg + 1,
+               .fullregfootprint = xs->info.max_reg + 1,
                .branchstack = ir3_shader_branchstack_hw(xs),
       ));
       break;
    case MESA_SHADER_TESS_EVAL:
       tu_cs_emit_regs(cs, A6XX_SP_DS_CTRL_REG0(
-               .fullregfootprint = xs->info.max_reg + 1,
                .halfregfootprint = xs->info.max_half_reg + 1,
+               .fullregfootprint = xs->info.max_reg + 1,
                .branchstack = ir3_shader_branchstack_hw(xs),
       ));
       break;
    case MESA_SHADER_GEOMETRY:
       tu_cs_emit_regs(cs, A6XX_SP_GS_CTRL_REG0(
-               .fullregfootprint = xs->info.max_reg + 1,
                .halfregfootprint = xs->info.max_half_reg + 1,
+               .fullregfootprint = xs->info.max_reg + 1,
                .branchstack = ir3_shader_branchstack_hw(xs),
       ));
       break;
    case MESA_SHADER_FRAGMENT:
       tu_cs_emit_regs(cs, A6XX_SP_FS_CTRL_REG0(
-               .fullregfootprint = xs->info.max_reg + 1,
                .halfregfootprint = xs->info.max_half_reg + 1,
+               .fullregfootprint = xs->info.max_reg + 1,
                .branchstack = ir3_shader_branchstack_hw(xs),
-               .mergedregs = xs->mergedregs,
                .threadsize = thrsz,
-               .pixlodenable = xs->need_pixlod,
-               .diff_fine = xs->need_fine_derivatives,
                .varying = xs->total_in != 0,
+               .diff_fine = xs->need_fine_derivatives,
                /* unknown bit, seems unnecessary */
                .unk24 = true,
+               .pixlodenable = xs->need_pixlod,
+               .mergedregs = xs->mergedregs,
       ));
       break;
    case MESA_SHADER_COMPUTE:
       tu_cs_emit_regs(cs, A6XX_SP_CS_CTRL_REG0(
-               .fullregfootprint = xs->info.max_reg + 1,
                .halfregfootprint = xs->info.max_half_reg + 1,
+               .fullregfootprint = xs->info.max_reg + 1,
                .branchstack = ir3_shader_branchstack_hw(xs),
-               .mergedregs = xs->mergedregs,
                .threadsize = thrsz,
+               .mergedregs = xs->mergedregs,
       ));
       break;
    default:
@@ -2357,21 +2357,22 @@ tu6_emit_blend_control(struct tu_pipeline *pipeline,
       msaa_info->pSampleMask ? (*msaa_info->pSampleMask & 0xffff)
                              : 0xffff;
 
-
    pipeline->blend.sp_blend_cntl =
-       A6XX_SP_BLEND_CNTL(.enable_blend = blend_enable_mask,
-                          .dual_color_in_enable = dual_src_blend,
-                          .alpha_to_coverage = msaa_info->alphaToCoverageEnable,
-                          .unk8 = true).value & pipeline->blend.sp_blend_cntl_mask;
+      A6XX_SP_BLEND_CNTL(.enable_blend = blend_enable_mask,
+                         .unk8 = true,
+                         .dual_color_in_enable = dual_src_blend,
+                         .alpha_to_coverage =
+                            msaa_info->alphaToCoverageEnable, ).value &
+      pipeline->blend.sp_blend_cntl_mask;
 
    /* set A6XX_RB_BLEND_CNTL_INDEPENDENT_BLEND only when enabled? */
    pipeline->blend.rb_blend_cntl =
        A6XX_RB_BLEND_CNTL(.enable_blend = blend_enable_mask,
                           .independent_blend = true,
-                          .sample_mask = sample_mask,
                           .dual_color_in_enable = dual_src_blend,
                           .alpha_to_coverage = msaa_info->alphaToCoverageEnable,
-                          .alpha_to_one = msaa_info->alphaToOneEnable).value &
+                          .alpha_to_one = msaa_info->alphaToOneEnable,
+                          .sample_mask = sample_mask,).value &
       pipeline->blend.rb_blend_cntl_mask;
 }
 
@@ -2677,11 +2678,11 @@ tu_append_executable(struct tu_pipeline *pipeline, struct ir3_shader_variant *va
 {
    struct tu_pipeline_executable exe = {
       .stage = variant->type,
+      .stats = variant->info,
+      .is_binning = variant->binning_pass,
       .nir_from_spirv = nir_from_spirv,
       .nir_final = ralloc_strdup(pipeline->executables_mem_ctx, variant->disasm_info.nir),
       .disasm = ralloc_strdup(pipeline->executables_mem_ctx, variant->disasm_info.disasm),
-      .stats = variant->info,
-      .is_binning = variant->binning_pass,
    };
 
    util_dynarray_append(&pipeline->executables, struct tu_pipeline_executable, exe);
@@ -4131,8 +4132,8 @@ tu_pipeline_builder_parse_vertex_input(struct tu_pipeline_builder *builder,
          .sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT,
          .pNext = NULL,
          .binding = binding->binding,
-         .inputRate = binding->inputRate,
          .stride = binding->stride,
+         .inputRate = binding->inputRate,
          .divisor = 1,
       };
 
@@ -4156,10 +4157,10 @@ tu_pipeline_builder_parse_vertex_input(struct tu_pipeline_builder *builder,
       attrs[i] = (VkVertexInputAttributeDescription2EXT) {
          .sType = VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT,
          .pNext = NULL,
-         .binding = attr->binding,
          .location = attr->location,
-         .offset = attr->offset,
+         .binding = attr->binding,
          .format = attr->format,
+         .offset = attr->offset,
       };
    }
 
@@ -4907,8 +4908,8 @@ tu_pipeline_builder_init_graphics(
       .device = dev,
       .mem_ctx = ralloc_context(NULL),
       .cache = cache,
-      .create_info = create_info,
       .alloc = alloc,
+      .create_info = create_info,
    };
 
    const VkGraphicsPipelineLibraryCreateInfoEXT *gpl_info =

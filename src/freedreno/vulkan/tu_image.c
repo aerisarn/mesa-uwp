@@ -756,9 +756,9 @@ tu_get_image_memory_requirements(struct tu_image *image,
                                  VkMemoryRequirements2 *pMemoryRequirements)
 {
    pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
-      .memoryTypeBits = 1,
+      .size = image->total_size,
       .alignment = image->layout[0].base_align,
-      .size = image->total_size
+      .memoryTypeBits = 1,
    };
 
    vk_foreach_struct(ext, pMemoryRequirements->pNext) {

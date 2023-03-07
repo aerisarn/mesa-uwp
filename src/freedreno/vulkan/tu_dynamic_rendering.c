@@ -94,8 +94,8 @@ tu_init_dynamic_rendering(struct tu_device *dev)
 
    return vk_common_CreateCommandPool(tu_device_to_handle(dev),
                                       &(VkCommandPoolCreateInfo) {
+                                       .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
                                         .pNext = NULL,
-                                        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
                                         .flags = 0,
                                         .queueFamilyIndex = 0,
                                       }, &dev->vk.alloc,
