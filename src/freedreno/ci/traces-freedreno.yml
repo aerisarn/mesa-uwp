@@ -29,7 +29,7 @@ traces:
     freedreno-a630:
       checksum: 6aef509acd1257cc56612141e24dc11c
     zink-a630:
-      checksum: 45bdbb33bf87ed114bd548248be13408
+      checksum: f5c2e5bef8136c383ae1ac363626eb24
 
   valve/portal-2-v2.trace:
     freedreno-a306:
@@ -52,7 +52,7 @@ traces:
     freedreno-a630:
       checksum: 339dce29ae08569652438116829510c7
     zink-a630:
-      checksum: 2eb996b7d308087c73c57872231f7baa
+      checksum: ade41e6fe932552914c678155149babb
 
   xonotic/xonotic-keybench-high-v2.trace:
     freedreno-a306:
@@ -74,7 +74,7 @@ traces:
     freedreno-a630:
       checksum: 50d4bd01756ffe70aee5f8401f7a6ce4
     zink-a630:
-      checksum: 59e37d2dca80caedd9494114d64c676c
+      checksum: be297e672aaaf2351de71686d47f59eb
 
   godot/godot-thrive.trace:
     freedreno-a306:
