@@ -145,6 +145,11 @@ extern "C"
 #define radv_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
 #endif
 
+/* The "RAW" clocks on Linux are called "FAST" on FreeBSD */
+#if !defined(CLOCK_MONOTONIC_RAW) && defined(CLOCK_MONOTONIC_FAST)
+#define CLOCK_MONOTONIC_RAW CLOCK_MONOTONIC_FAST
+#endif
+
 static inline uint32_t
 align_u32(uint32_t v, uint32_t a)
 {
@@ -377,6 +382,8 @@ VkResult create_drm_physical_device(struct vk_instance *vk_instance, struct _drm
                                     struct vk_physical_device **out);
 
 void radv_physical_device_destroy(struct vk_physical_device *vk_device);
+
+bool radv_thread_trace_enabled(void);
 
 struct radv_instance {
    struct vk_instance vk;

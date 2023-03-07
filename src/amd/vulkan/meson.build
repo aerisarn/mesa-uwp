@@ -95,6 +95,7 @@ libradv_files = files(
   'radv_nir_lower_ray_queries.c',
   'radv_nir_lower_vs_inputs.c',
   'radv_perfcounter.c',
+  'radv_physical_device.c',
   'radv_pipeline.c',
   'radv_pipeline_cache.c',
   'radv_pipeline_rt.c',
