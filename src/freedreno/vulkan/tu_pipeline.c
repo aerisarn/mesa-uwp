@@ -3117,6 +3117,10 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    };
    VkPipelineCreationFeedback stage_feedbacks[MESA_SHADER_STAGES] = { 0 };
 
+   const bool executable_info =
+      builder->create_info->flags &
+      VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR;
+
    int64_t pipeline_start = os_time_get_nano();
 
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
@@ -3138,7 +3142,16 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       };
    }
 
+   /* Forward declare everything due to the goto usage */
    nir_shader *nir[ARRAY_SIZE(stage_infos)] = { NULL };
+   nir_shader *post_link_nir[ARRAY_SIZE(nir)] = { NULL };
+   struct tu_shader *shaders[ARRAY_SIZE(nir)] = { NULL };
+   char *nir_initial_disasm[ARRAY_SIZE(stage_infos)] = { NULL };
+   struct ir3_shader_variant *safe_const_variants[ARRAY_SIZE(nir)] = { NULL };
+   struct tu_shader *last_shader = NULL;
+
+   uint32_t desc_sets = 0;
+   uint32_t safe_constlens = 0;
 
    struct tu_shader_key keys[ARRAY_SIZE(stage_infos)] = { };
    for (gl_shader_stage stage = MESA_SHADER_VERTEX;
@@ -3189,11 +3202,6 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    memcpy(nir_sha1, pipeline_sha1, sizeof(pipeline_sha1));
    nir_sha1[20] = 'N';
 
-   const bool executable_info = builder->create_info->flags &
-      VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR;
-
-   char *nir_initial_disasm[ARRAY_SIZE(stage_infos)] = { NULL };
-
    if (!executable_info) {
       bool cache_hit = false;
       bool application_cache_hit = false;
@@ -3235,8 +3243,6 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
        VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT) {
       return VK_PIPELINE_COMPILE_REQUIRED;
    }
-
-   struct tu_shader *shaders[ARRAY_SIZE(nir)] = { NULL };
 
    for (gl_shader_stage stage = MESA_SHADER_VERTEX; stage < ARRAY_SIZE(nir);
         stage = (gl_shader_stage) (stage + 1)) {
@@ -3306,7 +3312,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       goto fail;
    }
 
-   uint32_t desc_sets = 0;
+   desc_sets = 0;
    for (gl_shader_stage stage = MESA_SHADER_VERTEX; stage < ARRAY_SIZE(nir);
         stage = (gl_shader_stage) (stage + 1)) {
       if (!nir[stage])
@@ -3355,7 +3361,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    if (nir[MESA_SHADER_TESS_CTRL] && !nir[MESA_SHADER_FRAGMENT])
       ir3_key.tcs_store_primid = true;
 
-   struct tu_shader *last_shader = shaders[MESA_SHADER_GEOMETRY];
+   last_shader = shaders[MESA_SHADER_GEOMETRY];
    if (!last_shader)
       last_shader = shaders[MESA_SHADER_TESS_EVAL];
    if (!last_shader)
@@ -3381,7 +3387,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       stage_feedbacks[stage].duration += os_time_get_nano() - stage_start;
    }
 
-   uint32_t safe_constlens = ir3_trim_constlen(compiled_shaders->variants, compiler);
+   safe_constlens = ir3_trim_constlen(compiled_shaders->variants, compiler);
 
    ir3_key.safe_constlen = true;
 
@@ -3427,9 +3433,6 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       tu_pipeline_cache_insert(builder->cache, compiled_shaders);
 
 done:;
-
-   struct ir3_shader_variant *safe_const_variants[ARRAY_SIZE(nir)] = { NULL };
-   nir_shader *post_link_nir[ARRAY_SIZE(nir)] = { NULL };
 
    if (compiled_shaders) {
       for (gl_shader_stage stage = MESA_SHADER_VERTEX;
@@ -5156,6 +5159,9 @@ tu_compute_pipeline_create(VkDevice device,
    TU_FROM_HANDLE(tu_pipeline_layout, layout, pCreateInfo->layout);
    const VkPipelineShaderStageCreateInfo *stage_info = &pCreateInfo->stage;
    VkResult result;
+   struct ir3_shader_variant *v = NULL;
+   uint32_t additional_reserve_size = 0;
+   uint64_t shader_iova = 0;
 
    cache = cache ? cache : dev->mem_cache;
 
@@ -5273,7 +5279,7 @@ tu_compute_pipeline_create(VkDevice device,
 
    pipeline->active_desc_sets = compiled->active_desc_sets;
 
-   struct ir3_shader_variant *v = compiled->variants[MESA_SHADER_COMPUTE];
+   v = compiled->variants[MESA_SHADER_COMPUTE];
 
    tu_pipeline_set_linkage(&pipeline->program.link[MESA_SHADER_COMPUTE],
                            &compiled->const_state[MESA_SHADER_COMPUTE], v);
@@ -5282,7 +5288,7 @@ tu_compute_pipeline_create(VkDevice device,
    if (result != VK_SUCCESS)
       goto fail;
 
-   uint64_t shader_iova = tu_upload_variant(pipeline, v);
+   shader_iova = tu_upload_variant(pipeline, v);
 
    struct tu_pvtmem_config pvtmem;
    tu_setup_pvtmem(dev, pipeline, &pvtmem, v->pvtmem_size, v->pvtmem_per_wave);
@@ -5293,7 +5299,7 @@ tu_compute_pipeline_create(VkDevice device,
    pipeline->compute.subgroup_size = v->info.subgroup_size;
 
    struct tu_cs prog_cs;
-   uint32_t additional_reserve_size = tu_xs_get_additional_cs_size_dwords(v);
+   additional_reserve_size = tu_xs_get_additional_cs_size_dwords(v);
    tu_cs_begin_sub_stream(&pipeline->cs, 64 + additional_reserve_size, &prog_cs);
    tu6_emit_cs_config(&prog_cs, v, &pvtmem, shader_iova);
    pipeline->program.state = tu_cs_end_draw_state(&pipeline->cs, &prog_cs);

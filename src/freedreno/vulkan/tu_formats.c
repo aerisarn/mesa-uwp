@@ -411,6 +411,20 @@ tu_GetPhysicalDeviceFormatProperties2(
 }
 
 static VkResult
+tu_image_unsupported_format(VkImageFormatProperties *pImageFormatProperties)
+{
+   *pImageFormatProperties = (VkImageFormatProperties) {
+      .maxExtent = { 0, 0, 0 },
+      .maxMipLevels = 0,
+      .maxArrayLayers = 0,
+      .sampleCounts = 0,
+      .maxResourceSize = 0,
+   };
+
+   return VK_ERROR_FORMAT_NOT_SUPPORTED;
+}
+
+static VkResult
 tu_get_image_format_properties(
    struct tu_physical_device *physical_device,
    const VkPhysicalDeviceImageFormatInfo2 *info,
@@ -476,11 +490,11 @@ tu_get_image_format_properties(
    }
 
    if (format_feature_flags == 0)
-      goto unsupported;
+      return tu_image_unsupported_format(pImageFormatProperties);
 
    if (info->type != VK_IMAGE_TYPE_2D &&
        vk_format_is_depth_or_stencil(info->format))
-      goto unsupported;
+      return tu_image_unsupported_format(pImageFormatProperties);
 
    switch (info->type) {
    default:
@@ -542,26 +556,26 @@ tu_get_image_format_properties(
 
    if (image_usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
-         goto unsupported;
+         return tu_image_unsupported_format(pImageFormatProperties);
       }
    }
 
    if (image_usage & VK_IMAGE_USAGE_STORAGE_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)) {
-         goto unsupported;
+         return tu_image_unsupported_format(pImageFormatProperties);
       }
    }
 
    if (image_usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)) {
-         goto unsupported;
+         return tu_image_unsupported_format(pImageFormatProperties);
       }
    }
 
    if (image_usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
       if (!(format_feature_flags &
             VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
-         goto unsupported;
+         return tu_image_unsupported_format(pImageFormatProperties);
       }
    }
 
@@ -581,16 +595,6 @@ tu_get_image_format_properties(
       *p_feature_flags = format_feature_flags;
 
    return VK_SUCCESS;
-unsupported:
-   *pImageFormatProperties = (VkImageFormatProperties) {
-      .maxExtent = { 0, 0, 0 },
-      .maxMipLevels = 0,
-      .maxArrayLayers = 0,
-      .sampleCounts = 0,
-      .maxResourceSize = 0,
-   };
-
-   return VK_ERROR_FORMAT_NOT_SUPPORTED;
 }
 
 static VkResult

@@ -2136,6 +2136,10 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    if (!is_kgsl(physical_device->instance))
       vk_device_set_drm_fd(&device->vk, device->fd);
 
+   struct tu6_global *global = NULL;
+   uint32_t global_size = sizeof(struct tu6_global);
+   struct vk_pipeline_cache_create_info pcc_info = { };
+
    for (unsigned i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
       const VkDeviceQueueCreateInfo *queue_create =
          &pCreateInfo->pQueueCreateInfos[i];
@@ -2190,7 +2194,6 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    device->vsc_draw_strm_pitch = 0x1000 + VSC_PAD;
    device->vsc_prim_strm_pitch = 0x4000 + VSC_PAD;
 
-   uint32_t global_size = sizeof(struct tu6_global);
    if (custom_border_colors)
       global_size += TU_BORDER_COLOR_COUNT * sizeof(struct bcolor_entry);
 
@@ -2213,7 +2216,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       goto fail_global_bo_map;
    }
 
-   struct tu6_global *global = device->global_bo->map;
+   global = device->global_bo->map;
    tu_init_clear_blit_shaders(device);
    global->predicate = 0;
    global->vtx_stats_query_not_running = 1;
@@ -2237,7 +2240,6 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       goto fail_dynamic_rendering;
    }
 
-   struct vk_pipeline_cache_create_info pcc_info = { };
    device->mem_cache = vk_pipeline_cache_create(&device->vk, &pcc_info,
                                                 false);
    if (!device->mem_cache) {

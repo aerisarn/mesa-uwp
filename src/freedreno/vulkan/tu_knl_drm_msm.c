@@ -304,8 +304,10 @@ tu_bo_init(struct tu_device *dev,
       result = tu_allocate_kernel_iova(dev, gem_handle, &iova);
    }
 
-   if (result != VK_SUCCESS)
-      goto fail_bo_list;
+   if (result != VK_SUCCESS) {
+      tu_gem_close(dev, gem_handle);
+      return result;
+   }
 
    name = tu_debug_bos_add(dev, size, name);
 
@@ -319,8 +321,8 @@ tu_bo_init(struct tu_device *dev,
          vk_realloc(&dev->vk.alloc, dev->bo_list, new_len * sizeof(*dev->bo_list),
                     8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
       if (!new_ptr) {
-         result = VK_ERROR_OUT_OF_HOST_MEMORY;
-         goto fail_bo_list;
+         tu_gem_close(dev, gem_handle);
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
       }
 
       dev->bo_list = new_ptr;
@@ -347,10 +349,6 @@ tu_bo_init(struct tu_device *dev,
    mtx_unlock(&dev->bo_mutex);
 
    return VK_SUCCESS;
-
-fail_bo_list:
-   tu_gem_close(dev, gem_handle);
-   return result;
 }
 
 /**
@@ -1183,6 +1181,7 @@ tu_knl_drm_msm_load(struct tu_instance *instance,
                     struct tu_physical_device **out)
 {
    VkResult result = VK_SUCCESS;
+   int ret;
 
    /* Version 1.6 added SYNCOBJ support. */
    const int min_version_major = 1;
@@ -1251,7 +1250,7 @@ tu_knl_drm_msm_load(struct tu_instance *instance,
     */
    device->has_set_iova = false;
 
-   int ret = tu_drm_get_param(device, MSM_PARAM_FAULTS, &device->fault_count);
+   ret = tu_drm_get_param(device, MSM_PARAM_FAULTS, &device->fault_count);
    if (ret != 0) {
       result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                                  "Failed to get initial fault count: %d", ret);
