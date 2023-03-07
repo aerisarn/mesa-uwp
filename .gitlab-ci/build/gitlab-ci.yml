@@ -661,12 +661,13 @@ debian-ppc64el:
     UNWIND: "disabled"
     C_ARGS: >
       -Wno-error=format
+      -Wno-error=unused-but-set-variable
+    CPP_ARGS: >
+      -Wno-error=format
       -Wno-error=unused-function
       -Wno-error=unused-variable
-      -Wno-error=unused-but-set-variable
       -Wno-error=sign-compare
       -Wno-error=narrowing
-    CPP_ARGS: $C_ARGS
     GALLIUM_DRIVERS: "swrast,d3d12,zink"
     VULKAN_DRIVERS: "swrast,amd,microsoft-experimental"
     GALLIUM_ST: >
