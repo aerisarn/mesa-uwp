@@ -56,28 +56,34 @@ match_address(nir_ssa_scalar base, int8_t format_shift)
       if (op != nir_op_u2u64 && op != nir_op_i2i64)
          continue;
 
+      /* We've found a summand, commit to it */
       match.base = summands[1 - i];
       match.offset = nir_ssa_scalar_chase_alu_src(summands[i], 0);
       match.sign_extend = (op == nir_op_i2i64);
 
       /* Undo the implicit shift from using as offset */
       match.shift = -format_shift;
+      break;
+   }
 
-      /* Now try to fold in an ishl from the offset */
-      if (nir_ssa_scalar_is_alu(match.offset) &&
-          nir_ssa_scalar_alu_op(match.offset) == nir_op_ishl) {
+   /* If we didn't find something to fold in, there's nothing else we can do */
+   if (!match.offset.def)
+      return match;
 
-         nir_ssa_scalar shifted = nir_ssa_scalar_chase_alu_src(match.offset, 0);
-         nir_ssa_scalar shift = nir_ssa_scalar_chase_alu_src(match.offset, 1);
+   /* But if we did, we can try to fold in an ishl from the offset */
+   if (nir_ssa_scalar_is_alu(match.offset) &&
+       nir_ssa_scalar_alu_op(match.offset) == nir_op_ishl) {
 
-         if (nir_ssa_scalar_is_const(shift)) {
-            int8_t new_shift = match.shift + nir_ssa_scalar_as_uint(shift);
+      nir_ssa_scalar shifted = nir_ssa_scalar_chase_alu_src(match.offset, 0);
+      nir_ssa_scalar shift = nir_ssa_scalar_chase_alu_src(match.offset, 1);
 
-            /* Only fold in if we wouldn't overflow the lsl field */
-            if (new_shift <= 2) {
-               match.offset = shifted;
-               match.shift = new_shift;
-            }
+      if (nir_ssa_scalar_is_const(shift)) {
+         int8_t new_shift = match.shift + nir_ssa_scalar_as_uint(shift);
+
+         /* Only fold in if we wouldn't overflow the lsl field */
+         if (new_shift <= 2) {
+            match.offset = shifted;
+            match.shift = new_shift;
          }
       }
    }
