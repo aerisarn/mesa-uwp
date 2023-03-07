@@ -340,6 +340,7 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_FS_FACE_IS_INTEGER_SYSVAL:
    case PIPE_CAP_RESOURCE_FROM_USER_MEMORY:
    case PIPE_CAP_IMAGE_STORE_FORMATTED:
+   case PIPE_CAP_IMAGE_LOAD_FORMATTED:
       return 1;
 #ifdef PIPE_MEMORY_FD
    case PIPE_CAP_MEMOBJ:
