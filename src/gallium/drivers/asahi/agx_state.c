@@ -1893,7 +1893,9 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
    }
 
    agx_usc_pack(&b, SHADER, cfg) {
-      cfg.loads_varyings = (stage == PIPE_SHADER_FRAGMENT);
+      if (stage == PIPE_SHADER_FRAGMENT)
+         cfg.loads_varyings = cs->info.varyings.fs.nr_bindings > 0;
+
       cfg.code = cs->bo->ptr.gpu + cs->info.main_offset;
       cfg.unk_2 = (stage == PIPE_SHADER_FRAGMENT) ? 2 : 3;
    }
