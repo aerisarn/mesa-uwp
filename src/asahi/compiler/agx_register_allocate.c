@@ -172,7 +172,7 @@ find_regs(BITSET_WORD *used_regs, unsigned count, unsigned align, unsigned max)
 {
    assert(count >= 1);
 
-   for (unsigned reg = 0; reg < max; reg += align) {
+   for (unsigned reg = 0; reg + count <= max; reg += align) {
       if (!BITSET_TEST_RANGE(used_regs, reg, reg + count - 1))
          return reg;
    }
@@ -328,7 +328,8 @@ pick_regs(struct ra_ctx *rctx, agx_instr *I, unsigned d)
        * for a register for the source such that the collect base is aligned.
        */
       if (collect_align > align) {
-         for (unsigned reg = offset; reg < rctx->bound; reg += collect_align) {
+         for (unsigned reg = offset; reg + collect_align <= rctx->bound;
+              reg += collect_align) {
             if (!BITSET_TEST_RANGE(rctx->used_regs, reg, reg + count - 1))
                return reg;
          }
