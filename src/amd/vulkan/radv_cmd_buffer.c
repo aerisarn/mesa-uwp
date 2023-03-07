@@ -9884,7 +9884,7 @@ radv_trace_rays(struct radv_cmd_buffer *cmd_buffer, const VkTraceRaysIndirectCom
    } else
       info.va = launch_size_va;
 
-   ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 11);
+   ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 15);
 
    struct radv_userdata_info *desc_loc =
       radv_lookup_user_sgpr(&pipeline->base, MESA_SHADER_COMPUTE, AC_UD_CS_SBT_DESCRIPTORS);
@@ -9906,6 +9906,14 @@ radv_trace_rays(struct radv_cmd_buffer *cmd_buffer, const VkTraceRaysIndirectCom
       struct radv_shader_info *cs_info = &pipeline->base.shaders[MESA_SHADER_COMPUTE]->info;
       radeon_set_sh_reg(cmd_buffer->cs, R_00B900_COMPUTE_USER_DATA_0 + base_loc->sgpr_idx * 4,
                         pipeline->base.scratch_bytes_per_wave / cs_info->wave_size);
+   }
+
+   struct radv_userdata_info *shader_loc =
+      radv_lookup_user_sgpr(&pipeline->base, MESA_SHADER_COMPUTE, AC_UD_CS_TRAVERSAL_SHADER_ADDR);
+   if (shader_loc->sgpr_idx != -1) {
+      uint64_t raygen_va = pipeline->base.shaders[MESA_SHADER_RAYGEN]->va;
+      radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs,
+                               base_reg + shader_loc->sgpr_idx * 4, raygen_va, true);
    }
 
    assert(cmd_buffer->cs->cdw <= cdw_max);
