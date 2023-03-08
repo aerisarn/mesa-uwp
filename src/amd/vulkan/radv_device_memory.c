@@ -117,21 +117,6 @@ radv_alloc_memory(struct radv_device *device, const VkMemoryAllocateInfo *pAlloc
 
    radv_device_memory_init(mem, device, NULL);
 
-   if (wsi_info) {
-      if(wsi_info->implicit_sync)
-         flags |= RADEON_FLAG_IMPLICIT_SYNC;
-
-      /* In case of prime, linear buffer is allocated in default heap which is VRAM.
-       * Due to this when display is connected to iGPU and render on dGPU, ddx
-       * function amdgpu_present_check_flip() fails due to which there is blit
-       * instead of flip. Setting the flag RADEON_FLAG_GTT_WC allows kernel to
-       * allocate GTT memory in supported hardware where GTT can be directly scanout.
-       * Using wsi_info variable check to set the flag RADEON_FLAG_GTT_WC so that
-       * only for memory allocated by driver this flag is set.
-       */
-      flags |= RADEON_FLAG_GTT_WC;
-   }
-
    if (dedicate_info) {
       mem->image = radv_image_from_handle(dedicate_info->image);
       mem->buffer = radv_buffer_from_handle(dedicate_info->buffer);
@@ -140,11 +125,14 @@ radv_alloc_memory(struct radv_device *device, const VkMemoryAllocateInfo *pAlloc
       mem->buffer = NULL;
    }
 
-   if (wsi_info && wsi_info->implicit_sync && mem->buffer) {
+   if (wsi_info && wsi_info->implicit_sync) {
+      flags |= RADEON_FLAG_IMPLICIT_SYNC;
+
       /* Mark the linear prime buffer (aka the destination of the prime blit
        * as uncached.
        */
-      flags |= RADEON_FLAG_VA_UNCACHED;
+      if (mem->buffer)
+         flags |= RADEON_FLAG_VA_UNCACHED;
    }
 
    float priority_float = 0.5;
@@ -224,7 +212,17 @@ radv_alloc_memory(struct radv_device *device, const VkMemoryAllocateInfo *pAlloc
       domain = device->physical_device->memory_domains[pAllocateInfo->memoryTypeIndex];
       flags |= device->physical_device->memory_flags[pAllocateInfo->memoryTypeIndex];
 
-      if (!import_info && (!export_info || !export_info->handleTypes)) {
+      if (export_info && export_info->handleTypes) {
+         /* Setting RADEON_FLAG_GTT_WC in case the bo is spilled to GTT.  This is important when the
+          * foreign queue is the display engine of iGPU.  The carveout of iGPU can be tiny and the
+          * kernel driver refuses to spill without the flag.
+          *
+          * This covers any external memory user, including WSI.
+          */
+         if (domain == RADEON_DOMAIN_VRAM)
+            flags |= RADEON_FLAG_GTT_WC;
+      } else if (!import_info) {
+         /* neither export nor import */
          flags |= RADEON_FLAG_NO_INTERPROCESS_SHARING;
          if (device->use_global_bo_list) {
             flags |= RADEON_FLAG_PREFER_LOCAL_BO;
