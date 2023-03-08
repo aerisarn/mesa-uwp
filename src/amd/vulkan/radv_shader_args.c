@@ -337,6 +337,7 @@ radv_declare_rt_shader_args(enum amd_gfx_level gfx_level, struct radv_shader_arg
               AC_UD_INDIRECT_DESCRIPTOR_SETS);
    ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_PTR, &args->ac.push_constants);
    ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_DESC_PTR, &args->ac.rt.sbt_descriptors);
+   ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_PTR, &args->ac.rt.traversal_shader);
    ac_add_arg(&args->ac, AC_ARG_SGPR, 3, AC_ARG_INT, &args->ac.rt.launch_size);
    if (gfx_level < GFX9) {
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.scratch_offset);
@@ -345,6 +346,25 @@ radv_declare_rt_shader_args(enum amd_gfx_level gfx_level, struct radv_shader_arg
 
    ac_add_arg(&args->ac, AC_ARG_VGPR, 3, AC_ARG_INT, &args->ac.rt.launch_id);
    ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.rt.dynamic_callable_stack_base);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 2, AC_ARG_CONST_PTR, &args->ac.rt.next_shader);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 2, AC_ARG_CONST_PTR, &args->ac.rt.shader_record);
+
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.rt.payload_offset);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 3, AC_ARG_FLOAT, &args->ac.rt.ray_origin);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 3, AC_ARG_FLOAT, &args->ac.rt.ray_direction);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &args->ac.rt.ray_tmin);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &args->ac.rt.ray_tmax);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.rt.cull_mask_and_flags);
+
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 2, AC_ARG_CONST_PTR, &args->ac.rt.accel_struct);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.rt.sbt_offset);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.rt.sbt_stride);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.rt.miss_index);
+
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 2, AC_ARG_CONST_PTR, &args->ac.rt.instance_addr);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.rt.primitive_id);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.rt.geometry_id_and_flags);
+   ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.rt.hit_kind);
 }
 
 static bool
@@ -424,10 +444,10 @@ declare_shader_args(const struct radv_device *device, const struct radv_pipeline
       if (info->cs.is_rt_shader) {
          add_ud_arg(args, 2, AC_ARG_CONST_DESC_PTR, &args->ac.rt.sbt_descriptors,
                     AC_UD_CS_SBT_DESCRIPTORS);
-         add_ud_arg(args, 2, AC_ARG_CONST_PTR, &args->ac.rt.launch_size_addr,
-                    AC_UD_CS_RAY_LAUNCH_SIZE_ADDR);
          add_ud_arg(args, 2, AC_ARG_CONST_PTR, &args->ac.rt.traversal_shader,
                     AC_UD_CS_TRAVERSAL_SHADER_ADDR);
+         add_ud_arg(args, 2, AC_ARG_CONST_PTR, &args->ac.rt.launch_size_addr,
+                    AC_UD_CS_RAY_LAUNCH_SIZE_ADDR);
          add_ud_arg(args, 1, AC_ARG_INT, &args->ac.rt.dynamic_callable_stack_base,
                     AC_UD_CS_RAY_DYNAMIC_CALLABLE_STACK_BASE);
       }

@@ -11573,8 +11573,8 @@ select_rt_prolog(Program* program, ac_shader_config* config,
     * Indirect descriptor sets:    s[2]
     * Push constants pointer:      s[3]
     * SBT descriptors:             s[4-5]
-    * Ray launch size address:     s[6-7]
-    * Traversal shader address:    s[8-9]
+    * Traversal shader address:    s[6-7]
+    * Ray launch size address:     s[8-9]
     * Dynamic callable stack base: s[10]
     * Workgroup IDs (xyz):         s[11], s[12], s[13]
     * Scratch offset:              s[14]
@@ -11600,9 +11600,10 @@ select_rt_prolog(Program* program, ac_shader_config* config,
     * Indirect descriptor sets:    s[2]
     * Push constants pointer:      s[3]
     * SBT descriptors:             s[4-5]
-    * Ray launch sizes (xyz):      s[6], s[7], s[8]
-    * Scratch offset (<GFX9 only): s[9]
-    * Ring offsets (<GFX9 only):   s[10-11]
+    * Traversal shader address:    s[6-7]
+    * Ray launch sizes (xyz):      s[8], s[9], s[10]
+    * Scratch offset (<GFX9 only): s[11]
+    * Ring offsets (<GFX9 only):   s[12-13]
     * Ray launch IDs:              v[0-2]
     * Stack pointer:               v[3]
     */
@@ -11625,7 +11626,7 @@ select_rt_prolog(Program* program, ac_shader_config* config,
    assert(get_arg_reg(in_args, in_args->rt.sbt_descriptors) ==
           get_arg_reg(out_args, out_args->rt.sbt_descriptors));
    assert(in_launch_size_addr == out_launch_size_x);
-   assert(in_shader_addr == out_launch_size_z);
+   assert(in_stack_base == out_launch_size_z);
    assert(in_local_ids[0] == out_launch_ids[0]);
 
    /* init scratch */
