@@ -527,6 +527,8 @@ Intel driver environment variables
    ``sync``
       after sending each batch, wait on the CPU for that batch to
       finish rendering
+   ``swsb-stall``
+      Insert sync NOP after each instruction. This is only valid for Gfx12+.
    ``task``
       dump shader assembly for task shaders
    ``tcs``

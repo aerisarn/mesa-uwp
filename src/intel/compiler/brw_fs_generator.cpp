@@ -30,6 +30,7 @@
 #include "brw_eu.h"
 #include "brw_fs.h"
 #include "brw_cfg.h"
+#include "dev/intel_debug.h"
 #include "util/mesa-sha1.h"
 #include "util/half_float.h"
 
@@ -2386,6 +2387,14 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
             brw_inst_set_no_dd_clear(p->devinfo, last, inst->no_dd_clear);
             brw_inst_set_no_dd_check(p->devinfo, last, inst->no_dd_check);
          }
+      }
+
+      /* When enabled, insert sync NOP after every instruction and make sure
+       * that current instruction depends on the previous instruction.
+       */
+      if (INTEL_DEBUG(DEBUG_SWSB_STALL) && devinfo->ver >= 12) {
+         brw_set_default_swsb(p, tgl_swsb_regdist(1));
+         brw_SYNC(p, TGL_SYNC_NOP);
       }
    }
 
