@@ -136,6 +136,7 @@ radeonsi-raven-piglit-quick_shader:amd64:
     - radeonsi-raven-piglit-quick_gl:amd64
   variables:
     PIGLIT_PROFILES: quick_shader
+    PIGLIT_FRACTION: 2
 
 radeonsi-raven-va:amd64:
   extends:
