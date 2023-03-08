@@ -864,9 +864,9 @@ insert_rt_case(nir_builder *b, nir_shader *shader, struct rt_variables *vars, ni
    }
 }
 
-static nir_shader *
-parse_rt_stage(struct radv_device *device, const VkPipelineShaderStageCreateInfo *sinfo,
-               const struct radv_pipeline_key *key)
+nir_shader *
+radv_parse_rt_stage(struct radv_device *device, const VkPipelineShaderStageCreateInfo *sinfo,
+                    const struct radv_pipeline_key *key)
 {
    struct radv_pipeline_stage rt_stage;
 
@@ -1227,7 +1227,7 @@ visit_any_hit_shaders(struct radv_device *device,
          continue;
 
       const VkPipelineShaderStageCreateInfo *stage = &pCreateInfo->pStages[shader_id];
-      nir_shader *nir_stage = parse_rt_stage(device, stage, data->key);
+      nir_shader *nir_stage = radv_parse_rt_stage(device, stage, data->key);
 
       insert_rt_case(b, nir_stage, vars, sbt_idx, 0, data->groups[i].handle.any_hit_index,
                      shader_id, data->groups);
@@ -1364,12 +1364,12 @@ handle_candidate_aabb(nir_builder *b, struct radv_leaf_intersection *intersectio
          continue;
 
       const VkPipelineShaderStageCreateInfo *stage = &data->createInfo->pStages[shader_id];
-      nir_shader *nir_stage = parse_rt_stage(data->device, stage, data->key);
+      nir_shader *nir_stage = radv_parse_rt_stage(data->device, stage, data->key);
 
       nir_shader *any_hit_stage = NULL;
       if (any_hit_shader_id != VK_SHADER_UNUSED_KHR) {
          stage = &data->createInfo->pStages[any_hit_shader_id];
-         any_hit_stage = parse_rt_stage(data->device, stage, data->key);
+         any_hit_stage = radv_parse_rt_stage(data->device, stage, data->key);
 
          nir_lower_intersection_shader(nir_stage, any_hit_stage);
          ralloc_free(any_hit_stage);
@@ -1662,7 +1662,7 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
       assert(type == MESA_SHADER_RAYGEN || type == MESA_SHADER_CALLABLE ||
              type == MESA_SHADER_CLOSEST_HIT || type == MESA_SHADER_MISS);
 
-      nir_shader *nir_stage = parse_rt_stage(device, stage, key);
+      nir_shader *nir_stage = radv_parse_rt_stage(device, stage, key);
 
       /* Move ray tracing system values to the top that are set by rt_trace_ray
        * to prevent them from being overwritten by other rt_trace_ray calls.

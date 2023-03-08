@@ -559,6 +559,10 @@ void radv_postprocess_nir(struct radv_device *device,
                           const struct radv_pipeline_key *pipeline_key, unsigned last_vgt_api_stage,
                           struct radv_pipeline_stage *stage);
 
+nir_shader *radv_parse_rt_stage(struct radv_device *device,
+                                const VkPipelineShaderStageCreateInfo *sinfo,
+                                const struct radv_pipeline_key *key);
+
 struct radv_pipeline_stage;
 
 nir_shader *radv_shader_spirv_to_nir(struct radv_device *device,
