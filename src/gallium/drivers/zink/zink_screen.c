@@ -2022,6 +2022,9 @@ static void
 setup_renderdoc(struct zink_screen *screen)
 {
 #ifdef HAVE_RENDERDOC_APP_H
+   const char *capture_id = debug_get_option("ZINK_RENDERDOC", NULL);
+   if (!capture_id)
+      return;
    void *renderdoc = dlopen("librenderdoc.so", RTLD_NOW | RTLD_NOLOAD);
    /* not loaded */
    if (!renderdoc)
@@ -2036,9 +2039,6 @@ setup_renderdoc(struct zink_screen *screen)
    get_api(eRENDERDOC_API_Version_1_0_0, (void*)&screen->renderdoc_api);
    screen->renderdoc_api->SetActiveWindow(RENDERDOC_DEVICEPOINTER_FROM_VKINSTANCE(screen->instance), NULL);
 
-   const char *capture_id = debug_get_option("ZINK_RENDERDOC", NULL);
-   if (!capture_id)
-      return;
    int count = sscanf(capture_id, "%u:%u", &screen->renderdoc_capture_start, &screen->renderdoc_capture_end);
    if (count != 2) {
       count = sscanf(capture_id, "%u", &screen->renderdoc_capture_start);
