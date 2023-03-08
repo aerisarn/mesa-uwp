@@ -8269,19 +8269,19 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    }
    case nir_intrinsic_load_ray_launch_size: {
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      bld.copy(Definition(dst), Operand(get_arg(ctx, ctx->args->ray_launch_size)));
+      bld.copy(Definition(dst), Operand(get_arg(ctx, ctx->args->rt.launch_size)));
       emit_split_vector(ctx, dst, 3);
       break;
    }
    case nir_intrinsic_load_ray_launch_id: {
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      bld.copy(Definition(dst), Operand(get_arg(ctx, ctx->args->ray_launch_id)));
+      bld.copy(Definition(dst), Operand(get_arg(ctx, ctx->args->rt.launch_id)));
       emit_split_vector(ctx, dst, 3);
       break;
    }
    case nir_intrinsic_load_ray_launch_size_addr_amd: {
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      Temp addr = get_arg(ctx, ctx->args->ray_launch_size_addr);
+      Temp addr = get_arg(ctx, ctx->args->rt.launch_size_addr);
       assert(addr.regClass() == s2);
       bld.copy(Definition(dst), Operand(addr));
       break;
@@ -8994,7 +8994,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    }
    case nir_intrinsic_load_sbt_base_amd: {
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      Temp addr = get_arg(ctx, ctx->args->sbt_descriptors);
+      Temp addr = get_arg(ctx, ctx->args->rt.sbt_descriptors);
       assert(addr.regClass() == s2);
       bld.copy(Definition(dst), Operand(addr));
       break;
@@ -9002,7 +9002,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_bvh64_intersect_ray_amd: visit_bvh64_intersect_ray_amd(ctx, instr); break;
    case nir_intrinsic_load_rt_dynamic_callable_stack_base_amd:
       bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               get_arg(ctx, ctx->args->rt_dynamic_callable_stack_base));
+               get_arg(ctx, ctx->args->rt.dynamic_callable_stack_base));
       break;
    case nir_intrinsic_overwrite_vs_arguments_amd: {
       ctx->arg_temps[ctx->args->vertex_id.arg_index] = get_ssa_temp(ctx, instr->src[0].ssa);
@@ -11516,9 +11516,9 @@ select_rt_prolog(Program* program, ac_shader_config* config,
     * Local invocation IDs:        v[0-2]
     */
    PhysReg in_ring_offsets = get_arg_reg(in_args, in_args->ring_offsets);
-   PhysReg in_launch_size_addr = get_arg_reg(in_args, in_args->ray_launch_size_addr);
-   PhysReg in_shader_addr = get_arg_reg(in_args, in_args->rt_traversal_shader_addr);
-   PhysReg in_stack_base = get_arg_reg(in_args, in_args->rt_dynamic_callable_stack_base);
+   PhysReg in_launch_size_addr = get_arg_reg(in_args, in_args->rt.launch_size_addr);
+   PhysReg in_shader_addr = get_arg_reg(in_args, in_args->rt.traversal_shader);
+   PhysReg in_stack_base = get_arg_reg(in_args, in_args->rt.dynamic_callable_stack_base);
    PhysReg in_wg_id_x = get_arg_reg(in_args, in_args->workgroup_ids[0]);
    PhysReg in_wg_id_y = get_arg_reg(in_args, in_args->workgroup_ids[1]);
    PhysReg in_wg_id_z = get_arg_reg(in_args, in_args->workgroup_ids[2]);
@@ -11541,13 +11541,13 @@ select_rt_prolog(Program* program, ac_shader_config* config,
     * Ray launch IDs:              v[0-2]
     * Stack pointer:               v[3]
     */
-   PhysReg out_shader_pc = get_arg_reg(out_args, out_args->rt_shader_pc);
-   PhysReg out_launch_size_x = get_arg_reg(out_args, out_args->ray_launch_size);
+   PhysReg out_shader_pc = get_arg_reg(out_args, out_args->rt.shader_pc);
+   PhysReg out_launch_size_x = get_arg_reg(out_args, out_args->rt.launch_size);
    PhysReg out_launch_size_z = out_launch_size_x.advance(8);
    PhysReg out_launch_ids[3];
    for (unsigned i = 0; i < 3; i++)
-      out_launch_ids[i] = get_arg_reg(out_args, out_args->ray_launch_id).advance(i * 4);
-   PhysReg out_stack_ptr = get_arg_reg(out_args, out_args->rt_dynamic_callable_stack_base);
+      out_launch_ids[i] = get_arg_reg(out_args, out_args->rt.launch_id).advance(i * 4);
+   PhysReg out_stack_ptr = get_arg_reg(out_args, out_args->rt.dynamic_callable_stack_base);
 
    /* Temporaries: */
    num_sgprs = align(num_sgprs, 2) + 2;
@@ -11557,8 +11557,8 @@ select_rt_prolog(Program* program, ac_shader_config* config,
    assert(in_ring_offsets == out_shader_pc);
    assert(get_arg_reg(in_args, in_args->push_constants) ==
           get_arg_reg(out_args, out_args->push_constants));
-   assert(get_arg_reg(in_args, in_args->sbt_descriptors) ==
-          get_arg_reg(out_args, out_args->sbt_descriptors));
+   assert(get_arg_reg(in_args, in_args->rt.sbt_descriptors) ==
+          get_arg_reg(out_args, out_args->rt.sbt_descriptors));
    assert(in_launch_size_addr == out_launch_size_x);
    assert(in_shader_addr == out_launch_size_z);
    assert(in_local_ids[0] == out_launch_ids[0]);
