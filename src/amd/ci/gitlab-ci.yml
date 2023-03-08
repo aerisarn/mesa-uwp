@@ -35,14 +35,14 @@
     DEVICE_TYPE: hp-14-db0003na-grunt
     RUNNER_TAG: mesa-ci-x86-64-lava-hp-14-db0003na-grunt
 
-# Run ten jobs in parallel each running 1/40th of the test suite
+# Run five jobs in parallel each running 1/55th of the test suite
 radv-stoney-vkcts:amd64:
   extends:
     - .lava-test:amd64
     - .radv-stoney-test:amd64
   parallel: 5
   variables:
-    DEQP_FRACTION: 8
+    DEQP_FRACTION: 11
 
 radeonsi-stoney-gl:amd64:
   extends:
