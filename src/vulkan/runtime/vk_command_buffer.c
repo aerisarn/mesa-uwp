@@ -156,6 +156,21 @@ vk_common_CmdBindVertexBuffers(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdBindIndexBuffer(
+    VkCommandBuffer                             commandBuffer,
+    VkBuffer                                    buffer,
+    VkDeviceSize                                offset,
+    VkIndexType                                 indexType)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd_buffer, commandBuffer);
+   const struct vk_device_dispatch_table *disp =
+      &cmd_buffer->base.device->dispatch_table;
+
+   disp->CmdBindIndexBuffer2KHR(commandBuffer, buffer, offset,
+                                VK_WHOLE_SIZE, indexType);
+}
+
+VKAPI_ATTR void VKAPI_CALL
 vk_common_CmdDispatch(VkCommandBuffer commandBuffer,
                       uint32_t groupCountX,
                       uint32_t groupCountY,
