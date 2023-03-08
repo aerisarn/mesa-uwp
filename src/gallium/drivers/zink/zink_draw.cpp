@@ -511,10 +511,7 @@ zink_draw(struct pipe_context *pctx,
    ctx->gfx_pipeline_state.gfx_prim_mode = mode;
 
    if ((mode_changed || prim_changed || rast_state_changed || ctx->gfx_pipeline_state.modules_changed)) {
-      if (screen->optimal_keys)
-         zink_create_primitive_emulation_gs(ctx);
-      else
-         zink_set_primitive_emulation_keys(ctx);
+      zink_set_primitive_emulation_keys(ctx);
    }
 
    if (index_size) {
