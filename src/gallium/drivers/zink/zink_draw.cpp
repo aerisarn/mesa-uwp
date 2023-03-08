@@ -893,7 +893,7 @@ zink_draw(struct pipe_context *pctx,
    }
 
    if (unlikely(zink_tracing && ctx->blitting))
-      zink_cmd_debug_marker_end(ctx, marker);
+      zink_cmd_debug_marker_end(ctx, batch->state->cmdbuf, marker);
 
    if (have_streamout) {
       for (unsigned i = 0; i < ctx->num_so_targets; i++) {
