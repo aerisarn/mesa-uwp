@@ -22,6 +22,7 @@
  */
 
 #include "nir/nir.h"
+#include "nir/nir_control_flow.h"
 
 #include "radv_debug.h"
 #include "radv_private.h"
@@ -239,6 +240,124 @@ radv_create_merged_rt_create_info(const VkRayTracingPipelineCreateInfoKHR *pCrea
    local_create_info.groupCount = total_groups;
 
    return local_create_info;
+}
+
+static bool
+should_move_rt_instruction(nir_intrinsic_op intrinsic)
+{
+   switch (intrinsic) {
+   case nir_intrinsic_load_hit_attrib_amd:
+   case nir_intrinsic_load_rt_arg_scratch_offset_amd:
+   case nir_intrinsic_load_ray_flags:
+   case nir_intrinsic_load_ray_object_origin:
+   case nir_intrinsic_load_ray_world_origin:
+   case nir_intrinsic_load_ray_t_min:
+   case nir_intrinsic_load_ray_object_direction:
+   case nir_intrinsic_load_ray_world_direction:
+   case nir_intrinsic_load_ray_t_max:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static void
+move_rt_instructions(nir_shader *shader)
+{
+   nir_cursor target = nir_before_cf_list(&nir_shader_get_entrypoint(shader)->body);
+
+   nir_foreach_block (block, nir_shader_get_entrypoint(shader)) {
+      nir_foreach_instr_safe (instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrinsic = nir_instr_as_intrinsic(instr);
+
+         if (!should_move_rt_instruction(intrinsic->intrinsic))
+            continue;
+
+         nir_instr_move(target, instr);
+      }
+   }
+
+   nir_metadata_preserve(nir_shader_get_entrypoint(shader),
+                         nir_metadata_all & (~nir_metadata_instr_index));
+}
+
+static struct radv_shader *
+radv_rt_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
+                   const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
+                   const struct radv_pipeline_key *pipeline_key, struct radv_pipeline_stage *stage,
+                   uint32_t *stack_size)
+{
+   struct radv_shader_binary *binary;
+   RADV_FROM_HANDLE(radv_pipeline_layout, pipeline_layout, pCreateInfo->layout);
+   bool keep_executable_info = radv_pipeline_capture_shaders(device, pCreateInfo->flags);
+   bool keep_statistic_info = radv_pipeline_capture_shader_stats(device, pCreateInfo->flags);
+
+   /* Gather shader info. */
+   nir_shader_gather_info(stage->nir, nir_shader_get_entrypoint(stage->nir));
+   radv_nir_shader_info_init(&stage->info);
+   radv_nir_shader_info_pass(device, stage->nir, MESA_SHADER_NONE, pipeline_layout, pipeline_key,
+                             RADV_PIPELINE_RAY_TRACING, false, &stage->info);
+
+   /* Declare shader arguments. */
+   radv_declare_shader_args(device, pipeline_key, &stage->info, stage->stage, MESA_SHADER_NONE,
+                            RADV_SHADER_TYPE_DEFAULT, &stage->args);
+
+   stage->info.user_sgprs_locs = stage->args.user_sgprs_locs;
+   stage->info.inline_push_constant_mask = stage->args.ac.inline_push_const_mask;
+
+   /* Move ray tracing system values to the top that are set by rt_trace_ray
+    * to prevent them from being overwritten by other rt_trace_ray calls.
+    */
+   NIR_PASS_V(stage->nir, move_rt_instructions);
+
+   const nir_lower_shader_calls_options opts = {
+      .address_format = nir_address_format_32bit_offset,
+      .stack_alignment = 16,
+      .localized_loads = true,
+      .vectorizer_callback = radv_mem_vectorize_callback,
+   };
+   uint32_t num_resume_shaders = 0;
+   nir_shader **resume_shaders = NULL;
+   nir_lower_shader_calls(stage->nir, &opts, &resume_shaders, &num_resume_shaders, stage->nir);
+   unsigned num_shaders = num_resume_shaders + 1;
+   nir_shader **shaders = ralloc_array(stage->nir, nir_shader *, num_shaders);
+   if (!shaders)
+      return NULL;
+
+   shaders[0] = stage->nir;
+   for (uint32_t i = 0; i < num_resume_shaders; i++)
+      shaders[i + 1] = resume_shaders[i];
+
+   /* Postprocess shader parts. */
+   for (uint32_t i = 0; i < num_shaders; i++) {
+      struct radv_pipeline_stage temp_stage = *stage;
+      temp_stage.nir = shaders[i];
+      radv_nir_lower_rt_abi(temp_stage.nir, pCreateInfo, &temp_stage.args, pipeline_key,
+                            stack_size);
+      radv_optimize_nir(temp_stage.nir, pipeline_key->optimisations_disabled);
+      radv_postprocess_nir(device, pipeline_layout, pipeline_key, MESA_SHADER_NONE, &temp_stage);
+
+      if (radv_can_dump_shader(device, temp_stage.nir, false))
+         nir_print_shader(temp_stage.nir, stderr);
+   }
+
+   /* Compile NIR shader to AMD assembly. */
+   struct radv_shader *shader;
+   shader = radv_shader_nir_to_asm(device, cache, stage, shaders, num_shaders, pipeline_key,
+                                   keep_executable_info, keep_statistic_info, &binary);
+
+   if (shader && keep_executable_info && stage->spirv.size) {
+      shader->spirv = malloc(stage->spirv.size);
+      memcpy(shader->spirv, stage->spirv.data, stage->spirv.size);
+      shader->spirv_size = stage->spirv.size;
+   }
+
+   free(binary);
+
+   return shader;
 }
 
 static VkResult
