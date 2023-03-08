@@ -242,6 +242,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_maintenance2                      = true,
       .KHR_maintenance3                      = true,
       .KHR_maintenance4                      = true,
+      .KHR_maintenance5                      = true,
       .KHR_map_memory2                       = true,
       .KHR_multiview                         = true,
       .KHR_performance_query =
@@ -837,6 +838,9 @@ get_features(const struct anv_physical_device *pdevice,
 
       /* VK_EXT_pipeline_robustness */
       .pipelineRobustness = true,
+
+      /* VK_KHR_maintenance5 */
+      .maintenance5 = true,
    };
 
    /* The new DOOM and Wolfenstein games require depthBounds without
@@ -2260,6 +2264,18 @@ void anv_GetPhysicalDeviceProperties2(
          VkPhysicalDeviceMaintenance4Properties *properties =
             (VkPhysicalDeviceMaintenance4Properties *)ext;
          properties->maxBufferSize = pdevice->isl_dev.max_buffer_size;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_PROPERTIES_KHR: {
+         VkPhysicalDeviceMaintenance5PropertiesKHR *properties =
+            (VkPhysicalDeviceMaintenance5PropertiesKHR *)ext;
+         properties->earlyFragmentMultisampleCoverageAfterSampleCounting = false;
+         properties->earlyFragmentSampleMaskTestBeforeSampleCounting = false;
+         properties->depthStencilSwizzleOneSupport = true;
+         properties->polygonModePointSize = true;
+         properties->nonStrictSinglePixelWideLinesUseParallelogram = false;
+         properties->nonStrictWideLinesUseParallelogram = false;
          break;
       }
 

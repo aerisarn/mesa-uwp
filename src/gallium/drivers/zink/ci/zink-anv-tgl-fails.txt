@@ -575,7 +575,6 @@ spec@arb_texture_buffer_object@formats (fs- arb)@GL_ALPHA16UI_EXT,Fail
 spec@arb_texture_buffer_object@formats (fs- arb)@GL_ALPHA32F_ARB,Fail
 spec@arb_texture_buffer_object@formats (fs- arb)@GL_ALPHA32I_EXT,Fail
 spec@arb_texture_buffer_object@formats (fs- arb)@GL_ALPHA32UI_EXT,Fail
-spec@arb_texture_buffer_object@formats (fs- arb)@GL_ALPHA8,Fail
 spec@arb_texture_buffer_object@formats (fs- arb)@GL_ALPHA8I_EXT,Fail
 spec@arb_texture_buffer_object@formats (fs- arb)@GL_ALPHA8UI_EXT,Fail
 spec@arb_texture_buffer_object@formats (fs- arb)@GL_LUMINANCE_ALPHA16F_ARB,Fail
@@ -605,7 +604,6 @@ spec@arb_texture_buffer_object@formats (vs- arb)@GL_ALPHA16UI_EXT,Fail
 spec@arb_texture_buffer_object@formats (vs- arb)@GL_ALPHA32F_ARB,Fail
 spec@arb_texture_buffer_object@formats (vs- arb)@GL_ALPHA32I_EXT,Fail
 spec@arb_texture_buffer_object@formats (vs- arb)@GL_ALPHA32UI_EXT,Fail
-spec@arb_texture_buffer_object@formats (vs- arb)@GL_ALPHA8,Fail
 spec@arb_texture_buffer_object@formats (vs- arb)@GL_ALPHA8I_EXT,Fail
 spec@arb_texture_buffer_object@formats (vs- arb)@GL_ALPHA8UI_EXT,Fail
 spec@arb_texture_buffer_object@formats (vs- arb)@GL_LUMINANCE_ALPHA16F_ARB,Fail
