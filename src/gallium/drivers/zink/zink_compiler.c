@@ -4746,11 +4746,11 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
       /* only remove generated tcs during parent tes destruction */
       if (stage == MESA_SHADER_TESS_EVAL && shader->non_fs.generated_tcs)
          prog->shaders[MESA_SHADER_TESS_CTRL] = NULL;
-      for (unsigned int i = 0; i < ARRAY_SIZE(shader->non_fs.generated_gs); i++) {
-         for (int j = 0; j < ARRAY_SIZE(shader->non_fs.generated_gs[0]); j++) {
-            if (stage != MESA_SHADER_FRAGMENT && shader->non_fs.generated_gs[i][j])
-               prog->shaders[MESA_SHADER_GEOMETRY] = NULL;
-         }
+      if (stage != MESA_SHADER_FRAGMENT &&
+          prog->shaders[MESA_SHADER_GEOMETRY] &&
+          prog->shaders[MESA_SHADER_GEOMETRY]->non_fs.parent ==
+          shader) {
+         prog->shaders[MESA_SHADER_GEOMETRY] = NULL;
       }
       zink_gfx_program_reference(screen, &prog, NULL);
    }

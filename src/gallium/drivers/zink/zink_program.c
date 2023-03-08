@@ -1579,17 +1579,12 @@ unbind_generated_gs(struct zink_context *ctx, gl_shader_stage stage, struct zink
    if (ctx->gfx_stages[stage]->non_fs.is_generated)
       ctx->inlinable_uniforms_valid_mask &= ~BITFIELD_BIT(MESA_SHADER_GEOMETRY);
 
-   for (int i = 0; i < ARRAY_SIZE(shader->non_fs.generated_gs); i++) {
-      for (int j = 0; j < ARRAY_SIZE(shader->non_fs.generated_gs[0]); j++) {
-         if (ctx->gfx_stages[stage]->non_fs.generated_gs[i][j] &&
-             ctx->gfx_stages[MESA_SHADER_GEOMETRY] ==
-             ctx->gfx_stages[stage]->non_fs.generated_gs[i][j]) {
-            assert(stage != MESA_SHADER_GEOMETRY); /* let's not keep recursing! */
-            bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY, NULL);
-            ctx->is_generated_gs_bound = false;
-            ctx->inlinable_uniforms_valid_mask &= ~BITFIELD_BIT(MESA_SHADER_GEOMETRY);
-         }
-      }
+   if (ctx->gfx_stages[MESA_SHADER_GEOMETRY] &&
+       ctx->gfx_stages[MESA_SHADER_GEOMETRY]->non_fs.parent ==
+       ctx->gfx_stages[stage]) {
+      ctx->base.bind_gs_state(&ctx->base, NULL);
+      ctx->is_generated_gs_bound = false;
+      ctx->inlinable_uniforms_valid_mask &= ~BITFIELD_BIT(MESA_SHADER_GEOMETRY);
    }
 }
 
@@ -2335,8 +2330,8 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
             shader->sinfo.so_info = ctx->gfx_stages[prev_vertex_stage]->sinfo.so_info;
          }
 
-         bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY,
-                        ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type]);
+         ctx->base.bind_gs_state(&ctx->base,
+                                 ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type]);
          ctx->is_generated_gs_bound = true;
       }
 
@@ -2345,5 +2340,5 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
                                                       ctx->gfx_pipeline_state.dyn_state3.pv_last});
    } else if (ctx->gfx_stages[MESA_SHADER_GEOMETRY] &&
               ctx->gfx_stages[MESA_SHADER_GEOMETRY]->non_fs.is_generated)
-         bind_gfx_stage(ctx, MESA_SHADER_GEOMETRY, NULL);
+         ctx->base.bind_gs_state(&ctx->base, NULL);
 }
