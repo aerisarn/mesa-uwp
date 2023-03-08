@@ -3099,11 +3099,27 @@ tc_texture_subdata(struct pipe_context *_pipe,
    } else {
       struct pipe_context *pipe = tc->pipe;
 
-      tc_sync(tc);
-      tc_set_driver_thread(tc);
-      pipe->texture_subdata(pipe, resource, level, usage, box, data,
-                            stride, layer_stride);
-      tc_clear_driver_thread(tc);
+      if (resource->usage != PIPE_USAGE_STAGING &&
+          tc->options.parse_renderpass_info && tc->in_renderpass) {
+         enum pipe_format format = resource->format;
+         if (usage & PIPE_MAP_DEPTH_ONLY)
+            format = util_format_get_depth_only(format);
+         else if (usage & PIPE_MAP_STENCIL_ONLY)
+            format = PIPE_FORMAT_S8_UINT;
+         unsigned stride = util_format_get_stride(format, box->width);
+         unsigned layer_stride = util_format_get_2d_size(format, stride, box->height);
+         struct pipe_resource *pres = pipe_buffer_create_with_data(pipe, 0, PIPE_USAGE_STREAM, layer_stride * box->depth, data);
+         struct pipe_box src_box = *box;
+         src_box.x = src_box.y = src_box.z = 0;
+         tc->base.resource_copy_region(&tc->base, resource, level, box->x, box->y, box->z, pres, 0, &src_box);
+         pipe_resource_reference(&pres, NULL);
+      } else {
+         tc_sync(tc);
+         tc_set_driver_thread(tc);
+         pipe->texture_subdata(pipe, resource, level, usage, box, data,
+                              stride, layer_stride);
+         tc_clear_driver_thread(tc);
+      }
    }
 }
 
