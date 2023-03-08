@@ -123,6 +123,15 @@ begin_end_tp('compute',
           Arg(type='uint16_t', var='num_groups_y',   c_format='%u'),
           Arg(type='uint16_t', var='num_groups_z',   c_format='%u')])
 
+
+# Annotations for Cmd(Begin|End)DebugUtilsLabelEXT
+for suffix in ["", "_rp"]:
+    begin_end_tp('cmd_buffer_annotation' + suffix,
+                    args=[ArgStruct(type='unsigned', var='len'),
+                          ArgStruct(type='const char *', var='str'),],
+                    tp_struct=[Arg(type='uint8_t', name='dummy', var='0', c_format='%hhu'),
+                               Arg(type='char', name='str', var='str', c_format='%s', length_arg='len + 1', copy_func='strncpy'),])
+
 utrace_generate(cpath=args.utrace_src,
                 hpath=args.utrace_hdr,
                 ctx_param='struct tu_device *dev',

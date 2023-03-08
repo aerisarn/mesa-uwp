@@ -3459,3 +3459,55 @@ tu_debug_bos_print_stats(struct tu_device *dev)
 
    mtx_unlock(&dev->bo_mutex);
 }
+
+void
+tu_CmdBeginDebugUtilsLabelEXT(VkCommandBuffer _commandBuffer,
+                              const VkDebugUtilsLabelEXT *pLabelInfo)
+{
+   VK_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, _commandBuffer);
+
+   vk_common_CmdBeginDebugUtilsLabelEXT(_commandBuffer, pLabelInfo);
+
+   /* Note that the spec says:
+    *
+    * "An application may open a debug label region in one command buffer and
+    *  close it in another, or otherwise split debug label regions across
+    *  multiple command buffers or multiple queue submissions. When viewed
+    * from the linear series of submissions to a single queue, the calls to
+    *  vkCmdBeginDebugUtilsLabelEXT and vkCmdEndDebugUtilsLabelEXT must be
+    *  matched and balanced."
+    *
+    * But if you're beginning labeling during a renderpass and ending outside
+    * it, or vice versa, these trace ranges in perfetto will be unbalanced.  I
+    * expect that u_trace and perfetto will do something like take just one of
+    * the begins/ends, or drop the event entirely, but not crash.  Similarly,
+    * I think we'll have problems if the tracepoints are split across cmd
+    * buffers. Still, getting the simple case of cmd buffer annotation into
+    * perfetto should prove useful.
+    */
+   const char *label = pLabelInfo->pLabelName;
+   if (cmd_buffer->state.pass) {
+      trace_start_cmd_buffer_annotation_rp(
+         &cmd_buffer->trace, &cmd_buffer->draw_cs, strlen(label), label);
+   } else {
+      trace_start_cmd_buffer_annotation(&cmd_buffer->trace, &cmd_buffer->cs,
+                                        strlen(label), label);
+   }
+}
+
+void
+tu_CmdEndDebugUtilsLabelEXT(VkCommandBuffer _commandBuffer)
+{
+   VK_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, _commandBuffer);
+
+   if (cmd_buffer->vk.labels.size > 0) {
+      if (cmd_buffer->state.pass) {
+         trace_end_cmd_buffer_annotation_rp(&cmd_buffer->trace,
+                                            &cmd_buffer->draw_cs);
+      } else {
+         trace_end_cmd_buffer_annotation(&cmd_buffer->trace, &cmd_buffer->cs);
+      }
+   }
+
+   vk_common_CmdEndDebugUtilsLabelEXT(_commandBuffer);
+}
