@@ -15,10 +15,6 @@
 
 /* we can't include tu_knl.h and tu_device.h */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 int
 tu_device_get_gpu_timestamp(struct tu_device *dev,
                             uint64_t *ts);
@@ -30,10 +26,6 @@ tu_device_ticks_to_ns(struct tu_device *dev, uint64_t ts);
 
 struct u_trace_context *
 tu_device_get_u_trace(struct tu_device *device);
-
-#ifdef __cplusplus
-}
-#endif
 
 /**
  * Queue-id's
