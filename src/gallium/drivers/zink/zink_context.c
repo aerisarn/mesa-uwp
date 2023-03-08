@@ -1738,8 +1738,9 @@ finalize_image_bind(struct zink_context *ctx, struct zink_resource *res, bool is
       update_binds_for_samplerviews(ctx, res, is_compute);
    if (!check_for_layout_update(ctx, res, is_compute)) {
       /* no deferred barrier: unset unordered usage immediately */
-      if (zink_resource_access_is_write(res->barrier_access[is_compute]))
-         res->obj->unordered_write = false;
+      // TODO: figure out a way to link up layouts between unordered and main cmdbuf
+      // if (zink_resource_access_is_write(res->barrier_access[is_compute]))
+      res->obj->unordered_write = false;
       res->obj->unordered_read = false;
    }
 }
@@ -2039,13 +2040,15 @@ zink_set_sampler_views(struct pipe_context *pctx,
             if (b->cube_array) {
                ctx->di.cubes[shader_type] |= BITFIELD_BIT(start_slot + i);
             }
-            if (!check_for_layout_update(ctx, res, shader_type == MESA_SHADER_COMPUTE) && !ctx->unordered_blitting)
+            if (!check_for_layout_update(ctx, res, shader_type == MESA_SHADER_COMPUTE) && !ctx->unordered_blitting) {
                /* no deferred barrier: unset unordered usage immediately */
                res->obj->unordered_read = false;
+               // TODO: figure out a way to link up layouts between unordered and main cmdbuf
+               res->obj->unordered_write = false;
+            }
             if (!a)
                update = true;
             zink_batch_resource_usage_set(&ctx->batch, res, false, false);
-            res->obj->unordered_write = false;
             if (b->zs_view) {
                assert(start_slot + i < 32); //bitfield size
                ctx->di.zs_swizzle[shader_type].mask |= BITFIELD_BIT(start_slot + i);
@@ -2271,10 +2274,16 @@ zink_make_texture_handle_resident(struct pipe_context *pctx, uint64_t handle, bo
          ii->imageView = ds->surface->image_view;
          ii->imageLayout = zink_descriptor_util_image_layout_eval(ctx, res, false);
          flush_pending_clears(ctx, res);
-         if (!check_for_layout_update(ctx, res, false))
+         if (!check_for_layout_update(ctx, res, false)) {
             res->obj->unordered_read = false;
-         if (!check_for_layout_update(ctx, res, true))
+            // TODO: figure out a way to link up layouts between unordered and main cmdbuf
+            res->obj->unordered_write = false;
+         }
+         if (!check_for_layout_update(ctx, res, true)) {
             res->obj->unordered_read = false;
+            // TODO: figure out a way to link up layouts between unordered and main cmdbuf
+            res->obj->unordered_write = false;
+         }
          zink_batch_resource_usage_set(&ctx->batch, res, false, false);
          res->obj->unordered_write = false;
       }
@@ -5725,10 +5734,11 @@ zink_update_barriers(struct zink_context *ctx, bool is_compute,
             if (is_feedback)
                update_res_sampler_layouts(ctx, res);
          }
-         if (zink_resource_access_is_write(res->barrier_access[is_compute]))
-            res->obj->unordered_read = res->obj->unordered_write = false;
-         else
-            res->obj->unordered_read = false;
+         if (zink_resource_access_is_write(res->barrier_access[is_compute]) ||
+             // TODO: figure out a way to link up layouts between unordered and main cmdbuf
+             res->base.b.target != PIPE_BUFFER)
+            res->obj->unordered_write = false;
+         res->obj->unordered_read = false;
          /* always barrier on draw if this resource has either multiple image write binds or
           * image write binds and image read binds
           */
