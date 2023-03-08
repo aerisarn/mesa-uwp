@@ -3437,7 +3437,8 @@ tc_flush(struct pipe_context *_pipe, struct pipe_fence_handle **fence,
    bool async = flags & (PIPE_FLUSH_DEFERRED | PIPE_FLUSH_ASYNC);
    bool deferred = (flags & PIPE_FLUSH_DEFERRED) > 0;
 
-   tc->in_renderpass = false;
+   if (!deferred || !fence)
+      tc->in_renderpass = false;
 
    if (async && tc->options.create_fence) {
       if (fence) {
