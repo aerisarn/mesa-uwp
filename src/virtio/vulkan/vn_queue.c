@@ -58,6 +58,7 @@ struct vn_queue_submission {
    };
    VkFence fence_handle;
 
+   /* TODO remove synchronous when asyncRoundtrip is required */
    bool synchronous;
    bool has_feedback_fence;
    bool has_feedback_semaphore;
@@ -277,17 +278,12 @@ vn_queue_submission_prepare(struct vn_queue_submission *submit)
     * We enforce above via an asynchronous vkQueueSubmit(2) via ring followed
     * by an asynchronous renderer submission to wait for the ring submission:
     * - struct wsi_memory_signal_submit_info
-    *
-    * We enforce above via a synchronous submission if seeing any of below:
     * - fence is an external fence
     * - has an external signal semaphore
     */
    struct vn_queue *queue = vn_queue_from_handle(submit->queue_handle);
    submit->external.ring_idx = queue->ring_idx;
-   submit->synchronous =
-      has_external_fence ||
-      (!queue->device->instance->experimental.asyncRoundtrip &&
-       submit->wsi_mem);
+   submit->synchronous = has_external_fence || submit->wsi_mem;
 
    for (uint32_t i = 0; i < submit->batch_count; i++) {
       VkResult result = vn_queue_submission_fix_batch_semaphores(submit, i);
@@ -852,7 +848,8 @@ vn_queue_submit(struct vn_queue_submission *submit)
    if (!submit->batch_count && submit->fence_handle == VK_NULL_HANDLE)
       return VK_SUCCESS;
 
-   if (submit->synchronous || VN_PERF(NO_ASYNC_QUEUE_SUBMIT)) {
+   if ((!instance->experimental.asyncRoundtrip && submit->synchronous) ||
+       VN_PERF(NO_ASYNC_QUEUE_SUBMIT)) {
       if (submit->batch_type == VK_STRUCTURE_TYPE_SUBMIT_INFO_2) {
          result = vn_call_vkQueueSubmit2(
             instance, submit->queue_handle, submit->batch_count,
@@ -1361,14 +1358,25 @@ vn_create_sync_file(struct vn_device *dev,
    if (result != VK_SUCCESS)
       return vn_error(dev->instance, result);
 
+   struct vn_renderer_submit_batch batch = {
+      .syncs = &sync,
+      .sync_values = &(const uint64_t){ 1 },
+      .sync_count = 1,
+      .ring_idx = payload->ring_idx,
+   };
+
+   uint32_t local_data[8];
+   struct vn_cs_encoder local_enc =
+      VN_CS_ENCODER_INITIALIZER_LOCAL(local_data, sizeof(local_data));
+   if (payload->ring_seqno_valid) {
+      vn_encode_vkWaitRingSeqno100000MESA(
+         &local_enc, 0, dev->instance->ring.id, payload->ring_seqno);
+      batch.cs_data = local_data;
+      batch.cs_size = vn_cs_encoder_get_len(&local_enc);
+   }
+
    const struct vn_renderer_submit submit = {
-      .batches =
-         &(const struct vn_renderer_submit_batch){
-            .syncs = &sync,
-            .sync_values = &(const uint64_t){ 1 },
-            .sync_count = 1,
-            .ring_idx = payload->ring_idx,
-         },
+      .batches = &batch,
       .batch_count = 1,
    };
    result = vn_renderer_submit(dev->renderer, &submit);
