@@ -1864,11 +1864,11 @@ iris_bo_export_dmabuf(struct iris_bo *bo, int *prime_fd)
    /* We cannot export suballocated BOs. */
    assert(iris_bo_is_real(bo));
 
-   iris_bo_mark_exported(bo);
-
    if (drmPrimeHandleToFD(bufmgr->fd, bo->gem_handle,
                           DRM_CLOEXEC | DRM_RDWR, prime_fd) != 0)
       return -errno;
+
+   iris_bo_mark_exported(bo);
 
    return 0;
 }
