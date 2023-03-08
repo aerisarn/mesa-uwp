@@ -3018,3 +3018,14 @@ anv_DestroyBufferView(VkDevice _device, VkBufferView bufferView,
 
    vk_buffer_view_destroy(&device->vk, pAllocator, &view->vk);
 }
+
+void anv_GetRenderingAreaGranularityKHR(
+    VkDevice                                    _device,
+    const VkRenderingAreaInfoKHR*               pRenderingAreaInfo,
+    VkExtent2D*                                 pGranularity)
+{
+   *pGranularity = (VkExtent2D) {
+      .width = 1,
+      .height = 1,
+   };
+}
