@@ -2330,6 +2330,7 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
             shader->needs_inlining = true;
             ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type] = shader;
             shader->non_fs.is_generated = true;
+            shader->non_fs.parent = ctx->gfx_stages[prev_vertex_stage];
             shader->can_inline = true;
             shader->sinfo.so_info = ctx->gfx_stages[prev_vertex_stage]->sinfo.so_info;
          }

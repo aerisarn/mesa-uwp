@@ -768,6 +768,8 @@ struct zink_shader {
       struct {
          struct zink_shader *generated_tcs; // a generated shader that this shader "owns"; only valid in the tes stage
          struct zink_shader *generated_gs[PIPE_PRIM_MAX][ZINK_PRIM_MAX]; // generated shaders that this shader "owns"
+         struct zink_shader *parent; // for a generated gs this points to the shader that "owns" it
+
          bool is_generated; // if this is a driver-created shader (e.g., tcs)
       } non_fs;
 
