@@ -2211,9 +2211,7 @@ combine_ordering_test(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
    bool is_or = instr->opcode == aco_opcode::s_or_b64 || instr->opcode == aco_opcode::s_or_b32;
 
-   bool neg[2] = {false, false};
-   bool abs[2] = {false, false};
-   uint8_t opsel = 0;
+   bitarray8 opsel = 0, abs = 0, neg = 0;
    Instruction* op_instr[2];
    Temp op[2];
 
@@ -2240,7 +2238,7 @@ combine_ordering_test(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             return false;
          neg[i] = vop3.neg[0];
          abs[i] = vop3.abs[0];
-         opsel |= vop3.opsel[0] << i;
+         opsel[i] = vop3.opsel[0];
       } else if (op_instr[i]->isSDWA()) {
          return false;
       }
@@ -2267,13 +2265,12 @@ combine_ordering_test(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    case 64: new_op = is_or ? aco_opcode::v_cmp_u_f64 : aco_opcode::v_cmp_o_f64; break;
    }
    Instruction* new_instr;
-   if (neg[0] || neg[1] || abs[0] || abs[1] || opsel || num_sgprs > 1) {
+   if (neg || abs || opsel || num_sgprs > 1) {
       VALU_instruction* vop3 =
          create_instruction<VALU_instruction>(new_op, asVOP3(Format::VOPC), 2, 1);
-      for (unsigned i = 0; i < 2; i++) {
-         vop3->neg[i] = neg[i];
-         vop3->abs[i] = abs[i];
-      }
+
+      vop3->abs = abs;
+      vop3->neg = neg;
       vop3->opsel = opsel;
       new_instr = static_cast<Instruction*>(vop3);
    } else {
@@ -2597,8 +2594,8 @@ combine_inverse_comparison(opt_ctx& ctx, aco_ptr<Instruction>& instr)
  * op1(0, op2(1, 2)) if swap = true */
 bool
 match_op3_for_vop3(opt_ctx& ctx, aco_opcode op1, aco_opcode op2, Instruction* op1_instr, bool swap,
-                   const char* shuffle_str, Operand operands[3], bool neg[3], bool abs[3],
-                   uint8_t* opsel, bool* op1_clamp, uint8_t* op1_omod, bool* inbetween_neg,
+                   const char* shuffle_str, Operand operands[3], bitarray8& neg, bitarray8& abs,
+                   bitarray8& opsel, bool* op1_clamp, uint8_t* op1_omod, bool* inbetween_neg,
                    bool* inbetween_abs, bool* inbetween_opsel, bool* precise)
 {
    /* checks */
@@ -2650,15 +2647,13 @@ match_op3_for_vop3(opt_ctx& ctx, aco_opcode op1, aco_opcode op2, Instruction* op
    operands[shuffle[0]] = op1_instr->operands[!swap];
    neg[shuffle[0]] = op1_vop3 ? op1_vop3->neg[!swap] : false;
    abs[shuffle[0]] = op1_vop3 ? op1_vop3->abs[!swap] : false;
-   if (op1_vop3 && op1_vop3->opsel[!swap])
-      *opsel |= 1 << shuffle[0];
+   opsel[shuffle[0]] = op1_vop3 ? op1_vop3->opsel[!swap] : false;
 
    for (unsigned i = 0; i < 2; i++) {
       operands[shuffle[i + 1]] = op2_instr->operands[i];
       neg[shuffle[i + 1]] = op2_vop3 ? op2_vop3->neg[i] : false;
       abs[shuffle[i + 1]] = op2_vop3 ? op2_vop3->abs[i] : false;
-      if (op2_vop3 && op2_vop3->opsel[i])
-         *opsel |= 1 << shuffle[i + 1];
+      opsel[shuffle[i + 1]] = op2_vop3 ? op2_vop3->opsel[i] : false;
    }
 
    /* check operands */
@@ -2670,12 +2665,12 @@ match_op3_for_vop3(opt_ctx& ctx, aco_opcode op1, aco_opcode op2, Instruction* op
 
 void
 create_vop3_for_op3(opt_ctx& ctx, aco_opcode opcode, aco_ptr<Instruction>& instr,
-                    Operand operands[3], bool (&neg)[3], bool (&abs)[3], uint8_t opsel, bool clamp,
+                    Operand operands[3], uint8_t neg, uint8_t abs, uint8_t opsel, bool clamp,
                     unsigned omod)
 {
    VALU_instruction* new_instr = create_instruction<VALU_instruction>(opcode, Format::VOP3, 3, 1);
-   std::copy(std::cbegin(neg), std::cend(neg), std::begin(new_instr->neg));
-   std::copy(std::cbegin(abs), std::cend(abs), std::begin(new_instr->abs));
+   new_instr->neg = neg;
+   new_instr->abs = abs;
    new_instr->clamp = clamp;
    new_instr->omod = omod;
    new_instr->opsel = opsel;
@@ -2697,10 +2692,11 @@ combine_three_valu_op(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode op2,
          continue;
 
       Operand operands[3];
-      bool neg[3], abs[3], clamp, precise;
-      uint8_t opsel = 0, omod = 0;
+      bool clamp, precise;
+      bitarray8 neg = 0, abs = 0, opsel = 0;
+      uint8_t omod = 0;
       if (match_op3_for_vop3(ctx, instr->opcode, op2, instr.get(), swap, shuffle, operands, neg,
-                             abs, &opsel, &clamp, &omod, NULL, NULL, NULL, &precise)) {
+                             abs, opsel, &clamp, &omod, NULL, NULL, NULL, &precise)) {
          ctx.uses[instr->operands[swap].tempId()]--;
          create_vop3_for_op3(ctx, new_op, instr, operands, neg, abs, opsel, clamp, omod);
          return true;
@@ -2765,8 +2761,7 @@ combine_add_or_then_and_lshl(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       if (!check_vop3_operands(ctx, 3, operands))
          continue;
 
-      bool neg[3] = {}, abs[3] = {};
-      uint8_t opsel = 0, omod = 0;
+      uint8_t neg = 0, abs = 0, opsel = 0, omod = 0;
       bool clamp = false;
       if (instr->isVOP3())
          clamp = instr->valu().clamp;
@@ -2841,11 +2836,12 @@ combine_minmax(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode opposite, a
     */
    for (unsigned swap = 0; swap < 2; swap++) {
       Operand operands[3];
-      bool neg[3], abs[3], clamp, precise;
-      uint8_t opsel = 0, omod = 0;
+      bool clamp, precise;
+      bitarray8 opsel = 0, neg = 0, abs = 0;
+      uint8_t omod = 0;
       bool inbetween_neg;
       if (match_op3_for_vop3(ctx, instr->opcode, instr->opcode, instr.get(), swap, "120", operands,
-                             neg, abs, &opsel, &clamp, &omod, &inbetween_neg, NULL, NULL,
+                             neg, abs, opsel, &clamp, &omod, &inbetween_neg, NULL, NULL,
                              &precise) &&
           (!inbetween_neg ||
            (minmax != aco_opcode::num_opcodes && ctx.program->gfx_level >= GFX11))) {
@@ -2868,11 +2864,12 @@ combine_minmax(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode opposite, a
     */
    for (unsigned swap = 0; swap < 2; swap++) {
       Operand operands[3];
-      bool neg[3], abs[3], clamp, precise;
-      uint8_t opsel = 0, omod = 0;
+      bool clamp, precise;
+      bitarray8 opsel = 0, neg = 0, abs = 0;
+      uint8_t omod = 0;
       bool inbetween_neg;
       if (match_op3_for_vop3(ctx, instr->opcode, opposite, instr.get(), swap, "120", operands, neg,
-                             abs, &opsel, &clamp, &omod, &inbetween_neg, NULL, NULL, &precise) &&
+                             abs, opsel, &clamp, &omod, &inbetween_neg, NULL, NULL, &precise) &&
           (inbetween_neg ||
            (minmax != aco_opcode::num_opcodes && ctx.program->gfx_level >= GFX11))) {
          ctx.uses[instr->operands[swap].tempId()]--;
@@ -3272,10 +3269,11 @@ combine_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode min, aco_opc
 
    for (unsigned swap = 0; swap < 2; swap++) {
       Operand operands[3];
-      bool neg[3], abs[3], clamp, precise;
-      uint8_t opsel = 0, omod = 0;
+      bool clamp, precise;
+      bitarray8 opsel = 0, neg = 0, abs = 0;
+      uint8_t omod = 0;
       if (match_op3_for_vop3(ctx, instr->opcode, other_op, instr.get(), swap, "012", operands, neg,
-                             abs, &opsel, &clamp, &omod, NULL, NULL, NULL, &precise)) {
+                             abs, opsel, &clamp, &omod, NULL, NULL, NULL, &precise)) {
          /* max(min(src, upper), lower) returns upper if src is NaN, but
           * med3(src, lower, upper) returns lower.
           */
@@ -4315,8 +4313,8 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          bool abs[3] = {false, false, false};
          unsigned omod = 0;
          bool clamp = false;
-         uint8_t opsel_lo = 0;
-         uint8_t opsel_hi = 0;
+         bitarray8 opsel_lo = 0;
+         bitarray8 opsel_hi = 0;
          unsigned mul_op_idx = (instr->isVOP3P() ? 3 : 1) - add_op_idx;
 
          VALU_instruction& valu_mul = mul_instr->valu();
@@ -4330,8 +4328,8 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          VALU_instruction& valu = instr->valu();
          neg[2] = valu.neg[add_op_idx];
          abs[2] = valu.abs[add_op_idx];
-         opsel_lo |= valu.opsel_lo[add_op_idx] ? 0x4 : 0x0;
-         opsel_hi |= valu.opsel_hi[add_op_idx] ? 0x4 : 0x0;
+         opsel_lo[2] = valu.opsel_lo[add_op_idx];
+         opsel_hi[2] = valu.opsel_hi[add_op_idx];
          omod = valu.omod;
          clamp = valu.clamp;
          /* abs of the multiplication result */
