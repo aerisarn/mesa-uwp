@@ -8180,10 +8180,11 @@ static uint32_t restart_index_for_type(VkIndexType type)
    }
 }
 
-void genX(CmdBindIndexBuffer)(
+void genX(CmdBindIndexBuffer2KHR)(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    _buffer,
     VkDeviceSize                                offset,
+    VkDeviceSize                                size,
     VkIndexType                                 indexType)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
@@ -8202,6 +8203,7 @@ void genX(CmdBindIndexBuffer)(
       cmd_buffer->state.gfx.index_buffer = buffer;
       cmd_buffer->state.gfx.index_type = vk_to_intel_index_type(indexType);
       cmd_buffer->state.gfx.index_offset = offset;
+      cmd_buffer->state.gfx.index_size = vk_buffer_range(&buffer->vk, offset, size);
       cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_INDEX_BUFFER;
    }
 }

@@ -2831,6 +2831,7 @@ struct anv_cmd_graphics_state {
    struct anv_buffer *index_buffer;
    uint32_t index_type; /**< 3DSTATE_INDEX_BUFFER.IndexFormat */
    uint32_t index_offset;
+   uint32_t index_size;
 
    struct vk_vertex_input_state vertex_input;
    struct vk_sample_locations_state sample_locations;
