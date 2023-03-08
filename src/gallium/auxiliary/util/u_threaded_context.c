@@ -4379,8 +4379,13 @@ tc_clear(struct pipe_context *_pipe, unsigned buffers, const struct pipe_scissor
       if (info) {
          /* full clears use a different load operation, but are only valid if draws haven't occurred yet */
          info->cbuf_clear |= (buffers >> 2) & ~info->cbuf_load;
-         if (buffers & PIPE_CLEAR_DEPTHSTENCIL && !info->zsbuf_load && !info->zsbuf_clear_partial)
-            info->zsbuf_clear = true;
+         if (buffers & PIPE_CLEAR_DEPTHSTENCIL) {
+            if (!info->zsbuf_load && !info->zsbuf_clear_partial)
+               info->zsbuf_clear = true;
+            else if (!info->zsbuf_clear)
+               /* this is a clear that occurred after a draw: flag as partial to ensure it isn't ignored */
+               info->zsbuf_clear_partial = true;
+         }
       }
    }
    p->scissor_state_set = !!scissor_state;
