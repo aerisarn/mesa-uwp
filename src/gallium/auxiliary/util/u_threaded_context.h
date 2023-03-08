@@ -510,7 +510,8 @@ struct tc_batch {
    uint16_t num_total_slots;
    uint16_t buffer_list_index;
    /* the index of the current renderpass info for recording */
-   int renderpass_info_idx;
+   int16_t renderpass_info_idx;
+   uint16_t max_renderpass_info_idx;
 
    /* The last mergeable call that was added to this batch (i.e.
     * buffer subdata). This might be out-of-date or NULL.
@@ -608,6 +609,8 @@ struct threaded_context {
    bool in_renderpass;
    /* whether a query has ended more recently than a draw */
    bool query_ended;
+   /* whether pipe_context::flush has been called */
+   bool flushing;
 
    bool seen_streamout_buffers;
    bool seen_shader_buffers[PIPE_SHADER_TYPES];
