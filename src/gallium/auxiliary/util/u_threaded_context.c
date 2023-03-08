@@ -3435,6 +3435,7 @@ tc_flush(struct pipe_context *_pipe, struct pipe_fence_handle **fence,
    struct pipe_context *pipe = tc->pipe;
    struct pipe_screen *screen = pipe->screen;
    bool async = flags & (PIPE_FLUSH_DEFERRED | PIPE_FLUSH_ASYNC);
+   bool deferred = (flags & PIPE_FLUSH_DEFERRED) > 0;
 
    tc->in_renderpass = false;
 
@@ -3458,7 +3459,7 @@ tc_flush(struct pipe_context *_pipe, struct pipe_fence_handle **fence,
       }
 
       struct tc_flush_call *p;
-      if (flags & PIPE_FLUSH_DEFERRED) {
+      if (deferred) {
          /* these have identical fields */
          p = (struct tc_flush_call *)tc_add_call(tc, TC_CALL_flush_deferred, tc_flush_deferred_call);
       } else {
@@ -3468,7 +3469,7 @@ tc_flush(struct pipe_context *_pipe, struct pipe_fence_handle **fence,
       p->fence = fence ? *fence : NULL;
       p->flags = flags | TC_FLUSH_ASYNC;
 
-      if (!(flags & PIPE_FLUSH_DEFERRED)) {
+      if (!deferred) {
          /* non-deferred async flushes indicate completion of existing renderpass info */
          tc_signal_renderpass_info_ready(tc);
          tc_batch_flush(tc, false);
@@ -3483,7 +3484,7 @@ out_of_memory:
    tc_sync_msg(tc, flags & PIPE_FLUSH_END_OF_FRAME ? "end of frame" :
                    flags & PIPE_FLUSH_DEFERRED ? "deferred fence" : "normal");
 
-   if (!(flags & PIPE_FLUSH_DEFERRED)) {
+   if (!deferred) {
       tc_flush_queries(tc);
       tc->seen_fb_state = false;
       tc->query_ended = false;
