@@ -10,6 +10,7 @@
       - _build/meson-logs/*.txt
       - _build/meson-logs/strace
       - shader-db
+      - artifacts
 
 # Just Linux
 .build-linux:
@@ -221,14 +222,14 @@ debian-release:
       -D llvm=enabled
     GALLIUM_DRIVERS: "i915,iris,nouveau,kmsro,freedreno,r300,svga,swrast,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,d3d12,crocus"
     VULKAN_DRIVERS: "amd,imagination-experimental,microsoft-experimental"
-    BUILDTYPE: "release"
     EXTRA_OPTION: >
       -D spirv-to-dxil=true
       -D osmesa=true
       -D tools=all
       -D intel-clc=enabled
       -D imagination-srv=true
-    MINIO_ARTIFACT_NAME: "mesa-amd64-rel"
+    BUILDTYPE: "release"
+    MINIO_ARTIFACT_NAME: "mesa-amd64-${BUILDTYPE}"
   script:
     - .gitlab-ci/meson/build.sh
     - 'if [ -n "$MESA_CI_PERFORMANCE_ENABLED" ]; then .gitlab-ci/prepare-artifacts.sh; fi'
@@ -468,8 +469,8 @@ debian-arm64-release:
   extends:
     - debian-arm64
   variables:
-    MINIO_ARTIFACT_NAME: mesa-arm64-rel
-    BUILDTYPE: "release"
+    BUILDTYPE: release
+    MINIO_ARTIFACT_NAME: mesa-arm64-${BUILDTYPE}
     C_ARGS: >
       -Wno-error=stringop-truncation
   script:
