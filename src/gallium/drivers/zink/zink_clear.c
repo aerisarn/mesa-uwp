@@ -80,6 +80,8 @@ clear_in_rp(struct pipe_context *pctx,
       if (buffers & PIPE_CLEAR_STENCIL)
          aspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
+      assert(zink_is_zsbuf_used(ctx));
+
       attachments[num_attachments].aspectMask = aspect;
       attachments[num_attachments].clearValue.depthStencil.depth = depth;
       attachments[num_attachments].clearValue.depthStencil.stencil = stencil;
