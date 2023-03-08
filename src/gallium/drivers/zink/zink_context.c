@@ -2795,6 +2795,13 @@ zink_batch_no_rp(struct zink_context *ctx)
 {
    if (!ctx->batch.in_rp)
       return;
+   if (zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses && !ctx->blitting) {
+      ctx->dynamic_fb.tc_info.data32[0] = 0;
+      ctx->dynamic_fb.tc_info.cbuf_load = BITFIELD_MASK(8);
+      ctx->dynamic_fb.tc_info.zsbuf_clear_partial = true;
+      ctx->dynamic_fb.tc_info.has_draw = true;
+      ctx->dynamic_fb.tc_info.has_query_ends = true;
+   }
    if (ctx->render_condition.query)
       zink_stop_conditional_render(ctx);
    /* suspend all queries that were started in a renderpass
@@ -2849,7 +2856,6 @@ zink_prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, uns
    }
    VkImageLayout layout;
    if (ctx->tc && zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses && !ctx->blitting) {
-      assert(threaded_context_get_renderpass_info(ctx->tc, false)->data == ctx->dynamic_fb.tc_info.data);
       layout = zink_tc_renderpass_info_parse(ctx, &ctx->dynamic_fb.tc_info, i < ctx->fb_state.nr_cbufs ? i : PIPE_MAX_COLOR_BUFS, &pipeline, &access);
       assert(i < ctx->fb_state.nr_cbufs || layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL || !zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS));
       if (i == ctx->fb_state.nr_cbufs && zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS))
