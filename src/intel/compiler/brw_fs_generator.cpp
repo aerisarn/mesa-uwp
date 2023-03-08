@@ -1643,55 +1643,6 @@ fs_generator::generate_set_sample_id(fs_inst *inst,
 }
 
 void
-fs_generator::generate_pack_half_2x16_split(fs_inst *,
-                                            struct brw_reg dst,
-                                            struct brw_reg x,
-                                            struct brw_reg y)
-{
-   assert(devinfo->ver >= 7);
-   assert(dst.type == BRW_REGISTER_TYPE_UD);
-   assert(x.type == BRW_REGISTER_TYPE_F);
-   assert(y.type == BRW_REGISTER_TYPE_F);
-
-   /* From the Ivybridge PRM, Vol4, Part3, Section 6.27 f32to16:
-    *
-    *   Because this instruction does not have a 16-bit floating-point type,
-    *   the destination data type must be Word (W).
-    *
-    *   The destination must be DWord-aligned and specify a horizontal stride
-    *   (HorzStride) of 2. The 16-bit result is stored in the lower word of
-    *   each destination channel and the upper word is not modified.
-    */
-   const enum brw_reg_type t = devinfo->ver > 7
-      ? BRW_REGISTER_TYPE_HF : BRW_REGISTER_TYPE_W;
-   struct brw_reg dst_w = spread(retype(dst, t), 2);
-
-   if (y.file == IMM) {
-      const uint32_t hhhh0000 = _mesa_float_to_half(y.f) << 16;
-
-      brw_MOV(p, dst, brw_imm_ud(hhhh0000));
-      brw_set_default_swsb(p, tgl_swsb_regdist(1));
-   } else {
-      /* Give each 32-bit channel of dst the form below, where "." means
-       * unchanged.
-       *   0x....hhhh
-       */
-      brw_F32TO16(p, dst_w, y);
-
-      /* Now the form:
-       *   0xhhhh0000
-       */
-      brw_set_default_swsb(p, tgl_swsb_regdist(1));
-      brw_SHL(p, dst, dst, brw_imm_ud(16u));
-   }
-
-   /* And, finally the form of packHalf2x16's output:
-    *   0xhhhhllll
-    */
-   brw_F32TO16(p, dst_w, x);
-}
-
-void
 fs_generator::enable_debug(const char *shader_name)
 {
    debug_flag = true;
@@ -2349,10 +2300,6 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       case FS_OPCODE_SET_SAMPLE_ID:
          generate_set_sample_id(inst, dst, src[0], src[1]);
          break;
-
-      case FS_OPCODE_PACK_HALF_2x16_SPLIT:
-          generate_pack_half_2x16_split(inst, dst, src[0], src[1]);
-          break;
 
       case SHADER_OPCODE_HALT_TARGET:
          /* This is the place where the final HALT needs to be inserted if

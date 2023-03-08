@@ -637,11 +637,6 @@ private:
 
    void generate_halt(fs_inst *inst);
 
-   void generate_pack_half_2x16_split(fs_inst *inst,
-                                      struct brw_reg dst,
-                                      struct brw_reg x,
-                                      struct brw_reg y);
-
    void generate_mov_indirect(fs_inst *inst,
                               struct brw_reg dst,
                               struct brw_reg reg,
