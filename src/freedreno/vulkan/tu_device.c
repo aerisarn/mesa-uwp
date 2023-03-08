@@ -83,7 +83,7 @@ tu_EnumerateInstanceVersion(uint32_t *pApiVersion)
     return VK_SUCCESS;
 }
 
-static const struct vk_instance_extension_table tu_instance_extensions_supported = {
+static const struct vk_instance_extension_table tu_instance_extensions_supported = { .table = {
    .KHR_device_group_creation           = true,
 #ifdef VK_USE_PLATFORM_DISPLAY_KHR
    .KHR_display                         = true,
@@ -119,7 +119,7 @@ static const struct vk_instance_extension_table tu_instance_extensions_supported
    .EXT_display_surface_counter         = true,
 #endif
    .EXT_swapchain_colorspace            = TU_HAS_SURFACE,
-};
+} };
 
 static bool
 is_kgsl(struct tu_instance *instance)
@@ -131,7 +131,7 @@ static void
 get_device_extensions(const struct tu_physical_device *device,
                       struct vk_device_extension_table *ext)
 {
-   *ext = (struct vk_device_extension_table) {
+   *ext = (struct vk_device_extension_table) { .table = {
       .KHR_16bit_storage = device->info->a6xx.storage_16bit,
       .KHR_bind_memory2 = true,
       .KHR_buffer_device_address = true,
@@ -272,7 +272,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .ARM_rasterization_order_attachment_access = true,
       .IMG_filter_cubic = device->info->a6xx.has_tex_filter_cubic,
       .VALVE_mutable_descriptor_type = true,
-   };
+   } };
 }
 
 static const struct vk_pipeline_cache_object_ops *const cache_import_ops[] = {
