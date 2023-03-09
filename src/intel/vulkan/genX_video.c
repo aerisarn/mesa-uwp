@@ -231,10 +231,13 @@ anv_h264_decode_video(struct anv_cmd_buffer *cmd_buffer,
       picid.PictureIDRemappingDisable = true;
    }
 
+   uint32_t pic_height = sps->pic_height_in_map_units_minus1 + 1;
+   if (!sps->flags.frame_mbs_only_flag)
+      pic_height *= 2;
    anv_batch_emit(&cmd_buffer->batch, GENX(MFX_AVC_IMG_STATE), avc_img) {
       avc_img.FrameWidth = sps->pic_width_in_mbs_minus1;
-      avc_img.FrameHeight = sps->pic_height_in_map_units_minus1;
-      avc_img.FrameSize = (sps->pic_width_in_mbs_minus1 + 1) * (sps->pic_height_in_map_units_minus1 + 1);
+      avc_img.FrameHeight = pic_height - 1;
+      avc_img.FrameSize = (sps->pic_width_in_mbs_minus1 + 1) * pic_height;
 
       if (!h264_pic_info->pStdPictureInfo->flags.field_pic_flag)
          avc_img.ImageStructure = FramePicture;
