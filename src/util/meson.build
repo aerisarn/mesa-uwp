@@ -336,6 +336,8 @@ idep_xmlconfig = declare_dependency(
 files_xxd = files('xxd.py')
 glsl2spirv = files('glsl2spirv.py')
 
+devenv.set('DRIRC_CONFIGDIR', meson.current_source_dir())
+
 if with_tests
   # DRI_CONF macros use designated initializers (required for union
   # initializaiton), so we need c++2a since gtest forces us to use c++
