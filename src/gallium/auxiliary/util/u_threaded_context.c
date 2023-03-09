@@ -1094,6 +1094,7 @@ static bool
 tc_begin_query(struct pipe_context *_pipe, struct pipe_query *query)
 {
    struct threaded_context *tc = threaded_context(_pipe);
+   tc->num_queries_active++;
 
    tc_add_call(tc, TC_CALL_begin_query, tc_query_call)->query = query;
    return true; /* we don't care about the return value for this call */
@@ -1125,6 +1126,7 @@ tc_end_query(struct pipe_context *_pipe, struct pipe_query *query)
    struct threaded_query *tq = threaded_query(query);
    struct tc_end_query_call *call =
       tc_add_call(tc, TC_CALL_end_query, tc_end_query_call);
+   tc->num_queries_active--;
 
    call->tc = tc;
    call->query = query;

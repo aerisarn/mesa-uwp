@@ -563,6 +563,7 @@ struct threaded_context {
    bool use_forced_staging_uploads;
    bool add_all_gfx_bindings_to_buffer_list;
    bool add_all_compute_bindings_to_buffer_list;
+   uint8_t num_queries_active;
 
    /* Estimation of how much vram/gtt bytes are mmap'd in
     * the current tc_batch.
