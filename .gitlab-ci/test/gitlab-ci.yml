@@ -152,8 +152,7 @@ rustfmt:
     - section_start artifacts_download "Downloading artifacts from s3"
     # Note: Build dir (and thus install) may be dirty due to GIT_STRATEGY
     - rm -rf install
-    - curl -L --retry 4 -f --retry-all-errors --retry-delay 60 ${FDO_HTTP_CACHE_URI:-}https://${PIPELINE_ARTIFACTS_BASE}/${MINIO_ARTIFACT_NAME}.tar.zst | tar --zstd -x
-    - echo -e "\e[0Ksection_end:$(date +%s):artifacts_download\r\e[0K"
+    - (set -x; curl -L --retry 4 -f --retry-all-errors --retry-delay 60 ${FDO_HTTP_CACHE_URI:-}https://${PIPELINE_ARTIFACTS_BASE}/${MINIO_ARTIFACT_NAME}.tar.zst | tar --zstd -x)
     - section_end artifacts_download
   artifacts:
     when: always
