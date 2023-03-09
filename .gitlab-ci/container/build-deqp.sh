@@ -110,6 +110,8 @@ if [ "${DEQP_TARGET}" = 'android' ]; then
     mv /deqp/modules/egl/deqp-egl /deqp/modules/egl/deqp-egl-android
 fi
 
+git -C /VK-GL-CTS describe --long > /deqp/version
+
 # Copy out the mustpass lists we want.
 mkdir /deqp/mustpass
 for mustpass in $(< /VK-GL-CTS/external/vulkancts/mustpass/main/vk-default.txt) ; do

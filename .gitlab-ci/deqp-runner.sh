@@ -161,6 +161,8 @@ fi
 
 uncollapsed_section_switch deqp "deqp: deqp-runner"
 
+echo "deqp $(cat /deqp/version)"
+
 set +e
 if [ -z "$DEQP_SUITE" ]; then
     deqp-runner \
