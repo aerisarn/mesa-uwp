@@ -40,7 +40,7 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
 {
    struct nvk_device *dev = nvk_queue_device(queue);
 
-   uint32_t push_data[1024];
+   uint32_t push_data[1024 + 512];
    struct nv_push push;
    nv_push_init(&push, push_data, ARRAY_SIZE(push_data));
    struct nv_push *p = &push;
