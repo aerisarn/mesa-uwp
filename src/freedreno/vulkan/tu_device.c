@@ -2515,7 +2515,7 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 tu_GetInstanceProcAddr(VkInstance _instance, const char *pName)
 {
    TU_FROM_HANDLE(tu_instance, instance, _instance);
-   return vk_instance_get_proc_addr(&instance->vk,
+   return vk_instance_get_proc_addr(instance != NULL ? &instance->vk : NULL,
                                     &tu_instance_entrypoints,
                                     pName);
 }
