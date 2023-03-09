@@ -11581,8 +11581,8 @@ select_rt_prolog(Program* program, ac_shader_config* config,
     * Local invocation IDs:        v[0-2]
     */
    PhysReg in_ring_offsets = get_arg_reg(in_args, in_args->ring_offsets);
+   PhysReg in_sbt_desc = get_arg_reg(in_args, in_args->rt.sbt_descriptors);
    PhysReg in_launch_size_addr = get_arg_reg(in_args, in_args->rt.launch_size_addr);
-   PhysReg in_shader_addr = get_arg_reg(in_args, in_args->rt.traversal_shader);
    PhysReg in_stack_base = get_arg_reg(in_args, in_args->rt.dynamic_callable_stack_base);
    PhysReg in_wg_id_x = get_arg_reg(in_args, in_args->workgroup_ids[0]);
    PhysReg in_wg_id_y = get_arg_reg(in_args, in_args->workgroup_ids[1]);
@@ -11606,6 +11606,8 @@ select_rt_prolog(Program* program, ac_shader_config* config,
     * Ring offsets (<GFX9 only):   s[12-13]
     * Ray launch IDs:              v[0-2]
     * Stack pointer:               v[3]
+    * Shader VA:                   v[4-5]
+    * Shader Record Ptr:           v[6-7]
     */
    PhysReg out_shader_pc = get_arg_reg(out_args, out_args->rt.shader_pc);
    PhysReg out_launch_size_x = get_arg_reg(out_args, out_args->rt.launch_size);
@@ -11614,9 +11616,12 @@ select_rt_prolog(Program* program, ac_shader_config* config,
    for (unsigned i = 0; i < 3; i++)
       out_launch_ids[i] = get_arg_reg(out_args, out_args->rt.launch_id).advance(i * 4);
    PhysReg out_stack_ptr = get_arg_reg(out_args, out_args->rt.dynamic_callable_stack_base);
+   PhysReg out_shader_va = get_arg_reg(out_args, out_args->rt.next_shader);
+   PhysReg out_record_ptr = get_arg_reg(out_args, out_args->rt.shader_record);
 
    /* Temporaries: */
-   num_sgprs = align(num_sgprs, 2) + 2;
+   num_sgprs = align(num_sgprs, 2) + 4;
+   PhysReg tmp_raygen_sbt = PhysReg{num_sgprs - 4};
    PhysReg tmp_ring_offsets = PhysReg{num_sgprs - 2};
 
    /* Confirm some assumptions about register aliasing */
@@ -11628,6 +11633,10 @@ select_rt_prolog(Program* program, ac_shader_config* config,
    assert(in_launch_size_addr == out_launch_size_x);
    assert(in_stack_base == out_launch_size_z);
    assert(in_local_ids[0] == out_launch_ids[0]);
+
+   /* load raygen sbt */
+   bld.smem(aco_opcode::s_load_dwordx2, Definition(tmp_raygen_sbt, s2), Operand(in_sbt_desc, s2),
+            Operand::c32(0u));
 
    /* init scratch */
    if (options->gfx_level < GFX9) {
@@ -11642,9 +11651,9 @@ select_rt_prolog(Program* program, ac_shader_config* config,
    /* set stack ptr */
    bld.vop1(aco_opcode::v_mov_b32, Definition(out_stack_ptr, v1), Operand(in_stack_base, s1));
 
-   /* load RT shader address */
-   /* TODO: load this from the SBT, will be possible with separate shader compilation */
-   bld.sop1(aco_opcode::s_mov_b64, Definition(out_shader_pc, s2), Operand(in_shader_addr, s2));
+   /* load raygen address */
+   bld.smem(aco_opcode::s_load_dwordx2, Definition(out_shader_pc, s2), Operand(tmp_raygen_sbt, s2),
+            Operand::c32(0u));
 
    /* load ray launch sizes */
    bld.smem(aco_opcode::s_load_dword, Definition(out_launch_size_z, s1),
@@ -11675,6 +11684,23 @@ select_rt_prolog(Program* program, ac_shader_config* config,
       bld.sop1(aco_opcode::s_mov_b64, Definition(get_arg_reg(out_args, out_args->ring_offsets), s2),
                Operand(tmp_ring_offsets, s2));
    }
+
+   /* calculate shader record ptr: SBT + RADV_RT_HANDLE_SIZE */
+   if (options->gfx_level < GFX9) {
+      bld.vop2_e64(aco_opcode::v_add_co_u32, Definition(out_record_ptr, v1), Definition(vcc, s2),
+                   Operand(tmp_raygen_sbt, s1), Operand::c32(32u));
+   } else {
+      bld.vop2_e64(aco_opcode::v_add_u32, Definition(out_record_ptr, v1),
+                   Operand(tmp_raygen_sbt, s1), Operand::c32(32u));
+   }
+   bld.vop1(aco_opcode::v_mov_b32, Definition(out_record_ptr.advance(4), v1),
+            Operand(tmp_raygen_sbt.advance(4), s1));
+
+   /* initialize shader_va with raygen shader */
+   // TODO: we can optimize this away if we don't guard the raygen shader with an IF
+   bld.vop1(aco_opcode::v_mov_b32, Definition(out_shader_va, v1), Operand(out_shader_pc, s1));
+   bld.vop1(aco_opcode::v_mov_b32, Definition(out_shader_va.advance(4), v1),
+            Operand(out_shader_pc.advance(4), s1));
 
    /* jump to raygen */
    bld.sop1(aco_opcode::s_setpc_b64, Operand(out_shader_pc, s2));
