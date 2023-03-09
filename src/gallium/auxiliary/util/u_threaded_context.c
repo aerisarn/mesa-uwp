@@ -3150,7 +3150,6 @@ tc_get_sample_position(struct pipe_context *_pipe,
    struct threaded_context *tc = threaded_context(_pipe);
    struct pipe_context *pipe = tc->pipe;
 
-   tc_sync(tc);
    pipe->get_sample_position(pipe, sample_count, sample_index,
                              out_value);
 }

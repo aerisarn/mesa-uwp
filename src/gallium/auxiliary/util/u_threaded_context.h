@@ -78,6 +78,7 @@
  * - transfer_map (only unsychronized buffer mappings)
  * - get_query_result (when threaded_query::flushed == true)
  * - create_stream_output_target
+ * - get_sample_position
  *
  *
  * Transfer_map rules for buffer mappings
