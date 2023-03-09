@@ -690,6 +690,8 @@ gather_shader_info_task(const nir_shader *nir, struct radv_shader_info *info)
 void
 radv_nir_shader_info_init(struct radv_shader_info *info)
 {
+   memset(info, 0, sizeof(*info));
+
    /* Assume that shaders can inline all push constants by default. */
    info->can_inline_all_push_constants = true;
 }

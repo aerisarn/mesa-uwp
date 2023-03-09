@@ -2541,7 +2541,6 @@ radv_fill_shader_info(struct radv_graphics_pipeline *pipeline,
    bool consider_force_vrs = radv_consider_force_vrs(pipeline, noop_fs, stages);
 
    radv_foreach_stage(i, active_nir_stages) {
-      radv_nir_shader_info_init(&stages[i].info);
       radv_nir_shader_info_pass(device, stages[i].nir, pipeline_layout, pipeline_key,
                                 pipeline->base.type,
                                 i == pipeline->last_vgt_api_stage && consider_force_vrs,
@@ -3553,6 +3552,10 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
    }
 
    bool optimize_conservatively = pipeline_key->optimisations_disabled;
+
+   radv_foreach_stage(i, active_nir_stages) {
+      radv_nir_shader_info_init(&stages[i].info);
+   }
 
    /* Determine if shaders uses NGG before linking because it's needed for some NIR pass. */
    radv_fill_shader_info_ngg(pipeline, pipeline_key, stages);
