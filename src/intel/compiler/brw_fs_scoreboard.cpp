@@ -84,8 +84,7 @@ namespace {
             if (inst->src[i].file != BAD_FILE &&
                 !inst->is_control_source(i)) {
                const brw_reg_type t = inst->src[i].type;
-               has_int_src |= !brw_reg_type_is_floating_point(t) &&
-                              inst->opcode != BRW_OPCODE_F16TO32;
+               has_int_src |= !brw_reg_type_is_floating_point(t);
                has_long_src |= type_sz(t) >= 8;
             }
          }
