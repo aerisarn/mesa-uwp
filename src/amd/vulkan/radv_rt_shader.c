@@ -239,8 +239,8 @@ static void
 insert_rt_return(nir_builder *b, const struct rt_variables *vars)
 {
    nir_store_var(b, vars->stack_ptr, nir_iadd_imm(b, nir_load_var(b, vars->stack_ptr), -16), 1);
-   nir_store_var(b, vars->idx,
-                 nir_load_scratch(b, 1, 32, nir_load_var(b, vars->stack_ptr), .align_mul = 16), 1);
+   nir_store_var(b, vars->shader_va,
+                 nir_load_scratch(b, 1, 64, nir_load_var(b, vars->stack_ptr), .align_mul = 16), 1);
 }
 
 enum sbt_type {
@@ -278,11 +278,13 @@ load_sbt_entry(nir_builder *b, const struct rt_variables *vars, nir_ssa_def *idx
                enum sbt_type binding, enum sbt_entry offset)
 {
    nir_ssa_def *addr = get_sbt_ptr(b, idx, binding);
-
    nir_ssa_def *load_addr = nir_iadd_imm(b, addr, offset);
-   nir_ssa_def *v_idx = nir_build_load_global(b, 1, 32, load_addr);
 
-   nir_store_var(b, vars->idx, v_idx, 1);
+   if (offset == SBT_RECURSIVE_PTR) {
+      nir_store_var(b, vars->shader_va, nir_build_load_global(b, 1, 64, load_addr), 1);
+   } else {
+      nir_store_var(b, vars->idx, nir_build_load_global(b, 1, 32, load_addr), 1);
+   }
 
    nir_ssa_def *record_addr = nir_iadd_imm(b, addr, RADV_RT_HANDLE_SIZE);
    nir_store_var(b, vars->shader_record_ptr, record_addr, 1);
@@ -307,18 +309,19 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
             switch (intr->intrinsic) {
             case nir_intrinsic_rt_execute_callable: {
                uint32_t size = align(nir_intrinsic_stack_size(intr), 16);
-               uint32_t ret_idx = call_idx_base + nir_intrinsic_call_idx(intr) + 1;
+               nir_ssa_def *ret_ptr =
+                  nir_load_resume_shader_address_amd(&b_shader, nir_intrinsic_call_idx(intr));
 
                nir_store_var(
                   &b_shader, vars->stack_ptr,
                   nir_iadd_imm_nuw(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), size), 1);
-               nir_store_scratch(&b_shader, nir_imm_int(&b_shader, ret_idx),
-                                 nir_load_var(&b_shader, vars->stack_ptr), .align_mul = 16);
+               nir_store_scratch(&b_shader, ret_ptr, nir_load_var(&b_shader, vars->stack_ptr),
+                                 .align_mul = 16);
 
                nir_store_var(
                   &b_shader, vars->stack_ptr,
                   nir_iadd_imm_nuw(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), 16), 1);
-               load_sbt_entry(&b_shader, vars, intr->src[0].ssa, SBT_CALLABLE, SBT_GENERAL_IDX);
+               load_sbt_entry(&b_shader, vars, intr->src[0].ssa, SBT_CALLABLE, SBT_RECURSIVE_PTR);
 
                nir_store_var(&b_shader, vars->arg,
                              nir_iadd_imm(&b_shader, intr->src[1].ssa, -size - 16), 1);
@@ -328,19 +331,21 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
             }
             case nir_intrinsic_rt_trace_ray: {
                uint32_t size = align(nir_intrinsic_stack_size(intr), 16);
-               uint32_t ret_idx = call_idx_base + nir_intrinsic_call_idx(intr) + 1;
+               nir_ssa_def *ret_ptr =
+                  nir_load_resume_shader_address_amd(&b_shader, nir_intrinsic_call_idx(intr));
 
                nir_store_var(
                   &b_shader, vars->stack_ptr,
                   nir_iadd_imm_nuw(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), size), 1);
-               nir_store_scratch(&b_shader, nir_imm_int(&b_shader, ret_idx),
-                                 nir_load_var(&b_shader, vars->stack_ptr), .align_mul = 16);
+               nir_store_scratch(&b_shader, ret_ptr, nir_load_var(&b_shader, vars->stack_ptr),
+                                 .align_mul = 16);
 
                nir_store_var(
                   &b_shader, vars->stack_ptr,
                   nir_iadd_imm_nuw(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), 16), 1);
 
-               nir_store_var(&b_shader, vars->idx, nir_imm_int(&b_shader, 1), 1);
+               nir_store_var(&b_shader, vars->shader_va,
+                             nir_load_var(&b_shader, vars->traversal_addr), 1);
                nir_store_var(&b_shader, vars->arg,
                              nir_iadd_imm(&b_shader, intr->src[10].ssa, -size - 16), 1);
 
@@ -561,7 +566,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                nir_store_var(&b_shader, vars->instance_addr, intr->src[3].ssa, 0x1);
                nir_store_var(&b_shader, vars->geometry_id_and_flags, intr->src[4].ssa, 0x1);
                nir_store_var(&b_shader, vars->hit_kind, intr->src[5].ssa, 0x1);
-               load_sbt_entry(&b_shader, vars, intr->src[0].ssa, SBT_HIT, SBT_CLOSEST_HIT_IDX);
+               load_sbt_entry(&b_shader, vars, intr->src[0].ssa, SBT_HIT, SBT_RECURSIVE_PTR);
 
                nir_ssa_def *should_return =
                   nir_test_mask(&b_shader, nir_load_var(&b_shader, vars->cull_mask_and_flags),
@@ -571,7 +576,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                      VK_PIPELINE_CREATE_RAY_TRACING_NO_NULL_CLOSEST_HIT_SHADERS_BIT_KHR)) {
                   should_return =
                      nir_ior(&b_shader, should_return,
-                             nir_ieq_imm(&b_shader, nir_load_var(&b_shader, vars->idx), 0));
+                             nir_ieq_imm(&b_shader, nir_load_var(&b_shader, vars->shader_va), 0));
                }
 
                /* should_return is set if we had a hit but we won't be calling the closest hit
@@ -589,12 +594,12 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                nir_store_var(&b_shader, vars->geometry_id_and_flags, undef, 0x1);
                nir_store_var(&b_shader, vars->hit_kind, undef, 0x1);
                nir_ssa_def *miss_index = nir_load_var(&b_shader, vars->miss_index);
-               load_sbt_entry(&b_shader, vars, miss_index, SBT_MISS, SBT_GENERAL_IDX);
+               load_sbt_entry(&b_shader, vars, miss_index, SBT_MISS, SBT_RECURSIVE_PTR);
 
                if (!(vars->flags & VK_PIPELINE_CREATE_RAY_TRACING_NO_NULL_MISS_SHADERS_BIT_KHR)) {
                   /* In case of a NULL miss shader, do nothing and just return. */
                   nir_push_if(&b_shader,
-                              nir_ieq_imm(&b_shader, nir_load_var(&b_shader, vars->idx), 0));
+                              nir_ieq_imm(&b_shader, nir_load_var(&b_shader, vars->shader_va), 0));
                   insert_rt_return(&b_shader, vars);
                   nir_pop_if(&b_shader, NULL);
                }
