@@ -3856,27 +3856,17 @@ combine_vop3p(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       if (!mul_instr)
          return;
 
-      /* convert to mad */
-      Operand op[3] = {mul_instr->operands[0], mul_instr->operands[1], instr->operands[add_op_idx]};
-      ctx.uses[mul_instr->definitions[0].tempId()]--;
-      if (ctx.uses[mul_instr->definitions[0].tempId()]) {
-         if (op[0].isTemp())
-            ctx.uses[op[0].tempId()]++;
-         if (op[1].isTemp())
-            ctx.uses[op[1].tempId()]++;
-      }
-
       /* turn packed mul+add into v_pk_fma_f16 */
       assert(mul_instr->isVOP3P());
       aco_opcode mad = fadd ? aco_opcode::v_pk_fma_f16 : aco_opcode::v_pk_mad_u16;
       aco_ptr<VALU_instruction> fma{create_instruction<VALU_instruction>(mad, Format::VOP3P, 3, 1)};
       VALU_instruction* mul = &mul_instr->valu();
       for (unsigned i = 0; i < 2; i++) {
-         fma->operands[i] = op[i];
+         fma->operands[i] = copy_operand(ctx, mul_instr->operands[i]);
          fma->neg_lo[i] = mul->neg_lo[i];
          fma->neg_hi[i] = mul->neg_hi[i];
       }
-      fma->operands[2] = op[2];
+      fma->operands[2] = instr->operands[add_op_idx];
       fma->clamp = vop3p->clamp;
       fma->opsel_lo = mul->opsel_lo;
       fma->opsel_hi = mul->opsel_hi;
@@ -3891,6 +3881,7 @@ combine_vop3p(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       fma->pass_flags = instr->pass_flags;
       instr = std::move(fma);
       ctx.info[instr->definitions[0].tempId()].set_vop3p(instr.get());
+      decrease_uses(ctx, mul_instr);
       return;
    }
 }
