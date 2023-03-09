@@ -132,8 +132,6 @@ a530-traces:
     PIGLIT_RESULTS: "freedreno-a530-replay"
 
 .a618-test:
-  extends:
-    - .lava-test:arm64
   variables:
     FLAKES_CHANNEL: "#freedreno-ci"
     BOOT_METHOD: depthcharge
@@ -162,6 +160,7 @@ a530-traces:
 
 a618_vk:
   extends:
+    - .lava-test:arm64
     - .a618-test-kingoftown-r1
     - .turnip-rules
   parallel: 12
@@ -185,6 +184,7 @@ a618_vk_full:
 
 a618_gl:
   extends:
+    - .lava-test:arm64
     - .a618-test-limozeen-nots-r5
     - .freedreno-rules
   parallel: 4
@@ -195,6 +195,7 @@ a618_gl:
 # X11 takes over the screen, wayland is run headless.
 a618_egl:
   extends:
+    - .lava-test:arm64
     - .a618-test-limozeen-nots-r5
     - .freedreno-rules
   variables:
@@ -205,6 +206,7 @@ a618_egl:
 
 a618_skqp:
   extends:
+    - .lava-test:arm64
     - .a618-test-limozeen-nots-r5
     - .freedreno-rules
     # SKQP tests both the GL and VK drivers.
@@ -216,6 +218,7 @@ a618_skqp:
 a618_piglit:
   extends:
     - .piglit-test
+    - .lava-piglit:arm64
     - .a618-test-limozeen-nots-r5
     - .freedreno-rules
     # Note that piglit has GL+VK integration testing.

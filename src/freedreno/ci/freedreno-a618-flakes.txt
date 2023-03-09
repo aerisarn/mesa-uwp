@@ -185,6 +185,7 @@ KHR-.*.shader_image_size.advanced-nonMS-fs-uint
 
 # An old classic I thought I fixed at one point, but it still haunts us (particularly sensitive to specific frequencies iirc)
 spec@arb_depth_buffer_float@fbo-depthstencil-gl_depth32f_stencil8-blit
+spec@arb_depth_buffer_float@fbo-depthstencil-gl_depth32f_stencil8-copypixels
 
 # Flakes from aug-oct 2022.
 spec@ext_timer_query@time-elapsed
@@ -208,3 +209,15 @@ gmem-dEQP-VK.*descriptor
 # noted in #8219 - pipeline lib & suballoc fails
 gmem-dEQP-VK.pipeline.*library
 gmem-dEQP-VK.renderpass.*.suballocation
+
+# these flake basically everywhere
+glx@glx-make-current
+glx@glx-multi-window-single-context
+
+# flakes that turned up some time in early 2023
+spec@!opengl 1.1@line-smooth-stipple
+spec@!opengl 3.2@gl-3.2-adj-prims cull-back pv-last
+spec@!opengl 3.2@gl-3.2-adj-prims cull-front pv-last
+spec@!opengl 3.2@gl-3.2-adj-prims line cull-back pv-last
+spec@!opengl 3.2@gl-3.2-adj-prims line cull-front pv-last
+spec@!opengl 3.2@gl-3.2-adj-prims pv-last

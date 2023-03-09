@@ -121,3 +121,8 @@
   extends:
     - .lava-test:amd64
     - .lava-piglit
+
+.lava-piglit:arm64:
+  extends:
+    - .lava-test:arm64
+    - .lava-piglit

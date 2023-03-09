@@ -74,11 +74,6 @@ spec@arb_point_sprite@arb_point_sprite-interactions 1.0,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex@'vs_input2[1][0]' on GL_PROGRAM_INPUT,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex@'vs_input2' on GL_PROGRAM_INPUT,Fail
-spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceiv,Fail
-spec@arb_program_interface_query@arb_program_interface_query-resource-query,Fail
-spec@arb_program_interface_query@arb_program_interface_query-resource-query@GL_ATOMIC_COUNTER_BUFFER,Fail
-spec@arb_program_interface_query@arb_program_interface_query-resource-query@GL_BUFFER_VARIABLE,Fail
-spec@arb_program_interface_query@arb_program_interface_query-resource-query@GL_SHADER_STORAGE_BLOCK,Fail
 spec@arb_sample_shading@samplemask 2@0.500000 mask_in_one,Fail
 spec@arb_sample_shading@samplemask 2@1.000000 mask_in_one,Fail
 spec@arb_sample_shading@samplemask 2 all@0.500000 mask_in_one,Fail
@@ -108,33 +103,11 @@ spec@arb_sample_shading@samplemask 2@noms partition,Fail
 spec@arb_sample_shading@samplemask 4 all@noms partition,Fail
 spec@arb_sample_shading@samplemask 4@noms partition,Fail
 
-spec@arb_shader_image_load_store@execution@image-array-out-of-bounds-access-load,Crash
-
 # These 3 fails started to happen after piglit uprev with commit
 # 0ef03f824d1833a853d1a20b4be121089bb9246c
 spec@arb_shader_image_load_store@qualifiers,Fail
 spec@arb_shader_image_load_store@qualifiers@r8/permissive layout qualifiers/permissive access qualifiers/permissive binding test,Fail
 spec@arb_shader_image_load_store@qualifiers@r8/strict layout qualifiers/permissive access qualifiers/permissive binding test,Fail
-
-spec@arb_shader_storage_buffer_object@array-ssbo-auto-binding,Fail
-spec@arb_shader_storage_buffer_object@linker@instance-matching-shader-storage-blocks-member-array-size-mismatch,Fail
-
-# Test bug: https://gitlab.freedesktop.org/mesa/piglit/-/merge_requests/601#note_1154259
-# "Failed to link:
-#  error: Too many tessellation control shader atomic counters"
-spec@arb_tessellation_shader@execution@invocation-counting-even,Fail
-spec@arb_tessellation_shader@execution@invocation-counting-odd,Fail
-
-# Test bug: https://gitlab.freedesktop.org/mesa/piglit/-/merge_requests/601#note_1154259
-# "Failed to link:
-#  error: Too many tessellation control shader atomic counters"
-spec@arb_tessellation_shader@execution@tcs-output-unmatched,Fail
-spec@arb_tessellation_shader@execution@tcs-primitiveid,Fail
-
-# Test bug: https://gitlab.freedesktop.org/mesa/piglit/-/merge_requests/601#note_1154259
-# "Failed to link:
-#  error: Too many tessellation control shader atomic counters"
-spec@arb_tessellation_shader@execution@tes-primitiveid,Fail
 
 # ir3_nir_lower_tess.c:251: lower_block_to_explicit_output: Assertion `util_is_power_of_two_nonzero(nir_intrinsic_write_mask(intr) + 1)' failed.
 spec@arb_tessellation_shader@execution@tcs-input-read-mat,Crash

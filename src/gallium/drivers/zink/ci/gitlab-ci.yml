@@ -102,6 +102,7 @@ zink-anv-tgl-traces-restricted:
 
 zink-tu-a618:
   extends:
+    - .lava-test:arm64
     - .a618-test
     - .zink-turnip-rules
     - .zink-test
