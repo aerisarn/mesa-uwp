@@ -4,10 +4,13 @@
 tu_entrypoints = custom_target(
   'tu_entrypoints',
   input : [vk_entrypoints_gen, vk_api_xml],
-  output : ['tu_entrypoints.h', 'tu_entrypoints.c'],
+  output : ['tu_entrypoints.h', 'tu_entrypoints.cc'],
   command : [
     prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--proto', '--weak',
     '--out-h', '@OUTPUT0@', '--out-c', '@OUTPUT1@', '--prefix', 'tu',
+    '--include', 'adreno_common.xml.h',
+    '--tmpl-prefix', 'tu', '--tmpl-param', 'chip CHIP',
+    '--tmpl-variants', '<A6XX>', '<A7XX>',
   ],
   depend_files : vk_entrypoints_gen_depend_files,
 )

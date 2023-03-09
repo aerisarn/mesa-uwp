@@ -2127,6 +2127,17 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    struct vk_device_dispatch_table dispatch_table;
    vk_device_dispatch_table_from_entrypoints(
       &dispatch_table, &tu_device_entrypoints, true);
+
+   switch (fd_dev_gen(&physical_device->dev_id)) {
+   case 6:
+      vk_device_dispatch_table_from_entrypoints(
+         &dispatch_table, &tu_device_entrypoints_a6xx, false);
+      break;
+   case 7:
+      vk_device_dispatch_table_from_entrypoints(
+         &dispatch_table, &tu_device_entrypoints_a7xx, false);
+   }
+
    vk_device_dispatch_table_from_entrypoints(
       &dispatch_table, &wsi_device_entrypoints, false);
 
