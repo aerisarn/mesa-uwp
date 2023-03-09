@@ -38,6 +38,13 @@ struct vk_video_session {
    uint32_t max_dpb_slots;
    uint32_t max_active_ref_pics;
 
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+   struct {
+      VkVideoEncodeUsageFlagsKHR video_usage_hints;
+      VkVideoEncodeContentFlagsKHR video_content_hints;
+      VkVideoEncodeTuningModeKHR tuning_mode;
+   } enc_usage;
+#endif
    union {
       struct {
          StdVideoH264ProfileIdc profile_idc;
@@ -74,6 +81,18 @@ struct vk_video_session_parameters {
          uint32_t std_pps_count;
          StdVideoH265PictureParameterSet *std_pps;
       } h265_dec;
+
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+      struct {
+         uint32_t max_std_sps_count;
+         uint32_t max_std_pps_count;
+
+         uint32_t std_sps_count;
+         StdVideoH264SequenceParameterSet *std_sps;
+         uint32_t std_pps_count;
+         StdVideoH264PictureParameterSet *std_pps;
+      } h264_enc;
+#endif
    };
 };
 
@@ -198,6 +217,16 @@ void vk_fill_video_h265_reference_info(const VkVideoDecodeInfoKHR *frame_info,
 void
 vk_video_get_profile_alignments(const VkVideoProfileListInfoKHR *profile_list,
                                 uint32_t *width_align_out, uint32_t *height_align_out);
+
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+const StdVideoH264SequenceParameterSet *
+vk_video_find_h264_enc_std_sps(const struct vk_video_session_parameters *params,
+                               uint32_t id);
+const StdVideoH264PictureParameterSet *
+vk_video_find_h264_enc_std_pps(const struct vk_video_session_parameters *params,
+                               uint32_t id);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
