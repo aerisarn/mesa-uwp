@@ -271,9 +271,8 @@ radv_rt_pipeline_compile(struct radv_pipeline *pipeline,
    rt_stage.args.explicit_scratch_args = !radv_use_llvm_for_stage(device, rt_stage.stage);
    rt_stage.args.load_grid_size_from_user_sgpr = device->load_grid_size_from_user_sgpr;
 
-   radv_declare_shader_args(device->physical_device->rad_info.gfx_level, pipeline_key,
-                            &rt_stage.info, rt_stage.stage, false, MESA_SHADER_NONE,
-                            &rt_stage.args);
+   radv_declare_shader_args(device, pipeline_key, &rt_stage.info, rt_stage.stage, false,
+                            MESA_SHADER_NONE, &rt_stage.args);
 
    rt_stage.info.user_sgprs_locs = rt_stage.args.user_sgprs_locs;
    rt_stage.info.inline_push_constant_mask = rt_stage.args.ac.inline_push_const_mask;

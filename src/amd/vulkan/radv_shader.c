@@ -2460,11 +2460,10 @@ radv_create_trap_handler_shader(struct radv_device *device)
 
    info.wave_size = 64;
 
-   struct radv_shader_args args = {0};
+   struct radv_shader_args args;
    args.explicit_scratch_args = true;
    args.is_trap_handler_shader = true;
-   radv_declare_shader_args(device->physical_device->rad_info.gfx_level, &key, &info, stage, false,
-                            MESA_SHADER_VERTEX, &args);
+   radv_declare_shader_args(device, &key, &info, stage, false, MESA_SHADER_VERTEX, &args);
 
    shader =
       shader_compile(device, &b.shader, 1, stage, &info, &args, &key, true, false, false, &binary);
@@ -2527,7 +2526,7 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
    struct radv_pipeline_key pipeline_key = {0};
 
    args.explicit_scratch_args = true;
-   radv_declare_shader_args(options.gfx_level, &pipeline_key, &info, key->next_stage,
+   radv_declare_shader_args(device, &pipeline_key, &info, key->next_stage,
                             key->next_stage != MESA_SHADER_VERTEX, MESA_SHADER_VERTEX, &args);
 
    info.user_sgprs_locs = args.user_sgprs_locs;
@@ -2596,7 +2595,7 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
    info.wave_size = device->physical_device->ps_wave_size;
    info.workgroup_size = 64;
 
-   radv_declare_ps_epilog_args(device->physical_device->rad_info.gfx_level, key, &args);
+   radv_declare_ps_epilog_args(device, key, &args);
 
 #ifdef LLVM_AVAILABLE
    if (options.dump_shader || options.record_ir)
