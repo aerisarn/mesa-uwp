@@ -681,6 +681,11 @@ mme_tu104_end_while(struct mme_builder *b,
                       (if_true ? BITFIELD_BIT(15) : 0);
    build_alu_to(b, mme_zero(), mme_cmp_to_tu104_branch_op(cmp),
                 x, y, control, true);
+
+   /* Start a new instruction so next thing to come along doesn't end up being
+    * the 2nd half of of our back-edge while.
+    */
+   mme_tu104_new_inst(tb);
 }
 
 uint32_t *

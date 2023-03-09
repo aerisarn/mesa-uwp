@@ -1264,6 +1264,44 @@ WHILE_TEST(ine, 0, 1, 7)
 
 #undef WHILE_TEST
 
+TEST_F(mme_tu104_sim_test, nested_while)
+{
+   mme_builder b;
+   mme_builder_init(&b, devinfo);
+
+   mme_value n = mme_load(&b);
+   mme_value m = mme_load(&b);
+
+   mme_value count = mme_mov(&b, mme_zero());
+
+   mme_value i = mme_mov(&b, mme_zero());
+   mme_value j = mme_mov(&b, mme_imm(0xffff));
+   mme_while(&b, ine, i, n) {
+      mme_mov_to(&b, j, mme_zero());
+      mme_while(&b, ine, j, m) {
+         mme_add_to(&b, count, count, mme_imm(1));
+         mme_add_to(&b, j, j, mme_imm(1));
+      }
+
+      mme_add_to(&b, i, i, mme_imm(1));
+   }
+
+   mme_store_imm_addr(&b, data_addr + 0, i);
+   mme_store_imm_addr(&b, data_addr + 4, j);
+   mme_store_imm_addr(&b, data_addr + 8, count);
+
+   auto macro = mme_builder_finish_vec(&b);
+
+   std::vector<uint32_t> params;
+   params.push_back(3);
+   params.push_back(5);
+
+   test_macro(&b, macro, params);
+   ASSERT_EQ(data[0], 3);
+   ASSERT_EQ(data[1], 5);
+   ASSERT_EQ(data[2], 15);
+}
+
 #if 0
 TEST_F(mme_tu104_sim_test, do_ble)
 {
