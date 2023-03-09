@@ -2998,7 +2998,7 @@ static void handle_clear_ds_image(struct vk_cmd_queue_entry *cmd,
                                           cmd->u.clear_depth_stencil_image.depth_stencil->depth,
                                           cmd->u.clear_depth_stencil_image.depth_stencil->stencil,
                                           0, 0,
-                                          width, height, true);
+                                          width, height, false);
          state->pctx->surface_destroy(state->pctx, surf);
       }
    }
