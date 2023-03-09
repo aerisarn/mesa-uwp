@@ -1190,11 +1190,13 @@ apply_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, ssa_info&
       return;
    }
 
-   /* Output modifier, label_vopc and label_f2f32 seem to be the only one worth keeping at the
-    * moment
-    */
-   for (Definition& def : instr->definitions)
-      ctx.info[def.tempId()].label &= (label_vopc | label_f2f32 | instr_mod_labels);
+   /* These are the only labels worth keeping at the moment. */
+   for (Definition& def : instr->definitions) {
+      ctx.info[def.tempId()].label &=
+         (label_mul | label_minmax | label_usedef | label_vopc | label_f2f32 | instr_mod_labels);
+      if (ctx.info[def.tempId()].label & instr_usedef_labels)
+         ctx.info[def.tempId()].instr = instr.get();
+   }
 }
 
 void
