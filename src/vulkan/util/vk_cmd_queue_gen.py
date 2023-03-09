@@ -69,6 +69,9 @@ TEMPLATE_H = Template(COPYRIGHT + """\
 
 #define VK_PROTOTYPES
 #include <vulkan/vulkan_core.h>
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+#include <vulkan/vulkan_beta.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
