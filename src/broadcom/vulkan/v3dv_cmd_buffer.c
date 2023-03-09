@@ -4124,6 +4124,7 @@ cmd_buffer_emit_pre_dispatch(struct v3dv_cmd_buffer *cmd_buffer)
 
 void
 v3dv_cmd_buffer_rewrite_indirect_csd_job(
+   struct v3dv_device *device,
    struct v3dv_csd_indirect_cpu_job_info *info,
    const uint32_t *wg_counts)
 {
@@ -4143,8 +4144,15 @@ v3dv_cmd_buffer_rewrite_indirect_csd_job(
    submit->cfg[1] = wg_counts[1] << V3D_CSD_CFG012_WG_COUNT_SHIFT;
    submit->cfg[2] = wg_counts[2] << V3D_CSD_CFG012_WG_COUNT_SHIFT;
 
-   submit->cfg[4] = DIV_ROUND_UP(info->wg_size, 16) *
-                    (wg_counts[0] * wg_counts[1] * wg_counts[2]) - 1;
+   uint32_t num_batches = DIV_ROUND_UP(info->wg_size, 16) *
+                          (wg_counts[0] * wg_counts[1] * wg_counts[2]);
+   /* V3D 7.1.6 and later don't subtract 1 from the number of batches */
+   if (device->devinfo.ver < 71 ||
+       (device->devinfo.ver == 71 && device->devinfo.rev < 6)) {
+      submit->cfg[4] = num_batches - 1;
+   } else {
+      submit->cfg[4] = num_batches;
+   }
    assert(submit->cfg[4] != ~0);
 
    if (info->needs_wg_uniform_rewrite) {
@@ -4177,6 +4185,7 @@ cmd_buffer_create_csd_job(struct v3dv_cmd_buffer *cmd_buffer,
                           uint32_t **wg_uniform_offsets_out,
                           uint32_t *wg_size_out)
 {
+   struct v3dv_device *device = cmd_buffer->device;
    struct v3dv_pipeline *pipeline = cmd_buffer->state.compute.pipeline;
    assert(pipeline && pipeline->shared_data->variants[BROADCOM_SHADER_COMPUTE]);
    struct v3dv_shader_variant *cs_variant =
@@ -4235,18 +4244,26 @@ cmd_buffer_create_csd_job(struct v3dv_cmd_buffer *cmd_buffer,
    if (wg_size_out)
       *wg_size_out = wg_size;
 
-   submit->cfg[4] = num_batches - 1;
+   /* V3D 7.1.6 and later don't subtract 1 from the number of batches */
+   if (device->devinfo.ver < 71 ||
+       (device->devinfo.ver == 71 && device->devinfo.rev < 6)) {
+      submit->cfg[4] = num_batches - 1;
+   } else {
+      submit->cfg[4] = num_batches;
+   }
    assert(submit->cfg[4] != ~0);
 
    assert(pipeline->shared_data->assembly_bo);
    struct v3dv_bo *cs_assembly_bo = pipeline->shared_data->assembly_bo;
 
    submit->cfg[5] = cs_assembly_bo->offset + cs_variant->assembly_offset;
-   submit->cfg[5] |= V3D_CSD_CFG5_PROPAGATE_NANS;
    if (cs_variant->prog_data.base->single_seg)
       submit->cfg[5] |= V3D_CSD_CFG5_SINGLE_SEG;
    if (cs_variant->prog_data.base->threads == 4)
       submit->cfg[5] |= V3D_CSD_CFG5_THREADING;
+   /* V3D 7.x has made the PROPAGATE_NANS bit in CFG5 reserved  */
+   if (device->devinfo.ver < 71)
+      submit->cfg[5] |= V3D_CSD_CFG5_PROPAGATE_NANS;
 
    if (cs_variant->prog_data.cs->shared_size > 0) {
       job->csd.shared_memory =

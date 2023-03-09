@@ -1473,8 +1473,15 @@ v3d_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
         submit.cfg[3] |= (wg_size & 0xff) << V3D_CSD_CFG3_WG_SIZE_SHIFT;
 
 
-        /* Number of batches the dispatch will invoke (minus 1). */
-        submit.cfg[4] = num_batches - 1;
+        /* Number of batches the dispatch will invoke.
+         * V3D 7.1.6 and later don't subtract 1 from the number of batches
+         */
+        if (v3d->screen->devinfo.ver < 71 ||
+            (v3d->screen->devinfo.ver == 71 && v3d->screen->devinfo.rev < 6)) {
+                submit.cfg[4] = num_batches - 1;
+        } else {
+                submit.cfg[4] = num_batches;
+        }
 
         /* Make sure we didn't accidentally underflow. */
         assert(submit.cfg[4] != ~0);
@@ -1482,7 +1489,8 @@ v3d_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
         v3d_job_add_bo(job, v3d_resource(v3d->prog.compute->resource)->bo);
         submit.cfg[5] = (v3d_resource(v3d->prog.compute->resource)->bo->offset +
                          v3d->prog.compute->offset);
-        submit.cfg[5] |= V3D_CSD_CFG5_PROPAGATE_NANS;
+        if (v3d->screen->devinfo.ver < 71)
+                submit.cfg[5] |= V3D_CSD_CFG5_PROPAGATE_NANS;
         if (v3d->prog.compute->prog_data.base->single_seg)
                 submit.cfg[5] |= V3D_CSD_CFG5_SINGLE_SEG;
         if (v3d->prog.compute->prog_data.base->threads == 4)
