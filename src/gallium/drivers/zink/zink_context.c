@@ -3822,7 +3822,7 @@ zink_resource_image_barrier2(struct zink_context *ctx, struct zink_resource *res
 }
 
 bool
-zink_check_transfer_dst_barrier(struct zink_resource *res, unsigned level, const struct pipe_box *box)
+zink_check_unordered_transfer_access(struct zink_resource *res, unsigned level, const struct pipe_box *box)
 {
    /* always barrier against previous non-transfer writes */
    bool non_transfer_write = res->obj->last_write && res->obj->last_write != VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -3839,7 +3839,7 @@ zink_resource_image_transfer_dst_barrier(struct zink_context *ctx, struct zink_r
    /* skip TRANSFER_DST barrier if no intersection from previous copies */
    if (res->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ||
        zink_screen(ctx->base.screen)->driver_workarounds.broken_cache_semantics ||
-       zink_check_transfer_dst_barrier(res, level, box)) {
+       zink_check_unordered_transfer_access(res, level, box)) {
       zink_screen(ctx->base.screen)->image_barrier(ctx, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
    } else {
       res->obj->access = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -3859,7 +3859,7 @@ zink_resource_buffer_transfer_dst_barrier(struct zink_context *ctx, struct zink_
    /* must barrier if something read the valid buffer range */
    bool valid_read = res->obj->access && util_ranges_intersect(&res->valid_buffer_range, offset, offset + size) && !unordered_res_exec(ctx, res, true);
    if (zink_screen(ctx->base.screen)->driver_workarounds.broken_cache_semantics ||
-       zink_check_transfer_dst_barrier(res, 0, &box) || valid_read) {
+       zink_check_unordered_transfer_access(res, 0, &box) || valid_read) {
       zink_screen(ctx->base.screen)->buffer_barrier(ctx, res, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
       unordered = res->obj->unordered_write;
    } else {

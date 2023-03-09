@@ -115,7 +115,7 @@ zink_resource_image_barrier2(struct zink_context *ctx, struct zink_resource *res
 bool
 zink_resource_needs_barrier(struct zink_resource *res, VkImageLayout layout, VkAccessFlags flags, VkPipelineStageFlags pipeline);
 bool
-zink_check_transfer_dst_barrier(struct zink_resource *res, unsigned level, const struct pipe_box *box);
+zink_check_unordered_transfer_access(struct zink_resource *res, unsigned level, const struct pipe_box *box);
 void
 zink_resource_image_transfer_dst_barrier(struct zink_context *ctx, struct zink_resource *res, unsigned level, const struct pipe_box *box);
 bool
