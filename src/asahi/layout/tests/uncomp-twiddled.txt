@@ -1,25 +1,3 @@
-/*
- * Copyright 2022 Asahi Lina
- * SPDX-License-Identifier: MIT
- */
-
-#include <gtest/gtest.h>
-#include "layout.h"
-
-/*
- * Test uncompressed texture sizes. All test cases in this file are extracted
- * from texture structure dumps in Metal.
- */
-struct sizetest {
-   enum pipe_format format;
-   uint32_t width, height, depth;
-   uint8_t levels;
-   uint32_t size;
-};
-
-/* clang-format off */
-/* Sort: `sort -t"," -k1,1 -k2,5n | uniq` */
-static struct sizetest sizetests[] = {
    { PIPE_FORMAT_R8_UNORM, 1, 1, 1, 1, 0x80 },
    { PIPE_FORMAT_R8_UNORM, 1, 1, 2, 1, 0x100 },
    { PIPE_FORMAT_R8_UNORM, 1, 2, 1, 2, 0x100 },
@@ -4746,30 +4724,3 @@ static struct sizetest sizetests[] = {
    { PIPE_FORMAT_Z32_FLOAT, 4097, 15, 1, 13, 0xac000 },
    { PIPE_FORMAT_Z32_FLOAT, 4097, 15, 2, 1, 0x100000 },
    { PIPE_FORMAT_Z32_FLOAT, 4097, 15, 2, 13, 0x158000 },
-};
-/* clang-format on */
-
-TEST(UncompTwiddled, SizeTests)
-{
-   for (unsigned i = 0; i < ARRAY_SIZE(sizetests); ++i) {
-      struct sizetest test = sizetests[i];
-
-      struct ail_layout layout = {
-         .width_px = test.width,
-         .height_px = test.height,
-         .depth_px = test.depth,
-         .sample_count_sa = 1,
-         .levels = test.levels,
-         .tiling = AIL_TILING_TWIDDLED,
-         .format = test.format,
-      };
-
-      ail_make_miptree(&layout);
-
-      EXPECT_EQ(layout.size_B, test.size)
-         << test.width << "x" << test.height << "x" << test.depth << " "
-         << (int)test.levels << "L " << util_format_short_name(test.format)
-         << " uncompressed texture has wrong allocation size, off by "
-         << ((int)layout.size_B - (int)test.size);
-   }
-}

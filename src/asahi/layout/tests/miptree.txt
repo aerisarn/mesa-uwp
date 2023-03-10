@@ -1,42 +1,3 @@
-/*
- * Copyright (C) 2022 Alyssa Rosenzweig
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"),
- * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice (including the next
- * paragraph) shall be included in all copies or substantial portions of the
- * Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
- * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
-#include <gtest/gtest.h>
-#include "layout.h"
-
-/*
- * Test miptree layouts. All test cases in this file are extracted from memory
- * dumps of a test pattern ran through Metal.
- */
-struct miptest {
-   enum pipe_format format;
-   uint32_t width, height;
-   uint8_t levels;
-   uint32_t offsets[16];
-};
-
-/* clang-format off */
-static struct miptest miptests[] = {
    {
       PIPE_FORMAT_R8G8B8A8_UNORM,
       1024,
@@ -1256,32 +1217,3 @@ static struct miptest miptests[] = {
          0x32D700,
       }
    },
-};
-/* clang-format on */
-
-TEST(Miptree, Tests2D)
-{
-   for (unsigned i = 0; i < ARRAY_SIZE(miptests); ++i) {
-      struct miptest test = miptests[i];
-
-      struct ail_layout layout = {
-         .width_px = test.width,
-         .height_px = test.height,
-         .depth_px = 1,
-         .sample_count_sa = 1,
-         .levels = test.levels,
-         .tiling = AIL_TILING_TWIDDLED,
-         .format = test.format,
-      };
-
-      ail_make_miptree(&layout);
-
-      for (unsigned l = 0; l < test.levels; ++l) {
-         EXPECT_EQ(ail_get_level_offset_B(&layout, l), test.offsets[l])
-            << test.width << "x" << test.height << " "
-            << util_format_short_name(test.format)
-            << " texture has wrong offset at level " << l << ", off by "
-            << test.offsets[l] - ail_get_level_offset_B(&layout, l);
-      }
-   }
-}
