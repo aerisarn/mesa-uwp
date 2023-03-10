@@ -771,6 +771,10 @@ lower_hit_attribs(nir_shader *shader, nir_variable **hit_attribs, uint32_t workg
          nir_instr_remove(instr);
       }
    }
+
+   if (!hit_attribs)
+      shader->info.shared_size =
+         MAX2(shader->info.shared_size, workgroup_size * RADV_MAX_HIT_ATTRIB_SIZE);
 }
 
 static void
