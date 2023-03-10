@@ -11219,6 +11219,51 @@ merged_wave_info_to_mask(isel_context* ctx, unsigned i)
    return lanecount_to_mask(ctx, count);
 }
 
+void
+select_program_rt(isel_context& ctx, unsigned shader_count, struct nir_shader* const* shaders,
+                  const struct ac_shader_args* args)
+{
+   for (unsigned i = 0; i < shader_count; i++) {
+      if (i) {
+         ctx.block = ctx.program->create_and_insert_block();
+         ctx.block->kind = block_kind_top_level | block_kind_resume;
+      }
+
+      nir_shader* nir = shaders[i];
+      init_context(&ctx, nir);
+      setup_fp_mode(&ctx, nir);
+
+      Pseudo_instruction* startpgm = add_startpgm(&ctx);
+      append_logical_start(ctx.block);
+      split_arguments(&ctx, startpgm);
+      visit_cf_list(&ctx, &nir_shader_get_entrypoint(nir)->body);
+
+      /* Fix output registers and jump to next shader */
+      append_logical_end(ctx.block);
+      ctx.block->kind |= block_kind_uniform;
+      Builder bld(ctx.program, ctx.block);
+      unsigned src_count = ctx.args->arg_count;
+      Pseudo_instruction* ret =
+         create_instruction<Pseudo_instruction>(aco_opcode::p_return, Format::PSEUDO, src_count, 0);
+      ctx.block->instructions.emplace_back(ret);
+      for (unsigned j = 0; j < src_count; j++) {
+         enum ac_arg_regfile file = ctx.args->args[j].file;
+         unsigned size = ctx.args->args[j].size;
+         unsigned reg = ctx.args->args[j].offset + (file == AC_ARG_SGPR ? 0 : 256);
+         RegClass type = RegClass(file == AC_ARG_SGPR ? RegType::sgpr : RegType::vgpr, size);
+         Operand op = ctx.arg_temps[j].id() ? Operand(ctx.arg_temps[j], PhysReg{reg})
+                                            : Operand(PhysReg{reg}, type);
+         ret->operands[j] = op;
+      }
+      bld.sop1(aco_opcode::s_setpc_b64, get_arg(&ctx, ctx.args->rt.shader_pc));
+
+      cleanup_context(&ctx);
+   }
+
+   ctx.program->config->float_mode = ctx.program->blocks[0].fp_mode.val;
+   cleanup_cfg(ctx.program);
+}
+
 } /* end namespace */
 
 void
@@ -11228,6 +11273,10 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
                const struct ac_shader_args* args)
 {
    isel_context ctx = setup_isel_context(program, shader_count, shaders, config, options, info, args, false);
+
+   if (ctx.stage == raytracing_cs)
+      return select_program_rt(ctx, shader_count, shaders, args);
+
    if_context ic_merged_wave_info;
    bool ngg_gs = ctx.stage.hw == HWStage::NGG && ctx.stage.has(SWStage::GS);
 

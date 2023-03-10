@@ -274,6 +274,7 @@ def default_class(opcodes, cls):
 opcode("exp", 0, 0, 0, 0, format = Format.EXP, cls = InstrClass.Export)
 opcode("p_parallelcopy")
 opcode("p_startpgm")
+opcode("p_return")
 opcode("p_phi")
 opcode("p_linear_phi")
 opcode("p_as_uniform")
