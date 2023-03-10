@@ -74,7 +74,7 @@ OpenGL 3.0
 
 
 For OpenGL 3.0 support, the following additional requirements must be
-supported:
+met:
 
 * ``VkPhysicalDeviceFeatures``:
 
@@ -97,7 +97,7 @@ OpenGL 3.2
 ^^^^^^^^^^
 
 For OpenGL 3.2 support, the following additional requirements must be
-supported, although some of these might not actually get verified:
+met, although some of these might not actually get verified:
 
 * ``VkPhysicalDeviceFeatures``:
 
@@ -113,7 +113,7 @@ OpenGL 3.3
 ^^^^^^^^^^
 
 For OpenGL 3.3 support, the following additional requirements must be
-supported, although some of these might not actually get verified:
+met, although some of these might not actually get verified:
 
 * ``VkPhysicalDeviceFeatures``:
 
@@ -127,7 +127,7 @@ OpenGL 4.0
 ^^^^^^^^^^
 
 For OpenGL 4.0 support, the following additional requirements must be
-supported:
+met:
 
 * ``VkPhysicalDeviceFeatures``:
 
@@ -149,7 +149,7 @@ OpenGL 4.1
 ^^^^^^^^^^
 
 For OpenGL 4.1 support, the following additional requirements must be
-supported:
+met:
 
 * ``VkPhysicalDeviceFeatures``:
 
@@ -168,7 +168,7 @@ OpenGL 4.2
 ^^^^^^^^^^
 
 For OpenGL 4.2 support, the following additional requirements must be
-supported:
+met:
 
 * Device extensions:
     * :ext:`VK_EXT_image_2d_view_of_3d`
@@ -196,7 +196,7 @@ OpenGL 4.3
 ^^^^^^^^^^
 
 For OpenGL 4.3 support, the following additional requirements must be
-supported:
+met:
 
 * ``VkPhysicalDeviceFeatures``:
 
@@ -216,7 +216,7 @@ OpenGL 4.4
 ^^^^^^^^^^
 
 For OpenGL 4.4 support, the following additional requirements must be
-supported:
+met:
 
 * Formats requiring ``VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT``:
 
@@ -246,7 +246,7 @@ OpenGL 4.6
 ^^^^^^^^^^
 
 For OpenGL 4.6 support, the following additional requirements must be
-supported:
+met:
 
 * ``VkPhysicalDeviceFeatures``:
 
