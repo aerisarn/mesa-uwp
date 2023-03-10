@@ -994,7 +994,7 @@ for s in [16, 32, 64]:
             optimizations.extend([
                # S = smaller, B = bigger
                # floatS -> floatB -> floatS ==> identity
-               (('f2f{}'.format(s), ('f2f{}'.format(B), 'a@{}'.format(s))), a),
+               (('~f2f{}'.format(s), ('f2f{}'.format(B), 'a@{}'.format(s))), a),
 
                # bool1 -> typeB -> typeS ==> bool1 -> typeS
                (('f2f{}'.format(s), ('b2f{}'.format(B), 'a@1')), ('b2f{}'.format(s), a)),
@@ -1513,10 +1513,6 @@ optimizations.extend([
    (('f2i32', ('f2fmp', 'a@32')), ('f2i32', a)),
    (('f2u32', ('f2fmp', 'a@32')), ('f2u32', a)),
    (('i2f32', ('i2imp', 'a@32')), ('i2f32', a)),
-
-   # Conversions from float32 to float64 and back can be removed as long as
-   # it doesn't need to be precise, since the conversion may e.g. flush denorms
-   (('~f2f32', ('f2f64', 'a@32')), a),
 
    (('ffloor', 'a(is_integral)'), a),
    (('fceil', 'a(is_integral)'), a),
