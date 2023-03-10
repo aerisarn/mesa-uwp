@@ -3220,7 +3220,8 @@ static bool
 radv_pipeline_create_ps_epilog(struct radv_graphics_pipeline *pipeline,
                                const struct radv_pipeline_key *pipeline_key,
                                VkGraphicsPipelineLibraryFlagBitsEXT lib_flags,
-                               bool noop_fs)
+                               bool noop_fs,
+                               struct radv_shader_part_binary **ps_epilog_binary)
 {
    struct radv_device *device = pipeline->base.device;
    bool needs_ps_epilog = false;
@@ -3241,7 +3242,8 @@ radv_pipeline_create_ps_epilog(struct radv_graphics_pipeline *pipeline,
    }
 
    if (needs_ps_epilog) {
-      pipeline->ps_epilog = radv_create_ps_epilog(device, &pipeline_key->ps.epilog);
+      pipeline->ps_epilog =
+         radv_create_ps_epilog(device, &pipeline_key->ps.epilog, ps_epilog_binary);
       if (!pipeline->ps_epilog)
          return false;
    }
@@ -3351,6 +3353,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
    const char *noop_fs_entrypoint = "noop_fs";
    struct radv_shader_binary *binaries[MESA_VULKAN_SHADER_STAGES] = {NULL};
    struct radv_shader_binary *gs_copy_binary = NULL;
+   struct radv_shader_part_binary *ps_epilog_binary = NULL;
    unsigned char hash[20];
    bool keep_executable_info =
       radv_pipeline_capture_shaders(pipeline->base.device, pCreateInfo->flags);
@@ -3413,7 +3416,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
          pipeline_feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
 
       /* TODO: Add PS epilogs to the cache. */
-      if (!radv_pipeline_create_ps_epilog(pipeline, pipeline_key, lib_flags, noop_fs))
+      if (!radv_pipeline_create_ps_epilog(pipeline, pipeline_key, lib_flags, noop_fs, NULL))
          return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
       result = VK_SUCCESS;
@@ -3501,7 +3504,8 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
    radv_pipeline_nir_to_asm(pipeline, stages, pipeline_key, pipeline_layout, keep_executable_info,
                             keep_statistic_info, active_nir_stages, binaries, &gs_copy_binary);
 
-   if (!radv_pipeline_create_ps_epilog(pipeline, pipeline_key, lib_flags, noop_fs))
+   if (!radv_pipeline_create_ps_epilog(pipeline, pipeline_key, lib_flags, noop_fs,
+                                       &ps_epilog_binary))
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
    if (keep_executable_info) {
@@ -3546,6 +3550,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
    }
 
    free(gs_copy_binary);
+   free(ps_epilog_binary);
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
       free(binaries[i]);
       if (stages[i].nir) {

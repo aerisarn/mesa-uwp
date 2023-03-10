@@ -623,7 +623,8 @@ struct radv_shader_part *radv_create_vs_prolog(struct radv_device *device,
                                                const struct radv_vs_prolog_key *key);
 
 struct radv_shader_part *radv_create_ps_epilog(struct radv_device *device,
-                                               const struct radv_ps_epilog_key *key);
+                                               const struct radv_ps_epilog_key *key,
+                                               struct radv_shader_part_binary **binary_out);
 
 void radv_shader_destroy(struct radv_device *device, struct radv_shader *shader);
 

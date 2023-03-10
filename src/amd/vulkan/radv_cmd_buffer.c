@@ -4207,7 +4207,7 @@ lookup_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
          return epilog_entry->data;
       }
 
-      epilog = radv_create_ps_epilog(device, &key);
+      epilog = radv_create_ps_epilog(device, &key, NULL);
       struct radv_ps_epilog_key *key2 = malloc(sizeof(*key2));
       if (!epilog || !key2) {
          radv_shader_part_unref(device, epilog);

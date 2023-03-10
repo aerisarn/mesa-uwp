@@ -2944,7 +2944,8 @@ fail:
 }
 
 struct radv_shader_part *
-radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_key *key)
+radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_key *key,
+                      struct radv_shader_part_binary **binary_out)
 {
    struct radv_shader_part *epilog;
    struct radv_shader_args args = {0};
@@ -2985,7 +2986,11 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
       fprintf(stderr, "\ndisasm:\n%s\n", epilog->disasm_string);
    }
 
-   free(binary);
+   if (binary_out) {
+      *binary_out = binary;
+   } else {
+      free(binary);
+   }
 
    return epilog;
 
