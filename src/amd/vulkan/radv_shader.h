@@ -790,4 +790,8 @@ nir_shader *create_rt_shader(struct radv_device *device, struct radv_ray_tracing
                              const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                              const struct radv_pipeline_key *key);
 
+nir_shader *radv_build_traversal_shader(struct radv_device *device,
+                                        struct radv_ray_tracing_pipeline *pipeline,
+                                        const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
+                                        const struct radv_pipeline_key *key);
 #endif

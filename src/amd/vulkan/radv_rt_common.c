@@ -39,7 +39,6 @@ radv_enable_rt(const struct radv_physical_device *pdevice, bool rt_pipelines)
       return false;
 
    if (rt_pipelines) {
-      return false;
       if (pdevice->use_llvm)
          return false;
 

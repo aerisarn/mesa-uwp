@@ -1432,7 +1432,7 @@ load_stack_entry(nir_builder *b, nir_ssa_def *index, const struct radv_ray_trave
    return nir_load_shared(b, 1, 32, index, .base = 0, .align_mul = 4);
 }
 
-static nir_shader *
+nir_shader *
 radv_build_traversal_shader(struct radv_device *device, struct radv_ray_tracing_pipeline *pipeline,
                             const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                             const struct radv_pipeline_key *key)

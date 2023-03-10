@@ -2350,7 +2350,8 @@ struct radv_ray_tracing_stage {
 static inline bool
 radv_ray_tracing_stage_is_compiled(struct radv_ray_tracing_stage *stage)
 {
-   return false;
+   return stage->stage == MESA_SHADER_RAYGEN || stage->stage == MESA_SHADER_CALLABLE ||
+          stage->stage == MESA_SHADER_CLOSEST_HIT || stage->stage == MESA_SHADER_MISS;
 }
 
 struct radv_ray_tracing_pipeline {
