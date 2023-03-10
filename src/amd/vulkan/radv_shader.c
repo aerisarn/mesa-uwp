@@ -2487,29 +2487,7 @@ radv_shader_create(struct radv_device *device, const struct radv_shader_binary *
    return shader;
 }
 
-static struct radv_shader_part *
-radv_shader_part_create(struct radv_shader_part_binary *binary, unsigned wave_size)
-{
-   uint32_t code_size = radv_get_shader_binary_size(binary->code_size);
-   struct radv_shader_part *shader_part;
-
-   shader_part = calloc(1, sizeof(struct radv_shader_part));
-   if (!shader_part)
-      return NULL;
-
-   shader_part->ref_count = 1;
-   shader_part->code_size = code_size;
-   shader_part->rsrc1 = S_00B848_VGPRS((binary->num_vgprs - 1) / (wave_size == 32 ? 8 : 4)) |
-                        S_00B228_SGPRS((binary->num_sgprs - 1) / 8);
-   shader_part->disasm_string =
-      binary->disasm_size ? strdup((const char *)(binary->data + binary->code_size)) : NULL;
-
-   shader_part->spi_shader_col_format = binary->info.spi_shader_col_format;
-
-   return shader_part;
-}
-
-bool
+static bool
 radv_shader_part_binary_upload(struct radv_device *device, const struct radv_shader_part_binary *bin,
                                struct radv_shader_part *shader_part)
 {
@@ -2541,6 +2519,44 @@ radv_shader_part_binary_upload(struct radv_device *device, const struct radv_sha
    }
 
    return true;
+}
+
+static struct radv_shader_part *
+radv_shader_part_create(struct radv_device *device, struct radv_shader_part_binary *binary,
+                        unsigned wave_size)
+{
+   uint32_t code_size = radv_get_shader_binary_size(binary->code_size);
+   struct radv_shader_part *shader_part;
+
+   shader_part = calloc(1, sizeof(struct radv_shader_part));
+   if (!shader_part)
+      return NULL;
+
+   shader_part->ref_count = 1;
+   shader_part->code_size = code_size;
+   shader_part->rsrc1 = S_00B848_VGPRS((binary->num_vgprs - 1) / (wave_size == 32 ? 8 : 4)) |
+                        S_00B228_SGPRS((binary->num_sgprs - 1) / 8);
+   shader_part->disasm_string =
+      binary->disasm_size ? strdup((const char *)(binary->data + binary->code_size)) : NULL;
+
+   shader_part->spi_shader_col_format = binary->info.spi_shader_col_format;
+
+   /* Allocate memory and upload. */
+   shader_part->alloc = radv_alloc_shader_memory(device, shader_part->code_size, NULL);
+   if (!shader_part->alloc)
+      goto fail;
+
+   shader_part->bo = shader_part->alloc->arena->bo;
+   shader_part->va = radv_buffer_get_va(shader_part->bo) + shader_part->alloc->offset;
+
+   if (!radv_shader_part_binary_upload(device, binary, shader_part))
+      goto fail;
+
+   return shader_part;
+
+fail:
+   radv_shader_part_destroy(device, shader_part);
+   return NULL;
 }
 
 static char *
@@ -2907,22 +2923,11 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
    aco_compile_vs_prolog(&ac_opts, &ac_info, &ac_prolog_info, &args.ac, &radv_aco_build_shader_part,
                          (void **)&binary);
 
-   prolog = radv_shader_part_create(binary, info.wave_size);
+   prolog = radv_shader_part_create(device, binary, info.wave_size);
    if (!prolog)
-      goto fail_create;
+      goto fail;
 
    prolog->nontrivial_divisors = key->state->nontrivial_divisors;
-
-   /* Allocate memory and upload the prolog. */
-   prolog->alloc = radv_alloc_shader_memory(device, prolog->code_size, NULL);
-   if (!prolog->alloc)
-      goto fail_alloc;
-
-   prolog->bo = prolog->alloc->arena->bo;
-   prolog->va = radv_buffer_get_va(prolog->bo) + prolog->alloc->offset;
-
-   if (!radv_shader_part_binary_upload(device, binary, prolog))
-      goto fail_alloc;
 
    if (options.dump_shader) {
       fprintf(stderr, "Vertex prolog");
@@ -2933,9 +2938,7 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
 
    return prolog;
 
-fail_alloc:
-   radv_shader_part_destroy(device, prolog);
-fail_create:
+fail:
    free(binary);
    return NULL;
 }
@@ -2973,20 +2976,9 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
 
    binary->info.spi_shader_col_format = key->spi_shader_col_format;
 
-   epilog = radv_shader_part_create(binary, info.wave_size);
+   epilog = radv_shader_part_create(device, binary, info.wave_size);
    if (!epilog)
-      goto fail_create;
-
-   /* Allocate memory and upload the epilog. */
-   epilog->alloc = radv_alloc_shader_memory(device, epilog->code_size, NULL);
-   if (!epilog->alloc)
-      goto fail_alloc;
-
-   epilog->bo = epilog->alloc->arena->bo;
-   epilog->va = radv_buffer_get_va(epilog->bo) + epilog->alloc->offset;
-
-   if (!radv_shader_part_binary_upload(device, binary, epilog))
-      goto fail_alloc;
+      goto fail;
 
    if (options.dump_shader) {
       fprintf(stderr, "Fragment epilog");
@@ -2997,9 +2989,7 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
 
    return epilog;
 
-fail_alloc:
-   radv_shader_part_destroy(device, epilog);
-fail_create:
+fail:
    free(binary);
    return NULL;
 }
