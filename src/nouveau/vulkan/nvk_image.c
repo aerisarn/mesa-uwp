@@ -375,6 +375,27 @@ nvk_GetImageMemoryRequirements2(VkDevice _device,
    }
 }
 
+VKAPI_ATTR void VKAPI_CALL 
+nvk_GetDeviceImageMemoryRequirements(VkDevice _device,
+                                     const VkDeviceImageMemoryRequirementsKHR *pInfo,
+                                     VkMemoryRequirements2 *pMemoryRequirements)
+{
+   VK_FROM_HANDLE(nvk_device, device, _device);
+   ASSERTED VkResult result;
+   struct nvk_image image;
+
+   result = nvk_image_init(device, &image, pInfo->pCreateInfo);
+   assert(result == VK_SUCCESS);
+
+   VkImageMemoryRequirementsInfo2 info2 = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
+      .image = nvk_image_to_handle(&image),
+   };
+
+   nvk_GetImageMemoryRequirements2(_device, &info2, pMemoryRequirements);
+   nvk_image_finish(&image);
+}
+
 VKAPI_ATTR void VKAPI_CALL
 nvk_GetImageSparseMemoryRequirements2(VkDevice device,
                                       const VkImageSparseMemoryRequirementsInfo2* pInfo,
