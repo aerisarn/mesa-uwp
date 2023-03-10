@@ -921,3 +921,10 @@
     - changes:
       - src/**/*.rs
       when: on_success
+
+.lint-clang-format-rules:
+   rules:
+    - !reference [.core-rules, rules]
+    - changes:
+      - src/**/asahi/**/*
+      when: on_success

@@ -30,6 +30,19 @@ rustfmt:
     - shopt -s globstar
     - rustfmt --check --verbose src/**/*.rs
 
+clang-format:
+  # Cancel job if a newer commit is pushed to the same branch
+  interruptible: true
+  stage: lint
+  extends:
+    - .use-debian/x86_build
+    - .lint-clang-format-rules
+  variables:
+    GIT_STRATEGY: fetch
+  script:
+    - shopt -s globstar
+    - clang-format-13 --Werror --dry-run src/**/asahi/**/*.{h,c,cpp}
+
 .test-gl:
   extends:
     - .test
