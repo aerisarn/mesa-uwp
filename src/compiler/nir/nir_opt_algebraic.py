@@ -993,10 +993,8 @@ for s in [16, 32, 64]:
         if s < B:
             optimizations.extend([
                # S = smaller, B = bigger
-               # typeS -> typeB -> typeS ==> identity
+               # floatS -> floatB -> floatS ==> identity
                (('f2f{}'.format(s), ('f2f{}'.format(B), 'a@{}'.format(s))), a),
-               (('i2i{}'.format(s), ('i2i{}'.format(B), 'a@{}'.format(s))), a),
-               (('u2u{}'.format(s), ('u2u{}'.format(B), 'a@{}'.format(s))), a),
 
                # bool1 -> typeB -> typeS ==> bool1 -> typeS
                (('f2f{}'.format(s), ('b2f{}'.format(B), 'a@1')), ('b2f{}'.format(s), a)),
@@ -1010,10 +1008,27 @@ for s in [16, 32, 64]:
                # int? -> floatB -> floatS ==> int? -> floatS
                (('f2f{}'.format(s), ('u2f{}'.format(B), a)), ('u2f{}'.format(s), a)),
                (('f2f{}'.format(s), ('i2f{}'.format(B), a)), ('i2f{}'.format(s), a)),
+            ])
 
-               # intS -> intB -> floatB ==> intS -> floatB
-               (('u2f{}'.format(B), ('u2u{}'.format(B), 'a@{}'.format(s))), ('u2f{}'.format(B), a)),
-               (('i2f{}'.format(B), ('i2i{}'.format(B), 'a@{}'.format(s))), ('i2f{}'.format(B), a)),
+for S in [1, 8, 16, 32]:
+    for B in [8, 16, 32, 64]:
+        if B <= S:
+            continue
+        optimizations.extend([
+            # intS -> intB -> intS ==> identity
+            (('i2i{}'.format(S), ('i2i{}'.format(B), 'a@{}'.format(S))), a),
+            (('u2u{}'.format(S), ('u2u{}'.format(B), 'a@{}'.format(S))), a),
+        ])
+
+        if B < 16:
+            continue
+        for C in [8, 16, 32, 64]:
+            if C <= S:
+                continue
+            optimizations.extend([
+                # intS -> intC -> floatB ==> intS -> floatB
+                (('u2f{}'.format(B), ('u2u{}'.format(C), 'a@{}'.format(S))), ('u2f{}'.format(B), a)),
+                (('i2f{}'.format(B), ('i2i{}'.format(C), 'a@{}'.format(S))), ('i2f{}'.format(B), a)),
             ])
 
 # mediump variants of the above
