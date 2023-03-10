@@ -123,7 +123,7 @@ panfrost-g52-gl:arm64:
     PAN_I_WANT_A_BROKEN_VULKAN_DRIVER: 1
     DEQP_SUITE: panfrost-g52-vk
 
-panfrost-g52-piglit-gl:arm64:
+panfrost-g52-piglit-gles2:arm64:
   extends:
     - .piglit-test
     - .lava-piglit:arm64
