@@ -1268,7 +1268,6 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
          nir_pack_varying_interp_loc_sample |
          nir_pack_varying_interp_loc_centroid,
       .lower_io_variables = true,
-      .lower_fs_color_inputs = true,
       /* HW supports indirect indexing for: | Enabled in driver
        * -------------------------------------------------------
        * TCS inputs                         | Yes

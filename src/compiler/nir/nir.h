@@ -3827,13 +3827,6 @@ typedef struct nir_shader_compiler_options {
    bool lower_io_variables;
 
    /**
-    * Lower color inputs to load_colorN that are kind of like system values
-    * if lower_io_variables is also set. shader_info will contain
-    * the interpolation settings. This is used by nir_lower_io_passes.
-    */
-   bool lower_fs_color_inputs;
-
-   /**
     * The masks of shader stages that support indirect indexing with
     * load_input and store_output intrinsics. It's used when
     * lower_io_variables is true. This is used by nir_lower_io_passes.
@@ -4824,10 +4817,8 @@ bool nir_lower_io(nir_shader *shader,
                   nir_lower_io_options);
 
 bool nir_io_add_const_offset_to_base(nir_shader *nir, nir_variable_mode modes);
-
-void
-nir_lower_io_passes(nir_shader *nir);
-
+bool nir_lower_color_inputs(nir_shader *nir);
+void nir_lower_io_passes(nir_shader *nir);
 bool nir_io_add_intrinsic_xfb_info(nir_shader *nir);
 
 bool

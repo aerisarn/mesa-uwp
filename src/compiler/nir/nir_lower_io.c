@@ -2984,7 +2984,7 @@ nir_io_add_const_offset_to_base(nir_shader *nir, nir_variable_mode modes)
    return progress;
 }
 
-static bool
+bool
 nir_lower_color_inputs(nir_shader *nir)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
@@ -3000,32 +3000,58 @@ nir_lower_color_inputs(nir_shader *nir)
 
          nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
-         if (intrin->intrinsic != nir_intrinsic_load_deref)
+         if (intrin->intrinsic != nir_intrinsic_load_input &&
+             intrin->intrinsic != nir_intrinsic_load_interpolated_input)
             continue;
 
-         nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
-         if (!nir_deref_mode_is(deref, nir_var_shader_in))
+         nir_io_semantics sem = nir_intrinsic_io_semantics(intrin);
+
+         if (sem.location != VARYING_SLOT_COL0 &&
+             sem.location != VARYING_SLOT_COL1)
             continue;
 
-         b.cursor = nir_before_instr(instr);
-         nir_variable *var = nir_deref_instr_get_variable(deref);
-         nir_ssa_def *def;
+         /* Default to FLAT (for load_input) */
+         enum glsl_interp_mode interp = INTERP_MODE_FLAT;
+         bool sample = false;
+         bool centroid = false;
 
-         if (var->data.location == VARYING_SLOT_COL0) {
-            def = nir_load_color0(&b);
-            nir->info.fs.color0_interp = var->data.interpolation;
-            nir->info.fs.color0_sample = var->data.sample;
-            nir->info.fs.color0_centroid = var->data.centroid;
-         } else if (var->data.location == VARYING_SLOT_COL1) {
-            def = nir_load_color1(&b);
-            nir->info.fs.color1_interp = var->data.interpolation;
-            nir->info.fs.color1_sample = var->data.sample;
-            nir->info.fs.color1_centroid = var->data.centroid;
-         } else {
-            continue;
+         if (intrin->intrinsic == nir_intrinsic_load_interpolated_input) {
+            nir_intrinsic_instr *baryc =
+               nir_instr_as_intrinsic(intrin->src[0].ssa->parent_instr);
+
+            centroid =
+               baryc->intrinsic == nir_intrinsic_load_barycentric_centroid;
+            sample =
+               baryc->intrinsic == nir_intrinsic_load_barycentric_sample;
+            assert(centroid || sample ||
+                   baryc->intrinsic == nir_intrinsic_load_barycentric_pixel);
+
+            interp = nir_intrinsic_interp_mode(baryc);
          }
 
-         nir_ssa_def_rewrite_uses(&intrin->dest.ssa, def);
+         b.cursor = nir_before_instr(instr);
+         nir_ssa_def *load = NULL;
+
+         if (sem.location == VARYING_SLOT_COL0) {
+            load = nir_load_color0(&b);
+            nir->info.fs.color0_interp = interp;
+            nir->info.fs.color0_sample = sample;
+            nir->info.fs.color0_centroid = centroid;
+         } else {
+            assert(sem.location == VARYING_SLOT_COL1);
+            load = nir_load_color1(&b);
+            nir->info.fs.color1_interp = interp;
+            nir->info.fs.color1_sample = sample;
+            nir->info.fs.color1_centroid = centroid;
+         }
+
+         if (intrin->num_components != 4) {
+            unsigned start = nir_intrinsic_component(intrin);
+            unsigned count = intrin->num_components;
+            load = nir_channels(&b, load, BITFIELD_RANGE(start, count));
+         }
+
+         nir_ssa_def_rewrite_uses(&intrin->dest.ssa, load);
          nir_instr_remove(instr);
          progress = true;
       }
@@ -3153,10 +3179,6 @@ nir_lower_io_passes(nir_shader *nir)
       NIR_PASS_V(nir, nir_lower_var_copies);
       NIR_PASS_V(nir, nir_lower_global_vars_to_local);
    }
-
-   if (nir->info.stage == MESA_SHADER_FRAGMENT &&
-       nir->options->lower_fs_color_inputs)
-      NIR_PASS_V(nir, nir_lower_color_inputs);
 
    NIR_PASS_V(nir, nir_lower_io, nir_var_shader_out | nir_var_shader_in,
               type_size_vec4, nir_lower_io_lower_64bit_to_32);
