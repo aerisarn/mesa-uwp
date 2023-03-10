@@ -222,9 +222,17 @@ supported:
 
   * ``VK_FORMAT_B10G11R11_UFLOAT_PACK32``
 
-* Device extensions:
+* For Vulkan 1.2 and above:
 
-  * :ext:`VK_KHR_sampler_mirror_clamp_to_edge`
+  * ``VkPhysicalDeviceVulkan12Features``:
+
+    * ``samplerMirrorClampToEdge``
+
+* For Vulkan 1.1 and below:
+
+  * Device extensions:
+
+    * :ext:`VK_KHR_sampler_mirror_clamp_to_edge`
 
 OpenGL 4.5
 ^^^^^^^^^^
