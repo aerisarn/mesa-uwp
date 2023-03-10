@@ -1488,10 +1488,16 @@ optimizations.extend([
    (('i2i32', ('i2imp', 'a@32')), a),
    (('u2u32', ('i2imp', 'a@32')), a),
 
+   # typeA@32 -> typeB@16 -> typeB@32 ==> typeA@32 -> typeB@32
    (('i2i32', ('f2imp', 'a@32')), ('f2i32', a)),
    (('u2u32', ('f2ump', 'a@32')), ('f2u32', a)),
    (('f2f32', ('i2fmp', 'a@32')), ('i2f32', a)),
    (('f2f32', ('u2fmp', 'a@32')), ('u2f32', a)),
+
+   # typeA@32 -> typeA@16 -> typeB@32 ==> typeA@32 -> typeB@32
+   (('f2i32', ('f2fmp', 'a@32')), ('f2i32', a)),
+   (('f2u32', ('f2fmp', 'a@32')), ('f2u32', a)),
+   (('i2f32', ('i2imp', 'a@32')), ('i2f32', a)),
 
    # Conversions from float32 to float64 and back can be removed as long as
    # it doesn't need to be precise, since the conversion may e.g. flush denorms
