@@ -466,6 +466,10 @@ struct radv_shader_part_binary {
    uint8_t num_vgprs;
    unsigned code_size;
    unsigned disasm_size;
+
+   /* Self-referential size so we avoid consistency issues. */
+   uint32_t total_size;
+
    uint8_t data[0];
 };
 

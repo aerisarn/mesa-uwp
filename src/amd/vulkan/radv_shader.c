@@ -2786,6 +2786,7 @@ static void radv_aco_build_shader_part(void **bin,
 
    part_binary->num_sgprs = num_sgprs;
    part_binary->num_vgprs = num_vgprs;
+   part_binary->total_size = size;
    part_binary->code_size = code_size * sizeof(uint32_t);
    memcpy(part_binary->data, code, part_binary->code_size);
    if (disasm_size) {
