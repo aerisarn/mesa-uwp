@@ -4146,10 +4146,13 @@ zink_flush(struct pipe_context *pctx,
          *pfence = (struct pipe_fence_handle *)mfence;
       }
 
+      assert(!mfence->fence);
       mfence->fence = fence;
       mfence->sem = export_sem;
-      if (fence)
+      if (fence) {
          mfence->submit_count = submit_count;
+         util_dynarray_append(&fence->mfences, struct zink_tc_fence *, mfence);
+      }
 
       if (deferred_fence) {
          assert(fence);
