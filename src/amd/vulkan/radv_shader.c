@@ -2502,7 +2502,6 @@ radv_shader_part_create(struct radv_shader_part_binary *binary, unsigned wave_si
    shader_part->code_size = code_size;
    shader_part->rsrc1 = S_00B848_VGPRS((binary->num_vgprs - 1) / (wave_size == 32 ? 8 : 4)) |
                         S_00B228_SGPRS((binary->num_sgprs - 1) / 8);
-   shader_part->num_preserved_sgprs = binary->num_preserved_sgprs;
    shader_part->disasm_string =
       binary->disasm_size ? strdup((const char *)(binary->data + binary->code_size)) : NULL;
 
@@ -2773,7 +2772,6 @@ radv_create_trap_handler_shader(struct radv_device *device)
 static void radv_aco_build_shader_part(void **bin,
                                        uint32_t num_sgprs,
                                        uint32_t num_vgprs,
-                                       uint32_t num_preserved_sgprs,
                                        const uint32_t *code,
                                        uint32_t code_size,
                                        const char *disasm_str,
@@ -2787,7 +2785,6 @@ static void radv_aco_build_shader_part(void **bin,
 
    part_binary->num_sgprs = num_sgprs;
    part_binary->num_vgprs = num_vgprs;
-   part_binary->num_preserved_sgprs = num_preserved_sgprs;
    part_binary->code_size = code_size * sizeof(uint32_t);
    memcpy(part_binary->data, code, part_binary->code_size);
    if (disasm_size) {

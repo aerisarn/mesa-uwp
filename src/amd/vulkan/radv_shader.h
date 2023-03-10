@@ -460,7 +460,6 @@ struct radv_shader_binary_rtld {
 struct radv_shader_part_binary {
    uint8_t num_sgprs;
    uint8_t num_vgprs;
-   uint8_t num_preserved_sgprs;
    unsigned code_size;
    unsigned disasm_size;
    uint8_t data[0];
@@ -523,7 +522,6 @@ struct radv_shader_part {
    union radv_shader_arena_block *alloc;
    uint32_t code_size;
    uint32_t rsrc1;
-   uint8_t num_preserved_sgprs;
    bool nontrivial_divisors;
    uint32_t spi_shader_col_format;
    uint64_t upload_seq;
