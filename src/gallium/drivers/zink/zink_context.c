@@ -2536,6 +2536,7 @@ begin_rendering(struct zink_context *ctx)
    bool changed_layout = false;
    bool changed_size = false;
    bool zsbuf_used = zink_is_zsbuf_used(ctx);
+   bool use_tc_info = !ctx->blitting && ctx->tc && zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses;
    if (ctx->rp_changed || ctx->rp_layout_changed || ctx->rp_loadop_changed) {
       /* init imageviews, base loadOp, formats */
       for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
@@ -2545,7 +2546,7 @@ begin_rendering(struct zink_context *ctx)
             ctx->dynamic_fb.attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
          else
             ctx->dynamic_fb.attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-         if (ctx->tc && zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses) {
+         if (use_tc_info) {
             if (ctx->dynamic_fb.tc_info.cbuf_invalidate & BITFIELD_BIT(i))
                ctx->dynamic_fb.attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
             else
@@ -2582,7 +2583,7 @@ begin_rendering(struct zink_context *ctx)
          else
             ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
-         if (ctx->tc && zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses) {
+         if (use_tc_info) {
             if (ctx->dynamic_fb.tc_info.zsbuf_invalidate)
                ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
             else
@@ -2742,8 +2743,11 @@ zink_batch_rp(struct zink_context *ctx)
       ctx->base.clear(&ctx->base, ctx->void_clears, NULL, &color, 0, 0);
       ctx->void_clears = 0;
    }
-   update_tc_info(ctx, ctx->rp_tc_info_updated);
-   ctx->rp_tc_info_updated = false;
+   if (!ctx->blitting) {
+      if (ctx->rp_tc_info_updated)
+         update_tc_info(ctx, true);
+      ctx->rp_tc_info_updated = false;
+   }
    bool maybe_has_query_ends = !ctx->tc || !zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses || ctx->dynamic_fb.tc_info.has_query_ends;
    ctx->queries_in_rp = maybe_has_query_ends;
    /* if possible, out-of-renderpass resume any queries that were stopped when previous rp ended */

@@ -454,10 +454,11 @@ get_render_pass(struct zink_context *ctx)
    struct zink_render_pass_state state = {0};
    uint32_t clears = 0;
    bool have_zsbuf = fb->zsbuf && zink_is_zsbuf_used(ctx);
+   bool use_tc_info = !ctx->blitting && ctx->tc && zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses;
    state.samples = fb->samples > 0;
 
    for (int i = 0; i < fb->nr_cbufs; i++) {
-      if (ctx->tc && screen->driver_workarounds.track_renderpasses)
+      if (use_tc_info)
          zink_tc_init_color_attachment(ctx, &ctx->dynamic_fb.tc_info, i, &state.rts[i]);
       else
          zink_init_color_attachment(ctx, i, &state.rts[i]);
@@ -482,7 +483,7 @@ get_render_pass(struct zink_context *ctx)
    assert(!state.num_cresolves || state.num_cbufs == state.num_cresolves);
 
    if (have_zsbuf) {
-      if (ctx->tc && screen->driver_workarounds.track_renderpasses)
+      if (use_tc_info)
          zink_tc_init_zs_attachment(ctx, &ctx->dynamic_fb.tc_info, &state.rts[fb->nr_cbufs]);
       else
          zink_init_zs_attachment(ctx, &state.rts[fb->nr_cbufs]);
