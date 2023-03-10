@@ -641,10 +641,18 @@ fs_visitor::limit_dispatch_width(unsigned n, const char *msg)
 bool
 fs_inst::is_partial_write() const
 {
-   return ((this->predicate && this->opcode != BRW_OPCODE_SEL) ||
-           (this->exec_size * type_sz(this->dst.type)) < 32 ||
-           !this->dst.is_contiguous() ||
-           this->dst.offset % REG_SIZE != 0);
+   if (this->predicate && this->opcode != BRW_OPCODE_SEL)
+      return true;
+
+   if (this->dst.offset % REG_SIZE != 0)
+      return true;
+
+   /* SEND instructions always write whole registers */
+   if (this->opcode == SHADER_OPCODE_SEND)
+      return false;
+
+   return this->exec_size * type_sz(this->dst.type) < 32 ||
+          !this->dst.is_contiguous();
 }
 
 unsigned
