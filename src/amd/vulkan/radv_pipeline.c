@@ -3620,7 +3620,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
                             keep_statistic_info, active_nir_stages, binaries, &gs_copy_binary);
 
    if (!radv_pipeline_create_ps_epilog(pipeline, pipeline_key, lib_flags, noop_fs))
-      return result;
+      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
    if (keep_executable_info) {
       for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
