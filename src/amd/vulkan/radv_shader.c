@@ -2504,6 +2504,8 @@ radv_shader_part_create(struct radv_shader_part_binary *binary, unsigned wave_si
    shader_part->disasm_string =
       binary->disasm_size ? strdup((const char *)(binary->data + binary->code_size)) : NULL;
 
+   shader_part->spi_shader_col_format = binary->info.spi_shader_col_format;
+
    return shader_part;
 }
 
@@ -2968,11 +2970,11 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
    aco_compile_ps_epilog(&ac_opts, &ac_info, &ac_epilog_info, &args.ac, &radv_aco_build_shader_part,
                          (void **)&binary);
 
+   binary->info.spi_shader_col_format = key->spi_shader_col_format;
+
    epilog = radv_shader_part_create(binary, info.wave_size);
    if (!epilog)
       goto fail_create;
-
-   epilog->spi_shader_col_format = key->spi_shader_col_format;
 
    /* Allocate memory and upload the epilog. */
    epilog->alloc = radv_alloc_shader_memory(device, epilog->code_size, NULL);

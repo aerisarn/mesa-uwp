@@ -458,6 +458,10 @@ struct radv_shader_binary_rtld {
 };
 
 struct radv_shader_part_binary {
+   struct {
+      uint32_t spi_shader_col_format;
+   } info;
+
    uint8_t num_sgprs;
    uint8_t num_vgprs;
    unsigned code_size;
