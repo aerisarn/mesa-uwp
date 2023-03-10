@@ -976,18 +976,18 @@ for s in [16, 32, 64]:
 
        (('fadd', ('b2f{}'.format(s), ('flt', 0.0, 'a@{}'.format(s))), ('fneg', ('b2f{}'.format(s), ('flt', 'a@{}'.format(s), 0.0)))), ('fsign', a), '!options->lower_fsign'),
        (('iadd', ('b2i{}'.format(s), ('flt', 0, 'a@{}'.format(s))), ('ineg', ('b2i{}'.format(s), ('flt', 'a@{}'.format(s), 0)))), ('f2i{}'.format(s), ('fsign', a)), '!options->lower_fsign'),
+
+       # float? -> float? -> floatS ==> float? -> floatS
+       (('~f2f{}'.format(s), ('f2f', a)), ('f2f{}'.format(s), a)),
+
+       # int? -> float? -> floatS ==> int? -> floatS
+       (('~f2f{}'.format(s), ('u2f', a)), ('u2f{}'.format(s), a)),
+       (('~f2f{}'.format(s), ('i2f', a)), ('i2f{}'.format(s), a)),
+
+       # float? -> float? -> intS ==> float? -> intS
+       (('~f2u{}'.format(s), ('f2f', a)), ('f2u{}'.format(s), a)),
+       (('~f2i{}'.format(s), ('f2f', a)), ('f2i{}'.format(s), a)),
     ])
-
-    # float? -> float? -> floatS ==> float? -> floatS
-    (('~f2f{}'.format(s), ('f2f', a)), ('f2f{}'.format(s), a)),
-
-    # int? -> float? -> floatS ==> int? -> floatS
-    (('~f2f{}'.format(s), ('u2f', a)), ('u2f{}'.format(s), a)),
-    (('~f2f{}'.format(s), ('i2f', a)), ('i2f{}'.format(s), a)),
-
-    # float? -> float? -> intS ==> float? -> intS
-    (('~f2u{}'.format(s), ('f2f', a)), ('f2u{}'.format(s), a)),
-    (('~f2i{}'.format(s), ('f2f', a)), ('f2i{}'.format(s), a)),
 
     for B in [32, 64]:
         if s < B:
