@@ -566,6 +566,12 @@ Intel driver environment variables
    ``offsets``
       print offsets of instructions
 
+.. envvar:: INTEL_EXTENDED_METRICS
+
+   By default, only a standard set of gpu metrics are advertised. This
+   reduces time to collect metrics and hides infrequently used metrics.
+   To enable all metrics, set value to 1.
+
 .. envvar:: INTEL_MEASURE
 
    Collects GPU timestamps over common intervals, and generates a CSV report
