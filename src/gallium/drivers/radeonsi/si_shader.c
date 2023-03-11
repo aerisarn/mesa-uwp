@@ -1108,32 +1108,30 @@ static void si_shader_dump_stats(struct si_screen *sscreen, struct si_shader *sh
 {
    const struct ac_shader_config *conf = &shader->config;
 
-   if (!check_debug_option || si_can_dump_shader(sscreen, shader->selector->stage)) {
-      if (shader->selector->stage == MESA_SHADER_FRAGMENT) {
-         fprintf(file,
-                 "*** SHADER CONFIG ***\n"
-                 "SPI_PS_INPUT_ADDR = 0x%04x\n"
-                 "SPI_PS_INPUT_ENA  = 0x%04x\n",
-                 conf->spi_ps_input_addr, conf->spi_ps_input_ena);
-      }
-
+   if (shader->selector->stage == MESA_SHADER_FRAGMENT) {
       fprintf(file,
-              "*** SHADER STATS ***\n"
-              "SGPRS: %d\n"
-              "VGPRS: %d\n"
-              "Spilled SGPRs: %d\n"
-              "Spilled VGPRs: %d\n"
-              "Private memory VGPRs: %d\n"
-              "Code Size: %d bytes\n"
-              "LDS: %d bytes\n"
-              "Scratch: %d bytes per wave\n"
-              "Max Waves: %d\n"
-              "********************\n\n\n",
-              conf->num_sgprs, conf->num_vgprs, conf->spilled_sgprs, conf->spilled_vgprs,
-              shader->info.private_mem_vgprs, si_get_shader_binary_size(sscreen, shader),
-              conf->lds_size * get_lds_granularity(sscreen, shader->selector->stage),
-              conf->scratch_bytes_per_wave, shader->info.max_simd_waves);
+              "*** SHADER CONFIG ***\n"
+              "SPI_PS_INPUT_ADDR = 0x%04x\n"
+              "SPI_PS_INPUT_ENA  = 0x%04x\n",
+              conf->spi_ps_input_addr, conf->spi_ps_input_ena);
    }
+
+   fprintf(file,
+           "*** SHADER STATS ***\n"
+           "SGPRS: %d\n"
+           "VGPRS: %d\n"
+           "Spilled SGPRs: %d\n"
+           "Spilled VGPRs: %d\n"
+           "Private memory VGPRs: %d\n"
+           "Code Size: %d bytes\n"
+           "LDS: %d bytes\n"
+           "Scratch: %d bytes per wave\n"
+           "Max Waves: %d\n"
+           "********************\n\n\n",
+           conf->num_sgprs, conf->num_vgprs, conf->spilled_sgprs, conf->spilled_vgprs,
+           shader->info.private_mem_vgprs, si_get_shader_binary_size(sscreen, shader),
+           conf->lds_size * get_lds_granularity(sscreen, shader->selector->stage),
+           conf->scratch_bytes_per_wave, shader->info.max_simd_waves);
 }
 
 const char *si_get_shader_name(const struct si_shader *shader)
@@ -1207,9 +1205,9 @@ void si_shader_dump(struct si_screen *sscreen, struct si_shader *shader,
          si_shader_dump_disassembly(sscreen, &shader->epilog->binary, stage, shader->wave_size, debug,
                                     "epilog", file);
       fprintf(file, "\n");
-   }
 
-   si_shader_dump_stats(sscreen, shader, file, check_debug_option);
+      si_shader_dump_stats(sscreen, shader, file, check_debug_option);
+   }
 }
 
 static void si_dump_shader_key_vs(const union si_shader_key *key,
