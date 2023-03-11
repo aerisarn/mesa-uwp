@@ -192,10 +192,11 @@ enum
    DBG_GS = MESA_SHADER_GEOMETRY,
    DBG_PS = MESA_SHADER_FRAGMENT,
    DBG_CS = MESA_SHADER_COMPUTE,
-   DBG_NO_IR,
-   DBG_NO_NIR,
-   DBG_NO_ASM,
-   DBG_PREOPT_IR,
+   DBG_INIT_NIR,
+   DBG_NIR,
+   DBG_INIT_LLVM,
+   DBG_LLVM,
+   DBG_ASM,
 
    /* Shader compiler options the shader cache should be aware of: */
    DBG_FS_CORRECT_DERIVS_AFTER_KILL,
@@ -1786,11 +1787,6 @@ static inline struct si_shader_ctx_state *si_get_vs(struct si_context *sctx)
 {
    return si_get_vs_inline(sctx, sctx->shader.tes.cso ? TESS_ON : TESS_OFF,
                            sctx->shader.gs.cso ? GS_ON : GS_OFF);
-}
-
-static inline bool si_can_dump_shader(struct si_screen *sscreen, gl_shader_stage stage)
-{
-   return sscreen->debug_flags & (1 << stage);
 }
 
 static inline bool si_get_strmout_en(struct si_context *sctx)

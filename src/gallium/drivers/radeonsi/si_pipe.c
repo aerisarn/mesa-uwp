@@ -55,10 +55,12 @@ static const struct debug_named_value radeonsi_debug_options[] = {
    {"tcs", DBG(TCS), "Print tessellation control shaders"},
    {"tes", DBG(TES), "Print tessellation evaluation shaders"},
    {"cs", DBG(CS), "Print compute shaders"},
-   {"noir", DBG(NO_IR), "Don't print the LLVM IR"},
-   {"nonir", DBG(NO_NIR), "Don't print NIR when printing shaders"},
-   {"noasm", DBG(NO_ASM), "Don't print disassembled shaders"},
-   {"preoptir", DBG(PREOPT_IR), "Print the LLVM IR before initial optimizations"},
+
+   {"initnir", DBG(INIT_NIR), "Print initial input NIR when shaders are created"},
+   {"nir", DBG(NIR), "Print final NIR after lowering when shader variants are created"},
+   {"initllvm", DBG(INIT_LLVM), "Print initial LLVM IR before optimizations"},
+   {"llvm", DBG(LLVM), "Print final LLVM IR"},
+   {"asm", DBG(ASM), "Print final shaders in asm"},
 
    /* Shader compiler options the shader cache should be aware of: */
    {"w32ge", DBG(W32_GE), "Use Wave32 for vertex, tessellation, and geometry shaders."},

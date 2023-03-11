@@ -1103,6 +1103,24 @@ void si_shader_dump_stats_for_shader_db(struct si_screen *screen, struct si_shad
                       stages[shader->selector->stage], shader->wave_size);
 }
 
+bool si_can_dump_shader(struct si_screen *sscreen, gl_shader_stage stage,
+                        enum si_shader_dump_type dump_type)
+{
+   static uint64_t filter[] = {
+      [SI_DUMP_SHADER_KEY] = DBG(NIR) | DBG(INIT_LLVM) | DBG(LLVM) | DBG(ASM),
+      [SI_DUMP_INIT_NIR] = DBG(INIT_NIR),
+      [SI_DUMP_NIR] = DBG(NIR),
+      [SI_DUMP_INIT_LLVM_IR] = DBG(INIT_LLVM),
+      [SI_DUMP_LLVM_IR] = DBG(LLVM),
+      [SI_DUMP_ASM] = DBG(ASM),
+      [SI_DUMP_ALWAYS] = DBG(VS) | DBG(TCS) | DBG(TES) | DBG(GS) | DBG(PS) | DBG(CS),
+   };
+   assert(dump_type < ARRAY_SIZE(filter));
+
+   return sscreen->debug_flags & (1 << stage) &&
+          sscreen->debug_flags & filter[dump_type];
+}
+
 static void si_shader_dump_stats(struct si_screen *sscreen, struct si_shader *shader, FILE *file,
                                  bool check_debug_option)
 {
@@ -1174,10 +1192,11 @@ void si_shader_dump(struct si_screen *sscreen, struct si_shader *shader,
 {
    gl_shader_stage stage = shader->selector->stage;
 
-   if (!check_debug_option || si_can_dump_shader(sscreen, stage))
+   if (!check_debug_option || si_can_dump_shader(sscreen, stage, SI_DUMP_SHADER_KEY))
       si_dump_shader_key(shader, file);
 
    if (!check_debug_option && shader->binary.llvm_ir_string) {
+      /* This is only used with ddebug. */
       if (shader->previous_stage && shader->previous_stage->binary.llvm_ir_string) {
          fprintf(file, "\n%s - previous stage - LLVM IR:\n\n", si_get_shader_name(shader));
          fprintf(file, "%s\n", shader->previous_stage->binary.llvm_ir_string);
@@ -1187,9 +1206,7 @@ void si_shader_dump(struct si_screen *sscreen, struct si_shader *shader,
       fprintf(file, "%s\n", shader->binary.llvm_ir_string);
    }
 
-   if (!check_debug_option ||
-       (si_can_dump_shader(sscreen, stage) && !(sscreen->debug_flags & DBG(NO_ASM)))) {
-
+   if (!check_debug_option || (si_can_dump_shader(sscreen, stage, SI_DUMP_ASM))) {
       fprintf(file, "\n%s:\n", si_get_shader_name(shader));
 
       if (shader->prolog)
@@ -2078,10 +2095,9 @@ si_nir_generate_gs_copy_shader(struct si_screen *sscreen,
 
    si_nir_opts(gs_selector->screen, nir, false);
 
-   if (si_can_dump_shader(sscreen, MESA_SHADER_GEOMETRY)) {
+   if (si_can_dump_shader(sscreen, MESA_SHADER_GEOMETRY, SI_DUMP_NIR)) {
       fprintf(stderr, "GS Copy Shader:\n");
-      if (!(sscreen->debug_flags & DBG(NO_NIR)))
-         nir_print_shader(nir, stderr);
+      nir_print_shader(nir, stderr);
    }
 
    bool ok = false;
@@ -2167,8 +2183,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
 
    /* Dump NIR before doing NIR->LLVM conversion in case the
     * conversion fails. */
-   if (si_can_dump_shader(sscreen, sel->stage) &&
-       !(sscreen->debug_flags & DBG(NO_NIR))) {
+   if (si_can_dump_shader(sscreen, sel->stage, SI_DUMP_NIR)) {
       nir_print_shader(nir, stderr);
 
       if (nir->xfb_info)

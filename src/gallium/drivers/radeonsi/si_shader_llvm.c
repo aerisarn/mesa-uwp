@@ -76,14 +76,12 @@ bool si_compile_llvm(struct si_screen *sscreen, struct si_shader_binary *binary,
 {
    unsigned count = p_atomic_inc_return(&sscreen->num_compilations);
 
-   if (si_can_dump_shader(sscreen, stage)) {
+   if (si_can_dump_shader(sscreen, stage, SI_DUMP_LLVM_IR)) {
       fprintf(stderr, "radeonsi: Compiling shader %d\n", count);
 
-      if (!(sscreen->debug_flags & (DBG(NO_IR) | DBG(PREOPT_IR)))) {
-         fprintf(stderr, "%s LLVM IR:\n\n", name);
-         ac_dump_module(ac->module);
-         fprintf(stderr, "\n");
-      }
+      fprintf(stderr, "%s LLVM IR:\n\n", name);
+      ac_dump_module(ac->module);
+      fprintf(stderr, "\n");
    }
 
    if (sscreen->record_llvm_ir) {
@@ -255,8 +253,8 @@ void si_llvm_create_main_func(struct si_shader_context *ctx)
 void si_llvm_optimize_module(struct si_shader_context *ctx)
 {
    /* Dump LLVM IR before any optimization passes */
-   if (ctx->screen->debug_flags & DBG(PREOPT_IR) && si_can_dump_shader(ctx->screen, ctx->stage))
-      LLVMDumpModule(ctx->ac.module);
+   if (si_can_dump_shader(ctx->screen, ctx->stage, SI_DUMP_INIT_LLVM_IR))
+      ac_dump_module(ctx->ac.module);
 
    /* Run the pass */
    LLVMRunPassManager(ctx->compiler->passmgr, ctx->ac.module);
