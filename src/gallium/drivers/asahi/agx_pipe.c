@@ -642,15 +642,39 @@ agx_transfer_flush_region(struct pipe_context *pipe,
 
 /* Reallocate the backing buffer of a resource, returns true if successful */
 static bool
-agx_shadow(struct agx_context *ctx, struct agx_resource *rsrc)
+agx_shadow(struct agx_context *ctx, struct agx_resource *rsrc, bool needs_copy)
 {
    struct agx_device *dev = agx_device(ctx->base.screen);
    struct agx_bo *old = rsrc->bo;
-   struct agx_bo *new_ = agx_bo_create(dev, old->size, old->flags, old->label);
+   unsigned flags = old->flags;
+
+   /* If a resource is (or could be) shared, shadowing would desync across
+    * processes. (It's also not what this path is for.)
+    */
+   if (flags & (AGX_BO_SHARED | AGX_BO_SHAREABLE))
+      return false;
+
+   /* If we need to copy, we reallocate the resource with cached-coherent
+    * memory. This is a heuristic: it assumes that if the app needs a shadows
+    * (with a copy) now, it will again need to shadow-and-copy the same resource
+    * in the future. This accelerates the later copies, since otherwise the copy
+    * involves reading uncached memory.
+    */
+   if (needs_copy)
+      flags |= AGX_BO_WRITEBACK;
+
+   struct agx_bo *new_ = agx_bo_create(dev, old->size, flags, old->label);
 
    /* If allocation failed, we can fallback on a flush gracefully*/
    if (new_ == NULL)
       return false;
+
+   if (needs_copy) {
+      perf_debug_ctx(ctx, "Shadowing %zu bytes on the CPU (%s)", old->size,
+                     (old->flags & AGX_BO_WRITEBACK) ? "cached" : "uncached");
+
+      memcpy(new_->ptr.cpu, old->ptr.cpu, old->size);
+   }
 
    /* Swap the pointers, dropping a reference */
    agx_bo_unreference(rsrc->bo);
@@ -717,7 +741,8 @@ agx_prepare_for_map(struct agx_context *ctx, struct agx_resource *rsrc,
       return;
 
    /* There are readers. Try to shadow the resource to avoid a sync */
-   if ((usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) && agx_shadow(ctx, rsrc))
+   if (!(rsrc->base.flags & PIPE_RESOURCE_FLAG_MAP_PERSISTENT) &&
+       agx_shadow(ctx, rsrc, !(usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE)))
       return;
 
    /* Otherwise, we need to sync */
