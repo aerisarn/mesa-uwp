@@ -1805,8 +1805,8 @@ agx_dump_stats(agx_context *ctx, unsigned size, char **out)
    agx_foreach_instr_global(ctx, I)
       nr_ins++;
 
-   /* TODO: Pipe through occupancy */
-   unsigned nr_threads = 1;
+   unsigned nr_threads =
+      agx_occupancy_for_register_count(ctx->max_reg).max_threads;
 
    return asprintf(out,
                    "%s shader: %u inst, %u bytes, %u halfregs, %u threads, "

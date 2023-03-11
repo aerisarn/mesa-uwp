@@ -802,6 +802,13 @@ bool agx_nir_lower_ubo(nir_shader *shader);
 bool agx_nir_lower_shared_bitsize(nir_shader *shader);
 bool agx_nir_lower_frag_sidefx(nir_shader *s);
 
+struct agx_occupancy {
+   unsigned max_registers;
+   unsigned max_threads;
+};
+
+struct agx_occupancy agx_occupancy_for_register_count(unsigned halfregs);
+
 #ifdef __cplusplus
 } /* extern C */
 #endif
