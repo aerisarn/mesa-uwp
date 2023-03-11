@@ -115,6 +115,7 @@ nvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .descriptorBindingInlineUniformBlockUpdateAfterBind = true,
       .privateData = true,
       .dynamicRendering = true,
+      .maintenance4 = true,
    };
 
    vk_foreach_struct(ext, pFeatures->pNext)
@@ -409,6 +410,7 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       /* Vulkan 1.3 properties */
       .maxInlineUniformBlockSize = 1 << 16,
       .maxPerStageDescriptorInlineUniformBlocks = 32,
+      .maxBufferSize = UINT32_MAX,
    };
 
    vk_foreach_struct(ext, pProperties->pNext)
@@ -494,6 +496,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *pdev,
       .KHR_imageless_framebuffer = true,
       .KHR_maintenance1 = true,
       .KHR_maintenance3 = true,
+      .KHR_maintenance4 = true,
       .KHR_push_descriptor = true,
       .KHR_relaxed_block_layout = true,
       .KHR_sampler_mirror_clamp_to_edge = true,
