@@ -1388,6 +1388,10 @@ agx_compile_variant(struct agx_device *dev, struct agx_uncompiled_shader *so,
 
    nir_shader *nir = nir_shader_clone(NULL, so->nir);
 
+   /* This can happen at inopportune times and cause jank, log it */
+   perf_debug(dev, "Compiling shader variant #%u",
+              _mesa_hash_table_num_entries(so->variants));
+
    bool force_translucent = false;
 
    if (nir->info.stage == MESA_SHADER_VERTEX) {
