@@ -3169,6 +3169,9 @@ radv_update_dcc_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_image *
 
    assert(radv_dcc_enabled(image, range->baseMipLevel));
 
+   ASSERTED unsigned cdw_max =
+      radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 4 + count);
+
    radeon_emit(cmd_buffer->cs, PKT3(PKT3_WRITE_DATA, 2 + count, 0));
    radeon_emit(cmd_buffer->cs,
                S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_PFP));
@@ -3179,6 +3182,8 @@ radv_update_dcc_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_image *
       radeon_emit(cmd_buffer->cs, pred_val);
       radeon_emit(cmd_buffer->cs, pred_val >> 32);
    }
+
+   assert(cmd_buffer->cs->cdw <= cdw_max);
 }
 
 /**
