@@ -37,15 +37,14 @@ nvk_DestroyBuffer(VkDevice _device,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-nvk_GetBufferMemoryRequirements2(VkDevice _device,
-                                 const VkBufferMemoryRequirementsInfo2 *pInfo,
-                                 VkMemoryRequirements2 *pMemoryRequirements)
+nvk_GetDeviceBufferMemoryRequirements(VkDevice _device,
+                                      const VkDeviceBufferMemoryRequirements *pInfo,
+                                      VkMemoryRequirements2 *pMemoryRequirements)
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
-   VK_FROM_HANDLE(nvk_buffer, buffer, pInfo->buffer);
 
    pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
-      .size = buffer->vk.size,
+      .size = pInfo->pCreateInfo->size,
       .alignment = 64, /* TODO */
       .memoryTypeBits = BITFIELD_MASK(device->pdev->mem_type_cnt),
    };
