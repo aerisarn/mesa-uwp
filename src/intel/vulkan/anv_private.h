@@ -4212,6 +4212,15 @@ anv_device_init_generated_indirect_draws(struct anv_device *device);
 void
 anv_device_finish_generated_indirect_draws(struct anv_device *device);
 
+/* This structure is used in 2 scenarios :
+ *
+ *    - copy utrace timestamps from command buffer so that command buffer can
+ *      be resubmitted multiple times without the recorded timestamps being
+ *      overwritten before they're read back
+ *
+ *    - emit trace points for queue debug tagging
+ *      (vkQueueBeginDebugUtilsLabelEXT/vkQueueEndDebugUtilsLabelEXT)
+ */
 struct anv_utrace_submit {
    /* Needs to be the first field */
    struct intel_ds_flush_data ds;
@@ -4223,15 +4232,16 @@ struct anv_utrace_submit {
    struct anv_batch batch;
    struct anv_bo *batch_bo;
 
-   /* Buffer of 64bits timestamps */
-   struct anv_bo *trace_bo;
-
    /* Syncobj to be signaled when the batch completes */
    struct vk_sync *sync;
 
    /* Queue on which all the recorded traces are submitted */
    struct anv_queue *queue;
 
+   /* Buffer of 64bits timestamps (only used for timestamp copies) */
+   struct anv_bo *trace_bo;
+
+   /* Memcpy state tracking (only used for timestamp copies) */
    struct anv_memcpy_state memcpy_state;
 };
 

@@ -24,6 +24,7 @@
 #include "anv_private.h"
 
 #include "ds/intel_tracepoints.h"
+#include "genxml/gen8_pack.h"
 #include "perf/intel_perf.h"
 
 #include "vulkan/runtime/vk_common_entrypoints.h"
@@ -364,4 +365,104 @@ void anv_CmdEndDebugUtilsLabelEXT(VkCommandBuffer _commandBuffer)
    }
 
    vk_common_CmdEndDebugUtilsLabelEXT(_commandBuffer);
- }
+}
+
+static void
+anv_queue_trace(struct anv_queue *queue, const VkDebugUtilsLabelEXT *label, bool begin)
+{
+   struct anv_device *device = queue->device;
+
+   VkResult result;
+   struct anv_utrace_submit *submit =
+      vk_zalloc(&device->vk.alloc, sizeof(struct anv_utrace_submit),
+                8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   if (!submit)
+      return;
+
+   submit->queue = queue;
+
+   intel_ds_flush_data_init(&submit->ds, &queue->ds, queue->ds.submission_id);
+
+   result = vk_sync_create(&device->vk, &device->physical->sync_syncobj_type,
+                           0, 0, &submit->sync);
+   if (result != VK_SUCCESS)
+      goto error_trace;
+
+   result = anv_bo_pool_alloc(&device->utrace_bo_pool, 4096,
+                              &submit->batch_bo);
+   if (result != VK_SUCCESS)
+      goto error_sync;
+
+   result = anv_reloc_list_init(&submit->relocs, &device->vk.alloc);
+   if (result != VK_SUCCESS)
+      goto error_batch_bo;
+
+   submit->batch.alloc = &device->vk.alloc;
+   submit->batch.relocs = &submit->relocs;
+   anv_batch_set_storage(&submit->batch,
+                         (struct anv_address) { .bo = submit->batch_bo, },
+                         submit->batch_bo->map, submit->batch_bo->size);
+
+   if (begin) {
+      trace_intel_begin_queue_annotation(&submit->ds.trace, &submit->batch);
+   } else {
+      trace_intel_end_queue_annotation(&submit->ds.trace,
+                                       &submit->batch,
+                                       strlen(label->pLabelName),
+                                       label->pLabelName);
+   }
+
+   anv_batch_emit(&submit->batch, GFX8_MI_BATCH_BUFFER_END, bbs);
+   anv_batch_emit(&submit->batch, GFX8_MI_NOOP, noop);
+
+   if (submit->batch.status != VK_SUCCESS) {
+      result = submit->batch.status;
+      goto error_reloc_list;
+   }
+
+   u_trace_flush(&submit->ds.trace, submit, true);
+
+   pthread_mutex_lock(&device->mutex);
+   device->kmd_backend->queue_exec_trace(queue, submit);
+   pthread_mutex_unlock(&device->mutex);
+
+   return;
+
+ error_reloc_list:
+   anv_reloc_list_finish(&submit->relocs, &device->vk.alloc);
+ error_batch_bo:
+   anv_bo_pool_free(&device->utrace_bo_pool, submit->batch_bo);
+ error_sync:
+   vk_sync_destroy(&device->vk, submit->sync);
+ error_trace:
+   intel_ds_flush_data_fini(&submit->ds);
+   vk_free(&device->vk.alloc, submit);
+}
+
+void
+anv_QueueBeginDebugUtilsLabelEXT(
+   VkQueue _queue,
+   const VkDebugUtilsLabelEXT *pLabelInfo)
+{
+   VK_FROM_HANDLE(anv_queue, queue, _queue);
+
+   vk_common_QueueBeginDebugUtilsLabelEXT(_queue, pLabelInfo);
+
+   anv_queue_trace(queue, pLabelInfo, true /* begin */);
+}
+
+void
+anv_QueueEndDebugUtilsLabelEXT(VkQueue _queue)
+{
+   VK_FROM_HANDLE(anv_queue, queue, _queue);
+
+   if (queue->vk.labels.size > 0) {
+      const VkDebugUtilsLabelEXT *label =
+         util_dynarray_top_ptr(&queue->vk.labels, VkDebugUtilsLabelEXT);
+      anv_queue_trace(queue, label, false /* begin */);
+
+      u_trace_context_process(&queue->device->ds.trace_context, true);
+   }
+
+   vk_common_QueueEndDebugUtilsLabelEXT(_queue);
+}

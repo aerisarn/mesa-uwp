@@ -502,6 +502,29 @@ intel_ds_end_cmd_buffer_annotation(struct intel_ds_device *device,
 }
 
 void
+intel_ds_begin_queue_annotation(struct intel_ds_device *device,
+                                uint64_t ts_ns,
+                                const void *flush_data,
+                                const struct trace_intel_begin_queue_annotation *payload)
+{
+   const struct intel_ds_flush_data *flush =
+      (const struct intel_ds_flush_data *) flush_data;
+   begin_event(flush->queue, ts_ns, INTEL_DS_QUEUE_STAGE_QUEUE);
+}
+
+void
+intel_ds_end_queue_annotation(struct intel_ds_device *device,
+                              uint64_t ts_ns,
+                              const void *flush_data,
+                              const struct trace_intel_end_queue_annotation *payload)
+{
+   const struct intel_ds_flush_data *flush =
+      (const struct intel_ds_flush_data *) flush_data;
+   end_event(flush->queue, ts_ns, INTEL_DS_QUEUE_STAGE_QUEUE,
+             flush->submission_id, payload->str, NULL, NULL);
+}
+
+void
 intel_ds_begin_stall(struct intel_ds_device *device,
                      uint64_t ts_ns,
                      const void *flush_data,

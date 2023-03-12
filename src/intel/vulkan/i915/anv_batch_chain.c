@@ -798,3 +798,12 @@ fail:
    anv_execbuf_finish(&execbuf);
    return result;
 }
+
+VkResult
+i915_queue_exec_trace(struct anv_queue *queue,
+                      struct anv_utrace_submit *submit)
+{
+   assert(submit->batch_bo);
+
+   return anv_queue_exec_utrace_locked(queue, submit);
+}
