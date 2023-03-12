@@ -657,7 +657,8 @@ debian-ppc64el:
     GALLIUM_DRIVERS: "nouveau,radeonsi,swrast,virgl,zink"
     VULKAN_DRIVERS: "amd,swrast"
 
-debian-mingw32-x86_64:
+# Disabled as it hangs with winedbg on shared runners
+.debian-mingw32-x86_64:
   extends: .meson-build_mingw
   stage: build-misc
   variables:
