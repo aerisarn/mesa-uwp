@@ -901,6 +901,11 @@ lower_any_hit_for_intersection(nir_shader *any_hit)
          .num_components = 1,
          .bit_size = 32,
       },
+      {
+         /* Scratch offset */
+         .num_components = 1,
+         .bit_size = 32,
+      },
    };
    impl->function->num_params = ARRAY_SIZE(params);
    impl->function->params = ralloc_array(any_hit, nir_parameter, ARRAY_SIZE(params));
@@ -915,6 +920,7 @@ lower_any_hit_for_intersection(nir_shader *any_hit)
    nir_ssa_def *commit_ptr = nir_load_param(b, 0);
    nir_ssa_def *hit_t = nir_load_param(b, 1);
    nir_ssa_def *hit_kind = nir_load_param(b, 2);
+   nir_ssa_def *scratch_offset = nir_load_param(b, 3);
 
    nir_deref_instr *commit =
       nir_build_deref_cast(b, commit_ptr, nir_var_function_temp, glsl_bool_type(), 0);
@@ -952,6 +958,16 @@ lower_any_hit_for_intersection(nir_shader *any_hit)
             case nir_intrinsic_load_ray_hit_kind:
                nir_ssa_def_rewrite_uses(&intrin->dest.ssa, hit_kind);
                nir_instr_remove(&intrin->instr);
+               break;
+
+            case nir_intrinsic_load_scratch:
+               nir_instr_rewrite_src_ssa(instr, &intrin->src[0],
+                                         nir_iadd_nuw(b, scratch_offset, intrin->src[0].ssa));
+               break;
+
+            case nir_intrinsic_store_scratch:
+               nir_instr_rewrite_src_ssa(instr, &intrin->src[1],
+                                         nir_iadd_nuw(b, scratch_offset, intrin->src[1].ssa));
                break;
 
             default:
@@ -1042,6 +1058,7 @@ nir_lower_intersection_shader(nir_shader *intersection, nir_shader *any_hit)
                      &nir_build_deref_var(b, commit_tmp)->dest.ssa,
                      hit_t,
                      hit_kind,
+                     nir_imm_int(b, intersection->scratch_size),
                   };
                   nir_inline_function_impl(b, any_hit_impl, params, any_hit_var_remap);
                }
@@ -1060,7 +1077,8 @@ nir_lower_intersection_shader(nir_shader *intersection, nir_shader *any_hit)
          nir_ssa_def_rewrite_uses(&intrin->dest.ssa, accepted);
       }
    }
-
+   /* Any-hit scratch variables are placed after intersection scratch variables. */
+   intersection->scratch_size += any_hit->scratch_size;
    nir_metadata_preserve(impl, nir_metadata_none);
 
    /* We did some inlining; have to re-index SSA defs */
