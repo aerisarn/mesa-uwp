@@ -104,6 +104,12 @@ struct radv_winsys_sem_info {
    struct radv_winsys_sem_counts signal;
 };
 
+static void
+radeon_emit_unchecked(struct radeon_cmdbuf *cs, uint32_t value)
+{
+   cs->buf[cs->cdw++] = value;
+}
+
 static uint32_t radv_amdgpu_ctx_queue_syncobj(struct radv_amdgpu_ctx *ctx, unsigned ip,
                                               unsigned ring);
 
@@ -339,7 +345,7 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
    uint32_t ib_pad_dw_mask = MAX2(3, cs->ws->info.ib_pad_dw_mask[ip_type]);
    uint32_t nop_packet = get_nop_packet(cs);
    while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask) != ib_pad_dw_mask - 3)
-      radeon_emit(&cs->base, nop_packet);
+      radeon_emit_unchecked(&cs->base, nop_packet);
 
    if (cs->use_ib)
       *cs->ib_size_ptr |= cs->base.cdw + 4;
@@ -374,16 +380,16 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
    cs->ws->base.cs_add_buffer(&cs->base, cs->ib_buffer);
 
    if (cs->use_ib) {
-      radeon_emit(&cs->base, PKT3(PKT3_INDIRECT_BUFFER, 2, 0));
-      radeon_emit(&cs->base, radv_amdgpu_winsys_bo(cs->ib_buffer)->base.va);
-      radeon_emit(&cs->base, radv_amdgpu_winsys_bo(cs->ib_buffer)->base.va >> 32);
-      radeon_emit(&cs->base, S_3F2_CHAIN(1) | S_3F2_VALID(1));
+      radeon_emit_unchecked(&cs->base, PKT3(PKT3_INDIRECT_BUFFER, 2, 0));
+      radeon_emit_unchecked(&cs->base, radv_amdgpu_winsys_bo(cs->ib_buffer)->base.va);
+      radeon_emit_unchecked(&cs->base, radv_amdgpu_winsys_bo(cs->ib_buffer)->base.va >> 32);
+      radeon_emit_unchecked(&cs->base, S_3F2_CHAIN(1) | S_3F2_VALID(1));
 
       cs->ib_size_ptr = cs->base.buf + cs->base.cdw - 1;
    } else {
       /* Pad the CS with NOP packets. */
       while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask))
-         radeon_emit(&cs->base, nop_packet);
+         radeon_emit_unchecked(&cs->base, nop_packet);
    }
 
    cs->base.buf = (uint32_t *)cs->ib_mapped;
@@ -408,19 +414,19 @@ radv_amdgpu_cs_finalize(struct radeon_cmdbuf *_cs)
        * have 4 nops at the end for chaining.
        */
       while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask) != ib_pad_dw_mask - 3)
-         radeon_emit(&cs->base, nop_packet);
+         radeon_emit_unchecked(&cs->base, nop_packet);
 
-      radeon_emit(&cs->base, nop_packet);
-      radeon_emit(&cs->base, nop_packet);
-      radeon_emit(&cs->base, nop_packet);
-      radeon_emit(&cs->base, nop_packet);
+      radeon_emit_unchecked(&cs->base, nop_packet);
+      radeon_emit_unchecked(&cs->base, nop_packet);
+      radeon_emit_unchecked(&cs->base, nop_packet);
+      radeon_emit_unchecked(&cs->base, nop_packet);
 
       *cs->ib_size_ptr |= cs->base.cdw;
    } else {
       /* Pad the CS with NOP packets. */
       if (ip_type != AMDGPU_HW_IP_VCN_ENC) {
          while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask))
-            radeon_emit(&cs->base, nop_packet);
+            radeon_emit_unchecked(&cs->base, nop_packet);
       }
 
       /* Append the current (last) IB to the array of old IB buffers. */
