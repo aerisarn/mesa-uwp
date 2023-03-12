@@ -3516,12 +3516,12 @@ nir_slot_is_sysval_output_and_varying(gl_varying_slot slot,
  * stage. If the instruction has no other use, it's removed.
  */
 bool
-nir_remove_varying(nir_intrinsic_instr *intr)
+nir_remove_varying(nir_intrinsic_instr *intr, gl_shader_stage next_shader)
 {
    nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
 
    if ((!sem.no_sysval_output &&
-        nir_slot_is_sysval_output(sem.location, MESA_SHADER_NONE)) ||
+        nir_slot_is_sysval_output(sem.location, next_shader)) ||
        nir_instr_xfb_write_mask(intr)) {
       /* Demote the store instruction. */
       sem.no_varying = true;

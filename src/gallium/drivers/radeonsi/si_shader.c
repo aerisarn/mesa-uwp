@@ -1490,7 +1490,7 @@ static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
          if (nir_slot_is_varying(sem.location) &&
              key->ge.opt.kill_outputs &
              (1ull << si_shader_io_get_unique_index(sem.location, true))) {
-            nir_remove_varying(intr);
+            nir_remove_varying(intr, MESA_SHADER_FRAGMENT);
             progress = true;
          }
 
