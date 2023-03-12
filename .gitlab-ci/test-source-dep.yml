@@ -199,6 +199,7 @@
         *llvmpipe_file_list
       when: on_success
 
+# TODO: remove together with Clover
 .llvmpipe-clover-rules:
   rules:
     - !reference [.llvmpipe-cl-rules, rules]

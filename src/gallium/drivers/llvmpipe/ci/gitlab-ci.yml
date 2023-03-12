@@ -16,12 +16,13 @@
     LP_NUM_THREADS: 1
     PIGLIT_PROFILES: cl
 
-llvmpipe-piglit-clover:
+# TODO: remove together with Clover
+.llvmpipe-piglit-clover:
   extends:
     - .llvmpipe-piglit-cl
     - .llvmpipe-clover-rules
   needs:
-    - debian-clover-testing
+    - .debian-clover-testing
     - debian/x86_test-gl
   variables:
     LP_CL: 1
