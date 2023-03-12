@@ -4652,7 +4652,7 @@ fixup_io_locations(nir_shader *nir)
     */
    unsigned slot = 0;
    for (unsigned i = 0; i < VARYING_SLOT_MAX; i++) {
-      if (nir_slot_is_sysval_output(i))
+      if (nir_slot_is_sysval_output(i, MESA_SHADER_NONE))
          continue;
       nir_variable *var = nir_find_variable_with_location(nir, mode, i);
       if (!var) {

@@ -3434,28 +3434,47 @@ nir_instr_xfb_write_mask(nir_intrinsic_instr *instr)
  * Whether an output slot is consumed by fixed-function logic.
  */
 bool
-nir_slot_is_sysval_output(gl_varying_slot slot)
+nir_slot_is_sysval_output(gl_varying_slot slot, gl_shader_stage next_shader)
 {
-   return slot == VARYING_SLOT_POS ||
-          slot == VARYING_SLOT_PSIZ ||
-          slot == VARYING_SLOT_EDGE ||
-          slot == VARYING_SLOT_CLIP_VERTEX ||
-          slot == VARYING_SLOT_CLIP_DIST0 ||
-          slot == VARYING_SLOT_CLIP_DIST1 ||
-          slot == VARYING_SLOT_CULL_DIST0 ||
-          slot == VARYING_SLOT_CULL_DIST1 ||
-          slot == VARYING_SLOT_LAYER ||
-          slot == VARYING_SLOT_VIEWPORT ||
-          slot == VARYING_SLOT_TESS_LEVEL_OUTER ||
-          slot == VARYING_SLOT_TESS_LEVEL_INNER ||
-          slot == VARYING_SLOT_BOUNDING_BOX0 ||
-          slot == VARYING_SLOT_BOUNDING_BOX1 ||
-          slot == VARYING_SLOT_VIEW_INDEX ||
-          slot == VARYING_SLOT_VIEWPORT_MASK ||
-          slot == VARYING_SLOT_PRIMITIVE_SHADING_RATE ||
-          slot == VARYING_SLOT_PRIMITIVE_COUNT ||
-          slot == VARYING_SLOT_PRIMITIVE_INDICES ||
-          slot == VARYING_SLOT_TASK_COUNT;
+   switch (next_shader) {
+   case MESA_SHADER_FRAGMENT:
+      return slot == VARYING_SLOT_POS ||
+             slot == VARYING_SLOT_PSIZ ||
+             slot == VARYING_SLOT_EDGE ||
+             slot == VARYING_SLOT_CLIP_VERTEX ||
+             slot == VARYING_SLOT_CLIP_DIST0 ||
+             slot == VARYING_SLOT_CLIP_DIST1 ||
+             slot == VARYING_SLOT_CULL_DIST0 ||
+             slot == VARYING_SLOT_CULL_DIST1 ||
+             slot == VARYING_SLOT_LAYER ||
+             slot == VARYING_SLOT_VIEWPORT ||
+             slot == VARYING_SLOT_VIEW_INDEX ||
+             slot == VARYING_SLOT_VIEWPORT_MASK ||
+             slot == VARYING_SLOT_PRIMITIVE_SHADING_RATE ||
+             /* NV_mesh_shader_only */
+             slot == VARYING_SLOT_PRIMITIVE_COUNT ||
+             slot == VARYING_SLOT_PRIMITIVE_INDICES;
+
+   case MESA_SHADER_TESS_EVAL:
+      return slot == VARYING_SLOT_TESS_LEVEL_OUTER ||
+             slot == VARYING_SLOT_TESS_LEVEL_INNER ||
+             slot == VARYING_SLOT_BOUNDING_BOX0 ||
+             slot == VARYING_SLOT_BOUNDING_BOX1;
+
+   case MESA_SHADER_MESH:
+      /* NV_mesh_shader only */
+      return slot == VARYING_SLOT_TASK_COUNT;
+
+   case MESA_SHADER_NONE:
+      /* NONE means unknown. Check all possibilities. */
+      return nir_slot_is_sysval_output(slot, MESA_SHADER_FRAGMENT) ||
+             nir_slot_is_sysval_output(slot, MESA_SHADER_TESS_EVAL) ||
+             nir_slot_is_sysval_output(slot, MESA_SHADER_MESH);
+
+   default:
+      /* No other shaders have preceding shaders with sysval outputs. */
+      return false;
+   }
 }
 
 /**
@@ -3485,9 +3504,10 @@ nir_slot_is_varying(gl_varying_slot slot)
 }
 
 bool
-nir_slot_is_sysval_output_and_varying(gl_varying_slot slot)
+nir_slot_is_sysval_output_and_varying(gl_varying_slot slot,
+                                      gl_shader_stage next_shader)
 {
-   return nir_slot_is_sysval_output(slot) &&
+   return nir_slot_is_sysval_output(slot, next_shader) &&
           nir_slot_is_varying(slot);
 }
 
@@ -3500,7 +3520,8 @@ nir_remove_varying(nir_intrinsic_instr *intr)
 {
    nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
 
-   if ((!sem.no_sysval_output && nir_slot_is_sysval_output(sem.location)) ||
+   if ((!sem.no_sysval_output &&
+        nir_slot_is_sysval_output(sem.location, MESA_SHADER_NONE)) ||
        nir_instr_xfb_write_mask(intr)) {
       /* Demote the store instruction. */
       sem.no_varying = true;
