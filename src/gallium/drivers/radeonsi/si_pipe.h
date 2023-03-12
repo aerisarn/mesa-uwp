@@ -224,6 +224,7 @@ enum
 
    /* Driver options: */
    DBG_NO_WC,
+   DBG_NO_WC_STREAM,
    DBG_CHECK_VM,
    DBG_RESERVE_VMID,
    DBG_SHADOW_REGS,

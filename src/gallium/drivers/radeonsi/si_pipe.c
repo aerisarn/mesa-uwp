@@ -87,6 +87,7 @@ static const struct debug_named_value radeonsi_debug_options[] = {
 
    /* Driver options: */
    {"nowc", DBG(NO_WC), "Disable GTT write combining"},
+   {"nowcstream", DBG(NO_WC_STREAM), "Disable GTT write combining for streaming uploads"},
    {"check_vm", DBG(CHECK_VM), "Check VM faults and dump debug info."},
    {"reserve_vmid", DBG(RESERVE_VMID), "Force VMID reservation per context."},
    {"shadowregs", DBG(SHADOW_REGS), "Enable CP register shadowing."},
@@ -563,7 +564,9 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
     */
    bool is_apu = !sscreen->info.has_dedicated_vram;
    sctx->b.stream_uploader =
-      u_upload_create(&sctx->b, 1024 * 1024, 0, PIPE_USAGE_STREAM,
+      u_upload_create(&sctx->b, 1024 * 1024, 0,
+                      sscreen->debug_flags & DBG(NO_WC_STREAM) ? PIPE_USAGE_STAGING
+                                                               : PIPE_USAGE_STREAM,
                       SI_RESOURCE_FLAG_32BIT); /* same flags as const_uploader */
    if (!sctx->b.stream_uploader) {
       fprintf(stderr, "radeonsi: can't create stream_uploader\n");
