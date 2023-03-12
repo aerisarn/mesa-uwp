@@ -3495,7 +3495,8 @@ nir_slot_is_sysval_output_and_varying(gl_varying_slot slot)
  * This marks the output store instruction as not feeding the next shader
  * stage. If the instruction has no other use, it's removed.
  */
-void nir_remove_varying(nir_intrinsic_instr *intr)
+bool
+nir_remove_varying(nir_intrinsic_instr *intr)
 {
    nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
 
@@ -3504,8 +3505,10 @@ void nir_remove_varying(nir_intrinsic_instr *intr)
       /* Demote the store instruction. */
       sem.no_varying = true;
       nir_intrinsic_set_io_semantics(intr, sem);
+      return false;
    } else {
       nir_instr_remove(&intr->instr);
+      return true;
    }
 }
 

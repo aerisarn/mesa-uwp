@@ -4782,7 +4782,7 @@ void nir_link_varying_precision(nir_shader *producer, nir_shader *consumer);
 bool nir_slot_is_sysval_output(gl_varying_slot slot);
 bool nir_slot_is_varying(gl_varying_slot slot);
 bool nir_slot_is_sysval_output_and_varying(gl_varying_slot slot);
-void nir_remove_varying(nir_intrinsic_instr *intr);
+bool nir_remove_varying(nir_intrinsic_instr *intr);
 void nir_remove_sysval_output(nir_intrinsic_instr *intr);
 
 bool nir_lower_amul(nir_shader *shader,
