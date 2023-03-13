@@ -61,13 +61,12 @@ llvmpipe-traces:
     - .deqp-test
     - .llvmpipe-test
 
-.llvmpipe:
-  tags:
-    - mesa-swrast
+llvmpipe:
   variables:
     DEQP_SUITE: llvmpipe
     XDG_RUNTIME_DIR: /run/user
     XVFB_SCRIPT: "install/deqp-runner.sh"
+    DEQP_FRACTION: 4
   extends: .llvmpipe-deqp-test
   script: |
     . "$SCRIPTS_DIR"/setup-test-env.sh
