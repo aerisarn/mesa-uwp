@@ -862,12 +862,10 @@ radv_get_user_sgpr(const struct radv_shader *shader, int idx)
 
 static void
 radv_emit_userdata_address(struct radv_device *device, struct radeon_cmdbuf *cs,
-                           struct radv_pipeline *pipeline, gl_shader_stage stage, int idx,
-                           uint64_t va)
+                           struct radv_shader *shader, uint32_t base_reg, int idx, uint64_t va)
 {
-   const struct radv_shader *shader = radv_get_shader(pipeline, stage);
-   const struct radv_userdata_info *loc = radv_get_user_sgpr(shader, idx);
-   uint32_t base_reg = pipeline->user_data_0[stage];
+   const struct radv_userdata_info *loc = &shader->info.user_sgprs_locs.shader_data[idx];
+
    if (loc->sgpr_idx == -1)
       return;
 
@@ -4490,17 +4488,22 @@ radv_flush_indirect_descriptor_sets(struct radv_cmd_buffer *cmd_buffer,
 
       for (unsigned s = MESA_SHADER_VERTEX; s <= MESA_SHADER_FRAGMENT; s++)
          if (radv_pipeline_has_stage(graphics_pipeline, s))
-            radv_emit_userdata_address(device, cs, pipeline, s, AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
+            radv_emit_userdata_address(device, cs, pipeline->shaders[s], pipeline->user_data_0[s],
+                                       AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
 
       if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_MESH))
-         radv_emit_userdata_address(device, cs, pipeline, MESA_SHADER_MESH,
+         radv_emit_userdata_address(device, cs, pipeline->shaders[MESA_SHADER_MESH],
+                                    pipeline->user_data_0[MESA_SHADER_MESH],
                                     AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
 
       if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TASK))
-         radv_emit_userdata_address(device, cmd_buffer->ace_internal.cs, pipeline, MESA_SHADER_TASK,
+         radv_emit_userdata_address(device, cmd_buffer->ace_internal.cs,
+                                    pipeline->shaders[MESA_SHADER_TASK],
+                                    pipeline->user_data_0[MESA_SHADER_TASK],
                                     AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
    } else {
-      radv_emit_userdata_address(device, cs, pipeline, MESA_SHADER_COMPUTE,
+      radv_emit_userdata_address(device, cs, pipeline->shaders[MESA_SHADER_COMPUTE],
+                                 pipeline->user_data_0[MESA_SHADER_COMPUTE],
                                  AC_UD_INDIRECT_DESCRIPTOR_SETS, va);
    }
 }
@@ -4672,14 +4675,17 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
 
          /* Avoid redundantly emitting the address for merged stages. */
          if (shader && shader != prev_shader) {
-            radv_emit_userdata_address(device, cs, pipeline, stage, AC_UD_PUSH_CONSTANTS, va);
+            radv_emit_userdata_address(device, cs, shader, pipeline->user_data_0[stage],
+                                       AC_UD_PUSH_CONSTANTS, va);
 
             prev_shader = shader;
          }
       }
 
       if (internal_stages & VK_SHADER_STAGE_TASK_BIT_EXT) {
-         radv_emit_userdata_address(device, cmd_buffer->ace_internal.cs, pipeline, MESA_SHADER_TASK,
+         radv_emit_userdata_address(device, cmd_buffer->ace_internal.cs,
+                                    pipeline->shaders[MESA_SHADER_TASK],
+                                    pipeline->user_data_0[MESA_SHADER_TASK],
                                     AC_UD_PUSH_CONSTANTS, va);
       }
 
@@ -4883,8 +4889,10 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer)
    va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
    va += vb_offset;
 
-   radv_emit_userdata_address(cmd_buffer->device, cmd_buffer->cs, &pipeline->base,
-                              MESA_SHADER_VERTEX, AC_UD_VS_VERTEX_BUFFERS, va);
+   radv_emit_userdata_address(cmd_buffer->device, cmd_buffer->cs,
+                              radv_get_shader(&pipeline->base, MESA_SHADER_VERTEX),
+                              pipeline->base.user_data_0[MESA_SHADER_VERTEX],
+                              AC_UD_VS_VERTEX_BUFFERS, va);
 
    cmd_buffer->state.vb_va = va;
    cmd_buffer->state.prefetch_L2_mask |= RADV_PREFETCH_VBO_DESCRIPTORS;
