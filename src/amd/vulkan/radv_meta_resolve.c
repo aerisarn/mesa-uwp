@@ -304,7 +304,8 @@ radv_pick_resolve_method_images(struct radv_device *device, struct radv_image *s
       else if (src_image->info.array_size > 1 || dest_image->info.array_size > 1)
          *method = RESOLVE_COMPUTE;
    } else {
-      if (src_image->info.array_size > 1 || dest_image->info.array_size > 1)
+      if (src_image->info.array_size > 1 || dest_image->info.array_size > 1 ||
+          (dest_image->planes[0].surface.flags & RADEON_SURF_NO_RENDER_TARGET))
          *method = RESOLVE_COMPUTE;
       else
          *method = RESOLVE_FRAGMENT;

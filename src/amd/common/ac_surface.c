@@ -1132,7 +1132,9 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *i
       !compressed &&
       ((config->info.array_size == 1 && config->info.depth == 1) || config->info.levels == 1);
 
-   AddrSurfInfoIn.flags.noStencil = (surf->flags & RADEON_SURF_SBUFFER) == 0;
+   AddrSurfInfoIn.flags.noStencil =
+      !(surf->flags & RADEON_SURF_SBUFFER) || (surf->flags & RADEON_SURF_NO_RENDER_TARGET);
+
    AddrSurfInfoIn.flags.compressZ = !!(surf->flags & RADEON_SURF_Z_OR_SBUFFER);
 
    /* On GFX7-GFX8, the DB uses the same pitch and tile mode (except tilesplit)

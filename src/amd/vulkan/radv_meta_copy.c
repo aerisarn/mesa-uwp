@@ -81,6 +81,10 @@ radv_image_is_renderable(struct radv_device *device, struct radv_image *image)
        vk_format_get_blocksizebits(image->vk.format) == 128 &&
        vk_format_is_compressed(image->vk.format))
       return false;
+
+   if (image->planes[0].surface.flags & RADEON_SURF_NO_RENDER_TARGET)
+      return false;
+
    return true;
 }
 
