@@ -93,6 +93,7 @@ enum radeon_micro_mode
  * used as transfer resource. This flag indicates not to set flags.texture flag in
  * gfx9_compute_surface(). */
 #define RADEON_SURF_NO_TEXTURE            (1ull << 34)
+#define RADEON_SURF_NO_STENCIL_ADJUST     (1ull << 35)
 
 struct legacy_surf_level {
    uint32_t offset_256B;   /* divided by 256, the hw can only do 40-bit addresses */

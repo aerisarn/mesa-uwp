@@ -1164,7 +1164,7 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *i
       AddrSurfInfoIn.flags.matchStencilTileCfg = 1;
 
       /* Keep the depth mip-tail compatible with texturing. */
-      if (config->info.levels > 1)
+      if (config->info.levels > 1 && !(surf->flags & RADEON_SURF_NO_STENCIL_ADJUST))
          AddrSurfInfoIn.flags.noStencil = 1;
    }
 

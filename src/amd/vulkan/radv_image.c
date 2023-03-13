@@ -624,10 +624,19 @@ radv_get_surface_flags(struct radv_device *device, struct radv_image *image, uns
    if (is_depth) {
       flags |= RADEON_SURF_ZBUFFER;
 
-      if (is_depth && is_stencil &&
-          !(pCreateInfo->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) &&
-          device->physical_device->rad_info.gfx_level <= GFX8)
-         flags |= RADEON_SURF_NO_RENDER_TARGET;
+      if (is_depth && is_stencil && device->physical_device->rad_info.gfx_level <= GFX8) {
+         if (!(pCreateInfo->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
+            flags |= RADEON_SURF_NO_RENDER_TARGET;
+
+         /* RADV doesn't support stencil pitch adjustment. As a result there are some spec gaps that
+          * are not covered by CTS.
+          *
+          * For D+S images with pitch constraints due to rendertarget usage it can happen that
+          * sampling from mipmaps beyond the base level of the descriptor is broken as the pitch
+          * adjustment can't be applied to anything beyond the first level.
+          */
+         flags |= RADEON_SURF_NO_STENCIL_ADJUST;
+      }
 
       if (radv_use_htile_for_image(device, image) &&
           !(device->instance->debug_flags & RADV_DEBUG_NO_HIZ) &&
