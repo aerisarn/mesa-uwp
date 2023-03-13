@@ -487,6 +487,23 @@ tc_renderpass_info_is_zsbuf_used(const struct tc_renderpass_info *info)
           info->zsbuf_fbfetch;
 }
 
+/* if a driver ends a renderpass early for some reason,
+ * this function can be called to reset any stored renderpass info
+ * to a "safe" state that will avoid data loss on framebuffer attachments
+ * 
+ * note: ending a renderpass early if invalidate hints are applied will
+ * result in data loss
+ */
+static inline void
+tc_renderpass_info_reset(struct tc_renderpass_info *info)
+{
+   info->data32[0] = 0;
+   info->cbuf_load = BITFIELD_MASK(8);
+   info->zsbuf_clear_partial = true;
+   info->has_draw = true;
+   info->has_query_ends = true;
+}
+
 struct tc_batch {
    struct threaded_context *tc;
 #if !defined(NDEBUG) && TC_DEBUG >= 1

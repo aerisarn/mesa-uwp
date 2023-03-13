@@ -2816,13 +2816,8 @@ zink_batch_no_rp(struct zink_context *ctx)
 {
    if (!ctx->batch.in_rp)
       return;
-   if (zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses && !ctx->blitting) {
-      ctx->dynamic_fb.tc_info.data = 0;
-      ctx->dynamic_fb.tc_info.cbuf_load = BITFIELD_MASK(8);
-      ctx->dynamic_fb.tc_info.zsbuf_clear_partial = true;
-      ctx->dynamic_fb.tc_info.has_draw = true;
-      ctx->dynamic_fb.tc_info.has_query_ends = true;
-   }
+   if (zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses && !ctx->blitting)
+      tc_renderpass_info_reset(&ctx->dynamic_fb.tc_info);
    zink_batch_no_rp_safe(ctx);
 }
 
