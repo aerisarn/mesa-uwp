@@ -811,15 +811,10 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
          state->rs_state.fill_front = vk_polygon_mode_to_pipe(ps->rs->polygon_mode);
          state->rs_state.fill_back = vk_polygon_mode_to_pipe(ps->rs->polygon_mode);
       }
-      state->rs_state.point_size_per_vertex = true;
       if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_PROVOKING_VERTEX)) {
          state->rs_state.flatshade_first =
             ps->rs->provoking_vertex == VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT;
       }
-      state->rs_state.point_quad_rasterization = true;
-      state->rs_state.half_pixel_center = true;
-      state->rs_state.scissor = true;
-      state->rs_state.no_ms_sample_mask_out = true;
 
       if (!BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_RS_LINE_WIDTH))
          state->rs_state.line_width = ps->rs->line.width;
@@ -4449,6 +4444,18 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
    state->min_samples_dirty = true;
    state->sample_mask = UINT32_MAX;
    state->poison_mem = device->poison_mem;
+
+   /* default values */
+   state->rs_state.line_width = 1.0;
+   state->rs_state.flatshade_first = true;
+   state->rs_state.clip_halfz = true;
+   state->rs_state.front_ccw = true;
+   state->rs_state.point_size_per_vertex = true;
+   state->rs_state.point_quad_rasterization = true;
+   state->rs_state.half_pixel_center = true;
+   state->rs_state.scissor = true;
+   state->rs_state.no_ms_sample_mask_out = true;
+
    for (enum pipe_shader_type s = MESA_SHADER_VERTEX; s < MESA_SHADER_STAGES; s++) {
       for (unsigned i = 0; i < ARRAY_SIZE(state->cso_ss_ptr[s]); i++)
          state->cso_ss_ptr[s][i] = &state->ss[s][i];
