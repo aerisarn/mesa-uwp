@@ -371,45 +371,6 @@ radv_dump_annotated_shader(struct radv_shader *shader, gl_shader_stage stage,
 }
 
 static void
-radv_dump_annotated_shaders(struct radv_pipeline *pipeline, VkShaderStageFlagBits active_stages,
-                            FILE *f)
-{
-   struct ac_wave_info waves[AC_MAX_WAVES_PER_CHIP];
-   enum amd_gfx_level gfx_level = pipeline->device->physical_device->rad_info.gfx_level;
-   unsigned num_waves = ac_get_wave_info(gfx_level, waves);
-
-   fprintf(f, COLOR_CYAN "The number of active waves = %u" COLOR_RESET "\n\n", num_waves);
-
-   /* Dump annotated active graphics shaders. */
-   unsigned stages = active_stages;
-   while (stages) {
-      int stage = u_bit_scan(&stages);
-
-      radv_dump_annotated_shader(pipeline->shaders[stage], stage, waves, num_waves, f);
-   }
-
-   /* Print waves executing shaders that are not currently bound. */
-   unsigned i;
-   bool found = false;
-   for (i = 0; i < num_waves; i++) {
-      if (waves[i].matched)
-         continue;
-
-      if (!found) {
-         fprintf(f, COLOR_CYAN "Waves not executing currently-bound shaders:" COLOR_RESET "\n");
-         found = true;
-      }
-      fprintf(f,
-              "    SE%u SH%u CU%u SIMD%u WAVE%u  EXEC=%016" PRIx64 "  INST=%08X %08X  PC=%" PRIx64
-              "\n",
-              waves[i].se, waves[i].sh, waves[i].cu, waves[i].simd, waves[i].wave, waves[i].exec,
-              waves[i].inst_dw0, waves[i].inst_dw1, waves[i].pc);
-   }
-   if (found)
-      fprintf(f, "\n\n");
-}
-
-static void
 radv_dump_spirv(struct radv_shader *shader, const char *sha1, const char *dump_dir)
 {
    char dump_path[512];
@@ -456,19 +417,6 @@ radv_dump_shader(struct radv_pipeline *pipeline, struct radv_shader *shader,
 }
 
 static void
-radv_dump_shaders(struct radv_pipeline *pipeline, VkShaderStageFlagBits active_stages,
-                  const char *dump_dir, FILE *f)
-{
-   /* Dump active graphics shaders. */
-   unsigned stages = active_stages;
-   while (stages) {
-      int stage = u_bit_scan(&stages);
-
-      radv_dump_shader(pipeline, pipeline->shaders[stage], stage, dump_dir, f);
-   }
-}
-
-static void
 radv_dump_vertex_descriptors(struct radv_graphics_pipeline *pipeline, FILE *f)
 {
    void *ptr = (uint64_t *)pipeline->base.device->trace_id_ptr;
@@ -502,10 +450,10 @@ radv_get_saved_vs_prolog(struct radv_device *device)
 }
 
 static void
-radv_dump_vs_prolog(struct radv_pipeline *pipeline, FILE *f)
+radv_dump_vs_prolog(struct radv_graphics_pipeline *pipeline, FILE *f)
 {
-   struct radv_shader_part *vs_prolog = radv_get_saved_vs_prolog(pipeline->device);
-   struct radv_shader *vs_shader = radv_get_shader(pipeline, MESA_SHADER_VERTEX);
+   struct radv_shader_part *vs_prolog = radv_get_saved_vs_prolog(pipeline->base.device);
+   struct radv_shader *vs_shader = radv_get_shader(&pipeline->base, MESA_SHADER_VERTEX);
 
    if (!vs_prolog || !vs_shader || !vs_shader->info.vs.has_prolog)
       return;
@@ -533,20 +481,75 @@ radv_dump_queue_state(struct radv_queue *queue, const char *dump_dir, FILE *f)
 
    pipeline = radv_get_saved_pipeline(queue->device, ring);
    if (pipeline) {
-      VkShaderStageFlags active_stages;
-
       if (pipeline->type == RADV_PIPELINE_GRAPHICS) {
          struct radv_graphics_pipeline *graphics_pipeline =
             radv_pipeline_to_graphics(pipeline);
-         active_stages = graphics_pipeline->active_stages;
-         radv_dump_vs_prolog(pipeline, f);
+
+         radv_dump_vs_prolog(graphics_pipeline, f);
+
+         /* Dump active graphics shaders. */
+         unsigned stages = graphics_pipeline->active_stages;
+         while (stages) {
+            int stage = u_bit_scan(&stages);
+
+            radv_dump_shader(&graphics_pipeline->base, graphics_pipeline->base.shaders[stage],
+                             stage, dump_dir, f);
+         }
       } else {
-         active_stages = VK_SHADER_STAGE_COMPUTE_BIT;
+         struct radv_compute_pipeline *compute_pipeline =
+            radv_pipeline_to_compute(pipeline);
+
+         radv_dump_shader(&compute_pipeline->base, compute_pipeline->base.shaders[MESA_SHADER_COMPUTE],
+                          MESA_SHADER_COMPUTE, dump_dir, f);
       }
 
-      radv_dump_shaders(pipeline, active_stages, dump_dir, f);
-      if (!(queue->device->instance->debug_flags & RADV_DEBUG_NO_UMR))
-         radv_dump_annotated_shaders(pipeline, active_stages, f);
+      if (!(queue->device->instance->debug_flags & RADV_DEBUG_NO_UMR)) {
+         struct ac_wave_info waves[AC_MAX_WAVES_PER_CHIP];
+         enum amd_gfx_level gfx_level = pipeline->device->physical_device->rad_info.gfx_level;
+         unsigned num_waves = ac_get_wave_info(gfx_level, waves);
+
+         fprintf(f, COLOR_CYAN "The number of active waves = %u" COLOR_RESET "\n\n", num_waves);
+
+         if (pipeline->type == RADV_PIPELINE_GRAPHICS) {
+            struct radv_graphics_pipeline *graphics_pipeline =
+               radv_pipeline_to_graphics(pipeline);
+
+            /* Dump annotated active graphics shaders. */
+            unsigned stages = graphics_pipeline->active_stages;
+            while (stages) {
+               int stage = u_bit_scan(&stages);
+
+               radv_dump_annotated_shader(graphics_pipeline->base.shaders[stage], stage, waves,
+                                          num_waves, f);
+            }
+         } else {
+            struct radv_compute_pipeline *compute_pipeline =
+               radv_pipeline_to_compute(pipeline);
+
+            radv_dump_annotated_shader(compute_pipeline->base.shaders[MESA_SHADER_COMPUTE],
+                                       MESA_SHADER_COMPUTE, waves, num_waves, f);
+         }
+
+         /* Print waves executing shaders that are not currently bound. */
+         unsigned i;
+         bool found = false;
+         for (i = 0; i < num_waves; i++) {
+            if (waves[i].matched)
+               continue;
+
+            if (!found) {
+               fprintf(f, COLOR_CYAN "Waves not executing currently-bound shaders:" COLOR_RESET "\n");
+               found = true;
+            }
+            fprintf(f,
+                    "    SE%u SH%u CU%u SIMD%u WAVE%u  EXEC=%016" PRIx64 "  INST=%08X %08X  PC=%" PRIx64
+                    "\n",
+                    waves[i].se, waves[i].sh, waves[i].cu, waves[i].simd, waves[i].wave, waves[i].exec,
+                    waves[i].inst_dw0, waves[i].inst_dw1, waves[i].pc);
+         }
+         if (found)
+            fprintf(f, "\n\n");
+      }
 
       if (pipeline->type == RADV_PIPELINE_GRAPHICS) {
          struct radv_graphics_pipeline *graphics_pipeline =
