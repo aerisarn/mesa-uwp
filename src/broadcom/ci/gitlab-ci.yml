@@ -32,39 +32,20 @@ vc4-rpi3-gl:armhf:
     DEQP_SUITE: broadcom-rpi3
     HWCI_START_WESTON: 1
 
-.v3d-rpi4-test:armhf:
+v3d-rpi4-gl:armhf:
   extends:
     - .broadcom-test:armhf
     - .v3d-rules
-  variables:
-    GPU_VERSION: broadcom-rpi4
-    HWCI_KERNEL_MODULES: v3d,vc4
   script:
     - ./install/bare-metal/poe-powered.sh
   tags:
     - igalia-rpi4
-
-v3d-rpi4-gles:armhf:
-  extends:
-    - .v3d-rpi4-test:armhf
-  parallel: 8
+  parallel: 12
   variables:
-    DEQP_SUITE: broadcom-rpi4
-
-v3d-rpi4-egl:armhf:
-  extends:
-    - .v3d-rpi4-test:armhf
-  variables:
+    GPU_VERSION: broadcom-rpi4
+    HWCI_KERNEL_MODULES: v3d,vc4
     HWCI_START_WESTON: 1
-    DEQP_SUITE: broadcom-rpi4-egl
-
-v3d-rpi4-piglit:armhf:
-  extends:
-    - .v3d-rpi4-test:armhf
-  parallel: 4
-  variables:
-    HWCI_START_XORG: 1
-    DEQP_SUITE: broadcom-rpi4-piglit
+    DEQP_SUITE: broadcom-rpi4
 
 v3d-rpi4-traces:arm64:
   extends:
