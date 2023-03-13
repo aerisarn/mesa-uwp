@@ -3014,6 +3014,7 @@ dzn_cmd_buffer_update_pipeline(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint
    if (!pipeline)
       return;
 
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    ID3D12PipelineState *old_pipeline_state =
       cmdbuf->state.pipeline ? cmdbuf->state.pipeline->state : NULL;
 
@@ -3022,6 +3023,25 @@ dzn_cmd_buffer_update_pipeline(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint
          cmdbuf->state.bindpoint[bindpoint].root_sig = pipeline->root.sig;
          /* Changing root signature always requires re-binding descriptor heaps */
          cmdbuf->state.bindpoint[bindpoint].dirty |= DZN_CMD_BINDPOINT_DIRTY_HEAPS;
+
+         if (device->bindless) {
+            /* Note: The D3D12 spec for descriptor heap indexing requires that the descriptor heaps
+             * are bound *before* the root signature. */
+            bool bind_heaps = false;
+            dzn_foreach_pool_type(type) {
+               if (cmdbuf->state.heaps[type] != &device->device_heaps[type].heap) {
+                  bind_heaps = true;
+                  cmdbuf->state.heaps[type] = &device->device_heaps[type].heap;
+               }
+            }
+            if (bind_heaps) {
+               ID3D12DescriptorHeap *heaps[NUM_POOL_TYPES];
+               dzn_foreach_pool_type(type)
+                  heaps[type] = cmdbuf->state.heaps[type]->heap;
+               ID3D12GraphicsCommandList1_SetDescriptorHeaps(cmdbuf->cmdlist, NUM_POOL_TYPES, heaps);
+            }
+         }
+
          if (bindpoint == VK_PIPELINE_BIND_POINT_GRAPHICS)
             ID3D12GraphicsCommandList1_SetGraphicsRootSignature(cmdbuf->cmdlist, pipeline->root.sig);
          else
