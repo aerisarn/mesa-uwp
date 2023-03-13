@@ -322,7 +322,8 @@ tu_framebuffer_tiling_config(struct tu_framebuffer *fb,
 {
    for (int gmem_layout = 0; gmem_layout < TU_GMEM_LAYOUT_COUNT; gmem_layout++) {
       struct tu_tiling_config *tiling = &fb->tiling[gmem_layout];
-      tu_tiling_config_update_tile_layout(fb, device, pass, gmem_layout);
+      tu_tiling_config_update_tile_layout(fb, device, pass,
+                                          (enum tu_gmem_layout) gmem_layout);
       tu_tiling_config_update_pipe_layout(tiling, device);
       tu_tiling_config_update_pipes(tiling, device);
       tu_tiling_config_update_binning(tiling, device);

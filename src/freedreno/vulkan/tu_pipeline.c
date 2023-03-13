@@ -1003,7 +1003,7 @@ tu6_emit_link_map(struct tu_cs *cs,
                          producer->output_loc);
 }
 
-static uint16_t
+static enum a6xx_tess_output
 primitive_to_tess(enum shader_prim primitive) {
    switch (primitive) {
    case SHADER_PRIM_POINTS:
@@ -1069,7 +1069,8 @@ tu6_vpc_varying_mode(const struct ir3_shader_variant *fs,
       /* If the last geometry shader doesn't statically write these, they're
        * implicitly zero and the FS is supposed to read zero.
        */
-      if (ir3_find_output(last_shader, fs->inputs[index].slot) < 0 &&
+      const gl_varying_slot slot = (gl_varying_slot) fs->inputs[index].slot;
+      if (ir3_find_output(last_shader, slot) < 0 &&
           (compmask & 0x1)) {
          *interp_mode |= INTERP_ZERO;
       } else {
@@ -1395,7 +1396,7 @@ tu6_emit_vpc(struct tu_cs *cs,
       const struct ir3_shader_variant *tess =
          ds->tess.spacing == TESS_SPACING_UNSPECIFIED ? hs : ds;
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_TESS_CNTL, 1);
-      uint32_t output;
+      enum a6xx_tess_output output;
       if (tess->tess.point_mode)
          output = TESS_POINTS;
       else if (tess->tess.primitive_mode == TESS_PRIMITIVE_ISOLINES)
@@ -1429,7 +1430,7 @@ tu6_emit_vpc(struct tu_cs *cs,
 
 
    if (gs) {
-      uint32_t vertices_out, invocations, output, vec4_size;
+      uint32_t vertices_out, invocations, vec4_size;
       uint32_t prev_stage_output_size = ds ? ds->output_size : vs->output_size;
 
       if (hs) {
@@ -1438,7 +1439,7 @@ tu6_emit_vpc(struct tu_cs *cs,
          tu6_emit_link_map(cs, vs, gs, SB6_GS_SHADER);
       }
       vertices_out = gs->gs.vertices_out - 1;
-      output = primitive_to_tess(gs->gs.output_primitive);
+      enum a6xx_tess_output output = primitive_to_tess((enum shader_prim) gs->gs.output_primitive);
       invocations = gs->gs.invocations - 1;
       /* Size of per-primitive alloction in ldlw memory in vec4s. */
       vec4_size = gs->gs.vertices_in *
@@ -1843,8 +1844,6 @@ static void
 tu6_emit_program_config(struct tu_cs *cs,
                         struct tu_pipeline_builder *builder)
 {
-   gl_shader_stage stage = MESA_SHADER_VERTEX;
-
    STATIC_ASSERT(MESA_SHADER_VERTEX == 0);
 
    bool shared_consts_enable = tu6_shared_constants_enable(&builder->layout,
@@ -1859,7 +1858,9 @@ tu6_emit_program_config(struct tu_cs *cs,
          .fs_state = true,
          .gfx_ibo = true,
          .gfx_shared_const = shared_consts_enable));
-   for (; stage < ARRAY_SIZE(builder->shader_iova); stage++) {
+   for (size_t stage_idx = MESA_SHADER_VERTEX;
+        stage_idx < ARRAY_SIZE(builder->shader_iova); stage_idx++) {
+      gl_shader_stage stage = (gl_shader_stage) stage_idx;
       tu6_emit_xs_config(cs, stage, builder->variants[stage]);
    }
 }
@@ -1886,10 +1887,11 @@ tu6_emit_program(struct tu_cs *cs,
       vs = bs;
       tu6_emit_xs(cs, stage, bs, &builder->pvtmem, builder->binning_vs_iova);
       tu6_emit_dynamic_offset(cs, bs, builder);
-      stage++;
+      stage = (gl_shader_stage) (stage + 1);
    }
 
-   for (; stage < ARRAY_SIZE(builder->shader_iova); stage++) {
+   for (; stage < ARRAY_SIZE(builder->shader_iova);
+        stage = (gl_shader_stage) (stage + 1)) {
       const struct ir3_shader_variant *xs = builder->variants[stage];
 
       if (stage == MESA_SHADER_FRAGMENT && binning_pass)
@@ -2696,8 +2698,8 @@ tu_link_shaders(struct tu_pipeline_builder *builder,
                 nir_shader **shaders, unsigned shaders_count)
 {
    nir_shader *consumer = NULL;
-   for (gl_shader_stage stage = shaders_count - 1;
-        stage >= MESA_SHADER_VERTEX; stage--) {
+   for (gl_shader_stage stage = (gl_shader_stage) (shaders_count - 1);
+        stage >= MESA_SHADER_VERTEX; stage = (gl_shader_stage) (stage - 1)) {
       if (!shaders[stage])
          continue;
 
@@ -3140,7 +3142,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
 
    struct tu_shader_key keys[ARRAY_SIZE(stage_infos)] = { };
    for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-        stage < ARRAY_SIZE(keys); stage++) {
+        stage < ARRAY_SIZE(keys); stage = (gl_shader_stage) (stage+1)) {
       tu_shader_key_init(&keys[stage], stage_infos[stage], builder->device);
    }
 
@@ -3236,8 +3238,8 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
 
    struct tu_shader *shaders[ARRAY_SIZE(nir)] = { NULL };
 
-   for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-        stage < ARRAY_SIZE(nir); stage++) {
+   for (gl_shader_stage stage = MESA_SHADER_VERTEX; stage < ARRAY_SIZE(nir);
+        stage = (gl_shader_stage) (stage + 1)) {
       const VkPipelineShaderStageCreateInfo *stage_info = stage_infos[stage];
       if (!stage_info)
          continue;
@@ -3265,14 +3267,15 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    }
 
    if (executable_info) {
-      for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-            stage < ARRAY_SIZE(nir); stage++) {
+         for (gl_shader_stage stage = MESA_SHADER_VERTEX;
+              stage < ARRAY_SIZE(nir);
+              stage = (gl_shader_stage) (stage + 1)) {
          if (!nir[stage])
             continue;
 
          nir_initial_disasm[stage] =
             nir_shader_as_str(nir[stage], pipeline->executables_mem_ctx);
-      }
+         }
    }
 
    tu_link_shaders(builder, nir, ARRAY_SIZE(nir));
@@ -3282,7 +3285,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       nir_shaders =
          tu_nir_shaders_init(builder->device, &nir_sha1, sizeof(nir_sha1));
       for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-           stage < ARRAY_SIZE(nir); stage++) {
+           stage < ARRAY_SIZE(nir); stage = (gl_shader_stage) (stage + 1)) {
          if (!nir[stage])
             continue;
 
@@ -3304,8 +3307,8 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    }
 
    uint32_t desc_sets = 0;
-   for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-        stage < ARRAY_SIZE(nir); stage++) {
+   for (gl_shader_stage stage = MESA_SHADER_VERTEX; stage < ARRAY_SIZE(nir);
+        stage = (gl_shader_stage) (stage + 1)) {
       if (!nir[stage])
          continue;
 
@@ -3361,7 +3364,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    compiled_shaders->active_desc_sets = desc_sets;
 
    for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-        stage < ARRAY_SIZE(shaders); stage++) {
+        stage < ARRAY_SIZE(shaders); stage = (gl_shader_stage) (stage + 1)) {
       if (!shaders[stage])
          continue;
 
@@ -3383,7 +3386,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    ir3_key.safe_constlen = true;
 
    for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-        stage < ARRAY_SIZE(shaders); stage++) {
+        stage < ARRAY_SIZE(shaders); stage = (gl_shader_stage) (stage + 1)) {
       if (!shaders[stage])
          continue;
 
@@ -3413,8 +3416,8 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
 
    ir3_key.safe_constlen = false;
 
-   for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-         stage < ARRAY_SIZE(nir); stage++) {
+   for (gl_shader_stage stage = MESA_SHADER_VERTEX; stage < ARRAY_SIZE(nir);
+        stage = (gl_shader_stage) (stage + 1)) {
       if (shaders[stage]) {
          tu_shader_destroy(builder->device, shaders[stage], builder->alloc);
       }
@@ -3430,7 +3433,7 @@ done:;
 
    if (compiled_shaders) {
       for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-            stage < ARRAY_SIZE(nir); stage++) {
+           stage < ARRAY_SIZE(nir); stage = (gl_shader_stage) (stage + 1)) {
          if (compiled_shaders->variants[stage]) {
             tu_append_executable(pipeline, compiled_shaders->variants[stage],
                nir_initial_disasm[stage]);
@@ -3445,7 +3448,7 @@ done:;
 
    if (nir_shaders) {
       for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-            stage < ARRAY_SIZE(nir); stage++) {
+           stage < ARRAY_SIZE(nir); stage = (gl_shader_stage) (stage + 1)) {
          if (nir_shaders->nir[stage]) {
             post_link_nir[stage] = nir_shaders->nir[stage];
          }
@@ -3459,7 +3462,8 @@ done:;
    for (unsigned i = 0; i < builder->num_libraries; i++) {
       struct tu_pipeline *library = builder->libraries[i];
       for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-            stage < ARRAY_SIZE(library->shaders); stage++) {
+           stage < ARRAY_SIZE(library->shaders);
+           stage = (gl_shader_stage) (stage + 1)) {
          if (!post_link_nir[stage] && library->shaders[stage].nir) {
             post_link_nir[stage] = library->shaders[stage].nir;
             keys[stage] = library->shaders[stage].key;
@@ -3472,7 +3476,8 @@ done:;
       for (unsigned i = 0; i < builder->num_libraries; i++) {
          struct tu_pipeline *library = builder->libraries[i];
          for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-               stage < ARRAY_SIZE(library->shaders); stage++) {
+              stage < ARRAY_SIZE(library->shaders);
+              stage = (gl_shader_stage) (stage + 1)) {
             if (library->shaders[stage].variant) {
                assert(!builder->variants[stage]);
                builder->variants[stage] = library->shaders[stage].variant;
@@ -3490,7 +3495,8 @@ done:;
       if (builder->num_libraries > 0) {
          uint32_t safe_constlens = ir3_trim_constlen(builder->variants, compiler);
          for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-              stage < ARRAY_SIZE(builder->variants); stage++) {
+              stage < ARRAY_SIZE(builder->variants);
+              stage = (gl_shader_stage) (stage + 1)) {
             if (safe_constlens & (1u << stage))
                builder->variants[stage] = safe_const_variants[stage];
          }
@@ -3536,7 +3542,8 @@ done:;
       pipeline->nir_shaders = nir_shaders;
       pipeline->ir3_key = ir3_key;
       for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-           stage < ARRAY_SIZE(pipeline->shaders); stage++) {
+           stage < ARRAY_SIZE(pipeline->shaders);
+           stage = (gl_shader_stage) (stage + 1)) {
          pipeline->shaders[stage].nir = post_link_nir[stage];
          pipeline->shaders[stage].key = keys[stage];
          pipeline->shaders[stage].const_state = builder->const_state[stage];
@@ -3560,8 +3567,8 @@ done:;
    return VK_SUCCESS;
 
 fail:
-   for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-         stage < ARRAY_SIZE(nir); stage++) {
+   for (gl_shader_stage stage = MESA_SHADER_VERTEX; stage < ARRAY_SIZE(nir);
+        stage = (gl_shader_stage) (stage + 1)) {
       if (shaders[stage]) {
          tu_shader_destroy(builder->device, shaders[stage], builder->alloc);
       }
@@ -4670,8 +4677,8 @@ tu_pipeline_builder_parse_rasterization_order(
     * when implemented in the future.
     */
 
-   uint32_t sysmem_prim_mode = NO_FLUSH;
-   uint32_t gmem_prim_mode = NO_FLUSH;
+   enum a6xx_single_prim_mode sysmem_prim_mode = NO_FLUSH;
+   enum a6xx_single_prim_mode gmem_prim_mode = NO_FLUSH;
 
    if (raster_order_attachment_access) {
       /* VK_EXT_rasterization_order_attachment_access:

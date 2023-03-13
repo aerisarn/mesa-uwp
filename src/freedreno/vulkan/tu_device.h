@@ -204,6 +204,15 @@ struct tu6_global
    (global_iova(cmd, member) + sizeof_field(struct tu6_global, member[0]) * (idx))
 
 
+#ifdef ANDROID
+enum tu_gralloc_type
+{
+   TU_GRALLOC_UNKNOWN,
+   TU_GRALLOC_CROS,
+   TU_GRALLOC_OTHER,
+};
+#endif
+
 struct tu_device
 {
    struct vk_device vk;
@@ -320,11 +329,7 @@ struct tu_device
 
 #ifdef ANDROID
    const void *gralloc;
-   enum {
-      TU_GRALLOC_UNKNOWN,
-      TU_GRALLOC_CROS,
-      TU_GRALLOC_OTHER,
-   } gralloc_type;
+   enum tu_gralloc_type gralloc_type;
 #endif
 
    uint32_t submit_count;

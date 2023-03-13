@@ -1724,7 +1724,7 @@ tu_trace_create_ts_buffer(struct u_trace_context *utctx, uint32_t size)
       container_of(utctx, struct tu_device, trace_context);
 
    struct tu_bo *bo;
-   tu_bo_init_new(device, &bo, size, false, "trace");
+   tu_bo_init_new(device, &bo, size, TU_BO_ALLOC_NO_FLAGS, "trace");
 
    return bo;
 }
@@ -2194,10 +2194,11 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    if (custom_border_colors)
       global_size += TU_BORDER_COLOR_COUNT * sizeof(struct bcolor_entry);
 
-   tu_bo_suballocator_init(&device->pipeline_suballoc, device,
-                           128 * 1024, TU_BO_ALLOC_GPU_READ_ONLY | TU_BO_ALLOC_ALLOW_DUMP);
+   tu_bo_suballocator_init(
+      &device->pipeline_suballoc, device, 128 * 1024,
+      (enum tu_bo_alloc_flags) (TU_BO_ALLOC_GPU_READ_ONLY | TU_BO_ALLOC_ALLOW_DUMP));
    tu_bo_suballocator_init(&device->autotune_suballoc, device,
-                           128 * 1024, 0);
+                           128 * 1024, TU_BO_ALLOC_NO_FLAGS);
 
    result = tu_bo_init_new(device, &device->global_bo, global_size,
                            TU_BO_ALLOC_ALLOW_DUMP, "global");
@@ -2222,9 +2223,9 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    global->dbg_gmem_total_stores = 0;
    global->dbg_gmem_taken_stores = 0;
    for (int i = 0; i < TU_BORDER_COLOR_BUILTIN; i++) {
-      VkClearColorValue border_color = vk_border_color_value(i);
+      VkClearColorValue border_color = vk_border_color_value((VkBorderColor) i);
       tu6_pack_border_color(&global->bcolor_builtin[i], &border_color,
-                            vk_border_color_is_int(i));
+                            vk_border_color_is_int((VkBorderColor) i));
    }
 
    /* initialize to ones so ffs can be used to find unused slots */
@@ -2603,7 +2604,7 @@ tu_AllocateMemory(VkDevice _device,
       }
    } else {
       uint64_t client_address = 0;
-      enum tu_bo_alloc_flags alloc_flags = TU_BO_ALLOC_NO_FLAGS;
+      BITMASK_ENUM(tu_bo_alloc_flags) alloc_flags = TU_BO_ALLOC_NO_FLAGS;
 
       const VkMemoryOpaqueCaptureAddressAllocateInfo *replay_info =
          vk_find_struct_const(pAllocateInfo->pNext,
@@ -3084,7 +3085,7 @@ tu_init_sampler(struct tu_device *device,
       COND(miplinear, A6XX_TEX_SAMP_0_MIPFILTER_LINEAR_NEAR) |
       A6XX_TEX_SAMP_0_XY_MAG(tu6_tex_filter(pCreateInfo->magFilter, aniso)) |
       A6XX_TEX_SAMP_0_XY_MIN(tu6_tex_filter(pCreateInfo->minFilter, aniso)) |
-      A6XX_TEX_SAMP_0_ANISO(aniso) |
+      A6XX_TEX_SAMP_0_ANISO((enum a6xx_tex_aniso) aniso) |
       A6XX_TEX_SAMP_0_WRAP_S(tu6_tex_wrap(pCreateInfo->addressModeU)) |
       A6XX_TEX_SAMP_0_WRAP_T(tu6_tex_wrap(pCreateInfo->addressModeV)) |
       A6XX_TEX_SAMP_0_WRAP_R(tu6_tex_wrap(pCreateInfo->addressModeW)) |

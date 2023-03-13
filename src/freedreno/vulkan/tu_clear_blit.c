@@ -60,7 +60,6 @@ format_to_ifmt(enum pipe_format format)
       return is_int ? R2D_INT32 : R2D_FLOAT32;
     default:
       unreachable("bad format");
-      return 0;
    }
 }
 
@@ -415,7 +414,7 @@ r2d_setup_common(struct tu_cmd_buffer *cmd,
 
    uint32_t blit_cntl = A6XX_RB_2D_BLIT_CNTL(
          .scissor = scissor,
-         .rotate = blit_param,
+         .rotate = (enum a6xx_rotation) blit_param,
          .solid_color = clear,
          .d24s8 = fmt == FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8 && !clear,
          .color_format = fmt,
@@ -757,7 +756,7 @@ tu_init_clear_blit_shaders(struct tu_device *dev)
 
    for (uint32_t num_rts = 0; num_rts <= MAX_RTS; num_rts++) {
       compile_shader(dev, build_clear_fs_shader(num_rts), num_rts, &offset,
-                     GLOBAL_SH_FS_CLEAR0 + num_rts);
+                     (enum global_shader) (GLOBAL_SH_FS_CLEAR0 + num_rts));
    }
 }
 
@@ -789,7 +788,7 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit,
 
    unsigned num_rts = util_bitcount(rts_mask);
    if (!blit)
-      fs_id = GLOBAL_SH_FS_CLEAR0 + num_rts;
+      fs_id = (enum global_shader) (GLOBAL_SH_FS_CLEAR0 + num_rts);
 
    struct ir3_shader_variant *fs = cmd->device->global_shader_variants[fs_id];
    uint64_t fs_iova = cmd->device->global_shader_va[fs_id];
@@ -1666,7 +1665,7 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
 
    ops->setup(cmd, cs, src_format, dst_format, info->dstSubresource.aspectMask,
               blit_param, false, dst_image->layout[0].ubwc,
-              dst_image->layout[0].nr_samples);
+              (VkSampleCountFlagBits) dst_image->layout[0].nr_samples);
 
    if (ops == &r3d_ops) {
       const float coords[] = { info->dstOffsets[0].x, info->dstOffsets[0].y,
@@ -1809,7 +1808,7 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
 
    ops->setup(cmd, cs, src_format, dst_format,
               info->imageSubresource.aspectMask, 0, false, dst_image->layout[0].ubwc,
-              dst_image->layout[0].nr_samples);
+              (VkSampleCountFlagBits) dst_image->layout[0].nr_samples);
 
    struct fdl6_view dst;
    tu_image_view_copy(&dst, dst_image, dst_format, &info->imageSubresource, offset.z);
@@ -2087,7 +2086,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       }, false);
 
       ops->setup(cmd, cs, src_format, src_format, VK_IMAGE_ASPECT_COLOR_BIT, 0, false, false,
-                 dst_image->layout[0].nr_samples);
+                 (VkSampleCountFlagBits) dst_image->layout[0].nr_samples);
       coords(ops, cs, &staging_offset, &src_offset, &extent);
 
       for (uint32_t i = 0; i < layers_to_copy; i++) {
@@ -2116,7 +2115,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
 
       ops->setup(cmd, cs, dst_format, dst_format, info->dstSubresource.aspectMask,
                  0, false, dst_image->layout[0].ubwc,
-                 dst_image->layout[0].nr_samples);
+                 (VkSampleCountFlagBits) dst_image->layout[0].nr_samples);
       coords(ops, cs, &dst_offset, &staging_offset, &extent);
 
       for (uint32_t i = 0; i < layers_to_copy; i++) {
@@ -2130,7 +2129,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
 
       ops->setup(cmd, cs, format, format, info->dstSubresource.aspectMask,
                  0, false, dst_image->layout[0].ubwc,
-                 dst_image->layout[0].nr_samples);
+                 (VkSampleCountFlagBits) dst_image->layout[0].nr_samples);
       coords(ops, cs, &dst_offset, &src_offset, &extent);
 
       for (uint32_t i = 0; i < layers_to_copy; i++) {
@@ -2440,7 +2439,7 @@ clear_image(struct tu_cmd_buffer *cmd,
    const struct blit_ops *ops = image->layout[0].nr_samples > 1 ? &r3d_ops : &r2d_ops;
 
    ops->setup(cmd, cs, format, format, aspect_mask, 0, true, image->layout[0].ubwc,
-              image->layout[0].nr_samples);
+              (VkSampleCountFlagBits) image->layout[0].nr_samples);
    if (image->vk.format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)
       ops->clear_value(cs, PIPE_FORMAT_R9G9B9E5_FLOAT, clear_value);
    else
@@ -3296,7 +3295,7 @@ static void
 store_3d_blit(struct tu_cmd_buffer *cmd,
               struct tu_cs *cs,
               const struct tu_image_view *iview,
-              uint32_t dst_samples,
+              VkSampleCountFlagBits dst_samples,
               bool separate_stencil,
               enum pipe_format src_format,
               enum pipe_format dst_format,

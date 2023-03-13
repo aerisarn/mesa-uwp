@@ -27,7 +27,8 @@
 void
 tu_bo_suballocator_init(struct tu_suballocator *suballoc,
                         struct tu_device *dev,
-                        uint32_t default_size, uint32_t flags)
+                        uint32_t default_size,
+                        enum tu_bo_alloc_flags flags)
 {
    suballoc->dev = dev;
    suballoc->default_size = default_size;

@@ -1166,13 +1166,11 @@ static const struct tu_knl msm_knl_funcs = {
 
 const struct vk_sync_type tu_timeline_sync_type = {
    .size = sizeof(struct tu_timeline_sync),
-   .features = VK_SYNC_FEATURE_BINARY |
-               VK_SYNC_FEATURE_GPU_WAIT |
-               VK_SYNC_FEATURE_GPU_MULTI_WAIT |
-               VK_SYNC_FEATURE_CPU_WAIT |
-               VK_SYNC_FEATURE_CPU_RESET |
-               VK_SYNC_FEATURE_WAIT_ANY |
-               VK_SYNC_FEATURE_WAIT_PENDING,
+   .features = (enum vk_sync_features)(
+      VK_SYNC_FEATURE_BINARY | VK_SYNC_FEATURE_GPU_WAIT |
+      VK_SYNC_FEATURE_GPU_MULTI_WAIT | VK_SYNC_FEATURE_CPU_WAIT |
+      VK_SYNC_FEATURE_CPU_RESET | VK_SYNC_FEATURE_WAIT_ANY |
+      VK_SYNC_FEATURE_WAIT_PENDING),
    .init = tu_timeline_sync_init,
    .finish = tu_timeline_sync_finish,
    .reset = tu_timeline_sync_reset,

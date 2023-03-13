@@ -218,7 +218,9 @@ get_kgsl_prop(int fd, unsigned int type, void *value, size_t size)
       .sizebytes = size,
    };
 
-   return safe_ioctl(fd, IOCTL_KGSL_DEVICE_GETPROPERTY, &getprop);
+   return safe_ioctl(fd, IOCTL_KGSL_DEVICE_GETPROPERTY, &getprop)
+             ? VK_ERROR_UNKNOWN
+             : VK_SUCCESS;
 }
 
 enum kgsl_syncobj_state {
@@ -814,13 +816,14 @@ vk_kgsl_sync_export_sync_file(struct vk_device *device,
 
 const struct vk_sync_type vk_kgsl_sync_type = {
    .size = sizeof(struct vk_kgsl_syncobj),
-   .features = VK_SYNC_FEATURE_BINARY |
-               VK_SYNC_FEATURE_GPU_WAIT |
-               VK_SYNC_FEATURE_GPU_MULTI_WAIT |
-               VK_SYNC_FEATURE_CPU_WAIT |
-               VK_SYNC_FEATURE_CPU_RESET |
-               VK_SYNC_FEATURE_WAIT_ANY |
-               VK_SYNC_FEATURE_WAIT_PENDING,
+   .features = (enum vk_sync_features)
+               (VK_SYNC_FEATURE_BINARY |
+                VK_SYNC_FEATURE_GPU_WAIT |
+                VK_SYNC_FEATURE_GPU_MULTI_WAIT |
+                VK_SYNC_FEATURE_CPU_WAIT |
+                VK_SYNC_FEATURE_CPU_RESET |
+                VK_SYNC_FEATURE_WAIT_ANY |
+                VK_SYNC_FEATURE_WAIT_PENDING),
    .init = vk_kgsl_sync_init,
    .finish = vk_kgsl_sync_finish,
    .reset = vk_kgsl_sync_reset,

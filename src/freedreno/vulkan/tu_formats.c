@@ -293,7 +293,7 @@ tu_physical_device_get_format_properties(
     * DEPTH_STENCIL_ATTACHMENT_BIT for the optimal features.
     */
    linear = optimal;
-   if (tu6_pipe2depth(vk_format) != (enum a6xx_depth_format)~0)
+   if (tu6_pipe2depth(vk_format) != DEPTH6_NONE)
       optimal |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
    if (!tiling_possible(vk_format) &&
@@ -422,7 +422,7 @@ tu_get_image_format_properties(
    VkExtent3D maxExtent;
    uint32_t maxMipLevels;
    uint32_t maxArraySize;
-   VkSampleCountFlags sampleCounts = VK_SAMPLE_COUNT_1_BIT;
+   BITMASK_ENUM(VkSampleCountFlagBits) sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 
    tu_physical_device_get_format_properties(physical_device, info->format,
                                             &format_props);
@@ -600,7 +600,7 @@ tu_get_external_image_format_properties(
    VkExternalMemoryHandleTypeFlagBits handleType,
    VkExternalImageFormatProperties *external_properties)
 {
-   VkExternalMemoryFeatureFlagBits flags = 0;
+   BITMASK_ENUM(VkExternalMemoryFeatureFlagBits) flags = 0;
    VkExternalMemoryHandleTypeFlags export_flags = 0;
    VkExternalMemoryHandleTypeFlags compat_flags = 0;
 
@@ -771,7 +771,7 @@ tu_GetPhysicalDeviceExternalBufferProperties(
    const VkPhysicalDeviceExternalBufferInfo *pExternalBufferInfo,
    VkExternalBufferProperties *pExternalBufferProperties)
 {
-   VkExternalMemoryFeatureFlagBits flags = 0;
+   BITMASK_ENUM(VkExternalMemoryFeatureFlagBits) flags = 0;
    VkExternalMemoryHandleTypeFlags export_flags = 0;
    VkExternalMemoryHandleTypeFlags compat_flags = 0;
    switch (pExternalBufferInfo->handleType) {
