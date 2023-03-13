@@ -4698,8 +4698,9 @@ radv_pipeline_get_streamout_shader(struct radv_graphics_pipeline *pipeline)
 static bool
 radv_shader_need_indirect_descriptor_sets(struct radv_pipeline *pipeline, gl_shader_stage stage)
 {
-   struct radv_userdata_info *loc =
-      radv_lookup_user_sgpr(pipeline, stage, AC_UD_INDIRECT_DESCRIPTOR_SETS);
+   const struct radv_shader *shader = radv_get_shader(pipeline, stage);
+   const struct radv_userdata_info *loc =
+      radv_get_user_sgpr(shader, AC_UD_INDIRECT_DESCRIPTOR_SETS);
    return loc->sgpr_idx != -1;
 }
 
@@ -4724,8 +4725,9 @@ radv_pipeline_init_shader_stages_state(struct radv_graphics_pipeline *pipeline)
    gl_shader_stage first_stage =
       radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH) ? MESA_SHADER_MESH : MESA_SHADER_VERTEX;
 
-   struct radv_userdata_info *loc =
-      radv_lookup_user_sgpr(&pipeline->base, first_stage, AC_UD_VS_BASE_VERTEX_START_INSTANCE);
+   const struct radv_userdata_info *loc =
+      radv_get_user_sgpr(radv_get_shader(&pipeline->base, first_stage),
+                         AC_UD_VS_BASE_VERTEX_START_INSTANCE);
    if (loc->sgpr_idx != -1) {
       pipeline->vtx_base_sgpr = pipeline->base.user_data_0[first_stage];
       pipeline->vtx_base_sgpr += loc->sgpr_idx * 4;
