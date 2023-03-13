@@ -7762,11 +7762,11 @@ radv_cs_emit_dispatch_taskmesh_direct_ace_packet(struct radv_cmd_buffer *cmd_buf
                                                  const uint32_t z)
 {
    struct radv_pipeline *pipeline = &cmd_buffer->state.graphics_pipeline->base;
-   struct radv_shader *compute_shader = radv_get_shader(pipeline, MESA_SHADER_TASK);
+   struct radv_shader *task_shader = pipeline->shaders[MESA_SHADER_TASK];
    struct radeon_cmdbuf *cs = cmd_buffer->ace_internal.cs;
    const bool predicating = cmd_buffer->state.predicating;
    const uint32_t dispatch_initiator = cmd_buffer->device->dispatch_initiator_task |
-                                       S_00B800_CS_W32_EN(compute_shader->info.wave_size == 32);
+                                       S_00B800_CS_W32_EN(task_shader->info.wave_size == 32);
 
    struct radv_userdata_info *ring_entry_loc =
       radv_lookup_user_sgpr(pipeline, MESA_SHADER_TASK, AC_UD_TASK_RING_ENTRY);
@@ -7792,14 +7792,14 @@ radv_cs_emit_dispatch_taskmesh_indirect_multi_ace_packet(struct radv_cmd_buffer 
    assert((count_va & 0x03) == 0);
 
    struct radv_pipeline *pipeline = &cmd_buffer->state.graphics_pipeline->base;
-   struct radv_shader *compute_shader = radv_get_shader(pipeline, MESA_SHADER_TASK);
+   struct radv_shader *task_shader = pipeline->shaders[MESA_SHADER_TASK];
    struct radeon_cmdbuf *cs = cmd_buffer->ace_internal.cs;
 
    const uint32_t count_indirect_enable = !!count_va;
-   const uint32_t xyz_dim_enable = compute_shader->info.cs.uses_grid_size;
-   const uint32_t draw_id_enable = compute_shader->info.vs.needs_draw_id;
+   const uint32_t xyz_dim_enable = task_shader->info.cs.uses_grid_size;
+   const uint32_t draw_id_enable = task_shader->info.vs.needs_draw_id;
    const uint32_t dispatch_initiator = cmd_buffer->device->dispatch_initiator_task |
-                                       S_00B800_CS_W32_EN(compute_shader->info.wave_size == 32);
+                                       S_00B800_CS_W32_EN(task_shader->info.wave_size == 32);
 
    const struct radv_userdata_info *ring_entry_loc =
       radv_lookup_user_sgpr(pipeline, MESA_SHADER_TASK, AC_UD_TASK_RING_ENTRY);
@@ -8817,7 +8817,7 @@ radv_before_taskmesh_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
    struct radeon_cmdbuf *ace_cs = cmd_buffer->ace_internal.cs;
-   struct radv_shader *task_shader = radv_get_shader(&pipeline->base, MESA_SHADER_TASK);
+   struct radv_shader *task_shader = pipeline->base.shaders[MESA_SHADER_TASK];
 
    assert(!task_shader || ace_cs);
 
