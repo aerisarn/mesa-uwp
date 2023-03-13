@@ -893,12 +893,10 @@ radv_descriptor_get_va(const struct radv_descriptor_state *descriptors_state, un
 
 static void
 radv_emit_descriptor_pointers(struct radv_device *device, struct radeon_cmdbuf *cs,
-                              struct radv_pipeline *pipeline,
-                              struct radv_descriptor_state *descriptors_state,
-                              gl_shader_stage stage)
+                              struct radv_shader *shader, uint32_t sh_base,
+                              struct radv_descriptor_state *descriptors_state)
 {
-   uint32_t sh_base = pipeline->user_data_0[stage];
-   struct radv_userdata_locations *locs = &pipeline->shaders[stage]->info.user_sgprs_locs;
+   struct radv_userdata_locations *locs = &shader->info.user_sgprs_locs;
    unsigned mask = locs->descriptor_sets_enabled;
 
    mask &= descriptors_state->dirty & descriptors_state->valid;
@@ -4530,19 +4528,23 @@ radv_flush_descriptors(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags st
       radeon_check_space(device->ws, cs, MAX_SETS * MESA_VULKAN_SHADER_STAGES * 4);
 
    if (stages & VK_SHADER_STAGE_COMPUTE_BIT) {
-      radv_emit_descriptor_pointers(device, cs, pipeline, descriptors_state, MESA_SHADER_COMPUTE);
+      radv_emit_descriptor_pointers(device, cs, pipeline->shaders[MESA_SHADER_COMPUTE],
+                                    pipeline->user_data_0[MESA_SHADER_COMPUTE], descriptors_state);
    } else {
       radv_foreach_stage(stage, stages & ~VK_SHADER_STAGE_TASK_BIT_EXT)
       {
          if (!cmd_buffer->state.graphics_pipeline->base.shaders[stage])
             continue;
 
-         radv_emit_descriptor_pointers(device, cs, pipeline, descriptors_state, stage);
+         radv_emit_descriptor_pointers(device, cs, pipeline->shaders[stage],
+                                       pipeline->user_data_0[stage], descriptors_state);
       }
 
       if (stages & VK_SHADER_STAGE_TASK_BIT_EXT) {
-         radv_emit_descriptor_pointers(device, cmd_buffer->ace_internal.cs, pipeline,
-                                       descriptors_state, MESA_SHADER_TASK);
+         radv_emit_descriptor_pointers(device, cmd_buffer->ace_internal.cs,
+                                       pipeline->shaders[MESA_SHADER_TASK],
+                                       pipeline->user_data_0[MESA_SHADER_TASK],
+                                       descriptors_state);
       }
    }
 
