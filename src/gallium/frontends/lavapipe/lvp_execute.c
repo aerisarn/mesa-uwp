@@ -656,8 +656,6 @@ update_samples(struct rendering_state *state, VkSampleCountFlags samples)
 static void
 handle_graphics_stages(struct rendering_state *state, VkShaderStageFlagBits shader_stages, bool dynamic_tess_origin)
 {
-   state->tess_states[0] = NULL;
-   state->tess_states[1] = NULL;
    state->gs_output_lines = GS_OUTPUT_NONE;
 
    u_foreach_bit(b, shader_stages) {
@@ -697,6 +695,8 @@ handle_graphics_stages(struct rendering_state *state, VkShaderStageFlagBits shad
          break;
       case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
          state->inlines_dirty[MESA_SHADER_TESS_EVAL] = state->shaders[MESA_SHADER_TESS_EVAL]->inlines.can_inline;
+         state->tess_states[0] = NULL;
+         state->tess_states[1] = NULL;
          if (!state->shaders[MESA_SHADER_TESS_EVAL]->inlines.can_inline) {
             if (dynamic_tess_origin) {
                state->tess_states[0] = state->shaders[MESA_SHADER_TESS_EVAL]->shader_cso;
