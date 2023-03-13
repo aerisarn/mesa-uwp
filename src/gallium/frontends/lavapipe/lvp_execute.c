@@ -666,12 +666,6 @@ handle_graphics_stages(struct rendering_state *state, VkShaderStageFlagBits shad
    }
 
    bool has_stage[MESA_SHADER_STAGES] = { false };
-
-   state->pctx->bind_gs_state(state->pctx, NULL);
-   if (state->pctx->bind_tcs_state)
-      state->pctx->bind_tcs_state(state->pctx, NULL);
-   if (state->pctx->bind_tes_state)
-      state->pctx->bind_tes_state(state->pctx, NULL);
    state->tess_states[0] = NULL;
    state->tess_states[1] = NULL;
    state->gs_output_lines = GS_OUTPUT_NONE;
