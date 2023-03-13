@@ -3230,9 +3230,8 @@ radv_compute_spi_ps_input(const struct radv_pipeline_key *pipeline_key,
 
 VkResult
 radv_dump_shader_stats(struct radv_device *device, struct radv_pipeline *pipeline,
-                       gl_shader_stage stage, FILE *output)
+                       struct radv_shader *shader, gl_shader_stage stage, FILE *output)
 {
-   struct radv_shader *shader = pipeline->shaders[stage];
    VkPipelineExecutablePropertiesKHR *props = NULL;
    uint32_t prop_count = 0;
    VkResult result;

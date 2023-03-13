@@ -311,7 +311,8 @@ radv_rt_pipeline_compile(struct radv_pipeline *pipeline,
 
    free(binaries[rt_stage.stage]);
    if (radv_can_dump_shader_stats(device, rt_stage.nir)) {
-      radv_dump_shader_stats(device, pipeline, rt_stage.stage, stderr);
+      radv_dump_shader_stats(device, pipeline, pipeline->shaders[rt_stage.stage], rt_stage.stage,
+                             stderr);
    }
    ralloc_free(rt_stage.nir);
 

@@ -650,7 +650,7 @@ bool radv_can_dump_shader(struct radv_device *device, nir_shader *nir, bool meta
 bool radv_can_dump_shader_stats(struct radv_device *device, nir_shader *nir);
 
 VkResult radv_dump_shader_stats(struct radv_device *device, struct radv_pipeline *pipeline,
-                                gl_shader_stage stage, FILE *output);
+                                struct radv_shader *shader, gl_shader_stage stage, FILE *output);
 
 static inline struct radv_shader *
 radv_shader_ref(struct radv_shader *shader)

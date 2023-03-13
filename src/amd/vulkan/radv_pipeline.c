@@ -3552,7 +3552,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
       free(binaries[i]);
       if (stages[i].nir) {
          if (radv_can_dump_shader_stats(device, stages[i].nir) && pipeline->base.shaders[i]) {
-            radv_dump_shader_stats(device, &pipeline->base, i, stderr);
+            radv_dump_shader_stats(device, &pipeline->base, pipeline->base.shaders[i], i, stderr);
          }
 
          ralloc_free(stages[i].nir);
@@ -5412,7 +5412,8 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline,
 
    free(binaries[MESA_SHADER_COMPUTE]);
    if (radv_can_dump_shader_stats(device, cs_stage.nir)) {
-      radv_dump_shader_stats(device, &pipeline->base, MESA_SHADER_COMPUTE, stderr);
+      radv_dump_shader_stats(device, &pipeline->base, pipeline->base.shaders[MESA_SHADER_COMPUTE],
+                             MESA_SHADER_COMPUTE, stderr);
    }
    ralloc_free(cs_stage.nir);
 
