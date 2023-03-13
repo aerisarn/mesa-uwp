@@ -472,8 +472,6 @@ struct tc_renderpass_info {
       /* zsbuf fb info is in data8[3] */
       uint8_t data8[8];
    };
-   /* determines whether the info can be "safely" read by drivers or if it may still be in use */
-   struct util_queue_fence ready;
 };
 
 static inline bool
@@ -660,17 +658,18 @@ struct pipe_context *threaded_context_unwrap_sync(struct pipe_context *pipe);
 void tc_driver_internal_flush_notify(struct threaded_context *tc);
 
 /** function for getting the current renderpass info:
- * - renderpass info is always valid
- * - set 'wait=true' when calling during normal execution
- * - set 'wait=true' when calling from flush
+ * - renderpass info is always non-null
  *
  * Rules:
- * 1) this must be called with 'wait=true' after the driver receives a pipe_context::set_framebuffer_state callback
- * 2) this should be called with 'wait=false' when the driver receives a blocking pipe_context::flush call
- * 3) this must not be used during any internal driver operations (e.g., u_blitter)
+ * - threaded context must have been created with parse_renderpass_info=true
+ * - must be called after the driver receives a pipe_context::set_framebuffer_state callback
+ * - must be called after the driver receives a non-deferrable pipe_context::flush callback
+ * - renderpass info must not be used during any internal driver operations (e.g., u_blitter)
+ * - must not be called before the driver receives its first pipe_context::set_framebuffer_state callback
+ * - renderpass info is invalidated only for non-deferrable flushes and new framebuffer states
  */
 const struct tc_renderpass_info *
-threaded_context_get_renderpass_info(struct threaded_context *tc, bool wait);
+threaded_context_get_renderpass_info(struct threaded_context *tc);
 
 struct pipe_context *
 threaded_context_create(struct pipe_context *pipe,

@@ -116,6 +116,23 @@ tc_clear_driver_thread(struct threaded_context *tc)
 #endif
 }
 
+struct tc_batch_rp_info {
+   /* this is what drivers can see */
+   struct tc_renderpass_info info;
+   /* determines whether the info can be "safely" read by drivers or if it may still be in use */
+   struct util_queue_fence ready;
+   /* when a batch is full, the rp info rollsover onto 'next' */
+   struct tc_batch_rp_info *next;
+   /* when rp info has rolled over onto this struct, 'prev' is used to update pointers for realloc */
+   struct tc_batch_rp_info *prev;
+};
+
+static struct tc_batch_rp_info *
+tc_batch_rp_info(struct tc_renderpass_info *info)
+{
+   return (struct tc_batch_rp_info *)info;
+}
+
 /* ensure the batch's array of renderpass data is large enough for the current index */
 static void
 tc_batch_renderpass_infos_resize(struct threaded_context *tc, struct tc_batch *batch)
@@ -123,29 +140,29 @@ tc_batch_renderpass_infos_resize(struct threaded_context *tc, struct tc_batch *b
    unsigned size = batch->renderpass_infos.capacity;
    unsigned cur_num = MAX2(batch->renderpass_info_idx, 0);
 
-   if (size / sizeof(struct tc_renderpass_info) > cur_num)
+   if (size / sizeof(struct tc_batch_rp_info) > cur_num)
       return;
 
-   struct tc_renderpass_info *infos = batch->renderpass_infos.data;
+   struct tc_batch_rp_info *infos = batch->renderpass_infos.data;
    unsigned old_idx = batch->renderpass_info_idx - 1;
    bool redo = tc->renderpass_info_recording &&
-               tc->renderpass_info_recording == &infos[old_idx];
-   if (!util_dynarray_resize(&batch->renderpass_infos, struct tc_renderpass_info, cur_num + 10))
+               tc->renderpass_info_recording == &infos[old_idx].info;
+   if (!util_dynarray_resize(&batch->renderpass_infos, struct tc_batch_rp_info, cur_num + 10))
       mesa_loge("tc: memory alloc fail!");
 
    if (size != batch->renderpass_infos.capacity) {
       /* zero new allocation region */
       uint8_t *data = batch->renderpass_infos.data;
       memset(data + size, 0, batch->renderpass_infos.capacity - size);
-      unsigned start = size / sizeof(struct tc_renderpass_info);
+      unsigned start = size / sizeof(struct tc_batch_rp_info);
       unsigned count = (batch->renderpass_infos.capacity - size) /
-                       sizeof(struct tc_renderpass_info);
+                       sizeof(struct tc_batch_rp_info);
       infos = batch->renderpass_infos.data;
       for (unsigned i = 0; i < count; i++)
          util_queue_fence_init(&infos[start + i].ready);
       /* re-set current recording info on resize */
       if (redo)
-         tc->renderpass_info_recording = &infos[old_idx];
+         tc->renderpass_info_recording = &infos[old_idx].info;
    }
 }
 
@@ -154,8 +171,8 @@ static void
 tc_signal_renderpass_info_ready(struct threaded_context *tc)
 {
    if (tc->renderpass_info_recording &&
-       !util_queue_fence_is_signalled(&tc->renderpass_info_recording->ready))
-      util_queue_fence_signal(&tc->renderpass_info_recording->ready);
+       !util_queue_fence_is_signalled(&tc_batch_rp_info(tc->renderpass_info_recording)->ready))
+      util_queue_fence_signal(&tc_batch_rp_info(tc->renderpass_info_recording)->ready);
 }
 
 /* increment the current renderpass info struct for recording
@@ -165,7 +182,7 @@ static void
 tc_batch_increment_renderpass_info(struct threaded_context *tc, bool full_copy)
 {
    struct tc_batch *batch = &tc->batch_slots[tc->next];
-   struct tc_renderpass_info *tc_info = batch->renderpass_infos.data;
+   struct tc_batch_rp_info *tc_info = batch->renderpass_infos.data;
 
    /* signal existing info since it will not be used anymore */
    tc_signal_renderpass_info_ready(tc);
@@ -176,21 +193,23 @@ tc_batch_increment_renderpass_info(struct threaded_context *tc, bool full_copy)
 
    if (full_copy) {
       /* copy the previous data in its entirety: this is still the same renderpass */
-      if (tc->renderpass_info_recording)
-         tc_info[batch->renderpass_info_idx].data = tc->renderpass_info_recording->data;
-      else
-         tc_info[batch->renderpass_info_idx].data = 0;
+      if (tc->renderpass_info_recording) {
+         tc_info[batch->renderpass_info_idx].info.data = tc->renderpass_info_recording->data;
+      } else {
+         tc_info[batch->renderpass_info_idx].info.data = 0;
+      }
    } else {
       /* selectively copy: only the CSO metadata is copied, and a new framebuffer state will be added later */
-      tc_info[batch->renderpass_info_idx].data = 0;
-      if (tc->renderpass_info_recording)
-         tc_info[batch->renderpass_info_idx].data16[2] = tc->renderpass_info_recording->data16[2];
+      tc_info[batch->renderpass_info_idx].info.data = 0;
+      if (tc->renderpass_info_recording) {
+         tc_info[batch->renderpass_info_idx].info.data16[2] = tc->renderpass_info_recording->data16[2];
+      }
    }
 
    util_queue_fence_reset(&tc_info[batch->renderpass_info_idx].ready);
-   assert(tc->renderpass_info_recording != &tc_info[batch->renderpass_info_idx]);
+   assert(tc->renderpass_info_recording != &tc_info[batch->renderpass_info_idx].info);
    /* this is now the current recording renderpass info */
-   tc->renderpass_info_recording = &tc_info[batch->renderpass_info_idx];
+   tc->renderpass_info_recording = &tc_info[batch->renderpass_info_idx].info;
 }
 
 static ALWAYS_INLINE struct tc_renderpass_info *
@@ -300,6 +319,13 @@ tc_drop_vertex_state_references(struct pipe_vertex_state *dst, int num_refs)
 #define DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX \
    offsetof(struct pipe_draw_info, min_index)
 
+ALWAYS_INLINE static struct tc_renderpass_info *
+incr_rp_info(struct tc_renderpass_info *tc_info)
+{
+   struct tc_batch_rp_info *info = tc_batch_rp_info(tc_info);
+   return &info[1].info;
+}
+
 ALWAYS_INLINE static void
 batch_execute(struct tc_batch *batch, struct pipe_context *pipe, uint64_t *last, bool parsing)
 {
@@ -323,7 +349,7 @@ batch_execute(struct tc_batch *batch, struct pipe_context *pipe, uint64_t *last,
       if (parsing) {
          if (call->call_id == TC_CALL_flush) {
             /* always increment renderpass info for non-deferred flushes */
-            batch->tc->renderpass_info++;
+            batch->tc->renderpass_info = incr_rp_info(batch->tc->renderpass_info);
             /* if a flush happens, renderpass info is always incremented after */
             first = false;
          } else if (call->call_id == TC_CALL_set_framebuffer_state) {
@@ -331,7 +357,7 @@ batch_execute(struct tc_batch *batch, struct pipe_context *pipe, uint64_t *last,
              * so don't increment on the first set_framebuffer_state call
              */
             if (!first)
-               batch->tc->renderpass_info++;
+               batch->tc->renderpass_info = incr_rp_info(batch->tc->renderpass_info);
             first = false;
          } else if (call->call_id >= TC_CALL_draw_single &&
                     call->call_id <= TC_CALL_draw_vstate_multi) {
@@ -5089,9 +5115,9 @@ threaded_context_init_bytes_mapped_limit(struct threaded_context *tc, unsigned d
 }
 
 const struct tc_renderpass_info *
-threaded_context_get_renderpass_info(struct threaded_context *tc, bool wait)
+threaded_context_get_renderpass_info(struct threaded_context *tc)
 {
-   if (tc->renderpass_info && wait)
-      util_queue_fence_wait(&tc->renderpass_info->ready);
-   return tc->renderpass_info;
+   struct tc_batch_rp_info *info = tc_batch_rp_info(tc->renderpass_info);
+   util_queue_fence_wait(&info->ready);
+   return &info->info;
 }

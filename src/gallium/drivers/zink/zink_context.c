@@ -61,14 +61,12 @@
 #include "util/xxhash.h"
 
 static void
-update_tc_info(struct zink_context *ctx, bool wait)
+update_tc_info(struct zink_context *ctx)
 {
-   if (ctx->tc) {
-      const struct tc_renderpass_info *info = threaded_context_get_renderpass_info(ctx->tc, wait);
-      if (info) {
-         ctx->rp_changed |= ctx->dynamic_fb.tc_info.data != info->data;
-         ctx->dynamic_fb.tc_info.data = info->data;
-      }
+   if (ctx->tc && zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses) {
+      const struct tc_renderpass_info *info = threaded_context_get_renderpass_info(ctx->tc);
+      ctx->rp_changed |= ctx->dynamic_fb.tc_info.data != info->data;
+      ctx->dynamic_fb.tc_info.data = info->data;
    }
 }
 
@@ -2745,7 +2743,7 @@ zink_batch_rp(struct zink_context *ctx)
    }
    if (!ctx->blitting) {
       if (ctx->rp_tc_info_updated)
-         update_tc_info(ctx, true);
+         update_tc_info(ctx);
       ctx->rp_tc_info_updated = false;
    }
    bool maybe_has_query_ends = !ctx->tc || !zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses || ctx->dynamic_fb.tc_info.has_query_ends;
