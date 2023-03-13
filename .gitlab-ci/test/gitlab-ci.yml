@@ -27,7 +27,8 @@ rustfmt:
   variables:
     GIT_STRATEGY: fetch
   script:
-    - git ls-files */{lib,app}.rs | xargs rustfmt --check
+    - shopt -s globstar
+    - rustfmt --check src/**/*.rs
 
 .test-gl:
   extends:
