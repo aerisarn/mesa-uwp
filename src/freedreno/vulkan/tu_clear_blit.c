@@ -919,12 +919,18 @@ r3d_coords(struct tu_cs *cs,
 {
    int32_t src_x1 = src ? src->x : 0;
    int32_t src_y1 = src ? src->y : 0;
-   r3d_coords_raw(cs, (float[]) {
-      dst->x,                 dst->y,
-      src_x1,                 src_y1,
-      dst->x + extent->width, dst->y + extent->height,
-      src_x1 + extent->width, src_y1 + extent->height,
-   });
+
+   const float coords[] = {
+      dst->x,
+      dst->y,
+      src_x1,
+      src_y1,
+      dst->x + extent->width,
+      dst->y + extent->height,
+      src_x1 + extent->width,
+      src_y1 + extent->height,
+   };
+   r3d_coords_raw(cs, coords);
 }
 
 static void
@@ -1509,7 +1515,8 @@ tu6_dirty_lrz_fc(struct tu_cmd_buffer *cmd,
                  struct tu_image *image)
 {
    const struct blit_ops *ops = &r2d_ops;
-   VkClearValue clear = { .color = { .uint32[0] = 0xffffffff } };
+   VkClearValue clear = {};
+   clear.color.uint32[0] = 0xffffffff;
 
    /* LRZ fast-clear buffer is always allocated with 512 bytes size. */
    ops->setup(cmd, cs, PIPE_FORMAT_R32_UINT, PIPE_FORMAT_R32_UINT,
@@ -1662,12 +1669,11 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
               dst_image->layout[0].nr_samples);
 
    if (ops == &r3d_ops) {
-      r3d_coords_raw(cs, (float[]) {
-         info->dstOffsets[0].x, info->dstOffsets[0].y,
-         info->srcOffsets[0].x, info->srcOffsets[0].y,
-         info->dstOffsets[1].x, info->dstOffsets[1].y,
-         info->srcOffsets[1].x, info->srcOffsets[1].y
-      });
+      const float coords[] = { info->dstOffsets[0].x, info->dstOffsets[0].y,
+                               info->srcOffsets[0].x, info->srcOffsets[0].y,
+                               info->dstOffsets[1].x, info->dstOffsets[1].y,
+                               info->srcOffsets[1].x, info->srcOffsets[1].y };
+      r3d_coords_raw(cs, coords);
    } else {
       tu_cs_emit_regs(cs,
          A6XX_GRAS_2D_DST_TL(.x = MIN2(info->dstOffsets[0].x, info->dstOffsets[1].x),
@@ -2256,7 +2262,10 @@ tu_CmdFillBuffer(VkCommandBuffer commandBuffer,
    ops->setup(cmd, cs, PIPE_FORMAT_R32_UINT, PIPE_FORMAT_R32_UINT,
               VK_IMAGE_ASPECT_COLOR_BIT, 0, true, false,
               VK_SAMPLE_COUNT_1_BIT);
-   ops->clear_value(cs, PIPE_FORMAT_R32_UINT, &(VkClearValue){.color = {.uint32[0] = data}});
+
+   VkClearValue clear_val = {};
+   clear_val.color.uint32[0] = data;
+   ops->clear_value(cs, PIPE_FORMAT_R32_UINT, &clear_val);
 
    while (blocks) {
       uint32_t dst_x = (dst_va & 63) / 4;
@@ -2653,14 +2662,20 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
        * a const. Just use the layered path instead, since it shouldn't be
        * much worse.
        */
-      for_each_layer(layer, subpass->multiview_mask, rects[i].layerCount) {
-         r3d_coords_raw(cs, (float[]) {
-            rects[i].rect.offset.x, rects[i].rect.offset.y,
-            z_clear_val, uif(rects[i].baseArrayLayer + layer),
+      for_each_layer(layer, subpass->multiview_mask, rects[i].layerCount)
+      {
+         const float coords[] = {
+            rects[i].rect.offset.x,
+            rects[i].rect.offset.y,
+            z_clear_val,
+            uif(rects[i].baseArrayLayer + layer),
             rects[i].rect.offset.x + rects[i].rect.extent.width,
             rects[i].rect.offset.y + rects[i].rect.extent.height,
-            z_clear_val, 1.0f,
-         });
+            z_clear_val,
+            1.0f,
+         };
+
+         r3d_coords_raw(cs, coords);
          r3d_run_vis(cmd, cs);
       }
    }

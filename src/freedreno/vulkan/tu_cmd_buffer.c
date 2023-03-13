@@ -2411,9 +2411,9 @@ tu_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
    memcpy(set_mem.map, set->mapped_ptr, layout->size);
    set->va = set_mem.iova;
 
+   const VkDescriptorSet desc_set[] = { tu_descriptor_set_to_handle(set) };
    tu_CmdBindDescriptorSets(commandBuffer, pipelineBindPoint, _layout, _set,
-                            1, (VkDescriptorSet[]) { tu_descriptor_set_to_handle(set) },
-                            0, NULL);
+                            1, desc_set, 0, NULL);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -2450,9 +2450,9 @@ tu_CmdPushDescriptorSetWithTemplateKHR(VkCommandBuffer commandBuffer,
    memcpy(set_mem.map, set->mapped_ptr, layout->size);
    set->va = set_mem.iova;
 
+   const VkDescriptorSet desc_set[] = { tu_descriptor_set_to_handle(set) };
    tu_CmdBindDescriptorSets(commandBuffer, templ->bind_point, _layout, _set,
-                            1, (VkDescriptorSet[]) { tu_descriptor_set_to_handle(set) },
-                            0, NULL);
+                            1, desc_set, 0, NULL);
 }
 
 VKAPI_ATTR void VKAPI_CALL
