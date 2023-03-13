@@ -629,3 +629,6 @@ dEQP-VK.image.depth_stencil_descriptor.depth_read_only_stencil_attachment_optima
 # This is due to pretending to resolve stencil sample 0 using min
 # This needs to be a blit shader instead, but that runs into problems since shader stencil export is optional
 dEQP-VK.imageless_framebuffer.depth_stencil_resolve,Fail
+
+# This needs D3D API changes to enable sampler heaps >= 4k entries, which is incoming
+dEQP-VK.api.object_management.max_concurrent.sampler,Fail
