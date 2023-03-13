@@ -2565,7 +2565,7 @@ tu_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
    for (uint32_t i = 0; i < IR3_MAX_SO_BUFFERS; i++) {
       /* note: FLUSH_BASE is always the same, so it could go in init_hw()? */
       tu_cs_emit_pkt4(cs, REG_A6XX_VPC_SO_FLUSH_BASE(i), 2);
-      tu_cs_emit_qw(cs, global_iova(cmd, flush_base[i]));
+      tu_cs_emit_qw(cs, global_iova_arr(cmd, flush_base, i));
       tu6_emit_event_write(cmd, cs, FLUSH_SO_0 + i);
    }
 
@@ -2586,7 +2586,7 @@ tu_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
                      0x40000 | /* ??? */
                      CP_MEM_TO_REG_0_UNK31 |
                      CP_MEM_TO_REG_0_CNT(1));
-      tu_cs_emit_qw(cs, global_iova(cmd, flush_base[idx]));
+      tu_cs_emit_qw(cs, global_iova_arr(cmd, flush_base, idx));
 
       if (offset) {
          tu_cs_emit_pkt7(cs, CP_REG_RMW, 3);
@@ -5699,7 +5699,7 @@ tu_emit_compute_driver_params(struct tu_cmd_buffer *cmd,
       for (uint32_t i = 0; i < 3; i++) {
          tu_cs_emit_pkt7(cs, CP_MEM_TO_MEM, 5);
          tu_cs_emit(cs, 0);
-         tu_cs_emit_qw(cs, global_iova(cmd, cs_indirect_xyz[i]));
+         tu_cs_emit_qw(cs, global_iova_arr(cmd, cs_indirect_xyz, i));
          tu_cs_emit_qw(cs, indirect_iova + i * 4);
       }
 

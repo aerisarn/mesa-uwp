@@ -150,7 +150,7 @@ tu_CreateDescriptorSetLayout(
    }
 
    uint32_t samplers_offset =
-         offsetof(struct tu_descriptor_set_layout, binding[num_bindings]);
+      offsetof_arr(struct tu_descriptor_set_layout, binding, num_bindings);
 
    /* note: only need to store TEX_SAMP_DWORDS for immutable samples,
     * but using struct tu_sampler makes things simpler */

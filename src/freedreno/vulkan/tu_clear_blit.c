@@ -741,7 +741,7 @@ compile_shader(struct tu_device *dev, struct nir_shader *nir,
    memcpy(&global->shaders[*offset], so->bin,
           sizeof(uint32_t) * so->info.sizedwords);
    dev->global_shader_va[idx] = dev->global_bo->iova +
-      gb_offset(shaders[*offset]);
+      offsetof_arr(struct tu6_global, shaders, *offset);
    *offset += align(so->info.sizedwords, 32);
 }
 

@@ -3067,9 +3067,10 @@ tu_init_sampler(struct tu_device *device,
          color.uint32[1] = color.uint32[0];
       }
 
-      tu6_pack_border_color(device->global_bo->map + gb_offset(bcolor[border_color]),
-                            &color,
-                            pCreateInfo->borderColor == VK_BORDER_COLOR_INT_CUSTOM_EXT);
+      tu6_pack_border_color(
+         device->global_bo->map +
+            offsetof_arr(struct tu6_global, bcolor, border_color),
+         &color, pCreateInfo->borderColor == VK_BORDER_COLOR_INT_CUSTOM_EXT);
       border_color += TU_BORDER_COLOR_BUILTIN;
    }
 

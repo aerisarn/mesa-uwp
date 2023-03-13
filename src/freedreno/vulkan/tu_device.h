@@ -200,6 +200,9 @@ struct tu6_global
 };
 #define gb_offset(member) offsetof(struct tu6_global, member)
 #define global_iova(cmd, member) ((cmd)->device->global_bo->iova + gb_offset(member))
+#define global_iova_arr(cmd, member, idx)                                    \
+   (global_iova(cmd, member) + sizeof_field(struct tu6_global, member[0]) * (idx))
+
 
 struct tu_device
 {

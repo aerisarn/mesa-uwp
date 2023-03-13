@@ -431,4 +431,9 @@ tu_dbg_log_gmem_load_store_skips(struct tu_device *device);
       mesa_log(MESA_LOG_WARN, (MESA_LOG_TAG), (fmt), ##__VA_ARGS__);    \
 } while(0)
 
+#define sizeof_field(s, field) sizeof(((s *) NULL)->field)
+
+#define offsetof_arr(s, field, idx)                                          \
+   (offsetof(s, field) + sizeof_field(s, field[0]) * (idx))
+
 #endif /* TU_UTIL_H */
