@@ -2671,7 +2671,7 @@ begin_rendering(struct zink_context *ctx)
    bool rp_changed = ctx->gfx_pipeline_state.rp_state != rp_state;
    if (!rp_changed && ctx->batch.in_rp)
       return 0;
-   zink_batch_no_rp(ctx);
+   zink_batch_no_rp_safe(ctx);
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct zink_surface *surf = zink_csurface(ctx->fb_state.cbufs[i]);
       VkImageView iv = zink_prep_fb_attachment(ctx, surf, i);
@@ -2756,7 +2756,7 @@ zink_batch_rp(struct zink_context *ctx)
          /* this is a driver that doesn't need dummy surfaces but does need rasterization discard, so flush clears first */
          ctx->queries_disabled = true;
          zink_batch_rp(ctx);
-         zink_batch_no_rp(ctx);
+         zink_batch_no_rp_safe(ctx);
          ctx->queries_disabled = false;
       }
       zink_resume_queries(ctx, &ctx->batch);
@@ -2791,17 +2791,10 @@ zink_batch_rp(struct zink_context *ctx)
 }
 
 void
-zink_batch_no_rp(struct zink_context *ctx)
+zink_batch_no_rp_safe(struct zink_context *ctx)
 {
    if (!ctx->batch.in_rp)
       return;
-   if (zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses && !ctx->blitting) {
-      ctx->dynamic_fb.tc_info.data32[0] = 0;
-      ctx->dynamic_fb.tc_info.cbuf_load = BITFIELD_MASK(8);
-      ctx->dynamic_fb.tc_info.zsbuf_clear_partial = true;
-      ctx->dynamic_fb.tc_info.has_draw = true;
-      ctx->dynamic_fb.tc_info.has_query_ends = true;
-   }
    if (ctx->render_condition.query)
       zink_stop_conditional_render(ctx);
    /* suspend all queries that were started in a renderpass
@@ -2816,6 +2809,21 @@ zink_batch_no_rp(struct zink_context *ctx)
       ctx->batch.in_rp = false;
    }
    assert(!ctx->batch.in_rp);
+}
+
+void
+zink_batch_no_rp(struct zink_context *ctx)
+{
+   if (!ctx->batch.in_rp)
+      return;
+   if (zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses && !ctx->blitting) {
+      ctx->dynamic_fb.tc_info.data = 0;
+      ctx->dynamic_fb.tc_info.cbuf_load = BITFIELD_MASK(8);
+      ctx->dynamic_fb.tc_info.zsbuf_clear_partial = true;
+      ctx->dynamic_fb.tc_info.has_draw = true;
+      ctx->dynamic_fb.tc_info.has_query_ends = true;
+   }
+   zink_batch_no_rp_safe(ctx);
 }
 
 ALWAYS_INLINE static void
@@ -3100,7 +3108,7 @@ flush_batch(struct zink_context *ctx, bool sync)
       zink_batch_rp(ctx);
    bool conditional_render_active = ctx->render_condition.active;
    zink_stop_conditional_render(ctx);
-   zink_batch_no_rp(ctx);
+   zink_batch_no_rp_safe(ctx);
    zink_end_batch(ctx, batch);
    ctx->deferred_fence = NULL;
 
@@ -3405,7 +3413,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    ctx->gfx_pipeline_state.rast_samples = rast_samples;
 
    /* need to ensure we start a new rp on next draw */
-   zink_batch_no_rp(ctx);
+   zink_batch_no_rp_safe(ctx);
    /* this is an ideal time to oom flush since it won't split a renderpass */
    if (ctx->oom_flush)
       flush_batch(ctx, false);
@@ -4372,6 +4380,7 @@ zink_flush_resource(struct pipe_context *pctx,
    struct zink_resource *res = zink_resource(pres);
    if (res->obj->dt) {
       if (zink_kopper_acquired(res->obj->dt, res->obj->dt_idx)) {
+         zink_batch_no_rp_safe(ctx);
          zink_screen(ctx->base.screen)->image_barrier(ctx, res, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 0, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
          zink_batch_reference_resource_rw(&ctx->batch, res, true);
       } else {
