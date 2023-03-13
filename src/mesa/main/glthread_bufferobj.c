@@ -88,7 +88,7 @@ _mesa_glthread_upload(struct gl_context *ctx, const void *data,
       return;
 
    /* The alignment was chosen arbitrarily. */
-   unsigned offset = align(glthread->upload_offset, 8) + start_offset;
+   unsigned offset = align(glthread->upload_offset, size <= 4 ? 4 : 8) + start_offset;
 
    /* Allocate a new buffer if needed. */
    if (unlikely(!glthread->upload_buffer || offset + size > default_size)) {
