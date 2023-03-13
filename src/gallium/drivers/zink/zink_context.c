@@ -3133,6 +3133,8 @@ flush_batch(struct zink_context *ctx, bool sync)
          zink_start_conditional_render(ctx);
       reapply_color_write(ctx);
       update_layered_rendering_state(ctx);
+      tc_renderpass_info_reset(&ctx->dynamic_fb.tc_info);
+      ctx->rp_tc_info_updated = true;
    }
 }
 
@@ -4186,7 +4188,6 @@ zink_flush(struct pipe_context *pctx,
       if (!(flags & (PIPE_FLUSH_DEFERRED | PIPE_FLUSH_ASYNC)))
          sync_flush(ctx, zink_batch_state(fence));
    }
-   update_tc_info(ctx, false);
 }
 
 void
