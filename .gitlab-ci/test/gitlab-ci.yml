@@ -28,7 +28,7 @@ rustfmt:
     GIT_STRATEGY: fetch
   script:
     - shopt -s globstar
-    - rustfmt --check src/**/*.rs
+    - rustfmt --check --verbose src/**/*.rs
 
 .test-gl:
   extends:
