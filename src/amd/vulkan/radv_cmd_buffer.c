@@ -1124,12 +1124,11 @@ radv_emit_sample_locations(struct radv_cmd_buffer *cmd_buffer)
 
 static void
 radv_emit_inline_push_consts(struct radv_device *device, struct radeon_cmdbuf *cs,
-                             struct radv_pipeline *pipeline, gl_shader_stage stage, int idx,
+                             const struct radv_shader *shader, uint32_t base_reg, int idx,
                              uint32_t *values)
 {
-   const struct radv_shader *shader = radv_get_shader(pipeline, stage);
-   const struct radv_userdata_info *loc = radv_get_user_sgpr(shader, idx);
-   uint32_t base_reg = pipeline->user_data_0[stage];
+   const struct radv_userdata_info *loc = &shader->info.user_sgprs_locs.shader_data[idx];
+
    if (loc->sgpr_idx == -1)
       return;
 
@@ -4556,24 +4555,13 @@ radv_flush_descriptors(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags st
       radv_save_descriptors(cmd_buffer, bind_point);
 }
 
-static bool
-radv_shader_loads_push_constants(struct radv_pipeline *pipeline, gl_shader_stage stage)
-{
-   const struct radv_shader *shader = radv_get_shader(pipeline, stage);
-   const struct radv_userdata_info *loc = radv_get_user_sgpr(shader, AC_UD_PUSH_CONSTANTS);
-   return loc->sgpr_idx != -1;
-}
-
 static void
 radv_emit_all_inline_push_consts(struct radv_device *device, struct radeon_cmdbuf *cs,
-                                 struct radv_pipeline *pipeline, gl_shader_stage stage,
+                                 struct radv_shader *shader, uint32_t base_reg,
                                  uint32_t *values, bool *need_push_constants)
 {
-   const struct radv_shader *shader = radv_get_shader(pipeline, stage);
-   if (!shader)
-      return;
-
-   *need_push_constants |= radv_shader_loads_push_constants(pipeline, stage);
+   if (radv_get_user_sgpr(shader, AC_UD_PUSH_CONSTANTS)->sgpr_idx != -1)
+      *need_push_constants |= true;
 
    const uint64_t mask = shader->info.inline_push_constant_mask;
    if (!mask)
@@ -4582,7 +4570,7 @@ radv_emit_all_inline_push_consts(struct radv_device *device, struct radeon_cmdbu
    const uint8_t base = ffs(mask) - 1;
    if (mask == u_bit_consecutive64(base, util_last_bit64(mask) - base)) {
       /* consecutive inline push constants */
-      radv_emit_inline_push_consts(device, cs, pipeline, stage, AC_UD_INLINE_PUSH_CONSTANTS,
+      radv_emit_inline_push_consts(device, cs, shader, base_reg, AC_UD_INLINE_PUSH_CONSTANTS,
                                    values + base);
    } else {
       /* sparse inline push constants */
@@ -4590,7 +4578,7 @@ radv_emit_all_inline_push_consts(struct radv_device *device, struct radeon_cmdbu
       unsigned num_consts = 0;
       u_foreach_bit64 (idx, mask)
          consts[num_consts++] = values[idx];
-      radv_emit_inline_push_consts(device, cs, pipeline, stage, AC_UD_INLINE_PUSH_CONSTANTS,
+      radv_emit_inline_push_consts(device, cs, shader, base_reg, AC_UD_INLINE_PUSH_CONSTANTS,
                                    consts);
    }
 }
@@ -4635,16 +4623,30 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
       unreachable("Unhandled bind point");
    }
 
-   radv_foreach_stage(stage, internal_stages & ~VK_SHADER_STAGE_TASK_BIT_EXT)
-   {
-      radv_emit_all_inline_push_consts(
-         device, cs, pipeline, stage, (uint32_t *)cmd_buffer->push_constants, &need_push_constants);
-   }
+   if (internal_stages & VK_SHADER_STAGE_COMPUTE_BIT) {
+      radv_emit_all_inline_push_consts(device, cs, pipeline->shaders[MESA_SHADER_COMPUTE],
+                                       pipeline->user_data_0[MESA_SHADER_COMPUTE],
+                                       (uint32_t *)cmd_buffer->push_constants, &need_push_constants);
 
-   if (internal_stages & VK_SHADER_STAGE_TASK_BIT_EXT) {
-      radv_emit_all_inline_push_consts(device, cmd_buffer->ace_internal.cs, pipeline,
-                                       MESA_SHADER_TASK, (uint32_t *)cmd_buffer->push_constants,
-                                       &need_push_constants);
+   } else {
+      radv_foreach_stage(stage, internal_stages & ~VK_SHADER_STAGE_TASK_BIT_EXT) {
+         shader = radv_get_shader(pipeline, stage);
+
+         if (!shader)
+            continue;
+
+         radv_emit_all_inline_push_consts(device, cs, shader, pipeline->user_data_0[stage],
+                                          (uint32_t *)cmd_buffer->push_constants,
+                                          &need_push_constants);
+      }
+
+      if (internal_stages & VK_SHADER_STAGE_TASK_BIT_EXT) {
+         radv_emit_all_inline_push_consts(device, cmd_buffer->ace_internal.cs,
+                                          pipeline->shaders[MESA_SHADER_TASK],
+                                          pipeline->user_data_0[MESA_SHADER_TASK],
+                                          (uint32_t *)cmd_buffer->push_constants,
+                                          &need_push_constants);
+      }
    }
 
    if (need_push_constants) {
