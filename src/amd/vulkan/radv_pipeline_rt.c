@@ -374,6 +374,7 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
    RADV_FROM_HANDLE(radv_device, device, _device);
    struct radv_ray_tracing_lib_pipeline *pipeline;
    VkResult result = VK_SUCCESS;
+   bool keep_statistic_info = radv_pipeline_capture_shader_stats(device, pCreateInfo->flags);
 
    VkRayTracingPipelineCreateInfoKHR local_create_info =
       radv_create_merged_rt_create_info(pCreateInfo);
@@ -390,6 +391,9 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
    }
 
    radv_pipeline_init(device, &pipeline->base, RADV_PIPELINE_RAY_TRACING_LIB);
+
+   struct radv_pipeline_key key =
+      radv_generate_pipeline_key(device, &pipeline->base, pCreateInfo->flags);
 
    pipeline->ctx = ralloc_context(NULL);
 
@@ -418,6 +422,9 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
       }
       memcpy(pipeline->group_infos, local_create_info.pGroups, size);
    }
+
+   radv_hash_rt_shaders(pipeline->sha1, pCreateInfo, &key, pipeline->groups,
+                        radv_get_hash_flags(device, keep_statistic_info));
 
    *pPipeline = radv_pipeline_to_handle(&pipeline->base);
 
@@ -608,7 +615,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
 
    struct radv_pipeline_key key = radv_generate_rt_pipeline_key(device, rt_pipeline, pCreateInfo->flags);
 
-   radv_hash_rt_shaders(hash, &local_create_info, &key, rt_pipeline->groups,
+   radv_hash_rt_shaders(hash, pCreateInfo, &key, rt_pipeline->groups,
                         radv_get_hash_flags(device, keep_statistic_info));
 
    /* First check if we can get things from the cache before we take the expensive step of

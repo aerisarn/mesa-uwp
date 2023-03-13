@@ -107,6 +107,14 @@ radv_hash_rt_shaders(unsigned char *hash, const VkRayTracingPipelineCreateInfoKH
       _mesa_sha1_update(&ctx, &groups[i].handle, sizeof(struct radv_pipeline_group_handle));
    }
 
+   if (pCreateInfo->pLibraryInfo) {
+      for (uint32_t i = 0; i < pCreateInfo->pLibraryInfo->libraryCount; ++i) {
+         RADV_FROM_HANDLE(radv_pipeline, lib_pipeline, pCreateInfo->pLibraryInfo->pLibraries[i]);
+         struct radv_ray_tracing_lib_pipeline *lib = radv_pipeline_to_ray_tracing_lib(lib_pipeline);
+         _mesa_sha1_update(&ctx, lib->sha1, SHA1_DIGEST_LENGTH);
+      }
+   }
+
    const uint32_t pipeline_flags =
       pCreateInfo->flags & (VK_PIPELINE_CREATE_RAY_TRACING_SKIP_TRIANGLES_BIT_KHR |
                             VK_PIPELINE_CREATE_RAY_TRACING_SKIP_AABBS_BIT_KHR |
