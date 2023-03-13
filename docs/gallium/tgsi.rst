@@ -170,7 +170,11 @@ used.
 
    .. math::
 
-      dst = src0.x \times src1.x + src0.y \times src1.y + src0.z \times src1.z
+      \begin{aligned}
+      dst = & src0.x \times src1.x +\\
+            & src0.y \times src1.y +\\
+            & src0.z \times src1.z
+      \end{aligned}
 
 
 .. opcode:: DP4 - 4-component Dot Product
@@ -179,7 +183,12 @@ used.
 
    .. math::
 
-      dst = src0.x \times src1.x + src0.y \times src1.y + src0.z \times src1.z + src0.w \times src1.w
+      \begin{aligned}
+      dst = & src0.x \times src1.x +\\
+            & src0.y \times src1.y +\\
+            & src0.z \times src1.z +\\
+            & src0.w \times src1.w
+      \end{aligned}
 
 
 .. opcode:: DST - Distance Vector
@@ -418,8 +427,10 @@ used.
 
    .. math::
 
-      dst = f32\_to\_f16(src.x) | f32\_to\_f16(src.y) << 16
-
+      \begin{aligned}
+      dst = & f32\_to\_f16(src.x) | \\
+          ( & f32\_to\_f16(src.y) << 16)
+      \end{aligned}
 
 .. opcode:: PK2US - Pack Two Unsigned 16-bit Scalars
 
@@ -427,7 +438,10 @@ used.
 
    .. math::
 
-      dst = f32\_to\_unorm16(src.x) | f32\_to\_unorm16(src.y) << 16
+      \begin{aligned}
+      dst = & f32\_to\_unorm16(src.x) | \\
+          ( & f32\_to\_unorm16(src.y) << 16)
+      \end{aligned}
 
 
 .. opcode:: PK4B - Pack Four Signed 8-bit Scalars
@@ -436,10 +450,12 @@ used.
 
    .. math::
 
-      dst = f32\_to\_snorm8(src.x) |
-            (f32\_to\_snorm8(src.y) << 8) |
-            (f32\_to\_snorm8(src.z) << 16) |
-            (f32\_to\_snorm8(src.w) << 24)
+      \begin{aligned}
+      dst = & f32\_to\_snorm8(src.x) | \\
+          ( & f32\_to\_snorm8(src.y) << 8) | \\
+          ( & f32\_to\_snorm8(src.z) << 16) | \\
+          ( & f32\_to\_snorm8(src.w) << 24)
+      \end{aligned}
 
 
 .. opcode:: PK4UB - Pack Four Unsigned 8-bit Scalars
@@ -448,10 +464,12 @@ used.
 
    .. math::
 
-      dst = f32\_to\_unorm8(src.x) |
-            (f32\_to\_unorm8(src.y) << 8) |
-            (f32\_to\_unorm8(src.z) << 16) |
-            (f32\_to\_unorm8(src.w) << 24)
+      \begin{aligned}
+      dst = & f32\_to\_unorm8(src.x) | \\
+          ( & f32\_to\_unorm8(src.y) << 8) | \\
+          ( & f32\_to\_unorm8(src.z) << 16) | \\
+          ( & f32\_to\_unorm8(src.w) << 24)
+      \end{aligned}
 
 
 .. opcode:: SEQ - Set On Equal
@@ -772,8 +790,10 @@ used.
 
    .. math::
 
-      dst = src0.x \times src1.x + src0.y \times src1.y
-
+      \begin{aligned}
+      dst = & src0.x \times src1.x + \\
+            & src0.y \times src1.y
+      \end{aligned}
 
 .. opcode:: TEX_LZ - Texture Lookup With LOD = 0
 
