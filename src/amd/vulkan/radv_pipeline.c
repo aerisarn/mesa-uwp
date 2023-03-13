@@ -4696,11 +4696,9 @@ radv_pipeline_get_streamout_shader(struct radv_graphics_pipeline *pipeline)
 }
 
 static bool
-radv_shader_need_indirect_descriptor_sets(struct radv_pipeline *pipeline, gl_shader_stage stage)
+radv_shader_need_indirect_descriptor_sets(const struct radv_shader *shader)
 {
-   const struct radv_shader *shader = radv_get_shader(pipeline, stage);
-   const struct radv_userdata_info *loc =
-      radv_get_user_sgpr(shader, AC_UD_INDIRECT_DESCRIPTOR_SETS);
+   const struct radv_userdata_info *loc = radv_get_user_sgpr(shader, AC_UD_INDIRECT_DESCRIPTOR_SETS);
    return loc->sgpr_idx != -1;
 }
 
@@ -4718,7 +4716,7 @@ radv_pipeline_init_shader_stages_state(struct radv_graphics_pipeline *pipeline)
 
          if (shader_exists)
             pipeline->base.need_indirect_descriptor_sets |=
-               radv_shader_need_indirect_descriptor_sets(&pipeline->base, i);
+               radv_shader_need_indirect_descriptor_sets(pipeline->base.shaders[i]);
       }
    }
 
@@ -5293,7 +5291,7 @@ radv_compute_pipeline_init(struct radv_compute_pipeline *pipeline,
 
    pipeline->base.user_data_0[MESA_SHADER_COMPUTE] = R_00B900_COMPUTE_USER_DATA_0;
    pipeline->base.need_indirect_descriptor_sets |=
-      radv_shader_need_indirect_descriptor_sets(&pipeline->base, MESA_SHADER_COMPUTE);
+      radv_shader_need_indirect_descriptor_sets(pipeline->base.shaders[MESA_SHADER_COMPUTE]);
    radv_pipeline_init_scratch(device, &pipeline->base);
 
    pipeline->base.push_constant_size = layout->push_constant_size;
