@@ -918,10 +918,6 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
    if (!libstate && !pipeline->library)
       lvp_pipeline_shaders_compile(pipeline);
 
-   if (!pipeline->library && !pipeline->shaders[MESA_SHADER_FRAGMENT].pipeline_nir) {
-      pipeline->noop_fs = true;
-      pipeline->shaders[MESA_SHADER_FRAGMENT].shader_cso = device->noop_fs;
-   }
    return VK_SUCCESS;
 
 fail:

@@ -95,6 +95,7 @@ struct rendering_state {
    bool sample_mask_dirty;
    bool min_samples_dirty;
    bool poison_mem;
+   bool noop_fs_bound;
    struct pipe_draw_indirect_info indirect_info;
    struct pipe_draw_info info;
 
@@ -359,6 +360,7 @@ update_inline_shader_state(struct rendering_state *state, enum pipe_shader_type 
       break;
    case MESA_SHADER_FRAGMENT:
       state->pctx->bind_fs_state(state->pctx, shader_state);
+      state->noop_fs_bound = false;
       break;
    case MESA_SHADER_COMPUTE:
       state->pctx->bind_compute_state(state->pctx, shader_state);
@@ -413,6 +415,10 @@ static void emit_compute_state(struct rendering_state *state)
 static void emit_state(struct rendering_state *state)
 {
    int sh;
+   if (!state->shaders[MESA_SHADER_FRAGMENT] && !state->noop_fs_bound) {
+      state->pctx->bind_fs_state(state->pctx, state->device->noop_fs);
+      state->noop_fs_bound = true;
+   }
    if (state->blend_dirty) {
       uint32_t mask = 0;
       /* zero out the colormask values for disabled attachments */
@@ -675,9 +681,10 @@ handle_graphics_stages(struct rendering_state *state, VkShaderStageFlagBits shad
          switch (vk_stage) {
          case VK_SHADER_STAGE_FRAGMENT_BIT:
             state->inlines_dirty[MESA_SHADER_FRAGMENT] = state->shaders[MESA_SHADER_FRAGMENT]->inlines.can_inline;
-            if (!state->shaders[MESA_SHADER_FRAGMENT]->inlines.can_inline)
+            if (!state->shaders[MESA_SHADER_FRAGMENT]->inlines.can_inline) {
                state->pctx->bind_fs_state(state->pctx, state->shaders[MESA_SHADER_FRAGMENT]->shader_cso);
-            has_stage[MESA_SHADER_FRAGMENT] = true;
+               state->noop_fs_bound = false;
+            }
             break;
          case VK_SHADER_STAGE_VERTEX_BIT:
             state->inlines_dirty[MESA_SHADER_VERTEX] = state->shaders[MESA_SHADER_VERTEX]->inlines.can_inline;
@@ -720,9 +727,6 @@ handle_graphics_stages(struct rendering_state *state, VkShaderStageFlagBits shad
       }
    }
 
-   /* there should always be a dummy fs. */
-   if (!has_stage[MESA_SHADER_FRAGMENT])
-      state->pctx->bind_fs_state(state->pctx, state->shaders[MESA_SHADER_FRAGMENT]->shader_cso);
    if (state->pctx->bind_gs_state && !has_stage[MESA_SHADER_GEOMETRY])
       state->pctx->bind_gs_state(state->pctx, NULL);
    if (state->pctx->bind_tcs_state && !has_stage[MESA_SHADER_TESS_CTRL])
@@ -751,8 +755,12 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    const struct vk_graphics_pipeline_state *ps = &pipeline->graphics_state;
    lvp_pipeline_shaders_compile(pipeline);
    bool dynamic_tess_origin = BITSET_TEST(ps->dynamic, MESA_VK_DYNAMIC_TS_DOMAIN_ORIGIN);
-   for (enum pipe_shader_type sh = MESA_SHADER_VERTEX; sh < MESA_SHADER_COMPUTE; sh++)
-      state->shaders[sh] = &pipeline->shaders[sh];
+   for (enum pipe_shader_type sh = MESA_SHADER_VERTEX; sh < MESA_SHADER_COMPUTE; sh++) {
+      if (pipeline->graphics_state.shader_stages & mesa_to_vk_shader_stage(sh))
+         state->shaders[sh] = &pipeline->shaders[sh];
+      else
+         state->shaders[sh] = NULL;
+   }
 
    handle_graphics_stages(state, pipeline->graphics_state.shader_stages, dynamic_tess_origin);
    for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++)

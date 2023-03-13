@@ -457,7 +457,6 @@ struct lvp_pipeline {
    bool disable_multisample;
    bool line_rectangular;
    bool library;
-   bool noop_fs;
    bool compiled;
    bool used;
 };
