@@ -277,7 +277,7 @@ vn_instance_init_renderer(struct vn_instance *instance)
 
 VkResult
 vn_instance_submit_roundtrip(struct vn_instance *instance,
-                             uint32_t *roundtrip_seqno)
+                             uint64_t *roundtrip_seqno)
 {
    uint32_t write_ring_extra_data[8];
    struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
@@ -285,7 +285,8 @@ vn_instance_submit_roundtrip(struct vn_instance *instance,
 
    /* submit a vkWriteRingExtraMESA through the renderer */
    mtx_lock(&instance->ring.roundtrip_mutex);
-   const uint32_t seqno = instance->ring.roundtrip_next++;
+   const uint64_t seqno = instance->ring.roundtrip_next++;
+   /* clamp to 32bit for legacy ring extra based roundtrip waiting */
    vn_encode_vkWriteRingExtraMESA(&local_enc, 0, instance->ring.id, 0, seqno);
    VkResult result =
       vn_renderer_submit_simple(instance->renderer, write_ring_extra_data,
@@ -305,7 +306,7 @@ roundtrip_seqno_ge(uint32_t a, uint32_t b)
 
 void
 vn_instance_wait_roundtrip(struct vn_instance *instance,
-                           uint32_t roundtrip_seqno)
+                           uint64_t roundtrip_seqno)
 {
    VN_TRACE_FUNC();
    const struct vn_ring *ring = &instance->ring.ring;
@@ -313,6 +314,7 @@ vn_instance_wait_roundtrip(struct vn_instance *instance,
    uint32_t iter = 0;
    do {
       const uint32_t cur = atomic_load_explicit(ptr, memory_order_acquire);
+      /* clamp to 32bit for legacy ring extra based roundtrip waiting */
       if (roundtrip_seqno_ge(cur, roundtrip_seqno))
          break;
       vn_relax(ring, &iter, "roundtrip");
