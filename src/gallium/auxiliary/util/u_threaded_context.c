@@ -121,7 +121,7 @@ static void
 tc_batch_renderpass_infos_resize(struct threaded_context *tc, struct tc_batch *batch)
 {
    unsigned size = batch->renderpass_infos.capacity;
-   unsigned cur_num = batch->renderpass_info_idx;
+   unsigned cur_num = MAX2(batch->renderpass_info_idx, 0);
 
    if (size / sizeof(struct tc_renderpass_info) > cur_num)
       return;
