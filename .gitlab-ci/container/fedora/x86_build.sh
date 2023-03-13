@@ -21,7 +21,6 @@ EPHEMERAL="
 
 dnf install -y --setopt=install_weak_deps=False \
     bison \
-    ccache \
     clang-devel \
     flex \
     gcc \

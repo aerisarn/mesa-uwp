@@ -20,7 +20,7 @@ variables:
    DEBIAN_X86_TEST_VK_TAG: "2023-02-20-uprev-deqp-v2"
 
    ALPINE_X86_BUILD_TAG: "2023-02-26-add-bash-coreutils"
-   FEDORA_X86_BUILD_TAG: "2023-02-09-f36"
+   FEDORA_X86_BUILD_TAG: "2023-03-13-no-ccache"
    KERNEL_ROOTFS_TAG: "2023-03-13-virglrenderer-crosvm"
 
    WINDOWS_X64_VS_PATH: "windows/x64_vs"
