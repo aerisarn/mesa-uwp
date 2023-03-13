@@ -831,7 +831,6 @@
   rules:
     - if: '$MICROSOFT_FARM == "offline"'
       when: never
-    - !reference [.no_scheduled_pipelines-rules, rules]
     - !reference [.core-rules, rules]
     - changes: &spirv2dxil_file_list
       - src/microsoft/ci/*
@@ -918,7 +917,6 @@
 # Rules for linters
 .lint-rustfmt-rules:
    rules:
-    - !reference [.no_scheduled_pipelines-rules, rules]
     - !reference [.core-rules, rules]
     - changes:
       - src/**/*.rs
