@@ -160,7 +160,7 @@ if [ -n "$HWCI_START_WESTON" ]; then
 
   env \
     VK_ICD_FILENAMES="/install/share/vulkan/icd.d/${VK_DRIVER}_icd.$(uname -m).json" \
-    weston -Bheadless-backend.so --use-gl -Swayland-0 --xwayland &
+    weston -Bheadless-backend.so --use-gl -Swayland-0 --xwayland --idle-time=0 &
   BACKGROUND_PIDS="$! $BACKGROUND_PIDS"
 
   while [ ! -S "$WESTON_X11_SOCK" ]; do sleep 1; done
