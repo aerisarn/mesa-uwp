@@ -70,11 +70,11 @@ v3dv-rpi4-vk:arm64:
   extends:
     - .broadcom-test:arm64
     - .v3dv-rules
-  parallel: 8
+  parallel: 10
   variables:
     HWCI_TEST_SCRIPT: "/install/deqp-runner.sh"
     DEQP_EXPECTED_RENDERER: "V3D.4.2"
-    DEQP_FRACTION: 10
+    DEQP_FRACTION: 8
     DEQP_VER: vk
     FLAKES_CHANNEL: "#videocore-ci"
     GPU_VERSION: broadcom-rpi4
