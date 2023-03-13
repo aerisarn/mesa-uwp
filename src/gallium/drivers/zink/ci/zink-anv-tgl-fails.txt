@@ -598,8 +598,6 @@ spec@arb_tessellation_shader@execution@variable-indexing@tes-both-input-array-ve
 spec@arb_tessellation_shader@execution@variable-indexing@tes-both-input-array-vec3-index-rd,Crash
 spec@arb_tessellation_shader@execution@variable-indexing@tes-both-input-array-vec4-index-rd,Crash
 
-spec@ext_texture_array@compressed texsubimage pbo,Crash
-
 # "arb_texture_buffer_object-formats: ../src/gallium/drivers/zink/zink_context.c:807: create_bvci: Assertion `bvci.format' failed."
 spec@arb_texture_buffer_object@formats (vs- arb),Crash
 
