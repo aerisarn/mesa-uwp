@@ -251,18 +251,10 @@ a618-traces-performance:
   extends:
     - a618-traces
     - .freedreno-rules-performance
+    - .piglit-performance:arm64
   variables:
-    PIGLIT_REPLAY_SUBCOMMAND: "profile"
-    PIGLIT_REPLAY_EXTRA_ARGS: "--db-path ${CI_PROJECT_DIR}/replayer-db/"
-    # More than this can hit OOM due to BOs leaked during the replay of the last frame
-    PIGLIT_REPLAY_LOOP_TIMES: 150
-    # We don't want for more than one workload to be submitted to the GPU at a time
-    FDO_CI_CONCURRENT: 1
-    # Piglit is very sparse in its status output and downloads of big traces can take a while
-    LAVA_DEVICE_HANGING_TIMEOUT_SEC: 600
-    GIT_STRATEGY: none
-    HWCI_FREQ_MAX: "true"
     # Always use the same device
+    # a618 tag starts with cbg-1 (not cbg-0) for some reason
     LAVA_TAGS: "cbg-1"
 
 .a630-test:
