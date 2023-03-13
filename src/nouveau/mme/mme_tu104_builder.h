@@ -87,3 +87,5 @@ void mme_tu104_end_while(struct mme_builder *b,
 
 uint32_t *mme_tu104_builder_finish(struct mme_tu104_builder *b,
                                    size_t *size_out);
+
+void mme_tu104_builder_dump(struct mme_builder *b, FILE *fp);

@@ -33,6 +33,8 @@ void mme_fermi_builder_init(struct mme_builder *b);
 
 uint32_t * mme_fermi_builder_finish(struct mme_fermi_builder *b, size_t *size_out);
 
+void mme_fermi_builder_dump(struct mme_builder *b, FILE *fp);
+
 void mme_fermi_add_inst(struct mme_builder *b,
                         const struct mme_fermi_inst *inst);
 

@@ -98,6 +98,17 @@ mme_builder_finish(struct mme_builder *b, size_t *size_out)
       unreachable("Unsupported GPU class");
 }
 
+static inline void
+mme_builder_dump(struct mme_builder *b, FILE *fp)
+{
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING)
+      mme_tu104_builder_dump(b, fp);
+   else if (b->devinfo->cls_eng3d >= MME_CLS_FERMI)
+      mme_fermi_builder_dump(b, fp);
+   else
+      unreachable("Unsupported GPU class");
+}
+
 static inline struct mme_value
 mme_alloc_reg(struct mme_builder *b)
 {

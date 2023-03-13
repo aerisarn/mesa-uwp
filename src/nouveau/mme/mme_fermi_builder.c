@@ -772,3 +772,11 @@ mme_fermi_builder_finish(struct mme_fermi_builder *b, size_t *size_out)
    }
    return enc;
 }
+
+void
+mme_fermi_builder_dump(struct mme_builder *b, FILE *fp)
+{
+   struct mme_fermi_builder *fb = &b->fermi;
+
+   mme_fermi_print(fp, fb->insts, fb->inst_count);
+}

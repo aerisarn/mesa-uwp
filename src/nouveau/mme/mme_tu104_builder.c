@@ -712,3 +712,11 @@ mme_tu104_builder_finish(struct mme_tu104_builder *tb, size_t *size_out)
    }
    return enc;
 }
+
+void
+mme_tu104_builder_dump(struct mme_builder *b, FILE *fp)
+{
+   struct mme_tu104_builder *tb = &b->tu104;
+
+   mme_tu104_print(stderr, tb->insts, tb->inst_count);
+}
