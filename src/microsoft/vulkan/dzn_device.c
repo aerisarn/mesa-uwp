@@ -144,6 +144,7 @@ static const struct debug_control dzn_debug_options[] = {
    { "d3d12", DZN_DEBUG_D3D12 },
    { "debugger", DZN_DEBUG_DEBUGGER },
    { "redirects", DZN_DEBUG_REDIRECTS },
+   { "bindless", DZN_DEBUG_BINDLESS },
    { NULL, 0 }
 };
 
@@ -2362,6 +2363,8 @@ dzn_device_create(struct dzn_physical_device *pdev,
       device->swapchain_queue = &queues[qindex++];
       device->need_swapchain_blits = true;
    }
+
+   device->bindless = (instance->debug_flags & DZN_DEBUG_BINDLESS) != 0;
 
    if (device->bindless) {
       dzn_foreach_pool_type(type) {
