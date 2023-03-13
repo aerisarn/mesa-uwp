@@ -364,7 +364,7 @@ tu_autotune_on_submit(struct tu_device *dev,
          continue;
 
       if (TU_AUTOTUNE_DEBUG_LOG)
-         mesa_logi("Removed old history entry %016"PRIx64"", history->key);
+         mesa_logi("Removed old history entry %016" PRIx64 "", history->key);
 
       u_rwlock_wrlock(&at->ht_lock);
       _mesa_hash_table_remove_key(at->ht, &history->key);
@@ -423,7 +423,7 @@ tu_autotune_fini(struct tu_autotune *at, struct tu_device *dev)
          struct tu_renderpass_history *history =
             (struct tu_renderpass_history *) entry->data;
 
-         mesa_logi("%016"PRIx64" \tavg_passed=%u results=%u",
+         mesa_logi("%016" PRIx64 " \tavg_passed=%u results=%u",
                    history->key, history->avg_samples, history->num_results);
       }
    }

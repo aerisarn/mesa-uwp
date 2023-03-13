@@ -2273,7 +2273,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    }
 
    device->mem_cache = vk_pipeline_cache_create(&device->vk, &pcc_info,
-                                                false);
+                                                NULL);
    if (!device->mem_cache) {
       result = VK_ERROR_OUT_OF_HOST_MEMORY;
       vk_startup_errorf(device->instance, result, "create pipeline cache failed");

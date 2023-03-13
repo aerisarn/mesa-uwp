@@ -2900,7 +2900,7 @@ tu_shaders_init(struct tu_device *dev, const void *key_data, size_t key_size)
 {
    VK_MULTIALLOC(ma);
    VK_MULTIALLOC_DECL(&ma, struct tu_compiled_shaders, shaders, 1);
-   VK_MULTIALLOC_DECL_SIZE(&ma, void, obj_key_data, key_size);
+   VK_MULTIALLOC_DECL_SIZE(&ma, char, obj_key_data, key_size);
 
    if (!vk_multialloc_zalloc(&ma, &dev->vk.alloc,
                              VK_SYSTEM_ALLOCATION_SCOPE_DEVICE))
@@ -3026,7 +3026,7 @@ tu_nir_shaders_init(struct tu_device *dev, const void *key_data, size_t key_size
 {
    VK_MULTIALLOC(ma);
    VK_MULTIALLOC_DECL(&ma, struct tu_nir_shaders, shaders, 1);
-   VK_MULTIALLOC_DECL_SIZE(&ma, void, obj_key_data, key_size);
+   VK_MULTIALLOC_DECL_SIZE(&ma, char, obj_key_data, key_size);
 
    if (!vk_multialloc_zalloc(&ma, &dev->vk.alloc,
                              VK_SYSTEM_ALLOCATION_SCOPE_DEVICE))
@@ -4521,7 +4521,7 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
    pipeline->output.feedback_loop_may_involve_textures =
       builder->feedback_loop_may_involve_textures;
 
-   static const VkPipelineColorBlendStateCreateInfo dummy_blend_info;
+   static const VkPipelineColorBlendStateCreateInfo dummy_blend_info = {};
    const VkPipelineMultisampleStateCreateInfo *msaa_info =
       builder->create_info->pMultisampleState;
    pipeline->output.samples = msaa_info->rasterizationSamples;

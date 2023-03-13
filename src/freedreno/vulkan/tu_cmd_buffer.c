@@ -1864,9 +1864,9 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
                (VkCommandBufferInheritanceConditionalRenderingInfoEXT *) ext;
             cmd_buffer->state.predication_active = cond_rend->conditionalRenderingEnable;
             break;
+         }
          default:
             break;
-         }
          }
       }
 
@@ -2371,7 +2371,7 @@ tu_push_descriptor_set_update_layout(struct tu_device *device,
    if (set->host_size < layout->size) {
       void *new_buf =
          vk_realloc(&device->vk.alloc, set->mapped_ptr, layout->size, 8,
-                    VK_QUERY_SCOPE_COMMAND_BUFFER_KHR);
+                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       if (!new_buf)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
       set->mapped_ptr = (uint32_t *) new_buf;
