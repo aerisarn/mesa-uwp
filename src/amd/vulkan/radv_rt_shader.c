@@ -960,14 +960,24 @@ lower_any_hit_for_intersection(nir_shader *any_hit)
                nir_instr_remove(&intrin->instr);
                break;
 
+            /* We place all any_hit scratch variables after intersection scratch variables.
+             * For that reason, we increment the scratch offset by the intersection scratch
+             * size. For call_data, we have to subtract the offset again.
+             */
             case nir_intrinsic_load_scratch:
+               b->cursor = nir_before_instr(instr);
                nir_instr_rewrite_src_ssa(instr, &intrin->src[0],
                                          nir_iadd_nuw(b, scratch_offset, intrin->src[0].ssa));
                break;
-
             case nir_intrinsic_store_scratch:
+               b->cursor = nir_before_instr(instr);
                nir_instr_rewrite_src_ssa(instr, &intrin->src[1],
                                          nir_iadd_nuw(b, scratch_offset, intrin->src[1].ssa));
+               break;
+            case nir_intrinsic_load_rt_arg_scratch_offset_amd:
+               b->cursor = nir_after_instr(instr);
+               nir_ssa_def *arg_offset = nir_isub(b, &intrin->dest.ssa, scratch_offset);
+               nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa, arg_offset, arg_offset->parent_instr);
                break;
 
             default:
