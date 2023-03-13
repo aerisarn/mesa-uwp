@@ -4668,25 +4668,31 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
       ASSERTED unsigned cdw_max =
          radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, MESA_VULKAN_SHADER_STAGES * 4);
 
-      prev_shader = NULL;
-      radv_foreach_stage(stage, internal_stages & ~VK_SHADER_STAGE_TASK_BIT_EXT)
-      {
-         shader = radv_get_shader(pipeline, stage);
-
-         /* Avoid redundantly emitting the address for merged stages. */
-         if (shader && shader != prev_shader) {
-            radv_emit_userdata_address(device, cs, shader, pipeline->user_data_0[stage],
-                                       AC_UD_PUSH_CONSTANTS, va);
-
-            prev_shader = shader;
-         }
-      }
-
-      if (internal_stages & VK_SHADER_STAGE_TASK_BIT_EXT) {
-         radv_emit_userdata_address(device, cmd_buffer->ace_internal.cs,
-                                    pipeline->shaders[MESA_SHADER_TASK],
-                                    pipeline->user_data_0[MESA_SHADER_TASK],
+      if (internal_stages & VK_SHADER_STAGE_COMPUTE_BIT) {
+         radv_emit_userdata_address(device, cs, pipeline->shaders[MESA_SHADER_COMPUTE],
+                                    pipeline->user_data_0[MESA_SHADER_COMPUTE],
                                     AC_UD_PUSH_CONSTANTS, va);
+      } else {
+         prev_shader = NULL;
+         radv_foreach_stage(stage, internal_stages & ~VK_SHADER_STAGE_TASK_BIT_EXT)
+         {
+            shader = radv_get_shader(pipeline, stage);
+
+            /* Avoid redundantly emitting the address for merged stages. */
+            if (shader && shader != prev_shader) {
+               radv_emit_userdata_address(device, cs, shader, pipeline->user_data_0[stage],
+                                          AC_UD_PUSH_CONSTANTS, va);
+
+               prev_shader = shader;
+            }
+         }
+
+         if (internal_stages & VK_SHADER_STAGE_TASK_BIT_EXT) {
+            radv_emit_userdata_address(device, cmd_buffer->ace_internal.cs,
+                                       pipeline->shaders[MESA_SHADER_TASK],
+                                       pipeline->user_data_0[MESA_SHADER_TASK],
+                                       AC_UD_PUSH_CONSTANTS, va);
+         }
       }
 
       assert(cmd_buffer->cs->cdw <= cdw_max);
