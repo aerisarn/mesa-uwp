@@ -702,6 +702,7 @@ struct dzn_descriptor_pool {
 };
 
 #define MAX_SHADER_VISIBILITIES (D3D12_SHADER_VISIBILITY_PIXEL + 1)
+#define STATIC_SAMPLER_TAG (~0u - 1)
 
 struct dzn_descriptor_set_layout_binding {
    VkDescriptorType type;
@@ -711,7 +712,7 @@ struct dzn_descriptor_set_layout_binding {
    uint32_t range_idx[NUM_POOL_TYPES];
    union {
       /* For sampler types, index into the set layout's immutable sampler list,
-       * or ~0 for static samplers or dynamic samplers. */
+       * or STATIC_SAMPLER_TAG for static samplers, or ~0 for dynamic samplers. */
       uint32_t immutable_sampler_idx;
       /* For dynamic buffer types, index into the set's dynamic buffer list.
        * For non-dynamic buffer types, index into the set's buffer descriptor slot list when bindless. */
@@ -795,6 +796,12 @@ struct dzn_pipeline_layout_set {
    uint32_t range_desc_count[NUM_POOL_TYPES];
 };
 
+enum dzn_pipeline_binding_class {
+   DZN_PIPELINE_BINDING_NORMAL,
+   DZN_PIPELINE_BINDING_DYNAMIC_BUFFER,
+   DZN_PIPELINE_BINDING_STATIC_SAMPLER,
+};
+
 struct dzn_pipeline_layout {
    struct vk_pipeline_layout vk;
    struct dzn_pipeline_layout_set sets[MAX_SETS];
@@ -804,6 +811,7 @@ struct dzn_pipeline_layout {
        * in an array, to unique 0-based registers. This mapping is applied to the shaders
        * during pipeline creation. */
       uint32_t *base_reg;
+      uint8_t *binding_class;
    } binding_translation[MAX_SETS];
    uint32_t set_count;
    /* How much space needs to be allocated to copy descriptors during cmdbuf recording? */

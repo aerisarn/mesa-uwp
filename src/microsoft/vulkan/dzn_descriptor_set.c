@@ -302,9 +302,14 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
          translate_desc_stages(ordered_bindings[i].stageFlags);
       set_layout->stages |= binfos[binding].stages;
       binfos[binding].visibility = visibility;
-      binfos[binding].base_shader_register = base_register;
-      assert(base_register + desc_count >= base_register);
-      base_register += desc_count;
+      if (is_dynamic && device->bindless) {
+         /* Assign these into a separate 0->N space */
+         binfos[binding].base_shader_register = dynamic_buffer_idx;
+      } else {
+         binfos[binding].base_shader_register = base_register;
+         assert(base_register + desc_count >= base_register);
+         base_register += desc_count;
+      }
 
       if (has_static_sampler) {
          VK_FROM_HANDLE(dzn_sampler, sampler, ordered_bindings[i].pImmutableSamplers[0]);
@@ -340,7 +345,9 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
          }
       }
 
-      if (has_immutable_samplers && !has_static_sampler) {
+      if (has_static_sampler) {
+         binfos[binding].immutable_sampler_idx = STATIC_SAMPLER_TAG;
+      } else if (has_immutable_samplers) {
          binfos[binding].immutable_sampler_idx = immutable_sampler_idx;
          for (uint32_t s = 0; s < desc_count; s++) {
             VK_FROM_HANDLE(dzn_sampler, sampler, ordered_bindings[i].pImmutableSamplers[s]);
@@ -598,6 +605,7 @@ dzn_pipeline_layout_create(struct dzn_device *device,
    VK_MULTIALLOC(ma);
    VK_MULTIALLOC_DECL(&ma, struct dzn_pipeline_layout, layout, 1);
    VK_MULTIALLOC_DECL(&ma, uint32_t, binding_translation, binding_count);
+   VK_MULTIALLOC_DECL(&ma, uint8_t, binding_class, binding_count);
 
    if (!vk_pipeline_layout_multizalloc(&device->vk, &ma, pCreateInfo))
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -611,10 +619,13 @@ dzn_pipeline_layout_create(struct dzn_device *device,
          continue;
 
       layout->binding_translation[s].base_reg = binding_translation;
+      layout->binding_translation[s].binding_class = binding_class;
       binding_translation += set_layout->binding_count;
+      binding_class += set_layout->binding_count;
    }
 
    uint32_t range_count = 0, static_sampler_count = 0;
+   uint32_t dynamic_buffer_base = 0;
 
    layout->root.param_count = 0;
    dzn_foreach_pool_type (type)
@@ -629,8 +640,19 @@ dzn_pipeline_layout_create(struct dzn_device *device,
       memcpy(layout->sets[j].range_desc_count, set_layout->range_desc_count,
              sizeof(layout->sets[j].range_desc_count));
       layout->binding_translation[j].binding_count = set_layout->binding_count;
-      for (uint32_t b = 0; b < set_layout->binding_count; b++)
+
+      for (uint32_t b = 0; b < set_layout->binding_count; b++) {
          binding_trans[b] = set_layout->bindings[b].base_shader_register;
+         if (is_dynamic_desc_type(set_layout->bindings[b].type)) {
+            layout->binding_translation[j].binding_class[b] = DZN_PIPELINE_BINDING_DYNAMIC_BUFFER;
+            if (device->bindless)
+               binding_trans[b] += dynamic_buffer_base;
+         } else if (dzn_desc_type_has_sampler(set_layout->bindings[b].type) &&
+                  set_layout->bindings[b].immutable_sampler_idx == STATIC_SAMPLER_TAG)
+            layout->binding_translation[j].binding_class[b] = DZN_PIPELINE_BINDING_STATIC_SAMPLER;
+         else
+            layout->binding_translation[j].binding_class[b] = DZN_PIPELINE_BINDING_NORMAL;
+      }
 
       static_sampler_count += set_layout->static_sampler_count;
       dzn_foreach_pool_type (type) {
@@ -643,6 +665,7 @@ dzn_pipeline_layout_create(struct dzn_device *device,
       if (!device->bindless)
          layout->desc_count[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] += set_layout->dynamic_buffers.count;
 
+      dynamic_buffer_base += set_layout->dynamic_buffers.count;
       for (uint32_t o = 0, elem = 0; o < set_layout->dynamic_buffers.count; o++, elem++) {
          if (device->bindless) {
             layout->sets[j].dynamic_buffer_heap_offsets[o].primary = layout->dynamic_buffer_count++;
@@ -1564,7 +1587,9 @@ dzn_descriptor_set_init(struct dzn_descriptor_set *set,
          bool has_samplers =
             dzn_desc_type_has_sampler(layout->bindings[b].type);
 
-         if (!has_samplers || layout->bindings[b].immutable_sampler_idx == ~0)
+         if (!has_samplers ||
+             layout->bindings[b].immutable_sampler_idx == ~0 ||
+             layout->bindings[b].immutable_sampler_idx == STATIC_SAMPLER_TAG)
             continue;
 
          struct dzn_descriptor_set_ptr ptr;
