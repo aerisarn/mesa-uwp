@@ -946,7 +946,7 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
     *
     * So when robust image access is enabled, just avoid the workaround.
     */
-   if (devinfo->ver >= 12 && !opts->robust_image_access)
+   if (intel_needs_workaround(devinfo, 1806565034) && !opts->robust_image_access)
       OPT(brw_nir_clamp_image_1d_2d_array_sizes);
 
    const nir_lower_tex_options tex_options = {
