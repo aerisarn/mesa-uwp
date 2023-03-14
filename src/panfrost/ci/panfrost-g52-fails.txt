@@ -495,8 +495,6 @@ spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA32I/Destinat
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA32UI/Destination: GL_RGBA32UI,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA8/Destination: GL_RGBA8,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA8_SNORM/Destination: GL_RGBA8_SNORM,Fail
-spec@nv_primitive_restart@primitive-restart-draw-mode-polygon,Crash
-spec@nv_primitive_restart@primitive-restart-draw-mode-quad_strip,Crash
 spec@oes_texture_view@rendering-formats,Crash
 spec@oes_texture_view@sampling-2d-array-as-cubemap,Crash
 spec@!opengl 1.0@gl-1.0-edgeflag-const,Fail
