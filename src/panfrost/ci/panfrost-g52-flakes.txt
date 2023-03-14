@@ -18,3 +18,4 @@ spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_ext
 spec@egl_nok_texture_from_pixmap@basic
 spec@!opengl 1.1@depthstencil-default_fb-blit
 spec@glsl-1.30@execution@texturesize@vs-texturesize-isamplercube
+namespace pollution@renderbuffer with glgetteximage-compressed
