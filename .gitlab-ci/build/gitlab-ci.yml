@@ -284,6 +284,9 @@ fedora-release:
     C_LINK_ARGS: >
       -Wno-error=stringop-overflow
       -Wno-error=stringop-overread
+    CPP_ARGS: >
+      -Wno-error=dangling-reference
+      -Wno-error=overloaded-virtual
     CPP_LINK_ARGS: >
       -Wno-error=stringop-overflow
       -Wno-error=stringop-overread
