@@ -230,7 +230,7 @@ Core Mesa environment variables
 
 .. envvar:: MESA_DISK_CACHE_READ_ONLY_FOZ_DBS
 
-   if set with envvar:`MESA_DISK_CACHE_SINGLE_FILE` enabled, references
+   if set with :envvar:`MESA_DISK_CACHE_SINGLE_FILE` enabled, references
    a string of comma separated file paths to read only Fossilize DB
    shader caches for loading at initialization. The file paths are
    relative to the cache directory and do not include suffixes,
