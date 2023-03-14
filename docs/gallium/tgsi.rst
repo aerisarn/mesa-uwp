@@ -85,10 +85,19 @@ used.
 
    .. math::
 
-      dst.x &= 1 \\
-      dst.y &= max(src.x, 0) \\
-      dst.z &= (src.x > 0) ? max(src.y, 0)^{clamp(src.w, -128, 128))} : 0 \\
-      dst.w &= 1
+      dst.x = 1
+
+      dst.y = max(src.x, 0)
+
+      dst.z =
+      \left\{
+      \begin{array}{ c l }
+         max(src.y, 0)^{clamp(src.w, -128, 128)} & \quad \textrm{if } src.x \gt 0 \\
+         0                                       & \quad \textrm{otherwise}
+      \end{array}
+      \right.
+
+      dst.w = 1
 
 
 .. opcode:: RCP - Reciprocal
@@ -2907,8 +2916,13 @@ These atomic operations may only be used with 32-bit integer image formats.
 
       dst_x = resource[offset]
 
-      resource[offset] = (dst_x > 0 && dst_x < src_x) ? dst_x - 1 : 0
-
+      resource[offset] =
+      \left\{
+      \begin{array}{ c l }
+         dst_x - 1 & \quad \textrm{if } dst_x \gt 0 \textrm{ and } dst_x \lt src_x \\
+         0         & \quad \textrm{otherwise}
+      \end{array}
+      \right.
 
 .. _interlaneopcodes:
 
