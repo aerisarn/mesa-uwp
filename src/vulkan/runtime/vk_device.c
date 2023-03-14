@@ -444,43 +444,6 @@ vk_common_GetDeviceGroupPeerMemoryFeatures(
 }
 
 VKAPI_ATTR void VKAPI_CALL
-vk_common_GetBufferMemoryRequirements(VkDevice _device,
-                                      VkBuffer buffer,
-                                      VkMemoryRequirements *pMemoryRequirements)
-{
-   VK_FROM_HANDLE(vk_device, device, _device);
-
-   VkBufferMemoryRequirementsInfo2 info = {
-      .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
-      .buffer = buffer,
-   };
-   VkMemoryRequirements2 reqs = {
-      .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
-   };
-   device->dispatch_table.GetBufferMemoryRequirements2(_device, &info, &reqs);
-
-   *pMemoryRequirements = reqs.memoryRequirements;
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
-vk_common_BindBufferMemory(VkDevice _device,
-                           VkBuffer buffer,
-                           VkDeviceMemory memory,
-                           VkDeviceSize memoryOffset)
-{
-   VK_FROM_HANDLE(vk_device, device, _device);
-
-   VkBindBufferMemoryInfo bind = {
-      .sType         = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
-      .buffer        = buffer,
-      .memory        = memory,
-      .memoryOffset  = memoryOffset,
-   };
-
-   return device->dispatch_table.BindBufferMemory2(_device, 1, &bind);
-}
-
-VKAPI_ATTR void VKAPI_CALL
 vk_common_GetImageMemoryRequirements(VkDevice _device,
                                      VkImage image,
                                      VkMemoryRequirements *pMemoryRequirements)
