@@ -3415,10 +3415,6 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
       if (found_in_application_cache)
          pipeline_feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
 
-      /* TODO: Add PS epilogs to the cache. */
-      if (!radv_pipeline_create_ps_epilog(pipeline, pipeline_key, lib_flags, noop_fs, NULL))
-         return VK_ERROR_OUT_OF_DEVICE_MEMORY;
-
       result = VK_SUCCESS;
       goto done;
    }
@@ -3540,7 +3536,8 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
          pipeline->base.shaders[MESA_SHADER_COMPUTE] = pipeline->base.gs_copy_shader;
       }
 
-      radv_pipeline_cache_insert_shaders(device, cache, hash, &pipeline->base, binaries, NULL, 0);
+      radv_pipeline_cache_insert_shaders(device, cache, hash, &pipeline->base, binaries,
+                                         ps_epilog_binary, NULL, 0);
 
       if (pipeline->base.gs_copy_shader) {
          pipeline->base.gs_copy_shader = pipeline->base.shaders[MESA_SHADER_COMPUTE];
@@ -5408,7 +5405,7 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline,
    }
 
    if (!keep_executable_info) {
-      radv_pipeline_cache_insert_shaders(device, cache, hash, &pipeline->base, binaries, NULL, 0);
+      radv_pipeline_cache_insert_shaders(device, cache, hash, &pipeline->base, binaries, NULL, NULL, 0);
    }
 
    free(binaries[MESA_SHADER_COMPUTE]);

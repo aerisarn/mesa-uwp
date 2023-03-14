@@ -305,7 +305,7 @@ radv_rt_pipeline_compile(struct radv_pipeline *pipeline,
    }
 
    if (!keep_executable_info) {
-      radv_pipeline_cache_insert_shaders(device, cache, hash, pipeline, binaries, rt_groups,
+      radv_pipeline_cache_insert_shaders(device, cache, hash, pipeline, binaries, NULL, rt_groups,
                                          num_rt_groups);
    }
 
