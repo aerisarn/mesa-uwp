@@ -215,7 +215,10 @@ struct d3d12_context {
    struct d3d12_sampler_state *samplers[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
    unsigned num_samplers[PIPE_SHADER_TYPES];
    D3D12_INDEX_BUFFER_VIEW ibv;
+
    dxil_wrap_sampler_state tex_wrap_states[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   dxil_wrap_sampler_state tex_wrap_states_shader_key[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+
    dxil_texture_swizzle_state tex_swizzle_state[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_SAMPLER_VIEWS];
    enum compare_func tex_compare_func[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_SAMPLER_VIEWS];
 

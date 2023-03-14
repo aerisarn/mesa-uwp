@@ -97,6 +97,13 @@ compile_nir(struct d3d12_context *ctx, struct d3d12_shader_selector *sel,
    struct d3d12_shader *shader = rzalloc(sel, d3d12_shader);
    shader->key = *key;
 
+   if (shader->key.n_texture_states > 0) {
+      shader->key.tex_wrap_states = (dxil_wrap_sampler_state*)ralloc_size(sel, sizeof(dxil_wrap_sampler_state) * shader->key.n_texture_states);
+      memcpy(shader->key.tex_wrap_states, key->tex_wrap_states, sizeof(dxil_wrap_sampler_state) * shader->key.n_texture_states);
+   }
+   else
+      shader->key.tex_wrap_states = nullptr;
+
    shader->output_vars_fs = nullptr;
    shader->output_vars_gs = nullptr;
    shader->output_vars_default = nullptr;
@@ -837,7 +844,8 @@ d3d12_compare_shader_keys(struct d3d12_selection_context* sel_ctx, const d3d12_s
    if (expect->n_images != have->n_images)
       return false;
 
-   if (memcmp(expect->tex_wrap_states, have->tex_wrap_states,
+   if (expect->n_texture_states > 0 && 
+       memcmp(expect->tex_wrap_states, have->tex_wrap_states,
               expect->n_texture_states * sizeof(dxil_wrap_sampler_state)))
       return false;
 
@@ -949,6 +957,7 @@ d3d12_fill_shader_key(struct d3d12_selection_context *sel_ctx,
    }
 
    key->n_texture_states = 0;
+   key->tex_wrap_states = sel_ctx->ctx->tex_wrap_states_shader_key;
    key->n_images = 0;
 
    if (prev) {
@@ -1122,6 +1131,8 @@ d3d12_fill_shader_key(struct d3d12_selection_context *sel_ctx,
             memcpy(&key->tex_wrap_states[i], &wrap_state, sizeof(wrap_state));
             key->swizzle_state[i] = sel_ctx->ctx->tex_swizzle_state[stage][i];
          }
+         else
+            memset(&key->tex_wrap_states[i], 0, sizeof(key->tex_wrap_states[i]));
       }
    }
 
@@ -1144,6 +1155,8 @@ d3d12_fill_shader_key(struct d3d12_selection_context *sel_ctx,
              key->n_texture_states * sizeof(enum compare_func));
       memcpy(key->swizzle_state, sel_ctx->ctx->tex_swizzle_state[stage],
              key->n_texture_states * sizeof(dxil_texture_swizzle_state));
+      if (!sel->samples_int_textures) 
+         memset(key->tex_wrap_states, 0, sizeof(key->tex_wrap_states[0]) * key->n_texture_states);
    }
 
    if (stage == PIPE_SHADER_VERTEX && sel_ctx->ctx->gfx_pipeline_state.ves) {

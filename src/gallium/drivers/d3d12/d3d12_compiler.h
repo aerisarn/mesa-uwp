@@ -177,7 +177,7 @@ struct d3d12_shader_key {
    };
 
    int n_texture_states;
-   dxil_wrap_sampler_state tex_wrap_states[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   dxil_wrap_sampler_state *tex_wrap_states;
    dxil_texture_swizzle_state swizzle_state[PIPE_MAX_SHADER_SAMPLER_VIEWS];
    enum compare_func sampler_compare_funcs[PIPE_MAX_SHADER_SAMPLER_VIEWS];
 
