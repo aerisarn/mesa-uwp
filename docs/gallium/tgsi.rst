@@ -971,18 +971,25 @@ XXX doesn't look like most of the opcodes really belong here.
    PIPE_CAP_TGSI_TG4_COMPONENT_IN_SWIZZLE changes the encoding so that component
    is stored in the sampler source swizzle x.
 
+   (without TGSI_TG4_COMPONENT_IN_SWIZZLE)
+
    .. math::
 
       coord = src0
 
-      (without TGSI_TG4_COMPONENT_IN_SWIZZLE)
       component = src1
 
       dst = texture\_gather4 (unit, coord, component)
 
-      (with TGSI_TG4_COMPONENT_IN_SWIZZLE)
+   (with TGSI_TG4_COMPONENT_IN_SWIZZLE)
+
+   .. math::
+
+      coord = src0
+
       dst = texture\_gather4 (unit, coord)
-      component is encoded in sampler swizzle.
+
+      \text{component is encoded in sampler swizzle.}
 
    (with SM5 - cube array shadow)
 
