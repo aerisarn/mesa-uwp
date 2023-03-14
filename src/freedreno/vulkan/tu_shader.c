@@ -911,29 +911,30 @@ tu_shader_create(struct tu_device *dev,
 {
    struct tu_shader *shader;
 
-   shader = vk_zalloc2(
+   shader = (struct tu_shader *) vk_zalloc2(
       &dev->vk.alloc, alloc,
       sizeof(*shader),
       8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!shader)
       return NULL;
 
-   NIR_PASS_V(nir, nir_opt_access, &(nir_opt_access_options) {
-               .is_vulkan = true,
-             });
+   const nir_opt_access_options access_options = {
+      .is_vulkan = true,
+   };
+   NIR_PASS_V(nir, nir_opt_access, &access_options);
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      NIR_PASS_V(nir, nir_lower_input_attachments,
-                 &(nir_input_attachment_options) {
-                     .use_fragcoord_sysval = true,
-                     .use_layer_id_sysval = false,
-                     /* When using multiview rendering, we must use
-                      * gl_ViewIndex as the layer id to pass to the texture
-                      * sampling function. gl_Layer doesn't work when
-                      * multiview is enabled.
-                      */
-                     .use_view_id_for_layer = key->multiview_mask != 0,
-                 });
+      const nir_input_attachment_options att_options = {
+         .use_fragcoord_sysval = true,
+         .use_layer_id_sysval = false,
+         /* When using multiview rendering, we must use
+          * gl_ViewIndex as the layer id to pass to the texture
+          * sampling function. gl_Layer doesn't work when
+          * multiview is enabled.
+          */
+         .use_view_id_for_layer = key->multiview_mask != 0,
+      };
+      NIR_PASS_V(nir, nir_lower_input_attachments, &att_options);
    }
 
    /* This needs to happen before multiview lowering which rewrites store
@@ -1014,13 +1015,14 @@ tu_shader_create(struct tu_device *dev,
    if (shared_consts_enable)
       assert(!shader->const_state.push_consts.dwords);
 
+   const struct ir3_shader_options options = {
+      .reserved_user_consts = shader->reserved_user_consts_vec4,
+      .api_wavesize = key->api_wavesize,
+      .real_wavesize = key->real_wavesize,
+      .shared_consts_enable = shared_consts_enable,
+   };
    shader->ir3_shader =
-      ir3_shader_from_nir(dev->compiler, nir, &(struct ir3_shader_options) {
-                           .reserved_user_consts = shader->reserved_user_consts_vec4,
-                           .api_wavesize = key->api_wavesize,
-                           .real_wavesize = key->real_wavesize,
-                           .shared_consts_enable = shared_consts_enable,
-                          }, &so_info);
+      ir3_shader_from_nir(dev->compiler, nir, &options, &so_info);
 
    return shader;
 }

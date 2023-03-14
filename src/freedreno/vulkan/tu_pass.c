@@ -281,7 +281,7 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
       }
 
       if (src_implicit_dep) {
-         tu_render_pass_add_subpass_dep(pass, &(VkSubpassDependency2) {
+         const VkSubpassDependency2 dep = {
             .srcSubpass = VK_SUBPASS_EXTERNAL,
             .dstSubpass = i,
             .srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -293,7 +293,9 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
                              VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
                              VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
             .dependencyFlags = 0,
-         });
+         };
+
+         tu_render_pass_add_subpass_dep(pass, &dep);
       }
    }
 
@@ -373,7 +375,7 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
       }
 
       if (dst_implicit_dep) {
-         tu_render_pass_add_subpass_dep(pass, &(VkSubpassDependency2) {
+         VkSubpassDependency2 dep = {
             .srcSubpass = i,
             .dstSubpass = VK_SUBPASS_EXTERNAL,
             .srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
@@ -385,7 +387,8 @@ tu_render_pass_add_implicit_deps(struct tu_render_pass *pass,
                              VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
             .dstAccessMask = 0,
             .dependencyFlags = 0,
-         });
+         };
+         tu_render_pass_add_subpass_dep(pass, &dep);
       }
    }
 

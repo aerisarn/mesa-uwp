@@ -93,13 +93,15 @@ tu_init_dynamic_rendering(struct tu_device *dev)
    util_dynarray_init(&dev->dynamic_rendering_pending, NULL);
    dev->dynamic_rendering_fence = 0;
 
-   return vk_common_CreateCommandPool(tu_device_to_handle(dev),
-                                      &(VkCommandPoolCreateInfo) {
-                                       .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-                                        .pNext = NULL,
-                                        .flags = 0,
-                                        .queueFamilyIndex = 0,
-                                      }, &dev->vk.alloc,
+   const VkCommandPoolCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+      .pNext = NULL,
+      .flags = 0,
+      .queueFamilyIndex = 0,
+   };
+
+   return vk_common_CreateCommandPool(tu_device_to_handle(dev), &create_info,
+                                      &dev->vk.alloc,
                                       &dev->dynamic_rendering_pool);
 }
 

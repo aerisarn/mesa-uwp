@@ -22,6 +22,8 @@
 #include "tu_image.h"
 #include "tu_tracepoints.h"
 
+static const VkOffset2D blt_no_coord = { ~0, ~0 };
+
 static uint32_t
 tu_pack_float32_for_unorm(float val, int bits)
 {
@@ -123,22 +125,22 @@ blit_base_format(enum pipe_format format, bool ubwc)
 
 static void
 r2d_coords(struct tu_cs *cs,
-           const VkOffset2D *dst,
-           const VkOffset2D *src,
-           const VkExtent2D *extent)
+           const VkOffset2D dst,
+           const VkOffset2D src,
+           const VkExtent2D extent)
 {
    tu_cs_emit_regs(cs,
-      A6XX_GRAS_2D_DST_TL(.x = dst->x,                     .y = dst->y),
-      A6XX_GRAS_2D_DST_BR(.x = dst->x + extent->width - 1, .y = dst->y + extent->height - 1));
+      A6XX_GRAS_2D_DST_TL(.x = dst.x,                    .y = dst.y),
+      A6XX_GRAS_2D_DST_BR(.x = dst.x + extent.width - 1, .y = dst.y + extent.height - 1));
 
-   if (!src)
+   if (src.x == blt_no_coord.x)
       return;
 
    tu_cs_emit_regs(cs,
-                   A6XX_GRAS_2D_SRC_TL_X(src->x),
-                   A6XX_GRAS_2D_SRC_BR_X(src->x + extent->width - 1),
-                   A6XX_GRAS_2D_SRC_TL_Y(src->y),
-                   A6XX_GRAS_2D_SRC_BR_Y(src->y + extent->height - 1));
+                   A6XX_GRAS_2D_SRC_TL_X(src.x),
+                   A6XX_GRAS_2D_SRC_BR_X(src.x + extent.width - 1),
+                   A6XX_GRAS_2D_SRC_TL_Y(src.y),
+                   A6XX_GRAS_2D_SRC_BR_Y(src.y + extent.height - 1));
 }
 
 static void
@@ -913,22 +915,23 @@ r3d_coord_z(struct tu_cs *cs, float z)
 
 static void
 r3d_coords(struct tu_cs *cs,
-           const VkOffset2D *dst,
-           const VkOffset2D *src,
-           const VkExtent2D *extent)
+           const VkOffset2D dst,
+           const VkOffset2D src,
+           const VkExtent2D extent)
 {
-   int32_t src_x1 = src ? src->x : 0;
-   int32_t src_y1 = src ? src->y : 0;
+   const bool no_src = src.x != blt_no_coord.x;
+   int32_t src_x1 = no_src ? src.x : 0;
+   int32_t src_y1 = no_src ? src.y : 0;
 
    const float coords[] = {
-      dst->x,
-      dst->y,
+      dst.x,
+      dst.y,
       src_x1,
       src_y1,
-      dst->x + extent->width,
-      dst->y + extent->height,
-      src_x1 + extent->width,
-      src_y1 + extent->height,
+      dst.x + extent.width,
+      dst.y + extent.height,
+      src_x1 + extent.width,
+      src_y1 + extent.height,
    };
    r3d_coords_raw(cs, coords);
 }
@@ -1346,9 +1349,9 @@ r3d_teardown(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
 struct blit_ops {
    void (*coords)(struct tu_cs *cs,
-                  const VkOffset2D *dst,
-                  const VkOffset2D *src,
-                  const VkExtent2D *extent);
+                  const VkOffset2D dst,
+                  const VkOffset2D src,
+                  const VkExtent2D extent);
    void (*clear_value)(struct tu_cs *cs, enum pipe_format format, const VkClearValue *val);
    void (*src)(
         struct tu_cmd_buffer *cmd,
@@ -1414,11 +1417,12 @@ static const struct blit_ops r3d_ops = {
 static void
 coords(const struct blit_ops *ops,
        struct tu_cs *cs,
-       const VkOffset3D *dst,
-       const VkOffset3D *src,
-       const VkExtent3D *extent)
+       const VkOffset3D dst,
+       const VkOffset3D src,
+       const VkExtent3D extent)
 {
-   ops->coords(cs, (const VkOffset2D*) dst, (const VkOffset2D*) src, (const VkExtent2D*) extent);
+   ops->coords(cs, (VkOffset2D) {dst.x, dst.y}, (VkOffset2D) {src.x, src.y},
+               (VkExtent2D) {extent.width, extent.height});
 }
 
 /* Decides the VK format to treat our data as for a memcpy-style blit. We have
@@ -1497,7 +1501,8 @@ tu6_clear_lrz(struct tu_cmd_buffer *cmd,
    ops->dst_buffer(cs, PIPE_FORMAT_Z16_UNORM,
                    image->iova + image->lrz_offset,
                    image->lrz_pitch * 2, PIPE_FORMAT_Z16_UNORM);
-   ops->coords(cs, &(VkOffset2D) {}, NULL, &(VkExtent2D) {image->lrz_pitch, image->lrz_height});
+   ops->coords(cs, (VkOffset2D) {}, blt_no_coord,
+               (VkExtent2D) { image->lrz_pitch, image->lrz_height });
    ops->run(cmd, cs);
    ops->teardown(cmd, cs);
 
@@ -1526,7 +1531,7 @@ tu6_dirty_lrz_fc(struct tu_cmd_buffer *cmd,
    ops->dst_buffer(cs, PIPE_FORMAT_R32_UINT,
                    image->iova + image->lrz_fc_offset, 512,
                    PIPE_FORMAT_R32_UINT);
-   ops->coords(cs, &(VkOffset2D) {}, NULL, &(VkExtent2D) {128, 1});
+   ops->coords(cs, (VkOffset2D) {}, blt_no_coord, (VkExtent2D) {128, 1});
    ops->run(cmd, cs);
    ops->teardown(cmd, cs);
 }
@@ -1550,7 +1555,7 @@ tu_image_view_copy_blit(struct fdl6_view *iview,
    const struct fdl_layout *layout =
       &image->layout[tu6_plane_index(image->vk.format, aspect_mask)];
 
-   fdl6_view_init(iview, &layout, &(struct fdl_view_args) {
+   const struct fdl_view_args args = {
       .iova = image->iova,
       .base_miplevel = subres->mipLevel,
       .level_count = 1,
@@ -1561,7 +1566,8 @@ tu_image_view_copy_blit(struct fdl6_view *iview,
       },
       .format = tu_format_for_aspect(format, aspect_mask),
       .type = z_scale ? FDL_VIEW_TYPE_3D : FDL_VIEW_TYPE_2D,
-   }, false);
+   };
+   fdl6_view_init(iview, &layout, &args, false);
 }
 
 static void
@@ -1823,14 +1829,14 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
             uint32_t x = (src_va & 63) / util_format_get_blocksize(src_format);
             ops->src_buffer(cmd, cs, src_format, src_va & ~63, pitch,
                             x + extent.width, 1, dst_format);
-            ops->coords(cs, &(VkOffset2D){offset.x, offset.y + y},  &(VkOffset2D){x},
-                        &(VkExtent2D) {extent.width, 1});
+            ops->coords(cs, (VkOffset2D) {offset.x, offset.y + y},  (VkOffset2D) {x},
+                        (VkExtent2D) {extent.width, 1});
             ops->run(cmd, cs);
             src_va += pitch;
          }
       } else {
          ops->src_buffer(cmd, cs, src_format, src_va, pitch, extent.width, extent.height, dst_format);
-         coords(ops, cs, &offset, &(VkOffset3D){}, &extent);
+         coords(ops, cs, offset, (VkOffset3D) {}, extent);
          ops->run(cmd, cs);
       }
    }
@@ -1902,14 +1908,14 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmd,
          for (uint32_t y = 0; y < extent.height; y++) {
             uint32_t x = (dst_va & 63) / util_format_get_blocksize(dst_format);
             ops->dst_buffer(cs, dst_format, dst_va & ~63, 0, src_format);
-            ops->coords(cs, &(VkOffset2D) {x}, &(VkOffset2D){offset.x, offset.y + y},
-                        &(VkExtent2D) {extent.width, 1});
+            ops->coords(cs, (VkOffset2D) {x}, (VkOffset2D) {offset.x, offset.y + y},
+                        (VkExtent2D) {extent.width, 1});
             ops->run(cmd, cs);
             dst_va += pitch;
          }
       } else {
          ops->dst_buffer(cs, dst_format, dst_va, pitch, src_format);
-         coords(ops, cs, &(VkOffset3D) {0, 0}, &offset, &extent);
+         coords(ops, cs, (VkOffset3D) {0, 0}, offset, extent);
          ops->run(cmd, cs);
       }
    }
@@ -2075,7 +2081,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
 
       struct fdl6_view staging;
       const struct fdl_layout *staging_layout_ptr = &staging_layout;
-      fdl6_view_init(&staging, &staging_layout_ptr, &(struct fdl_view_args) {
+      const struct fdl_view_args copy_to_args = {
          .iova = staging_bo->iova,
          .base_miplevel = 0,
          .level_count = info->srcSubresource.layerCount,
@@ -2084,11 +2090,12 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
          .swiz = { PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W },
          .format = tu_format_for_aspect(src_format, VK_IMAGE_ASPECT_COLOR_BIT),
          .type = FDL_VIEW_TYPE_2D,
-      }, false);
+      };
+      fdl6_view_init(&staging, &staging_layout_ptr, &copy_to_args, false);
 
       ops->setup(cmd, cs, src_format, src_format, VK_IMAGE_ASPECT_COLOR_BIT, 0, false, false,
                  (VkSampleCountFlagBits) dst_image->layout[0].nr_samples);
-      coords(ops, cs, &staging_offset, &src_offset, &extent);
+      coords(ops, cs, staging_offset, src_offset, extent);
 
       for (uint32_t i = 0; i < layers_to_copy; i++) {
          ops->src(cmd, cs, &src, i, VK_FILTER_NEAREST, src_format);
@@ -2103,7 +2110,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
       tu_cs_emit_wfi(cs);
 
-      fdl6_view_init(&staging, &staging_layout_ptr, &(struct fdl_view_args) {
+      const struct fdl_view_args copy_from_args = {
          .iova = staging_bo->iova,
          .base_miplevel = 0,
          .level_count = info->srcSubresource.layerCount,
@@ -2112,12 +2119,13 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
          .swiz = { PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W },
          .format = tu_format_for_aspect(dst_format, VK_IMAGE_ASPECT_COLOR_BIT),
          .type = FDL_VIEW_TYPE_2D,
-      }, false);
+      };
+      fdl6_view_init(&staging, &staging_layout_ptr, &copy_from_args, false);
 
       ops->setup(cmd, cs, dst_format, dst_format, info->dstSubresource.aspectMask,
                  0, false, dst_image->layout[0].ubwc,
                  (VkSampleCountFlagBits) dst_image->layout[0].nr_samples);
-      coords(ops, cs, &dst_offset, &staging_offset, &extent);
+      coords(ops, cs, dst_offset, staging_offset, extent);
 
       for (uint32_t i = 0; i < layers_to_copy; i++) {
          ops->src(cmd, cs, &staging, i, VK_FILTER_NEAREST, dst_format);
@@ -2131,7 +2139,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       ops->setup(cmd, cs, format, format, info->dstSubresource.aspectMask,
                  0, false, dst_image->layout[0].ubwc,
                  (VkSampleCountFlagBits) dst_image->layout[0].nr_samples);
-      coords(ops, cs, &dst_offset, &src_offset, &extent);
+      coords(ops, cs, dst_offset, src_offset, extent);
 
       for (uint32_t i = 0; i < layers_to_copy; i++) {
          ops->src(cmd, cs, &src, i, VK_FILTER_NEAREST, format);
@@ -2193,7 +2201,7 @@ copy_buffer(struct tu_cmd_buffer *cmd,
 
       ops->src_buffer(cmd, cs, format, src_va & ~63, 0, src_x + width, 1, format);
       ops->dst_buffer(     cs, format, dst_va & ~63, 0, format);
-      ops->coords(cs, &(VkOffset2D) {dst_x}, &(VkOffset2D) {src_x}, &(VkExtent2D) {width, 1});
+      ops->coords(cs, (VkOffset2D) {dst_x}, (VkOffset2D) {src_x}, (VkExtent2D) {width, 1});
       ops->run(cmd, cs);
 
       src_va += width * block_size;
@@ -2272,7 +2280,7 @@ tu_CmdFillBuffer(VkCommandBuffer commandBuffer,
       uint32_t width = MIN2(blocks, 0x4000 - dst_x);
 
       ops->dst_buffer(cs, PIPE_FORMAT_R32_UINT, dst_va & ~63, 0, PIPE_FORMAT_R32_UINT);
-      ops->coords(cs, &(VkOffset2D) {dst_x}, NULL, &(VkExtent2D) {width, 1});
+      ops->coords(cs, (VkOffset2D) {dst_x}, blt_no_coord, (VkExtent2D) {width, 1});
       ops->run(cmd, cs);
 
       dst_va += width * 4;
@@ -2307,7 +2315,7 @@ tu_CmdResolveImage2KHR(VkCommandBuffer commandBuffer,
       assert(info->srcSubresource.layerCount == info->dstSubresource.layerCount);
       /* TODO: aspect masks possible ? */
 
-      coords(ops, cs, &info->dstOffset, &info->srcOffset, &info->extent);
+      coords(ops, cs, info->dstOffset, info->srcOffset, info->extent);
 
       struct fdl6_view dst, src;
       tu_image_view_blit(&dst, dst_image, &info->dstSubresource, info->dstOffset.z);
@@ -2352,7 +2360,7 @@ resolve_sysmem(struct tu_cmd_buffer *cmd,
    ops->setup(cmd, cs, src_format, dst_format,
               VK_IMAGE_ASPECT_COLOR_BIT, 0, false, dst->view.ubwc_enabled,
               VK_SAMPLE_COUNT_1_BIT);
-   ops->coords(cs, &rect->offset, &rect->offset, &rect->extent);
+   ops->coords(cs, rect->offset, rect->offset, rect->extent);
 
    for_each_layer(i, layer_mask, layers) {
       if (src_separate_ds) {
@@ -2450,18 +2458,19 @@ clear_image(struct tu_cmd_buffer *cmd,
       if (image->layout[0].depth0 > 1)
          layer_count = u_minify(image->layout[0].depth0, range->baseMipLevel + j);
 
-      ops->coords(cs, &(VkOffset2D){}, NULL, &(VkExtent2D) {
+      ops->coords(cs, (VkOffset2D) {}, blt_no_coord, (VkExtent2D) {
                      u_minify(image->layout[0].width0, range->baseMipLevel + j),
                      u_minify(image->layout[0].height0, range->baseMipLevel + j)
                   });
 
       struct fdl6_view dst;
-      tu_image_view_copy_blit(&dst, image, format, &(VkImageSubresourceLayers) {
+      const VkImageSubresourceLayers subresource = {
          .aspectMask = aspect_mask,
          .mipLevel = range->baseMipLevel + j,
          .baseArrayLayer = range->baseArrayLayer,
          .layerCount = 1,
-      }, 0, false);
+      };
+      tu_image_view_copy_blit(&dst, image, format, &subresource, 0, false);
 
       for (uint32_t i = 0; i < layer_count; i++) {
          ops->dst(cs, &dst, i, format);
@@ -2966,8 +2975,8 @@ clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
 
    ops->setup(cmd, cs, format, format, clear_mask, 0, true, iview->view.ubwc_enabled,
               cmd->state.pass->attachments[a].samples);
-   ops->coords(cs, &cmd->state.render_area.offset, NULL,
-               &cmd->state.render_area.extent);
+   ops->coords(cs, cmd->state.render_area.offset, (VkOffset2D) {},
+               cmd->state.render_area.extent);
    ops->clear_value(cs, format, value);
 
    for_each_layer(i, clear_views, fb->layers) {
@@ -3319,7 +3328,7 @@ store_3d_blit(struct tu_cmd_buffer *cmd,
    r3d_setup(cmd, cs, src_format, dst_format, VK_IMAGE_ASPECT_COLOR_BIT, 0, false,
              iview->view.ubwc_enabled, dst_samples);
 
-   r3d_coords(cs, &render_area->offset, &render_area->offset, &render_area->extent);
+   r3d_coords(cs, render_area->offset, render_area->offset, render_area->extent);
 
    if (iview->image->vk.format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
       if (!separate_stencil) {
@@ -3515,7 +3524,7 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
          }
       }
    } else {
-      r2d_coords(cs, &render_area->offset, &render_area->offset, &render_area->extent);
+      r2d_coords(cs, render_area->offset, render_area->offset, render_area->extent);
 
       for_each_layer(i, layer_mask, layers) {
          if (store_common) {

@@ -31,6 +31,10 @@ tu_hal_close(struct hw_device_t *dev);
 
 static_assert(HWVULKAN_DISPATCH_MAGIC == ICD_LOADER_MAGIC, "");
 
+struct hw_module_methods_t HAL_MODULE_METHODS = {
+   .open = tu_hal_open,
+};
+
 PUBLIC struct hwvulkan_module_t HAL_MODULE_INFO_SYM = {
    .common =
      {
@@ -40,10 +44,7 @@ PUBLIC struct hwvulkan_module_t HAL_MODULE_INFO_SYM = {
        .id = HWVULKAN_HARDWARE_MODULE_ID,
        .name = "Turnip Vulkan HAL",
        .author = "Google",
-       .methods =
-         &(hw_module_methods_t){
-           .open = tu_hal_open,
-         },
+       .methods = &HAL_MODULE_METHODS,
      },
 };
 
@@ -267,17 +268,18 @@ tu_import_memory_from_gralloc_handle(VkDevice device_h,
       .fd = os_dupfd_cloexec(dma_buf),
    };
 
-   result =
-      tu_AllocateMemory(device_h,
-                        &(VkMemoryAllocateInfo) {
-                           .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-                           .pNext = &import_info,
-                           .allocationSize = image->total_size,
-                           .memoryTypeIndex = 0,
-                        },
-                        alloc, &memory_h);
-   if (result != VK_SUCCESS)
-      goto fail_create_image;
+   const VkMemoryAllocateInfo alloc_info = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+      .pNext = &import_info,
+      .allocationSize = image->total_size,
+      .memoryTypeIndex = 0,
+   };
+   result = tu_AllocateMemory(device_h, &alloc_info, alloc, &memory_h);
+
+   if (result != VK_SUCCESS) {
+      tu_DestroyImage(device_h, image_h, alloc);
+      return result;
+   }
 
    VkBindImageMemoryInfo bind_info = {
       .sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO,
@@ -290,11 +292,6 @@ tu_import_memory_from_gralloc_handle(VkDevice device_h,
    image->owned_memory = memory_h;
 
    return VK_SUCCESS;
-
-fail_create_image:
-   tu_DestroyImage(device_h, image_h, alloc);
-
-   return result;
 }
 
 static VkResult

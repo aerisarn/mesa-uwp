@@ -2198,17 +2198,18 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       }
    }
 
-   device->compiler =
-      ir3_compiler_create(NULL, &physical_device->dev_id,
-                          &(struct ir3_compiler_options) {
-                              .robust_buffer_access2 = robust_buffer_access2,
-                              .push_ubo_with_preamble = true,
-                              .disable_cache = true,
-                              .bindless_fb_read_descriptor = -1,
-                              .bindless_fb_read_slot = -1,
-                              .storage_16bit =
-                                    physical_device->info->a6xx.storage_16bit
-                           });
+   {
+      struct ir3_compiler_options ir3_options = {
+         .robust_buffer_access2 = robust_buffer_access2,
+         .push_ubo_with_preamble = true,
+         .disable_cache = true,
+         .bindless_fb_read_descriptor = -1,
+         .bindless_fb_read_slot = -1,
+         .storage_16bit = physical_device->info->a6xx.storage_16bit
+      };
+      device->compiler =
+         ir3_compiler_create(NULL, &physical_device->dev_id, &ir3_options);
+   }
    if (!device->compiler) {
       result = vk_startup_errorf(physical_device->instance,
                                  VK_ERROR_INITIALIZATION_FAILED,
