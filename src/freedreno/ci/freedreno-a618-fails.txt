@@ -342,29 +342,6 @@ wayland-dEQP-EGL.functional.wide_color.window_fp16_default_colorspace,Fail
 # ../../tests/SRGBReadWritePixelsTest.cpp:214	Could not create sRGB surface context. [OpenGL]
 SRGBReadWritePixels,Fail
 
-# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/4144
-dEQP-VK.pipeline.fast_linked_library.descriptor_limits.fragment_shader.input_attachments_3,Fail
-dEQP-VK.pipeline.fast_linked_library.descriptor_limits.fragment_shader.input_attachments_4,Fail
-dEQP-VK.pipeline.fast_linked_library.descriptor_limits.fragment_shader.input_attachments_5,Fail
-dEQP-VK.pipeline.fast_linked_library.descriptor_limits.fragment_shader.input_attachments_6,Fail
-dEQP-VK.pipeline.fast_linked_library.descriptor_limits.fragment_shader.input_attachments_7,Fail
-dEQP-VK.pipeline.fast_linked_library.descriptor_limits.fragment_shader.input_attachments_8,Fail
-dEQP-VK.pipeline.monolithic.descriptor_limits.fragment_shader.input_attachments_3,Fail
-dEQP-VK.pipeline.monolithic.descriptor_limits.fragment_shader.input_attachments_4,Fail
-dEQP-VK.pipeline.monolithic.descriptor_limits.fragment_shader.input_attachments_5,Fail
-dEQP-VK.pipeline.monolithic.descriptor_limits.fragment_shader.input_attachments_6,Fail
-dEQP-VK.pipeline.monolithic.descriptor_limits.fragment_shader.input_attachments_7,Fail
-dEQP-VK.pipeline.monolithic.descriptor_limits.fragment_shader.input_attachments_8,Fail
-dEQP-VK.pipeline.pipeline_library.descriptor_limits.fragment_shader.input_attachments_3,Fail
-dEQP-VK.pipeline.pipeline_library.descriptor_limits.fragment_shader.input_attachments_4,Fail
-dEQP-VK.pipeline.pipeline_library.descriptor_limits.fragment_shader.input_attachments_5,Fail
-dEQP-VK.pipeline.pipeline_library.descriptor_limits.fragment_shader.input_attachments_6,Fail
-dEQP-VK.pipeline.pipeline_library.descriptor_limits.fragment_shader.input_attachments_7,Fail
-dEQP-VK.pipeline.pipeline_library.descriptor_limits.fragment_shader.input_attachments_8,Fail
-gmem-dEQP-VK.pipeline.fast_linked_library.descriptor_limits.fragment_shader.input_attachments_8,Fail
-gmem-dEQP-VK.pipeline.monolithic.descriptor_limits.fragment_shader.input_attachments_4,Fail
-gmem-dEQP-VK.pipeline.pipeline_library.descriptor_limits.fragment_shader.input_attachments_6,Fail
-
 # New CTS failures in 1.3.5.0
 KHR-GL45.polygon_offset_clamp.PolygonOffsetClampMinMax,Fail
 KHR-GL45.polygon_offset_clamp.PolygonOffsetClampZeroInfinity,Fail

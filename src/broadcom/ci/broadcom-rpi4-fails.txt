@@ -589,35 +589,3 @@ spec@!opengl 1.1@line-smooth-stipple,Fail
 
 # Works when run individually, but fail consistently on the CI
 dEQP-GLES3.functional.texture.specification.teximage2d_pbo.rgba32i_cube,Fail
-
-# https://gerrit.khronos.org/c/vk-gl-cts/+/11229
-wayland-dEQP-EGL.functional.create_context_ext.robust_gl_30.rgb565_depth_no_stencil,Fail
-wayland-dEQP-EGL.functional.create_context_ext.robust_gl_30.rgb565_depth_stencil,Fail
-wayland-dEQP-EGL.functional.create_context_ext.robust_gl_30.rgb565_no_depth_no_stencil,Fail
-wayland-dEQP-EGL.functional.create_context_ext.robust_gl_30.rgb888_depth_no_stencil,Fail
-wayland-dEQP-EGL.functional.create_context_ext.robust_gl_30.rgb888_depth_stencil,Fail
-wayland-dEQP-EGL.functional.create_context_ext.robust_gl_30.rgb888_no_depth_no_stencil,Fail
-wayland-dEQP-EGL.functional.create_context_ext.robust_gl_30.rgba8888_depth_no_stencil,Fail
-wayland-dEQP-EGL.functional.create_context_ext.robust_gl_30.rgba8888_depth_stencil,Fail
-wayland-dEQP-EGL.functional.create_context_ext.robust_gl_30.rgba8888_no_depth_no_stencil,Fail
-wayland-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgb565_depth_no_stencil,Fail
-wayland-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgb565_depth_stencil,Fail
-wayland-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgb565_no_depth_no_stencil,Fail
-wayland-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgb888_depth_no_stencil,Fail
-wayland-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgb888_depth_stencil,Fail
-wayland-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgb888_no_depth_no_stencil,Fail
-wayland-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgba8888_depth_no_stencil,Fail
-wayland-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgba8888_depth_stencil,Fail
-wayland-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgba8888_no_depth_no_stencil,Fail
-x11-dEQP-EGL.functional.create_context_ext.robust_gl_30.rgb888_depth_no_stencil,Fail
-x11-dEQP-EGL.functional.create_context_ext.robust_gl_30.rgb888_depth_stencil,Fail
-x11-dEQP-EGL.functional.create_context_ext.robust_gl_30.rgb888_no_depth_no_stencil,Fail
-x11-dEQP-EGL.functional.create_context_ext.robust_gl_30.rgba8888_depth_no_stencil,Fail
-x11-dEQP-EGL.functional.create_context_ext.robust_gl_30.rgba8888_depth_stencil,Fail
-x11-dEQP-EGL.functional.create_context_ext.robust_gl_30.rgba8888_no_depth_no_stencil,Fail
-x11-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgb888_depth_no_stencil,Fail
-x11-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgb888_depth_stencil,Fail
-x11-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgb888_no_depth_no_stencil,Fail
-x11-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgba8888_depth_no_stencil,Fail
-x11-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgba8888_depth_stencil,Fail
-x11-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgba8888_no_depth_no_stencil,Fail
