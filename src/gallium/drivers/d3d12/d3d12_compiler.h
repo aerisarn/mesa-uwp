@@ -238,15 +238,20 @@ struct d3d12_shader {
 
 struct d3d12_gs_variant_key
 {
-   unsigned passthrough:1;
-   unsigned provoking_vertex:3;
-   unsigned alternate_tri:1;
-   unsigned fill_mode:2;
-   unsigned cull_mode:2;
-   unsigned has_front_face:1;
-   unsigned front_ccw:1;
-   unsigned edge_flag_fix:1;
-   unsigned flatshade_first:1;
+   union {
+      struct {
+         unsigned passthrough:1;
+         unsigned provoking_vertex:3;
+         unsigned alternate_tri:1;
+         unsigned fill_mode:2;
+         unsigned cull_mode:2;
+         unsigned has_front_face:1;
+         unsigned front_ccw:1;
+         unsigned edge_flag_fix:1;
+         unsigned flatshade_first:1;
+      };
+      uint64_t all;
+   };
    uint64_t flat_varyings;
    struct d3d12_varying_info *varyings;
 };

@@ -714,9 +714,9 @@ validate_geometry_shader_variant(struct d3d12_selection_context *sel_ctx)
    d3d12_shader_selector* vs = ctx->gfx_stages[PIPE_SHADER_VERTEX];
    d3d12_shader_selector* fs = ctx->gfx_stages[PIPE_SHADER_FRAGMENT];
 
-   struct d3d12_gs_variant_key key{0};
-
-   bool variant_needed = false;
+   struct d3d12_gs_variant_key key;
+   key.all = 0;
+   key.flat_varyings = 0;
 
    /* Fill the geometry shader variant key */
    if (sel_ctx->fill_mode_lowered != PIPE_POLYGON_MODE_FILL) {
@@ -729,27 +729,20 @@ validate_geometry_shader_variant(struct d3d12_selection_context *sel_ctx)
       fill_flat_varyings(&key, fs);
       if (key.flat_varyings != 0)
          key.flatshade_first = ctx->gfx_pipeline_state.rast->base.flatshade_first;
-      variant_needed = true;
    } else if (sel_ctx->needs_point_sprite_lowering) {
       key.passthrough = true;
-      variant_needed = true;
    } else if (sel_ctx->needs_vertex_reordering) {
       /* TODO support cases where flat shading (pv != 0) and xfb are enabled */
       key.provoking_vertex = sel_ctx->provoking_vertex;
       key.alternate_tri = sel_ctx->alternate_tri;
-      variant_needed = true;
    }
 
-   if (variant_needed) {
-      if (vs->initial_output_vars == nullptr) {
-         vs->initial_output_vars = fill_varyings(sel_ctx->ctx, vs->initial, nir_var_shader_out,
-                                                 vs->initial->info.outputs_written, false);
-      }
-      key.varyings = vs->initial_output_vars;
+   if (vs->initial_output_vars == nullptr) {
+      vs->initial_output_vars = fill_varyings(sel_ctx->ctx, vs->initial, nir_var_shader_out,
+                                                vs->initial->info.outputs_written, false);
    }
-
-   /* Find/create the proper variant and bind it */
-   gs = variant_needed ? d3d12_get_gs_variant(ctx, &key) : NULL;
+   key.varyings = vs->initial_output_vars;
+   gs = d3d12_get_gs_variant(ctx, &key);
    ctx->gfx_stages[PIPE_SHADER_GEOMETRY] = gs;
 }
 
@@ -1639,7 +1632,15 @@ d3d12_select_shader_variants(struct d3d12_context *ctx, const struct pipe_draw_i
    sel_ctx.frag_result_color_lowering = frag_result_color_lowering(ctx);
    sel_ctx.manual_depth_range = ctx->manual_depth_range;
 
-   validate_geometry_shader_variant(&sel_ctx);
+   d3d12_shader_selector* gs = ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
+   if (gs == nullptr || gs->is_variant) {
+      if (sel_ctx.fill_mode_lowered != PIPE_POLYGON_MODE_FILL || sel_ctx.needs_point_sprite_lowering || sel_ctx.needs_vertex_reordering)
+         validate_geometry_shader_variant(&sel_ctx);
+      else if (gs != nullptr) {
+         ctx->gfx_stages[PIPE_SHADER_GEOMETRY] = NULL;
+      }
+   }
+
    validate_tess_ctrl_shader_variant(&sel_ctx);
 
    for (unsigned i = 0; i < ARRAY_SIZE(order); ++i) {
