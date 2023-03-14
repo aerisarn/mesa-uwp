@@ -669,7 +669,7 @@ tu_CreateImage(VkDevice _device,
    const VkSubresourceLayout *plane_layouts = NULL;
 
    TU_FROM_HANDLE(tu_device, device, _device);
-   struct tu_image *image =
+   struct tu_image *image = (struct tu_image *)
       vk_object_zalloc(&device->vk, alloc, sizeof(*image), VK_OBJECT_TYPE_IMAGE);
 
    if (!image)
@@ -859,8 +859,8 @@ tu_CreateImageView(VkDevice _device,
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_image_view *view;
 
-   view = vk_object_alloc(&device->vk, pAllocator, sizeof(*view),
-                          VK_OBJECT_TYPE_IMAGE_VIEW);
+   view = (struct tu_image_view *) vk_object_alloc(
+      &device->vk, pAllocator, sizeof(*view), VK_OBJECT_TYPE_IMAGE_VIEW);
    if (view == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -913,8 +913,8 @@ tu_CreateBufferView(VkDevice _device,
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_buffer_view *view;
 
-   view = vk_object_alloc(&device->vk, pAllocator, sizeof(*view),
-                          VK_OBJECT_TYPE_BUFFER_VIEW);
+   view = (struct tu_buffer_view *) vk_object_alloc(
+      &device->vk, pAllocator, sizeof(*view), VK_OBJECT_TYPE_BUFFER_VIEW);
    if (!view)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 

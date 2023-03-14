@@ -786,14 +786,16 @@ tu_CreateRenderPass2(VkDevice _device,
    attachments_offset = size;
    size += pCreateInfo->attachmentCount * sizeof(pass->attachments[0]);
 
-   pass = vk_object_zalloc(&device->vk, pAllocator, size,
-                           VK_OBJECT_TYPE_RENDER_PASS);
+   pass = (struct tu_render_pass *) vk_object_zalloc(
+      &device->vk, pAllocator, size, VK_OBJECT_TYPE_RENDER_PASS);
    if (pass == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    pass->attachment_count = pCreateInfo->attachmentCount;
    pass->subpass_count = pCreateInfo->subpassCount;
-   pass->attachments = (void *) pass + attachments_offset;
+   pass->attachments =
+      (struct tu_render_pass_attachment *) ((char *) pass +
+                                            attachments_offset);
 
    for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
       struct tu_render_pass_attachment *att = &pass->attachments[i];
@@ -831,7 +833,7 @@ tu_CreateRenderPass2(VkDevice _device,
    }
 
    if (subpass_attachment_count) {
-      pass->subpass_attachments = vk_alloc2(
+      pass->subpass_attachments = (struct tu_subpass_attachment *) vk_alloc2(
          &device->vk.alloc, pAllocator,
          subpass_attachment_count * sizeof(struct tu_subpass_attachment), 8,
          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);

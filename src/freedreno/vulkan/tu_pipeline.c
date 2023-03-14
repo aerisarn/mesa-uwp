@@ -4758,8 +4758,9 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
 {
    VkResult result;
 
-   *pipeline = vk_object_zalloc(&builder->device->vk, builder->alloc,
-                                sizeof(**pipeline), VK_OBJECT_TYPE_PIPELINE);
+   *pipeline = (struct tu_pipeline *) vk_object_zalloc(
+      &builder->device->vk, builder->alloc, sizeof(**pipeline),
+      VK_OBJECT_TYPE_PIPELINE);
    if (!*pipeline)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
@@ -5179,8 +5180,8 @@ tu_compute_pipeline_create(VkDevice device,
 
    int64_t pipeline_start = os_time_get_nano();
 
-   pipeline = vk_object_zalloc(&dev->vk, pAllocator, sizeof(*pipeline),
-                               VK_OBJECT_TYPE_PIPELINE);
+   pipeline = (struct tu_pipeline *) vk_object_zalloc(
+      &dev->vk, pAllocator, sizeof(*pipeline), VK_OBJECT_TYPE_PIPELINE);
    if (!pipeline)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
@@ -5586,7 +5587,7 @@ write_ir_text(VkPipelineExecutableInternalRepresentationKHR* ir,
       return true;
    }
 
-   strncpy(ir->pData, data, ir->dataSize);
+   strncpy((char *) ir->pData, data, ir->dataSize);
    if (ir->dataSize < data_len)
       return false;
 

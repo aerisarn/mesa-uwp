@@ -317,7 +317,7 @@ tu_bo_init(struct tu_device *dev,
    /* grow the bo list if needed */
    if (idx >= dev->bo_list_size) {
       uint32_t new_len = idx + 64;
-      struct drm_msm_gem_submit_bo *new_ptr =
+      struct drm_msm_gem_submit_bo *new_ptr = (struct drm_msm_gem_submit_bo *)
          vk_realloc(&dev->vk.alloc, dev->bo_list, new_len * sizeof(*dev->bo_list),
                     8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
       if (!new_ptr) {
@@ -779,7 +779,7 @@ tu_queue_submit_create_locked(struct tu_queue *queue,
 
    memset(new_submit, 0, sizeof(struct tu_queue_submit));
 
-   new_submit->cmd_buffers = (void *)vk_cmd_buffers;
+   new_submit->cmd_buffers = (struct tu_cmd_buffer **) vk_cmd_buffers;
    new_submit->nr_cmd_buffers = vk_submit->command_buffer_count;
    tu_insert_dynamic_cmdbufs(queue->device, &new_submit->cmd_buffers,
                              &new_submit->nr_cmd_buffers);
@@ -806,9 +806,9 @@ tu_queue_submit_create_locked(struct tu_queue *queue,
    if (new_submit->autotune_fence)
       entry_count++;
 
-   new_submit->cmds = vk_zalloc(&queue->device->vk.alloc,
-         entry_count * sizeof(*new_submit->cmds), 8,
-         VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   new_submit->cmds = (struct drm_msm_gem_submit_cmd *) vk_zalloc(
+      &queue->device->vk.alloc, entry_count * sizeof(*new_submit->cmds), 8,
+      VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
 
    if (new_submit->cmds == NULL) {
       result = vk_error(queue, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -828,9 +828,10 @@ tu_queue_submit_create_locked(struct tu_queue *queue,
    }
 
    /* Allocate without wait timeline semaphores */
-   new_submit->in_syncobjs = vk_zalloc(&queue->device->vk.alloc,
-         nr_in_syncobjs * sizeof(*new_submit->in_syncobjs), 8,
-         VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   new_submit->in_syncobjs = (struct drm_msm_gem_submit_syncobj *) vk_zalloc(
+      &queue->device->vk.alloc,
+      nr_in_syncobjs * sizeof(*new_submit->in_syncobjs), 8,
+      VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
 
    if (new_submit->in_syncobjs == NULL) {
       result = vk_error(queue, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -838,9 +839,10 @@ tu_queue_submit_create_locked(struct tu_queue *queue,
    }
 
    /* Allocate with signal timeline semaphores considered */
-   new_submit->out_syncobjs = vk_zalloc(&queue->device->vk.alloc,
-         nr_out_syncobjs * sizeof(*new_submit->out_syncobjs), 8,
-         VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   new_submit->out_syncobjs = (struct drm_msm_gem_submit_syncobj *) vk_zalloc(
+      &queue->device->vk.alloc,
+      nr_out_syncobjs * sizeof(*new_submit->out_syncobjs), 8,
+      VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
 
    if (new_submit->out_syncobjs == NULL) {
       result = vk_error(queue, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -1000,7 +1002,7 @@ tu_queue_submit_locked(struct tu_queue *queue, struct tu_queue_submit *submit)
          submit->u_trace_submission_data;
       submission_data->submission_id = queue->device->submit_count;
       /* We have to allocate it here since it is different between drm/kgsl */
-      submission_data->syncobj =
+      submission_data->syncobj = (struct tu_u_trace_syncobj *)
          vk_alloc(&queue->device->vk.alloc, sizeof(struct tu_u_trace_syncobj),
                8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
       submission_data->syncobj->fence = req.fence;
@@ -1198,7 +1200,7 @@ tu_knl_drm_msm_load(struct tu_instance *instance,
       return result;
    }
 
-   struct tu_physical_device *device =
+   struct tu_physical_device *device = (struct tu_physical_device *)
       vk_zalloc(&instance->vk.alloc, sizeof(*device), 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
    if (!device) {

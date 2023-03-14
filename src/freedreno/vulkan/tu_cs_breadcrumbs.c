@@ -119,8 +119,8 @@ tu_breadcrumbs_init(struct tu_device *device)
       return;
    }
 
-   struct breadcrumbs_context *ctx =
-      malloc(sizeof(struct breadcrumbs_context));
+   struct breadcrumbs_context *ctx = (struct breadcrumbs_context *) malloc(
+      sizeof(struct breadcrumbs_context));
    ctx->device = device;
    ctx->breadcrumb_idx = 0;
    ctx->thread_stop = false;

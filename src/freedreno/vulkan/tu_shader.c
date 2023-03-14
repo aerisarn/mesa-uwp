@@ -593,7 +593,7 @@ struct lower_instr_params {
 static bool
 lower_instr(nir_builder *b, nir_instr *instr, void *cb_data)
 {
-   struct lower_instr_params *params = cb_data;
+   struct lower_instr_params *params = (struct lower_instr_params *) cb_data;
    b->cursor = nir_before_instr(instr);
    switch (instr->type) {
    case nir_instr_type_tex:
@@ -618,7 +618,7 @@ lower_inline_ubo(nir_builder *b, nir_instr *instr, void *cb_data)
    if (intrin->intrinsic != nir_intrinsic_load_ubo)
       return false;
 
-   struct lower_instr_params *params = cb_data;
+   struct lower_instr_params *params = (struct lower_instr_params *) cb_data;
    struct tu_shader *shader = params->shader;
    const struct tu_pipeline_layout *layout = params->layout;
 

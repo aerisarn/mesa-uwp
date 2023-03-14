@@ -1675,14 +1675,16 @@ tu_create_cmd_buffer(struct vk_command_pool *pool,
       container_of(pool->base.device, struct tu_device, vk);
    struct tu_cmd_buffer *cmd_buffer;
 
-   cmd_buffer = vk_zalloc2(&device->vk.alloc, NULL, sizeof(*cmd_buffer), 8,
-                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   cmd_buffer = (struct tu_cmd_buffer *) vk_zalloc2(
+      &device->vk.alloc, NULL, sizeof(*cmd_buffer), 8,
+      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
    if (cmd_buffer == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   VkResult result = vk_command_buffer_init(pool, &cmd_buffer->vk,
-                                            &tu_cmd_buffer_ops, 0);
+   VkResult result =
+      vk_command_buffer_init(pool, &cmd_buffer->vk, &tu_cmd_buffer_ops,
+                             VK_COMMAND_BUFFER_LEVEL_PRIMARY);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, NULL, cmd_buffer);
       return result;
@@ -1857,7 +1859,8 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
       vk_foreach_struct_const(ext, pBeginInfo->pInheritanceInfo) {
          switch (ext->sType) {
          case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_CONDITIONAL_RENDERING_INFO_EXT: {
-            const VkCommandBufferInheritanceConditionalRenderingInfoEXT *cond_rend = (void *) ext;
+            const VkCommandBufferInheritanceConditionalRenderingInfoEXT *cond_rend =
+               (VkCommandBufferInheritanceConditionalRenderingInfoEXT *) ext;
             cmd_buffer->state.predication_active = cond_rend->conditionalRenderingEnable;
             break;
          default:
@@ -2370,7 +2373,7 @@ tu_push_descriptor_set_update_layout(struct tu_device *device,
                     VK_QUERY_SCOPE_COMMAND_BUFFER_KHR);
       if (!new_buf)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
-      set->mapped_ptr = new_buf;
+      set->mapped_ptr = (uint32_t *) new_buf;
       set->host_size = layout->size;
    }
    return VK_SUCCESS;
@@ -2616,7 +2619,7 @@ tu_CmdPushConstants(VkCommandBuffer commandBuffer,
                     const void *pValues)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   memcpy((void*) cmd->push_constants + offset, pValues, size);
+   memcpy((char *) cmd->push_constants + offset, pValues, size);
    cmd->state.dirty |= TU_CMD_DIRTY_SHADER_CONSTS;
 }
 
@@ -4325,7 +4328,7 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    cmd->state.framebuffer = fb;
    cmd->state.render_area = pRenderPassBegin->renderArea;
 
-   cmd->state.attachments =
+   cmd->state.attachments = (const struct tu_image_view **)
       vk_alloc(&cmd->vk.pool->alloc, pass->attachment_count *
                sizeof(cmd->state.attachments[0]), 8,
                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);

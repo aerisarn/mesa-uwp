@@ -126,9 +126,9 @@ struct PACKED primitives_generated_query_slot {
    pool->bo->iova + pool->stride * (query) +                          \
    sizeof(struct query_slot) + sizeof(type) * (i)
 
-#define query_result_addr(pool, query, type, i)                            \
-   pool->bo->map + pool->stride * (query) +                             \
-   sizeof(struct query_slot) + sizeof(type) * (i)
+#define query_result_addr(pool, query, type, i)                              \
+   (uint64_t *) ((char *) pool->bo->map + pool->stride * (query) +           \
+                 sizeof(struct query_slot) + sizeof(type) * (i))
 
 #define query_is_available(slot) slot->available
 
@@ -172,9 +172,11 @@ fd_perfcntr_type_to_vk_storage[] = {
 /*
  * Returns a pointer to a given slot in a query pool.
  */
-static void* slot_address(struct tu_query_pool *pool, uint32_t query)
+static struct query_slot *
+slot_address(struct tu_query_pool *pool, uint32_t query)
 {
-   return (char*)pool->bo->map + query * pool->stride;
+   return (struct query_slot *) ((char *) pool->bo->map +
+                                 query * pool->stride);
 }
 
 static void
@@ -253,7 +255,7 @@ tu_CreateQueryPool(VkDevice _device,
       unreachable("Invalid query type");
    }
 
-   struct tu_query_pool *pool =
+   struct tu_query_pool *pool = (struct tu_query_pool *)
          vk_object_alloc(&device->vk, pAllocator, pool_size,
                          VK_OBJECT_TYPE_QUERY_POOL);
    if (!pool)
@@ -477,7 +479,7 @@ get_query_pool_results(struct tu_device *device,
 {
    assert(dataSize >= stride * queryCount);
 
-   char *result_base = pData;
+   char *result_base = (char *) pData;
    VkResult result = VK_SUCCESS;
    for (uint32_t i = 0; i < queryCount; i++) {
       uint32_t query = firstQuery + i;

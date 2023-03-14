@@ -106,7 +106,8 @@ create_submission_data(struct tu_device *dev, struct tu_autotune *at,
                                          struct tu_submission_data, node);
       list_del(&submission_data->node);
    } else {
-      submission_data = calloc(1, sizeof(struct tu_submission_data));
+      submission_data = (struct tu_submission_data *) calloc(
+         1, sizeof(struct tu_submission_data));
       tu_cs_init(&submission_data->fence_cs, dev, TU_CS_MODE_GROW, 5, "autotune fence cs");
    }
    submission_data->fence = fence;
@@ -193,7 +194,8 @@ get_history(struct tu_autotune *at, uint64_t rp_key, uint32_t *avg_samples)
    struct hash_entry *entry =
       _mesa_hash_table_search(at->ht, &rp_key);
    if (entry) {
-      struct tu_renderpass_history *history = entry->data;
+      struct tu_renderpass_history *history =
+         (struct tu_renderpass_history *) entry->data;
       if (history->num_results > 0) {
          *avg_samples = p_atomic_read(&history->avg_samples);
          has_history = true;
@@ -207,7 +209,8 @@ get_history(struct tu_autotune *at, uint64_t rp_key, uint32_t *avg_samples)
 static struct tu_renderpass_result *
 create_history_result(struct tu_autotune *at, uint64_t rp_key)
 {
-   struct tu_renderpass_result *result = calloc(1, sizeof(*result));
+   struct tu_renderpass_result *result =
+      (struct tu_renderpass_result *) calloc(1, sizeof(*result));
    result->rp_key = rp_key;
 
    return result;
@@ -285,7 +288,8 @@ queue_pending_results(struct tu_autotune *at, struct tu_cmd_buffer *cmdbuf)
       list_for_each_entry_safe(struct tu_renderpass_result, result,
                               &cmdbuf->renderpass_autotune_results, node) {
          /* TODO: copying each result isn't nice */
-         struct tu_renderpass_result *copy = malloc(sizeof(*result));
+         struct tu_renderpass_result *copy =
+            (struct tu_renderpass_result *) malloc(sizeof(*result));
          *copy = *result;
          tu_bo_get_ref(copy->bo.bo);
          list_addtail(&copy->node, &at->pending_results);
@@ -317,7 +321,8 @@ tu_autotune_on_submit(struct tu_device *dev,
          struct hash_entry *entry =
             _mesa_hash_table_search(at->ht, &result->rp_key);
          if (!entry) {
-            history = calloc(1, sizeof(*history));
+            history =
+               (struct tu_renderpass_history *) calloc(1, sizeof(*history));
             history->key = result->rp_key;
             list_inithead(&history->results);
 
@@ -354,7 +359,8 @@ tu_autotune_on_submit(struct tu_device *dev,
     * command buffers, otherwise this table may grow big.
     */
    hash_table_foreach(at->ht, entry) {
-      struct tu_renderpass_history *history = entry->data;
+      struct tu_renderpass_history *history =
+         (struct tu_renderpass_history *) entry->data;
       if (fence_before(gpu_fence, history->last_fence + MAX_HISTORY_LIFETIME))
          continue;
 
@@ -415,7 +421,8 @@ tu_autotune_fini(struct tu_autotune *at, struct tu_device *dev)
       }
 
       hash_table_foreach(at->ht, entry) {
-         struct tu_renderpass_history *history = entry->data;
+         struct tu_renderpass_history *history =
+            (struct tu_renderpass_history *) entry->data;
 
          mesa_logi("%016"PRIx64" \tavg_passed=%u results=%u",
                    history->key, history->avg_samples, history->num_results);
@@ -426,7 +433,8 @@ tu_autotune_fini(struct tu_autotune *at, struct tu_device *dev)
 
    mtx_lock(&dev->autotune_mutex);
    hash_table_foreach(at->ht, entry) {
-      struct tu_renderpass_history *history = entry->data;
+      struct tu_renderpass_history *history =
+         (struct tu_renderpass_history *) entry->data;
       free_history(dev, history);
    }
    mtx_unlock(&dev->autotune_mutex);
@@ -625,7 +633,9 @@ tu_autotune_begin_renderpass(struct tu_cmd_buffer *cmd,
 
    uint64_t result_iova = autotune_result->bo.iova;
 
-   autotune_result->samples = tu_suballoc_bo_map(&autotune_result->bo);
+   autotune_result->samples =
+      (struct tu_renderpass_samples *) tu_suballoc_bo_map(
+         &autotune_result->bo);
 
    tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_COUNT_CONTROL(.copy = true));
 

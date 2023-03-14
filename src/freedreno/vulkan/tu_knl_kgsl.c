@@ -495,7 +495,7 @@ kgsl_syncobj_wait_any(struct tu_device* device, struct kgsl_syncobj **syncobjs, 
 
    if (convert_ts_to_fd) {
       kgsl_syncobj_foreach_state(syncobjs, KGSL_SYNCOBJ_STATE_TS) {
-         struct pollfd *poll_fd = u_vector_add(&poll_fds);
+         struct pollfd *poll_fd = (struct pollfd *) u_vector_add(&poll_fds);
          poll_fd->fd = timestamp_to_fd(sync->queue, sync->timestamp);
          poll_fd->events = POLLIN;
       }
@@ -510,7 +510,7 @@ kgsl_syncobj_wait_any(struct tu_device* device, struct kgsl_syncobj **syncobjs, 
       }
 
       if (num_fds) {
-         struct pollfd *poll_fd = u_vector_add(&poll_fds);
+         struct pollfd *poll_fd = (struct pollfd *) u_vector_add(&poll_fds);
          poll_fd->fd = timestamp_to_fd(queue, lowest_timestamp);
          poll_fd->events = POLLIN;
       }
@@ -518,7 +518,7 @@ kgsl_syncobj_wait_any(struct tu_device* device, struct kgsl_syncobj **syncobjs, 
 
    if (num_fds) {
       kgsl_syncobj_foreach_state(syncobjs, KGSL_SYNCOBJ_STATE_FD) {
-         struct pollfd *poll_fd = u_vector_add(&poll_fds);
+         struct pollfd *poll_fd = (struct pollfd *) u_vector_add(&poll_fds);
          poll_fd->fd = sync->fd;
          poll_fd->events = POLLIN;
       }
@@ -536,7 +536,7 @@ kgsl_syncobj_wait_any(struct tu_device* device, struct kgsl_syncobj **syncobjs, 
    } else {
       int ret, i;
 
-      struct pollfd *fds = poll_fds.data;
+      struct pollfd *fds = (struct pollfd *) poll_fds.data;
       uint32_t fds_count = u_vector_length(&poll_fds);
       do {
          ret = poll(fds, fds_count, get_relative_ms(abs_timeout_ns));
@@ -920,7 +920,7 @@ kgsl_queue_submit(struct tu_queue *queue, struct vk_queue_submit *vk_submit)
    if (tu_autotune_submit_requires_fence(cmd_buffers, cmdbuf_count))
       entry_count++;
 
-   struct kgsl_command_object *cmds =
+   struct kgsl_command_object *cmds = (struct kgsl_command_object *)
       vk_alloc(&queue->device->vk.alloc, sizeof(*cmds) * entry_count,
                alignof(*cmds), VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (cmds == NULL) {
@@ -1125,7 +1125,7 @@ tu_knl_kgsl_load(struct tu_instance *instance, int fd)
                        "I can't KHR_display");
    }
 
-   struct tu_physical_device *device =
+   struct tu_physical_device *device = (struct tu_physical_device *)
       vk_zalloc(&instance->vk.alloc, sizeof(*device), 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
    if (!device) {

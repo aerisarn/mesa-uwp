@@ -681,10 +681,10 @@ tu_GetPhysicalDeviceImageFormatProperties2(
    {
       switch (s->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO:
-         external_info = (const void *) s;
+         external_info = (const VkPhysicalDeviceExternalImageFormatInfo *) s;
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_IMAGE_FORMAT_INFO_EXT:
-         image_view_info = (const void *) s;
+         image_view_info = (const VkPhysicalDeviceImageViewImageFormatInfoEXT *) s;
          break;
       default:
          break;
@@ -696,13 +696,13 @@ tu_GetPhysicalDeviceImageFormatProperties2(
    {
       switch (s->sType) {
       case VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES:
-         external_props = (void *) s;
+         external_props = (VkExternalImageFormatProperties *) s;
          break;
       case VK_STRUCTURE_TYPE_FILTER_CUBIC_IMAGE_VIEW_IMAGE_FORMAT_PROPERTIES_EXT:
-         cubic_props = (void *) s;
+         cubic_props = (VkFilterCubicImageViewImageFormatPropertiesEXT *) s;
          break;
       case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES:
-         ycbcr_props = (void *) s;
+         ycbcr_props = (VkSamplerYcbcrConversionImageFormatProperties *) s;
          break;
       default:
          break;

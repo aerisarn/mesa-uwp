@@ -64,7 +64,7 @@ tu_hal_open(const struct hw_module_t *mod,
    assert(mod == &HAL_MODULE_INFO_SYM.common);
    assert(strcmp(id, HWVULKAN_DEVICE_0) == 0);
 
-   hwvulkan_device_t *hal_dev = malloc(sizeof(*hal_dev));
+   hwvulkan_device_t *hal_dev = (hwvulkan_device_t *) malloc(sizeof(*hal_dev));
    if (!hal_dev)
       return -1;
 
@@ -174,7 +174,7 @@ tu_gralloc_info_cros(struct tu_device *device,
                      uint64_t *modifier)
 
 {
-   const gralloc_module_t *gralloc = device->gralloc;
+   const gralloc_module_t *gralloc = (const gralloc_module_t *) device->gralloc;
    struct cros_gralloc0_buffer_info info;
    int ret;
 
@@ -211,7 +211,7 @@ tu_gralloc_info(struct tu_device *device,
                                   "Could not open gralloc\n");
       }
 
-      const gralloc_module_t *gralloc = device->gralloc;
+      const gralloc_module_t *gralloc = (const gralloc_module_t *) device->gralloc;
 
       mesa_logi("opened gralloc module name: %s", gralloc->common.name);
 

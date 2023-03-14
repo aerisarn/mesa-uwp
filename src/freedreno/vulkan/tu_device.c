@@ -63,7 +63,7 @@ tu_device_get_cache_uuid(struct tu_physical_device *device, void *uuid)
    memset(uuid, 0, VK_UUID_SIZE);
    _mesa_sha1_init(&ctx);
 
-   if (!disk_cache_get_function_identifier(tu_device_get_cache_uuid, &ctx))
+   if (!disk_cache_get_function_identifier((void *)tu_device_get_cache_uuid, &ctx))
       return -1;
 
    _mesa_sha1_update(&ctx, &family, sizeof(family));
@@ -457,8 +457,8 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    if (pAllocator == NULL)
       pAllocator = vk_default_allocator();
 
-   instance = vk_zalloc(pAllocator, sizeof(*instance), 8,
-                        VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+   instance = (struct tu_instance *) vk_zalloc(
+      pAllocator, sizeof(*instance), 8, VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
 
    if (!instance)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -724,25 +724,29 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: {
-         VkPhysicalDevice4444FormatsFeaturesEXT *features = (void *)ext;
+         VkPhysicalDevice4444FormatsFeaturesEXT *features =
+            (VkPhysicalDevice4444FormatsFeaturesEXT *) ext;
          features->formatA4R4G4B4 = true;
          features->formatA4B4G4R4 = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BORDER_COLOR_SWIZZLE_FEATURES_EXT: {
-         VkPhysicalDeviceBorderColorSwizzleFeaturesEXT *features = (void *)ext;
+         VkPhysicalDeviceBorderColorSwizzleFeaturesEXT *features =
+            (VkPhysicalDeviceBorderColorSwizzleFeaturesEXT *) ext;
          features->borderColorSwizzle = true;
          features->borderColorSwizzleFromImage = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
-         VkPhysicalDeviceCustomBorderColorFeaturesEXT *features = (void *) ext;
+         VkPhysicalDeviceCustomBorderColorFeaturesEXT *features =
+            (VkPhysicalDeviceCustomBorderColorFeaturesEXT *) ext;
          features->customBorderColors = true;
          features->customBorderColorWithoutFormat = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
-         VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *features = (void *)ext;
+         VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *features =
+            (VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *) ext;
          features->extendedDynamicState = true;
          break;
       }
@@ -811,12 +815,14 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES: {
-         VkPhysicalDeviceScalarBlockLayoutFeatures *features = (void *)ext;
+         VkPhysicalDeviceScalarBlockLayoutFeatures *features =
+            (VkPhysicalDeviceScalarBlockLayoutFeatures *) ext;
          features->scalarBlockLayout = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
-         VkPhysicalDeviceRobustness2FeaturesEXT *features = (void *)ext;
+         VkPhysicalDeviceRobustness2FeaturesEXT *features =
+            (VkPhysicalDeviceRobustness2FeaturesEXT *) ext;
          features->robustBufferAccess2 = true;
          features->robustImageAccess2 = true;
          features->nullDescriptor = true;
@@ -1367,7 +1373,8 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT: {
-         VkPhysicalDeviceCustomBorderColorPropertiesEXT *props = (void *)ext;
+         VkPhysicalDeviceCustomBorderColorPropertiesEXT *props =
+            (VkPhysicalDeviceCustomBorderColorPropertiesEXT *) ext;
          props->maxCustomBorderColorSamplers = TU_BORDER_COLOR_COUNT;
          break;
       }
@@ -1378,7 +1385,8 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
-         VkPhysicalDeviceRobustness2PropertiesEXT *props = (void *)ext;
+         VkPhysicalDeviceRobustness2PropertiesEXT *props =
+            (VkPhysicalDeviceRobustness2PropertiesEXT *) ext;
          /* see write_buffer_descriptor() */
          props->robustStorageBufferAccessSizeAlignment = 4;
          /* see write_ubo_descriptor() */
@@ -1576,7 +1584,8 @@ tu_GetPhysicalDeviceQueueFamilyProperties2(
       vk_foreach_struct(ext, p->pNext) {
          switch (ext->sType) {
          case VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES_KHR: {
-            VkQueueFamilyGlobalPriorityPropertiesKHR *props = (void *)ext;
+            VkQueueFamilyGlobalPriorityPropertiesKHR *props =
+               (VkQueueFamilyGlobalPriorityPropertiesKHR *) ext;
             tu_physical_device_get_global_priority_properties(pdevice, props);
             break;
          }
@@ -1744,7 +1753,7 @@ tu_trace_destroy_ts_buffer(struct u_trace_context *utctx, void *timestamps)
 {
    struct tu_device *device =
       container_of(utctx, struct tu_device, trace_context);
-   struct tu_bo *bo = timestamps;
+   struct tu_bo *bo = (struct tu_bo *) timestamps;
 
    tu_bo_finish(device, bo);
 }
@@ -1753,8 +1762,8 @@ static void
 tu_trace_record_ts(struct u_trace *ut, void *cs, void *timestamps,
                    unsigned idx, bool end_of_pipe)
 {
-   struct tu_bo *bo = timestamps;
-   struct tu_cs *ts_cs = cs;
+   struct tu_bo *bo = (struct tu_bo *) timestamps;
+   struct tu_cs *ts_cs = (struct tu_cs *) cs;
 
    unsigned ts_offset = idx * sizeof(uint64_t);
    tu_cs_emit_pkt7(ts_cs, CP_EVENT_WRITE, 4);
@@ -1769,8 +1778,9 @@ tu_trace_read_ts(struct u_trace_context *utctx,
 {
    struct tu_device *device =
       container_of(utctx, struct tu_device, trace_context);
-   struct tu_bo *bo = timestamps;
-   struct tu_u_trace_submission_data *submission_data = flush_data;
+   struct tu_bo *bo = (struct tu_bo *) timestamps;
+   struct tu_u_trace_submission_data *submission_data =
+      (struct tu_u_trace_submission_data *) flush_data;
 
    /* Only need to stall on results for the first entry: */
    if (idx == 0) {
@@ -1781,7 +1791,7 @@ tu_trace_read_ts(struct u_trace_context *utctx,
       return U_TRACE_NO_TIMESTAMP;
    }
 
-   uint64_t *ts = bo->map;
+   uint64_t *ts = (uint64_t *) bo->map;
 
    /* Don't translate the no-timestamp marker: */
    if (ts[idx] == U_TRACE_NO_TIMESTAMP)
@@ -1795,7 +1805,8 @@ tu_trace_delete_flush_data(struct u_trace_context *utctx, void *flush_data)
 {
    struct tu_device *device =
       container_of(utctx, struct tu_device, trace_context);
-   struct tu_u_trace_submission_data *submission_data = flush_data;
+   struct tu_u_trace_submission_data *submission_data =
+      (struct tu_u_trace_submission_data *) flush_data;
 
    tu_u_trace_submission_data_finish(device, submission_data);
 }
@@ -1806,9 +1817,9 @@ tu_copy_timestamp_buffer(struct u_trace_context *utctx, void *cmdstream,
                          void *ts_to, uint32_t to_offset,
                          uint32_t count)
 {
-   struct tu_cs *cs = cmdstream;
-   struct tu_bo *bo_from = ts_from;
-   struct tu_bo *bo_to = ts_to;
+   struct tu_cs *cs = (struct tu_cs *) cmdstream;
+   struct tu_bo *bo_from = (struct tu_bo *) ts_from;
+   struct tu_bo *bo_to = (struct tu_bo *) ts_to;
 
    tu_cs_emit_pkt7(cs, CP_MEMCPY, 5);
    tu_cs_emit(cs, count * sizeof(uint64_t) / sizeof(uint32_t));
@@ -1851,8 +1862,9 @@ VkResult
 tu_create_copy_timestamp_cs(struct tu_cmd_buffer *cmdbuf, struct tu_cs** cs,
                             struct u_trace **trace_copy)
 {
-   *cs = vk_zalloc(&cmdbuf->device->vk.alloc, sizeof(struct tu_cs), 8,
-                   VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   *cs = (struct tu_cs *) vk_zalloc(&cmdbuf->device->vk.alloc,
+                                    sizeof(struct tu_cs), 8,
+                                    VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
 
    if (*cs == NULL) {
       return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -1866,8 +1878,9 @@ tu_create_copy_timestamp_cs(struct tu_cmd_buffer *cmdbuf, struct tu_cs** cs,
    tu_cs_emit_wfi(*cs);
    tu_cs_emit_pkt7(*cs, CP_WAIT_FOR_ME, 0);
 
-   *trace_copy = vk_zalloc(&cmdbuf->device->vk.alloc, sizeof(struct u_trace), 8,
-                           VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   *trace_copy = (struct u_trace *) vk_zalloc(
+      &cmdbuf->device->vk.alloc, sizeof(struct u_trace), 8,
+      VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
 
    if (*trace_copy == NULL) {
       return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -1893,7 +1906,7 @@ tu_u_trace_submission_data_create(
    uint32_t cmd_buffer_count,
    struct tu_u_trace_submission_data **submission_data)
 {
-   *submission_data =
+   *submission_data = (struct tu_u_trace_submission_data *)
       vk_zalloc(&device->vk.alloc,
                 sizeof(struct tu_u_trace_submission_data), 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
@@ -1904,10 +1917,10 @@ tu_u_trace_submission_data_create(
 
    struct tu_u_trace_submission_data *data = *submission_data;
 
-   data->cmd_trace_data =
-      vk_zalloc(&device->vk.alloc,
-                cmd_buffer_count * sizeof(struct tu_u_trace_cmd_data), 8,
-                VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   data->cmd_trace_data = (struct tu_u_trace_cmd_data *) vk_zalloc(
+      &device->vk.alloc,
+      cmd_buffer_count * sizeof(struct tu_u_trace_cmd_data), 8,
+      VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
 
    if (!data->cmd_trace_data) {
       goto fail;
@@ -2013,12 +2026,12 @@ tu_init_dbg_reg_stomper(struct tu_device *device)
                                                  tu_reg_stomper_options,
                                                  TU_DEBUG_REG_STOMP_CMDBUF);
 
-   struct tu_cs *cmdbuf_cs = calloc(1, sizeof(struct tu_cs));
+   struct tu_cs *cmdbuf_cs = (struct tu_cs *) calloc(1, sizeof(struct tu_cs));
    tu_cs_init(cmdbuf_cs, device, TU_CS_MODE_GROW, 4096,
               "cmdbuf reg stomp cs");
    tu_cs_begin(cmdbuf_cs);
 
-   struct tu_cs *rp_cs = calloc(1, sizeof(struct tu_cs));
+   struct tu_cs *rp_cs = (struct tu_cs *) calloc(1, sizeof(struct tu_cs));
    tu_cs_init(rp_cs, device, TU_CS_MODE_GROW, 4096, "rp reg stomp cs");
    tu_cs_begin(rp_cs);
 
@@ -2074,7 +2087,9 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    vk_foreach_struct_const(ext, pCreateInfo->pNext) {
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
-         const VkPhysicalDeviceCustomBorderColorFeaturesEXT *border_color_features = (const void *)ext;
+         const VkPhysicalDeviceCustomBorderColorFeaturesEXT
+            *border_color_features =
+               (const VkPhysicalDeviceCustomBorderColorFeaturesEXT *) ext;
          custom_border_colors = border_color_features->customBorderColors;
          border_color_without_format =
             border_color_features->customBorderColorWithoutFormat;
@@ -2087,12 +2102,14 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
-         VkPhysicalDeviceRobustness2FeaturesEXT *features = (void *)ext;
+         VkPhysicalDeviceRobustness2FeaturesEXT *features =
+            (VkPhysicalDeviceRobustness2FeaturesEXT *) ext;
          robust_buffer_access2 = features->robustBufferAccess2;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_KHR: {
-         VkPhysicalDeviceGlobalPriorityQueryFeaturesKHR *features = (void *)ext;
+         VkPhysicalDeviceGlobalPriorityQueryFeaturesKHR *features =
+            (VkPhysicalDeviceGlobalPriorityQueryFeaturesKHR *) ext;
          global_priority_query = features->globalPriorityQuery;
          break;
       }
@@ -2101,8 +2118,9 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       }
    }
 
-   device = vk_zalloc2(&physical_device->instance->vk.alloc, pAllocator,
-                       sizeof(*device), 8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   device = (struct tu_device *) vk_zalloc2(
+      &physical_device->instance->vk.alloc, pAllocator, sizeof(*device), 8,
+      VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!device)
       return vk_startup_errorf(physical_device->instance, VK_ERROR_OUT_OF_HOST_MEMORY, "OOM");
 
@@ -2154,9 +2172,10 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       const VkDeviceQueueCreateInfo *queue_create =
          &pCreateInfo->pQueueCreateInfos[i];
       uint32_t qfi = queue_create->queueFamilyIndex;
-      device->queues[qfi] = vk_alloc(
-         &device->vk.alloc, queue_create->queueCount * sizeof(struct tu_queue),
-         8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+      device->queues[qfi] = (struct tu_queue *) vk_alloc(
+         &device->vk.alloc,
+         queue_create->queueCount * sizeof(struct tu_queue), 8,
+         VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
       if (!device->queues[qfi]) {
          result = vk_startup_errorf(physical_device->instance,
                                     VK_ERROR_OUT_OF_HOST_MEMORY,
@@ -2226,7 +2245,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       goto fail_global_bo_map;
    }
 
-   global = device->global_bo->map;
+   global = (struct tu6_global *)device->global_bo->map;
    tu_init_clear_blit_shaders(device);
    global->predicate = 0;
    global->vtx_stats_query_not_running = 1;
@@ -2265,13 +2284,15 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
        */
       struct tu_cs *cs;
 
-      if (!(device->perfcntrs_pass_cs = calloc(1, sizeof(struct tu_cs)))) {
+      if (!(device->perfcntrs_pass_cs =
+               (struct tu_cs *) calloc(1, sizeof(struct tu_cs)))) {
          result = vk_startup_errorf(device->instance,
                VK_ERROR_OUT_OF_HOST_MEMORY, "OOM");
          goto fail_perfcntrs_pass_alloc;
       }
 
-      device->perfcntrs_pass_cs_entries = calloc(32, sizeof(struct tu_cs_entry));
+      device->perfcntrs_pass_cs_entries =
+         (struct tu_cs_entry *) calloc(32, sizeof(struct tu_cs_entry));
       if (!device->perfcntrs_pass_cs_entries) {
          result = vk_startup_errorf(device->instance,
                VK_ERROR_OUT_OF_HOST_MEMORY, "OOM");
@@ -2587,8 +2608,8 @@ tu_AllocateMemory(VkDevice _device,
    if (mem_heap_used > mem_heap->size)
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
-   mem = vk_object_alloc(&device->vk, pAllocator, sizeof(*mem),
-                         VK_OBJECT_TYPE_DEVICE_MEMORY);
+   mem = (struct tu_device_memory *) vk_object_alloc(
+      &device->vk, pAllocator, sizeof(*mem), VK_OBJECT_TYPE_DEVICE_MEMORY);
    if (mem == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -2716,7 +2737,7 @@ tu_MapMemory(VkDevice _device,
          return result;
    }
 
-   *ppData = mem->bo->map + offset;
+   *ppData = (char *) mem->bo->map + offset;
    return VK_SUCCESS;
 }
 
@@ -2858,7 +2879,7 @@ tu_CreateEvent(VkDevice _device,
 {
    TU_FROM_HANDLE(tu_device, device, _device);
 
-   struct tu_event *event =
+   struct tu_event *event = (struct tu_event *)
          vk_object_alloc(&device->vk, pAllocator, sizeof(*event),
                          VK_OBJECT_TYPE_EVENT);
    if (!event)
@@ -2936,8 +2957,8 @@ tu_CreateBuffer(VkDevice _device,
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_buffer *buffer;
 
-   buffer = vk_buffer_create(&device->vk, pCreateInfo, pAllocator,
-         sizeof(*buffer));
+   buffer = (struct tu_buffer *) vk_buffer_create(
+      &device->vk, pCreateInfo, pAllocator, sizeof(*buffer));
    if (buffer == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -2982,8 +3003,8 @@ tu_CreateFramebuffer(VkDevice _device,
    size_t size = sizeof(*framebuffer);
    if (!imageless)
       size += sizeof(struct tu_attachment_info) * pCreateInfo->attachmentCount;
-   framebuffer = vk_object_alloc(&device->vk, pAllocator, size,
-                                 VK_OBJECT_TYPE_FRAMEBUFFER);
+   framebuffer = (struct tu_framebuffer *) vk_object_alloc(
+      &device->vk, pAllocator, size, VK_OBJECT_TYPE_FRAMEBUFFER);
    if (framebuffer == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -3142,8 +3163,8 @@ tu_CreateSampler(VkDevice _device,
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
 
-   sampler = vk_object_alloc(&device->vk, pAllocator, sizeof(*sampler),
-                             VK_OBJECT_TYPE_SAMPLER);
+   sampler = (struct tu_sampler *) vk_object_alloc(
+      &device->vk, pAllocator, sizeof(*sampler), VK_OBJECT_TYPE_SAMPLER);
    if (!sampler)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -3325,11 +3346,12 @@ tu_debug_bos_add(struct tu_device *dev, uint64_t size, const char *name)
    struct tu_debug_bos_entry *debug_bos;
 
    if (!entry) {
-      debug_bos = calloc(1, sizeof(struct tu_debug_bos_entry));
+      debug_bos = (struct tu_debug_bos_entry *) calloc(
+         1, sizeof(struct tu_debug_bos_entry));
       debug_bos->name = strdup(name);
       _mesa_hash_table_insert(dev->bo_sizes, debug_bos->name, debug_bos);
    } else {
-      debug_bos = entry->data;
+      debug_bos = (struct tu_debug_bos_entry *) entry->data;
    }
 
    debug_bos->count++;
@@ -3351,7 +3373,8 @@ tu_debug_bos_del(struct tu_device *dev, struct tu_bo *bo)
    /* If we're finishing the BO, it should have been added already */
    assert(entry);
 
-   struct tu_debug_bos_entry *debug_bos = entry->data;
+   struct tu_debug_bos_entry *debug_bos =
+      (struct tu_debug_bos_entry *) entry->data;
    debug_bos->count--;
    debug_bos->size -= align(bo->size, 4096);
    if (!debug_bos->count) {
@@ -3385,7 +3408,8 @@ tu_debug_bos_print_stats(struct tu_device *dev)
    uint32_t count = 0;
    hash_table_foreach(dev->bo_sizes, entry)
    {
-      struct tu_debug_bos_entry *debug_bos = (void *) entry->data;
+      struct tu_debug_bos_entry *debug_bos =
+         (struct tu_debug_bos_entry *) entry->data;
       util_dynarray_append(&dyn, struct tu_debug_bos_entry *, debug_bos);
       size += debug_bos->size / 1024;
       count += debug_bos->count;
