@@ -554,6 +554,10 @@ radv_cmd_buffer_trace_emit(struct radv_cmd_buffer *cmd_buffer)
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    uint64_t va;
 
+   if (cmd_buffer->qf != RADV_QUEUE_GENERAL &&
+       cmd_buffer->qf != RADV_QUEUE_COMPUTE)
+      return;
+
    va = radv_buffer_get_va(device->trace_bo);
    if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY)
       va += 4;
