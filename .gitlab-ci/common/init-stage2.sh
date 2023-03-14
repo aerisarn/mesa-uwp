@@ -36,7 +36,9 @@ BACKGROUND_PIDS=
 # Second-stage init, used to set up devices and our job environment before
 # running tests.
 
-. /set-job-env-vars.sh
+for path in '/set-job-env-vars.sh' './set-job-env-vars.sh'; do
+    [ -f "$path" ] && source "$path"
+done
 . "$SCRIPTS_DIR"/setup-test-env.sh
 
 set -ex
