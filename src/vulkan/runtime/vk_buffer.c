@@ -92,6 +92,33 @@ vk_common_GetBufferMemoryRequirements(VkDevice _device,
    *pMemoryRequirements = reqs.memoryRequirements;
 }
 
+VKAPI_ATTR void VKAPI_CALL
+vk_common_GetBufferMemoryRequirements2(VkDevice _device,
+                                       const VkBufferMemoryRequirementsInfo2 *pInfo,
+                                       VkMemoryRequirements2 *pMemoryRequirements)
+{
+   VK_FROM_HANDLE(vk_device, device, _device);
+   VK_FROM_HANDLE(vk_buffer, buffer, pInfo->buffer);
+
+   VkBufferCreateInfo pCreateInfo = {
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .pNext = NULL,
+      .usage = buffer->usage,
+      .size = buffer->size,
+      .flags = buffer->create_flags,
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+      .queueFamilyIndexCount = 0,
+      .pQueueFamilyIndices = NULL,
+   };
+   VkDeviceBufferMemoryRequirements info = {
+      .sType = VK_STRUCTURE_TYPE_DEVICE_BUFFER_MEMORY_REQUIREMENTS,
+      .pNext = NULL,
+      .pCreateInfo = &pCreateInfo,
+   };
+   
+   device->dispatch_table.GetDeviceBufferMemoryRequirements(_device, &info, pMemoryRequirements);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 vk_common_BindBufferMemory(VkDevice _device,
                            VkBuffer buffer,
