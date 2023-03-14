@@ -235,9 +235,9 @@ Core Mesa environment variables
    shader caches for loading at initialization. The file paths are
    relative to the cache directory and do not include suffixes,
    referencing both the cache DB and its index file. E.g.
-   MESA_DISK_CACHE_SINGLE_FILE=filename1 refers to filename1.foz and
-   filename1_idx.foz. A limit of 8 DBs can be loaded and this limit is
-   shared with :envvar:`MESA_DISK_CACHE_READ_ONLY_FOZ_DBS_DYNAMIC_LIST.`
+   ``MESA_DISK_CACHE_SINGLE_FILE=filename1`` refers to ``filename1.foz``
+   and ``filename1_idx.foz``. A limit of 8 DBs can be loaded and this limit
+   is shared with :envvar:`MESA_DISK_CACHE_READ_ONLY_FOZ_DBS_DYNAMIC_LIST.`
 
 .. envvar:: MESA_DISK_CACHE_DATABASE
 
