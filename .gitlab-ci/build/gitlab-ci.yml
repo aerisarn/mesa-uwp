@@ -25,11 +25,13 @@
     - |
       export PATH="/usr/lib/ccache:$PATH"
       export CCACHE_BASEDIR="$PWD"
-      section_start ccache_before "ccache stats before build"
-      ccache --show-stats
-      section_end ccache_before
+      if test -x /usr/bin/ccache; then
+        section_start ccache_before "ccache stats before build"
+        ccache --show-stats
+        section_end ccache_before
+      fi
   after_script:
-    - ccache --show-stats | grep "cache hit rate"
+    - if test -x /usr/bin/ccache; then ccache --show-stats | grep "cache hit rate"; fi
     - !reference [default, after_script]
 
 .build-windows:
@@ -182,7 +184,7 @@ debian-build-testing:
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,d3d12,asahi,crocus"
     VULKAN_DRIVERS: swrast
     EXTRA_OPTION: >
-      --native-file .gitlab-ci/build/meson-native-lto-wrappers.txt
+      --native-file .gitlab-ci/build/meson-native-lto-wrappers-ccache.txt
       -D spirv-to-dxil=true
       -D osmesa=true
       -D tools=drm-shim,etnaviv,freedreno,glsl,intel,intel-ui,nir,nouveau,lima,panfrost,asahi

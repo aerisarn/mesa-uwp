@@ -1,0 +1,3 @@
+[binaries]
+c = 'ccache-gcc-link-werror.sh'
+cpp = 'ccache-g++-link-werror.sh'
