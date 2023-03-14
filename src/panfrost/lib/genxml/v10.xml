@@ -952,7 +952,7 @@
     <field name="Layer index enable" size="1" start="0:20" type="bool"/>
     <field name="Scissor array enable" size="1" start="0:21" type="bool"/>
 
-    <field name="Base vertex offset" size="32" start="1:0" type="uint"/>
+    <field name="Base vertex offset" size="32" start="1:0" type="int"/>
     <field name="Instance offset" size="32" start="2:0" type="uint"/>
     <field name="Index count" size="32" start="3:0" type="uint"/>
   </struct>

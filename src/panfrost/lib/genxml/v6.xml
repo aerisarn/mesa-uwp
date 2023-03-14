@@ -581,7 +581,7 @@
     <field name="Secondary Shader" size="1" start="0:18" type="bool"/>
     <field name="Primitive restart" size="2" start="0:19" type="Primitive Restart"/>
     <field name="Job Task Split" size="6" start="0:26" type="uint"/>
-    <field name="Base vertex offset" size="32" start="1:0" type="uint"/>
+    <field name="Base vertex offset" size="32" start="1:0" type="int"/>
     <field name="Primitive Restart Index" size="32" start="2:0" type="uint"/>
     <field name="Index count" size="32" start="3:0" type="uint" modifier="minus(1)"/>
     <field name="Indices" size="64" start="4:0" type="address"/>
