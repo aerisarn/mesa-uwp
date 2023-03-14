@@ -700,7 +700,7 @@ used.
 
    Conditional discard.  Allowed in fragment shaders only.
 
-   .. math::
+   Pseudocode::
 
       if (src.x < 0 || src.y < 0 || src.z < 0 || src.w < 0)
          discard
