@@ -247,6 +247,7 @@ struct tu_device
    } fiber_pvtmem_bo, wave_pvtmem_bo;
 
    struct tu_bo *global_bo;
+   struct tu6_global *global_bo_map;
 
    uint32_t implicit_sync_bo_count;
 

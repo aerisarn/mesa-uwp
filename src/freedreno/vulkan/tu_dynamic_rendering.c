@@ -31,7 +31,7 @@ struct dynamic_rendering_entry {
 static VkResult
 get_cmd_buffer(struct tu_device *dev, struct tu_cmd_buffer **cmd_buffer_out)
 {
-   struct tu6_global *global = dev->global_bo->map;
+   struct tu6_global *global = dev->global_bo_map;
 
    /* Note: because QueueSubmit is serialized, we don't need any locks here.
     */

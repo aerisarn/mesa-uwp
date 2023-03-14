@@ -351,7 +351,7 @@ tu_dbg_log_gmem_load_store_skips(struct tu_device *device)
       return;
    }
 
-   struct tu6_global *global = device->global_bo->map;
+   struct tu6_global *global = device->global_bo_map;
 
    uint32_t current_taken_loads = global->dbg_gmem_taken_loads;
    uint32_t current_taken_stores = global->dbg_gmem_taken_stores;

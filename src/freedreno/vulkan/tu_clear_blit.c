@@ -720,19 +720,20 @@ compile_shader(struct tu_device *dev, struct nir_shader *nir,
 
    ir3_finalize_nir(dev->compiler, nir);
 
+   const struct ir3_shader_options options = {
+      .reserved_user_consts = align(consts, 4),
+      .api_wavesize = IR3_SINGLE_OR_DOUBLE,
+      .real_wavesize = IR3_SINGLE_OR_DOUBLE,
+   };
    struct ir3_shader *sh =
-      ir3_shader_from_nir(dev->compiler, nir, &(struct ir3_shader_options) {
-                              .reserved_user_consts = align(consts, 4),
-                              .api_wavesize = IR3_SINGLE_OR_DOUBLE,
-                              .real_wavesize = IR3_SINGLE_OR_DOUBLE,
-                          }, NULL);
+      ir3_shader_from_nir(dev->compiler, nir, &options, NULL);
 
    struct ir3_shader_key key = {};
    bool created;
    struct ir3_shader_variant *so =
       ir3_shader_get_variant(sh, &key, false, false, &created);
 
-   struct tu6_global *global = dev->global_bo->map;
+   struct tu6_global *global = dev->global_bo_map;
 
    assert(*offset + so->info.sizedwords <= ARRAY_SIZE(global->shaders));
    dev->global_shaders[idx] = sh;

@@ -92,8 +92,7 @@ fence_before(uint32_t a, uint32_t b)
 static uint32_t
 get_autotune_fence(struct tu_autotune *at)
 {
-   const struct tu6_global *global = at->device->global_bo->map;
-   return global->autotune_fence;
+   return at->device->global_bo_map->autotune_fence;
 }
 
 static struct tu_submission_data *

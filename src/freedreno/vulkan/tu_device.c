@@ -2246,7 +2246,9 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    }
 
    global = (struct tu6_global *)device->global_bo->map;
+   device->global_bo_map = global;
    tu_init_clear_blit_shaders(device);
+
    global->predicate = 0;
    global->vtx_stats_query_not_running = 1;
    global->dbg_one = (uint32_t)-1;
@@ -3102,9 +3104,8 @@ tu_init_sampler(struct tu_device *device,
       }
 
       tu6_pack_border_color(
-         device->global_bo->map +
-            offsetof_arr(struct tu6_global, bcolor, border_color),
-         &color, pCreateInfo->borderColor == VK_BORDER_COLOR_INT_CUSTOM_EXT);
+         &device->global_bo_map->bcolor[border_color], &color,
+         pCreateInfo->borderColor == VK_BORDER_COLOR_INT_CUSTOM_EXT);
       border_color += TU_BORDER_COLOR_BUILTIN;
    }
 
