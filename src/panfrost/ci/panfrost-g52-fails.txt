@@ -54,7 +54,6 @@ spec@arb_depth_buffer_float@fbo-stencil-gl_depth32f_stencil8-readpixels,Fail
 spec@arb_depth_clamp@depth-clamp-range,Fail
 spec@arb_direct_state_access@gettextureimage-formats,Fail
 spec@arb_direct_state_access@gettextureimage-formats init-by-rendering,Fail
-spec@arb_draw_buffers@fbo-mrt-new-bind,Crash
 spec@arb_es2_compatibility@fbo-blending-formats,Fail
 spec@arb_es2_compatibility@fbo-blending-formats@GL_RGB565,Fail
 spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit depth gl_depth32f_stencil8,Fail
