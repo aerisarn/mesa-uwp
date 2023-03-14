@@ -206,7 +206,7 @@ radeonsi-raven-va:amd64:
 .deqp-test-valve:
   variables:
     B2C_JOB_SUCCESS_REGEX: '^\+ DEQP_EXITCODE=0\r$'
-    B2C_TEST_SCRIPT: ./install/deqp-runner.sh
+    HWCI_TEST_SCRIPT: ./install/deqp-runner.sh
 
 .kabini-test-valve:
   variables:
@@ -420,7 +420,7 @@ radv-fossils:
     - .b2c-test-radv-vk
   variables:
     B2C_JOB_SUCCESS_REGEX: 'SUCCESS: No changes found!\r$'
-    B2C_TEST_SCRIPT: ./install/vkd3d-proton/run.sh
+    HWCI_TEST_SCRIPT: ./install/vkd3d-proton/run.sh
 
 .vkd3d-kabini-valve:
   extends:

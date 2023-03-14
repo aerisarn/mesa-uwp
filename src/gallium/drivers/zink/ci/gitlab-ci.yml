@@ -134,7 +134,7 @@ zink-freedreno-a630-traces:
     PIGLIT_PROFILES: all
     PIGLIT_PLATFORM: gbm
     RADV_PERFTEST: gpl
-    B2C_TEST_SCRIPT: ./install/valve/gl_combined_testing.sh
+    HWCI_TEST_SCRIPT: ./install/valve/gl_combined_testing.sh
     B2C_JOB_SUCCESS_REGEX: 'Execution is over, pipeline status: 0'
 
     # Disable reporting, since DUTs don't have internet access

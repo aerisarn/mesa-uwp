@@ -284,7 +284,7 @@ rustfmt:
       [ -d "$CI_COMMON_SCRIPTS" ] || exit 1
 
 
-      B2C_TEST_SCRIPT="bash -c 'source ./set-job-env-vars.sh; source ./setup-test-env.sh; tar xf ${INSTALL_TARBALL_NAME}; ${B2C_TEST_SCRIPT}'"
+      B2C_TEST_SCRIPT="bash -c 'tar xf ${INSTALL_TARBALL_NAME}; ./install/common/init-stage2.sh'"
 
       # The Valve CI gateway receives jobs in a YAML format. Create a
       # job description from the CI environment.
@@ -321,11 +321,11 @@ rustfmt:
       # begins running on the remote DUT.
       set +x
       "$CI_COMMON_SCRIPTS"/generate-env.sh > ${JOB_FOLDER}/set-job-env-vars.sh
+      echo "export SCRIPTS_DIR=./install" >> ${JOB_FOLDER}/set-job-env-vars.sh
       chmod +x ${JOB_FOLDER}/set-job-env-vars.sh
       echo "Variables passed through:"
       cat ${JOB_FOLDER}/set-job-env-vars.sh
       echo "export CI_JOB_JWT=${CI_JOB_JWT}" >> ${JOB_FOLDER}/set-job-env-vars.sh
-      cp ${SCRIPTS_DIR}/setup-test-env.sh ${JOB_FOLDER}/setup-test-env.sh
       set -x
 
       # Copy the mesa install tarball to the job folder, for later extraction
