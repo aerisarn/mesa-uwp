@@ -320,6 +320,9 @@ has_flat_varyings(struct d3d12_context* ctx);
 bool
 d3d12_compare_varying_info(const struct d3d12_varying_info *expect, const struct d3d12_varying_info *have);
 
+bool
+manual_depth_range(struct d3d12_context* ctx);
+
 #ifdef __cplusplus
 }
 #endif

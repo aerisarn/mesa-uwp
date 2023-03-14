@@ -318,7 +318,7 @@ frag_result_color_lowering(struct d3d12_context *ctx)
    return 0;
 }
 
-static bool
+bool
 manual_depth_range(struct d3d12_context *ctx)
 {
    if (!d3d12_need_zero_one_depth_range(ctx))
@@ -1620,7 +1620,7 @@ d3d12_select_shader_variants(struct d3d12_context *ctx, const struct pipe_draw_i
    sel_ctx.needs_vertex_reordering = needs_vertex_reordering(&sel_ctx, dinfo);
    sel_ctx.missing_dual_src_outputs = ctx->missing_dual_src_outputs;
    sel_ctx.frag_result_color_lowering = frag_result_color_lowering(ctx);
-   sel_ctx.manual_depth_range = manual_depth_range(ctx);
+   sel_ctx.manual_depth_range = ctx->manual_depth_range;
 
    validate_geometry_shader_variant(&sel_ctx);
    validate_tess_ctrl_shader_variant(&sel_ctx);

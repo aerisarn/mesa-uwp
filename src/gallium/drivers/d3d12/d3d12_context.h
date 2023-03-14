@@ -241,6 +241,7 @@ struct d3d12_context {
 
    bool has_flat_varyings;
    bool missing_dual_src_outputs;
+   bool manual_depth_range;
 
    struct d3d12_gfx_pipeline_state gfx_pipeline_state;
    struct d3d12_compute_pipeline_state compute_pipeline_state;
