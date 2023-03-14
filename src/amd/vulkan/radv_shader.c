@@ -2521,7 +2521,7 @@ radv_shader_part_binary_upload(struct radv_device *device, const struct radv_sha
    return true;
 }
 
-static struct radv_shader_part *
+struct radv_shader_part *
 radv_shader_part_create(struct radv_device *device, struct radv_shader_part_binary *binary,
                         unsigned wave_size)
 {
