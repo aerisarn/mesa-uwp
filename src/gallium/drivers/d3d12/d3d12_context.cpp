@@ -2610,6 +2610,11 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       ctx->id = D3D12_CONTEXT_NO_ID;
    mtx_unlock(&screen->submit_mutex);
 
+   for (unsigned i = 0; i < ARRAY_SIZE(ctx->batches); ++i) {
+      ctx->batches[i].ctx_id = ctx->id;
+      ctx->batches[i].ctx_index = i;
+   }
+
    if (flags & PIPE_CONTEXT_PREFER_THREADED)
       return threaded_context_create(&ctx->base,
          &screen->transfer_pool,

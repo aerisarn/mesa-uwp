@@ -339,6 +339,22 @@ resolve_global_state(struct d3d12_context *ctx, ID3D12Resource *res, d3d12_resou
    }
 }
 
+static void
+context_state_resolve_submission(struct d3d12_context *ctx, d3d12_bo *bo)
+{
+   d3d12_context_state_table_entry *bo_state = find_or_create_state_entry(ctx, bo);
+   if (!bo_state->batch_end.supports_simultaneous_access) {
+      assert(bo->res && bo->global_state.subresource_states);
+
+      resolve_global_state(ctx, bo->res, &bo_state->batch_begin, &bo->global_state);
+
+      copy_resource_state(&bo_state->batch_begin, &bo_state->batch_end);
+      copy_resource_state(&bo->global_state, &bo_state->batch_end);
+   } else {
+      reset_resource_state(&bo_state->batch_end);
+   }
+}
+
 bool
 d3d12_context_state_resolve_submission(struct d3d12_context *ctx, struct d3d12_batch *batch)
 {
@@ -351,20 +367,12 @@ d3d12_context_state_resolve_submission(struct d3d12_context *ctx, struct d3d12_b
 
    util_dynarray_clear(&ctx->recently_destroyed_bos);
 
-   hash_table_foreach(batch->bos, bo_entry) {
-      d3d12_bo *bo = (d3d12_bo *)bo_entry->key;
-      d3d12_context_state_table_entry *bo_state = find_or_create_state_entry(ctx, bo);
-      if (!bo_state->batch_end.supports_simultaneous_access) {
-         assert(bo->res && bo->global_state.subresource_states);
-
-         resolve_global_state(ctx, bo->res, &bo_state->batch_begin, &bo->global_state);
-
-         copy_resource_state(&bo_state->batch_begin, &bo_state->batch_end);
-         copy_resource_state(&bo->global_state, &bo_state->batch_end);
-      } else {
-         reset_resource_state(&bo_state->batch_end);
-      }
-   }
+   
+   util_dynarray_foreach(&batch->local_bos, d3d12_bo*, bo)
+      context_state_resolve_submission(ctx, *bo);
+   hash_table_foreach(batch->bos, bo_entry) 
+      context_state_resolve_submission(ctx, (d3d12_bo *)bo_entry->key);
+   
 
    bool needs_execute_fixup = false;
    if (ctx->barrier_scratch.size) {
