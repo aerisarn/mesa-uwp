@@ -350,10 +350,10 @@ def filter_api(elem, api):
 
     return api in elem.attrib['api'].split(',')
 
-def get_feature_structs(doc, api):
+def get_feature_structs(doc, api, beta):
     feature_structs = OrderedDict()
 
-    required = get_all_required(doc, 'type', api)
+    required = get_all_required(doc, 'type', api, beta)
 
     # parse all struct types where structextends VkPhysicalDeviceFeatures2
     for _type in doc.findall('./types/type[@category="struct"]'):
@@ -388,7 +388,7 @@ def get_feature_structs(doc, api):
 
     return feature_structs.values()
 
-def get_feature_structs_from_xml(xml_files, api='vulkan'):
+def get_feature_structs_from_xml(xml_files, beta, api='vulkan'):
     diagnostics = []
 
     pdev_features = None
@@ -396,7 +396,7 @@ def get_feature_structs_from_xml(xml_files, api='vulkan'):
 
     for filename in xml_files:
         doc = et.parse(filename)
-        feature_structs += get_feature_structs(doc, api)
+        feature_structs += get_feature_structs(doc, api, beta)
         if not pdev_features:
             pdev_features = get_pdev_features(doc)
 
@@ -432,12 +432,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--out-c', required=True, help='Output C file.')
     parser.add_argument('--out-h', required=True, help='Output H file.')
+    parser.add_argument('--beta', required=True, help='Enable beta extensions.')
     parser.add_argument('--xml',
                         help='Vulkan API XML file.',
                         required=True, action='append', dest='xml_files')
     args = parser.parse_args()
 
-    pdev_features, feature_structs, all_flags = get_feature_structs_from_xml(args.xml_files)
+    pdev_features, feature_structs, all_flags = get_feature_structs_from_xml(args.xml_files, args.beta)
 
     environment = {
         'filename': os.path.basename(__file__),

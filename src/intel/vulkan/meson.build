@@ -36,6 +36,7 @@ anv_entrypoints = custom_target(
   command : [
     prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--proto', '--weak',
     '--out-h', '@OUTPUT0@', '--out-c', '@OUTPUT1@', '--prefix', 'anv',
+    '--beta', with_vulkan_beta.to_string(),
     '--device-prefix', 'gfx9',
     '--device-prefix', 'gfx11',
     '--device-prefix', 'gfx12',
