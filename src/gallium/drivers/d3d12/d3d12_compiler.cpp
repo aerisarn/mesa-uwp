@@ -1613,13 +1613,6 @@ d3d12_create_compute_shader(struct d3d12_context *ctx,
 void
 d3d12_select_shader_variants(struct d3d12_context *ctx, const struct pipe_draw_info *dinfo)
 {
-   static unsigned order[] = {
-      PIPE_SHADER_VERTEX,
-      PIPE_SHADER_TESS_CTRL,
-      PIPE_SHADER_TESS_EVAL,
-      PIPE_SHADER_GEOMETRY,
-      PIPE_SHADER_FRAGMENT
-   };
    struct d3d12_selection_context sel_ctx;
 
    sel_ctx.ctx = ctx;
@@ -1643,15 +1636,31 @@ d3d12_select_shader_variants(struct d3d12_context *ctx, const struct pipe_draw_i
 
    validate_tess_ctrl_shader_variant(&sel_ctx);
 
-   for (unsigned i = 0; i < ARRAY_SIZE(order); ++i) {
-      auto sel = ctx->gfx_stages[order[i]];
-      if (!sel)
-         continue;
-
-      d3d12_shader_selector *prev = get_prev_shader(ctx, sel->stage);
-      d3d12_shader_selector *next = get_next_shader(ctx, sel->stage);
-
-      select_shader_variant(&sel_ctx, sel, prev, next);
+   auto* stages = ctx->gfx_stages;
+   d3d12_shader_selector* prev;
+   d3d12_shader_selector* next;
+   if (stages[PIPE_SHADER_VERTEX]) {
+      next = get_next_shader(ctx, PIPE_SHADER_VERTEX);
+      select_shader_variant(&sel_ctx, stages[PIPE_SHADER_VERTEX], nullptr, next);
+   }
+   if (stages[PIPE_SHADER_TESS_CTRL]) {
+      prev = get_prev_shader(ctx, PIPE_SHADER_TESS_CTRL);
+      next = get_next_shader(ctx, PIPE_SHADER_TESS_CTRL);
+      select_shader_variant(&sel_ctx, stages[PIPE_SHADER_TESS_CTRL], prev, next);
+   }
+   if (stages[PIPE_SHADER_TESS_EVAL]) {
+      prev = get_prev_shader(ctx, PIPE_SHADER_TESS_EVAL);
+      next = get_next_shader(ctx, PIPE_SHADER_TESS_EVAL);
+      select_shader_variant(&sel_ctx, stages[PIPE_SHADER_TESS_EVAL], prev, next);
+   }
+   if (stages[PIPE_SHADER_GEOMETRY]) {
+      prev = get_prev_shader(ctx, PIPE_SHADER_GEOMETRY);
+      next = get_next_shader(ctx, PIPE_SHADER_GEOMETRY);
+      select_shader_variant(&sel_ctx, stages[PIPE_SHADER_GEOMETRY], prev, next);
+   }
+   if (stages[PIPE_SHADER_FRAGMENT]) {
+      prev = get_prev_shader(ctx, PIPE_SHADER_FRAGMENT);
+      select_shader_variant(&sel_ctx, stages[PIPE_SHADER_FRAGMENT], prev, nullptr);
    }
 }
 
