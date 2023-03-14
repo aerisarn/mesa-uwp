@@ -2369,7 +2369,7 @@ zink_resource_copies_reset(struct zink_resource *res)
       struct pipe_box *b = res->obj->copies[0].data;
       unsigned num_boxes = util_dynarray_num_elements(&res->obj->copies[0], struct pipe_box);
       for (unsigned i = 0; i < num_boxes; i++)
-         util_range_add(&res->base.b, &res->valid_buffer_range, b->x, b->x + b->width);
+         util_range_add(&res->base.b, &res->valid_buffer_range, b[i].x, b[i].x + b[i].width);
    }
    for (unsigned i = 0; i < max_level; i++)
       util_dynarray_clear(&res->obj->copies[i]);
