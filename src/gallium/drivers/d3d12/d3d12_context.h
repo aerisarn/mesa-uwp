@@ -187,6 +187,7 @@ struct d3d12_context {
    struct util_dynarray recently_destroyed_bos;
    struct util_dynarray barrier_scratch;
    struct set *pending_barriers_bos;
+   struct util_dynarray local_pending_barriers_bos;
 
    struct pipe_constant_buffer cbufs[PIPE_SHADER_TYPES][PIPE_MAX_CONSTANT_BUFFERS];
    struct pipe_framebuffer_state fb;

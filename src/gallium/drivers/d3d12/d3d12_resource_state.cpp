@@ -200,6 +200,7 @@ d3d12_context_state_table_init(struct d3d12_context *ctx)
 {
    ctx->bo_state_table = _mesa_hash_table_u64_create(nullptr);
    ctx->pending_barriers_bos = _mesa_pointer_set_create(nullptr);
+   util_dynarray_init(&ctx->local_pending_barriers_bos, nullptr);
 }
 
 void
@@ -213,7 +214,9 @@ d3d12_context_state_table_destroy(struct d3d12_context *ctx)
    util_dynarray_fini(&ctx->barrier_scratch);
    if (ctx->state_fixup_cmdlist)
       ctx->state_fixup_cmdlist->Release();
+
    _mesa_set_destroy(ctx->pending_barriers_bos, nullptr);
+   util_dynarray_fini(&ctx->local_pending_barriers_bos);
 }
 
 static unsigned
@@ -462,7 +465,16 @@ d3d12_transition_resource_state(struct d3d12_context *ctx,
    d3d12_context_state_table_entry *state_entry = find_or_create_state_entry(ctx, res->bo);
    if (flags & D3D12_TRANSITION_FLAG_ACCUMULATE_STATE) {
       set_desired_resource_state(&state_entry->desired, state);
-      _mesa_set_add(ctx->pending_barriers_bos, res->bo);
+
+      if (ctx->id != D3D12_CONTEXT_NO_ID) {
+         if ((res->bo->local_needs_resolve_state & (1 << ctx->id)) == 0) {
+            util_dynarray_append(&ctx->local_pending_barriers_bos, struct d3d12_bo*, res->bo);
+            res->bo->local_needs_resolve_state |= (1 << ctx->id);
+         }
+      }
+      else 
+         _mesa_set_add(ctx->pending_barriers_bos, res->bo);
+
    } else if (state_entry->batch_end.homogenous) {
       append_barrier(ctx, res->bo, state_entry, state, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, false);
    } else {
@@ -511,40 +523,56 @@ d3d12_transition_subresources_state(struct d3d12_context *ctx,
       }
    }
 
-   if (is_accumulate)
-      _mesa_set_add(ctx->pending_barriers_bos, res->bo);
+   if (is_accumulate) {
+      if (ctx->id != D3D12_CONTEXT_NO_ID) {
+         if ((res->bo->local_needs_resolve_state & (1 << ctx->id)) == 0) {
+            util_dynarray_append(&ctx->local_pending_barriers_bos, struct d3d12_bo*, res->bo);
+            res->bo->local_needs_resolve_state |= (1 << ctx->id);
+         }
+      }
+      else
+         _mesa_set_add(ctx->pending_barriers_bos, res->bo);
+   }
+}
+
+static void apply_resource_state(struct d3d12_context *ctx, bool is_implicit_dispatch, d3d12_bo *bo)
+{
+   d3d12_context_state_table_entry* state_entry = find_or_create_state_entry(ctx, bo);
+   d3d12_desired_resource_state* destination_state = &state_entry->desired;
+   d3d12_resource_state* current_state = &state_entry->batch_end;
+
+   // Figure out the set of subresources that are transitioning
+   bool all_resources_at_once = current_state->homogenous && destination_state->homogenous;
+
+   UINT num_subresources = all_resources_at_once ? 1 : current_state->num_subresources;
+   for (UINT i = 0; i < num_subresources; ++i) {
+      D3D12_RESOURCE_STATES after = get_desired_subresource_state(destination_state, i);
+      UINT subresource = num_subresources == 1 ? D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES : i;
+
+      // Is this subresource currently being used, or is it just being iterated over?
+      if (after == UNKNOWN_RESOURCE_STATE) {
+         // This subresource doesn't have any transition requested - move on to the next.
+         continue;
+      }
+
+      append_barrier(ctx, bo, state_entry, after, subresource, is_implicit_dispatch);
+   }
+
+   // Update destination states.
+   reset_desired_resource_state(destination_state);
 }
 
 void
 d3d12_apply_resource_states(struct d3d12_context *ctx, bool is_implicit_dispatch)
 {
-   set_foreach_remove(ctx->pending_barriers_bos, entry) {
-      d3d12_bo *bo = (d3d12_bo *)entry->key;
-
-      d3d12_context_state_table_entry *state_entry = find_or_create_state_entry(ctx, bo);
-      d3d12_desired_resource_state *destination_state = &state_entry->desired;
-      d3d12_resource_state *current_state = &state_entry->batch_end;
-
-      // Figure out the set of subresources that are transitioning
-      bool all_resources_at_once = current_state->homogenous && destination_state->homogenous;
-
-      UINT num_subresources = all_resources_at_once ? 1 : current_state->num_subresources;
-      for (UINT i = 0; i < num_subresources; ++i) {
-         D3D12_RESOURCE_STATES after = get_desired_subresource_state(destination_state, i);
-         UINT subresource = num_subresources == 1 ? D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES : i;
-
-         // Is this subresource currently being used, or is it just being iterated over?
-         if (after == UNKNOWN_RESOURCE_STATE) {
-            // This subresource doesn't have any transition requested - move on to the next.
-            continue;
-         }
-
-         append_barrier(ctx, bo, state_entry, after, subresource, is_implicit_dispatch);
-      }
-
-      // Update destination states.
-      reset_desired_resource_state(destination_state);
+   set_foreach_remove(ctx->pending_barriers_bos, entry) 
+      apply_resource_state(ctx, is_implicit_dispatch, (d3d12_bo *)entry->key);
+   
+   util_dynarray_foreach(&ctx->local_pending_barriers_bos, struct d3d12_bo*, bo) {
+      apply_resource_state(ctx, is_implicit_dispatch, *bo);
+      (*bo)->local_needs_resolve_state &= ~(1 << ctx->id);
    }
+   util_dynarray_clear(&ctx->local_pending_barriers_bos);
 
    if (ctx->barrier_scratch.size) {
       ctx->cmdlist->ResourceBarrier(util_dynarray_num_elements(&ctx->barrier_scratch, D3D12_RESOURCE_BARRIER),
