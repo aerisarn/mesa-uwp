@@ -561,11 +561,11 @@ used.
 
       coord = src0
 
-      shadow_ref = src0.z or src0.w (optional)
+      shadow\_ref = src0.z \textrm{ or } src0.w \textrm{ (optional)}
 
       unit = src1
 
-      dst = texture\_sample(unit, coord, shadow_ref)
+      dst = texture\_sample(unit, coord, shadow\_ref)
 
 
 .. opcode:: TEX2 - Texture Lookup (for shadow cube map arrays only)
@@ -577,11 +577,11 @@ used.
 
       coord = src0
 
-      shadow_ref = src1.x
+      shadow\_ref = src1.x
 
       unit = src2
 
-      dst = texture\_sample(unit, coord, shadow_ref)
+      dst = texture\_sample(unit, coord, shadow\_ref)
 
 
 .. opcode:: TXD - Texture Lookup with Derivatives
