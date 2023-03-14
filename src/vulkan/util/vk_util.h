@@ -29,6 +29,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "vk_struct_type_cast.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -269,11 +271,13 @@ __vk_find_struct(void *start, VkStructureType sType)
    return NULL;
 }
 
-#define vk_find_struct(__start, __sType) \
-   __vk_find_struct((__start), VK_STRUCTURE_TYPE_##__sType)
+#define vk_find_struct(__start, __sType)                                       \
+  (VK_STRUCTURE_TYPE_##__sType##_cast *)__vk_find_struct(                      \
+      (__start), VK_STRUCTURE_TYPE_##__sType)
 
-#define vk_find_struct_const(__start, __sType) \
-   (const void *)__vk_find_struct((void *)(__start), VK_STRUCTURE_TYPE_##__sType)
+#define vk_find_struct_const(__start, __sType)                                 \
+  (const VK_STRUCTURE_TYPE_##__sType##_cast *)__vk_find_struct(                \
+      (void *)(__start), VK_STRUCTURE_TYPE_##__sType)
 
 static inline void
 __vk_append_struct(void *start, void *element)
