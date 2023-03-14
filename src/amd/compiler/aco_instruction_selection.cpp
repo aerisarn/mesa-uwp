@@ -12187,6 +12187,7 @@ select_ps_epilog(Program* program, const struct aco_ps_epilog_info* einfo, ac_sh
       out.enable_mrt_output_nan_fixup = (einfo->enable_mrt_output_nan_fixup >> i) & 1;
 
       Temp inputs = get_arg(&ctx, einfo->inputs[i]);
+      emit_split_vector(&ctx, inputs, 4);
       for (unsigned c = 0; c < 4; ++c) {
          out.values[c] = Operand(emit_extract_vector(&ctx, inputs, c, v1));
       }
