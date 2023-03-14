@@ -126,40 +126,25 @@ void
 radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline,
                       const VkAllocationCallbacks *allocator)
 {
-   if (pipeline->type == RADV_PIPELINE_GRAPHICS) {
-      struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
-
-      if (graphics_pipeline->ps_epilog)
-         radv_shader_part_unref(device, graphics_pipeline->ps_epilog);
-
-      vk_free(&device->vk.alloc, graphics_pipeline->state_data);
-   } else if (pipeline->type == RADV_PIPELINE_RAY_TRACING_LIB) {
-      struct radv_ray_tracing_lib_pipeline *library_pipeline =
-         radv_pipeline_to_ray_tracing_lib(pipeline);
-
-      ralloc_free(library_pipeline->ctx);
-   } else if (pipeline->type == RADV_PIPELINE_GRAPHICS_LIB) {
-      struct radv_graphics_lib_pipeline *gfx_pipeline_lib =
-         radv_pipeline_to_graphics_lib(pipeline);
-
-      radv_pipeline_layout_finish(device, &gfx_pipeline_lib->layout);
-
-      for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-         ralloc_free(gfx_pipeline_lib->base.retained_shaders[i].nir);
-      }
-
-      if (gfx_pipeline_lib->base.ps_epilog)
-         radv_shader_part_unref(device, gfx_pipeline_lib->base.ps_epilog);
-
-      vk_free(&device->vk.alloc, gfx_pipeline_lib->base.state_data);
+   switch (pipeline->type) {
+   case RADV_PIPELINE_GRAPHICS:
+      radv_destroy_graphics_pipeline(device, radv_pipeline_to_graphics(pipeline));
+      break;
+   case RADV_PIPELINE_GRAPHICS_LIB:
+      radv_destroy_graphics_lib_pipeline(device, radv_pipeline_to_graphics_lib(pipeline));
+      break;
+   case RADV_PIPELINE_COMPUTE:
+      radv_destroy_compute_pipeline(device, radv_pipeline_to_compute(pipeline));
+      break;
+   case RADV_PIPELINE_RAY_TRACING_LIB:
+      radv_destroy_ray_tracing_lib_pipeline(device, radv_pipeline_to_ray_tracing_lib(pipeline));
+      break;
+   case RADV_PIPELINE_RAY_TRACING:
+      radv_destroy_ray_tracing_pipeline(device, radv_pipeline_to_ray_tracing(pipeline));
+      break;
+   default:
+      unreachable("invalid pipeline type");
    }
-
-   for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i)
-      if (pipeline->shaders[i])
-         radv_shader_unref(device, pipeline->shaders[i]);
-
-   if (pipeline->gs_copy_shader)
-      radv_shader_unref(device, pipeline->gs_copy_shader);
 
    if (pipeline->cs.buf)
       free(pipeline->cs.buf);
@@ -5052,6 +5037,22 @@ radv_graphics_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    return VK_SUCCESS;
 }
 
+void
+radv_destroy_graphics_pipeline(struct radv_device *device, struct radv_graphics_pipeline *pipeline)
+{
+   for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
+      if (pipeline->base.shaders[i])
+         radv_shader_unref(device, pipeline->base.shaders[i]);
+   }
+
+   if (pipeline->base.gs_copy_shader)
+      radv_shader_unref(device, pipeline->base.gs_copy_shader);
+   if (pipeline->ps_epilog)
+      radv_shader_part_unref(device, pipeline->ps_epilog);
+
+   vk_free(&device->vk.alloc, pipeline->state_data);
+}
+
 static VkResult
 radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
                                 struct radv_device *device, struct radv_pipeline_cache *cache,
@@ -5147,6 +5148,19 @@ radv_graphics_lib_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    *pPipeline = radv_pipeline_to_handle(&pipeline->base.base);
 
    return VK_SUCCESS;
+}
+
+void
+radv_destroy_graphics_lib_pipeline(struct radv_device *device,
+                                   struct radv_graphics_lib_pipeline *pipeline)
+{
+   radv_pipeline_layout_finish(device, &pipeline->layout);
+
+   for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
+      ralloc_free(pipeline->base.retained_shaders[i].nir);
+   }
+
+   radv_destroy_graphics_pipeline(device, &pipeline->base);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -5475,6 +5489,13 @@ radv_create_compute_pipelines(VkDevice _device, VkPipelineCache pipelineCache, u
       pPipelines[i] = VK_NULL_HANDLE;
 
    return result;
+}
+
+void
+radv_destroy_compute_pipeline(struct radv_device *device, struct radv_compute_pipeline *pipeline)
+{
+   if (pipeline->base.shaders[MESA_SHADER_COMPUTE])
+      radv_shader_unref(device, pipeline->base.shaders[MESA_SHADER_COMPUTE]);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL

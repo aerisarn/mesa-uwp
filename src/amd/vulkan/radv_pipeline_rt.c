@@ -476,6 +476,13 @@ fail:
    return VK_ERROR_OUT_OF_HOST_MEMORY;
 }
 
+void
+radv_destroy_ray_tracing_lib_pipeline(struct radv_device *device,
+                                      struct radv_ray_tracing_lib_pipeline *pipeline)
+{
+   ralloc_free(pipeline->ctx);
+}
+
 static bool
 radv_rt_pipeline_has_dynamic_stack_size(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo)
 {
@@ -687,6 +694,16 @@ fail:
    free((void *)local_create_info.pGroups);
    free((void *)local_create_info.pStages);
    return result;
+}
+
+void
+radv_destroy_ray_tracing_pipeline(struct radv_device *device,
+                                  struct radv_ray_tracing_pipeline *pipeline)
+{
+   if (pipeline->base.base.shaders[MESA_SHADER_COMPUTE])
+      radv_shader_unref(device, pipeline->base.base.shaders[MESA_SHADER_COMPUTE]);
+   if (pipeline->base.base.shaders[MESA_SHADER_RAYGEN])
+      radv_shader_unref(device, pipeline->base.base.shaders[MESA_SHADER_RAYGEN]);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL

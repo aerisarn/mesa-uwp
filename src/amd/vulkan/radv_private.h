@@ -3612,6 +3612,17 @@ bool radv_spm_init(struct radv_device *device);
 void radv_spm_finish(struct radv_device *device);
 void radv_emit_spm_setup(struct radv_device *device, struct radeon_cmdbuf *cs);
 
+void radv_destroy_graphics_pipeline(struct radv_device *device,
+                                    struct radv_graphics_pipeline *pipeline);
+void radv_destroy_graphics_lib_pipeline(struct radv_device *device,
+                                        struct radv_graphics_lib_pipeline *pipeline);
+void radv_destroy_compute_pipeline(struct radv_device *device,
+                                   struct radv_compute_pipeline *pipeline);
+void radv_destroy_ray_tracing_lib_pipeline(struct radv_device *device,
+                                           struct radv_ray_tracing_lib_pipeline *pipeline);
+void radv_destroy_ray_tracing_pipeline(struct radv_device *device,
+                                       struct radv_ray_tracing_pipeline *pipeline);
+
 #define RADV_FROM_HANDLE(__radv_type, __name, __handle) \
    VK_FROM_HANDLE(__radv_type, __name, __handle)
 
