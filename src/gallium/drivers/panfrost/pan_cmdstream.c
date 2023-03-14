@@ -3974,6 +3974,8 @@ panfrost_create_vertex_elements_state(struct pipe_context *pctx,
    for (int i = 0; i < num_elements; ++i) {
       enum pipe_format fmt = elements[i].src_format;
       so->formats[i] = dev->formats[fmt].hw;
+
+      assert(MALI_EXTRACT_INDEX(so->formats[i]) && "format must be supported");
    }
 
    /* Let's also prepare vertex builtins */
