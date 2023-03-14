@@ -103,10 +103,8 @@ spec@arb_shader_texture_lod@execution@tex-miplevel-selection *gradarb 2drectshad
 spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projgradarb 2drect,Crash
 spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projgradarb 2drect_projvec4,Crash
 spec@arb_shader_texture_lod@execution@tex-miplevel-selection *projgradarb 2drectshadow,Crash
-spec@arb_shading_language_420pack@active sampler conflict,Crash
 spec@arb_texture_buffer_object@formats (fs- arb),Crash
 spec@arb_texture_buffer_object@formats (vs- arb),Crash
-spec@arb_texture_buffer_object@render-no-bo,Crash
 spec@arb_texture_buffer_object@texture-buffer-size-clamp,Crash
 spec@arb_texture_float@arb_texture_float-texture-float-formats,Fail
 spec@arb_texture_float@fbo-alphatest-formats,Crash

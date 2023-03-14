@@ -1732,25 +1732,53 @@ panfrost_update_sampler_view(struct panfrost_sampler_view *view,
    }
 }
 
+#if PAN_ARCH >= 6
+static void
+panfrost_emit_null_texture(struct mali_texture_packed *out)
+
+{
+   /* Annoyingly, an all zero texture descriptor is not valid and will raise
+    * a DATA_INVALID_FAULT if you try to texture it, instead of returning
+    * 0000s! Fill in with sometthing that will behave robustly.
+    */
+   pan_pack(out, TEXTURE, cfg) {
+      cfg.dimension = MALI_TEXTURE_DIMENSION_2D;
+      cfg.width = 1;
+      cfg.height = 1;
+      cfg.depth = 1;
+      cfg.array_size = 1;
+      cfg.format = PAN_ARCH >= 7 ? panfrost_pipe_format_v7[PIPE_FORMAT_NONE].hw
+                                 : panfrost_pipe_format_v6[PIPE_FORMAT_NONE].hw;
+#if PAN_ARCH <= 7
+         cfg.texel_ordering = MALI_TEXTURE_LAYOUT_LINEAR;
+#endif
+   }
+}
+#endif
+
 static mali_ptr
 panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
                                   enum pipe_shader_type stage)
 {
    struct panfrost_context *ctx = batch->ctx;
 
-   if (!ctx->sampler_view_count[stage])
+   unsigned actual_count = ctx->sampler_view_count[stage];
+   unsigned needed_count = ctx->prog[stage]->info.texture_count;
+   unsigned alloc_count = MAX2(actual_count, needed_count);
+
+   if (!alloc_count)
       return 0;
 
 #if PAN_ARCH >= 6
-   struct panfrost_ptr T = pan_pool_alloc_desc_array(
-      &batch->pool.base, ctx->sampler_view_count[stage], TEXTURE);
+   struct panfrost_ptr T =
+      pan_pool_alloc_desc_array(&batch->pool.base, alloc_count, TEXTURE);
    struct mali_texture_packed *out = (struct mali_texture_packed *)T.cpu;
 
-   for (int i = 0; i < ctx->sampler_view_count[stage]; ++i) {
+   for (int i = 0; i < actual_count; ++i) {
       struct panfrost_sampler_view *view = ctx->sampler_views[stage][i];
 
       if (!view) {
-         memset(&out[i], 0, sizeof(out[i]));
+         panfrost_emit_null_texture(&out[i]);
          continue;
       }
 
@@ -1764,11 +1792,14 @@ panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
       panfrost_batch_add_bo(batch, view->state.bo, stage);
    }
 
+   for (int i = actual_count; i < needed_count; ++i)
+      panfrost_emit_null_texture(&out[i]);
+
    return T.gpu;
 #else
    uint64_t trampolines[PIPE_MAX_SHADER_SAMPLER_VIEWS];
 
-   for (int i = 0; i < ctx->sampler_view_count[stage]; ++i) {
+   for (int i = 0; i < actual_count; ++i) {
       struct panfrost_sampler_view *view = ctx->sampler_views[stage][i];
 
       if (!view) {
@@ -1781,9 +1812,12 @@ panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
       trampolines[i] = panfrost_get_tex_desc(batch, stage, view);
    }
 
-   return pan_pool_upload_aligned(
-      &batch->pool.base, trampolines,
-      sizeof(uint64_t) * ctx->sampler_view_count[stage], sizeof(uint64_t));
+   for (int i = actual_count; i < needed_count; ++i)
+      trampolines[i] = 0;
+
+   return pan_pool_upload_aligned(&batch->pool.base, trampolines,
+                                  sizeof(uint64_t) * alloc_count,
+                                  sizeof(uint64_t));
 #endif
 }
 
@@ -2853,7 +2887,7 @@ panfrost_update_shader_state(struct panfrost_batch *batch,
    unsigned dirty_3d = ctx->dirty;
    unsigned dirty = ctx->dirty_shader[st];
 
-   if (dirty & PAN_DIRTY_STAGE_TEXTURE) {
+   if (dirty & (PAN_DIRTY_STAGE_TEXTURE | PAN_DIRTY_STAGE_SHADER)) {
       batch->textures[st] = panfrost_emit_texture_descriptors(batch, st);
    }
 
