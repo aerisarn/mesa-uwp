@@ -15,6 +15,9 @@ spec@arb_shader_storage_buffer_object@max-ssbo-size@fs
 spec@arb_shader_storage_buffer_object@max-ssbo-size@fsexceed
 spec@arb_shader_storage_buffer_object@max-ssbo-size@vs
 spec@arb_shader_storage_buffer_object@max-ssbo-size@vsexceed
+spec@arb_texture_buffer_object@texture-buffer-size-clamp
+spec@arb_texture_buffer_object@texture-buffer-size-clamp@rgba8ui_texture_buffer_size_via_sampler
+spec@arb_texture_buffer_object@texture-buffer-size-clamp@rgba8ui_texture_buffer_size_via_image
 spec@arb_uniform_buffer_object@maxuniformblocksize@fs
 spec@arb_uniform_buffer_object@maxuniformblocksize@fsexceed
 spec@arb_uniform_buffer_object@maxuniformblocksize@vs
