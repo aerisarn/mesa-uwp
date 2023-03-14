@@ -7478,8 +7478,10 @@ void genX(CmdBeginRendering)(
 #if GFX_VER >= 11
    bool has_color_att = false;
    for (uint32_t i = 0; i < gfx->color_att_count; i++) {
-      if (pRenderingInfo->pColorAttachments[i].imageView != VK_NULL_HANDLE)
+      if (pRenderingInfo->pColorAttachments[i].imageView != VK_NULL_HANDLE) {
          has_color_att = true;
+         break;
+      }
    }
    if (has_color_att) {
       /* The PIPE_CONTROL command description says:
