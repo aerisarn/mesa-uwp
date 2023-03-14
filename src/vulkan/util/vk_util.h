@@ -328,14 +328,14 @@ mesa_to_vk_shader_stage(gl_shader_stage mesa_stage)
 /* iterate over a sequence of indexed multidraws for VK_EXT_multi_draw extension */
 /* 'i' must be explicitly declared */
 #define vk_foreach_multi_draw_indexed(_draw, _i, _pDrawInfo, _num_draws, _stride) \
-   for (const VkMultiDrawIndexedInfoEXT *_draw = (const void*)(_pDrawInfo); \
+   for (const VkMultiDrawIndexedInfoEXT *_draw = (const VkMultiDrawIndexedInfoEXT*)(_pDrawInfo); \
         (_i) < (_num_draws); \
         (_i)++, (_draw) = (const VkMultiDrawIndexedInfoEXT*)((const uint8_t*)(_draw) + (_stride)))
 
 /* iterate over a sequence of multidraws for VK_EXT_multi_draw extension */
 /* 'i' must be explicitly declared */
 #define vk_foreach_multi_draw(_draw, _i, _pDrawInfo, _num_draws, _stride) \
-   for (const VkMultiDrawInfoEXT *_draw = (const void*)(_pDrawInfo); \
+   for (const VkMultiDrawInfoEXT *_draw = (const VkMultiDrawInfoEXT*)(_pDrawInfo); \
         (_i) < (_num_draws); \
         (_i)++, (_draw) = (const VkMultiDrawInfoEXT*)((const uint8_t*)(_draw) + (_stride)))
 
