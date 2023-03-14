@@ -5386,6 +5386,9 @@ discard_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb,
 {
    uint32_t mask = 0;
 
+   if (unlikely(ctx->st_opts->ignore_discard_framebuffer))
+      return;
+
    for (int i = 0; i < numAttachments; i++) {
       GLenum att = attachments[i];
 
