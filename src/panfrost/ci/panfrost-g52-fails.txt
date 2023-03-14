@@ -160,7 +160,6 @@ spec@arb_texture_rg@fbo-blending-formats,Fail
 spec@arb_texture_rg@fbo-blending-formats@GL_R8,Fail
 spec@arb_texture_rg@fbo-blending-formats@GL_RG8,Fail
 spec@arb_texture_rg@fbo-blending-formats@GL_RG,Fail
-spec@arb_texture_view@rendering-formats,Crash
 spec@arb_texture_view@sampling-2d-array-as-cubemap-array,Crash
 spec@arb_texture_view@sampling-2d-array-as-cubemap,Crash
 spec@arb_transform_feedback_instanced@draw-auto instanced,Fail
@@ -495,7 +494,6 @@ spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA32I/Destinat
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA32UI/Destination: GL_RGBA32UI,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA8/Destination: GL_RGBA8,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=4@Source: GL_RGBA8_SNORM/Destination: GL_RGBA8_SNORM,Fail
-spec@oes_texture_view@rendering-formats,Crash
 spec@oes_texture_view@sampling-2d-array-as-cubemap,Crash
 spec@!opengl 1.0@gl-1.0-edgeflag-const,Fail
 spec@!opengl 1.0@gl-1.0-edgeflag,Fail
