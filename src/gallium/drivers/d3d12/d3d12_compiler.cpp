@@ -833,11 +833,6 @@ d3d12_compare_shader_keys(struct d3d12_selection_context* sel_ctx, const d3d12_s
       unreachable("invalid stage");
    }
    
-   if (memcmp(&expect->required_varying_inputs,
-              &have->required_varying_inputs,
-              offsetof(d3d12_shader_key, vs) - offsetof(d3d12_shader_key, required_varying_inputs)) != 0)
-      return false;
-   
    if (expect->n_texture_states != have->n_texture_states)
       return false;
 
@@ -860,8 +855,16 @@ d3d12_compare_shader_keys(struct d3d12_selection_context* sel_ctx, const d3d12_s
    if (memcmp(expect->image_format_conversion, have->image_format_conversion,
       expect->n_images * sizeof(struct d3d12_image_format_conversion_info)))
       return false;
-
-   return true;
+   
+   return
+      expect->required_varying_inputs == have->required_varying_inputs &&
+      expect->required_varying_outputs == have->required_varying_outputs &&
+      expect->next_varying_inputs == have->next_varying_inputs &&
+      expect->prev_varying_outputs == have->prev_varying_outputs &&
+      expect->common_all == have->common_all &&
+      expect->tex_saturate_s == have->tex_saturate_s &&
+      expect->tex_saturate_r == have->tex_saturate_r &&
+      expect->tex_saturate_t == have->tex_saturate_t;
 }
 
 static uint32_t
@@ -870,10 +873,11 @@ d3d12_shader_key_hash(const d3d12_shader_key *key)
    uint32_t hash;
 
    hash = (uint32_t)key->stage;
-   if (key->required_varying_inputs != nullptr)
-      hash += key->required_varying_inputs->mask + key->required_varying_inputs->max;
-   if (key->required_varying_outputs != nullptr)
-      hash += key->required_varying_outputs->mask + key->required_varying_outputs->max;
+   hash += ((uint64_t)key->required_varying_inputs) +
+            (((uint64_t)key->required_varying_inputs) >> 32);
+   hash += ((uint64_t)key->required_varying_outputs) +
+            (((uint64_t)key->required_varying_outputs) >> 32);
+
    hash += key->next_varying_inputs;
    hash += key->prev_varying_outputs;
    switch (key->stage) {
@@ -893,14 +897,14 @@ d3d12_shader_key_hash(const d3d12_shader_key *key)
       break;
    case PIPE_SHADER_TESS_CTRL:
       hash += key->hs.all;
-      if (key->hs.required_patch_outputs)
-         hash += key->hs.required_patch_outputs->mask + key->hs.required_patch_outputs->max;
+      hash += ((uint64_t)key->hs.required_patch_outputs) +
+               (((uint64_t)key->hs.required_patch_outputs) >> 32);
       break;
    case PIPE_SHADER_TESS_EVAL:
       hash += key->ds.tcs_vertices_out;
       hash += key->ds.prev_patch_outputs;
-      if (key->ds.required_patch_inputs)
-         hash += key->ds.required_patch_inputs->mask + key->ds.required_patch_inputs->max;
+      hash += ((uint64_t)key->ds.required_patch_inputs) +
+               (((uint64_t)key->ds.required_patch_inputs) >> 32);
       break;
    default:
       /* No type specific information to hash for other stages. */
