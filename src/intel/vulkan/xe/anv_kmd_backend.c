@@ -40,7 +40,7 @@ xe_gem_create(struct anv_device *device,
       * 2. Cannot be exported as a PRIME fd.
       */
      .vm_id = alloc_flags & ANV_BO_ALLOC_EXTERNAL ? 0 : device->vm_id,
-     .size = size,
+     .size = align64(size, device->info->mem_alignment),
      .flags = alloc_flags & ANV_BO_ALLOC_SCANOUT ? XE_GEM_CREATE_FLAG_SCANOUT : 0,
    };
    for (uint16_t i = 0; i < regions_count; i++)
@@ -93,7 +93,7 @@ xe_gem_vm_bind_op(struct anv_device *device, struct anv_bo *bo, uint32_t op)
       .num_binds = 1,
       .bind.obj = op == XE_VM_BIND_OP_UNMAP ? 0 : bo->gem_handle,
       .bind.obj_offset = 0,
-      .bind.range = bo->size + bo->_ccs_size,
+      .bind.range = align64(bo->size + bo->_ccs_size, device->info->mem_alignment),
       .bind.addr = intel_48b_address(bo->offset),
       .bind.op = op,
       .num_syncs = 1,
