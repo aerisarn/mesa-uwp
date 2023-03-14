@@ -438,7 +438,7 @@ used.
 
       \begin{aligned}
       dst = & f32\_to\_f16(src.x) | \\
-          ( & f32\_to\_f16(src.y) << 16)
+          ( & f32\_to\_f16(src.y) \ll 16)
       \end{aligned}
 
 .. opcode:: PK2US - Pack Two Unsigned 16-bit Scalars
@@ -449,7 +449,7 @@ used.
 
       \begin{aligned}
       dst = & f32\_to\_unorm16(src.x) | \\
-          ( & f32\_to\_unorm16(src.y) << 16)
+          ( & f32\_to\_unorm16(src.y) \ll 16)
       \end{aligned}
 
 
@@ -461,9 +461,9 @@ used.
 
       \begin{aligned}
       dst = & f32\_to\_snorm8(src.x) | \\
-          ( & f32\_to\_snorm8(src.y) << 8) | \\
-          ( & f32\_to\_snorm8(src.z) << 16) | \\
-          ( & f32\_to\_snorm8(src.w) << 24)
+          ( & f32\_to\_snorm8(src.y) \ll 8) | \\
+          ( & f32\_to\_snorm8(src.z) \ll 16) | \\
+          ( & f32\_to\_snorm8(src.w) \ll 24)
       \end{aligned}
 
 
@@ -475,9 +475,9 @@ used.
 
       \begin{aligned}
       dst = & f32\_to\_unorm8(src.x) | \\
-          ( & f32\_to\_unorm8(src.y) << 8) | \\
-          ( & f32\_to\_unorm8(src.z) << 16) | \\
-          ( & f32\_to\_unorm8(src.w) << 24)
+          ( & f32\_to\_unorm8(src.y) \ll 8) | \\
+          ( & f32\_to\_unorm8(src.z) \ll 16) | \\
+          ( & f32\_to\_unorm8(src.w) \ll 24)
       \end{aligned}
 
 
@@ -622,11 +622,11 @@ used.
 
       dst.x = f16\_to\_f32(src0.x \& 0xffff)
 
-      dst.y = f16\_to\_f32(src0.x >> 16)
+      dst.y = f16\_to\_f32(src0.x \gg 16)
 
       dst.z = f16\_to\_f32(src0.x \& 0xffff)
 
-      dst.w = f16\_to\_f32(src0.x >> 16)
+      dst.w = f16\_to\_f32(src0.x \gg 16)
 
    .. note::
 
@@ -1179,13 +1179,13 @@ Support for these opcodes indicated by PIPE_SHADER_CAP_INTEGERS (all of them?)
 
    .. math::
 
-      dst.x = (src0.x \times src1.x) >> 32
+      dst.x = (src0.x \times src1.x) \gg 32
 
-      dst.y = (src0.y \times src1.y) >> 32
+      dst.y = (src0.y \times src1.y) \gg 32
 
-      dst.z = (src0.z \times src1.z) >> 32
+      dst.z = (src0.z \times src1.z) \gg 32
 
-      dst.w = (src0.w \times src1.w) >> 32
+      dst.w = (src0.w \times src1.w) \gg 32
 
 
 .. opcode:: UMUL_HI - Unsigned Integer Multiply High Bits
@@ -1194,13 +1194,13 @@ Support for these opcodes indicated by PIPE_SHADER_CAP_INTEGERS (all of them?)
 
    .. math::
 
-      dst.x = (src0.x \times src1.x) >> 32
+      dst.x = (src0.x \times src1.x) \gg 32
 
-      dst.y = (src0.y \times src1.y) >> 32
+      dst.y = (src0.y \times src1.y) \gg 32
 
-      dst.z = (src0.z \times src1.z) >> 32
+      dst.z = (src0.z \times src1.z) \gg 32
 
-      dst.w = (src0.w \times src1.w) >> 32
+      dst.w = (src0.w \times src1.w) \gg 32
 
 
 .. opcode:: IDIV - Signed Integer Division
@@ -1358,13 +1358,13 @@ Support for these opcodes indicated by PIPE_SHADER_CAP_INTEGERS (all of them?)
 
    .. math::
 
-      dst.x = src0.x << (0x1f \& src1.x)
+      dst.x = src0.x \ll (0x1f \& src1.x)
 
-      dst.y = src0.y << (0x1f \& src1.y)
+      dst.y = src0.y \ll (0x1f \& src1.y)
 
-      dst.z = src0.z << (0x1f \& src1.z)
+      dst.z = src0.z \ll (0x1f \& src1.z)
 
-      dst.w = src0.w << (0x1f \& src1.w)
+      dst.w = src0.w \ll (0x1f \& src1.w)
 
 
 .. opcode:: ISHR - Arithmetic Shift Right (of Signed Integer)
@@ -1373,13 +1373,13 @@ Support for these opcodes indicated by PIPE_SHADER_CAP_INTEGERS (all of them?)
 
    .. math::
 
-      dst.x = src0.x >> (0x1f \& src1.x)
+      dst.x = src0.x \gg (0x1f \& src1.x)
 
-      dst.y = src0.y >> (0x1f \& src1.y)
+      dst.y = src0.y \gg (0x1f \& src1.y)
 
-      dst.z = src0.z >> (0x1f \& src1.z)
+      dst.z = src0.z \gg (0x1f \& src1.z)
 
-      dst.w = src0.w >> (0x1f \& src1.w)
+      dst.w = src0.w \gg (0x1f \& src1.w)
 
 
 .. opcode:: USHR - Logical Shift Right
@@ -1388,13 +1388,13 @@ Support for these opcodes indicated by PIPE_SHADER_CAP_INTEGERS (all of them?)
 
    .. math::
 
-      dst.x = src0.x >> (unsigned) (0x1f \& src1.x)
+      dst.x = src0.x \gg (unsigned) (0x1f \& src1.x)
 
-      dst.y = src0.y >> (unsigned) (0x1f \& src1.y)
+      dst.y = src0.y \gg (unsigned) (0x1f \& src1.y)
 
-      dst.z = src0.z >> (unsigned) (0x1f \& src1.z)
+      dst.z = src0.z \gg (unsigned) (0x1f \& src1.z)
 
-      dst.w = src0.w >> (unsigned) (0x1f \& src1.w)
+      dst.w = src0.w \gg (unsigned) (0x1f \& src1.w)
 
 
 .. opcode:: UCMP - Integer Conditional Move
@@ -2210,9 +2210,9 @@ two-component vectors with 64-bits in each component.
 
    .. math::
 
-      dst.xy = src0.xy << (0x3f \& src1.x)
+      dst.xy = src0.xy \ll (0x3f \& src1.x)
 
-      dst.zw = src0.zw << (0x3f \& src1.y)
+      dst.zw = src0.zw \ll (0x3f \& src1.y)
 
 .. opcode:: I64SHR - Arithmetic Shift Right (of 64-bit Signed Integer)
 
@@ -2220,9 +2220,9 @@ two-component vectors with 64-bits in each component.
 
    .. math::
 
-      dst.xy = src0.xy >> (0x3f \& src1.x)
+      dst.xy = src0.xy \gg (0x3f \& src1.x)
 
-      dst.zw = src0.zw >> (0x3f \& src1.y)
+      dst.zw = src0.zw \gg (0x3f \& src1.y)
 
 .. opcode:: U64SHR - Logical Shift Right (of 64-bit Unsigned Integer)
 
@@ -2230,9 +2230,9 @@ two-component vectors with 64-bits in each component.
 
    .. math::
 
-      dst.xy = src0.xy >> (unsigned) (0x3f \& src1.x)
+      dst.xy = src0.xy \gg (unsigned) (0x3f \& src1.x)
 
-      dst.zw = src0.zw >> (unsigned) (0x3f \& src1.y)
+      dst.zw = src0.zw \gg (unsigned) (0x3f \& src1.y)
 
 .. opcode:: I64DIV - 64-bit Signed Integer Division
 
