@@ -361,8 +361,11 @@ used.
    .. math::
 
       dst.x = src0.x * 2^{src1.x}
+
       dst.y = src0.y * 2^{src1.y}
+
       dst.z = src0.z * 2^{src1.z}
+
       dst.w = src0.w * 2^{src1.w}
 
 
