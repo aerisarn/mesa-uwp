@@ -4581,20 +4581,6 @@ anv_get_buffer_memory_requirements(struct anv_device *device,
    }
 }
 
-void anv_GetBufferMemoryRequirements2(
-    VkDevice                                    _device,
-    const VkBufferMemoryRequirementsInfo2*      pInfo,
-    VkMemoryRequirements2*                      pMemoryRequirements)
-{
-   ANV_FROM_HANDLE(anv_device, device, _device);
-   ANV_FROM_HANDLE(anv_buffer, buffer, pInfo->buffer);
-
-   anv_get_buffer_memory_requirements(device,
-                                      buffer->vk.size,
-                                      buffer->vk.usage,
-                                      pMemoryRequirements);
-}
-
 void anv_GetDeviceBufferMemoryRequirementsKHR(
     VkDevice                                    _device,
     const VkDeviceBufferMemoryRequirements*     pInfo,
