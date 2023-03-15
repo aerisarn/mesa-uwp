@@ -3268,6 +3268,14 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, unsigned 
    res->fb_binds &= ~BITFIELD_BIT(idx);
    /* this is called just before the resource loses a reference, so a refcount==1 means the resource will be destroyed */
    if (!res->fb_bind_count && res->base.b.reference.count > 1) {
+      if (ctx->tc && zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses && !ctx->blitting) {
+         if (!(res->base.b.bind & PIPE_BIND_DISPLAY_TARGET) && util_format_is_depth_or_stencil(surf->format))
+            /* assume that all depth buffers which are not swapchain images will be used for sampling to avoid splitting renderpasses */
+            zink_screen(ctx->base.screen)->image_barrier(ctx, res, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+         if (!zink_is_swapchain(res) && !util_format_is_depth_or_stencil(surf->format))
+            /* assume that all color buffers which are not swapchain images will be used for sampling to avoid splitting renderpasses */
+            zink_screen(ctx->base.screen)->image_barrier(ctx, res, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+      }
       if (res->sampler_bind_count[0]) {
          update_res_sampler_layouts(ctx, res);
          if (res->layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && !ctx->blitting)
