@@ -23,12 +23,20 @@ COPYRIGHT=u"""
 """
 
 import argparse
+from collections import OrderedDict
 import os
-from collections import OrderedDict, namedtuple
+import sys
+import typing
 import xml.etree.ElementTree as et
 
+import mako
 from mako.template import Template
 from vk_extensions import get_all_required, filter_api
+
+class FeatureStruct(typing.NamedTuple):
+    c_type: str
+    s_type: str
+    features: list[str]
 
 TEMPLATE_C = Template(COPYRIGHT + """
 /* This file generated from ${filename}, don't edit directly. */
@@ -64,16 +72,16 @@ vk_physical_device_check_device_features(struct vk_physical_device *physical_dev
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
    };
 
-% for f in features:
-   ${f.name} supported_${f.name} = { .pNext = NULL };
+% for f in feature_structs:
+   ${f.c_type} supported_${f.c_type} = { .pNext = NULL };
 % endfor
 
-   vk_foreach_struct_const(feat, pCreateInfo->pNext) {
+   vk_foreach_struct_const(features, pCreateInfo->pNext) {
       VkBaseOutStructure *supported = NULL;
-      switch (feat->sType) {
-% for f in features:
-      case ${f.vk_type}:
-         supported = (VkBaseOutStructure *) &supported_${f.name};
+      switch (features->sType) {
+% for f in feature_structs:
+      case ${f.s_type}:
+         supported = (VkBaseOutStructure *) &supported_${f.c_type};
          break;
 % endfor
       default:
@@ -88,7 +96,7 @@ vk_physical_device_check_device_features(struct vk_physical_device *physical_dev
       if (supported->pNext != NULL || supported->sType != 0)
          return VK_ERROR_UNKNOWN;
 
-      supported->sType = feat->sType;
+      supported->sType = features->sType;
       __vk_append_struct(&supported_features2, supported);
    }
 
@@ -106,11 +114,11 @@ vk_physical_device_check_device_features(struct vk_physical_device *physical_dev
    }
 
    /* Iterate through additional feature structs */
-   vk_foreach_struct_const(feat, pCreateInfo->pNext) {
+   vk_foreach_struct_const(features, pCreateInfo->pNext) {
       /* Check each feature boolean for given structure. */
-      switch (feat->sType) {
+      switch (features->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2: {
-         const VkPhysicalDeviceFeatures2 *features2 = (const void *)feat;
+         const VkPhysicalDeviceFeatures2 *features2 = (const void *)features;
          VkResult result =
             check_physical_device_features(physical_device,
                                            &supported_features2.features,
@@ -120,14 +128,14 @@ vk_physical_device_check_device_features(struct vk_physical_device *physical_dev
             return result;
         break;
       }
-% for f in features:
-      case ${f.vk_type} : {
-         ${f.name} *a = &supported_${f.name};
-         ${f.name} *b = (${f.name} *) feat;
-% for flag in f.vk_flags:
+% for f in feature_structs:
+      case ${f.s_type} : {
+         const ${f.c_type} *a = &supported_${f.c_type};
+         const ${f.c_type} *b = (const void *) features;
+% for flag in f.features:
          if (b->${flag} && !a->${flag})
             return vk_errorf(physical_device, VK_ERROR_FEATURE_NOT_PRESENT,
-                             "%s.%s not supported", "${f.name}", "${flag}");
+                             "%s.%s not supported", "${f.c_type}", "${flag}");
 % endfor
          break;
       }
@@ -141,21 +149,14 @@ vk_physical_device_check_device_features(struct vk_physical_device *physical_dev
 
 """, output_encoding='utf-8')
 
-Feature = namedtuple('Feature', 'name vk_type vk_flags')
-
 def get_pdev_features(doc):
-    for _type in doc.findall('./types/type'):
-        if _type.attrib.get('name') != 'VkPhysicalDeviceFeatures':
-            continue
-
+    _type = doc.find(".types/type[@name='VkPhysicalDeviceFeatures']")
+    if _type is not None:
         flags = []
-
         for p in _type.findall('./member'):
             assert p.find('./type').text == 'VkBool32'
             flags.append(p.find('./name').text)
-
         return flags
-
     return None
 
 def filter_api(elem, api):
@@ -164,15 +165,13 @@ def filter_api(elem, api):
 
     return api in elem.attrib['api'].split(',')
 
-def get_features(doc, api):
-    features = OrderedDict()
+def get_feature_structs(doc, api):
+    feature_structs = OrderedDict()
 
     required = get_all_required(doc, 'type', api)
 
     # parse all struct types where structextends VkPhysicalDeviceFeatures2
-    for _type in doc.findall('./types/type'):
-        if _type.attrib.get('category') != 'struct':
-            continue
+    for _type in doc.findall('./types/type[@category="struct"]'):
         if _type.attrib.get('structextends') != 'VkPhysicalDeviceFeatures2,VkDeviceCreateInfo':
             continue
         if _type.attrib['name'] not in required:
@@ -199,22 +198,22 @@ def get_features(doc, api):
                 assert p.find('./type').text == 'VkBool32'
                 flags.append(m_name)
 
-        feat = Feature(name=_type.attrib.get('name'), vk_type=s_type, vk_flags=flags)
-        features[_type.attrib.get('name')] = feat
+        feature_struct = FeatureStruct(c_type=_type.attrib.get('name'), s_type=s_type, features=flags)
+        feature_structs[feature_struct.c_type] = feature_struct
 
-    return features.values()
+    return feature_structs.values()
 
-def get_features_from_xml(xml_files, api='vulkan'):
+def get_feature_structs_from_xml(xml_files, api='vulkan'):
     pdev_features = None
-    features = []
+    feature_structs = []
 
     for filename in xml_files:
         doc = et.parse(filename)
-        features += get_features(doc, api)
+        feature_structs += get_feature_structs(doc, api)
         if not pdev_features:
             pdev_features = get_pdev_features(doc)
 
-    return pdev_features, features
+    return pdev_features, feature_structs
 
 
 def main():
@@ -225,25 +224,23 @@ def main():
                         required=True, action='append', dest='xml_files')
     args = parser.parse_args()
 
-    pdev_features, features = get_features_from_xml(args.xml_files)
+    pdev_features, feature_structs = get_feature_structs_from_xml(args.xml_files)
 
     environment = {
         'filename': os.path.basename(__file__),
         'pdev_features': pdev_features,
-        'features': features,
+        'feature_structs': feature_structs,
     }
 
     try:
         with open(args.out_c, 'wb') as f:
             f.write(TEMPLATE_C.render(**environment))
     except Exception:
-        # In the event there's an error, this imports some helpers from mako
+        # In the event there's an error, this uses some helpers from mako
         # to print a useful stack trace and prints it, then exits with
         # status 1, if python is run with debug; otherwise it just raises
         # the exception
-        import sys
-        from mako import exceptions
-        print(exceptions.text_error_template().render(), file=sys.stderr)
+        print(mako.exceptions.text_error_template().render(), file=sys.stderr)
         sys.exit(1)
 
 if __name__ == '__main__':
