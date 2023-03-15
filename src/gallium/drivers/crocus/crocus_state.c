@@ -8285,6 +8285,8 @@ crocus_upload_compute_state(struct crocus_context *ice,
 static void
 crocus_destroy_state(struct crocus_context *ice)
 {
+   struct pipe_framebuffer_state *cso = &ice->state.framebuffer;
+
    pipe_resource_reference(&ice->draw.draw_params.res, NULL);
    pipe_resource_reference(&ice->draw.derived_draw_params.res, NULL);
 
@@ -8294,10 +8296,7 @@ crocus_destroy_state(struct crocus_context *ice)
       pipe_so_target_reference(&ice->state.so_target[i], NULL);
    }
 
-   for (unsigned i = 0; i < ice->state.framebuffer.nr_cbufs; i++) {
-      pipe_surface_reference(&ice->state.framebuffer.cbufs[i], NULL);
-   }
-   pipe_surface_reference(&ice->state.framebuffer.zsbuf, NULL);
+   util_unreference_framebuffer_state(cso);
 
    for (int stage = 0; stage < MESA_SHADER_STAGES; stage++) {
       struct crocus_shader_state *shs = &ice->state.shaders[stage];
