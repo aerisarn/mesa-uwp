@@ -79,50 +79,9 @@ static void
 collect_enabled_features(struct vk_device *device,
                          const VkDeviceCreateInfo *pCreateInfo)
 {
-   if (pCreateInfo->pEnabledFeatures) {
-      if (pCreateInfo->pEnabledFeatures->robustBufferAccess)
-         device->enabled_features.robustBufferAccess = true;
-   }
-
-   vk_foreach_struct_const(ext, pCreateInfo->pNext) {
-      switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2: {
-         const VkPhysicalDeviceFeatures2 *features = (const void *)ext;
-         if (features->features.robustBufferAccess)
-            device->enabled_features.robustBufferAccess = true;
-         break;
-      }
-
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES: {
-         const VkPhysicalDeviceImageRobustnessFeatures *features = (void *)ext;
-         if (features->robustImageAccess)
-            device->enabled_features.robustImageAccess = true;
-         break;
-      }
-
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
-         const VkPhysicalDeviceRobustness2FeaturesEXT *features = (void *)ext;
-         if (features->robustBufferAccess2)
-            device->enabled_features.robustBufferAccess2 = true;
-         if (features->robustImageAccess2)
-            device->enabled_features.robustImageAccess2 = true;
-         if (features->nullDescriptor)
-            device->enabled_features.nullDescriptor = true;
-         break;
-      }
-
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES: {
-         const VkPhysicalDeviceVulkan13Features *features = (void *)ext;
-         if (features->robustImageAccess)
-            device->enabled_features.robustImageAccess = true;
-         break;
-      }
-
-      default:
-         /* Don't warn */
-         break;
-      }
-   }
+   if (pCreateInfo->pEnabledFeatures)
+      vk_set_physical_device_features_1_0(&device->enabled_features, pCreateInfo->pEnabledFeatures);
+   vk_set_physical_device_features(&device->enabled_features, pCreateInfo->pNext);
 }
 
 VkResult

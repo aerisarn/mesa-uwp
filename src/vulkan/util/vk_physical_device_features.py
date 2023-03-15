@@ -229,6 +229,45 @@ vk_physical_device_check_device_features(struct vk_physical_device *physical_dev
 }
 
 void
+vk_set_physical_device_features_1_0(struct vk_features *all_features,
+                                    const VkPhysicalDeviceFeatures *pFeatures)
+{
+% for flag in pdev_features:
+   if (pFeatures->${flag})
+      all_features->${flag} = true;
+% endfor
+}
+
+void
+vk_set_physical_device_features(struct vk_features *all_features,
+                                const VkPhysicalDeviceFeatures2 *pFeatures)
+{
+   vk_foreach_struct_const(ext, pFeatures) {
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2: {
+         const VkPhysicalDeviceFeatures2 *features = (const void *) ext;
+         vk_set_physical_device_features_1_0(all_features, &features->features);
+         break;
+      }
+
+% for f in feature_structs:
+      case ${f.s_type}: {
+         const ${f.c_type} *features = (const void *) ext;
+% for flag in f.features:
+         if (features->${flag})
+            all_features->${get_renamed_feature(f.c_type, flag)} = true;
+% endfor
+         break;
+      }
+
+% endfor
+      default:
+         break;
+      }
+   }
+}
+
+void
 vk_get_physical_device_features(VkPhysicalDeviceFeatures2 *pFeatures,
                                 const struct vk_features *all_features)
 {
@@ -269,6 +308,14 @@ struct vk_features {
    bool ${flag};
 % endfor
 };
+
+void
+vk_set_physical_device_features_1_0(struct vk_features *all_features,
+                                    const VkPhysicalDeviceFeatures *pFeatures);
+
+void
+vk_set_physical_device_features(struct vk_features *all_features,
+                                const VkPhysicalDeviceFeatures2 *pFeatures);
 
 void
 vk_get_physical_device_features(VkPhysicalDeviceFeatures2 *pFeatures,
