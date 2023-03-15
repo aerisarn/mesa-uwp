@@ -613,9 +613,10 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    if (!ctx->queries_disabled)
       zink_suspend_queries(ctx, batch);
 
-   tc_driver_internal_flush_notify(ctx->tc);
 
    struct zink_screen *screen = zink_screen(ctx->base.screen);
+   if (!screen->driver_workarounds.track_renderpasses)
+      tc_driver_internal_flush_notify(ctx->tc);
    struct zink_batch_state *bs;
 
    /* oom flushing is triggered to handle stupid piglit tests like streaming-texture-leak */

@@ -4145,7 +4145,8 @@ zink_flush(struct pipe_context *pctx,
                 check_device_lost(ctx);
           }
        }
-       tc_driver_internal_flush_notify(ctx->tc);
+       if (!screen->driver_workarounds.track_renderpasses)
+         tc_driver_internal_flush_notify(ctx->tc);
    } else {
       fence = &batch->state->fence;
       submit_count = batch->state->submit_count;
@@ -5486,7 +5487,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
                                                      &(struct threaded_context_options){
                                                         .create_fence = zink_create_tc_fence_for_tc,
                                                         .is_resource_busy = zink_context_is_resource_busy,
-                                                        .driver_calls_flush_notify = true,
+                                                        .driver_calls_flush_notify = !screen->driver_workarounds.track_renderpasses,
                                                         .unsynchronized_get_device_reset_status = true,
                                                         .parse_renderpass_info = screen->driver_workarounds.track_renderpasses,
                                                         .dsa_parse = zink_tc_parse_dsa,
