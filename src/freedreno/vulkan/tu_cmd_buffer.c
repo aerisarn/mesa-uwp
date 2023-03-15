@@ -1237,8 +1237,9 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
        * of a renderpass. We have to patch the descriptor to make it compatible
        * with how it is sampled in shader.
        */
-      enum a6xx_tex_type tex_type = (dst[2] & A6XX_TEX_CONST_2_TYPE__MASK) >>
-                                    A6XX_TEX_CONST_2_TYPE__SHIFT;
+      enum a6xx_tex_type tex_type =
+         (enum a6xx_tex_type)((dst[2] & A6XX_TEX_CONST_2_TYPE__MASK) >>
+                              A6XX_TEX_CONST_2_TYPE__SHIFT);
       if (tex_type == A6XX_TEX_CUBE) {
          dst[2] &= ~A6XX_TEX_CONST_2_TYPE__MASK;
          dst[2] |= A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D);
@@ -4786,18 +4787,18 @@ tu6_update_simplified_stencil_state(struct tu_cmd_buffer *cmd)
       ((cmd->state.dynamic_stencil_wrmask & 0xff00) >> 8) :
       (cmd->state.pipeline->ds.stencil_wrmask & 0xff00) >> 8;
 
-   VkStencilOp front_fail_op =
-      (cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_FAIL__MASK) >> A6XX_RB_STENCIL_CONTROL_FAIL__SHIFT;
-   VkStencilOp front_pass_op =
-      (cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_ZPASS__MASK) >> A6XX_RB_STENCIL_CONTROL_ZPASS__SHIFT;
-   VkStencilOp front_depth_fail_op =
-      (cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_ZFAIL__MASK) >> A6XX_RB_STENCIL_CONTROL_ZFAIL__SHIFT;
-   VkStencilOp back_fail_op =
-      (cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_FAIL_BF__MASK) >> A6XX_RB_STENCIL_CONTROL_FAIL_BF__SHIFT;
-   VkStencilOp back_pass_op =
-      (cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_ZPASS_BF__MASK) >> A6XX_RB_STENCIL_CONTROL_ZPASS_BF__SHIFT;
-   VkStencilOp back_depth_fail_op =
-      (cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_ZFAIL_BF__MASK) >> A6XX_RB_STENCIL_CONTROL_ZFAIL_BF__SHIFT;
+   VkStencilOp front_fail_op = (VkStencilOp)
+      ((cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_FAIL__MASK) >> A6XX_RB_STENCIL_CONTROL_FAIL__SHIFT);
+   VkStencilOp front_pass_op = (VkStencilOp)
+      ((cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_ZPASS__MASK) >> A6XX_RB_STENCIL_CONTROL_ZPASS__SHIFT);
+   VkStencilOp front_depth_fail_op = (VkStencilOp)
+      ((cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_ZFAIL__MASK) >> A6XX_RB_STENCIL_CONTROL_ZFAIL__SHIFT);
+   VkStencilOp back_fail_op = (VkStencilOp)
+      ((cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_FAIL_BF__MASK) >> A6XX_RB_STENCIL_CONTROL_FAIL_BF__SHIFT);
+   VkStencilOp back_pass_op = (VkStencilOp)
+      ((cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_ZPASS_BF__MASK) >> A6XX_RB_STENCIL_CONTROL_ZPASS_BF__SHIFT);
+   VkStencilOp back_depth_fail_op = (VkStencilOp)
+      ((cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_ZFAIL_BF__MASK) >> A6XX_RB_STENCIL_CONTROL_ZFAIL_BF__SHIFT);
 
    bool stencil_front_op_writes =
       front_pass_op != VK_STENCIL_OP_KEEP ||
@@ -4821,8 +4822,8 @@ tu6_writes_depth(struct tu_cmd_buffer *cmd, bool depth_test_enable)
    bool depth_write_enable =
       cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
 
-   VkCompareOp depth_compare_op =
-      (cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_ZFUNC__MASK) >> A6XX_RB_DEPTH_CNTL_ZFUNC__SHIFT;
+   VkCompareOp depth_compare_op = (VkCompareOp)
+      ((cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_ZFUNC__MASK) >> A6XX_RB_DEPTH_CNTL_ZFUNC__SHIFT);
 
    bool depth_compare_op_writes = depth_compare_op != VK_COMPARE_OP_NEVER;
 

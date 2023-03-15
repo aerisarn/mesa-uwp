@@ -248,7 +248,8 @@ r2d_src(struct tu_cmd_buffer *cmd,
    if (filter != VK_FILTER_NEAREST)
       src_info |= A6XX_SP_PS_2D_SRC_INFO_FILTER;
 
-   enum a6xx_format fmt = (src_info & A6XX_SP_PS_2D_SRC_INFO_COLOR_FORMAT__MASK);
+   enum a6xx_format fmt = (enum a6xx_format)(
+      src_info & A6XX_SP_PS_2D_SRC_INFO_COLOR_FORMAT__MASK);
    enum pipe_format src_format = iview->format;
    fixup_src_format(&src_format, dst_format, &fmt);
 
@@ -327,7 +328,8 @@ r2d_dst(struct tu_cs *cs, const struct fdl6_view *iview, uint32_t layer,
         enum pipe_format src_format)
 {
    uint32_t dst_info = iview->RB_2D_DST_INFO;
-   enum a6xx_format fmt = dst_info & A6XX_RB_2D_DST_INFO_COLOR_FORMAT__MASK;
+   enum a6xx_format fmt =
+      (enum a6xx_format)(dst_info & A6XX_RB_2D_DST_INFO_COLOR_FORMAT__MASK);
    enum pipe_format dst_format = iview->format;
    fixup_dst_format(src_format, &dst_format, &fmt);
 
@@ -1049,8 +1051,8 @@ r3d_src(struct tu_cmd_buffer *cmd,
    uint32_t desc[A6XX_TEX_CONST_DWORDS];
    memcpy(desc, iview->descriptor, sizeof(desc));
 
-   enum a6xx_format fmt = (desc[0] & A6XX_TEX_CONST_0_FMT__MASK) >>
-         A6XX_TEX_CONST_0_FMT__SHIFT;
+   enum a6xx_format fmt = (enum a6xx_format)(
+      (desc[0] & A6XX_TEX_CONST_0_FMT__MASK) >> A6XX_TEX_CONST_0_FMT__SHIFT);
    enum pipe_format src_format = iview->format;
    fixup_src_format(&src_format, dst_format, &fmt);
    desc[0] = (desc[0] & ~A6XX_TEX_CONST_0_FMT__MASK) |
@@ -1143,7 +1145,8 @@ r3d_dst(struct tu_cs *cs, const struct fdl6_view *iview, uint32_t layer,
 {
    uint32_t mrt_buf_info = iview->RB_MRT_BUF_INFO;
 
-   enum a6xx_format fmt = mrt_buf_info & A6XX_RB_MRT_BUF_INFO_COLOR_FORMAT__MASK;
+   enum a6xx_format fmt = (enum a6xx_format)(
+      mrt_buf_info & A6XX_RB_MRT_BUF_INFO_COLOR_FORMAT__MASK);
    enum pipe_format dst_format = iview->format;
    fixup_dst_format(src_format, &dst_format, &fmt);
    mrt_buf_info =
