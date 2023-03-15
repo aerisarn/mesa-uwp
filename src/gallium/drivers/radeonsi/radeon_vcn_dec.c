@@ -3120,7 +3120,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
          dec->h264_valid_poc_num[i] = (unsigned) -1;
    }
 
-   bs_buf_size = width * height * (512 / (16 * 16));
+   bs_buf_size = width * height / 32;
    for (i = 0; i < NUM_BUFFERS; ++i) {
       unsigned msg_fb_it_probs_size = FB_BUFFER_OFFSET + FB_BUFFER_SIZE;
       if (have_it(dec))
