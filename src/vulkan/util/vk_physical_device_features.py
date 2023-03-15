@@ -33,6 +33,86 @@ import mako
 from mako.template import Template
 from vk_extensions import get_all_required, filter_api
 
+RENAMED_FEATURES = {
+    # See https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/17272#note_1446477 for details
+    ('BufferDeviceAddressFeaturesEXT', 'bufferDeviceAddressCaptureReplay'): 'bufferDeviceAddressCaptureReplayEXT',
+
+    ('MeshShaderFeaturesNV', 'taskShader'): 'taskShaderNV',
+    ('MeshShaderFeaturesNV', 'meshShader'): 'meshShaderNV',
+}
+
+KNOWN_ALIASES = [
+    (['Vulkan11Features', '16BitStorageFeatures'], ['storageBuffer16BitAccess', 'uniformAndStorageBuffer16BitAccess', 'storagePushConstant16', 'storageInputOutput16']),
+    (['Vulkan11Features', 'MultiviewFeatures'], ['multiview', 'multiviewGeometryShader', 'multiviewTessellationShader']),
+    (['Vulkan11Features', 'VariablePointersFeatures'], ['variablePointersStorageBuffer', 'variablePointers']),
+    (['Vulkan11Features', 'ProtectedMemoryFeatures'], ['protectedMemory']),
+    (['Vulkan11Features', 'SamplerYcbcrConversionFeatures'], ['samplerYcbcrConversion']),
+    (['Vulkan11Features', 'ShaderDrawParametersFeatures'], ['shaderDrawParameters']),
+
+    (['Vulkan12Features', '8BitStorageFeatures'], ['storageBuffer8BitAccess', 'uniformAndStorageBuffer8BitAccess', 'storagePushConstant8']),
+    (['Vulkan12Features', 'ShaderAtomicInt64Features'], ['shaderBufferInt64Atomics', 'shaderSharedInt64Atomics']),
+    (['Vulkan12Features', 'ShaderFloat16Int8Features'], ['shaderFloat16', 'shaderInt8']),
+    (
+        ['Vulkan12Features', 'DescriptorIndexingFeatures'],
+        [
+            'shaderInputAttachmentArrayDynamicIndexing',
+            'shaderUniformTexelBufferArrayDynamicIndexing',
+            'shaderStorageTexelBufferArrayDynamicIndexing',
+            'shaderUniformBufferArrayNonUniformIndexing',
+            'shaderSampledImageArrayNonUniformIndexing',
+            'shaderStorageBufferArrayNonUniformIndexing',
+            'shaderStorageImageArrayNonUniformIndexing',
+            'shaderInputAttachmentArrayNonUniformIndexing',
+            'shaderUniformTexelBufferArrayNonUniformIndexing',
+            'shaderStorageTexelBufferArrayNonUniformIndexing',
+            'descriptorBindingUniformBufferUpdateAfterBind',
+            'descriptorBindingSampledImageUpdateAfterBind',
+            'descriptorBindingStorageImageUpdateAfterBind',
+            'descriptorBindingStorageBufferUpdateAfterBind',
+            'descriptorBindingUniformTexelBufferUpdateAfterBind',
+            'descriptorBindingStorageTexelBufferUpdateAfterBind',
+            'descriptorBindingUpdateUnusedWhilePending',
+            'descriptorBindingPartiallyBound',
+            'descriptorBindingVariableDescriptorCount',
+            'runtimeDescriptorArray',
+        ],
+    ),
+    (['Vulkan12Features', 'ScalarBlockLayoutFeatures'], ['scalarBlockLayout']),
+    (['Vulkan12Features', 'ImagelessFramebufferFeatures'], ['imagelessFramebuffer']),
+    (['Vulkan12Features', 'UniformBufferStandardLayoutFeatures'], ['uniformBufferStandardLayout']),
+    (['Vulkan12Features', 'ShaderSubgroupExtendedTypesFeatures'], ['shaderSubgroupExtendedTypes']),
+    (['Vulkan12Features', 'SeparateDepthStencilLayoutsFeatures'], ['separateDepthStencilLayouts']),
+    (['Vulkan12Features', 'HostQueryResetFeatures'], ['hostQueryReset']),
+    (['Vulkan12Features', 'TimelineSemaphoreFeatures'], ['timelineSemaphore']),
+    (['Vulkan12Features', 'BufferDeviceAddressFeatures', 'BufferDeviceAddressFeaturesEXT'], ['bufferDeviceAddress', 'bufferDeviceAddressMultiDevice']),
+    (['Vulkan12Features', 'BufferDeviceAddressFeatures'], ['bufferDeviceAddressCaptureReplay']),
+    (['Vulkan12Features', 'VulkanMemoryModelFeatures'], ['vulkanMemoryModel', 'vulkanMemoryModelDeviceScope', 'vulkanMemoryModelAvailabilityVisibilityChains']),
+
+    (['Vulkan13Features', 'ImageRobustnessFeatures'], ['robustImageAccess']),
+    (['Vulkan13Features', 'InlineUniformBlockFeatures'], ['inlineUniformBlock', 'descriptorBindingInlineUniformBlockUpdateAfterBind']),
+    (['Vulkan13Features', 'PipelineCreationCacheControlFeatures'], ['pipelineCreationCacheControl']),
+    (['Vulkan13Features', 'PrivateDataFeatures'], ['privateData']),
+    (['Vulkan13Features', 'ShaderDemoteToHelperInvocationFeatures'], ['shaderDemoteToHelperInvocation']),
+    (['Vulkan13Features', 'ShaderTerminateInvocationFeatures'], ['shaderTerminateInvocation']),
+    (['Vulkan13Features', 'SubgroupSizeControlFeatures'], ['subgroupSizeControl', 'computeFullSubgroups']),
+    (['Vulkan13Features', 'Synchronization2Features'], ['synchronization2']),
+    (['Vulkan13Features', 'TextureCompressionASTCHDRFeatures'], ['textureCompressionASTC_HDR']),
+    (['Vulkan13Features', 'ZeroInitializeWorkgroupMemoryFeatures'], ['shaderZeroInitializeWorkgroupMemory']),
+    (['Vulkan13Features', 'DynamicRenderingFeatures'], ['dynamicRendering']),
+    (['Vulkan13Features', 'ShaderIntegerDotProductFeatures'], ['shaderIntegerDotProduct']),
+    (['Vulkan13Features', 'Maintenance4Features'], ['maintenance4']),
+]
+
+for (feature_structs, features) in KNOWN_ALIASES:
+    for flag in features:
+        for f in feature_structs:
+            rename = (f, flag)
+            assert rename not in RENAMED_FEATURES, f"{rename} already exists in RENAMED_FEATURES"
+            RENAMED_FEATURES[rename] = flag
+
+def get_renamed_feature(c_type, feature):
+    return RENAMED_FEATURES.get((c_type.removeprefix('VkPhysicalDevice'), feature), feature)
+
 class FeatureStruct(typing.NamedTuple):
     c_type: str
     s_type: str
@@ -43,6 +123,7 @@ TEMPLATE_C = Template(COPYRIGHT + """
 
 #include "vk_log.h"
 #include "vk_physical_device.h"
+#include "vk_physical_device_features.h"
 #include "vk_util.h"
 
 static VkResult
@@ -129,7 +210,7 @@ vk_physical_device_check_device_features(struct vk_physical_device *physical_dev
         break;
       }
 % for f in feature_structs:
-      case ${f.s_type} : {
+      case ${f.s_type}: {
          const ${f.c_type} *a = &supported_${f.c_type};
          const ${f.c_type} *b = (const void *) features;
 % for flag in f.features:
@@ -147,6 +228,57 @@ vk_physical_device_check_device_features(struct vk_physical_device *physical_dev
    return VK_SUCCESS;
 }
 
+void
+vk_get_physical_device_features(VkPhysicalDeviceFeatures2 *pFeatures,
+                                const struct vk_features *all_features)
+{
+% for flag in pdev_features:
+   pFeatures->features.${flag} = all_features->${flag};
+% endfor
+
+   vk_foreach_struct(ext, pFeatures) {
+      switch (ext->sType) {
+% for f in feature_structs:
+      case ${f.s_type}: {
+         ${f.c_type} *features = (void *) ext;
+% for flag in f.features:
+         features->${flag} = all_features->${get_renamed_feature(f.c_type, flag)};
+% endfor
+         break;
+      }
+
+% endfor
+      default:
+         break;
+      }
+   }
+}
+""", output_encoding='utf-8')
+
+TEMPLATE_H = Template(COPYRIGHT + """
+/* This file generated from ${filename}, don't edit directly. */
+#ifndef VK_FEATURES_H
+#define VK_FEATURES_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct vk_features {
+% for flag in all_flags:
+   bool ${flag};
+% endfor
+};
+
+void
+vk_get_physical_device_features(VkPhysicalDeviceFeatures2 *pFeatures,
+                                const struct vk_features *all_features);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
 """, output_encoding='utf-8')
 
 def get_pdev_features(doc):
@@ -204,6 +336,8 @@ def get_feature_structs(doc, api):
     return feature_structs.values()
 
 def get_feature_structs_from_xml(xml_files, api='vulkan'):
+    diagnostics = []
+
     pdev_features = None
     feature_structs = []
 
@@ -213,28 +347,58 @@ def get_feature_structs_from_xml(xml_files, api='vulkan'):
         if not pdev_features:
             pdev_features = get_pdev_features(doc)
 
-    return pdev_features, feature_structs
+    unused_renames = {**RENAMED_FEATURES}
+
+    features = OrderedDict()
+
+    for flag in pdev_features:
+        features[flag] = 'VkPhysicalDeviceFeatures'
+
+    for f in feature_structs:
+        for flag in f.features:
+            renamed_flag = get_renamed_feature(f.c_type, flag)
+            if renamed_flag not in features:
+                features[renamed_flag] = f.c_type
+            else:
+                a = features[renamed_flag].removeprefix('VkPhysicalDevice')
+                b = f.c_type.removeprefix('VkPhysicalDevice')
+                if (a, flag) not in RENAMED_FEATURES or (b, flag) not in RENAMED_FEATURES:
+                    diagnostics.append(f'{a} and {b} both define {flag}')
+
+            unused_renames.pop((f.c_type.removeprefix('VkPhysicalDevice'), flag), None)
+
+    for rename in unused_renames:
+        diagnostics.append(f'unused rename {rename}')
+
+    assert len(diagnostics) == 0, '\n'.join(diagnostics)
+
+    return pdev_features, feature_structs, features
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--out-c', required=True, help='Output C file.')
+    parser.add_argument('--out-h', required=True, help='Output H file.')
     parser.add_argument('--xml',
                         help='Vulkan API XML file.',
                         required=True, action='append', dest='xml_files')
     args = parser.parse_args()
 
-    pdev_features, feature_structs = get_feature_structs_from_xml(args.xml_files)
+    pdev_features, feature_structs, all_flags = get_feature_structs_from_xml(args.xml_files)
 
     environment = {
         'filename': os.path.basename(__file__),
         'pdev_features': pdev_features,
         'feature_structs': feature_structs,
+        'all_flags': all_flags,
+        'get_renamed_feature': get_renamed_feature,
     }
 
     try:
         with open(args.out_c, 'wb') as f:
             f.write(TEMPLATE_C.render(**environment))
+        with open(args.out_h, 'wb') as f:
+            f.write(TEMPLATE_H.render(**environment))
     except Exception:
         # In the event there's an error, this uses some helpers from mako
         # to print a useful stack trace and prints it, then exits with

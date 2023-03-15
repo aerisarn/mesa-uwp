@@ -165,10 +165,10 @@ vk_dispatch_trampolines = custom_target(
 vk_physical_device_features = custom_target(
   'vk_physical_device_features',
   input : [vk_physical_device_features_gen, vk_api_xml],
-  output : ['vk_physical_device_features.c'],
+  output : ['vk_physical_device_features.c', 'vk_physical_device_features.h'],
   command : [
     prog_python, '@INPUT0@', '--xml', '@INPUT1@',
-    '--out-c', '@OUTPUT0@'
+    '--out-c', '@OUTPUT0@', '--out-h', '@OUTPUT1@',
   ],
   depend_files : vk_physical_device_features_gen_depend_files,
 )
