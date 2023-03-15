@@ -251,13 +251,13 @@ ac_nir_export_position(nir_builder *b,
 }
 
 void
-ac_nir_export_parameter(nir_builder *b,
-                        const uint8_t *param_offsets,
-                        uint64_t outputs_written,
-                        uint16_t outputs_written_16bit,
-                        nir_ssa_def *(*outputs)[4],
-                        nir_ssa_def *(*outputs_16bit_lo)[4],
-                        nir_ssa_def *(*outputs_16bit_hi)[4])
+ac_nir_export_parameters(nir_builder *b,
+                         const uint8_t *param_offsets,
+                         uint64_t outputs_written,
+                         uint16_t outputs_written_16bit,
+                         nir_ssa_def *(*outputs)[4],
+                         nir_ssa_def *(*outputs_16bit_lo)[4],
+                         nir_ssa_def *(*outputs_16bit_hi)[4])
 {
    uint32_t exported_params = 0;
 
@@ -607,12 +607,12 @@ ac_nir_create_gs_copy_shader(const nir_shader *gs_nir,
                                 force_vrs, export_outputs, outputs.data);
 
          if (has_param_exports) {
-            ac_nir_export_parameter(&b, param_offsets,
-                                    b.shader->info.outputs_written,
-                                    b.shader->info.outputs_written_16bit,
-                                    outputs.data,
-                                    outputs.data_16bit_lo,
-                                    outputs.data_16bit_hi);
+            ac_nir_export_parameters(&b, param_offsets,
+                                     b.shader->info.outputs_written,
+                                     b.shader->info.outputs_written_16bit,
+                                     outputs.data,
+                                     outputs.data_16bit_lo,
+                                     outputs.data_16bit_hi);
          }
       }
 
@@ -716,12 +716,12 @@ ac_nir_lower_legacy_vs(nir_shader *nir,
                           force_vrs, export_outputs, outputs.data);
 
    if (has_param_exports) {
-      ac_nir_export_parameter(&b, param_offsets,
-                              nir->info.outputs_written,
-                              nir->info.outputs_written_16bit,
-                              outputs.data,
-                              outputs.data_16bit_lo,
-                              outputs.data_16bit_hi);
+      ac_nir_export_parameters(&b, param_offsets,
+                               nir->info.outputs_written,
+                               nir->info.outputs_written_16bit,
+                               outputs.data,
+                               outputs.data_16bit_lo,
+                               outputs.data_16bit_hi);
    }
 
    nir_metadata_preserve(impl, preserved);

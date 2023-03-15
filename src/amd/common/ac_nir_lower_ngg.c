@@ -2434,11 +2434,11 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
                                        options->vs_output_param_offset);
          }
       } else {
-         ac_nir_export_parameter(b, options->vs_output_param_offset,
-                                 shader->info.outputs_written,
-                                 shader->info.outputs_written_16bit,
-                                 state.outputs, state.outputs_16bit_lo,
-                                 state.outputs_16bit_hi);
+         ac_nir_export_parameters(b, options->vs_output_param_offset,
+                                  shader->info.outputs_written,
+                                  shader->info.outputs_written_16bit,
+                                  state.outputs, state.outputs_16bit_lo,
+                                  state.outputs_16bit_hi);
       }
    }
 
@@ -2952,11 +2952,11 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
                                        s->options->vs_output_param_offset);
          }
       } else {
-         ac_nir_export_parameter(b, s->options->vs_output_param_offset,
-                                 b->shader->info.outputs_written,
-                                 b->shader->info.outputs_written_16bit,
-                                 s->outputs, s->outputs_16bit_lo,
-                                 s->outputs_16bit_hi);
+         ac_nir_export_parameters(b, s->options->vs_output_param_offset,
+                                  b->shader->info.outputs_written,
+                                  b->shader->info.outputs_written_16bit,
+                                  s->outputs, s->outputs_16bit_lo,
+                                  s->outputs_16bit_hi);
       }
    }
 }
@@ -4263,9 +4263,9 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
                              s->per_vertex_outputs, s->outputs);
 
       if (s->has_param_exports) {
-         ac_nir_export_parameter(b, s->vs_output_param_offset,
-                                 s->per_vertex_outputs, 0,
-                                 s->outputs, NULL, NULL);
+         ac_nir_export_parameters(b, s->vs_output_param_offset,
+                                  s->per_vertex_outputs, 0,
+                                  s->outputs, NULL, NULL);
       }
    }
    nir_pop_if(b, if_has_output_vertex);
@@ -4324,9 +4324,9 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
 
       ms_emit_primitive_export(b, prim_exp_arg, per_primitive_outputs, s);
 
-      ac_nir_export_parameter(b, s->vs_output_param_offset,
-                              per_primitive_outputs, 0,
-                              s->outputs, NULL, NULL);
+      ac_nir_export_parameters(b, s->vs_output_param_offset,
+                               per_primitive_outputs, 0,
+                               s->outputs, NULL, NULL);
    }
    nir_pop_if(b, if_has_output_primitive);
 }
