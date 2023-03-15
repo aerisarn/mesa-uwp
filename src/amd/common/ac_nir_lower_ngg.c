@@ -2185,9 +2185,20 @@ export_vertex_params_gfx11(nir_builder *b, nir_ssa_def *export_tid, nir_ssa_def 
    nir_ssa_def *voffset = nir_imm_int(b, 0);
    nir_ssa_def *undef = nir_ssa_undef(b, 1, 32);
 
+   uint32_t exported_params = 0;
+
    for (unsigned i = 0; i < num_outputs; i++) {
       gl_varying_slot slot = outputs[i].slot;
-      nir_ssa_def *soffset = nir_iadd_imm(b, attr_offset, vs_output_param_offset[slot] * 16 * 32);
+      unsigned offset = vs_output_param_offset[slot];
+
+      /* Since vs_output_param_offset[] can map multiple varying slots to
+       * the same param export index (that's radeonsi-specific behavior),
+       * we need to do this so as not to emit duplicated exports.
+       */
+      if (exported_params & BITFIELD_BIT(offset))
+         continue;
+
+      nir_ssa_def *soffset = nir_iadd_imm(b, attr_offset, offset * 16 * 32);
 
       nir_ssa_def *comp[4];
       for (unsigned j = 0; j < 4; j++)
@@ -2195,6 +2206,7 @@ export_vertex_params_gfx11(nir_builder *b, nir_ssa_def *export_tid, nir_ssa_def 
       nir_store_buffer_amd(b, nir_vec(b, comp, 4), attr_rsrc, voffset, soffset, vindex,
                            .memory_modes = nir_var_shader_out,
                            .access = ACCESS_COHERENT | ACCESS_IS_SWIZZLED_AMD);
+      exported_params |= BITFIELD_BIT(offset);
    }
 
    nir_pop_if(b, NULL);

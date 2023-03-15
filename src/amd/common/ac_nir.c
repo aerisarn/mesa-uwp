@@ -259,6 +259,8 @@ ac_nir_export_parameter(nir_builder *b,
                         nir_ssa_def *(*outputs_16bit_lo)[4],
                         nir_ssa_def *(*outputs_16bit_hi)[4])
 {
+   uint32_t exported_params = 0;
+
    u_foreach_bit64 (slot, outputs_written) {
       unsigned offset = param_offsets[slot];
       if (offset > AC_EXP_PARAM_OFFSET_31)
@@ -274,10 +276,18 @@ ac_nir_export_parameter(nir_builder *b,
       if (!write_mask)
          continue;
 
+      /* Since param_offsets[] can map multiple varying slots to the same
+       * param export index (that's radeonsi-specific behavior), we need to
+       * do this so as not to emit duplicated exports.
+       */
+      if (exported_params & BITFIELD_BIT(offset))
+         continue;
+
       nir_export_amd(
          b, get_export_output(b, outputs[slot]),
          .base = V_008DFC_SQ_EXP_PARAM + offset,
          .write_mask = write_mask);
+      exported_params |= BITFIELD_BIT(offset);
    }
 
    u_foreach_bit (slot, outputs_written_16bit) {
@@ -295,6 +305,13 @@ ac_nir_export_parameter(nir_builder *b,
       if (!write_mask)
          continue;
 
+      /* Since param_offsets[] can map multiple varying slots to the same
+       * param export index (that's radeonsi-specific behavior), we need to
+       * do this so as not to emit duplicated exports.
+       */
+      if (exported_params & BITFIELD_BIT(offset))
+         continue;
+
       nir_ssa_def *vec[4];
       nir_ssa_def *undef = nir_ssa_undef(b, 1, 16);
       for (int i = 0; i < 4; i++) {
@@ -307,6 +324,7 @@ ac_nir_export_parameter(nir_builder *b,
          b, nir_vec(b, vec, 4),
          .base = V_008DFC_SQ_EXP_PARAM + offset,
          .write_mask = write_mask);
+      exported_params |= BITFIELD_BIT(offset);
    }
 }
 
