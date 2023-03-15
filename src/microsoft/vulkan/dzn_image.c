@@ -991,7 +991,8 @@ translate_swizzle(VkComponentSwizzle in, uint32_t comp)
 static void
 dzn_image_view_prepare_srv_desc(struct dzn_image_view *iview)
 {
-   uint32_t plane_slice = (iview->vk.aspects & VK_IMAGE_ASPECT_STENCIL_BIT) ? 1 : 0;
+   uint32_t plane_slice = (iview->vk.aspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) ==
+      VK_IMAGE_ASPECT_STENCIL_BIT ? 1 : 0;
    bool ms = iview->vk.image->samples > 1;
    uint32_t layers_per_elem =
       (iview->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE ||
