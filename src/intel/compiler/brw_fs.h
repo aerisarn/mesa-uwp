@@ -263,8 +263,6 @@ public:
    bool opt_cse_local(const brw::fs_live_variables &live, bblock_t *block, int &ip);
 
    bool opt_copy_propagation();
-   bool try_copy_propagate(fs_inst *inst, int arg, acp_entry *entry);
-   bool try_constant_propagate(fs_inst *inst, acp_entry *entry);
    bool opt_copy_propagation_local(void *mem_ctx, bblock_t *block,
                                    exec_list *acp);
    bool opt_register_renaming();

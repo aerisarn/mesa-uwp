@@ -542,11 +542,15 @@ instruction_requires_packed_data(fs_inst *inst)
    }
 }
 
-bool
-fs_visitor::try_copy_propagate(fs_inst *inst, int arg, acp_entry *entry)
+static bool
+try_copy_propagate(const brw_compiler *compiler, fs_inst *inst,
+                   acp_entry *entry, int arg,
+                   const brw::simple_allocator &alloc)
 {
    if (inst->src[arg].file != VGRF)
       return false;
+
+   const struct intel_device_info *devinfo = compiler->devinfo;
 
    if (entry->src.file == IMM)
       return false;
@@ -814,9 +818,11 @@ fs_visitor::try_copy_propagate(fs_inst *inst, int arg, acp_entry *entry)
 }
 
 
-bool
-fs_visitor::try_constant_propagate(fs_inst *inst, acp_entry *entry)
+static bool
+try_constant_propagate(const brw_compiler *compiler, fs_inst *inst,
+                       acp_entry *entry)
 {
+   const struct intel_device_info *devinfo = compiler->devinfo;
    bool progress = false;
 
    if (entry->src.file != IMM)
@@ -1181,10 +1187,10 @@ fs_visitor::opt_copy_propagation_local(void *copy_prop_ctx, bblock_t *block,
             continue;
 
          foreach_in_list(acp_entry, entry, &acp[inst->src[i].nr % ACP_HASH_SIZE]) {
-            if (try_constant_propagate(inst, entry)) {
+            if (try_constant_propagate(compiler, inst, entry)) {
                progress = true;
                break;
-            } else if (try_copy_propagate(inst, i, entry)) {
+            } else if (try_copy_propagate(compiler, inst, entry, i, alloc)) {
                progress = true;
                break;
             }
