@@ -316,10 +316,10 @@ dzn_image_get_dxgi_format(VkFormat format,
       if (usage == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
          return DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
 
-      if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT)
-         return DXGI_FORMAT_X32_TYPELESS_G8X24_UINT;
-      else if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+      if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
          return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+      else if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT)
+         return DXGI_FORMAT_X32_TYPELESS_G8X24_UINT;
       else
          return DXGI_FORMAT_R32G8X24_TYPELESS;
 
