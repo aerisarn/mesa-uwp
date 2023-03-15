@@ -1762,7 +1762,6 @@ static void si_nir_assign_param_offsets(nir_shader *nir, struct si_shader *shade
             assert(slot_remap[sem.location] == -1);
 
             info->vs_output_param_offset[sem.location] = info->nr_param_exports++;
-            info->vs_output_param_mask |= BITFIELD64_BIT(nir_intrinsic_base(intr));
          }
       }
    }
@@ -1775,7 +1774,6 @@ static void si_nir_assign_param_offsets(nir_shader *nir, struct si_shader *shade
 
    if (shader->key.ge.mono.u.vs_export_prim_id) {
       info->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] = info->nr_param_exports++;
-      info->vs_output_param_mask |= BITFIELD64_BIT(sel->info.num_outputs);
    }
 
    /* Update outputs written info, we may remove some outputs before. */
@@ -1787,7 +1785,6 @@ static void si_assign_param_offsets(nir_shader *nir, struct si_shader *shader)
 {
    /* Initialize this first. */
    shader->info.nr_param_exports = 0;
-   shader->info.vs_output_param_mask = 0;
 
    STATIC_ASSERT(sizeof(shader->info.vs_output_param_offset[0]) == 1);
    memset(shader->info.vs_output_param_offset, AC_EXP_PARAM_DEFAULT_VAL_0000,
@@ -2086,7 +2083,6 @@ si_nir_generate_gs_copy_shader(struct si_screen *sscreen,
          continue;
 
       shader->info.vs_output_param_offset[semantic] = shader->info.nr_param_exports++;
-      shader->info.vs_output_param_mask |= BITFIELD64_BIT(i);
    }
 
    shader->info.nr_pos_exports = si_get_nr_pos_exports(gs_selector, gskey);

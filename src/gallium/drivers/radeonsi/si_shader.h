@@ -784,7 +784,6 @@ union si_shader_key {
 /* GCN-specific shader info. */
 struct si_shader_binary_info {
    ubyte vs_output_param_offset[NUM_TOTAL_VARYING_SLOTS];
-   uint64_t vs_output_param_mask; /* which params to export, indexed by "base" */
    uint32_t vs_output_ps_input_cntl[NUM_TOTAL_VARYING_SLOTS];
    ubyte num_input_sgprs;
    ubyte num_input_vgprs;
