@@ -4193,7 +4193,12 @@ emit_image_size(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    if (!handle)
       return false;
 
-   const struct dxil_value *lod = get_src(ctx, &intr->src[1], 0, nir_type_uint);
+   enum glsl_sampler_dim sampler_dim = intr->intrinsic == nir_intrinsic_image_deref_size ?
+      glsl_get_sampler_dim(nir_src_as_deref(intr->src[0])->type) :
+      nir_intrinsic_image_dim(intr);
+   const struct dxil_value *lod = sampler_dim == GLSL_SAMPLER_DIM_BUF ?
+      dxil_module_get_undef(&ctx->mod, dxil_module_get_int_type(&ctx->mod, 32)) :
+      get_src(ctx, &intr->src[1], 0, nir_type_uint);
    if (!lod)
       return false;
 
