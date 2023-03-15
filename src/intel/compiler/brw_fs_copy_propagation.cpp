@@ -552,8 +552,6 @@ try_copy_propagate(const brw_compiler *compiler, fs_inst *inst,
 
    const struct intel_device_info *devinfo = compiler->devinfo;
 
-   if (entry->src.file == IMM)
-      return false;
    assert(entry->src.file == VGRF || entry->src.file == UNIFORM ||
           entry->src.file == ATTR || entry->src.file == FIXED_GRF);
 
@@ -825,8 +823,6 @@ try_constant_propagate(const brw_compiler *compiler, fs_inst *inst,
    const struct intel_device_info *devinfo = compiler->devinfo;
    bool progress = false;
 
-   if (entry->src.file != IMM)
-      return false;
    if (type_sz(entry->src.type) > 4)
       return false;
 
@@ -1187,12 +1183,16 @@ fs_visitor::opt_copy_propagation_local(void *copy_prop_ctx, bblock_t *block,
             continue;
 
          foreach_in_list(acp_entry, entry, &acp[inst->src[i].nr % ACP_HASH_SIZE]) {
-            if (try_constant_propagate(compiler, inst, entry)) {
-               progress = true;
-               break;
-            } else if (try_copy_propagate(compiler, inst, entry, i, alloc)) {
-               progress = true;
-               break;
+            if (entry->src.file == IMM) {
+               if (try_constant_propagate(compiler, inst, entry)) {
+                  progress = true;
+                  break;
+               }
+            } else {
+               if (try_copy_propagate(compiler, inst, entry, i, alloc)) {
+                  progress = true;
+                  break;
+               }
             }
          }
       }
