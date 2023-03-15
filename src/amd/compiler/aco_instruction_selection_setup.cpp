@@ -254,8 +254,6 @@ setup_vs_variables(isel_context* ctx, nir_shader* nir)
    if (ctx->stage == vertex_ngg) {
       ctx->program->config->lds_size =
          DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
-      assert((ctx->program->config->lds_size * ctx->program->dev.lds_encoding_granule) <
-             (32 * 1024));
    }
 }
 
@@ -285,8 +283,6 @@ setup_tes_variables(isel_context* ctx, nir_shader* nir)
    if (ctx->stage == tess_eval_ngg) {
       ctx->program->config->lds_size =
          DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
-      assert((ctx->program->config->lds_size * ctx->program->dev.lds_encoding_granule) <
-             (32 * 1024));
    }
 }
 
@@ -295,7 +291,6 @@ setup_ms_variables(isel_context* ctx, nir_shader* nir)
 {
    ctx->program->config->lds_size =
       DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
-   assert((ctx->program->config->lds_size * ctx->program->dev.lds_encoding_granule) < (32 * 1024));
 }
 
 void
