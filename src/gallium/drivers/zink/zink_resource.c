@@ -2216,21 +2216,21 @@ zink_resource_copy_box_add(struct zink_resource *res, unsigned level, const stru
          case PIPE_BUFFER:
          case PIPE_TEXTURE_1D:
             /* no-op included region */
-            if (b->x <= box->x && b->x + b->width >= box->x + box->width)
+            if (b[i].x <= box->x && b[i].x + b[i].width >= box->x + box->width)
                return;
 
             /* try to merge adjacent regions */
-            if (b->x == box->x + box->width) {
-               b->x -= box->width;
+            if (b[i].x == box->x + box->width) {
+               b[i].x -= box->width;
                return;
             }
-            if (b->x + b->width == box->x) {
-               b->width += box->width;
+            if (b[i].x + b[i].width == box->x) {
+               b[i].width += box->width;
                return;
             }
 
             /* try to merge into region */
-            if (box->x <= b->x && box->x + box->width >= b->x + b->width) {
+            if (box->x <= b[i].x && box->x + box->width >= b[i].x + b[i].width) {
                *b = *box;
                return;
             }
@@ -2239,34 +2239,34 @@ zink_resource_copy_box_add(struct zink_resource *res, unsigned level, const stru
          case PIPE_TEXTURE_1D_ARRAY:
          case PIPE_TEXTURE_2D:
             /* no-op included region */
-            if (b->x <= box->x && b->x + b->width >= box->x + box->width &&
-                b->y <= box->y && b->y + b->height >= box->y + box->height)
+            if (b[i].x <= box->x && b[i].x + b[i].width >= box->x + box->width &&
+                b[i].y <= box->y && b[i].y + b[i].height >= box->y + box->height)
                return;
 
             /* try to merge adjacent regions */
-            if (b->y == box->y && b->height == box->height) {
-               if (b->x == box->x + box->width) {
-                  b->x -= box->width;
+            if (b[i].y == box->y && b[i].height == box->height) {
+               if (b[i].x == box->x + box->width) {
+                  b[i].x -= box->width;
                   return;
                }
-               if (b->x + b->width == box->x) {
-                  b->width += box->width;
+               if (b[i].x + b[i].width == box->x) {
+                  b[i].width += box->width;
                   return;
                }
-            } else if (b->x == box->x && b->width == box->width) {
-               if (b->y == box->y + box->height) {
-                  b->y -= box->height;
+            } else if (b[i].x == box->x && b[i].width == box->width) {
+               if (b[i].y == box->y + box->height) {
+                  b[i].y -= box->height;
                   return;
                }
-               if (b->y + b->height == box->y) {
-                  b->height += box->height;
+               if (b[i].y + b[i].height == box->y) {
+                  b[i].height += box->height;
                   return;
                }
             }
 
             /* try to merge into region */
-            if (box->x <= b->x && box->x + box->width >= b->x + b->width &&
-                box->y <= b->y && box->y + box->height >= b->y + b->height) {
+            if (box->x <= b[i].x && box->x + box->width >= b[i].x + b[i].width &&
+                box->y <= b[i].y && box->y + box->height >= b[i].y + b[i].height) {
                *b = *box;
                return;
             }
@@ -2274,78 +2274,78 @@ zink_resource_copy_box_add(struct zink_resource *res, unsigned level, const stru
 
          default:
             /* no-op included region */
-            if (b->x <= box->x && b->x + b->width >= box->x + box->width &&
-                b->y <= box->y && b->y + b->height >= box->y + box->height &&
-                b->z <= box->z && b->z + b->depth >= box->z + box->depth)
+            if (b[i].x <= box->x && b[i].x + b[i].width >= box->x + box->width &&
+                b[i].y <= box->y && b[i].y + b[i].height >= box->y + box->height &&
+                b[i].z <= box->z && b[i].z + b[i].depth >= box->z + box->depth)
                return;
 
                /* try to merge adjacent regions */
-            if (b->z == box->z && b->depth == box->depth) {
-               if (b->y == box->y && b->height == box->height) {
-                  if (b->x == box->x + box->width) {
-                     b->x -= box->width;
+            if (b[i].z == box->z && b[i].depth == box->depth) {
+               if (b[i].y == box->y && b[i].height == box->height) {
+                  if (b[i].x == box->x + box->width) {
+                     b[i].x -= box->width;
                      return;
                   }
-                  if (b->x + b->width == box->x) {
-                     b->width += box->width;
+                  if (b[i].x + b[i].width == box->x) {
+                     b[i].width += box->width;
                      return;
                   }
-               } else if (b->x == box->x && b->width == box->width) {
-                  if (b->y == box->y + box->height) {
-                     b->y -= box->height;
+               } else if (b[i].x == box->x && b[i].width == box->width) {
+                  if (b[i].y == box->y + box->height) {
+                     b[i].y -= box->height;
                      return;
                   }
-                  if (b->y + b->height == box->y) {
-                     b->height += box->height;
-                     return;
-                  }
-               }
-            } else if (b->x == box->x && b->width == box->width) {
-               if (b->y == box->y && b->height == box->height) {
-                  if (b->z == box->z + box->depth) {
-                     b->z -= box->depth;
-                     return;
-                  }
-                  if (b->z + b->depth == box->z) {
-                     b->depth += box->depth;
-                     return;
-                  }
-               } else if (b->z == box->z && b->depth == box->depth) {
-                  if (b->y == box->y + box->height) {
-                     b->y -= box->height;
-                     return;
-                  }
-                  if (b->y + b->height == box->y) {
-                     b->height += box->height;
+                  if (b[i].y + b[i].height == box->y) {
+                     b[i].height += box->height;
                      return;
                   }
                }
-            } else if (b->y == box->y && b->height == box->height) {
-               if (b->z == box->z && b->depth == box->depth) {
-                  if (b->x == box->x + box->width) {
-                     b->x -= box->width;
+            } else if (b[i].x == box->x && b[i].width == box->width) {
+               if (b[i].y == box->y && b[i].height == box->height) {
+                  if (b[i].z == box->z + box->depth) {
+                     b[i].z -= box->depth;
                      return;
                   }
-                  if (b->x + b->width == box->x) {
-                     b->width += box->width;
+                  if (b[i].z + b[i].depth == box->z) {
+                     b[i].depth += box->depth;
                      return;
                   }
-               } else if (b->x == box->x && b->width == box->width) {
-                  if (b->z == box->z + box->depth) {
-                     b->z -= box->depth;
+               } else if (b[i].z == box->z && b[i].depth == box->depth) {
+                  if (b[i].y == box->y + box->height) {
+                     b[i].y -= box->height;
                      return;
                   }
-                  if (b->z + b->depth == box->z) {
-                     b->depth += box->depth;
+                  if (b[i].y + b[i].height == box->y) {
+                     b[i].height += box->height;
+                     return;
+                  }
+               }
+            } else if (b[i].y == box->y && b[i].height == box->height) {
+               if (b[i].z == box->z && b[i].depth == box->depth) {
+                  if (b[i].x == box->x + box->width) {
+                     b[i].x -= box->width;
+                     return;
+                  }
+                  if (b[i].x + b[i].width == box->x) {
+                     b[i].width += box->width;
+                     return;
+                  }
+               } else if (b[i].x == box->x && b[i].width == box->width) {
+                  if (b[i].z == box->z + box->depth) {
+                     b[i].z -= box->depth;
+                     return;
+                  }
+                  if (b[i].z + b[i].depth == box->z) {
+                     b[i].depth += box->depth;
                      return;
                   }
                }
             }
 
             /* try to merge into region */
-            if (box->x <= b->x && box->x + box->width >= b->x + b->width &&
-                box->y <= b->y && box->y + box->height >= b->y + b->height &&
-                box->z <= b->z && box->z + box->depth >= b->z + b->depth)
+            if (box->x <= b[i].x && box->x + box->width >= b[i].x + b[i].width &&
+                box->y <= b[i].y && box->y + box->height >= b[i].y + b[i].height &&
+                box->z <= b[i].z && box->z + box->depth >= b[i].z + b[i].depth)
                return;
 
             break;
