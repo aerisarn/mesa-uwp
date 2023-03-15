@@ -3277,8 +3277,12 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    }
    if (ctx->fb_state.zsbuf != state->zsbuf)
       flush_clears |= zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS);
-   if (flush_clears)
+   if (flush_clears) {
+      bool queries_disabled = ctx->queries_disabled;
+      ctx->queries_disabled = true;
       zink_batch_rp(ctx);
+      ctx->queries_disabled = queries_disabled;
+   }
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
       if (i < state->nr_cbufs)
