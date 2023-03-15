@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -x
+set -xe
 
 export HOME=/cuttlefish
 export PATH=$PATH:/cuttlefish/bin
@@ -88,6 +88,7 @@ $ADB shell rm /vendor/lib64/egl/libGLESv2_emulation.so
 
 RESULTS=/data/results
 
+set +e
 $ADB shell "mkdir /data/results; cd /data; strace -o /data/results/out.strace -f -s 1000 ./deqp-runner \
     suite \
     --suite /data/deqp-$DEQP_SUITE.toml \
@@ -101,6 +102,7 @@ $ADB shell "mkdir /data/results; cd /data; strace -o /data/results/out.strace -f
     $DEQP_RUNNER_OPTIONS"
 
 EXIT_CODE=$?
+set -e
 
 $ADB pull $RESULTS results
 
