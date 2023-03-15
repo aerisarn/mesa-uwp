@@ -6079,8 +6079,7 @@ get_image_coords(isel_context* ctx, const nir_intrinsic_instr* instr)
          lod = get_ssa_temp_tex(ctx, instr->src[lod_index].ssa, a16);
    }
 
-   if (ctx->options->key.image_2d_view_of_3d &&
-       dim == GLSL_SAMPLER_DIM_2D && !is_array) {
+   if (ctx->program->info.image_2d_view_of_3d && dim == GLSL_SAMPLER_DIM_2D && !is_array) {
       /* The hw can't bind a slice of a 3D image as a 2D image, because it
        * ignores BASE_ARRAY if the target is 3D. The workaround is to read
        * BASE_ARRAY and set it as the 3rd address operand for all 2D images.
@@ -10720,8 +10719,8 @@ export_fs_mrt_z(isel_context* ctx)
       values[i] = Operand(v1);
    }
 
-   bool writes_mrt0_alpha =
-      ctx->options->key.ps.alpha_to_coverage_via_mrtz && (ctx->outputs.mask[FRAG_RESULT_DATA0] & 0x8);
+   bool writes_mrt0_alpha = ctx->program->info.ps.alpha_to_coverage_via_mrtz &&
+                            (ctx->outputs.mask[FRAG_RESULT_DATA0] & 0x8);
 
    /* Both stencil and sample mask only need 16-bits. */
    if (!ctx->program->info.ps.writes_z && !writes_mrt0_alpha &&
@@ -11042,7 +11041,7 @@ create_fs_jump_to_epilog(isel_context* ctx)
       }
    }
 
-   Temp continue_pc = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->options->key.ps.epilog.pc));
+   Temp continue_pc = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->program->info.ps.epilog.pc));
 
    aco_ptr<Pseudo_instruction> jump{create_instruction<Pseudo_instruction>(
       aco_opcode::p_jump_to_epilog, Format::PSEUDO, 1 + color_exports.size(), 0)};
@@ -11104,7 +11103,7 @@ create_fs_exports(isel_context* ctx)
        * require MRT0 to be written. Just copy MRT1 into MRT0. Skipping MRT1 exports seems to be
        * fine.
        */
-      if (ctx->options->key.ps.epilog.mrt0_is_dual_src && !ctx->outputs.mask[FRAG_RESULT_DATA0] &&
+      if (ctx->program->info.ps.epilog.mrt0_is_dual_src && !ctx->outputs.mask[FRAG_RESULT_DATA0] &&
           ctx->outputs.mask[FRAG_RESULT_DATA1]) {
          u_foreach_bit (j, ctx->outputs.mask[FRAG_RESULT_DATA1]) {
             ctx->outputs.temps[FRAG_RESULT_DATA0 * 4u + j] =
@@ -11126,9 +11125,9 @@ create_fs_exports(isel_context* ctx)
 
          out.slot = compacted_mrt_index;
          out.write_mask = ctx->outputs.mask[i];
-         out.col_format = (ctx->options->key.ps.epilog.spi_shader_col_format >> (4 * idx)) & 0xf;
-         out.is_int8 = (ctx->options->key.ps.epilog.color_is_int8 >> idx) & 1;
-         out.is_int10 = (ctx->options->key.ps.epilog.color_is_int10 >> idx) & 1;
+         out.col_format = (ctx->program->info.ps.epilog.spi_shader_col_format >> (4 * idx)) & 0xf;
+         out.is_int8 = (ctx->program->info.ps.epilog.color_is_int8 >> idx) & 1;
+         out.is_int10 = (ctx->program->info.ps.epilog.color_is_int10 >> idx) & 1;
          out.enable_mrt_output_nan_fixup =
             (ctx->options->enable_mrt_output_nan_fixup >> idx) & 1;
 
@@ -11147,7 +11146,7 @@ create_fs_exports(isel_context* ctx)
       }
 
       if (exported) {
-         if (ctx->options->gfx_level >= GFX11 && ctx->options->key.ps.epilog.mrt0_is_dual_src) {
+         if (ctx->options->gfx_level >= GFX11 && ctx->program->info.ps.epilog.mrt0_is_dual_src) {
             struct aco_export_mrt* mrt0 = mrts[0].enabled_channels ? &mrts[0] : NULL;
             struct aco_export_mrt* mrt1 = mrts[1].enabled_channels ? &mrts[1] : NULL;
             create_fs_dual_src_export_gfx11(ctx, mrt0, mrt1);
@@ -11564,8 +11563,8 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
          if (!ngg_gs && !tcs_skip_barrier) {
             sync_scope scope =
                ctx.stage == vertex_tess_control_hs &&
-                     ctx.options->key.tcs.tess_input_vertices == nir->info.tess.tcs_vertices_out &&
-                     program->wave_size % ctx.options->key.tcs.tess_input_vertices == 0
+                     ctx.program->info.tcs.tess_input_vertices == nir->info.tess.tcs_vertices_out &&
+                     program->wave_size % ctx.program->info.tcs.tess_input_vertices == 0
                   ? scope_subgroup
                   : scope_workgroup;
             bld.barrier(aco_opcode::p_barrier,
