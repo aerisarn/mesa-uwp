@@ -331,37 +331,6 @@ spec@arb_query_buffer_object@qbo@query-GL_TIME_ELAPSED-SYNC_CPU_READ_AFTER_CACHE
 spec@arb_query_buffer_object@qbo@query-GL_TIME_ELAPSED-SYNC_CPU_READ_AFTER_CACHE_TEST-GL_UNSIGNED_INT,Fail
 spec@arb_query_buffer_object@qbo@query-GL_TIME_ELAPSED-SYNC_CPU_READ_AFTER_CACHE_TEST-GL_UNSIGNED_INT64_ARB,Fail
 
-# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3759
-# deqp-vk: ../src/freedreno/vulkan/tu_pipeline.c:3894: tu_pipeline_builder_init_graphics: Assertion `subpass->color_count == 0 || !create_info->pColorBlendState || subpass->color_count == create_info->pColorBlendState->attachmentCount' failed
-dEQP-VK.pipeline.monolithic.color_write_enable_maxa.cwe_after_bind.attachments6_more0,Crash
-dEQP-VK.pipeline.monolithic.color_write_enable_maxa.cwe_after_bind.attachments6_more1,Crash
-dEQP-VK.pipeline.pipeline_library.color_write_enable_maxa.cwe_after_bind.attachments6_more0,Crash
-dEQP-VK.pipeline.pipeline_library.color_write_enable_maxa.cwe_after_bind.attachments6_more1,Crash
-dEQP-VK.pipeline.fast_linked_library.color_write_enable_maxa.cwe_after_bind.attachments6_more0,Crash
-dEQP-VK.pipeline.fast_linked_library.color_write_enable_maxa.cwe_after_bind.attachments6_more1,Crash
-gmem-dEQP-VK.pipeline.monolithic.color_write_enable_maxa.cwe_after_bind.attachments4_more0,Crash
-gmem-dEQP-VK.pipeline.monolithic.color_write_enable_maxa.cwe_after_bind.attachments4_more1,Crash
-gmem-dEQP-VK.pipeline.monolithic.color_write_enable_maxa.cwe_after_bind.attachments4_more3,Crash
-gmem-dEQP-VK.pipeline.monolithic.color_write_enable_maxa.cwe_after_bind.attachments5_more0,Crash
-gmem-dEQP-VK.pipeline.monolithic.color_write_enable_maxa.cwe_after_bind.attachments5_more1,Crash
-gmem-dEQP-VK.pipeline.monolithic.color_write_enable_maxa.cwe_after_bind.attachments5_more3,Crash
-gmem-dEQP-VK.pipeline.monolithic.color_write_enable_maxa.cwe_after_bind.attachments6_more0,Crash
-gmem-dEQP-VK.pipeline.monolithic.color_write_enable_maxa.cwe_after_bind.attachments6_more1,Crash
-gmem-dEQP-VK.pipeline.pipeline_library.color_write_enable_maxa.cwe_after_bind.attachments4_more0,Crash
-gmem-dEQP-VK.pipeline.pipeline_library.color_write_enable_maxa.cwe_after_bind.attachments4_more1,Crash
-gmem-dEQP-VK.pipeline.pipeline_library.color_write_enable_maxa.cwe_after_bind.attachments4_more3,Crash
-gmem-dEQP-VK.pipeline.pipeline_library.color_write_enable_maxa.cwe_after_bind.attachments5_more1,Crash
-gmem-dEQP-VK.pipeline.pipeline_library.color_write_enable_maxa.cwe_after_bind.attachments5_more3,Crash
-gmem-dEQP-VK.pipeline.pipeline_library.color_write_enable_maxa.cwe_after_bind.attachments6_more0,Crash
-gmem-dEQP-VK.pipeline.pipeline_library.color_write_enable_maxa.cwe_after_bind.attachments6_more1,Crash
-gmem-dEQP-VK.pipeline.fast_linked_library.color_write_enable_maxa.cwe_after_bind.attachments4_more0,Crash
-gmem-dEQP-VK.pipeline.fast_linked_library.color_write_enable_maxa.cwe_after_bind.attachments4_more1,Crash
-gmem-dEQP-VK.pipeline.fast_linked_library.color_write_enable_maxa.cwe_after_bind.attachments5_more0,Crash
-gmem-dEQP-VK.pipeline.fast_linked_library.color_write_enable_maxa.cwe_after_bind.attachments5_more1,Crash
-gmem-dEQP-VK.pipeline.fast_linked_library.color_write_enable_maxa.cwe_after_bind.attachments5_more3,Crash
-gmem-dEQP-VK.pipeline.fast_linked_library.color_write_enable_maxa.cwe_after_bind.attachments6_more0,Crash
-gmem-dEQP-VK.pipeline.fast_linked_library.color_write_enable_maxa.cwe_after_bind.attachments6_more1,Crash
-
 spill-dEQP-VK.subgroups.ballot_broadcast.compute.subgroupbroadcast_bool,Fail
 spill-dEQP-VK.subgroups.ballot_broadcast.compute.subgroupbroadcast_bool_requiredsubgroupsize128,Fail
 
