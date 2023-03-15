@@ -1601,12 +1601,14 @@ nir_unsigned_upper_bound_impl(nir_shader *shader, struct hash_table *range_ht,
       case nir_op_ixor:
          res = bitmask(util_last_bit64(src0)) | bitmask(util_last_bit64(src1));
          break;
-      case nir_op_ishl:
+      case nir_op_ishl: {
+         src1 = MIN2(src1, q.scalar.def->bit_size - 1u);
          if (util_last_bit64(src0) + src1 > scalar.def->bit_size)
             res = max; /* overflow */
          else
-            res = src0 << MIN2(src1, scalar.def->bit_size - 1u);
+            res = src0 << src1;
          break;
+      }
       case nir_op_imul:
          if (src0 != 0 && (src0 * src1) / src0 != src1)
             res = max;
@@ -1615,16 +1617,18 @@ nir_unsigned_upper_bound_impl(nir_shader *shader, struct hash_table *range_ht,
          break;
       case nir_op_ushr: {
          nir_ssa_scalar src1_scalar = nir_ssa_scalar_chase_alu_src(scalar, 1);
+         uint32_t mask = q.scalar.def->bit_size - 1u;
          if (nir_ssa_scalar_is_const(src1_scalar))
-            res = src0 >> nir_ssa_scalar_as_uint(src1_scalar);
+            res = src0 >> (nir_ssa_scalar_as_uint(src1_scalar) & mask);
          else
             res = src0;
          break;
       }
       case nir_op_ishr: {
          nir_ssa_scalar src1_scalar = nir_ssa_scalar_chase_alu_src(scalar, 1);
+         uint32_t mask = q.scalar.def->bit_size - 1u;
          if (src0 <= 2147483647 && nir_ssa_scalar_is_const(src1_scalar))
-            res = src0 >> nir_ssa_scalar_as_uint(src1_scalar);
+            res = src0 >> (nir_ssa_scalar_as_uint(src1_scalar) & mask);
          else
             res = src0;
          break;
