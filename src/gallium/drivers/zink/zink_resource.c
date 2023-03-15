@@ -2222,6 +2222,7 @@ zink_resource_copy_box_add(struct zink_resource *res, unsigned level, const stru
             /* try to merge adjacent regions */
             if (b[i].x == box->x + box->width) {
                b[i].x -= box->width;
+               b[i].width += box->width;
                return;
             }
             if (b[i].x + b[i].width == box->x) {
@@ -2247,6 +2248,7 @@ zink_resource_copy_box_add(struct zink_resource *res, unsigned level, const stru
             if (b[i].y == box->y && b[i].height == box->height) {
                if (b[i].x == box->x + box->width) {
                   b[i].x -= box->width;
+                  b[i].width += box->width;
                   return;
                }
                if (b[i].x + b[i].width == box->x) {
@@ -2256,6 +2258,7 @@ zink_resource_copy_box_add(struct zink_resource *res, unsigned level, const stru
             } else if (b[i].x == box->x && b[i].width == box->width) {
                if (b[i].y == box->y + box->height) {
                   b[i].y -= box->height;
+                  b[i].height += box->height;
                   return;
                }
                if (b[i].y + b[i].height == box->y) {
@@ -2284,6 +2287,7 @@ zink_resource_copy_box_add(struct zink_resource *res, unsigned level, const stru
                if (b[i].y == box->y && b[i].height == box->height) {
                   if (b[i].x == box->x + box->width) {
                      b[i].x -= box->width;
+                     b[i].width += box->width;
                      return;
                   }
                   if (b[i].x + b[i].width == box->x) {
@@ -2293,6 +2297,7 @@ zink_resource_copy_box_add(struct zink_resource *res, unsigned level, const stru
                } else if (b[i].x == box->x && b[i].width == box->width) {
                   if (b[i].y == box->y + box->height) {
                      b[i].y -= box->height;
+                     b[i].height += box->height;
                      return;
                   }
                   if (b[i].y + b[i].height == box->y) {
@@ -2304,6 +2309,7 @@ zink_resource_copy_box_add(struct zink_resource *res, unsigned level, const stru
                if (b[i].y == box->y && b[i].height == box->height) {
                   if (b[i].z == box->z + box->depth) {
                      b[i].z -= box->depth;
+                     b[i].depth += box->depth;
                      return;
                   }
                   if (b[i].z + b[i].depth == box->z) {
@@ -2313,6 +2319,7 @@ zink_resource_copy_box_add(struct zink_resource *res, unsigned level, const stru
                } else if (b[i].z == box->z && b[i].depth == box->depth) {
                   if (b[i].y == box->y + box->height) {
                      b[i].y -= box->height;
+                     b[i].height += box->height;
                      return;
                   }
                   if (b[i].y + b[i].height == box->y) {
@@ -2324,6 +2331,7 @@ zink_resource_copy_box_add(struct zink_resource *res, unsigned level, const stru
                if (b[i].z == box->z && b[i].depth == box->depth) {
                   if (b[i].x == box->x + box->width) {
                      b[i].x -= box->width;
+                     b[i].width += box->width;
                      return;
                   }
                   if (b[i].x + b[i].width == box->x) {
@@ -2333,6 +2341,7 @@ zink_resource_copy_box_add(struct zink_resource *res, unsigned level, const stru
                } else if (b[i].x == box->x && b[i].width == box->width) {
                   if (b[i].z == box->z + box->depth) {
                      b[i].z -= box->depth;
+                     b[i].depth += box->depth;
                      return;
                   }
                   if (b[i].z + b[i].depth == box->z) {
