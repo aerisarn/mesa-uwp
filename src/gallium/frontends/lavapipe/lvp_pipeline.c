@@ -809,8 +809,10 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
             pipeline->line_rectangular = p->line_rectangular;
             pipeline->last_vertex = p->last_vertex;
             memcpy(pipeline->shaders, p->shaders, sizeof(struct lvp_shader) * 4);
-            for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++)
+            for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++) {
                pipeline->shaders[i].pipeline_nir = NULL; //this gets handled later
+               pipeline->shaders[i].tess_ccw = NULL; //this gets handled later
+            }
          }
          if (p->stages & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)
             pipeline->force_min_sample = p->force_min_sample;
