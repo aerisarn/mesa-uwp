@@ -4428,6 +4428,9 @@ mubuf_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsigne
       soffset = Operand(info.soffset);
    }
 
+   if (soffset.isUndefined())
+      soffset = Operand::zero();
+
    bool offen = !vaddr.isUndefined();
    bool idxen = info.idx.id();
 
@@ -5485,6 +5488,9 @@ mtbuf_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsigne
          vaddr = bld.copy(bld.def(v1), soffset);
       soffset = Operand(info.soffset);
    }
+
+   if (soffset.isUndefined())
+      soffset = Operand::zero();
 
    const bool offen = !vaddr.isUndefined();
    const bool idxen = info.idx.id();
