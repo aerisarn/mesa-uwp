@@ -3285,6 +3285,8 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
       zink_batch_rp(ctx);
       ctx->queries_disabled = queries_disabled;
    }
+   /* need to ensure we start a new rp on next draw */
+   zink_batch_no_rp_safe(ctx);
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
       if (i < state->nr_cbufs)
@@ -3418,8 +3420,6 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    }
    ctx->gfx_pipeline_state.rast_samples = rast_samples;
 
-   /* need to ensure we start a new rp on next draw */
-   zink_batch_no_rp_safe(ctx);
    /* this is an ideal time to oom flush since it won't split a renderpass */
    if (ctx->oom_flush)
       flush_batch(ctx, false);
