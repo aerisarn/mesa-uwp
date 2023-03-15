@@ -1017,10 +1017,11 @@ VkResult anv_CreateDescriptorPool(
          }
       } else {
          VkResult result = anv_device_alloc_bo(device,
-                                               "descriptors",
+                                               "indirect descriptors",
                                                descriptor_bo_size,
                                                ANV_BO_ALLOC_MAPPED |
-                                               ANV_BO_ALLOC_SNOOPED,
+                                               ANV_BO_ALLOC_SNOOPED |
+                                               ANV_BO_ALLOC_DESCRIPTOR_POOL,
                                                0 /* explicit_address */,
                                                &pool->bo);
          if (result != VK_SUCCESS) {

@@ -455,10 +455,10 @@ void anv_CmdBindPipeline(
 
             assert(layout->set[s].dynamic_offset_start < MAX_DYNAMIC_BUFFERS);
             if (layout->set[s].layout->dynamic_offset_count > 0 &&
-                (push->desc_sets[s] & ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK) != layout->set[s].dynamic_offset_start) {
-               push->desc_sets[s] &= ~ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK;
-               push->desc_sets[s] |= (layout->set[s].dynamic_offset_start &
-                                      ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK);
+                (push->desc_offsets[s] & ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK) != layout->set[s].dynamic_offset_start) {
+               push->desc_offsets[s] &= ~ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK;
+               push->desc_offsets[s] |= (layout->set[s].dynamic_offset_start &
+                                         ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK);
                modified = true;
             }
          }
@@ -586,15 +586,17 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
       if (update_desc_sets) {
          struct anv_push_constants *push = &pipe_state->push_constants;
 
-         struct anv_address addr = anv_descriptor_set_address(set);
-         push->desc_sets[set_index] &= ~ANV_DESCRIPTOR_SET_ADDRESS_MASK;
-         push->desc_sets[set_index] |= (anv_address_physical(addr) &
-                                        ANV_DESCRIPTOR_SET_ADDRESS_MASK);
+         struct anv_address set_addr = anv_descriptor_set_address(set);
+         uint64_t addr = anv_address_physical(set_addr);
+         uint32_t offset = addr & 0xffffffff;
+         assert((offset & ~ANV_DESCRIPTOR_SET_OFFSET_MASK) == 0);
+         push->desc_offsets[set_index] &= ~ANV_DESCRIPTOR_SET_OFFSET_MASK;
+         push->desc_offsets[set_index] |= offset;
 
-         if (addr.bo) {
+         if (set_addr.bo) {
             anv_reloc_list_add_bo(cmd_buffer->batch.relocs,
                                   cmd_buffer->batch.alloc,
-                                  addr.bo);
+                                  set_addr.bo);
          }
       }
 

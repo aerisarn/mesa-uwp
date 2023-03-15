@@ -2444,15 +2444,18 @@ struct anv_push_constants {
    /** Ray query globals (RT_DISPATCH_GLOBALS) */
    uint64_t ray_query_globals;
 
-#define ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK ((uint64_t)ANV_UBO_ALIGNMENT - 1)
-#define ANV_DESCRIPTOR_SET_ADDRESS_MASK       (~(uint64_t)(ANV_UBO_ALIGNMENT - 1))
+#define ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK ((uint32_t)ANV_UBO_ALIGNMENT - 1)
+#define ANV_DESCRIPTOR_SET_OFFSET_MASK        (~(uint32_t)(ANV_UBO_ALIGNMENT - 1))
 
    /**
+    * Base offsets for descriptor sets from
+    * INDIRECT_DESCRIPTOR_POOL_MIN_ADDRESS
+    *
     * In bits [0:5] : dynamic offset index in dynamic_offsets[] for the set
     *
     * In bits [6:63] : descriptor set address
     */
-   uint64_t desc_sets[MAX_SETS];
+   uint32_t desc_offsets[MAX_SETS];
 
    union {
       struct {

@@ -70,10 +70,10 @@ anv_nir_compute_push_layout(nir_shader *nir,
 
             case nir_intrinsic_load_desc_set_address_intel:
             case nir_intrinsic_load_desc_set_dynamic_index_intel: {
-               unsigned base = offsetof(struct anv_push_constants, desc_sets);
+               unsigned base = offsetof(struct anv_push_constants, desc_offsets);
                push_start = MIN2(push_start, base);
                push_end = MAX2(push_end, base +
-                  sizeof_field(struct anv_push_constants, desc_sets));
+                  sizeof_field(struct anv_push_constants, desc_offsets));
                break;
             }
 
@@ -177,27 +177,30 @@ anv_nir_compute_push_layout(nir_shader *nir,
 
                case nir_intrinsic_load_desc_set_address_intel: {
                   b->cursor = nir_before_instr(&intrin->instr);
-                  nir_ssa_def *pc_load = nir_load_uniform(b, 1, 64,
-                     nir_imul_imm(b, intrin->src[0].ssa, sizeof(uint64_t)),
-                     .base = offsetof(struct anv_push_constants, desc_sets),
-                     .range = sizeof_field(struct anv_push_constants, desc_sets),
-                     .dest_type = nir_type_uint64);
-                  pc_load = nir_iand_imm(b, pc_load, ANV_DESCRIPTOR_SET_ADDRESS_MASK);
-                  nir_ssa_def_rewrite_uses(&intrin->dest.ssa, pc_load);
+                  nir_ssa_def *pc_load = nir_load_uniform(b, 1, 32,
+                     nir_imul_imm(b, intrin->src[0].ssa, sizeof(uint32_t)),
+                     .base = offsetof(struct anv_push_constants, desc_offsets),
+                     .range = sizeof_field(struct anv_push_constants, desc_offsets),
+                     .dest_type = nir_type_uint32);
+                  pc_load = nir_iand_imm(b, pc_load, ANV_DESCRIPTOR_SET_OFFSET_MASK);
+                  nir_ssa_def *desc_addr =
+                     nir_pack_64_2x32_split(
+                        b, pc_load,
+                        nir_load_reloc_const_intel(
+                           b, BRW_SHADER_RELOC_DESCRIPTORS_ADDR_HIGH));
+                  nir_ssa_def_rewrite_uses(&intrin->dest.ssa, desc_addr);
                   break;
                }
 
                case nir_intrinsic_load_desc_set_dynamic_index_intel: {
                   b->cursor = nir_before_instr(&intrin->instr);
-                  nir_ssa_def *pc_load = nir_load_uniform(b, 1, 64,
-                     nir_imul_imm(b, intrin->src[0].ssa, sizeof(uint64_t)),
-                     .base = offsetof(struct anv_push_constants, desc_sets),
-                     .range = sizeof_field(struct anv_push_constants, desc_sets),
-                     .dest_type = nir_type_uint64);
-                  pc_load = nir_i2i32(
-                     b,
-                     nir_iand_imm(
-                        b, pc_load, ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK));
+                  nir_ssa_def *pc_load = nir_load_uniform(b, 1, 32,
+                     nir_imul_imm(b, intrin->src[0].ssa, sizeof(uint32_t)),
+                     .base = offsetof(struct anv_push_constants, desc_offsets),
+                     .range = sizeof_field(struct anv_push_constants, desc_offsets),
+                     .dest_type = nir_type_uint32);
+                  pc_load = nir_iand_imm(
+                     b, pc_load, ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK);
                   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, pc_load);
                   break;
                }
