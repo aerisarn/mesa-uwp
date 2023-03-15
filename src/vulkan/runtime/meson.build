@@ -209,7 +209,7 @@ idep_vulkan_common_entrypoints_h = declare_dependency(
 
 # This is likely a bug in the Meson VS backend, as MSVC with ninja works fine.
 # See this discussion here:
-# https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/10506 
+# https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/10506
 if get_option('backend').startswith('vs')
   idep_vulkan_runtime = declare_dependency(
     link_with : libvulkan_runtime,
