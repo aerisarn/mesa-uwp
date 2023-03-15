@@ -18,8 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-files_vulkan_wsi = files('wsi_common.c',
-                         'wsi_common_headless.c')
+files_vulkan_wsi = files('wsi_common.c')
 platform_deps = []
 
 if dep_libdrm.found()
@@ -41,6 +40,8 @@ endif
 if with_platform_windows
   files_vulkan_wsi += files('wsi_common_win32.cpp')
   platform_deps += dep_dxheaders
+else
+  files_vulkan_wsi += files('wsi_common_headless.c')
 endif
 
 if system_has_kms_drm and not with_platform_android
