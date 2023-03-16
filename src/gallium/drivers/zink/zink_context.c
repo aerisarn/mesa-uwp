@@ -5702,7 +5702,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
          info.pNext = NULL;
          info.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
          info.data.pInputAttachmentImage = &ctx->di.fbfetch;
-         VKSCR(GetDescriptorEXT)(screen->dev, &info, screen->info.db_props.inputAttachmentDescriptorSize, ctx->di.fbfetch_db);
+         if (screen->info.db_props.inputAttachmentDescriptorSize)
+            VKSCR(GetDescriptorEXT)(screen->dev, &info, screen->info.db_props.inputAttachmentDescriptorSize, ctx->di.fbfetch_db);
          memset(&ctx->di.fbfetch, 0, sizeof(ctx->di.fbfetch));
       }
       if (!screen->info.rb2_feats.nullDescriptor)
