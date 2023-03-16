@@ -62,7 +62,7 @@ $ADB push install/deqp-$DEQP_SUITE.toml /data/.
 
 $ADB shell rm /vendor/lib/dri/${ANDROID_DRIVER}_dri.so
 $ADB shell rm /vendor/lib/libglapi.so
-$ADB shell rm /vendor/lib/egl/libEGL_mesa.so
+$ADB shell rm /vendor/lib/egl/libGLES_mesa.so
 
 $ADB shell rm /vendor/lib/egl/libEGL_angle.so
 $ADB shell rm /vendor/lib/egl/libEGL_emulation.so
