@@ -2141,6 +2141,48 @@ radv_open_rtld_binary(struct radv_device *device, const struct radv_shader_binar
 #endif
 
 static bool
+radv_postprocess_binary_config(struct radv_device *device, struct radv_shader_binary *binary,
+                               const struct radv_shader_args *args)
+{
+   struct ac_shader_config config = {0};
+
+   if (binary->type == RADV_BINARY_TYPE_RTLD) {
+#if !defined(USE_LIBELF)
+      return false;
+#else
+      struct ac_rtld_binary rtld_binary = {0};
+
+      if (!radv_open_rtld_binary(device, binary, &rtld_binary)) {
+         return false;
+      }
+
+      if (!ac_rtld_read_config(&device->physical_device->rad_info, &rtld_binary, &config)) {
+         ac_rtld_close(&rtld_binary);
+         return false;
+      }
+
+      if (rtld_binary.lds_size > 0) {
+         unsigned encode_granularity = device->physical_device->rad_info.lds_encode_granularity;
+         config.lds_size = DIV_ROUND_UP(rtld_binary.lds_size, encode_granularity);
+      }
+      if (!config.lds_size && binary->stage == MESA_SHADER_TESS_CTRL) {
+         /* This is used for reporting LDS statistics */
+         config.lds_size = binary->info.tcs.num_lds_blocks;
+      }
+
+      assert(!binary->info.has_ngg_culling || config.lds_size);
+      ac_rtld_close(&rtld_binary);
+#endif
+   } else {
+      assert(binary->type == RADV_BINARY_TYPE_LEGACY);
+      config = ((struct radv_shader_binary_legacy *)binary)->base.config;
+   }
+
+   radv_postprocess_config(device, &config, &binary->info, binary->stage, args, &binary->config);
+   return true;
+}
+
+static bool
 radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_binary *binary,
                           struct radv_shader *shader, void *dest_ptr)
 {
@@ -2350,65 +2392,17 @@ radv_shader_dma_submit(struct radv_device *device, struct radv_shader_dma_submis
 
 struct radv_shader *
 radv_shader_create(struct radv_device *device, const struct radv_shader_binary *binary,
-                   bool keep_shader_info, bool from_cache, const struct radv_shader_args *args)
+                   bool keep_shader_info)
 {
-   struct ac_shader_config config = {0};
    struct radv_shader *shader = calloc(1, sizeof(struct radv_shader));
    if (!shader)
       return NULL;
 
    shader->ref_count = 1;
-
-   if (binary->type == RADV_BINARY_TYPE_RTLD) {
-#if !defined(USE_LIBELF)
-      free(shader);
-      return NULL;
-#else
-      struct ac_rtld_binary rtld_binary = {0};
-
-      if (!radv_open_rtld_binary(device, binary, &rtld_binary)) {
-         free(shader);
-         return NULL;
-      }
-
-      if (!ac_rtld_read_config(&device->physical_device->rad_info, &rtld_binary, &config)) {
-         ac_rtld_close(&rtld_binary);
-         free(shader);
-         return NULL;
-      }
-
-      if (rtld_binary.lds_size > 0) {
-         unsigned encode_granularity = device->physical_device->rad_info.lds_encode_granularity;
-         config.lds_size = DIV_ROUND_UP(rtld_binary.lds_size, encode_granularity);
-      }
-      if (!config.lds_size && binary->stage == MESA_SHADER_TESS_CTRL) {
-         /* This is used for reporting LDS statistics */
-         config.lds_size = binary->info.tcs.num_lds_blocks;
-      }
-
-      assert(!binary->info.has_ngg_culling || config.lds_size);
-
-      shader->code_size = rtld_binary.rx_size;
-      shader->exec_size = rtld_binary.exec_size;
-      ac_rtld_close(&rtld_binary);
-#endif
-   } else {
-      assert(binary->type == RADV_BINARY_TYPE_LEGACY);
-      config = ((struct radv_shader_binary_legacy *)binary)->base.config;
-      shader->code_size =
-         radv_get_shader_binary_size(((struct radv_shader_binary_legacy *)binary)->code_size);
-      shader->exec_size = ((struct radv_shader_binary_legacy *)binary)->exec_size;
-   }
-
    shader->info = binary->info;
 
-   if (from_cache) {
-      /* Copy the shader binary configuration from the cache. */
-      memcpy(&shader->config, &binary->config, sizeof(shader->config));
-   } else {
-      assert(args);
-      radv_postprocess_config(device, &config, &binary->info, binary->stage, args, &shader->config);
-   }
+   /* Copy the shader binary configuration. */
+   memcpy(&shader->config, &binary->config, sizeof(shader->config));
 
    if (binary->type == RADV_BINARY_TYPE_RTLD) {
 #if !defined(USE_LIBELF)
@@ -2422,6 +2416,9 @@ radv_shader_create(struct radv_device *device, const struct radv_shader_binary *
          free(shader);
          return NULL;
       }
+
+      shader->code_size = rtld_binary.rx_size;
+      shader->exec_size = rtld_binary.exec_size;
 
       if (keep_shader_info || (device->instance->debug_flags & RADV_DEBUG_DUMP_SHADERS)) {
          const char *disasm_data;
@@ -2444,6 +2441,8 @@ radv_shader_create(struct radv_device *device, const struct radv_shader_binary *
    } else {
       struct radv_shader_binary_legacy *bin = (struct radv_shader_binary_legacy *)binary;
 
+      shader->code_size = radv_get_shader_binary_size(bin->code_size);
+      shader->exec_size = bin->exec_size;
       shader->ir_string =
          bin->ir_size ? strdup((const char *)(bin->data + bin->stats_size + bin->code_size)) : NULL;
       shader->disasm_string =
@@ -2707,7 +2706,11 @@ shader_compile(struct radv_device *device, struct nir_shader *const *shaders, in
 
    binary->info = *info;
 
-   struct radv_shader *shader = radv_shader_create(device, binary, keep_shader_info, false, args);
+   if (!radv_postprocess_binary_config(device, binary, args)) {
+      free(binary);
+      return NULL;
+   }
+   struct radv_shader *shader = radv_shader_create(device, binary, keep_shader_info);
    if (!shader) {
       free(binary);
       return NULL;
@@ -2724,9 +2727,6 @@ shader_compile(struct radv_device *device, struct nir_shader *const *shaders, in
    if (keep_shader_info) {
       shader->nir_string = radv_dump_nir_shaders(shaders, shader_count);
    }
-
-   /* Copy the shader binary configuration to store it in the cache. */
-   memcpy(&binary->config, &shader->config, sizeof(binary->config));
 
    *binary_out = binary;
    return shader;
@@ -2862,7 +2862,8 @@ radv_create_rt_prolog(struct radv_device *device)
                          &radv_aco_build_shader_binary, (void **)&binary);
    binary->info = info;
 
-   prolog = radv_shader_create(device, binary, device->keep_shader_info, false, &in_args);
+   radv_postprocess_binary_config(device, binary, &in_args);
+   prolog = radv_shader_create(device, binary, device->keep_shader_info);
    if (!prolog)
       goto fail;
 
