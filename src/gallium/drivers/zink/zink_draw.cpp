@@ -838,7 +838,7 @@ zink_draw(struct pipe_context *pctx,
       marker = zink_cmd_debug_marker_begin(ctx, VK_NULL_HANDLE, "u_blitter(%s->%s, %dx%d)",
                                            util_format_short_name(ctx->sampler_views[MESA_SHADER_FRAGMENT][0]->format),
                                            util_format_short_name(ctx->fb_state.cbufs[0]->format),
-                                           viewport.width, viewport.height);
+                                           lround(viewport.width), lround(viewport.height));
    }
 
    bool needs_drawid = reads_drawid && zink_get_last_vertex_key(ctx)->push_drawid;
