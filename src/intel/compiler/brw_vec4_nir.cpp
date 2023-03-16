@@ -1636,6 +1636,12 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
    }
 
+   case nir_op_uclz:
+      assert(nir_dest_bit_size(instr->dest.dest) == 32);
+      assert(nir_src_bit_size(instr->src[0].src) == 32);
+      emit(LZD(dst, op[0]));
+      break;
+
    case nir_op_find_lsb:
       assert(nir_dest_bit_size(instr->dest.dest) == 32);
       assert(nir_src_bit_size(instr->src[0].src) == 32);
