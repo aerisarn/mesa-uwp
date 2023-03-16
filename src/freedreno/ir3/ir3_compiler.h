@@ -30,6 +30,7 @@
 #include "compiler/nir/nir.h"
 #include "util/disk_cache.h"
 #include "util/log.h"
+#include "util/perf/cpu_trace.h"
 
 #include "freedreno_dev_info.h"
 

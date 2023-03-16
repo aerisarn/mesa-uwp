@@ -4230,6 +4230,8 @@ uses_store_output(struct ir3_shader_variant *so)
 static void
 emit_instructions(struct ir3_context *ctx)
 {
+   MESA_TRACE_FUNC();
+
    nir_function_impl *fxn = nir_shader_get_entrypoint(ctx->s);
 
    /* some varying setup which can't be done in setup_input(): */
@@ -4575,6 +4577,8 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
    struct ir3 *ir;
    int ret = 0, max_bary;
    bool progress;
+
+   MESA_TRACE_FUNC();
 
    assert(!so->ir);
 
