@@ -475,7 +475,7 @@ vk_icdGetPhysicalDeviceProcAddr(VkInstance _instance, const char *pName)
 }
 
 static void
-nvk_get_device_extensions(const struct nvk_physical_device *pdev,
+nvk_get_device_extensions(const struct nv_device_info *dev,
                           struct vk_device_extension_table *ext)
 {
    *ext = (struct vk_device_extension_table) {
@@ -487,7 +487,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *pdev,
       .KHR_depth_stencil_resolve = true,
       .KHR_descriptor_update_template = true,
       .KHR_device_group = true,
-      .KHR_draw_indirect_count = pdev->info.cls_eng3d >= TURING_A,
+      .KHR_draw_indirect_count = dev->cls_eng3d >= TURING_A,
       .KHR_driver_properties = true,
       .KHR_dynamic_rendering = true,
       .KHR_format_feature_flags2 = true,
@@ -529,7 +529,7 @@ nvk_get_device_extensions(const struct nvk_physical_device *pdev,
       .EXT_private_data = true,
       .EXT_provoking_vertex = true,
       .EXT_robustness2 = true,
-      .EXT_sample_locations = pdev->info.cls_eng3d >= MAXWELL_B,
+      .EXT_sample_locations = dev->cls_eng3d >= MAXWELL_B,
       .EXT_separate_stencil_usage = true,
       .EXT_vertex_attribute_divisor = true,
       .EXT_vertex_input_dynamic_state = true,
@@ -568,12 +568,8 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
    vk_physical_device_dispatch_table_from_entrypoints(
       &dispatch_table, &wsi_physical_device_entrypoints, false);
 
-   device->instance = instance;
-   device->dev = ndev;
-   device->info = ndev->info;
-
    struct vk_device_extension_table supported_extensions;
-   nvk_get_device_extensions(device, &supported_extensions);
+   nvk_get_device_extensions(&ndev->info, &supported_extensions);
 
    result = vk_physical_device_init(&device->vk, &instance->vk,
                                     &supported_extensions, NULL,
@@ -581,6 +577,10 @@ nvk_physical_device_try_create(struct nvk_instance *instance,
 
    if (result != VK_SUCCESS)
       goto fail_alloc;
+
+   device->instance = instance;
+   device->dev = ndev;
+   device->info = ndev->info;
 
    device->mem_heaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
    device->mem_types[0].propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
