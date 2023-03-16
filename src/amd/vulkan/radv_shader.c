@@ -2375,8 +2375,7 @@ radv_shader_dma_submit(struct radv_device *device, struct radv_shader_dma_submis
 
 
 struct radv_shader *
-radv_shader_create(struct radv_device *device, const struct radv_shader_binary *binary,
-                   bool keep_shader_info)
+radv_shader_create(struct radv_device *device, const struct radv_shader_binary *binary)
 {
    struct radv_shader *shader = calloc(1, sizeof(struct radv_shader));
    if (!shader)
@@ -2393,7 +2392,6 @@ radv_shader_create(struct radv_device *device, const struct radv_shader_binary *
       free(shader);
       return NULL;
 #else
-      struct radv_shader_binary_rtld *bin = (struct radv_shader_binary_rtld *)binary;
       struct ac_rtld_binary rtld_binary = {0};
 
       if (!radv_open_rtld_binary(device, binary, &rtld_binary)) {
@@ -2403,23 +2401,6 @@ radv_shader_create(struct radv_device *device, const struct radv_shader_binary *
 
       shader->code_size = rtld_binary.rx_size;
       shader->exec_size = rtld_binary.exec_size;
-
-      if (keep_shader_info || (device->instance->debug_flags & RADV_DEBUG_DUMP_SHADERS)) {
-         const char *disasm_data;
-         size_t disasm_size;
-         if (!ac_rtld_get_section_by_name(&rtld_binary, ".AMDGPU.disasm", &disasm_data,
-                                          &disasm_size)) {
-            radv_shader_unref(device, shader);
-            ac_rtld_close(&rtld_binary);
-            return NULL;
-         }
-
-         shader->ir_string =
-            bin->llvm_ir_size ? strdup((const char *)(bin->data + bin->elf_size)) : NULL;
-         shader->disasm_string = malloc(disasm_size + 1);
-         memcpy(shader->disasm_string, disasm_data, disasm_size);
-         shader->disasm_string[disasm_size] = 0;
-      }
       ac_rtld_close(&rtld_binary);
 #endif
    } else {
@@ -2427,12 +2408,6 @@ radv_shader_create(struct radv_device *device, const struct radv_shader_binary *
 
       shader->code_size = radv_get_shader_binary_size(bin->code_size);
       shader->exec_size = bin->exec_size;
-      shader->ir_string =
-         bin->ir_size ? strdup((const char *)(bin->data + bin->stats_size + bin->code_size)) : NULL;
-      shader->disasm_string =
-         bin->disasm_size
-            ? strdup((const char *)(bin->data + bin->stats_size + bin->code_size + bin->ir_size))
-            : NULL;
 
       if (bin->stats_size) {
          shader->statistics = calloc(bin->stats_size, 1);
@@ -2649,6 +2624,51 @@ radv_fill_nir_compiler_options(struct radv_nir_compiler_options *options,
       options->enable_mrt_output_nan_fixup = options->key.ps.epilog.enable_mrt_output_nan_fixup;
 }
 
+static void
+radv_capture_shader_executable_info(struct radv_device *device, struct radv_shader *shader,
+                                    struct nir_shader *const *shaders, int shader_count,
+                                    const struct radv_shader_binary *binary)
+{
+   shader->nir_string = radv_dump_nir_shaders(shaders, shader_count);
+
+   if (binary->type == RADV_BINARY_TYPE_RTLD) {
+#if !defined(USE_LIBELF)
+      return;
+#else
+      struct radv_shader_binary_rtld *bin = (struct radv_shader_binary_rtld *)binary;
+      struct ac_rtld_binary rtld_binary = {0};
+
+      if (!radv_open_rtld_binary(device, binary, &rtld_binary)) {
+         return;
+      }
+
+      const char *disasm_data;
+      size_t disasm_size;
+      if (!ac_rtld_get_section_by_name(&rtld_binary, ".AMDGPU.disasm", &disasm_data,
+                                       &disasm_size)) {
+         return;
+      }
+
+      shader->ir_string =
+         bin->llvm_ir_size ? strdup((const char *)(bin->data + bin->elf_size)) : NULL;
+      shader->disasm_string = malloc(disasm_size + 1);
+      memcpy(shader->disasm_string, disasm_data, disasm_size);
+      shader->disasm_string[disasm_size] = 0;
+
+      ac_rtld_close(&rtld_binary);
+#endif
+   } else {
+      struct radv_shader_binary_legacy *bin = (struct radv_shader_binary_legacy *)binary;
+
+      shader->ir_string =
+         bin->ir_size ? strdup((const char *)(bin->data + bin->stats_size + bin->code_size)) : NULL;
+      shader->disasm_string =
+         bin->disasm_size
+            ? strdup((const char *)(bin->data + bin->stats_size + bin->code_size + bin->ir_size))
+            : NULL;
+   }
+}
+
 static struct radv_shader *
 shader_compile(struct radv_device *device, struct nir_shader *const *shaders, int shader_count,
                gl_shader_stage stage, const struct radv_shader_info *info,
@@ -2694,10 +2714,14 @@ shader_compile(struct radv_device *device, struct nir_shader *const *shaders, in
       free(binary);
       return NULL;
    }
-   struct radv_shader *shader = radv_shader_create(device, binary, keep_shader_info);
+   struct radv_shader *shader = radv_shader_create(device, binary);
    if (!shader) {
       free(binary);
       return NULL;
+   }
+
+   if (keep_shader_info || options.dump_shader) {
+      radv_capture_shader_executable_info(device, shader, shaders, shader_count, binary);
    }
 
    if (options.dump_shader) {
@@ -2706,10 +2730,6 @@ shader_compile(struct radv_device *device, struct nir_shader *const *shaders, in
          fprintf(stderr, " + %s", radv_get_shader_name(info, shaders[i]->info.stage));
 
       fprintf(stderr, "\ndisasm:\n%s\n", shader->disasm_string);
-   }
-
-   if (keep_shader_info) {
-      shader->nir_string = radv_dump_nir_shaders(shaders, shader_count);
    }
 
    *binary_out = binary;
@@ -2847,9 +2867,13 @@ radv_create_rt_prolog(struct radv_device *device)
    binary->info = info;
 
    radv_postprocess_binary_config(device, binary, &in_args);
-   prolog = radv_shader_create(device, binary, device->keep_shader_info);
+   prolog = radv_shader_create(device, binary);
    if (!prolog)
       goto fail;
+
+   if (device->keep_shader_info || options.dump_shader) {
+      radv_capture_shader_executable_info(device, prolog, NULL, 0, binary);
+   }
 
    if (options.dump_shader) {
       fprintf(stderr, "Raytracing prolog");

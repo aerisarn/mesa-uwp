@@ -581,8 +581,7 @@ void radv_destroy_shader_upload_queue(struct radv_device *device);
 struct radv_shader_args;
 
 struct radv_shader *radv_shader_create(struct radv_device *device,
-                                       const struct radv_shader_binary *binary,
-                                       bool keep_shader_info);
+                                       const struct radv_shader_binary *binary);
 struct radv_shader *radv_shader_nir_to_asm(
    struct radv_device *device, struct radv_pipeline_stage *stage, struct nir_shader *const *shaders,
    int shader_count, const struct radv_pipeline_key *key, bool keep_shader_info, bool keep_statistic_info,
