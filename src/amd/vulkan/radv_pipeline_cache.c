@@ -390,8 +390,8 @@ radv_create_shaders_from_pipeline_cache(struct radv_device *device,
    assert(num_rt_groups == entry->num_stack_sizes);
    for (int i = 0; i < num_rt_groups; ++i) {
       memcpy(&rt_groups[i].stack_size, p, sizeof(struct radv_pipeline_shader_stack_size));
+      p += sizeof(struct radv_pipeline_shader_stack_size);
    }
-   p += entry->num_stack_sizes * sizeof(struct radv_pipeline_shader_stack_size);
 
    if (device->instance->debug_flags & RADV_DEBUG_NO_MEMORY_CACHE && cache == device->mem_cache)
       vk_free(&cache->alloc, entry);
