@@ -1323,6 +1323,11 @@ dzn_image_view_init(struct dzn_device *device,
                              VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
                              VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT));
 
+   /* We remove this bit on depth textures, so skip creating a UAV for those */
+   if ((iview->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT) &&
+       !(image->desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+      iview->vk.usage &= ~VK_IMAGE_USAGE_STORAGE_BIT;
+
    switch (image->vk.image_type) {
    default:
       unreachable("bad VkImageType");
