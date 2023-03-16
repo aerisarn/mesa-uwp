@@ -937,8 +937,7 @@ static const struct intel_device_info intel_device_info_ehl_2x4 = {
       [MESA_SHADER_VERTEX]    = 3576,               \
       [MESA_SHADER_TESS_CTRL] = 1548,               \
       [MESA_SHADER_TESS_EVAL] = 3576,               \
-      /* Wa_14013840143 */                          \
-      [MESA_SHADER_GEOMETRY]  = 1536,               \
+      [MESA_SHADER_GEOMETRY]  = 1548,               \
    }
 
 #define GFX12_HW_INFO                               \
@@ -1329,6 +1328,9 @@ intel_get_device_info_from_pci_id(int pci_id,
 
    intel_device_info_update_cs_workgroup_threads(devinfo);
    intel_device_info_init_was(devinfo);
+
+   if (intel_needs_workaround(devinfo, 22012575642))
+      devinfo->urb.max_entries[MESA_SHADER_GEOMETRY] = 1536;
 
    return true;
 }
