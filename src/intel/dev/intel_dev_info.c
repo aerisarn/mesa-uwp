@@ -94,7 +94,6 @@ print_base_devinfo(const struct intel_device_info *devinfo)
 
    fprintf(stdout, "   LLC: %u\n", devinfo->has_llc);
    fprintf(stdout, "   threads per EU: %u\n", devinfo->num_thread_per_eu);
-   fprintf(stdout, "   URB size: %u\n", devinfo->urb.size);
    fprintf(stdout, "   L3 banks: %u\n", devinfo->l3_banks);
    fprintf(stdout, "   max VS  threads: %u\n", devinfo->max_vs_threads);
    fprintf(stdout, "   max TCS threads: %u\n", devinfo->max_tcs_threads);
@@ -105,6 +104,16 @@ print_base_devinfo(const struct intel_device_info *devinfo)
    fprintf(stdout, "   timestamp frequency: %" PRIu64 " / %.4f ns\n",
            devinfo->timestamp_frequency, 1000000000.0 / devinfo->timestamp_frequency);
 
+   fprintf(stdout, "   URB size: %u\n", devinfo->urb.size);
+   static const char *stage_names[4] = {
+      "VS", "HS", "DS", "GS",
+   };
+   for (unsigned s = 0; s < ARRAY_SIZE(devinfo->urb.min_entries); s++) {
+      fprintf(stderr, "      URB.entries[%s] = [%4u, %4u]\n",
+              stage_names[s],
+              devinfo->urb.min_entries[s],
+              devinfo->urb.max_entries[s]);
+   }
 }
 
 static void
