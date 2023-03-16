@@ -618,8 +618,10 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
 
    radv_init_shader_args(device, stage, args);
 
-   if (gl_shader_stage_is_rt(stage))
-      return radv_declare_rt_shader_args(gfx_level, args);
+   if (gl_shader_stage_is_rt(stage)) {
+      radv_declare_rt_shader_args(gfx_level, args);
+      return;
+   }
 
    allocate_user_sgprs(gfx_level, info, args, stage, has_previous_stage, previous_stage,
                        needs_view_index, has_ngg_query, has_ngg_provoking_vtx, key, &user_sgpr_info);
