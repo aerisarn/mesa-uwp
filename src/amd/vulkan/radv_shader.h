@@ -262,6 +262,8 @@ struct radv_shader_info {
    struct radv_vs_output_info outinfo;
    unsigned workgroup_size;
    bool force_vrs_per_vertex;
+   gl_shader_stage stage;
+
    struct {
       uint8_t input_usage_mask[RADV_VERT_ATTRIB_MAX];
       uint8_t output_usage_mask[VARYING_SLOT_VAR31 + 1];
@@ -430,7 +432,6 @@ enum radv_shader_binary_type { RADV_BINARY_TYPE_LEGACY, RADV_BINARY_TYPE_RTLD };
 
 struct radv_shader_binary {
    enum radv_shader_binary_type type;
-   gl_shader_stage stage;
 
    struct ac_shader_config config;
    struct radv_shader_info info;

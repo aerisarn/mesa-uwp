@@ -1831,14 +1831,14 @@ radv_open_rtld_binary(struct radv_device *device, const struct radv_shader_binar
    unsigned num_lds_symbols = 0;
 
    if (device->physical_device->rad_info.gfx_level >= GFX9 &&
-       (binary->stage == MESA_SHADER_GEOMETRY || binary->info.is_ngg)) {
+       (binary->info.stage == MESA_SHADER_GEOMETRY || binary->info.is_ngg)) {
       struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
       sym->name = "esgs_ring";
       sym->size = binary->info.ngg_info.esgs_ring_size;
       sym->align = 64 * 1024;
    }
 
-   if (binary->info.is_ngg && binary->stage == MESA_SHADER_GEOMETRY) {
+   if (binary->info.is_ngg && binary->info.stage == MESA_SHADER_GEOMETRY) {
       struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
       sym->name = "ngg_emit";
       sym->size = binary->info.ngg_info.ngg_emit_size * 4;
@@ -1852,7 +1852,7 @@ radv_open_rtld_binary(struct radv_device *device, const struct radv_shader_binar
 
    struct ac_rtld_open_info open_info = {
       .info = &device->physical_device->rad_info,
-      .shader_type = binary->stage,
+      .shader_type = binary->info.stage,
       .wave_size = binary->info.wave_size,
       .num_parts = 1,
       .elf_ptrs = &elf_data,
@@ -1890,7 +1890,7 @@ radv_postprocess_binary_config(struct radv_device *device, struct radv_shader_bi
          unsigned encode_granularity = device->physical_device->rad_info.lds_encode_granularity;
          config->lds_size = DIV_ROUND_UP(rtld_binary.lds_size, encode_granularity);
       }
-      if (!config->lds_size && binary->stage == MESA_SHADER_TESS_CTRL) {
+      if (!config->lds_size && binary->info.stage == MESA_SHADER_TESS_CTRL) {
          /* This is used for reporting LDS statistics */
          config->lds_size = binary->info.tcs.num_lds_blocks;
       }
@@ -1901,7 +1901,7 @@ radv_postprocess_binary_config(struct radv_device *device, struct radv_shader_bi
    }
 
    const struct radv_shader_info *info = &binary->info;
-   gl_shader_stage stage = binary->stage;
+   gl_shader_stage stage = binary->info.stage;
    const struct radv_physical_device *pdevice = device->physical_device;
    bool scratch_enabled = config->scratch_bytes_per_wave > 0 || info->cs.is_rt_shader;
    bool trap_enabled = !!device->trap_handler_shader;
@@ -2541,18 +2541,10 @@ radv_dump_nir_shaders(struct nir_shader *const *shaders, int shader_count)
 }
 
 static void
-radv_aco_build_shader_binary(void **bin,
-                             gl_shader_stage stage,
-                             const struct ac_shader_config *config,
-                             const char *llvm_ir_str,
-                             unsigned llvm_ir_size,
-                             const char *disasm_str,
-                             unsigned disasm_size,
-                             uint32_t *statistics,
-                             uint32_t stats_size,
-                             uint32_t exec_size,
-                             const uint32_t *code,
-                             uint32_t code_dw)
+radv_aco_build_shader_binary(void **bin, const struct ac_shader_config *config,
+                             const char *llvm_ir_str, unsigned llvm_ir_size, const char *disasm_str,
+                             unsigned disasm_size, uint32_t *statistics, uint32_t stats_size,
+                             uint32_t exec_size, const uint32_t *code, uint32_t code_dw)
 {
    struct radv_shader_binary **binary = (struct radv_shader_binary **)bin;
    size_t size = llvm_ir_size;
@@ -2568,7 +2560,6 @@ radv_aco_build_shader_binary(void **bin,
     * from the start less than sizeof(radv_shader_binary_legacy). */
    struct radv_shader_binary_legacy *legacy_binary = (struct radv_shader_binary_legacy *)calloc(size, 1);
    legacy_binary->base.type = RADV_BINARY_TYPE_LEGACY;
-   legacy_binary->base.stage = stage;
    legacy_binary->base.total_size = size;
    legacy_binary->base.config = *config;
 
@@ -2829,6 +2820,7 @@ radv_create_rt_prolog(struct radv_device *device)
                                   device->instance->debug_flags & RADV_DEBUG_DUMP_PROLOGS, false,
                                   device->instance->debug_flags & RADV_DEBUG_HANG, false);
    struct radv_shader_info info = {0};
+   info.stage = MESA_SHADER_COMPUTE;
    info.loads_push_constants = true;
    info.desc_set_used_mask = -1; /* just to force indirection */
    info.wave_size = device->physical_device->rt_wave_size;
@@ -2898,6 +2890,7 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
                                   device->instance->debug_flags & RADV_DEBUG_HANG, false);
 
    struct radv_shader_info info = {0};
+   info.stage = MESA_SHADER_VERTEX;
    info.wave_size = key->wave32 ? 32 : 64;
    info.vs.needs_instance_id = true;
    info.vs.needs_base_instance = true;
@@ -2964,6 +2957,7 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
                                   device->instance->debug_flags & RADV_DEBUG_HANG, false);
 
    struct radv_shader_info info = {0};
+   info.stage = MESA_SHADER_FRAGMENT;
    info.wave_size = device->physical_device->ps_wave_size;
    info.workgroup_size = 64;
 
