@@ -128,24 +128,8 @@ sync_timestamp(IntelRenderpassDataSource::TraceContext &ctx,
    device->sync_gpu_ts = gpu_ts;
    device->next_clock_sync_ns = cpu_ts + 1000000000ull;
 
-   auto packet = ctx.NewTracePacket();
-
-   packet->set_timestamp_clock_id(perfetto::protos::pbzero::BUILTIN_CLOCK_BOOTTIME);
-   packet->set_timestamp(cpu_ts);
-
-   auto event = packet->set_clock_snapshot();
-   {
-      auto clock = event->add_clocks();
-
-      clock->set_clock_id(perfetto::protos::pbzero::BUILTIN_CLOCK_BOOTTIME);
-      clock->set_timestamp(cpu_ts);
-   }
-   {
-      auto clock = event->add_clocks();
-
-      clock->set_clock_id(device->gpu_clock_id);
-      clock->set_timestamp(gpu_ts);
-   }
+   MesaRenderpassDataSource<IntelRenderpassDataSource, IntelRenderpassTraits>::EmitClockSync(ctx,
+      cpu_ts, gpu_ts, device->gpu_clock_id);
 }
 
 static void

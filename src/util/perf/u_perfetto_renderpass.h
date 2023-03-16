@@ -29,7 +29,12 @@ using perfetto::DataSource;
 template <typename DataSourceType, typename DataSourceTraits>
 class MesaRenderpassDataSource
     : public perfetto::DataSource<DataSourceType, DataSourceTraits> {
+
  public:
+   typedef typename perfetto::DataSource<DataSourceType,
+                                         DataSourceTraits>::TraceContext
+      TraceContext;
+
    void OnSetup(const perfetto::DataSourceBase::SetupArgs &) override
    {
       // Use this callback to apply any custom configuration to your data
@@ -58,6 +63,42 @@ class MesaRenderpassDataSource
          packet->Finalize();
          ctx.Flush();
       });
+   }
+
+   /* Emits a clock sync trace event.  Perfetto uses periodic clock events
+    * like this to sync up our GPU render stages with the CPU on the same
+    * timeline, since clocks always drift over time.  Note that perfetto
+    * relies on gpu_ts being monotonic, and will perform badly if it goes
+    * backwards -- see tu_perfetto.cc for an example implemntation of handling
+    * going backwards.
+    */
+   static void EmitClockSync(TraceContext &ctx,
+                             uint64_t cpu_ts,
+                             uint64_t gpu_ts,
+                             uint32_t gpu_clock_id)
+   {
+      auto packet = ctx.NewTracePacket();
+
+      packet->set_timestamp_clock_id(
+         perfetto::protos::pbzero::BUILTIN_CLOCK_BOOTTIME);
+      packet->set_timestamp(cpu_ts);
+
+      auto event = packet->set_clock_snapshot();
+
+      {
+         auto clock = event->add_clocks();
+
+         clock->set_clock_id(
+            perfetto::protos::pbzero::BUILTIN_CLOCK_BOOTTIME);
+         clock->set_timestamp(cpu_ts);
+      }
+
+      {
+         auto clock = event->add_clocks();
+
+         clock->set_clock_id(gpu_clock_id);
+         clock->set_timestamp(gpu_ts);
+      }
    }
 };
 

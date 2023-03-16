@@ -340,32 +340,15 @@ sync_timestamp(struct tu_device *dev)
       return;
    }
 
-   gpu_max_timestamp = gpu_ts;
-
-   TuRenderpassDataSource::Trace([=](TuRenderpassDataSource::TraceContext tctx) {
-      auto packet = tctx.NewTracePacket();
-
-      packet->set_timestamp(cpu_ts);
-
-      auto event = packet->set_clock_snapshot();
-
-      {
-         auto clock = event->add_clocks();
-
-         clock->set_clock_id(perfetto::protos::pbzero::BUILTIN_CLOCK_BOOTTIME);
-         clock->set_timestamp(cpu_ts);
-      }
-
-      {
-         auto clock = event->add_clocks();
-
-         clock->set_clock_id(gpu_clock_id);
-         clock->set_timestamp(gpu_ts);
-      }
-
-      sync_gpu_ts = gpu_ts;
-      next_clock_sync_ns = cpu_ts + 30000000;
+   TuRenderpassDataSource::Trace([=](auto tctx) {
+      MesaRenderpassDataSource<TuRenderpassDataSource,
+                               TuRenderpassTraits>::EmitClockSync(tctx, cpu_ts,
+                                                                  gpu_ts, gpu_clock_id);
    });
+
+   gpu_max_timestamp = gpu_ts;
+   sync_gpu_ts = gpu_ts;
+   next_clock_sync_ns = cpu_ts + 30000000;
 }
 
 static void
