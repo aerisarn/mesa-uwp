@@ -377,92 +377,6 @@ lower_intrinsics(nir_shader *nir, const struct radv_pipeline_key *key)
    return progress;
 }
 
-static bool
-radv_lower_primitive_shading_rate(nir_shader *nir, enum amd_gfx_level gfx_level)
-{
-   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
-   bool progress = false;
-
-   nir_builder b;
-   nir_builder_init(&b, impl);
-
-   /* Iterate in reverse order since there should be only one deref store to PRIMITIVE_SHADING_RATE
-    * after lower_io_to_temporaries for vertex shaders.
-    */
-   nir_foreach_block_reverse(block, impl) {
-      nir_foreach_instr_reverse(instr, block) {
-         if (instr->type != nir_instr_type_intrinsic)
-            continue;
-
-         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-         if (intr->intrinsic != nir_intrinsic_store_deref)
-            continue;
-
-         nir_variable *var = nir_intrinsic_get_var(intr, 0);
-         if (var->data.mode != nir_var_shader_out ||
-             var->data.location != VARYING_SLOT_PRIMITIVE_SHADING_RATE)
-            continue;
-
-         b.cursor = nir_before_instr(instr);
-
-         nir_ssa_def *val = nir_ssa_for_src(&b, intr->src[1], 1);
-
-         /* x_rate = (shadingRate & (Horizontal2Pixels | Horizontal4Pixels)) ? 0x1 : 0x0; */
-         nir_ssa_def *x_rate = nir_iand_imm(&b, val, 12);
-         x_rate = nir_b2i32(&b, nir_ine_imm(&b, x_rate, 0));
-
-         /* y_rate = (shadingRate & (Vertical2Pixels | Vertical4Pixels)) ? 0x1 : 0x0; */
-         nir_ssa_def *y_rate = nir_iand_imm(&b, val, 3);
-         y_rate = nir_b2i32(&b, nir_ine_imm(&b, y_rate, 0));
-
-         nir_ssa_def *out = NULL;
-
-         /* MS:
-          * Primitive shading rate is a per-primitive output, it is
-          * part of the second channel of the primitive export.
-          * Bits [28:31] = VRS rate
-          * This will be added to the other bits of that channel in the backend.
-          *
-          * VS, TES, GS:
-          * Primitive shading rate is a per-vertex output pos export.
-          * Bits [2:5] = VRS rate
-          * HW shading rate = (xRate << 2) | (yRate << 4)
-          *
-          * GFX11: 4-bit VRS_SHADING_RATE enum
-          * GFX10: X = low 2 bits, Y = high 2 bits
-          */
-         unsigned x_rate_shift = 2;
-         unsigned y_rate_shift = 4;
-
-         if (gfx_level >= GFX11) {
-            x_rate_shift = 4;
-            y_rate_shift = 2;
-         }
-         if (nir->info.stage == MESA_SHADER_MESH) {
-            x_rate_shift += 26;
-            y_rate_shift += 26;
-         }
-
-         out = nir_ior(&b, nir_ishl_imm(&b, x_rate, x_rate_shift), nir_ishl_imm(&b, y_rate, y_rate_shift));
-
-         nir_instr_rewrite_src(&intr->instr, &intr->src[1], nir_src_for_ssa(out));
-
-         progress = true;
-         if (nir->info.stage == MESA_SHADER_VERTEX)
-            break;
-      }
-      if (nir->info.stage == MESA_SHADER_VERTEX && progress)
-         break;
-   }
-
-   if (progress)
-      nir_metadata_preserve(impl, nir_metadata_block_index | nir_metadata_dominance);
-   else
-      nir_metadata_preserve(impl, nir_metadata_all);
-
-   return progress;
-}
-
 bool
 radv_lower_fs_intrinsics(nir_shader *nir, const struct radv_pipeline_stage *fs_stage,
                          const struct radv_pipeline_key *key)
@@ -1007,7 +921,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
         nir->info.stage == MESA_SHADER_MESH) &&
        nir->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_SHADING_RATE)) {
       /* Lower primitive shading rate to match HW requirements. */
-      NIR_PASS(_, nir, radv_lower_primitive_shading_rate,
+      NIR_PASS(_, nir, radv_nir_lower_primitive_shading_rate,
                device->physical_device->rad_info.gfx_level);
    }
 

@@ -57,6 +57,8 @@ bool radv_nir_lower_vs_inputs(nir_shader *shader, const struct radv_pipeline_sta
                               const struct radv_pipeline_key *pl_key,
                               const struct radeon_info *rad_info);
 
+bool radv_nir_lower_primitive_shading_rate(nir_shader *nir, enum amd_gfx_level gfx_level);
+
 #ifdef __cplusplus
 }
 #endif
