@@ -139,14 +139,11 @@ send_descriptors(IntelRenderpassDataSource::TraceContext &ctx,
    PERFETTO_LOG("Sending renderstage descriptors");
 
    device->event_id = 0;
-   device->current_app_event_iid = device->start_app_event_iids;
    list_for_each_entry_safe(struct intel_ds_queue, queue, &device->queues, link) {
       for (uint32_t s = 0; s < ARRAY_SIZE(queue->stages); s++) {
          queue->stages[s].start_ns[0] = 0;
       }
    }
-
-   _mesa_hash_table_clear(device->app_events, NULL);
 
    {
       auto packet = ctx.NewTracePacket();
@@ -225,33 +222,6 @@ begin_event(struct intel_ds_queue *queue, uint64_t ts_ns,
    queue->stages[stage_id].level++;
 }
 
-static uint64_t
-add_app_event(IntelRenderpassDataSource::TraceContext &tctx,
-              struct intel_ds_device *device,
-              const char *app_event)
-{
-   struct hash_entry *entry =
-      _mesa_hash_table_search(device->app_events, app_event);
-   if (entry)
-      return (uint64_t) entry->data;
-
-   /* Allocate a new iid for the string */
-   uint64_t iid = device->current_app_event_iid++;
-   _mesa_hash_table_insert(device->app_events, app_event, (void*)(uintptr_t)iid);
-
-   /* Send the definition of iid/string to perfetto */
-   {
-      auto packet = tctx.NewTracePacket();
-      auto interned_data = packet->set_interned_data();
-
-      auto desc = interned_data->add_gpu_specifications();
-      desc->set_iid(iid);
-      desc->set_name(app_event);
-   }
-
-   return iid;
-}
-
 static void
 end_event(struct intel_ds_queue *queue, uint64_t ts_ns,
           enum intel_ds_queue_stage stage_id,
@@ -295,7 +265,8 @@ end_event(struct intel_ds_queue *queue, uint64_t ts_ns,
        * have use the internal stage_iid.
        */
       uint64_t stage_iid = app_event ?
-         add_app_event(tctx, queue->device, app_event) : stage->stage_iid;
+         tctx.GetDataSourceLocked()->debug_marker_stage(tctx, app_event) :
+         stage->stage_iid;
 
       auto packet = tctx.NewTracePacket();
 
@@ -576,18 +547,12 @@ intel_ds_device_init(struct intel_ds_device *device,
    device->iid = get_iid();
    device->api = api;
    list_inithead(&device->queues);
-
-   /* Reserve iids for the application generated events */
-   device->start_app_event_iids = 1ull << 32;
-   device->app_events =
-      _mesa_hash_table_create(NULL, _mesa_hash_string, _mesa_key_string_equal);
 }
 
 void
 intel_ds_device_fini(struct intel_ds_device *device)
 {
    u_trace_context_fini(&device->trace_context);
-   _mesa_hash_table_destroy(device->app_events, NULL);
 }
 
 struct intel_ds_queue *

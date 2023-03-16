@@ -23,7 +23,9 @@
 
 #include "perfetto.h"
 
+#include "util/hash_table.h"
 #include "util/perf/u_trace.h"
+#include "util/ralloc.h"
 
 using perfetto::DataSource;
 template <typename DataSourceType, typename DataSourceTraits>
@@ -39,10 +41,13 @@ class MesaRenderpassDataSource
    {
       // Use this callback to apply any custom configuration to your data
       // source based on the TraceConfig in SetupArgs.
+      debug_markers = NULL;
    }
 
    void OnStart(const perfetto::DataSourceBase::StartArgs &) override
    {
+      debug_markers = _mesa_hash_table_create(NULL, _mesa_hash_string,
+                                              _mesa_key_string_equal);
       // This notification can be used to initialize the GPU driver, enable
       // counters, etc. StartArgs will contains the DataSourceDescriptor,
       // which can be extended.
@@ -63,6 +68,8 @@ class MesaRenderpassDataSource
          packet->Finalize();
          ctx.Flush();
       });
+
+      ralloc_free(debug_markers);
    }
 
    /* Emits a clock sync trace event.  Perfetto uses periodic clock events
@@ -100,6 +107,47 @@ class MesaRenderpassDataSource
          clock->set_timestamp(gpu_ts);
       }
    }
+
+   /* Returns a stage iid to use for a command stream or queue annotation.
+    *
+    * Using a new stage lets the annotation string show up right on the track
+    * event in the UI, rather than needing to click into the event to find the
+    * name in the metadata.  Intended for use with
+    * vkCmdBeginDebugUtilsLabelEXT() and glPushDebugGroup().
+    */
+   uint64_t debug_marker_stage(TraceContext &ctx, const char *name)
+   {
+      struct hash_entry *entry = _mesa_hash_table_search(debug_markers, name);
+      const uint64_t dynamic_iid_base = 1ull << 32;
+
+      if (entry) {
+         return dynamic_iid_base + (uint32_t) (uintptr_t) entry->data;
+      } else {
+         uint64_t iid = dynamic_iid_base + debug_markers->entries;
+
+         auto packet = ctx.NewTracePacket();
+         auto interned_data = packet->set_interned_data();
+
+         auto desc = interned_data->add_gpu_specifications();
+         desc->set_iid(iid);
+         desc->set_name(name);
+
+         /* We only track the entry count in entry->data, because the
+          * dynamic_iid_base would get lost on 32-bit builds.
+          */
+         _mesa_hash_table_insert(debug_markers,
+                                 ralloc_strdup(debug_markers, name),
+                                 (void *) (uintptr_t) debug_markers->entries);
+
+         return iid;
+      }
+   }
+
+ private:
+   /* Hash table of application generated events (string -> iid) (use
+    * tctx.GetDataSourceLocked()->debug_marker_stage() to get a stage iid)
+    */
+   struct hash_table *debug_markers;
 };
 
 /* Begin the C API section. */
