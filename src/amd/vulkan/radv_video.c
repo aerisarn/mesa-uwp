@@ -50,6 +50,50 @@ radv_vid_buffer_upload_alloc(struct radv_cmd_buffer *cmd_buffer, unsigned size,
                                                out_offset, ptr);
 }
 
+/* vcn unified queue (sq) ib header */
+static void
+radv_vcn_sq_header(struct radeon_cmdbuf *cs,
+                   struct rvcn_sq_var *sq,
+                   bool enc)
+{
+   /* vcn ib signature */
+   radeon_emit(cs, RADEON_VCN_SIGNATURE_SIZE);
+   radeon_emit(cs, RADEON_VCN_SIGNATURE);
+   sq->ib_checksum = &cs->buf[cs->cdw];
+   radeon_emit(cs, 0);
+   sq->ib_total_size_in_dw = &cs->buf[cs->cdw];
+   radeon_emit(cs, 0);
+
+   /* vcn ib engine info */
+   radeon_emit(cs, RADEON_VCN_ENGINE_INFO_SIZE);
+   radeon_emit(cs, RADEON_VCN_ENGINE_INFO);
+   radeon_emit(cs, enc ? RADEON_VCN_ENGINE_TYPE_ENCODE
+                       : RADEON_VCN_ENGINE_TYPE_DECODE);
+   radeon_emit(cs, 0);
+}
+
+static void
+radv_vcn_sq_tail(struct radeon_cmdbuf *cs,
+                 struct rvcn_sq_var *sq)
+{
+   uint32_t *end;
+   uint32_t size_in_dw;
+   uint32_t checksum = 0;
+
+   if (sq->ib_checksum == NULL || sq->ib_total_size_in_dw == NULL)
+      return;
+
+   end = &cs->buf[cs->cdw];
+   size_in_dw = end - sq->ib_total_size_in_dw - 1;
+   *sq->ib_total_size_in_dw = size_in_dw;
+   *(sq->ib_total_size_in_dw + 4) = size_in_dw * sizeof(uint32_t);
+
+   for (int i = 0; i < size_in_dw; i++)
+      checksum += *(sq->ib_checksum + 2 + i);
+
+   *sq->ib_checksum = checksum;
+}
+
 /* generate an stream handle */
 static unsigned si_vid_alloc_stream_handle()
 {
@@ -68,7 +112,10 @@ static unsigned si_vid_alloc_stream_handle()
 void
 radv_init_physical_device_decoder(struct radv_physical_device *pdevice)
 {
-   if (radv_has_uvd(pdevice))
+   if (pdevice->rad_info.family >= CHIP_GFX1100 ||
+       pdevice->rad_info.family == CHIP_GFX940)
+      pdevice->vid_decode_ip = AMD_IP_VCN_UNIFIED;
+   else if (radv_has_uvd(pdevice))
       pdevice->vid_decode_ip = AMD_IP_UVD;
    else
       pdevice->vid_decode_ip = AMD_IP_VCN_DEC;
@@ -113,6 +160,16 @@ radv_init_physical_device_decoder(struct radv_physical_device *pdevice)
       pdevice->vid_dec_reg.data1 = RDECODE_VCN2_5_GPCOM_VCPU_DATA1;
       pdevice->vid_dec_reg.cmd = RDECODE_VCN2_5_GPCOM_VCPU_CMD;
       pdevice->vid_dec_reg.cntl = RDECODE_VCN2_5_ENGINE_CNTL;
+      break;
+   case CHIP_GFX940:
+      pdevice->vid_addr_gfx_mode = RDECODE_ARRAY_MODE_ADDRLIB_SEL_GFX9;
+      break;
+   case CHIP_GFX1100:
+   case CHIP_GFX1101:
+   case CHIP_GFX1102:
+   case CHIP_GFX1103_R1:
+   case CHIP_GFX1103_R2:
+      pdevice->vid_addr_gfx_mode = RDECODE_ARRAY_MODE_ADDRLIB_SEL_GFX11;
       break;
    default:
       if (radv_has_uvd(pdevice)) {
@@ -560,9 +617,62 @@ static void send_cmd(struct radv_cmd_buffer *cmd_buffer, unsigned cmd,
    radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, bo);
    addr = radv_buffer_get_va(bo);
    addr += offset;
-   set_reg(cmd_buffer, pdev->vid_dec_reg.data0, addr);
-   set_reg(cmd_buffer, pdev->vid_dec_reg.data1, addr >> 32);
-   set_reg(cmd_buffer, pdev->vid_dec_reg.cmd, cmd << 1);
+
+   if (cmd_buffer->device->physical_device->vid_decode_ip != AMD_IP_VCN_UNIFIED) {
+      set_reg(cmd_buffer, pdev->vid_dec_reg.data0, addr);
+      set_reg(cmd_buffer, pdev->vid_dec_reg.data1, addr >> 32);
+      set_reg(cmd_buffer, pdev->vid_dec_reg.cmd, cmd << 1);
+      return;
+   }
+   switch(cmd) {
+   case RDECODE_CMD_MSG_BUFFER:
+      cmd_buffer->video.decode_buffer->valid_buf_flag |= RDECODE_CMDBUF_FLAGS_MSG_BUFFER;
+      cmd_buffer->video.decode_buffer->msg_buffer_address_hi = (addr >> 32);
+      cmd_buffer->video.decode_buffer->msg_buffer_address_lo = (addr);
+      break;
+   case RDECODE_CMD_DPB_BUFFER:
+      cmd_buffer->video.decode_buffer->valid_buf_flag |= (RDECODE_CMDBUF_FLAGS_DPB_BUFFER);
+      cmd_buffer->video.decode_buffer->dpb_buffer_address_hi = (addr >> 32);
+      cmd_buffer->video.decode_buffer->dpb_buffer_address_lo = (addr);
+      break;
+   case RDECODE_CMD_DECODING_TARGET_BUFFER:
+      cmd_buffer->video.decode_buffer->valid_buf_flag |= (RDECODE_CMDBUF_FLAGS_DECODING_TARGET_BUFFER);
+      cmd_buffer->video.decode_buffer->target_buffer_address_hi = (addr >> 32);
+      cmd_buffer->video.decode_buffer->target_buffer_address_lo = (addr);
+      break;
+   case RDECODE_CMD_FEEDBACK_BUFFER:
+      cmd_buffer->video.decode_buffer->valid_buf_flag |= (RDECODE_CMDBUF_FLAGS_FEEDBACK_BUFFER);
+      cmd_buffer->video.decode_buffer->feedback_buffer_address_hi = (addr >> 32);
+      cmd_buffer->video.decode_buffer->feedback_buffer_address_lo = (addr);
+      break;
+   case RDECODE_CMD_PROB_TBL_BUFFER:
+      cmd_buffer->video.decode_buffer->valid_buf_flag |= (RDECODE_CMDBUF_FLAGS_PROB_TBL_BUFFER);
+      cmd_buffer->video.decode_buffer->prob_tbl_buffer_address_hi = (addr >> 32);
+      cmd_buffer->video.decode_buffer->prob_tbl_buffer_address_lo = (addr);
+      break;
+   case RDECODE_CMD_SESSION_CONTEXT_BUFFER:
+      cmd_buffer->video.decode_buffer->valid_buf_flag |= (RDECODE_CMDBUF_FLAGS_SESSION_CONTEXT_BUFFER);
+      cmd_buffer->video.decode_buffer->session_contex_buffer_address_hi = (addr >> 32);
+      cmd_buffer->video.decode_buffer->session_contex_buffer_address_lo = (addr);
+      break;
+   case RDECODE_CMD_BITSTREAM_BUFFER:
+      cmd_buffer->video.decode_buffer->valid_buf_flag |= (RDECODE_CMDBUF_FLAGS_BITSTREAM_BUFFER);
+      cmd_buffer->video.decode_buffer->bitstream_buffer_address_hi = (addr >> 32);
+      cmd_buffer->video.decode_buffer->bitstream_buffer_address_lo = (addr);
+      break;
+   case RDECODE_CMD_IT_SCALING_TABLE_BUFFER:
+      cmd_buffer->video.decode_buffer->valid_buf_flag |= (RDECODE_CMDBUF_FLAGS_IT_SCALING_BUFFER);
+      cmd_buffer->video.decode_buffer->it_sclr_table_buffer_address_hi = (addr >> 32);
+      cmd_buffer->video.decode_buffer->it_sclr_table_buffer_address_lo = (addr);
+      break;
+   case RDECODE_CMD_CONTEXT_BUFFER:
+      cmd_buffer->video.decode_buffer->valid_buf_flag |= (RDECODE_CMDBUF_FLAGS_CONTEXT_BUFFER);
+      cmd_buffer->video.decode_buffer->context_buffer_address_hi = (addr >> 32);
+      cmd_buffer->video.decode_buffer->context_buffer_address_lo = (addr);
+      break;
+   default:
+      assert(0);
+   }
 }
 
 static void rvcn_dec_message_create(struct radv_video_session *vid,
@@ -1482,6 +1592,22 @@ radv_CmdBeginVideoCodingKHR(VkCommandBuffer commandBuffer,
 
    cmd_buffer->video.vid = vid;
    cmd_buffer->video.params = params;
+
+   if (cmd_buffer->device->physical_device->vid_decode_ip == AMD_IP_VCN_UNIFIED) {
+      radv_vcn_sq_header(cmd_buffer->cs, &cmd_buffer->video.sq, false);
+      rvcn_decode_ib_package_t *ib_header =
+         (rvcn_decode_ib_package_t *)&(cmd_buffer->cs->buf[cmd_buffer->cs->cdw]);
+      ib_header->package_size = sizeof(struct rvcn_decode_buffer_s) +
+         sizeof(struct rvcn_decode_ib_package_s);
+      cmd_buffer->cs->cdw++;
+      ib_header->package_type = (RDECODE_IB_PARAM_DECODE_BUFFER);
+      cmd_buffer->cs->cdw++;
+      cmd_buffer->video.decode_buffer =
+         (rvcn_decode_buffer_t *)&(cmd_buffer->cs->buf[cmd_buffer->cs->cdw]);
+      cmd_buffer->cs->cdw += sizeof(struct rvcn_decode_buffer_s) / 4;
+      memset(cmd_buffer->video.decode_buffer, 0, sizeof(struct rvcn_decode_buffer_s));
+   }
+
 }
 
 static void
@@ -1499,8 +1625,11 @@ radv_vcn_cmd_reset(struct radv_cmd_buffer *cmd_buffer)
    send_cmd(cmd_buffer, RDECODE_CMD_SESSION_CONTEXT_BUFFER, vid->sessionctx.mem->bo, vid->sessionctx.offset);
    send_cmd(cmd_buffer, RDECODE_CMD_MSG_BUFFER, cmd_buffer->upload.upload_bo, out_offset);
    /* pad out the IB to the 16 dword boundary - otherwise the fw seems to be unhappy */
-   for (unsigned i = 0; i < 8; i++)
-      radeon_emit(cmd_buffer->cs, 0x81ff);
+
+   if (cmd_buffer->device->physical_device->vid_decode_ip != AMD_IP_VCN_UNIFIED) {
+      for (unsigned i = 0; i < 8; i++)
+         radeon_emit(cmd_buffer->cs, 0x81ff);
+   }
 }
 
 static void
@@ -1539,6 +1668,12 @@ void
 radv_CmdEndVideoCodingKHR(VkCommandBuffer commandBuffer,
                           const VkVideoEndCodingInfoKHR *pEndCodingInfo)
 {
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   if (cmd_buffer->device->physical_device->vid_decode_ip != AMD_IP_VCN_UNIFIED)
+      return;
+
+   radv_vcn_sq_tail(cmd_buffer->cs, &cmd_buffer->video.sq);
 }
 
 static void
@@ -1662,7 +1797,8 @@ radv_vcn_decode_video(struct radv_cmd_buffer *cmd_buffer,
    if (have_it(vid))
       send_cmd(cmd_buffer, RDECODE_CMD_IT_SCALING_TABLE_BUFFER, it_bo, it_offset);
 
-   set_reg(cmd_buffer, cmd_buffer->device->physical_device->vid_dec_reg.cntl, 1);
+   if (cmd_buffer->device->physical_device->vid_decode_ip != AMD_IP_VCN_UNIFIED)
+      set_reg(cmd_buffer, cmd_buffer->device->physical_device->vid_dec_reg.cntl, 1);
 }
 
 void

@@ -79,6 +79,7 @@
 #include "ac_spm.h"
 #include "ac_sqtt.h"
 #include "ac_surface.h"
+#include "ac_vcn.h"
 #include "radv_constants.h"
 #include "radv_descriptor_set.h"
 #include "radv_radeon_winsys.h"
@@ -248,6 +249,7 @@ radv_float_to_ufixed(float value, unsigned frac_bits)
 
 struct radv_image_view;
 struct radv_instance;
+struct rvcn_decode_buffer_s;
 
 /* A non-fatal assert.  Useful for debugging. */
 #ifdef NDEBUG
@@ -1808,6 +1810,8 @@ struct radv_cmd_buffer {
    struct {
       struct radv_video_session *vid;
       struct radv_video_session_params *params;
+      struct rvcn_sq_var sq;
+      struct rvcn_decode_buffer_s *decode_buffer;
    } video;
 
    uint64_t shader_upload_seq;
