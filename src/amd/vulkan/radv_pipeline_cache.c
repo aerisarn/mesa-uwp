@@ -470,7 +470,7 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct radv_pipel
    }
 
    for (int i = 0; i < num_rt_groups; ++i) {
-      memcpy(p, &rt_groups->stack_size, sizeof(struct radv_pipeline_shader_stack_size));
+      memcpy(p, &rt_groups[i].stack_size, sizeof(struct radv_pipeline_shader_stack_size));
       p += sizeof(struct radv_pipeline_shader_stack_size);
    }
    entry->num_stack_sizes = num_rt_groups;
