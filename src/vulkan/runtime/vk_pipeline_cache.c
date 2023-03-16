@@ -593,13 +593,12 @@ vk_pipeline_cache_load(struct vk_pipeline_cache *cache,
          find_ops_for_type(cache->base.device->physical, type);
 
       struct vk_pipeline_cache_object *object =
-         vk_pipeline_cache_object_deserialize(cache,
-                                              key_data, key_size,
-                                              data, data_size, ops);
+         vk_pipeline_cache_create_and_insert_object(cache, key_data, key_size,
+                                                    data, data_size, ops);
+
       if (object == NULL)
          continue;
 
-      object = vk_pipeline_cache_add_object(cache, object);
       vk_pipeline_cache_object_unref(cache->base.device, object);
    }
 }
