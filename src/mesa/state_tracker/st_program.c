@@ -684,6 +684,8 @@ st_create_common_variant(struct st_context *st,
                          struct gl_program *prog,
                          const struct st_common_variant_key *key)
 {
+   MESA_TRACE_FUNC();
+
    struct st_common_variant *v = CALLOC_STRUCT(st_common_variant);
    struct pipe_shader_state state = {0};
 
@@ -895,6 +897,8 @@ st_create_fp_variant(struct st_context *st,
 
    if (!variant)
       return NULL;
+
+   MESA_TRACE_FUNC();
 
    /* Translate ATI_fs to NIR at variant time because that's when we have the
     * texture types.
@@ -1328,6 +1332,8 @@ st_finalize_program(struct st_context *st, struct gl_program *prog)
 {
    struct gl_context *ctx = st->ctx;
    bool is_bound = false;
+
+   MESA_TRACE_FUNC();
 
    if (prog->info.stage == MESA_SHADER_VERTEX)
       is_bound = prog == ctx->VertexProgram._Current;

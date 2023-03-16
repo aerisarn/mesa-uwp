@@ -26,6 +26,7 @@
 #include "util/u_debug.h"
 #include "util/disk_cache.h"
 #include "util/u_memory.h"
+#include "util/perf/cpu_trace.h"
 #include "util/ralloc.h"
 #include "pipe/p_screen.h"
 
@@ -2574,6 +2575,8 @@ static void
 ttn_finalize_nir(struct ttn_compile *c, struct pipe_screen *screen)
 {
    struct nir_shader *nir = c->build.shader;
+
+   MESA_TRACE_FUNC();
 
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);

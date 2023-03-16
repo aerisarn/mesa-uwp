@@ -40,6 +40,7 @@
 #include "main/mtypes.h"
 #include "main/shaderobj.h"
 #include "util/u_math.h"
+#include "util/perf/cpu_trace.h"
 
 /*
  * pass to lower GLSL IR to NIR
@@ -206,6 +207,8 @@ glsl_to_nir(const struct gl_constants *consts,
 
    const struct gl_shader_compiler_options *gl_options =
       &consts->ShaderCompilerOptions[stage];
+
+   MESA_TRACE_FUNC();
 
    /* glsl_to_nir can only handle converting certain function paramaters
     * to NIR. If we find something we can't handle then we get the GLSL IR

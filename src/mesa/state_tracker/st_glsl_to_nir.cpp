@@ -712,6 +712,8 @@ st_link_nir(struct gl_context *ctx,
    struct gl_linked_shader *linked_shader[MESA_SHADER_STAGES];
    unsigned num_shaders = 0;
 
+   MESA_TRACE_FUNC();
+
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       if (shader_program->_LinkedShaders[i])
          linked_shader[num_shaders++] = shader_program->_LinkedShaders[i];
@@ -1055,6 +1057,8 @@ st_finalize_nir(struct st_context *st, struct gl_program *prog,
                 bool is_before_variants)
 {
    struct pipe_screen *screen = st->screen;
+
+   MESA_TRACE_FUNC();
 
    NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_lower_var_copies);
