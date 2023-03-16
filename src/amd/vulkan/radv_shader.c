@@ -2560,10 +2560,7 @@ radv_create_rt_prolog(struct radv_device *device)
 
    prolog = radv_shader_create(device, binary, device->keep_shader_info, false, &in_args);
    if (!prolog)
-      goto fail_create;
-
-   if (!radv_shader_binary_upload(device, binary, prolog))
-      goto fail_alloc;
+      goto fail;
 
    if (options.dump_shader) {
       fprintf(stderr, "Raytracing prolog");
@@ -2572,9 +2569,7 @@ radv_create_rt_prolog(struct radv_device *device)
 
    return prolog;
 
-fail_alloc:
-   radv_shader_destroy(device, prolog);
-fail_create:
+fail:
    free(binary);
    return NULL;
 }
