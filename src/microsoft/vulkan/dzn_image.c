@@ -998,6 +998,7 @@ dzn_image_view_prepare_srv_desc(struct dzn_image_view *iview)
       (iview->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE ||
        iview->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) ?
       6 : 1;
+   bool from_3d_image = iview->vk.image->image_type == VK_IMAGE_TYPE_3D;
    bool use_array = iview->vk.base_array_layer > 0 ||
                     (iview->vk.layer_count / layers_per_elem) > 1;
 
@@ -1061,7 +1062,12 @@ dzn_image_view_prepare_srv_desc(struct dzn_image_view *iview)
 
    case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
    case VK_IMAGE_VIEW_TYPE_2D:
-      if (use_array && ms) {
+      if (from_3d_image) {
+         iview->srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
+         iview->srv_desc.Texture3D.MostDetailedMip = iview->vk.base_mip_level;
+         iview->srv_desc.Texture3D.MipLevels = iview->vk.level_count;
+         iview->srv_desc.Texture3D.ResourceMinLODClamp = 0.0f;
+      } else if (use_array && ms) {
          iview->srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
          iview->srv_desc.Texture2DMSArray.FirstArraySlice = iview->vk.base_array_layer;
          iview->srv_desc.Texture2DMSArray.ArraySize = iview->vk.layer_count;
