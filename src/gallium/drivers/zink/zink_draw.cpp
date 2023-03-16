@@ -822,7 +822,7 @@ zink_draw(struct pipe_context *pctx,
    }
 
    bool marker = false;
-   if (unlikely(zink_tracing && ctx->blitting)) {
+   if (unlikely(zink_tracing)) {
       VkViewport viewport = {
          ctx->vp_state.viewport_states[0].translate[0] - ctx->vp_state.viewport_states[0].scale[0],
          ctx->vp_state.viewport_states[0].translate[1] - ctx->vp_state.viewport_states[0].scale[1],
@@ -835,11 +835,18 @@ zink_draw(struct pipe_context *pctx,
          CLAMP(ctx->vp_state.viewport_states[0].translate[2] + ctx->vp_state.viewport_states[0].scale[2],
                0, 1)
       };
-      bool is_zs = util_format_is_depth_or_stencil(ctx->sampler_views[MESA_SHADER_FRAGMENT][0]->format);
-      marker = zink_cmd_debug_marker_begin(ctx, VK_NULL_HANDLE, "u_blitter(%s->%s, %dx%d)",
-                                           util_format_short_name(ctx->sampler_views[MESA_SHADER_FRAGMENT][0]->format),
-                                           util_format_short_name((is_zs ? ctx->fb_state.zsbuf : ctx->fb_state.cbufs[0])->format),
-                                           lround(viewport.width), lround(viewport.height));
+      if (ctx->blitting) {
+         bool is_zs = util_format_is_depth_or_stencil(ctx->sampler_views[MESA_SHADER_FRAGMENT][0]->format);
+         marker = zink_cmd_debug_marker_begin(ctx, VK_NULL_HANDLE, "u_blitter(%s->%s, %dx%d)",
+                                              util_format_short_name(ctx->sampler_views[MESA_SHADER_FRAGMENT][0]->format),
+                                              util_format_short_name((is_zs ? ctx->fb_state.zsbuf : ctx->fb_state.cbufs[0])->format),
+                                              lround(viewport.width), lround(viewport.height));
+      } else {
+         marker = zink_cmd_debug_marker_begin(ctx, VK_NULL_HANDLE, "draw(%u cbufs|%s, %dx%d)",
+                                              ctx->fb_state.nr_cbufs,
+                                              ctx->fb_state.zsbuf ? "zsbuf" : "",
+                                              lround(viewport.width), lround(viewport.height));
+      }
    }
 
    bool needs_drawid = reads_drawid && zink_get_last_vertex_key(ctx)->push_drawid;
@@ -899,7 +906,7 @@ zink_draw(struct pipe_context *pctx,
       }
    }
 
-   if (unlikely(zink_tracing && ctx->blitting))
+   if (unlikely(zink_tracing))
       zink_cmd_debug_marker_end(ctx, batch->state->cmdbuf, marker);
 
    if (have_streamout) {
