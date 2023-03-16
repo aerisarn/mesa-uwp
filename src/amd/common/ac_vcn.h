@@ -23,17 +23,20 @@
  * of the Software.
  */
 
-#ifndef RADEON_VCN_H
-#define RADEON_VCN_H
+#ifndef AC_VCN_H
+#define AC_VCN_H
 
-#include "radeon_video.h"
+#define RADEON_VCN_ENGINE_INFO                                        (0x30000001)
+#define RADEON_VCN_SIGNATURE                                          (0x30000002)
+#define RADEON_VCN_ENGINE_TYPE_ENCODE                                 (0x00000002)
+#define RADEON_VCN_ENGINE_TYPE_DECODE                                 (0x00000003)
 
-#include "ac_vcn.h"
+#define RADEON_VCN_ENGINE_INFO_SIZE                                   (0x00000010)
+#define RADEON_VCN_SIGNATURE_SIZE                                     (0x00000010)
 
-void rvcn_sq_header(struct radeon_cmdbuf *cs,
-                    struct rvcn_sq_var *sq,
-                    bool enc);
+struct rvcn_sq_var {
+   unsigned int *ib_total_size_in_dw;
+   unsigned int *ib_checksum;
+};
 
-void rvcn_sq_tail(struct radeon_cmdbuf *cs,
-                  struct rvcn_sq_var *sq);
 #endif
