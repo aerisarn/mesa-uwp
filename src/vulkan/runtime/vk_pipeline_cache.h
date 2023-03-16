@@ -241,6 +241,23 @@ struct vk_pipeline_cache_object * MUST_CHECK
 vk_pipeline_cache_add_object(struct vk_pipeline_cache *cache,
                              struct vk_pipeline_cache_object *object);
 
+/** Creates and inserts an object into the pipeline cache
+ *
+ * This function takes serialized data and emplaces the deserialized object
+ * into the pipeline cache.  It is the responsibility of the caller to
+ * specify a deserialize() function that properly initializes the object.
+ *
+ * This function can be used to avoid an extra serialize() step for
+ * disk-cache insertion.  For the intended usage pattern, see
+ * vk_pipeline_cache_add_object().
+ *
+ */
+struct vk_pipeline_cache_object *
+vk_pipeline_cache_create_and_insert_object(struct vk_pipeline_cache *cache,
+                                           const void *key_data, uint32_t key_size,
+                                           const void *data, size_t data_size,
+                                           const struct vk_pipeline_cache_object_ops *ops);
+
 struct nir_shader *
 vk_pipeline_cache_lookup_nir(struct vk_pipeline_cache *cache,
                              const void *key_data, size_t key_size,

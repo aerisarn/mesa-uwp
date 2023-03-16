@@ -452,6 +452,31 @@ vk_pipeline_cache_add_object(struct vk_pipeline_cache *cache,
    return inserted;
 }
 
+struct vk_pipeline_cache_object *
+vk_pipeline_cache_create_and_insert_object(struct vk_pipeline_cache *cache,
+                                           const void *key_data, uint32_t key_size,
+                                           const void *data, size_t data_size,
+                                           const struct vk_pipeline_cache_object_ops *ops)
+{
+#ifdef ENABLE_SHADER_CACHE
+   struct disk_cache *disk_cache = cache->base.device->physical->disk_cache;
+   if (disk_cache) {
+      cache_key cache_key;
+      disk_cache_compute_key(disk_cache, key_data, key_size, cache_key);
+      disk_cache_put(disk_cache, cache_key, data, data_size, NULL);
+   }
+#endif
+
+   struct vk_pipeline_cache_object *object =
+       vk_pipeline_cache_object_deserialize(cache, key_data, key_size, data,
+                                            data_size, ops);
+
+   if (object)
+      object = vk_pipeline_cache_insert_object(cache, object);
+
+   return object;
+}
+
 nir_shader *
 vk_pipeline_cache_lookup_nir(struct vk_pipeline_cache *cache,
                              const void *key_data, size_t key_size,
