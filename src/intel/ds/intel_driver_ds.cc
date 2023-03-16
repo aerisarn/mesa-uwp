@@ -37,6 +37,7 @@
 #ifdef HAVE_PERFETTO
 
 #include "util/perf/u_perfetto.h"
+#include "util/perf/u_perfetto_renderpass.h"
 
 #include "intel_tracepoints_perfetto.h"
 
@@ -100,38 +101,8 @@ struct IntelRenderpassTraits : public perfetto::DefaultDataSourceTraits {
    using IncrementalStateType = IntelRenderpassIncrementalState;
 };
 
-class IntelRenderpassDataSource : public perfetto::DataSource<IntelRenderpassDataSource,
-                                                            IntelRenderpassTraits> {
-public:
-   void OnSetup(const SetupArgs &) override
-   {
-      // Use this callback to apply any custom configuration to your data source
-      // based on the TraceConfig in SetupArgs.
-   }
-
-   void OnStart(const StartArgs &) override
-   {
-      // This notification can be used to initialize the GPU driver, enable
-      // counters, etc. StartArgs will contains the DataSourceDescriptor,
-      // which can be extended.
-      u_trace_perfetto_start();
-      PERFETTO_LOG("Tracing started");
-   }
-
-   void OnStop(const StopArgs &) override
-   {
-      PERFETTO_LOG("Tracing stopped");
-
-      // Undo any initialization done in OnStart.
-      u_trace_perfetto_stop();
-      // TODO we should perhaps block until queued traces are flushed?
-
-      Trace([](IntelRenderpassDataSource::TraceContext ctx) {
-         auto packet = ctx.NewTracePacket();
-         packet->Finalize();
-         ctx.Flush();
-      });
-   }
+class IntelRenderpassDataSource : public MesaRenderpassDataSource<IntelRenderpassDataSource,
+                                                                  IntelRenderpassTraits> {
 };
 
 PERFETTO_DECLARE_DATA_SOURCE_STATIC_MEMBERS(IntelRenderpassDataSource);

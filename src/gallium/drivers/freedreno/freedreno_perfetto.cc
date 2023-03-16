@@ -24,6 +24,7 @@
 #include <perfetto.h>
 
 #include "util/perf/u_perfetto.h"
+#include "util/perf/u_perfetto_renderpass.h"
 
 #include "freedreno_tracepoints.h"
 
@@ -47,21 +48,12 @@ struct FdRenderpassTraits : public perfetto::DefaultDataSourceTraits {
    using IncrementalStateType = FdRenderpassIncrementalState;
 };
 
-class FdRenderpassDataSource : public perfetto::DataSource<FdRenderpassDataSource, FdRenderpassTraits> {
+class FdRenderpassDataSource : public MesaRenderpassDataSource<FdRenderpassDataSource, FdRenderpassTraits> {
 public:
-   void OnSetup(const SetupArgs &) override
-   {
-      // Use this callback to apply any custom configuration to your data source
-      // based on the TraceConfig in SetupArgs.
-   }
 
-   void OnStart(const StartArgs &) override
+   void OnStart(const StartArgs &args) override
    {
-      // This notification can be used to initialize the GPU driver, enable
-      // counters, etc. StartArgs will contains the DataSourceDescriptor,
-      // which can be extended.
-      u_trace_perfetto_start();
-      PERFETTO_LOG("Tracing started");
+      MesaRenderpassDataSource<FdRenderpassDataSource, FdRenderpassTraits>::OnStart(args);
 
       /* Note: clock_id's below 128 are reserved.. for custom clock sources,
        * using the hash of a namespaced string is the recommended approach.
@@ -69,21 +61,6 @@ public:
        */
       gpu_clock_id =
          _mesa_hash_string("org.freedesktop.mesa.freedreno") | 0x80000000;
-   }
-
-   void OnStop(const StopArgs &) override
-   {
-      PERFETTO_LOG("Tracing stopped");
-
-      // Undo any initialization done in OnStart.
-      u_trace_perfetto_stop();
-      // TODO we should perhaps block until queued traces are flushed?
-
-      Trace([](FdRenderpassDataSource::TraceContext ctx) {
-         auto packet = ctx.NewTracePacket();
-         packet->Finalize();
-         ctx.Flush();
-      });
    }
 };
 
