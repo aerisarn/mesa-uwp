@@ -273,7 +273,7 @@ radv_queue_family_to_ring(struct radv_physical_device *physical_device,
    case RADV_QUEUE_TRANSFER:
       return AMD_IP_SDMA;
    case RADV_QUEUE_VIDEO_DEC:
-      return radv_has_uvd(physical_device) ? AMD_IP_UVD : AMD_IP_VCN_DEC;
+      return physical_device->vid_decode_ip;
    case RADV_QUEUE_VIDEO_ENC:
       return AMD_IP_VCN_ENC;
    default:

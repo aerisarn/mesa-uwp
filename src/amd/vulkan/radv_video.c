@@ -68,6 +68,11 @@ static unsigned si_vid_alloc_stream_handle()
 void
 radv_init_physical_device_decoder(struct radv_physical_device *pdevice)
 {
+   if (radv_has_uvd(pdevice))
+      pdevice->vid_decode_ip = AMD_IP_UVD;
+   else
+      pdevice->vid_decode_ip = AMD_IP_VCN_DEC;
+
    switch (pdevice->rad_info.family) {
    case CHIP_VEGA10:
    case CHIP_VEGA12:

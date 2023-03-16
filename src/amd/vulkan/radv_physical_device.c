@@ -176,12 +176,7 @@ radv_physical_device_init_queue_table(struct radv_physical_device *pdevice)
    }
 
    if (pdevice->instance->perftest_flags & RADV_PERFTEST_VIDEO_DECODE) {
-      if (pdevice->rad_info.ip[AMD_IP_VCN_DEC].num_queues > 0) {
-         pdevice->vk_queue_to_radv[idx] = RADV_QUEUE_VIDEO_DEC;
-         idx++;
-      }
-
-      if (radv_has_uvd(pdevice)) {
+      if (pdevice->rad_info.ip[pdevice->vid_decode_ip].num_queues > 0) {
          pdevice->vk_queue_to_radv[idx] = RADV_QUEUE_VIDEO_DEC;
          idx++;
       }
@@ -2466,10 +2461,7 @@ radv_get_physical_device_queue_family_properties(struct radv_physical_device *pd
       num_queue_families++;
 
    if (pdevice->instance->perftest_flags & RADV_PERFTEST_VIDEO_DECODE) {
-      if (pdevice->rad_info.ip[AMD_IP_VCN_DEC].num_queues > 0)
-         num_queue_families++;
-
-      if (radv_has_uvd(pdevice))
+      if (pdevice->rad_info.ip[pdevice->vid_decode_ip].num_queues > 0)
          num_queue_families++;
    }
 
@@ -2508,23 +2500,11 @@ radv_get_physical_device_queue_family_properties(struct radv_physical_device *pd
    }
 
    if (pdevice->instance->perftest_flags & RADV_PERFTEST_VIDEO_DECODE) {
-      if (pdevice->rad_info.ip[AMD_IP_VCN_DEC].num_queues > 0) {
+      if (pdevice->rad_info.ip[pdevice->vid_decode_ip].num_queues > 0) {
          if (*pCount > idx) {
             *pQueueFamilyProperties[idx] = (VkQueueFamilyProperties){
                .queueFlags = VK_QUEUE_VIDEO_DECODE_BIT_KHR,
-               .queueCount = pdevice->rad_info.ip[AMD_IP_VCN_DEC].num_queues,
-               .timestampValidBits = 64,
-               .minImageTransferGranularity = (VkExtent3D){1, 1, 1},
-            };
-            idx++;
-         }
-      }
-
-      if (radv_has_uvd(pdevice)) {
-         if (*pCount > idx) {
-            *pQueueFamilyProperties[idx] = (VkQueueFamilyProperties){
-               .queueFlags = VK_QUEUE_VIDEO_DECODE_BIT_KHR,
-               .queueCount = pdevice->rad_info.ip[AMD_IP_UVD].num_queues,
+               .queueCount = pdevice->rad_info.ip[pdevice->vid_decode_ip].num_queues,
                .timestampValidBits = 64,
                .minImageTransferGranularity = (VkExtent3D){1, 1, 1},
             };
