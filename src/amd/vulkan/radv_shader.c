@@ -2097,8 +2097,8 @@ radv_postprocess_config(const struct radv_device *device, const struct ac_shader
 
 #if defined(USE_LIBELF)
 static bool
-radv_open_rtld_binary(struct radv_device *device, const struct radv_shader *shader,
-                      const struct radv_shader_binary *binary, struct ac_rtld_binary *rtld_binary)
+radv_open_rtld_binary(struct radv_device *device, const struct radv_shader_binary *binary,
+                      struct ac_rtld_binary *rtld_binary)
 {
    const char *elf_data = (const char *)((struct radv_shader_binary_rtld *)binary)->data;
    size_t elf_size = ((struct radv_shader_binary_rtld *)binary)->elf_size;
@@ -2158,7 +2158,7 @@ radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_b
 #else
       struct ac_rtld_binary rtld_binary = {0};
 
-      if (!radv_open_rtld_binary(device, shader, binary, &rtld_binary)) {
+      if (!radv_open_rtld_binary(device, binary, &rtld_binary)) {
          free(shader);
          return false;
       }
@@ -2366,7 +2366,7 @@ radv_shader_create(struct radv_device *device, const struct radv_shader_binary *
 #else
       struct ac_rtld_binary rtld_binary = {0};
 
-      if (!radv_open_rtld_binary(device, shader, binary, &rtld_binary)) {
+      if (!radv_open_rtld_binary(device, binary, &rtld_binary)) {
          free(shader);
          return NULL;
       }
@@ -2418,7 +2418,7 @@ radv_shader_create(struct radv_device *device, const struct radv_shader_binary *
       struct radv_shader_binary_rtld *bin = (struct radv_shader_binary_rtld *)binary;
       struct ac_rtld_binary rtld_binary = {0};
 
-      if (!radv_open_rtld_binary(device, shader, binary, &rtld_binary)) {
+      if (!radv_open_rtld_binary(device, binary, &rtld_binary)) {
          free(shader);
          return NULL;
       }
