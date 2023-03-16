@@ -1949,13 +1949,15 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 
       case nir_tex_src_texture_offset: {
          assert(texture_reg.is_zero());
-         texture_reg = emit_uniformize(get_nir_src(instr->src[i].src, 1));
+         texture_reg = emit_uniformize(get_nir_src(instr->src[i].src,
+                                                   BRW_REGISTER_TYPE_UD, 1));
          break;
       }
 
       case nir_tex_src_sampler_offset: {
          assert(sampler_reg.is_zero());
-         sampler_reg = emit_uniformize(get_nir_src(instr->src[i].src, 1));
+         sampler_reg = emit_uniformize(get_nir_src(instr->src[i].src,
+                                                   BRW_REGISTER_TYPE_UD, 1));
          break;
       }
 
