@@ -3519,6 +3519,21 @@ panfrost_launch_xfb(struct panfrost_batch *batch,
    batch->push_uniforms[PIPE_SHADER_VERTEX] = saved_push;
 }
 
+/*
+ * Increase the vertex count on the batch using a saturating add, and hope the
+ * compiler can use the machine instruction here...
+ */
+static inline void
+panfrost_increase_vertex_count(struct panfrost_batch *batch, uint32_t increment)
+{
+   uint32_t sum = batch->tiler_ctx.vertex_count + increment;
+
+   if (sum >= batch->tiler_ctx.vertex_count)
+      batch->tiler_ctx.vertex_count = sum;
+   else
+      batch->tiler_ctx.vertex_count = UINT32_MAX;
+}
+
 static void
 panfrost_direct_draw(struct panfrost_batch *batch,
                      const struct pipe_draw_info *info, unsigned drawid_offset,
@@ -3578,6 +3593,9 @@ panfrost_direct_draw(struct panfrost_batch *batch,
 
    if (info->index_size && PAN_ARCH >= 9) {
       indices = panfrost_get_index_buffer(batch, info, draw);
+
+      /* Use index count to estimate vertex count */
+      panfrost_increase_vertex_count(batch, draw->count);
    } else if (info->index_size) {
       indices = panfrost_get_index_buffer_bounded(batch, info, draw, &min_index,
                                                   &max_index);
@@ -3585,8 +3603,10 @@ panfrost_direct_draw(struct panfrost_batch *batch,
       /* Use the corresponding values */
       vertex_count = max_index - min_index + 1;
       ctx->offset_start = min_index + draw->index_bias;
+      panfrost_increase_vertex_count(batch, vertex_count);
    } else {
       ctx->offset_start = draw->start;
+      panfrost_increase_vertex_count(batch, vertex_count);
    }
 
    if (info->instance_count > 1) {
@@ -4476,7 +4496,8 @@ batch_get_polygon_list(struct panfrost_batch *batch)
    if (!batch->tiler_ctx.midgard.polygon_list) {
       bool has_draws = batch->scoreboard.first_tiler != NULL;
       unsigned size = panfrost_tiler_get_polygon_list_size(
-         dev, batch->key.width, batch->key.height, has_draws);
+         dev, batch->key.width, batch->key.height,
+         batch->tiler_ctx.vertex_count);
 
       /* Create the BO as invisible if we can. If there are no draws,
        * we need to write the polygon list manually because there's
