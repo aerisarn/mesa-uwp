@@ -43,7 +43,6 @@ dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_frag_buffers1_sets1,Cr
 dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_frag_buffers1_sets3,Crash
 dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_frag_buffers1_sets3_imm_samplers,Crash
 dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_frag_buffers2_sets4,Crash
-dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_frag_buffers2_sets4_imm_samplers,Crash
 dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_frag_buffers32_sets1,Crash
 dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_frag_buffers3_sets1,Crash
 dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_frag_buffers8_sets1,Crash

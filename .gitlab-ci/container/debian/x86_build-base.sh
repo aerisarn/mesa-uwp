@@ -5,30 +5,25 @@ set -e
 set -o xtrace
 
 export DEBIAN_FRONTEND=noninteractive
+export LLVM_VERSION="${LLVM_VERSION:=15}"
 
-apt-get install -y ca-certificates gnupg2 software-properties-common
-
-# Add llvm 13 to the build image
-apt-key add .gitlab-ci/container/debian/llvm-snapshot.gpg.key
-add-apt-repository "deb https://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-13 main"
-
-sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
+apt-get install -y ca-certificates
+sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list.d/*
 
 # Ephemeral packages (installed for this script and removed again at
 # the end)
 STABLE_EPHEMERAL=" \
-        python3-pip \
-        python3-setuptools \
         "
 
 apt-get update
 
 apt-get install -y --no-remove \
         $STABLE_EPHEMERAL \
+        apt-utils \
         bison \
         ccache \
-	curl \
-        clang-format-13 \
+        curl \
+        clang-format-${LLVM_VERSION} \
         dpkg-cross \
         findutils \
         flex \
@@ -38,14 +33,14 @@ apt-get install -y --no-remove \
         git \
         glslang-tools \
         kmod \
-        libclang-13-dev \
-        libclang-11-dev \
+        libclang-${LLVM_VERSION}-dev \
+        libclang-cpp${LLVM_VERSION}-dev \
+        libclang-common-${LLVM_VERSION}-dev \
         libelf-dev \
         libepoxy-dev \
         libexpat1-dev \
         libgtk-3-dev \
-        libllvm13 \
-        libllvm11 \
+        libllvm${LLVM_VERSION} \
         libomxil-bellagio-dev \
         libpciaccess-dev \
         libunwind-dev \
@@ -60,13 +55,18 @@ apt-get install -y --no-remove \
         libxrender-dev \
         libxshmfence-dev \
         libxxf86vm-dev \
+        libwayland-egl-backend-dev \
         make \
+        meson \
         ninja-build \
+        openssh-server \
         pkgconf \
         python3-mako \
         python3-pil \
+        python3-pip \
         python3-ply \
         python3-requests \
+        python3-setuptools \
         qemu-user \
         valgrind \
         x11proto-dri2-dev \
@@ -74,13 +74,10 @@ apt-get install -y --no-remove \
         x11proto-randr-dev \
         xz-utils \
         zlib1g-dev \
-	zstd
+        zstd
 
-# Needed for ci-fairy, this revision is able to upload files to MinIO
-pip3 install git+http://gitlab.freedesktop.org/freedesktop/ci-templates@ffe4d1b10aab7534489f0c4bbc4c5899df17d3f2
-
-# We need at least 1.0.0 for proper Rust; 0.62 for modern meson env2mfile
-pip3 install meson==1.0.0
+# Needed for ci-fairy, this revision is able to upload files to S3
+pip3 install --break-system-packages git+http://gitlab.freedesktop.org/freedesktop/ci-templates@ffe4d1b10aab7534489f0c4bbc4c5899df17d3f2
 
 . .gitlab-ci/container/build-rust.sh
 

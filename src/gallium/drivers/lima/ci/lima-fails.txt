@@ -662,3 +662,6 @@ spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_srgb_alpha_s3
 spec@ext_texture_compression_s3tc@compressedteximage gl_compressed_srgb_s3tc_dxt1_ext,Fail
 
 spec@!opengl 1.1@line-smooth-stipple,Fail
+
+# bookworm update
+spec@ext_framebuffer_multisample@renderbufferstorage-samples,Fail

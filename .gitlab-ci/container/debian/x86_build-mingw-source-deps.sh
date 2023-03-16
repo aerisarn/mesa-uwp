@@ -64,10 +64,10 @@ ninja install
 popd
 
 # Building LLVM
-git clone -b release/14.x --depth=1 \
+git clone -b release/15.x --depth=1 \
 https://github.com/llvm/llvm-project llvm-project
 
-git clone -b v14.0.0 --depth=1 \
+git clone -b v15.0.0 --depth=1 \
 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/SPIRV-LLVM-Translator
 
 mkdir llvm-project/build

@@ -39,9 +39,10 @@ clang-format:
     - .lint-clang-format-rules
   variables:
     GIT_STRATEGY: fetch
+    LLVM_VERSION: 15
   script:
     - shopt -s globstar
-    - clang-format-13 --Werror --dry-run src/**/{asahi,panfrost}/**/*.{h,c,cpp}
+    - clang-format-${LLVM_VERSION:?} --Werror --dry-run src/**/{asahi,panfrost}/**/*.{h,c,cpp}
 
 .test-gl:
   extends:
@@ -211,7 +212,7 @@ clang-format:
     - .baremetal-test
     - .use-debian/arm64_test
   variables:
-    DEQP_RUNNER_OPTIONS: "--env LD_PRELOAD=libasan.so.6:/install/lib/libdlclose-skip.so"
+    DEQP_RUNNER_OPTIONS: "--env LD_PRELOAD=libasan.so.8:/install/lib/libdlclose-skip.so"
     MINIO_ARTIFACT_NAME: mesa-arm64-asan
   needs:
     - debian/arm64_test

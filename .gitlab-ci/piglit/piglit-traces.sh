@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 set -ex
 
@@ -9,9 +9,6 @@ RESULTS=$(realpath -s "$PWD"/results)
 mkdir -p "$RESULTS"
 
 if [ "$PIGLIT_REPLAY_SUBCOMMAND" = "profile" ]; then
-    # workaround for older Debian Bullseye libyaml 0.2.2
-    sed -i "/^%YAML 1\.2$/d" "$PIGLIT_REPLAY_DESCRIPTION_FILE"
-
     yq -iY 'del(.traces[][] | select(.label[]? == "no-perf"))' \
       "$PIGLIT_REPLAY_DESCRIPTION_FILE"
 fi
@@ -26,7 +23,7 @@ case "$PIGLIT_REPLAY_DEVICE_NAME" in
     ;;
 esac
 
-PATH="/opt/wine-stable/bin/:$PATH" # WineHQ path
+#PATH="/opt/wine-stable/bin/:$PATH" # WineHQ path
 
 # Avoid asking about Gecko or Mono instalation
 export WINEDLLOVERRIDES=mscoree=d;mshtml=d
@@ -67,7 +64,7 @@ quiet() {
 # Set environment for apitrace executable.
 export PATH="/apitrace/build:$PATH"
 
-export PIGLIT_REPLAY_WINE_BINARY=wine64
+export PIGLIT_REPLAY_WINE_BINARY=wine
 export PIGLIT_REPLAY_WINE_APITRACE_BINARY="/apitrace-msvc-win64/bin/apitrace.exe"
 export PIGLIT_REPLAY_WINE_D3DRETRACE_BINARY="/apitrace-msvc-win64/bin/d3dretrace.exe"
 

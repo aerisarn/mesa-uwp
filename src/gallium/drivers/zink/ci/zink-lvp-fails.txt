@@ -252,6 +252,5 @@ KHR-GL46.polygon_offset_clamp.PolygonOffsetClampMinMax,Fail
 KHR-GL46.polygon_offset_clamp.PolygonOffsetClampZeroInfinity,Fail
 spec@arb_texture_cube_map_array@texsubimage cube_map_array,Fail
 
-spec@ext_transform_feedback@tessellation quad_strip wireframe,Fail
 spec@ext_transform_feedback@tessellation quads wireframe,Fail
 spec@!opengl 1.1@texsubimage,Fail

@@ -10,6 +10,8 @@ mount -t proc none /proc
 mount -t sysfs none /sys
 mkdir -p /dev/pts
 mount -t devpts devpts /dev/pts
+mkdir /dev/shm
+mount -t tmpfs -o noexec,nodev,nosuid tmpfs /dev/shm
 mount -t tmpfs tmpfs /tmp
 
 . ${VM_TEMP_DIR}/crosvm-env.sh
