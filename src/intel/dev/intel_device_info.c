@@ -928,18 +928,6 @@ static const struct intel_device_info intel_device_info_ehl_2x4 = {
    .max_eus_per_subslice = 4,
 };
 
-#define GFX12_URB_MIN_MAX_ENTRIES                   \
-   .min_entries = {                                 \
-      [MESA_SHADER_VERTEX]    = 64,                 \
-      [MESA_SHADER_TESS_EVAL] = 34,                 \
-   },                                               \
-   .max_entries = {                                 \
-      [MESA_SHADER_VERTEX]    = 3576,               \
-      [MESA_SHADER_TESS_CTRL] = 1548,               \
-      [MESA_SHADER_TESS_EVAL] = 3576,               \
-      [MESA_SHADER_GEOMETRY]  = 1548,               \
-   }
-
 #define GFX12_HW_INFO                               \
    .ver = 12,                                       \
    .has_pln = false,                                \
@@ -952,7 +940,17 @@ static const struct intel_device_info intel_device_info_ehl_2x4 = {
    .max_threads_per_psd = 64,                       \
    .max_cs_threads = 112, /* threads per DSS */     \
    .urb = {                                         \
-      GFX12_URB_MIN_MAX_ENTRIES,                    \
+      .size = 512, /* For intel_stub_gpu */         \
+      .min_entries = {                              \
+         [MESA_SHADER_VERTEX]    = 64,              \
+         [MESA_SHADER_TESS_EVAL] = 34,              \
+      },                                            \
+      .max_entries = {                              \
+         [MESA_SHADER_VERTEX]    = 3576,            \
+         [MESA_SHADER_TESS_CTRL] = 1548,            \
+         [MESA_SHADER_TESS_EVAL] = 3576,            \
+         [MESA_SHADER_GEOMETRY]  = 1548,            \
+      },                                            \
    }
 
 #define GFX12_FEATURES(_gt, _slices, _l3)                       \
