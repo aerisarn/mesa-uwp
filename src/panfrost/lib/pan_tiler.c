@@ -320,12 +320,6 @@ panfrost_choose_tile_size(unsigned width, unsigned height,
    return exp_w | (exp_h << 6);
 }
 
-/* In the future, a heuristic to choose a tiler hierarchy mask would go here.
- * At the moment, we just default to 0xFF, which enables all possible hierarchy
- * levels. Overall this yields good performance but presumably incurs a cost in
- * memory bandwidth / power consumption / etc, at least on smaller scenes that
- * don't really need all the smaller levels enabled */
-
 unsigned
 panfrost_choose_hierarchy_mask(unsigned width, unsigned height,
                                unsigned vertex_count, bool hierarchy)
@@ -338,7 +332,45 @@ panfrost_choose_hierarchy_mask(unsigned width, unsigned height,
    if (!hierarchy)
       return panfrost_choose_tile_size(width, height, vertex_count);
 
-   /* Otherwise, default everything on. TODO: Proper tests */
+   /* Heuristic: choose the largest minimum bin size such that there are an
+    * average of k vertices per bin at the lowest level. This is modeled as:
+    *
+    *    k = vertex_count / ((fb width / bin width) * (fb height / bin height))
+    *
+    * Bins are square, so solving for bin size = bin width = bin height:
+    *
+    *    bin size = sqrt(((k) (fb width) (fb height) / vertex count))
+    *
+    * k = 4 represents each bin as a QUAD. If the screen is completely tiled
+    * into nonoverlapping uniform power-of-two squares, then this heuristic sets
+    * the bin size to the quad size, which seems like an ok choice.
+    */
+   unsigned k = 4;
+   unsigned log2_min_bin_size =
+      util_logbase2_ceil((k * width * height) / vertex_count) / 2;
 
-   return 0xFF;
+   /* Do not use bins larger than the framebuffer. They will be empty. */
+   unsigned log2_max_bin_size = util_logbase2_ceil(MAX2(width, height));
+
+   /* For small framebuffers, use one big tile */
+   log2_min_bin_size = MIN2(log2_min_bin_size, log2_max_bin_size);
+
+   /* Clamp to valid bin sizes */
+   log2_min_bin_size = CLAMP(log2_min_bin_size, MIN_TILE_SHIFT, MAX_TILE_SHIFT);
+   log2_max_bin_size = CLAMP(log2_max_bin_size, MIN_TILE_SHIFT, MAX_TILE_SHIFT);
+
+   /* Bin indices are numbered from 0 started with MIN_TILE_SIZE */
+   unsigned min_bin_index = log2_min_bin_size - MIN_TILE_SHIFT;
+   unsigned max_bin_index = log2_max_bin_size - MIN_TILE_SHIFT;
+
+   /* Enable up to 8 bins starting from the heuristic selected minimum. 8
+    * is the implementation specific maximum in supported Midgard devices.
+    */
+   unsigned mask =
+      (BITFIELD_MASK(8) << min_bin_index) & BITFIELD_MASK(max_bin_index + 1);
+
+   assert(mask != 0 && "too few levels");
+   assert(util_bitcount(mask) <= 8 && "too many levels");
+
+   return mask;
 }
