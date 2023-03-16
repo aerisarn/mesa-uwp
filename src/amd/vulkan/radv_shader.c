@@ -1820,11 +1820,88 @@ radv_should_use_wgp_mode(const struct radv_device *device, gl_shader_stage stage
    }
 }
 
-static void
-radv_postprocess_config(const struct radv_device *device, struct ac_shader_config *config,
-                        const struct radv_shader_info *info, gl_shader_stage stage,
-                        const struct radv_shader_args *args)
+#if defined(USE_LIBELF)
+static bool
+radv_open_rtld_binary(struct radv_device *device, const struct radv_shader_binary *binary,
+                      struct ac_rtld_binary *rtld_binary)
 {
+   const char *elf_data = (const char *)((struct radv_shader_binary_rtld *)binary)->data;
+   size_t elf_size = ((struct radv_shader_binary_rtld *)binary)->elf_size;
+   struct ac_rtld_symbol lds_symbols[3];
+   unsigned num_lds_symbols = 0;
+
+   if (device->physical_device->rad_info.gfx_level >= GFX9 &&
+       (binary->stage == MESA_SHADER_GEOMETRY || binary->info.is_ngg)) {
+      struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
+      sym->name = "esgs_ring";
+      sym->size = binary->info.ngg_info.esgs_ring_size;
+      sym->align = 64 * 1024;
+   }
+
+   if (binary->info.is_ngg && binary->stage == MESA_SHADER_GEOMETRY) {
+      struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
+      sym->name = "ngg_emit";
+      sym->size = binary->info.ngg_info.ngg_emit_size * 4;
+      sym->align = 4;
+
+      sym = &lds_symbols[num_lds_symbols++];
+      sym->name = "ngg_scratch";
+      sym->size = 8;
+      sym->align = 4;
+   }
+
+   struct ac_rtld_open_info open_info = {
+      .info = &device->physical_device->rad_info,
+      .shader_type = binary->stage,
+      .wave_size = binary->info.wave_size,
+      .num_parts = 1,
+      .elf_ptrs = &elf_data,
+      .elf_sizes = &elf_size,
+      .num_shared_lds_symbols = num_lds_symbols,
+      .shared_lds_symbols = lds_symbols,
+   };
+
+   return ac_rtld_open(rtld_binary, open_info);
+}
+#endif
+
+static bool
+radv_postprocess_binary_config(struct radv_device *device, struct radv_shader_binary *binary,
+                               const struct radv_shader_args *args)
+{
+   struct ac_shader_config *config = &binary->config;
+
+   if (binary->type == RADV_BINARY_TYPE_RTLD) {
+#if !defined(USE_LIBELF)
+      return false;
+#else
+      struct ac_rtld_binary rtld_binary = {0};
+
+      if (!radv_open_rtld_binary(device, binary, &rtld_binary)) {
+         return false;
+      }
+
+      if (!ac_rtld_read_config(&device->physical_device->rad_info, &rtld_binary, config)) {
+         ac_rtld_close(&rtld_binary);
+         return false;
+      }
+
+      if (rtld_binary.lds_size > 0) {
+         unsigned encode_granularity = device->physical_device->rad_info.lds_encode_granularity;
+         config->lds_size = DIV_ROUND_UP(rtld_binary.lds_size, encode_granularity);
+      }
+      if (!config->lds_size && binary->stage == MESA_SHADER_TESS_CTRL) {
+         /* This is used for reporting LDS statistics */
+         config->lds_size = binary->info.tcs.num_lds_blocks;
+      }
+
+      assert(!binary->info.has_ngg_culling || config->lds_size);
+      ac_rtld_close(&rtld_binary);
+#endif
+   }
+
+   const struct radv_shader_info *info = &binary->info;
+   gl_shader_stage stage = binary->stage;
    const struct radv_physical_device *pdevice = device->physical_device;
    bool scratch_enabled = config->scratch_bytes_per_wave > 0 || info->cs.is_rt_shader;
    bool trap_enabled = !!device->trap_handler_shader;
@@ -2085,89 +2162,7 @@ radv_postprocess_config(const struct radv_device *device, struct ac_shader_confi
    } else {
       config->rsrc1 |= S_00B128_VGPR_COMP_CNT(vgpr_comp_cnt);
    }
-}
 
-#if defined(USE_LIBELF)
-static bool
-radv_open_rtld_binary(struct radv_device *device, const struct radv_shader_binary *binary,
-                      struct ac_rtld_binary *rtld_binary)
-{
-   const char *elf_data = (const char *)((struct radv_shader_binary_rtld *)binary)->data;
-   size_t elf_size = ((struct radv_shader_binary_rtld *)binary)->elf_size;
-   struct ac_rtld_symbol lds_symbols[3];
-   unsigned num_lds_symbols = 0;
-
-   if (device->physical_device->rad_info.gfx_level >= GFX9 &&
-       (binary->stage == MESA_SHADER_GEOMETRY || binary->info.is_ngg)) {
-      struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
-      sym->name = "esgs_ring";
-      sym->size = binary->info.ngg_info.esgs_ring_size;
-      sym->align = 64 * 1024;
-   }
-
-   if (binary->info.is_ngg && binary->stage == MESA_SHADER_GEOMETRY) {
-      struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
-      sym->name = "ngg_emit";
-      sym->size = binary->info.ngg_info.ngg_emit_size * 4;
-      sym->align = 4;
-
-      sym = &lds_symbols[num_lds_symbols++];
-      sym->name = "ngg_scratch";
-      sym->size = 8;
-      sym->align = 4;
-   }
-
-   struct ac_rtld_open_info open_info = {
-      .info = &device->physical_device->rad_info,
-      .shader_type = binary->stage,
-      .wave_size = binary->info.wave_size,
-      .num_parts = 1,
-      .elf_ptrs = &elf_data,
-      .elf_sizes = &elf_size,
-      .num_shared_lds_symbols = num_lds_symbols,
-      .shared_lds_symbols = lds_symbols,
-   };
-
-   return ac_rtld_open(rtld_binary, open_info);
-}
-#endif
-
-static bool
-radv_postprocess_binary_config(struct radv_device *device, struct radv_shader_binary *binary,
-                               const struct radv_shader_args *args)
-{
-   struct ac_shader_config *config = &binary->config;
-
-   if (binary->type == RADV_BINARY_TYPE_RTLD) {
-#if !defined(USE_LIBELF)
-      return false;
-#else
-      struct ac_rtld_binary rtld_binary = {0};
-
-      if (!radv_open_rtld_binary(device, binary, &rtld_binary)) {
-         return false;
-      }
-
-      if (!ac_rtld_read_config(&device->physical_device->rad_info, &rtld_binary, config)) {
-         ac_rtld_close(&rtld_binary);
-         return false;
-      }
-
-      if (rtld_binary.lds_size > 0) {
-         unsigned encode_granularity = device->physical_device->rad_info.lds_encode_granularity;
-         config->lds_size = DIV_ROUND_UP(rtld_binary.lds_size, encode_granularity);
-      }
-      if (!config->lds_size && binary->stage == MESA_SHADER_TESS_CTRL) {
-         /* This is used for reporting LDS statistics */
-         config->lds_size = binary->info.tcs.num_lds_blocks;
-      }
-
-      assert(!binary->info.has_ngg_culling || config->lds_size);
-      ac_rtld_close(&rtld_binary);
-#endif
-   }
-
-   radv_postprocess_config(device, config, &binary->info, binary->stage, args);
    return true;
 }
 
