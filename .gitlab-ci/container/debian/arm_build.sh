@@ -54,7 +54,7 @@ apt-get -y install \
 	libwayland-dev \
 	llvm-11-dev \
 	ninja-build \
-	pkg-config \
+	pkgconf \
 	python3-mako \
 	python3-pil \
 	python3-pip \

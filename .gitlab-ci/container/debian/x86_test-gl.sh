@@ -37,7 +37,7 @@ STABLE_EPHEMERAL=" \
       meson \
       ocl-icd-opencl-dev \
       patch \
-      pkg-config \
+      pkgconf \
       python3-distutils \
       xz-utils \
       "

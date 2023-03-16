@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # shellcheck disable=SC2086 # we want word splitting
 
 set -e
@@ -17,6 +17,7 @@ apt-get install -y --no-remove \
         $STABLE_EPHEMERAL \
 	curl \
         crossbuild-essential-$arch \
+	pkgconf:$arch \
         libelf-dev:$arch \
         libexpat1-dev:$arch \
         libffi-dev:$arch \

@@ -62,7 +62,7 @@ apt-get install -y --no-remove \
         libxxf86vm-dev \
         make \
         ninja-build \
-        pkg-config \
+        pkgconf \
         python3-mako \
         python3-pil \
         python3-ply \

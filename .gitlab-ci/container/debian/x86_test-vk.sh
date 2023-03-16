@@ -38,7 +38,7 @@ STABLE_EPHEMERAL=" \
       mingw-w64-x86-64-dev \
       p7zip \
       patch \
-      pkg-config \
+      pkgconf \
       python3-dev \
       python3-distutils \
       python3-pip \

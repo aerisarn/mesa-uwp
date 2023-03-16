@@ -41,7 +41,7 @@ STABLE_EPHEMERAL=" \
       make \
       meson \
       patch \
-      pkg-config \
+      pkgconf \
       protobuf-compiler \
       python3-dev \
       python3-pip \
