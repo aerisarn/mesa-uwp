@@ -38,7 +38,7 @@ $ADB shell mkdir -p "$OV_TMPFS/vendor-upper"
 $ADB shell mkdir -p "$OV_TMPFS/vendor-work"
 
 opts="lowerdir=/vendor,upperdir=$OV_TMPFS/vendor-upper,workdir=$OV_TMPFS/vendor-work"
-adb shell mount -t overlay -o "$opts" none /vendor
+$ADB shell mount -t overlay -o "$opts" none /vendor
 
 $ADB shell setenforce 0
 
