@@ -2036,6 +2036,7 @@ store_dest(struct ntd_context *ctx, nir_dest *dest, unsigned chan,
          ctx->mod.feats.int64_ops = true;
       FALLTHROUGH;
    case nir_type_bool:
+   case nir_type_invalid:
       store_dest_value(ctx, dest, chan, value);
       break;
    default:
@@ -2348,6 +2349,8 @@ get_overload(nir_alu_type alu_type, unsigned bit_size)
       default:
          unreachable("unexpected bit_size");
       }
+   case nir_type_invalid:
+      return DXIL_NONE;
    default:
       unreachable("unexpected output type");
    }
@@ -2647,8 +2650,8 @@ emit_split_double(struct ntd_context *ctx, nir_alu_instr *alu)
    if (!hi || !lo)
       return false;
 
-   store_dest_value(ctx, &alu->dest.dest, 0, hi);
-   store_dest_value(ctx, &alu->dest.dest, 1, lo);
+   store_dest(ctx, &alu->dest.dest, 0, hi, nir_type_uint);
+   store_dest(ctx, &alu->dest.dest, 1, lo, nir_type_uint);
    return true;
 }
 
@@ -2961,7 +2964,7 @@ emit_load_global_invocation_id(struct ntd_context *ctx,
          if (!globalid)
             return false;
 
-         store_dest_value(ctx, &intr->dest, i, globalid);
+         store_dest(ctx, &intr->dest, i, globalid, nir_type_uint);
       }
    }
    return true;
@@ -2984,7 +2987,7 @@ emit_load_local_invocation_id(struct ntd_context *ctx,
             *threadidingroup = emit_threadidingroup_call(ctx, idx);
          if (!threadidingroup)
             return false;
-         store_dest_value(ctx, &intr->dest, i, threadidingroup);
+         store_dest(ctx, &intr->dest, i, threadidingroup, nir_type_uint);
       }
    }
    return true;
@@ -3000,7 +3003,7 @@ emit_load_local_invocation_index(struct ntd_context *ctx,
       *flattenedthreadidingroup = emit_flattenedthreadidingroup_call(ctx);
    if (!flattenedthreadidingroup)
       return false;
-   store_dest_value(ctx, &intr->dest, 0, flattenedthreadidingroup);
+   store_dest(ctx, &intr->dest, 0, flattenedthreadidingroup, nir_type_uint);
    
    return true;
 }
@@ -3020,7 +3023,7 @@ emit_load_local_workgroup_id(struct ntd_context *ctx,
          const struct dxil_value *groupid = emit_groupid_call(ctx, idx);
          if (!groupid)
             return false;
-         store_dest_value(ctx, &intr->dest, i, groupid);
+         store_dest(ctx, &intr->dest, i, groupid, nir_type_uint);
       }
    }
    return true;
@@ -3051,10 +3054,11 @@ static bool
 emit_load_unary_external_function(struct ntd_context *ctx,
                                   nir_intrinsic_instr *intr, const char *name,
                                   int32_t dxil_intr,
-                                  enum overload_type overload)
+                                  nir_alu_type type)
 {
-   const struct dxil_value *value = call_unary_external_function(ctx, name, dxil_intr, overload);
-   store_dest_value(ctx, &intr->dest, 0, value);
+   const struct dxil_value *value = call_unary_external_function(ctx, name, dxil_intr,
+                                                                 get_overload(type, intr->dest.ssa.bit_size));
+   store_dest(ctx, &intr->dest, 0, value, type);
 
    return true;
 }
@@ -3073,7 +3077,7 @@ emit_load_sample_mask_in(struct ntd_context *ctx, nir_intrinsic_instr *intr)
             call_unary_external_function(ctx, "dx.op.sampleIndex", DXIL_INTR_SAMPLE_INDEX, DXIL_I32), 0), 0);
    }
 
-   store_dest_value(ctx, &intr->dest, 0, value);
+   store_dest(ctx, &intr->dest, 0, value, nir_type_int);
    return true;
 }
 
@@ -3103,12 +3107,12 @@ emit_load_tess_coord(struct ntd_context *ctx,
 
       const struct dxil_value *value =
          dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
-      store_dest_value(ctx, &intr->dest, i, value);
+      store_dest(ctx, &intr->dest, i, value, nir_type_float);
    }
 
    for (unsigned i = num_coords; i < intr->dest.ssa.num_components; ++i) {
       const struct dxil_value *value = dxil_module_get_float_const(&ctx->mod, 0.0f);
-      store_dest_value(ctx, &intr->dest, i, value);
+      store_dest(ctx, &intr->dest, i, value, nir_type_float);
    }
 
    return true;
@@ -3304,7 +3308,7 @@ emit_load_ssbo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
          dxil_emit_extractval(&ctx->mod, load, i);
       if (!val)
          return false;
-      store_dest_value(ctx, &intr->dest, i, val);
+      store_dest(ctx, &intr->dest, i, val, nir_type_uint);
    }
    return true;
 }
@@ -3521,8 +3525,9 @@ emit_load_ubo_dxil(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return false;
 
    for (unsigned i = 0; i < nir_dest_num_components(intr->dest); i++)
-      store_dest_value(ctx, &intr->dest, i,
-                       dxil_emit_extractval(&ctx->mod, agg, i));
+      store_dest(ctx, &intr->dest, i,
+                 dxil_emit_extractval(&ctx->mod, agg, i),
+                 nir_type_uint);
 
    return true;
 }
@@ -4602,9 +4607,9 @@ emit_load_sample_id(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 
    if (ctx->mod.info.has_per_sample_input)
       return emit_load_unary_external_function(ctx, intr, "dx.op.sampleIndex",
-                                               DXIL_INTR_SAMPLE_INDEX, DXIL_I32);
+                                               DXIL_INTR_SAMPLE_INDEX, nir_type_int);
 
-   store_dest_value(ctx, &intr->dest, 0, dxil_module_get_int32_const(&ctx->mod, 0));
+   store_dest(ctx, &intr->dest, 0, dxil_module_get_int32_const(&ctx->mod, 0), nir_type_int);
    return true;
 }
 
@@ -4624,7 +4629,7 @@ emit_read_first_invocation(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    const struct dxil_value *ret = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
    if (!ret)
       return false;
-   store_dest_value(ctx, &intr->dest, 0, ret);
+   store_dest(ctx, &intr->dest, 0, ret, nir_type_int);
    return true;
 }
 
@@ -4646,7 +4651,7 @@ emit_read_invocation(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    const struct dxil_value *ret = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
    if (!ret)
       return false;
-   store_dest_value(ctx, &intr->dest, 0, ret);
+   store_dest(ctx, &intr->dest, 0, ret, nir_type_int);
    return true;
 }
 
@@ -4667,7 +4672,7 @@ emit_vote_eq(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    const struct dxil_value *ret = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
    if (!ret)
       return false;
-   store_dest_value(ctx, &intr->dest, 0, ret);
+   store_dest(ctx, &intr->dest, 0, ret, nir_type_bool);
    return true;
 }
 
@@ -4689,7 +4694,7 @@ emit_vote(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    const struct dxil_value *ret = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
    if (!ret)
       return false;
-   store_dest_value(ctx, &intr->dest, 0, ret);
+   store_dest(ctx, &intr->dest, 0, ret, nir_type_bool);
    return true;
 }
 
@@ -4709,7 +4714,7 @@ emit_ballot(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    if (!ret)
       return false;
    for (uint32_t i = 0; i < 4; ++i)
-      store_dest_value(ctx, &intr->dest, i, dxil_emit_extractval(&ctx->mod, ret, i));
+      store_dest(ctx, &intr->dest, i, dxil_emit_extractval(&ctx->mod, ret, i), nir_type_int);
    return true;
 }
 
@@ -4730,7 +4735,7 @@ emit_quad_op(struct ntd_context *ctx, nir_intrinsic_instr *intr, enum dxil_quad_
    const struct dxil_value *ret = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
    if (!ret)
       return false;
-   store_dest_value(ctx, &intr->dest, 0, ret);
+   store_dest(ctx, &intr->dest, 0, ret, nir_type_uint);
    return true;
 }
 
@@ -4859,7 +4864,7 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_load_ubo_dxil(ctx, intr);
    case nir_intrinsic_load_primitive_id:
       return emit_load_unary_external_function(ctx, intr, "dx.op.primitiveID",
-                                               DXIL_INTR_PRIMITIVE_ID, DXIL_I32);
+                                               DXIL_INTR_PRIMITIVE_ID, nir_type_int);
    case nir_intrinsic_load_sample_id:
    case nir_intrinsic_load_sample_id_no_per_sample:
       return emit_load_sample_id(ctx, intr);
@@ -4867,17 +4872,17 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       switch (ctx->mod.shader_kind) {
       case DXIL_HULL_SHADER:
          return emit_load_unary_external_function(ctx, intr, "dx.op.outputControlPointID",
-                                                  DXIL_INTR_OUTPUT_CONTROL_POINT_ID, DXIL_I32);
+                                                  DXIL_INTR_OUTPUT_CONTROL_POINT_ID, nir_type_int);
       case DXIL_GEOMETRY_SHADER:
          return emit_load_unary_external_function(ctx, intr, "dx.op.gsInstanceID",
-                                                  DXIL_INTR_GS_INSTANCE_ID, DXIL_I32);
+                                                  DXIL_INTR_GS_INSTANCE_ID, nir_type_int);
       default:
          unreachable("Unexpected shader kind for invocation ID");
       }
    case nir_intrinsic_load_view_index:
       ctx->mod.feats.view_id = true;
       return emit_load_unary_external_function(ctx, intr, "dx.op.viewID",
-                                               DXIL_INTR_VIEW_ID, DXIL_I32);
+                                               DXIL_INTR_VIEW_ID, nir_type_int);
    case nir_intrinsic_load_sample_mask_in:
       return emit_load_sample_mask_in(ctx, intr);
    case nir_intrinsic_load_tess_coord:
@@ -5032,19 +5037,19 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 
    case nir_intrinsic_is_helper_invocation:
       return emit_load_unary_external_function(
-         ctx, intr, "dx.op.isHelperLane", DXIL_INTR_IS_HELPER_LANE, DXIL_I32);
+         ctx, intr, "dx.op.isHelperLane", DXIL_INTR_IS_HELPER_LANE, nir_type_int);
    case nir_intrinsic_elect:
       ctx->mod.feats.wave_ops = 1;
       return emit_load_unary_external_function(
-         ctx, intr, "dx.op.waveIsFirstLane", DXIL_INTR_WAVE_IS_FIRST_LANE, DXIL_NONE);
+         ctx, intr, "dx.op.waveIsFirstLane", DXIL_INTR_WAVE_IS_FIRST_LANE, nir_type_invalid);
    case nir_intrinsic_load_subgroup_size:
       ctx->mod.feats.wave_ops = 1;
       return emit_load_unary_external_function(
-         ctx, intr, "dx.op.waveGetLaneCount", DXIL_INTR_WAVE_GET_LANE_COUNT, DXIL_NONE);
+         ctx, intr, "dx.op.waveGetLaneCount", DXIL_INTR_WAVE_GET_LANE_COUNT, nir_type_invalid);
    case nir_intrinsic_load_subgroup_invocation:
       ctx->mod.feats.wave_ops = 1;
       return emit_load_unary_external_function(
-         ctx, intr, "dx.op.waveGetLaneIndex", DXIL_INTR_WAVE_GET_LANE_INDEX, DXIL_NONE);
+         ctx, intr, "dx.op.waveGetLaneIndex", DXIL_INTR_WAVE_GET_LANE_INDEX, nir_type_invalid);
 
    case nir_intrinsic_vote_feq:
    case nir_intrinsic_vote_ieq:
