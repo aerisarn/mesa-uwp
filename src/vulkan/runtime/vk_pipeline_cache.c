@@ -302,6 +302,37 @@ vk_pipeline_cache_object_deserialize(struct vk_pipeline_cache *cache,
    return object;
 }
 
+static struct vk_pipeline_cache_object *
+vk_pipeline_cache_insert_object(struct vk_pipeline_cache *cache,
+                                struct vk_pipeline_cache_object *object)
+{
+   assert(object->ops != NULL);
+
+   if (cache->object_cache == NULL)
+      return object;
+
+   uint32_t hash = object_key_hash(object);
+
+   vk_pipeline_cache_lock(cache);
+   bool found = false;
+   struct set_entry *entry = _mesa_set_search_or_add_pre_hashed(
+       cache->object_cache, hash, object, &found);
+
+   struct vk_pipeline_cache_object *result = NULL;
+   /* add reference to either the found or inserted object */
+   if (found) {
+      result = vk_pipeline_cache_object_ref((void *)entry->key);
+   } else {
+      result = vk_pipeline_cache_object_ref(object);
+   }
+   vk_pipeline_cache_unlock(cache);
+
+   if (found) {
+      vk_pipeline_cache_object_unref(cache->base.device, object);
+   }
+   return result;
+}
+
 struct vk_pipeline_cache_object *
 vk_pipeline_cache_lookup_object(struct vk_pipeline_cache *cache,
                                 const void *key_data, size_t key_size,
@@ -349,8 +380,9 @@ vk_pipeline_cache_lookup_object(struct vk_pipeline_cache *cache,
                                                           data, data_size,
                                                           ops);
             free(data);
-            if (object != NULL)
-               return vk_pipeline_cache_add_object(cache, object);
+            if (object != NULL) {
+               return vk_pipeline_cache_insert_object(cache, object);
+            }
          }
       }
 #endif
@@ -390,37 +422,15 @@ struct vk_pipeline_cache_object *
 vk_pipeline_cache_add_object(struct vk_pipeline_cache *cache,
                              struct vk_pipeline_cache_object *object)
 {
-   assert(object->ops != NULL);
+   struct vk_pipeline_cache_object *inserted =
+       vk_pipeline_cache_insert_object(cache, object);
 
-   if (cache->object_cache == NULL)
-      return object;
-
-   uint32_t hash = object_key_hash(object);
-
-   vk_pipeline_cache_lock(cache);
-   bool found = false;
-   struct set_entry *entry =
-      _mesa_set_search_or_add_pre_hashed(cache->object_cache,
-                                         hash, object, &found);
-
-   struct vk_pipeline_cache_object *found_object = NULL;
-   if (found) {
-      found_object = vk_pipeline_cache_object_ref((void *)entry->key);
-   } else {
-      /* The cache now owns a reference */
-      vk_pipeline_cache_object_ref(object);
-   }
-   vk_pipeline_cache_unlock(cache);
-
-   if (found) {
-      vk_pipeline_cache_object_unref(cache->base.device, object);
-      return found_object;
-   } else {
+#ifdef ENABLE_SHADER_CACHE
+   if (object == inserted) {
       /* If it wasn't in the object cache, it might not be in the disk cache
        * either.  Better try and add it.
        */
 
-#ifdef ENABLE_SHADER_CACHE
       struct disk_cache *disk_cache = cache->base.device->physical->disk_cache;
       if (object->ops->serialize != NULL && disk_cache) {
          struct blob blob;
@@ -436,10 +446,10 @@ vk_pipeline_cache_add_object(struct vk_pipeline_cache *cache,
 
          blob_finish(&blob);
       }
+   }
 #endif
 
-      return object;
-   }
+   return inserted;
 }
 
 nir_shader *
