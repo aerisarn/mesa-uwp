@@ -1416,7 +1416,6 @@ struct zink_screen {
       bool needs_zs_shader_swizzle;
       unsigned z16_unscaled_bias;
       unsigned z24_unscaled_bias;
-      unsigned extra_swapchain_images;
    } driver_workarounds;
 };
 
