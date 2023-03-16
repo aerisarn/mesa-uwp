@@ -77,6 +77,7 @@ libradv_files = files(
   'nir/radv_nir_lower_intrinsics_early.c',
   'nir/radv_nir_lower_primitive_shading_rate.c',
   'nir/radv_nir_lower_ray_queries.c',
+  'nir/radv_nir_lower_view_index.c',
   'nir/radv_nir_lower_vs_inputs.c',
   'winsys/null/radv_null_bo.c',
   'winsys/null/radv_null_bo.h',

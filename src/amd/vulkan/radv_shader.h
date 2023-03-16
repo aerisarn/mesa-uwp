@@ -748,8 +748,6 @@ void radv_lower_io(struct radv_device *device, nir_shader *nir);
 
 bool radv_lower_io_to_mem(struct radv_device *device, struct radv_pipeline_stage *stage);
 
-bool radv_lower_view_index(nir_shader *nir, bool per_primitive);
-
 void radv_lower_ngg(struct radv_device *device, struct radv_pipeline_stage *ngg_stage,
                     const struct radv_pipeline_key *pl_key);
 

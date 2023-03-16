@@ -64,6 +64,8 @@ bool radv_nir_lower_fs_intrinsics(nir_shader *nir, const struct radv_pipeline_st
 
 bool radv_nir_lower_intrinsics_early(nir_shader *nir, const struct radv_pipeline_key *key);
 
+bool radv_nir_lower_view_index(nir_shader *nir, bool per_primitive);
+
 #ifdef __cplusplus
 }
 #endif

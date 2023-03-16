@@ -1763,7 +1763,7 @@ radv_pipeline_link_shaders(const struct radv_device *device,
       }
 
       /* Lower the view index to map on the layer. */
-      NIR_PASS(_, consumer, radv_lower_view_index, producer->info.stage == MESA_SHADER_MESH);
+      NIR_PASS(_, consumer, radv_nir_lower_view_index, producer->info.stage == MESA_SHADER_MESH);
    }
 
    if (pipeline_key->optimisations_disabled)
