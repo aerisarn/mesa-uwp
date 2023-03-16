@@ -1714,7 +1714,7 @@ agx_update_fs(struct agx_batch *batch)
 
    /* Only proceed if the shader or anything the key depends on changes
     *
-    * batch->key: implicitly dirties everyting, no explicit check
+    * batch->key: implicitly dirties everything, no explicit check
     * rast: RS
     * blend: BLEND
     */
@@ -1995,7 +1995,7 @@ agx_build_meta(struct agx_batch *batch, bool store, bool partial_render)
          struct agx_ptr texture =
             agx_pool_alloc_aligned(&batch->pool, AGX_TEXTURE_LENGTH, 64);
          struct pipe_surface *surf = batch->key.cbufs[rt];
-         assert(surf != NULL && "cannot load nonexistant attachment");
+         assert(surf != NULL && "cannot load nonexistent attachment");
 
          struct agx_resource *rsrc = agx_resource(surf->texture);
 

@@ -787,7 +787,7 @@
 
   <!-- Conditional branching and function calls may be supported, see the
        STREAM_LINK0 struct in mesa/src/imagination/csbgen/rogue_vdm.xml for a
-       probable dfinition -->
+       probable definition -->
   <struct name="VDM Stream Link" size="8">
     <field name="Target hi" size="8" start="0" type="hex"/>
     <field name="Block Type" size="3" start="29" type="VDM Block Type" default="Stream Link"/>

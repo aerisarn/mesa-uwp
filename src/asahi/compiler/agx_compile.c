@@ -436,7 +436,7 @@ agx_write_sample_mask_1(agx_builder *b)
 {
    if (b->shader->nir->info.fs.uses_discard && !b->shader->did_sample_mask) {
       /* If the shader uses discard, the sample mask must be written by the
-       * shader on all exeuction paths. If we've reached the end of the shader,
+       * shader on all execution paths. If we've reached the end of the shader,
        * we are therefore still active and need to write a full sample mask.
        * TODO: interactions with MSAA and gl_SampleMask writes
        */
@@ -2020,7 +2020,7 @@ agx_remap_varyings_vs(nir_shader *nir, struct agx_varyings_vs *varyings)
 {
    unsigned base = 0;
 
-   /* Initalize to "nothing is written" */
+   /* Initialize to "nothing is written" */
    for (unsigned i = 0; i < ARRAY_SIZE(varyings->slots); ++i)
       varyings->slots[i] = ~0;
 
