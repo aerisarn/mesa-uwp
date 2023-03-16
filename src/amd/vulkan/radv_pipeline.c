@@ -5606,6 +5606,30 @@ radv_GetPipelineExecutablePropertiesKHR(VkDevice _device, const VkPipelineInfoKH
          name = "Task Shader";
          description = "Vulkan Task Shader";
          break;
+      case MESA_SHADER_RAYGEN:
+         name = "Ray Generation Shader";
+         description = "Vulkan Ray Generation Shader";
+         break;
+      case MESA_SHADER_ANY_HIT:
+         name = "Any-Hit Shader";
+         description = "Vulkan Any-Hit Shader";
+         break;
+      case MESA_SHADER_CLOSEST_HIT:
+         name = "Closest-Hit Shader";
+         description = "Vulkan Closest-Hit Shader";
+         break;
+      case MESA_SHADER_MISS:
+         name = "Miss Shader";
+         description = "Vulkan Miss Shader";
+         break;
+      case MESA_SHADER_INTERSECTION:
+         name = "Intersection Shader";
+         description = "Vulkan Intersection Shader";
+         break;
+      case MESA_SHADER_CALLABLE:
+         name = "Callable Shader";
+         description = "Vulkan Callable Shader";
+         break;
       }
 
       pProperties[executable_idx].subgroupSize = pipeline->shaders[i]->info.wave_size;
