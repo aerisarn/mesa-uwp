@@ -1085,12 +1085,14 @@ enumerate_devices(struct vk_instance *vk_instance)
 }
 
 VKAPI_ATTR void VKAPI_CALL
-v3dv_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
-                               VkPhysicalDeviceFeatures *pFeatures)
+v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
+                                VkPhysicalDeviceFeatures2 *pFeatures)
 {
-   memset(pFeatures, 0, sizeof(*pFeatures));
+   V3DV_FROM_HANDLE(v3dv_physical_device, physical_device, physicalDevice);
 
-   *pFeatures = (VkPhysicalDeviceFeatures) {
+   memset(&pFeatures->features, 0, sizeof(pFeatures->features));
+
+   pFeatures->features = (VkPhysicalDeviceFeatures) {
       .robustBufferAccess = true, /* This feature is mandatory */
       .fullDrawIndexUint32 = false, /* Only available since V3D 4.4.9.1 */
       .imageCubeArray = true,
@@ -1151,14 +1153,6 @@ v3dv_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
       .variableMultisampleRate = false,
       .inheritedQueries = true,
    };
-}
-
-VKAPI_ATTR void VKAPI_CALL
-v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
-                                VkPhysicalDeviceFeatures2 *pFeatures)
-{
-   V3DV_FROM_HANDLE(v3dv_physical_device, physical_device, physicalDevice);
-   v3dv_GetPhysicalDeviceFeatures(physicalDevice, &pFeatures->features);
 
    VkPhysicalDeviceVulkan13Features vk13 = {
       .inlineUniformBlock  = true,
