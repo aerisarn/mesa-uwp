@@ -11799,7 +11799,9 @@ select_rt_prolog(Program* program, ac_shader_config* config,
    PhysReg in_wg_id_x = get_arg_reg(in_args, in_args->workgroup_ids[0]);
    PhysReg in_wg_id_y = get_arg_reg(in_args, in_args->workgroup_ids[1]);
    PhysReg in_wg_id_z = get_arg_reg(in_args, in_args->workgroup_ids[2]);
-   PhysReg in_scratch_offset = get_arg_reg(in_args, in_args->scratch_offset);
+   PhysReg in_scratch_offset;
+   if (options->gfx_level < GFX11)
+      in_scratch_offset = get_arg_reg(in_args, in_args->scratch_offset);
    PhysReg in_local_ids[2] = {
       get_arg_reg(in_args, in_args->local_invocation_ids),
       get_arg_reg(in_args, in_args->local_invocation_ids).advance(4),
@@ -11839,13 +11841,13 @@ select_rt_prolog(Program* program, ac_shader_config* config,
    assert(in_local_ids[0] == out_launch_ids[0]);
 
    /* init scratch */
-   if (options->gfx_level >= GFX9) {
-      hw_init_scratch(bld, Definition(in_ring_offsets, s1), Operand(in_ring_offsets, s2),
-                      Operand(in_scratch_offset, s1));
-   } else {
+   if (options->gfx_level < GFX9) {
       /* copy ring offsets to temporary location*/
       bld.sop1(aco_opcode::s_mov_b64, Definition(tmp_ring_offsets, s2),
                Operand(in_ring_offsets, s2));
+   } else if (options->gfx_level < GFX11) {
+      hw_init_scratch(bld, Definition(in_ring_offsets, s1), Operand(in_ring_offsets, s2),
+                      Operand(in_scratch_offset, s1));
    }
 
    /* set stack ptr */
