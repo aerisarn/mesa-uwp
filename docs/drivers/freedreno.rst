@@ -9,7 +9,7 @@ See the `Freedreno Wiki
 details.
 
 Turnip
-======
+------
 
 Turnip is a Vulkan 1.3 driver for Adreno 6xx GPUs.
 
