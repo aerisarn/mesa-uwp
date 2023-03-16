@@ -101,6 +101,7 @@ radv_init_physical_device_decoder(struct radv_physical_device *pdevice)
    case CHIP_NAVI24:
    case CHIP_VANGOGH:
    case CHIP_REMBRANDT:
+   case CHIP_RAPHAEL_MENDOCINO:
       pdevice->vid_dec_reg.data0 = RDECODE_VCN2_5_GPCOM_VCPU_DATA0;
       pdevice->vid_dec_reg.data1 = RDECODE_VCN2_5_GPCOM_VCPU_DATA1;
       pdevice->vid_dec_reg.cmd = RDECODE_VCN2_5_GPCOM_VCPU_CMD;
