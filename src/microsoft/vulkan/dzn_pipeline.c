@@ -93,12 +93,13 @@ dzn_cached_blob_serialize(struct vk_pipeline_cache_object *object,
 }
 
 static void
-dzn_cached_blob_destroy(struct vk_pipeline_cache_object *object)
+dzn_cached_blob_destroy(struct vk_device *device,
+                        struct vk_pipeline_cache_object *object)
 {
    struct dzn_cached_blob *shader =
       container_of(object, struct dzn_cached_blob, base);
 
-   vk_free(&shader->base.device->alloc, shader);
+   vk_free(&device->alloc, shader);
 }
 
 static struct vk_pipeline_cache_object *
@@ -544,7 +545,7 @@ dzn_pipeline_cache_lookup_dxil_shader(struct vk_pipeline_cache *cache,
    *stage = info->stage;
 
 out:
-   vk_pipeline_cache_object_unref(cache_obj);
+   vk_pipeline_cache_object_unref(cache->base.device, cache_obj);
    return ret;
 }
 
@@ -571,7 +572,7 @@ dzn_pipeline_cache_add_dxil_shader(struct vk_pipeline_cache *cache,
    memcpy(info->data, bc->pShaderBytecode, bc->BytecodeLength);
 
    cache_obj = vk_pipeline_cache_add_object(cache, cache_obj);
-   vk_pipeline_cache_object_unref(cache_obj);
+   vk_pipeline_cache_object_unref(cache->base.device, cache_obj);
 }
 
 struct dzn_cached_gfx_pipeline_header {
@@ -647,7 +648,7 @@ dzn_pipeline_cache_lookup_gfx_pipeline(struct dzn_graphics_pipeline *pipeline,
 
    *cache_hit = true;
 
-   vk_pipeline_cache_object_unref(cache_obj);
+   vk_pipeline_cache_object_unref(cache->base.device, cache_obj);
    return VK_SUCCESS;
 }
 
@@ -702,7 +703,7 @@ dzn_pipeline_cache_add_gfx_pipeline(struct dzn_graphics_pipeline *pipeline,
    }
 
    cache_obj = vk_pipeline_cache_add_object(cache, cache_obj);
-   vk_pipeline_cache_object_unref(cache_obj);
+   vk_pipeline_cache_object_unref(cache->base.device, cache_obj);
 }
 
 static void
@@ -2333,7 +2334,7 @@ dzn_pipeline_cache_lookup_compute_pipeline(struct vk_pipeline_cache *cache,
    *cache_hit = true;
 
 out:
-   vk_pipeline_cache_object_unref(cache_obj);
+   vk_pipeline_cache_object_unref(cache->base.device, cache_obj);
    return ret;
 }
 
@@ -2353,7 +2354,7 @@ dzn_pipeline_cache_add_compute_pipeline(struct vk_pipeline_cache *cache,
    memcpy((void *)cached_blob->data, dxil_hash, SHA1_DIGEST_LENGTH);
 
    cache_obj = vk_pipeline_cache_add_object(cache, cache_obj);
-   vk_pipeline_cache_object_unref(cache_obj);
+   vk_pipeline_cache_object_unref(cache->base.device, cache_obj);
 }
 
 static VkResult

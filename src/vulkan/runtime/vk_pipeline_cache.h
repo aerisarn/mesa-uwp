@@ -86,7 +86,8 @@ struct vk_pipeline_cache_object_ops {
     *
     * Called when vk_pipeline_cache_object.ref_cnt hits 0.
     */
-   void (*destroy)(struct vk_pipeline_cache_object *object);
+   void (*destroy)(struct vk_device *device,
+                   struct vk_pipeline_cache_object *object);
 };
 
 /** Base struct for cached objects
@@ -105,7 +106,6 @@ struct vk_pipeline_cache_object_ops {
  * it never has two objects of different types with the same key.
  */
 struct vk_pipeline_cache_object {
-   struct vk_device *device;
    const struct vk_pipeline_cache_object_ops *ops;
    uint32_t ref_cnt;
 
@@ -121,7 +121,6 @@ vk_pipeline_cache_object_init(struct vk_device *device,
                               const void *key_data, uint32_t key_size)
 {
    memset(object, 0, sizeof(*object));
-   object->device = device;
    object->ops = ops;
    p_atomic_set(&object->ref_cnt, 1);
    object->data_size = 0; /* Unknown */
@@ -144,11 +143,12 @@ vk_pipeline_cache_object_ref(struct vk_pipeline_cache_object *object)
 }
 
 static inline void
-vk_pipeline_cache_object_unref(struct vk_pipeline_cache_object *object)
+vk_pipeline_cache_object_unref(struct vk_device *device,
+                               struct vk_pipeline_cache_object *object)
 {
    assert(object && p_atomic_read(&object->ref_cnt) >= 1);
    if (p_atomic_dec_zero(&object->ref_cnt))
-      object->ops->destroy(object);
+      object->ops->destroy(device, object);
 }
 
 /** A generic implementation of VkPipelineCache */

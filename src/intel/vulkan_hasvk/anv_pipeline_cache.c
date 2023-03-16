@@ -41,10 +41,11 @@ anv_shader_bin_deserialize(struct vk_device *device,
                            struct blob_reader *blob);
 
 static void
-anv_shader_bin_destroy(struct vk_pipeline_cache_object *object)
+anv_shader_bin_destroy(struct vk_device *_device,
+                       struct vk_pipeline_cache_object *object)
 {
    struct anv_device *device =
-      container_of(object->device, struct anv_device, vk);
+      container_of(_device, struct anv_device, vk);
    struct anv_shader_bin *shader =
       container_of(object, struct anv_shader_bin, base);
 
