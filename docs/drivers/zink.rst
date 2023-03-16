@@ -297,6 +297,8 @@ variable:
     Disable renderpass optimizations (for tiling GPUs)
   ``map``
     Print info about mapped VRAM
+  ``flushsync``
+    Force synchronous flushes/presents
 
 Vulkan Validation Layers
 ^^^^^^^^^^^^^^^^^^^^^^^^

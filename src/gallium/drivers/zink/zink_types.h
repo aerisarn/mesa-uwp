@@ -220,6 +220,7 @@ enum zink_debug {
    ZINK_DEBUG_RP = (1<<9),
    ZINK_DEBUG_NORP = (1<<10),
    ZINK_DEBUG_MAP = (1<<11),
+   ZINK_DEBUG_FLUSHSYNC = (1<<12),
 };
 
 /** fence types */
@@ -1282,6 +1283,7 @@ struct zink_screen {
    PFN_vkGetDeviceProcAddr vk_GetDeviceProcAddr;
 
    bool threaded;
+   bool threaded_submit;
    bool is_cpu;
    bool abort_on_hang;
    bool frame_marker_emitted;
