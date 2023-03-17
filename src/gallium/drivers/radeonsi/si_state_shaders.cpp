@@ -3693,7 +3693,7 @@ static void si_cs_preamble_add_vgt_flush(struct si_context *sctx, bool tmz)
                                &sctx->cs_preamble_has_vgt_flush;
 
    /* We shouldn't get here if registers are shadowed. */
-   assert(!sctx->shadowed_regs);
+   assert(!sctx->shadowing.registers);
 
    if (*has_vgt_flush)
       return;
@@ -3810,7 +3810,7 @@ bool si_update_gs_ring_buffers(struct si_context *sctx)
                          false, 0, 0, 0);
    }
 
-   if (sctx->shadowed_regs) {
+   if (sctx->shadowing.registers) {
       /* These registers will be shadowed, so set them only once. */
       struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
@@ -4080,7 +4080,7 @@ void si_init_tess_factor_ring(struct si_context *sctx)
 
    assert((tf_ring_size_field & C_030938_SIZE) == 0);
 
-   if (sctx->shadowed_regs) {
+   if (sctx->shadowing.registers) {
       /* These registers will be shadowed, so set them only once. */
       /* TODO: tmz + shadowed_regs support */
       struct radeon_cmdbuf *cs = &sctx->gfx_cs;

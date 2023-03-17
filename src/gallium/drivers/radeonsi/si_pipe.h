@@ -962,7 +962,14 @@ struct si_context {
    struct u_log_context *log;
    void *query_result_shader;
    void *sh_query_result_shader;
-   struct si_resource *shadowed_regs;
+   struct {
+      /* Memory where the shadowed registers will be saved and loaded from. */
+      struct si_resource *registers;
+      /* Context Save Area: scratch area to save other required data. Only
+       * used if info->has_fw_based_mcbp is true.
+       */
+      struct si_resource *csa;
+   } shadowing;
 
    void (*emit_cache_flush)(struct si_context *ctx, struct radeon_cmdbuf *cs);
 

@@ -1471,7 +1471,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
    /* draw packet */
    if (index_size) {
       /* Register shadowing doesn't shadow INDEX_TYPE. */
-      if (index_size != sctx->last_index_size || sctx->shadowed_regs ||
+      if (index_size != sctx->last_index_size || sctx->shadowing.registers ||
           (GFX_VERSION == GFX10_3 && disable_instance_packing != sctx->disable_instance_packing)) {
          unsigned index_type;
 
@@ -1598,7 +1598,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
       }
    } else {
       /* Register shadowing requires that we always emit PKT3_NUM_INSTANCES. */
-      if (sctx->shadowed_regs ||
+      if (sctx->shadowing.registers ||
           sctx->last_instance_count == SI_INSTANCE_COUNT_UNKNOWN ||
           sctx->last_instance_count != instance_count) {
          radeon_emit(PKT3(PKT3_NUM_INSTANCES, 0, 0));
