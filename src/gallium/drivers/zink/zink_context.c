@@ -2934,6 +2934,8 @@ zink_prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, uns
       layout = VK_IMAGE_LAYOUT_GENERAL;
    if (res->valid || res->layout != layout)
       zink_screen(ctx->base.screen)->image_barrier(ctx, res, layout, access, pipeline);
+   if (!(res->aspect & VK_IMAGE_ASPECT_COLOR_BIT))
+      ctx->zsbuf_readonly = res->layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
    res->obj->unordered_read = res->obj->unordered_write = false;
    if (i == ctx->fb_state.nr_cbufs && res->sampler_bind_count[0])
       update_res_sampler_layouts(ctx, res);
