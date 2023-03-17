@@ -478,7 +478,9 @@ traces:
     freedreno-a630:
       label: [skip]
     zink-a630:
+      label: [skip, flakes]
       checksum: fd1b9033e68c394a5564d8c4819a3012
+      text: crashes time to time
 
   blender/blender-demo-cube_diorama.trace:
     freedreno-a306:
