@@ -1494,6 +1494,14 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
       info->attribute_ring_size_per_se = 64 * 1024;
    }
 
+   if (info->gfx_level >= GFX11 && device_info.shadow_size > 0) {
+      info->has_fw_based_shadowing = true;
+      info->fw_based_mcbp.shadow_size = device_info.shadow_size;
+      info->fw_based_mcbp.shadow_alignment = device_info.shadow_alignment;
+      info->fw_based_mcbp.csa_size = device_info.csa_size;
+      info->fw_based_mcbp.csa_alignment = device_info.csa_alignment;
+   }
+
    set_custom_cu_en_mask(info);
 
    const char *ib_filename = debug_get_option("AMD_PARSE_IB", NULL);
@@ -1721,6 +1729,16 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    has_gang_submit = %u\n", info->has_gang_submit);
    fprintf(f, "    mid_command_buffer_preemption_enabled = %u\n",
            info->mid_command_buffer_preemption_enabled);
+   fprintf(f, "    has_fw_based_shadowing = %u\n", info->has_fw_based_shadowing);
+   if (info->has_fw_based_shadowing) {
+      fprintf(f, "        * shadow size: %u (alignment: %u)\n",
+         info->fw_based_mcbp.shadow_size,
+         info->fw_based_mcbp.shadow_alignment);
+      fprintf(f, "        * csa size: %u (alignment: %u)\n",
+         info->fw_based_mcbp.csa_size,
+         info->fw_based_mcbp.csa_alignment);
+   }
+
    fprintf(f, "    has_tmz_support = %u\n", info->has_tmz_support);
    for (unsigned i = 0; i < AMD_NUM_IP_TYPES; i++) {
       if (info->max_submitted_ibs[i]) {

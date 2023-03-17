@@ -273,6 +273,14 @@ struct radeon_info {
    /* AMD_CU_MASK environment variable or ~0. */
    bool spi_cu_en_has_effect;
    uint32_t spi_cu_en;
+
+   struct {
+      uint32_t shadow_size;
+      uint32_t shadow_alignment;
+      uint32_t csa_size;
+      uint32_t csa_alignment;
+   } fw_based_mcbp;
+   bool has_fw_based_shadowing;
 };
 
 bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info);
