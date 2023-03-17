@@ -7,18 +7,23 @@ set -o xtrace
 
 CROSS_FILE=/cross_file-"$CROSS".txt
 
+export PATH=$PATH:$PWD/.gitlab-ci/build
+
+touch native.file
+printf > native.file "%s\n" \
+  "[binaries]" \
+  "c = '${CC:-gcc}-link-werror.sh'" \
+  "cpp = '${CXX:-g++}-link-werror.sh'"
+
 # We need to control the version of llvm-config we're using, so we'll
 # tweak the cross file or generate a native file to do so.
 if test -n "$LLVM_VERSION"; then
     LLVM_CONFIG="llvm-config-${LLVM_VERSION}"
-    echo -e "[binaries]\nllvm-config = '`which $LLVM_CONFIG`'" > native.file
+    echo "llvm-config = '`which $LLVM_CONFIG`'" >> native.file
     if [ -n "$CROSS" ]; then
         sed -i -e '/\[binaries\]/a\' -e "llvm-config = '`which $LLVM_CONFIG`'" $CROSS_FILE
     fi
     $LLVM_CONFIG --version
-else
-    rm -f native.file
-    touch native.file
 fi
 
 # cross-xfail-$CROSS, if it exists, contains a list of tests that are expected

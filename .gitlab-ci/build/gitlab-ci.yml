@@ -184,7 +184,6 @@ debian-build-testing:
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,d3d12,asahi,crocus"
     VULKAN_DRIVERS: swrast
     EXTRA_OPTION: >
-      --native-file .gitlab-ci/build/meson-native-lto-wrappers.txt
       -D spirv-to-dxil=true
       -D osmesa=true
       -D tools=drm-shim,etnaviv,freedreno,glsl,intel,intel-ui,nir,nouveau,lima,panfrost,asahi
@@ -198,7 +197,7 @@ debian-build-testing:
     section_switch yamllint "yamllint"
     .gitlab-ci/run-yamllint.sh
     section_switch meson "meson"
-    PATH=$PATH:$PWD/.gitlab-ci/build .gitlab-ci/meson/build.sh
+    .gitlab-ci/meson/build.sh
     section_switch shader-db "shader-db"
     .gitlab-ci/run-shader-db.sh
 
@@ -297,7 +296,6 @@ fedora-release:
       -D glvnd=true
       -D platforms=x11,wayland
     EXTRA_OPTION: >
-      --native-file .gitlab-ci/build/meson-native-lto-wrappers.txt
       -D b_lto=true
       -D osmesa=true
       -D selinux=true
@@ -325,7 +323,7 @@ fedora-release:
     UNWIND: "disabled"
     VULKAN_DRIVERS: "amd,broadcom,freedreno,imagination-experimental,intel,intel_hasvk"
   script:
-    - PATH=$PATH:$PWD/.gitlab-ci/build .gitlab-ci/meson/build.sh
+    - .gitlab-ci/meson/build.sh
 
 debian-android:
   extends:
