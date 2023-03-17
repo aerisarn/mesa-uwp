@@ -1362,10 +1362,6 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
    nir_function_impl *impl = nir_shader_get_entrypoint(b->shader);
 
    /* Create some helper variables. */
-   nir_variable *position_value_var = s->position_value_var;
-   nir_variable *prim_exp_arg_var = s->prim_exp_arg_var;
-   nir_variable *gs_accepted_var = s->gs_accepted_var;
-   nir_variable *es_accepted_var = s->es_accepted_var;
    nir_variable *gs_vtxaddr_vars[3] = {
       nir_local_variable_create(impl, glsl_uint_type(), "gs_vtx0_addr"),
       nir_local_variable_create(impl, glsl_uint_type(), "gs_vtx1_addr"),
@@ -1402,7 +1398,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       /* Initialize the position output variable to zeroes, in case not all VS/TES invocations store the output.
        * The spec doesn't require it, but we use (0, 0, 0, 1) because some games rely on that.
        */
-      nir_store_var(b, position_value_var, nir_imm_vec4(b, 0.0f, 0.0f, 0.0f, 1.0f), 0xfu);
+      nir_store_var(b, s->position_value_var, nir_imm_vec4(b, 0.0f, 0.0f, 0.0f, 1.0f), 0xfu);
 
       /* Now reinsert a clone of the shader code */
       struct hash_table *remap_table = _mesa_pointer_hash_table_create(NULL);
@@ -1428,9 +1424,9 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
    }
    nir_pop_if(b, if_es_thread);
 
-   nir_store_var(b, es_accepted_var, es_thread, 0x1u);
+   nir_store_var(b, s->es_accepted_var, es_thread, 0x1u);
    nir_ssa_def *gs_thread = has_input_primitive(b);
-   nir_store_var(b, gs_accepted_var, gs_thread, 0x1u);
+   nir_store_var(b, s->gs_accepted_var, gs_thread, 0x1u);
 
    /* Remove all non-position outputs, and put the position output into the variable. */
    nir_metadata_preserve(impl, nir_metadata_none);
@@ -1456,7 +1452,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       if_es_thread->control = nir_selection_control_divergent_always_taken;
       {
          /* Store position components that are relevant to culling in LDS */
-         nir_ssa_def *pre_cull_pos = nir_load_var(b, position_value_var);
+         nir_ssa_def *pre_cull_pos = nir_load_var(b, s->position_value_var);
          nir_ssa_def *pre_cull_w = nir_channel(b, pre_cull_pos, 3);
          nir_store_shared(b, pre_cull_w, es_vertex_lds_addr, .base = lds_es_pos_w);
          nir_ssa_def *pre_cull_x_div_w = nir_fdiv(b, nir_channel(b, pre_cull_pos, 0), pre_cull_w);
@@ -1474,8 +1470,8 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       nir_scoped_barrier(b, .execution_scope=NIR_SCOPE_WORKGROUP, .memory_scope=NIR_SCOPE_WORKGROUP,
                             .memory_semantics=NIR_MEMORY_ACQ_REL, .memory_modes=nir_var_mem_shared);
 
-      nir_store_var(b, gs_accepted_var, nir_imm_bool(b, false), 0x1u);
-      nir_store_var(b, prim_exp_arg_var, nir_imm_int(b, 1u << 31), 0x1u);
+      nir_store_var(b, s->gs_accepted_var, nir_imm_bool(b, false), 0x1u);
+      nir_store_var(b, s->prim_exp_arg_var, nir_imm_int(b, 1u << 31), 0x1u);
 
       /* GS invocations load the vertex data and perform the culling. */
       nir_if *if_gs_thread = nir_push_if(b, gs_thread);
@@ -1527,7 +1523,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       nir_scoped_barrier(b, .execution_scope=NIR_SCOPE_WORKGROUP, .memory_scope=NIR_SCOPE_WORKGROUP,
                             .memory_semantics=NIR_MEMORY_ACQ_REL, .memory_modes=nir_var_mem_shared);
 
-      nir_store_var(b, es_accepted_var, nir_imm_bool(b, false), 0x1u);
+      nir_store_var(b, s->es_accepted_var, nir_imm_bool(b, false), 0x1u);
 
       /* ES invocations load their accepted flag from LDS. */
       if_es_thread = nir_push_if(b, es_thread);
@@ -1535,11 +1531,11 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       {
          nir_ssa_def *accepted = nir_load_shared(b, 1, 8u, es_vertex_lds_addr, .base = lds_es_vertex_accepted, .align_mul = 4u);
          nir_ssa_def *accepted_bool = nir_ine(b, accepted, nir_imm_intN_t(b, 0, 8));
-         nir_store_var(b, es_accepted_var, accepted_bool, 0x1u);
+         nir_store_var(b, s->es_accepted_var, accepted_bool, 0x1u);
       }
       nir_pop_if(b, if_es_thread);
 
-      nir_ssa_def *es_accepted = nir_load_var(b, es_accepted_var);
+      nir_ssa_def *es_accepted = nir_load_var(b, s->es_accepted_var);
 
       /* Repack the vertices that survived the culling. */
       wg_repack_result rep = repack_invocations_in_workgroup(b, es_accepted, lds_scratch_base,
@@ -1577,7 +1573,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
          nir_alloc_vertices_and_primitives_amd(b, vtx_cnt, prim_cnt);
       }
       nir_pop_if(b, if_wave_0);
-      nir_store_var(b, prim_exp_arg_var, emit_ngg_nogs_prim_exp_arg(b, s), 0x1u);
+      nir_store_var(b, s->prim_exp_arg_var, emit_ngg_nogs_prim_exp_arg(b, s), 0x1u);
    }
    nir_pop_if(b, if_cull_en);
 
