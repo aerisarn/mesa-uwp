@@ -167,6 +167,8 @@ void
 zink_rebind_all_images(struct zink_context *ctx);
 
 void
+zink_parse_tc_info(struct zink_context *ctx);
+void
 zink_flush_memory_barrier(struct zink_context *ctx, bool is_compute);
 void
 zink_init_draw_functions(struct zink_context *ctx, struct zink_screen *screen);

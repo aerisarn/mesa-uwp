@@ -67,6 +67,20 @@ update_tc_info(struct zink_context *ctx)
       const struct tc_renderpass_info *info = threaded_context_get_renderpass_info(ctx->tc);
       ctx->rp_changed |= ctx->dynamic_fb.tc_info.data != info->data;
       ctx->dynamic_fb.tc_info.data = info->data;
+   } else {
+      struct tc_renderpass_info info = ctx->dynamic_fb.tc_info;
+      bool zsbuf_used = zink_is_zsbuf_used(ctx);
+      bool zsbuf_write = zink_is_zsbuf_write(ctx);
+      ctx->dynamic_fb.tc_info.data32[0] = 0;
+      if (ctx->clears_enabled & PIPE_CLEAR_DEPTHSTENCIL)
+         ctx->dynamic_fb.tc_info.zsbuf_clear_partial = true;
+      if (ctx->rp_clears_enabled & PIPE_CLEAR_DEPTHSTENCIL)
+         ctx->dynamic_fb.tc_info.zsbuf_clear = true;
+      if (ctx->dynamic_fb.tc_info.zsbuf_clear != info.zsbuf_clear)
+         ctx->rp_loadop_changed = true;
+      if (zink_is_zsbuf_write(ctx) != zsbuf_write)
+         ctx->rp_layout_changed = true;
+      ctx->rp_changed |= zink_is_zsbuf_used(ctx) != zsbuf_used;
    }
 }
 
@@ -5282,6 +5296,18 @@ zink_tc_parse_fs(void *state, struct tc_renderpass_info *info)
    info->zsbuf_write_fs |= zs->nir->info.outputs_written & (BITFIELD64_BIT(FRAG_RESULT_DEPTH) | BITFIELD64_BIT(FRAG_RESULT_STENCIL));
    /* TODO: if >1 fbfetch attachment is ever supported */
    info->cbuf_fbfetch |= zs->nir->info.fs.uses_fbfetch_output ? BITFIELD_BIT(0) : 0;
+}
+
+void
+zink_parse_tc_info(struct zink_context *ctx)
+{
+   struct tc_renderpass_info *info = &ctx->dynamic_fb.tc_info;
+   /* reset cso info first */
+   info->data16[2] = 0;
+   if (ctx->gfx_stages[MESA_SHADER_FRAGMENT])
+      zink_tc_parse_fs(ctx->gfx_stages[MESA_SHADER_FRAGMENT], info);
+   if (ctx->dsa_state)
+      zink_tc_parse_dsa(ctx->dsa_state, info);
 }
 
 struct pipe_context *

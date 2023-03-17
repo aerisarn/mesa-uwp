@@ -298,10 +298,15 @@ zink_clear(struct pipe_context *pctx,
       if (buffers & PIPE_CLEAR_STENCIL)
          clear->zs.stencil = stencil;
       clear->zs.bits |= (buffers & PIPE_CLEAR_DEPTHSTENCIL);
-      if (zink_fb_clear_first_needs_explicit(fb_clear))
+      if (zink_fb_clear_first_needs_explicit(fb_clear)) {
          ctx->rp_clears_enabled &= ~PIPE_CLEAR_DEPTHSTENCIL;
-      else
+         if (!zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses)
+            ctx->dynamic_fb.tc_info.zsbuf_clear_partial = true;
+      } else {
          ctx->rp_clears_enabled |= (buffers & PIPE_CLEAR_DEPTHSTENCIL);
+         if (!zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses)
+            ctx->dynamic_fb.tc_info.zsbuf_clear = true;
+      }
    }
    assert(!ctx->batch.in_rp);
    ctx->rp_changed |= ctx->rp_clears_enabled != rp_clears_enabled;
