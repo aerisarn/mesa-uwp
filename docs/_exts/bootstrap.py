@@ -36,6 +36,7 @@ from docutils import nodes
 
 import sphinx
 from sphinx.ext.autosummary import autosummary_table
+from sphinx.locale import admonitionlabels
 
 import types
 
@@ -49,6 +50,28 @@ class BootstrapHTML5TranslatorMixin:
         if kwargs.get("ROLE") == "heading" and "ARIA-LEVEL" not in kwargs:
             kwargs["ARIA-LEVEL"] = "2"
         return super().starttag(*args, **kwargs)
+
+    def visit_admonition(self, node, name: str = '') -> None:
+        admonitionclasses = {
+            'attention': 'alert-primary',
+            'caution':   'alert-secondary',
+            'danger':    'alert-danger',
+            'error':     'alert-danger',
+            'hint':      'alert-secondary',
+            'important': 'alert-primary',
+            'note':      'alert-info',
+            'seealso':   'alert-info',
+            'tip':       'alert-info',
+            'warning':   'alert-warning',
+        }
+
+        self.body.append(self.starttag(
+            node, 'div', CLASS=('alert ' + admonitionclasses[name])))
+        if name:
+            self.body.append(
+                  self.starttag(node, 'div', '', CLASS='h5'))
+            self.body.append(str(admonitionlabels[name]))
+            self.body.append('</div>')
 
     def visit_table(self, node):
         # init the attributes
