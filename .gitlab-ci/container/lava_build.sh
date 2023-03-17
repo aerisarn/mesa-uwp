@@ -220,10 +220,12 @@ if [ "$DEBIAN_ARCH" = "amd64" ]; then
 fi
 
 ############### Installing
-. .gitlab-ci/container/install-wine-apitrace.sh
-mkdir -p "$ROOTFS/apitrace-msvc-win64"
-mv /apitrace-msvc-win64/bin "$ROOTFS/apitrace-msvc-win64"
-rm -rf /apitrace-msvc-win64
+if [ "$DEBIAN_ARCH" = "amd64" ]; then
+  . .gitlab-ci/container/install-wine-apitrace.sh
+  mkdir -p "$ROOTFS/apitrace-msvc-win64"
+  mv /apitrace-msvc-win64/bin "$ROOTFS/apitrace-msvc-win64"
+  rm -rf /apitrace-msvc-win64
+fi
 
 ############### Building
 STRIP_CMD="${GCC_ARCH}-strip"
