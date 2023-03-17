@@ -436,6 +436,9 @@ debian-arm64:
     - .meson-arm
     - .ci-deqp-artifacts
   variables:
+    C_ARGS: >
+      -Wno-error=array-bounds
+      -Wno-error=stringop-truncation
     VULKAN_DRIVERS: "freedreno,broadcom,panfrost,imagination-experimental"
     EXTRA_OPTION: >
       -D llvm=disabled
@@ -478,6 +481,7 @@ debian-arm64-release:
     BUILDTYPE: release
     MINIO_ARTIFACT_NAME: mesa-arm64-${BUILDTYPE}
     C_ARGS: >
+      -Wno-error=array-bounds
       -Wno-error=stringop-truncation
   script:
     - .gitlab-ci/meson/build.sh
