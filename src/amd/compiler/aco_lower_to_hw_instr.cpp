@@ -2233,6 +2233,19 @@ lower_to_hw_instr(Program* program)
                handle_operands(copy_operations, &ctx, program->gfx_level, pi);
                break;
             }
+            case aco_opcode::p_start_linear_vgpr: {
+               if (instr->operands.empty())
+                  break;
+
+               Definition def(instr->definitions[0].physReg(),
+                              RegClass::get(RegType::vgpr, instr->definitions[0].bytes()));
+
+               std::map<PhysReg, copy_operation> copy_operations;
+               copy_operations[def.physReg()] = {instr->operands[0], def,
+                                                 instr->operands[0].bytes()};
+               handle_operands(copy_operations, &ctx, program->gfx_level, pi);
+               break;
+            }
             case aco_opcode::p_exit_early_if: {
                /* don't bother with an early exit near the end of the program */
                if ((block->instructions.size() - 1 - instr_idx) <= 4 &&

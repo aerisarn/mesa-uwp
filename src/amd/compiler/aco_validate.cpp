@@ -585,6 +585,15 @@ validate_ir(Program* program)
                            instr->operands[i].isUndefined(),
                         "Operands of p_dual_src_export_gfx11 must be VGPRs or undef", instr.get());
                }
+            } else if (instr->opcode == aco_opcode::p_start_linear_vgpr) {
+               check(instr->definitions.size() == 1, "Must have one definition", instr.get());
+               check(instr->operands.size() <= 1, "Must have one or zero operands", instr.get());
+               if (!instr->definitions.empty())
+                  check(instr->definitions[0].regClass().is_linear_vgpr(),
+                        "Definition must be linear VGPR", instr.get());
+               if (!instr->definitions.empty() && !instr->operands.empty())
+                  check(instr->definitions[0].bytes() == instr->operands[0].bytes(),
+                        "Operand size must match definition", instr.get());
             }
             break;
          }

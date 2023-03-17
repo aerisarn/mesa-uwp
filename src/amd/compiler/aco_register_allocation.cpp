@@ -1890,7 +1890,8 @@ handle_pseudo(ra_ctx& ctx, const RegisterFile& reg_file, Instruction* instr)
    case aco_opcode::p_create_vector:
    case aco_opcode::p_split_vector:
    case aco_opcode::p_parallelcopy:
-   case aco_opcode::p_wqm: break;
+   case aco_opcode::p_wqm:
+   case aco_opcode::p_start_linear_vgpr: break;
    default: return;
    }
 
@@ -2943,7 +2944,9 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
                      definition->setFixed(reg);
                }
             } else if (instr->opcode == aco_opcode::p_wqm ||
-                       instr->opcode == aco_opcode::p_parallelcopy) {
+                       instr->opcode == aco_opcode::p_parallelcopy ||
+                       (instr->opcode == aco_opcode::p_start_linear_vgpr &&
+                        !instr->operands.empty())) {
                PhysReg reg = instr->operands[i].physReg();
                if (instr->operands[i].isTemp() &&
                    instr->operands[i].getTemp().type() == definition->getTemp().type() &&
