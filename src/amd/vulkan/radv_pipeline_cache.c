@@ -206,6 +206,36 @@ radv_hash_rt_shaders(unsigned char *hash, const VkRayTracingPipelineCreateInfoKH
    _mesa_sha1_final(&ctx, hash);
 }
 
+static void
+radv_shader_destroy(struct vk_device *_device, struct vk_pipeline_cache_object *object)
+{
+   struct radv_device *device = container_of(_device, struct radv_device, vk);
+   struct radv_shader *shader = container_of(object, struct radv_shader, base);
+
+   if (device->shader_use_invisible_vram) {
+      /* Wait for any pending upload to complete, or we'll be writing into freed shader memory. */
+      radv_shader_wait_for_upload(device, shader->upload_seq);
+   }
+
+   radv_free_shader_memory(device, shader->alloc);
+
+   free(shader->code);
+   free(shader->spirv);
+   free(shader->nir_string);
+   free(shader->disasm_string);
+   free(shader->ir_string);
+   free(shader->statistics);
+
+   vk_pipeline_cache_object_finish(&shader->base);
+   free(shader);
+}
+
+const struct vk_pipeline_cache_object_ops radv_shader_ops = {
+   .serialize = NULL,
+   .deserialize = NULL,
+   .destroy = radv_shader_destroy,
+};
+
 static struct cache_entry *
 radv_pipeline_cache_search_unlocked(struct radv_pipeline_cache *cache, const unsigned char *sha1)
 {

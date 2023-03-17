@@ -29,6 +29,7 @@
 #define RADV_SHADER_H
 
 #include "util/u_math.h"
+#include "vulkan/runtime/vk_pipeline_cache.h"
 #include "vulkan/vulkan.h"
 #include "ac_binary.h"
 #include "ac_shader_util.h"
@@ -502,7 +503,7 @@ union radv_shader_arena_block {
 };
 
 struct radv_shader {
-   uint32_t ref_count;
+   struct vk_pipeline_cache_object base;
 
    struct radeon_winsys_bo *bo;
    union radv_shader_arena_block *alloc;
@@ -514,6 +515,8 @@ struct radv_shader {
    uint32_t code_size;
    uint32_t exec_size;
    struct radv_shader_info info;
+
+   uint8_t sha1[SHA1_DIGEST_LENGTH];
 
    /* sqtt only */
    void *code;
@@ -612,8 +615,6 @@ struct radv_shader_part *radv_create_ps_epilog(struct radv_device *device,
                                                const struct radv_ps_epilog_key *key,
                                                struct radv_shader_part_binary **binary_out);
 
-void radv_shader_destroy(struct radv_device *device, struct radv_shader *shader);
-
 void radv_shader_part_destroy(struct radv_device *device, struct radv_shader_part *shader_part);
 
 uint64_t radv_shader_get_va(const struct radv_shader *shader);
@@ -634,20 +635,19 @@ bool radv_can_dump_shader_stats(struct radv_device *device, nir_shader *nir);
 VkResult radv_dump_shader_stats(struct radv_device *device, struct radv_pipeline *pipeline,
                                 struct radv_shader *shader, gl_shader_stage stage, FILE *output);
 
+extern const struct vk_pipeline_cache_object_ops radv_shader_ops;
+
 static inline struct radv_shader *
 radv_shader_ref(struct radv_shader *shader)
 {
-   assert(shader && shader->ref_count >= 1);
-   p_atomic_inc(&shader->ref_count);
+   vk_pipeline_cache_object_ref(&shader->base);
    return shader;
 }
 
 static inline void
 radv_shader_unref(struct radv_device *device, struct radv_shader *shader)
 {
-   assert(shader && shader->ref_count >= 1);
-   if (p_atomic_dec_zero(&shader->ref_count))
-      radv_shader_destroy(device, shader);
+   vk_pipeline_cache_object_unref((struct vk_device *)device, &shader->base);
 }
 
 static inline struct radv_shader_part *

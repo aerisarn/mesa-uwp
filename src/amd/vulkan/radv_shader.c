@@ -1907,7 +1907,9 @@ radv_shader_create(struct radv_device *device, const struct radv_shader_binary *
    if (!shader)
       return NULL;
 
-   shader->ref_count = 1;
+   vk_pipeline_cache_object_init(&device->vk, &shader->base, &radv_shader_ops, shader->sha1,
+                                 SHA1_DIGEST_LENGTH);
+
    shader->info = binary->info;
 
    /* Copy the shader binary configuration. */
@@ -2516,27 +2518,6 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
 fail:
    free(binary);
    return NULL;
-}
-
-void
-radv_shader_destroy(struct radv_device *device, struct radv_shader *shader)
-{
-   assert(shader->ref_count == 0);
-
-   if (device->shader_use_invisible_vram) {
-      /* Wait for any pending upload to complete, or we'll be writing into freed shader memory. */
-      radv_shader_wait_for_upload(device, shader->upload_seq);
-   }
-
-   radv_free_shader_memory(device, shader->alloc);
-
-   free(shader->code);
-   free(shader->spirv);
-   free(shader->nir_string);
-   free(shader->disasm_string);
-   free(shader->ir_string);
-   free(shader->statistics);
-   free(shader);
 }
 
 void
