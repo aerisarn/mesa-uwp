@@ -5646,7 +5646,7 @@ zink_tc_context_unwrap(struct pipe_context *pctx, bool threaded)
 
 
 static bool
-add_implicit_color_feedback_loop(struct zink_context *ctx, struct zink_resource *res)
+add_implicit_feedback_loop(struct zink_context *ctx, struct zink_resource *res)
 {
    /* can only feedback loop with fb+sampler bind; image bind must be GENERAL */
    if (!res->fb_bind_count || !res->sampler_bind_count[0] || res->image_bind_count[0])
@@ -5706,7 +5706,7 @@ zink_update_barriers(struct zink_context *ctx, bool is_compute,
          if (res->base.b.target == PIPE_BUFFER)
             zink_screen(ctx->base.screen)->buffer_barrier(ctx, res, res->barrier_access[is_compute], pipeline);
          else {
-            bool is_feedback = is_compute ? false : add_implicit_color_feedback_loop(ctx, res);
+            bool is_feedback = is_compute ? false : add_implicit_feedback_loop(ctx, res);
             VkImageLayout layout = zink_descriptor_util_image_layout_eval(ctx, res, is_compute);
             /* GENERAL is only used for feedback loops and storage image binds */
             if (is_feedback || layout != VK_IMAGE_LAYOUT_GENERAL || res->image_bind_count[is_compute])
