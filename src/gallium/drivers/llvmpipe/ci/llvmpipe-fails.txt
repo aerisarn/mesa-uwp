@@ -213,9 +213,6 @@ spec@arb_texture_buffer_object@texture-buffer-size-clamp@rg8ui_texture_buffer_si
 spec@arb_texture_buffer_object@texture-buffer-size-clamp@rgba8ui_texture_buffer_size_via_image,Fail
 spec@arb_texture_buffer_object@texture-buffer-size-clamp@rgba8ui_texture_buffer_size_via_sampler,Fail
 
-# https://gitlab.freedesktop.org/mesa/mesa/-/issues/7152
-spec@ext_transform_feedback@builtin-varyings gl_culldistance,Fail
-
 # [...]
 # Image comparison failed: reference = -0.000488281, expected = 0:0:0:0, result = 0:0:0:3
 # Image comparison failed: reference = 0, expected = 0:0:0:0, result = 0:0:0:3

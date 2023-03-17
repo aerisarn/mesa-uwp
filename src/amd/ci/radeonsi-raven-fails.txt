@@ -185,7 +185,4 @@ CreateContext/VAAPICreateContext.CreateContext/3160,Crash
 
 spec@!opengl 1.0@gl-1.0-user-clip-all-planes,Fail
 
-# https://gitlab.freedesktop.org/mesa/mesa/-/issues/7152
-spec@ext_transform_feedback@builtin-varyings gl_culldistance,Fail
-
 spec@!opengl 1.1@line-smooth-stipple,Fail
