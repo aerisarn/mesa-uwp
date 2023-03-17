@@ -895,7 +895,7 @@ cleanup_culling_shader_after_dce(nir_shader *shader,
 static void
 compact_vertices_after_culling(nir_builder *b,
                                lower_ngg_nogs_state *s,
-                               nir_variable **repacked_arg_vars,
+                               nir_variable **repacked_variables,
                                nir_variable **gs_vtxaddr_vars,
                                nir_ssa_def *invocation_index,
                                nir_ssa_def *es_vertex_lds_addr,
@@ -903,7 +903,7 @@ compact_vertices_after_culling(nir_builder *b,
                                nir_ssa_def *num_live_vertices_in_workgroup,
                                nir_ssa_def *fully_culled,
                                unsigned pervertex_lds_bytes,
-                               unsigned max_exported_args)
+                               unsigned num_repacked_variables)
 {
    nir_variable *es_accepted_var = s->es_accepted_var;
    nir_variable *gs_accepted_var = s->gs_accepted_var;
@@ -922,8 +922,8 @@ compact_vertices_after_culling(nir_builder *b,
       nir_store_shared(b, pos, exporter_addr, .base = lds_es_pos_x);
 
       /* Store the current thread's repackable arguments to the exporter thread's LDS space */
-      for (unsigned i = 0; i < max_exported_args; ++i) {
-         nir_ssa_def *arg_val = nir_load_var(b, repacked_arg_vars[i]);
+      for (unsigned i = 0; i < num_repacked_variables; ++i) {
+         nir_ssa_def *arg_val = nir_load_var(b, repacked_variables[i]);
          nir_intrinsic_instr *store = nir_store_shared(b, arg_val, exporter_addr, .base = lds_es_arg_0 + 4u * i);
 
          s->compact_arg_stores[i] = &store->instr;
@@ -956,9 +956,9 @@ compact_vertices_after_culling(nir_builder *b,
       nir_store_var(b, position_value_var, exported_pos, 0xfu);
 
       /* Read the repacked arguments */
-      for (unsigned i = 0; i < max_exported_args; ++i) {
+      for (unsigned i = 0; i < num_repacked_variables; ++i) {
          nir_ssa_def *arg_val = nir_load_shared(b, 1, 32, es_vertex_lds_addr, .base = lds_es_arg_0 + 4u * i);
-         nir_store_var(b, repacked_arg_vars[i], arg_val, 0x1u);
+         nir_store_var(b, repacked_variables[i], arg_val, 0x1u);
       }
 
       if (b->shader->info.stage == MESA_SHADER_TESS_EVAL) {
@@ -970,8 +970,8 @@ compact_vertices_after_culling(nir_builder *b,
    nir_push_else(b, if_packed_es_thread);
    {
       nir_store_var(b, position_value_var, nir_ssa_undef(b, 4, 32), 0xfu);
-      for (unsigned i = 0; i < max_exported_args; ++i)
-         nir_store_var(b, repacked_arg_vars[i], nir_ssa_undef(b, 1, 32), 0x1u);
+      for (unsigned i = 0; i < num_repacked_variables; ++i)
+         nir_store_var(b, repacked_variables[i], nir_ssa_undef(b, 1, 32), 0x1u);
    }
    nir_pop_if(b, if_packed_es_thread);
 
@@ -1353,12 +1353,12 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
    bool uses_instance_id = BITSET_TEST(b->shader->info.system_values_read, SYSTEM_VALUE_INSTANCE_ID);
    bool uses_tess_primitive_id = BITSET_TEST(b->shader->info.system_values_read, SYSTEM_VALUE_PRIMITIVE_ID);
 
-   unsigned max_exported_args;
+   unsigned num_repacked_variables;
    unsigned pervertex_lds_bytes =
       ngg_nogs_get_culling_pervertex_lds_size(b->shader->info.stage,
                                               uses_instance_id,
                                               uses_tess_primitive_id,
-                                              &max_exported_args);
+                                              &num_repacked_variables);
 
    nir_function_impl *impl = nir_shader_get_entrypoint(b->shader);
 
@@ -1368,10 +1368,11 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       nir_local_variable_create(impl, glsl_uint_type(), "gs_vtx1_addr"),
       nir_local_variable_create(impl, glsl_uint_type(), "gs_vtx2_addr"),
    };
-   nir_variable *repacked_arg_vars[3] = {
-      nir_local_variable_create(impl, glsl_uint_type(), "repacked_arg_0"),
-      nir_local_variable_create(impl, glsl_uint_type(), "repacked_arg_1"),
-      nir_local_variable_create(impl, glsl_uint_type(), "repacked_arg_2"),
+
+   nir_variable *repacked_variables[3] = {
+      nir_local_variable_create(impl, glsl_uint_type(), "repacked_var_0"),
+      nir_local_variable_create(impl, glsl_uint_type(), "repacked_var_1"),
+      nir_local_variable_create(impl, glsl_uint_type(), "repacked_var_2"),
    };
 
    /* Relative patch ID is a special case because it doesn't need an extra dword, repack separately. */
@@ -1411,16 +1412,16 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
 
       /* Remember the current thread's shader arguments */
       if (b->shader->info.stage == MESA_SHADER_VERTEX) {
-         nir_store_var(b, repacked_arg_vars[0], nir_load_vertex_id_zero_base(b), 0x1u);
+         nir_store_var(b, repacked_variables[0], nir_load_vertex_id_zero_base(b), 0x1u);
          if (uses_instance_id)
-            nir_store_var(b, repacked_arg_vars[1], nir_load_instance_id(b), 0x1u);
+            nir_store_var(b, repacked_variables[1], nir_load_instance_id(b), 0x1u);
       } else if (b->shader->info.stage == MESA_SHADER_TESS_EVAL) {
          nir_store_var(b, s->repacked_rel_patch_id, nir_load_tess_rel_patch_id_amd(b), 0x1u);
          nir_ssa_def *tess_coord = nir_load_tess_coord(b);
-         nir_store_var(b, repacked_arg_vars[0], nir_channel(b, tess_coord, 0), 0x1u);
-         nir_store_var(b, repacked_arg_vars[1], nir_channel(b, tess_coord, 1), 0x1u);
+         nir_store_var(b, repacked_variables[0], nir_channel(b, tess_coord, 0), 0x1u);
+         nir_store_var(b, repacked_variables[1], nir_channel(b, tess_coord, 1), 0x1u);
          if (uses_tess_primitive_id)
-            nir_store_var(b, repacked_arg_vars[2], nir_load_primitive_id(b), 0x1u);
+            nir_store_var(b, repacked_variables[2], nir_load_primitive_id(b), 0x1u);
       } else {
          unreachable("Should be VS or TES.");
       }
@@ -1561,10 +1562,10 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
 
       /* Vertex compaction. */
       compact_vertices_after_culling(b, s,
-                                     repacked_arg_vars, gs_vtxaddr_vars,
+                                     repacked_variables, gs_vtxaddr_vars,
                                      invocation_index, es_vertex_lds_addr,
                                      es_exporter_tid, num_live_vertices_in_workgroup, fully_culled,
-                                     pervertex_lds_bytes, max_exported_args);
+                                     pervertex_lds_bytes, num_repacked_variables);
    }
    nir_push_else(b, if_cull_en);
    {
@@ -1600,12 +1601,12 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
    if (b->shader->info.stage == MESA_SHADER_VERTEX)
       s->overwrite_args =
          nir_overwrite_vs_arguments_amd(b,
-            nir_load_var(b, repacked_arg_vars[0]), nir_load_var(b, repacked_arg_vars[1]));
+            nir_load_var(b, repacked_variables[0]), nir_load_var(b, repacked_variables[1]));
    else if (b->shader->info.stage == MESA_SHADER_TESS_EVAL)
       s->overwrite_args =
          nir_overwrite_tes_arguments_amd(b,
-            nir_load_var(b, repacked_arg_vars[0]), nir_load_var(b, repacked_arg_vars[1]),
-            nir_load_var(b, repacked_arg_vars[2]), nir_load_var(b, s->repacked_rel_patch_id));
+            nir_load_var(b, repacked_variables[0]), nir_load_var(b, repacked_variables[1]),
+            nir_load_var(b, repacked_variables[2]), nir_load_var(b, s->repacked_rel_patch_id));
    else
       unreachable("Should be VS or TES.");
 }
