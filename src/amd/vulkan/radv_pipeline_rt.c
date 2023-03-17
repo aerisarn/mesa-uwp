@@ -161,6 +161,9 @@ radv_create_merged_rt_create_info(const VkRayTracingPipelineCreateInfoKHR *pCrea
       malloc(sizeof(VkRayTracingShaderGroupCreateInfoKHR) * total_groups);
    if (!local_create_info.pGroups) {
       free((void *)local_create_info.pStages);
+      /* Some compilers throw use-after-free errors despite all callers immediately returning
+       * VK_ERROR_OUT_OF_HOST_MEMORY in this case, circumvent those by setting pStages to NULL */
+      local_create_info.pStages = NULL;
       return local_create_info;
    }
 
