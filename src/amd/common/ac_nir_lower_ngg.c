@@ -1078,6 +1078,63 @@ analyze_shader_before_culling(nir_shader *shader, lower_ngg_nogs_state *nogs_sta
    }
 }
 
+static nir_ssa_def *
+find_reusable_ssa_def(nir_instr *instr)
+{
+   /* Find instructions whose SSA definitions are used by both
+    * the top and bottom parts of the shader (before and after culling).
+    * Only in this case, it makes sense for the bottom part
+    * to try to reuse these from the top part.
+    */
+   if ((instr->pass_flags & nggc_passflag_used_by_both) != nggc_passflag_used_by_both)
+      return NULL;
+
+   switch (instr->type) {
+   case nir_instr_type_alu: {
+      nir_alu_instr *alu = nir_instr_as_alu(instr);
+      if (alu->dest.dest.ssa.divergent)
+         return NULL;
+      /* Ignore uniform floats because they regress VGPR usage too much */
+      if (nir_op_infos[alu->op].output_type & nir_type_float)
+         return NULL;
+      return &alu->dest.dest.ssa;
+   }
+   case nir_instr_type_intrinsic: {
+      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+      if (!nir_intrinsic_can_reorder(intrin) ||
+            !nir_intrinsic_infos[intrin->intrinsic].has_dest ||
+            intrin->dest.ssa.divergent)
+         return NULL;
+      return &intrin->dest.ssa;
+   }
+   case nir_instr_type_phi: {
+      nir_phi_instr *phi = nir_instr_as_phi(instr);
+      if (phi->dest.ssa.divergent)
+         return NULL;
+      return &phi->dest.ssa;
+   }
+   default:
+      return NULL;
+   }
+}
+
+static const struct glsl_type *
+glsl_uint_type_for_ssa(nir_ssa_def *ssa)
+{
+   enum glsl_base_type base_type = GLSL_TYPE_UINT;
+   switch (ssa->bit_size) {
+   case 8: base_type = GLSL_TYPE_UINT8; break;
+   case 16: base_type = GLSL_TYPE_UINT16; break;
+   case 32: base_type = GLSL_TYPE_UINT; break;
+   case 64: base_type = GLSL_TYPE_UINT64; break;
+   default: return NULL;
+   }
+
+   return ssa->num_components == 1
+          ? glsl_scalar_type(base_type)
+          : glsl_vector_type(base_type, ssa->num_components);
+}
+
 /**
  * Save the reusable SSA definitions to variables so that the
  * bottom shader part can reuse them from the top part.
@@ -1100,66 +1157,19 @@ save_reusable_variables(nir_builder *b, lower_ngg_nogs_state *nogs_state)
    while (block) {
       /* Process the instructions in the current block. */
       nir_foreach_instr_safe(instr, block) {
-         /* Find instructions whose SSA definitions are used by both
-          * the top and bottom parts of the shader (before and after culling).
-          * Only in this case, it makes sense for the bottom part
-          * to try to reuse these from the top part.
-          */
-         if ((instr->pass_flags & nggc_passflag_used_by_both) != nggc_passflag_used_by_both)
-            continue;
-
          /* Determine if we can reuse the current SSA value.
           * When vertex compaction is used, it is possible that the same shader invocation
           * processes a different vertex in the top and bottom part of the shader.
           * Therefore, we only reuse uniform values.
           */
-         nir_ssa_def *ssa = NULL;
-         switch (instr->type) {
-         case nir_instr_type_alu: {
-            nir_alu_instr *alu = nir_instr_as_alu(instr);
-            if (alu->dest.dest.ssa.divergent)
-               continue;
-            /* Ignore uniform floats because they regress VGPR usage too much */
-            if (nir_op_infos[alu->op].output_type & nir_type_float)
-               continue;
-            ssa = &alu->dest.dest.ssa;
-            break;
-         }
-         case nir_instr_type_intrinsic: {
-            nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-            if (!nir_intrinsic_can_reorder(intrin) ||
-                !nir_intrinsic_infos[intrin->intrinsic].has_dest ||
-                intrin->dest.ssa.divergent)
-               continue;
-            ssa = &intrin->dest.ssa;
-            break;
-         }
-         case nir_instr_type_phi: {
-            nir_phi_instr *phi = nir_instr_as_phi(instr);
-            if (phi->dest.ssa.divergent)
-               continue;
-            ssa = &phi->dest.ssa;
-            break;
-         }
-         default:
+         nir_ssa_def *ssa = find_reusable_ssa_def(instr);
+         if (!ssa)
             continue;
-         }
-
-         assert(ssa);
 
          /* Determine a suitable type for the SSA value. */
-         enum glsl_base_type base_type = GLSL_TYPE_UINT;
-         switch (ssa->bit_size) {
-         case 8: base_type = GLSL_TYPE_UINT8; break;
-         case 16: base_type = GLSL_TYPE_UINT16; break;
-         case 32: base_type = GLSL_TYPE_UINT; break;
-         case 64: base_type = GLSL_TYPE_UINT64; break;
-         default: continue;
-         }
-
-         const struct glsl_type *t = ssa->num_components == 1
-                                     ? glsl_scalar_type(base_type)
-                                     : glsl_vector_type(base_type, ssa->num_components);
+         const struct glsl_type *t = glsl_uint_type_for_ssa(ssa);
+         if (!t)
+            continue;
 
          reusable_nondeferred_variable *saved = (reusable_nondeferred_variable *) u_vector_add(&nogs_state->reusable_nondeferred_variables);
          assert(saved);
