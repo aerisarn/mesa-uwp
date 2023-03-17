@@ -5005,6 +5005,11 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       }
    }
 
+   if (pipeline->base.gs_copy_shader) {
+      pipeline->base.shader_upload_seq = MAX2(pipeline->base.shader_upload_seq,
+                                              pipeline->base.gs_copy_shader->upload_seq);
+   }
+
    if (extra) {
       radv_pipeline_init_extra(pipeline, extra, &blend, &state, &vgt_gs_out_prim_type);
    }
