@@ -729,7 +729,7 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
          intel_engines_count(pdevice->engine_info,
                              INTEL_ENGINE_CLASS_RENDER);
       int v_count =
-         intel_engines_count(pdevice->engine_info, I915_ENGINE_CLASS_VIDEO);
+         intel_engines_count(pdevice->engine_info, INTEL_ENGINE_CLASS_VIDEO);
       int g_count = 0;
       int c_count = 0;
       if (debug_get_bool_option("INTEL_COMPUTE_CLASS", false))
@@ -769,7 +769,7 @@ anv_physical_device_init_queue_families(struct anv_physical_device *pdevice)
          pdevice->queue.families[family_count++] = (struct anv_queue_family) {
             .queueFlags = VK_QUEUE_VIDEO_DECODE_BIT_KHR,
             .queueCount = v_count,
-            .engine_class = I915_ENGINE_CLASS_VIDEO,
+            .engine_class = INTEL_ENGINE_CLASS_VIDEO,
          };
       }
       /* Increase count below when other families are added as a reminder to
