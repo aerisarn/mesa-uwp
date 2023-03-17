@@ -100,6 +100,9 @@ prepare_target_err(struct gl_context *ctx, GLuint name, GLenum target,
       break;
    case GL_TEXTURE_EXTERNAL_OES:
       /* Only exists in ES */
+      if (_mesa_is_gles(ctx))
+         break;
+      FALLTHROUGH;
    case GL_TEXTURE_BUFFER:
    default:
       _mesa_error(ctx, GL_INVALID_ENUM,
