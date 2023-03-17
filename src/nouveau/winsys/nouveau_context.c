@@ -124,6 +124,7 @@ nouveau_ws_context_create(struct nouveau_ws_device *dev, struct nouveau_ws_conte
 {
    struct drm_nouveau_channel_alloc req = { };
    uint32_t classes[NOUVEAU_WS_CONTEXT_MAX_CLASSES];
+   uint32_t base;
 
    *out = CALLOC_STRUCT(nouveau_ws_context);
    if (!*out)
@@ -137,15 +138,16 @@ nouveau_ws_context_create(struct nouveau_ws_device *dev, struct nouveau_ws_conte
    if (ret)
       goto fail_chan;
 
+   base = (0xbeef + req.channel) << 16;
    uint32_t obj_class = nouveau_ws_context_find_class(classes, 0x2d);
-   ret = nouveau_ws_subchan_alloc(dev->fd, req.channel, 0xbeef902d, obj_class, &(*out)->eng2d);
+   ret = nouveau_ws_subchan_alloc(dev->fd, req.channel, base | 0x902d, obj_class, &(*out)->eng2d);
    if (ret)
       goto fail_2d;
 
    obj_class = nouveau_ws_context_find_class(classes, 0x40);
    if (!obj_class)
       obj_class = nouveau_ws_context_find_class(classes, 0x39);
-   ret = nouveau_ws_subchan_alloc(dev->fd, req.channel, 0xbeef323f, obj_class, &(*out)->m2mf);
+   ret = nouveau_ws_subchan_alloc(dev->fd, req.channel, base | 0x323f, obj_class, &(*out)->m2mf);
    if (ret)
       goto fail_subchan;
 
@@ -155,12 +157,12 @@ nouveau_ws_context_create(struct nouveau_ws_device *dev, struct nouveau_ws_conte
       goto fail_subchan;
 
    obj_class = nouveau_ws_context_find_class(classes, 0x97);
-   ret = nouveau_ws_subchan_alloc(dev->fd, req.channel, 0xbeef003d, obj_class, &(*out)->eng3d);
+   ret = nouveau_ws_subchan_alloc(dev->fd, req.channel, base | 0x003d, obj_class, &(*out)->eng3d);
    if (ret)
       goto fail_subchan;
 
    obj_class = nouveau_ws_context_find_class(classes, 0xc0);
-   ret = nouveau_ws_subchan_alloc(dev->fd, req.channel, 0xbeef00c0, obj_class, &(*out)->compute);
+   ret = nouveau_ws_subchan_alloc(dev->fd, req.channel, base | 0x00c0, obj_class, &(*out)->compute);
    if (ret)
       goto fail_subchan;
 
