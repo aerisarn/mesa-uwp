@@ -44,7 +44,7 @@ typedef struct
 {
    nir_ssa_def *ssa;
    nir_variable *var;
-} saved_uniform;
+} reusable_nondeferred_variable;
 
 typedef struct
 {
@@ -71,7 +71,7 @@ typedef struct
 
    nir_ssa_def *vtx_addr[3];
 
-   struct u_vector saved_uniforms;
+   struct u_vector reusable_nondeferred_variables;
 
    bool early_prim_export;
    bool streamout_enabled;
@@ -1093,7 +1093,7 @@ analyze_shader_before_culling(nir_shader *shader, lower_ngg_nogs_state *nogs_sta
 static void
 save_reusable_variables(nir_builder *b, lower_ngg_nogs_state *nogs_state)
 {
-   ASSERTED int vec_ok = u_vector_init(&nogs_state->saved_uniforms, 4, sizeof(saved_uniform));
+   ASSERTED int vec_ok = u_vector_init(&nogs_state->reusable_nondeferred_variables, 4, sizeof(reusable_nondeferred_variable));
    assert(vec_ok);
 
    nir_block *block = nir_start_block(b->impl);
@@ -1161,7 +1161,7 @@ save_reusable_variables(nir_builder *b, lower_ngg_nogs_state *nogs_state)
                                      ? glsl_scalar_type(base_type)
                                      : glsl_vector_type(base_type, ssa->num_components);
 
-         saved_uniform *saved = (saved_uniform *) u_vector_add(&nogs_state->saved_uniforms);
+         reusable_nondeferred_variable *saved = (reusable_nondeferred_variable *) u_vector_add(&nogs_state->reusable_nondeferred_variables);
          assert(saved);
 
          /* Create a new NIR variable where we store the reusable value.
@@ -1217,8 +1217,8 @@ save_reusable_variables(nir_builder *b, lower_ngg_nogs_state *nogs_state)
 static void
 apply_reusable_variables(nir_builder *b, lower_ngg_nogs_state *nogs_state)
 {
-   if (!u_vector_length(&nogs_state->saved_uniforms)) {
-      u_vector_finish(&nogs_state->saved_uniforms);
+   if (!u_vector_length(&nogs_state->reusable_nondeferred_variables)) {
+      u_vector_finish(&nogs_state->reusable_nondeferred_variables);
       return;
    }
 
@@ -1240,8 +1240,8 @@ apply_reusable_variables(nir_builder *b, lower_ngg_nogs_state *nogs_state)
          if (deref->deref_type != nir_deref_type_var)
             continue;
 
-         saved_uniform *saved;
-         u_vector_foreach(saved, &nogs_state->saved_uniforms) {
+         reusable_nondeferred_variable *saved;
+         u_vector_foreach(saved, &nogs_state->reusable_nondeferred_variables) {
             if (saved->var == deref->var) {
                nir_instr_remove(instr);
             }
@@ -1250,7 +1250,7 @@ apply_reusable_variables(nir_builder *b, lower_ngg_nogs_state *nogs_state)
    }
 
    done:
-   u_vector_finish(&nogs_state->saved_uniforms);
+   u_vector_finish(&nogs_state->reusable_nondeferred_variables);
 }
 
 static void
