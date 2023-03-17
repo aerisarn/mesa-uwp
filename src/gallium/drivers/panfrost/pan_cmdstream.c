@@ -4426,10 +4426,14 @@ init_batch(struct panfrost_batch *batch)
    batch->tls = batch->framebuffer;
 
 #if PAN_ARCH == 5
-   pan_pack(&batch->tls.gpu, FRAMEBUFFER_POINTER, cfg) {
+   struct mali_framebuffer_pointer_packed ptr;
+
+   pan_pack(ptr.opaque, FRAMEBUFFER_POINTER, cfg) {
       cfg.pointer = batch->framebuffer.gpu;
       cfg.render_target_count = 1; /* a necessary lie */
    }
+
+   batch->tls.gpu = ptr.opaque[0];
 #endif
 #endif
 }
