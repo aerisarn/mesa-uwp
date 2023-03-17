@@ -1593,6 +1593,31 @@ nvk_mme_build_set_draw_params(struct mme_builder *b,
 }
 
 static void
+nvk_mme_build_draw_loop(struct mme_builder *b,
+                        struct mme_value instance_count,
+                        struct mme_value first_vertex,
+                        struct mme_value vertex_count)
+{
+   struct mme_value begin = nvk_mme_load_scratch(b, DRAW_BEGIN);
+
+   mme_loop(b, instance_count) {
+      mme_mthd(b, NV9097_BEGIN);
+      mme_emit(b, begin);
+
+      mme_mthd(b, NV9097_SET_VERTEX_ARRAY_START);
+      mme_emit(b, first_vertex);
+      mme_emit(b, vertex_count);
+
+      mme_mthd(b, NV9097_END);
+      mme_emit(b, mme_zero());
+
+      mme_set_field_enum(b, begin, NV9097_BEGIN_INSTANCE_ID, SUBSEQUENT);
+   }
+
+   mme_free_reg(b, begin);
+}
+
+static void
 nvk_mme_build_draw(struct mme_builder *b,
                    struct mme_value draw_idx)
 {
@@ -1614,28 +1639,10 @@ nvk_mme_build_draw(struct mme_builder *b,
    if (b->devinfo->cls_eng3d < TURING_A)
       nvk_mme_spill(b, DRAW_IDX, draw_idx);
 
-   struct mme_value begin = nvk_mme_load_scratch(b, DRAW_BEGIN);
+   nvk_mme_build_draw_loop(b, instance_count,
+                           first_vertex, vertex_count);
 
-   mme_loop(b, instance_count) {
-      /* The loop count in consumed at the beginning of the loop so we can
-       * free it now and save ourselves a register.
-       */
-      mme_free_reg(b, instance_count);
-
-      mme_mthd(b, NV9097_BEGIN);
-      mme_emit(b, begin);
-
-      mme_mthd(b, NV9097_SET_VERTEX_ARRAY_START);
-      mme_emit(b, first_vertex);
-      mme_emit(b, vertex_count);
-
-      mme_mthd(b, NV9097_END);
-      mme_emit(b, mme_zero());
-
-      mme_set_field_enum(b, begin, NV9097_BEGIN_INSTANCE_ID, SUBSEQUENT);
-   }
-
-   mme_free_reg(b, begin);
+   mme_free_reg(b, instance_count);
    mme_free_reg(b, first_vertex);
    mme_free_reg(b, vertex_count);
 
@@ -1682,6 +1689,31 @@ nvk_CmdDraw(VkCommandBuffer commandBuffer,
 }
 
 static void
+nvk_mme_build_draw_indexed_loop(struct mme_builder *b,
+                                struct mme_value instance_count,
+                                struct mme_value first_index,
+                                struct mme_value index_count)
+{
+   struct mme_value begin = nvk_mme_load_scratch(b, DRAW_BEGIN);
+
+   mme_loop(b, instance_count) {
+      mme_mthd(b, NV9097_BEGIN);
+      mme_emit(b, begin);
+
+      mme_mthd(b, NV9097_SET_INDEX_BUFFER_F);
+      mme_emit(b, first_index);
+      mme_emit(b, index_count);
+
+      mme_mthd(b, NV9097_END);
+      mme_emit(b, mme_zero());
+
+      mme_set_field_enum(b, begin, NV9097_BEGIN_INSTANCE_ID, SUBSEQUENT);
+   }
+
+   mme_free_reg(b, begin);
+}
+
+static void
 nvk_mme_build_draw_indexed(struct mme_builder *b,
                            struct mme_value draw_idx)
 {
@@ -1706,28 +1738,10 @@ nvk_mme_build_draw_indexed(struct mme_builder *b,
    if (b->devinfo->cls_eng3d < TURING_A)
       nvk_mme_spill(b, DRAW_IDX, draw_idx);
 
-   struct mme_value begin = nvk_mme_load_scratch(b, DRAW_BEGIN);
+   nvk_mme_build_draw_indexed_loop(b, instance_count,
+                                   first_index, index_count);
 
-   mme_loop(b, instance_count) {
-      /* The loop count in consumed at the beginning of the loop so we can
-       * free it now and save ourselves a register.
-       */
-      mme_free_reg(b, instance_count);
-
-      mme_mthd(b, NV9097_BEGIN);
-      mme_emit(b, begin);
-
-      mme_mthd(b, NV9097_SET_INDEX_BUFFER_F);
-      mme_emit(b, first_index);
-      mme_emit(b, index_count);
-
-      mme_mthd(b, NV9097_END);
-      mme_emit(b, mme_zero());
-
-      mme_set_field_enum(b, begin, NV9097_BEGIN_INSTANCE_ID, SUBSEQUENT);
-   }
-
-   mme_free_reg(b, begin);
+   mme_free_reg(b, instance_count);
    mme_free_reg(b, first_index);
    mme_free_reg(b, index_count);
 
@@ -2163,6 +2177,29 @@ nvk_CmdDrawIndexedIndirectCount(VkCommandBuffer commandBuffer,
    P_INLINE_DATA(p, stride);
 }
 
+static void
+nvk_mme_xfb_draw_indirect_loop(struct mme_builder *b,
+                               struct mme_value instance_count,
+                               struct mme_value counter)
+{
+   struct mme_value begin = nvk_mme_load_scratch(b, DRAW_BEGIN);
+
+   mme_loop(b, instance_count) {
+      mme_mthd(b, NV9097_BEGIN);
+      mme_emit(b, begin);
+
+      mme_mthd(b, NV9097_DRAW_AUTO);
+      mme_emit(b, counter);
+
+      mme_mthd(b, NV9097_END);
+      mme_emit(b, mme_zero());
+
+      mme_set_field_enum(b, begin, NV9097_BEGIN_INSTANCE_ID, SUBSEQUENT);
+   }
+
+   mme_free_reg(b, begin);
+}
+
 void
 nvk_mme_xfb_draw_indirect(struct mme_builder *b)
 {
@@ -2186,20 +2223,7 @@ nvk_mme_xfb_draw_indirect(struct mme_builder *b)
 
    mme_free_reg(b, first_instance);
 
-   struct mme_value begin = nvk_mme_load_scratch(b, DRAW_BEGIN);
-
-   mme_loop(b, instance_count) {
-      mme_mthd(b, NV9097_BEGIN);
-      mme_emit(b, begin);
-
-      mme_mthd(b, NV9097_DRAW_AUTO);
-      mme_emit(b, counter);
-
-      mme_mthd(b, NV9097_END);
-      mme_emit(b, mme_zero());
-
-      mme_set_field_enum(b, begin, NV9097_BEGIN_INSTANCE_ID, SUBSEQUENT);
-   }
+   nvk_mme_xfb_draw_indirect_loop(b, instance_count, counter);
 
    mme_free_reg(b, instance_count);
    mme_free_reg(b, counter);
