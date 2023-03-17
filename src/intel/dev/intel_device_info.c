@@ -1306,6 +1306,8 @@ intel_get_device_info_from_pci_id(int pci_id,
       strncpy(devinfo->name, "Intel Unknown", sizeof(devinfo->name));
    }
 
+   devinfo->pci_device_id = pci_id;
+
    fill_masks(devinfo);
 
    /* From the Skylake PRM, 3DSTATE_PS::Scratch Space Base Pointer:
