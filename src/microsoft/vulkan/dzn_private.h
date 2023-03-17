@@ -718,6 +718,7 @@ struct dzn_descriptor_set_layout_binding {
        * For non-dynamic buffer types, index into the set's buffer descriptor slot list when bindless. */
       uint32_t buffer_idx;
    };
+   bool variable_size;
 };
 
 #if D3D12_SDK_VERSION < 609

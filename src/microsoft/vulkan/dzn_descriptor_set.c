@@ -156,6 +156,10 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
    uint32_t dynamic_buffer_count = 0;
    uint32_t range_count[MAX_SHADER_VISIBILITIES][NUM_POOL_TYPES] = { 0 };
 
+   const VkDescriptorSetLayoutBindingFlagsCreateInfo *binding_flags =
+      vk_find_struct_const(pCreateInfo->pNext, DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO);
+   bool has_variable_size = false;
+
    for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
       binding_count = MAX2(binding_count, bindings[i].binding + 1);
 
@@ -218,7 +222,13 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
          else
             dynamic_ranges_offset += bindings[i].descriptorCount * factor;
       }
+
+      if (binding_flags && binding_flags->bindingCount &&
+          (binding_flags->pBindingFlags[i] & VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT))
+         has_variable_size = true;
    }
+
+   assert(!has_variable_size || device->bindless);
 
    /* We need to allocate decriptor set layouts off the device allocator
     * with DEVICE scope because they are reference counted and may not be
@@ -302,6 +312,9 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
          translate_desc_stages(ordered_bindings[i].stageFlags);
       set_layout->stages |= binfos[binding].stages;
       binfos[binding].visibility = visibility;
+      /* Only the last binding can have variable size */
+      if (binding == binding_count - 1)
+         binfos[binding].variable_size = has_variable_size;
       if (is_dynamic && device->bindless) {
          /* Assign these into a separate 0->N space */
          binfos[binding].base_shader_register = dynamic_buffer_idx;
@@ -410,7 +423,8 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
             set_layout->dynamic_buffers.count += range->NumDescriptors;
          } else {
             range->OffsetInDescriptorsFromTableStart = set_layout->range_desc_count[type];
-            set_layout->range_desc_count[type] += range->NumDescriptors;
+            if (!binfos[binding].variable_size)
+               set_layout->range_desc_count[type] += range->NumDescriptors;
          }
 
          if (!dzn_descriptor_type_depends_on_shader_usage(desc_type, device->bindless))
@@ -1557,7 +1571,8 @@ dzn_descriptor_set_init(struct dzn_descriptor_set *set,
                         struct dzn_device *device,
                         struct dzn_descriptor_pool *pool,
                         struct dzn_descriptor_set_layout *layout,
-                        bool reuse)
+                        bool reuse,
+                        uint32_t *variable_descriptor_count)
 {
    vk_object_base_init(&device->vk, &set->base, VK_OBJECT_TYPE_DESCRIPTOR_SET);
 
@@ -1576,8 +1591,8 @@ dzn_descriptor_set_init(struct dzn_descriptor_set *set,
    if (!reuse) {
       dzn_foreach_pool_type(type) {
          set->heap_offsets[type] = pool->free_offset[type];
-         set->heap_sizes[type] = layout->range_desc_count[type];
-         set->pool->free_offset[type] += layout->range_desc_count[type];
+         set->heap_sizes[type] = layout->range_desc_count[type] + variable_descriptor_count[type];
+         set->pool->free_offset[type] += set->heap_sizes[type];
       }
    }
 
@@ -1895,12 +1910,22 @@ dzn_AllocateDescriptorSets(VkDevice dev,
    VK_FROM_HANDLE(dzn_descriptor_pool, pool, pAllocateInfo->descriptorPool);
    VK_FROM_HANDLE(dzn_device, device, dev);
 
+   const struct VkDescriptorSetVariableDescriptorCountAllocateInfo *variable_counts =
+      vk_find_struct_const(pAllocateInfo->pNext, DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO);
+
    uint32_t set_idx = 0;
    for (unsigned i = 0; i < pAllocateInfo->descriptorSetCount; i++) {
       VK_FROM_HANDLE(dzn_descriptor_set_layout, layout, pAllocateInfo->pSetLayouts[i]);
+      uint32_t additional_desc_counts[NUM_POOL_TYPES];
+      additional_desc_counts[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] =
+         variable_counts && variable_counts->descriptorSetCount ?
+         variable_counts->pDescriptorCounts[i] : 0;
+      additional_desc_counts[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER] = 0;
+      uint32_t total_desc_count[NUM_POOL_TYPES];
 
       dzn_foreach_pool_type(type) {
-         if (pool->used_desc_count[type] + layout->range_desc_count[type] > pool->desc_count[type]) {
+         total_desc_count[type] = layout->range_desc_count[type] + additional_desc_counts[type];
+         if (pool->used_desc_count[type] + total_desc_count[type] > pool->desc_count[type]) {
             dzn_FreeDescriptorSets(dev, pAllocateInfo->descriptorPool, i, pDescriptorSets);
             return vk_error(device, VK_ERROR_OUT_OF_POOL_MEMORY);
          }
@@ -1917,7 +1942,7 @@ dzn_AllocateDescriptorSets(VkDevice dev,
                is_reuse = true;
                found_any_unused = true;
                dzn_foreach_pool_type(type) {
-                  if (pool->sets[set_idx].heap_sizes[type] < layout->range_desc_count[type]) {
+                  if (pool->sets[set_idx].heap_sizes[type] < total_desc_count[type]) {
                      /* No, not enough space */
                      is_reuse = false;
                      break;
@@ -1940,14 +1965,14 @@ dzn_AllocateDescriptorSets(VkDevice dev,
       /* Couldn't find one for re-use, check if there's enough space at the end */
       if (!is_reuse) {
          dzn_foreach_pool_type(type) {
-            if (pool->free_offset[type] + layout->range_desc_count[type] > pool->desc_count[type]) {
+            if (pool->free_offset[type] + total_desc_count[type] > pool->desc_count[type]) {
                dzn_FreeDescriptorSets(dev, pAllocateInfo->descriptorPool, i, pDescriptorSets);
                return vk_error(device, VK_ERROR_FRAGMENTED_POOL);
             }
          }
       }
 
-      VkResult result = dzn_descriptor_set_init(set, device, pool, layout, is_reuse);
+      VkResult result = dzn_descriptor_set_init(set, device, pool, layout, is_reuse, additional_desc_counts);
       if (result != VK_SUCCESS) {
          dzn_FreeDescriptorSets(dev, pAllocateInfo->descriptorPool, i, pDescriptorSets);
          return result;
@@ -1955,7 +1980,7 @@ dzn_AllocateDescriptorSets(VkDevice dev,
 
       pool->used_set_count = MAX2(pool->used_set_count, set_idx + 1);
       dzn_foreach_pool_type(type)
-         pool->used_desc_count[type] += layout->range_desc_count[type];
+         pool->used_desc_count[type] += total_desc_count[type];
       pDescriptorSets[i] = dzn_descriptor_set_to_handle(set);
    }
 
@@ -1978,7 +2003,7 @@ dzn_FreeDescriptorSets(VkDevice dev,
 
       assert(set->pool == pool);
       dzn_foreach_pool_type(type)
-         pool->used_desc_count[type] -= set->layout->range_desc_count[type];
+         pool->used_desc_count[type] -= set->heap_sizes[type];
 
       dzn_descriptor_set_finish(set);
    }
