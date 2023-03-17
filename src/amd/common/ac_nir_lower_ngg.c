@@ -1057,6 +1057,9 @@ analyze_shader_before_culling_walk(nir_ssa_def *ssa,
 static void
 analyze_shader_before_culling(nir_shader *shader, lower_ngg_nogs_state *nogs_state)
 {
+   /* We need divergence info for culling shaders. */
+   nir_divergence_analysis(shader);
+
    nir_foreach_function(func, shader) {
       nir_foreach_block(block, func->impl) {
          nir_foreach_instr(instr, block) {
@@ -2284,8 +2287,6 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
    nir_builder_init(b, impl);
 
    if (options->can_cull) {
-      /* We need divergence info for culling shaders. */
-      nir_divergence_analysis(shader);
       analyze_shader_before_culling(shader, &state);
       save_reusable_variables(b, &state);
    }
