@@ -120,6 +120,8 @@ struct pvr_instance {
 
    int physical_devices_count;
    struct pvr_physical_device physical_device;
+
+   uint32_t active_device_count;
 };
 
 struct pvr_queue {
