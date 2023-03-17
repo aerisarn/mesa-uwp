@@ -80,6 +80,15 @@ zink_is_zsbuf_used(const struct zink_context *ctx)
    return ctx->blitting || tc_renderpass_info_is_zsbuf_used(&ctx->dynamic_fb.tc_info);
 }
 
+static inline bool
+zink_is_zsbuf_write(const struct zink_context *ctx)
+{
+   if (!zink_is_zsbuf_used(ctx))
+      return false;
+   return ctx->dynamic_fb.tc_info.zsbuf_write_fs || ctx->dynamic_fb.tc_info.zsbuf_write_dsa ||
+          ctx->dynamic_fb.tc_info.zsbuf_clear || ctx->dynamic_fb.tc_info.zsbuf_clear_partial;
+}
+
 void
 zink_fence_wait(struct pipe_context *ctx);
 
