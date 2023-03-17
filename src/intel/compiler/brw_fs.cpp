@@ -6506,6 +6506,8 @@ fs_visitor::allocate_registers(bool allow_spilling)
       "lifo"
    };
 
+   compact_virtual_grfs();
+
    if (needs_register_pressure)
       shader_stats.max_register_pressure = compute_max_register_pressure();
 
