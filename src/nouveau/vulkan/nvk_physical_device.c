@@ -338,6 +338,7 @@ nvk_get_device_features(const struct nv_device_info *dev,
       .vertexPipelineStoresAndAtomics = true,
       .fragmentStoresAndAtomics = true,
       /* TODO: shaderTessellationAndGeometryPointSize */
+      .shaderImageGatherExtended = true,
       .shaderStorageImageExtendedFormats = true,
       /* TODO: shaderStorageImageMultisample */
       /* TODO: shaderStorageImageReadWithoutFormat */
