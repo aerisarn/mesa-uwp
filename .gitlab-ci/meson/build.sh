@@ -12,8 +12,8 @@ export PATH=$PATH:$PWD/.gitlab-ci/build
 touch native.file
 printf > native.file "%s\n" \
   "[binaries]" \
-  "c = '${CC:-gcc}-link-werror.sh'" \
-  "cpp = '${CXX:-g++}-link-werror.sh'"
+  "c = 'compiler-wrapper-${CC:-gcc}.sh'" \
+  "cpp = 'compiler-wrapper-${CXX:-g++}.sh'"
 
 # We need to control the version of llvm-config we're using, so we'll
 # tweak the cross file or generate a native file to do so.
