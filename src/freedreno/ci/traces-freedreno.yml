@@ -172,7 +172,9 @@ traces:
     freedreno-a630:
       checksum: 5c0c5da476775dfac94b79e7edb556ce
     zink-a630:
+      label: [skip, flakes]
       checksum: a8dea3dcb341c0f6c786a264dee51766
+      text: occasional Different pixels 1 (no tolerance), 0 (1% tol.)
 
   filament/filament-default.trace:
     freedreno-a306:
@@ -530,7 +532,9 @@ traces:
     freedreno-a630:
       checksum: ae37867b1a9a94d2be9ff6c7e2009813
     zink-a630:
+      label: [skip, flakes]
       checksum: ae37867b1a9a94d2be9ff6c7e2009813
+      text: occasional misrender
 
   unvanquished/unvanquished-ultra.trace:
     freedreno-a306:
