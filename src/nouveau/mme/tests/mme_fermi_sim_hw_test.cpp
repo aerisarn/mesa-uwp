@@ -357,6 +357,35 @@ SHIFT_TEST(srl)
 
 #undef SHIFT_TEST
 
+TEST_F(mme_fermi_sim_test, bfe)
+{
+   const uint32_t canary = 0xc0ffee01;
+
+   mme_builder b;
+   mme_builder_init(&b, devinfo);
+
+   mme_value val = mme_load(&b);
+   mme_value pos = mme_load(&b);
+
+   mme_store_imm_addr(&b, data_addr + 0, mme_bfe(&b, val, pos, 1), true);
+   mme_store_imm_addr(&b, data_addr + 4, mme_bfe(&b, val, pos, 2), true);
+   mme_store_imm_addr(&b, data_addr + 8, mme_bfe(&b, val, pos, 5), true);
+
+   auto macro = mme_builder_finish_vec(&b);
+
+   for (unsigned i = 0; i < 31; i++) {
+      std::vector<uint32_t> params;
+      params.push_back(canary);
+      params.push_back(i);
+
+      test_macro(&b, macro, params);
+
+      ASSERT_EQ(data[0], (canary >> i) & 0x1);
+      ASSERT_EQ(data[1], (canary >> i) & 0x3);
+      ASSERT_EQ(data[2], (canary >> i) & 0x1f);
+   }
+}
+
 #define BITOP_TEST(op)                                   \
 TEST_F(mme_fermi_sim_test, op)                           \
 {                                                        \

@@ -343,6 +343,29 @@ mme_mul64(struct mme_builder *b,
 }
 
 static inline void
+mme_bfe_to(struct mme_builder *b, struct mme_value dst,
+           struct mme_value x, struct mme_value pos, uint8_t bits)
+{
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING) {
+      mme_srl_to(b, dst, x, pos);
+      mme_and_to(b, dst, dst, mme_imm(BITFIELD_MASK(bits)));
+   } else if (b->devinfo->cls_eng3d >= MME_CLS_FERMI) {
+      mme_fermi_bfe_to(b, dst, x, pos, bits);
+   } else {
+      unreachable("Unsupported GPU class");
+   }
+}
+
+static inline struct mme_value
+mme_bfe(struct mme_builder *b,
+        struct mme_value x, struct mme_value pos, uint8_t bits)
+{
+   struct mme_value dst = mme_alloc_reg(b);
+   mme_bfe_to(b, dst, x, pos, bits);
+   return dst;
+}
+
+static inline void
 mme_merge_to(struct mme_builder *b, struct mme_value dst,
              struct mme_value x, struct mme_value y,
              uint16_t dst_pos, uint16_t bits, uint16_t src_pos)

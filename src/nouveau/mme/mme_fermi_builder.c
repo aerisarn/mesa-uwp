@@ -309,6 +309,16 @@ mme_fermi_srl_to(struct mme_fermi_builder *b,
    mme_fermi_bfe(b, dst, y, x, mme_zero(), 31);
 }
 
+void
+mme_fermi_bfe_to(struct mme_builder *b, struct mme_value dst,
+                 struct mme_value x, struct mme_value pos, uint8_t bits)
+{
+   struct mme_fermi_builder *fb = &b->fermi;
+   assert(mme_fermi_is_zero_or_reg(dst));
+
+   mme_fermi_bfe(fb, dst, pos, x, mme_zero(), bits);
+}
+
 static struct mme_value
 mme_fermi_load_imm_to_reg(struct mme_builder *b, struct mme_value data)
 {

@@ -102,6 +102,10 @@ mme_fermi_alu64_to(struct mme_builder *b,
 }
 
 void
+mme_fermi_bfe_to(struct mme_builder *b, struct mme_value dst,
+                 struct mme_value x, struct mme_value pos, uint8_t bits);
+
+void
 mme_fermi_merge_to(struct mme_builder *b, struct mme_value dst,
                    struct mme_value x, struct mme_value y,
                    uint16_t dst_pos, uint16_t bits, uint16_t src_pos);
