@@ -609,13 +609,6 @@ union radv_shader_arena_block *radv_alloc_shader_memory(struct radv_device *devi
                                                         void *ptr);
 void radv_free_shader_memory(struct radv_device *device, union radv_shader_arena_block *alloc);
 
-struct radv_shader *
-radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *nir,
-                           const struct radv_shader_info *info, const struct radv_shader_args *args,
-                           struct radv_shader_binary **binary_out,
-                           bool keep_shader_info, bool keep_statistic_info,
-                           bool disable_optimizations);
-
 struct radv_shader *radv_create_trap_handler_shader(struct radv_device *device);
 
 struct radv_shader *radv_create_rt_prolog(struct radv_device *device);

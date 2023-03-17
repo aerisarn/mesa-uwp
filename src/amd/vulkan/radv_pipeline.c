@@ -2838,28 +2838,35 @@ radv_pipeline_create_gs_copy_shader(struct radv_device *device, struct radv_pipe
    nir_validate_shader(nir, "after ac_nir_create_gs_copy_shader");
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
-   struct radv_shader_info info = {0};
-   radv_nir_shader_info_pass(device, nir, pipeline_layout, pipeline_key, pipeline->type, false, &info);
-   info.wave_size = 64; /* Wave32 not supported. */
-   info.workgroup_size = 64; /* HW VS: separate waves, no workgroups */
-   info.so = gs_info->so;
-   info.outinfo = gs_info->outinfo;
-   info.force_vrs_per_vertex = gs_info->force_vrs_per_vertex;
+   struct radv_pipeline_stage gs_copy_stage = {
+      .stage = MESA_SHADER_VERTEX,
+      .shader_sha1 = {0},
+   };
+   radv_nir_shader_info_init(&gs_copy_stage.info);
+   radv_nir_shader_info_pass(device, nir, pipeline_layout, pipeline_key, pipeline->type, false,
+                             &gs_copy_stage.info);
+   gs_copy_stage.info.wave_size = 64;      /* Wave32 not supported. */
+   gs_copy_stage.info.workgroup_size = 64; /* HW VS: separate waves, no workgroups */
+   gs_copy_stage.info.so = gs_info->so;
+   gs_copy_stage.info.outinfo = gs_info->outinfo;
+   gs_copy_stage.info.force_vrs_per_vertex = gs_info->force_vrs_per_vertex;
 
-   struct radv_shader_args gs_copy_args;
-   gs_copy_args.is_gs_copy_shader = true;
-   gs_copy_args.explicit_scratch_args = !radv_use_llvm_for_stage(device, MESA_SHADER_VERTEX);
-   radv_declare_shader_args(device, pipeline_key, &info, MESA_SHADER_VERTEX, false,
-                            MESA_SHADER_VERTEX, &gs_copy_args);
-   info.user_sgprs_locs = gs_copy_args.user_sgprs_locs;
-   info.inline_push_constant_mask = gs_copy_args.ac.inline_push_const_mask;
+   gs_copy_stage.args.is_gs_copy_shader = true;
+   radv_declare_shader_args(device, pipeline_key, &gs_copy_stage.info, MESA_SHADER_VERTEX, false,
+                            MESA_SHADER_VERTEX, &gs_copy_stage.args);
+   gs_copy_stage.info.user_sgprs_locs = gs_copy_stage.args.user_sgprs_locs;
+   gs_copy_stage.info.inline_push_constant_mask = gs_copy_stage.args.ac.inline_push_const_mask;
 
-   NIR_PASS_V(nir, radv_nir_lower_abi, device->physical_device->rad_info.gfx_level, &info,
-              &gs_copy_args, pipeline_key, device->physical_device->rad_info.address32_hi);
+   NIR_PASS_V(nir, radv_nir_lower_abi, device->physical_device->rad_info.gfx_level,
+              &gs_copy_stage.info, &gs_copy_stage.args, pipeline_key,
+              device->physical_device->rad_info.address32_hi);
 
-   return radv_create_gs_copy_shader(device, nir, &info, &gs_copy_args, gs_copy_binary,
-                                     keep_executable_info, keep_statistic_info,
-                                     pipeline_key->optimisations_disabled);
+   struct radv_pipeline_key key = {
+      .optimisations_disabled = pipeline_key->optimisations_disabled,
+   };
+
+   return radv_shader_nir_to_asm(device, &gs_copy_stage, &nir, 1, &key, keep_executable_info,
+                                 keep_statistic_info, gs_copy_binary);
 }
 
 static void

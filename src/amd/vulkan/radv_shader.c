@@ -2740,22 +2740,6 @@ radv_shader_nir_to_asm(struct radv_device *device, struct radv_pipeline_stage *p
 }
 
 struct radv_shader *
-radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *shader,
-                           const struct radv_shader_info *info, const struct radv_shader_args *args,
-                           struct radv_shader_binary **binary_out, bool keep_shader_info,
-                           bool keep_statistic_info, bool disable_optimizations)
-{
-   gl_shader_stage stage = MESA_SHADER_VERTEX;
-
-   struct radv_pipeline_key key = {
-      .optimisations_disabled = disable_optimizations,
-   };
-
-   return shader_compile(device, &shader, 1, stage, info, args, &key, false, keep_shader_info,
-                         keep_statistic_info, binary_out);
-}
-
-struct radv_shader *
 radv_create_trap_handler_shader(struct radv_device *device)
 {
    gl_shader_stage stage = MESA_SHADER_COMPUTE;
