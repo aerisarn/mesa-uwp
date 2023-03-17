@@ -240,15 +240,6 @@ enum {
 
    /* Repacked arguments - also listed separately for VS and TES */
    lds_es_arg_0 = 20,
-
-   /* VS arguments which need to be repacked */
-   lds_es_vs_vertex_id = 20,
-   lds_es_vs_instance_id = 24,
-
-   /* TES arguments which need to be repacked */
-   lds_es_tes_u = 20,
-   lds_es_tes_v = 24,
-   lds_es_tes_patch_id = 28,
 };
 
 typedef struct {
@@ -1311,21 +1302,35 @@ static unsigned
 ngg_nogs_get_culling_pervertex_lds_size(gl_shader_stage stage,
                                         bool uses_instance_id,
                                         bool uses_primitive_id,
-                                        unsigned *max_exported_args)
+                                        unsigned *num_repacked_variables)
 {
-   unsigned max_args;
+   /* Culling shaders must repack some variables because
+    * the same shader invocation may process different vertices
+    * before and after the culling algorithm.
+    */
+
+   unsigned num_repacked;
    if (stage == MESA_SHADER_VERTEX) {
-      max_args = uses_instance_id ? 2 : 1;
+      /* Vertex shaders repack:
+       * - Vertex ID
+       * - Instance ID (only if used)
+       */
+      num_repacked = uses_instance_id ? 2 : 1;
    } else {
+      /* Tess eval shaders repack:
+       * - U, V coordinates
+       * - primitive ID (aka. patch id, only if used)
+       * - relative patch id (not included here because doesn't need a dword)
+       */
       assert(stage == MESA_SHADER_TESS_EVAL);
-      max_args = uses_primitive_id ? 3 : 2;
+      num_repacked = uses_primitive_id ? 3 : 2;
    }
 
-   if (max_exported_args)
-      *max_exported_args = max_args;
+   if (num_repacked_variables)
+      *num_repacked_variables = num_repacked;
 
    /* one odd dword to reduce LDS bank conflict */
-   return (lds_es_arg_0 + max_args * 4u) | 4u;
+   return (lds_es_arg_0 + num_repacked * 4u) | 4u;
 }
 
 static void
