@@ -2525,6 +2525,28 @@ find_rp_state(struct zink_context *ctx)
    return info->id;
 }
 
+unsigned
+zink_update_rendering_info(struct zink_context *ctx)
+{
+   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+      struct zink_surface *surf = zink_csurface(ctx->fb_state.cbufs[i]);
+      ctx->gfx_pipeline_state.rendering_formats[i] = surf ? surf->info.format[0] : VK_FORMAT_R8G8B8A8_UNORM;
+   }
+      ctx->gfx_pipeline_state.rendering_info.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
+   ctx->gfx_pipeline_state.rendering_info.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
+   if (ctx->fb_state.zsbuf && zink_is_zsbuf_used(ctx)) {
+      struct zink_surface *surf = zink_csurface(ctx->fb_state.zsbuf);
+      bool has_depth = util_format_has_depth(util_format_description(ctx->fb_state.zsbuf->format));
+      bool has_stencil = util_format_has_stencil(util_format_description(ctx->fb_state.zsbuf->format));
+
+      if (has_depth)
+         ctx->gfx_pipeline_state.rendering_info.depthAttachmentFormat = surf->info.format[0];
+      if (has_stencil)
+         ctx->gfx_pipeline_state.rendering_info.stencilAttachmentFormat = surf->info.format[0];
+   }
+   return find_rp_state(ctx);
+}
+
 static unsigned
 begin_rendering(struct zink_context *ctx)
 {
@@ -2555,7 +2577,6 @@ begin_rendering(struct zink_context *ctx)
             else
                ctx->dynamic_fb.attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
          }
-         ctx->gfx_pipeline_state.rendering_formats[i] = surf ? surf->info.format[0] : VK_FORMAT_R8G8B8A8_UNORM;
          /* use dummy fb size of 1024 if no surf exists */
          unsigned width = surf ? surf->base.texture->width0 : 1024;
          unsigned height = surf ? surf->base.texture->height0 : 1024;
@@ -2571,9 +2592,7 @@ begin_rendering(struct zink_context *ctx)
       VkImageLayout zlayout = ctx->dynamic_fb.info.pDepthAttachment ? ctx->dynamic_fb.info.pDepthAttachment->imageLayout : VK_IMAGE_LAYOUT_UNDEFINED;
       VkImageLayout slayout = ctx->dynamic_fb.info.pStencilAttachment ? ctx->dynamic_fb.info.pStencilAttachment->imageLayout : VK_IMAGE_LAYOUT_UNDEFINED;
       ctx->dynamic_fb.info.pDepthAttachment = NULL;
-      ctx->gfx_pipeline_state.rendering_info.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
       ctx->dynamic_fb.info.pStencilAttachment = NULL;
-      ctx->gfx_pipeline_state.rendering_info.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
 
       if (ctx->fb_state.zsbuf && zsbuf_used) {
          struct zink_surface *surf = zink_csurface(ctx->fb_state.zsbuf);
@@ -2599,17 +2618,14 @@ begin_rendering(struct zink_context *ctx)
 
          if (has_depth) {
             ctx->dynamic_fb.info.pDepthAttachment = &ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS];
-            ctx->gfx_pipeline_state.rendering_info.depthAttachmentFormat = surf->info.format[0];
             /* stencil info only set for clears below */
          }
          if (has_stencil) {
             /* must be stencil-only */
             ctx->dynamic_fb.info.pStencilAttachment = &ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS + 1];
-            ctx->gfx_pipeline_state.rendering_info.stencilAttachmentFormat = surf->info.format[0];
          }
       } else {
          ctx->dynamic_fb.info.pDepthAttachment = NULL;
-         ctx->gfx_pipeline_state.rendering_info.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
       }
       if (zlayout != (ctx->dynamic_fb.info.pDepthAttachment ? ctx->dynamic_fb.info.pDepthAttachment->imageLayout : VK_IMAGE_LAYOUT_UNDEFINED))
          changed_layout = true;
@@ -2662,18 +2678,20 @@ begin_rendering(struct zink_context *ctx)
       ctx->rp_loadop_changed = false;
       ctx->rp_layout_changed = false;
    }
-   /* validate zs VUs: attachment must be null or format must be valid */
-   assert(!ctx->dynamic_fb.info.pDepthAttachment || ctx->gfx_pipeline_state.rendering_info.depthAttachmentFormat);
-   assert(!ctx->dynamic_fb.info.pStencilAttachment || ctx->gfx_pipeline_state.rendering_info.stencilAttachmentFormat);
 
    if (!ctx->rp_changed && ctx->batch.in_rp)
       return 0;
    ctx->rp_changed = false;
+
    /* update pipeline info id for compatibility VUs */
-   unsigned rp_state = find_rp_state(ctx);
+   unsigned rp_state = zink_update_rendering_info(ctx);
+   /* validate zs VUs: attachment must be null or format must be valid */
+   assert(!ctx->dynamic_fb.info.pDepthAttachment || ctx->gfx_pipeline_state.rendering_info.depthAttachmentFormat);
+   assert(!ctx->dynamic_fb.info.pStencilAttachment || ctx->gfx_pipeline_state.rendering_info.stencilAttachmentFormat);
    bool rp_changed = ctx->gfx_pipeline_state.rp_state != rp_state;
    if (!rp_changed && ctx->batch.in_rp)
       return 0;
+
    zink_batch_no_rp_safe(ctx);
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct zink_surface *surf = zink_csurface(ctx->fb_state.cbufs[i]);
