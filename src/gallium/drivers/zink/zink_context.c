@@ -5284,7 +5284,7 @@ static void
 zink_tc_parse_dsa(void *state, struct tc_renderpass_info *info)
 {
    struct zink_depth_stencil_alpha_state *cso = state;
-   info->zsbuf_write_dsa |= (cso->hw_state.depth_write || cso->base.stencil[0].writemask || cso->base.stencil[1].writemask);
+   info->zsbuf_write_dsa |= (cso->hw_state.depth_write || cso->hw_state.stencil_test);
    info->zsbuf_read_dsa |= (cso->hw_state.depth_test || cso->hw_state.stencil_test);
    /* TODO: if zsbuf fbfetch is ever supported */
 }
