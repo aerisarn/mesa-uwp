@@ -437,6 +437,54 @@ zink_blit_begin(struct zink_context *ctx, enum zink_blit_flags flags)
       zink_stop_conditional_render(ctx);
 }
 
+void
+zink_blit_barriers(struct zink_context *ctx, struct zink_resource *src, struct zink_resource *dst, bool whole_dst)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   if (src && zink_is_swapchain(src)) {
+      if (!zink_kopper_acquire(ctx, src, UINT64_MAX))
+         return;
+   } else if (dst && zink_is_swapchain(dst)) {
+      if (!zink_kopper_acquire(ctx, dst, UINT64_MAX))
+         return;
+   }
+
+   VkAccessFlagBits flags;
+   VkPipelineStageFlagBits pipeline;
+   if (util_format_is_depth_or_stencil(dst->base.b.format)) {
+      flags = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+      if (!whole_dst)
+         flags |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+      pipeline = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+   } else {
+      flags = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+      if (!whole_dst)
+         flags |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+      pipeline = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+   }
+   if (src == dst) {
+      VkImageLayout layout = zink_screen(ctx->base.screen)->info.have_EXT_attachment_feedback_loop_layout ?
+                             VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT :
+                             VK_IMAGE_LAYOUT_GENERAL;
+      screen->image_barrier(ctx, src, layout, VK_ACCESS_SHADER_READ_BIT | flags, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | pipeline);
+   } else {
+      if (src) {
+         VkImageLayout layout = util_format_is_depth_or_stencil(src->base.b.format) &&
+                                src->obj->vkusage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT ?
+                                VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL :
+                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+         screen->image_barrier(ctx, src, layout,
+                              VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+         src->obj->unordered_read = false;
+      }
+      VkImageLayout layout = util_format_is_depth_or_stencil(dst->base.b.format) ?
+                           VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
+                           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      screen->image_barrier(ctx, dst, layout, flags, pipeline);
+   }
+   dst->obj->unordered_read = dst->obj->unordered_write = false;
+}
+
 bool
 zink_blit_region_fills(struct u_rect region, unsigned width, unsigned height)
 {

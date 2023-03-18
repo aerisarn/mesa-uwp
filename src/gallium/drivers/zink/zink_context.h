@@ -199,6 +199,8 @@ zink_context_query_init(struct pipe_context *ctx);
 
 void
 zink_blit_begin(struct zink_context *ctx, enum zink_blit_flags flags);
+void
+zink_blit_barriers(struct zink_context *ctx, struct zink_resource *src, struct zink_resource *dst, bool whole_dst);
 
 void
 zink_blit(struct pipe_context *pctx,
