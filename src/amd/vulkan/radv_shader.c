@@ -2660,41 +2660,33 @@ radv_capture_shader_executable_info(struct radv_device *device, struct radv_shad
    }
 }
 
-static struct radv_shader *
+static struct radv_shader_binary *
 shader_compile(struct radv_device *device, struct nir_shader *const *shaders, int shader_count,
                gl_shader_stage stage, const struct radv_shader_info *info,
-               const struct radv_shader_args *args, const struct radv_pipeline_key *key,
-               bool trap_handler_shader, bool keep_shader_info, bool keep_statistic_info,
-               struct radv_shader_binary **binary_out)
+               const struct radv_shader_args *args, struct radv_nir_compiler_options *options)
 {
-   struct radv_nir_compiler_options options = {0};
-   radv_fill_nir_compiler_options(
-      &options, device, key, radv_should_use_wgp_mode(device, stage, info),
-      radv_can_dump_shader(device, shaders[0], trap_handler_shader), is_meta_shader(shaders[0]),
-      keep_shader_info, keep_statistic_info);
-
    struct radv_shader_debug_data debug_data = {
       .device = device,
       .object = NULL,
    };
-   options.debug.func = radv_compiler_debug;
-   options.debug.private_data = &debug_data;
+   options->debug.func = radv_compiler_debug;
+   options->debug.private_data = &debug_data;
 
    struct radv_shader_binary *binary = NULL;
 
 #ifdef LLVM_AVAILABLE
-   if (radv_use_llvm_for_stage(device, stage) || options.dump_shader || options.record_ir)
+   if (radv_use_llvm_for_stage(device, stage) || options->dump_shader || options->record_ir)
       ac_init_llvm_once();
 
    if (radv_use_llvm_for_stage(device, stage)) {
-      llvm_compile_shader(&options, info, shader_count, shaders, &binary, args);
+      llvm_compile_shader(options, info, shader_count, shaders, &binary, args);
 #else
    if (false) {
 #endif
    } else {
       struct aco_shader_info ac_info;
       struct aco_compiler_options ac_opts;
-      radv_aco_convert_opts(&ac_opts, &options, args);
+      radv_aco_convert_opts(&ac_opts, options, args);
       radv_aco_convert_shader_info(&ac_info, info, args);
       aco_compile_shader(&ac_opts, &ac_info, shader_count, shaders, &args->ac, &radv_aco_build_shader_binary, (void **)&binary);
    }
@@ -2705,6 +2697,28 @@ shader_compile(struct radv_device *device, struct nir_shader *const *shaders, in
       free(binary);
       return NULL;
    }
+
+   return binary;
+}
+
+struct radv_shader *
+radv_shader_nir_to_asm(struct radv_device *device, struct radv_pipeline_stage *pl_stage,
+                       struct nir_shader *const *shaders, int shader_count,
+                       const struct radv_pipeline_key *key, bool keep_shader_info,
+                       bool keep_statistic_info, struct radv_shader_binary **binary_out)
+{
+   gl_shader_stage stage = shaders[shader_count - 1]->info.stage;
+   struct radv_shader_info *info = &pl_stage->info;
+
+   struct radv_nir_compiler_options options = {0};
+   radv_fill_nir_compiler_options(
+      &options, device, key, radv_should_use_wgp_mode(device, stage, info),
+      radv_can_dump_shader(device, shaders[0], false), is_meta_shader(shaders[0]), keep_shader_info,
+      keep_statistic_info);
+
+   struct radv_shader_binary *binary =
+      shader_compile(device, shaders, shader_count, stage, info, &pl_stage->args, &options);
+
    struct radv_shader *shader = radv_shader_create(device, binary);
    if (!shader) {
       free(binary);
@@ -2728,25 +2742,15 @@ shader_compile(struct radv_device *device, struct nir_shader *const *shaders, in
 }
 
 struct radv_shader *
-radv_shader_nir_to_asm(struct radv_device *device, struct radv_pipeline_stage *pl_stage,
-                       struct nir_shader *const *shaders, int shader_count,
-                       const struct radv_pipeline_key *key, bool keep_shader_info,
-                       bool keep_statistic_info, struct radv_shader_binary **binary_out)
-{
-   gl_shader_stage stage = shaders[shader_count - 1]->info.stage;
-
-   return shader_compile(device, shaders, shader_count, stage, &pl_stage->info, &pl_stage->args,
-                         key, false, keep_shader_info, keep_statistic_info, binary_out);
-}
-
-struct radv_shader *
 radv_create_trap_handler_shader(struct radv_device *device)
 {
    gl_shader_stage stage = MESA_SHADER_COMPUTE;
-   struct radv_shader *shader = NULL;
-   struct radv_shader_binary *binary = NULL;
    struct radv_shader_info info = {0};
    struct radv_pipeline_key key = {0};
+   struct radv_nir_compiler_options options = {0};
+   radv_fill_nir_compiler_options(&options, device, &key,
+                                  radv_should_use_wgp_mode(device, stage, &info), false, false,
+                                  false, false);
 
    nir_builder b = radv_meta_init_shader(device, stage, "meta_trap_handler");
 
@@ -2755,10 +2759,12 @@ radv_create_trap_handler_shader(struct radv_device *device)
    struct radv_shader_args args;
    args.explicit_scratch_args = true;
    args.is_trap_handler_shader = true;
-   radv_declare_shader_args(device, &key, &info, stage, false, MESA_SHADER_VERTEX, &args);
+   radv_declare_shader_args(device, &key, &info, stage, false, MESA_SHADER_NONE, &args);
 
-   shader =
-      shader_compile(device, &b.shader, 1, stage, &info, &args, &key, true, false, false, &binary);
+   struct radv_shader_binary *binary =
+      shader_compile(device, &b.shader, 1, stage, &info, &args, &options);
+   struct radv_shader *shader = radv_shader_create(device, binary);
+
    ralloc_free(b.shader);
    free(binary);
 
