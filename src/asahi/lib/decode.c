@@ -552,7 +552,7 @@ agxdecode_vdm(const uint8_t *map, uint64_t *link, bool verbose,
 
    switch (block_type) {
    case AGX_VDM_BLOCK_TYPE_BARRIER: {
-      agx_unpack(agxdecode_dump_stream, map, VDM_BARRIER, cmd);
+      DUMP_CL(VDM_BARRIER, map, "Barrier");
       return AGX_VDM_BARRIER_LENGTH;
    }
 
