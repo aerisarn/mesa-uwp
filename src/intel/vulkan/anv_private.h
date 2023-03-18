@@ -4212,7 +4212,7 @@ anv_device_init_generated_indirect_draws(struct anv_device *device);
 void
 anv_device_finish_generated_indirect_draws(struct anv_device *device);
 
-struct anv_utrace_flush_copy {
+struct anv_utrace_submit {
    /* Needs to be the first field */
    struct intel_ds_flush_data ds;
 
@@ -4241,7 +4241,7 @@ VkResult
 anv_device_utrace_flush_cmd_buffers(struct anv_queue *queue,
                                     uint32_t cmd_buffer_count,
                                     struct anv_cmd_buffer **cmd_buffers,
-                                    struct anv_utrace_flush_copy **out_flush_data);
+                                    struct anv_utrace_submit **out_submit);
 
 #ifdef HAVE_PERFETTO
 void anv_perfetto_init(void);
