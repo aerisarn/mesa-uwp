@@ -408,8 +408,10 @@ out:
       }
       to_clear = 0;
    }
-   for (int i = 0; i < ARRAY_SIZE(ctx->fb_clears); i++)
-       zink_fb_clear_reset(ctx, i);
+   if (ctx->clears_enabled & PIPE_CLEAR_DEPTHSTENCIL)
+      zink_fb_clear_reset(ctx, PIPE_MAX_COLOR_BUFS);
+   u_foreach_bit(i, ctx->clears_enabled >> 2)
+      zink_fb_clear_reset(ctx, i);
 }
 
 static struct pipe_surface *
