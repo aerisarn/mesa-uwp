@@ -423,16 +423,6 @@ agx_compression_allowed(const struct agx_resource *pres)
    assert(!util_format_is_compressed(pres->base.format) &&
           "block-compressed formats are not renderable");
 
-   /* TODO: Compression of arrays/cubes currently fails because it would require
-    * arrayed linear staging resources, which the hardware doesn't support. This
-    * could be worked around with more sophisticated blit code.
-    */
-   if (pres->base.target != PIPE_TEXTURE_2D &&
-       pres->base.target != PIPE_TEXTURE_RECT) {
-      rsrc_debug(pres, "No compression: array/cube\n");
-      return false;
-   }
-
    /* Small textures cannot (should not?) be compressed */
    if (pres->base.width0 < 16 || pres->base.height0 < 16) {
       rsrc_debug(pres, "No compression: too small\n");
