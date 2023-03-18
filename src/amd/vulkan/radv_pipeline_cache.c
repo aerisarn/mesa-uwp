@@ -230,9 +230,58 @@ radv_shader_destroy(struct vk_device *_device, struct vk_pipeline_cache_object *
    free(shader);
 }
 
+static struct vk_pipeline_cache_object *
+radv_shader_deserialize(struct vk_pipeline_cache *cache, const void *key_data, size_t key_size,
+                        struct blob_reader *blob)
+{
+   struct radv_device *device = container_of(cache->base.device, struct radv_device, vk);
+   const struct radv_shader_binary *binary =
+      blob_read_bytes(blob, sizeof(struct radv_shader_binary));
+   assert(key_size == SHA1_DIGEST_LENGTH);
+
+   struct radv_shader *shader = radv_shader_create(device, binary);
+   if (!shader)
+      return NULL;
+
+   memcpy(shader->sha1, key_data, key_size);
+   blob_skip_bytes(blob, binary->total_size - sizeof(struct radv_shader_binary));
+
+   return &shader->base;
+}
+
+static bool
+radv_shader_serialize(struct vk_pipeline_cache_object *object, struct blob *blob)
+{
+   struct radv_shader *shader = container_of(object, struct radv_shader, base);
+   size_t stats_size = shader->statistics ? aco_num_statistics * sizeof(uint32_t) : 0;
+   size_t code_size = shader->code_size - 5 /* DEBUGGER_NUM_MARKERS */ * 4;
+   uint32_t total_size = sizeof(struct radv_shader_binary_legacy) + code_size + stats_size;
+
+   struct radv_shader_binary_legacy binary = {
+      .base =
+         {
+            .type = RADV_BINARY_TYPE_LEGACY,
+            .config = shader->config,
+            .info = shader->info,
+            .total_size = total_size,
+         },
+      .code_size = code_size,
+      .exec_size = shader->exec_size,
+      .ir_size = 0,
+      .disasm_size = 0,
+      .stats_size = stats_size,
+   };
+
+   blob_write_bytes(blob, &binary, sizeof(struct radv_shader_binary_legacy));
+   blob_write_bytes(blob, shader->statistics, stats_size);
+   blob_write_bytes(blob, shader->code, code_size);
+
+   return true;
+}
+
 const struct vk_pipeline_cache_object_ops radv_shader_ops = {
-   .serialize = NULL,
-   .deserialize = NULL,
+   .serialize = radv_shader_serialize,
+   .deserialize = radv_shader_deserialize,
    .destroy = radv_shader_destroy,
 };
 
