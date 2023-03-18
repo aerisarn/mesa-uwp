@@ -1774,12 +1774,36 @@ translate_sampler_state_count(struct agx_context *ctx,
                                             ctx->stage[stage].custom_borders);
 }
 
+/*
+ * Despite having both a layout *and* a flag that I only see Metal use with null
+ * textures, AGX doesn't seem to have "real" null textures. Instead we need to
+ * bind an arbitrary address and throw away the results to read all 0's.
+ * Accordingly, the caller must pass some address that lives at least as long as
+ * the texture descriptor itself.
+ */
+static void
+agx_set_null_texture(struct agx_texture_packed *tex, uint64_t valid_address)
+{
+   agx_pack(tex, TEXTURE, cfg) {
+      cfg.layout = AGX_LAYOUT_NULL;
+      cfg.channels = AGX_CHANNELS_R8;
+      cfg.type = AGX_TEXTURE_TYPE_UNORM /* don't care */;
+      cfg.swizzle_r = AGX_CHANNEL_0;
+      cfg.swizzle_g = AGX_CHANNEL_0;
+      cfg.swizzle_b = AGX_CHANNEL_0;
+      cfg.swizzle_a = AGX_CHANNEL_0;
+      cfg.address = valid_address;
+      cfg.null = true;
+   }
+}
+
 static uint32_t
 agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
                    enum pipe_shader_type stage, unsigned variable_shared_mem)
 {
    struct agx_context *ctx = batch->ctx;
-   unsigned nr_textures = ctx->stage[stage].texture_count;
+   unsigned nr_textures = cs->info.nr_bindful_textures;
+   unsigned nr_active_textures = ctx->stage[stage].texture_count;
    unsigned nr_samplers = sampler_count(ctx, cs, stage);
    bool custom_borders = ctx->stage[stage].custom_borders;
 
@@ -1795,12 +1819,11 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
    struct agx_texture_packed *textures = T_tex.cpu;
 
    /* TODO: Dirty track me to save some CPU cycles and maybe improve caching */
-   for (unsigned i = 0; i < nr_textures; ++i) {
+   for (unsigned i = 0; i < MIN2(nr_textures, nr_active_textures); ++i) {
       struct agx_sampler_view *tex = ctx->stage[stage].textures[i];
 
-      /* TODO: Use an actual null texture for robustness */
       if (tex == NULL) {
-         memset(&textures[i], 0, sizeof(textures[i]));
+         agx_set_null_texture(&textures[i], T_tex.gpu);
          continue;
       }
 
@@ -1831,6 +1854,9 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
       agx_merge(texture, texture2, TEXTURE);
       textures[i] = texture;
    }
+
+   for (unsigned i = nr_active_textures; i < nr_textures; ++i)
+      agx_set_null_texture(&textures[i], T_tex.gpu);
 
    /* TODO: Dirty track me to save some CPU cycles and maybe improve caching */
    uint8_t *out_sampler = T_samp.cpu;
@@ -2185,7 +2211,7 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
       }
       out += AGX_VDM_STATE_LENGTH;
 
-      unsigned tex_count = ctx->stage[PIPE_SHADER_VERTEX].texture_count;
+      unsigned tex_count = ctx->vs->info.nr_bindful_textures;
       agx_pack(out, VDM_STATE_VERTEX_SHADER_WORD_0, cfg) {
          cfg.uniform_register_count = ctx->vs->info.push_count;
          cfg.preshader_register_count = ctx->vs->info.nr_preamble_gprs;
@@ -2757,7 +2783,7 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    /* TODO: Ensure space if we allow multiple kernels in a batch */
    uint8_t *out = batch->encoder_current;
 
-   unsigned nr_textures = ctx->stage[PIPE_SHADER_COMPUTE].texture_count;
+   unsigned nr_textures = cs->info.nr_bindful_textures;
    agx_pack(out, CDM_HEADER, cfg) {
       if (info->indirect)
          cfg.mode = AGX_CDM_MODE_INDIRECT_GLOBAL;

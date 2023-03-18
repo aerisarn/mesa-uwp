@@ -109,6 +109,9 @@ struct agx_shader_info {
    /* Shader needs a dummy sampler (for txf reads) */
    bool needs_dummy_sampler;
 
+   /* Number of bindful textures used */
+   unsigned nr_bindful_textures;
+
    /* Number of 16-bit registers used by the main shader and preamble
     * respectively.
     */

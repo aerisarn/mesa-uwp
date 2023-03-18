@@ -2385,6 +2385,8 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
          out->depth_layout = layout;
    }
 
+   out->nr_bindful_textures = nir->info.num_textures;
+
    /* Late clip plane lowering created discards */
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       NIR_PASS_V(nir, agx_nir_lower_zs_emit);
