@@ -431,7 +431,7 @@ struct radv_vs_prolog_key {
 enum radv_shader_binary_type { RADV_BINARY_TYPE_LEGACY, RADV_BINARY_TYPE_RTLD };
 
 struct radv_shader_binary {
-   enum radv_shader_binary_type type;
+   uint32_t type; /* enum radv_shader_binary_type */
 
    struct ac_shader_config config;
    struct radv_shader_info info;
@@ -442,11 +442,11 @@ struct radv_shader_binary {
 
 struct radv_shader_binary_legacy {
    struct radv_shader_binary base;
-   unsigned code_size;
-   unsigned exec_size;
-   unsigned ir_size;
-   unsigned disasm_size;
-   unsigned stats_size;
+   uint32_t code_size;
+   uint32_t exec_size;
+   uint32_t ir_size;
+   uint32_t disasm_size;
+   uint32_t stats_size;
 
    /* data has size of stats_size + code_size + ir_size + disasm_size + 2,
     * where the +2 is for 0 of the ir strings. */
