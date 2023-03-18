@@ -27,6 +27,7 @@
 #include "pipe/p_defines.h"
 #include "pipe/p_screen.h"
 #include "pipe/p_state.h"
+#include "util/compiler.h"
 #include "util/format_srgb.h"
 #include "util/half_float.h"
 #include "util/u_inlines.h"
@@ -606,23 +607,20 @@ agx_translate_tex_dim(enum pipe_texture_target dim, unsigned samples)
 
    switch (dim) {
    case PIPE_BUFFER:
+   case PIPE_TEXTURE_1D:
       /* Lowered to 2D */
       assert(samples == 1);
       return AGX_TEXTURE_DIMENSION_2D;
-
-   case PIPE_TEXTURE_1D:
-      assert(samples == 1);
-      return AGX_TEXTURE_DIMENSION_1D;
-
-   case PIPE_TEXTURE_1D_ARRAY:
-      assert(samples == 1);
-      return AGX_TEXTURE_DIMENSION_1D_ARRAY;
 
    case PIPE_TEXTURE_RECT:
    case PIPE_TEXTURE_2D:
       return samples > 1 ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
                          : AGX_TEXTURE_DIMENSION_2D;
 
+   case PIPE_TEXTURE_1D_ARRAY:
+      assert(samples == 1);
+      /* Lowered to 2D */
+      FALLTHROUGH;
    case PIPE_TEXTURE_2D_ARRAY:
       return samples > 1 ? AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED
                          : AGX_TEXTURE_DIMENSION_2D_ARRAY;

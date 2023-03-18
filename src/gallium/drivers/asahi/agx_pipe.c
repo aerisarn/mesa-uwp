@@ -282,6 +282,7 @@ agx_linear_allowed(const struct agx_resource *pres)
    /* 1D is always linear */
    case PIPE_BUFFER:
    case PIPE_TEXTURE_1D:
+   case PIPE_TEXTURE_1D_ARRAY:
 
    /* Linear textures require specifying their strides explicitly, which only
     * works for 2D textures. Rectangle textures are a special case of 2D.
@@ -307,8 +308,8 @@ agx_twiddled_allowed(const struct agx_resource *pres)
        (PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT | PIPE_BIND_LINEAR))
       return false;
 
-   /* Buffers must be linear, and it does not make sense to twiddle 1D */
-   if (pres->base.target == PIPE_BUFFER || pres->base.target == PIPE_TEXTURE_1D)
+   /* Buffers must be linear */
+   if (pres->base.target == PIPE_BUFFER)
       return false;
 
    /* Anything else may be twiddled */
