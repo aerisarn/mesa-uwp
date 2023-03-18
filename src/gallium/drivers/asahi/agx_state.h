@@ -693,4 +693,18 @@ agx_render_condition_check(struct agx_context *ctx)
       return agx_render_condition_check_inner(ctx);
 }
 
+/* Texel buffers lowered to (at most) 1024x16384 2D textures */
+#define AGX_TEXTURE_BUFFER_WIDTH      1024
+#define AGX_TEXTURE_BUFFER_MAX_HEIGHT 16384
+#define AGX_TEXTURE_BUFFER_MAX_SIZE                                            \
+   (AGX_TEXTURE_BUFFER_WIDTH * AGX_TEXTURE_BUFFER_MAX_HEIGHT)
+
+static inline uint32_t
+agx_texture_buffer_size_el(enum pipe_format format, uint32_t size)
+{
+   unsigned blocksize = util_format_get_blocksize(format);
+
+   return MIN2(AGX_TEXTURE_BUFFER_MAX_SIZE, size / blocksize);
+}
+
 #endif

@@ -702,7 +702,7 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
 
       if (state->target == PIPE_BUFFER) {
          unsigned size_el =
-            state->u.buf.size / util_format_get_blocksize(format);
+            agx_texture_buffer_size_el(format, state->u.buf.size);
 
          /* Use a 2D texture to increase the maximum size */
          cfg.width = 1024;

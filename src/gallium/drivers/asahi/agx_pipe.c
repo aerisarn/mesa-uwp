@@ -1425,9 +1425,8 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
       return 16;
 
-   /* Texel buffers lowered to (at most) 1024x16384 2D textures */
    case PIPE_CAP_MAX_TEXEL_BUFFER_ELEMENTS_UINT:
-      return 1024 * 16384;
+      return AGX_TEXTURE_BUFFER_MAX_SIZE;
 
    case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
       return 64;
