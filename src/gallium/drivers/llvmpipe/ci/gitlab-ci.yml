@@ -70,9 +70,9 @@ llvmpipe:
   script: |
     . "$SCRIPTS_DIR"/setup-test-env.sh
     section_start weston "weston: prepare"
-    LD_LIBRARY_PATH=`pwd`/install weston -Bheadless-backend.so -Swayland-0 &
+    LD_LIBRARY_PATH="$PWD/install" weston -Bheadless-backend.so -Swayland-0 --idle-time=0 &
     section_end weston
-    LD_LIBRARY_PATH=`pwd`/install WAYLAND_DISPLAY=wayland-0 xvfb-run --server-args='-noreset' bash -c ". $SCRIPTS_DIR/setup-test-env.sh && ${XVFB_SCRIPT}"
+    LD_LIBRARY_PATH="$PWD/install" WAYLAND_DISPLAY=wayland-0 xvfb-run --server-args='-noreset' bash -c ". $SCRIPTS_DIR/setup-test-env.sh && ${XVFB_SCRIPT}"
 
 llvmpipe-deqp-asan:
   variables:
