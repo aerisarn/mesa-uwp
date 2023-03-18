@@ -3257,7 +3257,7 @@ bool
 radv_pipeline_capture_shaders(const struct radv_device *device, VkPipelineCreateFlags flags)
 {
    return (flags & VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR) ||
-          device->keep_shader_info;
+          (device->instance->debug_flags & RADV_DEBUG_DUMP_SHADERS) || device->keep_shader_info;
 }
 
 bool
