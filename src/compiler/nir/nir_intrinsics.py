@@ -864,8 +864,15 @@ system_value("scratch_base_ptr", 0, bit_sizes=[32,64], indices=[BASE])
 system_value("constant_base_ptr", 0, bit_sizes=[32,64])
 system_value("shared_base_ptr", 0, bit_sizes=[32,64])
 system_value("global_base_ptr", 0, bit_sizes=[32,64])
-# Address of a transform feedback buffer, indexed by BASE
+# Address and size of a transform feedback buffer, indexed by BASE
 system_value("xfb_address", 1, bit_sizes=[32,64], indices=[BASE])
+system_value("xfb_size", 1, bit_sizes=[32], indices=[BASE])
+
+# Address of the associated index buffer in a transform feedback program for an
+# indexed draw. This will be used so transform feedback can pull the gl_VertexID
+# from the index buffer.
+system_value("xfb_index_buffer", 1, bit_sizes=[32,64])
+
 system_value("frag_size", 2)
 system_value("frag_invocation_count", 1)
 
