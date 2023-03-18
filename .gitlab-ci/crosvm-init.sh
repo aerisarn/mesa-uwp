@@ -15,9 +15,6 @@ mount -t tmpfs tmpfs /tmp
 . ${VM_TEMP_DIR}/crosvm-env.sh
 . ${VM_TEMP_DIR}/setup-test-env.sh
 
-# Required by the wayland platform
-export XDG_RUNTIME_DIR=$(mktemp -d)
-
 # .gitlab-ci.yml script variable is using relative paths to install directory,
 # so change to that dir before running `crosvm-script`
 cd "${CI_PROJECT_DIR}"

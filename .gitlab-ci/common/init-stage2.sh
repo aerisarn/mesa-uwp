@@ -125,9 +125,6 @@ fi
 /capture-devcoredump.sh &
 BACKGROUND_PIDS="$! $BACKGROUND_PIDS"
 
-export XDG_RUNTIME_DIR=/run/user
-mkdir -p $XDG_RUNTIME_DIR
-
 # If we want Xorg to be running for the test, then we start it up before the
 # HWCI_TEST_SCRIPT because we need to use xinit to start X (otherwise
 # without using -displayfd you can race with Xorg's startup), but xinit will eat
