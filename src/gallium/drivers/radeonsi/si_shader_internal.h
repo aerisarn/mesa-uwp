@@ -171,6 +171,10 @@ bool si_nir_lower_abi(nir_shader *nir, struct si_shader *shader, struct si_shade
 bool si_nir_lower_resource(nir_shader *nir, struct si_shader *shader,
                            struct si_shader_args *args);
 
+/* si_nir_lower_vs_inputs.c */
+bool si_nir_lower_vs_inputs(nir_shader *nir, struct si_shader *shader,
+                            struct si_shader_args *args);
+
 /* si_shader_llvm.c */
 bool si_compile_llvm(struct si_screen *sscreen, struct si_shader_binary *binary,
                      struct ac_shader_config *conf, struct ac_llvm_compiler *compiler,
