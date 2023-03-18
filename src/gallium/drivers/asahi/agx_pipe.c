@@ -1383,6 +1383,7 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CONDITIONAL_RENDER:
    case PIPE_CAP_CONDITIONAL_RENDER_INVERTED:
    case PIPE_CAP_SEAMLESS_CUBE_MAP:
+   case PIPE_CAP_LOAD_CONSTBUF:
    case PIPE_CAP_SEAMLESS_CUBE_MAP_PER_TEXTURE:
    case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
       return 1;
