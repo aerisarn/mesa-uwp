@@ -986,7 +986,7 @@ v3d_get_sand30_fs(struct pipe_context *pctx)
          * for UV frame, but as we are reading 4 10-bit-values at a time we
          * will have 24 groups (pixels) of 4 10-bit values.
          */
-        nir_ssa_def *pixels_stripe = nir_imm_int(&b, 24);
+        uint32_t pixels_stripe = 24;
 
         nir_ssa_def *x = nir_f2i32(&b, nir_channel(&b, pos, 0));
         nir_ssa_def *y = nir_f2i32(&b, nir_channel(&b, pos, 1));
@@ -1033,7 +1033,7 @@ v3d_get_sand30_fs(struct pipe_context *pctx)
         nir_ssa_def *real_x = nir_ior(&b, nir_iand_imm(&b, x, 1),
                                       nir_ishl_imm(&b,nir_ushr_imm(&b, x, 2),
                                       1));
-        nir_ssa_def *x_pos_in_stripe = nir_umod(&b, real_x, pixels_stripe);
+        nir_ssa_def *x_pos_in_stripe = nir_umod_imm(&b, real_x, pixels_stripe);
         nir_ssa_def *component = nir_umod(&b, real_x, three);
         nir_ssa_def *intra_utile_x_offset = nir_ishl_imm(&b, component, 2);
 
@@ -1043,7 +1043,7 @@ v3d_get_sand30_fs(struct pipe_context *pctx)
         nir_ssa_def *stripe_offset=
                 nir_ishl_imm(&b,
                              nir_imul(&b,
-                                      nir_udiv(&b, real_x, pixels_stripe),
+                                      nir_udiv_imm(&b, real_x, pixels_stripe),
                                       stride),
                              7);
 
