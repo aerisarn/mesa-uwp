@@ -846,10 +846,10 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
       identify_chip(REMBRANDT);
       break;
    case FAMILY_RPL:
-      identify_chip2(RAPHAEL, GFX1036);
+      identify_chip2(RAPHAEL, RAPHAEL_MENDOCINO);
       break;
    case FAMILY_MDN:
-      identify_chip2(MENDOCINO, GFX1036);
+      identify_chip2(MENDOCINO, RAPHAEL_MENDOCINO);
       break;
    case FAMILY_GFX1100:
       identify_chip(GFX1100);
@@ -1031,7 +1031,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
       case CHIP_FIJI:
       case CHIP_POLARIS12:
       case CHIP_VEGAM:
-      case CHIP_GFX1036:
+      case CHIP_RAPHAEL_MENDOCINO:
          info->l2_cache_size = info->num_tcc_blocks * 128 * 1024;
          break;
       default:
@@ -1297,7 +1297,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
          break;
       case CHIP_VANGOGH:
       case CHIP_REMBRANDT:
-      case CHIP_GFX1036:
+      case CHIP_RAPHAEL_MENDOCINO:
          pc_lines = 256;
          break;
       default:
