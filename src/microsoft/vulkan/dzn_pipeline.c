@@ -109,17 +109,15 @@ dzn_cached_blob_create(struct vk_device *device,
                        size_t data_size);
 
 static struct vk_pipeline_cache_object *
-dzn_cached_blob_deserialize(struct vk_device *device,
-                                   const void *key_data,
-                                   size_t key_size,
-                                   struct blob_reader *blob)
+dzn_cached_blob_deserialize(struct vk_pipeline_cache *cache,
+                            const void *key_data, size_t key_size,
+                            struct blob_reader *blob)
 {
    size_t data_size = blob->end - blob->current;
    assert(key_size == SHA1_DIGEST_LENGTH);
 
-   return dzn_cached_blob_create(device, key_data,
-                                 blob_read_bytes(blob, data_size),
-                                 data_size);
+   return dzn_cached_blob_create(cache->base.device, key_data,
+                                 blob_read_bytes(blob, data_size), data_size);
 }
 
 const struct vk_pipeline_cache_object_ops dzn_cached_blob_ops = {

@@ -62,7 +62,7 @@ raw_data_object_serialize(struct vk_pipeline_cache_object *object,
 }
 
 static struct vk_pipeline_cache_object *
-raw_data_object_deserialize(struct vk_device *device,
+raw_data_object_deserialize(struct vk_pipeline_cache *cache,
                             const void *key_data,
                             size_t key_size,
                             struct blob_reader *blob)
@@ -77,7 +77,8 @@ raw_data_object_deserialize(struct vk_device *device,
    const void *data = blob_read_bytes(blob, data_size);
 
    struct raw_data_object *data_obj =
-      raw_data_object_create(device, key_data, key_size, data, data_size);
+      raw_data_object_create(cache->base.device, key_data, key_size, data,
+                             data_size);
 
    return data_obj ? &data_obj->base : NULL;
 }
@@ -285,7 +286,7 @@ vk_pipeline_cache_object_deserialize(struct vk_pipeline_cache *cache,
    blob_reader_init(&reader, data, data_size);
 
    struct vk_pipeline_cache_object *object =
-      ops->deserialize(cache->base.device, key_data, key_size, &reader);
+      ops->deserialize(cache, key_data, key_size, &reader);
 
    if (object == NULL) {
       vk_logw(VK_LOG_OBJS(cache),

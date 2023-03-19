@@ -2869,8 +2869,9 @@ tu_shaders_serialize(struct vk_pipeline_cache_object *object,
                      struct blob *blob);
 
 static struct vk_pipeline_cache_object *
-tu_shaders_deserialize(struct vk_device *device,
-                       const void *key_data, size_t key_size,
+tu_shaders_deserialize(struct vk_pipeline_cache *cache,
+                       const void *key_data,
+                       size_t key_size,
                        struct blob_reader *blob);
 
 static void
@@ -2944,11 +2945,13 @@ tu_shaders_serialize(struct vk_pipeline_cache_object *object,
 }
 
 static struct vk_pipeline_cache_object *
-tu_shaders_deserialize(struct vk_device *_device,
-                       const void *key_data, size_t key_size,
+tu_shaders_deserialize(struct vk_pipeline_cache *cache,
+                       const void *key_data,
+                       size_t key_size,
                        struct blob_reader *blob)
 {
-   struct tu_device *dev = container_of(_device, struct tu_device, vk);
+   struct tu_device *dev =
+      container_of(cache->base.device, struct tu_device, vk);
    struct tu_compiled_shaders *shaders =
       tu_shaders_init(dev, key_data, key_size);
 
@@ -2999,8 +3002,9 @@ tu_nir_shaders_serialize(struct vk_pipeline_cache_object *object,
                          struct blob *blob);
 
 static struct vk_pipeline_cache_object *
-tu_nir_shaders_deserialize(struct vk_device *device,
-                           const void *key_data, size_t key_size,
+tu_nir_shaders_deserialize(struct vk_pipeline_cache *cache,
+                           const void *key_data,
+                           size_t key_size,
                            struct blob_reader *blob);
 
 static void
@@ -3061,11 +3065,13 @@ tu_nir_shaders_serialize(struct vk_pipeline_cache_object *object,
 }
 
 static struct vk_pipeline_cache_object *
-tu_nir_shaders_deserialize(struct vk_device *_device,
-                       const void *key_data, size_t key_size,
-                       struct blob_reader *blob)
+tu_nir_shaders_deserialize(struct vk_pipeline_cache *cache,
+                           const void *key_data,
+                           size_t key_size,
+                           struct blob_reader *blob)
 {
-   struct tu_device *dev = container_of(_device, struct tu_device, vk);
+   struct tu_device *dev =
+      container_of(cache->base.device, struct tu_device, vk);
    struct tu_nir_shaders *shaders =
       tu_nir_shaders_init(dev, key_data, key_size);
 

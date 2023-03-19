@@ -77,7 +77,7 @@ struct vk_pipeline_cache_object_ops {
     *
     * This function is optional.
     */
-   struct vk_pipeline_cache_object *(*deserialize)(struct vk_device *device,
+   struct vk_pipeline_cache_object *(*deserialize)(struct vk_pipeline_cache *cache,
                                                    const void *key_data,
                                                    size_t key_size,
                                                    struct blob_reader *blob);
