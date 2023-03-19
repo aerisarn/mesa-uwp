@@ -352,6 +352,8 @@ radv_create_cmd_buffer(struct vk_command_pool *pool,
       return result;
    }
 
+   list_inithead(&cmd_buffer->upload.list);
+
    cmd_buffer->device = device;
 
    cmd_buffer->qf = vk_queue_to_radv(device->physical_device, pool->queue_family_index);
@@ -372,8 +374,6 @@ radv_create_cmd_buffer(struct vk_command_pool *pool,
                           VK_OBJECT_TYPE_DESCRIPTOR_SET);
 
    *cmd_buffer_out = &cmd_buffer->vk;
-
-   list_inithead(&cmd_buffer->upload.list);
 
    return VK_SUCCESS;
 }
