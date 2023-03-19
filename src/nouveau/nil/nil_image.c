@@ -438,7 +438,7 @@ nil_image_init(struct nv_device_info *dev,
 
    if (!(info->usage & NIL_IMAGE_USAGE_LINEAR_BIT)) {
       image->pte_kind = nil_choose_pte_kind(dev, info->format, info->samples,
-                                            true /* TODO: compressed */);
+                                            false /* TODO: compressed */);
    }
 
    image->align_B = MAX2(image->align_B, 4096);
