@@ -204,7 +204,7 @@ radv_create_merged_rt_create_info(const VkRayTracingPipelineCreateInfoKHR *pCrea
 static VkResult
 radv_rt_pipeline_compile(struct radv_ray_tracing_pipeline *pipeline,
                          struct radv_pipeline_layout *pipeline_layout, struct radv_device *device,
-                         struct radv_pipeline_cache *cache,
+                         struct vk_pipeline_cache *cache,
                          const struct radv_pipeline_key *pipeline_key,
                          const VkPipelineShaderStageCreateInfo *pStage,
                          const VkPipelineCreateFlags flags, const uint8_t *custom_hash,
@@ -282,7 +282,7 @@ radv_rt_pipeline_compile(struct radv_ray_tracing_pipeline *pipeline,
 
    /* Compile NIR shader to AMD assembly. */
    pipeline->base.base.shaders[rt_stage.stage] =
-      radv_shader_nir_to_asm(device, &rt_stage, &rt_stage.nir, 1, pipeline_key,
+      radv_shader_nir_to_asm(device, cache, &rt_stage, &rt_stage.nir, 1, pipeline_key,
                              keep_executable_info, keep_statistic_info, &binaries[rt_stage.stage]);
 
    rt_stage.feedback.duration += os_time_get_nano() - stage_start;
@@ -512,7 +512,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
                         const VkAllocationCallbacks *pAllocator, VkPipeline *pPipeline)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
-   RADV_FROM_HANDLE(radv_pipeline_cache, cache, _cache);
+   VK_FROM_HANDLE(vk_pipeline_cache, cache, _cache);
    RADV_FROM_HANDLE(radv_pipeline_layout, pipeline_layout, pCreateInfo->layout);
    VkResult result;
    struct radv_ray_tracing_pipeline *rt_pipeline = NULL;

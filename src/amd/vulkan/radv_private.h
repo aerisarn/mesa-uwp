@@ -415,35 +415,14 @@ struct radv_instance {
 VkResult radv_init_wsi(struct radv_physical_device *physical_device);
 void radv_finish_wsi(struct radv_physical_device *physical_device);
 
-struct cache_entry;
-
-struct radv_pipeline_cache {
-   struct vk_object_base base;
-   struct radv_device *device;
-   mtx_t mutex;
-   VkPipelineCacheCreateFlags flags;
-
-   uint32_t total_size;
-   uint32_t table_size;
-   uint32_t kernel_count;
-   struct cache_entry **hash_table;
-
-   VkAllocationCallbacks alloc;
-};
-
-struct radv_shader_binary;
-struct radv_shader;
-struct radv_pipeline_shader_stack_size;
-
 bool radv_create_shaders_from_pipeline_cache(
-   struct radv_device *device, struct radv_pipeline_cache *cache, const unsigned char *sha1,
+   struct radv_device *device, struct vk_pipeline_cache *cache, const unsigned char *sha1,
    struct radv_pipeline *pipeline, struct radv_ray_tracing_module *rt_groups,
    uint32_t num_rt_groups, bool *found_in_application_cache);
 
 struct radv_shader_binary_part;
 
-void radv_pipeline_cache_insert_shaders(struct radv_device *device,
-                                        struct radv_pipeline_cache *cache,
+void radv_pipeline_cache_insert_shaders(struct radv_device *device, struct vk_pipeline_cache *cache,
                                         const unsigned char *sha1, struct radv_pipeline *pipeline,
                                         struct radv_shader_binary *const *binaries,
                                         struct radv_shader_part_binary *ps_epilog_binary,
@@ -983,7 +962,7 @@ struct radv_device {
    struct radv_physical_device *physical_device;
 
    /* Backup in-memory cache to be used if the app doesn't provide one */
-   struct radv_pipeline_cache *mem_cache;
+   struct vk_pipeline_cache *mem_cache;
 
    /*
     * use different counters so MSAA MRTs get consecutive surface indices,
@@ -3710,8 +3689,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(radv_image_view, vk.base, VkImageView,
                                VK_OBJECT_TYPE_IMAGE_VIEW);
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_indirect_command_layout, base, VkIndirectCommandsLayoutNV,
                                VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NV)
-VK_DEFINE_NONDISP_HANDLE_CASTS(radv_pipeline_cache, base, VkPipelineCache,
-                               VK_OBJECT_TYPE_PIPELINE_CACHE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_pipeline, base, VkPipeline,
                                VK_OBJECT_TYPE_PIPELINE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_pipeline_layout, base, VkPipelineLayout,

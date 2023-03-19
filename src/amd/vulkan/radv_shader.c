@@ -2228,9 +2228,9 @@ shader_compile(struct radv_device *device, struct nir_shader *const *shaders, in
 }
 
 struct radv_shader *
-radv_shader_nir_to_asm(struct radv_device *device, struct radv_pipeline_stage *pl_stage,
-                       struct nir_shader *const *shaders, int shader_count,
-                       const struct radv_pipeline_key *key, bool keep_shader_info,
+radv_shader_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
+                       struct radv_pipeline_stage *pl_stage, struct nir_shader *const *shaders,
+                       int shader_count, const struct radv_pipeline_key *key, bool keep_shader_info,
                        bool keep_statistic_info, struct radv_shader_binary **binary_out)
 {
    gl_shader_stage stage = shaders[shader_count - 1]->info.stage;
@@ -2245,7 +2245,13 @@ radv_shader_nir_to_asm(struct radv_device *device, struct radv_pipeline_stage *p
    struct radv_shader_binary *binary =
       shader_compile(device, shaders, shader_count, stage, info, &pl_stage->args, &options);
 
-   struct radv_shader *shader = radv_shader_create(device, binary);
+   struct radv_shader *shader;
+   if (keep_shader_info || options.dump_shader) {
+      /* skip cache insertion and directly create shader */
+      shader = radv_shader_create(device, binary);
+   } else {
+      shader = radv_shader_create_cached(device, cache, binary);
+   }
    if (!shader) {
       free(binary);
       return NULL;

@@ -43,7 +43,6 @@
 struct radv_physical_device;
 struct radv_device;
 struct radv_pipeline;
-struct radv_pipeline_cache;
 struct radv_ray_tracing_module;
 struct radv_pipeline_key;
 struct radv_shader_args;
@@ -577,10 +576,11 @@ struct radv_shader *radv_shader_create_cached(struct radv_device *device,
                                               struct vk_pipeline_cache *cache,
                                               const struct radv_shader_binary *binary);
 
-struct radv_shader *radv_shader_nir_to_asm(
-   struct radv_device *device, struct radv_pipeline_stage *stage, struct nir_shader *const *shaders,
-   int shader_count, const struct radv_pipeline_key *key, bool keep_shader_info, bool keep_statistic_info,
-   struct radv_shader_binary **binary_out);
+struct radv_shader *
+radv_shader_nir_to_asm(struct radv_device *device, struct vk_pipeline_cache *cache,
+                       struct radv_pipeline_stage *stage, struct nir_shader *const *shaders,
+                       int shader_count, const struct radv_pipeline_key *key, bool keep_shader_info,
+                       bool keep_statistic_info, struct radv_shader_binary **binary_out);
 
 VkResult radv_shader_wait_for_upload(struct radv_device *device, uint64_t seq);
 
