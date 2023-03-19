@@ -8,6 +8,8 @@ set -o xtrace
 
 export DEBIAN_FRONTEND=noninteractive
 
+apt-get install -y libelogind0  # this interfere with systemd deps, install separately
+
 # Ephemeral packages (installed for this script and removed again at the end)
 STABLE_EPHEMERAL=" \
       ccache \
@@ -60,6 +62,7 @@ apt-get install -y --no-remove --no-install-recommends \
       pciutils \
       python3-lxml \
       python3-simplejson \
+      sysvinit-core \
       xinit \
       xserver-xorg-video-amdgpu \
       xserver-xorg-video-ati

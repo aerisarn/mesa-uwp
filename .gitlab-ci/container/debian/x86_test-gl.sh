@@ -7,6 +7,8 @@ set -o xtrace
 export DEBIAN_FRONTEND=noninteractive
 export LLVM_VERSION="${LLVM_VERSION:=15}"
 
+apt-get install -y libelogind0  # this interfere with systemd deps, install separately
+
 # Ephemeral packages (installed for this script and removed again at the end)
 STABLE_EPHEMERAL=" \
       bzip2 \
@@ -59,6 +61,7 @@ apt-get install -y --no-remove \
       python3-renderdoc \
       python3-simplejson \
       spirv-tools \
+      sysvinit-core \
       weston
 
 
