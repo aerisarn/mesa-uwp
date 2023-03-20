@@ -449,15 +449,9 @@ radv_rt_pipeline_compile(struct radv_ray_tracing_pipeline *pipeline,
 
    radv_pipeline_stage_init(&stage, &rt_stage, vk_to_mesa_shader_stage(stage.stage));
 
-   bool found_in_application_cache = true;
    if (!keep_executable_info &&
-       radv_pipeline_cache_search(device, cache, &pipeline->base.base, pipeline->sha1,
-                                  &found_in_application_cache)) {
-      if (found_in_application_cache && creation_feedback)
-         creation_feedback->pPipelineCreationFeedback->flags |=
-            VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
+       radv_ray_tracing_pipeline_cache_search(device, cache, pipeline, pCreateInfo))
       return VK_SUCCESS;
-   }
 
    if (pCreateInfo->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT)
       return VK_PIPELINE_COMPILE_REQUIRED;
@@ -501,7 +495,8 @@ radv_rt_pipeline_compile(struct radv_ray_tracing_pipeline *pipeline,
                              keep_executable_info, keep_statistic_info, &binaries[rt_stage.stage]);
 
    if (!keep_executable_info) {
-      radv_pipeline_cache_insert(device, cache, &pipeline->base.base, NULL, pipeline->sha1);
+      radv_ray_tracing_pipeline_cache_insert(device, cache, pipeline, pCreateInfo->stageCount,
+                                             pipeline->sha1);
    }
 
    free(binaries[rt_stage.stage]);

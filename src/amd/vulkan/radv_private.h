@@ -433,6 +433,17 @@ void radv_pipeline_cache_insert(struct radv_device *device, struct vk_pipeline_c
                                 struct radv_shader_part_binary *ps_epilog_binary,
                                 const unsigned char *sha1);
 
+struct radv_ray_tracing_pipeline;
+bool radv_ray_tracing_pipeline_cache_search(struct radv_device *device,
+                                            struct vk_pipeline_cache *cache,
+                                            struct radv_ray_tracing_pipeline *pipeline,
+                                            const VkRayTracingPipelineCreateInfoKHR *create_info);
+
+void radv_ray_tracing_pipeline_cache_insert(struct radv_device *device,
+                                            struct vk_pipeline_cache *cache,
+                                            struct radv_ray_tracing_pipeline *pipeline,
+                                            unsigned num_stages, const unsigned char *sha1);
+
 struct vk_pipeline_cache_object *radv_pipeline_cache_search_nir(struct radv_device *device,
                                                                 struct vk_pipeline_cache *cache,
                                                                 const unsigned char *sha1,
@@ -2336,6 +2347,12 @@ struct radv_ray_tracing_stage {
 
    uint8_t sha1[SHA1_DIGEST_LENGTH];
 };
+
+static inline bool
+radv_ray_tracing_stage_is_compiled(struct radv_ray_tracing_stage *stage)
+{
+   return false;
+}
 
 struct radv_ray_tracing_pipeline {
    struct radv_compute_pipeline base;
