@@ -75,6 +75,7 @@
 #include "vk_debug_report.h"
 #include "vk_descriptor_update_template.h"
 #include "vk_device.h"
+#include "vk_device_memory.h"
 #include "vk_drm_syncobj.h"
 #include "vk_enum_defines.h"
 #include "vk_format.h"
@@ -1574,10 +1575,7 @@ _anv_combine_address(struct anv_batch *batch, void *location,
 /* #define __gen_address_offset anv_address_add */
 
 struct anv_device_memory {
-   struct vk_object_base                        base;
-
-   /** Client-requested allocaiton size */
-   uint64_t                                     size;
+   struct vk_device_memory                      vk;
 
    struct list_head                             link;
 
@@ -1589,14 +1587,6 @@ struct anv_device_memory {
 
    /* The map, from the user PoV is map + map_delta */
    uint64_t                                     map_delta;
-
-   /* If set, we are holding reference to AHardwareBuffer
-    * which we must release when memory is freed.
-    */
-   struct AHardwareBuffer *                     ahw;
-
-   /* If set, this memory comes from a host pointer. */
-   void *                                       host_ptr;
 };
 
 /**
@@ -4319,7 +4309,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_descriptor_set, base, VkDescriptorSet,
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_descriptor_set_layout, base,
                                VkDescriptorSetLayout,
                                VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT)
-VK_DEFINE_NONDISP_HANDLE_CASTS(anv_device_memory, base, VkDeviceMemory,
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_device_memory, vk.base, VkDeviceMemory,
                                VK_OBJECT_TYPE_DEVICE_MEMORY)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)

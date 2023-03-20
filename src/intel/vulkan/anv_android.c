@@ -306,34 +306,6 @@ anv_GetAndroidHardwareBufferPropertiesANDROID(
    return VK_SUCCESS;
 }
 
-VkResult
-anv_GetMemoryAndroidHardwareBufferANDROID(
-   VkDevice device_h,
-   const VkMemoryGetAndroidHardwareBufferInfoANDROID *pInfo,
-   struct AHardwareBuffer **pBuffer)
-{
-   ANV_FROM_HANDLE(anv_device_memory, mem, pInfo->memory);
-
-   /* Some quotes from Vulkan spec:
-    *
-    * "If the device memory was created by importing an Android hardware
-    * buffer, vkGetMemoryAndroidHardwareBufferANDROID must return that same
-    * Android hardware buffer object."
-    *
-    * "VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID must
-    * have been included in VkExportMemoryAllocateInfo::handleTypes when
-    * memory was created."
-    */
-   if (mem->ahw) {
-      *pBuffer = mem->ahw;
-      /* Increase refcount. */
-      AHardwareBuffer_acquire(mem->ahw);
-      return VK_SUCCESS;
-   }
-
-   return VK_ERROR_OUT_OF_HOST_MEMORY;
-}
-
 #endif
 
 /*
@@ -341,15 +313,14 @@ anv_GetMemoryAndroidHardwareBufferANDROID(
  */
 VkResult
 anv_import_ahw_memory(VkDevice device_h,
-                      struct anv_device_memory *mem,
-                      const VkImportAndroidHardwareBufferInfoANDROID *info)
+                      struct anv_device_memory *mem)
 {
 #if ANDROID_API_LEVEL >= 26
    ANV_FROM_HANDLE(anv_device, device, device_h);
 
    /* Import from AHardwareBuffer to anv_device_memory. */
    const native_handle_t *handle =
-      AHardwareBuffer_getNativeHandle(info->buffer);
+      AHardwareBuffer_getNativeHandle(mem->vk.ahardware_buffer);
 
    /* NOTE - We support buffers with only one handle but do not error on
     * multiple handle case. Reason is that we want to support YUV formats
@@ -365,43 +336,10 @@ anv_import_ahw_memory(VkDevice device_h,
                                           &mem->bo);
    assert(result == VK_SUCCESS);
 
-   /* "If the vkAllocateMemory command succeeds, the implementation must
-    * acquire a reference to the imported hardware buffer, which it must
-    * release when the device memory object is freed. If the command fails,
-    * the implementation must not retain a reference."
-    */
-   AHardwareBuffer_acquire(info->buffer);
-   mem->ahw = info->buffer;
-
    return VK_SUCCESS;
 #else
    return VK_ERROR_EXTENSION_NOT_PRESENT;
 #endif
-}
-
-VkResult
-anv_create_ahw_memory(VkDevice device_h,
-                      struct anv_device_memory *mem,
-                      const VkMemoryAllocateInfo *pAllocateInfo)
-{
-#if ANDROID_API_LEVEL >= 26
-   struct AHardwareBuffer *ahw = vk_alloc_ahardware_buffer(pAllocateInfo);
-   if (ahw == NULL)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-   const VkImportAndroidHardwareBufferInfoANDROID import_info = {
-      .buffer = ahw,
-   };
-   VkResult result = anv_import_ahw_memory(device_h, mem, &import_info);
-
-   /* Release a reference to avoid leak for AHB allocation. */
-   AHardwareBuffer_release(ahw);
-
-   return result;
-#else
-   return VK_ERROR_EXTENSION_NOT_PRESENT;
-#endif
-
 }
 
 VkResult
