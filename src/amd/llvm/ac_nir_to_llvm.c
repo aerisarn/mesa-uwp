@@ -5144,3 +5144,23 @@ bool ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
 
    return true;
 }
+
+/* Fixup the HW not emitting the TCS regs if there are no HS threads. */
+void ac_fixup_ls_hs_input_vgprs(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
+                                const struct ac_shader_args *args)
+{
+   LLVMValueRef count = ac_unpack_param(ac, ac_get_arg(ac, args->merged_wave_info), 8, 8);
+   LLVMValueRef hs_empty = LLVMBuildICmp(ac->builder, LLVMIntEQ, count, ac->i32_0, "");
+
+   abi->instance_id =
+      LLVMBuildSelect(ac->builder, hs_empty, ac_get_arg(ac, args->vertex_id),
+                      abi->instance_id, "");
+
+   abi->vs_rel_patch_id =
+      LLVMBuildSelect(ac->builder, hs_empty, ac_get_arg(ac, args->tcs_rel_ids),
+                      abi->vs_rel_patch_id, "");
+
+   abi->vertex_id =
+      LLVMBuildSelect(ac->builder, hs_empty, ac_get_arg(ac, args->tcs_patch_id),
+                      abi->vertex_id, "");
+}
