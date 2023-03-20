@@ -1065,7 +1065,10 @@ struct anv_queue {
 
    struct intel_batch_decode_ctx *           decoder;
 
-   uint32_t                                  exec_flags;
+   union {
+      uint32_t                               exec_flags; /* i915 */
+      uint32_t                               engine_id; /* Xe */
+   };
 
    /** Synchronization object for debug purposes (DEBUG_SYNC) */
    struct vk_sync                           *sync;

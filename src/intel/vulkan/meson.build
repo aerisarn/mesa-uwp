@@ -140,6 +140,8 @@ libanv_files = files(
   'xe/anv_kmd_backend.c',
   'xe/anv_device.c',
   'xe/anv_device.h',
+  'xe/anv_queue.c',
+  'xe/anv_queue.h',
   'anv_allocator.c',
   'anv_android.h',
   'anv_batch_chain.c',
