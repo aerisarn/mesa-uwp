@@ -23,12 +23,21 @@
 
 #include "vk_android.h"
 
+#include "vk_buffer.h"
 #include "vk_common_entrypoints.h"
 #include "vk_device.h"
+#include "vk_image.h"
 #include "vk_log.h"
 #include "vk_queue.h"
+#include "vk_util.h"
 
 #include "util/libsync.h"
+
+#include <hardware/gralloc.h>
+
+#if ANDROID_API_LEVEL >= 26
+#include <hardware/gralloc1.h>
+#endif
 
 #include <unistd.h>
 
@@ -84,7 +93,61 @@ vk_image_usage_to_ahb_usage(const VkImageCreateFlags vk_create,
    if (ahb_usage == 0)
       ahb_usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
 
-   return ahb_usage
+   return ahb_usage;
+}
+
+struct AHardwareBuffer *
+vk_alloc_ahardware_buffer(const VkMemoryAllocateInfo *pAllocateInfo)
+{
+   const VkMemoryDedicatedAllocateInfo *dedicated_info =
+      vk_find_struct_const(pAllocateInfo->pNext,
+                           MEMORY_DEDICATED_ALLOCATE_INFO);
+
+   uint32_t w = 0;
+   uint32_t h = 1;
+   uint32_t layers = 1;
+   uint32_t format = 0;
+   uint64_t usage = 0;
+
+   /* If caller passed dedicated information. */
+   if (dedicated_info && dedicated_info->image) {
+      VK_FROM_HANDLE(vk_image, image, dedicated_info->image);
+      w = image->extent.width;
+      h = image->extent.height;
+      layers = image->array_layers;
+      assert(image->ahardware_buffer_format != 0);
+      /* TODO: This feels a bit sketchy.  We should probably be taking the
+       * external format into account somehow.
+       */
+      format = image->ahardware_buffer_format;
+      usage = vk_image_usage_to_ahb_usage(image->create_flags,
+                                          image->usage);
+   } else if (dedicated_info && dedicated_info->buffer) {
+      VK_FROM_HANDLE(vk_buffer, buffer, dedicated_info->buffer);
+      w = buffer->size;
+      format = AHARDWAREBUFFER_FORMAT_BLOB;
+      usage = AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN |
+              AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
+   } else {
+      w = pAllocateInfo->allocationSize;
+      format = AHARDWAREBUFFER_FORMAT_BLOB;
+      usage = AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN |
+              AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
+   }
+
+   struct AHardwareBuffer_Desc desc = {
+      .width = w,
+      .height = h,
+      .layers = layers,
+      .format = format,
+      .usage = usage,
+    };
+
+   struct AHardwareBuffer *ahb;
+   if (AHardwareBuffer_allocate(&desc, &ahb) != 0)
+      return NULL;
+
+   return ahb;
 }
 #endif /* ANDROID_API_LEVEL >= 26 */
 

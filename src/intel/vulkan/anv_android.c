@@ -385,48 +385,8 @@ anv_create_ahw_memory(VkDevice device_h,
                       const VkMemoryAllocateInfo *pAllocateInfo)
 {
 #if ANDROID_API_LEVEL >= 26
-   const VkMemoryDedicatedAllocateInfo *dedicated_info =
-      vk_find_struct_const(pAllocateInfo->pNext,
-                           MEMORY_DEDICATED_ALLOCATE_INFO);
-
-   uint32_t w = 0;
-   uint32_t h = 1;
-   uint32_t layers = 1;
-   uint32_t format = 0;
-   uint64_t usage = 0;
-
-   /* If caller passed dedicated information. */
-   if (dedicated_info && dedicated_info->image) {
-      ANV_FROM_HANDLE(anv_image, image, dedicated_info->image);
-      w = image->vk.extent.width;
-      h = image->vk.extent.height;
-      layers = image->vk.array_layers;
-      format = anv_ahw_format_for_vk_format(image->vk.format);
-      usage = vk_image_usage_to_ahb_usage(image->vk.create_flags,
-                                          image->vk.usage);
-   } else if (dedicated_info && dedicated_info->buffer) {
-      ANV_FROM_HANDLE(anv_buffer, buffer, dedicated_info->buffer);
-      w = buffer->vk.size;
-      format = AHARDWAREBUFFER_FORMAT_BLOB;
-      usage = AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN |
-              AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
-   } else {
-      w = pAllocateInfo->allocationSize;
-      format = AHARDWAREBUFFER_FORMAT_BLOB;
-      usage = AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN |
-              AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
-   }
-
-   struct AHardwareBuffer *ahw = NULL;
-   struct AHardwareBuffer_Desc desc = {
-      .width = w,
-      .height = h,
-      .layers = layers,
-      .format = format,
-      .usage = usage,
-    };
-
-   if (AHardwareBuffer_allocate(&desc, &ahw) != 0)
+   struct AHardwareBuffer *ahw = vk_alloc_ahardware_buffer(pAllocateInfo);
+   if (ahw == NULL)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    const VkImportAndroidHardwareBufferInfoANDROID import_info = {

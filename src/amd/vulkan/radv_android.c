@@ -736,47 +736,9 @@ radv_create_ahb_memory(struct radv_device *device, struct radv_device_memory *me
                        unsigned priority, const VkMemoryAllocateInfo *pAllocateInfo)
 {
 #if RADV_SUPPORT_ANDROID_HARDWARE_BUFFER
-   const VkMemoryDedicatedAllocateInfo *dedicated_info =
-      vk_find_struct_const(pAllocateInfo->pNext, MEMORY_DEDICATED_ALLOCATE_INFO);
-
-   uint32_t w = 0;
-   uint32_t h = 1;
-   uint32_t layers = 1;
-   uint32_t format = 0;
-   uint64_t usage = 0;
-
-   /* If caller passed dedicated information. */
-   if (dedicated_info && dedicated_info->image) {
-      RADV_FROM_HANDLE(radv_image, image, dedicated_info->image);
-      w = image->info.width;
-      h = image->info.height;
-      layers = image->info.array_size;
-      format = radv_ahb_format_for_vk_format(image->vk.format);
-      usage = vk_image_usage_to_ahb_usage(image->vk.create_flags, image->vk.usage);
-   } else if (dedicated_info && dedicated_info->buffer) {
-      RADV_FROM_HANDLE(radv_buffer, buffer, dedicated_info->buffer);
-      w = buffer->vk.size;
-      format = AHARDWAREBUFFER_FORMAT_BLOB;
-      usage = AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN | AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
-   } else {
-      w = pAllocateInfo->allocationSize;
-      format = AHARDWAREBUFFER_FORMAT_BLOB;
-      usage = AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN | AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
-   }
-
-   struct AHardwareBuffer *android_hardware_buffer = NULL;
-   struct AHardwareBuffer_Desc desc = {
-      .width = w,
-      .height = h,
-      .layers = layers,
-      .format = format,
-      .usage = usage,
-   };
-
-   if (AHardwareBuffer_allocate(&desc, &android_hardware_buffer) != 0)
+   mem->android_hardware_buffer = vk_alloc_ahardware_buffer(pAllocateInfo);
+   if (mem->android_hardware_buffer == NULL)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-   mem->android_hardware_buffer = android_hardware_buffer;
 
    const struct VkImportAndroidHardwareBufferInfoANDROID import_info = {
       .buffer = mem->android_hardware_buffer,

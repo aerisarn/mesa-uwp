@@ -32,6 +32,9 @@ extern "C" {
 #if ANDROID_API_LEVEL >= 26
 uint64_t vk_image_usage_to_ahb_usage(const VkImageCreateFlags vk_create,
                                      const VkImageUsageFlags vk_usage);
+
+struct AHardwareBuffer *
+vk_alloc_ahardware_buffer(const VkMemoryAllocateInfo *pAllocateInfo);
 #endif
 
 #ifdef __cplusplus
