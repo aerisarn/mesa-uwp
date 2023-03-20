@@ -571,7 +571,7 @@ setup_framebuffer(struct zink_context *ctx)
 
    zink_update_vk_sample_locations(ctx);
 
-   if (ctx->rp_changed || ctx->rp_layout_changed || ctx->rp_loadop_changed) {
+   if (ctx->rp_changed || ctx->rp_layout_changed || (!ctx->batch.in_rp && ctx->rp_loadop_changed)) {
       /* 0. ensure no stale pointers are set */
       ctx->gfx_pipeline_state.next_render_pass = NULL;
       /* 1. calc new rp */
