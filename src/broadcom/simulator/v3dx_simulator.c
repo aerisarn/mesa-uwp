@@ -40,6 +40,8 @@
 #include "v3d_simulator.h"
 #include "v3d_simulator_wrapper.h"
 
+#include "common/v3d_performance_counters.h"
+
 #include "util/macros.h"
 #include "util/bitscan.h"
 #include "drm-uapi/v3d_drm.h"
@@ -218,12 +220,12 @@ v3dX(simulator_submit_tfu_ioctl)(struct v3d_hw *v3d,
         return 0;
 }
 
-#if V3D_VERSION >= 41
 int
 v3dX(simulator_submit_csd_ioctl)(struct v3d_hw *v3d,
                                  struct drm_v3d_submit_csd *args,
                                  uint32_t gmp_ofs)
 {
+#if V3D_VERSION >= 41
         int last_completed_jobs = (V3D_READ(V3D_CSD_0_STATUS) &
                                    V3D_CSD_0_STATUS_NUM_COMPLETED_JOBS_SET);
         g_gmp_ofs = gmp_ofs;
@@ -256,8 +258,10 @@ v3dX(simulator_submit_csd_ioctl)(struct v3d_hw *v3d,
         v3d_flush_caches(v3d);
 
         return 0;
-}
+#else
+        return -1;
 #endif
+}
 
 int
 v3dX(simulator_get_param_ioctl)(struct v3d_hw *v3d,
@@ -545,7 +549,8 @@ v3dX(simulator_submit_cl_ioctl)(struct v3d_hw *v3d,
 #define V3D_PCTR_0_SRC_N(x) (V3D_PCTR_0_SRC_0_3 + 4 * (x))
 #define V3D_PCTR_0_SRC_N_SHIFT(x) ((x) * 8)
 #define V3D_PCTR_0_SRC_N_MASK(x) (BITFIELD_RANGE(V3D_PCTR_0_SRC_N_SHIFT(x), \
-                                                 V3D_PCTR_0_SRC_N_SHIFT(x) + 6))
+                                                 V3D_PCTR_0_SRC_N_SHIFT(x) + \
+                                                 V3D_PCTR_0_SRC_0_3_PCTRS0_MSB))
 #endif
 
 void
@@ -583,6 +588,11 @@ void v3dX(simulator_perfmon_stop)(struct v3d_hw *v3d,
 
         V3D_WRITE(V3D_PCTR_0_EN, 0);
 #endif
+}
+
+void v3dX(simulator_get_perfcnt_total)(uint32_t *count)
+{
+        *count = ARRAY_SIZE(v3d_performance_counters);
 }
 
 #endif /* USE_V3D_SIMULATOR */

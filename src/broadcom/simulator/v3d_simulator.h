@@ -59,4 +59,25 @@ uint32_t v3d_simulator_get_mem_free(void);
 
 #endif
 
+/* Helper to call simulator ver specific functions */
+#define v3d_X_simulator(thing) ({                     \
+   __typeof(&v3d33_simulator_##thing) v3d_X_sim_thing;\
+   switch (sim_state.ver) {                           \
+   case 33:                                           \
+   case 40:                                           \
+      v3d_X_sim_thing = &v3d33_simulator_##thing;     \
+      break;                                          \
+   case 41:                                           \
+   case 42:                                           \
+      v3d_X_sim_thing = &v3d41_simulator_##thing;     \
+      break;                                          \
+   case 71:                                           \
+      v3d_X_sim_thing = &v3d71_simulator_##thing;     \
+      break;                                          \
+   default:                                           \
+      unreachable("Unsupported hardware generation"); \
+   }                                                  \
+   v3d_X_sim_thing;                                   \
+})
+
 #endif
