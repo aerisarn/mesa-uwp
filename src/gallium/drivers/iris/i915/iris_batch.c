@@ -273,6 +273,12 @@ void iris_i915_destroy_batch(struct iris_batch *batch)
    struct iris_screen *screen = batch->screen;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
 
+   /* destroy the engines context on the first batch or destroy each batch
+    * context
+    */
+   if (batch->ice->has_engines_context && batch != &batch->ice->batches[0])
+      return;
+
    iris_destroy_kernel_context(bufmgr, batch->ctx_id);
 }
 
