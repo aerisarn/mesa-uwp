@@ -40,7 +40,6 @@ Linux, FreeBSD, and other operating systems.
    license
    faq
    relnotes
-   thanks
 
 .. toctree::
    :maxdepth: 2
