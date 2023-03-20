@@ -3342,9 +3342,6 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
    /* No indirect indexing is allowed after this point. */
    assert(!indir_index);
 
-   if (ctx->stage == MESA_SHADER_VERTEX && !is_output)
-      return ctx->abi->load_inputs(ctx->abi, base, component, count, 0, component_type);
-
    /* Other non-fragment cases have outputs in temporaries. */
    if (is_output && (ctx->stage == MESA_SHADER_VERTEX || ctx->stage == MESA_SHADER_TESS_EVAL)) {
       assert(is_output);

@@ -239,6 +239,5 @@ void si_llvm_ps_build_end(struct si_shader_context *ctx);
 /* si_shader_llvm_vs.c */
 void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part_key *key,
                              bool separate_prolog);
-void si_llvm_init_vs_callbacks(struct si_shader_context *ctx);
 
 #endif

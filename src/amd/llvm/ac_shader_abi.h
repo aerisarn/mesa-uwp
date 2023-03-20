@@ -66,11 +66,6 @@ struct ac_shader_abi {
    void (*emit_vertex_with_counter)(struct ac_shader_abi *abi, unsigned stream,
                                     LLVMValueRef vertexidx, LLVMValueRef *addrs);
 
-   LLVMValueRef (*load_inputs)(struct ac_shader_abi *abi,
-                               unsigned driver_location, unsigned component,
-                               unsigned num_components, unsigned vertex_index,
-                               LLVMTypeRef type);
-
    LLVMValueRef (*load_tess_varyings)(struct ac_shader_abi *abi, LLVMTypeRef type,
                                       LLVMValueRef vertex_index, LLVMValueRef param_index,
                                       unsigned driver_location, unsigned component,
