@@ -3227,7 +3227,7 @@ VkResult anv_CreateDevice(
          goto fail_binding_table_pool;
    }
 
-   result = anv_device_alloc_bo(device, "workaround", 4096,
+   result = anv_device_alloc_bo(device, "workaround", 8192,
                                 ANV_BO_ALLOC_CAPTURE |
                                 ANV_BO_ALLOC_MAPPED,
                                 0 /* explicit_address */,
