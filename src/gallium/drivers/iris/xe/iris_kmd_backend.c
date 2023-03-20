@@ -44,7 +44,7 @@ xe_gem_create(struct iris_bufmgr *bufmgr,
 
    struct drm_xe_gem_create gem_create = {
      .vm_id = iris_bufmgr_get_global_vm_id(bufmgr),
-     .size = size,
+     .size = align64(size, iris_bufmgr_get_device_info(bufmgr)->mem_alignment),
    };
    for (uint16_t i = 0; i < regions_count; i++)
       gem_create.flags |= BITFIELD_BIT(regions[i]->instance);
