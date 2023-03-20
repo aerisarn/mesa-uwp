@@ -279,6 +279,25 @@ radv_shader_serialize(struct vk_pipeline_cache_object *object, struct blob *blob
    return true;
 }
 
+struct radv_shader *
+radv_shader_create_cached(struct radv_device *device, struct vk_pipeline_cache *cache,
+                          const struct radv_shader_binary *binary)
+{
+   if (radv_is_cache_disabled(device))
+      return radv_shader_create(device, binary);
+
+   uint8_t hash[SHA1_DIGEST_LENGTH];
+   _mesa_sha1_compute(binary, binary->total_size, hash);
+
+   /* TODO: Skip disk-cache for meta-shaders because they are stored in a different cache file */
+
+   struct vk_pipeline_cache_object *shader_obj;
+   shader_obj = vk_pipeline_cache_create_and_insert_object(cache, hash, SHA1_DIGEST_LENGTH, binary,
+                                                           binary->total_size, &radv_shader_ops);
+
+   return shader_obj ? container_of(shader_obj, struct radv_shader, base) : NULL;
+}
+
 const struct vk_pipeline_cache_object_ops radv_shader_ops = {
    .serialize = radv_shader_serialize,
    .deserialize = radv_shader_deserialize,
