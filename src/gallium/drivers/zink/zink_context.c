@@ -2710,7 +2710,7 @@ begin_rendering(struct zink_context *ctx)
    if (!rp_changed && ctx->batch.in_rp)
       return 0;
 
-   zink_batch_no_rp_safe(ctx);
+   zink_batch_no_rp(ctx);
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct zink_surface *surf = zink_csurface(ctx->fb_state.cbufs[i]);
       VkImageView iv = zink_prep_fb_attachment(ctx, surf, i);
@@ -2797,7 +2797,7 @@ zink_batch_rp(struct zink_context *ctx)
          /* this is a driver that doesn't need dummy surfaces but does need rasterization discard, so flush clears first */
          ctx->queries_disabled = true;
          zink_batch_rp(ctx);
-         zink_batch_no_rp_safe(ctx);
+         zink_batch_no_rp(ctx);
          ctx->queries_disabled = false;
       }
       zink_resume_queries(ctx, &ctx->batch);
