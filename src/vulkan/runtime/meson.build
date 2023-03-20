@@ -50,6 +50,8 @@ vulkan_runtime_files = files(
   'vk_descriptor_update_template.h',
   'vk_device.c',
   'vk_device.h',
+  'vk_device_memory.c',
+  'vk_device_memory.h',
   'vk_fence.c',
   'vk_fence.h',
   'vk_framebuffer.c',
