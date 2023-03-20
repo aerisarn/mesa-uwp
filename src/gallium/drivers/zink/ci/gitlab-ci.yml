@@ -125,6 +125,16 @@ zink-tu-a618-traces:
   variables:
     PIGLIT_REPLAY_DEVICE_NAME: "zink-a618"
 
+zink-tu-a618-traces-performance:
+  extends:
+    - zink-tu-a618-traces
+    - .zink-turnip-manual-rules
+    - .piglit-performance:arm64
+  variables:
+    # Always use the same device
+    # a618 tag starts with cbg-1 (not cbg-0) for some reason
+    LAVA_TAGS: "cbg-1"
+
 zink-freedreno-a630-traces:
   extends:
     - a630-traces

@@ -220,6 +220,7 @@ traces:
     freedreno-a630:
       checksum: d25edb433abfcde517b626b3071906ff
     zink-a618:
+      label: [no-perf]
       checksum: d25edb433abfcde517b626b3071906ff
     zink-a630:
       checksum: d25edb433abfcde517b626b3071906ff
@@ -573,6 +574,7 @@ traces:
     freedreno-a630:
       checksum: 5ce2fde8189c8ef6665994fa9bed4cfc
     zink-a618:
+      label: [no-perf]
       checksum: 5ce2fde8189c8ef6665994fa9bed4cfc
     zink-a630:
       checksum: 5ce2fde8189c8ef6665994fa9bed4cfc
@@ -587,6 +589,7 @@ traces:
     freedreno-a630:
       checksum: dd05d3e98eb93c0e520c1359de18e9fb
     zink-a618:
+      label: [no-perf]
       checksum: dd05d3e98eb93c0e520c1359de18e9fb
     zink-a630:
       checksum: dd05d3e98eb93c0e520c1359de18e9fb
@@ -601,6 +604,7 @@ traces:
     freedreno-a630:
       checksum: 0e32ca8fc815a7250f38a07faeafb21b
     zink-a618:
+      label: [no-perf]
       checksum: 0e32ca8fc815a7250f38a07faeafb21b
     zink-a630:
       checksum: 0e32ca8fc815a7250f38a07faeafb21b
@@ -673,7 +677,7 @@ traces:
     freedreno-a630:
       label: [skip]
     zink-a618:
-      label: [no-perf, skip, broken]
+      label: [no-perf]
       checksum: fd1b9033e68c394a5564d8c4819a3012
       text: >
         Zink assertion error:
