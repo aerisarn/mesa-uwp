@@ -133,8 +133,9 @@ radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline
          radv_shader_part_unref(device, graphics_pipeline->ps_epilog);
 
       vk_free(&device->vk.alloc, graphics_pipeline->state_data);
-   } else if (pipeline->type == RADV_PIPELINE_LIBRARY) {
-      struct radv_library_pipeline *library_pipeline = radv_pipeline_to_library(pipeline);
+   } else if (pipeline->type == RADV_PIPELINE_RAY_TRACING_LIB) {
+      struct radv_ray_tracing_lib_pipeline *library_pipeline =
+         radv_pipeline_to_ray_tracing_lib(pipeline);
 
       ralloc_free(library_pipeline->ctx);
    } else if (pipeline->type == RADV_PIPELINE_GRAPHICS_LIB) {

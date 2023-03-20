@@ -142,7 +142,8 @@ radv_create_merged_rt_create_info(const VkRayTracingPipelineCreateInfoKHR *pCrea
    if (pCreateInfo->pLibraryInfo) {
       for (unsigned i = 0; i < pCreateInfo->pLibraryInfo->libraryCount; ++i) {
          RADV_FROM_HANDLE(radv_pipeline, pipeline, pCreateInfo->pLibraryInfo->pLibraries[i]);
-         struct radv_library_pipeline *library_pipeline = radv_pipeline_to_library(pipeline);
+         struct radv_ray_tracing_lib_pipeline *library_pipeline =
+            radv_pipeline_to_ray_tracing_lib(pipeline);
 
          total_stages += library_pipeline->stage_count;
          total_groups += library_pipeline->group_count;
@@ -173,7 +174,8 @@ radv_create_merged_rt_create_info(const VkRayTracingPipelineCreateInfoKHR *pCrea
    if (pCreateInfo->pLibraryInfo) {
       for (unsigned i = 0; i < pCreateInfo->pLibraryInfo->libraryCount; ++i) {
          RADV_FROM_HANDLE(radv_pipeline, pipeline, pCreateInfo->pLibraryInfo->pLibraries[i]);
-         struct radv_library_pipeline *library_pipeline = radv_pipeline_to_library(pipeline);
+         struct radv_ray_tracing_lib_pipeline *library_pipeline =
+            radv_pipeline_to_ray_tracing_lib(pipeline);
 
          for (unsigned j = 0; j < library_pipeline->stage_count; ++j)
             stages[total_stages + j] = library_pipeline->stages[j];
@@ -334,7 +336,7 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
                                 const VkAllocationCallbacks *pAllocator, VkPipeline *pPipeline)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
-   struct radv_library_pipeline *pipeline;
+   struct radv_ray_tracing_lib_pipeline *pipeline;
 
    VkRayTracingPipelineCreateInfoKHR local_create_info =
       radv_create_merged_rt_create_info(pCreateInfo);
@@ -348,7 +350,7 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
    if (pipeline == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   radv_pipeline_init(device, &pipeline->base, RADV_PIPELINE_LIBRARY);
+   radv_pipeline_init(device, &pipeline->base, RADV_PIPELINE_RAY_TRACING_LIB);
 
    pipeline->ctx = ralloc_context(NULL);
 
@@ -733,8 +735,8 @@ radv_GetRayTracingShaderGroupHandlesKHR(VkDevice device, VkPipeline _pipeline, u
 {
    RADV_FROM_HANDLE(radv_pipeline, pipeline, _pipeline);
    struct radv_ray_tracing_module *groups;
-   if (pipeline->type == RADV_PIPELINE_LIBRARY) {
-      groups = radv_pipeline_to_library(pipeline)->groups;
+   if (pipeline->type == RADV_PIPELINE_RAY_TRACING_LIB) {
+      groups = radv_pipeline_to_ray_tracing_lib(pipeline)->groups;
    } else {
       groups = radv_pipeline_to_ray_tracing(pipeline)->groups;
    }
