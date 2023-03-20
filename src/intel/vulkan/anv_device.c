@@ -3652,6 +3652,7 @@ VkResult anv_AllocateMemory(
    if (mem == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   mem->size = pAllocateInfo->allocationSize;
    mem->type = mem_type;
    mem->map = NULL;
    mem->map_size = 0;
@@ -4028,7 +4029,7 @@ VkResult anv_MapMemory(
    }
 
    if (size == VK_WHOLE_SIZE)
-      size = mem->bo->size - offset;
+      size = mem->size - offset;
 
    /* From the Vulkan spec version 1.0.32 docs for MapMemory:
     *
@@ -4038,7 +4039,8 @@ VkResult anv_MapMemory(
     *    equal to the size of the memory minus offset
     */
    assert(size > 0);
-   assert(offset + size <= mem->bo->size);
+   assert(offset < mem->size);
+   assert(size <= mem->size - offset);
 
    if (size != (size_t)size) {
       return vk_errorf(device, VK_ERROR_MEMORY_MAP_FAILED,
@@ -4177,8 +4179,8 @@ anv_bind_buffer_memory(const VkBindBufferMemoryInfo *pBindInfo)
    assert(pBindInfo->sType == VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO);
 
    if (mem) {
-      assert(pBindInfo->memoryOffset < mem->bo->size);
-      assert(mem->bo->size - pBindInfo->memoryOffset >= buffer->vk.size);
+      assert(pBindInfo->memoryOffset < mem->size);
+      assert(mem->size - pBindInfo->memoryOffset >= buffer->vk.size);
       buffer->address = (struct anv_address) {
          .bo = mem->bo,
          .offset = pBindInfo->memoryOffset,

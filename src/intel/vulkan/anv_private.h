@@ -1577,6 +1577,9 @@ _anv_combine_address(struct anv_batch *batch, void *location,
 struct anv_device_memory {
    struct vk_object_base                        base;
 
+   /** Client-requested allocaiton size */
+   uint64_t                                     size;
+
    struct list_head                             link;
 
    struct anv_bo *                              bo;
