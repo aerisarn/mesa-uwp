@@ -399,6 +399,7 @@ void anv_CmdBindPipeline(
       if (cmd_buffer->state.compute.pipeline == compute_pipeline)
          return;
 
+      cmd_buffer->state.compute.base.pipeline = pipeline;
       cmd_buffer->state.compute.pipeline = compute_pipeline;
       cmd_buffer->state.compute.pipeline_dirty = true;
       set_dirty_for_bind_map(cmd_buffer, MESA_SHADER_COMPUTE,
@@ -415,6 +416,7 @@ void anv_CmdBindPipeline(
       if (cmd_buffer->state.gfx.pipeline == gfx_pipeline)
          return;
 
+      cmd_buffer->state.gfx.base.pipeline = pipeline;
       cmd_buffer->state.gfx.pipeline = gfx_pipeline;
       cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_PIPELINE;
 
@@ -474,6 +476,7 @@ void anv_CmdBindPipeline(
       if (cmd_buffer->state.rt.pipeline == rt_pipeline)
          return;
 
+      cmd_buffer->state.rt.base.pipeline = pipeline;
       cmd_buffer->state.rt.pipeline = rt_pipeline;
       cmd_buffer->state.rt.pipeline_dirty = true;
 

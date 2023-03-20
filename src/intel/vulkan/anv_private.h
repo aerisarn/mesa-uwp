@@ -2551,6 +2551,8 @@ struct anv_cmd_pipeline_state {
    struct {
       uint32_t                                  offsets[MAX_DYNAMIC_BUFFERS];
    }                                            dynamic_offsets[MAX_SETS];
+
+   struct anv_pipeline      *pipeline;
 };
 
 /** State tracking for graphics pipeline
