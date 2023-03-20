@@ -635,6 +635,13 @@ Intel driver environment variables
    stalling.  Combined events will not span batches, except in
    the case of ``INTEL_MEASURE=frame``.
 
+   Collect CPU timestamps instead of GPU timestamps.  Prints results
+   immediately instead of waiting for GPU execution.  Useful when used
+   with interactive debug to know which frame, or where in frame, you
+   are currently in.
+
+   ``INTEL_MEASURE=cpu {workload}``
+
 .. envvar:: INTEL_NO_HW
 
    if set to 1, true or yes, prevents batches from being submitted to the
