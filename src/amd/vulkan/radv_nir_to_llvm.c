@@ -56,8 +56,6 @@ struct radv_shader_context {
 
    LLVMValueRef descriptor_sets[MAX_SETS];
 
-   LLVMValueRef vs_rel_patch_id;
-
    LLVMValueRef gs_wave_id;
 
    uint64_t output_mask;
@@ -626,9 +624,9 @@ ac_nir_fixup_ls_hs_input_vgprs(struct radv_shader_context *ctx)
    ctx->abi.instance_id =
       LLVMBuildSelect(ctx->ac.builder, hs_empty, ac_get_arg(&ctx->ac, ctx->args->ac.vertex_id),
                       ctx->abi.instance_id, "");
-   ctx->vs_rel_patch_id =
+   ctx->abi.vs_rel_patch_id =
       LLVMBuildSelect(ctx->ac.builder, hs_empty, ac_get_arg(&ctx->ac, ctx->args->ac.tcs_rel_ids),
-                      ctx->vs_rel_patch_id, "");
+                      ctx->abi.vs_rel_patch_id, "");
    ctx->abi.vertex_id =
       LLVMBuildSelect(ctx->ac.builder, hs_empty, ac_get_arg(&ctx->ac, ctx->args->ac.tcs_patch_id),
                       ctx->abi.vertex_id, "");
@@ -744,7 +742,7 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
    if (args->ac.vertex_id.used)
       ctx.abi.vertex_id = ac_get_arg(&ctx.ac, args->ac.vertex_id);
    if (args->ac.vs_rel_patch_id.used)
-      ctx.vs_rel_patch_id = ac_get_arg(&ctx.ac, args->ac.vs_rel_patch_id);
+      ctx.abi.vs_rel_patch_id = ac_get_arg(&ctx.ac, args->ac.vs_rel_patch_id);
    if (args->ac.instance_id.used)
       ctx.abi.instance_id = ac_get_arg(&ctx.ac, args->ac.instance_id);
 

@@ -44,6 +44,7 @@ struct ac_shader_abi {
 
    /* These input registers sometimes need to be fixed up. */
    LLVMValueRef vertex_id;
+   LLVMValueRef vs_rel_patch_id;
    LLVMValueRef instance_id;
    LLVMValueRef persp_centroid, linear_centroid;
    LLVMValueRef color0, color1;

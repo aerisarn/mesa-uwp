@@ -244,6 +244,8 @@ void si_llvm_create_main_func(struct si_shader_context *ctx)
    if (ctx->stage == MESA_SHADER_VERTEX) {
       ctx->abi.vertex_id = ac_get_arg(&ctx->ac, ctx->args->ac.vertex_id);
       ctx->abi.instance_id = ac_get_arg(&ctx->ac, ctx->args->ac.instance_id);
+      if (ctx->args->ac.vs_rel_patch_id.used)
+         ctx->abi.vs_rel_patch_id = ac_get_arg(&ctx->ac, ctx->args->ac.vs_rel_patch_id);
    } else if (ctx->stage == MESA_SHADER_FRAGMENT) {
       ctx->abi.persp_centroid = ac_get_arg(&ctx->ac, ctx->args->ac.persp_centroid);
       ctx->abi.linear_centroid = ac_get_arg(&ctx->ac, ctx->args->ac.linear_centroid);
