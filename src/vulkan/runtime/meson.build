@@ -113,7 +113,7 @@ if dep_libdrm.found()
 endif
 
 if with_platform_android
-  vulkan_runtime_files += files('vk_android.c')
+  vulkan_runtime_files += files('vk_android.c', 'vk_android.h')
   vulkan_runtime_deps += dep_android
 endif
 

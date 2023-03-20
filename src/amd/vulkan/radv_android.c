@@ -37,6 +37,7 @@
 #include "util/os_file.h"
 
 #include "radv_private.h"
+#include "vk_android.h"
 #include "vk_util.h"
 
 #ifdef ANDROID
@@ -431,31 +432,6 @@ android_format_from_vk(unsigned vk_format)
    }
 }
 
-uint64_t
-radv_ahb_usage_from_vk_usage(const VkImageCreateFlags vk_create, const VkImageUsageFlags vk_usage)
-{
-   uint64_t ahb_usage = 0;
-   if (vk_usage & VK_IMAGE_USAGE_SAMPLED_BIT)
-      ahb_usage |= AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
-
-   if (vk_usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)
-      ahb_usage |= AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
-
-   if (vk_usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
-      ahb_usage |= AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT;
-
-   if (vk_create & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)
-      ahb_usage |= AHARDWAREBUFFER_USAGE_GPU_CUBE_MAP;
-
-   if (vk_create & VK_IMAGE_CREATE_PROTECTED_BIT)
-      ahb_usage |= AHARDWAREBUFFER_USAGE_PROTECTED_CONTENT;
-
-   /* No usage bits set - set at least one GPU usage. */
-   if (ahb_usage == 0)
-      ahb_usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
-   return ahb_usage;
-}
-
 static VkResult
 get_ahb_buffer_format_properties(VkDevice device_h, const struct AHardwareBuffer *buffer,
                                  VkAndroidHardwareBufferFormatPropertiesANDROID *pProperties)
@@ -776,7 +752,7 @@ radv_create_ahb_memory(struct radv_device *device, struct radv_device_memory *me
       h = image->info.height;
       layers = image->info.array_size;
       format = android_format_from_vk(image->vk.format);
-      usage = radv_ahb_usage_from_vk_usage(image->vk.create_flags, image->vk.usage);
+      usage = vk_image_usage_to_ahb_usage(image->vk.create_flags, image->vk.usage);
    } else if (dedicated_info && dedicated_info->buffer) {
       RADV_FROM_HANDLE(radv_buffer, buffer, dedicated_info->buffer);
       w = buffer->vk.size;

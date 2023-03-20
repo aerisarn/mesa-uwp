@@ -335,37 +335,6 @@ anv_GetMemoryAndroidHardwareBufferANDROID(
 
 #endif
 
-/* Construct ahw usage mask from image usage bits, see
- * 'AHardwareBuffer Usage Equivalence' in Vulkan spec.
- */
-uint64_t
-anv_ahw_usage_from_vk_usage(const VkImageCreateFlags vk_create,
-                            const VkImageUsageFlags vk_usage)
-{
-   uint64_t ahw_usage = 0;
-#if ANDROID_API_LEVEL >= 26
-   if (vk_usage & VK_IMAGE_USAGE_SAMPLED_BIT)
-      ahw_usage |= AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
-
-   if (vk_usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)
-      ahw_usage |= AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
-
-   if (vk_usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
-      ahw_usage |= AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT;
-
-   if (vk_create & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)
-      ahw_usage |= AHARDWAREBUFFER_USAGE_GPU_CUBE_MAP;
-
-   if (vk_create & VK_IMAGE_CREATE_PROTECTED_BIT)
-      ahw_usage |= AHARDWAREBUFFER_USAGE_PROTECTED_CONTENT;
-
-   /* No usage bits set - set at least one GPU usage. */
-   if (ahw_usage == 0)
-      ahw_usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
-#endif
-   return ahw_usage;
-}
-
 /*
  * Called from anv_AllocateMemory when import AHardwareBuffer.
  */
@@ -432,7 +401,8 @@ anv_create_ahw_memory(VkDevice device_h,
       h = image->vk.extent.height;
       layers = image->vk.array_layers;
       format = android_format_from_vk(image->vk.format);
-      usage = anv_ahw_usage_from_vk_usage(image->vk.create_flags, image->vk.usage);
+      usage = vk_image_usage_to_ahb_usage(image->vk.create_flags,
+                                          image->vk.usage);
    } else if (dedicated_info && dedicated_info->buffer) {
       ANV_FROM_HANDLE(anv_buffer, buffer, dedicated_info->buffer);
       w = buffer->vk.size;

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2018 Intel Corporation
+ * Copyright © 2023 Collabora, Ltd.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -20,37 +20,22 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
+#ifndef VK_ANDROID_H
+#define VK_ANDROID_H
 
-#include "anv_android.h"
+#include "vulkan/vulkan_core.h"
 
-VkResult
-anv_image_init_from_gralloc(struct anv_device *device,
-                            struct anv_image *image,
-                            const VkImageCreateInfo *base_info,
-                            const VkNativeBufferANDROID *gralloc_info)
-{
-   return VK_ERROR_EXTENSION_NOT_PRESENT;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#if ANDROID_API_LEVEL >= 26
+uint64_t vk_image_usage_to_ahb_usage(const VkImageCreateFlags vk_create,
+                                     const VkImageUsageFlags vk_usage);
+#endif
+
+#ifdef __cplusplus
 }
+#endif
 
-VkResult anv_image_bind_from_gralloc(struct anv_device *device,
-                                     struct anv_image *image,
-                                     const VkNativeBufferANDROID *gralloc_info)
-{
-   return VK_ERROR_EXTENSION_NOT_PRESENT;
-}
-
-VkResult
-anv_import_ahw_memory(VkDevice device_h,
-                      struct anv_device_memory *mem,
-                      const VkImportAndroidHardwareBufferInfoANDROID *info)
-{
-   return VK_ERROR_EXTENSION_NOT_PRESENT;
-}
-
-VkResult
-anv_create_ahw_memory(VkDevice device_h,
-                      struct anv_device_memory *mem,
-                      const VkMemoryAllocateInfo *pAllocateInfo)
-{
-   return VK_ERROR_EXTENSION_NOT_PRESENT;
-}
+#endif /* VK_ANDROID_H */

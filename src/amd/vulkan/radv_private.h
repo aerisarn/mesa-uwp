@@ -2845,8 +2845,6 @@ bool vi_alpha_is_on_msb(struct radv_device *device, VkFormat format);
 VkResult radv_image_from_gralloc(VkDevice device_h, const VkImageCreateInfo *base_info,
                                  const VkNativeBufferANDROID *gralloc_info,
                                  const VkAllocationCallbacks *alloc, VkImage *out_image_h);
-uint64_t radv_ahb_usage_from_vk_usage(const VkImageCreateFlags vk_create,
-                                      const VkImageUsageFlags vk_usage);
 VkResult radv_import_ahb_memory(struct radv_device *device, struct radv_device_memory *mem,
                                 unsigned priority,
                                 const VkImportAndroidHardwareBufferInfoANDROID *info);
