@@ -108,7 +108,9 @@ gs_thread_payload::gs_thread_payload(const fs_visitor &v)
    unsigned r = reg_unit(v.devinfo);
 
    /* R1: output URB handles. */
-   urb_handles = brw_ud8_grf(r, 0);
+   urb_handles = v.bld.vgrf(BRW_REGISTER_TYPE_UD);
+   v.bld.AND(urb_handles, brw_ud8_grf(r, 0),
+         v.devinfo->ver >= 20 ? brw_imm_ud(0xFFFFFF) : brw_imm_ud(0xFFFF));
    r += reg_unit(v.devinfo);
 
    if (gs_prog_data->include_primitive_id) {
