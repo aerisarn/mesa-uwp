@@ -559,6 +559,9 @@ struct zink_batch_state {
    struct util_dynarray acquires;
    struct util_dynarray acquire_flags;
 
+   VkAccessFlagBits unordered_write_access;
+   VkPipelineStageFlagBits unordered_write_stages;
+
    struct util_queue_fence flush_completed;
 
    struct set programs;
@@ -1117,8 +1120,14 @@ struct zink_resource_object {
 
    VkPipelineStageFlagBits access_stage;
    VkAccessFlagBits access;
+   VkPipelineStageFlagBits unordered_access_stage;
+   VkAccessFlagBits unordered_access;
    VkAccessFlagBits last_write;
 
+   /* 'access' is propagated from unordered_access to handle ops occurring
+    * in the ordered cmdbuf which can promote barriers to unordered
+    */
+   bool ordered_access_is_copied;
    bool unordered_read;
    bool unordered_write;
    bool copies_valid;

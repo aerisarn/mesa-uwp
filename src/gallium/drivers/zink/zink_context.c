@@ -3959,16 +3959,25 @@ zink_resource_buffer_transfer_dst_barrier(struct zink_context *ctx, struct zink_
       zink_resource_copies_reset(res);
    bool unordered = true;
    struct pipe_box box = {offset, 0, 0, size, 0, 0};
+   bool can_unordered_write = unordered_res_exec(ctx, res, true);
    /* must barrier if something read the valid buffer range */
-   bool valid_read = res->obj->access && util_ranges_intersect(&res->valid_buffer_range, offset, offset + size) && !unordered_res_exec(ctx, res, true);
-   if (zink_screen(ctx->base.screen)->driver_workarounds.broken_cache_semantics ||
-       zink_check_unordered_transfer_access(res, 0, &box) || valid_read) {
+   bool valid_read = (res->obj->access || res->obj->unordered_access) &&
+                     util_ranges_intersect(&res->valid_buffer_range, offset, offset + size) && !can_unordered_write;
+   if (valid_read || zink_screen(ctx->base.screen)->driver_workarounds.broken_cache_semantics || zink_check_unordered_transfer_access(res, 0, &box)) {
       zink_screen(ctx->base.screen)->buffer_barrier(ctx, res, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
       unordered = res->obj->unordered_write;
    } else {
-      res->obj->access = VK_ACCESS_TRANSFER_WRITE_BIT;
+      res->obj->unordered_access = VK_ACCESS_TRANSFER_WRITE_BIT;
       res->obj->last_write = VK_ACCESS_TRANSFER_WRITE_BIT;
-      res->obj->access_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+      res->obj->unordered_access_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+      ctx->batch.state->unordered_write_access |= VK_ACCESS_TRANSFER_WRITE_BIT;
+      ctx->batch.state->unordered_write_stages |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+      if (!zink_resource_usage_matches(res, ctx->batch.state)) {
+         res->obj->access = VK_ACCESS_TRANSFER_WRITE_BIT;
+         res->obj->access_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+         res->obj->ordered_access_is_copied = true;
+      }
    }
    zink_resource_copy_box_add(res, 0, &box);
    /* this return value implies that the caller could do an unordered op on this resource */
@@ -4015,16 +4024,12 @@ pipeline_access_stage(VkAccessFlags flags)
 }
 
 ALWAYS_INLINE static bool
-zink_resource_buffer_needs_barrier(struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline)
+buffer_needs_barrier(struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline, bool unordered)
 {
-   if (!res->obj->access || !res->obj->access_stage)
-      return true;
-   if (!pipeline)
-      pipeline = pipeline_access_stage(flags);
-   return zink_resource_access_is_write(res->obj->access) ||
+   return zink_resource_access_is_write(unordered ? res->obj->unordered_access : res->obj->access) ||
           zink_resource_access_is_write(flags) ||
-          (res->obj->access_stage & pipeline) != pipeline ||
-          (res->obj->access & flags) != flags;
+          ((unordered ? res->obj->unordered_access_stage : res->obj->access_stage) & pipeline) != pipeline ||
+          ((unordered ? res->obj->unordered_access : res->obj->access) & flags) != flags;
 }
 
 void
@@ -4032,20 +4037,59 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_resource *res
 {
    if (!pipeline)
       pipeline = pipeline_access_stage(flags);
-   if (!zink_resource_buffer_needs_barrier(res, flags, pipeline))
-      return;
 
    bool is_write = zink_resource_access_is_write(flags);
+   bool unordered = unordered_res_exec(ctx, res, is_write);
+   if (!buffer_needs_barrier(res, flags, pipeline, unordered))
+      return;
    enum zink_resource_access rw = is_write ? ZINK_RESOURCE_ACCESS_RW : ZINK_RESOURCE_ACCESS_WRITE;
-   if (res->obj->access && !zink_resource_usage_check_completion_fast(zink_screen(ctx->base.screen), res, rw)) {
+   bool completed = zink_resource_usage_check_completion_fast(zink_screen(ctx->base.screen), res, rw);
+   bool usage_matches = !completed && zink_resource_usage_matches(res, ctx->batch.state);
+   bool unordered_usage_matches = res->obj->unordered_access && usage_matches;
+   if (completed) {
+      /* reset access on complete */
+      res->obj->access = 0;
+      res->obj->access_stage = 0;
+      res->obj->last_write = 0;
+   } else if (unordered && unordered_usage_matches && res->obj->ordered_access_is_copied) {
+      /* always reset propagated access to avoid weirdness */
+      res->obj->access = 0;
+      res->obj->access_stage = 0;
+   } else if (!unordered && !unordered_usage_matches) {
+      /* reset unordered access on first ordered barrier */
+      res->obj->unordered_access = 0;
+      res->obj->unordered_access_stage = 0;
+   }
+   if (!usage_matches) {
+      /* reset unordered on first new cmdbuf barrier */
+      res->obj->unordered_access = 0;
+      res->obj->unordered_access_stage = 0;
+      res->obj->ordered_access_is_copied = false;
+   }
+   /* unordered barriers can be skipped if either:
+    * - there is no current-batch unordered access
+    * - the unordered access is not write access
+    */
+   bool can_skip_unordered = !unordered ? false : (!unordered_usage_matches || !zink_resource_access_is_write(res->obj->unordered_access));
+   /* ordered barriers can be skipped if both:
+    * - there is no current access
+    * - there is no current-batch unordered access
+    */
+   bool can_skip_ordered = unordered ? false : (!res->obj->access && !unordered_usage_matches);
+
+   if (!can_skip_unordered && !can_skip_ordered) {
       VkMemoryBarrier bmb;
       bmb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
       bmb.pNext = NULL;
-      bmb.srcAccessMask = res->obj->access;
-      bmb.dstAccessMask = flags;
-      assert(res->obj->access_stage);
-      VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
+      VkPipelineStageFlagBits stages = res->obj->access_stage ? res->obj->access_stage : pipeline_access_stage(res->obj->access);;
+      if (unordered) {
+         stages = usage_matches ? res->obj->unordered_access_stage : stages;
+         bmb.srcAccessMask = usage_matches ? res->obj->unordered_access : res->obj->access;
+      } else {
+         bmb.srcAccessMask = res->obj->access;
+      }
 
+      VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
       bool marker = false;
       if (unlikely(zink_tracing)) {
          char buf[4096];
@@ -4061,7 +4105,7 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_resource *res
       }
       VKCTX(CmdPipelineBarrier)(
          cmdbuf,
-         res->obj->access_stage ? res->obj->access_stage : pipeline_access_stage(res->obj->access),
+         stages,
          pipeline,
          0,
          1, &bmb,
@@ -4075,9 +4119,20 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_resource *res
 
    if (is_write)
       res->obj->last_write = flags;
-
-   res->obj->access = flags;
-   res->obj->access_stage = pipeline;
+   if (unordered) {
+      /* these should get automatically emitted during submission */
+      res->obj->unordered_access = flags;
+      res->obj->unordered_access_stage = pipeline;
+      if (is_write) {
+         ctx->batch.state->unordered_write_access |= flags;
+         ctx->batch.state->unordered_write_stages |= pipeline;
+      }
+   }
+   if (!unordered || !usage_matches || res->obj->ordered_access_is_copied) {
+      res->obj->access = flags;
+      res->obj->access_stage = pipeline;
+      res->obj->ordered_access_is_copied = unordered;
+   }
    if (pipeline != VK_PIPELINE_STAGE_TRANSFER_BIT && is_write)
       zink_resource_copies_reset(res);
 }
@@ -4087,21 +4142,60 @@ zink_resource_buffer_barrier2(struct zink_context *ctx, struct zink_resource *re
 {
    if (!pipeline)
       pipeline = pipeline_access_stage(flags);
-   if (!zink_resource_buffer_needs_barrier(res, flags, pipeline))
-      return;
 
    bool is_write = zink_resource_access_is_write(flags);
+   bool unordered = unordered_res_exec(ctx, res, is_write);
+   if (!buffer_needs_barrier(res, flags, pipeline, unordered))
+      return;
    enum zink_resource_access rw = is_write ? ZINK_RESOURCE_ACCESS_RW : ZINK_RESOURCE_ACCESS_WRITE;
-   if (res->obj->access && !zink_resource_usage_check_completion_fast(zink_screen(ctx->base.screen), res, rw)) {
+   bool completed = zink_resource_usage_check_completion_fast(zink_screen(ctx->base.screen), res, rw);
+   bool usage_matches = !completed && zink_resource_usage_matches(res, ctx->batch.state);
+   bool unordered_usage_matches = res->obj->unordered_access && usage_matches;
+   if (completed) {
+      /* reset access on complete */
+      res->obj->access = 0;
+      res->obj->access_stage = 0;
+      res->obj->last_write = 0;
+   } else if (unordered && unordered_usage_matches && res->obj->ordered_access_is_copied) {
+      /* always reset propagated access to avoid weirdness */
+      res->obj->access = 0;
+      res->obj->access_stage = 0;
+   } else if (!unordered && !unordered_usage_matches) {
+      /* reset unordered access on first ordered barrier */
+      res->obj->unordered_access = 0;
+      res->obj->unordered_access_stage = 0;
+   }
+   if (!usage_matches) {
+      /* reset unordered on first new cmdbuf barrier */
+      res->obj->unordered_access = 0;
+      res->obj->unordered_access_stage = 0;
+      res->obj->ordered_access_is_copied = false;
+   }
+   /* unordered barriers can be skipped if either:
+    * - there is no current-batch unordered access
+    * - the unordered access is not write access
+    */
+   bool can_skip_unordered = !unordered ? false : (!unordered_usage_matches || !zink_resource_access_is_write(res->obj->unordered_access));
+   /* ordered barriers can be skipped if both:
+    * - there is no current access
+    * - there is no current-batch unordered access
+    */
+   bool can_skip_ordered = unordered ? false : (!res->obj->access && !unordered_usage_matches);
+
+   if (!can_skip_unordered && !can_skip_ordered) {
       VkMemoryBarrier2 bmb;
       bmb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
       bmb.pNext = NULL;
-      bmb.srcStageMask = res->obj->access_stage ? res->obj->access_stage : pipeline_access_stage(res->obj->access);
-      bmb.srcAccessMask = res->obj->access;
+      VkPipelineStageFlagBits stages = res->obj->access_stage ? res->obj->access_stage : pipeline_access_stage(res->obj->access);;
+      if (unordered) {
+         bmb.srcStageMask = usage_matches ? res->obj->unordered_access_stage : stages;
+         bmb.srcAccessMask = usage_matches ? res->obj->unordered_access : res->obj->access;
+      } else {
+         bmb.srcStageMask = stages;
+         bmb.srcAccessMask = res->obj->access;
+      }
       bmb.dstStageMask = pipeline;
       bmb.dstAccessMask = flags;
-      assert(res->obj->access_stage);
-      VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
       VkDependencyInfo dep = {
          VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
          NULL,
@@ -4113,6 +4207,7 @@ zink_resource_buffer_barrier2(struct zink_context *ctx, struct zink_resource *re
          0,
          NULL
       };
+      VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
       bool marker = false;
       if (unlikely(zink_tracing)) {
          char buf[4096];
@@ -4134,9 +4229,20 @@ zink_resource_buffer_barrier2(struct zink_context *ctx, struct zink_resource *re
 
    if (is_write)
       res->obj->last_write = flags;
-
-   res->obj->access = flags;
-   res->obj->access_stage = pipeline;
+   if (unordered) {
+      /* these should get automatically emitted during submission */
+      res->obj->unordered_access = flags;
+      res->obj->unordered_access_stage = pipeline;
+      if (is_write) {
+         ctx->batch.state->unordered_write_access |= flags;
+         ctx->batch.state->unordered_write_stages |= pipeline;
+      }
+   }
+   if (!unordered || !usage_matches || res->obj->ordered_access_is_copied) {
+      res->obj->access = flags;
+      res->obj->access_stage = pipeline;
+      res->obj->ordered_access_is_copied = unordered;
+   }
    if (pipeline != VK_PIPELINE_STAGE_TRANSFER_BIT && is_write)
       zink_resource_copies_reset(res);
 }
