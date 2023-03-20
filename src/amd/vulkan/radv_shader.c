@@ -2498,7 +2498,6 @@ radv_shader_part_create(struct radv_shader_part_binary *binary, unsigned wave_si
       return NULL;
 
    shader_part->ref_count = 1;
-   shader_part->binary = binary;
    shader_part->code_size = code_size;
    shader_part->rsrc1 = S_00B848_VGPRS((binary->num_vgprs - 1) / (wave_size == 32 ? 8 : 4)) |
                         S_00B228_SGPRS((binary->num_sgprs - 1) / 8);
@@ -2509,9 +2508,9 @@ radv_shader_part_create(struct radv_shader_part_binary *binary, unsigned wave_si
 }
 
 bool
-radv_shader_part_binary_upload(struct radv_device *device, struct radv_shader_part *shader_part)
+radv_shader_part_binary_upload(struct radv_device *device, const struct radv_shader_part_binary *bin,
+                               struct radv_shader_part *shader_part)
 {
-   const struct radv_shader_part_binary *bin = shader_part->binary;
    uint32_t code_size = radv_get_shader_binary_size(bin->code_size);
    struct radv_shader_dma_submission *submission = NULL;
    void *dest_ptr;
@@ -2919,7 +2918,7 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
    prolog->bo = prolog->alloc->arena->bo;
    prolog->va = radv_buffer_get_va(prolog->bo) + prolog->alloc->offset;
 
-   if (!radv_shader_part_binary_upload(device, prolog))
+   if (!radv_shader_part_binary_upload(device, binary, prolog))
       goto fail_alloc;
 
    if (options.dump_shader) {
@@ -2927,8 +2926,7 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
       fprintf(stderr, "\ndisasm:\n%s\n", prolog->disasm_string);
    }
 
-   free(prolog->binary);
-   prolog->binary = NULL;
+   free(binary);
 
    return prolog;
 
@@ -2984,7 +2982,7 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
    epilog->bo = epilog->alloc->arena->bo;
    epilog->va = radv_buffer_get_va(epilog->bo) + epilog->alloc->offset;
 
-   if (!radv_shader_part_binary_upload(device, epilog))
+   if (!radv_shader_part_binary_upload(device, binary, epilog))
       goto fail_alloc;
 
    if (options.dump_shader) {
@@ -2992,8 +2990,7 @@ radv_create_ps_epilog(struct radv_device *device, const struct radv_ps_epilog_ke
       fprintf(stderr, "\ndisasm:\n%s\n", epilog->disasm_string);
    }
 
-   free(epilog->binary);
-   epilog->binary = NULL;
+   free(binary);
 
    return epilog;
 
@@ -3037,7 +3034,6 @@ radv_shader_part_destroy(struct radv_device *device, struct radv_shader_part *sh
 
    if (shader_part->alloc)
       radv_free_shader_memory(device, shader_part->alloc);
-   free(shader_part->binary);
    free(shader_part->disasm_string);
    free(shader_part);
 }

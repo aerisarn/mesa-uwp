@@ -526,8 +526,6 @@ struct radv_shader_part {
    uint32_t spi_shader_col_format;
    uint64_t upload_seq;
 
-   struct radv_shader_part_binary *binary;
-
    /* debug only */
    char *disasm_string;
 };
@@ -584,6 +582,7 @@ struct radv_shader *radv_shader_nir_to_asm(
 VkResult radv_shader_wait_for_upload(struct radv_device *device, uint64_t seq);
 
 bool radv_shader_part_binary_upload(struct radv_device *device,
+                                    const struct radv_shader_part_binary *bin,
                                     struct radv_shader_part *shader_part);
 
 struct radv_shader_dma_submission *
