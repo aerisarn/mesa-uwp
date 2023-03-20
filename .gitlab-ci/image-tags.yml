@@ -19,7 +19,7 @@ variables:
    DEBIAN_X86_TEST_GL_TAG: "2023-03-20-piglit-60e7f058"
    DEBIAN_X86_TEST_VK_TAG: "2023-03-20-piglit-60e7f058"
 
-   ALPINE_X86_BUILD_TAG: "2023-02-26-add-bash-coreutils"
+   ALPINE_X86_BUILD_TAG: "2023-03-20-3.17-bump"
    FEDORA_X86_BUILD_TAG: "2023-03-13-procps-ng"
    KERNEL_ROOTFS_TAG: "2023-03-20-piglit-60e7f058"
 
