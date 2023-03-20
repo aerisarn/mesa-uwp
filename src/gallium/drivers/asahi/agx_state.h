@@ -39,16 +39,44 @@ struct agx_streamout_target {
    uint32_t offset;
 };
 
-struct agx_streamout {
-   struct pipe_stream_output_target *targets[PIPE_MAX_SO_BUFFERS];
-   unsigned num_targets;
-};
-
 static inline struct agx_streamout_target *
 agx_so_target(struct pipe_stream_output_target *target)
 {
    return (struct agx_streamout_target *)target;
 }
+
+struct agx_xfb_key {
+   /* If true, compiles a "transform feedback" program instead of a vertex
+    * shader. This is a kernel that runs on the VDM and writes out the transform
+    * feedback buffers, with no rasterization.
+    */
+   bool active;
+
+   /* The index size (1, 2, 4) or 0 if drawing without an index buffer. */
+   uint8_t index_size;
+
+   /* The primitive mode for unrolling the vertex ID */
+   enum pipe_prim_type mode;
+
+   /* Use first vertex as the provoking vertex for flat shading */
+   bool flatshade_first;
+};
+
+struct agx_xfb_params {
+   uint64_t base[PIPE_MAX_SO_BUFFERS];
+   uint32_t size[PIPE_MAX_SO_BUFFERS];
+   uint64_t index_buffer;
+   uint32_t base_vertex;
+   uint32_t num_vertices;
+};
+
+struct agx_streamout {
+   struct pipe_stream_output_target *targets[PIPE_MAX_SO_BUFFERS];
+   unsigned num_targets;
+
+   struct agx_xfb_key key;
+   struct agx_xfb_params params;
+};
 
 /* Shaders can access fixed-function state through system values.
  * It is convenient to stash all of this information into a single "root"
@@ -87,6 +115,9 @@ struct PACKED agx_draw_uniforms {
       struct {
          /* Vertex buffer object bases, if present */
          uint64_t vbo_base[PIPE_MAX_ATTRIBS];
+
+         /* Transform feedback info for a transform feedback shader */
+         struct agx_xfb_params xfb;
       } vs;
 
       struct {
@@ -239,6 +270,7 @@ struct agx_blend {
 
 struct asahi_vs_shader_key {
    struct agx_vbufs vbuf;
+   struct agx_xfb_key xfb;
 };
 
 struct asahi_fs_shader_key {
@@ -277,6 +309,7 @@ enum agx_dirty {
 
    AGX_DIRTY_BLEND = BITFIELD_BIT(12),
    AGX_DIRTY_QUERY = BITFIELD_BIT(13),
+   AGX_DIRTY_XFB = BITFIELD_BIT(14),
 };
 
 /* Maximum number of in-progress + under-construction GPU batches.
@@ -336,6 +369,8 @@ struct agx_context {
    enum pipe_render_cond_flag cond_mode;
 
    struct agx_query *occlusion_query;
+   struct agx_query *prims_generated;
+   struct agx_query *tf_prims_generated;
    bool active_queries;
 
    struct util_debug_callback debug;
@@ -410,6 +445,27 @@ agx_context(struct pipe_context *pctx)
 
 void agx_init_query_functions(struct pipe_context *ctx);
 
+void
+agx_primitives_update_direct(struct agx_context *ctx,
+                             const struct pipe_draw_info *info,
+                             const struct pipe_draw_start_count_bias *draw);
+
+void agx_nir_lower_xfb(nir_shader *shader, struct agx_xfb_key *key);
+
+void agx_draw_vbo_from_xfb(struct pipe_context *pctx,
+                           const struct pipe_draw_info *info,
+                           unsigned drawid_offset,
+                           const struct pipe_draw_indirect_info *indirect);
+
+void agx_launch_so(struct pipe_context *pctx, const struct pipe_draw_info *info,
+                   const struct pipe_draw_start_count_bias *draws,
+                   uint64_t index_buffer);
+
+uint64_t agx_batch_get_so_address(struct agx_batch *batch, unsigned buffer,
+                                  uint32_t *size);
+
+void agx_init_streamout_functions(struct pipe_context *ctx);
+
 static inline void
 agx_dirty_all(struct agx_context *ctx)
 {
@@ -438,7 +494,7 @@ struct agx_query {
    struct agx_batch *writer;
    unsigned writer_index;
 
-   /* For occlusion queries, which use some CPU work */
+   /* Accumulator flushed to the CPU */
    uint64_t value;
 };
 

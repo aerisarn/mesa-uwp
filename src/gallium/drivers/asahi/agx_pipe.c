@@ -1397,6 +1397,7 @@ agx_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
    agx_init_state_functions(pctx);
    agx_init_query_functions(pctx);
+   agx_init_streamout_functions(pctx);
 
    agx_meta_init(&ctx->meta, agx_device(screen));
 
@@ -1556,15 +1557,15 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 0;
 
    case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
-      return is_deqp ? PIPE_MAX_SO_BUFFERS : 0;
+      return PIPE_MAX_SO_BUFFERS;
 
    case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
    case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
-      return is_deqp ? PIPE_MAX_SO_OUTPUTS : 0;
+      return PIPE_MAX_SO_OUTPUTS;
 
    case PIPE_CAP_STREAM_OUTPUT_PAUSE_RESUME:
    case PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS:
-      return is_deqp ? 1 : 0;
+      return 1;
 
    case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
       return 2048;
@@ -1585,6 +1586,13 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 64;
 
    case PIPE_CAP_VERTEX_ATTRIB_ELEMENT_ALIGNED_ONLY:
+      return 1;
+
+   /* We run nir_lower_point_size so we need the GLSL linker to copy
+    * the original gl_PointSize when captured by transform feedback. We could
+    * also copy it ourselves but it's easier to set the CAP.
+    */
+   case PIPE_CAP_PSIZ_CLAMPED:
       return 1;
 
    case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
