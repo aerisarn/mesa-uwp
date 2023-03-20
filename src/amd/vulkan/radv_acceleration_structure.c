@@ -480,7 +480,7 @@ radv_device_init_null_accel_struct(struct radv_device *device)
       return result;
 
    void *data;
-   result = radv_MapMemory(_device, memory, 0, size, 0, &data);
+   result = vk_common_MapMemory(_device, memory, 0, size, 0, &data);
    if (result != VK_SUCCESS)
       return result;
 
@@ -512,7 +512,7 @@ radv_device_init_null_accel_struct(struct radv_device *device)
 
    memcpy((uint8_t *)data + bvh_offset, &root, sizeof(struct radv_bvh_box32_node));
 
-   radv_UnmapMemory(_device, memory);
+   vk_common_UnmapMemory(_device, memory);
 
    VkAccelerationStructureCreateInfoKHR create_info = {
       .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
