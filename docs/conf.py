@@ -137,6 +137,7 @@ html_extra_path = [
 
 html_redirects = [
   ('webmaster', 'https://www.mesa3d.org/website/'),
+  ('developers', 'https://www.mesa3d.org/developers/'),
 ]
 
 
