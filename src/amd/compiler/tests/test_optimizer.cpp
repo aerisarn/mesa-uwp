@@ -1947,3 +1947,35 @@ BEGIN_TEST(optimize.fmamix_two_literals)
       finish_opt_test();
    }
 END_TEST
+
+BEGIN_TEST(optimize.fma_opsel)
+   /* TODO make these work before GFX11 using SDWA. */
+   for (unsigned i = GFX11; i <= GFX11; i++) {
+      //>> v2b: %a, v2b: %b, v1: %c, v1: %d, v1: %e  = p_startpgm
+      if (!setup_cs("v2b v2b v1 v1 v1", (amd_gfx_level)i))
+         continue;
+
+      Temp a = inputs[0];
+      Temp b = inputs[1];
+      Temp c = inputs[2];
+      Temp d = inputs[3];
+      Temp e = inputs[4];
+      Temp c_hi = bld.pseudo(aco_opcode::p_extract_vector, bld.def(v2b), c, Operand::c32(1));
+      Temp d_hi = bld.pseudo(aco_opcode::p_extract_vector, bld.def(v2b), d, Operand::c32(1));
+      Temp e_hi = bld.pseudo(aco_opcode::p_extract_vector, bld.def(v2b), e, Operand::c32(1));
+
+      //! v2b: %res0 = v_fma_f16 %b, hi(%c), %a
+      //! p_unit_test 0, %res0
+      writeout(0, fadd(fmul(b, c_hi), a));
+
+      //! v2b: %res1 = v_fma_f16 %a, %b, hi(%d)
+      //! p_unit_test 1, %res1
+      writeout(1, fadd(fmul(a, b), d_hi));
+
+      //! v2b: %res2 = v_fma_f16 %a, %b, hi(%e)
+      //! p_unit_test 2, %res2
+      writeout(2, fma(a, b, e_hi));
+
+      finish_opt_test();
+   }
+END_TEST
