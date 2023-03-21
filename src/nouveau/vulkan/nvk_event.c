@@ -140,6 +140,7 @@ vk_stage_flags_to_nv9097_pipeline_location(VkPipelineStageFlags2 flags)
 
    clear_bits64(&flags, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT |
                         VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT |
+                        VK_PIPELINE_STAGE_2_HOST_BIT |
                         VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT);
 
    /* TODO: Doing this on 3D will likely cause a WFI which is probably ok but,
