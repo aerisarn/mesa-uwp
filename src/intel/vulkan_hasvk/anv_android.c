@@ -138,8 +138,8 @@ vk_format_from_android(unsigned android_format, unsigned android_usage)
    }
 }
 
-static inline unsigned
-android_format_from_vk(unsigned vk_format)
+unsigned
+anv_ahb_format_for_vk_format(VkFormat vk_format)
 {
    switch (vk_format) {
    case VK_FORMAT_R8G8B8A8_UNORM:
@@ -400,7 +400,7 @@ anv_create_ahw_memory(VkDevice device_h,
       w = image->vk.extent.width;
       h = image->vk.extent.height;
       layers = image->vk.array_layers;
-      format = android_format_from_vk(image->vk.format);
+      format = anv_ahw_format_for_vk_format(image->vk.format);
       usage = vk_image_usage_to_ahb_usage(image->vk.create_flags,
                                           image->vk.usage);
    } else if (dedicated_info && dedicated_info->buffer) {
