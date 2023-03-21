@@ -3362,6 +3362,10 @@ VkResult anv_CreateDevice(
       goto fail_internal_cache;
    }
 
+   device->robust_buffer_access =
+      device->vk.enabled_features.robustBufferAccess ||
+      device->vk.enabled_features.nullDescriptor;
+
    anv_device_init_blorp(device);
 
    anv_device_init_border_colors(device);
@@ -4289,7 +4293,7 @@ anv_get_buffer_memory_requirements(struct anv_device *device,
     * This would ensure that not internal padding would be needed for
     * 16-bit types.
     */
-   if (device->vk.enabled_features.robustBufferAccess &&
+   if (device->robust_buffer_access &&
        (usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT ||
         usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
       pMemoryRequirements->memoryRequirements.size = align64(size, 4);

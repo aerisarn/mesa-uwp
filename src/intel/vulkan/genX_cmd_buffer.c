@@ -2612,7 +2612,7 @@ cmd_buffer_flush_gfx_push_constants(struct anv_cmd_buffer *cmd_buffer,
 #endif
 
    /* Compute robust pushed register access mask for each stage. */
-   if (cmd_buffer->device->vk.enabled_features.robustBufferAccess) {
+   if (cmd_buffer->device->robust_buffer_access) {
       anv_foreach_stage(stage, dirty_stages) {
          if (!anv_pipeline_has_stage(pipeline, stage))
             continue;
