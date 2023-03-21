@@ -1619,7 +1619,8 @@ struct MIMG_instruction : public Instruction {
    bool a16 : 1;         /* VEGA, NAVI: Address components are 16-bits */
    bool d16 : 1;         /* Convert 32-bit data to 16-bit data */
    bool disable_wqm : 1; /* Require an exec mask without helper invocations */
-   uint8_t padding0 : 2;
+   bool strict_wqm : 1;  /* VADDR is a linear VGPR and additional VGPRs may be copied into it */
+   uint8_t padding0 : 1;
    uint8_t padding1;
    uint8_t padding2;
 };
@@ -2095,6 +2096,7 @@ struct DeviceInfo {
 
    int16_t scratch_global_offset_min;
    int16_t scratch_global_offset_max;
+   unsigned max_nsa_vgprs;
 };
 
 enum class CompilationProgress {

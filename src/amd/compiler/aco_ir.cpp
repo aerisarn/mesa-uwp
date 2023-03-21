@@ -188,6 +188,21 @@ init_program(Program* program, Stage stage, const struct aco_shader_info* info,
       program->dev.scratch_global_offset_max = 4095;
    }
 
+   if (program->gfx_level >= GFX11) {
+      /* GFX11 can have only 1 NSA dword. The last VGPR isn't included here because it contains the
+       * rest of the address.
+       */
+      program->dev.max_nsa_vgprs = 4;
+   } else if (program->gfx_level >= GFX10_3) {
+      /* GFX10.3 can have up to 3 NSA dwords. */
+      program->dev.max_nsa_vgprs = 13;
+   } else if (program->gfx_level >= GFX10) {
+      /* Limit NSA instructions to 1 NSA dword on GFX10 to avoid stability issues. */
+      program->dev.max_nsa_vgprs = 5;
+   } else {
+      program->dev.max_nsa_vgprs = 0;
+   }
+
    program->wgp_mode = wgp_mode;
 
    program->progress = CompilationProgress::after_isel;
