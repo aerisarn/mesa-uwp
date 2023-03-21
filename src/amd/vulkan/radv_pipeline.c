@@ -3663,7 +3663,7 @@ radv_pipeline_emit_hw_vs(const struct radv_device *device, struct radeon_cmdbuf 
    radeon_emit(cs, shader->config.rsrc1);
    radeon_emit(cs, shader->config.rsrc2);
 
-   const struct radv_vs_output_info *outinfo = get_vs_output_info(pipeline);
+   const struct radv_vs_output_info *outinfo = &shader->info.outinfo;
    unsigned clip_dist_mask, cull_dist_mask, total_mask;
    clip_dist_mask = outinfo->clip_dist_mask;
    cull_dist_mask = outinfo->cull_dist_mask;
@@ -3770,7 +3770,7 @@ radv_pipeline_emit_hw_ngg(const struct radv_device *device, struct radeon_cmdbuf
    radeon_emit(cs, shader->config.rsrc1);
    radeon_emit(cs, shader->config.rsrc2);
 
-   const struct radv_vs_output_info *outinfo = get_vs_output_info(pipeline);
+   const struct radv_vs_output_info *outinfo = &shader->info.outinfo;
    unsigned clip_dist_mask, cull_dist_mask, total_mask;
    clip_dist_mask = outinfo->clip_dist_mask;
    cull_dist_mask = outinfo->cull_dist_mask;
