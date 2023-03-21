@@ -415,19 +415,16 @@ struct radv_instance {
 VkResult radv_init_wsi(struct radv_physical_device *physical_device);
 void radv_finish_wsi(struct radv_physical_device *physical_device);
 
-bool radv_create_shaders_from_pipeline_cache(
-   struct radv_device *device, struct vk_pipeline_cache *cache, const unsigned char *sha1,
-   struct radv_pipeline *pipeline, struct radv_ray_tracing_module *rt_groups,
-   uint32_t num_rt_groups, bool *found_in_application_cache);
-
 struct radv_shader_binary_part;
 
-void radv_pipeline_cache_insert_shaders(struct radv_device *device, struct vk_pipeline_cache *cache,
-                                        const unsigned char *sha1, struct radv_pipeline *pipeline,
-                                        struct radv_shader_binary *const *binaries,
-                                        struct radv_shader_part_binary *ps_epilog_binary,
-                                        const struct radv_ray_tracing_module *rt_groups,
-                                        uint32_t num_rt_groups);
+bool radv_pipeline_cache_search(struct radv_device *device, struct vk_pipeline_cache *cache,
+                                struct radv_pipeline *pipeline, const unsigned char *sha1,
+                                bool *found_in_application_cache);
+
+void radv_pipeline_cache_insert(struct radv_device *device, struct vk_pipeline_cache *cache,
+                                struct radv_pipeline *pipeline,
+                                struct radv_shader_part_binary *ps_epilog_binary,
+                                const unsigned char *sha1);
 
 enum radv_blit_ds_layout {
    RADV_BLIT_DS_LAYOUT_TILE_ENABLE,

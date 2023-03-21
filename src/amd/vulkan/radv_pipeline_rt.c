@@ -235,9 +235,8 @@ radv_rt_pipeline_compile(struct radv_ray_tracing_pipeline *pipeline,
    pipeline->base.base.pipeline_hash = *(uint64_t *)hash;
 
    bool found_in_application_cache = true;
-   if (!keep_executable_info &&
-       radv_create_shaders_from_pipeline_cache(device, cache, hash, &pipeline->base.base, rt_groups,
-                                               num_rt_groups, &found_in_application_cache)) {
+   if (!keep_executable_info && radv_pipeline_cache_search(device, cache, &pipeline->base.base,
+                                                           hash, &found_in_application_cache)) {
       if (found_in_application_cache)
          pipeline_feedback.flags |=
             VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
@@ -298,8 +297,7 @@ radv_rt_pipeline_compile(struct radv_ray_tracing_pipeline *pipeline,
    }
 
    if (!keep_executable_info) {
-      radv_pipeline_cache_insert_shaders(device, cache, hash, &pipeline->base.base, binaries, NULL,
-                                         rt_groups, num_rt_groups);
+      radv_pipeline_cache_insert(device, cache, &pipeline->base.base, NULL, hash);
    }
 
    free(binaries[rt_stage.stage]);

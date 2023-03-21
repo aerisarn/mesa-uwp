@@ -362,10 +362,9 @@ const struct vk_pipeline_cache_object_ops radv_pipeline_ops = {
 };
 
 bool
-radv_create_shaders_from_pipeline_cache(struct radv_device *device, struct vk_pipeline_cache *cache,
-                                        const unsigned char *sha1, struct radv_pipeline *pipeline,
-                                        struct radv_ray_tracing_module *rt_groups,
-                                        uint32_t num_rt_groups, bool *found_in_application_cache)
+radv_pipeline_cache_search(struct radv_device *device, struct vk_pipeline_cache *cache,
+                           struct radv_pipeline *pipeline, const unsigned char *sha1,
+                           bool *found_in_application_cache)
 {
    *found_in_application_cache = false;
 
@@ -399,7 +398,6 @@ radv_create_shaders_from_pipeline_cache(struct radv_device *device, struct vk_pi
    }
 
    if (pipeline_obj->ps_epilog) {
-      assert(num_rt_groups == 0);
       struct radv_shader_part *ps_epilog = radv_shader_part_ref(pipeline_obj->ps_epilog);
 
       if (pipeline->type == RADV_PIPELINE_GRAPHICS)
@@ -408,10 +406,11 @@ radv_create_shaders_from_pipeline_cache(struct radv_device *device, struct vk_pi
          radv_pipeline_to_graphics_lib(pipeline)->base.ps_epilog = ps_epilog;
    }
 
-   if (num_rt_groups) {
+   if (pipeline->type == RADV_PIPELINE_RAY_TRACING) {
+      unsigned num_rt_groups = radv_pipeline_to_ray_tracing(pipeline)->group_count;
       assert(num_rt_groups == pipeline_obj->num_stack_sizes);
-      assert(pipeline_obj->ps_epilog == NULL);
       struct radv_pipeline_shader_stack_size *stack_sizes = pipeline_obj->data;
+      struct radv_ray_tracing_module *rt_groups = radv_pipeline_to_ray_tracing(pipeline)->groups;
       for (unsigned i = 0; i < num_rt_groups; i++)
          rt_groups[i].stack_size = stack_sizes[i];
    }
@@ -421,12 +420,10 @@ radv_create_shaders_from_pipeline_cache(struct radv_device *device, struct vk_pi
 }
 
 void
-radv_pipeline_cache_insert_shaders(struct radv_device *device, struct vk_pipeline_cache *cache,
-                                   const unsigned char *sha1, struct radv_pipeline *pipeline,
-                                   struct radv_shader_binary *const *binaries,
-                                   struct radv_shader_part_binary *ps_epilog_binary,
-                                   const struct radv_ray_tracing_module *rt_groups,
-                                   uint32_t num_rt_groups)
+radv_pipeline_cache_insert(struct radv_device *device, struct vk_pipeline_cache *cache,
+                           struct radv_pipeline *pipeline,
+                           struct radv_shader_part_binary *ps_epilog_binary,
+                           const unsigned char *sha1)
 {
    if (radv_is_cache_disabled(device))
       return;
@@ -441,6 +438,9 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct vk_pipelin
    num_shaders += pipeline->gs_copy_shader ? 1 : 0;
 
    unsigned ps_epilog_binary_size = ps_epilog_binary ? ps_epilog_binary->total_size : 0;
+   unsigned num_rt_groups = 0;
+   if (pipeline->type == RADV_PIPELINE_RAY_TRACING)
+      num_rt_groups = radv_pipeline_to_ray_tracing(pipeline)->group_count;
 
    struct radv_pipeline_cache_object *pipeline_obj;
    pipeline_obj = radv_pipeline_cache_object_create(&device->vk, num_shaders, sha1, num_rt_groups,
@@ -471,9 +471,12 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct vk_pipelin
       pipeline_obj->ps_epilog = radv_shader_part_ref(ps_epilog);
    }
 
-   struct radv_pipeline_shader_stack_size *stack_sizes = pipeline_obj->data;
-   for (unsigned i = 0; i < num_rt_groups; i++)
-      stack_sizes[i] = rt_groups[i].stack_size;
+   if (pipeline->type == RADV_PIPELINE_RAY_TRACING) {
+      struct radv_pipeline_shader_stack_size *stack_sizes = pipeline_obj->data;
+      struct radv_ray_tracing_module *rt_groups = radv_pipeline_to_ray_tracing(pipeline)->groups;
+      for (unsigned i = 0; i < num_rt_groups; i++)
+         stack_sizes[i] = rt_groups[i].stack_size;
+   }
 
    /* Add the object to the cache */
    struct vk_pipeline_cache_object *object =

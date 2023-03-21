@@ -3307,9 +3307,8 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
    }
 
    bool found_in_application_cache = true;
-   if (!skip_shaders_cache &&
-       radv_create_shaders_from_pipeline_cache(device, cache, hash, &pipeline->base, NULL, 0,
-                                               &found_in_application_cache)) {
+   if (!skip_shaders_cache && radv_pipeline_cache_search(device, cache, &pipeline->base, hash,
+                                                         &found_in_application_cache)) {
       if (found_in_application_cache)
          pipeline_feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
 
@@ -3451,8 +3450,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
    }
 
    if (!skip_shaders_cache) {
-      radv_pipeline_cache_insert_shaders(device, cache, hash, &pipeline->base, binaries,
-                                         ps_epilog_binary, NULL, 0);
+      radv_pipeline_cache_insert(device, cache, &pipeline->base, ps_epilog_binary, hash);
    }
 
    free(gs_copy_binary);
@@ -5112,9 +5110,8 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline,
    pipeline->base.pipeline_hash = *(uint64_t *)hash;
 
    bool found_in_application_cache = true;
-   if (!keep_executable_info &&
-       radv_create_shaders_from_pipeline_cache(device, cache, hash, &pipeline->base, NULL, 0,
-                                               &found_in_application_cache)) {
+   if (!keep_executable_info && radv_pipeline_cache_search(device, cache, &pipeline->base, hash,
+                                                           &found_in_application_cache)) {
       if (found_in_application_cache)
          pipeline_feedback.flags |=
             VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
@@ -5175,7 +5172,7 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline,
    }
 
    if (!keep_executable_info) {
-      radv_pipeline_cache_insert_shaders(device, cache, hash, &pipeline->base, binaries, NULL, NULL, 0);
+      radv_pipeline_cache_insert(device, cache, &pipeline->base, NULL, hash);
    }
 
    free(binaries[MESA_SHADER_COMPUTE]);
