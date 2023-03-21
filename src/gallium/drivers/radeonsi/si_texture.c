@@ -556,7 +556,7 @@ static void si_set_tex_bo_metadata(struct si_screen *sscreen, struct si_texture 
    ac_surface_compute_umd_metadata(&sscreen->info, &tex->surface,
                                    tex->buffer.b.b.last_level + 1,
                                    desc, &md.size_metadata, md.metadata,
-                                   false);
+                                   sscreen->debug_flags & DBG(EXTRA_METADATA));
    sscreen->ws->buffer_set_metadata(sscreen->ws, tex->buffer.buf, &md, &tex->surface);
 }
 
@@ -1307,6 +1307,11 @@ si_texture_create_with_modifier(struct pipe_screen *screen,
        */
       if (num_planes > 1)
          plane_templ[i].bind |= PIPE_BIND_SHARED;
+      /* Setting metadata on suballocated buffers is impossible. So use PIPE_BIND_CUSTOM to
+       * request a non-suballocated buffer.
+       */
+      if (!is_zs && sscreen->debug_flags & DBG(EXTRA_METADATA))
+         plane_templ[i].bind |= PIPE_BIND_CUSTOM;
 
       if (si_init_surface(sscreen, &surface[i], &plane_templ[i], tile_mode, modifier,
                           false, plane_templ[i].bind & PIPE_BIND_SCANOUT,
@@ -1340,6 +1345,8 @@ si_texture_create_with_modifier(struct pipe_screen *screen,
          last_plane->buffer.b.b.next = &tex->buffer.b.b;
          last_plane = tex;
       }
+      if (i == 0 && !is_zs && sscreen->debug_flags & DBG(EXTRA_METADATA))
+         si_set_tex_bo_metadata(sscreen, tex);
    }
 
    return (struct pipe_resource *)plane0;

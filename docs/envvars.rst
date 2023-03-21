@@ -1368,6 +1368,8 @@ RadeonSI driver environment variables
       Enable DPBB.
    ``dfsm``
       Enable DFSM.
+   ``extra_md``
+      add extra information in bo metadatas to help tools (umr)
 
 r600 driver environment variables
 ---------------------------------
