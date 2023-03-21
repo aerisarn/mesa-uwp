@@ -319,10 +319,13 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
    VkImageMemoryBarrier imb;
    if (!pipeline)
       pipeline = pipeline_dst_stage(new_layout);
+   if (!flags)
+      flags = access_dst_flags(new_layout);
 
-   if (!zink_resource_image_barrier_init(&imb, res, new_layout, flags, pipeline))
+   if (!res->obj->needs_zs_evaluate && !zink_resource_image_needs_barrier(res, new_layout, flags, pipeline))
       return;
-   bool is_write = zink_resource_access_is_write((VkAccessFlags)imb.dstAccessMask);
+   zink_resource_image_barrier_init(&imb, res, new_layout, flags, pipeline);
+   bool is_write = zink_resource_access_is_write(flags);
    VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
    assert(new_layout);
    enum zink_resource_access rw = is_write ? ZINK_RESOURCE_ACCESS_RW : ZINK_RESOURCE_ACCESS_WRITE;
@@ -366,10 +369,13 @@ zink_resource_image_barrier2(struct zink_context *ctx, struct zink_resource *res
    VkImageMemoryBarrier2 imb;
    if (!pipeline)
       pipeline = pipeline_dst_stage(new_layout);
+   if (!flags)
+      flags = access_dst_flags(new_layout);
 
-   if (!zink_resource_image_barrier2_init(&imb, res, new_layout, flags, pipeline))
+   if (!res->obj->needs_zs_evaluate && !zink_resource_image_needs_barrier(res, new_layout, flags, pipeline))
       return;
-   bool is_write = zink_resource_access_is_write((VkAccessFlags)imb.dstAccessMask);
+   zink_resource_image_barrier2_init(&imb, res, new_layout, flags, pipeline);
+   bool is_write = zink_resource_access_is_write(flags);
    VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
    assert(new_layout);
    enum zink_resource_access rw = is_write ? ZINK_RESOURCE_ACCESS_RW : ZINK_RESOURCE_ACCESS_WRITE;
