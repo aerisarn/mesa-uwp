@@ -555,7 +555,8 @@ static void si_set_tex_bo_metadata(struct si_screen *sscreen, struct si_texture 
 
    ac_surface_compute_umd_metadata(&sscreen->info, &tex->surface,
                                    tex->buffer.b.b.last_level + 1,
-                                   desc, &md.size_metadata, md.metadata);
+                                   desc, &md.size_metadata, md.metadata,
+                                   false);
    sscreen->ws->buffer_set_metadata(sscreen->ws, tex->buffer.buf, &md, &tex->surface);
 }
 

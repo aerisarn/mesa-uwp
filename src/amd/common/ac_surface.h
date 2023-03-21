@@ -451,7 +451,8 @@ bool ac_surface_apply_umd_metadata(const struct radeon_info *info, struct radeon
                                    unsigned size_metadata, const uint32_t metadata[64]);
 void ac_surface_compute_umd_metadata(const struct radeon_info *info, struct radeon_surf *surf,
                                      unsigned num_mipmap_levels, uint32_t desc[8],
-                                     unsigned *size_metadata, uint32_t metadata[64]);
+                                     unsigned *size_metadata, uint32_t metadata[64],
+                                     bool include_tool_md);
 
 bool ac_surface_override_offset_stride(const struct radeon_info *info, struct radeon_surf *surf,
                                        unsigned num_mipmap_levels, uint64_t offset, unsigned pitch);
