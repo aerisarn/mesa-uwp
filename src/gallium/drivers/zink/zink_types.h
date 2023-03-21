@@ -560,8 +560,8 @@ struct zink_batch_state {
    struct util_dynarray acquires;
    struct util_dynarray acquire_flags;
 
-   VkAccessFlagBits unordered_write_access;
-   VkPipelineStageFlagBits unordered_write_stages;
+   VkAccessFlags unordered_write_access;
+   VkPipelineStageFlags unordered_write_stages;
 
    struct util_queue_fence flush_completed;
 
@@ -1119,11 +1119,11 @@ struct zink_render_pass {
 struct zink_resource_object {
    struct pipe_reference reference;
 
-   VkPipelineStageFlagBits access_stage;
-   VkAccessFlagBits access;
-   VkPipelineStageFlagBits unordered_access_stage;
-   VkAccessFlagBits unordered_access;
-   VkAccessFlagBits last_write;
+   VkPipelineStageFlags access_stage;
+   VkAccessFlags access;
+   VkPipelineStageFlags unordered_access_stage;
+   VkAccessFlags unordered_access;
+   VkAccessFlags last_write;
 
    /* 'access' is propagated from unordered_access to handle ops occurring
     * in the ordered cmdbuf which can promote barriers to unordered
