@@ -1974,11 +1974,13 @@ radv_image_create(VkDevice _device, const struct radv_image_create_info *create_
       image->planes[plane].surface.modifier = modifier;
    }
 
-   bool delay_layout =
-      external_info && (external_info->handleTypes &
-                        VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID);
+   if (image->vk.external_handle_types &
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID) {
+#ifdef ANDROID
+      image->vk.ahardware_buffer_format =
+         radv_ahb_format_for_vk_format(image->vk.format);
+#endif
 
-   if (delay_layout) {
       *pImage = radv_image_to_handle(image);
       assert(!(image->vk.create_flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT));
       return VK_SUCCESS;

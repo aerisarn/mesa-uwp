@@ -411,8 +411,8 @@ vk_format_from_android(unsigned android_format, unsigned android_usage)
    }
 }
 
-static inline unsigned
-android_format_from_vk(unsigned vk_format)
+unsigned
+radv_ahb_format_for_vk_format(VkFormat vk_format)
 {
    switch (vk_format) {
    case VK_FORMAT_R8G8B8A8_UNORM:
@@ -751,7 +751,7 @@ radv_create_ahb_memory(struct radv_device *device, struct radv_device_memory *me
       w = image->info.width;
       h = image->info.height;
       layers = image->info.array_size;
-      format = android_format_from_vk(image->vk.format);
+      format = radv_ahb_format_for_vk_format(image->vk.format);
       usage = vk_image_usage_to_ahb_usage(image->vk.create_flags, image->vk.usage);
    } else if (dedicated_info && dedicated_info->buffer) {
       RADV_FROM_HANDLE(radv_buffer, buffer, dedicated_info->buffer);

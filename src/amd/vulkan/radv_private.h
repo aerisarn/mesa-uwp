@@ -2851,6 +2851,8 @@ VkResult radv_import_ahb_memory(struct radv_device *device, struct radv_device_m
 VkResult radv_create_ahb_memory(struct radv_device *device, struct radv_device_memory *mem,
                                 unsigned priority, const VkMemoryAllocateInfo *pAllocateInfo);
 
+unsigned radv_ahb_format_for_vk_format(VkFormat vk_format);
+
 VkFormat radv_select_android_external_format(const void *next, VkFormat default_format);
 
 bool radv_android_gralloc_supports_format(VkFormat format, VkImageUsageFlagBits usage);
