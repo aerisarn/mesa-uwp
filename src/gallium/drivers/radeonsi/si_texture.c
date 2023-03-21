@@ -553,9 +553,9 @@ static void si_set_tex_bo_metadata(struct si_screen *sscreen, struct si_texture 
    si_set_mutable_tex_desc_fields(sscreen, tex, &tex->surface.u.legacy.level[0], 0, 0,
                                   tex->surface.blk_w, false, 0, desc);
 
-   ac_surface_get_umd_metadata(&sscreen->info, &tex->surface,
-                               tex->buffer.b.b.last_level + 1,
-                               desc, &md.size_metadata, md.metadata);
+   ac_surface_compute_umd_metadata(&sscreen->info, &tex->surface,
+                                   tex->buffer.b.b.last_level + 1,
+                                   desc, &md.size_metadata, md.metadata);
    sscreen->ws->buffer_set_metadata(sscreen->ws, tex->buffer.buf, &md, &tex->surface);
 }
 
@@ -1628,11 +1628,11 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
       return NULL;
    }
 
-   if (!ac_surface_set_umd_metadata(&sscreen->info, &tex->surface,
-                                    tex->buffer.b.b.nr_storage_samples,
-                                    tex->buffer.b.b.last_level + 1,
-                                    metadata.size_metadata,
-                                    metadata.metadata)) {
+   if (!ac_surface_apply_umd_metadata(&sscreen->info, &tex->surface,
+                                      tex->buffer.b.b.nr_storage_samples,
+                                      tex->buffer.b.b.last_level + 1,
+                                      metadata.size_metadata,
+                                      metadata.metadata)) {
       si_texture_reference(&tex, NULL);
       return NULL;
    }

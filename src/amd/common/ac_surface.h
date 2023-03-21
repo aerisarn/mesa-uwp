@@ -441,17 +441,17 @@ int ac_compute_surface(struct ac_addrlib *addrlib, const struct radeon_info *inf
                        struct radeon_surf *surf);
 void ac_surface_zero_dcc_fields(struct radeon_surf *surf);
 
-void ac_surface_set_bo_metadata(const struct radeon_info *info, struct radeon_surf *surf,
-                                uint64_t tiling_flags, enum radeon_surf_mode *mode);
-void ac_surface_get_bo_metadata(const struct radeon_info *info, struct radeon_surf *surf,
-                                uint64_t *tiling_flags);
+void ac_surface_apply_bo_metadata(const struct radeon_info *info, struct radeon_surf *surf,
+                                  uint64_t tiling_flags, enum radeon_surf_mode *mode);
+void ac_surface_compute_bo_metadata(const struct radeon_info *info, struct radeon_surf *surf,
+                                    uint64_t *tiling_flags);
 
-bool ac_surface_set_umd_metadata(const struct radeon_info *info, struct radeon_surf *surf,
-                                 unsigned num_storage_samples, unsigned num_mipmap_levels,
-                                 unsigned size_metadata, const uint32_t metadata[64]);
-void ac_surface_get_umd_metadata(const struct radeon_info *info, struct radeon_surf *surf,
-                                 unsigned num_mipmap_levels, uint32_t desc[8],
-                                 unsigned *size_metadata, uint32_t metadata[64]);
+bool ac_surface_apply_umd_metadata(const struct radeon_info *info, struct radeon_surf *surf,
+                                   unsigned num_storage_samples, unsigned num_mipmap_levels,
+                                   unsigned size_metadata, const uint32_t metadata[64]);
+void ac_surface_compute_umd_metadata(const struct radeon_info *info, struct radeon_surf *surf,
+                                     unsigned num_mipmap_levels, uint32_t desc[8],
+                                     unsigned *size_metadata, uint32_t metadata[64]);
 
 bool ac_surface_override_offset_stride(const struct radeon_info *info, struct radeon_surf *surf,
                                        unsigned num_mipmap_levels, uint64_t offset, unsigned pitch);

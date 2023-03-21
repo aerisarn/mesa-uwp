@@ -1441,8 +1441,8 @@ radv_query_opaque_metadata(struct radv_device *device, struct radv_image *image,
                                   0, image->planes[0].surface.blk_w, false, false, false, false,
                                   desc, NULL);
 
-   ac_surface_get_umd_metadata(&device->physical_device->rad_info, &image->planes[0].surface,
-                               image->info.levels, desc, &md->size_metadata, md->metadata);
+   ac_surface_compute_umd_metadata(&device->physical_device->rad_info, &image->planes[0].surface,
+                                   image->info.levels, desc, &md->size_metadata, md->metadata);
 }
 
 void
@@ -1751,10 +1751,10 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
       }
 
       if (create_info.bo_metadata && !mod_info &&
-          !ac_surface_set_umd_metadata(&device->physical_device->rad_info,
-                                       &image->planes[plane].surface, image_info.storage_samples,
-                                       image_info.levels, create_info.bo_metadata->size_metadata,
-                                       create_info.bo_metadata->metadata))
+          !ac_surface_apply_umd_metadata(&device->physical_device->rad_info,
+                                         &image->planes[plane].surface, image_info.storage_samples,
+                                         image_info.levels, create_info.bo_metadata->size_metadata,
+                                         create_info.bo_metadata->metadata))
          return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
       if (!create_info.no_metadata_planes && !create_info.bo_metadata && plane_count == 1 &&
