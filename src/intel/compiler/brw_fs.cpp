@@ -7261,11 +7261,11 @@ brw_nir_move_interpolation_to_top(nir_shader *nir)
          continue;
 
       nir_block *top = nir_start_block(f->impl);
-      exec_node *cursor_node = NULL;
+      nir_cursor cursor = nir_before_instr(nir_block_first_instr(top));
 
-      nir_foreach_block(block, f->impl) {
-         if (block == top)
-            continue;
+      for (nir_block *block = nir_block_cf_tree_next(top);
+           block != NULL;
+           block = nir_block_cf_tree_next(block)) {
 
          nir_foreach_instr_safe(instr, block) {
             if (instr->type != nir_instr_type_intrinsic)
@@ -7291,14 +7291,7 @@ brw_nir_move_interpolation_to_top(nir_shader *nir)
 
             for (unsigned i = 0; i < ARRAY_SIZE(move); i++) {
                if (move[i]->block != top) {
-                  move[i]->block = top;
-                  exec_node_remove(&move[i]->node);
-                  if (cursor_node) {
-                     exec_node_insert_after(cursor_node, &move[i]->node);
-                  } else {
-                     exec_list_push_head(&top->instr_list, &move[i]->node);
-                  }
-                  cursor_node = &move[i]->node;
+                  nir_instr_move(cursor, move[i]);
                   progress = true;
                }
             }
