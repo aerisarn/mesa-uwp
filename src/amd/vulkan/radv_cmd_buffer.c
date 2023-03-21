@@ -9592,10 +9592,9 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
 
 static void
 radv_emit_dispatch_packets(struct radv_cmd_buffer *cmd_buffer,
-                           struct radv_compute_pipeline *pipeline,
+                           const struct radv_shader *compute_shader,
                            const struct radv_dispatch_info *info)
 {
-   struct radv_shader *compute_shader = pipeline->base.shaders[MESA_SHADER_COMPUTE];
    unsigned dispatch_initiator = cmd_buffer->device->dispatch_initiator;
    struct radeon_winsys *ws = cmd_buffer->device->ws;
    bool predicating = cmd_buffer->state.predicating;
@@ -9665,7 +9664,7 @@ radv_emit_dispatch_packets(struct radv_cmd_buffer *cmd_buffer,
       unsigned offsets[3] = {info->offsets[0], info->offsets[1], info->offsets[2]};
 
       if (info->unaligned) {
-         unsigned *cs_block_size = compute_shader->info.cs.block_size;
+         const unsigned *cs_block_size = compute_shader->info.cs.block_size;
          unsigned remainder[3];
 
          /* If aligned, these should be an entire block size,
@@ -9787,7 +9786,7 @@ radv_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_inf
 
       radv_upload_compute_shader_descriptors(cmd_buffer, pipeline, bind_point);
 
-      radv_emit_dispatch_packets(cmd_buffer, pipeline, info);
+      radv_emit_dispatch_packets(cmd_buffer, compute_shader, info);
       /* <-- CUs are busy here --> */
 
       /* Start prefetches after the dispatch has been started. Both
@@ -9795,7 +9794,7 @@ radv_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_inf
        * more important.
        */
       if (has_prefetch && pipeline_is_dirty) {
-         radv_emit_shader_prefetch(cmd_buffer, pipeline->base.shaders[MESA_SHADER_COMPUTE]);
+         radv_emit_shader_prefetch(cmd_buffer, compute_shader);
       }
    } else {
       /* If we don't wait for idle, start prefetches first, then set
@@ -9804,13 +9803,13 @@ radv_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_inf
       si_emit_cache_flush(cmd_buffer);
 
       if (has_prefetch && pipeline_is_dirty) {
-         radv_emit_shader_prefetch(cmd_buffer, pipeline->base.shaders[MESA_SHADER_COMPUTE]);
+         radv_emit_shader_prefetch(cmd_buffer, compute_shader);
       }
 
       radv_upload_compute_shader_descriptors(cmd_buffer, pipeline, bind_point);
 
       radv_emit_compute_pipeline(cmd_buffer, pipeline);
-      radv_emit_dispatch_packets(cmd_buffer, pipeline, info);
+      radv_emit_dispatch_packets(cmd_buffer, compute_shader, info);
    }
 
    if (pipeline_is_dirty) {
