@@ -4305,6 +4305,7 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          bool clamp = false;
          bitarray8 opsel_lo = 0;
          bitarray8 opsel_hi = 0;
+         bitarray8 opsel = 0;
          unsigned mul_op_idx = (instr->isVOP3P() ? 3 : 1) - add_op_idx;
 
          VALU_instruction& valu_mul = mul_instr->valu();
@@ -4314,12 +4315,15 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          abs[1] = valu_mul.abs[1];
          opsel_lo = valu_mul.opsel_lo & 0x3;
          opsel_hi = valu_mul.opsel_hi & 0x3;
+         opsel = valu_mul.opsel & 0x3;
 
          VALU_instruction& valu = instr->valu();
          neg[2] = valu.neg[add_op_idx];
          abs[2] = valu.abs[add_op_idx];
          opsel_lo[2] = valu.opsel_lo[add_op_idx];
          opsel_hi[2] = valu.opsel_hi[add_op_idx];
+         opsel[2] = valu.opsel[add_op_idx];
+         opsel[3] = valu.opsel[3];
          omod = valu.omod;
          clamp = valu.clamp;
          /* abs of the multiplication result */
@@ -4342,6 +4346,7 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          aco_ptr<VALU_instruction> mad;
          if (add_instr->isVOP3P() || mul_instr->isVOP3P()) {
             assert(!omod);
+            assert(!opsel);
 
             aco_opcode mad_op = add_instr->definitions[0].bytes() == 2 ? aco_opcode::v_fma_mixlo_f16
                                                                        : aco_opcode::v_fma_mix_f32;
@@ -4375,6 +4380,7 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          mad->clamp = clamp;
          mad->opsel_lo = opsel_lo;
          mad->opsel_hi = opsel_hi;
+         mad->opsel = opsel;
          mad->definitions[0] = add_instr->definitions[0];
          mad->definitions[0].setPrecise(add_instr->definitions[0].isPrecise() ||
                                         mul_instr->definitions[0].isPrecise());
