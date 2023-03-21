@@ -540,18 +540,6 @@ add_subdword_operand(ra_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, uns
 
    assert(rc.bytes() <= 2);
    if (instr->isVALU()) {
-      /* check if we can use opsel */
-      if (instr->format == Format::VOP3 || instr->isVINTERP_INREG()) {
-         assert(byte == 2);
-         instr->valu().opsel[idx] = true;
-         return;
-      }
-      if (instr->isVOP3P()) {
-         assert(byte == 2 && !instr->valu().opsel_lo[idx]);
-         instr->valu().opsel_lo[idx] = true;
-         instr->valu().opsel_hi[idx] = true;
-         return;
-      }
       if (instr->opcode == aco_opcode::v_cvt_f32_ubyte0) {
          switch (byte) {
          case 0: instr->opcode = aco_opcode::v_cvt_f32_ubyte0; break;
@@ -563,8 +551,21 @@ add_subdword_operand(ra_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, uns
       }
 
       /* use SDWA */
-      assert(can_use_SDWA(gfx_level, instr, false));
-      convert_to_SDWA(gfx_level, instr);
+      if (can_use_SDWA(gfx_level, instr, false)) {
+         convert_to_SDWA(gfx_level, instr);
+         return;
+      }
+
+      /* use opsel */
+      if (instr->isVOP3P()) {
+         assert(byte == 2 && !instr->valu().opsel_lo[idx]);
+         instr->valu().opsel_lo[idx] = true;
+         instr->valu().opsel_hi[idx] = true;
+         return;
+      }
+
+      assert(can_use_opsel(gfx_level, instr->opcode, idx));
+      instr->valu().opsel[idx] = true;
       return;
    }
 
@@ -686,11 +687,9 @@ add_subdword_definition(Program* program, aco_ptr<Instruction>& instr, PhysReg r
       if (reg.byte() == 0 && instr_is_16bit(gfx_level, instr->opcode))
          return;
 
-      /* check if we can use opsel */
-      if (instr->format == Format::VOP3 || instr->isVINTERP_INREG()) {
-         assert(reg.byte() == 2);
-         assert(can_use_opsel(gfx_level, instr->opcode, -1));
-         instr->valu().opsel[3] = true; /* dst in high half */
+      /* use SDWA */
+      if (can_use_SDWA(gfx_level, instr, false)) {
+         convert_to_SDWA(gfx_level, instr);
          return;
       }
 
@@ -699,9 +698,10 @@ add_subdword_definition(Program* program, aco_ptr<Instruction>& instr, PhysReg r
          return;
       }
 
-      /* use SDWA */
-      assert(can_use_SDWA(gfx_level, instr, false));
-      convert_to_SDWA(gfx_level, instr);
+      /* use opsel */
+      assert(reg.byte() == 2);
+      assert(can_use_opsel(gfx_level, instr->opcode, -1));
+      instr->valu().opsel[3] = true; /* dst in high half */
       return;
    }
 
