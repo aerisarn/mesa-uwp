@@ -312,11 +312,10 @@ resource_check_defer_image_barrier(struct zink_context *ctx, struct zink_resourc
       _mesa_set_add(ctx->need_barriers[is_compute], res);
 }
 
+template <bool HAS_SYNC2>
 void
-zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
-                      VkImageLayout new_layout, VkAccessFlags flags, VkPipelineStageFlags pipeline)
+zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res, VkImageLayout new_layout, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
-   VkImageMemoryBarrier imb;
    if (!pipeline)
       pipeline = pipeline_dst_stage(new_layout);
    if (!flags)
@@ -324,92 +323,67 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_resource *res,
 
    if (!res->obj->needs_zs_evaluate && !zink_resource_image_needs_barrier(res, new_layout, flags, pipeline))
       return;
-   zink_resource_image_barrier_init(&imb, res, new_layout, flags, pipeline);
    bool is_write = zink_resource_access_is_write(flags);
    VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
    assert(new_layout);
-   enum zink_resource_access rw = is_write ? ZINK_RESOURCE_ACCESS_RW : ZINK_RESOURCE_ACCESS_WRITE;
-   if (!res->obj->access_stage || zink_resource_usage_check_completion_fast(zink_screen(ctx->base.screen), res, rw))
-      imb.srcAccessMask = 0;
-   if (res->obj->needs_zs_evaluate)
-      imb.pNext = &res->obj->zs_evaluate;
-   res->obj->needs_zs_evaluate = false;
-   if (res->queue != zink_screen(ctx->base.screen)->gfx_queue && res->queue != VK_QUEUE_FAMILY_IGNORED) {
-      imb.srcQueueFamilyIndex = res->queue;
-      imb.dstQueueFamilyIndex = zink_screen(ctx->base.screen)->gfx_queue;
-      res->queue = VK_QUEUE_FAMILY_IGNORED;
-   }
    bool marker = zink_cmd_debug_marker_begin(ctx, cmdbuf, "image_barrier(%s->%s)", vk_ImageLayout_to_str(res->layout), vk_ImageLayout_to_str(new_layout));
-   VKCTX(CmdPipelineBarrier)(
-      cmdbuf,
-      res->obj->access_stage ? res->obj->access_stage : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-      pipeline,
-      0,
-      0, NULL,
-      0, NULL,
-      1, &imb
-   );
+   enum zink_resource_access rw = is_write ? ZINK_RESOURCE_ACCESS_RW : ZINK_RESOURCE_ACCESS_WRITE;
+   if (HAS_SYNC2) {
+      VkImageMemoryBarrier2 imb;
+      zink_resource_image_barrier2_init(&imb, res, new_layout, flags, pipeline);
+      if (!res->obj->access_stage || zink_resource_usage_check_completion_fast(zink_screen(ctx->base.screen), res, rw))
+         imb.srcAccessMask = 0;
+      if (res->obj->needs_zs_evaluate)
+         imb.pNext = &res->obj->zs_evaluate;
+      res->obj->needs_zs_evaluate = false;
+      if (res->queue != zink_screen(ctx->base.screen)->gfx_queue && res->queue != VK_QUEUE_FAMILY_IGNORED) {
+         imb.srcQueueFamilyIndex = res->queue;
+         imb.dstQueueFamilyIndex = zink_screen(ctx->base.screen)->gfx_queue;
+         res->queue = VK_QUEUE_FAMILY_IGNORED;
+      }
+      VkDependencyInfo dep = {
+         VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+         NULL,
+         0,
+         0,
+         NULL,
+         0,
+         NULL,
+         1,
+         &imb
+      };
+      VKCTX(CmdPipelineBarrier2)(cmdbuf, &dep);
+   } else {
+      VkImageMemoryBarrier imb;
+      zink_resource_image_barrier_init(&imb, res, new_layout, flags, pipeline);
+      if (!res->obj->access_stage || zink_resource_usage_check_completion_fast(zink_screen(ctx->base.screen), res, rw))
+         imb.srcAccessMask = 0;
+      if (res->obj->needs_zs_evaluate)
+         imb.pNext = &res->obj->zs_evaluate;
+      res->obj->needs_zs_evaluate = false;
+      if (res->queue != zink_screen(ctx->base.screen)->gfx_queue && res->queue != VK_QUEUE_FAMILY_IGNORED) {
+         imb.srcQueueFamilyIndex = res->queue;
+         imb.dstQueueFamilyIndex = zink_screen(ctx->base.screen)->gfx_queue;
+         res->queue = VK_QUEUE_FAMILY_IGNORED;
+      }
+      VKCTX(CmdPipelineBarrier)(
+         cmdbuf,
+         res->obj->access_stage ? res->obj->access_stage : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+         pipeline,
+         0,
+         0, NULL,
+         0, NULL,
+         1, &imb
+      );
+   }
    zink_cmd_debug_marker_end(ctx, cmdbuf, marker);
 
    resource_check_defer_image_barrier(ctx, res, new_layout, pipeline);
 
    if (is_write)
-      res->obj->last_write = (VkAccessFlags)imb.dstAccessMask;
+      res->obj->last_write = flags;
 
-   res->obj->access = (VkAccessFlags)imb.dstAccessMask;
-   res->obj->access_stage = pipeline;
-   res->layout = new_layout;
-   if (new_layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-      zink_resource_copies_reset(res);
-}
-
-void
-zink_resource_image_barrier2(struct zink_context *ctx, struct zink_resource *res, VkImageLayout new_layout, VkAccessFlags flags, VkPipelineStageFlags pipeline)
-{
-   VkImageMemoryBarrier2 imb;
-   if (!pipeline)
-      pipeline = pipeline_dst_stage(new_layout);
-   if (!flags)
-      flags = access_dst_flags(new_layout);
-
-   if (!res->obj->needs_zs_evaluate && !zink_resource_image_needs_barrier(res, new_layout, flags, pipeline))
-      return;
-   zink_resource_image_barrier2_init(&imb, res, new_layout, flags, pipeline);
-   bool is_write = zink_resource_access_is_write(flags);
-   VkCommandBuffer cmdbuf = is_write ? zink_get_cmdbuf(ctx, NULL, res) : zink_get_cmdbuf(ctx, res, NULL);
-   assert(new_layout);
-   enum zink_resource_access rw = is_write ? ZINK_RESOURCE_ACCESS_RW : ZINK_RESOURCE_ACCESS_WRITE;
-   if (!res->obj->access_stage || zink_resource_usage_check_completion_fast(zink_screen(ctx->base.screen), res, rw))
-      imb.srcAccessMask = 0;
-   if (res->obj->needs_zs_evaluate)
-      imb.pNext = &res->obj->zs_evaluate;
-   res->obj->needs_zs_evaluate = false;
-   if (res->queue != zink_screen(ctx->base.screen)->gfx_queue && res->queue != VK_QUEUE_FAMILY_IGNORED) {
-      imb.srcQueueFamilyIndex = res->queue;
-      imb.dstQueueFamilyIndex = zink_screen(ctx->base.screen)->gfx_queue;
-      res->queue = VK_QUEUE_FAMILY_IGNORED;
-   }
-   VkDependencyInfo dep = {
-      VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-      NULL,
-      0,
-      0,
-      NULL,
-      0,
-      NULL,
-      1,
-      &imb
-   };
-   bool marker = zink_cmd_debug_marker_begin(ctx, cmdbuf, "image_barrier(%s->%s)", vk_ImageLayout_to_str(res->layout), vk_ImageLayout_to_str(new_layout));
-   VKCTX(CmdPipelineBarrier2)(cmdbuf, &dep);
-   zink_cmd_debug_marker_end(ctx, cmdbuf, marker);
-
-   resource_check_defer_image_barrier(ctx, res, new_layout, pipeline);
-
-   if (is_write)
-      res->obj->last_write = (VkAccessFlags)imb.dstAccessMask;
-
-   res->obj->access = (VkAccessFlags)imb.dstAccessMask;
+   res->obj->access = flags;
    res->obj->access_stage = pipeline;
    res->layout = new_layout;
    if (new_layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
@@ -669,7 +643,9 @@ zink_synchronization_init(struct zink_screen *screen)
 {
    if (screen->info.have_vulkan13 || screen->info.have_KHR_synchronization2) {
       screen->buffer_barrier = zink_resource_buffer_barrier<true>;
+      screen->image_barrier = zink_resource_image_barrier<true>;
    } else {
       screen->buffer_barrier = zink_resource_buffer_barrier<false>;
+      screen->image_barrier = zink_resource_image_barrier<false>;
    }
 }
