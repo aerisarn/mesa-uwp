@@ -1101,9 +1101,8 @@ can_apply_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, ssa_i
       if (instr->isSDWA() && instr->sdwa().sel[idx] != SubdwordSel::dword)
          return false;
       return true;
-   } else if (instr->isVOP3() && sel.size() == 2 &&
-              can_use_opsel(ctx.program->gfx_level, instr->opcode, idx) &&
-              !instr->valu().opsel[idx]) {
+   } else if (instr->isVALU() && sel.size() == 2 && !instr->valu().opsel[idx] &&
+              can_use_opsel(ctx.program->gfx_level, instr->opcode, idx)) {
       return true;
    } else if (instr->opcode == aco_opcode::p_extract) {
       SubdwordSel instrSel = parse_extract(instr.get());
@@ -1168,9 +1167,15 @@ apply_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, ssa_info&
               (tmp.type() == RegType::vgpr || ctx.program->gfx_level >= GFX9)) {
       to_SDWA(ctx, instr);
       static_cast<SDWA_instruction*>(instr.get())->sel[idx] = sel;
-   } else if (instr->isVOP3()) {
-      if (sel.offset())
+   } else if (instr->isVALU()) {
+      if (sel.offset()) {
          instr->valu().opsel[idx] = true;
+
+         /* VOP12C cannot use opsel with SGPRs. */
+         if (!instr->isVOP3() && !instr->isVINTERP_INREG() &&
+             !info.instr->operands[0].isOfType(RegType::vgpr))
+            instr->format = asVOP3(instr->format);
+      }
    } else if (instr->opcode == aco_opcode::p_extract) {
       SubdwordSel instrSel = parse_extract(instr.get());
 
