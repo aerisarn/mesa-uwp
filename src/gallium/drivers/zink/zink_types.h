@@ -1715,6 +1715,7 @@ struct zink_context {
    bool rp_changed; //force renderpass restart
    bool rp_layout_changed; //renderpass changed, maybe restart
    bool rp_loadop_changed; //renderpass changed, don't restart
+   bool zsbuf_unused;
    bool zsbuf_readonly;
 
    struct zink_framebuffer *framebuffer;

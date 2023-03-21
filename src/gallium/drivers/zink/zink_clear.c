@@ -230,7 +230,7 @@ zink_clear(struct pipe_context *pctx,
    }
 
    if (batch->in_rp) {
-      if (buffers & PIPE_CLEAR_DEPTHSTENCIL && (!zink_is_zsbuf_used(ctx) || ctx->zsbuf_readonly)) {
+      if (buffers & PIPE_CLEAR_DEPTHSTENCIL && (ctx->zsbuf_unused || ctx->zsbuf_readonly)) {
          /* this will need a layout change */
          assert(!zink_screen(ctx->base.screen)->driver_workarounds.track_renderpasses);
          zink_batch_no_rp(ctx);

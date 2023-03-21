@@ -716,6 +716,7 @@ begin_render_pass(struct zink_context *ctx)
    infos.pAttachments = att;
    if (!prep_fb_attachments(ctx, att))
       return 0;
+   ctx->zsbuf_unused = !zink_is_zsbuf_used(ctx);
    /* this can be set if fbfetch is activated */
    ctx->rp_changed = false;
 #ifndef NDEBUG

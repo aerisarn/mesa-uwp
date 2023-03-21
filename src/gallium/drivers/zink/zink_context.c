@@ -69,7 +69,7 @@ update_tc_info(struct zink_context *ctx)
       ctx->dynamic_fb.tc_info.data = info->data;
    } else {
       struct tc_renderpass_info info = ctx->dynamic_fb.tc_info;
-      bool zsbuf_used = zink_is_zsbuf_used(ctx);
+      bool zsbuf_used = !ctx->zsbuf_unused;
       bool zsbuf_write = zink_is_zsbuf_write(ctx);
       ctx->dynamic_fb.tc_info.data32[0] = 0;
       if (ctx->clears_enabled & PIPE_CLEAR_DEPTHSTENCIL)
@@ -2754,6 +2754,7 @@ begin_rendering(struct zink_context *ctx)
       ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS+1].imageLayout = zink_resource(surf->base.texture)->layout;
       assert(ctx->dynamic_fb.attachments[PIPE_MAX_COLOR_BUFS+1].imageLayout != VK_IMAGE_LAYOUT_UNDEFINED);
    }
+   ctx->zsbuf_unused = !zsbuf_used;
    assert(ctx->fb_state.width >= ctx->dynamic_fb.info.renderArea.extent.width);
    assert(ctx->fb_state.height >= ctx->dynamic_fb.info.renderArea.extent.height);
    ctx->gfx_pipeline_state.dirty |= rp_changed;
