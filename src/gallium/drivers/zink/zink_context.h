@@ -193,7 +193,9 @@ bool
 zink_cmd_debug_marker_begin(struct zink_context *ctx, VkCommandBuffer cmdbuf, const char *fmt, ...);
 void
 zink_cmd_debug_marker_end(struct zink_context *ctx, VkCommandBuffer cmdbuf,bool emitted);
-
+void
+zink_copy_buffer(struct zink_context *ctx, struct zink_resource *dst, struct zink_resource *src,
+                 unsigned dst_offset, unsigned src_offset, unsigned size);
 #ifdef __cplusplus
 }
 #endif
@@ -260,9 +262,6 @@ bool
 zink_use_dummy_attachments(const struct zink_context *ctx);
 void
 zink_set_color_write_enables(struct zink_context *ctx);
-void
-zink_copy_buffer(struct zink_context *ctx, struct zink_resource *dst, struct zink_resource *src,
-                 unsigned dst_offset, unsigned src_offset, unsigned size);
 
 void
 zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, struct zink_resource *src,
