@@ -21,7 +21,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "radv_meta.h"
+#include "meta/radv_meta.h"
 #include "radv_private.h"
 
 #include "nir_builder.h"

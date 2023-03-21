@@ -36,7 +36,7 @@
 #include "util/streaming-load-memcpy.h"
 #include "radv_cs.h"
 #include "radv_debug.h"
-#include "radv_meta.h"
+#include "meta/radv_meta.h"
 #include "radv_private.h"
 #include "radv_shader_args.h"
 
