@@ -3031,12 +3031,11 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->base.vertex_state_destroy = zink_cache_vertex_state_destroy;
    glsl_type_singleton_init_or_ref();
 
+   zink_synchronization_init(screen);
    if (screen->info.have_vulkan13 || screen->info.have_KHR_synchronization2) {
       screen->image_barrier = zink_resource_image_barrier2;
-      screen->buffer_barrier = zink_resource_buffer_barrier2;
    } else {
       screen->image_barrier = zink_resource_image_barrier;
-      screen->buffer_barrier = zink_resource_buffer_barrier;
    }
 
    zink_init_screen_pipeline_libs(screen);

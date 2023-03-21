@@ -130,6 +130,8 @@ zink_resource_image_transfer_dst_barrier(struct zink_context *ctx, struct zink_r
 bool
 zink_resource_buffer_transfer_dst_barrier(struct zink_context *ctx, struct zink_resource *res, unsigned offset, unsigned size);
 void
+zink_synchronization_init(struct zink_screen *screen);
+void
 zink_update_descriptor_refs(struct zink_context *ctx, bool compute);
 void
 zink_init_vk_sample_locations(struct zink_context *ctx, VkSampleLocationsInfoEXT *loc);
