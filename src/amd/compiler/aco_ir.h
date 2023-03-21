@@ -310,10 +310,8 @@ withoutVOP3(Format format)
 }
 
 enum class RegType {
-   none = 0,
    sgpr,
    vgpr,
-   linear_vgpr,
 };
 
 struct RegClass {
