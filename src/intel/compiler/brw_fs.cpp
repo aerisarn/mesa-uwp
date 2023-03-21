@@ -7262,6 +7262,7 @@ brw_nir_move_interpolation_to_top(nir_shader *nir)
 
       nir_block *top = nir_start_block(f->impl);
       nir_cursor cursor = nir_before_instr(nir_block_first_instr(top));
+      bool impl_progress = false;
 
       for (nir_block *block = nir_block_cf_tree_next(top);
            block != NULL;
@@ -7292,13 +7293,17 @@ brw_nir_move_interpolation_to_top(nir_shader *nir)
             for (unsigned i = 0; i < ARRAY_SIZE(move); i++) {
                if (move[i]->block != top) {
                   nir_instr_move(cursor, move[i]);
-                  progress = true;
+                  impl_progress = true;
                }
             }
          }
       }
-      nir_metadata_preserve(f->impl, nir_metadata_block_index |
-                                     nir_metadata_dominance);
+
+      progress = progress || impl_progress;
+
+      nir_metadata_preserve(f->impl, impl_progress ? (nir_metadata_block_index |
+                                                      nir_metadata_dominance)
+                                                   : nir_metadata_all);
    }
 
    return progress;
