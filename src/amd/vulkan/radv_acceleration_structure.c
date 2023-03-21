@@ -454,7 +454,7 @@ radv_device_init_null_accel_struct(struct radv_device *device)
    VkMemoryRequirements2 mem_req = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
    };
-   radv_GetBufferMemoryRequirements2(_device, &info, &mem_req);
+   vk_common_GetBufferMemoryRequirements2(_device, &info, &mem_req);
 
    VkMemoryAllocateInfo alloc_info = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
