@@ -5303,13 +5303,6 @@ radv_compute_pipeline_init(struct radv_compute_pipeline *pipeline,
 
    pipeline->base.shader_upload_seq = pipeline->base.shaders[MESA_SHADER_COMPUTE]->upload_seq;
 
-   if (device->physical_device->rad_info.has_cs_regalloc_hang_bug) {
-      struct radv_shader *compute_shader = pipeline->base.shaders[MESA_SHADER_COMPUTE];
-      unsigned *cs_block_size = compute_shader->info.cs.block_size;
-
-      pipeline->cs_regalloc_hang_bug = cs_block_size[0] * cs_block_size[1] * cs_block_size[2] > 256;
-   }
-
    radv_compute_generate_pm4(pipeline);
 }
 

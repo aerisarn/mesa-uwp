@@ -9763,10 +9763,11 @@ static void
 radv_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_info *info,
               struct radv_compute_pipeline *pipeline, VkPipelineBindPoint bind_point)
 {
+   struct radv_shader *compute_shader = pipeline->base.shaders[MESA_SHADER_COMPUTE];
    bool has_prefetch = cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7;
    bool pipeline_is_dirty = pipeline != cmd_buffer->state.emitted_compute_pipeline;
 
-   if (pipeline->cs_regalloc_hang_bug)
+   if (compute_shader->info.cs.regalloc_hang_bug)
       cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_PS_PARTIAL_FLUSH |
                                       RADV_CMD_FLAG_CS_PARTIAL_FLUSH;
 
@@ -9825,7 +9826,7 @@ radv_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_inf
                                                      : VK_PIPELINE_BIND_POINT_COMPUTE);
    }
 
-   if (pipeline->cs_regalloc_hang_bug)
+   if (compute_shader->info.cs.regalloc_hang_bug)
       cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH;
 
    radv_cmd_buffer_after_draw(cmd_buffer, RADV_CMD_FLAG_CS_PARTIAL_FLUSH);

@@ -367,6 +367,8 @@ struct radv_shader_info {
       bool uses_dynamic_rt_callable_stack;
       bool uses_rt;
       bool uses_full_subgroups;
+
+      bool regalloc_hang_bug;
    } cs;
    struct {
       uint64_t tes_inputs_read;

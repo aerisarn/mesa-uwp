@@ -697,6 +697,11 @@ gather_shader_info_cs(struct radv_device *device, const nir_shader *nir,
    }
 
    info->cs.subgroup_size = subgroup_size;
+
+   if (device->physical_device->rad_info.has_cs_regalloc_hang_bug) {
+      info->cs.regalloc_hang_bug =
+         info->cs.block_size[0] * info->cs.block_size[1] * info->cs.block_size[2] > 256;
+   }
 }
 
 static void

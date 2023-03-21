@@ -2275,8 +2275,6 @@ struct radv_graphics_pipeline {
 
 struct radv_compute_pipeline {
    struct radv_pipeline base;
-
-   bool cs_regalloc_hang_bug;
 };
 
 struct radv_ray_tracing_module {
