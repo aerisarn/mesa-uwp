@@ -919,7 +919,6 @@ radv_emit_descriptor_pointers(struct radv_device *device, struct radeon_cmdbuf *
 static unsigned
 radv_get_rasterization_prim(struct radv_cmd_buffer *cmd_buffer)
 {
-   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_shader *last_vgt_shader = cmd_buffer->state.last_vgt_shader;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
@@ -928,7 +927,7 @@ radv_get_rasterization_prim(struct radv_cmd_buffer *cmd_buffer)
                                           VK_SHADER_STAGE_GEOMETRY_BIT |
                                           VK_SHADER_STAGE_MESH_BIT_EXT)) {
       /* Ignore dynamic primitive topology for TES/GS/MS stages. */
-      return pipeline->rast_prim;
+      return cmd_buffer->state.rast_prim;
    }
 
    return si_conv_prim_to_gs_out(d->vk.ia.primitive_topology, last_vgt_shader->info.is_ngg);
@@ -6571,6 +6570,8 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       radv_bind_multisample_state(cmd_buffer, &graphics_pipeline->ms);
 
       cmd_buffer->state.custom_blend_mode = graphics_pipeline->custom_blend_mode;
+
+      cmd_buffer->state.rast_prim = graphics_pipeline->rast_prim;
       break;
    }
    default:

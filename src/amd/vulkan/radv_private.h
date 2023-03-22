@@ -1700,6 +1700,8 @@ struct radv_cmd_state {
 
    /* Custom blend mode for internal operations. */
    unsigned custom_blend_mode;
+
+   unsigned rast_prim;
 };
 
 struct radv_cmd_buffer_upload {
