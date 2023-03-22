@@ -794,4 +794,32 @@ nir_shader *radv_build_traversal_shader(struct radv_device *device,
                                         struct radv_ray_tracing_pipeline *pipeline,
                                         const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                                         const struct radv_pipeline_key *key);
+
+enum radv_rt_priority {
+   radv_rt_priority_raygen = 0,
+   radv_rt_priority_traversal = 1,
+   radv_rt_priority_hit_miss = 2,
+   radv_rt_priority_callable = 3,
+   radv_rt_priority_mask = 0x3,
+};
+
+static inline enum radv_rt_priority
+radv_get_rt_priority(gl_shader_stage stage)
+{
+   switch (stage) {
+   case MESA_SHADER_RAYGEN:
+      return radv_rt_priority_raygen;
+   case MESA_SHADER_INTERSECTION:
+   case MESA_SHADER_ANY_HIT:
+      return radv_rt_priority_traversal;
+   case MESA_SHADER_CLOSEST_HIT:
+   case MESA_SHADER_MISS:
+      return radv_rt_priority_hit_miss;
+   case MESA_SHADER_CALLABLE:
+      return radv_rt_priority_callable;
+   default:
+      unreachable("Unimplemented RT shader stage.");
+   }
+}
+
 #endif

@@ -634,7 +634,8 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
          struct radv_shader *shader =
             container_of(pipeline->stages[pipeline->groups[i].recursive_shader].shader,
                          struct radv_shader, base);
-         pipeline->groups[i].handle.recursive_shader_ptr = shader->va;
+         pipeline->groups[i].handle.recursive_shader_ptr =
+            shader->va | radv_get_rt_priority(shader->info.stage);
       }
    }
 
