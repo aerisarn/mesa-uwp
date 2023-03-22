@@ -1697,6 +1697,9 @@ struct radv_cmd_state {
    unsigned last_pa_sc_binner_cntl_0;
 
    struct radv_multisample_state ms;
+
+   /* Custom blend mode for internal operations. */
+   unsigned custom_blend_mode;
 };
 
 struct radv_cmd_buffer_upload {

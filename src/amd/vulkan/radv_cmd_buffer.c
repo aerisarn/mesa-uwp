@@ -2345,7 +2345,6 @@ radv_is_mrt0_dual_src(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_logic_op(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    unsigned cb_color_control = 0;
 
@@ -2361,11 +2360,11 @@ radv_emit_logic_op(struct radv_cmd_buffer *cmd_buffer)
 
       cb_color_control |=
          S_028808_DISABLE_DUAL_QUAD(mrt0_is_dual_src || d->vk.cb.logic_op_enable ||
-                                    pipeline->custom_blend_mode == V_028808_CB_RESOLVE);
+                                    cmd_buffer->state.custom_blend_mode == V_028808_CB_RESOLVE);
    }
 
-   if (pipeline->custom_blend_mode) {
-      cb_color_control |= S_028808_MODE(pipeline->custom_blend_mode);
+   if (cmd_buffer->state.custom_blend_mode) {
+      cb_color_control |= S_028808_MODE(cmd_buffer->state.custom_blend_mode);
    } else {
       bool color_write_enabled = false;
 
@@ -6565,6 +6564,8 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       cmd_buffer->scratch_waves_wanted = MAX2(cmd_buffer->scratch_waves_wanted, pipeline->max_waves);
 
       radv_bind_multisample_state(cmd_buffer, &graphics_pipeline->ms);
+
+      cmd_buffer->state.custom_blend_mode = graphics_pipeline->custom_blend_mode;
       break;
    }
    default:
