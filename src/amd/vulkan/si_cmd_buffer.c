@@ -849,22 +849,22 @@ si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_dra
    struct radv_prim_vertex_count prim_vertex_count = prim_size_table[topology];
    unsigned primgroup_size;
 
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL)) {
+   if (radv_cmdbuf_has_stage(cmd_buffer, MESA_SHADER_TESS_CTRL)) {
       primgroup_size = num_tess_patches;
-   } else if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY)) {
+   } else if (radv_cmdbuf_has_stage(cmd_buffer, MESA_SHADER_GEOMETRY)) {
       primgroup_size = 64;
    } else {
       primgroup_size = 128; /* recommended without a GS */
    }
 
    /* GS requirement. */
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY) && info->gfx_level <= GFX8) {
+   if (radv_cmdbuf_has_stage(cmd_buffer, MESA_SHADER_GEOMETRY) && info->gfx_level <= GFX8) {
       unsigned gs_table_depth = cmd_buffer->device->physical_device->gs_table_depth;
       if (SI_GS_PER_ES / primgroup_size >= gs_table_depth - 3)
          partial_es_wave = true;
    }
 
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL)) {
+   if (radv_cmdbuf_has_stage(cmd_buffer, MESA_SHADER_TESS_CTRL)) {
       if (topology == V_008958_DI_PT_PATCH) {
          prim_vertex_count.min = patch_control_points;
          prim_vertex_count.incr = 1;
@@ -922,7 +922,7 @@ si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_dra
           (info->family == CHIP_HAWAII ||
            (info->gfx_level == GFX8 &&
             /* max primgroup in wave is always 2 - leave this for documentation */
-            (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY) ||
+            (radv_cmdbuf_has_stage(cmd_buffer, MESA_SHADER_GEOMETRY) ||
              max_primgroup_in_wave != 2))))
          partial_vs_wave = true;
 
@@ -937,7 +937,7 @@ si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_dra
    if (info->gfx_level <= GFX8 && ia_switch_on_eoi)
       partial_es_wave = true;
 
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY)) {
+   if (radv_cmdbuf_has_stage(cmd_buffer, MESA_SHADER_GEOMETRY)) {
       /* GS hw bug with single-primitive instances and SWITCH_ON_EOI.
        * The hw doc says all multi-SE chips are affected, but amdgpu-pro Vulkan
        * only applies it to Hawaii. Do what amdgpu-pro Vulkan does.

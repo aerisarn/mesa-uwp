@@ -1585,6 +1585,8 @@ struct radv_cmd_state {
    uint64_t dirty;
 
    VkShaderStageFlags active_stages;
+   struct radv_shader *shaders[MESA_VULKAN_SHADER_STAGES];
+   struct radv_shader *gs_copy_shader;
    struct radv_shader *last_vgt_shader;
 
    uint32_t prefetch_L2_mask;
@@ -1790,6 +1792,12 @@ struct radv_cmd_buffer {
 
    uint64_t shader_upload_seq;
 };
+
+static inline bool
+radv_cmdbuf_has_stage(const struct radv_cmd_buffer *cmd_buffer, gl_shader_stage stage)
+{
+   return !!(cmd_buffer->state.active_stages & mesa_to_vk_shader_stage(stage));
+}
 
 extern const struct vk_command_buffer_ops radv_cmd_buffer_ops;
 
