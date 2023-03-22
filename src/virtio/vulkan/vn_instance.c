@@ -133,8 +133,19 @@ vn_instance_init_ring(struct vn_instance *instance)
 
    instance->ring.id = (uintptr_t)ring;
 
+   struct VkRingMonitorInfoMESA monitor_info;
+   if (instance->experimental.ringMonitoring) {
+      ring->monitor.report_period_us = 3000000;
+      mtx_init(&ring->monitor.mutex, mtx_plain);
+      monitor_info = (struct VkRingMonitorInfoMESA){
+         .sType = VK_STRUCTURE_TYPE_RING_MONITOR_INFO_MESA,
+         .maxReportingPeriodMicroseconds = ring->monitor.report_period_us,
+      };
+   }
+
    const struct VkRingCreateInfoMESA info = {
       .sType = VK_STRUCTURE_TYPE_RING_CREATE_INFO_MESA,
+      .pNext = instance->experimental.ringMonitoring ? &monitor_info : NULL,
       .resourceId = instance->ring.shmem->res_id,
       .size = layout.shmem_size,
       .idleTimeout = 50ull * 1000 * 1000,
@@ -231,12 +242,14 @@ vn_instance_init_experimental_features(struct vn_instance *instance)
              "\n\tglobalFencing = %u"
              "\n\tlargeRing = %u"
              "\n\tsyncFdFencing = %u"
-             "\n\tasyncRoundtrip = %u",
+             "\n\tasyncRoundtrip = %u"
+             "\n\tringMonitoring = %u",
              instance->experimental.memoryResourceAllocationSize,
              instance->experimental.globalFencing,
              instance->experimental.largeRing,
              instance->experimental.syncFdFencing,
-             instance->experimental.asyncRoundtrip);
+             instance->experimental.asyncRoundtrip,
+             instance->experimental.ringMonitoring);
    }
 
    return VK_SUCCESS;

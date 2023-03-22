@@ -123,9 +123,52 @@ vn_extension_get_spec_version(const char *name)
    return index >= 0 ? vn_info_extension_get(index)->spec_version : 0;
 }
 
+static bool
+vn_ring_monitor_acquire(struct vn_ring *ring)
+{
+   pid_t tid = gettid();
+   if (!ring->monitor.threadid && tid != ring->monitor.threadid &&
+       mtx_trylock(&ring->monitor.mutex) == thrd_success) {
+      /* register as the only waiting thread that monitors the ring. */
+      ring->monitor.threadid = tid;
+   }
+   return tid == ring->monitor.threadid;
+}
+
+void
+vn_ring_monitor_release(struct vn_ring *ring)
+{
+   if (gettid() != ring->monitor.threadid)
+      return;
+
+   ring->monitor.threadid = 0;
+   mtx_unlock(&ring->monitor.mutex);
+}
+
 struct vn_relax_state
 vn_relax_init(struct vn_ring *ring, const char *reason)
 {
+   if (ring->monitor.report_period_us) {
+#ifndef NDEBUG
+      /* ensure minimum check period is greater than maximum renderer
+       * reporting period (with margin of safety to ensure no false
+       * positives).
+       *
+       * first_warn_time is pre-calculated based on parameters in vn_relax
+       * and must update together.
+       */
+      const uint32_t first_warn_time = 3481600;
+      const uint32_t safety_margin = 250000;
+      assert(first_warn_time - safety_margin >=
+             ring->monitor.report_period_us);
+#endif
+
+      if (vn_ring_monitor_acquire(ring)) {
+         ring->monitor.alive = true;
+         vn_ring_unset_status_bits(ring, VK_RING_STATUS_ALIVE_BIT_MESA);
+      }
+   }
+
    return (struct vn_relax_state){
       .ring = ring,
       .iter = 0,
@@ -143,6 +186,7 @@ vn_relax(struct vn_relax_state *state)
    /* Yield for the first 2^busy_wait_order times and then sleep for
     * base_sleep_us microseconds for the same number of times.  After that,
     * keep doubling both sleep length and count.
+    * Must also update pre-calculated "first_warn_time" in vn_relax_init().
     */
    const uint32_t busy_wait_order = 8;
    const uint32_t base_sleep_us = vn_env.relax_base_sleep_us;
@@ -165,6 +209,19 @@ vn_relax(struct vn_relax_state *state)
       if (status & VK_RING_STATUS_FATAL_BIT_MESA) {
          vn_log(NULL, "aborting on ring fatal error at iter %d", *iter);
          abort();
+      }
+
+      if (ring->monitor.report_period_us) {
+         if (vn_ring_monitor_acquire(ring)) {
+            ring->monitor.alive = status & VK_RING_STATUS_ALIVE_BIT_MESA;
+            vn_ring_unset_status_bits(ring, VK_RING_STATUS_ALIVE_BIT_MESA);
+         }
+
+         if (!ring->monitor.alive) {
+            vn_log(NULL, "aborting on expired ring alive status at iter %d",
+                   *iter);
+            abort();
+         }
       }
 
       if (*iter >= (1 << abort_order) && !VN_DEBUG(NO_ABORT)) {
