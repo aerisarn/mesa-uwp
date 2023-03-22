@@ -2325,6 +2325,7 @@ agx_preprocess_nir(nir_shader *nir, bool support_lod_bias)
 
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
    NIR_PASS_V(nir, nir_lower_idiv, &idiv_options);
+   NIR_PASS_V(nir, nir_lower_frexp);
    NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
    NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
    NIR_PASS_V(nir, nir_lower_flrp, 16 | 32 | 64, false);
