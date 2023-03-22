@@ -208,7 +208,7 @@ v3d_create_depth_stencil_alpha_state(struct pipe_context *pctx,
                     (cso->stencil[0].zfail_op != PIPE_STENCIL_OP_KEEP ||
                      cso->stencil[0].func != PIPE_FUNC_ALWAYS ||
                      (cso->stencil[1].enabled &&
-                      (cso->stencil[1].zfail_op != PIPE_STENCIL_OP_KEEP &&
+                      (cso->stencil[1].zfail_op != PIPE_STENCIL_OP_KEEP ||
                        cso->stencil[1].func != PIPE_FUNC_ALWAYS)))) {
                         so->ez_state = V3D_EZ_DISABLED;
                 }
