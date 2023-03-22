@@ -12,7 +12,8 @@ extern "C" {
 #endif
 
 enum mme_value_type {
-   MME_VALUE_TYPE_ZERO,
+   /* This must be zero, making a zero-initizlied mme_value a ZERO */
+   MME_VALUE_TYPE_ZERO = 0,
    MME_VALUE_TYPE_IMM,
    MME_VALUE_TYPE_REG,
 };
