@@ -1252,6 +1252,15 @@ zink_screen_init_compiler(struct zink_screen *screen)
       .lower_extract_word = true,
       .lower_insert_byte = true,
       .lower_insert_word = true,
+
+      /* We can only support 32-bit ldexp, but NIR doesn't have a flag
+       * distinguishing 64-bit ldexp support (radeonsi *does* support 64-bit
+       * ldexp, so we don't just always lower it in NIR).  Given that ldexp is
+       * effectively unused (no instances in shader-db), it's not worth the
+       * effort to do so.
+       * */
+      .lower_ldexp = true,
+
       .lower_mul_high = true,
       .lower_rotate = true,
       .lower_uadd_carry = true,
