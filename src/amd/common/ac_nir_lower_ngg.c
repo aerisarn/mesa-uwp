@@ -1075,6 +1075,11 @@ analyze_shader_before_culling_walk(nir_ssa_def *ssa,
          break;
       }
 
+      const unsigned num_srcs = nir_intrinsic_infos[intrin->intrinsic].num_srcs;
+      for (unsigned i = 0; i < num_srcs; ++i) {
+         analyze_shader_before_culling_walk(intrin->src[i].ssa, flag, s);
+      }
+
       break;
    }
    case nir_instr_type_alu: {
