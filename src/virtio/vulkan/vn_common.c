@@ -123,9 +123,23 @@ vn_extension_get_spec_version(const char *name)
    return index >= 0 ? vn_info_extension_get(index)->spec_version : 0;
 }
 
-void
-vn_relax(const struct vn_ring *ring, uint32_t *iter, const char *reason)
+struct vn_relax_state
+vn_relax_init(struct vn_ring *ring, const char *reason)
 {
+   return (struct vn_relax_state){
+      .ring = ring,
+      .iter = 0,
+      .reason = reason,
+   };
+}
+
+void
+vn_relax(struct vn_relax_state *state)
+{
+   struct vn_ring *ring = state->ring;
+   uint32_t *iter = &state->iter;
+   const char *reason = state->reason;
+
    /* Yield for the first 2^busy_wait_order times and then sleep for
     * base_sleep_us microseconds for the same number of times.  After that,
     * keep doubling both sleep length and count.

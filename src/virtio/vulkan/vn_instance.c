@@ -321,15 +321,17 @@ vn_instance_wait_roundtrip(struct vn_instance *instance,
       return;
    }
 
-   const struct vn_ring *ring = &instance->ring.ring;
+   struct vn_ring *ring = &instance->ring.ring;
    const volatile atomic_uint *ptr = ring->shared.extra;
-   uint32_t iter = 0;
+   struct vn_relax_state relax_state = vn_relax_init(ring, "roundtrip");
    do {
       const uint32_t cur = atomic_load_explicit(ptr, memory_order_acquire);
       /* clamp to 32bit for legacy ring extra based roundtrip waiting */
-      if (roundtrip_seqno_ge(cur, roundtrip_seqno))
+      if (roundtrip_seqno_ge(cur, roundtrip_seqno)) {
+         vn_relax_fini(&relax_state);
          break;
-      vn_relax(ring, &iter, "roundtrip");
+      }
+      vn_relax(&relax_state);
    } while (true);
 }
 
