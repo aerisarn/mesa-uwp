@@ -536,7 +536,6 @@ vgpu9_get_shader_param(struct pipe_screen *screen,
       case PIPE_SHADER_CAP_SUPPORTED_IRS:
          return (1 << PIPE_SHADER_IR_TGSI) | (svgascreen->debug.nir ? (1 << PIPE_SHADER_IR_NIR) : 0);
       case PIPE_SHADER_CAP_DROUND_SUPPORTED:
-      case PIPE_SHADER_CAP_DFRACEXP_DLDEXP_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
       case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
       case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
@@ -601,7 +600,6 @@ vgpu9_get_shader_param(struct pipe_screen *screen,
       case PIPE_SHADER_CAP_SUPPORTED_IRS:
          return (1 << PIPE_SHADER_IR_TGSI) | (svgascreen->debug.nir ? (1 << PIPE_SHADER_IR_NIR) : 0);
       case PIPE_SHADER_CAP_DROUND_SUPPORTED:
-      case PIPE_SHADER_CAP_DFRACEXP_DLDEXP_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
       case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
       case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
@@ -711,7 +709,6 @@ vgpu10_get_shader_param(struct pipe_screen *screen,
       else
          return 0;
    case PIPE_SHADER_CAP_DROUND_SUPPORTED:
-   case PIPE_SHADER_CAP_DFRACEXP_DLDEXP_SUPPORTED:
       /* For the above cases, we rely on the GLSL compiler to translate/lower
        * the TGIS instruction into other instructions we do support.
        */

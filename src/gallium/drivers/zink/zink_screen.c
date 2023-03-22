@@ -1204,7 +1204,6 @@ zink_get_shader_param(struct pipe_screen *pscreen,
                   PIPE_MAX_SAMPLERS);
 
    case PIPE_SHADER_CAP_DROUND_SUPPORTED:
-   case PIPE_SHADER_CAP_DFRACEXP_DLDEXP_SUPPORTED:
       return 0; /* not implemented */
 
    case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:

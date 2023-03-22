@@ -550,7 +550,6 @@ iris_get_shader_param(struct pipe_screen *pscreen,
    }
    case PIPE_SHADER_CAP_DROUND_SUPPORTED:
       return 1;
-   case PIPE_SHADER_CAP_DFRACEXP_DLDEXP_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
    case PIPE_SHADER_CAP_TGSI_SQRT_SUPPORTED:
       return 0;
