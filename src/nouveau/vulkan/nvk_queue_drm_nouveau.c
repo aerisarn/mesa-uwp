@@ -165,6 +165,8 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
 
    push_builder_init(dev, &pb);
 
+   pthread_mutex_lock(&dev->mutex);
+
    for (uint32_t i = 0; i < submit->signal_count; i++) {
       struct nvk_bo_sync *bo_sync =
          container_of(submit->signals[i].sync, struct nvk_bo_sync, sync);
@@ -179,12 +181,10 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
 
       push_add_heap(&pb, &dev->shader_heap);
 
-      simple_mtx_lock(&dev->memory_objects_lock);
       list_for_each_entry(struct nvk_device_memory, mem,
                           &dev->memory_objects, link) {
          push_add_bo(&pb, mem->bo, NOUVEAU_WS_BO_RDWR);
       }
-      simple_mtx_unlock(&dev->memory_objects_lock);
 
       for (unsigned i = 0; i < submit->command_buffer_count; i++) {
          struct nvk_cmd_buffer *cmd =
@@ -200,8 +200,6 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
             push_add_bo(&pb, ref->bo, NOUVEAU_WS_BO_RDWR);
       }
    }
-
-   pthread_mutex_lock(&dev->mutex);
 
    result = push_submit(&pb, queue, sync);
    if (result == VK_SUCCESS) {

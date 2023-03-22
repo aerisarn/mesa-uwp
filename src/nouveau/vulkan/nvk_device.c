@@ -153,7 +153,6 @@ nvk_CreateDevice(VkPhysicalDevice physicalDevice,
    }
 
    list_inithead(&dev->memory_objects);
-   simple_mtx_init(&dev->memory_objects_lock, mtx_plain);
 
    result = nvk_descriptor_table_init(dev, &dev->images,
                                       8 * 4 /* tic entry size */,
@@ -269,7 +268,6 @@ fail_samplers:
 fail_images:
    nvk_descriptor_table_finish(dev, &dev->images);
 fail_memory_objects:
-   simple_mtx_destroy(&dev->memory_objects_lock);
    nouveau_ws_context_destroy(dev->ctx);
 fail_init:
    vk_device_finish(&dev->vk);
@@ -301,7 +299,6 @@ nvk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    nvk_descriptor_table_finish(dev, &dev->samplers);
    nvk_descriptor_table_finish(dev, &dev->images);
    assert(list_is_empty(&dev->memory_objects));
-   simple_mtx_destroy(&dev->memory_objects_lock);
    nouveau_ws_context_destroy(dev->ctx);
    vk_free(&dev->vk.alloc, dev);
 }

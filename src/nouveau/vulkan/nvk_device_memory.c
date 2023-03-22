@@ -125,9 +125,9 @@ nvk_allocate_memory(struct nvk_device *device,
       }
    }
 
-   simple_mtx_lock(&device->memory_objects_lock);
+   pthread_mutex_lock(&device->mutex);
    list_addtail(&mem->link, &device->memory_objects);
-   simple_mtx_unlock(&device->memory_objects_lock);
+   pthread_mutex_unlock(&device->mutex);
 
    *mem_out = mem;
 
@@ -147,9 +147,9 @@ nvk_free_memory(struct nvk_device *device,
    if (mem->map)
       nouveau_ws_bo_unmap(mem->bo, mem->map);
 
-   simple_mtx_lock(&device->memory_objects_lock);
+   pthread_mutex_lock(&device->mutex);
    list_del(&mem->link);
-   simple_mtx_unlock(&device->memory_objects_lock);
+   pthread_mutex_unlock(&device->mutex);
 
    nouveau_ws_bo_destroy(mem->bo);
 

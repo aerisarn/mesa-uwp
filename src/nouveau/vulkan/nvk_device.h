@@ -31,7 +31,7 @@ struct nvk_device {
 
    struct nouveau_ws_context *ctx;
 
-   simple_mtx_t memory_objects_lock;
+   /* Protected by nvk_device::mutex */
    struct list_head memory_objects;
 
    struct nvk_descriptor_table images;
