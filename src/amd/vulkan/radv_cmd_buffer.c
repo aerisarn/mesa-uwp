@@ -5044,9 +5044,9 @@ radv_flush_ngg_query_state(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_flush_force_vrs_state(struct radv_cmd_buffer *cmd_buffer)
 {
-   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   const struct radv_shader *last_vgt_shader = cmd_buffer->state.last_vgt_shader;
 
-   if (!pipeline->force_vrs_per_vertex) {
+   if (!last_vgt_shader->info.force_vrs_per_vertex) {
       /* Un-set the SGPR index so we know to re-emit it later. */
       cmd_buffer->state.last_vrs_rates_sgpr_idx = -1;
       return;
@@ -5059,8 +5059,6 @@ radv_flush_force_vrs_state(struct radv_cmd_buffer *cmd_buffer)
       loc = &cmd_buffer->state.gs_copy_shader->info.user_sgprs_locs.shader_data[AC_UD_FORCE_VRS_RATES];
       base_reg = R_00B130_SPI_SHADER_USER_DATA_VS_0;
    } else {
-      const struct radv_shader *last_vgt_shader = cmd_buffer->state.last_vgt_shader;
-
       loc = radv_get_user_sgpr(last_vgt_shader, AC_UD_FORCE_VRS_RATES);
       base_reg = last_vgt_shader->info.user_data_0;
    }
