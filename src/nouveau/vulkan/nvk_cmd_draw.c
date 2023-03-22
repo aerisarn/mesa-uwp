@@ -1508,6 +1508,34 @@ vk_to_nv9097_primitive_topology(VkPrimitiveTopology prim)
    }
 }
 
+struct mme_draw_params {
+   struct mme_value base_vertex;
+   struct mme_value first_vertex;
+   struct mme_value first_instance;
+   struct mme_value draw_idx;
+};
+
+static void
+nvk_mme_build_set_draw_params(struct mme_builder *b,
+                              const struct mme_draw_params *p)
+{
+   const uint32_t draw_params_offset = nvk_root_descriptor_offset(draw);
+   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
+   mme_emit(b, mme_imm(draw_params_offset));
+   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
+   mme_emit(b, p->first_vertex);
+   mme_emit(b, p->first_instance);
+   mme_emit(b, p->draw_idx);
+
+   mme_mthd(b, NV9097_SET_GLOBAL_BASE_VERTEX_INDEX);
+   mme_emit(b, p->base_vertex);
+   mme_mthd(b, NV9097_SET_VERTEX_ID_BASE);
+   mme_emit(b, p->base_vertex);
+
+   mme_mthd(b, NV9097_SET_GLOBAL_BASE_INSTANCE_INDEX);
+   mme_emit(b, p->first_instance);
+}
+
 static void
 nvk_mme_build_draw(struct mme_builder *b,
                    struct mme_value begin,
@@ -1519,26 +1547,14 @@ nvk_mme_build_draw(struct mme_builder *b,
    struct mme_value first_vertex = mme_load(b);
    struct mme_value first_instance = mme_load(b);
 
-   // load draw params in root descriptor
-   const uint32_t draw_params_offset = nvk_root_descriptor_offset(draw);
-   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
-   mme_emit(b, mme_imm(draw_params_offset));
-   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
-   mme_emit(b, first_vertex);
-   mme_emit(b, first_instance);
-   mme_emit(b, draw_idx);
+   struct mme_draw_params params = {
+      .first_vertex = first_vertex,
+      .first_instance = first_instance,
+      .draw_idx = draw_idx,
+   };
+   nvk_mme_build_set_draw_params(b, &params);
 
-   mme_mthd(b, NV9097_SET_GLOBAL_BASE_VERTEX_INDEX);
-   mme_emit(b, mme_zero());
-   mme_mthd(b, NV9097_SET_VERTEX_ID_BASE);
-   mme_emit(b, mme_zero());
-
-   {
-      mme_mthd(b, NV9097_SET_GLOBAL_BASE_INSTANCE_INDEX);
-      mme_emit(b, first_instance);
-
-      mme_free_reg(b, first_instance);
-   }
+   mme_free_reg(b, first_instance);
 
    /* Make a copy of begin because this helper may be called inside an MME loop
     * (i.e. indirect draws) and we're going to modify the value of begin below.
@@ -1619,30 +1635,16 @@ nvk_mme_build_draw_indexed(struct mme_builder *b,
    struct mme_value vertex_offset = mme_load(b);
    struct mme_value first_instance = mme_load(b);
 
-   // load draw params in root descriptor
-   const uint32_t draw_params_offset = nvk_root_descriptor_offset(draw);
-   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
-   mme_emit(b, mme_imm(draw_params_offset));
-   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
-   mme_emit(b, vertex_offset);
-   mme_emit(b, first_instance);
-   mme_emit(b, draw_idx);
+   struct mme_draw_params params = {
+      .base_vertex = vertex_offset,
+      .first_vertex = vertex_offset,
+      .first_instance = first_instance,
+      .draw_idx = draw_idx,
+   };
+   nvk_mme_build_set_draw_params(b, &params);
 
-   {
-      mme_mthd(b, NV9097_SET_GLOBAL_BASE_VERTEX_INDEX);
-      mme_emit(b, vertex_offset);
-      mme_mthd(b, NV9097_SET_VERTEX_ID_BASE);
-      mme_emit(b, vertex_offset);
-
-      mme_free_reg(b, vertex_offset);
-   }
-
-   {
-      mme_mthd(b, NV9097_SET_GLOBAL_BASE_INSTANCE_INDEX);
-      mme_emit(b, first_instance);
-
-      mme_free_reg(b, first_instance);
-   }
+   mme_free_reg(b, vertex_offset);
+   mme_free_reg(b, first_instance);
 
    /* Make a copy of begin because this helper may be called inside an MME loop
     * (i.e. indirect draws) and we're going to modify the value of begin below.
