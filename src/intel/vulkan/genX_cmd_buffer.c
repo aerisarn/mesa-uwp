@@ -3328,7 +3328,10 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
 
    if (!cmd_buffer->state.gfx.dirty && !descriptors_dirty &&
        !any_dynamic_state_dirty &&
-       !cmd_buffer->state.push_constants_dirty)
+       ((cmd_buffer->state.push_constants_dirty &
+         (VK_SHADER_STAGE_ALL_GRAPHICS |
+          VK_SHADER_STAGE_TASK_BIT_EXT |
+          VK_SHADER_STAGE_MESH_BIT_EXT)) == 0))
       return;
 
    if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_XFB_ENABLE) {
