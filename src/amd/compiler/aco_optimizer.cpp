@@ -2209,7 +2209,7 @@ combine_ordering_test(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
    bool is_or = instr->opcode == aco_opcode::s_or_b64 || instr->opcode == aco_opcode::s_or_b32;
 
-   bitarray8 opsel = 0, abs = 0, neg = 0;
+   bitarray8 opsel = 0;
    Instruction* op_instr[2];
    Temp op[2];
 
@@ -2229,17 +2229,14 @@ combine_ordering_test(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       if (!op_instr[i]->operands[0].isTemp() || !op_instr[i]->operands[1].isTemp())
          return false;
 
-      if (op_instr[i]->isVOP3()) {
-         VALU_instruction& vop3 = op_instr[i]->valu();
-         if (vop3.neg[0] != vop3.neg[1] || vop3.abs[0] != vop3.abs[1] ||
-             vop3.opsel[0] != vop3.opsel[1])
-            return false;
-         neg[i] = vop3.neg[0];
-         abs[i] = vop3.abs[0];
-         opsel[i] = vop3.opsel[0];
-      } else if (op_instr[i]->isSDWA()) {
+      if (op_instr[i]->isSDWA() || op_instr[i]->isDPP())
          return false;
-      }
+
+      VALU_instruction& valu = op_instr[i]->valu();
+      if (valu.neg[0] != valu.neg[1] || valu.abs[0] != valu.abs[1] ||
+          valu.opsel[0] != valu.opsel[1])
+         return false;
+      opsel[i] = valu.opsel[0];
 
       Temp op0 = op_instr[i]->operands[0].getTemp();
       Temp op1 = op_instr[i]->operands[1].getTemp();
@@ -2250,8 +2247,10 @@ combine_ordering_test(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       bitsize = op_bitsize;
    }
 
-   if (op[1].type() == RegType::sgpr)
+   if (op[1].type() == RegType::sgpr) {
       std::swap(op[0], op[1]);
+      opsel[0].swap(opsel[1]);
+   }
    unsigned num_sgprs = (op[0].type() == RegType::sgpr) + (op[1].type() == RegType::sgpr);
    if (num_sgprs > (ctx.program->gfx_level >= GFX10 ? 2 : 1))
       return false;
@@ -2262,18 +2261,11 @@ combine_ordering_test(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    case 32: new_op = is_or ? aco_opcode::v_cmp_u_f32 : aco_opcode::v_cmp_o_f32; break;
    case 64: new_op = is_or ? aco_opcode::v_cmp_u_f64 : aco_opcode::v_cmp_o_f64; break;
    }
-   Instruction* new_instr;
-   if (neg || abs || opsel || num_sgprs > 1) {
-      VALU_instruction* vop3 =
-         create_instruction<VALU_instruction>(new_op, asVOP3(Format::VOPC), 2, 1);
+   bool needs_vop3 = num_sgprs > 1 || (opsel[0] && op[0].type() != RegType::vgpr);
+   VALU_instruction* new_instr = create_instruction<VALU_instruction>(
+      new_op, needs_vop3 ? asVOP3(Format::VOPC) : Format::VOPC, 2, 1);
 
-      vop3->abs = abs;
-      vop3->neg = neg;
-      vop3->opsel = opsel;
-      new_instr = static_cast<Instruction*>(vop3);
-   } else {
-      new_instr = create_instruction<VALU_instruction>(new_op, Format::VOPC, 2, 1);
-   }
+   new_instr->opsel = opsel;
    new_instr->operands[0] = copy_operand(ctx, Operand(op[0]));
    new_instr->operands[1] = copy_operand(ctx, Operand(op[1]));
    new_instr->definitions[0] = instr->definitions[0];
