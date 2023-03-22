@@ -859,11 +859,17 @@ nvk_flush_vp_state(struct nvk_cmd_buffer *cmd)
          P_NV9097_SET_VIEWPORT_OFFSET_Y(p, i, fui(vp->y + 0.5f * vp->height));
          P_NV9097_SET_VIEWPORT_OFFSET_Z(p, i, fui(vp->minDepth));
 
-         const uint32_t xmin = vp->x;
-         const uint32_t xmax = vp->x + vp->width;
-         const uint32_t ymin = MIN2(vp->y, vp->y + vp->height);
-         const uint32_t ymax = MAX2(vp->y, vp->y + vp->height);
+         float xmin = vp->x;
+         float xmax = vp->x + vp->width;
+         float ymin = MIN2(vp->y, vp->y + vp->height);
+         float ymax = MAX2(vp->y, vp->y + vp->height);
          assert(xmin <= xmax && ymin <= ymax);
+
+         const float max_dim = (float)0xffff;
+         xmin = CLAMP(xmin, 0, max_dim);
+         xmax = CLAMP(xmax, 0, max_dim);
+         ymin = CLAMP(ymin, 0, max_dim);
+         ymax = CLAMP(ymax, 0, max_dim);
 
          P_MTHD(p, NV9097, SET_VIEWPORT_CLIP_HORIZONTAL(i));
          P_NV9097_SET_VIEWPORT_CLIP_HORIZONTAL(p, i, {
