@@ -8601,7 +8601,6 @@ radv_need_late_scissor_emission(struct radv_cmd_buffer *cmd_buffer,
 ALWAYS_INLINE static uint32_t
 radv_get_ngg_culling_settings(struct radv_cmd_buffer *cmd_buffer, bool vp_y_inverted)
 {
-   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
    /* Disable shader culling entirely when conservative overestimate is used.
@@ -8642,7 +8641,7 @@ radv_get_ngg_culling_settings(struct radv_cmd_buffer *cmd_buffer, bool vp_y_inve
    /* Small primitive culling assumes a sample position at (0.5, 0.5)
     * so don't enable it with user sample locations.
     */
-   if (!pipeline->uses_user_sample_locations) {
+   if (!cmd_buffer->state.ms.uses_user_sample_locations) {
       nggc_settings |= radv_nggc_small_primitives;
 
       /* small_prim_precision = num_samples / 2^subpixel_bits

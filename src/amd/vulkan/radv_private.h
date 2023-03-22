@@ -1573,6 +1573,7 @@ enum rgp_flush_bits {
 
 struct radv_multisample_state {
    bool sample_shading_enable;
+   bool uses_user_sample_locations;
    float min_sample_shading;
 };
 
@@ -2193,7 +2194,6 @@ struct radv_graphics_pipeline {
    bool uses_baseinstance;
    bool use_per_attribute_vb_descs;
    bool can_use_simple_input;
-   bool uses_user_sample_locations;
 
    /* Whether the pipeline uses inner coverage which means that a fragment has all of its pixel
     * squares fully covered by the generating primitive.

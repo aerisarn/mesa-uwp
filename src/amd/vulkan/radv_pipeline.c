@@ -504,6 +504,8 @@ radv_pipeline_init_multisample_state(const struct radv_device *device,
        */
       pipeline->pa_sc_mode_cntl_1 |= S_028A4C_WALK_ALIGN8_PRIM_FITS_ST(1);
    }
+
+   ms->uses_user_sample_locations = state->ms && state->ms->sample_locations_enable;
 }
 
 static void
@@ -4990,7 +4992,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       pipeline->base.shaders[pipeline->last_vgt_api_stage]->info.has_ngg_culling;
    pipeline->force_vrs_per_vertex =
       pipeline->base.shaders[pipeline->last_vgt_api_stage]->info.force_vrs_per_vertex;
-   pipeline->uses_user_sample_locations = state.ms && state.ms->sample_locations_enable;
    pipeline->uses_inner_coverage =
       pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.reads_fully_covered;
    pipeline->rast_prim = vgt_gs_out_prim_type;
