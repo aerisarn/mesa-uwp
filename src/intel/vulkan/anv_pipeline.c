@@ -717,7 +717,7 @@ anv_pipeline_hash_graphics(struct anv_graphics_base_pipeline *pipeline,
    _mesa_sha1_update(&ctx, &rba, sizeof(rba));
 
    for (uint32_t s = 0; s < ANV_GRAPHICS_SHADER_STAGE_COUNT; s++) {
-      if (pipeline->active_stages & BITFIELD_BIT(s)) {
+      if (pipeline->base.active_stages & BITFIELD_BIT(s)) {
          _mesa_sha1_update(&ctx, stages[s].shader_sha1,
                            sizeof(stages[s].shader_sha1));
          _mesa_sha1_update(&ctx, &stages[s].key, brw_prog_key_size(s));
@@ -1776,7 +1776,7 @@ anv_graphics_pipeline_load_cached_shaders(struct anv_graphics_base_pipeline *pip
       }
    }
 
-   if ((found + imported) == __builtin_popcount(pipeline->active_stages)) {
+   if ((found + imported) == __builtin_popcount(pipeline->base.active_stages)) {
       if (cache_hits == found && found != 0) {
          pipeline_feedback->flags |=
             VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
@@ -1795,7 +1795,7 @@ anv_graphics_pipeline_load_cached_shaders(struct anv_graphics_base_pipeline *pip
        * of the time but it can if we have a partially populated pipeline
        * cache.
        */
-      assert(found < __builtin_popcount(pipeline->active_stages));
+      assert(found < __builtin_popcount(pipeline->base.active_stages));
 
       vk_perf(VK_LOG_OBJS(cache ? &cache->base :
                                   &pipeline->base.device->vk.base),
@@ -2037,8 +2037,8 @@ anv_graphics_pipeline_compile(struct anv_graphics_base_pipeline *pipeline,
       vk_pipeline_hash_shader_stage(stages[stage].info, NULL, stages[stage].shader_sha1);
    }
 
-   /* Prepare shader keys for all shaders in pipeline->active_stages (this
-    * includes libraries) before generating the hash for cache look up.
+   /* Prepare shader keys for all shaders in pipeline->base.active_stages
+    * (this includes libraries) before generating the hash for cache look up.
     *
     * We're doing this because the spec states that :
     *
@@ -2210,7 +2210,8 @@ anv_graphics_pipeline_compile(struct anv_graphics_base_pipeline *pipeline,
          shaders[s] = stages[s].nir;
 
       use_primitive_replication =
-         anv_check_for_primitive_replication(device, pipeline->active_stages,
+         anv_check_for_primitive_replication(device,
+                                             pipeline->base.active_stages,
                                              shaders, view_mask);
    }
 
@@ -2604,8 +2605,11 @@ anv_compute_pipeline_create(struct anv_device *device,
       return result;
    }
 
+
    ANV_FROM_HANDLE(anv_pipeline_layout, pipeline_layout, pCreateInfo->layout);
    anv_pipeline_init_layout(&pipeline->base, pipeline_layout);
+
+   pipeline->base.active_stages = VK_SHADER_STAGE_COMPUTE_BIT;
 
    anv_batch_set_storage(&pipeline->base.batch, ANV_NULL_ADDRESS,
                          pipeline->batch_data, sizeof(pipeline->batch_data));
@@ -2824,7 +2828,7 @@ anv_graphics_pipeline_import_lib(struct anv_graphics_base_pipeline *pipeline,
    anv_graphics_pipeline_import_layout(pipeline, lib_layout);
 
    /* We can't have shaders specified twice through libraries. */
-   assert((pipeline->active_stages & lib->base.active_stages) == 0);
+   assert((pipeline->base.active_stages & lib->base.base.active_stages) == 0);
 
    /* VK_EXT_graphics_pipeline_library:
     *
@@ -2837,7 +2841,7 @@ anv_graphics_pipeline_import_lib(struct anv_graphics_base_pipeline *pipeline,
     */
    assert(!link_optimize || lib->retain_shaders);
 
-   pipeline->active_stages |= lib->base.active_stages;
+   pipeline->base.active_stages |= lib->base.base.active_stages;
 
    /* Propagate the fragment dynamic flag, unless we're doing link
     * optimization, in that case we'll have all the state information and this
@@ -2845,7 +2849,7 @@ anv_graphics_pipeline_import_lib(struct anv_graphics_base_pipeline *pipeline,
     */
    if (!link_optimize) {
       if (lib->base.fragment_dynamic) {
-         assert(lib->base.active_stages & VK_SHADER_STAGE_FRAGMENT_BIT);
+         assert(lib->base.base.active_stages & VK_SHADER_STAGE_FRAGMENT_BIT);
          pipeline->fragment_dynamic = true;
       }
    }
@@ -2951,7 +2955,7 @@ anv_graphics_lib_pipeline_create(struct anv_device *device,
       return result;
    }
 
-   pipeline->base.active_stages = pipeline->state.shader_stages;
+   pipeline->base.base.active_stages = pipeline->state.shader_stages;
 
    /* After we've imported all the libraries' layouts, import the pipeline
     * layout and hash the whole lot.
@@ -2967,7 +2971,7 @@ anv_graphics_lib_pipeline_create(struct anv_device *device,
    /* Compile shaders. We can skip this if there are no active stage in that
     * pipeline.
     */
-   if (pipeline->base.active_stages != 0) {
+   if (pipeline->base.base.active_stages != 0) {
       result = anv_graphics_pipeline_compile(&pipeline->base, stages,
                                              cache, &pipeline_feedback,
                                              pCreateInfo, &pipeline->state);
@@ -3068,11 +3072,11 @@ anv_graphics_pipeline_create(struct anv_device *device,
    pipeline->dynamic_state.ms.sample_locations = &pipeline->base.sample_locations;
    vk_dynamic_graphics_state_fill(&pipeline->dynamic_state, &state);
 
-   pipeline->base.active_stages = state.shader_stages;
+   pipeline->base.base.active_stages = state.shader_stages;
 
    /* Sanity check on the shaders */
-   assert(pipeline->base.active_stages & VK_SHADER_STAGE_VERTEX_BIT ||
-          pipeline->base.active_stages & VK_SHADER_STAGE_MESH_BIT_EXT);
+   assert(pipeline->base.base.active_stages & VK_SHADER_STAGE_VERTEX_BIT ||
+          pipeline->base.base.active_stages & VK_SHADER_STAGE_MESH_BIT_EXT);
 
    if (anv_pipeline_is_mesh(pipeline)) {
       assert(device->physical->vk.supported_extensions.NV_mesh_shader ||
@@ -3108,8 +3112,8 @@ anv_graphics_pipeline_create(struct anv_device *device,
    anv_batch_set_storage(&pipeline->base.base.batch, ANV_NULL_ADDRESS,
                          pipeline->batch_data, sizeof(pipeline->batch_data));
 
-   if (pipeline->base.active_stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
-      pipeline->base.active_stages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+   if (pipeline->base.base.active_stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
+      pipeline->base.base.active_stages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
 
    if (anv_pipeline_is_mesh(pipeline))
       assert(device->physical->vk.supported_extensions.NV_mesh_shader ||
@@ -3367,6 +3371,8 @@ anv_pipeline_init_ray_tracing_stages(struct anv_ray_tracing_pipeline *pipeline,
             .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
          },
       };
+
+      pipeline->base.active_stages |= sinfo->stage;
 
       populate_bs_prog_key(pipeline->base.device,
                            pipeline->base.device->robust_buffer_access,
@@ -3961,6 +3967,8 @@ anv_ray_tracing_pipeline_create(
           */
          pipeline->scratch_size =
             MAX2(pipeline->scratch_size, rt_library->scratch_size);
+
+         pipeline->base.active_stages |= rt_library->base.active_stages;
       }
    }
 

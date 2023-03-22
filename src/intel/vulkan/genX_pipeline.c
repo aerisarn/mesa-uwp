@@ -411,7 +411,7 @@ emit_urb_setup(struct anv_graphics_pipeline *pipeline,
    genX(emit_urb_setup)(pipeline->base.base.device,
                         &pipeline->base.base.batch,
                         pipeline->base.base.l3_config,
-                        pipeline->base.active_stages, entry_size,
+                        pipeline->base.base.active_stages, entry_size,
                         deref_block_size);
 }
 

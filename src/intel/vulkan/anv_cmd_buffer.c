@@ -420,7 +420,7 @@ void anv_CmdBindPipeline(
       cmd_buffer->state.gfx.pipeline = gfx_pipeline;
       cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_PIPELINE;
 
-      anv_foreach_stage(stage, gfx_pipeline->base.active_stages) {
+      anv_foreach_stage(stage, gfx_pipeline->base.base.active_stages) {
          set_dirty_for_bind_map(cmd_buffer, stage,
                                 &gfx_pipeline->base.shaders[stage]->bind_map);
       }
@@ -430,7 +430,8 @@ void anv_CmdBindPipeline(
                                         &gfx_pipeline->dynamic_state);
 
       state = &cmd_buffer->state.gfx.base;
-      stages = gfx_pipeline->base.active_stages;
+      stages = gfx_pipeline->base.base.active_stages;
+
 
       /* When the pipeline is using independent states and dynamic buffers,
        * this will trigger an update of anv_push_constants::dynamic_base_index
