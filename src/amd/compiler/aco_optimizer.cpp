@@ -2582,8 +2582,8 @@ match_op3_for_vop3(opt_ctx& ctx, aco_opcode op1, aco_opcode op2, Instruction* op
    if (!op2_instr || op2_instr->opcode != op2)
       return false;
 
-   VALU_instruction* op1_vop3 = op1_instr->isVOP3() ? &op1_instr->valu() : NULL;
-   VALU_instruction* op2_vop3 = op2_instr->isVOP3() ? &op2_instr->valu() : NULL;
+   VALU_instruction* op1_valu = op1_instr->isVALU() ? &op1_instr->valu() : NULL;
+   VALU_instruction* op2_valu = op2_instr->isVALU() ? &op2_instr->valu() : NULL;
 
    if (op1_instr->isSDWA() || op2_instr->isSDWA())
       return false;
@@ -2591,26 +2591,26 @@ match_op3_for_vop3(opt_ctx& ctx, aco_opcode op1, aco_opcode op2, Instruction* op
       return false;
 
    /* don't support inbetween clamp/omod */
-   if (op2_vop3 && (op2_vop3->clamp || op2_vop3->omod))
+   if (op2_valu && (op2_valu->clamp || op2_valu->omod))
       return false;
 
    /* get operands and modifiers and check inbetween modifiers */
-   *op1_clamp = op1_vop3 ? (bool)op1_vop3->clamp : false;
-   *op1_omod = op1_vop3 ? (unsigned)op1_vop3->omod : 0u;
+   *op1_clamp = op1_valu ? (bool)op1_valu->clamp : false;
+   *op1_omod = op1_valu ? (unsigned)op1_valu->omod : 0u;
 
    if (inbetween_neg)
-      *inbetween_neg = op1_vop3 ? op1_vop3->neg[swap] : false;
-   else if (op1_vop3 && op1_vop3->neg[swap])
+      *inbetween_neg = op1_valu ? op1_valu->neg[swap] : false;
+   else if (op1_valu && op1_valu->neg[swap])
       return false;
 
    if (inbetween_abs)
-      *inbetween_abs = op1_vop3 ? op1_vop3->abs[swap] : false;
-   else if (op1_vop3 && op1_vop3->abs[swap])
+      *inbetween_abs = op1_valu ? op1_valu->abs[swap] : false;
+   else if (op1_valu && op1_valu->abs[swap])
       return false;
 
    if (inbetween_opsel)
-      *inbetween_opsel = op1_vop3 ? op1_vop3->opsel[swap] : false;
-   else if (op1_vop3 && op1_vop3->opsel[swap])
+      *inbetween_opsel = op1_valu ? op1_valu->opsel[swap] : false;
+   else if (op1_valu && op1_valu->opsel[swap])
       return false;
 
    *precise = op1_instr->definitions[0].isPrecise() || op2_instr->definitions[0].isPrecise();
@@ -2621,15 +2621,15 @@ match_op3_for_vop3(opt_ctx& ctx, aco_opcode op1, aco_opcode op2, Instruction* op
    shuffle[shuffle_str[2] - '0'] = 2;
 
    operands[shuffle[0]] = op1_instr->operands[!swap];
-   neg[shuffle[0]] = op1_vop3 ? op1_vop3->neg[!swap] : false;
-   abs[shuffle[0]] = op1_vop3 ? op1_vop3->abs[!swap] : false;
-   opsel[shuffle[0]] = op1_vop3 ? op1_vop3->opsel[!swap] : false;
+   neg[shuffle[0]] = op1_valu ? op1_valu->neg[!swap] : false;
+   abs[shuffle[0]] = op1_valu ? op1_valu->abs[!swap] : false;
+   opsel[shuffle[0]] = op1_valu ? op1_valu->opsel[!swap] : false;
 
    for (unsigned i = 0; i < 2; i++) {
       operands[shuffle[i + 1]] = op2_instr->operands[i];
-      neg[shuffle[i + 1]] = op2_vop3 ? op2_vop3->neg[i] : false;
-      abs[shuffle[i + 1]] = op2_vop3 ? op2_vop3->abs[i] : false;
-      opsel[shuffle[i + 1]] = op2_vop3 ? op2_vop3->opsel[i] : false;
+      neg[shuffle[i + 1]] = op2_valu ? op2_valu->neg[i] : false;
+      abs[shuffle[i + 1]] = op2_valu ? op2_valu->abs[i] : false;
+      opsel[shuffle[i + 1]] = op2_valu ? op2_valu->opsel[i] : false;
    }
 
    /* check operands */
