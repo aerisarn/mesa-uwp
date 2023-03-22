@@ -479,8 +479,13 @@ nvk_queue_submit_drm_nouveau(struct nvk_queue *queue,
          list_for_each_entry_safe(struct nvk_cmd_bo, bo, &cmd->bos, link)
             push_add_bo(&pb, bo->bo, NOUVEAU_WS_BO_RD);
 
+#if NVK_NEW_UAPI == 1
+         util_dynarray_foreach(&cmd->pushes, struct nvk_cmd_push, push)
+            push_add_push(&pb, push->addr, push->range);
+#else
          util_dynarray_foreach(&cmd->pushes, struct nvk_cmd_push, push)
             push_add_push_bo(&pb, push->bo, push->bo_offset, push->range);
+#endif
 
          util_dynarray_foreach(&cmd->bo_refs, struct nvk_cmd_bo_ref, ref)
             push_add_bo(&pb, ref->bo, NOUVEAU_WS_BO_RDWR);

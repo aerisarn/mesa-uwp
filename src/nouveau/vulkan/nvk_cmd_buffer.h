@@ -103,9 +103,13 @@ struct nvk_compute_state {
 };
 
 struct nvk_cmd_push {
-   struct nouveau_ws_bo *bo;
    void *map;
-   uint32_t bo_offset;
+#if NVK_NEW_UAPI == 1
+   uint64_t addr;
+#else
+   struct nouveau_ws_bo *bo;
+   uint64_t bo_offset;
+#endif
    uint32_t range;
 };
 

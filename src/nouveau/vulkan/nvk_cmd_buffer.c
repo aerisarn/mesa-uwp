@@ -114,10 +114,17 @@ static void
 nvk_cmd_buffer_flush_push(struct nvk_cmd_buffer *cmd)
 {
    if (likely(cmd->push_bo != NULL)) {
+      const uint32_t bo_offset =
+         (char *)cmd->push.start - (char *)cmd->push_bo->map;
+
       struct nvk_cmd_push push = {
-         .bo = cmd->push_bo->bo,
          .map = cmd->push.start,
-         .bo_offset = (char *)cmd->push.start - (char *)cmd->push_bo->map,
+#if NVK_NEW_UAPI == 1
+         .addr = cmd->push_bo->bo->offset + bo_offset,
+#else
+         .bo = cmd->push_bo->bo,
+         .bo_offset = bo_offset,
+#endif
          .range = nv_push_dw_count(&cmd->push) * 4,
       };
       util_dynarray_append(&cmd->pushes, struct nvk_cmd_push, push);
@@ -153,21 +160,25 @@ nvk_cmd_buffer_push_indirect_buffer(struct nvk_cmd_buffer *cmd,
 {
    nvk_cmd_buffer_flush_push(cmd);
 
-#if NVK_NEW_UAPI == 1
-   unreachable("Does not yet support sparse");
-#else
-   /* TODO: The new uAPI should just take addresses */
-   struct nouveau_ws_bo *bo = buffer->mem->bo;
-   uint64_t bo_offset = nvk_buffer_address(buffer, offset) - bo->offset;
+   uint64_t addr = nvk_buffer_address(buffer, offset);
    assert(range < NVC0_IB_ENTRY_1_NO_PREFETCH);
 
+#if NVK_NEW_UAPI == 1
+   struct nvk_cmd_push push = {
+      .addr = addr,
+      .range = NVC0_IB_ENTRY_1_NO_PREFETCH | range,
+   };
+#else
+   struct nouveau_ws_bo *bo = buffer->mem->bo;
+   uint64_t bo_offset = addr - bo->offset;
    struct nvk_cmd_push push = {
       .bo = bo,
       .bo_offset = bo_offset,
       .range = NVC0_IB_ENTRY_1_NO_PREFETCH | range,
    };
-   util_dynarray_append(&cmd->pushes, struct nvk_cmd_push, push);
 #endif
+
+   util_dynarray_append(&cmd->pushes, struct nvk_cmd_push, push);
 }
 
 VkResult
@@ -493,9 +504,13 @@ nvk_cmd_buffer_dump(struct nvk_cmd_buffer *cmd, FILE *fp)
          };
          vk_push_print(fp, &push, &dev->pdev->info);
       } else {
+#if NVK_NEW_UAPI == 1
+         const uint64_t addr = p->addr;
+#else
+         const uint64_t addr = p->bo->offset + p->bo_offset;
+#endif
          fprintf(fp, "<%u B of INDIRECT DATA at 0x%" PRIx64 ">\n",
-                 p->range & ~NVC0_IB_ENTRY_1_NO_PREFETCH,
-                 p->bo->offset + p->bo_offset);
+                 p->range & ~NVC0_IB_ENTRY_1_NO_PREFETCH, addr);
       }
    }
 }
