@@ -18,12 +18,16 @@
 #include "clc0c0qmd.h"
 #include "clc3c0.h"
 #include "clc3c0qmd.h"
+#include "clc6c0.h"
+#include "clc6c0qmd.h"
 #define NVA0C0_QMDV00_06_VAL_SET(p,a...) NVVAL_MW_SET((p), NVA0C0, QMDV00_06, ##a)
 #define NVA0C0_QMDV00_06_DEF_SET(p,a...) NVDEF_MW_SET((p), NVA0C0, QMDV00_06, ##a)
 #define NVC0C0_QMDV02_01_VAL_SET(p,a...) NVVAL_MW_SET((p), NVC0C0, QMDV02_01, ##a)
 #define NVC0C0_QMDV02_01_DEF_SET(p,a...) NVDEF_MW_SET((p), NVC0C0, QMDV02_01, ##a)
 #define NVC3C0_QMDV02_02_VAL_SET(p,a...) NVVAL_MW_SET((p), NVC3C0, QMDV02_02, ##a)
 #define NVC3C0_QMDV02_02_DEF_SET(p,a...) NVDEF_MW_SET((p), NVC3C0, QMDV02_02, ##a)
+#define NVC6C0_QMDV03_00_VAL_SET(p,a...) NVVAL_MW_SET((p), NVC6C0, QMDV03_00, ##a)
+#define NVC6C0_QMDV03_00_DEF_SET(p,a...) NVDEF_MW_SET((p), NVC6C0, QMDV03_00, ##a)
 
 #define QMD_DEF_SET(qmd, class_id, version_major, version_minor, a...) \
    NVDEF_MW_SET((qmd), NV##class_id, QMDV##version_major##_##version_minor, ##a)
@@ -123,7 +127,28 @@ nvc3c0_compute_setup_launch_desc_template(uint32_t *qmd,
    uint64_t addr = nvk_shader_address(shader);
    NVC3C0_QMDV02_02_VAL_SET(qmd, PROGRAM_ADDRESS_LOWER, addr & 0xffffffff);
    NVC3C0_QMDV02_02_VAL_SET(qmd, PROGRAM_ADDRESS_UPPER, addr >> 32);
+}
 
+static void
+nvc6c0_compute_setup_launch_desc_template(uint32_t *qmd,
+                                          struct nvk_shader *shader)
+{
+   base_compute_setup_launch_desc_template(qmd, shader, C6C0, 03, 00);
+
+   NVC6C0_QMDV03_00_VAL_SET(qmd, SM_GLOBAL_CACHING_ENABLE, 1);
+   /* those are all QMD 2.2+ */
+   NVC6C0_QMDV03_00_VAL_SET(qmd, MIN_SM_CONFIG_SHARED_MEM_SIZE,
+                            gv100_sm_config_smem_size(8 * 1024));
+   NVC6C0_QMDV03_00_VAL_SET(qmd, MAX_SM_CONFIG_SHARED_MEM_SIZE,
+                            gv100_sm_config_smem_size(96 * 1024));
+   NVC6C0_QMDV03_00_VAL_SET(qmd, TARGET_SM_CONFIG_SHARED_MEM_SIZE,
+                            gv100_sm_config_smem_size(shader->cp.smem_size));
+
+   NVC6C0_QMDV03_00_VAL_SET(qmd, REGISTER_COUNT_V, shader->num_gprs);
+
+   uint64_t addr = nvk_shader_address(shader);
+   NVC6C0_QMDV03_00_VAL_SET(qmd, PROGRAM_ADDRESS_LOWER, addr & 0xffffffff);
+   NVC6C0_QMDV03_00_VAL_SET(qmd, PROGRAM_ADDRESS_UPPER, addr >> 32);
 }
 
 VkResult
@@ -177,7 +202,9 @@ nvk_compute_pipeline_create(struct nvk_device *device,
       goto fail;
 
    struct nvk_shader *shader = &pipeline->base.shaders[MESA_SHADER_COMPUTE];
-   if (device->ctx->compute.cls >= VOLTA_COMPUTE_A)
+   if (device->ctx->compute.cls >= AMPERE_COMPUTE_A)
+      nvc6c0_compute_setup_launch_desc_template(pipeline->qmd_template, shader);
+   else if (device->ctx->compute.cls >= VOLTA_COMPUTE_A)
       nvc3c0_compute_setup_launch_desc_template(pipeline->qmd_template, shader);
    else if (device->ctx->compute.cls >= PASCAL_COMPUTE_A)
       nvc0c0_compute_setup_launch_desc_template(pipeline->qmd_template, shader);
