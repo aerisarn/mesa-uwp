@@ -1752,7 +1752,16 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
        * saying that render target writes are ongoing.
        */
       if (bits & ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT)
-         bits &= ~(ANV_PIPE_RENDER_TARGET_BUFFER_WRITES);
+         bits &= ~ANV_PIPE_RENDER_TARGET_BUFFER_WRITES;
+
+      /* If the conditions for flushing the query clears are met, we can
+       * toggle the bit off.
+       */
+      if ((bits & ANV_PIPE_QUERY_FLUSH_BITS) == ANV_PIPE_QUERY_FLUSH_BITS &&
+          (bits & (ANV_PIPE_END_OF_PIPE_SYNC_BIT |
+                   ANV_PIPE_CS_STALL_BIT))) {
+         bits &= ~ANV_PIPE_QUERY_CLEARS_BIT;
+      }
 
       bits &= ~(ANV_PIPE_FLUSH_BITS | ANV_PIPE_STALL_BITS |
                 ANV_PIPE_END_OF_PIPE_SYNC_BIT);
@@ -3803,6 +3812,16 @@ genX(EndCommandBuffer)(
       return VK_SUCCESS;
    }
 
+   /* Flush query clears using blorp so that secondary query writes do not
+    * race with the clear.
+    */
+   if (cmd_buffer->state.pending_pipe_bits & ANV_PIPE_QUERY_CLEARS_BIT) {
+      anv_add_pending_pipe_bits(cmd_buffer,
+                                ANV_PIPE_QUERY_FLUSH_BITS |
+                                ANV_PIPE_NEEDS_END_OF_PIPE_SYNC_BIT,
+                                "query clear flush prior command buffer end");
+   }
+
    genX(cmd_buffer_flush_generated_draws)(cmd_buffer);
 
    /* Turn on object level preemption if it is disabled to have it in known
@@ -3877,6 +3896,16 @@ genX(CmdExecuteCommands)(
     * Apply task URB workaround before secondary cmd buffers.
     */
    genX(apply_task_urb_workaround)(primary);
+
+   /* Flush query clears using blorp so that secondary query writes do not
+    * race with the clear.
+    */
+   if (primary->state.pending_pipe_bits & ANV_PIPE_QUERY_CLEARS_BIT) {
+      anv_add_pending_pipe_bits(primary,
+                                ANV_PIPE_QUERY_FLUSH_BITS |
+                                ANV_PIPE_NEEDS_END_OF_PIPE_SYNC_BIT,
+                                "query clear flush prior to secondary buffer");
+   }
 
    /* The secondary command buffer doesn't know which textures etc. have been
     * flushed prior to their execution.  Apply those flushes now.
@@ -6533,6 +6562,21 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
     */
    if (pipeline == _3D)
       cmd_buffer->state.compute.pipeline_dirty = true;
+#endif
+
+
+#if GFX_VERx10 < 125
+   /* We apparently cannot flush the tile cache (color/depth) from the GPGPU
+    * pipeline. That means query clears will not be visible to query
+    * copy/write. So we need to flush it before going to GPGPU mode.
+    */
+   if (cmd_buffer->state.current_pipeline == _3D &&
+       (cmd_buffer->state.pending_pipe_bits & ANV_PIPE_QUERY_CLEARS_BIT)) {
+      anv_add_pending_pipe_bits(cmd_buffer,
+                                ANV_PIPE_QUERY_FLUSH_BITS |
+                                ANV_PIPE_END_OF_PIPE_SYNC_BIT,
+                                "query clear flush prior to GPGPU");
+   }
 #endif
 
 #if GFX_VER >= 12
