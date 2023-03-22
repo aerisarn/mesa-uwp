@@ -4463,7 +4463,7 @@ radv_flush_push_descriptors(struct radv_cmd_buffer *cmd_buffer,
 
 static void
 radv_flush_indirect_descriptor_sets(struct radv_cmd_buffer *cmd_buffer,
-                                    struct radv_pipeline *pipeline, VkPipelineBindPoint bind_point)
+                                    VkPipelineBindPoint bind_point)
 {
    struct radv_descriptor_state *descriptors_state =
       radv_get_descriptors_state(cmd_buffer, bind_point);
@@ -4514,7 +4514,7 @@ radv_flush_indirect_descriptor_sets(struct radv_cmd_buffer *cmd_buffer,
 
 ALWAYS_INLINE static void
 radv_flush_descriptors(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stages,
-                       struct radv_pipeline *pipeline, VkPipelineBindPoint bind_point)
+                       VkPipelineBindPoint bind_point)
 {
    struct radv_descriptor_state *descriptors_state =
       radv_get_descriptors_state(cmd_buffer, bind_point);
@@ -4525,10 +4525,10 @@ radv_flush_descriptors(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags st
    if (!descriptors_state->dirty)
       return;
 
-   flush_indirect_descriptors = pipeline->need_indirect_descriptor_sets;
+   flush_indirect_descriptors = descriptors_state->need_indirect_descriptor_sets;
 
    if (flush_indirect_descriptors)
-      radv_flush_indirect_descriptor_sets(cmd_buffer, pipeline, bind_point);
+      radv_flush_indirect_descriptor_sets(cmd_buffer, bind_point);
 
    ASSERTED unsigned cdw_max =
       radeon_check_space(device->ws, cs, MAX_SETS * MESA_VULKAN_SHADER_STAGES * 4);
@@ -5110,7 +5110,7 @@ radv_upload_graphics_shader_descriptors(struct radv_cmd_buffer *cmd_buffer)
    radv_flush_streamout_descriptors(cmd_buffer);
 
    VkShaderStageFlags stages = VK_SHADER_STAGE_ALL_GRAPHICS;
-   radv_flush_descriptors(cmd_buffer, stages, &pipeline->base, VK_PIPELINE_BIND_POINT_GRAPHICS);
+   radv_flush_descriptors(cmd_buffer, stages, VK_PIPELINE_BIND_POINT_GRAPHICS);
 
    const VkShaderStageFlags pc_stages =
       radv_must_flush_constants(cmd_buffer, &pipeline->base, stages);
@@ -6592,6 +6592,9 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       assert(!"invalid bind point");
       break;
    }
+
+   cmd_buffer->descriptors[vk_to_bind_point(pipelineBindPoint)].need_indirect_descriptor_sets =
+      pipeline->need_indirect_descriptor_sets;
 
    if (cmd_buffer->device->shader_use_invisible_vram)
       cmd_buffer->shader_upload_seq =
@@ -8998,7 +9001,7 @@ radv_before_taskmesh_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_
       }
    }
 
-   radv_flush_descriptors(cmd_buffer, stages, &pipeline->base, VK_PIPELINE_BIND_POINT_GRAPHICS);
+   radv_flush_descriptors(cmd_buffer, stages, VK_PIPELINE_BIND_POINT_GRAPHICS);
 
    const VkShaderStageFlags pc_stages =
       radv_must_flush_constants(cmd_buffer, &pipeline->base, stages);
@@ -9569,7 +9572,7 @@ radv_upload_compute_shader_descriptors(struct radv_cmd_buffer *cmd_buffer,
                                        struct radv_compute_pipeline *pipeline,
                                        VkPipelineBindPoint bind_point)
 {
-   radv_flush_descriptors(cmd_buffer, VK_SHADER_STAGE_COMPUTE_BIT, &pipeline->base, bind_point);
+   radv_flush_descriptors(cmd_buffer, VK_SHADER_STAGE_COMPUTE_BIT, bind_point);
    const VkShaderStageFlags stages = bind_point == VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR
                                         ? RADV_RT_STAGE_BITS
                                         : VK_SHADER_STAGE_COMPUTE_BIT;
