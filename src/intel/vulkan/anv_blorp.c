@@ -141,22 +141,22 @@ anv_blorp_batch_finish(struct blorp_batch *batch)
 }
 
 static void
-get_blorp_surf_for_anv_buffer(struct anv_device *device,
-                              struct anv_buffer *buffer, uint64_t offset,
-                              uint32_t width, uint32_t height,
-                              uint32_t row_pitch, enum isl_format format,
-                              bool is_dest,
-                              struct blorp_surf *blorp_surf,
-                              struct isl_surf *isl_surf)
+get_blorp_surf_for_anv_address(struct anv_device *device,
+                               struct anv_address address,
+                               uint32_t width, uint32_t height,
+                               uint32_t row_pitch, enum isl_format format,
+                               bool is_dest,
+                               struct blorp_surf *blorp_surf,
+                               struct isl_surf *isl_surf)
 {
    bool ok UNUSED;
 
    *blorp_surf = (struct blorp_surf) {
       .surf = isl_surf,
       .addr = {
-         .buffer = buffer->address.bo,
-         .offset = buffer->address.offset + offset,
-         .mocs = anv_mocs(device, buffer->address.bo,
+         .buffer = address.bo,
+         .offset = address.offset,
+         .mocs = anv_mocs(device, address.bo,
                           is_dest ? ISL_SURF_USAGE_RENDER_TARGET_BIT
                                   : ISL_SURF_USAGE_TEXTURE_BIT),
       },
@@ -176,6 +176,21 @@ get_blorp_surf_for_anv_buffer(struct anv_device *device,
                                       : ISL_SURF_USAGE_TEXTURE_BIT,
                      .tiling_flags = ISL_TILING_LINEAR_BIT);
    assert(ok);
+}
+
+static void
+get_blorp_surf_for_anv_buffer(struct anv_device *device,
+                              struct anv_buffer *buffer, uint64_t offset,
+                              uint32_t width, uint32_t height,
+                              uint32_t row_pitch, enum isl_format format,
+                              bool is_dest,
+                              struct blorp_surf *blorp_surf,
+                              struct isl_surf *isl_surf)
+{
+   get_blorp_surf_for_anv_address(device,
+                                  anv_address_add(buffer->address, offset),
+                                  width, height, row_pitch, format,
+                                  is_dest, blorp_surf, isl_surf);
 }
 
 /* Pick something high enough that it won't be used in core and low enough it
