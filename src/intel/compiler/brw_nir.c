@@ -930,6 +930,8 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
 
    nir_validate_ssa_dominance(nir, "before brw_preprocess_nir");
 
+   OPT(nir_lower_frexp);
+
    if (is_scalar) {
       OPT(nir_lower_alu_to_scalar, NULL, NULL);
    }
