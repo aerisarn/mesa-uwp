@@ -57,7 +57,7 @@ VkResult pvr_CreateQueryPool(VkDevice _device,
     * We don't currently support pipeline statistics queries.
     * VkPhysicalDeviceFeatures->pipelineStatisticsQuery = false.
     */
-   assert(!device->features.pipelineStatisticsQuery);
+   assert(!device->vk.enabled_features.pipelineStatisticsQuery);
    assert(pCreateInfo->queryType == VK_QUERY_TYPE_OCCLUSION);
 
    pool = vk_object_alloc(&device->vk,

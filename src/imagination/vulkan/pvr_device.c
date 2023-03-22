@@ -1838,11 +1838,6 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto err_pvr_spm_finish_scratch_buffer_store;
 
-   if (pCreateInfo->pEnabledFeatures)
-      memcpy(&device->features,
-             pCreateInfo->pEnabledFeatures,
-             sizeof(device->features));
-
    /* FIXME: Move this to a later stage and possibly somewhere other than
     * pvr_device. The purpose of this is so that we don't have to get the size
     * on each kick.

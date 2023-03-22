@@ -163,7 +163,8 @@ void pvr_descriptor_size_info_init(
 
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-      size_info_out->secondary = (uint32_t)device->features.robustBufferAccess;
+      size_info_out->secondary =
+         (uint32_t)device->vk.enabled_features.robustBufferAccess;
       break;
 
    default:

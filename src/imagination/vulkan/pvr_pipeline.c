@@ -353,7 +353,7 @@ static VkResult pvr_pds_vertex_attrib_program_create_and_upload(
    const size_t const_entries_size_in_bytes =
       pvr_pds_get_max_vertex_program_const_map_size_in_bytes(
          &device->pdevice->dev_info,
-         device->features.robustBufferAccess);
+         device->vk.enabled_features.robustBufferAccess);
    struct pvr_pds_upload *const program = &program_out->program;
    struct pvr_pds_info *const info = &program_out->info;
    struct pvr_const_map_entry *entries_buffer;
@@ -375,11 +375,12 @@ static VkResult pvr_pds_vertex_attrib_program_create_and_upload(
    info->entries = entries_buffer;
    info->entries_size_in_bytes = const_entries_size_in_bytes;
 
-   pvr_pds_generate_vertex_primary_program(input,
-                                           NULL,
-                                           info,
-                                           device->features.robustBufferAccess,
-                                           &device->pdevice->dev_info);
+   pvr_pds_generate_vertex_primary_program(
+      input,
+      NULL,
+      info,
+      device->vk.enabled_features.robustBufferAccess,
+      &device->pdevice->dev_info);
 
    code_size_in_dwords = info->code_size_in_dwords;
    staging_buffer_size = PVR_DW_TO_BYTES(info->code_size_in_dwords);
@@ -395,11 +396,12 @@ static VkResult pvr_pds_vertex_attrib_program_create_and_upload(
    }
 
    /* This also fills in info->entries. */
-   pvr_pds_generate_vertex_primary_program(input,
-                                           staging_buffer,
-                                           info,
-                                           device->features.robustBufferAccess,
-                                           &device->pdevice->dev_info);
+   pvr_pds_generate_vertex_primary_program(
+      input,
+      staging_buffer,
+      info,
+      device->vk.enabled_features.robustBufferAccess,
+      &device->pdevice->dev_info);
 
    assert(info->code_size_in_dwords <= code_size_in_dwords);
 
@@ -734,7 +736,7 @@ static VkResult pvr_pds_descriptor_program_create_and_upload(
    if (old_path) {
       result = pvr_pds_descriptor_program_setup_buffers(
          device,
-         device->features.robustBufferAccess,
+         device->vk.enabled_features.robustBufferAccess,
          compile_time_consts_data,
          ubo_data,
          &program.buffers,
