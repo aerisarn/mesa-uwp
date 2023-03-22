@@ -1205,21 +1205,6 @@ backend_instruction::insert_before(bblock_t *block, backend_instruction *inst)
 }
 
 void
-backend_instruction::insert_before(bblock_t *block, exec_list *list)
-{
-   assert(inst_is_in_block(block, this) || !"Instruction not in block");
-   assert(block->end_ip_delta == 0);
-
-   unsigned num_inst = list->length();
-
-   block->end_ip += num_inst;
-
-   adjust_later_block_ips(block, num_inst);
-
-   exec_node::insert_before(list);
-}
-
-void
 backend_instruction::remove(bblock_t *block, bool defer_later_block_ip_updates)
 {
    assert(inst_is_in_block(block, this) || !"Instruction not in block");
