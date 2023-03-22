@@ -1702,6 +1702,11 @@ struct radv_cmd_state {
    unsigned custom_blend_mode;
 
    unsigned rast_prim;
+
+   uint32_t vtx_base_sgpr;
+   uint8_t vtx_emit_num;
+   bool uses_drawid;
+   bool uses_baseinstance;
 };
 
 struct radv_cmd_buffer_upload {
