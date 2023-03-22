@@ -327,6 +327,8 @@ v3d_uncompiled_shader_create(struct pipe_context *pctx,
 
         NIR_PASS(_, s, nir_remove_dead_variables, nir_var_function_temp, NULL);
 
+        NIR_PASS(_, s, nir_lower_frexp);
+
         /* Garbage collect dead instructions */
         nir_sweep(s);
 
