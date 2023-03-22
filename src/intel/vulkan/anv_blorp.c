@@ -843,6 +843,85 @@ void anv_CmdUpdateBuffer(
    cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_BUFFER_WRITES;
 }
 
+void
+anv_cmd_buffer_fill_area(struct anv_cmd_buffer *cmd_buffer,
+                         struct anv_address address,
+                         VkDeviceSize size,
+                         uint32_t data)
+{
+   struct blorp_surf surf;
+   struct isl_surf isl_surf;
+
+   struct blorp_batch batch;
+   anv_blorp_batch_init(cmd_buffer, &batch, 0);
+
+   /* First, we compute the biggest format that can be used with the
+    * given offsets and size.
+    */
+   int bs = 16;
+   uint64_t offset = address.offset;
+   bs = gcd_pow2_u64(bs, offset);
+   bs = gcd_pow2_u64(bs, size);
+   enum isl_format isl_format = isl_format_for_size(bs);
+
+   union isl_color_value color = {
+      .u32 = { data, data, data, data },
+   };
+
+   const uint64_t max_fill_size = MAX_SURFACE_DIM * MAX_SURFACE_DIM * bs;
+   while (size >= max_fill_size) {
+      get_blorp_surf_for_anv_address(cmd_buffer->device,
+                                     (struct anv_address) {
+                                        .bo = address.bo, .offset = offset,
+                                     },
+                                     MAX_SURFACE_DIM, MAX_SURFACE_DIM,
+                                     MAX_SURFACE_DIM * bs, isl_format, true,
+                                     &surf, &isl_surf);
+
+      blorp_clear(&batch, &surf, isl_format, ISL_SWIZZLE_IDENTITY,
+                  0, 0, 1, 0, 0, MAX_SURFACE_DIM, MAX_SURFACE_DIM,
+                  color, 0 /* color_write_disable */);
+      size -= max_fill_size;
+      offset += max_fill_size;
+   }
+
+   uint64_t height = size / (MAX_SURFACE_DIM * bs);
+   assert(height < MAX_SURFACE_DIM);
+   if (height != 0) {
+      const uint64_t rect_fill_size = height * MAX_SURFACE_DIM * bs;
+      get_blorp_surf_for_anv_address(cmd_buffer->device,
+                                     (struct anv_address) {
+                                        .bo = address.bo, .offset = offset,
+                                     },
+                                     MAX_SURFACE_DIM, height,
+                                     MAX_SURFACE_DIM * bs, isl_format, true,
+                                     &surf, &isl_surf);
+
+      blorp_clear(&batch, &surf, isl_format, ISL_SWIZZLE_IDENTITY,
+                  0, 0, 1, 0, 0, MAX_SURFACE_DIM, height,
+                  color, 0 /* color_write_disable */);
+      size -= rect_fill_size;
+      offset += rect_fill_size;
+   }
+
+   if (size != 0) {
+      const uint32_t width = size / bs;
+      get_blorp_surf_for_anv_address(cmd_buffer->device,
+                                     (struct anv_address) {
+                                        .bo = address.bo, .offset = offset,
+                                     },
+                                     width, 1,
+                                     width * bs, isl_format, true,
+                                     &surf, &isl_surf);
+
+      blorp_clear(&batch, &surf, isl_format, ISL_SWIZZLE_IDENTITY,
+                  0, 0, 1, 0, 0, width, 1,
+                  color, 0 /* color_write_disable */);
+   }
+
+   anv_blorp_batch_finish(&batch);
+}
+
 void anv_CmdFillBuffer(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    dstBuffer,
@@ -852,11 +931,6 @@ void anv_CmdFillBuffer(
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_buffer, dst_buffer, dstBuffer);
-   struct blorp_surf surf;
-   struct isl_surf isl_surf;
-
-   struct blorp_batch batch;
-   anv_blorp_batch_init(cmd_buffer, &batch, 0);
 
    fillSize = vk_buffer_range(&dst_buffer->vk, dstOffset, fillSize);
 
@@ -870,64 +944,9 @@ void anv_CmdFillBuffer(
     */
    fillSize &= ~3ull;
 
-   /* First, we compute the biggest format that can be used with the
-    * given offsets and size.
-    */
-   int bs = 16;
-   bs = gcd_pow2_u64(bs, dstOffset);
-   bs = gcd_pow2_u64(bs, fillSize);
-   enum isl_format isl_format = isl_format_for_size(bs);
-
-   union isl_color_value color = {
-      .u32 = { data, data, data, data },
-   };
-
-   const uint64_t max_fill_size = MAX_SURFACE_DIM * MAX_SURFACE_DIM * bs;
-   while (fillSize >= max_fill_size) {
-      get_blorp_surf_for_anv_buffer(cmd_buffer->device,
-                                    dst_buffer, dstOffset,
-                                    MAX_SURFACE_DIM, MAX_SURFACE_DIM,
-                                    MAX_SURFACE_DIM * bs, isl_format, true,
-                                    &surf, &isl_surf);
-
-      blorp_clear(&batch, &surf, isl_format, ISL_SWIZZLE_IDENTITY,
-                  0, 0, 1, 0, 0, MAX_SURFACE_DIM, MAX_SURFACE_DIM,
-                  color, 0 /* color_write_disable */);
-      fillSize -= max_fill_size;
-      dstOffset += max_fill_size;
-   }
-
-   uint64_t height = fillSize / (MAX_SURFACE_DIM * bs);
-   assert(height < MAX_SURFACE_DIM);
-   if (height != 0) {
-      const uint64_t rect_fill_size = height * MAX_SURFACE_DIM * bs;
-      get_blorp_surf_for_anv_buffer(cmd_buffer->device,
-                                    dst_buffer, dstOffset,
-                                    MAX_SURFACE_DIM, height,
-                                    MAX_SURFACE_DIM * bs, isl_format, true,
-                                    &surf, &isl_surf);
-
-      blorp_clear(&batch, &surf, isl_format, ISL_SWIZZLE_IDENTITY,
-                  0, 0, 1, 0, 0, MAX_SURFACE_DIM, height,
-                  color, 0 /* color_write_disable */);
-      fillSize -= rect_fill_size;
-      dstOffset += rect_fill_size;
-   }
-
-   if (fillSize != 0) {
-      const uint32_t width = fillSize / bs;
-      get_blorp_surf_for_anv_buffer(cmd_buffer->device,
-                                    dst_buffer, dstOffset,
-                                    width, 1,
-                                    width * bs, isl_format, true,
-                                    &surf, &isl_surf);
-
-      blorp_clear(&batch, &surf, isl_format, ISL_SWIZZLE_IDENTITY,
-                  0, 0, 1, 0, 0, width, 1,
-                  color, 0 /* color_write_disable */);
-   }
-
-   anv_blorp_batch_finish(&batch);
+   anv_cmd_buffer_fill_area(cmd_buffer,
+                            anv_address_add(dst_buffer->address, dstOffset),
+                            fillSize, data);
 
    cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_BUFFER_WRITES;
 }

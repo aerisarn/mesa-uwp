@@ -3882,6 +3882,12 @@ anv_image_ccs_op(struct anv_cmd_buffer *cmd_buffer,
                  enum isl_aux_op ccs_op, union isl_color_value *clear_value,
                  bool predicate);
 
+void
+anv_cmd_buffer_fill_area(struct anv_cmd_buffer *cmd_buffer,
+                         struct anv_address address,
+                         VkDeviceSize size,
+                         uint32_t data);
+
 enum isl_aux_state ATTRIBUTE_PURE
 anv_layout_to_aux_state(const struct intel_device_info * const devinfo,
                         const struct anv_image *image,
