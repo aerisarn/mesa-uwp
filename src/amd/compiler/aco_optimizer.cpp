@@ -638,20 +638,6 @@ is_operand_vgpr(Operand op)
    return op.isTemp() && op.getTemp().type() == RegType::vgpr;
 }
 
-void
-to_SDWA(opt_ctx& ctx, aco_ptr<Instruction>& instr)
-{
-   aco_ptr<Instruction> tmp = convert_to_SDWA(ctx.program->gfx_level, instr);
-   if (!tmp)
-      return;
-
-   for (unsigned i = 0; i < instr->definitions.size(); i++) {
-      ssa_info& info = ctx.info[instr->definitions[i].tempId()];
-      if (info.label & instr_labels && info.instr == tmp.get())
-         info.instr = instr.get();
-   }
-}
-
 /* only covers special cases */
 bool
 alu_can_accept_constant(aco_opcode opcode, unsigned operand)
@@ -1165,8 +1151,8 @@ apply_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, ssa_info&
       instr.reset(mad);
    } else if (can_use_SDWA(ctx.program->gfx_level, instr, true) &&
               (tmp.type() == RegType::vgpr || ctx.program->gfx_level >= GFX9)) {
-      to_SDWA(ctx, instr);
-      static_cast<SDWA_instruction*>(instr.get())->sel[idx] = sel;
+      convert_to_SDWA(ctx.program->gfx_level, instr);
+      instr->sdwa().sel[idx] = sel;
    } else if (instr->isVALU()) {
       if (sel.offset()) {
          instr->valu().opsel[idx] = true;
@@ -3546,10 +3532,10 @@ apply_insert(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    if (!can_use_SDWA(ctx.program->gfx_level, instr, true))
       return false;
 
-   to_SDWA(ctx, instr);
+   convert_to_SDWA(ctx.program->gfx_level, instr);
    if (instr->sdwa().dst_sel.size() != 4)
       return false;
-   static_cast<SDWA_instruction*>(instr.get())->dst_sel = sel;
+   instr->sdwa().dst_sel = sel;
 
    instr->definitions[0].swapTemp(def_info.instr->definitions[0]);
    ctx.info[instr->definitions[0].tempId()].label = 0;
