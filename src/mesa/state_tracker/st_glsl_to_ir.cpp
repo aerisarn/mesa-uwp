@@ -82,7 +82,6 @@ link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
             shader, ctx->Extensions.KHR_blend_equation_advanced_coherent);
 
       lower_instructions(ir, have_ldexp, have_dfrexp, have_dround,
-                         ctx->Const.ForceGLSLAbsSqrt,
                          ctx->Extensions.ARB_gpu_shader5);
 
       do_vec_index_to_cond_assign(ir);

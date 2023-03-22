@@ -122,6 +122,8 @@ private:
 
    void adjust_sparse_variable(nir_deref_instr *var_deref, const glsl_type *type,
                                nir_ssa_def *dest);
+
+   const struct gl_constants *consts;
 };
 
 /*
@@ -283,6 +285,7 @@ glsl_to_nir(const struct gl_constants *consts,
 
 nir_visitor::nir_visitor(const struct gl_constants *consts, nir_shader *shader)
 {
+   this->consts = consts;
    this->supports_std430 = consts->UseSTD430AsDefaultPacking;
    this->shader = shader;
    this->is_global = true;
@@ -2034,8 +2037,19 @@ nir_visitor::visit(ir_expression *ir)
                                        : nir_isign(&b, srcs[0]);
       break;
    case ir_unop_rcp:  result = nir_frcp(&b, srcs[0]);  break;
-   case ir_unop_rsq:  result = nir_frsq(&b, srcs[0]);  break;
-   case ir_unop_sqrt: result = nir_fsqrt(&b, srcs[0]); break;
+
+   case ir_unop_rsq:
+      if (consts->ForceGLSLAbsSqrt)
+         srcs[0] = nir_fabs(&b, srcs[0]);
+      result = nir_frsq(&b, srcs[0]);
+      break;
+
+   case ir_unop_sqrt:
+      if (consts->ForceGLSLAbsSqrt)
+         srcs[0] = nir_fabs(&b, srcs[0]);
+      result = nir_fsqrt(&b, srcs[0]);
+      break;
+
    case ir_unop_exp:  result = nir_fexp2(&b, nir_fmul_imm(&b, srcs[0], M_LOG2E)); break;
    case ir_unop_log:  result = nir_fmul_imm(&b, nir_flog2(&b, srcs[0]), 1.0 / M_LOG2E); break;
    case ir_unop_exp2: result = nir_fexp2(&b, srcs[0]); break;

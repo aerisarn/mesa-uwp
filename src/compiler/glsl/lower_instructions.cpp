@@ -63,7 +63,6 @@
 #define FIND_LSB_TO_FLOAT_CAST    0x20000
 #define FIND_MSB_TO_FLOAT_CAST    0x40000
 #define IMUL_HIGH_TO_MUL          0x80000
-#define SQRT_TO_ABS_SQRT          0x200000
 
 using namespace ir_builder;
 
@@ -95,7 +94,6 @@ private:
    void find_lsb_to_float_cast(ir_expression *ir);
    void find_msb_to_float_cast(ir_expression *ir);
    void imul_high_to_mul(ir_expression *ir);
-   void sqrt_to_abs_sqrt(ir_expression *ir);
 
    ir_expression *_carry(operand a, operand b);
 
@@ -114,14 +112,12 @@ private:
 
 bool
 lower_instructions(exec_list *instructions, bool have_ldexp, bool have_dfrexp,
-                   bool have_dround, bool force_abs_sqrt,
-                   bool have_gpu_shader5)
+                   bool have_dround, bool have_gpu_shader5)
 {
    unsigned what_to_lower =
       (have_ldexp ? 0 : LDEXP_TO_ARITH) |
       (have_dfrexp ? 0 : DFREXP_DLDEXP_TO_ARITH) |
       (have_dround ? 0 : DOPS_TO_DFRAC) |
-      (force_abs_sqrt ? SQRT_TO_ABS_SQRT : 0) |
       /* Assume that if ARB_gpu_shader5 is not supported then all of the
        * extended integer functions need lowering.  It may be necessary to add
        * some caps for individual instructions.
@@ -1090,13 +1086,6 @@ lower_instructions_visitor::imul_high_to_mul(ir_expression *ir)
    }
 }
 
-void
-lower_instructions_visitor::sqrt_to_abs_sqrt(ir_expression *ir)
-{
-   ir->operands[0] = new(ir) ir_expression(ir_unop_abs, ir->operands[0]);
-   this->progress = true;
-}
-
 ir_visitor_status
 lower_instructions_visitor::visit_leave(ir_expression *ir)
 {
@@ -1165,12 +1154,6 @@ lower_instructions_visitor::visit_leave(ir_expression *ir)
    case ir_binop_imul_high:
       if (lowering(IMUL_HIGH_TO_MUL))
          imul_high_to_mul(ir);
-      break;
-
-   case ir_unop_rsq:
-   case ir_unop_sqrt:
-      if (lowering(SQRT_TO_ABS_SQRT))
-         sqrt_to_abs_sqrt(ir);
       break;
 
    default:
