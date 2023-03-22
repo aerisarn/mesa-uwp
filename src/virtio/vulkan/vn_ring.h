@@ -44,7 +44,7 @@ static_assert(ATOMIC_INT_LOCK_FREE == 2 && sizeof(atomic_uint) == 4,
 struct vn_ring_shared {
    const volatile atomic_uint *head;
    volatile atomic_uint *tail;
-   const volatile atomic_uint *status;
+   volatile atomic_uint *status;
    void *buffer;
    void *extra;
 };
@@ -89,6 +89,12 @@ vn_ring_fini(struct vn_ring *ring);
 struct vn_ring_submit *
 vn_ring_get_submit(struct vn_ring *ring, uint32_t shmem_count);
 
+uint32_t
+vn_ring_load_status(const struct vn_ring *ring);
+
+void
+vn_ring_unset_status_bits(struct vn_ring *ring, uint32_t mask);
+
 bool
 vn_ring_submit(struct vn_ring *ring,
                struct vn_ring_submit *submit,
@@ -97,8 +103,5 @@ vn_ring_submit(struct vn_ring *ring,
 
 void
 vn_ring_wait(struct vn_ring *ring, uint32_t seqno);
-
-bool
-vn_ring_fatal(const struct vn_ring *ring);
 
 #endif /* VN_RING_H */

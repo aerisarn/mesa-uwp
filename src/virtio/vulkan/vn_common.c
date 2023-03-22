@@ -161,8 +161,9 @@ vn_relax(struct vn_relax_state *state)
    if (unlikely(*iter % (1 << warn_order) == 0)) {
       vn_log(NULL, "stuck in %s wait with iter at %d", reason, *iter);
 
-      if (vn_ring_fatal(ring)) {
-         vn_log(NULL, "aborting on ring fatal error");
+      const uint32_t status = vn_ring_load_status(ring);
+      if (status & VK_RING_STATUS_FATAL_BIT_MESA) {
+         vn_log(NULL, "aborting on ring fatal error at iter %d", *iter);
          abort();
       }
 

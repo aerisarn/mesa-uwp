@@ -27,17 +27,18 @@ vn_ring_store_tail(struct vn_ring *ring)
                                 memory_order_release);
 }
 
-static uint32_t
+uint32_t
 vn_ring_load_status(const struct vn_ring *ring)
 {
    /* must be called and ordered after vn_ring_store_tail for idle status */
    return atomic_load_explicit(ring->shared.status, memory_order_seq_cst);
 }
 
-bool
-vn_ring_fatal(const struct vn_ring *ring)
+void
+vn_ring_unset_status_bits(struct vn_ring *ring, uint32_t mask)
 {
-   return vn_ring_load_status(ring) & VK_RING_STATUS_FATAL_BIT_MESA;
+   atomic_fetch_and_explicit(ring->shared.status, ~mask,
+                             memory_order_seq_cst);
 }
 
 static void
