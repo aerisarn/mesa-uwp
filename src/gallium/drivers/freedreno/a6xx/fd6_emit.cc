@@ -760,6 +760,9 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
       trace_start_state_restore(&batch->trace, ring);
    }
 
+   OUT_PKT7(ring, CP_SET_MODE, 1);
+   OUT_RING(ring, 0);
+
    fd6_cache_inv(batch, ring);
 
    OUT_REG(ring,
