@@ -2146,7 +2146,6 @@ radv_emit_culling(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_provoking_vertex_mode(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_shader *last_vgt_shader = cmd_buffer->state.last_vgt_shader;
    const unsigned stage = last_vgt_shader->info.stage;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
@@ -2160,7 +2159,8 @@ radv_emit_provoking_vertex_mode(struct radv_cmd_buffer *cmd_buffer)
 
    if (d->vk.rs.provoking_vertex == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT) {
       if (stage == MESA_SHADER_VERTEX) {
-         provoking_vtx = si_conv_prim_to_gs_out(d->vk.ia.primitive_topology, pipeline->is_ngg);
+         provoking_vtx = si_conv_prim_to_gs_out(d->vk.ia.primitive_topology,
+                                                last_vgt_shader->info.is_ngg);
       } else {
          assert(stage == MESA_SHADER_GEOMETRY);
          provoking_vtx = last_vgt_shader->info.gs.vertices_in - 1;
@@ -2174,7 +2174,6 @@ radv_emit_provoking_vertex_mode(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_primitive_topology(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_shader *last_vgt_shader = cmd_buffer->state.last_vgt_shader;
    const struct radv_userdata_info *loc =
       radv_get_user_sgpr(last_vgt_shader, AC_UD_NUM_VERTS_PER_PRIM);
@@ -2196,7 +2195,8 @@ radv_emit_primitive_topology(struct radv_cmd_buffer *cmd_buffer)
 
    base_reg = last_vgt_shader->info.user_data_0;
    radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4,
-                     si_conv_prim_to_gs_out(d->vk.ia.primitive_topology, pipeline->is_ngg) + 1);
+                     si_conv_prim_to_gs_out(d->vk.ia.primitive_topology,
+                                            last_vgt_shader->info.is_ngg) + 1);
 }
 
 static void
@@ -3496,6 +3496,7 @@ static void
 radv_emit_guardband_state(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   const struct radv_shader *last_vgt_shader = cmd_buffer->state.last_vgt_shader;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    unsigned rast_prim;
 
@@ -3506,7 +3507,7 @@ radv_emit_guardband_state(struct radv_cmd_buffer *cmd_buffer)
       /* Ignore dynamic primitive topology for TES/GS/MS stages. */
       rast_prim = pipeline->rast_prim;
    } else {
-      rast_prim = si_conv_prim_to_gs_out(d->vk.ia.primitive_topology, pipeline->is_ngg);
+      rast_prim = si_conv_prim_to_gs_out(d->vk.ia.primitive_topology, last_vgt_shader->info.is_ngg);
    }
 
    si_write_guardband(cmd_buffer->cs, d->vk.vp.viewport_count, d->vk.vp.viewports, rast_prim,
@@ -5007,7 +5008,6 @@ radv_flush_streamout_descriptors(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_flush_ngg_query_state(struct radv_cmd_buffer *cmd_buffer)
 {
-   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_shader *last_vgt_shader = cmd_buffer->state.last_vgt_shader;
    const struct radv_userdata_info *loc =
       radv_get_user_sgpr(last_vgt_shader, AC_UD_NGG_QUERY_STATE);
@@ -5017,7 +5017,7 @@ radv_flush_ngg_query_state(struct radv_cmd_buffer *cmd_buffer)
    if (loc->sgpr_idx == -1)
       return;
 
-   assert(pipeline->is_ngg);
+   assert(last_vgt_shader->info.is_ngg);
 
    /* By default NGG queries are disabled but they are enabled if the command buffer has active GDS
     * queries or if it's a secondary command buffer that inherits the number of generated
@@ -5205,13 +5205,13 @@ si_emit_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_dr
 static void
 gfx10_emit_ge_cntl(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   const struct radv_shader *last_vgt_shader = cmd_buffer->state.last_vgt_shader;
    struct radv_cmd_state *state = &cmd_buffer->state;
    bool break_wave_at_eoi = false;
    unsigned primgroup_size;
    unsigned ge_cntl;
 
-   if (pipeline->is_ngg)
+   if (last_vgt_shader->info.is_ngg)
       return;
 
    if (radv_cmdbuf_has_stage(cmd_buffer, MESA_SHADER_TESS_CTRL)) {
