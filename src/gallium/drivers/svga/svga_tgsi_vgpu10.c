@@ -11116,8 +11116,7 @@ emit_instruction(struct svga_shader_emitter_v10 *emit,
       return emit_dtrunc(emit, inst);
 
    /* The following opcodes should never be seen here.  We return zero
-    * for all the PIPE_CAP_TGSI_DROUND_SUPPORTED, DFRACEXP_DLDEXP_SUPPORTED,
-    * LDEXP_SUPPORTED queries.
+    * for all the PIPE_CAP_TGSI_DROUND_SUPPORTED, DFRACEXP_DLDEXP_SUPPORTED queries.
     */
    case TGSI_OPCODE_LDEXP:
    case TGSI_OPCODE_DSSG:

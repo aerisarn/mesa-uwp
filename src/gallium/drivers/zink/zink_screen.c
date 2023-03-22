@@ -1242,9 +1242,6 @@ zink_get_shader_param(struct pipe_screen *pscreen,
                      ZINK_MAX_SHADER_IMAGES);
       return 0;
 
-   case PIPE_SHADER_CAP_LDEXP_SUPPORTED:
-      return 1;
-
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
       return 0; /* not implemented */

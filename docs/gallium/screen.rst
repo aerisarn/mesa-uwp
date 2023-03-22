@@ -752,7 +752,6 @@ support different features.
   is supported. If it is, DTRUNC/DCEIL/DFLR/DROUND opcodes may be used.
 * ``PIPE_SHADER_CAP_DFRACEXP_DLDEXP_SUPPORTED``: Whether DFRACEXP and
   DLDEXP are supported.
-* ``PIPE_SHADER_CAP_LDEXP_SUPPORTED``: Whether LDEXP is supported.
 * ``PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE``: Whether the driver doesn't
   ignore tgsi_declaration_range::Last for shader inputs and outputs.
 * ``PIPE_SHADER_CAP_MAX_SHADER_BUFFERS``: Maximum number of memory buffers

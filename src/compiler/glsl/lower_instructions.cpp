@@ -30,12 +30,7 @@
  * rather than in each driver backend.
  *
  * Currently supported transformations:
- * - LDEXP_TO_ARITH
  * - DOPS_TO_DFRAC
- *
- * LDEXP_TO_ARITH:
- * -------------
- * Converts ir_binop_ldexp to arithmetic and bit operations for float sources.
  *
  * DFREXP_DLDEXP_TO_ARITH:
  * ---------------
@@ -57,7 +52,6 @@
 #include <math.h>
 
 /* Operations for lower_instructions() */
-#define LDEXP_TO_ARITH     0x80
 #define DOPS_TO_DFRAC      0x800
 #define DFREXP_DLDEXP_TO_ARITH    0x1000
 #define FIND_LSB_TO_FLOAT_CAST    0x20000
@@ -80,7 +74,6 @@ public:
 private:
    unsigned lower; /** Bitfield of which operations to lower */
 
-   void ldexp_to_arith(ir_expression *);
    void dldexp_to_arith(ir_expression *);
    void dfrexp_sig_to_arith(ir_expression *);
    void dfrexp_exp_to_arith(ir_expression *);
@@ -111,11 +104,10 @@ private:
 #define lowering(x) (this->lower & x)
 
 bool
-lower_instructions(exec_list *instructions, bool have_ldexp, bool have_dfrexp,
+lower_instructions(exec_list *instructions, bool have_dfrexp,
                    bool have_dround, bool have_gpu_shader5)
 {
    unsigned what_to_lower =
-      (have_ldexp ? 0 : LDEXP_TO_ARITH) |
       (have_dfrexp ? 0 : DFREXP_DLDEXP_TO_ARITH) |
       (have_dround ? 0 : DOPS_TO_DFRAC) |
       /* Assume that if ARB_gpu_shader5 is not supported then all of the
@@ -130,170 +122,6 @@ lower_instructions(exec_list *instructions, bool have_ldexp, bool have_dfrexp,
 
    visit_list_elements(&v, instructions);
    return v.progress;
-}
-
-void
-lower_instructions_visitor::ldexp_to_arith(ir_expression *ir)
-{
-   /* Translates
-    *    ir_binop_ldexp x exp
-    * into
-    *
-    *    extracted_biased_exp = rshift(bitcast_f2i(abs(x)), exp_shift);
-    *    resulting_biased_exp = min(extracted_biased_exp + exp, 255);
-    *
-    *    if (extracted_biased_exp >= 255)
-    *       return x; // +/-inf, NaN
-    *
-    *    sign_mantissa = bitcast_f2u(x) & sign_mantissa_mask;
-    *
-    *    if (min(resulting_biased_exp, extracted_biased_exp) < 1)
-    *       resulting_biased_exp = 0;
-    *    if (resulting_biased_exp >= 255 ||
-    *        min(resulting_biased_exp, extracted_biased_exp) < 1) {
-    *       sign_mantissa &= sign_mask;
-    *    }
-    *
-    *    return bitcast_u2f(sign_mantissa |
-    *                       lshift(i2u(resulting_biased_exp), exp_shift));
-    *
-    * which we can't actually implement as such, since the GLSL IR doesn't
-    * have vectorized if-statements. We actually implement it without branches
-    * using conditional-select:
-    *
-    *    extracted_biased_exp = rshift(bitcast_f2i(abs(x)), exp_shift);
-    *    resulting_biased_exp = min(extracted_biased_exp + exp, 255);
-    *
-    *    sign_mantissa = bitcast_f2u(x) & sign_mantissa_mask;
-    *
-    *    flush_to_zero = lequal(min(resulting_biased_exp, extracted_biased_exp), 0);
-    *    resulting_biased_exp = csel(flush_to_zero, 0, resulting_biased_exp)
-    *    zero_mantissa = logic_or(flush_to_zero,
-    *                             gequal(resulting_biased_exp, 255));
-    *    sign_mantissa = csel(zero_mantissa, sign_mantissa & sign_mask, sign_mantissa);
-    *
-    *    result = sign_mantissa |
-    *             lshift(i2u(resulting_biased_exp), exp_shift));
-    *
-    *    return csel(extracted_biased_exp >= 255, x, bitcast_u2f(result));
-    *
-    * The definition of ldexp in the GLSL spec says:
-    *
-    *    "If this product is too large to be represented in the
-    *     floating-point type, the result is undefined."
-    *
-    * However, the definition of ldexp in the GLSL ES spec does not contain
-    * this sentence, so we do need to handle overflow correctly.
-    *
-    * There is additional language limiting the defined range of exp, but this
-    * is merely to allow implementations that store 2^exp in a temporary
-    * variable.
-    */
-
-   const unsigned vec_elem = ir->type->vector_elements;
-
-   /* Types */
-   const glsl_type *ivec = glsl_type::get_instance(GLSL_TYPE_INT, vec_elem, 1);
-   const glsl_type *uvec = glsl_type::get_instance(GLSL_TYPE_UINT, vec_elem, 1);
-   const glsl_type *bvec = glsl_type::get_instance(GLSL_TYPE_BOOL, vec_elem, 1);
-
-   /* Temporary variables */
-   ir_variable *x = new(ir) ir_variable(ir->type, "x", ir_var_temporary);
-   ir_variable *exp = new(ir) ir_variable(ivec, "exp", ir_var_temporary);
-   ir_variable *result = new(ir) ir_variable(uvec, "result", ir_var_temporary);
-
-   ir_variable *extracted_biased_exp =
-      new(ir) ir_variable(ivec, "extracted_biased_exp", ir_var_temporary);
-   ir_variable *resulting_biased_exp =
-      new(ir) ir_variable(ivec, "resulting_biased_exp", ir_var_temporary);
-
-   ir_variable *sign_mantissa =
-      new(ir) ir_variable(uvec, "sign_mantissa", ir_var_temporary);
-
-   ir_variable *flush_to_zero =
-      new(ir) ir_variable(bvec, "flush_to_zero", ir_var_temporary);
-   ir_variable *zero_mantissa =
-      new(ir) ir_variable(bvec, "zero_mantissa", ir_var_temporary);
-
-   ir_instruction &i = *base_ir;
-
-   /* Copy <x> and <exp> arguments. */
-   i.insert_before(x);
-   i.insert_before(assign(x, ir->operands[0]));
-   i.insert_before(exp);
-   i.insert_before(assign(exp, ir->operands[1]));
-
-   /* Extract the biased exponent from <x>. */
-   i.insert_before(extracted_biased_exp);
-   i.insert_before(assign(extracted_biased_exp,
-                          rshift(bitcast_f2i(abs(x)),
-                                 new(ir) ir_constant(23, vec_elem))));
-
-   /* The definition of ldexp in the GLSL 4.60 spec says:
-    *
-    *    "If exp is greater than +128 (single-precision) or +1024
-    *     (double-precision), the value returned is undefined. If exp is less
-    *     than -126 (single-precision) or -1022 (double-precision), the value
-    *     returned may be flushed to zero."
-    *
-    * So we do not have to guard against the possibility of addition overflow,
-    * which could happen when exp is close to INT_MAX. Addition underflow
-    * cannot happen (the worst case is 0 + (-INT_MAX)).
-    */
-   i.insert_before(resulting_biased_exp);
-   i.insert_before(assign(resulting_biased_exp,
-                          min2(add(extracted_biased_exp, exp),
-                               new(ir) ir_constant(255, vec_elem))));
-
-   i.insert_before(sign_mantissa);
-   i.insert_before(assign(sign_mantissa,
-                          bit_and(bitcast_f2u(x),
-                                  new(ir) ir_constant(0x807fffffu, vec_elem))));
-
-   /* We flush to zero if the original or resulting biased exponent is 0,
-    * indicating a +/-0.0 or subnormal input or output.
-    *
-    * The mantissa is set to 0 if the resulting biased exponent is 255, since
-    * an overflow should produce a +/-inf result.
-    *
-    * Note that NaN inputs are handled separately.
-    */
-   i.insert_before(flush_to_zero);
-   i.insert_before(assign(flush_to_zero,
-                          lequal(min2(resulting_biased_exp,
-                                      extracted_biased_exp),
-                                 ir_constant::zero(ir, ivec))));
-   i.insert_before(assign(resulting_biased_exp,
-                          csel(flush_to_zero,
-                               ir_constant::zero(ir, ivec),
-                               resulting_biased_exp)));
-
-   i.insert_before(zero_mantissa);
-   i.insert_before(assign(zero_mantissa,
-                          logic_or(flush_to_zero,
-                                   equal(resulting_biased_exp,
-                                         new(ir) ir_constant(255, vec_elem)))));
-   i.insert_before(assign(sign_mantissa,
-                          csel(zero_mantissa,
-                               bit_and(sign_mantissa,
-                                       new(ir) ir_constant(0x80000000u, vec_elem)),
-                               sign_mantissa)));
-
-   i.insert_before(result);
-   i.insert_before(assign(result,
-                          bitfield_insert(sign_mantissa,
-                                          i2u(resulting_biased_exp),
-                                          new(ir) ir_constant(23u, vec_elem),
-                                          new(ir) ir_constant(8u, vec_elem))));
-
-   ir->operation = ir_triop_csel;
-   ir->init_num_operands();
-   ir->operands[0] = gequal(extracted_biased_exp,
-                            new(ir) ir_constant(255, vec_elem));
-   ir->operands[1] = new(ir) ir_dereference_variable(x);
-   ir->operands[2] = bitcast_u2f(result);
-
-   this->progress = true;
 }
 
 void
@@ -1100,8 +928,6 @@ lower_instructions_visitor::visit_leave(ir_expression *ir)
       break;
 
    case ir_binop_ldexp:
-      if (lowering(LDEXP_TO_ARITH) && ir->type->is_float())
-         ldexp_to_arith(ir);
       if (lowering(DFREXP_DLDEXP_TO_ARITH) && ir->type->is_double())
          dldexp_to_arith(ir);
       break;

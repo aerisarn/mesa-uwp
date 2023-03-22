@@ -59,7 +59,7 @@ bool do_tree_grafting(exec_list *instructions);
 bool do_vec_index_to_cond_assign(exec_list *instructions);
 bool lower_discard(exec_list *instructions);
 void lower_discard_flow(exec_list *instructions);
-bool lower_instructions(exec_list *instructions, bool have_ldexp,
+bool lower_instructions(exec_list *instructions,
                         bool have_dfrexp, bool have_dround,
                         bool have_gpu_shader5);
 bool lower_clip_cull_distance(struct gl_shader_program *prog,
