@@ -7665,14 +7665,14 @@ radv_CmdEndRendering(VkCommandBuffer commandBuffer)
 }
 
 static void
-radv_emit_view_index_per_stage(struct radeon_cmdbuf *cs, struct radv_graphics_pipeline *pipeline,
-                               unsigned stage, unsigned index)
+radv_emit_view_index_per_stage(struct radeon_cmdbuf *cs, const struct radv_shader *shader,
+                               uint32_t base_reg, unsigned index)
 {
-   const struct radv_shader *shader = radv_get_shader(&pipeline->base, stage);
    const struct radv_userdata_info *loc = radv_get_user_sgpr(shader, AC_UD_VIEW_INDEX);
+
    if (loc->sgpr_idx == -1)
       return;
-   uint32_t base_reg = pipeline->base.user_data_0[stage];
+
    radeon_set_sh_reg(cs, base_reg + loc->sgpr_idx * 4, index);
 }
 
@@ -7680,21 +7680,22 @@ static void
 radv_emit_view_index(struct radv_cmd_buffer *cmd_buffer, unsigned index)
 {
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
    radv_foreach_stage(stage, pipeline->active_stages & ~VK_SHADER_STAGE_TASK_BIT_EXT) {
-      radv_emit_view_index_per_stage(cmd_buffer->cs, pipeline, stage, index);
+      radv_emit_view_index_per_stage(cs, radv_get_shader(&pipeline->base, stage),
+                                     pipeline->base.user_data_0[stage], index);
    }
+
    if (radv_pipeline_has_gs_copy_shader(&pipeline->base)) {
-      struct radv_userdata_info *loc =
-         &pipeline->base.gs_copy_shader->info.user_sgprs_locs.shader_data[AC_UD_VIEW_INDEX];
-      if (loc->sgpr_idx != -1) {
-         uint32_t base_reg = R_00B130_SPI_SHADER_USER_DATA_VS_0;
-         radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, index);
-      }
+      radv_emit_view_index_per_stage(cs, pipeline->base.gs_copy_shader,
+                                     R_00B130_SPI_SHADER_USER_DATA_VS_0, index);
    }
+
    if (pipeline->active_stages & VK_SHADER_STAGE_TASK_BIT_EXT) {
-      radv_emit_view_index_per_stage(cmd_buffer->ace_internal.cs, pipeline, MESA_SHADER_TASK,
-                                     index);
+      radv_emit_view_index_per_stage(cmd_buffer->ace_internal.cs,
+                                     pipeline->base.shaders[MESA_SHADER_TASK],
+                                     pipeline->base.user_data_0[MESA_SHADER_TASK], index);
    }
 }
 
