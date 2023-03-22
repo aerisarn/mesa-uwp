@@ -2326,26 +2326,23 @@ combine_comparison_ordering(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    unsigned prop_cmp1 = original_temp_id(ctx, cmp->operands[1].getTemp());
    unsigned prop_nan0 = original_temp_id(ctx, nan_test->operands[0].getTemp());
    unsigned prop_nan1 = original_temp_id(ctx, nan_test->operands[1].getTemp());
-   if (prop_cmp0 != prop_nan0 && prop_cmp0 != prop_nan1)
+   VALU_instruction& cmp_valu = cmp->valu();
+   VALU_instruction& nan_valu = nan_test->valu();
+   if ((prop_cmp0 != prop_nan0 || cmp_valu.opsel[0] != nan_valu.opsel[0]) &&
+       (prop_cmp0 != prop_nan1 || cmp_valu.opsel[0] != nan_valu.opsel[1]))
       return false;
-   if (prop_cmp1 != prop_nan0 && prop_cmp1 != prop_nan1)
+   if ((prop_cmp1 != prop_nan0 || cmp_valu.opsel[1] != nan_valu.opsel[0]) &&
+       (prop_cmp1 != prop_nan1 || cmp_valu.opsel[1] != nan_valu.opsel[1]))
       return false;
 
    aco_opcode new_op = is_or ? get_unordered(cmp->opcode) : get_ordered(cmp->opcode);
-   Instruction* new_instr;
-   if (cmp->isVOP3()) {
-      VALU_instruction* new_vop3 =
-         create_instruction<VALU_instruction>(new_op, asVOP3(Format::VOPC), 2, 1);
-      VALU_instruction& cmp_vop3 = cmp->valu();
-      new_vop3->neg = cmp_vop3.neg;
-      new_vop3->abs = cmp_vop3.abs;
-      new_vop3->clamp = cmp_vop3.clamp;
-      new_vop3->omod = cmp_vop3.omod;
-      new_vop3->opsel = cmp_vop3.opsel;
-      new_instr = new_vop3;
-   } else {
-      new_instr = create_instruction<VALU_instruction>(new_op, Format::VOPC, 2, 1);
-   }
+   VALU_instruction* new_instr = create_instruction<VALU_instruction>(
+      new_op, cmp->isVOP3() ? asVOP3(Format::VOPC) : Format::VOPC, 2, 1);
+   new_instr->neg = cmp_valu.neg;
+   new_instr->abs = cmp_valu.abs;
+   new_instr->clamp = cmp_valu.clamp;
+   new_instr->omod = cmp_valu.omod;
+   new_instr->opsel = cmp_valu.opsel;
    new_instr->operands[0] = copy_operand(ctx, cmp->operands[0]);
    new_instr->operands[1] = copy_operand(ctx, cmp->operands[1]);
    new_instr->definitions[0] = instr->definitions[0];
