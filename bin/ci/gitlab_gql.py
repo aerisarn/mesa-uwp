@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# For the dependencies, see the requirements.txt
 
 import re
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
