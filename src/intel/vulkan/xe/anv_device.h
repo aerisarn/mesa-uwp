@@ -38,7 +38,5 @@ VkResult anv_xe_device_check_status(struct vk_device *vk_device);
 
 VkResult
 anv_xe_physical_device_get_parameters(struct anv_physical_device *device);
-void
-anv_xe_physical_device_max_priority_update(struct anv_physical_device *device);
 enum drm_sched_priority
 anv_vk_priority_to_drm_sched_priority(VkQueueGlobalPriorityKHR vk_priority);

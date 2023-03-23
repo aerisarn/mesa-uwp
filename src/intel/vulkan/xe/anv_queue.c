@@ -30,6 +30,7 @@
 #include "xe/anv_device.h"
 
 #include "drm-uapi/xe_drm.h"
+#include "drm-uapi/gpu_scheduler.h"
 
 VkResult
 anv_xe_create_engine(struct anv_device *device,
