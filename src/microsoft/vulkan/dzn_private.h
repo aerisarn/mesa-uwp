@@ -1075,7 +1075,8 @@ dzn_image_get_rtv_desc(const struct dzn_image *image,
 D3D12_RESOURCE_STATES
 dzn_image_layout_to_state(const struct dzn_image *image,
                           VkImageLayout layout,
-                          VkImageAspectFlagBits aspect);
+                          VkImageAspectFlagBits aspect,
+                          D3D12_COMMAND_LIST_TYPE type);
 
 D3D12_BARRIER_LAYOUT
 dzn_vk_layout_to_d3d_layout(VkImageLayout layout,

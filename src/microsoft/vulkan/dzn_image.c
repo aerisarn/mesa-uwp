@@ -590,11 +590,14 @@ dzn_image_get_rtv_desc(const struct dzn_image *image,
 D3D12_RESOURCE_STATES
 dzn_image_layout_to_state(const struct dzn_image *image,
                           VkImageLayout layout,
-                          VkImageAspectFlagBits aspect)
+                          VkImageAspectFlagBits aspect,
+                          D3D12_COMMAND_LIST_TYPE type)
 {
    D3D12_RESOURCE_STATES shaders_access =
       (image->desc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE) ?
-      0 : D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
+      0 : (type == D3D12_COMMAND_LIST_TYPE_DIRECT ?
+           D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE :
+           D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
    switch (layout) {
    case VK_IMAGE_LAYOUT_PREINITIALIZED:
@@ -633,7 +636,7 @@ dzn_image_layout_to_state(const struct dzn_image *image,
              D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
    case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-      return D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
+      return shaders_access;
 
    case VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT:
       return D3D12_RESOURCE_STATE_COMMON;

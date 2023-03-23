@@ -213,12 +213,12 @@ dzn_cmd_buffer_queue_image_range_layout_transition(struct dzn_cmd_buffer *cmdbuf
 
    dzn_foreach_aspect(aspect, range->aspectMask) {
       D3D12_RESOURCE_STATES after =
-         dzn_image_layout_to_state(image, new_layout, aspect);
+         dzn_image_layout_to_state(image, new_layout, aspect, cmdbuf->type);
       D3D12_RESOURCE_STATES before =
          (old_layout == VK_IMAGE_LAYOUT_UNDEFINED ||
           old_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) ?
          D3D12_RESOURCE_STATE_COMMON :
-         dzn_image_layout_to_state(image, old_layout, aspect);
+         dzn_image_layout_to_state(image, old_layout, aspect, cmdbuf->type);
 
       uint32_t layer_count = dzn_get_layer_count(image, range);
       uint32_t level_count = dzn_get_level_count(image, range);
@@ -4402,8 +4402,8 @@ dzn_cmd_buffer_resolve_rendering_attachment(struct dzn_cmd_buffer *cmdbuf,
       dst_range.layerCount = 1;
    }
 
-   D3D12_RESOURCE_STATES src_state = dzn_image_layout_to_state(src_img, src_layout, aspect);
-   D3D12_RESOURCE_STATES dst_state = dzn_image_layout_to_state(dst_img, dst_layout, aspect);
+   D3D12_RESOURCE_STATES src_state = dzn_image_layout_to_state(src_img, src_layout, aspect, cmdbuf->type);
+   D3D12_RESOURCE_STATES dst_state = dzn_image_layout_to_state(dst_img, dst_layout, aspect, cmdbuf->type);
    D3D12_BARRIER_LAYOUT src_restore_layout = D3D12_BARRIER_LAYOUT_COMMON,
       src_needed_layout = D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_GENERIC_READ;
    D3D12_BARRIER_LAYOUT dst_restore_layout = D3D12_BARRIER_LAYOUT_COMMON,
