@@ -1428,6 +1428,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             } else if (!instr->isVOP3() && can_swap_operands(instr, &instr->opcode)) {
                instr->operands[i] = instr->operands[0];
                instr->operands[0] = op;
+               instr->valu().opsel[0].swap(instr->valu().opsel[i]);
                continue;
             } else if (can_use_VOP3(ctx, instr)) {
                instr->format = asVOP3(instr->format);
@@ -3425,9 +3426,10 @@ apply_sgprs(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          else if (info.is_extract())
             continue;
          instr->operands[sgpr_idx] = Operand(sgpr);
-      } else if (can_swap_operands(instr, &instr->opcode)) {
+      } else if (can_swap_operands(instr, &instr->opcode) && !instr->valu().opsel[sgpr_idx]) {
          instr->operands[sgpr_idx] = instr->operands[0];
          instr->operands[0] = Operand(sgpr);
+         instr->valu().opsel[0].swap(instr->valu().opsel[sgpr_idx]);
          /* swap bits using a 4-entry LUT */
          uint32_t swapped = (0x3120 >> (operand_mask & 0x3)) & 0xf;
          operand_mask = (operand_mask & ~0x3) | swapped;
@@ -4812,22 +4814,21 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
             continue;
 
          convert_to_DPP(instr, dpp8);
+
+         if (i != 0) {
+            instr->opcode = swapped_op;
+            std::swap(instr->operands[0], instr->operands[1]);
+            instr->valu().neg[0].swap(instr->valu().neg[1]);
+            instr->valu().abs[0].swap(instr->valu().abs[1]);
+            instr->valu().opsel[0].swap(instr->valu().opsel[1]);
+         }
+
          if (dpp8) {
             DPP8_instruction* dpp = &instr->dpp8();
             for (unsigned j = 0; j < 8; ++j)
                dpp->lane_sel[j] = info.instr->dpp8().lane_sel[j];
-            if (i) {
-               instr->opcode = swapped_op;
-               std::swap(instr->operands[0], instr->operands[1]);
-            }
          } else {
             DPP16_instruction* dpp = &instr->dpp16();
-            if (i) {
-               instr->opcode = swapped_op;
-               std::swap(instr->operands[0], instr->operands[1]);
-               dpp->neg[0].swap(dpp->neg[1]);
-               dpp->abs[0].swap(dpp->abs[1]);
-            }
             dpp->dpp_ctrl = info.instr->dpp16().dpp_ctrl;
             dpp->bound_ctrl = info.instr->dpp16().bound_ctrl;
             dpp->neg[0] ^= info.instr->dpp16().neg[0] && !dpp->abs[0];
