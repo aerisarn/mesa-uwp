@@ -3106,7 +3106,7 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
          new_heap_offsets[type] = dst_heap_offset;
          update_root_desc_table[type] = true;
 
-         for (uint32_t s = 0; s < MAX_SETS; s++) {
+         for (uint32_t s = 0; s < cmdbuf->state.pipeline->root.sets_param_count; s++) {
             const struct dzn_descriptor_set *set = desc_state->sets[s].set;
             if (!set) continue;
 
@@ -3175,7 +3175,7 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
    }
 
    if (device->bindless) {
-      for (uint32_t s = 0; s < MAX_SETS; ++s) {
+      for (uint32_t s = 0; s < pipeline->root.sets_param_count; ++s) {
          const struct dzn_descriptor_set *set = desc_state->sets[s].set;
          if (!set || !set->pool->bindless.buf)
             continue;
