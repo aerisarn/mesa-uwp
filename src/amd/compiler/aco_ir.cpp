@@ -403,13 +403,11 @@ convert_to_DPP(aco_ptr<Instruction>& instr, bool dpp8)
       dpp->dpp_ctrl = dpp_quad_perm(0, 1, 2, 3);
       dpp->row_mask = 0xf;
       dpp->bank_mask = 0xf;
-
-      if (tmp->isVOP3()) {
-         const VALU_instruction* vop3 = &tmp->valu();
-         dpp->neg = vop3->neg;
-         dpp->abs = vop3->abs;
-      }
    }
+
+   instr->valu().neg = tmp->valu().neg;
+   instr->valu().abs = tmp->valu().abs;
+   instr->valu().opsel = tmp->valu().opsel;
 
    if (instr->isVOPC() || instr->definitions.size() > 1)
       instr->definitions.back().setFixed(vcc);
