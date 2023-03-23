@@ -177,6 +177,8 @@ nvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          .patch = 0,
       },
       .robustBufferAccessUpdateAfterBind = true,
+      .filterMinmaxSingleComponentFormats = true,
+      .filterMinmaxImageComponentMapping = true,
    };
 
    snprintf(core_1_2.driverName, VK_MAX_DRIVER_NAME_SIZE, "NVK");
@@ -325,6 +327,7 @@ nvk_get_device_extensions(const struct nv_device_info *dev,
       .EXT_provoking_vertex = true,
       .EXT_robustness2 = true,
       .EXT_sample_locations = dev->cls_eng3d >= MAXWELL_B,
+      .EXT_sampler_filter_minmax = dev->cls_eng3d >= MAXWELL_B,
       .EXT_separate_stencil_usage = true,
       .EXT_shader_demote_to_helper_invocation = true,
       .EXT_shader_viewport_index_layer = dev->cls_eng3d >= MAXWELL_B,
@@ -410,6 +413,7 @@ nvk_get_device_features(const struct nv_device_info *dev,
       .bufferDeviceAddressCaptureReplay = false,
       .bufferDeviceAddressMultiDevice = false,
       .drawIndirectCount = dev->cls_eng3d >= TURING_A,
+      .samplerFilterMinmax = dev->cls_eng3d >= MAXWELL_B,
 
       /* Vulkan 1.3 */
       .robustImageAccess = true,
