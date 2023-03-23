@@ -54,6 +54,7 @@ struct mme_tu104_sim {
 
    uint16_t ip;
    uint16_t next_ip;
+   bool stop;
 
    uint32_t loop_count;
    uint16_t loop_start;
@@ -442,6 +443,11 @@ eval_alu(struct mme_tu104_sim *sim,
       bool expect = (inst->imm[alu_idx] & BITFIELD_BIT(15)) != 0;
       if (eval_cond(inst->alu[alu_idx].op, x, y) == expect) {
          int16_t offset = util_mask_sign_extend(inst->imm[alu_idx], 13);
+         if ((uint16_t)offset == 0xf000) {
+            sim->stop = true;
+            break;
+         }
+
          assert((int)sim->ip + offset >= 0);
          assert((int)sim->ip + offset < 0x1000);
          sim->next_ip = sim->ip + offset;
@@ -553,7 +559,7 @@ mme_tu104_sim(uint32_t inst_count, const struct mme_tu104_inst *insts,
       if (pred & BITFIELD_BIT(3))
          eval_out(&sim, inst, 1);
 
-      if (end_next)
+      if (end_next || sim.stop)
          break;
 
       end_next = inst->end_next;

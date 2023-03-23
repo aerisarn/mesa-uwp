@@ -1166,6 +1166,40 @@ TEST_F(mme_tu104_sim_test, bxx_bwd)
       ASSERT_EQ(data[j], 1);
 }
 
+TEST_F(mme_tu104_sim_test, bxx_exit)
+{
+   mme_builder b;
+   mme_builder_init(&b, devinfo);
+
+   mme_value vals[10];
+   for (uint32_t i = 0; i < 10; i++)
+      vals[i] = mme_mov(&b, mme_zero());
+
+   for (uint32_t i = 0; i < 10; i++)
+      mme_store_imm_addr(&b, data_addr + i * 4, mme_imm(0));
+
+   mme_tu104_asm(&b, i) {
+      i.alu[0].op = MME_TU104_ALU_OP_BEQ;
+      i.imm[0] = (1 << 15) | 0x1000;
+   }
+
+   /* those writes won't be visible */
+   for (uint32_t j = 0; j < 10; j++)
+      mme_inc_whole_inst(&b, vals[j]);
+
+   for (uint32_t i = 0; i < 10; i++)
+      mme_store_imm_addr(&b, data_addr + i * 4, vals[i]);
+
+   std::vector<uint32_t> params;
+
+   auto macro = mme_builder_finish_vec(&b);
+   test_macro(&b, macro, params);
+
+   uint32_t i;
+   for (i = 0; i < 10; i++)
+      ASSERT_EQ(data[i], 0);
+}
+
 static bool c_ilt(int32_t x, int32_t y) { return x < y; };
 static bool c_ult(uint32_t x, uint32_t y) { return x < y; };
 static bool c_ile(int32_t x, int32_t y) { return x <= y; };
