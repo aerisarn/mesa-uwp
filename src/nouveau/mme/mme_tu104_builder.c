@@ -688,6 +688,24 @@ mme_tu104_end_while(struct mme_builder *b,
    mme_tu104_new_inst(tb);
 }
 
+void mme_tu104_exit_if(struct mme_builder *b,
+                       enum mme_cmp_op op,
+                       bool if_true,
+                       struct mme_value x,
+                       struct mme_value y)
+{
+   struct mme_tu104_builder *tb = &b->tu104;
+
+   /* we reverse it as we want to take the branch if the condition is true */
+   uint16_t control = if_true ? BITFIELD_BIT(15) : 0;
+   /* magic offset to exit the macro */
+   control |= 0x1000;
+   build_alu_to(b, mme_zero(), mme_cmp_to_tu104_branch_op(op), x, y, control,
+                true);
+
+   mme_tu104_new_inst(tb);
+}
+
 uint32_t *
 mme_tu104_builder_finish(struct mme_tu104_builder *tb, size_t *size_out)
 {

@@ -633,6 +633,39 @@ MME_DEF_END_WHILE(ine,   EQ,  false)
    for (bool run = (mme_start_while(b), true); run; \
         run = false, mme_end_while_##cmp((b), x, y))
 
+#define MME_DEF_EXIT(op, OP, if_true)                             \
+static inline void                                                \
+mme_exit_if_##op(struct mme_builder *b,                           \
+                 struct mme_value x, struct mme_value y)          \
+{                                                                 \
+   if (b->devinfo->cls_eng3d >= MME_CLS_TURING)                   \
+      mme_tu104_exit_if(b, MME_CMP_OP_##OP, if_true, x, y);       \
+   else                                                           \
+      unreachable("Unsupported GPU class");                       \
+}
+
+MME_DEF_EXIT(ilt,   LT,  true)
+MME_DEF_EXIT(ult,   LTU, true)
+MME_DEF_EXIT(ile,   LE,  true)
+MME_DEF_EXIT(ule,   LEU, true)
+MME_DEF_EXIT(ieq,   EQ,  true)
+MME_DEF_EXIT(ige,   LT,  false)
+MME_DEF_EXIT(uge,   LTU, false)
+MME_DEF_EXIT(igt,   LE,  false)
+MME_DEF_EXIT(ugt,   LEU, false)
+MME_DEF_EXIT(ine,   EQ,  false)
+
+#undef MME_DEF_EXIT
+
+#define mme_exit_if(b, cmp, x, y) \
+   mme_exit_if_##cmp(b, x, y)
+
+static inline void
+mme_exit(struct mme_builder *b)
+{
+   mme_exit_if_ieq(b, mme_zero(), mme_zero());
+}
+
 #ifdef __cplusplus
 }
 #endif

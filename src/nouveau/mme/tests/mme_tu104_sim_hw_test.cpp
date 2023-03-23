@@ -1200,6 +1200,73 @@ TEST_F(mme_tu104_sim_test, bxx_exit)
       ASSERT_EQ(data[i], 0);
 }
 
+TEST_F(mme_tu104_sim_test, mme_exit)
+{
+   mme_builder b;
+   mme_builder_init(&b, devinfo);
+
+   mme_value vals[10];
+   for (uint32_t i = 0; i < 10; i++)
+      vals[i] = mme_mov(&b, mme_zero());
+
+   for (uint32_t i = 0; i < 10; i++)
+      mme_store_imm_addr(&b, data_addr + i * 4, mme_imm(0));
+
+   /* abort */
+   mme_exit(&b);
+
+   /* those writes won't be visible */
+   for (uint32_t i = 0; i < 10; i++)
+      vals[i] = mme_mov(&b, mme_imm(i));
+
+   for (uint32_t i = 0; i < 10; i++) {
+      mme_store_imm_addr(&b, data_addr + i * 4, vals[i]);
+   }
+
+   std::vector<uint32_t> params;
+
+   auto macro = mme_builder_finish_vec(&b);
+   test_macro(&b, macro, params);
+
+   uint32_t i;
+   for (i = 0; i < 10; i++)
+      ASSERT_EQ(data[i], 0);
+}
+
+TEST_F(mme_tu104_sim_test, mme_exit_if)
+{
+   mme_builder b;
+   mme_builder_init(&b, devinfo);
+
+   mme_value vals[10];
+   for (uint32_t i = 0; i < 10; i++)
+      vals[i] = mme_mov(&b, mme_zero());
+
+   for (uint32_t i = 0; i < 10; i++)
+      mme_store_imm_addr(&b, data_addr + i * 4, mme_imm(0));
+
+   /* shouldn't do anything */
+   mme_exit_if(&b, ieq, mme_zero(), mme_imm(1));
+
+   for (uint32_t i = 0; i < 10; i++)
+      vals[i] = mme_mov(&b, mme_imm(i));
+
+   for (uint32_t i = 0; i < 10; i++) {
+      /* abort on reaching 5 */
+      mme_exit_if(&b, ile, mme_imm(5), vals[i]);
+      mme_store_imm_addr(&b, data_addr + i * 4, vals[i]);
+   }
+
+   std::vector<uint32_t> params;
+
+   auto macro = mme_builder_finish_vec(&b);
+   test_macro(&b, macro, params);
+
+   uint32_t i;
+   for (i = 0; i < 10; i++)
+      ASSERT_EQ(data[i], i < 5 ? i : 0);
+}
+
 static bool c_ilt(int32_t x, int32_t y) { return x < y; };
 static bool c_ult(uint32_t x, uint32_t y) { return x < y; };
 static bool c_ile(int32_t x, int32_t y) { return x <= y; };

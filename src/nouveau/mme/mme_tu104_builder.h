@@ -85,6 +85,12 @@ void mme_tu104_end_while(struct mme_builder *b,
                          struct mme_value x,
                          struct mme_value y);
 
+void mme_tu104_exit_if(struct mme_builder *b,
+                       enum mme_cmp_op op,
+                       bool if_true,
+                       struct mme_value x,
+                       struct mme_value y);
+
 uint32_t *mme_tu104_builder_finish(struct mme_tu104_builder *b,
                                    size_t *size_out);
 
