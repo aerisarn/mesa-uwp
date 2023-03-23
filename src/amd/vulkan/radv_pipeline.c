@@ -3656,9 +3656,8 @@ radv_pipeline_emit_vgt_gs_mode(const struct radv_device *device, struct radeon_c
 }
 
 static void
-radv_pipeline_emit_hw_vs(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
-                         struct radeon_cmdbuf *cs,
-                         const struct radv_graphics_pipeline *pipeline, const struct radv_shader *shader)
+radv_emit_hw_vs(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
+                struct radeon_cmdbuf *cs, const struct radv_shader *shader)
 {
    const struct radv_physical_device *pdevice = device->physical_device;
    uint64_t va = radv_shader_get_va(shader);
@@ -3733,8 +3732,7 @@ radv_pipeline_emit_hw_vs(const struct radv_device *device, struct radeon_cmdbuf 
 }
 
 static void
-radv_pipeline_emit_hw_es(struct radeon_cmdbuf *cs, const struct radv_graphics_pipeline *pipeline,
-                         const struct radv_shader *shader)
+radv_emit_hw_es(struct radeon_cmdbuf *cs, const struct radv_shader *shader)
 {
    uint64_t va = radv_shader_get_va(shader);
 
@@ -3746,8 +3744,7 @@ radv_pipeline_emit_hw_es(struct radeon_cmdbuf *cs, const struct radv_graphics_pi
 }
 
 static void
-radv_pipeline_emit_hw_ls(struct radeon_cmdbuf *cs, const struct radv_graphics_pipeline *pipeline,
-                         const struct radv_shader *shader)
+radv_emit_hw_ls(struct radeon_cmdbuf *cs, const struct radv_shader *shader)
 {
    uint64_t va = radv_shader_get_va(shader);
 
@@ -3920,9 +3917,8 @@ radv_emit_hw_ngg(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
 }
 
 static void
-radv_pipeline_emit_hw_hs(const struct radv_device *device, struct radeon_cmdbuf *cs,
-                         const struct radv_graphics_pipeline *pipeline,
-                         const struct radv_shader *shader)
+radv_emit_hw_hs(const struct radv_device *device, struct radeon_cmdbuf *cs,
+                const struct radv_shader *shader)
 {
    const struct radv_physical_device *pdevice = device->physical_device;
    uint64_t va = radv_shader_get_va(shader);
@@ -3945,61 +3941,42 @@ radv_pipeline_emit_hw_hs(const struct radv_device *device, struct radeon_cmdbuf 
 }
 
 static void
-radv_pipeline_emit_vertex_shader(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
-                                 struct radeon_cmdbuf *cs,
-                                 const struct radv_graphics_pipeline *pipeline)
+radv_emit_vertex_shader(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
+                        struct radeon_cmdbuf *cs, const struct radv_shader *vs)
 {
-   struct radv_shader *vs;
-
-   /* Skip shaders merged into HS/GS */
-   vs = pipeline->base.shaders[MESA_SHADER_VERTEX];
-   if (!vs)
-      return;
-
    if (vs->info.vs.as_ls)
-      radv_pipeline_emit_hw_ls(cs, pipeline, vs);
+      radv_emit_hw_ls(cs, vs);
    else if (vs->info.vs.as_es)
-      radv_pipeline_emit_hw_es(cs, pipeline, vs);
+      radv_emit_hw_es(cs, vs);
    else if (vs->info.is_ngg)
       radv_emit_hw_ngg(device, ctx_cs, cs, NULL, vs);
    else
-      radv_pipeline_emit_hw_vs(device, ctx_cs, cs, pipeline, vs);
+      radv_emit_hw_vs(device, ctx_cs, cs, vs);
 }
 
 static void
-radv_pipeline_emit_tess_shaders(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
-                                struct radeon_cmdbuf *cs,
-                                const struct radv_graphics_pipeline *pipeline)
+radv_emit_tess_ctrl_shader(const struct radv_device *device, struct radeon_cmdbuf *cs,
+                           const struct radv_shader *tcs)
 {
-   const struct radv_physical_device *pdevice = device->physical_device;
-   struct radv_shader *tes, *tcs;
+   radv_emit_hw_hs(device, cs, tcs);
+}
 
-   tcs = pipeline->base.shaders[MESA_SHADER_TESS_CTRL];
-   tes = pipeline->base.shaders[MESA_SHADER_TESS_EVAL];
-
-   if (tes) {
-      if (tes->info.is_ngg) {
-         radv_emit_hw_ngg(device, ctx_cs, cs, NULL, tes);
-      } else if (tes->info.tes.as_es)
-         radv_pipeline_emit_hw_es(cs, pipeline, tes);
-      else
-         radv_pipeline_emit_hw_vs(device, ctx_cs, cs, pipeline, tes);
-   }
-
-   radv_pipeline_emit_hw_hs(device, cs, pipeline, tcs);
-
-   if (pdevice->rad_info.gfx_level >= GFX10 &&
-       !radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY) && !radv_pipeline_has_ngg(pipeline)) {
-      radeon_set_context_reg(ctx_cs, R_028A44_VGT_GS_ONCHIP_CNTL,
-                             S_028A44_ES_VERTS_PER_SUBGRP(250) | S_028A44_GS_PRIMS_PER_SUBGRP(126) |
-                                S_028A44_GS_INST_PRIMS_IN_SUBGRP(126));
+static void
+radv_emit_tess_eval_shader(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
+                           struct radeon_cmdbuf *cs, const struct radv_shader *tes)
+{
+   if (tes->info.is_ngg) {
+      radv_emit_hw_ngg(device, ctx_cs, cs, NULL, tes);
+   } else if (tes->info.tes.as_es) {
+      radv_emit_hw_es(cs, tes);
+   } else {
+      radv_emit_hw_vs(device, ctx_cs, cs, tes);
    }
 }
 
 static void
-radv_pipeline_emit_hw_gs(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
-                         struct radeon_cmdbuf *cs, const struct radv_graphics_pipeline *pipeline,
-                         const struct radv_shader *gs)
+radv_emit_hw_gs(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
+                struct radeon_cmdbuf *cs, const struct radv_shader *gs)
 {
    const struct radv_physical_device *pdevice = device->physical_device;
    const struct radv_legacy_gs_info *gs_state = &gs->info.gs_ring_info;
@@ -4084,37 +4061,25 @@ radv_pipeline_emit_hw_gs(const struct radv_device *device, struct radeon_cmdbuf 
 }
 
 static void
-radv_pipeline_emit_geometry_shader(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
-                                   struct radeon_cmdbuf *cs,
-                                   const struct radv_graphics_pipeline *pipeline)
+radv_emit_geometry_shader(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
+                          struct radeon_cmdbuf *cs, const struct radv_shader *gs,
+                          const struct radv_shader *es, const struct radv_shader *gs_copy_shader)
 {
-   struct radv_shader *gs;
-
-   gs = pipeline->base.shaders[MESA_SHADER_GEOMETRY];
-   if (!gs)
-      return;
-
    if (gs->info.is_ngg) {
-      const struct radv_shader *es = pipeline->base.shaders[gs->info.gs.es_type];
-
       radv_emit_hw_ngg(device, ctx_cs, cs, es, gs);
    } else {
-      radv_pipeline_emit_hw_gs(device, ctx_cs, cs, pipeline, gs);
-      radv_pipeline_emit_hw_vs(device, ctx_cs, cs, pipeline, pipeline->base.gs_copy_shader);
+      radv_emit_hw_gs(device, ctx_cs, cs, gs);
+      radv_emit_hw_vs(device, ctx_cs, cs, gs_copy_shader);
    }
 
    radeon_set_context_reg(ctx_cs, R_028B38_VGT_GS_MAX_VERT_OUT, gs->info.gs.vertices_out);
 }
 
 static void
-radv_pipeline_emit_mesh_shader(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
-                               struct radeon_cmdbuf *cs,
-                               const struct radv_graphics_pipeline *pipeline)
+radv_emit_mesh_shader(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
+                      struct radeon_cmdbuf *cs, const struct radv_shader *ms)
 {
    const struct radv_physical_device *pdevice = device->physical_device;
-   struct radv_shader *ms = pipeline->base.shaders[MESA_SHADER_MESH];
-   if (!ms)
-      return;
 
    radv_emit_hw_ngg(device, ctx_cs, cs, NULL, ms);
    radeon_set_context_reg(ctx_cs, R_028B38_VGT_GS_MAX_VERT_OUT, ms->info.workgroup_size);
@@ -4256,17 +4221,13 @@ radv_emit_ps_inputs(const struct radv_device *device, struct radeon_cmdbuf *ctx_
 }
 
 static void
-radv_pipeline_emit_fragment_shader(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
-                                   struct radeon_cmdbuf *cs,
-                                   const struct radv_graphics_pipeline *pipeline)
+radv_emit_fragment_shader(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
+                          struct radeon_cmdbuf *cs, const struct radv_shader *ps)
 {
    const struct radv_physical_device *pdevice = device->physical_device;
-   struct radv_shader *ps;
    bool param_gen;
    uint64_t va;
-   assert(pipeline->base.shaders[MESA_SHADER_FRAGMENT]);
 
-   ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
    va = radv_shader_get_va(ps);
 
    radeon_set_sh_reg_seq(cs, R_00B020_SPI_SHADER_PGM_LO_PS, 4);
@@ -4540,15 +4501,39 @@ radv_pipeline_emit_pm4(const struct radv_device *device,
    radv_pipeline_emit_depth_stencil_state(ctx_cs, ds_state);
    radv_pipeline_emit_blend_state(ctx_cs, pipeline, blend);
    radv_pipeline_emit_vgt_gs_mode(device, ctx_cs, pipeline);
-   radv_pipeline_emit_vertex_shader(device, ctx_cs, cs, pipeline);
-   radv_pipeline_emit_mesh_shader(device, ctx_cs, cs, pipeline);
 
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL)) {
-      radv_pipeline_emit_tess_shaders(device, ctx_cs, cs, pipeline);
+   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_VERTEX)) {
+      radv_emit_vertex_shader(device, ctx_cs, cs, pipeline->base.shaders[MESA_SHADER_VERTEX]);
    }
 
-   radv_pipeline_emit_geometry_shader(device, ctx_cs, cs, pipeline);
-   radv_pipeline_emit_fragment_shader(device, ctx_cs, cs, pipeline);
+   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH)) {
+      radv_emit_mesh_shader(device, ctx_cs, cs, pipeline->base.shaders[MESA_SHADER_MESH]);
+   }
+
+   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL)) {
+      radv_emit_tess_ctrl_shader(device, cs, pipeline->base.shaders[MESA_SHADER_TESS_CTRL]);
+
+      if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL)) {
+         radv_emit_tess_eval_shader(device, ctx_cs, cs,
+                                    pipeline->base.shaders[MESA_SHADER_TESS_EVAL]);
+      }
+
+      if (pdevice->rad_info.gfx_level >= GFX10 &&
+          !radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY) && !radv_pipeline_has_ngg(pipeline)) {
+         radeon_set_context_reg(ctx_cs, R_028A44_VGT_GS_ONCHIP_CNTL,
+                                S_028A44_ES_VERTS_PER_SUBGRP(250) | S_028A44_GS_PRIMS_PER_SUBGRP(126) |
+                                   S_028A44_GS_INST_PRIMS_IN_SUBGRP(126));
+      }
+   }
+
+   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY)) {
+      const struct radv_shader *gs = pipeline->base.shaders[MESA_SHADER_GEOMETRY];
+      const struct radv_shader *es = pipeline->base.shaders[gs->info.gs.es_type];
+
+      radv_emit_geometry_shader(device, ctx_cs, cs, gs, es, pipeline->base.gs_copy_shader);
+   }
+
+   radv_emit_fragment_shader(device, ctx_cs, cs, ps);
    radv_emit_ps_inputs(device, ctx_cs, last_vgt_shader, ps);
    radv_pipeline_emit_vgt_vertex_reuse(device, ctx_cs, pipeline);
    radv_pipeline_emit_vgt_shader_config(device, ctx_cs, pipeline);
