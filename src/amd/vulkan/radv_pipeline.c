@@ -4080,8 +4080,6 @@ radv_pipeline_emit_hw_gs(const struct radv_device *device, struct radeon_cmdbuf 
                                            S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(0),
                                            C_00B204_CU_EN_GFX10, 16, &pdevice->rad_info));
    }
-
-   radv_pipeline_emit_hw_vs(device, ctx_cs, cs, pipeline, pipeline->base.gs_copy_shader);
 }
 
 static void
@@ -4095,10 +4093,12 @@ radv_pipeline_emit_geometry_shader(const struct radv_device *device, struct rade
    if (!gs)
       return;
 
-   if (gs->info.is_ngg)
+   if (gs->info.is_ngg) {
       radv_pipeline_emit_hw_ngg(device, ctx_cs, cs, pipeline, gs);
-   else
+   } else {
       radv_pipeline_emit_hw_gs(device, ctx_cs, cs, pipeline, gs);
+      radv_pipeline_emit_hw_vs(device, ctx_cs, cs, pipeline, pipeline->base.gs_copy_shader);
+   }
 
    radeon_set_context_reg(ctx_cs, R_028B38_VGT_GS_MAX_VERT_OUT, gs->info.gs.vertices_out);
 }
