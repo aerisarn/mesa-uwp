@@ -58,20 +58,19 @@ anv_xe_physical_device_get_parameters(struct anv_physical_device *device)
    return VK_SUCCESS;
 }
 
-/* TODO: include gpu_scheduler.h and spsc_queue.h and replace hard-coded values */
-uint64_t
-anv_vk_priority_to_xe(VkQueueGlobalPriorityKHR vk_priority)
+enum drm_sched_priority
+anv_vk_priority_to_drm_sched_priority(VkQueueGlobalPriorityKHR vk_priority)
 {
    switch (vk_priority) {
    case VK_QUEUE_GLOBAL_PRIORITY_LOW_KHR:
-      return 0;
+      return DRM_SCHED_PRIORITY_MIN;
    case VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR:
-      return 1;
+      return DRM_SCHED_PRIORITY_NORMAL;
    case VK_QUEUE_GLOBAL_PRIORITY_HIGH_KHR:
-      return 2;
+      return DRM_SCHED_PRIORITY_HIGH;
    default:
       unreachable("Invalid priority");
-      return 0;
+      return DRM_SCHED_PRIORITY_MIN;
    }
 }
 
@@ -108,7 +107,7 @@ anv_xe_physical_device_max_priority_update(struct anv_physical_device *device)
       struct drm_xe_engine_set_property engine_property = {
          .engine_id = create_engine.engine_id,
          .property = XE_ENGINE_SET_PROPERTY_PRIORITY,
-         engine_property.value = anv_vk_priority_to_xe(priorities[i]),
+         engine_property.value = anv_vk_priority_to_drm_sched_priority(priorities[i]),
       };
       if (intel_ioctl(device->local_fd, DRM_IOCTL_XE_ENGINE_SET_PROPERTY,
                       &engine_property))
