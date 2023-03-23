@@ -3380,6 +3380,8 @@ Converter::run()
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
       NIR_PASS_V(nir, nv_nir_move_stores_to_end);
 
+   NIR_PASS(progress, nir, nir_opt_algebraic_late);
+
    NIR_PASS_V(nir, nir_lower_bool_to_int32);
    NIR_PASS_V(nir, nir_lower_bit_size, Converter::lowerBitSizeCB, this);
 
