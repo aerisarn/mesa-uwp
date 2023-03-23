@@ -7765,9 +7765,9 @@ radv_cs_emit_indirect_mesh_draw_packet(struct radv_cmd_buffer *cmd_buffer, uint3
 
    radeon_emit(cs, PKT3(PKT3_DISPATCH_MESH_INDIRECT_MULTI, 7, predicating));
    radeon_emit(cs, 0); /* data_offset */
-   radeon_emit(cs, (xyz_dim_reg & 0xFFFF) | (draw_id_reg << 16));
+   radeon_emit(cs, S_4C1_XYZ_DIM_REG(xyz_dim_reg) | S_4C1_DRAW_INDEX_REG(draw_id_reg));
    radeon_emit(cs,
-               S_2C3_DRAW_INDEX_ENABLE(draw_id_enable) | S_2C3_COUNT_INDIRECT_ENABLE(!!count_va));
+               S_4C2_DRAW_INDEX_ENABLE(draw_id_enable) | S_4C2_COUNT_INDIRECT_ENABLE(!!count_va));
    radeon_emit(cs, draw_count);
    radeon_emit(cs, count_va & 0xFFFFFFFF);
    radeon_emit(cs, count_va >> 32);
@@ -7816,7 +7816,6 @@ radv_cs_emit_dispatch_taskmesh_indirect_multi_ace_packet(struct radv_cmd_buffer 
    struct radv_shader *task_shader = pipeline->shaders[MESA_SHADER_TASK];
    struct radeon_cmdbuf *cs = cmd_buffer->ace_internal.cs;
 
-   const uint32_t count_indirect_enable = !!count_va;
    const uint32_t xyz_dim_enable = task_shader->info.cs.uses_grid_size;
    const uint32_t draw_id_enable = task_shader->info.vs.needs_draw_id;
    const uint32_t dispatch_initiator = cmd_buffer->device->dispatch_initiator_task |
@@ -7847,10 +7846,11 @@ radv_cs_emit_dispatch_taskmesh_indirect_multi_ace_packet(struct radv_cmd_buffer 
    radeon_emit(cs, PKT3(PKT3_DISPATCH_TASKMESH_INDIRECT_MULTI_ACE, 9, 0) | PKT3_SHADER_TYPE_S(1));
    radeon_emit(cs, data_va);
    radeon_emit(cs, data_va >> 32);
-   radeon_emit(cs, ring_entry_reg & 0xFFFF);
-   radeon_emit(cs, (count_indirect_enable << 1) | (draw_id_enable << 2) | (xyz_dim_enable << 3) |
-                      (draw_id_reg << 16));
-   radeon_emit(cs, xyz_dim_reg & 0xFFFF);
+   radeon_emit(cs, S_AD2_RING_ENTRY_REG(ring_entry_reg));
+   radeon_emit(cs, S_AD3_COUNT_INDIRECT_ENABLE(!!count_va) |
+                      S_AD3_DRAW_INDEX_ENABLE(draw_id_enable) |
+                      S_AD3_XYZ_DIM_ENABLE(xyz_dim_enable) | S_AD3_DRAW_INDEX_REG(draw_id_reg));
+   radeon_emit(cs, S_AD4_XYZ_DIM_REG(xyz_dim_reg));
    radeon_emit(cs, draw_count);
    radeon_emit(cs, count_va);
    radeon_emit(cs, count_va >> 32);
@@ -7874,7 +7874,7 @@ radv_cs_emit_dispatch_taskmesh_gfx_packet(struct radv_cmd_buffer *cmd_buffer)
    uint32_t ring_entry_reg = ((base_reg + ring_entry_loc->sgpr_idx * 4) - SI_SH_REG_OFFSET) >> 2;
 
    radeon_emit(cs, PKT3(PKT3_DISPATCH_TASKMESH_GFX, 2, predicating));
-   radeon_emit(cs, (ring_entry_reg << 16) | (xyz_dim_reg & 0xFFFF));
+   radeon_emit(cs, S_4D0_RING_ENTRY_REG(ring_entry_reg) | S_4D0_XYZ_DIM_REG(xyz_dim_reg));
    radeon_emit(cs, 0);
    radeon_emit(cs, V_0287F0_DI_SRC_SEL_AUTO_INDEX);
 }
