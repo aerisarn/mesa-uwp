@@ -35,6 +35,44 @@ nvk_cmd_buffer_3d_cls(struct nvk_cmd_buffer *cmd)
    return nvk_cmd_buffer_device(cmd)->ctx->eng3d.cls;
 }
 
+void
+nvk_mme_set_priv_reg(struct mme_builder *b)
+{
+   mme_mthd(b, NV9097_WAIT_FOR_IDLE);
+   mme_emit(b, mme_zero());
+
+   mme_mthd(b, NV9097_SET_MME_SHADOW_SCRATCH(0));
+   mme_emit(b, mme_zero());
+   mme_emit(b, mme_load(b));
+   mme_emit(b, mme_load(b));
+
+   /* Not sure if this has to strictly go before SET_FALCON04, but it might.
+    * We also don't really know what that value indicates and when and how it's
+    * set.
+    */
+   struct mme_value s26 = mme_state(b, NV9097_SET_MME_SHADOW_SCRATCH(26));
+   s26 = mme_merge(b, mme_zero(), s26, 0, 8, 0);
+
+   mme_mthd(b, NV9097_SET_FALCON04);
+   mme_emit(b, mme_load(b));
+
+   mme_if(b, ieq, s26, mme_imm(2)) {
+      struct mme_value loop_cond = mme_mov(b, mme_zero());
+      mme_while(b, ine, loop_cond, mme_imm(1)) {
+         mme_state_to(b, loop_cond, NV9097_SET_MME_SHADOW_SCRATCH(0));
+         mme_mthd(b, NV9097_NO_OPERATION);
+         mme_emit(b, mme_zero());
+      };
+   }
+
+   mme_if(b, ine, s26, mme_imm(2)) {
+      mme_loop(b, mme_imm(10)) {
+         mme_mthd(b, NV9097_NO_OPERATION);
+         mme_emit(b, mme_zero());
+      }
+   }
+}
+
 VkResult
 nvk_queue_init_context_draw_state(struct nvk_queue *queue)
 {
@@ -91,6 +129,18 @@ nvk_queue_init_context_draw_state(struct nvk_queue *queue)
       mme_pos += num_dw;
 
       free(dw);
+   }
+
+   /* Enable FP hepler invocation memory loads
+    *
+    * On older generations we'll let the kernel do it, but starting with GSP we
+    * have to do it this way.
+    */
+   if (dev->ctx->eng3d.cls >= TURING_A) {
+      P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_SET_PRIV_REG));
+      P_INLINE_DATA(p, 0);
+      P_INLINE_DATA(p, BITFIELD_BIT(3));
+      P_INLINE_DATA(p, 0x419ba4);
    }
 
    P_IMMD(p, NV9097, SET_RENDER_ENABLE_C, MODE_TRUE);
