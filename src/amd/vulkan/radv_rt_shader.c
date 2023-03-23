@@ -1190,6 +1190,7 @@ struct traversal_data {
    nir_variable *barycentrics;
 
    struct radv_ray_tracing_group *groups;
+   struct radv_ray_tracing_stage *stages;
    const struct radv_pipeline_key *key;
 };
 
@@ -1226,8 +1227,9 @@ visit_any_hit_shaders(struct radv_device *device,
       if (is_dup)
          continue;
 
-      const VkPipelineShaderStageCreateInfo *stage = &pCreateInfo->pStages[shader_id];
-      nir_shader *nir_stage = radv_parse_rt_stage(device, stage, data->key);
+      nir_shader *nir_stage =
+         radv_pipeline_cache_handle_to_nir(device, data->stages[shader_id].shader);
+      assert(nir_stage);
 
       insert_rt_case(b, nir_stage, vars, sbt_idx, 0, data->groups[i].handle.any_hit_index,
                      shader_id, data->groups);
@@ -1363,13 +1365,15 @@ handle_candidate_aabb(nir_builder *b, struct radv_leaf_intersection *intersectio
       if (is_dup)
          continue;
 
-      const VkPipelineShaderStageCreateInfo *stage = &data->createInfo->pStages[shader_id];
-      nir_shader *nir_stage = radv_parse_rt_stage(data->device, stage, data->key);
+      nir_shader *nir_stage =
+         radv_pipeline_cache_handle_to_nir(data->device, data->stages[shader_id].shader);
+      assert(nir_stage);
 
       nir_shader *any_hit_stage = NULL;
       if (any_hit_shader_id != VK_SHADER_UNUSED_KHR) {
-         stage = &data->createInfo->pStages[any_hit_shader_id];
-         any_hit_stage = radv_parse_rt_stage(data->device, stage, data->key);
+         any_hit_stage =
+            radv_pipeline_cache_handle_to_nir(data->device, data->stages[any_hit_shader_id].shader);
+         assert(any_hit_stage);
 
          nir_lower_intersection_shader(nir_stage, any_hit_stage);
          ralloc_free(any_hit_stage);
@@ -1421,7 +1425,7 @@ load_stack_entry(nir_builder *b, nir_ssa_def *index, const struct radv_ray_trave
 }
 
 static nir_shader *
-build_traversal_shader(struct radv_device *device,
+build_traversal_shader(struct radv_device *device, struct radv_ray_tracing_stage *stages,
                        const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
                        struct radv_ray_tracing_group *groups, const struct radv_pipeline_key *key)
 {
@@ -1515,6 +1519,7 @@ build_traversal_shader(struct radv_device *device,
       .trav_vars = &trav_vars,
       .barycentrics = barycentrics,
       .groups = groups,
+      .stages = stages,
       .key = key,
    };
 
@@ -1619,7 +1624,8 @@ move_rt_instructions(nir_shader *shader)
 
 nir_shader *
 create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
-                 struct radv_ray_tracing_group *groups, const struct radv_pipeline_key *key)
+                 struct radv_ray_tracing_stage *stages, struct radv_ray_tracing_group *groups,
+                 const struct radv_pipeline_key *key)
 {
    nir_builder b = radv_meta_init_shader(device, MESA_SHADER_RAYGEN, "rt_combined");
    b.shader->info.internal = false;
@@ -1635,7 +1641,7 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
    nir_ssa_def *idx = nir_load_var(&b, vars.idx);
 
    /* Insert traversal shader */
-   nir_shader *traversal = build_traversal_shader(device, pCreateInfo, groups, key);
+   nir_shader *traversal = build_traversal_shader(device, stages, pCreateInfo, groups, key);
    b.shader->info.shared_size = MAX2(b.shader->info.shared_size, traversal->info.shared_size);
    assert(b.shader->info.shared_size <= 32768);
    insert_rt_case(&b, traversal, &vars, idx, 0, 1, -1u, groups);
@@ -1657,12 +1663,11 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
       if (is_dup)
          continue;
 
-      const VkPipelineShaderStageCreateInfo *stage = &pCreateInfo->pStages[stage_idx];
-      ASSERTED gl_shader_stage type = vk_to_mesa_shader_stage(stage->stage);
+      nir_shader *nir_stage = radv_pipeline_cache_handle_to_nir(device, stages[stage_idx].shader);
+      assert(nir_stage);
+      ASSERTED gl_shader_stage type = nir_stage->info.stage;
       assert(type == MESA_SHADER_RAYGEN || type == MESA_SHADER_CALLABLE ||
              type == MESA_SHADER_CLOSEST_HIT || type == MESA_SHADER_MISS);
-
-      nir_shader *nir_stage = radv_parse_rt_stage(device, stage, key);
 
       /* Move ray tracing system values to the top that are set by rt_trace_ray
        * to prevent them from being overwritten by other rt_trace_ray calls.
