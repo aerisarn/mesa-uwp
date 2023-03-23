@@ -2852,6 +2852,7 @@ glsl_float64_funcs_to_nir(struct gl_context *ctx,
     * with compile times.
     */
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
    NIR_PASS_V(nir, nir_copy_prop);
    NIR_PASS_V(nir, nir_opt_dce);
    NIR_PASS_V(nir, nir_opt_cse);
