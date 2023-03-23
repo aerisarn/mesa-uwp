@@ -792,14 +792,25 @@ d3d12_video_encoder_build_codec_headers_hevc(struct d3d12_video_encoder *pD3D12E
    }
 
    size_t writtenPPSBytesCount = 0;
-   
+
    pHEVCBitstreamBuilder->build_pps(pHEVCBitstreamBuilder->get_latest_sps(),
                                     currentPicParams.pHEVCPicData->slice_pic_parameter_set_id,
                                     *codecConfigDesc.pHEVCConfig,
                                     *currentPicParams.pHEVCPicData,
-                                    pD3D12Enc->m_BitstreamHeadersBuffer,
-                                    pD3D12Enc->m_BitstreamHeadersBuffer.begin() + writtenSPSBytesCount + writtenVPSBytesCount,
+                                    pD3D12Enc->m_StagingHeadersBuffer,
+                                    pD3D12Enc->m_StagingHeadersBuffer.begin(),
                                     writtenPPSBytesCount);
+
+   std::vector<uint8_t>& active_pps = pHEVCBitstreamBuilder->get_active_pps();
+   if ( (writtenPPSBytesCount != active_pps.size()) ||
+         memcmp(pD3D12Enc->m_StagingHeadersBuffer.data(), active_pps.data(), writtenPPSBytesCount)) {
+      active_pps = pD3D12Enc->m_StagingHeadersBuffer;
+      pD3D12Enc->m_BitstreamHeadersBuffer.resize(writtenSPSBytesCount + writtenVPSBytesCount + writtenPPSBytesCount);
+      memcpy(&pD3D12Enc->m_BitstreamHeadersBuffer.data()[(writtenSPSBytesCount + writtenVPSBytesCount)], pD3D12Enc->m_StagingHeadersBuffer.data(), writtenPPSBytesCount);
+   } else {
+      writtenPPSBytesCount = 0;
+      debug_printf("Skipping PPS (same as active PPS) for fenceValue: %" PRIu64 "\n", pD3D12Enc->m_fenceValue);
+   }
 
    // Shrink buffer to fit the headers
    if (pD3D12Enc->m_BitstreamHeadersBuffer.size() > (writtenPPSBytesCount + writtenSPSBytesCount + writtenVPSBytesCount)) {
