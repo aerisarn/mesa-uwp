@@ -368,6 +368,58 @@ vk_video_find_h265_dec_std_pps(const struct vk_video_session_parameters *params,
    return find_h265_dec_std_pps(params, id);
 }
 
+int
+vk_video_h265_poc_by_slot(const struct VkVideoDecodeInfoKHR *frame_info, int slot)
+{
+   for (unsigned i = 0; i < frame_info->referenceSlotCount; i++) {
+      const VkVideoDecodeH265DpbSlotInfoKHR *dpb_slot_info =
+         vk_find_struct_const(frame_info->pReferenceSlots[i].pNext, VIDEO_DECODE_H265_DPB_SLOT_INFO_KHR);
+      if (frame_info->pReferenceSlots[i].slotIndex == slot)
+         return dpb_slot_info->pStdReferenceInfo->PicOrderCntVal;
+   }
+
+   assert(0);
+
+   return 0;
+}
+
+void
+vk_fill_video_h265_reference_info(const VkVideoDecodeInfoKHR *frame_info,
+                                  const struct VkVideoDecodeH265PictureInfoKHR *pic,
+                                  const struct vk_video_h265_slice_params *slice_params,
+                                  struct vk_video_h265_reference ref_slots[][8])
+{
+   uint8_t list_cnt = slice_params->slice_type == STD_VIDEO_H265_SLICE_TYPE_B ? 2 : 1;
+   uint8_t list_idx;
+   int i, j;
+
+   for (list_idx = 0; list_idx < list_cnt; list_idx++) {
+      /* The order is
+       *  L0: Short term current before set - Short term current after set - long term current
+       *  L1: Short term current after set - short term current before set - long term current
+       */
+      const uint8_t *rps[3] = {
+         list_idx ? pic->pStdPictureInfo->RefPicSetStCurrAfter : pic->pStdPictureInfo->RefPicSetStCurrBefore,
+         list_idx ? pic->pStdPictureInfo->RefPicSetStCurrBefore : pic->pStdPictureInfo->RefPicSetStCurrAfter,
+         pic->pStdPictureInfo->RefPicSetLtCurr
+      };
+
+      uint8_t ref_idx = 0;
+      for (i = 0; i < 3; i++) {
+         const uint8_t *cur_rps = rps[i];
+
+         for (j = 0; (cur_rps[j] != 0xff) && ((j + ref_idx) < 8); j++) {
+            ref_slots[list_idx][j + ref_idx].slot_index = cur_rps[j];
+            ref_slots[list_idx][j + ref_idx].pic_order_cnt = vk_video_h265_poc_by_slot(frame_info, cur_rps[j]);
+         }
+         ref_idx += j;
+      }
+
+      /* TODO: should handle cases where rpl_modification_flag is true. */
+      assert(!slice_params->rpl_modification_flag[0] && !slice_params->rpl_modification_flag[1]);
+   }
+}
+
 static void
 h265_pred_weight_table(struct vk_video_h265_slice_params *params,
                        struct vl_rbsp *rbsp,

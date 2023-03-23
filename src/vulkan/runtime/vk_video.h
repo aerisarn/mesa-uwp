@@ -163,6 +163,21 @@ vk_video_parse_h265_slice_header(const struct VkVideoDecodeInfoKHR *frame_info,
                                  uint32_t slice_size,
                                  struct vk_video_h265_slice_params *params);
 
+
+struct vk_video_h265_reference {
+   const VkVideoPictureResourceInfoKHR *pPictureResource;
+   StdVideoDecodeH265ReferenceInfoFlags flags;
+   uint32_t slot_index;
+   int32_t pic_order_cnt;
+};
+
+int vk_video_h265_poc_by_slot(const struct VkVideoDecodeInfoKHR *frame_info, int slot);
+
+void vk_fill_video_h265_reference_info(const VkVideoDecodeInfoKHR *frame_info,
+                                       const struct VkVideoDecodeH265PictureInfoKHR *pic,
+                                       const struct vk_video_h265_slice_params *slice_params,
+                                       struct vk_video_h265_reference ref_slots[][8]);
+
 #ifdef __cplusplus
 }
 #endif
