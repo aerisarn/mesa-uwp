@@ -2518,7 +2518,7 @@ static void
 radv_emit_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
+   const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
    unsigned rasterization_samples = radv_get_rasterization_samples(cmd_buffer);
    const struct radv_rendering_state *render = &cmd_buffer->state.render;
    unsigned pa_sc_mode_cntl_1 = pipeline->pa_sc_mode_cntl_1;
@@ -4188,7 +4188,7 @@ lookup_ps_epilog(struct radv_cmd_buffer *cmd_buffer)
       state.need_src_alpha |= 0x1;
    }
 
-   struct radv_ps_epilog_key key = radv_generate_ps_epilog_key(pipeline, &state, true);
+   struct radv_ps_epilog_key key = radv_generate_ps_epilog_key(device, pipeline, &state, true);
    uint32_t hash = radv_hash_ps_epilog(&key);
 
    u_rwlock_rdlock(&device->ps_epilogs_lock);
@@ -5066,7 +5066,7 @@ radv_flush_force_vrs_state(struct radv_cmd_buffer *cmd_buffer)
 
    assert(loc->sgpr_idx != -1);
 
-   enum amd_gfx_level gfx_level = pipeline->base.device->physical_device->rad_info.gfx_level;
+   enum amd_gfx_level gfx_level = cmd_buffer->device->physical_device->rad_info.gfx_level;
    uint32_t vrs_rates = 0;
 
    switch (cmd_buffer->device->force_vrs) {

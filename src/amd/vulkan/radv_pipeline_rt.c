@@ -217,8 +217,8 @@ radv_rt_pipeline_compile(struct radv_ray_tracing_pipeline *pipeline,
 {
    struct radv_shader_binary *binaries[MESA_VULKAN_SHADER_STAGES] = {NULL};
    unsigned char hash[20];
-   bool keep_executable_info = radv_pipeline_capture_shaders(pipeline->base.base.device, flags);
-   bool keep_statistic_info = radv_pipeline_capture_shader_stats(pipeline->base.base.device, flags);
+   bool keep_executable_info = radv_pipeline_capture_shaders(device, flags);
+   bool keep_statistic_info = radv_pipeline_capture_shader_stats(device, flags);
    struct radv_pipeline_stage rt_stage = {0};
    VkPipelineCreationFeedback pipeline_feedback = {
       .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
@@ -283,8 +283,7 @@ radv_rt_pipeline_compile(struct radv_ray_tracing_pipeline *pipeline,
    stage_start = os_time_get_nano();
 
    /* Postprocess NIR. */
-   radv_postprocess_nir(&pipeline->base.base, pipeline_layout, pipeline_key, MESA_SHADER_NONE,
-                        &rt_stage);
+   radv_postprocess_nir(device, pipeline_layout, pipeline_key, MESA_SHADER_NONE, &rt_stage);
 
    if (radv_can_dump_shader(device, rt_stage.nir, false))
       nir_print_shader(rt_stage.nir, stderr);
@@ -562,11 +561,12 @@ compute_rt_stack_size(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
 }
 
 static struct radv_pipeline_key
-radv_generate_rt_pipeline_key(const struct radv_ray_tracing_pipeline *pipeline,
+radv_generate_rt_pipeline_key(const struct radv_device *device,
+                              const struct radv_ray_tracing_pipeline *pipeline,
                               VkPipelineCreateFlags flags)
 {
-   struct radv_pipeline_key key = radv_generate_pipeline_key(&pipeline->base.base, flags);
-   key.cs.compute_subgroup_size = pipeline->base.base.device->physical_device->rt_wave_size;
+   struct radv_pipeline_key key = radv_generate_pipeline_key(device, &pipeline->base.base, flags);
+   key.cs.compute_subgroup_size = device->physical_device->rt_wave_size;
 
    return key;
 }
@@ -649,7 +649,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
 
-   struct radv_pipeline_key key = radv_generate_rt_pipeline_key(rt_pipeline, pCreateInfo->flags);
+   struct radv_pipeline_key key = radv_generate_rt_pipeline_key(device, rt_pipeline, pCreateInfo->flags);
 
    radv_hash_rt_shaders(hash, &local_create_info, &key, rt_pipeline->groups,
                         radv_get_hash_flags(device, keep_statistic_info));
@@ -685,7 +685,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    postprocess_rt_config(&rt_pipeline->base.base.shaders[MESA_SHADER_COMPUTE]->config,
                          device->physical_device->rt_wave_size);
 
-   radv_compute_pipeline_init(&rt_pipeline->base, pipeline_layout);
+   radv_compute_pipeline_init(device, &rt_pipeline->base, pipeline_layout);
 
    *pPipeline = radv_pipeline_to_handle(&rt_pipeline->base.base);
 shader_fail:

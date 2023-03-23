@@ -1892,7 +1892,8 @@ struct radv_ps_epilog_state
    uint8_t need_src_alpha;
 };
 
-struct radv_ps_epilog_key radv_generate_ps_epilog_key(const struct radv_graphics_pipeline *pipeline,
+struct radv_ps_epilog_key radv_generate_ps_epilog_key(const struct radv_device *device,
+                                                      const struct radv_graphics_pipeline *pipeline,
                                                       const struct radv_ps_epilog_state *state,
                                                       bool disable_mrt_compaction);
 
@@ -2153,8 +2154,6 @@ struct radv_pipeline {
    struct vk_object_base base;
    enum radv_pipeline_type type;
 
-   struct radv_device *device;
-
    bool is_internal;
    bool need_indirect_descriptor_sets;
    struct radv_shader *shaders[MESA_VULKAN_SHADER_STAGES];
@@ -2379,7 +2378,8 @@ bool radv_mem_vectorize_callback(unsigned align_mul, unsigned align_offset, unsi
                                  unsigned num_components, nir_intrinsic_instr *low, nir_intrinsic_instr *high,
                                  void *data);
 
-void radv_compute_pipeline_init(struct radv_compute_pipeline *pipeline,
+void radv_compute_pipeline_init(const struct radv_device *device,
+                                struct radv_compute_pipeline *pipeline,
                                 const struct radv_pipeline_layout *layout);
 
 struct radv_graphics_pipeline_create_info {
@@ -2392,7 +2392,8 @@ struct radv_graphics_pipeline_create_info {
    uint32_t custom_blend_mode;
 };
 
-struct radv_pipeline_key radv_generate_pipeline_key(const struct radv_pipeline *pipeline,
+struct radv_pipeline_key radv_generate_pipeline_key(const struct radv_device *device,
+                                                    const struct radv_pipeline *pipeline,
                                                     VkPipelineCreateFlags flags);
 
 void radv_pipeline_init(struct radv_device *device, struct radv_pipeline *pipeline,

@@ -33,6 +33,7 @@ radv_get_sequence_size(const struct radv_indirect_command_layout *layout,
                        const struct radv_graphics_pipeline *pipeline, uint32_t *cmd_size,
                        uint32_t *upload_size)
 {
+   const struct radv_device *device = container_of(layout->base.device, struct radv_device, vk);
    *cmd_size = 0;
    *upload_size = 0;
 
@@ -85,7 +86,7 @@ radv_get_sequence_size(const struct radv_indirect_command_layout *layout,
       /* One PKT3_SET_CONTEXT_REG (PA_SU_SC_MODE_CNTL) */
       *cmd_size += 3 * 4;
 
-      if (pipeline->base.device->physical_device->rad_info.has_gfx9_scissor_bug) {
+      if (device->physical_device->rad_info.has_gfx9_scissor_bug) {
          /* 1 reg write of 4 regs + 1 reg write of 2 regs per scissor */
          *cmd_size += (8 + 2 * MAX_SCISSORS) * 4;
       }
