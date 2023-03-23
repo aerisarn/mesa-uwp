@@ -5444,6 +5444,8 @@ zink_parse_tc_info(struct zink_context *ctx)
       zink_tc_parse_fs(ctx->gfx_stages[MESA_SHADER_FRAGMENT], info);
    if (ctx->dsa_state)
       zink_tc_parse_dsa(ctx->dsa_state, info);
+   if (ctx->zsbuf_unused == zink_is_zsbuf_used(ctx))
+      ctx->rp_layout_changed = true;
 }
 
 struct pipe_context *
