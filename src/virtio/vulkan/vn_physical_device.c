@@ -778,19 +778,21 @@ vn_physical_device_init_memory_properties(
       instance, vn_physical_device_to_handle(physical_dev),
       &physical_dev->memory_properties);
 
-   if (!instance->renderer->info.has_cache_management) {
-      VkPhysicalDeviceMemoryProperties *props =
-         &physical_dev->memory_properties.memoryProperties;
-      const uint32_t host_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-                                  VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+   VkPhysicalDeviceMemoryProperties *props =
+      &physical_dev->memory_properties.memoryProperties;
+   const uint32_t host_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+                               VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
 
-      for (uint32_t i = 0; i < props->memoryTypeCount; i++) {
-         const bool coherent = props->memoryTypes[i].propertyFlags &
-                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-         if (!coherent)
-            props->memoryTypes[i].propertyFlags &= ~host_flags;
-      }
+   for (uint32_t i = 0; i < props->memoryTypeCount; i++) {
+      /* Kernel makes every mapping coherent.  If a memory type is truly
+       * incoherent, it's better to remove the host-visible flag than silently
+       * making it coherent.
+       */
+      const bool coherent = props->memoryTypes[i].propertyFlags &
+                            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+      if (!coherent)
+         props->memoryTypes[i].propertyFlags &= ~host_flags;
    }
 }
 
