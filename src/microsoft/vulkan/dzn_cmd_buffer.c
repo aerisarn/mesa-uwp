@@ -2739,6 +2739,8 @@ dzn_cmd_buffer_blit_set_pipeline(struct dzn_cmd_buffer *cmdbuf,
       dzn_meta_blits_get_context(device, &ctx_key);
    assert(ctx);
 
+   cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty |= DZN_CMD_BINDPOINT_DIRTY_PIPELINE;
+   cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].root_sig = NULL;
    ID3D12GraphicsCommandList1_SetGraphicsRootSignature(cmdbuf->cmdlist, ctx->root_sig);
    ID3D12GraphicsCommandList1_SetPipelineState(cmdbuf->cmdlist, ctx->pipeline_state);
 }
@@ -3472,6 +3474,8 @@ dzn_cmd_buffer_triangle_fan_rewrite_index(struct dzn_cmd_buffer *cmdbuf,
       .first_index = *first_index,
    };
 
+   cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_COMPUTE].dirty |= DZN_CMD_BINDPOINT_DIRTY_PIPELINE;
+   cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_COMPUTE].root_sig = NULL;
    ID3D12GraphicsCommandList1_SetComputeRootSignature(cmdbuf->cmdlist, rewrite_index->root_sig);
    ID3D12GraphicsCommandList1_SetPipelineState(cmdbuf->cmdlist, rewrite_index->pipeline_state);
    ID3D12GraphicsCommandList1_SetComputeRootUnorderedAccessView(cmdbuf->cmdlist, 0, ID3D12Resource_GetGPUVirtualAddress(new_index_buf));
@@ -3682,6 +3686,8 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
    struct dzn_meta_indirect_draw *indirect_draw = &device->indirect_draws[draw_type];
    uint32_t root_param_idx = 0;
 
+   cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_COMPUTE].dirty |= DZN_CMD_BINDPOINT_DIRTY_PIPELINE;
+   cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_COMPUTE].root_sig = NULL;
    ID3D12GraphicsCommandList1_SetComputeRootSignature(cmdbuf->cmdlist, indirect_draw->root_sig);
    ID3D12GraphicsCommandList1_SetPipelineState(cmdbuf->cmdlist, indirect_draw->pipeline_state);
    ID3D12GraphicsCommandList1_SetComputeRoot32BitConstants(cmdbuf->cmdlist, root_param_idx++,
@@ -3738,6 +3744,8 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
                                                   DZN_QUEUE_TRANSITION_FLUSH);
       }
 
+      cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_COMPUTE].dirty |= DZN_CMD_BINDPOINT_DIRTY_PIPELINE;
+      cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_COMPUTE].root_sig = NULL;
       ID3D12GraphicsCommandList1_SetComputeRootSignature(cmdbuf->cmdlist, rewrite_index->root_sig);
       ID3D12GraphicsCommandList1_SetPipelineState(cmdbuf->cmdlist, rewrite_index->pipeline_state);
       root_param_idx = 0;
