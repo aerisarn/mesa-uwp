@@ -62,7 +62,7 @@ struct etna_compile {
 #define compile_error(ctx, args...) ({ \
    printf(args); \
    ctx->error = true; \
-   assert(0); \
+   abort(); \
 })
 
 enum {
