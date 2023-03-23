@@ -448,7 +448,7 @@ dzn_pipeline_compile_shader(struct dzn_device *device,
 
    if (!res) {
       if (err) {
-         fprintf(stderr,
+         mesa_loge(
                "== VALIDATION ERROR =============================================\n"
                "%s\n"
                "== END ==========================================================\n",
