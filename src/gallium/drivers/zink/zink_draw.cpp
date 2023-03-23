@@ -467,11 +467,9 @@ zink_draw(struct pipe_context *pctx,
          bool points_changed =
             (ctx->gfx_pipeline_state.rast_prim == PIPE_PRIM_POINTS) !=
             (rast_prim == PIPE_PRIM_POINTS);
-         prim_changed = points_changed;
 
-         prim_changed |=
-            (ctx->gfx_pipeline_state.rast_prim == PIPE_PRIM_LINES) !=
-            (rast_prim == PIPE_PRIM_LINES);
+         prim_changed = ctx->gfx_pipeline_state.rast_prim != rast_prim;
+
          static bool rect_warned = false;
          if (DYNAMIC_STATE >= ZINK_DYNAMIC_STATE3 && rast_prim == PIPE_PRIM_LINES && !rect_warned && 
              (VkLineRasterizationModeEXT)rast_state->hw_state.line_mode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT) {
@@ -480,10 +478,6 @@ zink_draw(struct pipe_context *pctx,
             else
                warn_missing_feature(rect_warned, "rectangularLines");
          }
-
-         prim_changed |=
-            (ctx->gfx_pipeline_state.rast_prim == PIPE_PRIM_TRIANGLES) !=
-            (rast_prim == PIPE_PRIM_TRIANGLES);
 
          ctx->gfx_pipeline_state.rast_prim = rast_prim;
          rast_prim_changed = true;
