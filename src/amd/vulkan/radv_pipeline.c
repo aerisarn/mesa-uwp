@@ -4197,12 +4197,11 @@ input_mask_to_ps_inputs(const struct radv_vs_output_info *outinfo, const struct 
 }
 
 static void
-radv_pipeline_emit_ps_inputs(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
-                             const struct radv_graphics_pipeline *pipeline)
+radv_emit_ps_inputs(const struct radv_device *device, struct radeon_cmdbuf *ctx_cs,
+                    const struct radv_shader *last_vgt_shader, const struct radv_shader *ps)
 {
-   struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
-   const struct radv_vs_output_info *outinfo = get_vs_output_info(pipeline);
-   bool mesh = radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH);
+   const struct radv_vs_output_info *outinfo = &last_vgt_shader->info.outinfo;
+   bool mesh = last_vgt_shader->info.stage == MESA_SHADER_MESH;
    bool gfx11plus = device->physical_device->rad_info.gfx_level >= GFX11;
    uint32_t ps_input_cntl[32];
 
@@ -4531,6 +4530,8 @@ radv_pipeline_emit_pm4(const struct radv_device *device,
 
 {
    const struct radv_physical_device *pdevice = device->physical_device;
+   const struct radv_shader *last_vgt_shader = radv_get_last_vgt_shader(pipeline);
+   const struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
    struct radeon_cmdbuf *ctx_cs = &pipeline->base.ctx_cs;
    struct radeon_cmdbuf *cs = &pipeline->base.cs;
 
@@ -4551,7 +4552,7 @@ radv_pipeline_emit_pm4(const struct radv_device *device,
 
    radv_pipeline_emit_geometry_shader(device, ctx_cs, cs, pipeline);
    radv_pipeline_emit_fragment_shader(device, ctx_cs, cs, pipeline);
-   radv_pipeline_emit_ps_inputs(device, ctx_cs, pipeline);
+   radv_emit_ps_inputs(device, ctx_cs, last_vgt_shader, ps);
    radv_pipeline_emit_vgt_vertex_reuse(device, ctx_cs, pipeline);
    radv_pipeline_emit_vgt_shader_config(device, ctx_cs, pipeline);
    radv_pipeline_emit_cliprect_rule(ctx_cs, state);
