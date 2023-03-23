@@ -3159,19 +3159,21 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
          cmdbuf->state.heaps[h] = new_heaps[h];
    }
 
-   for (uint32_t r = 0; r < pipeline->root.sets_param_count; r++) {
-      D3D12_DESCRIPTOR_HEAP_TYPE type = pipeline->root.type[r];
+   if (!device->bindless) {
+      for (uint32_t r = 0; r < pipeline->root.sets_param_count; r++) {
+         D3D12_DESCRIPTOR_HEAP_TYPE type = pipeline->root.type[r];
 
-      if (!update_root_desc_table[type])
-         continue;
+         if (!update_root_desc_table[type])
+            continue;
 
-      D3D12_GPU_DESCRIPTOR_HANDLE handle =
-         dzn_descriptor_heap_get_gpu_handle(new_heaps[type], new_heap_offsets[type]);
+         D3D12_GPU_DESCRIPTOR_HANDLE handle =
+            dzn_descriptor_heap_get_gpu_handle(new_heaps[type], new_heap_offsets[type]);
 
-      if (bindpoint == VK_PIPELINE_BIND_POINT_GRAPHICS)
-         ID3D12GraphicsCommandList1_SetGraphicsRootDescriptorTable(cmdbuf->cmdlist, r, handle);
-      else
-         ID3D12GraphicsCommandList1_SetComputeRootDescriptorTable(cmdbuf->cmdlist, r, handle);
+         if (bindpoint == VK_PIPELINE_BIND_POINT_GRAPHICS)
+            ID3D12GraphicsCommandList1_SetGraphicsRootDescriptorTable(cmdbuf->cmdlist, r, handle);
+         else
+            ID3D12GraphicsCommandList1_SetComputeRootDescriptorTable(cmdbuf->cmdlist, r, handle);
+      }
    }
 
    if (device->bindless) {
