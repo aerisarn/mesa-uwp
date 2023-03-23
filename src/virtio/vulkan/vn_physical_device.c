@@ -770,29 +770,26 @@ vn_physical_device_init_memory_properties(
    struct vn_physical_device *physical_dev)
 {
    struct vn_instance *instance = physical_dev->instance;
+   VkPhysicalDeviceMemoryProperties2 *props2 =
+      &physical_dev->memory_properties;
+   VkPhysicalDeviceMemoryProperties *props1 = &props2->memoryProperties;
 
-   physical_dev->memory_properties.sType =
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
+   props2->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
 
    vn_call_vkGetPhysicalDeviceMemoryProperties2(
-      instance, vn_physical_device_to_handle(physical_dev),
-      &physical_dev->memory_properties);
+      instance, vn_physical_device_to_handle(physical_dev), props2);
 
-   VkPhysicalDeviceMemoryProperties *props =
-      &physical_dev->memory_properties.memoryProperties;
-   const uint32_t host_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                               VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-                               VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+   for (uint32_t i = 0; i < props1->memoryTypeCount; i++) {
+      VkMemoryType *type = &props1->memoryTypes[i];
 
-   for (uint32_t i = 0; i < props->memoryTypeCount; i++) {
       /* Kernel makes every mapping coherent.  If a memory type is truly
        * incoherent, it's better to remove the host-visible flag than silently
        * making it coherent.
        */
-      const bool coherent = props->memoryTypes[i].propertyFlags &
-                            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-      if (!coherent)
-         props->memoryTypes[i].propertyFlags &= ~host_flags;
+      if (!(type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
+         type->propertyFlags &= ~(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                  VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
+      }
    }
 }
 
