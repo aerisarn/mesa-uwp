@@ -1571,6 +1571,11 @@ enum rgp_flush_bits {
    RGP_FLUSH_INVAL_L1 = 0x8000,
 };
 
+struct radv_multisample_state {
+   bool sample_shading_enable;
+   float min_sample_shading;
+};
+
 struct radv_cmd_state {
    /* Vertex descriptors */
    uint64_t vb_va;
@@ -1683,6 +1688,8 @@ struct radv_cmd_state {
 
    /* Binning state */
    unsigned last_pa_sc_binner_cntl_0;
+
+   struct radv_multisample_state ms;
 };
 
 struct radv_cmd_buffer_upload {
@@ -2093,11 +2100,6 @@ enum {
 
 extern const VkFormat radv_fs_key_format_exemplars[NUM_META_FS_KEYS];
 unsigned radv_format_meta_fs_key(struct radv_device *device, VkFormat format);
-
-struct radv_multisample_state {
-   bool sample_shading_enable;
-   float min_sample_shading;
-};
 
 struct radv_vrs_state {
    uint32_t pa_cl_vrs_cntl;

@@ -942,15 +942,14 @@ radv_get_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
 static ALWAYS_INLINE unsigned
 radv_get_ps_iter_samples(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_rendering_state *render = &cmd_buffer->state.render;
    unsigned ps_iter_samples = 1;
 
-   if (pipeline->ms.sample_shading_enable) {
+   if (cmd_buffer->state.ms.sample_shading_enable) {
       unsigned rasterization_samples = radv_get_rasterization_samples(cmd_buffer);
       unsigned color_samples = MAX2(render->color_samples, rasterization_samples);
 
-      ps_iter_samples = ceilf(pipeline->ms.min_sample_shading * color_samples);
+      ps_iter_samples = ceilf(cmd_buffer->state.ms.min_sample_shading * color_samples);
       ps_iter_samples = util_next_power_of_two(ps_iter_samples);
    }
 
@@ -6248,6 +6247,13 @@ radv_bind_vs_input_state(struct radv_cmd_buffer *cmd_buffer,
 }
 
 static void
+radv_bind_multisample_state(struct radv_cmd_buffer *cmd_buffer,
+                            const struct radv_multisample_state *ms)
+{
+   cmd_buffer->state.ms = *ms;
+}
+
+static void
 radv_bind_pre_rast_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *shader)
 {
    if (radv_get_user_sgpr(shader, AC_UD_NGG_PROVOKING_VTX)->sgpr_idx != -1) {
@@ -6493,6 +6499,8 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
          radv_bind_mesh_shader(cmd_buffer, graphics_pipeline->base.shaders[MESA_SHADER_MESH]);
       if (graphics_pipeline->base.shaders[MESA_SHADER_TASK])
          radv_bind_task_shader(cmd_buffer, graphics_pipeline->base.shaders[MESA_SHADER_TASK]);
+
+      radv_bind_multisample_state(cmd_buffer, &graphics_pipeline->ms);
       break;
    }
    default:
