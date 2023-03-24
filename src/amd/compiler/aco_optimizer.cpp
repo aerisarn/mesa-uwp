@@ -3920,10 +3920,7 @@ can_use_mad_mix(opt_ctx& ctx, aco_ptr<Instruction>& instr)
        instr->definitions[0].isPrecise())
       return false;
 
-   if (instr->isVOP3())
-      return !instr->valu().omod && !instr->valu().opsel[3];
-
-   return instr->format == Format::VOP2;
+   return !instr->valu().omod && !instr->isSDWA() && !instr->isDPP();
 }
 
 void
@@ -3934,20 +3931,15 @@ to_mad_mix(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    aco_ptr<VALU_instruction> vop3p{
       create_instruction<VALU_instruction>(aco_opcode::v_fma_mix_f32, Format::VOP3P, 3, 1)};
 
-   vop3p->opsel_lo = instr->isVOP3() ? ((instr->valu().opsel & 0x7) << (is_add ? 1 : 0)) : 0x0;
-   vop3p->opsel_hi = 0x0;
    for (unsigned i = 0; i < instr->operands.size(); i++) {
       vop3p->operands[is_add + i] = instr->operands[i];
       vop3p->neg_lo[is_add + i] = instr->valu().neg[i];
       vop3p->neg_hi[is_add + i] = instr->valu().abs[i];
-      vop3p->opsel_lo |= (instr->isSDWA() && instr->sdwa().sel[i].offset()) << (is_add + i);
    }
    if (instr->opcode == aco_opcode::v_mul_f32) {
-      vop3p->opsel_hi &= 0x3;
       vop3p->operands[2] = Operand::zero();
       vop3p->neg_lo[2] = true;
    } else if (is_add) {
-      vop3p->opsel_hi &= 0x6;
       vop3p->operands[0] = Operand::c32(0x3f800000);
       if (instr->opcode == aco_opcode::v_sub_f32)
          vop3p->neg_lo[2] ^= true;
@@ -3955,7 +3947,7 @@ to_mad_mix(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          vop3p->neg_lo[1] ^= true;
    }
    vop3p->definitions[0] = instr->definitions[0];
-   vop3p->clamp = instr->isVOP3() && instr->valu().clamp;
+   vop3p->clamp = instr->valu().clamp;
    instr = std::move(vop3p);
 
    ctx.info[instr->definitions[0].tempId()].label &= label_f2f16 | label_clamp | label_mul;
