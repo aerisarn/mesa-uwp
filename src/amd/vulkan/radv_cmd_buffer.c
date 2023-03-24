@@ -6323,6 +6323,11 @@ static void
 radv_bind_geometry_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *gs)
 {
    radv_bind_pre_rast_shader(cmd_buffer, gs);
+
+   cmd_buffer->esgs_ring_size_needed =
+      MAX2(cmd_buffer->esgs_ring_size_needed, gs->info.gs_ring_info.esgs_ring_size);
+   cmd_buffer->gsvs_ring_size_needed =
+      MAX2(cmd_buffer->gsvs_ring_size_needed, gs->info.gs_ring_info.gsvs_ring_size);
 }
 
 static void
@@ -6466,11 +6471,6 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       radv_bind_dynamic_state(cmd_buffer, &graphics_pipeline->dynamic_state);
 
       radv_bind_vs_input_state(cmd_buffer, graphics_pipeline);
-
-      if (graphics_pipeline->esgs_ring_size > cmd_buffer->esgs_ring_size_needed)
-         cmd_buffer->esgs_ring_size_needed = graphics_pipeline->esgs_ring_size;
-      if (graphics_pipeline->gsvs_ring_size > cmd_buffer->gsvs_ring_size_needed)
-         cmd_buffer->gsvs_ring_size_needed = graphics_pipeline->gsvs_ring_size;
 
       cmd_buffer->scratch_size_per_wave_needed =
          MAX2(cmd_buffer->scratch_size_per_wave_needed, pipeline->scratch_bytes_per_wave);

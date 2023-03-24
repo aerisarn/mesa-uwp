@@ -1411,42 +1411,6 @@ gfx10_emit_ge_pc_alloc(struct radeon_cmdbuf *cs, enum amd_gfx_level gfx_level,
       S_030980_OVERSUB_EN(oversub_pc_lines > 0) | S_030980_NUM_PC_LINES(oversub_pc_lines - 1));
 }
 
-static void
-radv_pipeline_init_legacy_gs_ring_info(const struct radv_device *device,
-                                       struct radv_graphics_pipeline *pipeline,
-                                       const struct radv_legacy_gs_info *gs)
-{
-   const struct radv_physical_device *pdevice = device->physical_device;
-   unsigned num_se = pdevice->rad_info.max_se;
-   unsigned wave_size = 64;
-   unsigned max_gs_waves = 32 * num_se; /* max 32 per SE on GCN */
-   /* On GFX6-GFX7, the value comes from VGT_GS_VERTEX_REUSE = 16.
-    * On GFX8+, the value comes from VGT_VERTEX_REUSE_BLOCK_CNTL = 30 (+2).
-    */
-   unsigned gs_vertex_reuse = (pdevice->rad_info.gfx_level >= GFX8 ? 32 : 16) * num_se;
-   unsigned alignment = 256 * num_se;
-   /* The maximum size is 63.999 MB per SE. */
-   unsigned max_size = ((unsigned)(63.999 * 1024 * 1024) & ~255) * num_se;
-   struct radv_shader_info *gs_info = &pipeline->base.shaders[MESA_SHADER_GEOMETRY]->info;
-
-   /* Calculate the minimum size. */
-   unsigned min_esgs_ring_size =
-      align(gs->vgt_esgs_ring_itemsize * 4 * gs_vertex_reuse * wave_size, alignment);
-   /* These are recommended sizes, not minimum sizes. */
-   unsigned esgs_ring_size =
-      max_gs_waves * 2 * wave_size * gs->vgt_esgs_ring_itemsize * 4 * gs_info->gs.vertices_in;
-   unsigned gsvs_ring_size = max_gs_waves * 2 * wave_size * gs_info->gs.max_gsvs_emit_size;
-
-   min_esgs_ring_size = align(min_esgs_ring_size, alignment);
-   esgs_ring_size = align(esgs_ring_size, alignment);
-   gsvs_ring_size = align(gsvs_ring_size, alignment);
-
-   if (pdevice->rad_info.gfx_level <= GFX8)
-      pipeline->esgs_ring_size = CLAMP(esgs_ring_size, min_esgs_ring_size, max_size);
-
-   pipeline->gsvs_ring_size = MIN2(gsvs_ring_size, max_size);
-}
-
 struct radv_shader *
 radv_get_shader(const struct radv_pipeline *pipeline, gl_shader_stage stage)
 {
@@ -4963,12 +4927,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    if (pipeline->need_null_export_workaround && !blend.spi_shader_col_format) {
       blend.spi_shader_col_format = V_028714_SPI_SHADER_32_R;
       pipeline->col_format_non_compacted = V_028714_SPI_SHADER_32_R;
-   }
-
-   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY) && !radv_pipeline_has_ngg(pipeline)) {
-      struct radv_shader *gs = pipeline->base.shaders[MESA_SHADER_GEOMETRY];
-
-      radv_pipeline_init_legacy_gs_ring_info(device, pipeline, &gs->info.gs_ring_info);
    }
 
    if (!radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH))

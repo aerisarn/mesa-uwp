@@ -2210,8 +2210,6 @@ struct radv_graphics_pipeline {
 
    uint8_t vtx_emit_num;
 
-   unsigned esgs_ring_size;
-   unsigned gsvs_ring_size;
    uint32_t vtx_base_sgpr;
    uint64_t dynamic_states;
    uint64_t needed_dynamic_state;

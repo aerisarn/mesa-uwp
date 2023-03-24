@@ -915,6 +915,40 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
 }
 
 static void
+radv_init_legacy_gs_ring_info(const struct radv_device *device, struct radv_shader_info *gs_info)
+{
+   const struct radv_physical_device *pdevice = device->physical_device;
+   struct radv_legacy_gs_info *gs_ring_info = &gs_info->gs_ring_info;
+   unsigned num_se = pdevice->rad_info.max_se;
+   unsigned wave_size = 64;
+   unsigned max_gs_waves = 32 * num_se; /* max 32 per SE on GCN */
+   /* On GFX6-GFX7, the value comes from VGT_GS_VERTEX_REUSE = 16.
+    * On GFX8+, the value comes from VGT_VERTEX_REUSE_BLOCK_CNTL = 30 (+2).
+    */
+   unsigned gs_vertex_reuse = (pdevice->rad_info.gfx_level >= GFX8 ? 32 : 16) * num_se;
+   unsigned alignment = 256 * num_se;
+   /* The maximum size is 63.999 MB per SE. */
+   unsigned max_size = ((unsigned)(63.999 * 1024 * 1024) & ~255) * num_se;
+
+   /* Calculate the minimum size. */
+   unsigned min_esgs_ring_size =
+      align(gs_ring_info->vgt_esgs_ring_itemsize * 4 * gs_vertex_reuse * wave_size, alignment);
+   /* These are recommended sizes, not minimum sizes. */
+   unsigned esgs_ring_size =
+      max_gs_waves * 2 * wave_size * gs_ring_info->vgt_esgs_ring_itemsize * 4 * gs_info->gs.vertices_in;
+   unsigned gsvs_ring_size = max_gs_waves * 2 * wave_size * gs_info->gs.max_gsvs_emit_size;
+
+   min_esgs_ring_size = align(min_esgs_ring_size, alignment);
+   esgs_ring_size = align(esgs_ring_size, alignment);
+   gsvs_ring_size = align(gsvs_ring_size, alignment);
+
+   if (pdevice->rad_info.gfx_level <= GFX8)
+      gs_ring_info->esgs_ring_size = CLAMP(esgs_ring_size, min_esgs_ring_size, max_size);
+
+   gs_ring_info->gsvs_ring_size = MIN2(gsvs_ring_size, max_size);
+}
+
+static void
 radv_get_legacy_gs_info(const struct radv_device *device, struct radv_pipeline_stage *es_stage,
                         struct radv_pipeline_stage *gs_stage)
 {
@@ -1019,6 +1053,8 @@ radv_get_legacy_gs_info(const struct radv_device *device, struct radv_pipeline_s
       es_verts_per_subgroup, gs_inst_prims_in_subgroup);
    es_info->workgroup_size = workgroup_size;
    gs_info->workgroup_size = workgroup_size;
+
+   radv_init_legacy_gs_ring_info(device, &gs_stage->info);
 }
 
 static void
