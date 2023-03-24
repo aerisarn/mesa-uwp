@@ -5519,6 +5519,9 @@ radv_CreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uin
 static uint32_t
 radv_get_executable_count(struct radv_pipeline *pipeline)
 {
+   if (pipeline->type == RADV_PIPELINE_RAY_TRACING)
+      return 1;
+
    uint32_t ret = 0;
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
       if (!pipeline->shaders[i])
@@ -5538,6 +5541,11 @@ static struct radv_shader *
 radv_get_shader_from_executable_index(struct radv_pipeline *pipeline, int index,
                                       gl_shader_stage *stage)
 {
+   if (pipeline->type == RADV_PIPELINE_RAY_TRACING) {
+      *stage = MESA_SHADER_RAYGEN;
+      return pipeline->shaders[*stage];
+   }
+
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
       if (!pipeline->shaders[i])
          continue;
