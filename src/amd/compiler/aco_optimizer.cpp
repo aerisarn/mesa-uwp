@@ -3977,10 +3977,10 @@ combine_mad_mix(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          continue;
 
       Instruction* conv = ctx.info[tmp.id()].instr;
-      if (conv->isSDWA() && (conv->sdwa().dst_sel.size() != 4 || conv->sdwa().sel[0].size() != 2 ||
-                             conv->sdwa().clamp || conv->sdwa().omod)) {
+      if (conv->valu().clamp || conv->valu().omod) {
          continue;
-      } else if (conv->isVOP3() && (conv->valu().clamp || conv->valu().omod)) {
+      } else if (conv->isSDWA() &&
+                 (conv->sdwa().dst_sel.size() != 4 || conv->sdwa().sel[0].size() != 2)) {
          continue;
       } else if (conv->isDPP()) {
          continue;
@@ -4010,9 +4010,11 @@ combine_mad_mix(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       instr->operands[i].setTemp(conv->operands[0].getTemp());
       if (conv->definitions[0].isPrecise())
          instr->definitions[0].setPrecise(true);
-      instr->valu().opsel_hi[i] ^= true;
+      instr->valu().opsel_hi[i] = true;
       if (conv->isSDWA() && conv->sdwa().sel[0].offset() == 2)
          instr->valu().opsel_lo[i] = true;
+      else
+         instr->valu().opsel_lo[i] = conv->valu().opsel[0];
       bool neg = conv->valu().neg[0];
       bool abs = conv->valu().abs[0];
       if (!instr->valu().abs[i]) {
