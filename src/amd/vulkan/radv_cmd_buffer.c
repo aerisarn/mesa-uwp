@@ -6395,6 +6395,10 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
 
       cmd_buffer->state.rt_pipeline = rt_pipeline;
       cmd_buffer->push_constant_stages |= RADV_RT_STAGE_BITS;
+
+      /* Bind the stack size when it's not dynamic. */
+      if (rt_pipeline->stack_size != -1u)
+         cmd_buffer->state.rt_stack_size = rt_pipeline->stack_size;
       break;
    }
    case VK_PIPELINE_BIND_POINT_GRAPHICS: {
@@ -10001,12 +10005,9 @@ radv_trace_rays(struct radv_cmd_buffer *cmd_buffer, const VkTraceRaysIndirectCom
    uint32_t scratch_bytes_per_wave = pipeline->base.scratch_bytes_per_wave;
    const struct radv_shader *compute_shader = pipeline->base.shaders[MESA_SHADER_COMPUTE];
    uint32_t wave_size = compute_shader->info.wave_size;
-   uint32_t stack_size = cmd_buffer->state.rt_pipeline->stack_size;
-   if (stack_size == -1u)
-      stack_size = cmd_buffer->state.rt_stack_size; /* dynamic stack size */
 
    /* The hardware register is specified as a multiple of 256 DWORDS. */
-   scratch_bytes_per_wave += align(stack_size * wave_size, 1024);
+   scratch_bytes_per_wave += align(cmd_buffer->state.rt_stack_size * wave_size, 1024);
 
    cmd_buffer->compute_scratch_size_per_wave_needed =
       MAX2(cmd_buffer->compute_scratch_size_per_wave_needed, scratch_bytes_per_wave);
