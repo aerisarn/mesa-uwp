@@ -971,14 +971,11 @@ zink_draw_vertex_state(struct pipe_context *pctx,
                                 VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
    if (!ctx->unordered_blitting)
       res->obj->unordered_read = false;
-   struct zink_vertex_elements_hw_state *hw_state = ctx->gfx_pipeline_state.element_state;
-   ctx->gfx_pipeline_state.element_state = &((struct zink_vertex_state*)vstate)->velems.hw_state;
    zink_bind_vertex_state(ctx, vstate, partial_velem_mask);
 
    zink_draw<HAS_MULTIDRAW, DYNAMIC_STATE, BATCH_CHANGED, true>(pctx, &dinfo, 0, NULL, draws, num_draws, vstate, partial_velem_mask);
    /* ensure ctx->vertex_buffers gets rebound on next non-vstate draw */
    ctx->vertex_buffers_dirty = true;
-   ctx->gfx_pipeline_state.element_state = hw_state;
 
    if (info.take_vertex_state_ownership)
       pipe_vertex_state_reference(&vstate, NULL);
