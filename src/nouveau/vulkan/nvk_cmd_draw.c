@@ -1594,7 +1594,6 @@ nvk_mme_build_set_draw_params(struct mme_builder *b,
 
 static void
 nvk_mme_build_draw(struct mme_builder *b,
-                   struct mme_value begin,
                    struct mme_value draw_idx)
 {
    /* These are in VkDrawIndirectCommand order */
@@ -1612,10 +1611,7 @@ nvk_mme_build_draw(struct mme_builder *b,
 
    mme_free_reg(b, first_instance);
 
-   /* Make a copy of begin because this helper may be called inside an MME loop
-    * (i.e. indirect draws) and we're going to modify the value of begin below.
-    */
-   begin = mme_mov(b, begin);
+   struct mme_value begin = nvk_mme_load_scratch(b, DRAW_BEGIN);
 
    mme_loop(b, instance_count) {
       /* The loop count in consumed at the beginning of the loop so we can
@@ -1644,9 +1640,9 @@ nvk_mme_build_draw(struct mme_builder *b,
 void
 nvk_mme_draw(struct mme_builder *b)
 {
-   struct mme_value begin = mme_load(b);
+   nvk_mme_load_to_scratch(b, DRAW_BEGIN);
 
-   nvk_mme_build_draw(b, begin, mme_zero());
+   nvk_mme_build_draw(b, mme_zero());
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -1681,7 +1677,6 @@ nvk_CmdDraw(VkCommandBuffer commandBuffer,
 
 static void
 nvk_mme_build_draw_indexed(struct mme_builder *b,
-                           struct mme_value begin,
                            struct mme_value draw_idx)
 {
    /* These are in VkDrawIndexedIndirectCommand order */
@@ -1702,10 +1697,7 @@ nvk_mme_build_draw_indexed(struct mme_builder *b,
    mme_free_reg(b, vertex_offset);
    mme_free_reg(b, first_instance);
 
-   /* Make a copy of begin because this helper may be called inside an MME loop
-    * (i.e. indirect draws) and we're going to modify the value of begin below.
-    */
-   begin = mme_mov(b, begin);
+   struct mme_value begin = nvk_mme_load_scratch(b, DRAW_BEGIN);
 
    mme_loop(b, instance_count) {
       /* The loop count in consumed at the beginning of the loop so we can
@@ -1734,9 +1726,9 @@ nvk_mme_build_draw_indexed(struct mme_builder *b,
 void
 nvk_mme_draw_indexed(struct mme_builder *b)
 {
-   struct mme_value begin = mme_load(b);
+   nvk_mme_load_to_scratch(b, DRAW_BEGIN);
 
-   nvk_mme_build_draw_indexed(b, begin, mme_zero());
+   nvk_mme_build_draw_indexed(b, mme_zero());
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -1793,7 +1785,7 @@ nvk_mme_fill(struct mme_builder *b, uint16_t idx)
 void
 nvk_mme_draw_indirect(struct mme_builder *b)
 {
-   struct mme_value begin = mme_load(b);
+   nvk_mme_load_to_scratch(b, DRAW_BEGIN);
 
    if (b->devinfo->cls_eng3d >= TURING_A) {
       struct mme_value64 draw_addr = mme_load_addr64(b);
@@ -1804,7 +1796,7 @@ nvk_mme_draw_indirect(struct mme_builder *b)
       mme_while(b, ult, draw, draw_count) {
          mme_tu104_read_fifoed(b, draw_addr, mme_imm(4));
 
-         nvk_mme_build_draw(b, begin, draw);
+         nvk_mme_build_draw(b, draw);
 
          mme_add_to(b, draw, draw, mme_imm(1));
          mme_add64_to(b, draw_addr, draw_addr, mme_value64(stride, mme_zero()));
@@ -1821,7 +1813,7 @@ nvk_mme_draw_indirect(struct mme_builder *b)
          nvk_mme_spill(b, 1, draw_count);
          mme_free_reg(b, draw_count);
 
-         nvk_mme_build_draw(b, begin, draw);
+         nvk_mme_build_draw(b, draw);
          mme_add_to(b, draw, draw, mme_imm(1));
 
          pad_dw = nvk_mme_fill(b, 0);
@@ -1914,7 +1906,7 @@ nvk_CmdDrawIndirect(VkCommandBuffer commandBuffer,
 void
 nvk_mme_draw_indexed_indirect(struct mme_builder *b)
 {
-   struct mme_value begin = mme_load(b);
+   nvk_mme_load_to_scratch(b, DRAW_BEGIN);
 
    if (b->devinfo->cls_eng3d >= TURING_A) {
       struct mme_value64 draw_addr = mme_load_addr64(b);
@@ -1925,7 +1917,7 @@ nvk_mme_draw_indexed_indirect(struct mme_builder *b)
       mme_while(b, ult, draw, draw_count) {
          mme_tu104_read_fifoed(b, draw_addr, mme_imm(5));
 
-         nvk_mme_build_draw_indexed(b, begin, draw);
+         nvk_mme_build_draw_indexed(b, draw);
 
          mme_add_to(b, draw, draw, mme_imm(1));
          mme_add64_to(b, draw_addr, draw_addr, mme_value64(stride, mme_zero()));
@@ -1942,7 +1934,7 @@ nvk_mme_draw_indexed_indirect(struct mme_builder *b)
          nvk_mme_spill(b, 1, draw_count);
          mme_free_reg(b, draw_count);
 
-         nvk_mme_build_draw_indexed(b, begin, draw);
+         nvk_mme_build_draw_indexed(b, draw);
          mme_add_to(b, draw, draw, mme_imm(1));
 
          pad_dw = nvk_mme_fill(b, 0);
@@ -2038,7 +2030,8 @@ nvk_mme_draw_indirect_count(struct mme_builder *b)
    if (b->devinfo->cls_eng3d < TURING_A)
       return;
 
-   struct mme_value begin = mme_load(b);
+   nvk_mme_load_to_scratch(b, DRAW_BEGIN);
+
    struct mme_value64 draw_addr = mme_load_addr64(b);
    struct mme_value64 draw_count_addr = mme_load_addr64(b);
    struct mme_value draw_max = mme_load(b);
@@ -2057,7 +2050,7 @@ nvk_mme_draw_indirect_count(struct mme_builder *b)
    mme_while(b, ult, draw, draw_max) {
       mme_tu104_read_fifoed(b, draw_addr, mme_imm(4));
 
-      nvk_mme_build_draw(b, begin, draw);
+      nvk_mme_build_draw(b, draw);
 
       mme_add_to(b, draw, draw, mme_imm(1));
       mme_add64_to(b, draw_addr, draw_addr, mme_value64(stride, mme_zero()));
@@ -2114,7 +2107,8 @@ nvk_mme_draw_indexed_indirect_count(struct mme_builder *b)
    if (b->devinfo->cls_eng3d < TURING_A)
       return;
 
-   struct mme_value begin = mme_load(b);
+   nvk_mme_load_to_scratch(b, DRAW_BEGIN);
+
    struct mme_value64 draw_addr = mme_load_addr64(b);
    struct mme_value64 draw_count_addr = mme_load_addr64(b);
    struct mme_value draw_max = mme_load(b);
@@ -2133,7 +2127,7 @@ nvk_mme_draw_indexed_indirect_count(struct mme_builder *b)
    mme_while(b, ult, draw, draw_max) {
       mme_tu104_read_fifoed(b, draw_addr, mme_imm(5));
 
-      nvk_mme_build_draw_indexed(b, begin, draw);
+      nvk_mme_build_draw_indexed(b, draw);
 
       mme_add_to(b, draw, draw, mme_imm(1));
       mme_add64_to(b, draw_addr, draw_addr, mme_value64(stride, mme_zero()));
@@ -2187,7 +2181,8 @@ nvk_CmdDrawIndexedIndirectCount(VkCommandBuffer commandBuffer,
 void
 nvk_mme_xfb_draw_indirect(struct mme_builder *b)
 {
-   struct mme_value begin = mme_load(b);
+   nvk_mme_load_to_scratch(b, DRAW_BEGIN);
+
    struct mme_value instance_count = mme_load(b);
    struct mme_value first_instance = mme_load(b);
 
@@ -2205,6 +2200,8 @@ nvk_mme_xfb_draw_indirect(struct mme_builder *b)
    nvk_mme_build_set_draw_params(b, &params);
 
    mme_free_reg(b, first_instance);
+
+   struct mme_value begin = nvk_mme_load_scratch(b, DRAW_BEGIN);
 
    mme_loop(b, instance_count) {
       mme_mthd(b, NV9097_BEGIN);
