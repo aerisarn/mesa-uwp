@@ -1330,8 +1330,11 @@ static LLVMValueRef ac_build_buffer_load_common(struct ac_llvm_context *ctx, LLV
       snprintf(name, sizeof(name), "llvm.amdgcn.%s.buffer.load.%s", indexing_kind, type_name);
    }
 
-   return ac_build_intrinsic(ctx, name, type, args, idx,
-                             can_speculate ? AC_ATTR_INVARIANT_LOAD : 0);
+   LLVMValueRef result = ac_build_intrinsic(ctx, name, type, args, idx,
+                                            can_speculate ? AC_ATTR_INVARIANT_LOAD : 0);
+   if (func > num_channels)
+      result = ac_trim_vector(ctx, result, num_channels);
+   return result;
 }
 
 LLVMValueRef ac_build_buffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc, int num_channels,
@@ -1369,8 +1372,6 @@ LLVMValueRef ac_build_buffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc
       if (num_channels == 1)
          return result[0];
 
-      if (num_channels == 3 && !ac_has_vec3_support(ctx->gfx_level, false))
-         result[num_channels++] = LLVMGetUndef(channel_type);
       return ac_build_gather_values(ctx, result, num_channels);
    }
 
