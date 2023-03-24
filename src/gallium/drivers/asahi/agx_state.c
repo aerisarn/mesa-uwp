@@ -508,14 +508,7 @@ agx_create_sampler_state(struct pipe_context *pctx,
       cfg.pixel_coordinates = state->unnormalized_coords;
       cfg.compare_func = agx_compare_funcs[state->compare_func];
       cfg.compare_enable = state->compare_mode == PIPE_TEX_COMPARE_R_TO_TEXTURE;
-
-      /* Only support seamless cube maps if we advertise GLES3. Works around a
-       * mesa/st bug where seamless_cube_map is set in GLES2 contrary to the
-       * spec. When we advertise GLES3, this check can be removed.
-       */
-      cfg.seamful_cube_maps =
-         !(agx_device(pctx->screen)->debug & AGX_DBG_DEQP) ||
-         !state->seamless_cube_map;
+      cfg.seamful_cube_maps = !state->seamless_cube_map;
 
       if (state->border_color_format != PIPE_FORMAT_NONE) {
          /* TODO: Optimize to use compact descriptors for black/white borders */
