@@ -3497,11 +3497,10 @@ radv_emit_guardband_state(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    unsigned rast_prim;
 
-   if (!(pipeline->dynamic_states & RADV_DYNAMIC_PRIMITIVE_TOPOLOGY) ||
-       (pipeline->active_stages & (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
-                                   VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
-                                   VK_SHADER_STAGE_GEOMETRY_BIT |
-                                   VK_SHADER_STAGE_MESH_BIT_EXT))) {
+   if (pipeline->active_stages & (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+                                  VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
+                                  VK_SHADER_STAGE_GEOMETRY_BIT |
+                                  VK_SHADER_STAGE_MESH_BIT_EXT)) {
       /* Ignore dynamic primitive topology for TES/GS/MS stages. */
       rast_prim = pipeline->rast_prim;
    } else {
