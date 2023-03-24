@@ -68,6 +68,7 @@ enum {
    RADV_DEBUG_DUMP_EPILOGS = 1ull << 37,
    RADV_DEBUG_NO_FMASK = 1ull << 38,
    RADV_DEBUG_SHADOW_REGS = 1ull << 39,
+   RADV_DEBUG_EXTRA_MD = 1ull << 40,
 };
 
 enum {

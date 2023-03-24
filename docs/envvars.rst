@@ -1063,6 +1063,8 @@ RADV driver environment variables
       validate the LLVM IR before LLVM compiles the shader
    ``epilogs``
       dump fragment shader epilogs
+   ``extra_md``
+      add extra information in bo metadatas to help tools (umr)
    ``forcecompress``
       Enables DCC,FMASK,CMASK,HTILE in situations where the driver supports it
       but normally does not deem it beneficial.

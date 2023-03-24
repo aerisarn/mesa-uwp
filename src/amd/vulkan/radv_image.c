@@ -1443,7 +1443,7 @@ radv_query_opaque_metadata(struct radv_device *device, struct radv_image *image,
 
    ac_surface_compute_umd_metadata(&device->physical_device->rad_info, &image->planes[0].surface,
                                    image->info.levels, desc, &md->size_metadata, md->metadata,
-                                   false);
+                                   device->instance->debug_flags & RADV_DEBUG_EXTRA_MD);
 }
 
 void
