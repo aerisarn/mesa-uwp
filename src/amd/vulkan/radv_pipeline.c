@@ -476,15 +476,9 @@ radv_pipeline_init_multisample_state(const struct radv_device *device,
     *
     * Otherwise, sample shading is considered disabled."
     */
-   if (pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.uses_sample_shading ||
-       (state->ms && state->ms->sample_shading_enable)) {
-      if (pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.uses_sample_shading) {
-         ms->min_sample_shading = 1.0f;
-      } else {
-         ms->min_sample_shading = state->ms->min_sample_shading;
-      }
-
+   if (state->ms && state->ms->sample_shading_enable) {
       ms->sample_shading_enable = true;
+      ms->min_sample_shading = state->ms->min_sample_shading;
    }
 
    pipeline->pa_sc_mode_cntl_1 =

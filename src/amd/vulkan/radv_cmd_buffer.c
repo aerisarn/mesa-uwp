@@ -6250,7 +6250,12 @@ static void
 radv_bind_multisample_state(struct radv_cmd_buffer *cmd_buffer,
                             const struct radv_multisample_state *ms)
 {
-   cmd_buffer->state.ms = *ms;
+   if (ms->sample_shading_enable) {
+      cmd_buffer->state.ms.sample_shading_enable = true;
+      cmd_buffer->state.ms.min_sample_shading = ms->min_sample_shading;
+   }
+
+   cmd_buffer->state.ms.uses_user_sample_locations = ms->uses_user_sample_locations;
 }
 
 static void
@@ -6340,6 +6345,10 @@ radv_bind_fragment_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_
    if (radv_get_user_sgpr(ps, AC_UD_PS_NUM_SAMPLES)->sgpr_idx != -1) {
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
    }
+
+   cmd_buffer->state.ms.sample_shading_enable = ps->info.ps.uses_sample_shading;
+   if (ps->info.ps.uses_sample_shading)
+      cmd_buffer->state.ms.min_sample_shading = 1.0f;
 }
 
 static void
