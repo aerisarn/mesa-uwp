@@ -4142,9 +4142,9 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
       if (mul_instr->operands[0].isLiteral())
          return;
-      if (mul_instr->isVOP3() && mul_instr->valu().clamp)
+      if (mul_instr->valu().clamp)
          return;
-      if (mul_instr->isSDWA() || mul_instr->isDPP() || mul_instr->isVOP3P())
+      if (mul_instr->isSDWA() || mul_instr->isDPP())
          return;
       if (mul_instr->opcode == aco_opcode::v_mul_legacy_f32 &&
           ctx.fp_mode.preserve_signed_zero_inf_nan32)
@@ -4157,20 +4157,19 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       Definition def = instr->definitions[0];
       bool is_neg = ctx.info[instr->definitions[0].tempId()].is_neg();
       bool is_abs = ctx.info[instr->definitions[0].tempId()].is_abs();
-      instr.reset(
-         create_instruction<VALU_instruction>(mul_instr->opcode, asVOP3(Format::VOP2), 2, 1));
-      instr->operands[0] = mul_instr->operands[0];
-      instr->operands[1] = mul_instr->operands[1];
+      Format format = mul_instr->format == Format::VOP2 ? asVOP3(Format::VOP2) : mul_instr->format;
+      instr.reset(create_instruction<VALU_instruction>(mul_instr->opcode, format,
+                                                       mul_instr->operands.size(), 1));
+      std::copy(mul_instr->operands.cbegin(), mul_instr->operands.cend(), instr->operands.begin());
       instr->definitions[0] = def;
       VALU_instruction& new_mul = instr->valu();
-      if (mul_instr->isVOP3()) {
-         VALU_instruction& mul = mul_instr->valu();
-         new_mul.neg[0] = mul.neg[0];
-         new_mul.neg[1] = mul.neg[1];
-         new_mul.abs[0] = mul.abs[0];
-         new_mul.abs[1] = mul.abs[1];
-         new_mul.omod = mul.omod;
-      }
+      VALU_instruction& mul = mul_instr->valu();
+      new_mul.neg = mul.neg;
+      new_mul.abs = mul.abs;
+      new_mul.omod = mul.omod;
+      new_mul.opsel = mul.opsel;
+      new_mul.opsel_lo = mul.opsel_lo;
+      new_mul.opsel_hi = mul.opsel_hi;
       if (is_abs) {
          new_mul.neg[0] = new_mul.neg[1] = false;
          new_mul.abs[0] = new_mul.abs[1] = true;
