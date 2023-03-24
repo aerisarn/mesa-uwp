@@ -3876,8 +3876,8 @@ radv_pipeline_emit_hw_ngg(const struct radv_device *device, struct radeon_cmdbuf
     *
     * Requirement: GE_CNTL.VERT_GRP_SIZE = VGT_GS_ONCHIP_CNTL.ES_VERTS_PER_SUBGRP - 5
     */
-   if (pdevice->rad_info.gfx_level == GFX10 &&
-       !radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL) && ngg_state->hw_max_esverts != 256) {
+   if (pdevice->rad_info.gfx_level == GFX10 && es_type != MESA_SHADER_TESS_EVAL &&
+       ngg_state->hw_max_esverts != 256) {
       ge_cntl &= C_03096C_VERT_GRP_SIZE;
 
       if (ngg_state->hw_max_esverts > 5) {
