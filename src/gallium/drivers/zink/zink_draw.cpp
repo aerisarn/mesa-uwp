@@ -164,9 +164,9 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
 }
 
 static void
-zink_bind_vertex_state(struct zink_batch *batch, struct zink_context *ctx,
-                       struct pipe_vertex_state *vstate, uint32_t partial_velem_mask)
+zink_bind_vertex_state(struct zink_context *ctx, struct pipe_vertex_state *vstate, uint32_t partial_velem_mask)
 {
+   VkCommandBuffer cmdbuf = ctx->batch.state->cmdbuf;
    if (!vstate->input.vbuffer.buffer.resource)
       return;
 
@@ -176,11 +176,11 @@ zink_bind_vertex_state(struct zink_batch *batch, struct zink_context *ctx,
    struct zink_resource *res = zink_resource(vstate->input.vbuffer.buffer.resource);
    zink_batch_resource_usage_set(&ctx->batch, res, false, true);
    VkDeviceSize offset = vstate->input.vbuffer.buffer_offset;
-   VKCTX(CmdBindVertexBuffers)(batch->state->cmdbuf, 0,
+   VKCTX(CmdBindVertexBuffers)(cmdbuf, 0,
                                hw_state->num_bindings,
                                &res->obj->buffer, &offset);
 
-   VKCTX(CmdSetVertexInputEXT)(batch->state->cmdbuf,
+   VKCTX(CmdSetVertexInputEXT)(cmdbuf,
                                hw_state->num_bindings, hw_state->dynbindings,
                                hw_state->num_attribs, hw_state->dynattribs);
 }
@@ -721,13 +721,13 @@ zink_draw(struct pipe_context *pctx,
    }
    ctx->blend_state_changed = false;
 
-   if (DRAW_STATE)
-      zink_bind_vertex_state(batch, ctx, vstate, partial_velem_mask);
-   else if (BATCH_CHANGED || ctx->vertex_buffers_dirty) {
-      if (DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT || ctx->gfx_pipeline_state.uses_dynamic_stride)
-         zink_bind_vertex_buffers<DYNAMIC_STATE>(batch, ctx);
-      else
-         zink_bind_vertex_buffers<ZINK_NO_DYNAMIC_STATE>(batch, ctx);
+   if (!DRAW_STATE) {
+      if (BATCH_CHANGED || ctx->vertex_buffers_dirty) {
+         if (DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT || ctx->gfx_pipeline_state.uses_dynamic_stride)
+            zink_bind_vertex_buffers<DYNAMIC_STATE>(batch, ctx);
+         else
+            zink_bind_vertex_buffers<ZINK_NO_DYNAMIC_STATE>(batch, ctx);
+      }
    }
 
    if (BATCH_CHANGED) {
@@ -972,6 +972,7 @@ zink_draw_vertex_state(struct pipe_context *pctx,
       res->obj->unordered_read = false;
    struct zink_vertex_elements_hw_state *hw_state = ctx->gfx_pipeline_state.element_state;
    ctx->gfx_pipeline_state.element_state = &((struct zink_vertex_state*)vstate)->velems.hw_state;
+   zink_bind_vertex_state(ctx, vstate, partial_velem_mask);
 
    zink_draw<HAS_MULTIDRAW, DYNAMIC_STATE, BATCH_CHANGED, true>(pctx, &dinfo, 0, NULL, draws, num_draws, vstate, partial_velem_mask);
    /* ensure ctx->vertex_buffers gets rebound on next non-vstate draw */
