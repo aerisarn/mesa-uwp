@@ -735,7 +735,6 @@ zink_create_vertex_state(struct pipe_screen *pscreen,
                           uint32_t full_velem_mask)
 {
    struct zink_vertex_state *zstate = CALLOC_STRUCT(zink_vertex_state);
-   _mesa_set_init(&zstate->masks, NULL, NULL, _mesa_key_pointer_equal);
 
    util_init_pipe_vertex_state(pscreen, buffer, elements, num_elements, indexbuf, full_velem_mask,
                                &zstate->b);
@@ -759,8 +758,6 @@ zink_create_vertex_state(struct pipe_screen *pscreen,
 void
 zink_vertex_state_destroy(struct pipe_screen *pscreen, struct pipe_vertex_state *vstate)
 {
-   struct zink_vertex_state *zstate = (struct zink_vertex_state *)vstate;
-   ralloc_free(zstate->masks.table);
    pipe_vertex_buffer_unreference(&vstate->input.vbuffer);
    pipe_resource_reference(&vstate->input.indexbuf, NULL);
    FREE(vstate);

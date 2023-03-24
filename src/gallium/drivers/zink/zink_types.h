@@ -292,7 +292,6 @@ struct zink_vertex_elements_state {
 struct zink_vertex_state {
    struct pipe_vertex_state b;
    struct zink_vertex_elements_state velems;
-   struct set masks;
 };
 
 struct zink_rasterizer_hw_state {

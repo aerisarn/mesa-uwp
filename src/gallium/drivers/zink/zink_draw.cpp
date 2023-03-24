@@ -929,55 +929,50 @@ zink_draw_vbo(struct pipe_context *pctx,
 }
 
 template <util_popcnt HAS_POPCNT>
-static const struct zink_vertex_elements_hw_state *
-zink_vertex_state_mask(struct pipe_vertex_state *vstate, uint32_t partial_velem_mask)
+static void
+zink_vertex_state_mask(struct zink_context *ctx, struct pipe_vertex_state *vstate, uint32_t partial_velem_mask)
 {
    struct zink_vertex_state *zstate = (struct zink_vertex_state *)vstate;
+   VkCommandBuffer cmdbuf = ctx->batch.state->cmdbuf;
 
-   if (partial_velem_mask == vstate->input.full_velem_mask)
-      return &zstate->velems.hw_state;
-   bool found;
-   struct set_entry *he = _mesa_set_search_or_add_pre_hashed(&zstate->masks, partial_velem_mask, (void*)(uintptr_t)partial_velem_mask, &found);
-   if (found)
-      return (const struct zink_vertex_elements_hw_state *)he->key;
+   if (partial_velem_mask == vstate->input.full_velem_mask) {
+      VKCTX(CmdSetVertexInputEXT)(cmdbuf,
+                                 zstate->velems.hw_state.num_bindings, zstate->velems.hw_state.dynbindings,
+                                 zstate->velems.hw_state.num_attribs, zstate->velems.hw_state.dynattribs);
+      return;
+   }
 
-   struct zink_vertex_elements_hw_state *hw_state = rzalloc(zstate->masks.table, struct zink_vertex_elements_hw_state);
-   unsigned i = 0;
+   VkVertexInputAttributeDescription2EXT dynattribs[PIPE_MAX_ATTRIBS];
+   unsigned num_attribs = 0;
    u_foreach_bit(elem, vstate->input.full_velem_mask & partial_velem_mask) {
       unsigned idx = util_bitcount_fast<HAS_POPCNT>(vstate->input.full_velem_mask & BITFIELD_MASK(elem));
-      hw_state->dynattribs[i] = zstate->velems.hw_state.dynattribs[idx];
-      hw_state->dynattribs[i].location = i;
-      i++;
+      dynattribs[num_attribs] = zstate->velems.hw_state.dynattribs[idx];
+      dynattribs[num_attribs].location = num_attribs;
+      num_attribs++;
    }
-   memcpy(hw_state->dynbindings, zstate->velems.hw_state.dynbindings,
-            zstate->velems.hw_state.num_bindings * sizeof(VkVertexInputBindingDescription2EXT));
-   hw_state->num_attribs = i;
-   hw_state->num_bindings = zstate->velems.hw_state.num_bindings;
-   he->key = hw_state;
-   return hw_state;
+
+   VKCTX(CmdSetVertexInputEXT)(cmdbuf,
+                               zstate->velems.hw_state.num_bindings, zstate->velems.hw_state.dynbindings,
+                               num_attribs, dynattribs);
 }
 
 template <util_popcnt HAS_POPCNT>
 static void
 zink_bind_vertex_state(struct zink_context *ctx, struct pipe_vertex_state *vstate, uint32_t partial_velem_mask)
 {
+   struct zink_vertex_state *zstate = (struct zink_vertex_state *)vstate;
    VkCommandBuffer cmdbuf = ctx->batch.state->cmdbuf;
    if (!vstate->input.vbuffer.buffer.resource)
       return;
 
-   const struct zink_vertex_elements_hw_state *hw_state = zink_vertex_state_mask<HAS_POPCNT>(vstate, partial_velem_mask);
-   assert(hw_state);
+   zink_vertex_state_mask<HAS_POPCNT>(ctx, vstate, partial_velem_mask);
 
    struct zink_resource *res = zink_resource(vstate->input.vbuffer.buffer.resource);
    zink_batch_resource_usage_set(&ctx->batch, res, false, true);
    VkDeviceSize offset = vstate->input.vbuffer.buffer_offset;
    VKCTX(CmdBindVertexBuffers)(cmdbuf, 0,
-                               hw_state->num_bindings,
+                               zstate->velems.hw_state.num_bindings,
                                &res->obj->buffer, &offset);
-
-   VKCTX(CmdSetVertexInputEXT)(cmdbuf,
-                               hw_state->num_bindings, hw_state->dynbindings,
-                               hw_state->num_attribs, hw_state->dynattribs);
 }
 
 template <zink_multidraw HAS_MULTIDRAW, zink_dynamic_state DYNAMIC_STATE, util_popcnt HAS_POPCNT, bool BATCH_CHANGED>
