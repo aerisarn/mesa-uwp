@@ -212,7 +212,10 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
          pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, &gkey->pipeline, 1, okey->pipeline, false);
       } else {
          /* optimize by default only when expecting precompiles in order to reduce stuttering */
-         pipeline = zink_create_gfx_pipeline(screen, prog, state, state->element_state->binding_map, vkmode, !HAVE_LIB);
+         if (DYNAMIC_STATE != ZINK_DYNAMIC_VERTEX_INPUT2 && DYNAMIC_STATE != ZINK_DYNAMIC_VERTEX_INPUT)
+            pipeline = zink_create_gfx_pipeline(screen, prog, state, state->element_state->binding_map, vkmode, !HAVE_LIB);
+         else
+            pipeline = zink_create_gfx_pipeline(screen, prog, state, NULL, vkmode, !HAVE_LIB);
       }
       if (pipeline == VK_NULL_HANDLE)
          return VK_NULL_HANDLE;
