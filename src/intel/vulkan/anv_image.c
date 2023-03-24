@@ -819,6 +819,11 @@ add_video_buffers(struct anv_device *device,
          unsigned h_mb = DIV_ROUND_UP(image->vk.extent.height, ANV_MB_HEIGHT);
          size = w_mb * h_mb * 128;
       }
+      else if (profile_list->pProfiles[i].videoCodecOperation == VK_VIDEO_CODEC_OPERATION_DECODE_H265_BIT_KHR) {
+         unsigned w_mb = DIV_ROUND_UP(image->vk.extent.width, 32);
+         unsigned h_mb = DIV_ROUND_UP(image->vk.extent.height, 32);
+         size = ALIGN(w_mb * h_mb, 2) << 6;
+      }
    }
 
    if (size == 0)
