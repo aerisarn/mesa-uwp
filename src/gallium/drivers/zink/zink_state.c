@@ -773,8 +773,9 @@ zink_vertex_state_mask(struct pipe_vertex_state *vstate, uint32_t partial_velem_
 
    if (partial_velem_mask == vstate->input.full_velem_mask)
       return &zstate->velems.hw_state;
-   struct set_entry *he = _mesa_set_search_pre_hashed(&zstate->masks, partial_velem_mask, (void*)(uintptr_t)partial_velem_mask);
-   if (he)
+   bool found;
+   struct set_entry *he = _mesa_set_search_or_add_pre_hashed(&zstate->masks, partial_velem_mask, (void*)(uintptr_t)partial_velem_mask, &found);
+   if (found)
       return he->key;
 
    struct zink_vertex_elements_hw_state *hw_state = rzalloc(zstate->masks.table, struct zink_vertex_elements_hw_state);
@@ -792,7 +793,7 @@ zink_vertex_state_mask(struct pipe_vertex_state *vstate, uint32_t partial_velem_
    }
    hw_state->num_attribs = i;
    hw_state->num_bindings = zstate->velems.hw_state.num_bindings;
-   _mesa_set_add_pre_hashed(&zstate->masks, partial_velem_mask, hw_state);
+   he->key = hw_state;
    return hw_state;
 }
 
