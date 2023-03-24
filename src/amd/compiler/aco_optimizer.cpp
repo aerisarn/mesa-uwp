@@ -1803,8 +1803,6 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    case aco_opcode::p_as_uniform:
       if (instr->definitions[0].isFixed()) {
          /* don't copy-propagate copies into fixed registers */
-      } else if (instr->usesModifiers()) {
-         // TODO
       } else if (instr->operands[0].isConstant()) {
          ctx.info[instr->definitions[0].tempId()].set_constant(
             ctx.program->gfx_level, instr->operands[0].constantValue64());
