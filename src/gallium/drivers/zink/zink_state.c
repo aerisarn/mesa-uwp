@@ -766,37 +766,6 @@ zink_vertex_state_destroy(struct pipe_screen *pscreen, struct pipe_vertex_state 
    FREE(vstate);
 }
 
-const struct zink_vertex_elements_hw_state *
-zink_vertex_state_mask(struct pipe_vertex_state *vstate, uint32_t partial_velem_mask, bool have_EXT_vertex_input_dynamic_state)
-{
-   struct zink_vertex_state *zstate = (struct zink_vertex_state *)vstate;
-
-   if (partial_velem_mask == vstate->input.full_velem_mask)
-      return &zstate->velems.hw_state;
-   bool found;
-   struct set_entry *he = _mesa_set_search_or_add_pre_hashed(&zstate->masks, partial_velem_mask, (void*)(uintptr_t)partial_velem_mask, &found);
-   if (found)
-      return he->key;
-
-   struct zink_vertex_elements_hw_state *hw_state = rzalloc(zstate->masks.table, struct zink_vertex_elements_hw_state);
-   unsigned i = 0;
-   if (have_EXT_vertex_input_dynamic_state) {
-      u_foreach_bit(elem, vstate->input.full_velem_mask & partial_velem_mask) {
-         unsigned idx = util_bitcount(vstate->input.full_velem_mask & BITFIELD_MASK(elem));
-         hw_state->dynattribs[i] = zstate->velems.hw_state.dynattribs[idx];
-         hw_state->dynattribs[i].location = i;
-         i++;
-      }
-      memcpy(hw_state->dynbindings, zstate->velems.hw_state.dynbindings,
-             zstate->velems.hw_state.num_bindings * sizeof(VkVertexInputBindingDescription2EXT));
-   } else {
-   }
-   hw_state->num_attribs = i;
-   hw_state->num_bindings = zstate->velems.hw_state.num_bindings;
-   he->key = hw_state;
-   return hw_state;
-}
-
 struct pipe_vertex_state *
 zink_cache_create_vertex_state(struct pipe_screen *pscreen,
                                struct pipe_vertex_buffer *buffer,
