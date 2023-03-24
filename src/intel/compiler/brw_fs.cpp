@@ -6445,10 +6445,12 @@ fs_visitor::fixup_nomask_control_flow()
                 */
                const bool save_flag = flag_liveout &
                                       flag_mask(flag, dispatch_width / 8);
-               const fs_reg tmp = ubld.group(1, 0).vgrf(flag.type);
+               const fs_reg tmp = ubld.group(8, 0).vgrf(flag.type);
 
-               if (save_flag)
+               if (save_flag) {
+                  ubld.group(8, 0).UNDEF(tmp);
                   ubld.group(1, 0).MOV(tmp, flag);
+               }
 
                ubld.emit(FS_OPCODE_LOAD_LIVE_CHANNELS);
 
