@@ -21,7 +21,7 @@
  * IN THE SOFTWARE.
  *
  * Authors:
- *    Jason Ekstrand (jason@jlekstrand.net)
+ *    Faith Ekstrand (faith@gfxstrand.net)
  *
  */
 
