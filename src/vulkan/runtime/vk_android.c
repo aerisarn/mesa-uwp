@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022 Jason Ekstrand
+ * Copyright © 2022 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
