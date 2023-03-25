@@ -30,46 +30,6 @@
 #include "radv_private.h"
 #include "radv_shader.h"
 
-static void
-set_loc(struct radv_userdata_info *ud_info, uint8_t *sgpr_idx, uint8_t num_sgprs)
-{
-   ud_info->sgpr_idx = *sgpr_idx;
-   ud_info->num_sgprs = num_sgprs;
-   *sgpr_idx += num_sgprs;
-}
-
-static void
-set_loc_shader(struct radv_shader_args *args, int idx, uint8_t *sgpr_idx, uint8_t num_sgprs)
-{
-   struct radv_userdata_info *ud_info = &args->user_sgprs_locs.shader_data[idx];
-   assert(ud_info);
-
-   set_loc(ud_info, sgpr_idx, num_sgprs);
-}
-
-static void
-set_loc_shader_ptr(struct radv_shader_args *args, int idx, uint8_t *sgpr_idx)
-{
-   bool use_32bit_pointers = idx != AC_UD_SCRATCH_RING_OFFSETS &&
-                             idx != AC_UD_CS_TASK_RING_OFFSETS && idx != AC_UD_CS_SBT_DESCRIPTORS &&
-                             idx != AC_UD_CS_RAY_LAUNCH_SIZE_ADDR &&
-                             idx != AC_UD_CS_TRAVERSAL_SHADER_ADDR;
-
-   set_loc_shader(args, idx, sgpr_idx, use_32bit_pointers ? 1 : 2);
-}
-
-static void
-set_loc_desc(struct radv_shader_args *args, int idx, uint8_t *sgpr_idx)
-{
-   struct radv_userdata_locations *locs = &args->user_sgprs_locs;
-   struct radv_userdata_info *ud_info = &locs->descriptor_sets[idx];
-   assert(ud_info);
-
-   set_loc(ud_info, sgpr_idx, 1);
-
-   locs->descriptor_sets_enabled |= 1u << idx;
-}
-
 struct user_sgpr_info {
    uint64_t inline_push_constant_mask;
    bool inlined_all_push_consts;
@@ -269,6 +229,36 @@ allocate_user_sgprs(enum amd_gfx_level gfx_level, const struct radv_shader_info 
 }
 
 static void
+add_ud_arg(struct radv_shader_args *args, unsigned size, enum ac_arg_type type, struct ac_arg *arg,
+           enum radv_ud_index ud)
+{
+   ac_add_arg(&args->ac, AC_ARG_SGPR, size, type, arg);
+
+   struct radv_userdata_info *ud_info = &args->user_sgprs_locs.shader_data[ud];
+
+   if (ud_info->sgpr_idx == -1)
+      ud_info->sgpr_idx = args->num_user_sgprs;
+
+   ud_info->num_sgprs += size;
+
+   args->num_user_sgprs += size;
+}
+
+static void
+add_descriptor_set(struct radv_shader_args *args, enum ac_arg_type type, struct ac_arg *arg,
+                   uint32_t set)
+{
+   ac_add_arg(&args->ac, AC_ARG_SGPR, 1, type, arg);
+
+   struct radv_userdata_info *ud_info = &args->user_sgprs_locs.descriptor_sets[set];
+   ud_info->sgpr_idx = args->num_user_sgprs;
+   ud_info->num_sgprs = 1;
+
+   args->user_sgprs_locs.descriptor_sets_enabled |= 1u << set;
+   args->num_user_sgprs++;
+}
+
+static void
 declare_global_input_sgprs(const struct radv_shader_info *info,
                            const struct user_sgpr_info *user_sgpr_info,
                            struct radv_shader_args *args)
@@ -280,24 +270,25 @@ declare_global_input_sgprs(const struct radv_shader_info *info,
       while (mask) {
          int i = u_bit_scan(&mask);
 
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_PTR, &args->descriptor_sets[i]);
+         add_descriptor_set(args, AC_ARG_CONST_PTR, &args->descriptor_sets[i], i);
       }
    } else {
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_PTR_PTR, &args->descriptor_sets[0]);
+      add_ud_arg(args, 1, AC_ARG_CONST_PTR_PTR, &args->descriptor_sets[0],
+                 AC_UD_INDIRECT_DESCRIPTOR_SETS);
    }
 
    if (info->loads_push_constants && !user_sgpr_info->inlined_all_push_consts) {
       /* 1 for push constants and dynamic descriptors */
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_PTR, &args->ac.push_constants);
+      add_ud_arg(args, 1, AC_ARG_CONST_PTR, &args->ac.push_constants, AC_UD_PUSH_CONSTANTS);
    }
 
    for (unsigned i = 0; i < util_bitcount64(user_sgpr_info->inline_push_constant_mask); i++) {
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.inline_push_consts[i]);
+      add_ud_arg(args, 1, AC_ARG_INT, &args->ac.inline_push_consts[i], AC_UD_INLINE_PUSH_CONSTANTS);
    }
    args->ac.inline_push_const_mask = user_sgpr_info->inline_push_constant_mask;
 
    if (info->so.num_outputs) {
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &args->streamout_buffers);
+      add_ud_arg(args, 1, AC_ARG_CONST_DESC_PTR, &args->streamout_buffers, AC_UD_STREAMOUT_BUFFERS);
    }
 }
 
@@ -307,19 +298,22 @@ declare_vs_specific_input_sgprs(const struct radv_shader_info *info, struct radv
                                 gl_shader_stage previous_stage)
 {
    if (info->vs.has_prolog)
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_INT, &args->prolog_inputs);
+      add_ud_arg(args, 2, AC_ARG_INT, &args->prolog_inputs, AC_UD_VS_PROLOG_INPUTS);
 
    if (!args->is_gs_copy_shader && (stage == MESA_SHADER_VERTEX ||
                                     (has_previous_stage && previous_stage == MESA_SHADER_VERTEX))) {
       if (info->vs.vb_desc_usage_mask) {
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &args->ac.vertex_buffers);
+         add_ud_arg(args, 1, AC_ARG_CONST_DESC_PTR, &args->ac.vertex_buffers,
+                    AC_UD_VS_VERTEX_BUFFERS);
       }
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.base_vertex);
+
+      add_ud_arg(args, 1, AC_ARG_INT, &args->ac.base_vertex, AC_UD_VS_BASE_VERTEX_START_INSTANCE);
       if (info->vs.needs_draw_id) {
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.draw_id);
+         add_ud_arg(args, 1, AC_ARG_INT, &args->ac.draw_id, AC_UD_VS_BASE_VERTEX_START_INSTANCE);
       }
       if (info->vs.needs_base_instance) {
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.start_instance);
+         add_ud_arg(args, 1, AC_ARG_INT, &args->ac.start_instance,
+                    AC_UD_VS_BASE_VERTEX_START_INSTANCE);
       }
    }
 }
@@ -415,12 +409,12 @@ declare_tes_input_vgprs(struct radv_shader_args *args)
 static void
 declare_ms_input_sgprs(const struct radv_shader_info *info, struct radv_shader_args *args)
 {
-   ac_add_arg(&args->ac, AC_ARG_SGPR, 3, AC_ARG_INT, &args->ac.num_work_groups);
+   add_ud_arg(args, 3, AC_ARG_INT, &args->ac.num_work_groups, AC_UD_VS_BASE_VERTEX_START_INSTANCE);
    if (info->vs.needs_draw_id) {
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.draw_id);
+      add_ud_arg(args, 1, AC_ARG_INT, &args->ac.draw_id, AC_UD_VS_BASE_VERTEX_START_INSTANCE);
    }
    if (info->ms.has_task) {
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.task_ring_entry);
+      add_ud_arg(args, 1, AC_ARG_INT, &args->ac.task_ring_entry, AC_UD_TASK_RING_ENTRY);
    }
 }
 
@@ -487,76 +481,18 @@ declare_ngg_sgprs(const struct radv_shader_info *info, struct radv_shader_args *
                   bool has_ngg_query, bool has_ngg_provoking_vtx)
 {
    if (has_ngg_query)
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ngg_query_state);
+      add_ud_arg(args, 1, AC_ARG_INT, &args->ngg_query_state, AC_UD_NGG_QUERY_STATE);
 
    if (has_ngg_provoking_vtx)
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ngg_provoking_vtx);
+      add_ud_arg(args, 1, AC_ARG_INT, &args->ngg_provoking_vtx, AC_UD_NGG_PROVOKING_VTX);
 
    if (info->has_ngg_culling) {
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ngg_culling_settings);
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ngg_viewport_scale[0]);
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ngg_viewport_scale[1]);
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ngg_viewport_translate[0]);
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ngg_viewport_translate[1]);
+      add_ud_arg(args, 1, AC_ARG_INT, &args->ngg_culling_settings, AC_UD_NGG_CULLING_SETTINGS);
+      add_ud_arg(args, 1, AC_ARG_INT, &args->ngg_viewport_scale[0], AC_UD_NGG_VIEWPORT);
+      add_ud_arg(args, 1, AC_ARG_INT, &args->ngg_viewport_scale[1], AC_UD_NGG_VIEWPORT);
+      add_ud_arg(args, 1, AC_ARG_INT, &args->ngg_viewport_translate[0], AC_UD_NGG_VIEWPORT);
+      add_ud_arg(args, 1, AC_ARG_INT, &args->ngg_viewport_translate[1], AC_UD_NGG_VIEWPORT);
    }
-}
-
-static void
-set_global_input_locs(struct radv_shader_args *args, const struct user_sgpr_info *user_sgpr_info,
-                      uint8_t *user_sgpr_idx)
-{
-   if (!user_sgpr_info->indirect_all_descriptor_sets) {
-      for (unsigned i = 0; i < ARRAY_SIZE(args->descriptor_sets); i++) {
-         if (args->descriptor_sets[i].used)
-            set_loc_desc(args, i, user_sgpr_idx);
-      }
-   } else {
-      set_loc_shader_ptr(args, AC_UD_INDIRECT_DESCRIPTOR_SETS, user_sgpr_idx);
-   }
-
-   if (args->ac.push_constants.used) {
-      set_loc_shader_ptr(args, AC_UD_PUSH_CONSTANTS, user_sgpr_idx);
-   }
-
-   if (user_sgpr_info->inline_push_constant_mask) {
-      set_loc_shader(args, AC_UD_INLINE_PUSH_CONSTANTS, user_sgpr_idx,
-                     util_bitcount64(user_sgpr_info->inline_push_constant_mask));
-   }
-
-   if (args->streamout_buffers.used) {
-      set_loc_shader_ptr(args, AC_UD_STREAMOUT_BUFFERS, user_sgpr_idx);
-   }
-}
-
-static void
-set_vs_specific_input_locs(struct radv_shader_args *args, gl_shader_stage stage,
-                           bool has_previous_stage, gl_shader_stage previous_stage,
-                           uint8_t *user_sgpr_idx)
-{
-   if (args->prolog_inputs.used)
-      set_loc_shader(args, AC_UD_VS_PROLOG_INPUTS, user_sgpr_idx, 2);
-
-   if (!args->is_gs_copy_shader && (stage == MESA_SHADER_VERTEX ||
-                                    (has_previous_stage && previous_stage == MESA_SHADER_VERTEX))) {
-      if (args->ac.vertex_buffers.used) {
-         set_loc_shader_ptr(args, AC_UD_VS_VERTEX_BUFFERS, user_sgpr_idx);
-      }
-
-      unsigned vs_num = args->ac.base_vertex.used + args->ac.draw_id.used +
-                        args->ac.start_instance.used;
-      set_loc_shader(args, AC_UD_VS_BASE_VERTEX_START_INSTANCE, user_sgpr_idx, vs_num);
-   }
-}
-
-static void
-set_ms_input_locs(struct radv_shader_args *args, uint8_t *user_sgpr_idx)
-{
-   unsigned vs_num =
-      3 * args->ac.num_work_groups.used + args->ac.draw_id.used;
-   set_loc_shader(args, AC_UD_VS_BASE_VERTEX_START_INSTANCE, user_sgpr_idx, vs_num);
-
-   if (args->ac.task_ring_entry.used)
-      set_loc_shader(args, AC_UD_TASK_RING_ENTRY, user_sgpr_idx, 1);
 }
 
 static void
@@ -578,8 +514,9 @@ radv_init_shader_args(const struct radv_device *device, gl_shader_stage stage,
 void
 radv_declare_rt_shader_args(enum amd_gfx_level gfx_level, struct radv_shader_args *args)
 {
-   ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_PTR, &args->ac.rt_shader_pc);
-   ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_PTR_PTR, &args->descriptor_sets[0]);
+   add_ud_arg(args, 2, AC_ARG_CONST_PTR, &args->ac.rt_shader_pc, AC_UD_SCRATCH_RING_OFFSETS);
+   add_ud_arg(args, 1, AC_ARG_CONST_PTR_PTR, &args->descriptor_sets[0],
+              AC_UD_INDIRECT_DESCRIPTOR_SETS);
    ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_CONST_PTR, &args->ac.push_constants);
    ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_DESC_PTR, &args->ac.sbt_descriptors);
    ac_add_arg(&args->ac, AC_ARG_SGPR, 3, AC_ARG_INT, &args->ac.ray_launch_size);
@@ -590,10 +527,6 @@ radv_declare_rt_shader_args(enum amd_gfx_level gfx_level, struct radv_shader_arg
 
    ac_add_arg(&args->ac, AC_ARG_VGPR, 3, AC_ARG_INT, &args->ac.ray_launch_id);
    ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.rt_dynamic_callable_stack_base);
-
-   /* set indirect descriptor set location for correctly applied pipeline_layout */
-   uint8_t user_sgpr_idx = args->ac.args[args->descriptor_sets[0].arg_index].offset;
-   set_loc_shader_ptr(args, AC_UD_INDIRECT_DESCRIPTOR_SETS, &user_sgpr_idx);
 }
 
 void
@@ -627,10 +560,17 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
    allocate_user_sgprs(gfx_level, info, args, stage, has_previous_stage, previous_stage,
                        needs_view_index, has_ngg_query, has_ngg_provoking_vtx, key, &user_sgpr_info);
 
-   ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_DESC_PTR, &args->ac.ring_offsets);
+   add_ud_arg(args, 2, AC_ARG_CONST_DESC_PTR, &args->ac.ring_offsets, AC_UD_SCRATCH_RING_OFFSETS);
    if (stage == MESA_SHADER_TASK) {
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_DESC_PTR, &args->task_ring_offsets);
+      add_ud_arg(args, 2, AC_ARG_CONST_DESC_PTR, &args->task_ring_offsets,
+                 AC_UD_CS_TASK_RING_OFFSETS);
    }
+
+   /* For merged shaders the user SGPRs start at 8, with 8 system SGPRs in front (including
+    * the rw_buffers at s0/s1. With user SGPR0 = s8, lets restart the count from 0.
+    */
+   if (has_previous_stage)
+      args->num_user_sgprs = 0;
 
    /* To ensure prologs match the main VS, VS specific input SGPRs have to be placed before other
     * sgprs.
@@ -643,26 +583,28 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
 
       if (info->cs.uses_grid_size) {
          if (args->load_grid_size_from_user_sgpr)
-            ac_add_arg(&args->ac, AC_ARG_SGPR, 3, AC_ARG_INT, &args->ac.num_work_groups);
+            add_ud_arg(args, 3, AC_ARG_INT, &args->ac.num_work_groups, AC_UD_CS_GRID_SIZE);
          else
-            ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_PTR, &args->ac.num_work_groups);
+            add_ud_arg(args, 2, AC_ARG_CONST_PTR, &args->ac.num_work_groups, AC_UD_CS_GRID_SIZE);
       }
 
       if (info->cs.is_rt_shader) {
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_DESC_PTR, &args->ac.sbt_descriptors);
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_PTR, &args->ac.ray_launch_size_addr);
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_PTR,
-                    &args->ac.rt_traversal_shader_addr);
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT,
-                    &args->ac.rt_dynamic_callable_stack_base);
+         add_ud_arg(args, 2, AC_ARG_CONST_DESC_PTR, &args->ac.sbt_descriptors,
+                    AC_UD_CS_SBT_DESCRIPTORS);
+         add_ud_arg(args, 2, AC_ARG_CONST_PTR, &args->ac.ray_launch_size_addr,
+                    AC_UD_CS_RAY_LAUNCH_SIZE_ADDR);
+         add_ud_arg(args, 2, AC_ARG_CONST_PTR, &args->ac.rt_traversal_shader_addr,
+                    AC_UD_CS_TRAVERSAL_SHADER_ADDR);
+         add_ud_arg(args, 1, AC_ARG_INT, &args->ac.rt_dynamic_callable_stack_base,
+                    AC_UD_CS_RAY_DYNAMIC_CALLABLE_STACK_BASE);
       }
 
       if (info->vs.needs_draw_id) {
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.draw_id);
+         add_ud_arg(args, 1, AC_ARG_INT, &args->ac.draw_id, AC_UD_CS_TASK_DRAW_ID);
       }
 
       if (stage == MESA_SHADER_TASK) {
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.task_ring_entry);
+         add_ud_arg(args, 1, AC_ARG_INT, &args->ac.task_ring_entry, AC_UD_TASK_RING_ENTRY);
       }
 
       for (int i = 0; i < 3; i++) {
@@ -693,11 +635,11 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
       declare_global_input_sgprs(info, &user_sgpr_info, args);
 
       if (needs_view_index) {
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.view_index);
+         add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
       }
 
       if (info->force_vrs_per_vertex) {
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.force_vrs_rates);
+         add_ud_arg(args, 1, AC_ARG_INT, &args->ac.force_vrs_rates, AC_UD_FORCE_VRS_RATES);
       }
 
       if (info->vs.as_es) {
@@ -735,11 +677,11 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
          declare_global_input_sgprs(info, &user_sgpr_info, args);
 
          if (needs_view_index) {
-            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.view_index);
+            add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
          }
 
          if (key->dynamic_patch_control_points) {
-            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tcs_offchip_layout);
+            add_ud_arg(args, 1, AC_ARG_INT, &args->tcs_offchip_layout, AC_UD_TCS_OFFCHIP_LAYOUT);
          }
 
          ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.tcs_patch_id);
@@ -750,11 +692,11 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
          declare_global_input_sgprs(info, &user_sgpr_info, args);
 
          if (needs_view_index) {
-            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.view_index);
+            add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
          }
 
          if (key->dynamic_patch_control_points) {
-            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tcs_offchip_layout);
+            add_ud_arg(args, 1, AC_ARG_INT, &args->tcs_offchip_layout, AC_UD_TCS_OFFCHIP_LAYOUT);
          }
 
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tess_offchip_offset);
@@ -773,10 +715,10 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
       declare_global_input_sgprs(info, &user_sgpr_info, args);
 
       if (needs_view_index)
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.view_index);
+         add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
 
       if (key->dynamic_patch_control_points)
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tes_num_patches);
+         add_ud_arg(args, 1, AC_ARG_INT, &args->tes_num_patches, AC_UD_TES_NUM_PATCHES);
 
       if (info->tes.as_es) {
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.tess_offchip_offset);
@@ -821,18 +763,18 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
          declare_global_input_sgprs(info, &user_sgpr_info, args);
 
          if (needs_view_index) {
-            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.view_index);
+            add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
          }
 
          if (previous_stage == MESA_SHADER_TESS_EVAL && key->dynamic_patch_control_points)
-            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->tes_num_patches);
+            add_ud_arg(args, 1, AC_ARG_INT, &args->tes_num_patches, AC_UD_TES_NUM_PATCHES);
 
          if (previous_stage == MESA_SHADER_VERTEX && info->vs.dynamic_num_verts_per_prim)
-            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->num_verts_per_prim);
+            add_ud_arg(args, 1, AC_ARG_INT, &args->num_verts_per_prim, AC_UD_NUM_VERTS_PER_PRIM);
 
          /* Legacy GS force vrs is handled by GS copy shader. */
          if (info->force_vrs_per_vertex && info->is_ngg) {
-            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.force_vrs_rates);
+            add_ud_arg(args, 1, AC_ARG_INT, &args->ac.force_vrs_rates, AC_UD_FORCE_VRS_RATES);
          }
 
          if (info->is_ngg) {
@@ -856,11 +798,11 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
          declare_global_input_sgprs(info, &user_sgpr_info, args);
 
          if (needs_view_index) {
-            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.view_index);
+            add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
          }
 
          if (info->force_vrs_per_vertex) {
-            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.force_vrs_rates);
+            add_ud_arg(args, 1, AC_ARG_INT, &args->ac.force_vrs_rates, AC_UD_FORCE_VRS_RATES);
          }
 
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.gs2vs_offset);
@@ -882,11 +824,11 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
       declare_global_input_sgprs(info, &user_sgpr_info, args);
 
       if (info->ps.has_epilog) {
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ps_epilog_pc);
+         add_ud_arg(args, 1, AC_ARG_INT, &args->ps_epilog_pc, AC_UD_PS_EPILOG_PC);
       }
 
       if (info->ps.needs_sample_positions && key->dynamic_rasterization_samples) {
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ps_num_samples);
+         add_ud_arg(args, 1, AC_ARG_INT, &args->ps_num_samples, AC_UD_PS_NUM_SAMPLES);
       }
 
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.prim_mask);
@@ -899,115 +841,6 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
    default:
       unreachable("Shader stage not implemented");
    }
-
-   uint8_t user_sgpr_idx = 0;
-
-   set_loc_shader_ptr(args, AC_UD_SCRATCH_RING_OFFSETS, &user_sgpr_idx);
-   if (stage == MESA_SHADER_TASK) {
-      set_loc_shader_ptr(args, AC_UD_CS_TASK_RING_OFFSETS, &user_sgpr_idx);
-   }
-
-   /* For merged shaders the user SGPRs start at 8, with 8 system SGPRs in front (including
-    * the rw_buffers at s0/s1. With user SGPR0 = s8, lets restart the count from 0 */
-   if (has_previous_stage)
-      user_sgpr_idx = 0;
-
-   if (stage == MESA_SHADER_VERTEX || (has_previous_stage && previous_stage == MESA_SHADER_VERTEX))
-      set_vs_specific_input_locs(args, stage, has_previous_stage, previous_stage, &user_sgpr_idx);
-   else if (has_previous_stage && previous_stage == MESA_SHADER_MESH)
-      set_ms_input_locs(args, &user_sgpr_idx);
-
-   set_global_input_locs(args, &user_sgpr_info, &user_sgpr_idx);
-
-   switch (stage) {
-   case MESA_SHADER_COMPUTE:
-   case MESA_SHADER_TASK:
-      if (args->ac.sbt_descriptors.used) {
-         set_loc_shader_ptr(args, AC_UD_CS_SBT_DESCRIPTORS, &user_sgpr_idx);
-      }
-      if (args->ac.num_work_groups.used) {
-         set_loc_shader(args, AC_UD_CS_GRID_SIZE, &user_sgpr_idx,
-                        args->load_grid_size_from_user_sgpr ? 3 : 2);
-      }
-      if (args->ac.ray_launch_size_addr.used) {
-         set_loc_shader_ptr(args, AC_UD_CS_RAY_LAUNCH_SIZE_ADDR, &user_sgpr_idx);
-      }
-      if (args->ac.rt_traversal_shader_addr.used) {
-         set_loc_shader_ptr(args, AC_UD_CS_TRAVERSAL_SHADER_ADDR, &user_sgpr_idx);
-      }
-      if (args->ac.rt_dynamic_callable_stack_base.used) {
-         set_loc_shader(args, AC_UD_CS_RAY_DYNAMIC_CALLABLE_STACK_BASE, &user_sgpr_idx, 1);
-      }
-      if (args->ac.draw_id.used) {
-         set_loc_shader(args, AC_UD_CS_TASK_DRAW_ID, &user_sgpr_idx, 1);
-      }
-      if (args->ac.task_ring_entry.used) {
-         set_loc_shader(args, AC_UD_TASK_RING_ENTRY, &user_sgpr_idx, 1);
-      }
-      break;
-   case MESA_SHADER_VERTEX:
-      if (args->ac.view_index.used)
-         set_loc_shader(args, AC_UD_VIEW_INDEX, &user_sgpr_idx, 1);
-      if (args->ac.force_vrs_rates.used)
-         set_loc_shader(args, AC_UD_FORCE_VRS_RATES, &user_sgpr_idx, 1);
-      break;
-   case MESA_SHADER_TESS_CTRL:
-      if (args->ac.view_index.used)
-         set_loc_shader(args, AC_UD_VIEW_INDEX, &user_sgpr_idx, 1);
-
-      if (args->tcs_offchip_layout.used)
-         set_loc_shader(args, AC_UD_TCS_OFFCHIP_LAYOUT, &user_sgpr_idx, 1);
-      break;
-   case MESA_SHADER_TESS_EVAL:
-      if (args->ac.view_index.used)
-         set_loc_shader(args, AC_UD_VIEW_INDEX, &user_sgpr_idx, 1);
-
-      if (args->tes_num_patches.used)
-         set_loc_shader(args, AC_UD_TES_NUM_PATCHES, &user_sgpr_idx, 1);
-      break;
-   case MESA_SHADER_GEOMETRY:
-      if (args->ac.view_index.used)
-         set_loc_shader(args, AC_UD_VIEW_INDEX, &user_sgpr_idx, 1);
-
-      if (args->tes_num_patches.used)
-         set_loc_shader(args, AC_UD_TES_NUM_PATCHES, &user_sgpr_idx, 1);
-
-      if (args->num_verts_per_prim.used)
-         set_loc_shader(args, AC_UD_NUM_VERTS_PER_PRIM, &user_sgpr_idx, 1);
-
-      if (args->ac.force_vrs_rates.used)
-         set_loc_shader(args, AC_UD_FORCE_VRS_RATES, &user_sgpr_idx, 1);
-
-      if (args->ngg_query_state.used) {
-         set_loc_shader(args, AC_UD_NGG_QUERY_STATE, &user_sgpr_idx, 1);
-      }
-
-      if (args->ngg_provoking_vtx.used) {
-         set_loc_shader(args, AC_UD_NGG_PROVOKING_VTX, &user_sgpr_idx, 1);
-      }
-
-      if (args->ngg_culling_settings.used) {
-         set_loc_shader(args, AC_UD_NGG_CULLING_SETTINGS, &user_sgpr_idx, 1);
-      }
-
-      if (args->ngg_viewport_scale[0].used) {
-         assert(args->ngg_viewport_scale[1].used &&
-                args->ngg_viewport_translate[0].used &&
-                args->ngg_viewport_translate[1].used);
-         set_loc_shader(args, AC_UD_NGG_VIEWPORT, &user_sgpr_idx, 4);
-      }
-      break;
-   case MESA_SHADER_FRAGMENT:
-      if (args->ps_epilog_pc.used)
-         set_loc_shader(args, AC_UD_PS_EPILOG_PC, &user_sgpr_idx, 1);
-      if (args->ps_num_samples.used)
-         set_loc_shader(args, AC_UD_PS_NUM_SAMPLES, &user_sgpr_idx, 1);
-      break;
-   default:
-      unreachable("Shader stage not implemented");
-   }
-
-   args->num_user_sgprs = user_sgpr_idx;
 }
 
 void
