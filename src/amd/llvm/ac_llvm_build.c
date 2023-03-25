@@ -1454,12 +1454,10 @@ static LLVMValueRef ac_build_tbuffer_load(struct ac_llvm_context *ctx, LLVMValue
    args[idx++] = soffset ? soffset : ctx->i32_0;
    args[idx++] = LLVMConstInt(ctx->i32, tbuffer_format, 0);
    args[idx++] = LLVMConstInt(ctx->i32, get_load_cache_policy(ctx, cache_policy), 0);
-   unsigned func =
-      !ac_has_vec3_support(ctx->gfx_level, true) && num_channels == 3 ? 4 : num_channels;
    const char *indexing_kind = vindex ? "struct" : "raw";
    char name[256], type_name[8];
 
-   LLVMTypeRef type = func > 1 ? LLVMVectorType(channel_type, func) : channel_type;
+   LLVMTypeRef type = num_channels > 1 ? LLVMVectorType(channel_type, num_channels) : channel_type;
    ac_build_type_name_for_intr(type, type_name, sizeof(type_name));
 
    snprintf(name, sizeof(name), "llvm.amdgcn.%s.tbuffer.load.%s", indexing_kind, type_name);
