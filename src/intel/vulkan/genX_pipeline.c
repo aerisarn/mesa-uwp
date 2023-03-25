@@ -1196,7 +1196,7 @@ emit_3dstate_vs(struct anv_graphics_pipeline *pipeline)
           * but the Haswell docs for the "VS Reference Count Full Force Miss
           * Enable" field of the "Thread Mode" register refer to a HSW bug in
           * which the VUE handle reference count would overflow resulting in
-          * internal reference counting bugs.  My (Jason's) best guess is that
+          * internal reference counting bugs.  My (Faith's) best guess is that
           * this bug cropped back up on SKL GT4 when we suddenly had more
           * threads in play than any previous gfx9 hardware.
           *
