@@ -78,8 +78,19 @@ struct aco_ps_epilog_info {
 };
 
 struct aco_tcs_epilog_info {
+   bool pass_tessfactors_by_reg;
+   bool tcs_out_patch_fits_subgroup;
    enum tess_primitive_mode primitive_mode;
+   unsigned tess_offchip_ring_size;
    bool tes_reads_tessfactors;
+
+   struct ac_arg invocation_id;
+   struct ac_arg rel_patch_id;
+   struct ac_arg tcs_out_current_patch_data_offset;
+   struct ac_arg tess_lvl_in[2];
+   struct ac_arg tess_lvl_out[4];
+   struct ac_arg tcs_out_lds_layout;
+   struct ac_arg tcs_offchip_layout;
 };
 
 struct aco_shader_info {
