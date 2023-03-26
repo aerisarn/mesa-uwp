@@ -2126,3 +2126,24 @@ BEGIN_TEST(optimize.max3_opsel)
       finish_opt_test();
    }
 END_TEST
+
+BEGIN_TEST(optimize.neg_mul_opsel)
+   //>> v1: %a, v2b: %b = p_startpgm
+   if (!setup_cs("v1  v2b", GFX11))
+      return;
+
+   Temp a = inputs[0];
+   Temp b = inputs[1];
+
+   Temp a_hi = bld.pseudo(aco_opcode::p_extract_vector, bld.def(v2b), a, Operand::c32(1));
+
+   //! v2b: %res0 = v_mul_f16 -hi(%a), %b
+   //! p_unit_test 0, %res0
+   writeout(0, fneg(fmul(a_hi, b)));
+
+   //! v1: %res1 = v_fma_mix_f32 -hi(%a), lo(%b), -0
+   //! p_unit_test 1, %res1
+   writeout(1, fneg(fmul(f2f32(a_hi), f2f32(b))));
+
+   finish_opt_test();
+END_TEST
