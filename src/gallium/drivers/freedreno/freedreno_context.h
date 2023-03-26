@@ -630,10 +630,8 @@ fd_context_dirty(struct fd_context *ctx, BITMASK_ENUM(fd_dirty_3d_state) dirty)
    ctx->dirty |= dirty;
 }
 
-static inline void
-fd_context_dirty_shader(struct fd_context *ctx, enum pipe_shader_type shader,
-                        BITMASK_ENUM(fd_dirty_shader_state) dirty)
-   assert_dt
+static inline enum fd_dirty_3d_state
+dirty_shader_to_dirty_state(BITMASK_ENUM(fd_dirty_shader_state) dirty)
 {
    const enum fd_dirty_3d_state map[] = {
       FD_DIRTY_PROG, FD_DIRTY_CONST, FD_DIRTY_TEX,
@@ -647,13 +645,20 @@ fd_context_dirty_shader(struct fd_context *ctx, enum pipe_shader_type shader,
    STATIC_ASSERT(FD_DIRTY_SHADER_SSBO == BIT(3));
    STATIC_ASSERT(FD_DIRTY_SHADER_IMAGE == BIT(4));
 
-   assert(util_is_power_of_two_nonzero(dirty));
    assert(ffs(dirty) <= ARRAY_SIZE(map));
 
-   ctx->gen_dirty |= ctx->gen_dirty_shader_map[shader][ffs(dirty) - 1];
+   return map[ffs(dirty) - 1];
+}
 
+static inline void
+fd_context_dirty_shader(struct fd_context *ctx, enum pipe_shader_type shader,
+                        BITMASK_ENUM(fd_dirty_shader_state) dirty)
+   assert_dt
+{
+   assert(util_is_power_of_two_nonzero(dirty));
+   ctx->gen_dirty |= ctx->gen_dirty_shader_map[shader][ffs(dirty) - 1];
    ctx->dirty_shader[shader] |= dirty;
-   fd_context_dirty(ctx, map[ffs(dirty) - 1]);
+   fd_context_dirty(ctx, dirty_shader_to_dirty_state(dirty));
 }
 
 /* mark all state dirty: */
