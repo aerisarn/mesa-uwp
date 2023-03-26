@@ -374,14 +374,20 @@ lower_load_vs_input(nir_builder *b, nir_intrinsic_instr *intrin, lower_vs_inputs
    nir_ssa_def *channels[NIR_MAX_VEC_COMPONENTS] = {0};
    for (unsigned i = 0; i < dest_num_components; ++i) {
       const unsigned c = i + component;
+
       if (!(dest_use_mask & BITFIELD_BIT(c))) {
          /* Fill unused channels with zero. */
          channels[i] = nir_imm_zero(b, 1, bit_size);
-      } else if (c < max_loaded_channels) {
+         continue;
+      }
+
+      const unsigned sw = f->swizzle[c];
+      assert(sw >= first_used_channel);
+      const unsigned loaded_channel = sw - first_used_channel;
+
+      if (load && loaded_channel < load->num_components) {
          /* Use channels that were loaded from VRAM. */
-         const unsigned sw = f->swizzle[c];
-         assert(sw >= first_used_channel);
-         channels[i] = nir_channel(b, load, sw - first_used_channel);
+         channels[i] = nir_channel(b, load, loaded_channel);
 
          if (alpha_adjust != AC_ALPHA_ADJUST_NONE && c == 3)
             channels[i] = adjust_vertex_fetch_alpha(b, alpha_adjust, channels[i]);
