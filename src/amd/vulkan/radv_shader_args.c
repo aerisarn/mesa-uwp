@@ -37,62 +37,6 @@ struct user_sgpr_info {
    uint8_t remaining_sgprs;
 };
 
-static uint8_t
-count_vs_user_sgprs(const struct radv_shader_info *info)
-{
-   uint8_t count = 1; /* vertex offset */
-
-   if (info->vs.vb_desc_usage_mask)
-      count++;
-   if (info->vs.needs_draw_id)
-      count++;
-   if (info->vs.needs_base_instance)
-      count++;
-   if (info->vs.dynamic_num_verts_per_prim)
-      count++;
-
-   return count;
-}
-
-static uint8_t
-count_tes_user_sgprs(const struct radv_pipeline_key *key)
-{
-   unsigned count = 0;
-
-   if (key->dynamic_patch_control_points)
-      count++; /* tes_num_patches */
-
-   return count;
-}
-
-static uint8_t
-count_ms_user_sgprs(const struct radv_shader_info *info)
-{
-   uint8_t count = 3; /* num_work_groups[3] */
-
-   if (info->vs.needs_draw_id)
-      count++;
-   if (info->ms.has_task)
-      count++;
-
-   return count;
-}
-
-static unsigned
-count_ngg_sgprs(const struct radv_shader_info *info, bool has_ngg_query, bool has_ngg_provoking_vtx)
-{
-   unsigned count = 0;
-
-   if (has_ngg_query)
-      count += 1; /* ngg_query_state */
-   if (has_ngg_provoking_vtx)
-      count += 1; /* ngg_provoking_vtx */
-   if (info->has_ngg_culling)
-      count += 5; /* ngg_culling_settings + 4x ngg_viewport_* */
-
-   return count;
-}
-
 static void
 allocate_inline_push_consts(const struct radv_shader_info *info,
                             struct user_sgpr_info *user_sgpr_info)
@@ -122,110 +66,6 @@ allocate_inline_push_consts(const struct radv_shader_info *info,
 
    user_sgpr_info->remaining_sgprs = remaining_sgprs - util_bitcount64(mask);
    user_sgpr_info->inline_push_constant_mask = mask;
-}
-
-static void
-allocate_user_sgprs(enum amd_gfx_level gfx_level, const struct radv_shader_info *info,
-                    struct radv_shader_args *args, gl_shader_stage stage, bool has_previous_stage,
-                    gl_shader_stage previous_stage, bool needs_view_index, bool has_ngg_query,
-                    bool has_ngg_provoking_vtx, const struct radv_pipeline_key *key,
-                    struct user_sgpr_info *user_sgpr_info)
-{
-   uint8_t user_sgpr_count = 0;
-
-   memset(user_sgpr_info, 0, sizeof(struct user_sgpr_info));
-
-   /* 2 user sgprs will always be allocated for scratch/rings */
-   user_sgpr_count += 2;
-
-   if (stage == MESA_SHADER_TASK)
-      user_sgpr_count += 2; /* task descriptors */
-
-   /* prolog inputs */
-   if (info->vs.has_prolog)
-      user_sgpr_count += 2;
-
-   switch (stage) {
-   case MESA_SHADER_COMPUTE:
-   case MESA_SHADER_TASK:
-      if (info->cs.is_rt_shader)
-         user_sgpr_count += 2; /* SBT descriptors */
-      if (info->cs.uses_grid_size)
-         user_sgpr_count += args->load_grid_size_from_user_sgpr ? 3 : 2;
-      if (info->cs.uses_ray_launch_size)
-         user_sgpr_count += 2;
-      if (info->cs.uses_dynamic_rt_callable_stack)
-         user_sgpr_count += 1;
-      if (info->vs.needs_draw_id)
-         user_sgpr_count += 1;
-      if (stage == MESA_SHADER_TASK)
-         user_sgpr_count += 4; /* ring_entry, 2x ib_addr, ib_stride */
-      break;
-   case MESA_SHADER_FRAGMENT:
-      /* epilog continue PC */
-      if (info->ps.has_epilog)
-         user_sgpr_count += 1;
-      if (info->ps.needs_sample_positions && key->dynamic_rasterization_samples)
-         user_sgpr_count += 1;
-      break;
-   case MESA_SHADER_VERTEX:
-      if (!args->is_gs_copy_shader)
-         user_sgpr_count += count_vs_user_sgprs(info);
-      break;
-   case MESA_SHADER_TESS_CTRL:
-      if (has_previous_stage) {
-         if (previous_stage == MESA_SHADER_VERTEX)
-            user_sgpr_count += count_vs_user_sgprs(info);
-      }
-      if (key->dynamic_patch_control_points)
-         user_sgpr_count += 1; /* tcs_offchip_layout */
-      break;
-   case MESA_SHADER_TESS_EVAL:
-      user_sgpr_count += count_tes_user_sgprs(key);
-      break;
-   case MESA_SHADER_GEOMETRY:
-      if (has_previous_stage) {
-         if (info->is_ngg)
-            user_sgpr_count += count_ngg_sgprs(info, has_ngg_query, has_ngg_provoking_vtx);
-
-         if (previous_stage == MESA_SHADER_VERTEX) {
-            user_sgpr_count += count_vs_user_sgprs(info);
-         } else if (previous_stage == MESA_SHADER_TESS_EVAL) {
-            user_sgpr_count += count_tes_user_sgprs(key);
-         } else if (previous_stage == MESA_SHADER_MESH) {
-            user_sgpr_count += count_ms_user_sgprs(info);
-         }
-      }
-      break;
-   default:
-      break;
-   }
-
-   if (needs_view_index)
-      user_sgpr_count++;
-
-   if (info->force_vrs_per_vertex)
-      user_sgpr_count++;
-
-   if (info->loads_push_constants)
-      user_sgpr_count++;
-
-   if (info->so.num_outputs)
-      user_sgpr_count++;
-
-   uint32_t available_sgprs =
-      gfx_level >= GFX9 && stage != MESA_SHADER_COMPUTE && stage != MESA_SHADER_TASK ? 32 : 16;
-   uint32_t remaining_sgprs = available_sgprs - user_sgpr_count;
-   uint32_t num_desc_set = util_bitcount(info->desc_set_used_mask);
-
-   if (remaining_sgprs < num_desc_set) {
-      user_sgpr_info->indirect_all_descriptor_sets = true;
-      user_sgpr_info->remaining_sgprs = remaining_sgprs - 1;
-   } else {
-      user_sgpr_info->remaining_sgprs = remaining_sgprs - num_desc_set;
-   }
-
-   allocate_inline_push_consts(info, user_sgpr_info);
 }
 
 static void
@@ -263,29 +103,32 @@ declare_global_input_sgprs(const struct radv_shader_info *info,
                            const struct user_sgpr_info *user_sgpr_info,
                            struct radv_shader_args *args)
 {
-   /* 1 for each descriptor set */
-   if (!user_sgpr_info->indirect_all_descriptor_sets) {
-      uint32_t mask = info->desc_set_used_mask;
+   if (user_sgpr_info) {
+      /* 1 for each descriptor set */
+      if (!user_sgpr_info->indirect_all_descriptor_sets) {
+         uint32_t mask = info->desc_set_used_mask;
 
-      while (mask) {
-         int i = u_bit_scan(&mask);
+         while (mask) {
+            int i = u_bit_scan(&mask);
 
-         add_descriptor_set(args, AC_ARG_CONST_PTR, &args->descriptor_sets[i], i);
+            add_descriptor_set(args, AC_ARG_CONST_PTR, &args->descriptor_sets[i], i);
+         }
+      } else {
+         add_ud_arg(args, 1, AC_ARG_CONST_PTR_PTR, &args->descriptor_sets[0],
+                    AC_UD_INDIRECT_DESCRIPTOR_SETS);
       }
-   } else {
-      add_ud_arg(args, 1, AC_ARG_CONST_PTR_PTR, &args->descriptor_sets[0],
-                 AC_UD_INDIRECT_DESCRIPTOR_SETS);
-   }
 
-   if (info->loads_push_constants && !user_sgpr_info->inlined_all_push_consts) {
-      /* 1 for push constants and dynamic descriptors */
-      add_ud_arg(args, 1, AC_ARG_CONST_PTR, &args->ac.push_constants, AC_UD_PUSH_CONSTANTS);
-   }
+      if (info->loads_push_constants && !user_sgpr_info->inlined_all_push_consts) {
+         /* 1 for push constants and dynamic descriptors */
+         add_ud_arg(args, 1, AC_ARG_CONST_PTR, &args->ac.push_constants, AC_UD_PUSH_CONSTANTS);
+      }
 
-   for (unsigned i = 0; i < util_bitcount64(user_sgpr_info->inline_push_constant_mask); i++) {
-      add_ud_arg(args, 1, AC_ARG_INT, &args->ac.inline_push_consts[i], AC_UD_INLINE_PUSH_CONSTANTS);
+      for (unsigned i = 0; i < util_bitcount64(user_sgpr_info->inline_push_constant_mask); i++) {
+         add_ud_arg(args, 1, AC_ARG_INT, &args->ac.inline_push_consts[i],
+                    AC_UD_INLINE_PUSH_CONSTANTS);
+      }
+      args->ac.inline_push_const_mask = user_sgpr_info->inline_push_constant_mask;
    }
-   args->ac.inline_push_const_mask = user_sgpr_info->inline_push_constant_mask;
 
    if (info->so.num_outputs) {
       add_ud_arg(args, 1, AC_ARG_CONST_DESC_PTR, &args->streamout_buffers, AC_UD_STREAMOUT_BUFFERS);
@@ -529,14 +372,13 @@ radv_declare_rt_shader_args(enum amd_gfx_level gfx_level, struct radv_shader_arg
    ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.rt_dynamic_callable_stack_base);
 }
 
-void
-radv_declare_shader_args(const struct radv_device *device, const struct radv_pipeline_key *key,
-                         const struct radv_shader_info *info, gl_shader_stage stage,
-                         bool has_previous_stage, gl_shader_stage previous_stage,
-                         struct radv_shader_args *args)
+static void
+declare_shader_args(const struct radv_device *device, const struct radv_pipeline_key *key,
+                    const struct radv_shader_info *info, gl_shader_stage stage,
+                    bool has_previous_stage, gl_shader_stage previous_stage,
+                    struct radv_shader_args *args, struct user_sgpr_info *user_sgpr_info)
 {
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
-   struct user_sgpr_info user_sgpr_info;
    bool needs_view_index = info->uses_view_index;
    bool has_ngg_query = info->has_ngg_prim_query || info->has_ngg_xfb_query ||
                         (stage == MESA_SHADER_GEOMETRY && info->gs.has_ngg_pipeline_stat_query);
@@ -557,9 +399,6 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
       return;
    }
 
-   allocate_user_sgprs(gfx_level, info, args, stage, has_previous_stage, previous_stage,
-                       needs_view_index, has_ngg_query, has_ngg_provoking_vtx, key, &user_sgpr_info);
-
    add_ud_arg(args, 2, AC_ARG_CONST_DESC_PTR, &args->ac.ring_offsets, AC_UD_SCRATCH_RING_OFFSETS);
    if (stage == MESA_SHADER_TASK) {
       add_ud_arg(args, 2, AC_ARG_CONST_DESC_PTR, &args->task_ring_offsets,
@@ -579,7 +418,7 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
    switch (stage) {
    case MESA_SHADER_COMPUTE:
    case MESA_SHADER_TASK:
-      declare_global_input_sgprs(info, &user_sgpr_info, args);
+      declare_global_input_sgprs(info, user_sgpr_info, args);
 
       if (info->cs.uses_grid_size) {
          if (args->load_grid_size_from_user_sgpr)
@@ -632,7 +471,7 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
 
       declare_vs_specific_input_sgprs(info, args, stage, has_previous_stage, previous_stage);
 
-      declare_global_input_sgprs(info, &user_sgpr_info, args);
+      declare_global_input_sgprs(info, user_sgpr_info, args);
 
       if (needs_view_index) {
          add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
@@ -674,7 +513,7 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
 
          declare_vs_specific_input_sgprs(info, args, stage, has_previous_stage, previous_stage);
 
-         declare_global_input_sgprs(info, &user_sgpr_info, args);
+         declare_global_input_sgprs(info, user_sgpr_info, args);
 
          if (needs_view_index) {
             add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
@@ -689,7 +528,7 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
 
          declare_vs_input_vgprs(gfx_level, info, args, true);
       } else {
-         declare_global_input_sgprs(info, &user_sgpr_info, args);
+         declare_global_input_sgprs(info, user_sgpr_info, args);
 
          if (needs_view_index) {
             add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
@@ -712,7 +551,7 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
       /* NGG is handled by the GS case */
       assert(!info->is_ngg);
 
-      declare_global_input_sgprs(info, &user_sgpr_info, args);
+      declare_global_input_sgprs(info, user_sgpr_info, args);
 
       if (needs_view_index)
          add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
@@ -760,7 +599,7 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
             declare_ms_input_sgprs(info, args);
          }
 
-         declare_global_input_sgprs(info, &user_sgpr_info, args);
+         declare_global_input_sgprs(info, user_sgpr_info, args);
 
          if (needs_view_index) {
             add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
@@ -795,7 +634,7 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
             declare_ms_input_vgprs(args);
          }
       } else {
-         declare_global_input_sgprs(info, &user_sgpr_info, args);
+         declare_global_input_sgprs(info, user_sgpr_info, args);
 
          if (needs_view_index) {
             add_ud_arg(args, 1, AC_ARG_INT, &args->ac.view_index, AC_UD_VIEW_INDEX);
@@ -821,7 +660,7 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
       }
       break;
    case MESA_SHADER_FRAGMENT:
-      declare_global_input_sgprs(info, &user_sgpr_info, args);
+      declare_global_input_sgprs(info, user_sgpr_info, args);
 
       if (info->ps.has_epilog) {
          add_ud_arg(args, 1, AC_ARG_INT, &args->ps_epilog_pc, AC_UD_PS_EPILOG_PC);
@@ -841,6 +680,45 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
    default:
       unreachable("Shader stage not implemented");
    }
+}
+
+void
+radv_declare_shader_args(const struct radv_device *device, const struct radv_pipeline_key *key,
+                         const struct radv_shader_info *info, gl_shader_stage stage,
+                         bool has_previous_stage, gl_shader_stage previous_stage,
+                         struct radv_shader_args *args)
+{
+   declare_shader_args(device, key, info, stage, has_previous_stage, previous_stage, args, NULL);
+
+   if (gl_shader_stage_is_rt(stage))
+      return;
+
+   uint32_t num_user_sgprs = args->num_user_sgprs;
+   if (info->loads_push_constants)
+      num_user_sgprs++;
+
+   const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
+   uint32_t available_sgprs =
+      gfx_level >= GFX9 && stage != MESA_SHADER_COMPUTE && stage != MESA_SHADER_TASK ? 32 : 16;
+   uint32_t remaining_sgprs = available_sgprs - num_user_sgprs;
+
+   struct user_sgpr_info user_sgpr_info = {
+      .remaining_sgprs = remaining_sgprs,
+   };
+
+   uint32_t num_desc_set = util_bitcount(info->desc_set_used_mask);
+
+   if (remaining_sgprs < num_desc_set) {
+      user_sgpr_info.indirect_all_descriptor_sets = true;
+      user_sgpr_info.remaining_sgprs--;
+   } else {
+      user_sgpr_info.remaining_sgprs -= num_desc_set;
+   }
+
+   allocate_inline_push_consts(info, &user_sgpr_info);
+
+   declare_shader_args(device, key, info, stage, has_previous_stage, previous_stage, args,
+                       &user_sgpr_info);
 }
 
 void
