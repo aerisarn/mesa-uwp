@@ -1979,3 +1979,30 @@ BEGIN_TEST(optimize.fma_opsel)
       finish_opt_test();
    }
 END_TEST
+
+BEGIN_TEST(optimize.dpp_opsel)
+   //>> v1: %a, v1: %b = p_startpgm
+   if (!setup_cs("v1  v1", GFX11))
+      return;
+
+   Temp a = inputs[0];
+   Temp b = inputs[1];
+
+   Temp dpp16 = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), a, dpp_row_mirror);
+   Temp dpp16_hi = bld.pseudo(aco_opcode::p_extract_vector, bld.def(v2b), dpp16, Operand::c32(1));
+   Temp dpp8 = bld.vop1_dpp8(aco_opcode::v_mov_b32, bld.def(v1), a);
+   Temp dpp8_hi = bld.pseudo(aco_opcode::p_extract_vector, bld.def(v2b), dpp8, Operand::c32(1));
+
+   Temp b_hi = bld.pseudo(aco_opcode::p_extract_vector, bld.def(v2b), b, Operand::c32(1));
+   Temp b_lo = bld.pseudo(aco_opcode::p_extract_vector, bld.def(v2b), b, Operand::c32(0));
+
+   //! v2b: %res0 = v_add_f16 hi(%a), hi(%b) row_mirror bound_ctrl:1
+   //! p_unit_test 0, %res0
+   writeout(0, fadd(dpp16_hi, b_hi));
+
+   //! v2b: %res1 = v_add_f16 hi(%a), %b dpp8:[0,0,0,0,0,0,0,0]
+   //! p_unit_test 1, %res1
+   writeout(1, fadd(b_lo, dpp8_hi));
+
+   finish_opt_test();
+END_TEST
