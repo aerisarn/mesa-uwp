@@ -976,7 +976,7 @@ agx_get_scissor_extents(const struct pipe_viewport_state *vp,
 static void
 agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
                             uint8_t **out, const struct pipe_viewport_state *vp,
-                            const struct pipe_scissor_state *ss, unsigned zbias)
+                            const struct pipe_scissor_state *ss)
 {
    unsigned minx, miny, maxx, maxy;
 
@@ -1010,7 +1010,10 @@ agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
 
    agx_ppp_push(&ppp, DEPTH_BIAS_SCISSOR, cfg) {
       cfg.scissor = index;
-      cfg.depth_bias = zbias;
+
+      /* Use the current depth bias, we allocate linearly */
+      unsigned count = batch->depth_bias.size / AGX_DEPTH_BIAS_LENGTH;
+      cfg.depth_bias = count ? count - 1 : 0;
    };
 
    agx_ppp_push(&ppp, REGION_CLIP, cfg) {
@@ -1033,11 +1036,10 @@ agx_upload_viewport_scissor(struct agx_pool *pool, struct agx_batch *batch,
    agx_ppp_fini(out, &ppp);
 }
 
-static uint16_t
+static void
 agx_upload_depth_bias(struct agx_batch *batch,
                       const struct pipe_rasterizer_state *rast)
 {
-   unsigned index = batch->depth_bias.size / AGX_DEPTH_BIAS_LENGTH;
    void *ptr =
       util_dynarray_grow_bytes(&batch->depth_bias, 1, AGX_DEPTH_BIAS_LENGTH);
 
@@ -1046,8 +1048,6 @@ agx_upload_depth_bias(struct agx_batch *batch,
       cfg.slope_scale = rast->offset_scale;
       cfg.clamp = rast->offset_clamp;
    }
-
-   return index;
 }
 
 /* A framebuffer state can be reused across batches, so it doesn't make sense
@@ -2246,17 +2246,16 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
 
    struct agx_pool *pool = &batch->pool;
    struct agx_compiled_shader *vs = ctx->vs, *fs = ctx->fs;
-   unsigned zbias = 0;
 
-   if (ctx->rast->base.offset_tri) {
-      zbias = agx_upload_depth_bias(batch, &ctx->rast->base);
+   if ((ctx->dirty & AGX_DIRTY_RS) && ctx->rast->base.offset_tri) {
+      agx_upload_depth_bias(batch, &ctx->rast->base);
       ctx->dirty |= AGX_DIRTY_SCISSOR_ZBIAS;
    }
 
    if (ctx->dirty & (AGX_DIRTY_VIEWPORT | AGX_DIRTY_SCISSOR_ZBIAS)) {
       agx_upload_viewport_scissor(
          pool, batch, &out, &ctx->viewport,
-         ctx->rast->base.scissor ? &ctx->scissor : NULL, zbias);
+         ctx->rast->base.scissor ? &ctx->scissor : NULL);
    }
 
    bool varyings_dirty = false;
