@@ -2006,3 +2006,25 @@ BEGIN_TEST(optimize.dpp_opsel)
 
    finish_opt_test();
 END_TEST
+
+BEGIN_TEST(optimize.apply_sgpr_swap_opsel)
+   //>> v1: %a, s1: %b = p_startpgm
+   if (!setup_cs("v1  s1", GFX11))
+      return;
+
+   Temp a = inputs[0];
+   Temp b = inputs[1];
+
+   Temp b_vgpr = bld.pseudo(aco_opcode::p_extract_vector, bld.def(v2b), bld.copy(bld.def(v1), b),
+                            Operand::c32(0));
+
+   Temp res0 = bld.tmp(v2b);
+   VALU_instruction& valu = bld.vop2(aco_opcode::v_sub_f16, Definition(res0), a, b_vgpr)->valu();
+   valu.opsel[0] = true;
+
+   //! v2b: %res0 = v_subrev_f16 %b, hi(%a)
+   //! p_unit_test 0, %res0
+   writeout(0, res0);
+
+   finish_opt_test();
+END_TEST
