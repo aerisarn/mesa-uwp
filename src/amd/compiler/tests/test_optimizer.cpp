@@ -1305,7 +1305,9 @@ BEGIN_TEST(optimize.mad_mix.input_conv.precision)
 END_TEST
 
 BEGIN_TEST(optimize.mad_mix.input_conv.modifiers)
-   for (unsigned i = GFX9; i <= GFX10; i++) {
+   for (unsigned i = GFX9; i <= GFX11; i++) {
+      if (i == GFX10_3)
+         continue;
       //>> v1: %a, v2b: %a16 = p_startpgm
       if (!setup_cs("v1 v2b", (amd_gfx_level)i))
          continue;
@@ -1380,18 +1382,24 @@ BEGIN_TEST(optimize.mad_mix.input_conv.modifiers)
       //! p_unit_test 14, %res14
       writeout(14, fmul(f2f32(ext_ushort(a, 1)), a));
 
-      //! v1: %res15_cvt = v_cvt_f32_f16 %a dst_sel:uword0 src0_sel:dword
+      //~gfx(9|10)! v1: %res15_cvt = v_cvt_f32_f16 %a dst_sel:uword0 src0_sel:dword
+      //~gfx11! v1: %res16_cvt1 = v_cvt_f32_f16 %a
+      //~gfx11! v1: %res15_cvt = p_extract %res16_cvt1, 0, 16, 0
       //! v1: %res15 = v_mul_f32 %res15_cvt, %a
       //! p_unit_test 15, %res15
       writeout(15, fmul(ext_ushort(f2f32(a), 0), a));
 
       //! v1: %res16_cvt = v_cvt_f32_f16 %a
-      //! v1: %res16 = v_mul_f32 %res16_cvt, %a dst_sel:dword src0_sel:uword1 src1_sel:dword
+      //~gfx(9|10)! v1: %res16 = v_mul_f32 %res16_cvt, %a dst_sel:dword src0_sel:uword1 src1_sel:dword
+      //~gfx11! v1: %res16_ext = p_extract %res16_cvt, 1, 16, 0
+      //~gfx11! v1: %res16 = v_mul_f32 %res16_ext, %a
       //! p_unit_test 16, %res16
       writeout(16, fmul(ext_ushort(f2f32(a), 1), a));
 
-      //! v1: %res17_cvt = v_cvt_f32_f16 %a dst_sel:dword src0_sel:ubyte2
-      //! v1: %res17 = v_mul_f32 %res17_cvt, %a
+      //~gfx(9|10)! v1: %res17_cvt = v_cvt_f32_f16 %a dst_sel:dword src0_sel:ubyte2
+      //~gfx(9|10)! v1: %res17 = v_mul_f32 %res17_cvt, %a
+      //~gfx11! v1: %res17_ext = p_extract %a, 2, 8, 0
+      //~gfx11! v1: %res17 = v_fma_mix_f32 lo(%res17_ext), %a, -0
       //! p_unit_test 17, %res17
       writeout(17, fmul(f2f32(ext_ubyte(a, 2)), a));
 
