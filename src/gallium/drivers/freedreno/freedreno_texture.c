@@ -93,6 +93,8 @@ fd_set_sampler_views(struct pipe_context *pctx, enum pipe_shader_type shader,
 
       if (tex->textures[p]) {
          fd_resource_set_usage(tex->textures[p]->texture, FD_DIRTY_TEX);
+         fd_dirty_shader_resource(ctx, tex->textures[p]->texture,
+                                  shader, FD_DIRTY_SHADER_TEX, false);
          tex->valid_textures |= (1 << p);
       } else {
          tex->valid_textures &= ~(1 << p);

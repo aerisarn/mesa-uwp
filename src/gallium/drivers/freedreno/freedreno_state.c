@@ -147,11 +147,7 @@ fd_set_constant_buffer(struct pipe_context *pctx, enum pipe_shader_type shader,
 
    fd_context_dirty_shader(ctx, shader, FD_DIRTY_SHADER_CONST);
    fd_resource_set_usage(cb->buffer, FD_DIRTY_CONST);
-
-   if (index > 0) {
-      assert(!cb->user_buffer);
-      ctx->dirty |= FD_DIRTY_RESOURCE;
-   }
+   fd_dirty_shader_resource(ctx, cb->buffer, shader, FD_DIRTY_SHADER_CONST, false);
 }
 
 void
@@ -176,11 +172,15 @@ fd_set_shader_buffers(struct pipe_context *pctx, enum pipe_shader_type shader,
          buf->buffer_size = buffers[i].buffer_size;
          pipe_resource_reference(&buf->buffer, buffers[i].buffer);
 
+         bool write = writable_bitmask & BIT(i);
+
          fd_resource_set_usage(buffers[i].buffer, FD_DIRTY_SSBO);
+         fd_dirty_shader_resource(ctx, buffers[i].buffer, shader,
+                                  FD_DIRTY_SHADER_SSBO, write);
 
          so->enabled_mask |= BIT(n);
 
-         if (writable_bitmask & BIT(i)) {
+         if (write) {
             struct fd_resource *rsc = fd_resource(buf->buffer);
             util_range_add(&rsc->b.b, &rsc->valid_buffer_range,
                            buf->buffer_offset,
@@ -222,12 +222,14 @@ fd_set_shader_images(struct pipe_context *pctx, enum pipe_shader_type shader,
          util_copy_image_view(buf, &images[i]);
 
          if (buf->resource) {
+            bool write = buf->access & PIPE_IMAGE_ACCESS_WRITE;
+
             fd_resource_set_usage(buf->resource, FD_DIRTY_IMAGE);
+            fd_dirty_shader_resource(ctx, buf->resource, shader,
+                                     FD_DIRTY_SHADER_IMAGE, write);
             so->enabled_mask |= BIT(n);
 
-            if ((buf->access & PIPE_IMAGE_ACCESS_WRITE) &&
-                (buf->resource->target == PIPE_BUFFER)) {
-
+            if (write && (buf->resource->target == PIPE_BUFFER)) {
                struct fd_resource *rsc = fd_resource(buf->resource);
                util_range_add(&rsc->b.b, &rsc->valid_buffer_range,
                               buf->u.buf.offset,
@@ -488,6 +490,7 @@ fd_set_vertex_buffers(struct pipe_context *pctx, unsigned start_slot,
    for (unsigned i = 0; i < count; i++) {
       assert(!vb[i].is_user_buffer);
       fd_resource_set_usage(vb[i].buffer.resource, FD_DIRTY_VTXBUF);
+      fd_dirty_resource(ctx, vb[i].buffer.resource, FD_DIRTY_VTXBUF, false);
 
       /* Robust buffer access: Return undefined data (the start of the buffer)
        * instead of process termination or a GPU hang in case of overflow.
@@ -677,6 +680,11 @@ fd_set_stream_output_targets(struct pipe_context *pctx, unsigned num_targets,
 
       so->reset |= (reset << i);
 
+      if (targets[i]) {
+         fd_resource_set_usage(targets[i]->buffer, FD_DIRTY_STREAMOUT);
+         fd_dirty_resource(ctx, targets[i]->buffer, FD_DIRTY_STREAMOUT, true);
+      }
+
       if (!changed && !reset)
          continue;
 
@@ -688,8 +696,6 @@ fd_set_stream_output_targets(struct pipe_context *pctx, unsigned num_targets,
          ctx->streamout.verts_written = 0;
       }
 
-      if (so->targets[i])
-         fd_resource_set_usage(so->targets[i]->buffer, FD_DIRTY_STREAMOUT);
       pipe_so_target_reference(&so->targets[i], targets[i]);
    }
 

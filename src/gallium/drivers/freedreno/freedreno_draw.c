@@ -70,7 +70,7 @@ batch_draw_tracking_for_dirty_bits(struct fd_batch *batch) assert_dt
 {
    struct fd_context *ctx = batch->ctx;
    struct pipe_framebuffer_state *pfb = &batch->framebuffer;
-   enum fd_dirty_3d_state dirty = ctx->dirty;
+   enum fd_dirty_3d_state dirty = ctx->dirty_resource;
    unsigned buffers = 0, restore_buffers = 0;
 
    if (dirty & (FD_DIRTY_FRAMEBUFFER | FD_DIRTY_ZSA)) {
@@ -133,7 +133,7 @@ batch_draw_tracking_for_dirty_bits(struct fd_batch *batch) assert_dt
    }
 
    u_foreach_bit (s, ctx->bound_shader_stages) {
-      enum fd_dirty_shader_state dirty_shader = ctx->dirty_shader[s];
+      enum fd_dirty_shader_state dirty_shader = ctx->dirty_shader_resource[s];
 
       /* Mark constbuf as being read: */
       if (dirty_shader & FD_DIRTY_SHADER_CONST) {
@@ -204,7 +204,7 @@ needs_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
 {
    struct fd_context *ctx = batch->ctx;
 
-   if (ctx->dirty & FD_DIRTY_RESOURCE)
+   if (ctx->dirty_resource)
       return true;
 
    if (info->index_size && !batch_references_resource(batch, info->index.resource))
@@ -240,7 +240,7 @@ batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
 
    fd_screen_lock(ctx->screen);
 
-   if (ctx->dirty & FD_DIRTY_RESOURCE)
+   if (ctx->dirty_resource)
       batch_draw_tracking_for_dirty_bits(batch);
 
    /* Mark index buffer as being read */
