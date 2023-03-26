@@ -2095,3 +2095,26 @@ BEGIN_TEST(optimize.combine_comparison_ordering_opsel)
 
    finish_opt_test();
 END_TEST
+
+BEGIN_TEST(optimize.max3_opsel)
+   /* TODO make these work before GFX11 using SDWA. */
+   for (unsigned i = GFX11; i <= GFX11; i++) {
+      //>> v1: %a, v1: %b, v2b: %c = p_startpgm
+      if (!setup_cs("v1  v1 v2b", GFX11))
+         continue;
+
+      Temp a = inputs[0];
+      Temp b = inputs[1];
+      Temp c = inputs[2];
+
+      Temp a_hi = bld.pseudo(aco_opcode::p_extract_vector, bld.def(v2b), a, Operand::c32(1));
+      Temp b_hi = bld.pseudo(aco_opcode::p_extract_vector, bld.def(v2b), b, Operand::c32(1));
+
+      //! v2b: %res0 = v_max3_f16 hi(%a), %c, hi(%b)
+      //! p_unit_test 0, %res0
+      writeout(0, bld.vop2(aco_opcode::v_max_f16, bld.def(v2b),
+                           bld.vop2(aco_opcode::v_max_f16, bld.def(v2b), a_hi, c), b_hi));
+
+      finish_opt_test();
+   }
+END_TEST
