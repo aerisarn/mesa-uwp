@@ -109,6 +109,18 @@ mme_reg_alloc_alloc(struct mme_reg_alloc *a)
 }
 
 static inline void
+mme_reg_alloc_realloc(struct mme_reg_alloc *a, struct mme_value val)
+{
+   assert(val.type == MME_VALUE_TYPE_REG);
+
+   assert(val.reg < 32);
+   assert(a->exists & (1u << val.reg));
+   assert(!(a->alloc & (1u << val.reg)));
+
+   a->alloc |= (1u << val.reg);
+}
+
+static inline void
 mme_reg_alloc_free(struct mme_reg_alloc *a, struct mme_value val)
 {
    assert(val.type == MME_VALUE_TYPE_REG);

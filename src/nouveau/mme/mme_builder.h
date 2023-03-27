@@ -116,6 +116,12 @@ mme_alloc_reg(struct mme_builder *b)
 }
 
 static inline void
+mme_realloc_reg(struct mme_builder *b, struct mme_value value)
+{
+   return mme_reg_alloc_realloc(&b->reg_alloc, value);
+}
+
+static inline void
 mme_free_reg(struct mme_builder *b, struct mme_value val)
 {
    mme_reg_alloc_free(&b->reg_alloc, val);
