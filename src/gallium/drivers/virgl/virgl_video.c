@@ -693,6 +693,82 @@ static int fill_mjpeg_picture_desc(const struct pipe_picture_desc *desc,
     return 0;
 }
 
+static int fill_vp9_picture_desc(const struct pipe_picture_desc *desc,
+                                   union virgl_picture_desc *vdsc)
+{
+    unsigned i;
+    struct virgl_video_buffer *vbuf;
+    struct virgl_vp9_picture_desc *vvp9 = &vdsc->vp9;
+    struct pipe_vp9_picture_desc *vp9 = (struct pipe_vp9_picture_desc *)desc;
+
+    fill_base_picture_desc(desc, &vvp9->base);
+
+    for (i = 0; i < 16; i++) {
+        vbuf = virgl_video_buffer(vp9->ref[i]);
+        vvp9->ref[i] = vbuf ? vbuf->handle : 0;
+    }
+
+    ITEM_SET(vvp9, vp9, picture_parameter.frame_width);
+    ITEM_SET(vvp9, vp9, picture_parameter.frame_height);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.subsampling_x);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.subsampling_y);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.frame_type);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.show_frame);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.error_resilient_mode);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.intra_only);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.allow_high_precision_mv);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.mcomp_filter_type);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.frame_parallel_decoding_mode);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.reset_frame_context);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.refresh_frame_context);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.frame_context_idx);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.segmentation_enabled);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.segmentation_temporal_update);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.segmentation_update_map);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.last_ref_frame);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.last_ref_frame_sign_bias);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.golden_ref_frame);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.golden_ref_frame_sign_bias);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.alt_ref_frame);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.alt_ref_frame_sign_bias);
+    ITEM_SET(vvp9, vp9, picture_parameter.pic_fields.lossless_flag);
+    ITEM_SET(vvp9, vp9, picture_parameter.filter_level);
+    ITEM_SET(vvp9, vp9, picture_parameter.sharpness_level);
+    ITEM_SET(vvp9, vp9, picture_parameter.log2_tile_rows);
+    ITEM_SET(vvp9, vp9, picture_parameter.log2_tile_columns);
+    ITEM_SET(vvp9, vp9, picture_parameter.frame_header_length_in_bytes);
+    ITEM_SET(vvp9, vp9, picture_parameter.first_partition_size);
+    ITEM_CPY(vvp9, vp9, picture_parameter.mb_segment_tree_probs);
+    ITEM_CPY(vvp9, vp9, picture_parameter.segment_pred_probs);
+    ITEM_SET(vvp9, vp9, picture_parameter.profile);
+    ITEM_SET(vvp9, vp9, picture_parameter.bit_depth);
+    ITEM_SET(vvp9, vp9, picture_parameter.mode_ref_delta_enabled);
+    ITEM_SET(vvp9, vp9, picture_parameter.mode_ref_delta_update);
+    ITEM_SET(vvp9, vp9, picture_parameter.base_qindex);
+    ITEM_SET(vvp9, vp9, picture_parameter.y_dc_delta_q);
+    ITEM_SET(vvp9, vp9, picture_parameter.uv_ac_delta_q);
+    ITEM_SET(vvp9, vp9, picture_parameter.uv_dc_delta_q);
+    ITEM_SET(vvp9, vp9, picture_parameter.abs_delta);
+    ITEM_CPY(vvp9, vp9, picture_parameter.ref_deltas);
+    ITEM_CPY(vvp9, vp9, picture_parameter.mode_deltas);
+    
+    vvp9->slice_parameter.slice_data_size = vp9->slice_parameter.slice_data_size[0];
+    vvp9->slice_parameter.slice_data_offset = vp9->slice_parameter.slice_data_offset[0];
+    vvp9->slice_parameter.slice_data_flag = vp9->slice_parameter.slice_data_flag[0];
+
+    for (i = 0; i < 8; i++) {
+        ITEM_SET(vvp9, vp9, slice_parameter.seg_param[i].segment_flags.segment_reference_enabled);
+        ITEM_SET(vvp9, vp9, slice_parameter.seg_param[i].segment_flags.segment_reference);
+        ITEM_SET(vvp9, vp9, slice_parameter.seg_param[i].segment_flags.segment_reference_skipped);
+        ITEM_CPY(vvp9, vp9, slice_parameter.seg_param[i].filter_level);
+        ITEM_SET(vvp9, vp9, slice_parameter.seg_param[i].luma_ac_quant_scale);
+        ITEM_SET(vvp9, vp9, slice_parameter.seg_param[i].luma_dc_quant_scale);
+        ITEM_SET(vvp9, vp9, slice_parameter.seg_param[i].chroma_ac_quant_scale);
+        ITEM_SET(vvp9, vp9, slice_parameter.seg_param[i].chroma_dc_quant_scale);
+    }
+
+    return 0;
+}
 #undef ITEM_SET
 #undef ITEM_CPY
 
@@ -965,9 +1041,10 @@ virgl_video_create_codec(struct pipe_context *ctx,
         height = align(height, VL_MACROBLOCK_HEIGHT);
         break;
     case PIPE_VIDEO_FORMAT_HEVC: 
-    case PIPE_VIDEO_FORMAT_MPEG12: 
-    case PIPE_VIDEO_FORMAT_VC1: 
-    case PIPE_VIDEO_FORMAT_JPEG: /* fall through */
+    case PIPE_VIDEO_FORMAT_MPEG12:
+    case PIPE_VIDEO_FORMAT_VC1:
+    case PIPE_VIDEO_FORMAT_JPEG:
+    case PIPE_VIDEO_FORMAT_VP9: /* fall through */
     default:
         break;
     }
