@@ -770,6 +770,7 @@ zink_begin_render_pass(struct zink_context *ctx)
       uint32_t rp_state = ctx->gfx_pipeline_state.rp_state;
       struct zink_render_pass *rp = ctx->gfx_pipeline_state.render_pass;
       struct zink_framebuffer *fb = ctx->framebuffer;
+      bool blitting = ctx->blitting;
 
       u_foreach_bit(i, ctx->framebuffer->rp->state.msaa_expand_mask) {
          struct zink_ctx_surface *csurf = (struct zink_ctx_surface*)ctx->fb_state.cbufs[i];
@@ -788,13 +789,19 @@ zink_begin_render_pass(struct zink_context *ctx)
          src_view = ctx->base.create_sampler_view(&ctx->base, src, &src_templ);
 
          zink_blit_begin(ctx, ZINK_BLIT_SAVE_FB | ZINK_BLIT_SAVE_FS | ZINK_BLIT_SAVE_TEXTURES);
-         zink_blit_barriers(ctx, zink_resource(src), zink_resource(dst_view->texture), false);
+         ctx->blitting = false;
+         zink_blit_barriers(ctx, zink_resource(src), zink_resource(dst_view->texture), true);
          ctx->blitting = true;
          util_blitter_blit_generic(ctx->blitter, dst_view, &dstbox,
                                    src_view, &dstbox, ctx->fb_state.width, ctx->fb_state.height,
                                    PIPE_MASK_RGBAZS, PIPE_TEX_FILTER_NEAREST, NULL,
                                    false, false, 0);
          ctx->blitting = false;
+         if (blitting) {
+            zink_blit_barriers(ctx, NULL, zink_resource(dst_view->texture), true);
+            zink_blit_barriers(ctx, NULL, zink_resource(src), true);
+         }
+         ctx->blitting = blitting;
          pipe_sampler_view_reference(&src_view, NULL);
          csurf->transient_init = true;
       }
