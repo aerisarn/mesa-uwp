@@ -2360,7 +2360,7 @@ bool radv_pipeline_has_gs_copy_shader(const struct radv_pipeline *pipeline);
 
 const struct radv_userdata_info *radv_get_user_sgpr(const struct radv_shader *shader, int idx);
 
-struct radv_shader *radv_get_shader(const struct radv_pipeline *pipeline, gl_shader_stage stage);
+struct radv_shader *radv_get_shader(struct radv_shader *const *shaders, gl_shader_stage stage);
 
 void radv_pipeline_emit_hw_cs(const struct radv_physical_device *pdevice, struct radeon_cmdbuf *cs,
                               const struct radv_shader *shader);

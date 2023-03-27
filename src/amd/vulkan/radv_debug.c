@@ -455,7 +455,7 @@ radv_dump_vs_prolog(const struct radv_device *device, struct radv_graphics_pipel
                     FILE *f)
 {
    struct radv_shader_part *vs_prolog = radv_get_saved_vs_prolog(device);
-   struct radv_shader *vs_shader = radv_get_shader(&pipeline->base, MESA_SHADER_VERTEX);
+   struct radv_shader *vs_shader = radv_get_shader(pipeline->base.shaders, MESA_SHADER_VERTEX);
 
    if (!vs_prolog || !vs_shader || !vs_shader->info.vs.has_prolog)
       return;

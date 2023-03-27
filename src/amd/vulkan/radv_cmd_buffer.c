@@ -2461,7 +2461,7 @@ radv_emit_patch_control_points(struct radv_cmd_buffer *cmd_buffer)
                      (cmd_buffer->state.tess_num_patches << 6) | d->vk.ts.patch_control_points);
 
    const struct radv_userdata_info *num_patches = radv_get_user_sgpr(
-      radv_get_shader(&pipeline->base, MESA_SHADER_TESS_EVAL), AC_UD_TES_NUM_PATCHES);
+      radv_get_shader(pipeline->base.shaders, MESA_SHADER_TESS_EVAL), AC_UD_TES_NUM_PATCHES);
    assert(num_patches->sgpr_idx != -1 && num_patches->num_sgprs == 1);
 
    base_reg = pipeline->base.user_data_0[MESA_SHADER_TESS_EVAL];
@@ -3902,7 +3902,7 @@ static void
 radv_emit_vertex_input(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
 {
    const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   const struct radv_shader *vs_shader = radv_get_shader(&pipeline->base, MESA_SHADER_VERTEX);
+   const struct radv_shader *vs_shader = radv_get_shader(pipeline->base.shaders, MESA_SHADER_VERTEX);
 
    assert(!cmd_buffer->state.mesh_shading);
 
@@ -3932,7 +3932,7 @@ radv_emit_tess_domain_origin(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
    const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   const struct radv_shader *tes = radv_get_shader(&pipeline->base, MESA_SHADER_TESS_EVAL);
+   const struct radv_shader *tes = radv_get_shader(pipeline->base.shaders, MESA_SHADER_TESS_EVAL);
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    unsigned type = 0, partitioning = 0, distribution_mode = 0;
    unsigned topology;
@@ -4631,7 +4631,7 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
 
    } else {
       radv_foreach_stage(stage, internal_stages & ~VK_SHADER_STAGE_TASK_BIT_EXT) {
-         shader = radv_get_shader(pipeline, stage);
+         shader = radv_get_shader(pipeline->shaders, stage);
 
          if (!shader)
             continue;
@@ -4674,7 +4674,7 @@ radv_flush_constants(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags stag
          prev_shader = NULL;
          radv_foreach_stage(stage, internal_stages & ~VK_SHADER_STAGE_TASK_BIT_EXT)
          {
-            shader = radv_get_shader(pipeline, stage);
+            shader = radv_get_shader(pipeline->shaders, stage);
 
             /* Avoid redundantly emitting the address for merged stages. */
             if (shader && shader != prev_shader) {
@@ -4705,7 +4705,7 @@ radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
                               const struct radv_graphics_pipeline *pipeline,
                               bool full_null_descriptors, void *vb_ptr)
 {
-   struct radv_shader *vs_shader = radv_get_shader(&pipeline->base, MESA_SHADER_VERTEX);
+   struct radv_shader *vs_shader = radv_get_shader(pipeline->base.shaders, MESA_SHADER_VERTEX);
    enum amd_gfx_level chip = cmd_buffer->device->physical_device->rad_info.gfx_level;
    enum radeon_family family = cmd_buffer->device->physical_device->rad_info.family;
    unsigned desc_index = 0;
@@ -4894,7 +4894,7 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer)
    va += vb_offset;
 
    radv_emit_userdata_address(cmd_buffer->device, cmd_buffer->cs,
-                              radv_get_shader(&pipeline->base, MESA_SHADER_VERTEX),
+                              radv_get_shader(pipeline->base.shaders, MESA_SHADER_VERTEX),
                               pipeline->base.user_data_0[MESA_SHADER_VERTEX],
                               AC_UD_VS_VERTEX_BUFFERS, va);
 
@@ -5215,7 +5215,7 @@ gfx10_emit_ge_cntl(struct radv_cmd_buffer *cmd_buffer)
       primgroup_size = state->tess_num_patches;
 
       if (pipeline->base.shaders[MESA_SHADER_TESS_CTRL]->info.uses_prim_id ||
-          radv_get_shader(&pipeline->base, MESA_SHADER_TESS_EVAL)->info.uses_prim_id) {
+          radv_get_shader(pipeline->base.shaders, MESA_SHADER_TESS_EVAL)->info.uses_prim_id) {
          break_wave_at_eoi = true;
       }
    } else if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY)) {
@@ -6222,7 +6222,7 @@ static void
 radv_bind_vs_input_state(struct radv_cmd_buffer *cmd_buffer,
                          const struct radv_graphics_pipeline *pipeline)
 {
-   const struct radv_shader *vs_shader = radv_get_shader(&pipeline->base, MESA_SHADER_VERTEX);
+   const struct radv_shader *vs_shader = radv_get_shader(pipeline->base.shaders, MESA_SHADER_VERTEX);
    const struct radv_vs_input_state *src = &pipeline->vs_input_state;
 
    /* Bind the vertex input state from the pipeline when the VS has a prolog and the state isn't
@@ -7683,7 +7683,7 @@ radv_emit_view_index(struct radv_cmd_buffer *cmd_buffer, unsigned index)
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
    radv_foreach_stage(stage, pipeline->active_stages & ~VK_SHADER_STAGE_TASK_BIT_EXT) {
-      radv_emit_view_index_per_stage(cs, radv_get_shader(&pipeline->base, stage),
+      radv_emit_view_index_per_stage(cs, radv_get_shader(pipeline->base.shaders, stage),
                                      pipeline->base.user_data_0[stage], index);
    }
 

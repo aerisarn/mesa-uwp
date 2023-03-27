@@ -779,7 +779,7 @@ radv_compute_ia_multi_vgt_param_helpers(const struct radv_device *device,
    if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL)) {
       /* SWITCH_ON_EOI must be set if PrimID is used. */
       if (pipeline->base.shaders[MESA_SHADER_TESS_CTRL]->info.uses_prim_id ||
-          radv_get_shader(&pipeline->base, MESA_SHADER_TESS_EVAL)->info.uses_prim_id)
+          radv_get_shader(pipeline->base.shaders, MESA_SHADER_TESS_EVAL)->info.uses_prim_id)
          ia_multi_vgt_param.ia_switch_on_eoi = true;
    }
 
@@ -1412,24 +1412,24 @@ gfx10_emit_ge_pc_alloc(struct radeon_cmdbuf *cs, enum amd_gfx_level gfx_level,
 }
 
 struct radv_shader *
-radv_get_shader(const struct radv_pipeline *pipeline, gl_shader_stage stage)
+radv_get_shader(struct radv_shader *const *shaders, gl_shader_stage stage)
 {
    if (stage == MESA_SHADER_VERTEX) {
-      if (pipeline->shaders[MESA_SHADER_VERTEX])
-         return pipeline->shaders[MESA_SHADER_VERTEX];
-      if (pipeline->shaders[MESA_SHADER_TESS_CTRL])
-         return pipeline->shaders[MESA_SHADER_TESS_CTRL];
-      if (pipeline->shaders[MESA_SHADER_GEOMETRY])
-         return pipeline->shaders[MESA_SHADER_GEOMETRY];
+      if (shaders[MESA_SHADER_VERTEX])
+         return shaders[MESA_SHADER_VERTEX];
+      if (shaders[MESA_SHADER_TESS_CTRL])
+         return shaders[MESA_SHADER_TESS_CTRL];
+      if (shaders[MESA_SHADER_GEOMETRY])
+         return shaders[MESA_SHADER_GEOMETRY];
    } else if (stage == MESA_SHADER_TESS_EVAL) {
-      if (!pipeline->shaders[MESA_SHADER_TESS_CTRL])
+      if (!shaders[MESA_SHADER_TESS_CTRL])
          return NULL;
-      if (pipeline->shaders[MESA_SHADER_TESS_EVAL])
-         return pipeline->shaders[MESA_SHADER_TESS_EVAL];
-      if (pipeline->shaders[MESA_SHADER_GEOMETRY])
-         return pipeline->shaders[MESA_SHADER_GEOMETRY];
+      if (shaders[MESA_SHADER_TESS_EVAL])
+         return shaders[MESA_SHADER_TESS_EVAL];
+      if (shaders[MESA_SHADER_GEOMETRY])
+         return shaders[MESA_SHADER_GEOMETRY];
    }
-   return pipeline->shaders[stage];
+   return shaders[stage];
 }
 
 static const struct radv_shader *
@@ -4268,7 +4268,7 @@ radv_pipeline_emit_vgt_vertex_reuse(const struct radv_device *device, struct rad
 
    unsigned vtx_reuse_depth = 30;
    if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL) &&
-       radv_get_shader(&pipeline->base, MESA_SHADER_TESS_EVAL)->info.tes.spacing ==
+       radv_get_shader(pipeline->base.shaders, MESA_SHADER_TESS_EVAL)->info.tes.spacing ==
           TESS_SPACING_FRACTIONAL_ODD) {
       vtx_reuse_depth = 14;
    }
@@ -4557,7 +4557,8 @@ radv_pipeline_init_vertex_input_state(const struct radv_device *device,
                                       const struct vk_graphics_pipeline_state *state)
 {
    const struct radv_physical_device *pdevice = device->physical_device;
-   const struct radv_shader_info *vs_info = &radv_get_shader(&pipeline->base, MESA_SHADER_VERTEX)->info;
+   const struct radv_shader_info *vs_info =
+      &radv_get_shader(pipeline->base.shaders, MESA_SHADER_VERTEX)->info;
 
    if (state->vi) {
       u_foreach_bit(i, state->vi->attributes_valid) {
@@ -4654,7 +4655,7 @@ radv_pipeline_get_streamout_shader(struct radv_graphics_pipeline *pipeline)
    int i;
 
    for (i = MESA_SHADER_GEOMETRY; i >= MESA_SHADER_VERTEX; i--) {
-      struct radv_shader *shader = radv_get_shader(&pipeline->base, i);
+      struct radv_shader *shader = radv_get_shader(pipeline->base.shaders, i);
 
       if (shader && shader->info.so.num_outputs > 0)
          return shader;
@@ -4691,16 +4692,16 @@ radv_pipeline_init_shader_stages_state(const struct radv_device *device,
       radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH) ? MESA_SHADER_MESH : MESA_SHADER_VERTEX;
 
    const struct radv_userdata_info *loc =
-      radv_get_user_sgpr(radv_get_shader(&pipeline->base, first_stage),
+      radv_get_user_sgpr(radv_get_shader(pipeline->base.shaders, first_stage),
                          AC_UD_VS_BASE_VERTEX_START_INSTANCE);
    if (loc->sgpr_idx != -1) {
       pipeline->vtx_base_sgpr = pipeline->base.user_data_0[first_stage];
       pipeline->vtx_base_sgpr += loc->sgpr_idx * 4;
       pipeline->vtx_emit_num = loc->num_sgprs;
       pipeline->uses_drawid =
-         radv_get_shader(&pipeline->base, first_stage)->info.vs.needs_draw_id;
+         radv_get_shader(pipeline->base.shaders, first_stage)->info.vs.needs_draw_id;
       pipeline->uses_baseinstance =
-         radv_get_shader(&pipeline->base, first_stage)->info.vs.needs_base_instance;
+         radv_get_shader(pipeline->base.shaders, first_stage)->info.vs.needs_base_instance;
 
       assert(first_stage != MESA_SHADER_MESH || !pipeline->uses_baseinstance);
    }
