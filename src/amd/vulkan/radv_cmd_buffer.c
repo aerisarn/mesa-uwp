@@ -6260,6 +6260,11 @@ radv_bind_multisample_state(struct radv_cmd_buffer *cmd_buffer,
 static void
 radv_bind_pre_rast_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *shader)
 {
+   assert(shader->info.stage == MESA_SHADER_VERTEX ||
+          shader->info.stage == MESA_SHADER_TESS_EVAL ||
+          shader->info.stage == MESA_SHADER_GEOMETRY ||
+          shader->info.stage == MESA_SHADER_MESH);
+
    if (radv_get_user_sgpr(shader, AC_UD_NGG_PROVOKING_VTX)->sgpr_idx != -1) {
       /* Re-emit the provoking vertex mode state because the SGPR idx can be different. */
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PROVOKING_VERTEX_MODE;
