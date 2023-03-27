@@ -2077,14 +2077,37 @@ iris_map_copy_region(struct iris_transfer *map)
       .format = res->internal_format,
    };
 
-   if (xfer->resource->target == PIPE_BUFFER)
+   if (xfer->resource->target == PIPE_BUFFER) {
       templ.target = PIPE_BUFFER;
-   else if (templ.array_size > 1)
-      templ.target = PIPE_TEXTURE_2D_ARRAY;
-   else
-      templ.target = PIPE_TEXTURE_2D;
+      map->staging = iris_resource_create_for_buffer(pscreen, &templ);
+   } else {
+      templ.target = templ.array_size > 1 ? PIPE_TEXTURE_2D_ARRAY
+                                          : PIPE_TEXTURE_2D;
 
-   map->staging = iris_resource_create(pscreen, &templ);
+      unsigned row_pitch_B = 0;
+
+#ifdef ANDROID
+      /* Staging buffers for stall-avoidance blits don't always have the
+       * same restrictions on stride as the original buffer.  For example,
+       * the original buffer may be used for scanout, while the staging
+       * buffer will not be.  So we may compute a smaller stride for the
+       * staging buffer than the original.
+       *
+       * Normally, this is good, as it saves memory.  Unfortunately, for
+       * Android, gbm_gralloc incorrectly asserts that the stride returned
+       * by gbm_bo_map() must equal the result of gbm_bo_get_stride(),
+       * which simply isn't always the case.
+       *
+       * Because gralloc is unlikely to be fixed, we hack around it in iris
+       * by forcing the staging buffer to have a matching stride.
+       */
+      if (iris_bo_is_external(res->bo))
+         row_pitch_B = res->surf.row_pitch_B;
+#endif
+
+      map->staging =
+         iris_resource_create_for_image(pscreen, &templ, NULL, 0, row_pitch_B);
+   }
 
    /* If we fail to create a staging resource, the caller will fallback
     * to mapping directly on the CPU.
