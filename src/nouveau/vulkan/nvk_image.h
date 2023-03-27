@@ -26,7 +26,7 @@ struct nvk_image {
    struct nil_image nil;
 };
 
-VK_DEFINE_HANDLE_CASTS(nvk_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)
+VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)
 
 static inline uint64_t
 nvk_image_base_address(const struct nvk_image *image)

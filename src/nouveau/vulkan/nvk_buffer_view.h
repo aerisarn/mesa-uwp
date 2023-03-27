@@ -18,7 +18,7 @@ struct nvk_buffer_view {
    uint32_t desc_index;
 };
 
-VK_DEFINE_HANDLE_CASTS(nvk_buffer_view, vk.base, VkBufferView,
-                       VK_OBJECT_TYPE_BUFFER_VIEW)
+VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_buffer_view, vk.base, VkBufferView,
+                               VK_OBJECT_TYPE_BUFFER_VIEW)
 
 #endif

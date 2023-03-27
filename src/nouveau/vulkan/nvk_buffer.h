@@ -15,7 +15,7 @@ struct nvk_buffer {
    uint64_t addr;
 };
 
-VK_DEFINE_HANDLE_CASTS(nvk_buffer, vk.base, VkBuffer, VK_OBJECT_TYPE_BUFFER)
+VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_buffer, vk.base, VkBuffer, VK_OBJECT_TYPE_BUFFER)
 
 static inline uint64_t
 nvk_buffer_address(const struct nvk_buffer *buffer, uint64_t offset)

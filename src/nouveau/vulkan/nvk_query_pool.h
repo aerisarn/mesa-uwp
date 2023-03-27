@@ -17,7 +17,7 @@ struct nvk_query_pool {
    void *bo_map;
 };
 
-VK_DEFINE_HANDLE_CASTS(nvk_query_pool, vk.base, VkQueryPool,
-                       VK_OBJECT_TYPE_QUERY_POOL)
+VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_query_pool, vk.base, VkQueryPool,
+                               VK_OBJECT_TYPE_QUERY_POOL)
 
 #endif /* NVK_QUERY_POOL_H */

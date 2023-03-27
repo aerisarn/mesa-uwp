@@ -17,7 +17,7 @@ struct nvk_device_memory {
    void *map;
 };
 
-VK_DEFINE_HANDLE_CASTS(nvk_device_memory, base, VkDeviceMemory, VK_OBJECT_TYPE_DEVICE_MEMORY)
+VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_device_memory, base, VkDeviceMemory, VK_OBJECT_TYPE_DEVICE_MEMORY)
 
 struct nvk_memory_tiling_info {
    uint16_t tile_mode;

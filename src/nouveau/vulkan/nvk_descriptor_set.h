@@ -56,7 +56,7 @@ struct nvk_descriptor_set {
    struct nvk_buffer_address dynamic_buffers[];
 };
 
-VK_DEFINE_HANDLE_CASTS(nvk_descriptor_set, base, VkDescriptorSet,
+VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_descriptor_set, base, VkDescriptorSet,
                        VK_OBJECT_TYPE_DESCRIPTOR_SET)
 
 static inline uint64_t

@@ -11,6 +11,6 @@ struct nvk_sampler {
    uint32_t desc_index;
 };
 
-VK_DEFINE_HANDLE_CASTS(nvk_sampler, base, VkSampler, VK_OBJECT_TYPE_SAMPLER)
+VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_sampler, base, VkSampler, VK_OBJECT_TYPE_SAMPLER)
 
 #endif

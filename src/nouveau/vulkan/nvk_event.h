@@ -12,7 +12,7 @@ struct nvk_event {
    VkResult *status;
 };
 
-VK_DEFINE_HANDLE_CASTS(nvk_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
+VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
 
 uint32_t
 vk_stage_flags_to_nv9097_pipeline_location(VkPipelineStageFlags2 flags);
