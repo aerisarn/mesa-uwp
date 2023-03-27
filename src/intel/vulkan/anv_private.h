@@ -1695,6 +1695,13 @@ struct anv_descriptor_set_binding_layout {
    struct anv_sampler **immutable_samplers;
 };
 
+enum anv_descriptor_set_layout_type {
+   ANV_PIPELINE_DESCRIPTOR_SET_LAYOUT_TYPE_UNKNOWN,
+   ANV_PIPELINE_DESCRIPTOR_SET_LAYOUT_TYPE_INDIRECT,
+   ANV_PIPELINE_DESCRIPTOR_SET_LAYOUT_TYPE_DIRECT,
+   ANV_PIPELINE_DESCRIPTOR_SET_LAYOUT_TYPE_BUFFER,
+};
+
 bool anv_descriptor_supports_bindless(const struct anv_physical_device *pdevice,
                                       const struct anv_descriptor_set_binding_layout *binding,
                                       bool sampler);
@@ -1707,6 +1714,9 @@ struct anv_descriptor_set_layout {
    struct vk_object_base base;
 
    VkDescriptorSetLayoutCreateFlags flags;
+
+   /* Type of descriptor set layout */
+   enum anv_descriptor_set_layout_type type;
 
    /* Descriptor set layouts can be destroyed at almost any time */
    uint32_t ref_cnt;
@@ -2022,6 +2032,8 @@ struct anv_pipeline_sets_layout {
       struct anv_descriptor_set_layout *layout;
       uint32_t dynamic_offset_start;
    } set[MAX_SETS];
+
+   enum anv_descriptor_set_layout_type type;
 
    uint32_t num_sets;
    uint32_t num_dynamic_buffers;

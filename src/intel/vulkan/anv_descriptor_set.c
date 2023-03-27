@@ -579,6 +579,13 @@ VkResult anv_CreateDescriptorSetLayout(
    set_layout->dynamic_offset_count = dynamic_offset_count;
    set_layout->descriptor_buffer_size = descriptor_buffer_size;
 
+   if (pCreateInfo->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT)
+      set_layout->type = ANV_PIPELINE_DESCRIPTOR_SET_LAYOUT_TYPE_BUFFER;
+   else if (device->physical->indirect_descriptors)
+      set_layout->type = ANV_PIPELINE_DESCRIPTOR_SET_LAYOUT_TYPE_INDIRECT;
+   else
+      set_layout->type = ANV_PIPELINE_DESCRIPTOR_SET_LAYOUT_TYPE_DIRECT;
+
    *pSetLayout = anv_descriptor_set_layout_to_handle(set_layout);
 
    return VK_SUCCESS;
@@ -763,6 +770,11 @@ anv_pipeline_sets_layout_add(struct anv_pipeline_sets_layout *layout,
    /* Workaround CTS : Internal CTS issue 3584 */
    if (layout->independent_sets && anv_descriptor_set_layout_empty(set_layout))
       return;
+
+   if (layout->type == ANV_PIPELINE_DESCRIPTOR_SET_LAYOUT_TYPE_UNKNOWN)
+      layout->type = set_layout->type;
+   else
+      assert(layout->type == set_layout->type);
 
    layout->num_sets = MAX2(set_idx + 1, layout->num_sets);
 
