@@ -32,7 +32,6 @@ spec@!opengl 1.0@rasterpos,Crash
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-24_8 samples=2,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-24_8 samples=4,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-32f_24_8_rev samples=2,Fail
-spec@!opengl 1.1@depthstencil-default_fb-drawpixels-32f_24_8_rev samples=4,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-float-and-ushort samples=2,Fail
 spec@!opengl 1.1@getteximage-depth,Fail
 spec@!opengl 1.1@getteximage-depth@GL_TEXTURE_1D_ARRAY-GL_DEPTH_COMPONENT,Fail
