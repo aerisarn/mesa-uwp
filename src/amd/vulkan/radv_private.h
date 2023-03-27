@@ -3019,6 +3019,7 @@ void llvm_compile_shader(const struct radv_nir_compiler_options *options,
 struct radv_shader_info;
 
 void radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *nir,
+                               gl_shader_stage next_stage,
                                const struct radv_pipeline_layout *layout,
                                const struct radv_pipeline_key *pipeline_key,
                                const enum radv_pipeline_type pipeline_type,

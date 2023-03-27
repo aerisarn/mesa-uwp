@@ -2484,6 +2484,38 @@ radv_consider_force_vrs(const struct radv_device *device,
    return true;
 }
 
+static gl_shader_stage
+radv_get_next_stage(gl_shader_stage stage, VkShaderStageFlagBits active_nir_stages)
+{
+   switch (stage) {
+   case MESA_SHADER_VERTEX:
+      if (active_nir_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) {
+         return MESA_SHADER_TESS_CTRL;
+      } else if (active_nir_stages & VK_SHADER_STAGE_GEOMETRY_BIT) {
+         return MESA_SHADER_GEOMETRY;
+      } else {
+         return MESA_SHADER_FRAGMENT;
+      }
+   case MESA_SHADER_TESS_CTRL:
+      return MESA_SHADER_TESS_EVAL;
+   case MESA_SHADER_TESS_EVAL:
+      if (active_nir_stages & VK_SHADER_STAGE_GEOMETRY_BIT) {
+         return MESA_SHADER_GEOMETRY;
+      } else {
+         return MESA_SHADER_FRAGMENT;
+      }
+   case MESA_SHADER_GEOMETRY:
+   case MESA_SHADER_MESH:
+      return MESA_SHADER_FRAGMENT;
+   case MESA_SHADER_TASK:
+      return MESA_SHADER_MESH;
+   case MESA_SHADER_FRAGMENT:
+      return MESA_SHADER_NONE;
+   default:
+      unreachable("invalid graphics shader stage");
+   }
+}
+
 static void
 radv_fill_shader_info(struct radv_device *device,
                       struct radv_graphics_pipeline *pipeline,
@@ -2496,7 +2528,9 @@ radv_fill_shader_info(struct radv_device *device,
    bool consider_force_vrs = radv_consider_force_vrs(device, pipeline, noop_fs, stages);
 
    radv_foreach_stage(i, active_nir_stages) {
-      radv_nir_shader_info_pass(device, stages[i].nir, pipeline_layout, pipeline_key,
+      gl_shader_stage next_stage = radv_get_next_stage(i, active_nir_stages);
+
+      radv_nir_shader_info_pass(device, stages[i].nir, next_stage, pipeline_layout, pipeline_key,
                                 pipeline->base.type,
                                 i == pipeline->last_vgt_api_stage && consider_force_vrs,
                                 &stages[i].info);
@@ -2810,7 +2844,7 @@ radv_pipeline_create_gs_copy_shader(struct radv_device *device, struct radv_pipe
       .shader_sha1 = {0},
    };
    radv_nir_shader_info_init(&gs_copy_stage.info);
-   radv_nir_shader_info_pass(device, nir, pipeline_layout, pipeline_key, pipeline->type, false,
+   radv_nir_shader_info_pass(device, nir, MESA_SHADER_FRAGMENT, pipeline_layout, pipeline_key, pipeline->type, false,
                              &gs_copy_stage.info);
    gs_copy_stage.info.wave_size = 64;      /* Wave32 not supported. */
    gs_copy_stage.info.workgroup_size = 64; /* HW VS: separate waves, no workgroups */
@@ -5310,7 +5344,7 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline,
 
    /* Run the shader info pass. */
    radv_nir_shader_info_init(&cs_stage.info);
-   radv_nir_shader_info_pass(device, cs_stage.nir, pipeline_layout, pipeline_key,
+   radv_nir_shader_info_pass(device, cs_stage.nir, MESA_SHADER_NONE, pipeline_layout, pipeline_key,
                              pipeline->base.type, false, &cs_stage.info);
 
    /* Declare shader arguments. */

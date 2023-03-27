@@ -736,6 +736,7 @@ radv_nir_shader_info_init(struct radv_shader_info *info)
 
 void
 radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *nir,
+                          gl_shader_stage next_stage,
                           const struct radv_pipeline_layout *layout,
                           const struct radv_pipeline_key *pipeline_key,
                           const enum radv_pipeline_type pipeline_type,
@@ -743,6 +744,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
                           struct radv_shader_info *info)
 {
    info->stage = nir->info.stage;
+   info->next_stage = next_stage;
 
    struct nir_function *func = (struct nir_function *)exec_list_get_head_const(&nir->functions);
 

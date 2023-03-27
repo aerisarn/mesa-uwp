@@ -267,7 +267,7 @@ radv_rt_pipeline_compile(struct radv_ray_tracing_pipeline *pipeline,
 
    /* Run the shader info pass. */
    radv_nir_shader_info_init(&rt_stage.info);
-   radv_nir_shader_info_pass(device, rt_stage.nir, pipeline_layout, pipeline_key,
+   radv_nir_shader_info_pass(device, rt_stage.nir, MESA_SHADER_NONE, pipeline_layout, pipeline_key,
                              pipeline->base.base.type, false, &rt_stage.info);
 
    /* Declare shader arguments. */
