@@ -367,7 +367,7 @@ The integer capabilities:
 * ``PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT``:
   If non-zero, rendering to framebuffers with no surface attachments
   is supported. The context->is_format_supported function will be expected
-  to be implemented with PIPE_FORMAT_NONE yeilding the MSAA modes the hardware
+  to be implemented with PIPE_FORMAT_NONE yielding the MSAA modes the hardware
   supports. N.B., The maximum number of layers supported for rasterizing a
   primitive on a layer is obtained from ``PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS``
   even though it can be larger than the number of layers supported by either
