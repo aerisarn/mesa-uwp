@@ -8097,20 +8097,6 @@ radv_emit_userdata_mesh(struct radv_cmd_buffer *cmd_buffer,
 }
 
 ALWAYS_INLINE static void
-radv_emit_userdata_mesh_draw_id_0(struct radv_cmd_buffer *cmd_buffer)
-{
-   struct radv_cmd_state *state = &cmd_buffer->state;
-   struct radeon_cmdbuf *cs = cmd_buffer->cs;
-   struct radv_graphics_pipeline *pipeline = state->graphics_pipeline;
-   const bool uses_drawid = pipeline->uses_drawid;
-
-   if (uses_drawid) {
-      radeon_set_sh_reg_seq(cs, pipeline->vtx_base_sgpr + (pipeline->vtx_emit_num - 1) * 4, 1);
-      radeon_emit(cs, 0);
-   }
-}
-
-ALWAYS_INLINE static void
 radv_emit_userdata_task(struct radv_cmd_buffer *cmd_buffer, uint32_t x, uint32_t y, uint32_t z,
                         uint32_t draw_id)
 {
@@ -8375,7 +8361,10 @@ radv_emit_indirect_mesh_draw_packets(struct radv_cmd_buffer *cmd_buffer,
    radeon_emit(cs, va);
    radeon_emit(cs, va >> 32);
 
-   radv_emit_userdata_mesh_draw_id_0(cmd_buffer);
+   if (state->graphics_pipeline->uses_drawid) {
+      radeon_set_sh_reg_seq(cs, state->graphics_pipeline->vtx_base_sgpr + 12, 1);
+      radeon_emit(cs, 0);
+   }
 
    if (!state->render.view_mask) {
       radv_cs_emit_indirect_mesh_draw_packet(cmd_buffer, info->count, count_va, info->stride);
@@ -8396,7 +8385,6 @@ radv_emit_direct_taskmesh_draw_packets(struct radv_cmd_buffer *cmd_buffer, uint3
    unsigned ace_predication_size = num_views * 6; /* DISPATCH_TASKMESH_DIRECT_ACE size */
 
    radv_emit_userdata_task(cmd_buffer, x, y, z, 0);
-   radv_emit_userdata_mesh_draw_id_0(cmd_buffer);
    radv_cs_emit_compute_predication(&cmd_buffer->state, cmd_buffer->ace_internal.cs,
                                     cmd_buffer->mec_inv_pred_va, &cmd_buffer->mec_inv_pred_emitted,
                                     ace_predication_size);
@@ -8471,7 +8459,6 @@ radv_emit_indirect_taskmesh_draw_packets(struct radv_cmd_buffer *cmd_buffer,
    }
 
    radv_cs_add_buffer(ws, cmd_buffer->ace_internal.cs, info->indirect->bo);
-   radv_emit_userdata_mesh_draw_id_0(cmd_buffer);
    radv_cs_emit_compute_predication(&cmd_buffer->state, cmd_buffer->ace_internal.cs,
                                     cmd_buffer->mec_inv_pred_va, &cmd_buffer->mec_inv_pred_emitted,
                                     ace_predication_size);
