@@ -72,7 +72,7 @@ struct pipe_screen *kmsro_drm_screen_create(int fd,
        * flag on allocation will have ensured.
        */
       ro->create_for_resource = renderonly_create_gpu_import_for_resource;
-      screen = vc4_drm_screen_create_renderonly(ro, config);
+      screen = vc4_drm_screen_create_renderonly(ro->gpu_fd, ro, config);
       if (!screen)
          goto out_free;
 
