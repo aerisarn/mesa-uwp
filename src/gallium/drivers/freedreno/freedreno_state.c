@@ -172,11 +172,6 @@ fd_set_shader_buffers(struct pipe_context *pctx, enum pipe_shader_type shader,
       struct pipe_shader_buffer *buf = &so->sb[n];
 
       if (buffers && buffers[i].buffer) {
-         if ((buf->buffer == buffers[i].buffer) &&
-             (buf->buffer_offset == buffers[i].buffer_offset) &&
-             (buf->buffer_size == buffers[i].buffer_size))
-            continue;
-
          buf->buffer_offset = buffers[i].buffer_offset;
          buf->buffer_size = buffers[i].buffer_size;
          pipe_resource_reference(&buf->buffer, buffers[i].buffer);
