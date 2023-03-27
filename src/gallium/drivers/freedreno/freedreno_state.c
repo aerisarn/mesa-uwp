@@ -412,10 +412,10 @@ fd_set_viewport_states(struct pipe_context *pctx, unsigned start_slot,
 
       /* Handle inverted viewports. */
       if (minx > maxx) {
-         swap(minx, maxx);
+         SWAP(minx, maxx);
       }
       if (miny > maxy) {
-         swap(miny, maxy);
+         SWAP(miny, maxy);
       }
 
       const float max_dims = ctx->screen->gen >= 4 ? 16384.f : 4096.f;

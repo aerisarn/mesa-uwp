@@ -116,9 +116,9 @@ struct BitmaskEnum {
 #endif
 
 /*
- * swap - swap value of @a and @b
+ * SWAP - swap value of @a and @b
  */
-#define swap(a, b)                                                             \
+#define SWAP(a, b)                                                             \
    do {                                                                        \
       __typeof(a) __tmp = (a);                                                 \
       (a) = (b);                                                               \
