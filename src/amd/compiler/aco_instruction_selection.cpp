@@ -11868,8 +11868,8 @@ select_rt_prolog(Program* program, ac_shader_config* config,
       /* Thread IDs are packed in VGPR0, 10 bits per component. */
       bld.vop3(aco_opcode::v_bfe_u32, Definition(in_local_ids[1], v1), Operand(in_local_ids[0], v1),
                Operand::c32(10u), Operand::c32(3u));
-      bld.vop2(aco_opcode::v_and_b32, Definition(in_local_ids[0], v1), Operand(in_local_ids[0], v1),
-               Operand::c32(0x7));
+      bld.vop2(aco_opcode::v_and_b32, Definition(in_local_ids[0], v1), Operand::c32(0x7),
+               Operand(in_local_ids[0], v1));
    }
    /* Do this backwards to reduce some RAW hazards on GFX11+ */
    bld.vop1(aco_opcode::v_mov_b32, Definition(out_launch_ids[2], v1), Operand(in_wg_id_z, s1));
