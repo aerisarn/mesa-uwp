@@ -1584,6 +1584,8 @@ struct radv_cmd_state {
    bool predicating;
    uint64_t dirty;
 
+   VkShaderStageFlags active_stages;
+
    uint32_t prefetch_L2_mask;
 
    struct radv_graphics_pipeline *graphics_pipeline;

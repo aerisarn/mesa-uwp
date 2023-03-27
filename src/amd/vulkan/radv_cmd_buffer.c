@@ -3497,10 +3497,10 @@ radv_emit_guardband_state(struct radv_cmd_buffer *cmd_buffer)
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    unsigned rast_prim;
 
-   if (pipeline->active_stages & (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
-                                  VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
-                                  VK_SHADER_STAGE_GEOMETRY_BIT |
-                                  VK_SHADER_STAGE_MESH_BIT_EXT)) {
+   if (cmd_buffer->state.active_stages & (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+                                          VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
+                                          VK_SHADER_STAGE_GEOMETRY_BIT |
+                                          VK_SHADER_STAGE_MESH_BIT_EXT)) {
       /* Ignore dynamic primitive topology for TES/GS/MS stages. */
       rast_prim = pipeline->rast_prim;
    } else {
@@ -6377,8 +6377,10 @@ static void
 radv_bind_shader(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *shader,
                  gl_shader_stage stage)
 {
-   if (!shader)
+   if (!shader) {
+      cmd_buffer->state.active_stages &= ~mesa_to_vk_shader_stage(stage);
       return;
+   }
 
    switch (stage) {
    case MESA_SHADER_VERTEX:
@@ -6409,6 +6411,8 @@ radv_bind_shader(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *shader,
    default:
       unreachable("invalid shader stage");
    }
+
+   cmd_buffer->state.active_stages |= mesa_to_vk_shader_stage(stage);
 }
 
 #define RADV_GRAPHICS_STAGES \
@@ -7709,7 +7713,7 @@ radv_emit_view_index(struct radv_cmd_buffer *cmd_buffer, unsigned index)
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
-   radv_foreach_stage(stage, pipeline->active_stages & ~VK_SHADER_STAGE_TASK_BIT_EXT) {
+   radv_foreach_stage(stage, cmd_buffer->state.active_stages & ~VK_SHADER_STAGE_TASK_BIT_EXT) {
       radv_emit_view_index_per_stage(cs, radv_get_shader(pipeline->base.shaders, stage),
                                      pipeline->base.user_data_0[stage], index);
    }
@@ -7719,7 +7723,7 @@ radv_emit_view_index(struct radv_cmd_buffer *cmd_buffer, unsigned index)
                                      R_00B130_SPI_SHADER_USER_DATA_VS_0, index);
    }
 
-   if (pipeline->active_stages & VK_SHADER_STAGE_TASK_BIT_EXT) {
+   if (cmd_buffer->state.active_stages & VK_SHADER_STAGE_TASK_BIT_EXT) {
       radv_emit_view_index_per_stage(cmd_buffer->ace_internal.cs,
                                      pipeline->base.shaders[MESA_SHADER_TASK],
                                      pipeline->base.user_data_0[MESA_SHADER_TASK], index);
