@@ -4740,8 +4740,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
       pipeline->base.shaders[pipeline->last_vgt_api_stage]->info.has_ngg_culling;
    pipeline->force_vrs_per_vertex =
       pipeline->base.shaders[pipeline->last_vgt_api_stage]->info.force_vrs_per_vertex;
-   pipeline->uses_inner_coverage =
-      pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.reads_fully_covered;
    pipeline->rast_prim = vgt_gs_out_prim_type;
 
    pipeline->base.push_constant_size = pipeline_layout.push_constant_size;
