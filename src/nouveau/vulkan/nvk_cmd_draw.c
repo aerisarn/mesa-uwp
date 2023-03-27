@@ -1803,10 +1803,7 @@ nvk_mme_draw_indirect(struct mme_builder *b)
       }
    } else {
       struct mme_value draw_count = mme_load(b);
-      struct mme_value pad_dw = mme_load(b);
-
-      nvk_mme_spill(b, 0, pad_dw);
-      mme_free_reg(b, pad_dw);
+      nvk_mme_load_to_scratch(b, DRAW_PAD_DW);
 
       struct mme_value draw = mme_mov(b, mme_zero());
       mme_while(b, ine, draw, draw_count) {
@@ -1816,7 +1813,7 @@ nvk_mme_draw_indirect(struct mme_builder *b)
          nvk_mme_build_draw(b, draw);
          mme_add_to(b, draw, draw, mme_imm(1));
 
-         pad_dw = nvk_mme_fill(b, 0);
+         struct mme_value pad_dw = nvk_mme_load_scratch(b, DRAW_PAD_DW);
          mme_loop(b, pad_dw) {
             mme_free_reg(b, mme_load(b));
          }
@@ -1924,10 +1921,7 @@ nvk_mme_draw_indexed_indirect(struct mme_builder *b)
       }
    } else {
       struct mme_value draw_count = mme_load(b);
-      struct mme_value pad_dw = mme_load(b);
-
-      nvk_mme_spill(b, 0, pad_dw);
-      mme_free_reg(b, pad_dw);
+      nvk_mme_load_to_scratch(b, DRAW_PAD_DW);
 
       struct mme_value draw = mme_mov(b, mme_zero());
       mme_while(b, ine, draw, draw_count) {
@@ -1937,7 +1931,7 @@ nvk_mme_draw_indexed_indirect(struct mme_builder *b)
          nvk_mme_build_draw_indexed(b, draw);
          mme_add_to(b, draw, draw, mme_imm(1));
 
-         pad_dw = nvk_mme_fill(b, 0);
+         struct mme_value pad_dw = nvk_mme_load_scratch(b, DRAW_PAD_DW);
          mme_loop(b, pad_dw) {
             mme_free_reg(b, mme_load(b));
          }
