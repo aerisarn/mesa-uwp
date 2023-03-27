@@ -769,6 +769,7 @@ zink_begin_render_pass(struct zink_context *ctx)
    if (ctx->framebuffer->rp->state.msaa_expand_mask) {
       uint32_t rp_state = ctx->gfx_pipeline_state.rp_state;
       struct zink_render_pass *rp = ctx->gfx_pipeline_state.render_pass;
+      struct zink_framebuffer *fb = ctx->framebuffer;
 
       u_foreach_bit(i, ctx->framebuffer->rp->state.msaa_expand_mask) {
          struct zink_ctx_surface *csurf = (struct zink_ctx_surface*)ctx->fb_state.cbufs[i];
@@ -801,6 +802,9 @@ zink_begin_render_pass(struct zink_context *ctx)
       ctx->fb_changed = ctx->rp_changed = false;
       ctx->gfx_pipeline_state.rp_state = rp_state;
       ctx->gfx_pipeline_state.render_pass = rp;
+      /* manually re-set fb: depth buffer may have been eliminated */
+      ctx->framebuffer = fb;
+      ctx->framebuffer->rp = rp;
    }
    assert(ctx->gfx_pipeline_state.render_pass);
    return begin_render_pass(ctx);
