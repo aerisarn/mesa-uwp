@@ -2,6 +2,8 @@
 
 #include "nvk_physical_device.h"
 
+#include "vulkan/wsi/wsi_common.h"
+
 VKAPI_ATTR VkResult VKAPI_CALL
 nvk_EnumerateInstanceVersion(uint32_t *pApiVersion)
 {
@@ -118,6 +120,9 @@ nvk_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    vk_instance_dispatch_table_from_entrypoints(&dispatch_table,
                                                &nvk_instance_entrypoints,
                                                true);
+   vk_instance_dispatch_table_from_entrypoints(&dispatch_table,
+                                               &wsi_instance_entrypoints,
+                                               false);
 
    result = vk_instance_init(&instance->vk, &instance_extensions,
                              &dispatch_table, pCreateInfo, pAllocator);
