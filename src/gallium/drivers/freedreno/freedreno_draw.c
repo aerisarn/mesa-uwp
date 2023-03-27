@@ -132,40 +132,42 @@ batch_draw_tracking_for_dirty_bits(struct fd_batch *batch) assert_dt
       }
    }
 
-   u_foreach_bit (s, ctx->bound_shader_stages) {
-      enum fd_dirty_shader_state dirty_shader = ctx->dirty_shader_resource[s];
+   if (dirty & (FD_DIRTY_CONST | FD_DIRTY_TEX | FD_DIRTY_SSBO | FD_DIRTY_IMAGE)) {
+      u_foreach_bit (s, ctx->bound_shader_stages) {
+         enum fd_dirty_shader_state dirty_shader = ctx->dirty_shader_resource[s];
 
-      /* Mark constbuf as being read: */
-      if (dirty_shader & FD_DIRTY_SHADER_CONST) {
-         u_foreach_bit (i, ctx->constbuf[s].enabled_mask)
-            resource_read(batch, ctx->constbuf[s].cb[i].buffer);
-      }
+         /* Mark constbuf as being read: */
+         if (dirty_shader & FD_DIRTY_SHADER_CONST) {
+            u_foreach_bit (i, ctx->constbuf[s].enabled_mask)
+                  resource_read(batch, ctx->constbuf[s].cb[i].buffer);
+         }
 
-      /* Mark textures as being read */
-      if (dirty_shader & FD_DIRTY_SHADER_TEX) {
-         u_foreach_bit (i, ctx->tex[s].valid_textures)
-            resource_read(batch, ctx->tex[s].textures[i]->texture);
-      }
+         /* Mark textures as being read */
+         if (dirty_shader & FD_DIRTY_SHADER_TEX) {
+            u_foreach_bit (i, ctx->tex[s].valid_textures)
+                  resource_read(batch, ctx->tex[s].textures[i]->texture);
+         }
 
-      /* Mark SSBOs as being read or written: */
-      if (dirty_shader & FD_DIRTY_SHADER_SSBO) {
-         const struct fd_shaderbuf_stateobj *so = &ctx->shaderbuf[s];
+         /* Mark SSBOs as being read or written: */
+         if (dirty_shader & FD_DIRTY_SHADER_SSBO) {
+            const struct fd_shaderbuf_stateobj *so = &ctx->shaderbuf[s];
 
-         u_foreach_bit (i, so->enabled_mask & so->writable_mask)
-            resource_written(batch, so->sb[i].buffer);
+            u_foreach_bit (i, so->enabled_mask & so->writable_mask)
+               resource_written(batch, so->sb[i].buffer);
 
-         u_foreach_bit (i, so->enabled_mask & ~so->writable_mask)
-            resource_read(batch, so->sb[i].buffer);
-      }
+            u_foreach_bit (i, so->enabled_mask & ~so->writable_mask)
+               resource_read(batch, so->sb[i].buffer);
+         }
 
-      /* Mark Images as being read or written: */
-      if (dirty_shader & FD_DIRTY_SHADER_IMAGE) {
-         u_foreach_bit (i, ctx->shaderimg[s].enabled_mask) {
-            struct pipe_image_view *img = &ctx->shaderimg[s].si[i];
-            if (img->access & PIPE_IMAGE_ACCESS_WRITE)
-               resource_written(batch, img->resource);
-            else
-               resource_read(batch, img->resource);
+         /* Mark Images as being read or written: */
+         if (dirty_shader & FD_DIRTY_SHADER_IMAGE) {
+            u_foreach_bit (i, ctx->shaderimg[s].enabled_mask) {
+               struct pipe_image_view *img = &ctx->shaderimg[s].si[i];
+               if (img->access & PIPE_IMAGE_ACCESS_WRITE)
+                  resource_written(batch, img->resource);
+               else
+                  resource_read(batch, img->resource);
+            }
          }
       }
    }
