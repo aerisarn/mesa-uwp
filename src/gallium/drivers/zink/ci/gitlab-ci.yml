@@ -121,7 +121,7 @@ zink-tu-a618-traces:
     - a618-traces
     - .zink-turnip-rules
     - .zink-trace-test
-  parallel: 3
+  parallel: null
   variables:
     PIGLIT_REPLAY_DEVICE_NAME: "zink-a618"
 
