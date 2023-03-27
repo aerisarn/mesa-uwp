@@ -1974,6 +1974,9 @@ brw_nir_create_passthrough_tcs(void *mem_ctx, const struct brw_compiler *compile
    nir_shader *nir =
       nir_create_passthrough_tcs_impl(options, locations, num_locations,
                                       key->input_vertices);
+
+   ralloc_steal(mem_ctx, nir);
+
    nir->info.inputs_read = inputs_read;
    nir->info.tess._primitive_mode = key->_tes_primitive_mode;
    nir_validate_shader(nir, "in brw_nir_create_passthrough_tcs");
