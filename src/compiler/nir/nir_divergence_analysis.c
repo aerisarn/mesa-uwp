@@ -162,8 +162,6 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_streamout_write_index_amd:
    case nir_intrinsic_load_streamout_offset_amd:
    case nir_intrinsic_load_task_ring_entry_amd:
-   case nir_intrinsic_load_task_ib_addr:
-   case nir_intrinsic_load_task_ib_stride:
    case nir_intrinsic_load_ring_attr_amd:
    case nir_intrinsic_load_ring_attr_offset_amd:
    case nir_intrinsic_load_sample_positions_pan:

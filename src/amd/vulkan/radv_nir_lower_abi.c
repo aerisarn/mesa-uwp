@@ -272,12 +272,6 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_task_ring_entry_amd:
       replacement = ac_nir_load_arg(b, &s->args->ac, s->args->ac.task_ring_entry);
       break;
-   case nir_intrinsic_load_task_ib_addr:
-      replacement = nir_imm_zero(b, intrin->dest.ssa.num_components, intrin->dest.ssa.bit_size);
-      break;
-   case nir_intrinsic_load_task_ib_stride:
-      replacement = nir_imm_zero(b, intrin->dest.ssa.num_components, intrin->dest.ssa.bit_size);
-      break;
    case nir_intrinsic_load_lshs_vertex_stride_amd: {
       unsigned io_num = stage == MESA_SHADER_VERTEX ?
          s->info->vs.num_linked_outputs :
