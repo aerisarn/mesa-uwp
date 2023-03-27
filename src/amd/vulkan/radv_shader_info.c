@@ -725,6 +725,58 @@ gather_shader_info_task(const nir_shader *nir, struct radv_shader_info *info)
    info->cs.uses_local_invocation_idx = true;
 }
 
+static uint32_t
+radv_get_user_data_0(const struct radv_device *device, struct radv_shader_info *info)
+{
+   const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
+
+   switch (info->stage) {
+   case MESA_SHADER_VERTEX:
+   case MESA_SHADER_TESS_EVAL:
+   case MESA_SHADER_MESH:
+      if (info->next_stage == MESA_SHADER_TESS_CTRL) {
+         assert(info->stage == MESA_SHADER_VERTEX);
+
+         if (gfx_level >= GFX10) {
+            return R_00B430_SPI_SHADER_USER_DATA_HS_0;
+         } else if (gfx_level == GFX9) {
+            return R_00B430_SPI_SHADER_USER_DATA_LS_0;
+         } else {
+            return R_00B530_SPI_SHADER_USER_DATA_LS_0;
+         }
+      }
+
+      if (info->next_stage == MESA_SHADER_GEOMETRY) {
+         assert(info->stage == MESA_SHADER_VERTEX || info->stage == MESA_SHADER_TESS_EVAL);
+
+         if (gfx_level >= GFX10) {
+            return R_00B230_SPI_SHADER_USER_DATA_GS_0;
+         } else {
+            return R_00B330_SPI_SHADER_USER_DATA_ES_0;
+         }
+      }
+
+      if (info->is_ngg)
+         return R_00B230_SPI_SHADER_USER_DATA_GS_0;
+
+      assert(info->stage != MESA_SHADER_MESH);
+      return R_00B130_SPI_SHADER_USER_DATA_VS_0;
+   case MESA_SHADER_TESS_CTRL:
+      return gfx_level == GFX9 ? R_00B430_SPI_SHADER_USER_DATA_LS_0
+                               : R_00B430_SPI_SHADER_USER_DATA_HS_0;
+   case MESA_SHADER_GEOMETRY:
+      return gfx_level == GFX9 ? R_00B330_SPI_SHADER_USER_DATA_ES_0
+                               : R_00B230_SPI_SHADER_USER_DATA_GS_0;
+   case MESA_SHADER_FRAGMENT:
+      return R_00B030_SPI_SHADER_USER_DATA_PS_0;
+   case MESA_SHADER_COMPUTE:
+   case MESA_SHADER_TASK:
+      return R_00B900_COMPUTE_USER_DATA_0;
+   default:
+      unreachable("invalid shader stage");
+   }
+}
+
 void
 radv_nir_shader_info_init(struct radv_shader_info *info)
 {
@@ -853,6 +905,8 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       for (int i = 0; i < 3; ++i)
          info->cs.block_size[i] = nir->info.workgroup_size[i];
    }
+
+   info->user_data_0 = radv_get_user_data_0(device, info);
 
    switch (nir->info.stage) {
    case MESA_SHADER_COMPUTE:

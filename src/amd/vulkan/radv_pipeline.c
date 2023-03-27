@@ -3579,66 +3579,6 @@ done:
    return result;
 }
 
-static uint32_t
-radv_pipeline_stage_to_user_data_0(struct radv_graphics_pipeline *pipeline, gl_shader_stage stage,
-                                   enum amd_gfx_level gfx_level)
-{
-   bool has_gs = radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY);
-   bool has_tess = radv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_CTRL);
-   bool has_ngg = radv_pipeline_has_ngg(pipeline);
-
-   switch (stage) {
-   case MESA_SHADER_FRAGMENT:
-      return R_00B030_SPI_SHADER_USER_DATA_PS_0;
-   case MESA_SHADER_VERTEX:
-      if (has_tess) {
-         if (gfx_level >= GFX10) {
-            return R_00B430_SPI_SHADER_USER_DATA_HS_0;
-         } else if (gfx_level == GFX9) {
-            return R_00B430_SPI_SHADER_USER_DATA_LS_0;
-         } else {
-            return R_00B530_SPI_SHADER_USER_DATA_LS_0;
-         }
-      }
-
-      if (has_gs) {
-         if (gfx_level >= GFX10) {
-            return R_00B230_SPI_SHADER_USER_DATA_GS_0;
-         } else {
-            return R_00B330_SPI_SHADER_USER_DATA_ES_0;
-         }
-      }
-
-      if (has_ngg)
-         return R_00B230_SPI_SHADER_USER_DATA_GS_0;
-
-      return R_00B130_SPI_SHADER_USER_DATA_VS_0;
-   case MESA_SHADER_GEOMETRY:
-      return gfx_level == GFX9 ? R_00B330_SPI_SHADER_USER_DATA_ES_0
-                               : R_00B230_SPI_SHADER_USER_DATA_GS_0;
-   case MESA_SHADER_COMPUTE:
-   case MESA_SHADER_TASK:
-      return R_00B900_COMPUTE_USER_DATA_0;
-   case MESA_SHADER_TESS_CTRL:
-      return gfx_level == GFX9 ? R_00B430_SPI_SHADER_USER_DATA_LS_0
-                               : R_00B430_SPI_SHADER_USER_DATA_HS_0;
-   case MESA_SHADER_TESS_EVAL:
-      if (has_gs) {
-         return gfx_level >= GFX10 ? R_00B230_SPI_SHADER_USER_DATA_GS_0
-                                   : R_00B330_SPI_SHADER_USER_DATA_ES_0;
-      } else if (has_ngg) {
-         return R_00B230_SPI_SHADER_USER_DATA_GS_0;
-      } else {
-         return R_00B130_SPI_SHADER_USER_DATA_VS_0;
-      }
-   case MESA_SHADER_MESH:
-      assert(has_ngg);
-      return R_00B230_SPI_SHADER_USER_DATA_GS_0;
-   default:
-      unreachable("unknown shader");
-   }
-}
-
 static void
 radv_pipeline_emit_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
                                        const struct radv_depth_stencil_state *ds_state)
@@ -4712,10 +4652,6 @@ radv_pipeline_init_shader_stages_state(const struct radv_device *device,
    for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
       bool shader_exists = !!pipeline->base.shaders[i];
       if (shader_exists || i < MESA_SHADER_COMPUTE) {
-         /* We need this info for some stages even when the shader doesn't exist. */
-         pipeline->base.user_data_0[i] = radv_pipeline_stage_to_user_data_0(
-            pipeline, i, device->physical_device->rad_info.gfx_level);
-
          if (shader_exists)
             pipeline->base.need_indirect_descriptor_sets |=
                radv_shader_need_indirect_descriptor_sets(pipeline->base.shaders[i]);
@@ -4725,11 +4661,12 @@ radv_pipeline_init_shader_stages_state(const struct radv_device *device,
    gl_shader_stage first_stage =
       radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH) ? MESA_SHADER_MESH : MESA_SHADER_VERTEX;
 
+   const struct radv_shader *shader = radv_get_shader(pipeline->base.shaders, first_stage);
    const struct radv_userdata_info *loc =
-      radv_get_user_sgpr(radv_get_shader(pipeline->base.shaders, first_stage),
-                         AC_UD_VS_BASE_VERTEX_START_INSTANCE);
+      radv_get_user_sgpr(shader, AC_UD_VS_BASE_VERTEX_START_INSTANCE);
+
    if (loc->sgpr_idx != -1) {
-      pipeline->vtx_base_sgpr = pipeline->base.user_data_0[first_stage];
+      pipeline->vtx_base_sgpr = shader->info.user_data_0;
       pipeline->vtx_base_sgpr += loc->sgpr_idx * 4;
       pipeline->vtx_emit_num = loc->num_sgprs;
       pipeline->uses_drawid =
@@ -5274,7 +5211,6 @@ radv_compute_pipeline_init(const struct radv_device *device,
                            struct radv_compute_pipeline *pipeline,
                            const struct radv_pipeline_layout *layout)
 {
-   pipeline->base.user_data_0[MESA_SHADER_COMPUTE] = R_00B900_COMPUTE_USER_DATA_0;
    pipeline->base.need_indirect_descriptor_sets |=
       radv_shader_need_indirect_descriptor_sets(pipeline->base.shaders[MESA_SHADER_COMPUTE]);
    radv_pipeline_init_scratch(device, &pipeline->base);

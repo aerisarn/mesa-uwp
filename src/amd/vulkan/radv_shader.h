@@ -266,6 +266,7 @@ struct radv_shader_info {
    bool force_vrs_per_vertex;
    gl_shader_stage stage;
    gl_shader_stage next_stage;
+   uint32_t user_data_0;
 
    struct {
       uint8_t input_usage_mask[RADV_VERT_ATTRIB_MAX];

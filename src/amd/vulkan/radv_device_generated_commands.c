@@ -1155,7 +1155,7 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer,
    const struct radv_shader *vertex_shader =
       radv_get_shader(graphics_pipeline->base.shaders, MESA_SHADER_VERTEX);
    uint16_t vbo_sgpr = ((radv_get_user_sgpr(vertex_shader, AC_UD_VS_VERTEX_BUFFERS)->sgpr_idx * 4 +
-                         graphics_pipeline->base.user_data_0[MESA_SHADER_VERTEX]) -
+                         vertex_shader->info.user_data_0) -
                         SI_SH_REG_OFFSET) >>
                        2;
    struct radv_dgc_params params = {
@@ -1212,7 +1212,8 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer,
          if (!graphics_pipeline->base.shaders[i])
             continue;
 
-         struct radv_userdata_locations *locs = &graphics_pipeline->base.shaders[i]->info.user_sgprs_locs;
+         const struct radv_shader *shader = graphics_pipeline->base.shaders[i];
+         const struct radv_userdata_locations *locs = &shader->info.user_sgprs_locs;
          if (locs->shader_data[AC_UD_PUSH_CONSTANTS].sgpr_idx >= 0)
             params.const_copy = 1;
 
@@ -1223,13 +1224,13 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer,
 
             if (locs->shader_data[AC_UD_PUSH_CONSTANTS].sgpr_idx >= 0) {
                upload_sgpr =
-                  (graphics_pipeline->base.user_data_0[i] + 4 * locs->shader_data[AC_UD_PUSH_CONSTANTS].sgpr_idx -
+                  (shader->info.user_data_0 + 4 * locs->shader_data[AC_UD_PUSH_CONSTANTS].sgpr_idx -
                    SI_SH_REG_OFFSET) >>
                   2;
             }
 
             if (locs->shader_data[AC_UD_INLINE_PUSH_CONSTANTS].sgpr_idx >= 0) {
-               inline_sgpr = (graphics_pipeline->base.user_data_0[i] +
+               inline_sgpr = (shader->info.user_data_0 +
                               4 * locs->shader_data[AC_UD_INLINE_PUSH_CONSTANTS].sgpr_idx -
                               SI_SH_REG_OFFSET) >>
                              2;
