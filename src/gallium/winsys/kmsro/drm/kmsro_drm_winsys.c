@@ -133,7 +133,7 @@ struct pipe_screen *kmsro_drm_screen_create(int fd,
    ro->gpu_fd = drmOpenWithType("v3d", NULL, DRM_NODE_RENDER);
    if (ro->gpu_fd >= 0) {
       ro->create_for_resource = renderonly_create_kms_dumb_buffer_for_resource;
-      screen = v3d_drm_screen_create_renderonly(ro, config);
+      screen = v3d_drm_screen_create_renderonly(ro->gpu_fd, ro, config);
       if (!screen)
          goto out_free;
 
