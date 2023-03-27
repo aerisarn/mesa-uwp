@@ -28,6 +28,7 @@
 #include "meta/radv_meta.h"
 #include "nir/nir.h"
 #include "nir/nir_builder.h"
+#include "nir/nir_serialize.h"
 #include "nir/nir_vulkan.h"
 #include "nir/radv_nir.h"
 #include "spirv/nir_spirv.h"
@@ -959,7 +960,8 @@ radv_pipeline_import_graphics_info(struct radv_device *device,
 }
 
 static void
-radv_graphics_pipeline_import_lib(struct radv_graphics_pipeline *pipeline,
+radv_graphics_pipeline_import_lib(const struct radv_device *device,
+                                  struct radv_graphics_pipeline *pipeline,
                                   struct vk_graphics_pipeline_state *state,
                                   struct radv_pipeline_layout *layout,
                                   struct radv_graphics_lib_pipeline *lib,
@@ -987,10 +989,19 @@ radv_graphics_pipeline_import_lib(struct radv_graphics_pipeline *pipeline,
    if (import_nir) {
       /* Import the NIR shaders (after SPIRV->NIR). */
       for (uint32_t s = 0; s < ARRAY_SIZE(lib->base.base.shaders); s++) {
-         if (!lib->base.retained_shaders[s].nir)
+         if (!lib->base.retained_shaders[s].serialized_nir_size)
             continue;
 
-         pipeline->retained_shaders[s] = lib->base.retained_shaders[s];
+         /* Deserialize the NIR shader. */
+         const struct nir_shader_compiler_options *options =
+            &device->physical_device->nir_options[s];
+         struct blob_reader blob_reader;
+         blob_reader_init(&blob_reader, lib->base.retained_shaders[s].serialized_nir,
+                          lib->base.retained_shaders[s].serialized_nir_size);
+         pipeline->retained_shaders[s].nir = nir_deserialize(NULL, options, &blob_reader);
+
+         memcpy(pipeline->retained_shaders[s].shader_sha1, lib->base.retained_shaders[s].shader_sha1,
+                sizeof(pipeline->retained_shaders[s].shader_sha1));
       }
    } else {
       /* Import the compiled shaders. */
@@ -2780,16 +2791,22 @@ radv_pipeline_get_nir(struct radv_device *device, struct radv_graphics_pipeline 
       assert(retain_shaders || pipeline->base.shaders[s] == NULL);
 
       if (pipeline->retained_shaders[s].nir) {
-         /* Clone the NIR shader because it's imported from a library. */
-         stages[s].nir = nir_shader_clone(NULL, pipeline->retained_shaders[s].nir);
+         /* Get the deserialized NIR shader directly because it has been imported from a library. */
+         stages[s].nir = pipeline->retained_shaders[s].nir;
       } else {
          stages[s].nir =
             radv_shader_spirv_to_nir(device, &stages[s], pipeline_key, pipeline->base.is_internal);
       }
 
       if (retain_shaders) {
-         /* Clone the NIR shader because NIR passes after this step will change it. */
-         pipeline->retained_shaders[s].nir = nir_shader_clone(NULL, stages[s].nir);
+         /* Serialize the NIR shader to reduce memory pressure. */
+         struct blob blob;
+
+         blob_init(&blob);
+         nir_serialize(&blob, stages[s].nir, true);
+         blob_finish_get_buffer(&blob, &pipeline->retained_shaders[s].serialized_nir,
+                                &pipeline->retained_shaders[s].serialized_nir_size);
+
          memcpy(pipeline->retained_shaders[s].shader_sha1, stages[s].shader_sha1,
                 sizeof(stages[s].shader_sha1));
       }
@@ -4639,7 +4656,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
           */
          assert(!link_optimize || gfx_pipeline_lib->base.retain_shaders);
 
-         radv_graphics_pipeline_import_lib(pipeline, &state, &pipeline_layout, gfx_pipeline_lib,
+         radv_graphics_pipeline_import_lib(device, pipeline, &state, &pipeline_layout, gfx_pipeline_lib,
                                            link_optimize);
 
          needed_lib_flags &= ~gfx_pipeline_lib->lib_flags;
@@ -4854,7 +4871,7 @@ radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
          struct radv_graphics_lib_pipeline *gfx_pipeline_lib =
             radv_pipeline_to_graphics_lib(pipeline_lib);
 
-         radv_graphics_pipeline_import_lib(&pipeline->base, state, pipeline_layout,
+         radv_graphics_pipeline_import_lib(device, &pipeline->base, state, pipeline_layout,
                                            gfx_pipeline_lib, link_optimize);
 
          pipeline->lib_flags |= gfx_pipeline_lib->lib_flags;
@@ -4924,7 +4941,7 @@ radv_destroy_graphics_lib_pipeline(struct radv_device *device,
    radv_pipeline_layout_finish(device, &pipeline->layout);
 
    for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-      ralloc_free(pipeline->base.retained_shaders[i].nir);
+      free(pipeline->base.retained_shaders[i].serialized_nir);
    }
 
    radv_destroy_graphics_pipeline(device, &pipeline->base);
