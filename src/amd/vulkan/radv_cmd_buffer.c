@@ -2157,7 +2157,7 @@ radv_emit_provoking_vertex_mode(struct radv_cmd_buffer *cmd_buffer)
 
    if (d->vk.rs.provoking_vertex == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT) {
       if (stage == MESA_SHADER_VERTEX) {
-         provoking_vtx = si_conv_prim_to_gs_out(d->vk.ia.primitive_topology);
+         provoking_vtx = si_conv_prim_to_gs_out(d->vk.ia.primitive_topology, pipeline->is_ngg);
       } else {
          assert(stage == MESA_SHADER_GEOMETRY);
          struct radv_shader *gs = pipeline->base.shaders[stage];
@@ -2194,7 +2194,7 @@ radv_emit_primitive_topology(struct radv_cmd_buffer *cmd_buffer)
 
    base_reg = pipeline->base.user_data_0[stage];
    radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4,
-                     si_conv_prim_to_gs_out(d->vk.ia.primitive_topology) + 1);
+                     si_conv_prim_to_gs_out(d->vk.ia.primitive_topology, pipeline->is_ngg) + 1);
 }
 
 static void
@@ -3505,7 +3505,7 @@ radv_emit_guardband_state(struct radv_cmd_buffer *cmd_buffer)
       /* Ignore dynamic primitive topology for TES/GS/MS stages. */
       rast_prim = pipeline->rast_prim;
    } else {
-      rast_prim = si_conv_prim_to_gs_out(d->vk.ia.primitive_topology);
+      rast_prim = si_conv_prim_to_gs_out(d->vk.ia.primitive_topology, pipeline->is_ngg);
    }
 
    si_write_guardband(cmd_buffer->cs, d->vk.vp.viewport_count, d->vk.vp.viewports, rast_prim,
@@ -8622,7 +8622,8 @@ radv_get_ngg_culling_settings(struct radv_cmd_buffer *cmd_buffer, bool vp_y_inve
     * because we don't know the primitive topology at compile time, so we should
     * disable it dynamically for points or lines.
     */
-   const unsigned num_vertices_per_prim = si_conv_prim_to_gs_out(d->vk.ia.primitive_topology) + 1;
+   const unsigned num_vertices_per_prim =
+      si_conv_prim_to_gs_out(d->vk.ia.primitive_topology, true) + 1;
    if (num_vertices_per_prim != 3)
       return radv_nggc_none;
 

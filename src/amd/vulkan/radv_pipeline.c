@@ -4772,7 +4772,7 @@ radv_pipeline_init_vgt_gs_out(struct radv_graphics_pipeline *pipeline,
       gs_out =
          si_conv_gl_prim_to_gs_out(pipeline->base.shaders[MESA_SHADER_MESH]->info.ms.output_prim);
    } else {
-      gs_out = si_conv_prim_to_gs_out(si_translate_prim(state->ia->primitive_topology));
+      gs_out = si_conv_prim_to_gs_out(si_translate_prim(state->ia->primitive_topology), false);
    }
 
    return gs_out;
@@ -4802,9 +4802,8 @@ radv_pipeline_init_extra(struct radv_graphics_pipeline *pipeline,
       struct radv_dynamic_state *dynamic = &pipeline->dynamic_state;
       dynamic->vk.ia.primitive_topology = V_008958_DI_PT_RECTLIST;
 
-      *vgt_gs_out_prim_type = V_028A6C_TRISTRIP;
-      if (radv_pipeline_has_ngg(pipeline))
-         *vgt_gs_out_prim_type = V_028A6C_RECTLIST;
+      *vgt_gs_out_prim_type =
+         si_conv_prim_to_gs_out(dynamic->vk.ia.primitive_topology, radv_pipeline_has_ngg(pipeline));
 
       pipeline->rast_prim = *vgt_gs_out_prim_type;
    }

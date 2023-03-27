@@ -3202,7 +3202,7 @@ void radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer,
                       const VkGeneratedCommandsInfoNV *pGeneratedCommandsInfo);
 
 static inline uint32_t
-si_conv_prim_to_gs_out(uint32_t topology)
+si_conv_prim_to_gs_out(uint32_t topology, bool is_ngg)
 {
    switch (topology) {
    case V_008958_DI_PT_POINTLIST:
@@ -3219,6 +3219,8 @@ si_conv_prim_to_gs_out(uint32_t topology)
    case V_008958_DI_PT_TRILIST_ADJ:
    case V_008958_DI_PT_TRISTRIP_ADJ:
       return V_028A6C_TRISTRIP;
+   case V_008958_DI_PT_RECTLIST:
+      return is_ngg ? V_028A6C_RECTLIST : V_028A6C_TRISTRIP;
    default:
       assert(0);
       return 0;
@@ -3319,7 +3321,7 @@ radv_get_num_vertices_per_prim(const struct radv_pipeline_key *pipeline_key)
       return 3;
    } else {
       /* Need to add 1, because: V_028A6C_POINTLIST=0, V_028A6C_LINESTRIP=1, V_028A6C_TRISTRIP=2, etc. */
-      return si_conv_prim_to_gs_out(pipeline_key->vs.topology) + 1;
+      return si_conv_prim_to_gs_out(pipeline_key->vs.topology, false) + 1;
    }
 }
 
