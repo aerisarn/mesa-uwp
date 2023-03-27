@@ -1205,6 +1205,19 @@ iris_bufmgr_bo_close(struct iris_bufmgr *bufmgr, uint32_t gem_handle)
    return iris_bo_close(bufmgr->fd, gem_handle);
 }
 
+static enum iris_mmap_mode
+iris_bo_create_userptr_get_mmap_mode(struct iris_bufmgr *bufmgr)
+{
+   switch (bufmgr->devinfo.kmd_type) {
+   case INTEL_KMD_TYPE_I915:
+      return IRIS_MMAP_WB;
+   case INTEL_KMD_TYPE_XE:
+      return iris_xe_bo_flags_to_mmap_mode(bufmgr, IRIS_HEAP_SYSTEM_MEMORY, 0);
+   default:
+      return IRIS_MMAP_NONE;
+   }
+}
+
 struct iris_bo *
 iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
                        void *ptr, size_t size,
@@ -1252,7 +1265,8 @@ iris_bo_create_userptr(struct iris_bufmgr *bufmgr, const char *name,
    bo->real.userptr = true;
    bo->index = -1;
    bo->idle = true;
-   bo->real.mmap_mode = IRIS_MMAP_WB;
+   bo->real.heap = IRIS_HEAP_SYSTEM_MEMORY;
+   bo->real.mmap_mode = iris_bo_create_userptr_get_mmap_mode(bufmgr);
 
    return bo;
 
