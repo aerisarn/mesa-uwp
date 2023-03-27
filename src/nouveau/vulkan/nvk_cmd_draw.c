@@ -1611,6 +1611,9 @@ nvk_mme_build_draw(struct mme_builder *b,
 
    mme_free_reg(b, first_instance);
 
+   if (b->devinfo->cls_eng3d < TURING_A)
+      nvk_mme_spill(b, DRAW_IDX, draw_idx);
+
    struct mme_value begin = nvk_mme_load_scratch(b, DRAW_BEGIN);
 
    mme_loop(b, instance_count) {
@@ -1635,6 +1638,9 @@ nvk_mme_build_draw(struct mme_builder *b,
    mme_free_reg(b, begin);
    mme_free_reg(b, first_vertex);
    mme_free_reg(b, vertex_count);
+
+   if (b->devinfo->cls_eng3d < TURING_A)
+      nvk_mme_unspill(b, DRAW_IDX, draw_idx);
 }
 
 void
@@ -1697,6 +1703,9 @@ nvk_mme_build_draw_indexed(struct mme_builder *b,
    mme_free_reg(b, vertex_offset);
    mme_free_reg(b, first_instance);
 
+   if (b->devinfo->cls_eng3d < TURING_A)
+      nvk_mme_spill(b, DRAW_IDX, draw_idx);
+
    struct mme_value begin = nvk_mme_load_scratch(b, DRAW_BEGIN);
 
    mme_loop(b, instance_count) {
@@ -1721,6 +1730,9 @@ nvk_mme_build_draw_indexed(struct mme_builder *b,
    mme_free_reg(b, begin);
    mme_free_reg(b, first_index);
    mme_free_reg(b, index_count);
+
+   if (b->devinfo->cls_eng3d < TURING_A)
+      nvk_mme_unspill(b, DRAW_IDX, draw_idx);
 }
 
 void
