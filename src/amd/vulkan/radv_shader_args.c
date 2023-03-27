@@ -108,7 +108,7 @@ count_tes_user_sgprs(const struct radv_pipeline_key *key)
 static uint8_t
 count_ms_user_sgprs(const struct radv_shader_info *info)
 {
-   uint8_t count = 1 + 3; /* firstTask + num_work_groups[3] */
+   uint8_t count = 3; /* num_work_groups[3] */
 
    if (info->vs.needs_draw_id)
       count++;
@@ -415,7 +415,6 @@ declare_tes_input_vgprs(struct radv_shader_args *args)
 static void
 declare_ms_input_sgprs(const struct radv_shader_info *info, struct radv_shader_args *args)
 {
-   ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.base_vertex);
    ac_add_arg(&args->ac, AC_ARG_SGPR, 3, AC_ARG_INT, &args->ac.num_work_groups);
    if (info->vs.needs_draw_id) {
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.draw_id);
@@ -553,7 +552,7 @@ static void
 set_ms_input_locs(struct radv_shader_args *args, uint8_t *user_sgpr_idx)
 {
    unsigned vs_num =
-      args->ac.base_vertex.used + 3 * args->ac.num_work_groups.used + args->ac.draw_id.used;
+      3 * args->ac.num_work_groups.used + args->ac.draw_id.used;
    set_loc_shader(args, AC_UD_VS_BASE_VERTEX_START_INSTANCE, user_sgpr_idx, vs_num);
 
    if (args->ac.task_ring_entry.used)
@@ -664,8 +663,6 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
 
       if (stage == MESA_SHADER_TASK) {
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.task_ring_entry);
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_INT, &args->task_ib_addr);
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->task_ib_stride);
       }
 
       for (int i = 0; i < 3; i++) {
@@ -946,10 +943,6 @@ radv_declare_shader_args(const struct radv_device *device, const struct radv_pip
       }
       if (args->ac.task_ring_entry.used) {
          set_loc_shader(args, AC_UD_TASK_RING_ENTRY, &user_sgpr_idx, 1);
-      }
-      if (args->task_ib_addr.used) {
-         assert(args->task_ib_stride.used);
-         set_loc_shader(args, AC_UD_CS_TASK_IB, &user_sgpr_idx, 3);
       }
       break;
    case MESA_SHADER_VERTEX:

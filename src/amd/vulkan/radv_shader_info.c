@@ -514,7 +514,6 @@ gather_shader_info_mesh(const nir_shader *nir, struct radv_shader_info *info)
     * - drawing 1 input vertex ~ launching 1 mesh shader workgroup
     *
     * In the shader:
-    * - base vertex ~ first workgroup index (firstTask in NV_mesh_shader)
     * - input vertex id ~ workgroup id (in 1D - shader needs to calculate in 3D)
     *
     * Notes:
@@ -710,10 +709,6 @@ gather_shader_info_task(const nir_shader *nir, struct radv_shader_info *info)
    /* Task shaders always need these for the I/O lowering even if the API shader doesn't actually
     * use them.
     */
-
-   /* Needed to address the IB to read firstTask in NV_mesh_shader. */
-   info->vs.needs_draw_id |=
-      BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_WORKGROUP_ID);
 
    /* Needed to address the task draw/payload rings. */
    info->cs.uses_block_id[0] = true;

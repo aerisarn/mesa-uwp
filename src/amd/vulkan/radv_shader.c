@@ -594,39 +594,6 @@ radv_lower_fs_intrinsics(nir_shader *nir, const struct radv_pipeline_stage *fs_s
    return progress;
 }
 
-/* Emulates NV_mesh_shader first_task using first_vertex. */
-static bool
-radv_lower_ms_workgroup_id(nir_shader *nir)
-{
-   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
-   bool progress = false;
-   nir_builder b;
-   nir_builder_init(&b, impl);
-
-   nir_foreach_block(block, impl) {
-      nir_foreach_instr_safe(instr, block) {
-         if (instr->type != nir_instr_type_intrinsic)
-            continue;
-
-         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-         if (intrin->intrinsic != nir_intrinsic_load_workgroup_id)
-            continue;
-
-         progress = true;
-         b.cursor = nir_after_instr(instr);
-         nir_ssa_def *x = nir_channel(&b, &intrin->dest.ssa, 0);
-         nir_ssa_def *x_full = nir_iadd(&b, x, nir_load_first_vertex(&b));
-         nir_ssa_def *v = nir_vector_insert_imm(&b, &intrin->dest.ssa, x_full, 0);
-         nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa, v, v->parent_instr);
-      }
-   }
-
-   nir_metadata preserved =
-      progress ? (nir_metadata_block_index | nir_metadata_dominance) : nir_metadata_all;
-   nir_metadata_preserve(impl, preserved);
-   return progress;
-}
-
 static bool
 is_sincos(const nir_instr *instr, const void *_)
 {
@@ -889,9 +856,6 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
    NIR_PASS(_, nir, nir_lower_compute_system_values, &csv_options);
 
    if (nir->info.stage == MESA_SHADER_MESH) {
-      /* NV_mesh_shader: include first_task (aka. first_vertex) in workgroup ID. */
-      NIR_PASS(_, nir, radv_lower_ms_workgroup_id);
-
       /* Mesh shaders only have a 1D "vertex index" which we use
        * as "workgroup index" to emulate the 3D workgroup ID.
        */
@@ -1204,7 +1168,6 @@ radv_lower_io_to_mem(struct radv_device *device, struct radv_pipeline_stage *sta
                  device->physical_device->rad_info.gfx_level, false);
       return true;
    } else if (nir->info.stage == MESA_SHADER_TASK) {
-      ac_nir_apply_first_task_to_task_shader(nir);
       ac_nir_lower_task_outputs_to_mem(nir, AC_TASK_PAYLOAD_ENTRY_BYTES,
                                        device->physical_device->task_info.num_entries);
       return true;
