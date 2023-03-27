@@ -219,8 +219,7 @@ dzn_instance_destroy(struct dzn_instance *instance, const VkAllocationCallbacks 
    vk_instance_finish(&instance->vk);
 
 #ifdef _WIN32
-   if (instance->dxil_validator)
-      dxil_destroy_validator(instance->dxil_validator);
+   dxil_destroy_validator(instance->dxil_validator);
 #endif
 
    if (instance->factory)
