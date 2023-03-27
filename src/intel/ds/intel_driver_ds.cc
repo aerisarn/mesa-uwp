@@ -44,12 +44,6 @@
 static const struct {
    const char *name;
 
-   /* Tells us if a given stage is pipelined. This is used to build stacks of
-    * pipelined elements so that the perfetto UI doesn't get confused by elements
-    * ending out of order.
-    */
-   bool pipelined;
-
    /* The perfetto UI requires that there is a parent-child relationship
     * within a row of elements. Which means that all children elements must
     * end within the lifespan of their parent.
@@ -62,47 +56,38 @@ static const struct {
    /* Order must match the enum! */
    {
       "queue",
-      false,
       INTEL_DS_QUEUE_STAGE_QUEUE,
    },
    {
       "cmd-buffer",
-      false,
       INTEL_DS_QUEUE_STAGE_CMD_BUFFER,
    },
    {
       "generate-draws",
-      false,
       INTEL_DS_QUEUE_STAGE_GENERATE_DRAWS,
    },
    {
       "stall",
-      false,
       INTEL_DS_QUEUE_STAGE_STALL,
    },
    {
       "compute",
-      true,
       INTEL_DS_QUEUE_STAGE_COMPUTE,
    },
    {
       "render-pass",
-      true,
       INTEL_DS_QUEUE_STAGE_RENDER_PASS,
    },
    {
       "blorp",
-      true,
       INTEL_DS_QUEUE_STAGE_BLORP,
    },
    {
       "draw",
-      true,
       INTEL_DS_QUEUE_STAGE_DRAW,
    },
    {
       "draw_mesh",
-      true,
       INTEL_DS_QUEUE_STAGE_DRAW_MESH,
    },
 };
