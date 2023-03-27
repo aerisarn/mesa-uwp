@@ -3935,6 +3935,12 @@ zink_check_unordered_transfer_access(struct zink_resource *res, unsigned level, 
    return non_transfer_write || transfer_clobber;
 }
 
+bool
+zink_check_valid_buffer_src_access(struct zink_context *ctx, struct zink_resource *res, unsigned offset, unsigned size)
+{
+   return res->obj->access && util_ranges_intersect(&res->valid_buffer_range, offset, offset + size) && !unordered_res_exec(ctx, res, false);
+}
+
 void
 zink_resource_image_transfer_dst_barrier(struct zink_context *ctx, struct zink_resource *res, unsigned level, const struct pipe_box *box)
 {
@@ -4896,7 +4902,7 @@ zink_copy_buffer(struct zink_context *ctx, struct zink_resource *dst, struct zin
 
    struct pipe_box box = {(int)src_offset, 0, 0, (int)size, 0, 0};
    /* must barrier if something wrote the valid buffer range */
-   bool valid_write = src->obj->access && util_ranges_intersect(&src->valid_buffer_range, src_offset, src_offset + size) && !unordered_res_exec(ctx, src, false);
+   bool valid_write = zink_check_valid_buffer_src_access(ctx, src, src_offset, size);
    bool unordered_src = !valid_write && !zink_check_unordered_transfer_access(src, 0, &box);
    zink_screen(ctx->base.screen)->buffer_barrier(ctx, src, VK_ACCESS_TRANSFER_READ_BIT, 0);
    bool unordered_dst = zink_resource_buffer_transfer_dst_barrier(ctx, dst, dst_offset, size);
