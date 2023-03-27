@@ -729,7 +729,6 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
                .int64_atomics = true,
                .integer_functions2 = true,
                .mesh_shading = true,
-               .mesh_shading_nv = true,
                .min_lod = true,
                .multiview = true,
                .physical_storage_buffer_address = true,

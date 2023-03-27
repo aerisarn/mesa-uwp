@@ -96,7 +96,6 @@ static const struct debug_control radv_perftest_options[] = {
    {"rt", RADV_PERFTEST_RT},
    {"nggc", RADV_PERFTEST_NGGC},
    {"emulate_rt", RADV_PERFTEST_EMULATE_RT},
-   {"nv_ms", RADV_PERFTEST_NV_MS},
    {"rtwave64", RADV_PERFTEST_RT_WAVE_64},
    {"gpl", RADV_PERFTEST_GPL},
    {"ngg_streamout", RADV_PERFTEST_NGG_STREAMOUT},
