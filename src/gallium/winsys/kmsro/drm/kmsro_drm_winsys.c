@@ -72,15 +72,11 @@ struct pipe_screen *kmsro_drm_screen_create(int fd,
                                                         struct renderonly *,
                                                         struct winsys_handle *);
    } renderonly_drivers[] = {
-#if defined(GALLIUM_VC4)
-      /* Passes the vc4-allocated BO through to the KMS-only DRM device using
-       * PRIME buffer sharing.  The VC4 BO must be linear, which the SCANOUT
-       * flag on allocation will have ensured.
-       */
+#if defined(GALLIUM_ASAHI)
       {
-         .name = "vc4",
-         .create_screen = vc4_drm_screen_create_renderonly,
-         .create_for_resource = renderonly_create_gpu_import_for_resource,
+         .name = "asahi",
+         .create_screen = asahi_drm_screen_create_renderonly,
+         .create_for_resource = renderonly_create_kms_dumb_buffer_for_resource,
       },
 #endif
 
@@ -100,18 +96,18 @@ struct pipe_screen *kmsro_drm_screen_create(int fd,
       },
 #endif
 
-#if defined(GALLIUM_PANFROST)
-      {
-         .name = "panfrost",
-         .create_screen = panfrost_drm_screen_create_renderonly,
-         .create_for_resource = renderonly_create_kms_dumb_buffer_for_resource,
-      },
-#endif
-
 #if defined(GALLIUM_LIMA)
       {
          .name = "lima",
          .create_screen = lima_drm_screen_create_renderonly,
+         .create_for_resource = renderonly_create_kms_dumb_buffer_for_resource,
+      },
+#endif
+
+#if defined(GALLIUM_PANFROST)
+      {
+         .name = "panfrost",
+         .create_screen = panfrost_drm_screen_create_renderonly,
          .create_for_resource = renderonly_create_kms_dumb_buffer_for_resource,
       },
 #endif
@@ -124,11 +120,15 @@ struct pipe_screen *kmsro_drm_screen_create(int fd,
       },
 #endif
 
-#if defined(GALLIUM_ASAHI)
+#if defined(GALLIUM_VC4)
+      /* Passes the vc4-allocated BO through to the KMS-only DRM device using
+       * PRIME buffer sharing.  The VC4 BO must be linear, which the SCANOUT
+       * flag on allocation will have ensured.
+       */
       {
-         .name = "asahi",
-         .create_screen = asahi_drm_screen_create_renderonly,
-         .create_for_resource = renderonly_create_kms_dumb_buffer_for_resource,
+         .name = "vc4",
+         .create_screen = vc4_drm_screen_create_renderonly,
+         .create_for_resource = renderonly_create_gpu_import_for_resource,
       },
 #endif
    };
