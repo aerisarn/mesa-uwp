@@ -1763,25 +1763,6 @@ nvk_CmdDrawIndexed(VkCommandBuffer commandBuffer,
    P_INLINE_DATA(p, firstInstance);
 }
 
-static void
-nvk_mme_spill(struct mme_builder *b, uint16_t idx, struct mme_value val)
-{
-   const uint16_t scratch_state =
-      NV9097_SET_MME_SHADOW_SCRATCH(NVK_MME_NUM_SCRATCH + idx);
-
-   mme_mthd(b, scratch_state);
-   mme_emit(b, val);
-}
-
-static struct mme_value
-nvk_mme_fill(struct mme_builder *b, uint16_t idx)
-{
-   const uint16_t scratch_state =
-      NV9097_SET_MME_SHADOW_SCRATCH(NVK_MME_NUM_SCRATCH + idx);
-
-   return mme_state(b, scratch_state);
-}
-
 void
 nvk_mme_draw_indirect(struct mme_builder *b)
 {
@@ -1807,8 +1788,7 @@ nvk_mme_draw_indirect(struct mme_builder *b)
 
       struct mme_value draw = mme_mov(b, mme_zero());
       mme_while(b, ine, draw, draw_count) {
-         nvk_mme_spill(b, 1, draw_count);
-         mme_free_reg(b, draw_count);
+         nvk_mme_spill(b, DRAW_COUNT, draw_count);
 
          nvk_mme_build_draw(b, draw);
          mme_add_to(b, draw, draw, mme_imm(1));
@@ -1819,7 +1799,7 @@ nvk_mme_draw_indirect(struct mme_builder *b)
          }
          mme_free_reg(b, pad_dw);
 
-         draw_count = nvk_mme_fill(b, 1);
+         nvk_mme_unspill(b, DRAW_COUNT, draw_count);
       }
    }
 }
@@ -1925,8 +1905,7 @@ nvk_mme_draw_indexed_indirect(struct mme_builder *b)
 
       struct mme_value draw = mme_mov(b, mme_zero());
       mme_while(b, ine, draw, draw_count) {
-         nvk_mme_spill(b, 1, draw_count);
-         mme_free_reg(b, draw_count);
+         nvk_mme_spill(b, DRAW_COUNT, draw_count);
 
          nvk_mme_build_draw_indexed(b, draw);
          mme_add_to(b, draw, draw, mme_imm(1));
@@ -1937,7 +1916,7 @@ nvk_mme_draw_indexed_indirect(struct mme_builder *b)
          }
          mme_free_reg(b, pad_dw);
 
-         draw_count = nvk_mme_fill(b, 1);
+         nvk_mme_unspill(b, DRAW_COUNT, draw_count);
       }
    }
 }

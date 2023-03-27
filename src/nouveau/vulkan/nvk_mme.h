@@ -28,16 +28,26 @@ enum nvk_mme_scratch {
    NVK_MME_SCRATCH_CS_INVOCATIONS_HI = 0,
    NVK_MME_SCRATCH_CS_INVOCATIONS_LO,
    NVK_MME_SCRATCH_DRAW_BEGIN,
+   NVK_MME_SCRATCH_DRAW_COUNT,
    NVK_MME_SCRATCH_DRAW_PAD_DW,
 
    /* Must be at the end */
    NVK_MME_NUM_SCRATCH,
 };
 
+static inline void
+_nvk_mme_load_scratch_to(struct mme_builder *b, struct mme_value val,
+                         enum nvk_mme_scratch scratch)
+{
+   mme_state_to(b, val, 0x3400 + scratch * 4);
+}
+
 static inline struct mme_value
 _nvk_mme_load_scratch(struct mme_builder *b, enum nvk_mme_scratch scratch)
 {
-   return mme_state(b, 0x3400 + scratch * 4);
+   struct mme_value val = mme_alloc_reg(b);
+   _nvk_mme_load_scratch_to(b, val, scratch);
+   return val;
 }
 #define nvk_mme_load_scratch(b, S) \
    _nvk_mme_load_scratch(b, NVK_MME_SCRATCH_##S)
@@ -61,6 +71,30 @@ _nvk_mme_load_to_scratch(struct mme_builder *b, enum nvk_mme_scratch scratch)
 }
 #define nvk_mme_load_to_scratch(b, S) \
    _nvk_mme_load_to_scratch(b, NVK_MME_SCRATCH_##S)
+
+static void
+_nvk_mme_spill(struct mme_builder *b, enum nvk_mme_scratch scratch,
+               struct mme_value val)
+{
+   if (val.type == MME_VALUE_TYPE_REG) {
+      _nvk_mme_store_scratch(b, scratch, val);
+      mme_free_reg(b, val);
+   }
+}
+#define nvk_mme_spill(b, S, v) \
+   _nvk_mme_spill(b, NVK_MME_SCRATCH_##S, v)
+
+static void
+_nvk_mme_unspill(struct mme_builder *b, enum nvk_mme_scratch scratch,
+                 struct mme_value val)
+{
+   if (val.type == MME_VALUE_TYPE_REG) {
+      mme_realloc_reg(b, val);
+      _nvk_mme_load_scratch_to(b, val, scratch);
+   }
+}
+#define nvk_mme_unspill(b, S, v) \
+   _nvk_mme_unspill(b, NVK_MME_SCRATCH_##S, v)
 
 typedef void (*nvk_mme_builder_func)(struct mme_builder *b);
 
