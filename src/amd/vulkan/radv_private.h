@@ -1585,6 +1585,7 @@ struct radv_cmd_state {
    uint64_t dirty;
 
    VkShaderStageFlags active_stages;
+   struct radv_shader *last_vgt_shader;
 
    uint32_t prefetch_L2_mask;
 

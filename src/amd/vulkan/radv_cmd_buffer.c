@@ -6471,6 +6471,9 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
          radv_bind_shader(cmd_buffer, graphics_pipeline->base.shaders[stage], stage);
       }
 
+      cmd_buffer->state.last_vgt_shader =
+         graphics_pipeline->base.shaders[graphics_pipeline->last_vgt_api_stage];
+
       bool vtx_emit_count_changed =
          !cmd_buffer->state.graphics_pipeline ||
          cmd_buffer->state.graphics_pipeline->vtx_emit_num != graphics_pipeline->vtx_emit_num ||
@@ -10937,13 +10940,12 @@ void
 radv_emit_streamout_enable(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_streamout_state *so = &cmd_buffer->state.streamout;
-   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    bool streamout_enabled = radv_is_streamout_enabled(cmd_buffer);
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    uint32_t enabled_stream_buffers_mask = 0;
 
-   if (pipeline && pipeline->streamout_shader) {
-      enabled_stream_buffers_mask = pipeline->streamout_shader->info.so.enabled_stream_buffers_mask;
+   if (cmd_buffer->state.last_vgt_shader) {
+      enabled_stream_buffers_mask = cmd_buffer->state.last_vgt_shader->info.so.enabled_stream_buffers_mask;
    }
 
    radeon_set_context_reg_seq(cs, R_028B94_VGT_STRMOUT_CONFIG, 2);
@@ -11025,8 +11027,7 @@ radv_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer, uint32_t firstC
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_streamout_binding *sb = cmd_buffer->streamout_bindings;
    struct radv_streamout_state *so = &cmd_buffer->state.streamout;
-   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   struct radv_shader_info *info = &pipeline->streamout_shader->info;
+   struct radv_shader_info *info = &cmd_buffer->state.last_vgt_shader->info;
    unsigned last_target = util_last_bit(so->enabled_mask) - 1;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
