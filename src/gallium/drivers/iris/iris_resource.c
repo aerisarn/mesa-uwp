@@ -1162,10 +1162,11 @@ iris_resource_create_for_buffer(struct pipe_screen *pscreen,
 }
 
 static struct pipe_resource *
-iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
-                                    const struct pipe_resource *templ,
-                                    const uint64_t *modifiers,
-                                    int modifiers_count)
+iris_resource_create_for_image(struct pipe_screen *pscreen,
+                               const struct pipe_resource *templ,
+                               const uint64_t *modifiers,
+                               int modifiers_count,
+                               unsigned row_pitch_B)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
    const struct intel_device_info *devinfo = screen->devinfo;
@@ -1183,7 +1184,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    }
 
    const bool isl_surf_created_successfully =
-      iris_resource_configure_main(screen, res, templ, modifier, 0);
+      iris_resource_configure_main(screen, res, templ, modifier, row_pitch_B);
    if (!isl_surf_created_successfully)
       goto fail;
 
@@ -1264,6 +1265,16 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
 fail:
    iris_resource_destroy(pscreen, &res->base.b);
    return NULL;
+}
+
+static struct pipe_resource *
+iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
+                                    const struct pipe_resource *templ,
+                                    const uint64_t *modifiers,
+                                    int modifier_count)
+{
+   return iris_resource_create_for_image(pscreen, templ, modifiers,
+                                         modifier_count, 0);
 }
 
 static struct pipe_resource *
