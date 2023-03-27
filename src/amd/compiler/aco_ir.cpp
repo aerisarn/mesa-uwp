@@ -305,7 +305,7 @@ convert_to_SDWA(amd_gfx_level gfx_level, aco_ptr<Instruction>& instr)
    if (tmp->isVOP3()) {
       VALU_instruction& vop3 = tmp->valu();
       sdwa.neg = vop3.neg;
-      sdwa.abs = vop3.neg;
+      sdwa.abs = vop3.abs;
       sdwa.omod = vop3.omod;
       sdwa.clamp = vop3.clamp;
    }
