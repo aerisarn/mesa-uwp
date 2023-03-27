@@ -1831,9 +1831,15 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
             break;
          case VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK:
             pipeline->zsa.stencil_test.dynamic_compare_mask = true;
+            ret = dzn_graphics_pipeline_prepare_for_variants(device, pipeline);
+            if (ret)
+               goto out;
             break;
          case VK_DYNAMIC_STATE_STENCIL_WRITE_MASK:
             pipeline->zsa.stencil_test.dynamic_write_mask = true;
+            ret = dzn_graphics_pipeline_prepare_for_variants(device, pipeline);
+            if (ret)
+               goto out;
             break;
          case VK_DYNAMIC_STATE_BLEND_CONSTANTS:
             pipeline->blend.dynamic_constants = true;
