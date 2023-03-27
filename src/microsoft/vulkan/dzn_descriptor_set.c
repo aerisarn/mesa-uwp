@@ -1591,8 +1591,10 @@ dzn_descriptor_set_init(struct dzn_descriptor_set *set,
    if (!reuse) {
       dzn_foreach_pool_type(type) {
          set->heap_offsets[type] = pool->free_offset[type];
+         if (device->bindless)
+            set->heap_offsets[type] = ALIGN(set->heap_offsets[type], 2);
          set->heap_sizes[type] = layout->range_desc_count[type] + variable_descriptor_count[type];
-         set->pool->free_offset[type] += set->heap_sizes[type];
+         set->pool->free_offset[type] = set->heap_offsets[type] + set->heap_sizes[type];
       }
    }
 
@@ -1725,6 +1727,12 @@ dzn_descriptor_pool_create(struct dzn_device *device,
 
    if (device->bindless) {
       if (pool->desc_count[0]) {
+         /* Include extra descriptors so that we can align each allocated descriptor set to a 16-byte boundary */
+         static_assert(D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT / sizeof(struct dxil_spirv_bindless_entry) == 2,
+                       "Ensure only one extra descriptor is needed to produce correct alignments");
+         uint32_t extra_descriptors = pool->set_count - 1;
+         pool->desc_count[0] += extra_descriptors;
+
          /* Going to raw APIs to avoid allocating descriptors for this */
          D3D12_RESOURCE_DESC buf_desc = {
             .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
