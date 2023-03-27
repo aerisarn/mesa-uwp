@@ -4937,7 +4937,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    pipeline->uses_inner_coverage =
       pipeline->base.shaders[MESA_SHADER_FRAGMENT]->info.ps.reads_fully_covered;
    pipeline->rast_prim = vgt_gs_out_prim_type;
-   pipeline->last_vgt_api_stage_locs = pipeline->base.shaders[pipeline->last_vgt_api_stage]->info.user_sgprs_locs.shader_data;
 
    pipeline->base.push_constant_size = pipeline_layout.push_constant_size;
    pipeline->base.dynamic_offset_count = pipeline_layout.dynamic_offset_count;

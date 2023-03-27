@@ -2242,7 +2242,6 @@ struct radv_graphics_pipeline {
 
    /* Last pre-PS API stage */
    gl_shader_stage last_vgt_api_stage;
-   struct radv_userdata_info *last_vgt_api_stage_locs;
 
    /* Not NULL if graphics pipeline uses streamout. */
    struct radv_shader *streamout_shader;

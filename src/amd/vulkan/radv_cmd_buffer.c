@@ -2146,9 +2146,11 @@ static void
 radv_emit_provoking_vertex_mode(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   const unsigned stage = pipeline->last_vgt_api_stage;
+   const struct radv_shader *last_vgt_shader = cmd_buffer->state.last_vgt_shader;
+   const unsigned stage = last_vgt_shader->info.stage;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
-   const struct radv_userdata_info *loc = &pipeline->last_vgt_api_stage_locs[AC_UD_NGG_PROVOKING_VTX];
+   const struct radv_userdata_info *loc =
+      radv_get_user_sgpr(last_vgt_shader, AC_UD_NGG_PROVOKING_VTX);
    unsigned provoking_vtx = 0;
    uint32_t base_reg;
 
@@ -2160,8 +2162,7 @@ radv_emit_provoking_vertex_mode(struct radv_cmd_buffer *cmd_buffer)
          provoking_vtx = si_conv_prim_to_gs_out(d->vk.ia.primitive_topology, pipeline->is_ngg);
       } else {
          assert(stage == MESA_SHADER_GEOMETRY);
-         struct radv_shader *gs = pipeline->base.shaders[stage];
-         provoking_vtx = gs->info.gs.vertices_in - 1;
+         provoking_vtx = last_vgt_shader->info.gs.vertices_in - 1;
       }
    }
 
@@ -2173,10 +2174,11 @@ static void
 radv_emit_primitive_topology(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   const struct radv_shader *last_vgt_shader = cmd_buffer->state.last_vgt_shader;
    const struct radv_userdata_info *loc =
-      &pipeline->last_vgt_api_stage_locs[AC_UD_NUM_VERTS_PER_PRIM];
+      radv_get_user_sgpr(last_vgt_shader, AC_UD_NUM_VERTS_PER_PRIM);
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
-   const unsigned stage = pipeline->last_vgt_api_stage;
+   const unsigned stage = last_vgt_shader->info.stage;
    uint32_t base_reg;
 
    assert(!cmd_buffer->state.mesh_shading);
@@ -4911,8 +4913,10 @@ static void
 radv_emit_streamout_buffers(struct radv_cmd_buffer *cmd_buffer, uint64_t va)
 {
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   const struct radv_userdata_info *loc = &pipeline->last_vgt_api_stage_locs[AC_UD_STREAMOUT_BUFFERS];
-   const unsigned stage = pipeline->last_vgt_api_stage;
+   const struct radv_shader *last_vgt_shader = cmd_buffer->state.last_vgt_shader;
+   const unsigned stage = last_vgt_shader->info.stage;
+   const struct radv_userdata_info *loc =
+      radv_get_user_sgpr(last_vgt_shader, AC_UD_STREAMOUT_BUFFERS);
    uint32_t base_reg;
 
    if (loc->sgpr_idx == -1)
@@ -5008,8 +5012,10 @@ static void
 radv_flush_ngg_query_state(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   const unsigned stage = pipeline->last_vgt_api_stage;
-   const struct radv_userdata_info *loc = &pipeline->last_vgt_api_stage_locs[AC_UD_NGG_QUERY_STATE];
+   const struct radv_shader *last_vgt_shader = cmd_buffer->state.last_vgt_shader;
+   const unsigned stage = last_vgt_shader->info.stage;
+   const struct radv_userdata_info *loc =
+      radv_get_user_sgpr(last_vgt_shader, AC_UD_NGG_QUERY_STATE);
    enum radv_ngg_query_state ngg_query_state = radv_ngg_query_none;
    uint32_t base_reg;
 
@@ -5051,15 +5057,17 @@ radv_flush_force_vrs_state(struct radv_cmd_buffer *cmd_buffer)
       return;
    }
 
-   struct radv_userdata_info *loc;
+   const struct radv_userdata_info *loc;
    uint32_t base_reg;
 
    if (radv_pipeline_has_gs_copy_shader(&pipeline->base)) {
       loc = &pipeline->base.gs_copy_shader->info.user_sgprs_locs.shader_data[AC_UD_FORCE_VRS_RATES];
       base_reg = R_00B130_SPI_SHADER_USER_DATA_VS_0;
    } else {
-      loc = &pipeline->last_vgt_api_stage_locs[AC_UD_FORCE_VRS_RATES];
-      base_reg = pipeline->base.user_data_0[pipeline->last_vgt_api_stage];
+      const struct radv_shader *last_vgt_shader = cmd_buffer->state.last_vgt_shader;
+
+      loc = radv_get_user_sgpr(last_vgt_shader, AC_UD_FORCE_VRS_RATES);
+      base_reg = pipeline->base.user_data_0[last_vgt_shader->info.stage];
    }
 
    assert(loc->sgpr_idx != -1);
@@ -8000,11 +8008,11 @@ radv_cs_emit_dispatch_taskmesh_indirect_multi_ace_packet(struct radv_cmd_buffer 
 ALWAYS_INLINE static void
 radv_cs_emit_dispatch_taskmesh_gfx_packet(struct radv_cmd_buffer *cmd_buffer)
 {
-   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    bool predicating = cmd_buffer->state.predicating;
 
-   struct radv_userdata_info *ring_entry_loc = &pipeline->last_vgt_api_stage_locs[AC_UD_TASK_RING_ENTRY];
+   const struct radv_userdata_info *ring_entry_loc =
+      radv_get_user_sgpr(cmd_buffer->state.last_vgt_shader, AC_UD_TASK_RING_ENTRY);
 
    assert(ring_entry_loc->sgpr_idx != -1);
 
@@ -8709,7 +8717,8 @@ static void
 radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   const unsigned stage = pipeline->last_vgt_api_stage;
+   const struct radv_shader *last_vgt_shader = cmd_buffer->state.last_vgt_shader;
+   const unsigned stage = last_vgt_shader->info.stage;
    const uint32_t base_reg = pipeline->base.user_data_0[stage];
 
    /* Get viewport transform. */
@@ -8736,14 +8745,15 @@ radv_emit_ngg_culling_state(struct radv_cmd_buffer *cmd_buffer)
       }
 
       uint32_t vp_reg_values[4] = {fui(vp_scale[0]), fui(vp_scale[1]), fui(vp_translate[0]), fui(vp_translate[1])};
-      const int8_t vp_sgpr_idx = pipeline->last_vgt_api_stage_locs[AC_UD_NGG_VIEWPORT].sgpr_idx;
+      const int8_t vp_sgpr_idx =
+         radv_get_user_sgpr(last_vgt_shader, AC_UD_NGG_VIEWPORT)->sgpr_idx;
       assert(vp_sgpr_idx != -1);
       radeon_set_sh_reg_seq(cmd_buffer->cs, base_reg + vp_sgpr_idx * 4, 4);
       radeon_emit_array(cmd_buffer->cs, vp_reg_values, 4);
    }
 
    const int8_t nggc_sgpr_idx =
-      pipeline->last_vgt_api_stage_locs[AC_UD_NGG_CULLING_SETTINGS].sgpr_idx;
+      radv_get_user_sgpr(last_vgt_shader, AC_UD_NGG_CULLING_SETTINGS)->sgpr_idx;
    assert(nggc_sgpr_idx != -1);
 
    radeon_set_sh_reg(cmd_buffer->cs, base_reg + nggc_sgpr_idx * 4, nggc_settings);
