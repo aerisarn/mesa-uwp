@@ -915,13 +915,13 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
 }
 
 static void
-gfx9_get_gs_info(const struct radv_device *device, struct radv_pipeline_stage *es_stage,
-                 struct radv_pipeline_stage *gs_stage)
+radv_get_legacy_gs_info(const struct radv_device *device, struct radv_pipeline_stage *es_stage,
+                        struct radv_pipeline_stage *gs_stage)
 {
    const enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
    struct radv_shader_info *gs_info = &gs_stage->info;
    struct radv_shader_info *es_info = &es_stage->info;
-   struct gfx9_gs_info *out = &gs_stage->info.gs_ring_info;
+   struct radv_legacy_gs_info *out = &gs_stage->info.gs_ring_info;
 
    const unsigned gs_num_invocations = MAX2(gs_info->gs.invocations, 1);
    const bool uses_adjacency = gs_info->gs.input_prim == SHADER_PRIM_LINES_ADJACENCY ||
@@ -1402,7 +1402,7 @@ radv_link_shaders_info(struct radv_device *device,
             radv_determine_ngg_settings(device, producer, consumer, pipeline_key);
          }
       } else if (consumer && consumer->stage == MESA_SHADER_GEOMETRY) {
-         gfx9_get_gs_info(device, producer, consumer);
+         radv_get_legacy_gs_info(device, producer, consumer);
       }
    }
 

@@ -220,7 +220,7 @@ struct radv_vs_output_info {
    unsigned pos_exports;
 };
 
-struct gfx9_gs_info {
+struct radv_legacy_gs_info {
    uint32_t vgt_gs_onchip_cntl;
    uint32_t vgt_gs_max_prims_per_subgroup;
    uint32_t vgt_esgs_ring_itemsize;
@@ -390,7 +390,7 @@ struct radv_shader_info {
 
    struct radv_streamout_info so;
 
-   struct gfx9_gs_info gs_ring_info;
+   struct radv_legacy_gs_info gs_ring_info;
    struct gfx10_ngg_info ngg_info;
 };
 

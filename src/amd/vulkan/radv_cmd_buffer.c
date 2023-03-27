@@ -5219,7 +5219,7 @@ gfx10_emit_ge_cntl(struct radv_cmd_buffer *cmd_buffer)
          break_wave_at_eoi = true;
       }
    } else if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY)) {
-      const struct gfx9_gs_info *gs_state =
+      const struct radv_legacy_gs_info *gs_state =
          &pipeline->base.shaders[MESA_SHADER_GEOMETRY]->info.gs_ring_info;
       primgroup_size = G_028A44_GS_PRIMS_PER_SUBGRP(gs_state->vgt_gs_onchip_cntl);
    } else {

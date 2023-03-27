@@ -1412,8 +1412,9 @@ gfx10_emit_ge_pc_alloc(struct radeon_cmdbuf *cs, enum amd_gfx_level gfx_level,
 }
 
 static void
-radv_pipeline_init_gs_ring_state(const struct radv_device *device,
-                                 struct radv_graphics_pipeline *pipeline, const struct gfx9_gs_info *gs)
+radv_pipeline_init_legacy_gs_ring_info(const struct radv_device *device,
+                                       struct radv_graphics_pipeline *pipeline,
+                                       const struct radv_legacy_gs_info *gs)
 {
    const struct radv_physical_device *pdevice = device->physical_device;
    unsigned num_se = pdevice->rad_info.max_se;
@@ -4036,7 +4037,7 @@ radv_pipeline_emit_hw_gs(const struct radv_device *device, struct radeon_cmdbuf 
                          const struct radv_shader *gs)
 {
    const struct radv_physical_device *pdevice = device->physical_device;
-   const struct gfx9_gs_info *gs_state = &gs->info.gs_ring_info;
+   const struct radv_legacy_gs_info *gs_state = &gs->info.gs_ring_info;
    unsigned gs_max_out_vertices;
    const uint8_t *num_components;
    uint8_t max_stream;
@@ -4967,7 +4968,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    if (radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY) && !radv_pipeline_has_ngg(pipeline)) {
       struct radv_shader *gs = pipeline->base.shaders[MESA_SHADER_GEOMETRY];
 
-      radv_pipeline_init_gs_ring_state(device, pipeline, &gs->info.gs_ring_info);
+      radv_pipeline_init_legacy_gs_ring_info(device, pipeline, &gs->info.gs_ring_info);
    }
 
    if (!radv_pipeline_has_stage(pipeline, MESA_SHADER_MESH))
