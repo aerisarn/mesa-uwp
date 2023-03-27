@@ -10,9 +10,12 @@
 #include <stdbool.h>
 
 struct pipe_screen;
+struct pipe_screen_config;
 struct renderonly;
 
 struct pipe_screen *asahi_drm_screen_create(int drmFD);
-struct pipe_screen *asahi_drm_screen_create_renderonly(struct renderonly *ro);
+struct pipe_screen *
+asahi_drm_screen_create_renderonly(int fd, struct renderonly *ro,
+                                   const struct pipe_screen_config *config);
 
 #endif /* __ASAHI_DRM_PUBLIC_H__ */
