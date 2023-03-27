@@ -6268,6 +6268,8 @@ radv_bind_multisample_state(struct radv_cmd_buffer *cmd_buffer,
 static void
 radv_bind_pre_rast_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *shader)
 {
+   bool mesh_shading = shader->info.stage == MESA_SHADER_MESH;
+
    assert(shader->info.stage == MESA_SHADER_VERTEX ||
           shader->info.stage == MESA_SHADER_TESS_EVAL ||
           shader->info.stage == MESA_SHADER_GEOMETRY ||
@@ -6299,6 +6301,16 @@ radv_bind_pre_rast_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_
       /* Re-emit NGG query state when SGPR exists but location potentially changed. */
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
    }
+
+   if (mesh_shading != cmd_buffer->state.mesh_shading) {
+      /* Re-emit VRS state because the combiner is different (vertex vs primitive). Re-emit
+       * primitive topology because the mesh shading pipeline clobbered it.
+       */
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE |
+                                 RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
+   }
+
+   cmd_buffer->state.mesh_shading = mesh_shading;
 }
 
 static void
@@ -6488,16 +6500,6 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
          cmd_buffer->state.graphics_pipeline->vtx_base_sgpr != graphics_pipeline->vtx_base_sgpr;
       cmd_buffer->state.graphics_pipeline = graphics_pipeline;
 
-      bool mesh_shading = (graphics_pipeline->active_stages & VK_SHADER_STAGE_MESH_BIT_EXT) > 0;
-      if (mesh_shading != cmd_buffer->state.mesh_shading) {
-         /* Re-emit VRS state because the combiner is different (vertex vs primitive).
-          * Re-emit primitive topology because the mesh shading pipeline clobbered it.
-          */
-         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE |
-                                    RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
-      }
-
-      cmd_buffer->state.mesh_shading = mesh_shading;
       cmd_buffer->state.has_nggc = graphics_pipeline->has_ngg_culling;
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_PIPELINE | RADV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT;
       cmd_buffer->push_constant_stages |= graphics_pipeline->active_stages;
