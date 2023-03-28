@@ -99,7 +99,13 @@ xe_gem_vm_bind_op(struct iris_bo *bo, uint32_t op)
    };
 
    uint32_t handle = op == XE_VM_BIND_OP_UNMAP ? 0 : bo->gem_handle;
-   uint64_t obj_offset = 0;
+   uint64_t range, obj_offset = 0;
+
+   if (iris_bo_is_imported(bo))
+      range = bo->size;
+   else
+      range = align64(bo->size,
+                      iris_bufmgr_get_device_info(bo->bufmgr)->mem_alignment);
 
    if (bo->real.userptr) {
       handle = 0;
@@ -113,8 +119,7 @@ xe_gem_vm_bind_op(struct iris_bo *bo, uint32_t op)
       .num_binds = 1,
       .bind.obj = handle,
       .bind.obj_offset = obj_offset,
-      .bind.range = align64(bo->size,
-                            iris_bufmgr_get_device_info(bo->bufmgr)->mem_alignment),
+      .bind.range = range,
       .bind.addr = intel_48b_address(bo->address),
       .bind.op = op,
       .num_syncs = 1,
