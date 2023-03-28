@@ -2593,6 +2593,9 @@ struct anv_cmd_compute_state {
    struct anv_state push_data;
 
    struct anv_address num_workgroups;
+
+   uint32_t scratch_size;
+   bool cfe_state_valid;
 };
 
 struct anv_cmd_ray_tracing_state {
