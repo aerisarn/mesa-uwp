@@ -532,6 +532,8 @@ anv_image_init_from_gralloc(struct anv_device *device,
                                                base_info->tiling);
    assert(format != ISL_FORMAT_UNSUPPORTED);
 
+   anv_info.stride = gralloc_info->stride * (isl_format_get_layout(format)->bpb / 8);
+
    result = anv_image_init(device, image, &anv_info);
    if (result != VK_SUCCESS)
       goto fail_init;

@@ -1399,7 +1399,7 @@ anv_image_init(struct anv_device *device, struct anv_image *image,
                                            mod_explicit_info, isl_tiling_flags,
                                            create_info->isl_extra_usage_flags);
    } else {
-      r = add_all_surfaces_implicit_layout(device, image, fmt_list, 0,
+      r = add_all_surfaces_implicit_layout(device, image, fmt_list, create_info->stride,
                                            isl_tiling_flags,
                                            create_info->isl_extra_usage_flags);
    }
