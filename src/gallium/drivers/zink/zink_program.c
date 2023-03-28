@@ -843,7 +843,7 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
       if (!zm) {
          return;
       }
-      mod = zink_shader_compile(screen, zs, comp->shader->nir, key, zs_swizzle_size ? &ctx->di.zs_swizzle[MESA_SHADER_COMPUTE] : NULL);
+      mod = zink_shader_compile(screen, zs, comp->nir, key, zs_swizzle_size ? &ctx->di.zs_swizzle[MESA_SHADER_COMPUTE] : NULL);
       if (!mod) {
          FREE(zm);
          return;
