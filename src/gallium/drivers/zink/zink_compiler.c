@@ -1810,7 +1810,7 @@ find_packed_output(const struct pipe_stream_output_info *so_info, uint8_t *rever
 }
 
 static void
-update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_info,
+update_so_info(struct zink_shader *zs, nir_shader *nir, const struct pipe_stream_output_info *so_info,
                uint64_t outputs_written, bool have_psiz)
 {
    uint8_t reverse_map[VARYING_SLOT_MAX] = {0};
@@ -1825,7 +1825,7 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
    }
 
    bool have_fake_psiz = false;
-   nir_foreach_shader_out_variable(var, zs->nir) {
+   nir_foreach_shader_out_variable(var, nir) {
       if (var->data.location == VARYING_SLOT_PSIZ && !var->data.explicit_location)
          have_fake_psiz = true;
    }
@@ -1846,7 +1846,7 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
          nir_variable *var = NULL;
          unsigned so_slot;
          while (!var)
-            var = find_var_with_location_frac(zs->nir, slot--, output->start_component, have_psiz);
+            var = find_var_with_location_frac(nir, slot--, output->start_component, have_psiz);
          if (var->data.location == VARYING_SLOT_PSIZ)
             psiz = var;
          so_slot = slot + 1;
@@ -1892,10 +1892,10 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
       unsigned slot = reverse_map[output->register_index];
       if (is_inlined(inlined[slot], output))
          continue;
-      if (zs->nir->info.stage != MESA_SHADER_GEOMETRY || util_bitcount(zs->nir->info.gs.active_stream_mask) == 1) {
+      if (zs->info.stage != MESA_SHADER_GEOMETRY || util_bitcount(zs->info.gs.active_stream_mask) == 1) {
          nir_variable *var = NULL;
          while (!var)
-            var = find_var_with_location_frac(zs->nir, slot--, output->start_component, have_psiz);
+            var = find_var_with_location_frac(nir, slot--, output->start_component, have_psiz);
          /* this is a lowered 64bit variable that can't be exported due to packing */
          if (var->data.is_xfb)
             goto out;
@@ -1955,7 +1955,7 @@ out:
    zs->sinfo.have_xfb = zs->sinfo.so_info.num_outputs || zs->sinfo.so_propagate;
    /* ensure this doesn't get output in the shader by unsetting location */
    if (have_fake_psiz && psiz)
-      update_psiz_location(zs->nir, psiz);
+      update_psiz_location(nir, psiz);
 }
 
 struct decompose_state {
@@ -4883,7 +4883,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       nir_foreach_shader_out_variable(var, nir)
          var->data.explicit_xfb_buffer = 0;
    if (so_info && so_info->num_outputs)
-      update_so_info(ret, so_info, nir->info.outputs_written, have_psiz);
+      update_so_info(ret, nir, so_info, nir->info.outputs_written, have_psiz);
    else if (have_psiz) {
       bool have_fake_psiz = false;
       nir_variable *psiz = NULL;
