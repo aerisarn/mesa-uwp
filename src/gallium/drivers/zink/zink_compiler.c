@@ -3275,7 +3275,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
 }
 
 VkShaderModule
-zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs, nir_shader **ret_nir)
+zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
 {
    nir_shader *nir = nir_shader_clone(NULL, zs->nir);
    int set = nir->info.stage == MESA_SHADER_FRAGMENT;
@@ -3303,8 +3303,9 @@ zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs,
       }
    }
    optimize_nir(nir, zs);
-   *ret_nir = nir;
-   return compile_module(screen, zs, nir);
+   VkShaderModule mod = compile_module(screen, zs, nir);
+   ralloc_free(nir);
+   return mod;
 }
 
 static bool

@@ -2018,11 +2018,10 @@ precompile_separate_shader_job(void *data, void *gdata, int thread_index)
    struct zink_screen *screen = gdata;
    struct zink_shader *zs = data;
 
-   nir_shader *nir;
-   zs->precompile.mod = zink_shader_compile_separate(screen, zs, &nir);
+   zs->precompile.mod = zink_shader_compile_separate(screen, zs);
    zink_descriptor_shader_init(screen, zs);
    VkShaderModule mods[ZINK_GFX_SHADER_COUNT] = {0};
-   mods[nir->info.stage] = zs->precompile.mod;
+   mods[zs->nir->info.stage] = zs->precompile.mod;
    zs->precompile.gpl = zink_create_gfx_pipeline_separate(screen, mods, zs->precompile.layout);
 }
 
