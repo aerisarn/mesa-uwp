@@ -5524,6 +5524,7 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    if (cmd_buffer->state.compute.pipeline_dirty) {
+#if GFX_VERx10 < 125
       /* From the Sky Lake PRM Vol 2a, MEDIA_VFE_STATE:
        *
        *    "A stalling PIPE_CONTROL is required before MEDIA_VFE_STATE unless
@@ -5536,6 +5537,7 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
                               ANV_PIPE_CS_STALL_BIT,
                               "flush compute state");
       genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+#endif
 
       anv_batch_emit_batch(&cmd_buffer->batch, &pipeline->base.batch);
 
