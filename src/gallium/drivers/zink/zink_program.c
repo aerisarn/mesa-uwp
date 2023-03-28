@@ -933,13 +933,8 @@ create_program(struct zink_context *ctx, bool is_compute)
 static void
 assign_io(struct zink_screen *screen,
           struct zink_gfx_program *prog,
-          struct zink_shader *stages[ZINK_GFX_SHADER_COUNT])
+          struct zink_shader *shaders[ZINK_GFX_SHADER_COUNT])
 {
-   struct zink_shader *shaders[MESA_SHADER_STAGES];
-
-   /* build array in pipeline order */
-   for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++)
-      shaders[i] = stages[i];
 
    for (unsigned i = 0; i < MESA_SHADER_FRAGMENT;) {
       nir_shader *producer = shaders[i]->nir;
