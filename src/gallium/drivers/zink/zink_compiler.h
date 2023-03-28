@@ -43,9 +43,9 @@ struct spirv_shader;
 struct tgsi_token;
 
 static inline gl_shader_stage
-clamp_stage(nir_shader *nir)
+clamp_stage(const shader_info *info)
 {
-   return nir->info.stage == MESA_SHADER_KERNEL ? MESA_SHADER_COMPUTE : nir->info.stage;
+   return info->stage == MESA_SHADER_KERNEL ? MESA_SHADER_COMPUTE : info->stage;
 }
 
 const void *

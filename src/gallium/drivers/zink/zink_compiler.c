@@ -1842,7 +1842,7 @@ update_so_info(struct zink_shader *zs, nir_shader *nir, const struct pipe_stream
       unsigned slot = reverse_map[output->register_index];
       /* always set stride to be used during draw */
       zs->sinfo.so_info.stride[output->output_buffer] = so_info->stride[output->output_buffer];
-      if (zs->nir->info.stage != MESA_SHADER_GEOMETRY || util_bitcount(zs->nir->info.gs.active_stream_mask) == 1) {
+      if (zs->info.stage != MESA_SHADER_GEOMETRY || util_bitcount(zs->info.gs.active_stream_mask) == 1) {
          nir_variable *var = NULL;
          unsigned so_slot;
          while (!var)
@@ -3161,7 +3161,7 @@ zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, st
       VkSpecializationInfo sinfo = {0};
       VkSpecializationMapEntry me[3];
       uint32_t size[3] = {1,1,1};
-      if (!zs->nir->info.workgroup_size[0]) {
+      if (!zs->info.workgroup_size[0]) {
          sinfo.mapEntryCount = 3;
          sinfo.pMapEntries = &me[0];
          sinfo.dataSize = sizeof(uint32_t) * 3;
@@ -3176,7 +3176,7 @@ zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, st
       }
       nir_shader *nir = spirv_to_nir(spirv->words, spirv->num_words,
                          spec_entries, num_spec_entries,
-                         clamp_stage(zs->nir), "main", &spirv_options, &screen->nir_options);
+                         clamp_stage(&zs->info), "main", &spirv_options, &screen->nir_options);
       assert(nir);
       ralloc_free(nir);
       free(spec_entries);
@@ -3407,7 +3407,7 @@ compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *n
       mod = zink_shader_spirv_compile(screen, zs, spirv);
 
    /* TODO: determine if there's any reason to cache spirv output? */
-   if (zs->nir->info.stage == MESA_SHADER_TESS_CTRL && zs->non_fs.is_generated)
+   if (zs->info.stage == MESA_SHADER_TESS_CTRL && zs->non_fs.is_generated)
       zs->spirv = spirv;
    else
       ralloc_free(spirv);
@@ -3437,7 +3437,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
       /* TODO: use a separate mem ctx here for ralloc */
 
       if (!screen->optimal_keys) {
-         switch (zs->nir->info.stage) {
+         switch (zs->info.stage) {
          case MESA_SHADER_VERTEX: {
             uint32_t decomposed_attrs = 0, decomposed_attrs_without_w = 0;
             const struct zink_vs_key *vs_key = zink_vs_key(key);
@@ -3490,7 +3490,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
          }
       }
 
-      switch (zs->nir->info.stage) {
+      switch (zs->info.stage) {
       case MESA_SHADER_VERTEX:
       case MESA_SHADER_TESS_EVAL:
       case MESA_SHADER_GEOMETRY:
@@ -4737,7 +4737,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       subgroup_options.ballot_bit_size = 32;
       subgroup_options.ballot_components = 4;
       subgroup_options.lower_subgroup_masks = true;
-      if (!(screen->info.subgroup.supportedStages & mesa_to_vk_shader_stage(clamp_stage(nir)))) {
+      if (!(screen->info.subgroup.supportedStages & mesa_to_vk_shader_stage(clamp_stage(&nir->info)))) {
          subgroup_options.subgroup_size = 1;
          subgroup_options.lower_vote_trivial = true;
       }
@@ -4815,7 +4815,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
             ztype = ZINK_DESCRIPTOR_TYPE_UBO;
             /* buffer 0 is a push descriptor */
             var->data.descriptor_set = !!var->data.driver_location;
-            var->data.binding = !var->data.driver_location ? clamp_stage(nir) :
+            var->data.binding = !var->data.driver_location ? clamp_stage(&nir->info) :
                                 zink_binding(nir->info.stage,
                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                              var->data.driver_location,
@@ -4954,10 +4954,10 @@ zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr)
 void
 zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
 {
-   assert(shader->nir->info.stage != MESA_SHADER_COMPUTE);
+   assert(shader->info.stage != MESA_SHADER_COMPUTE);
    set_foreach(shader->programs, entry) {
       struct zink_gfx_program *prog = (void*)entry->key;
-      gl_shader_stage stage = shader->nir->info.stage;
+      gl_shader_stage stage = shader->info.stage;
       assert(stage < ZINK_GFX_SHADER_COUNT);
       if (!prog->base.removed && prog->stages_present == prog->stages_remaining &&
           (stage == MESA_SHADER_FRAGMENT || !shader->non_fs.is_generated)) {
@@ -5015,7 +5015,7 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
       }
       zink_gfx_program_reference(screen, &prog, NULL);
    }
-   if (shader->nir->info.stage == MESA_SHADER_TESS_EVAL &&
+   if (shader->info.stage == MESA_SHADER_TESS_EVAL &&
        shader->non_fs.generated_tcs) {
       /* automatically destroy generated tcs shaders when tes is destroyed */
       zink_shader_free(screen, shader->non_fs.generated_tcs);
@@ -5023,7 +5023,7 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
    }
    for (unsigned int i = 0; i < ARRAY_SIZE(shader->non_fs.generated_gs); i++) {
       for (int j = 0; j < ARRAY_SIZE(shader->non_fs.generated_gs[0]); j++) {
-         if (shader->nir->info.stage != MESA_SHADER_FRAGMENT &&
+         if (shader->info.stage != MESA_SHADER_FRAGMENT &&
              shader->non_fs.generated_gs[i][j]) {
             /* automatically destroy generated gs shaders when owner is destroyed */
             zink_shader_free(screen, shader->non_fs.generated_gs[i][j]);
@@ -5049,7 +5049,7 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
 VkShaderModule
 zink_shader_tcs_compile(struct zink_screen *screen, struct zink_shader *zs, unsigned patch_vertices)
 {
-   assert(zs->nir->info.stage == MESA_SHADER_TESS_CTRL);
+   assert(zs->info.stage == MESA_SHADER_TESS_CTRL);
    /* shortcut all the nir passes since we just have to change this one word */
    zs->spirv->words[zs->spirv->tcs_vertices_out_word] = patch_vertices;
    return zink_shader_spirv_compile(screen, zs, NULL);
