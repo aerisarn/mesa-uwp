@@ -5077,7 +5077,7 @@ void main()
 
 */
 struct zink_shader *
-zink_shader_tcs_create(struct zink_screen *screen, struct zink_shader *vs, unsigned vertices_per_patch)
+zink_shader_tcs_create(struct zink_screen *screen, nir_shader *vs, unsigned vertices_per_patch)
 {
    struct zink_shader *ret = rzalloc(NULL, struct zink_shader);
    util_queue_fence_init(&ret->precompile.fence);
@@ -5096,7 +5096,7 @@ zink_shader_tcs_create(struct zink_screen *screen, struct zink_shader *vs, unsig
 
    nir_ssa_def *invocation_id = nir_load_invocation_id(&b);
 
-   nir_foreach_shader_out_variable(var, vs->nir) {
+   nir_foreach_shader_out_variable(var, vs) {
       const struct glsl_type *type = var->type;
       const struct glsl_type *in_type = var->type;
       const struct glsl_type *out_type = var->type;
