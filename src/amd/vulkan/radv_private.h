@@ -1553,6 +1553,11 @@ struct radv_descriptor_state {
    bool need_indirect_descriptor_sets;
 };
 
+struct radv_push_constant_state {
+   uint32_t size;
+   uint32_t dynamic_offset_count;
+};
+
 enum rgp_flush_bits {
    RGP_FLUSH_WAIT_ON_EOP_TS = 0x1,
    RGP_FLUSH_VS_PARTIAL_FLUSH = 0x2,
@@ -1747,6 +1752,8 @@ struct radv_cmd_buffer {
    struct radv_descriptor_set_header meta_push_descriptors;
 
    struct radv_descriptor_state descriptors[MAX_BIND_POINTS];
+
+   struct radv_push_constant_state push_constant_state[MAX_BIND_POINTS];
 
    uint64_t descriptor_buffers[MAX_SETS];
 
@@ -2057,6 +2064,13 @@ static inline struct radv_descriptor_state *
 radv_get_descriptors_state(struct radv_cmd_buffer *cmd_buffer, VkPipelineBindPoint bind_point)
 {
    return &cmd_buffer->descriptors[vk_to_bind_point(bind_point)];
+}
+
+static inline const struct radv_push_constant_state *
+radv_get_push_constants_state(const struct radv_cmd_buffer *cmd_buffer,
+                              VkPipelineBindPoint bind_point)
+{
+   return &cmd_buffer->push_constant_state[vk_to_bind_point(bind_point)];
 }
 
 void
