@@ -553,7 +553,9 @@ void anv_CmdCopyImageToBuffer2(
 
    anv_blorp_batch_finish(&batch);
 
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_BUFFER_WRITES;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_RENDER_TARGET_BUFFER_WRITES,
+                             "after copy image to buffer");
 }
 
 static bool
@@ -778,7 +780,9 @@ void anv_CmdCopyBuffer2(
 
    anv_blorp_batch_finish(&batch);
 
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_BUFFER_WRITES;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_RENDER_TARGET_BUFFER_WRITES,
+                             "after copy buffer");
 }
 
 
@@ -840,7 +844,9 @@ void anv_CmdUpdateBuffer(
 
    anv_blorp_batch_finish(&batch);
 
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_BUFFER_WRITES;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_RENDER_TARGET_BUFFER_WRITES,
+                             "update buffer");
 }
 
 void
@@ -948,7 +954,9 @@ void anv_CmdFillBuffer(
                             anv_address_add(dst_buffer->address, dstOffset),
                             fillSize, data);
 
-   cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_RENDER_TARGET_BUFFER_WRITES;
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_RENDER_TARGET_BUFFER_WRITES,
+                             "after fill buffer");
 }
 
 void anv_CmdClearColorImage(
