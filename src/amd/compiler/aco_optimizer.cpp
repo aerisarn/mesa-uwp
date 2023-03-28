@@ -2472,9 +2472,8 @@ combine_constant_comparison_ordering(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    Instruction* nan_test = follow_operand(ctx, instr->operands[0], true);
    Instruction* cmp = follow_operand(ctx, instr->operands[1], true);
 
-   if (!nan_test || !cmp || nan_test->isSDWA() || cmp->isSDWA())
-      return false;
-   if (nan_test->isSDWA() || cmp->isSDWA())
+   if (!nan_test || !cmp || nan_test->isSDWA() || cmp->isSDWA() || nan_test->isDPP() ||
+       cmp->isDPP())
       return false;
 
    aco_opcode expected_nan_test = is_or ? aco_opcode::v_cmp_neq_f32 : aco_opcode::v_cmp_eq_f32;
@@ -2497,17 +2496,15 @@ combine_constant_comparison_ordering(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    if (prop_nan0 != prop_nan1)
       return false;
 
-   if (nan_test->isVOP3()) {
-      VALU_instruction& vop3 = nan_test->valu();
-      if (vop3.neg[0] != vop3.neg[1] || vop3.abs[0] != vop3.abs[1] ||
-          vop3.opsel[0] != vop3.opsel[1])
-         return false;
-   }
+   VALU_instruction& vop3 = nan_test->valu();
+   if (vop3.neg[0] != vop3.neg[1] || vop3.abs[0] != vop3.abs[1] || vop3.opsel[0] != vop3.opsel[1])
+      return false;
 
    int constant_operand = -1;
    for (unsigned i = 0; i < 2; i++) {
       if (cmp->operands[i].isTemp() &&
-          original_temp_id(ctx, cmp->operands[i].getTemp()) == prop_nan0) {
+          original_temp_id(ctx, cmp->operands[i].getTemp()) == prop_nan0 &&
+          cmp->valu().opsel[i] == nan_test->valu().opsel[0]) {
          constant_operand = !i;
          break;
       }
@@ -2518,24 +2515,16 @@ combine_constant_comparison_ordering(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    uint64_t constant_value;
    if (!is_operand_constant(ctx, cmp->operands[constant_operand], bit_size, &constant_value))
       return false;
-   if (is_constant_nan(constant_value, bit_size))
+   if (is_constant_nan(constant_value >> (cmp->valu().opsel[constant_operand] * 16), bit_size))
       return false;
 
    aco_opcode new_op = is_or ? get_unordered(cmp->opcode) : get_ordered(cmp->opcode);
-   Instruction* new_instr;
-   if (cmp->isVOP3()) {
-      VALU_instruction* new_vop3 =
-         create_instruction<VALU_instruction>(new_op, asVOP3(Format::VOPC), 2, 1);
-      VALU_instruction& cmp_vop3 = cmp->valu();
-      new_vop3->neg = cmp_vop3.neg;
-      new_vop3->abs = cmp_vop3.abs;
-      new_vop3->clamp = cmp_vop3.clamp;
-      new_vop3->omod = cmp_vop3.omod;
-      new_vop3->opsel = cmp_vop3.opsel;
-      new_instr = new_vop3;
-   } else {
-      new_instr = create_instruction<VALU_instruction>(new_op, Format::VOPC, 2, 1);
-   }
+   Instruction* new_instr = create_instruction<VALU_instruction>(new_op, cmp->format, 2, 1);
+   new_instr->valu().neg = cmp->valu().neg;
+   new_instr->valu().abs = cmp->valu().abs;
+   new_instr->valu().clamp = cmp->valu().clamp;
+   new_instr->valu().omod = cmp->valu().omod;
+   new_instr->valu().opsel = cmp->valu().opsel;
    new_instr->operands[0] = copy_operand(ctx, cmp->operands[0]);
    new_instr->operands[1] = copy_operand(ctx, cmp->operands[1]);
    new_instr->definitions[0] = instr->definitions[0];
