@@ -4901,6 +4901,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
          NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
       }
    }
+   memcpy(&ret->info, &nir->info, sizeof(nir->info));
 
    ret->can_inline = true;
 
@@ -5142,6 +5143,7 @@ zink_shader_tcs_create(struct zink_screen *screen, struct zink_shader *vs, unsig
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
    ret->nir = nir;
+   memcpy(&ret->info, &nir->info, sizeof(nir->info));
    ret->non_fs.is_generated = true;
    return ret;
 }

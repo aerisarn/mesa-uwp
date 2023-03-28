@@ -734,6 +734,7 @@ struct zink_shader {
    struct util_live_shader base;
    uint32_t hash;
    struct nir_shader *nir;
+   struct shader_info info;
 
    struct zink_shader_info sinfo;
 
