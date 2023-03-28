@@ -937,15 +937,11 @@ assign_io(struct zink_screen *screen,
 {
 
    for (unsigned i = 0; i < MESA_SHADER_FRAGMENT;) {
-      nir_shader *producer = shaders[i]->nir;
+      nir_shader *producer = prog->nir[i];
       for (unsigned j = i + 1; j < ZINK_GFX_SHADER_COUNT; i++, j++) {
          struct zink_shader *consumer = shaders[j];
          if (!consumer)
             continue;
-         if (!prog->nir[producer->info.stage])
-            prog->nir[producer->info.stage] = nir_shader_clone(prog, producer);
-         if (!prog->nir[j])
-            prog->nir[j] = nir_shader_clone(prog, consumer->nir);
          zink_compiler_assign_io(screen, prog->nir[producer->info.stage], prog->nir[j]);
          i = j;
          break;
@@ -1045,13 +1041,15 @@ zink_create_gfx_program(struct zink_context *ctx,
          prog->stages_present |= BITFIELD_BIT(i);
          prog->optimal_keys &= !prog->shaders[i]->non_fs.is_generated;
          prog->needs_inlining |= prog->shaders[i]->needs_inlining;
+         prog->nir[i] = nir_shader_clone(NULL, stages[i]->nir);
       }
    }
    if (stages[MESA_SHADER_TESS_EVAL] && !stages[MESA_SHADER_TESS_CTRL]) {
       nir_shader *nir;
       prog->shaders[MESA_SHADER_TESS_EVAL]->non_fs.generated_tcs =
       prog->shaders[MESA_SHADER_TESS_CTRL] =
-        zink_shader_tcs_create(screen, stages[MESA_SHADER_VERTEX]->nir, vertices_per_patch, &nir);
+        zink_shader_tcs_create(screen, prog->nir[MESA_SHADER_VERTEX], vertices_per_patch, &nir);
+      prog->nir[MESA_SHADER_TESS_CTRL] = nir_shader_clone(NULL, nir);
       prog->stages_present |= BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
    }
    prog->stages_remaining = prog->stages_present;
