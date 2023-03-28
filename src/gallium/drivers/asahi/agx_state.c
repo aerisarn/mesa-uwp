@@ -1753,18 +1753,35 @@ agx_delete_shader_state(struct pipe_context *ctx, void *cso)
    ralloc_free(so);
 }
 
+static unsigned
+sampler_count(struct agx_context *ctx, struct agx_compiled_shader *cs,
+              enum pipe_shader_type stage)
+{
+   unsigned nr_samplers = ctx->stage[stage].sampler_count;
+
+   if (cs->info.needs_dummy_sampler)
+      nr_samplers = MAX2(nr_samplers, 1);
+
+   return nr_samplers;
+}
+
+static inline enum agx_sampler_states
+translate_sampler_state_count(struct agx_context *ctx,
+                              struct agx_compiled_shader *cs,
+                              enum pipe_shader_type stage)
+{
+   return agx_translate_sampler_state_count(sampler_count(ctx, cs, stage),
+                                            ctx->stage[stage].custom_borders);
+}
+
 static uint32_t
 agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
                    enum pipe_shader_type stage, unsigned variable_shared_mem)
 {
    struct agx_context *ctx = batch->ctx;
    unsigned nr_textures = ctx->stage[stage].texture_count;
-   unsigned nr_samplers = ctx->stage[stage].sampler_count;
+   unsigned nr_samplers = sampler_count(ctx, cs, stage);
    bool custom_borders = ctx->stage[stage].custom_borders;
-   bool dummy_sampler = cs->info.needs_dummy_sampler && (nr_samplers == 0);
-
-   if (dummy_sampler)
-      nr_samplers = 1;
 
    struct agx_ptr T_tex = agx_pool_alloc_aligned(
       &batch->pool, AGX_TEXTURE_LENGTH * nr_textures, 64);
@@ -1817,7 +1834,7 @@ agx_build_pipeline(struct agx_batch *batch, struct agx_compiled_shader *cs,
 
    /* TODO: Dirty track me to save some CPU cycles and maybe improve caching */
    uint8_t *out_sampler = T_samp.cpu;
-   if (dummy_sampler) {
+   if (nr_samplers && ctx->stage[stage].sampler_count == 0) {
       /* Configuration is irrelevant for the dummy sampler */
       agx_pack(out_sampler, SAMPLER, cfg)
          ;
@@ -2173,8 +2190,8 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
          cfg.uniform_register_count = ctx->vs->info.push_count;
          cfg.preshader_register_count = ctx->vs->info.nr_preamble_gprs;
          cfg.texture_state_register_count = tex_count;
-         cfg.sampler_state_register_count = agx_translate_sampler_state_count(
-            tex_count, ctx->stage[PIPE_SHADER_VERTEX].custom_borders);
+         cfg.sampler_state_register_count =
+            translate_sampler_state_count(ctx, ctx->vs, PIPE_SHADER_VERTEX);
       }
       out += AGX_VDM_STATE_VERTEX_SHADER_WORD_0_LENGTH;
 
@@ -2357,8 +2374,8 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
          cfg.uniform_register_count = ctx->fs->info.push_count;
          cfg.preshader_register_count = ctx->fs->info.nr_preamble_gprs;
          cfg.texture_state_register_count = frag_tex_count;
-         cfg.sampler_state_register_count = agx_translate_sampler_state_count(
-            frag_tex_count, ctx->stage[PIPE_SHADER_FRAGMENT].custom_borders);
+         cfg.sampler_state_register_count =
+            translate_sampler_state_count(ctx, ctx->fs, PIPE_SHADER_FRAGMENT);
          cfg.cf_binding_count = ctx->fs->info.varyings.fs.nr_bindings;
          cfg.cf_bindings = batch->varyings;
 
@@ -2750,8 +2767,8 @@ agx_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
       cfg.uniform_register_count = cs->info.push_count;
       cfg.preshader_register_count = cs->info.nr_preamble_gprs;
       cfg.texture_state_register_count = nr_textures;
-      cfg.sampler_state_register_count = agx_translate_sampler_state_count(
-         nr_textures, ctx->stage[PIPE_SHADER_COMPUTE].custom_borders);
+      cfg.sampler_state_register_count =
+         translate_sampler_state_count(ctx, cs, PIPE_SHADER_COMPUTE);
       cfg.pipeline = agx_build_pipeline(batch, cs, PIPE_SHADER_COMPUTE,
                                         info->variable_shared_mem);
    }
