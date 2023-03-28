@@ -260,6 +260,7 @@ EXT(EXT_gpu_program_parameters              , EXT_gpu_program_parameters        
  * Additionally, EXT_gpu_shader4 would reintroduce functions that were removed in GLSL 1.40. */
 EXT(EXT_gpu_shader4                         , EXT_gpu_shader4                        , GLL,  x ,  x ,  x , 2006)
 EXT(EXT_gpu_shader5                         , ARB_gpu_shader5                        ,  x ,  x ,  x ,  31, 2014)
+EXT(EXT_instanced_arrays                    , ARB_instanced_arrays                   ,  x ,  x ,  x , ES2, 2012)
 EXT(EXT_map_buffer_range                    , ARB_map_buffer_range                   ,  x ,  x , ES1, ES2, 2012)
 EXT(EXT_memory_object                       , EXT_memory_object                      , GLL, GLC,  x , ES2, 2017)
 EXT(EXT_memory_object_fd                    , EXT_memory_object_fd                   , GLL, GLC,  x , ES2, 2017)
