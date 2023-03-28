@@ -27,6 +27,7 @@
 #include "util/hash_table.h"
 
 #include "bvh/bvh.h"
+#include "radv_nir.h"
 #include "radv_private.h"
 #include "radv_rt_common.h"
 #include "radv_shader.h"

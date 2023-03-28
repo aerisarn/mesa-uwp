@@ -24,6 +24,7 @@
 #include "ac_shader_util.h"
 #include "nir.h"
 #include "nir_builder.h"
+#include "radv_nir.h"
 #include "radv_private.h"
 #include "radv_shader.h"
 #include "radv_shader_args.h"
@@ -141,10 +142,10 @@ static void
 visit_load_vulkan_descriptor(nir_builder *b, apply_layout_state *state, nir_intrinsic_instr *intrin)
 {
    if (nir_intrinsic_desc_type(intrin) == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR) {
-      nir_ssa_def *addr = convert_pointer_to_64_bit(
-         b, state,
-         nir_iadd(b, nir_unpack_64_2x32_split_x(b, intrin->src[0].ssa),
-                     nir_unpack_64_2x32_split_y(b, intrin->src[0].ssa)));
+      nir_ssa_def *addr =
+         convert_pointer_to_64_bit(b, state,
+                                   nir_iadd(b, nir_unpack_64_2x32_split_x(b, intrin->src[0].ssa),
+                                            nir_unpack_64_2x32_split_y(b, intrin->src[0].ssa)));
       nir_ssa_def *desc = nir_build_load_global(b, 1, 64, addr, .access = ACCESS_NON_WRITEABLE);
 
       nir_ssa_def_rewrite_uses(&intrin->dest.ssa, desc);
@@ -258,8 +259,9 @@ get_sampler_desc(nir_builder *b, apply_layout_state *state, nir_deref_instr *der
 
       uint32_t dword0_mask = tex->op == nir_texop_tg4 ? C_008F30_TRUNC_COORD : 0xffffffffu;
       const uint32_t *samplers = radv_immutable_samplers(layout, binding);
-      return nir_imm_ivec4(b, samplers[constant_index * 4 + 0] & dword0_mask, samplers[constant_index * 4 + 1],
-                           samplers[constant_index * 4 + 2], samplers[constant_index * 4 + 3]);
+      return nir_imm_ivec4(b, samplers[constant_index * 4 + 0] & dword0_mask,
+                           samplers[constant_index * 4 + 1], samplers[constant_index * 4 + 2],
+                           samplers[constant_index * 4 + 3]);
    }
 
    unsigned size = 8;

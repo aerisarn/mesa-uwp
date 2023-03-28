@@ -26,17 +26,18 @@
  */
 
 #include "radv_shader.h"
+#include "meta/radv_meta.h"
 #include "nir/nir.h"
 #include "nir/nir_builder.h"
 #include "nir/nir_xfb_info.h"
+#include "nir/radv_nir.h"
 #include "spirv/nir_spirv.h"
 #include "util/memstream.h"
 #include "util/mesa-sha1.h"
-#include "util/u_atomic.h"
 #include "util/streaming-load-memcpy.h"
+#include "util/u_atomic.h"
 #include "radv_cs.h"
 #include "radv_debug.h"
-#include "meta/radv_meta.h"
 #include "radv_private.h"
 #include "radv_shader_args.h"
 

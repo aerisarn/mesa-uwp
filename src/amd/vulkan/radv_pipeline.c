@@ -25,9 +25,11 @@
  * IN THE SOFTWARE.
  */
 
+#include "meta/radv_meta.h"
 #include "nir/nir.h"
 #include "nir/nir_builder.h"
 #include "nir/nir_vulkan.h"
+#include "nir/radv_nir.h"
 #include "spirv/nir_spirv.h"
 #include "util/disk_cache.h"
 #include "util/mesa-sha1.h"
@@ -35,7 +37,6 @@
 #include "util/u_atomic.h"
 #include "radv_cs.h"
 #include "radv_debug.h"
-#include "meta/radv_meta.h"
 #include "radv_private.h"
 #include "radv_shader.h"
 #include "radv_shader_args.h"
