@@ -1041,15 +1041,13 @@ zink_create_gfx_program(struct zink_context *ctx,
          prog->stages_present |= BITFIELD_BIT(i);
          prog->optimal_keys &= !prog->shaders[i]->non_fs.is_generated;
          prog->needs_inlining |= prog->shaders[i]->needs_inlining;
-         prog->nir[i] = nir_shader_clone(NULL, stages[i]->nir);
+         prog->nir[i] = zink_shader_deserialize(screen, stages[i]);
       }
    }
    if (stages[MESA_SHADER_TESS_EVAL] && !stages[MESA_SHADER_TESS_CTRL]) {
-      nir_shader *nir;
       prog->shaders[MESA_SHADER_TESS_EVAL]->non_fs.generated_tcs =
       prog->shaders[MESA_SHADER_TESS_CTRL] =
-        zink_shader_tcs_create(screen, prog->nir[MESA_SHADER_VERTEX], vertices_per_patch, &nir);
-      prog->nir[MESA_SHADER_TESS_CTRL] = nir_shader_clone(NULL, nir);
+        zink_shader_tcs_create(screen, prog->nir[MESA_SHADER_VERTEX], vertices_per_patch, &prog->nir[MESA_SHADER_TESS_CTRL]);
       prog->stages_present |= BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
    }
    prog->stages_remaining = prog->stages_present;
@@ -1259,20 +1257,15 @@ precompile_compute_job(void *data, void *gdata, int thread_index)
    comp->shader = zink_shader_create(screen, comp->nir, NULL);
    comp->curr = comp->module = CALLOC_STRUCT(zink_shader_module);
    assert(comp->module);
-   comp->module->shader = zink_shader_compile(screen, comp->shader, comp->shader->nir, NULL, NULL);
+   comp->module->shader = zink_shader_compile(screen, comp->shader, comp->nir, NULL, NULL);
    assert(comp->module->shader);
    util_dynarray_init(&comp->shader_cache[0], comp);
    util_dynarray_init(&comp->shader_cache[1], comp);
 
-   struct blob blob = {0};
-   blob_init(&blob);
-   nir_serialize(&blob, comp->shader->nir, true);
-
    struct mesa_sha1 sha1_ctx;
    _mesa_sha1_init(&sha1_ctx);
-   _mesa_sha1_update(&sha1_ctx, blob.data, blob.size);
+   _mesa_sha1_update(&sha1_ctx, comp->shader->blob.data, comp->shader->blob.size);
    _mesa_sha1_final(&sha1_ctx, comp->base.sha1);
-   blob_finish(&blob);
 
    zink_descriptor_program_init(comp->base.ctx, &comp->base);
 
@@ -1483,7 +1476,7 @@ zink_destroy_compute_program(struct zink_screen *screen,
    assert(!comp->shader->spirv);
 
    _mesa_set_destroy(comp->shader->programs, NULL);
-   ralloc_free(comp->shader->nir);
+   ralloc_free(comp->nir);
    ralloc_free(comp->shader);
 
    destroy_shader_cache(screen, &comp->shader_cache[0]);
@@ -1897,7 +1890,9 @@ zink_create_gfx_shader_state(struct pipe_context *pctx, const struct pipe_shader
    if (nir->info.uses_bindless)
       zink_descriptors_init_bindless(zink_context(pctx));
 
-   return zink_shader_create(zink_screen(pctx->screen), nir, &shader->stream_output);
+   void *ret = zink_shader_create(zink_screen(pctx->screen), nir, &shader->stream_output);
+   ralloc_free(nir);
+   return ret;
 }
 
 static void
@@ -2305,16 +2300,17 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
           (ctx->gfx_stages[MESA_SHADER_GEOMETRY]->info.gs.input_primitive != ctx->gfx_pipeline_state.gfx_prim_mode)) {
 
          if (!ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type]) {
+            nir_shader *prev_stage = zink_shader_deserialize(screen, ctx->gfx_stages[prev_vertex_stage]);
             nir_shader *nir;
             if (lower_filled_quad) {
                nir = zink_create_quads_emulation_gs(
                   &screen->nir_options,
-                  ctx->gfx_stages[prev_vertex_stage]->nir,
+                  prev_stage,
                   ZINK_INLINE_VAL_PV_LAST_VERT * 4);
             } else {
                nir = nir_create_passthrough_gs(
                   &screen->nir_options,
-                  ctx->gfx_stages[prev_vertex_stage]->nir,
+                  prev_stage,
                   ctx->gfx_pipeline_state.gfx_prim_mode,
                   ZINK_INLINE_VAL_FLAT_MASK * sizeof(uint32_t),
                   ZINK_INLINE_VAL_PV_LAST_VERT * sizeof(uint32_t),
@@ -2324,6 +2320,7 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
 
             zink_add_inline_uniform(nir, ZINK_INLINE_VAL_FLAT_MASK);
             zink_add_inline_uniform(nir, ZINK_INLINE_VAL_PV_LAST_VERT);
+            ralloc_free(prev_stage);
             struct zink_shader *shader = zink_shader_create(screen, nir, &ctx->gfx_stages[prev_vertex_stage]->sinfo.so_info);
             shader->needs_inlining = true;
             ctx->gfx_stages[prev_vertex_stage]->non_fs.generated_gs[ctx->gfx_pipeline_state.gfx_prim_mode][zink_prim_type] = shader;

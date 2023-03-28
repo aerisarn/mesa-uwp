@@ -96,4 +96,8 @@ zink_shader_descriptor_is_buffer(struct zink_shader *zs, enum zink_descriptor_ty
 
 bool
 zink_shader_has_cubes(nir_shader *nir);
+nir_shader *
+zink_shader_deserialize(struct zink_screen *screen, struct zink_shader *zs);
+void
+zink_shader_serialize_blob(nir_shader *nir, struct blob *blob);
 #endif

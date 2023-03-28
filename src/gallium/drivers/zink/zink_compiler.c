@@ -35,6 +35,7 @@
 #include "nir_xfb_info.h"
 #include "nir/nir_draw_helpers.h"
 #include "compiler/nir/nir_builder.h"
+#include "compiler/nir/nir_serialize.h"
 #include "compiler/nir/nir_builtin_builder.h"
 
 #include "nir/tgsi_to_nir.h"
@@ -3615,7 +3616,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
 VkShaderModule
 zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
 {
-   nir_shader *nir = nir_shader_clone(NULL, zs->nir);
+   nir_shader *nir = zink_shader_deserialize(screen, zs);
    int set = nir->info.stage == MESA_SHADER_FRAGMENT;
    unsigned offsets[4];
    zink_descriptor_shader_get_binding_offsets(zs, offsets);
@@ -4892,7 +4893,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    if (nir->info.stage != MESA_SHADER_KERNEL)
       NIR_PASS_V(nir, match_tex_dests, ret);
 
-   ret->nir = nir;
    if (!nir->info.internal)
       nir_foreach_shader_out_variable(var, nir)
          var->data.explicit_xfb_buffer = 0;
@@ -4915,6 +4915,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
          NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
       }
    }
+   zink_shader_serialize_blob(nir, &ret->blob);
    memcpy(&ret->info, &nir->info, sizeof(nir->info));
 
    ret->can_inline = true;
@@ -5039,7 +5040,7 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
       VKSCR(DestroyShaderModule)(screen->dev, shader->precompile.mod, NULL);
    if (shader->precompile.gpl)
       VKSCR(DestroyPipeline)(screen->dev, shader->precompile.gpl, NULL);
-   ralloc_free(shader->nir);
+   blob_finish(&shader->blob);
    ralloc_free(shader->spirv);
    free(shader->precompile.bindings);
    ralloc_free(shader);
@@ -5156,8 +5157,8 @@ zink_shader_tcs_create(struct zink_screen *screen, nir_shader *vs, unsigned vert
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
-   ret->nir = nir;
    *nir_ret = nir;
+   zink_shader_serialize_blob(nir, &ret->blob);
    memcpy(&ret->info, &nir->info, sizeof(nir->info));
    ret->non_fs.is_generated = true;
    return ret;
@@ -5172,4 +5173,24 @@ zink_shader_has_cubes(nir_shader *nir)
          return true;
    }
    return false;
+}
+
+nir_shader *
+zink_shader_deserialize(struct zink_screen *screen, struct zink_shader *zs)
+{
+   struct blob_reader blob;
+   blob_reader_init(&blob, zs->blob.data, zs->blob.size);
+   return nir_deserialize(NULL, &screen->nir_options, &blob);
+}
+
+void
+zink_shader_serialize_blob(nir_shader *nir, struct blob *blob)
+{
+   blob_init(blob);
+#ifndef NDEBUG
+   bool strip = !(zink_debug & (ZINK_DEBUG_NIR | ZINK_DEBUG_SPIRV | ZINK_DEBUG_TGSI));
+#else
+   bool strip = false;
+#endif
+   nir_serialize(blob, nir, strip);
 }
