@@ -774,6 +774,11 @@ zink_begin_render_pass(struct zink_context *ctx)
 
       u_foreach_bit(i, ctx->framebuffer->rp->state.msaa_expand_mask) {
          struct zink_ctx_surface *csurf = (struct zink_ctx_surface*)ctx->fb_state.cbufs[i];
+         /* skip replicate blit if the image will be full-cleared */
+         if ((i == PIPE_MAX_COLOR_BUFS && (ctx->rp_clears_enabled & PIPE_CLEAR_DEPTHSTENCIL)) ||
+             (ctx->rp_clears_enabled >> 2) & BITFIELD_BIT(i)) {
+            csurf->transient_init |= zink_fb_clear_full_exists(ctx, i);
+         }
          if (csurf->transient_init)
             continue;
          struct pipe_surface *dst_view = (struct pipe_surface*)csurf->transient;
