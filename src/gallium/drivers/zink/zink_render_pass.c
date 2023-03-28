@@ -797,10 +797,19 @@ zink_begin_render_pass(struct zink_context *ctx)
          ctx->blitting = false;
          zink_blit_barriers(ctx, zink_resource(src), zink_resource(dst_view->texture), true);
          ctx->blitting = true;
+         unsigned clear_mask = i == PIPE_MAX_COLOR_BUFS ?
+                               (BITFIELD_MASK(PIPE_MAX_COLOR_BUFS) << 2) :
+                               (PIPE_CLEAR_DEPTHSTENCIL | ((BITFIELD_MASK(PIPE_MAX_COLOR_BUFS) & ~BITFIELD_BIT(i)) << 2));
+         unsigned clears_enabled = ctx->clears_enabled & clear_mask;
+         unsigned rp_clears_enabled = ctx->rp_clears_enabled & clear_mask;
+         ctx->clears_enabled &= ~clear_mask;
+         ctx->rp_clears_enabled &= ~clear_mask;
          util_blitter_blit_generic(ctx->blitter, dst_view, &dstbox,
                                    src_view, &dstbox, ctx->fb_state.width, ctx->fb_state.height,
                                    PIPE_MASK_RGBAZS, PIPE_TEX_FILTER_NEAREST, NULL,
                                    false, false, 0);
+         ctx->clears_enabled = clears_enabled;
+         ctx->rp_clears_enabled = rp_clears_enabled;
          ctx->blitting = false;
          if (blitting) {
             zink_blit_barriers(ctx, NULL, zink_resource(dst_view->texture), true);
