@@ -120,9 +120,16 @@ struct tu_pipeline_executable {
    char *disasm;
 };
 
+enum tu_pipeline_type {
+   TU_PIPELINE_GRAPHICS,
+   TU_PIPELINE_GRAPHICS_LIB,
+   TU_PIPELINE_COMPUTE,
+};
+
 struct tu_pipeline
 {
    struct vk_object_base base;
+   enum tu_pipeline_type type;
 
    struct tu_cs cs;
    struct tu_suballoc_bo bo;
@@ -138,8 +145,6 @@ struct tu_pipeline
     */
    uint64_t dynamic_state_mask;
    struct tu_draw_state dynamic_state[TU_DYNAMIC_STATE_COUNT];
-
-   VkGraphicsPipelineLibraryFlagsEXT state;
 
    /* for dynamic states which use the same register: */
    struct {
@@ -232,7 +237,6 @@ struct tu_pipeline
       uint32_t hs_param_stride;
       uint32_t hs_param_dwords;
       uint32_t hs_vertices_out;
-      uint32_t cs_instrlen;
 
       bool writes_viewport;
       bool per_samp;
@@ -254,12 +258,6 @@ struct tu_pipeline
       bool upper_left_domain_origin;
    } tess;
 
-   struct
-   {
-      uint32_t local_size[3];
-      uint32_t subgroup_size;
-   } compute;
-
    struct tu_lrz_pipeline lrz;
 
    struct {
@@ -272,11 +270,20 @@ struct tu_pipeline
       bool per_view_viewport;
    } viewport;
 
-   /* Used only for libraries. compiled_shaders only contains variants compiled
-    * by this pipeline, and it owns them, so when it is freed they disappear.
-    * Similarly, nir_shaders owns the link-time NIR. shaders points to the
-    * shaders from this pipeline and all libraries included in it, for
-    * convenience.
+   void *executables_mem_ctx;
+   /* tu_pipeline_executable */
+   struct util_dynarray executables;
+};
+
+struct tu_graphics_lib_pipeline {
+   struct tu_pipeline base;
+
+   VkGraphicsPipelineLibraryFlagsEXT state;
+
+   /* compiled_shaders only contains variants compiled by this pipeline, and
+    * it owns them, so when it is freed they disappear.  Similarly,
+    * nir_shaders owns the link-time NIR. shaders points to the shaders from
+    * this pipeline and all libraries included in it, for convenience.
     */
    struct tu_compiled_shaders *compiled_shaders;
    struct tu_nir_shaders *nir_shaders;
@@ -289,20 +296,39 @@ struct tu_pipeline
 
    struct ir3_shader_key ir3_key;
 
-   /* Used for libraries, to stitch together an overall layout for the final
-    * pipeline.
-    */
+   /* Used to stitch together an overall layout for the final pipeline. */
    struct tu_descriptor_set_layout *layouts[MAX_SETS];
    unsigned num_sets;
    unsigned push_constant_size;
    bool independent_sets;
-
-   void *executables_mem_ctx;
-   /* tu_pipeline_executable */
-   struct util_dynarray executables;
 };
+
+struct tu_graphics_pipeline {
+   struct tu_pipeline base;
+};
+
+struct tu_compute_pipeline {
+   struct tu_pipeline base;
+
+   uint32_t local_size[3];
+   uint32_t subgroup_size;
+   uint32_t instrlen;
+};
+
 VK_DEFINE_NONDISP_HANDLE_CASTS(tu_pipeline, base, VkPipeline,
                                VK_OBJECT_TYPE_PIPELINE)
+
+#define TU_DECL_PIPELINE_DOWNCAST(pipe_type, pipe_enum)              \
+   static inline struct tu_##pipe_type##_pipeline *                  \
+   tu_pipeline_to_##pipe_type(struct tu_pipeline *pipeline)          \
+   {                                                                 \
+      assert(pipeline->type == pipe_enum);                           \
+      return (struct tu_##pipe_type##_pipeline *) pipeline;          \
+   }
+
+TU_DECL_PIPELINE_DOWNCAST(graphics, TU_PIPELINE_GRAPHICS)
+TU_DECL_PIPELINE_DOWNCAST(graphics_lib, TU_PIPELINE_GRAPHICS_LIB)
+TU_DECL_PIPELINE_DOWNCAST(compute, TU_PIPELINE_COMPUTE)
 
 void
 tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewport, uint32_t num_viewport,

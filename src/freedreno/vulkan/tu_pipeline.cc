@@ -284,7 +284,7 @@ struct tu_pipeline_builder
 #define MAX_LIBRARIES 4
 
    unsigned num_libraries;
-   struct tu_pipeline *libraries[MAX_LIBRARIES];
+   struct tu_graphics_lib_pipeline *libraries[MAX_LIBRARIES];
 
    /* This is just the state that we are compiling now, whereas the final
     * pipeline will include the state from the libraries.
@@ -2435,6 +2435,14 @@ contains_all_shader_state(VkGraphicsPipelineLibraryFlagsEXT state)
        VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT);
 }
 
+static bool
+pipeline_contains_all_shader_state(struct tu_pipeline *pipeline)
+{
+   return pipeline->type == TU_PIPELINE_GRAPHICS ||
+      pipeline->type == TU_PIPELINE_COMPUTE ||
+      contains_all_shader_state(tu_pipeline_to_graphics_lib(pipeline)->state);
+}
+
 /* Return true if this pipeline contains all of the GPL stages listed but none
  * of the libraries it uses do, so this is "the first time" that all of them
  * are defined together. This is useful for state that needs to be combined
@@ -2446,7 +2454,8 @@ set_combined_state(struct tu_pipeline_builder *builder,
                    struct tu_pipeline *pipeline,
                    VkGraphicsPipelineLibraryFlagsEXT state)
 {
-   if ((pipeline->state & state) != state)
+   if (pipeline->type == TU_PIPELINE_GRAPHICS_LIB &&
+       (tu_pipeline_to_graphics_lib(pipeline)->state & state) != state)
       return false;
 
    for (unsigned i = 0; i < builder->num_libraries; i++) {
@@ -3142,7 +3151,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    if (builder->create_info->flags &
        VK_PIPELINE_CREATE_LINK_TIME_OPTIMIZATION_BIT_EXT) {
       for (unsigned i = 0; i < builder->num_libraries; i++) {
-         struct tu_pipeline *library = builder->libraries[i];
+         struct tu_graphics_lib_pipeline *library = builder->libraries[i];
 
          for (unsigned j = 0; j < ARRAY_SIZE(library->shaders); j++) {
             if (library->shaders[j].nir) {
@@ -3448,7 +3457,7 @@ done:;
     * retain it ourselves in case another pipeline includes us with LTO.
     */
    for (unsigned i = 0; i < builder->num_libraries; i++) {
-      struct tu_pipeline *library = builder->libraries[i];
+      struct tu_graphics_lib_pipeline *library = builder->libraries[i];
       for (gl_shader_stage stage = MESA_SHADER_VERTEX;
            stage < ARRAY_SIZE(library->shaders);
            stage = (gl_shader_stage) (stage + 1)) {
@@ -3462,7 +3471,7 @@ done:;
    if (!(builder->create_info->flags &
          VK_PIPELINE_CREATE_LINK_TIME_OPTIMIZATION_BIT_EXT)) {
       for (unsigned i = 0; i < builder->num_libraries; i++) {
-         struct tu_pipeline *library = builder->libraries[i];
+         struct tu_graphics_lib_pipeline *library = builder->libraries[i];
          for (gl_shader_stage stage = MESA_SHADER_VERTEX;
               stage < ARRAY_SIZE(library->shaders);
               stage = (gl_shader_stage) (stage + 1)) {
@@ -3495,8 +3504,8 @@ done:;
       pipeline->active_desc_sets = compiled_shaders->active_desc_sets;
 
    for (unsigned i = 0; i < builder->num_libraries; i++) {
-      struct tu_pipeline *library = builder->libraries[i];
-      pipeline->active_desc_sets |= library->active_desc_sets;
+      struct tu_graphics_lib_pipeline *library = builder->libraries[i];
+      pipeline->active_desc_sets |= library->base.active_desc_sets;
    }
 
    if (compiled_shaders && compiled_shaders->variants[MESA_SHADER_TESS_CTRL]) {
@@ -3504,7 +3513,7 @@ done:;
          compiled_shaders->variants[MESA_SHADER_TESS_CTRL]->key.tessellation;
    }
 
-   if (contains_all_shader_state(pipeline->state)) {
+   if (pipeline_contains_all_shader_state(pipeline)) {
       struct ir3_shader_variant *vs =
          builder->variants[MESA_SHADER_VERTEX];
 
@@ -3527,17 +3536,19 @@ done:;
          vk_pipeline_cache_object_unref(&builder->device->vk,
                                         &nir_shaders->base);
    } else {
-      pipeline->compiled_shaders = compiled_shaders;
-      pipeline->nir_shaders = nir_shaders;
-      pipeline->ir3_key = ir3_key;
+      struct tu_graphics_lib_pipeline *library =
+         tu_pipeline_to_graphics_lib(pipeline);
+      library->compiled_shaders = compiled_shaders;
+      library->nir_shaders = nir_shaders;
+      library->ir3_key = ir3_key;
       for (gl_shader_stage stage = MESA_SHADER_VERTEX;
-           stage < ARRAY_SIZE(pipeline->shaders);
+           stage < ARRAY_SIZE(library->shaders);
            stage = (gl_shader_stage) (stage + 1)) {
-         pipeline->shaders[stage].nir = post_link_nir[stage];
-         pipeline->shaders[stage].key = keys[stage];
-         pipeline->shaders[stage].const_state = builder->const_state[stage];
-         pipeline->shaders[stage].variant = builder->variants[stage];
-         pipeline->shaders[stage].safe_const_variant =
+         library->shaders[stage].nir = post_link_nir[stage];
+         library->shaders[stage].key = keys[stage];
+         library->shaders[stage].const_state = builder->const_state[stage];
+         library->shaders[stage].variant = builder->variants[stage];
+         library->shaders[stage].safe_const_variant =
             safe_const_variants[stage];
       }
    }
@@ -3845,36 +3856,38 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
       builder->num_libraries = library_info->libraryCount;
       for (unsigned i = 0; i < library_info->libraryCount; i++) {
          TU_FROM_HANDLE(tu_pipeline, library, library_info->pLibraries[i]);
-         builder->libraries[i] = library;
+         builder->libraries[i] = tu_pipeline_to_graphics_lib(library);
       }
    }
 
    /* Merge in the state from libraries. The program state is a bit special
     * and is handled separately.
     */
-   pipeline->state = builder->state;
+   if (pipeline->type == TU_PIPELINE_GRAPHICS_LIB)
+      tu_pipeline_to_graphics_lib(pipeline)->state = builder->state;
    for (unsigned i = 0; i < builder->num_libraries; i++) {
-      struct tu_pipeline *library = builder->libraries[i];
-      pipeline->state |= library->state;
+      struct tu_graphics_lib_pipeline *library = builder->libraries[i];
+      if (pipeline->type == TU_PIPELINE_GRAPHICS_LIB)
+         tu_pipeline_to_graphics_lib(pipeline)->state |= library->state;
 
       uint64_t library_dynamic_state = 0;
       if (library->state &
           VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT) {
-         pipeline->vi = library->vi;
-         pipeline->ia = library->ia;
+         pipeline->vi = library->base.vi;
+         pipeline->ia = library->base.ia;
          library_dynamic_state |=
             BIT(TU_DYNAMIC_STATE_VERTEX_INPUT) |
             BIT(TU_DYNAMIC_STATE_VB_STRIDE) |
             BIT(TU_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY) |
             BIT(TU_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE);
-         pipeline->shared_consts = library->shared_consts;
+         pipeline->shared_consts = library->base.shared_consts;
       }
 
       if (library->state &
           VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT) {
-         pipeline->tess = library->tess;
-         pipeline->rast = library->rast;
-         pipeline->viewport = library->viewport;
+         pipeline->tess = library->base.tess;
+         pipeline->rast = library->base.rast;
+         pipeline->viewport = library->base.viewport;
          library_dynamic_state |=
             BIT(VK_DYNAMIC_STATE_VIEWPORT) |
             BIT(VK_DYNAMIC_STATE_SCISSOR) |
@@ -3893,27 +3906,27 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
 
       if (library->state &
           VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) {
-         pipeline->ds = library->ds;
-         pipeline->fs = library->fs;
-         pipeline->lrz.fs = library->lrz.fs;
-         pipeline->lrz.lrz_status |= library->lrz.lrz_status;
-         pipeline->lrz.force_late_z |= library->lrz.force_late_z;
+         pipeline->ds = library->base.ds;
+         pipeline->fs = library->base.fs;
+         pipeline->lrz.fs = library->base.lrz.fs;
+         pipeline->lrz.lrz_status |= library->base.lrz.lrz_status;
+         pipeline->lrz.force_late_z |= library->base.lrz.force_late_z;
          library_dynamic_state |=
             BIT(VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK) |
             BIT(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK) |
             BIT(VK_DYNAMIC_STATE_STENCIL_REFERENCE) |
             BIT(TU_DYNAMIC_STATE_DS) |
             BIT(VK_DYNAMIC_STATE_DEPTH_BOUNDS);
-         pipeline->shared_consts = library->shared_consts;
+         pipeline->shared_consts = library->base.shared_consts;
       }
 
       if (library->state &
           VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) {
-         pipeline->blend = library->blend;
-         pipeline->output = library->output;
-         pipeline->lrz.lrz_status |= library->lrz.lrz_status;
-         pipeline->lrz.force_late_z |= library->lrz.force_late_z;
-         pipeline->prim_order = library->prim_order;
+         pipeline->blend = library->base.blend;
+         pipeline->output = library->base.output;
+         pipeline->lrz.lrz_status |= library->base.lrz.lrz_status;
+         pipeline->lrz.force_late_z |= library->base.lrz.force_late_z;
+         pipeline->prim_order = library->base.prim_order;
          library_dynamic_state |=
             BIT(VK_DYNAMIC_STATE_BLEND_CONSTANTS) |
             BIT(TU_DYNAMIC_STATE_SAMPLE_LOCATIONS) |
@@ -3932,7 +3945,7 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
            VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
           (library->state &
            VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT)) {
-         pipeline->prim_order = library->prim_order;
+         pipeline->prim_order = library->base.prim_order;
       }
 
       if ((library->state &
@@ -3941,23 +3954,23 @@ tu_pipeline_builder_parse_libraries(struct tu_pipeline_builder *builder,
            VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT) &&
           (library->state &
            VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT)) {
-         pipeline->rast_ds = library->rast_ds;
+         pipeline->rast_ds = library->base.rast_ds;
       }
 
       pipeline->dynamic_state_mask =
          (pipeline->dynamic_state_mask & ~library_dynamic_state) |
-         (library->dynamic_state_mask & library_dynamic_state);
+         (library->base.dynamic_state_mask & library_dynamic_state);
 
-      u_foreach_bit (i, library_dynamic_state & ~library->dynamic_state_mask) {
+      u_foreach_bit (i, library_dynamic_state & ~library->base.dynamic_state_mask) {
          if (i >= TU_DYNAMIC_STATE_COUNT)
             break;
 
-         pipeline->dynamic_state[i] = library->dynamic_state[i];
+         pipeline->dynamic_state[i] = library->base.dynamic_state[i];
       }
 
       if (contains_all_shader_state(library->state)) {
-         pipeline->program = library->program;
-         pipeline->load_state = library->load_state;
+         pipeline->program = library->base.program;
+         pipeline->load_state = library->base.load_state;
       }
    }
 }
@@ -3977,7 +3990,7 @@ tu_pipeline_builder_parse_layout(struct tu_pipeline_builder *builder,
       builder->layout = *layout;
    } else {
       for (unsigned i = 0; i < builder->num_libraries; i++) {
-         struct tu_pipeline *library = builder->libraries[i];
+         struct tu_graphics_lib_pipeline *library = builder->libraries[i];
          builder->layout.num_sets = MAX2(builder->layout.num_sets,
                                          library->num_sets);
          for (unsigned j = 0; j < library->num_sets; j++) {
@@ -3985,22 +3998,24 @@ tu_pipeline_builder_parse_layout(struct tu_pipeline_builder *builder,
                builder->layout.set[i].layout = library->layouts[i];
          }
 
-         builder->layout.push_constant_size = pipeline->push_constant_size;
-         builder->layout.independent_sets |= pipeline->independent_sets;
+         builder->layout.push_constant_size = library->push_constant_size;
+         builder->layout.independent_sets |= library->independent_sets;
       }
 
       tu_pipeline_layout_init(&builder->layout);
    }
 
-   if (builder->create_info->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR) {
-      pipeline->num_sets = builder->layout.num_sets;
-      for (unsigned i = 0; i < pipeline->num_sets; i++) {
-         pipeline->layouts[i] = builder->layout.set[i].layout;
-         if (pipeline->layouts[i])
-            vk_descriptor_set_layout_ref(&pipeline->layouts[i]->vk);
+   if (pipeline->type == TU_PIPELINE_GRAPHICS_LIB) {
+      struct tu_graphics_lib_pipeline *library =
+         tu_pipeline_to_graphics_lib(pipeline);
+      library->num_sets = builder->layout.num_sets;
+      for (unsigned i = 0; i < library->num_sets; i++) {
+         library->layouts[i] = builder->layout.set[i].layout;
+         if (library->layouts[i])
+            vk_descriptor_set_layout_ref(&library->layouts[i]->vk);
       }
-      pipeline->push_constant_size = builder->layout.push_constant_size;
-      pipeline->independent_sets = builder->layout.independent_sets;
+      library->push_constant_size = builder->layout.push_constant_size;
+      library->independent_sets = builder->layout.independent_sets;
    }
 }
 
@@ -4842,16 +4857,21 @@ tu_pipeline_finish(struct tu_pipeline *pipeline,
    if (pipeline->pvtmem_bo)
       tu_bo_finish(dev, pipeline->pvtmem_bo);
 
-   if (pipeline->compiled_shaders)
-      vk_pipeline_cache_object_unref(&dev->vk,
-                                     &pipeline->compiled_shaders->base);
+   if (pipeline->type == TU_PIPELINE_GRAPHICS_LIB) {
+      struct tu_graphics_lib_pipeline *library =
+         tu_pipeline_to_graphics_lib(pipeline);
+      if (library->compiled_shaders)
+         vk_pipeline_cache_object_unref(&dev->vk,
+                                        &library->compiled_shaders->base);
 
-   if (pipeline->nir_shaders)
-      vk_pipeline_cache_object_unref(&dev->vk, &pipeline->nir_shaders->base);
+      if (library->nir_shaders)
+         vk_pipeline_cache_object_unref(&dev->vk,
+                                        &library->nir_shaders->base);
 
-   for (unsigned i = 0; i < pipeline->num_sets; i++) {
-      if (pipeline->layouts[i])
-         vk_descriptor_set_layout_unref(&dev->vk, &pipeline->layouts[i]->vk);
+      for (unsigned i = 0; i < library->num_sets; i++) {
+         if (library->layouts[i])
+            vk_descriptor_set_layout_unref(&dev->vk, &library->layouts[i]->vk);
+      }
    }
 
    ralloc_free(pipeline->executables_mem_ctx);
@@ -4882,11 +4902,23 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
 {
    VkResult result;
 
-   *pipeline = (struct tu_pipeline *) vk_object_zalloc(
-      &builder->device->vk, builder->alloc, sizeof(**pipeline),
-      VK_OBJECT_TYPE_PIPELINE);
-   if (!*pipeline)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
+   if (builder->create_info->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR) {
+      *pipeline = (struct tu_pipeline *) vk_object_zalloc(
+         &builder->device->vk, builder->alloc,
+         sizeof(struct tu_graphics_lib_pipeline),
+         VK_OBJECT_TYPE_PIPELINE);
+      if (!*pipeline)
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+      (*pipeline)->type = TU_PIPELINE_GRAPHICS_LIB;
+   } else {
+      *pipeline = (struct tu_pipeline *) vk_object_zalloc(
+         &builder->device->vk, builder->alloc,
+         sizeof(struct tu_graphics_pipeline),
+         VK_OBJECT_TYPE_PIPELINE);
+      if (!*pipeline)
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+      (*pipeline)->type = TU_PIPELINE_GRAPHICS;
+   }
 
    (*pipeline)->executables_mem_ctx = ralloc_context(NULL);
    util_dynarray_init(&(*pipeline)->executables, (*pipeline)->executables_mem_ctx);
@@ -4908,7 +4940,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
 
    (*pipeline)->active_stages = stages;
    for (unsigned i = 0; i < builder->num_libraries; i++)
-      (*pipeline)->active_stages |= builder->libraries[i]->active_stages;
+      (*pipeline)->active_stages |= builder->libraries[i]->base.active_stages;
 
    /* Compile and upload shaders unless a library has already done that. */
    if ((*pipeline)->program.state.size == 0) {
@@ -5308,7 +5340,7 @@ tu_compute_pipeline_create(VkDevice device,
 
    cache = cache ? cache : dev->mem_cache;
 
-   struct tu_pipeline *pipeline;
+   struct tu_compute_pipeline *pipeline;
 
    *pPipeline = VK_NULL_HANDLE;
 
@@ -5321,14 +5353,15 @@ tu_compute_pipeline_create(VkDevice device,
 
    int64_t pipeline_start = os_time_get_nano();
 
-   pipeline = (struct tu_pipeline *) vk_object_zalloc(
+   pipeline = (struct tu_compute_pipeline *) vk_object_zalloc(
       &dev->vk, pAllocator, sizeof(*pipeline), VK_OBJECT_TYPE_PIPELINE);
    if (!pipeline)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
+   pipeline->base.type = TU_PIPELINE_COMPUTE;
 
-   pipeline->executables_mem_ctx = ralloc_context(NULL);
-   util_dynarray_init(&pipeline->executables, pipeline->executables_mem_ctx);
-   pipeline->active_stages = VK_SHADER_STAGE_COMPUTE_BIT;
+   pipeline->base.executables_mem_ctx = ralloc_context(NULL);
+   util_dynarray_init(&pipeline->base.executables, pipeline->base.executables_mem_ctx);
+   pipeline->base.active_stages = VK_SHADER_STAGE_COMPUTE_BIT;
 
    struct tu_shader_key key = { };
    tu_shader_key_init(&key, stage_info, dev);
@@ -5357,7 +5390,7 @@ tu_compute_pipeline_create(VkDevice device,
    }
 
    if (tu6_shared_constants_enable(layout, dev->compiler)) {
-      pipeline->shared_consts = (struct tu_push_constant_range) {
+      pipeline->base.shared_consts = (struct tu_push_constant_range) {
          .lo = 0,
          .dwords = layout->push_constant_size / 4,
       };
@@ -5378,7 +5411,7 @@ tu_compute_pipeline_create(VkDevice device,
                                         MESA_SHADER_COMPUTE);
 
       nir_initial_disasm = executable_info ?
-         nir_shader_as_str(nir, pipeline->executables_mem_ctx) : NULL;
+         nir_shader_as_str(nir, pipeline->base.executables_mem_ctx) : NULL;
 
       struct tu_shader *shader =
          tu_shader_create(dev, nir, &key, layout, pAllocator);
@@ -5420,43 +5453,43 @@ tu_compute_pipeline_create(VkDevice device,
       creation_feedback->pPipelineStageCreationFeedbacks[0] = pipeline_feedback;
    }
 
-   pipeline->active_desc_sets = compiled->active_desc_sets;
+   pipeline->base.active_desc_sets = compiled->active_desc_sets;
 
    v = compiled->variants[MESA_SHADER_COMPUTE];
 
-   tu_pipeline_set_linkage(&pipeline->program.link[MESA_SHADER_COMPUTE],
+   tu_pipeline_set_linkage(&pipeline->base.program.link[MESA_SHADER_COMPUTE],
                            &compiled->const_state[MESA_SHADER_COMPUTE], v);
 
-   result = tu_pipeline_allocate_cs(dev, pipeline, layout, NULL, v);
+   result = tu_pipeline_allocate_cs(dev, &pipeline->base, layout, NULL, v);
    if (result != VK_SUCCESS)
       goto fail;
 
-   shader_iova = tu_upload_variant(pipeline, v);
+   shader_iova = tu_upload_variant(&pipeline->base, v);
 
    struct tu_pvtmem_config pvtmem;
-   tu_setup_pvtmem(dev, pipeline, &pvtmem, v->pvtmem_size, v->pvtmem_per_wave);
+   tu_setup_pvtmem(dev, &pipeline->base, &pvtmem, v->pvtmem_size, v->pvtmem_per_wave);
 
    for (int i = 0; i < 3; i++)
-      pipeline->compute.local_size[i] = v->local_size[i];
+      pipeline->local_size[i] = v->local_size[i];
 
-   pipeline->compute.subgroup_size = v->info.subgroup_size;
+   pipeline->subgroup_size = v->info.subgroup_size;
 
    struct tu_cs prog_cs;
    additional_reserve_size = tu_xs_get_additional_cs_size_dwords(v);
-   tu_cs_begin_sub_stream(&pipeline->cs, 64 + additional_reserve_size, &prog_cs);
+   tu_cs_begin_sub_stream(&pipeline->base.cs, 64 + additional_reserve_size, &prog_cs);
    tu6_emit_cs_config(&prog_cs, v, &pvtmem, shader_iova);
-   pipeline->program.state = tu_cs_end_draw_state(&pipeline->cs, &prog_cs);
+   pipeline->base.program.state = tu_cs_end_draw_state(&pipeline->base.cs, &prog_cs);
 
-   tu6_emit_load_state(pipeline, layout);
+   tu6_emit_load_state(&pipeline->base, layout);
 
-   tu_append_executable(pipeline, v, nir_initial_disasm);
+   tu_append_executable(&pipeline->base, v, nir_initial_disasm);
 
-   pipeline->program.cs_instrlen = v->instrlen;
+   pipeline->instrlen = v->instrlen;
 
    vk_pipeline_cache_object_unref(&dev->vk, &compiled->base);
    ralloc_free(pipeline_mem_ctx);
 
-   *pPipeline = tu_pipeline_to_handle(pipeline);
+   *pPipeline = tu_pipeline_to_handle(&pipeline->base);
 
    return VK_SUCCESS;
 

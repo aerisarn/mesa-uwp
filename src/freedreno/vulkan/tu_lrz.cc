@@ -559,7 +559,7 @@ static struct A6XX_GRAS_LRZ_CNTL
 tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
                         const uint32_t a)
 {
-   struct tu_pipeline *pipeline = cmd->state.pipeline;
+   struct tu_pipeline *pipeline = &cmd->state.pipeline->base;
    bool z_test_enable = (bool) (cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE);
    bool z_write_enable = (bool) (cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE);
    bool z_bounds_enable = (bool) (cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_BOUNDS_ENABLE);
@@ -600,7 +600,7 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
 
    /* See comment in tu_pipeline about disabling LRZ write for blending. */
    bool reads_dest = !!(pipeline->lrz.lrz_status & TU_LRZ_READS_DEST);
-   if (gras_lrz_cntl.lrz_write && cmd->state.pipeline->dynamic_state_mask &
+   if (gras_lrz_cntl.lrz_write && pipeline->dynamic_state_mask &
          (BIT(TU_DYNAMIC_STATE_LOGIC_OP) |
           BIT(TU_DYNAMIC_STATE_BLEND_ENABLE))) {
        if (cmd->state.logic_op_enabled && cmd->state.rop_reads_dst) {
@@ -616,7 +616,7 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
        }
    }
 
-   if ((cmd->state.pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_BLEND))) {
+   if ((pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_BLEND))) {
       for (unsigned i = 0; i < cmd->state.subpass->color_count; i++) {
          unsigned a = cmd->state.subpass->color_attachments[i].attachment;
          if (a == VK_ATTACHMENT_UNUSED)
@@ -641,17 +641,17 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
       }
    }
 
-   if ((cmd->state.pipeline->dynamic_state_mask &
+   if ((pipeline->dynamic_state_mask &
         BIT(TU_DYNAMIC_STATE_COLOR_WRITE_ENABLE)) &&
        (cmd->state.color_write_enable &
         MASK(cmd->state.subpass->color_count)) !=
-          MASK(cmd->state.pipeline->blend.num_rts)) {
+          MASK(pipeline->blend.num_rts)) {
       if (gras_lrz_cntl.lrz_write) {
          perf_debug(
             cmd->device,
             "disabling lrz write due to dynamic color write enables (%x/%x)",
             cmd->state.color_write_enable,
-            MASK(cmd->state.pipeline->blend.num_rts));
+            MASK(pipeline->blend.num_rts));
       }
       gras_lrz_cntl.lrz_write = false;
       reads_dest = true;
