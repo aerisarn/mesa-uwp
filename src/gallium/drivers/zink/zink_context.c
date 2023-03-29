@@ -4012,6 +4012,10 @@ rebind_ubo(struct zink_context *ctx, gl_shader_stage shader, unsigned slot)
 {
    struct zink_resource *res = update_descriptor_state_ubo(ctx, shader, slot,
                                                            ctx->di.descriptor_res[ZINK_DESCRIPTOR_TYPE_UBO][shader][slot]);
+   if (res) {
+      res->obj->unordered_read = false;
+      res->obj->access |= VK_ACCESS_SHADER_READ_BIT;
+   }
    zink_context_invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_UBO, slot, 1);
    return res;
 }
@@ -4026,6 +4030,14 @@ rebind_ssbo(struct zink_context *ctx, gl_shader_stage shader, unsigned slot)
    util_range_add(&res->base.b, &res->valid_buffer_range, ssbo->buffer_offset,
                   ssbo->buffer_offset + ssbo->buffer_size);
    update_descriptor_state_ssbo(ctx, shader, slot, res);
+   if (res) {
+      res->obj->unordered_read = false;
+      res->obj->access |= VK_ACCESS_SHADER_READ_BIT;
+      if (ctx->writable_ssbos[shader] & BITFIELD_BIT(slot)) {
+         res->obj->unordered_write = false;
+         res->obj->access |= VK_ACCESS_SHADER_WRITE_BIT;
+      }
+   }
    zink_context_invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_SSBO, slot, 1);
    return res;
 }
@@ -4044,6 +4056,10 @@ rebind_tbo(struct zink_context *ctx, gl_shader_stage shader, unsigned slot)
       sampler_view->buffer_view = get_buffer_view(ctx, res, &bvci);
    }
    update_descriptor_state_sampler(ctx, shader, slot, res);
+   if (res) {
+      res->obj->unordered_read = false;
+      res->obj->access |= VK_ACCESS_SHADER_READ_BIT;
+   }
    zink_context_invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, slot, 1);
    return res;
 }
@@ -4068,6 +4084,14 @@ rebind_ibo(struct zink_context *ctx, gl_shader_stage shader, unsigned slot)
    if (zink_descriptor_mode != ZINK_DESCRIPTOR_MODE_DB) {
       image_view->buffer_view = get_buffer_view(ctx, res, &bvci);
       assert(image_view->buffer_view);
+   }
+   if (res) {
+      res->obj->unordered_read = false;
+      res->obj->access |= VK_ACCESS_SHADER_READ_BIT;
+      if (image_view->base.access & PIPE_IMAGE_ACCESS_WRITE) {
+         res->obj->unordered_write = false;
+         res->obj->access |= VK_ACCESS_SHADER_WRITE_BIT;
+      }
    }
    util_range_add(&res->base.b, &res->valid_buffer_range, image_view->base.u.buf.offset,
                   image_view->base.u.buf.offset + image_view->base.u.buf.size);
@@ -4105,6 +4129,9 @@ rebind_buffer(struct zink_context *ctx, struct zink_resource *res, uint32_t rebi
       u_foreach_bit(slot, res->vbo_bind_mask) {
          if (ctx->vertex_buffers[slot].buffer.resource != &res->base.b) //wrong context
             goto end;
+         res->obj->access |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+         res->obj->access_stage |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+         res->obj->unordered_read = false;
          num_rebinds++;
       }
       rebind_mask &= ~BITFIELD_BIT(TC_BINDING_VERTEX_BUFFER);

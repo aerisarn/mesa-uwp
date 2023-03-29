@@ -74,6 +74,11 @@ zink_emit_stream_output_targets(struct pipe_context *pctx)
       buffer_offsets[i] = t->base.buffer_offset;
       buffer_sizes[i] = t->base.buffer_size;
       res->so_valid = true;
+      if (!ctx->unordered_blitting) {
+         res->obj->unordered_read = res->obj->unordered_write = false;
+         res->obj->access = VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
+         res->obj->access_stage = VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
+      }
       util_range_add(t->base.buffer, &res->valid_buffer_range, t->base.buffer_offset,
                      t->base.buffer_offset + t->base.buffer_size);
    }
