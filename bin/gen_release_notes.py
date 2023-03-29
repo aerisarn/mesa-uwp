@@ -279,7 +279,7 @@ def calculate_next_version(version: str, is_point: bool) -> str:
 def calculate_previous_version(version: str, is_point: bool) -> str:
     """Calculate the previous version to compare to.
 
-    In the case of -rc to final that verison is the previous .0 release,
+    In the case of -rc to final that version is the previous .0 release,
     (19.3.0 in the case of 20.0.0, for example). for point releases that is
     the last point release. This value will be the same as the input value
     for a point release, but different for a major release.
