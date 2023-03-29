@@ -1064,6 +1064,7 @@ struct zink_compute_program {
 
    bool use_local_size;
 
+   unsigned num_inlinable_uniforms;
    nir_shader *nir;
 
    struct zink_shader_module *curr;

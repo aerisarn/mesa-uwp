@@ -1282,6 +1282,7 @@ create_compute_program(struct zink_context *ctx, nir_shader *nir)
    if (!comp)
       return NULL;
    comp->nir = nir;
+   comp->num_inlinable_uniforms = nir->info.num_inlinable_uniforms;
 
    comp->use_local_size = !(nir->info.workgroup_size[0] ||
                             nir->info.workgroup_size[1] ||
@@ -1837,7 +1838,7 @@ zink_bind_cs_state(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
    struct zink_compute_program *comp = cso;
-   if (comp && comp->nir->info.num_inlinable_uniforms)
+   if (comp && comp->num_inlinable_uniforms)
       ctx->shader_has_inlinable_uniforms_mask |= 1 << MESA_SHADER_COMPUTE;
    else
       ctx->shader_has_inlinable_uniforms_mask &= ~(1 << MESA_SHADER_COMPUTE);
