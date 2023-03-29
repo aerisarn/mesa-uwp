@@ -4409,7 +4409,6 @@ radv_pipeline_init_vertex_input_state(const struct radv_device *device,
       }
    }
 
-   pipeline->last_vertex_attrib_bit = util_last_bit(vs_info->vs.vb_desc_usage_mask);
    if (pipeline->base.shaders[MESA_SHADER_VERTEX])
       pipeline->next_vertex_stage = MESA_SHADER_VERTEX;
    else if (pipeline->base.shaders[MESA_SHADER_TESS_CTRL])
@@ -4424,7 +4423,7 @@ radv_pipeline_init_vertex_input_state(const struct radv_device *device,
       pipeline->can_use_simple_input = false;
    }
    if (vs_info->vs.dynamic_inputs)
-      pipeline->vb_desc_usage_mask = BITFIELD_MASK(pipeline->last_vertex_attrib_bit);
+      pipeline->vb_desc_usage_mask = BITFIELD_MASK(util_last_bit(vs_info->vs.vb_desc_usage_mask));
    else
       pipeline->vb_desc_usage_mask = vs_info->vs.vb_desc_usage_mask;
    pipeline->vb_desc_alloc_size = util_bitcount(pipeline->vb_desc_usage_mask) * 16;
