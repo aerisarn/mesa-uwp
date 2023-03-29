@@ -5077,7 +5077,7 @@ void main()
 
 */
 struct zink_shader *
-zink_shader_tcs_create(struct zink_screen *screen, nir_shader *vs, unsigned vertices_per_patch)
+zink_shader_tcs_create(struct zink_screen *screen, nir_shader *vs, unsigned vertices_per_patch, nir_shader **nir_ret)
 {
    struct zink_shader *ret = rzalloc(NULL, struct zink_shader);
    util_queue_fence_init(&ret->precompile.fence);
@@ -5157,6 +5157,7 @@ zink_shader_tcs_create(struct zink_screen *screen, nir_shader *vs, unsigned vert
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
    ret->nir = nir;
+   *nir_ret = nir;
    memcpy(&ret->info, &nir->info, sizeof(nir->info));
    ret->non_fs.is_generated = true;
    return ret;
