@@ -175,7 +175,7 @@ int main(int argc, char **argv)
                                   &spirv_opts, NULL);
 
    if (nir)
-      nir_print_shader(nir, stderr);
+      nir_print_shader(nir, stdout);
    else
       fprintf(stderr, "SPIRV to NIR compilation failed\n");
 
