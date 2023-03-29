@@ -234,7 +234,12 @@ gather_ps_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ps_sta
 
    s->output_types[slot] = type;
 
-   nir_instr_remove(&intrin->instr);
+   /* Keep color output instruction if not exported in nir. */
+   if (!s->options->no_color_export ||
+       (slot < FRAG_RESULT_DATA0 && slot != FRAG_RESULT_COLOR)) {
+      nir_instr_remove(&intrin->instr);
+   }
+
    return true;
 }
 
@@ -739,6 +744,10 @@ export_ps_outputs(nir_builder *b, lower_ps_state *s)
    emit_ps_color_clamp_and_alpha_test(b, s);
 
    emit_ps_mrtz_export(b, s);
+
+   /* When non-monolithic shader, RADV export mrtz in main part and export color in epilog. */
+   if (s->options->no_color_export)
+      return;
 
    unsigned first_color_export = s->exp_num;
 
