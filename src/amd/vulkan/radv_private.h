@@ -1577,6 +1577,13 @@ struct radv_multisample_state {
    float min_sample_shading;
 };
 
+struct radv_ia_multi_vgt_param_helpers {
+   uint32_t base;
+   bool partial_es_wave;
+   bool ia_switch_on_eoi;
+   bool partial_vs_wave;
+};
+
 struct radv_cmd_state {
    /* Vertex descriptors */
    uint64_t vb_va;
@@ -1686,6 +1693,8 @@ struct radv_cmd_state {
 
    /* Whether this commandbuffer uses performance counters. */
    bool uses_perf_counters;
+
+   struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param;
 
    /* Tessellation info when patch control points is dynamic. */
    unsigned tess_num_patches;
@@ -2131,13 +2140,6 @@ struct radv_vrs_state {
 struct radv_prim_vertex_count {
    uint8_t min;
    uint8_t incr;
-};
-
-struct radv_ia_multi_vgt_param_helpers {
-   uint32_t base;
-   bool partial_es_wave;
-   bool ia_switch_on_eoi;
-   bool partial_vs_wave;
 };
 
 #define SI_GS_PER_ES 128

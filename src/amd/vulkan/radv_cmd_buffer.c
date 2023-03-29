@@ -6584,6 +6584,8 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       cmd_buffer->state.custom_blend_mode = graphics_pipeline->custom_blend_mode;
 
       cmd_buffer->state.rast_prim = graphics_pipeline->rast_prim;
+
+      cmd_buffer->state.ia_multi_vgt_param = graphics_pipeline->ia_multi_vgt_param;
       break;
    }
    default:
