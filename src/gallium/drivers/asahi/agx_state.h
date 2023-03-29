@@ -23,6 +23,7 @@
 #include "util/bitset.h"
 #include "util/disk_cache.h"
 #include "util/hash_table.h"
+#include "util/u_range.h"
 #include "agx_meta.h"
 
 struct agx_streamout_target {
@@ -511,6 +512,9 @@ struct agx_resource {
     * resources.
     */
    struct agx_resource *separate_stencil;
+
+   /* Valid buffer range tracking, to optimize buffer appends */
+   struct util_range valid_buffer_range;
 };
 
 static inline struct agx_resource *

@@ -177,6 +177,11 @@ agx_resource_from_handle(struct pipe_screen *pscreen,
       /* failure is expected in some cases.. */
    }
 
+   if (prsc->target == PIPE_BUFFER) {
+      assert(rsc->layout.tiling == AIL_TILING_LINEAR);
+      util_range_init(&rsc->valid_buffer_range);
+   }
+
    return prsc;
 }
 
@@ -440,6 +445,11 @@ agx_resource_create_with_modifiers(struct pipe_screen *screen,
 
    ail_make_miptree(&nresource->layout);
 
+   if (templ->target == PIPE_BUFFER) {
+      assert(nresource->layout.tiling == AIL_TILING_LINEAR);
+      util_range_init(&nresource->valid_buffer_range);
+   }
+
    if (dev->ro && (templ->bind & PIPE_BIND_SCANOUT)) {
       struct winsys_handle handle;
       assert(util_format_get_blockwidth(templ->format) == 1);
@@ -559,6 +569,9 @@ agx_resource_destroy(struct pipe_screen *screen, struct pipe_resource *prsrc)
    struct agx_resource *rsrc = (struct agx_resource *)prsrc;
    struct agx_screen *agx_screen = (struct agx_screen *)screen;
 
+   if (prsrc->target == PIPE_BUFFER)
+      util_range_destroy(&rsrc->valid_buffer_range);
+
    if (rsrc->dt) {
       /* display target */
       struct sw_winsys *winsys = agx_screen->winsys;
@@ -645,6 +658,12 @@ agx_prepare_for_map(struct agx_context *ctx, struct agx_resource *rsrc,
 
    /* Additionally, writing needs readers synced */
    if (!(usage & PIPE_MAP_WRITE))
+      return;
+
+   /* If the range being written is uninitialized, we do not need to sync. */
+   if (rsrc->base.target == PIPE_BUFFER && !(rsrc->bo->flags & AGX_BO_SHARED) &&
+       !util_ranges_intersect(&rsrc->valid_buffer_range, box->x,
+                              box->x + box->width))
       return;
 
    /* If there are no readers, we're done. We check at the start to
@@ -755,6 +774,17 @@ agx_transfer_map(struct pipe_context *pctx, struct pipe_resource *resource,
       return NULL;
 
    agx_prepare_for_map(ctx, rsrc, level, usage, box);
+
+   /* Track the written buffer range */
+   if (resource->target == PIPE_BUFFER) {
+      /* Note the ordering: DISCARD|WRITE is valid, so clear before adding. */
+      if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE)
+         util_range_set_empty(&rsrc->valid_buffer_range);
+      if (usage & PIPE_MAP_WRITE) {
+         util_range_add(resource, &rsrc->valid_buffer_range, box->x,
+                        box->x + box->width);
+      }
+   }
 
    struct agx_transfer *transfer = CALLOC_STRUCT(agx_transfer);
    transfer->base.level = level;
