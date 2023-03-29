@@ -867,26 +867,6 @@ struct vk_graphics_pipeline_state {
    const struct vk_render_pass_state *rp;
 };
 
-/** Struct for extra information that we need from the subpass.
- *
- * This struct need only be provided if the driver has its own render pass
- * implementation.  If the driver uses the common render pass implementation,
- * we can get this information ourselves.
- */
-struct vk_subpass_info {
-   /** VkSubpassDescription2::viewMask */
-   uint32_t view_mask;
-
-   /**
-    * Aspects of all attachments used as color or depth/stencil attachments
-    * in the subpass.  Input and resolve attachments should not be considered
-    * when computing the attachments aspect mask.  This is used to determine
-    * whether or not depth/stencil and color blend state are required for a
-    * pipeline.
-    */
-   VkImageAspectFlags attachment_aspects;
-};
-
 /** Populate a vk_graphics_pipeline_state from VkGraphicsPipelineCreateInfo
  *
  * This function crawls the provided VkGraphicsPipelineCreateInfo and uses it
@@ -913,7 +893,7 @@ struct vk_subpass_info {
  * @param[in]  device         The Vulkan device
  * @param[out] state          The graphics pipeline state to populate
  * @param[in]  info           The pCreateInfo from vkCreateGraphicsPipelines
- * @param[in]  sp_info        Subpass info if the driver implements render
+ * @param[in]  driver_rp      Renderpass state if the driver implements render
  *                            passes itself.  This should be NULL for drivers
  *                            that use the common render pass infrastructure
  *                            built on top of dynamic rendering.
@@ -933,7 +913,7 @@ VkResult
 vk_graphics_pipeline_state_fill(const struct vk_device *device,
                                 struct vk_graphics_pipeline_state *state,
                                 const VkGraphicsPipelineCreateInfo *info,
-                                const struct vk_subpass_info *sp_info,
+                                const struct vk_render_pass_state *rp_info,
                                 struct vk_graphics_pipeline_all_state *all,
                                 const VkAllocationCallbacks *alloc,
                                 VkSystemAllocationScope scope,

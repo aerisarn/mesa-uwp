@@ -1012,8 +1012,8 @@ vk_render_pass_state_is_complete(const struct vk_render_pass_state *rp)
 static void
 vk_render_pass_state_init(struct vk_render_pass_state *rp,
                           const struct vk_render_pass_state *old_rp,
+                          const struct vk_render_pass_state *driver_rp,
                           const VkGraphicsPipelineCreateInfo *info,
-                          const struct vk_subpass_info *sp_info,
                           VkGraphicsPipelineLibraryFlagsEXT lib)
 {
    VkPipelineCreateFlags valid_pipeline_flags = 0;
@@ -1048,9 +1048,10 @@ vk_render_pass_state_init(struct vk_render_pass_state *rp,
       .stencil_attachment_format = VK_FORMAT_UNDEFINED,
    };
 
-   if (info->renderPass != VK_NULL_HANDLE && sp_info != NULL) {
-      rp->attachment_aspects = sp_info->attachment_aspects;
-      rp->view_mask = sp_info->view_mask;
+   if (info->renderPass != VK_NULL_HANDLE && driver_rp != NULL) {
+      assert(driver_rp->render_pass == info->renderPass);
+      assert(driver_rp->subpass == info->subpass);
+      *rp = *driver_rp;
       return;
    }
 
@@ -1187,7 +1188,7 @@ VkResult
 vk_graphics_pipeline_state_fill(const struct vk_device *device,
                                 struct vk_graphics_pipeline_state *state,
                                 const VkGraphicsPipelineCreateInfo *info,
-                                const struct vk_subpass_info *sp_info,
+                                const struct vk_render_pass_state *driver_rp,
                                 struct vk_graphics_pipeline_all_state *all,
                                 const VkAllocationCallbacks *alloc,
                                 VkSystemAllocationScope scope,
@@ -1307,7 +1308,7 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
    if (lib & (VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT |
               VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT |
               VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT)) {
-      vk_render_pass_state_init(&rp, state->rp, info, sp_info, lib);
+      vk_render_pass_state_init(&rp, state->rp, driver_rp, info, lib);
 
       needs |= MESA_VK_GRAPHICS_STATE_RENDER_PASS_BIT;
 
