@@ -4409,11 +4409,7 @@ radv_pipeline_init_vertex_input_state(const struct radv_device *device,
       }
    }
 
-   if (vs_info->vs.dynamic_inputs)
-      pipeline->vb_desc_usage_mask = BITFIELD_MASK(util_last_bit(vs_info->vs.vb_desc_usage_mask));
-   else
-      pipeline->vb_desc_usage_mask = vs_info->vs.vb_desc_usage_mask;
-   pipeline->vb_desc_alloc_size = util_bitcount(pipeline->vb_desc_usage_mask) * 16;
+   pipeline->vb_desc_alloc_size = util_bitcount(vs_info->vs.vb_desc_usage_mask) * 16;
 
    /* Prepare the VS input state for prologs created inside a library. */
    if (vs_info->vs.has_prolog && !(pipeline->dynamic_states & RADV_DYNAMIC_VERTEX_INPUT)) {

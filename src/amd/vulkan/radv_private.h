@@ -2239,7 +2239,6 @@ struct radv_graphics_pipeline {
    uint8_t attrib_bindings[MAX_VERTEX_ATTRIBS];
    uint32_t attrib_ends[MAX_VERTEX_ATTRIBS];
    uint32_t attrib_index_offset[MAX_VERTEX_ATTRIBS];
-   uint32_t vb_desc_usage_mask;
    uint32_t vb_desc_alloc_size;
    uint32_t pa_sc_mode_cntl_1;
    uint32_t db_render_control;

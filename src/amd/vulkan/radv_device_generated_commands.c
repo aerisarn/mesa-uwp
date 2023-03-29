@@ -34,11 +34,12 @@ radv_get_sequence_size(const struct radv_indirect_command_layout *layout,
                        uint32_t *upload_size)
 {
    const struct radv_device *device = container_of(layout->base.device, struct radv_device, vk);
+   const struct radv_shader *vs = radv_get_shader(pipeline->base.shaders, MESA_SHADER_VERTEX);
    *cmd_size = 0;
    *upload_size = 0;
 
    if (layout->bind_vbo_mask) {
-      *upload_size += 16 * util_bitcount(pipeline->vb_desc_usage_mask);
+      *upload_size += 16 * util_bitcount(vs->info.vs.vb_desc_usage_mask);
 
      /* One PKT3_SET_SH_REG for emitting VBO pointer (32-bit) */
       *cmd_size += 3 * 4;
@@ -1107,6 +1108,7 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer,
    VK_FROM_HANDLE(radv_pipeline, pipeline, pGeneratedCommandsInfo->pipeline);
    VK_FROM_HANDLE(radv_buffer, prep_buffer, pGeneratedCommandsInfo->preprocessBuffer);
    struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
+   struct radv_shader *vs = radv_get_shader(graphics_pipeline->base.shaders, MESA_SHADER_VERTEX);
    struct radv_meta_saved_state saved_state;
    struct radv_buffer token_buffer;
 
@@ -1116,7 +1118,7 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer,
    unsigned cmd_buf_size =
       radv_align_cmdbuf_size(cmd_stride * pGeneratedCommandsInfo->sequencesCount);
 
-   unsigned vb_size = layout->bind_vbo_mask ? util_bitcount(graphics_pipeline->vb_desc_usage_mask) * 24 : 0;
+   unsigned vb_size = layout->bind_vbo_mask ? util_bitcount(vs->info.vs.vb_desc_usage_mask) * 24 : 0;
    unsigned const_size = graphics_pipeline->base.push_constant_size +
                          16 * graphics_pipeline->base.dynamic_offset_count +
                          sizeof(layout->push_constant_offsets) + ARRAY_SIZE(graphics_pipeline->base.shaders) * 12;
@@ -1185,7 +1187,7 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer,
 
       uint32_t *vbo_info = (uint32_t *)((char *)upload_data + graphics_pipeline->vb_desc_alloc_size);
 
-      uint32_t mask = graphics_pipeline->vb_desc_usage_mask;
+      uint32_t mask = vertex_shader->info.vs.vb_desc_usage_mask;
       unsigned idx = 0;
       while (mask) {
          unsigned i = u_bit_scan(&mask);

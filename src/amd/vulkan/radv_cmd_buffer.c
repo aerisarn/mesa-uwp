@@ -4716,7 +4716,7 @@ radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
    enum amd_gfx_level chip = cmd_buffer->device->physical_device->rad_info.gfx_level;
    enum radeon_family family = cmd_buffer->device->physical_device->rad_info.family;
    unsigned desc_index = 0;
-   uint32_t mask = pipeline->vb_desc_usage_mask;
+   uint32_t mask = vs_shader->info.vs.vb_desc_usage_mask;
    uint64_t va;
    const struct radv_vs_input_state *vs_state =
       vs_shader->info.vs.dynamic_inputs ? &cmd_buffer->state.dynamic_vs_input : NULL;
@@ -4879,14 +4879,15 @@ radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
 static void
 radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer)
 {
-   if (!cmd_buffer->state.graphics_pipeline->vb_desc_usage_mask)
+   struct radv_shader *vs = radv_get_shader(cmd_buffer->state.shaders, MESA_SHADER_VERTEX);
+
+   if (!vs->info.vs.vb_desc_usage_mask)
       return;
 
    /* Mesh shaders don't have vertex descriptors. */
    assert(!cmd_buffer->state.mesh_shading);
 
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   struct radv_shader *vs = radv_get_shader(cmd_buffer->state.shaders, MESA_SHADER_VERTEX);
    unsigned vb_offset;
    void *vb_ptr;
    uint64_t va;
@@ -6538,7 +6539,8 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       }
 
       /* Re-emit the vertex buffer descriptors because they are really tied to the pipeline. */
-      if (graphics_pipeline->vb_desc_usage_mask) {
+      if (graphics_pipeline->base.shaders[MESA_SHADER_VERTEX] &&
+          graphics_pipeline->base.shaders[MESA_SHADER_VERTEX]->info.vs.vb_desc_usage_mask) {
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_BUFFER;
       }
 
