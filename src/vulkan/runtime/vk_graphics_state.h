@@ -657,15 +657,6 @@ struct vk_render_pass_state {
     */
    VkPipelineCreateFlags pipeline_flags;
 
-   /** VkRenderingSelfDependencyInfoMESA::colorSelfDependencies */
-   uint8_t color_self_dependencies;
-
-   /** VkRenderingSelfDependencyInfoMESA::depthSelfDependency */
-   bool depth_self_dependency;
-
-   /** VkRenderingSelfDependencyInfoMESA::stencilSelfDependency */
-   bool stencil_self_dependency;
-
    /** VkPipelineRenderingCreateInfo::colorAttachmentCount */
    uint8_t color_attachment_count;
 

@@ -1060,16 +1060,6 @@ vk_render_pass_state_init(struct vk_render_pass_state *rp,
    if (r_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED)
       rp->attachment_aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-   const VkRenderingSelfDependencyInfoMESA *rsd_info =
-      vk_find_struct_const(r_info->pNext, RENDERING_SELF_DEPENDENCY_INFO_MESA);
-   if (rsd_info != NULL) {
-      STATIC_ASSERT(sizeof(rp->color_self_dependencies) * 8 >=
-                    MESA_VK_MAX_COLOR_ATTACHMENTS);
-      rp->color_self_dependencies = rsd_info->colorSelfDependencies;
-      rp->depth_self_dependency = rsd_info->depthSelfDependency;
-      rp->stencil_self_dependency = rsd_info->stencilSelfDependency;
-   }
-
    const VkAttachmentSampleCountInfoAMD *asc_info =
       vk_get_pipeline_sample_count_info_amd(info);
    if (asc_info != NULL) {
