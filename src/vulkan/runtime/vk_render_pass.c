@@ -610,9 +610,6 @@ vk_common_CreateRenderPass2(VkDevice _device,
 
       /* Figure out any self-dependencies */
       assert(desc->colorAttachmentCount <= 32);
-      uint32_t color_self_deps = 0;
-      bool has_depth_self_dep = false;
-      bool has_stencil_self_dep = false;
       for (uint32_t a = 0; a < desc->inputAttachmentCount; a++) {
          if (desc->pInputAttachments[a].attachment == VK_ATTACHMENT_UNUSED)
             continue;
@@ -626,8 +623,6 @@ vk_common_CreateRenderPass2(VkDevice _device,
                   VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
                subpass->pipeline_flags |=
                   VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
-
-               color_self_deps |= (1u << c);
             }
          }
 
@@ -643,7 +638,6 @@ vk_common_CreateRenderPass2(VkDevice _device,
                   VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
                subpass->pipeline_flags |=
                   VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
-               has_depth_self_dep = true;
             }
             if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
                subpass->input_attachments[a].stencil_layout =
@@ -652,7 +646,6 @@ vk_common_CreateRenderPass2(VkDevice _device,
                   VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
                subpass->pipeline_flags |=
                   VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
-               has_stencil_self_dep = true;
             }
          }
       }
@@ -702,16 +695,9 @@ vk_common_CreateRenderPass2(VkDevice _device,
          }
       }
 
-      subpass->self_dep_info = (VkRenderingSelfDependencyInfoMESA) {
-         .sType = VK_STRUCTURE_TYPE_RENDERING_SELF_DEPENDENCY_INFO_MESA,
-         .colorSelfDependencies = color_self_deps,
-         .depthSelfDependency = has_depth_self_dep,
-         .stencilSelfDependency = has_stencil_self_dep,
-      };
-
       subpass->sample_count_info_amd = (VkAttachmentSampleCountInfoAMD) {
          .sType = VK_STRUCTURE_TYPE_ATTACHMENT_SAMPLE_COUNT_INFO_AMD,
-         .pNext = &subpass->self_dep_info,
+         .pNext = NULL,
          .colorAttachmentCount = desc->colorAttachmentCount,
          .pColorAttachmentSamples = color_samples,
          .depthStencilAttachmentSamples = depth_stencil_samples,
@@ -747,7 +733,6 @@ vk_common_CreateRenderPass2(VkDevice _device,
             .multisampledRenderToSingleSampledEnable = VK_TRUE,
             .rasterizationSamples = mrtss->rasterizationSamples,
          };
-         subpass->self_dep_info.pNext = &subpass->mrtss;
       }
    }
    assert(next_subpass_attachment ==
@@ -1049,7 +1034,8 @@ vk_get_command_buffer_inheritance_as_rendering_resume(
    /* Append this one last because it lives in the subpass and we don't want
     * to be changed by appending other structures later.
     */
-   __vk_append_struct(&data->rendering, (void *)&subpass->self_dep_info);
+   if (subpass->mrtss.multisampledRenderToSingleSampledEnable)
+      __vk_append_struct(&data->rendering, (void *)&subpass->mrtss);
 
    return &data->rendering;
 }
@@ -2155,7 +2141,8 @@ begin_subpass(struct vk_command_buffer *cmd_buffer,
    /* Append this one last because it lives in the subpass and we don't want
     * to be changed by appending other structures later.
     */
-   __vk_append_struct(&rendering, (void *)&subpass->self_dep_info);
+   if (subpass->mrtss.multisampledRenderToSingleSampledEnable)
+      __vk_append_struct(&rendering, (void *)&subpass->mrtss);
 
    disp->CmdBeginRendering(vk_command_buffer_to_handle(cmd_buffer),
                            &rendering);
