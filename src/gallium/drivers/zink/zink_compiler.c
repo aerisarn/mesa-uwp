@@ -3417,11 +3417,10 @@ compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *n
 
 VkShaderModule
 zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
-                    nir_shader *base_nir, const struct zink_shader_key *key, const void *extra_data)
+                    nir_shader *nir, const struct zink_shader_key *key, const void *extra_data)
 {
    VkShaderModule mod = VK_NULL_HANDLE;
    struct zink_shader_info *sinfo = &zs->sinfo;
-   nir_shader *nir = nir_shader_clone(NULL, base_nir);
    bool need_optimize = false;
    bool inlined_uniforms = false;
 
