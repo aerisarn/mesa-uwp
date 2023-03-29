@@ -9849,8 +9849,11 @@ radv_trace_rays(struct radv_cmd_buffer *cmd_buffer, const VkTraceRaysIndirectCom
    uint32_t scratch_bytes_per_wave = pipeline->base.scratch_bytes_per_wave;
    uint32_t wave_size = rt_prolog->info.wave_size;
 
-   /* The hardware register is specified as a multiple of 256 DWORDS. */
-   scratch_bytes_per_wave += align(cmd_buffer->state.rt_stack_size * wave_size, 1024);
+   /* The hardware register is specified as a multiple of 64 or 256 DWORDS. */
+   unsigned scratch_alloc_granule =
+      cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11 ? 256 : 1024;
+   scratch_bytes_per_wave +=
+      align(cmd_buffer->state.rt_stack_size * wave_size, scratch_alloc_granule);
 
    cmd_buffer->compute_scratch_size_per_wave_needed =
       MAX2(cmd_buffer->compute_scratch_size_per_wave_needed, scratch_bytes_per_wave);
