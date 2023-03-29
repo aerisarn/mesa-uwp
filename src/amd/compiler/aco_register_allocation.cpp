@@ -3120,12 +3120,7 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
             }
 
             /* change the instruction to VOP3 to enable an arbitrary register pair as dst */
-            aco_ptr<Instruction> tmp = std::move(instr);
-            Format format = asVOP3(tmp->format);
-            instr.reset(create_instruction<VALU_instruction>(
-               tmp->opcode, format, tmp->operands.size(), tmp->definitions.size()));
-            std::copy(tmp->operands.begin(), tmp->operands.end(), instr->operands.begin());
-            std::copy(tmp->definitions.begin(), tmp->definitions.end(), instr->definitions.begin());
+            instr->format = asVOP3(instr->format);
          }
 
          instructions.emplace_back(std::move(*instr_it));
