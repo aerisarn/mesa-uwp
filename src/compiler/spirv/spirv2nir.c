@@ -78,6 +78,7 @@ print_usage(char *exec_name, FILE *f)
 "  -e, --entry <name>      Specify the entry-point name.\n"
 "  -g, --opengl            Use OpenGL environment instead of Vulkan for\n"
 "                          graphics stages.\n"
+"  --optimize              Run basic NIR optimizations in the result.\n"
    , exec_name);
 }
 
@@ -86,6 +87,7 @@ int main(int argc, char **argv)
    gl_shader_stage shader_stage = MESA_SHADER_FRAGMENT;
    char *entry_point = "main";
    int ch;
+   bool optimize = false;
    enum nir_spirv_execution_environment env = NIR_SPIRV_VULKAN;
 
    static struct option long_options[] =
@@ -94,6 +96,7 @@ int main(int argc, char **argv)
        {"stage",  required_argument, 0, 's'},
        {"entry",  required_argument, 0, 'e'},
        {"opengl",       no_argument, 0, 'g'},
+       {"optimize",     no_argument, 0, 'O'},
        {0, 0, 0, 0}
      };
 
@@ -118,6 +121,9 @@ int main(int argc, char **argv)
          break;
       case 'g':
          env = NIR_SPIRV_OPENGL;
+         break;
+      case 'O':
+         optimize = true;
          break;
       default:
          fprintf(stderr, "Unrecognized option \"%s\".\n", optarg);
@@ -156,6 +162,8 @@ int main(int argc, char **argv)
 
    glsl_type_singleton_init_or_ref();
 
+   struct nir_shader_compiler_options nir_opts = {0};
+
    struct spirv_to_nir_options spirv_opts = {
       .environment = env,
    };
@@ -172,12 +180,30 @@ int main(int argc, char **argv)
 
    nir_shader *nir = spirv_to_nir(map, word_count, NULL, 0,
                                   shader_stage, entry_point,
-                                  &spirv_opts, NULL);
+                                  &spirv_opts, &nir_opts);
 
-   if (nir)
+   if (nir) {
+      if (optimize) {
+         bool progress;
+         do {
+            progress = false;
+            progress |= nir_opt_dce(nir);
+            progress |= nir_opt_cse(nir);
+            progress |= nir_opt_dead_cf(nir);
+            progress |= nir_copy_prop(nir);
+            progress |= nir_opt_constant_folding(nir);
+            progress |= nir_opt_copy_prop_vars(nir);
+            progress |= nir_opt_dead_write_vars(nir);
+            progress |= nir_remove_dead_variables(nir, nir_var_function_temp, NULL);
+            progress |= nir_opt_algebraic(nir);
+            progress |= nir_opt_if(nir, 0);
+            progress |= nir_opt_loop_unroll(nir);
+         } while (progress);
+      }
       nir_print_shader(nir, stdout);
-   else
+   } else {
       fprintf(stderr, "SPIRV to NIR compilation failed\n");
+   }
 
    glsl_type_singleton_decref();
 
