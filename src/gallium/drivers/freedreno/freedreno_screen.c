@@ -1108,7 +1108,7 @@ fd_screen_create(int fd,
    driParseConfigFiles(config->options, config->options_info, 0, "msm",
                        NULL, fd_dev_name(screen->dev_id), NULL, 0, NULL, 0);
 
-   screen->conservative_lrz =
+   screen->driconf.conservative_lrz =
          !driQueryOptionb(config->options, "disable_conservative_lrz");
 
    struct sysinfo si;
