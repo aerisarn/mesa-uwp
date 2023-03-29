@@ -223,6 +223,14 @@ enum zink_debug {
    ZINK_DEBUG_FLUSHSYNC = (1<<12),
 };
 
+enum zink_pv_emulation_primitive {
+   ZINK_PVE_PRIMITIVE_NONE = 0,
+   ZINK_PVE_PRIMITIVE_SIMPLE = 1,
+   /* when triangle or quad strips are used and the gs outputs triangles */
+   ZINK_PVE_PRIMITIVE_TRISTRIP = 2,
+   ZINK_PVE_PRIMITIVE_FAN = 3,
+};
+
 /** fence types */
 struct tc_unflushed_batch_token;
 

@@ -2241,11 +2241,26 @@ zink_flat_flags(struct nir_shader *shader)
    return flat_flags;
 }
 
+static unsigned
+encode_lower_pv_mode(enum pipe_prim_type prim_type)
+{
+   switch (prim_type) {
+   case PIPE_PRIM_TRIANGLE_STRIP:
+   case PIPE_PRIM_QUAD_STRIP:
+      return ZINK_PVE_PRIMITIVE_TRISTRIP;
+   case PIPE_PRIM_TRIANGLE_FAN:
+      return ZINK_PVE_PRIMITIVE_FAN;
+   default:
+      return ZINK_PVE_PRIMITIVE_SIMPLE;
+   }
+}
+
 void
 zink_set_primitive_emulation_keys(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    bool lower_line_stipple = false, lower_line_smooth = false;
+   unsigned lower_pv_mode = 0;
    if (!screen->optimal_keys) {
       lower_line_stipple = ctx->gfx_pipeline_state.rast_prim == PIPE_PRIM_LINES &&
                                 screen->driver_workarounds.no_linestipple &&
@@ -2277,6 +2292,13 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
          zink_set_fs_key(ctx)->lower_point_smooth = lower_point_smooth;
       }
 
+      lower_pv_mode = ctx->gfx_pipeline_state.dyn_state3.pv_last &&
+                      !screen->info.have_EXT_provoking_vertex;
+      if (lower_pv_mode)
+         lower_pv_mode = encode_lower_pv_mode(ctx->gfx_pipeline_state.gfx_prim_mode);
+
+      if (zink_get_gs_key(ctx)->lower_pv_mode != lower_pv_mode)
+         zink_set_gs_key(ctx)->lower_pv_mode = lower_pv_mode;
    }
 
    bool lower_edge_flags = has_edge_flags(ctx);
@@ -2285,7 +2307,6 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
 
    bool lower_filled_quad =  lower_quad_prim &&
       ctx->gfx_pipeline_state.rast_prim == PIPE_PRIM_TRIANGLES;
-
 
    if (lower_line_stipple || lower_line_smooth ||
        lower_edge_flags || lower_quad_prim ||
