@@ -1586,44 +1586,6 @@ merge_tess_info(struct shader_info *tes_info, struct shader_info *tcs_info)
 }
 
 static void
-radv_lower_io_to_scalar_early(nir_shader *nir, nir_variable_mode mask)
-{
-   bool progress = false;
-
-   NIR_PASS(progress, nir, nir_lower_array_deref_of_vec, mask,
-            nir_lower_direct_array_deref_of_vec_load | nir_lower_indirect_array_deref_of_vec_load |
-               nir_lower_direct_array_deref_of_vec_store |
-               nir_lower_indirect_array_deref_of_vec_store);
-   NIR_PASS(progress, nir, nir_lower_io_to_scalar_early, mask);
-   if (progress) {
-      /* Optimize the new vector code and then remove dead vars */
-      NIR_PASS(_, nir, nir_copy_prop);
-      NIR_PASS(_, nir, nir_opt_shrink_vectors);
-
-      if (mask & nir_var_shader_out) {
-         /* Optimize swizzled movs of load_const for nir_link_opt_varyings's constant propagation. */
-         NIR_PASS(_, nir, nir_opt_constant_folding);
-
-         /* For nir_link_opt_varyings's duplicate input opt */
-         NIR_PASS(_, nir, nir_opt_cse);
-      }
-
-      /* Run copy-propagation to help remove dead output variables (some shaders have useless copies
-       * to/from an output), so compaction later will be more effective.
-       *
-       * This will have been done earlier but it might not have worked because the outputs were
-       * vector.
-       */
-      if (nir->info.stage == MESA_SHADER_TESS_CTRL)
-         NIR_PASS(_, nir, nir_opt_copy_prop_vars);
-
-      NIR_PASS(_, nir, nir_opt_dce);
-      NIR_PASS(_, nir, nir_remove_dead_variables,
-               nir_var_function_temp | nir_var_shader_in | nir_var_shader_out, NULL);
-   }
-}
-
-static void
 radv_pipeline_link_shaders(const struct radv_device *device,
                            nir_shader *producer, nir_shader *consumer,
                            const struct radv_pipeline_key *pipeline_key)
@@ -1654,8 +1616,8 @@ radv_pipeline_link_shaders(const struct radv_device *device,
    nir_validate_shader(producer, "after nir_lower_io_arrays_to_elements");
    nir_validate_shader(consumer, "after nir_lower_io_arrays_to_elements");
 
-   radv_lower_io_to_scalar_early(producer, nir_var_shader_out);
-   radv_lower_io_to_scalar_early(consumer, nir_var_shader_in);
+   radv_nir_lower_io_to_scalar_early(producer, nir_var_shader_out);
+   radv_nir_lower_io_to_scalar_early(consumer, nir_var_shader_in);
 
    /* Remove PSIZ from shaders when it's not needed.
     * This is typically produced by translation layers like Zink or D9VK.
@@ -2993,7 +2955,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layo
    }
 
    /* Lower I/O intrinsics to memory instructions. */
-   bool io_to_mem = radv_lower_io_to_mem(device, stage);
+   bool io_to_mem = radv_nir_lower_io_to_mem(device, stage);
    bool lowered_ngg = stage->info.is_ngg && stage->stage == last_vgt_api_stage;
    if (lowered_ngg)
       radv_lower_ngg(device, stage, pipeline_key);
@@ -3355,7 +3317,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
 
       /* Gather info again, information such as outputs_read can be out-of-date. */
       nir_shader_gather_info(stages[i].nir, nir_shader_get_entrypoint(stages[i].nir));
-      radv_lower_io(device, stages[i].nir);
+      radv_nir_lower_io(device, stages[i].nir);
 
       stages[i].feedback.duration += os_time_get_nano() - stage_start;
    }

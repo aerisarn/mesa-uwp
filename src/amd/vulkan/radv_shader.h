@@ -744,10 +744,6 @@ get_tcs_num_patches(unsigned tcs_num_input_vertices, unsigned tcs_num_output_ver
    return num_patches;
 }
 
-void radv_lower_io(struct radv_device *device, nir_shader *nir);
-
-bool radv_lower_io_to_mem(struct radv_device *device, struct radv_pipeline_stage *stage);
-
 void radv_lower_ngg(struct radv_device *device, struct radv_pipeline_stage *ngg_stage,
                     const struct radv_pipeline_key *pl_key);
 
