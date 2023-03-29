@@ -1183,11 +1183,13 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer,
    };
 
    if (layout->bind_vbo_mask) {
+      uint32_t mask = vertex_shader->info.vs.vb_desc_usage_mask;
+      unsigned vb_desc_alloc_size = util_bitcount(mask) * 16;
+
       radv_write_vertex_descriptors(cmd_buffer, graphics_pipeline, true, upload_data);
 
-      uint32_t *vbo_info = (uint32_t *)((char *)upload_data + graphics_pipeline->vb_desc_alloc_size);
+      uint32_t *vbo_info = (uint32_t *)((char *)upload_data + vb_desc_alloc_size);
 
-      uint32_t mask = vertex_shader->info.vs.vb_desc_usage_mask;
       unsigned idx = 0;
       while (mask) {
          unsigned i = u_bit_scan(&mask);

@@ -1624,7 +1624,7 @@ radv_emit_prefetch_L2(struct radv_cmd_buffer *cmd_buffer, struct radv_graphics_p
       radv_emit_shader_prefetch(cmd_buffer, cmd_buffer->state.shaders[MESA_SHADER_MESH]);
 
    if (mask & RADV_PREFETCH_VBO_DESCRIPTORS)
-      si_cp_dma_prefetch(cmd_buffer, state->vb_va, pipeline->vb_desc_alloc_size);
+      si_cp_dma_prefetch(cmd_buffer, state->vb_va, state->vb_size);
 
    if (mask & RADV_PREFETCH_TCS)
       radv_emit_shader_prefetch(cmd_buffer, cmd_buffer->state.shaders[MESA_SHADER_TESS_CTRL]);
@@ -4888,13 +4888,13 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer)
    assert(!cmd_buffer->state.mesh_shading);
 
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   unsigned vb_desc_alloc_size = util_bitcount(vs->info.vs.vb_desc_usage_mask) * 16;
    unsigned vb_offset;
    void *vb_ptr;
    uint64_t va;
 
    /* allocate some descriptor state for vertex buffers */
-   if (!radv_cmd_buffer_upload_alloc(cmd_buffer, pipeline->vb_desc_alloc_size, &vb_offset,
-                                     &vb_ptr))
+   if (!radv_cmd_buffer_upload_alloc(cmd_buffer, vb_desc_alloc_size, &vb_offset, &vb_ptr))
       return;
 
    radv_write_vertex_descriptors(cmd_buffer, pipeline, false, vb_ptr);
@@ -4906,6 +4906,7 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer)
                               AC_UD_VS_VERTEX_BUFFERS, va);
 
    cmd_buffer->state.vb_va = va;
+   cmd_buffer->state.vb_size = vb_desc_alloc_size;
    cmd_buffer->state.prefetch_L2_mask |= RADV_PREFETCH_VBO_DESCRIPTORS;
 
    if (unlikely(cmd_buffer->device->trace_bo))

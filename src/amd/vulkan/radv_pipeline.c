@@ -4409,8 +4409,6 @@ radv_pipeline_init_vertex_input_state(const struct radv_device *device,
       }
    }
 
-   pipeline->vb_desc_alloc_size = util_bitcount(vs_info->vs.vb_desc_usage_mask) * 16;
-
    /* Prepare the VS input state for prologs created inside a library. */
    if (vs_info->vs.has_prolog && !(pipeline->dynamic_states & RADV_DYNAMIC_VERTEX_INPUT)) {
       const enum amd_gfx_level gfx_level = pdevice->rad_info.gfx_level;
