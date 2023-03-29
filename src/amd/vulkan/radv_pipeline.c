@@ -610,6 +610,11 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layo
 
          .enable_mrt_output_nan_fixup = pipeline_key->ps.epilog.enable_mrt_output_nan_fixup,
          .no_color_export = stage->info.ps.has_epilog,
+
+         .bc_optimize_for_persp =
+            stage->info.ps.reads_persp_center && stage->info.ps.reads_persp_centroid,
+         .bc_optimize_for_linear =
+            stage->info.ps.reads_linear_center && stage->info.ps.reads_linear_centroid,
       };
 
       NIR_PASS_V(stage->nir, ac_nir_lower_ps, &options);

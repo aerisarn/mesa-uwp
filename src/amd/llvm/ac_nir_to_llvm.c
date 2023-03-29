@@ -3195,7 +3195,7 @@ static LLVMValueRef lookup_interp_param(struct ac_nir_context *ctx, enum glsl_in
       if (location == INTERP_CENTER)
          return ac_get_arg(&ctx->ac, ctx->args->persp_center);
       else if (location == INTERP_CENTROID)
-         return ctx->abi->persp_centroid;
+         return ac_get_arg(&ctx->ac, ctx->args->persp_centroid);
       else if (location == INTERP_SAMPLE)
          return ac_get_arg(&ctx->ac, ctx->args->persp_sample);
       break;
@@ -3203,7 +3203,7 @@ static LLVMValueRef lookup_interp_param(struct ac_nir_context *ctx, enum glsl_in
       if (location == INTERP_CENTER)
          return ac_get_arg(&ctx->ac, ctx->args->linear_center);
       else if (location == INTERP_CENTROID)
-         return ctx->abi->linear_centroid;
+         return ac_get_arg(&ctx->ac, ctx->args->linear_centroid);
       else if (location == INTERP_SAMPLE)
          return ac_get_arg(&ctx->ac, ctx->args->linear_sample);
       break;

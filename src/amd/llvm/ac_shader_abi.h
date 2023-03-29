@@ -46,7 +46,6 @@ struct ac_shader_abi {
    LLVMValueRef vertex_id;
    LLVMValueRef vs_rel_patch_id;
    LLVMValueRef instance_id;
-   LLVMValueRef persp_centroid, linear_centroid;
    LLVMValueRef user_data;
 
    /* replaced registers when culling enabled */

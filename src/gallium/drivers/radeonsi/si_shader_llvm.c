@@ -250,9 +250,6 @@ void si_llvm_create_main_func(struct si_shader_context *ctx)
        */
       if (shader->is_monolithic && shader->key.ge.part.vs.prolog.ls_vgpr_fix)
          ac_fixup_ls_hs_input_vgprs(&ctx->ac, &ctx->abi, &ctx->args->ac);
-   } else if (ctx->stage == MESA_SHADER_FRAGMENT) {
-      ctx->abi.persp_centroid = ac_get_arg(&ctx->ac, ctx->args->ac.persp_centroid);
-      ctx->abi.linear_centroid = ac_get_arg(&ctx->ac, ctx->args->ac.linear_centroid);
    }
 }
 

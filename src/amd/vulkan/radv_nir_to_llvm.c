@@ -254,38 +254,6 @@ radv_get_sampler_desc(struct ac_shader_abi *abi, LLVMValueRef index,
 }
 
 static void
-prepare_interp_optimize(struct radv_shader_context *ctx, struct nir_shader *nir)
-{
-   bool uses_center = false;
-   bool uses_centroid = false;
-   nir_foreach_shader_in_variable (variable, nir) {
-      if (glsl_get_base_type(glsl_without_array(variable->type)) != GLSL_TYPE_FLOAT ||
-          variable->data.sample)
-         continue;
-
-      if (variable->data.centroid)
-         uses_centroid = true;
-      else
-         uses_center = true;
-   }
-
-   ctx->abi.persp_centroid = ac_get_arg(&ctx->ac, ctx->args->ac.persp_centroid);
-   ctx->abi.linear_centroid = ac_get_arg(&ctx->ac, ctx->args->ac.linear_centroid);
-
-   if (uses_center && uses_centroid) {
-      LLVMValueRef sel =
-         LLVMBuildICmp(ctx->ac.builder, LLVMIntSLT, ac_get_arg(&ctx->ac, ctx->args->ac.prim_mask),
-                       ctx->ac.i32_0, "");
-      ctx->abi.persp_centroid =
-         LLVMBuildSelect(ctx->ac.builder, sel, ac_get_arg(&ctx->ac, ctx->args->ac.persp_center),
-                         ctx->abi.persp_centroid, "");
-      ctx->abi.linear_centroid =
-         LLVMBuildSelect(ctx->ac.builder, sel, ac_get_arg(&ctx->ac, ctx->args->ac.linear_center),
-                         ctx->abi.linear_centroid, "");
-   }
-}
-
-static void
 scan_shader_output_decl(struct radv_shader_context *ctx, struct nir_variable *variable,
                         struct nir_shader *shader, gl_shader_stage stage)
 {
@@ -548,9 +516,7 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
          LLVMPositionBuilderAtEnd(ctx.ac.builder, then_block);
       }
 
-      if (shaders[shader_idx]->info.stage == MESA_SHADER_FRAGMENT)
-         prepare_interp_optimize(&ctx, shaders[shader_idx]);
-      else if (shaders[shader_idx]->info.stage == MESA_SHADER_GEOMETRY && !info->is_ngg)
+      if (shaders[shader_idx]->info.stage == MESA_SHADER_GEOMETRY && !info->is_ngg)
          prepare_gs_input_vgprs(&ctx, shader_count >= 2);
 
       if (!ac_nir_translate(&ctx.ac, &ctx.abi, &args->ac, shaders[shader_idx])) {

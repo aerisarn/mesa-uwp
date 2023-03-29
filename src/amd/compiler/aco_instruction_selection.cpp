@@ -8080,7 +8080,7 @@ get_interp_param(isel_context* ctx, nir_intrinsic_op intrin,
        intrin == nir_intrinsic_load_barycentric_at_offset) {
       return get_arg(ctx, linear ? ctx->args->linear_center : ctx->args->persp_center);
    } else if (intrin == nir_intrinsic_load_barycentric_centroid) {
-      return linear ? ctx->linear_centroid : ctx->persp_centroid;
+      return get_arg(ctx, linear ? ctx->args->linear_centroid : ctx->args->persp_centroid);
    } else {
       assert(intrin == nir_intrinsic_load_barycentric_sample);
       return get_arg(ctx, linear ? ctx->args->linear_sample : ctx->args->persp_sample);
@@ -11201,60 +11201,6 @@ split_arguments(isel_context* ctx, Pseudo_instruction* startpgm)
 }
 
 void
-handle_bc_optimize(isel_context* ctx)
-{
-   /* needed when SPI_PS_IN_CONTROL.BC_OPTIMIZE_DISABLE is set to 0 */
-   Builder bld(ctx->program, ctx->block);
-   uint32_t spi_ps_input_ena = ctx->program->config->spi_ps_input_ena;
-   bool uses_center =
-      G_0286CC_PERSP_CENTER_ENA(spi_ps_input_ena) || G_0286CC_LINEAR_CENTER_ENA(spi_ps_input_ena);
-   bool uses_persp_centroid = G_0286CC_PERSP_CENTROID_ENA(spi_ps_input_ena);
-   bool uses_linear_centroid = G_0286CC_LINEAR_CENTROID_ENA(spi_ps_input_ena);
-
-   if (uses_persp_centroid)
-      ctx->persp_centroid = get_arg(ctx, ctx->args->persp_centroid);
-   if (uses_linear_centroid)
-      ctx->linear_centroid = get_arg(ctx, ctx->args->linear_centroid);
-
-   if (uses_center && (uses_persp_centroid || uses_linear_centroid)) {
-      Temp sel = bld.vopc_e64(aco_opcode::v_cmp_lt_i32, bld.def(bld.lm),
-                              get_arg(ctx, ctx->args->prim_mask), Operand::zero());
-
-      if (uses_persp_centroid) {
-         Temp new_coord[2];
-         for (unsigned i = 0; i < 2; i++) {
-            Temp persp_centroid =
-               emit_extract_vector(ctx, get_arg(ctx, ctx->args->persp_centroid), i, v1);
-            Temp persp_center =
-               emit_extract_vector(ctx, get_arg(ctx, ctx->args->persp_center), i, v1);
-            new_coord[i] =
-               bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), persp_centroid, persp_center, sel);
-         }
-         ctx->persp_centroid = bld.tmp(v2);
-         bld.pseudo(aco_opcode::p_create_vector, Definition(ctx->persp_centroid),
-                    Operand(new_coord[0]), Operand(new_coord[1]));
-         emit_split_vector(ctx, ctx->persp_centroid, 2);
-      }
-
-      if (uses_linear_centroid) {
-         Temp new_coord[2];
-         for (unsigned i = 0; i < 2; i++) {
-            Temp linear_centroid =
-               emit_extract_vector(ctx, get_arg(ctx, ctx->args->linear_centroid), i, v1);
-            Temp linear_center =
-               emit_extract_vector(ctx, get_arg(ctx, ctx->args->linear_center), i, v1);
-            new_coord[i] = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), linear_centroid,
-                                    linear_center, sel);
-         }
-         ctx->linear_centroid = bld.tmp(v2);
-         bld.pseudo(aco_opcode::p_create_vector, Definition(ctx->linear_centroid),
-                    Operand(new_coord[0]), Operand(new_coord[1]));
-         emit_split_vector(ctx, ctx->linear_centroid, 2);
-      }
-   }
-}
-
-void
 setup_fp_mode(isel_context* ctx, nir_shader* shader)
 {
    Program* program = ctx->program;
@@ -11443,9 +11389,6 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
          }
       } else if (ctx.stage == geometry_gs)
          ctx.gs_wave_id = get_arg(&ctx, args->gs_wave_id);
-
-      if (ctx.stage == fragment_fs)
-         handle_bc_optimize(&ctx);
 
       visit_cf_list(&ctx, &func->body);
 
