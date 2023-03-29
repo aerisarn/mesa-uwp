@@ -92,6 +92,10 @@ struct fd_screen {
        * suffer a performance loss with conservative LRZ.
        */
       bool conservative_lrz;
+
+      /* Enable EGL throttling (default true).
+       */
+      bool enable_throttling;
    } driconf;
 
    const struct fd_dev_info *info;
