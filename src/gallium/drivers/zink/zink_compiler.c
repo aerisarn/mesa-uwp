@@ -4968,6 +4968,23 @@ zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr)
 }
 
 void
+zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
+{
+   _mesa_set_destroy(shader->programs, NULL);
+   util_queue_fence_wait(&shader->precompile.fence);
+   util_queue_fence_destroy(&shader->precompile.fence);
+   zink_descriptor_shader_deinit(screen, shader);
+   if (shader->precompile.mod)
+      VKSCR(DestroyShaderModule)(screen->dev, shader->precompile.mod, NULL);
+   if (shader->precompile.gpl)
+      VKSCR(DestroyPipeline)(screen->dev, shader->precompile.gpl, NULL);
+   blob_finish(&shader->blob);
+   ralloc_free(shader->spirv);
+   free(shader->precompile.bindings);
+   ralloc_free(shader);
+}
+
+void
 zink_gfx_shader_free(struct zink_screen *screen, struct zink_shader *shader)
 {
    assert(shader->info.stage != MESA_SHADER_COMPUTE);
@@ -5047,18 +5064,7 @@ zink_gfx_shader_free(struct zink_screen *screen, struct zink_shader *shader)
          }
       }
    }
-   _mesa_set_destroy(shader->programs, NULL);
-   util_queue_fence_wait(&shader->precompile.fence);
-   util_queue_fence_destroy(&shader->precompile.fence);
-   zink_descriptor_shader_deinit(screen, shader);
-   if (shader->precompile.mod)
-      VKSCR(DestroyShaderModule)(screen->dev, shader->precompile.mod, NULL);
-   if (shader->precompile.gpl)
-      VKSCR(DestroyPipeline)(screen->dev, shader->precompile.gpl, NULL);
-   blob_finish(&shader->blob);
-   ralloc_free(shader->spirv);
-   free(shader->precompile.bindings);
-   ralloc_free(shader);
+   zink_shader_free(screen, shader);
 }
 
 
