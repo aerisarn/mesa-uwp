@@ -634,6 +634,12 @@ agx_prepare_for_map(struct agx_context *ctx, struct agx_resource *rsrc,
    if (usage & PIPE_MAP_UNSYNCHRONIZED)
       return;
 
+   /* Everything after this needs the context, which is not safe for
+    * unsynchronized transfers when we claim
+    * PIPE_CAP_MAP_UNSYNCHRONIZED_THREAD_SAFE.
+    */
+   assert(!(usage & PIPE_MAP_UNSYNCHRONIZED));
+
    /* Both writing and reading need writers synced */
    agx_sync_writer(ctx, rsrc, "Unsynchronized transfer");
 
@@ -763,6 +769,9 @@ agx_transfer_map(struct pipe_context *pctx, struct pipe_resource *resource,
     * twiddled too, but we don't have a use case for that yet.
     */
    if (rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED_COMPRESSED) {
+      /* Should never happen for buffers, and it's not safe */
+      assert(resource->target != PIPE_BUFFER);
+
       struct agx_resource *staging =
          agx_alloc_staging(pctx->screen, rsrc, level, box);
       assert(staging);
@@ -793,6 +802,9 @@ agx_transfer_map(struct pipe_context *pctx, struct pipe_resource *resource,
    agx_bo_mmap(rsrc->bo);
 
    if (rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED) {
+      /* Should never happen for buffers, and it's not safe */
+      assert(resource->target != PIPE_BUFFER);
+
       transfer->base.stride =
          util_format_get_stride(rsrc->layout.format, box->width);
 
@@ -843,6 +855,7 @@ agx_transfer_unmap(struct pipe_context *pctx, struct pipe_transfer *transfer)
    struct agx_resource *rsrc = (struct agx_resource *)prsrc;
 
    if (trans->staging.rsrc && (transfer->usage & PIPE_MAP_WRITE)) {
+      assert(prsrc->target != PIPE_BUFFER);
       agx_blit_from_staging(pctx, trans);
       agx_flush_readers(agx_context(pctx), agx_resource(trans->staging.rsrc),
                         "GPU write staging blit");
@@ -1504,6 +1517,9 @@ agx_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
              BITFIELD_BIT(PIPE_PRIM_TRIANGLE_STRIP) |
              BITFIELD_BIT(PIPE_PRIM_TRIANGLE_FAN) |
              BITFIELD_BIT(PIPE_PRIM_QUADS) | BITFIELD_BIT(PIPE_PRIM_QUAD_STRIP);
+
+   case PIPE_CAP_MAP_UNSYNCHRONIZED_THREAD_SAFE:
+      return 1;
 
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
