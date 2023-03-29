@@ -4409,13 +4409,6 @@ radv_pipeline_init_vertex_input_state(const struct radv_device *device,
       }
    }
 
-   if (pipeline->base.shaders[MESA_SHADER_VERTEX]) {
-      const struct radv_shader *vs_shader = pipeline->base.shaders[MESA_SHADER_VERTEX];
-      pipeline->can_use_simple_input = vs_shader->info.is_ngg == pdevice->use_ngg &&
-                                       vs_shader->info.wave_size == pdevice->ge_wave_size;
-   } else {
-      pipeline->can_use_simple_input = false;
-   }
    if (vs_info->vs.dynamic_inputs)
       pipeline->vb_desc_usage_mask = BITFIELD_MASK(util_last_bit(vs_info->vs.vb_desc_usage_mask));
    else

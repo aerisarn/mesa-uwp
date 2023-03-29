@@ -3657,7 +3657,6 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
    assert(vs_shader->info.vs.dynamic_inputs);
 
    const struct radv_vs_input_state *state = &cmd_buffer->state.dynamic_vs_input;
-   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    struct radv_device *device = cmd_buffer->device;
 
    unsigned num_attributes = util_last_bit(vs_shader->info.vs.vb_desc_usage_mask);
@@ -3686,10 +3685,16 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
    }
    misaligned_mask |= state->nontrivial_formats;
 
+   const bool can_use_simple_input =
+      cmd_buffer->state.shaders[MESA_SHADER_VERTEX] &&
+      cmd_buffer->state.shaders[MESA_SHADER_VERTEX]->info.is_ngg ==
+         device->physical_device->use_ngg &&
+      cmd_buffer->state.shaders[MESA_SHADER_VERTEX]->info.wave_size ==
+         device->physical_device->ge_wave_size;
+
    /* try to use a pre-compiled prolog first */
    struct radv_shader_part *prolog = NULL;
-   if (pipeline->can_use_simple_input &&
-       (!vs_shader->info.vs.as_ls || !instance_rate_inputs) &&
+   if (can_use_simple_input && (!vs_shader->info.vs.as_ls || !instance_rate_inputs) &&
        !misaligned_mask && !state->alpha_adjust_lo && !state->alpha_adjust_hi) {
       if (!instance_rate_inputs) {
          prolog = device->simple_vs_prologs[num_attributes - 1];
