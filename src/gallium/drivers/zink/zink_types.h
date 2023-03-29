@@ -1038,7 +1038,7 @@ struct zink_gfx_program {
    /* full */
    VkShaderModule modules[ZINK_GFX_SHADER_COUNT]; // compute stage doesn't belong here
    uint32_t module_hash[ZINK_GFX_SHADER_COUNT];
-   struct nir_shader *nir[ZINK_GFX_SHADER_COUNT];
+   struct blob blobs[ZINK_GFX_SHADER_COUNT];
    struct util_dynarray shader_cache[ZINK_GFX_SHADER_COUNT][2][2]; //normal, nonseamless cubes, inline uniforms
    unsigned inlined_variant_count[ZINK_GFX_SHADER_COUNT];
    uint32_t default_variant_hash;
@@ -1065,7 +1065,7 @@ struct zink_compute_program {
    bool use_local_size;
 
    unsigned num_inlinable_uniforms;
-   nir_shader *nir;
+   nir_shader *nir; //only until precompile finishes
 
    struct zink_shader_module *curr;
 

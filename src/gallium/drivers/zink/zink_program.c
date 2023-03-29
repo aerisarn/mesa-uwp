@@ -152,7 +152,7 @@ create_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *scr
       assert(ctx); //TODO async
       mod = zink_shader_tcs_compile(screen, zs, patch_vertices);
    } else {
-      mod = zink_shader_compile(screen, zs, nir_shader_clone(NULL, prog->nir[stage]), key, &ctx->di.zs_swizzle[stage]);
+      mod = zink_shader_compile(screen, zs, zink_shader_blob_deserialize(screen, &prog->blobs[stage]), key, &ctx->di.zs_swizzle[stage]);
    }
    if (!mod) {
       FREE(zm);
@@ -267,7 +267,7 @@ create_shader_module_for_stage_optimal(struct zink_context *ctx, struct zink_scr
       struct zink_tcs_key *tcs = (struct zink_tcs_key*)key;
       mod = zink_shader_tcs_compile(screen, zs, tcs->patch_vertices);
    } else {
-      mod = zink_shader_compile(screen, zs, nir_shader_clone(NULL, prog->nir[stage]), (struct zink_shader_key*)key, shadow_needs_shader_swizzle ? &ctx->di.zs_swizzle[stage] : NULL);
+      mod = zink_shader_compile(screen, zs, zink_shader_blob_deserialize(screen, &prog->blobs[stage]), (struct zink_shader_key*)key, shadow_needs_shader_swizzle ? &ctx->di.zs_swizzle[stage] : NULL);
    }
    if (!mod) {
       FREE(zm);
@@ -843,7 +843,7 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
       if (!zm) {
          return;
       }
-      mod = zink_shader_compile(screen, zs, nir_shader_clone(NULL, comp->nir), key, zs_swizzle_size ? &ctx->di.zs_swizzle[MESA_SHADER_COMPUTE] : NULL);
+      mod = zink_shader_compile(screen, zs, zink_shader_blob_deserialize(screen, &comp->shader->blob), key, zs_swizzle_size ? &ctx->di.zs_swizzle[MESA_SHADER_COMPUTE] : NULL);
       if (!mod) {
          FREE(zm);
          return;
@@ -1027,6 +1027,8 @@ zink_create_gfx_program(struct zink_context *ctx,
    prog->base.removed = true;
    prog->optimal_keys = screen->optimal_keys;
 
+   nir_shader *nir[ZINK_GFX_SHADER_COUNT];
+
    prog->has_edgeflags = prog->shaders[MESA_SHADER_VERTEX] &&
                          prog->shaders[MESA_SHADER_VERTEX]->has_edgeflags;
    for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
@@ -1039,18 +1041,26 @@ zink_create_gfx_program(struct zink_context *ctx,
          prog->stages_present |= BITFIELD_BIT(i);
          prog->optimal_keys &= !prog->shaders[i]->non_fs.is_generated;
          prog->needs_inlining |= prog->shaders[i]->needs_inlining;
-         prog->nir[i] = zink_shader_deserialize(screen, stages[i]);
+         nir[i] = zink_shader_deserialize(screen, stages[i]);
+      } else {
+         nir[i] = NULL;
       }
    }
    if (stages[MESA_SHADER_TESS_EVAL] && !stages[MESA_SHADER_TESS_CTRL]) {
       prog->shaders[MESA_SHADER_TESS_EVAL]->non_fs.generated_tcs =
       prog->shaders[MESA_SHADER_TESS_CTRL] =
-        zink_shader_tcs_create(screen, prog->nir[MESA_SHADER_VERTEX], vertices_per_patch, &prog->nir[MESA_SHADER_TESS_CTRL]);
+        zink_shader_tcs_create(screen, nir[MESA_SHADER_VERTEX], vertices_per_patch, &nir[MESA_SHADER_TESS_CTRL]);
       prog->stages_present |= BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
    }
    prog->stages_remaining = prog->stages_present;
 
-   assign_io(screen, prog->nir);
+   assign_io(screen, nir);
+   for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++) {
+      if (nir[i])
+         zink_shader_serialize_blob(nir[i], &prog->blobs[i]);
+      ralloc_free(nir[i]);
+   }
+
 
    if (stages[MESA_SHADER_GEOMETRY])
       prog->last_vertex_stage = stages[MESA_SHADER_GEOMETRY];
@@ -1255,7 +1265,9 @@ precompile_compute_job(void *data, void *gdata, int thread_index)
    comp->shader = zink_shader_create(screen, comp->nir, NULL);
    comp->curr = comp->module = CALLOC_STRUCT(zink_shader_module);
    assert(comp->module);
-   comp->module->shader = zink_shader_compile(screen, comp->shader, nir_shader_clone(NULL, comp->nir), NULL, NULL);
+   comp->module->shader = zink_shader_compile(screen, comp->shader, comp->nir, NULL, NULL);
+   /* comp->nir will be freed by zink_shader_compile */
+   comp->nir = NULL;
    assert(comp->module->shader);
    util_dynarray_init(&comp->shader_cache[0], comp);
    util_dynarray_init(&comp->shader_cache[1], comp);
@@ -1456,7 +1468,7 @@ zink_destroy_gfx_program(struct zink_screen *screen,
          destroy_shader_cache(screen, &prog->shader_cache[i][0][1]);
          destroy_shader_cache(screen, &prog->shader_cache[i][1][0]);
          destroy_shader_cache(screen, &prog->shader_cache[i][1][1]);
-         ralloc_free(prog->nir[i]);
+         blob_finish(&prog->blobs[i]);
       }
    }
    if (prog->is_separable)
@@ -1475,7 +1487,7 @@ zink_destroy_compute_program(struct zink_screen *screen,
    assert(!comp->shader->spirv);
 
    _mesa_set_destroy(comp->shader->programs, NULL);
-   ralloc_free(comp->nir);
+   blob_finish(&comp->shader->blob);
    ralloc_free(comp->shader);
 
    destroy_shader_cache(screen, &comp->shader_cache[0]);
