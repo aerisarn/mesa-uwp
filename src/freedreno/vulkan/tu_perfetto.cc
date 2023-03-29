@@ -393,8 +393,7 @@ tu_perfetto_submit(struct tu_device *dev, uint32_t submission_id)
       const struct trace_start_##event_name *payload)                               \
    {                                                                                \
       stage_start(                                                                  \
-         dev, ts_ns, stage_id, payload,                                             \
-         sizeof(struct trace_start_##event_name),                                   \
+         dev, ts_ns, stage_id, payload, sizeof(*payload),                           \
          (trace_payload_as_extra_func) &trace_payload_as_extra_start_##event_name); \
    }                                                                                \
                                                                                     \
