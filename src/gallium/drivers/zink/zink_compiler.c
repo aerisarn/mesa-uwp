@@ -4661,6 +4661,18 @@ fixup_io_locations(nir_shader *nir)
    return true;
 }
 
+static uint32_t
+zink_flat_flags(struct nir_shader *shader)
+{
+   uint32_t flat_flags = 0, c = 0;
+   nir_foreach_shader_in_variable(var, shader) {
+      if (var->data.interpolation == INTERP_MODE_FLAT)
+         flat_flags |= 1u << (c++);
+   }
+
+   return flat_flags;
+}
+
 struct zink_shader *
 zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                    const struct pipe_stream_output_info *so_info)
@@ -4697,6 +4709,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
 
    if (nir->info.stage < MESA_SHADER_FRAGMENT)
       have_psiz = check_psiz(nir);
+   if (nir->info.stage == MESA_SHADER_FRAGMENT)
+      ret->flat_flags = zink_flat_flags(nir);
 
    if (!gl_shader_stage_is_compute(nir->info.stage) && nir->info.separate_shader)
       NIR_PASS_V(nir, fixup_io_locations);

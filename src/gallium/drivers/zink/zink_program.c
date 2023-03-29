@@ -2224,18 +2224,6 @@ zink_add_inline_uniform(nir_shader *shader, int offset)
    ++shader->info.num_inlinable_uniforms;
 }
 
-static uint32_t
-zink_flat_flags(struct nir_shader *shader)
-{
-   uint32_t flat_flags = 0, c = 0;
-   nir_foreach_shader_in_variable(var, shader) {
-      if (var->data.interpolation == INTERP_MODE_FLAT)
-         flat_flags |= 1u << (c++);
-   }
-
-   return flat_flags;
-}
-
 static unsigned
 encode_lower_pv_mode(enum pipe_prim_type prim_type)
 {
@@ -2353,7 +2341,7 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
       }
 
       ctx->base.set_inlinable_constants(&ctx->base, MESA_SHADER_GEOMETRY, 2,
-                                        (uint32_t []){zink_flat_flags(ctx->gfx_stages[MESA_SHADER_FRAGMENT]->nir),
+                                        (uint32_t []){ctx->gfx_stages[MESA_SHADER_FRAGMENT]->flat_flags,
                                                       ctx->gfx_pipeline_state.dyn_state3.pv_last});
    } else if (ctx->gfx_stages[MESA_SHADER_GEOMETRY] &&
               ctx->gfx_stages[MESA_SHADER_GEOMETRY]->non_fs.is_generated)
