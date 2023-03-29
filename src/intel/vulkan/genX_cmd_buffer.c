@@ -5528,6 +5528,8 @@ genX(cmd_buffer_ensure_cfe_state)(struct anv_cmd_buffer *cmd_buffer,
                                       total_scratch);
          cfe.ScratchSpaceBuffer = scratch_surf >> 4;
       }
+
+      cfe.OverDispatchControl = 2; /* 50% overdispatch */
    }
 
    comp_state->scratch_size = total_scratch;
