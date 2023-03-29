@@ -1492,9 +1492,7 @@ zink_destroy_compute_program(struct zink_screen *screen,
    assert(comp->shader);
    assert(!comp->shader->spirv);
 
-   _mesa_set_destroy(comp->shader->programs, NULL);
-   blob_finish(&comp->shader->blob);
-   ralloc_free(comp->shader);
+   zink_shader_free(screen, comp->shader);
 
    destroy_shader_cache(screen, &comp->shader_cache[0]);
    destroy_shader_cache(screen, &comp->shader_cache[1]);
