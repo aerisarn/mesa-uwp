@@ -148,7 +148,11 @@ agx_bo_import(struct agx_device *dev, int fd)
    pthread_mutex_lock(&dev->bo_map_lock);
 
    ret = drmPrimeFDToHandle(dev->fd, fd, &gem_handle);
-   assert(!ret);
+   if (ret) {
+      fprintf(stderr, "import failed: Could not map fd %d to handle\n", fd);
+      pthread_mutex_unlock(&dev->bo_map_lock);
+      return NULL;
+   }
 
    bo = agx_lookup_bo(dev, gem_handle);
    dev->max_handle = MAX2(dev->max_handle, gem_handle);
@@ -170,9 +174,9 @@ agx_bo_import(struct agx_device *dev, int fd)
             stderr,
             "import failed: BO is not a multiple of the page size (0x%llx bytes)\n",
             (long long)bo->size);
-         pthread_mutex_unlock(&dev->bo_map_lock);
-         return NULL;
+         goto error;
       }
+
       bo->flags = AGX_BO_SHARED | AGX_BO_SHAREABLE;
       bo->handle = gem_handle;
       bo->prime_fd = dup(fd);
@@ -186,10 +190,21 @@ agx_bo_import(struct agx_device *dev, int fd)
          &dev->main_heap, bo->size + dev->guard_size, dev->params.vm_page_size);
       simple_mtx_unlock(&dev->vma_lock);
 
+      if (!bo->ptr.gpu) {
+         fprintf(
+            stderr,
+            "import failed: Could not allocate from VMA heap (0x%llx bytes)\n",
+            (long long)bo->size);
+         abort();
+      }
+
       ret =
          agx_bo_bind(dev, bo, bo->ptr.gpu, ASAHI_BIND_READ | ASAHI_BIND_WRITE);
-      assert(!ret);
-
+      if (ret) {
+         fprintf(stderr, "import failed: Could not bind BO at 0x%llx\n",
+                 (long long)bo->ptr.gpu);
+         abort();
+      }
    } else {
       /* bo->refcnt == 0 can happen if the BO
        * was being released but agx_bo_import() acquired the
@@ -209,6 +224,11 @@ agx_bo_import(struct agx_device *dev, int fd)
    pthread_mutex_unlock(&dev->bo_map_lock);
 
    return bo;
+
+error:
+   memset(bo, 0, sizeof(*bo));
+   pthread_mutex_unlock(&dev->bo_map_lock);
+   return NULL;
 }
 
 int
