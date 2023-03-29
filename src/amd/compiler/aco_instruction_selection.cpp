@@ -9140,8 +9140,11 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       unsigned write_mask = nir_intrinsic_write_mask(instr);
 
       /* Mark vertex export block. */
-      if (target == V_008DFC_SQ_EXP_POS)
+      if (target == V_008DFC_SQ_EXP_POS || target <= V_008DFC_SQ_EXP_NULL)
          ctx->block->kind |= block_kind_export_end;
+
+      if (target <= V_008DFC_SQ_EXP_NULL)
+         ctx->program->has_color_exports = true;
 
       aco_ptr<Export_instruction> exp{
          create_instruction<Export_instruction>(aco_opcode::exp, Format::EXP, 4, 0)};
@@ -9149,10 +9152,9 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       exp->dest = target;
       exp->enabled_mask = write_mask;
       exp->compressed = flags & AC_EXP_FLAG_COMPRESSED;
-      exp->valid_mask = flags & AC_EXP_FLAG_VALID_MASK;
 
-      /* ACO may reorder position export instructions, then mark done for last
-       * export instruction. So don't respect the nir AC_EXP_FLAG_DONE for position
+      /* ACO may reorder position/mrt export instructions, then mark done for last
+       * export instruction. So don't respect the nir AC_EXP_FLAG_DONE for position/mrt
        * exports here and leave it to ACO.
        */
       if (target == V_008DFC_SQ_EXP_PRIM)
@@ -9160,9 +9162,23 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       else
          exp->done = false;
 
+      /* ACO may reorder mrt export instructions, then mark valid mask for last
+       * export instruction. So don't respect the nir AC_EXP_FLAG_VALID_MASK for mrt
+       * exports here and leave it to ACO.
+       */
+      if (target > V_008DFC_SQ_EXP_NULL)
+         exp->valid_mask = flags & AC_EXP_FLAG_VALID_MASK;
+      else
+         exp->valid_mask = false;
+
+      /* Compressed export uses two bits for a channel. */
+      uint32_t channel_mask = exp->compressed ?
+         (write_mask & 0x3 ? 1 : 0) | (write_mask & 0xc ? 2 : 0) :
+         write_mask;
+
       Temp value = get_ssa_temp(ctx, instr->src[0].ssa);
       for (unsigned i = 0; i < 4; i++) {
-         exp->operands[i] = write_mask & BITFIELD_BIT(i) ?
+         exp->operands[i] = channel_mask & BITFIELD_BIT(i) ?
             Operand(emit_extract_vector(ctx, value, i, v1)) :
             Operand(v1);
       }
