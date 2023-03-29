@@ -62,6 +62,8 @@ bool radv_nir_lower_primitive_shading_rate(nir_shader *nir, enum amd_gfx_level g
 bool radv_nir_lower_fs_intrinsics(nir_shader *nir, const struct radv_pipeline_stage *fs_stage,
                                   const struct radv_pipeline_key *key);
 
+bool radv_nir_lower_intrinsics_early(nir_shader *nir, const struct radv_pipeline_key *key);
+
 #ifdef __cplusplus
 }
 #endif

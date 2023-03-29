@@ -329,55 +329,6 @@ radv_compiler_debug(void *private_data, enum aco_compiler_debug_level level, con
 }
 
 static bool
-lower_intrinsics(nir_shader *nir, const struct radv_pipeline_key *key)
-{
-   nir_function_impl *entry = nir_shader_get_entrypoint(nir);
-   bool progress = false;
-   nir_builder b;
-
-   nir_builder_init(&b, entry);
-
-   nir_foreach_block (block, entry) {
-      nir_foreach_instr_safe (instr, block) {
-         if (instr->type != nir_instr_type_intrinsic)
-            continue;
-
-         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-         b.cursor = nir_before_instr(&intrin->instr);
-
-         nir_ssa_def *def = NULL;
-         switch (intrin->intrinsic) {
-         case nir_intrinsic_is_sparse_texels_resident:
-            def = nir_ieq_imm(&b, intrin->src[0].ssa, 0);
-            break;
-         case nir_intrinsic_sparse_residency_code_and:
-            def = nir_ior(&b, intrin->src[0].ssa, intrin->src[1].ssa);
-            break;
-         case nir_intrinsic_load_view_index:
-            if (key->has_multiview_view_index)
-               continue;
-            def = nir_imm_zero(&b, 1, 32);
-            break;
-         default:
-            continue;
-         }
-
-         nir_ssa_def_rewrite_uses(&intrin->dest.ssa, def);
-
-         nir_instr_remove(instr);
-         progress = true;
-      }
-   }
-
-   if (progress)
-      nir_metadata_preserve(entry, nir_metadata_block_index | nir_metadata_dominance);
-   else
-      nir_metadata_preserve(entry, nir_metadata_all);
-
-   return progress;
-}
-
-static bool
 is_sincos(const nir_instr *instr, const void *_)
 {
    return instr->type == nir_instr_type_alu &&
@@ -748,7 +699,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_ubo | nir_var_mem_ssbo,
             nir_address_format_vec2_index_32bit_offset);
 
-   NIR_PASS(_, nir, lower_intrinsics, key);
+   NIR_PASS(_, nir, radv_nir_lower_intrinsics_early, key);
 
    /* Lower deref operations for compute shared memory. */
    if (nir->info.stage == MESA_SHADER_COMPUTE ||
