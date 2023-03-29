@@ -329,21 +329,6 @@ radv_compiler_debug(void *private_data, enum aco_compiler_debug_level level, con
 }
 
 static bool
-is_sincos(const nir_instr *instr, const void *_)
-{
-   return instr->type == nir_instr_type_alu &&
-          (nir_instr_as_alu(instr)->op == nir_op_fsin || nir_instr_as_alu(instr)->op == nir_op_fcos);
-}
-
-static nir_ssa_def *
-lower_sincos(struct nir_builder *b, nir_instr *instr, void *_)
-{
-   nir_alu_instr *sincos = nir_instr_as_alu(instr);
-   nir_ssa_def *src = nir_fmul_imm(b, nir_ssa_for_alu_src(b, sincos, 0), 0.15915493667125702);
-   return sincos->op == nir_op_fsin ? nir_fsin_amd(b, src) : nir_fcos_amd(b, src);
-}
-
-static bool
 is_not_xfb_output(nir_variable *var, void *data)
 {
    if (var->data.mode != nir_var_shader_out)
@@ -573,7 +558,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
 
       NIR_PASS(_, nir, nir_lower_doubles, NULL, lower_doubles);
 
-      NIR_PASS(_, nir, nir_shader_lower_instructions, &is_sincos, &lower_sincos, NULL);
+      NIR_PASS(_, nir, ac_nir_lower_sin_cos);
    }
 
    NIR_PASS(_, nir, nir_lower_system_values);

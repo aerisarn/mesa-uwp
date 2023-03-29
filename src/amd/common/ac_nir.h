@@ -73,6 +73,8 @@ nir_ssa_def *
 ac_nir_unpack_arg(nir_builder *b, const struct ac_shader_args *ac_args, struct ac_arg arg,
                   unsigned rshift, unsigned bitwidth);
 
+bool ac_nir_lower_sin_cos(nir_shader *shader);
+
 void
 ac_nir_store_var_components(nir_builder *b, nir_variable *var, nir_ssa_def *value,
                             unsigned component, unsigned writemask);
