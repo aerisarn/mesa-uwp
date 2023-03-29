@@ -4409,7 +4409,6 @@ radv_pipeline_init_vertex_input_state(const struct radv_device *device,
       }
    }
 
-   pipeline->use_per_attribute_vb_descs = vs_info->vs.use_per_attribute_vb_descs;
    pipeline->last_vertex_attrib_bit = util_last_bit(vs_info->vs.vb_desc_usage_mask);
    if (pipeline->base.shaders[MESA_SHADER_VERTEX])
       pipeline->next_vertex_stage = MESA_SHADER_VERTEX;

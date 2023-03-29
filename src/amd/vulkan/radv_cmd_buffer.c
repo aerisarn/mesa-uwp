@@ -4715,7 +4715,7 @@ radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
    uint64_t va;
    const struct radv_vs_input_state *vs_state =
       vs_shader->info.vs.dynamic_inputs ? &cmd_buffer->state.dynamic_vs_input : NULL;
-   assert(!vs_state || pipeline->use_per_attribute_vb_descs);
+   assert(!vs_state || vs_shader->info.vs.use_per_attribute_vb_descs);
 
    const struct ac_vtx_format_info *vtx_info_table =
       vs_state ? ac_get_vtx_format_info_table(chip, family) : NULL;
@@ -4736,7 +4736,7 @@ radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
 
       unsigned binding =
          vs_state ? cmd_buffer->state.dynamic_vs_input.bindings[i]
-                  : (pipeline->use_per_attribute_vb_descs ? pipeline->attrib_bindings[i] : i);
+                  : (vs_shader->info.vs.use_per_attribute_vb_descs ? pipeline->attrib_bindings[i] : i);
       struct radv_buffer *buffer = cmd_buffer->vertex_binding_buffers[binding];
       unsigned num_records;
       unsigned stride;
@@ -4805,7 +4805,7 @@ radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
          num_records = vk_buffer_range(&buffer->vk, offset, VK_WHOLE_SIZE);
       }
 
-      if (pipeline->use_per_attribute_vb_descs) {
+      if (vs_shader->info.vs.use_per_attribute_vb_descs) {
          uint32_t attrib_end =
             vs_state ? vs_state->offsets[i] + vs_state->format_sizes[i] : pipeline->attrib_ends[i];
 

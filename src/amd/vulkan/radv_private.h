@@ -2203,7 +2203,6 @@ struct radv_graphics_pipeline {
 
    bool uses_drawid;
    bool uses_baseinstance;
-   bool use_per_attribute_vb_descs;
    bool can_use_simple_input;
 
    /* Whether the pipeline uses inner coverage which means that a fragment has all of its pixel

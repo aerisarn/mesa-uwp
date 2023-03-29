@@ -1190,11 +1190,11 @@ radv_prepare_dgc(struct radv_cmd_buffer *cmd_buffer,
       while (mask) {
          unsigned i = u_bit_scan(&mask);
          unsigned binding =
-            graphics_pipeline->use_per_attribute_vb_descs ? graphics_pipeline->attrib_bindings[i] : i;
+            vertex_shader->info.vs.use_per_attribute_vb_descs ? graphics_pipeline->attrib_bindings[i] : i;
          uint32_t attrib_end = graphics_pipeline->attrib_ends[i];
 
          params.vbo_bind_mask |= ((layout->bind_vbo_mask >> binding) & 1u) << idx;
-         vbo_info[2 * idx] = ((graphics_pipeline->use_per_attribute_vb_descs ? 1u : 0u) << 31) |
+         vbo_info[2 * idx] = ((vertex_shader->info.vs.use_per_attribute_vb_descs ? 1u : 0u) << 31) |
                              layout->vbo_offsets[binding];
          vbo_info[2 * idx + 1] = graphics_pipeline->attrib_index_offset[i] | (attrib_end << 16);
          ++idx;
