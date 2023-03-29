@@ -222,10 +222,15 @@ stage_start(struct tu_device *dev,
 
 static void
 stage_end(struct tu_device *dev, uint64_t ts_ns, enum tu_stage_id stage_id,
-          uint32_t submission_id, const void* payload = nullptr,
+          const void *flush_data,
+          const void* payload = nullptr,
           trace_payload_as_extra_func payload_as_extra = nullptr)
 {
    struct tu_perfetto_stage *stage = stage_pop(dev);
+   auto trace_flush_data =
+      (const struct tu_u_trace_submission_data *) flush_data;
+   uint32_t submission_id =
+      tu_u_trace_submission_data_get_submit_id(trace_flush_data);
 
    if (!stage)
       return;
@@ -397,12 +402,8 @@ tu_perfetto_submit(struct tu_device *dev, uint32_t submission_id)
       struct tu_device *dev, uint64_t ts_ns, const void *flush_data,                \
       const struct trace_end_##event_name *payload)                                 \
    {                                                                                \
-      auto trace_flush_data =                                                       \
-         (const struct tu_u_trace_submission_data *) flush_data;                    \
-      uint32_t submission_id =                                                      \
-         tu_u_trace_submission_data_get_submit_id(trace_flush_data);                \
       stage_end(                                                                    \
-         dev, ts_ns, stage_id, submission_id, payload,                              \
+         dev, ts_ns, stage_id, flush_data, payload,                                 \
          (trace_payload_as_extra_func) &trace_payload_as_extra_end_##event_name);   \
    }
 
