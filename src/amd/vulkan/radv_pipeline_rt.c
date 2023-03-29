@@ -587,10 +587,15 @@ combine_config(struct ac_shader_config *config, struct ac_shader_config *other)
 }
 
 static void
-postprocess_rt_config(struct ac_shader_config *config, unsigned wave_size)
+postprocess_rt_config(struct ac_shader_config *config, enum amd_gfx_level gfx_level,
+                      unsigned wave_size)
 {
    config->rsrc1 = (config->rsrc1 & C_00B848_VGPRS) |
                    S_00B848_VGPRS((config->num_vgprs - 1) / (wave_size == 32 ? 8 : 4));
+   if (gfx_level < GFX10)
+      config->rsrc1 =
+         (config->rsrc1 & C_00B848_SGPRS) | S_00B848_SGPRS((config->num_sgprs - 1) / 8);
+
    config->rsrc2 = (config->rsrc2 & C_00B84C_LDS_SIZE) | S_00B84C_LDS_SIZE(config->lds_size);
    config->rsrc3 = (config->rsrc3 & C_00B8A0_SHARED_VGPR_CNT) |
                    S_00B8A0_SHARED_VGPR_CNT(config->num_shared_vgprs / 8);
@@ -683,6 +688,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
                   &rt_pipeline->base.base.shaders[MESA_SHADER_RAYGEN]->config);
 
    postprocess_rt_config(&rt_pipeline->base.base.shaders[MESA_SHADER_COMPUTE]->config,
+                         device->physical_device->rad_info.gfx_level,
                          device->physical_device->rt_wave_size);
 
    radv_compute_pipeline_init(device, &rt_pipeline->base, pipeline_layout);
