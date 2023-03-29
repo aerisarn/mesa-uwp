@@ -4409,13 +4409,7 @@ radv_pipeline_init_vertex_input_state(const struct radv_device *device,
       }
    }
 
-   if (pipeline->base.shaders[MESA_SHADER_VERTEX])
-      pipeline->next_vertex_stage = MESA_SHADER_VERTEX;
-   else if (pipeline->base.shaders[MESA_SHADER_TESS_CTRL])
-      pipeline->next_vertex_stage = MESA_SHADER_TESS_CTRL;
-   else
-      pipeline->next_vertex_stage = MESA_SHADER_GEOMETRY;
-   if (pipeline->next_vertex_stage == MESA_SHADER_VERTEX) {
+   if (pipeline->base.shaders[MESA_SHADER_VERTEX]) {
       const struct radv_shader *vs_shader = pipeline->base.shaders[MESA_SHADER_VERTEX];
       pipeline->can_use_simple_input = vs_shader->info.is_ngg == pdevice->use_ngg &&
                                        vs_shader->info.wave_size == pdevice->ge_wave_size;
