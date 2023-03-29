@@ -3092,6 +3092,8 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
 
       if (sctx->family == CHIP_MI100 || sctx->family == CHIP_MI200)
          dec->njctx = 2;
+      else if (sctx->family == CHIP_GFX940)
+         dec->njctx = 24;
       else
          dec->njctx = 1;
 
