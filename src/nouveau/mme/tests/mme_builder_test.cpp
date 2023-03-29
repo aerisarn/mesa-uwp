@@ -259,3 +259,53 @@ TEST_F(mme_builder_test, merge)
       ASSERT_SIM_DATA(sim);
    }
 }
+
+TEST_F(mme_builder_test, while_ine)
+{
+   static const uint32_t cases[] = { 1, 3, 5, 8 };
+
+   for (auto sim : sims) {
+      mme_builder b;
+      mme_builder_init(&b, sim->devinfo);
+
+      mme_value inc = mme_load(&b);
+      mme_value bound = mme_load(&b);
+
+      mme_value x = mme_mov(&b, mme_zero());
+      mme_value y = mme_mov(&b, mme_zero());
+      mme_value z = mme_mov(&b, mme_zero());
+
+      mme_value i = mme_mov(&b, mme_zero());
+      mme_while(&b, ine, i, bound) {
+         mme_add_to(&b, x, x, mme_imm(1));
+         mme_add_to(&b, y, y, mme_imm(2));
+         mme_add_to(&b, z, z, mme_imm(3));
+         mme_add_to(&b, i, i, inc);
+      }
+
+      sim->mme_store_data(&b, 0, x);
+      sim->mme_store_data(&b, 1, y);
+      sim->mme_store_data(&b, 2, z);
+      sim->mme_store_data(&b, 3, i);
+
+      auto macro = mme_builder_finish_vec(&b);
+
+      for (unsigned i = 0; i < ARRAY_SIZE(cases); i++) {
+         const uint32_t inc = cases[i];
+         const uint32_t count = cases[ARRAY_SIZE(cases) - i];
+         const uint32_t bound = inc * count;
+
+         std::vector<uint32_t> params;
+         params.push_back(inc);
+         params.push_back(bound);
+
+         expected[0] = count * 1;
+         expected[1] = count * 2;
+         expected[2] = count * 3;
+         expected[3] = count * inc;
+
+         sim->run_macro(macro, params);
+         ASSERT_SIM_DATA(sim);
+      }
+   }
+}

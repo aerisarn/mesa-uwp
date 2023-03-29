@@ -520,12 +520,14 @@ mme_fermi_start_while(struct mme_builder *b)
 
 static void
 mme_fermi_end_while_zero(struct mme_builder *b,
+                         struct mme_cf cf,
                          struct mme_value cond,
                          bool is_zero)
 {
    struct mme_fermi_builder *fb = &b->fermi;
 
-   struct mme_cf cf = mme_fermi_end_cf(b, MME_CF_TYPE_WHILE);
+   if (fb->inst_parts)
+      mme_fermi_new_inst(fb);
 
    int delta = fb->inst_count - cf.start_ip - 2;
    mme_fermi_branch(fb, mme_value_alu_reg(cond), -delta, !is_zero);
@@ -540,13 +542,15 @@ mme_fermi_end_while(struct mme_builder *b,
 {
    assert(op == MME_CMP_OP_EQ);
 
+   struct mme_cf cf = mme_fermi_end_cf(b, MME_CF_TYPE_WHILE);
+
    if (mme_is_zero(x)) {
-      mme_fermi_end_while_zero(b, y, if_true);
+      mme_fermi_end_while_zero(b, cf, y, if_true);
    } else if (mme_is_zero(y)) {
-      mme_fermi_end_while_zero(b, x, if_true);
+      mme_fermi_end_while_zero(b, cf, x, if_true);
    } else {
       struct mme_value tmp = mme_fermi_neq(b, x, y);
-      mme_fermi_end_while_zero(b, tmp, if_true);
+      mme_fermi_end_while_zero(b, cf, tmp, if_true);
       mme_free_reg(b, tmp);
    }
 }
@@ -569,7 +573,7 @@ mme_fermi_end_loop(struct mme_builder *b)
    struct mme_fermi_builder *fb = &b->fermi;
 
    mme_sub_to(b, fb->loop_counter, fb->loop_counter, mme_imm(1));
-   mme_fermi_end_while_zero(b, fb->loop_counter, false);
+   mme_fermi_end_while(b, MME_CMP_OP_EQ, false, fb->loop_counter, mme_zero());
 
    mme_free_reg(b, fb->loop_counter);
    fb->loop_counter = mme_zero();
