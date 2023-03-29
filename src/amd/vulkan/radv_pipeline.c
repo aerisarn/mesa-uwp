@@ -3013,7 +3013,7 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layo
       if (!pipeline_key->optimisations_disabled) {
          NIR_PASS(_, stage->nir, nir_opt_cse);
       }
-      NIR_PASS(_, stage->nir, radv_lower_fs_intrinsics, stage, pipeline_key);
+      NIR_PASS(_, stage->nir, radv_nir_lower_fs_intrinsics, stage, pipeline_key);
    }
 
    enum nir_lower_non_uniform_access_type lower_non_uniform_access_types =
