@@ -1161,7 +1161,7 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
       }
    }
    /* We can do this add after the _mesa_set_adds above because we know the prog->shaders[] are 
-   * referenced by the draw state and zink_shader_free() can't be called on them while we're in here.
+   * referenced by the draw state and zink_gfx_shader_free() can't be called on them while we're in here.
    */
    p_atomic_add(&prog->base.reference.count, refs);
 
@@ -1890,7 +1890,7 @@ zink_delete_cs_shader_state(struct pipe_context *pctx, void *cso)
 void
 zink_delete_shader_state(struct pipe_context *pctx, void *cso)
 {
-   zink_shader_free(zink_screen(pctx->screen), cso);
+   zink_gfx_shader_free(zink_screen(pctx->screen), cso);
 }
 
 void *

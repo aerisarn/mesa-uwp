@@ -80,7 +80,7 @@ char *
 zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr);
 
 void
-zink_shader_free(struct zink_screen *screen, struct zink_shader *shader);
+zink_gfx_shader_free(struct zink_screen *screen, struct zink_shader *shader);
 
 VkShaderModule
 zink_shader_tcs_compile(struct zink_screen *screen, struct zink_shader *zs, unsigned patch_vertices);

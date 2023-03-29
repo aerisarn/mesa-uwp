@@ -4968,7 +4968,7 @@ zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr)
 }
 
 void
-zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
+zink_gfx_shader_free(struct zink_screen *screen, struct zink_shader *shader)
 {
    assert(shader->info.stage != MESA_SHADER_COMPUTE);
    set_foreach(shader->programs, entry) {
@@ -5034,7 +5034,7 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
    if (shader->info.stage == MESA_SHADER_TESS_EVAL &&
        shader->non_fs.generated_tcs) {
       /* automatically destroy generated tcs shaders when tes is destroyed */
-      zink_shader_free(screen, shader->non_fs.generated_tcs);
+      zink_gfx_shader_free(screen, shader->non_fs.generated_tcs);
       shader->non_fs.generated_tcs = NULL;
    }
    for (unsigned int i = 0; i < ARRAY_SIZE(shader->non_fs.generated_gs); i++) {
@@ -5042,7 +5042,7 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
          if (shader->info.stage != MESA_SHADER_FRAGMENT &&
              shader->non_fs.generated_gs[i][j]) {
             /* automatically destroy generated gs shaders when owner is destroyed */
-            zink_shader_free(screen, shader->non_fs.generated_gs[i][j]);
+            zink_gfx_shader_free(screen, shader->non_fs.generated_gs[i][j]);
             shader->non_fs.generated_gs[i][j] = NULL;
          }
       }
