@@ -5176,11 +5176,17 @@ zink_shader_has_cubes(nir_shader *nir)
 }
 
 nir_shader *
+zink_shader_blob_deserialize(struct zink_screen *screen, struct blob *blob)
+{
+   struct blob_reader blob_reader;
+   blob_reader_init(&blob_reader, blob->data, blob->size);
+   return nir_deserialize(NULL, &screen->nir_options, &blob_reader);
+}
+
+nir_shader *
 zink_shader_deserialize(struct zink_screen *screen, struct zink_shader *zs)
 {
-   struct blob_reader blob;
-   blob_reader_init(&blob, zs->blob.data, zs->blob.size);
-   return nir_deserialize(NULL, &screen->nir_options, &blob);
+   return zink_shader_blob_deserialize(screen, &zs->blob);
 }
 
 void
