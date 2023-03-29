@@ -3172,6 +3172,7 @@ static void
 flush_batch(struct zink_context *ctx, bool sync)
 {
    struct zink_batch *batch = &ctx->batch;
+   assert(!ctx->unordered_blitting);
    if (ctx->clears_enabled)
       /* start rp to do all the clears */
       zink_batch_rp(ctx);
@@ -3502,7 +3503,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    ctx->gfx_pipeline_state.rast_samples = rast_samples;
 
    /* this is an ideal time to oom flush since it won't split a renderpass */
-   if (ctx->oom_flush)
+   if (ctx->oom_flush && !ctx->unordered_blitting)
       flush_batch(ctx, false);
    else
       update_layered_rendering_state(ctx);
