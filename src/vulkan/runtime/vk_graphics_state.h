@@ -670,6 +670,9 @@ struct vk_render_pass_state {
     */
    VkPipelineCreateFlags pipeline_flags;
 
+   /* True if any feedback loops only involve input attachments. */
+   bool feedback_loop_input_only;
+
    /** VkPipelineRenderingCreateInfo::colorAttachmentCount */
    uint8_t color_attachment_count;
 
