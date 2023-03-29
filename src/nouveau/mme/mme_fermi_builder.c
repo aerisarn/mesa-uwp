@@ -469,6 +469,23 @@ mme_fermi_end_cf(struct mme_builder *b, enum mme_cf_type type)
    return cf;
 }
 
+static struct mme_value
+mme_fermi_neq(struct mme_builder *b, struct mme_value x, struct mme_value y)
+{
+   struct mme_fermi_builder *fb = &b->fermi;
+
+   /* Generate some value that's non-zero if x != y */
+   struct mme_value res = mme_alloc_reg(b);
+   if (x.type == MME_VALUE_TYPE_IMM && is_int18(-x.imm)) {
+      mme_fermi_add_imm18(fb, res, y, -x.imm);
+   } else if (y.type == MME_VALUE_TYPE_IMM && is_int18(-y.imm)) {
+      mme_fermi_add_imm18(fb, res, x, -y.imm);
+   } else {
+      mme_xor_to(b, res, x, y);
+   }
+   return res;
+}
+
 void
 mme_fermi_start_if(struct mme_builder *b,
                    enum mme_cmp_op op,
@@ -483,7 +500,7 @@ mme_fermi_start_if(struct mme_builder *b,
    } else if (mme_is_zero(y)) {
       mme_fermi_start_cf(b, MME_CF_TYPE_IF, x, if_true);
    } else {
-      struct mme_value tmp = mme_xor(b, x, y);
+      struct mme_value tmp = mme_fermi_neq(b, x, y);
       mme_fermi_start_cf(b, MME_CF_TYPE_IF, tmp, if_true);
       mme_free_reg(b, tmp);
    }
@@ -528,7 +545,7 @@ mme_fermi_end_while(struct mme_builder *b,
    } else if (mme_is_zero(y)) {
       mme_fermi_end_while_zero(b, x, if_true);
    } else {
-      struct mme_value tmp = mme_xor(b, x, y);
+      struct mme_value tmp = mme_fermi_neq(b, x, y);
       mme_fermi_end_while_zero(b, tmp, if_true);
       mme_free_reg(b, tmp);
    }
