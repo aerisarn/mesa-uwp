@@ -303,6 +303,11 @@ static void send_cmd_target_direct(struct radeon_decoder *dec, struct pb_buffer 
                       ((dec->jpg.crop_y << 16) | dec->jpg.crop_x));
          set_reg_jpeg(dec, vcnipUVD_JPEG_ROI_CROP_POS_STRIDE, COND0, TYPE0,
                       ((dec->jpg.crop_height << 16) | dec->jpg.crop_width));
+      } else {
+         set_reg_jpeg(dec, vcnipUVD_JPEG_ROI_CROP_POS_START, COND0, TYPE0,
+                      ((0 << 16) | 0));
+         set_reg_jpeg(dec, vcnipUVD_JPEG_ROI_CROP_POS_STRIDE, COND0, TYPE0,
+                      ((1 << 16) | 1));
       }
       if (format_convert) {
          /* set fc timeout control */
@@ -321,7 +326,8 @@ static void send_cmd_target_direct(struct radeon_decoder *dec, struct pb_buffer 
          set_reg_jpeg(dec, vcnipUVD_JPEG_FC_HUP_COEF_CNTL1, COND0, TYPE0, 384 | (128 << 16));
          set_reg_jpeg(dec, vcnipUVD_JPEG_FC_HUP_COEF_CNTL2, COND0, TYPE0, 128 | (384 << 16));
          set_reg_jpeg(dec, vcnipUVD_JPEG_FC_HUP_COEF_CNTL3, COND0, TYPE0, 384 | (128 << 16));
-      }
+      } else
+         set_reg_jpeg(dec, vcnipUVD_JPEG_FC_SPS_INFO, COND0, TYPE0, 1 | (1 << 5) | (255 << 8));
    }
    set_reg_jpeg(dec, dec->jpg_reg.jpeg_tier_cntl2, COND0, 0, 0);
 
@@ -337,7 +343,7 @@ static void send_cmd_target_direct(struct radeon_decoder *dec, struct pb_buffer 
    val = 0x6;
    if (dec->jpg_reg.version == RDECODE_JPEG_REG_VER_V3) {
       if (dec->jpg.crop_width && dec->jpg.crop_height)
-         val = val | (0x3 << 24);
+         val = val | (0x1 << 24);
       if (format_convert)
          val = val |  (1 << 16) | (1 << 18);
    }
@@ -352,12 +358,8 @@ static void send_cmd_target_direct(struct radeon_decoder *dec, struct pb_buffer 
    set_reg_jpeg(dec, dec->jpg_reg.jrbc_ib_ref_data, COND0, TYPE0, 0xFFFFFFFF);
    set_reg_jpeg(dec, dec->jpg_reg.jpeg_outbuf_wptr, COND3, TYPE3, 0x00000001);
 
-   if (dec->jpg_reg.version == RDECODE_JPEG_REG_VER_V3) {
-      val = 0;
-      if (dec->jpg.crop_width && dec->jpg.crop_height)
-         val = val | (0x1 << 19);
-      if (format_convert)
-         val = val | (0x7 << 16);
+   if (dec->jpg_reg.version == RDECODE_JPEG_REG_VER_V3 && format_convert) {
+      val = val | (0x7 << 16);
       set_reg_jpeg(dec, dec->jpg_reg.jrbc_ib_ref_data, COND0, TYPE0, 0);
       set_reg_jpeg(dec, vcnipUVD_JPEG_INT_STAT, COND3, TYPE3, val);
    }
