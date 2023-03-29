@@ -11910,8 +11910,8 @@ select_rt_prolog(Program* program, ac_shader_config* config,
    bld.sop1(aco_opcode::s_setpc_b64, Operand(out_shader_pc, s2));
 
    program->config->float_mode = program->blocks[0].fp_mode.val;
-   program->config->num_vgprs = get_vgpr_alloc(program, num_sgprs);
-   program->config->num_sgprs = get_sgpr_alloc(program, num_vgprs);
+   program->config->num_vgprs = get_vgpr_alloc(program, num_vgprs);
+   program->config->num_sgprs = get_sgpr_alloc(program, num_sgprs);
 }
 
 void
