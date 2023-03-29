@@ -422,6 +422,9 @@ gather_shader_info_vs(struct radv_device *device, const nir_shader *nir,
       gather_info_input_decl_vs(nir, var->data.location - VERT_ATTRIB_GENERIC0, var->type,
                                 pipeline_key, info);
 
+   if (info->vs.dynamic_inputs)
+      info->vs.vb_desc_usage_mask = BITFIELD_MASK(util_last_bit(info->vs.vb_desc_usage_mask));
+
    /* When the topology is unknown (with GPL), the number of vertices per primitive needs be passed
     * through a user SGPR for NGG streamout with VS. Otherwise, the XFB offset is incorrectly
     * computed because using the maximum number of vertices can't work.
