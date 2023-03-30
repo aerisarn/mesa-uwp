@@ -978,9 +978,23 @@ zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
             continue;
          }
          /* no need to use copy_var to save a lower pass */
-         nir_ssa_def *value = nir_load_array_var(&b, in_vars[j], idx);
-         nir_store_var(&b, out_vars[j], value,
-                       (1u << value->num_components) - 1);
+         nir_deref_instr *deref_var = nir_build_deref_var(&b, in_vars[j]);
+         nir_deref_instr *deref_array = nir_build_deref_array(&b, deref_var, idx);
+         if (glsl_type_is_array(deref_array->type)) {
+            nir_deref_instr *deref_out = nir_build_deref_var(&b, out_vars[j]);
+            for (unsigned k = 0; k < glsl_array_size(deref_array->type); k++) {
+               nir_deref_instr *deref_arr_arr = nir_build_deref_array_imm(&b, deref_array, k);
+               nir_deref_instr *deref_arr_out = nir_build_deref_array_imm(&b, deref_out, k);
+               assert(glsl_type_is_vector_or_scalar(deref_arr_arr->type));
+               nir_ssa_def *value = nir_load_deref(&b, deref_arr_arr);
+               nir_store_deref(&b, deref_arr_out, value,
+                             (1u << value->num_components) - 1);
+            }
+         } else {
+            nir_ssa_def *value = nir_load_deref(&b, deref_array);
+            nir_store_var(&b, out_vars[j], value,
+                        (1u << value->num_components) - 1);
+         }
       }
       nir_emit_vertex(&b, 0);
       if (i == 2)
