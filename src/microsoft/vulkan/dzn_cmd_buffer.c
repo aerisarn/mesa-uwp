@@ -1150,9 +1150,19 @@ dzn_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
          ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &aliasing_barrier);
       }
 
+      VkImageLayout old_layout = ibarrier->oldLayout;
+      VkImageLayout new_layout = ibarrier->newLayout;
+      if ((image->vk.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) &&
+          old_layout == VK_IMAGE_LAYOUT_GENERAL &&
+          (ibarrier->srcAccessMask & VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT))
+         old_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      if ((image->vk.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) &&
+          new_layout == VK_IMAGE_LAYOUT_GENERAL &&
+          (ibarrier->dstAccessMask & VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT))
+         new_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
       dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, range,
-                                                         ibarrier->oldLayout,
-                                                         ibarrier->newLayout,
+                                                         old_layout,
+                                                         new_layout,
                                                          DZN_QUEUE_TRANSITION_FLUSH);
    }
 }
