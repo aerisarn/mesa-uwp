@@ -878,10 +878,12 @@ radv_amdgpu_get_bo_list(struct radv_amdgpu_winsys *ws, struct radeon_cmdbuf **cs
       unsigned total_buffer_count = num_extra_bo;
       num_handles = num_extra_bo;
       for (unsigned i = 0; i < count; ++i) {
-         struct radv_amdgpu_cs *cs = (struct radv_amdgpu_cs *)cs_array[i];
-         total_buffer_count += cs->num_buffers;
-         for (unsigned j = 0; j < cs->num_virtual_buffers; ++j)
-            total_buffer_count += radv_amdgpu_winsys_bo(cs->virtual_buffers[j])->bo_count;
+         struct radv_amdgpu_cs *start_cs = (struct radv_amdgpu_cs *)cs_array[i];
+         for (struct radv_amdgpu_cs *cs = start_cs; cs; cs = cs->chained_to) {
+            total_buffer_count += cs->num_buffers;
+            for (unsigned j = 0; j < cs->num_virtual_buffers; ++j)
+               total_buffer_count += radv_amdgpu_winsys_bo(cs->virtual_buffers[j])->bo_count;
+         }
       }
 
       if (num_extra_cs) {
@@ -904,14 +906,12 @@ radv_amdgpu_get_bo_list(struct radv_amdgpu_winsys *ws, struct radeon_cmdbuf **cs
       }
 
       for (unsigned i = 0; i < count + num_extra_cs; ++i) {
-         struct radv_amdgpu_cs *cs;
+         struct radv_amdgpu_cs *start_cs = i >= count
+                                              ? (struct radv_amdgpu_cs *)extra_cs_array[i - count]
+                                              : (struct radv_amdgpu_cs *)cs_array[i];
 
-         if (i >= count)
-            cs = (struct radv_amdgpu_cs *)extra_cs_array[i - count];
-         else
-            cs = (struct radv_amdgpu_cs *)cs_array[i];
-
-         num_handles = radv_amdgpu_add_cs_to_bo_list(cs, handles, num_handles);
+         for (struct radv_amdgpu_cs *cs = start_cs; cs; cs = cs->chained_to)
+            num_handles = radv_amdgpu_add_cs_to_bo_list(cs, handles, num_handles);
       }
 
       unsigned unique_bo_so_far = num_handles;
@@ -975,7 +975,7 @@ radv_amdgpu_winsys_cs_submit_chained(struct radv_amdgpu_ctx *ctx, int queue_idx,
    u_rwlock_rdlock(&aws->global_bo_list.lock);
 
    /* Get the BO list. */
-   result = radv_amdgpu_get_bo_list(cs0->ws, cs_array, cs_count, NULL, 0, initial_preamble_cs,
+   result = radv_amdgpu_get_bo_list(cs0->ws, cs_array, 1, NULL, 0, initial_preamble_cs,
                                     preamble_count, &num_handles, &handles);
    if (result != VK_SUCCESS)
       goto fail;
