@@ -2074,7 +2074,11 @@ lower_subgroup_id(nir_builder *b, nir_instr *instr, void *data)
       nir_store_deref(b, counter_deref, nir_imm_int(b, 0), 1);
       nir_pop_if(b, nif);
 
-      nir_scoped_memory_barrier(b, NIR_SCOPE_WORKGROUP, NIR_MEMORY_ACQ_REL, nir_var_mem_shared);
+      nir_scoped_barrier(b,
+                         .execution_scope = NIR_SCOPE_WORKGROUP,
+                         .memory_scope = NIR_SCOPE_WORKGROUP,
+                         .memory_semantics = NIR_MEMORY_ACQ_REL,
+                         .memory_modes = nir_var_mem_shared);
 
       nif = nir_push_if(b, nir_elect(b, 1));
       nir_ssa_def *subgroup_id_first_thread = nir_deref_atomic_add(b, 32, &counter_deref->dest.ssa, nir_imm_int(b, 1));
