@@ -508,19 +508,6 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
 
       unsigned size = 4;
       memcpy(util_dynarray_grow_bytes(emission, 1, size), &raw, size);
-
-      {
-         /* This is actually a separate instruction.
-          *
-          *    signal_pix 1, 0
-          *
-          * We don't model this correctly yet, but we should.
-          */
-         uint32_t raw = 0x158;
-         unsigned size = 4;
-         memcpy(util_dynarray_grow_bytes(emission, 1, size), &raw, size);
-      }
-
       break;
    }
 

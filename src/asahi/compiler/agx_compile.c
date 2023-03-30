@@ -423,6 +423,7 @@ agx_write_sample_mask_1(agx_builder *b)
        * TODO: interactions with MSAA and gl_SampleMask writes
        */
       agx_sample_mask(b, agx_immediate(1));
+      agx_signal_pix(b, 1);
       b->shader->did_sample_mask = true;
 
       assert(!(b->shader->nir->info.outputs_written &
@@ -668,7 +669,8 @@ agx_emit_discard(agx_builder *b)
    b->shader->did_writeout = true;
 
    b->shader->out->writes_sample_mask = true;
-   return agx_sample_mask(b, agx_immediate(0));
+   agx_sample_mask(b, agx_immediate(0));
+   return agx_signal_pix(b, 1);
 }
 
 static agx_instr *
