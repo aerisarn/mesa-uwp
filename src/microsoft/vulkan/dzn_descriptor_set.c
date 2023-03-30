@@ -1182,10 +1182,16 @@ dzn_bindless_descriptor_set_write_buffer_desc(struct dzn_device *device,
       if (*info->bindless_descriptor_slot < 0)
          *info->bindless_descriptor_slot =
             dzn_device_descriptor_heap_alloc_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+      uint32_t offset = (info->offset / D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT) * D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT;
+
+      struct dzn_buffer_desc local_info = *info;
+      local_info.offset = offset;
+      info = &local_info;
+
       dzn_descriptor_heap_write_buffer_desc(device, &device->device_heaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].heap,
                                             *info->bindless_descriptor_slot, info->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, info);
       map[desc_offset].buffer_idx = *info->bindless_descriptor_slot;
-      map[desc_offset].buffer_offset = 0;
+      map[desc_offset].buffer_offset = info->offset - offset;
    }
 }
 
@@ -1372,8 +1378,12 @@ dzn_descriptor_set_write_dynamic_buffer_desc(struct dzn_device *device,
          if (*info->bindless_descriptor_slot < 0)
             *info->bindless_descriptor_slot =
             dzn_device_descriptor_heap_alloc_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+         uint32_t offset = (info->offset / D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT) * D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT;
+
+         struct dzn_buffer_desc local_info = *info;
+         local_info.offset = offset;
          dzn_descriptor_heap_write_buffer_desc(device, &device->device_heaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV].heap,
-                                               *info->bindless_descriptor_slot, info->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, info);
+                                               *info->bindless_descriptor_slot, info->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, &local_info);
       }
    }
 
