@@ -2320,6 +2320,8 @@ combine_comparison_ordering(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    if ((prop_cmp1 != prop_nan0 || cmp_valu.opsel[1] != nan_valu.opsel[0]) &&
        (prop_cmp1 != prop_nan1 || cmp_valu.opsel[1] != nan_valu.opsel[1]))
       return false;
+   if (prop_cmp0 == prop_cmp1 && cmp_valu.opsel[0] == cmp_valu.opsel[1])
+      return false;
 
    aco_opcode new_op = is_or ? get_unordered(cmp->opcode) : get_ordered(cmp->opcode);
    VALU_instruction* new_instr = create_instruction<VALU_instruction>(
