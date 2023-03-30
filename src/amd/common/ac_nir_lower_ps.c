@@ -844,4 +844,8 @@ ac_nir_lower_ps(nir_shader *nir, const ac_nir_lower_ps_options *options)
    init_interp_param(b, &state);
 
    export_ps_outputs(b, &state);
+
+   /* Cleanup nir variable, as RADV won't do this. */
+   if (state.lower_load_barycentric)
+      nir_lower_vars_to_ssa(nir);
 }
