@@ -2229,12 +2229,11 @@ export_vertex_params_gfx11(nir_builder *b, nir_ssa_def *export_tid, nir_ssa_def 
       if (exported_params & BITFIELD_BIT(offset))
          continue;
 
-      nir_ssa_def *soffset = nir_iadd_imm(b, attr_offset, offset * 16 * 32);
-
       nir_ssa_def *comp[4];
       for (unsigned j = 0; j < 4; j++)
          comp[j] = outputs[i].chan[j] ? outputs[i].chan[j] : undef;
-      nir_store_buffer_amd(b, nir_vec(b, comp, 4), attr_rsrc, voffset, soffset, vindex,
+      nir_store_buffer_amd(b, nir_vec(b, comp, 4), attr_rsrc, voffset, attr_offset, vindex,
+                           .base = offset * 16,
                            .memory_modes = nir_var_shader_out,
                            .access = ACCESS_COHERENT | ACCESS_IS_SWIZZLED_AMD);
       exported_params |= BITFIELD_BIT(offset);
@@ -3750,10 +3749,11 @@ ms_store_arrayed_output_intrin(nir_builder *b,
        * (Also much better than storing and reloading from the scratch ring.)
        */
       const nir_io_semantics io_sem = nir_intrinsic_io_semantics(intrin);
+      unsigned param_offset = s->vs_output_param_offset[io_sem.location];
       nir_ssa_def *ring = nir_load_ring_attr_amd(b);
       nir_ssa_def *soffset = nir_load_ring_attr_offset_amd(b);
-      soffset = nir_iadd_imm(b, soffset, s->vs_output_param_offset[io_sem.location] * 16 * 32);
-      nir_store_buffer_amd(b, store_val, ring, base_addr_off, soffset, arr_index, .base = const_off,
+      nir_store_buffer_amd(b, store_val, ring, base_addr_off, soffset, arr_index,
+                           .base = const_off + param_offset * 16,
                            .memory_modes = nir_var_shader_out,
                            .access = ACCESS_COHERENT | ACCESS_IS_SWIZZLED_AMD);
    } else if (out_mode == ms_out_mode_var) {
