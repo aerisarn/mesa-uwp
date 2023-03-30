@@ -792,6 +792,54 @@ radv_amdgpu_cs_execute_secondary(struct radeon_cmdbuf *_parent, struct radeon_cm
    }
 }
 
+static unsigned
+radv_amdgpu_add_cs_to_bo_list(struct radv_amdgpu_cs *cs, struct drm_amdgpu_bo_list_entry *handles,
+                              unsigned num_handles)
+{
+   if (!cs->num_buffers)
+      return num_handles;
+
+   if (num_handles == 0 && !cs->num_virtual_buffers) {
+      memcpy(handles, cs->handles, cs->num_buffers * sizeof(struct drm_amdgpu_bo_list_entry));
+      return cs->num_buffers;
+   }
+
+   int unique_bo_so_far = num_handles;
+   for (unsigned j = 0; j < cs->num_buffers; ++j) {
+      bool found = false;
+      for (unsigned k = 0; k < unique_bo_so_far; ++k) {
+         if (handles[k].bo_handle == cs->handles[j].bo_handle) {
+            found = true;
+            break;
+         }
+      }
+      if (!found) {
+         handles[num_handles] = cs->handles[j];
+         ++num_handles;
+      }
+   }
+   for (unsigned j = 0; j < cs->num_virtual_buffers; ++j) {
+      struct radv_amdgpu_winsys_bo *virtual_bo = radv_amdgpu_winsys_bo(cs->virtual_buffers[j]);
+      for (unsigned k = 0; k < virtual_bo->bo_count; ++k) {
+         struct radv_amdgpu_winsys_bo *bo = virtual_bo->bos[k];
+         bool found = false;
+         for (unsigned m = 0; m < num_handles; ++m) {
+            if (handles[m].bo_handle == bo->bo_handle) {
+               found = true;
+               break;
+            }
+         }
+         if (!found) {
+            handles[num_handles].bo_handle = bo->bo_handle;
+            handles[num_handles].bo_priority = bo->priority;
+            ++num_handles;
+         }
+      }
+   }
+
+   return num_handles;
+}
+
 static VkResult
 radv_amdgpu_get_bo_list(struct radv_amdgpu_winsys *ws, struct radeon_cmdbuf **cs_array,
                         unsigned count, struct radv_amdgpu_winsys_bo **extra_bo_array,
@@ -862,47 +910,7 @@ radv_amdgpu_get_bo_list(struct radv_amdgpu_winsys *ws, struct radeon_cmdbuf **cs
          else
             cs = (struct radv_amdgpu_cs *)cs_array[i];
 
-         if (!cs->num_buffers)
-            continue;
-
-         if (num_handles == 0 && !cs->num_virtual_buffers) {
-            memcpy(handles, cs->handles, cs->num_buffers * sizeof(struct drm_amdgpu_bo_list_entry));
-            num_handles = cs->num_buffers;
-            continue;
-         }
-         int unique_bo_so_far = num_handles;
-         for (unsigned j = 0; j < cs->num_buffers; ++j) {
-            bool found = false;
-            for (unsigned k = 0; k < unique_bo_so_far; ++k) {
-               if (handles[k].bo_handle == cs->handles[j].bo_handle) {
-                  found = true;
-                  break;
-               }
-            }
-            if (!found) {
-               handles[num_handles] = cs->handles[j];
-               ++num_handles;
-            }
-         }
-         for (unsigned j = 0; j < cs->num_virtual_buffers; ++j) {
-            struct radv_amdgpu_winsys_bo *virtual_bo =
-               radv_amdgpu_winsys_bo(cs->virtual_buffers[j]);
-            for (unsigned k = 0; k < virtual_bo->bo_count; ++k) {
-               struct radv_amdgpu_winsys_bo *bo = virtual_bo->bos[k];
-               bool found = false;
-               for (unsigned m = 0; m < num_handles; ++m) {
-                  if (handles[m].bo_handle == bo->bo_handle) {
-                     found = true;
-                     break;
-                  }
-               }
-               if (!found) {
-                  handles[num_handles].bo_handle = bo->bo_handle;
-                  handles[num_handles].bo_priority = bo->priority;
-                  ++num_handles;
-               }
-            }
-         }
+         num_handles = radv_amdgpu_add_cs_to_bo_list(cs, handles, num_handles);
       }
 
       unsigned unique_bo_so_far = num_handles;
