@@ -2334,6 +2334,14 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
    int texture_index = instr->texture_index;
    int sampler_index = instr->sampler_index;
 
+   /* If txf is used, we assume there is a valid sampler bound at index 0. Use
+    * it for txf operations, since there may be no other valid samplers. This is
+    * a workaround: txf does not require a sampler in NIR (so sampler_index is
+    * undefined) but we need one in the hardware. This is ABI with the driver.
+    */
+   if (!nir_tex_instr_need_sampler(instr))
+      sampler_index = 0;
+
    nir_alu_type dest_base = nir_alu_type_get_base_type(instr->dest_type);
 
    /* texture instructions support float outmods */
