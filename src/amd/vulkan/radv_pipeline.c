@@ -456,11 +456,7 @@ radv_pipeline_init_multisample_state(const struct radv_device *device,
                                      const struct vk_graphics_pipeline_state *state,
                                      unsigned rast_prim)
 {
-   const struct radv_physical_device *pdevice = device->physical_device;
    struct radv_multisample_state *ms = &pipeline->ms;
-   unsigned num_tile_pipes = pdevice->rad_info.num_tile_pipes;
-   bool out_of_order_rast =
-      state->rs->rasterization_order_amd == VK_RASTERIZATION_ORDER_RELAXED_AMD;
 
    /* From the Vulkan 1.1.129 spec, 26.7. Sample Shading:
     *
@@ -481,24 +477,6 @@ radv_pipeline_init_multisample_state(const struct radv_device *device,
    if (state->ms && state->ms->sample_shading_enable) {
       ms->sample_shading_enable = true;
       ms->min_sample_shading = state->ms->min_sample_shading;
-   }
-
-   pipeline->pa_sc_mode_cntl_1 =
-      S_028A4C_WALK_FENCE_ENABLE(1) | // TODO linear dst fixes
-      S_028A4C_WALK_FENCE_SIZE(num_tile_pipes == 2 ? 2 : 3) |
-      S_028A4C_OUT_OF_ORDER_PRIMITIVE_ENABLE(out_of_order_rast) |
-      S_028A4C_OUT_OF_ORDER_WATER_MARK(0x7) |
-      /* always 1: */
-      S_028A4C_SUPERTILE_WALK_ORDER_ENABLE(1) | S_028A4C_TILE_WALK_ORDER_ENABLE(1) |
-      S_028A4C_MULTI_SHADER_ENGINE_PRIM_DISCARD_ENABLE(1) | S_028A4C_FORCE_EOV_CNTDWN_ENABLE(1) |
-      S_028A4C_FORCE_EOV_REZ_ENABLE(1);
-
-   if (pdevice->rad_info.gfx_level < GFX11 ||
-       !radv_pipeline_uses_vrs_attachment(pCreateInfo, state)) {
-      /* This should only be set when VRS surfaces aren't enabled on GFX11, otherwise the GPU might
-       * hang.
-       */
-      pipeline->pa_sc_mode_cntl_1 |= S_028A4C_WALK_ALIGN8_PRIM_FITS_ST(1);
    }
 
    ms->uses_user_sample_locations = state->ms && state->ms->sample_locations_enable;
@@ -4715,6 +4693,9 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    pipeline->force_vrs_per_vertex =
       pipeline->base.shaders[pipeline->last_vgt_api_stage]->info.force_vrs_per_vertex;
    pipeline->rast_prim = vgt_gs_out_prim_type;
+   pipeline->uses_out_of_order_rast =
+      state.rs->rasterization_order_amd == VK_RASTERIZATION_ORDER_RELAXED_AMD;
+   pipeline->uses_vrs_attachment = radv_pipeline_uses_vrs_attachment(pCreateInfo, &state);
 
    pipeline->base.push_constant_size = pipeline_layout.push_constant_size;
    pipeline->base.dynamic_offset_count = pipeline_layout.dynamic_offset_count;
