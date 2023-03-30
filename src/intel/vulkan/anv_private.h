@@ -4167,7 +4167,7 @@ struct anv_video_session_params {
 };
 
 void
-anv_dump_pipe_bits(enum anv_pipe_bits bits);
+anv_dump_pipe_bits(enum anv_pipe_bits bits, FILE *f);
 
 static inline void
 anv_add_pending_pipe_bits(struct anv_cmd_buffer* cmd_buffer,
@@ -4177,9 +4177,9 @@ anv_add_pending_pipe_bits(struct anv_cmd_buffer* cmd_buffer,
    cmd_buffer->state.pending_pipe_bits |= bits;
    if (INTEL_DEBUG(DEBUG_PIPE_CONTROL) && bits)
    {
-      fputs("pc: add ", stderr);
-      anv_dump_pipe_bits(bits);
-      fprintf(stderr, "reason: %s\n", reason);
+      fputs("pc: add ", stdout);
+      anv_dump_pipe_bits(bits, stdout);
+      fprintf(stdout, "reason: %s\n", reason);
    }
 }
 
