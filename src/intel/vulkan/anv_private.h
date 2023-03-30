@@ -2834,6 +2834,20 @@ anv_cmd_buffer_is_chainable(struct anv_cmd_buffer *cmd_buffer)
             VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
 }
 
+static inline bool
+anv_cmd_buffer_is_render_queue(const struct anv_cmd_buffer *cmd_buffer)
+{
+   struct anv_queue_family *queue_family = cmd_buffer->queue_family;
+   return (queue_family->queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
+}
+
+static inline bool
+anv_cmd_buffer_is_video_queue(const struct anv_cmd_buffer *cmd_buffer)
+{
+   struct anv_queue_family *queue_family = cmd_buffer->queue_family;
+   return (queue_family->queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR) != 0;
+}
+
 VkResult anv_cmd_buffer_init_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer);
 void anv_cmd_buffer_fini_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer);
 void anv_cmd_buffer_reset_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer);
