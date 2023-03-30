@@ -2557,6 +2557,7 @@ radv_emit_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
+   const struct radv_shader *ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
    unsigned rasterization_samples = radv_get_rasterization_samples(cmd_buffer);
    const struct radv_rendering_state *render = &cmd_buffer->state.render;
    unsigned pa_sc_mode_cntl_1 = pipeline->pa_sc_mode_cntl_1;
@@ -2574,6 +2575,16 @@ radv_emit_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
          spi_baryc_cntl |= S_0286E0_POS_FLOAT_LOCATION(2);
          pa_sc_mode_cntl_1 |= S_028A4C_PS_ITER_SAMPLE(1);
       }
+   }
+
+   if (pdevice->rad_info.gfx_level >= GFX10_3 &&
+       (cmd_buffer->state.ms.sample_shading_enable || ps->info.ps.reads_sample_mask_in)) {
+      /* Make sure sample shading is enabled even if only MSAA1x is used because the SAMPLE_ITER
+       * combiner is in passthrough mode if PS_ITER_SAMPLE is 0, and it uses the per-draw rate. The
+       * default VRS rate when sample shading is enabled is 1x1.
+       */
+      if (!G_028A4C_PS_ITER_SAMPLE(pa_sc_mode_cntl_1))
+         pa_sc_mode_cntl_1 |= S_028A4C_PS_ITER_SAMPLE(1);
    }
 
    if (pdevice->rad_info.gfx_level >= GFX11) {
@@ -6408,6 +6419,7 @@ radv_bind_mesh_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_shad
 static void
 radv_bind_fragment_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *ps)
 {
+   const enum amd_gfx_level gfx_level = cmd_buffer->device->physical_device->rad_info.gfx_level;
    const struct radv_shader *previous_ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
    const float min_sample_shading = 1.0f;
 
@@ -6423,6 +6435,10 @@ radv_bind_fragment_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_
    /* Re-emit the conservative rasterization mode because inner coverage is different. */
    if (previous_ps && previous_ps->info.ps.reads_fully_covered != ps->info.ps.reads_fully_covered)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE;
+
+   if (gfx_level >= GFX10_3 &&
+       previous_ps && previous_ps->info.ps.reads_sample_mask_in != ps->info.ps.reads_sample_mask_in)
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
 
    if (cmd_buffer->state.ms.sample_shading_enable != ps->info.ps.uses_sample_shading ||
        cmd_buffer->state.ms.min_sample_shading != min_sample_shading) {
