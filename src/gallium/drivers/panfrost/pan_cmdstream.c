@@ -1604,7 +1604,7 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
       info.tls.ptr = bo->ptr.gpu;
    }
 
-   if (ss->info.wls_size) {
+   if (info.wls.size) {
       unsigned size = pan_wls_adjust_size(info.wls.size) * info.wls.instances *
                       dev->core_id_range;
 
