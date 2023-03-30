@@ -10821,75 +10821,6 @@ visit_cf_list(isel_context* ctx, struct exec_list* list)
    return false;
 }
 
-static bool
-export_fs_mrt_z(isel_context* ctx)
-{
-   Builder bld(ctx->program, ctx->block);
-   unsigned enabled_channels = 0;
-   bool compr = false;
-   Operand values[4];
-
-   for (unsigned i = 0; i < 4; ++i) {
-      values[i] = Operand(v1);
-   }
-
-   bool writes_mrt0_alpha = ctx->program->info.ps.alpha_to_coverage_via_mrtz &&
-                            (ctx->outputs.mask[FRAG_RESULT_DATA0] & 0x8);
-
-   /* Both stencil and sample mask only need 16-bits. */
-   if (!ctx->program->info.ps.writes_z && !writes_mrt0_alpha &&
-       (ctx->program->info.ps.writes_stencil || ctx->program->info.ps.writes_sample_mask)) {
-      compr = ctx->program->gfx_level < GFX11; /* COMPR flag */
-
-      if (ctx->program->info.ps.writes_stencil) {
-         /* Stencil should be in X[23:16]. */
-         values[0] = Operand(ctx->outputs.temps[FRAG_RESULT_STENCIL * 4u]);
-         values[0] = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand::c32(16u), values[0]);
-         enabled_channels |= ctx->program->gfx_level >= GFX11 ? 0x1 : 0x3;
-      }
-
-      if (ctx->program->info.ps.writes_sample_mask) {
-         /* SampleMask should be in Y[15:0]. */
-         values[1] = Operand(ctx->outputs.temps[FRAG_RESULT_SAMPLE_MASK * 4u]);
-         enabled_channels |= ctx->program->gfx_level >= GFX11 ? 0x2 : 0xc;
-      }
-   } else {
-      if (ctx->program->info.ps.writes_z) {
-         values[0] = Operand(ctx->outputs.temps[FRAG_RESULT_DEPTH * 4u]);
-         enabled_channels |= 0x1;
-      }
-
-      if (ctx->program->info.ps.writes_stencil) {
-         values[1] = Operand(ctx->outputs.temps[FRAG_RESULT_STENCIL * 4u]);
-         enabled_channels |= 0x2;
-      }
-
-      if (ctx->program->info.ps.writes_sample_mask) {
-         values[2] = Operand(ctx->outputs.temps[FRAG_RESULT_SAMPLE_MASK * 4u]);
-         enabled_channels |= 0x4;
-      }
-
-      if (writes_mrt0_alpha) {
-         assert(ctx->program->gfx_level >= GFX11);
-         values[3] = Operand(ctx->outputs.temps[FRAG_RESULT_DATA0 * 4u + 3u]);
-         enabled_channels |= 0x8;
-      }
-   }
-
-   /* GFX6 (except OLAND and HAINAN) has a bug that it only looks at the X
-    * writemask component.
-    */
-   if (ctx->options->gfx_level == GFX6 && ctx->options->family != CHIP_OLAND &&
-       ctx->options->family != CHIP_HAINAN) {
-      enabled_channels |= 0x1;
-   }
-
-   bld.exp(aco_opcode::exp, values[0], values[1], values[2], values[3], enabled_channels,
-           V_008DFC_SQ_EXP_MRTZ, compr);
-
-   return true;
-}
-
 struct mrt_color_export {
    int slot;
    unsigned write_mask;
@@ -11157,90 +11088,6 @@ create_fs_jump_to_epilog(isel_context* ctx)
       jump->operands[i + 1] = color_exports[i];
    }
    ctx->block->instructions.emplace_back(std::move(jump));
-}
-
-static void
-create_fs_exports(isel_context* ctx)
-{
-   Builder bld(ctx->program, ctx->block);
-   bool exported = false;
-
-   /* Export depth, stencil and sample mask. */
-   if (ctx->outputs.mask[FRAG_RESULT_DEPTH] || ctx->outputs.mask[FRAG_RESULT_STENCIL] ||
-       ctx->outputs.mask[FRAG_RESULT_SAMPLE_MASK])
-      exported |= export_fs_mrt_z(ctx);
-
-   if (ctx->program->info.ps.has_epilog) {
-      create_fs_jump_to_epilog(ctx);
-
-      /* FS epilogs always have at least one color/null export. */
-      ctx->program->has_color_exports = true;
-   } else {
-      struct aco_export_mrt mrts[8];
-      unsigned compacted_mrt_index = 0;
-
-      /* MRT compaction doesn't work with dual-source blending. Dual-source blending seems to
-       * require MRT0 to be written. Just copy MRT1 into MRT0. Skipping MRT1 exports seems to be
-       * fine.
-       */
-      if (ctx->program->info.ps.epilog.mrt0_is_dual_src && !ctx->outputs.mask[FRAG_RESULT_DATA0] &&
-          ctx->outputs.mask[FRAG_RESULT_DATA1]) {
-         u_foreach_bit (j, ctx->outputs.mask[FRAG_RESULT_DATA1]) {
-            ctx->outputs.temps[FRAG_RESULT_DATA0 * 4u + j] =
-               ctx->outputs.temps[FRAG_RESULT_DATA1 * 4u + j];
-         }
-         ctx->outputs.mask[FRAG_RESULT_DATA0] = ctx->outputs.mask[FRAG_RESULT_DATA1];
-      }
-
-      /* Export all color render targets. */
-      for (unsigned i = FRAG_RESULT_DATA0; i < FRAG_RESULT_DATA7 + 1; ++i) {
-         unsigned idx = i - FRAG_RESULT_DATA0;
-
-         mrts[idx].enabled_channels = 0;
-
-         if (!ctx->outputs.mask[i])
-            continue;
-
-         struct mrt_color_export out = {0};
-
-         out.slot = compacted_mrt_index;
-         out.write_mask = ctx->outputs.mask[i];
-         out.col_format = (ctx->program->info.ps.epilog.spi_shader_col_format >> (4 * idx)) & 0xf;
-         out.is_int8 = (ctx->program->info.ps.epilog.color_is_int8 >> idx) & 1;
-         out.is_int10 = (ctx->program->info.ps.epilog.color_is_int10 >> idx) & 1;
-         out.enable_mrt_output_nan_fixup =
-            (ctx->options->enable_mrt_output_nan_fixup >> idx) & 1;
-
-         for (unsigned c = 0; c < 4; ++c) {
-            if (out.write_mask & (1 << c)) {
-               out.values[c] = Operand(ctx->outputs.temps[i * 4u + c]);
-            } else {
-               out.values[c] = Operand(v1);
-            }
-         }
-
-         if (export_fs_mrt_color(ctx, &out, &mrts[compacted_mrt_index])) {
-            compacted_mrt_index++;
-            exported = true;
-         }
-      }
-
-      if (exported) {
-         if (ctx->options->gfx_level >= GFX11 && ctx->program->info.ps.epilog.mrt0_is_dual_src) {
-            struct aco_export_mrt* mrt0 = mrts[0].enabled_channels ? &mrts[0] : NULL;
-            struct aco_export_mrt* mrt1 = mrts[1].enabled_channels ? &mrts[1] : NULL;
-            create_fs_dual_src_export_gfx11(ctx, mrt0, mrt1);
-         } else {
-            for (unsigned i = 0; i < compacted_mrt_index; i++) {
-               export_mrt(ctx, &mrts[i]);
-            }
-         }
-      } else {
-         create_fs_null_export(ctx);
-      }
-   }
-
-   ctx->block->kind |= block_kind_export_end;
 }
 
 Pseudo_instruction*
@@ -11610,8 +11457,13 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
                   sendmsg_gs_done(false, false, 0));
       }
 
-      if (ctx.stage == fragment_fs) {
-         create_fs_exports(&ctx);
+      if (ctx.stage == fragment_fs && ctx.program->info.ps.has_epilog) {
+         create_fs_jump_to_epilog(&ctx);
+
+         /* FS epilogs always have at least one color/null export. */
+         ctx.program->has_color_exports = true;
+
+         ctx.block->kind |= block_kind_export_end;
       }
 
       if (endif_merged_wave_info) {
