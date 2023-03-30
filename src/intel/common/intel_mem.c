@@ -22,10 +22,19 @@
  */
 
 #include "intel_mem.h"
+#include "util/u_cpu_detect.h"
 
 #include <stdint.h>
 
+#define CACHELINE_SIZE 64
+#define CACHELINE_MASK 63
+
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
+
+#ifdef HAVE___BUILTIN_IA32_CLFLUSHOPT
+void intel_clflushopt_range(void *start, size_t size);
+#endif
+
 static void
 intel_clflush_range(void *start, size_t size)
 {
@@ -41,6 +50,13 @@ intel_clflush_range(void *start, size_t size)
 void
 intel_flush_range_no_fence(void *start, size_t size)
 {
+#ifdef HAVE___BUILTIN_IA32_CLFLUSHOPT
+   const struct util_cpu_caps_t *cpu_caps = util_get_cpu_caps();
+   if (cpu_caps->has_clflushopt) {
+      intel_clflushopt_range(start, size);
+      return;
+   }
+#endif
    intel_clflush_range(start, size);
 }
 
@@ -49,6 +65,11 @@ intel_flush_range(void *start, size_t size)
 {
    __builtin_ia32_mfence();
    intel_flush_range_no_fence(start, size);
+#ifdef HAVE___BUILTIN_IA32_CLFLUSHOPT
+   /* clflushopt doesn't include an mfence like clflush */
+   if (util_get_cpu_caps()->has_clflushopt)
+      __builtin_ia32_mfence();
+#endif
 }
 
 void

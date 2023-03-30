@@ -60,6 +60,19 @@ files_batch_decoder = files(
   'intel_decoder.c',
 )
 
+libintel_common_links = [libisl]
+
+if with_clflushopt
+  libintel_clflushopt = static_library(
+    'intel_clflushopt',
+    ['intel_clflushopt.c'],
+    include_directories : [inc_include, inc_src],
+    c_args : [no_override_init_args] + clflushopt_args,
+    gnu_symbol_visibility : 'hidden',
+  )
+  libintel_common_links += libintel_clflushopt
+endif
+
 batch_decoder_dependencies = []
 if not dep_expat.found()
   files_libintel_common += 'intel_batch_decoder_stub.c'
@@ -74,7 +87,7 @@ libintel_common = static_library(
   include_directories : [inc_include, inc_src, inc_intel],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
-  link_with : [libisl],
+  link_with : libintel_common_links,
   dependencies : [batch_decoder_dependencies, dep_libdrm, dep_thread, idep_genxml, idep_mesautil, idep_intel_dev],
 )
 
