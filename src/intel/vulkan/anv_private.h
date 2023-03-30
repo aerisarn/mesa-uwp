@@ -1000,6 +1000,9 @@ struct anv_physical_device {
     uint8_t                                     device_uuid[VK_UUID_SIZE];
     uint8_t                                     rt_uuid[VK_UUID_SIZE];
 
+    /* Maximum amount of scratch space used by all the GRL kernels */
+    uint32_t                                    max_grl_scratch_size;
+
     struct vk_sync_type                         sync_syncobj_type;
     struct vk_sync_timeline_type                sync_timeline_type;
     const struct vk_sync_type *                 sync_types[4];
