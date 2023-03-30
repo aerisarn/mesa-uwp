@@ -916,14 +916,31 @@ radv_emit_descriptor_pointers(struct radv_device *device, struct radeon_cmdbuf *
    }
 }
 
+static unsigned
+radv_get_rasterization_prim(struct radv_cmd_buffer *cmd_buffer)
+{
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   const struct radv_shader *last_vgt_shader = cmd_buffer->state.last_vgt_shader;
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+
+   if (cmd_buffer->state.active_stages & (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+                                          VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
+                                          VK_SHADER_STAGE_GEOMETRY_BIT |
+                                          VK_SHADER_STAGE_MESH_BIT_EXT)) {
+      /* Ignore dynamic primitive topology for TES/GS/MS stages. */
+      return pipeline->rast_prim;
+   }
+
+   return si_conv_prim_to_gs_out(d->vk.ia.primitive_topology, last_vgt_shader->info.is_ngg);
+}
+
 static ALWAYS_INLINE unsigned
 radv_get_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
    if (d->vk.rs.line.mode == VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT &&
-       radv_rast_prim_is_line(pipeline->rast_prim)) {
+       radv_rast_prim_is_line(radv_get_rasterization_prim(cmd_buffer))) {
       /* From the Vulkan spec 1.3.221:
        *
        * "When Bresenham lines are being rasterized, sample locations may all be treated as being at
@@ -3492,20 +3509,8 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_guardband_state(struct radv_cmd_buffer *cmd_buffer)
 {
-   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   const struct radv_shader *last_vgt_shader = cmd_buffer->state.last_vgt_shader;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
-   unsigned rast_prim;
-
-   if (cmd_buffer->state.active_stages & (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
-                                          VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
-                                          VK_SHADER_STAGE_GEOMETRY_BIT |
-                                          VK_SHADER_STAGE_MESH_BIT_EXT)) {
-      /* Ignore dynamic primitive topology for TES/GS/MS stages. */
-      rast_prim = pipeline->rast_prim;
-   } else {
-      rast_prim = si_conv_prim_to_gs_out(d->vk.ia.primitive_topology, last_vgt_shader->info.is_ngg);
-   }
+   unsigned rast_prim = radv_get_rasterization_prim(cmd_buffer);
 
    si_write_guardband(cmd_buffer->cs, d->vk.vp.viewport_count, d->vk.vp.viewports, rast_prim,
                       d->vk.rs.polygon_mode, d->vk.rs.line.width);
