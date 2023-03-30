@@ -6383,6 +6383,7 @@ static void
 radv_bind_fragment_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *ps)
 {
    const struct radv_shader *previous_ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
+   const float min_sample_shading = 1.0f;
 
    if (ps->info.ps.needs_sample_positions) {
       cmd_buffer->sample_positions_needed = true;
@@ -6397,9 +6398,12 @@ radv_bind_fragment_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_
    if (previous_ps && previous_ps->info.ps.reads_fully_covered != ps->info.ps.reads_fully_covered)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE;
 
-   cmd_buffer->state.ms.sample_shading_enable = ps->info.ps.uses_sample_shading;
-   if (ps->info.ps.uses_sample_shading)
-      cmd_buffer->state.ms.min_sample_shading = 1.0f;
+   if (cmd_buffer->state.ms.sample_shading_enable != ps->info.ps.uses_sample_shading ||
+       cmd_buffer->state.ms.min_sample_shading != min_sample_shading) {
+      cmd_buffer->state.ms.sample_shading_enable = ps->info.ps.uses_sample_shading;
+      cmd_buffer->state.ms.min_sample_shading = min_sample_shading;
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
+   }
 }
 
 static void
