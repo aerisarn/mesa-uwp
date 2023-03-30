@@ -76,7 +76,7 @@ struct radv_amdgpu_cs {
    unsigned max_num_old_ib_buffers;
    unsigned *ib_size_ptr;
    VkResult status;
-   bool is_chained;
+   struct radv_amdgpu_cs *chained_to;
    bool use_ib;
 
    int buffer_hash_table[1024];
@@ -458,7 +458,7 @@ radv_amdgpu_cs_finalize(struct radeon_cmdbuf *_cs)
 
       *cs->ib_size_ptr |= cs->base.cdw;
 
-      cs->is_chained = false;
+      cs->chained_to = NULL;
 
       assert(cs->base.cdw <= cs->base.max_dw + 4);
    }
@@ -514,13 +514,13 @@ radv_amdgpu_cs_unchain(struct radeon_cmdbuf *cs)
 {
    struct radv_amdgpu_cs *acs = radv_amdgpu_cs(cs);
 
-   if (!acs->is_chained)
+   if (!acs->chained_to)
       return;
 
    assert(cs->cdw <= cs->max_dw + 4);
    assert(get_nop_packet(acs) == PKT3_NOP_PAD); /* Other shouldn't chain. */
 
-   acs->is_chained = false;
+   acs->chained_to = NULL;
    cs->buf[cs->cdw - 4] = PKT3_NOP_PAD;
    cs->buf[cs->cdw - 3] = PKT3_NOP_PAD;
    cs->buf[cs->cdw - 2] = PKT3_NOP_PAD;
@@ -549,7 +549,7 @@ radv_amdgpu_cs_chain(struct radeon_cmdbuf *cs, struct radeon_cmdbuf *next_cs, bo
    assert(cs->cdw <= cs->max_dw + 4);
    assert(get_nop_packet(acs) == PKT3_NOP_PAD); /* Other shouldn't chain. */
 
-   acs->is_chained = true;
+   acs->chained_to = next_acs;
 
    cs->buf[cs->cdw - 4] = PKT3(PKT3_INDIRECT_BUFFER_CIK, 2, 0);
    cs->buf[cs->cdw - 3] = next_acs->ib.ib_mc_address;
@@ -862,7 +862,8 @@ radv_amdgpu_get_bo_list(struct radv_amdgpu_winsys *ws, struct radeon_cmdbuf **cs
          num_handles++;
       }
    } else if (count == 1 && !num_extra_bo && !num_extra_cs &&
-              !radv_amdgpu_cs(cs_array[0])->num_virtual_buffers && !ws->global_bo_list.count) {
+              !radv_amdgpu_cs(cs_array[0])->num_virtual_buffers &&
+              !radv_amdgpu_cs(cs_array[0])->chained_to && !ws->global_bo_list.count) {
       struct radv_amdgpu_cs *cs = (struct radv_amdgpu_cs *)cs_array[0];
       if (cs->num_buffers == 0)
          return VK_SUCCESS;
