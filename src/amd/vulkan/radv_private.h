@@ -2046,18 +2046,16 @@ radv_emit_shader_pointer(struct radv_device *device, struct radeon_cmdbuf *cs, u
    radv_emit_shader_pointer_body(device, cs, va, use_32bit_pointers);
 }
 
+static inline unsigned
+vk_to_bind_point(VkPipelineBindPoint bind_point)
+{
+   return bind_point == VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR ? 2 : bind_point;
+}
+
 static inline struct radv_descriptor_state *
 radv_get_descriptors_state(struct radv_cmd_buffer *cmd_buffer, VkPipelineBindPoint bind_point)
 {
-   switch (bind_point) {
-   case VK_PIPELINE_BIND_POINT_GRAPHICS:
-   case VK_PIPELINE_BIND_POINT_COMPUTE:
-      return &cmd_buffer->descriptors[bind_point];
-   case VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR:
-      return &cmd_buffer->descriptors[2];
-   default:
-      unreachable("Unhandled bind point");
-   }
+   return &cmd_buffer->descriptors[vk_to_bind_point(bind_point)];
 }
 
 void
