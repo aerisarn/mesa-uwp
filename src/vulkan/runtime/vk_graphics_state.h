@@ -650,6 +650,13 @@ struct vk_render_pass_state {
    /** VkPipelineRenderingCreateInfo::viewMask */
    uint32_t view_mask;
 
+   /** Render pass flags from VkGraphicsPipelineCreateInfo::flags
+    *
+    * For drivers which use vk_render_pass, this will also include flags
+    * generated based on subpass self-dependencies and fragment density map.
+    */
+   VkPipelineCreateFlags pipeline_flags;
+
    /** VkRenderingSelfDependencyInfoMESA::colorSelfDependencies */
    uint8_t color_self_dependencies;
 
