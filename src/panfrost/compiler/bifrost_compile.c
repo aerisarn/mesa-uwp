@@ -2239,16 +2239,19 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 
    case nir_op_pack_64_2x32:
       bi_collect_v2i32_to(b, dst,
-                          bi_extract(b, bi_src_index(&instr->src[0].src), 0),
-                          bi_extract(b, bi_src_index(&instr->src[0].src), 1));
+                          bi_extract(b, bi_src_index(&instr->src[0].src),
+                                     instr->src[0].swizzle[0]),
+                          bi_extract(b, bi_src_index(&instr->src[0].src),
+                                     instr->src[0].swizzle[1]));
       return;
 
    case nir_op_pack_uvec2_to_uint: {
       bi_index src = bi_src_index(&instr->src[0].src);
 
       assert(sz == 32 && src_sz == 32);
-      bi_mkvec_v2i16_to(b, dst, bi_half(bi_extract(b, src, 0), false),
-                        bi_half(bi_extract(b, src, 1), false));
+      bi_mkvec_v2i16_to(
+         b, dst, bi_half(bi_extract(b, src, instr->src[0].swizzle[0]), false),
+         bi_half(bi_extract(b, src, instr->src[0].swizzle[1]), false));
       return;
    }
 
@@ -2256,10 +2259,11 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
       bi_index src = bi_src_index(&instr->src[0].src);
 
       assert(sz == 32 && src_sz == 32);
-      bi_mkvec_v4i8_to(b, dst, bi_byte(bi_extract(b, src, 0), 0),
-                       bi_byte(bi_extract(b, src, 1), 0),
-                       bi_byte(bi_extract(b, src, 2), 0),
-                       bi_byte(bi_extract(b, src, 3), 0));
+      bi_mkvec_v4i8_to(
+         b, dst, bi_byte(bi_extract(b, src, instr->src[0].swizzle[0]), 0),
+         bi_byte(bi_extract(b, src, instr->src[0].swizzle[1]), 0),
+         bi_byte(bi_extract(b, src, instr->src[0].swizzle[2]), 0),
+         bi_byte(bi_extract(b, src, instr->src[0].swizzle[3]), 0));
       return;
    }
 
