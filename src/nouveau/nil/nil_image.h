@@ -208,6 +208,11 @@ void nil_image_for_level(const struct nil_image *image_in,
                          struct nil_image *level_image_out,
                          uint64_t *offset_B_out);
 
+void nil_image_level_as_uncompressed(const struct nil_image *image_3d,
+                                     uint32_t level,
+                                     struct nil_image *uc_image_out,
+                                     uint64_t *offset_B_out);
+
 void nil_image_3d_level_as_2d_array(const struct nil_image *image_3d,
                                     uint32_t level,
                                     struct nil_image *image_2d_out,

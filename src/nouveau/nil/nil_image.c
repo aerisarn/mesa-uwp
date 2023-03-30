@@ -519,6 +519,40 @@ nil_image_for_level(const struct nil_image *image_in,
    };
 }
 
+static enum pipe_format
+pipe_format_for_bits(uint32_t bits)
+{
+   switch (bits) {
+   case 32:    return PIPE_FORMAT_R32_UINT;
+   case 64:    return PIPE_FORMAT_R32G32_UINT;
+   case 128:   return PIPE_FORMAT_R32G32B32A32_UINT;
+   default:
+      unreachable("No PIPE_FORMAT with this size");
+   }
+}
+
+void
+nil_image_level_as_uncompressed(const struct nil_image *image_in,
+                                uint32_t level,
+                                struct nil_image *uc_image_out,
+                                uint64_t *offset_B_out)
+{
+   assert(image_in->sample_layout == NIL_SAMPLE_LAYOUT_1X1);
+
+   /* Format is arbitrary. Pick one that has the right number of bits. */
+   const enum pipe_format uc_format =
+      pipe_format_for_bits(util_format_get_blocksizebits(image_in->format));
+
+   struct nil_image lvl_image;
+   nil_image_for_level(image_in, level, &lvl_image, offset_B_out);
+
+   *uc_image_out = lvl_image;
+   uc_image_out->format = uc_format;
+   uc_image_out->extent_px =
+      nil_extent4d_px_to_el(lvl_image.extent_px, lvl_image.format,
+                            lvl_image.sample_layout);
+}
+
 void
 nil_image_3d_level_as_2d_array(const struct nil_image *image_3d,
                                uint32_t level,
