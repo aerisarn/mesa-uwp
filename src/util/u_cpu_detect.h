@@ -120,7 +120,7 @@ struct util_cpu_caps_t {
    unsigned has_avx512vl:1;
    unsigned has_avx512vbmi:1;
 
-   unsigned unused:1;
+   unsigned has_clflushopt:1;
 
    unsigned num_L3_caches;
    unsigned num_cpu_mask_bits;

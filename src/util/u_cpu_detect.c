@@ -878,22 +878,25 @@ _util_cpu_detect_once(void)
          if (cacheline > 0)
             util_cpu_caps.cacheline = cacheline;
       }
-      if (util_cpu_caps.has_avx && regs[0] >= 0x00000007) {
+      if (regs[0] >= 0x00000007) {
          uint32_t regs7[4];
          cpuid_count(0x00000007, 0x00000000, regs7);
-         util_cpu_caps.has_avx2 = (regs7[1] >> 5) & 1;
+         util_cpu_caps.has_clflushopt = (regs7[1] >> 23) & 1;
+         if (util_cpu_caps.has_avx) {
+            util_cpu_caps.has_avx2 = (regs7[1] >> 5) & 1;
 
-         // check for avx512
-         if (xgetbv() & (0x7 << 5)) { // OPMASK: upper-256 enabled by OS
-            util_cpu_caps.has_avx512f    = (regs7[1] >> 16) & 1;
-            util_cpu_caps.has_avx512dq   = (regs7[1] >> 17) & 1;
-            util_cpu_caps.has_avx512ifma = (regs7[1] >> 21) & 1;
-            util_cpu_caps.has_avx512pf   = (regs7[1] >> 26) & 1;
-            util_cpu_caps.has_avx512er   = (regs7[1] >> 27) & 1;
-            util_cpu_caps.has_avx512cd   = (regs7[1] >> 28) & 1;
-            util_cpu_caps.has_avx512bw   = (regs7[1] >> 30) & 1;
-            util_cpu_caps.has_avx512vl   = (regs7[1] >> 31) & 1;
-            util_cpu_caps.has_avx512vbmi = (regs7[2] >>  1) & 1;
+            // check for avx512
+            if (xgetbv() & (0x7 << 5)) { // OPMASK: upper-256 enabled by OS
+               util_cpu_caps.has_avx512f    = (regs7[1] >> 16) & 1;
+               util_cpu_caps.has_avx512dq   = (regs7[1] >> 17) & 1;
+               util_cpu_caps.has_avx512ifma = (regs7[1] >> 21) & 1;
+               util_cpu_caps.has_avx512pf   = (regs7[1] >> 26) & 1;
+               util_cpu_caps.has_avx512er   = (regs7[1] >> 27) & 1;
+               util_cpu_caps.has_avx512cd   = (regs7[1] >> 28) & 1;
+               util_cpu_caps.has_avx512bw   = (regs7[1] >> 30) & 1;
+               util_cpu_caps.has_avx512vl   = (regs7[1] >> 31) & 1;
+               util_cpu_caps.has_avx512vbmi = (regs7[2] >>  1) & 1;
+            }
          }
       }
 
@@ -986,6 +989,7 @@ _util_cpu_detect_once(void)
       printf("util_cpu_caps.has_avx512bw = %u\n", util_cpu_caps.has_avx512bw);
       printf("util_cpu_caps.has_avx512vl = %u\n", util_cpu_caps.has_avx512vl);
       printf("util_cpu_caps.has_avx512vbmi = %u\n", util_cpu_caps.has_avx512vbmi);
+      printf("util_cpu_caps.has_clflushopt = %u\n", util_cpu_caps.has_clflushopt);
       printf("util_cpu_caps.num_L3_caches = %u\n", util_cpu_caps.num_L3_caches);
       printf("util_cpu_caps.num_cpu_mask_bits = %u\n", util_cpu_caps.num_cpu_mask_bits);
    }
