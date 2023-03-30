@@ -1136,6 +1136,9 @@ static const driOptionDescription dzn_dri_options[] = {
    DRI_CONF_SECTION_DEBUG
       DRI_CONF_DZN_CLAIM_WIDE_LINES(false)
       DRI_CONF_DZN_ENABLE_8BIT_LOADS_STORES(false)
+      /* Default-disabled because the CTS doesn't check subgroupQuadOperationsInAllStages
+       * and tries to do quad ops in VS/GS which is unsupported. */
+      DRI_CONF_DZN_ENABLE_SUBGROUP_OPS_IN_VTX_PIPELINE(false)
    DRI_CONF_SECTION_END
 };
 
@@ -1586,6 +1589,7 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
                                  VkPhysicalDeviceProperties2 *pProperties)
 {
    VK_FROM_HANDLE(dzn_physical_device, pdevice, physicalDevice);
+   struct dzn_instance *instance = container_of(pdevice->vk.instance, struct dzn_instance, vk);
 
    (void)dzn_physical_device_get_d3d12_dev(pdevice);
 
@@ -1777,9 +1781,9 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
                                      VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT |
                                      VK_SUBGROUP_FEATURE_QUAD_BIT |
                                      VK_SUBGROUP_FEATURE_ARITHMETIC_BIT,
-      /* Note: The CTS doesn't seem to respect the subgroupQuadOperationsInAllStages bit, and it
-       * seems more useful to support quad ops in FS/CS than subgroup ops at all in VS/GS. */
-      .subgroupSupportedStages = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT,
+      .subgroupSupportedStages = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT |
+                                 (driQueryOptionb(&instance->dri_options, "dzn_enable_subgroup_ops_in_vtx_pipeline") ?
+                                    (VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_VERTEX_BIT) : 0),
       .subgroupQuadOperationsInAllStages = false,
       .subgroupSize = pdevice->options1.WaveOps ? pdevice->options1.WaveLaneCountMin : 1,
    };
