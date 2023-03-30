@@ -5221,3 +5221,11 @@ zink_shader_serialize_blob(nir_shader *nir, struct blob *blob)
 #endif
    nir_serialize(blob, nir, strip);
 }
+
+void
+zink_print_shader(struct zink_screen *screen, struct zink_shader *zs, FILE *fp)
+{
+   nir_shader *nir = zink_shader_deserialize(screen, zs);
+   nir_print_shader(nir, fp);
+   ralloc_free(nir);
+}

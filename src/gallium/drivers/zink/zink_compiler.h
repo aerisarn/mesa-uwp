@@ -104,4 +104,6 @@ nir_shader *
 zink_shader_deserialize(struct zink_screen *screen, struct zink_shader *zs);
 void
 zink_shader_serialize_blob(nir_shader *nir, struct blob *blob);
+void
+zink_print_shader(struct zink_screen *screen, struct zink_shader *zs, FILE *fp);
 #endif
