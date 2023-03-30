@@ -439,9 +439,9 @@ agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
    if (b->shader->key->fs.ignore_tib_dependencies) {
       assert(b->shader->nir->info.internal && "only for clear shaders");
    } else if (b->shader->did_writeout) {
-      agx_writeout(b, 0x0004);
+      agx_wait_pix(b, 0x0004);
    } else {
-      agx_writeout(b, 0x000C);
+      agx_wait_pix(b, 0x000C);
    }
 
    agx_write_sample_mask_1(b);
@@ -472,7 +472,7 @@ agx_emit_store_zs(agx_builder *b, nir_intrinsic_instr *instr)
 
    /* TODO: Handle better */
    assert(!b->shader->key->fs.ignore_tib_dependencies && "not used");
-   agx_writeout(b, 0x0001);
+   agx_wait_pix(b, 0x0001);
 
    agx_index z = agx_src_index(&instr->src[1]);
    agx_index s = agx_src_index(&instr->src[2]);
@@ -494,7 +494,7 @@ agx_emit_local_load_pixel(agx_builder *b, agx_index dest,
 {
    /* TODO: Reverse-engineer interactions with MRT */
    assert(!b->shader->key->fs.ignore_tib_dependencies && "invalid usage");
-   agx_writeout(b, 0x0008);
+   agx_wait_pix(b, 0x0008);
    b->shader->did_writeout = true;
    b->shader->out->reads_tib = true;
 
@@ -664,7 +664,7 @@ static agx_instr *
 agx_emit_discard(agx_builder *b)
 {
    assert(!b->shader->key->fs.ignore_tib_dependencies && "invalid usage");
-   agx_writeout(b, 0x0001);
+   agx_wait_pix(b, 0x0001);
    b->shader->did_writeout = true;
 
    b->shader->out->writes_sample_mask = true;
