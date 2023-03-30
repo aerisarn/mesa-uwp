@@ -419,7 +419,6 @@ static bool
 has_bit6_swizzle(int fd)
 {
    struct drm_gem_close close;
-   int ret;
 
    struct drm_i915_gem_create gem_create = {
       .size = 4096,
@@ -435,17 +434,13 @@ has_bit6_swizzle(int fd)
    /* set_tiling overwrites the input on the error path, so we have to open
     * code intel_ioctl.
     */
-   do {
-      struct drm_i915_gem_set_tiling set_tiling = {
-         .handle = gem_create.handle,
-         .tiling_mode = I915_TILING_X,
-         .stride = 512,
-      };
+   struct drm_i915_gem_set_tiling set_tiling = {
+      .handle = gem_create.handle,
+      .tiling_mode = I915_TILING_X,
+      .stride = 512,
+   };
 
-      ret = ioctl(fd, DRM_IOCTL_I915_GEM_SET_TILING, &set_tiling);
-   } while (ret == -1 && (errno == EINTR || errno == EAGAIN));
-
-   if (ret != 0) {
+   if (intel_ioctl(fd, DRM_IOCTL_I915_GEM_SET_TILING, &set_tiling)) {
       unreachable("Failed to set BO tiling");
       goto close_and_return;
    }
