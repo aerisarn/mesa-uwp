@@ -23,6 +23,7 @@
 # util is self contained.
 inc_util = [inc_include, include_directories('..')]
 
+subdir('blake3')
 subdir('format')
 
 files_mesa_util = files(
