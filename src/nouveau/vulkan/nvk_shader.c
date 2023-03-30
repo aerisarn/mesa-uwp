@@ -78,6 +78,8 @@ nvk_physical_device_spirv_options(const struct nvk_physical_device *pdevice,
       .phys_ssbo_addr_format = nir_address_format_64bit_global,
       .ubo_addr_format = nvk_buffer_addr_format(rs->uniform_buffers),
       .shared_addr_format = nir_address_format_32bit_offset,
+      .min_ssbo_alignment = NVK_MIN_SSBO_ALIGNMENT,
+      .min_ubo_alignment = NVK_MIN_UBO_ALIGNMENT,
    };
 }
 
