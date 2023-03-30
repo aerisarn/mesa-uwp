@@ -4324,10 +4324,15 @@ struct anv_vid_mem {
 };
 
 #define ANV_VIDEO_MEM_REQS_H264 4
+#define ANV_VIDEO_MEM_REQS_H265 9
 #define ANV_MB_WIDTH 16
 #define ANV_MB_HEIGHT 16
+#define ANV_VIDEO_H264_MAX_NUM_REF_FRAME 16
+#define ANV_VIDEO_H265_MAX_NUM_REF_FRAME 16
+#define ANV_VIDEO_H265_HCP_NUM_REF_FRAME 8
+#define ANV_MAX_H265_CTB_SIZE 64
 
-enum {
+enum anv_vid_mem_h264_types {
    ANV_VID_MEM_H264_INTRA_ROW_STORE,
    ANV_VID_MEM_H264_DEBLOCK_FILTER_ROW_STORE,
    ANV_VID_MEM_H264_BSD_MPC_ROW_SCRATCH,
@@ -4335,11 +4340,24 @@ enum {
    ANV_VID_MEM_H264_MAX,
 };
 
+enum anv_vid_mem_h265_types {
+   ANV_VID_MEM_H265_DEBLOCK_FILTER_ROW_STORE_LINE,
+   ANV_VID_MEM_H265_DEBLOCK_FILTER_ROW_STORE_TILE_LINE,
+   ANV_VID_MEM_H265_DEBLOCK_FILTER_ROW_STORE_TILE_COLUMN,
+   ANV_VID_MEM_H265_METADATA_LINE,
+   ANV_VID_MEM_H265_METADATA_TILE_LINE,
+   ANV_VID_MEM_H265_METADATA_TILE_COLUMN,
+   ANV_VID_MEM_H265_SAO_LINE,
+   ANV_VID_MEM_H265_SAO_TILE_LINE,
+   ANV_VID_MEM_H265_SAO_TILE_COLUMN,
+   ANV_VID_MEM_H265_MAX,
+};
+
 struct anv_video_session {
    struct vk_video_session vk;
 
    /* the decoder needs some private memory allocations */
-   struct anv_vid_mem vid_mem[ANV_VID_MEM_H264_MAX];
+   struct anv_vid_mem vid_mem[ANV_VID_MEM_H265_MAX];
 };
 
 struct anv_video_session_params {
