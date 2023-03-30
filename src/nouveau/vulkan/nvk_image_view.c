@@ -38,6 +38,19 @@ vk_swizzle_to_pipe(VkComponentSwizzle swizzle)
 }
 
 static void
+image_uncompressed_view(struct nil_image *image,
+                        struct nil_view *view,
+                        uint64_t *base_addr)
+{
+   assert(view->num_levels == 1);
+
+   uint64_t offset_B;
+   nil_image_level_as_uncompressed(image, view->base_level, image, &offset_B);
+   *base_addr += offset_B;
+   view->base_level = 0;
+}
+
+static void
 image_3d_view_as_2d_array(struct nil_image *image,
                           struct nil_view *view,
                           uint64_t *base_addr)
@@ -99,6 +112,10 @@ nvk_image_view_init(struct nvk_device *device,
       },
       .min_lod_clamp = view->vk.min_lod,
    };
+
+   if (util_format_is_compressed(nil_image.format) &&
+       !util_format_is_compressed(nil_view.format))
+      image_uncompressed_view(&nil_image, &nil_view, &base_addr);
 
    if (nil_image.dim == NIL_IMAGE_DIM_3D &&
        nil_view.type != NIL_VIEW_TYPE_3D)
