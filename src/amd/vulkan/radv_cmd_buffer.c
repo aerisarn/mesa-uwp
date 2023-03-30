@@ -8167,11 +8167,14 @@ radv_cs_emit_dispatch_taskmesh_gfx_packet(struct radv_cmd_buffer *cmd_buffer)
    uint32_t ring_entry_reg = ((base_reg + ring_entry_loc->sgpr_idx * 4) - SI_SH_REG_OFFSET) >> 2;
    uint32_t xyz_dim_en = 1; /* TODO: disable XYZ_DIM when unneeded */
    uint32_t mode1_en = 1;   /* legacy fast launch mode */
+   uint32_t linear_dispatch_en =
+      cmd_buffer->state.shaders[MESA_SHADER_TASK]->info.cs.linear_taskmesh_dispatch;
 
    radeon_emit(cs, PKT3(PKT3_DISPATCH_TASKMESH_GFX, 2, predicating));
    radeon_emit(cs, S_4D0_RING_ENTRY_REG(ring_entry_reg) | S_4D0_XYZ_DIM_REG(xyz_dim_reg));
    if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11)
-      radeon_emit(cs, S_4D1_XYZ_DIM_ENABLE(xyz_dim_en) | S_4D1_MODE1_ENABLE(mode1_en));
+      radeon_emit(cs, S_4D1_XYZ_DIM_ENABLE(xyz_dim_en) | S_4D1_MODE1_ENABLE(mode1_en) |
+                         S_4D1_LINEAR_DISPATCH_ENABLE(linear_dispatch_en));
    else
       radeon_emit(cs, 0);
    radeon_emit(cs, V_0287F0_DI_SRC_SEL_AUTO_INDEX);
