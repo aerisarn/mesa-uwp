@@ -2562,7 +2562,7 @@ radv_emit_rasterization_samples(struct radv_cmd_buffer *cmd_buffer)
    unsigned pa_sc_mode_cntl_1 = pipeline->pa_sc_mode_cntl_1;
    const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    unsigned spi_baryc_cntl = S_0286E0_FRONT_FACE_ALL_BITS(1);
-   unsigned db_render_control = pipeline->db_render_control;
+   unsigned db_render_control = cmd_buffer->state.db_render_control;
 
    if (!d->sample_location.count)
       radv_emit_default_sample_locations(cmd_buffer->cs, rasterization_samples);
@@ -6615,6 +6615,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       radv_bind_multisample_state(cmd_buffer, &graphics_pipeline->ms);
 
       cmd_buffer->state.custom_blend_mode = graphics_pipeline->custom_blend_mode;
+      cmd_buffer->state.db_render_control = graphics_pipeline->db_render_control;
 
       cmd_buffer->state.rast_prim = graphics_pipeline->rast_prim;
 

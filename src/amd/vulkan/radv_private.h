@@ -1719,6 +1719,7 @@ struct radv_cmd_state {
 
    /* Custom blend mode for internal operations. */
    unsigned custom_blend_mode;
+   unsigned db_render_control;
 
    unsigned rast_prim;
 
