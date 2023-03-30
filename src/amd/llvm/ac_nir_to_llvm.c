@@ -4971,23 +4971,6 @@ static bool visit_cf_list(struct ac_nir_context *ctx, struct exec_list *list)
    return true;
 }
 
-static void ac_handle_shader_output_decl(struct ac_llvm_context *ctx, struct ac_shader_abi *abi,
-                                         struct nir_shader *nir, struct nir_variable *variable,
-                                         gl_shader_stage stage)
-{
-   unsigned output_loc = variable->data.driver_location;
-   unsigned attrib_count = glsl_count_attribute_slots(variable->type, false);
-   bool is_16bit = glsl_type_is_16bit(glsl_without_array(variable->type));
-   LLVMTypeRef type = is_16bit ? ctx->f16 : ctx->f32;
-   for (unsigned i = 0; i < attrib_count; ++i) {
-      for (unsigned chan = 0; chan < 4; chan++) {
-         int idx = ac_llvm_reg_index_soa(output_loc + i, chan);
-         abi->outputs[idx] = ac_build_alloca_undef(ctx, type, "");
-         abi->is_16bit[idx] = is_16bit;
-      }
-   }
-}
-
 static void setup_scratch(struct ac_nir_context *ctx, struct nir_shader *shader)
 {
    if (shader->scratch_size == 0)
@@ -5077,17 +5060,6 @@ bool ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
    ctx.info = &nir->info;
 
    ctx.main_function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(ctx.ac.builder));
-
-   /* TODO: remove this after RADV switches to lowered IO.
-    *
-    * Only fragment shader still uses store output for RADV.
-    */
-   if (!nir->info.io_lowered && ctx.stage == MESA_SHADER_FRAGMENT) {
-      nir_foreach_shader_out_variable(variable, nir)
-      {
-         ac_handle_shader_output_decl(&ctx.ac, ctx.abi, nir, variable, ctx.stage);
-      }
-   }
 
    ctx.defs = _mesa_hash_table_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
    ctx.phis = _mesa_hash_table_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
