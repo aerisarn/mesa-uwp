@@ -294,7 +294,7 @@ struct radeon_winsys {
    VkResult (*cs_submit)(struct radeon_winsys_ctx *ctx,
                          const struct radv_winsys_submit_info *submits, uint32_t wait_count,
                          const struct vk_sync_wait *waits, uint32_t signal_count,
-                         const struct vk_sync_signal *signals, bool can_patch);
+                         const struct vk_sync_signal *signals);
 
    void (*cs_add_buffer)(struct radeon_cmdbuf *cs, struct radeon_winsys_bo *bo);
 

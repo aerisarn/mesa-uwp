@@ -946,75 +946,6 @@ radv_assign_last_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_reque
 }
 
 static VkResult
-radv_amdgpu_winsys_cs_submit_chained(struct radv_amdgpu_ctx *ctx, int queue_idx,
-                                     struct radv_winsys_sem_info *sem_info,
-                                     struct radeon_cmdbuf **cs_array, unsigned cs_count,
-                                     struct radeon_cmdbuf **initial_preamble_cs,
-                                     unsigned preamble_count, bool uses_shadow_regs)
-{
-   struct radv_amdgpu_cs *cs0 = radv_amdgpu_cs(cs_array[0]);
-   struct radv_amdgpu_winsys *aws = cs0->ws;
-   struct drm_amdgpu_bo_list_entry *handles = NULL;
-   struct radv_amdgpu_cs_request request;
-   struct radv_amdgpu_cs_ib_info ibs[1 + AMD_NUM_IP_TYPES];
-   bool enable_preemption = cs0->hw_ip == AMDGPU_HW_IP_GFX && uses_shadow_regs;
-   unsigned num_handles = 0;
-
-   VkResult result;
-
-   for (unsigned i = cs_count; i--;) {
-      struct radeon_cmdbuf *cmdbuf = cs_array[i];
-
-      radv_amdgpu_cs_unchain(cmdbuf);
-
-      if (i + 1 < cs_count) {
-         radv_amdgpu_cs_chain(cmdbuf, cs_array[i + 1], enable_preemption);
-      }
-   }
-
-   u_rwlock_rdlock(&aws->global_bo_list.lock);
-
-   /* Get the BO list. */
-   result = radv_amdgpu_get_bo_list(cs0->ws, cs_array, 1, NULL, 0, initial_preamble_cs,
-                                    preamble_count, &num_handles, &handles);
-   if (result != VK_SUCCESS)
-      goto fail;
-
-   /* Configure the CS request. */
-   if (initial_preamble_cs) {
-      for (unsigned i = 0; i < preamble_count; ++i) {
-         ibs[i] = radv_amdgpu_cs(initial_preamble_cs[i])->ib;
-      }
-   }
-
-   ibs[preamble_count] = cs0->ib;
-   if (uses_shadow_regs && cs0->hw_ip == AMDGPU_HW_IP_GFX)
-      ibs[preamble_count].flags |= AMDGPU_IB_FLAG_PREEMPT;
-
-   request.ip_type = cs0->hw_ip;
-   request.ip_instance = 0;
-   request.ring = queue_idx;
-   request.number_of_ibs = preamble_count + 1;
-   request.ibs = ibs;
-   request.handles = handles;
-   request.num_handles = num_handles;
-
-   /* Submit the CS. */
-   result = radv_amdgpu_cs_submit(ctx, &request, sem_info);
-
-   free(request.handles);
-
-   if (result != VK_SUCCESS)
-      goto fail;
-
-   radv_assign_last_submit(ctx, &request);
-
-fail:
-   u_rwlock_rdunlock(&aws->global_bo_list.lock);
-   return result;
-}
-
-static VkResult
 radv_amdgpu_winsys_cs_submit_fallback(struct radv_amdgpu_ctx *ctx, int queue_idx,
                                       struct radv_winsys_sem_info *sem_info,
                                       struct radeon_cmdbuf **cs_array, unsigned cs_count,
@@ -1377,7 +1308,7 @@ radv_amdgpu_cs_submit_zero(struct radv_amdgpu_ctx *ctx, enum amd_ip_type ip_type
 static VkResult
 radv_amdgpu_winsys_cs_submit_internal(struct radv_amdgpu_ctx *ctx,
                                       const struct radv_winsys_submit_info *submit,
-                                      struct radv_winsys_sem_info *sem_info, bool can_patch)
+                                      struct radv_winsys_sem_info *sem_info)
 {
    VkResult result;
 
@@ -1389,10 +1320,6 @@ radv_amdgpu_winsys_cs_submit_internal(struct radv_amdgpu_ctx *ctx,
       result = radv_amdgpu_winsys_cs_submit_sysmem(
          ctx, submit->queue_index, sem_info, submit->cs_array, submit->cs_count,
          submit->initial_preamble_cs, submit->continue_preamble_cs, submit->uses_shadow_regs);
-   } else if (can_patch) {
-      result = radv_amdgpu_winsys_cs_submit_chained(
-         ctx, submit->queue_index, sem_info, submit->cs_array, submit->cs_count,
-         submit->initial_preamble_cs, submit->preamble_count, submit->uses_shadow_regs);
    } else {
       result = radv_amdgpu_winsys_cs_submit_fallback(
          ctx, submit->queue_index, sem_info, submit->cs_array, submit->cs_count,
@@ -1406,7 +1333,7 @@ static VkResult
 radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx,
                              const struct radv_winsys_submit_info *submits, uint32_t wait_count,
                              const struct vk_sync_wait *waits, uint32_t signal_count,
-                             const struct vk_sync_signal *signals, bool can_patch)
+                             const struct vk_sync_signal *signals)
 {
    struct radv_amdgpu_ctx *ctx = radv_amdgpu_ctx(_ctx);
    struct radv_amdgpu_winsys *ws = ctx->ws;
@@ -1470,7 +1397,7 @@ radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx,
       .cs_emit_signal = true,
    };
 
-   result = radv_amdgpu_winsys_cs_submit_internal(ctx, &submits[0], &sem_info, can_patch);
+   result = radv_amdgpu_winsys_cs_submit_internal(ctx, &submits[0], &sem_info);
 
 out:
    STACK_ARRAY_FINISH(wait_points);
