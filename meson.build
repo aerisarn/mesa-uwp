@@ -1170,6 +1170,16 @@ if host_machine.cpu_family().startswith('x86')
   endif
 endif
 
+# Detect __builtin_ia32_clflushopt support
+if cc.has_function('__builtin_ia32_clflushopt', args : '-mclflushopt')
+  pre_args += '-DHAVE___BUILTIN_IA32_CLFLUSHOPT'
+  clflushopt_args = ['-mclflushopt']
+  with_clflushopt = true
+else
+  clflushopt_args = []
+  with_clflushopt = false
+endif
+
 # Check for GCC style atomics
 dep_atomic = null_dep
 
