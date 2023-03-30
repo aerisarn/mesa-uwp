@@ -282,6 +282,9 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
    dev->revision = panfrost_query_gpu_revision(fd);
    dev->model = panfrost_get_model(dev->gpu_id);
 
+   if (!dev->kernel_version)
+      return;
+
    /* If we don't recognize the model, bail early */
    if (!dev->model)
       return;
