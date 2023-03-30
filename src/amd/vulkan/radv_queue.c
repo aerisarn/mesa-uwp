@@ -1716,11 +1716,13 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
 
          /* ACE needs to be first because the last CS must match the queue's IP type. */
          if (radv_cmd_buffer_needs_ace(cmd_buffer)) {
+            queue->device->ws->cs_unchain(cmd_buffer->ace_internal.cs);
             cs_array[num_submitted_cs++] = cmd_buffer->ace_internal.cs;
             submit_ace = true;
          }
 
          can_patch &= !(cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
+         queue->device->ws->cs_unchain(cmd_buffer->cs);
          cs_array[num_submitted_cs++] = cmd_buffer->cs;
          cs_idx = num_submitted_cs - 1;
       }

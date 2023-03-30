@@ -1062,7 +1062,6 @@ radv_amdgpu_winsys_cs_submit_fallback(struct radv_amdgpu_ctx *ctx, int queue_idx
       struct radv_amdgpu_cs *cs = radv_amdgpu_cs(cs_array[i]);
 
       ibs[i + preamble_count] = cs->ib;
-      radv_amdgpu_cs_unchain(&cs->base);
 
       if (uses_shadow_regs && cs->ib.ip_type == AMDGPU_HW_IP_GFX)
          cs->ib.flags |= AMDGPU_IB_FLAG_PREEMPT;
