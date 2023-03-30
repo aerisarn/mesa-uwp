@@ -70,8 +70,7 @@ iris_xe_init_batch(struct iris_bufmgr *bufmgr,
 
       instances[count].engine_class = intel_engine_class_to_xe(engine.engine_class);
       instances[count].engine_instance = engine.engine_instance;
-      /* TODO: handle gt_id, MTL and newer platforms will need it */
-      instances[count++].gt_id = 0;
+      instances[count++].gt_id = engine.gt_id;
    }
 
    struct drm_xe_engine_create create = {
