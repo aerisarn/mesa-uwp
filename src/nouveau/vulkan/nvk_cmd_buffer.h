@@ -171,7 +171,7 @@ nvk_cmd_buffer_pool(struct nvk_cmd_buffer *cmd)
 
 void nvk_cmd_buffer_new_push(struct nvk_cmd_buffer *cmd);
 
-#define NVK_CMD_BUFFER_MAX_PUSH 256
+#define NVK_CMD_BUFFER_MAX_PUSH 512
 
 static inline struct nv_push *
 nvk_cmd_buffer_push(struct nvk_cmd_buffer *cmd, uint32_t dw_count)
