@@ -108,6 +108,10 @@ vk_common_CreateRenderPass(VkDevice _device,
          multiview_info = (const VkRenderPassMultiviewCreateInfo*) ext;
          break;
 
+      case VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT:
+         /* pass this through to CreateRenderPass2 */
+         break;
+
       default:
          mesa_logd("%s: ignored VkStructureType %u\n", __func__, ext->sType);
          break;
@@ -822,6 +826,16 @@ vk_common_CreateRenderPass2(VkDevice _device,
       }
    }
 
+   const VkRenderPassFragmentDensityMapCreateInfoEXT *fdm_info =
+      vk_find_struct_const(pCreateInfo->pNext,
+                           RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT);
+   if (fdm_info) {
+      pass->fragment_density_map = fdm_info->fragmentDensityMapAttachment;
+   } else {
+      pass->fragment_density_map.attachment = VK_ATTACHMENT_UNUSED;
+      pass->fragment_density_map.layout = VK_IMAGE_LAYOUT_UNDEFINED;
+   }
+
    *pRenderPass = vk_render_pass_to_handle(pass);
 
    return VK_SUCCESS;
@@ -849,8 +863,12 @@ vk_get_pipeline_rendering_flags(const VkGraphicsPipelineCreateInfo *info)
        VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT);
 
    VK_FROM_HANDLE(vk_render_pass, render_pass, info->renderPass);
-   if (render_pass != NULL)
+   if (render_pass != NULL) {
       rendering_flags |= render_pass->subpasses[info->subpass].pipeline_flags;
+      if (render_pass->fragment_density_map.attachment != VK_ATTACHMENT_UNUSED)
+         rendering_flags |=
+            VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT;
+   }
 
    return rendering_flags;
 }
@@ -1999,6 +2017,8 @@ begin_subpass(struct vk_command_buffer *cmd_buffer,
       max_image_barrier_count += util_bitcount(subpass->view_mask) *
                                  util_bitcount(rp_att->aspects);
    }
+   if (pass->fragment_density_map.attachment != VK_ATTACHMENT_UNUSED)
+      max_image_barrier_count += util_bitcount(subpass->view_mask);
    STACK_ARRAY(VkImageMemoryBarrier2, image_barriers, max_image_barrier_count);
    uint32_t image_barrier_count = 0;
 
@@ -2013,6 +2033,15 @@ begin_subpass(struct vk_command_buffer *cmd_buffer,
       transition_attachment(cmd_buffer, sp_att->attachment,
                             subpass->view_mask,
                             sp_att->layout, sp_att->stencil_layout,
+                            &image_barrier_count,
+                            max_image_barrier_count,
+                            image_barriers);
+   }
+   if (pass->fragment_density_map.attachment != VK_ATTACHMENT_UNUSED) {
+      transition_attachment(cmd_buffer, pass->fragment_density_map.attachment,
+                            subpass->view_mask,
+                            pass->fragment_density_map.layout,
+                            VK_IMAGE_LAYOUT_UNDEFINED,
                             &image_barrier_count,
                             max_image_barrier_count,
                             image_barriers);
@@ -2089,6 +2118,32 @@ begin_subpass(struct vk_command_buffer *cmd_buffer,
             subpass->fragment_shading_rate_attachment_texel_size,
       };
       __vk_append_struct(&rendering, &fsr_attachment);
+   }
+
+   VkRenderingFragmentDensityMapAttachmentInfoEXT fdm_attachment;
+   if (pass->fragment_density_map.attachment != VK_ATTACHMENT_UNUSED) {
+      assert(pass->fragment_density_map.attachment < pass->attachment_count);
+      struct vk_attachment_state *att_state =
+         &cmd_buffer->attachments[pass->fragment_density_map.attachment];
+
+      /* From the Vulkan 1.3.125 spec:
+       *
+       *    VUID-VkRenderPassFragmentDensityMapCreateInfoEXT-fragmentDensityMapAttachment-02550
+       *
+       *    If fragmentDensityMapAttachment is not VK_ATTACHMENT_UNUSED,
+       *    fragmentDensityMapAttachment must reference an attachment with a
+       *    loadOp equal to VK_ATTACHMENT_LOAD_OP_LOAD or
+       *    VK_ATTACHMENT_LOAD_OP_DONT_CARE
+       *
+       * This means we don't have to implement the load op.
+       */
+
+      fdm_attachment = (VkRenderingFragmentDensityMapAttachmentInfoEXT) {
+         .sType = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_INFO_EXT,
+         .imageView = vk_image_view_to_handle(att_state->image_view),
+         .imageLayout = pass->fragment_density_map.layout,
+      };
+      __vk_append_struct(&rendering, &fdm_attachment);
    }
 
    VkSampleLocationsInfoEXT sample_locations_tmp;

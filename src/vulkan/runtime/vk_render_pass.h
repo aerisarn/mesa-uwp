@@ -310,6 +310,9 @@ struct vk_render_pass {
    /** VkRenderPassCreateInfo2::dependencyCount */
    uint32_t dependency_count;
 
+   /** VkRenderPassFragmentDensityMapCreateInfoEXT::fragmentDensityMapAttachment */
+   VkAttachmentReference fragment_density_map;
+
    /** VkRenderPassCreateInfo2::pDependencies */
    struct vk_subpass_dependency *dependencies;
 };
@@ -341,6 +344,7 @@ vk_get_pipeline_rendering_create_info(const VkGraphicsPipelineCreateInfo *info);
  *  - VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT
  *  - VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT
  *  - VK_PIPELINE_CREATE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR
+ *  - VK_PIPELINE_CREATE_RENDERING_FRAGMENT_DENSITY_MAP_ATTACHMENT_BIT_EXT
  *
  * If VkGraphicsPipelineCreateInfo::renderPass is VK_NULL_HANDLE, the relevant
  * flags from VkGraphicsPipelineCreateInfo::flags will be returned.
