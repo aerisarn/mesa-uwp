@@ -1284,6 +1284,23 @@ brw_nir_link_shaders(const struct brw_compiler *compiler,
       NIR_PASS(_, producer, nir_split_var_copies);
       NIR_PASS(_, producer, nir_lower_var_copies);
    }
+
+   if (producer->info.stage == MESA_SHADER_TASK &&
+         consumer->info.stage == MESA_SHADER_MESH &&
+         !consumer->info.mesh.nv) {
+
+      for (unsigned i = 0; i < 3; ++i)
+         assert(producer->info.mesh.ts_mesh_dispatch_dimensions[i] <= UINT16_MAX);
+
+      nir_lower_compute_system_values_options options = {
+            .lower_workgroup_id_to_index = true,
+            .num_workgroups[0] = producer->info.mesh.ts_mesh_dispatch_dimensions[0],
+            .num_workgroups[1] = producer->info.mesh.ts_mesh_dispatch_dimensions[1],
+            .num_workgroups[2] = producer->info.mesh.ts_mesh_dispatch_dimensions[2],
+      };
+
+      NIR_PASS(_, consumer, nir_lower_compute_system_values, &options);
+   }
 }
 
 bool
