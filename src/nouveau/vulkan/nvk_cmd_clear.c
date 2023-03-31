@@ -15,7 +15,7 @@
 void nvk_mme_clear_views(struct mme_builder *b)
 {
    struct mme_value payload = mme_load(b);
-   struct mme_value view_mask = mme_load(b);
+   struct mme_value view_mask = nvk_mme_load_scratch(b, VIEW_MASK);
    struct mme_value bit = mme_mov(b, mme_imm(1));
 
    const uint32_t arr_idx = 1 << DRF_LO(NV9097_CLEAR_SURFACE_RT_ARRAY_INDEX);
@@ -84,7 +84,6 @@ emit_clear_rects(struct nvk_cmd_buffer *cmd,
 
          P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_CLEAR_VIEWS));
          P_INLINE_DATA(p, payload);
-         P_INLINE_DATA(p, render->view_mask);
       } else {
          uint32_t payload;
          V_NV9097_CLEAR_SURFACE(payload, {
