@@ -2061,11 +2061,20 @@ lower_subgroup_id(nir_builder *b, nir_instr *instr, void *data)
    if (intr->intrinsic != nir_intrinsic_load_subgroup_id)
       return false;
 
+   b->cursor = nir_before_block(nir_start_block(b->impl));
+   if (b->shader->info.workgroup_size[1] == 1 &&
+       b->shader->info.workgroup_size[2] == 1) {
+      /* When using Nx1x1 groups, use a simple stable algorithm
+       * which is almost guaranteed to be correct. */
+      nir_ssa_def *subgroup_id = nir_udiv(b, nir_load_local_invocation_index(b), nir_load_subgroup_size(b));
+      nir_ssa_def_rewrite_uses(&intr->dest.ssa, subgroup_id);
+      return true;
+   }
+
    nir_ssa_def **subgroup_id = (nir_ssa_def **)data;
    if (*subgroup_id == NULL) {
       nir_variable *subgroup_id_counter = nir_variable_create(b->shader, nir_var_mem_shared, glsl_uint_type(), "dxil_SubgroupID_counter");
       nir_variable *subgroup_id_local = nir_local_variable_create(b->impl, glsl_uint_type(), "dxil_SubgroupID_local");
-      b->cursor = nir_before_block(nir_start_block(b->impl));
       nir_store_var(b, subgroup_id_local, nir_imm_int(b, 0), 1);
 
       nir_deref_instr *counter_deref = nir_build_deref_var(b, subgroup_id_counter);
