@@ -1071,10 +1071,6 @@ update_separable(struct zink_context *ctx, struct zink_program *pg)
    info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT;
    info.pNext = NULL;
    struct zink_gfx_program *prog = (struct zink_gfx_program *)pg;
-   struct zink_shader *shaders[] = {
-      prog->shaders[MESA_SHADER_VERTEX],
-      prog->shaders[MESA_SHADER_FRAGMENT],
-   };
    size_t db_size = 0;
    for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++) {
       if (prog->shaders[i])
@@ -1087,9 +1083,9 @@ update_separable(struct zink_context *ctx, struct zink_program *pg)
    if (!bs->dd.db_bound)
       zink_batch_bind_db(ctx);
 
-   for (unsigned j = 0; j < pg->num_dsl; j++) {
-      struct zink_shader *zs = shaders[j];
-      if (!zs->precompile.dsl)
+   for (unsigned j = 0; j < ZINK_GFX_SHADER_COUNT; j++) {
+      struct zink_shader *zs = prog->shaders[j];
+      if (!zs || !zs->precompile.dsl)
          continue;
       uint64_t offset = bs->dd.db_offset;
       assert(bs->dd.db->base.b.width0 > bs->dd.db_offset + zs->precompile.db_size);
@@ -1129,7 +1125,8 @@ update_separable(struct zink_context *ctx, struct zink_program *pg)
       }
       bs->dd.cur_db_offset[use_buffer] = bs->dd.db_offset;
       bs->dd.db_offset += zs->precompile.db_size;
-      VKCTX(CmdSetDescriptorBufferOffsetsEXT)(bs->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pg->layout, j, 1, &use_buffer, &offset);
+      int set_idx = j == MESA_SHADER_FRAGMENT;
+      VKCTX(CmdSetDescriptorBufferOffsetsEXT)(bs->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pg->layout, set_idx, 1, &use_buffer, &offset);
    }
 }
 
