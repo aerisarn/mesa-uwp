@@ -1479,8 +1479,7 @@ void genX(CmdCopyQueryPoolResults)(
                                 "CopyQueryPoolResults");
    }
 
-   if ((flags & VK_QUERY_RESULT_WAIT_BIT) ||
-       (cmd_buffer->state.pending_pipe_bits & ANV_PIPE_FLUSH_BITS) ||
+   if ((cmd_buffer->state.pending_pipe_bits & ANV_PIPE_FLUSH_BITS) ||
        /* Occlusion & timestamp queries are written using a PIPE_CONTROL and
         * because we're about to copy values from MI commands, we need to
         * stall the command streamer to make sure the PIPE_CONTROL values have
@@ -1503,6 +1502,17 @@ void genX(CmdCopyQueryPoolResults)(
    struct anv_address dest_addr = anv_address_add(buffer->address, destOffset);
    for (uint32_t i = 0; i < queryCount; i++) {
       struct anv_address query_addr = anv_query_address(pool, firstQuery + i);
+
+      /* Wait for the availability write to land before we go read the data */
+      if (flags & VK_QUERY_RESULT_WAIT_BIT) {
+          anv_batch_emit(&cmd_buffer->batch, GENX(MI_SEMAPHORE_WAIT), sem) {
+             sem.WaitMode            = PollingMode;
+             sem.CompareOperation    = COMPARE_SAD_EQUAL_SDD;
+             sem.SemaphoreDataDword  = true;
+             sem.SemaphoreAddress    = query_addr;
+          }
+      }
+
       uint32_t idx = 0;
       switch (pool->type) {
       case VK_QUERY_TYPE_OCCLUSION:
