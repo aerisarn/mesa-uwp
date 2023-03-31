@@ -1083,31 +1083,32 @@ update_separable(struct zink_context *ctx, struct zink_program *pg)
       zink_batch_bind_db(ctx);
 
    for (unsigned j = 0; j < pg->num_dsl; j++) {
-      if (!shaders[j]->precompile.dsl)
+      struct zink_shader *zs = shaders[j];
+      if (!zs->precompile.dsl)
          continue;
       uint64_t offset = bs->dd.db_offset;
-      assert(bs->dd.db->base.b.width0 > bs->dd.db_offset + shaders[j]->precompile.db_size);
-      for (unsigned i = 0; i < shaders[j]->precompile.num_bindings; i++) {
-         info.type = shaders[j]->precompile.bindings[i].descriptorType;
-         uint64_t desc_offset = offset + shaders[j]->precompile.db_offset[i];
+      assert(bs->dd.db->base.b.width0 > bs->dd.db_offset + zs->precompile.db_size);
+      for (unsigned i = 0; i < zs->precompile.num_bindings; i++) {
+         info.type = zs->precompile.bindings[i].descriptorType;
+         uint64_t desc_offset = offset + zs->precompile.db_offset[i];
          if (screen->info.db_props.combinedImageSamplerDescriptorSingleArray ||
-               shaders[j]->precompile.bindings[i].descriptorType != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
-               shaders[j]->precompile.bindings[i].descriptorCount == 1) {
-            for (unsigned k = 0; k < shaders[j]->precompile.bindings[i].descriptorCount; k++) {
+               zs->precompile.bindings[i].descriptorType != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+               zs->precompile.bindings[i].descriptorCount == 1) {
+            for (unsigned k = 0; k < zs->precompile.bindings[i].descriptorCount; k++) {
                /* VkDescriptorDataEXT is a union of pointers; the member doesn't matter */
-               info.data.pSampler = (void*)(((uint8_t*)ctx) + shaders[j]->precompile.db_template[i].offset + k * shaders[j]->precompile.db_template[i].stride);
-               VKSCR(GetDescriptorEXT)(screen->dev, &info, shaders[j]->precompile.db_template[i].db_size, bs->dd.db_map + desc_offset + k * shaders[j]->precompile.db_template[i].db_size);
+               info.data.pSampler = (void*)(((uint8_t*)ctx) + zs->precompile.db_template[i].offset + k * zs->precompile.db_template[i].stride);
+               VKSCR(GetDescriptorEXT)(screen->dev, &info, zs->precompile.db_template[i].db_size, bs->dd.db_map + desc_offset + k * zs->precompile.db_template[i].db_size);
             }
          } else {
-            assert(shaders[j]->precompile.bindings[i].descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+            assert(zs->precompile.bindings[i].descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
             char buf[1024];
             uint8_t *db = bs->dd.db_map + desc_offset;
-            uint8_t *samplers = db + shaders[j]->precompile.bindings[i].descriptorCount * screen->info.db_props.sampledImageDescriptorSize;
-            for (unsigned k = 0; k < shaders[j]->precompile.bindings[i].descriptorCount; k++) {
+            uint8_t *samplers = db + zs->precompile.bindings[i].descriptorCount * screen->info.db_props.sampledImageDescriptorSize;
+            for (unsigned k = 0; k < zs->precompile.bindings[i].descriptorCount; k++) {
                /* VkDescriptorDataEXT is a union of pointers; the member doesn't matter */
-               info.data.pSampler = (void*)(((uint8_t*)ctx) + shaders[j]->precompile.db_template[i].offset +
-                                             k * shaders[j]->precompile.db_template[i].stride);
-               VKSCR(GetDescriptorEXT)(screen->dev, &info, shaders[j]->precompile.db_template[i].db_size, buf);
+               info.data.pSampler = (void*)(((uint8_t*)ctx) + zs->precompile.db_template[i].offset +
+                                             k * zs->precompile.db_template[i].stride);
+               VKSCR(GetDescriptorEXT)(screen->dev, &info, zs->precompile.db_template[i].db_size, buf);
                /* drivers that don't support combinedImageSamplerDescriptorSingleArray must have sampler arrays written in memory as
                   *
                   *   | array_of_samplers[] | array_of_sampled_images[] |
@@ -1122,7 +1123,7 @@ update_separable(struct zink_context *ctx, struct zink_program *pg)
          }
       }
       bs->dd.cur_db_offset[use_buffer] = bs->dd.db_offset;
-      bs->dd.db_offset += shaders[j]->precompile.db_size;
+      bs->dd.db_offset += zs->precompile.db_size;
       VKCTX(CmdSetDescriptorBufferOffsetsEXT)(bs->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pg->layout, j, 1, &use_buffer, &offset);
    }
 }
