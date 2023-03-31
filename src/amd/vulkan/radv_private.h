@@ -430,6 +430,18 @@ void radv_pipeline_cache_insert(struct radv_device *device, struct vk_pipeline_c
                                 struct radv_shader_part_binary *ps_epilog_binary,
                                 const unsigned char *sha1);
 
+struct vk_pipeline_cache_object *radv_pipeline_cache_search_nir(struct radv_device *device,
+                                                                struct vk_pipeline_cache *cache,
+                                                                const unsigned char *sha1,
+                                                                bool *found_in_application_cache);
+
+struct vk_pipeline_cache_object *
+radv_pipeline_cache_nir_to_handle(struct radv_device *device, struct vk_pipeline_cache *cache,
+                                  struct nir_shader *nir, const unsigned char *sha1, bool cached);
+
+struct nir_shader *radv_pipeline_cache_handle_to_nir(struct radv_device *device,
+                                                     struct vk_pipeline_cache_object *object);
+
 enum radv_blit_ds_layout {
    RADV_BLIT_DS_LAYOUT_TILE_ENABLE,
    RADV_BLIT_DS_LAYOUT_TILE_DISABLE,

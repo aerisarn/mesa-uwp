@@ -21,16 +21,17 @@
  * IN THE SOFTWARE.
  */
 
-#include "util/u_debug.h"
 #include "util/disk_cache.h"
 #include "util/macros.h"
 #include "util/mesa-sha1.h"
 #include "util/u_atomic.h"
+#include "util/u_debug.h"
 #include "vulkan/util/vk_util.h"
+#include "aco_interface.h"
+#include "nir_serialize.h"
 #include "radv_debug.h"
 #include "radv_private.h"
 #include "radv_shader.h"
-#include "aco_interface.h"
 #include "vk_pipeline.h"
 
 static bool
@@ -490,4 +491,75 @@ radv_pipeline_cache_insert(struct radv_device *device, struct vk_pipeline_cache 
    struct vk_pipeline_cache_object *object =
       vk_pipeline_cache_add_object(cache, &pipeline_obj->base);
    vk_pipeline_cache_object_unref(&device->vk, object);
+}
+
+struct vk_pipeline_cache_object *
+radv_pipeline_cache_search_nir(struct radv_device *device, struct vk_pipeline_cache *cache,
+                               const uint8_t *sha1, bool *found_in_application_cache)
+{
+   *found_in_application_cache = false;
+
+   if (radv_is_cache_disabled(device))
+      return NULL;
+
+   if (!cache) {
+      cache = device->mem_cache;
+      found_in_application_cache = NULL;
+   }
+
+   return vk_pipeline_cache_lookup_object(
+      cache, sha1, SHA1_DIGEST_LENGTH, &vk_raw_data_cache_object_ops, found_in_application_cache);
+}
+
+struct nir_shader *
+radv_pipeline_cache_handle_to_nir(struct radv_device *device,
+                                  struct vk_pipeline_cache_object *object)
+{
+   struct blob_reader blob;
+   struct vk_raw_data_cache_object *nir_object =
+      container_of(object, struct vk_raw_data_cache_object, base);
+   blob_reader_init(&blob, nir_object->data, nir_object->data_size);
+   nir_shader *nir = nir_deserialize(NULL, NULL, &blob);
+
+   if (blob.overrun) {
+      ralloc_free(nir);
+      return NULL;
+   }
+   nir->options = &device->physical_device->nir_options[nir->info.stage];
+
+   return nir;
+}
+
+struct vk_pipeline_cache_object *
+radv_pipeline_cache_nir_to_handle(struct radv_device *device, struct vk_pipeline_cache *cache,
+                                  struct nir_shader *nir, const uint8_t *sha1, bool cached)
+{
+   if (!cache)
+      cache = device->mem_cache;
+
+   struct blob blob;
+   blob_init(&blob);
+   nir_serialize(&blob, nir, true);
+
+   if (blob.out_of_memory) {
+      blob_finish(&blob);
+      return NULL;
+   }
+
+   void *data;
+   size_t size;
+   blob_finish_get_buffer(&blob, &data, &size);
+   struct vk_pipeline_cache_object *object;
+
+   if (cached && !radv_is_cache_disabled(device)) {
+      object = vk_pipeline_cache_create_and_insert_object(cache, sha1, SHA1_DIGEST_LENGTH, data,
+                                                          size, &vk_raw_data_cache_object_ops);
+   } else {
+      struct vk_raw_data_cache_object *nir_object =
+         vk_raw_data_cache_object_create(&device->vk, sha1, SHA1_DIGEST_LENGTH, data, size);
+      object = nir_object ? &nir_object->base : NULL;
+   }
+
+   free(data);
+   return object;
 }
