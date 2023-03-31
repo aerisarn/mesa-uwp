@@ -5408,6 +5408,7 @@ typedef struct nir_lower_compute_system_values_options {
    bool lower_local_invocation_index:1;
    bool lower_cs_local_id_to_index:1;
    bool lower_workgroup_id_to_index:1;
+   uint16_t num_workgroups[3]; /* Compile-time-known dispatch sizes, or 0 if unknown. */
 } nir_lower_compute_system_values_options;
 
 bool nir_lower_compute_system_values(nir_shader *shader,

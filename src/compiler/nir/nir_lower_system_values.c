@@ -672,10 +672,18 @@ lower_compute_system_value_instr(nir_builder *b,
       if (options && options->has_base_workgroup_id)
          return nir_iadd(b, nir_u2uN(b, nir_load_workgroup_id_zero_base(b), bit_size),
                             nir_load_base_workgroup_id(b, bit_size));
-      else if (options && options->lower_workgroup_id_to_index)
-         return lower_id_to_index_no_umod(b, nir_load_workgroup_index(b),
+      else if (options && options->lower_workgroup_id_to_index) {
+         nir_ssa_def *wg_idx = nir_load_workgroup_index(b);
+
+         nir_ssa_def *val =
+               try_lower_id_to_index_1d(b, wg_idx, options->num_workgroups);
+         if (val)
+            return val;
+
+         return lower_id_to_index_no_umod(b, wg_idx,
                                           nir_load_num_workgroups(b, bit_size),
                                           bit_size);
+      }
 
       return NULL;
 
