@@ -10365,7 +10365,8 @@ begin_divergent_if_then(isel_context* ctx, if_context* ic, Temp cond,
                                                               Format::PSEUDO_BRANCH, 1, 1));
    branch->definitions[0] = Definition(ctx->program->allocateTmp(s2));
    branch->operands[0] = Operand(cond);
-   branch->selection_control = sel_ctrl;
+   branch->selection_control_remove = sel_ctrl == nir_selection_control_flatten ||
+                                      sel_ctrl == nir_selection_control_divergent_always_taken;
    ctx->block->instructions.push_back(std::move(branch));
 
    ic->BB_if_idx = ctx->block->index;
@@ -10436,7 +10437,8 @@ begin_divergent_if_else(isel_context* ctx, if_context* ic,
    branch.reset(create_instruction<Pseudo_branch_instruction>(aco_opcode::p_branch,
                                                               Format::PSEUDO_BRANCH, 0, 1));
    branch->definitions[0] = Definition(ctx->program->allocateTmp(s2));
-   branch->selection_control = sel_ctrl;
+   branch->selection_control_remove = sel_ctrl == nir_selection_control_flatten ||
+                                      sel_ctrl == nir_selection_control_divergent_always_taken;
    ctx->block->instructions.push_back(std::move(branch));
 
    ic->exec_potentially_empty_discard_old |= ctx->cf_info.exec_potentially_empty_discard;

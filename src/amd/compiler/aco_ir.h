@@ -1664,7 +1664,11 @@ struct Pseudo_branch_instruction : public Instruction {
     * A value of 0 means the target has not been initialized (BB0 cannot be a branch target).
     */
    uint32_t target[2];
-   nir_selection_control selection_control;
+
+   /* Indicates that selection control prefers to remove this instruction if possible.
+    * This is set when the branch is divergent and always taken, or flattened.
+    */
+   bool selection_control_remove;
 };
 static_assert(sizeof(Pseudo_branch_instruction) == sizeof(Instruction) + 12, "Unexpected padding");
 
