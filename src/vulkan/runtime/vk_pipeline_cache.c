@@ -288,11 +288,8 @@ vk_pipeline_cache_object_deserialize(struct vk_pipeline_cache *cache,
    struct vk_pipeline_cache_object *object =
       ops->deserialize(cache, key_data, key_size, &reader);
 
-   if (object == NULL) {
-      vk_logw(VK_LOG_OBJS(cache),
-              "Deserializing pipeline cache object failed");
+   if (object == NULL)
       return NULL;
-   }
 
    assert(reader.current == reader.end && !reader.overrun);
    assert(object->ops == ops);
@@ -406,6 +403,9 @@ vk_pipeline_cache_lookup_object(struct vk_pipeline_cache *cache,
                                               data_obj->data,
                                               data_obj->data_size, ops);
       if (real_object == NULL) {
+         vk_logw(VK_LOG_OBJS(cache),
+           "Deserializing pipeline cache object failed");
+
          vk_pipeline_cache_remove_object(cache, hash, object);
          return NULL;
       }
@@ -597,8 +597,11 @@ vk_pipeline_cache_load(struct vk_pipeline_cache *cache,
          vk_pipeline_cache_create_and_insert_object(cache, key_data, key_size,
                                                     data, data_size, ops);
 
-      if (object == NULL)
+      if (object == NULL) {
+         vk_logw(VK_LOG_OBJS(cache),
+                 "Failed to load pipeline cache object");
          continue;
+      }
 
       vk_pipeline_cache_object_unref(cache->base.device, object);
    }
