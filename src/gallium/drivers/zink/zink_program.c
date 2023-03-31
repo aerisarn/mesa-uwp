@@ -1129,16 +1129,24 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    unsigned shader_stages = BITFIELD_BIT(MESA_SHADER_VERTEX) | BITFIELD_BIT(MESA_SHADER_FRAGMENT);
+   bool is_separate = true;
+   for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++)
+      is_separate &= !stages[i] || stages[i]->info.separate_shader;
    /* filter cases that need real pipelines */
    if (ctx->shader_stages != shader_stages ||
-       !stages[MESA_SHADER_VERTEX]->precompile.obj.mod || !stages[MESA_SHADER_FRAGMENT]->precompile.obj.mod ||
+       !is_separate ||
        /* TODO: maybe try variants? grimace */
        !ZINK_SHADER_KEY_OPTIMAL_IS_DEFAULT(ctx->gfx_pipeline_state.optimal_key) ||
        !zink_can_use_pipeline_libs(ctx))
       return zink_create_gfx_program(ctx, stages, vertices_per_patch, ctx->gfx_hash);
-   /* ensure async gpl creation is done */
-   util_queue_fence_wait(&stages[MESA_SHADER_VERTEX]->precompile.fence);
-   util_queue_fence_wait(&stages[MESA_SHADER_FRAGMENT]->precompile.fence);
+   for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++) {
+      /* ensure async shader creation is done */
+      if (stages[i]) {
+         util_queue_fence_wait(&stages[i]->precompile.fence);
+         if (!stages[i]->precompile.obj.mod)
+            return zink_create_gfx_program(ctx, stages, vertices_per_patch, ctx->gfx_hash);
+      }
+   }
 
    struct zink_gfx_program *prog = create_program(ctx, false);
    if (!prog)
