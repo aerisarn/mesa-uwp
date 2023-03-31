@@ -4519,11 +4519,18 @@ dzn_rendering_attachment_initial_transition(struct dzn_cmd_buffer *cmdbuf,
          access_before = D3D12_BARRIER_ACCESS_NO_ACCESS;
       }
 
+      D3D12_BARRIER_LAYOUT layout_before = dzn_vk_layout_to_d3d_layout(initial_layout->initialLayout, cmdbuf->type, aspect);
+      D3D12_BARRIER_LAYOUT layout_after = dzn_vk_layout_to_d3d_layout(att->imageLayout, cmdbuf->type, aspect);
+      if (image->desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS) {
+         layout_before = D3D12_BARRIER_LAYOUT_UNDEFINED;
+         layout_after = D3D12_BARRIER_LAYOUT_UNDEFINED;
+      }
+
       dzn_cmd_buffer_image_barrier(cmdbuf, image,
                                    sync_before, D3D12_BARRIER_SYNC_DRAW,
                                    access_before, D3D12_BARRIER_ACCESS_COMMON,
-                                   dzn_vk_layout_to_d3d_layout(initial_layout->initialLayout, cmdbuf->type, aspect),
-                                   dzn_vk_layout_to_d3d_layout(att->imageLayout, cmdbuf->type, aspect),
+                                   layout_before,
+                                   layout_after,
                                    &range);
    } else {
       dzn_cmd_buffer_queue_image_range_layout_transition(cmdbuf, image, &range,
