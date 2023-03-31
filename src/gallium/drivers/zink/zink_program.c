@@ -147,7 +147,7 @@ create_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *scr
    if (!zm) {
       return NULL;
    }
-   unsigned patch_vertices = state->shader_keys.key[MESA_SHADER_TESS_CTRL ].key.tcs.patch_vertices;
+   unsigned patch_vertices = state->shader_keys.key[MESA_SHADER_TESS_CTRL].key.tcs.patch_vertices;
    if (stage == MESA_SHADER_TESS_CTRL && zs->non_fs.is_generated && zs->spirv) {
       assert(ctx); //TODO async
       struct zink_shader_object obj = zink_shader_tcs_compile(screen, zs, patch_vertices);
