@@ -124,6 +124,7 @@ EXTENSIONS = [
               properties=True),
     Extension("VK_EXT_memory_budget"),
     Extension("VK_KHR_draw_indirect_count"),
+    Extension("VK_EXT_shader_object", alias="shobj", features=True, properties=True),
     Extension("VK_EXT_attachment_feedback_loop_layout",
               alias="feedback_loop",
               features=True),
