@@ -3408,7 +3408,7 @@ invert_point_coord(nir_shader *nir)
    return nir_shader_instructions_pass(nir, invert_point_coord_instr, nir_metadata_dominance, NULL);
 }
 
-static VkShaderModule
+static struct zink_shader_object
 compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *nir)
 {
    VkShaderModule mod = VK_NULL_HANDLE;
@@ -3426,14 +3426,14 @@ compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *n
       zs->spirv = spirv;
    else
       ralloc_free(spirv);
-   return mod;
+   struct zink_shader_object obj = {.mod = mod};
+   return obj;
 }
 
 VkShaderModule
 zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
                     nir_shader *nir, const struct zink_shader_key *key, const void *extra_data)
 {
-   VkShaderModule mod = VK_NULL_HANDLE;
    struct zink_shader_info *sinfo = &zs->sinfo;
    bool need_optimize = false;
    bool inlined_uniforms = false;
@@ -3624,9 +3624,9 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
    } else if (need_optimize)
       optimize_nir(nir, zs);
    
-   mod = compile_module(screen, zs, nir);
+   struct zink_shader_object obj = compile_module(screen, zs, nir);
    ralloc_free(nir);
-   return mod;
+   return obj.mod;
 }
 
 struct zink_shader_object
@@ -3658,9 +3658,8 @@ zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
       }
    }
    optimize_nir(nir, zs);
-   VkShaderModule mod = compile_module(screen, zs, nir);
+   struct zink_shader_object obj = compile_module(screen, zs, nir);
    ralloc_free(nir);
-   struct zink_shader_object obj = {.mod = mod};
    return obj;
 }
 
