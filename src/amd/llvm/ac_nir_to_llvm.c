@@ -1601,8 +1601,10 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_te
       break;
    case nir_texop_tg4:
       args->opcode = ac_image_gather4;
-      if (!args->lod && !args->bias)
+      if (!args->lod && !instr->is_gather_implicit_lod)
          args->level_zero = true;
+      /* GFX11 supports implicit LOD, but the extension is unsupported. */
+      assert(args->level_zero || ctx->ac.gfx_level < GFX11);
       break;
    case nir_texop_lod:
       args->opcode = ac_image_get_lod;
