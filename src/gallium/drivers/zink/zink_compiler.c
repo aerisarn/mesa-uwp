@@ -3215,14 +3215,14 @@ zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, st
    sci.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
    sci.stage = mesa_to_vk_shader_stage(zs->info.stage);
    if (sci.stage != VK_SHADER_STAGE_FRAGMENT_BIT)
-      sci.nextStage = VK_SHADER_STAGE_FRAGMENT_BIT;
+      sci.nextStage = VK_SHADER_STAGE_ALL_GRAPHICS & ~VK_SHADER_STAGE_VERTEX_BIT;
    sci.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
    sci.codeSize = spirv->num_words * sizeof(uint32_t);
    sci.pCode = spirv->words;
    sci.pName = "main";
-   sci.setLayoutCount = 2;
-   VkDescriptorSetLayout dsl[2] = {0};
-   dsl[zs->info.stage == MESA_SHADER_FRAGMENT] = zs->precompile.dsl;
+   sci.setLayoutCount = zs->info.stage + 1;
+   VkDescriptorSetLayout dsl[ZINK_GFX_SHADER_COUNT] = {0};
+   dsl[zs->info.stage] = zs->precompile.dsl;;
    sci.pSetLayouts = dsl;
    VkPushConstantRange pcr;
    pcr.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
@@ -3748,7 +3748,10 @@ struct zink_shader_object
 zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
 {
    nir_shader *nir = zink_shader_deserialize(screen, zs);
-   int set = nir->info.stage == MESA_SHADER_FRAGMENT;
+   /* TODO: maybe compile multiple variants for different set counts for compact mode? */
+   int set = zs->info.stage == MESA_SHADER_FRAGMENT;
+   if (screen->info.have_EXT_shader_object)
+      set = zs->info.stage;
    unsigned offsets[4];
    zink_descriptor_shader_get_binding_offsets(zs, offsets);
    nir_foreach_variable_with_modes(var, nir, nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_uniform | nir_var_image) {
@@ -3779,7 +3782,17 @@ zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
    }
    optimize_nir(nir, zs);
    zink_descriptor_shader_init(screen, zs);
+   zs->sinfo.last_vertex = zs->sinfo.have_xfb;
    struct zink_shader_object obj = compile_module(screen, zs, nir, true);
+   /* always try to pre-generate a tcs in case it's needed */
+   if (zs->info.stage == MESA_SHADER_TESS_EVAL && screen->info.have_EXT_shader_object && !zs->info.internal) {
+      nir_shader *nir_tcs = NULL;
+      /* use max pcp for compat */
+      zs->non_fs.generated_tcs = zink_shader_tcs_create(screen, nir, 32, &nir_tcs);
+      nir_tcs->info.separate_shader = true;
+      zs->non_fs.generated_tcs->precompile.obj = zink_shader_compile_separate(screen, zs->non_fs.generated_tcs);
+      ralloc_free(nir_tcs);
+   }
    ralloc_free(nir);
    return obj;
 }

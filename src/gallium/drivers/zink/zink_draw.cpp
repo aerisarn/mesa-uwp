@@ -290,6 +290,7 @@ update_gfx_pipeline(struct zink_context *ctx, struct zink_batch_state *bs, enum 
          /* always rebind all stages */
          VKCTX(CmdBindShadersEXT)(bs->cmdbuf, ZINK_GFX_SHADER_COUNT, stages, ctx->curr_program->objects);
          VKCTX(CmdSetDepthBiasEnable)(bs->cmdbuf, VK_TRUE);
+         pipeline_changed = false;
       }
       ctx->shobj_draw = true;
    } else {

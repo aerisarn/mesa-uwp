@@ -280,6 +280,9 @@ disk_cache_init(struct zink_screen *screen)
     */
    _mesa_sha1_update(&ctx, &screen->driconf, sizeof(screen->driconf));
 
+   /* EXT_shader_object causes different descriptor layouts for separate shaders */
+   _mesa_sha1_update(&ctx, &screen->info.have_EXT_shader_object, sizeof(screen->info.have_EXT_shader_object));
+
    /* Finish the sha1 and format it as text. */
    unsigned char sha1[20];
    _mesa_sha1_final(&ctx, sha1);
@@ -2404,6 +2407,10 @@ init_driver_workarounds(struct zink_screen *screen)
    default:
       break;
    }
+   /* TODO: maybe compile multiple variants for different set counts for compact mode? */
+   if (screen->info.props.limits.maxBoundDescriptorSets < ZINK_DESCRIPTOR_ALL_TYPES ||
+       zink_debug & ZINK_DEBUG_COMPACT)
+      screen->info.have_EXT_shader_object = false;
    if (screen->info.line_rast_feats.stippledRectangularLines &&
        screen->info.line_rast_feats.stippledBresenhamLines &&
        screen->info.line_rast_feats.stippledSmoothLines &&

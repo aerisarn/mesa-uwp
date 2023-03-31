@@ -1132,13 +1132,11 @@ struct zink_gfx_program *
 create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stages, unsigned vertices_per_patch)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   unsigned shader_stages = BITFIELD_BIT(MESA_SHADER_VERTEX) | BITFIELD_BIT(MESA_SHADER_FRAGMENT);
    bool is_separate = true;
    for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++)
       is_separate &= !stages[i] || stages[i]->info.separate_shader;
    /* filter cases that need real pipelines */
-   if (ctx->shader_stages != shader_stages ||
-       !is_separate ||
+   if (!is_separate ||
        /* TODO: maybe try variants? grimace */
        !ZINK_SHADER_KEY_OPTIMAL_IS_DEFAULT(ctx->gfx_pipeline_state.optimal_key) ||
        !zink_can_use_pipeline_libs(ctx))
@@ -1164,6 +1162,11 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
    memcpy(prog->shaders, stages, sizeof(prog->shaders));
    prog->last_vertex_stage = ctx->last_vertex_stage;
 
+   if (stages[MESA_SHADER_TESS_EVAL] && !stages[MESA_SHADER_TESS_CTRL]) {
+      prog->shaders[MESA_SHADER_TESS_CTRL] = stages[MESA_SHADER_VERTEX]->non_fs.generated_tcs;
+      prog->stages_present |= BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
+   }
+
    if (!screen->info.have_EXT_shader_object) {
       prog->libs = create_lib_cache(prog, false);
       /* this libs cache is owned by the program */
@@ -1177,7 +1180,7 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
          _mesa_set_add(prog->shaders[i]->programs, prog);
          simple_mtx_unlock(&prog->shaders[i]->lock);
          if (screen->info.have_EXT_shader_object) {
-            prog->objects[i] = stages[i]->precompile.obj.obj;
+            prog->objects[i] = prog->shaders[i]->precompile.obj.obj;
          }
          refs++;
       }
@@ -1200,7 +1203,7 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
    for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
       if (!prog->shaders[i] || !prog->shaders[i]->precompile.dsl)
          continue;
-      int idx = !i ? 0 : 1;
+      int idx = !i ? 0 : screen->info.have_EXT_shader_object ? i : 1;
       prog->base.dd.binding_usage |= BITFIELD_BIT(idx);
       prog->base.dsl[idx] = prog->shaders[i]->precompile.dsl;
       /* guarantee a null dsl if previous stages don't have descriptors */
@@ -2119,7 +2122,8 @@ zink_create_gfx_shader_state(struct pipe_context *pctx, const struct pipe_shader
    void *ret = zink_shader_create(zink_screen(pctx->screen), nir, &shader->stream_output);
 
    if (nir->info.separate_shader && zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB &&
-       (screen->info.have_EXT_graphics_pipeline_library && (nir->info.stage == MESA_SHADER_FRAGMENT || nir->info.stage == MESA_SHADER_VERTEX))) {
+       (screen->info.have_EXT_shader_object ||
+       (screen->info.have_EXT_graphics_pipeline_library && (nir->info.stage == MESA_SHADER_FRAGMENT || nir->info.stage == MESA_SHADER_VERTEX)))) {
       struct zink_shader *zs = ret;
       /* sample shading can't precompile */
       if (nir->info.stage != MESA_SHADER_FRAGMENT || !nir->info.fs.uses_sample_shading)

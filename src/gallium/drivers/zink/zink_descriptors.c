@@ -1125,7 +1125,8 @@ update_separable(struct zink_context *ctx, struct zink_program *pg)
       }
       bs->dd.cur_db_offset[use_buffer] = bs->dd.db_offset;
       bs->dd.db_offset += zs->precompile.db_size;
-      int set_idx = j == MESA_SHADER_FRAGMENT;
+      /* TODO: maybe compile multiple variants for different set counts for compact mode? */
+      int set_idx = screen->info.have_EXT_shader_object ? j : j == MESA_SHADER_FRAGMENT;
       VKCTX(CmdSetDescriptorBufferOffsetsEXT)(bs->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pg->layout, set_idx, 1, &use_buffer, &offset);
    }
 }
