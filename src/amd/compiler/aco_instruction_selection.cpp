@@ -9359,6 +9359,9 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       }
    }
 
+   if (instr->op == nir_texop_tg4 && !has_lod && !instr->is_gather_implicit_lod)
+      level_zero = true;
+
    if (has_offset) {
       assert(instr->op != nir_texop_txf);
 
@@ -9809,15 +9812,22 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
    }
 
    if (instr->op == nir_texop_tg4) {
+      /* GFX11 supports implicit LOD, but the extension is unsupported. */
+      assert(level_zero || ctx->options->gfx_level < GFX11);
+
       if (has_offset) { /* image_gather4_*_o */
          if (has_compare) {
-            opcode = aco_opcode::image_gather4_c_lz_o;
+            opcode = aco_opcode::image_gather4_c_o;
+            if (level_zero)
+               opcode = aco_opcode::image_gather4_c_lz_o;
             if (has_lod)
                opcode = aco_opcode::image_gather4_c_l_o;
             if (has_bias)
                opcode = aco_opcode::image_gather4_c_b_o;
          } else {
-            opcode = aco_opcode::image_gather4_lz_o;
+            opcode = aco_opcode::image_gather4_o;
+            if (level_zero)
+               opcode = aco_opcode::image_gather4_lz_o;
             if (has_lod)
                opcode = aco_opcode::image_gather4_l_o;
             if (has_bias)
@@ -9825,13 +9835,17 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
          }
       } else {
          if (has_compare) {
-            opcode = aco_opcode::image_gather4_c_lz;
+            opcode = aco_opcode::image_gather4_c;
+            if (level_zero)
+               opcode = aco_opcode::image_gather4_c_lz;
             if (has_lod)
                opcode = aco_opcode::image_gather4_c_l;
             if (has_bias)
                opcode = aco_opcode::image_gather4_c_b;
          } else {
-            opcode = aco_opcode::image_gather4_lz;
+            opcode = aco_opcode::image_gather4;
+            if (level_zero)
+               opcode = aco_opcode::image_gather4_lz;
             if (has_lod)
                opcode = aco_opcode::image_gather4_l;
             if (has_bias)
