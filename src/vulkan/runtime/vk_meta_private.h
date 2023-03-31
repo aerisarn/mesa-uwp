@@ -34,7 +34,11 @@ extern const VkPipelineVertexInputStateCreateInfo vk_meta_draw_rects_vi_state;
 extern const VkPipelineInputAssemblyStateCreateInfo vk_meta_draw_rects_ia_state;
 extern const VkPipelineViewportStateCreateInfo vk_meta_draw_rects_vs_state;
 
-struct nir_shader *vk_meta_draw_rects_vs_nir(struct vk_meta_device *device);
+struct nir_shader *
+vk_meta_draw_rects_vs_nir(struct vk_meta_device *device, bool use_gs);
+
+struct nir_shader *
+vk_meta_draw_rects_gs_nir(struct vk_meta_device *device);
 
 static inline void
 vk_meta_rendering_info_copy(struct vk_meta_rendering_info *dst,

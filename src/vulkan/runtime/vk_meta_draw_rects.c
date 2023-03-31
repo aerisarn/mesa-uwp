@@ -59,7 +59,7 @@ const VkPipelineViewportStateCreateInfo vk_meta_draw_rects_vs_state = {
 };
 
 nir_shader *
-vk_meta_draw_rects_vs_nir(struct vk_meta_device *device)
+vk_meta_draw_rects_vs_nir(struct vk_meta_device *device, bool use_gs)
 {
    nir_builder build = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, NULL,
                                                       "vk-meta-draw-rects-vs");
@@ -69,13 +69,15 @@ vk_meta_draw_rects_vs_nir(struct vk_meta_device *device)
                                           glsl_uvec4_type(), "vtx_in");
    in->data.location = VERT_ATTRIB_GENERIC0;
 
-   nir_variable *pos = nir_variable_create(b->shader, nir_var_shader_out,
-                                           glsl_vec4_type(), "gl_Position");
-   pos->data.location = VARYING_SLOT_POS;
+   nir_variable *pos =
+      nir_variable_create(b->shader, nir_var_shader_out, glsl_vec4_type(),
+                          use_gs ? "pos_out" : "gl_Position");
+   pos->data.location = use_gs ? VARYING_SLOT_VAR0 : VARYING_SLOT_POS;
 
-   nir_variable *layer = nir_variable_create(b->shader, nir_var_shader_out,
-                                             glsl_int_type(), "gl_Layer");
-   layer->data.location = VARYING_SLOT_LAYER;
+   nir_variable *layer =
+      nir_variable_create(b->shader, nir_var_shader_out, glsl_int_type(),
+                          use_gs ? "layer_out" : "gl_Layer");
+   layer->data.location = use_gs ? VARYING_SLOT_VAR1 : VARYING_SLOT_LAYER;
 
    nir_ssa_def *vtx = nir_load_var(b, in);
    nir_store_var(b, pos, nir_vec4(b, nir_channel(b, vtx, 0),
@@ -83,9 +85,62 @@ vk_meta_draw_rects_vs_nir(struct vk_meta_device *device)
                                      nir_channel(b, vtx, 2),
                                      nir_imm_float(b, 1)),
                  0xf);
+
    nir_store_var(b, layer, nir_iadd(b, nir_load_instance_id(b),
                                        nir_channel(b, vtx, 3)),
                  0x1);
+
+   return b->shader;
+}
+
+nir_shader *
+vk_meta_draw_rects_gs_nir(struct vk_meta_device *device)
+{
+   nir_builder build =
+      nir_builder_init_simple_shader(MESA_SHADER_GEOMETRY, NULL,
+                                     "vk-meta-draw-rects-gs");
+   nir_builder *b = &build;
+
+   nir_variable *pos_in =
+      nir_variable_create(b->shader, nir_var_shader_in,
+                          glsl_array_type(glsl_vec4_type(), 3, 0), "pos_in");
+   pos_in->data.location = VARYING_SLOT_VAR0;
+
+   nir_variable *layer_in =
+      nir_variable_create(b->shader, nir_var_shader_in,
+                          glsl_array_type(glsl_int_type(), 3, 0), "layer_in");
+   layer_in->data.location = VARYING_SLOT_VAR1;
+
+   nir_variable *pos_out =
+      nir_variable_create(b->shader, nir_var_shader_out,
+                          glsl_vec4_type(), "gl_Position");
+   pos_out->data.location = VARYING_SLOT_POS;
+
+   nir_variable *layer_out =
+      nir_variable_create(b->shader, nir_var_shader_out,
+                          glsl_int_type(), "gl_Layer");
+   layer_out->data.location = VARYING_SLOT_LAYER;
+
+   for (unsigned i = 0; i < 3; i++) {
+      nir_deref_instr *pos_in_deref =
+         nir_build_deref_array_imm(b, nir_build_deref_var(b, pos_in), i);
+      nir_deref_instr *layer_in_deref =
+         nir_build_deref_array_imm(b, nir_build_deref_var(b, layer_in), i);
+
+      nir_store_var(b, pos_out, nir_load_deref(b, pos_in_deref), 0xf);
+      nir_store_var(b, layer_out, nir_load_deref(b, layer_in_deref), 1);
+      nir_emit_vertex(b);
+   }
+
+   nir_end_primitive(b);
+
+   struct shader_info *info = &build.shader->info;
+   info->gs.input_primitive = MESA_PRIM_TRIANGLES;
+   info->gs.output_primitive = MESA_PRIM_TRIANGLE_STRIP;
+   info->gs.vertices_in = 3;
+   info->gs.vertices_out = 3;
+   info->gs.invocations = 1;
+   info->gs.active_stream_mask = 1;
 
    return b->shader;
 }

@@ -276,24 +276,46 @@ create_rect_list_pipeline(struct vk_device *device,
 
    VkGraphicsPipelineCreateInfo info_local = *info;
 
-   STACK_ARRAY(VkPipelineShaderStageCreateInfo, stages, info->stageCount + 1);
-   for (uint32_t i = 0; i < info->stageCount; i++) {
-      assert(info->pStages[i].stage != VK_SHADER_STAGE_VERTEX_BIT);
-      stages[i + 1] = info->pStages[i];
-   }
+   /* We always configure for layered rendering for now */
+   bool use_gs = meta->use_gs_for_layer;
+
+   STACK_ARRAY(VkPipelineShaderStageCreateInfo, stages,
+               info->stageCount + 1 + use_gs);
+   uint32_t stage_count = 0;
 
    VkPipelineShaderStageNirCreateInfoMESA vs_nir_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_NIR_CREATE_INFO_MESA,
-      .nir = vk_meta_draw_rects_vs_nir(meta),
+      .nir = vk_meta_draw_rects_vs_nir(meta, use_gs),
    };
-   stages[0] = (VkPipelineShaderStageCreateInfo) {
+   stages[stage_count++] = (VkPipelineShaderStageCreateInfo) {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
       .pNext = &vs_nir_info,
       .stage = VK_SHADER_STAGE_VERTEX_BIT,
       .pName = "main",
    };
 
-   info_local.stageCount = info->stageCount + 1;
+   VkPipelineShaderStageNirCreateInfoMESA gs_nir_info;
+   if (use_gs) {
+      gs_nir_info = (VkPipelineShaderStageNirCreateInfoMESA) {
+         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_NIR_CREATE_INFO_MESA,
+         .nir = vk_meta_draw_rects_gs_nir(meta),
+      };
+      stages[stage_count++] = (VkPipelineShaderStageCreateInfo) {
+         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+         .pNext = &gs_nir_info,
+         .stage = VK_SHADER_STAGE_GEOMETRY_BIT,
+         .pName = "main",
+      };
+   }
+
+   for (uint32_t i = 0; i < info->stageCount; i++) {
+      assert(info->pStages[i].stage != VK_SHADER_STAGE_VERTEX_BIT);
+      if (use_gs)
+         assert(info->pStages[i].stage != VK_SHADER_STAGE_GEOMETRY_BIT);
+      stages[stage_count++] = info->pStages[i];
+   }
+
+   info_local.stageCount = stage_count;
    info_local.pStages = stages;
    info_local.pVertexInputState = &vk_meta_draw_rects_vi_state;
    info_local.pViewportState = &vk_meta_draw_rects_vs_state;
