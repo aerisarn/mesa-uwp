@@ -6,8 +6,7 @@
 struct nv_device_info;
 
 enum nvk_mme {
-   NVK_MME_CLEAR_VIEWS,
-   NVK_MME_CLEAR_LAYERS,
+   NVK_MME_CLEAR,
    NVK_MME_DRAW,
    NVK_MME_DRAW_INDEXED,
    NVK_MME_DRAW_INDIRECT,
@@ -105,8 +104,7 @@ uint32_t *nvk_build_mme(const struct nv_device_info *devinfo,
 
 void nvk_test_build_all_mmes(const struct nv_device_info *devinfo);
 
-void nvk_mme_clear_views(struct mme_builder *b);
-void nvk_mme_clear_layers(struct mme_builder *b);
+void nvk_mme_clear(struct mme_builder *b);
 void nvk_mme_draw(struct mme_builder *b);
 void nvk_mme_draw_indexed(struct mme_builder *b);
 void nvk_mme_draw_indirect(struct mme_builder *b);

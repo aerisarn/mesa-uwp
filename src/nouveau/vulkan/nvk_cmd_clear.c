@@ -12,38 +12,42 @@
 #include "nvk_cl9097.h"
 #include "drf.h"
 
-void nvk_mme_clear_views(struct mme_builder *b)
+void nvk_mme_clear(struct mme_builder *b)
 {
    struct mme_value payload = mme_load(b);
    struct mme_value view_mask = nvk_mme_load_scratch(b, VIEW_MASK);
-   struct mme_value bit = mme_mov(b, mme_imm(1));
 
    const uint32_t arr_idx = 1 << DRF_LO(NV9097_CLEAR_SURFACE_RT_ARRAY_INDEX);
 
-   mme_loop(b, mme_imm(32)) {
-      mme_if(b, ine, mme_and(b, view_mask, bit), mme_zero()) {
+   mme_if(b, ine, view_mask, mme_zero()) {
+      struct mme_value bit = mme_mov(b, mme_imm(1));
+
+      mme_loop(b, mme_imm(32)) {
+         mme_if(b, ine, mme_and(b, view_mask, bit), mme_zero()) {
+            mme_mthd(b, NV9097_CLEAR_SURFACE);
+            mme_emit(b, payload);
+         }
+
+         mme_add_to(b, payload, payload, mme_imm(arr_idx));
+         mme_sll_to(b, bit, bit, mme_imm(1));
+      }
+      mme_free_reg(b, bit);
+   }
+
+   mme_if(b, ieq, view_mask, mme_zero()) {
+      struct mme_value layer_count = mme_load(b);
+
+      mme_loop(b, layer_count) {
          mme_mthd(b, NV9097_CLEAR_SURFACE);
          mme_emit(b, payload);
+
+         mme_add_to(b, payload, payload, mme_imm(arr_idx));
       }
-
-      mme_add_to(b, payload, payload, mme_imm(arr_idx));
-      mme_sll_to(b, bit, bit, mme_imm(1));
+      mme_free_reg(b, layer_count);
    }
-}
 
-void nvk_mme_clear_layers(struct mme_builder *b)
-{
-   struct mme_value payload = mme_load(b);
-   struct mme_value layer_count = mme_load(b);
-
-   const uint32_t arr_idx = 1 << DRF_LO(NV9097_CLEAR_SURFACE_RT_ARRAY_INDEX);
-
-   mme_loop(b, layer_count) {
-      mme_mthd(b, NV9097_CLEAR_SURFACE);
-      mme_emit(b, payload);
-
-      mme_add_to(b, payload, payload, mme_imm(arr_idx));
-   }
+   mme_free_reg(b, payload);
+   mme_free_reg(b, view_mask);
 }
 
 static void
@@ -69,36 +73,21 @@ emit_clear_rects(struct nvk_cmd_buffer *cmd,
          .ymax = rects[r].rect.offset.y + rects[r].rect.extent.height,
       });
 
-      if (render->view_mask) {
-         uint32_t payload;
-         V_NV9097_CLEAR_SURFACE(payload, {
-            .z_enable       = clear_depth,
-            .stencil_enable = clear_stencil,
-            .r_enable       = color_att >= 0,
-            .g_enable       = color_att >= 0,
-            .b_enable       = color_att >= 0,
-            .a_enable       = color_att >= 0,
-            .mrt_select     = color_att >= 0 ? color_att : 0,
-            .rt_array_index = rects[r].baseArrayLayer,
-         });
+      uint32_t payload;
+      V_NV9097_CLEAR_SURFACE(payload, {
+         .z_enable       = clear_depth,
+         .stencil_enable = clear_stencil,
+         .r_enable       = color_att >= 0,
+         .g_enable       = color_att >= 0,
+         .b_enable       = color_att >= 0,
+         .a_enable       = color_att >= 0,
+         .mrt_select     = color_att >= 0 ? color_att : 0,
+         .rt_array_index = rects[r].baseArrayLayer,
+      });
 
-         P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_CLEAR_VIEWS));
-         P_INLINE_DATA(p, payload);
-      } else {
-         uint32_t payload;
-         V_NV9097_CLEAR_SURFACE(payload, {
-            .z_enable       = clear_depth,
-            .stencil_enable = clear_stencil,
-            .r_enable       = color_att >= 0,
-            .g_enable       = color_att >= 0,
-            .b_enable       = color_att >= 0,
-            .a_enable       = color_att >= 0,
-            .mrt_select     = color_att >= 0 ? color_att : 0,
-            .rt_array_index = rects[r].baseArrayLayer,
-         });
-
-         P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_CLEAR_LAYERS));
-         P_INLINE_DATA(p, payload);
+      P_1INC(p, NV9097, CALL_MME_MACRO(NVK_MME_CLEAR));
+      P_INLINE_DATA(p, payload);
+      if (render->view_mask == 0) {
          P_INLINE_DATA(p, rects[r].layerCount);
       }
    }
