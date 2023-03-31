@@ -5408,6 +5408,10 @@ typedef struct nir_lower_compute_system_values_options {
    bool lower_local_invocation_index:1;
    bool lower_cs_local_id_to_index:1;
    bool lower_workgroup_id_to_index:1;
+   /* At shader execution time, check if WorkGroupId should be 1D
+    * and compute it quickly. Fall back to slow computation if not.
+    */
+   bool shortcut_1d_workgroup_id:1;
    uint16_t num_workgroups[3]; /* Compile-time-known dispatch sizes, or 0 if unknown. */
 } nir_lower_compute_system_values_options;
 
