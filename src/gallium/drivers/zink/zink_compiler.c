@@ -3105,7 +3105,7 @@ zink_shader_dump(void *words, size_t size, const char *file)
 }
 
 static struct zink_shader_object
-zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, struct spirv_shader *spirv)
+zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, struct spirv_shader *spirv, bool separate)
 {
    VkShaderModuleCreateInfo smci = {0};
 
@@ -3409,7 +3409,7 @@ invert_point_coord(nir_shader *nir)
 }
 
 static struct zink_shader_object
-compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *nir)
+compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *nir, bool separate)
 {
    struct zink_shader_info *sinfo = &zs->sinfo;
    prune_io(nir);
@@ -3419,7 +3419,7 @@ compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *n
    struct zink_shader_object obj;
    struct spirv_shader *spirv = nir_to_spirv(nir, sinfo, screen->spirv_version);
    if (spirv)
-      obj = zink_shader_spirv_compile(screen, zs, spirv);
+      obj = zink_shader_spirv_compile(screen, zs, spirv, separate);
 
    /* TODO: determine if there's any reason to cache spirv output? */
    if (zs->info.stage == MESA_SHADER_TESS_CTRL && zs->non_fs.is_generated)
@@ -3623,7 +3623,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
    } else if (need_optimize)
       optimize_nir(nir, zs);
    
-   struct zink_shader_object obj = compile_module(screen, zs, nir);
+   struct zink_shader_object obj = compile_module(screen, zs, nir, false);
    ralloc_free(nir);
    return obj.mod;
 }
@@ -3658,7 +3658,7 @@ zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
    }
    optimize_nir(nir, zs);
    zink_descriptor_shader_init(screen, zs);
-   struct zink_shader_object obj = compile_module(screen, zs, nir);
+   struct zink_shader_object obj = compile_module(screen, zs, nir, true);
    ralloc_free(nir);
    return obj;
 }
@@ -5078,7 +5078,7 @@ zink_shader_tcs_compile(struct zink_screen *screen, struct zink_shader *zs, unsi
    assert(zs->info.stage == MESA_SHADER_TESS_CTRL);
    /* shortcut all the nir passes since we just have to change this one word */
    zs->spirv->words[zs->spirv->tcs_vertices_out_word] = patch_vertices;
-   return zink_shader_spirv_compile(screen, zs, NULL);
+   return zink_shader_spirv_compile(screen, zs, NULL, false);
 }
 
 /* creating a passthrough tcs shader that's roughly:
