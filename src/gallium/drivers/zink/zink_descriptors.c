@@ -1075,8 +1075,13 @@ update_separable(struct zink_context *ctx, struct zink_program *pg)
       prog->shaders[MESA_SHADER_VERTEX],
       prog->shaders[MESA_SHADER_FRAGMENT],
    };
+   size_t db_size = 0;
+   for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++) {
+      if (prog->shaders[i])
+         db_size += prog->shaders[i]->precompile.db_size;
+   }
 
-   if (bs->dd.db_offset + shaders[0]->precompile.db_size + shaders[1]->precompile.db_size >= bs->dd.db->base.b.width0)
+   if (bs->dd.db_offset + db_size >= bs->dd.db->base.b.width0)
       enlarge_db(ctx);
 
    if (!bs->dd.db_bound)
