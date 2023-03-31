@@ -1297,6 +1297,8 @@ brw_nir_link_shaders(const struct brw_compiler *compiler,
             .num_workgroups[0] = producer->info.mesh.ts_mesh_dispatch_dimensions[0],
             .num_workgroups[1] = producer->info.mesh.ts_mesh_dispatch_dimensions[1],
             .num_workgroups[2] = producer->info.mesh.ts_mesh_dispatch_dimensions[2],
+            /* nir_lower_idiv generates expensive code */
+            .shortcut_1d_workgroup_id = compiler->devinfo->verx10 >= 125,
       };
 
       NIR_PASS(_, consumer, nir_lower_compute_system_values, &options);
