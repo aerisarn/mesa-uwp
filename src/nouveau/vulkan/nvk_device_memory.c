@@ -190,22 +190,22 @@ nvk_FreeMemory(VkDevice _device,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-nvk_MapMemory(VkDevice _device,
-              VkDeviceMemory _memory,
-              VkDeviceSize offset,
-              VkDeviceSize size,
-              VkMemoryMapFlags flags,
-              void **ppData)
+nvk_MapMemory2KHR(VkDevice _device,
+                  const VkMemoryMapInfoKHR *pMemoryMapInfo,
+                  void **ppData)
 {
    VK_FROM_HANDLE(nvk_device, device, _device);
-   VK_FROM_HANDLE(nvk_device_memory, mem, _memory);
+   VK_FROM_HANDLE(nvk_device_memory, mem, pMemoryMapInfo->memory);
 
    if (mem == NULL) {
       *ppData = NULL;
       return VK_SUCCESS;
    }
 
-   size = vk_device_memory_range(&mem->vk, offset, size);
+   const VkDeviceSize offset = pMemoryMapInfo->offset;
+   const VkDeviceSize size =
+      vk_device_memory_range(&mem->vk, pMemoryMapInfo->offset,
+                                       pMemoryMapInfo->size);
 
    /* From the Vulkan spec version 1.0.32 docs for MapMemory:
     *
@@ -243,17 +243,19 @@ nvk_MapMemory(VkDevice _device,
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR void VKAPI_CALL
-nvk_UnmapMemory(VkDevice _device,
-                VkDeviceMemory _memory)
+VKAPI_ATTR VkResult VKAPI_CALL
+nvk_UnmapMemory2KHR(VkDevice _device,
+                    const VkMemoryUnmapInfoKHR *pMemoryUnmapInfo)
 {
-   VK_FROM_HANDLE(nvk_device_memory, mem, _memory);
+   VK_FROM_HANDLE(nvk_device_memory, mem, pMemoryUnmapInfo->memory);
 
    if (mem == NULL)
-      return;
+      return VK_SUCCESS;
 
    nouveau_ws_bo_unmap(mem->bo, mem->map);
    mem->map = NULL;
+
+   return VK_SUCCESS;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
