@@ -1606,6 +1606,7 @@ struct radv_cmd_state {
    struct radv_shader *shaders[MESA_VULKAN_SHADER_STAGES];
    struct radv_shader *gs_copy_shader;
    struct radv_shader *last_vgt_shader;
+   struct radv_shader *rt_prolog;
 
    uint32_t prefetch_L2_mask;
 
