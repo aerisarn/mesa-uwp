@@ -1098,6 +1098,8 @@ RADV driver environment variables
       disable fast color/depthstencil clears
    ``nofmask``
       disable FMASK compression on MSAA images (GFX6-GFX10.3)
+   ``nogpl``
+      disable VK_EXT_graphics_pipeline_library
    ``nohiz``
       disable HIZ for depthstencil images
    ``noibs``
@@ -1170,8 +1172,6 @@ RADV driver environment variables
       rt extensions with older hardware.
    ``gewave32``
       enable wave32 for vertex/tess/geometry shaders (GFX10+)
-   ``gpl``
-      enable graphics pipeline library
    ``localbos``
       enable local BOs
    ``nosam``
