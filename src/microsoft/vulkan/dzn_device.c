@@ -50,6 +50,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <c99_alloca.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -2001,11 +2002,13 @@ dzn_queue_submit(struct vk_queue *q,
          return result;
    }
 
+   ID3D12CommandList **cmdlists = alloca(info->command_buffer_count * sizeof(ID3D12CommandList*));
+
    for (uint32_t i = 0; i < info->command_buffer_count; i++) {
       struct dzn_cmd_buffer *cmd_buffer =
          container_of(info->command_buffers[i], struct dzn_cmd_buffer, vk);
 
-      ID3D12CommandList *cmdlists[] = { (ID3D12CommandList *)cmd_buffer->cmdlist };
+      cmdlists[i] = (ID3D12CommandList *)cmd_buffer->cmdlist;
 
       util_dynarray_foreach(&cmd_buffer->events.wait, struct dzn_event *, evt) {
          if (FAILED(ID3D12CommandQueue_Wait(queue->cmdqueue, (*evt)->fence, 1)))
@@ -2024,8 +2027,13 @@ dzn_queue_submit(struct vk_queue *q,
          }
          mtx_unlock(&range->qpool->queries_lock);
       }
+   }
 
-      ID3D12CommandQueue_ExecuteCommandLists(queue->cmdqueue, 1, cmdlists);
+   ID3D12CommandQueue_ExecuteCommandLists(queue->cmdqueue, info->command_buffer_count, cmdlists);
+   
+   for (uint32_t i = 0; i < info->command_buffer_count; i++) {
+      struct dzn_cmd_buffer* cmd_buffer =
+         container_of(info->command_buffers[i], struct dzn_cmd_buffer, vk);
 
       util_dynarray_foreach(&cmd_buffer->events.signal, struct dzn_cmd_event_signal, evt) {
          if (FAILED(ID3D12CommandQueue_Signal(queue->cmdqueue, evt->event->fence, evt->value ? 1 : 0)))
