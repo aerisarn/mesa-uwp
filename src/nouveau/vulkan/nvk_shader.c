@@ -65,14 +65,14 @@ nvk_physical_device_spirv_options(const struct nvk_physical_device *pdevice,
 {
    return (struct spirv_to_nir_options) {
       .caps = {
+         .demote_to_helper_invocation = true,
          .draw_parameters = true,
+         .geometry_streams = true,
          .image_write_without_format = true,
+         .min_lod = true,
          .multiview = true,
          .physical_storage_buffer_address = true,
-         .min_lod = true,
          .transform_feedback = true,
-         .geometry_streams = true,
-         .demote_to_helper_invocation = true,
       },
       .ssbo_addr_format = nvk_buffer_addr_format(rs->storage_buffers),
       .phys_ssbo_addr_format = nir_address_format_64bit_global,
