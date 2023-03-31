@@ -3657,6 +3657,7 @@ zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
       }
    }
    optimize_nir(nir, zs);
+   zink_descriptor_shader_init(screen, zs);
    struct zink_shader_object obj = compile_module(screen, zs, nir);
    ralloc_free(nir);
    return obj;
