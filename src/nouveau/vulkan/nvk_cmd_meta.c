@@ -2,6 +2,9 @@
 #include "nvk_cmd_buffer.h"
 #include "nvk_device.h"
 #include "nvk_image.h"
+#include "nvk_physical_device.h"
+
+#include "nvk_clb197.h"
 
 static VkResult
 nvk_cmd_bind_map_buffer(struct vk_command_buffer *vk_cmd,
@@ -28,10 +31,13 @@ nvk_cmd_bind_map_buffer(struct vk_command_buffer *vk_cmd,
 VkResult
 nvk_device_init_meta(struct nvk_device *dev)
 {
+   struct nvk_physical_device *pdev = nvk_device_physical(dev);
+
    VkResult result = vk_meta_device_init(&dev->vk, &dev->meta);
    if (result != VK_SUCCESS)
       return result;
 
+   dev->meta.use_gs_for_layer = pdev->info.cls_eng3d < MAXWELL_B,
    dev->meta.cmd_bind_map_buffer = nvk_cmd_bind_map_buffer;
    dev->meta.max_bind_map_buffer_size_B = 64 * 1024; /* TODO */
 
