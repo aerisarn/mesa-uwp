@@ -3629,7 +3629,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
    return mod;
 }
 
-VkShaderModule
+struct zink_shader_object
 zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
 {
    nir_shader *nir = zink_shader_deserialize(screen, zs);
@@ -3660,7 +3660,8 @@ zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
    optimize_nir(nir, zs);
    VkShaderModule mod = compile_module(screen, zs, nir);
    ralloc_free(nir);
-   return mod;
+   struct zink_shader_object obj = {.mod = mod};
+   return obj;
 }
 
 static bool

@@ -732,6 +732,10 @@ enum zink_rast_prim {
    ZINK_PRIM_MAX,
 };
 
+struct zink_shader_object {
+   VkShaderModule mod;
+};
+
 struct zink_shader {
    struct util_live_shader base;
    uint32_t hash;

@@ -2053,7 +2053,8 @@ precompile_separate_shader_job(void *data, void *gdata, int thread_index)
    struct zink_screen *screen = gdata;
    struct zink_shader *zs = data;
 
-   zs->precompile.mod = zink_shader_compile_separate(screen, zs);
+   struct zink_shader_object obj = zink_shader_compile_separate(screen, zs);
+   zs->precompile.mod = obj.mod;
    zink_descriptor_shader_init(screen, zs);
    VkShaderModule mods[ZINK_GFX_SHADER_COUNT] = {0};
    mods[zs->info.stage] = zs->precompile.mod;
