@@ -3104,10 +3104,9 @@ zink_shader_dump(void *words, size_t size, const char *file)
    }
 }
 
-static VkShaderModule
+static struct zink_shader_object
 zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, struct spirv_shader *spirv)
 {
-   VkShaderModule mod;
    VkShaderModuleCreateInfo smci = {0};
 
    if (!spirv)
@@ -3198,10 +3197,11 @@ zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, st
    }
 #endif
 
-   VkResult ret = VKSCR(CreateShaderModule)(screen->dev, &smci, NULL, &mod);
+   struct zink_shader_object obj;
+   VkResult ret = VKSCR(CreateShaderModule)(screen->dev, &smci, NULL, &obj.mod);
    bool success = zink_screen_handle_vkresult(screen, ret);
    assert(success);
-   return success ? mod : VK_NULL_HANDLE;
+   return obj;
 }
 
 static void
@@ -3411,22 +3411,21 @@ invert_point_coord(nir_shader *nir)
 static struct zink_shader_object
 compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *nir)
 {
-   VkShaderModule mod = VK_NULL_HANDLE;
    struct zink_shader_info *sinfo = &zs->sinfo;
    prune_io(nir);
 
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
+   struct zink_shader_object obj;
    struct spirv_shader *spirv = nir_to_spirv(nir, sinfo, screen->spirv_version);
    if (spirv)
-      mod = zink_shader_spirv_compile(screen, zs, spirv);
+      obj = zink_shader_spirv_compile(screen, zs, spirv);
 
    /* TODO: determine if there's any reason to cache spirv output? */
    if (zs->info.stage == MESA_SHADER_TESS_CTRL && zs->non_fs.is_generated)
       zs->spirv = spirv;
    else
       ralloc_free(spirv);
-   struct zink_shader_object obj = {.mod = mod};
    return obj;
 }
 
@@ -5072,7 +5071,7 @@ zink_gfx_shader_free(struct zink_screen *screen, struct zink_shader *shader)
 }
 
 
-VkShaderModule
+struct zink_shader_object
 zink_shader_tcs_compile(struct zink_screen *screen, struct zink_shader *zs, unsigned patch_vertices)
 {
    assert(zs->info.stage == MESA_SHADER_TESS_CTRL);
