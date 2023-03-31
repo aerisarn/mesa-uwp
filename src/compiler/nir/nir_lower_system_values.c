@@ -424,6 +424,24 @@ lower_compute_system_value_filter(const nir_instr *instr, const void *_state)
 }
 
 static nir_ssa_def *
+try_lower_id_to_index_1d(nir_builder *b, nir_ssa_def *index, const uint16_t *size)
+{
+   /* size_x = 1, size_y = 1, therefore Z = local index */
+   if (size[0] == 1 && size[1] == 1)
+      return nir_vec3(b, nir_imm_int(b, 0), nir_imm_int(b, 0), index);
+
+   /* size_x = 1, size_z = 1, therefore Y = local index */
+   if (size[0] == 1 && size[2] == 1)
+      return nir_vec3(b, nir_imm_int(b, 0), index, nir_imm_int(b, 0));
+
+   /* size_y = 1, size_z = 1, therefore X = local index */
+   if (size[1] == 1 && size[2] == 1)
+      return nir_vec3(b, index, nir_imm_int(b, 0), nir_imm_int(b, 0));
+
+   return NULL;
+}
+
+static nir_ssa_def *
 lower_compute_system_value_instr(nir_builder *b,
                                  nir_instr *instr, void *_state)
 {
@@ -454,20 +472,10 @@ lower_compute_system_value_instr(nir_builder *b,
              * this way we don't leave behind extra ALU instrs.
              */
 
-            /* size_x = 1, size_y = 1, therefore Z = local index */
-            if (b->shader->info.workgroup_size[0] == 1 &&
-                b->shader->info.workgroup_size[1] == 1)
-               return nir_vec3(b, nir_imm_int(b, 0), nir_imm_int(b, 0), local_index);
-
-            /* size_x = 1, size_z = 1, therefore Y = local index */
-            if (b->shader->info.workgroup_size[0] == 1 &&
-                b->shader->info.workgroup_size[2] == 1)
-               return nir_vec3(b, nir_imm_int(b, 0), local_index, nir_imm_int(b, 0));
-
-            /* size_y = 1, size_z = 1, therefore X = local index */
-            if (b->shader->info.workgroup_size[1] == 1 &&
-                b->shader->info.workgroup_size[2] == 1)
-               return nir_vec3(b, local_index, nir_imm_int(b, 0), nir_imm_int(b, 0));
+            nir_ssa_def *val = try_lower_id_to_index_1d(b, local_index,
+                  b->shader->info.workgroup_size);
+            if (val)
+               return val;
          }
 
          nir_ssa_def *local_size = nir_load_workgroup_size(b);
