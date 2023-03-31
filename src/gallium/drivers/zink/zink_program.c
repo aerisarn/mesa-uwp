@@ -1148,10 +1148,9 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
    prog->is_separable = true;
    prog->gfx_hash = ctx->gfx_hash;
 
-   prog->shaders[MESA_SHADER_VERTEX] = stages[MESA_SHADER_VERTEX];
    prog->stages_remaining = prog->stages_present = shader_stages;
-   prog->shaders[MESA_SHADER_FRAGMENT] = stages[MESA_SHADER_FRAGMENT];
-   prog->last_vertex_stage = stages[MESA_SHADER_VERTEX];
+   memcpy(prog->shaders, stages, sizeof(prog->shaders));
+   prog->last_vertex_stage = ctx->last_vertex_stage;
 
    if (!screen->info.have_EXT_shader_object) {
       prog->libs = create_lib_cache(prog, false);
