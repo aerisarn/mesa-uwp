@@ -764,7 +764,7 @@ struct zink_shader {
 
    struct {
       struct util_queue_fence fence;
-      VkShaderModule mod;
+      struct zink_shader_object obj;
       VkDescriptorSetLayout dsl;
       VkPipelineLayout layout;
       VkPipeline gpl;

@@ -1128,7 +1128,7 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
    unsigned shader_stages = BITFIELD_BIT(MESA_SHADER_VERTEX) | BITFIELD_BIT(MESA_SHADER_FRAGMENT);
    /* filter cases that need real pipelines */
    if (ctx->shader_stages != shader_stages ||
-       !stages[MESA_SHADER_VERTEX]->precompile.mod || !stages[MESA_SHADER_FRAGMENT]->precompile.mod ||
+       !stages[MESA_SHADER_VERTEX]->precompile.obj.mod || !stages[MESA_SHADER_FRAGMENT]->precompile.obj.mod ||
        /* TODO: maybe try variants? grimace */
        !ZINK_SHADER_KEY_OPTIMAL_IS_DEFAULT(ctx->gfx_pipeline_state.optimal_key) ||
        !zink_can_use_pipeline_libs(ctx))
@@ -2055,11 +2055,10 @@ precompile_separate_shader_job(void *data, void *gdata, int thread_index)
    struct zink_screen *screen = gdata;
    struct zink_shader *zs = data;
 
-   struct zink_shader_object obj = zink_shader_compile_separate(screen, zs);
-   zs->precompile.mod = obj.mod;
+   zs->precompile.obj = zink_shader_compile_separate(screen, zs);
    zink_descriptor_shader_init(screen, zs);
    VkShaderModule mods[ZINK_GFX_SHADER_COUNT] = {0};
-   mods[zs->info.stage] = zs->precompile.mod;
+   mods[zs->info.stage] = zs->precompile.obj.mod;
    zs->precompile.gpl = zink_create_gfx_pipeline_separate(screen, mods, zs->precompile.layout);
 }
 
@@ -2074,7 +2073,7 @@ zink_link_gfx_shader(struct pipe_context *pctx, void **shaders)
    if (!shaders[MESA_SHADER_VERTEX] || !shaders[MESA_SHADER_FRAGMENT]) {
       if (shaders[MESA_SHADER_VERTEX] || shaders[MESA_SHADER_FRAGMENT]) {
          struct zink_shader *zs = shaders[MESA_SHADER_VERTEX] ? shaders[MESA_SHADER_VERTEX] : shaders[MESA_SHADER_FRAGMENT];
-         if (zs->info.separate_shader && !zs->precompile.mod && util_queue_fence_is_signalled(&zs->precompile.fence) &&
+         if (zs->info.separate_shader && !zs->precompile.obj.mod && util_queue_fence_is_signalled(&zs->precompile.fence) &&
              zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB &&
              /* sample shading can't precompile */
              (!shaders[MESA_SHADER_FRAGMENT] || !zs->info.fs.uses_sample_shading))

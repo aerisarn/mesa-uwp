@@ -4976,8 +4976,8 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
    util_queue_fence_wait(&shader->precompile.fence);
    util_queue_fence_destroy(&shader->precompile.fence);
    zink_descriptor_shader_deinit(screen, shader);
-   if (shader->precompile.mod)
-      VKSCR(DestroyShaderModule)(screen->dev, shader->precompile.mod, NULL);
+   if (shader->precompile.obj.mod)
+      VKSCR(DestroyShaderModule)(screen->dev, shader->precompile.obj.mod, NULL);
    if (shader->precompile.gpl)
       VKSCR(DestroyPipeline)(screen->dev, shader->precompile.gpl, NULL);
    blob_finish(&shader->blob);
