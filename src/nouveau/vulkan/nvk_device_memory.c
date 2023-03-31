@@ -77,8 +77,8 @@ nvk_allocate_memory(struct nvk_device *device,
    VkMemoryType *type = &device->pdev->mem_types[pAllocateInfo->memoryTypeIndex];
    struct nvk_device_memory *mem;
 
-   mem = vk_object_alloc(&device->vk, pAllocator, sizeof(*mem),
-                         VK_OBJECT_TYPE_DEVICE_MEMORY);
+   mem = vk_device_memory_create(&device->vk, pAllocateInfo,
+                                 pAllocator, sizeof(*mem));
    if (!mem)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -135,7 +135,7 @@ nvk_allocate_memory(struct nvk_device *device,
 
 fail_bo:
    nouveau_ws_bo_destroy(mem->bo);
-   vk_object_free(&device->vk, pAllocator, mem);
+   vk_device_memory_destroy(&device->vk, pAllocator, &mem->vk);
    return result;
 }
 
@@ -153,7 +153,7 @@ nvk_free_memory(struct nvk_device *device,
 
    nouveau_ws_bo_destroy(mem->bo);
 
-   vk_object_free(&device->vk, pAllocator, mem);
+   vk_device_memory_destroy(&device->vk, pAllocator, &mem->vk);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -205,8 +205,7 @@ nvk_MapMemory(VkDevice _device,
       return VK_SUCCESS;
    }
 
-   if (size == VK_WHOLE_SIZE)
-      size = mem->bo->size - offset;
+   size = vk_device_memory_range(&mem->vk, offset, size);
 
    /* From the Vulkan spec version 1.0.32 docs for MapMemory:
     *

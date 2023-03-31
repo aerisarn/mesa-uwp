@@ -3,12 +3,14 @@
 
 #include "nvk_private.h"
 
+#include "vk_device_memory.h"
+
 #include "util/list.h"
 
 struct nvk_device;
 
 struct nvk_device_memory {
-   struct vk_object_base base;
+   struct vk_device_memory vk;
 
    struct list_head link;
 
@@ -17,7 +19,7 @@ struct nvk_device_memory {
    void *map;
 };
 
-VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_device_memory, base, VkDeviceMemory, VK_OBJECT_TYPE_DEVICE_MEMORY)
+VK_DEFINE_NONDISP_HANDLE_CASTS(nvk_device_memory, vk.base, VkDeviceMemory, VK_OBJECT_TYPE_DEVICE_MEMORY)
 
 struct nvk_memory_tiling_info {
    uint16_t tile_mode;
