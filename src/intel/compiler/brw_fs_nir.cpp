@@ -864,15 +864,24 @@ fs_visitor::emit_fsign(const fs_builder &bld, const nir_alu_instr *instr,
          set_predicate(BRW_PREDICATE_NORMAL,
                        bld.OR(r, r, brw_imm_ud(0x3ff00000u)));
       } else {
-         /* This could be done better in some cases.  If the scale is an
-          * immediate with the low 32-bits all 0, emitting a separate XOR and
-          * OR would allow an algebraic optimization to remove the OR.  There
-          * are currently zero instances of fsign(double(x))*IMM in shader-db
-          * or any test suite, so it is hard to care at this time.
-          */
-         fs_reg result_int64 = retype(result, BRW_REGISTER_TYPE_UQ);
-         inst = bld.XOR(result_int64, result_int64,
-                        retype(op[1], BRW_REGISTER_TYPE_UQ));
+         if (devinfo->has_64bit_int) {
+            /* This could be done better in some cases.  If the scale is an
+             * immediate with the low 32-bits all 0, emitting a separate XOR and
+             * OR would allow an algebraic optimization to remove the OR.  There
+             * are currently zero instances of fsign(double(x))*IMM in shader-db
+             * or any test suite, so it is hard to care at this time.
+             */
+            fs_reg result_int64 = retype(result, BRW_REGISTER_TYPE_UQ);
+            inst = bld.XOR(result_int64, result_int64,
+                           retype(op[1], BRW_REGISTER_TYPE_UQ));
+         } else {
+            fs_reg result_int64 = retype(result, BRW_REGISTER_TYPE_UQ);
+            bld.MOV(subscript(result_int64, BRW_REGISTER_TYPE_UD, 0),
+                    subscript(op[1], BRW_REGISTER_TYPE_UD, 0));
+            bld.XOR(subscript(result_int64, BRW_REGISTER_TYPE_UD, 1),
+                    subscript(result_int64, BRW_REGISTER_TYPE_UD, 1),
+                    subscript(op[1], BRW_REGISTER_TYPE_UD, 1));
+         }
       }
    }
 }
