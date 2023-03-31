@@ -3140,6 +3140,9 @@ radv_update_fce_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_image *
    uint32_t level_count = radv_get_levelCount(image, range);
    uint32_t count = 2 * level_count;
 
+   ASSERTED unsigned cdw_max =
+      radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 4 + count);
+
    radeon_emit(cmd_buffer->cs, PKT3(PKT3_WRITE_DATA, 2 + count, 0));
    radeon_emit(cmd_buffer->cs,
                S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_PFP));
@@ -3150,6 +3153,8 @@ radv_update_fce_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_image *
       radeon_emit(cmd_buffer->cs, pred_val);
       radeon_emit(cmd_buffer->cs, pred_val >> 32);
    }
+
+   assert(cmd_buffer->cs->cdw <= cdw_max);
 }
 
 /**
@@ -3200,9 +3205,14 @@ radv_update_bound_fast_clear_color(struct radv_cmd_buffer *cmd_buffer, struct ra
        cmd_buffer->state.render.color_att[cb_idx].iview->image != image)
       return;
 
+   ASSERTED unsigned cdw_max =
+      radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 4);
+
    radeon_set_context_reg_seq(cs, R_028C8C_CB_COLOR0_CLEAR_WORD0 + cb_idx * 0x3c, 2);
    radeon_emit(cs, color_values[0]);
    radeon_emit(cs, color_values[1]);
+
+   assert(cmd_buffer->cs->cdw <= cdw_max);
 
    cmd_buffer->state.context_roll_without_scissor_emitted = true;
 }
@@ -3223,6 +3233,9 @@ radv_set_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_im
    if (radv_image_has_clear_value(image)) {
       uint64_t va = radv_image_get_fast_clear_va(image, range->baseMipLevel);
 
+      ASSERTED unsigned cdw_max =
+         radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 4 + count);
+
       radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + count, cmd_buffer->state.predicating));
       radeon_emit(cs, S_370_DST_SEL(V_370_MEM) | S_370_WR_CONFIRM(1) | S_370_ENGINE_SEL(V_370_PFP));
       radeon_emit(cs, va);
@@ -3232,6 +3245,8 @@ radv_set_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_im
          radeon_emit(cs, color_values[0]);
          radeon_emit(cs, color_values[1]);
       }
+
+      assert(cmd_buffer->cs->cdw <= cdw_max);
    } else {
       /* Some default value we can set in the update. */
       assert(color_values[0] == 0 && color_values[1] == 0);
