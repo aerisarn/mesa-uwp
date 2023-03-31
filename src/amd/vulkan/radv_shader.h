@@ -28,16 +28,12 @@
 #ifndef RADV_SHADER_H
 #define RADV_SHADER_H
 
+#include "util/u_math.h"
+#include "vulkan/vulkan.h"
 #include "ac_binary.h"
 #include "ac_shader_util.h"
-
 #include "amd_family.h"
 #include "radv_constants.h"
-
-#include "nir/nir.h"
-#include "vulkan/runtime/vk_object.h"
-#include "vulkan/runtime/vk_shader_module.h"
-#include "vulkan/vulkan.h"
 
 #include "aco_shader_info.h"
 
