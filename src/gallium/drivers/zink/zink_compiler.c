@@ -3104,7 +3104,7 @@ zink_shader_dump(void *words, size_t size, const char *file)
    }
 }
 
-VkShaderModule
+static VkShaderModule
 zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, struct spirv_shader *spirv)
 {
    VkShaderModule mod;
