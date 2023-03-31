@@ -360,7 +360,8 @@ nir_lower_system_values(nir_shader *shader)
 
 static nir_ssa_def *
 lower_id_to_index_no_umod(nir_builder *b, nir_ssa_def *index,
-                          nir_ssa_def *size, unsigned bit_size)
+                          nir_ssa_def *size, unsigned bit_size,
+                          const uint16_t *size_imm)
 {
    /* We lower ID to Index with the following formula:
     *
@@ -373,8 +374,18 @@ lower_id_to_index_no_umod(nir_builder *b, nir_ssa_def *index,
     * not compile time known or not a power of two.
     */
 
-   nir_ssa_def *size_x = nir_channel(b, size, 0);
-   nir_ssa_def *size_y = nir_channel(b, size, 1);
+   nir_ssa_def *size_x, *size_y;
+
+   if (size_imm[0] > 0)
+      size_x = nir_imm_int(b, size_imm[0]);
+   else
+      size_x = nir_channel(b, size, 0);
+
+   if (size_imm[1] > 0)
+      size_y = nir_imm_int(b, size_imm[1]);
+   else
+      size_y = nir_channel(b, size, 1);
+
    nir_ssa_def *size_x_y = nir_imul(b, size_x, size_y);
 
    nir_ssa_def *id_z = nir_udiv(b, index, size_x_y);
@@ -682,7 +693,8 @@ lower_compute_system_value_instr(nir_builder *b,
 
          return lower_id_to_index_no_umod(b, wg_idx,
                                           nir_load_num_workgroups(b, bit_size),
-                                          bit_size);
+                                          bit_size,
+                                          options->num_workgroups);
       }
 
       return NULL;
