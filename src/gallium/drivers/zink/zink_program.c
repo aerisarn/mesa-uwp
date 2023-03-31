@@ -1149,9 +1149,12 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
    prog->stages_remaining = prog->stages_present = shader_stages;
    prog->shaders[MESA_SHADER_FRAGMENT] = stages[MESA_SHADER_FRAGMENT];
    prog->last_vertex_stage = stages[MESA_SHADER_VERTEX];
-   prog->libs = create_lib_cache(prog, false);
-   /* this libs cache is owned by the program */
-   p_atomic_set(&prog->libs->refcount, 1);
+
+   if (!screen->info.have_EXT_shader_object) {
+      prog->libs = create_lib_cache(prog, false);
+      /* this libs cache is owned by the program */
+      p_atomic_set(&prog->libs->refcount, 1);
+   }
 
    unsigned refs = 0;
    for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
@@ -1159,6 +1162,9 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
          simple_mtx_lock(&prog->shaders[i]->lock);
          _mesa_set_add(prog->shaders[i]->programs, prog);
          simple_mtx_unlock(&prog->shaders[i]->lock);
+         if (screen->info.have_EXT_shader_object) {
+            prog->objects[i] = stages[i]->precompile.obj.obj;
+         }
          refs++;
       }
    }
@@ -1195,18 +1201,20 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
    }
    prog->base.layout = zink_pipeline_layout_create(screen, prog->base.dsl, prog->base.num_dsl, false, VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT);
 
-   VkPipeline libs[] = {stages[MESA_SHADER_VERTEX]->precompile.gpl, stages[MESA_SHADER_FRAGMENT]->precompile.gpl};
    prog->last_variant_hash = ctx->gfx_pipeline_state.optimal_key;
 
-   struct zink_gfx_library_key *gkey = CALLOC_STRUCT(zink_gfx_library_key);
-   if (!gkey) {
-      mesa_loge("ZINK: failed to allocate gkey!");
-      goto fail;
+   if (!screen->info.have_EXT_shader_object) {
+      VkPipeline libs[] = {stages[MESA_SHADER_VERTEX]->precompile.gpl, stages[MESA_SHADER_FRAGMENT]->precompile.gpl};
+      struct zink_gfx_library_key *gkey = CALLOC_STRUCT(zink_gfx_library_key);
+      if (!gkey) {
+         mesa_loge("ZINK: failed to allocate gkey!");
+         goto fail;
+      }
+      gkey->optimal_key = prog->last_variant_hash;
+      assert(gkey->optimal_key);
+      gkey->pipeline = zink_create_gfx_pipeline_combined(screen, prog, VK_NULL_HANDLE, libs, 2, VK_NULL_HANDLE, false);
+      _mesa_set_add(&prog->libs->libs, gkey);
    }
-   gkey->optimal_key = prog->last_variant_hash;
-   assert(gkey->optimal_key);
-   gkey->pipeline = zink_create_gfx_pipeline_combined(screen, prog, VK_NULL_HANDLE, libs, 2, VK_NULL_HANDLE, false);
-   _mesa_set_add(&prog->libs->libs, gkey);
 
    util_queue_add_job(&screen->cache_get_thread, prog, &prog->base.cache_fence, create_linked_separable_job, NULL, 0);
 
@@ -1479,7 +1487,7 @@ zink_destroy_gfx_program(struct zink_screen *screen,
          blob_finish(&prog->blobs[i]);
       }
    }
-   if (prog->is_separable)
+   if (prog->is_separable && prog->libs)
       zink_gfx_lib_cache_unref(screen, prog->libs);
 
    ralloc_free(prog);
@@ -2056,9 +2064,11 @@ precompile_separate_shader_job(void *data, void *gdata, int thread_index)
    struct zink_shader *zs = data;
 
    zs->precompile.obj = zink_shader_compile_separate(screen, zs);
-   VkShaderModule mods[ZINK_GFX_SHADER_COUNT] = {0};
-   mods[zs->info.stage] = zs->precompile.obj.mod;
-   zs->precompile.gpl = zink_create_gfx_pipeline_separate(screen, mods, zs->precompile.layout);
+   if (!screen->info.have_EXT_shader_object) {
+      VkShaderModule mods[ZINK_GFX_SHADER_COUNT] = {0};
+      mods[zs->info.stage] = zs->precompile.obj.mod;
+      zs->precompile.gpl = zink_create_gfx_pipeline_separate(screen, mods, zs->precompile.layout);
+   }
 }
 
 static void

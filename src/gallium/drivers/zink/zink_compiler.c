@@ -3108,6 +3108,7 @@ static struct zink_shader_object
 zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, struct spirv_shader *spirv, bool separate)
 {
    VkShaderModuleCreateInfo smci = {0};
+   VkShaderCreateInfoEXT sci = {0};
 
    if (!spirv)
       spirv = zs->spirv;
@@ -3118,6 +3119,25 @@ zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, st
       snprintf(buf, sizeof(buf), "dump%02d.spv", i++);
       zink_shader_dump(spirv->words, spirv->num_words * sizeof(uint32_t), buf);
    }
+
+   sci.sType = VK_STRUCTURE_TYPE_SHADER_CREATE_INFO_EXT;
+   sci.stage = mesa_to_vk_shader_stage(zs->info.stage);
+   if (sci.stage != VK_SHADER_STAGE_FRAGMENT_BIT)
+      sci.nextStage = VK_SHADER_STAGE_FRAGMENT_BIT;
+   sci.codeType = VK_SHADER_CODE_TYPE_SPIRV_EXT;
+   sci.codeSize = spirv->num_words * sizeof(uint32_t);
+   sci.pCode = spirv->words;
+   sci.pName = "main";
+   sci.setLayoutCount = 2;
+   VkDescriptorSetLayout dsl[2] = {0};
+   dsl[zs->info.stage == MESA_SHADER_FRAGMENT] = zs->precompile.dsl;
+   sci.pSetLayouts = dsl;
+   VkPushConstantRange pcr;
+   pcr.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
+   pcr.offset = 0;
+   pcr.size = sizeof(struct zink_gfx_push_constant);
+   sci.pushConstantRangeCount = 1;
+   sci.pPushConstantRanges = &pcr;
 
    smci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
    smci.codeSize = spirv->num_words * sizeof(uint32_t);
@@ -3197,8 +3217,12 @@ zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, st
    }
 #endif
 
+   VkResult ret;
    struct zink_shader_object obj;
-   VkResult ret = VKSCR(CreateShaderModule)(screen->dev, &smci, NULL, &obj.mod);
+   if (!separate || !screen->info.have_EXT_shader_object)
+      ret = VKSCR(CreateShaderModule)(screen->dev, &smci, NULL, &obj.mod);
+   else
+      ret = VKSCR(CreateShadersEXT)(screen->dev, 1, &sci, NULL, &obj.obj);
    bool success = zink_screen_handle_vkresult(screen, ret);
    assert(success);
    return obj;
@@ -4982,10 +5006,14 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
    util_queue_fence_wait(&shader->precompile.fence);
    util_queue_fence_destroy(&shader->precompile.fence);
    zink_descriptor_shader_deinit(screen, shader);
-   if (shader->precompile.obj.mod)
-      VKSCR(DestroyShaderModule)(screen->dev, shader->precompile.obj.mod, NULL);
-   if (shader->precompile.gpl)
-      VKSCR(DestroyPipeline)(screen->dev, shader->precompile.gpl, NULL);
+   if (screen->info.have_EXT_shader_object) {
+      VKSCR(DestroyShaderEXT)(screen->dev, shader->precompile.obj.obj, NULL);
+   } else {
+      if (shader->precompile.obj.mod)
+         VKSCR(DestroyShaderModule)(screen->dev, shader->precompile.obj.mod, NULL);
+      if (shader->precompile.gpl)
+         VKSCR(DestroyPipeline)(screen->dev, shader->precompile.gpl, NULL);
+   }
    blob_finish(&shader->blob);
    ralloc_free(shader->spirv);
    free(shader->precompile.bindings);

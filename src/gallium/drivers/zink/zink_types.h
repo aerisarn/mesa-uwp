@@ -733,7 +733,10 @@ enum zink_rast_prim {
 };
 
 struct zink_shader_object {
-   VkShaderModule mod;
+   union {
+      VkShaderEXT obj;
+      VkShaderModule mod;
+   };
 };
 
 struct zink_shader {
@@ -1044,7 +1047,10 @@ struct zink_gfx_program {
    struct zink_shader *last_vertex_stage;
 
    /* full */
-   VkShaderModule modules[ZINK_GFX_SHADER_COUNT]; // compute stage doesn't belong here
+   union {
+      VkShaderModule modules[ZINK_GFX_SHADER_COUNT]; // compute stage doesn't belong here
+      VkShaderEXT objects[ZINK_GFX_SHADER_COUNT];
+   };
    uint32_t module_hash[ZINK_GFX_SHADER_COUNT];
    struct blob blobs[ZINK_GFX_SHADER_COUNT];
    struct util_dynarray shader_cache[ZINK_GFX_SHADER_COUNT][2][2]; //normal, nonseamless cubes, inline uniforms
@@ -1436,6 +1442,7 @@ struct zink_screen {
       bool glsl_correct_derivatives_after_discard;
       bool inline_uniforms;
       bool emulate_point_smooth;
+      bool zink_shader_object_enable;
    } driconf;
 
    VkFormatProperties format_props[PIPE_FORMAT_COUNT];
@@ -1889,6 +1896,7 @@ struct zink_context {
 
    bool gfx_dirty;
 
+   bool shobj_draw : 1; //using shader objects for draw
    bool is_device_lost;
    bool primitive_restart;
    bool blitting : 1;

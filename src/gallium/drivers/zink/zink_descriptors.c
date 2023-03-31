@@ -741,6 +741,8 @@ zink_descriptor_shader_init(struct zink_screen *screen, struct zink_shader *shad
          shader->precompile.db_offset[i] = val;
       }
    }
+   if (screen->info.have_EXT_shader_object)
+      return;
    VkDescriptorSetLayout dsl[ZINK_DESCRIPTOR_ALL_TYPES] = {0};
    unsigned num_dsl = num_bindings ? 2 : 0;
    if (shader->bindless)
