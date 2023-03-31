@@ -1696,12 +1696,10 @@ static bool
 radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_binary *binary,
                           struct radv_shader *shader, void *dest_ptr)
 {
-   if (device->thread_trace.bo) {
-      shader->code = calloc(shader->code_size, 1);
-      if (!shader->code) {
-         radv_shader_unref(device, shader);
-         return false;
-      }
+   shader->code = calloc(shader->code_size, 1);
+   if (!shader->code) {
+      radv_shader_unref(device, shader);
+      return false;
    }
 
    if (binary->type == RADV_BINARY_TYPE_RTLD) {

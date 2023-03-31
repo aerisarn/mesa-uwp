@@ -517,8 +517,6 @@ struct radv_shader {
    struct radv_shader_info info;
 
    uint8_t sha1[SHA1_DIGEST_LENGTH];
-
-   /* sqtt only */
    void *code;
 
    /* debug only */
