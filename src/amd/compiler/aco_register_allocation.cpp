@@ -24,14 +24,16 @@
 
 #include "aco_ir.h"
 
+#include "util/enum_operators.h"
+
 #include <algorithm>
 #include <array>
 #include <bitset>
 #include <map>
+#include <optional>
 #include <set>
 #include <unordered_map>
 #include <vector>
-#include <optional>
 
 namespace aco {
 namespace {

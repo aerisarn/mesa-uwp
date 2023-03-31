@@ -25,18 +25,20 @@
 #ifndef ACO_IR_H
 #define ACO_IR_H
 
-#include "aco_interface.h"
 #include "aco_opcodes.h"
 #include "aco_shader_info.h"
 #include "aco_util.h"
 
-#include "nir.h"
+#include "util/compiler.h"
 
 #include "ac_binary.h"
+#include "amd_family.h"
 #include <algorithm>
 #include <bitset>
 #include <memory>
 #include <vector>
+
+typedef struct nir_shader nir_shader;
 
 namespace aco {
 

@@ -28,6 +28,7 @@
 #define ACO_SHADER_INFO_H
 
 #include "ac_shader_args.h"
+#include "amd_family.h"
 #include "shader_enums.h"
 
 #ifdef __cplusplus
