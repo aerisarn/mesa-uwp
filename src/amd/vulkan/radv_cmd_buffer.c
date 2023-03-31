@@ -6624,8 +6624,9 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       }
 
       /* Re-emit the vertex buffer descriptors because they are really tied to the pipeline. */
-      if (graphics_pipeline->base.shaders[MESA_SHADER_VERTEX] &&
-          graphics_pipeline->base.shaders[MESA_SHADER_VERTEX]->info.vs.vb_desc_usage_mask) {
+      const struct radv_shader *vs =
+         radv_get_shader(graphics_pipeline->base.shaders, MESA_SHADER_VERTEX);
+      if (vs && vs->info.vs.vb_desc_usage_mask) {
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_BUFFER;
       }
 
