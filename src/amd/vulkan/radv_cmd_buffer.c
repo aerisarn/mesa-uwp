@@ -6270,6 +6270,11 @@ radv_emit_compute_pipeline(struct radv_cmd_buffer *cmd_buffer,
    radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs,
                       cmd_buffer->state.shaders[MESA_SHADER_COMPUTE]->bo);
 
+   if (pipeline->base.type == RADV_PIPELINE_RAY_TRACING) {
+      radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs,
+                      cmd_buffer->state.shaders[MESA_SHADER_RAYGEN]->bo);
+   }
+
    if (unlikely(cmd_buffer->device->trace_bo))
       radv_save_pipeline(cmd_buffer, &pipeline->base);
 }
