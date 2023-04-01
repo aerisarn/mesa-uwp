@@ -76,13 +76,14 @@ re_mask = re.compile(r'^#define (?P<name>\w+)__(?P<field>\w+)_MASK\s+(?P<value>[
 
 def register_filter(gfx_level, name, offset, already_added):
     group = offset // 0x1000
+    is_cdna = gfx_level in ['gfx940']
 
-    # Compute shader registers
-    umd_ranges = [0xB]
+    # Shader and uconfig registers
+    umd_ranges = [0xB, 0x30]
 
-    # Gfx context, uconfig, and perf counter registers
-    if gfx_level != 'gfx940':
-        umd_ranges += [0x28, 0x30, 0x31, 0x34, 0x35, 0x36, 0x37]
+    # Gfx context, other uconfig, and perf counter registers
+    if not is_cdna:
+        umd_ranges += [0x28, 0x31, 0x34, 0x35, 0x36, 0x37]
 
     # Add all registers in the 0x8000 range for gfx6
     if gfx_level == 'gfx6':
@@ -109,7 +110,9 @@ def register_filter(gfx_level, name, offset, already_added):
             not already_added and
             'PREF_PRI_ACCUM' not in name and
             # only define SPI and COMPUTE registers in the 0xB000 range.
-            (group != 0xB or name.startswith('SPI') or name.startswith('COMPUTE')))
+            (group != 0xB or name.startswith('SPI') or name.startswith('COMPUTE')) and
+            # only define CP_COHER uconfig registers on CDNA
+            (not is_cdna or group != 0x30 or name.startswith('CP_COHER')))
 
 # Mapping from field names to enum types
 enum_map = {
