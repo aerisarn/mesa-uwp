@@ -1204,6 +1204,9 @@ save_reusable_variables(nir_builder *b, lower_ngg_nogs_state *s)
    ASSERTED int vec_ok = u_vector_init(&s->reusable_nondeferred_variables, 4, sizeof(reusable_nondeferred_variable));
    assert(vec_ok);
 
+   /* Upper limit on reusable uniforms in order to reduce SGPR spilling. */
+   unsigned remaining_reusable_uniforms = 48;
+
    nir_block *block = nir_start_block(b->impl);
    while (block) {
       /* Process the instructions in the current block. */
@@ -1221,6 +1224,13 @@ save_reusable_variables(nir_builder *b, lower_ngg_nogs_state *s)
          const struct glsl_type *t = glsl_uint_type_for_ssa(ssa);
          if (!t)
             continue;
+
+         if (!ssa->divergent) {
+            if (remaining_reusable_uniforms < ssa->num_components)
+               continue;
+
+            remaining_reusable_uniforms -= ssa->num_components;
+         }
 
          reusable_nondeferred_variable *saved = (reusable_nondeferred_variable *) u_vector_add(&s->reusable_nondeferred_variables);
          assert(saved);
