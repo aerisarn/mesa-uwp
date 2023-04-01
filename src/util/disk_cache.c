@@ -317,7 +317,7 @@ disk_cache_destroy(struct disk_cache *cache)
              cache->stats.misses);
    }
 
-   if (cache && !cache->path_init_failed) {
+   if (cache && util_queue_is_initialized(&cache->cache_queue)) {
       util_queue_finish(&cache->cache_queue);
       util_queue_destroy(&cache->cache_queue);
 
@@ -551,7 +551,7 @@ disk_cache_put(struct disk_cache *cache, const cache_key key,
       return;
    }
 
-   if (cache->path_init_failed)
+   if (!util_queue_is_initialized(&cache->cache_queue))
       return;
 
    struct disk_cache_put_job *dc_job =
@@ -575,7 +575,7 @@ disk_cache_put_nocopy(struct disk_cache *cache, const cache_key key,
       return;
    }
 
-   if (cache->path_init_failed) {
+   if (!util_queue_is_initialized(&cache->cache_queue)) {
       free(data);
       return;
    }
