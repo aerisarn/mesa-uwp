@@ -602,6 +602,28 @@ init_dispatch_tables(struct radv_device *device, struct radv_physical_device *ph
    add_entrypoints(&b, &vk_common_device_entrypoints, RADV_DISPATCH_TABLE_COUNT);
 }
 
+static VkResult
+radv_check_status(struct vk_device *vk_device)
+{
+   struct radv_device *device = container_of(vk_device, struct radv_device, vk);
+   enum radv_reset_status status;
+
+   for (int i = 0; i < RADV_NUM_HW_CTX; i++) {
+      if (device->hw_ctx[i]) {
+         status = device->ws->ctx_query_reset_status(device->hw_ctx[i]);
+
+         if (status == RADV_GUILTY_CONTEXT_RESET)
+            return vk_device_set_lost(&device->vk, "GPU hung detected in this process");
+	 if (status == RADV_INNOCENT_CONTEXT_RESET)
+            return vk_device_set_lost(&device->vk, "GPU hung triggered by other process");
+	 if (status == RADV_UNKNOWN_CONTEXT_RESET)
+            return vk_device_set_lost(&device->vk, "GPU hung triggered by unknown source");
+      }
+   }
+
+   return VK_SUCCESS;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *pAllocator, VkDevice *pDevice)
@@ -750,6 +772,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    init_dispatch_tables(device, physical_device);
 
    device->vk.command_buffer_ops = &radv_cmd_buffer_ops;
+   device->vk.check_status = radv_check_status;
 
    device->instance = physical_device->instance;
    device->physical_device = physical_device;
