@@ -4283,8 +4283,9 @@ static void evergreen_set_shader_images(struct pipe_context *ctx,
 
 		r600_context_add_resource_size(ctx, image);
 
+		struct pipe_resource *const pipe_saved = rview->base.resource;
 		rview->base = *iview;
-		rview->base.resource = NULL;
+		rview->base.resource = pipe_saved;
 		pipe_resource_reference((struct pipe_resource **)&rview->base.resource, image);
 
 		evergreen_setup_immed_buffer(rctx, rview, iview->format);
