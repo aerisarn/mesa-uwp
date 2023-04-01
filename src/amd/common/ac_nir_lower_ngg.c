@@ -1092,6 +1092,16 @@ analyze_shader_before_culling_walk(nir_ssa_def *ssa,
 
       break;
    }
+   case nir_instr_type_tex: {
+      nir_tex_instr *tex = nir_instr_as_tex(instr);
+      unsigned num_srcs = tex->num_srcs;
+
+      for (unsigned i = 0; i < num_srcs; ++i) {
+         analyze_shader_before_culling_walk(tex->src[i].src.ssa, flag, s);
+      }
+
+      break;
+   }
    case nir_instr_type_phi: {
       nir_phi_instr *phi = nir_instr_as_phi(instr);
       nir_foreach_phi_src_safe(phi_src, phi) {
