@@ -70,6 +70,29 @@ do {                                       \
    _dst += _src_size;                      \
 } while (0);
 
+static bool
+disk_cache_init_queue(struct disk_cache *cache)
+{
+   if (util_queue_is_initialized(&cache->cache_queue))
+      return true;
+
+   /* 4 threads were chosen below because just about all modern CPUs currently
+    * available that run Mesa have *at least* 4 cores. For these CPUs allowing
+    * more threads can result in the queue being processed faster, thus
+    * avoiding excessive memory use due to a backlog of cache entrys building
+    * up in the queue. Since we set the UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY
+    * flag this should have little negative impact on low core systems.
+    *
+    * The queue will resize automatically when it's full, so adding new jobs
+    * doesn't stall.
+    */
+   return util_queue_init(&cache->cache_queue, "disk$", 32, 4,
+                          UTIL_QUEUE_INIT_SCALE_THREADS |
+                          UTIL_QUEUE_INIT_RESIZE_IF_FULL |
+                          UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY |
+                          UTIL_QUEUE_INIT_SET_FULL_THREAD_AFFINITY, NULL);
+}
+
 static struct disk_cache *
 disk_cache_type_create(const char *gpu_name,
                        const char *driver_id,
@@ -192,21 +215,7 @@ disk_cache_type_create(const char *gpu_name,
    if (cache->type == DISK_CACHE_DATABASE)
       mesa_cache_db_multipart_set_size_limit(&cache->cache_db, cache->max_size);
 
-   /* 4 threads were chosen below because just about all modern CPUs currently
-    * available that run Mesa have *at least* 4 cores. For these CPUs allowing
-    * more threads can result in the queue being processed faster, thus
-    * avoiding excessive memory use due to a backlog of cache entrys building
-    * up in the queue. Since we set the UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY
-    * flag this should have little negative impact on low core systems.
-    *
-    * The queue will resize automatically when it's full, so adding new jobs
-    * doesn't stall.
-    */
-   if (!util_queue_init(&cache->cache_queue, "disk$", 32, 4,
-                        UTIL_QUEUE_INIT_SCALE_THREADS |
-                        UTIL_QUEUE_INIT_RESIZE_IF_FULL |
-                        UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY |
-                        UTIL_QUEUE_INIT_SET_FULL_THREAD_AFFINITY, NULL))
+   if (!disk_cache_init_queue(cache))
       goto fail;
 
    cache->path_init_failed = false;
