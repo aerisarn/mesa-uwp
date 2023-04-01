@@ -2430,6 +2430,46 @@
    "chips": ["gfx940"],
    "map": {"at": 47612, "to": "mm"},
    "name": "COMPUTE_NOWHERE"
+  },
+  {
+   "chips": ["gfx940"],
+   "map": {"at": 197092, "to": "mm"},
+   "name": "CP_COHER_BASE_HI",
+   "type_ref": "CP_COHER_BASE_HI"
+  },
+  {
+   "chips": ["gfx940"],
+   "map": {"at": 197100, "to": "mm"},
+   "name": "CP_COHER_START_DELAY",
+   "type_ref": "CP_COHER_START_DELAY"
+  },
+  {
+   "chips": ["gfx940"],
+   "map": {"at": 197104, "to": "mm"},
+   "name": "CP_COHER_CNTL",
+   "type_ref": "CP_COHER_CNTL"
+  },
+  {
+   "chips": ["gfx940"],
+   "map": {"at": 197108, "to": "mm"},
+   "name": "CP_COHER_SIZE"
+  },
+  {
+   "chips": ["gfx940"],
+   "map": {"at": 197112, "to": "mm"},
+   "name": "CP_COHER_BASE"
+  },
+  {
+   "chips": ["gfx940"],
+   "map": {"at": 197116, "to": "mm"},
+   "name": "CP_COHER_STATUS",
+   "type_ref": "CP_COHER_STATUS"
+  },
+  {
+   "chips": ["gfx940"],
+   "map": {"at": 197168, "to": "mm"},
+   "name": "CP_COHER_SIZE_HI",
+   "type_ref": "CP_COHER_SIZE_HI"
   }
  ],
  "register_types": {
@@ -2562,6 +2602,44 @@
   "COMPUTE_WAVE_RESTORE_ADDR_HI": {
    "fields": [
     {"bits": [0, 15], "name": "ADDR"}
+   ]
+  },
+  "CP_COHER_BASE_HI": {
+   "fields": [
+    {"bits": [0, 7], "name": "COHER_BASE_HI_256B"}
+   ]
+  },
+  "CP_COHER_CNTL": {
+   "fields": [
+    {"bits": [3, 3], "name": "TC_NC_ACTION_ENA"},
+    {"bits": [4, 4], "name": "TC_WC_ACTION_ENA"},
+    {"bits": [5, 5], "name": "TC_INV_METADATA_ACTION_ENA"},
+    {"bits": [15, 15], "name": "TCL1_VOL_ACTION_ENA"},
+    {"bits": [18, 18], "name": "TC_WB_ACTION_ENA"},
+    {"bits": [22, 22], "name": "TCL1_ACTION_ENA"},
+    {"bits": [23, 23], "name": "TC_ACTION_ENA"},
+    {"bits": [25, 25], "name": "CB_ACTION_ENA"},
+    {"bits": [26, 26], "name": "DB_ACTION_ENA"},
+    {"bits": [27, 27], "name": "SH_KCACHE_ACTION_ENA"},
+    {"bits": [28, 28], "name": "SH_KCACHE_VOL_ACTION_ENA"},
+    {"bits": [29, 29], "name": "SH_ICACHE_ACTION_ENA"},
+    {"bits": [30, 30], "name": "SH_KCACHE_WB_ACTION_ENA"}
+   ]
+  },
+  "CP_COHER_SIZE_HI": {
+   "fields": [
+    {"bits": [0, 7], "name": "COHER_SIZE_HI_256B"}
+   ]
+  },
+  "CP_COHER_START_DELAY": {
+   "fields": [
+    {"bits": [0, 5], "name": "START_DELAY_COUNT"}
+   ]
+  },
+  "CP_COHER_STATUS": {
+   "fields": [
+    {"bits": [24, 25], "name": "MEID"},
+    {"bits": [31, 31], "name": "STATUS"}
    ]
   },
   "CP_CPC_BUSY_STAT": {
