@@ -5770,7 +5770,8 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
    if (sctx->gfx_level >= GFX9 && sctx->gfx_level < GFX11)
       si_pm4_set_reg(pm4, R_0301EC_CP_COHER_START_DELAY, sctx->gfx_level >= GFX10 ? 0x20 : 0);
 
-   if (!sscreen->info.has_graphics && sscreen->info.family >= CHIP_MI100) {
+   if (sscreen->info.family == CHIP_MI100 ||
+       sscreen->info.family == CHIP_MI200) {
       si_pm4_set_reg(pm4, R_00B894_COMPUTE_STATIC_THREAD_MGMT_SE4, compute_cu_en);
       si_pm4_set_reg(pm4, R_00B898_COMPUTE_STATIC_THREAD_MGMT_SE5, compute_cu_en);
       si_pm4_set_reg(pm4, R_00B89C_COMPUTE_STATIC_THREAD_MGMT_SE6, compute_cu_en);
