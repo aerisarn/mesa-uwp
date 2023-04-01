@@ -75,6 +75,8 @@ re_shift = re.compile(r'^#define (?P<name>\w+)__(?P<field>\w+)__SHIFT\s+(?P<valu
 re_mask = re.compile(r'^#define (?P<name>\w+)__(?P<field>\w+)_MASK\s+(?P<value>[0-9a-fA-Fx]+)L?\n')
 
 def register_filter(gfx_level, name, offset, already_added):
+    group = offset // 0x1000
+
     # Compute shader registers
     umd_ranges = [0xB]
 
@@ -87,18 +89,18 @@ def register_filter(gfx_level, name, offset, already_added):
         umd_ranges += [0x8]
 
     # Only accept writeable registers and debug registers
-    return ((offset // 0x1000 in umd_ranges or
+    return ((group in umd_ranges or
              # Add SQ_WAVE registers for trap handlers
              name.startswith('SQ_WAVE_') or
              # Add registers in the 0x8000 range used by all generations
-             (offset // 0x1000 == 0x8 and
+             (group == 0x8 and
               (name.startswith('SQ_IMG_') or
                name.startswith('SQ_BUF_') or
                name.startswith('SQ_THREAD') or
                name.startswith('GRBM_STATUS') or
                name.startswith('CP_CP'))) or
              # Add registers in the 0x9000 range
-             (offset // 0x1000 == 0x9 and
+             (group == 0x9 and
               (name in ['TA_CS_BC_BASE_ADDR', 'GB_ADDR_CONFIG', 'SPI_CONFIG_CNTL'] or
                (name.startswith('GB') and 'TILE_MODE' in name)))) and
             # Remove SQ compiler definitions
@@ -107,7 +109,7 @@ def register_filter(gfx_level, name, offset, already_added):
             not already_added and
             'PREF_PRI_ACCUM' not in name and
             # only define SPI and COMPUTE registers in the 0xB000 range.
-            (offset // 0x1000 != 0xB or name.startswith('SPI') or name.startswith('COMPUTE')))
+            (group != 0xB or name.startswith('SPI') or name.startswith('COMPUTE')))
 
 # Mapping from field names to enum types
 enum_map = {
