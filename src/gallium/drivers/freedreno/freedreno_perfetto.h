@@ -118,6 +118,7 @@ struct fd_perfetto_state {
    uint32_t num_groups_x;
    uint32_t num_groups_y;
    uint32_t num_groups_z;
+   uint32_t shader_id;
 };
 
 void fd_perfetto_init(void);

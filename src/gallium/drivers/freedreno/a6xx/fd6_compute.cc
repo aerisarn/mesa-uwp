@@ -126,7 +126,8 @@ fd6_launch_grid(struct fd_context *ctx, const struct pipe_grid_info *info) in_dt
 
    trace_start_compute(&ctx->batch->trace, ring, !!info->indirect, info->work_dim,
                        info->block[0], info->block[1], info->block[2],
-                       info->grid[0],  info->grid[1],  info->grid[2]);
+                       info->grid[0],  info->grid[1],  info->grid[2],
+                       cs->v->shader_id);
 
    if (ctx->batch->barrier)
       fd6_barrier_flush(ctx->batch);

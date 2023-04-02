@@ -157,7 +157,8 @@ begin_end_tp('compute',
           TracepointArg(type='uint16_t', var='local_size_z', c_format='%u'),
           TracepointArg(type='uint32_t', var='num_groups_x', c_format='%u'),
           TracepointArg(type='uint32_t', var='num_groups_y', c_format='%u'),
-          TracepointArg(type='uint32_t', var='num_groups_z', c_format='%u')]
+          TracepointArg(type='uint32_t', var='num_groups_z', c_format='%u'),
+          TracepointArg(type='uint32_t', var='shader_id',    c_format='%u')]
 )
 
 utrace_generate(cpath=args.src,

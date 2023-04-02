@@ -265,6 +265,13 @@ stage_end(struct pipe_context *pctx, uint64_t ts_ns, enum fd_stage_id stage)
             data->set_name("num_groups_z");
             data->set_value(std::to_string(p->num_groups_z));
          }
+
+         {
+            auto data = event->add_extra_data();
+
+            data->set_name("shader_id");
+            data->set_value(std::to_string(p->shader_id));
+         }
       }
    });
 }
@@ -445,6 +452,7 @@ fd_start_compute(struct pipe_context *pctx, uint64_t ts_ns,
    p->num_groups_x = payload->num_groups_x;
    p->num_groups_y = payload->num_groups_y;
    p->num_groups_z = payload->num_groups_z;
+   p->shader_id    = payload->shader_id;
 }
 
 void
