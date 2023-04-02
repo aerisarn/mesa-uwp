@@ -270,8 +270,12 @@ try_remove_simple_block(ssa_elimination_ctx& ctx, Block* block)
       assert(false);
    }
 
-   if (branch.target[0] == branch.target[1])
+   if (branch.target[0] == branch.target[1]) {
+      while (branch.operands.size())
+         branch.operands.pop_back();
+
       branch.opcode = aco_opcode::p_branch;
+   }
 
    for (unsigned i = 0; i < pred.linear_succs.size(); i++)
       if (pred.linear_succs[i] == block->index)
