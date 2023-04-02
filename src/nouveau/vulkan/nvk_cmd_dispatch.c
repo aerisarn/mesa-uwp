@@ -204,10 +204,8 @@ static void
 nvk_build_mme_add_cs_invocations(struct mme_builder *b,
                                  struct mme_value64 count)
 {
-   struct mme_value accum_hi = mme_state(b,
-      NVC597_SET_MME_SHADOW_SCRATCH(NVK_MME_SCRATCH_CS_INVOCATIONS_HI));
-   struct mme_value accum_lo = mme_state(b,
-      NVC597_SET_MME_SHADOW_SCRATCH(NVK_MME_SCRATCH_CS_INVOCATIONS_LO));
+   struct mme_value accum_hi = nvk_mme_load_scratch(b, CS_INVOCATIONS_HI);
+   struct mme_value accum_lo = nvk_mme_load_scratch(b, CS_INVOCATIONS_LO);
    struct mme_value64 accum = mme_value64(accum_lo, accum_hi);
 
    accum = mme_add64(b, accum, count);
@@ -223,9 +221,7 @@ nvk_build_mme_add_cs_invocations(struct mme_builder *b,
 void
 nvk_mme_add_cs_invocations(struct mme_builder *b)
 {
-   struct mme_value count_hi = mme_load(b);
-   struct mme_value count_lo = mme_load(b);
-   struct mme_value64 count = mme_value64(count_lo, count_hi);
+   struct mme_value64 count = mme_load_addr64(b);
 
    nvk_build_mme_add_cs_invocations(b, count);
 }

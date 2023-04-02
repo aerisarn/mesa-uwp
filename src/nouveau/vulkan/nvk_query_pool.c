@@ -703,10 +703,8 @@ nvk_mme_copy_queries(struct mme_builder *b)
             mme_sub64_to(b, result, end, begin);
             mme_sub_to(b, report_count, report_count, mme_imm(2));
 
-            mme_free_reg(b, begin_lo);
-            mme_free_reg(b, begin_hi);
-            mme_free_reg(b, end_lo);
-            mme_free_reg(b, end_hi);
+            mme_free_reg64(b, begin);
+            mme_free_reg64(b, end);
          }
 
          mme_store_global(b, write_addr, result_lo);
