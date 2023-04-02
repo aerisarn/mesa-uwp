@@ -568,6 +568,7 @@ nvk_ResetDescriptorPool(VkDevice _device,
       nvk_descriptor_set_destroy(device, pool, pool->entries[i].set, false);
    }
    pool->entry_count = 0;
+   pool->current_offset = 0;
 
    return VK_SUCCESS;
 }
