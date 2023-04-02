@@ -586,10 +586,10 @@ static void r600_set_vertex_buffers(struct pipe_context *ctx,
 	/* Set vertex buffers. */
 	if (input) {
 		for (i = 0; i < count; i++) {
-			if ((input[i].buffer.resource != vb[i].buffer.resource) ||
-			    (vb[i].stride != input[i].stride) ||
-			    (vb[i].buffer_offset != input[i].buffer_offset) ||
-			    (vb[i].is_user_buffer != input[i].is_user_buffer)) {
+			if (likely((input[i].buffer.resource != vb[i].buffer.resource) ||
+				   (vb[i].stride != input[i].stride) ||
+				   (vb[i].buffer_offset != input[i].buffer_offset) ||
+				   (vb[i].is_user_buffer != input[i].is_user_buffer))) {
 				if (input[i].buffer.resource) {
 					vb[i].stride = input[i].stride;
 					vb[i].buffer_offset = input[i].buffer_offset;
@@ -605,6 +605,14 @@ static void r600_set_vertex_buffers(struct pipe_context *ctx,
 				} else {
 					pipe_resource_reference(&vb[i].buffer.resource, NULL);
 					disable_mask |= 1 << i;
+				}
+			} else if (input[i].buffer.resource) {
+				if (take_ownership) {
+					pipe_resource_reference(&vb[i].buffer.resource, NULL);
+					vb[i].buffer.resource = input[i].buffer.resource;
+				} else {
+					pipe_resource_reference(&vb[i].buffer.resource,
+								input[i].buffer.resource);
 				}
 			}
 		}
