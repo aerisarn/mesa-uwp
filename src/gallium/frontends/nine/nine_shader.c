@@ -3757,9 +3757,10 @@ shader_add_ps_fog_stage(struct shader_translator *tx, struct ureg_src src_col)
 
     if (tx->info->fog_mode != D3DFOG_NONE) {
         depth = tx_scratch_scalar(tx);
-        /* Depth used for fog is perspective interpolated */
-        ureg_RCP(ureg, depth, ureg_scalar(nine_get_position_input(tx), TGSI_SWIZZLE_W));
-        ureg_MUL(ureg, depth, ureg_src(depth), ureg_scalar(nine_get_position_input(tx), TGSI_SWIZZLE_Z));
+        if (tx->info->zfog)
+            ureg_MOV(ureg, depth, ureg_scalar(nine_get_position_input(tx), TGSI_SWIZZLE_Z));
+        else /* wfog: use w. position's w contains 1/w */
+            ureg_RCP(ureg, depth, ureg_scalar(nine_get_position_input(tx), TGSI_SWIZZLE_W));
     }
 
     fog_color = nine_float_constant_src(tx, 32);

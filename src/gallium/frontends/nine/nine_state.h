@@ -270,6 +270,7 @@ struct nine_context {
     int    ps_const_i[NINE_MAX_CONST_I][4];
     BOOL   ps_const_b[NINE_MAX_CONST_B];
     float *ps_lconstf_temp;
+    BOOL   zfog;
 
     struct NineVertexDeclaration9 *vdecl;
 

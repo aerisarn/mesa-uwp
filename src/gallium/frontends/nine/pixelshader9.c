@@ -211,12 +211,13 @@ NinePixelShader9_GetVariant( struct NinePixelShader9 *This,
         }
         info.fog_enable = device->context.rs[D3DRS_FOGENABLE];
         info.fog_mode = device->context.rs[D3DRS_FOGTABLEMODE];
-        info.force_color_in_centroid = (key >> 23) & 1;
+        info.zfog = device->context.zfog;
         info.add_constants_defs.c_combination =
             nine_shader_constant_combination_get(This->c_combinations, (key >> 24) & 0xff);
         info.add_constants_defs.int_const_added = &This->int_slots_used;
         info.add_constants_defs.bool_const_added = &This->bool_slots_used;
-        info.fetch4 = key >> 32 ;
+        info.fetch4 = (key >> 32) & 0xffff;
+        info.force_color_in_centroid = (key >> 48) & 1;
         info.process_vertices = false;
         info.swvp_on = false;
 
