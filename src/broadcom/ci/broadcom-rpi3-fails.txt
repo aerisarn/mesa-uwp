@@ -103,7 +103,7 @@ spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj 3d,Fail
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj(bias) 3d,Fail
 spec@khr_texture_compression_astc@basic-gl,Fail
 
-glx@glx-make-current,Crash
+glx@glx-make-current,Fail
 glx@glx-multithread-buffer,Fail
 glx@glx-swap-pixmap-bad,Fail
 glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
