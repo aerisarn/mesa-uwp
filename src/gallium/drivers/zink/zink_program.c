@@ -1157,6 +1157,7 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
    prog->ctx = ctx;
    prog->is_separable = true;
    prog->gfx_hash = ctx->gfx_hash;
+   prog->base.uses_shobj = screen->info.have_EXT_shader_object;
 
    prog->stages_remaining = prog->stages_present = ctx->shader_stages;
    memcpy(prog->shaders, stages, sizeof(prog->shaders));

@@ -955,6 +955,7 @@ struct zink_program {
    struct zink_batch_usage *batch_uses;
    bool is_compute;
    bool can_precompile;
+   bool uses_shobj; //whether shader objects are used; programs CANNOT mix shader objects and shader modules
 
    struct zink_program_descriptor_data dd;
 

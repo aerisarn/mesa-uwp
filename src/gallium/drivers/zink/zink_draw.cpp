@@ -278,7 +278,7 @@ update_gfx_pipeline(struct zink_context *ctx, struct zink_batch_state *bs, enum 
    else
       zink_gfx_program_update(ctx);
    bool pipeline_changed = false;
-   if (ctx->curr_program->is_separable && screen->info.have_EXT_shader_object) {
+   if (ctx->curr_program->base.uses_shobj) {
       if (BATCH_CHANGED || shaders_changed || !ctx->shobj_draw) {
          VkShaderStageFlagBits stages[] = {
             VK_SHADER_STAGE_VERTEX_BIT,
