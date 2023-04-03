@@ -3581,6 +3581,12 @@ radv_has_shader_buffer_float_minmax(const struct radv_physical_device *pdevice, 
           pdevice->rad_info.gfx_level == GFX10_3 || (pdevice->rad_info.gfx_level == GFX11 && bitsize == 32);
 }
 
+static inline bool
+radv_has_pops(const struct radv_physical_device *pdevice)
+{
+   return pdevice->rad_info.gfx_level >= GFX9 && !pdevice->use_llvm;
+}
+
 /* radv_perfcounter.c */
 void radv_perfcounter_emit_shaders(struct radeon_cmdbuf *cs, unsigned shaders);
 void radv_perfcounter_emit_spm_reset(struct radeon_cmdbuf *cs);

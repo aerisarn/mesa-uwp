@@ -494,6 +494,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_extended_dynamic_state3 = true,
       .EXT_external_memory_dma_buf = true,
       .EXT_external_memory_host = device->rad_info.has_userptr,
+      .EXT_fragment_shader_interlock = radv_has_pops(device),
       .EXT_global_priority = true,
       .EXT_global_priority_query = true,
       .EXT_graphics_pipeline_library = !device->use_llvm && !(device->instance->debug_flags & RADV_DEBUG_NO_GPL),
@@ -594,6 +595,7 @@ radv_physical_device_get_features(const struct radv_physical_device *pdevice, st
    bool has_perf_query = radv_perf_query_supported(pdevice);
    bool has_shader_image_float_minmax = pdevice->rad_info.gfx_level != GFX8 && pdevice->rad_info.gfx_level != GFX9 &&
                                         pdevice->rad_info.gfx_level != GFX11;
+   bool has_fragment_shader_interlock = radv_has_pops(pdevice);
 
    *features = (struct vk_features){
       /* Vulkan 1.0 */
@@ -1021,6 +1023,11 @@ radv_physical_device_get_features(const struct radv_physical_device *pdevice, st
       .leastRepresentableValueForceUnormRepresentation = true,
       .floatRepresentation = true,
       .depthBiasExact = true,
+
+      /* VK_EXT_fragment_shader_interlock */
+      .fragmentShaderSampleInterlock = has_fragment_shader_interlock,
+      .fragmentShaderPixelInterlock = has_fragment_shader_interlock,
+      .fragmentShaderShadingRateInterlock = false,
    };
 }
 
@@ -1607,7 +1614,8 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice, VkPhysicalDev
          props->fragmentShadingRateWithSampleMask = true;
          props->fragmentShadingRateWithShaderSampleMask = false;
          props->fragmentShadingRateWithConservativeRasterization = true;
-         props->fragmentShadingRateWithFragmentShaderInterlock = false;
+         props->fragmentShadingRateWithFragmentShaderInterlock =
+            pdevice->rad_info.gfx_level >= GFX11 && radv_has_pops(pdevice);
          props->fragmentShadingRateWithCustomSampleLocations = false;
          props->fragmentShadingRateStrictMultiplyCombiner = true;
          break;

@@ -363,6 +363,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
          .device = device,
          .object = stage->spirv.object,
       };
+      const bool has_fragment_shader_interlock = radv_has_pops(device->physical_device);
       const struct spirv_to_nir_options spirv_options = {
          .caps =
             {
@@ -388,6 +389,8 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
                .float64_atomic_min_max = true,
                .fragment_barycentric = true,
                .fragment_fully_covered = true,
+               .fragment_shader_pixel_interlock = has_fragment_shader_interlock,
+               .fragment_shader_sample_interlock = has_fragment_shader_interlock,
                .geometry_streams = true,
                .groups = true,
                .image_atomic_int64 = true,
