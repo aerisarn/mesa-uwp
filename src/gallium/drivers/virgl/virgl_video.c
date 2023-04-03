@@ -788,6 +788,8 @@ static int fill_picture_desc(const struct pipe_picture_desc *desc,
         return fill_vc1_picture_desc(desc, vdsc);
     case PIPE_VIDEO_FORMAT_JPEG:
         return fill_mjpeg_picture_desc(desc, vdsc);
+    case PIPE_VIDEO_FORMAT_VP9:
+        return fill_vp9_picture_desc(desc, vdsc);
     default:
         return -1;
     }
