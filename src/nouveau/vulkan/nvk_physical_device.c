@@ -434,9 +434,7 @@ nvk_get_device_features(const struct nv_device_info *dev,
       .borderColorSwizzleFromImage = false,
 
       /* VK_EXT_buffer_device_address */
-      .bufferDeviceAddress = true,
-      .bufferDeviceAddressCaptureReplay = false,
-      .bufferDeviceAddressMultiDevice = false,
+      .bufferDeviceAddressCaptureReplayEXT = false,
 
       /* VK_EXT_custom_border_color */
       .customBorderColors = true,
