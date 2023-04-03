@@ -1850,9 +1850,6 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
             cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
       }
 
-      if (cmd_buffer->state.emitted_graphics_pipeline->db_shader_control != pipeline->db_shader_control)
-         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE;
-
       if (cmd_buffer->state.emitted_graphics_pipeline->db_render_control != pipeline->db_render_control)
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_FRAMEBUFFER;
    }
@@ -4370,43 +4367,6 @@ radv_emit_line_rasterization_mode(struct radv_cmd_buffer *cmd_buffer)
       S_028BDC_PERPENDICULAR_ENDCAP_ENA(d->vk.rs.line.mode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT));
 }
 
-static bool
-radv_ps_can_enable_early_z(const struct radv_shader *ps)
-{
-   return ps->info.ps.early_fragment_test || !ps->info.ps.writes_memory;
-}
-
-static void
-radv_emit_attachment_feedback_loop_enable(struct radv_cmd_buffer *cmd_buffer)
-{
-   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   const struct radv_shader *ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
-   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
-   unsigned db_shader_control = pipeline->db_shader_control;
-   const bool uses_ds_feedback_loop =
-      !!(d->feedback_loop_aspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
-   unsigned z_order;
-
-   /* When a depth/stencil attachment is used inside feedback loops, use LATE_Z to make sure shader
-    * invocations read the correct value.
-    */
-   if (!uses_ds_feedback_loop && ps && radv_ps_can_enable_early_z(ps)) {
-      z_order = V_02880C_EARLY_Z_THEN_LATE_Z;
-   } else {
-      z_order = V_02880C_LATE_Z;
-   }
-
-   /* Bug workaround for smoothing (overrasterization) on GFX6. */
-   if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX6 &&
-       d->vk.rs.line.mode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT) {
-      z_order = V_02880C_LATE_Z;
-   }
-
-   db_shader_control |= S_02880C_Z_ORDER(z_order);
-
-   radeon_set_context_reg(cmd_buffer->cs, R_02880C_DB_SHADER_CONTROL, db_shader_control);
-}
-
 static void
 radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const uint64_t states)
 {
@@ -4517,9 +4477,7 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const ui
                  RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE))
       radv_emit_msaa_state(cmd_buffer);
 
-   if (states &
-       (RADV_CMD_DIRTY_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE | RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE))
-      radv_emit_attachment_feedback_loop_enable(cmd_buffer);
+   /* RADV_CMD_DIRTY_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE is handled by radv_emit_db_shader_control. */
 
    cmd_buffer->state.dirty &= ~states;
 }
@@ -5723,9 +5681,11 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
    cmd_buffer->state.last_vrs_rates_sgpr_idx = -1;
    cmd_buffer->state.last_pa_sc_binner_cntl_0 = -1;
    cmd_buffer->state.last_db_count_control = -1;
+   cmd_buffer->state.last_db_shader_control = -1;
    cmd_buffer->usage_flags = pBeginInfo->flags;
 
-   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_ALL | RADV_CMD_DIRTY_GUARDBAND | RADV_CMD_DIRTY_OCCLUSION_QUERY;
+   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_ALL | RADV_CMD_DIRTY_GUARDBAND | RADV_CMD_DIRTY_OCCLUSION_QUERY |
+                              RADV_CMD_DIRTY_DB_SHADER_CONTROL;
 
    if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
       uint32_t pred_value = 0;
@@ -6393,9 +6353,6 @@ radv_bind_fragment_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_
       cmd_buffer->state.dirty |=
          RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES | RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
 
-   if (!previous_ps || radv_ps_can_enable_early_z(previous_ps) != radv_ps_can_enable_early_z(ps))
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE;
-
    if (cmd_buffer->state.ms.sample_shading_enable != ps->info.ps.uses_sample_shading) {
       cmd_buffer->state.ms.sample_shading_enable = ps->info.ps.uses_sample_shading;
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
@@ -6408,6 +6365,9 @@ radv_bind_fragment_shader(struct radv_cmd_buffer *cmd_buffer, const struct radv_
       cmd_buffer->state.ms.min_sample_shading = min_sample_shading;
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES;
    }
+
+   if (!previous_ps || previous_ps->info.ps.db_shader_control != ps->info.ps.db_shader_control)
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DB_SHADER_CONTROL;
 
    /* Re-emit the PS epilog when a new fragment shader is bound. */
    if (ps->info.ps.has_epilog)
@@ -6437,9 +6397,9 @@ radv_bind_shader(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *shader,
       /* Reset some dynamic states when a shader stage is unbound. */
       switch (stage) {
       case MESA_SHADER_FRAGMENT:
-         cmd_buffer->state.dirty |=
-            RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE | RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
-            RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE | RADV_CMD_DIRTY_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE;
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_CONSERVATIVE_RAST_MODE |
+                                    RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
+                                    RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE | RADV_CMD_DIRTY_DB_SHADER_CONTROL;
          break;
       default:
          break;
@@ -7503,6 +7463,8 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
 
       primary->state.last_pa_sc_binner_cntl_0 = secondary->state.last_pa_sc_binner_cntl_0;
 
+      primary->state.last_db_shader_control = secondary->state.last_db_shader_control;
+
       primary->state.rb_noncoherent_dirty |= secondary->state.rb_noncoherent_dirty;
    }
 
@@ -7510,7 +7472,8 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
     * some states.
     */
    primary->state.dirty |= RADV_CMD_DIRTY_PIPELINE | RADV_CMD_DIRTY_INDEX_BUFFER | RADV_CMD_DIRTY_GUARDBAND |
-                           RADV_CMD_DIRTY_DYNAMIC_ALL | RADV_CMD_DIRTY_NGG_QUERY | RADV_CMD_DIRTY_OCCLUSION_QUERY;
+                           RADV_CMD_DIRTY_DYNAMIC_ALL | RADV_CMD_DIRTY_NGG_QUERY | RADV_CMD_DIRTY_OCCLUSION_QUERY |
+                           RADV_CMD_DIRTY_DB_SHADER_CONTROL;
    radv_mark_descriptor_sets_dirty(primary, VK_PIPELINE_BIND_POINT_GRAPHICS);
    radv_mark_descriptor_sets_dirty(primary, VK_PIPELINE_BIND_POINT_COMPUTE);
 
@@ -8733,6 +8696,51 @@ radv_emit_fs_state(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
+radv_emit_db_shader_control(struct radv_cmd_buffer *cmd_buffer)
+{
+   const struct radeon_info *rad_info = &cmd_buffer->device->physical_device->rad_info;
+   const struct radv_shader *ps = cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT];
+   const struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+   const bool uses_ds_feedback_loop =
+      !!(d->feedback_loop_aspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
+
+   uint32_t db_shader_control;
+
+   if (ps) {
+      db_shader_control = ps->info.ps.db_shader_control;
+   } else {
+      db_shader_control = S_02880C_CONSERVATIVE_Z_EXPORT(V_02880C_EXPORT_ANY_Z) |
+                          S_02880C_Z_ORDER(V_02880C_EARLY_Z_THEN_LATE_Z) |
+                          S_02880C_DUAL_QUAD_DISABLE(rad_info->has_rbplus && !rad_info->rbplus_allowed);
+   }
+
+   /* When a depth/stencil attachment is used inside feedback loops, use LATE_Z to make sure shader invocations read the
+    * correct value.
+    * Also apply the bug workaround for smoothing (overrasterization) on GFX6.
+    */
+   if (uses_ds_feedback_loop ||
+       (rad_info->gfx_level == GFX6 && d->vk.rs.line.mode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT))
+      db_shader_control = (db_shader_control & C_02880C_Z_ORDER) | S_02880C_Z_ORDER(V_02880C_LATE_Z);
+
+   if (rad_info->has_export_conflict_bug && radv_get_rasterization_samples(cmd_buffer) == 1) {
+      for (uint32_t i = 0; i < MAX_RTS; i++) {
+         if (d->vk.cb.attachments[i].write_mask && d->vk.cb.attachments[i].blend_enable) {
+            db_shader_control |= S_02880C_OVERRIDE_INTRINSIC_RATE_ENABLE(1) | S_02880C_OVERRIDE_INTRINSIC_RATE(2);
+            break;
+         }
+      }
+   }
+
+   if (db_shader_control != cmd_buffer->state.last_db_shader_control) {
+      radeon_set_context_reg(cmd_buffer->cs, R_02880C_DB_SHADER_CONTROL, db_shader_control);
+
+      cmd_buffer->state.last_db_shader_control = db_shader_control;
+   }
+
+   cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_DB_SHADER_CONTROL;
+}
+
+static void
 radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info *info)
 {
    const struct radv_device *device = cmd_buffer->device;
@@ -8806,6 +8814,12 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
 
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_GUARDBAND)
       radv_emit_guardband_state(cmd_buffer);
+
+   if (cmd_buffer->state.dirty &
+       (RADV_CMD_DIRTY_DB_SHADER_CONTROL | RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_MASK |
+        RADV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_ENABLE | RADV_CMD_DIRTY_DYNAMIC_RASTERIZATION_SAMPLES |
+        RADV_CMD_DIRTY_DYNAMIC_LINE_RASTERIZATION_MODE | RADV_CMD_DIRTY_DYNAMIC_ATTACHMENT_FEEDBACK_LOOP_ENABLE))
+      radv_emit_db_shader_control(cmd_buffer);
 
    if (info->indexed && info->indirect && cmd_buffer->state.dirty & RADV_CMD_DIRTY_INDEX_BUFFER)
       radv_emit_index_buffer(cmd_buffer);

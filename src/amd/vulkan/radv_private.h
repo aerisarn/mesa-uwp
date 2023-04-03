@@ -1351,6 +1351,7 @@ enum radv_cmd_dirty_bits {
    RADV_CMD_DIRTY_RBPLUS = 1ull << 56,
    RADV_CMD_DIRTY_NGG_QUERY = 1ull << 57,
    RADV_CMD_DIRTY_OCCLUSION_QUERY = 1ull << 58,
+   RADV_CMD_DIRTY_DB_SHADER_CONTROL = 1ull << 59,
 };
 
 enum radv_cmd_flush_bits {
@@ -1654,6 +1655,8 @@ struct radv_cmd_state {
    uint32_t last_sx_blend_opt_control;
 
    uint32_t last_db_count_control;
+
+   uint32_t last_db_shader_control;
 
    /* Whether CP DMA is busy/idle. */
    bool dma_is_busy;
@@ -2253,7 +2256,6 @@ struct radv_graphics_pipeline {
    uint32_t attrib_ends[MAX_VERTEX_ATTRIBS];
    uint32_t attrib_index_offset[MAX_VERTEX_ATTRIBS];
    uint32_t db_render_control;
-   uint32_t db_shader_control;
 
    /* Last pre-PS API stage */
    gl_shader_stage last_vgt_api_stage;

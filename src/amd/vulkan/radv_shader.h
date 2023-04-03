@@ -382,6 +382,7 @@ struct radv_shader_info {
       uint8_t color0_written;
       bool load_provoking_vtx;
       bool load_rasterization_prim;
+      uint32_t db_shader_control; /* DB_SHADER_CONTROL without intrinsic rate overrides */
    } ps;
    struct {
       bool uses_grid_size;

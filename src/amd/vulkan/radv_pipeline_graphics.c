@@ -1162,44 +1162,6 @@ radv_pipeline_init_dynamic_state(const struct radv_device *device, struct radv_g
    pipeline->dynamic_state.mask = states;
 }
 
-static uint32_t
-radv_compute_db_shader_control(const struct radv_device *device, const struct radv_graphics_pipeline *pipeline,
-                               const struct vk_graphics_pipeline_state *state)
-{
-   const struct radv_physical_device *pdevice = device->physical_device;
-   struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
-   unsigned conservative_z_export = V_02880C_EXPORT_ANY_Z;
-
-   if (ps && ps->info.ps.depth_layout == FRAG_DEPTH_LAYOUT_GREATER)
-      conservative_z_export = V_02880C_EXPORT_GREATER_THAN_Z;
-   else if (ps && ps->info.ps.depth_layout == FRAG_DEPTH_LAYOUT_LESS)
-      conservative_z_export = V_02880C_EXPORT_LESS_THAN_Z;
-
-   bool disable_rbplus = pdevice->rad_info.has_rbplus && !pdevice->rad_info.rbplus_allowed;
-
-   /* It shouldn't be needed to export gl_SampleMask when MSAA is disabled
-    * but this appears to break Project Cars (DXVK). See
-    * https://bugs.freedesktop.org/show_bug.cgi?id=109401
-    */
-   bool mask_export_enable = ps && ps->info.ps.writes_sample_mask;
-
-   bool export_conflict_wa = device->physical_device->rad_info.has_export_conflict_bug &&
-                             radv_pipeline_is_blend_enabled(pipeline, state->cb) &&
-                             (!state->ms || state->ms->rasterization_samples <= 1 ||
-                              (pipeline->dynamic_states & RADV_DYNAMIC_RASTERIZATION_SAMPLES));
-
-   return S_02880C_Z_EXPORT_ENABLE(ps && ps->info.ps.writes_z) |
-          S_02880C_STENCIL_TEST_VAL_EXPORT_ENABLE(ps && ps->info.ps.writes_stencil) |
-          S_02880C_KILL_ENABLE(ps && ps->info.ps.can_discard) | S_02880C_MASK_EXPORT_ENABLE(mask_export_enable) |
-          S_02880C_CONSERVATIVE_Z_EXPORT(conservative_z_export) |
-          S_02880C_DEPTH_BEFORE_SHADER(ps && ps->info.ps.early_fragment_test) |
-          S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(ps && ps->info.ps.post_depth_coverage) |
-          S_02880C_EXEC_ON_HIER_FAIL(ps && ps->info.ps.writes_memory) |
-          S_02880C_EXEC_ON_NOOP(ps && ps->info.ps.writes_memory) | S_02880C_DUAL_QUAD_DISABLE(disable_rbplus) |
-          S_02880C_OVERRIDE_INTRINSIC_RATE_ENABLE(export_conflict_wa) |
-          S_02880C_OVERRIDE_INTRINSIC_RATE(export_conflict_wa ? 2 : 0);
-}
-
 static void
 gfx10_emit_ge_pc_alloc(struct radeon_cmdbuf *cs, enum amd_gfx_level gfx_level, uint32_t oversub_pc_lines)
 {
@@ -3985,7 +3947,6 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
    pipeline->base.push_constant_size = pipeline_layout.push_constant_size;
    pipeline->base.dynamic_offset_count = pipeline_layout.dynamic_offset_count;
-   pipeline->db_shader_control = radv_compute_db_shader_control(device, pipeline, &state);
 
    for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
       if (pipeline->base.shaders[i]) {

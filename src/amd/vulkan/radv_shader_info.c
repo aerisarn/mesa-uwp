@@ -637,6 +637,34 @@ gather_shader_info_fs(const struct radv_device *device, const nir_shader *nir,
             info->ps.input_mask |= mask << (var->data.location - VARYING_SLOT_VAR0);
       }
    }
+
+   /* DB_SHADER_CONTROL based on other fragment shader info fields. */
+
+   unsigned conservative_z_export = V_02880C_EXPORT_ANY_Z;
+   if (info->ps.depth_layout == FRAG_DEPTH_LAYOUT_GREATER)
+      conservative_z_export = V_02880C_EXPORT_GREATER_THAN_Z;
+   else if (info->ps.depth_layout == FRAG_DEPTH_LAYOUT_LESS)
+      conservative_z_export = V_02880C_EXPORT_LESS_THAN_Z;
+
+   unsigned z_order =
+      info->ps.early_fragment_test || !info->ps.writes_memory ? V_02880C_EARLY_Z_THEN_LATE_Z : V_02880C_LATE_Z;
+
+   /* It shouldn't be needed to export gl_SampleMask when MSAA is disabled, but this appears to break Project Cars
+    * (DXVK). See https://bugs.freedesktop.org/show_bug.cgi?id=109401
+    */
+   const bool mask_export_enable = info->ps.writes_sample_mask;
+
+   const bool disable_rbplus =
+      device->physical_device->rad_info.has_rbplus && !device->physical_device->rad_info.rbplus_allowed;
+
+   info->ps.db_shader_control =
+      S_02880C_Z_EXPORT_ENABLE(info->ps.writes_z) | S_02880C_STENCIL_TEST_VAL_EXPORT_ENABLE(info->ps.writes_stencil) |
+      S_02880C_KILL_ENABLE(info->ps.can_discard) | S_02880C_MASK_EXPORT_ENABLE(mask_export_enable) |
+      S_02880C_CONSERVATIVE_Z_EXPORT(conservative_z_export) | S_02880C_Z_ORDER(z_order) |
+      S_02880C_DEPTH_BEFORE_SHADER(info->ps.early_fragment_test) |
+      S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(info->ps.post_depth_coverage) |
+      S_02880C_EXEC_ON_HIER_FAIL(info->ps.writes_memory) | S_02880C_EXEC_ON_NOOP(info->ps.writes_memory) |
+      S_02880C_DUAL_QUAD_DISABLE(disable_rbplus);
 }
 
 static void
