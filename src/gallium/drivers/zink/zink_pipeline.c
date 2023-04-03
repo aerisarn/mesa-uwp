@@ -245,9 +245,11 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_PROVOKING_VERTEX_MODE_EXT;
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE_EXT;
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LINE_RASTERIZATION_MODE_EXT;
-      if (screen->info.dynamic_state3_feats.extendedDynamicState3LineStippleEnable)
-         dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LINE_STIPPLE_ENABLE_EXT;
-      dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LINE_STIPPLE_EXT;
+      if (!screen->driver_workarounds.no_linestipple) {
+         if (screen->info.dynamic_state3_feats.extendedDynamicState3LineStippleEnable)
+            dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LINE_STIPPLE_ENABLE_EXT;
+         dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LINE_STIPPLE_EXT;
+      }
       if (screen->have_full_ds3) {
          dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_SAMPLE_MASK_EXT;
          dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT;
