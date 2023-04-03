@@ -92,6 +92,7 @@ zink_debug_options[] = {
    { "norp", ZINK_DEBUG_NORP, "Disable renderpass tracking/optimizations" },
    { "map", ZINK_DEBUG_MAP, "Track amount of mapped VRAM" },
    { "flushsync", ZINK_DEBUG_FLUSHSYNC, "Force synchronous flushes/presents" },
+   { "noshobj", ZINK_DEBUG_NOSHOBJ, "Disable EXT_shader_object" },
    DEBUG_NAMED_VALUE_END
 };
 
@@ -2409,7 +2410,7 @@ init_driver_workarounds(struct zink_screen *screen)
    }
    /* TODO: maybe compile multiple variants for different set counts for compact mode? */
    if (screen->info.props.limits.maxBoundDescriptorSets < ZINK_DESCRIPTOR_ALL_TYPES ||
-       zink_debug & ZINK_DEBUG_COMPACT)
+       zink_debug & (ZINK_DEBUG_COMPACT | ZINK_DEBUG_NOSHOBJ))
       screen->info.have_EXT_shader_object = false;
    if (screen->info.line_rast_feats.stippledRectangularLines &&
        screen->info.line_rast_feats.stippledBresenhamLines &&

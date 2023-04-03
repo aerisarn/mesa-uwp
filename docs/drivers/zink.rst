@@ -307,6 +307,8 @@ variable:
     Print info about mapped VRAM
   ``flushsync``
     Force synchronous flushes/presents
+  ``noshobj``
+    Disable EXT_shader_object
 
 Vulkan Validation Layers
 ^^^^^^^^^^^^^^^^^^^^^^^^

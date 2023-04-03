@@ -221,6 +221,7 @@ enum zink_debug {
    ZINK_DEBUG_NORP = (1<<10),
    ZINK_DEBUG_MAP = (1<<11),
    ZINK_DEBUG_FLUSHSYNC = (1<<12),
+   ZINK_DEBUG_NOSHOBJ = (1<<13),
 };
 
 enum zink_pv_emulation_primitive {
