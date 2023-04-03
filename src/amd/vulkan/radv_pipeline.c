@@ -2765,10 +2765,6 @@ radv_pipeline_get_nir(struct radv_device *device, struct radv_graphics_pipeline 
       if (!stages[s].entrypoint)
          continue;
 
-      /* Do not try to get the NIR when we already have the assembly. */
-      if (pipeline->base.shaders[s])
-         continue;
-
       int64_t stage_start = os_time_get_nano();
 
       assert(retain_shaders || pipeline->base.shaders[s] == NULL);
