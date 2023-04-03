@@ -41,6 +41,7 @@ get_dynamic_state_groups(BITSET_WORD *dynamic,
 
    if (groups & MESA_VK_GRAPHICS_STATE_VERTEX_INPUT_BIT) {
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_VI);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_VI_BINDINGS_VALID);
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_VI_BINDING_STRIDES);
    }
 
@@ -128,7 +129,9 @@ fully_dynamic_state_groups(const BITSET_WORD *dynamic)
 {
    enum mesa_vk_graphics_state_groups groups = 0;
 
-   if (BITSET_TEST(dynamic, MESA_VK_DYNAMIC_VI))
+   if (BITSET_TEST(dynamic, MESA_VK_DYNAMIC_VI) &&
+       BITSET_TEST(dynamic, MESA_VK_DYNAMIC_VI_BINDING_STRIDES) &&
+       BITSET_TEST(dynamic, MESA_VK_DYNAMIC_VI_BINDINGS_VALID))
       groups |= MESA_VK_GRAPHICS_STATE_VERTEX_INPUT_BIT;
 
    if (BITSET_TEST(dynamic, MESA_VK_DYNAMIC_TS_PATCH_CONTROL_POINTS) &&
@@ -203,9 +206,16 @@ vk_get_dynamic_graphics_states(BITSET_WORD *dynamic,
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_##MESA2); \
       break;
 
+#define CASE3(VK, MESA1, MESA2, MESA3) \
+   case VK_DYNAMIC_STATE_##VK: \
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_##MESA1); \
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_##MESA2); \
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_##MESA3); \
+      break;
+
    for (uint32_t i = 0; i < info->dynamicStateCount; i++) {
       switch (info->pDynamicStates[i]) {
-      CASE2(VERTEX_INPUT_EXT,             VI, VI_BINDING_STRIDES)
+      CASE3(VERTEX_INPUT_EXT,             VI, VI_BINDINGS_VALID, VI_BINDING_STRIDES)
       CASE( VERTEX_INPUT_BINDING_STRIDE,  VI_BINDING_STRIDES)
       CASE( VIEWPORT,                     VP_VIEWPORTS)
       CASE( SCISSOR,                      VP_SCISSORS)
@@ -336,6 +346,9 @@ vk_dynamic_graphics_state_init_vi(struct vk_dynamic_graphics_state *dst,
 {
    if (IS_NEEDED(VI))
       *dst->vi = *vi;
+
+   if (IS_NEEDED(VI_BINDINGS_VALID))
+      dst->vi_bindings_valid = vi->bindings_valid;
 
    if (IS_NEEDED(VI_BINDING_STRIDES)) {
       for (uint32_t b = 0; b < MESA_VK_MAX_VERTEX_BINDINGS; b++) {
@@ -1673,8 +1686,15 @@ vk_dynamic_graphics_state_fill(struct vk_dynamic_graphics_state *dyn,
 
 #undef INIT_DYNAMIC_STATE
 
-   /* Mask off all but the groups we actually found */
    get_dynamic_state_groups(dyn->set, groups);
+
+   /* Vertex input state is always included in a complete pipeline. If p->vi
+    * is NULL, that means that it has been precompiled by the driver, but we
+    * should still track vi_bindings_valid.
+    */
+   BITSET_SET(dyn->set, MESA_VK_DYNAMIC_VI_BINDINGS_VALID);
+
+   /* Mask off all but the groups we actually found */
    BITSET_AND(dyn->set, dyn->set, needed);
 }
 
@@ -1735,9 +1755,14 @@ vk_dynamic_graphics_state_copy(struct vk_dynamic_graphics_state *dst,
       }
    }
 
+   if (IS_SET_IN_SRC(VI_BINDINGS_VALID))
+      COPY_MEMBER(VI_BINDINGS_VALID, vi_bindings_valid);
+
    if (IS_SET_IN_SRC(VI_BINDING_STRIDES)) {
-      COPY_ARRAY(VI_BINDING_STRIDES, vi_binding_strides,
-                 MESA_VK_MAX_VERTEX_BINDINGS);
+      assert(IS_SET_IN_SRC(VI_BINDINGS_VALID));
+      u_foreach_bit(a, src->vi_bindings_valid) {
+         COPY_MEMBER(VI_BINDING_STRIDES, vi_binding_strides[a]);
+      }
    }
 
    COPY_IF_SET(IA_PRIMITIVE_TOPOLOGY, ia.primitive_topology);
@@ -1931,6 +1956,7 @@ vk_common_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer,
                     vi_binding_strides[b], desc->stride);
    }
    SET_DYN_VALUE(dyn, VI, vi->bindings_valid, bindings_valid);
+   SET_DYN_VALUE(dyn, VI_BINDINGS_VALID, vi_bindings_valid, bindings_valid);
 
    uint32_t attributes_valid = 0;
    for (uint32_t i = 0; i < vertexAttributeDescriptionCount; i++) {

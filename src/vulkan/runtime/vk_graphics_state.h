@@ -46,6 +46,7 @@ struct vk_device;
  */
 enum mesa_vk_dynamic_graphics_state {
    MESA_VK_DYNAMIC_VI,
+   MESA_VK_DYNAMIC_VI_BINDINGS_VALID,
    MESA_VK_DYNAMIC_VI_BINDING_STRIDES,
    MESA_VK_DYNAMIC_IA_PRIMITIVE_TOPOLOGY,
    MESA_VK_DYNAMIC_IA_PRIMITIVE_RESTART_ENABLE,
@@ -711,6 +712,14 @@ struct vk_dynamic_graphics_state {
     * MESA_VK_DYNAMIC_GRAPHICS_STATE_VI
     */
    struct vk_vertex_input_state *vi;
+
+   /* This is a copy of vi->bindings_valid, used when the vertex input state
+    * is precompiled in the pipeline (so that vi is NULL) but the strides are
+    * set dynamically.
+    *
+    * MESA_VK_DYNAMIC_GRAPHICS_STATE_VI_BINDINGS_VALID
+    */
+   uint32_t vi_bindings_valid;
 
    /** Vertex binding strides
     *
