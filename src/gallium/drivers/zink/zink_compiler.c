@@ -3196,7 +3196,7 @@ zink_shader_dump(const struct zink_shader *zs, void *words, size_t size, const c
    }
 }
 
-static struct zink_shader_object
+struct zink_shader_object
 zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, struct spirv_shader *spirv, bool can_shobj)
 {
    VkShaderModuleCreateInfo smci = {0};
