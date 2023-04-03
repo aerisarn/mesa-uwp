@@ -938,6 +938,7 @@ enum zink_gfx_push_constant_member {
 struct zink_shader_module {
    struct zink_shader_object obj;
    uint32_t hash;
+   bool shobj;
    bool default_variant;
    bool has_nonseamless;
    bool needs_zs_shader_swizzle;

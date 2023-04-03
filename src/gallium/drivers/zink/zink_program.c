@@ -151,12 +151,13 @@ create_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *scr
       assert(ctx); //TODO async
       zm->obj = zink_shader_tcs_compile(screen, zs, patch_vertices);
    } else {
-      zm->obj = zink_shader_compile(screen, zs, zink_shader_blob_deserialize(screen, &prog->blobs[stage]), key, &ctx->di.zs_swizzle[stage]);
+      zm->obj = zink_shader_compile(screen, false, zs, zink_shader_blob_deserialize(screen, &prog->blobs[stage]), key, &ctx->di.zs_swizzle[stage]);
    }
    if (!zm->obj.mod) {
       FREE(zm);
       return NULL;
    }
+   zm->shobj = false;
    zm->num_uniforms = inline_size;
    if (!is_nongenerated_tcs) {
       zm->key_size = key->size;
@@ -268,13 +269,14 @@ create_shader_module_for_stage_optimal(struct zink_context *ctx, struct zink_scr
       }
       zm->obj = zink_shader_tcs_compile(screen, zs, patch_vertices);
    } else {
-      zm->obj = zink_shader_compile(screen, zs, zink_shader_blob_deserialize(screen, &prog->blobs[stage]),
+      zm->obj = zink_shader_compile(screen, false, zs, zink_shader_blob_deserialize(screen, &prog->blobs[stage]),
                                     (struct zink_shader_key*)key, shadow_needs_shader_swizzle ? &ctx->di.zs_swizzle[stage] : NULL);
    }
    if (!zm->obj.mod) {
       FREE(zm);
       return NULL;
    }
+   zm->shobj = false;
    /* non-generated tcs won't use the shader key */
    const bool is_nongenerated_tcs = stage == MESA_SHADER_TESS_CTRL && !zs->non_fs.is_generated;
    if (key && !is_nongenerated_tcs) {
@@ -343,7 +345,10 @@ get_shader_module_for_stage_optimal(struct zink_context *ctx, struct zink_screen
 static void
 zink_destroy_shader_module(struct zink_screen *screen, struct zink_shader_module *zm)
 {
-   VKSCR(DestroyShaderModule)(screen->dev, zm->obj.mod, NULL);
+   if (zm->shobj)
+      VKSCR(DestroyShaderEXT)(screen->dev, zm->obj.obj, NULL);
+   else
+      VKSCR(DestroyShaderModule)(screen->dev, zm->obj.mod, NULL);
    ralloc_free(zm->obj.spirv);
    free(zm);
 }
@@ -847,7 +852,8 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
       if (!zm) {
          return;
       }
-      zm->obj = zink_shader_compile(screen, zs, zink_shader_blob_deserialize(screen, &comp->shader->blob), key, zs_swizzle_size ? &ctx->di.zs_swizzle[MESA_SHADER_COMPUTE] : NULL);
+      zm->shobj = false;
+      zm->obj = zink_shader_compile(screen, false, zs, zink_shader_blob_deserialize(screen, &comp->shader->blob), key, zs_swizzle_size ? &ctx->di.zs_swizzle[MESA_SHADER_COMPUTE] : NULL);
       if (!zm->obj.spirv) {
          FREE(zm);
          return;
@@ -1296,7 +1302,8 @@ precompile_compute_job(void *data, void *gdata, int thread_index)
    comp->shader = zink_shader_create(screen, comp->nir, NULL);
    comp->curr = comp->module = CALLOC_STRUCT(zink_shader_module);
    assert(comp->module);
-   comp->module->obj = zink_shader_compile(screen, comp->shader, comp->nir, NULL, NULL);
+   comp->module->shobj = false;
+   comp->module->obj = zink_shader_compile(screen, false, comp->shader, comp->nir, NULL, NULL);
    /* comp->nir will be freed by zink_shader_compile */
    comp->nir = NULL;
    assert(comp->module->obj.spirv);

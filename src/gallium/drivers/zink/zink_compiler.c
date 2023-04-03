@@ -3546,7 +3546,7 @@ compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *n
 }
 
 struct zink_shader_object
-zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
+zink_shader_compile(struct zink_screen *screen, bool can_shobj, struct zink_shader *zs,
                     nir_shader *nir, const struct zink_shader_key *key, const void *extra_data)
 {
    struct zink_shader_info *sinfo = &zs->sinfo;
