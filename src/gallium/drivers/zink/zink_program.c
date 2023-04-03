@@ -1193,18 +1193,17 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
       }
    }
 
-   if (prog->shaders[MESA_SHADER_VERTEX]->precompile.dsl) {
-      prog->base.dd.binding_usage |= BITFIELD_BIT(0);
-      prog->base.dsl[0] = prog->shaders[MESA_SHADER_VERTEX]->precompile.dsl;
-      prog->base.num_dsl = 1;
+   for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
+      if (!prog->shaders[i] || !prog->shaders[i]->precompile.dsl)
+         continue;
+      int idx = !i ? 0 : 1;
+      prog->base.dd.binding_usage |= BITFIELD_BIT(idx);
+      prog->base.dsl[idx] = prog->shaders[i]->precompile.dsl;
+      /* guarantee a null dsl if previous stages don't have descriptors */
+      if (prog->shaders[i]->precompile.dsl)
+         prog->base.num_dsl = idx + 1;
+      prog->base.dd.bindless |= prog->shaders[i]->bindless;
    }
-   if (prog->shaders[MESA_SHADER_FRAGMENT]->precompile.dsl) {
-      prog->base.dd.binding_usage |= BITFIELD_BIT(1);
-      prog->base.dsl[1] = prog->shaders[MESA_SHADER_FRAGMENT]->precompile.dsl;
-      /* guarantee a null dsl if vs doesn't have descriptors */
-      prog->base.num_dsl = 2;
-   }
-   prog->base.dd.bindless = prog->shaders[MESA_SHADER_VERTEX]->bindless | prog->shaders[MESA_SHADER_FRAGMENT]->bindless;
    if (prog->base.dd.bindless) {
       prog->base.num_dsl = screen->compact_descriptors ? ZINK_DESCRIPTOR_ALL_TYPES - ZINK_DESCRIPTOR_COMPACT : ZINK_DESCRIPTOR_ALL_TYPES;
       prog->base.dsl[screen->desc_set_id[ZINK_DESCRIPTOR_BINDLESS]] = screen->bindless_layout;
