@@ -1,17 +1,10 @@
 use crate::api::icd::CLResult;
-use crate::api::icd::DISPATCH;
 use crate::api::util::*;
+use crate::core::platform::*;
 use crate::core::version::*;
 
 use mesa_rust_util::ptr::*;
 use rusticl_opencl_gen::*;
-
-#[repr(C)]
-#[allow(non_camel_case_types)]
-pub struct _cl_platform_id {
-    dispatch: &'static cl_icd_dispatch,
-    extensions: [cl_name_version; 2],
-}
 
 impl CLInfo<cl_platform_info> for cl_platform_id {
     fn query(&self, q: cl_platform_info, _: &[u8]) -> CLResult<Vec<u8>> {
@@ -33,33 +26,6 @@ impl CLInfo<cl_platform_info> for cl_platform_id {
             // CL_INVALID_VALUE if param_name is not one of the supported values
             _ => return Err(CL_INVALID_VALUE),
         })
-    }
-}
-
-static PLATFORM: _cl_platform_id = _cl_platform_id {
-    dispatch: &DISPATCH,
-    extensions: [
-        mk_cl_version_ext(1, 0, 0, "cl_khr_icd"),
-        mk_cl_version_ext(1, 0, 0, "cl_khr_il_program"),
-    ],
-};
-
-pub fn get_platform() -> cl_platform_id {
-    &PLATFORM as *const crate::api::platform::_cl_platform_id
-        as *mut ::rusticl_opencl_gen::_cl_platform_id
-}
-
-pub trait GetPlatformRef {
-    fn get_ref(&self) -> CLResult<&'static _cl_platform_id>;
-}
-
-impl GetPlatformRef for cl_platform_id {
-    fn get_ref(&self) -> CLResult<&'static _cl_platform_id> {
-        if !self.is_null() && *self == get_platform() {
-            Ok(&PLATFORM)
-        } else {
-            Err(CL_INVALID_PLATFORM)
-        }
     }
 }
 

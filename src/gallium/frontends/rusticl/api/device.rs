@@ -1,7 +1,7 @@
 use crate::api::icd::*;
-use crate::api::platform::*;
 use crate::api::util::*;
 use crate::core::device::*;
+use crate::core::platform::*;
 use crate::core::version::*;
 
 use mesa_rust_gen::*;
