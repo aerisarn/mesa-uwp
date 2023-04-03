@@ -110,7 +110,7 @@ static void pvr_cmd_buffer_free_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
       case PVR_SUB_CMD_TYPE_TRANSFER:
          list_for_each_entry_safe (struct pvr_transfer_cmd,
                                    transfer_cmd,
-                                   &sub_cmd->transfer.transfer_cmds,
+                                   sub_cmd->transfer.transfer_cmds,
                                    link) {
             list_del(&transfer_cmd->link);
             if (!transfer_cmd->is_deferred_clear)
@@ -2346,7 +2346,8 @@ VkResult pvr_cmd_buffer_start_sub_cmd(struct pvr_cmd_buffer *cmd_buffer,
       break;
 
    case PVR_SUB_CMD_TYPE_TRANSFER:
-      list_inithead(&sub_cmd->transfer.transfer_cmds);
+      sub_cmd->transfer.transfer_cmds = &sub_cmd->transfer.transfer_cmds_priv;
+      list_inithead(sub_cmd->transfer.transfer_cmds);
       break;
 
    case PVR_SUB_CMD_TYPE_EVENT:
@@ -3255,7 +3256,7 @@ VkResult pvr_cmd_buffer_add_transfer_cmd(struct pvr_cmd_buffer *cmd_buffer,
 
    sub_cmd = &cmd_buffer->state.current_sub_cmd->transfer;
 
-   list_addtail(&transfer_cmd->link, &sub_cmd->transfer_cmds);
+   list_addtail(&transfer_cmd->link, sub_cmd->transfer_cmds);
 
    return VK_SUCCESS;
 }

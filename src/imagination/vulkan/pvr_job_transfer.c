@@ -5878,7 +5878,7 @@ VkResult pvr_transfer_job_submit(struct pvr_transfer_ctx *ctx,
 {
    list_for_each_entry_safe (struct pvr_transfer_cmd,
                              transfer_cmd,
-                             &sub_cmd->transfer_cmds,
+                             sub_cmd->transfer_cmds,
                              link) {
       /* The fw guarantees that any kick on the same context will be
        * synchronized in submission order. This means only the first kick must
@@ -5888,13 +5888,13 @@ VkResult pvr_transfer_job_submit(struct pvr_transfer_ctx *ctx,
       struct vk_sync *last_cmd_signal_sync = NULL;
       VkResult result;
 
-      if (list_first_entry(&sub_cmd->transfer_cmds,
-                          struct pvr_transfer_cmd,
-                          link) == transfer_cmd) {
+      if (list_first_entry(sub_cmd->transfer_cmds,
+                           struct pvr_transfer_cmd,
+                           link) == transfer_cmd) {
          first_cmd_wait_sync = wait_sync;
       }
 
-      if (list_last_entry(&sub_cmd->transfer_cmds,
+      if (list_last_entry(sub_cmd->transfer_cmds,
                           struct pvr_transfer_cmd,
                           link) == transfer_cmd) {
          last_cmd_signal_sync = signal_sync;
