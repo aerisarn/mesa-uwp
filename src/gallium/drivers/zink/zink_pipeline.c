@@ -38,6 +38,7 @@
 VkPipeline
 zink_create_gfx_pipeline(struct zink_screen *screen,
                          struct zink_gfx_program *prog,
+                         VkShaderModule *modules,
                          struct zink_gfx_pipeline_state *state,
                          const uint8_t *binding_map,
                          VkPrimitiveTopology primitive_topology,
@@ -364,7 +365,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
 
    VkPipelineTessellationStateCreateInfo tci = {0};
    VkPipelineTessellationDomainOriginStateCreateInfo tdci = {0};
-   if (prog->modules[MESA_SHADER_TESS_CTRL] && prog->modules[MESA_SHADER_TESS_EVAL]) {
+   if (prog->shaders[MESA_SHADER_TESS_CTRL] && prog->shaders[MESA_SHADER_TESS_EVAL]) {
       tci.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
       tci.patchControlPoints = state->dyn_state2.vertices_per_patch;
       pci.pTessellationState = &tci;
@@ -376,13 +377,13 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    VkPipelineShaderStageCreateInfo shader_stages[ZINK_GFX_SHADER_COUNT];
    uint32_t num_stages = 0;
    for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
-      if (!prog->modules[i])
+      if (!prog->shaders[i])
          continue;
 
       VkPipelineShaderStageCreateInfo stage = {0};
       stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
       stage.stage = mesa_to_vk_shader_stage(i);
-      stage.module = prog->modules[i];
+      stage.module = modules[i];
       stage.pName = "main";
       shader_stages[num_stages++] = stage;
    }

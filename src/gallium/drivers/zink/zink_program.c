@@ -781,7 +781,7 @@ optimized_compile_job(void *data, void *gdata, int thread_index)
    if (pc_entry->gkey)
       pipeline = zink_create_gfx_pipeline_combined(screen, pc_entry->prog, pc_entry->ikey->pipeline, &pc_entry->gkey->pipeline, 1, pc_entry->okey->pipeline, true);
    else
-      pipeline = zink_create_gfx_pipeline(screen, pc_entry->prog, &pc_entry->state, pc_entry->state.element_state->binding_map, zink_primitive_topology(pc_entry->state.gfx_prim_mode), true);
+      pipeline = zink_create_gfx_pipeline(screen, pc_entry->prog, pc_entry->prog->modules, &pc_entry->state, pc_entry->state.element_state->binding_map, zink_primitive_topology(pc_entry->state.gfx_prim_mode), true);
    if (pipeline) {
       pc_entry->unoptimized_pipeline = pc_entry->pipeline;
       pc_entry->pipeline = pipeline;
@@ -2099,7 +2099,9 @@ zink_link_gfx_shader(struct pipe_context *pctx, void **shaders)
          generate_gfx_program_modules_optimal(ctx, screen,  prog, &ctx->gfx_pipeline_state);
       else
          generate_gfx_program_modules(ctx, screen,  prog, &ctx->gfx_pipeline_state);
-      VkPipeline pipeline = zink_create_gfx_pipeline(screen, prog, &ctx->gfx_pipeline_state, ctx->gfx_pipeline_state.element_state->binding_map,  shaders[MESA_SHADER_TESS_EVAL] ? VK_PRIMITIVE_TOPOLOGY_PATCH_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, true);
+      VkPipeline pipeline = zink_create_gfx_pipeline(screen, prog, prog->modules, &ctx->gfx_pipeline_state,
+                                                     ctx->gfx_pipeline_state.element_state->binding_map,
+                                                     shaders[MESA_SHADER_TESS_EVAL] ? VK_PRIMITIVE_TOPOLOGY_PATCH_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, true);
       print_pipeline_stats(screen, pipeline);
    } else {
       util_queue_add_job(&zink_screen(pctx->screen)->cache_get_thread, prog, &prog->base.cache_fence, precompile_job, NULL, 0);
