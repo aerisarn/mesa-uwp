@@ -931,6 +931,59 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
                                 VkSystemAllocationScope scope,
                                 void **alloc_ptr_out);
 
+/** Populate a vk_graphics_pipeline_state from another one.
+ *
+ * This allocates space for graphics pipeline state and copies it from another
+ * pipeline state. It ignores state in `old_state` which is not set and does
+ * not allocate memory if the entire group is unused. The intended use-case is
+ * for drivers that may be able to precompile some state ahead of time, to
+ * avoid allocating memory for it in pipeline libraries. The workflow looks
+ * something like this:
+ *
+ *     struct vk_graphics_pipeline_all_state all;
+ *     struct vk_graphics_pipeline_state state;
+ *     vk_graphics_pipeline_state_fill(dev, &state, ..., &all, NULL, 0, NULL);
+ *
+ *     ...
+ *
+ *     BITSET_DECLARE(set_state, MESA_VK_DYNAMIC_GRAPHICS_STATE_ENUM_MAX);
+ *     vk_graphics_pipeline_get_state(&state, &set_state);
+ *
+ *     ...
+ *
+ *     if (BITSET_TEST(set_state, MESA_VK_DYNAMIC_FOO)) {
+ *        emit_foo(&state.foo, ...);
+ *        BITSET_SET(state.dynamic, MESA_VK_DYNAMIC_FOO);
+ *     }
+ *
+ *     ...
+ *
+ *     if (pipeline->is_library) {
+ *        library = pipeline_to_library(pipeline);
+ *        vk_graphics_pipeline_state_copy(dev, &library->state, &state, ...);
+ *     }
+ *
+ * In this case we will avoid allocating memory for `library->state.foo`.
+ *
+ * @param[in]  device         The Vulkan device
+ * @param[out] state          The graphics pipeline state to populate
+ * @param[in]  old_state      The graphics pipeline state to copy from
+ * @param[in]  alloc          Allocation callbacks for dynamically allocating
+ *                            new state memory.
+ * @param[in]  scope          Allocation scope for dynamically allocating new
+ *                            state memory.
+ * @param[out] alloc_ptr_out  Will be populated with a pointer to any newly
+ *                            allocated state.  The driver is responsible for
+ *                            freeing this pointer.
+ */
+VkResult
+vk_graphics_pipeline_state_copy(const struct vk_device *device,
+                                struct vk_graphics_pipeline_state *state,
+                                const struct vk_graphics_pipeline_state *old_state,
+                                const VkAllocationCallbacks *alloc,
+                                VkSystemAllocationScope scope,
+                                void **alloc_ptr_out);
+
 /** Merge one vk_graphics_pipeline_state into another
  *
  * Both the destination and source states are assumed to be valid (i.e., all
@@ -946,6 +999,14 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
 void
 vk_graphics_pipeline_state_merge(struct vk_graphics_pipeline_state *dst,
                                  const struct vk_graphics_pipeline_state *src);
+
+/** Get the states which will be set for a given vk_graphics_pipeline_state
+ *
+ * Return which states should be set when the pipeline is bound.
+ */
+void
+vk_graphics_pipeline_get_state(const struct vk_graphics_pipeline_state *state,
+                               BITSET_WORD *set_state_out);
 
 extern const struct vk_dynamic_graphics_state vk_default_dynamic_graphics_state;
 

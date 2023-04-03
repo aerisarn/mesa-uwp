@@ -1172,6 +1172,26 @@ vk_graphics_pipeline_state_groups(const struct vk_graphics_pipeline_state *state
    return groups | fully_dynamic_state_groups(state->dynamic);
 }
 
+void
+vk_graphics_pipeline_get_state(const struct vk_graphics_pipeline_state *state,
+                               BITSET_WORD *set_state_out)
+{
+   /* For now, we just validate dynamic state */
+   enum mesa_vk_graphics_state_groups groups = 0;
+
+#define FILL_HAS(STATE, type, s) \
+   if (state->s != NULL) groups |= STATE
+
+   FOREACH_STATE_GROUP(FILL_HAS)
+
+#undef FILL_HAS
+
+   BITSET_DECLARE(set_state, MESA_VK_DYNAMIC_GRAPHICS_STATE_ENUM_MAX);
+   get_dynamic_state_groups(set_state, groups);
+   BITSET_ANDNOT(set_state, set_state, state->dynamic);
+   memcpy(set_state_out, set_state, sizeof(set_state));
+}
+
 static void
 vk_graphics_pipeline_state_validate(const struct vk_graphics_pipeline_state *state)
 {
@@ -1587,6 +1607,85 @@ vk_graphics_pipeline_state_merge(struct vk_graphics_pipeline_state *dst,
    FOREACH_STATE_GROUP(MERGE)
 
 #undef MERGE
+}
+
+static bool
+is_group_all_dynamic(const struct vk_graphics_pipeline_state *state,
+                     enum mesa_vk_graphics_state_groups group)
+{
+   /* Render pass is a bit special, because it contains always-static state
+    * (e.g. the view mask). It's never all dynamic.
+    */
+   if (group == MESA_VK_GRAPHICS_STATE_RENDER_PASS_BIT)
+      return false;
+
+   BITSET_DECLARE(group_state, MESA_VK_DYNAMIC_GRAPHICS_STATE_ENUM_MAX);
+   BITSET_DECLARE(dynamic_state, MESA_VK_DYNAMIC_GRAPHICS_STATE_ENUM_MAX);
+   get_dynamic_state_groups(group_state, group);
+   BITSET_AND(dynamic_state, group_state, state->dynamic);
+   return BITSET_EQUAL(dynamic_state, group_state);
+}
+
+VkResult
+vk_graphics_pipeline_state_copy(const struct vk_device *device,
+                                struct vk_graphics_pipeline_state *state,
+                                const struct vk_graphics_pipeline_state *old_state,
+                                const VkAllocationCallbacks *alloc,
+                                VkSystemAllocationScope scope,
+                                void **alloc_ptr_out)
+{
+   vk_graphics_pipeline_state_validate(old_state);
+
+   VK_MULTIALLOC(ma);
+
+#define ENSURE_STATE_IF_NEEDED(STATE, type, s) \
+   struct type *new_##s = NULL; \
+   if (old_state->s && !is_group_all_dynamic(state, STATE)) { \
+      vk_multialloc_add(&ma, &new_##s, struct type, 1); \
+   }
+
+   FOREACH_STATE_GROUP(ENSURE_STATE_IF_NEEDED)
+
+#undef ENSURE_STATE_IF_NEEDED
+
+   /* Sample locations are a bit special. */
+   struct vk_sample_locations_state *new_sample_locations = NULL;
+   if (old_state->ms && old_state->ms->sample_locations &&
+       !BITSET_TEST(old_state->dynamic, MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS)) {
+      assert(old_state->ms->sample_locations);
+      vk_multialloc_add(&ma, &new_sample_locations,
+                        struct vk_sample_locations_state, 1);
+   }
+
+   if (ma.size > 0) {
+      *alloc_ptr_out = vk_multialloc_alloc2(&ma, &device->alloc, alloc, scope);
+      if (*alloc_ptr_out == NULL)
+         return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+   }
+
+   if (new_sample_locations) {
+      *new_sample_locations = *old_state->ms->sample_locations;
+   }
+
+   if (new_ms) {
+      new_ms->sample_locations = new_sample_locations;
+   }
+
+#define COPY_STATE_IF_NEEDED(STATE, type, s) \
+   if (new_##s) { \
+      *new_##s = *old_state->s; \
+   } \
+   state->s = new_##s;
+
+   FOREACH_STATE_GROUP(COPY_STATE_IF_NEEDED)
+
+   state->shader_stages = old_state->shader_stages;
+   BITSET_COPY(state->dynamic, old_state->dynamic);
+
+#undef COPY_STATE_IF_NEEDED
+
+   vk_graphics_pipeline_state_validate(state);
+   return VK_SUCCESS;
 }
 
 const struct vk_dynamic_graphics_state vk_default_dynamic_graphics_state = {
