@@ -8065,6 +8065,7 @@ emit_interp_center(isel_context* ctx, Temp dst, Temp bary, Temp pos1, Temp pos2)
 
 Temp merged_wave_info_to_mask(isel_context* ctx, unsigned i);
 Temp lanecount_to_mask(isel_context* ctx, Temp count);
+void pops_await_overlapped_waves(isel_context* ctx);
 
 Temp
 get_interp_param(isel_context* ctx, nir_intrinsic_op intrin, enum glsl_interp_mode interp)
@@ -9214,6 +9215,15 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_store_vector_arg_amd: {
       ctx->arg_temps[nir_intrinsic_base(instr)] =
          as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
+      break;
+   }
+   case nir_intrinsic_begin_invocation_interlock: {
+      pops_await_overlapped_waves(ctx);
+      break;
+   }
+   case nir_intrinsic_end_invocation_interlock: {
+      if (ctx->options->gfx_level < GFX11)
+         bld.pseudo(aco_opcode::p_pops_gfx9_ordered_section_done);
       break;
    }
    default:
@@ -11238,6 +11248,122 @@ select_program_rt(isel_context& ctx, unsigned shader_count, struct nir_shader* c
 
    ctx.program->config->float_mode = ctx.program->blocks[0].fp_mode.val;
    cleanup_cfg(ctx.program);
+}
+
+void
+pops_await_overlapped_waves(isel_context* ctx)
+{
+   ctx->program->has_pops_overlapped_waves_wait = true;
+
+   Builder bld(ctx->program, ctx->block);
+
+   if (ctx->program->gfx_level >= GFX11) {
+      /* GFX11+ - waiting for the export from the overlapped waves.
+       * Await the export_ready event (bit wait_event_imm_dont_wait_export_ready clear).
+       */
+      bld.sopp(aco_opcode::s_wait_event, -1, 0);
+      return;
+   }
+
+   /* Pre-GFX11 - sleep loop polling the exiting wave ID. */
+
+   const Temp collision = get_arg(ctx, ctx->args->pops_collision_wave_id);
+
+   /* Check if there's an overlap in the current wave - otherwise, the wait may result in a hang. */
+   const Temp did_overlap =
+      bld.sopc(aco_opcode::s_bitcmp1_b32, bld.def(s1, scc), collision, Operand::c32(31));
+   if_context did_overlap_if_context;
+   begin_uniform_if_then(ctx, &did_overlap_if_context, did_overlap);
+   bld.reset(ctx->block);
+
+   /* Set the packer register - after this, pops_exiting_wave_id can be polled. */
+   if (ctx->program->gfx_level >= GFX10) {
+      /* 2 packer ID bits on GFX10-10.3. */
+      const Temp packer_id = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
+                                      collision, Operand::c32(0x2001c));
+      /* POPS_PACKER register: bit 0 - POPS enabled for this wave, bits 2:1 - packer ID. */
+      const Temp packer_id_hwreg_bits = bld.sop2(aco_opcode::s_lshl1_add_u32, bld.def(s1),
+                                                 bld.def(s1, scc), packer_id, Operand::c32(1));
+      bld.sopk(aco_opcode::s_setreg_b32, packer_id_hwreg_bits, ((3 - 1) << 11) | 25);
+   } else {
+      /* 1 packer ID bit on GFX9. */
+      const Temp packer_id = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
+                                      collision, Operand::c32(0x1001c));
+      /* MODE register: bit 24 - wave is associated with packer 0, bit 25 - with packer 1.
+       * Packer index to packer bits: 0 to 0b01, 1 to 0b10.
+       */
+      const Temp packer_id_hwreg_bits =
+         bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc), packer_id, Operand::c32(1));
+      bld.sopk(aco_opcode::s_setreg_b32, packer_id_hwreg_bits, ((2 - 1) << 11) | (24 << 6) | 1);
+   }
+
+   Temp newest_overlapped_wave_id = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
+                                             collision, Operand::c32(0xa0010));
+   if (ctx->program->gfx_level < GFX10) {
+      /* On GFX9, the newest overlapped wave ID value passed to the shader is smaller than the
+       * actual wave ID by 1 in case of wraparound.
+       */
+      const Temp current_wave_id = bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc),
+                                            collision, Operand::c32(0x3ff));
+      const Temp newest_overlapped_wave_id_wrapped = bld.sopc(
+         aco_opcode::s_cmp_gt_u32, bld.def(s1, scc), newest_overlapped_wave_id, current_wave_id);
+      newest_overlapped_wave_id =
+         bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc), newest_overlapped_wave_id,
+                  newest_overlapped_wave_id_wrapped);
+   }
+
+   /* The wave IDs are the low 10 bits of a monotonically increasing wave counter.
+    * The overlapped and the exiting wave IDs can't be larger than the current wave ID, and they are
+    * no more than 1023 values behind the current wave ID.
+    * Remap the overlapped and the exiting wave IDs from wrapping to monotonic so an unsigned
+    * comparison can be used: the wave `current - 1023` becomes 0, it's followed by a piece growing
+    * away from 0, then a piece increasing until UINT32_MAX, and the current wave is UINT32_MAX.
+    * To do that, subtract `current - 1023`, which with wrapping arithmetic is (current + 1), and
+    * `a - (b + 1)` is `a + ~b`.
+    * Note that if the 10-bit current wave ID is 1023 (thus 1024 will be subtracted), the wave
+    * `current - 1023` will become `UINT32_MAX - 1023` rather than 0, but all the possible wave IDs
+    * will still grow monotonically in the 32-bit value, and the unsigned comparison will behave as
+    * expected.
+    */
+   const Temp wave_id_offset = bld.sop2(aco_opcode::s_nand_b32, bld.def(s1), bld.def(s1, scc),
+                                        collision, Operand::c32(0x3ff));
+   newest_overlapped_wave_id = bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc),
+                                        newest_overlapped_wave_id, wave_id_offset);
+
+   /* Await the overlapped waves. */
+
+   loop_context wait_loop_context;
+   begin_loop(ctx, &wait_loop_context);
+   bld.reset(ctx->block);
+
+   const Temp exiting_wave_id = bld.pseudo(aco_opcode::p_pops_gfx9_add_exiting_wave_id, bld.def(s1),
+                                           bld.def(s1, scc), wave_id_offset);
+   /* If the exiting (not exited) wave ID is larger than the newest overlapped wave ID (after
+    * remapping both to monotonically increasing unsigned integers), the newest overlapped wave has
+    * exited the ordered section.
+    */
+   const Temp newest_overlapped_wave_exited = bld.sopc(aco_opcode::s_cmp_lt_u32, bld.def(s1, scc),
+                                                       newest_overlapped_wave_id, exiting_wave_id);
+   if_context newest_overlapped_wave_exited_if_context;
+   begin_uniform_if_then(ctx, &newest_overlapped_wave_exited_if_context,
+                         newest_overlapped_wave_exited);
+   emit_loop_break(ctx);
+   begin_uniform_if_else(ctx, &newest_overlapped_wave_exited_if_context);
+   end_uniform_if(ctx, &newest_overlapped_wave_exited_if_context);
+   bld.reset(ctx->block);
+
+   /* Sleep before rechecking to let overlapped waves run for some time. */
+   bld.sopp(aco_opcode::s_sleep, -1, ctx->program->gfx_level >= GFX10 ? UINT16_MAX : 3);
+
+   end_loop(ctx, &wait_loop_context);
+   bld.reset(ctx->block);
+
+   /* Indicate the wait has been done to subsequent compilation stages. */
+   bld.pseudo(aco_opcode::p_pops_gfx9_overlapped_wave_wait_done);
+
+   begin_uniform_if_else(ctx, &did_overlap_if_context);
+   end_uniform_if(ctx, &did_overlap_if_context);
+   bld.reset(ctx->block);
 }
 
 } /* end namespace */
