@@ -1846,10 +1846,12 @@ radv_emit_ps_epilog_state(struct radv_cmd_buffer *cmd_buffer, struct radv_shader
    radeon_set_context_reg(cmd_buffer->cs, R_02823C_CB_SHADER_MASK,
                           ac_get_cb_shader_mask(ps_epilog->spi_shader_col_format));
 
-   /* The main shader must not use less VGPRs than the epilog, otherwise shared vgprs might not
-    * work.
-    */
-   assert(G_00B848_VGPRS(ps_shader->config.rsrc1) >= G_00B848_VGPRS(ps_epilog->rsrc1));
+   assert(ps_shader->config.num_shared_vgprs == 0);
+   if (G_00B848_VGPRS(ps_epilog->rsrc1) > G_00B848_VGPRS(ps_shader->config.rsrc1)) {
+      uint32_t rsrc1 = ps_shader->config.rsrc1;
+      rsrc1 = (rsrc1 & C_00B848_VGPRS) | (ps_epilog->rsrc1 & ~C_00B848_VGPRS);
+      radeon_set_sh_reg(cmd_buffer->cs, R_00B028_SPI_SHADER_PGM_RSRC1_PS, rsrc1);
+   }
 
    radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, ps_epilog->bo);
 
