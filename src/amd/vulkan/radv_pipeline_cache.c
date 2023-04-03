@@ -408,9 +408,11 @@ radv_create_shaders_from_pipeline_cache(struct radv_device *device,
    }
 
    if (entry->ps_epilog) {
-      struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
-
-      graphics_pipeline->ps_epilog = entry->ps_epilog;
+      if (pipeline->type == RADV_PIPELINE_GRAPHICS) {
+         radv_pipeline_to_graphics(pipeline)->ps_epilog = entry->ps_epilog;
+      } else {
+         radv_pipeline_to_graphics_lib(pipeline)->base.ps_epilog = entry->ps_epilog;
+      }
    }
 
    assert(num_rt_groups == entry->num_stack_sizes);
@@ -560,10 +562,16 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device, struct radv_pipel
    }
 
    if (ps_epilog_binary) {
-      struct radv_graphics_pipeline *graphics_pipeline = radv_pipeline_to_graphics(pipeline);
+      struct radv_shader_part *ps_epilog = NULL;
 
-      entry->ps_epilog = graphics_pipeline->ps_epilog;
-      radv_shader_part_ref(graphics_pipeline->ps_epilog);
+      if (pipeline->type == RADV_PIPELINE_GRAPHICS) {
+         ps_epilog = radv_pipeline_to_graphics(pipeline)->ps_epilog;
+      } else {
+         ps_epilog = radv_pipeline_to_graphics_lib(pipeline)->base.ps_epilog;
+      }
+
+      entry->ps_epilog = ps_epilog;
+      radv_shader_part_ref(ps_epilog);
    }
 
    radv_pipeline_cache_add_entry(cache, entry);
