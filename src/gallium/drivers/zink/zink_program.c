@@ -1528,8 +1528,7 @@ zink_destroy_compute_program(struct zink_screen *screen,
       free(pc_entry);
    }
    VKSCR(DestroyPipeline)(screen->dev, comp->base_pipeline, NULL);
-   VKSCR(DestroyShaderModule)(screen->dev, comp->module->obj.mod, NULL);
-   free(comp->module);
+   zink_destroy_shader_module(screen, comp->module);
 
    ralloc_free(comp);
 }
