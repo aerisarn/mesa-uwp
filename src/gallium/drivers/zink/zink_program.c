@@ -344,6 +344,7 @@ static void
 zink_destroy_shader_module(struct zink_screen *screen, struct zink_shader_module *zm)
 {
    VKSCR(DestroyShaderModule)(screen->dev, zm->obj.mod, NULL);
+   ralloc_free(zm->obj.spirv);
    free(zm);
 }
 
@@ -847,7 +848,7 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
          return;
       }
       zm->obj = zink_shader_compile(screen, zs, zink_shader_blob_deserialize(screen, &comp->shader->blob), key, zs_swizzle_size ? &ctx->di.zs_swizzle[MESA_SHADER_COMPUTE] : NULL);
-      if (!zm->obj.mod) {
+      if (!zm->obj.spirv) {
          FREE(zm);
          return;
       }
@@ -1298,7 +1299,7 @@ precompile_compute_job(void *data, void *gdata, int thread_index)
    comp->module->obj = zink_shader_compile(screen, comp->shader, comp->nir, NULL, NULL);
    /* comp->nir will be freed by zink_shader_compile */
    comp->nir = NULL;
-   assert(comp->module->obj.mod);
+   assert(comp->module->obj.spirv);
    util_dynarray_init(&comp->shader_cache[0], comp);
    util_dynarray_init(&comp->shader_cache[1], comp);
 

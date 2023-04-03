@@ -3310,7 +3310,7 @@ zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, st
 #endif
 
    VkResult ret;
-   struct zink_shader_object obj;
+   struct zink_shader_object obj = {0};
    if (!can_shobj || !screen->info.have_EXT_shader_object)
       ret = VKSCR(CreateShaderModule)(screen->dev, &smci, NULL, &obj.mod);
    else
@@ -3541,7 +3541,7 @@ compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *n
    if (zs->info.stage == MESA_SHADER_TESS_CTRL && zs->non_fs.is_generated)
       zs->spirv = spirv;
    else
-      ralloc_free(spirv);
+      obj.spirv = spirv;
    return obj;
 }
 
@@ -3811,10 +3811,14 @@ zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
             NIR_PASS_V(nir_clone, nir_remove_dead_variables, nir_var_shader_temp, NULL);
             optimize_nir(nir_clone, NULL);
             zs->precompile.no_psiz_obj = compile_module(screen, zs, nir_clone, true);
+            spirv_shader_delete(zs->precompile.no_psiz_obj.spirv);
+            zs->precompile.no_psiz_obj.spirv = NULL;
          }
       }
    }
    ralloc_free(nir);
+   spirv_shader_delete(obj.spirv);
+   obj.spirv = NULL;
    return obj;
 }
 

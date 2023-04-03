@@ -738,6 +738,7 @@ struct zink_shader_object {
       VkShaderEXT obj;
       VkShaderModule mod;
    };
+   struct spirv_shader *spirv;
 };
 
 struct zink_shader {
