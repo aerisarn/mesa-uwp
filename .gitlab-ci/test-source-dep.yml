@@ -755,6 +755,18 @@
       - src/gallium/winsys/virgl/**/*
       when: on_success
 
+.virgl-iris-manual-rules:
+  stage: layered-backends
+  rules:
+    - !reference [.collabora-farm-rules, rules]
+    - !reference [.gl-manual-rules, rules]
+    - changes:
+        *virgl_file_list
+      when: manual
+    - changes:
+        *iris_file_list
+      when: manual
+
 .virgl-iris-rules-performance:
   stage: layered-backends
   rules:
