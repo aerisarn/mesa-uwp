@@ -3197,7 +3197,7 @@ zink_shader_dump(const struct zink_shader *zs, void *words, size_t size, const c
 }
 
 static struct zink_shader_object
-zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, struct spirv_shader *spirv, bool separate)
+zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, struct spirv_shader *spirv, bool can_shobj)
 {
    VkShaderModuleCreateInfo smci = {0};
    VkShaderCreateInfoEXT sci = {0};
@@ -3311,7 +3311,7 @@ zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, st
 
    VkResult ret;
    struct zink_shader_object obj;
-   if (!separate || !screen->info.have_EXT_shader_object)
+   if (!can_shobj || !screen->info.have_EXT_shader_object)
       ret = VKSCR(CreateShaderModule)(screen->dev, &smci, NULL, &obj.mod);
    else
       ret = VKSCR(CreateShadersEXT)(screen->dev, 1, &sci, NULL, &obj.obj);
@@ -3525,7 +3525,7 @@ invert_point_coord(nir_shader *nir)
 }
 
 static struct zink_shader_object
-compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *nir, bool separate)
+compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *nir, bool can_shobj)
 {
    struct zink_shader_info *sinfo = &zs->sinfo;
    prune_io(nir);
@@ -3535,7 +3535,7 @@ compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *n
    struct zink_shader_object obj;
    struct spirv_shader *spirv = nir_to_spirv(nir, sinfo, screen->spirv_version);
    if (spirv)
-      obj = zink_shader_spirv_compile(screen, zs, spirv, separate);
+      obj = zink_shader_spirv_compile(screen, zs, spirv, can_shobj);
 
    /* TODO: determine if there's any reason to cache spirv output? */
    if (zs->info.stage == MESA_SHADER_TESS_CTRL && zs->non_fs.is_generated)
