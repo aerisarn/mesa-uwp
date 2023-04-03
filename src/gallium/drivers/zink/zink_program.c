@@ -694,6 +694,7 @@ update_gfx_program_optimal(struct zink_context *ctx, struct zink_gfx_program *pr
 void
 zink_gfx_program_update_optimal(struct zink_context *ctx)
 {
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
    if (ctx->gfx_dirty) {
       struct zink_gfx_program *prog = NULL;
       ctx->gfx_pipeline_state.optimal_key = ctx->gfx_pipeline_state.shader_keys_optimal.key.val;
@@ -718,7 +719,7 @@ zink_gfx_program_update_optimal(struct zink_context *ctx)
                real->base.removed = false;
                prog->full_prog = NULL;
                prog->base.removed = true;
-               zink_gfx_program_reference(zink_screen(ctx->base.screen), &prog, NULL);
+               zink_gfx_program_reference(screen, &prog, NULL);
                prog = real;
             }
          }
@@ -729,8 +730,8 @@ zink_gfx_program_update_optimal(struct zink_context *ctx)
          prog->base.removed = false;
          _mesa_hash_table_insert_pre_hashed(ht, hash, prog->shaders, prog);
          if (!prog->is_separable) {
-            zink_screen_get_pipeline_cache(zink_screen(ctx->base.screen), &prog->base, false);
-            generate_gfx_program_modules_optimal(ctx, zink_screen(ctx->base.screen), prog, &ctx->gfx_pipeline_state);
+            zink_screen_get_pipeline_cache(screen, &prog->base, false);
+            generate_gfx_program_modules_optimal(ctx, screen, prog, &ctx->gfx_pipeline_state);
          }
       }
       simple_mtx_unlock(&ctx->program_lock[zink_program_cache_stages(ctx->shader_stages)]);
@@ -757,7 +758,7 @@ zink_gfx_program_update_optimal(struct zink_context *ctx)
             real->base.removed = false;
             prog->full_prog = NULL;
             prog->base.removed = true;
-            zink_gfx_program_reference(zink_screen(ctx->base.screen), &prog, NULL);
+            zink_gfx_program_reference(screen, &prog, NULL);
             ctx->curr_program = real;
             simple_mtx_unlock(&ctx->program_lock[zink_program_cache_stages(ctx->shader_stages)]);
          }
