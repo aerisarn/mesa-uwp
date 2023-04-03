@@ -403,7 +403,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="CP_DRAW_INDX_OFFSET" value="0x38"/>
 	<value name="CP_DRAW_INDIRECT" value="0x28" variants="A4XX-"/>
 	<value name="CP_DRAW_INDX_INDIRECT" value="0x29" variants="A4XX-"/>
-	<value name="CP_DRAW_INDIRECT_MULTI" value="0x2a" variants="A6XX"/>
+	<value name="CP_DRAW_INDIRECT_MULTI" value="0x2a" variants="A6XX-"/>
 	<value name="CP_DRAW_AUTO" value="0x24"/>
 
 	<doc>
@@ -465,7 +465,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<doc>Tells CP the current mode of GPU operation</doc>
 	<value name="CP_SET_MARKER" value="0x65" variants="A6XX-"/>
 	<doc>Instruct CP to set a few internal CP registers</doc>
-	<value name="CP_SET_PSEUDO_REG" value="0x56" variants="A6XX"/>
+	<value name="CP_SET_PSEUDO_REG" value="0x56" variants="A6XX-"/>
 	<!--
 	pairs of regid and value.. seems to be used to program some TF
 	related regs:
@@ -562,12 +562,12 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 
 	<!-- TODO do these exist on A5xx? -->
 	<value name="CP_SCRATCH_WRITE" value="0x4c" variants="A6XX"/>
-	<value name="CP_REG_TO_MEM_OFFSET_MEM" value="0x74" variants="A6XX"/>
-	<value name="CP_REG_TO_MEM_OFFSET_REG" value="0x72" variants="A6XX"/>
+	<value name="CP_REG_TO_MEM_OFFSET_MEM" value="0x74" variants="A6XX-"/>
+	<value name="CP_REG_TO_MEM_OFFSET_REG" value="0x72" variants="A6XX-"/>
 	<value name="CP_WAIT_MEM_GTE" value="0x14" variants="A6XX"/>
 	<value name="CP_WAIT_TWO_REGS" value="0x70" variants="A6XX"/>
-	<value name="CP_MEMCPY" value="0x75" variants="A6XX"/>
-	<value name="CP_SET_BIN_DATA5_OFFSET" value="0x2e" variants="A6XX"/>
+	<value name="CP_MEMCPY" value="0x75" variants="A6XX-"/>
+	<value name="CP_SET_BIN_DATA5_OFFSET" value="0x2e" variants="A6XX-"/>
 	<doc>
                 Write CP_CONTEXT_SWITCH_*_INFO from CP to the following dwords,
                 and forcibly switch to the indicated context.
