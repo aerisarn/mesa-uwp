@@ -192,7 +192,17 @@ emit_bpermute(isel_context* ctx, Builder& bld, Temp index, Temp data)
    if (index.regClass() == s1)
       return bld.readlane(bld.def(s1), data, index);
 
-   if (ctx->options->gfx_level <= GFX7) {
+   /* Avoid using shared VGPRs for shuffle on GFX10 when the shader consists
+    * of multiple binaries, because the VGPR use is not known when choosing
+    * which registers to use for the shared VGPRs.
+    */
+   const bool avoid_shared_vgprs =
+      ctx->options->gfx_level >= GFX10 && ctx->options->gfx_level < GFX11 &&
+      ctx->program->wave_size == 64 &&
+      ((ctx->stage == fragment_fs && ctx->program->info.ps.has_epilog) ||
+       ctx->stage == raytracing_cs);
+
+   if (ctx->options->gfx_level <= GFX7 || avoid_shared_vgprs) {
       /* GFX6-7: there is no bpermute instruction */
       Operand index_op(index);
       Operand input_data(data);
