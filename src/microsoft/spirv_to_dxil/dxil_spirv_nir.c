@@ -438,7 +438,7 @@ lower_yz_flip(struct nir_builder *builder, nir_instr *instr,
    return true;
 }
 
-static bool
+bool
 dxil_spirv_nir_lower_yz_flip(nir_shader *shader,
                              const struct dxil_spirv_runtime_conf *rt_conf,
                              bool *reads_sysval_ubo)
