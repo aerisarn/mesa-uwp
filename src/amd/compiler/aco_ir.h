@@ -285,6 +285,16 @@ struct wait_imm {
    bool empty() const;
 };
 
+/* s_wait_event immediate bits. */
+enum wait_event_imm : uint16_t {
+   /* If this bit is 0, await that the export buffer space has been allocated.
+    * In Primitive Ordered Pixel Shading, export ready means that the overlapped waves have exited
+    * their ordered sections (by performing the `done` export), and that the current wave may enter
+    * its ordered section.
+    */
+   wait_event_imm_dont_wait_export_ready = 0x1,
+};
+
 constexpr Format
 asVOP3(Format format)
 {
