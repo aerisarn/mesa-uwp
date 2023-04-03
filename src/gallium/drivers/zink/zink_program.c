@@ -751,7 +751,7 @@ zink_gfx_program_update_optimal(struct zink_context *ctx)
       ctx->gfx_pipeline_state.final_hash ^= ctx->curr_program->last_variant_hash;
       if (ctx->curr_program->is_separable) {
          struct zink_gfx_program *prog = ctx->curr_program;
-         if (prog->is_separable && !ZINK_SHADER_KEY_OPTIMAL_IS_DEFAULT(ctx->gfx_pipeline_state.optimal_key)) {
+         if (!ZINK_SHADER_KEY_OPTIMAL_IS_DEFAULT(ctx->gfx_pipeline_state.optimal_key)) {
             util_queue_fence_wait(&prog->base.cache_fence);
             /* shader variants can't be handled by separable programs: sync and compile */
             struct hash_table *ht = &ctx->program_cache[zink_program_cache_stages(ctx->shader_stages)];
