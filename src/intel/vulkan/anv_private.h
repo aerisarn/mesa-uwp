@@ -1350,6 +1350,9 @@ VkResult anv_queue_submit(struct vk_queue *queue,
 VkResult anv_queue_submit_simple_batch(struct anv_queue *queue,
                                        struct anv_batch *batch);
 
+void anv_queue_trace(struct anv_queue *queue, const char *label,
+                     bool frame, bool begin);
+
 void *
 anv_gem_mmap(struct anv_device *device, struct anv_bo *bo, uint64_t offset,
              uint64_t size, VkMemoryPropertyFlags property_flags);

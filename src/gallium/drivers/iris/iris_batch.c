@@ -535,7 +535,7 @@ void iris_batch_maybe_begin_frame(struct iris_batch *batch)
    struct iris_context *ice = batch->ice;
 
    if (ice->tracing_begin_frame != ice->frame) {
-      trace_intel_begin_frame(&batch->trace);
+      trace_intel_begin_frame(&batch->trace, batch);
       ice->tracing_begin_frame = ice->tracing_end_frame = ice->frame;
    }
 }
@@ -640,7 +640,7 @@ iris_finish_batch(struct iris_batch *batch)
 
    struct iris_context *ice = batch->ice;
    if (ice->tracing_end_frame != ice->frame) {
-      trace_intel_end_frame(&batch->trace, ice->tracing_end_frame);
+      trace_intel_end_frame(&batch->trace, batch, ice->tracing_end_frame);
       ice->tracing_end_frame = ice->frame;
    }
 
