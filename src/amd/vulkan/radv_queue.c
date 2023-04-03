@@ -1652,22 +1652,25 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
     * before starting the next cmdbuffer, so we need to do it here.
     */
    const bool need_wait = wait_count > 0;
-   unsigned num_preambles = 0;
-   struct radeon_cmdbuf *preambles[4] = {0};
+   unsigned num_initial_preambles = 0;
+   unsigned num_continue_preambles = 0;
+   struct radeon_cmdbuf *initial_preambles[4] = {0};
+   struct radeon_cmdbuf *continue_preambles[4] = {0};
 
    if (queue->state.qf == RADV_QUEUE_GENERAL || queue->state.qf == RADV_QUEUE_COMPUTE) {
-      preambles[num_preambles++] =
+      initial_preambles[num_initial_preambles++] =
          need_wait ? queue->state.initial_full_flush_preamble_cs : queue->state.initial_preamble_cs;
+      continue_preambles[num_continue_preambles++] = queue->state.continue_preamble_cs;
    }
 
-   const unsigned num_1q_preambles = num_preambles;
+   const unsigned num_1q_initial_preambles = num_initial_preambles;
 
    if (use_ace) {
-      preambles[num_preambles++] = queue->state.gang_wait_preamble_cs;
-      preambles[num_preambles++] = queue->ace_internal_state->gang_wait_preamble_cs;
-      preambles[num_preambles++] = need_wait
-                                      ? queue->ace_internal_state->initial_full_flush_preamble_cs
-                                      : queue->ace_internal_state->initial_preamble_cs;
+      initial_preambles[num_initial_preambles++] = queue->state.gang_wait_preamble_cs;
+      initial_preambles[num_initial_preambles++] = queue->ace_internal_state->gang_wait_preamble_cs;
+      initial_preambles[num_initial_preambles++] =
+         need_wait ? queue->ace_internal_state->initial_full_flush_preamble_cs
+                   : queue->ace_internal_state->initial_preamble_cs;
    }
 
    struct radv_winsys_submit_info submit = {
@@ -1675,9 +1678,10 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       .queue_index = queue->vk.index_in_family,
       .cs_array = cs_array,
       .cs_count = 0,
-      .preamble_count = 1,
-      .initial_preamble_cs = preambles,
-      .continue_preamble_cs = queue->state.continue_preamble_cs,
+      .initial_preamble_count = 1,
+      .continue_preamble_count = 1,
+      .initial_preamble_cs = initial_preambles,
+      .continue_preamble_cs = continue_preambles,
       .uses_shadow_regs = queue->state.uses_shadow_regs,
    };
 
@@ -1740,7 +1744,7 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
          cs_array[num_submitted_cs++] = perf_ctr_unlock_cs;
 
       submit.cs_count = num_submitted_cs;
-      submit.preamble_count = submit_ace ? num_preambles : num_1q_preambles;
+      submit.initial_preamble_count = submit_ace ? num_initial_preambles : num_1q_initial_preambles;
 
       result = queue->device->ws->cs_submit(ctx, &submit, j == 0 ? wait_count : 0, waits,
                                             last_submit ? submission->signal_count : 0,
@@ -1757,8 +1761,8 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
          radv_check_trap_handler(queue);
       }
 
-      preambles[0] = queue->state.initial_preamble_cs;
-      preambles[1] = !use_ace ? NULL : queue->ace_internal_state->initial_preamble_cs;
+      initial_preambles[0] = queue->state.initial_preamble_cs;
+      initial_preambles[1] = !use_ace ? NULL : queue->ace_internal_state->initial_preamble_cs;
    }
 
    queue->last_shader_upload_seq =
