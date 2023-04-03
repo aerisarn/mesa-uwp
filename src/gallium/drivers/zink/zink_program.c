@@ -1175,12 +1175,12 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
 
    if (prog->shaders[MESA_SHADER_VERTEX]->precompile.dsl) {
       prog->base.dd.binding_usage |= BITFIELD_BIT(0);
-      prog->base.dsl[prog->base.num_dsl] = prog->shaders[MESA_SHADER_VERTEX]->precompile.dsl;
-      prog->base.num_dsl++;
+      prog->base.dsl[0] = prog->shaders[MESA_SHADER_VERTEX]->precompile.dsl;
+      prog->base.num_dsl = 1;
    }
    if (prog->shaders[MESA_SHADER_FRAGMENT]->precompile.dsl) {
       prog->base.dd.binding_usage |= BITFIELD_BIT(1);
-      prog->base.dsl[prog->base.num_dsl] = prog->shaders[MESA_SHADER_FRAGMENT]->precompile.dsl;
+      prog->base.dsl[1] = prog->shaders[MESA_SHADER_FRAGMENT]->precompile.dsl;
       /* guarantee a null dsl if vs doesn't have descriptors */
       prog->base.num_dsl = 2;
    }
