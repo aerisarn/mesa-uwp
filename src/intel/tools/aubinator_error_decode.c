@@ -291,7 +291,7 @@ struct section {
    size_t data_offset;
 };
 
-#define MAX_SECTIONS 256
+#define MAX_SECTIONS 1024
 static unsigned num_sections;
 static struct section sections[MAX_SECTIONS];
 
