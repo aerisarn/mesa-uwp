@@ -3812,8 +3812,11 @@ radv_needs_null_export_workaround(const struct radv_device *device, const struct
     * instructions if any are present.
     *
     * GFX11 requires one color output, otherwise the DCC decompression does nothing.
+    *
+    * Primitive Ordered Pixel Shading also requires an export, otherwise interlocking doesn't work
+    * correctly before GFX11, and a hang happens on GFX11.
     */
-   return (gfx_level <= GFX9 || ps->info.ps.can_discard ||
+   return (gfx_level <= GFX9 || ps->info.ps.can_discard || ps->info.ps.pops ||
            (custom_blend_mode == V_028808_CB_DCC_DECOMPRESS_GFX11 && gfx_level >= GFX11)) &&
           !ps->info.ps.writes_z && !ps->info.ps.writes_stencil && !ps->info.ps.writes_sample_mask;
 }
