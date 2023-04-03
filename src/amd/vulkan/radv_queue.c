@@ -1069,12 +1069,6 @@ radv_update_preamble_cs(struct radv_queue_state *queue, struct radv_device *devi
          if (!(device->instance->debug_flags & RADV_DEBUG_NO_IBS) &&
              device->physical_device->rad_info.gfx_level >= GFX7)
             continue;
-         /* Continue preamble is unnecessary when no shader rings are used. */
-         if (!needs->scratch_size_per_wave && !needs->compute_scratch_size_per_wave &&
-             !needs->esgs_ring_size && !needs->gsvs_ring_size && !needs->tess_rings &&
-             !needs->task_rings && !needs->mesh_scratch_ring && !needs->attr_ring_size &&
-             !needs->gds && !needs->gds_oa && !needs->sample_positions)
-            continue;
       }
 
       enum rgp_flush_bits sqtt_flush_bits = 0;
