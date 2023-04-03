@@ -1739,8 +1739,8 @@ vk_dynamic_graphics_state_copy(struct vk_dynamic_graphics_state *dst,
 #define COPY_IF_SET(STATE, state) \
    if (IS_SET_IN_SRC(STATE)) SET_DYN_VALUE(dst, STATE, state, src->state)
 
-   assert((dst->vi != NULL) == (src->vi != NULL));
-   if (dst->vi != NULL && IS_SET_IN_SRC(VI)) {
+   if (IS_SET_IN_SRC(VI)) {
+      assert(dst->vi != NULL);
       COPY_MEMBER(VI, vi->bindings_valid);
       u_foreach_bit(b, src->vi->bindings_valid) {
          COPY_MEMBER(VI, vi->bindings[b].stride);
@@ -1827,10 +1827,8 @@ vk_dynamic_graphics_state_copy(struct vk_dynamic_graphics_state *dst,
    COPY_IF_SET(MS_ALPHA_TO_ONE_ENABLE, ms.alpha_to_one_enable);
    COPY_IF_SET(MS_SAMPLE_LOCATIONS_ENABLE, ms.sample_locations_enable);
 
-   assert((dst->ms.sample_locations == NULL) ==
-          (src->ms.sample_locations == NULL));
-   if (dst->ms.sample_locations != NULL &&
-       IS_SET_IN_SRC(MS_SAMPLE_LOCATIONS)) {
+   if (IS_SET_IN_SRC(MS_SAMPLE_LOCATIONS)) {
+      assert(dst->ms.sample_locations != NULL);
       COPY_MEMBER(MS_SAMPLE_LOCATIONS, ms.sample_locations->per_pixel);
       COPY_MEMBER(MS_SAMPLE_LOCATIONS, ms.sample_locations->grid_size.width);
       COPY_MEMBER(MS_SAMPLE_LOCATIONS, ms.sample_locations->grid_size.height);
