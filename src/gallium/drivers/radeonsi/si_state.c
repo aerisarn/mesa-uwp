@@ -5762,9 +5762,7 @@ static void gfx6_init_gfx_preamble_state(struct si_context *sctx)
       si_pm4_set_reg(pm4, R_030924_VGT_MIN_VTX_INDX, 0);
       si_pm4_set_reg(pm4, R_030928_VGT_INDX_OFFSET, 0);
 
-      si_pm4_set_reg(pm4, R_028060_DB_DFSM_CONTROL,
-                     S_028060_PUNCHOUT_MODE(V_028060_FORCE_OFF) |
-                     S_028060_POPS_DRAIN_PS_ON_OVERLAP(1));
+      si_pm4_set_reg(pm4, R_028060_DB_DFSM_CONTROL, S_028060_PUNCHOUT_MODE(V_028060_FORCE_OFF));
 
       si_pm4_set_reg_idx3(pm4, R_00B41C_SPI_SHADER_PGM_RSRC3_HS,
                           ac_apply_cu_en(S_00B41C_CU_EN(0xffff) | S_00B41C_WAVE_LIMIT(0x3F),
@@ -5967,9 +5965,7 @@ static void gfx10_init_gfx_preamble_state(struct si_context *sctx)
 
    /* Context registers. */
    if (sctx->gfx_level < GFX11) {
-      si_pm4_set_reg(pm4, R_028038_DB_DFSM_CONTROL,
-                     S_028038_PUNCHOUT_MODE(V_028038_FORCE_OFF) |
-                     S_028038_POPS_DRAIN_PS_ON_OVERLAP(1));
+      si_pm4_set_reg(pm4, R_028038_DB_DFSM_CONTROL, S_028038_PUNCHOUT_MODE(V_028038_FORCE_OFF));
    }
    si_pm4_set_reg(pm4, R_02807C_DB_RMI_L2_CACHE_CONTROL,
                   S_02807C_Z_WR_POLICY(V_02807C_CACHE_STREAM) |
