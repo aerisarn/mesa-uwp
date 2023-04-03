@@ -265,7 +265,7 @@ enum {
 };
 
 
-#define lp_jit_thread_data_cache(_gallivm, _type, _ptr)			\
+#define lp_jit_thread_data_cache(_gallivm, _type, _ptr) \
    lp_build_struct_get2(_gallivm, _type, _ptr, LP_JIT_THREAD_DATA_CACHE, "cache")
 
 #define lp_jit_thread_data_vis_counter(_gallivm, _type, _ptr) \
@@ -276,13 +276,13 @@ enum {
 
 #define lp_jit_thread_data_raster_state_viewport_index(_gallivm, _type, _ptr) \
    lp_build_struct_get2(_gallivm, _type, _ptr, \
-			LP_JIT_THREAD_DATA_RASTER_STATE_VIEWPORT_INDEX, \
-			"raster_state.viewport_index")
+                        LP_JIT_THREAD_DATA_RASTER_STATE_VIEWPORT_INDEX, \
+                        "raster_state.viewport_index")
 
 #define lp_jit_thread_data_raster_state_view_index(_gallivm, _type, _ptr) \
    lp_build_struct_get2(_gallivm, _type, _ptr, \
-			LP_JIT_THREAD_DATA_RASTER_STATE_VIEW_INDEX,	\
-			"raster_state.view_index")
+                        LP_JIT_THREAD_DATA_RASTER_STATE_VIEW_INDEX, \
+                        "raster_state.view_index")
 
 /**
  * typedef for fragment shader function
