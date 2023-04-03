@@ -2406,6 +2406,11 @@ lower_to_hw_instr(Program* program)
                }
                break;
             }
+            case aco_opcode::p_pops_gfx9_add_exiting_wave_id: {
+               bld.sop2(aco_opcode::s_add_i32, instr->definitions[0], instr->definitions[1],
+                        Operand(pops_exiting_wave_id, s1), instr->operands[0]);
+               break;
+            }
             case aco_opcode::p_bpermute_gfx6: {
                emit_gfx6_bpermute(program, instr, bld);
                break;
