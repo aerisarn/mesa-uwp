@@ -3254,6 +3254,27 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
       if (found_in_application_cache)
          pipeline_feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
 
+      if (pipeline->base.type == RADV_PIPELINE_GRAPHICS_LIB && retain_shaders) {
+         /* For graphics pipeline libraries created with the RETAIN_LINK_TIME_OPTIMIZATION flag, we
+          * still need to compile the SPIR-V to NIR because we can't know if the LTO pipelines will
+          * be find in the shaders cache.
+          */
+         if (noop_fs) {
+            nir_builder fs_b = radv_meta_init_shader(device, MESA_SHADER_FRAGMENT, "noop_fs");
+
+            stages[MESA_SHADER_FRAGMENT] = (struct radv_pipeline_stage) {
+               .stage = MESA_SHADER_FRAGMENT,
+               .internal_nir = fs_b.shader,
+               .entrypoint = noop_fs_entrypoint,
+               .feedback = {
+                  .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
+               },
+            };
+         }
+
+         radv_pipeline_get_nir(device, pipeline, stages, pipeline_key, retain_shaders);
+      }
+
       result = VK_SUCCESS;
       goto done;
    }
