@@ -1905,46 +1905,6 @@ zink_delete_cs_shader_state(struct pipe_context *pctx, void *cso)
    zink_compute_program_reference(zink_screen(pctx->screen), &comp, NULL);
 }
 
-void
-zink_delete_shader_state(struct pipe_context *pctx, void *cso)
-{
-   zink_gfx_shader_free(zink_screen(pctx->screen), cso);
-}
-
-void *
-zink_create_gfx_shader_state(struct pipe_context *pctx, const struct pipe_shader_state *shader)
-{
-   nir_shader *nir;
-   if (shader->type != PIPE_SHADER_IR_NIR)
-      nir = zink_tgsi_to_nir(pctx->screen, shader->tokens);
-   else
-      nir = (struct nir_shader *)shader->ir.nir;
-
-   if (nir->info.stage == MESA_SHADER_FRAGMENT && nir->info.fs.uses_fbfetch_output)
-      zink_descriptor_util_init_fbfetch(zink_context(pctx));
-   if (nir->info.uses_bindless)
-      zink_descriptors_init_bindless(zink_context(pctx));
-
-   void *ret = zink_shader_create(zink_screen(pctx->screen), nir, &shader->stream_output);
-   ralloc_free(nir);
-   return ret;
-}
-
-static void
-zink_delete_cached_shader_state(struct pipe_context *pctx, void *cso)
-{
-   struct zink_screen *screen = zink_screen(pctx->screen);
-   util_shader_reference(pctx, &screen->shaders, &cso, NULL);
-}
-
-static void *
-zink_create_cached_shader_state(struct pipe_context *pctx, const struct pipe_shader_state *shader)
-{
-   bool cache_hit;
-   struct zink_screen *screen = zink_screen(pctx->screen);
-   return util_live_shader_cache_get(pctx, &screen->shaders, shader, &cache_hit);
-}
-
 /* caller must lock prog->libs->lock */
 struct zink_gfx_library_key *
 zink_create_pipeline_lib(struct zink_screen *screen, struct zink_gfx_program *prog, struct zink_gfx_pipeline_state *state)
@@ -2138,6 +2098,48 @@ zink_link_gfx_shader(struct pipe_context *pctx, void **shaders)
       util_queue_add_job(&zink_screen(pctx->screen)->cache_get_thread, prog, &prog->base.cache_fence, precompile_job, NULL, 0);
    }
 }
+
+void
+zink_delete_shader_state(struct pipe_context *pctx, void *cso)
+{
+   zink_gfx_shader_free(zink_screen(pctx->screen), cso);
+}
+
+void *
+zink_create_gfx_shader_state(struct pipe_context *pctx, const struct pipe_shader_state *shader)
+{
+   struct zink_screen *screen = zink_screen(pctx->screen);
+   nir_shader *nir;
+   if (shader->type != PIPE_SHADER_IR_NIR)
+      nir = zink_tgsi_to_nir(pctx->screen, shader->tokens);
+   else
+      nir = (struct nir_shader *)shader->ir.nir;
+
+   if (nir->info.stage == MESA_SHADER_FRAGMENT && nir->info.fs.uses_fbfetch_output)
+      zink_descriptor_util_init_fbfetch(zink_context(pctx));
+   if (nir->info.uses_bindless)
+      zink_descriptors_init_bindless(zink_context(pctx));
+
+   void *ret = zink_shader_create(zink_screen(pctx->screen), nir, &shader->stream_output);
+   ralloc_free(nir);
+   return ret;
+}
+
+static void
+zink_delete_cached_shader_state(struct pipe_context *pctx, void *cso)
+{
+   struct zink_screen *screen = zink_screen(pctx->screen);
+   util_shader_reference(pctx, &screen->shaders, &cso, NULL);
+}
+
+static void *
+zink_create_cached_shader_state(struct pipe_context *pctx, const struct pipe_shader_state *shader)
+{
+   bool cache_hit;
+   struct zink_screen *screen = zink_screen(pctx->screen);
+   return util_live_shader_cache_get(pctx, &screen->shaders, shader, &cache_hit);
+}
+
 
 void
 zink_program_init(struct zink_context *ctx)
