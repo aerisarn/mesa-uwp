@@ -1054,12 +1054,10 @@ struct zink_gfx_program {
 
    struct zink_shader *shaders[ZINK_GFX_SHADER_COUNT];
    struct zink_shader *last_vertex_stage;
+   struct zink_shader_object objs[ZINK_GFX_SHADER_COUNT];
 
    /* full */
-   union {
-      VkShaderModule modules[ZINK_GFX_SHADER_COUNT]; // compute stage doesn't belong here
-      VkShaderEXT objects[ZINK_GFX_SHADER_COUNT];
-   };
+   VkShaderEXT objects[ZINK_GFX_SHADER_COUNT];
    uint32_t module_hash[ZINK_GFX_SHADER_COUNT];
    struct blob blobs[ZINK_GFX_SHADER_COUNT];
    struct util_dynarray shader_cache[ZINK_GFX_SHADER_COUNT][2][2]; //normal, nonseamless cubes, inline uniforms

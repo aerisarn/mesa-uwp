@@ -372,7 +372,7 @@ update_gfx_shader_modules(struct zink_context *ctx,
 {
    bool hash_changed = false;
    bool default_variants = true;
-   assert(prog->modules[MESA_SHADER_VERTEX]);
+   assert(prog->objs[MESA_SHADER_VERTEX].mod);
    uint32_t variant_hash = prog->last_variant_hash;
    prog->has_edgeflags = prog->shaders[MESA_SHADER_VERTEX]->has_edgeflags;
    for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++) {
@@ -389,13 +389,13 @@ update_gfx_shader_modules(struct zink_context *ctx,
          zm = create_shader_module_for_stage(ctx, screen, prog->shaders[i], prog, i, state,
                                              inline_size, nonseamless_size, has_inline, has_nonseamless);
       state->modules[i] = zm->obj.mod;
-      if (prog->modules[i] == zm->obj.mod)
+      if (prog->objs[i].mod == zm->obj.mod)
          continue;
       prog->optimal_keys &= !prog->shaders[i]->non_fs.is_generated;
       variant_hash ^= prog->module_hash[i];
       hash_changed = true;
       default_variants &= zm->default_variant;
-      prog->modules[i] = zm->obj.mod;
+      prog->objs[i] = zm->obj;
       prog->module_hash[i] = zm->hash;
       if (has_inline) {
          if (zm->num_uniforms)
@@ -419,7 +419,7 @@ update_gfx_shader_modules(struct zink_context *ctx,
 static void
 generate_gfx_program_modules(struct zink_context *ctx, struct zink_screen *screen, struct zink_gfx_program *prog, struct zink_gfx_pipeline_state *state)
 {
-   assert(!prog->modules[MESA_SHADER_VERTEX]);
+   assert(!prog->objs[MESA_SHADER_VERTEX].mod);
    uint32_t variant_hash = 0;
    bool default_variants = true;
    for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++) {
@@ -436,7 +436,7 @@ generate_gfx_program_modules(struct zink_context *ctx, struct zink_screen *scree
                                                                      inline_size, nonseamless_size,
                                                                      screen->driconf.inline_uniforms, screen->info.have_EXT_non_seamless_cube_map);
       state->modules[i] = zm->obj.mod;
-      prog->modules[i] = zm->obj.mod;
+      prog->objs[i] = zm->obj ;
       prog->module_hash[i] = zm->hash;
       if (zm->num_uniforms)
          prog->inline_variants |= BITFIELD_BIT(i);
@@ -455,7 +455,7 @@ generate_gfx_program_modules(struct zink_context *ctx, struct zink_screen *scree
 static void
 generate_gfx_program_modules_optimal(struct zink_context *ctx, struct zink_screen *screen, struct zink_gfx_program *prog, struct zink_gfx_pipeline_state *state)
 {
-   assert(!prog->modules[MESA_SHADER_VERTEX]);
+   assert(!prog->objs[MESA_SHADER_VERTEX].mod);
    for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++) {
       if (!(prog->stages_present & BITFIELD_BIT(i)))
          continue;
@@ -463,7 +463,7 @@ generate_gfx_program_modules_optimal(struct zink_context *ctx, struct zink_scree
       assert(prog->shaders[i]);
 
       struct zink_shader_module *zm = create_shader_module_for_stage_optimal(ctx, screen, prog->shaders[i], prog, i, state);
-      prog->modules[i] = zm->obj.mod;
+      prog->objs[i] = zm->obj;
    }
 
    p_atomic_dec(&prog->base.reference.count);
@@ -618,7 +618,7 @@ zink_gfx_program_update(struct zink_context *ctx)
          prog = (struct zink_gfx_program*)entry->data;
          for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++) {
             if (prog->stages_present & ~ctx->dirty_gfx_stages & BITFIELD_BIT(i))
-               ctx->gfx_pipeline_state.modules[i] = prog->modules[i];
+               ctx->gfx_pipeline_state.modules[i] = prog->objs[i].mod;
          }
          /* ensure variants are always updated if keys have changed since last use */
          ctx->dirty_gfx_stages |= prog->stages_present;
@@ -657,8 +657,8 @@ update_gfx_shader_module_optimal(struct zink_context *ctx, struct zink_gfx_progr
    if (!zm)
       zm = create_shader_module_for_stage_optimal(ctx, screen, prog->shaders[pstage], prog, pstage, &ctx->gfx_pipeline_state);
 
-   bool changed = prog->modules[pstage] != zm->obj.mod;
-   prog->modules[pstage] = zm->obj.mod;
+   bool changed = prog->objs[pstage].mod != zm->obj.mod;
+   prog->objs[pstage] = zm->obj;
    return changed;
 }
 
@@ -781,7 +781,7 @@ optimized_compile_job(void *data, void *gdata, int thread_index)
    if (pc_entry->gpl.gkey)
       pipeline = zink_create_gfx_pipeline_combined(screen, pc_entry->prog, pc_entry->gpl.ikey->pipeline, &pc_entry->gpl.gkey->pipeline, 1, pc_entry->gpl.okey->pipeline, true);
    else
-      pipeline = zink_create_gfx_pipeline(screen, pc_entry->prog, pc_entry->prog->modules, &pc_entry->state, pc_entry->state.element_state->binding_map, zink_primitive_topology(pc_entry->state.gfx_prim_mode), true);
+      pipeline = zink_create_gfx_pipeline(screen, pc_entry->prog, pc_entry->prog->objs, &pc_entry->state, pc_entry->state.element_state->binding_map, zink_primitive_topology(pc_entry->state.gfx_prim_mode), true);
    if (pipeline) {
       pc_entry->gpl.unoptimized_pipeline = pc_entry->pipeline;
       pc_entry->pipeline = pipeline;
@@ -1928,7 +1928,8 @@ zink_create_pipeline_lib(struct zink_screen *screen, struct zink_gfx_program *pr
       
    gkey->optimal_key = state->optimal_key;
    assert(gkey->optimal_key);
-   memcpy(gkey->modules, prog->modules, sizeof(gkey->modules));
+   for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++)
+      gkey->modules[i] = prog->objs[i].mod;
    gkey->pipeline = zink_create_gfx_pipeline_library(screen, prog);
    _mesa_set_add(&prog->libs->libs, gkey);
    return gkey;
@@ -2046,9 +2047,9 @@ precompile_separate_shader_job(void *data, void *gdata, int thread_index)
 
    zs->precompile.obj = zink_shader_compile_separate(screen, zs);
    if (!screen->info.have_EXT_shader_object) {
-      VkShaderModule mods[ZINK_GFX_SHADER_COUNT] = {0};
-      mods[zs->info.stage] = zs->precompile.obj.mod;
-      zs->precompile.gpl = zink_create_gfx_pipeline_separate(screen, mods, zs->precompile.layout);
+      struct zink_shader_object objs[ZINK_GFX_SHADER_COUNT] = {0};
+      objs[zs->info.stage].mod = zs->precompile.obj.mod;
+      zs->precompile.gpl = zink_create_gfx_pipeline_separate(screen, objs, zs->precompile.layout);
    }
 }
 
@@ -2099,7 +2100,7 @@ zink_link_gfx_shader(struct pipe_context *pctx, void **shaders)
          generate_gfx_program_modules_optimal(ctx, screen,  prog, &ctx->gfx_pipeline_state);
       else
          generate_gfx_program_modules(ctx, screen,  prog, &ctx->gfx_pipeline_state);
-      VkPipeline pipeline = zink_create_gfx_pipeline(screen, prog, prog->modules, &ctx->gfx_pipeline_state,
+      VkPipeline pipeline = zink_create_gfx_pipeline(screen, prog, prog->objs, &ctx->gfx_pipeline_state,
                                                      ctx->gfx_pipeline_state.element_state->binding_map,
                                                      shaders[MESA_SHADER_TESS_EVAL] ? VK_PRIMITIVE_TOPOLOGY_PATCH_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, true);
       print_pipeline_stats(screen, pipeline);

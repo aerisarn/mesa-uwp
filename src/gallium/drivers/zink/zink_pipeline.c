@@ -38,7 +38,7 @@
 VkPipeline
 zink_create_gfx_pipeline(struct zink_screen *screen,
                          struct zink_gfx_program *prog,
-                         VkShaderModule *modules,
+                         struct zink_shader_object *objs,
                          struct zink_gfx_pipeline_state *state,
                          const uint8_t *binding_map,
                          VkPrimitiveTopology primitive_topology,
@@ -383,7 +383,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       VkPipelineShaderStageCreateInfo stage = {0};
       stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
       stage.stage = mesa_to_vk_shader_stage(i);
-      stage.module = modules[i];
+      stage.module = objs[i].mod;
       stage.pName = "main";
       shader_stages[num_stages++] = stage;
    }
@@ -639,7 +639,7 @@ zink_create_gfx_pipeline_input(struct zink_screen *screen,
 }
 
 static VkPipeline
-create_gfx_pipeline_library(struct zink_screen *screen, VkShaderModule *modules, VkPipelineLayout layout, VkPipelineCache pipeline_cache)
+create_gfx_pipeline_library(struct zink_screen *screen, struct zink_shader_object *objs, VkPipelineLayout layout, VkPipelineCache pipeline_cache)
 {
    assert(screen->info.have_EXT_extended_dynamic_state && screen->info.have_EXT_extended_dynamic_state2);
    VkPipelineRenderingCreateInfo rendering_info;
@@ -651,9 +651,9 @@ create_gfx_pipeline_library(struct zink_screen *screen, VkShaderModule *modules,
       &rendering_info,
       0
    };
-   if (modules[MESA_SHADER_VERTEX])
+   if (objs[MESA_SHADER_VERTEX].mod)
       gplci.flags |= VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT;
-   if (modules[MESA_SHADER_FRAGMENT])
+   if (objs[MESA_SHADER_FRAGMENT].mod)
       gplci.flags |= VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT;
 
    VkPipelineViewportStateCreateInfo viewport_state = {0};
@@ -724,7 +724,7 @@ create_gfx_pipeline_library(struct zink_screen *screen, VkShaderModule *modules,
 
    VkPipelineTessellationStateCreateInfo tci = {0};
    VkPipelineTessellationDomainOriginStateCreateInfo tdci = {0};
-   if (modules[MESA_SHADER_TESS_CTRL] && modules[MESA_SHADER_TESS_EVAL]) {
+   if (objs[MESA_SHADER_TESS_CTRL].mod && objs[MESA_SHADER_TESS_EVAL].mod) {
       tci.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
       //this is a wild guess; pray for extendedDynamicState2PatchControlPoints
       if (!screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints) {
@@ -741,13 +741,13 @@ create_gfx_pipeline_library(struct zink_screen *screen, VkShaderModule *modules,
    VkPipelineShaderStageCreateInfo shader_stages[ZINK_GFX_SHADER_COUNT];
    uint32_t num_stages = 0;
    for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
-      if (!modules[i])
+      if (!objs[i].mod)
          continue;
 
       VkPipelineShaderStageCreateInfo stage = {0};
       stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
       stage.stage = mesa_to_vk_shader_stage(i);
-      stage.module = modules[i];
+      stage.module = objs[i].mod;
       stage.pName = "main";
       shader_stages[num_stages++] = stage;
    }
@@ -774,13 +774,13 @@ create_gfx_pipeline_library(struct zink_screen *screen, VkShaderModule *modules,
 VkPipeline
 zink_create_gfx_pipeline_library(struct zink_screen *screen, struct zink_gfx_program *prog)
 {
-   return create_gfx_pipeline_library(screen, prog->modules, prog->base.layout, prog->base.pipeline_cache);
+   return create_gfx_pipeline_library(screen, prog->objs, prog->base.layout, prog->base.pipeline_cache);
 }
 
 VkPipeline
-zink_create_gfx_pipeline_separate(struct zink_screen *screen, VkShaderModule *modules, VkPipelineLayout layout)
+zink_create_gfx_pipeline_separate(struct zink_screen *screen, struct zink_shader_object *objs, VkPipelineLayout layout)
 {
-   return create_gfx_pipeline_library(screen, modules, layout, VK_NULL_HANDLE);
+   return create_gfx_pipeline_library(screen, objs, layout, VK_NULL_HANDLE);
 }
 
 VkPipeline
