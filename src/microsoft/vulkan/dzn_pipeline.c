@@ -773,6 +773,13 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       active_stage_mask |= BITFIELD_BIT(stage);
    }
 
+   bool use_gs_for_polygon_mode_point =
+      info->pRasterizationState &&
+      info->pRasterizationState->polygonMode == VK_POLYGON_MODE_POINT &&
+      !(active_stage_mask & (1 << MESA_SHADER_GEOMETRY));
+   if (use_gs_for_polygon_mode_point)
+      last_raster_stage = MESA_SHADER_GEOMETRY;
+
    enum dxil_spirv_yz_flip_mode yz_flip_mode = DXIL_SPIRV_YZ_FLIP_NONE;
    uint16_t y_flip_mask = 0, z_flip_mask = 0;
    bool lower_view_index =
@@ -815,6 +822,7 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       _mesa_sha1_update(&pipeline_hash_ctx, &z_flip_mask, sizeof(z_flip_mask));
       _mesa_sha1_update(&pipeline_hash_ctx, &force_sample_rate_shading, sizeof(force_sample_rate_shading));
       _mesa_sha1_update(&pipeline_hash_ctx, &lower_view_index, sizeof(lower_view_index));
+      _mesa_sha1_update(&pipeline_hash_ctx, &use_gs_for_polygon_mode_point, sizeof(use_gs_for_polygon_mode_point));
 
       u_foreach_bit(stage, active_stage_mask) {
          vk_pipeline_hash_shader_stage(stages[stage].info, NULL, stages[stage].spirv_hash);
@@ -884,6 +892,37 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
          return ret;
    }
 
+   if (use_gs_for_polygon_mode_point) {
+      /* TODO: Cache; handle TES */
+      pipeline->templates.shaders[MESA_SHADER_GEOMETRY].nir =
+         dzn_nir_polygon_point_mode_gs(pipeline->templates.shaders[MESA_SHADER_VERTEX].nir,
+                                       info->pRasterizationState->cullMode,
+                                       info->pRasterizationState->frontFace == VK_FRONT_FACE_COUNTER_CLOCKWISE);
+
+      struct dxil_spirv_runtime_conf conf = {
+         .runtime_data_cbv = {
+            .register_space = DZN_REGISTER_SPACE_SYSVALS,
+            .base_shader_register = 0,
+         },
+         .yz_flip = {
+            .mode = yz_flip_mode,
+            .y_mask = y_flip_mask,
+            .z_mask = z_flip_mask,
+         },
+      };
+
+      bool requires_runtime_data;
+      NIR_PASS_V(pipeline->templates.shaders[MESA_SHADER_GEOMETRY].nir, dxil_spirv_nir_lower_yz_flip,
+                 &conf, &requires_runtime_data);
+
+      active_stage_mask |= (1 << MESA_SHADER_GEOMETRY);
+      memcpy(stages[MESA_SHADER_GEOMETRY].spirv_hash, stages[MESA_SHADER_VERTEX].spirv_hash, SHA1_DIGEST_LENGTH);
+
+      if ((active_stage_mask & (1 << MESA_SHADER_FRAGMENT)) &&
+          BITSET_TEST(pipeline->templates.shaders[MESA_SHADER_FRAGMENT].nir->info.system_values_read, SYSTEM_VALUE_FRONT_FACE))
+         NIR_PASS_V(pipeline->templates.shaders[MESA_SHADER_FRAGMENT].nir, dxil_nir_forward_front_face);
+   }
+
    /* Third step: link those NIR shaders. We iterate in reverse order
     * so we can eliminate outputs that are never read by the next stage.
     */
@@ -932,8 +971,10 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
             _mesa_sha1_update(&dxil_hash_ctx, &z_flip_mask, sizeof(z_flip_mask));
          }
 
-         if (stage == MESA_SHADER_FRAGMENT)
+         if (stage == MESA_SHADER_FRAGMENT) {
             _mesa_sha1_update(&dxil_hash_ctx, &force_sample_rate_shading, sizeof(force_sample_rate_shading));
+            _mesa_sha1_update(&dxil_hash_ctx, &use_gs_for_polygon_mode_point, sizeof(use_gs_for_polygon_mode_point));
+         }
 
          _mesa_sha1_update(&dxil_hash_ctx, stages[stage].spirv_hash, sizeof(stages[stage].spirv_hash));
          _mesa_sha1_update(&dxil_hash_ctx, stages[stage].link_hashes[0], sizeof(stages[stage].link_hashes[0]));
@@ -1209,6 +1250,9 @@ translate_polygon_mode(VkPolygonMode in)
    switch (in) {
    case VK_POLYGON_MODE_FILL: return D3D12_FILL_MODE_SOLID;
    case VK_POLYGON_MODE_LINE: return D3D12_FILL_MODE_WIREFRAME;
+   case VK_POLYGON_MODE_POINT:
+      /* This is handled elsewhere */
+      return D3D12_FILL_MODE_SOLID;
    default: unreachable("Unsupported polygon mode");
    }
 }
