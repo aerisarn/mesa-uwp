@@ -26,6 +26,7 @@
 #include "zink_pipeline.h"
 
 #include "zink_compiler.h"
+#include "nir_to_spirv/nir_to_spirv.h"
 #include "zink_context.h"
 #include "zink_program.h"
 #include "zink_render_pass.h"
@@ -375,6 +376,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    }
 
    VkPipelineShaderStageCreateInfo shader_stages[ZINK_GFX_SHADER_COUNT];
+   VkShaderModuleCreateInfo smci[ZINK_GFX_SHADER_COUNT] = {0};
    uint32_t num_stages = 0;
    for (int i = 0; i < ZINK_GFX_SHADER_COUNT; ++i) {
       if (!prog->shaders[i])
@@ -383,8 +385,15 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       VkPipelineShaderStageCreateInfo stage = {0};
       stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
       stage.stage = mesa_to_vk_shader_stage(i);
-      stage.module = objs[i].mod;
       stage.pName = "main";
+      if (objs[i].mod) {
+         stage.module = objs[i].mod;
+      } else {
+         smci[i].sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+         stage.pNext = &smci[i];
+         smci[i].codeSize = objs[i].spirv->num_words * sizeof(uint32_t);
+         smci[i].pCode = objs[i].spirv->words;
+      }
       shader_stages[num_stages++] = stage;
    }
    assert(num_stages > 0);

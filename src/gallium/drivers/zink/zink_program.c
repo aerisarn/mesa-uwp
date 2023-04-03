@@ -149,15 +149,15 @@ create_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *scr
    unsigned patch_vertices = state->shader_keys.key[MESA_SHADER_TESS_CTRL].key.tcs.patch_vertices;
    if (stage == MESA_SHADER_TESS_CTRL && zs->non_fs.is_generated && zs->spirv) {
       assert(ctx); //TODO async
-      zm->obj = zink_shader_tcs_compile(screen, zs, patch_vertices);
+      zm->obj = zink_shader_tcs_compile(screen, zs, patch_vertices, prog->base.uses_shobj, &prog->base);
    } else {
-      zm->obj = zink_shader_compile(screen, false, zs, zink_shader_blob_deserialize(screen, &prog->blobs[stage]), key, &ctx->di.zs_swizzle[stage]);
+      zm->obj = zink_shader_compile(screen, prog->base.uses_shobj, zs, zink_shader_blob_deserialize(screen, &prog->blobs[stage]), key, &ctx->di.zs_swizzle[stage], &prog->base);
    }
    if (!zm->obj.mod) {
       FREE(zm);
       return NULL;
    }
-   zm->shobj = false;
+   zm->shobj = prog->base.uses_shobj;
    zm->num_uniforms = inline_size;
    if (!is_nongenerated_tcs) {
       zm->key_size = key->size;
@@ -267,16 +267,16 @@ create_shader_module_for_stage_optimal(struct zink_context *ctx, struct zink_scr
          struct zink_tcs_key *tcs = (struct zink_tcs_key*)key;
          patch_vertices = tcs->patch_vertices;
       }
-      zm->obj = zink_shader_tcs_compile(screen, zs, patch_vertices);
+      zm->obj = zink_shader_tcs_compile(screen, zs, patch_vertices, prog->base.uses_shobj, &prog->base);
    } else {
-      zm->obj = zink_shader_compile(screen, false, zs, zink_shader_blob_deserialize(screen, &prog->blobs[stage]),
-                                    (struct zink_shader_key*)key, shadow_needs_shader_swizzle ? &ctx->di.zs_swizzle[stage] : NULL);
+      zm->obj = zink_shader_compile(screen, prog->base.uses_shobj, zs, zink_shader_blob_deserialize(screen, &prog->blobs[stage]),
+                                    (struct zink_shader_key*)key, shadow_needs_shader_swizzle ? &ctx->di.zs_swizzle[stage] : NULL, &prog->base);
    }
    if (!zm->obj.mod) {
       FREE(zm);
       return NULL;
    }
-   zm->shobj = false;
+   zm->shobj = prog->base.uses_shobj;
    /* non-generated tcs won't use the shader key */
    const bool is_nongenerated_tcs = stage == MESA_SHADER_TESS_CTRL && !zs->non_fs.is_generated;
    if (key && !is_nongenerated_tcs) {
@@ -396,6 +396,7 @@ update_gfx_shader_modules(struct zink_context *ctx,
       hash_changed = true;
       default_variants &= zm->default_variant;
       prog->objs[i] = zm->obj;
+      prog->objects[i] = zm->obj.obj;
       prog->module_hash[i] = zm->hash;
       if (has_inline) {
          if (zm->num_uniforms)
@@ -436,7 +437,8 @@ generate_gfx_program_modules(struct zink_context *ctx, struct zink_screen *scree
                                                                      inline_size, nonseamless_size,
                                                                      screen->driconf.inline_uniforms, screen->info.have_EXT_non_seamless_cube_map);
       state->modules[i] = zm->obj.mod;
-      prog->objs[i] = zm->obj ;
+      prog->objs[i] = zm->obj;
+      prog->objects[i] = zm->obj.obj;
       prog->module_hash[i] = zm->hash;
       if (zm->num_uniforms)
          prog->inline_variants |= BITFIELD_BIT(i);
@@ -464,6 +466,7 @@ generate_gfx_program_modules_optimal(struct zink_context *ctx, struct zink_scree
 
       struct zink_shader_module *zm = create_shader_module_for_stage_optimal(ctx, screen, prog->shaders[i], prog, i, state);
       prog->objs[i] = zm->obj;
+      prog->objects[i] = zm->obj.obj;
    }
 
    p_atomic_dec(&prog->base.reference.count);
@@ -659,6 +662,7 @@ update_gfx_shader_module_optimal(struct zink_context *ctx, struct zink_gfx_progr
 
    bool changed = prog->objs[pstage].mod != zm->obj.mod;
    prog->objs[pstage] = zm->obj;
+   prog->objects[pstage] = zm->obj.obj;
    return changed;
 }
 
@@ -788,13 +792,29 @@ optimized_compile_job(void *data, void *gdata, int thread_index)
    }
 }
 
+static void
+optimized_shobj_compile_job(void *data, void *gdata, int thread_index)
+{
+   struct zink_gfx_pipeline_cache_entry *pc_entry = data;
+   struct zink_screen *screen = gdata;
+
+   struct zink_shader_object objs[ZINK_GFX_SHADER_COUNT];
+   for (unsigned i = 0; i < ZINK_GFX_SHADER_COUNT; i++) {
+      objs[i].mod = VK_NULL_HANDLE;
+      objs[i].spirv = pc_entry->shobjs[i].spirv;
+   }
+   pc_entry->pipeline = zink_create_gfx_pipeline(screen, pc_entry->prog, objs, &pc_entry->state, NULL, zink_primitive_topology(pc_entry->state.gfx_prim_mode), true);
+   /* no unoptimized_pipeline dance */
+}
+
 void
 zink_gfx_program_compile_queue(struct zink_context *ctx, struct zink_gfx_pipeline_cache_entry *pc_entry)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    if (screen->driver_workarounds.disable_optimized_compile)
       return;
-   util_queue_add_job(&screen->cache_get_thread, pc_entry, &pc_entry->fence, optimized_compile_job, NULL, 0);
+   util_queue_add_job(&screen->cache_get_thread, pc_entry, &pc_entry->fence,
+                      pc_entry->prog->base.uses_shobj ? optimized_shobj_compile_job : optimized_compile_job, NULL, 0);
 }
 
 static void
@@ -853,7 +873,7 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
          return;
       }
       zm->shobj = false;
-      zm->obj = zink_shader_compile(screen, false, zs, zink_shader_blob_deserialize(screen, &comp->shader->blob), key, zs_swizzle_size ? &ctx->di.zs_swizzle[MESA_SHADER_COMPUTE] : NULL);
+      zm->obj = zink_shader_compile(screen, false, zs, zink_shader_blob_deserialize(screen, &comp->shader->blob), key, zs_swizzle_size ? &ctx->di.zs_swizzle[MESA_SHADER_COMPUTE] : NULL, &comp->base);
       if (!zm->obj.spirv) {
          FREE(zm);
          return;
@@ -1303,7 +1323,7 @@ precompile_compute_job(void *data, void *gdata, int thread_index)
    comp->curr = comp->module = CALLOC_STRUCT(zink_shader_module);
    assert(comp->module);
    comp->module->shobj = false;
-   comp->module->obj = zink_shader_compile(screen, false, comp->shader, comp->nir, NULL, NULL);
+   comp->module->obj = zink_shader_compile(screen, false, comp->shader, comp->nir, NULL, NULL, &comp->base);
    /* comp->nir will be freed by zink_shader_compile */
    comp->nir = NULL;
    assert(comp->module->obj.spirv);
@@ -2033,9 +2053,11 @@ precompile_job(void *data, void *gdata, int thread_index)
    state.optimal_key = state.shader_keys_optimal.key.val;
    generate_gfx_program_modules_optimal(NULL, screen, prog, &state);
    zink_screen_get_pipeline_cache(screen, &prog->base, true);
-   simple_mtx_lock(&prog->libs->lock);
-   zink_create_pipeline_lib(screen, prog, &state);
-   simple_mtx_unlock(&prog->libs->lock);
+   if (!screen->info.have_EXT_shader_object) {
+      simple_mtx_lock(&prog->libs->lock);
+      zink_create_pipeline_lib(screen, prog, &state);
+      simple_mtx_unlock(&prog->libs->lock);
+   }
    zink_screen_update_pipeline_cache(screen, &prog->base, true);
 }
 
@@ -2105,6 +2127,8 @@ zink_link_gfx_shader(struct pipe_context *pctx, void **shaders)
                                                      shaders[MESA_SHADER_TESS_EVAL] ? VK_PRIMITIVE_TOPOLOGY_PATCH_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, true);
       print_pipeline_stats(screen, pipeline);
    } else {
+      if (zink_screen(pctx->screen)->info.have_EXT_shader_object)
+         prog->base.uses_shobj = !BITSET_TEST(zshaders[MESA_SHADER_FRAGMENT]->info.system_values_read, SYSTEM_VALUE_SAMPLE_MASK_IN);
       util_queue_add_job(&zink_screen(pctx->screen)->cache_get_thread, prog, &prog->base.cache_fence, precompile_job, NULL, 0);
    }
 }
@@ -2207,7 +2231,8 @@ zink_program_init(struct zink_context *ctx)
 
    STATIC_ASSERT(sizeof(union zink_shader_key_optimal) == sizeof(uint32_t));
 
-   if (zink_screen(ctx->base.screen)->info.have_EXT_graphics_pipeline_library || zink_debug & ZINK_DEBUG_SHADERDB)
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   if (screen->info.have_EXT_graphics_pipeline_library || screen->info.have_EXT_shader_object || zink_debug & ZINK_DEBUG_SHADERDB)
       ctx->base.link_shader = zink_link_gfx_shader;
 }
 

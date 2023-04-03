@@ -272,13 +272,25 @@ update_gfx_pipeline(struct zink_context *ctx, struct zink_batch_state *bs, enum 
 {
    VkPipeline prev_pipeline = ctx->gfx_pipeline_state.pipeline;
    const struct zink_screen *screen = zink_screen(ctx->base.screen);
-   bool shaders_changed = ctx->gfx_dirty;
+   bool shaders_changed = ctx->gfx_dirty || ctx->dirty_gfx_stages;
    if (screen->optimal_keys && !ctx->is_generated_gs_bound)
       zink_gfx_program_update_optimal(ctx);
    else
       zink_gfx_program_update(ctx);
    bool pipeline_changed = false;
-   if (ctx->curr_program->base.uses_shobj) {
+   VkPipeline pipeline = VK_NULL_HANDLE;
+   if (!ctx->curr_program->base.uses_shobj) {
+      if (screen->info.have_EXT_graphics_pipeline_library)
+         pipeline = zink_get_gfx_pipeline<DYNAMIC_STATE, true>(ctx, ctx->curr_program, &ctx->gfx_pipeline_state, mode);
+      else
+         pipeline = zink_get_gfx_pipeline<DYNAMIC_STATE, false>(ctx, ctx->curr_program, &ctx->gfx_pipeline_state, mode);
+   }
+   if (pipeline) {
+      pipeline_changed = prev_pipeline != pipeline;
+      if (BATCH_CHANGED || pipeline_changed || ctx->shobj_draw)
+         VKCTX(CmdBindPipeline)(bs->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+      ctx->shobj_draw = false;
+   } else {
       if (BATCH_CHANGED || shaders_changed || !ctx->shobj_draw) {
          VkShaderStageFlagBits stages[] = {
             VK_SHADER_STAGE_VERTEX_BIT,
@@ -290,19 +302,8 @@ update_gfx_pipeline(struct zink_context *ctx, struct zink_batch_state *bs, enum 
          /* always rebind all stages */
          VKCTX(CmdBindShadersEXT)(bs->cmdbuf, ZINK_GFX_SHADER_COUNT, stages, ctx->curr_program->objects);
          VKCTX(CmdSetDepthBiasEnable)(bs->cmdbuf, VK_TRUE);
-         pipeline_changed = false;
       }
       ctx->shobj_draw = true;
-   } else {
-      VkPipeline pipeline;
-      if (screen->info.have_EXT_graphics_pipeline_library)
-         pipeline = zink_get_gfx_pipeline<DYNAMIC_STATE, true>(ctx, ctx->curr_program, &ctx->gfx_pipeline_state, mode);
-      else
-         pipeline = zink_get_gfx_pipeline<DYNAMIC_STATE, false>(ctx, ctx->curr_program, &ctx->gfx_pipeline_state, mode);
-      pipeline_changed = prev_pipeline != pipeline;
-      if (BATCH_CHANGED || pipeline_changed || ctx->shobj_draw)
-         VKCTX(CmdBindPipeline)(bs->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-      ctx->shobj_draw = false;
    }
    return pipeline_changed;
 }

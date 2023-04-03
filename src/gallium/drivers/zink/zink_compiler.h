@@ -69,7 +69,7 @@ void
 zink_compiler_assign_io(struct zink_screen *screen, nir_shader *producer, nir_shader *consumer);
 /* pass very large shader key data with extra_data */
 struct zink_shader_object
-zink_shader_compile(struct zink_screen *screen, bool can_shobj, struct zink_shader *zs, nir_shader *nir, const struct zink_shader_key *key, const void *extra_data);
+zink_shader_compile(struct zink_screen *screen, bool can_shobj, struct zink_shader *zs, nir_shader *nir, const struct zink_shader_key *key, const void *extra_data, struct zink_program *pg);
 struct zink_shader_object
 zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs);
 struct zink_shader *
@@ -85,9 +85,9 @@ void
 zink_gfx_shader_free(struct zink_screen *screen, struct zink_shader *shader);
 
 struct zink_shader_object
-zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, struct spirv_shader *spirv, bool can_shobj);
+zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, struct spirv_shader *spirv, bool can_shobj, struct zink_program *pg);
 struct zink_shader_object
-zink_shader_tcs_compile(struct zink_screen *screen, struct zink_shader *zs, unsigned patch_vertices);
+zink_shader_tcs_compile(struct zink_screen *screen, struct zink_shader *zs, unsigned patch_vertices, bool can_shobj, struct zink_program *pg);
 struct zink_shader *
 zink_shader_tcs_create(struct zink_screen *screen, nir_shader *tes, unsigned vertices_per_patch, nir_shader **nir_ret);
 

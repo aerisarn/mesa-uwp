@@ -3197,7 +3197,7 @@ zink_shader_dump(const struct zink_shader *zs, void *words, size_t size, const c
 }
 
 struct zink_shader_object
-zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, struct spirv_shader *spirv, bool can_shobj)
+zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, struct spirv_shader *spirv, bool can_shobj, struct zink_program *pg)
 {
    VkShaderModuleCreateInfo smci = {0};
    VkShaderCreateInfoEXT sci = {0};
@@ -3220,10 +3220,15 @@ zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, st
    sci.codeSize = spirv->num_words * sizeof(uint32_t);
    sci.pCode = spirv->words;
    sci.pName = "main";
-   sci.setLayoutCount = zs->info.stage + 1;
    VkDescriptorSetLayout dsl[ZINK_GFX_SHADER_COUNT] = {0};
-   dsl[zs->info.stage] = zs->precompile.dsl;;
-   sci.pSetLayouts = dsl;
+   if (pg) {
+      sci.setLayoutCount = pg->num_dsl;
+      sci.pSetLayouts = pg->dsl;
+   } else {
+      sci.setLayoutCount = zs->info.stage + 1;
+      dsl[zs->info.stage] = zs->precompile.dsl;;
+      sci.pSetLayouts = dsl;
+   }
    VkPushConstantRange pcr;
    pcr.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
    pcr.offset = 0;
@@ -3525,7 +3530,7 @@ invert_point_coord(nir_shader *nir)
 }
 
 static struct zink_shader_object
-compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *nir, bool can_shobj)
+compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *nir, bool can_shobj, struct zink_program *pg)
 {
    struct zink_shader_info *sinfo = &zs->sinfo;
    prune_io(nir);
@@ -3535,7 +3540,7 @@ compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *n
    struct zink_shader_object obj;
    struct spirv_shader *spirv = nir_to_spirv(nir, sinfo, screen->spirv_version);
    if (spirv)
-      obj = zink_shader_spirv_compile(screen, zs, spirv, can_shobj);
+      obj = zink_shader_spirv_compile(screen, zs, spirv, can_shobj, pg);
 
    /* TODO: determine if there's any reason to cache spirv output? */
    if (zs->info.stage == MESA_SHADER_TESS_CTRL && zs->non_fs.is_generated)
@@ -3547,7 +3552,7 @@ compile_module(struct zink_screen *screen, struct zink_shader *zs, nir_shader *n
 
 struct zink_shader_object
 zink_shader_compile(struct zink_screen *screen, bool can_shobj, struct zink_shader *zs,
-                    nir_shader *nir, const struct zink_shader_key *key, const void *extra_data)
+                    nir_shader *nir, const struct zink_shader_key *key, const void *extra_data, struct zink_program *pg)
 {
    struct zink_shader_info *sinfo = &zs->sinfo;
    bool need_optimize = false;
@@ -3739,7 +3744,7 @@ zink_shader_compile(struct zink_screen *screen, bool can_shobj, struct zink_shad
    } else if (need_optimize)
       optimize_nir(nir, zs);
    
-   struct zink_shader_object obj = compile_module(screen, zs, nir, false);
+   struct zink_shader_object obj = compile_module(screen, zs, nir, can_shobj, pg);
    ralloc_free(nir);
    return obj;
 }
@@ -3786,7 +3791,7 @@ zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
    nir_shader *nir_clone = NULL;
    if (screen->info.have_EXT_shader_object)
       nir_clone = nir_shader_clone(nir, nir);
-   struct zink_shader_object obj = compile_module(screen, zs, nir, true);
+   struct zink_shader_object obj = compile_module(screen, zs, nir, true, NULL);
    if (screen->info.have_EXT_shader_object && !zs->info.internal) {
       /* always try to pre-generate a tcs in case it's needed */
       if (zs->info.stage == MESA_SHADER_TESS_EVAL) {
@@ -3810,7 +3815,7 @@ zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
             nir_fixup_deref_modes(nir_clone);
             NIR_PASS_V(nir_clone, nir_remove_dead_variables, nir_var_shader_temp, NULL);
             optimize_nir(nir_clone, NULL);
-            zs->precompile.no_psiz_obj = compile_module(screen, zs, nir_clone, true);
+            zs->precompile.no_psiz_obj = compile_module(screen, zs, nir_clone, true, NULL);
             spirv_shader_delete(zs->precompile.no_psiz_obj.spirv);
             zs->precompile.no_psiz_obj.spirv = NULL;
          }
@@ -5251,12 +5256,12 @@ zink_gfx_shader_free(struct zink_screen *screen, struct zink_shader *shader)
 
 
 struct zink_shader_object
-zink_shader_tcs_compile(struct zink_screen *screen, struct zink_shader *zs, unsigned patch_vertices)
+zink_shader_tcs_compile(struct zink_screen *screen, struct zink_shader *zs, unsigned patch_vertices, bool can_shobj, struct zink_program *pg)
 {
    assert(zs->info.stage == MESA_SHADER_TESS_CTRL);
    /* shortcut all the nir passes since we just have to change this one word */
    zs->spirv->words[zs->spirv->tcs_vertices_out_word] = patch_vertices;
-   return zink_shader_spirv_compile(screen, zs, NULL, false);
+   return zink_shader_spirv_compile(screen, zs, NULL, can_shobj, pg);
 }
 
 /* creating a passthrough tcs shader that's roughly:

@@ -186,7 +186,10 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
       /* init the optimized background compile fence */
       util_queue_fence_init(&pc_entry->fence);
       entry = _mesa_hash_table_insert_pre_hashed(&prog->pipelines[rp_idx][idx], state->final_hash, pc_entry, pc_entry);
-      if (HAVE_LIB && zink_can_use_pipeline_libs(ctx)) {
+      if (prog->base.uses_shobj && !prog->is_separable) {
+         memcpy(pc_entry->shobjs, prog->objs, sizeof(prog->objs));
+         zink_gfx_program_compile_queue(ctx, pc_entry);
+      } else if (HAVE_LIB && zink_can_use_pipeline_libs(ctx)) {
          /* this is the graphics pipeline library path: find/construct all partial pipelines */
          simple_mtx_lock(&prog->libs->lock);
          struct set_entry *he = _mesa_set_search(&prog->libs->libs, &ctx->gfx_pipeline_state.optimal_key);

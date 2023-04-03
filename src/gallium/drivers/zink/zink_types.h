@@ -1028,6 +1028,7 @@ struct zink_gfx_pipeline_cache_entry {
          struct zink_gfx_output_key *okey;
          VkPipeline unoptimized_pipeline;
       } gpl;
+      struct zink_shader_object shobjs[ZINK_GFX_SHADER_COUNT];
    };
 };
 
