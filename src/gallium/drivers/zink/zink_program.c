@@ -2058,6 +2058,9 @@ zink_link_gfx_shader(struct pipe_context *pctx, void **shaders)
    struct zink_shader **zshaders = (struct zink_shader **)shaders;
    if (shaders[MESA_SHADER_COMPUTE])
       return;
+   /* explicitly block sample shading: this needs full pipelines always */
+   if (zshaders[MESA_SHADER_FRAGMENT] && zshaders[MESA_SHADER_FRAGMENT]->info.fs.uses_sample_shading)
+      return;
    /* can't precompile fixedfunc */
    if (!shaders[MESA_SHADER_VERTEX] || !shaders[MESA_SHADER_FRAGMENT]) {
       /* handled directly from shader create */
