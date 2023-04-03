@@ -134,7 +134,6 @@ create_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *scr
                                bool has_inline, //is inlining enabled?
                                bool has_nonseamless) //is nonseamless ext present?
 {
-   VkShaderModule mod;
    struct zink_shader_module *zm;
    const struct zink_shader_key *key = &state->shader_keys.key[stage];
    /* non-generated tcs won't use the shader key */
@@ -150,16 +149,14 @@ create_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *scr
    unsigned patch_vertices = state->shader_keys.key[MESA_SHADER_TESS_CTRL].key.tcs.patch_vertices;
    if (stage == MESA_SHADER_TESS_CTRL && zs->non_fs.is_generated && zs->spirv) {
       assert(ctx); //TODO async
-      struct zink_shader_object obj = zink_shader_tcs_compile(screen, zs, patch_vertices);
-      mod = obj.mod;
+      zm->obj = zink_shader_tcs_compile(screen, zs, patch_vertices);
    } else {
-      mod = zink_shader_compile(screen, zs, zink_shader_blob_deserialize(screen, &prog->blobs[stage]), key, &ctx->di.zs_swizzle[stage]);
+      zm->obj = zink_shader_compile(screen, zs, zink_shader_blob_deserialize(screen, &prog->blobs[stage]), key, &ctx->di.zs_swizzle[stage]);
    }
-   if (!mod) {
+   if (!zm->obj.mod) {
       FREE(zm);
       return NULL;
    }
-   zm->shader = mod;
    zm->num_uniforms = inline_size;
    if (!is_nongenerated_tcs) {
       zm->key_size = key->size;
@@ -243,7 +240,6 @@ create_shader_module_for_stage_optimal(struct zink_context *ctx, struct zink_scr
                                        gl_shader_stage stage,
                                        struct zink_gfx_pipeline_state *state)
 {
-   VkShaderModule mod;
    struct zink_shader_module *zm;
    uint16_t *key;
    unsigned mask = stage == MESA_SHADER_FRAGMENT ? BITFIELD_MASK(16) : BITFIELD_MASK(8);
@@ -270,16 +266,15 @@ create_shader_module_for_stage_optimal(struct zink_context *ctx, struct zink_scr
          struct zink_tcs_key *tcs = (struct zink_tcs_key*)key;
          patch_vertices = tcs->patch_vertices;
       }
-      struct zink_shader_object obj = zink_shader_tcs_compile(screen, zs, patch_vertices);
-      mod = obj.mod;
+      zm->obj = zink_shader_tcs_compile(screen, zs, patch_vertices);
    } else {
-      mod = zink_shader_compile(screen, zs, zink_shader_blob_deserialize(screen, &prog->blobs[stage]), (struct zink_shader_key*)key, shadow_needs_shader_swizzle ? &ctx->di.zs_swizzle[stage] : NULL);
+      zm->obj = zink_shader_compile(screen, zs, zink_shader_blob_deserialize(screen, &prog->blobs[stage]),
+                                    (struct zink_shader_key*)key, shadow_needs_shader_swizzle ? &ctx->di.zs_swizzle[stage] : NULL);
    }
-   if (!mod) {
+   if (!zm->obj.mod) {
       FREE(zm);
       return NULL;
    }
-   zm->shader = mod;
    /* non-generated tcs won't use the shader key */
    const bool is_nongenerated_tcs = stage == MESA_SHADER_TESS_CTRL && !zs->non_fs.is_generated;
    if (key && !is_nongenerated_tcs) {
@@ -348,7 +343,7 @@ get_shader_module_for_stage_optimal(struct zink_context *ctx, struct zink_screen
 static void
 zink_destroy_shader_module(struct zink_screen *screen, struct zink_shader_module *zm)
 {
-   VKSCR(DestroyShaderModule)(screen->dev, zm->shader, NULL);
+   VKSCR(DestroyShaderModule)(screen->dev, zm->obj.mod, NULL);
    free(zm);
 }
 
@@ -387,14 +382,14 @@ update_gfx_shader_modules(struct zink_context *ctx,
       if (!zm)
          zm = create_shader_module_for_stage(ctx, screen, prog->shaders[i], prog, i, state,
                                              inline_size, nonseamless_size, has_inline, has_nonseamless);
-      state->modules[i] = zm->shader;
-      if (prog->modules[i] == zm->shader)
+      state->modules[i] = zm->obj.mod;
+      if (prog->modules[i] == zm->obj.mod)
          continue;
       prog->optimal_keys &= !prog->shaders[i]->non_fs.is_generated;
       variant_hash ^= prog->module_hash[i];
       hash_changed = true;
       default_variants &= zm->default_variant;
-      prog->modules[i] = zm->shader;
+      prog->modules[i] = zm->obj.mod;
       prog->module_hash[i] = zm->hash;
       if (has_inline) {
          if (zm->num_uniforms)
@@ -434,8 +429,8 @@ generate_gfx_program_modules(struct zink_context *ctx, struct zink_screen *scree
       struct zink_shader_module *zm = create_shader_module_for_stage(ctx, screen, prog->shaders[i], prog, i, state,
                                                                      inline_size, nonseamless_size,
                                                                      screen->driconf.inline_uniforms, screen->info.have_EXT_non_seamless_cube_map);
-      state->modules[i] = zm->shader;
-      prog->modules[i] = zm->shader;
+      state->modules[i] = zm->obj.mod;
+      prog->modules[i] = zm->obj.mod;
       prog->module_hash[i] = zm->hash;
       if (zm->num_uniforms)
          prog->inline_variants |= BITFIELD_BIT(i);
@@ -462,7 +457,7 @@ generate_gfx_program_modules_optimal(struct zink_context *ctx, struct zink_scree
       assert(prog->shaders[i]);
 
       struct zink_shader_module *zm = create_shader_module_for_stage_optimal(ctx, screen, prog->shaders[i], prog, i, state);
-      prog->modules[i] = zm->shader;
+      prog->modules[i] = zm->obj.mod;
    }
 
    p_atomic_dec(&prog->base.reference.count);
@@ -656,8 +651,8 @@ update_gfx_shader_module_optimal(struct zink_context *ctx, struct zink_gfx_progr
    if (!zm)
       zm = create_shader_module_for_stage_optimal(ctx, screen, prog->shaders[pstage], prog, pstage, &ctx->gfx_pipeline_state);
 
-   bool changed = prog->modules[pstage] != zm->shader;
-   prog->modules[pstage] = zm->shader;
+   bool changed = prog->modules[pstage] != zm->obj.mod;
+   prog->modules[pstage] = zm->obj.mod;
    return changed;
 }
 
@@ -801,7 +796,6 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_shader *zs = comp->shader;
-   VkShaderModule mod;
    struct zink_shader_module *zm = NULL;
    unsigned inline_size = 0, nonseamless_size = 0, zs_swizzle_size = 0;
    struct zink_shader_key *key = &ctx->compute_pipeline_state.key;
@@ -852,12 +846,11 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
       if (!zm) {
          return;
       }
-      mod = zink_shader_compile(screen, zs, zink_shader_blob_deserialize(screen, &comp->shader->blob), key, zs_swizzle_size ? &ctx->di.zs_swizzle[MESA_SHADER_COMPUTE] : NULL);
-      if (!mod) {
+      zm->obj = zink_shader_compile(screen, zs, zink_shader_blob_deserialize(screen, &comp->shader->blob), key, zs_swizzle_size ? &ctx->di.zs_swizzle[MESA_SHADER_COMPUTE] : NULL);
+      if (!zm->obj.mod) {
          FREE(zm);
          return;
       }
-      zm->shader = mod;
       zm->num_uniforms = inline_size;
       zm->key_size = key->size;
       memcpy(zm->key, key, key->size);
@@ -1302,10 +1295,10 @@ precompile_compute_job(void *data, void *gdata, int thread_index)
    comp->shader = zink_shader_create(screen, comp->nir, NULL);
    comp->curr = comp->module = CALLOC_STRUCT(zink_shader_module);
    assert(comp->module);
-   comp->module->shader = zink_shader_compile(screen, comp->shader, comp->nir, NULL, NULL);
+   comp->module->obj = zink_shader_compile(screen, comp->shader, comp->nir, NULL, NULL);
    /* comp->nir will be freed by zink_shader_compile */
    comp->nir = NULL;
-   assert(comp->module->shader);
+   assert(comp->module->obj.mod);
    util_dynarray_init(&comp->shader_cache[0], comp);
    util_dynarray_init(&comp->shader_cache[1], comp);
 
@@ -1535,7 +1528,7 @@ zink_destroy_compute_program(struct zink_screen *screen,
       free(pc_entry);
    }
    VKSCR(DestroyPipeline)(screen->dev, comp->base_pipeline, NULL);
-   VKSCR(DestroyShaderModule)(screen->dev, comp->module->shader, NULL);
+   VKSCR(DestroyShaderModule)(screen->dev, comp->module->obj.mod, NULL);
    free(comp->module);
 
    ralloc_free(comp);
@@ -1901,7 +1894,7 @@ zink_bind_cs_state(struct pipe_context *pctx,
    if (comp && comp != ctx->curr_compute) {
       ctx->compute_pipeline_state.module_hash = ctx->curr_compute->curr->hash;
       if (util_queue_fence_is_signalled(&comp->base.cache_fence))
-         ctx->compute_pipeline_state.module = ctx->curr_compute->curr->shader;
+         ctx->compute_pipeline_state.module = ctx->curr_compute->curr->obj.mod;
       ctx->compute_pipeline_state.final_hash ^= ctx->compute_pipeline_state.module_hash;
       if (ctx->compute_pipeline_state.key.base.nonseamless_cube_mask)
          ctx->compute_dirty = true;

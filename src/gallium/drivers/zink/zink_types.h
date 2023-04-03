@@ -935,7 +935,7 @@ enum zink_gfx_push_constant_member {
  * allowing us to skip going through shader keys
  */
 struct zink_shader_module {
-   VkShaderModule shader;
+   struct zink_shader_object obj;
    uint32_t hash;
    bool default_variant;
    bool has_nonseamless;
