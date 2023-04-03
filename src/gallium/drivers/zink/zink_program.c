@@ -691,6 +691,19 @@ update_gfx_program_optimal(struct zink_context *ctx, struct zink_gfx_program *pr
    prog->last_variant_hash = ctx->gfx_pipeline_state.shader_keys_optimal.key.val;
 }
 
+static struct zink_gfx_program *
+replace_separable_prog(struct zink_screen *screen, struct hash_entry *entry, struct zink_gfx_program *prog)
+{
+   struct zink_gfx_program *real = prog->full_prog;
+   entry->data = real;
+   entry->key = real->shaders;
+   real->base.removed = false;
+   prog->full_prog = NULL;
+   prog->base.removed = true;
+   zink_gfx_program_reference(screen, &prog, NULL);
+   return real;
+}
+
 void
 zink_gfx_program_update_optimal(struct zink_context *ctx)
 {
@@ -713,14 +726,7 @@ zink_gfx_program_update_optimal(struct zink_context *ctx)
                util_queue_fence_wait(&prog->base.cache_fence);
             /* If the optimized linked pipeline is done compiling, swap it into place. */
             if (util_queue_fence_is_signalled(&prog->base.cache_fence)) {
-               struct zink_gfx_program *real = prog->full_prog;
-               entry->data = real;
-               entry->key = real->shaders;
-               real->base.removed = false;
-               prog->full_prog = NULL;
-               prog->base.removed = true;
-               zink_gfx_program_reference(screen, &prog, NULL);
-               prog = real;
+               prog = replace_separable_prog(screen, entry, prog);
             }
          }
          update_gfx_program_optimal(ctx, prog);
@@ -752,14 +758,7 @@ zink_gfx_program_update_optimal(struct zink_context *ctx)
             const uint32_t hash = ctx->gfx_hash;
             simple_mtx_lock(&ctx->program_lock[zink_program_cache_stages(ctx->shader_stages)]);
             struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(ht, hash, ctx->gfx_stages);
-            struct zink_gfx_program *real = prog->full_prog;
-            entry->data = real;
-            entry->key = real->shaders;
-            real->base.removed = false;
-            prog->full_prog = NULL;
-            prog->base.removed = true;
-            zink_gfx_program_reference(screen, &prog, NULL);
-            ctx->curr_program = real;
+            ctx->curr_program = replace_separable_prog(screen, entry, prog);
             simple_mtx_unlock(&ctx->program_lock[zink_program_cache_stages(ctx->shader_stages)]);
          }
       }
