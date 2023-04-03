@@ -778,12 +778,12 @@ optimized_compile_job(void *data, void *gdata, int thread_index)
    struct zink_gfx_pipeline_cache_entry *pc_entry = data;
    struct zink_screen *screen = gdata;
    VkPipeline pipeline;
-   if (pc_entry->gkey)
-      pipeline = zink_create_gfx_pipeline_combined(screen, pc_entry->prog, pc_entry->ikey->pipeline, &pc_entry->gkey->pipeline, 1, pc_entry->okey->pipeline, true);
+   if (pc_entry->gpl.gkey)
+      pipeline = zink_create_gfx_pipeline_combined(screen, pc_entry->prog, pc_entry->gpl.ikey->pipeline, &pc_entry->gpl.gkey->pipeline, 1, pc_entry->gpl.okey->pipeline, true);
    else
       pipeline = zink_create_gfx_pipeline(screen, pc_entry->prog, pc_entry->prog->modules, &pc_entry->state, pc_entry->state.element_state->binding_map, zink_primitive_topology(pc_entry->state.gfx_prim_mode), true);
    if (pipeline) {
-      pc_entry->unoptimized_pipeline = pc_entry->pipeline;
+      pc_entry->gpl.unoptimized_pipeline = pc_entry->pipeline;
       pc_entry->pipeline = pipeline;
    }
 }
@@ -1488,7 +1488,7 @@ zink_destroy_gfx_program(struct zink_screen *screen,
 
             util_queue_fence_wait(&pc_entry->fence);
             VKSCR(DestroyPipeline)(screen->dev, pc_entry->pipeline, NULL);
-            VKSCR(DestroyPipeline)(screen->dev, pc_entry->unoptimized_pipeline, NULL);
+            VKSCR(DestroyPipeline)(screen->dev, pc_entry->gpl.unoptimized_pipeline, NULL);
             free(pc_entry);
          }
       }

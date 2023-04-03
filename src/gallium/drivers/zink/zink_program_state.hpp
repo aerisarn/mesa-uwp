@@ -205,9 +205,9 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
                                              zink_find_or_create_output_ds3(ctx) :
                                              zink_find_or_create_output(ctx);
          /* partial pipelines are stored to the cache entry for async optimized pipeline compiles */
-         pc_entry->ikey = ikey;
-         pc_entry->gkey = gkey;
-         pc_entry->okey = okey;
+         pc_entry->gpl.ikey = ikey;
+         pc_entry->gpl.gkey = gkey;
+         pc_entry->gpl.okey = okey;
          /* create the non-optimized pipeline first using fast-linking to avoid stuttering */
          pipeline = zink_create_gfx_pipeline_combined(screen, prog, ikey->pipeline, &gkey->pipeline, 1, okey->pipeline, false);
       } else {
