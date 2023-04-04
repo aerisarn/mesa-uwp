@@ -1,6 +1,7 @@
 use crate::api::icd::*;
 use crate::core::context::*;
 use crate::core::device::*;
+use crate::core::platform::Platform;
 use crate::impl_cl_type_trait;
 
 use mesa_rust::compiler::clc::*;
@@ -595,18 +596,25 @@ impl Program {
 
         let info = Self::dev_build_info(&mut lock, d);
         assert_eq!(info.status, CL_BUILD_SUCCESS as cl_build_status);
-        info.spirv
-            .as_ref()
-            .unwrap()
-            .to_nir(
-                kernel,
-                d.screen
-                    .nir_shader_compiler_options(pipe_shader_type::PIPE_SHADER_COMPUTE),
-                &d.lib_clc,
-                &mut spec_constants,
-                d.address_bits(),
-            )
-            .unwrap()
+
+        let mut log = Platform::get().debug.program.then(Vec::new);
+        let nir = info.spirv.as_ref().unwrap().to_nir(
+            kernel,
+            d.screen
+                .nir_shader_compiler_options(pipe_shader_type::PIPE_SHADER_COMPUTE),
+            &d.lib_clc,
+            &mut spec_constants,
+            d.address_bits(),
+            log.as_mut(),
+        );
+
+        if let Some(log) = log {
+            for line in log {
+                eprintln!("{}", line);
+            }
+        };
+
+        nir.unwrap()
     }
 
     pub fn is_binary(&self) -> bool {

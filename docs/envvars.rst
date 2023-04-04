@@ -893,6 +893,12 @@ Rusticl environment variables
    -  ``RUSTICL_ENABLE=iris:1,radeonsi:0,2`` (enables second iris and first
       and third radeonsi device)
 
+.. envvar:: RUSTICL_DEBUG
+
+   a comma-separated list of debug channels to enable.
+
+   - ``program`` dumps compilation logs to stderr
+
 Nine frontend environment variables
 -----------------------------------
 

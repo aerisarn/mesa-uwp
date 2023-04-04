@@ -6,6 +6,7 @@ use crate::core::version::*;
 use mesa_rust_gen::*;
 use rusticl_opencl_gen::*;
 
+use std::env;
 use std::sync::Arc;
 use std::sync::Once;
 
@@ -14,6 +15,11 @@ pub struct Platform {
     dispatch: &'static cl_icd_dispatch,
     pub extensions: [cl_name_version; 2],
     pub devs: Vec<Arc<Device>>,
+    pub debug: PlatformDebug,
+}
+
+pub struct PlatformDebug {
+    pub program: bool,
 }
 
 static PLATFORM_ONCE: Once = Once::new();
@@ -24,6 +30,7 @@ static mut PLATFORM: Platform = Platform {
         mk_cl_version_ext(1, 0, 0, "cl_khr_il_program"),
     ],
     devs: Vec::new(),
+    debug: PlatformDebug { program: false },
 };
 
 impl Platform {
@@ -44,6 +51,14 @@ impl Platform {
         }
 
         self.devs.extend(Device::all());
+        if let Ok(debug_flags) = env::var("RUSTICL_DEBUG") {
+            for flag in debug_flags.split(',') {
+                match flag {
+                    "program" => self.debug.program = true,
+                    _ => eprintln!("Unknown RUSTICL_DEBUG flag found: {}", flag),
+                }
+            }
+        }
     }
 }
 

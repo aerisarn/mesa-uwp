@@ -2,6 +2,7 @@ use crate::api::icd::*;
 use crate::api::types::*;
 use crate::api::util::*;
 use crate::core::device::*;
+use crate::core::platform::*;
 use crate::core::program::*;
 
 use mesa_rust::compiler::clc::*;
@@ -270,8 +271,8 @@ pub fn build_program(
 
     // CL_BUILD_PROGRAM_FAILURE if there is a failure to build the program executable. This error
     // will be returned if clBuildProgram does not return until the build has completed.
-    for dev in devs {
-        res &= p.build(&dev, c_string_to_string(options));
+    for dev in &devs {
+        res &= p.build(dev, c_string_to_string(options));
     }
 
     call_cb(pfn_notify, program, user_data);
@@ -284,6 +285,11 @@ pub fn build_program(
     if res {
         Ok(())
     } else {
+        if Platform::get().debug.program {
+            for dev in &devs {
+                eprintln!("{}", p.log(dev));
+            }
+        }
         Err(CL_BUILD_PROGRAM_FAILURE)
     }
 }
@@ -337,8 +343,8 @@ pub fn compile_program(
 
     // CL_COMPILE_PROGRAM_FAILURE if there is a failure to compile the program source. This error
     // will be returned if clCompileProgram does not return until the compile has completed.
-    for dev in devs {
-        res &= p.compile(&dev, c_string_to_string(options), &headers);
+    for dev in &devs {
+        res &= p.compile(dev, c_string_to_string(options), &headers);
     }
 
     call_cb(pfn_notify, program, user_data);
@@ -349,6 +355,11 @@ pub fn compile_program(
     if res {
         Ok(())
     } else {
+        if Platform::get().debug.program {
+            for dev in &devs {
+                eprintln!("{}", p.log(dev));
+            }
+        }
         Err(CL_COMPILE_PROGRAM_FAILURE)
     }
 }
