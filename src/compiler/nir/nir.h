@@ -2432,6 +2432,12 @@ typedef struct {
     * then the sampler index is given by sampler_index + sampler_offset.
     */
    unsigned sampler_index;
+
+   /* Back-end specific flags, intended to be used in combination with
+    * nir_tex_src_backend1/2 to provide additional hw-specific information
+    * to the back-end compiler.
+    */
+   uint32_t backend_flags;
 } nir_tex_instr;
 
 /**

@@ -1506,6 +1506,7 @@ write_tex(write_ctx *ctx, const nir_tex_instr *tex)
 
    blob_write_uint32(ctx->blob, tex->texture_index);
    blob_write_uint32(ctx->blob, tex->sampler_index);
+   blob_write_uint32(ctx->blob, tex->backend_flags);
    if (tex->op == nir_texop_tg4)
       blob_write_bytes(ctx->blob, tex->tg4_offsets, sizeof(tex->tg4_offsets));
 
@@ -1544,6 +1545,7 @@ read_tex(read_ctx *ctx, union packed_instr header)
    tex->op = header.tex.op;
    tex->texture_index = blob_read_uint32(ctx->blob);
    tex->sampler_index = blob_read_uint32(ctx->blob);
+   tex->backend_flags = blob_read_uint32(ctx->blob);
    if (tex->op == nir_texop_tg4)
       blob_copy_bytes(ctx->blob, tex->tg4_offsets, sizeof(tex->tg4_offsets));
 
