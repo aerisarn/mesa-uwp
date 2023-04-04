@@ -2164,12 +2164,24 @@ emit_shift(struct ntd_context *ctx, nir_alu_instr *alu,
 {
    unsigned op0_bit_size = nir_src_bit_size(alu->src[0].src);
    unsigned op1_bit_size = nir_src_bit_size(alu->src[1].src);
-   if (op0_bit_size != op1_bit_size) {
-      const struct dxil_type *type =
-         dxil_module_get_int_type(&ctx->mod, op0_bit_size);
-      enum dxil_cast_opcode cast_op =
-         op1_bit_size < op0_bit_size ? DXIL_CAST_ZEXT : DXIL_CAST_TRUNC;
-      op1 = dxil_emit_cast(&ctx->mod, cast_op, type, op1);
+
+   uint64_t shift_mask = op0_bit_size - 1;
+   if (!nir_src_is_const(alu->src[1].src)) {
+      if (op0_bit_size != op1_bit_size) {
+         const struct dxil_type *type =
+            dxil_module_get_int_type(&ctx->mod, op0_bit_size);
+         enum dxil_cast_opcode cast_op =
+            op1_bit_size < op0_bit_size ? DXIL_CAST_ZEXT : DXIL_CAST_TRUNC;
+         op1 = dxil_emit_cast(&ctx->mod, cast_op, type, op1);
+      }
+      op1 = dxil_emit_binop(&ctx->mod, DXIL_BINOP_AND,
+                            op1,
+                            dxil_module_get_int_const(&ctx->mod, shift_mask, op0_bit_size),
+                            0);
+   } else {
+      uint64_t val = nir_ssa_scalar_as_uint(
+         nir_ssa_scalar_chase_alu_src(nir_get_ssa_scalar(&alu->dest.dest.ssa, 0), 1));
+      op1 = dxil_module_get_int_const(&ctx->mod, val & shift_mask, op0_bit_size);
    }
 
    const struct dxil_value *v =
