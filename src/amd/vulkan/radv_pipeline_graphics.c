@@ -3463,11 +3463,36 @@ done:
    if (creation_feedback) {
       *creation_feedback->pPipelineCreationFeedback = pipeline_feedback;
 
-      uint32_t stage_count = creation_feedback->pipelineStageCreationFeedbackCount;
-      assert(stage_count == 0 || pCreateInfo->stageCount == stage_count);
-      for (uint32_t i = 0; i < stage_count; i++) {
-         gl_shader_stage s = vk_to_mesa_shader_stage(pCreateInfo->pStages[i].stage);
-         creation_feedback->pPipelineStageCreationFeedbacks[i] = stages[s].feedback;
+      if (creation_feedback->pipelineStageCreationFeedbackCount > 0) {
+         uint32_t num_feedbacks = 0;
+
+         for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
+            gl_shader_stage s = vk_to_mesa_shader_stage(pCreateInfo->pStages[i].stage);
+            creation_feedback->pPipelineStageCreationFeedbacks[num_feedbacks++] = stages[s].feedback;
+         }
+
+         /* Stages imported from graphics pipeline libraries are defined as additional entries in the
+          * order they were imported.
+          */
+         const VkPipelineLibraryCreateInfoKHR *libs_info =
+            vk_find_struct_const(pCreateInfo->pNext, PIPELINE_LIBRARY_CREATE_INFO_KHR);
+         if (libs_info) {
+            for (uint32_t i = 0; i < libs_info->libraryCount; i++) {
+               RADV_FROM_HANDLE(radv_pipeline, pipeline_lib, libs_info->pLibraries[i]);
+               struct radv_graphics_lib_pipeline *gfx_pipeline_lib =
+                  radv_pipeline_to_graphics_lib(pipeline_lib);
+
+               if (!gfx_pipeline_lib->base.active_stages)
+                  continue;
+
+               radv_foreach_stage(s, gfx_pipeline_lib->base.active_stages) {
+                  creation_feedback->pPipelineStageCreationFeedbacks[num_feedbacks++] =
+                     stages[s].feedback;
+               }
+            }
+         }
+
+         assert(num_feedbacks == creation_feedback->pipelineStageCreationFeedbackCount);
       }
    }
 
