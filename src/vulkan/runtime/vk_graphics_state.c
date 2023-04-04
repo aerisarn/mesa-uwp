@@ -116,6 +116,7 @@ get_dynamic_state_groups(BITSET_WORD *dynamic,
    if (groups & MESA_VK_GRAPHICS_STATE_COLOR_BLEND_BIT) {
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE);
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_CB_LOGIC_OP);
+      BITSET_SET(dynamic, MESA_VK_DYNAMIC_CB_ATTACHMENT_COUNT);
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES);
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_CB_BLEND_ENABLES);
       BITSET_SET(dynamic, MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS);
@@ -155,6 +156,7 @@ fully_dynamic_state_groups(const BITSET_WORD *dynamic)
 
    if (BITSET_TEST(dynamic, MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE) &&
        BITSET_TEST(dynamic, MESA_VK_DYNAMIC_CB_LOGIC_OP) &&
+       BITSET_TEST(dynamic, MESA_VK_DYNAMIC_CB_ATTACHMENT_COUNT) &&
        BITSET_TEST(dynamic, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES) &&
        BITSET_TEST(dynamic, MESA_VK_DYNAMIC_CB_BLEND_ENABLES) &&
        BITSET_TEST(dynamic, MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS) &&
@@ -1002,14 +1004,12 @@ vk_dynamic_graphics_state_init_cb(struct vk_dynamic_graphics_state *dst,
    dst->cb.logic_op_enable = cb->logic_op_enable;
    dst->cb.logic_op = cb->logic_op;
    dst->cb.color_write_enables = cb->color_write_enables;
+   dst->cb.attachment_count = cb->attachment_count;
 
    if (IS_NEEDED(CB_BLEND_ENABLES) ||
        IS_NEEDED(CB_BLEND_EQUATIONS) ||
        IS_NEEDED(CB_WRITE_MASKS)) {
-      dst->cb.attachment_count = cb->attachment_count;
       typed_memcpy(dst->cb.attachments, cb->attachments, cb->attachment_count);
-   } else {
-      dst->cb.attachment_count = 0;
    }
 
    if (IS_NEEDED(CB_BLEND_CONSTANTS))
@@ -1793,6 +1793,16 @@ vk_dynamic_graphics_state_fill(struct vk_dynamic_graphics_state *dyn,
     */
    BITSET_SET(dyn->set, MESA_VK_DYNAMIC_VI_BINDINGS_VALID);
 
+   /* If the pipeline doesn't render any color attachments, we should still
+    * keep track of the fact that it writes 0 attachments, even though none of
+    * the other blend states will be initialized. Normally this would be
+    * initialized with the other blend states.
+    */
+   if (!p->rp || !(p->rp->attachment_aspects & VK_IMAGE_ASPECT_COLOR_BIT)) {
+      dyn->cb.attachment_count = 0;
+      BITSET_SET(dyn->set, MESA_VK_DYNAMIC_CB_ATTACHMENT_COUNT);
+   }
+
    /* Mask off all but the groups we actually found */
    BITSET_AND(dyn->set, dyn->set, needed);
 }
@@ -1972,6 +1982,7 @@ vk_dynamic_graphics_state_copy(struct vk_dynamic_graphics_state *dst,
 
    COPY_IF_SET(CB_LOGIC_OP_ENABLE, cb.logic_op_enable);
    COPY_IF_SET(CB_LOGIC_OP, cb.logic_op);
+   COPY_IF_SET(CB_ATTACHMENT_COUNT, cb.attachment_count);
    COPY_IF_SET(CB_COLOR_WRITE_ENABLES, cb.color_write_enables);
    if (IS_SET_IN_SRC(CB_BLEND_ENABLES)) {
       for (uint32_t a = 0; a < src->cb.attachment_count; a++)

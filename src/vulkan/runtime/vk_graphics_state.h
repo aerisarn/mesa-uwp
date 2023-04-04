@@ -96,6 +96,7 @@ enum mesa_vk_dynamic_graphics_state {
    MESA_VK_DYNAMIC_DS_STENCIL_REFERENCE,
    MESA_VK_DYNAMIC_CB_LOGIC_OP_ENABLE,
    MESA_VK_DYNAMIC_CB_LOGIC_OP,
+   MESA_VK_DYNAMIC_CB_ATTACHMENT_COUNT,
    MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES,
    MESA_VK_DYNAMIC_CB_BLEND_ENABLES,
    MESA_VK_DYNAMIC_CB_BLEND_EQUATIONS,
@@ -625,6 +626,12 @@ struct vk_color_blend_state {
     */
    uint8_t logic_op;
 
+   /** VkPipelineColorBlendStateCreateInfo::attachmentCount
+    *
+    * MESA_VK_DYNAMIC_GRAPHICS_STATE_CB_ATTACHMENT_COUNT,
+    */
+   uint8_t attachment_count;
+
    /** VkPipelineColorWriteCreateInfoEXT::pColorWriteEnables
     *
     * Bitmask of color write enables, indexed by color attachment index.
@@ -632,10 +639,6 @@ struct vk_color_blend_state {
     * MESA_VK_DYNAMIC_GRAPHICS_STATE_CB_COLOR_WRITE_ENABLES,
     */
    uint8_t color_write_enables;
-
-   /** VkPipelineColorBlendStateCreateInfo::attachmentCount
-    */
-   uint8_t attachment_count;
 
    /** VkPipelineColorBlendStateCreateInfo::pAttachments */
    struct vk_color_blend_attachment_state attachments[MESA_VK_MAX_COLOR_ATTACHMENTS];
