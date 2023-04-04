@@ -42,6 +42,18 @@ v3dv_wsi_can_present_on_device(VkPhysicalDevice _pdevice, int fd)
 {
    V3DV_FROM_HANDLE(v3dv_physical_device, pdevice, _pdevice);
 
+   /* There are some instances with direct display extensions where this may be
+    * called before we have ever tried to create a swapchain, and therefore,
+    * before we have ever tried to acquire the display device, in which case we
+    * have to do it now.
+    */
+   if (unlikely(pdevice->display_fd < 0 && pdevice->master_fd >= 0)) {
+      VkResult result =
+         v3dv_physical_device_acquire_display(pdevice, NULL);
+      if (result != VK_SUCCESS)
+         return false;
+   }
+
    return wsi_common_drm_devices_equal(fd, pdevice->display_fd);
 }
 

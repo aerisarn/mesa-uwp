@@ -840,7 +840,8 @@ create_physical_device(struct v3dv_instance *instance,
    device->device_id = drm_render_device->deviceinfo.pci->device_id;
 #endif
 
-   if (instance->vk.enabled_extensions.KHR_display) {
+   if (instance->vk.enabled_extensions.KHR_display ||
+       instance->vk.enabled_extensions.EXT_acquire_drm_display) {
 #if !using_v3d_simulator
       /* Open the primary node on the vc4 display device */
       assert(drm_primary_device);
