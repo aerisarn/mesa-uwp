@@ -1,5 +1,6 @@
 from .console_format import CONSOLE_LOG
 from .gitlab_section import GitlabSection
+from .lava_job_definition import generate_lava_yaml_payload
 from .log_follower import (
     LogFollower,
     fatal_err,
