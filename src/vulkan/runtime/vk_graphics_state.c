@@ -1041,7 +1041,8 @@ vk_render_pass_state_init(struct vk_render_pass_state *rp,
          VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
    }
    const VkPipelineCreateFlags pipeline_flags =
-      vk_get_pipeline_rendering_flags(info) & valid_pipeline_flags;
+      (driver_rp ? driver_rp->pipeline_flags :
+       vk_get_pipeline_rendering_flags(info)) & valid_pipeline_flags;
 
    /* If we already have render pass state and it has attachment info, then
     * it's complete and we don't need a new one.  The one caveat here is that
