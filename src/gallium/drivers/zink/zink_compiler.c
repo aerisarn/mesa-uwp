@@ -523,7 +523,7 @@ lower_pv_mode_gs_end_primitive(nir_builder *b,
    {
       nir_ssa_def *out_pos_counter = nir_load_var(b, state->out_pos_counter);
       nir_push_if(b, nir_ilt(b, nir_isub(b, pos_counter, out_pos_counter),
-                                nir_imm_int(b, state->primitive_vert_count - 1)));
+                                nir_imm_int(b, state->primitive_vert_count)));
       nir_jump(b, nir_jump_break);
       nir_pop_if(b, NULL);
 
