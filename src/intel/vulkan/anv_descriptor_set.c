@@ -1530,8 +1530,6 @@ anv_descriptor_set_write_image_view(struct anv_device *device,
       struct anv_storage_image_descriptor desc_data = {
          .vanilla = anv_surface_state_to_handle(
                            image_view->planes[0].storage_surface_state.state),
-         .lowered = anv_surface_state_to_handle(
-                           image_view->planes[0].lowered_storage_surface_state.state),
       };
       memcpy(desc_map, &desc_data, sizeof(desc_data));
    }
@@ -1582,8 +1580,6 @@ anv_descriptor_set_write_buffer_view(struct anv_device *device,
       struct anv_storage_image_descriptor desc_data = {
          .vanilla = anv_surface_state_to_handle(
                            buffer_view->storage_surface_state),
-         .lowered = anv_surface_state_to_handle(
-                           buffer_view->lowered_storage_surface_state),
       };
       memcpy(desc_map, &desc_data, sizeof(desc_data));
    }

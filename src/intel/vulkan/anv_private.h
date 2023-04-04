@@ -1622,7 +1622,8 @@ struct anv_storage_image_descriptor {
     * SURFACE_STATE table index is in the top 20 bits.
     */
    uint32_t vanilla;
-   uint32_t lowered;
+
+   uint32_t pad;
 };
 
 /** Struct representing a address/range descriptor
@@ -1833,7 +1834,6 @@ struct anv_buffer_view {
 
    struct anv_state surface_state;
    struct anv_state storage_surface_state;
-   struct anv_state lowered_storage_surface_state;
 };
 
 struct anv_push_descriptor_set {
@@ -1996,9 +1996,6 @@ struct anv_pipeline_binding {
        */
       uint8_t dynamic_offset_index;
    };
-
-   /** For a storage image, whether it requires a lowered surface */
-   uint8_t lowered_storage_surface;
 };
 
 struct anv_push_range {
@@ -4130,22 +4127,14 @@ struct anv_image_view {
       struct anv_surface_state general_sampler_surface_state;
 
       /**
-       * RENDER_SURFACE_STATE when using image as a storage image. Separate
-       * states for vanilla (with the original format) and one which has been
-       * lowered to a format suitable for reading.  This may be a raw surface
-       * in extreme cases or simply a surface with a different format where we
-       * expect some conversion to be done in the shader.
+       * RENDER_SURFACE_STATE when using image as a storage image.
        */
       struct anv_surface_state storage_surface_state;
-      struct anv_surface_state lowered_storage_surface_state;
-
-      bool lowered_surface_state_is_null;
    } planes[3];
 };
 
 enum anv_image_view_state_flags {
-   ANV_IMAGE_VIEW_STATE_STORAGE_LOWERED      = (1 << 0),
-   ANV_IMAGE_VIEW_STATE_TEXTURE_OPTIMAL      = (1 << 1),
+   ANV_IMAGE_VIEW_STATE_TEXTURE_OPTIMAL      = (1 << 0),
 };
 
 void anv_image_fill_surface_state(struct anv_device *device,

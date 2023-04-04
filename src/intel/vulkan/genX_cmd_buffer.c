@@ -2180,27 +2180,9 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
             if (desc->image_view) {
                struct anv_surface_state sstate =
-                  binding->lowered_storage_surface
-                  ? desc->image_view->planes[binding->plane].lowered_storage_surface_state
-                  : desc->image_view->planes[binding->plane].storage_surface_state;
-               const bool lowered_surface_state_is_null =
-                  desc->image_view->planes[binding->plane].lowered_surface_state_is_null;
+                  desc->image_view->planes[binding->plane].storage_surface_state;
                surface_state = anv_bindless_state_for_binding_table(sstate.state);
                assert(surface_state.alloc_size);
-               if (binding->lowered_storage_surface && lowered_surface_state_is_null) {
-                  mesa_loge("Bound a image to a descriptor where the "
-                            "descriptor does not have NonReadable "
-                            "set and the image does not have a "
-                            "corresponding SPIR-V format enum.");
-                  vk_debug_report(&cmd_buffer->device->physical->instance->vk,
-                                  VK_DEBUG_REPORT_ERROR_BIT_EXT,
-                                  &desc->image_view->vk.base,
-                                  __LINE__, 0, "anv",
-                                  "Bound a image to a descriptor where the "
-                                  "descriptor does not have NonReadable "
-                                  "set and the image does not have a "
-                                  "corresponding SPIR-V format enum.");
-               }
             } else {
                surface_state = anv_bindless_state_for_binding_table(
                   cmd_buffer->device->null_surface_state);
@@ -2274,9 +2256,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
             if (desc->buffer_view) {
                surface_state = anv_bindless_state_for_binding_table(
-                  binding->lowered_storage_surface
-                  ? desc->buffer_view->lowered_storage_surface_state
-                  : desc->buffer_view->storage_surface_state);
+                  desc->buffer_view->storage_surface_state);
                assert(surface_state.alloc_size);
             } else {
                surface_state = anv_bindless_state_for_binding_table(

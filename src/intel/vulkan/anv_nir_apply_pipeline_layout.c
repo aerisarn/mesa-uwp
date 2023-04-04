@@ -983,11 +983,8 @@ lower_image_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
    b->cursor = nir_before_instr(&intrin->instr);
 
    if (binding_offset > MAX_BINDING_TABLE_SIZE) {
-      const unsigned desc_comp =
-         image_binding_needs_lowered_surface(var) ? 1 : 0;
-      nir_ssa_def *desc =
-         build_load_var_deref_descriptor_mem(b, deref, 0, 2, 32, state);
-      nir_ssa_def *handle = nir_channel(b, desc, desc_comp);
+      nir_ssa_def *handle =
+         build_load_var_deref_descriptor_mem(b, deref, 0, 1, 32, state);
       nir_rewrite_image_intrinsic(intrin, handle, true);
    } else {
       unsigned array_size =
@@ -1542,9 +1539,6 @@ anv_nir_apply_pipeline_layout(nir_shader *shader,
       for (unsigned i = 0; i < array_size; i++) {
          assert(pipe_binding[i].set == set);
          assert(pipe_binding[i].index == bind_layout->descriptor_index + i);
-
-         pipe_binding[i].lowered_storage_surface =
-            image_binding_needs_lowered_surface(var);
       }
    }
 
