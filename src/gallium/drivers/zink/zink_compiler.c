@@ -390,9 +390,21 @@ struct lower_pv_mode_state {
    nir_variable *varyings[VARYING_SLOT_MAX];
    nir_variable *pos_counter;
    nir_variable *out_pos_counter;
+   nir_variable *ring_offset;
+   unsigned ring_size;
    unsigned primitive_vert_count;
    unsigned prim;
 };
+
+static nir_ssa_def*
+lower_pv_mode_gs_ring_index(nir_builder *b,
+                            struct lower_pv_mode_state *state,
+                            nir_ssa_def *index)
+{
+   nir_ssa_def *ring_offset = nir_load_var(b, state->ring_offset);
+   return nir_imod(b, nir_iadd(b, index, ring_offset),
+                      nir_imm_int(b, state->ring_size));
+}
 
 static bool
 lower_pv_mode_gs_store(nir_builder *b,
@@ -408,8 +420,9 @@ lower_pv_mode_gs_store(nir_builder *b,
       assert(state->varyings[location]);
       assert(intrin->src[1].is_ssa);
       nir_ssa_def *pos_counter = nir_load_var(b, state->pos_counter);
+      nir_ssa_def *index = lower_pv_mode_gs_ring_index(b, state, pos_counter);
       nir_store_array_var(b, state->varyings[location],
-                             pos_counter, intrin->src[1].ssa,
+                             index, intrin->src[1].ssa,
                              nir_intrinsic_write_mask(intrin));
       nir_instr_remove(&intrin->instr);
       return true;
@@ -474,7 +487,8 @@ lower_pv_mode_emit_rotated_prim(nir_builder *b,
       nir_foreach_variable_with_modes(var, b->shader, nir_var_shader_out) {
          gl_varying_slot location = var->data.location;
          if (state->varyings[location]) {
-            nir_ssa_def *value = nir_load_array_var(b, state->varyings[location], rotated_i);
+            nir_ssa_def *index = lower_pv_mode_gs_ring_index(b, state, rotated_i);
+            nir_ssa_def *value = nir_load_array_var(b, state->varyings[location], index);
             nir_store_var(b, var, value, (1u << value->num_components) - 1);
          }
       }
@@ -519,6 +533,10 @@ lower_pv_mode_gs_end_primitive(nir_builder *b,
       nir_store_var(b, state->out_pos_counter, nir_iadd_imm(b, out_pos_counter, 1), 1);
    }
    nir_pop_loop(b, NULL);
+   /* Set the ring offset such that when position 0 is
+    * read we get the last value written
+    */
+   nir_store_var(b, state->ring_offset, pos_counter, 1);
    nir_store_var(b, state->pos_counter, nir_imm_int(b, 0), 1);
    nir_store_var(b, state->out_pos_counter, nir_imm_int(b, 0), 1);
 
@@ -579,6 +597,7 @@ lower_pv_mode_gs(nir_shader *shader, unsigned prim)
 
    state.primitive_vert_count =
       lower_pv_mode_vertices_for_prim(shader->info.gs.output_primitive);
+   state.ring_size = shader->info.gs.vertices_out;
 
    nir_foreach_variable_with_modes(var, shader, nir_var_shader_out) {
       gl_varying_slot location = var->data.location;
@@ -588,7 +607,7 @@ lower_pv_mode_gs(nir_shader *shader, unsigned prim)
       state.varyings[location] =
          nir_local_variable_create(entry,
                                    glsl_array_type(var->type,
-                                                   shader->info.gs.vertices_out,
+                                                   state.ring_size,
                                                    false),
                                    name);
    }
@@ -601,11 +620,16 @@ lower_pv_mode_gs(nir_shader *shader, unsigned prim)
                                                      glsl_uint_type(),
                                                      "__out_pos_counter");
 
+   state.ring_offset = nir_local_variable_create(entry,
+                                                 glsl_uint_type(),
+                                                 "__ring_offset");
+
    state.prim = prim;
 
    // initialize pos_counter and out_pos_counter
    nir_store_var(&b, state.pos_counter, nir_imm_int(&b, 0), 1);
    nir_store_var(&b, state.out_pos_counter, nir_imm_int(&b, 0), 1);
+   nir_store_var(&b, state.ring_offset, nir_imm_int(&b, 0), 1);
 
    shader->info.gs.vertices_out = (shader->info.gs.vertices_out -
                                    (state.primitive_vert_count - 1)) *
