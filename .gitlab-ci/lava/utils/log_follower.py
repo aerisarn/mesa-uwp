@@ -270,11 +270,13 @@ def print_log(msg: str) -> None:
     print(f"{CONSOLE_LOG['RESET']}{datetime.now()}: {msg}")
 
 
-def fatal_err(msg):
+def fatal_err(msg, exception=None):
     colored_msg = f"{CONSOLE_LOG['FG_RED']}"
     f"{msg}"
     f"{CONSOLE_LOG['RESET']}"
     print_log(colored_msg)
+    if exception:
+        raise exception
     sys.exit(1)
 
 

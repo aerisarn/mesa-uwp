@@ -16,6 +16,7 @@ from lava.lava_job_submitter import (
     DEVICE_HANGING_TIMEOUT_SEC,
     NUMBER_OF_RETRIES_TIMEOUT_DETECTION,
     LAVAJob,
+    bootstrap_log_follower,
     follow_job_execution,
     retriable_follow_job,
 )
@@ -52,7 +53,8 @@ def test_submit_and_follow_respects_exceptions(mock_sleep, mock_proxy, exception
     with pytest.raises(MesaCIException):
         proxy = mock_proxy(side_effect=exception)
         job = LAVAJob(proxy, '')
-        follow_job_execution(job)
+        log_follower = bootstrap_log_follower()
+        follow_job_execution(job, log_follower)
 
 
 NETWORK_EXCEPTION = xmlrpc.client.ProtocolError("", 0, "test", {})
@@ -179,7 +181,7 @@ PROXY_SCENARIOS = {
         "fail",
         {},
     ),
-    "XMLRPC Fault": ([XMLRPC_FAULT], pytest.raises(SystemExit, match="1"), False, {}),
+    "XMLRPC Fault": ([XMLRPC_FAULT], pytest.raises(MesaCIRetryError), False, {}),
 }
 
 
