@@ -387,7 +387,7 @@ You can enable capturing all the BOs with:
 Note that, since all command streams get captured, it is easy to run the system
 out of memory doing this, so you probably don't want to enable it during play of
 a heavyweight game.  Instead, to capture a command stream within a game, you
-probably want to cause a crash in the GPU during a farme of interest so that a
+probably want to cause a crash in the GPU during a frame of interest so that a
 single GPU core dump is generated.  Emitting ``0xdeadbeef`` in the CS should be
 enough to cause a fault.
 
