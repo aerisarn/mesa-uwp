@@ -405,6 +405,12 @@ impl SPIRVBin {
     }
 }
 
+impl Clone for SPIRVBin {
+    fn clone(&self) -> Self {
+        Self::from_bin(self.to_bin())
+    }
+}
+
 impl Drop for SPIRVBin {
     fn drop(&mut self) {
         unsafe {

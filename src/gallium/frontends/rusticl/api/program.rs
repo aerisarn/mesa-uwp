@@ -5,6 +5,7 @@ use crate::core::device::*;
 use crate::core::platform::*;
 use crate::core::program::*;
 
+use mesa_rust::compiler::clc::spirv::SPIRVBin;
 use mesa_rust::compiler::clc::*;
 use mesa_rust_util::string::*;
 use rusticl_opencl_gen::*;
@@ -41,7 +42,12 @@ impl CLInfo<cl_program_info> for cl_program {
                         .collect(),
                 )
             }
-            CL_PROGRAM_IL => prog.il.clone(),
+            CL_PROGRAM_IL => prog
+                .il
+                .as_ref()
+                .map(SPIRVBin::to_bin)
+                .unwrap_or_default()
+                .to_vec(),
             CL_PROGRAM_KERNEL_NAMES => cl_prop::<String>(prog.kernels().join(";")),
             CL_PROGRAM_NUM_DEVICES => cl_prop::<cl_uint>(prog.devs.len() as cl_uint),
             CL_PROGRAM_NUM_KERNELS => cl_prop::<usize>(prog.kernels().len()),
@@ -436,7 +442,7 @@ pub fn set_program_specialization_constant(
     // CL_INVALID_PROGRAM if program is not a valid program object created from an intermediate
     // language (e.g. SPIR-V)
     // TODO: or if the intermediate language does not support specialization constants.
-    if program.il.is_empty() {
+    if program.il.is_none() {
         return Err(CL_INVALID_PROGRAM);
     }
 
