@@ -1000,7 +1000,7 @@ dxil_spirv_nir_passes(nir_shader *nir,
               nir_var_mem_ubo | nir_var_mem_push_const |
               nir_var_mem_ssbo);
 
-   if (conf->read_only_images_as_srvs) {
+   if (conf->inferred_read_only_images_as_srvs) {
       const nir_opt_access_options opt_access_options = {
          .is_vulkan = true,
       };
@@ -1088,7 +1088,7 @@ dxil_spirv_nir_passes(nir_shader *nir,
       } while (progress);
    }
 
-   if (conf->read_only_images_as_srvs)
+   if (conf->declared_read_only_images_as_srvs)
       NIR_PASS_V(nir, nir_lower_readonly_images_to_tex, true);
    nir_lower_tex_options lower_tex_options = {
       .lower_txp = UINT32_MAX,
