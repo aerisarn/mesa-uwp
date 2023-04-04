@@ -184,6 +184,7 @@ llvmpipe_get_query_result(struct pipe_context *pipe,
       struct pipe_query_data_pipeline_statistics *stats =
          (struct pipe_query_data_pipeline_statistics *)vresult;
       /* only ps_invocations come from binned query */
+      pq->stats.ps_invocations = 0;
       for (unsigned i = 0; i < num_threads; i++) {
          pq->stats.ps_invocations += pq->end[i];
       }
