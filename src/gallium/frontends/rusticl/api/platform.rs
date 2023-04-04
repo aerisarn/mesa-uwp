@@ -49,7 +49,7 @@ pub fn get_platform_ids(
     // specific OpenCL platform. If the platforms argument is NULL, then this argument is ignored. The
     // number of OpenCL platforms returned is the minimum of the value specified by num_entries or the
     // number of OpenCL platforms available.
-    platforms.write_checked(get_platform());
+    platforms.write_checked(Platform::get().as_ptr());
 
     // num_platforms returns the number of OpenCL platforms available. If num_platforms is NULL, then
     // this argument is ignored.

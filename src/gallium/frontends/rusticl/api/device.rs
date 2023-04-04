@@ -143,7 +143,7 @@ impl CLInfo<cl_device_info> for cl_device_id {
             CL_DEVICE_PIPE_MAX_ACTIVE_RESERVATIONS => cl_prop::<cl_uint>(0),
             CL_DEVICE_PIPE_MAX_PACKET_SIZE => cl_prop::<cl_uint>(0),
             CL_DEVICE_PIPE_SUPPORT => cl_prop::<bool>(false),
-            CL_DEVICE_PLATFORM => cl_prop::<cl_platform_id>(get_platform()),
+            CL_DEVICE_PLATFORM => cl_prop::<cl_platform_id>(Platform::get().as_ptr()),
             CL_DEVICE_PREFERRED_GLOBAL_ATOMIC_ALIGNMENT => cl_prop::<cl_uint>(0),
             CL_DEVICE_PREFERRED_INTEROP_USER_SYNC => cl_prop::<bool>(true),
             CL_DEVICE_PREFERRED_LOCAL_ATOMIC_ALIGNMENT => cl_prop::<cl_uint>(0),

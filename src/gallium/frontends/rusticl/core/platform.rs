@@ -18,8 +18,14 @@ static PLATFORM: Platform = Platform {
     ],
 };
 
-pub fn get_platform() -> cl_platform_id {
-    &PLATFORM as *const Platform as *mut _cl_platform_id
+impl Platform {
+    pub fn as_ptr(&self) -> cl_platform_id {
+        (self as *const Self) as cl_platform_id
+    }
+
+    pub fn get() -> &'static Self {
+        &PLATFORM
+    }
 }
 
 pub trait GetPlatformRef {
@@ -28,8 +34,8 @@ pub trait GetPlatformRef {
 
 impl GetPlatformRef for cl_platform_id {
     fn get_ref(&self) -> CLResult<&'static Platform> {
-        if !self.is_null() && *self == get_platform() {
-            Ok(&PLATFORM)
+        if !self.is_null() && *self == Platform::get().as_ptr() {
+            Ok(Platform::get())
         } else {
             Err(CL_INVALID_PLATFORM)
         }
