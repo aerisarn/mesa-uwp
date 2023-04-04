@@ -2405,7 +2405,7 @@ after lookup.
   additional float32 operand, reference value, which must be a register with
   single-component, or a scalar literal.  SAMPLE_C makes the hardware use the
   current samplers compare_func (in pipe_sampler_state) to compare reference
-  value against the red component value for the surce resource at each texel
+  value against the red component value for the source resource at each texel
   that the currently configured texture filter covers based on the provided
   coordinates.
 
