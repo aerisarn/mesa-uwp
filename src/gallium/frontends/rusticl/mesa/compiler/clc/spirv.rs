@@ -55,6 +55,14 @@ unsafe extern "C" fn spirv_to_nir_msg_callback(
     callback_impl(data, msg);
 }
 
+fn create_clc_logger(msgs: &mut Vec<String>) -> clc_logger {
+    clc_logger {
+        priv_: msgs as *mut Vec<String> as *mut c_void,
+        error: Some(spirv_msg_callback),
+        warning: Some(spirv_msg_callback),
+    }
+}
+
 impl SPIRVBin {
     pub fn from_clc(
         source: &CString,
@@ -113,11 +121,7 @@ impl SPIRVBin {
             address_bits: address_bits,
         };
         let mut msgs: Vec<String> = Vec::new();
-        let logger = clc_logger {
-            priv_: &mut msgs as *mut Vec<String> as *mut c_void,
-            error: Some(spirv_msg_callback),
-            warning: Some(spirv_msg_callback),
-        };
+        let logger = create_clc_logger(&mut msgs);
         let mut out = clc_binary::default();
 
         let res = unsafe { clc_compile_c_to_spirv(&args, &logger, &mut out) };
@@ -154,11 +158,7 @@ impl SPIRVBin {
         };
 
         let mut msgs: Vec<String> = Vec::new();
-        let logger = clc_logger {
-            priv_: &mut msgs as *mut Vec<String> as *mut c_void,
-            error: Some(spirv_msg_callback),
-            warning: Some(spirv_msg_callback),
-        };
+        let logger = create_clc_logger(&mut msgs);
 
         let mut out = clc_binary::default();
         let res = unsafe { clc_link_spirv(&linker_args, &logger, &mut out) };
@@ -186,6 +186,14 @@ impl SPIRVBin {
             None
         };
         (res, msgs.join("\n"))
+    }
+
+    pub fn clone_on_validate(&self) -> (Option<Self>, String) {
+        let mut msgs: Vec<String> = Vec::new();
+        let logger = create_clc_logger(&mut msgs);
+        let res = unsafe { clc_validate_spirv(&self.spirv, &logger) };
+
+        (res.then(|| self.clone()), msgs.join("\n"))
     }
 
     fn kernel_infos(&self) -> &[clc_kernel_info] {

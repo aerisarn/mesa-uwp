@@ -359,11 +359,11 @@ impl Program {
         let mut info = self.build_info();
         let d = Self::dev_build_info(&mut info, dev);
         let lib = options.contains("-create-library");
-        let args = prepare_options(&options, dev);
 
-        let (spirv, log) = if self.il.is_some() {
-            (self.il.clone(), String::new())
+        let (spirv, log) = if let Some(il) = self.il.as_ref() {
+            il.clone_on_validate()
         } else {
+            let args = prepare_options(&options, dev);
             spirv::SPIRVBin::from_clc(
                 &self.src,
                 &args,
@@ -416,11 +416,10 @@ impl Program {
         let mut info = self.build_info();
         let d = Self::dev_build_info(&mut info, dev);
 
-        let (spirv, log) = if self.il.is_some() {
-            (self.il.clone(), String::new())
+        let (spirv, log) = if let Some(il) = self.il.as_ref() {
+            il.clone_on_validate()
         } else {
             let args = prepare_options(&options, dev);
-
             spirv::SPIRVBin::from_clc(
                 &self.src,
                 &args,
