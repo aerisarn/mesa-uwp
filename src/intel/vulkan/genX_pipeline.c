@@ -524,6 +524,7 @@ emit_3dstate_sbe(struct anv_graphics_pipeline *pipeline)
          sbe.PrimitiveIDOverrideComponentY = true;
          sbe.PrimitiveIDOverrideComponentZ = true;
          sbe.PrimitiveIDOverrideComponentW = true;
+         pipeline->primitive_id_override = true;
       }
    } else {
       assert(anv_pipeline_is_mesh(pipeline));

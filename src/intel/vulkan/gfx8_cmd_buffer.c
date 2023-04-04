@@ -260,7 +260,8 @@ genX(cmd_emit_te)(struct anv_cmd_buffer *cmd_buffer)
           *
           * Disable Tessellation Distribution when primitive Id is enabled.
           */
-         if (geom_or_tess_prim_id_used(pipeline))
+         if (pipeline->primitive_id_override ||
+             geom_or_tess_prim_id_used(pipeline))
             te.TessellationDistributionMode = TEDMODE_OFF;
       }
 
