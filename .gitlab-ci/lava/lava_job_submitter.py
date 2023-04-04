@@ -10,16 +10,17 @@
 """Send a job to LAVA, track it and collect log back"""
 
 
-import argparse
 import contextlib
 import pathlib
 import sys
 import time
+from dataclasses import dataclass, fields
 from datetime import datetime, timedelta
 from io import StringIO
 from os import getenv
 from typing import Any, Optional
 
+import fire
 from lava.exceptions import (
     MesaCIException,
     MesaCIParseException,
@@ -252,8 +253,6 @@ def print_job_final_status(job):
 
 def execute_job_with_retries(proxy, job_definition, retry_count) -> Optional[LAVAJob]:
     for attempt_no in range(1, retry_count + 2):
-        # Need to get the logger value from its object to enable autosave
-        # features, if AutoSaveDict is enabled from StructuredLogging module
         job = LAVAJob(proxy, job_definition)
 
         try:
@@ -294,71 +293,84 @@ def retriable_follow_job(proxy, job_definition) -> LAVAJob:
     )
 
 
-def treat_mesa_job_name(args):
-    # Remove mesa job names with spaces, which breaks the lava-test-case command
-    args.mesa_job_name = args.mesa_job_name.split(" ")[0]
+@dataclass
+class PathResolver:
+    def __post_init__(self):
+        for field in fields(self):
+            value = getattr(self, field.name)
+            if not value:
+                continue
+            if field.type == pathlib.Path:
+                value = pathlib.Path(value)
+                setattr(self, field.name, value.resolve())
 
 
-def main(args):
-    proxy = setup_lava_proxy()
+@dataclass
+class LAVAJobSubmitter(PathResolver):
+    boot_method: str
+    ci_project_dir: str
+    device_type: str
+    job_timeout_min: int  # The job timeout in minutes
+    build_url: str = None
+    dtb_filename: str = None
+    dump_yaml: bool = False  # Whether to dump the YAML payload to stdout
+    first_stage_init: str = None
+    jwt_file: pathlib.Path = None
+    kernel_image_name: str = None
+    kernel_image_type: str = ""
+    kernel_url_prefix: str = None
+    lava_tags: str = ""  # Comma-separated LAVA tags for the job
+    mesa_job_name: str = "mesa_ci_job"
+    pipeline_info: str = ""
+    rootfs_url_prefix: str = None
+    validate_only: bool = False  # Whether to only validate the job, not execute it
+    visibility_group: str = None  # Only affects LAVA farm maintainers
+    job_rootfs_overlay_url: str = None
 
-    # Overwrite the timeout for the testcases with the value offered by the
-    # user. The testcase running time should be at least 4 times greater than
-    # the other sections (boot and setup), so we can safely ignore them.
-    # If LAVA fails to stop the job at this stage, it will fall back to the
-    # script section timeout with a reasonable delay.
-    GL_SECTION_TIMEOUTS[LogSectionType.TEST_CASE] = timedelta(minutes=args.job_timeout)
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        # Remove mesa job names with spaces, which breaks the lava-test-case command
+        self.mesa_job_name = self.mesa_job_name.split(" ")[0]
 
-    job_definition_stream = StringIO()
-    lava_yaml.dump(generate_lava_yaml_payload(args), job_definition_stream)
-    job_definition = job_definition_stream.getvalue()
+    def dump(self, job_definition):
+        if self.dump_yaml:
+            with GitlabSection(
+                "yaml_dump",
+                "LAVA job definition (YAML)",
+                type=LogSectionType.LAVA_BOOT,
+                start_collapsed=True,
+            ):
+                print(hide_sensitive_data(job_definition))
 
-    if args.dump_yaml:
-        with GitlabSection(
-            "yaml_dump",
-            "LAVA job definition (YAML)",
-            type=LogSectionType.LAVA_BOOT,
-            start_collapsed=True,
-        ):
-            print(hide_sensitive_data(job_definition))
-    job = LAVAJob(proxy, job_definition)
+    def submit(self):
+        proxy = setup_lava_proxy()
 
-    if errors := job.validate():
-        fatal_err(f"Error in LAVA job definition: {errors}")
-    print_log("LAVA job definition validated successfully")
+        # Overwrite the timeout for the testcases with the value offered by the
+        # user. The testcase running time should be at least 4 times greater than
+        # the other sections (boot and setup), so we can safely ignore them.
+        # If LAVA fails to stop the job at this stage, it will fall back to the
+        # script section timeout with a reasonable delay.
+        GL_SECTION_TIMEOUTS[LogSectionType.TEST_CASE] = timedelta(
+            minutes=self.job_timeout_min
+        )
 
-    if args.validate_only:
-        return
+        job_definition_stream = StringIO()
+        lava_yaml.dump(generate_lava_yaml_payload(self), job_definition_stream)
+        job_definition = job_definition_stream.getvalue()
 
-    finished_job = retriable_follow_job(proxy, job_definition)
-    exit_code = 0 if finished_job.status == "pass" else 1
-    sys.exit(exit_code)
+        self.dump(job_definition)
 
+        job = LAVAJob(proxy, job_definition)
+        if errors := job.validate():
+            fatal_err(f"Error in LAVA job definition: {errors}")
+        print_log("LAVA job definition validated successfully")
 
-def create_parser():
-    parser = argparse.ArgumentParser("LAVA job submitter")
+        if self.validate_only:
+            return
 
-    parser.add_argument("--pipeline-info")
-    parser.add_argument("--rootfs-url-prefix")
-    parser.add_argument("--kernel-url-prefix")
-    parser.add_argument("--build-url")
-    parser.add_argument("--job-rootfs-overlay-url")
-    parser.add_argument("--job-timeout", type=int)
-    parser.add_argument("--first-stage-init")
-    parser.add_argument("--ci-project-dir")
-    parser.add_argument("--device-type")
-    parser.add_argument("--dtb", nargs='?', default="")
-    parser.add_argument("--kernel-image-name")
-    parser.add_argument("--kernel-image-type", nargs='?', default="")
-    parser.add_argument("--boot-method")
-    parser.add_argument("--lava-tags", nargs='?', default="")
-    parser.add_argument("--jwt-file", type=pathlib.Path)
-    parser.add_argument("--validate-only", action='store_true')
-    parser.add_argument("--dump-yaml", action='store_true')
-    parser.add_argument("--visibility-group")
-    parser.add_argument("--mesa-job-name")
-
-    return parser
+        finished_job = retriable_follow_job(proxy, job_definition)
+        exit_code = 0 if finished_job.status == "pass" else 1
+        sys.exit(exit_code)
 
 
 if __name__ == "__main__":
@@ -368,9 +380,4 @@ if __name__ == "__main__":
     sys.stdout.reconfigure(line_buffering=True)
     sys.stderr.reconfigure(line_buffering=True)
 
-    parser = create_parser()
-
-    parser.set_defaults(func=main)
-    args = parser.parse_args()
-    treat_mesa_job_name(args)
-    args.func(args)
+    fire.Fire(LAVAJobSubmitter)

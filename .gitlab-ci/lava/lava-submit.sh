@@ -45,22 +45,23 @@ fi
 touch results/lava.log
 tail -f results/lava.log &
 PYTHONPATH=artifacts/ artifacts/lava/lava_job_submitter.py \
+	submit \
 	--dump-yaml \
 	--pipeline-info "$CI_JOB_NAME: $CI_PIPELINE_URL on $CI_COMMIT_REF_NAME ${CI_NODE_INDEX}/${CI_NODE_TOTAL}" \
 	--rootfs-url-prefix "https://${BASE_SYSTEM_HOST_PATH}" \
 	--kernel-url-prefix "https://${BASE_SYSTEM_HOST_PATH}" \
 	--build-url "${ARTIFACT_URL}" \
 	--job-rootfs-overlay-url "${FDO_HTTP_CACHE_URI:-}https://${JOB_ROOTFS_OVERLAY_PATH}" \
-	--job-timeout ${JOB_TIMEOUT:-30} \
+	--job-timeout-min ${JOB_TIMEOUT:-30} \
 	--first-stage-init artifacts/ci-common/init-stage1.sh \
-	--ci-project-dir ${CI_PROJECT_DIR} \
-	--device-type ${DEVICE_TYPE} \
-	--dtb ${DTB} \
+	--ci-project-dir "${CI_PROJECT_DIR}" \
+	--device-type "${DEVICE_TYPE}" \
+	--dtb-filename "${DTB}" \
 	--jwt-file "${CI_JOB_JWT_FILE}" \
-	--kernel-image-name ${KERNEL_IMAGE_NAME} \
+	--kernel-image-name "${KERNEL_IMAGE_NAME}" \
 	--kernel-image-type "${KERNEL_IMAGE_TYPE}" \
-	--boot-method ${BOOT_METHOD} \
-	--visibility-group ${VISIBILITY_GROUP} \
+	--boot-method "${BOOT_METHOD}" \
+	--visibility-group "${VISIBILITY_GROUP}" \
 	--lava-tags "${LAVA_TAGS}" \
 	--mesa-job-name "$CI_JOB_NAME" \
 	>> results/lava.log

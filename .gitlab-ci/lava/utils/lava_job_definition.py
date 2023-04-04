@@ -21,7 +21,7 @@ def generate_lava_yaml_payload(args) -> dict[str, Any]:
             "extra_nfsroot_args": " init=/init rootwait usbcore.quirks=0bda:8153:k"
         },
         "timeouts": {
-            "job": {"minutes": args.job_timeout},
+            "job": {"minutes": args.job_timeout_min},
             "actions": {
                 "depthcharge-retry": {
                     # Could take between 1 and 1.5 min in slower boots
@@ -60,8 +60,10 @@ def generate_lava_yaml_payload(args) -> dict[str, Any]:
     }
     if args.kernel_image_type:
         deploy["kernel"]["type"] = args.kernel_image_type
-    if args.dtb:
-        deploy["dtb"] = {"url": "{}/{}.dtb".format(args.kernel_url_prefix, args.dtb)}
+    if args.dtb_filename:
+        deploy["dtb"] = {
+            "url": "{}/{}.dtb".format(args.kernel_url_prefix, args.dtb_filename)
+        }
 
     # always boot over NFS
     boot = {
@@ -75,7 +77,7 @@ def generate_lava_yaml_payload(args) -> dict[str, Any]:
     # since LAVA's test parsing is not useful to us
     run_steps = []
     test = {
-        "timeout": {"minutes": args.job_timeout},
+        "timeout": {"minutes": args.job_timeout_min},
         "failure_retry": 1,
         "definitions": [
             {
