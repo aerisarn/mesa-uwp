@@ -446,7 +446,7 @@ lower_pv_mode_emit_rotated_prim(nir_builder *b,
     * [lines, tris][even/odd index][vertex mod 3]
     */
    static const unsigned vert_maps[2][2][3] = {
-      {{1, 0, 0}, {0, 1, 0}},
+      {{1, 0, 0}, {1, 0, 0}},
       {{2, 0, 1}, {2, 1, 0}}
    };
    /* When the primive supplied to the gs comes from a strip, the last provoking vertex
