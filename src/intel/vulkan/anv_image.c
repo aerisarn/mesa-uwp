@@ -430,7 +430,7 @@ anv_get_isl_format_with_usage(const struct intel_device_info *devinfo,
                             vk_tiling);
 
    if ((vk_usage == VK_IMAGE_USAGE_STORAGE_BIT) &&
-       isl_is_storage_image_format(format.isl_format)) {
+       isl_is_storage_image_format(devinfo, format.isl_format)) {
       enum isl_format lowered_format =
          isl_lower_storage_image_format(devinfo, format.isl_format);
 
@@ -2689,7 +2689,7 @@ anv_CreateImageView(VkDevice _device,
 
          iview->planes[vplane].lowered_storage_surface_state.state =
             alloc_bindless_surface_state(device);
-         if (isl_is_storage_image_format(format.isl_format)) {
+         if (isl_is_storage_image_format(device->info, format.isl_format)) {
             anv_image_fill_surface_state(device, image, 1ULL << iaspect_bit,
                                          &storage_view,
                                          ISL_SURF_USAGE_STORAGE_BIT,
