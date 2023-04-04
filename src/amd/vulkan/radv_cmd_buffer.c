@@ -3710,6 +3710,7 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
    STATIC_ASSERT(sizeof(union vs_prolog_key_header) == 4);
    assert(vs_shader->info.vs.dynamic_inputs);
 
+   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_vs_input_state *state = &cmd_buffer->state.dynamic_vs_input;
    struct radv_device *device = cmd_buffer->device;
 
@@ -3728,10 +3729,20 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, const struct radv_shader *v
          uint8_t binding = state->bindings[index];
          if (!(cmd_buffer->state.vbo_bound_mask & BITFIELD_BIT(binding)))
             continue;
+
          uint8_t req = state->format_align_req_minus_1[index];
-         struct radv_vertex_binding *vb = &cmd_buffer->vertex_bindings[binding];
-         VkDeviceSize offset = vb->offset + state->offsets[index];
-         if ((offset & req) || (vb->stride & req))
+         uint64_t vb_offset = cmd_buffer->vertex_bindings[binding].offset;
+         uint64_t vb_stride;
+
+         if (pipeline->dynamic_states & (RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE |
+                                         RADV_DYNAMIC_VERTEX_INPUT)) {
+            vb_stride = cmd_buffer->vertex_bindings[binding].stride;
+         } else {
+            vb_stride = pipeline->binding_stride[binding];
+         }
+
+         VkDeviceSize offset = vb_offset + state->offsets[index];
+         if ((offset & req) || (vb_stride & req))
             misaligned_mask |= BITFIELD_BIT(index);
       }
       cmd_buffer->state.vbo_misaligned_mask = misaligned_mask;
