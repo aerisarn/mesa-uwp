@@ -165,7 +165,7 @@ call is going to actually execute (some primitive is visible in the current
 tile), the SQE goes through the ``GROUP_ID``\s and for any with an update since
 the last time they were executed, it executes the corresponding fragment.
 
-Starting with a6xx, states can be taggged with whether they should be executed
+Starting with a6xx, states can be tagged with whether they should be executed
 at draw time for any of sysmem, binning, or tile rendering.  This allows a
 single command stream to be generated which can be executed in any of the modes,
 unlike pre-a6xx where we had to generate separate command lists for the binning
