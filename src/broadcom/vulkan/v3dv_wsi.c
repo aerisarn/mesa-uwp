@@ -127,12 +127,11 @@ v3dv_CreateSwapchainKHR(
     VkSwapchainKHR*                              pSwapchain)
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
-   struct v3dv_instance *instance = device->instance;
    struct v3dv_physical_device *pdevice = device->pdevice;
 
    ICD_FROM_HANDLE(VkIcdSurfaceBase, surface, pCreateInfo->surface);
    VkResult result =
-      v3dv_physical_device_acquire_display(instance, pdevice, surface);
+      v3dv_physical_device_acquire_display(pdevice, surface);
    if (result != VK_SUCCESS)
       return result;
 
