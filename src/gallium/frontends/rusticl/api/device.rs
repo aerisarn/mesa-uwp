@@ -13,7 +13,6 @@ use std::ffi::CStr;
 use std::mem::size_of;
 use std::ptr;
 use std::sync::Arc;
-use std::sync::Once;
 
 const SPIRV_SUPPORT_STRING: &str = "SPIR-V_1.0 SPIR-V_1.1 SPIR-V_1.2 SPIR-V_1.3 SPIR-V_1.4";
 const SPIRV_SUPPORT: [cl_name_version; 5] = [
@@ -196,22 +195,8 @@ impl CLInfo<cl_device_info> for cl_device_id {
     }
 }
 
-// TODO replace with const new container
-static mut DEVICES: Vec<Arc<Device>> = Vec::new();
-static INIT: Once = Once::new();
-
-fn load_devices() {
-    unsafe {
-        glsl_type_singleton_init_or_ref();
-    }
-    Device::all()
-        .into_iter()
-        .for_each(|d| unsafe { DEVICES.push(d) });
-}
-
 fn devs() -> &'static Vec<Arc<Device>> {
-    INIT.call_once(load_devices);
-    unsafe { &DEVICES }
+    &Platform::get().devs
 }
 
 pub fn get_devs_for_type(device_type: cl_device_type) -> Vec<&'static Arc<Device>> {
