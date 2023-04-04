@@ -470,6 +470,7 @@ lower_pv_mode_emit_rotated_prim(nir_builder *b,
       else if (state->prim == ZINK_PVE_PRIMITIVE_FAN)
         rotated_i = nir_imod(b, nir_iadd_imm(b, rotated_i, 2),
                                 three);
+      rotated_i = nir_iadd(b, rotated_i, current_vertex);
       nir_foreach_variable_with_modes(var, b->shader, nir_var_shader_out) {
          gl_varying_slot location = var->data.location;
          if (state->varyings[location]) {
