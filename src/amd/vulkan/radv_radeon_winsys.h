@@ -203,9 +203,11 @@ struct radv_winsys_submit_info {
    unsigned cs_count;
    unsigned initial_preamble_count;
    unsigned continue_preamble_count;
+   unsigned postamble_count;
    struct radeon_cmdbuf **cs_array;
    struct radeon_cmdbuf **initial_preamble_cs;
    struct radeon_cmdbuf **continue_preamble_cs;
+   struct radeon_cmdbuf **postamble_cs;
    bool uses_shadow_regs;
 };
 

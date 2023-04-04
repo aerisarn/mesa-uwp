@@ -940,13 +940,12 @@ radv_assign_last_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_reque
 }
 
 static VkResult
-radv_amdgpu_winsys_cs_submit_fallback(struct radv_amdgpu_ctx *ctx, int queue_idx,
-                                      struct radv_winsys_sem_info *sem_info,
-                                      struct radeon_cmdbuf **cs_array, unsigned cs_count,
-                                      struct radeon_cmdbuf **initial_preamble_cs,
-                                      unsigned initial_preamble_count,
-                                      struct radeon_cmdbuf **continue_preamble_cs,
-                                      unsigned continue_preamble_count, bool uses_shadow_regs)
+radv_amdgpu_winsys_cs_submit_fallback(
+   struct radv_amdgpu_ctx *ctx, int queue_idx, struct radv_winsys_sem_info *sem_info,
+   struct radeon_cmdbuf **cs_array, unsigned cs_count, struct radeon_cmdbuf **initial_preamble_cs,
+   unsigned initial_preamble_count, struct radeon_cmdbuf **continue_preamble_cs,
+   unsigned continue_preamble_count, struct radeon_cmdbuf **postamble_cs, unsigned postamble_count,
+   bool uses_shadow_regs)
 {
    VkResult result;
 
@@ -954,7 +953,7 @@ radv_amdgpu_winsys_cs_submit_fallback(struct radv_amdgpu_ctx *ctx, int queue_idx
    struct radv_amdgpu_cs *last_cs = radv_amdgpu_cs(cs_array[cs_count - 1]);
    struct radv_amdgpu_winsys *ws = last_cs->ws;
 
-   /* Get the BO list. Assume continue preambles don't need more. */
+   /* Get the BO list. Assume continue preambles and postambles don't need more. */
    struct drm_amdgpu_bo_list_entry *handles = NULL;
    unsigned num_handles = 0;
    u_rwlock_rdlock(&ws->global_bo_list.lock);
@@ -976,12 +975,13 @@ radv_amdgpu_winsys_cs_submit_fallback(struct radv_amdgpu_ctx *ctx, int queue_idx
    };
 
    assert(cs_count);
-   assert(MAX2(initial_preamble_count, continue_preamble_count) < RADV_MAX_IBS_PER_SUBMIT);
+   assert(MAX2(initial_preamble_count, continue_preamble_count) + postamble_count <
+          RADV_MAX_IBS_PER_SUBMIT);
 
    for (unsigned cs_idx = 0; cs_idx < cs_count;) {
       struct radeon_cmdbuf **preambles = cs_idx ? continue_preamble_cs : initial_preamble_cs;
       const unsigned preamble_count = cs_idx ? continue_preamble_count : initial_preamble_count;
-      const unsigned ib_per_submit = RADV_MAX_IBS_PER_SUBMIT - preamble_count;
+      const unsigned ib_per_submit = RADV_MAX_IBS_PER_SUBMIT - preamble_count - postamble_count;
       unsigned num_submitted_ibs = 0;
 
       /* Copy preambles to the submission. */
@@ -1011,6 +1011,12 @@ radv_amdgpu_winsys_cs_submit_fallback(struct radv_amdgpu_ctx *ctx, int queue_idx
       }
 
       assert(num_submitted_ibs > preamble_count);
+
+      /* Copy postambles to the submission. */
+      for (unsigned i = 0; i < postamble_count; ++i) {
+         struct radv_amdgpu_cs *cs = radv_amdgpu_cs(postamble_cs[i]);
+         ibs[num_submitted_ibs++] = cs->ib;
+      }
 
       /* Submit the CS. */
       request.number_of_ibs = num_submitted_ibs;
@@ -1337,7 +1343,8 @@ radv_amdgpu_winsys_cs_submit_internal(struct radv_amdgpu_ctx *ctx,
       result = radv_amdgpu_winsys_cs_submit_fallback(
          ctx, submit->queue_index, sem_info, submit->cs_array, submit->cs_count,
          submit->initial_preamble_cs, submit->initial_preamble_count, submit->continue_preamble_cs,
-         submit->continue_preamble_count, submit->uses_shadow_regs);
+         submit->continue_preamble_count, submit->postamble_cs, submit->postamble_count,
+         submit->uses_shadow_regs);
    }
 
    return result;
