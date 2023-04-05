@@ -28,7 +28,7 @@ rustfmt:
     GIT_STRATEGY: fetch
   script:
     - shopt -s globstar
-    - rustfmt --check --verbose src/**/*.rs
+    - rustfmt --check --verbose src/**/lib.rs
 
 clang-format:
   # Cancel job if a newer commit is pushed to the same branch
