@@ -236,6 +236,69 @@ can_remove_var(nir_variable *var, UNUSED void *data)
    return true;
 }
 
+static void
+set_always_active_io(nir_shader *shader, nir_variable_mode io_mode)
+{
+   assert(io_mode == nir_var_shader_in || io_mode == nir_var_shader_out);
+
+   nir_foreach_variable_with_modes(var, shader, io_mode) {
+      /* Don't set always active on builtins that haven't been redeclared */
+      if (var->data.how_declared == nir_var_declared_implicitly)
+         continue;
+
+      var->data.always_active_io = true;
+   }
+}
+
+/**
+ * When separate shader programs are enabled, only input/outputs between
+ * the stages of a multi-stage separate program can be safely removed
+ * from the shader interface. Other inputs/outputs must remain active.
+ */
+static void
+disable_varying_optimizations_for_sso(struct gl_shader_program *prog)
+{
+   unsigned first, last;
+   assert(prog->SeparateShader);
+
+   first = MESA_SHADER_STAGES;
+   last = 0;
+
+   /* Determine first and last stage. Excluding the compute stage */
+   for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++) {
+      if (!prog->_LinkedShaders[i])
+         continue;
+      if (first == MESA_SHADER_STAGES)
+         first = i;
+      last = i;
+   }
+
+   if (first == MESA_SHADER_STAGES)
+      return;
+
+   for (unsigned stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+      if (!prog->_LinkedShaders[stage])
+         continue;
+
+      /* Prevent the removal of inputs to the first and outputs from the last
+       * stage, unless they are the initial pipeline inputs or final pipeline
+       * outputs, respectively.
+       *
+       * The removal of IO between shaders in the same program is always
+       * allowed.
+       */
+      if (stage == first && stage != MESA_SHADER_VERTEX) {
+         set_always_active_io(prog->_LinkedShaders[stage]->Program->nir,
+                              nir_var_shader_in);
+      }
+
+      if (stage == last && stage != MESA_SHADER_FRAGMENT) {
+         set_always_active_io(prog->_LinkedShaders[stage]->Program->nir,
+                              nir_var_shader_out);
+      }
+   }
+}
+
 static bool
 inout_has_same_location(const nir_variable *var, unsigned stage)
 {
@@ -1238,6 +1301,9 @@ gl_nir_link_glsl(const struct gl_constants *consts,
       return true;
 
    MESA_TRACE_FUNC();
+
+   if (prog->SeparateShader)
+      disable_varying_optimizations_for_sso(prog);
 
    struct gl_linked_shader *linked_shader[MESA_SHADER_STAGES];
    unsigned num_shaders = 0;
