@@ -223,12 +223,6 @@ agx_resource_from_handle(struct pipe_screen *pscreen,
 
    ail_make_miptree(&rsc->layout);
 
-   if (dev->ro) {
-      rsc->scanout =
-         renderonly_create_gpu_import_for_resource(prsc, dev->ro, NULL);
-      /* failure is expected in some cases.. */
-   }
-
    if (prsc->target == PIPE_BUFFER) {
       assert(rsc->layout.tiling == AIL_TILING_LINEAR);
       util_range_init(&rsc->valid_buffer_range);
@@ -245,7 +239,6 @@ agx_resource_get_handle(struct pipe_screen *pscreen, struct pipe_context *ctx,
                         unsigned usage)
 {
    struct agx_device *dev = agx_device(pscreen);
-   struct renderonly_scanout *scanout;
    struct pipe_resource *cur = pt;
 
    /* Even though asahi doesn't support multi-planar formats, we
@@ -258,13 +251,20 @@ agx_resource_get_handle(struct pipe_screen *pscreen, struct pipe_context *ctx,
          return false;
    }
 
-   struct agx_resource *rsrc = (struct agx_resource *)cur;
-   scanout = rsrc->scanout;
+   struct agx_resource *rsrc = agx_resource(cur);
 
    if (handle->type == WINSYS_HANDLE_TYPE_KMS && dev->ro) {
       rsrc_debug(rsrc, "Get handle: %p (KMS RO)\n", rsrc);
 
-      return renderonly_get_handle(scanout, handle);
+      if (!rsrc->scanout && dev->ro && (rsrc->base.bind & PIPE_BIND_SCANOUT)) {
+         rsrc->scanout =
+            renderonly_scanout_for_resource(&rsrc->base, dev->ro, NULL);
+      }
+
+      if (!rsrc->scanout)
+         return false;
+
+      return renderonly_get_handle(rsrc->scanout, handle);
    } else if (handle->type == WINSYS_HANDLE_TYPE_KMS) {
       rsrc_debug(rsrc, "Get handle: %p (KMS)\n", rsrc);
 
@@ -522,48 +522,6 @@ agx_resource_create_with_modifiers(struct pipe_screen *screen,
    if (templ->target == PIPE_BUFFER) {
       assert(nresource->layout.tiling == AIL_TILING_LINEAR);
       util_range_init(&nresource->valid_buffer_range);
-   }
-
-   if (dev->ro && (templ->bind & PIPE_BIND_SCANOUT)) {
-      struct winsys_handle handle;
-      assert(util_format_get_blockwidth(templ->format) == 1);
-      assert(util_format_get_blockheight(templ->format) == 1);
-
-      unsigned width = templ->width0;
-      unsigned stride =
-         templ->width0 * util_format_get_blocksize(templ->format);
-      unsigned size = nresource->layout.size_B;
-      unsigned effective_rows = DIV_ROUND_UP(size, stride);
-
-      struct pipe_resource scanout_tmpl = {
-         .target = nresource->base.target,
-         .format = templ->format,
-         .width0 = width,
-         .height0 = effective_rows,
-         .depth0 = 1,
-         .array_size = 1,
-      };
-
-      nresource->scanout =
-         renderonly_scanout_for_resource(&scanout_tmpl, dev->ro, &handle);
-
-      if (!nresource->scanout) {
-         agx_msg("Failed to create scanout resource\n");
-         free(nresource);
-         return NULL;
-      }
-      assert(handle.type == WINSYS_HANDLE_TYPE_FD);
-      nresource->bo = agx_bo_import(dev, handle.handle);
-      close(handle.handle);
-
-      if (!nresource->bo) {
-         free(nresource);
-         return NULL;
-      }
-
-      agx_resource_debug(nresource, "New[RO]: ");
-
-      return &nresource->base;
    }
 
    if (winsys && templ->bind & PIPE_BIND_DISPLAY_TARGET) {
