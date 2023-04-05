@@ -523,6 +523,10 @@
    DRI_CONF_OPT_B(format_l8_srgb_enable_readback, def, \
                   "Force-enable reading back L8_SRGB textures")
 
+#define DRI_CONF_VIRGL_SHADER_SYNC(def) \
+   DRI_CONF_OPT_B(virgl_shader_sync, def, \
+                  "Make shader compilation synchronous")
+
 /**
  * \brief freedreno specific configuration options
  */
