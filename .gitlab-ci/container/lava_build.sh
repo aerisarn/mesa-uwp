@@ -163,6 +163,13 @@ rm -rf /apitrace-msvc-win64
 STRIP_CMD="${GCC_ARCH}-strip"
 mkdir -p $ROOTFS/usr/lib/$GCC_ARCH
 
+############### Build Vulkan validation layer (for zink)
+if [ "$DEBIAN_ARCH" = "amd64" ]; then
+  . .gitlab-ci/container/build-vulkan-validation.sh
+  mv /usr/lib/x86_64-linux-gnu/libVkLayer_khronos_validation.so $ROOTFS/usr/lib/x86_64-linux-gnu/
+  mkdir -p $ROOTFS/usr/share/vulkan/explicit_layer.d
+  mv /usr/share/vulkan/explicit_layer.d/* $ROOTFS/usr/share/vulkan/explicit_layer.d/
+fi
 
 ############### Build apitrace
 . .gitlab-ci/container/build-apitrace.sh
