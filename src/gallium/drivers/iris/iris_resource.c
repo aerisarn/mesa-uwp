@@ -498,7 +498,7 @@ iris_resource_alloc_flags(const struct iris_screen *screen,
 
    if (templ->flags & (PIPE_RESOURCE_FLAG_MAP_COHERENT |
                        PIPE_RESOURCE_FLAG_MAP_PERSISTENT))
-      flags |= BO_ALLOC_SMEM;
+      flags |= BO_ALLOC_SMEM | BO_ALLOC_COHERENT;
 
    if (screen->devinfo->verx10 >= 125 && screen->devinfo->has_local_mem &&
        isl_aux_usage_has_ccs(aux_usage)) {
