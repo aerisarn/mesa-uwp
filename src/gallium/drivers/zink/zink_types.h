@@ -1680,6 +1680,7 @@ struct zink_context {
    struct zink_batch_state *last_free_batch_state; //for appending
    bool oom_flush;
    bool oom_stall;
+   bool track_renderpasses;
    struct zink_batch batch;
 
    unsigned shader_has_inlinable_uniforms_mask;
