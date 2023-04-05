@@ -3614,6 +3614,8 @@ void
 brw_float_controls_mode(struct brw_codegen *p,
                         unsigned mode, unsigned mask)
 {
+   assert(p->current->mask_control == BRW_MASK_DISABLE);
+
    /* From the Skylake PRM, Volume 7, page 760:
     *  "Implementation Restriction on Register Access: When the control
     *   register is used as an explicit source and/or destination, hardware
