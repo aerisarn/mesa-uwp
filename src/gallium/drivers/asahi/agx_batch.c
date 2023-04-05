@@ -146,8 +146,8 @@ agx_batch_print_stats(struct agx_device *dev, struct agx_batch *batch)
    unreachable("Linux UAPI not yet upstream");
 }
 
-void
-agx_batch_cleanup(struct agx_context *ctx, struct agx_batch *batch)
+static void
+agx_batch_cleanup(struct agx_context *ctx, struct agx_batch *batch, bool reset)
 {
    struct agx_device *dev = agx_device(ctx->base.screen);
    assert(batch->ctx == ctx);
@@ -159,19 +159,58 @@ agx_batch_cleanup(struct agx_context *ctx, struct agx_batch *batch)
    batch->occlusion_buffer.cpu = NULL;
    batch->occlusion_buffer.gpu = 0;
 
-   int handle;
-   AGX_BATCH_FOREACH_BO_HANDLE(batch, handle) {
-      struct agx_bo *bo = agx_lookup_bo(dev, handle);
+   if (reset) {
+      int handle;
+      AGX_BATCH_FOREACH_BO_HANDLE(batch, handle) {
+         struct agx_bo *bo = agx_lookup_bo(dev, handle);
 
-      /* There is no more writer on this context for anything we wrote */
-      struct agx_batch *writer = agx_writer_get(ctx, handle);
+         /* Revert the writer to the last submitted batch that writes this BO,
+          * if any.
+          */
+         struct agx_batch *writer = agx_writer_get(ctx, handle);
 
-      if (writer == batch) {
-         bo->writer_syncobj = 0;
-         agx_writer_remove(ctx, handle);
+         if (writer == batch) {
+            int i;
+            assert(bo->writer_syncobj != batch->syncobj);
+            agx_writer_remove(ctx, handle);
+
+            if (bo->writer_syncobj) {
+               struct agx_batch *old_batch = NULL;
+               foreach_submitted(ctx, i) {
+                  old_batch = &ctx->batches.slots[i];
+                  if (old_batch->syncobj == bo->writer_syncobj)
+                     break;
+                  else
+                     old_batch = NULL;
+               }
+               assume(old_batch);
+               batch_debug(batch,
+                           "Resetting writer for BO @ 0x%" PRIx64
+                           " to batch %d (syncobj was %d)",
+                           bo->ptr.gpu, agx_batch_idx(old_batch),
+                           bo->writer_syncobj);
+               agx_writer_add(ctx, agx_batch_idx(old_batch), bo->handle);
+            }
+         }
+
+         agx_bo_unreference(agx_lookup_bo(dev, handle));
       }
+   } else {
+      int handle;
+      AGX_BATCH_FOREACH_BO_HANDLE(batch, handle) {
+         struct agx_bo *bo = agx_lookup_bo(dev, handle);
 
-      agx_bo_unreference(agx_lookup_bo(dev, handle));
+         /* There is no more writer on this context for anything we wrote */
+         struct agx_batch *writer = agx_writer_get(ctx, handle);
+
+         if (writer == batch) {
+            assert(bo->writer_syncobj == batch->syncobj);
+            bo->writer_syncobj = 0;
+            agx_writer_remove(ctx, handle);
+         }
+
+         agx_bo_unreference(agx_lookup_bo(dev, handle));
+      }
    }
 
    agx_bo_unreference(batch->encoder);
@@ -215,7 +254,7 @@ agx_cleanup_batches(struct agx_context *ctx)
       return -1;
 
    assert(first < AGX_MAX_BATCHES);
-   agx_batch_cleanup(ctx, batches[first]);
+   agx_batch_cleanup(ctx, batches[first], false);
    return agx_batch_idx(batches[first]);
 }
 
@@ -700,7 +739,7 @@ agx_sync_batch(struct agx_context *ctx, struct agx_batch *batch)
    assert(batch->syncobj);
    int ret = drmSyncobjWait(dev->fd, &batch->syncobj, 1, INT64_MAX, 0, NULL);
    assert(!ret);
-   agx_batch_cleanup(ctx, batch);
+   agx_batch_cleanup(ctx, batch, false);
 }
 
 void
@@ -740,5 +779,5 @@ agx_batch_reset(struct agx_context *ctx, struct agx_batch *batch)
    if (ctx->batch == batch)
       ctx->batch = NULL;
 
-   agx_batch_cleanup(ctx, batch);
+   agx_batch_cleanup(ctx, batch, true);
 }

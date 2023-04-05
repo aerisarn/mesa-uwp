@@ -673,7 +673,6 @@ bool agx_any_batch_uses_resource(struct agx_context *ctx,
 struct agx_batch *agx_get_batch(struct agx_context *ctx);
 struct agx_batch *agx_get_compute_batch(struct agx_context *ctx);
 void agx_batch_reset(struct agx_context *ctx, struct agx_batch *batch);
-void agx_batch_cleanup(struct agx_context *ctx, struct agx_batch *batch);
 int agx_cleanup_batches(struct agx_context *ctx);
 
 /* Blit shaders */
