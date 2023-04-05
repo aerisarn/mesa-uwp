@@ -2143,7 +2143,7 @@ dzn_descriptor_set_write(struct dzn_device *device,
             pDescriptorWrite->descriptorType,
             dzn_buffer_from_handle(binfo->buffer),
             binfo->range, binfo->offset,
-            &set->buffer_heap_slots[set->layout->bindings[ptr.binding].buffer_idx]
+            &set->buffer_heap_slots[dzn_descriptor_set_ptr_get_buffer_idx(set->layout, &ptr)]
          };
 
          if (desc.buffer)
