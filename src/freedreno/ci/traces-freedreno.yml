@@ -58,7 +58,9 @@ traces:
           MESA: error: zink: couldn't allocate memory: heap=<heap> size=<size>
         Resulting in a segfault
     zink-a630:
+      label: [skip, flakes]
       checksum: b589b5d9ddd3026cbde08f0abe840ea7
+      text: seems to trigger oomkilling recently
 
   valve/counterstrike-source-v2.trace:
     freedreno-a306:
