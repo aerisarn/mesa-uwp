@@ -372,8 +372,7 @@ static bool
 agx_twiddled_allowed(const struct agx_resource *pres)
 {
    /* Certain binds force linear */
-   if (pres->base.bind &
-       (PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT | PIPE_BIND_LINEAR))
+   if (pres->base.bind & (PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_LINEAR))
       return false;
 
    /* Buffers must be linear */
@@ -463,6 +462,14 @@ agx_select_best_modifier(const struct agx_resource *pres)
     */
    if (agx_linear_allowed(pres) && pres->base.usage == PIPE_USAGE_STAGING)
       return DRM_FORMAT_MOD_LINEAR;
+
+   /* For SCANOUT resources with no explicit modifier selection, assume we need
+    * linear.
+    */
+   if (pres->base.bind & PIPE_BIND_SCANOUT) {
+      assert(agx_linear_allowed(pres));
+      return DRM_FORMAT_MOD_LINEAR;
+   }
 
    if (agx_twiddled_allowed(pres)) {
       if (agx_compression_allowed(pres))
