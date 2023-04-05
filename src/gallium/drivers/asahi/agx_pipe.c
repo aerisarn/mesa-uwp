@@ -660,10 +660,9 @@ agx_prepare_for_map(struct agx_context *ctx, struct agx_resource *rsrc,
  * Code adapted from panfrost */
 
 static struct agx_resource *
-agx_alloc_staging(struct agx_context *ctx, struct agx_resource *rsc,
+agx_alloc_staging(struct pipe_screen *screen, struct agx_resource *rsc,
                   unsigned level, const struct pipe_box *box)
 {
-   struct pipe_context *pctx = &ctx->base;
    struct pipe_resource tmpl = rsc->base;
 
    tmpl.width0 = box->width;
@@ -684,8 +683,7 @@ agx_alloc_staging(struct agx_context *ctx, struct agx_resource *rsc,
    tmpl.last_level = 0;
    tmpl.bind |= PIPE_BIND_LINEAR;
 
-   struct pipe_resource *pstaging =
-      pctx->screen->resource_create(pctx->screen, &tmpl);
+   struct pipe_resource *pstaging = screen->resource_create(screen, &tmpl);
    if (!pstaging)
       return NULL;
 
@@ -765,7 +763,8 @@ agx_transfer_map(struct pipe_context *pctx, struct pipe_resource *resource,
     * twiddled too, but we don't have a use case for that yet.
     */
    if (rsrc->modifier == DRM_FORMAT_MOD_APPLE_TWIDDLED_COMPRESSED) {
-      struct agx_resource *staging = agx_alloc_staging(ctx, rsrc, level, box);
+      struct agx_resource *staging =
+         agx_alloc_staging(pctx->screen, rsrc, level, box);
       assert(staging);
 
       /* Staging resources have one LOD: level 0. Query the strides
