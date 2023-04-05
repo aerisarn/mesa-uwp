@@ -1286,6 +1286,8 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
       .lower_fisnormal = true,
       .lower_rotate = true,
       .lower_to_scalar = true,
+      .lower_to_scalar_filter = sscreen->info.has_packed_math_16bit ?
+                                   si_alu_to_scalar_packed_math_filter : NULL,
       .lower_int64_options = nir_lower_imul_2x32_64 | nir_lower_imul_high64,
       .has_sdot_4x8 = sscreen->info.has_accelerated_dot_product,
       .has_sudot_4x8 = sscreen->info.has_accelerated_dot_product && sscreen->info.gfx_level >= GFX11,

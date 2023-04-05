@@ -1062,6 +1062,7 @@ void si_nir_scan_shader(struct si_screen *sscreen,  const struct nir_shader *nir
 /* si_shader_nir.c */
 extern const nir_lower_subgroups_options si_nir_subgroups_options;
 
+bool si_alu_to_scalar_packed_math_filter(const nir_instr *instr, const void *data);
 void si_nir_opts(struct si_screen *sscreen, struct nir_shader *nir, bool first);
 void si_nir_late_opts(nir_shader *nir);
 char *si_finalize_nir(struct pipe_screen *screen, void *nirptr);

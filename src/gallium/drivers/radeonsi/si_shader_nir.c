@@ -10,11 +10,9 @@
 #include "ac_nir.h"
 
 
-static bool si_alu_to_scalar_filter(const nir_instr *instr, const void *data)
+bool si_alu_to_scalar_packed_math_filter(const nir_instr *instr, const void *data)
 {
-   struct si_screen *sscreen = (struct si_screen *)data;
-
-   if (sscreen->info.has_packed_math_16bit && instr->type == nir_instr_type_alu) {
+   if (instr->type == nir_instr_type_alu) {
       nir_alu_instr *alu = nir_instr_as_alu(instr);
 
       if (alu->dest.dest.is_ssa &&
@@ -75,7 +73,8 @@ void si_nir_opts(struct si_screen *sscreen, struct nir_shader *nir, bool first)
       bool lower_phis_to_scalar = false;
 
       NIR_PASS(progress, nir, nir_lower_vars_to_ssa);
-      NIR_PASS(progress, nir, nir_lower_alu_to_scalar, si_alu_to_scalar_filter, sscreen);
+      NIR_PASS(progress, nir, nir_lower_alu_to_scalar,
+               nir->options->lower_to_scalar_filter, NULL);
       NIR_PASS(progress, nir, nir_lower_phis_to_scalar, false);
 
       if (first) {
@@ -97,8 +96,10 @@ void si_nir_opts(struct si_screen *sscreen, struct nir_shader *nir, bool first)
             (LLVM_VERSION_MAJOR == 14 ? 0 : nir_opt_if_optimize_phi_true_false));
       NIR_PASS(progress, nir, nir_opt_dead_cf);
 
-      if (lower_alu_to_scalar)
-         NIR_PASS_V(nir, nir_lower_alu_to_scalar, si_alu_to_scalar_filter, sscreen);
+      if (lower_alu_to_scalar) {
+         NIR_PASS_V(nir, nir_lower_alu_to_scalar,
+                    nir->options->lower_to_scalar_filter, NULL);
+      }
       if (lower_phis_to_scalar)
          NIR_PASS_V(nir, nir_lower_phis_to_scalar, false);
       progress |= lower_alu_to_scalar | lower_phis_to_scalar;
