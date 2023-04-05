@@ -379,8 +379,8 @@ agx_create_rs_state(struct pipe_context *ctx,
     * implementation lowers to multiple draws with culling. Warn.
     */
    if (unlikely(cso->fill_front != cso->fill_back)) {
-      fprintf(stderr, "Warning: Two-sided fill modes are unsupported, "
-                      "rendering may be incorrect.\n");
+      agx_msg("Warning: Two-sided fill modes are unsupported, "
+              "rendering may be incorrect.\n");
    }
 
    so->polygon_mode = agx_translate_polygon_mode(cso->fill_front);

@@ -26,6 +26,14 @@
 #include "util/u_range.h"
 #include "agx_meta.h"
 
+#ifdef __GLIBC__
+#include <errno.h>
+#define agx_msg(fmt, ...)                                                      \
+   fprintf(stderr, "[%s] " fmt, program_invocation_short_name, ##__VA_ARGS__)
+#else
+#define agx_msg(...) fprintf(stderr, __VA_ARGS)
+#endif
+
 struct agx_streamout_target {
    struct pipe_stream_output_target base;
    uint32_t offset;

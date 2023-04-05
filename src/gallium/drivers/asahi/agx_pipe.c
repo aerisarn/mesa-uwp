@@ -474,7 +474,7 @@ agx_resource_create_with_modifiers(struct pipe_screen *screen,
          renderonly_scanout_for_resource(&scanout_tmpl, dev->ro, &handle);
 
       if (!nresource->scanout) {
-         fprintf(stderr, "Failed to create scanout resource\n");
+         agx_msg("Failed to create scanout resource\n");
          free(nresource);
          return NULL;
       }
@@ -1963,10 +1963,10 @@ agx_screen_create(int fd, struct renderonly *ro, struct sw_winsys *winsys)
       static bool warned_about_hacks = false;
 
       if (!warned_about_hacks) {
-         fprintf(stderr, "\n------------------\n"
-                         "Unsupported debug parameter set. Expect breakage.\n"
-                         "Do not report bugs.\n"
-                         "------------------\n\n");
+         agx_msg("\n------------------\n"
+                 "Unsupported debug parameter set. Expect breakage.\n"
+                 "Do not report bugs.\n"
+                 "------------------\n\n");
          warned_about_hacks = true;
       }
    }
