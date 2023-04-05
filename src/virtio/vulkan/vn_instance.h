@@ -129,6 +129,7 @@ struct vn_instance_submit_command {
    struct vn_renderer_shmem *reply_shmem;
    struct vn_cs_decoder reply;
 
+   /* valid when instance ring submission succeeds */
    bool ring_seqno_valid;
    uint32_t ring_seqno;
 };

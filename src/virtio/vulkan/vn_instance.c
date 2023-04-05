@@ -232,7 +232,7 @@ vn_instance_init_experimental_features(struct vn_instance *instance)
 
    if (!exp_feats->memoryResourceAllocationSize ||
        !exp_feats->globalFencing || !exp_feats->largeRing ||
-       !exp_feats->syncFdFencing)
+       !exp_feats->syncFdFencing || !exp_feats->asyncRoundtrip)
       return VK_ERROR_INITIALIZATION_FAILED;
 
    if (VN_DEBUG(INIT)) {
@@ -334,14 +334,8 @@ vn_instance_submit_roundtrip(struct vn_instance *instance,
 
    mtx_lock(&instance->ring.roundtrip_mutex);
    const uint64_t seqno = instance->ring.roundtrip_next++;
-   if (instance->experimental.asyncRoundtrip) {
-      vn_encode_vkSubmitVirtqueueSeqno100000MESA(&local_enc, 0,
-                                                 instance->ring.id, seqno);
-   } else {
-      /* clamp to 32bit for legacy ring extra based roundtrip waiting */
-      vn_encode_vkWriteRingExtraMESA(&local_enc, 0, instance->ring.id, 0,
-                                     seqno);
-   }
+   vn_encode_vkSubmitVirtqueueSeqno100000MESA(&local_enc, 0,
+                                              instance->ring.id, seqno);
    VkResult result = vn_renderer_submit_simple(
       instance->renderer, local_data, vn_cs_encoder_get_len(&local_enc));
    mtx_unlock(&instance->ring.roundtrip_mutex);
@@ -350,36 +344,11 @@ vn_instance_submit_roundtrip(struct vn_instance *instance,
    return result;
 }
 
-static bool
-roundtrip_seqno_ge(uint32_t a, uint32_t b)
-{
-   /* a >= b, but deal with wrapping as well */
-   return (a - b) <= INT32_MAX;
-}
-
 void
 vn_instance_wait_roundtrip(struct vn_instance *instance,
                            uint64_t roundtrip_seqno)
 {
-   VN_TRACE_FUNC();
-
-   if (instance->experimental.asyncRoundtrip) {
-      vn_async_vkWaitVirtqueueSeqno100000MESA(instance, roundtrip_seqno);
-      return;
-   }
-
-   struct vn_ring *ring = &instance->ring.ring;
-   const volatile atomic_uint *ptr = ring->shared.extra;
-   struct vn_relax_state relax_state = vn_relax_init(ring, "roundtrip");
-   do {
-      const uint32_t cur = atomic_load_explicit(ptr, memory_order_acquire);
-      /* clamp to 32bit for legacy ring extra based roundtrip waiting */
-      if (roundtrip_seqno_ge(cur, roundtrip_seqno)) {
-         vn_relax_fini(&relax_state);
-         break;
-      }
-      vn_relax(&relax_state);
-   } while (true);
+   vn_async_vkWaitVirtqueueSeqno100000MESA(instance, roundtrip_seqno);
 }
 
 struct vn_instance_submission {
