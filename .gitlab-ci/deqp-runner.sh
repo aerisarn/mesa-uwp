@@ -124,6 +124,9 @@ if [ "$PIGLIT_PLATFORM" = "gbm" ]; then
     DEQP_SKIPS="$DEQP_SKIPS $INSTALL/gbm-skips.txt"
 fi
 
+# Set the path to VK validation layer settings (in case it ends up getting loaded)
+export VK_LAYER_SETTINGS_PATH=$INSTALL/$GPU_VERSION-validation-settings.txt
+
 report_load() {
     echo "System load: $(cut -d' ' -f1-3 < /proc/loadavg)"
     echo "# of CPU cores: $(cat /proc/cpuinfo | grep processor | wc -l)"
