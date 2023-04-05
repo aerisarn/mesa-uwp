@@ -260,6 +260,27 @@ a618-traces-performance:
     # a618 tag starts with cbg-1 (not cbg-0) for some reason
     LAVA_TAGS: "cbg-1"
 
+.lava-sm8350-hdk:
+  variables:
+    BOOT_METHOD: fastboot
+    KERNEL_IMAGE_TYPE: ""
+    # Increase the hangcheck timer for our spilling tests which bump up against
+    # the .5s default.
+    FREEDRENO_HANGCHECK_MS: 2000
+    DEVICE_TYPE: sm8350-hdk
+    DTB: sm8350-hdk
+    GPU_VERSION: freedreno-a660
+    RUNNER_TAG: mesa-ci-x86-64-lava-sm8350-hdk
+
+a660_gl:
+  extends:
+    - .lava-test-deqp:arm64
+    - .freedreno-rules
+    - .lava-sm8350-hdk
+  parallel: 2
+  variables:
+    DEQP_SUITE: freedreno-a660
+
 .a630-test:
   extends:
     - .google-freedreno-test
