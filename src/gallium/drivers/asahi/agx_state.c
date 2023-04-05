@@ -2347,9 +2347,10 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
    if (dirty.fragment_front_face_2)
       agx_ppp_fragment_face_2(&ppp, object_type, &ctx->fs->info);
 
-   if (dirty.fragment_front_stencil)
+   if (dirty.fragment_front_stencil) {
       agx_ppp_push_packed(&ppp, ctx->zs->front_stencil.opaque,
                           FRAGMENT_STENCIL);
+   }
 
    if (dirty.fragment_back_face) {
       struct agx_fragment_face_packed back_face;

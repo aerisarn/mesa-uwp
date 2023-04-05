@@ -2239,9 +2239,10 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
       int ret = agx_dump_stats(ctx, binary->size, &stats);
 
       if (ret >= 0) {
-         if (agx_should_dump(nir, AGX_DBG_SHADERDB))
+         if (agx_should_dump(nir, AGX_DBG_SHADERDB)) {
             fprintf(stderr, "SHADER-DB: %s - %s\n", nir->info.label ?: "",
                     stats);
+         }
 
          if (debug)
             util_debug_message(debug, SHADER_INFO, "%s", stats);

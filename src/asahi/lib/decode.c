@@ -825,10 +825,11 @@ agxdecode_dump_file_open(void)
                agxdecode_dump_frame_count);
       printf("agxdecode: dump command stream to file %s\n", buffer);
       agxdecode_dump_stream = fopen(buffer, "w");
-      if (!agxdecode_dump_stream)
+      if (!agxdecode_dump_stream) {
          fprintf(stderr,
                  "agxdecode: failed to open command stream log file %s\n",
                  buffer);
+      }
    }
 }
 
