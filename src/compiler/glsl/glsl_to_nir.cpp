@@ -486,6 +486,9 @@ get_nir_how_declared(unsigned how_declared)
    if (how_declared == ir_var_hidden)
       return nir_var_hidden;
 
+   if (how_declared == ir_var_declared_implicitly)
+      return nir_var_declared_implicitly;
+
    return nir_var_declared_normally;
 }
 
