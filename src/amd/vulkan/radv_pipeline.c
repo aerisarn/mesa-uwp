@@ -3421,12 +3421,13 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
          if (radv_can_dump_shader_stats(device, stages[i].nir) && pipeline->base.shaders[i]) {
             radv_dump_shader_stats(device, &pipeline->base, pipeline->base.shaders[i], i, stderr);
          }
-
-         ralloc_free(stages[i].nir);
       }
    }
 
 done:
+   for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
+      ralloc_free(stages[i].nir);
+   }
    pipeline_feedback.duration = os_time_get_nano() - pipeline_start;
 
    if (creation_feedback) {
