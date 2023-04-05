@@ -309,6 +309,13 @@ typedef struct {
 void
 ac_nir_lower_ps(nir_shader *nir, const ac_nir_lower_ps_options *options);
 
+typedef struct {
+   enum amd_gfx_level gfx_level;
+} ac_nir_lower_tex_options;
+
+bool
+ac_nir_lower_tex(nir_shader *nir, const ac_nir_lower_tex_options *options);
+
 #ifdef __cplusplus
 }
 #endif
