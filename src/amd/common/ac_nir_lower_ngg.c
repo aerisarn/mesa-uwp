@@ -2777,7 +2777,10 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
       prim_flag = nir_ior(b, prim_flag, odd_flag);
    }
 
-   nir_store_shared(b, nir_u2u8(b, prim_flag), gs_emit_vtx_addr, .base = s->lds_offs_primflags + stream, .align_mul = 4u);
+   nir_store_shared(b, nir_u2u8(b, prim_flag), gs_emit_vtx_addr,
+                    .base = s->lds_offs_primflags + stream,
+                    .align_mul = 4, .align_offset = stream);
+
    nir_instr_remove(&intrin->instr);
    return true;
 }
