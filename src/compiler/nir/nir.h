@@ -4965,6 +4965,11 @@ void nir_compact_varyings(nir_shader *producer, nir_shader *consumer,
 void nir_link_xfb_varyings(nir_shader *producer, nir_shader *consumer);
 bool nir_link_opt_varyings(nir_shader *producer, nir_shader *consumer);
 void nir_link_varying_precision(nir_shader *producer, nir_shader *consumer);
+nir_variable *nir_clone_uniform_variable(nir_shader *nir,
+                                         nir_variable *uniform);
+nir_deref_instr *nir_clone_deref_instr(struct nir_builder *b,
+                                       nir_variable *var,
+                                       nir_deref_instr *deref);
 
 bool nir_slot_is_sysval_output(gl_varying_slot slot,
                                gl_shader_stage next_shader);
