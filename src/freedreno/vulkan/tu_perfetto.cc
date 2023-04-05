@@ -132,7 +132,7 @@ PERFETTO_DECLARE_DATA_SOURCE_STATIC_MEMBERS(TuRenderpassDataSource);
 PERFETTO_DEFINE_DATA_SOURCE_STATIC_MEMBERS(TuRenderpassDataSource);
 
 static void
-send_descriptors(TuRenderpassDataSource::TraceContext &ctx, uint64_t ts_ns)
+send_descriptors(TuRenderpassDataSource::TraceContext &ctx)
 {
    PERFETTO_LOG("Sending renderstage descriptors");
 
@@ -266,7 +266,7 @@ stage_end(struct tu_device *dev, uint64_t ts_ns, enum tu_stage_id stage_id,
 
    TuRenderpassDataSource::Trace([=](TuRenderpassDataSource::TraceContext tctx) {
       if (auto state = tctx.GetIncrementalState(); state->was_cleared) {
-         send_descriptors(tctx, stage->start_ts);
+         send_descriptors(tctx);
          state->was_cleared = false;
       }
 
