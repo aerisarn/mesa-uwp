@@ -38,6 +38,7 @@
 #include "pipe-loader/pipe_loader.h"
 #include "state_tracker/st_context.h"
 
+#include "util/u_cpu_detect.h"
 #include "util/u_memory.h"
 #include "util/u_debug.h"
 
@@ -206,6 +207,12 @@ dri_create_context(struct dri_screen *screen,
     * - user setting
     */
    bool enable_glthread = driQueryOptionb(&screen->dev->option_cache, "mesa_glthread_driver");
+
+   /* always disable glthread by default if fewer than 5 "big" CPUs are active */
+   unsigned nr_big_cpus = util_get_cpu_caps()->nr_big_cpus;
+   if (util_get_cpu_caps()->nr_cpus < 4 || (nr_big_cpus && nr_big_cpus < 5))
+      enable_glthread = false;
+
    int app_enable_glthread = driQueryOptioni(&screen->dev->option_cache, "mesa_glthread_app_profile");
    if (app_enable_glthread != -1) {
       /* if set (not -1), apply the app setting */
