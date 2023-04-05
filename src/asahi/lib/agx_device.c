@@ -385,10 +385,14 @@ agx_debug_fault(struct agx_device *dev, uint64_t addr)
 
    for (uint32_t handle = 0; handle < dev->max_handle; handle++) {
       struct agx_bo *bo = agx_lookup_bo(dev, handle);
-      if (!bo->dev || bo->ptr.gpu > addr)
+      uint64_t bo_addr = bo->ptr.gpu;
+      if (bo->flags & AGX_BO_LOW_VA)
+         bo_addr += dev->shader_base;
+
+      if (!bo->dev || bo_addr > addr)
          continue;
 
-      if (!best || bo->ptr.gpu > best->ptr.gpu)
+      if (!best || bo_addr > best->ptr.gpu)
          best = bo;
    }
 
