@@ -8870,11 +8870,10 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
                               bool pipeline_is_dirty)
 {
    const struct radv_device *device = cmd_buffer->device;
+   struct radv_shader_part *ps_epilog = NULL;
    bool late_scissor_emission;
 
    if (cmd_buffer->state.shaders[MESA_SHADER_FRAGMENT]->info.ps.has_epilog) {
-      struct radv_shader_part *ps_epilog = NULL;
-
       if (cmd_buffer->state.graphics_pipeline->ps_epilog) {
          ps_epilog = cmd_buffer->state.graphics_pipeline->ps_epilog;
       } else if ((cmd_buffer->state.emitted_graphics_pipeline != cmd_buffer->state.graphics_pipeline ||
@@ -8895,9 +8894,6 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
          if (device->physical_device->rad_info.rbplus_allowed)
             cmd_buffer->state.dirty |= RADV_CMD_DIRTY_RBPLUS;
       }
-
-      if (ps_epilog)
-         radv_emit_ps_epilog_state(cmd_buffer, ps_epilog, pipeline_is_dirty);
    }
 
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_RBPLUS)
@@ -8924,6 +8920,9 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
 
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_PIPELINE)
       radv_emit_graphics_pipeline(cmd_buffer);
+
+   if (ps_epilog)
+      radv_emit_ps_epilog_state(cmd_buffer, ps_epilog, pipeline_is_dirty);
 
    /* This should be before the cmd_buffer->state.dirty is cleared
     * (excluding RADV_CMD_DIRTY_PIPELINE) and after
