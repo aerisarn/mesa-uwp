@@ -67,6 +67,7 @@ static const struct debug_named_value agx_debug_options[] = {
    {"nocluster", AGX_DBG_NOCLUSTER,"Disable vertex clustering"},
    {"sync",      AGX_DBG_SYNC,     "Synchronously wait for all submissions"},
    {"stats",     AGX_DBG_STATS,    "Show command execution statistics"},
+   {"resource",  AGX_DBG_RESOURCE, "Log resource operations"},
    DEBUG_NAMED_VALUE_END
 };
 /* clang-format on */
@@ -96,6 +97,57 @@ ail_modifier_to_tiling(uint64_t modifier)
    default:
       unreachable("Unsupported modifier");
    }
+}
+
+const static char *s_tiling[] = {
+   [AIL_TILING_LINEAR] = "LINR",
+   [AIL_TILING_TWIDDLED] = "TWID",
+   [AIL_TILING_TWIDDLED_COMPRESSED] = "COMP",
+};
+
+#define rsrc_debug(res, ...)                                                   \
+   do {                                                                        \
+      if (agx_device((res)->base.screen)->debug & AGX_DBG_RESOURCE)            \
+         agx_msg(__VA_ARGS__);                                                 \
+   } while (0)
+
+static void
+agx_resource_debug(struct agx_resource *res, const char *msg)
+{
+   if (!(agx_device(res->base.screen)->debug & AGX_DBG_RESOURCE))
+      return;
+
+   int ino = -1;
+   if (res->bo->prime_fd >= 0) {
+      struct stat sb;
+      if (!fstat(res->bo->prime_fd, &sb))
+         ino = sb.st_ino;
+   }
+
+   agx_msg(
+      "%s%s %dx%dx%d %dL %d/%dM %dS M:%llx %s %s%s S:0x%llx LS:0x%llx CS:0x%llx "
+      "Base=0x%llx Size=0x%llx Meta=0x%llx/0x%llx (%s) %s%s%s%s%s%sfd:%d(%d) @ %p\n",
+      msg ?: "", util_format_short_name(res->base.format), res->base.width0,
+      res->base.height0, res->base.depth0, res->base.array_size,
+      res->base.last_level, res->layout.levels, res->layout.sample_count_sa,
+      (long long)res->modifier, s_tiling[res->layout.tiling],
+      res->layout.mipmapped_z ? "MZ " : "",
+      res->layout.page_aligned_layers ? "PL " : "",
+      (long long)res->layout.linear_stride_B,
+      (long long)res->layout.layer_stride_B,
+      (long long)res->layout.compression_layer_stride_B,
+      (long long)res->bo->ptr.gpu, (long long)res->layout.size_B,
+      res->layout.metadata_offset_B
+         ? ((long long)res->bo->ptr.gpu + res->layout.metadata_offset_B)
+         : 0,
+      (long long)res->layout.metadata_offset_B, res->bo->label,
+      res->bo->flags & AGX_BO_SHARED ? "SH " : "",
+      res->bo->flags & AGX_BO_LOW_VA ? "LO " : "",
+      res->bo->flags & AGX_BO_EXEC ? "EX " : "",
+      res->bo->flags & AGX_BO_WRITEBACK ? "WB " : "",
+      res->bo->flags & AGX_BO_SHAREABLE ? "SA " : "",
+      res->bo->flags & AGX_BO_READONLY ? "RO " : "", res->bo->prime_fd, ino,
+      res);
 }
 
 static void
@@ -182,6 +234,8 @@ agx_resource_from_handle(struct pipe_screen *pscreen,
       util_range_init(&rsc->valid_buffer_range);
    }
 
+   agx_resource_debug(rsc, "Import: ");
+
    return prsc;
 }
 
@@ -208,8 +262,12 @@ agx_resource_get_handle(struct pipe_screen *pscreen, struct pipe_context *ctx,
    scanout = rsrc->scanout;
 
    if (handle->type == WINSYS_HANDLE_TYPE_KMS && dev->ro) {
+      rsrc_debug(rsrc, "Get handle: %p (KMS RO)\n", rsrc);
+
       return renderonly_get_handle(scanout, handle);
    } else if (handle->type == WINSYS_HANDLE_TYPE_KMS) {
+      rsrc_debug(rsrc, "Get handle: %p (KMS)\n", rsrc);
+
       handle->handle = rsrc->bo->handle;
    } else if (handle->type == WINSYS_HANDLE_TYPE_FD) {
       int fd = agx_bo_export(rsrc->bo);
@@ -218,6 +276,11 @@ agx_resource_get_handle(struct pipe_screen *pscreen, struct pipe_context *ctx,
          return false;
 
       handle->handle = fd;
+      if (dev->debug & AGX_DBG_RESOURCE) {
+         struct stat sb;
+         fstat(rsrc->bo->prime_fd, &sb);
+         agx_msg("Get handle: %p (FD %d/%ld)\n", rsrc, fd, (long)sb.st_ino);
+      }
    } else {
       /* Other handle types not supported */
       return false;
@@ -487,6 +550,8 @@ agx_resource_create_with_modifiers(struct pipe_screen *screen,
          return NULL;
       }
 
+      agx_resource_debug(nresource, "New[RO]: ");
+
       return &nresource->base;
    }
 
@@ -553,6 +618,7 @@ agx_resource_create_with_modifiers(struct pipe_screen *screen,
       return NULL;
    }
 
+   agx_resource_debug(nresource, "New: ");
    return &nresource->base;
 }
 
@@ -568,6 +634,8 @@ agx_resource_destroy(struct pipe_screen *screen, struct pipe_resource *prsrc)
 {
    struct agx_resource *rsrc = (struct agx_resource *)prsrc;
    struct agx_screen *agx_screen = (struct agx_screen *)screen;
+
+   agx_resource_debug(rsrc, "Destroy: ");
 
    if (prsrc->target == PIPE_BUFFER)
       util_range_destroy(&rsrc->valid_buffer_range);
