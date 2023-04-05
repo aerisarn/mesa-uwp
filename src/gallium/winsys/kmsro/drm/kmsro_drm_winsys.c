@@ -108,7 +108,7 @@ struct pipe_screen *kmsro_drm_screen_create(int fd,
       {
          .name = "panfrost",
          .create_screen = panfrost_drm_screen_create_renderonly,
-         .create_for_resource = renderonly_create_kms_dumb_buffer_for_resource,
+         .create_for_resource = panfrost_create_kms_dumb_buffer_for_resource,
       },
 #endif
 
