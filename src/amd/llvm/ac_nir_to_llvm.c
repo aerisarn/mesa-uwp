@@ -1183,21 +1183,14 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 
    case nir_op_cube_face_coord_amd: {
       src[0] = ac_to_float(&ctx->ac, src[0]);
-      LLVMValueRef results[2];
+      LLVMValueRef results[3];
       LLVMValueRef in[3];
       for (unsigned chan = 0; chan < 3; chan++)
          in[chan] = ac_llvm_extract_elem(&ctx->ac, src[0], chan);
-      results[0] = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.cubesc", ctx->ac.f32, in, 3,
-                                      0);
-      results[1] = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.cubetc", ctx->ac.f32, in, 3,
-                                      0);
-      LLVMValueRef ma = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.cubema", ctx->ac.f32, in, 3, 0);
-      results[0] = ac_build_fdiv(&ctx->ac, results[0], ma);
-      results[1] = ac_build_fdiv(&ctx->ac, results[1], ma);
-      LLVMValueRef offset = LLVMConstReal(ctx->ac.f32, 0.5);
-      results[0] = LLVMBuildFAdd(ctx->ac.builder, results[0], offset, "");
-      results[1] = LLVMBuildFAdd(ctx->ac.builder, results[1], offset, "");
-      result = ac_build_gather_values(&ctx->ac, results, 2);
+      results[0] = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.cubesc", ctx->ac.f32, in, 3, 0);
+      results[1] = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.cubetc", ctx->ac.f32, in, 3, 0);
+      results[2] = ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.cubema", ctx->ac.f32, in, 3, 0);
+      result = ac_build_gather_values(&ctx->ac, results, 3);
       break;
    }
 
