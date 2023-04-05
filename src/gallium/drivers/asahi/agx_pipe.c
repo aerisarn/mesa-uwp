@@ -405,7 +405,8 @@ agx_compression_allowed(const struct agx_resource *pres)
     * renderable formats. As framebuffer compression, other formats don't make a
     * ton of sense to compress anyway.
     */
-   if (!agx_pixel_format[pres->base.format].renderable) {
+   if (!agx_pixel_format[pres->base.format].renderable &&
+       !util_format_is_depth_or_stencil(pres->base.format)) {
       rsrc_debug(pres, "No compression: format not renderable\n");
       return false;
    }
