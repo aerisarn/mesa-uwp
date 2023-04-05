@@ -301,6 +301,25 @@ static uint32_t get_nop_packet(struct radv_amdgpu_cs *cs)
 }
 
 static void
+radv_amdgpu_cs_add_old_ib_buffer(struct radv_amdgpu_cs *cs)
+{
+   if (cs->num_old_ib_buffers == cs->max_num_old_ib_buffers) {
+      unsigned max_num_old_ib_buffers = MAX2(1, cs->max_num_old_ib_buffers * 2);
+      struct radv_amdgpu_ib *old_ib_buffers =
+         realloc(cs->old_ib_buffers, max_num_old_ib_buffers * sizeof(*old_ib_buffers));
+      if (!old_ib_buffers) {
+         cs->status = VK_ERROR_OUT_OF_HOST_MEMORY;
+         return;
+      }
+      cs->max_num_old_ib_buffers = max_num_old_ib_buffers;
+      cs->old_ib_buffers = old_ib_buffers;
+   }
+
+   cs->old_ib_buffers[cs->num_old_ib_buffers].bo = cs->ib_buffer;
+   cs->old_ib_buffers[cs->num_old_ib_buffers++].cdw = cs->base.cdw;
+}
+
+static void
 radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
 {
    struct radv_amdgpu_cs *cs = radv_amdgpu_cs(_cs);
@@ -367,20 +386,9 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
 
    *cs->ib_size_ptr |= cs->base.cdw + 4;
 
-   if (cs->num_old_ib_buffers == cs->max_num_old_ib_buffers) {
-      unsigned max_num_old_ib_buffers = MAX2(1, cs->max_num_old_ib_buffers * 2);
-      struct radv_amdgpu_ib *old_ib_buffers =
-         realloc(cs->old_ib_buffers, max_num_old_ib_buffers * sizeof(*old_ib_buffers));
-      if (!old_ib_buffers) {
-         cs->status = VK_ERROR_OUT_OF_HOST_MEMORY;
-         return;
-      }
-      cs->max_num_old_ib_buffers = max_num_old_ib_buffers;
-      cs->old_ib_buffers = old_ib_buffers;
-   }
-
-   cs->old_ib_buffers[cs->num_old_ib_buffers].bo = cs->ib_buffer;
-   cs->old_ib_buffers[cs->num_old_ib_buffers++].cdw = cs->base.cdw;
+   radv_amdgpu_cs_add_old_ib_buffer(cs);
+   if (cs->status != VK_SUCCESS)
+      return;
 
    uint64_t ib_size = MAX2(min_size * 4 + 16, cs->base.max_dw * 4 * 2);
 
