@@ -14,6 +14,13 @@
 #define foreach_submitted(ctx, idx)                                            \
    BITSET_FOREACH_SET(idx, ctx->batches.submitted, AGX_MAX_BATCHES)
 
+#define batch_debug(batch, fmt, ...)                                           \
+   do {                                                                        \
+      if (unlikely(agx_device(batch->ctx->base.screen)->debug &                \
+                   AGX_DBG_BATCH))                                             \
+         agx_msg("[Batch %u] " fmt "\n", agx_batch_idx(batch), ##__VA_ARGS__); \
+   } while (0)
+
 static unsigned
 agx_batch_idx(struct agx_batch *batch)
 {
@@ -37,6 +44,8 @@ agx_batch_mark_active(struct agx_batch *batch)
 {
    unsigned batch_idx = agx_batch_idx(batch);
 
+   batch_debug(batch, "ACTIVE");
+
    assert(!BITSET_TEST(batch->ctx->batches.submitted, batch_idx));
    assert(!BITSET_TEST(batch->ctx->batches.active, batch_idx));
    BITSET_SET(batch->ctx->batches.active, batch_idx);
@@ -46,6 +55,8 @@ static void
 agx_batch_mark_submitted(struct agx_batch *batch)
 {
    unsigned batch_idx = agx_batch_idx(batch);
+
+   batch_debug(batch, "SUBMIT");
 
    assert(BITSET_TEST(batch->ctx->batches.active, batch_idx));
    assert(!BITSET_TEST(batch->ctx->batches.submitted, batch_idx));
@@ -57,6 +68,8 @@ static void
 agx_batch_mark_complete(struct agx_batch *batch)
 {
    unsigned batch_idx = agx_batch_idx(batch);
+
+   batch_debug(batch, "COMPLETE");
 
    assert(!BITSET_TEST(batch->ctx->batches.active, batch_idx));
    assert(BITSET_TEST(batch->ctx->batches.submitted, batch_idx));
@@ -563,6 +576,8 @@ agx_batch_submit(struct agx_context *ctx, struct agx_batch *batch,
       struct agx_bo *bo = agx_lookup_bo(dev, handle);
 
       if (bo->flags & AGX_BO_SHARED) {
+         batch_debug(batch, "Waits on shared BO @ 0x%" PRIx64, bo->ptr.gpu);
+
          /* Get a sync file fd from the buffer */
          int in_sync_fd = agx_export_sync_file(dev, bo);
          assert(in_sync_fd >= 0);
@@ -604,6 +619,9 @@ agx_batch_submit(struct agx_context *ctx, struct agx_batch *batch,
       assert(out_sync_fd >= 0);
 
       for (unsigned i = 0; i < shared_bo_count; i++) {
+         batch_debug(batch, "Signals shared BO @ 0x%" PRIx64,
+                     shared_bos[i]->ptr.gpu);
+
          /* Free the in_sync handle we just acquired */
          ret = drmSyncobjDestroy(dev->fd, in_syncs[i].handle);
          assert(ret >= 0);
@@ -714,6 +732,8 @@ agx_sync_all(struct agx_context *ctx, const char *reason)
 void
 agx_batch_reset(struct agx_context *ctx, struct agx_batch *batch)
 {
+   batch_debug(batch, "RESET");
+
    /* Reset an empty batch. Like submit, but does nothing. */
    agx_batch_mark_submitted(batch);
 

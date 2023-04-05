@@ -68,6 +68,7 @@ static const struct debug_named_value agx_debug_options[] = {
    {"sync",      AGX_DBG_SYNC,     "Synchronously wait for all submissions"},
    {"stats",     AGX_DBG_STATS,    "Show command execution statistics"},
    {"resource",  AGX_DBG_RESOURCE, "Log resource operations"},
+   {"batch",     AGX_DBG_BATCH,    "Log batches"},
    DEBUG_NAMED_VALUE_END
 };
 /* clang-format on */
