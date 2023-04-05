@@ -121,6 +121,7 @@ disk_cache_type_create(const char *gpu_name,
 
    /* Assume failure. */
    cache->path_init_failed = true;
+   cache->type = DISK_CACHE_NONE;
 
 #ifdef ANDROID
    /* Android needs the "disk cache" to be enabled for
