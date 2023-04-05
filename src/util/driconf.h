@@ -400,8 +400,8 @@
    DRI_CONF_OPT_B(vk_xwayland_wait_ready, def, \
                   "Wait for fences before submitting buffers to Xwayland")
 
-#define DRI_CONF_MESA_GLTHREAD(def) \
-   DRI_CONF_OPT_B(mesa_glthread, def, \
+#define DRI_CONF_MESA_GLTHREAD_DRIVER(def) \
+   DRI_CONF_OPT_B(mesa_glthread_driver, def, \
                   "Enable offloading GL driver work to a separate thread")
 
 #define DRI_CONF_MESA_NO_ERROR(def) \
