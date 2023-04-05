@@ -133,19 +133,16 @@ vn_instance_init_ring(struct vn_instance *instance)
 
    instance->ring.id = (uintptr_t)ring;
 
-   struct VkRingMonitorInfoMESA monitor_info;
-   if (instance->experimental.ringMonitoring) {
-      ring->monitor.report_period_us = 3000000;
-      mtx_init(&ring->monitor.mutex, mtx_plain);
-      monitor_info = (struct VkRingMonitorInfoMESA){
-         .sType = VK_STRUCTURE_TYPE_RING_MONITOR_INFO_MESA,
-         .maxReportingPeriodMicroseconds = ring->monitor.report_period_us,
-      };
-   }
+   ring->monitor.report_period_us = 3000000;
+   mtx_init(&ring->monitor.mutex, mtx_plain);
 
+   const struct VkRingMonitorInfoMESA monitor_info = {
+      .sType = VK_STRUCTURE_TYPE_RING_MONITOR_INFO_MESA,
+      .maxReportingPeriodMicroseconds = ring->monitor.report_period_us,
+   };
    const struct VkRingCreateInfoMESA info = {
       .sType = VK_STRUCTURE_TYPE_RING_CREATE_INFO_MESA,
-      .pNext = instance->experimental.ringMonitoring ? &monitor_info : NULL,
+      .pNext = &monitor_info,
       .resourceId = instance->ring.shmem->res_id,
       .size = layout.shmem_size,
       .idleTimeout = 50ull * 1000 * 1000,
@@ -232,7 +229,8 @@ vn_instance_init_experimental_features(struct vn_instance *instance)
 
    if (!exp_feats->memoryResourceAllocationSize ||
        !exp_feats->globalFencing || !exp_feats->largeRing ||
-       !exp_feats->syncFdFencing || !exp_feats->asyncRoundtrip)
+       !exp_feats->syncFdFencing || !exp_feats->asyncRoundtrip ||
+       !exp_feats->ringMonitoring)
       return VK_ERROR_INITIALIZATION_FAILED;
 
    if (VN_DEBUG(INIT)) {
