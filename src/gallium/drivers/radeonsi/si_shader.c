@@ -1122,11 +1122,13 @@ bool si_can_dump_shader(struct si_screen *sscreen, gl_shader_stage stage,
                         enum si_shader_dump_type dump_type)
 {
    static uint64_t filter[] = {
-      [SI_DUMP_SHADER_KEY] = DBG(NIR) | DBG(INIT_LLVM) | DBG(LLVM) | DBG(ASM),
+      [SI_DUMP_SHADER_KEY] = DBG(NIR) | DBG(INIT_LLVM) | DBG(LLVM) | DBG(INIT_ACO) | DBG(ACO) | DBG(ASM),
       [SI_DUMP_INIT_NIR] = DBG(INIT_NIR),
       [SI_DUMP_NIR] = DBG(NIR),
       [SI_DUMP_INIT_LLVM_IR] = DBG(INIT_LLVM),
       [SI_DUMP_LLVM_IR] = DBG(LLVM),
+      [SI_DUMP_INIT_ACO_IR] = DBG(INIT_ACO),
+      [SI_DUMP_ACO_IR] = DBG(ACO),
       [SI_DUMP_ASM] = DBG(ASM),
       [SI_DUMP_ALWAYS] = DBG(VS) | DBG(TCS) | DBG(TES) | DBG(GS) | DBG(PS) | DBG(CS),
    };

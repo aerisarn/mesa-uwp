@@ -331,6 +331,8 @@ enum si_shader_dump_type {
    SI_DUMP_NIR,            /* final NIR after lowering when shader variants are created */
    SI_DUMP_INIT_LLVM_IR,   /* initial LLVM IR before optimizations */
    SI_DUMP_LLVM_IR,        /* final LLVM IR */
+   SI_DUMP_INIT_ACO_IR,    /* initial ACO IR before optimizations */
+   SI_DUMP_ACO_IR,         /* final ACO IR */
    SI_DUMP_ASM,            /* final asm shaders */
    SI_DUMP_ALWAYS,
 };

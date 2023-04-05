@@ -61,6 +61,8 @@ static const struct debug_named_value radeonsi_debug_options[] = {
    {"nir", DBG(NIR), "Print final NIR after lowering when shader variants are created"},
    {"initllvm", DBG(INIT_LLVM), "Print initial LLVM IR before optimizations"},
    {"llvm", DBG(LLVM), "Print final LLVM IR"},
+   {"initaco", DBG(INIT_ACO), "Print initial ACO IR before optimizations"},
+   {"aco", DBG(ACO), "Print final ACO IR"},
    {"asm", DBG(ASM), "Print final shaders in asm"},
 
    /* Shader compiler options the shader cache should be aware of: */
@@ -76,6 +78,7 @@ static const struct debug_named_value radeonsi_debug_options[] = {
    {"checkir", DBG(CHECK_IR), "Enable additional sanity checks on shader IR"},
    {"mono", DBG(MONOLITHIC_SHADERS), "Use old-style monolithic shaders compiled on demand"},
    {"nooptvariant", DBG(NO_OPT_VARIANT), "Disable compiling optimized shader variants."},
+   {"useaco", DBG(USE_ACO), "Use ACO as shader compiler when possible"},
 
    /* Information logging options: */
    {"info", DBG(INFO), "Print driver information"},

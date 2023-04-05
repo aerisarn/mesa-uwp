@@ -196,6 +196,8 @@ enum
    DBG_NIR,
    DBG_INIT_LLVM,
    DBG_LLVM,
+   DBG_INIT_ACO,
+   DBG_ACO,
    DBG_ASM,
 
    /* Shader compiler options the shader cache should be aware of: */
@@ -260,6 +262,7 @@ enum
 
    DBG_TMZ,
    DBG_SQTT,
+   DBG_USE_ACO,
 
    DBG_COUNT
 };
