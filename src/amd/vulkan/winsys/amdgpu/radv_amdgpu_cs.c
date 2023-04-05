@@ -45,8 +45,8 @@
 
 #define GFX6_MAX_CS_SIZE 0xffff8 /* in dwords */
 
-/* TODO: change this to a suitable number. */
-#define RADV_MAX_IBS_PER_SUBMIT 256
+/* Maximum allowed total number of submitted IBs. */
+#define RADV_MAX_IBS_PER_SUBMIT 192
 
 enum { VIRTUAL_BUFFER_HASH_TABLE_SIZE = 1024 };
 

@@ -31,13 +31,6 @@
 #include "vk_sync.h"
 #include "vk_semaphore.h"
 
-/* The number of IBs per submit isn't infinite, it depends on the IP type
- * (ie. some initial setup needed for a submit) and the number of IBs (4 DW).
- * This limit is arbitrary but should be safe for now.  Ideally, we should get
- * this limit from the KMD.
- */
-#define RADV_MAX_IBS_PER_SUBMIT 192
-
 enum radeon_ctx_priority
 radv_get_queue_global_priority(const VkDeviceQueueGlobalPriorityCreateInfoKHR *pObj)
 {
@@ -1588,8 +1581,8 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
 
    const unsigned num_perfctr_cs = use_perf_counters ? 2 : 0;
    const unsigned num_gang_wait_cs = use_ace ? 4 : 0;
-   const unsigned max_cs_submission = queue->device->trace_bo ? 1 : RADV_MAX_IBS_PER_SUBMIT;
    const unsigned cmd_buffer_count = submission->command_buffer_count;
+   const unsigned max_cs_submission = queue->device->trace_bo ? 1 : cmd_buffer_count;
    const unsigned cs_array_size = (use_ace ? 2 : 1) * MIN2(max_cs_submission, cmd_buffer_count) +
                                   num_perfctr_cs + num_gang_wait_cs;
 
