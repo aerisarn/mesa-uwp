@@ -118,6 +118,7 @@ for var in \
     VK_ICD_FILENAMES \
     VKD3D_PROTON_RESULTS \
     ZINK_DESCRIPTORS \
+    ZINK_DEBUG \
     LVP_POISON_MEMORY \
     ; do
   if [ -n "${!var+x}" ]; then

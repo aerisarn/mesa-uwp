@@ -50,6 +50,8 @@ deqp_args = [
     "--deqp-visibility=hidden"
 ]
 timeout = 180.0
+[deqp.env]
+  ZINK_DEBUG = "validation"
 
 #[[piglit]]
 #piglit_folder = "/piglit"
