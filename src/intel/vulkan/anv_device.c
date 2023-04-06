@@ -308,7 +308,7 @@ get_device_extensions(const struct anv_physical_device *device,
                                                VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR,
       .EXT_global_priority_query             = device->max_context_priority >=
                                                VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR,
-      .EXT_graphics_pipeline_library         = true,
+      .EXT_graphics_pipeline_library         = device->gpl_enabled,
       .EXT_host_query_reset                  = true,
       .EXT_image_2d_view_of_3d               = true,
       .EXT_image_robustness                  = true,
@@ -916,6 +916,18 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
       debug_get_bool_option("ANV_ENABLE_GENERATED_INDIRECT_DRAWS",
                             true);
 
+   /* The GPL implementation is new, and may have issues in conjunction with
+    * mesh shading. Enable it by default for zink for performance reasons (where
+    * mesh shading is unused anyway), and have an env var for testing in CI or
+    * by end users.
+    * */
+   if (debug_get_bool_option("ANV_GPL",
+                             instance->vk.app_info.engine_name != NULL &&
+                             (strcmp(instance->vk.app_info.engine_name, "mesa zink") == 0 ||
+                              strcmp(instance->vk.app_info.engine_name, "DXVK") == 0))) {
+      device->gpl_enabled = true;
+   }
+
    unsigned st_idx = 0;
 
    device->sync_syncobj_type = vk_drm_syncobj_get_type(fd);
@@ -1384,7 +1396,7 @@ void anv_GetPhysicalDeviceFeatures2(
 
       /* VK_EXT_global_priority_query */
       .globalPriorityQuery = true,
-      .graphicsPipelineLibrary = true,
+      .graphicsPipelineLibrary = pdevice->gpl_enabled,
 
       /* VK_KHR_fragment_shading_rate */
       .pipelineFragmentShadingRate = true,
