@@ -4342,15 +4342,22 @@ bool nir_srcs_equal(nir_src src1, nir_src src2);
 bool nir_instrs_equal(const nir_instr *instr1, const nir_instr *instr2);
 
 static inline void
+nir_src_rewrite_ssa(nir_src *src, nir_ssa_def *new_ssa)
+{
+   assert(src->is_ssa && src->ssa);
+   assert(src->is_if ? (src->parent_if != NULL) : (src->parent_instr != NULL));
+   list_del(&src->use_link);
+   src->ssa = new_ssa;
+   list_addtail(&src->use_link, &new_ssa->uses);
+}
+
+static inline void
 nir_instr_rewrite_src_ssa(ASSERTED nir_instr *instr,
                           nir_src *src, nir_ssa_def *new_ssa)
 {
    assert(!src->is_if);
    assert(src->parent_instr == instr);
-   assert(src->is_ssa && src->ssa);
-   list_del(&src->use_link);
-   src->ssa = new_ssa;
-   list_addtail(&src->use_link, &new_ssa->uses);
+   nir_src_rewrite_ssa(src, new_ssa);
 }
 
 void nir_instr_rewrite_src(nir_instr *instr, nir_src *src, nir_src new_src);
@@ -4362,10 +4369,7 @@ nir_if_rewrite_condition_ssa(ASSERTED nir_if *if_stmt,
 {
    assert(src->is_if);
    assert(src->parent_if == if_stmt);
-   assert(src->is_ssa && src->ssa);
-   list_del(&src->use_link);
-   src->ssa = new_ssa;
-   list_addtail(&src->use_link, &new_ssa->uses);
+   nir_src_rewrite_ssa(src, new_ssa);
 }
 
 void nir_if_rewrite_condition(nir_if *if_stmt, nir_src new_src);
