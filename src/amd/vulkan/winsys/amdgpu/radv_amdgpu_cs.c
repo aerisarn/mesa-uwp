@@ -277,11 +277,6 @@ radv_amdgpu_cs_create(struct radeon_winsys *ws, enum amd_ip_type ip_type)
    return &cs->base;
 }
 
-static bool hw_can_chain(unsigned hw_ip)
-{
-   return hw_ip == AMDGPU_HW_IP_GFX || hw_ip == AMDGPU_HW_IP_COMPUTE;
-}
-
 static uint32_t get_nop_packet(struct radv_amdgpu_cs *cs)
 {
    switch(cs->hw_ip) {
@@ -419,8 +414,6 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
 
    cs->ws->base.cs_add_buffer(&cs->base, cs->ib_buffer);
 
-   assert(hw_can_chain(cs->hw_ip)); /* TODO: Implement growing other queues if needed. */
-
    radeon_emit(&cs->base, PKT3(PKT3_INDIRECT_BUFFER_CIK, 2, 0));
    radeon_emit(&cs->base, radv_amdgpu_winsys_bo(cs->ib_buffer)->base.va);
    radeon_emit(&cs->base, radv_amdgpu_winsys_bo(cs->ib_buffer)->base.va >> 32);
@@ -443,20 +436,16 @@ radv_amdgpu_cs_finalize(struct radeon_cmdbuf *_cs)
       uint32_t ib_pad_dw_mask = MAX2(3, cs->ws->info.ib_pad_dw_mask[ip_type]);
       uint32_t nop_packet = get_nop_packet(cs);
 
-      if (hw_can_chain(cs->hw_ip)) {
-         /* Ensure that with the 4 dword reservation we subtract from max_dw we always
-          * have 4 nops at the end for chaining. */
-         while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask) != ib_pad_dw_mask - 3)
-            radeon_emit(&cs->base, nop_packet);
+      /* Ensure that with the 4 dword reservation we subtract from max_dw we always
+       * have 4 nops at the end for chaining.
+       */
+      while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask) != ib_pad_dw_mask - 3)
+         radeon_emit(&cs->base, nop_packet);
 
-         radeon_emit(&cs->base, nop_packet);
-         radeon_emit(&cs->base, nop_packet);
-         radeon_emit(&cs->base, nop_packet);
-         radeon_emit(&cs->base, nop_packet);
-      } else {
-         while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask))
-            radeon_emit(&cs->base, nop_packet);
-      }
+      radeon_emit(&cs->base, nop_packet);
+      radeon_emit(&cs->base, nop_packet);
+      radeon_emit(&cs->base, nop_packet);
+      radeon_emit(&cs->base, nop_packet);
 
       *cs->ib_size_ptr |= cs->base.cdw;
 
@@ -545,7 +534,7 @@ radv_amdgpu_cs_chain(struct radeon_cmdbuf *cs, struct radeon_cmdbuf *next_cs, bo
    struct radv_amdgpu_cs *next_acs = radv_amdgpu_cs(next_cs);
 
    /* Only some HW IP types have packets that we can use for chaining. */
-   if (!hw_can_chain(acs->hw_ip))
+   if (!acs->use_ib)
       return false;
 
    assert(cs->cdw <= cs->max_dw + 4);
