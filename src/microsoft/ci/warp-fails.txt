@@ -1,5 +1,4 @@
 dEQP-VK.api.driver_properties.conformance_version,Fail
-dEQP-VK.info.instance_extensions,Fail
 
 # All of these fails are due to a WARP bug in converting normalized texture coordinates to texel coordinates.
 dEQP-VK.image.texel_view_compatible.compute.basic.2d_image.texture.bc1_rgb_srgb_block.r32g32_uint,Fail
