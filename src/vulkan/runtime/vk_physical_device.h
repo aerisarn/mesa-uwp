@@ -26,6 +26,7 @@
 #include "vk_dispatch_table.h"
 #include "vk_extensions.h"
 #include "vk_object.h"
+#include "vk_physical_device_features.h"
 
 #include "util/list.h"
 
@@ -48,6 +49,8 @@ struct vk_physical_device {
 
    /** Instance which is the parent of this physical device */
    struct vk_instance *instance;
+
+   struct vk_features supported_features;
 
    /** Table of all supported device extensions
     *
