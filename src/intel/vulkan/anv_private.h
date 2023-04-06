@@ -2218,8 +2218,12 @@ anv_pipe_flush_bits_for_access_flags(struct anv_device *device,
          /* We're transitioning a buffer written either from VS stage or from
           * the command streamer (see CmdEndTransformFeedbackEXT), we just
           * need to stall the CS.
+          *
+          * Streamout writes apparently bypassing L3, in order to make them
+          * visible to the destination, we need to invalidate the other
+          * caches.
           */
-         pipe_bits |= ANV_PIPE_CS_STALL_BIT;
+         pipe_bits |= ANV_PIPE_CS_STALL_BIT | ANV_PIPE_INVALIDATE_BITS;
          break;
       default:
          break; /* Nothing to do */
