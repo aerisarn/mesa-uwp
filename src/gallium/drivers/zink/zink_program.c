@@ -2049,14 +2049,7 @@ zink_link_gfx_shader(struct pipe_context *pctx, void **shaders)
       return;
    /* can't precompile fixedfunc */
    if (!shaders[MESA_SHADER_VERTEX] || !shaders[MESA_SHADER_FRAGMENT]) {
-      if (shaders[MESA_SHADER_VERTEX] || shaders[MESA_SHADER_FRAGMENT]) {
-         struct zink_shader *zs = shaders[MESA_SHADER_VERTEX] ? shaders[MESA_SHADER_VERTEX] : shaders[MESA_SHADER_FRAGMENT];
-         if (zs->info.separate_shader && !zs->precompile.obj.mod && util_queue_fence_is_signalled(&zs->precompile.fence) &&
-             zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB &&
-             /* sample shading can't precompile */
-             (!shaders[MESA_SHADER_FRAGMENT] || !zs->info.fs.uses_sample_shading))
-            util_queue_add_job(&zink_screen(pctx->screen)->cache_get_thread, zs, &zs->precompile.fence, precompile_separate_shader_job, NULL, 0);
-      }
+      /* handled directly from shader create */
       return;
    }
    unsigned hash = 0;
@@ -2120,7 +2113,16 @@ zink_create_gfx_shader_state(struct pipe_context *pctx, const struct pipe_shader
       zink_descriptors_init_bindless(zink_context(pctx));
 
    void *ret = zink_shader_create(zink_screen(pctx->screen), nir, &shader->stream_output);
+
+   if (nir->info.separate_shader && zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB &&
+       (screen->info.have_EXT_graphics_pipeline_library && (nir->info.stage == MESA_SHADER_FRAGMENT || nir->info.stage == MESA_SHADER_VERTEX))) {
+      struct zink_shader *zs = ret;
+      /* sample shading can't precompile */
+      if (nir->info.stage != MESA_SHADER_FRAGMENT || !nir->info.fs.uses_sample_shading)
+         util_queue_add_job(&screen->cache_get_thread, zs, &zs->precompile.fence, precompile_separate_shader_job, NULL, 0);
+   }
    ralloc_free(nir);
+
    return ret;
 }
 
