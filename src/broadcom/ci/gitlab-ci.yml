@@ -17,9 +17,9 @@
   variables:
     BM_BOOTFS: /boot/raspberrypi_armhf
 
-vc4-rpi3-gl:arm64:
+vc4-rpi3-gl:armhf:
   extends:
-    - .broadcom-test:arm64
+    - .broadcom-test:armhf
     - .vc4-rules
   script:
     - ./install/bare-metal/poe-powered.sh
@@ -32,9 +32,9 @@ vc4-rpi3-gl:arm64:
     DEQP_SUITE: broadcom-rpi3
     HWCI_START_WESTON: 1
 
-v3d-rpi4-gl:arm64:
+v3d-rpi4-gl:armhf:
   extends:
-    - .broadcom-test:arm64
+    - .broadcom-test:armhf
     - .v3d-rules
   script:
     - ./install/bare-metal/poe-powered.sh
