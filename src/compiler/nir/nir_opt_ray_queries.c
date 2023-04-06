@@ -77,7 +77,7 @@ nir_find_ray_queries_read(struct set *queries,
             nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
             switch (intrin->intrinsic) {
             case nir_intrinsic_rq_proceed:
-               if (list_length(&intrin->dest.ssa.uses) > 0)
+               if (!list_is_empty(&intrin->dest.ssa.uses))
                   mark_query_read(queries, intrin);
                break;
             case nir_intrinsic_rq_load:
