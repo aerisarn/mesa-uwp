@@ -235,12 +235,7 @@ dxil_nir_split_tess_ctrl(nir_shader *nir, nir_function **patch_const_func)
             continue;
          nir_foreach_use_including_if_safe(src, &intr->dest.ssa) {
             b.cursor = nir_before_src(src);
-            nir_ssa_def *id = nir_load_invocation_id(&b);
-
-            if (src->is_if)
-               nir_if_rewrite_condition_ssa(src->parent_if, src, id);
-            else
-               nir_instr_rewrite_src_ssa(src->parent_instr, src, id);
+            nir_src_rewrite_ssa(src, nir_load_invocation_id(&b));
          }
          nir_instr_remove(instr);
       }
