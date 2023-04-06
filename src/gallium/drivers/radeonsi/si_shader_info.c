@@ -10,13 +10,7 @@
 #include "sid.h"
 #include "nir.h"
 
-
-struct si_shader_profile {
-   uint32_t sha1[SHA1_DIGEST_LENGTH32];
-   uint32_t options;
-};
-
-static struct si_shader_profile profiles[] =
+struct si_shader_profile si_shader_profiles[] =
 {
    {
       /* Plot3D */
@@ -41,6 +35,11 @@ static struct si_shader_profile profiles[] =
       SI_PROFILE_CLAMP_DIV_BY_ZERO,
    },
 };
+
+unsigned si_get_num_shader_profiles(void)
+{
+   return ARRAY_SIZE(si_shader_profiles);
+}
 
 static unsigned get_inst_tessfactor_writemask(nir_intrinsic_instr *intrin)
 {
@@ -603,9 +602,9 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
    info->base = nir->info;
 
    /* Get options from shader profiles. */
-   for (unsigned i = 0; i < ARRAY_SIZE(profiles); i++) {
-      if (_mesa_printed_sha1_equal(info->base.source_sha1, profiles[i].sha1)) {
-         info->options = profiles[i].options;
+   for (unsigned i = 0; i < ARRAY_SIZE(si_shader_profiles); i++) {
+      if (_mesa_printed_sha1_equal(info->base.source_sha1, si_shader_profiles[i].sha1)) {
+         info->options = si_shader_profiles[i].options;
          break;
       }
    }

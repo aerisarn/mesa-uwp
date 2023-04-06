@@ -115,6 +115,7 @@
 #include "shader_info.h"
 #include "ac_binary.h"
 #include "ac_gpu_info.h"
+#include "util/mesa-sha1.h"
 #include "util/u_live_shader_cache.h"
 #include "util/u_queue.h"
 #include "si_pm4.h"
@@ -305,6 +306,14 @@ enum
 #define SI_NGG_CULL_SMALL_LINES_DIAMOND_EXIT (1 << 4)   /* cull small lines according to the diamond exit rule */
 #define SI_NGG_CULL_CLIP_PLANE_ENABLE(enable) (((enable) & 0xff) << 5)
 #define SI_NGG_CULL_GET_CLIP_PLANE_ENABLE(x)  (((x) >> 5) & 0xff)
+
+struct si_shader_profile {
+   uint32_t sha1[SHA1_DIGEST_LENGTH32];
+   uint32_t options;
+};
+
+extern struct si_shader_profile si_shader_profiles[];
+unsigned si_get_num_shader_profiles(void);
 
 #define SI_PROFILE_WAVE32                    (1 << 0)
 #define SI_PROFILE_GFX10_WAVE64              (1 << 1)
