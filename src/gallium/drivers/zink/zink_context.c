@@ -1013,6 +1013,11 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
    struct zink_sampler_view *sampler_view = CALLOC_STRUCT_CL(zink_sampler_view);
    bool err;
 
+   if (!sampler_view) {
+      mesa_loge("ZINK: failed to allocate sampler_view!");
+      return NULL;
+   }
+      
    sampler_view->base = *state;
    sampler_view->base.texture = NULL;
    pipe_resource_reference(&sampler_view->base.texture, pres);
@@ -4993,14 +4998,26 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
          util_idalloc_alloc(&ctx->di.bindless[i].img_slots);
          if (zink_descriptor_mode == ZINK_DESCRIPTOR_MODE_DB) {
             ctx->di.bindless[i].db.buffer_infos = malloc(sizeof(VkDescriptorAddressInfoEXT) * ZINK_MAX_BINDLESS_HANDLES);
+            if (!ctx->di.bindless[i].db.buffer_infos) {
+               mesa_loge("ZINK: failed to allocate ctx->di.bindless[%d].db.buffer_infos!",i);
+               goto fail;
+            }
             for (unsigned j = 0; j < ZINK_MAX_BINDLESS_HANDLES; j++) {
                ctx->di.bindless[i].db.buffer_infos[j].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT;
                ctx->di.bindless[i].db.buffer_infos[j].pNext = NULL;
             }
          } else {
             ctx->di.bindless[i].t.buffer_infos = malloc(sizeof(VkBufferView) * ZINK_MAX_BINDLESS_HANDLES);
+            if (!ctx->di.bindless[i].t.buffer_infos) {
+               mesa_loge("ZINK: failed to allocate ctx->di.bindless[%d].t.buffer_infos!",i);
+               goto fail;
+            }
          }
          ctx->di.bindless[i].img_infos = malloc(sizeof(VkDescriptorImageInfo) * ZINK_MAX_BINDLESS_HANDLES);
+         if (!ctx->di.bindless[i].img_infos) {
+            mesa_loge("ZINK: failed to allocate ctx->di.bindless[%d].img_infos!",i);
+            goto fail;
+         }
          util_dynarray_init(&ctx->di.bindless[i].updates, NULL);
          util_dynarray_init(&ctx->di.bindless[i].resident, NULL);
       }

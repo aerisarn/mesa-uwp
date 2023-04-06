@@ -1196,6 +1196,10 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
    prog->last_variant_hash = ctx->gfx_pipeline_state.optimal_key;
 
    struct zink_gfx_library_key *gkey = CALLOC_STRUCT(zink_gfx_library_key);
+   if (!gkey) {
+      mesa_loge("ZINK: failed to allocate gkey!");
+      goto fail;
+   }
    gkey->optimal_key = prog->last_variant_hash;
    assert(gkey->optimal_key);
    gkey->pipeline = zink_create_gfx_pipeline_combined(screen, prog, VK_NULL_HANDLE, libs, 2, VK_NULL_HANDLE, false);
@@ -1927,6 +1931,11 @@ struct zink_gfx_library_key *
 zink_create_pipeline_lib(struct zink_screen *screen, struct zink_gfx_program *prog, struct zink_gfx_pipeline_state *state)
 {
    struct zink_gfx_library_key *gkey = CALLOC_STRUCT(zink_gfx_library_key);
+   if (!gkey) {
+      mesa_loge("ZINK: failed to allocate gkey!");
+      return NULL;
+   }
+      
    gkey->optimal_key = state->optimal_key;
    assert(gkey->optimal_key);
    memcpy(gkey->modules, prog->modules, sizeof(gkey->modules));
@@ -1988,6 +1997,11 @@ print_pipeline_stats(struct zink_screen *screen, VkPipeline pipeline)
       VkPipelineExecutableStatisticKHR *stats = NULL;
       VKSCR(GetPipelineExecutableStatisticsKHR)(screen->dev, &info, &count, NULL);
       stats = calloc(count, sizeof(VkPipelineExecutableStatisticKHR));
+      if (!stats) {
+         mesa_loge("ZINK: failed to allocate stats!");
+         return;
+      }
+         
       for (unsigned i = 0; i < count; i++)
          stats[i].sType = VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_STATISTIC_KHR;
       VKSCR(GetPipelineExecutableStatisticsKHR)(screen->dev, &info, &count, stats);

@@ -671,6 +671,11 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    pipe_reference_init(&obj->reference, 1);
    if (loader_private) {
       obj->bo = CALLOC_STRUCT(zink_bo);
+      if (!obj->bo) {
+         mesa_loge("ZINK: failed to allocate obj->bo!");
+         return NULL;
+      }
+         
       obj->transfer_dst = true;
       return obj;
    } else if (templ->target == PIPE_BUFFER) {
@@ -1169,6 +1174,11 @@ resource_create(struct pipe_screen *pscreen,
    struct zink_screen *screen = zink_screen(pscreen);
    struct zink_resource *res = CALLOC_STRUCT_CL(zink_resource);
 
+   if (!res) {
+      mesa_loge("ZINK: failed to allocate res!");
+      return NULL;
+   }
+
    if (modifiers_count > 0 && screen->info.have_EXT_image_drm_format_modifier) {
       /* for rebinds */
       res->modifiers_count = modifiers_count;
@@ -1334,6 +1344,11 @@ add_resource_bind(struct zink_context *ctx, struct zink_resource *res, unsigned 
    if (bind & ZINK_BIND_DMABUF && !res->modifiers_count && screen->info.have_EXT_image_drm_format_modifier) {
       res->modifiers_count = 1;
       res->modifiers = malloc(res->modifiers_count * sizeof(uint64_t));
+      if (!res->modifiers) {
+         mesa_loge("ZINK: failed to allocate res->modifiers!");
+         return false;
+      }
+
       res->modifiers[0] = DRM_FORMAT_MOD_LINEAR;
    }
    struct zink_resource_object *new_obj = resource_object_create(screen, &res->base.b, NULL, &res->linear, res->modifiers, res->modifiers_count, NULL);

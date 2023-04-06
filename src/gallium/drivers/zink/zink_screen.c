@@ -1511,6 +1511,10 @@ choose_pdev(struct zink_screen *screen)
       assert(pdev_count > 0);
 
       pdevs = malloc(sizeof(*pdevs) * pdev_count);
+      if (!pdevs) {
+         mesa_loge("ZINK: failed to allocate pdevs!");
+         return;
+      }
       result = VKSCR(EnumeratePhysicalDevices)(screen->instance, &pdev_count, pdevs);
       assert(result == VK_SUCCESS);
       assert(pdev_count > 0);
@@ -1570,6 +1574,11 @@ update_queue_props(struct zink_screen *screen)
    assert(num_queues > 0);
 
    VkQueueFamilyProperties *props = malloc(sizeof(*props) * num_queues);
+   if (!props) {
+      mesa_loge("ZINK: failed to allocate props!");
+      return;
+   }
+      
    VKSCR(GetPhysicalDeviceQueueFamilyProperties)(screen->pdev, &num_queues, props);
 
    bool found_gfx = false;

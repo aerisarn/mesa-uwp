@@ -474,6 +474,10 @@ query_pool_get_range(struct zink_context *ctx, struct zink_query *q)
             pool = find_or_allocate_qp(ctx, q, pool_idx);
          }
          vkq = CALLOC_STRUCT(zink_vk_query);
+         if (!vkq) {
+            mesa_loge("ZINK: failed to allocate vkq!");
+            return;
+         }
 
          vkq->refcount = 1;
          vkq->needs_reset = true;
