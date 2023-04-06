@@ -173,6 +173,18 @@ radv_amdgpu_request_to_fence(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_fen
    fence->fence.fence = req->seq_no;
 }
 
+static struct radv_amdgpu_cs_ib_info
+radv_amdgpu_cs_ib_to_info(struct radv_amdgpu_cs *cs, struct radv_amdgpu_ib ib)
+{
+   struct radv_amdgpu_cs_ib_info info = {
+      .flags = 0,
+      .ip_type = cs->hw_ip,
+      .ib_mc_address = radv_amdgpu_winsys_bo(ib.bo)->base.va,
+      .size = ib.cdw,
+   };
+   return info;
+}
+
 static void
 radv_amdgpu_cs_destroy(struct radeon_cmdbuf *rcs)
 {
@@ -978,7 +990,7 @@ radv_amdgpu_winsys_cs_submit_fallback(
    assert(MAX2(initial_preamble_count, continue_preamble_count) + postamble_count <
           RADV_MAX_IBS_PER_SUBMIT);
 
-   for (unsigned cs_idx = 0; cs_idx < cs_count;) {
+   for (unsigned cs_idx = 0, cs_ib_idx = 0; cs_idx < cs_count;) {
       struct radeon_cmdbuf **preambles = cs_idx ? continue_preamble_cs : initial_preamble_cs;
       const unsigned preamble_count = cs_idx ? continue_preamble_count : initial_preamble_count;
       const unsigned ib_per_submit = RADV_MAX_IBS_PER_SUBMIT - preamble_count - postamble_count;
@@ -986,7 +998,9 @@ radv_amdgpu_winsys_cs_submit_fallback(
 
       /* Copy preambles to the submission. */
       for (unsigned i = 0; i < preamble_count; ++i) {
+         /* Assume that the full preamble fits into 1 IB. */
          struct radv_amdgpu_cs *cs = radv_amdgpu_cs(preambles[i]);
+         assert(cs->num_old_ib_buffers <= 1);
          ibs[num_submitted_ibs++] = cs->ib;
       }
 
@@ -994,14 +1008,28 @@ radv_amdgpu_winsys_cs_submit_fallback(
          struct radv_amdgpu_cs *cs = radv_amdgpu_cs(cs_array[cs_idx]);
          struct radv_amdgpu_cs_ib_info ib;
 
+         if (cs_ib_idx == 0) {
+            /* Make sure the whole CS fits into the same submission. */
+            unsigned cs_num_ib = cs->use_ib ? 1 : cs->num_old_ib_buffers;
+            if (i + cs_num_ib > ib_per_submit)
+               break;
+         }
+
          /* When can use IBs, we only need to submit the main IB of this CS,
           * because everything else is chained to the first IB.
+          * Otherwise we must submit all IBs in the old_ib_buffers array.
           */
          if (cs->use_ib) {
             ib = cs->ib;
             cs_idx++;
          } else {
-            unreachable("TODO");
+            assert(cs_ib_idx < cs->num_old_ib_buffers);
+            ib = radv_amdgpu_cs_ib_to_info(cs, cs->old_ib_buffers[cs_ib_idx++]);
+
+            if (cs_ib_idx == cs->num_old_ib_buffers) {
+               cs_idx++;
+               cs_ib_idx = 0;
+            }
          }
 
          if (uses_shadow_regs && ib.ip_type == AMDGPU_HW_IP_GFX)
@@ -1014,7 +1042,9 @@ radv_amdgpu_winsys_cs_submit_fallback(
 
       /* Copy postambles to the submission. */
       for (unsigned i = 0; i < postamble_count; ++i) {
+         /* Assume that the full postamble fits into 1 IB. */
          struct radv_amdgpu_cs *cs = radv_amdgpu_cs(postamble_cs[i]);
+         assert(cs->num_old_ib_buffers <= 1);
          ibs[num_submitted_ibs++] = cs->ib;
       }
 
