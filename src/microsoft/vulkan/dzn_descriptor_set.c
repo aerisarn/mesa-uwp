@@ -188,7 +188,8 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
          bindings[i].pImmutableSamplers != NULL;
       bool static_sampler = false;
 
-      if (immutable_samplers && bindings[i].descriptorCount == 1) {
+      if (device->support_static_samplers &&
+          immutable_samplers && bindings[i].descriptorCount == 1) {
          VK_FROM_HANDLE(dzn_sampler, sampler, bindings[i].pImmutableSamplers[0]);
 
          if (sampler->static_border_color != -1)
@@ -301,7 +302,8 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
       bool has_immutable_samplers =
          has_sampler &&
          ordered_bindings[i].pImmutableSamplers != NULL;
-      bool has_static_sampler = has_immutable_samplers && desc_count == 1;
+      bool has_static_sampler = device->support_static_samplers &&
+         has_immutable_samplers && desc_count == 1;
       bool is_dynamic = is_dynamic_desc_type(desc_type);
 
       D3D12_SHADER_VISIBILITY visibility = device->bindless ?

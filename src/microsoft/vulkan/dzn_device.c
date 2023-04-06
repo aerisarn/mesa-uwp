@@ -458,6 +458,13 @@ dzn_physical_device_cache_caps(struct dzn_physical_device *pdev)
    ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_D3D12_OPTIONS13, &pdev->options13, sizeof(pdev->options13));
    ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_D3D12_OPTIONS14, &pdev->options14, sizeof(pdev->options14));
    ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_D3D12_OPTIONS15, &pdev->options15, sizeof(pdev->options15));
+#if D3D12_SDK_VERSION >= 610
+   if (FAILED(ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_D3D12_OPTIONS19, &pdev->options19, sizeof(pdev->options19)))) {
+      pdev->options19.MaxSamplerDescriptorHeapSize = D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE;
+      pdev->options19.MaxSamplerDescriptorHeapSizeWithStaticSamplers = pdev->options19.MaxSamplerDescriptorHeapSize;
+      pdev->options19.MaxViewDescriptorHeapSize = D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_1;
+   }
+#endif
 
    pdev->queue_families[pdev->queue_family_count++] = (struct dzn_queue_family) {
       .props = {
@@ -2409,15 +2416,28 @@ dzn_device_create(struct dzn_physical_device *pdev,
       device->need_swapchain_blits = true;
    }
 
+   device->support_static_samplers = true;
    device->bindless = (instance->debug_flags & DZN_DEBUG_BINDLESS) != 0 ||
+#if D3D12_SDK_VERSION >= 610
+      /* Enable bindless by default when we can do it and still be in-spec, this is
+       * likely to be more efficient than the "bindful" method of copying descriptors. */
+      (pdev->options19.MaxSamplerDescriptorHeapSize >= 4000 &&
+       pdev->shader_model >= D3D_SHADER_MODEL_6_6) ||
+#endif
       device->vk.enabled_features.descriptorIndexing ||
       device->vk.enabled_extensions.EXT_descriptor_indexing;
 
    if (device->bindless) {
+#if D3D12_SDK_VERSION >= 610
+      uint32_t sampler_count = MIN2(pdev->options19.MaxSamplerDescriptorHeapSize, 4000);
+      device->support_static_samplers = pdev->options19.MaxSamplerDescriptorHeapSizeWithStaticSamplers >= sampler_count;
+#else
+      uint32_t sampler_count = D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE;
+      device->support_static_samplers = true;
+#endif
       dzn_foreach_pool_type(type) {
          uint32_t descriptor_count = type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER ?
-            D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE :
-            D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_1;
+            sampler_count : D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_1;
          result = dzn_descriptor_heap_init(&device->device_heaps[type].heap, device, type, descriptor_count, true);
          if (result != VK_SUCCESS) {
             dzn_device_destroy(device, pAllocator);

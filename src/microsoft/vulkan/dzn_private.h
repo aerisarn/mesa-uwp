@@ -218,6 +218,9 @@ struct dzn_physical_device {
    D3D12_FEATURE_DATA_D3D12_OPTIONS13 options13;
    D3D12_FEATURE_DATA_D3D12_OPTIONS14 options14;
    D3D12_FEATURE_DATA_D3D12_OPTIONS15 options15;
+#if D3D12_SDK_VERSION >= 610
+   D3D12_FEATURE_DATA_D3D12_OPTIONS19 options19;
+#endif
    VkPhysicalDeviceMemoryProperties memory;
    D3D12_HEAP_FLAGS heap_flags_for_mem_type[VK_MAX_MEMORY_TYPES];
    const struct vk_sync_type *sync_types[MAX_SYNC_TYPES + 1];
@@ -308,6 +311,7 @@ struct dzn_device {
    struct dzn_queue *swapchain_queue;
 
    bool bindless;
+   bool support_static_samplers;
    struct dzn_device_descriptor_heap device_heaps[NUM_POOL_TYPES];
 };
 
@@ -425,8 +429,8 @@ struct dzn_buffer_desc {
    int *bindless_descriptor_slot;
 };
 
-#define MAX_DESCS_PER_SAMPLER_HEAP 2048u
-#define MAX_DESCS_PER_CBV_SRV_UAV_HEAP 1000000u
+#define MAX_DESCS_PER_SAMPLER_HEAP     D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE
+#define MAX_DESCS_PER_CBV_SRV_UAV_HEAP D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_1
 
 VkResult
 dzn_descriptor_heap_init(struct dzn_descriptor_heap *heap,
