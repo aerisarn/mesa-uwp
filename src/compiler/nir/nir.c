@@ -1743,10 +1743,7 @@ nir_ssa_def_rewrite_uses(nir_ssa_def *def, nir_ssa_def *new_ssa)
 {
    assert(def != new_ssa);
    nir_foreach_use_including_if_safe(use_src, def) {
-      if (use_src->is_if)
-         nir_if_rewrite_condition_ssa(use_src->parent_if, use_src, new_ssa);
-      else
-         nir_instr_rewrite_src_ssa(use_src->parent_instr, use_src, new_ssa);
+      nir_src_rewrite_ssa(use_src, new_ssa);
    }
 }
 
@@ -1803,17 +1800,18 @@ nir_ssa_def_rewrite_uses_after(nir_ssa_def *def, nir_ssa_def *new_ssa,
       return;
 
    nir_foreach_use_including_if_safe(use_src, def) {
-      if (use_src->is_if) {
-         nir_if_rewrite_condition_ssa(use_src->parent_if, use_src, new_ssa);
-      } else {
+      if (!use_src->is_if) {
          assert(use_src->parent_instr != def->parent_instr);
+
          /* Since def already dominates all of its uses, the only way a use can
           * not be dominated by after_me is if it is between def and after_me in
           * the instruction list.
           */
-         if (!is_instr_between(def->parent_instr, after_me, use_src->parent_instr))
-            nir_instr_rewrite_src_ssa(use_src->parent_instr, use_src, new_ssa);
+         if (is_instr_between(def->parent_instr, after_me, use_src->parent_instr))
+            continue;
       }
+
+      nir_src_rewrite_ssa(use_src, new_ssa);
    }
 }
 
