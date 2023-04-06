@@ -352,36 +352,13 @@ impl Program {
     }
 
     pub fn build(&self, dev: &Arc<Device>, options: String) -> bool {
-        if self.is_binary() {
-            return true;
-        }
-
-        let mut info = self.build_info();
-        let d = Self::dev_build_info(&mut info, dev);
         let lib = options.contains("-create-library");
-
-        let (spirv, log) = if let Some(il) = self.il.as_ref() {
-            il.clone_on_validate()
-        } else {
-            let args = prepare_options(&options, dev);
-            spirv::SPIRVBin::from_clc(
-                &self.src,
-                &args,
-                &Vec::new(),
-                get_disk_cache(),
-                dev.cl_features(),
-                dev.address_bits(),
-            )
-        };
-
-        d.log = log;
-        if spirv.is_none() {
-            d.status = CL_BUILD_ERROR;
+        let mut info = self.build_info();
+        if !self.do_compile(dev, options, &Vec::new(), &mut info) {
             return false;
         }
-        d.spirv = spirv;
-        d.options = options;
 
+        let d = Self::dev_build_info(&mut info, dev);
         let spirvs = [d.spirv.as_ref().unwrap()];
         let (spirv, log) = spirv::SPIRVBin::link(&spirvs, lib);
 
@@ -399,23 +376,23 @@ impl Program {
             true
         } else {
             d.status = CL_BUILD_ERROR;
+            d.bin_type = CL_PROGRAM_BINARY_TYPE_NONE;
             false
         }
     }
 
-    pub fn compile(
+    fn do_compile(
         &self,
         dev: &Arc<Device>,
         options: String,
         headers: &[spirv::CLCHeader],
+        info: &mut MutexGuard<ProgramBuild>,
     ) -> bool {
         if self.is_binary() {
             return true;
         }
 
-        let mut info = self.build_info();
-        let d = Self::dev_build_info(&mut info, dev);
-
+        let d = Self::dev_build_info(info, dev);
         let (spirv, log) = if let Some(il) = self.il.as_ref() {
             il.clone_on_validate()
         } else {
@@ -442,6 +419,16 @@ impl Program {
             d.status = CL_BUILD_ERROR;
             false
         }
+    }
+
+    pub fn compile(
+        &self,
+        dev: &Arc<Device>,
+        options: String,
+        headers: &[spirv::CLCHeader],
+    ) -> bool {
+        let mut info = self.build_info();
+        self.do_compile(dev, options, headers, &mut info)
     }
 
     pub fn link(
