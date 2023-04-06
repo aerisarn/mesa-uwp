@@ -119,13 +119,7 @@ static bool
 ring_can_use_ib_bos(const struct radv_amdgpu_winsys *ws,
                     enum amd_ip_type ip_type)
 {
-   if (ip_type == AMD_IP_UVD ||
-       ip_type == AMD_IP_VCE ||
-       ip_type == AMD_IP_UVD_ENC ||
-       ip_type == AMD_IP_VCN_DEC ||
-       ip_type == AMD_IP_VCN_ENC)
-      return false;
-   return ws->use_ib_bos;
+   return ws->use_ib_bos && (ip_type == AMD_IP_GFX || ip_type == AMD_IP_COMPUTE);
 }
 
 struct radv_amdgpu_cs_request {
