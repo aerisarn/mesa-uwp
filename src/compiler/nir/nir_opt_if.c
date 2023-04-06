@@ -1288,7 +1288,7 @@ propagate_condition_eval(nir_builder *b, nir_if *nif, nir_src *use_src,
                          nir_src *alu_use, nir_alu_instr *alu)
 {
    bool bool_value;
-   b->cursor = nir_before_src(alu_use, alu_use->is_if);
+   b->cursor = nir_before_src(alu_use);
    if (!evaluate_if_condition(nif, b->cursor, &bool_value))
       return false;
 
@@ -1339,7 +1339,7 @@ evaluate_condition_use(nir_builder *b, nir_if *nif, nir_src *use_src)
 {
    bool progress = false;
 
-   b->cursor = nir_before_src(use_src, use_src->is_if);
+   b->cursor = nir_before_src(use_src);
 
    bool bool_value;
    if (evaluate_if_condition(nif, b->cursor, &bool_value)) {

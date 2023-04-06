@@ -4136,9 +4136,9 @@ nir_after_block_before_jump(nir_block *block)
 }
 
 static inline nir_cursor
-nir_before_src(nir_src *src, bool is_if_condition)
+nir_before_src(nir_src *src)
 {
-   if (is_if_condition) {
+   if (src->is_if) {
       nir_block *prev_block =
          nir_cf_node_as_block(nir_cf_node_prev(&src->parent_if->cf_node));
       assert(!nir_block_ends_in_jump(prev_block));
