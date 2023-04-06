@@ -2320,11 +2320,6 @@ struct radv_ray_tracing_lib_pipeline {
    VkPipelineShaderStageCreateInfo *stages;
    unsigned group_count;
    VkRayTracingShaderGroupCreateInfoKHR *group_infos;
-   VkPipelineShaderStageModuleIdentifierCreateInfoEXT *identifiers;
-   struct {
-      uint8_t sha1[SHA1_DIGEST_LENGTH];
-   } *hashes;
-
    struct radv_ray_tracing_module groups[];
 };
 

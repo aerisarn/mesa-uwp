@@ -373,22 +373,9 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
 
       memcpy(pipeline->stages, local_create_info.pStages, size);
 
-      pipeline->hashes =
-         ralloc_size(pipeline->ctx, sizeof(*pipeline->hashes) * local_create_info.stageCount);
-      if (!pipeline->hashes)
-         goto fail;
-
-      pipeline->identifiers =
-         ralloc_size(pipeline->ctx, sizeof(*pipeline->identifiers) * local_create_info.stageCount);
-      if (!pipeline->identifiers)
-         goto fail;
-
       for (uint32_t i = 0; i < local_create_info.stageCount; i++) {
          RADV_FROM_HANDLE(vk_shader_module, module, pipeline->stages[i].module);
 
-         const VkPipelineShaderStageModuleIdentifierCreateInfoEXT *iinfo =
-            vk_find_struct_const(local_create_info.pStages[i].pNext,
-                                 PIPELINE_SHADER_STAGE_MODULE_IDENTIFIER_CREATE_INFO_EXT);
          const VkShaderModuleCreateInfo *minfo =
             vk_find_struct_const(local_create_info.pStages[i].pNext, SHADER_MODULE_CREATE_INFO);
 
@@ -443,18 +430,6 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
             if (!pipeline->stages[i].pName)
                goto fail;
             pipeline->stages[i].pNext = NULL;
-         } else {
-            assert(iinfo);
-            pipeline->identifiers[i].identifierSize =
-               MIN2(iinfo->identifierSize, sizeof(pipeline->hashes[i].sha1));
-            memcpy(pipeline->hashes[i].sha1, iinfo->pIdentifier,
-                   pipeline->identifiers[i].identifierSize);
-            pipeline->stages[i].module = VK_NULL_HANDLE;
-            pipeline->stages[i].pNext = &pipeline->identifiers[i];
-            pipeline->identifiers[i].sType =
-               VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_MODULE_IDENTIFIER_CREATE_INFO_EXT;
-            pipeline->identifiers[i].pNext = NULL;
-            pipeline->identifiers[i].pIdentifier = pipeline->hashes[i].sha1;
          }
       }
    }
