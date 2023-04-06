@@ -1256,6 +1256,7 @@ create_shader_object(struct lvp_device *device, const VkShaderCreateInfoEXT *pCr
       VkResult result = compile_spirv(device, &sinfo, &nir);
       if (result != VK_SUCCESS)
          goto fail;
+      nir->info.separate_shader = true;
    } else {
       assert(pCreateInfo->codeType == VK_SHADER_CODE_TYPE_BINARY_EXT);
       if (pCreateInfo->codeSize < SHA1_DIGEST_LENGTH + VK_UUID_SIZE + 1)
