@@ -2063,6 +2063,13 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
    if (sel->stage <= MESA_SHADER_GEOMETRY)
       NIR_PASS(progress, nir, si_nir_kill_outputs, key);
 
+   NIR_PASS(
+      _, nir, ac_nir_lower_tex,
+      &(ac_nir_lower_tex_options){
+         .gfx_level = sel->screen->info.gfx_level,
+         .lower_array_layer_round_even = !sel->screen->info.conformant_trunc_coord,
+      });
+
    if (nir->info.uses_resource_info_query)
       NIR_PASS(progress, nir, ac_nir_lower_resinfo, sel->screen->info.gfx_level);
 

@@ -613,7 +613,6 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
       .lower_to_fragment_fetch_amd = device->physical_device->use_fmask,
       .lower_lod_zero_width = true,
       .lower_invalid_implicit_lod = true,
-      .lower_array_layer_round_even = !device->physical_device->rad_info.conformant_trunc_coord,
    };
 
    NIR_PASS(_, nir, nir_lower_tex, &tex_options);

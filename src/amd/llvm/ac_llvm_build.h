@@ -224,9 +224,6 @@ LLVMValueRef ac_build_fast_udiv_nuw(struct ac_llvm_context *ctx, LLVMValueRef nu
 LLVMValueRef ac_build_fast_udiv_u31_d_not_one(struct ac_llvm_context *ctx, LLVMValueRef num,
                                               LLVMValueRef multiplier, LLVMValueRef post_shift);
 
-void ac_prepare_cube_coords(struct ac_llvm_context *ctx, bool is_deriv, bool is_array, bool is_lod,
-                            LLVMValueRef *coords_arg, LLVMValueRef *derivs_arg);
-
 LLVMValueRef ac_build_fs_interp(struct ac_llvm_context *ctx, LLVMValueRef llvm_chan,
                                 LLVMValueRef attr_number, LLVMValueRef params, LLVMValueRef i,
                                 LLVMValueRef j);

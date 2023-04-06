@@ -1540,13 +1540,6 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_te
       return lower_gather4_integer(&ctx->ac, args, instr);
    }
 
-   /* Fixup for GFX9 which allocates 1D textures as 2D. */
-   if (instr->op == nir_texop_lod && ctx->ac.gfx_level == GFX9) {
-      if ((args->dim == ac_image_2darray || args->dim == ac_image_2d) && !args->coords[1]) {
-         args->coords[1] = ctx->ac.i32_0;
-      }
-   }
-
    args->attributes = AC_ATTR_INVARIANT_LOAD;
    bool cs_derivs =
       ctx->stage == MESA_SHADER_COMPUTE && ctx->info->cs.derivative_group != DERIVATIVE_GROUP_NONE;
@@ -4242,61 +4235,26 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 
    /* pack derivatives */
    if (ddx || ddy) {
-      int num_src_deriv_channels, num_dest_deriv_channels;
+      int num_deriv_channels;
       switch (instr->sampler_dim) {
       case GLSL_SAMPLER_DIM_3D:
-      case GLSL_SAMPLER_DIM_CUBE:
-         num_src_deriv_channels = 3;
-         num_dest_deriv_channels = 3;
+         num_deriv_channels = 3;
          break;
       case GLSL_SAMPLER_DIM_2D:
+      case GLSL_SAMPLER_DIM_CUBE:
       default:
-         num_src_deriv_channels = 2;
-         num_dest_deriv_channels = 2;
+         num_deriv_channels = 2;
          break;
       case GLSL_SAMPLER_DIM_1D:
-         num_src_deriv_channels = 1;
-         if (ctx->ac.gfx_level == GFX9) {
-            num_dest_deriv_channels = 2;
-         } else {
-            num_dest_deriv_channels = 1;
-         }
+         num_deriv_channels = ctx->ac.gfx_level == GFX9 ? 2 : 1;
          break;
       }
 
-      for (unsigned i = 0; i < num_src_deriv_channels; i++) {
+      for (unsigned i = 0; i < num_deriv_channels; i++) {
          args.derivs[i] = ac_to_float(&ctx->ac, ac_llvm_extract_elem(&ctx->ac, ddx, i));
-         args.derivs[num_dest_deriv_channels + i] =
+         args.derivs[num_deriv_channels + i] =
             ac_to_float(&ctx->ac, ac_llvm_extract_elem(&ctx->ac, ddy, i));
       }
-      for (unsigned i = num_src_deriv_channels; i < num_dest_deriv_channels; i++) {
-         LLVMValueRef zero = args.g16 ? ctx->ac.f16_0 : ctx->ac.f32_0;
-         args.derivs[i] = zero;
-         args.derivs[num_dest_deriv_channels + i] = zero;
-      }
-   }
-
-   if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE && args.coords[0]) {
-      for (unsigned chan = 0; chan < instr->coord_components; chan++)
-         args.coords[chan] = ac_to_float(&ctx->ac, args.coords[chan]);
-      if (instr->coord_components == 3)
-         args.coords[3] = LLVMGetUndef(args.a16 ? ctx->ac.f16 : ctx->ac.f32);
-      ac_prepare_cube_coords(&ctx->ac, instr->op == nir_texop_txd, instr->is_array,
-                             instr->op == nir_texop_lod, args.coords, args.derivs);
-   }
-
-   /* Texture coordinates fixups */
-   if (ctx->ac.gfx_level == GFX9 && instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
-       instr->op != nir_texop_lod) {
-      LLVMValueRef filler;
-      if (instr->op == nir_texop_txf)
-         filler = args.a16 ? ctx->ac.i16_0 : ctx->ac.i32_0;
-      else
-         filler = LLVMConstReal(args.a16 ? ctx->ac.f16 : ctx->ac.f32, 0.5);
-
-      if (instr->is_array)
-         args.coords[2] = args.coords[1];
-      args.coords[1] = filler;
    }
 
    /* Pack sample index */

@@ -530,6 +530,13 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layo
    if (progress)
       nir_shader_gather_info(stage->nir, nir_shader_get_entrypoint(stage->nir));
 
+   NIR_PASS(
+      _, stage->nir, ac_nir_lower_tex,
+      &(ac_nir_lower_tex_options){
+         .gfx_level = gfx_level,
+         .lower_array_layer_round_even = !device->physical_device->rad_info.conformant_trunc_coord,
+      });
+
    if (stage->nir->info.uses_resource_info_query)
       NIR_PASS(_, stage->nir, ac_nir_lower_resinfo, gfx_level);
 

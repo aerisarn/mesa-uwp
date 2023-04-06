@@ -9060,119 +9060,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 }
 
 void
-build_cube_select(isel_context* ctx, Temp ma, Temp id, Temp deriv, Temp* out_ma, Temp* out_sc,
-                  Temp* out_tc)
-{
-   Builder bld(ctx->program, ctx->block);
-
-   Temp deriv_x = emit_extract_vector(ctx, deriv, 0, v1);
-   Temp deriv_y = emit_extract_vector(ctx, deriv, 1, v1);
-   Temp deriv_z = emit_extract_vector(ctx, deriv, 2, v1);
-
-   Operand neg_one = Operand::c32(0xbf800000u);
-   Operand one = Operand::c32(0x3f800000u);
-   Operand two = Operand::c32(0x40000000u);
-   Operand four = Operand::c32(0x40800000u);
-
-   Temp is_ma_positive = bld.vopc(aco_opcode::v_cmp_le_f32, bld.def(bld.lm), Operand::zero(), ma);
-   Temp sgn_ma = bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(v1), neg_one, one, is_ma_positive);
-   Temp neg_sgn_ma = bld.vop2(aco_opcode::v_sub_f32, bld.def(v1), Operand::zero(), sgn_ma);
-
-   Temp is_ma_z = bld.vopc(aco_opcode::v_cmp_le_f32, bld.def(bld.lm), four, id);
-   Temp is_ma_y = bld.vopc(aco_opcode::v_cmp_le_f32, bld.def(bld.lm), two, id);
-   is_ma_y = bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc), is_ma_y, is_ma_z);
-   Temp is_not_ma_x = bld.sop2(Builder::s_or, bld.def(bld.lm), bld.def(s1, scc), is_ma_z, is_ma_y);
-
-   /* select sc */
-   Temp tmp = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), deriv_z, deriv_x, is_not_ma_x);
-   Temp sgn = bld.vop2_e64(
-      aco_opcode::v_cndmask_b32, bld.def(v1),
-      bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), neg_sgn_ma, sgn_ma, is_ma_z), one, is_ma_y);
-   *out_sc = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), tmp, sgn);
-
-   /* select tc */
-   tmp = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), deriv_y, deriv_z, is_ma_y);
-   sgn = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), neg_one, sgn_ma, is_ma_y);
-   *out_tc = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), tmp, sgn);
-
-   /* select ma */
-   tmp = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1),
-                  bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), deriv_x, deriv_y, is_ma_y),
-                  deriv_z, is_ma_z);
-   tmp = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand::c32(0x7fffffffu), tmp);
-   *out_ma = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), two, tmp);
-}
-
-void
-prepare_cube_coords(isel_context* ctx, std::vector<Temp>& coords, Temp* ddx, Temp* ddy,
-                    bool is_deriv, bool is_array)
-{
-   Builder bld(ctx->program, ctx->block);
-   Temp ma, tc, sc, id;
-   aco_opcode madak =
-      ctx->program->gfx_level >= GFX10_3 ? aco_opcode::v_fmaak_f32 : aco_opcode::v_madak_f32;
-   aco_opcode madmk =
-      ctx->program->gfx_level >= GFX10_3 ? aco_opcode::v_fmamk_f32 : aco_opcode::v_madmk_f32;
-
-   /* see comment in ac_prepare_cube_coords() */
-   if (is_array && ctx->options->gfx_level <= GFX8)
-      coords[3] = bld.vop2(aco_opcode::v_max_f32, bld.def(v1), Operand::zero(), coords[3]);
-
-   ma = bld.vop3(aco_opcode::v_cubema_f32, bld.def(v1), coords[0], coords[1], coords[2]);
-
-   aco_ptr<VALU_instruction> vop3a{
-      create_instruction<VALU_instruction>(aco_opcode::v_rcp_f32, asVOP3(Format::VOP1), 1, 1)};
-   vop3a->operands[0] = Operand(ma);
-   vop3a->abs[0] = true;
-   Temp invma = bld.tmp(v1);
-   vop3a->definitions[0] = Definition(invma);
-   ctx->block->instructions.emplace_back(std::move(vop3a));
-
-   sc = bld.vop3(aco_opcode::v_cubesc_f32, bld.def(v1), coords[0], coords[1], coords[2]);
-   if (!is_deriv)
-      sc = bld.vop2(madak, bld.def(v1), sc, invma, Operand::c32(0x3fc00000u /*1.5*/));
-
-   tc = bld.vop3(aco_opcode::v_cubetc_f32, bld.def(v1), coords[0], coords[1], coords[2]);
-   if (!is_deriv)
-      tc = bld.vop2(madak, bld.def(v1), tc, invma, Operand::c32(0x3fc00000u /*1.5*/));
-
-   id = bld.vop3(aco_opcode::v_cubeid_f32, bld.def(v1), coords[0], coords[1], coords[2]);
-
-   if (is_deriv) {
-      sc = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), sc, invma);
-      tc = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), tc, invma);
-
-      for (unsigned i = 0; i < 2; i++) {
-         /* see comment in ac_prepare_cube_coords() */
-         Temp deriv_ma;
-         Temp deriv_sc, deriv_tc;
-         build_cube_select(ctx, ma, id, i ? *ddy : *ddx, &deriv_ma, &deriv_sc, &deriv_tc);
-
-         deriv_ma = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), deriv_ma, invma);
-
-         Temp x = bld.vop2(aco_opcode::v_sub_f32, bld.def(v1),
-                           bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), deriv_sc, invma),
-                           bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), deriv_ma, sc));
-         Temp y = bld.vop2(aco_opcode::v_sub_f32, bld.def(v1),
-                           bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), deriv_tc, invma),
-                           bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), deriv_ma, tc));
-         *(i ? ddy : ddx) = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), x, y);
-      }
-
-      sc = bld.vop2(aco_opcode::v_add_f32, bld.def(v1), Operand::c32(0x3fc00000u /*1.5*/), sc);
-      tc = bld.vop2(aco_opcode::v_add_f32, bld.def(v1), Operand::c32(0x3fc00000u /*1.5*/), tc);
-   }
-
-   if (is_array) {
-      id = bld.vop2(madmk, bld.def(v1), coords[3], id, Operand::c32(0x41000000u /*8.0*/));
-      coords.erase(coords.begin() + 3);
-   }
-   coords[0] = sc;
-   coords[1] = tc;
-   coords[2] = id;
-}
-
-void
 get_const_vec(nir_ssa_def* vec, nir_const_value* cv[4])
 {
    if (vec->parent_instr->type != nir_instr_type_alu)
@@ -9363,25 +9250,8 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
    }
 
    std::vector<Temp> unpacked_coord;
-   if (ctx->options->gfx_level == GFX9 && instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
-       instr->coord_components) {
-      RegClass rc = a16 ? v2b : v1;
-      for (unsigned i = 0; i < coord.bytes() / rc.bytes(); i++)
-         unpacked_coord.emplace_back(emit_extract_vector(ctx, coord, i, rc));
-
-      assert(unpacked_coord.size() > 0 && unpacked_coord.size() < 3);
-
-      Operand coord2d;
-      /* 0.5 for floating point coords, 0 for integer. */
-      if (a16)
-         coord2d = instr->op == nir_texop_txf ? Operand::c16(0) : Operand::c16(0x3800);
-      else
-         coord2d = instr->op == nir_texop_txf ? Operand::c32(0) : Operand::c32(0x3f000000);
-      unpacked_coord.insert(std::next(unpacked_coord.begin()), bld.copy(bld.def(rc), coord2d));
-   } else if (coord != Temp()) {
+   if (coord != Temp())
       unpacked_coord.push_back(coord);
-   }
-
    if (has_sample_index)
       unpacked_coord.push_back(sample_index);
    if (has_lod)
@@ -9391,25 +9261,14 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
 
    coords = emit_pack_v1(ctx, unpacked_coord);
 
-   assert(instr->sampler_dim != GLSL_SAMPLER_DIM_CUBE || !a16);
-   if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE && instr->coord_components)
-      prepare_cube_coords(ctx, coords, &ddx, &ddy, instr->op == nir_texop_txd,
-                          instr->is_array && instr->op != nir_texop_lod);
-
    /* pack derivatives */
    if (has_ddx || has_ddy) {
-      RegClass rc = g16 ? v2b : v1;
       assert(a16 == g16 || ctx->options->gfx_level >= GFX10);
       std::array<Temp, 2> ddxddy = {ddx, ddy};
       for (Temp tmp : ddxddy) {
          if (tmp == Temp())
             continue;
          std::vector<Temp> unpacked = {tmp};
-         if (instr->sampler_dim == GLSL_SAMPLER_DIM_1D && ctx->options->gfx_level == GFX9) {
-            assert(has_ddx && has_ddy);
-            Temp zero = bld.copy(bld.def(rc), Operand::zero(rc.bytes()));
-            unpacked.push_back(zero);
-         }
          for (Temp derv : emit_pack_v1(ctx, unpacked))
             derivs.push_back(derv);
       }
