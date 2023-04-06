@@ -1491,6 +1491,9 @@ dzn_CmdPipelineBarrier2_enhanced(VkCommandBuffer commandBuffer,
    VK_MULTIALLOC_DECL(&ma, D3D12_BUFFER_BARRIER, buffer_barriers, num_buffer_barriers);
    VK_MULTIALLOC_DECL(&ma, D3D12_TEXTURE_BARRIER, texture_barriers, num_image_barriers);
 
+   if (ma.size == 0)
+      return;
+
    if (!vk_multialloc_alloc(&ma, &cmdbuf->vk.pool->alloc,
                             VK_SYSTEM_ALLOCATION_SCOPE_COMMAND)) {
       vk_command_buffer_set_error(&cmdbuf->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
