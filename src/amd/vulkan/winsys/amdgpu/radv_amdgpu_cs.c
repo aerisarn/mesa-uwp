@@ -1773,6 +1773,8 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request
       chunks[i].chunk_data = (uint64_t)(uintptr_t)&chunk_data[i];
 
       ib = &request->ibs[i];
+      assert(ib->ib_mc_address && ib->ib_mc_address % ctx->ws->info.ib_alignment == 0);
+      assert(ib->size);
 
       chunk_data[i].ib_data._pad = 0;
       chunk_data[i].ib_data.va_start = ib->ib_mc_address;
