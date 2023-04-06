@@ -7122,7 +7122,10 @@ fs_visitor::run_mesh(bool allow_spilling)
 static bool
 is_used_in_not_interp_frag_coord(nir_ssa_def *def)
 {
-   nir_foreach_use(src, def) {
+   nir_foreach_use_including_if(src, def) {
+      if (src->is_if)
+         return true;
+
       if (src->parent_instr->type != nir_instr_type_intrinsic)
          return true;
 
@@ -7130,9 +7133,6 @@ is_used_in_not_interp_frag_coord(nir_ssa_def *def)
       if (intrin->intrinsic != nir_intrinsic_load_frag_coord)
          return true;
    }
-
-   nir_foreach_if_use(src, def)
-      return true;
 
    return false;
 }

@@ -178,8 +178,8 @@ instr_cost(loop_info_state *state, nir_instr *instr,
             /* Also if the selects condition is only used by the select then
              * remove that alu instructons cost from the cost total also.
              */
-            if (!list_is_empty(&sel_alu->dest.dest.ssa.if_uses) ||
-                !list_is_singular(&sel_alu->dest.dest.ssa.uses))
+            if (!list_is_singular(&sel_alu->dest.dest.ssa.uses) ||
+                nir_ssa_def_used_by_if(&sel_alu->dest.dest.ssa))
                return 0;
             else
                return -1;

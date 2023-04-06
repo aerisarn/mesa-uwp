@@ -806,14 +806,7 @@ add_output(struct vc4_compile *c,
 static bool
 ntq_src_is_only_ssa_def_user(nir_src *src)
 {
-        if (!src->is_ssa)
-                return false;
-
-        if (!list_is_empty(&src->ssa->if_uses))
-                return false;
-
-        return (src->ssa->uses.next == &src->use_link &&
-                src->ssa->uses.next->next == &src->ssa->uses);
+        return src->is_ssa && list_is_singular(&src->ssa->uses);
 }
 
 /**

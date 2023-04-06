@@ -763,7 +763,7 @@ ntt_output_decl(struct ntt_compile *c, nir_intrinsic_instr *instr, uint32_t *fra
  */
 static bool
 ntt_try_store_in_tgsi_output(struct ntt_compile *c, struct ureg_dst *dst,
-                             struct list_head *uses, struct list_head *if_uses)
+                             struct list_head *uses)
 {
    *dst = ureg_dst_undef();
 
@@ -779,10 +779,12 @@ ntt_try_store_in_tgsi_output(struct ntt_compile *c, struct ureg_dst *dst,
       return false;
    }
 
-   if (!list_is_empty(if_uses) || !list_is_singular(uses))
+   if (!list_is_singular(uses))
       return false;
 
    nir_src *src = list_first_entry(uses, nir_src, use_link);
+   if (src->is_if)
+      return false;
 
    if (src->parent_instr->type != nir_instr_type_intrinsic)
       return false;
@@ -1099,7 +1101,7 @@ ntt_setup_registers(struct ntt_compile *c, struct exec_list *list)
       if (nir_reg->num_array_elems == 0) {
          struct ureg_dst decl;
          uint32_t write_mask = BITFIELD_MASK(nir_reg->num_components);
-         if (!ntt_try_store_in_tgsi_output(c, &decl, &nir_reg->uses, &nir_reg->if_uses)) {
+         if (!ntt_try_store_in_tgsi_output(c, &decl, &nir_reg->uses)) {
             if (nir_reg->bit_size == 64) {
                if (nir_reg->num_components > 2) {
                   fprintf(stderr, "NIR-to-TGSI: error: %d-component NIR r%d\n",
@@ -1253,7 +1255,7 @@ ntt_get_ssa_def_decl(struct ntt_compile *c, nir_ssa_def *ssa)
       writemask = ntt_64bit_write_mask(writemask);
 
    struct ureg_dst dst;
-   if (!ntt_try_store_in_tgsi_output(c, &dst, &ssa->uses, &ssa->if_uses))
+   if (!ntt_try_store_in_tgsi_output(c, &dst, &ssa->uses))
       dst = ntt_temp(c);
 
    c->ssa_temp[ssa->index] = ntt_swizzle_for_write_mask(ureg_src(dst), writemask);

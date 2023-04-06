@@ -146,15 +146,14 @@ copy_prop_instr(nir_function_impl *impl, nir_instr *instr)
 
    bool progress = false;
 
-   nir_foreach_use_safe(src, &mov->dest.dest.ssa) {
-      if (src->parent_instr->type == nir_instr_type_alu)
+   nir_foreach_use_including_if_safe(src, &mov->dest.dest.ssa) {
+      if (src->is_if)
+         progress |= copy_propagate_if(src, mov);
+      else if (src->parent_instr->type == nir_instr_type_alu)
          progress |= copy_propagate_alu(impl, container_of(src, nir_alu_src, src), mov);
       else
          progress |= copy_propagate(src, mov);
    }
-
-   nir_foreach_if_use_safe(src, &mov->dest.dest.ssa)
-      progress |= copy_propagate_if(src, mov);
 
    if (progress && nir_ssa_def_is_unused(&mov->dest.dest.ssa))
       nir_instr_remove(&mov->instr);

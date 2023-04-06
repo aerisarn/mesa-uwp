@@ -858,9 +858,9 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
       nir_ssa_def *ssa = alu->src[i].src.ssa;
 
       /* check that vecN instruction is only user of this */
-      bool need_mov = list_length(&ssa->if_uses) != 0;
-      nir_foreach_use(use_src, ssa) {
-         if (use_src->parent_instr != &alu->instr)
+      bool need_mov = false;
+      nir_foreach_use_including_if(use_src, ssa) {
+         if (use_src->is_if || use_src->parent_instr != &alu->instr)
             need_mov = true;
       }
 
