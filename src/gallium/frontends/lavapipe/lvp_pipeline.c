@@ -830,8 +830,12 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
                pipeline->shaders[i].tess_ccw = NULL; //this gets handled later
             }
          }
-         if (p->stages & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)
+         if (p->stages & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) {
             pipeline->force_min_sample = p->force_min_sample;
+            memcpy(&pipeline->shaders[MESA_SHADER_FRAGMENT], &p->shaders[MESA_SHADER_FRAGMENT], sizeof(struct lvp_shader));
+            pipeline->shaders[MESA_SHADER_FRAGMENT].pipeline_nir = NULL; //this gets handled later
+            pipeline->shaders[MESA_SHADER_FRAGMENT].tess_ccw = NULL; //this gets handled later
+         }
          if (p->stages & layout_stages) {
             if (!layout || (layout->vk.create_flags & VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT))
                merge_layouts(&device->vk, pipeline, p->layout);
