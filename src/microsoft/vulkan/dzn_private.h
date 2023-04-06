@@ -202,6 +202,9 @@ struct dzn_physical_device {
    ID3D12Device4 *dev;
    ID3D12Device10 *dev10;
    ID3D12Device11 *dev11;
+#if D3D12_SDK_VERSION >= 610
+   ID3D12Device12 *dev12;
+#endif
    D3D_FEATURE_LEVEL feature_level;
    D3D_SHADER_MODEL shader_model;
    D3D_ROOT_SIGNATURE_VERSION root_sig_version;
@@ -281,6 +284,9 @@ struct dzn_device {
    ID3D12Device4 *dev;
    ID3D12Device10 *dev10;
    ID3D12Device11 *dev11;
+#if D3D12_SDK_VERSION >= 610
+   ID3D12Device12 *dev12;
+#endif
    ID3D12DeviceConfiguration *dev_config;
 
    struct dzn_meta_indirect_draw indirect_draws[DZN_NUM_INDIRECT_DRAW_TYPES];

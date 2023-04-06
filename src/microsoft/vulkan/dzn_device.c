@@ -167,6 +167,11 @@ dzn_physical_device_destroy(struct vk_physical_device *physical)
    if (pdev->dev11)
       ID3D12Device1_Release(pdev->dev11);
 
+#if D3D12_SDK_VERSION >= 610
+   if (pdev->dev12)
+      ID3D12Device1_Release(pdev->dev12);
+#endif
+
    if (pdev->adapter)
       IUnknown_Release(pdev->adapter);
 
@@ -646,6 +651,10 @@ dzn_physical_device_get_d3d12_dev(struct dzn_physical_device *pdev)
          pdev->dev10 = NULL;
       if (FAILED(ID3D12Device1_QueryInterface(pdev->dev, &IID_ID3D12Device11, (void **)&pdev->dev11)))
          pdev->dev11 = NULL;
+#if D3D12_SDK_VERSION >= 610
+      if (FAILED(ID3D12Device1_QueryInterface(pdev->dev, &IID_ID3D12Device12, (void **)&pdev->dev12)))
+         pdev->dev12 = NULL;
+#endif
       dzn_physical_device_cache_caps(pdev);
       dzn_physical_device_init_memory(pdev);
       dzn_physical_device_init_uuids(pdev);
@@ -2210,6 +2219,11 @@ dzn_device_destroy(struct dzn_device *device, const VkAllocationCallbacks *pAllo
    if (device->dev11)
       ID3D12Device1_Release(device->dev11);
 
+#if D3D12_SDK_VERSION >= 610
+   if (device->dev12)
+      ID3D12Device1_Release(device->dev12);
+#endif
+
    vk_device_finish(&device->vk);
    vk_free2(&instance->vk.alloc, pAllocator, device);
 }
@@ -2309,6 +2323,13 @@ dzn_device_create(struct dzn_physical_device *pdev,
       device->dev11 = pdev->dev11;
       ID3D12Device1_AddRef(device->dev11);
    }
+
+#if D3D12_SDK_VERSION >= 610
+   if (pdev->dev12) {
+      device->dev12 = pdev->dev12;
+      ID3D12Device1_AddRef(device->dev12);
+   }
+#endif
 
    ID3D12InfoQueue *info_queue;
    if (SUCCEEDED(ID3D12Device1_QueryInterface(device->dev,
