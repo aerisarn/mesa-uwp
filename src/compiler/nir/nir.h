@@ -4363,15 +4363,6 @@ nir_instr_rewrite_src_ssa(ASSERTED nir_instr *instr,
 void nir_instr_rewrite_src(nir_instr *instr, nir_src *src, nir_src new_src);
 void nir_instr_move_src(nir_instr *dest_instr, nir_src *dest, nir_src *src);
 
-static inline void
-nir_if_rewrite_condition_ssa(ASSERTED nir_if *if_stmt,
-                             nir_src *src, nir_ssa_def *new_ssa)
-{
-   assert(src->is_if);
-   assert(src->parent_if == if_stmt);
-   nir_src_rewrite_ssa(src, new_ssa);
-}
-
 void nir_if_rewrite_condition(nir_if *if_stmt, nir_src new_src);
 void nir_instr_rewrite_dest(nir_instr *instr, nir_dest *dest,
                             nir_dest new_dest);
