@@ -2462,6 +2462,21 @@ lower_to_hw_instr(Program* program)
                   block = &program->blocks[block_idx];
 
                   bld.reset(discard_block);
+                  if (program->has_pops_overlapped_waves_wait &&
+                      (program->gfx_level >= GFX11 || discard_sends_pops_done)) {
+                     /* If this discard early exit potentially exits the POPS ordered section, do
+                      * the waitcnt necessary before resuming overlapping waves as the normal
+                      * waitcnt insertion doesn't work in a discard early exit block.
+                      */
+                     if (program->gfx_level >= GFX10)
+                        bld.sopk(aco_opcode::s_waitcnt_vscnt, Definition(sgpr_null, s1), 0);
+                     wait_imm pops_exit_wait_imm;
+                     pops_exit_wait_imm.vm = 0;
+                     if (program->has_smem_buffer_or_global_loads)
+                        pops_exit_wait_imm.lgkm = 0;
+                     bld.sopp(aco_opcode::s_waitcnt, -1,
+                              pops_exit_wait_imm.pack(program->gfx_level));
+                  }
                   if (discard_sends_pops_done)
                      bld.sopp(aco_opcode::s_sendmsg, -1, sendmsg_ordered_ps_done);
                   unsigned target = V_008DFC_SQ_EXP_NULL;

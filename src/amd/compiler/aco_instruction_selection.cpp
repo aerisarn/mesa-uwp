@@ -4398,6 +4398,8 @@ smem_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsigned
 {
    assert(align >= 4u);
 
+   bld.program->has_smem_buffer_or_global_loads = true;
+
    bool buffer = info.resource.id() && info.resource.bytes() == 16;
    Temp addr = info.resource;
    if (!buffer && !addr.id()) {
