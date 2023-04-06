@@ -1039,7 +1039,8 @@ zink_create_gfx_program(struct zink_context *ctx,
       if (stages[i]) {
          prog->shaders[i] = stages[i];
          prog->stages_present |= BITFIELD_BIT(i);
-         prog->optimal_keys &= !prog->shaders[i]->non_fs.is_generated;
+         if (i != MESA_SHADER_FRAGMENT)
+            prog->optimal_keys &= !prog->shaders[i]->non_fs.is_generated;
          prog->needs_inlining |= prog->shaders[i]->needs_inlining;
          nir[i] = zink_shader_deserialize(screen, stages[i]);
       } else {
