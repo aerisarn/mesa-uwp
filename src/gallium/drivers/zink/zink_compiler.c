@@ -4770,31 +4770,45 @@ type_images(nir_shader *nir, unsigned *sampler_mask)
 static bool
 fixup_io_locations(nir_shader *nir)
 {
-   nir_variable_mode mode = nir->info.stage == MESA_SHADER_FRAGMENT ? nir_var_shader_in : nir_var_shader_out;
-   /* i/o interface blocks are required to be EXACT matches between stages:
-    * iterate over all locations and set locations incrementally
-    */
-   unsigned slot = 0;
-   for (unsigned i = 0; i < VARYING_SLOT_MAX; i++) {
-      if (nir_slot_is_sysval_output(i, MESA_SHADER_NONE))
-         continue;
-      nir_variable *var = nir_find_variable_with_location(nir, mode, i);
-      if (!var) {
-         /* locations used between stages are not required to be contiguous */
-         if (i >= VARYING_SLOT_VAR0)
-            slot++;
-         continue;
+   nir_variable_mode modes;
+   if (nir->info.stage != MESA_SHADER_FRAGMENT && nir->info.stage != MESA_SHADER_VERTEX)
+      modes = nir_var_shader_in | nir_var_shader_out;
+   else
+      modes = nir->info.stage == MESA_SHADER_FRAGMENT ? nir_var_shader_in : nir_var_shader_out;
+   u_foreach_bit(mode, modes) {
+      /* i/o interface blocks are required to be EXACT matches between stages:
+      * iterate over all locations and set locations incrementally
+      */
+      unsigned slot = 0;
+      for (unsigned i = 0; i < VARYING_SLOT_MAX; i++) {
+         if (nir_slot_is_sysval_output(i, MESA_SHADER_NONE))
+            continue;
+         bool found = false;
+         unsigned size = 0;
+         nir_foreach_variable_with_modes(var, nir, 1<<mode) {
+            if (var->data.location != i)
+               continue;
+            /* only add slots for non-component vars or first-time component vars */
+            if (!var->data.location_frac || !size) {
+               /* ensure variable is given enough slots */
+               if (nir_is_arrayed_io(var, nir->info.stage))
+                  size += glsl_count_vec4_slots(glsl_get_array_element(var->type), false, false);
+               else
+                  size += glsl_count_vec4_slots(var->type, false, false);
+            }
+            var->data.driver_location = slot;
+            found = true;
+         }
+         slot += size;
+         if (found) {
+            /* ensure the consumed slots aren't double iterated */
+            i += size - 1;
+         } else {
+            /* locations used between stages are not required to be contiguous */
+            if (i >= VARYING_SLOT_VAR0)
+               slot++;
+         }
       }
-      unsigned size;
-      /* ensure variable is given enough slots */
-      if (nir_is_arrayed_io(var, nir->info.stage))
-         size = glsl_count_vec4_slots(glsl_get_array_element(var->type), false, false);
-      else
-         size = glsl_count_vec4_slots(var->type, false, false);
-      var->data.driver_location = slot;
-      slot += size;
-      /* ensure the consumed slots aren't double iterated */
-      i += size - 1;
    }
    return true;
 }
