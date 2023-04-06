@@ -188,9 +188,6 @@ validate_reg_src(nir_src *src, validate_state *state,
    }
 }
 
-#define SET_PTR_BIT(ptr, bit) \
-   (void *)(((uintptr_t)(ptr)) | (((uintptr_t)1) << bit))
-
 static void
 validate_ssa_src(nir_src *src, validate_state *state,
                  unsigned bit_sizes, unsigned num_components)
@@ -200,12 +197,7 @@ validate_ssa_src(nir_src *src, validate_state *state,
    /* As we walk SSA defs, we add every use to this set.  We need to make sure
     * our use is seen in a use list.
     */
-   struct set_entry *entry;
-   if (!src->is_if && state->instr) {
-      entry = _mesa_set_search(state->ssa_srcs, src);
-   } else {
-      entry = _mesa_set_search(state->ssa_srcs, SET_PTR_BIT(src, 0));
-   }
+   struct set_entry *entry = _mesa_set_search(state->ssa_srcs, src);
    validate_assert(state, entry);
 
    /* This will let us prove that we've seen all the sources */
@@ -304,13 +296,9 @@ validate_ssa_def(nir_ssa_def *def, validate_state *state)
    nir_foreach_use_including_if(src, def) {
       validate_assert(state, src->is_ssa);
       validate_assert(state, src->ssa == def);
+
       bool already_seen = false;
-
-      nir_src *ssa_src_ptr = src;
-      if (src->is_if)
-         ssa_src_ptr = SET_PTR_BIT(ssa_src_ptr, 0);
-
-      _mesa_set_search_and_add(state->ssa_srcs, ssa_src_ptr, &already_seen);
+      _mesa_set_search_and_add(state->ssa_srcs, src, &already_seen);
       /* A nir_src should only appear once and only in one SSA def use list */
       validate_assert(state, !already_seen);
    }
