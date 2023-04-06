@@ -105,6 +105,7 @@ dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
       .KHR_draw_indirect_count               = true,
       .KHR_driver_properties                 = true,
       .KHR_dynamic_rendering                 = true,
+      .KHR_get_memory_requirements2          = true,
       .KHR_maintenance1                      = true,
       .KHR_maintenance2                      = true,
       .KHR_maintenance3                      = true,
