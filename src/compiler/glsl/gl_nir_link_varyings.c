@@ -3654,6 +3654,28 @@ link_varyings(struct gl_shader_program *prog, unsigned first,
 }
 
 bool
+gl_assign_attribute_or_color_locations(const struct gl_constants *consts,
+                                       struct gl_shader_program *prog)
+{
+   void *mem_ctx = ralloc_context(NULL);
+
+   if (!assign_attribute_or_color_locations(mem_ctx, prog, consts,
+                                            MESA_SHADER_VERTEX, true)) {
+      ralloc_free(mem_ctx);
+      return false;
+   }
+
+   if (!assign_attribute_or_color_locations(mem_ctx, prog, consts,
+                                            MESA_SHADER_FRAGMENT, true)) {
+      ralloc_free(mem_ctx);
+      return false;
+   }
+
+   ralloc_free(mem_ctx);
+   return true;
+}
+
+bool
 gl_nir_link_varyings(const struct gl_constants *consts,
                      const struct gl_extensions *exts,
                      gl_api api, struct gl_shader_program *prog)

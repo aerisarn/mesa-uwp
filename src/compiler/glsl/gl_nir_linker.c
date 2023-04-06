@@ -25,6 +25,7 @@
 #include "nir_builder.h"
 #include "gl_nir.h"
 #include "gl_nir_linker.h"
+#include "gl_nir_link_varyings.h"
 #include "linker_util.h"
 #include "main/shader_types.h"
 #include "main/consts_exts.h"
@@ -1245,6 +1246,9 @@ gl_nir_link_glsl(const struct gl_constants *consts,
       if (prog->_LinkedShaders[i])
          linked_shader[num_shaders++] = prog->_LinkedShaders[i];
    }
+
+   if (!gl_assign_attribute_or_color_locations(consts, prog))
+      return false;
 
    if (!prelink_lowering(consts, exts, prog, linked_shader, num_shaders))
       return false;

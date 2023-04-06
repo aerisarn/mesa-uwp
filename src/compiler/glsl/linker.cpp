@@ -3523,16 +3523,6 @@ link_varyings(const struct gl_constants *consts, struct gl_shader_program *prog,
       }
    }
 
-   if (!assign_attribute_or_color_locations(mem_ctx, prog, consts,
-                                            MESA_SHADER_VERTEX, true)) {
-      return false;
-   }
-
-   if (!assign_attribute_or_color_locations(mem_ctx, prog, consts,
-                                            MESA_SHADER_FRAGMENT, true)) {
-      return false;
-   }
-
    prog->last_vert_prog = NULL;
    for (int i = MESA_SHADER_GEOMETRY; i >= MESA_SHADER_VERTEX; i--) {
       if (prog->_LinkedShaders[i] == NULL)
