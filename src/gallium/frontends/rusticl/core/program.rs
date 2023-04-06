@@ -47,13 +47,19 @@ fn get_disk_cache() -> &'static Option<DiskCache> {
     }
 }
 
+pub enum ProgramSourceType {
+    Binary,
+    Linked,
+    Src(CString),
+    Il(spirv::SPIRVBin),
+}
+
 #[repr(C)]
 pub struct Program {
     pub base: CLObjectBase<CL_INVALID_PROGRAM>,
     pub context: Arc<Context>,
     pub devs: Vec<Arc<Device>>,
-    pub src: CString,
-    pub il: Option<spirv::SPIRVBin>,
+    pub src: ProgramSourceType,
     pub kernel_count: AtomicU32,
     spec_constants: Mutex<HashMap<u32, nir_const_value>>,
     build: Mutex<ProgramBuild>,
@@ -144,8 +150,7 @@ impl Program {
             base: CLObjectBase::new(),
             context: context.clone(),
             devs: devs.to_vec(),
-            src: src,
-            il: None,
+            src: ProgramSourceType::Src(src),
             kernel_count: AtomicU32::new(0),
             spec_constants: Mutex::new(HashMap::new()),
             build: Mutex::new(ProgramBuild {
@@ -217,8 +222,7 @@ impl Program {
             base: CLObjectBase::new(),
             context: context,
             devs: devs,
-            src: CString::new("").unwrap(),
-            il: None,
+            src: ProgramSourceType::Binary,
             kernel_count: AtomicU32::new(0),
             spec_constants: Mutex::new(HashMap::new()),
             build: Mutex::new(ProgramBuild {
@@ -234,8 +238,7 @@ impl Program {
             base: CLObjectBase::new(),
             devs: context.devs.clone(),
             context: context,
-            src: CString::new("").unwrap(),
-            il: Some(SPIRVBin::from_bin(spirv)),
+            src: ProgramSourceType::Il(SPIRVBin::from_bin(spirv)),
             kernel_count: AtomicU32::new(0),
             spec_constants: Mutex::new(HashMap::new()),
             build: Mutex::new(ProgramBuild {
@@ -388,23 +391,25 @@ impl Program {
         headers: &[spirv::CLCHeader],
         info: &mut MutexGuard<ProgramBuild>,
     ) -> bool {
-        if self.is_binary() {
-            return true;
-        }
-
         let d = Self::dev_build_info(info, dev);
-        let (spirv, log) = if let Some(il) = self.il.as_ref() {
-            il.clone_on_validate()
-        } else {
-            let args = prepare_options(&options, dev);
-            spirv::SPIRVBin::from_clc(
-                &self.src,
-                &args,
-                headers,
-                get_disk_cache(),
-                dev.cl_features(),
-                dev.address_bits(),
-            )
+
+        let (spirv, log) = match &self.src {
+            ProgramSourceType::Il(spirv) => spirv.clone_on_validate(),
+            ProgramSourceType::Src(src) => {
+                let args = prepare_options(&options, dev);
+                spirv::SPIRVBin::from_clc(
+                    src,
+                    &args,
+                    headers,
+                    get_disk_cache(),
+                    dev.cl_features(),
+                    dev.address_bits(),
+                )
+            }
+            // do nothing if we got a library or binary
+            _ => {
+                return true;
+            }
         };
 
         d.spirv = spirv;
@@ -484,8 +489,7 @@ impl Program {
             base: CLObjectBase::new(),
             context: context,
             devs: devs,
-            src: CString::new("").unwrap(),
-            il: None,
+            src: ProgramSourceType::Linked,
             kernel_count: AtomicU32::new(0),
             spec_constants: Mutex::new(HashMap::new()),
             build: Mutex::new(ProgramBuild {
@@ -585,20 +589,21 @@ impl Program {
         nir.unwrap()
     }
 
-    pub fn is_binary(&self) -> bool {
-        self.src.to_bytes().is_empty() && self.il.is_none()
+    pub fn is_il(&self) -> bool {
+        matches!(self.src, ProgramSourceType::Il(_))
     }
 
     pub fn is_src(&self) -> bool {
-        !self.src.to_bytes().is_empty()
+        matches!(self.src, ProgramSourceType::Src(_))
     }
 
     pub fn get_spec_constant_size(&self, spec_id: u32) -> u8 {
-        self.il
-            .as_ref()
-            .unwrap()
-            .spec_constant(spec_id)
-            .map_or(0, spirv::CLCSpecConstantType::size)
+        match &self.src {
+            ProgramSourceType::Il(il) => il
+                .spec_constant(spec_id)
+                .map_or(0, spirv::CLCSpecConstantType::size),
+            _ => unreachable!(),
+        }
     }
 
     pub fn set_spec_constant(&self, spec_id: u32, data: &[u8]) {
