@@ -240,7 +240,7 @@ radv_amdgpu_cs_create(struct radeon_winsys *ws, enum amd_ip_type ip_type)
 
    if (cs->use_ib) {
       VkResult result =
-         ws->buffer_create(ws, ib_size, 0, radv_amdgpu_cs_domain(ws),
+         ws->buffer_create(ws, ib_size, cs->ws->info.ib_alignment, radv_amdgpu_cs_domain(ws),
                            RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING |
                               RADEON_FLAG_READ_ONLY | RADEON_FLAG_GTT_WC,
                            RADV_BO_PRIORITY_CS, 0, &cs->ib_buffer);
@@ -387,11 +387,11 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
    /* max that fits in the chain size field. */
    ib_size = align(MIN2(ib_size, 0xfffff), ib_pad_dw_mask + 1);
 
-   VkResult result =
-      cs->ws->base.buffer_create(&cs->ws->base, ib_size, 0, radv_amdgpu_cs_domain(&cs->ws->base),
-                                 RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING |
-                                    RADEON_FLAG_READ_ONLY | RADEON_FLAG_GTT_WC,
-                                 RADV_BO_PRIORITY_CS, 0, &cs->ib_buffer);
+   VkResult result = cs->ws->base.buffer_create(
+      &cs->ws->base, ib_size, cs->ws->info.ib_alignment, radv_amdgpu_cs_domain(&cs->ws->base),
+      RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY |
+         RADEON_FLAG_GTT_WC,
+      RADV_BO_PRIORITY_CS, 0, &cs->ib_buffer);
 
    if (result != VK_SUCCESS) {
       cs->base.cdw = 0;
@@ -1093,10 +1093,10 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radv_amdgpu_ctx *ctx, int queue_idx,
                pad_words++;
             }
 
-            ws->buffer_create(
-               ws, 4 * size, 4096, radv_amdgpu_cs_domain(ws),
-               RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY |
-               RADEON_FLAG_GTT_WC, RADV_BO_PRIORITY_CS, 0, &bos[j]);
+            ws->buffer_create(ws, 4 * size, cs->ws->info.ib_alignment, radv_amdgpu_cs_domain(ws),
+                              RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING |
+                                 RADEON_FLAG_READ_ONLY | RADEON_FLAG_GTT_WC,
+                              RADV_BO_PRIORITY_CS, 0, &bos[j]);
             ptr = ws->buffer_map(bos[j]);
 
             if (needs_preamble) {
@@ -1138,10 +1138,10 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radv_amdgpu_ctx *ctx, int queue_idx,
          }
          assert(cnt);
 
-         ws->buffer_create(
-            ws, 4 * size, 4096, radv_amdgpu_cs_domain(ws),
-            RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY |
-            RADEON_FLAG_GTT_WC, RADV_BO_PRIORITY_CS, 0, &bos[0]);
+         ws->buffer_create(ws, 4 * size, cs->ws->info.ib_alignment, radv_amdgpu_cs_domain(ws),
+                           RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING |
+                              RADEON_FLAG_READ_ONLY | RADEON_FLAG_GTT_WC,
+                           RADV_BO_PRIORITY_CS, 0, &bos[0]);
          ptr = ws->buffer_map(bos[0]);
 
          if (preamble_cs) {
