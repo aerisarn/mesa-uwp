@@ -64,4 +64,5 @@ PYTHONPATH=artifacts/ artifacts/lava/lava_job_submitter.py \
 	--visibility-group "${VISIBILITY_GROUP}" \
 	--lava-tags "${LAVA_TAGS}" \
 	--mesa-job-name "$CI_JOB_NAME" \
+	--structured-log-file "results/lava_job_detail.json" \
 	>> results/lava.log

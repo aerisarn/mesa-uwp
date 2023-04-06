@@ -11,9 +11,11 @@
 
 
 import contextlib
+import json
 import pathlib
 import sys
 import time
+from collections import defaultdict
 from dataclasses import dataclass, fields
 from datetime import datetime, timedelta
 from io import StringIO
@@ -43,6 +45,10 @@ from lava.utils import (
 )
 from lavacli.utils import flow_yaml as lava_yaml
 
+# Initialize structural logging with a defaultdict, it can be changed for more
+# sophisticated dict-like data abstractions.
+STRUCTURAL_LOG = defaultdict(list)
+
 # Timeout in seconds to decide if the device from the dispatched LAVA job has
 # hung or not due to the lack of new log output.
 DEVICE_HANGING_TIMEOUT_SEC = int(getenv("LAVA_DEVICE_HANGING_TIMEOUT_SEC",  5*60))
@@ -68,7 +74,11 @@ NUMBER_OF_RETRIES_TIMEOUT_DETECTION = int(
     getenv("LAVA_NUMBER_OF_RETRIES_TIMEOUT_DETECTION", 2)
 )
 
-def find_exception_from_metadata(metadata, job_id):
+def raise_exception_from_metadata(metadata: dict, job_id: int) -> None:
+    """
+    Investigate infrastructure errors from the job metadata.
+    If it finds an error, raise it as MesaCIException.
+    """
     if "result" not in metadata or metadata["result"] != "fail":
         return
     if "error_type" in metadata:
@@ -90,23 +100,22 @@ def find_exception_from_metadata(metadata, job_id):
         raise MesaCIException(
             f"LAVA job {job_id} failed validation (possible download error). Retry."
         )
-    return metadata
 
 
-def find_lava_error(job) -> None:
-    # Look for infrastructure errors and retry if we see them.
+def raise_lava_error(job) -> None:
+    # Look for infrastructure errors, raise them, and retry if we see them.
     results_yaml = call_proxy(job.proxy.results.get_testjob_results_yaml, job.job_id)
     results = lava_yaml.load(results_yaml)
     for res in results:
         metadata = res["metadata"]
-        find_exception_from_metadata(metadata, job.job_id)
+        raise_exception_from_metadata(metadata, job.job_id)
 
     # If we reach this far, it means that the job ended without hwci script
     # result and no LAVA infrastructure problem was found
     job.status = "fail"
 
 
-def show_job_data(job, colour=f"{CONSOLE_LOG['BOLD']}{CONSOLE_LOG['FG_GREEN']}"):
+def show_final_job_data(job, colour=f"{CONSOLE_LOG['BOLD']}{CONSOLE_LOG['FG_GREEN']}"):
     with GitlabSection(
         "job_data",
         "LAVA job info",
@@ -233,7 +242,8 @@ def follow_job_execution(job, log_follower):
     # If this does not happen, it probably means a LAVA infrastructure error
     # happened.
     if job.status not in ["pass", "fail"]:
-        find_lava_error(job)
+        raise_lava_error(job)
+
 
 def structural_log_phases(job, log_follower):
     phases: dict[str, Any] = {
@@ -243,6 +253,7 @@ def structural_log_phases(job, log_follower):
         for s in log_follower.section_history
     }
     job.log["dut_job_phases"] = phases
+
 
 def print_job_final_status(job):
     if job.status == "running":
@@ -256,13 +267,19 @@ def print_job_final_status(job):
     )
 
     job.refresh_log()
-    job.log["status"] = job.status
-    show_job_data(job, colour=f"{CONSOLE_LOG['BOLD']}{color}")
+    show_final_job_data(job, colour=f"{CONSOLE_LOG['BOLD']}{color}")
 
 
-def execute_job_with_retries(proxy, job_definition, retry_count) -> Optional[LAVAJob]:
+def execute_job_with_retries(
+    proxy, job_definition, retry_count, jobs_log
+) -> Optional[LAVAJob]:
     for attempt_no in range(1, retry_count + 2):
-        job = LAVAJob(proxy, job_definition)
+        # Need to get the logger value from its object to enable autosave
+        # features
+        jobs_log.append({})
+        job_log = jobs_log[-1]
+        job = LAVAJob(proxy, job_definition, job_log)
+        STRUCTURAL_LOG["dut_attempt_counter"] = attempt_no
 
         try:
             submit_job(job)
@@ -280,6 +297,7 @@ def execute_job_with_retries(proxy, job_definition, retry_count) -> Optional[LAV
             )
 
         finally:
+            job_log["finished_time"] = datetime.now().isoformat()
             print_job_final_status(job)
 
 
@@ -287,7 +305,7 @@ def retriable_follow_job(proxy, job_definition) -> LAVAJob:
     number_of_retries = NUMBER_OF_RETRIES_TIMEOUT_DETECTION
 
     if finished_job := execute_job_with_retries(
-        proxy, job_definition, number_of_retries
+        proxy, job_definition, number_of_retries, STRUCTURAL_LOG["dut_jobs"]
     ):
         return finished_job
 
@@ -335,11 +353,15 @@ class LAVAJobSubmitter(PathResolver):
     validate_only: bool = False  # Whether to only validate the job, not execute it
     visibility_group: str = None  # Only affects LAVA farm maintainers
     job_rootfs_overlay_url: str = None
+    structured_log_file: pathlib.Path = None  # Log file path with structured LAVA log
 
     def __post_init__(self) -> None:
         super().__post_init__()
         # Remove mesa job names with spaces, which breaks the lava-test-case command
         self.mesa_job_name = self.mesa_job_name.split(" ")[0]
+
+        if self.structured_log_file:
+            self.setup_structured_logger()
 
     def dump(self, job_definition):
         if self.dump_yaml:
@@ -377,9 +399,31 @@ class LAVAJobSubmitter(PathResolver):
         if self.validate_only:
             return
 
-        finished_job = retriable_follow_job(proxy, job_definition)
+        try:
+            finished_job = retriable_follow_job(proxy, job_definition)
+        except Exception as exception:
+            STRUCTURAL_LOG["job_combined_fail_reason"] = str(exception)
+            raise exception
         exit_code = 0 if finished_job.status == "pass" else 1
+        STRUCTURAL_LOG["job_combined_status"] = job.status
         sys.exit(exit_code)
+
+    def setup_structured_logger(self):
+        try:
+            global STRUCTURAL_LOG
+            STRUCTURAL_LOG = StructuredLogger(
+                self.structured_log_file, truncate=True
+            ).data
+        except NameError as e:
+            print(
+                f"Could not import StructuredLogger library: {e}. "
+                "Falling back to DummyLogger"
+            )
+
+        STRUCTURAL_LOG["fixed_tags"] = self.lava_tags
+        STRUCTURAL_LOG["dut_job_type"] = self.device_type
+        STRUCTURAL_LOG["job_combined_fail_reason"] = None
+        STRUCTURAL_LOG["job_combined_status"] = "not_submitted"
 
 
 if __name__ == "__main__":

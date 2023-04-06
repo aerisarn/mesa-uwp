@@ -9,6 +9,7 @@ import xmlrpc.client
 from contextlib import nullcontext as does_not_raise
 from datetime import datetime
 from itertools import chain, repeat
+from pathlib import Path
 
 import pytest
 from lava.exceptions import MesaCIException, MesaCIRetryError
@@ -16,6 +17,7 @@ from lava.lava_job_submitter import (
     DEVICE_HANGING_TIMEOUT_SEC,
     NUMBER_OF_RETRIES_TIMEOUT_DETECTION,
     LAVAJob,
+    LAVAJobSubmitter,
     bootstrap_log_follower,
     follow_job_execution,
     retriable_follow_job,
@@ -299,7 +301,7 @@ def test_parse_job_result_from_log(message, expectation, mock_proxy):
 @pytest.mark.slow(
     reason="Slow and sketchy test. Needs a LAVA log raw file at /tmp/log.yaml"
 )
-def test_full_yaml_log(mock_proxy, frozen_time):
+def test_full_yaml_log(mock_proxy, frozen_time, tmp_path):
     import random
 
     from lavacli.utils import flow_yaml as lava_yaml
@@ -350,7 +352,10 @@ def test_full_yaml_log(mock_proxy, frozen_time):
     def reset_logs(*args):
         proxy.scheduler.jobs.logs.side_effect = load_lines()
 
+    tmp_file = Path(tmp_path) / "log.json"
+    LAVAJobSubmitter(structured_log_file=tmp_file)
     proxy.scheduler.jobs.submit = reset_logs
     with pytest.raises(MesaCIRetryError):
         time_travel_to_test_time()
         retriable_follow_job(proxy, "")
+        print(tmp_file.read_text())
