@@ -1804,9 +1804,7 @@ nir_ssa_def_rewrite_uses_after(nir_ssa_def *def, nir_ssa_def *new_ssa,
 
    nir_foreach_use_including_if_safe(use_src, def) {
       if (use_src->is_if) {
-         nir_if_rewrite_condition_ssa(use_src->parent_if,
-                                      &use_src->parent_if->condition,
-                                      new_ssa);
+         nir_if_rewrite_condition_ssa(use_src->parent_if, use_src, new_ssa);
       } else {
          assert(use_src->parent_instr != def->parent_instr);
          /* Since def already dominates all of its uses, the only way a use can
