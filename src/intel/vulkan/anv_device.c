@@ -185,6 +185,10 @@ static const struct vk_instance_extension_table instance_extensions = {
 };
 
 static void
+get_features(const struct anv_physical_device *pdevice,
+             struct vk_features *features);
+
+static void
 get_device_extensions(const struct anv_physical_device *device,
                       struct vk_device_extension_table *ext)
 {
@@ -1015,6 +1019,7 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
    anv_physical_device_init_perf(device, fd);
 
    get_device_extensions(device, &device->vk.supported_extensions);
+   get_features(device, &device->vk.supported_features);
 
    /* Gather major/minor before WSI. */
    struct stat st;
@@ -1194,12 +1199,10 @@ void anv_DestroyInstance(
    vk_free(&instance->vk.alloc, instance);
 }
 
-void anv_GetPhysicalDeviceFeatures2(
-    VkPhysicalDevice                            physicalDevice,
-    VkPhysicalDeviceFeatures2*                  pFeatures)
+static void
+get_features(const struct anv_physical_device *pdevice,
+             struct vk_features *features)
 {
-   ANV_FROM_HANDLE(anv_physical_device, pdevice, physicalDevice);
-
    struct vk_app_info *app_info = &pdevice->instance->vk.app_info;
 
    /* Just pick one; they're all the same */
@@ -1213,7 +1216,7 @@ void anv_GetPhysicalDeviceFeatures2(
       pdevice->vk.supported_extensions.EXT_mesh_shader ||
       pdevice->vk.supported_extensions.NV_mesh_shader;
 
-   struct vk_features features = {
+   *features = (struct vk_features) {
       /* Vulkan 1.0 */
       .robustBufferAccess                       = true,
       .fullDrawIndexUint32                      = true,
@@ -1620,9 +1623,7 @@ void anv_GetPhysicalDeviceFeatures2(
     * there and accept the consequences.
     */
    if (app_info->engine_name && strcmp(app_info->engine_name, "idTech") == 0)
-      features.depthBounds = true;
-
-   vk_get_physical_device_features(pFeatures, &features);
+      features->depthBounds = true;
 }
 
 #define MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BUFFERS   64
