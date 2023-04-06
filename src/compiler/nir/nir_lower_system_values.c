@@ -701,6 +701,29 @@ lower_compute_system_value_instr(nir_builder *b,
 
    }
 
+   case nir_intrinsic_load_num_workgroups: {
+      if (!options)
+         return NULL;
+
+      const uint16_t *num_wgs_imm = options->num_workgroups;
+
+      /* Exit early when none of the num workgroups components are known at
+       * compile time.
+       */
+      if (num_wgs_imm[0] == 0 && num_wgs_imm[1] == 0 && num_wgs_imm[2] == 0)
+         return NULL;
+
+      b->cursor = nir_after_instr(instr);
+
+      nir_ssa_def *num_wgs = &intrin->dest.ssa;
+      for (unsigned i = 0; i < 3; ++i) {
+         if (num_wgs_imm[i])
+            num_wgs = nir_vector_insert_imm(b, num_wgs, nir_imm_int(b, num_wgs_imm[i]), i);
+      }
+
+      return num_wgs;
+   }
+
    default:
       return NULL;
    }
