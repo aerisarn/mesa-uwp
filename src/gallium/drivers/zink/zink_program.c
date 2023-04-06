@@ -264,9 +264,13 @@ create_shader_module_for_stage_optimal(struct zink_context *ctx, struct zink_scr
       return NULL;
    }
    if (stage == MESA_SHADER_TESS_CTRL && zs->non_fs.is_generated && zs->spirv) {
-      assert(ctx); //TODO async
-      struct zink_tcs_key *tcs = (struct zink_tcs_key*)key;
-      struct zink_shader_object obj = zink_shader_tcs_compile(screen, zs, tcs->patch_vertices);
+      assert(ctx || screen->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints);
+      unsigned patch_vertices = 3;
+      if (ctx) {
+         struct zink_tcs_key *tcs = (struct zink_tcs_key*)key;
+         patch_vertices = tcs->patch_vertices;
+      }
+      struct zink_shader_object obj = zink_shader_tcs_compile(screen, zs, patch_vertices);
       mod = obj.mod;
    } else {
       mod = zink_shader_compile(screen, zs, zink_shader_blob_deserialize(screen, &prog->blobs[stage]), (struct zink_shader_key*)key, shadow_needs_shader_swizzle ? &ctx->di.zs_swizzle[stage] : NULL);
