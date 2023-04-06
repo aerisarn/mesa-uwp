@@ -217,7 +217,7 @@ def bootstrap_log_follower() -> LogFollower:
         start_collapsed=True,
     )
     print(gl.start())
-    return LogFollower(current_section=gl)
+    return LogFollower(starting_section=gl)
 
 
 def follow_job_execution(job, log_follower):
@@ -227,6 +227,7 @@ def follow_job_execution(job, log_follower):
         job.heartbeat()
         while not job.is_finished:
             fetch_logs(job, max_idle_time, log_follower)
+            structural_log_phases(job, log_follower)
 
     # Mesa Developers expect to have a simple pass/fail job result.
     # If this does not happen, it probably means a LAVA infrastructure error
@@ -234,6 +235,14 @@ def follow_job_execution(job, log_follower):
     if job.status not in ["pass", "fail"]:
         find_lava_error(job)
 
+def structural_log_phases(job, log_follower):
+    phases: dict[str, Any] = {
+        s.header.split(" - ")[0]: {
+            k: str(getattr(s, k)) for k in ("start_time", "end_time")
+        }
+        for s in log_follower.section_history
+    }
+    job.log["dut_job_phases"] = phases
 
 def print_job_final_status(job):
     if job.status == "running":
