@@ -1684,6 +1684,8 @@ check_psiz(struct nir_shader *s)
 static nir_variable *
 find_var_with_location_frac(nir_shader *nir, unsigned location, unsigned location_frac, bool have_psiz)
 {
+   assert((int)location >= 0);
+
    unsigned found = 0;
    if (!location_frac && location != VARYING_SLOT_PSIZ) {
       nir_foreach_shader_out_variable(var, nir) {
