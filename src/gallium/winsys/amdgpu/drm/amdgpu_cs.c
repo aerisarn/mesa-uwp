@@ -469,10 +469,17 @@ amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx, bool full_reset_o
              *    completed. If a reset status is repeatedly returned, the context may
              *    be in the process of resetting.
              *
+             * Starting with drm_minor >= 54 amdgpu reports if the reset is complete,
+             * so don't do anything special. On older kernels, submit a no-op cs. If it
+             * succeeds then assume the reset is complete.
              */
             if (!(flags & AMDGPU_CTX_QUERY2_FLAGS_RESET_IN_PROGRESS))
                *reset_completed = true;
+
+            if (ctx->ws->info.drm_minor < 54 && ctx->ws->info.has_graphics)
+               *reset_completed = amdgpu_submit_gfx_nop(ctx->ws->dev) == 0;
          }
+
          if (needs_reset)
                *needs_reset = flags & AMDGPU_CTX_QUERY2_FLAGS_VRAMLOST;
          if (flags & AMDGPU_CTX_QUERY2_FLAGS_GUILTY)
