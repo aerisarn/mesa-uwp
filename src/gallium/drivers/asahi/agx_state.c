@@ -667,10 +667,11 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
       desc->swizzle[3],
    };
 
-   if (util_format_has_stencil(desc)) {
-      assert(!util_format_has_depth(desc) && "separate stencil always used");
+   if (util_format_is_depth_or_stencil(format)) {
+      assert(!util_format_is_depth_and_stencil(format) &&
+             "separate stencil always used");
 
-      /* Broadcast stencil */
+      /* Broadcast depth and stencil */
       format_swizzle[0] = 0;
       format_swizzle[1] = 0;
       format_swizzle[2] = 0;
