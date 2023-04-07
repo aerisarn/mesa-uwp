@@ -112,14 +112,15 @@
      .aspect = VK_IMAGE_ASPECT_PLANE_ ## __plane ## _BIT, \
    }
 
-#define ycbcr_fmt(__vk_fmt, __n_planes, ...) \
+#define ycbcr_fmt(__vk_fmt, __n_planes, __can_ycbcr, __can_video, ...) \
    [VK_ENUM_OFFSET(__vk_fmt)] = { \
       .planes = { \
          __VA_ARGS__, \
       }, \
       .vk_format = __vk_fmt, \
       .n_planes = __n_planes, \
-      .can_ycbcr = true, \
+      .can_ycbcr = __can_ycbcr, \
+      .can_video = __can_video, \
    }
 
 /* HINT: For array formats, the ISL name should match the VK name.  For
@@ -324,25 +325,25 @@ static const struct anv_format _4444_formats[] = {
 };
 
 static const struct anv_format ycbcr_formats[] = {
-   ycbcr_fmt(VK_FORMAT_G8B8G8R8_422_UNORM, 1,
+   ycbcr_fmt(VK_FORMAT_G8B8G8R8_422_UNORM, 1, true, false,
              ycbcr_plane(0, ISL_FORMAT_YCRCB_SWAPUV, RGBA)),
-   ycbcr_fmt(VK_FORMAT_B8G8R8G8_422_UNORM, 1,
+   ycbcr_fmt(VK_FORMAT_B8G8R8G8_422_UNORM, 1, true, false,
              ycbcr_plane(0, ISL_FORMAT_YCRCB_SWAPUVY, RGBA)),
-   ycbcr_fmt(VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM, 3,
+   ycbcr_fmt(VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM, 3, true, false,
              ycbcr_plane(0, ISL_FORMAT_R8_UNORM, RGBA),
              ycbcr_plane(1, ISL_FORMAT_R8_UNORM, RGBA),
              ycbcr_plane(2, ISL_FORMAT_R8_UNORM, RGBA)),
-   ycbcr_fmt(VK_FORMAT_G8_B8R8_2PLANE_420_UNORM, 2,
+   ycbcr_fmt(VK_FORMAT_G8_B8R8_2PLANE_420_UNORM, 2, true, true,
              ycbcr_plane(0, ISL_FORMAT_R8_UNORM, RGBA),
              ycbcr_plane(1, ISL_FORMAT_R8G8_UNORM, RGBA)),
-   ycbcr_fmt(VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM, 3,
+   ycbcr_fmt(VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM, 3, true, false,
              ycbcr_plane(0, ISL_FORMAT_R8_UNORM, RGBA),
              ycbcr_plane(1, ISL_FORMAT_R8_UNORM, RGBA),
              ycbcr_plane(2, ISL_FORMAT_R8_UNORM, RGBA)),
-   ycbcr_fmt(VK_FORMAT_G8_B8R8_2PLANE_422_UNORM, 2,
+   ycbcr_fmt(VK_FORMAT_G8_B8R8_2PLANE_422_UNORM, 2, true, false,
              ycbcr_plane(0, ISL_FORMAT_R8_UNORM, RGBA),
              ycbcr_plane(1, ISL_FORMAT_R8G8_UNORM, RGBA)),
-   ycbcr_fmt(VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM, 3,
+   ycbcr_fmt(VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM, 3, true, false,
              ycbcr_plane(0, ISL_FORMAT_R8_UNORM, RGBA),
              ycbcr_plane(1, ISL_FORMAT_R8_UNORM, RGBA),
              ycbcr_plane(2, ISL_FORMAT_R8_UNORM, RGBA)),
@@ -353,7 +354,9 @@ static const struct anv_format ycbcr_formats[] = {
    fmt_unsupported(VK_FORMAT_G10X6B10X6G10X6R10X6_422_UNORM_4PACK16),
    fmt_unsupported(VK_FORMAT_B10X6G10X6R10X6G10X6_422_UNORM_4PACK16),
    fmt_unsupported(VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16),
-   fmt_unsupported(VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16),
+   ycbcr_fmt(VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16, 2, false, true,
+             ycbcr_plane(0, ISL_FORMAT_R16_UNORM, RGBA),
+             ycbcr_plane(1, ISL_FORMAT_R16G16_UNORM, RGBA)),
    fmt_unsupported(VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16),
    fmt_unsupported(VK_FORMAT_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16),
    fmt_unsupported(VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16),
@@ -373,21 +376,21 @@ static const struct anv_format ycbcr_formats[] = {
    fmt_unsupported(VK_FORMAT_G16B16G16R16_422_UNORM),
    fmt_unsupported(VK_FORMAT_B16G16R16G16_422_UNORM),
 
-   ycbcr_fmt(VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM, 3,
+   ycbcr_fmt(VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM, 3, true, false,
              ycbcr_plane(0, ISL_FORMAT_R16_UNORM, RGBA),
              ycbcr_plane(1, ISL_FORMAT_R16_UNORM, RGBA),
              ycbcr_plane(2, ISL_FORMAT_R16_UNORM, RGBA)),
-   ycbcr_fmt(VK_FORMAT_G16_B16R16_2PLANE_420_UNORM, 2,
+   ycbcr_fmt(VK_FORMAT_G16_B16R16_2PLANE_420_UNORM, 2, true, false,
              ycbcr_plane(0, ISL_FORMAT_R16_UNORM, RGBA),
              ycbcr_plane(1, ISL_FORMAT_R16G16_UNORM, RGBA)),
-   ycbcr_fmt(VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM, 3,
+   ycbcr_fmt(VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM, 3, true, false,
              ycbcr_plane(0, ISL_FORMAT_R16_UNORM, RGBA),
              ycbcr_plane(1, ISL_FORMAT_R16_UNORM, RGBA),
              ycbcr_plane(2, ISL_FORMAT_R16_UNORM, RGBA)),
-   ycbcr_fmt(VK_FORMAT_G16_B16R16_2PLANE_422_UNORM, 2,
+   ycbcr_fmt(VK_FORMAT_G16_B16R16_2PLANE_422_UNORM, 2, true, false,
              ycbcr_plane(0, ISL_FORMAT_R16_UNORM, RGBA),
              ycbcr_plane(1, ISL_FORMAT_R16G16_UNORM, RGBA)),
-   ycbcr_fmt(VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM, 3,
+   ycbcr_fmt(VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM, 3, true, false,
              ycbcr_plane(0, ISL_FORMAT_R16_UNORM, RGBA),
              ycbcr_plane(1, ISL_FORMAT_R16_UNORM, RGBA),
              ycbcr_plane(2, ISL_FORMAT_R16_UNORM, RGBA)),
@@ -552,7 +555,7 @@ anv_get_image_format_features2(const struct intel_device_info *devinfo,
 
    assert(aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
 
-   if (vk_format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM) {
+   if (anv_format->can_video) {
       flags |= VK_FORMAT_FEATURE_2_VIDEO_DECODE_OUTPUT_BIT_KHR |
                VK_FORMAT_FEATURE_2_VIDEO_DECODE_DPB_BIT_KHR;
    }
@@ -655,6 +658,13 @@ anv_get_image_format_features2(const struct intel_device_info *devinfo,
       flags &= ~VK_FORMAT_FEATURE_2_BLIT_DST_BIT;
    }
 
+   const VkFormatFeatureFlags2 disallowed_ycbcr_image_features =
+      VK_FORMAT_FEATURE_2_BLIT_SRC_BIT |
+      VK_FORMAT_FEATURE_2_BLIT_DST_BIT |
+      VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT |
+      VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT |
+      VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT;
+
    if (anv_format->can_ycbcr) {
       /* The sampler doesn't have support for mid point when it handles YUV on
        * its own.
@@ -688,13 +698,9 @@ anv_get_image_format_features2(const struct intel_device_info *devinfo,
       if (anv_format->n_planes > 1)
          flags |= VK_FORMAT_FEATURE_2_DISJOINT_BIT;
 
-      const VkFormatFeatureFlags2 disallowed_ycbcr_image_features =
-         VK_FORMAT_FEATURE_2_BLIT_SRC_BIT |
-         VK_FORMAT_FEATURE_2_BLIT_DST_BIT |
-         VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT |
-         VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT |
-         VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT;
-
+      flags &= ~disallowed_ycbcr_image_features;
+   } else if (anv_format->can_video) {
+      /* This format is for video decoding. */
       flags &= ~disallowed_ycbcr_image_features;
    }
 
@@ -814,7 +820,7 @@ get_buffer_format_features2(const struct intel_device_info *devinfo,
    if (anv_format->n_planes > 1)
       return 0;
 
-   if (anv_format->can_ycbcr)
+   if (anv_format->can_ycbcr || anv_format->can_video)
       return 0;
 
    if (vk_format_is_depth_or_stencil(vk_format))
