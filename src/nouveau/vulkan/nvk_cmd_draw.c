@@ -1597,6 +1597,22 @@ nvk_mme_build_set_draw_params(struct mme_builder *b,
 }
 
 static void
+nvk_mme_emit_view_index(struct mme_builder *b, struct mme_value view_index)
+{
+   /* Set the push constant */
+   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
+   mme_emit(b, mme_imm(nvk_root_descriptor_offset(draw.view_index)));
+   mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
+   mme_emit(b, view_index);
+
+   /* Set the layer to the view index */
+   STATIC_ASSERT(DRF_LO(NV9097_SET_RT_LAYER_V) == 0);
+   STATIC_ASSERT(NV9097_SET_RT_LAYER_CONTROL_V_SELECTS_LAYER == 0);
+   mme_mthd(b, NV9097_SET_RT_LAYER);
+   mme_emit(b, view_index);
+}
+
+static void
 nvk_mme_build_draw_loop(struct mme_builder *b,
                         struct mme_value instance_count,
                         struct mme_value first_vertex,
@@ -1662,19 +1678,7 @@ nvk_mme_build_draw(struct mme_builder *b,
          mme_free_reg(b, view_mask);
          mme_if(b, ine, has_view, mme_zero()) {
             mme_free_reg(b, has_view);
-
-            /* Set the push constant */
-            mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
-            mme_emit(b, mme_imm(nvk_root_descriptor_offset(draw.view_index)));
-            mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
-            mme_emit(b, view);
-
-            /* Set the layer to the view index */
-            STATIC_ASSERT(DRF_LO(NV9097_SET_RT_LAYER_V) == 0);
-            STATIC_ASSERT(NV9097_SET_RT_LAYER_CONTROL_V_SELECTS_LAYER == 0);
-            mme_mthd(b, NV9097_SET_RT_LAYER);
-            mme_emit(b, view);
-
+            nvk_mme_emit_view_index(b, view);
             nvk_mme_build_draw_loop(b, instance_count,
                                     first_vertex, vertex_count);
          }
@@ -1799,19 +1803,7 @@ nvk_mme_build_draw_indexed(struct mme_builder *b,
          mme_free_reg(b, view_mask);
          mme_if(b, ine, has_view, mme_zero()) {
             mme_free_reg(b, has_view);
-
-            /* Set the push constant */
-            mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
-            mme_emit(b, mme_imm(nvk_root_descriptor_offset(draw.view_index)));
-            mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
-            mme_emit(b, view);
-
-            /* Set the layer to the view index */
-            STATIC_ASSERT(DRF_LO(NV9097_SET_RT_LAYER_V) == 0);
-            STATIC_ASSERT(NV9097_SET_RT_LAYER_CONTROL_V_SELECTS_LAYER == 0);
-            mme_mthd(b, NV9097_SET_RT_LAYER);
-            mme_emit(b, view);
-
+            nvk_mme_emit_view_index(b, view);
             nvk_mme_build_draw_indexed_loop(b, instance_count,
                                             first_index, index_count);
          }
@@ -2321,19 +2313,7 @@ nvk_mme_xfb_draw_indirect(struct mme_builder *b)
          mme_free_reg(b, view_mask);
          mme_if(b, ine, has_view, mme_zero()) {
             mme_free_reg(b, has_view);
-
-            /* Set the push constant */
-            mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER_OFFSET);
-            mme_emit(b, mme_imm(nvk_root_descriptor_offset(draw.view_index)));
-            mme_mthd(b, NV9097_LOAD_CONSTANT_BUFFER(0));
-            mme_emit(b, view);
-
-            /* Set the layer to the view index */
-            STATIC_ASSERT(DRF_LO(NV9097_SET_RT_LAYER_V) == 0);
-            STATIC_ASSERT(NV9097_SET_RT_LAYER_CONTROL_V_SELECTS_LAYER == 0);
-            mme_mthd(b, NV9097_SET_RT_LAYER);
-            mme_emit(b, view);
-
+            nvk_mme_emit_view_index(b, view);
             nvk_mme_xfb_draw_indirect_loop(b, instance_count, counter);
          }
 
