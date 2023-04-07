@@ -359,9 +359,7 @@ enum dzn_cmd_bindpoint_dirty {
    DZN_CMD_BINDPOINT_DIRTY_DESC_SET5 = 1 << 8,
    DZN_CMD_BINDPOINT_DIRTY_DESC_SET6 = 1 << 9,
    DZN_CMD_BINDPOINT_DIRTY_DESC_SET7 = 1 << 10,
-   DZN_CMD_BINDPOINT_DIRTY_HEAPS =
-      DZN_CMD_BINDPOINT_DIRTY_DYNAMIC_BUFFERS |
-      DZN_CMD_BINDPOINT_DIRTY_SYSVALS |
+   DZN_CMD_BINDPOINT_DIRTY_DESC_SETS =
       DZN_CMD_BINDPOINT_DIRTY_DESC_SET0 |
       DZN_CMD_BINDPOINT_DIRTY_DESC_SET1 |
       DZN_CMD_BINDPOINT_DIRTY_DESC_SET2 |
@@ -370,6 +368,10 @@ enum dzn_cmd_bindpoint_dirty {
       DZN_CMD_BINDPOINT_DIRTY_DESC_SET5 |
       DZN_CMD_BINDPOINT_DIRTY_DESC_SET6 |
       DZN_CMD_BINDPOINT_DIRTY_DESC_SET7,
+   DZN_CMD_BINDPOINT_DIRTY_HEAPS =
+      DZN_CMD_BINDPOINT_DIRTY_DYNAMIC_BUFFERS |
+      DZN_CMD_BINDPOINT_DIRTY_SYSVALS |
+      DZN_CMD_BINDPOINT_DIRTY_DESC_SETS,
 };
 
 enum dzn_cmd_dirty {
@@ -920,6 +922,7 @@ struct dzn_pipeline {
       ID3D12RootSignature *sig;
    } root;
    struct dzn_pipeline_layout_set sets[MAX_SETS];
+   uint32_t set_count;
    uint32_t desc_count[NUM_POOL_TYPES];
    uint32_t dynamic_buffer_count;
    ID3D12PipelineState *state;

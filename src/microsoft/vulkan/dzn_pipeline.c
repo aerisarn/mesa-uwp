@@ -1701,6 +1701,7 @@ dzn_pipeline_init(struct dzn_pipeline *pipeline,
 
    STATIC_ASSERT(sizeof(layout->sets) == sizeof(pipeline->sets));
    memcpy(pipeline->sets, layout->sets, sizeof(pipeline->sets));
+   pipeline->set_count = layout->set_count;
    pipeline->dynamic_buffer_count = layout->dynamic_buffer_count;
    vk_object_base_init(&device->vk, &pipeline->base, VK_OBJECT_TYPE_PIPELINE);
 

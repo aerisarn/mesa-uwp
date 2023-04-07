@@ -3097,7 +3097,16 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
    const struct dzn_pipeline *pipeline =
       cmdbuf->state.bindpoint[bindpoint].pipeline;
 
-   if (!(cmdbuf->state.bindpoint[bindpoint].dirty & DZN_CMD_BINDPOINT_DIRTY_HEAPS))
+   /* The set of dirty bits that are cleared by running this function. Notably, 
+    * for bindless, descriptor sets that are bound but unused by the currently
+    * set pipeline are not processed, meaning their dirty bits should persist 
+    * until such a point as a pipeline does use them. For not-bindless,
+    * all sets are processed. */
+   uint32_t dirty_bits_bindless =
+      (pipeline->dynamic_buffer_count ? DZN_CMD_BINDPOINT_DIRTY_DYNAMIC_BUFFERS : 0) |
+      (((DZN_CMD_BINDPOINT_DIRTY_DESC_SET0 << pipeline->set_count) - 1) & DZN_CMD_BINDPOINT_DIRTY_DESC_SETS);
+   uint32_t dirty_bits = (device->bindless ? dirty_bits_bindless : DZN_CMD_BINDPOINT_DIRTY_DESC_SETS | DZN_CMD_BINDPOINT_DIRTY_DYNAMIC_BUFFERS);
+   if (!(cmdbuf->state.bindpoint[bindpoint].dirty & dirty_bits))
       return;
 
    dzn_foreach_pool_type (type) {
@@ -3119,7 +3128,7 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
          new_heap_offsets[type] = dst_heap_offset;
          update_root_desc_table[type] = true;
 
-         for (uint32_t s = 0; s < cmdbuf->state.pipeline->root.sets_param_count; s++) {
+         for (uint32_t s = 0; s < MAX_SETS; s++) {
             const struct dzn_descriptor_set *set = desc_state->sets[s].set;
             if (!set) continue;
 
@@ -3190,7 +3199,7 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
    }
 
    if (device->bindless) {
-      for (uint32_t s = 0; s < pipeline->root.sets_param_count; ++s) {
+      for (uint32_t s = 0; s < pipeline->set_count; ++s) {
          const struct dzn_descriptor_set *set = desc_state->sets[s].set;
          if (!set || !set->pool->bindless.buf)
             continue;
@@ -3252,6 +3261,8 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
                                                                         gpuva);
       }
    }
+
+   cmdbuf->state.bindpoint[bindpoint].dirty &= ~dirty_bits;
 }
 
 static void
@@ -3272,6 +3283,8 @@ dzn_cmd_buffer_update_sysvals(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
                                                     sizeof(cmdbuf->state.sysvals.compute) / 4,
                                                     &cmdbuf->state.sysvals.compute, 0);
    }
+
+   cmdbuf->state.bindpoint[bindpoint].dirty &= ~DZN_CMD_BINDPOINT_DIRTY_SYSVALS;
 }
 
 static void
@@ -3548,7 +3561,7 @@ dzn_cmd_buffer_prepare_draw(struct dzn_cmd_buffer *cmdbuf, bool indexed)
    dzn_cmd_buffer_update_depth_bounds(cmdbuf);
 
    /* Reset the dirty states */
-   cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty = 0;
+   cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty &= DZN_CMD_BINDPOINT_DIRTY_HEAPS;
    cmdbuf->state.dirty = 0;
 }
 
@@ -3883,7 +3896,7 @@ dzn_cmd_buffer_prepare_dispatch(struct dzn_cmd_buffer *cmdbuf)
    dzn_cmd_buffer_update_push_constants(cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE);
 
    /* Reset the dirty states */
-   cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_COMPUTE].dirty = 0;
+   cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_COMPUTE].dirty &= DZN_CMD_BINDPOINT_DIRTY_HEAPS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
