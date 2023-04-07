@@ -878,16 +878,22 @@ agx_create_surface(struct pipe_context *ctx, struct pipe_resource *texture,
 
    if (!surface)
       return NULL;
+
+   unsigned level = surf_tmpl->u.tex.level;
+
    pipe_reference_init(&surface->reference, 1);
    pipe_resource_reference(&surface->texture, texture);
+
+   assert(texture->target != PIPE_BUFFER && "buffers are not renderable");
+
    surface->context = ctx;
    surface->format = surf_tmpl->format;
-   surface->width = texture->width0;
-   surface->height = texture->height0;
+   surface->width = u_minify(texture->width0, level);
+   surface->height = u_minify(texture->height0, level);
    surface->texture = texture;
    surface->u.tex.first_layer = surf_tmpl->u.tex.first_layer;
    surface->u.tex.last_layer = surf_tmpl->u.tex.last_layer;
-   surface->u.tex.level = surf_tmpl->u.tex.level;
+   surface->u.tex.level = level;
 
    return surface;
 }
