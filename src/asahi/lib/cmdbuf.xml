@@ -905,6 +905,8 @@
     <field name="S Store Enable" start="18" size="1" type="bool"/>
     <field name="Z Store Enable" start="19" size="1" type="bool"/>
     <field name="Z Format" start="25" size="2" type="ZLS Format"/>
+    <field name="Z Resolve" start="56" size="1" type="bool"/>
+    <field name="S Resolve" start="58" size="1" type="bool"/>
   </struct>
 
   <struct name="IOGPU Header" size="64">
