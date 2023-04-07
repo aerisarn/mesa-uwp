@@ -300,7 +300,9 @@ panvk_physical_device_init(struct panvk_physical_device *device,
       &dispatch_table, &wsi_physical_device_entrypoints, false);
 
    result = vk_physical_device_init(&device->vk, &instance->vk,
-                                    &supported_extensions, &dispatch_table);
+                                    &supported_extensions,
+                                    NULL,
+                                    &dispatch_table);
 
    if (result != VK_SUCCESS) {
       vk_error(instance, result);

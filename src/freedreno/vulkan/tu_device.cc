@@ -370,6 +370,7 @@ tu_physical_device_init(struct tu_physical_device *device,
 
    result = vk_physical_device_init(&device->vk, &instance->vk,
                                     &supported_extensions,
+                                    NULL,
                                     &dispatch_table);
    if (result != VK_SUCCESS)
       goto fail_free_vma;
@@ -1501,7 +1502,7 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->robustStorageTexelBufferDescriptorSize = A6XX_TEX_CONST_DWORDS * 4;
          properties->uniformBufferDescriptorSize = A6XX_TEX_CONST_DWORDS * 4;
          properties->robustUniformBufferDescriptorSize = A6XX_TEX_CONST_DWORDS * 4;
-         properties->storageBufferDescriptorSize = 
+         properties->storageBufferDescriptorSize =
             pdevice->info->a6xx.storage_16bit ?
             2 * A6XX_TEX_CONST_DWORDS * 4 :
             A6XX_TEX_CONST_DWORDS * 4;
@@ -2475,7 +2476,7 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    if (device->fiber_pvtmem_bo.bo)
       tu_bo_finish(device, device->fiber_pvtmem_bo.bo);
-   
+
    if (device->wave_pvtmem_bo.bo)
       tu_bo_finish(device, device->wave_pvtmem_bo.bo);
 

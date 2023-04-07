@@ -348,6 +348,7 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
    result = vk_physical_device_init(&pdevice->vk,
                                     &instance->vk,
                                     &supported_extensions,
+                                    NULL,
                                     &dispatch_table);
    if (result != VK_SUCCESS)
       return result;

@@ -235,7 +235,7 @@ lvp_physical_device_init(struct lvp_physical_device *device,
    vk_physical_device_dispatch_table_from_entrypoints(
       &dispatch_table, &wsi_physical_device_entrypoints, false);
    result = vk_physical_device_init(&device->vk, &instance->vk,
-                                    NULL, &dispatch_table);
+                                    NULL, NULL, &dispatch_table);
    if (result != VK_SUCCESS) {
       vk_error(instance, result);
       goto fail;
@@ -2373,9 +2373,9 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
     *
     *    - Loader interface v4 differs from v3 in:
     *        - The ICD must implement vk_icdGetPhysicalDeviceProcAddr().
-    * 
+    *
     *    - Loader interface v5 differs from v4 in:
-    *        - The ICD must support Vulkan API version 1.1 and must not return 
+    *        - The ICD must support Vulkan API version 1.1 and must not return
     *          VK_ERROR_INCOMPATIBLE_DRIVER from vkCreateInstance() unless a
     *          Vulkan Loader with interface v4 or smaller is being used and the
     *          application provides an API version that is greater than 1.0.

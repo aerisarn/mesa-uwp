@@ -725,7 +725,7 @@ anv_physical_device_try_create(struct vk_instance *vk_instance,
       &dispatch_table, &wsi_physical_device_entrypoints, false);
 
    result = vk_physical_device_init(&device->vk, &instance->vk,
-                                    NULL, /* We set up extensions later */
+                                    NULL, NULL, /* We set up extensions later */
                                     &dispatch_table);
    if (result != VK_SUCCESS) {
       vk_error(instance, result);

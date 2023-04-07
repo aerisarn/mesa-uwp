@@ -371,7 +371,7 @@ dzn_physical_device_create(struct vk_instance *instance,
 
    VkResult result =
       vk_physical_device_init(&pdev->vk, instance,
-                              NULL, /* We set up extensions later */
+                              NULL, NULL, /* We set up extensions later */
                               &dispatch_table);
    if (result != VK_SUCCESS) {
       vk_free(&instance->alloc, pdev);
@@ -1156,7 +1156,7 @@ dzn_enumerate_physical_devices(struct vk_instance *instance)
    if (result != VK_SUCCESS)
       result = dzn_enumerate_physical_devices_dxgi(instance);
 #endif
-   
+
    return result;
 }
 
@@ -1598,9 +1598,9 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion)
     *
     *    - Loader interface v4 differs from v3 in:
     *        - The ICD must implement vk_icdGetPhysicalDeviceProcAddr().
-    * 
+    *
     *    - Loader interface v5 differs from v4 in:
-    *        - The ICD must support Vulkan API version 1.1 and must not return 
+    *        - The ICD must support Vulkan API version 1.1 and must not return
     *          VK_ERROR_INCOMPATIBLE_DRIVER from vkCreateInstance() unless a
     *          Vulkan Loader with interface v4 or smaller is being used and the
     *          application provides an API version that is greater than 1.0.
@@ -2052,7 +2052,7 @@ dzn_queue_submit(struct vk_queue *q,
    }
 
    ID3D12CommandQueue_ExecuteCommandLists(queue->cmdqueue, info->command_buffer_count, cmdlists);
-   
+
    for (uint32_t i = 0; i < info->command_buffer_count; i++) {
       struct dzn_cmd_buffer* cmd_buffer =
          container_of(info->command_buffers[i], struct dzn_cmd_buffer, vk);
