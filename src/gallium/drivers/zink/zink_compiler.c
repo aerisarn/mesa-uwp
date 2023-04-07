@@ -5128,10 +5128,9 @@ zink_shader_tcs_create(struct zink_screen *screen, nir_shader *vs, unsigned vert
          - ARB_tessellation_shader
        */
       /* we need to load the invocation-specific value of the vertex output and then store it to the per-patch output */
-      nir_deref_instr *in_array_var = nir_build_deref_array(&b, nir_build_deref_var(&b, in), invocation_id);
-      nir_ssa_def *load = nir_load_deref(&b, in_array_var);
-      nir_deref_instr *out_array_var = nir_build_deref_array(&b, nir_build_deref_var(&b, out), invocation_id);
-      nir_store_deref(&b, out_array_var, load, 0xff);
+      nir_deref_instr *in_value = nir_build_deref_array(&b, nir_build_deref_var(&b, in), invocation_id);
+      nir_deref_instr *out_value = nir_build_deref_array(&b, nir_build_deref_var(&b, out), invocation_id);
+      copy_vars(&b, out_value, in_value);
    }
    nir_variable *gl_TessLevelInner = nir_variable_create(nir, nir_var_shader_out, glsl_array_type(glsl_float_type(), 2, 0), "gl_TessLevelInner");
    gl_TessLevelInner->data.location = VARYING_SLOT_TESS_LEVEL_INNER;
