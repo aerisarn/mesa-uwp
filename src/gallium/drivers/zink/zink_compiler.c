@@ -3656,6 +3656,11 @@ zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
       default: break;
       }
    }
+   if (screen->driconf.inline_uniforms) {
+      NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_mem_global | nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_mem_shared);
+      NIR_PASS_V(nir, rewrite_bo_access, screen);
+      NIR_PASS_V(nir, remove_bo_access, zs);
+   }
    optimize_nir(nir, zs);
    zink_descriptor_shader_init(screen, zs);
    struct zink_shader_object obj = compile_module(screen, zs, nir, true);
