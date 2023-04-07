@@ -1173,12 +1173,14 @@ is_direct_uniform_load(nir_def *def, nir_scalar *s)
  * \param uniform The uniform that's declared in another shader.
  */
 nir_variable *
-nir_clone_uniform_variable(nir_shader *nir, nir_variable *uniform)
+nir_clone_uniform_variable(nir_shader *nir, nir_variable *uniform, bool spirv)
 {
    /* Find if uniform already exists in consumer. */
    nir_variable *new_var = NULL;
-   nir_foreach_uniform_variable(v, nir) {
-      if (!strcmp(uniform->name, v->name)) {
+   nir_foreach_variable_with_modes(v, nir, uniform->data.mode) {
+      if ((spirv && uniform->data.mode & nir_var_mem_ubo &&
+           v->data.binding == uniform->data.binding) ||
+          (!spirv && !strcmp(uniform->name, v->name))) {
          new_var = v;
          break;
       }
@@ -1241,7 +1243,7 @@ replace_varying_input_by_uniform_load(nir_shader *shader,
    nir_intrinsic_instr *load = nir_instr_as_intrinsic(scalar->def->parent_instr);
    nir_deref_instr *deref = nir_src_as_deref(load->src[0]);
    nir_variable *uni_var = nir_deref_instr_get_variable(deref);
-   uni_var = nir_clone_uniform_variable(shader, uni_var);
+   uni_var = nir_clone_uniform_variable(shader, uni_var, false);
 
    bool progress = false;
    nir_foreach_block(block, impl) {
