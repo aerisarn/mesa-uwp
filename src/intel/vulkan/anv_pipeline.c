@@ -1886,6 +1886,25 @@ anv_pipeline_nir_preprocess(struct anv_pipeline *pipeline, nir_shader *nir)
    }
 }
 
+static void
+anv_fill_pipeline_creation_feedback(VkPipelineCreationFeedbackEXT *pipeline_feedback,
+                                    const VkGraphicsPipelineCreateInfo *info,
+                                    struct anv_pipeline_stage *stages)
+{
+   const VkPipelineCreationFeedbackCreateInfo *create_feedback =
+      vk_find_struct_const(info->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
+   if (create_feedback) {
+      *create_feedback->pPipelineCreationFeedback = *pipeline_feedback;
+
+      uint32_t stage_count = create_feedback->pipelineStageCreationFeedbackCount;
+      assert(stage_count == 0 || info->stageCount == stage_count);
+      for (uint32_t i = 0; i < stage_count; i++) {
+         gl_shader_stage s = vk_to_mesa_shader_stage(info->pStages[i].stage);
+         create_feedback->pPipelineStageCreationFeedbacks[i] = stages[s].feedback;
+      }
+   }
+}
+
 static VkResult
 anv_graphics_pipeline_compile(struct anv_graphics_base_pipeline *pipeline,
                               struct anv_pipeline_stage *stages,
@@ -2282,18 +2301,7 @@ done:
 
    pipeline_feedback->duration = os_time_get_nano() - pipeline_start;
 
-   const VkPipelineCreationFeedbackCreateInfo *create_feedback =
-      vk_find_struct_const(info->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
-   if (create_feedback) {
-      *create_feedback->pPipelineCreationFeedback = *pipeline_feedback;
-
-      uint32_t stage_count = create_feedback->pipelineStageCreationFeedbackCount;
-      assert(stage_count == 0 || info->stageCount == stage_count);
-      for (uint32_t i = 0; i < stage_count; i++) {
-         gl_shader_stage s = vk_to_mesa_shader_stage(info->pStages[i].stage);
-         create_feedback->pPipelineStageCreationFeedbacks[i] = stages[s].feedback;
-      }
-   }
+   anv_fill_pipeline_creation_feedback(pipeline_feedback, info, stages);
 
    if (pipeline->shaders[MESA_SHADER_FRAGMENT]) {
       pipeline->fragment_dynamic =
@@ -2858,18 +2866,7 @@ anv_graphics_lib_pipeline_create(struct anv_device *device,
 
    pipeline_feedback.duration = os_time_get_nano() - pipeline_start;
 
-   const VkPipelineCreationFeedbackCreateInfo *create_feedback =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
-   if (create_feedback) {
-      *create_feedback->pPipelineCreationFeedback = pipeline_feedback;
-
-      uint32_t stage_count = create_feedback->pipelineStageCreationFeedbackCount;
-      assert(stage_count == 0 || pCreateInfo->stageCount == stage_count);
-      for (uint32_t i = 0; i < stage_count; i++) {
-         gl_shader_stage s = vk_to_mesa_shader_stage(pCreateInfo->pStages[i].stage);
-         create_feedback->pPipelineStageCreationFeedbacks[i] = stages[s].feedback;
-      }
-   }
+   anv_fill_pipeline_creation_feedback(&pipeline_feedback, pCreateInfo, stages);
 
    anv_graphics_lib_validate_shaders(pipeline,
                                      pCreateInfo->flags & VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT);
@@ -3007,18 +3004,7 @@ anv_graphics_pipeline_create(struct anv_device *device,
 
    pipeline_feedback.duration = os_time_get_nano() - pipeline_start;
 
-   const VkPipelineCreationFeedbackCreateInfo *create_feedback =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
-   if (create_feedback) {
-      *create_feedback->pPipelineCreationFeedback = pipeline_feedback;
-
-      uint32_t stage_count = create_feedback->pipelineStageCreationFeedbackCount;
-      assert(stage_count == 0 || pCreateInfo->stageCount == stage_count);
-      for (uint32_t i = 0; i < stage_count; i++) {
-         gl_shader_stage s = vk_to_mesa_shader_stage(pCreateInfo->pStages[i].stage);
-         create_feedback->pPipelineStageCreationFeedbacks[i] = stages[s].feedback;
-      }
-   }
+   anv_fill_pipeline_creation_feedback(&pipeline_feedback, pCreateInfo, stages);
 
    *pPipeline = anv_pipeline_to_handle(&pipeline->base.base);
 
