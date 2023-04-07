@@ -187,6 +187,14 @@ zink_context_destroy(struct pipe_context *pctx)
       zink_destroy_render_pass(screen, he->data);
 
    zink_context_destroy_query_pools(ctx);
+   set_foreach(&ctx->gfx_inputs, he) {
+      struct zink_gfx_input_key *ikey = (void*)he->key;
+      VKSCR(DestroyPipeline)(screen->dev, ikey->pipeline, NULL);
+   }
+   set_foreach(&ctx->gfx_outputs, he) {
+      struct zink_gfx_output_key *okey = (void*)he->key;
+      VKSCR(DestroyPipeline)(screen->dev, okey->pipeline, NULL);
+   }
    u_upload_destroy(pctx->stream_uploader);
    u_upload_destroy(pctx->const_uploader);
    slab_destroy_child(&ctx->transfer_pool);
