@@ -597,11 +597,9 @@ try_setup_line(struct lp_setup_context *setup,
    scissor_planes_needed(s_planes, &bboxpos, scissor);
    nr_planes += s_planes[0] + s_planes[1] + s_planes[2] + s_planes[3];
 
-   unsigned tri_bytes;
    struct lp_rast_triangle *line = lp_setup_alloc_triangle(scene,
                                                            key->num_inputs,
-                                                           nr_planes,
-                                                           &tri_bytes);
+                                                           nr_planes);
    if (!line)
       return FALSE;
 
