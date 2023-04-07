@@ -458,6 +458,9 @@ dzn_physical_device_cache_caps(struct dzn_physical_device *pdev)
    ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_D3D12_OPTIONS13, &pdev->options13, sizeof(pdev->options13));
    ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_D3D12_OPTIONS14, &pdev->options14, sizeof(pdev->options14));
    ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_D3D12_OPTIONS15, &pdev->options15, sizeof(pdev->options15));
+#if D3D12_SDK_VERSION >= 609
+   ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_D3D12_OPTIONS17, &pdev->options17, sizeof(pdev->options17));
+#endif
 #if D3D12_SDK_VERSION >= 610
    if (FAILED(ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_D3D12_OPTIONS19, &pdev->options19, sizeof(pdev->options19)))) {
       pdev->options19.MaxSamplerDescriptorHeapSize = D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE;
@@ -3254,6 +3257,9 @@ dzn_sampler_create(struct dzn_device *device,
                    const VkAllocationCallbacks *pAllocator,
                    VkSampler *out)
 {
+#if D3D12_SDK_VERSION >= 609
+   struct dzn_physical_device *pdev = container_of(device->vk.physical, struct dzn_physical_device, vk);
+#endif
    struct dzn_sampler *sampler =
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*sampler), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -3340,7 +3346,7 @@ dzn_sampler_create(struct dzn_device *device,
    }
 
 #if D3D12_SDK_VERSION >= 609
-   if (pCreateInfo->unnormalizedCoordinates)
+   if (pCreateInfo->unnormalizedCoordinates && pdev->options17.NonNormalizedCoordinateSamplersSupported)
       sampler->desc.Flags |= D3D12_SAMPLER_FLAG_NON_NORMALIZED_COORDINATES;
 #endif
 
