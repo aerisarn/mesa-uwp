@@ -1013,6 +1013,19 @@ radv_amdgpu_winsys_cs_submit_fallback(
             unsigned cs_num_ib = cs->use_ib ? 1 : cs->num_old_ib_buffers;
             if (i + cs_num_ib > ib_per_submit)
                break;
+
+            if (cs->hw_ip != request.ip_type) {
+               /* Found a "follower" CS in a gang submission.
+                * Make sure to submit this together with its "leader", the next CS.
+                * We rely on the caller to order each "follower" before its "leader."
+                */
+               assert(cs_idx != cs_count - 1);
+               struct radv_amdgpu_cs *next_cs = radv_amdgpu_cs(cs_array[cs_idx + 1]);
+               assert(next_cs->hw_ip == request.ip_type);
+               unsigned next_cs_num_ib = next_cs->use_ib ? 1 : next_cs->num_old_ib_buffers;
+               if (i + cs_num_ib + next_cs_num_ib > ib_per_submit)
+                  break;
+            }
          }
 
          /* When can use IBs, we only need to submit the main IB of this CS,
