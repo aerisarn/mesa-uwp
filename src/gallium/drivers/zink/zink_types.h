@@ -768,6 +768,7 @@ struct zink_shader {
    struct {
       struct util_queue_fence fence;
       struct zink_shader_object obj;
+      struct zink_shader_object no_psiz_obj; //avoid a crippling bug in nir_assign_io_var_locations()
       VkDescriptorSetLayout dsl;
       VkPipelineLayout layout;
       VkPipeline gpl;

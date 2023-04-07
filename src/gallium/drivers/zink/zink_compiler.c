@@ -3783,15 +3783,36 @@ zink_shader_compile_separate(struct zink_screen *screen, struct zink_shader *zs)
    optimize_nir(nir, zs);
    zink_descriptor_shader_init(screen, zs);
    zs->sinfo.last_vertex = zs->sinfo.have_xfb;
+   nir_shader *nir_clone = NULL;
+   if (screen->info.have_EXT_shader_object)
+      nir_clone = nir_shader_clone(nir, nir);
    struct zink_shader_object obj = compile_module(screen, zs, nir, true);
-   /* always try to pre-generate a tcs in case it's needed */
-   if (zs->info.stage == MESA_SHADER_TESS_EVAL && screen->info.have_EXT_shader_object && !zs->info.internal) {
-      nir_shader *nir_tcs = NULL;
-      /* use max pcp for compat */
-      zs->non_fs.generated_tcs = zink_shader_tcs_create(screen, nir, 32, &nir_tcs);
-      nir_tcs->info.separate_shader = true;
-      zs->non_fs.generated_tcs->precompile.obj = zink_shader_compile_separate(screen, zs->non_fs.generated_tcs);
-      ralloc_free(nir_tcs);
+   if (screen->info.have_EXT_shader_object && !zs->info.internal) {
+      /* always try to pre-generate a tcs in case it's needed */
+      if (zs->info.stage == MESA_SHADER_TESS_EVAL) {
+         nir_shader *nir_tcs = NULL;
+         /* use max pcp for compat */
+         zs->non_fs.generated_tcs = zink_shader_tcs_create(screen, nir_clone, 32, &nir_tcs);
+         nir_tcs->info.separate_shader = true;
+         zs->non_fs.generated_tcs->precompile.obj = zink_shader_compile_separate(screen, zs->non_fs.generated_tcs);
+         ralloc_free(nir_tcs);
+      }
+      if (zs->info.stage == MESA_SHADER_VERTEX || zs->info.stage == MESA_SHADER_TESS_EVAL) {
+         /* create a second variant with PSIZ removed:
+          * this works around a bug in drivers using nir_assign_io_var_locations()
+          * where builtins that aren't read by following stages get assigned
+          * driver locations before varyings and break the i/o interface between shaders even
+          * though zink has correctly assigned all locations
+          */
+         nir_variable *var = nir_find_variable_with_location(nir_clone, nir_var_shader_out, VARYING_SLOT_PSIZ);
+         if (var && !var->data.explicit_location) {
+            var->data.mode = nir_var_shader_temp;
+            nir_fixup_deref_modes(nir_clone);
+            NIR_PASS_V(nir_clone, nir_remove_dead_variables, nir_var_shader_temp, NULL);
+            optimize_nir(nir_clone, NULL);
+            zs->precompile.no_psiz_obj = compile_module(screen, zs, nir_clone, true);
+         }
+      }
    }
    ralloc_free(nir);
    return obj;
@@ -5127,6 +5148,7 @@ zink_shader_free(struct zink_screen *screen, struct zink_shader *shader)
    zink_descriptor_shader_deinit(screen, shader);
    if (screen->info.have_EXT_shader_object) {
       VKSCR(DestroyShaderEXT)(screen->dev, shader->precompile.obj.obj, NULL);
+      VKSCR(DestroyShaderEXT)(screen->dev, shader->precompile.no_psiz_obj.obj, NULL);
    } else {
       if (shader->precompile.obj.mod)
          VKSCR(DestroyShaderModule)(screen->dev, shader->precompile.obj.mod, NULL);

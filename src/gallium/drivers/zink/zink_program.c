@@ -1180,7 +1180,11 @@ create_gfx_program_separable(struct zink_context *ctx, struct zink_shader **stag
          _mesa_set_add(prog->shaders[i]->programs, prog);
          simple_mtx_unlock(&prog->shaders[i]->lock);
          if (screen->info.have_EXT_shader_object) {
-            prog->objects[i] = prog->shaders[i]->precompile.obj.obj;
+            /* FIXME: delete this if nir_assign_io_var_locations is ever fixed */
+            if (prog->last_vertex_stage != prog->shaders[i] && (i == MESA_SHADER_VERTEX || i == MESA_SHADER_TESS_EVAL))
+               prog->objects[i] = prog->shaders[i]->precompile.no_psiz_obj.obj;
+            if (!prog->objects[i])
+               prog->objects[i] = prog->shaders[i]->precompile.obj.obj;
          }
          refs++;
       }
