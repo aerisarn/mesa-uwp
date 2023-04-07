@@ -2421,12 +2421,6 @@ dzn_device_create(struct dzn_physical_device *pdev,
 
    device->support_static_samplers = true;
    device->bindless = (instance->debug_flags & DZN_DEBUG_BINDLESS) != 0 ||
-#if D3D12_SDK_VERSION >= 610
-      /* Enable bindless by default when we can do it and still be in-spec, this is
-       * likely to be more efficient than the "bindful" method of copying descriptors. */
-      (pdev->options19.MaxSamplerDescriptorHeapSize >= 4000 &&
-       pdev->shader_model >= D3D_SHADER_MODEL_6_6) ||
-#endif
       device->vk.enabled_features.descriptorIndexing ||
       device->vk.enabled_extensions.EXT_descriptor_indexing;
 
