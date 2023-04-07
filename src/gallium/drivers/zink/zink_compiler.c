@@ -4988,6 +4988,7 @@ void
 zink_gfx_shader_free(struct zink_screen *screen, struct zink_shader *shader)
 {
    assert(shader->info.stage != MESA_SHADER_COMPUTE);
+   util_queue_fence_wait(&shader->precompile.fence);
    set_foreach(shader->programs, entry) {
       struct zink_gfx_program *prog = (void*)entry->key;
       gl_shader_stage stage = shader->info.stage;
