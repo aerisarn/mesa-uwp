@@ -125,6 +125,36 @@ class FeatureStruct:
     s_type: str
     features: typing.List[str]
 
+TEMPLATE_H = Template(COPYRIGHT + """
+/* This file generated from ${filename}, don't edit directly. */
+#ifndef VK_FEATURES_H
+#define VK_FEATURES_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct vk_features {
+% for flag in all_flags:
+   bool ${flag};
+% endfor
+};
+
+void
+vk_set_physical_device_features(struct vk_features *all_features,
+                                const VkPhysicalDeviceFeatures2 *pFeatures);
+
+void
+vk_set_physical_device_features_1_0(struct vk_features *all_features,
+                                    const VkPhysicalDeviceFeatures *pFeatures);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+""", output_encoding='utf-8')
+
 TEMPLATE_C = Template(COPYRIGHT + """
 /* This file generated from ${filename}, don't edit directly. */
 
@@ -302,36 +332,6 @@ vk_set_physical_device_features_1_0(struct vk_features *all_features,
       all_features->${flag} = true;
 % endfor
 }
-""", output_encoding='utf-8')
-
-TEMPLATE_H = Template(COPYRIGHT + """
-/* This file generated from ${filename}, don't edit directly. */
-#ifndef VK_FEATURES_H
-#define VK_FEATURES_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-struct vk_features {
-% for flag in all_flags:
-   bool ${flag};
-% endfor
-};
-
-void
-vk_set_physical_device_features(struct vk_features *all_features,
-                                const VkPhysicalDeviceFeatures2 *pFeatures);
-
-void
-vk_set_physical_device_features_1_0(struct vk_features *all_features,
-                                    const VkPhysicalDeviceFeatures *pFeatures);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
 """, output_encoding='utf-8')
 
 def get_pdev_features(doc):
