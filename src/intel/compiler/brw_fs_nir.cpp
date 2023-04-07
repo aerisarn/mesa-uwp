@@ -4961,9 +4961,14 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
       const bool is_ssbo =
          instr->intrinsic == nir_intrinsic_load_ssbo_uniform_block_intel;
-      srcs[SURFACE_LOGICAL_SRC_SURFACE] = is_ssbo ?
-         get_nir_buffer_intrinsic_index(bld, instr) :
-         fs_reg(brw_imm_ud(GFX7_BTI_SLM));
+      if (is_ssbo) {
+         srcs[get_nir_src_bindless(instr->src[0]) ?
+              SURFACE_LOGICAL_SRC_SURFACE_HANDLE :
+              SURFACE_LOGICAL_SRC_SURFACE] =
+            get_nir_buffer_intrinsic_index(bld, instr);
+      } else {
+         srcs[SURFACE_LOGICAL_SRC_SURFACE] = fs_reg(brw_imm_ud(GFX7_BTI_SLM));
+      }
 
       const unsigned total_dwords = ALIGN(instr->num_components, REG_SIZE / 4);
       unsigned loaded_dwords = 0;
