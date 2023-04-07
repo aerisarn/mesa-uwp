@@ -1130,6 +1130,22 @@ lower_64bit_pack(nir_shader *shader)
                                        nir_metadata_block_index | nir_metadata_dominance, NULL);
 }
 
+static void
+copy_vars(nir_builder *b, nir_deref_instr *dst, nir_deref_instr *src)
+{
+   assert(glsl_get_bare_type(dst->type) == glsl_get_bare_type(src->type));
+   if (glsl_type_is_struct(dst->type)) {
+      for (unsigned i = 0; i < glsl_get_length(dst->type); ++i) {
+         copy_vars(b, nir_build_deref_struct(b, dst, i), nir_build_deref_struct(b, src, i));
+      }
+   } else if (glsl_type_is_array_or_matrix(dst->type)) {
+      copy_vars(b, nir_build_deref_array_wildcard(b, dst), nir_build_deref_array_wildcard(b, src));
+   } else {
+      nir_ssa_def *load = nir_load_deref(b, src);
+      nir_store_deref(b, dst, load, BITFIELD_MASK(load->num_components));
+   }
+}
+
 nir_shader *
 zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
                                const nir_shader *prev_stage,
@@ -1205,24 +1221,8 @@ zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
          if (in_vars[j]->data.location == VARYING_SLOT_EDGE) {
             continue;
          }
-         /* no need to use copy_var to save a lower pass */
-         nir_deref_instr *deref_var = nir_build_deref_var(&b, in_vars[j]);
-         nir_deref_instr *deref_array = nir_build_deref_array(&b, deref_var, idx);
-         if (glsl_type_is_array(deref_array->type)) {
-            nir_deref_instr *deref_out = nir_build_deref_var(&b, out_vars[j]);
-            for (unsigned k = 0; k < glsl_array_size(deref_array->type); k++) {
-               nir_deref_instr *deref_arr_arr = nir_build_deref_array_imm(&b, deref_array, k);
-               nir_deref_instr *deref_arr_out = nir_build_deref_array_imm(&b, deref_out, k);
-               assert(glsl_type_is_vector_or_scalar(deref_arr_arr->type));
-               nir_ssa_def *value = nir_load_deref(&b, deref_arr_arr);
-               nir_store_deref(&b, deref_arr_out, value,
-                             (1u << value->num_components) - 1);
-            }
-         } else {
-            nir_ssa_def *value = nir_load_deref(&b, deref_array);
-            nir_store_var(&b, out_vars[j], value,
-                        (1u << value->num_components) - 1);
-         }
+         nir_deref_instr *in_value = nir_build_deref_array(&b, nir_build_deref_var(&b, in_vars[j]), idx);
+         copy_vars(&b, nir_build_deref_var(&b, out_vars[j]), in_value);
       }
       nir_emit_vertex(&b, 0);
       if (i == 2)
