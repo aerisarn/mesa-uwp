@@ -390,6 +390,7 @@ dzn_physical_device_create(struct vk_instance *instance,
 
    result = dzn_wsi_init(pdev);
    if (result != VK_SUCCESS) {
+      list_del(&pdev->vk.link);
       dzn_physical_device_destroy(&pdev->vk);
       return result;
    }
