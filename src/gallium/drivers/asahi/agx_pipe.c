@@ -1817,7 +1817,8 @@ agx_is_format_supported(struct pipe_screen *pscreen, enum pipe_format format,
 
    bool is_deqp = agx_device(pscreen)->debug & AGX_DBG_DEQP;
 
-   if (sample_count > 1 && !(sample_count == 4 && is_deqp))
+   if (sample_count > 1 &&
+       (!is_deqp || (sample_count != 4 && sample_count != 2)))
       return false;
 
    if (MAX2(sample_count, 1) != MAX2(storage_sample_count, 1))
