@@ -402,10 +402,12 @@ dzn_cmd_buffer_destroy(struct vk_command_buffer *cbuf)
    if (cmdbuf->cmdalloc)
       ID3D12CommandAllocator_Release(cmdbuf->cmdalloc);
 
-   list_for_each_entry_safe(struct dzn_internal_resource, res, &cmdbuf->internal_bufs, link) {
-      list_del(&res->link);
-      ID3D12Resource_Release(res->res);
-      vk_free(&cbuf->pool->alloc, res);
+   for (uint32_t bucket = 0; bucket < DZN_INTERNAL_BUF_BUCKET_COUNT; ++bucket) {
+      list_for_each_entry_safe(struct dzn_internal_resource, res, &cmdbuf->internal_bufs[bucket], link) {
+         list_del(&res->link);
+         ID3D12Resource_Release(res->res);
+         vk_free(&cbuf->pool->alloc, res);
+      }
    }
 
    dzn_descriptor_heap_pool_finish(&cmdbuf->cbv_srv_uav_pool);
@@ -465,11 +467,14 @@ dzn_cmd_buffer_reset(struct vk_command_buffer *cbuf, VkCommandBufferResetFlags f
    cmdbuf->state.multiview.view_mask = 1;
 
    /* TODO: Return resources to the pool */
-   list_for_each_entry_safe(struct dzn_internal_resource, res, &cmdbuf->internal_bufs, link) {
-      list_del(&res->link);
-      ID3D12Resource_Release(res->res);
-      vk_free(&cmdbuf->vk.pool->alloc, res);
+   for (uint32_t bucket = 0; bucket < DZN_INTERNAL_BUF_BUCKET_COUNT; ++bucket) {
+      list_for_each_entry_safe(struct dzn_internal_resource, res, &cmdbuf->internal_bufs[bucket], link) {
+         list_del(&res->link);
+         ID3D12Resource_Release(res->res);
+         vk_free(&cmdbuf->vk.pool->alloc, res);
+      }
    }
+   cmdbuf->cur_upload_buf = NULL;
 
    util_dynarray_clear(&cmdbuf->events.wait);
    util_dynarray_clear(&cmdbuf->events.signal);
@@ -603,7 +608,8 @@ dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
    memset(&cmdbuf->state, 0, sizeof(cmdbuf->state));
    cmdbuf->state.multiview.num_views = 1;
    cmdbuf->state.multiview.view_mask = 1;
-   list_inithead(&cmdbuf->internal_bufs);
+   for (uint32_t bucket = 0; bucket < DZN_INTERNAL_BUF_BUCKET_COUNT; ++bucket)
+      list_inithead(&cmdbuf->internal_bufs[bucket]);
    util_dynarray_init(&cmdbuf->events.wait, NULL);
    util_dynarray_init(&cmdbuf->events.signal, NULL);
    util_dynarray_init(&cmdbuf->queries.reset, NULL);
@@ -1752,25 +1758,55 @@ dzn_cmd_buffer_get_null_rtv(struct dzn_cmd_buffer *cmdbuf)
    return cmdbuf->null_rtv;
 }
 
+static D3D12_HEAP_TYPE
+heap_type_for_bucket(enum dzn_internal_buf_bucket bucket)
+{
+   switch (bucket) {
+   case DZN_INTERNAL_BUF_UPLOAD: return D3D12_HEAP_TYPE_UPLOAD;
+   case DZN_INTERNAL_BUF_DEFAULT: return D3D12_HEAP_TYPE_DEFAULT;
+   default: unreachable("Invalid value");
+   }
+}
+
 static VkResult
 dzn_cmd_buffer_alloc_internal_buf(struct dzn_cmd_buffer *cmdbuf,
                                   uint32_t size,
-                                  D3D12_HEAP_TYPE heap_type,
+                                  enum dzn_internal_buf_bucket bucket,
                                   D3D12_RESOURCE_STATES init_state,
-                                  ID3D12Resource **out)
+                                  uint64_t align,
+                                  ID3D12Resource **out,
+                                  uint64_t *offset)
 {
    struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    ID3D12Resource *res;
    *out = NULL;
+   D3D12_HEAP_TYPE heap_type = heap_type_for_bucket(bucket);
 
-   /* Align size on 64k (the default alignment) */
-   size = ALIGN_POT(size, 64 * 1024);
+   if (bucket == DZN_INTERNAL_BUF_UPLOAD && cmdbuf->cur_upload_buf) {
+      uint64_t new_offset = ALIGN_POT(cmdbuf->cur_upload_buf_offset, align);
+      if (cmdbuf->cur_upload_buf->size >= size + new_offset) {
+         cmdbuf->cur_upload_buf_offset = new_offset + size;
+         *out = cmdbuf->cur_upload_buf->res;
+         *offset = new_offset;
+         return VK_SUCCESS;
+      }
+      cmdbuf->cur_upload_buf = NULL;
+      cmdbuf->cur_upload_buf_offset = 0;
+   }
+
+   uint32_t alloc_size = size;
+   if (bucket == DZN_INTERNAL_BUF_UPLOAD)
+      /* Walk through a 4MB upload buffer */
+      alloc_size = ALIGN_POT(size, 4 * 1024 * 1024);
+   else
+      /* Align size on 64k (the default alignment) */
+      alloc_size = ALIGN_POT(size, 64 * 1024);
 
    D3D12_HEAP_PROPERTIES hprops = dzn_ID3D12Device4_GetCustomHeapProperties(device->dev, 0, heap_type);
    D3D12_RESOURCE_DESC rdesc = {
       .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
       .Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
-      .Width = size,
+      .Width = alloc_size,
       .Height = 1,
       .DepthOrArraySize = 1,
       .MipLevels = 1,
@@ -1799,8 +1835,15 @@ dzn_cmd_buffer_alloc_internal_buf(struct dzn_cmd_buffer *cmdbuf,
    }
 
    entry->res = res;
-   list_addtail(&entry->link, &cmdbuf->internal_bufs);
+   entry->size = alloc_size;
+   list_addtail(&entry->link, &cmdbuf->internal_bufs[bucket]);
    *out = entry->res;
+   if (offset)
+      *offset = 0;
+   if (bucket == DZN_INTERNAL_BUF_UPLOAD) {
+      cmdbuf->cur_upload_buf = entry;
+      cmdbuf->cur_upload_buf_offset = size;
+   }
    return VK_SUCCESS;
 }
 
@@ -1837,12 +1880,15 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
       memcpy(&buf[i], raw, blksize);
 
    ID3D12Resource *src_res;
+   uint64_t src_offset;
 
    VkResult result =
       dzn_cmd_buffer_alloc_internal_buf(cmdbuf, res_size,
-                                        D3D12_HEAP_TYPE_UPLOAD,
+                                        DZN_INTERNAL_BUF_UPLOAD,
                                         D3D12_RESOURCE_STATE_GENERIC_READ,
-                                        &src_res);
+                                        D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT,
+                                        &src_res,
+                                        &src_offset);
    if (result != VK_SUCCESS)
       return;
 
@@ -1850,6 +1896,7 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
 
    uint8_t *cpu_ptr;
    ID3D12Resource_Map(src_res, 0, NULL, (void **)&cpu_ptr);
+   cpu_ptr += src_offset;
    for (uint32_t i = 0; i < res_size; i += fill_step)
       memcpy(&cpu_ptr[i], buf, fill_step);
 
@@ -1859,7 +1906,7 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
       .pResource = src_res,
       .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
       .PlacedFootprint = {
-         .Offset = 0,
+         .Offset = src_offset,
          .Footprint = {
             .Width = max_w,
             .Height = max_h,
@@ -1977,12 +2024,15 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
       memcpy(&buf[i], raw, blksize);
 
    ID3D12Resource *src_res;
+   uint64_t src_offset;
 
    VkResult result =
       dzn_cmd_buffer_alloc_internal_buf(cmdbuf, res_size,
-                                        D3D12_HEAP_TYPE_UPLOAD,
+                                        DZN_INTERNAL_BUF_UPLOAD,
                                         D3D12_RESOURCE_STATE_GENERIC_READ,
-                                        &src_res);
+                                        D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT,
+                                        &src_res,
+                                        &src_offset);
    if (result != VK_SUCCESS)
       return;
 
@@ -1990,6 +2040,7 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
 
    uint8_t *cpu_ptr;
    ID3D12Resource_Map(src_res, 0, NULL, (void **)&cpu_ptr);
+   cpu_ptr += src_offset;
    for (uint32_t i = 0; i < res_size; i += fill_step)
       memcpy(&cpu_ptr[i], buf, fill_step);
 
@@ -1999,7 +2050,7 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
       .pResource = src_res,
       .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
       .PlacedFootprint = {
-         .Offset = 0,
+         .Offset = src_offset,
       },
    };
 
@@ -3216,17 +3267,21 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
       if (pipeline->dynamic_buffer_count &&
           (cmdbuf->state.bindpoint[bindpoint].dirty & DZN_CMD_BINDPOINT_DIRTY_DYNAMIC_BUFFERS)) {
          ID3D12Resource *dynamic_buffer_buf = NULL;
+         uint64_t dynamic_buffer_buf_offset;
          VkResult result =
             dzn_cmd_buffer_alloc_internal_buf(cmdbuf, sizeof(struct dxil_spirv_bindless_entry) * pipeline->dynamic_buffer_count,
-                                              D3D12_HEAP_TYPE_UPLOAD,
+                                              DZN_INTERNAL_BUF_UPLOAD,
                                               D3D12_RESOURCE_STATE_GENERIC_READ,
-                                              &dynamic_buffer_buf);
+                                              D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT,
+                                              &dynamic_buffer_buf,
+                                              &dynamic_buffer_buf_offset);
          if (result != VK_SUCCESS)
             return;
 
-         uint64_t gpuva = ID3D12Resource_GetGPUVirtualAddress(dynamic_buffer_buf);
+         uint64_t gpuva = ID3D12Resource_GetGPUVirtualAddress(dynamic_buffer_buf) + dynamic_buffer_buf_offset;
          struct dxil_spirv_bindless_entry *map;
          ID3D12Resource_Map(dynamic_buffer_buf, 0, NULL, (void **)&map);
+         map += (dynamic_buffer_buf_offset / sizeof(*map));
 
          for (uint32_t s = 0; s < MAX_SETS; ++s) {
             const struct dzn_descriptor_set *set = desc_state->sets[s].set;
@@ -3426,16 +3481,20 @@ dzn_cmd_buffer_triangle_fan_create_index(struct dzn_cmd_buffer *cmdbuf, uint32_t
       return VK_SUCCESS;
 
    ID3D12Resource *index_buf;
+   uint64_t index_offset;
    VkResult result =
       dzn_cmd_buffer_alloc_internal_buf(cmdbuf, *vertex_count * index_size,
-                                        D3D12_HEAP_TYPE_UPLOAD,
+                                        DZN_INTERNAL_BUF_UPLOAD,
                                         D3D12_RESOURCE_STATE_GENERIC_READ,
-                                        &index_buf);
+                                        index_size,
+                                        &index_buf,
+                                        &index_offset);
    if (result != VK_SUCCESS)
       return result;
 
    void *cpu_ptr;
    ID3D12Resource_Map(index_buf, 0, NULL, &cpu_ptr);
+   cpu_ptr = (uint8_t *)cpu_ptr + index_offset;
 
    /* TODO: VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT */
    if (index_size == 2) {
@@ -3457,7 +3516,7 @@ dzn_cmd_buffer_triangle_fan_create_index(struct dzn_cmd_buffer *cmdbuf, uint32_t
    }
 
    cmdbuf->state.ib.view.SizeInBytes = *vertex_count * index_size;
-   cmdbuf->state.ib.view.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(index_buf);
+   cmdbuf->state.ib.view.BufferLocation = ID3D12Resource_GetGPUVirtualAddress(index_buf) + index_offset;
    cmdbuf->state.dirty |= DZN_CMD_DIRTY_IB;
    return VK_SUCCESS;
 }
@@ -3479,9 +3538,11 @@ dzn_cmd_buffer_triangle_fan_rewrite_index(struct dzn_cmd_buffer *cmdbuf,
    ID3D12Resource *new_index_buf;
    VkResult result =
       dzn_cmd_buffer_alloc_internal_buf(cmdbuf, *index_count * 4,
-                                        D3D12_HEAP_TYPE_DEFAULT,
+                                        DZN_INTERNAL_BUF_DEFAULT,
                                         D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                                        &new_index_buf);
+                                        4,
+                                        &new_index_buf,
+                                        NULL);
    if (result != VK_SUCCESS)
       return result;
 
@@ -3641,9 +3702,10 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
    ID3D12Resource *exec_buf;
    VkResult result =
       dzn_cmd_buffer_alloc_internal_buf(cmdbuf, exec_buf_size,
-                                        D3D12_HEAP_TYPE_DEFAULT,
+                                        DZN_INTERNAL_BUF_DEFAULT,
                                         D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                                        &exec_buf);
+                                        0,
+                                        &exec_buf, NULL);
    if (result != VK_SUCCESS)
       return;
 
@@ -3656,18 +3718,20 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
       result =
          dzn_cmd_buffer_alloc_internal_buf(cmdbuf,
                                            max_draw_count * triangle_fan_index_buf_stride,
-                                           D3D12_HEAP_TYPE_DEFAULT,
+                                           DZN_INTERNAL_BUF_DEFAULT,
                                            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                                           &triangle_fan_index_buf);
+                                           0,
+                                           &triangle_fan_index_buf, NULL);
       if (result != VK_SUCCESS)
          return;
 
       result =
          dzn_cmd_buffer_alloc_internal_buf(cmdbuf,
                                            max_draw_count * triangle_fan_exec_buf_stride,
-                                           D3D12_HEAP_TYPE_DEFAULT,
+                                           DZN_INTERNAL_BUF_DEFAULT,
                                            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                                           &triangle_fan_exec_buf);
+                                           0,
+                                           &triangle_fan_exec_buf, NULL);
       if (result != VK_SUCCESS)
          return;
    }
@@ -4084,9 +4148,10 @@ dzn_CmdCopyImage2(VkCommandBuffer commandBuffer,
 
       VkResult result =
          dzn_cmd_buffer_alloc_internal_buf(cmdbuf, max_size,
-                                           D3D12_HEAP_TYPE_DEFAULT,
+                                           DZN_INTERNAL_BUF_DEFAULT,
                                            D3D12_RESOURCE_STATE_COPY_DEST,
-                                           &tmp_loc.pResource);
+                                           0,
+                                           &tmp_loc.pResource, NULL);
       if (result != VK_SUCCESS)
          return;
 
@@ -4258,22 +4323,26 @@ dzn_CmdFillBuffer(VkCommandBuffer commandBuffer,
    size &= ~3ULL;
 
    ID3D12Resource *src_res;
+   uint64_t src_offset;
    VkResult result =
       dzn_cmd_buffer_alloc_internal_buf(cmdbuf, size,
-                                        D3D12_HEAP_TYPE_UPLOAD,
+                                        DZN_INTERNAL_BUF_UPLOAD,
                                         D3D12_RESOURCE_STATE_GENERIC_READ,
-                                        &src_res);
+                                        4,
+                                        &src_res,
+                                        &src_offset);
    if (result != VK_SUCCESS)
       return;
 
    uint32_t *cpu_ptr;
    ID3D12Resource_Map(src_res, 0, NULL, (void **)&cpu_ptr);
+   cpu_ptr += src_offset / sizeof(uint32_t);
    for (uint32_t i = 0; i < size / 4; i++)
       cpu_ptr[i] = data;
 
    ID3D12Resource_Unmap(src_res, 0, NULL);
 
-   ID3D12GraphicsCommandList1_CopyBufferRegion(cmdbuf->cmdlist, buf->res, dstOffset, src_res, 0, size);
+   ID3D12GraphicsCommandList1_CopyBufferRegion(cmdbuf->cmdlist, buf->res, dstOffset, src_res, src_offset, size);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -4298,20 +4367,22 @@ dzn_CmdUpdateBuffer(VkCommandBuffer commandBuffer,
    size &= ~3ULL;
 
    ID3D12Resource *src_res;
+   uint64_t src_offset;
    VkResult result =
       dzn_cmd_buffer_alloc_internal_buf(cmdbuf, size,
-                                        D3D12_HEAP_TYPE_UPLOAD,
+                                        DZN_INTERNAL_BUF_UPLOAD,
                                         D3D12_RESOURCE_STATE_GENERIC_READ,
-                                        &src_res);
+                                        4,
+                                        &src_res, &src_offset);
    if (result != VK_SUCCESS)
       return;
 
    void *cpu_ptr;
    ID3D12Resource_Map(src_res, 0, NULL, &cpu_ptr);
-   memcpy(cpu_ptr, data, size),
+   memcpy((uint8_t *)cpu_ptr + src_offset, data, size),
    ID3D12Resource_Unmap(src_res, 0, NULL);
 
-   ID3D12GraphicsCommandList1_CopyBufferRegion(cmdbuf->cmdlist, buf->res, dstOffset, src_res, 0, size);
+   ID3D12GraphicsCommandList1_CopyBufferRegion(cmdbuf->cmdlist, buf->res, dstOffset, src_res, src_offset, size);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -5010,21 +5081,23 @@ dzn_CmdDrawIndexed(VkCommandBuffer commandBuffer,
       };
 
       ID3D12Resource *draw_buf;
+      uint64_t offset;
       VkResult result =
          dzn_cmd_buffer_alloc_internal_buf(cmdbuf, sizeof(params),
-                                           D3D12_HEAP_TYPE_UPLOAD,
+                                           DZN_INTERNAL_BUF_UPLOAD,
                                            D3D12_RESOURCE_STATE_GENERIC_READ,
-                                           &draw_buf);
+                                           4,
+                                           &draw_buf, &offset);
       if (result != VK_SUCCESS)
          return;
 
       void *cpu_ptr;
       ID3D12Resource_Map(draw_buf, 0, NULL, &cpu_ptr);
-      memcpy(cpu_ptr, &params, sizeof(params));
+      memcpy((uint8_t *)cpu_ptr + offset, &params, sizeof(params));
 
       ID3D12Resource_Unmap(draw_buf, 0, NULL);
 
-      dzn_cmd_buffer_indirect_draw(cmdbuf, draw_buf, 0, NULL, 0, 1, sizeof(params), true);
+      dzn_cmd_buffer_indirect_draw(cmdbuf, draw_buf, offset, NULL, 0, 1, sizeof(params), true);
       return;
    }
 
@@ -5548,9 +5621,10 @@ dzn_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
    ID3D12Resource *exec_buf;
    VkResult result =
       dzn_cmd_buffer_alloc_internal_buf(cmdbuf, sizeof(D3D12_DISPATCH_ARGUMENTS) * 2,
-                                        D3D12_HEAP_TYPE_DEFAULT,
+                                        DZN_INTERNAL_BUF_DEFAULT,
                                         D3D12_RESOURCE_STATE_COPY_DEST,
-                                        &exec_buf);
+                                        0,
+                                        &exec_buf, NULL);
    if (result != VK_SUCCESS)
       return;
 

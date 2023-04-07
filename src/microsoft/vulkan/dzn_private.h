@@ -539,6 +539,7 @@ struct dzn_cmd_buffer_query_pool_state {
 struct dzn_internal_resource {
    struct list_head link;
    ID3D12Resource *res;
+   uint64_t size;
 };
 
 enum dzn_event_state {
@@ -662,6 +663,12 @@ struct dzn_cmd_buffer_dsv_entry {
    D3D12_CPU_DESCRIPTOR_HANDLE handle;
 };
 
+enum dzn_internal_buf_bucket {
+   DZN_INTERNAL_BUF_UPLOAD,
+   DZN_INTERNAL_BUF_DEFAULT,
+   DZN_INTERNAL_BUF_BUCKET_COUNT,
+};
+
 struct dzn_cmd_buffer {
    struct vk_command_buffer vk;
    struct dzn_cmd_buffer_state state;
@@ -689,7 +696,9 @@ struct dzn_cmd_buffer {
    struct dzn_descriptor_heap_pool cbv_srv_uav_pool, sampler_pool;
    D3D12_CPU_DESCRIPTOR_HANDLE null_rtv;
 
-   struct list_head internal_bufs;
+   struct list_head internal_bufs[DZN_INTERNAL_BUF_BUCKET_COUNT];
+   struct dzn_internal_resource *cur_upload_buf;
+   uint64_t cur_upload_buf_offset;
 
    ID3D12CommandAllocator *cmdalloc;
    ID3D12GraphicsCommandList1 *cmdlist;
