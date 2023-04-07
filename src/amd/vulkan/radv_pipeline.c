@@ -3175,11 +3175,33 @@ radv_skip_graphics_pipeline_compile(const struct radv_device *device,
 
 static bool
 radv_pipeline_needs_noop_fs(struct radv_graphics_pipeline *pipeline,
+                            const VkGraphicsPipelineCreateInfo *pCreateInfo,
                             VkGraphicsPipelineLibraryFlagBitsEXT lib_flags)
 {
-   if (pipeline->base.type == RADV_PIPELINE_GRAPHICS &&
-       !(radv_pipeline_to_graphics(&pipeline->base)->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT))
-      return true;
+   if (pipeline->base.type == RADV_PIPELINE_GRAPHICS) {
+      if (!(radv_pipeline_to_graphics(&pipeline->base)->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT))
+         return true;
+
+      const VkPipelineLibraryCreateInfoKHR *libs_info =
+         vk_find_struct_const(pCreateInfo->pNext, PIPELINE_LIBRARY_CREATE_INFO_KHR);
+      const bool link_optimize =
+         (pCreateInfo->flags & VK_PIPELINE_CREATE_LINK_TIME_OPTIMIZATION_BIT_EXT) != 0;
+
+      /* When the noop FS has already been imported by libraries we can skip it, otherwise we need
+       * to compile one.
+       */
+      if (libs_info && link_optimize) {
+         for (uint32_t i = 0; i < libs_info->libraryCount; i++) {
+            RADV_FROM_HANDLE(radv_pipeline, pipeline_lib, libs_info->pLibraries[i]);
+            struct radv_graphics_lib_pipeline *gfx_pipeline_lib =
+               radv_pipeline_to_graphics_lib(pipeline_lib);
+
+            if ((gfx_pipeline_lib->lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)  &&
+                !pipeline->retained_shaders[MESA_SHADER_FRAGMENT].nir)
+               return true;
+         }
+      }
+   }
 
    if (pipeline->base.type == RADV_PIPELINE_GRAPHICS_LIB &&
        (lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) &&
@@ -3198,7 +3220,6 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
                                VkGraphicsPipelineLibraryFlagBitsEXT lib_flags,
                                bool fast_linking_enabled)
 {
-   const bool noop_fs = radv_pipeline_needs_noop_fs(pipeline, lib_flags);
    const char *noop_fs_entrypoint = "noop_fs";
    struct radv_shader_binary *binaries[MESA_VULKAN_SHADER_STAGES] = {NULL};
    struct radv_shader_binary *gs_copy_binary = NULL;
@@ -3276,19 +3297,6 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
           * still need to compile the SPIR-V to NIR because we can't know if the LTO pipelines will
           * be find in the shaders cache.
           */
-         if (noop_fs) {
-            nir_builder fs_b = radv_meta_init_shader(device, MESA_SHADER_FRAGMENT, "noop_fs");
-
-            stages[MESA_SHADER_FRAGMENT] = (struct radv_pipeline_stage) {
-               .stage = MESA_SHADER_FRAGMENT,
-               .internal_nir = fs_b.shader,
-               .entrypoint = noop_fs_entrypoint,
-               .feedback = {
-                  .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
-               },
-            };
-         }
-
          radv_pipeline_get_nir(device, pipeline, stages, pipeline_key);
          radv_pipeline_retain_shaders(radv_pipeline_to_graphics_lib(&pipeline->base), stages);
       }
@@ -3300,6 +3308,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
    if (pCreateInfo->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT)
       return VK_PIPELINE_COMPILE_REQUIRED;
 
+   const bool noop_fs = radv_pipeline_needs_noop_fs(pipeline, pCreateInfo, lib_flags);
    if (noop_fs) {
       nir_builder fs_b = radv_meta_init_shader(device, MESA_SHADER_FRAGMENT, "noop_fs");
 
