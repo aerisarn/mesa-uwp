@@ -201,13 +201,6 @@ radv_create_merged_rt_create_info(const VkRayTracingPipelineCreateInfoKHR *pCrea
    return local_create_info;
 }
 
-static void
-vk_shader_module_finish(void *_module)
-{
-   struct vk_shader_module *module = _module;
-   vk_object_base_finish(&module->base);
-}
-
 static VkResult
 radv_rt_pipeline_compile(struct radv_ray_tracing_pipeline *pipeline,
                          struct radv_pipeline_layout *pipeline_layout, struct radv_device *device,
@@ -364,74 +357,12 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
       goto fail;
 
    if (local_create_info.stageCount) {
-      pipeline->stage_count = local_create_info.stageCount;
-
-      size_t size = sizeof(VkPipelineShaderStageCreateInfo) * local_create_info.stageCount;
-      pipeline->stages = ralloc_size(pipeline->ctx, size);
+      pipeline->stages = radv_copy_shader_stage_create_info(
+         device, local_create_info.stageCount, local_create_info.pStages, pipeline->ctx);
       if (!pipeline->stages)
          goto fail;
 
-      memcpy(pipeline->stages, local_create_info.pStages, size);
-
-      for (uint32_t i = 0; i < local_create_info.stageCount; i++) {
-         RADV_FROM_HANDLE(vk_shader_module, module, pipeline->stages[i].module);
-
-         const VkShaderModuleCreateInfo *minfo =
-            vk_find_struct_const(local_create_info.pStages[i].pNext, SHADER_MODULE_CREATE_INFO);
-
-         if (module) {
-            struct vk_shader_module *new_module =
-               ralloc_size(pipeline->ctx, sizeof(struct vk_shader_module) + module->size);
-            if (!new_module)
-               goto fail;
-
-            ralloc_set_destructor(new_module, vk_shader_module_finish);
-            vk_object_base_init(&device->vk, &new_module->base, VK_OBJECT_TYPE_SHADER_MODULE);
-
-            new_module->nir = NULL;
-            memcpy(new_module->sha1, module->sha1, sizeof(module->sha1));
-            new_module->size = module->size;
-            memcpy(new_module->data, module->data, module->size);
-
-            module = new_module;
-         } else if (minfo) {
-            module = ralloc_size(pipeline->ctx, sizeof(struct vk_shader_module) + minfo->codeSize);
-            if (!module)
-               goto fail;
-
-            vk_shader_module_init(&device->vk, module, minfo);
-         }
-
-         if (module) {
-            const VkSpecializationInfo *spec = pipeline->stages[i].pSpecializationInfo;
-            if (spec) {
-               VkSpecializationInfo *new_spec = ralloc(pipeline->ctx, VkSpecializationInfo);
-               if (!new_spec)
-                  goto fail;
-
-               new_spec->mapEntryCount = spec->mapEntryCount;
-               uint32_t map_entries_size = sizeof(VkSpecializationMapEntry) * spec->mapEntryCount;
-               new_spec->pMapEntries = ralloc_size(pipeline->ctx, map_entries_size);
-               if (!new_spec->pMapEntries)
-                  goto fail;
-               memcpy((void *)new_spec->pMapEntries, spec->pMapEntries, map_entries_size);
-
-               new_spec->dataSize = spec->dataSize;
-               new_spec->pData = ralloc_size(pipeline->ctx, spec->dataSize);
-               if (!new_spec->pData)
-                  goto fail;
-               memcpy((void *)new_spec->pData, spec->pData, spec->dataSize);
-
-               pipeline->stages[i].pSpecializationInfo = new_spec;
-            }
-
-            pipeline->stages[i].module = vk_shader_module_to_handle(module);
-            pipeline->stages[i].pName = ralloc_strdup(pipeline->ctx, pipeline->stages[i].pName);
-            if (!pipeline->stages[i].pName)
-               goto fail;
-            pipeline->stages[i].pNext = NULL;
-         }
-      }
+      pipeline->stage_count = local_create_info.stageCount;
    }
 
    if (local_create_info.groupCount) {

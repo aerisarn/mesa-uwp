@@ -2443,6 +2443,10 @@ bool radv_pipeline_capture_shaders(const struct radv_device *device, VkPipelineC
 bool radv_pipeline_capture_shader_stats(const struct radv_device *device,
                                         VkPipelineCreateFlags flags);
 
+VkPipelineShaderStageCreateInfo *
+radv_copy_shader_stage_create_info(struct radv_device *device, uint32_t stageCount,
+                                   const VkPipelineShaderStageCreateInfo *pStages, void *mem_ctx);
+
 void radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline,
                            const VkAllocationCallbacks *allocator);
 

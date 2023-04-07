@@ -5668,3 +5668,86 @@ radv_GetPipelineExecutableInternalRepresentationsKHR(
 
    return result;
 }
+
+static void
+vk_shader_module_finish(void *_module)
+{
+   struct vk_shader_module *module = _module;
+   vk_object_base_finish(&module->base);
+}
+
+VkPipelineShaderStageCreateInfo *
+radv_copy_shader_stage_create_info(struct radv_device *device, uint32_t stageCount,
+                                   const VkPipelineShaderStageCreateInfo *pStages, void *mem_ctx)
+{
+   VkPipelineShaderStageCreateInfo *new_stages;
+
+   size_t size = sizeof(VkPipelineShaderStageCreateInfo) * stageCount;
+   new_stages = ralloc_size(mem_ctx, size);
+   if (!new_stages)
+      return NULL;
+
+   memcpy(new_stages, pStages, size);
+
+   for (uint32_t i = 0; i < stageCount; i++) {
+      RADV_FROM_HANDLE(vk_shader_module, module, new_stages[i].module);
+
+      const VkShaderModuleCreateInfo *minfo =
+         vk_find_struct_const(pStages[i].pNext, SHADER_MODULE_CREATE_INFO);
+
+      if (module) {
+         struct vk_shader_module *new_module =
+            ralloc_size(mem_ctx, sizeof(struct vk_shader_module) + module->size);
+         if (!new_module)
+            return NULL;
+
+         ralloc_set_destructor(new_module, vk_shader_module_finish);
+         vk_object_base_init(&device->vk, &new_module->base, VK_OBJECT_TYPE_SHADER_MODULE);
+
+         new_module->nir = NULL;
+         memcpy(new_module->sha1, module->sha1, sizeof(module->sha1));
+         new_module->size = module->size;
+         memcpy(new_module->data, module->data, module->size);
+
+         module = new_module;
+      } else if (minfo) {
+         module = ralloc_size(mem_ctx, sizeof(struct vk_shader_module) + minfo->codeSize);
+         if (!module)
+            return NULL;
+
+         vk_shader_module_init(&device->vk, module, minfo);
+      }
+
+      if (module) {
+         const VkSpecializationInfo *spec = new_stages[i].pSpecializationInfo;
+         if (spec) {
+            VkSpecializationInfo *new_spec = ralloc(mem_ctx, VkSpecializationInfo);
+            if (!new_spec)
+               return NULL;
+
+            new_spec->mapEntryCount = spec->mapEntryCount;
+            uint32_t map_entries_size = sizeof(VkSpecializationMapEntry) * spec->mapEntryCount;
+            new_spec->pMapEntries = ralloc_size(mem_ctx, map_entries_size);
+            if (!new_spec->pMapEntries)
+               return NULL;
+            memcpy((void *)new_spec->pMapEntries, spec->pMapEntries, map_entries_size);
+
+            new_spec->dataSize = spec->dataSize;
+            new_spec->pData = ralloc_size(mem_ctx, spec->dataSize);
+            if (!new_spec->pData)
+               return NULL;
+            memcpy((void *)new_spec->pData, spec->pData, spec->dataSize);
+
+            new_stages[i].pSpecializationInfo = new_spec;
+         }
+
+         new_stages[i].module = vk_shader_module_to_handle(module);
+         new_stages[i].pName = ralloc_strdup(mem_ctx, new_stages[i].pName);
+         if (!new_stages[i].pName)
+            return NULL;
+         new_stages[i].pNext = NULL;
+      }
+   }
+
+   return new_stages;
+}
