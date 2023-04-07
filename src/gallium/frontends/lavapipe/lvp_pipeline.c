@@ -56,6 +56,12 @@ shader_destroy(struct lvp_device *device, struct lvp_shader *shader)
       device->queue.ctx->delete_fs_state,
       device->queue.ctx->delete_compute_state,
    };
+   set_foreach(&shader->inlines.variants, entry) {
+      struct lvp_inline_variant *variant = (void*)entry->key;
+      destroy[stage](device->queue.ctx, variant->cso);
+      free(variant);
+   }
+   ralloc_free(shader->inlines.variants.table);
    if (shader->shader_cso)
       destroy[stage](device->queue.ctx, shader->shader_cso);
    if (shader->tess_ccw_cso)
@@ -439,6 +445,18 @@ compile_spirv(struct lvp_device *pdevice, const VkPipelineShaderStageCreateInfo 
    return result;
 }
 
+static bool
+inline_variant_equals(const void *a, const void *b)
+{
+   const struct lvp_inline_variant *av = a, *bv = b;
+   assert(av->mask == bv->mask);
+   u_foreach_bit(slot, av->mask) {
+      if (memcmp(av->vals[slot], bv->vals[slot], sizeof(av->vals[slot])))
+         return false;
+   }
+   return true;
+}
+
 static void
 lvp_shader_lower(struct lvp_device *pdevice, nir_shader *nir, struct lvp_shader *shader, struct lvp_pipeline_layout *layout)
 {
@@ -528,6 +546,8 @@ lvp_shader_lower(struct lvp_device *pdevice, nir_shader *nir, struct lvp_shader 
    if (impl->ssa_alloc > 100) //skip for small shaders
       shader->inlines.must_inline = lvp_find_inlinable_uniforms(shader, nir);
    shader->pipeline_nir = create_pipeline_nir(nir);
+   if (shader->inlines.can_inline)
+      _mesa_set_init(&shader->inlines.variants, NULL, NULL, inline_variant_equals);
 }
 
 static VkResult
@@ -782,6 +802,8 @@ copy_shader_sanitized(struct lvp_shader *dst, const struct lvp_shader *src)
    dst->tess_ccw = NULL; //this gets handled later
    assert(!dst->shader_cso);
    assert(!dst->tess_ccw_cso);
+   if (src->inlines.can_inline)
+      _mesa_set_init(&dst->inlines.variants, NULL, NULL, inline_variant_equals);
 }
 
 static VkResult
@@ -833,9 +855,10 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
             pipeline->line_smooth = p->line_smooth;
             pipeline->disable_multisample = p->disable_multisample;
             pipeline->line_rectangular = p->line_rectangular;
-            pipeline->last_vertex = p->last_vertex;
-            for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++)
+            memcpy(pipeline->shaders, p->shaders, sizeof(struct lvp_shader) * 4);
+            for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++) {
                copy_shader_sanitized(&pipeline->shaders[i], &p->shaders[i]);
+            }
          }
          if (p->stages & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) {
             pipeline->force_min_sample = p->force_min_sample;
