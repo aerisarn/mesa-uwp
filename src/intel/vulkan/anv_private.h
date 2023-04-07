@@ -3210,6 +3210,14 @@ struct anv_graphics_base_pipeline {
    /* Shaders */
    struct anv_shader_bin *                      shaders[ANV_GRAPHICS_SHADER_STAGE_COUNT];
 
+   /* Feedback index in
+    * VkPipelineCreationFeedbackCreateInfo::pPipelineStageCreationFeedbacks
+    *
+    * For pipeline libraries, we need to remember the order at creation when
+    * included into a linked pipeline.
+    */
+   uint32_t                                     feedback_index[ANV_GRAPHICS_SHADER_STAGE_COUNT];
+
    VkShaderStageFlags                           active_stages;
 
    /* True if at the time the fragment shader was compiled, it didn't have all

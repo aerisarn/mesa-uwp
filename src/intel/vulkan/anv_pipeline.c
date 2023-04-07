@@ -676,6 +676,7 @@ struct anv_pipeline_stage {
    char *disasm[3];
 
    VkPipelineCreationFeedback feedback;
+   uint32_t feedback_idx;
 
    const unsigned *code;
 
@@ -1887,7 +1888,8 @@ anv_pipeline_nir_preprocess(struct anv_pipeline *pipeline, nir_shader *nir)
 }
 
 static void
-anv_fill_pipeline_creation_feedback(VkPipelineCreationFeedbackEXT *pipeline_feedback,
+anv_fill_pipeline_creation_feedback(const struct anv_graphics_base_pipeline *pipeline,
+                                    VkPipelineCreationFeedbackEXT *pipeline_feedback,
                                     const VkGraphicsPipelineCreateInfo *info,
                                     struct anv_pipeline_stage *stages)
 {
@@ -1896,13 +1898,44 @@ anv_fill_pipeline_creation_feedback(VkPipelineCreationFeedbackEXT *pipeline_feed
    if (create_feedback) {
       *create_feedback->pPipelineCreationFeedback = *pipeline_feedback;
 
-      uint32_t stage_count = create_feedback->pipelineStageCreationFeedbackCount;
-      assert(stage_count == 0 || info->stageCount == stage_count);
-      for (uint32_t i = 0; i < stage_count; i++) {
-         gl_shader_stage s = vk_to_mesa_shader_stage(info->pStages[i].stage);
-         create_feedback->pPipelineStageCreationFeedbacks[i] = stages[s].feedback;
+      /* VkPipelineCreationFeedbackCreateInfo:
+       *
+       *    "An implementation must set or clear the
+       *     VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT in
+       *     VkPipelineCreationFeedback::flags for pPipelineCreationFeedback
+       *     and every element of pPipelineStageCreationFeedbacks."
+       *
+       */
+      for (uint32_t i = 0; i < create_feedback->pipelineStageCreationFeedbackCount; i++) {
+         create_feedback->pPipelineStageCreationFeedbacks[i].flags &=
+            ~VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
+      }
+      /* This part is not really specified in the Vulkan spec at the moment.
+       * We're kind of guessing what the CTS wants. We might need to update
+       * when https://gitlab.khronos.org/vulkan/vulkan/-/issues/3115 is
+       * clarified.
+       */
+      for (uint32_t s = 0; s < ANV_GRAPHICS_SHADER_STAGE_COUNT; s++) {
+         if (!anv_pipeline_base_has_stage(pipeline, s))
+            continue;
+
+         if (stages[s].feedback_idx < create_feedback->pipelineStageCreationFeedbackCount) {
+            create_feedback->pPipelineStageCreationFeedbacks[
+               stages[s].feedback_idx] = stages[s].feedback;
+         }
       }
    }
+}
+
+static uint32_t
+anv_graphics_pipeline_imported_shader_count(struct anv_pipeline_stage *stages)
+{
+   uint32_t count = 0;
+   for (uint32_t s = 0; s < ANV_GRAPHICS_SHADER_STAGE_COUNT; s++) {
+      if (stages[s].imported.bin != NULL)
+         count++;
+   }
+   return count;
 }
 
 static VkResult
@@ -1923,6 +1956,7 @@ anv_graphics_pipeline_compile(struct anv_graphics_base_pipeline *pipeline,
     * Other shaders imported from libraries should have been added by
     * anv_graphics_pipeline_import_lib().
     */
+   uint32_t shader_count = anv_graphics_pipeline_imported_shader_count(stages);
    for (uint32_t i = 0; i < info->stageCount; i++) {
       gl_shader_stage stage = vk_to_mesa_shader_stage(info->pStages[i].stage);
 
@@ -1934,6 +1968,7 @@ anv_graphics_pipeline_compile(struct anv_graphics_base_pipeline *pipeline,
 
       stages[stage].stage = stage;
       stages[stage].info = &info->pStages[i];
+      stages[stage].feedback_idx = shader_count++;
 
       vk_pipeline_hash_shader_stage(stages[stage].info, NULL, stages[stage].shader_sha1);
    }
@@ -2299,9 +2334,16 @@ anv_graphics_pipeline_compile(struct anv_graphics_base_pipeline *pipeline,
 
 done:
 
-   pipeline_feedback->duration = os_time_get_nano() - pipeline_start;
+   /* Write the feedback index into the pipeline */
+   for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
+      if (!anv_pipeline_base_has_stage(pipeline, s))
+         continue;
 
-   anv_fill_pipeline_creation_feedback(pipeline_feedback, info, stages);
+      struct anv_pipeline_stage *stage = &stages[s];
+      pipeline->feedback_index[s] = stage->feedback_idx;
+   }
+
+   pipeline_feedback->duration = os_time_get_nano() - pipeline_start;
 
    if (pipeline->shaders[MESA_SHADER_FRAGMENT]) {
       pipeline->fragment_dynamic =
@@ -2738,11 +2780,13 @@ anv_graphics_pipeline_import_lib(struct anv_graphics_base_pipeline *pipeline,
       }
    }
 
+   uint32_t shader_count = anv_graphics_pipeline_imported_shader_count(stages);
    for (uint32_t s = 0; s < ARRAY_SIZE(lib->base.shaders); s++) {
       if (lib->base.shaders[s] == NULL)
          continue;
 
       stages[s].stage = s;
+      stages[s].feedback_idx = shader_count + lib->base.feedback_index[s];
 
       /* Always import the shader sha1, this will be used for cache lookup. */
       memcpy(stages[s].shader_sha1, lib->retained_shaders[s].shader_sha1,
@@ -2866,7 +2910,8 @@ anv_graphics_lib_pipeline_create(struct anv_device *device,
 
    pipeline_feedback.duration = os_time_get_nano() - pipeline_start;
 
-   anv_fill_pipeline_creation_feedback(&pipeline_feedback, pCreateInfo, stages);
+   anv_fill_pipeline_creation_feedback(&pipeline->base, &pipeline_feedback,
+                                       pCreateInfo, stages);
 
    anv_graphics_lib_validate_shaders(pipeline,
                                      pCreateInfo->flags & VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT);
@@ -3004,7 +3049,8 @@ anv_graphics_pipeline_create(struct anv_device *device,
 
    pipeline_feedback.duration = os_time_get_nano() - pipeline_start;
 
-   anv_fill_pipeline_creation_feedback(&pipeline_feedback, pCreateInfo, stages);
+   anv_fill_pipeline_creation_feedback(&pipeline->base, &pipeline_feedback,
+                                       pCreateInfo, stages);
 
    *pPipeline = anv_pipeline_to_handle(&pipeline->base.base);
 
