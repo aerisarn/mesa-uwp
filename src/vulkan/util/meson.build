@@ -55,7 +55,7 @@ vk_extensions_gen = files('vk_extensions_gen.py')
 vk_icd_gen = files('vk_icd_gen.py')
 vk_cmd_queue_gen = files('vk_cmd_queue_gen.py')
 vk_dispatch_trampolines_gen = files('vk_dispatch_trampolines_gen.py')
-vk_physical_device_features_gen = files('vk_physical_device_features.py')
+vk_physical_device_features_gen = files('vk_physical_device_features_gen.py')
 
 files_vulkan_util = files(
   'vk_alloc.c',
