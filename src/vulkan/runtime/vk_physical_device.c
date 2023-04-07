@@ -118,15 +118,6 @@ vk_common_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-vk_common_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
-                                     VkPhysicalDeviceFeatures2 *pFeatures)
-{
-   VK_FROM_HANDLE(vk_physical_device, pdevice, physicalDevice);
-
-   vk_get_physical_device_features(pFeatures, &pdevice->supported_features);
-}
-
-VKAPI_ATTR void VKAPI_CALL
 vk_common_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
                                       VkPhysicalDeviceProperties *pProperties)
 {

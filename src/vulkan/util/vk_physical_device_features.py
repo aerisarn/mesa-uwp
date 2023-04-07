@@ -128,6 +128,7 @@ class FeatureStruct:
 TEMPLATE_C = Template(COPYRIGHT + """
 /* This file generated from ${filename}, don't edit directly. */
 
+#include "vk_common_entrypoints.h"
 #include "vk_log.h"
 #include "vk_physical_device.h"
 #include "vk_physical_device_features.h"
@@ -274,12 +275,14 @@ vk_set_physical_device_features(struct vk_features *all_features,
    }
 }
 
-void
-vk_get_physical_device_features(VkPhysicalDeviceFeatures2 *pFeatures,
-                                const struct vk_features *all_features)
+VKAPI_ATTR void VKAPI_CALL
+vk_common_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
+                                     VkPhysicalDeviceFeatures2 *pFeatures)
 {
+   VK_FROM_HANDLE(vk_physical_device, pdevice, physicalDevice);
+
 % for flag in pdev_features:
-   pFeatures->features.${flag} = all_features->${flag};
+   pFeatures->features.${flag} = pdevice->supported_features.${flag};
 % endfor
 
    vk_foreach_struct(ext, pFeatures) {
@@ -288,7 +291,7 @@ vk_get_physical_device_features(VkPhysicalDeviceFeatures2 *pFeatures,
       case ${f.s_type}: {
          ${f.c_type} *features = (void *) ext;
 % for flag in f.features:
-         features->${flag} = all_features->${get_renamed_feature(f.c_type, flag)};
+         features->${flag} = pdevice->supported_features.${get_renamed_feature(f.c_type, flag)};
 % endfor
          break;
       }
@@ -323,10 +326,6 @@ vk_set_physical_device_features_1_0(struct vk_features *all_features,
 void
 vk_set_physical_device_features(struct vk_features *all_features,
                                 const VkPhysicalDeviceFeatures2 *pFeatures);
-
-void
-vk_get_physical_device_features(VkPhysicalDeviceFeatures2 *pFeatures,
-                                const struct vk_features *all_features);
 
 #ifdef __cplusplus
 }
