@@ -1218,6 +1218,7 @@ struct si_context {
    bool dpbb_force_off_profile_ps;
    bool vs_writes_viewport_index;
    bool vs_disables_clipping_viewport;
+   bool has_reset_been_notified;
 
    /* Precomputed IA_MULTI_VGT_PARAM */
    union si_vgt_param_key ia_multi_vgt_param_key;

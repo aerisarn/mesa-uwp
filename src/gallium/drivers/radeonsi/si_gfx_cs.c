@@ -80,7 +80,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
     * while si_get_reset_status can't. */
    if (!(ctx->context_flags & SI_CONTEXT_FLAG_AUX) &&
        ctx->device_reset_callback.reset) {
-      enum pipe_reset_status status = ctx->ws->ctx_query_reset_status(ctx->ctx, true, NULL);
+      enum pipe_reset_status status = ctx->ws->ctx_query_reset_status(ctx->ctx, true, NULL, NULL);
       if (status != PIPE_NO_RESET)
          ctx->device_reset_callback.reset(ctx->device_reset_callback.data, status);
    }

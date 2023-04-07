@@ -349,13 +349,15 @@ static void amdgpu_ctx_destroy(struct radeon_winsys_ctx *rwctx)
 
 static enum pipe_reset_status
 amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx, bool full_reset_only,
-                              bool *needs_reset)
+                              bool *needs_reset, bool *reset_completed)
 {
    struct amdgpu_ctx *ctx = (struct amdgpu_ctx*)rwctx;
    int r;
 
    if (needs_reset)
       *needs_reset = false;
+   if (reset_completed)
+      *reset_completed = false;
 
    /* Return a failure due to a GPU hang. */
    if (ctx->ws->info.drm_minor >= 24) {
@@ -376,6 +378,18 @@ amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx, bool full_reset_o
       }
 
       if (flags & AMDGPU_CTX_QUERY2_FLAGS_RESET) {
+         if (reset_completed) {
+            /* The ARB_robustness spec says:
+             *
+             *    If a reset status other than NO_ERROR is returned and subsequent
+             *    calls return NO_ERROR, the context reset was encountered and
+             *    completed. If a reset status is repeatedly returned, the context may
+             *    be in the process of resetting.
+             *
+             */
+            if (!(flags & AMDGPU_CTX_QUERY2_FLAGS_RESET_IN_PROGRESS))
+               *reset_completed = true;
+         }
          if (needs_reset)
                *needs_reset = flags & AMDGPU_CTX_QUERY2_FLAGS_VRAMLOST;
          if (flags & AMDGPU_CTX_QUERY2_FLAGS_GUILTY)

@@ -385,13 +385,20 @@ static enum pipe_reset_status si_get_reset_status(struct pipe_context *ctx)
    if (sctx->context_flags & SI_CONTEXT_FLAG_AUX)
       return PIPE_NO_RESET;
 
-   bool needs_reset;
-   enum pipe_reset_status status = sctx->ws->ctx_query_reset_status(sctx->ctx, false, &needs_reset);
+   bool needs_reset, reset_completed;
+   enum pipe_reset_status status = sctx->ws->ctx_query_reset_status(sctx->ctx, false,
+                                                                    &needs_reset, &reset_completed);
 
-   if (status != PIPE_NO_RESET && needs_reset && !(sctx->context_flags & SI_CONTEXT_FLAG_AUX)) {
-      /* Call the gallium frontend to set a no-op API dispatch. */
-      if (sctx->device_reset_callback.reset) {
-         sctx->device_reset_callback.reset(sctx->device_reset_callback.data, status);
+   if (status != PIPE_NO_RESET) {
+      if (sctx->has_reset_been_notified && reset_completed)
+         return PIPE_NO_RESET;
+
+      sctx->has_reset_been_notified = true;
+
+      if (!(sctx->context_flags & SI_CONTEXT_FLAG_AUX)) {
+         /* Call the gallium frontend to set a no-op API dispatch. */
+         if (needs_reset && sctx->device_reset_callback.reset)
+            sctx->device_reset_callback.reset(sctx->device_reset_callback.data, status);
       }
    }
    return status;
@@ -818,7 +825,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       struct si_context *saux = si_get_aux_context(sscreen);
 
       enum pipe_reset_status status = sctx->ws->ctx_query_reset_status(
-         saux->ctx, true, NULL);
+         saux->ctx, true, NULL, NULL);
       if (status != PIPE_NO_RESET) {
          /* We lost the aux_context, create a new one */
          struct u_log_context *aux_log = (saux)->log;
