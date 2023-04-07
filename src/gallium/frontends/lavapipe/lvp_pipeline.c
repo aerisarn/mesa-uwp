@@ -774,6 +774,16 @@ merge_layouts(struct vk_device *device, struct lvp_pipeline *dst, struct lvp_pip
    dst->layout->push_constant_stages |= src->push_constant_stages;
 }
 
+static void
+copy_shader_sanitized(struct lvp_shader *dst, const struct lvp_shader *src)
+{
+   *dst = *src;
+   dst->pipeline_nir = NULL; //this gets handled later
+   dst->tess_ccw = NULL; //this gets handled later
+   assert(!dst->shader_cso);
+   assert(!dst->tess_ccw_cso);
+}
+
 static VkResult
 lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
                            struct lvp_device *device,
@@ -824,17 +834,12 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
             pipeline->disable_multisample = p->disable_multisample;
             pipeline->line_rectangular = p->line_rectangular;
             pipeline->last_vertex = p->last_vertex;
-            memcpy(pipeline->shaders, p->shaders, sizeof(struct lvp_shader) * 4);
-            for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++) {
-               pipeline->shaders[i].pipeline_nir = NULL; //this gets handled later
-               pipeline->shaders[i].tess_ccw = NULL; //this gets handled later
-            }
+            for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++)
+               copy_shader_sanitized(&pipeline->shaders[i], &p->shaders[i]);
          }
          if (p->stages & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) {
             pipeline->force_min_sample = p->force_min_sample;
-            memcpy(&pipeline->shaders[MESA_SHADER_FRAGMENT], &p->shaders[MESA_SHADER_FRAGMENT], sizeof(struct lvp_shader));
-            pipeline->shaders[MESA_SHADER_FRAGMENT].pipeline_nir = NULL; //this gets handled later
-            pipeline->shaders[MESA_SHADER_FRAGMENT].tess_ccw = NULL; //this gets handled later
+            copy_shader_sanitized(&pipeline->shaders[MESA_SHADER_FRAGMENT], &p->shaders[MESA_SHADER_FRAGMENT]);
          }
          if (p->stages & layout_stages) {
             if (!layout || (layout->vk.create_flags & VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT))
