@@ -2790,6 +2790,18 @@ radv_pipeline_import_retained_shaders(const struct radv_device *device,
                                       struct radv_graphics_lib_pipeline *lib,
                                       struct radv_pipeline_stage *stages)
 {
+   /* Import the stages (SPIR-V only in case of cache hits). */
+   for (uint32_t i = 0; i < lib->stage_count; i++) {
+      const VkPipelineShaderStageCreateInfo *sinfo = &lib->stages[i];
+      gl_shader_stage s = vk_to_mesa_shader_stage(sinfo->stage);
+
+      /* Ignore graphics shader stages that don't need to be imported. */
+      if (!(shader_stage_to_pipeline_library_flags(sinfo->stage) & lib->lib_flags))
+         continue;
+
+      radv_pipeline_stage_init(sinfo, &stages[s], s);
+   }
+
    /* Import the NIR shaders (after SPIRV->NIR). */
    for (uint32_t s = 0; s < ARRAY_SIZE(lib->base.base.shaders); s++) {
       if (!lib->retained_shaders[s].serialized_nir_size)
@@ -3193,7 +3205,8 @@ radv_skip_graphics_pipeline_compile(const struct radv_device *device,
 static bool
 radv_pipeline_needs_noop_fs(struct radv_graphics_pipeline *pipeline,
                             const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                            VkGraphicsPipelineLibraryFlagBitsEXT lib_flags)
+                            VkGraphicsPipelineLibraryFlagBitsEXT lib_flags,
+                            const struct radv_pipeline_stage *stages)
 {
    if (pipeline->base.type == RADV_PIPELINE_GRAPHICS) {
       if (!(radv_pipeline_to_graphics(&pipeline->base)->active_stages & VK_SHADER_STAGE_FRAGMENT_BIT))
@@ -3207,17 +3220,8 @@ radv_pipeline_needs_noop_fs(struct radv_graphics_pipeline *pipeline,
       /* When the noop FS has already been imported by libraries we can skip it, otherwise we need
        * to compile one.
        */
-      if (libs_info && link_optimize) {
-         for (uint32_t i = 0; i < libs_info->libraryCount; i++) {
-            RADV_FROM_HANDLE(radv_pipeline, pipeline_lib, libs_info->pLibraries[i]);
-            struct radv_graphics_lib_pipeline *gfx_pipeline_lib =
-               radv_pipeline_to_graphics_lib(pipeline_lib);
-
-            if ((gfx_pipeline_lib->lib_flags & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)  &&
-                !gfx_pipeline_lib->retained_shaders[MESA_SHADER_FRAGMENT].serialized_nir_size)
-               return true;
-         }
-      }
+      if (libs_info && link_optimize && !stages[MESA_SHADER_FRAGMENT].entrypoint)
+         return true;
    }
 
    if (pipeline->base.type == RADV_PIPELINE_GRAPHICS_LIB &&
@@ -3311,11 +3315,19 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
 
       if (retain_shaders) {
          /* For graphics pipeline libraries created with the RETAIN_LINK_TIME_OPTIMIZATION flag, we
-          * still need to compile the SPIR-V to NIR because we can't know if the LTO pipelines will
+          * need to retain the stage info because we can't know if the LTO pipelines will
           * be find in the shaders cache.
           */
-         radv_pipeline_get_nir(device, pipeline, stages, pipeline_key);
-         radv_pipeline_retain_shaders(radv_pipeline_to_graphics_lib(&pipeline->base), stages);
+         struct radv_graphics_lib_pipeline *gfx_pipeline_lib =
+            radv_pipeline_to_graphics_lib(&pipeline->base);
+
+         gfx_pipeline_lib->stages =
+            radv_copy_shader_stage_create_info(device, pCreateInfo->stageCount, pCreateInfo->pStages,
+                                               gfx_pipeline_lib->mem_ctx);
+         if (!gfx_pipeline_lib->stages)
+            return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+         gfx_pipeline_lib->stage_count = pCreateInfo->stageCount;
       }
 
       result = VK_SUCCESS;
@@ -3325,7 +3337,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
    if (pCreateInfo->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT)
       return VK_PIPELINE_COMPILE_REQUIRED;
 
-   const bool noop_fs = radv_pipeline_needs_noop_fs(pipeline, pCreateInfo, lib_flags);
+   const bool noop_fs = radv_pipeline_needs_noop_fs(pipeline, pCreateInfo, lib_flags, stages);
    if (noop_fs) {
       nir_builder fs_b = radv_meta_init_shader(device, MESA_SHADER_FRAGMENT, "noop_fs");
 
@@ -4922,6 +4934,8 @@ radv_graphics_lib_pipeline_create(VkDevice _device, VkPipelineCache _cache,
 
    radv_pipeline_init(device, &pipeline->base.base, RADV_PIPELINE_GRAPHICS_LIB);
 
+   pipeline->mem_ctx = ralloc_context(NULL);
+
    result = radv_graphics_lib_pipeline_init(pipeline, device, cache, pCreateInfo);
    if (result != VK_SUCCESS) {
       radv_pipeline_destroy(device, &pipeline->base.base, pAllocator);
@@ -4942,6 +4956,8 @@ radv_destroy_graphics_lib_pipeline(struct radv_device *device,
    for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
       free(pipeline->retained_shaders[i].serialized_nir);
    }
+
+   ralloc_free(pipeline->mem_ctx);
 
    radv_destroy_graphics_pipeline(device, &pipeline->base);
 }

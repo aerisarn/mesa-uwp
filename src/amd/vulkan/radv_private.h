@@ -2337,6 +2337,11 @@ struct radv_graphics_lib_pipeline {
       size_t serialized_nir_size;
       unsigned char shader_sha1[SHA1_DIGEST_LENGTH];
    } retained_shaders[MESA_VULKAN_SHADER_STAGES];
+
+   void *mem_ctx;
+
+   unsigned stage_count;
+   VkPipelineShaderStageCreateInfo *stages;
 };
 
 struct radv_ray_tracing_pipeline {
