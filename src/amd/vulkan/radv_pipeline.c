@@ -3271,7 +3271,7 @@ radv_graphics_pipeline_compile(struct radv_graphics_pipeline *pipeline,
       if (found_in_application_cache)
          pipeline_feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
 
-      if (pipeline->base.type == RADV_PIPELINE_GRAPHICS_LIB && retain_shaders) {
+      if (retain_shaders) {
          /* For graphics pipeline libraries created with the RETAIN_LINK_TIME_OPTIMIZATION flag, we
           * still need to compile the SPIR-V to NIR because we can't know if the LTO pipelines will
           * be find in the shaders cache.
