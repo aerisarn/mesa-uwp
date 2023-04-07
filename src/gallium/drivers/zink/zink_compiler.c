@@ -5083,7 +5083,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    if (!nir->info.internal)
       nir_foreach_shader_out_variable(var, nir)
          var->data.explicit_xfb_buffer = 0;
-   if (so_info && so_info->num_outputs)
+   if (so_info && so_info->num_outputs && nir->info.outputs_written)
       update_so_info(ret, nir, so_info, nir->info.outputs_written, have_psiz);
    else if (have_psiz) {
       bool have_fake_psiz = false;
