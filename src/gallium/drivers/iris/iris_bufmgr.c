@@ -2247,7 +2247,9 @@ iris_bo_alloc_aux_map_get_mmap_mode(struct iris_bufmgr *bufmgr,
 {
    switch (bufmgr->devinfo.kmd_type) {
    case INTEL_KMD_TYPE_I915:
-      return heap != IRIS_HEAP_SYSTEM_MEMORY ? IRIS_MMAP_WC : IRIS_MMAP_WB;
+      return heap != IRIS_HEAP_SYSTEM_MEMORY ||
+         bufmgr->devinfo.has_set_pat_uapi ?
+         IRIS_MMAP_WC : IRIS_MMAP_WB;
    case INTEL_KMD_TYPE_XE:
       return iris_xe_bo_flags_to_mmap_mode(bufmgr, heap, 0);
    default:
