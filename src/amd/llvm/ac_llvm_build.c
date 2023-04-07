@@ -3979,43 +3979,48 @@ void ac_build_sendmsg_gs_alloc_req(struct ac_llvm_context *ctx, LLVMValueRef wav
                                    LLVMValueRef vtx_cnt, LLVMValueRef prim_cnt)
 {
    LLVMBuilderRef builder = ctx->builder;
-   LLVMValueRef tmp;
-   bool export_dummy_prim = false;
-
-   /* HW workaround for a GPU hang with 100% culling.
-    * We always have to export at least 1 primitive.
-    * Export a degenerate triangle using vertex 0 for all 3 vertices.
-    */
-   if (prim_cnt == ctx->i32_0 && ctx->gfx_level == GFX10) {
-      assert(vtx_cnt == ctx->i32_0);
-      prim_cnt = ctx->i32_1;
-      vtx_cnt = ctx->i32_1;
-      export_dummy_prim = true;
-   }
 
    if (wave_id)
       ac_build_ifcc(ctx, LLVMBuildICmp(builder, LLVMIntEQ, wave_id, ctx->i32_0, ""), 5020);
 
-   tmp = LLVMBuildShl(builder, prim_cnt, LLVMConstInt(ctx->i32, 12, false), "");
-   tmp = LLVMBuildOr(builder, tmp, vtx_cnt, "");
-   ac_build_sendmsg(ctx, AC_SENDMSG_GS_ALLOC_REQ, tmp);
+   /* HW workaround for a GPU hang with 100% culling on GFX10.
+    * We always have to export at least 1 primitive.
+    * Export a degenerate triangle using vertex 0 for all 3 vertices.
+    * 
+    * NOTE: We rely on the caller to set the vertex count also to 0 when the primitive count is 0.
+    */
+   if (ctx->gfx_level == GFX10) {
+      ac_build_ifcc(ctx, LLVMBuildICmp(builder, LLVMIntEQ, ac_get_thread_id(ctx), ctx->i32_0, ""), 5021);
+      LLVMValueRef prim_cnt_is_0 = LLVMBuildICmp(builder, LLVMIntEQ, prim_cnt, ctx->i32_0, "");
+      ac_build_ifcc(ctx, prim_cnt_is_0, 5022);
+      {
+         LLVMValueRef x = LLVMBuildShl(builder, ctx->i32_1, LLVMConstInt(ctx->i32, 12, false), "");
+         x = LLVMBuildOr(builder, x, ctx->i32_1, "");
+         ac_build_sendmsg(ctx, AC_SENDMSG_GS_ALLOC_REQ, x);
 
-   if (export_dummy_prim) {
-      struct ac_ngg_prim prim = {0};
-      /* The vertex indices are 0,0,0. */
-      prim.passthrough = ctx->i32_0;
+         /* The vertex indices are 0, 0, 0. */
+         struct ac_ngg_prim prim = {0};
+         prim.passthrough = ctx->i32_0;
 
-      struct ac_export_args pos = {0};
-      /* The hw culls primitives with NaN. */
-      pos.out[0] = pos.out[1] = pos.out[2] = pos.out[3] = LLVMConstReal(ctx->f32, NAN);
-      pos.target = V_008DFC_SQ_EXP_POS;
-      pos.enabled_channels = 0xf;
-      pos.done = true;
+         /* The HW culls primitives with NaN. */
+         struct ac_export_args pos = {0};
+         pos.out[0] = pos.out[1] = pos.out[2] = pos.out[3] = LLVMConstReal(ctx->f32, NAN);
+         pos.target = V_008DFC_SQ_EXP_POS;
+         pos.enabled_channels = 0xf;
+         pos.done = true;
 
-      ac_build_ifcc(ctx, LLVMBuildICmp(builder, LLVMIntEQ, ac_get_thread_id(ctx), ctx->i32_0, ""),
-                    5021);
-      ac_build_export_prim(ctx, &prim);
-      ac_build_export(ctx, &pos);
+         ac_build_export_prim(ctx, &prim);
+         ac_build_export(ctx, &pos);
+      }
+      ac_build_else(ctx, 5022);
+   }
+
+   LLVMValueRef x = LLVMBuildShl(builder, prim_cnt, LLVMConstInt(ctx->i32, 12, false), "");
+   x = LLVMBuildOr(builder, x, vtx_cnt, "");
+   ac_build_sendmsg(ctx, AC_SENDMSG_GS_ALLOC_REQ, x);
+
+   if (ctx->gfx_level == GFX10) {
+      ac_build_endif(ctx, 5022);
       ac_build_endif(ctx, 5021);
    }
 
