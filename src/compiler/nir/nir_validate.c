@@ -528,16 +528,17 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
     */
    validate_dest(&instr->dest, state, 0, 0);
 
-   /* Deref instructions as if conditions don't make sense because if
-    * conditions expect well-formed Booleans.  If you want to compare with
-    * NULL, an explicit comparison operation should be used.
-    */
-   validate_assert(state, !nir_ssa_def_used_by_if(&instr->dest.ssa));
-
    /* Certain modes cannot be used as sources for phi instructions because
     * way too many passes assume that they can always chase deref chains.
     */
-   nir_foreach_use(use, &instr->dest.ssa) {
+   nir_foreach_use_including_if(use, &instr->dest.ssa) {
+      /* Deref instructions as if conditions don't make sense because if
+       * conditions expect well-formed Booleans.  If you want to compare with
+       * NULL, an explicit comparison operation should be used.
+       */
+      if (!validate_assert(state, !use->is_if))
+         continue;
+
       if (use->parent_instr->type == nir_instr_type_phi) {
          validate_assert(state, !(instr->modes & (nir_var_shader_in |
                                                   nir_var_shader_out |
