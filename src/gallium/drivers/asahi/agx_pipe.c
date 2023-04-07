@@ -725,6 +725,34 @@ agx_prepare_for_map(struct agx_context *ctx, struct agx_resource *rsrc,
    agx_sync_readers(ctx, rsrc, "Unsynchronized write");
 }
 
+/*
+ * Return a colour-renderable format compatible with a depth/stencil format, to
+ * be used as an interchange format for depth/stencil blits. For
+ * non-depth/stencil formats, returns the format itself.
+ */
+static enum pipe_format
+agx_staging_color_format_for_zs(enum pipe_format format)
+{
+   switch (format) {
+   case PIPE_FORMAT_Z16_UNORM:
+      return PIPE_FORMAT_R16_UNORM;
+   case PIPE_FORMAT_Z32_FLOAT:
+      return PIPE_FORMAT_R32_FLOAT;
+   case PIPE_FORMAT_S8_UINT:
+      return PIPE_FORMAT_R8_UINT;
+   default:
+      /* Z24 and combined Z/S are lowered to one of the above formats by
+       * u_transfer_helper. The caller needs to pass in the rsrc->layout.format
+       * and not the rsrc->base.format to get the lowered physical format
+       * (rather than the API logical format).
+       */
+      assert(!util_format_is_depth_or_stencil(format) &&
+             "no other depth/stencil formats allowed for staging");
+
+      return format;
+   }
+}
+
 /* Most of the time we can do CPU-side transfers, but sometimes we need to use
  * the 3D pipe for this. Let's wrap u_blitter to blit to/from staging textures.
  * Code adapted from panfrost */
@@ -753,6 +781,10 @@ agx_alloc_staging(struct pipe_screen *screen, struct agx_resource *rsc,
    tmpl.last_level = 0;
    tmpl.bind |= PIPE_BIND_LINEAR;
 
+   /* Linear is incompatible with depth/stencil, so we convert */
+   tmpl.format = agx_staging_color_format_for_zs(rsc->layout.format);
+   tmpl.bind &= ~PIPE_BIND_DEPTH_STENCIL;
+
    struct pipe_resource *pstaging = screen->resource_create(screen, &tmpl);
    if (!pstaging)
       return NULL;
@@ -767,7 +799,8 @@ agx_blit_from_staging(struct pipe_context *pctx, struct agx_transfer *trans)
    struct pipe_blit_info blit = {0};
 
    blit.dst.resource = dst;
-   blit.dst.format = dst->format;
+   blit.dst.format =
+      agx_staging_color_format_for_zs(agx_resource(dst)->layout.format);
    blit.dst.level = trans->base.level;
    blit.dst.box = trans->base.box;
    blit.src.resource = trans->staging.rsrc;
@@ -787,7 +820,8 @@ agx_blit_to_staging(struct pipe_context *pctx, struct agx_transfer *trans)
    struct pipe_blit_info blit = {0};
 
    blit.src.resource = src;
-   blit.src.format = src->format;
+   blit.src.format =
+      agx_staging_color_format_for_zs(agx_resource(src)->layout.format);
    blit.src.level = trans->base.level;
    blit.src.box = trans->base.box;
    blit.dst.resource = trans->staging.rsrc;
