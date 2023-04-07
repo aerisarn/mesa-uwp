@@ -851,7 +851,7 @@ radv_assign_last_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_reque
 }
 
 static VkResult
-radv_amdgpu_winsys_cs_submit_fallback(
+radv_amdgpu_winsys_cs_submit_internal(
    struct radv_amdgpu_ctx *ctx, int queue_idx, struct radv_winsys_sem_info *sem_info,
    struct radeon_cmdbuf **cs_array, unsigned cs_count, struct radeon_cmdbuf **initial_preamble_cs,
    unsigned initial_preamble_count, struct radeon_cmdbuf **continue_preamble_cs,
@@ -1070,24 +1070,8 @@ radv_amdgpu_cs_submit_zero(struct radv_amdgpu_ctx *ctx, enum amd_ip_type ip_type
 }
 
 static VkResult
-radv_amdgpu_winsys_cs_submit_internal(struct radv_amdgpu_ctx *ctx,
-                                      const struct radv_winsys_submit_info *submit,
-                                      struct radv_winsys_sem_info *sem_info)
-{
-   if (!submit->cs_count) {
-      return radv_amdgpu_cs_submit_zero(ctx, submit->ip_type, submit->queue_index, sem_info);
-   }
-
-   return radv_amdgpu_winsys_cs_submit_fallback(
-      ctx, submit->queue_index, sem_info, submit->cs_array, submit->cs_count,
-      submit->initial_preamble_cs, submit->initial_preamble_count, submit->continue_preamble_cs,
-      submit->continue_preamble_count, submit->postamble_cs, submit->postamble_count,
-      submit->uses_shadow_regs);
-}
-
-static VkResult
 radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx,
-                             const struct radv_winsys_submit_info *submits, uint32_t wait_count,
+                             const struct radv_winsys_submit_info *submit, uint32_t wait_count,
                              const struct vk_sync_wait *waits, uint32_t signal_count,
                              const struct vk_sync_signal *signals)
 {
@@ -1153,7 +1137,15 @@ radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx,
       .cs_emit_signal = true,
    };
 
-   result = radv_amdgpu_winsys_cs_submit_internal(ctx, &submits[0], &sem_info);
+   if (!submit->cs_count) {
+      result = radv_amdgpu_cs_submit_zero(ctx, submit->ip_type, submit->queue_index, &sem_info);
+   } else {
+      result = radv_amdgpu_winsys_cs_submit_internal(
+         ctx, submit->queue_index, &sem_info, submit->cs_array, submit->cs_count,
+         submit->initial_preamble_cs, submit->initial_preamble_count, submit->continue_preamble_cs,
+         submit->continue_preamble_count, submit->postamble_cs, submit->postamble_count,
+         submit->uses_shadow_regs);
+   }
 
 out:
    STACK_ARRAY_FINISH(wait_points);
