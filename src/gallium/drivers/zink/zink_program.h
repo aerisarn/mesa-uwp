@@ -299,7 +299,8 @@ zink_set_tcs_key_patches(struct zink_context *ctx, uint8_t patch_vertices)
                               &ctx->gfx_pipeline_state.shader_keys.key[MESA_SHADER_TESS_CTRL].key.tcs;
    if (tcs->patch_vertices == patch_vertices)
       return false;
-   ctx->dirty_gfx_stages |= BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
+   if (!zink_screen(ctx->base.screen)->info.dynamic_state2_feats.extendedDynamicState2PatchControlPoints)
+      ctx->dirty_gfx_stages |= BITFIELD_BIT(MESA_SHADER_TESS_CTRL);
    tcs->patch_vertices = patch_vertices;
    return true;
 }
