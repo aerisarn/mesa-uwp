@@ -36,6 +36,8 @@ bool anv_check_for_primitive_replication(struct anv_device *device,
                                          nir_shader **shaders,
                                          uint32_t view_mask);
 
+bool anv_nir_lower_load_patch_vertices_in(nir_shader *shader);
+
 bool anv_nir_lower_multiview(nir_shader *shader, uint32_t view_mask,
                              bool use_primitive_replication);
 

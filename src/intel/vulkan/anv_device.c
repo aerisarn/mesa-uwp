@@ -748,7 +748,7 @@ get_features(const struct anv_physical_device *pdevice,
       /* VK_EXT_extended_dynamic_state2 */
       .extendedDynamicState2 = true,
       .extendedDynamicState2LogicOp = true,
-      .extendedDynamicState2PatchControlPoints = false,
+      .extendedDynamicState2PatchControlPoints = true,
 
       /* VK_EXT_extended_dynamic_state3 */
       .extendedDynamicState3PolygonMode = true,

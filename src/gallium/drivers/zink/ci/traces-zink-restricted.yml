@@ -56,7 +56,7 @@ traces:
       checksum: 488ac7f0a747ed9f9255f60be7118650
   TheRavenRemastered/Raven-f10900-v2.trace:
     gl-zink-anv-tgl:
-      checksum: e910141d9520739c653fa7de0d8a1c9b
+      checksum: db7b901177e7ac00cc489e0e13f71f76
   TombRaider2013/TombRaider-f1430-v2.trace:
     gl-zink-anv-tgl:
       label: [crash]

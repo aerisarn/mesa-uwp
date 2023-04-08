@@ -105,7 +105,7 @@ anv_nir_compute_push_layout(nir_shader *nir,
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT && fragment_dynamic) {
       const uint32_t fs_msaa_flags_start =
-         offsetof(struct anv_push_constants, fs.msaa_flags);
+         offsetof(struct anv_push_constants, gfx.fs_msaa_flags);
       const uint32_t fs_msaa_flags_end = fs_msaa_flags_start + sizeof(uint32_t);
       push_start = MIN2(push_start, fs_msaa_flags_start);
       push_end = MAX2(push_end, fs_msaa_flags_end);
@@ -289,7 +289,7 @@ anv_nir_compute_push_layout(nir_shader *nir,
          container_of(prog_data, struct brw_wm_prog_data, base);
 
       const uint32_t fs_msaa_flags_offset =
-         offsetof(struct anv_push_constants, fs.msaa_flags);
+         offsetof(struct anv_push_constants, gfx.fs_msaa_flags);
       assert(fs_msaa_flags_offset >= push_start);
       wm_prog_data->msaa_flags_param =
          (fs_msaa_flags_offset - push_start) / 4;
