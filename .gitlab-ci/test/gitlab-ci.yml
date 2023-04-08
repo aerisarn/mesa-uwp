@@ -41,7 +41,7 @@ clang-format:
     GIT_STRATEGY: fetch
   script:
     - shopt -s globstar
-    - clang-format-13 --Werror --dry-run src/**/asahi/**/*.{h,c,cpp}
+    - clang-format-13 --Werror --dry-run src/**/{asahi,panfrost}/**/*.{h,c,cpp}
 
 .test-gl:
   extends:
