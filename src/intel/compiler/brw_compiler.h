@@ -322,6 +322,7 @@ struct brw_tcs_prog_key
 
    enum tess_primitive_mode _tes_primitive_mode;
 
+   /** Number of input vertices, 0 means dynamic */
    unsigned input_vertices;
 
    /** A bitfield of per-patch outputs written. */
@@ -330,6 +331,15 @@ struct brw_tcs_prog_key
    bool quads_workaround;
    uint32_t padding:24;
 };
+
+#define BRW_MAX_TCS_INPUT_VERTICES (32)
+
+static inline uint32_t
+brw_tcs_prog_key_input_vertices(const struct brw_tcs_prog_key *key)
+{
+   return key->input_vertices != 0 ?
+          key->input_vertices : BRW_MAX_TCS_INPUT_VERTICES;
+}
 
 /** The program key for Tessellation Evaluation Shaders. */
 struct brw_tes_prog_key

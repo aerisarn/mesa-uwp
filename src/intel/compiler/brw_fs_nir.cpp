@@ -2665,7 +2665,8 @@ fs_visitor::get_tcs_multi_patch_icp_handle(const fs_builder &bld,
     * we might read up to nir->info.gs.vertices_in registers.
     */
    bld.emit(SHADER_OPCODE_MOV_INDIRECT, icp_handle, start,
-            icp_offset_bytes, brw_imm_ud(tcs_key->input_vertices * REG_SIZE));
+            icp_offset_bytes,
+            brw_imm_ud(brw_tcs_prog_key_input_vertices(tcs_key) * REG_SIZE));
 
    return icp_handle;
 }
@@ -2675,7 +2676,6 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
                                    nir_intrinsic_instr *instr)
 {
    assert(stage == MESA_SHADER_TESS_CTRL);
-   struct brw_tcs_prog_key *tcs_key = (struct brw_tcs_prog_key *) key;
    struct brw_tcs_prog_data *tcs_prog_data = brw_tcs_prog_data(prog_data);
    struct brw_vue_prog_data *vue_prog_data = &tcs_prog_data->base;
 
@@ -2689,10 +2689,6 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       break;
    case nir_intrinsic_load_invocation_id:
       bld.MOV(retype(dst, invocation_id.type), invocation_id);
-      break;
-   case nir_intrinsic_load_patch_vertices_in:
-      bld.MOV(retype(dst, BRW_REGISTER_TYPE_D),
-              brw_imm_d(tcs_key->input_vertices));
       break;
 
    case nir_intrinsic_scoped_barrier:

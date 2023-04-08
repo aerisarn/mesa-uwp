@@ -98,6 +98,9 @@ struct brw_nir_compiler_opts {
 
    /* Whether robust image access is enabled */
    bool robust_image_access;
+
+   /* Input vertices for TCS stage (0 means dynamic) */
+   unsigned input_vertices;
 };
 
 void brw_preprocess_nir(const struct brw_compiler *compiler,
@@ -191,8 +194,9 @@ bool brw_nir_opt_peephole_ffma(nir_shader *shader);
 
 bool brw_nir_opt_peephole_imul32x16(nir_shader *shader);
 
-bool brw_nir_clamp_per_vertex_loads(nir_shader *shader,
-                                    unsigned input_vertices);
+bool brw_nir_clamp_per_vertex_loads(nir_shader *shader);
+
+bool brw_nir_lower_patch_vertices_in(nir_shader *shader, unsigned input_vertices);
 
 bool brw_nir_blockify_uniform_loads(nir_shader *shader,
                                     const struct intel_device_info *devinfo);

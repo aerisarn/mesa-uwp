@@ -1049,6 +1049,14 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
        nir_var_mem_ubo | nir_var_mem_ssbo,
        nir_lower_direct_array_deref_of_vec_load);
 
+   /* Clamp load_per_vertex_input of the TCS stage so that we do not generate
+    * loads reading out of bounds. We can do this here because we called
+    * nir_lower_system_values above.
+    */
+   if (nir->info.stage == MESA_SHADER_TESS_CTRL &&
+       compiler->use_tcs_multi_patch)
+      OPT(brw_nir_clamp_per_vertex_loads);
+
    /* Get rid of split copies */
    brw_nir_optimize(nir, compiler);
 }
@@ -1985,6 +1993,8 @@ nir_shader *
 brw_nir_create_passthrough_tcs(void *mem_ctx, const struct brw_compiler *compiler,
                                const struct brw_tcs_prog_key *key)
 {
+   assert(key->input_vertices > 0);
+
    const nir_shader_compiler_options *options =
       compiler->nir_options[MESA_SHADER_TESS_CTRL];
 
