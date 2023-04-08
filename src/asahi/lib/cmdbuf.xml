@@ -173,6 +173,8 @@
     <field name="Perspective" size="1" start="4" type="bool"/>
     <field name="Fragcoord Z" size="1" start="5" type="bool"/>
     <field name="Point sprite" size="1" start="6" type="bool"/>
+    <!-- Set with fragcoord Z for a vec2 of bary coords -->
+    <field name="Barycentric coordinates" size="1" start="7" type="bool"/>
     <field name="Base slot" size="8" start="8" type="uint"/>
     <field name="Base coefficient register" size="8" start="16" type="uint"/>
   </struct>
@@ -517,6 +519,7 @@
     <field name="Viewport target" size="1" start="19" type="bool"/>
     <field name="Render target" size="1" start="20" type="bool"/>
     <field name="Frag coord Z" size="1" start="21" type="bool"/>
+    <field name="Barycentric coordinates" size="1" start="22" type="bool"/>
   </struct>
 
   <struct name="Output Unknown" size="4">
