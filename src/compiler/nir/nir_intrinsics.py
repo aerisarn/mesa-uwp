@@ -1696,6 +1696,17 @@ intrinsic("load_ubo_base_agx", src_comp=[1], dest_comp=1, bit_sizes=[64],
 intrinsic("load_vbo_base_agx", src_comp=[1], dest_comp=1, bit_sizes=[64],
           flags=[CAN_ELIMINATE, CAN_REORDER])
 
+# Write out a sample mask for a targeted subset of samples, specified in the two
+# masks. Maps to the corresponding AGX instruction, the actual workings are
+# documented elsewhere as they are too complicated for this comment.
+intrinsic("sample_mask_agx", src_comp=[1, 1])
+
+# The fixed-function sample mask specified in the API (e.g. glSampleMask)
+system_value("api_sample_mask_agx", 1, bit_sizes=[16])
+
+# Loads the sample position array as fixed point packed into a 32-bit word
+system_value("sample_positions_agx", 1, bit_sizes=[32])
+
 # Intel-specific query for loading from the brw_image_param struct passed
 # into the shader as a uniform.  The variable is a deref to the image
 # variable. The const index specifies which of the six parameters to load.

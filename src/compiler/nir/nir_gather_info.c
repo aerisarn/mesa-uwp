@@ -777,6 +777,10 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
                                       BITFIELD64_BIT(FRAG_RESULT_STENCIL);
       break;
 
+   case nir_intrinsic_sample_mask_agx:
+      shader->info.outputs_written |= BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK);
+      break;
+
    case nir_intrinsic_launch_mesh_workgroups:
    case nir_intrinsic_launch_mesh_workgroups_with_payload_deref: {
       for (unsigned i = 0; i < 3; ++i) {
