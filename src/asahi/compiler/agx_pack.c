@@ -385,7 +385,7 @@ agx_pack_alu(struct util_dynarray *emission, agx_instr *I)
       if (is_16 && !is_cmpsel)
          assert((src_short & (1 << 9)) == 0);
 
-      if (info.is_float) {
+      if (info.is_float || (I->op == AGX_OPCODE_FCMPSEL && !is_cmpsel)) {
          unsigned fmod = agx_pack_float_mod(I->src[s]);
          unsigned fmod_offset = is_16 ? 9 : 10;
          src_short |= (fmod << fmod_offset);
