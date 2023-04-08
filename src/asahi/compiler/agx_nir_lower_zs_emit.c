@@ -91,7 +91,7 @@ lower_discard_to_z(nir_builder *b, nir_instr *instr, UNUSED void *data)
       nir_push_else(b, NULL);
 
    nir_instr_remove(instr);
-   return false;
+   return true;
 }
 
 bool
