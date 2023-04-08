@@ -1750,7 +1750,7 @@ panfrost_emit_null_texture(struct mali_texture_packed *out)
       cfg.format = PAN_ARCH >= 7 ? panfrost_pipe_format_v7[PIPE_FORMAT_NONE].hw
                                  : panfrost_pipe_format_v6[PIPE_FORMAT_NONE].hw;
 #if PAN_ARCH <= 7
-         cfg.texel_ordering = MALI_TEXTURE_LAYOUT_LINEAR;
+      cfg.texel_ordering = MALI_TEXTURE_LAYOUT_LINEAR;
 #endif
    }
 }

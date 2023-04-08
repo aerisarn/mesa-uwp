@@ -4790,8 +4790,8 @@ bifrost_preprocess_nir(nir_shader *nir, unsigned gpu_id)
 static bi_context *
 bi_compile_variant_nir(nir_shader *nir,
                        const struct panfrost_compile_inputs *inputs,
-                       struct util_dynarray *binary,
-                       struct bi_shader_info info, enum bi_idvs_mode idvs)
+                       struct util_dynarray *binary, struct bi_shader_info info,
+                       enum bi_idvs_mode idvs)
 {
    bi_context *ctx = rzalloc(NULL, bi_context);
 
@@ -5055,8 +5055,8 @@ bi_compile_variant_nir(nir_shader *nir,
 static void
 bi_compile_variant(nir_shader *nir,
                    const struct panfrost_compile_inputs *inputs,
-                   struct util_dynarray *binary,
-                   struct pan_shader_info *info, enum bi_idvs_mode idvs)
+                   struct util_dynarray *binary, struct pan_shader_info *info,
+                   enum bi_idvs_mode idvs)
 {
    struct bi_shader_info local_info = {
       .push = &info->push,
