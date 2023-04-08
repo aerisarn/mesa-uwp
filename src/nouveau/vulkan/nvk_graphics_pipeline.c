@@ -249,7 +249,8 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
       if (result != VK_SUCCESS)
          goto fail;
 
-      nvk_lower_nir(device, nir[stage], &robustness, pipeline_layout);
+      nvk_lower_nir(device, nir[stage], &robustness,
+                    state.rp->view_mask != 0, pipeline_layout);
    }
 
    for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {

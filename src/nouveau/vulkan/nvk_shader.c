@@ -286,6 +286,7 @@ assign_io_locations(nir_shader *nir)
 void
 nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
               const struct vk_pipeline_robustness_state *rs,
+              bool is_multiview,
               const struct vk_pipeline_layout *layout)
 {
    NIR_PASS(_, nir, nir_split_struct_vars, nir_var_function_temp);
@@ -315,8 +316,8 @@ nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
                nir_metadata_block_index | nir_metadata_dominance, NULL);
       NIR_PASS(_, nir, nir_lower_input_attachments,
                &(nir_input_attachment_options) {
-                  .use_layer_id_sysval = true,
-                  .use_view_id_for_layer = true,
+                  .use_layer_id_sysval = is_multiview,
+                  .use_view_id_for_layer = is_multiview,
                });
    }
 

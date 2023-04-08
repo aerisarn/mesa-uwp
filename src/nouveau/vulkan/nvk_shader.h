@@ -113,6 +113,7 @@ nvk_nir_lower_descriptors(nir_shader *nir,
 void
 nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
               const struct vk_pipeline_robustness_state *rs,
+              bool is_multiview,
               const struct vk_pipeline_layout *layout);
 
 VkResult
