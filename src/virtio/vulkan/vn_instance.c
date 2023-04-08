@@ -250,8 +250,8 @@ vn_instance_submit_roundtrip(struct vn_instance *instance,
 
    mtx_lock(&instance->ring.roundtrip_mutex);
    const uint64_t seqno = instance->ring.roundtrip_next++;
-   vn_encode_vkSubmitVirtqueueSeqno100000MESA(&local_enc, 0,
-                                              instance->ring.id, seqno);
+   vn_encode_vkSubmitVirtqueueSeqnoMESA(&local_enc, 0, instance->ring.id,
+                                        seqno);
    VkResult result = vn_renderer_submit_simple(
       instance->renderer, local_data, vn_cs_encoder_get_len(&local_enc));
    mtx_unlock(&instance->ring.roundtrip_mutex);
@@ -264,7 +264,7 @@ void
 vn_instance_wait_roundtrip(struct vn_instance *instance,
                            uint64_t roundtrip_seqno)
 {
-   vn_async_vkWaitVirtqueueSeqno100000MESA(instance, roundtrip_seqno);
+   vn_async_vkWaitVirtqueueSeqnoMESA(instance, roundtrip_seqno);
 }
 
 struct vn_instance_submission {

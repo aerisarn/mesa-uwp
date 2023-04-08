@@ -215,13 +215,12 @@ vn_queue_submission_fix_batch_semaphores(struct vn_queue_submission *submit,
 
       assert(dev->physical_device->renderer_sync_fd.semaphore_importable);
 
-      const VkImportSemaphoreResourceInfo100000MESA res_info = {
-         .sType =
-            VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_RESOURCE_INFO_100000_MESA,
+      const VkImportSemaphoreResourceInfoMESA res_info = {
+         .sType = VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_RESOURCE_INFO_MESA,
          .semaphore = sem_handle,
          .resourceId = 0,
       };
-      vn_async_vkImportSemaphoreResource100000MESA(
+      vn_async_vkImportSemaphoreResourceMESA(
          dev->instance, vn_device_to_handle(dev), &res_info);
    }
 
@@ -788,9 +787,8 @@ vn_queue_wsi_present(struct vn_queue_submission *submit)
       struct vn_cs_encoder local_enc =
          VN_CS_ENCODER_INITIALIZER_LOCAL(local_data, sizeof(local_data));
       if (submit->external_payload.ring_seqno_valid) {
-         vn_encode_vkWaitRingSeqno100000MESA(
-            &local_enc, 0, instance->ring.id,
-            submit->external_payload.ring_seqno);
+         vn_encode_vkWaitRingSeqnoMESA(&local_enc, 0, instance->ring.id,
+                                       submit->external_payload.ring_seqno);
          batch.cs_data = local_data;
          batch.cs_size = vn_cs_encoder_get_len(&local_enc);
       }
@@ -1368,8 +1366,8 @@ vn_create_sync_file(struct vn_device *dev,
    struct vn_cs_encoder local_enc =
       VN_CS_ENCODER_INITIALIZER_LOCAL(local_data, sizeof(local_data));
    if (external_payload->ring_seqno_valid) {
-      vn_encode_vkWaitRingSeqno100000MESA(
-         &local_enc, 0, dev->instance->ring.id, external_payload->ring_seqno);
+      vn_encode_vkWaitRingSeqnoMESA(&local_enc, 0, dev->instance->ring.id,
+                                    external_payload->ring_seqno);
       batch.cs_data = local_data;
       batch.cs_size = vn_cs_encoder_get_len(&local_enc);
    }
@@ -1446,8 +1444,8 @@ vn_GetFenceFdKHR(VkDevice device,
       if (result != VK_SUCCESS)
          return vn_error(dev->instance, result);
 
-      vn_async_vkResetFenceResource100000MESA(dev->instance, device,
-                                              pGetFdInfo->fence);
+      vn_async_vkResetFenceResourceMESA(dev->instance, device,
+                                        pGetFdInfo->fence);
 
       vn_sync_payload_release(dev, &fence->temporary);
       fence->payload = &fence->permanent;
@@ -1924,19 +1922,18 @@ vn_GetSemaphoreFdKHR(VkDevice device,
     * semaphore.
     */
    if (payload->type == VN_SYNC_TYPE_IMPORTED_SYNC_FD) {
-      const VkImportSemaphoreResourceInfo100000MESA res_info = {
-         .sType =
-            VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_RESOURCE_INFO_100000_MESA,
+      const VkImportSemaphoreResourceInfoMESA res_info = {
+         .sType = VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_RESOURCE_INFO_MESA,
          .semaphore = pGetFdInfo->semaphore,
          .resourceId = 0,
       };
-      vn_async_vkImportSemaphoreResource100000MESA(dev->instance, device,
-                                                   &res_info);
+      vn_async_vkImportSemaphoreResourceMESA(dev->instance, device,
+                                             &res_info);
    }
 
    /* perform wait operation on the host semaphore */
-   vn_async_vkWaitSemaphoreResource100000MESA(dev->instance, device,
-                                              pGetFdInfo->semaphore);
+   vn_async_vkWaitSemaphoreResourceMESA(dev->instance, device,
+                                        pGetFdInfo->semaphore);
 
    vn_sync_payload_release(dev, &sem->temporary);
    sem->payload = &sem->permanent;
