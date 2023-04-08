@@ -161,9 +161,9 @@ struct radv_amdgpu_cs_request {
    uint64_t seq_no;
 };
 
-static int radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx,
-                                 struct radv_amdgpu_cs_request *request,
-                                 struct radv_winsys_sem_info *sem_info);
+static VkResult radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx,
+                                      struct radv_amdgpu_cs_request *request,
+                                      struct radv_winsys_sem_info *sem_info);
 
 static void
 radv_amdgpu_request_to_fence(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_fence *fence,
