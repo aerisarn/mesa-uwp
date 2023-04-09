@@ -2363,8 +2363,8 @@ radv_declare_pipeline_args(struct radv_device *device, struct radv_pipeline_stag
 
    if (gfx_level >= GFX9 && stages[MESA_SHADER_TESS_CTRL].nir) {
       radv_declare_shader_args(device, pipeline_key, &stages[MESA_SHADER_TESS_CTRL].info,
-                               MESA_SHADER_TESS_CTRL, true, MESA_SHADER_VERTEX,
-                               RADV_SHADER_TYPE_DEFAULT, &stages[MESA_SHADER_TESS_CTRL].args);
+                               MESA_SHADER_TESS_CTRL, MESA_SHADER_VERTEX, RADV_SHADER_TYPE_DEFAULT,
+                               &stages[MESA_SHADER_TESS_CTRL].args);
       stages[MESA_SHADER_TESS_CTRL].info.user_sgprs_locs = stages[MESA_SHADER_TESS_CTRL].args.user_sgprs_locs;
       stages[MESA_SHADER_TESS_CTRL].info.inline_push_constant_mask =
          stages[MESA_SHADER_TESS_CTRL].args.ac.inline_push_const_mask;
@@ -2381,7 +2381,7 @@ radv_declare_pipeline_args(struct radv_device *device, struct radv_pipeline_stag
       gl_shader_stage pre_stage =
          stages[MESA_SHADER_TESS_EVAL].nir ? MESA_SHADER_TESS_EVAL : MESA_SHADER_VERTEX;
       radv_declare_shader_args(device, pipeline_key, &stages[MESA_SHADER_GEOMETRY].info,
-                               MESA_SHADER_GEOMETRY, true, pre_stage, RADV_SHADER_TYPE_DEFAULT,
+                               MESA_SHADER_GEOMETRY, pre_stage, RADV_SHADER_TYPE_DEFAULT,
                                &stages[MESA_SHADER_GEOMETRY].args);
       stages[MESA_SHADER_GEOMETRY].info.user_sgprs_locs = stages[MESA_SHADER_GEOMETRY].args.user_sgprs_locs;
       stages[MESA_SHADER_GEOMETRY].info.inline_push_constant_mask =
@@ -2395,7 +2395,7 @@ radv_declare_pipeline_args(struct radv_device *device, struct radv_pipeline_stag
    }
 
    u_foreach_bit(i, active_nir_stages) {
-      radv_declare_shader_args(device, pipeline_key, &stages[i].info, i, false, MESA_SHADER_VERTEX,
+      radv_declare_shader_args(device, pipeline_key, &stages[i].info, i, MESA_SHADER_NONE,
                                RADV_SHADER_TYPE_DEFAULT, &stages[i].args);
       stages[i].info.user_sgprs_locs = stages[i].args.user_sgprs_locs;
       stages[i].info.inline_push_constant_mask = stages[i].args.ac.inline_push_const_mask;
@@ -2667,8 +2667,8 @@ radv_pipeline_create_gs_copy_shader(struct radv_device *device, struct radv_pipe
    gs_copy_stage.info.outinfo = gs_info->outinfo;
    gs_copy_stage.info.force_vrs_per_vertex = gs_info->force_vrs_per_vertex;
 
-   radv_declare_shader_args(device, pipeline_key, &gs_copy_stage.info, MESA_SHADER_VERTEX, false,
-                            MESA_SHADER_VERTEX, RADV_SHADER_TYPE_GS_COPY, &gs_copy_stage.args);
+   radv_declare_shader_args(device, pipeline_key, &gs_copy_stage.info, MESA_SHADER_VERTEX,
+                            MESA_SHADER_NONE, RADV_SHADER_TYPE_GS_COPY, &gs_copy_stage.args);
    gs_copy_stage.info.user_sgprs_locs = gs_copy_stage.args.user_sgprs_locs;
    gs_copy_stage.info.inline_push_constant_mask = gs_copy_stage.args.ac.inline_push_const_mask;
 
@@ -5153,8 +5153,8 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline,
    radv_nir_shader_info_pass(device, cs_stage.nir, MESA_SHADER_NONE, pipeline_layout, pipeline_key,
                              pipeline->base.type, false, &cs_stage.info);
 
-   radv_declare_shader_args(device, pipeline_key, &cs_stage.info, MESA_SHADER_COMPUTE, false,
-                            MESA_SHADER_VERTEX, RADV_SHADER_TYPE_DEFAULT, &cs_stage.args);
+   radv_declare_shader_args(device, pipeline_key, &cs_stage.info, MESA_SHADER_COMPUTE,
+                            MESA_SHADER_NONE, RADV_SHADER_TYPE_DEFAULT, &cs_stage.args);
 
    cs_stage.info.user_sgprs_locs = cs_stage.args.user_sgprs_locs;
    cs_stage.info.inline_push_constant_mask = cs_stage.args.ac.inline_push_const_mask;

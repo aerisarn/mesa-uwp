@@ -99,8 +99,8 @@ struct radv_shader_info;
 
 void radv_declare_shader_args(const struct radv_device *device, const struct radv_pipeline_key *key,
                               const struct radv_shader_info *info, gl_shader_stage stage,
-                              bool has_previous_stage, gl_shader_stage previous_stage,
-                              enum radv_shader_type type, struct radv_shader_args *args);
+                              gl_shader_stage previous_stage, enum radv_shader_type type,
+                              struct radv_shader_args *args);
 
 void radv_declare_ps_epilog_args(const struct radv_device *device,
                                  const struct radv_ps_epilog_key *key,

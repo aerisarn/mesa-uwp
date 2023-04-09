@@ -266,8 +266,8 @@ radv_rt_pipeline_compile(struct radv_ray_tracing_pipeline *pipeline,
    radv_nir_shader_info_pass(device, rt_stage.nir, MESA_SHADER_NONE, pipeline_layout, pipeline_key,
                              pipeline->base.base.type, false, &rt_stage.info);
 
-   radv_declare_shader_args(device, pipeline_key, &rt_stage.info, rt_stage.stage, false,
-                            MESA_SHADER_NONE, RADV_SHADER_TYPE_DEFAULT, &rt_stage.args);
+   radv_declare_shader_args(device, pipeline_key, &rt_stage.info, rt_stage.stage, MESA_SHADER_NONE,
+                            RADV_SHADER_TYPE_DEFAULT, &rt_stage.args);
 
    rt_stage.info.user_sgprs_locs = rt_stage.args.user_sgprs_locs;
    rt_stage.info.inline_push_constant_mask = rt_stage.args.ac.inline_push_const_mask;
