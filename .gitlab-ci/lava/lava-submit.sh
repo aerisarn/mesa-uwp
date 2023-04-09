@@ -1,15 +1,18 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -e
 set -x
 
-# Try to use the kernel and rootfs built in mainline first, so we're more
-# likely to hit cache
-if curl -s -X HEAD -L --retry 4 -f --retry-all-errors --retry-delay 60 \
-    "https://${BASE_SYSTEM_MAINLINE_HOST_PATH}/done"; then
-	BASE_SYSTEM_HOST_PATH="${BASE_SYSTEM_MAINLINE_HOST_PATH}"
-else
+# If we run in the fork (not from mesa or Marge-bot), reuse mainline kernel and rootfs, if exist.
+BASE_SYSTEM_HOST_PATH="${BASE_SYSTEM_MAINLINE_HOST_PATH}"
+if [ "$CI_PROJECT_PATH" != "$FDO_UPSTREAM_REPO" ]; then
+    if ! curl -s -X HEAD -L --retry 4 -f --retry-delay 60 \
+      "https://${BASE_SYSTEM_MAINLINE_HOST_PATH}/done"; then
+	echo "Using kernel and rootfs from the fork, cached from mainline is unavailable."
 	BASE_SYSTEM_HOST_PATH="${BASE_SYSTEM_FORK_HOST_PATH}"
+    else
+	echo "Using the cached mainline kernel and rootfs."
+    fi
 fi
 
 rm -rf results

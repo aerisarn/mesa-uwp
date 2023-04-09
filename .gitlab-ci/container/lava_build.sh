@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # shellcheck disable=SC1091 # The relative paths in this file only become valid at runtime.
 # shellcheck disable=SC2034 # Variables are used in scripts called from here
 # shellcheck disable=SC2086 # we want word splitting
@@ -11,13 +11,13 @@ export DEBIAN_FRONTEND=noninteractive
 check_minio()
 {
     MINIO_PATH="${MINIO_HOST}/mesa-lava/$1/${DISTRIBUTION_TAG}/${DEBIAN_ARCH}"
-    if curl -L --retry 4 -f --retry-all-errors --retry-delay 60 -s -X HEAD \
+    if curl -L --retry 4 -f --retry-delay 60 -s -X HEAD \
       "https://${MINIO_PATH}/done"; then
+        echo "Remote files are up-to-date, skip rebuilding them."
         exit
     fi
 }
 
-# If remote files are up-to-date, skip rebuilding them
 check_minio "${FDO_UPSTREAM_REPO}"
 check_minio "${CI_PROJECT_PATH}"
 
