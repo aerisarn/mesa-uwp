@@ -121,7 +121,11 @@ agx_batch_init(struct agx_context *ctx,
    batch->reduced_prim = PIPE_PRIM_MAX;
 
    if (batch->key.zsbuf) {
-      agx_batch_writes(batch, agx_resource(key->zsbuf->texture));
+      struct agx_resource *rsrc = agx_resource(key->zsbuf->texture);
+      agx_batch_writes(batch, rsrc);
+
+      if (rsrc->separate_stencil)
+         agx_batch_writes(batch, rsrc->separate_stencil);
    }
 
    for (unsigned i = 0; i < key->nr_cbufs; ++i) {
