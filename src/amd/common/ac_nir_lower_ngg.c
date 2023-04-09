@@ -448,6 +448,50 @@ emit_pack_ngg_prim_exp_arg(nir_builder *b, unsigned num_vertices_per_primitives,
 }
 
 static void
+alloc_vertices_and_primitives_gfx10_workaround(nir_builder *b,
+                                               nir_ssa_def *num_vtx,
+                                               nir_ssa_def *num_prim)
+{
+   /* HW workaround for a GPU hang with 100% culling on GFX10.
+    * We always have to export at least 1 primitive.
+    * Export a degenerate triangle using vertex 0 for all 3 vertices.
+    *
+    * NOTE: We rely on the caller to set the vertex count also to 0 when the primitive count is 0.
+    */
+   nir_ssa_def *is_prim_cnt_0 = nir_ieq_imm(b, num_prim, 0);
+   nir_if *if_prim_cnt_0 = nir_push_if(b, is_prim_cnt_0);
+   {
+      nir_ssa_def *one = nir_imm_int(b, 1);
+      nir_alloc_vertices_and_primitives_amd(b, one, one);
+
+      nir_ssa_def *tid = nir_load_subgroup_invocation(b);
+      nir_ssa_def *is_thread_0 = nir_ieq_imm(b, tid, 0);
+      nir_if *if_thread_0 = nir_push_if(b, is_thread_0);
+      {
+         /* The vertex indices are 0, 0, 0. */
+         nir_export_amd(b, nir_imm_zero(b, 4, 32),
+                        .base = V_008DFC_SQ_EXP_PRIM,
+                        .flags = AC_EXP_FLAG_DONE,
+                        .write_mask = 1);
+
+         /* The HW culls primitives with NaN. -1 is also NaN and can save
+          * a dword in binary code by inlining constant.
+          */
+         nir_export_amd(b, nir_imm_ivec4(b, -1, -1, -1, -1),
+                        .base = V_008DFC_SQ_EXP_POS,
+                        .flags = AC_EXP_FLAG_DONE,
+                        .write_mask = 0xf);
+      }
+      nir_pop_if(b, if_thread_0);
+   }
+   nir_push_else(b, if_prim_cnt_0);
+   {
+      nir_alloc_vertices_and_primitives_amd(b, num_vtx, num_prim);
+   }
+   nir_pop_if(b, if_prim_cnt_0);
+}
+
+static void
 ngg_nogs_init_vertex_indices_vars(nir_builder *b, nir_function_impl *impl, lower_ngg_nogs_state *s)
 {
    for (unsigned v = 0; v < s->options->num_vertices_per_primitive; ++v) {
@@ -1565,7 +1609,13 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       nir_if *if_wave_0 = nir_push_if(b, nir_ieq(b, nir_load_subgroup_id(b), nir_imm_int(b, 0)));
       {
          /* Tell the final vertex and primitive count to the HW. */
-         nir_alloc_vertices_and_primitives_amd(b, num_live_vertices_in_workgroup, num_exported_prims);
+         if (s->options->gfx_level == GFX10) {
+            alloc_vertices_and_primitives_gfx10_workaround(
+               b, num_live_vertices_in_workgroup, num_exported_prims);
+         } else {
+            nir_alloc_vertices_and_primitives_amd(
+               b, num_live_vertices_in_workgroup, num_exported_prims);
+         }
       }
       nir_pop_if(b, if_wave_0);
 
@@ -3309,7 +3359,12 @@ ngg_gs_finale(nir_builder *b, lower_ngg_gs_state *s)
 
    /* Allocate export space. We currently don't compact primitives, just use the maximum number. */
    nir_if *if_wave_0 = nir_push_if(b, nir_ieq(b, nir_load_subgroup_id(b), nir_imm_zero(b, 1, 32)));
-   nir_alloc_vertices_and_primitives_amd(b, workgroup_num_vertices, max_prmcnt);
+   {
+      if (s->options->gfx_level == GFX10)
+         alloc_vertices_and_primitives_gfx10_workaround(b, workgroup_num_vertices, max_prmcnt);
+      else
+         nir_alloc_vertices_and_primitives_amd(b, workgroup_num_vertices, max_prmcnt);
+   }
    nir_pop_if(b, if_wave_0);
 
    /* Vertex compaction. This makes sure there are no gaps between threads that export vertices. */

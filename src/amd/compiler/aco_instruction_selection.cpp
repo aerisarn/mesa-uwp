@@ -8053,7 +8053,6 @@ emit_interp_center(isel_context* ctx, Temp dst, Temp bary, Temp pos1, Temp pos2)
 
 Temp merged_wave_info_to_mask(isel_context* ctx, unsigned i);
 Temp lanecount_to_mask(isel_context* ctx, Temp count);
-void ngg_emit_sendmsg_gs_alloc_req(isel_context* ctx, Temp vtx_cnt, Temp prm_cnt);
 
 Temp
 get_interp_param(isel_context* ctx, nir_intrinsic_op intrin,
@@ -8963,7 +8962,18 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       assert(ctx->stage.hw == HWStage::NGG);
       Temp num_vertices = get_ssa_temp(ctx, instr->src[0].ssa);
       Temp num_primitives = get_ssa_temp(ctx, instr->src[1].ssa);
-      ngg_emit_sendmsg_gs_alloc_req(ctx, num_vertices, num_primitives);
+
+      /* Put the number of vertices and primitives into m0 for the GS_ALLOC_REQ */
+      Temp tmp =
+         bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc),
+                  num_primitives, Operand::c32(12u));
+      tmp = bld.sop2(aco_opcode::s_or_b32, bld.m0(bld.def(s1)), bld.def(s1, scc),
+                     tmp, num_vertices);
+
+      /* Request the SPI to allocate space for the primitives and vertices
+       * that will be exported by the threadgroup.
+       */
+      bld.sopp(aco_opcode::s_sendmsg, bld.m0(tmp), -1, sendmsg_gs_alloc_req);
       break;
    }
    case nir_intrinsic_gds_atomic_add_amd: {
@@ -11428,70 +11438,6 @@ merged_wave_info_to_mask(isel_context* ctx, unsigned i)
                               get_arg(ctx, ctx->args->merged_wave_info), Operand::c32(i * 8u));
 
    return lanecount_to_mask(ctx, count);
-}
-
-void
-ngg_emit_sendmsg_gs_alloc_req(isel_context* ctx, Temp vtx_cnt, Temp prm_cnt)
-{
-   assert(vtx_cnt.id() && prm_cnt.id());
-
-   Builder bld(ctx->program, ctx->block);
-   Temp prm_cnt_0;
-
-   if (ctx->program->gfx_level == GFX10 &&
-       (ctx->stage.has(SWStage::GS) || ctx->program->info.has_ngg_culling)) {
-      /* Navi 1x workaround: check whether the workgroup has no output.
-       * If so, change the number of exported vertices and primitives to 1.
-       */
-      prm_cnt_0 = bld.sopc(aco_opcode::s_cmp_eq_u32, bld.def(s1, scc), prm_cnt, Operand::zero());
-      prm_cnt = bld.sop2(aco_opcode::s_cselect_b32, bld.def(s1), Operand::c32(1u), prm_cnt,
-                         bld.scc(prm_cnt_0));
-      vtx_cnt = bld.sop2(aco_opcode::s_cselect_b32, bld.def(s1), Operand::c32(1u), vtx_cnt,
-                         bld.scc(prm_cnt_0));
-   }
-
-   /* Put the number of vertices and primitives into m0 for the GS_ALLOC_REQ */
-   Temp tmp =
-      bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc), prm_cnt, Operand::c32(12u));
-   tmp = bld.sop2(aco_opcode::s_or_b32, bld.m0(bld.def(s1)), bld.def(s1, scc), tmp, vtx_cnt);
-
-   /* Request the SPI to allocate space for the primitives and vertices
-    * that will be exported by the threadgroup.
-    */
-   bld.sopp(aco_opcode::s_sendmsg, bld.m0(tmp), -1, sendmsg_gs_alloc_req);
-
-   if (prm_cnt_0.id()) {
-      /* Navi 1x workaround: export a triangle with NaN coordinates when NGG has no output.
-       * It can't have all-zero positions because that would render an undesired pixel with
-       * conservative rasterization.
-       */
-      Temp first_lane = bld.sop1(Builder::s_ff1_i32, bld.def(s1), Operand(exec, bld.lm));
-      Temp cond = bld.sop2(Builder::s_lshl, bld.def(bld.lm), bld.def(s1, scc),
-                           Operand::c32_or_c64(1u, ctx->program->wave_size == 64), first_lane);
-      cond = bld.sop2(Builder::s_cselect, bld.def(bld.lm), cond,
-                      Operand::zero(ctx->program->wave_size == 64 ? 8 : 4), bld.scc(prm_cnt_0));
-
-      if_context ic_prim_0;
-      begin_divergent_if_then(ctx, &ic_prim_0, cond);
-      bld.reset(ctx->block);
-      ctx->block->kind |= block_kind_export_end;
-
-      /* Use zero: means that it's a triangle whose every vertex index is 0. */
-      Temp zero = bld.copy(bld.def(v1), Operand::zero());
-      /* Use NaN for the coordinates, so that the rasterizer allways culls it.  */
-      Temp nan_coord = bld.copy(bld.def(v1), Operand::c32(-1u));
-
-      bld.exp(aco_opcode::exp, zero, Operand(v1), Operand(v1), Operand(v1), 1 /* enabled mask */,
-              V_008DFC_SQ_EXP_PRIM /* dest */, false /* compressed */, true /* done */,
-              false /* valid mask */);
-      bld.exp(aco_opcode::exp, nan_coord, nan_coord, nan_coord, nan_coord, 0xf /* enabled mask */,
-              V_008DFC_SQ_EXP_POS /* dest */, false /* compressed */, true /* done */,
-              true /* valid mask */);
-
-      begin_divergent_if_else(ctx, &ic_prim_0);
-      end_divergent_if(ctx, &ic_prim_0);
-      bld.reset(ctx->block);
-   }
 }
 
 } /* end namespace */
