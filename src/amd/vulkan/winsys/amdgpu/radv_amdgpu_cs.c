@@ -874,6 +874,7 @@ radv_amdgpu_winsys_cs_submit_internal(
       goto fail;
 
    /* Configure the CS request. */
+   const uint8_t *max_ib_per_ip = ws->info.max_submitted_ibs;
    struct radv_amdgpu_cs_ib_info ibs[RADV_MAX_IBS_PER_SUBMIT];
    struct radv_amdgpu_cs_request request = {
       .ip_type = last_cs->hw_ip,
@@ -894,6 +895,7 @@ radv_amdgpu_winsys_cs_submit_internal(
       const unsigned preamble_count = cs_idx ? continue_preamble_count : initial_preamble_count;
       const unsigned ib_per_submit = RADV_MAX_IBS_PER_SUBMIT - preamble_count - postamble_count;
       unsigned num_submitted_ibs = 0;
+      unsigned ibs_per_ip[AMD_NUM_IP_TYPES] = {0};
 
       /* Copy preambles to the submission. */
       for (unsigned i = 0; i < preamble_count; ++i) {
@@ -901,6 +903,7 @@ radv_amdgpu_winsys_cs_submit_internal(
          struct radv_amdgpu_cs *cs = radv_amdgpu_cs(preambles[i]);
          assert(cs->num_old_ib_buffers <= 1);
          ibs[num_submitted_ibs++] = cs->ib;
+         ibs_per_ip[cs->hw_ip]++;
       }
 
       for (unsigned i = 0; i < ib_per_submit && cs_idx < cs_count; ++i) {
@@ -910,7 +913,8 @@ radv_amdgpu_winsys_cs_submit_internal(
          if (cs_ib_idx == 0) {
             /* Make sure the whole CS fits into the same submission. */
             unsigned cs_num_ib = cs->use_ib ? 1 : cs->num_old_ib_buffers;
-            if (i + cs_num_ib > ib_per_submit)
+            if (i + cs_num_ib > ib_per_submit ||
+                ibs_per_ip[cs->hw_ip] + cs_num_ib > max_ib_per_ip[cs->hw_ip])
                break;
 
             if (cs->hw_ip != request.ip_type) {
@@ -922,7 +926,8 @@ radv_amdgpu_winsys_cs_submit_internal(
                struct radv_amdgpu_cs *next_cs = radv_amdgpu_cs(cs_array[cs_idx + 1]);
                assert(next_cs->hw_ip == request.ip_type);
                unsigned next_cs_num_ib = next_cs->use_ib ? 1 : next_cs->num_old_ib_buffers;
-               if (i + cs_num_ib + next_cs_num_ib > ib_per_submit)
+               if (i + cs_num_ib + next_cs_num_ib > ib_per_submit ||
+                   ibs_per_ip[next_cs->hw_ip] + next_cs_num_ib > max_ib_per_ip[next_cs->hw_ip])
                   break;
             }
          }
@@ -948,6 +953,7 @@ radv_amdgpu_winsys_cs_submit_internal(
             ib.flags |= AMDGPU_IB_FLAG_PREEMPT;
 
          ibs[num_submitted_ibs++] = ib;
+         ibs_per_ip[cs->hw_ip]++;
       }
 
       assert(num_submitted_ibs > preamble_count);
@@ -958,6 +964,7 @@ radv_amdgpu_winsys_cs_submit_internal(
          struct radv_amdgpu_cs *cs = radv_amdgpu_cs(postamble_cs[i]);
          assert(cs->num_old_ib_buffers <= 1);
          ibs[num_submitted_ibs++] = cs->ib;
+         ibs_per_ip[cs->hw_ip]++;
       }
 
       /* Submit the CS. */
