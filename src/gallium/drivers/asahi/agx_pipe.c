@@ -773,19 +773,25 @@ agx_alloc_staging(struct pipe_screen *screen, struct agx_resource *rsc,
 
    tmpl.width0 = box->width;
    tmpl.height0 = box->height;
+   tmpl.depth0 = 1;
 
-   /* for array textures, box->depth is the array_size, otherwise for 3d
-    * textures, it is the depth.
+   /* We need a linear staging resource. We have linear 2D arrays, but not
+    * linear 3D or cube textures. So switch to 2D arrays if needed.
     */
-   if (tmpl.array_size > 1) {
-      if (tmpl.target == PIPE_TEXTURE_CUBE)
-         tmpl.target = PIPE_TEXTURE_2D_ARRAY;
+   switch (tmpl.target) {
+   case PIPE_TEXTURE_2D_ARRAY:
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_CUBE_ARRAY:
+   case PIPE_TEXTURE_3D:
+      tmpl.target = PIPE_TEXTURE_2D_ARRAY;
       tmpl.array_size = box->depth;
-      tmpl.depth0 = 1;
-   } else {
-      tmpl.array_size = 1;
-      tmpl.depth0 = box->depth;
+      break;
+   default:
+      assert(tmpl.array_size == 1);
+      assert(box->depth == 1);
+      break;
    }
+
    tmpl.last_level = 0;
    tmpl.bind |= PIPE_BIND_LINEAR;
 
