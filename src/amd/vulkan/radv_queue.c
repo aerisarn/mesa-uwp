@@ -1058,7 +1058,7 @@ radv_update_preamble_cs(struct radv_queue_state *queue, struct radv_device *devi
    for (int i = 0; i < 3; ++i) {
       enum rgp_flush_bits sqtt_flush_bits = 0;
       struct radeon_cmdbuf *cs = NULL;
-      cs = ws->cs_create(ws, radv_queue_family_to_ring(device->physical_device, queue->qf));
+      cs = ws->cs_create(ws, radv_queue_family_to_ring(device->physical_device, queue->qf), false);
       if (!cs) {
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
          goto fail;
@@ -1325,10 +1325,10 @@ radv_create_gang_wait_preambles_postambles(struct radv_queue *queue)
    if (r != VK_SUCCESS)
       return r;
 
-   struct radeon_cmdbuf *leader_pre_cs = ws->cs_create(ws, leader_ip);
-   struct radeon_cmdbuf *leader_post_cs = ws->cs_create(ws, leader_ip);
-   struct radeon_cmdbuf *ace_pre_cs = ws->cs_create(ws, AMD_IP_COMPUTE);
-   struct radeon_cmdbuf *ace_post_cs = ws->cs_create(ws, AMD_IP_COMPUTE);
+   struct radeon_cmdbuf *leader_pre_cs = ws->cs_create(ws, leader_ip, false);
+   struct radeon_cmdbuf *leader_post_cs = ws->cs_create(ws, leader_ip, false);
+   struct radeon_cmdbuf *ace_pre_cs = ws->cs_create(ws, AMD_IP_COMPUTE, false);
+   struct radeon_cmdbuf *ace_post_cs = ws->cs_create(ws, AMD_IP_COMPUTE, false);
 
    if (!leader_pre_cs || !leader_post_cs || !ace_pre_cs || !ace_post_cs)
       goto fail;
@@ -1475,7 +1475,7 @@ radv_create_perf_counter_lock_cs(struct radv_device *device, unsigned pass, bool
    if (*cs_ref)
       return *cs_ref;
 
-   cs = device->ws->cs_create(device->ws, AMD_IP_GFX);
+   cs = device->ws->cs_create(device->ws, AMD_IP_GFX, false);
    if (!cs)
       return NULL;
 

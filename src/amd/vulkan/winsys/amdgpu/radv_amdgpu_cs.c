@@ -79,6 +79,7 @@ struct radv_amdgpu_cs {
    VkResult status;
    struct radv_amdgpu_cs *chained_to;
    bool use_ib;
+   bool is_secondary;
 
    int buffer_hash_table[1024];
    unsigned hw_ip;
@@ -226,7 +227,7 @@ radv_amdgpu_cs_domain(const struct radeon_winsys *_ws)
 }
 
 static struct radeon_cmdbuf *
-radv_amdgpu_cs_create(struct radeon_winsys *ws, enum amd_ip_type ip_type)
+radv_amdgpu_cs_create(struct radeon_winsys *ws, enum amd_ip_type ip_type, bool is_secondary)
 {
    struct radv_amdgpu_cs *cs;
    uint32_t ib_pad_dw_mask = MAX2(3, radv_amdgpu_winsys(ws)->info.ib_pad_dw_mask[ip_type]);
@@ -235,6 +236,7 @@ radv_amdgpu_cs_create(struct radeon_winsys *ws, enum amd_ip_type ip_type)
    if (!cs)
       return NULL;
 
+   cs->is_secondary = is_secondary;
    cs->ws = radv_amdgpu_winsys(ws);
    radv_amdgpu_init_cs(cs, ip_type);
 

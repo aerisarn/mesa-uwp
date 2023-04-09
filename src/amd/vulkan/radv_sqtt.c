@@ -643,7 +643,7 @@ radv_begin_thread_trace(struct radv_queue *queue)
       device->thread_trace.start_cs[family] = NULL;
    }
 
-   cs = ws->cs_create(ws, radv_queue_ring(queue));
+   cs = ws->cs_create(ws, radv_queue_ring(queue), false);
    if (!cs)
       return false;
 
@@ -712,7 +712,7 @@ radv_end_thread_trace(struct radv_queue *queue)
       device->thread_trace.stop_cs[family] = NULL;
    }
 
-   cs = ws->cs_create(ws, radv_queue_ring(queue));
+   cs = ws->cs_create(ws, radv_queue_ring(queue), false);
    if (!cs)
       return false;
 

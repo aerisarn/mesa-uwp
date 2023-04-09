@@ -289,7 +289,8 @@ struct radeon_winsys {
 
    enum radeon_bo_domain (*cs_domain)(const struct radeon_winsys *ws);
 
-   struct radeon_cmdbuf *(*cs_create)(struct radeon_winsys *ws, enum amd_ip_type amd_ip_type);
+   struct radeon_cmdbuf *(*cs_create)(struct radeon_winsys *ws, enum amd_ip_type amd_ip_type,
+                                      bool is_secondary);
 
    void (*cs_destroy)(struct radeon_cmdbuf *cs);
 

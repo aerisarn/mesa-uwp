@@ -363,7 +363,8 @@ radv_create_cmd_buffer(struct vk_command_pool *pool,
 
    ring = radv_queue_family_to_ring(device->physical_device, cmd_buffer->qf);
 
-   cmd_buffer->cs = device->ws->cs_create(device->ws, ring);
+   cmd_buffer->cs = device->ws->cs_create(
+      device->ws, ring, cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
    if (!cmd_buffer->cs) {
       radv_destroy_cmd_buffer(&cmd_buffer->vk);
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -679,7 +680,8 @@ radv_ace_internal_create(struct radv_cmd_buffer *cmd_buffer)
 {
    assert(!cmd_buffer->ace_internal.cs);
    struct radv_device *device = cmd_buffer->device;
-   struct radeon_cmdbuf *ace_cs = device->ws->cs_create(device->ws, AMD_IP_COMPUTE);
+   struct radeon_cmdbuf *ace_cs = device->ws->cs_create(
+      device->ws, AMD_IP_COMPUTE, cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
 
    if (!ace_cs)
       vk_command_buffer_set_error(&cmd_buffer->vk, VK_ERROR_OUT_OF_HOST_MEMORY);
