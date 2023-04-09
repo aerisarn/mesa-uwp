@@ -1434,6 +1434,24 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info)
       }
    }
 
+   /* The number of IBs per submit isn't infinite, it depends on the IP type
+    * (ie. some initial setup needed for a submit) and the packet size.
+    * It can be calculated according to the kernel source code as:
+    * (ring->max_dw - emit_frame_size) / emit_ib_size
+    *
+    * The numbers we chose here is a rough estimate that should
+    * work well (as of kernel 6.3).
+    */
+   memset(info->max_submitted_ibs, 50, AMD_NUM_IP_TYPES);
+   info->max_submitted_ibs[AMD_IP_GFX] = info->gfx_level >= GFX7 ? 192 : 144;
+   info->max_submitted_ibs[AMD_IP_COMPUTE] = 124;
+   info->max_submitted_ibs[AMD_IP_VCN_JPEG] = 16;
+   for (unsigned i = 0; i < AMD_NUM_IP_TYPES; ++i) {
+      /* Clear out max submitted IB count for IPs that have no queues. */
+      if (!info->ip[i].num_queues)
+         info->max_submitted_ibs[i] = 0;
+   }
+
    if (info->gfx_level >= GFX11) {
       switch (info->family) {
       case CHIP_GFX1103_R1:
@@ -1691,6 +1709,12 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    mid_command_buffer_preemption_enabled = %u\n",
            info->mid_command_buffer_preemption_enabled);
    fprintf(f, "    has_tmz_support = %u\n", info->has_tmz_support);
+   for (unsigned i = 0; i < AMD_NUM_IP_TYPES; i++) {
+      if (info->max_submitted_ibs[i]) {
+         fprintf(f, "    IP %-7s max_submitted_ibs = %u\n", ip_string[i],
+                 info->max_submitted_ibs[i]);
+      }
+   }
 
    fprintf(f, "Shader core info:\n");
    for (unsigned i = 0; i < info->max_se; i++) {
