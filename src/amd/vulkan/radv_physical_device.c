@@ -71,7 +71,7 @@ static bool
 radv_taskmesh_enabled(const struct radv_physical_device *pdevice)
 {
    return pdevice->use_ngg && !pdevice->use_llvm && pdevice->rad_info.gfx_level >= GFX10_3 &&
-          !(pdevice->instance->debug_flags & (RADV_DEBUG_NO_COMPUTE_QUEUE | RADV_DEBUG_NO_IBS)) &&
+          !(pdevice->instance->debug_flags & RADV_DEBUG_NO_COMPUTE_QUEUE) &&
           pdevice->rad_info.has_gang_submit;
 }
 
