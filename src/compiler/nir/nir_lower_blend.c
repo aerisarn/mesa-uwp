@@ -533,6 +533,7 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
 
       b->shader->info.outputs_read |= BITFIELD64_BIT(sem.location);
       b->shader->info.fs.uses_fbfetch_output = true;
+      b->shader->info.fs.uses_sample_shading = true;
       sem.fb_fetch_output = true;
 
       dst = nir_load_output(b, 4, nir_src_bit_size(store->src[0]),
