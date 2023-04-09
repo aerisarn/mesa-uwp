@@ -9,3 +9,4 @@ primitiveUnderestimation on RADV/GFX9+
 VK_KHR_fragment_shading_rate on RADV/GFX11
 VK_EXT_mesh_shader on RADV/GFX11
 RGP support on RADV/GFX11
+GL_NV_alpha_to_coverage_dither_control on r600/evergreen+
