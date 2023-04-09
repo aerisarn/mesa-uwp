@@ -37,8 +37,6 @@ spec@arb_draw_indirect@arb_draw_indirect-api-errors,Crash
 spec@arb_explicit_attrib_location@overlapping-locations-input-attribs api,Crash
 spec@arb_explicit_attrib_location@overlapping-locations-input-attribs shader,Crash
 spec@arb_framebuffer_object@fbo-blit-scaled-linear,Fail
-spec@arb_framebuffer_no_attachments@arb_framebuffer_no_attachments-atomic,Fail
-spec@arb_framebuffer_no_attachments@arb_framebuffer_no_attachments-atomic@Per-sample,Fail
 spec@arb_get_program_binary@restore-sso-program,Fail
 spec@arb_point_sprite@arb_point_sprite-mipmap,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex,Fail

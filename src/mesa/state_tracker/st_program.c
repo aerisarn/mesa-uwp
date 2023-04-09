@@ -937,6 +937,14 @@ st_create_fp_variant(struct st_context *st,
       nir_shader *shader = state.ir.nir;
       nir_foreach_shader_in_variable(var, shader)
          var->data.sample = true;
+
+      /* In addition to requiring per-sample interpolation, sample shading
+       * changes the behaviour of gl_SampleMaskIn, so we need per-sample shading
+       * even if there are no shader-in variables at all. In that case,
+       * uses_sample_shading won't be set by glsl_to_nir. We need to do so here.
+       */
+      shader->info.fs.uses_sample_shading = true;
+
       finalize = true;
    }
 
