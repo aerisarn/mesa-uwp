@@ -347,6 +347,14 @@ agx_linear_allowed(const struct agx_resource *pres)
    if (pres->base.bind & PIPE_BIND_DEPTH_STENCIL)
       return false;
 
+   /* Multisampling not allowed with linear */
+   if (pres->base.nr_samples > 1)
+      return false;
+
+   /* Block compression not allowed with linear */
+   if (util_format_is_compressed(pres->base.format))
+      return false;
+
    switch (pres->base.target) {
    /* 1D is always linear */
    case PIPE_BUFFER:
