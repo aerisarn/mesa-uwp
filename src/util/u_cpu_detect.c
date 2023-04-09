@@ -853,7 +853,6 @@ _util_cpu_detect_once(void)
          }
 
          /* general feature flags */
-         util_cpu_caps.has_tsc    = (regs2[3] >>  4) & 1; /* 0x0000010 */
          util_cpu_caps.has_mmx    = (regs2[3] >> 23) & 1; /* 0x0800000 */
          util_cpu_caps.has_sse    = (regs2[3] >> 25) & 1; /* 0x2000000 */
          util_cpu_caps.has_sse2   = (regs2[3] >> 26) & 1; /* 0x4000000 */
@@ -958,7 +957,6 @@ _util_cpu_detect_once(void)
       printf("util_cpu_caps.x86_cpu_type = %u\n", util_cpu_caps.x86_cpu_type);
       printf("util_cpu_caps.cacheline = %u\n", util_cpu_caps.cacheline);
 
-      printf("util_cpu_caps.has_tsc = %u\n", util_cpu_caps.has_tsc);
       printf("util_cpu_caps.has_mmx = %u\n", util_cpu_caps.has_mmx);
       printf("util_cpu_caps.has_mmx2 = %u\n", util_cpu_caps.has_mmx2);
       printf("util_cpu_caps.has_sse = %u\n", util_cpu_caps.has_sse);
