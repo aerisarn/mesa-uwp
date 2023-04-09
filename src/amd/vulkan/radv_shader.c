@@ -2284,8 +2284,8 @@ radv_create_trap_handler_shader(struct radv_device *device)
 
    struct radv_shader_args args;
    args.explicit_scratch_args = true;
-   args.is_trap_handler_shader = true;
-   radv_declare_shader_args(device, &key, &info, stage, false, MESA_SHADER_NONE, &args);
+   radv_declare_shader_args(device, &key, &info, stage, false, MESA_SHADER_NONE,
+                            RADV_SHADER_TYPE_TRAP_HANDLER, &args);
 
    struct radv_shader_binary *binary =
       shader_compile(device, &b.shader, 1, stage, &info, &args, &options);
@@ -2357,7 +2357,7 @@ radv_create_rt_prolog(struct radv_device *device)
 
    in_args.explicit_scratch_args = true;
    radv_declare_shader_args(device, &pipeline_key, &info, MESA_SHADER_COMPUTE, false,
-                            MESA_SHADER_NONE, &in_args);
+                            MESA_SHADER_NONE, RADV_SHADER_TYPE_DEFAULT, &in_args);
    radv_declare_rt_shader_args(options.gfx_level, &out_args);
    info.user_sgprs_locs = in_args.user_sgprs_locs;
 
@@ -2422,7 +2422,8 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
 
    args.explicit_scratch_args = true;
    radv_declare_shader_args(device, &pipeline_key, &info, key->next_stage,
-                            key->next_stage != MESA_SHADER_VERTEX, MESA_SHADER_VERTEX, &args);
+                            key->next_stage != MESA_SHADER_VERTEX, MESA_SHADER_VERTEX,
+                            RADV_SHADER_TYPE_DEFAULT, &args);
 
    info.user_sgprs_locs = args.user_sgprs_locs;
    info.inline_push_constant_mask = args.ac.inline_push_const_mask;

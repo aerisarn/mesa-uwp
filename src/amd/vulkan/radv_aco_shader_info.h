@@ -67,7 +67,7 @@ radv_aco_convert_shader_info(struct aco_shader_info *aco_info,
    ASSIGN_FIELD(cs.subgroup_size);
    ASSIGN_FIELD(cs.uses_full_subgroups);
    aco_info->gfx9_gs_ring_lds_size = radv->gs_ring_info.lds_size;
-   aco_info->is_trap_handler_shader = radv_args->is_trap_handler_shader;
+   aco_info->is_trap_handler_shader = radv_args->type == RADV_SHADER_TYPE_TRAP_HANDLER;
 }
 
 #define ASSIGN_VS_STATE_FIELD(x) aco_info->state.x = radv->state->x
