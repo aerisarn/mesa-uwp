@@ -266,10 +266,6 @@ radv_rt_pipeline_compile(struct radv_ray_tracing_pipeline *pipeline,
    radv_nir_shader_info_pass(device, rt_stage.nir, MESA_SHADER_NONE, pipeline_layout, pipeline_key,
                              pipeline->base.base.type, false, &rt_stage.info);
 
-   /* Declare shader arguments. */
-   rt_stage.args.explicit_scratch_args = !radv_use_llvm_for_stage(device, rt_stage.stage);
-   rt_stage.args.load_grid_size_from_user_sgpr = device->load_grid_size_from_user_sgpr;
-
    radv_declare_shader_args(device, pipeline_key, &rt_stage.info, rt_stage.stage, false,
                             MESA_SHADER_NONE, RADV_SHADER_TYPE_DEFAULT, &rt_stage.args);
 

@@ -5153,10 +5153,6 @@ radv_compute_pipeline_compile(struct radv_compute_pipeline *pipeline,
    radv_nir_shader_info_pass(device, cs_stage.nir, MESA_SHADER_NONE, pipeline_layout, pipeline_key,
                              pipeline->base.type, false, &cs_stage.info);
 
-   /* Declare shader arguments. */
-   cs_stage.args.explicit_scratch_args = !radv_use_llvm_for_stage(device, MESA_SHADER_COMPUTE);
-   cs_stage.args.load_grid_size_from_user_sgpr = device->load_grid_size_from_user_sgpr;
-
    radv_declare_shader_args(device, pipeline_key, &cs_stage.info, MESA_SHADER_COMPUTE, false,
                             MESA_SHADER_VERTEX, RADV_SHADER_TYPE_DEFAULT, &cs_stage.args);
 
