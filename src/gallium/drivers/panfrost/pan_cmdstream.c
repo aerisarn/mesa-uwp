@@ -31,6 +31,7 @@
 #include "util/u_helpers.h"
 #include "util/u_memory.h"
 #include "util/u_prim.h"
+#include "util/u_sample_positions.h"
 #include "util/u_vbuf.h"
 #include "util/u_viewport.h"
 
@@ -4392,15 +4393,6 @@ prepare_shader(struct panfrost_compiled_shader *state,
 }
 
 static void
-panfrost_get_sample_position(struct pipe_context *context,
-                             unsigned sample_count, unsigned sample_index,
-                             float *out_value)
-{
-   panfrost_query_sample_position(panfrost_sample_pattern(sample_count),
-                                  sample_index, out_value);
-}
-
-static void
 screen_destroy(struct pipe_screen *pscreen)
 {
    struct panfrost_device *dev = pan_device(pscreen);
@@ -4475,7 +4467,7 @@ context_init(struct pipe_context *pipe)
    pipe->create_sampler_state = panfrost_create_sampler_state;
    pipe->create_blend_state = panfrost_create_blend_state;
 
-   pipe->get_sample_position = panfrost_get_sample_position;
+   pipe->get_sample_position = u_default_get_sample_position;
 }
 
 #if PAN_ARCH <= 5
