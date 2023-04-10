@@ -860,7 +860,6 @@ static void
 llvmpipe_destroy_screen(struct pipe_screen *_screen)
 {
    struct llvmpipe_screen *screen = llvmpipe_screen(_screen);
-   struct sw_winsys *winsys = screen->winsys;
 
    if (screen->cs_tpool)
       lp_cs_tpool_destroy(screen->cs_tpool);
@@ -871,8 +870,6 @@ llvmpipe_destroy_screen(struct pipe_screen *_screen)
    lp_jit_screen_cleanup(screen);
 
    disk_cache_destroy(screen->disk_shader_cache);
-   if (winsys->destroy)
-      winsys->destroy(winsys);
 
    glsl_type_singleton_decref();
 
