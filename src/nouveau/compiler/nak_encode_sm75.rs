@@ -163,30 +163,18 @@ impl SM75Instr {
         }
     }
 
-    fn set_pred_src(
-        &mut self,
-        range: Range<usize>,
-        not_bit: isize,
-        src: Src,
-        default: bool,
-    ) {
-        match src.src_ref {
-            SrcRef::True => {
-                assert!(default);
-                self.set_pred_reg(range, RegRef::zero(RegFile::Pred, 1));
-            }
-            SrcRef::False => {
-                assert!(!default);
-                self.set_pred_reg(range, RegRef::zero(RegFile::Pred, 1));
-            }
-            SrcRef::Reg(reg) => self.set_pred_reg(range, reg),
+    fn set_pred_src(&mut self, range: Range<usize>, not_bit: usize, src: Src) {
+        /* The default for predicates is true */
+        let true_reg = RegRef::new(RegFile::Pred, 7, 1);
+
+        let (not, reg) = match src.src_ref {
+            SrcRef::True => (false, true_reg),
+            SrcRef::False => (true, true_reg),
+            SrcRef::Reg(reg) => (false, reg),
             _ => panic!("Not a register"),
-        }
-        if not_bit >= 0 {
-            self.set_bit(not_bit.try_into().unwrap(), src.src_mod.has_not());
-        } else {
-            assert!(src.src_mod.is_none());
-        }
+        };
+        self.set_pred_reg(range, reg);
+        self.set_bit(not_bit, not ^ src.src_mod.has_not());
     }
 
     fn set_src_cb(&mut self, range: Range<usize>, cb: &CBufRef) {
@@ -472,7 +460,19 @@ impl SM75Instr {
         }
 
         self.set_pred_dst(81..84, op.overflow);
-        self.set_pred_src(84..87, -1, op.carry, false);
+
+        /* Carry for IADD3 is special because the default (register 7) is false
+         * instead of the usual true and it doesn't have a not modifier.
+         */
+        assert!(op.carry.src_mod.is_none());
+        self.set_pred_reg(
+            84..87,
+            match op.carry.src_ref {
+                SrcRef::False => RegRef::new(RegFile::Pred, 7, 1),
+                SrcRef::Reg(reg) => reg,
+                _ => panic!("Invalid carry source"),
+            },
+        );
     }
 
     fn set_int_cmp_op(&mut self, range: Range<usize>, op: IntCmpOp) {
@@ -583,7 +583,7 @@ impl SM75Instr {
             ALUSrc::None,
         );
 
-        self.set_pred_src(87..90, 90, op.cond, true);
+        self.set_pred_src(87..90, 90, op.cond);
     }
 
     fn encode_plop3(&mut self, op: &OpPLop3) {
@@ -592,13 +592,13 @@ impl SM75Instr {
         self.set_field(64..67, op.ops[0].lut & 0x7);
         self.set_field(72..77, op.ops[0].lut >> 3);
 
-        self.set_pred_src(68..71, 71, op.srcs[2], true);
+        self.set_pred_src(68..71, 71, op.srcs[2]);
 
-        self.set_pred_src(77..80, 80, op.srcs[1], true);
+        self.set_pred_src(77..80, 80, op.srcs[1]);
         self.set_pred_dst(81..84, op.dsts[0]);
         self.set_pred_dst(84..87, op.dsts[1]);
 
-        self.set_pred_src(87..90, 90, op.srcs[0], true);
+        self.set_pred_src(87..90, 90, op.srcs[0]);
     }
 
     fn set_mem_access(&mut self, access: &MemAccess) {
