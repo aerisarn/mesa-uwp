@@ -13,25 +13,39 @@ use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use syn::*;
 
-fn count_type(ty: &Type, search_type: &str) -> TokenStream2 {
+fn expr_as_usize(expr: &syn::Expr) -> usize {
+    let lit = match expr {
+        syn::Expr::Lit(lit) => lit,
+        _ => panic!("Expected a literal, found an expression"),
+    };
+    let lit_int = match &lit.lit {
+        syn::Lit::Int(i) => i,
+        _ => panic!("Expected a literal integer"),
+    };
+    assert!(lit.attrs.is_empty());
+    lit_int
+        .base10_parse()
+        .expect("Failed to parse integer literal")
+}
+
+fn count_type(ty: &Type, search_type: &str) -> usize {
     match ty {
         syn::Type::Array(a) => {
             let elems = count_type(a.elem.as_ref(), search_type);
-            if !elems.is_empty() {
-                let len = &a.len;
-                quote! {((#elems) * (#len))}
+            if elems > 0 {
+                elems * expr_as_usize(&a.len)
             } else {
-                TokenStream2::new()
+                0
             }
         }
         syn::Type::Path(p) => {
             if p.qself.is_none() && p.path.is_ident(search_type) {
-                quote! {1_usize}
+                1
             } else {
-                TokenStream2::new()
+                0
             }
         }
-        _ => TokenStream2::new(),
+        _ => 0,
     }
 }
 
@@ -70,20 +84,20 @@ fn derive_as_slice(
             assert!(has_repr_c, "Struct must be declared #[repr(C)]");
 
             let mut first = None;
-            let mut count = quote! {0_usize};
+            let mut count = 0_usize;
             let mut found_last = false;
 
             if let Fields::Named(named) = s.fields {
                 for f in named.named {
                     let ty_count = count_type(&f.ty, search_type);
-                    if !ty_count.is_empty() {
+                    if ty_count > 0 {
                         assert!(
                             !found_last,
                             "All fields of type {} must be consecutive",
                             search_type
                         );
                         first.get_or_insert(f.ident);
-                        count.extend(quote! {+ #ty_count});
+                        count += ty_count;
                     } else {
                         if !first.is_none() {
                             found_last = true;
