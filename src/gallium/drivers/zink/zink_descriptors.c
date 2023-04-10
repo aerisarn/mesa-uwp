@@ -1456,7 +1456,7 @@ zink_batch_descriptor_deinit(struct zink_screen *screen, struct zink_batch_state
       util_dynarray_fini(&bs->dd.pools[i]);
    }
    for (unsigned i = 0; i < 2; i++) {
-      if (bs->dd.push_pool[0].pool)
+      if (bs->dd.push_pool[i].pool)
          pool_destroy(screen, bs->dd.push_pool[i].pool);
       deinit_multi_pool_overflow(screen, &bs->dd.push_pool[i]);
    }
