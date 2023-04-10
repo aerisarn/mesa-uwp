@@ -59,51 +59,93 @@ impl<T: Copy> RegTracker<T> {
     }
 }
 
+struct BarDep {
+    dep: usize,
+    bar: u8,
+}
+
+struct BarAlloc {
+    bars: u8,
+    bar_dep: [usize; 6],
+    dep_bar: Vec<u8>,
+}
+
+impl BarAlloc {
+    pub fn new() -> BarAlloc {
+        BarAlloc {
+            bars: 6,
+            bar_dep: [usize::MAX; 6],
+            dep_bar: Vec::new(),
+        }
+    }
+
+    pub fn get_dep(&self, bar: u8) -> Option<usize> {
+        assert!(bar < self.bars);
+        let dep = self.bar_dep[usize::from(bar)];
+        if dep == usize::MAX {
+            None
+        } else {
+            assert!(self.dep_bar[dep] == bar);
+            Some(dep)
+        }
+    }
+
+    pub fn get_bar(&self, dep: usize) -> Option<u8> {
+        let bar = self.dep_bar[dep];
+        if bar == u8::MAX {
+            None
+        } else {
+            assert!(self.bar_dep[usize::from(bar)] == dep);
+            Some(bar)
+        }
+    }
+
+    fn alloc_dep(&mut self, bar: u8) -> BarDep {
+        let dep = self.dep_bar.len();
+        self.bar_dep[usize::from(bar)] = dep;
+        self.dep_bar.push(bar);
+        BarDep { dep: dep, bar: bar }
+    }
+
+    pub fn try_alloc(&mut self) -> Option<BarDep> {
+        for bar in 0..self.bars {
+            if self.bar_dep[usize::from(bar)] == usize::MAX {
+                return Some(self.alloc_dep(bar));
+            }
+        }
+        None
+    }
+
+    pub fn free_bar(&mut self, bar: u8) {
+        let dep = self.get_dep(bar).unwrap();
+        self.bar_dep[usize::from(bar)] = usize::MAX;
+        self.dep_bar[dep] = u8::MAX;
+    }
+}
+
 struct AllocBarriers {
     deps: RegTracker<usize>,
-    barriers: Vec<i8>,
-    active: u8,
+    bars: BarAlloc,
 }
 
 impl AllocBarriers {
     pub fn new() -> AllocBarriers {
         AllocBarriers {
             deps: RegTracker::new(usize::MAX),
-            barriers: Vec::new(),
-            active: 0,
+            bars: BarAlloc::new(),
         }
-    }
-
-    fn alloc_bar(&mut self) -> i8 {
-        let bar = i8::try_from(self.active.trailing_ones()).unwrap();
-        assert!(bar < 6);
-        self.active |= 1 << bar;
-        bar
-    }
-
-    fn free_bar_mask(&mut self, bar_mask: u8) {
-        assert!(bar_mask < (1 << 7));
-        assert!((bar_mask & !self.active) == 0);
-        self.active &= !bar_mask;
-    }
-
-    fn alloc_dep(&mut self) -> (usize, i8) {
-        let bar = self.alloc_bar();
-        let dep = self.barriers.len();
-        self.barriers.push(bar);
-        (dep, bar)
     }
 
     fn take_reg_barrier_mask(&mut self, reg: &RegRef) -> u8 {
         let mut mask = 0_u8;
         for d in self.deps.get_mut(reg) {
-            if *d != usize::MAX && self.barriers[*d] >= 0 {
-                let bar = self.barriers[*d];
-                self.barriers[*d] = -1;
-                mask |= 1_u8 << bar;
+            if *d != usize::MAX {
+                if let Some(bar) = self.bars.get_bar(*d) {
+                    self.bars.free_bar(bar);
+                    mask |= 1_u8 << bar;
+                }
             }
         }
-        self.free_bar_mask(mask);
         mask
     }
 
@@ -163,14 +205,14 @@ impl AllocBarriers {
                     }
 
                     if !instr.srcs().is_empty() {
-                        let (dep, bar) = self.alloc_dep();
-                        instr.deps.set_rd_bar(bar.try_into().unwrap());
-                        self.set_instr_read_dep(instr, dep);
+                        let bd = self.bars.try_alloc().unwrap();
+                        instr.deps.set_rd_bar(bd.bar);
+                        self.set_instr_read_dep(instr, bd.dep);
                     }
                     if !instr.dsts().is_empty() {
-                        let (dep, bar) = self.alloc_dep();
-                        instr.deps.set_wr_bar(bar.try_into().unwrap());
-                        self.set_instr_write_dep(instr, dep);
+                        let bd = self.bars.try_alloc().unwrap();
+                        instr.deps.set_wr_bar(bd.bar);
+                        self.set_instr_write_dep(instr, bd.dep);
                     }
                 }
             }
