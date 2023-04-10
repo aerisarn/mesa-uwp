@@ -238,7 +238,7 @@ impl<'a> ShaderFromNir<'a> {
                         dst: sum[0].into(),
                         overflow: carry.into(),
                         srcs: [x[0].into(), y[0].into(), Src::new_zero()],
-                        carry: Src::new_zero(),
+                        carry: SrcRef::False.into(),
                     })));
                     self.instrs.push(Instr::new(Op::IAdd3(OpIAdd3 {
                         dst: sum[1].into(),
@@ -260,7 +260,7 @@ impl<'a> ShaderFromNir<'a> {
                         LogicOp::new_lut(&|x, y, _| x & y),
                         srcs[0],
                         srcs[1],
-                        Src::new_zero(),
+                        Src::new_imm_bool(true),
                     ));
                 } else {
                     self.instrs.push(Instr::new_lop3(
@@ -320,8 +320,8 @@ impl<'a> ShaderFromNir<'a> {
                         dst,
                         LogicOp::new_lut(&|x, _, _| !x),
                         srcs[0],
-                        Src::new_zero(),
-                        Src::new_zero(),
+                        Src::new_imm_bool(true),
+                        Src::new_imm_bool(true),
                     ));
                 } else {
                     self.instrs.push(Instr::new_lop3(
@@ -340,7 +340,7 @@ impl<'a> ShaderFromNir<'a> {
                         LogicOp::new_lut(&|x, y, _| x | y),
                         srcs[0],
                         srcs[1],
-                        Src::new_zero(),
+                        Src::new_imm_bool(true),
                     ));
                 } else {
                     self.instrs.push(Instr::new_lop3(
@@ -508,13 +508,18 @@ impl<'a> ShaderFromNir<'a> {
         let dst = self.get_dst(&load_const.def);
         let mut srcs = Vec::new();
         for c in 0..load_const.def.num_components {
-            assert!(load_const.def.bit_size == 32);
-            let imm_u32 = unsafe { load_const.values()[c as usize].u32_ };
-            srcs.push(if imm_u32 == 0 {
-                Src::new_zero()
+            if load_const.def.bit_size == 1 {
+                let imm_b1 = unsafe { load_const.values()[c as usize].b };
+                srcs.push(Src::new_imm_bool(imm_b1));
             } else {
-                Src::new_imm_u32(imm_u32)
-            });
+                assert!(load_const.def.bit_size == 32);
+                let imm_u32 = unsafe { load_const.values()[c as usize].u32_ };
+                srcs.push(if imm_u32 == 0 {
+                    Src::new_zero()
+                } else {
+                    Src::new_imm_u32(imm_u32)
+                });
+            }
         }
         self.instrs.push(Instr::new_vec(dst, &srcs));
     }

@@ -277,6 +277,8 @@ pub struct CBufRef {
 #[derive(Clone, Copy)]
 pub enum SrcRef {
     Zero,
+    True,
+    False,
     Imm32(u32),
     CBuf(CBufRef),
     SSA(SSAValue),
@@ -300,7 +302,11 @@ impl SrcRef {
 
     pub fn get_reg(&self) -> Option<&RegRef> {
         match self {
-            SrcRef::Zero | SrcRef::Imm32(_) | SrcRef::SSA(_) => None,
+            SrcRef::Zero
+            | SrcRef::True
+            | SrcRef::False
+            | SrcRef::Imm32(_)
+            | SrcRef::SSA(_) => None,
             SrcRef::CBuf(cb) => match &cb.buf {
                 CBuf::Binding(_) | CBuf::BindlessSSA(_) => None,
                 CBuf::BindlessGPR(reg) => Some(reg),
@@ -311,7 +317,11 @@ impl SrcRef {
 
     pub fn get_ssa(&self) -> Option<&SSAValue> {
         match self {
-            SrcRef::Zero | SrcRef::Imm32(_) | SrcRef::Reg(_) => None,
+            SrcRef::Zero
+            | SrcRef::True
+            | SrcRef::False
+            | SrcRef::Imm32(_)
+            | SrcRef::Reg(_) => None,
             SrcRef::CBuf(cb) => match &cb.buf {
                 CBuf::Binding(_) | CBuf::BindlessGPR(_) => None,
                 CBuf::BindlessSSA(ssa) => Some(ssa),
@@ -337,6 +347,8 @@ impl fmt::Display for SrcRef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             SrcRef::Zero => write!(f, "ZERO")?,
+            SrcRef::True => write!(f, "TRUE")?,
+            SrcRef::False => write!(f, "FALSE")?,
             SrcRef::Imm32(u) => write!(f, "{:#x}", u)?,
             SrcRef::CBuf(r) => {
                 match r.buf {
@@ -451,6 +463,10 @@ impl Src {
         SrcRef::Imm32(u).into()
     }
 
+    pub fn new_imm_bool(b: bool) -> Src {
+        Src::from(if b { SrcRef::True } else { SrcRef::False })
+    }
+
     pub fn new_cbuf(idx: u8, offset: u16) -> Src {
         SrcRef::CBuf(CBufRef {
             buf: CBuf::Binding(idx),
@@ -498,9 +514,22 @@ impl Src {
 
     pub fn is_uniform(&self) -> bool {
         match self.src_ref {
-            SrcRef::Zero | SrcRef::Imm32(_) | SrcRef::CBuf(_) => true,
+            SrcRef::Zero
+            | SrcRef::True
+            | SrcRef::False
+            | SrcRef::Imm32(_)
+            | SrcRef::CBuf(_) => true,
             SrcRef::SSA(ssa) => ssa.is_uniform(),
             SrcRef::Reg(reg) => reg.is_uniform(),
+        }
+    }
+
+    pub fn is_predicate(&self) -> bool {
+        match self.src_ref {
+            SrcRef::Zero | SrcRef::Imm32(_) | SrcRef::CBuf(_) => false,
+            SrcRef::True | SrcRef::False => true,
+            SrcRef::SSA(ssa) => ssa.is_predicate(),
+            SrcRef::Reg(reg) => reg.is_predicate(),
         }
     }
 
@@ -514,7 +543,10 @@ impl Src {
     pub fn is_reg_or_zero(&self) -> bool {
         match self.src_ref {
             SrcRef::Zero | SrcRef::SSA(_) | SrcRef::Reg(_) => true,
-            SrcRef::Imm32(_) | SrcRef::CBuf(_) => false,
+            SrcRef::True
+            | SrcRef::False
+            | SrcRef::Imm32(_)
+            | SrcRef::CBuf(_) => false,
         }
     }
 }
@@ -657,6 +689,12 @@ impl LogicOp {
     pub fn new_lut<F: Fn(u8, u8, u8) -> u8>(f: &F) -> LogicOp {
         LogicOp {
             lut: f(0xf0, 0xcc, 0xaa),
+        }
+    }
+
+    pub fn new_const(val: bool) -> LogicOp {
+        LogicOp {
+            lut: if val { !0 } else { 0 },
         }
     }
 
@@ -1614,7 +1652,7 @@ impl Instr {
             dst: dst,
             overflow: Dst::None,
             srcs: [Src::new_zero(), x, y],
-            carry: Src::new_zero(),
+            carry: Src::new_imm_bool(false),
         }))
     }
 
@@ -1675,6 +1713,7 @@ impl Instr {
     }
 
     pub fn new_plop3(dst: Dst, op: LogicOp, x: Src, y: Src, z: Src) -> Instr {
+        assert!(x.is_predicate() && y.is_predicate() && z.is_predicate());
         Instr::new(Op::PLop3(OpPLop3 {
             dst: dst,
             srcs: [x, y, z],
@@ -1974,7 +2013,7 @@ impl Shader {
                         dst: mov.dst,
                         overflow: Dst::None,
                         srcs: [Src::new_zero(), mov.src, Src::new_zero()],
-                        carry: Src::new_zero(),
+                        carry: Src::new_imm_bool(false),
                     }))]
                 }
                 Op::Vec(vec) => {
@@ -2024,6 +2063,51 @@ impl Shader {
                         instrs.push(Instr::new_mov(dst.into(), *src));
                     }
                     instrs
+                }
+                _ => vec![instr],
+            }
+        })
+    }
+
+    pub fn lower_mov_predicate(&mut self) {
+        self.map_instrs(&|instr: Instr, _| -> Vec<Instr> {
+            match &instr.op {
+                Op::Mov(mov) => {
+                    assert!(mov.src.src_mod.is_none());
+                    match mov.src.src_ref {
+                        SrcRef::True => {
+                            vec![Instr::new_isetp(
+                                mov.dst,
+                                IntCmpType::I32,
+                                IntCmpOp::Eq,
+                                Src::new_zero(),
+                                Src::new_zero(),
+                            )]
+                        }
+                        SrcRef::False => {
+                            vec![Instr::new_isetp(
+                                mov.dst,
+                                IntCmpType::I32,
+                                IntCmpOp::Ne,
+                                Src::new_zero(),
+                                Src::new_zero(),
+                            )]
+                        }
+                        SrcRef::Reg(reg) => {
+                            if reg.is_predicate() {
+                                vec![Instr::new_plop3(
+                                    mov.dst,
+                                    LogicOp::new_lut(&|x, _, _| x),
+                                    mov.src,
+                                    Src::new_imm_bool(true),
+                                    Src::new_imm_bool(true),
+                                )]
+                            } else {
+                                vec![instr]
+                            }
+                        }
+                        _ => vec![instr],
+                    }
                 }
                 _ => vec![instr],
             }

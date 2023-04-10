@@ -331,6 +331,7 @@ pub extern "C" fn nak_compile_shader(
 
     s.assign_regs_trivial();
     s.lower_vec_split();
+    s.lower_mov_predicate();
     s.calc_instr_deps();
 
     println!("NAK IR:\n{}", &s);

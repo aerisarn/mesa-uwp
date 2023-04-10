@@ -12,7 +12,7 @@ struct LegalizeInstr<'a> {
 
 fn src_is_reg(src: &Src) -> bool {
     match src.src_ref {
-        SrcRef::Zero | SrcRef::SSA(_) => true,
+        SrcRef::Zero | SrcRef::True | SrcRef::False | SrcRef::SSA(_) => true,
         SrcRef::Imm32(_) | SrcRef::CBuf(_) => false,
         SrcRef::Reg(_) => panic!("Not in SSA form"),
     }

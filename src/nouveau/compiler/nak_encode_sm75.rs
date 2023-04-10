@@ -157,9 +157,20 @@ impl SM75Instr {
         }
     }
 
-    fn set_pred_src(&mut self, range: Range<usize>, not_bit: isize, src: Src) {
+    fn set_pred_src(
+        &mut self,
+        range: Range<usize>,
+        not_bit: isize,
+        src: Src,
+        default: bool,
+    ) {
         match src.src_ref {
-            SrcRef::Zero => {
+            SrcRef::True => {
+                assert!(default);
+                self.set_pred_reg(range, RegRef::zero(RegFile::Pred, 1));
+            }
+            SrcRef::False => {
+                assert!(!default);
                 self.set_pred_reg(range, RegRef::zero(RegFile::Pred, 1));
             }
             SrcRef::Reg(reg) => self.set_pred_reg(range, reg),
@@ -455,7 +466,7 @@ impl SM75Instr {
         }
 
         self.set_pred_dst(81..84, op.overflow);
-        self.set_pred_src(84..87, -1, op.carry);
+        self.set_pred_src(84..87, -1, op.carry, false);
     }
 
     fn set_int_cmp_op(&mut self, range: Range<usize>, op: IntCmpOp) {
@@ -566,7 +577,7 @@ impl SM75Instr {
             ALUSrc::None,
         );
 
-        self.set_pred_src(87..90, 90, op.cond);
+        self.set_pred_src(87..90, 90, op.cond, true);
     }
 
     fn encode_plop3(&mut self, op: &OpPLop3) {
@@ -574,13 +585,13 @@ impl SM75Instr {
         self.set_field(64..67, op.op.lut & 0x7);
         self.set_field(72..77, op.op.lut >> 3);
 
-        self.set_pred_src(68..71, 71, op.srcs[2]);
+        self.set_pred_src(68..71, 71, op.srcs[2], true);
 
-        self.set_pred_src(77..80, 80, op.srcs[1]);
+        self.set_pred_src(77..80, 80, op.srcs[1], true);
         self.set_pred_dst(81..84, op.dst);
         self.set_field(84..87, 7_u8); /* Def1 */
 
-        self.set_pred_src(87..90, 90, op.srcs[0]);
+        self.set_pred_src(87..90, 90, op.srcs[0], true);
     }
 
     fn set_mem_access(&mut self, access: &MemAccess) {
