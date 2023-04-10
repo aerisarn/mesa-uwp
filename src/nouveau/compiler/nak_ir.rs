@@ -1387,7 +1387,7 @@ impl fmt::Display for OpVec {
         for src in &self.srcs[1..] {
             write!(f, " {}", src)?;
         }
-        write!(f, "}}")
+        write!(f, " }}")
     }
 }
 
@@ -1414,7 +1414,7 @@ impl fmt::Display for OpSplit {
         for dst in &self.dsts[1..] {
             write!(f, " {}", dst)?;
         }
-        write!(f, "}} {}", self.src)
+        write!(f, " }} {}", self.src)
     }
 }
 
