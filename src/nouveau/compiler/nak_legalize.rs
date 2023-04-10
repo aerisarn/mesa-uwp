@@ -72,6 +72,22 @@ impl<'a> LegalizeInstr<'a> {
 
     pub fn map(&mut self, mut instr: Instr) -> Vec<Instr> {
         match &mut instr.op {
+            Op::FAdd(op) => {
+                let [ref mut src0, ref mut src1] = op.srcs;
+                self.swap_srcs_if_not_reg(src0, src1);
+                self.mov_src_if_not_reg(src0, RegFile::GPR);
+            }
+            Op::FFma(op) => {
+                let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
+                self.swap_srcs_if_not_reg(src0, src1);
+                self.mov_src_if_not_reg(src0, RegFile::GPR);
+                self.mov_src_if_not_reg(src2, RegFile::GPR);
+            }
+            Op::FMul(op) => {
+                let [ref mut src0, ref mut src1] = op.srcs;
+                self.swap_srcs_if_not_reg(src0, src1);
+                self.mov_src_if_not_reg(src0, RegFile::GPR);
+            }
             Op::IAdd3(op) => {
                 let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
                 self.swap_srcs_if_not_reg(src0, src1);
