@@ -853,7 +853,7 @@ tu_get_physical_device_properties_1_1(struct tu_physical_device *pdevice,
    p->deviceNodeMask = 0;
    p->deviceLUIDValid = false;
 
-   p->subgroupSize = 128;
+   p->subgroupSize = pdevice->info->a6xx.supports_double_threadsize ? 128 : 64;
    p->subgroupSupportedStages = VK_SHADER_STAGE_COMPUTE_BIT;
    p->subgroupSupportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT |
                                     VK_SUBGROUP_FEATURE_VOTE_BIT |
@@ -974,7 +974,8 @@ tu_get_physical_device_properties_1_3(struct tu_physical_device *pdevice,
 {
    /* TODO move threadsize_base and max_waves to fd_dev_info and use them here */
    p->minSubgroupSize = 64; /* threadsize_base */
-   p->maxSubgroupSize = 128; /* threadsize_base * 2 */
+   p->maxSubgroupSize =
+      pdevice->info->a6xx.supports_double_threadsize ? 128 : 64;
    p->maxComputeWorkgroupSubgroups = 16; /* max_waves */
    p->requiredSubgroupSizeStages = VK_SHADER_STAGE_ALL;
 
@@ -1095,7 +1096,7 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .maxFragmentCombinedOutputResources = MAX_RTS + max_descriptor_set_size * 2,
       .maxComputeSharedMemorySize = pdevice->info->cs_shared_mem_size,
       .maxComputeWorkGroupCount = { 65535, 65535, 65535 },
-      .maxComputeWorkGroupInvocations = 2048,
+      .maxComputeWorkGroupInvocations = pdevice->info->a6xx.supports_double_threadsize ? 2048 : 1024,
       .maxComputeWorkGroupSize = { 1024, 1024, 1024 },
       .subPixelPrecisionBits = 8,
       .subTexelPrecisionBits = 8,

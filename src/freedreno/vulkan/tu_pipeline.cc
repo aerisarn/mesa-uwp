@@ -504,6 +504,8 @@ tu6_emit_xs(struct tu_cs *cs,
       ));
       break;
    case MESA_SHADER_COMPUTE:
+      thrsz = cs->device->physical_device->info->a6xx
+            .supports_double_threadsize ? thrsz : THREAD128;
       tu_cs_emit_regs(cs, A6XX_SP_CS_CTRL_REG0(
                .halfregfootprint = xs->info.max_half_reg + 1,
                .fullregfootprint = xs->info.max_reg + 1,
@@ -702,7 +704,14 @@ tu6_emit_cs_config(struct tu_cs *cs,
    uint32_t work_group_id =
       ir3_find_sysval_regid(v, SYSTEM_VALUE_WORKGROUP_ID);
 
+   /*
+    * Devices that do not support double threadsize take the threadsize from
+    * A6XX_HLSQ_FS_CNTL_0_THREADSIZE instead of A6XX_HLSQ_CS_CNTL_1_THREADSIZE
+    * which is always set to THREAD128.
+    */
    enum a6xx_threadsize thrsz = v->info.double_threadsize ? THREAD128 : THREAD64;
+   enum a6xx_threadsize thrsz_cs = cs->device->physical_device->info->a6xx
+      .supports_double_threadsize ? thrsz : THREAD128;
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CS_CNTL_0, 2);
    tu_cs_emit(cs,
               A6XX_HLSQ_CS_CNTL_0_WGIDCONSTID(work_group_id) |
@@ -710,7 +719,11 @@ tu6_emit_cs_config(struct tu_cs *cs,
               A6XX_HLSQ_CS_CNTL_0_WGOFFSETCONSTID(regid(63, 0)) |
               A6XX_HLSQ_CS_CNTL_0_LOCALIDREGID(local_invocation_id));
    tu_cs_emit(cs, A6XX_HLSQ_CS_CNTL_1_LINEARLOCALIDREGID(regid(63, 0)) |
-                  A6XX_HLSQ_CS_CNTL_1_THREADSIZE(thrsz));
+                  A6XX_HLSQ_CS_CNTL_1_THREADSIZE(thrsz_cs));
+   if (!cs->device->physical_device->info->a6xx.supports_double_threadsize) {
+      tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_FS_CNTL_0, 1);
+      tu_cs_emit(cs, A6XX_HLSQ_FS_CNTL_0_THREADSIZE(thrsz));
+   }
 
    if (cs->device->physical_device->info->a6xx.has_lpac) {
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_CNTL_0, 2);
@@ -2294,8 +2307,10 @@ tu_shader_key_init(struct tu_shader_key *key,
                    struct tu_device *dev)
 {
    enum ir3_wavesize_option api_wavesize, real_wavesize;
-
-   if (stage_info) {
+   if (!dev->physical_device->info->a6xx.supports_double_threadsize) {
+      api_wavesize = IR3_SINGLE_ONLY;
+      real_wavesize = IR3_SINGLE_ONLY;
+   } else if (stage_info) {
       if (stage_info->flags &
           VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT) {
          api_wavesize = real_wavesize = IR3_SINGLE_OR_DOUBLE;

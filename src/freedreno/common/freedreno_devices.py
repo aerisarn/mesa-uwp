@@ -249,6 +249,7 @@ a6xx_gen1 = dict(
         concurrent_resolve = False,
         indirect_draw_wfm_quirk = True,
         depth_bounds_require_depth_test_quirk = True,
+        supports_double_threadsize = True,
     )
 
 # a605, a608, a610, 612
@@ -259,6 +260,7 @@ a6xx_gen1_low = {**a6xx_gen1, **dict(
         sysmem_per_ccu_cache_size = 8 * 1024,
         gmem_ccu_color_cache_fraction = CCUColorCacheFraction.HALF.value,
         vs_max_inputs_count = 16,
+        supports_double_threadsize = False,
 )}
 
 # a640, a680:
@@ -272,6 +274,7 @@ a6xx_gen2 = dict(
         depth_bounds_require_depth_test_quirk = True, # TODO: check if true
         has_dp2acc = False, # TODO: check if true
         has_8bpp_ubwc = False,
+        supports_double_threadsize = True,
     )
 
 # a650:
@@ -294,6 +297,7 @@ a6xx_gen3 = dict(
         enable_lrz_fast_clear = True,
         lrz_track_quirk = True,
         has_per_view_viewport = True,
+        supports_double_threadsize = True,
     )
 
 # a635, a660:
@@ -320,6 +324,7 @@ a6xx_gen4 = dict(
         enable_lrz_fast_clear = True,
         has_lrz_dir_tracking = True,
         has_per_view_viewport = True,
+        supports_double_threadsize = True,
     )
 
 add_gpus([

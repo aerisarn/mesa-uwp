@@ -181,6 +181,8 @@ struct fd_dev_info {
 
          uint32_t vs_max_inputs_count;
 
+         bool supports_double_threadsize;
+
          struct {
             uint32_t PC_POWER_CNTL;
             uint32_t TPL1_DBG_ECO_CNTL;
