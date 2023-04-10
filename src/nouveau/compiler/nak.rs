@@ -10,6 +10,7 @@ mod nak_encode_sm75;
 mod nak_from_nir;
 mod nak_ir;
 mod nak_legalize;
+mod nak_lower_par_copies;
 mod nak_opt_copy_prop;
 mod nak_opt_dce;
 mod nir;
@@ -331,6 +332,8 @@ pub extern "C" fn nak_compile_shader(
 
     s.assign_regs_trivial();
     s.lower_vec_split();
+    s.lower_par_copies();
+    s.lower_swap();
     s.lower_mov_predicate();
     s.calc_instr_deps();
 

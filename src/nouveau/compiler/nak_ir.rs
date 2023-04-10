@@ -1406,6 +1406,63 @@ impl fmt::Display for OpPhiDst {
 }
 
 #[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpSwap {
+    pub dsts: [Dst; 2],
+    pub srcs: [Src; 2],
+}
+
+impl fmt::Display for OpSwap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "SWAP {{ {} {} }} {{ {} {} }}",
+            self.dsts[0], self.dsts[1], self.srcs[0], self.srcs[1]
+        )
+    }
+}
+
+#[repr(C)]
+pub struct OpParCopy {
+    pub dsts: Vec<Dst>,
+    pub srcs: Vec<Src>,
+}
+
+impl SrcsAsSlice for OpParCopy {
+    fn srcs_as_slice(&self) -> &[Src] {
+        &self.srcs
+    }
+
+    fn srcs_as_mut_slice(&mut self) -> &mut [Src] {
+        &mut self.srcs
+    }
+}
+
+impl DstsAsSlice for OpParCopy {
+    fn dsts_as_slice(&self) -> &[Dst] {
+        &self.dsts
+    }
+
+    fn dsts_as_mut_slice(&mut self) -> &mut [Dst] {
+        &mut self.dsts
+    }
+}
+
+impl fmt::Display for OpParCopy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "PAR_COPY {{")?;
+        assert!(self.srcs.len() == self.dsts.len());
+        for i in 0..self.srcs.len() {
+            if i > 0 {
+                write!(f, ",")?;
+            }
+            write!(f, " {} <- {}", self.dsts[i], self.srcs[i])?;
+        }
+        write!(f, " }}")
+    }
+}
+
+#[repr(C)]
 #[derive(DstsAsSlice)]
 pub struct OpFSOut {
     pub srcs: Vec<Src>,
@@ -1457,6 +1514,8 @@ pub enum Op {
     PhiDst(OpPhiDst),
     Vec(OpVec),
     Split(OpSplit),
+    Swap(OpSwap),
+    ParCopy(OpParCopy),
     FSOut(OpFSOut),
 }
 
@@ -1695,6 +1754,11 @@ impl Instr {
         }))
     }
 
+    pub fn new_xor(dst: Dst, x: Src, y: Src) -> Instr {
+        let xor_lop = LogicOp::new_lut(&|x, y, _| x ^ y);
+        Instr::new_lop3(dst, xor_lop, x, y, Src::new_zero())
+    }
+
     pub fn new_shl(dst: Dst, x: Src, shift: Src) -> Instr {
         Instr::new(Op::Shl(OpShl {
             dst: dst,
@@ -1815,6 +1879,14 @@ impl Instr {
         }))
     }
 
+    pub fn new_swap(x: RegRef, y: RegRef) -> Instr {
+        assert!(x.file() == y.file());
+        Instr::new(Op::Swap(OpSwap {
+            dsts: [x.into(), y.into()],
+            srcs: [y.into(), x.into()],
+        }))
+    }
+
     pub fn new_fs_out(srcs: &[Src]) -> Instr {
         Instr::new(Op::FSOut(OpFSOut {
             srcs: srcs.to_vec(),
@@ -1879,6 +1951,8 @@ impl Instr {
             | Op::PhiDst(_)
             | Op::Vec(_)
             | Op::Split(_)
+            | Op::Swap(_)
+            | Op::ParCopy(_)
             | Op::FSOut(_) => {
                 panic!("Not a hardware opcode")
             }
@@ -2071,6 +2145,44 @@ impl Shader {
                         instrs.push(Instr::new_mov(dst.into(), *src));
                     }
                     instrs
+                }
+                _ => vec![instr],
+            }
+        })
+    }
+
+    pub fn lower_swap(&mut self) {
+        self.map_instrs(&|instr: Instr, _| -> Vec<Instr> {
+            match instr.op {
+                Op::Swap(swap) => {
+                    let x = *swap.dsts[0].as_reg().unwrap();
+                    let y = *swap.dsts[1].as_reg().unwrap();
+
+                    assert!(x.file() == y.file());
+                    assert!(x.comps() == 1 && y.comps() == 1);
+                    assert!(swap.srcs[0].src_mod.is_none());
+                    assert!(*swap.srcs[0].src_ref.as_reg().unwrap() == y);
+                    assert!(swap.srcs[1].src_mod.is_none());
+                    assert!(*swap.srcs[1].src_ref.as_reg().unwrap() == x);
+
+                    if x == y {
+                        Vec::new()
+                    } else if x.is_predicate() {
+                        vec![Instr::new(Op::PLop3(OpPLop3 {
+                            dsts: [x.into(), y.into()],
+                            srcs: [x.into(), y.into(), Src::new_imm_bool(true)],
+                            ops: [
+                                LogicOp::new_lut(&|_, y, _| y),
+                                LogicOp::new_lut(&|x, _, _| x),
+                            ],
+                        }))]
+                    } else {
+                        vec![
+                            Instr::new_xor(x.into(), x.into(), y.into()),
+                            Instr::new_xor(y.into(), x.into(), y.into()),
+                            Instr::new_xor(x.into(), x.into(), y.into()),
+                        ]
+                    }
                 }
                 _ => vec![instr],
             }
