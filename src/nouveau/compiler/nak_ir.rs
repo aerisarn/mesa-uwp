@@ -2491,13 +2491,14 @@ impl Shader {
                     }))]
                 }
                 Op::FSOut(out) => {
-                    let mut instrs = Vec::new();
+                    let mut pcopy = OpParCopy::new();
                     for (i, src) in out.srcs.iter().enumerate() {
                         let dst =
                             RegRef::new(RegFile::GPR, i.try_into().unwrap(), 1);
-                        instrs.push(Instr::new_mov(dst.into(), *src));
+                        pcopy.srcs.push(*src);
+                        pcopy.dsts.push(dst.into());
                     }
-                    instrs
+                    vec![Instr::new(Op::ParCopy(pcopy))]
                 }
                 _ => vec![instr],
             }
