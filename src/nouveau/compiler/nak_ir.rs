@@ -1118,6 +1118,51 @@ impl fmt::Display for OpFSetP {
     }
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum MuFuOp {
+    Cos,
+    Sin,
+    Exp2,
+    Log2,
+    Rcp,
+    Rsq,
+    Rcp64H,
+    Rsq64H,
+    Sqrt,
+    Tanh,
+}
+
+impl fmt::Display for MuFuOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MuFuOp::Cos => write!(f, "COS"),
+            MuFuOp::Sin => write!(f, "SIN"),
+            MuFuOp::Exp2 => write!(f, "EXP2"),
+            MuFuOp::Log2 => write!(f, "LOG2"),
+            MuFuOp::Rcp => write!(f, "RCP"),
+            MuFuOp::Rsq => write!(f, "RSQ"),
+            MuFuOp::Rcp64H => write!(f, "RCP64H"),
+            MuFuOp::Rsq64H => write!(f, "RSQ64H"),
+            MuFuOp::Sqrt => write!(f, "SQRT"),
+            MuFuOp::Tanh => write!(f, "TANH"),
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpMuFu {
+    pub dst: Dst,
+    pub op: MuFuOp,
+    pub src: Src,
+}
+
+impl fmt::Display for OpMuFu {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "MUFU.{} {} {}", self.op, self.dst, self.src)
+    }
+}
+
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpIAdd3 {
@@ -1702,6 +1747,7 @@ pub enum Op {
     FAdd(OpFAdd),
     FMnMx(OpFMnMx),
     FMul(OpFMul),
+    MuFu(OpMuFu),
     FSet(OpFSet),
     FSetP(OpFSetP),
     IAdd3(OpIAdd3),
@@ -1933,6 +1979,14 @@ impl Instr {
         }))
     }
 
+    pub fn new_mufu(dst: Dst, op: MuFuOp, src: Src) -> Instr {
+        Instr::new(Op::MuFu(OpMuFu {
+            dst: dst,
+            op: op,
+            src: src,
+        }))
+    }
+
     pub fn new_iadd(dst: Dst, x: Src, y: Src) -> Instr {
         Instr::new(Op::IAdd3(OpIAdd3 {
             dst: dst,
@@ -2151,6 +2205,7 @@ impl Instr {
             | Op::FMul(_)
             | Op::FSet(_)
             | Op::FSetP(_)
+            | Op::MuFu(_)
             | Op::IAdd3(_)
             | Op::IMnMx(_)
             | Op::Lop3(_)
@@ -2158,6 +2213,7 @@ impl Instr {
             | Op::ISetP(_)
             | Op::Shl(_) => Some(6),
             Op::I2F(_) | Op::Mov(_) => Some(15),
+            Op::MuFu(_) => None,
             Op::Sel(_) => Some(15),
             Op::S2R(_) => None,
             Op::ALd(_) => None,

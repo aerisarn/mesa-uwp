@@ -466,6 +466,31 @@ impl SM75Instr {
         self.set_bit(90, false); /* TODO: src pred neg */
     }
 
+    fn encode_mufu(&mut self, op: &OpMuFu) {
+        self.encode_alu(
+            0x108,
+            Some(op.dst),
+            ALUSrc::None,
+            ALUSrc::from_src(&op.src),
+            ALUSrc::None,
+        );
+        self.set_field(
+            74..80,
+            match op.op {
+                MuFuOp::Cos => 0,
+                MuFuOp::Sin => 1,
+                MuFuOp::Exp2 => 2,
+                MuFuOp::Log2 => 3,
+                MuFuOp::Rcp => 4,
+                MuFuOp::Rsq => 5,
+                MuFuOp::Rcp64H => 6,
+                MuFuOp::Rsq64H => 7,
+                MuFuOp::Sqrt => 8,
+                MuFuOp::Tanh => 9,
+            },
+        );
+    }
+
     fn encode_iadd3(&mut self, op: &OpIAdd3) {
         /* TODO: This should happen as part of a legalization pass */
         assert!(op.srcs[0].is_reg_or_zero());
@@ -798,6 +823,7 @@ impl SM75Instr {
             Op::FMul(op) => si.encode_fmul(&op),
             Op::FSet(op) => si.encode_fset(&op),
             Op::FSetP(op) => si.encode_fsetp(&op),
+            Op::MuFu(op) => si.encode_mufu(&op),
             Op::IAdd3(op) => si.encode_iadd3(&op),
             Op::IMnMx(op) => si.encode_imnmx(&op),
             Op::ISetP(op) => si.encode_isetp(&op),

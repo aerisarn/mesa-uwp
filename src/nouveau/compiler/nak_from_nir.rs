@@ -146,6 +146,9 @@ impl<'a> ShaderFromNir<'a> {
             nir_op_fadd => {
                 self.instrs.push(Instr::new_fadd(dst, srcs[0], srcs[1]));
             }
+            nir_op_fcos => {
+                self.instrs.push(Instr::new_mufu(dst, MuFuOp::Cos, srcs[0]));
+            }
             nir_op_feq => {
                 self.instrs.push(Instr::new_fsetp(
                     dst,
@@ -154,6 +157,10 @@ impl<'a> ShaderFromNir<'a> {
                     srcs[1],
                 ));
             }
+            nir_op_fexp2 => {
+                self.instrs
+                    .push(Instr::new_mufu(dst, MuFuOp::Exp2, srcs[0]));
+            }
             nir_op_fge => {
                 self.instrs.push(Instr::new_fsetp(
                     dst,
@@ -161,6 +168,10 @@ impl<'a> ShaderFromNir<'a> {
                     srcs[0],
                     srcs[1],
                 ));
+            }
+            nir_op_flog2 => {
+                self.instrs
+                    .push(Instr::new_mufu(dst, MuFuOp::Log2, srcs[0]));
             }
             nir_op_flt => {
                 self.instrs.push(Instr::new_fsetp(
@@ -202,6 +213,12 @@ impl<'a> ShaderFromNir<'a> {
                     saturate: false,
                 })));
             }
+            nir_op_frcp => {
+                self.instrs.push(Instr::new_mufu(dst, MuFuOp::Rcp, srcs[0]));
+            }
+            nir_op_frsq => {
+                self.instrs.push(Instr::new_mufu(dst, MuFuOp::Rsq, srcs[0]));
+            }
             nir_op_fsat => {
                 self.instrs.push(Instr::new(Op::FMov(OpFMov {
                     dst: dst,
@@ -231,6 +248,13 @@ impl<'a> ShaderFromNir<'a> {
                     gz.into(),
                     Src::from(lz).neg(),
                 ));
+            }
+            nir_op_fsin => {
+                self.instrs.push(Instr::new_mufu(dst, MuFuOp::Sin, srcs[0]));
+            }
+            nir_op_fsqrt => {
+                self.instrs
+                    .push(Instr::new_mufu(dst, MuFuOp::Sqrt, srcs[0]));
             }
             nir_op_i2f32 => {
                 self.instrs.push(Instr::new_i2f(dst, srcs[0]));
