@@ -11,34 +11,12 @@ use std::ops::Range;
 
 pub trait BitSetViewable {
     fn bits(&self) -> usize;
+
     fn get_bit_range_u64(&self, range: Range<usize>) -> u64;
 }
 
 pub trait BitSetMutViewable: BitSetViewable {
     fn set_bit_range_u64(&mut self, range: Range<usize>, val: u64);
-}
-
-pub trait BitSet: BitSetViewable {
-    fn get_bit(&self, bit: usize) -> bool {
-        self.get_bit_range_u64(bit..(bit + 1)) != 0
-    }
-
-    fn subset<'a>(&'a self, range: Range<usize>) -> BitSetView<'a, Self> {
-        BitSetView::new_subset(self, range)
-    }
-}
-
-pub trait BitSetMut: BitSetMutViewable {
-    fn set_bit(&mut self, bit: usize, val: bool) {
-        self.set_bit_range_u64(bit..(bit + 1), u64::from(val));
-    }
-
-    fn subset_mut<'a>(
-        &'a mut self,
-        range: Range<usize>,
-    ) -> BitSetMutView<'a, Self> {
-        BitSetMutView::new_subset(self, range)
-    }
 }
 
 fn u64_mask_for_bits(bits: usize) -> u64 {
@@ -169,7 +147,7 @@ impl<'a, BS: BitSetViewable + ?Sized> BitSetView<'a, BS> {
         }
     }
 
-    fn new_subset(parent: &'a BS, range: Range<usize>) -> Self {
+    pub fn new_subset(parent: &'a BS, range: Range<usize>) -> Self {
         assert!(range.end <= parent.bits());
         Self {
             parent: parent,
@@ -177,11 +155,22 @@ impl<'a, BS: BitSetViewable + ?Sized> BitSetView<'a, BS> {
         }
     }
 
+    pub fn subset(
+        &'a self,
+        range: Range<usize>,
+    ) -> BitSetView<'a, BitSetView<'a, BS>> {
+        BitSetView::new_subset(self, range)
+    }
+
     fn range_in_parent(&self, range: Range<usize>) -> Range<usize> {
         let new_start = self.range.start + range.start;
         let new_end = self.range.start + range.end;
         assert!(new_end <= self.range.end);
         new_start..new_end
+    }
+
+    pub fn get_bit(&self, bit: usize) -> bool {
+        self.get_bit_range_u64(bit..(bit + 1)) != 0
     }
 }
 
@@ -194,8 +183,6 @@ impl<'a, BS: BitSetViewable + ?Sized> BitSetViewable for BitSetView<'a, BS> {
         self.parent.get_bit_range_u64(self.range_in_parent(range))
     }
 }
-
-impl<'a, BS: BitSetViewable + ?Sized> BitSet for BitSetView<'a, BS> {}
 
 pub struct BitSetMutView<'a, BS: BitSetMutViewable + ?Sized> {
     parent: &'a mut BS,
@@ -211,7 +198,7 @@ impl<'a, BS: BitSetMutViewable + ?Sized> BitSetMutView<'a, BS> {
         }
     }
 
-    fn new_subset(parent: &'a mut BS, range: Range<usize>) -> Self {
+    pub fn new_subset(parent: &'a mut BS, range: Range<usize>) -> Self {
         assert!(range.end <= parent.bits());
         Self {
             parent: parent,
@@ -219,11 +206,26 @@ impl<'a, BS: BitSetMutViewable + ?Sized> BitSetMutView<'a, BS> {
         }
     }
 
+    pub fn subset_mut<'b>(
+        &'b mut self,
+        range: Range<usize>,
+    ) -> BitSetMutView<'b, BitSetMutView<'a, BS>> {
+        BitSetMutView::new_subset(self, range)
+    }
+
     fn range_in_parent(&self, range: Range<usize>) -> Range<usize> {
         let new_start = self.range.start + range.start;
         let new_end = self.range.start + range.end;
         assert!(new_end <= self.range.end);
         new_start..new_end
+    }
+
+    pub fn get_bit(&self, bit: usize) -> bool {
+        self.get_bit_range_u64(bit..(bit + 1)) != 0
+    }
+
+    pub fn set_bit(&mut self, bit: usize, val: bool) {
+        self.set_bit_range_u64(bit..(bit + 1), u64::from(val));
     }
 }
 
@@ -239,8 +241,6 @@ impl<'a, BS: BitSetMutViewable + ?Sized> BitSetViewable
     }
 }
 
-impl<'a, BS: BitSetMutViewable + ?Sized> BitSet for BitSetMutView<'a, BS> {}
-
 impl<'a, BS: BitSetMutViewable + ?Sized> BitSetMutViewable
     for BitSetMutView<'a, BS>
 {
@@ -250,14 +250,12 @@ impl<'a, BS: BitSetMutViewable + ?Sized> BitSetMutViewable
     }
 }
 
-impl<'a, BS: BitSetMutViewable + ?Sized> BitSetMut for BitSetMutView<'a, BS> {}
-
-pub trait SetField<T> {
-    fn set_field(&mut self, range: Range<usize>, val: T);
+pub trait SetFieldU64 {
+    fn set_field_u64(&mut self, range: Range<usize>, val: u64);
 }
 
-impl<'a, BS: BitSetMut> SetField<u64> for BS {
-    fn set_field(&mut self, range: Range<usize>, val: u64) {
+impl<'a, BS: BitSetMutViewable + ?Sized> SetFieldU64 for BitSetMutView<'a, BS> {
+    fn set_field_u64(&mut self, range: Range<usize>, val: u64) {
         let bits = range.end - range.start;
 
         /* Check that it fits in the bitfield */
@@ -267,32 +265,52 @@ impl<'a, BS: BitSetMut> SetField<u64> for BS {
     }
 }
 
-impl<'a, BS: BitSetMut> SetField<u32> for BS {
+pub trait SetField<T> {
+    fn set_field(&mut self, range: Range<usize>, val: T);
+}
+
+impl<'a, T: SetFieldU64> SetField<u64> for T {
+    fn set_field(&mut self, range: Range<usize>, val: u64) {
+        self.set_field_u64(range, val);
+    }
+}
+
+impl<'a, T: SetFieldU64> SetField<u32> for T {
     fn set_field(&mut self, range: Range<usize>, val: u32) {
         self.set_field(range, u64::from(val));
     }
 }
 
-impl<'a, BS: BitSetMut> SetField<u16> for BS {
+impl<'a, T: SetFieldU64> SetField<u16> for T {
     fn set_field(&mut self, range: Range<usize>, val: u16) {
         self.set_field(range, u64::from(val));
     }
 }
 
-impl<'a, BS: BitSetMut> SetField<u8> for BS {
+impl<'a, T: SetFieldU64> SetField<u8> for T {
     fn set_field(&mut self, range: Range<usize>, val: u8) {
         self.set_field(range, u64::from(val));
     }
 }
 
-impl<'a, BS: BitSetMut> SetField<bool> for BS {
+impl<'a, T: SetFieldU64> SetField<bool> for T {
     fn set_field(&mut self, range: Range<usize>, val: bool) {
         assert!(range.end == range.start + 1);
         self.set_field(range, u64::from(val));
     }
 }
 
-impl<'a, BS: BitSetMut> SetField<i64> for BS {
+pub trait SetBit {
+    fn set_bit(&mut self, bit: usize, val: bool);
+}
+
+impl<'a, T: SetFieldU64> SetBit for T {
+    fn set_bit(&mut self, bit: usize, val: bool) {
+        self.set_field(bit..(bit + 1), val);
+    }
+}
+
+impl<'a, T: SetFieldU64> SetField<i64> for T {
     fn set_field(&mut self, range: Range<usize>, val: i64) {
         let bits = range.end - range.start;
         let mask = u64_mask_for_bits(bits);
@@ -304,23 +322,23 @@ impl<'a, BS: BitSetMut> SetField<i64> for BS {
         let sign_mask = !(mask >> 1);
         assert!((val & sign_mask) == 0 || (val & sign_mask) == sign_mask);
 
-        self.set_bit_range_u64(range, val & mask);
+        self.set_field_u64(range, val & mask);
     }
 }
 
-impl<'a, BS: BitSetMut> SetField<i32> for BS {
+impl<'a, T: SetFieldU64> SetField<i32> for T {
     fn set_field(&mut self, range: Range<usize>, val: i32) {
         self.set_field(range, i64::from(val));
     }
 }
 
-impl<'a, BS: BitSetMut> SetField<i16> for BS {
+impl<'a, T: SetFieldU64> SetField<i16> for T {
     fn set_field(&mut self, range: Range<usize>, val: i16) {
         self.set_field(range, i64::from(val));
     }
 }
 
-impl<'a, BS: BitSetMut> SetField<i8> for BS {
+impl<'a, T: SetFieldU64> SetField<i8> for T {
     fn set_field(&mut self, range: Range<usize>, val: i8) {
         self.set_field(range, i64::from(val));
     }

@@ -101,17 +101,23 @@ impl BitSetViewable for SM75Instr {
     }
 }
 
-impl BitSet for SM75Instr {}
-
 impl BitSetMutViewable for SM75Instr {
     fn set_bit_range_u64(&mut self, range: Range<usize>, val: u64) {
         BitSetMutView::new(&mut self.inst).set_bit_range_u64(range, val);
     }
 }
 
-impl BitSetMut for SM75Instr {}
+impl SetFieldU64 for SM75Instr {
+    fn set_field_u64(&mut self, range: Range<usize>, val: u64) {
+        BitSetMutView::new(&mut self.inst).set_field_u64(range, val);
+    }
+}
 
 impl SM75Instr {
+    fn set_bit(&mut self, bit: usize, val: bool) {
+        BitSetMutView::new(&mut self.inst).set_bit(bit, val);
+    }
+
     fn set_src_imm(&mut self, range: Range<usize>, u: &u32) {
         assert!(range.len() == 32);
         self.set_field(range, *u);
@@ -184,7 +190,7 @@ impl SM75Instr {
     }
 
     fn set_src_cb(&mut self, range: Range<usize>, cb: &CBufRef) {
-        let mut v = self.subset_mut(range);
+        let mut v = BitSetMutView::new_subset(self, range);
         v.set_field(0..16, cb.offset);
         if let CBuf::Binding(idx) = cb.buf {
             v.set_field(16..21, idx);
@@ -194,7 +200,7 @@ impl SM75Instr {
     }
 
     fn set_src_cx(&mut self, range: Range<usize>, cb: &CBufRef) {
-        let mut v = self.subset_mut(range);
+        let mut v = BitSetMutView::new_subset(self, range);
         if let CBuf::BindlessGPR(reg) = cb.buf {
             assert!(reg.base_idx() <= 63);
             assert!(reg.file() == RegFile::UGPR);
