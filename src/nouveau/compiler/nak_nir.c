@@ -6,6 +6,8 @@
 #include "nak_private.h"
 #include "nir_builder.h"
 
+#include "util/u_math.h"
+
 #define OPT(nir, pass, ...) ({                           \
    bool this_progress = false;                           \
    NIR_PASS(this_progress, nir, pass, ##__VA_ARGS__);    \
@@ -439,10 +441,55 @@ nak_nir_lower_system_values(nir_shader *nir)
                                        NULL);
 }
 
+static nir_mem_access_size_align
+nak_mem_access_size_align(nir_intrinsic_op intrin,
+                          uint8_t bytes, uint8_t bit_size,
+                          uint32_t align_mul, uint32_t align_offset,
+                          bool offset_is_const, const void *cb_data)
+{
+   assert(align_offset < align_mul);
+   const uint32_t align =
+      align_offset ? 1 << (ffs(align_offset) - 1) : align_mul;
+   assert(util_is_power_of_two_nonzero(align));
+
+   unsigned bytes_pow2;
+   if (nir_intrinsic_infos[intrin].has_dest) {
+      /* Reads can over-fetch a bit if the alignment is okay. */
+      bytes_pow2 = util_next_power_of_two(bytes);
+   } else {
+      bytes_pow2 = 1 << (util_last_bit(bytes) - 1);
+   }
+
+   const unsigned chunk_bytes = MIN3(bytes_pow2, align, 16);
+   assert(util_is_power_of_two_nonzero(chunk_bytes));
+
+   if (chunk_bytes < 4) {
+      return (nir_mem_access_size_align) {
+         .bit_size = chunk_bytes * 8,
+         .num_components = 1,
+         .align = align,
+      };
+   } else {
+      return (nir_mem_access_size_align) {
+         .bit_size = 32,
+         .num_components = chunk_bytes / 4,
+         .align = align,
+      };
+   }
+}
+
 void
 nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak)
 {
    UNUSED bool progress = false;
+
+   nak_optimize_nir(nir, nak);
+
+   nir_lower_mem_access_bit_sizes_options mem_bit_size_options = {
+      .modes = nir_var_mem_global,
+      .callback = nak_mem_access_size_align,
+   };
+   OPT(nir, nir_lower_mem_access_bit_sizes, &mem_bit_size_options);
 
    OPT(nir, nir_lower_int64);
 
