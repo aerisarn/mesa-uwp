@@ -355,13 +355,23 @@ impl SM75Instr {
     }
 
     fn encode_fadd(&mut self, op: &OpFAdd) {
-        self.encode_alu(
-            0x021,
-            Some(op.dst),
-            ALUSrc::from_src(&op.srcs[0]),
-            ALUSrc::from_src(&op.srcs[1]),
-            ALUSrc::None,
-        );
+        if op.srcs[1].src_ref.as_reg().is_some() {
+            self.encode_alu(
+                0x021,
+                Some(op.dst),
+                ALUSrc::from_src(&op.srcs[0]),
+                ALUSrc::from_src(&op.srcs[1]),
+                ALUSrc::None,
+            );
+        } else {
+            self.encode_alu(
+                0x021,
+                Some(op.dst),
+                ALUSrc::from_src(&op.srcs[0]),
+                ALUSrc::from_src(&Src::new_zero()),
+                ALUSrc::from_src(&op.srcs[1]),
+            );
+        }
         self.set_bit(77, op.saturate);
         self.set_rnd_mode(78..80, op.rnd_mode);
         self.set_bit(80, false); /* TODO: Denorm mode */
