@@ -229,13 +229,20 @@ impl RegFileAllocation {
         Some(self.assign_reg(ssa, reg))
     }
 
-    pub fn try_find_unused_reg(&self, comps: u8) -> Option<u8> {
+    pub fn try_find_unused_reg(&self, start_reg: u8, comps: u8) -> Option<u8> {
         assert!(comps > 0);
         let comps_mask = u32::MAX >> (32 - comps);
         let align = comps.next_power_of_two();
 
-        for (w, word) in self.used.words().iter().enumerate() {
+        let start_word = usize::from(start_reg / 32);
+        for w in start_word..self.used.words().len() {
+            let word = self.used.words()[w];
+
             let mut avail = !word;
+            if w == start_word {
+                avail &= u32::MAX << (start_reg % 32);
+            }
+
             if w < self.pinned.words().len() {
                 avail &= !self.pinned.words()[w];
             }
@@ -293,7 +300,7 @@ impl RegFileAllocation {
     pub fn get_any_reg(&self, comps: u8) -> u8 {
         let mut pick_comps = comps;
         while pick_comps > 0 {
-            if let Some(reg) = self.try_find_unused_reg(pick_comps) {
+            if let Some(reg) = self.try_find_unused_reg(0, pick_comps) {
                 return self.get_reg_near_reg(reg, comps);
             }
             pick_comps = pick_comps >> 1;
@@ -347,7 +354,7 @@ impl RegFileAllocation {
     ) -> RegRef {
         let reg = if let Some(reg) = self.try_get_reg(ssa) {
             reg
-        } else if let Some(reg) = self.try_find_unused_reg(ssa.comps()) {
+        } else if let Some(reg) = self.try_find_unused_reg(0, ssa.comps()) {
             reg
         } else {
             self.get_reg_near_ssa(ssa)
@@ -357,7 +364,7 @@ impl RegFileAllocation {
     }
 
     pub fn alloc_scalar(&mut self, ssa: SSAComp) -> RegRef {
-        let reg = self.try_find_unused_reg(1).unwrap();
+        let reg = self.try_find_unused_reg(0, 1).unwrap();
         self.assign_reg_comp(ssa, reg)
     }
 }
@@ -398,103 +405,162 @@ fn instr_assign_regs_file(
     pcopy: &mut OpParCopy,
     ra: &mut RegFileAllocation,
 ) {
-    let mut max_killed_vec_comps = 0;
-    let mut total_killed_vec_comps = 0;
-    for ssa in killed.iter() {
-        if ssa.file() == ra.file() && ssa.comps() > 1 {
-            max_killed_vec_comps = max(max_killed_vec_comps, ssa.comps());
-            total_killed_vec_comps += ssa.comps();
+    struct VecDst {
+        dst_idx: usize,
+        comps: u8,
+        killed: Option<SSAValue>,
+        reg: u8,
+    }
+
+    let mut vec_dsts = Vec::new();
+    let mut vec_dst_comps = 0;
+    for (i, dst) in instr.dsts().iter().enumerate() {
+        if let Dst::SSA(ssa) = dst {
+            if ssa.file() == ra.file() && ssa.comps() > 1 {
+                vec_dsts.push(VecDst {
+                    dst_idx: i,
+                    comps: ssa.comps(),
+                    killed: None,
+                    reg: u8::MAX,
+                });
+                vec_dst_comps += ssa.comps();
+            }
         }
     }
 
-    let mut vec_dst = None;
-    for (i, dst) in instr.dsts().iter().enumerate() {
-        if let Dst::SSA(ssa) = dst {
-            if ssa.file() == ra.file() {
-                if ssa.comps() > 1 {
-                    assert!(vec_dst.is_none());
-                    vec_dst = Some(i)
-                }
+    /* No vector destinations is the easy case */
+    if vec_dst_comps == 0 {
+        ra.begin_alloc();
+        instr_remap_srcs_file(instr, pcopy, ra);
+        ra.end_alloc();
+        ra.free_killed(killed);
+        ra.begin_alloc();
+        instr_alloc_scalar_dsts_file(instr, ra);
+        ra.end_alloc();
+        return;
+    }
+
+    /* Predicates can't be vectors.  This lets us ignore instr.pred in our
+     * analysis for the cases below. Only the easy case above needs to care
+     * about them.
+     */
+    assert!(!ra.file().is_predicate());
+
+    let mut killed_vecs = Vec::new();
+    let mut killed_vec_comps = 0;
+    for ssa in killed.iter() {
+        if ssa.file() == ra.file() && ssa.comps() > 1 {
+            killed_vecs.push(ssa);
+            killed_vec_comps += ssa.comps();
+        }
+    }
+
+    vec_dsts.sort_by_key(|v| v.comps);
+    killed_vecs.sort_by_key(|v| v.comps());
+
+    let mut next_dst_reg = 0;
+    let mut vec_dsts_map_to_killed_srcs = true;
+    let mut could_trivially_allocate = true;
+    for vec_dst in vec_dsts.iter_mut().rev() {
+        while !killed_vecs.is_empty() {
+            let src = killed_vecs.pop().unwrap();
+            if src.comps() >= vec_dst.comps {
+                vec_dst.killed = Some(*src);
+                break;
             }
+        }
+        if vec_dst.killed.is_none() {
+            vec_dsts_map_to_killed_srcs = false;
+        }
+
+        if let Some(reg) = ra.try_find_unused_reg(next_dst_reg, vec_dst.comps) {
+            vec_dst.reg = reg;
+            next_dst_reg = reg + vec_dst.comps;
+        } else {
+            could_trivially_allocate = false;
         }
     }
 
     ra.begin_alloc();
 
-    if let Some(vec_dst) = vec_dst {
-        /* Predicates can't be vectors.  This lets us ignore instr.pred in our
-         * analysis in the cases below. We only have to handle it in the final
-         * simple case for scalar destinations.
-         */
-        assert!(!ra.file().is_predicate());
+    if vec_dsts_map_to_killed_srcs {
+        instr_remap_srcs_file(instr, pcopy, ra);
 
-        let vec_dst_comps = instr.dsts()[vec_dst].as_ssa().unwrap().comps();
-
-        if let Some(reg) = ra.try_find_unused_reg(vec_dst_comps) {
-            let vec_dst = &mut instr.dsts_mut()[vec_dst];
-            let vec_ssa = *vec_dst.as_ssa().unwrap();
-            *vec_dst = ra.assign_reg(vec_ssa, reg).into();
-
-            instr_remap_srcs_file(instr, pcopy, ra);
-            ra.free_killed(killed);
-            instr_alloc_scalar_dsts_file(instr, ra);
-        } else if vec_dst_comps <= max_killed_vec_comps {
-            instr_remap_srcs_file(instr, pcopy, ra);
-
-            let mut reg = None;
-            for ssa in killed.iter() {
-                if ssa.file() == ra.file() {
-                    if ssa.comps() >= vec_dst_comps {
-                        reg = Some(ra.try_get_reg(*ssa).unwrap());
-                    }
-                    ra.free_ssa(*ssa);
-                }
-            }
-            assert!(reg.is_some());
-
-            let vec_dst = &mut instr.dsts_mut()[vec_dst];
-            let vec_ssa = *vec_dst.as_ssa().unwrap();
-            *vec_dst = ra.assign_reg(vec_ssa, reg.unwrap()).into();
-
-            instr_alloc_scalar_dsts_file(instr, ra);
-        } else {
-            let vec_comps = max(max_killed_vec_comps, vec_dst_comps);
-            let vec_reg = ra.get_any_reg(vec_comps);
-
-            let mut ssa_reg = HashMap::new();
-            let mut src_vec_reg = vec_reg;
-            for src in instr.srcs_mut() {
-                if let SrcRef::SSA(ssa) = src.src_ref {
-                    if ssa.file() == ra.file() {
-                        if killed.contains(&ssa) && ssa.comps() > 1 {
-                            let reg =
-                                *ssa_reg.entry(ssa).or_insert_with(|| {
-                                    let align = ssa.comps().next_power_of_two();
-                                    let reg = src_vec_reg;
-                                    src_vec_reg += ssa.comps();
-                                    assert!(reg % align == 0);
-                                    ra.move_to_reg(pcopy, ssa, reg)
-                                });
-                            src.src_ref = reg.into();
-                        }
-                    }
-                }
-            }
-
-            /* Handle the scalar and not killed sources */
-            instr_remap_srcs_file(instr, pcopy, ra);
-
-            ra.free_killed(killed);
-
-            let vec_dst = &mut instr.dsts_mut()[vec_dst];
-            let vec_ssa = *vec_dst.as_ssa().unwrap();
-            *vec_dst = ra.assign_reg(vec_ssa, vec_reg).into();
-
-            instr_alloc_scalar_dsts_file(instr, ra);
+        for vec_dst in &mut vec_dsts {
+            vec_dst.reg = ra.try_get_reg(vec_dst.killed.unwrap()).unwrap();
         }
-    } else {
+
+        ra.free_killed(killed);
+
+        for vec_dst in vec_dsts {
+            let dst = &mut instr.dsts_mut()[vec_dst.dst_idx];
+            *dst = ra.assign_reg(*dst.as_ssa().unwrap(), vec_dst.reg).into();
+        }
+
+        instr_alloc_scalar_dsts_file(instr, ra);
+    } else if could_trivially_allocate {
+        for vec_dst in vec_dsts {
+            let dst = &mut instr.dsts_mut()[vec_dst.dst_idx];
+            *dst = ra.assign_reg(*dst.as_ssa().unwrap(), vec_dst.reg).into();
+        }
+
         instr_remap_srcs_file(instr, pcopy, ra);
         ra.free_killed(killed);
+        instr_alloc_scalar_dsts_file(instr, ra);
+    } else {
+        /* We're all out of tricks.  We need to allocate enough space for all
+         * the vector destinations and all the killed SSA values and shuffle the
+         * killed values into the new space.
+         */
+        let vec_comps = max(killed_vec_comps, vec_dst_comps);
+        let vec_reg = ra.get_any_reg(vec_comps);
+
+        let mut ssa_reg = HashMap::new();
+        let mut src_vec_reg = vec_reg;
+        for src in instr.srcs_mut() {
+            if let SrcRef::SSA(ssa) = src.src_ref {
+                if ssa.file() == ra.file() {
+                    if killed.contains(&ssa) && ssa.comps() > 1 {
+                        let reg = *ssa_reg.entry(ssa).or_insert_with(|| {
+                            let align = ssa.comps().next_power_of_two();
+                            let reg = src_vec_reg;
+                            src_vec_reg += ssa.comps();
+                            /* We assume vector sources are in order of
+                             * decreasing alignment.  This is true for texture
+                             * opcodes which should be the only interesting
+                             * case.
+                             */
+                            assert!(reg % align == 0);
+                            ra.move_to_reg(pcopy, ssa, reg)
+                        });
+                        src.src_ref = reg.into();
+                    }
+                }
+            }
+        }
+
+        /* Handle the scalar and not killed sources */
+        instr_remap_srcs_file(instr, pcopy, ra);
+
+        ra.free_killed(killed);
+
+        let mut dst_vec_reg = vec_reg;
+        for dst in instr.dsts_mut() {
+            if let Dst::SSA(ssa) = dst {
+                if ssa.comps() > 1 {
+                    let align = ssa.comps().next_power_of_two();
+                    let reg = dst_vec_reg;
+                    dst_vec_reg += ssa.comps();
+                    /* We assume vector destinations are in order of decreasing
+                     * alignment.  This is true for texture opcodes which should
+                     * be the only interesting case.
+                     */
+                    assert!(reg % align == 0);
+                    *dst = ra.assign_reg(*ssa, reg).into();
+                }
+            }
+        }
+
         instr_alloc_scalar_dsts_file(instr, ra);
     }
 
