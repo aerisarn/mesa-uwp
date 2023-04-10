@@ -1043,6 +1043,24 @@ impl fmt::Display for OpFAdd {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpFMnMx {
+    pub dst: Dst,
+    pub srcs: [Src; 2],
+    pub min: Src,
+}
+
+impl fmt::Display for OpFMnMx {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "FMNMX {} {{ {}, {} }} {}",
+            self.dst, self.srcs[0], self.srcs[1], self.min
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpFMul {
     pub dst: Dst,
     pub srcs: [Src; 2],
@@ -1682,6 +1700,7 @@ impl fmt::Display for OpFSOut {
 #[derive(Display, DstsAsSlice, SrcsAsSlice)]
 pub enum Op {
     FAdd(OpFAdd),
+    FMnMx(OpFMnMx),
     FMul(OpFMul),
     FSet(OpFSet),
     FSetP(OpFSetP),
@@ -2118,6 +2137,7 @@ impl Instr {
     pub fn get_latency(&self) -> Option<u32> {
         match self.op {
             Op::FAdd(_)
+            | Op::FMnMx(_)
             | Op::FMul(_)
             | Op::FSet(_)
             | Op::FSetP(_)

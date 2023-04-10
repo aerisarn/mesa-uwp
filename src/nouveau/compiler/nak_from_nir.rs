@@ -170,6 +170,20 @@ impl<'a> ShaderFromNir<'a> {
                     srcs[1],
                 ));
             }
+            nir_op_fmax => {
+                self.instrs.push(Instr::new(Op::FMnMx(OpFMnMx {
+                    dst: dst,
+                    srcs: [srcs[0], srcs[1]],
+                    min: SrcRef::False.into(),
+                })));
+            }
+            nir_op_fmin => {
+                self.instrs.push(Instr::new(Op::FMnMx(OpFMnMx {
+                    dst: dst,
+                    srcs: [srcs[0], srcs[1]],
+                    min: SrcRef::True.into(),
+                })));
+            }
             nir_op_fmul => {
                 self.instrs.push(Instr::new_fmul(dst, srcs[0], srcs[1]));
             }
