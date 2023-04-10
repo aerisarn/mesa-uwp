@@ -193,7 +193,7 @@ impl CopyPropPass {
                 self.prop_to_pred(&mut instr.pred, &mut instr.pred_inv);
 
                 match &mut instr.op {
-                    Op::FAdd(_) | Op::FSet(_) => {
+                    Op::FAdd(_) | Op::FMul(_) | Op::FSet(_) => {
                         self.prop_to_srcs(instr.srcs_mut(), CopyType::F32);
                     }
                     Op::FSetP(op) => {

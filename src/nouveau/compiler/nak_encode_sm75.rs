@@ -379,7 +379,23 @@ impl SM75Instr {
         }
         self.set_bit(77, op.saturate);
         self.set_rnd_mode(78..80, op.rnd_mode);
-        self.set_bit(80, false); /* TODO: Denorm mode */
+        self.set_bit(80, false); /* TODO: FTZ */
+        self.set_bit(81, false); /* TODO: DNZ */
+    }
+
+    fn encode_fmul(&mut self, op: &OpFMul) {
+        self.encode_alu(
+            0x020,
+            Some(op.dst),
+            ALUSrc::from_src(&op.srcs[0]),
+            ALUSrc::from_src(&op.srcs[1]),
+            ALUSrc::from_src(&Src::new_zero()),
+        );
+        self.set_bit(76, false); /* TODO: DNZ */
+        self.set_bit(77, op.saturate);
+        self.set_rnd_mode(78..80, op.rnd_mode);
+        self.set_bit(80, false); /* TODO: FTZ */
+        self.set_field(84..87, 0x4_u8) /* TODO: PDIV */
     }
 
     fn set_float_cmp_op(&mut self, range: Range<usize>, op: FloatCmpOp) {
@@ -766,6 +782,7 @@ impl SM75Instr {
 
         match &instr.op {
             Op::FAdd(op) => si.encode_fadd(&op),
+            Op::FMul(op) => si.encode_fmul(&op),
             Op::FSet(op) => si.encode_fset(&op),
             Op::FSetP(op) => si.encode_fsetp(&op),
             Op::IAdd3(op) => si.encode_iadd3(&op),

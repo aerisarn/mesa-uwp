@@ -1043,6 +1043,28 @@ impl fmt::Display for OpFAdd {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpFMul {
+    pub dst: Dst,
+    pub srcs: [Src; 2],
+    pub saturate: bool,
+    pub rnd_mode: FRndMode,
+}
+
+impl fmt::Display for OpFMul {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "FMUL")?;
+        if self.saturate {
+            write!(f, ".SAT")?;
+        }
+        if self.rnd_mode != FRndMode::NearestEven {
+            write!(f, ".{}", self.rnd_mode)?;
+        }
+        write!(f, " {} {{ {}, {} }}", self.dst, self.srcs[0], self.srcs[1],)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpFSet {
     pub dst: Dst,
     pub cmp_op: FloatCmpOp,
@@ -1660,6 +1682,7 @@ impl fmt::Display for OpFSOut {
 #[derive(Display, DstsAsSlice, SrcsAsSlice)]
 pub enum Op {
     FAdd(OpFAdd),
+    FMul(OpFMul),
     FSet(OpFSet),
     FSetP(OpFSetP),
     IAdd3(OpIAdd3),
@@ -1859,6 +1882,15 @@ impl Instr {
 
     pub fn new_fadd(dst: Dst, x: Src, y: Src) -> Instr {
         Instr::new(Op::FAdd(OpFAdd {
+            dst: dst,
+            srcs: [x, y],
+            saturate: false,
+            rnd_mode: FRndMode::NearestEven,
+        }))
+    }
+
+    pub fn new_fmul(dst: Dst, x: Src, y: Src) -> Instr {
+        Instr::new(Op::FMul(OpFMul {
             dst: dst,
             srcs: [x, y],
             saturate: false,
@@ -2086,6 +2118,7 @@ impl Instr {
     pub fn get_latency(&self) -> Option<u32> {
         match self.op {
             Op::FAdd(_)
+            | Op::FMul(_)
             | Op::FSet(_)
             | Op::FSetP(_)
             | Op::IAdd3(_)

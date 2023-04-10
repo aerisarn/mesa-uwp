@@ -170,6 +170,9 @@ impl<'a> ShaderFromNir<'a> {
                     srcs[1],
                 ));
             }
+            nir_op_fmul => {
+                self.instrs.push(Instr::new_fmul(dst, srcs[0], srcs[1]));
+            }
             nir_op_fneu => {
                 self.instrs.push(Instr::new_fsetp(
                     dst,
