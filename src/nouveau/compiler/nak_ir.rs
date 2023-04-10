@@ -34,6 +34,27 @@ impl RegFile {
             RegFile::Pred | RegFile::UPred => true,
         }
     }
+
+    pub fn num_regs(&self, sm: u8) -> u8 {
+        match self {
+            RegFile::GPR => 255,
+            RegFile::UGPR => {
+                if sm >= 75 {
+                    63
+                } else {
+                    0
+                }
+            }
+            RegFile::Pred => 7,
+            RegFile::UPred => {
+                if sm >= 75 {
+                    7
+                } else {
+                    0
+                }
+            }
+        }
+    }
 }
 
 impl From<RegFile> for u8 {
@@ -1430,6 +1451,13 @@ pub struct OpPhiSrcs {
 }
 
 impl OpPhiSrcs {
+    pub fn new() -> OpPhiSrcs {
+        OpPhiSrcs {
+            srcs: Vec::new(),
+            ids: Vec::new(),
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         assert!(self.ids.len() == self.srcs.len());
         self.ids.is_empty()

@@ -332,7 +332,9 @@ pub extern "C" fn nak_compile_shader(
 
     println!("NAK IR:\n{}", &s);
 
-    s.assign_regs_trivial();
+    s.assign_regs();
+    //s.assign_regs_trivial();
+    println!("NAK IR:\n{}", &s);
     s.lower_vec_split();
     s.lower_par_copies();
     s.lower_swap();
