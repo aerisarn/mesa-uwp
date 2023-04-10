@@ -442,6 +442,9 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs
                     .push(Instr::new_split(&[Dst::None, dst], srcs[0]));
             }
+            nir_op_vec2 | nir_op_vec3 | nir_op_vec4 => {
+                self.instrs.push(Instr::new_vec(dst, &srcs));
+            }
             _ => panic!("Unsupported ALU instruction: {}", alu.info().name()),
         }
     }
