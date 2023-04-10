@@ -11,6 +11,7 @@ mod nak_encode_sm75;
 mod nak_from_nir;
 mod nak_ir;
 mod nak_legalize;
+mod nak_liveness;
 mod nak_lower_par_copies;
 mod nak_opt_copy_prop;
 mod nak_opt_dce;

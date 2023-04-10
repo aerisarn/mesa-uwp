@@ -173,6 +173,10 @@ impl SSAValueAllocator {
         }
     }
 
+    pub fn count(&self) -> u32 {
+        self.count
+    }
+
     pub fn alloc(&mut self, file: RegFile, comps: u8) -> SSAValue {
         let idx = self.count;
         self.count += 1;
@@ -2015,7 +2019,7 @@ impl Instr {
 
     pub fn is_branch(&self) -> bool {
         match self.op {
-            Op::Bra(_) => true,
+            Op::Bra(_) | Op::Exit(_) => true,
             _ => false,
         }
     }
@@ -2102,6 +2106,18 @@ impl BasicBlock {
         self.instrs = instrs;
     }
 
+    pub fn branch(&self) -> Option<&Instr> {
+        if let Some(i) = self.instrs.last() {
+            if i.is_branch() {
+                Some(i)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
     pub fn branch_mut(&mut self) -> Option<&mut Instr> {
         if let Some(i) = self.instrs.last_mut() {
             if i.is_branch() {
@@ -2111,6 +2127,14 @@ impl BasicBlock {
             }
         } else {
             None
+        }
+    }
+
+    pub fn falls_through(&self) -> bool {
+        if let Some(i) = self.branch() {
+            !i.pred.is_none()
+        } else {
+            true
         }
     }
 }
