@@ -2097,45 +2097,44 @@ impl Shader {
                     }))]
                 }
                 Op::Vec(vec) => {
-                    let mut instrs = Vec::new();
                     let comps = u8::try_from(vec.srcs.len()).unwrap();
                     let vec_dst = vec.dst.as_reg().unwrap();
                     assert!(comps == vec_dst.comps());
+
+                    let mut dsts = Vec::new();
                     for i in 0..comps {
-                        let src = vec.srcs[usize::from(i)];
-                        let dst = vec_dst.as_comp(i).unwrap();
-                        match src.src_ref {
-                            SrcRef::Reg(reg) => {
-                                if reg == dst {
-                                    continue;
-                                }
-                            }
-                            _ => (),
-                        }
-                        instrs.push(Instr::new_mov(dst.into(), src));
+                        dsts.push(Dst::from(vec_dst.as_comp(i).unwrap()));
                     }
-                    instrs
+                    vec![Instr::new(Op::ParCopy(OpParCopy {
+                        srcs: vec.srcs,
+                        dsts: dsts,
+                    }))]
                 }
                 Op::Split(split) => {
-                    let mut instrs = Vec::new();
-                    let comps = u8::try_from(split.dsts.len()).unwrap();
                     let vec_src = split.src.src_ref.as_reg().unwrap();
-                    assert!(comps == vec_src.comps());
-                    for i in 0..comps {
+                    assert!(usize::from(vec_src.comps()) == split.dsts.len());
+
+                    let mut dsts = Vec::new();
+                    let mut srcs = Vec::new();
+                    for (i, dst) in split.dsts.iter().enumerate() {
+                        let i = u8::try_from(i).unwrap();
                         let src = vec_src.as_comp(i).unwrap();
-                        let dst = split.dsts[usize::from(i)];
                         match dst {
                             Dst::None => continue,
                             Dst::Reg(reg) => {
-                                if reg == src {
+                                if *reg == src {
                                     continue;
                                 }
                             }
                             _ => (),
                         }
-                        instrs.push(Instr::new_mov(dst.into(), src.into()));
+                        dsts.push(*dst);
+                        srcs.push(src.into());
                     }
-                    instrs
+                    vec![Instr::new(Op::ParCopy(OpParCopy {
+                        srcs: srcs,
+                        dsts: dsts,
+                    }))]
                 }
                 Op::FSOut(out) => {
                     let mut instrs = Vec::new();
