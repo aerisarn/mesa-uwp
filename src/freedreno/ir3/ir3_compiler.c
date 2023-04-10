@@ -146,13 +146,12 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
    compiler->options = *options;
 
    /* TODO see if older GPU's were different here */
+   const struct fd_dev_info *dev_info = fd_dev_info(compiler->dev_id);
    compiler->branchstack_size = 64;
-   compiler->wave_granularity = 2;
+   compiler->wave_granularity = dev_info->wave_granularity;
    compiler->max_waves = 16;
 
    compiler->max_variable_workgroup_size = 1024;
-
-   const struct fd_dev_info *dev_info = fd_dev_info(compiler->dev_id);
 
    compiler->local_mem_size = dev_info->cs_shared_mem_size;
 

@@ -51,6 +51,8 @@ struct fd_dev_info {
 
    uint32_t cs_shared_mem_size;
 
+   int wave_granularity;
+
    /* number of CCU is always equal to the number of SP */
    union {
       uint32_t num_sp_cores;
