@@ -413,6 +413,9 @@ impl<'a> ShaderFromNir<'a> {
             nir_op_pack_64_2x32_split => {
                 self.instrs.push(Instr::new_vec(dst, &[srcs[0], srcs[1]]));
             }
+            nir_op_u2f32 => {
+                self.instrs.push(Instr::new_u2f(dst, srcs[0]));
+            }
             nir_op_uge => {
                 self.instrs.push(Instr::new_isetp(
                     dst,

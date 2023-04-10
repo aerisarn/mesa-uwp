@@ -1952,6 +1952,16 @@ impl Instr {
         }))
     }
 
+    pub fn new_u2f(dst: Dst, src: Src) -> Instr {
+        Instr::new(Op::I2F(OpI2F {
+            dst: dst,
+            src: src,
+            dst_type: FloatType::F32,
+            src_type: IntType::U32,
+            rnd_mode: FRndMode::NearestEven,
+        }))
+    }
+
     pub fn new_isetp(
         dst: Dst,
         cmp_type: IntCmpType,
