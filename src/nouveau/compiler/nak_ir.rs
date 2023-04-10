@@ -105,6 +105,16 @@ impl SSAValue {
     pub fn comps(&self) -> u8 {
         (((self.packed >> 27) & 0x7) + 1).try_into().unwrap()
     }
+
+    pub fn comp(&self, comp: u8) -> SSAComp {
+        assert!(comp < self.comps());
+        SSAComp::new(self.file(), self.idx(), comp)
+    }
+
+    pub fn as_comp(&self) -> SSAComp {
+        assert!(self.comps() == 1);
+        SSAComp::new(self.file(), self.idx(), 0)
+    }
 }
 
 impl HasRegFile for SSAValue {
@@ -120,6 +130,33 @@ impl fmt::Display for SSAValue {
         } else {
             write!(f, "SSA{}@{}", self.idx(), self.comps())
         }
+    }
+}
+
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+pub struct SSAComp {
+    v: SSAValue,
+}
+
+impl SSAComp {
+    pub fn new(file: RegFile, idx: u32, comp: u8) -> SSAComp {
+        SSAComp {
+            v: SSAValue::new(file, idx, comp + 1),
+        }
+    }
+
+    pub fn idx(&self) -> u32 {
+        self.v.idx()
+    }
+
+    pub fn comp(&self) -> u8 {
+        self.v.comps() - 1
+    }
+}
+
+impl HasRegFile for SSAComp {
+    fn file(&self) -> RegFile {
+        self.v.file()
     }
 }
 
