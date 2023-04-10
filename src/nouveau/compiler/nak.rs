@@ -9,6 +9,7 @@ mod nak_calc_instr_deps;
 mod nak_encode_sm75;
 mod nak_from_nir;
 mod nak_ir;
+mod nak_legalize;
 mod nak_opt_copy_prop;
 mod nak_opt_dce;
 mod nir;
@@ -321,6 +322,10 @@ pub extern "C" fn nak_compile_shader(
     println!("NAK IR:\n{}", &s);
 
     s.opt_dce();
+
+    println!("NAK IR:\n{}", &s);
+
+    s.legalize();
 
     println!("NAK IR:\n{}", &s);
 
