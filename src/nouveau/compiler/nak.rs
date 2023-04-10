@@ -19,6 +19,8 @@ mod nir;
 mod union_find;
 mod util;
 
+use crate::nir::NirShader;
+
 use bitview::*;
 use nak_bindings::*;
 use nak_from_nir::*;
@@ -276,6 +278,32 @@ fn encode_hdr_for_nir(nir: &nir_shader, tls_size: u32) -> [u32; 32] {
         imap_sv.set_bit(31, true); //has_frag_coord);
 
         /* [192, 447]: ImapGenericVector[32] */
+        /* TODO: Non-perspective */
+        let mut imap_g = hdr_view.subset_mut(192..447);
+
+        let nir_ir = BitView::new(&nir.info.inputs_read);
+        let input0: usize = VARYING_SLOT_VAR0.try_into().unwrap();
+        for var in nir.iter_variables() {
+            if var.data.mode() != nir_var_shader_in {
+                continue;
+            }
+            let loc_u32 = u32::try_from(var.data.location).unwrap();
+            let slot =
+                (loc_u32 - VARYING_SLOT_VAR0) * 4 + var.data.location_frac();
+            let num_slots = unsafe { glsl_get_component_slots(var.type_) };
+            let mode: u8 = match var.data.interpolation() {
+                INTERP_MODE_NONE | INTERP_MODE_SMOOTH => 2, /* Perspective */
+                INTERP_MODE_FLAT => 1,                      /* Constant */
+                INTERP_MODE_NOPERSPECTIVE => 3,             /* ScreenLinear */
+                INTERP_MODE_EXPLICIT => 0,                  /* Unused */
+                _ => panic!("Unsupported INTERP_MODE"),
+            };
+            for s in slot..(slot + num_slots) {
+                let s = usize::try_from(s).unwrap();
+                imap_g.set_field((s * 2)..(s * 2 + 2), mode);
+            }
+        }
+
         /* [448, 463]: ImapColor */
         /* [464, 479]: ImapSystemValuesC */
         /* [480, 559]: ImapFixedFncTexture[10] */

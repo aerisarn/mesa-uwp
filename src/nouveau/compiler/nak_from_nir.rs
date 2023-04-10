@@ -484,6 +484,9 @@ impl<'a> ShaderFromNir<'a> {
     fn parse_intrinsic(&mut self, intrin: &nir_intrinsic_instr) {
         let srcs = intrin.srcs_as_slice();
         match intrin.intrinsic {
+            nir_intrinsic_load_barycentric_centroid => (),
+            nir_intrinsic_load_barycentric_pixel => (),
+            nir_intrinsic_load_barycentric_sample => (),
             nir_intrinsic_load_global => {
                 let size_B =
                     (intrin.def.bit_size() / 8) * intrin.def.num_components();
@@ -504,6 +507,32 @@ impl<'a> ShaderFromNir<'a> {
                 let offset = self.get_src(&srcs[0]);
                 let dst = self.get_dst(&intrin.def);
                 self.instrs.push(Instr::new_ald(dst, addr, vtx, offset));
+            }
+            nir_intrinsic_load_interpolated_input => {
+                let bary =
+                    srcs[0].as_def().parent_instr().as_intrinsic().unwrap();
+                let addr = u16::try_from(intrin.base()).unwrap()
+                    + u16::try_from(srcs[1].as_uint().unwrap()).unwrap();
+                let freq = InterpFreq::Pass;
+                let loc = match bary.intrinsic {
+                    nir_intrinsic_load_barycentric_pixel => InterpLoc::Default,
+                    _ => panic!("Unsupported interp mode"),
+                };
+                let dst = self.get_dst(&intrin.def);
+
+                let mut comps = Vec::new();
+                for c in 0..intrin.num_components {
+                    let tmp = self.alloc_ssa(RegFile::GPR, 1);
+                    self.instrs.push(Instr::new(Op::Ipa(OpIpa {
+                        dst: tmp.into(),
+                        addr: addr + 4 * u16::try_from(c).unwrap(),
+                        freq: freq,
+                        loc: loc,
+                        offset: SrcRef::Zero.into(),
+                    })));
+                    comps.push(tmp.into());
+                }
+                self.instrs.push(Instr::new_vec(dst, &comps));
             }
             nir_intrinsic_load_per_vertex_input => {
                 let addr = u16::try_from(intrin.base()).unwrap();

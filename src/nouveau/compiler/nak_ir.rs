@@ -1011,6 +1011,20 @@ impl fmt::Display for MemAccess {
     }
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum InterpFreq {
+    Pass,
+    Constant,
+    State,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum InterpLoc {
+    Default,
+    Centroid,
+    Offset,
+}
+
 pub struct AttrAccess {
     pub addr: u16,
     pub comps: u8,
@@ -1429,6 +1443,38 @@ impl fmt::Display for OpASt {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpIpa {
+    pub dst: Dst,
+    pub addr: u16,
+    pub freq: InterpFreq,
+    pub loc: InterpLoc,
+    pub offset: Src,
+}
+
+impl fmt::Display for OpIpa {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "IPA")?;
+        match self.freq {
+            InterpFreq::Pass => (),
+            InterpFreq::Constant => write!(f, ".CONSTANT")?,
+            InterpFreq::State => write!(f, ".STATE")?,
+        }
+        match self.loc {
+            InterpLoc::Default => (),
+            InterpLoc::Centroid => write!(f, ".CENTROID")?,
+            InterpLoc::Offset => write!(f, ".OFFSET")?,
+        }
+
+        write!(f, " {} a[{:#x}]", self.dst, self.addr)?;
+        if !self.offset.is_zero() {
+            write!(f, " {}", self.offset)?;
+        }
+        Ok(())
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpBra {
     pub target: u32,
 }
@@ -1763,6 +1809,7 @@ pub enum Op {
     St(OpSt),
     ALd(OpALd),
     ASt(OpASt),
+    Ipa(OpIpa),
     Bra(OpBra),
     Exit(OpExit),
     S2R(OpS2R),
@@ -2218,6 +2265,7 @@ impl Instr {
             Op::S2R(_) => None,
             Op::ALd(_) => None,
             Op::ASt(_) => Some(15),
+            Op::Ipa(_) => None,
             Op::Ld(_) => None,
             Op::St(_) => None,
             Op::Bra(_) | Op::Exit(_) => Some(15),

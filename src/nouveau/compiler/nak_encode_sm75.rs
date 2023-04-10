@@ -766,6 +766,37 @@ impl SM75Instr {
         assert!(!op.access.out_load);
     }
 
+    fn encode_ipa(&mut self, op: &OpIpa) {
+        self.set_opcode(0x326);
+
+        self.set_dst(op.dst);
+
+        assert!(op.addr % 4 == 0);
+        self.set_field(64..72, op.addr >> 2);
+
+        self.set_field(
+            76..78,
+            match op.freq {
+                InterpFreq::Pass => 0_u8,
+                InterpFreq::Constant => 1_u8,
+                InterpFreq::State => 2_u8,
+            },
+        );
+        self.set_field(
+            78..80,
+            match op.loc {
+                InterpLoc::Default => 0_u8,
+                InterpLoc::Centroid => 1_u8,
+                InterpLoc::Offset => 2_u8,
+            },
+        );
+
+        self.set_reg_src(32..40, op.offset);
+
+        /* TODO: What is this for? */
+        self.set_pred_dst(81..84, Dst::None);
+    }
+
     fn encode_bra(
         &mut self,
         op: &OpBra,
@@ -837,6 +868,7 @@ impl SM75Instr {
             Op::St(op) => si.encode_st(&op),
             Op::ALd(op) => si.encode_ald(&op),
             Op::ASt(op) => si.encode_ast(&op),
+            Op::Ipa(op) => si.encode_ipa(&op),
             Op::Bra(op) => si.encode_bra(&op, ip, block_offsets),
             Op::Exit(op) => si.encode_exit(&op),
             Op::S2R(op) => si.encode_s2r(&op),
