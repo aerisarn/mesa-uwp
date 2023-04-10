@@ -379,7 +379,7 @@ impl<'a> ShaderFromNir<'a> {
                     srcs[1],
                 ));
             }
-            _ => panic!("Unsupported ALU instruction"),
+            _ => panic!("Unsupported ALU instruction: {}", alu.info().name()),
         }
     }
 
@@ -489,7 +489,10 @@ impl<'a> ShaderFromNir<'a> {
                     self.instrs.push(Instr::new_ast(addr, data, vtx, offset))
                 }
             }
-            _ => panic!("Unsupported intrinsic instruction"),
+            _ => panic!(
+                "Unsupported intrinsic instruction: {}",
+                intrin.info().name()
+            ),
         }
     }
 
