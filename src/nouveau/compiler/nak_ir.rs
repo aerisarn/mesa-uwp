@@ -1872,10 +1872,14 @@ impl BasicBlock {
         }
     }
 
-    pub fn map_instrs<F: Fn(Instr) -> Vec<Instr>>(&mut self, map: &F) {
+    pub fn map_instrs<F: Fn(Instr, &mut SSAValueAllocator) -> Vec<Instr>>(
+        &mut self,
+        map: &F,
+        ssa_alloc: &mut SSAValueAllocator,
+    ) {
         let mut instrs = Vec::new();
         for i in self.instrs.drain(..) {
-            instrs.append(&mut map(i));
+            instrs.append(&mut map(i, ssa_alloc));
         }
         self.instrs = instrs;
     }
@@ -1918,9 +1922,12 @@ impl Function {
         }
     }
 
-    pub fn map_instrs<F: Fn(Instr) -> Vec<Instr>>(&mut self, map: &F) {
+    pub fn map_instrs<F: Fn(Instr, &mut SSAValueAllocator) -> Vec<Instr>>(
+        &mut self,
+        map: &F,
+    ) {
         for b in &mut self.blocks {
-            b.map_instrs(map);
+            b.map_instrs(map, &mut self.ssa_alloc);
         }
     }
 }
@@ -1947,14 +1954,17 @@ impl Shader {
         }
     }
 
-    pub fn map_instrs<F: Fn(Instr) -> Vec<Instr>>(&mut self, map: &F) {
+    pub fn map_instrs<F: Fn(Instr, &mut SSAValueAllocator) -> Vec<Instr>>(
+        &mut self,
+        map: &F,
+    ) {
         for f in &mut self.functions {
             f.map_instrs(map);
         }
     }
 
     pub fn lower_vec_split(&mut self) {
-        self.map_instrs(&|instr: Instr| -> Vec<Instr> {
+        self.map_instrs(&|instr: Instr, _| -> Vec<Instr> {
             match instr.op {
                 Op::FMov(mov) => {
                     vec![Instr::new(Op::FAdd(OpFAdd {
