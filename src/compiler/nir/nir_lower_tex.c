@@ -1612,6 +1612,7 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
 
       if (tex->op == nir_texop_txd &&
           (options->lower_txd ||
+           (options->lower_txd_clamp && has_min_lod) ||
            (options->lower_txd_shadow && tex->is_shadow) ||
            (options->lower_txd_shadow_clamp && tex->is_shadow && has_min_lod) ||
            (options->lower_txd_offset_clamp && has_offset && has_min_lod) ||

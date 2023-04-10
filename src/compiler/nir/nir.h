@@ -5678,6 +5678,11 @@ typedef struct nir_lower_tex_options {
    bool lower_txd;
 
    /**
+    * If true, lower nir_texop_txd  when it uses min_lod.
+    */
+   bool lower_txd_clamp;
+
+   /**
     * If true, lower nir_texop_txb that try to use shadow compare and min_lod
     * at the same time to a nir_texop_lod, some math, and nir_texop_tex.
     */
