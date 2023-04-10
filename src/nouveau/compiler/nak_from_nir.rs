@@ -10,6 +10,8 @@ use crate::nir::*;
 
 use nak_bindings::*;
 
+use std::collections::HashMap;
+
 struct ShaderFromNir<'a> {
     nir: &'a nir_shader,
     func: Option<Function>,
@@ -17,6 +19,8 @@ struct ShaderFromNir<'a> {
     instrs: Vec<Instr>,
     fs_out_regs: Vec<Src>,
     end_block_id: u32,
+    num_phis: u32,
+    phis: HashMap<u32, u32>,
 }
 
 impl<'a> ShaderFromNir<'a> {
@@ -34,6 +38,8 @@ impl<'a> ShaderFromNir<'a> {
             instrs: Vec::new(),
             fs_out_regs: fs_out_regs,
             end_block_id: 0,
+            num_phis: 0,
+            phis: HashMap::new(),
         }
     }
 
@@ -78,6 +84,18 @@ impl<'a> ShaderFromNir<'a> {
             }
             self.instrs.push(Instr::new_split(&dsts, vec_src));
             comp.into()
+        }
+    }
+
+    fn get_phi_id(&mut self, phi: &nir_phi_instr) -> u32 {
+        match self.phis.get(&phi.def.index) {
+            Some(id) => *id,
+            None => {
+                let id = self.num_phis;
+                self.num_phis += 1;
+                self.phis.insert(phi.def.index, id);
+                id
+            }
         }
     }
 
@@ -509,11 +527,39 @@ impl<'a> ShaderFromNir<'a> {
                 nir_instr_type_undef => {
                     self.parse_undef(ni.as_undef().unwrap())
                 }
+                nir_instr_type_phi => {
+                    let phi = ni.as_phi().unwrap();
+                    let dst = self.get_dst(&phi.def);
+                    let phi_id = self.get_phi_id(phi);
+                    self.instrs.push(Instr::new_phi_dst(phi_id, dst));
+                }
                 _ => panic!("Unsupported instruction type"),
             }
         }
 
         let succ = nb.successors();
+        for sb in succ {
+            let sb = match sb {
+                Some(b) => b,
+                None => continue,
+            };
+
+            for i in sb.iter_instr_list() {
+                let phi = match i.as_phi() {
+                    Some(phi) => phi,
+                    None => break,
+                };
+
+                let phi_id = self.get_phi_id(phi);
+                for ps in phi.iter_srcs() {
+                    if ps.pred().index == nb.index {
+                        let src = self.get_src(&ps.src);
+                        self.instrs.push(Instr::new_phi_src(phi_id, src));
+                    }
+                }
+            }
+        }
+
         let s0 = succ[0].unwrap();
         if let Some(s1) = succ[1] {
             /* Jump to the else.  We'll come back and fix up the predicate as

@@ -9,12 +9,14 @@ use std::collections::HashSet;
 
 struct DeadCodePass {
     live_ssa: HashSet<SSAValue>,
+    live_phi: HashSet<u32>,
 }
 
 impl DeadCodePass {
     pub fn new() -> DeadCodePass {
         DeadCodePass {
             live_ssa: HashSet::new(),
+            live_phi: HashSet::new(),
         }
     }
 
@@ -23,6 +25,10 @@ impl DeadCodePass {
     }
 
     fn mark_instr_live(&mut self, instr: &Instr) {
+        if let Op::PhiDst(op) = &instr.op {
+            self.live_phi.insert(op.phi_id);
+        }
+
         if let Pred::SSA(ssa) = &instr.pred {
             self.mark_ssa_live(ssa);
         }
@@ -45,6 +51,12 @@ impl DeadCodePass {
     fn is_instr_live(&self, instr: &Instr) -> bool {
         if !instr.can_eliminate() {
             return true;
+        }
+
+        if let Op::PhiSrc(op) = &instr.op {
+            if self.live_phi.get(&op.phi_id).is_some() {
+                return true;
+            }
         }
 
         for dst in instr.dsts() {

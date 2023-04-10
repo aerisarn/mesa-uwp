@@ -16,6 +16,7 @@ struct TrivialRegAlloc {
     next_pred: u8,
     next_upred: u8,
     reg_map: HashMap<SSAValue, RegRef>,
+    phi_map: HashMap<u32, RegRef>,
 }
 
 impl TrivialRegAlloc {
@@ -26,6 +27,7 @@ impl TrivialRegAlloc {
             next_pred: 0,
             next_upred: 0,
             reg_map: HashMap::new(),
+            phi_map: HashMap::new(),
         }
     }
 
@@ -56,7 +58,17 @@ impl TrivialRegAlloc {
         RegRef::new(file, idx, comps)
     }
 
-    pub fn rewrite_ssa(&mut self, ssa: SSAValue) -> RegRef {
+    fn get_phi_reg(&mut self, phi_id: u32, file: RegFile, comps: u8) -> RegRef {
+        if let Some(reg) = self.phi_map.get(&phi_id) {
+            *reg
+        } else {
+            let reg = self.alloc_reg(file, comps);
+            self.phi_map.insert(phi_id, reg);
+            reg
+        }
+    }
+
+    pub fn get_ssa_reg(&mut self, ssa: SSAValue) -> RegRef {
         if let Some(reg) = self.reg_map.get(&ssa) {
             *reg
         } else {
@@ -70,17 +82,49 @@ impl TrivialRegAlloc {
         for f in &mut s.functions {
             for b in &mut f.blocks {
                 for instr in &mut b.instrs {
-                    if let Pred::SSA(ssa) = instr.pred {
-                        instr.pred = Pred::Reg(self.rewrite_ssa(ssa));
-                    }
-                    for dst in instr.dsts_mut() {
-                        if let Dst::SSA(ssa) = dst {
-                            *dst = self.rewrite_ssa(*ssa).into();
+                    match &instr.op {
+                        Op::PhiSrc(op) => {
+                            let src_ssa = op.src.as_ssa().unwrap();
+                            let src = self.get_ssa_reg(*src_ssa);
+                            let dst = self.get_phi_reg(
+                                op.phi_id,
+                                src_ssa.file(),
+                                src_ssa.comps(),
+                            );
+                            instr.op = Op::Mov(OpMov {
+                                dst: dst.into(),
+                                src: src.into(),
+                                quad_lanes: 0xf,
+                            });
                         }
-                    }
-                    for src in instr.srcs_mut() {
-                        if let SrcRef::SSA(ssa) = src.src_ref {
-                            src.src_ref = self.rewrite_ssa(ssa).into();
+                        Op::PhiDst(op) => {
+                            let dst_ssa = op.dst.as_ssa().unwrap();
+                            let src = self.get_phi_reg(
+                                op.phi_id,
+                                dst_ssa.file(),
+                                dst_ssa.comps(),
+                            );
+                            let dst = self.get_ssa_reg(*dst_ssa);
+                            instr.op = Op::Mov(OpMov {
+                                dst: dst.into(),
+                                src: src.into(),
+                                quad_lanes: 0xf,
+                            });
+                        }
+                        _ => {
+                            if let Pred::SSA(ssa) = instr.pred {
+                                instr.pred = self.get_ssa_reg(ssa).into();
+                            }
+                            for dst in instr.dsts_mut() {
+                                if let Dst::SSA(ssa) = dst {
+                                    *dst = self.get_ssa_reg(*ssa).into();
+                                }
+                            }
+                            for src in instr.srcs_mut() {
+                                if let SrcRef::SSA(ssa) = src.src_ref {
+                                    src.src_ref = self.get_ssa_reg(ssa).into();
+                                }
+                            }
                         }
                     }
                 }

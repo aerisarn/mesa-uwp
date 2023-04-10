@@ -1323,6 +1323,32 @@ impl fmt::Display for OpSplit {
 }
 
 #[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpPhiSrc {
+    pub src: Src,
+    pub phi_id: u32,
+}
+
+impl fmt::Display for OpPhiSrc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "PHI_SRC({}) {}", self.phi_id, self.src)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpPhiDst {
+    pub dst: Dst,
+    pub phi_id: u32,
+}
+
+impl fmt::Display for OpPhiDst {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "PHI_DST({}) {}", self.phi_id, self.dst)
+    }
+}
+
+#[repr(C)]
 #[derive(DstsAsSlice)]
 pub struct OpFSOut {
     pub srcs: Vec<Src>,
@@ -1370,6 +1396,8 @@ pub enum Op {
     S2R(OpS2R),
     FMov(OpFMov),
     IMov(OpIMov),
+    PhiSrc(OpPhiSrc),
+    PhiDst(OpPhiDst),
     Vec(OpVec),
     Split(OpSplit),
     FSOut(OpFSOut),
@@ -1701,6 +1729,20 @@ impl Instr {
         Instr::new(Op::S2R(OpS2R { dst: dst, idx: idx }))
     }
 
+    pub fn new_phi_src(phi_id: u32, src: Src) -> Instr {
+        Instr::new(Op::PhiSrc(OpPhiSrc {
+            phi_id: phi_id,
+            src: src,
+        }))
+    }
+
+    pub fn new_phi_dst(phi_id: u32, dst: Dst) -> Instr {
+        Instr::new(Op::PhiDst(OpPhiDst {
+            phi_id: phi_id,
+            dst: dst,
+        }))
+    }
+
     pub fn new_vec(dst: Dst, srcs: &[Src]) -> Instr {
         Instr::new(Op::Vec(OpVec {
             dst: dst,
@@ -1775,6 +1817,8 @@ impl Instr {
             Op::Bra(_) | Op::Exit(_) => Some(15),
             Op::FMov(_)
             | Op::IMov(_)
+            | Op::PhiSrc(_)
+            | Op::PhiDst(_)
             | Op::Vec(_)
             | Op::Split(_)
             | Op::FSOut(_) => {
