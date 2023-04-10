@@ -5103,7 +5103,7 @@ void main()
 
 */
 struct zink_shader *
-zink_shader_tcs_create(struct zink_screen *screen, nir_shader *vs, unsigned vertices_per_patch, nir_shader **nir_ret)
+zink_shader_tcs_create(struct zink_screen *screen, nir_shader *tes, unsigned vertices_per_patch, nir_shader **nir_ret)
 {
    struct zink_shader *ret = rzalloc(NULL, struct zink_shader);
    util_queue_fence_init(&ret->precompile.fence);
@@ -5122,14 +5122,18 @@ zink_shader_tcs_create(struct zink_screen *screen, nir_shader *vs, unsigned vert
 
    nir_ssa_def *invocation_id = nir_load_invocation_id(&b);
 
-   nir_foreach_shader_out_variable(var, vs) {
-      const struct glsl_type *type = var->type;
+   nir_foreach_shader_in_variable(var, tes) {
+      if (var->data.location == VARYING_SLOT_TESS_LEVEL_INNER || var->data.location == VARYING_SLOT_TESS_LEVEL_OUTER)
+         continue;
       const struct glsl_type *in_type = var->type;
       const struct glsl_type *out_type = var->type;
       char buf[1024];
       snprintf(buf, sizeof(buf), "%s_out", var->name);
-      in_type = glsl_array_type(type, 32 /* MAX_PATCH_VERTICES */, 0);
-      out_type = glsl_array_type(type, vertices_per_patch, 0);
+      if (!nir_is_arrayed_io(var, MESA_SHADER_TESS_EVAL)) {
+         const struct glsl_type *type = var->type;
+         in_type = glsl_array_type(type, 32 /* MAX_PATCH_VERTICES */, 0);
+         out_type = glsl_array_type(type, vertices_per_patch, 0);
+      }
 
       nir_variable *in = nir_variable_create(nir, nir_var_shader_in, in_type, var->name);
       nir_variable *out = nir_variable_create(nir, nir_var_shader_out, out_type, buf);
