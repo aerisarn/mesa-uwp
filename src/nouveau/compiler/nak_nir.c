@@ -533,6 +533,7 @@ nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak)
    };
    OPT(nir, nir_lower_mem_access_bit_sizes, &mem_bit_size_options);
 
+   OPT(nir, nir_lower_idiv, NULL);
    OPT(nir, nir_lower_int64);
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
