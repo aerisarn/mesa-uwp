@@ -128,6 +128,24 @@ impl fmt::Display for SSAValue {
     }
 }
 
+pub struct SSAValueAllocator {
+    count: u32,
+}
+
+impl SSAValueAllocator {
+    pub fn new(initial_count: u32) -> SSAValueAllocator {
+        SSAValueAllocator {
+            count: initial_count,
+        }
+    }
+
+    pub fn alloc(&mut self, file: RegFile, comps: u8) -> SSAValue {
+        let idx = self.count;
+        self.count += 1;
+        SSAValue::new(file, idx, comps)
+    }
+}
+
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct RegRef {
     packed: u16,
@@ -1887,7 +1905,7 @@ impl fmt::Display for BasicBlock {
 
 pub struct Function {
     id: u32,
-    pub ssa_count: u32,
+    pub ssa_alloc: SSAValueAllocator,
     pub blocks: Vec<BasicBlock>,
 }
 
@@ -1895,15 +1913,9 @@ impl Function {
     pub fn new(id: u32, reserved_ssa_count: u32) -> Function {
         Function {
             id: id,
-            ssa_count: reserved_ssa_count,
+            ssa_alloc: SSAValueAllocator::new(reserved_ssa_count),
             blocks: Vec::new(),
         }
-    }
-
-    pub fn alloc_ssa(&mut self, file: RegFile, comps: u8) -> SSAValue {
-        let idx = self.ssa_count;
-        self.ssa_count += 1;
-        SSAValue::new(file, idx, comps)
     }
 
     pub fn map_instrs<F: Fn(Instr) -> Vec<Instr>>(&mut self, map: &F) {

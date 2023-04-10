@@ -44,7 +44,7 @@ impl<'a> ShaderFromNir<'a> {
     }
 
     pub fn alloc_ssa(&mut self, file: RegFile, comps: u8) -> SSAValue {
-        self.func.as_mut().unwrap().alloc_ssa(file, comps)
+        self.func.as_mut().unwrap().ssa_alloc.alloc(file, comps)
     }
 
     fn get_ssa(&self, def: &nir_def) -> SSAValue {
