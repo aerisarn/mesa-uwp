@@ -2354,7 +2354,7 @@ bool
 optimize_cmp_subgroup_invocation(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
    /* This optimization only applies to VOPC with 2 operands. */
-   if (instr->operands.size() == 2)
+   if (instr->operands.size() != 2)
       return false;
 
    /* Find the constant operand or return early if there isn't one. */
@@ -2420,7 +2420,7 @@ optimize_cmp_subgroup_invocation(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
    cpy->definitions[0] = instr->definitions[0];
    ctx.info[instr->definitions[0].tempId()].label = 0;
-   decrease_uses(ctx, ctx.instructions[mbcnt_op_idx].get());
+   decrease_uses(ctx, ctx.info[mbcnt_op.tempId()].instr);
    instr.reset(cpy);
 
    return true;
