@@ -170,11 +170,7 @@ pub fn create_kernel(
         return Err(CL_INVALID_KERNEL_DEFINITION);
     }
 
-    Ok(cl_kernel::from_arc(Kernel::new(
-        name,
-        p,
-        kernel_args.into_iter().next().unwrap(),
-    )))
+    Ok(cl_kernel::from_arc(Kernel::new(name, p)))
 }
 
 pub fn create_kernels_in_program(
@@ -207,11 +203,7 @@ pub fn create_kernels_in_program(
             unsafe {
                 kernels
                     .add(num_kernels as usize)
-                    .write(cl_kernel::from_arc(Kernel::new(
-                        name,
-                        p.clone(),
-                        kernel_args.into_iter().next().unwrap(),
-                    )));
+                    .write(cl_kernel::from_arc(Kernel::new(name, p.clone())));
             }
         }
         num_kernels += 1;

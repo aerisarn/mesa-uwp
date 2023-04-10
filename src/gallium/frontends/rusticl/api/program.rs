@@ -235,7 +235,10 @@ pub fn create_program_with_binary(
         return Err(err);
     }
 
-    Ok(cl_program::from_arc(Program::from_bins(c, devs, &bins)))
+    let prog = Program::from_bins(c, devs, &bins);
+    prog.build_nirs();
+
+    Ok(cl_program::from_arc(prog))
     //• CL_INVALID_BINARY if an invalid program binary was encountered for any device. binary_status will return specific status for each device.
 }
 
@@ -289,6 +292,7 @@ pub fn build_program(
     //• CL_INVALID_OPERATION if program was not created with clCreateProgramWithSource, clCreateProgramWithIL or clCreateProgramWithBinary.
 
     if res {
+        p.build_nirs();
         Ok(())
     } else {
         if Platform::dbg().program {
@@ -430,6 +434,9 @@ pub fn link_program(
     } else {
         CL_LINK_PROGRAM_FAILURE
     };
+
+    // Pre build nir kernels
+    res.build_nirs();
 
     let res = cl_program::from_arc(res);
 

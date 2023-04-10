@@ -1,6 +1,7 @@
 use crate::api::icd::*;
 use crate::core::context::*;
 use crate::core::device::*;
+use crate::core::kernel::*;
 use crate::core::platform::Platform;
 use crate::impl_cl_type_trait;
 
@@ -63,9 +64,18 @@ pub struct Program {
     pub kernel_count: AtomicU32,
     spec_constants: Mutex<HashMap<u32, nir_const_value>>,
     build: Mutex<ProgramBuild>,
+    nir_builds: Mutex<HashMap<String, NirKernelBuild>>,
 }
 
 impl_cl_type_trait!(cl_program, Program, CL_INVALID_PROGRAM);
+
+#[derive(Clone)]
+pub struct NirKernelBuild {
+    pub nirs: HashMap<Arc<Device>, Arc<NirShader>>,
+    pub args: Vec<KernelArg>,
+    pub internal_args: Vec<InternalKernelArg>,
+    pub attributes_string: String,
+}
 
 struct ProgramBuild {
     builds: HashMap<Arc<Device>, ProgramDevBuild>,
@@ -157,6 +167,7 @@ impl Program {
                 builds: Self::create_default_builds(devs),
                 kernels: Vec::new(),
             }),
+            nir_builds: Mutex::new(HashMap::new()),
         })
     }
 
@@ -229,6 +240,7 @@ impl Program {
                 builds: builds,
                 kernels: kernels.into_iter().collect(),
             }),
+            nir_builds: Mutex::new(HashMap::new()),
         })
     }
 
@@ -245,6 +257,7 @@ impl Program {
                 builds: builds,
                 kernels: Vec::new(),
             }),
+            nir_builds: Mutex::new(HashMap::new()),
         })
     }
 
@@ -257,6 +270,20 @@ impl Program {
         dev: &Arc<Device>,
     ) -> &'a mut ProgramDevBuild {
         l.builds.get_mut(dev).unwrap()
+    }
+
+    fn nir_build_info(&self) -> MutexGuard<HashMap<String, NirKernelBuild>> {
+        self.nir_builds.lock().unwrap()
+    }
+
+    pub fn get_nir_kernel_build(&self, name: &str) -> NirKernelBuild {
+        let info = self.nir_build_info();
+        info.get(name).unwrap().clone()
+    }
+
+    pub fn set_nir_kernel_build(&self, name: &str, nir_build: NirKernelBuild) {
+        let mut info = self.nir_build_info();
+        info.insert(String::from(name), nir_build);
     }
 
     pub fn status(&self, dev: &Arc<Device>) -> cl_build_status {
@@ -496,7 +523,56 @@ impl Program {
                 builds: builds,
                 kernels: kernels.into_iter().collect(),
             }),
+            nir_builds: Mutex::new(HashMap::new()),
         })
+    }
+
+    pub fn build_nir_kernel(&self, name: &str, args: Vec<spirv::SPIRVKernelArg>) -> NirKernelBuild {
+        let mut nirs = HashMap::new();
+        let mut args_set = HashSet::new();
+        let mut internal_args_set = HashSet::new();
+        let mut attributes_string_set = HashSet::new();
+
+        // TODO: we could run this in parallel?
+        for d in self.devs_with_build() {
+            let (nir, args, internal_args, attributes_string) =
+                convert_spirv_to_nir(self, name, &args, d);
+            nirs.insert(d.clone(), Arc::new(nir));
+            args_set.insert(args);
+            internal_args_set.insert(internal_args);
+            attributes_string_set.insert(attributes_string);
+        }
+
+        // we want the same (internal) args for every compiled kernel, for now
+        assert!(args_set.len() == 1);
+        assert!(internal_args_set.len() == 1);
+        assert!(attributes_string_set.len() == 1);
+        let args = args_set.into_iter().next().unwrap();
+        let internal_args = internal_args_set.into_iter().next().unwrap();
+
+        // spec: For kernels not created from OpenCL C source and the clCreateProgramWithSource API call
+        // the string returned from this query [CL_KERNEL_ATTRIBUTES] will be empty.
+        let attributes_string = if self.is_src() {
+            attributes_string_set.into_iter().next().unwrap()
+        } else {
+            String::new()
+        };
+
+        NirKernelBuild {
+            nirs: nirs,
+            args: args,
+            internal_args: internal_args,
+            attributes_string: attributes_string,
+        }
+    }
+
+    pub fn build_nirs(&self) {
+        let devs = self.devs_with_build();
+        for k in &self.kernels() {
+            let kernel_args: HashSet<_> = devs.iter().map(|d| self.args(d, k)).collect();
+            let nir_build = self.build_nir_kernel(k, kernel_args.into_iter().next().unwrap());
+            self.set_nir_kernel_build(k, nir_build);
+        }
     }
 
     pub(super) fn hash_key(&self, dev: &Arc<Device>, name: &str) -> Option<cache_key> {
