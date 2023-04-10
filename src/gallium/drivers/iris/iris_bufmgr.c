@@ -787,6 +787,21 @@ flags_to_heap(struct iris_bufmgr *bufmgr, unsigned flags)
    }
 }
 
+static bool
+zero_bo(struct iris_bufmgr *bufmgr,
+        unsigned flags,
+        struct iris_bo *bo)
+{
+   assert(flags & BO_ALLOC_ZEROED);
+
+   void *map = iris_bo_map(NULL, bo, MAP_WRITE | MAP_RAW);
+   if (!map)
+      return false;
+
+   memset(map, 0, bo->size);
+   return true;
+}
+
 static struct iris_bo *
 alloc_bo_from_slabs(struct iris_bufmgr *bufmgr,
                     const char *name,
@@ -863,14 +878,9 @@ alloc_bo_from_slabs(struct iris_bufmgr *bufmgr,
    /* Zero the contents if necessary.  If this fails, fall back to
     * allocating a fresh BO, which will always be zeroed by the kernel.
     */
-   if (flags & BO_ALLOC_ZEROED) {
-      void *map = iris_bo_map(NULL, bo, MAP_WRITE | MAP_RAW);
-      if (map) {
-         memset(map, 0, bo->size);
-      } else {
-         pb_slab_free(slabs, &bo->slab.entry);
-         return NULL;
-      }
+   if ((flags & BO_ALLOC_ZEROED) && !zero_bo(bufmgr, flags, bo)) {
+      pb_slab_free(slabs, &bo->slab.entry);
+      return NULL;
    }
 
    return bo;
@@ -960,14 +970,9 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
    /* Zero the contents if necessary.  If this fails, fall back to
     * allocating a fresh BO, which will always be zeroed by the kernel.
     */
-   if (flags & BO_ALLOC_ZEROED) {
-      void *map = iris_bo_map(NULL, bo, MAP_WRITE | MAP_RAW);
-      if (map) {
-         memset(map, 0, bo->size);
-      } else {
-         bo_free(bo);
-         return NULL;
-      }
+   if ((flags & BO_ALLOC_ZEROED) && !zero_bo(bufmgr, flags, bo)) {
+      bo_free(bo);
+      return NULL;
    }
 
    return bo;
