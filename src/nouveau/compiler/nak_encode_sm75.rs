@@ -383,6 +383,20 @@ impl SM75Instr {
         self.set_bit(81, false); /* TODO: DNZ */
     }
 
+    fn encode_ffma(&mut self, op: &OpFFma) {
+        self.encode_alu(
+            0x023,
+            Some(op.dst),
+            ALUSrc::from_src(&op.srcs[0]),
+            ALUSrc::from_src(&op.srcs[1]),
+            ALUSrc::from_src(&op.srcs[2]),
+        );
+        self.set_bit(76, false); /* TODO: DNZ */
+        self.set_bit(77, op.saturate);
+        self.set_rnd_mode(78..80, op.rnd_mode);
+        self.set_bit(80, false); /* TODO: FTZ */
+    }
+
     fn encode_fmnmx(&mut self, op: &OpFMnMx) {
         self.encode_alu(
             0x009,
@@ -867,6 +881,7 @@ impl SM75Instr {
 
         match &instr.op {
             Op::FAdd(op) => si.encode_fadd(&op),
+            Op::FFma(op) => si.encode_ffma(&op),
             Op::FMnMx(op) => si.encode_fmnmx(&op),
             Op::FMul(op) => si.encode_fmul(&op),
             Op::FSet(op) => si.encode_fset(&op),

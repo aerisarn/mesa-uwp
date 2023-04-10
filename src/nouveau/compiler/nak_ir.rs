@@ -1100,6 +1100,32 @@ impl fmt::Display for OpFAdd {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpFFma {
+    pub dst: Dst,
+    pub srcs: [Src; 3],
+    pub saturate: bool,
+    pub rnd_mode: FRndMode,
+}
+
+impl fmt::Display for OpFFma {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "FFMA")?;
+        if self.saturate {
+            write!(f, ".SAT")?;
+        }
+        if self.rnd_mode != FRndMode::NearestEven {
+            write!(f, ".{}", self.rnd_mode)?;
+        }
+        write!(
+            f,
+            " {} {{ {}, {}, {} }}",
+            self.dst, self.srcs[0], self.srcs[1], self.srcs[2]
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpFMnMx {
     pub dst: Dst,
     pub srcs: [Src; 2],
@@ -1854,6 +1880,7 @@ impl fmt::Display for OpFSOut {
 #[derive(Display, DstsAsSlice, SrcsAsSlice)]
 pub enum Op {
     FAdd(OpFAdd),
+    FFma(OpFFma),
     FMnMx(OpFMnMx),
     FMul(OpFMul),
     MuFu(OpMuFu),
@@ -2322,6 +2349,7 @@ impl Instr {
     pub fn get_latency(&self) -> Option<u32> {
         match self.op {
             Op::FAdd(_)
+            | Op::FFma(_)
             | Op::FMnMx(_)
             | Op::FMul(_)
             | Op::FSet(_)

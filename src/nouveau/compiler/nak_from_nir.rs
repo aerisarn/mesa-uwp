@@ -193,6 +193,14 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs
                     .push(Instr::new_mufu(dst, MuFuOp::Exp2, srcs[0]));
             }
+            nir_op_ffma => {
+                self.instrs.push(Instr::new(Op::FFma(OpFFma {
+                    dst: dst,
+                    srcs: [srcs[0], srcs[1], srcs[2]],
+                    saturate: false,
+                    rnd_mode: FRndMode::NearestEven,
+                })));
+            }
             nir_op_fge => {
                 self.instrs.push(Instr::new_fsetp(
                     dst,
