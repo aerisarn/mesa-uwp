@@ -2025,39 +2025,27 @@ impl Shader {
                 Op::Vec(vec) => {
                     let mut instrs = Vec::new();
                     let comps = u8::try_from(vec.srcs.len()).unwrap();
-                    if comps == 1 {
-                        let src = vec.srcs[0];
-                        let dst = vec.dst;
+                    let vec_dst = vec.dst.as_reg().unwrap();
+                    assert!(comps == vec_dst.comps());
+                    for i in 0..comps {
+                        let src = vec.srcs[usize::from(i)];
+                        let dst = Dst::Reg(vec_dst.as_comp(i).unwrap());
                         instrs.push(Instr::new_mov(dst, src));
-                    } else {
-                        let vec_dst = vec.dst.as_reg().unwrap();
-                        assert!(comps == vec_dst.comps());
-                        for i in 0..comps {
-                            let src = vec.srcs[usize::from(i)];
-                            let dst = Dst::Reg(vec_dst.as_comp(i).unwrap());
-                            instrs.push(Instr::new_mov(dst, src));
-                        }
                     }
                     instrs
                 }
                 Op::Split(split) => {
                     let mut instrs = Vec::new();
                     let comps = u8::try_from(split.dsts.len()).unwrap();
-                    if comps == 1 {
-                        let src = split.src;
-                        let dst = split.dsts[0];
-                        instrs.push(Instr::new_mov(dst, src));
-                    } else {
-                        let vec_src = split.src.src_ref.as_reg().unwrap();
-                        assert!(comps == vec_src.comps());
-                        for i in 0..comps {
-                            let src = vec_src.as_comp(i).unwrap();
-                            let dst = split.dsts[usize::from(i)];
-                            if let Dst::None = dst {
-                                continue;
-                            }
-                            instrs.push(Instr::new_mov(dst.into(), src.into()));
+                    let vec_src = split.src.src_ref.as_reg().unwrap();
+                    assert!(comps == vec_src.comps());
+                    for i in 0..comps {
+                        let src = vec_src.as_comp(i).unwrap();
+                        let dst = split.dsts[usize::from(i)];
+                        if let Dst::None = dst {
+                            continue;
                         }
+                        instrs.push(Instr::new_mov(dst.into(), src.into()));
                     }
                     instrs
                 }
