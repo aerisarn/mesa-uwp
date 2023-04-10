@@ -252,7 +252,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_rasterization_order_attachment_access = true,
       .EXT_robustness2 = true,
       .EXT_sample_locations = device->info->a6xx.has_sample_locations,
-      .EXT_sampler_filter_minmax = true,
+      .EXT_sampler_filter_minmax = device->info->a6xx.has_sampler_minmax,
       .EXT_scalar_block_layout = true,
       .EXT_separate_stencil_usage = true,
       .EXT_shader_demote_to_helper_invocation = true,
@@ -377,7 +377,8 @@ tu_get_features(struct tu_physical_device *pdevice,
    features->descriptorBindingVariableDescriptorCount           = true;
    features->runtimeDescriptorArray                             = true;
 
-   features->samplerFilterMinmax                 = true;
+   features->samplerFilterMinmax                 =
+      pdevice->info->a6xx.has_sampler_minmax;
    features->scalarBlockLayout                   = true;
    features->imagelessFramebuffer                = true;
    features->uniformBufferStandardLayout         = true;

@@ -156,6 +156,7 @@ class A6xxGPUInfo(GPUInfo):
         self.a6xx.has_gmem_fast_clear = True
         self.a6xx.has_hw_multiview = True
         self.a6xx.has_fs_tex_prefetch = True
+        self.a6xx.has_sampler_minmax = True
 
         self.a6xx.sysmem_per_ccu_cache_size = 64 * 1024
         self.a6xx.gmem_ccu_color_cache_fraction = CCUColorCacheFraction.QUARTER.value
@@ -256,6 +257,7 @@ a6xx_gen1 = dict(
 a6xx_gen1_low = {**a6xx_gen1, **dict(
         has_gmem_fast_clear = False,
         has_hw_multiview = False,
+        has_sampler_minmax = False,
         has_fs_tex_prefetch = False,
         sysmem_per_ccu_cache_size = 8 * 1024,
         gmem_ccu_color_cache_fraction = CCUColorCacheFraction.HALF.value,
