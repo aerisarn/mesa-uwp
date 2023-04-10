@@ -273,13 +273,23 @@ impl<'a> ShaderFromNir<'a> {
                 }
             }
             nir_op_ieq => {
-                self.instrs.push(Instr::new_isetp(
-                    dst,
-                    IntCmpType::I32,
-                    IntCmpOp::Eq,
-                    srcs[0],
-                    srcs[1],
-                ));
+                if alu.get_src(0).bit_size() == 1 {
+                    self.instrs.push(Instr::new_plop3(
+                        dst,
+                        LogicOp::new_lut(&|x, y, _| !(x ^ y)),
+                        srcs[0],
+                        srcs[1],
+                        Src::new_imm_bool(true),
+                    ));
+                } else {
+                    self.instrs.push(Instr::new_isetp(
+                        dst,
+                        IntCmpType::I32,
+                        IntCmpOp::Eq,
+                        srcs[0],
+                        srcs[1],
+                    ));
+                }
             }
             nir_op_ige => {
                 self.instrs.push(Instr::new_isetp(
@@ -300,13 +310,23 @@ impl<'a> ShaderFromNir<'a> {
                 ));
             }
             nir_op_ine => {
-                self.instrs.push(Instr::new_isetp(
-                    dst,
-                    IntCmpType::I32,
-                    IntCmpOp::Ne,
-                    srcs[0],
-                    srcs[1],
-                ));
+                if alu.get_src(0).bit_size() == 1 {
+                    self.instrs.push(Instr::new_plop3(
+                        dst,
+                        LogicOp::new_lut(&|x, y, _| !(x ^ y)),
+                        srcs[0],
+                        srcs[1],
+                        Src::new_imm_bool(true),
+                    ));
+                } else {
+                    self.instrs.push(Instr::new_isetp(
+                        dst,
+                        IntCmpType::I32,
+                        IntCmpOp::Ne,
+                        srcs[0],
+                        srcs[1],
+                    ));
+                }
             }
             nir_op_ineg => {
                 self.instrs.push(Instr::new(Op::IMov(OpIMov {
