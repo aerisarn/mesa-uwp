@@ -582,14 +582,15 @@ impl SM75Instr {
 
     fn encode_plop3(&mut self, op: &OpPLop3) {
         self.set_opcode(0x81c);
-        self.set_field(64..67, op.op.lut & 0x7);
-        self.set_field(72..77, op.op.lut >> 3);
+        self.set_field(16..24, op.ops[1].lut);
+        self.set_field(64..67, op.ops[0].lut & 0x7);
+        self.set_field(72..77, op.ops[0].lut >> 3);
 
         self.set_pred_src(68..71, 71, op.srcs[2], true);
 
         self.set_pred_src(77..80, 80, op.srcs[1], true);
-        self.set_pred_dst(81..84, op.dst);
-        self.set_field(84..87, 7_u8); /* Def1 */
+        self.set_pred_dst(81..84, op.dsts[0]);
+        self.set_pred_dst(84..87, op.dsts[1]);
 
         self.set_pred_src(87..90, 90, op.srcs[0], true);
     }

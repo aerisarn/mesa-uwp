@@ -1154,17 +1154,23 @@ impl fmt::Display for OpSel {
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpPLop3 {
-    pub dst: Dst,
+    pub dsts: [Dst; 2],
     pub srcs: [Src; 3],
-    pub op: LogicOp,
+    pub ops: [LogicOp; 2],
 }
 
 impl fmt::Display for OpPLop3 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "PLOP3.{} {} {{ {}, {}, {} }}",
-            self.op, self.dst, self.srcs[0], self.srcs[1], self.srcs[2],
+            "PLOP3 {{ {}, {} }} {{ {}, {}, {} }} {} {}",
+            self.dsts[0],
+            self.dsts[1],
+            self.srcs[0],
+            self.srcs[1],
+            self.srcs[2],
+            self.ops[0],
+            self.ops[1],
         )
     }
 }
@@ -1715,9 +1721,9 @@ impl Instr {
     pub fn new_plop3(dst: Dst, op: LogicOp, x: Src, y: Src, z: Src) -> Instr {
         assert!(x.is_predicate() && y.is_predicate() && z.is_predicate());
         Instr::new(Op::PLop3(OpPLop3 {
-            dst: dst,
+            dsts: [dst, Dst::None],
             srcs: [x, y, z],
-            op: op,
+            ops: [op, LogicOp::new_const(false)],
         }))
     }
 
