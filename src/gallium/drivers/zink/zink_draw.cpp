@@ -1047,7 +1047,6 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
 
    if (BATCH_CHANGED) {
       zink_update_descriptor_refs(ctx, true);
-      zink_batch_reference_program(&ctx->batch, &ctx->curr_compute->base);
    }
    if (ctx->compute_dirty) {
       /* update inlinable constants */
