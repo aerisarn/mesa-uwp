@@ -226,6 +226,19 @@ radv_amdgpu_cs_domain(const struct radeon_winsys *_ws)
    return use_sam ? RADEON_DOMAIN_VRAM : RADEON_DOMAIN_GTT;
 }
 
+static VkResult
+radv_amdgpu_cs_bo_create(struct radv_amdgpu_cs *cs, uint32_t ib_size)
+{
+   struct radeon_winsys *ws = &cs->ws->base;
+
+   const enum radeon_bo_domain domain = radv_amdgpu_cs_domain(ws);
+   const enum radeon_bo_flag flags = RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING |
+                                     RADEON_FLAG_READ_ONLY | RADEON_FLAG_GTT_WC;
+
+   return ws->buffer_create(ws, ib_size, cs->ws->info.ib_alignment, domain, flags,
+                            RADV_BO_PRIORITY_CS, 0, &cs->ib_buffer);
+}
+
 static struct radeon_cmdbuf *
 radv_amdgpu_cs_create(struct radeon_winsys *ws, enum amd_ip_type ip_type, bool is_secondary)
 {
@@ -242,11 +255,7 @@ radv_amdgpu_cs_create(struct radeon_winsys *ws, enum amd_ip_type ip_type, bool i
 
    cs->use_ib = ring_can_use_ib_bos(cs->ws, ip_type);
 
-   VkResult result =
-      ws->buffer_create(ws, ib_size, cs->ws->info.ib_alignment, radv_amdgpu_cs_domain(ws),
-                        RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING |
-                           RADEON_FLAG_READ_ONLY | RADEON_FLAG_GTT_WC,
-                        RADV_BO_PRIORITY_CS, 0, &cs->ib_buffer);
+   VkResult result = radv_amdgpu_cs_bo_create(cs, ib_size);
    if (result != VK_SUCCESS) {
       free(cs);
       return NULL;
@@ -338,11 +347,7 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
    /* max that fits in the chain size field. */
    ib_size = align(MIN2(ib_size, 0xfffff), ib_pad_dw_mask + 1);
 
-   VkResult result = cs->ws->base.buffer_create(
-      &cs->ws->base, ib_size, cs->ws->info.ib_alignment, radv_amdgpu_cs_domain(&cs->ws->base),
-      RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY |
-         RADEON_FLAG_GTT_WC,
-      RADV_BO_PRIORITY_CS, 0, &cs->ib_buffer);
+   VkResult result = radv_amdgpu_cs_bo_create(cs, ib_size);
 
    if (result != VK_SUCCESS) {
       cs->base.cdw = 0;
