@@ -2029,8 +2029,16 @@ impl Shader {
                     assert!(comps == vec_dst.comps());
                     for i in 0..comps {
                         let src = vec.srcs[usize::from(i)];
-                        let dst = Dst::Reg(vec_dst.as_comp(i).unwrap());
-                        instrs.push(Instr::new_mov(dst, src));
+                        let dst = vec_dst.as_comp(i).unwrap();
+                        match src.src_ref {
+                            SrcRef::Reg(reg) => {
+                                if reg == dst {
+                                    continue;
+                                }
+                            }
+                            _ => (),
+                        }
+                        instrs.push(Instr::new_mov(dst.into(), src));
                     }
                     instrs
                 }
@@ -2042,8 +2050,14 @@ impl Shader {
                     for i in 0..comps {
                         let src = vec_src.as_comp(i).unwrap();
                         let dst = split.dsts[usize::from(i)];
-                        if let Dst::None = dst {
-                            continue;
+                        match dst {
+                            Dst::None => continue,
+                            Dst::Reg(reg) => {
+                                if reg == src {
+                                    continue;
+                                }
+                            }
+                            _ => (),
                         }
                         instrs.push(Instr::new_mov(dst.into(), src.into()));
                     }
