@@ -7,7 +7,9 @@ extern crate nak_ir_proc;
 
 use nak_ir_proc::*;
 use std::fmt;
+use std::iter::Zip;
 use std::ops::{BitAnd, BitOr, Not, Range};
+use std::slice;
 
 #[repr(u8)]
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
@@ -1463,6 +1465,25 @@ impl fmt::Display for OpSwap {
 pub struct OpParCopy {
     pub dsts: Vec<Dst>,
     pub srcs: Vec<Src>,
+}
+
+impl OpParCopy {
+    pub fn new() -> OpParCopy {
+        OpParCopy {
+            dsts: Vec::new(),
+            srcs: Vec::new(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        assert!(self.srcs.len() == self.dsts.len());
+        self.srcs.is_empty()
+    }
+
+    pub fn iter(&self) -> Zip<slice::Iter<'_, Src>, slice::Iter<'_, Dst>> {
+        assert!(self.srcs.len() == self.dsts.len());
+        self.srcs.iter().zip(&self.dsts)
+    }
 }
 
 impl SrcsAsSlice for OpParCopy {

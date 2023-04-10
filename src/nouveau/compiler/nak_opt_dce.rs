@@ -8,6 +8,8 @@ use crate::nak_ir::*;
 use std::collections::HashSet;
 
 struct DeadCodePass {
+    any_dead: bool,
+    new_live: bool,
     live_ssa: HashSet<SSAValue>,
     live_phi: HashSet<u32>,
 }
@@ -15,29 +17,25 @@ struct DeadCodePass {
 impl DeadCodePass {
     pub fn new() -> DeadCodePass {
         DeadCodePass {
+            any_dead: false,
+            new_live: false,
             live_ssa: HashSet::new(),
             live_phi: HashSet::new(),
         }
     }
 
     fn mark_ssa_live(&mut self, ssa: &SSAValue) {
-        self.live_ssa.insert(*ssa);
+        self.new_live |= self.live_ssa.insert(*ssa);
     }
 
-    fn mark_instr_live(&mut self, instr: &Instr) {
-        if let Op::PhiDst(op) = &instr.op {
-            self.live_phi.insert(op.phi_id);
-        }
-
-        if let Pred::SSA(ssa) = &instr.pred {
+    fn mark_src_live(&mut self, src: &Src) {
+        if let SrcRef::SSA(ssa) = &src.src_ref {
             self.mark_ssa_live(ssa);
         }
+    }
 
-        for src in instr.srcs() {
-            if let SrcRef::SSA(ssa) = &src.src_ref {
-                self.mark_ssa_live(ssa);
-            }
-        }
+    fn mark_phi_live(&mut self, id: u32) {
+        self.new_live |= self.live_phi.insert(id);
     }
 
     fn is_dst_live(&self, dst: &Dst) -> bool {
@@ -46,6 +44,10 @@ impl DeadCodePass {
             Dst::None => false,
             _ => panic!("Invalid SSA destination"),
         }
+    }
+
+    fn is_phi_live(&self, id: u32) -> bool {
+        self.live_phi.get(&id).is_some()
     }
 
     fn is_instr_live(&self, instr: &Instr) -> bool {
@@ -68,27 +70,93 @@ impl DeadCodePass {
         false
     }
 
-    pub fn run(&mut self, f: &mut Function) {
-        let mut has_any_dead = false;
-
-        for b in f.blocks.iter().rev() {
-            for instr in b.instrs.iter().rev() {
-                if self.is_instr_live(instr) {
-                    self.mark_instr_live(instr);
+    fn mark_instr(&mut self, instr: &Instr) {
+        match &instr.op {
+            Op::PhiSrc(phi) => {
+                assert!(instr.pred.is_none());
+                if self.is_phi_live(phi.phi_id) {
+                    self.mark_src_live(&phi.src);
                 } else {
-                    has_any_dead = true;
+                    self.any_dead = true;
+                }
+            }
+            Op::PhiDst(phi) => {
+                assert!(instr.pred.is_none());
+                if self.is_dst_live(&phi.dst) {
+                    self.mark_phi_live(phi.phi_id);
+                } else {
+                    self.any_dead = true;
+                }
+            }
+            Op::ParCopy(pcopy) => {
+                assert!(instr.pred.is_none());
+                for (src, dst) in pcopy.iter() {
+                    if self.is_dst_live(dst) {
+                        self.mark_src_live(src);
+                    } else {
+                        self.any_dead = true;
+                    }
+                }
+            }
+            _ => {
+                if self.is_instr_live(instr) {
+                    if let Pred::SSA(ssa) = &instr.pred {
+                        self.mark_ssa_live(ssa);
+                    }
+
+                    for src in instr.srcs() {
+                        self.mark_src_live(src);
+                    }
+                } else {
+                    self.any_dead = true;
                 }
             }
         }
+    }
 
-        if has_any_dead {
-            f.map_instrs(&|instr: Instr, _| -> Vec<Instr> {
-                if self.is_instr_live(&instr) {
-                    vec![instr]
-                } else {
-                    Vec::new()
+    fn map_instr(&self, mut instr: Instr) -> Vec<Instr> {
+        let is_live = match &mut instr.op {
+            Op::ParCopy(pcopy) => {
+                assert!(pcopy.srcs.len() == pcopy.dsts.len());
+                let mut i = 0;
+                while i < pcopy.dsts.len() {
+                    if self.is_dst_live(&pcopy.dsts[i]) {
+                        i += 1;
+                    } else {
+                        pcopy.srcs.remove(i);
+                        pcopy.dsts.remove(i);
+                    }
                 }
-            })
+                i > 0
+            }
+            _ => self.is_instr_live(&instr),
+        };
+
+        if is_live {
+            vec![instr]
+        } else {
+            Vec::new()
+        }
+    }
+
+    pub fn run(&mut self, f: &mut Function) {
+        loop {
+            self.new_live = false;
+            self.any_dead = false;
+
+            for b in f.blocks.iter().rev() {
+                for instr in b.instrs.iter().rev() {
+                    self.mark_instr(instr);
+                }
+            }
+
+            if !self.new_live {
+                break;
+            }
+        }
+
+        if self.any_dead {
+            f.map_instrs(&|instr, _| self.map_instr(instr));
         }
     }
 }
