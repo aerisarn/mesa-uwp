@@ -58,17 +58,7 @@ impl TrivialRegAlloc {
         RegRef::new(file, idx, comps)
     }
 
-    fn get_phi_reg(&mut self, phi_id: u32, file: RegFile, comps: u8) -> RegRef {
-        if let Some(reg) = self.phi_map.get(&phi_id) {
-            *reg
-        } else {
-            let reg = self.alloc_reg(file, comps);
-            self.phi_map.insert(phi_id, reg);
-            reg
-        }
-    }
-
-    pub fn get_ssa_reg(&mut self, ssa: SSAValue) -> RegRef {
+    fn get_ssa_reg(&mut self, ssa: SSAValue) -> RegRef {
         if let Some(reg) = self.reg_map.get(&ssa) {
             *reg
         } else {
@@ -83,30 +73,39 @@ impl TrivialRegAlloc {
             for b in &mut f.blocks {
                 for instr in &mut b.instrs {
                     match &instr.op {
-                        Op::PhiSrc(op) => {
-                            let src_ssa = op.src.as_ssa().unwrap();
-                            let src = self.get_ssa_reg(*src_ssa);
-                            let dst = self.get_phi_reg(
-                                op.phi_id,
-                                src_ssa.file(),
-                                src_ssa.comps(),
-                            );
-                            instr.op = Op::Mov(OpMov {
-                                dst: dst.into(),
-                                src: src.into(),
-                                quad_lanes: 0xf,
-                            });
-                        }
                         Op::PhiDst(op) => {
                             let dst_ssa = op.dst.as_ssa().unwrap();
-                            let src = self.get_phi_reg(
-                                op.phi_id,
-                                dst_ssa.file(),
-                                dst_ssa.comps(),
-                            );
+                            let reg =
+                                self.alloc_reg(dst_ssa.file(), dst_ssa.comps());
+                            self.phi_map.insert(op.phi_id, reg);
+
                             let dst = self.get_ssa_reg(*dst_ssa);
                             instr.op = Op::Mov(OpMov {
                                 dst: dst.into(),
+                                src: reg.into(),
+                                quad_lanes: 0xf,
+                            });
+                        }
+                        _ => (),
+                    }
+                }
+            }
+        }
+
+        for f in &mut s.functions {
+            for b in &mut f.blocks {
+                for instr in &mut b.instrs {
+                    match &instr.op {
+                        Op::PhiSrc(op) => {
+                            assert!(op.src.src_mod.is_none());
+                            let reg = *self.phi_map.get(&op.phi_id).unwrap();
+                            let src = if let SrcRef::SSA(ssa) = op.src.src_ref {
+                                Src::from(self.get_ssa_reg(ssa))
+                            } else {
+                                op.src
+                            };
+                            instr.op = Op::Mov(OpMov {
+                                dst: reg.into(),
                                 src: src.into(),
                                 quad_lanes: 0xf,
                             });
