@@ -469,7 +469,28 @@ impl<'a> ShaderFromNir<'a> {
                 }
             }
             nir_op_ishl => {
-                self.instrs.push(Instr::new_shl(dst, srcs[0], srcs[1]));
+                self.instrs.push(Instr::new(Op::Shf(OpShf {
+                    dst: dst,
+                    low: srcs[0],
+                    high: Src::new_zero(),
+                    shift: srcs[1],
+                    right: false,
+                    wrap: true,
+                    data_type: IntType::U32,
+                    dst_high: false,
+                })));
+            }
+            nir_op_ishr => {
+                self.instrs.push(Instr::new(Op::Shf(OpShf {
+                    dst: dst,
+                    low: Src::new_zero(),
+                    high: srcs[0],
+                    shift: srcs[1],
+                    right: true,
+                    wrap: true,
+                    data_type: IntType::I32,
+                    dst_high: true,
+                })));
             }
             nir_op_mov => {
                 self.instrs.push(Instr::new_mov(dst, srcs[0]));
@@ -505,6 +526,18 @@ impl<'a> ShaderFromNir<'a> {
             nir_op_unpack_64_2x32_split_y => {
                 self.instrs
                     .push(Instr::new_split(&[Dst::None, dst], srcs[0]));
+            }
+            nir_op_ushr => {
+                self.instrs.push(Instr::new(Op::Shf(OpShf {
+                    dst: dst,
+                    low: srcs[0],
+                    high: Src::new_zero(),
+                    shift: srcs[1],
+                    right: true,
+                    wrap: true,
+                    data_type: IntType::U32,
+                    dst_high: false,
+                })));
             }
             nir_op_vec2 | nir_op_vec3 | nir_op_vec4 => {
                 self.instrs.push(Instr::new_vec(dst, &srcs));

@@ -617,19 +617,28 @@ impl SM75Instr {
         self.set_bit(90, true);
     }
 
-    fn encode_shl(&mut self, op: &OpShl) {
+    fn encode_shf(&mut self, op: &OpShf) {
         self.encode_alu(
             0x019,
             Some(op.dst),
-            ALUSrc::from_src(&op.srcs[0].into()),
-            ALUSrc::from_src(&op.srcs[1].into()),
-            ALUSrc::None,
+            ALUSrc::from_src(&op.low),
+            ALUSrc::from_src(&op.shift),
+            ALUSrc::from_src(&op.high),
         );
 
-        self.set_field(73..75, 3_u32 /* U32 */);
-        self.set_bit(75, true /* W? */);
-        self.set_bit(76, false /* Left */);
-        self.set_bit(80, false /* HI */);
+        self.set_field(
+            73..75,
+            match op.data_type {
+                IntType::I64 => 0_u8,
+                IntType::U64 => 1_u8,
+                IntType::I32 => 2_u8,
+                IntType::U32 => 3_u8,
+                _ => panic!("Invalid shift data type"),
+            },
+        );
+        self.set_bit(75, op.wrap);
+        self.set_bit(76, op.right);
+        self.set_bit(80, op.dst_high);
     }
 
     fn encode_f2i(&mut self, op: &OpF2I) {
@@ -891,7 +900,7 @@ impl SM75Instr {
             Op::IMnMx(op) => si.encode_imnmx(&op),
             Op::ISetP(op) => si.encode_isetp(&op),
             Op::Lop3(op) => si.encode_lop3(&op),
-            Op::Shl(op) => si.encode_shl(&op),
+            Op::Shf(op) => si.encode_shf(&op),
             Op::F2I(op) => si.encode_f2i(&op),
             Op::I2F(op) => si.encode_i2f(&op),
             Op::Mov(op) => si.encode_mov(&op),

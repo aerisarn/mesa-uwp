@@ -1331,17 +1331,36 @@ impl fmt::Display for OpLop3 {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
-pub struct OpShl {
+pub struct OpShf {
     pub dst: Dst,
-    pub srcs: [Src; 2],
+    pub low: Src,
+    pub high: Src,
+    pub shift: Src,
+    pub right: bool,
+    pub wrap: bool,
+    pub data_type: IntType,
+    pub dst_high: bool,
 }
 
-impl fmt::Display for OpShl {
+impl fmt::Display for OpShf {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "SHF")?;
+        if self.right {
+            write!(f, ".R")?;
+        } else {
+            write!(f, ".L")?;
+        }
+        if self.wrap {
+            write!(f, ".W")?;
+        }
+        write!(f, ".{}", self.data_type)?;
+        if self.dst_high {
+            write!(f, ".HI")?;
+        }
         write!(
             f,
-            "SHL {} {{ {}, {} }}",
-            self.dst, self.srcs[0], self.srcs[1],
+            " {} {{ {}, {} }} {}",
+            self.dst, self.low, self.high, self.shift
         )
     }
 }
@@ -1890,7 +1909,7 @@ pub enum Op {
     IMnMx(OpIMnMx),
     ISetP(OpISetP),
     Lop3(OpLop3),
-    Shl(OpShl),
+    Shf(OpShf),
     F2I(OpF2I),
     I2F(OpI2F),
     Mov(OpMov),
@@ -2182,13 +2201,6 @@ impl Instr {
         Instr::new_lop3(dst, xor_lop, x, y, Src::new_zero())
     }
 
-    pub fn new_shl(dst: Dst, x: Src, shift: Src) -> Instr {
-        Instr::new(Op::Shl(OpShl {
-            dst: dst,
-            srcs: [x, shift],
-        }))
-    }
-
     pub fn new_mov(dst: Dst, src: Src) -> Instr {
         Instr::new(Op::Mov(OpMov {
             dst: dst,
@@ -2360,7 +2372,7 @@ impl Instr {
             | Op::Lop3(_)
             | Op::PLop3(_)
             | Op::ISetP(_)
-            | Op::Shl(_) => Some(6),
+            | Op::Shf(_) => Some(6),
             Op::F2I(_) | Op::I2F(_) | Op::Mov(_) => Some(15),
             Op::MuFu(_) => None,
             Op::Sel(_) => Some(15),
