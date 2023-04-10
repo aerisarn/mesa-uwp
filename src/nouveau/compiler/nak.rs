@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mod bitset;
+mod bitview;
 mod nak_assign_regs;
 mod nak_calc_instr_deps;
 mod nak_encode_sm75;
@@ -17,7 +17,7 @@ mod nir;
 mod union_find;
 mod util;
 
-use bitset::*;
+use bitview::*;
 use nak_bindings::*;
 use nak_from_nir::*;
 use std::os::raw::c_void;
@@ -120,7 +120,7 @@ fn encode_hdr_for_nir(nir: &nir_shader, tls_size: u32) -> [u32; 32] {
     }
 
     let mut hdr = [0_u32; 32];
-    let mut hdr_view = BitSetMutView::new(&mut hdr);
+    let mut hdr_view = BitMutView::new(&mut hdr);
 
     /* [0, 31]: CommonWord0 */
     let mut cw0 = hdr_view.subset_mut(0..32);
@@ -192,7 +192,7 @@ fn encode_hdr_for_nir(nir: &nir_shader, tls_size: u32) -> [u32; 32] {
     cw4.set_field(20..24, 0_u32 /* Reserved */);
     cw4.set_field(24..32, 0_u32 /* TODO: StoreReqEnd */);
 
-    let nir_sv = BitSetView::new(&nir.info.system_values_read);
+    let nir_sv = BitView::new(&nir.info.system_values_read);
 
     if nir.info.stage() != MESA_SHADER_FRAGMENT {
         assert!(sph_type == 1);
@@ -211,7 +211,7 @@ fn encode_hdr_for_nir(nir: &nir_shader, tls_size: u32) -> [u32; 32] {
         /* [192, 319]: ImapGenericVector[32] */
         let mut imap_g = hdr_view.subset_mut(192..320);
 
-        let nir_ir = BitSetView::new(&nir.info.inputs_read);
+        let nir_ir = BitView::new(&nir.info.inputs_read);
         let input0: usize = if nir.info.stage() == MESA_SHADER_VERTEX {
             VERT_ATTRIB_GENERIC0.try_into().unwrap()
         } else {
@@ -228,7 +228,7 @@ fn encode_hdr_for_nir(nir: &nir_shader, tls_size: u32) -> [u32; 32] {
         /* [352, 391]: ImapFixedFncTexture[10] */
         /* [392, 399]: ImapReserved */
 
-        let nir_ow = BitSetView::new(&nir.info.outputs_written);
+        let nir_ow = BitView::new(&nir.info.outputs_written);
 
         /* [400, 423]: TODO: OmapSystemValuesA */
 
@@ -282,7 +282,7 @@ fn encode_hdr_for_nir(nir: &nir_shader, tls_size: u32) -> [u32; 32] {
         /* [576, 607]: OmapTarget[8] */
         let mut omap_color = hdr_view.subset_mut(576..608);
 
-        let nir_ow = BitSetView::new(&nir.info.outputs_written);
+        let nir_ow = BitView::new(&nir.info.outputs_written);
         let output0 = usize::try_from(FRAG_RESULT_DATA0).unwrap();
         for i in 0..8 {
             if nir_ow.get_bit(output0 + i) {

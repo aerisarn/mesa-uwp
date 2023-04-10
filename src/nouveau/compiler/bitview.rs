@@ -9,13 +9,13 @@ use crate::util::DivCeil;
 
 use std::ops::Range;
 
-pub trait BitSetViewable {
+pub trait BitViewable {
     fn bits(&self) -> usize;
 
     fn get_bit_range_u64(&self, range: Range<usize>) -> u64;
 }
 
-pub trait BitSetMutViewable: BitSetViewable {
+pub trait BitMutViewable: BitViewable {
     fn set_bit_range_u64(&mut self, range: Range<usize>, val: u64);
 }
 
@@ -26,7 +26,7 @@ fn u64_mask_for_bits(bits: usize) -> u64 {
 
 macro_rules! decl_bit_set_viewable_for_uint {
     ($ty: ty) => {
-        impl BitSetViewable for $ty {
+        impl BitViewable for $ty {
             fn bits(&self) -> usize {
                 <$ty>::BITS as usize
             }
@@ -40,7 +40,7 @@ macro_rules! decl_bit_set_viewable_for_uint {
             }
         }
 
-        impl BitSetMutViewable for $ty {
+        impl BitMutViewable for $ty {
             fn set_bit_range_u64(&mut self, range: Range<usize>, val: u64) {
                 assert!(!range.is_empty());
                 assert!(range.end <= self.bits());
@@ -54,7 +54,7 @@ macro_rules! decl_bit_set_viewable_for_uint {
             }
         }
 
-        impl BitSetViewable for [$ty] {
+        impl BitViewable for [$ty] {
             fn bits(&self) -> usize {
                 self.len() * (<$ty>::BITS as usize)
             }
@@ -83,7 +83,7 @@ macro_rules! decl_bit_set_viewable_for_uint {
             }
         }
 
-        impl BitSetMutViewable for [$ty] {
+        impl BitMutViewable for [$ty] {
             fn set_bit_range_u64(&mut self, range: Range<usize>, val: u64) {
                 assert!(!range.is_empty());
                 assert!(range.end <= self.bits());
@@ -110,7 +110,7 @@ macro_rules! decl_bit_set_viewable_for_uint {
             }
         }
 
-        impl<const N: usize> BitSetViewable for [$ty; N] {
+        impl<const N: usize> BitViewable for [$ty; N] {
             fn bits(&self) -> usize {
                 N * (<$ty>::BITS as usize)
             }
@@ -120,7 +120,7 @@ macro_rules! decl_bit_set_viewable_for_uint {
             }
         }
 
-        impl<const N: usize> BitSetMutViewable for [$ty; N] {
+        impl<const N: usize> BitMutViewable for [$ty; N] {
             fn set_bit_range_u64(&mut self, range: Range<usize>, val: u64) {
                 self[..].set_bit_range_u64(range, val);
             }
@@ -133,12 +133,12 @@ decl_bit_set_viewable_for_uint!(u16);
 decl_bit_set_viewable_for_uint!(u32);
 decl_bit_set_viewable_for_uint!(u64);
 
-pub struct BitSetView<'a, BS: BitSetViewable + ?Sized> {
+pub struct BitView<'a, BS: BitViewable + ?Sized> {
     parent: &'a BS,
     range: Range<usize>,
 }
 
-impl<'a, BS: BitSetViewable + ?Sized> BitSetView<'a, BS> {
+impl<'a, BS: BitViewable + ?Sized> BitView<'a, BS> {
     pub fn new(parent: &'a BS) -> Self {
         let len = parent.bits();
         Self {
@@ -158,8 +158,8 @@ impl<'a, BS: BitSetViewable + ?Sized> BitSetView<'a, BS> {
     pub fn subset(
         &'a self,
         range: Range<usize>,
-    ) -> BitSetView<'a, BitSetView<'a, BS>> {
-        BitSetView::new_subset(self, range)
+    ) -> BitView<'a, BitView<'a, BS>> {
+        BitView::new_subset(self, range)
     }
 
     fn range_in_parent(&self, range: Range<usize>) -> Range<usize> {
@@ -174,7 +174,7 @@ impl<'a, BS: BitSetViewable + ?Sized> BitSetView<'a, BS> {
     }
 }
 
-impl<'a, BS: BitSetViewable + ?Sized> BitSetViewable for BitSetView<'a, BS> {
+impl<'a, BS: BitViewable + ?Sized> BitViewable for BitView<'a, BS> {
     fn bits(&self) -> usize {
         self.range.end - self.range.start
     }
@@ -184,12 +184,12 @@ impl<'a, BS: BitSetViewable + ?Sized> BitSetViewable for BitSetView<'a, BS> {
     }
 }
 
-pub struct BitSetMutView<'a, BS: BitSetMutViewable + ?Sized> {
+pub struct BitMutView<'a, BS: BitMutViewable + ?Sized> {
     parent: &'a mut BS,
     range: Range<usize>,
 }
 
-impl<'a, BS: BitSetMutViewable + ?Sized> BitSetMutView<'a, BS> {
+impl<'a, BS: BitMutViewable + ?Sized> BitMutView<'a, BS> {
     pub fn new(parent: &'a mut BS) -> Self {
         let len = parent.bits();
         Self {
@@ -209,8 +209,8 @@ impl<'a, BS: BitSetMutViewable + ?Sized> BitSetMutView<'a, BS> {
     pub fn subset_mut<'b>(
         &'b mut self,
         range: Range<usize>,
-    ) -> BitSetMutView<'b, BitSetMutView<'a, BS>> {
-        BitSetMutView::new_subset(self, range)
+    ) -> BitMutView<'b, BitMutView<'a, BS>> {
+        BitMutView::new_subset(self, range)
     }
 
     fn range_in_parent(&self, range: Range<usize>) -> Range<usize> {
@@ -229,9 +229,7 @@ impl<'a, BS: BitSetMutViewable + ?Sized> BitSetMutView<'a, BS> {
     }
 }
 
-impl<'a, BS: BitSetMutViewable + ?Sized> BitSetViewable
-    for BitSetMutView<'a, BS>
-{
+impl<'a, BS: BitMutViewable + ?Sized> BitViewable for BitMutView<'a, BS> {
     fn bits(&self) -> usize {
         self.range.end - self.range.start
     }
@@ -241,9 +239,7 @@ impl<'a, BS: BitSetMutViewable + ?Sized> BitSetViewable
     }
 }
 
-impl<'a, BS: BitSetMutViewable + ?Sized> BitSetMutViewable
-    for BitSetMutView<'a, BS>
-{
+impl<'a, BS: BitMutViewable + ?Sized> BitMutViewable for BitMutView<'a, BS> {
     fn set_bit_range_u64(&mut self, range: Range<usize>, val: u64) {
         self.parent
             .set_bit_range_u64(self.range_in_parent(range), val);
@@ -254,7 +250,7 @@ pub trait SetFieldU64 {
     fn set_field_u64(&mut self, range: Range<usize>, val: u64);
 }
 
-impl<'a, BS: BitSetMutViewable + ?Sized> SetFieldU64 for BitSetMutView<'a, BS> {
+impl<'a, BS: BitMutViewable + ?Sized> SetFieldU64 for BitMutView<'a, BS> {
     fn set_field_u64(&mut self, range: Range<usize>, val: u64) {
         let bits = range.end - range.start;
 

@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: MIT
  */
 
-mod bitset;
+mod bitview;
 mod util;
 
-use crate::bitset::*;
+use crate::bitview::*;
 
 use std::fs;
 use std::io::Write;
@@ -72,7 +72,7 @@ fn main() {
     let cuda_path = find_cuda().expect("Failed to find CUDA");
 
     for bits in 0..(1_u64 << range.len()) {
-        BitSetMutView::new(&mut instr).set_field(range.clone(), bits);
+        BitMutView::new(&mut instr).set_field(range.clone(), bits);
 
         print!("With {:#x} in {}..{}:", bits, range.start, range.end);
         for dw in instr {

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-use crate::bitset::*;
+use crate::bitview::*;
 use crate::nak_ir::*;
 
 use std::collections::HashMap;
@@ -91,31 +91,31 @@ struct SM75Instr {
     sm: u8,
 }
 
-impl BitSetViewable for SM75Instr {
+impl BitViewable for SM75Instr {
     fn bits(&self) -> usize {
-        BitSetView::new(&self.inst).bits()
+        BitView::new(&self.inst).bits()
     }
 
     fn get_bit_range_u64(&self, range: Range<usize>) -> u64 {
-        BitSetView::new(&self.inst).get_bit_range_u64(range)
+        BitView::new(&self.inst).get_bit_range_u64(range)
     }
 }
 
-impl BitSetMutViewable for SM75Instr {
+impl BitMutViewable for SM75Instr {
     fn set_bit_range_u64(&mut self, range: Range<usize>, val: u64) {
-        BitSetMutView::new(&mut self.inst).set_bit_range_u64(range, val);
+        BitMutView::new(&mut self.inst).set_bit_range_u64(range, val);
     }
 }
 
 impl SetFieldU64 for SM75Instr {
     fn set_field_u64(&mut self, range: Range<usize>, val: u64) {
-        BitSetMutView::new(&mut self.inst).set_field_u64(range, val);
+        BitMutView::new(&mut self.inst).set_field_u64(range, val);
     }
 }
 
 impl SM75Instr {
     fn set_bit(&mut self, bit: usize, val: bool) {
-        BitSetMutView::new(&mut self.inst).set_bit(bit, val);
+        BitMutView::new(&mut self.inst).set_bit(bit, val);
     }
 
     fn set_src_imm(&mut self, range: Range<usize>, u: &u32) {
@@ -190,7 +190,7 @@ impl SM75Instr {
     }
 
     fn set_src_cb(&mut self, range: Range<usize>, cb: &CBufRef) {
-        let mut v = BitSetMutView::new_subset(self, range);
+        let mut v = BitMutView::new_subset(self, range);
         v.set_field(0..16, cb.offset);
         if let CBuf::Binding(idx) = cb.buf {
             v.set_field(16..21, idx);
@@ -200,7 +200,7 @@ impl SM75Instr {
     }
 
     fn set_src_cx(&mut self, range: Range<usize>, cb: &CBufRef) {
-        let mut v = BitSetMutView::new_subset(self, range);
+        let mut v = BitMutView::new_subset(self, range);
         if let CBuf::BindlessGPR(reg) = cb.buf {
             assert!(reg.base_idx() <= 63);
             assert!(reg.file() == RegFile::UGPR);
