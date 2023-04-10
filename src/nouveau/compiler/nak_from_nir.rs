@@ -4,12 +4,15 @@
  */
 
 #![allow(non_upper_case_globals)]
+#![allow(unstable_name_collisions)]
 
 use crate::nak_ir::*;
 use crate::nir::*;
+use crate::util::DivCeil;
 
 use nak_bindings::*;
 
+use std::cmp::min;
 use std::collections::HashMap;
 
 struct ShaderFromNir<'a> {
@@ -126,6 +129,29 @@ impl<'a> ShaderFromNir<'a> {
         let dsts = [split[0].into(), split[1].into()];
         self.instrs.push(Instr::new_split(&dsts, ssa.into()));
         split
+    }
+
+    fn split(&mut self, ssa: SSAValue) -> Vec<SSAValue> {
+        if ssa.comps() == 1 {
+            return vec![ssa];
+        }
+
+        let mut split_ssa = Vec::new();
+        let mut dsts = Vec::new();
+        for c in 0..ssa.comps() {
+            let dst_ssa = self.alloc_ssa(ssa.file(), 1);
+            split_ssa.push(dst_ssa);
+            dsts.push(Dst::from(dst_ssa));
+        }
+        self.instrs.push(Instr::new_split(&dsts, ssa.into()));
+        split_ssa
+    }
+
+    fn vec(&mut self, ssa: &[SSAValue]) -> SSAValue {
+        let dst = self.alloc_ssa(ssa[0].file(), ssa.len().try_into().unwrap());
+        let srcs: Vec<Src> = ssa.iter().map(|s| (*s).into()).collect();
+        self.instrs.push(Instr::new_vec(dst.into(), &srcs));
+        dst
     }
 
     fn parse_alu(&mut self, alu: &nir_alu_instr) {
@@ -567,8 +593,171 @@ impl<'a> ShaderFromNir<'a> {
         /* Nothing to do */
     }
 
-    fn parse_tex(&mut self, _tex: &nir_tex_instr) {
-        panic!("Texture instructions unimplemented");
+    fn parse_tex(&mut self, tex: &nir_tex_instr) {
+        let dim = match tex.sampler_dim {
+            GLSL_SAMPLER_DIM_1D => {
+                if tex.is_array {
+                    TexDim::Array1D
+                } else {
+                    TexDim::_1D
+                }
+            }
+            GLSL_SAMPLER_DIM_2D => {
+                if tex.is_array {
+                    TexDim::Array2D
+                } else {
+                    TexDim::_2D
+                }
+            }
+            GLSL_SAMPLER_DIM_3D => {
+                assert!(!tex.is_array);
+                TexDim::_3D
+            }
+            GLSL_SAMPLER_DIM_CUBE => {
+                if tex.is_array {
+                    TexDim::ArrayCube
+                } else {
+                    TexDim::Cube
+                }
+            }
+            GLSL_SAMPLER_DIM_BUF => TexDim::_1D,
+            GLSL_SAMPLER_DIM_MS => {
+                if tex.is_array {
+                    TexDim::Array2D
+                } else {
+                    TexDim::_2D
+                }
+            }
+            _ => panic!("Unsupported texture dimension: {}", tex.sampler_dim),
+        };
+
+        let srcs = tex.srcs_as_slice();
+        assert!(srcs[0].src_type == nir_tex_src_backend1);
+        if srcs.len() > 1 {
+            assert!(srcs.len() == 2);
+            assert!(srcs[1].src_type == nir_tex_src_backend2);
+        }
+
+        let flags: nak_nir_tex_flags =
+            unsafe { std::mem::transmute_copy(&tex.backend_flags) };
+
+        let mask = tex.def.components_read();
+        let mask = u8::try_from(mask).unwrap();
+
+        let dst_comps = u8::try_from(mask.count_ones()).unwrap();
+        let mut dsts = [Dst::None; 2];
+        dsts[0] = self.alloc_ssa(RegFile::GPR, min(dst_comps, 2)).into();
+        if dst_comps > 2 {
+            dsts[1] = self.alloc_ssa(RegFile::GPR, dst_comps - 2).into();
+        }
+
+        if tex.op == nir_texop_hdr_dim_nv {
+            self.instrs.push(Instr::new(Op::Txq(OpTxq {
+                dsts: dsts,
+                src: self.get_src(&srcs[0].src),
+                query: TexQuery::Dimension,
+                mask: mask,
+            })));
+        } else if tex.op == nir_texop_tex_type_nv {
+            self.instrs.push(Instr::new(Op::Txq(OpTxq {
+                dsts: dsts,
+                src: self.get_src(&srcs[0].src),
+                query: TexQuery::TextureType,
+                mask: mask,
+            })));
+        } else {
+            let lod_mode = match flags.lod_mode() {
+                NAK_NIR_LOD_MODE_AUTO => TexLodMode::Auto,
+                NAK_NIR_LOD_MODE_ZERO => TexLodMode::Zero,
+                NAK_NIR_LOD_MODE_BIAS => TexLodMode::Bias,
+                NAK_NIR_LOD_MODE_LOD => TexLodMode::Lod,
+                NAK_NIR_LOD_MODE_CLAMP => TexLodMode::Clamp,
+                NAK_NIR_LOD_MODE_BIAS_CLAMP => TexLodMode::BiasClamp,
+                _ => panic!("Invalid LOD mode"),
+            };
+
+            let offset_mode = match flags.offset_mode() {
+                NAK_NIR_OFFSET_MODE_NONE => Tld4OffsetMode::None,
+                NAK_NIR_OFFSET_MODE_AOFFI => Tld4OffsetMode::AddOffI,
+                NAK_NIR_OFFSET_MODE_PER_PX => Tld4OffsetMode::PerPx,
+                _ => panic!("Invalid offset mode"),
+            };
+
+            let srcs = [self.get_src(&srcs[0].src), self.get_src(&srcs[1].src)];
+
+            if tex.op == nir_texop_txd {
+                assert!(lod_mode == TexLodMode::Auto);
+                assert!(offset_mode != Tld4OffsetMode::PerPx);
+                assert!(!flags.has_z_cmpr());
+                self.instrs.push(Instr::new(Op::Txd(OpTxd {
+                    dsts: dsts,
+                    resident: Dst::None,
+                    srcs: srcs,
+                    dim: dim,
+                    offset: offset_mode == Tld4OffsetMode::AddOffI,
+                    mask: mask,
+                })));
+            } else if tex.op == nir_texop_lod {
+                assert!(offset_mode == Tld4OffsetMode::None);
+                self.instrs.push(Instr::new(Op::Tmml(OpTmml {
+                    dsts: dsts,
+                    srcs: srcs,
+                    dim: dim,
+                    mask: mask,
+                })));
+            } else if tex.op == nir_texop_txf {
+                assert!(offset_mode != Tld4OffsetMode::PerPx);
+                self.instrs.push(Instr::new(Op::Tld(OpTld {
+                    dsts: dsts,
+                    resident: Dst::None,
+                    srcs: srcs,
+                    dim: dim,
+                    lod_mode: lod_mode,
+                    is_ms: false,
+                    offset: offset_mode == Tld4OffsetMode::AddOffI,
+                    mask: mask,
+                })));
+            } else if tex.op == nir_texop_tg4 {
+                self.instrs.push(Instr::new(Op::Tld4(OpTld4 {
+                    dsts: dsts,
+                    resident: Dst::None,
+                    srcs: srcs,
+                    dim: dim,
+                    comp: tex.component().try_into().unwrap(),
+                    offset_mode: offset_mode,
+                    z_cmpr: flags.has_z_cmpr(),
+                    mask: mask,
+                })));
+            } else {
+                assert!(offset_mode != Tld4OffsetMode::PerPx);
+                self.instrs.push(Instr::new(Op::Tex(OpTex {
+                    dsts: dsts,
+                    resident: Dst::None,
+                    srcs: srcs,
+                    dim: dim,
+                    lod_mode: lod_mode,
+                    z_cmpr: flags.has_z_cmpr(),
+                    offset: offset_mode == Tld4OffsetMode::AddOffI,
+                    mask: mask,
+                })));
+            }
+        }
+
+        let mut dst_comps = Vec::new();
+        for dst in dsts {
+            if let Dst::SSA(dst) = dst {
+                for comp in self.split(dst) {
+                    dst_comps.push(comp.into());
+                }
+            }
+        }
+        for c in 0..tex.def.num_components() {
+            if mask & (1 << c) == 0 {
+                dst_comps.insert(c.into(), SrcRef::Zero.into());
+            }
+        }
+        self.instrs
+            .push(Instr::new_vec(self.get_dst(&tex.def), &dst_comps));
     }
 
     fn parse_intrinsic(&mut self, intrin: &nir_intrinsic_instr) {

@@ -859,6 +859,88 @@ impl fmt::Display for FRndMode {
     }
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum TexDim {
+    _1D,
+    Array1D,
+    _2D,
+    Array2D,
+    _3D,
+    Cube,
+    ArrayCube,
+}
+
+impl fmt::Display for TexDim {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TexDim::_1D => write!(f, "1D"),
+            TexDim::Array1D => write!(f, "ARRAY_1D"),
+            TexDim::_2D => write!(f, "2D"),
+            TexDim::Array2D => write!(f, "ARRAY_2D"),
+            TexDim::_3D => write!(f, "3D"),
+            TexDim::Cube => write!(f, "CUBE"),
+            TexDim::ArrayCube => write!(f, "ARRAY_CUBE"),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum TexLodMode {
+    Auto,
+    Zero,
+    Bias,
+    Lod,
+    Clamp,
+    BiasClamp,
+}
+
+impl fmt::Display for TexLodMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TexLodMode::Auto => write!(f, "LA"),
+            TexLodMode::Zero => write!(f, "LZ"),
+            TexLodMode::Bias => write!(f, "LB"),
+            TexLodMode::Lod => write!(f, "LL"),
+            TexLodMode::Clamp => write!(f, "LC"),
+            TexLodMode::BiasClamp => write!(f, "LB.LC"),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum Tld4OffsetMode {
+    None,
+    AddOffI,
+    PerPx,
+}
+
+impl fmt::Display for Tld4OffsetMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Tld4OffsetMode::None => write!(f, "NO_OFF"),
+            Tld4OffsetMode::AddOffI => write!(f, "AOFFI"),
+            Tld4OffsetMode::PerPx => write!(f, "PTP"),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum TexQuery {
+    Dimension,
+    TextureType,
+    SamplerPos,
+}
+
+impl fmt::Display for TexQuery {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TexQuery::Dimension => write!(f, "DIMENSION"),
+            TexQuery::TextureType => write!(f, "TEXTURE_TYPE"),
+            TexQuery::SamplerPos => write!(f, "SAMPLER_POS"),
+        }
+    }
+}
+
 pub enum IntType {
     U8,
     I8,
@@ -1503,6 +1585,182 @@ impl fmt::Display for OpPLop3 {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpTex {
+    pub dsts: [Dst; 2],
+    pub resident: Dst,
+    pub srcs: [Src; 2],
+    pub dim: TexDim,
+    pub lod_mode: TexLodMode,
+    pub z_cmpr: bool,
+    pub offset: bool,
+    pub mask: u8,
+}
+
+impl fmt::Display for OpTex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "TEX.B")?;
+        if self.lod_mode != TexLodMode::Auto {
+            write!(f, ".{}", self.lod_mode)?;
+        }
+        if self.offset {
+            write!(f, ".AOFFI")?;
+        }
+        if self.z_cmpr {
+            write!(f, ".DC")?;
+        }
+        write!(
+            f,
+            " {{ {}, {}, {} }} {{ {}, {} }} {}",
+            self.dsts[0],
+            self.dsts[1],
+            self.resident,
+            self.srcs[0],
+            self.srcs[1],
+            self.dim,
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpTld {
+    pub dsts: [Dst; 2],
+    pub resident: Dst,
+    pub srcs: [Src; 2],
+    pub dim: TexDim,
+    pub is_ms: bool,
+    pub lod_mode: TexLodMode,
+    pub offset: bool,
+    pub mask: u8,
+}
+
+impl fmt::Display for OpTld {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "TLD.B")?;
+        if self.lod_mode != TexLodMode::Auto {
+            write!(f, ".{}", self.lod_mode)?;
+        }
+        if self.offset {
+            write!(f, ".AOFFI")?;
+        }
+        if self.is_ms {
+            write!(f, ".MS")?;
+        }
+        write!(
+            f,
+            " {{ {}, {}, {} }} {{ {}, {} }} {}",
+            self.dsts[0],
+            self.dsts[1],
+            self.resident,
+            self.srcs[0],
+            self.srcs[1],
+            self.dim,
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpTld4 {
+    pub dsts: [Dst; 2],
+    pub resident: Dst,
+    pub srcs: [Src; 2],
+    pub dim: TexDim,
+    pub comp: u8,
+    pub offset_mode: Tld4OffsetMode,
+    pub z_cmpr: bool,
+    pub mask: u8,
+}
+
+impl fmt::Display for OpTld4 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "TLD4.G.B")?;
+        if self.offset_mode != Tld4OffsetMode::None {
+            write!(f, ".{}", self.offset_mode)?;
+        }
+        write!(
+            f,
+            " {{ {}, {}, {} }} {{ {}, {} }} {}",
+            self.dsts[0],
+            self.dsts[1],
+            self.resident,
+            self.srcs[0],
+            self.srcs[1],
+            self.dim,
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpTmml {
+    pub dsts: [Dst; 2],
+    pub srcs: [Src; 2],
+    pub dim: TexDim,
+    pub mask: u8,
+}
+
+impl fmt::Display for OpTmml {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "TMML.B.LOD {{ {}, {} }} {{ {}, {} }} {}",
+            self.dsts[0], self.dsts[1], self.srcs[0], self.srcs[1], self.dim
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpTxd {
+    pub dsts: [Dst; 2],
+    pub resident: Dst,
+    pub srcs: [Src; 2],
+    pub dim: TexDim,
+    pub offset: bool,
+    pub mask: u8,
+}
+
+impl fmt::Display for OpTxd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "TXD.B")?;
+        if self.offset {
+            write!(f, ".AOFFI")?;
+        }
+        write!(
+            f,
+            " {{ {}, {}, {} }} {{ {}, {} }} {}",
+            self.dsts[0],
+            self.dsts[1],
+            self.resident,
+            self.srcs[0],
+            self.srcs[1],
+            self.dim,
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpTxq {
+    pub dsts: [Dst; 2],
+    pub src: Src,
+    pub query: TexQuery,
+    pub mask: u8,
+}
+
+impl fmt::Display for OpTxq {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "TXQ.B {{ {}, {} }} {} {}",
+            self.dsts[0], self.dsts[1], self.src, self.query
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpLd {
     pub dst: Dst,
     pub addr: Src,
@@ -1953,6 +2211,12 @@ pub enum Op {
     Mov(OpMov),
     Sel(OpSel),
     PLop3(OpPLop3),
+    Tex(OpTex),
+    Tld(OpTld),
+    Tld4(OpTld4),
+    Tmml(OpTmml),
+    Txd(OpTxd),
+    Txq(OpTxq),
     Ld(OpLd),
     St(OpSt),
     ALd(OpALd),
@@ -2420,6 +2684,12 @@ impl Instr {
             Op::ALd(_) => None,
             Op::ASt(_) => Some(15),
             Op::Ipa(_) => None,
+            Op::Tex(_) => None,
+            Op::Tld(_) => None,
+            Op::Tld4(_) => None,
+            Op::Tmml(_) => None,
+            Op::Txd(_) => None,
+            Op::Txq(_) => None,
             Op::Ld(_) => None,
             Op::St(_) => None,
             Op::Bra(_) | Op::Exit(_) => Some(15),

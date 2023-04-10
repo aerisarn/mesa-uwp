@@ -735,6 +735,187 @@ impl SM75Instr {
         self.set_pred_src(87..90, 90, op.srcs[0]);
     }
 
+    fn set_tex_dim(&mut self, range: Range<usize>, dim: TexDim) {
+        assert!(range.len() == 3);
+        self.set_field(
+            range,
+            match dim {
+                TexDim::_1D => 0_u8,
+                TexDim::Array1D => 4_u8,
+                TexDim::_2D => 1_u8,
+                TexDim::Array2D => 5_u8,
+                TexDim::_3D => 2_u8,
+                TexDim::Cube => 3_u8,
+                TexDim::ArrayCube => 7_u8,
+            },
+        );
+    }
+
+    fn set_tex_lod_mode(&mut self, range: Range<usize>, lod_mode: TexLodMode) {
+        assert!(range.len() == 3);
+        self.set_field(
+            range,
+            match lod_mode {
+                TexLodMode::Auto => 0_u8,
+                TexLodMode::Zero => 1_u8,
+                TexLodMode::Bias => 2_u8,
+                TexLodMode::Lod => 3_u8,
+                TexLodMode::Clamp => 4_u8,
+                TexLodMode::BiasClamp => 5_u8,
+            },
+        );
+    }
+
+    fn encode_tex(&mut self, op: &OpTex) {
+        self.set_opcode(0x361);
+        self.set_bit(59, true); /* .B */
+
+        self.set_dst(op.dsts[0]);
+        if let Dst::Reg(reg) = op.dsts[1] {
+            self.set_reg(64..72, reg);
+        } else {
+            self.set_field(64..72, 255_u8);
+        }
+        self.set_pred_dst(81..84, op.resident);
+
+        self.set_reg_src(24..32, op.srcs[0]);
+        self.set_reg_src(32..40, op.srcs[1]);
+
+        self.set_tex_dim(61..64, op.dim);
+        self.set_field(72..76, op.mask);
+        self.set_bit(76, op.offset);
+        self.set_bit(77, false); /* ToDo: NDV */
+        self.set_bit(78, op.z_cmpr);
+        self.set_field(84..87, 1);
+        self.set_tex_lod_mode(87..90, op.lod_mode);
+        self.set_bit(90, false); /* TODO: .NODEP */
+    }
+
+    fn encode_tld(&mut self, op: &OpTld) {
+        self.set_opcode(0x367);
+        self.set_bit(59, true); /* .B */
+
+        self.set_dst(op.dsts[0]);
+        if let Dst::Reg(reg) = op.dsts[1] {
+            self.set_reg(64..72, reg);
+        } else {
+            self.set_field(64..72, 255_u8);
+        }
+        self.set_pred_dst(81..84, op.resident);
+
+        self.set_reg_src(24..32, op.srcs[0]);
+        self.set_reg_src(32..40, op.srcs[1]);
+
+        self.set_tex_dim(61..64, op.dim);
+        self.set_field(72..76, op.mask);
+        self.set_bit(76, op.offset);
+        /* bit 77: .CL */
+        self.set_bit(78, op.is_ms);
+        /* bits 79..81: .F16 */
+        assert!(
+            op.lod_mode == TexLodMode::Zero || op.lod_mode == TexLodMode::Lod
+        );
+        self.set_tex_lod_mode(87..90, op.lod_mode);
+        self.set_bit(90, false); /* TODO: .NODEP */
+    }
+
+    fn encode_tld4(&mut self, op: &OpTld4) {
+        self.set_opcode(0x364);
+        self.set_bit(59, true); /* .B */
+
+        self.set_dst(op.dsts[0]);
+        if let Dst::Reg(reg) = op.dsts[1] {
+            self.set_reg(64..72, reg);
+        } else {
+            self.set_field(64..72, 255_u8);
+        }
+        self.set_pred_dst(81..84, op.resident);
+
+        self.set_reg_src(24..32, op.srcs[0]);
+        self.set_reg_src(32..40, op.srcs[1]);
+
+        self.set_tex_dim(61..64, op.dim);
+        self.set_field(72..76, op.mask);
+        self.set_field(
+            76..78,
+            match op.offset_mode {
+                Tld4OffsetMode::None => 0_u8,
+                Tld4OffsetMode::AddOffI => 1_u8,
+                Tld4OffsetMode::PerPx => 2_u8,
+            },
+        );
+        /* bit 77: .CL */
+        self.set_bit(78, op.z_cmpr);
+        self.set_bit(84, true); /* !.EF */
+        self.set_field(87..89, op.comp);
+        self.set_bit(90, false); /* TODO: .NODEP */
+    }
+
+    fn encode_tmml(&mut self, op: &OpTmml) {
+        self.set_opcode(0x36a);
+        self.set_bit(59, true); /* .B */
+
+        self.set_dst(op.dsts[0]);
+        if let Dst::Reg(reg) = op.dsts[1] {
+            self.set_reg(64..72, reg);
+        } else {
+            self.set_field(64..72, 255_u8);
+        }
+
+        self.set_reg_src(24..32, op.srcs[0]);
+        self.set_reg_src(32..40, op.srcs[1]);
+
+        self.set_tex_dim(61..64, op.dim);
+        self.set_field(72..76, op.mask);
+        self.set_bit(77, false); /* ToDo: NDV */
+        self.set_bit(90, false); /* TODO: .NODEP */
+    }
+
+    fn encode_txd(&mut self, op: &OpTxd) {
+        self.set_opcode(0x36d);
+        self.set_bit(59, true); /* .B */
+
+        self.set_dst(op.dsts[0]);
+        if let Dst::Reg(reg) = op.dsts[1] {
+            self.set_reg(64..72, reg);
+        } else {
+            self.set_field(64..72, 255_u8);
+        }
+        self.set_pred_dst(81..84, op.resident);
+
+        self.set_reg_src(24..32, op.srcs[0]);
+        self.set_reg_src(32..40, op.srcs[1]);
+
+        self.set_tex_dim(61..64, op.dim);
+        self.set_field(72..76, op.mask);
+        self.set_bit(76, op.offset);
+        self.set_bit(77, false); /* ToDo: NDV */
+        self.set_bit(90, false); /* TODO: .NODEP */
+    }
+
+    fn encode_txq(&mut self, op: &OpTxq) {
+        self.set_opcode(0x370);
+        self.set_bit(59, true); /* .B */
+
+        self.set_dst(op.dsts[0]);
+        if let Dst::Reg(reg) = op.dsts[1] {
+            self.set_reg(64..72, reg);
+        } else {
+            self.set_field(64..72, 255_u8);
+        }
+
+        self.set_reg_src(24..32, op.src);
+        self.set_field(
+            62..64,
+            match op.query {
+                TexQuery::Dimension => 0_u8,
+                TexQuery::TextureType => 1_u8,
+                TexQuery::SamplerPos => 2_u8,
+            },
+        );
+        self.set_field(72..76, op.mask);
+    }
+
     fn set_mem_access(&mut self, access: &MemAccess) {
         self.set_field(
             72..73,
@@ -931,6 +1112,12 @@ impl SM75Instr {
             Op::Mov(op) => si.encode_mov(&op),
             Op::Sel(op) => si.encode_sel(&op),
             Op::PLop3(op) => si.encode_plop3(&op),
+            Op::Tex(op) => si.encode_tex(&op),
+            Op::Tld(op) => si.encode_tld(&op),
+            Op::Tld4(op) => si.encode_tld4(&op),
+            Op::Tmml(op) => si.encode_tmml(&op),
+            Op::Txd(op) => si.encode_txd(&op),
+            Op::Txq(op) => si.encode_txq(&op),
             Op::Ld(op) => si.encode_ld(&op),
             Op::St(op) => si.encode_st(&op),
             Op::ALd(op) => si.encode_ald(&op),
