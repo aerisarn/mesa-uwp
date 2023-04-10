@@ -379,6 +379,14 @@ impl<'a> ShaderFromNir<'a> {
                     srcs[1],
                 ));
             }
+            nir_op_unpack_64_2x32_split_x => {
+                self.instrs
+                    .push(Instr::new_split(&[dst, Dst::None], srcs[0]));
+            }
+            nir_op_unpack_64_2x32_split_y => {
+                self.instrs
+                    .push(Instr::new_split(&[Dst::None, dst], srcs[0]));
+            }
             _ => panic!("Unsupported ALU instruction: {}", alu.info().name()),
         }
     }
