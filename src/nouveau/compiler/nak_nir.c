@@ -257,6 +257,39 @@ nak_varying_attr_addr(gl_varying_slot slot)
    }
 }
 
+static uint16_t
+nak_sysval_attr_addr(gl_system_value sysval)
+{
+   switch (sysval) {
+   case SYSTEM_VALUE_FRAG_COORD:    return 0x070;
+   case SYSTEM_VALUE_POINT_COORD:   return 0x2e0;
+   case SYSTEM_VALUE_TESS_COORD:    return 0x2f0;
+   case SYSTEM_VALUE_INSTANCE_ID:   return 0x2f8;
+   case SYSTEM_VALUE_VERTEX_ID:     return 0x2fc;
+   default: unreachable("Invalid system value");
+   }
+}
+
+static uint8_t
+nak_sysval_sysval_idx(gl_system_value sysval)
+{
+   switch (sysval) {
+   case SYSTEM_VALUE_SUBGROUP_INVOCATION:    return 0x00;
+   case SYSTEM_VALUE_VERTICES_IN:            return 0x10;
+   case SYSTEM_VALUE_INVOCATION_ID:          return 0x11;
+   case SYSTEM_VALUE_HELPER_INVOCATION:      return 0x13;
+   case SYSTEM_VALUE_LOCAL_INVOCATION_INDEX: return 0x20;
+   case SYSTEM_VALUE_LOCAL_INVOCATION_ID:    return 0x21;
+   case SYSTEM_VALUE_WORKGROUP_ID:           return 0x25;
+   case SYSTEM_VALUE_SUBGROUP_EQ_MASK:       return 0x38;
+   case SYSTEM_VALUE_SUBGROUP_LT_MASK:       return 0x39;
+   case SYSTEM_VALUE_SUBGROUP_LE_MASK:       return 0x3a;
+   case SYSTEM_VALUE_SUBGROUP_GT_MASK:       return 0x3b;
+   case SYSTEM_VALUE_SUBGROUP_GE_MASK:       return 0x3c;
+   default: unreachable("Invalid system value");
+   }
+}
+
 static bool
 nak_nir_lower_varyings(nir_shader *nir, nir_variable_mode modes)
 {
@@ -320,39 +353,6 @@ nak_nir_lower_fs_outputs(nir_shader *nir)
    progress |= OPT(nir, nir_lower_io, nir_var_shader_out, vec_size_4, 0);
 
    return progress;
-}
-
-static uint16_t
-nak_sysval_attr_addr(gl_system_value sysval)
-{
-   switch (sysval) {
-   case SYSTEM_VALUE_FRAG_COORD:    return 0x070;
-   case SYSTEM_VALUE_POINT_COORD:   return 0x2e0;
-   case SYSTEM_VALUE_TESS_COORD:    return 0x2f0;
-   case SYSTEM_VALUE_INSTANCE_ID:   return 0x2f8;
-   case SYSTEM_VALUE_VERTEX_ID:     return 0x2fc;
-   default: unreachable("Invalid system value");
-   }
-}
-
-static uint8_t
-nak_sysval_sysval_idx(gl_system_value sysval)
-{
-   switch (sysval) {
-   case SYSTEM_VALUE_SUBGROUP_INVOCATION:    return 0x00;
-   case SYSTEM_VALUE_VERTICES_IN:            return 0x10;
-   case SYSTEM_VALUE_INVOCATION_ID:          return 0x11;
-   case SYSTEM_VALUE_HELPER_INVOCATION:      return 0x13;
-   case SYSTEM_VALUE_LOCAL_INVOCATION_INDEX: return 0x20;
-   case SYSTEM_VALUE_LOCAL_INVOCATION_ID:    return 0x21;
-   case SYSTEM_VALUE_WORKGROUP_ID:           return 0x25;
-   case SYSTEM_VALUE_SUBGROUP_EQ_MASK:       return 0x38;
-   case SYSTEM_VALUE_SUBGROUP_LT_MASK:       return 0x39;
-   case SYSTEM_VALUE_SUBGROUP_LE_MASK:       return 0x3a;
-   case SYSTEM_VALUE_SUBGROUP_GT_MASK:       return 0x3b;
-   case SYSTEM_VALUE_SUBGROUP_GE_MASK:       return 0x3c;
-   default: unreachable("Invalid system value");
-   }
 }
 
 static bool
