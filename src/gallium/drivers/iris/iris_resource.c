@@ -487,8 +487,15 @@ iris_resource_alloc_flags(const struct iris_screen *screen,
    if (templ->bind & PIPE_BIND_PROTECTED)
       flags |= BO_ALLOC_PROTECTED;
 
-   if (templ->bind & PIPE_BIND_SHARED)
+   if (templ->bind & PIPE_BIND_SHARED) {
       flags |= BO_ALLOC_SHARED;
+
+      /* We request that the bufmgr zero because, if a buffer gets re-used
+       * from the pool, we don't want to leak random garbage from our process
+       * to some other.
+       */
+      flags |= BO_ALLOC_ZEROED;
+   }
 
    return flags;
 }
