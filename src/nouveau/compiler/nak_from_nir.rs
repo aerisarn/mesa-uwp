@@ -424,6 +424,23 @@ impl<'a> ShaderFromNir<'a> {
                     min: min.into(),
                 })));
             }
+            nir_op_imul => {
+                self.instrs.push(Instr::new(Op::IMad(OpIMad {
+                    dst: dst,
+                    srcs: [srcs[0], srcs[1], Src::new_zero()],
+                    signed: false,
+                })));
+            }
+            nir_op_imul_high | nir_op_umul_high => {
+                let dst64 = self.alloc_ssa(RegFile::GPR, 2);
+                self.instrs.push(Instr::new(Op::IMad64(OpIMad64 {
+                    dst: dst64.into(),
+                    srcs: [srcs[0], srcs[1], Src::new_zero()],
+                    signed: alu.op == nir_op_imul_high,
+                })));
+                self.instrs
+                    .push(Instr::new_split(&[Dst::None, dst], dst64.into()));
+            }
             nir_op_ineg => {
                 self.instrs.push(Instr::new(Op::IMov(OpIMov {
                     dst: dst,

@@ -95,6 +95,12 @@ impl<'a> LegalizeInstr<'a> {
                 self.mov_src_if_not_reg(src0, RegFile::GPR);
                 self.mov_src_if_not_reg(src2, RegFile::GPR);
             }
+            Op::IMad(op) => {
+                let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
+                self.swap_srcs_if_not_reg(src0, src1);
+                self.mov_src_if_not_reg(src0, RegFile::GPR);
+                self.mov_src_if_not_reg(src2, RegFile::GPR);
+            }
             Op::Lop3(op) => {
                 /* Fold constants if we can */
                 op.op = LogicOp::new_lut(&|mut x, mut y, mut z| {

@@ -1272,6 +1272,42 @@ impl fmt::Display for OpIAdd3 {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpIMad {
+    pub dst: Dst,
+    pub srcs: [Src; 3],
+    pub signed: bool,
+}
+
+impl fmt::Display for OpIMad {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "IMAD {} {{ {}, {}, {} }}",
+            self.dst, self.srcs[0], self.srcs[1], self.srcs[2],
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpIMad64 {
+    pub dst: Dst,
+    pub srcs: [Src; 3],
+    pub signed: bool,
+}
+
+impl fmt::Display for OpIMad64 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "IMAD64 {} {{ {}, {}, {} }}",
+            self.dst, self.srcs[0], self.srcs[1], self.srcs[2],
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpIMnMx {
     pub dst: Dst,
     pub cmp_type: IntCmpType,
@@ -1906,6 +1942,8 @@ pub enum Op {
     FSet(OpFSet),
     FSetP(OpFSetP),
     IAdd3(OpIAdd3),
+    IMad(OpIMad),
+    IMad64(OpIMad64),
     IMnMx(OpIMnMx),
     ISetP(OpISetP),
     Lop3(OpLop3),
@@ -2368,6 +2406,8 @@ impl Instr {
             | Op::FSetP(_)
             | Op::MuFu(_)
             | Op::IAdd3(_)
+            | Op::IMad(_)
+            | Op::IMad64(_)
             | Op::IMnMx(_)
             | Op::Lop3(_)
             | Op::PLop3(_)

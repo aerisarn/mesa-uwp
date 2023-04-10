@@ -542,6 +542,29 @@ impl SM75Instr {
         );
     }
 
+    fn encode_imad(&mut self, op: &OpIMad) {
+        self.encode_alu(
+            0x024,
+            Some(op.dst),
+            ALUSrc::from_src(&op.srcs[0]),
+            ALUSrc::from_src(&op.srcs[1]),
+            ALUSrc::from_src(&op.srcs[2]),
+        );
+        self.set_bit(73, op.signed);
+    }
+
+    fn encode_imad64(&mut self, op: &OpIMad64) {
+        self.encode_alu(
+            0x025,
+            Some(op.dst),
+            ALUSrc::from_src(&op.srcs[0]),
+            ALUSrc::from_src(&op.srcs[1]),
+            ALUSrc::from_src(&op.srcs[2]),
+        );
+        self.set_field(81..84, 0x7_u8); /* TODO: Pred? */
+        self.set_bit(73, op.signed);
+    }
+
     fn encode_imnmx(&mut self, op: &OpIMnMx) {
         self.encode_alu(
             0x017,
@@ -897,6 +920,8 @@ impl SM75Instr {
             Op::FSetP(op) => si.encode_fsetp(&op),
             Op::MuFu(op) => si.encode_mufu(&op),
             Op::IAdd3(op) => si.encode_iadd3(&op),
+            Op::IMad(op) => si.encode_imad(&op),
+            Op::IMad64(op) => si.encode_imad64(&op),
             Op::IMnMx(op) => si.encode_imnmx(&op),
             Op::ISetP(op) => si.encode_isetp(&op),
             Op::Lop3(op) => si.encode_lop3(&op),
