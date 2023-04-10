@@ -529,6 +529,25 @@ impl<'a> ShaderFromNir<'a> {
     }
 
     fn parse_block(&mut self, nb: &nir_block) {
+        let mut phi = OpPhiDsts {
+            ids: Vec::new(),
+            dsts: Vec::new(),
+        };
+
+        for ni in nb.iter_instr_list() {
+            if ni.type_ == nir_instr_type_phi {
+                let np = ni.as_phi().unwrap();
+                phi.ids.push(self.get_phi_id(np));
+                phi.dsts.push(self.get_dst(&np.def));
+            } else {
+                break;
+            }
+        }
+
+        if !phi.ids.is_empty() {
+            self.instrs.push(Instr::new(Op::PhiDsts(phi)));
+        }
+
         for ni in nb.iter_instr_list() {
             match ni.type_ {
                 nir_instr_type_alu => self.parse_alu(ni.as_alu().unwrap()),
@@ -543,12 +562,7 @@ impl<'a> ShaderFromNir<'a> {
                 nir_instr_type_undef => {
                     self.parse_undef(ni.as_undef().unwrap())
                 }
-                nir_instr_type_phi => {
-                    let phi = ni.as_phi().unwrap();
-                    let dst = self.get_dst(&phi.def);
-                    let phi_id = self.get_phi_id(phi);
-                    self.instrs.push(Instr::new_phi_dst(phi_id, dst));
-                }
+                nir_instr_type_phi => (),
                 _ => panic!("Unsupported instruction type"),
             }
         }
@@ -560,19 +574,28 @@ impl<'a> ShaderFromNir<'a> {
                 None => continue,
             };
 
+            let mut phi = OpPhiSrcs {
+                srcs: Vec::new(),
+                ids: Vec::new(),
+            };
+
             for i in sb.iter_instr_list() {
-                let phi = match i.as_phi() {
+                let np = match i.as_phi() {
                     Some(phi) => phi,
                     None => break,
                 };
 
-                let phi_id = self.get_phi_id(phi);
-                for ps in phi.iter_srcs() {
+                for ps in np.iter_srcs() {
                     if ps.pred().index == nb.index {
-                        let src = self.get_src(&ps.src);
-                        self.instrs.push(Instr::new_phi_src(phi_id, src));
+                        phi.srcs.push(self.get_src(&ps.src));
+                        phi.ids.push(self.get_phi_id(np));
+                        break;
                     }
                 }
+            }
+
+            if !phi.ids.is_empty() {
+                self.instrs.push(Instr::new(Op::PhiSrcs(phi)));
             }
         }
 

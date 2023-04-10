@@ -1419,28 +1419,88 @@ impl fmt::Display for OpSplit {
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice)]
-pub struct OpPhiSrc {
-    pub src: Src,
-    pub phi_id: u32,
+#[derive(DstsAsSlice)]
+pub struct OpPhiSrcs {
+    pub srcs: Vec<Src>,
+    pub ids: Vec<u32>,
 }
 
-impl fmt::Display for OpPhiSrc {
+impl OpPhiSrcs {
+    pub fn is_empty(&self) -> bool {
+        assert!(self.ids.len() == self.srcs.len());
+        self.ids.is_empty()
+    }
+
+    pub fn iter(&self) -> Zip<slice::Iter<'_, u32>, slice::Iter<'_, Src>> {
+        assert!(self.ids.len() == self.srcs.len());
+        self.ids.iter().zip(self.srcs.iter())
+    }
+}
+
+impl SrcsAsSlice for OpPhiSrcs {
+    fn srcs_as_slice(&self) -> &[Src] {
+        &self.srcs
+    }
+
+    fn srcs_as_mut_slice(&mut self) -> &mut [Src] {
+        &mut self.srcs
+    }
+}
+
+impl fmt::Display for OpPhiSrcs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PHI_SRC({}) {}", self.phi_id, self.src)
+        write!(f, "PHI_SRC {{")?;
+        assert!(self.ids.len() == self.srcs.len());
+        for i in 0..self.ids.len() {
+            if i > 0 {
+                write!(f, ",")?;
+            }
+            write!(f, " {} <- {}", self.ids[i], self.srcs[i])?;
+        }
+        write!(f, " }}")
     }
 }
 
 #[repr(C)]
-#[derive(SrcsAsSlice, DstsAsSlice)]
-pub struct OpPhiDst {
-    pub dst: Dst,
-    pub phi_id: u32,
+#[derive(SrcsAsSlice)]
+pub struct OpPhiDsts {
+    pub ids: Vec<u32>,
+    pub dsts: Vec<Dst>,
 }
 
-impl fmt::Display for OpPhiDst {
+impl OpPhiDsts {
+    pub fn is_empty(&self) -> bool {
+        assert!(self.ids.len() == self.dsts.len());
+        self.ids.is_empty()
+    }
+
+    pub fn iter(&self) -> Zip<slice::Iter<'_, u32>, slice::Iter<'_, Dst>> {
+        assert!(self.ids.len() == self.dsts.len());
+        self.ids.iter().zip(self.dsts.iter())
+    }
+}
+
+impl DstsAsSlice for OpPhiDsts {
+    fn dsts_as_slice(&self) -> &[Dst] {
+        &self.dsts
+    }
+
+    fn dsts_as_mut_slice(&mut self) -> &mut [Dst] {
+        &mut self.dsts
+    }
+}
+
+impl fmt::Display for OpPhiDsts {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PHI_DST({}) {}", self.phi_id, self.dst)
+        write!(f, "PHI_DST {{")?;
+        assert!(self.ids.len() == self.dsts.len());
+        for i in 0..self.ids.len() {
+            if i > 0 {
+                write!(f, ",")?;
+            }
+            write!(f, " {} <- {}", self.dsts[i], self.ids[i])?;
+        }
+        write!(f, " }}")
     }
 }
 
@@ -1568,8 +1628,8 @@ pub enum Op {
     S2R(OpS2R),
     FMov(OpFMov),
     IMov(OpIMov),
-    PhiSrc(OpPhiSrc),
-    PhiDst(OpPhiDst),
+    PhiSrcs(OpPhiSrcs),
+    PhiDsts(OpPhiDsts),
     Vec(OpVec),
     Split(OpSplit),
     Swap(OpSwap),
@@ -1909,20 +1969,6 @@ impl Instr {
         Instr::new(Op::S2R(OpS2R { dst: dst, idx: idx }))
     }
 
-    pub fn new_phi_src(phi_id: u32, src: Src) -> Instr {
-        Instr::new(Op::PhiSrc(OpPhiSrc {
-            phi_id: phi_id,
-            src: src,
-        }))
-    }
-
-    pub fn new_phi_dst(phi_id: u32, dst: Dst) -> Instr {
-        Instr::new(Op::PhiDst(OpPhiDst {
-            phi_id: phi_id,
-            dst: dst,
-        }))
-    }
-
     pub fn new_vec(dst: Dst, srcs: &[Src]) -> Instr {
         Instr::new(Op::Vec(OpVec {
             dst: dst,
@@ -2005,8 +2051,8 @@ impl Instr {
             Op::Bra(_) | Op::Exit(_) => Some(15),
             Op::FMov(_)
             | Op::IMov(_)
-            | Op::PhiSrc(_)
-            | Op::PhiDst(_)
+            | Op::PhiSrcs(_)
+            | Op::PhiDsts(_)
             | Op::Vec(_)
             | Op::Split(_)
             | Op::Swap(_)

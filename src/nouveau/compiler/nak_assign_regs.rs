@@ -58,14 +58,22 @@ impl TrivialRegAlloc {
         RegRef::new(file, idx, comps)
     }
 
-    fn get_ssa_reg(&mut self, ssa: SSAValue) -> RegRef {
-        if let Some(reg) = self.reg_map.get(&ssa) {
-            *reg
-        } else {
-            let reg = self.alloc_reg(ssa.file(), ssa.comps());
-            self.reg_map.insert(ssa, reg);
-            reg
+    fn alloc_ssa(&mut self, ssa: SSAValue) -> RegRef {
+        let reg = self.alloc_reg(ssa.file(), ssa.comps());
+        let old = self.reg_map.insert(ssa, reg);
+        assert!(old.is_none());
+        reg
+    }
+
+    fn get_ssa_reg(&self, ssa: SSAValue) -> RegRef {
+        *self.reg_map.get(&ssa).unwrap()
+    }
+
+    fn map_src(&self, mut src: Src) -> Src {
+        if let SrcRef::SSA(ssa) = src.src_ref {
+            src.src_ref = self.get_ssa_reg(ssa).into();
         }
+        src
     }
 
     pub fn do_alloc(&mut self, s: &mut Shader) {
@@ -73,18 +81,21 @@ impl TrivialRegAlloc {
             for b in &mut f.blocks {
                 for instr in &mut b.instrs {
                     match &instr.op {
-                        Op::PhiDst(op) => {
-                            let dst_ssa = op.dst.as_ssa().unwrap();
-                            let reg =
-                                self.alloc_reg(dst_ssa.file(), dst_ssa.comps());
-                            self.phi_map.insert(op.phi_id, reg);
+                        Op::PhiDsts(phi) => {
+                            let mut pcopy = OpParCopy::new();
 
-                            let dst = self.get_ssa_reg(*dst_ssa);
-                            instr.op = Op::Mov(OpMov {
-                                dst: dst.into(),
-                                src: reg.into(),
-                                quad_lanes: 0xf,
-                            });
+                            assert!(phi.ids.len() == phi.dsts.len());
+                            for (id, dst) in phi.iter() {
+                                let dst_ssa = dst.as_ssa().unwrap();
+                                let dst_reg = self.alloc_ssa(*dst_ssa);
+                                let src_reg = self
+                                    .alloc_reg(dst_ssa.file(), dst_ssa.comps());
+                                self.phi_map.insert(*id, src_reg);
+                                pcopy.srcs.push(src_reg.into());
+                                pcopy.dsts.push(dst_reg.into());
+                            }
+
+                            instr.op = Op::ParCopy(pcopy);
                         }
                         _ => (),
                     }
@@ -96,18 +107,21 @@ impl TrivialRegAlloc {
             for b in &mut f.blocks {
                 for instr in &mut b.instrs {
                     match &instr.op {
-                        Op::PhiSrc(op) => {
-                            assert!(op.src.src_mod.is_none());
-                            let reg = *self.phi_map.get(&op.phi_id).unwrap();
-                            let src = if let SrcRef::SSA(ssa) = op.src.src_ref {
-                                Src::from(self.get_ssa_reg(ssa))
-                            } else {
-                                op.src
-                            };
-                            instr.op = Op::Mov(OpMov {
-                                dst: reg.into(),
-                                src: src.into(),
-                                quad_lanes: 0xf,
+                        Op::PhiSrcs(phi) => {
+                            assert!(phi.ids.len() == phi.srcs.len());
+                            instr.op = Op::ParCopy(OpParCopy {
+                                srcs: phi
+                                    .srcs
+                                    .iter()
+                                    .map(|src| self.map_src(*src))
+                                    .collect(),
+                                dsts: phi
+                                    .ids
+                                    .iter()
+                                    .map(|id| {
+                                        (*self.phi_map.get(id).unwrap()).into()
+                                    })
+                                    .collect(),
                             });
                         }
                         _ => {
@@ -116,13 +130,11 @@ impl TrivialRegAlloc {
                             }
                             for dst in instr.dsts_mut() {
                                 if let Dst::SSA(ssa) = dst {
-                                    *dst = self.get_ssa_reg(*ssa).into();
+                                    *dst = self.alloc_ssa(*ssa).into();
                                 }
                             }
                             for src in instr.srcs_mut() {
-                                if let SrcRef::SSA(ssa) = src.src_ref {
-                                    src.src_ref = self.get_ssa_reg(ssa).into();
-                                }
+                                *src = self.map_src(*src);
                             }
                         }
                     }
