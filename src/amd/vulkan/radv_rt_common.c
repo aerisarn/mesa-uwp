@@ -502,8 +502,9 @@ insert_traversal_aabb_case(struct radv_device *device, nir_builder *b,
 
    struct radv_leaf_intersection intersection;
    intersection.node_addr = build_node_to_addr(device, b, bvh_node, false);
-   nir_ssa_def *triangle_info =
-      nir_build_load_global(b, 2, 32, nir_iadd_imm(b, intersection.node_addr, 24));
+   nir_ssa_def *triangle_info = nir_build_load_global(
+      b, 2, 32,
+      nir_iadd_imm(b, intersection.node_addr, offsetof(struct radv_bvh_aabb_node, primitive_id)));
    intersection.primitive_id = nir_channel(b, triangle_info, 0);
    intersection.geometry_id_and_flags = nir_channel(b, triangle_info, 1);
    intersection.opaque = hit_is_opaque(b, nir_load_deref(b, args->vars.sbt_offset_and_flags),
