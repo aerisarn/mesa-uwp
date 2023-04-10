@@ -1104,6 +1104,25 @@ impl fmt::Display for OpIAdd3 {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpIMnMx {
+    pub dst: Dst,
+    pub cmp_type: IntCmpType,
+    pub srcs: [Src; 2],
+    pub min: Src,
+}
+
+impl fmt::Display for OpIMnMx {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "IMNMX.{} {} {{ {}, {} }} {}",
+            self.cmp_type, self.dst, self.srcs[0], self.srcs[1], self.min
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpISetP {
     pub dst: Dst,
 
@@ -1644,6 +1663,7 @@ pub enum Op {
     FSet(OpFSet),
     FSetP(OpFSetP),
     IAdd3(OpIAdd3),
+    IMnMx(OpIMnMx),
     ISetP(OpISetP),
     Lop3(OpLop3),
     Shl(OpShl),
@@ -2069,6 +2089,7 @@ impl Instr {
             | Op::FSet(_)
             | Op::FSetP(_)
             | Op::IAdd3(_)
+            | Op::IMnMx(_)
             | Op::Lop3(_)
             | Op::PLop3(_)
             | Op::ISetP(_)

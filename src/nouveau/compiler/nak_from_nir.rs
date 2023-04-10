@@ -328,6 +328,21 @@ impl<'a> ShaderFromNir<'a> {
                     ));
                 }
             }
+            nir_op_imax | nir_op_imin | nir_op_umax | nir_op_umin => {
+                let (tp, min) = match alu.op {
+                    nir_op_imax => (IntCmpType::I32, SrcRef::False),
+                    nir_op_imin => (IntCmpType::I32, SrcRef::True),
+                    nir_op_umax => (IntCmpType::U32, SrcRef::False),
+                    nir_op_umin => (IntCmpType::U32, SrcRef::True),
+                    _ => panic!("Not an integer min/max"),
+                };
+                self.instrs.push(Instr::new(Op::IMnMx(OpIMnMx {
+                    dst: dst,
+                    cmp_type: tp,
+                    srcs: [srcs[0], srcs[1]],
+                    min: min.into(),
+                })));
+            }
             nir_op_ineg => {
                 self.instrs.push(Instr::new(Op::IMov(OpIMov {
                     dst: dst,

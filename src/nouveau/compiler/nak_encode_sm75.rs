@@ -475,6 +475,24 @@ impl SM75Instr {
         );
     }
 
+    fn encode_imnmx(&mut self, op: &OpIMnMx) {
+        self.encode_alu(
+            0x017,
+            Some(op.dst),
+            ALUSrc::from_src(&op.srcs[0]),
+            ALUSrc::from_src(&op.srcs[1]),
+            ALUSrc::None,
+        );
+        self.set_pred_src(87..90, 90, op.min);
+        self.set_bit(
+            73,
+            match op.cmp_type {
+                IntCmpType::U32 => false,
+                IntCmpType::I32 => true,
+            },
+        );
+    }
+
     fn set_int_cmp_op(&mut self, range: Range<usize>, op: IntCmpOp) {
         assert!(range.len() == 3);
         self.set_field(
@@ -751,6 +769,7 @@ impl SM75Instr {
             Op::FSet(op) => si.encode_fset(&op),
             Op::FSetP(op) => si.encode_fsetp(&op),
             Op::IAdd3(op) => si.encode_iadd3(&op),
+            Op::IMnMx(op) => si.encode_imnmx(&op),
             Op::ISetP(op) => si.encode_isetp(&op),
             Op::Lop3(op) => si.encode_lop3(&op),
             Op::Shl(op) => si.encode_shl(&op),
