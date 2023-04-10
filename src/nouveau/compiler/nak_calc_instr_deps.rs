@@ -116,6 +116,26 @@ impl BarAlloc {
         None
     }
 
+    pub fn alloc(&mut self) -> (BarDep, bool) {
+        if let Some(bd) = self.try_alloc() {
+            (bd, false)
+        } else {
+            /* Get the oldest by looking for the one with the smallest dep */
+            let mut old_bar = 0;
+            let mut old_dep = self.bar_dep[0];
+            for bar in 1..self.bars {
+                let dep = self.bar_dep[usize::from(bar)];
+                if dep < old_dep {
+                    old_bar = bar;
+                    old_dep = dep;
+                }
+            }
+            self.free_bar(old_bar);
+            let bd = self.alloc_dep(old_bar);
+            (bd, true)
+        }
+    }
+
     pub fn free_bar(&mut self, bar: u8) {
         let dep = self.get_dep(bar).unwrap();
         self.bar_dep[usize::from(bar)] = usize::MAX;
@@ -205,12 +225,18 @@ impl AllocBarriers {
                     }
 
                     if !instr.srcs().is_empty() {
-                        let bd = self.bars.try_alloc().unwrap();
+                        let (bd, stall) = self.bars.alloc();
+                        if stall {
+                            instr.deps.add_wt_bar(bd.bar);
+                        }
                         instr.deps.set_rd_bar(bd.bar);
                         self.set_instr_read_dep(instr, bd.dep);
                     }
                     if !instr.dsts().is_empty() {
-                        let bd = self.bars.try_alloc().unwrap();
+                        let (bd, stall) = self.bars.alloc();
+                        if stall {
+                            instr.deps.add_wt_bar(bd.bar);
+                        }
                         instr.deps.set_wr_bar(bd.bar);
                         self.set_instr_write_dep(instr, bd.dep);
                     }
