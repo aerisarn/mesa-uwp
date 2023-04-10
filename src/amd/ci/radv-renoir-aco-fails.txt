@@ -109,14 +109,4 @@ dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_vert_buffers2_sets4_im
 dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_vert_buffers32_sets1,Crash
 dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_vert_buffers3_sets1,Crash
 dEQP-VK.binding_model.descriptor_buffer.multiple.graphics_vert_buffers8_sets1,Crash
-dEQP-VK.dynamic_rendering.primary_cmd_buff.random.seed3_tessellation,Fail
-dEQP-VK.dynamic_rendering.primary_cmd_buff.random.seed46_geometry,Fail
-dEQP-VK.dynamic_rendering.primary_cmd_buff.random.seed49_tessellation,Fail
-dEQP-VK.dynamic_rendering.primary_cmd_buff.random.seed50_geometry,Fail
-dEQP-VK.dynamic_rendering.primary_cmd_buff.random.seed52_geometry,Fail
-dEQP-VK.dynamic_rendering.primary_cmd_buff.random.seed59_geometry,Fail
-dEQP-VK.dynamic_rendering.primary_cmd_buff.random.seed65_tessellation,Fail
-dEQP-VK.dynamic_rendering.primary_cmd_buff.random.seed6_geometry,Fail
-dEQP-VK.dynamic_rendering.primary_cmd_buff.random.seed81_tessellation,Fail
-dEQP-VK.dynamic_rendering.primary_cmd_buff.random.seed8_tessellation,Fail
 dEQP-VK.pipeline.fast_linked_library.multisample_interpolation.sample_interpolation_consistency.component_1.128_128_1.samples_8,Fail
