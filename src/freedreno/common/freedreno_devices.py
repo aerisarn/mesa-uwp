@@ -256,6 +256,7 @@ a6xx_gen1 = dict(
 # a605, a608, a610, 612
 a6xx_gen1_low = {**a6xx_gen1, **dict(
         has_gmem_fast_clear = False,
+        reg_size_vec4 = 48,
         has_hw_multiview = False,
         has_sampler_minmax = False,
         has_fs_tex_prefetch = False,
