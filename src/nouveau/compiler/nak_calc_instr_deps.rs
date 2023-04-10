@@ -60,83 +60,91 @@ impl<T: Copy> RegTracker<T> {
 }
 
 struct AllocBarriers {
+    deps: RegTracker<usize>,
+    barriers: Vec<i8>,
     active: u8,
-    tracker: RegTracker<i8>,
 }
 
 impl AllocBarriers {
     pub fn new() -> AllocBarriers {
         AllocBarriers {
+            deps: RegTracker::new(usize::MAX),
+            barriers: Vec::new(),
             active: 0,
-            tracker: RegTracker::new(-1),
         }
     }
 
-    fn alloc_barrier(&mut self) -> i8 {
-        let bar = self.active.trailing_ones();
+    fn alloc_bar(&mut self) -> i8 {
+        let bar = i8::try_from(self.active.trailing_ones()).unwrap();
         assert!(bar < 6);
         self.active |= 1 << bar;
-        bar.try_into().unwrap()
+        bar
     }
 
-    fn free_barrier(&mut self, bar: i8) {
-        self.free_barrier_mask(1 << bar);
+    fn free_bar_mask(&mut self, bar_mask: u8) {
+        assert!(bar_mask < (1 << 7));
+        assert!((bar_mask & !self.active) == 0);
+        self.active &= !bar_mask;
     }
 
-    fn free_barrier_mask(&mut self, bar_mask: u8) {
-        //assert!(bar_mask < (1 << 7));
-        //assert!((bar_mask & !self.active) == 0);
-        //self.active &= !bar_mask;
+    fn alloc_dep(&mut self) -> (usize, i8) {
+        let bar = self.alloc_bar();
+        let dep = self.barriers.len();
+        self.barriers.push(bar);
+        (dep, bar)
     }
 
-    fn reg_barrier_mask(&self, reg: &RegRef) -> u8 {
-        self.tracker
-            .get(reg)
-            .iter()
-            .map(|i| if i < &0 { 0 } else { 1_u8 << i })
-            .reduce(|a, x| a | x)
-            .unwrap_or(0)
-            & self.active
+    fn take_reg_barrier_mask(&mut self, reg: &RegRef) -> u8 {
+        let mut mask = 0_u8;
+        for d in self.deps.get_mut(reg) {
+            if *d != usize::MAX && self.barriers[*d] >= 0 {
+                let bar = self.barriers[*d];
+                self.barriers[*d] = -1;
+                mask |= 1_u8 << bar;
+            }
+        }
+        self.free_bar_mask(mask);
+        mask
     }
 
-    fn set_reg_barrier(&mut self, reg: &RegRef, bar: i8) {
-        for b in self.tracker.get_mut(reg) {
-            *b = bar;
+    fn set_reg_dep(&mut self, reg: &RegRef, dep: usize) {
+        for d in self.deps.get_mut(reg) {
+            *d = dep;
         }
     }
 
-    fn instr_read_barrier_mask(&self, instr: &Instr) -> u8 {
+    fn take_instr_read_barrier_mask(&mut self, instr: &Instr) -> u8 {
         let mut bar_mask = 0_u8;
         for src in instr.srcs() {
             if let Some(reg) = src.get_reg() {
-                bar_mask |= self.reg_barrier_mask(reg);
+                bar_mask |= self.take_reg_barrier_mask(reg);
             }
         }
         bar_mask
     }
 
-    fn set_instr_read_barrier(&mut self, instr: &Instr, bar: i8) {
+    fn set_instr_read_dep(&mut self, instr: &Instr, dep: usize) {
         for src in instr.srcs() {
             if let Some(reg) = src.get_reg() {
-                self.set_reg_barrier(reg, bar);
+                self.set_reg_dep(reg, dep);
             }
         }
     }
 
-    fn instr_write_barrier_mask(&self, instr: &Instr) -> u8 {
+    fn take_instr_write_barrier_mask(&mut self, instr: &Instr) -> u8 {
         let mut bar_mask = 0_u8;
         for dst in instr.dsts() {
             if let Some(reg) = dst.as_reg() {
-                bar_mask |= self.reg_barrier_mask(reg);
+                bar_mask |= self.take_reg_barrier_mask(reg);
             }
         }
         bar_mask
     }
 
-    fn set_instr_write_barrier(&mut self, instr: &Instr, bar: i8) {
+    fn set_instr_write_dep(&mut self, instr: &Instr, dep: usize) {
         for dst in instr.dsts() {
             if let Some(reg) = dst.as_reg() {
-                self.set_reg_barrier(reg, bar);
+                self.set_reg_dep(reg, dep);
             }
         }
     }
@@ -146,24 +154,23 @@ impl AllocBarriers {
             for b in &mut f.blocks.iter_mut() {
                 for instr in &mut b.instrs.iter_mut() {
                     /* TODO: Don't barrier read-after-read */
-                    let wait = self.instr_read_barrier_mask(instr)
-                        | self.instr_write_barrier_mask(instr);
+                    let wait = self.take_instr_read_barrier_mask(instr)
+                        | self.take_instr_write_barrier_mask(instr);
                     instr.deps.add_wt_bar_mask(wait);
-                    self.free_barrier_mask(wait);
 
                     if instr.get_latency().is_some() {
                         continue;
                     }
 
                     if !instr.srcs().is_empty() {
-                        let bar = self.alloc_barrier();
+                        let (dep, bar) = self.alloc_dep();
                         instr.deps.set_rd_bar(bar.try_into().unwrap());
-                        self.set_instr_read_barrier(instr, bar);
+                        self.set_instr_read_dep(instr, dep);
                     }
                     if !instr.dsts().is_empty() {
-                        let bar = self.alloc_barrier();
+                        let (dep, bar) = self.alloc_dep();
                         instr.deps.set_wr_bar(bar.try_into().unwrap());
-                        self.set_instr_write_barrier(instr, bar);
+                        self.set_instr_write_dep(instr, dep);
                     }
                 }
             }
