@@ -1,0 +1,325 @@
+/*
+ * Copyright © 2023 Collabora, Ltd.
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "nak_private.h"
+#include "nir_builder.h"
+#include "nir_format_convert.h"
+
+static bool
+lower_tex(nir_builder *b, nir_tex_instr *tex, const struct nak_compiler *nak)
+{
+   b->cursor = nir_before_instr(&tex->instr);
+
+   nir_def *tex_h = NULL, *samp_h = NULL, *coord = NULL, *ms_idx = NULL;
+   nir_def *offset = NULL, *lod = NULL, *bias = NULL, *min_lod = NULL;
+   nir_def *ddx = NULL, *ddy = NULL, *z_cmpr = NULL;
+   for (unsigned i = 0; i < tex->num_srcs; i++) {
+      switch (tex->src[i].src_type) {
+      case nir_tex_src_texture_handle: tex_h =     tex->src[i].src.ssa; break;
+      case nir_tex_src_sampler_handle: samp_h =    tex->src[i].src.ssa; break;
+      case nir_tex_src_coord:          coord =     tex->src[i].src.ssa; break;
+      case nir_tex_src_ms_index:       ms_idx =    tex->src[i].src.ssa; break;
+      case nir_tex_src_comparator:     z_cmpr =    tex->src[i].src.ssa; break;
+      case nir_tex_src_offset:         offset =    tex->src[i].src.ssa; break;
+      case nir_tex_src_lod:            lod =       tex->src[i].src.ssa; break;
+      case nir_tex_src_bias:           bias =      tex->src[i].src.ssa; break;
+      case nir_tex_src_min_lod:        min_lod =   tex->src[i].src.ssa; break;
+      case nir_tex_src_ddx:            ddx =       tex->src[i].src.ssa; break;
+      case nir_tex_src_ddy:            ddy =       tex->src[i].src.ssa; break;
+      default:
+         unreachable("Unsupported texture source");
+      }
+   }
+
+   /* Combine sampler and texture into one if needed */
+   if (samp_h != NULL && samp_h != tex_h) {
+      tex_h = nir_ior(b, nir_iand_imm(b, tex_h,  0x000fffff),
+                         nir_iand_imm(b, samp_h, 0xfff00000));
+   }
+   tex_h = nir_u2u32(b, tex_h);
+
+   /* Array index is treated separately, so pull it off if we have one. */
+   nir_def *arr_idx = NULL;
+   unsigned coord_components = tex->coord_components;
+   if (coord && tex->is_array) {
+      if (tex->op == nir_texop_lod) {
+         /* The HW wants an array index. Use zero. */
+         arr_idx = nir_imm_int(b, 0);
+      } else {
+         arr_idx = nir_channel(b, coord, --coord_components);
+
+         /* Everything but texelFetch takes a float index
+          *
+          * TODO: Use F2I.U32.RNE
+          */
+         if (tex->op != nir_texop_txf)
+            arr_idx = nir_f2u32(b, nir_fadd_imm(b, arr_idx, 0.5));
+
+         arr_idx = nir_umin(b, arr_idx, nir_imm_int(b, UINT16_MAX));
+      }
+   }
+
+   enum nak_nir_lod_mode lod_mode = NAK_NIR_LOD_MODE_AUTO;
+   if (lod != NULL) {
+      nir_scalar lod_s = { .def = lod, .comp = 0 };
+      if (nir_scalar_is_const(lod_s) &&
+          nir_scalar_as_uint(lod_s) == 0) {
+         lod_mode = NAK_NIR_LOD_MODE_ZERO;
+         lod = NULL; /* We don't need this */
+      } else {
+         lod_mode = NAK_NIR_LOD_MODE_LOD;
+      }
+   } else if (bias != NULL) {
+      lod_mode = NAK_NIR_LOD_MODE_BIAS;
+      lod = bias;
+   }
+
+   if (min_lod != NULL) {
+      switch (lod_mode) {
+      case NAK_NIR_LOD_MODE_AUTO:
+         lod_mode = NAK_NIR_LOD_MODE_CLAMP;
+         break;
+      case NAK_NIR_LOD_MODE_BIAS:
+         lod_mode = NAK_NIR_LOD_MODE_BIAS_CLAMP;
+         break;
+      default:
+         unreachable("Invalid min_lod");
+      }
+      min_lod = nir_f2u32(b, nir_fmax(b, nir_fmul_imm(b, min_lod, 256),
+                                         nir_imm_float(b, 16)));
+   }
+
+   enum nak_nir_offset_mode offset_mode = NAK_NIR_OFFSET_MODE_NONE;
+   if (offset != NULL) {
+      /* For TG4, offsets, are packed into a single 32-bit value with 8 bits
+       * per component.  For all other texture instructions, offsets are
+       * packed into a single at most 16-bit value with 8 bits per component.
+       */
+      static const unsigned bits4[] = { 4, 4, 4, 4 };
+      static const unsigned bits8[] = { 8, 8, 8, 8 };
+      const unsigned *bits = tex->op == nir_texop_tg4 ? bits8 : bits4;
+
+      offset = nir_pad_vector_imm_int(b, offset, 0, 4);
+      offset = nir_format_clamp_sint(b, offset, bits);
+      offset = nir_format_pack_uint(b, offset, bits, 4);
+      offset_mode = NAK_NIR_OFFSET_MODE_AOFFI;
+   } else if (nir_tex_instr_has_explicit_tg4_offsets(tex)) {
+      uint64_t off_u64 = 0;
+      for (uint8_t i = 0; i < 8; ++i) {
+         uint64_t off = (uint8_t)tex->tg4_offsets[i / 2][i % 2];
+         off_u64 |= off << (i * 8);
+      }
+      offset = nir_imm_ivec2(b, off_u64, off_u64 >> 32);
+      offset_mode = NAK_NIR_OFFSET_MODE_PER_PX;
+   }
+
+   nir_def *src0[4] = { NULL, };
+   nir_def *src1[4] = { NULL, };
+   unsigned src0_comps = 0, src1_comps = 0;
+
+#define PUSH(a, x) do { \
+   nir_def *val = (x); \
+   assert(a##_comps < ARRAY_SIZE(a)); \
+   a[a##_comps++] = val; \
+} while(0)
+
+   if (nak->sm >= 50) {
+      if (tex->op == nir_texop_txd) {
+         PUSH(src0, tex_h);
+
+         for (uint32_t i = 0; i < coord_components; i++)
+            PUSH(src0, nir_channel(b, coord, i));
+
+         if (offset != NULL) {
+            nir_def *arr_off = nir_ishl_imm(b, offset, 16);
+            if (arr_idx)
+               arr_off = nir_ior(b, arr_off, arr_idx);
+            PUSH(src0, arr_off);
+         } else if (arr_idx != NULL) {
+            PUSH(src0, arr_idx);
+         }
+
+         assert(ddx->num_components == coord_components);
+         for (uint32_t i = 0; i < coord_components; i++) {
+            PUSH(src1, nir_channel(b, ddx, i));
+            PUSH(src1, nir_channel(b, ddy, i));
+         }
+      } else {
+         if (min_lod != NULL) {
+            nir_def *arr_ml = nir_ishl_imm(b, min_lod, 16);
+            if (arr_idx)
+               arr_ml = nir_ior(b, arr_ml, arr_idx);
+            PUSH(src0, arr_ml);
+         } else if (arr_idx != NULL) {
+            PUSH(src0, arr_idx);
+         }
+
+         for (uint32_t i = 0; i < coord_components; i++)
+            PUSH(src0, nir_channel(b, coord, i));
+
+         PUSH(src1, tex_h);
+         if (ms_idx != NULL)
+            PUSH(src1, ms_idx);
+         if (lod != NULL)
+            PUSH(src1, lod);
+         if (offset_mode == NAK_NIR_OFFSET_MODE_AOFFI) {
+            PUSH(src1, offset);
+         } else if (offset_mode == NAK_NIR_OFFSET_MODE_PER_PX) {
+            PUSH(src1, nir_channel(b, offset, 0));
+            PUSH(src1, nir_channel(b, offset, 1));
+         }
+         if (z_cmpr != NULL)
+            PUSH(src1, z_cmpr);
+      }
+   } else {
+      unreachable("Unsupported shader model");
+   }
+
+   nir_def *vec_srcs[2] = {
+      nir_vec(b, src0, src0_comps),
+      nir_vec(b, src1, src1_comps),
+   };
+
+   tex->src[0].src_type = nir_tex_src_backend1;
+   nir_src_rewrite(&tex->src[0].src, vec_srcs[0]);
+
+   tex->src[1].src_type = nir_tex_src_backend2;
+   nir_src_rewrite(&tex->src[1].src, vec_srcs[1]);
+
+   /* Remove any extras */
+   while (tex->num_srcs > 2)
+      nir_tex_instr_remove_src(tex, tex->num_srcs - 1);
+
+   struct nak_nir_tex_flags flags = {
+      .lod_mode = lod_mode,
+      .offset_mode = offset_mode,
+      .has_z_cmpr = tex->is_shadow,
+   };
+   STATIC_ASSERT(sizeof(flags) == sizeof(tex->backend_flags));
+   memcpy(&tex->backend_flags, &flags, sizeof(flags));
+
+   if (tex->op == nir_texop_lod) {
+      b->cursor = nir_after_instr(&tex->instr);
+
+      /* The outputs are flipped compared to what NIR expects */
+      nir_def *abs = nir_channel(b, &tex->def, 1);
+      nir_def *rel = nir_channel(b, &tex->def, 0);
+
+      /* The returned values are not quite what we want:
+       * (a) convert from s16/u16 to f32
+       * (b) multiply by 1/256
+       *
+       * TODO: We can make this cheaper once we have 16-bit in NAK
+       */
+      abs = nir_u2f32(b, nir_iand_imm(b, abs, 0xffff));
+      nir_def *shift = nir_imm_int(b, 16);
+      rel = nir_i2f32(b, nir_ishr(b, nir_ishl(b, rel, shift), shift));
+
+      abs = nir_fmul_imm(b, abs, 1.0 / 256.0);
+      rel = nir_fmul_imm(b, rel, 1.0 / 256.0);
+
+      nir_def *res = nir_vec2(b, abs, rel);
+      nir_def_rewrite_uses_after(&tex->def, res, res->parent_instr);
+   }
+
+   return true;
+}
+
+static bool
+lower_txq(nir_builder *b, nir_tex_instr *tex, const struct nak_compiler *nak)
+{
+   b->cursor = nir_before_instr(&tex->instr);
+
+   nir_def *tex_h = NULL, *lod = NULL;
+   for (unsigned i = 0; i < tex->num_srcs; i++) {
+      switch (tex->src[i].src_type) {
+      case nir_tex_src_texture_handle: tex_h = tex->src[i].src.ssa; break;
+      case nir_tex_src_sampler_handle: break; /* Ignored */
+      case nir_tex_src_lod:            lod = tex->src[i].src.ssa; break;
+      default:
+         unreachable("Unsupported texture source");
+      }
+   }
+
+   /* TODO: We should only support 32-bit handles */
+   tex_h = nir_u2u32(b, tex_h);
+
+   nir_def *txq_src;
+   nir_component_mask_t mask;
+   switch (tex->op) {
+   case nir_texop_txs:
+      tex->op = nir_texop_hdr_dim_nv;
+      if (lod == NULL)
+         lod = nir_imm_int(b, 0);
+      txq_src = nir_vec2(b, tex_h, lod);
+      mask = BITSET_MASK(tex->def.num_components);
+      break;
+   case nir_texop_query_levels:
+      tex->op = nir_texop_hdr_dim_nv;
+      txq_src = nir_vec2(b, tex_h, nir_imm_int(b, 0));
+      mask = BITSET_BIT(3);
+      break;
+   case nir_texop_texture_samples:
+      tex->op = nir_texop_tex_type_nv;
+      txq_src = tex_h;
+      mask = BITSET_BIT(2);
+      break;
+   default:
+      unreachable("Invalid texture query op");
+   }
+
+   tex->src[0].src_type = nir_tex_src_backend1;
+   nir_src_rewrite(&tex->src[0].src, txq_src);
+
+   /* Remove any extras */
+   while (tex->num_srcs > 1)
+      nir_tex_instr_remove_src(tex, tex->num_srcs - 1);
+
+   b->cursor = nir_after_instr(&tex->instr);
+
+   /* Only pick off slected components */
+   tex->def.num_components = 4;
+   nir_def *res = nir_channels(b, &tex->def, mask);
+   nir_def_rewrite_uses_after(&tex->def, res, res->parent_instr);
+
+   return true;
+}
+
+static bool
+lower_tex_instr(nir_builder *b, nir_instr *instr, void *_data)
+{
+   const struct nak_compiler *nak = _data;
+
+   if (instr->type != nir_instr_type_tex)
+      return false;
+
+   nir_tex_instr *tex = nir_instr_as_tex(instr);
+   switch (tex->op) {
+   case nir_texop_tex:
+   case nir_texop_txb:
+   case nir_texop_txl:
+   case nir_texop_txd:
+   case nir_texop_txf:
+   case nir_texop_txf_ms:
+   case nir_texop_tg4:
+   case nir_texop_lod:
+      return lower_tex(b, tex, nak);
+   case nir_texop_txs:
+   case nir_texop_query_levels:
+   case nir_texop_texture_samples:
+      return lower_txq(b, tex, nak);
+   default:
+      unreachable("Unsupported texture instruction");
+   }
+}
+
+bool
+nak_nir_lower_tex(nir_shader *nir, const struct nak_compiler *nak)
+{
+   return nir_shader_instructions_pass(nir, lower_tex_instr,
+                                       nir_metadata_block_index |
+                                       nir_metadata_dominance,
+                                       (void *)nak);
+}
