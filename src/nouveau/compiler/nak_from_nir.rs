@@ -156,6 +156,18 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs
                     .push(Instr::new_sel(dst, srcs[0], srcs[1], srcs[2]));
             }
+            nir_op_f2i32 | nir_op_f2u32 => {
+                let src_bits = usize::from(alu.get_src(0).bit_size());
+                let dst_bits = usize::from(alu.def.bit_size());
+                let dst_is_signed = alu.info().output_type & 2 != 0;
+                self.instrs.push(Instr::new(Op::F2I(OpF2I {
+                    dst: dst,
+                    src: srcs[0],
+                    src_type: FloatType::from_bytes(src_bits / 8),
+                    dst_type: IntType::from_bytes(dst_bits / 8, dst_is_signed),
+                    rnd_mode: FRndMode::Zero,
+                })));
+            }
             nir_op_fabs => {
                 self.instrs.push(Instr::new(Op::FMov(OpFMov {
                     dst: dst,

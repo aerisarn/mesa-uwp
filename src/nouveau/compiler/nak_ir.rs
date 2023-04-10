@@ -812,6 +812,15 @@ pub enum FloatType {
 }
 
 impl FloatType {
+    pub fn from_bytes(bytes: usize) -> FloatType {
+        match bytes {
+            2 => FloatType::F16,
+            4 => FloatType::F32,
+            8 => FloatType::F64,
+            _ => panic!("Invalid float type size"),
+        }
+    }
+
     pub fn bytes(&self) -> usize {
         match self {
             FloatType::F16 => 2,
@@ -862,6 +871,40 @@ pub enum IntType {
 }
 
 impl IntType {
+    pub fn from_bytes(bytes: usize, is_signed: bool) -> IntType {
+        match bytes {
+            1 => {
+                if is_signed {
+                    IntType::I8
+                } else {
+                    IntType::U8
+                }
+            }
+            2 => {
+                if is_signed {
+                    IntType::I16
+                } else {
+                    IntType::U16
+                }
+            }
+            4 => {
+                if is_signed {
+                    IntType::I32
+                } else {
+                    IntType::U32
+                }
+            }
+            8 => {
+                if is_signed {
+                    IntType::I64
+                } else {
+                    IntType::U64
+                }
+            }
+            _ => panic!("Invalid integer type size"),
+        }
+    }
+
     pub fn is_signed(&self) -> bool {
         match self {
             IntType::U8 | IntType::U16 | IntType::U32 | IntType::U64 => false,
@@ -1273,6 +1316,26 @@ impl fmt::Display for OpShl {
             f,
             "SHL {} {{ {}, {} }}",
             self.dst, self.srcs[0], self.srcs[1],
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpF2I {
+    pub dst: Dst,
+    pub src: Src,
+    pub src_type: FloatType,
+    pub dst_type: IntType,
+    pub rnd_mode: FRndMode,
+}
+
+impl fmt::Display for OpF2I {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "F2I.{}.{}.{} {} {}",
+            self.dst_type, self.src_type, self.rnd_mode, self.dst, self.src,
         )
     }
 }
@@ -1801,6 +1864,7 @@ pub enum Op {
     ISetP(OpISetP),
     Lop3(OpLop3),
     Shl(OpShl),
+    F2I(OpF2I),
     I2F(OpI2F),
     Mov(OpMov),
     Sel(OpSel),
@@ -2269,7 +2333,7 @@ impl Instr {
             | Op::PLop3(_)
             | Op::ISetP(_)
             | Op::Shl(_) => Some(6),
-            Op::I2F(_) | Op::Mov(_) => Some(15),
+            Op::F2I(_) | Op::I2F(_) | Op::Mov(_) => Some(15),
             Op::MuFu(_) => None,
             Op::Sel(_) => Some(15),
             Op::S2R(_) => None,
