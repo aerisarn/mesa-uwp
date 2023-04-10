@@ -1709,6 +1709,12 @@ print_tex_instr(nir_tex_instr *instr, print_state *state)
    case nir_texop_lod_bias_agx:
       fprintf(fp, "lod_bias_agx ");
       break;
+   case nir_texop_hdr_dim_nv:
+      fprintf(fp, "hdr_dim_nv ");
+      break;
+   case nir_texop_tex_type_nv:
+      fprintf(fp, "tex_type_nv ");
+      break;
    default:
       unreachable("Invalid texture operation");
       break;

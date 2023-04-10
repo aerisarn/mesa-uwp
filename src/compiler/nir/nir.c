@@ -3087,6 +3087,10 @@ nir_tex_instr_result_size(const nir_tex_instr *instr)
    case nir_texop_sampler_descriptor_amd:
       return 4;
 
+   case nir_texop_hdr_dim_nv:
+   case nir_texop_tex_type_nv:
+      return 4;
+
    default:
       if (instr->is_shadow && instr->is_new_style_shadow)
          return 1;
