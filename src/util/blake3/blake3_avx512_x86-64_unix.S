@@ -1,3 +1,5 @@
+#include "mesa_blake3_visibility.h"
+
 #if defined(__ELF__) && defined(__linux__)
 .section .note.GNU-stack,"",%progbits
 #endif
@@ -13,6 +15,12 @@
 #endif
 
 .intel_syntax noprefix
+HIDDEN _blake3_hash_many_avx512
+HIDDEN blake3_hash_many_avx512
+HIDDEN blake3_compress_in_place_avx512
+HIDDEN _blake3_compress_in_place_avx512
+HIDDEN blake3_compress_xof_avx512
+HIDDEN _blake3_compress_xof_avx512
 .global _blake3_hash_many_avx512
 .global blake3_hash_many_avx512
 .global blake3_compress_in_place_avx512

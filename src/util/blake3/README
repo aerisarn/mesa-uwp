@@ -12,3 +12,5 @@ Changes:
 - Add non-typedef struct name to blake3_hasher.
 
 - Add "static" to blake3_hash4_neon, to comply with -Werror=missing-prototypes.
+
+- Add mesa_blake3_visibility.h and set symbol visibility to hidden for assembly sources.
