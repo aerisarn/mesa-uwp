@@ -49,7 +49,7 @@
 
 #include "errno.h"
 #include "common/intel_aux_map.h"
-#include "common/intel_clflush.h"
+#include "common/intel_mem.h"
 #include "dev/intel_debug.h"
 #include "common/intel_gem.h"
 #include "dev/intel_device_info.h"

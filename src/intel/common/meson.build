@@ -32,7 +32,6 @@ files_libintel_common = files(
   'intel_aux_map.c',
   'intel_aux_map.h',
   'intel_buffer_alloc.h',
-  'intel_clflush.h',
   'intel_decoder.h',
   'intel_disasm.c',
   'intel_disasm.h',
@@ -51,6 +50,8 @@ files_libintel_common = files(
   'intel_uuid.h',
   'intel_measure.c',
   'intel_measure.h',
+  'intel_mem.c',
+  'intel_mem.h',
   'intel_pixel_hash.h'
 )
 

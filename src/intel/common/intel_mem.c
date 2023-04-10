@@ -21,14 +21,12 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef INTEL_CLFLUSH_H
-#define INTEL_CLFLUSH_H
+#include "intel_mem.h"
 
-#define CACHELINE_SIZE 64
-#define CACHELINE_MASK 63
+#include <stdint.h>
 
 #ifdef SUPPORT_INTEL_INTEGRATED_GPUS
-static inline void
+void
 intel_clflush_range(void *start, size_t size)
 {
    void *p = (void *) (((uintptr_t) start) & ~CACHELINE_MASK);
@@ -40,14 +38,14 @@ intel_clflush_range(void *start, size_t size)
    }
 }
 
-static inline void
+void
 intel_flush_range(void *start, size_t size)
 {
    __builtin_ia32_mfence();
    intel_clflush_range(start, size);
 }
 
-static inline void
+void
 intel_invalidate_range(void *start, size_t size)
 {
    if (size == 0)
@@ -69,5 +67,3 @@ intel_invalidate_range(void *start, size_t size)
    __builtin_ia32_mfence();
 }
 #endif /* SUPPORT_INTEL_INTEGRATED_GPUS */
-
-#endif
