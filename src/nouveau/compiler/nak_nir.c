@@ -186,10 +186,15 @@ nak_preprocess_nir(nir_shader *nir, const struct nak_compiler *nak)
    OPT(nir, nir_lower_bit_size, lower_bit_size_cb, (void *)nak);
 
    const nir_lower_tex_options tex_options = {
+      .lower_txd_3d = true,
+      .lower_txd_cube_map = true,
+      .lower_txd_clamp = true,
+      .lower_txd_shadow = true,
       .lower_txp = ~0,
       /* TODO: More lowering */
    };
    OPT(nir, nir_lower_tex, &tex_options);
+   OPT(nir, nir_normalize_cubemap_coords);
 
    OPT(nir, nir_lower_global_vars_to_local);
 
