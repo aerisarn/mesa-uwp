@@ -12,6 +12,7 @@ mod nak_ir;
 mod nak_opt_copy_prop;
 mod nak_opt_dce;
 mod nir;
+mod union_find;
 mod util;
 
 use bitset::*;
