@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+mod bitset;
 mod bitview;
 mod nak_assign_regs;
 mod nak_calc_instr_deps;
