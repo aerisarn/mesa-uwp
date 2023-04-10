@@ -794,6 +794,14 @@ zero_bo(struct iris_bufmgr *bufmgr,
 {
    assert(flags & BO_ALLOC_ZEROED);
 
+   if (bufmgr->devinfo.has_flat_ccs && (flags & BO_ALLOC_LMEM)) {
+      /* With flat CCS, all allocations in LMEM have memory ranges with
+       * corresponding CCS elements. These elements are only accessible
+       * through GPU commands, but we don't issue GPU commands here.
+       */
+      return false;
+   }
+
    void *map = iris_bo_map(NULL, bo, MAP_WRITE | MAP_RAW);
    if (!map)
       return false;
