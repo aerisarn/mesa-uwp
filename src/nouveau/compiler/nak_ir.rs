@@ -9,11 +9,6 @@ use nak_ir_proc::*;
 use std::fmt;
 use std::ops::{BitAnd, BitOr, Not, Range};
 
-#[derive(Clone, Copy)]
-pub struct Immediate {
-    pub u: u32,
-}
-
 #[repr(u8)]
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum RegFile {
@@ -282,7 +277,7 @@ pub struct CBufRef {
 #[derive(Clone, Copy)]
 pub enum SrcRef {
     Zero,
-    Imm(Immediate),
+    Imm32(u32),
     CBuf(CBufRef),
     SSA(SSAValue),
     Reg(RegRef),
@@ -305,7 +300,7 @@ impl SrcRef {
 
     pub fn get_reg(&self) -> Option<&RegRef> {
         match self {
-            SrcRef::Zero | SrcRef::Imm(_) | SrcRef::SSA(_) => None,
+            SrcRef::Zero | SrcRef::Imm32(_) | SrcRef::SSA(_) => None,
             SrcRef::CBuf(cb) => match &cb.buf {
                 CBuf::Binding(_) | CBuf::BindlessSSA(_) => None,
                 CBuf::BindlessGPR(reg) => Some(reg),
@@ -316,7 +311,7 @@ impl SrcRef {
 
     pub fn get_ssa(&self) -> Option<&SSAValue> {
         match self {
-            SrcRef::Zero | SrcRef::Imm(_) | SrcRef::Reg(_) => None,
+            SrcRef::Zero | SrcRef::Imm32(_) | SrcRef::Reg(_) => None,
             SrcRef::CBuf(cb) => match &cb.buf {
                 CBuf::Binding(_) | CBuf::BindlessGPR(_) => None,
                 CBuf::BindlessSSA(ssa) => Some(ssa),
@@ -342,7 +337,7 @@ impl fmt::Display for SrcRef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             SrcRef::Zero => write!(f, "ZERO")?,
-            SrcRef::Imm(x) => write!(f, "{:#x}", x.u)?,
+            SrcRef::Imm32(u) => write!(f, "{:#x}", u)?,
             SrcRef::CBuf(r) => {
                 match r.buf {
                     CBuf::Binding(idx) => write!(f, "c[{:#x}]", idx)?,
@@ -453,7 +448,7 @@ impl Src {
     }
 
     pub fn new_imm_u32(u: u32) -> Src {
-        SrcRef::Imm(Immediate { u: u }).into()
+        SrcRef::Imm32(u).into()
     }
 
     pub fn new_cbuf(idx: u8, offset: u16) -> Src {
@@ -503,7 +498,7 @@ impl Src {
 
     pub fn is_uniform(&self) -> bool {
         match self.src_ref {
-            SrcRef::Zero | SrcRef::Imm(_) | SrcRef::CBuf(_) => true,
+            SrcRef::Zero | SrcRef::Imm32(_) | SrcRef::CBuf(_) => true,
             SrcRef::SSA(ssa) => ssa.is_uniform(),
             SrcRef::Reg(reg) => reg.is_uniform(),
         }
@@ -519,7 +514,7 @@ impl Src {
     pub fn is_reg_or_zero(&self) -> bool {
         match self.src_ref {
             SrcRef::Zero | SrcRef::SSA(_) | SrcRef::Reg(_) => true,
-            SrcRef::Imm(_) | SrcRef::CBuf(_) => false,
+            SrcRef::Imm32(_) | SrcRef::CBuf(_) => false,
         }
     }
 }

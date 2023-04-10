@@ -23,7 +23,7 @@ struct ALUCBufRef {
 
 enum ALUSrc {
     None,
-    Imm(Immediate),
+    Imm32(u32),
     Reg(ALURegRef),
     UReg(ALURegRef),
     CBuf(ALUCBufRef),
@@ -45,9 +45,9 @@ impl ALUSrc {
                     _ => panic!("Invalid ALU register file"),
                 }
             }
-            SrcRef::Imm(i) => {
+            SrcRef::Imm32(i) => {
                 assert!(src.src_mod.is_none());
-                ALUSrc::Imm(i)
+                ALUSrc::Imm32(i)
             }
             SrcRef::CBuf(cb) => {
                 let alu_ref = ALUCBufRef {
@@ -112,9 +112,9 @@ impl BitSetMutViewable for SM75Instr {
 impl BitSetMut for SM75Instr {}
 
 impl SM75Instr {
-    fn set_src_imm(&mut self, range: Range<usize>, imm: &Immediate) {
+    fn set_src_imm(&mut self, range: Range<usize>, u: &u32) {
         assert!(range.len() == 32);
-        self.set_field(range, imm.u);
+        self.set_field(range, *u);
     }
 
     fn set_reg(&mut self, range: Range<usize>, reg: RegRef) {
@@ -297,7 +297,7 @@ impl SM75Instr {
                         self.set_alu_reg(64..72, 74, 75, reg1);
                         7_u8 /* form */
                     }
-                    ALUSrc::Imm(imm) => {
+                    ALUSrc::Imm32(imm) => {
                         self.set_src_imm(32..64, &imm);
                         self.set_alu_reg(64..72, 74, 75, reg1);
                         2_u8 /* form */
@@ -315,7 +315,7 @@ impl SM75Instr {
                 self.set_alu_reg_src(64..72, 74, 75, &src2);
                 6_u8 /* form */
             }
-            ALUSrc::Imm(imm) => {
+            ALUSrc::Imm32(imm) => {
                 self.set_src_imm(32..64, &imm);
                 self.set_alu_reg_src(64..72, 74, 75, &src2);
                 4_u8 /* form */
