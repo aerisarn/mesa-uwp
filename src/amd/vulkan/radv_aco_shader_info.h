@@ -108,7 +108,6 @@ radv_aco_convert_ps_epilog_key(struct aco_ps_epilog_info *aco_info,
    ASSIGN_FIELD(spi_shader_col_format);
    ASSIGN_FIELD(color_is_int8);
    ASSIGN_FIELD(color_is_int10);
-   ASSIGN_FIELD(enable_mrt_output_nan_fixup);
    ASSIGN_FIELD(mrt0_is_dual_src);
 
    memcpy(aco_info->inputs, radv_args->ps_epilog_inputs, sizeof(aco_info->inputs));

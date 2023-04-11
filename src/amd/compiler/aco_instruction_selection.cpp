@@ -12195,7 +12195,7 @@ select_ps_epilog(Program* program, const struct aco_ps_epilog_info* einfo, ac_sh
       out.col_format = col_format;
       out.is_int8 = (einfo->color_is_int8 >> i) & 1;
       out.is_int10 = (einfo->color_is_int10 >> i) & 1;
-      out.enable_mrt_output_nan_fixup = (einfo->enable_mrt_output_nan_fixup >> i) & 1;
+      out.enable_mrt_output_nan_fixup = (options->enable_mrt_output_nan_fixup >> i) & 1;
 
       Temp inputs = get_arg(&ctx, einfo->inputs[i]);
       emit_split_vector(&ctx, inputs, 4);
