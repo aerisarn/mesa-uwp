@@ -34,7 +34,7 @@
 #include "vl/vl_video_buffer.h"
 #include <sys/utsname.h>
 
-/* The capabilties reported by the kernel has priority
+/* The capabilities reported by the kernel has priority
    over the existing logic in si_get_video_param */
 #define QUERYABLE_KERNEL   (!!(sscreen->info.drm_minor >= 41))
 #define KERNEL_DEC_CAP(codec, attrib)    \

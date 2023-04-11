@@ -1397,7 +1397,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
     *     z = [2..8]
     *     c = [2..8]
     *
-    * Only MSAA color and depth buffers are overriden.
+    * Only MSAA color and depth buffers are overridden.
     */
    if (sscreen->info.has_eqaa_surface_allocator) {
       const char *eqaa = debug_get_option("EQAA", NULL);

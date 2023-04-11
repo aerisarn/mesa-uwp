@@ -481,7 +481,7 @@ static void si_llvm_emit_polygon_stipple(struct si_shader_context *ctx,
  * - polygon stippling
  *
  * All preloaded SGPRs and VGPRs are passed through unmodified unless they are
- * overriden by other states. (e.g. per-sample interpolation)
+ * overridden by other states. (e.g. per-sample interpolation)
  * Interpolated colors are stored after the preloaded VGPRs.
  */
 void si_llvm_build_ps_prolog(struct si_shader_context *ctx, union si_shader_part_key *key,

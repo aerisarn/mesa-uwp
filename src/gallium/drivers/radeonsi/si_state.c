@@ -5962,7 +5962,7 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
                                  S_028B50_ACCUM_QUAD(11) |
                                  S_028B50_DONUT_SPLIT_GFX81(16);
 
-         /* Testing with Unigine Heaven extreme tesselation yielded best results
+         /* Testing with Unigine Heaven extreme tessellation yielded best results
           * with TRAP_SPLIT = 3.
           */
          if (sctx->family == CHIP_FIJI || sctx->family >= CHIP_POLARIS10)
