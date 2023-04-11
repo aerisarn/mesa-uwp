@@ -2935,8 +2935,10 @@ zink_prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, uns
    if (ctx->blitting)
       return surf->image_view;
    VkImageLayout layout;
+   /* depth attachment is stored as the last attachment, but bitfields always use PIPE_MAX_COLOR_BUFS */
+   int idx = i == ctx->fb_state.nr_cbufs ? PIPE_MAX_COLOR_BUFS : i;
    if (ctx->track_renderpasses) {
-      layout = zink_tc_renderpass_info_parse(ctx, &ctx->dynamic_fb.tc_info, i < ctx->fb_state.nr_cbufs ? i : PIPE_MAX_COLOR_BUFS, &pipeline, &access);
+      layout = zink_tc_renderpass_info_parse(ctx, &ctx->dynamic_fb.tc_info, idx, &pipeline, &access);
       assert(i < ctx->fb_state.nr_cbufs || layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL || !zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS));
       if (i == ctx->fb_state.nr_cbufs && zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS))
          assert(ctx->dynamic_fb.tc_info.zsbuf_clear || ctx->dynamic_fb.tc_info.zsbuf_clear_partial || ctx->dynamic_fb.tc_info.zsbuf_load);
