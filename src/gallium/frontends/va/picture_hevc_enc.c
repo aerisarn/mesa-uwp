@@ -235,7 +235,8 @@ vlVaHandleVAEncMiscParameterTypeRateControlHEVC(vlVaContext *context, VAEncMiscP
       context->desc.h265enc.rc.vbv_buffer_size = context->desc.h265enc.rc.target_bitrate;
 
    context->desc.h265enc.rc.fill_data_enable = !(rc->rc_flags.bits.disable_bit_stuffing);
-   context->desc.h265enc.rc.skip_frame_enable = !(rc->rc_flags.bits.disable_frame_skip);
+   /* context->desc.h265enc.rc.skip_frame_enable = !(rc->rc_flags.bits.disable_frame_skip); */
+   context->desc.h265enc.rc.skip_frame_enable = 0;
    context->desc.h265enc.rc.max_qp = rc->max_qp;
    context->desc.h265enc.rc.min_qp = rc->min_qp;
 
