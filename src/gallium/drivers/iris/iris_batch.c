@@ -814,10 +814,11 @@ _iris_batch_flush(struct iris_batch *batch, const char *file, int line)
       if (basefile)
          file = basefile + 5;
 
+      uint32_t batch_ctx_id = batch->i915.ctx_id;
       fprintf(stderr, "%19s:%-3d: %s batch [%u] flush with %5db (%0.1f%%) "
               "(cmds), %4d BOs (%0.1fMb aperture)\n",
-              file, line, iris_batch_name_to_string(batch->name), batch->ctx_id,
-              batch->total_chained_batch_size,
+              file, line, iris_batch_name_to_string(batch->name),
+              batch_ctx_id, batch->total_chained_batch_size,
               100.0f * batch->total_chained_batch_size / BATCH_SZ,
               batch->exec_count,
               (float) batch->aperture_space / (1024 * 1024));
