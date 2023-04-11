@@ -1281,6 +1281,54 @@ out:
    return ok;
 }
 
+static unsigned
+amdgpu_bo_find_next_committed_memory(struct pb_buffer *buf,
+                        uint64_t range_offset, unsigned *range_size)
+{
+   struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(buf);
+   struct amdgpu_sparse_commitment *comm;
+   uint32_t va_page, end_va_page;
+   uint32_t span_va_page, start_va_page;
+   unsigned skip, skip_after;
+
+   skip = skip_after = 0;
+   comm = bo->u.sparse.commitments;
+   start_va_page = va_page = range_offset / RADEON_SPARSE_PAGE_SIZE;
+   end_va_page = va_page + DIV_ROUND_UP(*range_size, RADEON_SPARSE_PAGE_SIZE);
+
+   simple_mtx_lock(&bo->lock);
+   /* Lookup the first page with backing physical storage */
+   while (va_page < end_va_page && !comm[va_page].backing)
+      va_page++;
+   span_va_page = va_page;
+
+   /* Lookup the first page without backing physical storage */
+   while (va_page < end_va_page && comm[va_page].backing)
+      va_page++;
+   simple_mtx_unlock(&bo->lock);
+
+   if (span_va_page * RADEON_SPARSE_PAGE_SIZE >= range_offset + *range_size) {
+      skip = *range_size;
+      *range_size = 0;
+      return skip;
+   }
+
+   /* Calc byte count that need to skip before committed range */
+   if (span_va_page != start_va_page)
+      skip = (span_va_page - start_va_page) * RADEON_SPARSE_PAGE_SIZE
+	      - range_offset % RADEON_SPARSE_PAGE_SIZE;
+
+   if (va_page != end_va_page) {
+      skip_after = (end_va_page - va_page - 1) * RADEON_SPARSE_PAGE_SIZE
+         + *range_size % RADEON_SPARSE_PAGE_SIZE;
+      if (!(*range_size % RADEON_SPARSE_PAGE_SIZE))
+         skip_after += RADEON_SPARSE_PAGE_SIZE;
+   }
+
+   *range_size = *range_size - skip_after - skip;
+   return skip;
+}
+
 static void amdgpu_buffer_get_metadata(struct radeon_winsys *rws,
                                        struct pb_buffer *_buf,
                                        struct radeon_bo_metadata *md,
@@ -1755,6 +1803,7 @@ void amdgpu_bo_init_functions(struct amdgpu_screen_winsys *ws)
    ws->base.buffer_is_suballocated = amdgpu_bo_is_suballocated;
    ws->base.buffer_get_handle = amdgpu_bo_get_handle;
    ws->base.buffer_commit = amdgpu_bo_sparse_commit;
+   ws->base.buffer_find_next_committed_memory = amdgpu_bo_find_next_committed_memory;
    ws->base.buffer_get_virtual_address = amdgpu_bo_get_va;
    ws->base.buffer_get_initial_domain = amdgpu_bo_get_initial_domain;
    ws->base.buffer_get_flags = amdgpu_bo_get_flags;
