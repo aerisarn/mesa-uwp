@@ -780,6 +780,11 @@ radv_get_user_data_0(const struct radv_device *device, struct radv_shader_info *
    case MESA_SHADER_COMPUTE:
    case MESA_SHADER_TASK:
    case MESA_SHADER_RAYGEN:
+   case MESA_SHADER_CALLABLE:
+   case MESA_SHADER_CLOSEST_HIT:
+   case MESA_SHADER_MISS:
+   case MESA_SHADER_INTERSECTION:
+   case MESA_SHADER_ANY_HIT:
       return R_00B900_COMPUTE_USER_DATA_0;
    default:
       unreachable("invalid shader stage");
