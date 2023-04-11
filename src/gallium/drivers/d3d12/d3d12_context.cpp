@@ -437,6 +437,8 @@ stencil_op_state(const struct pipe_stencil_state *src)
    ret.StencilPassOp = stencil_op((pipe_stencil_op) src->zpass_op);
    ret.StencilDepthFailOp = stencil_op((pipe_stencil_op) src->zfail_op);
    ret.StencilFunc = compare_op((pipe_compare_func) src->func);
+   ret.StencilReadMask = src->valuemask;
+   ret.StencilWriteMask = src->writemask;
    return ret;
 }
 
@@ -467,13 +469,21 @@ d3d12_create_depth_stencil_alpha_state(struct pipe_context *pctx,
       dsa->desc.FrontFace = stencil_op_state(depth_stencil_alpha->stencil);
    }
 
-   if (depth_stencil_alpha->stencil[1].enabled)
-      dsa->desc.BackFace = stencil_op_state(depth_stencil_alpha->stencil + 1);
-   else
-      dsa->desc.BackFace = dsa->desc.FrontFace;
+   if (depth_stencil_alpha->stencil[1].enabled) {
+      struct d3d12_screen* screen = d3d12_screen(pctx->screen);
 
-   dsa->desc.FrontFace.StencilReadMask = dsa->desc.BackFace.StencilReadMask = depth_stencil_alpha->stencil[0].valuemask; /* FIXME Back face mask */
-   dsa->desc.FrontFace.StencilWriteMask = dsa->desc.BackFace.StencilWriteMask = depth_stencil_alpha->stencil[0].writemask; /* FIXME Back face mask */
+      dsa->backface_enabled = true;
+      dsa->desc.BackFace = stencil_op_state(depth_stencil_alpha->stencil + 1);
+
+      if (!screen->opts14.IndependentFrontAndBackStencilRefMaskSupported) {
+         dsa->desc.BackFace.StencilReadMask = dsa->desc.FrontFace.StencilReadMask;
+         dsa->desc.BackFace.StencilWriteMask = dsa->desc.FrontFace.StencilWriteMask;
+      }
+   }
+   else {
+      dsa->desc.BackFace = dsa->desc.FrontFace;
+   }
+
    dsa->desc.DepthWriteMask = (D3D12_DEPTH_WRITE_MASK) depth_stencil_alpha->depth_writemask;
 
    return dsa;
@@ -1509,7 +1519,10 @@ d3d12_set_stencil_ref(struct pipe_context *pctx,
                       const struct pipe_stencil_ref ref)
 {
    struct d3d12_context *ctx = d3d12_context(pctx);
+   struct d3d12_screen *screen = d3d12_screen(pctx->screen);
    if ((ref.ref_value[0] != ref.ref_value[1]) &&
+       (!screen->opts14.IndependentFrontAndBackStencilRefMaskSupported ||
+        ctx->cmdlist8 == nullptr) &&
        (d3d12_debug & D3D12_DEBUG_VERBOSE))
        debug_printf("D3D12: Different values for front and back stencil reference are not supported\n");
    ctx->stencil_ref = ref;

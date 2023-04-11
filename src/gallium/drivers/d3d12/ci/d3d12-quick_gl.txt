@@ -22,7 +22,6 @@ spec@!opengl 1.1@polygon-mode-offset@config 4: Expected white pixel on top edge,
 spec@!opengl 1.1@polygon-offset,Fail
 spec@!opengl 1.1@vertex-fallbacks,Crash
 spec@!opengl 1.1@windowoverlap,Missing
-spec@!opengl 2.0@gl-2.0-two-sided-stencil,Fail
 spec@!opengl 3.0@sampler-cube-shadow,Fail
 spec@!opengl 3.1@default-vao,Fail
 spec@!opengl 3.1@genned-names,Fail
