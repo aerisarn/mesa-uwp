@@ -83,6 +83,7 @@ extern "C" {
 #endif
 
 #define MAX_SETS         8
+#define MAX_DESCRIPTORS (UINT32_MAX / sizeof(union lp_descriptor))
 #define MAX_PUSH_CONSTANTS_SIZE 256
 #define MAX_PUSH_DESCRIPTORS 32
 #define MAX_DESCRIPTOR_UNIFORM_BLOCK_SIZE 4096

@@ -161,6 +161,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_depth_range_unrestricted          = true,
    .EXT_dynamic_rendering_unused_attachments = true,
    .EXT_descriptor_buffer                 = true,
+   .EXT_descriptor_indexing               = true,
    .EXT_extended_dynamic_state            = true,
    .EXT_extended_dynamic_state2           = true,
    .EXT_extended_dynamic_state3           = true,
@@ -243,7 +244,6 @@ lvp_get_features(const struct lvp_physical_device *pdevice,
                  struct vk_features *features)
 {
    bool instance_divisor = pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR) != 0;
-   bool indirect = false;//pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_GLSL_FEATURE_LEVEL) >= 400;
 
    *features = (struct vk_features){
       /* Vulkan 1.0 */
@@ -279,9 +279,9 @@ lvp_get_features(const struct lvp_physical_device *pdevice,
       .shaderStorageImageExtendedFormats        = (min_shader_param(pdevice->pscreen, PIPE_SHADER_CAP_MAX_SHADER_IMAGES) != 0),
       .shaderStorageImageMultisample            = (pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_TEXTURE_MULTISAMPLE) != 0),
       .shaderUniformBufferArrayDynamicIndexing  = true,
-      .shaderSampledImageArrayDynamicIndexing   = indirect,
+      .shaderSampledImageArrayDynamicIndexing   = true,
       .shaderStorageBufferArrayDynamicIndexing  = true,
-      .shaderStorageImageArrayDynamicIndexing   = indirect,
+      .shaderStorageImageArrayDynamicIndexing   = true,
       .shaderStorageImageReadWithoutFormat      = (pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_IMAGE_LOAD_FORMATTED) != 0),
       .shaderStorageImageWriteWithoutFormat     = (pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_IMAGE_STORE_FORMATTED) != 0),
       .shaderClipDistance                       = true,
@@ -317,27 +317,27 @@ lvp_get_features(const struct lvp_physical_device *pdevice,
       .shaderFloat16 = pdevice->pscreen->get_shader_param(pdevice->pscreen, MESA_SHADER_FRAGMENT, PIPE_SHADER_CAP_FP16) != 0,
       .shaderInt8 = true,
 
-      .descriptorIndexing = false,
-      .shaderInputAttachmentArrayDynamicIndexing = false,
-      .shaderUniformTexelBufferArrayDynamicIndexing = false,
-      .shaderStorageTexelBufferArrayDynamicIndexing = false,
-      .shaderUniformBufferArrayNonUniformIndexing = false,
-      .shaderSampledImageArrayNonUniformIndexing = false,
-      .shaderStorageBufferArrayNonUniformIndexing = false,
-      .shaderStorageImageArrayNonUniformIndexing = false,
-      .shaderInputAttachmentArrayNonUniformIndexing = false,
-      .shaderUniformTexelBufferArrayNonUniformIndexing = false,
-      .shaderStorageTexelBufferArrayNonUniformIndexing = false,
-      .descriptorBindingUniformBufferUpdateAfterBind = false,
-      .descriptorBindingSampledImageUpdateAfterBind = false,
-      .descriptorBindingStorageImageUpdateAfterBind = false,
-      .descriptorBindingStorageBufferUpdateAfterBind = false,
-      .descriptorBindingUniformTexelBufferUpdateAfterBind = false,
-      .descriptorBindingStorageTexelBufferUpdateAfterBind = false,
-      .descriptorBindingUpdateUnusedWhilePending = false,
-      .descriptorBindingPartiallyBound = false,
-      .descriptorBindingVariableDescriptorCount = false,
-      .runtimeDescriptorArray = false,
+      .descriptorIndexing = true,
+      .shaderInputAttachmentArrayDynamicIndexing = true,
+      .shaderUniformTexelBufferArrayDynamicIndexing = true,
+      .shaderStorageTexelBufferArrayDynamicIndexing = true,
+      .shaderUniformBufferArrayNonUniformIndexing = true,
+      .shaderSampledImageArrayNonUniformIndexing = true,
+      .shaderStorageBufferArrayNonUniformIndexing = true,
+      .shaderStorageImageArrayNonUniformIndexing = true,
+      .shaderInputAttachmentArrayNonUniformIndexing = true,
+      .shaderUniformTexelBufferArrayNonUniformIndexing = true,
+      .shaderStorageTexelBufferArrayNonUniformIndexing = true,
+      .descriptorBindingUniformBufferUpdateAfterBind = true,
+      .descriptorBindingSampledImageUpdateAfterBind = true,
+      .descriptorBindingStorageImageUpdateAfterBind = true,
+      .descriptorBindingStorageBufferUpdateAfterBind = true,
+      .descriptorBindingUniformTexelBufferUpdateAfterBind = true,
+      .descriptorBindingStorageTexelBufferUpdateAfterBind = true,
+      .descriptorBindingUpdateUnusedWhilePending = true,
+      .descriptorBindingPartiallyBound = true,
+      .descriptorBindingVariableDescriptorCount = true,
+      .runtimeDescriptorArray = true,
 
       .samplerFilterMinmax = true,
       .scalarBlockLayout = true,
@@ -643,21 +643,21 @@ lvp_physical_device_init(struct lvp_physical_device *device,
       .bufferImageGranularity                   = 64, /* A cache line */
       .sparseAddressSpaceSize                   = 0,
       .maxBoundDescriptorSets                   = MAX_SETS,
-      .maxPerStageDescriptorSamplers            = min_shader_param(device->pscreen, PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS),
-      .maxPerStageDescriptorUniformBuffers      = min_shader_param(device->pscreen, PIPE_SHADER_CAP_MAX_CONST_BUFFERS) - 1,
-      .maxPerStageDescriptorStorageBuffers      = min_shader_param(device->pscreen, PIPE_SHADER_CAP_MAX_SHADER_BUFFERS),
-      .maxPerStageDescriptorSampledImages       = min_shader_param(device->pscreen, PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS),
-      .maxPerStageDescriptorStorageImages       = min_shader_param(device->pscreen, PIPE_SHADER_CAP_MAX_SHADER_IMAGES),
-      .maxPerStageDescriptorInputAttachments    = 8,
-      .maxPerStageResources                     = 128,
-      .maxDescriptorSetSamplers                 = 32 * 1024,
-      .maxDescriptorSetUniformBuffers           = 256,
-      .maxDescriptorSetUniformBuffersDynamic    = 256,
-      .maxDescriptorSetStorageBuffers           = 256,
-      .maxDescriptorSetStorageBuffersDynamic    = 256,
-      .maxDescriptorSetSampledImages            = 256,
-      .maxDescriptorSetStorageImages            = 256,
-      .maxDescriptorSetInputAttachments         = 256,
+      .maxPerStageDescriptorSamplers            = MAX_DESCRIPTORS,
+      .maxPerStageDescriptorUniformBuffers      = MAX_DESCRIPTORS,
+      .maxPerStageDescriptorStorageBuffers      = MAX_DESCRIPTORS,
+      .maxPerStageDescriptorSampledImages       = MAX_DESCRIPTORS,
+      .maxPerStageDescriptorStorageImages       = MAX_DESCRIPTORS,
+      .maxPerStageDescriptorInputAttachments    = MAX_DESCRIPTORS,
+      .maxPerStageResources                     = MAX_DESCRIPTORS,
+      .maxDescriptorSetSamplers                 = MAX_DESCRIPTORS,
+      .maxDescriptorSetUniformBuffers           = MAX_DESCRIPTORS,
+      .maxDescriptorSetUniformBuffersDynamic    = MAX_DESCRIPTORS,
+      .maxDescriptorSetStorageBuffers           = MAX_DESCRIPTORS,
+      .maxDescriptorSetStorageBuffersDynamic    = MAX_DESCRIPTORS,
+      .maxDescriptorSetSampledImages            = MAX_DESCRIPTORS,
+      .maxDescriptorSetStorageImages            = MAX_DESCRIPTORS,
+      .maxDescriptorSetInputAttachments         = MAX_DESCRIPTORS,
       .maxVertexInputAttributes                 = 32,
       .maxVertexInputBindings                   = 32,
       .maxVertexInputAttributeOffset            = 2047,
@@ -952,7 +952,7 @@ lvp_get_physical_device_properties_1_1(struct lvp_physical_device *pdevice,
    p->maxMultiviewViewCount = 6;
    p->maxMultiviewInstanceIndex = INT_MAX;
    p->protectedNoFault = false;
-   p->maxPerSetDescriptors = 1024;
+   p->maxPerSetDescriptors = MAX_DESCRIPTORS;
    p->maxMemoryAllocationSize = (1u << 31);
 }
 
@@ -995,31 +995,29 @@ lvp_get_physical_device_properties_1_2(struct lvp_physical_device *pdevice,
    p->shaderRoundingModeRTZFloat64 = false;
    p->shaderSignedZeroInfNanPreserveFloat64 = true;
 
-   p->maxUpdateAfterBindDescriptorsInAllPools = UINT32_MAX / 64;
-   p->shaderUniformBufferArrayNonUniformIndexingNative = false;
-   p->shaderSampledImageArrayNonUniformIndexingNative = false;
-   p->shaderStorageBufferArrayNonUniformIndexingNative = false;
-   p->shaderStorageImageArrayNonUniformIndexingNative = false;
-   p->shaderInputAttachmentArrayNonUniformIndexingNative = false;
+   p->maxUpdateAfterBindDescriptorsInAllPools = UINT32_MAX;
+   p->shaderUniformBufferArrayNonUniformIndexingNative = true;
+   p->shaderSampledImageArrayNonUniformIndexingNative = true;
+   p->shaderStorageBufferArrayNonUniformIndexingNative = true;
+   p->shaderStorageImageArrayNonUniformIndexingNative = true;
+   p->shaderInputAttachmentArrayNonUniformIndexingNative = true;
    p->robustBufferAccessUpdateAfterBind = true;
-   p->quadDivergentImplicitLod = false;
-
-   size_t max_descriptor_set_size = 65536; //TODO
-   p->maxPerStageDescriptorUpdateAfterBindSamplers = max_descriptor_set_size;
-   p->maxPerStageDescriptorUpdateAfterBindUniformBuffers = max_descriptor_set_size;
-   p->maxPerStageDescriptorUpdateAfterBindStorageBuffers = max_descriptor_set_size;
-   p->maxPerStageDescriptorUpdateAfterBindSampledImages = max_descriptor_set_size;
-   p->maxPerStageDescriptorUpdateAfterBindStorageImages = max_descriptor_set_size;
-   p->maxPerStageDescriptorUpdateAfterBindInputAttachments = max_descriptor_set_size;
-   p->maxPerStageUpdateAfterBindResources = max_descriptor_set_size;
-   p->maxDescriptorSetUpdateAfterBindSamplers = max_descriptor_set_size;
-   p->maxDescriptorSetUpdateAfterBindUniformBuffers = max_descriptor_set_size;
-   p->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = 16;
-   p->maxDescriptorSetUpdateAfterBindStorageBuffers = max_descriptor_set_size;
-   p->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = 16;
-   p->maxDescriptorSetUpdateAfterBindSampledImages = max_descriptor_set_size;
-   p->maxDescriptorSetUpdateAfterBindStorageImages = max_descriptor_set_size;
-   p->maxDescriptorSetUpdateAfterBindInputAttachments = max_descriptor_set_size;
+   p->quadDivergentImplicitLod = true;
+   p->maxPerStageDescriptorUpdateAfterBindSamplers = MAX_DESCRIPTORS;
+   p->maxPerStageDescriptorUpdateAfterBindUniformBuffers = MAX_DESCRIPTORS;
+   p->maxPerStageDescriptorUpdateAfterBindStorageBuffers = MAX_DESCRIPTORS;
+   p->maxPerStageDescriptorUpdateAfterBindSampledImages = MAX_DESCRIPTORS;
+   p->maxPerStageDescriptorUpdateAfterBindStorageImages = MAX_DESCRIPTORS;
+   p->maxPerStageDescriptorUpdateAfterBindInputAttachments = MAX_DESCRIPTORS;
+   p->maxPerStageUpdateAfterBindResources = MAX_DESCRIPTORS;
+   p->maxDescriptorSetUpdateAfterBindSamplers = MAX_DESCRIPTORS;
+   p->maxDescriptorSetUpdateAfterBindUniformBuffers = MAX_DESCRIPTORS;
+   p->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = MAX_DESCRIPTORS;
+   p->maxDescriptorSetUpdateAfterBindStorageBuffers = MAX_DESCRIPTORS;
+   p->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = MAX_DESCRIPTORS;
+   p->maxDescriptorSetUpdateAfterBindSampledImages = MAX_DESCRIPTORS;
+   p->maxDescriptorSetUpdateAfterBindStorageImages = MAX_DESCRIPTORS;
+   p->maxDescriptorSetUpdateAfterBindInputAttachments = MAX_DESCRIPTORS;
 
    p->supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT | VK_RESOLVE_MODE_AVERAGE_BIT;
    p->supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
@@ -1114,6 +1112,34 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
             props->maxVertexAttribDivisor = UINT32_MAX;
          else
             props->maxVertexAttribDivisor = 1;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES: {
+         VkPhysicalDeviceDescriptorIndexingProperties *props =
+            (VkPhysicalDeviceDescriptorIndexingProperties *)ext;
+         props->maxUpdateAfterBindDescriptorsInAllPools = 1000000;
+         props->shaderUniformBufferArrayNonUniformIndexingNative = true;
+         props->shaderSampledImageArrayNonUniformIndexingNative = true;
+         props->shaderStorageBufferArrayNonUniformIndexingNative = true;
+         props->shaderStorageImageArrayNonUniformIndexingNative = true;
+         props->shaderInputAttachmentArrayNonUniformIndexingNative = true;
+         props->robustBufferAccessUpdateAfterBind = true;
+         props->quadDivergentImplicitLod = true;
+         props->maxPerStageDescriptorUpdateAfterBindSamplers = 1000000;
+         props->maxPerStageDescriptorUpdateAfterBindUniformBuffers = 1000000;
+         props->maxPerStageDescriptorUpdateAfterBindStorageBuffers = 1000000;
+         props->maxPerStageDescriptorUpdateAfterBindSampledImages = 1000000;
+         props->maxPerStageDescriptorUpdateAfterBindStorageImages = 1000000;
+         props->maxPerStageDescriptorUpdateAfterBindInputAttachments = 1000000;
+         props->maxPerStageUpdateAfterBindResources = 1000000;
+         props->maxDescriptorSetUpdateAfterBindSamplers = 1000000;
+         props->maxDescriptorSetUpdateAfterBindUniformBuffers = 1000000;
+         props->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = 1000000;
+         props->maxDescriptorSetUpdateAfterBindStorageBuffers = 1000000;
+         props->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = 1000000;
+         props->maxDescriptorSetUpdateAfterBindSampledImages = 1000000;
+         props->maxDescriptorSetUpdateAfterBindStorageImages = 1000000;
+         props->maxDescriptorSetUpdateAfterBindInputAttachments = 1000000;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT: {
