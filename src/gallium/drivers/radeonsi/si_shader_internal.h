@@ -153,8 +153,7 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader, struct si_shader_
                                      ac_nir_gs_output_info *output_info);
 void si_get_tcs_epilog_key(struct si_shader *shader, union si_shader_part_key *key);
 bool si_need_ps_prolog(const union si_shader_part_key *key);
-void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *key,
-                          bool separate_prolog);
+void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *key);
 void si_get_ps_epilog_key(struct si_shader *shader, union si_shader_part_key *key);
 
 /* gfx10_shader_ngg.c */

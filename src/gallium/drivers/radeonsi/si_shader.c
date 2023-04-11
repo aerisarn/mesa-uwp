@@ -2740,8 +2740,7 @@ static bool si_shader_select_gs_parts(struct si_screen *sscreen, struct ac_llvm_
  * Compute the PS prolog key, which contains all the information needed to
  * build the PS prolog function, and set related bits in shader->config.
  */
-void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *key,
-                          bool separate_prolog)
+void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *key)
 {
    struct si_shader_info *info = &shader->selector->info;
 
@@ -2771,8 +2770,7 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
          /* BCOLORs are stored after the last input. */
          key->ps_prolog.num_interp_inputs = info->num_inputs;
          key->ps_prolog.face_vgpr_index = shader->info.face_vgpr_index;
-         if (separate_prolog)
-            shader->config.spi_ps_input_ena |= S_0286CC_FRONT_FACE_ENA(1);
+         shader->config.spi_ps_input_ena |= S_0286CC_FRONT_FACE_ENA(1);
       }
 
       for (unsigned i = 0; i < 2; i++) {
@@ -2802,21 +2800,15 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
             switch (location) {
             case TGSI_INTERPOLATE_LOC_SAMPLE:
                key->ps_prolog.color_interp_vgpr_index[i] = 0;
-               if (separate_prolog) {
-                  shader->config.spi_ps_input_ena |= S_0286CC_PERSP_SAMPLE_ENA(1);
-               }
+               shader->config.spi_ps_input_ena |= S_0286CC_PERSP_SAMPLE_ENA(1);
                break;
             case TGSI_INTERPOLATE_LOC_CENTER:
                key->ps_prolog.color_interp_vgpr_index[i] = 2;
-               if (separate_prolog) {
-                  shader->config.spi_ps_input_ena |= S_0286CC_PERSP_CENTER_ENA(1);
-               }
+               shader->config.spi_ps_input_ena |= S_0286CC_PERSP_CENTER_ENA(1);
                break;
             case TGSI_INTERPOLATE_LOC_CENTROID:
                key->ps_prolog.color_interp_vgpr_index[i] = 4;
-               if (separate_prolog) {
-                  shader->config.spi_ps_input_ena |= S_0286CC_PERSP_CENTROID_ENA(1);
-               }
+               shader->config.spi_ps_input_ena |= S_0286CC_PERSP_CENTROID_ENA(1);
                break;
             default:
                assert(0);
@@ -2835,22 +2827,16 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
              */
             switch (location) {
             case TGSI_INTERPOLATE_LOC_SAMPLE:
-               key->ps_prolog.color_interp_vgpr_index[i] = separate_prolog ? 6 : 9;
-               if (separate_prolog) {
-                  shader->config.spi_ps_input_ena |= S_0286CC_LINEAR_SAMPLE_ENA(1);
-               }
+               key->ps_prolog.color_interp_vgpr_index[i] = 6;
+               shader->config.spi_ps_input_ena |= S_0286CC_LINEAR_SAMPLE_ENA(1);
                break;
             case TGSI_INTERPOLATE_LOC_CENTER:
-               key->ps_prolog.color_interp_vgpr_index[i] = separate_prolog ? 8 : 11;
-               if (separate_prolog) {
-                  shader->config.spi_ps_input_ena |= S_0286CC_LINEAR_CENTER_ENA(1);
-               }
+               key->ps_prolog.color_interp_vgpr_index[i] = 8;
+               shader->config.spi_ps_input_ena |= S_0286CC_LINEAR_CENTER_ENA(1);
                break;
             case TGSI_INTERPOLATE_LOC_CENTROID:
-               key->ps_prolog.color_interp_vgpr_index[i] = separate_prolog ? 10 : 13;
-               if (separate_prolog) {
-                  shader->config.spi_ps_input_ena |= S_0286CC_LINEAR_CENTROID_ENA(1);
-               }
+               key->ps_prolog.color_interp_vgpr_index[i] = 10;
+               shader->config.spi_ps_input_ena |= S_0286CC_LINEAR_CENTROID_ENA(1);
                break;
             default:
                assert(0);
@@ -2905,7 +2891,7 @@ static bool si_shader_select_ps_parts(struct si_screen *sscreen, struct ac_llvm_
    union si_shader_part_key epilog_key;
 
    /* Get the prolog. */
-   si_get_ps_prolog_key(shader, &prolog_key, true);
+   si_get_ps_prolog_key(shader, &prolog_key);
 
    /* The prolog is a no-op if these aren't set. */
    if (si_need_ps_prolog(&prolog_key)) {
