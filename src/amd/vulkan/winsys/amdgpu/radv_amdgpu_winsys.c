@@ -62,7 +62,7 @@ do_winsys_init(struct radv_amdgpu_winsys *ws, int fd)
    ws->info.ip[AMD_IP_SDMA].num_queues = MIN2(ws->info.ip[AMD_IP_SDMA].num_queues, MAX_RINGS_PER_TYPE);
    ws->info.ip[AMD_IP_COMPUTE].num_queues = MIN2(ws->info.ip[AMD_IP_COMPUTE].num_queues, MAX_RINGS_PER_TYPE);
 
-   ws->use_ib_bos = ws->info.gfx_level >= GFX7;
+   ws->use_ib_bos = true;
    return true;
 }
 
