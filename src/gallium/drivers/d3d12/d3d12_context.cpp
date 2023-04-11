@@ -1548,9 +1548,11 @@ static void
 d3d12_stream_output_target_destroy(struct pipe_context *ctx,
                                    struct pipe_stream_output_target *state)
 {
-   pipe_resource_reference(&state->buffer, NULL);
+   struct d3d12_stream_output_target *target = (struct d3d12_stream_output_target *)state;
+   pipe_resource_reference(&target->base.buffer, NULL);
+   pipe_resource_reference(&target->fill_buffer, NULL);
 
-   FREE(state);
+   FREE(target);
 }
 
 static void
