@@ -1257,6 +1257,17 @@ resource_create(struct pipe_screen *pscreen,
             FREE_CL(res);
             return NULL;
          }
+         struct kopper_displaytarget *cdt = res->obj->dt;
+         if (cdt->swapchain->num_acquires) {
+            /* this should be a reused swapchain after a MakeCurrent dance that deleted the original resource */
+            for (unsigned i = 0; i < cdt->swapchain->num_images; i++) {
+               if (!cdt->swapchain->images[i].acquired)
+                  continue;
+               res->obj->dt_idx = i;
+               res->obj->image = cdt->swapchain->images[i].image;
+               res->layout = cdt->swapchain->images[i].layout;
+            }
+         }
       } else {
          /* frontbuffer */
          struct zink_resource *back = (void*)loader_private;
