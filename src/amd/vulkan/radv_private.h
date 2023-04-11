@@ -2428,6 +2428,12 @@ VkPipelineShaderStageCreateInfo *
 radv_copy_shader_stage_create_info(struct radv_device *device, uint32_t stageCount,
                                    const VkPipelineShaderStageCreateInfo *pStages, void *mem_ctx);
 
+bool radv_shader_need_indirect_descriptor_sets(const struct radv_shader *shader);
+
+void radv_pipeline_init_scratch(const struct radv_device *device, struct radv_pipeline *pipeline);
+
+bool radv_pipeline_has_ngg(const struct radv_graphics_pipeline *pipeline);
+
 void radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline,
                            const VkAllocationCallbacks *allocator);
 
