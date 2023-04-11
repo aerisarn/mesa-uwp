@@ -1934,6 +1934,23 @@ zink_set_shader_images(struct pipe_context *pctx,
       zink_context_invalidate_descriptor_state(ctx, shader_type, ZINK_DESCRIPTOR_TYPE_IMAGE, start_slot, count);
 }
 
+static void
+update_feedback_loop_state(struct zink_context *ctx, unsigned idx, unsigned feedback_loops)
+{
+   if (feedback_loops != ctx->feedback_loops) {
+      if (idx == PIPE_MAX_COLOR_BUFS && !zink_screen(ctx->base.screen)->driver_workarounds.always_feedback_loop_zs) {
+         if (ctx->gfx_pipeline_state.feedback_loop_zs)
+            ctx->gfx_pipeline_state.dirty = true;
+         ctx->gfx_pipeline_state.feedback_loop_zs = false;
+      } else if (idx < PIPE_MAX_COLOR_BUFS && !zink_screen(ctx->base.screen)->driver_workarounds.always_feedback_loop) {
+         if (ctx->gfx_pipeline_state.feedback_loop)
+            ctx->gfx_pipeline_state.dirty = true;
+         ctx->gfx_pipeline_state.feedback_loop = false;
+      }
+   }
+   ctx->feedback_loops = feedback_loops;
+}
+
 ALWAYS_INLINE static void
 unbind_samplerview(struct zink_context *ctx, gl_shader_stage stage, unsigned slot)
 {
@@ -1948,19 +1965,7 @@ unbind_samplerview(struct zink_context *ctx, gl_shader_stage stage, unsigned slo
             ctx->dynamic_fb.attachments[idx].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             ctx->rp_layout_changed = true;
          }
-         unsigned feedback_loops = ctx->feedback_loops;
-         ctx->feedback_loops &= ~BITFIELD_BIT(idx);
-         if (feedback_loops != ctx->feedback_loops) {
-            if (idx == PIPE_MAX_COLOR_BUFS && !zink_screen(ctx->base.screen)->driver_workarounds.always_feedback_loop_zs) {
-               if (ctx->gfx_pipeline_state.feedback_loop_zs)
-                  ctx->gfx_pipeline_state.dirty = true;
-               ctx->gfx_pipeline_state.feedback_loop_zs = false;
-            } else if (idx < PIPE_MAX_COLOR_BUFS && !zink_screen(ctx->base.screen)->driver_workarounds.always_feedback_loop) {
-               if (ctx->gfx_pipeline_state.feedback_loop)
-                  ctx->gfx_pipeline_state.dirty = true;
-               ctx->gfx_pipeline_state.feedback_loop = false;
-            }
-         }
+         update_feedback_loop_state(ctx, idx, ctx->feedback_loops & ~BITFIELD_BIT(idx));
       }
    }
    update_res_bind_count(ctx, res, stage == MESA_SHADER_COMPUTE, true);
