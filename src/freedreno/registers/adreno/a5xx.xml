@@ -1762,6 +1762,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0xa87c" name="GPMU_POWER_COUNTER_SELECT_0"/>
 	<reg32 offset="0xa87d" name="GPMU_POWER_COUNTER_SELECT_1"/>
 
+	<reg32 offset="0xa880" name="GPMU_GPMU_SP_CLOCK_CONTROL"/>
 	<reg32 offset="0xa881" name="GPMU_SP_POWER_CNTL"/>
 	<reg32 offset="0xa886" name="GPMU_RBCCU_CLOCK_CNTL"/>
 	<reg32 offset="0xa887" name="GPMU_RBCCU_POWER_CNTL"/>
