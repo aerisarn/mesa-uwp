@@ -7498,7 +7498,7 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
       RADV_FROM_HANDLE(radv_cmd_buffer, secondary, pCmdBuffers[i]);
       bool allow_ib2 = true;
 
-      if (secondary->device->physical_device->rad_info.gfx_level == GFX7 &&
+      if (secondary->device->physical_device->rad_info.gfx_level <= GFX7 &&
           secondary->state.uses_draw_indirect_multi) {
          /* Do not launch an IB2 for secondary command buffers that contain
           * DRAW_{INDEX}_INDIRECT_MULTI on GFX7 because it's illegal and hang the GPU.
