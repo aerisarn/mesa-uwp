@@ -482,7 +482,6 @@ radv_amdgpu_cs_unchain(struct radeon_cmdbuf *cs)
       return;
 
    assert(cs->cdw <= cs->max_dw + 4);
-   assert(get_nop_packet(acs) == PKT3_NOP_PAD); /* Other shouldn't chain. */
 
    acs->chained_to = NULL;
    cs->buf[cs->cdw - 4] = PKT3_NOP_PAD;
@@ -511,7 +510,6 @@ radv_amdgpu_cs_chain(struct radeon_cmdbuf *cs, struct radeon_cmdbuf *next_cs, bo
       return false;
 
    assert(cs->cdw <= cs->max_dw + 4);
-   assert(get_nop_packet(acs) == PKT3_NOP_PAD); /* Other shouldn't chain. */
 
    acs->chained_to = next_acs;
 
