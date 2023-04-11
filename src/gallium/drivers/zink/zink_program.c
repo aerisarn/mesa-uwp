@@ -959,19 +959,20 @@ zink_gfx_lib_cache_unref(struct zink_screen *screen, struct zink_gfx_lib_cache *
       VKSCR(DestroyPipeline)(screen->dev, gkey->pipeline, NULL);
       FREE(gkey);
    }
-   ralloc_free(libs);
+   ralloc_free(libs->libs.table);
+   FREE(libs);
 }
 
 static struct zink_gfx_lib_cache *
 create_lib_cache(struct zink_gfx_program *prog, bool generated_tcs)
 {
-   struct zink_gfx_lib_cache *libs = rzalloc(NULL, struct zink_gfx_lib_cache);
+   struct zink_gfx_lib_cache *libs = CALLOC_STRUCT(zink_gfx_lib_cache);
    libs->stages_present = prog->stages_present;
    simple_mtx_init(&libs->lock, mtx_plain);
    if (generated_tcs)
-      _mesa_set_init(&libs->libs, libs, hash_pipeline_lib_generated_tcs, equals_pipeline_lib_generated_tcs);
+      _mesa_set_init(&libs->libs, NULL, hash_pipeline_lib_generated_tcs, equals_pipeline_lib_generated_tcs);
    else
-      _mesa_set_init(&libs->libs, libs, hash_pipeline_lib, equals_pipeline_lib);
+      _mesa_set_init(&libs->libs, NULL, hash_pipeline_lib, equals_pipeline_lib);
    return libs;
 }
 
