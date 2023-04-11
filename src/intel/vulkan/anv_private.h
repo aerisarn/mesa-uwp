@@ -506,6 +506,11 @@ struct anv_bo {
     */
    uint32_t _ccs_size;
 
+   /* The actual size of bo allocated by kmd, basically:
+    * align(size + _ccs_size, mem_alignment)
+    */
+   uint64_t actual_size;
+
    /** Flags to pass to the kernel through drm_i915_exec_object2::flags */
    uint32_t flags;
 
