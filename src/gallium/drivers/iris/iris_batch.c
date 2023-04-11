@@ -197,6 +197,7 @@ iris_init_batch(struct iris_context *ice,
    batch->state_sizes = ice->state.sizes;
    batch->name = name;
    batch->ice = ice;
+   batch->screen = screen;
    batch->contains_fence_signal = false;
 
    batch->fine_fences.uploader =
@@ -255,10 +256,6 @@ iris_init_batch(struct iris_context *ice,
 void
 iris_init_batches(struct iris_context *ice)
 {
-   /* We have to do this early for iris_foreach_batch() to work */
-   for (int i = 0; i < IRIS_BATCH_COUNT; i++)
-      ice->batches[i].screen = (void *) ice->ctx.screen;
-
    iris_i915_init_batches(ice);
 
    iris_foreach_batch(ice, batch)
