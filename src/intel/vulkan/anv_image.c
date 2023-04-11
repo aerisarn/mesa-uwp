@@ -861,6 +861,14 @@ add_primary_surface(struct anv_device *device,
       assert(plane < ycbcr_info->n_planes);
       width /= ycbcr_info->planes[plane].denominator_scales[0];
       height /= ycbcr_info->planes[plane].denominator_scales[1];
+   } else if (isl_usage & ISL_SURF_USAGE_VIDEO_DECODE_BIT) {
+      /* To get proper width/height for P010 format,
+       * that isn't supported for YCbCr conversion yet
+       */
+      width = util_format_get_plane_width(
+            vk_format_to_pipe_format(image->vk.format), plane, width);
+      height = util_format_get_plane_height(
+            vk_format_to_pipe_format(image->vk.format), plane, height);
    }
 
    ok = isl_surf_init(&device->isl_dev, &anv_surf->isl,
