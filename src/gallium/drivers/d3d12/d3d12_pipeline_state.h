@@ -52,7 +52,7 @@ struct d3d12_blend_state {
 };
 
 struct d3d12_depth_stencil_alpha_state {
-   D3D12_DEPTH_STENCIL_DESC desc;
+   D3D12_DEPTH_STENCIL_DESC2 desc;
 };
 
 struct d3d12_gfx_pipeline_state {

@@ -427,10 +427,10 @@ stencil_op(enum pipe_stencil_op op)
    unreachable("unexpected op");
 }
 
-static D3D12_DEPTH_STENCILOP_DESC
+static D3D12_DEPTH_STENCILOP_DESC1
 stencil_op_state(const struct pipe_stencil_state *src)
 {
-   D3D12_DEPTH_STENCILOP_DESC ret;
+   D3D12_DEPTH_STENCILOP_DESC1 ret;
    ret.StencilFailOp = stencil_op((pipe_stencil_op) src->fail_op);
    ret.StencilPassOp = stencil_op((pipe_stencil_op) src->zpass_op);
    ret.StencilDepthFailOp = stencil_op((pipe_stencil_op) src->zfail_op);
@@ -470,8 +470,8 @@ d3d12_create_depth_stencil_alpha_state(struct pipe_context *pctx,
    else
       dsa->desc.BackFace = dsa->desc.FrontFace;
 
-   dsa->desc.StencilReadMask = depth_stencil_alpha->stencil[0].valuemask; /* FIXME Back face mask */
-   dsa->desc.StencilWriteMask = depth_stencil_alpha->stencil[0].writemask; /* FIXME Back face mask */
+   dsa->desc.FrontFace.StencilReadMask = dsa->desc.BackFace.StencilReadMask = depth_stencil_alpha->stencil[0].valuemask; /* FIXME Back face mask */
+   dsa->desc.FrontFace.StencilWriteMask = dsa->desc.BackFace.StencilWriteMask = depth_stencil_alpha->stencil[0].writemask; /* FIXME Back face mask */
    dsa->desc.DepthWriteMask = (D3D12_DEPTH_WRITE_MASK) depth_stencil_alpha->depth_writemask;
 
    return dsa;
