@@ -123,102 +123,6 @@ shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
       *align = comp_size;
 }
 
-static void
-set_image_access(struct lvp_shader *shader, struct lvp_pipeline_layout *layout, nir_shader *nir,
-                   nir_intrinsic_instr *instr,
-                   bool reads, bool writes)
-{
-   nir_variable *var = nir_intrinsic_get_var(instr, 0);
-   /* calculate the variable's offset in the layout */
-   uint64_t value = 0;
-   const struct lvp_descriptor_set_binding_layout *binding =
-      get_binding_layout(layout, var->data.descriptor_set, var->data.binding);
-   for (unsigned s = 0; s < var->data.descriptor_set; s++) {
-     if (layout->vk.set_layouts[s])
-        value += get_set_layout(layout, s)->stage[nir->info.stage].image_count;
-   }
-   value += binding->stage[nir->info.stage].image_index;
-   const unsigned size = glsl_type_is_array(var->type) ? glsl_get_aoa_size(var->type) : 1;
-   uint64_t mask = BITFIELD64_MASK(MAX2(size, 1)) << value;
-
-   if (reads)
-      shader->access.images_read |= mask;
-   if (writes)
-      shader->access.images_written |= mask;
-}
-
-static void
-set_buffer_access(struct lvp_shader *shader, struct lvp_pipeline_layout *layout, nir_shader *nir,
-                    nir_intrinsic_instr *instr)
-{
-   nir_variable *var = nir_intrinsic_get_var(instr, 0);
-   if (!var) {
-      nir_deref_instr *deref = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
-      if (deref->modes != nir_var_mem_ssbo)
-         return;
-      nir_binding b = nir_chase_binding(instr->src[0]);
-      var = nir_get_binding_variable(nir, b);
-      if (!var)
-         return;
-   }
-   if (var->data.mode != nir_var_mem_ssbo)
-      return;
-   /* calculate the variable's offset in the layout */
-   uint64_t value = 0;
-   const struct lvp_descriptor_set_binding_layout *binding =
-      get_binding_layout(layout, var->data.descriptor_set, var->data.binding);
-   for (unsigned s = 0; s < var->data.descriptor_set; s++) {
-     if (layout->vk.set_layouts[s])
-        value += get_set_layout(layout, s)->stage[nir->info.stage].shader_buffer_count;
-   }
-   value += binding->stage[nir->info.stage].shader_buffer_index;
-   /* Structs have been lowered already, so get_aoa_size is sufficient. */
-   const unsigned size = glsl_type_is_array(var->type) ? glsl_get_aoa_size(var->type) : 1;
-   uint64_t mask = BITFIELD64_MASK(MAX2(size, 1)) << value;
-   shader->access.buffers_written |= mask;
-}
-
-static void
-scan_intrinsic(struct lvp_shader *shader, struct lvp_pipeline_layout *layout, nir_shader *nir, nir_intrinsic_instr *instr)
-{
-   switch (instr->intrinsic) {
-   case nir_intrinsic_image_deref_sparse_load:
-   case nir_intrinsic_image_deref_load:
-   case nir_intrinsic_image_deref_size:
-   case nir_intrinsic_image_deref_samples:
-      set_image_access(shader, layout, nir, instr, true, false);
-      break;
-   case nir_intrinsic_image_deref_store:
-      set_image_access(shader, layout, nir, instr, false, true);
-      break;
-   case nir_intrinsic_image_deref_atomic:
-   case nir_intrinsic_image_deref_atomic_swap:
-      set_image_access(shader, layout, nir, instr, true, true);
-      break;
-   case nir_intrinsic_deref_atomic:
-   case nir_intrinsic_deref_atomic_swap:
-   case nir_intrinsic_store_deref:
-      set_buffer_access(shader, layout, nir, instr);
-      break;
-   default: break;
-   }
-}
-
-static void
-scan_pipeline_info(struct lvp_shader *shader, struct lvp_pipeline_layout *layout, nir_shader *nir)
-{
-   nir_foreach_function(function, nir) {
-      if (function->impl)
-         nir_foreach_block(block, function->impl) {
-            nir_foreach_instr(instr, block) {
-               if (instr->type == nir_instr_type_intrinsic)
-                  scan_intrinsic(shader, layout, nir, nir_instr_as_intrinsic(instr));
-            }
-         }
-   }
-
-}
-
 static bool
 remove_scoped_barriers_impl(nir_builder *b, nir_instr *instr, void *data)
 {
@@ -419,8 +323,8 @@ compile_spirv(struct lvp_device *pdevice, const VkPipelineShaderStageCreateInfo 
          .demote_to_helper_invocation = true,
          .mesh_shading = true,
       },
-      .ubo_addr_format = nir_address_format_32bit_index_offset,
-      .ssbo_addr_format = nir_address_format_32bit_index_offset,
+      .ubo_addr_format = nir_address_format_vec2_index_32bit_offset,
+      .ssbo_addr_format = nir_address_format_vec2_index_32bit_offset,
       .phys_ssbo_addr_format = nir_address_format_64bit_global,
       .push_const_addr_format = nir_address_format_logical,
       .shared_addr_format = nir_address_format_32bit_offset,
@@ -472,12 +376,8 @@ lvp_shader_lower(struct lvp_device *pdevice, nir_shader *nir, struct lvp_shader 
    NIR_PASS_V(nir, nir_remove_dead_variables,
               nir_var_uniform | nir_var_image, NULL);
 
-   scan_pipeline_info(shader, layout, nir);
-
    optimize(nir);
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
-
-   lvp_lower_pipeline_layout(pdevice, layout, nir);
 
    NIR_PASS_V(nir, nir_lower_io_to_temporaries, nir_shader_get_entrypoint(nir), true, true);
    NIR_PASS_V(nir, nir_split_var_copies);
@@ -488,11 +388,13 @@ lvp_shader_lower(struct lvp_device *pdevice, nir_shader *nir, struct lvp_shader 
 
    NIR_PASS_V(nir, nir_lower_explicit_io,
               nir_var_mem_ubo | nir_var_mem_ssbo,
-              nir_address_format_32bit_index_offset);
+              nir_address_format_vec2_index_32bit_offset);
 
    NIR_PASS_V(nir, nir_lower_explicit_io,
               nir_var_mem_global,
               nir_address_format_64bit_global);
+
+   lvp_lower_pipeline_layout(pdevice, layout, nir);
 
    if (nir->info.stage == MESA_SHADER_COMPUTE ||
        nir->info.stage == MESA_SHADER_TASK ||

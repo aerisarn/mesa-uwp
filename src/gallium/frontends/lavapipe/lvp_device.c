@@ -1560,6 +1560,11 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(
    uint32_t zero = 0;
    device->zero_buffer = pipe_buffer_create_with_data(device->queue.ctx, 0, PIPE_USAGE_IMMUTABLE, sizeof(uint32_t), &zero);
 
+   device->null_texture_handle = (void *)(uintptr_t)device->queue.ctx->create_texture_handle(device->queue.ctx,
+      &(struct pipe_sampler_view){ 0 }, NULL);
+   device->null_image_handle = (void *)(uintptr_t)device->queue.ctx->create_image_handle(device->queue.ctx,
+      &(struct pipe_image_view){ 0 });
+
    *pDevice = lvp_device_to_handle(device);
 
    return VK_SUCCESS;
@@ -1571,6 +1576,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroyDevice(
    const VkAllocationCallbacks*                pAllocator)
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
+
+   device->queue.ctx->delete_texture_handle(device->queue.ctx, (uint64_t)(uintptr_t)device->null_texture_handle);
+   device->queue.ctx->delete_image_handle(device->queue.ctx, (uint64_t)(uintptr_t)device->null_image_handle);
 
    device->queue.ctx->delete_fs_state(device->queue.ctx, device->noop_fs);
 
@@ -2205,35 +2213,43 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
    vk_object_base_init(&device->vk, &sampler->base,
                        VK_OBJECT_TYPE_SAMPLER);
 
+   struct pipe_sampler_state state;
    VkClearColorValue border_color =
       vk_sampler_border_color_value(pCreateInfo, NULL);
-   STATIC_ASSERT(sizeof(sampler->state.border_color) == sizeof(border_color));
+   STATIC_ASSERT(sizeof(state.border_color) == sizeof(border_color));
 
-   sampler->state.wrap_s = vk_conv_wrap_mode(pCreateInfo->addressModeU);
-   sampler->state.wrap_t = vk_conv_wrap_mode(pCreateInfo->addressModeV);
-   sampler->state.wrap_r = vk_conv_wrap_mode(pCreateInfo->addressModeW);
-   sampler->state.min_img_filter = pCreateInfo->minFilter == VK_FILTER_LINEAR ? PIPE_TEX_FILTER_LINEAR : PIPE_TEX_FILTER_NEAREST;
-   sampler->state.min_mip_filter = pCreateInfo->mipmapMode == VK_SAMPLER_MIPMAP_MODE_LINEAR ? PIPE_TEX_MIPFILTER_LINEAR : PIPE_TEX_MIPFILTER_NEAREST;
-   sampler->state.mag_img_filter = pCreateInfo->magFilter == VK_FILTER_LINEAR ? PIPE_TEX_FILTER_LINEAR : PIPE_TEX_FILTER_NEAREST;
-   sampler->state.min_lod = pCreateInfo->minLod;
-   sampler->state.max_lod = pCreateInfo->maxLod;
-   sampler->state.lod_bias = pCreateInfo->mipLodBias;
+   state.wrap_s = vk_conv_wrap_mode(pCreateInfo->addressModeU);
+   state.wrap_t = vk_conv_wrap_mode(pCreateInfo->addressModeV);
+   state.wrap_r = vk_conv_wrap_mode(pCreateInfo->addressModeW);
+   state.min_img_filter = pCreateInfo->minFilter == VK_FILTER_LINEAR ? PIPE_TEX_FILTER_LINEAR : PIPE_TEX_FILTER_NEAREST;
+   state.min_mip_filter = pCreateInfo->mipmapMode == VK_SAMPLER_MIPMAP_MODE_LINEAR ? PIPE_TEX_MIPFILTER_LINEAR : PIPE_TEX_MIPFILTER_NEAREST;
+   state.mag_img_filter = pCreateInfo->magFilter == VK_FILTER_LINEAR ? PIPE_TEX_FILTER_LINEAR : PIPE_TEX_FILTER_NEAREST;
+   state.min_lod = pCreateInfo->minLod;
+   state.max_lod = pCreateInfo->maxLod;
+   state.lod_bias = pCreateInfo->mipLodBias;
    if (pCreateInfo->anisotropyEnable)
-      sampler->state.max_anisotropy = pCreateInfo->maxAnisotropy;
+      state.max_anisotropy = pCreateInfo->maxAnisotropy;
    else
-      sampler->state.max_anisotropy = 1;
-   sampler->state.unnormalized_coords = pCreateInfo->unnormalizedCoordinates;
-   sampler->state.compare_mode = pCreateInfo->compareEnable ? PIPE_TEX_COMPARE_R_TO_TEXTURE : PIPE_TEX_COMPARE_NONE;
-   sampler->state.compare_func = pCreateInfo->compareOp;
-   sampler->state.seamless_cube_map = !(pCreateInfo->flags & VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT);
+      state.max_anisotropy = 1;
+   state.unnormalized_coords = pCreateInfo->unnormalizedCoordinates;
+   state.compare_mode = pCreateInfo->compareEnable ? PIPE_TEX_COMPARE_R_TO_TEXTURE : PIPE_TEX_COMPARE_NONE;
+   state.compare_func = pCreateInfo->compareOp;
+   state.seamless_cube_map = !(pCreateInfo->flags & VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT);
    STATIC_ASSERT((unsigned)VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE == (unsigned)PIPE_TEX_REDUCTION_WEIGHTED_AVERAGE);
    STATIC_ASSERT((unsigned)VK_SAMPLER_REDUCTION_MODE_MIN == (unsigned)PIPE_TEX_REDUCTION_MIN);
    STATIC_ASSERT((unsigned)VK_SAMPLER_REDUCTION_MODE_MAX == (unsigned)PIPE_TEX_REDUCTION_MAX);
    if (reduction_mode_create_info)
-      sampler->state.reduction_mode = (enum pipe_tex_reduction_mode)reduction_mode_create_info->reductionMode;
+      state.reduction_mode = (enum pipe_tex_reduction_mode)reduction_mode_create_info->reductionMode;
    else
-      sampler->state.reduction_mode = PIPE_TEX_REDUCTION_WEIGHTED_AVERAGE;
-   memcpy(&sampler->state.border_color, &border_color, sizeof(border_color));
+      state.reduction_mode = PIPE_TEX_REDUCTION_WEIGHTED_AVERAGE;
+   memcpy(&state.border_color, &border_color, sizeof(border_color));
+
+   simple_mtx_lock(&device->queue.lock);
+   sampler->texture_handle = (void *)(uintptr_t)device->queue.ctx->create_texture_handle(device->queue.ctx, NULL, &state);
+   simple_mtx_unlock(&device->queue.lock);
+
+   lp_jit_sampler_from_pipe(&sampler->desc.sampler, &state);
+   sampler->desc.sampler_index = sampler->texture_handle->sampler_index;
 
    *pSampler = lvp_sampler_to_handle(sampler);
 
@@ -2250,6 +2266,11 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroySampler(
 
    if (!_sampler)
       return;
+
+   simple_mtx_lock(&device->queue.lock);
+   device->queue.ctx->delete_texture_handle(device->queue.ctx, (uint64_t)(uintptr_t)sampler->texture_handle);
+   simple_mtx_unlock(&device->queue.lock);
+
    vk_object_base_finish(&sampler->base);
    vk_free2(&device->vk.alloc, pAllocator, sampler);
 }

@@ -128,28 +128,13 @@ struct rendering_state {
    unsigned index_offset;
    struct pipe_resource *index_buffer;
    struct pipe_constant_buffer const_buffer[LVP_SHADER_STAGES][16];
+   struct lvp_descriptor_set *desc_sets[2][MAX_SETS];
    int num_const_bufs[LVP_SHADER_STAGES];
    int num_vb;
    unsigned start_vb;
    struct pipe_vertex_buffer vb[PIPE_MAX_ATTRIBS];
    struct cso_velems_state velem;
 
-   struct lvp_access_info access[LVP_SHADER_STAGES];
-   struct pipe_sampler_view *sv[LVP_SHADER_STAGES][PIPE_MAX_SHADER_SAMPLER_VIEWS];
-   int num_sampler_views[LVP_SHADER_STAGES];
-   struct pipe_sampler_state ss[LVP_SHADER_STAGES][PIPE_MAX_SAMPLERS];
-   /* cso_context api is stupid */
-   const struct pipe_sampler_state *cso_ss_ptr[LVP_SHADER_STAGES][PIPE_MAX_SAMPLERS];
-   int num_sampler_states[LVP_SHADER_STAGES];
-   bool sv_dirty[LVP_SHADER_STAGES];
-   bool ss_dirty[LVP_SHADER_STAGES];
-
-   struct pipe_image_view iv[LVP_SHADER_STAGES][PIPE_MAX_SHADER_IMAGES];
-   int num_shader_images[LVP_SHADER_STAGES];
-   struct pipe_shader_buffer sb[LVP_SHADER_STAGES][PIPE_MAX_SHADER_BUFFERS];
-   int num_shader_buffers[LVP_SHADER_STAGES];
-   bool iv_dirty[LVP_SHADER_STAGES];
-   bool sb_dirty[LVP_SHADER_STAGES];
    bool disable_multisample;
    enum gs_output gs_output_lines : 2;
 
@@ -161,11 +146,6 @@ struct rendering_state {
    uint8_t push_constants[128 * 4];
    uint16_t push_size[2]; //gfx, compute
    uint16_t gfx_push_sizes[LVP_SHADER_STAGES];
-   struct {
-      void *block[MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS * MAX_SETS];
-      uint16_t size[MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS * MAX_SETS];
-      uint16_t count;
-   } uniform_blocks[LVP_SHADER_STAGES];
 
    VkRect2D render_area;
    bool suspending;
@@ -196,6 +176,8 @@ struct rendering_state {
 
    bool tess_ccw;
    void *tess_states[2];
+
+   struct util_dynarray push_desc_sets;
 };
 
 static struct pipe_resource *
@@ -261,34 +243,18 @@ get_pcbuf_size(struct rendering_state *state, enum pipe_shader_type pstage)
    return state->has_pcbuf[pstage] ? state->push_size[is_compute] : 0;
 }
 
-static unsigned
-calc_ubo0_size(struct rendering_state *state, enum pipe_shader_type pstage)
-{
-   unsigned size = get_pcbuf_size(state, pstage);
-   for (unsigned i = 0; i < state->uniform_blocks[pstage].count; i++)
-      size += state->uniform_blocks[pstage].size[i];
-   return size;
-}
-
 static void
 fill_ubo0(struct rendering_state *state, uint8_t *mem, enum pipe_shader_type pstage)
 {
    unsigned push_size = get_pcbuf_size(state, pstage);
    if (push_size)
       memcpy(mem, state->push_constants, push_size);
-
-   mem += push_size;
-   for (unsigned i = 0; i < state->uniform_blocks[pstage].count; i++) {
-      unsigned size = state->uniform_blocks[pstage].size[i];
-      memcpy(mem, state->uniform_blocks[pstage].block[i], size);
-      mem += size;
-   }
 }
 
 static void
 update_pcbuf(struct rendering_state *state, enum pipe_shader_type pstage)
 {
-   unsigned size = calc_ubo0_size(state, pstage);
+   unsigned size = get_pcbuf_size(state, pstage);
    if (size) {
       uint8_t *mem;
       struct pipe_constant_buffer cbuf;
@@ -303,7 +269,7 @@ update_pcbuf(struct rendering_state *state, enum pipe_shader_type pstage)
 }
 
 static void
-update_inline_shader_state(struct rendering_state *state, enum pipe_shader_type sh, bool pcbuf_dirty, bool constbuf_dirty)
+update_inline_shader_state(struct rendering_state *state, enum pipe_shader_type sh, bool pcbuf_dirty)
 {
    unsigned stage = tgsi_processor_to_shader_stage(sh);
    state->inlines_dirty[sh] = false;
@@ -325,42 +291,10 @@ update_inline_shader_state(struct rendering_state *state, enum pipe_shader_type 
          unsigned offset = shader->inlines.uniform_offsets[0][i];
          if (offset < push_size) {
             memcpy(&v.vals[0][i], &state->push_constants[offset], sizeof(uint32_t));
-         } else {
-            for (unsigned i = 0; i < state->uniform_blocks[sh].count; i++) {
-               if (offset < push_size + state->uniform_blocks[sh].size[i]) {
-                  unsigned ubo_offset = offset - push_size;
-                  uint8_t *block = state->uniform_blocks[sh].block[i];
-                  memcpy(&v.vals[0][i], &block[ubo_offset], sizeof(uint32_t));
-                  break;
-               }
-               push_size += state->uniform_blocks[sh].size[i];
-            }
          }
       }
       for (unsigned i = count; i < MAX_INLINABLE_UNIFORMS; i++)
          v.vals[0][i] = 0;
-   }
-   if (constbuf_dirty) {
-      struct pipe_box box = {0};
-      u_foreach_bit(slot, shader->inlines.can_inline) {
-         /* this is already inlined above */
-         if (slot == 0)
-            continue;
-         unsigned count = shader->inlines.count[slot];
-         struct pipe_constant_buffer *cbuf = &state->const_buffer[sh][slot - 1];
-         struct pipe_resource *pres = cbuf->buffer;
-         box.x = cbuf->buffer_offset;
-         box.width = cbuf->buffer_size - cbuf->buffer_offset;
-         struct pipe_transfer *xfer;
-         uint8_t *map = state->pctx->buffer_map(state->pctx, pres, 0, PIPE_MAP_READ, &box, &xfer);
-         for (unsigned i = 0; i < count; i++) {
-            unsigned offset = shader->inlines.uniform_offsets[slot][i];
-            memcpy(&v.vals[slot][i], map + offset, sizeof(uint32_t));
-         }
-         state->pctx->buffer_unmap(state->pctx, xfer);
-         for (unsigned i = count; i < MAX_INLINABLE_UNIFORMS; i++)
-            v.vals[slot][i] = 0;
-      }
    }
    bool found = false;
    struct set_entry *entry = _mesa_set_search_or_add_pre_hashed(&shader->inlines.variants, v.mask, &v, &found);
@@ -371,10 +305,6 @@ update_inline_shader_state(struct rendering_state *state, enum pipe_shader_type 
    } else {
       nir_shader *nir = nir_shader_clone(NULL, base_nir);
       NIR_PASS_V(nir, lvp_inline_uniforms, shader, v.vals[0], 0);
-      if (constbuf_dirty) {
-         u_foreach_bit(slot, shader->inlines.can_inline)
-            NIR_PASS_V(nir, lvp_inline_uniforms, shader, v.vals[slot], slot);
-      }
       lvp_shader_optimize(nir);
       impl = nir_shader_get_entrypoint(nir);
       if (ssa_alloc - impl->ssa_alloc < ssa_alloc / 2 &&
@@ -424,18 +354,10 @@ update_inline_shader_state(struct rendering_state *state, enum pipe_shader_type 
 
 static void emit_compute_state(struct rendering_state *state)
 {
-   if (state->iv_dirty[MESA_SHADER_COMPUTE]) {
-      state->pctx->set_shader_images(state->pctx, MESA_SHADER_COMPUTE,
-                                     0, state->num_shader_images[MESA_SHADER_COMPUTE],
-                                     0, state->iv[MESA_SHADER_COMPUTE]);
-      state->iv_dirty[MESA_SHADER_COMPUTE] = false;
-   }
-
    bool pcbuf_dirty = state->pcbuf_dirty[MESA_SHADER_COMPUTE];
    if (state->pcbuf_dirty[MESA_SHADER_COMPUTE])
       update_pcbuf(state, MESA_SHADER_COMPUTE);
 
-   bool constbuf_dirty = state->constbuf_dirty[MESA_SHADER_COMPUTE];
    if (state->constbuf_dirty[MESA_SHADER_COMPUTE]) {
       for (unsigned i = 0; i < state->num_const_bufs[MESA_SHADER_COMPUTE]; i++)
          state->pctx->set_constant_buffer(state->pctx, MESA_SHADER_COMPUTE,
@@ -444,25 +366,7 @@ static void emit_compute_state(struct rendering_state *state)
    }
 
    if (state->inlines_dirty[MESA_SHADER_COMPUTE])
-      update_inline_shader_state(state, MESA_SHADER_COMPUTE, pcbuf_dirty, constbuf_dirty);
-
-   if (state->sb_dirty[MESA_SHADER_COMPUTE]) {
-      state->pctx->set_shader_buffers(state->pctx, MESA_SHADER_COMPUTE,
-                                      0, state->num_shader_buffers[MESA_SHADER_COMPUTE],
-                                      state->sb[MESA_SHADER_COMPUTE], state->access[MESA_SHADER_COMPUTE].buffers_written);
-      state->sb_dirty[MESA_SHADER_COMPUTE] = false;
-   }
-
-   if (state->sv_dirty[MESA_SHADER_COMPUTE]) {
-      state->pctx->set_sampler_views(state->pctx, MESA_SHADER_COMPUTE, 0, state->num_sampler_views[MESA_SHADER_COMPUTE],
-                                     0, false, state->sv[MESA_SHADER_COMPUTE]);
-      state->sv_dirty[MESA_SHADER_COMPUTE] = false;
-   }
-
-   if (state->ss_dirty[MESA_SHADER_COMPUTE]) {
-      cso_set_samplers(state->cso, MESA_SHADER_COMPUTE, state->num_sampler_states[MESA_SHADER_COMPUTE], state->cso_ss_ptr[MESA_SHADER_COMPUTE]);
-      state->ss_dirty[MESA_SHADER_COMPUTE] = false;
-   }
+      update_inline_shader_state(state, MESA_SHADER_COMPUTE, pcbuf_dirty);
 }
 
 static void
@@ -573,11 +477,9 @@ static void emit_state(struct rendering_state *state)
       state->ve_dirty = false;
    }
 
-   bool constbuf_dirty[LVP_SHADER_STAGES] = {false};
    bool pcbuf_dirty[LVP_SHADER_STAGES] = {false};
 
    lvp_forall_gfx_stage(sh) {
-      constbuf_dirty[sh] = state->constbuf_dirty[sh];
       if (state->constbuf_dirty[sh]) {
          for (unsigned idx = 0; idx < state->num_const_bufs[sh]; idx++)
             state->pctx->set_constant_buffer(state->pctx, sh,
@@ -594,38 +496,7 @@ static void emit_state(struct rendering_state *state)
 
    lvp_forall_gfx_stage(sh) {
       if (state->inlines_dirty[sh])
-         update_inline_shader_state(state, sh, pcbuf_dirty[sh], constbuf_dirty[sh]);
-   }
-
-   lvp_forall_gfx_stage(sh) {
-      if (state->sb_dirty[sh]) {
-         state->pctx->set_shader_buffers(state->pctx, sh,
-                                         0, state->num_shader_buffers[sh],
-                                         state->sb[sh], state->access[tgsi_processor_to_shader_stage(sh)].buffers_written);
-      }
-   }
-
-   lvp_forall_gfx_stage(sh) {
-      if (state->iv_dirty[sh]) {
-         state->pctx->set_shader_images(state->pctx, sh,
-                                        0, state->num_shader_images[sh], 0,
-                                        state->iv[sh]);
-      }
-   }
-
-   lvp_forall_gfx_stage(sh) {
-      if (state->sv_dirty[sh]) {
-         state->pctx->set_sampler_views(state->pctx, sh, 0, state->num_sampler_views[sh],
-                                        0, false, state->sv[sh]);
-         state->sv_dirty[sh] = false;
-      }
-   }
-
-   lvp_forall_gfx_stage(sh) {
-      if (state->ss_dirty[sh]) {
-         cso_set_samplers(state->cso, sh, state->num_sampler_states[sh], state->cso_ss_ptr[sh]);
-         state->ss_dirty[sh] = false;
-      }
+         update_inline_shader_state(state, sh, pcbuf_dirty[sh]);
    }
 
    if (state->vp_dirty) {
@@ -646,18 +517,9 @@ handle_compute_shader(struct rendering_state *state, struct lvp_shader *shader, 
 
    if ((layout->push_constant_stages & VK_SHADER_STAGE_COMPUTE_BIT) > 0)
       state->has_pcbuf[MESA_SHADER_COMPUTE] = layout->push_constant_size > 0;
-   state->uniform_blocks[MESA_SHADER_COMPUTE].count = layout->stage[MESA_SHADER_COMPUTE].uniform_block_count;
-   for (unsigned j = 0; j < layout->stage[MESA_SHADER_COMPUTE].uniform_block_count; j++)
-      state->uniform_blocks[MESA_SHADER_COMPUTE].size[j] = layout->stage[MESA_SHADER_COMPUTE].uniform_block_sizes[j];
-   if (!state->has_pcbuf[MESA_SHADER_COMPUTE] && !layout->stage[MESA_SHADER_COMPUTE].uniform_block_count)
-      state->pcbuf_dirty[MESA_SHADER_COMPUTE] = false;
 
-   state->iv_dirty[MESA_SHADER_COMPUTE] |= state->num_shader_images[MESA_SHADER_COMPUTE] &&
-                          (state->access[MESA_SHADER_COMPUTE].images_read != shader->access.images_read ||
-                           state->access[MESA_SHADER_COMPUTE].images_written != shader->access.images_written);
-   state->sb_dirty[MESA_SHADER_COMPUTE] |= state->num_shader_buffers[MESA_SHADER_COMPUTE] &&
-                                           state->access[MESA_SHADER_COMPUTE].buffers_written != shader->access.buffers_written;
-   memcpy(&state->access[MESA_SHADER_COMPUTE], &shader->access, sizeof(struct lvp_access_info));
+   if (!state->has_pcbuf[MESA_SHADER_COMPUTE])
+      state->pcbuf_dirty[MESA_SHADER_COMPUTE] = false;
 
    state->dispatch_info.block[0] = shader->pipeline_nir->nir->info.workgroup_size[0];
    state->dispatch_info.block[1] = shader->pipeline_nir->nir->info.workgroup_size[1];
@@ -724,11 +586,6 @@ handle_graphics_stages(struct rendering_state *state, VkShaderStageFlagBits shad
       VkShaderStageFlagBits vk_stage = (1 << b);
       gl_shader_stage stage = vk_to_mesa_shader_stage(vk_stage);
 
-      state->iv_dirty[stage] |= state->num_shader_images[stage] &&
-                             (state->access[stage].images_read != state->shaders[stage]->access.images_read ||
-                              state->access[stage].images_written != state->shaders[stage]->access.images_written);
-      state->sb_dirty[stage] |= state->num_shader_buffers[stage] && state->access[stage].buffers_written != state->shaders[stage]->access.buffers_written;
-      memcpy(&state->access[stage], &state->shaders[stage]->access, sizeof(struct lvp_access_info));
       state->has_pcbuf[stage] = false;
 
       switch (vk_stage) {
@@ -801,9 +658,6 @@ unbind_graphics_stages(struct rendering_state *state, VkShaderStageFlagBits shad
 {
    u_foreach_bit(vkstage, shader_stages) {
       gl_shader_stage stage = vk_to_mesa_shader_stage(1<<vkstage);
-      state->iv_dirty[stage] |= state->num_shader_images[stage] > 0;
-      state->sb_dirty[stage] |= state->num_shader_buffers[stage] > 0;
-      memset(&state->access[stage], 0, sizeof(state->access[stage]));
       state->has_pcbuf[stage] = false;
       switch (stage) {
       case MESA_SHADER_FRAGMENT:
@@ -845,12 +699,9 @@ unbind_graphics_stages(struct rendering_state *state, VkShaderStageFlagBits shad
 static void
 handle_graphics_layout(struct rendering_state *state, gl_shader_stage stage, struct lvp_pipeline_layout *layout)
 {
-   state->uniform_blocks[stage].count = layout->stage[stage].uniform_block_count;
-   for (unsigned j = 0; j < layout->stage[stage].uniform_block_count; j++)
-      state->uniform_blocks[stage].size[j] = layout->stage[stage].uniform_block_sizes[j];
    if (layout->push_constant_stages & BITFIELD_BIT(stage)) {
       state->has_pcbuf[stage] = layout->push_constant_size > 0;
-      if (!state->has_pcbuf[stage] && !state->uniform_blocks[stage].count)
+      if (!state->has_pcbuf[stage])
          state->pcbuf_dirty[stage] = false;
    }
 }
@@ -1171,24 +1022,6 @@ static void handle_graphics_pipeline(struct lvp_pipeline *pipeline,
    }
 }
 
-static void
-handle_pipeline_access(struct rendering_state *state, gl_shader_stage stage)
-{
-   enum pipe_shader_type pstage = pipe_shader_type_from_mesa(stage);
-   for (unsigned i = 0; i < PIPE_MAX_SHADER_IMAGES; i++) {
-      state->iv[pstage][i].access = 0;
-      state->iv[pstage][i].shader_access = 0;
-   }
-   u_foreach_bit64(idx, state->access[stage].images_read) {
-      state->iv[pstage][idx].access |= PIPE_IMAGE_ACCESS_READ;
-      state->iv[pstage][idx].shader_access |= PIPE_IMAGE_ACCESS_READ;
-   }
-   u_foreach_bit64(idx, state->access[stage].images_written) {
-      state->iv[pstage][idx].access |= PIPE_IMAGE_ACCESS_WRITE;
-      state->iv[pstage][idx].shader_access |= PIPE_IMAGE_ACCESS_WRITE;
-   }
-}
-
 static void handle_pipeline(struct vk_cmd_queue_entry *cmd,
                             struct rendering_state *state)
 {
@@ -1196,12 +1029,8 @@ static void handle_pipeline(struct vk_cmd_queue_entry *cmd,
    pipeline->used = true;
    if (pipeline->is_compute_pipeline) {
       handle_compute_pipeline(cmd, state);
-      handle_pipeline_access(state, MESA_SHADER_COMPUTE);
    } else {
       handle_graphics_pipeline(pipeline, state);
-      lvp_forall_gfx_stage(sh) {
-         handle_pipeline_access(state, sh);
-      }
    }
    state->push_size[pipeline->is_compute_pipeline] = pipeline->layout->push_constant_size;
 }
@@ -1214,8 +1043,6 @@ handle_graphics_pipeline_group(struct vk_cmd_queue_entry *cmd, struct rendering_
    if (cmd->u.bind_pipeline_shader_group_nv.group_index)
       pipeline = lvp_pipeline_from_handle(pipeline->groups[cmd->u.bind_pipeline_shader_group_nv.group_index - 1]);
    handle_graphics_pipeline(pipeline, state);
-   lvp_forall_gfx_stage(sh)
-      handle_pipeline_access(state, sh);
    state->push_size[pipeline->is_compute_pipeline] = pipeline->layout->push_constant_size;
 }
 
@@ -1242,290 +1069,108 @@ static void handle_vertex_buffers2(struct vk_cmd_queue_entry *cmd,
    state->vb_dirty = true;
 }
 
-struct dyn_info {
-   struct {
-      uint16_t const_buffer_count;
-      uint16_t shader_buffer_count;
-      uint16_t sampler_count;
-      uint16_t sampler_view_count;
-      uint16_t image_count;
-      uint16_t uniform_block_count;
-   } stage[LVP_SHADER_STAGES];
-
-   uint32_t dyn_index;
-   const uint32_t *dynamic_offsets;
-   uint32_t dynamic_offset_count;
-};
-
-static void fill_sampler_stage(struct rendering_state *state,
-                               struct dyn_info *dyn_info,
-                               gl_shader_stage stage,
-                               enum pipe_shader_type p_stage,
-                               int array_idx,
-                               const union lvp_descriptor_info *descriptor,
-                               const struct lvp_descriptor_set_binding_layout *binding)
-{
-   int ss_idx = binding->stage[stage].sampler_index;
-   if (ss_idx == -1)
-      return;
-   ss_idx += array_idx;
-   ss_idx += dyn_info->stage[stage].sampler_count;
-   struct pipe_sampler_state *ss = binding->immutable_samplers ? binding->immutable_samplers[array_idx] : descriptor->sampler;
-   if (!ss)
-      return;
-   state->ss[p_stage][ss_idx] = *ss;
-   if (state->num_sampler_states[p_stage] <= ss_idx)
-      state->num_sampler_states[p_stage] = ss_idx + 1;
-   state->ss_dirty[p_stage] = true;
-}
-
-static void fill_sampler_view_stage(struct rendering_state *state,
-                                    struct dyn_info *dyn_info,
-                                    gl_shader_stage stage,
-                                    enum pipe_shader_type p_stage,
-                                    int array_idx,
-                                    const union lvp_descriptor_info *descriptor,
-                                    const struct lvp_descriptor_set_binding_layout *binding)
-{
-   int sv_idx = binding->stage[stage].sampler_view_index;
-   if (sv_idx == -1)
-      return;
-   sv_idx += array_idx;
-   sv_idx += dyn_info->stage[stage].sampler_view_count;
-
-   assert(sv_idx < ARRAY_SIZE(state->sv[p_stage]));
-   state->sv[p_stage][sv_idx] = descriptor->sampler_view;
-
-   if (state->num_sampler_views[p_stage] <= sv_idx)
-      state->num_sampler_views[p_stage] = sv_idx + 1;
-   state->sv_dirty[p_stage] = true;
-}
-
-static void fill_image_view_stage(struct rendering_state *state,
-                                  struct dyn_info *dyn_info,
-                                  gl_shader_stage stage,
-                                  enum pipe_shader_type p_stage,
-                                  int array_idx,
-                                  const union lvp_descriptor_info *descriptor,
-                                  const struct lvp_descriptor_set_binding_layout *binding)
-{
-   int idx = binding->stage[stage].image_index;
-   if (idx == -1)
-      return;
-   idx += array_idx;
-   idx += dyn_info->stage[stage].image_count;
-   uint16_t access = state->iv[p_stage][idx].access;
-   uint16_t shader_access = state->iv[p_stage][idx].shader_access;
-   state->iv[p_stage][idx] = descriptor->image_view;
-   state->iv[p_stage][idx].access = access;
-   state->iv[p_stage][idx].shader_access = shader_access;
-
-   if (state->num_shader_images[p_stage] <= idx)
-      state->num_shader_images[p_stage] = idx + 1;
-
-   state->iv_dirty[p_stage] = true;
-}
-
-static void handle_descriptor(struct rendering_state *state,
-                              struct dyn_info *dyn_info,
-                              const struct lvp_descriptor_set_binding_layout *binding,
-                              gl_shader_stage stage,
-                              enum pipe_shader_type p_stage,
-                              int array_idx,
-                              VkDescriptorType type,
-                              const union lvp_descriptor_info *descriptor)
-{
-   bool is_dynamic = type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
-      type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-
-   switch (type) {
-   case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK: {
-      int idx = binding->stage[stage].uniform_block_index;
-      if (idx == -1)
-         return;
-      idx += dyn_info->stage[stage].uniform_block_count;
-      assert(descriptor->uniform);
-      state->uniform_blocks[p_stage].block[idx] = descriptor->uniform;
-      state->pcbuf_dirty[p_stage] = true;
-      state->inlines_dirty[p_stage] = true;
-      break;
-   }
-   case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-   case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
-      fill_image_view_stage(state, dyn_info, stage, p_stage, array_idx, descriptor, binding);
-      break;
-   }
-   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: {
-      int idx = binding->stage[stage].const_buffer_index;
-      if (idx == -1)
-         return;
-      idx += array_idx;
-      idx += dyn_info->stage[stage].const_buffer_count;
-      state->const_buffer[p_stage][idx] = descriptor->ubo;
-      if (is_dynamic) {
-         uint32_t offset = dyn_info->dynamic_offsets[dyn_info->dyn_index + binding->dynamic_index + array_idx];
-         state->const_buffer[p_stage][idx].buffer_offset += offset;
-      }
-      if (state->num_const_bufs[p_stage] <= idx)
-         state->num_const_bufs[p_stage] = idx + 1;
-      state->constbuf_dirty[p_stage] = true;
-      state->inlines_dirty[p_stage] = true;
-      break;
-   }
-   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
-      int idx = binding->stage[stage].shader_buffer_index;
-      if (idx == -1)
-         return;
-      idx += array_idx;
-      idx += dyn_info->stage[stage].shader_buffer_count;
-      state->sb[p_stage][idx] = descriptor->ssbo;
-      if (is_dynamic) {
-         uint32_t offset = dyn_info->dynamic_offsets[dyn_info->dyn_index + binding->dynamic_index + array_idx];
-         state->sb[p_stage][idx].buffer_offset += offset;
-      }
-      if (state->num_shader_buffers[p_stage] <= idx)
-         state->num_shader_buffers[p_stage] = idx + 1;
-      state->sb_dirty[p_stage] = true;
-      break;
-   }
-   case VK_DESCRIPTOR_TYPE_SAMPLER:
-      fill_sampler_stage(state, dyn_info, stage, p_stage, array_idx, descriptor, binding);
-      break;
-   case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-      fill_sampler_view_stage(state, dyn_info, stage, p_stage, array_idx, descriptor, binding);
-      break;
-   case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-      fill_sampler_stage(state, dyn_info, stage, p_stage, array_idx, descriptor, binding);
-      fill_sampler_view_stage(state, dyn_info, stage, p_stage, array_idx, descriptor, binding);
-      break;
-   default:
-      fprintf(stderr, "Unhandled descriptor set %d\n", type);
-      unreachable("oops");
-      break;
-   }
-}
-
 static void handle_set_stage(struct rendering_state *state,
-                             struct dyn_info *dyn_info,
-                             const struct lvp_descriptor_set *set,
+                             struct lvp_descriptor_set *set,
                              gl_shader_stage stage,
-                             enum pipe_shader_type p_stage)
+                             uint32_t index)
 {
-   for (unsigned j = 0; j < set->layout->binding_count; j++) {
-      const struct lvp_descriptor_set_binding_layout *binding;
-      const struct lvp_descriptor *descriptor;
-      binding = &set->layout->binding[j];
+   state->desc_sets[stage == MESA_SHADER_COMPUTE][index] = set;
 
-      if (binding->valid) {
-         unsigned array_size = binding->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK ? 1 : binding->array_size;
-         for (unsigned i = 0; i < array_size; i++) {
-            descriptor = &set->descriptors[binding->descriptor_index + i];
-            handle_descriptor(state, dyn_info, binding, stage, p_stage, i, descriptor->type, &descriptor->info);
-         }
+   state->const_buffer[stage][index].buffer = set->bo;
+   state->const_buffer[stage][index].buffer_offset = 0; 
+   state->const_buffer[stage][index].buffer_size = set->bo->width0;
+   state->const_buffer[stage][index].user_buffer = NULL;
+
+   state->constbuf_dirty[stage] = true;
+
+   if (state->num_const_bufs[stage] <= index)
+      state->num_const_bufs[stage] = index + 1;
+}
+
+static void
+apply_dynamic_offsets(struct lvp_descriptor_set **out_set, uint32_t *offsets, uint32_t offset_count,
+                      struct rendering_state *state)
+{
+   if (!offset_count)
+      return;
+
+   struct lvp_descriptor_set *in_set = *out_set;
+
+   struct lvp_descriptor_set *set;
+   lvp_descriptor_set_create(state->device, in_set->layout, &set);
+
+   util_dynarray_append(&state->push_desc_sets, struct lvp_descriptor_set *, set);
+
+   memcpy(set->map, in_set->map, in_set->bo->width0);
+
+   *out_set = set;
+
+   for (uint32_t i = 0; i < set->layout->binding_count; i++) {
+      const struct lvp_descriptor_set_binding_layout *binding = &set->layout->binding[i];
+      if (binding->type != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC &&
+          binding->type != VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+         continue;
+
+      union lp_descriptor *desc = set->map;
+      desc += binding->descriptor_index;
+
+      for (uint32_t j = 0; j < binding->array_size; j++) {
+         uint32_t offset_index = binding->dynamic_index + j;
+         if (offset_index >= offset_count)
+            return;
+
+         desc[j].buffer.u = (uint32_t *)((uint8_t *)desc[j].buffer.u + offsets[offset_index]);
       }
    }
 }
 
-static void increment_dyn_info(struct dyn_info *dyn_info,
-                               const struct vk_descriptor_set_layout *vk_layout,
-                               bool inc_dyn)
-{
-   const struct lvp_descriptor_set_layout *layout =
-      vk_to_lvp_descriptor_set_layout(vk_layout);
-
-   lvp_forall_stage(stage) {
-      dyn_info->stage[stage].const_buffer_count += layout->stage[stage].const_buffer_count;
-      dyn_info->stage[stage].shader_buffer_count += layout->stage[stage].shader_buffer_count;
-      dyn_info->stage[stage].sampler_count += layout->stage[stage].sampler_count;
-      dyn_info->stage[stage].sampler_view_count += layout->stage[stage].sampler_view_count;
-      dyn_info->stage[stage].image_count += layout->stage[stage].image_count;
-      dyn_info->stage[stage].uniform_block_count += layout->stage[stage].uniform_block_count;
-   }
-   if (inc_dyn)
-      dyn_info->dyn_index += layout->dynamic_offset_count;
-}
-
-static void handle_compute_descriptor_sets(struct vk_cmd_queue_entry *cmd,
-                                           struct dyn_info *dyn_info,
-                                           struct rendering_state *state)
+static void
+handle_descriptor_sets(struct vk_cmd_queue_entry *cmd, struct rendering_state *state)
 {
    struct vk_cmd_bind_descriptor_sets *bds = &cmd->u.bind_descriptor_sets;
    LVP_FROM_HANDLE(lvp_pipeline_layout, layout, bds->layout);
 
-   for (unsigned i = 0; i < bds->first_set; i++) {
-      increment_dyn_info(dyn_info, layout->vk.set_layouts[i], false);
-   }
-   for (unsigned i = 0; i < bds->descriptor_set_count; i++) {
-      const struct lvp_descriptor_set *set = lvp_descriptor_set_from_handle(bds->descriptor_sets[i]);
+   uint32_t dynamic_offset_index = 0;
 
-      if (set->layout->shader_stages & VK_SHADER_STAGE_COMPUTE_BIT)
-         handle_set_stage(state, dyn_info, set, MESA_SHADER_COMPUTE, MESA_SHADER_COMPUTE);
-      increment_dyn_info(dyn_info, layout->vk.set_layouts[bds->first_set + i], true);
-   }
-}
-
-static void handle_descriptor_sets(struct vk_cmd_queue_entry *cmd,
-                                   struct rendering_state *state)
-{
-   struct vk_cmd_bind_descriptor_sets *bds = &cmd->u.bind_descriptor_sets;
-   LVP_FROM_HANDLE(lvp_pipeline_layout, layout, bds->layout);
-   int i;
-   struct dyn_info dyn_info;
-
-   dyn_info.dyn_index = 0;
-   dyn_info.dynamic_offsets = bds->dynamic_offsets;
-   dyn_info.dynamic_offset_count = bds->dynamic_offset_count;
-
-   memset(dyn_info.stage, 0, sizeof(dyn_info.stage));
-   if (bds->pipeline_bind_point == VK_PIPELINE_BIND_POINT_COMPUTE) {
-      handle_compute_descriptor_sets(cmd, &dyn_info, state);
-      return;
-   }
-
-   for (i = 0; i < bds->first_set; i++) {
-      increment_dyn_info(&dyn_info, layout->vk.set_layouts[i], false);
-   }
-
-   for (i = 0; i < bds->descriptor_set_count; i++) {
+   for (uint32_t i = 0; i < bds->descriptor_set_count; i++) {
       if (!layout->vk.set_layouts[bds->first_set + i])
          continue;
 
-      const struct lvp_descriptor_set *set = lvp_descriptor_set_from_handle(bds->descriptor_sets[i]);
+      struct lvp_descriptor_set *set = lvp_descriptor_set_from_handle(bds->descriptor_sets[i]);
       if (!set)
          continue;
-      /* verify that there's enough total offsets */
-      assert(set->layout->dynamic_offset_count <= dyn_info.dynamic_offset_count);
-      /* verify there's either no offsets... */
-      assert(!dyn_info.dynamic_offset_count ||
-             /* or that the total number of offsets required is <= the number remaining */
-             set->layout->dynamic_offset_count <= dyn_info.dynamic_offset_count - dyn_info.dyn_index);
+
+      apply_dynamic_offsets(&set, bds->dynamic_offsets + dynamic_offset_index,
+                            bds->dynamic_offset_count - dynamic_offset_index, state);
+
+      dynamic_offset_index += set->layout->dynamic_offset_count;
+
+      if (bds->pipeline_bind_point == VK_PIPELINE_BIND_POINT_COMPUTE) {
+         if (set->layout->shader_stages & VK_SHADER_STAGE_COMPUTE_BIT)
+            handle_set_stage(state, set, MESA_SHADER_COMPUTE, bds->first_set + i);
+         continue;
+      }
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_VERTEX_BIT)
-         handle_set_stage(state, &dyn_info, set, MESA_SHADER_VERTEX, MESA_SHADER_VERTEX);
+         handle_set_stage(state, set, MESA_SHADER_VERTEX, bds->first_set + i);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_GEOMETRY_BIT)
-         handle_set_stage(state, &dyn_info, set, MESA_SHADER_GEOMETRY, MESA_SHADER_GEOMETRY);
+         handle_set_stage(state, set, MESA_SHADER_GEOMETRY, bds->first_set + i);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)
-         handle_set_stage(state, &dyn_info, set, MESA_SHADER_TESS_CTRL, MESA_SHADER_TESS_CTRL);
+         handle_set_stage(state, set, MESA_SHADER_TESS_CTRL, bds->first_set + i);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
-         handle_set_stage(state, &dyn_info, set, MESA_SHADER_TESS_EVAL, MESA_SHADER_TESS_EVAL);
+         handle_set_stage(state, set, MESA_SHADER_TESS_EVAL, bds->first_set + i);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_FRAGMENT_BIT)
-         handle_set_stage(state, &dyn_info, set, MESA_SHADER_FRAGMENT, MESA_SHADER_FRAGMENT);
+         handle_set_stage(state, set, MESA_SHADER_FRAGMENT, bds->first_set + i);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_TASK_BIT_EXT)
-         handle_set_stage(state, &dyn_info, set, MESA_SHADER_TASK, MESA_SHADER_TASK);
+         handle_set_stage(state, set, MESA_SHADER_TASK, bds->first_set + i);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_MESH_BIT_EXT)
-         handle_set_stage(state, &dyn_info, set, MESA_SHADER_MESH, MESA_SHADER_MESH);
-
-      increment_dyn_info(&dyn_info, layout->vk.set_layouts[bds->first_set + i], true);
+         handle_set_stage(state, set, MESA_SHADER_MESH, bds->first_set + i);
    }
 }
 
@@ -3391,317 +3036,71 @@ static void handle_draw_indirect_count(struct vk_cmd_queue_entry *cmd,
    pipe_resource_reference(&index, NULL);
 }
 
-static void handle_compute_push_descriptor_set(struct lvp_cmd_push_descriptor_set *pds,
-                                               struct dyn_info *dyn_info,
-                                               struct rendering_state *state)
-{
-   const struct lvp_descriptor_set_layout *layout =
-      vk_to_lvp_descriptor_set_layout(pds->layout->vk.set_layouts[pds->set]);
-
-   if (!(layout->shader_stages & VK_SHADER_STAGE_COMPUTE_BIT))
-      return;
-   for (unsigned i = 0; i < pds->set; i++) {
-      increment_dyn_info(dyn_info, pds->layout->vk.set_layouts[i], false);
-   }
-   unsigned info_idx = 0;
-   for (unsigned i = 0; i < pds->descriptor_write_count; i++) {
-      struct lvp_write_descriptor *desc = &pds->descriptors[i];
-      const struct lvp_descriptor_set_binding_layout *binding =
-         &layout->binding[desc->dst_binding];
-
-      if (!binding->valid)
-         continue;
-
-      for (unsigned j = 0; j < desc->descriptor_count; j++) {
-         union lvp_descriptor_info *info = &pds->infos[info_idx + j];
-
-         handle_descriptor(state, dyn_info, binding,
-                           MESA_SHADER_COMPUTE, MESA_SHADER_COMPUTE,
-                           j, desc->descriptor_type,
-                           info);
-      }
-      info_idx += desc->descriptor_count;
-   }
-}
-
-static struct lvp_cmd_push_descriptor_set *
-create_push_descriptor_set(struct rendering_state *state, struct vk_cmd_push_descriptor_set_khr *in_cmd)
-{
-   LVP_FROM_HANDLE(lvp_pipeline_layout, layout, in_cmd->layout);
-   struct lvp_cmd_push_descriptor_set *out_cmd;
-   int count_descriptors = 0;
-
-   for (unsigned i = 0; i < in_cmd->descriptor_write_count; i++) {
-      count_descriptors += in_cmd->descriptor_writes[i].descriptorCount;
-   }
-
-   void *descriptors;
-   void *infos;
-   void **ptrs[] = {&descriptors, &infos};
-   size_t sizes[] = {
-      in_cmd->descriptor_write_count * sizeof(struct lvp_write_descriptor),
-      count_descriptors * sizeof(union lvp_descriptor_info),
-   };
-   out_cmd = ptrzalloc(sizeof(struct lvp_cmd_push_descriptor_set), 2, sizes, ptrs);
-   if (!out_cmd)
-      return NULL;
-
-   out_cmd->bind_point = in_cmd->pipeline_bind_point;
-   out_cmd->layout = layout;
-   out_cmd->set = in_cmd->set;
-   out_cmd->descriptor_write_count = in_cmd->descriptor_write_count;
-   out_cmd->descriptors = descriptors;
-   out_cmd->infos = infos;
-
-   unsigned descriptor_index = 0;
-
-   for (unsigned i = 0; i < in_cmd->descriptor_write_count; i++) {
-      struct lvp_write_descriptor *desc = &out_cmd->descriptors[i];
-
-      /* dstSet is ignored */
-      desc->dst_binding = in_cmd->descriptor_writes[i].dstBinding;
-      desc->dst_array_element = in_cmd->descriptor_writes[i].dstArrayElement;
-      desc->descriptor_count = in_cmd->descriptor_writes[i].descriptorCount;
-      desc->descriptor_type = in_cmd->descriptor_writes[i].descriptorType;
-
-      for (unsigned j = 0; j < desc->descriptor_count; j++) {
-         union lvp_descriptor_info *info = &out_cmd->infos[descriptor_index + j];
-         switch (desc->descriptor_type) {
-         case VK_DESCRIPTOR_TYPE_SAMPLER:
-            if (in_cmd->descriptor_writes[i].pImageInfo[j].sampler)
-               info->sampler = &lvp_sampler_from_handle(in_cmd->descriptor_writes[i].pImageInfo[j].sampler)->state;
-            else
-               info->sampler = NULL;
-            break;
-         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-            if (in_cmd->descriptor_writes[i].pImageInfo[j].sampler)
-               info->sampler = &lvp_sampler_from_handle(in_cmd->descriptor_writes[i].pImageInfo[j].sampler)->state;
-            else
-               info->sampler = NULL;
-            if (in_cmd->descriptor_writes[i].pImageInfo[j].imageView)
-               info->sampler_view = lvp_image_view_from_handle(in_cmd->descriptor_writes[i].pImageInfo[j].imageView)->sv;
-            else
-               info->sampler_view = NULL;
-            break;
-         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-            if (in_cmd->descriptor_writes[i].pImageInfo[j].imageView)
-               info->sampler_view = lvp_image_view_from_handle(in_cmd->descriptor_writes[i].pImageInfo[j].imageView)->sv;
-            else
-               info->sampler_view = NULL;
-            break;
-         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-            if (in_cmd->descriptor_writes[i].pImageInfo[j].imageView)
-               info->image_view = lvp_image_view_from_handle(in_cmd->descriptor_writes[i].pImageInfo[j].imageView)->iv;
-            else
-               info->image_view = ((struct pipe_image_view){0});
-            break;
-         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
-            struct lvp_buffer_view *bview = lvp_buffer_view_from_handle(in_cmd->descriptor_writes[i].pTexelBufferView[j]);
-            info->sampler_view = bview ? bview->sv : NULL;
-            break;
-         }
-         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
-            struct lvp_buffer_view *bview = lvp_buffer_view_from_handle(in_cmd->descriptor_writes[i].pTexelBufferView[j]);
-            info->image_view = bview ? bview->iv : ((struct pipe_image_view){0});
-            break;
-         }
-         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: {
-            LVP_FROM_HANDLE(lvp_buffer, buffer, in_cmd->descriptor_writes[i].pBufferInfo[j].buffer);
-            info->ubo.buffer = buffer ? buffer->bo : NULL;
-            info->ubo.buffer_offset = buffer ? in_cmd->descriptor_writes[i].pBufferInfo[j].offset : 0;
-            info->ubo.buffer_size = buffer ? in_cmd->descriptor_writes[i].pBufferInfo[j].range : 0;
-            if (buffer && in_cmd->descriptor_writes[i].pBufferInfo[j].range == VK_WHOLE_SIZE)
-               info->ubo.buffer_size = info->ubo.buffer->width0 - info->ubo.buffer_offset;
-            break;
-         }
-         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
-            LVP_FROM_HANDLE(lvp_buffer, buffer, in_cmd->descriptor_writes[i].pBufferInfo[j].buffer);
-            info->ssbo.buffer = buffer ? buffer->bo : NULL;
-            info->ssbo.buffer_offset = buffer ? in_cmd->descriptor_writes[i].pBufferInfo[j].offset : 0;
-            info->ssbo.buffer_size = buffer ? in_cmd->descriptor_writes[i].pBufferInfo[j].range : 0;
-            if (buffer && in_cmd->descriptor_writes[i].pBufferInfo[j].range == VK_WHOLE_SIZE)
-               info->ssbo.buffer_size = info->ssbo.buffer->width0 - info->ssbo.buffer_offset;
-            break;
-         }
-         default:
-            break;
-         }
-      }
-      descriptor_index += desc->descriptor_count;
-   }
-
-   return out_cmd;
-}
-
-static void handle_push_descriptor_set_generic(struct vk_cmd_push_descriptor_set_khr *_pds,
-                                               struct rendering_state *state)
-{
-   struct lvp_cmd_push_descriptor_set *pds = create_push_descriptor_set(state, _pds);
-   const struct lvp_descriptor_set_layout *layout =
-      vk_to_lvp_descriptor_set_layout(pds->layout->vk.set_layouts[pds->set]);
-
-   struct dyn_info dyn_info;
-   memset(&dyn_info.stage, 0, sizeof(dyn_info.stage));
-   dyn_info.dyn_index = 0;
-   if (pds->bind_point == VK_PIPELINE_BIND_POINT_COMPUTE) {
-      handle_compute_push_descriptor_set(pds, &dyn_info, state);
-   }
-
-   for (unsigned i = 0; i < pds->set; i++) {
-      increment_dyn_info(&dyn_info, pds->layout->vk.set_layouts[i], false);
-   }
-
-   unsigned info_idx = 0;
-   for (unsigned i = 0; i < pds->descriptor_write_count; i++) {
-      struct lvp_write_descriptor *desc = &pds->descriptors[i];
-      const struct lvp_descriptor_set_binding_layout *binding =
-         &layout->binding[desc->dst_binding];
-
-      if (!binding->valid)
-         continue;
-
-      for (unsigned j = 0; j < desc->descriptor_count; j++) {
-         union lvp_descriptor_info *info = &pds->infos[info_idx + j];
-
-         if (layout->shader_stages & VK_SHADER_STAGE_VERTEX_BIT)
-            handle_descriptor(state, &dyn_info, binding,
-                              MESA_SHADER_VERTEX, MESA_SHADER_VERTEX,
-                              j, desc->descriptor_type,
-                              info);
-         if (layout->shader_stages & VK_SHADER_STAGE_FRAGMENT_BIT)
-            handle_descriptor(state, &dyn_info, binding,
-                              MESA_SHADER_FRAGMENT, MESA_SHADER_FRAGMENT,
-                              j, desc->descriptor_type,
-                              info);
-         if (layout->shader_stages & VK_SHADER_STAGE_GEOMETRY_BIT)
-            handle_descriptor(state, &dyn_info, binding,
-                              MESA_SHADER_GEOMETRY, MESA_SHADER_GEOMETRY,
-                              j, desc->descriptor_type,
-                              info);
-         if (layout->shader_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)
-            handle_descriptor(state, &dyn_info, binding,
-                              MESA_SHADER_TESS_CTRL, MESA_SHADER_TESS_CTRL,
-                              j, desc->descriptor_type,
-                              info);
-         if (layout->shader_stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
-            handle_descriptor(state, &dyn_info, binding,
-                              MESA_SHADER_TESS_EVAL, MESA_SHADER_TESS_EVAL,
-                              j, desc->descriptor_type,
-                              info);
-         if (layout->shader_stages & VK_SHADER_STAGE_TASK_BIT_EXT)
-            handle_descriptor(state, &dyn_info, binding,
-                              MESA_SHADER_TASK, MESA_SHADER_TASK,
-                              j, desc->descriptor_type,
-                              info);
-         if (layout->shader_stages & VK_SHADER_STAGE_MESH_BIT_EXT)
-            handle_descriptor(state, &dyn_info, binding,
-                              MESA_SHADER_MESH, MESA_SHADER_MESH,
-                              j, desc->descriptor_type,
-                              info);
-      }
-      info_idx += desc->descriptor_count;
-   }
-   free(pds);
-}
-
 static void handle_push_descriptor_set(struct vk_cmd_queue_entry *cmd,
                                        struct rendering_state *state)
 {
-   handle_push_descriptor_set_generic(&cmd->u.push_descriptor_set_khr, state);
+   struct vk_cmd_push_descriptor_set_khr *pds = &cmd->u.push_descriptor_set_khr;
+   LVP_FROM_HANDLE(lvp_pipeline_layout, layout, pds->layout);
+   struct lvp_descriptor_set_layout *set_layout = (struct lvp_descriptor_set_layout *)layout->vk.set_layouts[pds->set];
+
+   struct lvp_descriptor_set *set;
+   lvp_descriptor_set_create(state->device, set_layout, &set);
+
+   util_dynarray_append(&state->push_desc_sets, struct lvp_descriptor_set *, set);
+
+   bool is_compute = pds->pipeline_bind_point == VK_PIPELINE_BIND_POINT_COMPUTE;
+   struct lvp_descriptor_set *base = state->desc_sets[is_compute][pds->set];
+   if (base)
+      memcpy(set->map, base->map, MIN2(set->bo->width0, base->bo->width0));
+
+   VkDescriptorSet set_handle = lvp_descriptor_set_to_handle(set);
+   for (uint32_t i = 0; i < pds->descriptor_write_count; i++)
+      pds->descriptor_writes[i].dstSet = set_handle;
+
+   lvp_UpdateDescriptorSets(lvp_device_to_handle(state->device), pds->descriptor_write_count, pds->descriptor_writes, 0, NULL);
+
+   struct vk_cmd_queue_entry bind_cmd;
+   bind_cmd.u.bind_descriptor_sets = (struct vk_cmd_bind_descriptor_sets){
+      .pipeline_bind_point = pds->pipeline_bind_point,
+      .layout = pds->layout,
+      .first_set = pds->set,
+      .descriptor_set_count = 1,
+      .descriptor_sets = &set_handle,
+   };
+   handle_descriptor_sets(&bind_cmd, state);
 }
 
 static void handle_push_descriptor_set_with_template(struct vk_cmd_queue_entry *cmd,
                                                      struct rendering_state *state)
 {
-   LVP_FROM_HANDLE(lvp_descriptor_update_template, templ, cmd->u.push_descriptor_set_with_template_khr.descriptor_update_template);
-   struct vk_cmd_push_descriptor_set_khr *pds;
-   int pds_size = sizeof(*pds);
+   struct vk_cmd_push_descriptor_set_with_template_khr *pds = &cmd->u.push_descriptor_set_with_template_khr;
+   LVP_FROM_HANDLE(lvp_descriptor_update_template, templ, pds->descriptor_update_template);
+   LVP_FROM_HANDLE(lvp_pipeline_layout, layout, pds->layout);
+   struct lvp_descriptor_set_layout *set_layout = (struct lvp_descriptor_set_layout *)layout->vk.set_layouts[pds->set];
 
-   pds_size += templ->entry_count * sizeof(struct VkWriteDescriptorSet);
+   struct lvp_descriptor_set *set;
+   lvp_descriptor_set_create(state->device, set_layout, &set);
 
-   for (unsigned i = 0; i < templ->entry_count; i++) {
-      VkDescriptorUpdateTemplateEntry *entry = &templ->entry[i];
-      switch (entry->descriptorType) {
-      case VK_DESCRIPTOR_TYPE_SAMPLER:
-      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-      case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-      case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-         pds_size += sizeof(VkDescriptorImageInfo) * entry->descriptorCount;
-         break;
-      case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-      case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-         pds_size += sizeof(VkBufferView) * entry->descriptorCount;
-         break;
-      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-      default:
-         pds_size += sizeof(VkDescriptorBufferInfo) * entry->descriptorCount;
-         break;
-      }
-   }
+   util_dynarray_append(&state->push_desc_sets, struct lvp_descriptor_set *, set);
 
-   pds = calloc(1, pds_size);
-   if (!pds)
-      return;
+   bool is_compute = templ->bind_point == VK_PIPELINE_BIND_POINT_COMPUTE;
+   struct lvp_descriptor_set *base = state->desc_sets[is_compute][pds->set];
+   if (base)
+      memcpy(set->map, base->map, MIN2(set->bo->width0, base->bo->width0));
 
-   pds->pipeline_bind_point = templ->bind_point;
-   pds->layout = lvp_pipeline_layout_to_handle(templ->pipeline_layout);
-   pds->set = templ->set;
-   pds->descriptor_write_count = templ->entry_count;
-   pds->descriptor_writes = (struct VkWriteDescriptorSet *)(pds + 1);
-   const uint8_t *next_info = (const uint8_t *) (pds->descriptor_writes + templ->entry_count);
+   VkDescriptorSet set_handle = lvp_descriptor_set_to_handle(set);
+   lvp_descriptor_set_update_with_template(lvp_device_to_handle(state->device), set_handle,
+                                           pds->descriptor_update_template, pds->data, true);
 
-   const uint8_t *pSrc = cmd->u.push_descriptor_set_with_template_khr.data;
-   for (unsigned i = 0; i < templ->entry_count; i++) {
-      struct VkWriteDescriptorSet *desc = &pds->descriptor_writes[i];
-      struct VkDescriptorUpdateTemplateEntry *entry = &templ->entry[i];
-
-      /* dstSet is ignored */
-      desc->dstBinding = entry->dstBinding;
-      desc->dstArrayElement = entry->dstArrayElement;
-      desc->descriptorCount = entry->descriptorCount;
-      desc->descriptorType = entry->descriptorType;
-      desc->pImageInfo = (const VkDescriptorImageInfo *) next_info;
-      desc->pTexelBufferView = (const VkBufferView *) next_info;
-      desc->pBufferInfo = (const VkDescriptorBufferInfo *) next_info;
-
-      for (unsigned j = 0; j < desc->descriptorCount; j++) {
-         switch (desc->descriptorType) {
-         case VK_DESCRIPTOR_TYPE_SAMPLER:
-         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-            memcpy((VkDescriptorImageInfo*)&desc->pImageInfo[j], pSrc, sizeof(VkDescriptorImageInfo));
-            next_info += sizeof(VkDescriptorImageInfo);
-            pSrc += sizeof(VkDescriptorImageInfo);
-            break;
-         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-            memcpy((VkBufferView*)&desc->pTexelBufferView[j], pSrc, sizeof(VkBufferView));
-            next_info += sizeof(VkBufferView);
-            pSrc += sizeof(VkBufferView);
-            break;
-         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-         default:
-            memcpy((VkDescriptorBufferInfo*)&desc->pBufferInfo[j], pSrc, sizeof(VkDescriptorBufferInfo));
-            next_info += sizeof(VkDescriptorBufferInfo);
-            pSrc += sizeof(VkDescriptorBufferInfo);
-            break;
-         }
-      }
-   }
-   handle_push_descriptor_set_generic(pds, state);
-   free(pds);
+   struct vk_cmd_queue_entry bind_cmd;
+   bind_cmd.u.bind_descriptor_sets = (struct vk_cmd_bind_descriptor_sets){
+      .pipeline_bind_point = templ->bind_point,
+      .layout = pds->layout,
+      .first_set = pds->set,
+      .descriptor_set_count = 1,
+      .descriptor_sets = &set_handle,
+   };
+   handle_descriptor_sets(&bind_cmd, state);
 }
 
 static void handle_bind_transform_feedback_buffers(struct vk_cmd_queue_entry *cmd,
@@ -4205,13 +3604,11 @@ handle_shaders(struct vk_cmd_queue_entry *cmd, struct rendering_state *state)
       handle_graphics_stages(state, vkstages & all_gfx, true);
       u_foreach_bit(i, new_stages) {
          handle_graphics_layout(state, i, state->shaders[i]->layout);
-         handle_pipeline_access(state, i);
       }
    }
    /* ignore compute unbinds */
    if (new_stages & BITFIELD_BIT(MESA_SHADER_COMPUTE)) {
       handle_compute_shader(state, state->shaders[MESA_SHADER_COMPUTE], state->shaders[MESA_SHADER_COMPUTE]->layout);
-      handle_pipeline_access(state, MESA_SHADER_COMPUTE);
    }
 
    if (gfx) {
@@ -4985,6 +4382,7 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
    state->min_samples_dirty = true;
    state->sample_mask = UINT32_MAX;
    state->poison_mem = device->poison_mem;
+   util_dynarray_init(&state->push_desc_sets, NULL);
 
    /* default values */
    state->rs_state.line_width = 1.0;
@@ -4997,10 +4395,6 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
    state->rs_state.scissor = true;
    state->rs_state.no_ms_sample_mask_out = true;
 
-   lvp_forall_stage(s) {
-      for (unsigned i = 0; i < ARRAY_SIZE(state->cso_ss_ptr[s]); i++)
-         state->cso_ss_ptr[s][i] = &state->ss[s][i];
-   }
    /* create a gallium context */
    lvp_execute_cmd_buffer(&cmd_buffer->vk.cmd_queue.cmds, state, device->print_cmds);
 
@@ -5012,6 +4406,14 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
          state->pctx->stream_output_target_destroy(state->pctx, state->so_targets[i]);
       }
    }
+
+   if (util_dynarray_num_elements(&state->push_desc_sets, struct lvp_descriptor_set *))
+      finish_fence(state);
+
+   util_dynarray_foreach (&state->push_desc_sets, struct lvp_descriptor_set *, set)
+      lvp_descriptor_set_destroy(device, *set);
+
+   util_dynarray_fini(&state->push_desc_sets);
 
    free(state->color_att);
    return VK_SUCCESS;
