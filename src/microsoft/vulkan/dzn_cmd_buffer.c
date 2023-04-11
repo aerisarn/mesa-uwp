@@ -3184,7 +3184,7 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
             if (!set) continue;
 
             uint32_t set_heap_offset = pipeline->sets[s].heap_offsets[type];
-            uint32_t set_desc_count = pipeline->sets[s].range_desc_count[type];
+            uint32_t set_desc_count = MIN2(pipeline->sets[s].range_desc_count[type], set->heap_sizes[type]);
             if (set_desc_count) {
                dzn_descriptor_heap_copy(device, dst_heap, dst_heap_offset + set_heap_offset,
                                         &set->pool->heaps[type], set->heap_offsets[type],
@@ -3195,6 +3195,8 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
                uint32_t dynamic_buffer_count = pipeline->sets[s].dynamic_buffer_count;
                for (uint32_t o = 0; o < dynamic_buffer_count; o++) {
                   struct dzn_buffer_desc bdesc = set->dynamic_buffers[o];
+                  if (!bdesc.buffer)
+                     continue;
                   bdesc.offset += desc_state->sets[s].dynamic_offsets[o];
 
                   bool primary_is_writable = bdesc.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
