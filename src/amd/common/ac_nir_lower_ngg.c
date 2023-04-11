@@ -67,6 +67,7 @@ typedef struct
    nir_variable *prim_exp_arg_var;
    nir_variable *es_accepted_var;
    nir_variable *gs_accepted_var;
+   nir_variable *gs_exported_var;
    nir_variable *gs_vtx_indices_vars[3];
 
    nir_ssa_def *vtx_addr[3];
@@ -517,10 +518,7 @@ nogs_prim_gen_query(nir_builder *b, lower_ngg_nogs_state *s)
 static void
 emit_ngg_nogs_prim_export(nir_builder *b, lower_ngg_nogs_state *s, nir_ssa_def *arg)
 {
-   nir_ssa_def *gs_thread =
-      s->gs_accepted_var ? nir_load_var(b, s->gs_accepted_var) : has_input_primitive(b);
-
-   nir_if *if_gs_thread = nir_push_if(b, gs_thread);
+   nir_if *if_gs_thread = nir_push_if(b, nir_load_var(b, s->gs_exported_var));
    {
       if (!arg)
          arg = emit_ngg_nogs_prim_exp_arg(b, s);
@@ -914,7 +912,6 @@ compact_vertices_after_culling(nir_builder *b,
                                nir_ssa_def *es_vertex_lds_addr,
                                nir_ssa_def *es_exporter_tid,
                                nir_ssa_def *num_live_vertices_in_workgroup,
-                               nir_ssa_def *fully_culled,
                                unsigned pervertex_lds_bytes,
                                unsigned num_repacked_variables)
 {
@@ -1008,8 +1005,6 @@ compact_vertices_after_culling(nir_builder *b,
    nir_pop_if(b, if_gs_accepted);
 
    nir_store_var(b, es_accepted_var, es_survived, 0x1u);
-   nir_store_var(b, gs_accepted_var, nir_iand(b, nir_inot(b, fully_culled), has_input_primitive(b)),
-                 0x1u);
 }
 
 static void
@@ -1565,6 +1560,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       nir_ssa_def *num_exported_prims = nir_load_workgroup_num_input_primitives_amd(b);
       nir_ssa_def *fully_culled = nir_ieq_imm(b, num_live_vertices_in_workgroup, 0u);
       num_exported_prims = nir_bcsel(b, fully_culled, nir_imm_int(b, 0u), num_exported_prims);
+      nir_store_var(b, s->gs_exported_var, nir_iand(b, nir_inot(b, fully_culled), has_input_primitive(b)), 0x1u);
 
       nir_if *if_wave_0 = nir_push_if(b, nir_ieq(b, nir_load_subgroup_id(b), nir_imm_int(b, 0)));
       {
@@ -1577,7 +1573,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
       compact_vertices_after_culling(b, s,
                                      repacked_variables, gs_vtxaddr_vars,
                                      invocation_index, es_vertex_lds_addr,
-                                     es_exporter_tid, num_live_vertices_in_workgroup, fully_culled,
+                                     es_exporter_tid, num_live_vertices_in_workgroup,
                                      pervertex_lds_bytes, num_repacked_variables);
    }
    nir_push_else(b, if_cull_en);
@@ -2256,6 +2252,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
       options->can_cull ? nir_local_variable_create(impl, glsl_bool_type(), "es_accepted") : NULL;
    nir_variable *gs_accepted_var =
       options->can_cull ? nir_local_variable_create(impl, glsl_bool_type(), "gs_accepted") : NULL;
+   nir_variable *gs_exported_var = nir_local_variable_create(impl, glsl_bool_type(), "gs_exported");
 
    bool streamout_enabled = shader->xfb_info && !options->disable_streamout;
    bool has_user_edgeflags =
@@ -2279,6 +2276,7 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
       .prim_exp_arg_var = prim_exp_arg_var,
       .es_accepted_var = es_accepted_var,
       .gs_accepted_var = gs_accepted_var,
+      .gs_exported_var = gs_exported_var,
       .max_num_waves = DIV_ROUND_UP(options->max_workgroup_size, options->wave_size),
       .has_user_edgeflags = has_user_edgeflags,
    };
@@ -2313,6 +2311,11 @@ ac_nir_lower_ngg_nogs(nir_shader *shader, const ac_nir_lower_ngg_options *option
     * it executes before culling and isn't in the extracted CF.
     */
    nogs_prim_gen_query(b, &state);
+
+   /* Whether a shader invocation should export a primitive,
+    * initialize to all invocations that have an input primitive.
+    */
+   nir_store_var(b, gs_exported_var, has_input_primitive(b), 0x1u);
 
    if (!options->can_cull) {
       /* Newer chips can use PRIMGEN_PASSTHRU_NO_MSG to skip gs_alloc_req for NGG passthrough. */
