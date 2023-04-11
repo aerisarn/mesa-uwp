@@ -784,7 +784,8 @@ void genX(CmdResetQueryPool)(
    ANV_FROM_HANDLE(anv_query_pool, pool, queryPool);
    struct anv_physical_device *pdevice = cmd_buffer->device->physical;
 
-   if (queryCount >= pdevice->instance->query_clear_with_blorp_threshold) {
+   if (queryCount >= pdevice->instance->query_clear_with_blorp_threshold &&
+       pool->type != VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR) {
       anv_cmd_buffer_fill_area(cmd_buffer,
                                anv_query_address(pool, firstQuery),
                                queryCount * pool->stride,
