@@ -1069,7 +1069,7 @@ struct dzn_image {
    struct dzn_device_memory *mem;
    VkDeviceSize mem_offset;
    uint32_t castable_format_count;
-   DXGI_FORMAT *castable_formats;
+   const DXGI_FORMAT *castable_formats;
 
    D3D12_BARRIER_ACCESS valid_access;
 };
