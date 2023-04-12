@@ -106,7 +106,6 @@ _mesa_symbol_table_pop_scope(struct _mesa_symbol_table *table)
            hte->data = sym->next_with_same_name;
         } else {
            _mesa_hash_table_remove(table->ht, hte);
-           free(sym->name);
         }
 
         free(sym);
@@ -183,7 +182,7 @@ _mesa_symbol_table_add_symbol(struct _mesa_symbol_table *table,
    if (sym && sym->depth == table->depth)
       return -1;
 
-   new_sym = calloc(1, sizeof(*sym));
+   new_sym = calloc(1, sizeof(*sym) + (sym ? 0 : (strlen(name) + 1)));
    if (new_sym == NULL) {
       _mesa_error_no_memory(__func__);
       return -1;
@@ -194,12 +193,8 @@ _mesa_symbol_table_add_symbol(struct _mesa_symbol_table *table,
       new_sym->next_with_same_name = sym;
       new_sym->name = sym->name;
    } else {
-      new_sym->name = strdup(name);
-      if (new_sym->name == NULL) {
-         free(new_sym);
-         _mesa_error_no_memory(__func__);
-         return -1;
-      }
+      new_sym->name = (char *)(new_sym + 1);
+      strcpy(new_sym->name, name);
    }
 
    new_sym->next_with_same_scope = table->current_scope->symbols;
@@ -252,7 +247,7 @@ _mesa_symbol_table_add_global_symbol(struct _mesa_symbol_table *table,
       /* empty */
    }
 
-   sym = calloc(1, sizeof(*sym));
+   sym = calloc(1, sizeof(*sym) + (inner_sym ? 0 : strlen(name) + 1));
    if (sym == NULL) {
       _mesa_error_no_memory(__func__);
       return -1;
@@ -266,12 +261,8 @@ _mesa_symbol_table_add_global_symbol(struct _mesa_symbol_table *table,
 
       sym->name = inner_sym->name;
    } else {
-      sym->name = strdup(name);
-      if (sym->name == NULL) {
-         free(sym);
-         _mesa_error_no_memory(__func__);
-         return -1;
-      }
+      sym->name = (char *)(sym + 1);
+      strcpy(sym->name, name);
    }
 
    sym->next_with_same_scope = top_scope->symbols;
