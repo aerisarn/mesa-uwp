@@ -2395,9 +2395,9 @@ pub struct Instr {
 }
 
 impl Instr {
-    pub fn new(op: Op) -> Instr {
+    pub fn new(op: impl Into<Op>) -> Instr {
         Instr {
-            op: op,
+            op: op.into(),
             pred: Pred::None,
             pred_inv: false,
             deps: InstrDeps::new(),
