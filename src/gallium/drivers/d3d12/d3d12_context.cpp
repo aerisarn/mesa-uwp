@@ -50,6 +50,7 @@
 #include "util/u_memory.h"
 #include "util/u_upload_mgr.h"
 #include "util/u_pstipple.h"
+#include "util/u_sample_positions.h"
 #include "util/u_dl.h"
 #include "nir_to_dxil.h"
 
@@ -2283,77 +2284,6 @@ d3d12_memory_barrier(struct pipe_context *pctx, unsigned flags)
 }
 
 static void
-d3d12_get_sample_position(struct pipe_context *pctx, unsigned sample_count, unsigned sample_index,
-                          float *positions)
-{
-   /* Sample patterns transcribed from
-    * https://docs.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_standard_multisample_quality_levels
-    */
-   static const int sample_pattern_1sample[2] = { 0, 0 };
-   static const int sample_pattern_2samples[2][2] = {
-      {  4,  4 },
-      { -4, -4 },
-   };
-   static const int sample_pattern_4samples[4][2] = {
-      { -2, -6 },
-      {  6, -2 },
-      { -6,  2 },
-      {  2,  6 },
-   };
-   static const int sample_pattern_8samples[8][2] = {
-      {  1, -3 },
-      { -1,  3 },
-      {  5,  1 },
-      { -3, -5 },
-      { -5,  5 },
-      { -7, -1 },
-      {  3,  7 },
-      {  7, -7 },
-   };
-   static const int sample_pattern_16samples[16][2] = {
-      {  1,  1 },
-      { -1, -3 },
-      { -3,  2 },
-      {  4, -1 },
-      { -5, -2 },
-      {  2,  5 },
-      {  5,  3 },
-      {  3, -5 },
-      { -2,  6 },
-      {  0, -7 },
-      { -4, -6 },
-      { -6,  4 },
-      { -8,  0 },
-      {  7, -4 },
-      {  6,  7 },
-      { -7, -8 },
-   };
-   const int *samples;
-   switch (sample_count) {
-   case 1:
-   default:
-      samples = sample_pattern_1sample;
-      break;
-   case 2:
-      samples = sample_pattern_2samples[sample_index];
-      break;
-   case 4:
-      samples = sample_pattern_4samples[sample_index];
-      break;
-   case 8:
-      samples = sample_pattern_8samples[sample_index];
-      break;
-   case 16:
-      samples = sample_pattern_16samples[sample_index];
-      break;
-   }
-
-   /* GL coords go from 0 -> 1, D3D from -0.5 -> 0.5 */
-   for (unsigned i = 0; i < 2; ++i)
-      positions[i] = (float)(samples[i] + 8) / 16.0f;
-}
-
-static void
 d3d12_set_patch_vertices(struct pipe_context *pctx, uint8_t patch_vertices)
 {
    struct d3d12_context *ctx = d3d12_context(pctx);
@@ -2511,7 +2441,7 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->base.memory_barrier = d3d12_memory_barrier;
 
-   ctx->base.get_sample_position = d3d12_get_sample_position;
+   ctx->base.get_sample_position = u_default_get_sample_position;
 
    ctx->base.get_device_reset_status = d3d12_get_reset_status;
 
