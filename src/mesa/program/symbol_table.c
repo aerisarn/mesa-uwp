@@ -176,7 +176,9 @@ _mesa_symbol_table_add_symbol(struct _mesa_symbol_table *table,
                               const char *name, void *declaration)
 {
    struct symbol *new_sym;
-   struct symbol *sym = find_symbol(table, name);
+   uint32_t hash = _mesa_hash_string(name);
+   struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(table->ht, hash, name);
+   struct symbol *sym = entry ? entry->data : NULL;
 
    if (sym && sym->depth == table->depth)
       return -1;
@@ -191,9 +193,13 @@ _mesa_symbol_table_add_symbol(struct _mesa_symbol_table *table,
       /* Store link to symbol in outer scope with the same name */
       new_sym->next_with_same_name = sym;
       new_sym->name = sym->name;
+
+      entry->data = new_sym;
    } else {
       new_sym->name = (char *)(new_sym + 1);
       strcpy(new_sym->name, name);
+
+      _mesa_hash_table_insert_pre_hashed(table->ht, hash, new_sym->name, new_sym);
    }
 
    new_sym->next_with_same_scope = table->current_scope->symbols;
@@ -201,8 +207,6 @@ _mesa_symbol_table_add_symbol(struct _mesa_symbol_table *table,
    new_sym->depth = table->depth;
 
    table->current_scope->symbols = new_sym;
-
-   _mesa_hash_table_insert(table->ht, new_sym->name, new_sym);
 
    return 0;
 }
