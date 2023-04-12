@@ -557,6 +557,12 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
          if (intr->intrinsic == nir_intrinsic_load_barycentric_at_sample)
             info->uses_interp_at_sample = true;
          break;
+      case nir_intrinsic_load_frag_coord:
+         info->reads_frag_coord_mask |= nir_ssa_def_components_read(&intr->dest.ssa);
+         break;
+      case nir_intrinsic_load_sample_pos:
+         info->reads_sample_pos_mask |= nir_ssa_def_components_read(&intr->dest.ssa);
+         break;
       case nir_intrinsic_load_input:
       case nir_intrinsic_load_per_vertex_input:
       case nir_intrinsic_load_input_vertex:

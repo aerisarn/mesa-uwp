@@ -496,6 +496,10 @@ struct si_shader_info {
     * texunit + 1.
     */
    uint8_t writes_1_if_tex_is_1;
+
+   /* frag coord and sample pos per component read mask. */
+   uint8_t reads_frag_coord_mask;
+   uint8_t reads_sample_pos_mask;
 };
 
 /* A shader selector is a gallium CSO and contains shader variants and
