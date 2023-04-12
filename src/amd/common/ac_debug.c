@@ -689,7 +689,7 @@ void ac_parse_ib(FILE *f, uint32_t *ib, int num_dw, const int *trace_ids, unsign
  * \param old_dmesg_timestamp	previous dmesg timestamp parsed at init time
  * \param out_addr		detected VM fault addr
  */
-bool ac_vm_fault_occured(enum amd_gfx_level gfx_level, uint64_t *old_dmesg_timestamp,
+bool ac_vm_fault_occurred(enum amd_gfx_level gfx_level, uint64_t *old_dmesg_timestamp,
                          uint64_t *out_addr)
 {
 #ifdef _WIN32

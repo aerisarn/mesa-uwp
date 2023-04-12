@@ -358,7 +358,7 @@
 #define CIK_SDMA_COPY_SUB_OPCODE_T2T_SUB_WINDOW    0x6
 #define CIK_SDMA_OPCODE_WRITE                      0x2
 #define SDMA_WRITE_SUB_OPCODE_LINEAR               0x0
-#define SDMA_WRTIE_SUB_OPCODE_TILED                0x1
+#define SDMA_WRITE_SUB_OPCODE_TILED                0x1
 #define CIK_SDMA_OPCODE_INDIRECT_BUFFER            0x4
 #define CIK_SDMA_PACKET_FENCE                      0x5
 #define CIK_SDMA_PACKET_TRAP                       0x6

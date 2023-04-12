@@ -1059,7 +1059,7 @@ void si_check_vm_faults(struct si_context *sctx, struct radeon_saved_cs *saved, 
    uint64_t addr;
    char cmd_line[4096];
 
-   if (!ac_vm_fault_occured(sctx->gfx_level, &sctx->dmesg_timestamp, &addr))
+   if (!ac_vm_fault_occurred(sctx->gfx_level, &sctx->dmesg_timestamp, &addr))
       return;
 
    f = dd_get_debug_file(false);
@@ -1109,5 +1109,5 @@ void si_init_debug_functions(struct si_context *sctx)
     * only new messages will be checked for VM faults.
     */
    if (sctx->screen->debug_flags & DBG(CHECK_VM))
-      ac_vm_fault_occured(sctx->gfx_level, &sctx->dmesg_timestamp, NULL);
+      ac_vm_fault_occurred(sctx->gfx_level, &sctx->dmesg_timestamp, NULL);
 }
