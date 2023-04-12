@@ -827,10 +827,12 @@ get_sorted_vk_formats(VkIcdSurfaceBase *surface, struct wsi_device *wsi_device,
    }
 
    for (unsigned i = 0; i < ARRAY_SIZE(formats); i++) {
-      if (formats[i] == sorted_formats[0])
-         continue;
+      for (unsigned j = 0; j < *count; j++)
+         if (formats[i] == sorted_formats[j])
+            goto next_format;
       if (rgb_component_bits_are_equal(formats[i], visual))
          sorted_formats[(*count)++] = formats[i];
+next_format:;
    }
 
    if (wsi_device->force_bgra8_unorm_first) {
