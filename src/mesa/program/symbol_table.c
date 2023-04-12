@@ -296,8 +296,20 @@ _mesa_symbol_table_ctor(void)
 void
 _mesa_symbol_table_dtor(struct _mesa_symbol_table *table)
 {
-   while (table->current_scope != NULL) {
-      _mesa_symbol_table_pop_scope(table);
+   /* Free all the scopes and symbols left in the table.  This is like repeated
+    * _mesa_symbol_table_pop_scope(), but not maintining the hash table as we
+    * blow it all away.
+    */
+   while (table->current_scope) {
+      struct scope_level *scope = table->current_scope;
+      table->current_scope = scope->next;
+
+      while (scope->symbols) {
+         struct symbol *sym = scope->symbols;
+         scope->symbols = sym->next_with_same_scope;
+         free(sym);
+      }
+      free(scope);
    }
 
    _mesa_hash_table_destroy(table->ht, NULL);
