@@ -699,8 +699,6 @@ impl Mem {
             let tx_dst;
             let mut src_pitch = [0, 0, 0];
             let mut dst_pitch = [0, 0, 0];
-            let mut new_src_origin = &CLVec::default();
-            let mut new_dst_origin = &CLVec::default();
 
             let bpp = if !self.is_buffer() {
                 self.pixel_size().unwrap() as usize
@@ -719,9 +717,8 @@ impl Mem {
                     src_pitch[2] = region[0] * region[1] * bpp;
                 }
 
-                // We should use original origin vector if it's not an image
-                new_src_origin = &src_origin;
-                tx_src = src.tx(q, ctx, 0, *region * src_pitch, RWFlags::RD)?;
+                let (offset, size) = CLVec::calc_offset_size(src_origin, region, src_pitch);
+                tx_src = src.tx(q, ctx, offset, size, RWFlags::RD)?;
             } else {
                 tx_src = src.tx_image(
                     q,
@@ -748,9 +745,8 @@ impl Mem {
                     dst_pitch[2] = region[0] * region[1] * bpp;
                 }
 
-                // We should use original origin vector if it's not an image
-                new_dst_origin = &dst_origin;
-                tx_dst = dst.tx(q, ctx, 0, *region * dst_pitch, RWFlags::WR)?;
+                let (offset, size) = CLVec::calc_offset_size(dst_origin, region, dst_pitch);
+                tx_dst = dst.tx(q, ctx, offset, size, RWFlags::WR)?;
             } else {
                 tx_dst = dst.tx_image(
                     q,
@@ -774,10 +770,10 @@ impl Mem {
                 tx_src.ptr(),
                 tx_dst.ptr(),
                 region,
-                new_src_origin,
+                &CLVec::default(),
                 src_pitch[1],
                 src_pitch[2],
-                new_dst_origin,
+                &CLVec::default(),
                 dst_pitch[1],
                 dst_pitch[2],
                 bpp as u8,
