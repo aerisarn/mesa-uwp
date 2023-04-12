@@ -102,7 +102,6 @@ _mesa_symbol_table_pop_scope(struct _mesa_symbol_table *table)
            /* If there is a symbol with this name in an outer scope update
             * the hash table to point to it.
             */
-           hte->key = sym->next_with_same_name->name;
            hte->data = sym->next_with_same_name;
         } else {
            _mesa_hash_table_remove(table->ht, hte);
