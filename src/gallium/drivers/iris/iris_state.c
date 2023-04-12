@@ -2736,7 +2736,7 @@ iris_create_sampler_view(struct pipe_context *ctx,
 
    if ((isv->res->aux.usage == ISL_AUX_USAGE_CCS_D ||
         isv->res->aux.usage == ISL_AUX_USAGE_CCS_E ||
-        isv->res->aux.usage == ISL_AUX_USAGE_GFX12_CCS_E) &&
+        isv->res->aux.usage == ISL_AUX_USAGE_FCV_CCS_E) &&
        !isl_format_supports_ccs_e(devinfo, isv->view.format)) {
       aux_usages = 1 << ISL_AUX_USAGE_NONE;
    } else if (isl_aux_usage_has_hiz(isv->res->aux.usage) &&
@@ -2976,7 +2976,7 @@ iris_create_surface(struct pipe_context *ctx,
    unsigned aux_usages = 0;
 
    if ((res->aux.usage == ISL_AUX_USAGE_CCS_E ||
-        res->aux.usage == ISL_AUX_USAGE_GFX12_CCS_E) &&
+        res->aux.usage == ISL_AUX_USAGE_FCV_CCS_E) &&
        !isl_format_supports_ccs_e(devinfo, view->format)) {
       aux_usages = 1 << ISL_AUX_USAGE_NONE;
    } else {

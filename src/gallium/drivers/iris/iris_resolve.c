@@ -54,7 +54,7 @@ disable_rb_aux_buffer(struct iris_context *ice,
    /* We only need to worry about color compression and fast clears. */
    if (tex_res->aux.usage != ISL_AUX_USAGE_CCS_D &&
        tex_res->aux.usage != ISL_AUX_USAGE_CCS_E &&
-       tex_res->aux.usage != ISL_AUX_USAGE_GFX12_CCS_E)
+       tex_res->aux.usage != ISL_AUX_USAGE_FCV_CCS_E)
       return false;
 
    for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
@@ -986,7 +986,7 @@ iris_resource_texture_aux_usage(struct iris_context *ice,
       return res->aux.usage;
 
    case ISL_AUX_USAGE_CCS_E:
-   case ISL_AUX_USAGE_GFX12_CCS_E:
+   case ISL_AUX_USAGE_FCV_CCS_E:
       /* If we don't have any unresolved color, report an aux usage of
        * ISL_AUX_USAGE_NONE.  This way, texturing won't even look at the
        * aux surface and we can save some bandwidth.
@@ -1049,7 +1049,7 @@ iris_image_view_aux_usage(struct iris_context *ice,
        !iris_has_invalid_primary(res, level, 1, 0, INTEL_REMAINING_LAYERS))
       return ISL_AUX_USAGE_NONE;
 
-   if (res->aux.usage == ISL_AUX_USAGE_GFX12_CCS_E)
+   if (res->aux.usage == ISL_AUX_USAGE_FCV_CCS_E)
       return res->aux.usage;
 
    return ISL_AUX_USAGE_NONE;
@@ -1181,7 +1181,7 @@ iris_resource_render_aux_usage(struct iris_context *ice,
 
    case ISL_AUX_USAGE_CCS_D:
    case ISL_AUX_USAGE_CCS_E:
-   case ISL_AUX_USAGE_GFX12_CCS_E:
+   case ISL_AUX_USAGE_FCV_CCS_E:
       /* Disable CCS for some cases of texture-view rendering. On gfx12, HW
        * may convert some subregions of shader output to fast-cleared blocks
        * if CCS is enabled and the shader output matches the clear color.
