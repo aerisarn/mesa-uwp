@@ -6,8 +6,8 @@ else
   CCACHE=
 fi
 
-if [ "$(ps -p $(ps -p $PPID -o ppid --no-headers) -o comm --no-headers)" != ninja ]; then
-    # Not invoked by ninja (e.g. for a meson feature check)
+if echo "$@" | grep -E 'meson-private/tmp[^ /]*/testfile.c' >/dev/null; then
+    # Invoked for meson feature check
     exec $CCACHE $_COMPILER "$@"
 fi
 
