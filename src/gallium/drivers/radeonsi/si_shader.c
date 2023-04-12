@@ -2420,6 +2420,56 @@ static void si_fixup_spi_ps_input_config(struct si_shader *shader)
       shader->config.spi_ps_input_ena |= S_0286CC_ANCILLARY_ENA(1);
 }
 
+static void
+si_set_spi_ps_input_config(struct si_shader *shader)
+{
+   assert(shader->is_monolithic);
+
+   const struct si_shader_selector *sel = shader->selector;
+   const struct si_shader_info *info = &sel->info;
+   const union si_shader_key *key = &shader->key;
+
+   shader->config.spi_ps_input_ena =
+      S_0286CC_PERSP_CENTER_ENA(info->uses_persp_center) |
+      S_0286CC_PERSP_CENTROID_ENA(info->uses_persp_centroid) |
+      S_0286CC_PERSP_SAMPLE_ENA(info->uses_persp_sample) |
+      S_0286CC_LINEAR_CENTER_ENA(info->uses_linear_center) |
+      S_0286CC_LINEAR_CENTROID_ENA(info->uses_linear_centroid) |
+      S_0286CC_LINEAR_SAMPLE_ENA(info->uses_linear_sample) |
+      S_0286CC_FRONT_FACE_ENA(info->uses_frontface) |
+      S_0286CC_SAMPLE_COVERAGE_ENA(info->reads_samplemask) |
+      S_0286CC_ANCILLARY_ENA(info->uses_sampleid);
+
+   uint8_t mask = info->reads_frag_coord_mask | info->reads_sample_pos_mask;
+   u_foreach_bit(i, mask) {
+      shader->config.spi_ps_input_ena |= S_0286CC_POS_X_FLOAT_ENA(1) << i;
+   }
+
+   if (key->ps.part.prolog.color_two_side)
+      shader->config.spi_ps_input_ena |= S_0286CC_FRONT_FACE_ENA(1);
+
+   /* INTERP_MODE_COLOR, same as SMOOTH if flat shading is disabled. */
+   if (info->uses_interp_color && !key->ps.part.prolog.flatshade_colors) {
+      shader->config.spi_ps_input_ena |=
+         S_0286CC_PERSP_SAMPLE_ENA(info->uses_persp_sample_color) |
+         S_0286CC_PERSP_CENTER_ENA(info->uses_persp_center_color) |
+         S_0286CC_PERSP_CENTROID_ENA(info->uses_persp_centroid_color);
+   }
+
+   /* nir_lower_poly_line_smooth use nir_load_sample_mask_in */
+   if (key->ps.mono.poly_line_smoothing)
+      shader->config.spi_ps_input_ena |= S_0286CC_SAMPLE_COVERAGE_ENA(1);
+
+   /* nir_lower_point_smooth use nir_load_point_coord_maybe_flipped which is lowered
+    * to nir_load_barycentric_pixel and nir_load_interpolated_input.
+    */
+   if (key->ps.mono.point_smoothing)
+      shader->config.spi_ps_input_ena |= S_0286CC_PERSP_CENTER_ENA(1);
+
+   si_fixup_spi_ps_input_config(shader);
+   shader->config.spi_ps_input_addr = shader->config.spi_ps_input_ena;
+}
+
 bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
                        struct si_shader *shader, struct util_debug_callback *debug)
 {
@@ -2427,6 +2477,10 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    struct si_shader_selector *sel = shader->selector;
 
    si_determine_use_aco(shader);
+
+   /* ACO need spi_ps_input in advance to init args and used in compiler. */
+   if (sel->stage == MESA_SHADER_FRAGMENT && shader->use_aco)
+      si_set_spi_ps_input_config(shader);
 
    /* We need this info only when legacy GS. */
    struct si_gs_output_info legacy_gs_output_info;
