@@ -1789,7 +1789,7 @@ struct radv_cmd_buffer {
    } ace_internal;
 
    /**
-    * Whether a query pool has been resetted and we have to flush caches.
+    * Whether a query pool has been reset and we have to flush caches.
     */
    bool pending_reset_query;
 

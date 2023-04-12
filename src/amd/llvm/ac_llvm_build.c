@@ -872,7 +872,7 @@ void ac_prepare_cube_coords(struct ac_llvm_context *ctx, bool is_deriv, bool is_
        *
        *     where d is the depth of the texture array and layer
        *     comes from the component indicated in the tables below.
-       *     Workaroudn for an issue where the layer is taken from a
+       *     Workaround for an issue where the layer is taken from a
        *     helper invocation which happens to fall on a different
        *     layer due to extrapolation."
        *
@@ -1972,7 +1972,7 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx, struct ac_image_
    if (atomic) {
       data_type = LLVMTypeOf(a->data[0]);
    } else if (a->opcode == ac_image_store || a->opcode == ac_image_store_mip) {
-      /* Image stores might have been shrinked using the format. */
+      /* Image stores might have been shrunk using the format. */
       data_type = LLVMTypeOf(a->data[0]);
       dmask = (1 << ac_get_llvm_num_components(a->data[0])) - 1;
    } else {

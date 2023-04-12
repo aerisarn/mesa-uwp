@@ -218,7 +218,7 @@ combined_node_cost(uint32_t lds_base, uint32_t i, uint32_t j)
     * tree depth for internal nodes)
     *
     * Dividing area by both relative costs will make it more likely that we merge nodes with
-    * a hight child cost.
+    * a high child cost.
     */
    float p_i = aabb_surface_area(shared_bounds[i - lds_base]) / area;
    float p_j = aabb_surface_area(shared_bounds[j - lds_base]) / area;

@@ -1242,7 +1242,7 @@ radv_rra_dump_trace(VkQueue vk_queue, char *filename)
 
       rra_dump_chunk_description(accel_struct_offsets[i],
                                  sizeof(struct rra_accel_struct_chunk_header), accel_struct_size,
-                                 "RawAccelStruc", RADV_RRA_CHUNK_ID_ACCEL_STRUCT, file);
+                                 "RawAccelStruct", RADV_RRA_CHUNK_ID_ACCEL_STRUCT, file);
    }
 
    uint64_t file_end = (uint64_t)ftell(file);

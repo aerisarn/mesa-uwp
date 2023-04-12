@@ -1494,7 +1494,7 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
    /* Run culling algorithms if culling is enabled.
     *
     * NGG culling can be enabled or disabled in runtime.
-    * This is determined by a SGPR shader argument which is acccessed
+    * This is determined by a SGPR shader argument which is accessed
     * by the following NIR intrinsic.
     */
 
@@ -3233,7 +3233,7 @@ ngg_gs_build_streamout(nir_builder *b, lower_ngg_gs_state *s)
 
       /* We want to export primitives to streamout buffer in sequence,
        * but not all vertices are alive or mark end of a primitive, so
-       * there're "holes". We don't need continous invocations to write
+       * there're "holes". We don't need continuous invocations to write
        * primitives to streamout buffer like final vertex export, so
        * just repack to get the sequence (export_seq) is enough, no need
        * to do compaction.
@@ -4018,7 +4018,7 @@ ms_emit_arrayed_outputs(nir_builder *b,
    nir_ssa_def *zero = nir_imm_int(b, 0);
 
    u_foreach_bit64(slot, mask) {
-      /* Should not occour here, handled separately. */
+      /* Should not occur here, handled separately. */
       assert(slot != VARYING_SLOT_PRIMITIVE_COUNT && slot != VARYING_SLOT_PRIMITIVE_INDICES);
 
       unsigned component_mask = s->output_info[slot].components_mask;

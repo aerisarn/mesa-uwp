@@ -309,7 +309,7 @@ void ac_get_hs_info(struct radeon_info *info,
  * store the task payload which is passed to mesh shaders.
  *
  * The driver only needs to create this BO once,
- * and it will always be able to accomodate the maximum needed
+ * and it will always be able to accommodate the maximum needed
  * task payload size.
  *
  * The following memory layout is used:

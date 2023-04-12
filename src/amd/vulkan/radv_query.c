@@ -1466,7 +1466,7 @@ emit_query_flush(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
    if (cmd_buffer->pending_reset_query) {
       if (pool->size >= RADV_BUFFER_OPS_CS_THRESHOLD) {
          /* Only need to flush caches if the query pool size is
-          * large enough to be resetted using the compute shader
+          * large enough to be reset using the compute shader
           * path. Small pools don't need any cache flushes
           * because we use a CP dma clear.
           */

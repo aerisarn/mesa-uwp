@@ -786,7 +786,7 @@ get_alu_src_vop3p(struct isel_context* ctx, nir_alu_src src)
 
    /* extract a full dword if possible */
    if (tmp.bytes() >= (dword + 1) * 4) {
-      /* if the source is splitted into components, use p_create_vector */
+      /* if the source is split into components, use p_create_vector */
       auto it = ctx->allocated_vec.find(tmp.id());
       if (it != ctx->allocated_vec.end()) {
          unsigned index = dword << 1;
@@ -5549,7 +5549,7 @@ mtbuf_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsigne
       ac_get_safe_fetch_size(bld.program->gfx_level, vtx_info, const_offset, max_components,
                              alignment, max_fetched_components);
    const unsigned fetch_fmt = vtx_info->hw_format[max_fetched_components - 1];
-   /* Adjust bytes needed in case we need to do a smaller load due to aligment.
+   /* Adjust bytes needed in case we need to do a smaller load due to alignment.
     * If a larger format is selected, it's still OK to load a smaller amount from it.
     */
    bytes_needed = MIN2(bytes_needed, max_fetched_components * info.component_size);

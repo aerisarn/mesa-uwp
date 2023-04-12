@@ -450,7 +450,7 @@ struct waterfall_context {
  * to implement the body.
  *
  * params:
- *  - ctx is the usal nir context
+ *  - ctx is the usual nir context
  *  - wctx is a temporary struct containing some loop info. Can be left uninitialized.
  *  - value is the possibly divergent value for which we built the loop
  *  - divergent is whether value is actually divergent. If false we just pass

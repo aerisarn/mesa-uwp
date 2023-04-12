@@ -151,8 +151,8 @@ emit_ps_mrtz_export(nir_builder *b, lower_ps_state *s)
 
    uint64_t outputs_written = b->shader->info.outputs_written;
    /* use outputs_written to determine export format as we use it to set
-    * R_028710_SPI_SHADER_Z_FORMAT instead of relying on the real store ouput,
-    * because store ouput may be optimized out.
+    * R_028710_SPI_SHADER_Z_FORMAT instead of relying on the real store output,
+    * because store output may be optimized out.
     */
    unsigned format =
       ac_get_spi_shader_z_format(outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH),
@@ -352,7 +352,7 @@ emit_ps_color_export(nir_builder *b, lower_ps_state *s, gl_frag_result slot, uns
          pack_op = nir_op_pack_snorm_2x16;
          break;
       default:
-         unreachable("unsupport color export format");
+         unreachable("unsupported color export format");
          break;
       }
 

@@ -71,7 +71,7 @@ aco_opcode
 get_reduce_opcode(amd_gfx_level gfx_level, ReduceOp op)
 {
    /* Because some 16-bit instructions are already VOP3 on GFX10, we use the
-    * 32-bit opcodes (VOP2) which allows to remove the tempory VGPR and to use
+    * 32-bit opcodes (VOP2) which allows to remove the temporary VGPR and to use
     * DPP with the arithmetic instructions. This requires to sign-extend.
     */
    switch (op) {
@@ -718,7 +718,7 @@ emit_reduction(lower_context* ctx, aco_opcode op, ReduceOp reduce_op, unsigned c
 
       for (unsigned i = 0; i < src.size(); i++) {
          if (!identity[i].isConstant() ||
-             identity[i].constantValue()) { /* bound_ctrl should take care of this overwise */
+             identity[i].constantValue()) { /* bound_ctrl should take care of this otherwise */
             if (ctx->program->gfx_level < GFX10)
                assert((identity[i].isConstant() && !identity[i].isLiteral()) ||
                       identity[i].physReg() == PhysReg{sitmp + i});

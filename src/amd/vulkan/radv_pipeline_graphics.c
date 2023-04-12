@@ -4106,7 +4106,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    if (enable_mrt_compaction) {
       blend.spi_shader_col_format = radv_compact_spi_shader_col_format(ps, &blend);
 
-      /* In presense of MRT holes (ie. the FS exports MRT1 but not MRT0), the compiler will remap
+      /* In presence of MRT holes (ie. the FS exports MRT1 but not MRT0), the compiler will remap
        * them, so that only MRT0 is exported and the driver will compact SPI_SHADER_COL_FORMAT to
        * match what the FS actually exports. Though, to make sure the hw remapping works as
        * expected, we should also clear color attachments without exports in CB_SHADER_MASK.

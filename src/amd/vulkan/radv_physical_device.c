@@ -2315,7 +2315,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
       if (device->instance->perftest_flags & RADV_PERFTEST_CS_WAVE_32)
          device->cs_wave_size = 32;
 
-      /* For pixel shaders, wave64 is recommanded. */
+      /* For pixel shaders, wave64 is recommended. */
       if (device->instance->perftest_flags & RADV_PERFTEST_PS_WAVE_32)
          device->ps_wave_size = 32;
 
@@ -2641,7 +2641,7 @@ radv_get_memory_budget_properties(VkPhysicalDevice physicalDevice,
                                        device->ws->query_value(device->ws, RADEON_GTT_USAGE);
          uint64_t total_usage = MAX2(total_internal_usage, total_system_usage);
 
-         /* Compute the total free space that can be allocated for this process accross all heaps. */
+         /* Compute the total free space that can be allocated for this process across all heaps. */
          uint64_t total_free_space = total_heap_size - MIN2(total_heap_size, total_usage);
 
          memoryBudget->heapBudget[vram_vis_heap_idx] = total_free_space + total_internal_usage;
@@ -2673,7 +2673,7 @@ radv_get_memory_budget_properties(VkPhysicalDevice physicalDevice,
 
          uint64_t total_usage = MAX2(total_internal_usage, total_system_usage);
 
-         /* Compute the total free space that can be allocated for this process accross all heaps. */
+         /* Compute the total free space that can be allocated for this process across all heaps. */
          uint64_t total_free_space = total_heap_size - MIN2(total_heap_size, total_usage);
 
          /* Compute the remaining visible VRAM size for this process. */

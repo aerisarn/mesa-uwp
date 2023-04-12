@@ -327,7 +327,7 @@ Waiting for the VMEM/DS instruction to finish, a VALU or export instruction, or
 ### VALUTransUseHazard
 
 Triggered by:
-A VALU instrction reading a VGPR written by a transcendental VALU instruction without 6+ VALU or 2+
+A VALU instruction reading a VGPR written by a transcendental VALU instruction without 6+ VALU or 2+
 transcendental instructions in-between.
 
 Mitigated by:

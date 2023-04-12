@@ -2080,7 +2080,7 @@ radv_aco_build_shader_binary(void **bin, const struct ac_shader_config *config,
 
    size += code_dw * sizeof(uint32_t) + sizeof(struct radv_shader_binary_legacy);
 
-   /* We need to calloc to prevent unintialized data because this will be used
+   /* We need to calloc to prevent uninitialized data because this will be used
     * directly for the disk cache. Uninitialized data can appear because of
     * padding in the struct or because legacy_binary->data can be at an offset
     * from the start less than sizeof(radv_shader_binary_legacy). */
