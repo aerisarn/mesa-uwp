@@ -1,5 +1,3 @@
-#!/bin/sh -e
-
 if command -V ccache >/dev/null 2>/dev/null; then
   CCACHE=ccache
 else
