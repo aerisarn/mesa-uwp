@@ -877,6 +877,9 @@ struct si_shader {
    bool is_gs_copy_shader;
    uint8_t wave_size;
 
+   /* Use ACO for compilation. */
+   bool use_aco;
+
    /* The following data is all that's needed for binary shaders. */
    struct si_shader_binary binary;
    struct ac_shader_config config;

@@ -2224,6 +2224,16 @@ void si_update_shader_binary_info(struct si_shader *shader, nir_shader *nir)
    shader->info.uses_vmem_sampler_or_bvh |= info.uses_vmem_sampler_or_bvh;
 }
 
+static void si_determine_use_aco(struct si_shader *shader)
+{
+   const struct si_shader_selector *sel = shader->selector;
+
+   if (!(sel->screen->debug_flags & DBG(USE_ACO)))
+      return;
+
+   shader->use_aco = false;
+}
+
 /* Generate code for the hardware VS shader stage to go with a geometry shader */
 static struct si_shader *
 si_nir_generate_gs_copy_shader(struct si_screen *sscreen,
@@ -2362,6 +2372,8 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
 {
    bool ret = true;
    struct si_shader_selector *sel = shader->selector;
+
+   si_determine_use_aco(shader);
 
    /* We need this info only when legacy GS. */
    struct si_gs_output_info legacy_gs_output_info;
