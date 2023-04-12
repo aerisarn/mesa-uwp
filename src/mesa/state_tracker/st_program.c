@@ -476,6 +476,11 @@ st_translate_stream_output_info(struct gl_program *prog)
    struct pipe_stream_output_info *so_info =
       &prog->state.stream_output;
 
+   if (!num_outputs) {
+      so_info->num_outputs = 0;
+      return;
+   }
+
    for (unsigned i = 0; i < info->NumOutputs; i++) {
       so_info->output[i].register_index =
          output_mapping[info->Outputs[i].OutputRegister];

@@ -690,9 +690,6 @@ spec@ext_transform_feedback@tessellation triangle_fan flat_first,Fail
 spec@ext_transform_feedback@tessellation quad_strip wireframe,Fail
 spec@ext_transform_feedback@tessellation quads wireframe,Fail
 
-# ../src/gallium/drivers/zink/zink_compiler.c:1684: find_var_with_location_frac: Assertion `(int)location > 0' failed.
-spec@glsl-1.50@execution@interface-blocks-api-access-members,Crash
-
 spec@glsl-1.50@execution@primitive-id-no-gs-quad-strip,Fail
 spec@glsl-1.50@execution@primitive-id-no-gs-quads,Fail
 
