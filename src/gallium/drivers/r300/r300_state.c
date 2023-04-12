@@ -1771,7 +1771,7 @@ static void r300_set_viewport_states(struct pipe_context* pipe,
 }
 
 static void r300_set_vertex_buffers_hwtcl(struct pipe_context* pipe,
-                                    unsigned start_slot, unsigned count,
+                                    unsigned count,
                                     unsigned unbind_num_trailing_slots,
                                     bool take_ownership,
                                     const struct pipe_vertex_buffer* buffers)
@@ -1780,21 +1780,21 @@ static void r300_set_vertex_buffers_hwtcl(struct pipe_context* pipe,
 
     util_set_vertex_buffers_count(r300->vertex_buffer,
                                   &r300->nr_vertex_buffers,
-                                  buffers, start_slot, count,
+                                  buffers, count,
                                   unbind_num_trailing_slots, take_ownership);
 
     /* There must be at least one vertex buffer set, otherwise it locks up. */
     if (!r300->nr_vertex_buffers) {
         util_set_vertex_buffers_count(r300->vertex_buffer,
                                       &r300->nr_vertex_buffers,
-                                      &r300->dummy_vb, 0, 1, 0, false);
+                                      &r300->dummy_vb, 1, 0, false);
     }
 
     r300->vertex_arrays_dirty = true;
 }
 
 static void r300_set_vertex_buffers_swtcl(struct pipe_context* pipe,
-                                    unsigned start_slot, unsigned count,
+                                    unsigned count,
                                     unsigned unbind_num_trailing_slots,
                                     bool take_ownership,
                                     const struct pipe_vertex_buffer* buffers)
@@ -1804,9 +1804,9 @@ static void r300_set_vertex_buffers_swtcl(struct pipe_context* pipe,
 
     util_set_vertex_buffers_count(r300->vertex_buffer,
                                   &r300->nr_vertex_buffers,
-                                  buffers, start_slot, count,
+                                  buffers, count,
                                   unbind_num_trailing_slots, take_ownership);
-    draw_set_vertex_buffers(r300->draw, start_slot, count,
+    draw_set_vertex_buffers(r300->draw, count,
                             unbind_num_trailing_slots, buffers);
 
     if (!buffers)
@@ -1814,10 +1814,10 @@ static void r300_set_vertex_buffers_swtcl(struct pipe_context* pipe,
 
     for (i = 0; i < count; i++) {
         if (buffers[i].is_user_buffer) {
-            draw_set_mapped_vertex_buffer(r300->draw, start_slot + i,
+            draw_set_mapped_vertex_buffer(r300->draw, i,
                                           buffers[i].buffer.user, ~0);
         } else if (buffers[i].buffer.resource) {
-            draw_set_mapped_vertex_buffer(r300->draw, start_slot + i,
+            draw_set_mapped_vertex_buffer(r300->draw, i,
                                           r300_resource(buffers[i].buffer.resource)->malloced_buffer, ~0);
         }
     }

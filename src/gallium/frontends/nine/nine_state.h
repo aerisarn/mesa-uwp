@@ -215,7 +215,9 @@ struct nine_state
 
     struct NineIndexBuffer9   *idxbuf;
     struct NineVertexBuffer9  *stream[PIPE_MAX_ATTRIBS];
+    uint32_t stream_mask; /* i bit set for *stream[i] not NULL */
     struct pipe_vertex_buffer  vtxbuf[PIPE_MAX_ATTRIBS]; /* vtxbuf.buffer unused */
+    unsigned last_vtxbuf_count;
     UINT stream_freq[PIPE_MAX_ATTRIBS];
 
     struct pipe_clip_state clip;
@@ -283,6 +285,8 @@ struct nine_context {
     struct NineVertexDeclaration9 *vdecl;
 
     struct pipe_vertex_buffer vtxbuf[PIPE_MAX_ATTRIBS];
+    uint32_t vtxbuf_mask; /* i bit set for context->vtxbuf[i].buffer.resource not NULL */
+    uint32_t last_vtxbuf_count;
     UINT stream_freq[PIPE_MAX_ATTRIBS];
     uint32_t stream_instancedata_mask; /* derived from stream_freq */
     uint32_t stream_usage_mask; /* derived from VS and vdecl */
@@ -318,7 +322,6 @@ struct nine_context {
     uint16_t enabled_samplers_mask_ps;
 
     int dummy_vbo_bound_at; /* -1 = not bound , >= 0 = bound index */
-    bool vbo_bound_done;
 
     bool inline_constants;
 

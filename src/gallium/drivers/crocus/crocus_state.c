@@ -3658,7 +3658,7 @@ crocus_delete_state(struct pipe_context *ctx, void *state)
  */
 static void
 crocus_set_vertex_buffers(struct pipe_context *ctx,
-                          unsigned start_slot, unsigned count,
+                          unsigned count,
                           unsigned unbind_num_trailing_slots,
                           bool take_ownership,
                           const struct pipe_vertex_buffer *buffers)
@@ -3668,15 +3668,15 @@ crocus_set_vertex_buffers(struct pipe_context *ctx,
    const unsigned padding =
       (GFX_VERx10 < 75 && screen->devinfo.platform != INTEL_PLATFORM_BYT) * 2;
    ice->state.bound_vertex_buffers &=
-      ~u_bit_consecutive64(start_slot, count + unbind_num_trailing_slots);
+      ~u_bit_consecutive64(0, count + unbind_num_trailing_slots);
 
    util_set_vertex_buffers_mask(ice->state.vertex_buffers, &ice->state.bound_vertex_buffers,
-                                buffers, start_slot, count, unbind_num_trailing_slots,
+                                buffers, count, unbind_num_trailing_slots,
                                 take_ownership);
 
    for (unsigned i = 0; i < count; i++) {
       struct pipe_vertex_buffer *state =
-         &ice->state.vertex_buffers[start_slot + i];
+         &ice->state.vertex_buffers[i];
 
       if (!state->is_user_buffer && state->buffer.resource) {
          struct crocus_resource *res = (void *)state->buffer.resource;
@@ -3686,7 +3686,7 @@ crocus_set_vertex_buffers(struct pipe_context *ctx,
       uint32_t end = 0;
       if (state->buffer.resource)
          end = state->buffer.resource->width0 + padding;
-      ice->state.vb_end[start_slot + i] = end;
+      ice->state.vb_end[i] = end;
    }
    ice->state.dirty |= CROCUS_DIRTY_VERTEX_BUFFERS;
 }

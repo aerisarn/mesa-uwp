@@ -1085,7 +1085,7 @@ nv50_set_window_rectangles(struct pipe_context *pipe,
 
 static void
 nv50_set_vertex_buffers(struct pipe_context *pipe,
-                        unsigned start_slot, unsigned count,
+                        unsigned count,
                         unsigned unbind_num_trailing_slots,
                         bool take_ownership,
                         const struct pipe_vertex_buffer *vb)
@@ -1097,17 +1097,16 @@ nv50_set_vertex_buffers(struct pipe_context *pipe,
    nv50->dirty_3d |= NV50_NEW_3D_ARRAYS;
 
    util_set_vertex_buffers_count(nv50->vtxbuf, &nv50->num_vtxbufs, vb,
-                                 start_slot, count,
-                                 unbind_num_trailing_slots,
+                                 count, unbind_num_trailing_slots,
                                  take_ownership);
 
-   unsigned clear_mask = ~u_bit_consecutive(start_slot + count, unbind_num_trailing_slots);
+   unsigned clear_mask = ~u_bit_consecutive(count, unbind_num_trailing_slots);
    nv50->vbo_user &= clear_mask;
    nv50->vbo_constant &= clear_mask;
    nv50->vtxbufs_coherent &= clear_mask;
 
    if (!vb) {
-      clear_mask = ~u_bit_consecutive(start_slot, count);
+      clear_mask = ~u_bit_consecutive(0, count);
       nv50->vbo_user &= clear_mask;
       nv50->vbo_constant &= clear_mask;
       nv50->vtxbufs_coherent &= clear_mask;
@@ -1115,7 +1114,7 @@ nv50_set_vertex_buffers(struct pipe_context *pipe,
    }
 
    for (i = 0; i < count; ++i) {
-      unsigned dst_index = start_slot + i;
+      unsigned dst_index = i;
 
       if (vb[i].is_user_buffer) {
          nv50->vbo_user |= 1 << dst_index;

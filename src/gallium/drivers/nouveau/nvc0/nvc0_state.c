@@ -1038,7 +1038,7 @@ nvc0_set_patch_vertices(struct pipe_context *pipe, uint8_t patch_vertices)
 
 static void
 nvc0_set_vertex_buffers(struct pipe_context *pipe,
-                        unsigned start_slot, unsigned count,
+                        unsigned count,
                         unsigned unbind_num_trailing_slots,
                         bool take_ownership,
                         const struct pipe_vertex_buffer *vb)
@@ -1050,17 +1050,16 @@ nvc0_set_vertex_buffers(struct pipe_context *pipe,
     nvc0->dirty_3d |= NVC0_NEW_3D_ARRAYS;
 
     util_set_vertex_buffers_count(nvc0->vtxbuf, &nvc0->num_vtxbufs, vb,
-                                  start_slot, count,
-                                  unbind_num_trailing_slots,
+                                  count, unbind_num_trailing_slots,
                                   take_ownership);
 
-    unsigned clear_mask = ~u_bit_consecutive(start_slot + count, unbind_num_trailing_slots);
+    unsigned clear_mask = ~u_bit_consecutive(count, unbind_num_trailing_slots);
     nvc0->vbo_user &= clear_mask;
     nvc0->constant_vbos &= clear_mask;
     nvc0->vtxbufs_coherent &= clear_mask;
 
     if (!vb) {
-       clear_mask = ~u_bit_consecutive(start_slot, count);
+       clear_mask = ~u_bit_consecutive(0, count);
        nvc0->vbo_user &= clear_mask;
        nvc0->constant_vbos &= clear_mask;
        nvc0->vtxbufs_coherent &= clear_mask;
@@ -1068,7 +1067,7 @@ nvc0_set_vertex_buffers(struct pipe_context *pipe,
     }
 
     for (i = 0; i < count; ++i) {
-       unsigned dst_index = start_slot + i;
+       unsigned dst_index = i;
 
        if (vb[i].is_user_buffer) {
           nvc0->vbo_user |= 1 << dst_index;

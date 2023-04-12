@@ -450,19 +450,19 @@ etna_set_viewport_states(struct pipe_context *pctx, unsigned start_slot,
 }
 
 static void
-etna_set_vertex_buffers(struct pipe_context *pctx, unsigned start_slot,
-      unsigned num_buffers, unsigned unbind_num_trailing_slots, bool take_ownership,
+etna_set_vertex_buffers(struct pipe_context *pctx, unsigned num_buffers,
+      unsigned unbind_num_trailing_slots, bool take_ownership,
       const struct pipe_vertex_buffer *vb)
 {
    struct etna_context *ctx = etna_context(pctx);
    struct etna_vertexbuf_state *so = &ctx->vertex_buffer;
 
-   util_set_vertex_buffers_mask(so->vb, &so->enabled_mask, vb, start_slot,
+   util_set_vertex_buffers_mask(so->vb, &so->enabled_mask, vb,
                                 num_buffers, unbind_num_trailing_slots,
                                 take_ownership);
    so->count = util_last_bit(so->enabled_mask);
 
-   for (unsigned idx = start_slot; idx < start_slot + num_buffers; ++idx) {
+   for (unsigned idx = 0; idx < num_buffers; ++idx) {
       struct compiled_set_vertex_buffer *cs = &so->cvb[idx];
       struct pipe_vertex_buffer *vbi = &so->vb[idx];
 

@@ -3894,7 +3894,7 @@ iris_delete_state(struct pipe_context *ctx, void *state)
  */
 static void
 iris_set_vertex_buffers(struct pipe_context *ctx,
-                        unsigned start_slot, unsigned count,
+                        unsigned count,
                         unsigned unbind_num_trailing_slots,
                         bool take_ownership,
                         const struct pipe_vertex_buffer *buffers)
@@ -3904,12 +3904,12 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
    struct iris_genx_state *genx = ice->state.genx;
 
    ice->state.bound_vertex_buffers &=
-      ~u_bit_consecutive64(start_slot, count + unbind_num_trailing_slots);
+      ~u_bit_consecutive64(0, count + unbind_num_trailing_slots);
 
    for (unsigned i = 0; i < count; i++) {
       const struct pipe_vertex_buffer *buffer = buffers ? &buffers[i] : NULL;
       struct iris_vertex_buffer_state *state =
-         &genx->vertex_buffers[start_slot + i];
+         &genx->vertex_buffers[i];
 
       if (!buffer) {
          pipe_resource_reference(&state->resource, NULL);
@@ -3934,12 +3934,12 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
       state->offset = (int) buffer->buffer_offset;
 
       if (res) {
-         ice->state.bound_vertex_buffers |= 1ull << (start_slot + i);
+         ice->state.bound_vertex_buffers |= 1ull << i;
          res->bind_history |= PIPE_BIND_VERTEX_BUFFER;
       }
 
       iris_pack_state(GENX(VERTEX_BUFFER_STATE), state->state, vb) {
-         vb.VertexBufferIndex = start_slot + i;
+         vb.VertexBufferIndex = i;
          vb.AddressModifyEnable = true;
          vb.BufferPitch = buffer->stride;
          if (res) {
@@ -3961,7 +3961,7 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
 
    for (unsigned i = 0; i < unbind_num_trailing_slots; i++) {
       struct iris_vertex_buffer_state *state =
-         &genx->vertex_buffers[start_slot + count + i];
+         &genx->vertex_buffers[count + i];
 
       pipe_resource_reference(&state->resource, NULL);
    }

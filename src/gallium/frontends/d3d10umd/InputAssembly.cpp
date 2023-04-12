@@ -178,7 +178,7 @@ IaSetVertexBuffers(D3D10DDI_HDEVICE hDevice,                                    
 
    /* Resubmit old and new vertex buffers.
     */
-   pipe->set_vertex_buffers(pipe, 0, PIPE_MAX_ATTRIBS, 0, false, pDevice->vertex_buffers);
+   pipe->set_vertex_buffers(pipe, PIPE_MAX_ATTRIBS, 0, false, pDevice->vertex_buffers);
 }
 
 

@@ -357,7 +357,7 @@ st_update_array_templ(struct st_context *st,
       st->uses_user_vertex_buffers = uses_user_vertex_buffers;
    } else {
       /* Only vertex buffers. */
-      cso_set_vertex_buffers(cso, 0, num_vbuffers, unbind_trailing_vbuffers,
+      cso_set_vertex_buffers(cso, num_vbuffers, unbind_trailing_vbuffers,
                              true, vbuffer);
       /* This can change only when we update vertex elements. */
       assert(st->uses_user_vertex_buffers == uses_user_vertex_buffers);

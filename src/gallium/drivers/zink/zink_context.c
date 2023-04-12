@@ -1272,7 +1272,6 @@ update_existing_vbo(struct zink_context *ctx, unsigned slot)
 
 static void
 zink_set_vertex_buffers(struct pipe_context *pctx,
-                        unsigned start_slot,
                         unsigned num_buffers,
                         unsigned unbind_num_trailing_slots,
                         bool take_ownership,
@@ -1283,16 +1282,16 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
    const bool need_state_change = !zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state &&
                                   !have_input_state;
    uint32_t enabled_buffers = ctx->gfx_pipeline_state.vertex_buffers_enabled_mask;
-   enabled_buffers |= u_bit_consecutive(start_slot, num_buffers);
-   enabled_buffers &= ~u_bit_consecutive(start_slot + num_buffers, unbind_num_trailing_slots);
+   enabled_buffers |= u_bit_consecutive(0, num_buffers);
+   enabled_buffers &= ~u_bit_consecutive(num_buffers, unbind_num_trailing_slots);
    bool stride_changed = false;
 
    if (buffers) {
       for (unsigned i = 0; i < num_buffers; ++i) {
          const struct pipe_vertex_buffer *vb = buffers + i;
-         struct pipe_vertex_buffer *ctx_vb = &ctx->vertex_buffers[start_slot + i];
+         struct pipe_vertex_buffer *ctx_vb = &ctx->vertex_buffers[i];
          stride_changed |= ctx_vb->stride != vb->stride;
-         update_existing_vbo(ctx, start_slot + i);
+         update_existing_vbo(ctx, i);
          if (!take_ownership)
             pipe_resource_reference(&ctx_vb->buffer.resource, vb->buffer.resource);
          else {
@@ -1301,7 +1300,7 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
          }
          if (vb->buffer.resource) {
             struct zink_resource *res = zink_resource(vb->buffer.resource);
-            res->vbo_bind_mask |= BITFIELD_BIT(start_slot + i);
+            res->vbo_bind_mask |= BITFIELD_BIT(i);
             res->vbo_bind_count++;
             res->gfx_barrier |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
             res->barrier_access[0] |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
@@ -1314,18 +1313,18 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
             zink_batch_resource_usage_set(&ctx->batch, res, false, true);
             res->obj->unordered_read = false;
          } else {
-            enabled_buffers &= ~BITFIELD_BIT(start_slot + i);
+            enabled_buffers &= ~BITFIELD_BIT(i);
          }
       }
    } else {
       for (unsigned i = 0; i < num_buffers; ++i) {
-         update_existing_vbo(ctx, start_slot + i);
-         pipe_resource_reference(&ctx->vertex_buffers[start_slot + i].buffer.resource, NULL);
+         update_existing_vbo(ctx, i);
+         pipe_resource_reference(&ctx->vertex_buffers[i].buffer.resource, NULL);
       }
    }
    for (unsigned i = 0; i < unbind_num_trailing_slots; i++) {
-      update_existing_vbo(ctx, start_slot + i);
-      pipe_resource_reference(&ctx->vertex_buffers[start_slot + i].buffer.resource, NULL);
+      update_existing_vbo(ctx, i);
+      pipe_resource_reference(&ctx->vertex_buffers[i].buffer.resource, NULL);
    }
    if (need_state_change)
       ctx->vertex_state_changed = true;

@@ -1309,7 +1309,6 @@ d3d12_set_polygon_stipple(struct pipe_context *pctx,
 
 static void
 d3d12_set_vertex_buffers(struct pipe_context *pctx,
-                         unsigned start_slot,
                          unsigned num_buffers,
                          unsigned unbind_num_trailing_slots,
                          bool take_ownership,
@@ -1317,7 +1316,7 @@ d3d12_set_vertex_buffers(struct pipe_context *pctx,
 {
    struct d3d12_context *ctx = d3d12_context(pctx);
    util_set_vertex_buffers_count(ctx->vbs, &ctx->num_vbs,
-                                 buffers, start_slot, num_buffers,
+                                 buffers, num_buffers,
                                  unbind_num_trailing_slots,
                                  take_ownership);
 

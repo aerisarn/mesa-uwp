@@ -295,7 +295,7 @@ st_DrawTex(struct gl_context *ctx, GLfloat x, GLfloat y, GLfloat z,
       cso_set_viewport(cso, &vp);
    }
 
-   util_draw_vertex_buffer(pipe, cso, vbuffer, 0,
+   util_draw_vertex_buffer(pipe, cso, vbuffer,
                            offset,  /* offset */
                            MESA_PRIM_TRIANGLE_FAN,
                            4,  /* verts */

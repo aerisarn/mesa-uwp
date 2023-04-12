@@ -401,6 +401,26 @@ NineDevice9_ctor( struct NineDevice9 *This,
         assert(transfer);
         memset(data, 0, 16);
         This->context.pipe->buffer_unmap(This->context.pipe, transfer);
+
+        /* initialize dummy_vbo_sw */
+        if (pScreen != This->screen_sw) {
+
+            This->dummy_vbo_sw = This->screen_sw->resource_create(This->screen_sw, &tmpl);
+            if (!This->dummy_vbo_sw)
+                return D3DERR_OUTOFVIDEOMEMORY;
+
+            u_box_1d(0, 16, &box);
+            data = This->pipe_sw->buffer_map(This->pipe_sw, This->dummy_vbo_sw, 0,
+                                       PIPE_MAP_WRITE |
+                                       PIPE_MAP_DISCARD_WHOLE_RESOURCE,
+                                       &box, &transfer);
+            assert(data);
+            assert(transfer);
+            memset(data, 0, 16);
+            This->pipe_sw->buffer_unmap(This->pipe_sw, transfer);
+        } else {
+            This->dummy_vbo_sw = This->dummy_vbo;
+        }
     }
 
     This->cursor.software = false;
@@ -639,6 +659,8 @@ NineDevice9_dtor( struct NineDevice9 *This )
     pipe_sampler_view_reference(&This->dummy_sampler_view, NULL);
     pipe_resource_reference(&This->dummy_texture, NULL);
     pipe_resource_reference(&This->dummy_vbo, NULL);
+    if (This->screen != This->screen_sw)
+        pipe_resource_reference(&This->dummy_vbo_sw, NULL);
     FREE(This->state.vs_const_f);
     FREE(This->context.vs_const_f);
     FREE(This->state.ps_const_f);

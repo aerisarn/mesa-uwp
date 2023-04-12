@@ -315,14 +315,13 @@ struct blitter_context *util_blitter_create(struct pipe_context *pipe)
    }
 
    ctx->base.cb_slot = 0; /* 0 for now */
-   ctx->base.vb_slot = 0; /* 0 for now */
 
    /* vertex elements states */
    memset(&velem[0], 0, sizeof(velem[0]) * 2);
    for (i = 0; i < 2; i++) {
       velem[i].src_offset = i * 4 * sizeof(float);
       velem[i].src_format = PIPE_FORMAT_R32G32B32A32_FLOAT;
-      velem[i].vertex_buffer_index = ctx->base.vb_slot;
+      velem[i].vertex_buffer_index = 0;
    }
    ctx->velem_state = pipe->create_vertex_elements_state(pipe, 2, &velem[0]);
 
@@ -336,7 +335,7 @@ struct blitter_context *util_blitter_create(struct pipe_context *pipe)
 
       for (i = 0; i < 4; i++) {
          velem[0].src_format = formats[i];
-         velem[0].vertex_buffer_index = ctx->base.vb_slot;
+         velem[0].vertex_buffer_index = 0;
          ctx->velem_state_readbuf[i] =
                pipe->create_vertex_elements_state(pipe, 1, &velem[0]);
       }
@@ -643,7 +642,7 @@ void util_blitter_restore_vertex_states(struct blitter_context *blitter)
 
    /* Vertex buffer. */
    if (ctx->base.saved_vertex_buffer.buffer.resource) {
-      pipe->set_vertex_buffers(pipe, ctx->base.vb_slot, 1, 0, true,
+      pipe->set_vertex_buffers(pipe, 1, 0, true,
                                &ctx->base.saved_vertex_buffer);
       ctx->base.saved_vertex_buffer.buffer.resource = NULL;
    }
@@ -1410,7 +1409,7 @@ static void blitter_draw(struct blitter_context_priv *ctx,
       return;
    u_upload_unmap(pipe->stream_uploader);
 
-   pipe->set_vertex_buffers(pipe, ctx->base.vb_slot, 1, 0, false, &vb);
+   pipe->set_vertex_buffers(pipe, 1, 0, false, &vb);
    pipe->bind_vertex_elements_state(pipe, vertex_elements_cso);
    pipe->bind_vs_state(pipe, get_vs(&ctx->base));
 
@@ -2634,7 +2633,7 @@ void util_blitter_clear_buffer(struct blitter_context *blitter,
    blitter_check_saved_vertex_states(ctx);
    blitter_disable_render_cond(ctx);
 
-   pipe->set_vertex_buffers(pipe, ctx->base.vb_slot, 1, 0, false, &vb);
+   pipe->set_vertex_buffers(pipe, 1, 0, false, &vb);
    pipe->bind_vertex_elements_state(pipe,
                                     ctx->velem_state_readbuf[num_channels-1]);
    bind_vs_pos_only(ctx, num_channels);
