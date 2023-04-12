@@ -93,6 +93,8 @@ d3d12_context_destroy(struct pipe_context *pctx)
    for (unsigned i = 0; i < ARRAY_SIZE(ctx->batches); ++i)
       d3d12_destroy_batch(ctx, &ctx->batches[i]);
    ctx->cmdlist->Release();
+   if (ctx->cmdlist8)
+      ctx->cmdlist8->Release();
    d3d12_descriptor_pool_free(ctx->sampler_pool);
    util_primconvert_destroy(ctx->primconvert);
    slab_destroy_child(&ctx->transfer_pool);
