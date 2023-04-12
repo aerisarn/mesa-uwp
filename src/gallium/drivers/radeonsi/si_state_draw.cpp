@@ -317,8 +317,8 @@ static bool si_update_shaders(struct si_context *sctx)
          struct si_shader *shader = sctx->shaders[i].current;
          if (sctx->shaders[i].cso && shader) {
             pipeline_code_hash = XXH64(
-               shader->binary.elf_buffer,
-               shader->binary.elf_size,
+               shader->binary.code_buffer,
+               shader->binary.code_size,
                pipeline_code_hash);
 
             total_size += ALIGN(shader->binary.uploaded_code_size, 256);

@@ -99,14 +99,16 @@ bool si_compile_llvm(struct si_screen *sscreen, struct si_shader_binary *binary,
       struct si_llvm_diagnostics diag = {debug};
       LLVMContextSetDiagnosticHandler(ac->context, si_diagnostic_handler, &diag);
 
-      if (!ac_compile_module_to_elf(passes, ac->module, (char **)&binary->elf_buffer,
-                                    &binary->elf_size))
+      if (!ac_compile_module_to_elf(passes, ac->module, (char **)&binary->code_buffer,
+                                    &binary->code_size))
          diag.retval = 1;
 
       if (diag.retval != 0) {
          util_debug_message(debug, SHADER_INFO, "LLVM compilation failed");
          return false;
       }
+
+      binary->type = SI_SHADER_BINARY_ELF;
    }
 
    struct ac_rtld_binary rtld;
@@ -115,8 +117,8 @@ bool si_compile_llvm(struct si_screen *sscreen, struct si_shader_binary *binary,
                                .shader_type = stage,
                                .wave_size = ac->wave_size,
                                .num_parts = 1,
-                               .elf_ptrs = &binary->elf_buffer,
-                               .elf_sizes = &binary->elf_size}))
+                               .elf_ptrs = &binary->code_buffer,
+                               .elf_sizes = &binary->code_size}))
       return false;
 
    bool ok = ac_rtld_read_config(&sscreen->info, &rtld, conf);

@@ -808,8 +808,8 @@ bool si_shader_binary_open(struct si_screen *screen, struct si_shader *shader,
 
 #define add_part(shader_or_part)                                                                   \
    if (shader_or_part) {                                                                           \
-      part_elfs[num_parts] = (shader_or_part)->binary.elf_buffer;                                  \
-      part_sizes[num_parts] = (shader_or_part)->binary.elf_size;                                   \
+      part_elfs[num_parts] = (shader_or_part)->binary.code_buffer;                                 \
+      part_sizes[num_parts] = (shader_or_part)->binary.code_size;                                  \
       num_parts++;                                                                                 \
    }
 
@@ -950,8 +950,8 @@ static void si_shader_dump_disassembly(struct si_screen *screen,
                                       .shader_type = stage,
                                       .wave_size = wave_size,
                                       .num_parts = 1,
-                                      .elf_ptrs = &binary->elf_buffer,
-                                      .elf_sizes = &binary->elf_size}))
+                                      .elf_ptrs = &binary->code_buffer,
+                                      .elf_sizes = &binary->code_size}))
       return;
 
    const char *disasm;
@@ -3254,8 +3254,8 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
 
 void si_shader_binary_clean(struct si_shader_binary *binary)
 {
-   free((void *)binary->elf_buffer);
-   binary->elf_buffer = NULL;
+   free((void *)binary->code_buffer);
+   binary->code_buffer = NULL;
 
    free(binary->llvm_ir_string);
    binary->llvm_ir_string = NULL;

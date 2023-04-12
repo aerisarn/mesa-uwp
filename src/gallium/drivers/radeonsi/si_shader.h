@@ -806,9 +806,17 @@ struct si_shader_binary_info {
    unsigned max_simd_waves;
 };
 
+enum si_shader_binary_type {
+   SI_SHADER_BINARY_ELF,
+   SI_SHADER_BINARY_RAW,
+};
+
 struct si_shader_binary {
-   const char *elf_buffer;
-   size_t elf_size;
+   enum si_shader_binary_type type;
+
+   /* Depends on binary type, either ELF or raw buffer. */
+   const char *code_buffer;
+   size_t code_size;
 
    char *uploaded_code;
    size_t uploaded_code_size;

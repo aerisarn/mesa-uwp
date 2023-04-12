@@ -70,8 +70,8 @@ static const amd_kernel_code_t *si_compute_get_code_object(const struct si_compu
                                                 .shader_type = MESA_SHADER_COMPUTE,
                                                 .wave_size = program->shader.wave_size,
                                                 .num_parts = 1,
-                                                .elf_ptrs = &program->shader.binary.elf_buffer,
-                                                .elf_sizes = &program->shader.binary.elf_size}))
+                                                .elf_ptrs = &program->shader.binary.code_buffer,
+                                                .elf_sizes = &program->shader.binary.code_size}))
       return NULL;
 
    const amd_kernel_code_t *result = NULL;
@@ -269,13 +269,14 @@ static void *si_create_compute_state(struct pipe_context *ctx, const struct pipe
       const struct pipe_binary_program_header *header;
       header = cso->prog;
 
-      program->shader.binary.elf_size = header->num_bytes;
-      program->shader.binary.elf_buffer = malloc(header->num_bytes);
-      if (!program->shader.binary.elf_buffer) {
+      program->shader.binary.type = SI_SHADER_BINARY_ELF;
+      program->shader.binary.code_size = header->num_bytes;
+      program->shader.binary.code_buffer = malloc(header->num_bytes);
+      if (!program->shader.binary.code_buffer) {
          FREE(program);
          return NULL;
       }
-      memcpy((void *)program->shader.binary.elf_buffer, header->blob, header->num_bytes);
+      memcpy((void *)program->shader.binary.code_buffer, header->blob, header->num_bytes);
 
       /* This is only for clover without NIR. */
       program->shader.wave_size = sscreen->info.gfx_level >= GFX10 ? 32 : 64;
@@ -288,7 +289,7 @@ static void *si_create_compute_state(struct pipe_context *ctx, const struct pipe
 
       if (!ok) {
          fprintf(stderr, "LLVM failed to upload shader\n");
-         free((void *)program->shader.binary.elf_buffer);
+         free((void *)program->shader.binary.code_buffer);
          FREE(program);
          return NULL;
       }
@@ -339,8 +340,8 @@ static void si_bind_compute_state(struct pipe_context *ctx, void *state)
 
    if (unlikely((sctx->screen->debug_flags & DBG(SQTT)) && sctx->sqtt)) {
       uint32_t pipeline_code_hash = _mesa_hash_data_with_seed(
-         program->shader.binary.elf_buffer,
-         program->shader.binary.elf_size,
+         program->shader.binary.code_buffer,
+         program->shader.binary.code_size,
          0);
 
       if (!si_sqtt_pipeline_is_registered(sctx->sqtt, pipeline_code_hash)) {
