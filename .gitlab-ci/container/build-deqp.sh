@@ -64,10 +64,6 @@ cmake -S /VK-GL-CTS -B . -G Ninja \
       $EXTRA_CMAKE_ARGS
 ninja
 
-if [ "${DEQP_TARGET}" != 'android' ]; then
-    mv /deqp/modules/egl/deqp-egl-x11 /deqp/modules/egl/deqp-egl
-fi
-
 # Copy out the mustpass lists we want.
 mkdir /deqp/mustpass
 for mustpass in $(< /VK-GL-CTS/external/vulkancts/mustpass/main/vk-default.txt) ; do
