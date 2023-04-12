@@ -2367,6 +2367,59 @@ si_init_gs_output_info(struct si_shader_info *info, struct si_gs_output_info *ou
    ac_info->types_16bit_lo = ac_info->types_16bit_hi = NULL;
 }
 
+static void si_fixup_spi_ps_input_config(struct si_shader *shader)
+{
+   const union si_shader_key *key = &shader->key;
+
+   /* Enable POS_FIXED_PT if polygon stippling is enabled. */
+   if (key->ps.part.prolog.poly_stipple)
+      shader->config.spi_ps_input_ena |= S_0286CC_POS_FIXED_PT_ENA(1);
+
+   /* Set up the enable bits for per-sample shading if needed. */
+   if (key->ps.part.prolog.force_persp_sample_interp &&
+       (G_0286CC_PERSP_CENTER_ENA(shader->config.spi_ps_input_ena) ||
+        G_0286CC_PERSP_CENTROID_ENA(shader->config.spi_ps_input_ena))) {
+      shader->config.spi_ps_input_ena &= C_0286CC_PERSP_CENTER_ENA;
+      shader->config.spi_ps_input_ena &= C_0286CC_PERSP_CENTROID_ENA;
+      shader->config.spi_ps_input_ena |= S_0286CC_PERSP_SAMPLE_ENA(1);
+   }
+   if (key->ps.part.prolog.force_linear_sample_interp &&
+       (G_0286CC_LINEAR_CENTER_ENA(shader->config.spi_ps_input_ena) ||
+        G_0286CC_LINEAR_CENTROID_ENA(shader->config.spi_ps_input_ena))) {
+      shader->config.spi_ps_input_ena &= C_0286CC_LINEAR_CENTER_ENA;
+      shader->config.spi_ps_input_ena &= C_0286CC_LINEAR_CENTROID_ENA;
+      shader->config.spi_ps_input_ena |= S_0286CC_LINEAR_SAMPLE_ENA(1);
+   }
+   if (key->ps.part.prolog.force_persp_center_interp &&
+       (G_0286CC_PERSP_SAMPLE_ENA(shader->config.spi_ps_input_ena) ||
+        G_0286CC_PERSP_CENTROID_ENA(shader->config.spi_ps_input_ena))) {
+      shader->config.spi_ps_input_ena &= C_0286CC_PERSP_SAMPLE_ENA;
+      shader->config.spi_ps_input_ena &= C_0286CC_PERSP_CENTROID_ENA;
+      shader->config.spi_ps_input_ena |= S_0286CC_PERSP_CENTER_ENA(1);
+   }
+   if (key->ps.part.prolog.force_linear_center_interp &&
+       (G_0286CC_LINEAR_SAMPLE_ENA(shader->config.spi_ps_input_ena) ||
+        G_0286CC_LINEAR_CENTROID_ENA(shader->config.spi_ps_input_ena))) {
+      shader->config.spi_ps_input_ena &= C_0286CC_LINEAR_SAMPLE_ENA;
+      shader->config.spi_ps_input_ena &= C_0286CC_LINEAR_CENTROID_ENA;
+      shader->config.spi_ps_input_ena |= S_0286CC_LINEAR_CENTER_ENA(1);
+   }
+
+   /* POW_W_FLOAT requires that one of the perspective weights is enabled. */
+   if (G_0286CC_POS_W_FLOAT_ENA(shader->config.spi_ps_input_ena) &&
+       !(shader->config.spi_ps_input_ena & 0xf)) {
+      shader->config.spi_ps_input_ena |= S_0286CC_PERSP_CENTER_ENA(1);
+   }
+
+   /* At least one pair of interpolation weights must be enabled. */
+   if (!(shader->config.spi_ps_input_ena & 0x7f))
+      shader->config.spi_ps_input_ena |= S_0286CC_LINEAR_CENTER_ENA(1);
+
+   /* Samplemask fixup requires the sample ID. */
+   if (key->ps.part.prolog.samplemask_log_ps_iter)
+      shader->config.spi_ps_input_ena |= S_0286CC_ANCILLARY_ENA(1);
+}
+
 bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
                        struct si_shader *shader, struct util_debug_callback *debug)
 {
@@ -2923,60 +2976,12 @@ static bool si_shader_select_ps_parts(struct si_screen *sscreen, struct ac_llvm_
    if (!shader->epilog)
       return false;
 
-   /* Enable POS_FIXED_PT if polygon stippling is enabled. */
-   if (shader->key.ps.part.prolog.poly_stipple) {
-      shader->config.spi_ps_input_ena |= S_0286CC_POS_FIXED_PT_ENA(1);
-      assert(G_0286CC_POS_FIXED_PT_ENA(shader->config.spi_ps_input_addr));
-   }
+   si_fixup_spi_ps_input_config(shader);
 
-   /* Set up the enable bits for per-sample shading if needed. */
-   if (shader->key.ps.part.prolog.force_persp_sample_interp &&
-       (G_0286CC_PERSP_CENTER_ENA(shader->config.spi_ps_input_ena) ||
-        G_0286CC_PERSP_CENTROID_ENA(shader->config.spi_ps_input_ena))) {
-      shader->config.spi_ps_input_ena &= C_0286CC_PERSP_CENTER_ENA;
-      shader->config.spi_ps_input_ena &= C_0286CC_PERSP_CENTROID_ENA;
-      shader->config.spi_ps_input_ena |= S_0286CC_PERSP_SAMPLE_ENA(1);
-   }
-   if (shader->key.ps.part.prolog.force_linear_sample_interp &&
-       (G_0286CC_LINEAR_CENTER_ENA(shader->config.spi_ps_input_ena) ||
-        G_0286CC_LINEAR_CENTROID_ENA(shader->config.spi_ps_input_ena))) {
-      shader->config.spi_ps_input_ena &= C_0286CC_LINEAR_CENTER_ENA;
-      shader->config.spi_ps_input_ena &= C_0286CC_LINEAR_CENTROID_ENA;
-      shader->config.spi_ps_input_ena |= S_0286CC_LINEAR_SAMPLE_ENA(1);
-   }
-   if (shader->key.ps.part.prolog.force_persp_center_interp &&
-       (G_0286CC_PERSP_SAMPLE_ENA(shader->config.spi_ps_input_ena) ||
-        G_0286CC_PERSP_CENTROID_ENA(shader->config.spi_ps_input_ena))) {
-      shader->config.spi_ps_input_ena &= C_0286CC_PERSP_SAMPLE_ENA;
-      shader->config.spi_ps_input_ena &= C_0286CC_PERSP_CENTROID_ENA;
-      shader->config.spi_ps_input_ena |= S_0286CC_PERSP_CENTER_ENA(1);
-   }
-   if (shader->key.ps.part.prolog.force_linear_center_interp &&
-       (G_0286CC_LINEAR_SAMPLE_ENA(shader->config.spi_ps_input_ena) ||
-        G_0286CC_LINEAR_CENTROID_ENA(shader->config.spi_ps_input_ena))) {
-      shader->config.spi_ps_input_ena &= C_0286CC_LINEAR_SAMPLE_ENA;
-      shader->config.spi_ps_input_ena &= C_0286CC_LINEAR_CENTROID_ENA;
-      shader->config.spi_ps_input_ena |= S_0286CC_LINEAR_CENTER_ENA(1);
-   }
-
-   /* POW_W_FLOAT requires that one of the perspective weights is enabled. */
-   if (G_0286CC_POS_W_FLOAT_ENA(shader->config.spi_ps_input_ena) &&
-       !(shader->config.spi_ps_input_ena & 0xf)) {
-      shader->config.spi_ps_input_ena |= S_0286CC_PERSP_CENTER_ENA(1);
-      assert(G_0286CC_PERSP_CENTER_ENA(shader->config.spi_ps_input_addr));
-   }
-
-   /* At least one pair of interpolation weights must be enabled. */
-   if (!(shader->config.spi_ps_input_ena & 0x7f)) {
-      shader->config.spi_ps_input_ena |= S_0286CC_LINEAR_CENTER_ENA(1);
-      assert(G_0286CC_LINEAR_CENTER_ENA(shader->config.spi_ps_input_addr));
-   }
-
-   /* Samplemask fixup requires the sample ID. */
-   if (shader->key.ps.part.prolog.samplemask_log_ps_iter) {
-      shader->config.spi_ps_input_ena |= S_0286CC_ANCILLARY_ENA(1);
-      assert(G_0286CC_ANCILLARY_ENA(shader->config.spi_ps_input_addr));
-   }
+   /* Make sure spi_ps_input_addr bits is superset of spi_ps_input_ena. */
+   unsigned spi_ps_input_ena = shader->config.spi_ps_input_ena;
+   unsigned spi_ps_input_addr = shader->config.spi_ps_input_addr;
+   assert((spi_ps_input_ena & spi_ps_input_addr) == spi_ps_input_ena);
 
    return true;
 }
