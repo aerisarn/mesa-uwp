@@ -293,17 +293,6 @@ fn create_box(
     })
 }
 
-fn buffer_offset_size(
-    origin: &CLVec<usize>,
-    region: &CLVec<usize>,
-    row_pitch: usize,
-    slice_pitch: usize,
-    pixel_size: usize,
-) -> (usize, usize) {
-    let pitch = [pixel_size, row_pitch, slice_pitch];
-    (*origin * pitch, *region * pitch)
-}
-
 impl Mem {
     pub fn new_buffer(
         context: Arc<Context>,
@@ -878,12 +867,14 @@ impl Mem {
     ) -> CLResult<()> {
         if self.is_buffer() || self.is_image_from_buffer() {
             let pixel_size = self.pixel_size().unwrap();
-            let (offset, size) = buffer_offset_size(
+            let (offset, size) = CLVec::calc_offset_size(
                 dst_origin,
                 region,
-                dst_row_pitch,
-                dst_slice_pitch,
-                pixel_size.try_into().unwrap(),
+                [
+                    pixel_size.try_into().unwrap(),
+                    dst_row_pitch,
+                    dst_slice_pitch,
+                ],
             );
             let tx = self.tx(q, ctx, offset, size, RWFlags::WR)?;
 
@@ -944,12 +935,14 @@ impl Mem {
 
         if self.is_buffer() || self.is_image_from_buffer() {
             pixel_size = self.pixel_size().unwrap();
-            let (offset, size) = buffer_offset_size(
+            let (offset, size) = CLVec::calc_offset_size(
                 src_origin,
                 region,
-                src_row_pitch,
-                src_slice_pitch,
-                pixel_size.try_into().unwrap(),
+                [
+                    pixel_size.try_into().unwrap(),
+                    src_row_pitch,
+                    src_slice_pitch,
+                ],
             );
             tx = self.tx(q, ctx, offset, size, RWFlags::RD)?;
         } else {
@@ -996,11 +989,11 @@ impl Mem {
         assert!(dst.is_buffer());
 
         let (offset, size) =
-            buffer_offset_size(src_origin, region, src_row_pitch, src_slice_pitch, 1);
+            CLVec::calc_offset_size(src_origin, region, [1, src_row_pitch, src_slice_pitch]);
         let tx_src = self.tx(q, ctx, offset, size, RWFlags::RD)?;
 
         let (offset, size) =
-            buffer_offset_size(dst_origin, region, dst_row_pitch, dst_slice_pitch, 1);
+            CLVec::calc_offset_size(dst_origin, region, [1, dst_row_pitch, dst_slice_pitch]);
         let tx_dst = dst.tx(q, ctx, offset, size, RWFlags::WR)?;
 
         // TODO check to use hw accelerated paths (e.g. resource_copy_region or blits)
