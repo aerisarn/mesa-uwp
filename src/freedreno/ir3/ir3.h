@@ -160,6 +160,12 @@ typedef enum ir3_register_flags {
     * interferes with the sources of the instruction.
     */
    IR3_REG_EARLY_CLOBBER = BIT(17),
+
+   /* If this is the last usage of a specific value in the register, the
+    * register cannot be read without being written to first after this. 
+    * Note: This effectively has the same semantics as IR3_REG_KILL.
+    */
+   IR3_REG_LAST_USE = BIT(18),
 } ir3_register_flags;
 
 struct ir3_register {

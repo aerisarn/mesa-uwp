@@ -343,6 +343,7 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_NEG
 %token <tok> T_ABS
 %token <tok> T_R
+%token <tok> T_LAST
 
 %token <tok> T_HR
 %token <tok> T_HC
@@ -1364,6 +1365,7 @@ src_reg_flag:      T_ABSNEG       { rflags.flags |= IR3_REG_ABS|IR3_REG_NEGATE; 
 |                  T_NEG          { rflags.flags |= IR3_REG_NEGATE; }
 |                  T_ABS          { rflags.flags |= IR3_REG_ABS; }
 |                  T_R            { rflags.flags |= IR3_REG_R; }
+|                  T_LAST         { rflags.flags |= IR3_REG_LAST_USE; }
 
 src_reg_flags:     src_reg_flag
 |                  src_reg_flag src_reg_flags

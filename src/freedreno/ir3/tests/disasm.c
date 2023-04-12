@@ -103,6 +103,8 @@ static const struct test {
    INSTR_6XX(20400006_00003800, "mov.f16f16 hr1.z, h(0.500000)"),
    INSTR_6XX(204880f5_00000000, "mova1 a1.x, 0"),
 
+   INSTR_7XX(2004c005_00000405, "cov.f32u32 r1.y, (last)r1.y"),
+
    /* cat2 */
    INSTR_6XX(40104002_0c210001, "add.f hr0.z, r0.y, c<a0.x + 33>"),
    INSTR_6XX(40b80804_10408004, "(nop3) cmps.f.lt r1.x, (abs)r1.x, c16.x"),
@@ -119,6 +121,9 @@ static const struct test {
    INSTR_6XX(42480000_48801086, "(nop2) sub.u hr0.x, hc33.z, (neg)hr<a0.x + 128>"),
    INSTR_6XX(46b00001_00001020, "clz.b r0.y, c8.x"),
    INSTR_6XX(46700009_00000009, "bfrev.b r2.y, r2.y"),
+
+   INSTR_7XX(42380800_04010400, "(nop3) add.s r0.x, (last)r0.x, (last)r0.y"),
+   INSTR_7XX(42930000_04000406, "cmps.u.ge r0.x, (last)r1.z, (last)r0.x"),
 
    /* cat3 */
    INSTR_6XX(66000000_10421041, "sel.f16 hr0.x, hc16.y, hr0.x, hc16.z"),
@@ -142,6 +147,9 @@ static const struct test {
    /* custom test with qcom_dot8 function from cl_qcom_dot_product8 */
    INSTR_6XX(66818c02_0002e003, "(sat)(nop3) dp2acc.mixed.low r0.z, r0.w, r0.w, r0.z"), /* (nop3) dp2acc (sat)r0.z, (signed)(low)(r)r0.w, (low)(r)r0.w, r0.z */
    INSTR_6XX(6681c802_8002a003, "(nop3) dp4acc.unsigned.low r0.z, r0.w, r0.w, (neg)r0.z"), /* (nop3) dp4acc r0.z, (unsigned)(r)r0.w, (r)r0.w, (neg)r0.z */
+
+   INSTR_7XX(61808000_04020400, "madsh.m16 r0.x, (last)r0.x, r0.y, (last)r0.z"),
+   INSTR_7XX(64838806_04088406, "(nop3) sel.b32 r1.z, (last)r1.z, r1.w, (last)r2.x"),
 
    /* cat4 */
    INSTR_6XX(8010000a_00000003, "rcp r2.z, r0.w"),
