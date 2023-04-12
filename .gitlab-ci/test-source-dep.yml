@@ -746,10 +746,8 @@
     # Note that we trigger on changes both anv and iris, because piglit and skqp jobs test both.
     - !reference [.vulkan-rules, rules]
     - !reference [.gl-rules, rules]
-    - changes: &iris_file_list
-      - src/gallium/drivers/iris/**/*
-      - src/gallium/winsys/iris/**/*
-      - src/intel/**/*
+    - changes:
+        *iris_file_list
       when: on_success
 
 .virgl-rules:
