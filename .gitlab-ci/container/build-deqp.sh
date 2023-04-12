@@ -1,6 +1,13 @@
 #!/bin/bash
 # shellcheck disable=SC2086 # we want word splitting
 
+# When changing this file, you need to bump the following
+# .gitlab-ci/image-tags.yml tags:
+# DEBIAN_X86_TEST_ANDROID_TAG
+# DEBIAN_X86_TEST_GL_TAG
+# DEBIAN_X86_TEST_VK_TAG
+# KERNEL_ROOTFS_TAG
+
 set -ex
 
 git config --global user.email "mesa@example.com"
