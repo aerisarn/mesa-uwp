@@ -10,7 +10,8 @@ extern crate quote;
 extern crate syn;
 
 use proc_macro::TokenStream;
-use proc_macro2::{Span, TokenStream as TokenStream2};
+use proc_macro2::{Span, TokenStream as TokenStream2, TokenTree};
+use quote::ToTokens;
 use syn::*;
 
 fn count_type(ty: &Type, search_type: &str) -> TokenStream2 {
@@ -195,4 +196,45 @@ pub fn enum_derive_display(input: TokenStream) -> TokenStream {
     } else {
         panic!("Not an enum type");
     }
+}
+
+#[proc_macro_derive(FromOps)]
+pub fn derive_from_ops(input: TokenStream) -> TokenStream {
+    let DeriveInput { data, .. } = parse_macro_input!(input);
+
+    let mut impls = TokenStream2::new();
+
+    if let Data::Enum(e) = data {
+        for v in e.variants {
+            let (old_token, new_token) = match v.fields {
+                Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
+                    let mut tt: Vec<_> =
+                        unnamed.to_token_stream().into_iter().collect();
+
+                    let old_ident = match tt.pop() {
+                        Some(TokenTree::Ident(ident)) => ident,
+                        _ => panic!("Expected Op(OpFoo)"),
+                    };
+                    let new_ident = Ident::new(
+                        &old_ident.to_string().replace("Op", ""),
+                        old_ident.span(),
+                    );
+                    (old_ident, new_ident)
+                }
+                _ => panic!("Expected Op(OpFoo)"),
+            };
+
+            let quote = quote! {
+                impl From<#old_token> for crate::nak_ir::Op {
+                    fn from (op: #old_token) -> crate::nak_ir::Op {
+                        crate::nak_ir::Op::#new_token(op)
+                    }
+                }
+            };
+
+            impls.extend(quote);
+        }
+    }
+
+    impls.into()
 }

@@ -2190,7 +2190,7 @@ impl fmt::Display for OpFSOut {
     }
 }
 
-#[derive(Display, DstsAsSlice, SrcsAsSlice)]
+#[derive(Display, DstsAsSlice, SrcsAsSlice, FromOps)]
 pub enum Op {
     FAdd(OpFAdd),
     FFma(OpFFma),
