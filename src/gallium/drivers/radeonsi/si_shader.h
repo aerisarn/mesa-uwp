@@ -478,6 +478,7 @@ struct si_shader_info {
    bool uses_bindless_images;
    bool uses_indirect_descriptor;
    bool has_divergent_loop;
+   bool uses_sampleid;
 
    bool uses_vmem_sampler_or_bvh;
    bool uses_vmem_load_other; /* all other VMEM loads and atomics with return */
