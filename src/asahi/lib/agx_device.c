@@ -30,14 +30,17 @@ agx_bo_free(struct agx_device *dev, struct agx_bo *bo)
 
    if (bo->ptr.gpu) {
       struct util_vma_heap *heap;
+      uint64_t bo_addr = bo->ptr.gpu;
 
-      if (bo->flags & AGX_BO_LOW_VA)
+      if (bo->flags & AGX_BO_LOW_VA) {
          heap = &dev->usc_heap;
-      else
+         bo_addr += dev->shader_base;
+      } else {
          heap = &dev->main_heap;
+      }
 
       simple_mtx_lock(&dev->vma_lock);
-      util_vma_heap_free(heap, bo->ptr.gpu, bo->size + dev->guard_size);
+      util_vma_heap_free(heap, bo_addr, bo->size + dev->guard_size);
       simple_mtx_unlock(&dev->vma_lock);
 
       /* No need to unmap the BO, as the kernel will take care of that when we
