@@ -125,7 +125,7 @@ class UI:
     def _make_body(self) -> 'urwid.Columns':
         commits = urwid.ListBox(self.commit_list)
         feedback = urwid.ListBox(self.feedback_box)
-        return urwid.Columns([commits, feedback])
+        return urwid.Columns([urwid.LineBox(commits), urwid.LineBox(feedback)])
 
     def _make_footer(self) -> 'urwid.Columns':
         body = [
@@ -139,7 +139,7 @@ class UI:
         return urwid.Columns(body)
 
     def _make_root(self) -> 'RootWidget':
-        return RootWidget(self.body, self.header, self.footer, 'body', ui=self)
+        return RootWidget(self.body, urwid.LineBox(self.header), urwid.LineBox(self.footer), 'body', ui=self)
 
     def render(self) -> 'WidgetType':
         asyncio.ensure_future(self.update())
