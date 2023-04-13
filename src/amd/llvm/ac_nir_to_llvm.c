@@ -4399,8 +4399,6 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
                            struct waterfall_context *wctx, LLVMValueRef *res_ptr,
                            LLVMValueRef *samp_ptr)
 {
-   bool texture_handle_divergent = false;
-   bool sampler_handle_divergent = false;
    LLVMValueRef texture_dynamic_handle = NULL;
    LLVMValueRef sampler_dynamic_handle = NULL;
    int plane = -1;
@@ -4418,14 +4416,10 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
             else
                *samp_ptr = val;
          } else {
-            bool divergent = instr->src[i].src.ssa->divergent;
-            if (instr->src[i].src_type == nir_tex_src_texture_handle) {
+            if (instr->src[i].src_type == nir_tex_src_texture_handle)
                texture_dynamic_handle = val;
-               texture_handle_divergent = divergent;
-            } else {
+            else
                sampler_dynamic_handle = val;
-               sampler_handle_divergent = divergent;
-            }
          }
          break;
       }
@@ -4455,23 +4449,11 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
       main_descriptor = AC_DESC_FMASK;
    }
 
-   /* instr->sampler_non_uniform and texture_non_uniform are always false in GLSL,
-    * but this can lead to unexpected behavior if texture/sampler index come from
-    * a vertex attribute.
-    * For instance, 2 consecutive draws using 2 different index values,
-    * could be squashed together by the hw - producing a single draw with
-    * non-dynamically uniform index.
-    * To avoid this, detect divergent indexing, and use enter_waterfall.
-    * See https://gitlab.freedesktop.org/mesa/mesa/-/issues/2253.
-    */
-
    /* descriptor handles given through nir_tex_src_{texture,sampler}_handle */
-   if (instr->texture_non_uniform ||
-       (ctx->abi->use_waterfall_for_divergent_tex_samplers && texture_handle_divergent))
+   if (instr->texture_non_uniform)
       texture_dynamic_handle = enter_waterfall(ctx, &wctx[0], texture_dynamic_handle, true);
 
-   if (instr->sampler_non_uniform ||
-       (ctx->abi->use_waterfall_for_divergent_tex_samplers && sampler_handle_divergent))
+   if (instr->sampler_non_uniform)
       sampler_dynamic_handle = enter_waterfall(ctx, &wctx[1], sampler_dynamic_handle, true);
 
    if (texture_dynamic_handle)

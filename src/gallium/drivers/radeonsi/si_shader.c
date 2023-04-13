@@ -2200,8 +2200,6 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader,
    if (progress || progress2 || opt_offsets)
       si_nir_late_opts(nir);
 
-   NIR_PASS_V(nir, nir_divergence_analysis);
-
    /* This helps LLVM form VMEM clauses and thus get more GPU cache hits.
     * 200 is tuned for Viewperf. It should be done last.
     */

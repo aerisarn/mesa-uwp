@@ -460,5 +460,12 @@ char *si_finalize_nir(struct pipe_screen *screen, void *nirptr)
    NIR_PASS_V(nir, nir_convert_to_lcssa, true, true); /* required by divergence analysis */
    NIR_PASS_V(nir, nir_divergence_analysis); /* to find divergent loops */
 
+   /* Must be after divergence analysis. */
+   bool divergence_changed = false;
+   NIR_PASS(divergence_changed, nir, si_mark_divergent_texture_non_uniform);
+   /* Re-analysis whole shader if texture instruction divergence changed. */
+   if (divergence_changed)
+      NIR_PASS_V(nir, nir_divergence_analysis);
+
    return NULL;
 }
