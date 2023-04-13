@@ -633,6 +633,28 @@ vlVaQuerySurfaceAttributes(VADriverContextP ctx, VAConfigID config_id,
                                 PIPE_VIDEO_ENTRYPOINT_PROCESSING,
                                 PIPE_VIDEO_CAP_SUPPORTED))
    {
+      unsigned min_width, min_height;
+      min_width = pscreen->get_video_param(pscreen,
+                                  config->profile, config->entrypoint,
+                                  PIPE_VIDEO_CAP_MIN_WIDTH);
+      min_height = pscreen->get_video_param(pscreen,
+                                  config->profile, config->entrypoint,
+                                  PIPE_VIDEO_CAP_MIN_HEIGHT);
+
+      if (min_width > 0 && min_height > 0) {
+         attribs[i].type = VASurfaceAttribMinWidth;
+         attribs[i].value.type = VAGenericValueTypeInteger;
+         attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE;
+         attribs[i].value.value.i = min_width;
+         i++;
+
+         attribs[i].type = VASurfaceAttribMinHeight;
+         attribs[i].value.type = VAGenericValueTypeInteger;
+         attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE;
+         attribs[i].value.value.i = min_height;
+         i++;
+      }
+
       attribs[i].type = VASurfaceAttribMaxWidth;
       attribs[i].value.type = VAGenericValueTypeInteger;
       attribs[i].flags = VA_SURFACE_ATTRIB_GETTABLE;
