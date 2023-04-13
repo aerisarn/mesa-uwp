@@ -553,7 +553,7 @@ zink_destroy_query(struct pipe_context *pctx,
     * otherwise just mark dead and wait
     */
    if (query->batch_uses) {
-      p_atomic_set(&query->dead, true);
+      query->dead = true;
       return;
    }
 
@@ -566,7 +566,7 @@ zink_prune_query(struct zink_screen *screen, struct zink_batch_state *bs, struct
    if (!zink_batch_usage_matches(query->batch_uses, bs))
       return;
    query->batch_uses = NULL;
-   if (p_atomic_read(&query->dead))
+   if (query->dead)
       destroy_query(screen, query);
 }
 
