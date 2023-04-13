@@ -245,6 +245,12 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
 #undef RADV_CMP_COPY
 
    cmd_buffer->state.dirty |= dest_mask;
+
+   /* Handle driver specific states that need to be re-emitted when PSO are bound. */
+   if (dest_mask & (RADV_DYNAMIC_VIEWPORT | RADV_DYNAMIC_POLYGON_MODE | RADV_DYNAMIC_LINE_WIDTH |
+                    RADV_DYNAMIC_PRIMITIVE_TOPOLOGY)) {
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_GUARDBAND;
+   }
 }
 
 bool
