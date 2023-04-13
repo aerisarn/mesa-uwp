@@ -1523,7 +1523,10 @@ visit_load_ubo(struct lp_build_nir_context *bld_base,
    LLVMValueRef offset = get_src(bld_base, instr->src[1]);
 
    bool offset_is_uniform = nir_src_is_always_uniform(instr->src[1]);
-   idx = LLVMBuildExtractElement(builder, idx, lp_build_const_int32(gallivm, 0), "");
+
+   if (nir_src_num_components(instr->src[0]) == 1)
+      idx = LLVMBuildExtractElement(builder, idx, lp_build_const_int32(gallivm, 0), "");
+
    bld_base->load_ubo(bld_base, nir_dest_num_components(instr->dest),
                       nir_dest_bit_size(instr->dest),
                       offset_is_uniform, idx, offset, result);

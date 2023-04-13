@@ -1185,6 +1185,23 @@ lp_offset_in_range(struct lp_build_nir_context *bld_base,
    return LLVMBuildAnd(gallivm->builder, fetch_in_bounds, fetch_non_negative, "");
 }
 
+static LLVMValueRef
+build_resource_to_scalar(struct lp_build_nir_context *bld_base, LLVMValueRef resource)
+{
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+
+   LLVMValueRef invocation = first_active_invocation(bld_base);
+
+   LLVMValueRef set = LLVMBuildExtractValue(gallivm->builder, resource, 0, "");
+   set = LLVMBuildExtractElement(gallivm->builder, set, invocation, "");
+
+   LLVMValueRef binding = LLVMBuildExtractValue(gallivm->builder, resource, 1, "");
+   binding = LLVMBuildExtractElement(gallivm->builder, binding, invocation, "");
+
+   LLVMValueRef components[2] = { set, binding };
+   return lp_nir_array_build_gather_values(gallivm->builder, components, 2);
+}
+
 static void emit_load_ubo(struct lp_build_nir_context *bld_base,
                           unsigned nc,
                           unsigned bit_size,
@@ -1193,6 +1210,9 @@ static void emit_load_ubo(struct lp_build_nir_context *bld_base,
                           LLVMValueRef offset,
                           LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
+   if (LLVMGetTypeKind(LLVMTypeOf(index)) == LLVMArrayTypeKind)
+      index = build_resource_to_scalar(bld_base, index);
+
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;

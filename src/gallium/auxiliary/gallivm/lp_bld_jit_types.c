@@ -89,16 +89,32 @@ lp_llvm_buffer_member(struct gallivm_state *gallivm,
                       const char *member_name)
 {
    LLVMBuilderRef builder = gallivm->builder;
-   LLVMValueRef indices[3];
-
-   indices[0] = lp_build_const_int32(gallivm, 0);
-   LLVMValueRef cond = LLVMBuildICmp(gallivm->builder, LLVMIntULT, buffers_offset, lp_build_const_int32(gallivm, buffers_limit), "");
-   indices[1] = LLVMBuildSelect(gallivm->builder, cond, buffers_offset, lp_build_const_int32(gallivm, 0), "");
-   indices[2] = lp_build_const_int32(gallivm, member_index);
 
    LLVMTypeRef buffer_type = lp_build_create_jit_buffer_type(gallivm);
-   LLVMTypeRef buffers_type = LLVMArrayType(buffer_type, buffers_limit);
-   LLVMValueRef ptr = LLVMBuildGEP2(builder, buffers_type, buffers_ptr, indices, ARRAY_SIZE(indices), "");
+
+   LLVMValueRef ptr;
+   if (LLVMGetTypeKind(LLVMTypeOf(buffers_offset)) == LLVMArrayTypeKind) {
+      LLVMValueRef desc_ptr = lp_llvm_descriptor_base(gallivm, buffers_ptr, buffers_offset, buffers_limit);
+
+      LLVMTypeRef buffer_ptr_type = LLVMPointerType(buffer_type, 0);
+      desc_ptr = LLVMBuildIntToPtr(builder, desc_ptr, buffer_ptr_type, "");
+
+      LLVMValueRef indices[2] = {
+         lp_build_const_int32(gallivm, 0),
+         lp_build_const_int32(gallivm, member_index),
+      };
+      ptr = LLVMBuildGEP2(builder, buffer_type, desc_ptr, indices, ARRAY_SIZE(indices), "");
+   } else {
+      LLVMValueRef indices[3];
+
+      indices[0] = lp_build_const_int32(gallivm, 0);
+      LLVMValueRef cond = LLVMBuildICmp(gallivm->builder, LLVMIntULT, buffers_offset, lp_build_const_int32(gallivm, buffers_limit), "");
+      indices[1] = LLVMBuildSelect(gallivm->builder, cond, buffers_offset, lp_build_const_int32(gallivm, 0), "");
+      indices[2] = lp_build_const_int32(gallivm, member_index);
+
+      LLVMTypeRef buffers_type = LLVMArrayType(buffer_type, buffers_limit);
+      ptr = LLVMBuildGEP2(builder, buffers_type, buffers_ptr, indices, ARRAY_SIZE(indices), "");
+   }
 
    LLVMTypeRef res_type = LLVMStructGetTypeAtIndex(buffer_type, member_index);
    LLVMValueRef res = LLVMBuildLoad2(builder, res_type, ptr, "");
