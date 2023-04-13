@@ -5294,7 +5294,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          srcs[SURFACE_LOGICAL_SRC_SURFACE] = fs_reg(brw_imm_ud(GFX7_BTI_SLM));
       }
 
-      const unsigned total_dwords = ALIGN(instr->num_components, REG_SIZE / 4);
+      const unsigned total_dwords = ALIGN(instr->num_components,
+                                          REG_SIZE * reg_unit(devinfo) / 4);
       unsigned loaded_dwords = 0;
 
       const fs_builder ubld1 = bld.exec_all().group(1, 0);
@@ -5325,7 +5326,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          const fs_builder &ubld = block <= 8 ? ubld8 : ubld16;
          ubld.emit(SHADER_OPCODE_UNALIGNED_OWORD_BLOCK_READ_LOGICAL,
                    retype(byte_offset(packed_consts, loaded_dwords * 4), BRW_REGISTER_TYPE_UD),
-                   srcs, SURFACE_LOGICAL_NUM_SRCS)->size_written = align(block_bytes, REG_SIZE);
+                   srcs, SURFACE_LOGICAL_NUM_SRCS)->size_written =
+            align(block_bytes, REG_SIZE * reg_unit(devinfo));
 
          loaded_dwords += block;
 
