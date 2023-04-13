@@ -1061,6 +1061,31 @@ iris_heap_to_string[IRIS_HEAP_MAX] = {
    [IRIS_HEAP_DEVICE_LOCAL_PREFERRED] = "local-preferred",
 };
 
+static enum iris_mmap_mode
+iris_bo_alloc_get_mmap_mode(struct iris_bufmgr *bufmgr, enum iris_heap heap,
+                            unsigned flags)
+{
+   if (bufmgr->devinfo.kmd_type == INTEL_KMD_TYPE_XE)
+      return iris_xe_bo_flags_to_mmap_mode(bufmgr, heap, flags);
+
+   /* i915 */
+   const bool local = heap != IRIS_HEAP_SYSTEM_MEMORY;
+   const bool is_coherent = bufmgr->devinfo.has_llc ||
+                            (bufmgr->vram.size > 0 && !local) ||
+                            (flags & BO_ALLOC_COHERENT);
+   const bool is_scanout = (flags & BO_ALLOC_SCANOUT) != 0;
+   enum iris_mmap_mode mmap_mode;
+
+   if (!intel_vram_all_mappable(&bufmgr->devinfo) && heap == IRIS_HEAP_DEVICE_LOCAL)
+      mmap_mode = IRIS_MMAP_NONE;
+   else if (!local && is_coherent && !is_scanout)
+      mmap_mode = IRIS_MMAP_WB;
+   else
+      mmap_mode = IRIS_MMAP_WC;
+
+   return mmap_mode;
+}
+
 struct iris_bo *
 iris_bo_alloc(struct iris_bufmgr *bufmgr,
               const char *name,
@@ -1072,7 +1097,6 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
    struct iris_bo *bo;
    unsigned int page_size = getpagesize();
    enum iris_heap heap = flags_to_heap(bufmgr, flags);
-   bool local = heap != IRIS_HEAP_SYSTEM_MEMORY;
    struct bo_cache_bucket *bucket = bucket_for_size(bufmgr, size, heap, flags);
 
    if (memzone != IRIS_MEMZONE_OTHER || (flags & BO_ALLOC_COHERENT))
@@ -1088,19 +1112,7 @@ iris_bo_alloc(struct iris_bufmgr *bufmgr,
     */
    uint64_t bo_size =
       bucket ? bucket->size : MAX2(ALIGN(size, page_size), page_size);
-
-   bool is_coherent = bufmgr->devinfo.has_llc ||
-                      (bufmgr->vram.size > 0 && !local) ||
-                      (flags & BO_ALLOC_COHERENT);
-   bool is_scanout = (flags & BO_ALLOC_SCANOUT) != 0;
-
-   enum iris_mmap_mode mmap_mode;
-   if (!intel_vram_all_mappable(&bufmgr->devinfo) && heap == IRIS_HEAP_DEVICE_LOCAL)
-      mmap_mode = IRIS_MMAP_NONE;
-   else if (!local && is_coherent && !is_scanout)
-      mmap_mode = IRIS_MMAP_WB;
-   else
-      mmap_mode = IRIS_MMAP_WC;
+   enum iris_mmap_mode mmap_mode = iris_bo_alloc_get_mmap_mode(bufmgr, heap, flags);
 
    simple_mtx_lock(&bufmgr->lock);
 
