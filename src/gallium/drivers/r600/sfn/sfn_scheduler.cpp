@@ -702,7 +702,7 @@ BlockSheduler::schedule_alu_to_group_trans(AluGroup *group,
          ++i;
          readylist.erase(old_i);
          success = true;
-         sfn_log << SfnLog::schedule << " sucess\n";
+         sfn_log << SfnLog::schedule << " success\n";
          break;
       } else {
          ++i;
@@ -813,7 +813,7 @@ BlockSheduler::collect_ready_alu_vec(std::list<AluInstr *>& ready,
          /* LDS fetches that use static offsets are usually ready ery fast,
           * so that they would get schedules early, and this leaves the
           * problem that we allocate too many registers with just constant
-          * values, and this will make problems wih RA. So limit the number of
+          * values, and this will make problems with RA. So limit the number of
           * LDS address registers.
           */
          if ((*i)->has_alu_flag(alu_lds_address)) {

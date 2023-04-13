@@ -207,7 +207,7 @@ class LowerSplit64op : public NirLowerInstruction {
             return nir_bcsel(b, gt0, value, nir_ineg(b, value));
          }
          case nir_op_f2u32: {
-            /* fp32 doesn't hold suffient bits to represent the full range of
+            /* fp32 doesn't hold sufficient bits to represent the full range of
              * u32, therefore we have to split the values, and because f2f32
              * rounds, we have to remove the fractional part in the hi bits
              * For values > UINT_MAX the result is undefined */
