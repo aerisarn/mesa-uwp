@@ -136,10 +136,6 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
             dest_mask |= RADV_DYNAMIC_COLOR_WRITE_MASK;
          }
       }
-
-      if (cmd_buffer->device->physical_device->rad_info.rbplus_allowed &&
-          (dest_mask & RADV_DYNAMIC_COLOR_WRITE_MASK))
-         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_RBPLUS;
    }
 
    if (copy_mask & RADV_DYNAMIC_COLOR_BLEND_ENABLE) {
@@ -250,6 +246,11 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    if (dest_mask & (RADV_DYNAMIC_VIEWPORT | RADV_DYNAMIC_POLYGON_MODE | RADV_DYNAMIC_LINE_WIDTH |
                     RADV_DYNAMIC_PRIMITIVE_TOPOLOGY)) {
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_GUARDBAND;
+   }
+
+   if (cmd_buffer->device->physical_device->rad_info.rbplus_allowed &&
+       (dest_mask & RADV_DYNAMIC_COLOR_WRITE_MASK)) {
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_RBPLUS;
    }
 }
 
