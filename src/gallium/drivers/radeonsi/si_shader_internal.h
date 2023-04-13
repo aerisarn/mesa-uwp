@@ -82,6 +82,7 @@ struct si_shader_args {
    /* PS */
    struct ac_arg pos_fixed_pt;
    struct ac_arg alpha_reference;
+   struct ac_arg color_start;
    /* CS */
    struct ac_arg block_size;
    struct ac_arg cs_user_data;

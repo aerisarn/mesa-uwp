@@ -3544,12 +3544,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_is_helper_invocation:
       result = ac_build_is_helper_invocation(&ctx->ac);
       break;
-   case nir_intrinsic_load_color0:
-      result = ctx->abi->color0;
-      break;
-   case nir_intrinsic_load_color1:
-      result = ctx->abi->color1;
-      break;
    case nir_intrinsic_load_user_data_amd:
       assert(LLVMTypeOf(ctx->abi->user_data) == ctx->ac.v4i32);
       result = ctx->abi->user_data;

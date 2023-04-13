@@ -488,6 +488,29 @@ static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_s
       replacement = nir_ilt(b, prim_mask, nir_imm_int(b, 0));
       break;
    }
+   case nir_intrinsic_load_color0:
+   case nir_intrinsic_load_color1: {
+      uint32_t colors_read = sel->info.colors_read;
+
+      int start, offset;
+      if (intrin->intrinsic == nir_intrinsic_load_color0) {
+         start = 0;
+         offset = 0;
+      } else {
+         start = 4;
+         offset = util_bitcount(colors_read & 0xf);
+      }
+
+      nir_ssa_def *color[4];
+      for (int i = 0; i < 4; i++) {
+         color[i] = colors_read & BITFIELD_BIT(start + i) ?
+            ac_nir_load_arg_at_offset(b, &args->ac, args->color_start, offset++) :
+            nir_ssa_undef(b, 1, 32);
+      }
+
+      replacement = nir_vec(b, color, 4);
+      break;
+   }
    default:
       return false;
    }

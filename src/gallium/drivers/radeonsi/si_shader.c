@@ -706,7 +706,7 @@ void si_init_shader_args(struct si_shader *shader, struct si_shader_args *args)
          unsigned num_color_elements = util_bitcount(shader->selector->info.colors_read);
 
          for (i = 0; i < num_color_elements; i++)
-            ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, NULL);
+            ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_FLOAT, i ? NULL : &args->color_start);
 
          num_prolog_vgprs += num_color_elements;
       }
