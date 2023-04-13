@@ -2384,6 +2384,7 @@ radv_layout_is_htile_compressed(const struct radv_device *device, const struct r
        */
       return false;
    case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
+   case VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL:
       if (radv_image_is_tc_compat_htile(image) ||
           (radv_image_has_htile(image) &&
            !(image->vk.usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
