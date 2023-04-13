@@ -1158,13 +1158,6 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
    BITSET_DECLARE(dynamic, MESA_VK_DYNAMIC_GRAPHICS_STATE_ENUM_MAX);
    vk_get_dynamic_graphics_states(dynamic, info->pDynamicState);
 
-   for (uint32_t i = 0; i < info->stageCount; i++)
-      state->shader_stages |= info->pStages[i].stage;
-
-   /* In case we return early */
-   if (alloc_ptr_out != NULL)
-      *alloc_ptr_out = NULL;
-
    /*
     * First, figure out which library-level shader/state groups we need
     */
@@ -1174,6 +1167,49 @@ vk_graphics_pipeline_state_fill(const struct vk_device *device,
       vk_find_struct_const(info->pNext, GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT);
    const VkPipelineLibraryCreateInfoKHR *lib_info =
       vk_find_struct_const(info->pNext, PIPELINE_LIBRARY_CREATE_INFO_KHR);
+
+   VkShaderStageFlagBits allowed_stages;
+   if (!(info->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR)) {
+      allowed_stages = VK_SHADER_STAGE_ALL_GRAPHICS |
+                       VK_SHADER_STAGE_TASK_BIT_EXT |
+                       VK_SHADER_STAGE_MESH_BIT_EXT;
+   } else if (gpl_info) {
+      allowed_stages = 0;
+
+      /* If we're creating a pipeline library without pre-rasterization,
+       * discard all the associated stages.
+       */
+      if (gpl_info->flags &
+          VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT) {
+         allowed_stages |= (VK_SHADER_STAGE_VERTEX_BIT |
+                            VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+                            VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
+                            VK_SHADER_STAGE_GEOMETRY_BIT |
+                            VK_SHADER_STAGE_TASK_BIT_EXT |
+                            VK_SHADER_STAGE_MESH_BIT_EXT);
+      }
+
+      /* If we're creating a pipeline library without fragment shader,
+       * discard that stage.
+       */
+      if (gpl_info->flags &
+           VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT)
+         allowed_stages |= VK_SHADER_STAGE_FRAGMENT_BIT;
+   } else {
+      /* VkGraphicsPipelineLibraryCreateInfoEXT was omitted, flags should
+       * be assumed to be empty and therefore no shader stage should be
+       * considered.
+       */
+      allowed_stages = 0;
+   }
+
+   for (uint32_t i = 0; i < info->stageCount; i++) {
+      state->shader_stages |= info->pStages[i].stage & allowed_stages;
+   }
+
+   /* In case we return early */
+   if (alloc_ptr_out != NULL)
+      *alloc_ptr_out = NULL;
 
    if (gpl_info) {
       lib = gpl_info->flags;
