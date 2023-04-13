@@ -133,7 +133,7 @@ amd-raven-skqp:amd64:
     PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-amd.yml"
     PIGLIT_REPLAY_EXTRA_ARGS: --keep-image
 
-.radv-raven-traces:amd64:  # FIXME: when TPad-C13 gets back, restore
+radv-raven-traces:amd64:
   extends:
     - .radv-traces
     - .radv-raven-test:amd64
@@ -152,7 +152,7 @@ radeonsi-raven-piglit-quick_gl:amd64:
     PIGLIT_PROFILES: quick_gl
     HWCI_START_XORG: 1
 
-radeonsi-raven-piglit-quick_shader:amd64:  # FIXME: when TPad-C13 gets back, restore
+radeonsi-raven-piglit-quick_shader:amd64:
   extends:
     - radeonsi-raven-piglit-quick_gl:amd64
   variables:
