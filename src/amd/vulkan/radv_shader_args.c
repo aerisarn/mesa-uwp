@@ -272,8 +272,6 @@ declare_ms_input_vgprs(struct radv_shader_args *args)
 static void
 declare_ps_input_vgprs(const struct radv_shader_info *info, struct radv_shader_args *args)
 {
-   unsigned spi_ps_input = info->ps.spi_ps_input;
-
    ac_add_arg(&args->ac, AC_ARG_VGPR, 2, AC_ARG_INT, &args->ac.persp_sample);
    ac_add_arg(&args->ac, AC_ARG_VGPR, 2, AC_ARG_INT, &args->ac.persp_center);
    ac_add_arg(&args->ac, AC_ARG_VGPR, 2, AC_ARG_INT, &args->ac.persp_centroid);
@@ -291,25 +289,8 @@ declare_ps_input_vgprs(const struct radv_shader_info *info, struct radv_shader_a
    ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, &args->ac.sample_coverage);
    ac_add_arg(&args->ac, AC_ARG_VGPR, 1, AC_ARG_INT, NULL); /* fixed pt */
 
-   if (args->remap_spi_ps_input) {
-      /* LLVM optimizes away unused FS inputs and computes spi_ps_input_addr itself and then
-       * communicates the results back via the ELF binary. Mirror what LLVM does by re-mapping the
-       * VGPR arguments here.
-       */
-      for (unsigned i = 0, vgpr_arg = 0, vgpr_reg = 0; i < args->ac.arg_count; i++) {
-         if (args->ac.args[i].file != AC_ARG_VGPR) {
-            continue;
-         }
-
-         if (!(spi_ps_input & (1 << vgpr_arg))) {
-            args->ac.args[i].skip = true;
-         } else {
-            args->ac.args[i].offset = vgpr_reg;
-            vgpr_reg += args->ac.args[i].size;
-         }
-         vgpr_arg++;
-      }
-   }
+   if (args->remap_spi_ps_input)
+      ac_compact_ps_vgpr_args(&args->ac, info->ps.spi_ps_input);
 }
 
 static void
