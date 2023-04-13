@@ -404,7 +404,7 @@ nvk_get_device_features(const struct nv_device_info *dev,
       /* Vulkan 1.1 */
       .multiview = true,
       .multiviewGeometryShader = true,
-      .multiviewTessellationShader = false,
+      .multiviewTessellationShader = true,
       .shaderDrawParameters = true,
 
       /* Vulkan 1.2 */
