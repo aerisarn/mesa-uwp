@@ -109,7 +109,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    /* queries must only be destroyed once they are inactive */
    set_foreach_remove(&bs->active_queries, entry) {
       struct zink_query *query = (void*)entry->key;
-      zink_prune_query(screen, bs, query);
+      zink_prune_query(bs, query);
    }
    util_dynarray_foreach(&bs->dead_querypools, VkQueryPool, pool)
       VKSCR(DestroyQueryPool)(screen->dev, *pool, NULL);

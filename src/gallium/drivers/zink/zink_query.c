@@ -561,7 +561,7 @@ zink_destroy_query(struct pipe_context *pctx,
 }
 
 void
-zink_prune_query(struct zink_screen *screen, struct zink_batch_state *bs, struct zink_query *query)
+zink_prune_query(struct zink_batch_state *bs, struct zink_query *query)
 {
    if (!zink_batch_usage_matches(query->batch_uses, bs))
       return;
