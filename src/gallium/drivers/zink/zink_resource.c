@@ -1080,10 +1080,10 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       }
       assert(zink_mem_type_idx_from_bits(screen, heap, reqs.memoryTypeBits) != UINT32_MAX);
    }
-   mai.memoryTypeIndex = zink_mem_type_idx_from_bits(screen, heap, reqs.memoryTypeBits);
-   assert(reqs.memoryTypeBits & BITFIELD_BIT(mai.memoryTypeIndex));
 
 retry:
+   mai.memoryTypeIndex = zink_mem_type_idx_from_bits(screen, heap, reqs.memoryTypeBits);
+   assert(reqs.memoryTypeBits & BITFIELD_BIT(mai.memoryTypeIndex));
    obj->bo = zink_bo(zink_bo_create(screen, reqs.size, alignment, heap, mai.pNext ? ZINK_ALLOC_NO_SUBALLOC : 0, mai.memoryTypeIndex, mai.pNext));
    if (!obj->bo) {
       if (heap == ZINK_HEAP_DEVICE_LOCAL_VISIBLE) {
