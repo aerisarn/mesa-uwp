@@ -387,7 +387,7 @@ unref_vk_pool(struct zink_context *ctx, struct zink_query_pool *pool)
 {
    if (!pool || --pool->refcount)
       return;
-   VKCTX(DestroyQueryPool)(zink_screen(ctx->base.screen)->dev, pool->query_pool, NULL);
+   util_dynarray_append(&ctx->batch.state->dead_querypools, VkQueryPool, pool->query_pool);
    if (list_is_linked(&pool->list))
       list_del(&pool->list);
    FREE(pool);
