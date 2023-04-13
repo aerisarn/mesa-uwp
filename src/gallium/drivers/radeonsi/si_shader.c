@@ -863,11 +863,16 @@ bool si_shader_binary_open(struct si_screen *screen, struct si_shader *shader,
 
 static unsigned si_get_shader_binary_size(struct si_screen *screen, struct si_shader *shader)
 {
-   struct ac_rtld_binary rtld;
-   si_shader_binary_open(screen, shader, &rtld);
-   uint64_t size = rtld.exec_size;
-   ac_rtld_close(&rtld);
-   return size;
+   if (shader->binary.type == SI_SHADER_BINARY_ELF) {
+      struct ac_rtld_binary rtld;
+      si_shader_binary_open(screen, shader, &rtld);
+      uint64_t size = rtld.exec_size;
+      ac_rtld_close(&rtld);
+      return size;
+   } else {
+      assert(shader->binary.type == SI_SHADER_BINARY_RAW);
+      return shader->binary.code_size;
+   }
 }
 
 bool si_get_external_symbol(enum amd_gfx_level gfx_level, void *data, const char *name,
@@ -893,8 +898,8 @@ bool si_get_external_symbol(enum amd_gfx_level gfx_level, void *data, const char
    return false;
 }
 
-bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader,
-                             uint64_t scratch_va)
+static bool upload_binary_elf(struct si_screen *sscreen, struct si_shader *shader,
+                              uint64_t scratch_va)
 {
    struct ac_rtld_binary binary;
    if (!si_shader_binary_open(sscreen, shader, &binary))
@@ -935,6 +940,50 @@ bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader
    shader->gpu_address = u.rx_va;
 
    return size >= 0;
+}
+
+static bool upload_binary_raw(struct si_screen *sscreen, struct si_shader *shader,
+                              uint64_t scratch_va)
+{
+   unsigned rx_size =
+      ac_align_shader_binary_for_prefetch(&sscreen->info, shader->binary.code_size);
+
+   si_resource_reference(&shader->bo, NULL);
+   shader->bo =
+      si_aligned_buffer_create(&sscreen->b,
+                               (sscreen->info.cpdma_prefetch_writes_memory ?
+                                0 : SI_RESOURCE_FLAG_READ_ONLY) |
+                               SI_RESOURCE_FLAG_DRIVER_INTERNAL |
+                               SI_RESOURCE_FLAG_32BIT,
+                               PIPE_USAGE_IMMUTABLE,
+                               align(rx_size, SI_CPDMA_ALIGNMENT), 256);
+   if (!shader->bo)
+      return false;
+
+   void *rx_ptr =
+      sscreen->ws->buffer_map(sscreen->ws, shader->bo->buf, NULL,
+                              PIPE_MAP_READ_WRITE |
+                              PIPE_MAP_UNSYNCHRONIZED |
+                              RADEON_MAP_TEMPORARY);
+   if (!rx_ptr)
+      return false;
+
+   memcpy(rx_ptr, shader->binary.code_buffer, shader->binary.code_size);
+
+   sscreen->ws->buffer_unmap(sscreen->ws, shader->bo->buf);
+   shader->gpu_address = shader->bo->gpu_address;
+   return true;
+}
+
+bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader,
+                             uint64_t scratch_va)
+{
+   if (shader->binary.type == SI_SHADER_BINARY_ELF) {
+      return upload_binary_elf(sscreen, shader, scratch_va);
+   } else {
+      assert(shader->binary.type == SI_SHADER_BINARY_RAW);
+      return upload_binary_raw(sscreen, shader, scratch_va);
+   }
 }
 
 static void si_shader_dump_disassembly(struct si_screen *screen,
