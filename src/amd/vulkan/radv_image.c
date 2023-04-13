@@ -1638,6 +1638,10 @@ radv_image_can_fast_clear(const struct radv_device *device, const struct radv_im
       /* RB+ doesn't work with CMASK fast clear on Stoney. */
       if (!radv_image_has_dcc(image) && device->physical_device->rad_info.family == CHIP_STONEY)
          return false;
+
+      /* Fast-clears with CMASK aren't supported for 128-bit formats. */
+      if (radv_image_has_cmask(image) && vk_format_get_blocksizebits(image->vk.format) > 64)
+         return false;
    } else {
       if (!radv_image_has_htile(image))
          return false;
