@@ -1071,14 +1071,22 @@ guess_and_alloc_texture(struct st_context *st,
                                    width, height, depth,
                                    &ptWidth, &ptHeight, &ptDepth, &ptLayers);
 
+   enum pipe_texture_target target = gl_target_to_pipe(stObj->Target);
+   unsigned nr_samples = 0;
+   if (stObj->TargetIndex == TEXTURE_2D_MULTISAMPLE_INDEX ||
+       stObj->TargetIndex == TEXTURE_2D_MULTISAMPLE_ARRAY_INDEX) {
+      int samples[16];
+      st_QueryInternalFormat(st->ctx, 0, stImage->InternalFormat, GL_SAMPLES, samples);
+      nr_samples = samples[0];
+   }
    stObj->pt = st_texture_create(st,
-                                 gl_target_to_pipe(stObj->Target),
+                                 target,
                                  fmt,
                                  lastLevel,
                                  ptWidth,
                                  ptHeight,
                                  ptDepth,
-                                 ptLayers, 0,
+                                 ptLayers, nr_samples,
                                  bindings,
                                  false);
 
