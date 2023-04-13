@@ -320,6 +320,11 @@ Core Mesa environment variables
    ``VkSwapchainCreateInfoKHR::presentMode``. Values can be ``fifo``,
    ``relaxed``, ``mailbox`` or ``immediate``.
 
+.. envvar:: MESA_VK_WSI_HEADLESS_SWAPCHAIN
+
+   Forces all swapchains to be headless (no rendering will be display
+   in the swapchain's window).
+
 .. envvar:: MESA_VK_ABORT_ON_DEVICE_LOSS
 
    causes the Vulkan driver to call abort() immediately after detecting a
