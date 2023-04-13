@@ -113,12 +113,12 @@ NinePixelShader9_UpdateKey( struct NinePixelShader9 *ps,
 
     if (ps->byte_code.version < 0x30) {
         key |= ((uint64_t)context->rs[D3DRS_FOGENABLE]) << 20;
-        key |= ((uint64_t)context->rs[D3DRS_FOGTABLEMODE]) << 21;
+        key |= ((uint64_t)context->rs[D3DRS_FOGTABLEMODE]) << 21; /* 2 bits */
     }
 
     /* centroid interpolation automatically used for color ps inputs */
     if (context->rt[0]->base.info.nr_samples)
-        key |= ((uint64_t)1) << 22;
+        key |= ((uint64_t)1) << 23;
 
     if ((ps->const_int_slots > 0 || ps->const_bool_slots > 0) && context->inline_constants)
         key |= ((uint64_t)nine_shader_constant_combination_key(&ps->c_combinations,

@@ -211,7 +211,7 @@ NinePixelShader9_GetVariant( struct NinePixelShader9 *This,
         }
         info.fog_enable = device->context.rs[D3DRS_FOGENABLE];
         info.fog_mode = device->context.rs[D3DRS_FOGTABLEMODE];
-        info.force_color_in_centroid = (key >> 22) & 1;
+        info.force_color_in_centroid = (key >> 23) & 1;
         info.add_constants_defs.c_combination =
             nine_shader_constant_combination_get(This->c_combinations, (key >> 24) & 0xff);
         info.add_constants_defs.int_const_added = &This->int_slots_used;
