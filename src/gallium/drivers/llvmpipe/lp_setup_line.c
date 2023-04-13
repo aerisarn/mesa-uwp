@@ -409,8 +409,8 @@ try_setup_line(struct lp_setup_context *setup,
          }
 
          /* Are we already drawing start/end? */
-         bool will_draw_start = sign(-x1diff) != sign(dx);
-         bool will_draw_end = (sign(x2diff) == sign(-dx)) || x2diff==0;
+         bool will_draw_start;
+         bool will_draw_end;
 
          /* interpolate using the preferred wide-lines formula */
          info.dx *= 1.0f + dydx * dydx;
@@ -421,23 +421,31 @@ try_setup_line(struct lp_setup_context *setup,
             const float (*temp)[4] = v1;
             v1 = v2;
             v2 = temp;
-            dx = -dx;
+
             /* Otherwise shift planes appropriately */
+            /* left edge */
+            will_draw_start = x1diff <= 0.f;
             if (will_draw_start != draw_start) {
                x_offset_end = -x1diff - 0.5f;
                y_offset_end = x_offset_end * dydx;
 
             }
+            /* right edge */
+            will_draw_end = x2diff > 0.f;
             if (will_draw_end != draw_end) {
                x_offset = -x2diff - 0.5f;
                y_offset = x_offset * dydx;
             }
          } else {
             /* Otherwise shift planes appropriately */
+            /* right edge */
+            will_draw_start = x1diff > 0.f;
             if (will_draw_start != draw_start) {
                x_offset = -x1diff + 0.5f;
                y_offset = x_offset * dydx;
             }
+            /* left edge */
+            will_draw_end = x2diff <= 0.f;
             if (will_draw_end != draw_end) {
                x_offset_end = -x2diff + 0.5f;
                y_offset_end = x_offset_end * dydx;
@@ -493,9 +501,15 @@ try_setup_line(struct lp_setup_context *setup,
             draw_end = (xintersect < 1.0f && xintersect >= 0.0f);
          }
 
-         /* Are we already drawing start/end? */
-         bool will_draw_start = sign(y1diff) == sign(dy);
-         bool will_draw_end = (sign(-y2diff) == sign(dy)) || y2diff==0;
+         /*
+          * Are we already drawing start/end?
+          * FIXME: this needs to be done with fixed point arithmetic (otherwise
+          * the comparisons against zero are not mirroring what actually happens
+          * when rasterizing using the plane equations).
+          */
+         
+         bool will_draw_start;
+         bool will_draw_end;
 
          /* interpolate using the preferred wide-lines formula */
          info.dx = 0.0f;
@@ -506,23 +520,42 @@ try_setup_line(struct lp_setup_context *setup,
             const float (*temp)[4] = v1;
             v1 = v2;
             v2 = temp;
-            dy = -dy;
+
+            if (setup->bottom_edge_rule) {
+               will_draw_start = y1diff >= 0.f;
+               will_draw_end = y2diff < 0.f;
+            } else {
+               will_draw_start = y1diff > 0.f;
+               will_draw_end = y2diff <= 0.f;
+            }
 
             /* Otherwise shift planes appropriately */
+            /* bottom edge */
             if (will_draw_start != draw_start) {
                y_offset_end = -y1diff + 0.5f;
                x_offset_end = y_offset_end * dxdy;
             }
+            /* top edge */
             if (will_draw_end != draw_end) {
                y_offset = -y2diff + 0.5f;
                x_offset = y_offset * dxdy;
             }
          } else {
+            if (setup->bottom_edge_rule) {
+               will_draw_start = y1diff < 0.f;
+               will_draw_end = y2diff >= 0.f;
+            } else {
+               will_draw_start = y1diff <= 0.f;
+               will_draw_end = y2diff > 0.f;
+            }
+
             /* Otherwise shift planes appropriately */
+            /* top edge */
             if (will_draw_start != draw_start) {
                y_offset = -y1diff - 0.5f;
                x_offset = y_offset * dxdy;
             }
+            /* bottom edge */
             if (will_draw_end != draw_end) {
                y_offset_end = -y2diff - 0.5f;
                x_offset_end = y_offset_end * dxdy;
