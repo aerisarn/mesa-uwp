@@ -221,12 +221,14 @@ radv_create_merged_rt_create_info(const VkRayTracingPipelineCreateInfoKHR *pCrea
 static VkResult
 radv_rt_precompile_shaders(struct radv_device *device, struct vk_pipeline_cache *cache,
                            const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
+                           const VkPipelineCreationFeedbackCreateInfo *creation_feedback,
                            const struct radv_pipeline_key *key,
                            struct radv_ray_tracing_stage *stages)
 {
    uint32_t idx;
 
    for (idx = 0; idx < pCreateInfo->stageCount; idx++) {
+      int64_t stage_start = os_time_get_nano();
       struct radv_pipeline_stage stage;
       radv_pipeline_stage_init(&pCreateInfo->pStages[idx], &stage, stages[idx].stage);
 
@@ -234,10 +236,16 @@ radv_rt_precompile_shaders(struct radv_device *device, struct vk_pipeline_cache 
       radv_hash_shaders(shader_sha1, &stage, 1, NULL, key, radv_get_hash_flags(device, false));
 
       /* lookup the stage in cache */
-      stages[idx].shader = radv_pipeline_cache_search_nir(device, cache, shader_sha1, NULL);
+      bool found_in_application_cache = false;
+      stages[idx].shader =
+         radv_pipeline_cache_search_nir(device, cache, shader_sha1, &found_in_application_cache);
 
-      if (stages[idx].shader)
-         continue;
+      if (stages[idx].shader) {
+         if (found_in_application_cache)
+            stage.feedback.flags |=
+               VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
+         goto feedback;
+      }
 
       if (pCreateInfo->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT)
          return VK_PIPELINE_COMPILE_REQUIRED;
@@ -250,6 +258,13 @@ radv_rt_precompile_shaders(struct radv_device *device, struct vk_pipeline_cache 
 
       if (!stages[idx].shader)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   feedback:
+      if (creation_feedback && creation_feedback->pipelineStageCreationFeedbackCount) {
+         assert(idx < creation_feedback->pipelineStageCreationFeedbackCount);
+         stage.feedback.duration = os_time_get_nano() - stage_start;
+         creation_feedback->pPipelineStageCreationFeedbacks[idx] = stage.feedback;
+      }
    }
 
    /* reference library shaders */
@@ -377,11 +392,6 @@ done:
 
    if (creation_feedback) {
       *creation_feedback->pPipelineCreationFeedback = pipeline_feedback;
-
-      if (creation_feedback->pipelineStageCreationFeedbackCount) {
-         assert(creation_feedback->pipelineStageCreationFeedbackCount == 1);
-         creation_feedback->pPipelineStageCreationFeedbacks[0] = rt_stage.feedback;
-      }
    }
 
    return result;
@@ -397,6 +407,12 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
    struct radv_ray_tracing_lib_pipeline *pipeline;
    VkResult result = VK_SUCCESS;
    bool keep_statistic_info = radv_pipeline_capture_shader_stats(device, pCreateInfo->flags);
+   const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
+   VkPipelineCreationFeedback pipeline_feedback = {
+      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
+   };
+   int64_t pipeline_start = os_time_get_nano();
 
    VkRayTracingPipelineCreateInfoKHR local_create_info =
       radv_create_merged_rt_create_info(pCreateInfo);
@@ -429,7 +445,8 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
 
       pipeline->stage_count = local_create_info.stageCount;
       radv_rt_fill_stage_info(pCreateInfo, pipeline->stages);
-      result = radv_rt_precompile_shaders(device, cache, pCreateInfo, &key, pipeline->stages);
+      result = radv_rt_precompile_shaders(device, cache, pCreateInfo, creation_feedback, &key,
+                                          pipeline->stages);
       if (result != VK_SUCCESS)
          goto pipeline_fail;
    }
@@ -438,6 +455,11 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
                         radv_get_hash_flags(device, keep_statistic_info));
 
    *pPipeline = radv_pipeline_to_handle(&pipeline->base);
+
+   if (creation_feedback) {
+      pipeline_feedback.duration = os_time_get_nano() - pipeline_start;
+      *creation_feedback->pPipelineCreationFeedback = pipeline_feedback;
+   }
 
 pipeline_fail:
    if (result != VK_SUCCESS)
@@ -637,7 +659,8 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
       if (pCreateInfo->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT)
          goto pipeline_fail;
 
-      result = radv_rt_precompile_shaders(device, cache, pCreateInfo, &key, stages);
+      result =
+         radv_rt_precompile_shaders(device, cache, pCreateInfo, creation_feedback, &key, stages);
       if (result != VK_SUCCESS)
          goto shader_fail;
 
