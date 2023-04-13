@@ -591,9 +591,7 @@ impl Mem {
     }
 
     pub fn has_same_parent(&self, other: &Self) -> bool {
-        let a = self.parent.as_ref().map_or(self, |p| p);
-        let b = other.parent.as_ref().map_or(other, |p| p);
-        ptr::eq(a, b)
+        ptr::eq(self.get_parent(), other.get_parent())
     }
 
     pub fn is_parent_buffer(&self) -> bool {
@@ -605,16 +603,19 @@ impl Mem {
     }
 
     fn get_res(&self) -> CLResult<&HashMap<Arc<Device>, Arc<PipeResource>>> {
-        self.parent
-            .as_ref()
-            .map_or(self, |p| p.as_ref())
-            .res
-            .as_ref()
-            .ok_or(CL_OUT_OF_HOST_MEMORY)
+        self.get_parent().res.as_ref().ok_or(CL_OUT_OF_HOST_MEMORY)
     }
 
     pub fn get_res_of_dev(&self, dev: &Arc<Device>) -> CLResult<&Arc<PipeResource>> {
         Ok(self.get_res()?.get(dev).unwrap())
+    }
+
+    fn get_parent(&self) -> &Self {
+        if let Some(parent) = &self.parent {
+            parent
+        } else {
+            self
+        }
     }
 
     fn to_parent<'a>(&'a self, offset: &mut usize) -> &'a Self {
