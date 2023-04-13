@@ -4153,6 +4153,14 @@ struct anv_query_pool {
    uint32_t                                     slots;
    struct anv_bo *                              bo;
 
+   /** Location for the KHR_performance_query small batch updating
+    *  ANV_PERF_QUERY_OFFSET_REG
+    */
+   uint32_t                                     khr_perf_preambles_offset;
+
+   /** Size of each small batch */
+   uint32_t                                     khr_perf_preamble_stride;
+
    /* KHR perf queries : */
    uint32_t                                     pass_size;
    uint32_t                                     data_offset;
@@ -4166,7 +4174,8 @@ struct anv_query_pool {
 static inline uint32_t khr_perf_query_preamble_offset(const struct anv_query_pool *pool,
                                                       uint32_t pass)
 {
-   return pool->pass_size * pass + 8;
+   return pool->khr_perf_preambles_offset +
+          pool->khr_perf_preamble_stride * pass;
 }
 
 struct anv_vid_mem {
