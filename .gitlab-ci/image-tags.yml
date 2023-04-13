@@ -16,7 +16,7 @@ variables:
    DEBIAN_X86_TEST_ANDROID_IMAGE_PATH: "debian/x86_test-android"
 
    DEBIAN_X86_TEST_ANDROID_TAG: "2023-04-12-deqp-egl"
-   DEBIAN_X86_TEST_GL_TAG: "2023-04-14-dxvk-2.1-1"
+   DEBIAN_X86_TEST_GL_TAG: "2023-04-18-vulkan-validation-layer"
    DEBIAN_X86_TEST_VK_TAG: "2023-04-14-dxvk-2.1-1"
 
    ALPINE_X86_BUILD_TAG: "2023-03-20-3.17-bump"
