@@ -132,7 +132,7 @@
 #define   WAIT_REG_MEM_MEM_SPACE(x)                   (((unsigned)(x)&0x3) << 4)
 #define   WAIT_REG_MEM_PFP                            (1 << 8)
 #define PKT3_MEM_WRITE                             0x3D /* GFX6 only */
-#define PKT3_INDIRECT_BUFFER_CIK                   0x3F /* GFX7+ */
+#define PKT3_INDIRECT_BUFFER                       0x3F /* GFX6+ */
 #define PKT3_COPY_DATA                             0x40
 #define   COPY_DATA_SRC_SEL(x)                        ((x)&0xf)
 #define   COPY_DATA_REG                               0

@@ -449,7 +449,7 @@ static void ac_parse_packet3(FILE *f, uint32_t header, struct ac_ib_parser *ib,
       break;
    case PKT3_INDIRECT_BUFFER_SI:
    case PKT3_INDIRECT_BUFFER_CONST:
-   case PKT3_INDIRECT_BUFFER_CIK: {
+   case PKT3_INDIRECT_BUFFER: {
       uint32_t base_lo_dw = ac_ib_get(ib);
       ac_dump_reg(f, ib->gfx_level, ib->family, R_3F0_IB_BASE_LO, base_lo_dw, ~0);
       uint32_t base_hi_dw = ac_ib_get(ib);

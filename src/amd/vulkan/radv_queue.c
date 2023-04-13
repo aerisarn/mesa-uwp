@@ -828,7 +828,7 @@ radv_init_graphics_state(struct radeon_cmdbuf *cs, struct radv_device *device)
    if (device->gfx_init) {
       uint64_t va = radv_buffer_get_va(device->gfx_init);
 
-      radeon_emit(cs, PKT3(PKT3_INDIRECT_BUFFER_CIK, 2, 0));
+      radeon_emit(cs, PKT3(PKT3_INDIRECT_BUFFER, 2, 0));
       radeon_emit(cs, va);
       radeon_emit(cs, va >> 32);
       radeon_emit(cs, device->gfx_init_size_dw & 0xffff);

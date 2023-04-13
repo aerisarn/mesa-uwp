@@ -9509,7 +9509,7 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
       return;
 
    /* Secondary command buffers are needed for the full extension but can't use
-    * PKT3_INDIRECT_BUFFER_CIK.
+    * PKT3_INDIRECT_BUFFER.
     */
    assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
@@ -9539,7 +9539,7 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
    radeon_emit(cmd_buffer->cs, 0);
 
    if (!view_mask) {
-      radeon_emit(cmd_buffer->cs, PKT3(PKT3_INDIRECT_BUFFER_CIK, 2, 0));
+      radeon_emit(cmd_buffer->cs, PKT3(PKT3_INDIRECT_BUFFER, 2, 0));
       radeon_emit(cmd_buffer->cs, va);
       radeon_emit(cmd_buffer->cs, va >> 32);
       radeon_emit(cmd_buffer->cs, cmdbuf_size >> 2);
@@ -9547,7 +9547,7 @@ radv_CmdExecuteGeneratedCommandsNV(VkCommandBuffer commandBuffer, VkBool32 isPre
       u_foreach_bit (view, view_mask) {
          radv_emit_view_index(cmd_buffer, view);
 
-         radeon_emit(cmd_buffer->cs, PKT3(PKT3_INDIRECT_BUFFER_CIK, 2, 0));
+         radeon_emit(cmd_buffer->cs, PKT3(PKT3_INDIRECT_BUFFER, 2, 0));
          radeon_emit(cmd_buffer->cs, va);
          radeon_emit(cmd_buffer->cs, va >> 32);
          radeon_emit(cmd_buffer->cs, cmdbuf_size >> 2);
