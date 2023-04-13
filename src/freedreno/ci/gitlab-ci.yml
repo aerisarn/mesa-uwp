@@ -88,7 +88,6 @@ a306-traces:
     - .google-freedreno-test
   variables:
     BM_KERNEL: /baremetal-files/Image.gz
-    BM_KERNEL_EXTRA_ARGS: maxcpus=2
     BM_DTB: /baremetal-files/apq8096-db820c.dtb
     GPU_VERSION: freedreno-a530
   tags:
