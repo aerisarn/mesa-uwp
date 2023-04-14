@@ -538,10 +538,26 @@ fn validate_image_desc(
 }
 
 fn validate_image_bounds(i: &Mem, origin: CLVec<usize>, region: CLVec<usize>) -> CLResult<()> {
+    let dims = i.image_desc.dims_with_array();
     let bound = region + origin;
     if bound > i.image_desc.size() {
         return Err(CL_INVALID_VALUE);
     }
+
+    // If image is a 2D image object, origin[2] must be 0. If image is a 1D image or 1D image buffer
+    // object, origin[1] and origin[2] must be 0. If image is a 1D image array object, origin[2]
+    // must be 0.
+    if dims < 3 && origin[2] != 0 || dims < 2 && origin[1] != 0 {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // If image is a 2D image object, region[2] must be 1. If image is a 1D image or 1D image buffer
+    // object, region[1] and region[2] must be 1. If image is a 1D image array object, region[2]
+    // must be 1. The values in region cannot be 0.
+    if dims < 3 && region[2] != 1 || dims < 2 && region[1] != 1 || region.contains(&0) {
+        return Err(CL_INVALID_VALUE);
+    }
+
     Ok(())
 }
 
@@ -1677,6 +1693,8 @@ pub fn enqueue_read_image(
 
     // CL_INVALID_VALUE if the region being read or written specified by origin and region is out of
     // bounds.
+    // CL_INVALID_VALUE if values in origin and region do not follow rules described in the argument
+    // description for origin and region.
     validate_image_bounds(&i, o, r)?;
 
     // If row_pitch (or input_row_pitch) is set to 0, the appropriate row pitch is calculated based
@@ -1713,7 +1731,6 @@ pub fn enqueue_read_image(
         }),
     )
 
-    //• CL_INVALID_VALUE if values in origin and region do not follow rules described in the argument description for origin and region.
     //• CL_INVALID_IMAGE_SIZE if image dimensions (image width, height, specified or compute row and/or slice pitch) for image are not supported by device associated with queue.
     //• CL_IMAGE_FORMAT_NOT_SUPPORTED if image format (image channel order and data type) for image are not supported by device associated with queue.
     //• CL_INVALID_OPERATION if the device associated with command_queue does not support images (i.e. CL_DEVICE_IMAGE_SUPPORT specified in the Device Queries table is CL_FALSE).
@@ -1766,6 +1783,8 @@ pub fn enqueue_write_image(
 
     // CL_INVALID_VALUE if the region being read or written specified by origin and region is out of
     // bounds.
+    // CL_INVALID_VALUE if values in origin and region do not follow rules described in the argument
+    // description for origin and region.
     validate_image_bounds(&i, o, r)?;
 
     // If row_pitch (or input_row_pitch) is set to 0, the appropriate row pitch is calculated based
@@ -1802,7 +1821,6 @@ pub fn enqueue_write_image(
         }),
     )
 
-    //• CL_INVALID_VALUE if values in origin and region do not follow rules described in the argument description for origin and region.
     //• CL_INVALID_IMAGE_SIZE if image dimensions (image width, height, specified or compute row and/or slice pitch) for image are not supported by device associated with queue.
     //• CL_IMAGE_FORMAT_NOT_SUPPORTED if image format (image channel order and data type) for image are not supported by device associated with queue.
     //• CL_INVALID_OPERATION if the device associated with command_queue does not support images (i.e. CL_DEVICE_IMAGE_SUPPORT specified in the Device Queries table is CL_FALSE).
@@ -1845,11 +1863,11 @@ pub fn enqueue_copy_image(
     let src_origin = unsafe { CLVec::from_raw(src_origin) };
 
     // CL_INVALID_VALUE if the 2D or 3D rectangular region specified by src_origin and
-    // src_origin + region refers to a region outside src_image, ...
+    // src_origin + region refers to a region outside src_image, or if the 2D or 3D rectangular
+    // region specified by dst_origin and dst_origin + region refers to a region outside dst_image.
+    // CL_INVALID_VALUE if values in src_origin, dst_origin and region do not follow rules described
+    // in the argument description for src_origin, dst_origin and region.
     validate_image_bounds(&src_image, src_origin, region)?;
-
-    // ... or if the 2D or 3D rectangular region specified by dst_origin and dst_origin + region
-    // refers to a region outside dst_image.
     validate_image_bounds(&dst_image, dst_origin, region)?;
 
     create_and_queue(
@@ -1863,7 +1881,6 @@ pub fn enqueue_copy_image(
         }),
     )
 
-    //• CL_INVALID_VALUE if values in src_origin, dst_origin and region do not follow rules described in the argument description for src_origin, dst_origin and region.
     //• CL_INVALID_IMAGE_SIZE if image dimensions (image width, height, specified or compute row and/or slice pitch) for src_image or dst_image are not supported by device associated with queue.
     //• CL_IMAGE_FORMAT_NOT_SUPPORTED if image format (image channel order and data type) for src_image or dst_image are not supported by device associated with queue.
     //• CL_INVALID_OPERATION if the device associated with command_queue does not support images (i.e. CL_DEVICE_IMAGE_SUPPORT specified in the Device Queries table is CL_FALSE).
@@ -1900,6 +1917,8 @@ pub fn enqueue_fill_image(
 
     // CL_INVALID_VALUE if the region being filled as specified by origin and region is out of
     // bounds.
+    // CL_INVALID_VALUE if values in origin and region do not follow rules described in the argument
+    // description for origin and region.
     validate_image_bounds(&i, origin, region)?;
 
     // we have to copy memory and it's always a 4 component int value
@@ -1914,7 +1933,6 @@ pub fn enqueue_fill_image(
         Box::new(move |q, ctx| i.fill_image(q, ctx, &fill_color, &origin, &region)),
     )
 
-    //• CL_INVALID_VALUE if values in origin and region do not follow rules described in the argument description for origin and region.
     //• CL_INVALID_IMAGE_SIZE if image dimensions (image width, height, specified or compute row and/or slice pitch) for image are not supported by device associated with queue.
     //• CL_IMAGE_FORMAT_NOT_SUPPORTED if image format (image channel order and data type) for
     //image are not supported by device associated with queue.
@@ -1951,6 +1969,12 @@ pub fn enqueue_copy_buffer_to_image(
     let src_origin = CLVec::new([src_offset, 0, 0]);
     let dst_origin = unsafe { CLVec::from_raw(dst_origin) };
 
+    // CL_INVALID_VALUE if values in dst_origin and region do not follow rules described in the
+    // argument description for dst_origin and region.
+    // CL_INVALID_VALUE if the 1D, 2D or 3D rectangular region specified by dst_origin and
+    // dst_origin + region refer to a region outside dst_image,
+    validate_image_bounds(&dst, dst_origin, region)?;
+
     create_and_queue(
         q,
         CL_COMMAND_COPY_BUFFER_TO_IMAGE,
@@ -1961,8 +1985,7 @@ pub fn enqueue_copy_buffer_to_image(
     )
 
     //• CL_INVALID_MEM_OBJECT if src_buffer is not a valid buffer object or dst_image is not a valid image object or if dst_image is a 1D image buffer object created from src_buffer.
-    //• CL_INVALID_VALUE if the 1D, 2D or 3D rectangular region specified by dst_origin and dst_origin + region refer to a region outside dst_image, or if the region specified by src_offset and src_offset + src_cb refer to a region outside src_buffer.
-    //• CL_INVALID_VALUE if values in dst_origin and region do not follow rules described in the argument description for dst_origin and region.
+    //• CL_INVALID_VALUE ... if the region specified by src_offset and src_offset + src_cb refer to a region outside src_buffer.
     //• CL_MISALIGNED_SUB_BUFFER_OFFSET if src_buffer is a sub-buffer object and offset specified when the sub-buffer object is created is not aligned to CL_DEVICE_MEM_BASE_ADDR_ALIGN value for device associated with queue.
     //• CL_INVALID_IMAGE_SIZE if image dimensions (image width, height, specified or compute row and/or slice pitch) for dst_image are not supported by device associated with queue.
     //• CL_IMAGE_FORMAT_NOT_SUPPORTED if image format (image channel order and data type) for dst_image are not supported by device associated with queue.
@@ -2001,6 +2024,13 @@ pub fn enqueue_copy_image_to_buffer(
     let src_origin = unsafe { CLVec::from_raw(src_origin) };
     let dst_origin = CLVec::new([dst_offset, 0, 0]);
 
+    // CL_INVALID_VALUE if values in src_origin and region do not follow rules described in the
+    // argument description for src_origin and region.
+    // CL_INVALID_VALUE if the 1D, 2D or 3D rectangular region specified by src_origin and
+    // src_origin + region refers to a region outside src_image, or if the region specified by
+    // dst_offset and dst_offset + dst_cb to a region outside dst_buffer.
+    validate_image_bounds(&src, src_origin, region)?;
+
     create_and_queue(
         q,
         CL_COMMAND_COPY_IMAGE_TO_BUFFER,
@@ -2011,8 +2041,7 @@ pub fn enqueue_copy_image_to_buffer(
     )
 
     //• CL_INVALID_MEM_OBJECT if src_image is not a valid image object or dst_buffer is not a valid buffer object or if src_image is a 1D image buffer object created from dst_buffer.
-    //• CL_INVALID_VALUE if the 1D, 2D or 3D rectangular region specified by src_origin and src_origin + region refers to a region outside src_image, or if the region specified by dst_offset and dst_offset + dst_cb to a region outside dst_buffer.
-    //• CL_INVALID_VALUE if values in src_origin and region do not follow rules described in the argument description for src_origin and region.
+    //• CL_INVALID_VALUE ... if the region specified by dst_offset and dst_offset + dst_cb to a region outside dst_buffer.
     //• CL_MISALIGNED_SUB_BUFFER_OFFSET if dst_buffer is a sub-buffer object and offset specified when the sub-buffer object is created is not aligned to CL_DEVICE_MEM_BASE_ADDR_ALIGN value for device associated with queue. This error code is missing before version 1.1.
     //• CL_INVALID_IMAGE_SIZE if image dimensions (image width, height, specified or compute row and/or slice pitch) for src_image are not supported by device associated with queue.
     //• CL_IMAGE_FORMAT_NOT_SUPPORTED if image format (image channel order and data type) for src_image are not supported by device associated with queue.
@@ -2056,6 +2085,8 @@ pub fn enqueue_map_image(
     let origin = unsafe { CLVec::from_raw(origin) };
 
     // CL_INVALID_VALUE if region being mapped given by (origin, origin + region) is out of bounds
+    // CL_INVALID_VALUE if values in origin and region do not follow rules described in the argument
+    // description for origin and region.
     validate_image_bounds(&i, origin, region)?;
 
     let mut dummy_slice_pitch: usize = 0;
@@ -2089,7 +2120,6 @@ pub fn enqueue_map_image(
 
     Ok(ptr)
 
-    //• CL_INVALID_VALUE if values in origin and region do not follow rules described in the argument description for origin and region.
     //• CL_INVALID_IMAGE_SIZE if image dimensions (image width, height, specified or compute row and/or slice pitch) for image are not supported by device associated with queue.
     //• CL_IMAGE_FORMAT_NOT_SUPPORTED if image format (image channel order and data type) for image are not supported by device associated with queue.
     //• CL_MAP_FAILURE if there is a failure to map the requested region into the host address space. This error cannot occur for image objects created with CL_MEM_USE_HOST_PTR or CL_MEM_ALLOC_HOST_PTR.

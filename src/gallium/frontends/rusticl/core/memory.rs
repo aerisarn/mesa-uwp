@@ -136,6 +136,11 @@ pub trait CLImageDescInfo {
         self.type_info().0
     }
 
+    fn dims_with_array(&self) -> u8 {
+        let array: u8 = self.is_array().into();
+        self.dims() + array
+    }
+
     fn has_slice(&self) -> bool {
         self.dims() == 3 || self.is_array()
     }
