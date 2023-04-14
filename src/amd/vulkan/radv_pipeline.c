@@ -530,12 +530,21 @@ radv_postprocess_nir(struct radv_device *device, const struct radv_pipeline_layo
    if (progress)
       nir_shader_gather_info(stage->nir, nir_shader_get_entrypoint(stage->nir));
 
-   NIR_PASS(
-      _, stage->nir, ac_nir_lower_tex,
-      &(ac_nir_lower_tex_options){
-         .gfx_level = gfx_level,
-         .lower_array_layer_round_even = !device->physical_device->rad_info.conformant_trunc_coord,
-      });
+   bool fix_derivs_in_divergent_cf =
+      stage->stage == MESA_SHADER_FRAGMENT && !radv_use_llvm_for_stage(device, stage->stage);
+   if (fix_derivs_in_divergent_cf) {
+      NIR_PASS(_, stage->nir, nir_convert_to_lcssa, true, true);
+      nir_divergence_analysis(stage->nir);
+   }
+   NIR_PASS(_, stage->nir, ac_nir_lower_tex,
+            &(ac_nir_lower_tex_options){
+               .gfx_level = gfx_level,
+               .lower_array_layer_round_even = !device->physical_device->rad_info.conformant_trunc_coord,
+               .fix_derivs_in_divergent_cf = fix_derivs_in_divergent_cf,
+               .max_wqm_vgprs = 64, // TODO: improve spiller and RA support for linear VGPRs
+            });
+   if (fix_derivs_in_divergent_cf)
+      NIR_PASS(_, stage->nir, nir_opt_remove_phis); /* cleanup LCSSA phis */
 
    if (stage->nir->info.uses_resource_info_query)
       NIR_PASS(_, stage->nir, ac_nir_lower_resinfo, gfx_level);
