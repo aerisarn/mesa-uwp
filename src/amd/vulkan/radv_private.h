@@ -2285,6 +2285,10 @@ struct radv_compute_pipeline {
 };
 
 struct radv_ray_tracing_group {
+   VkRayTracingShaderGroupTypeKHR type;
+   uint32_t recursive_shader; /* generalShader or closestHitShader */
+   uint32_t any_hit_shader;
+   uint32_t intersection_shader;
    struct radv_pipeline_group_handle handle;
    struct radv_pipeline_shader_stack_size stack_size;
 };
