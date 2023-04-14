@@ -2325,7 +2325,7 @@ struct radv_ray_tracing_stage {
 };
 
 struct radv_ray_tracing_lib_pipeline {
-   struct radv_pipeline base;
+   struct radv_compute_pipeline base;
 
    /* ralloc context used for allocating pipeline library resources. */
    void *ctx;

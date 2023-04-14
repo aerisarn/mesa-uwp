@@ -424,10 +424,10 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
    if (!pipeline)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   radv_pipeline_init(device, &pipeline->base, RADV_PIPELINE_RAY_TRACING_LIB);
+   radv_pipeline_init(device, &pipeline->base.base, RADV_PIPELINE_RAY_TRACING_LIB);
 
    struct radv_pipeline_key key =
-      radv_generate_pipeline_key(device, &pipeline->base, pCreateInfo->flags);
+      radv_generate_pipeline_key(device, &pipeline->base.base, pCreateInfo->flags);
 
    pipeline->ctx = ralloc_context(NULL);
    pipeline->group_count = local_create_info.groupCount;
@@ -454,7 +454,7 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
    radv_hash_rt_shaders(pipeline->sha1, pCreateInfo, &key, pipeline->groups,
                         radv_get_hash_flags(device, keep_statistic_info));
 
-   *pPipeline = radv_pipeline_to_handle(&pipeline->base);
+   *pPipeline = radv_pipeline_to_handle(&pipeline->base.base);
 
    if (creation_feedback) {
       pipeline_feedback.duration = os_time_get_nano() - pipeline_start;
@@ -463,7 +463,7 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
 
 pipeline_fail:
    if (result != VK_SUCCESS)
-      radv_pipeline_destroy(device, &pipeline->base, pAllocator);
+      radv_pipeline_destroy(device, &pipeline->base.base, pAllocator);
    return result;
 }
 
