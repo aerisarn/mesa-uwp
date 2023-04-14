@@ -569,24 +569,17 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    case nir_op_unpack_64_4x16:
       src_components = 1;
       break;
-   case nir_op_pack_half_2x16:
    case nir_op_pack_snorm_2x16:
    case nir_op_pack_unorm_2x16:
    case nir_op_pack_uint_2x16:
    case nir_op_pack_sint_2x16:
-   case nir_op_pack_32_2x16:
-   case nir_op_pack_64_2x32:
       src_components = 2;
-      break;
-   case nir_op_unpack_half_2x16:
-      src_components = 1;
       break;
    case nir_op_cube_face_coord_amd:
    case nir_op_cube_face_index_amd:
       src_components = 3;
       break;
    case nir_op_pack_32_4x8:
-   case nir_op_pack_64_4x16:
       src_components = 4;
       break;
    default:
@@ -1104,9 +1097,6 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    case nir_op_imul_high:
       result = emit_imul_high(&ctx->ac, src[0], src[1]);
       break;
-   case nir_op_pack_half_2x16:
-      result = emit_pack_2x16(&ctx->ac, src[0], ac_build_cvt_pkrtz_f16);
-      break;
    case nir_op_pack_half_2x16_rtz_split:
    case nir_op_pack_half_2x16_split:
       src[0] = ac_to_float(&ctx->ac, src[0]);
@@ -1157,9 +1147,6 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       result = ac_build_cvt_pk_i16(&ctx->ac, comp, 16, false);
       break;
    }
-   case nir_op_unpack_half_2x16:
-      result = emit_unpack_half_2x16(&ctx->ac, src[0]);
-      break;
    case nir_op_unpack_half_2x16_split_x: {
       assert(ac_get_llvm_num_components(src[0]) == 1);
       LLVMValueRef tmp = emit_unpack_half_2x16(&ctx->ac, src[0]);
@@ -1185,10 +1172,6 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       result = LLVMBuildBitCast(ctx->ac.builder, src[0], ctx->ac.v4i16, "");
       break;
    }
-   case nir_op_pack_64_4x16: {
-      result = LLVMBuildBitCast(ctx->ac.builder, src[0], ctx->ac.i64, "");
-      break;
-   }
 
    case nir_op_unpack_64_2x32: {
       result = LLVMBuildBitCast(ctx->ac.builder, src[0],
@@ -1208,19 +1191,13 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       break;
    }
 
-   case nir_op_pack_64_2x32: {
-      result = LLVMBuildBitCast(ctx->ac.builder, src[0],
-            ctx->ac.i64, "");
-      break;
-   }
    case nir_op_pack_64_2x32_split: {
       LLVMValueRef tmp = ac_build_gather_values(&ctx->ac, src, 2);
       result = LLVMBuildBitCast(ctx->ac.builder, tmp, ctx->ac.i64, "");
       break;
    }
 
-   case nir_op_pack_32_4x8:
-   case nir_op_pack_32_2x16: {
+   case nir_op_pack_32_4x8: {
       result = LLVMBuildBitCast(ctx->ac.builder, src[0],
             ctx->ac.i32, "");
       break;
