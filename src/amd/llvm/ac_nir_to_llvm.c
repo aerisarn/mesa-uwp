@@ -820,14 +820,6 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       result = emit_intrin_1f_param_scalar(&ctx->ac, "llvm.amdgcn.fract",
                                            ac_to_float_type(&ctx->ac, def_type), src[0]);
       break;
-   case nir_op_fsin:
-      result =
-         emit_intrin_1f_param(&ctx->ac, "llvm.sin", ac_to_float_type(&ctx->ac, def_type), src[0]);
-      break;
-   case nir_op_fcos:
-      result =
-         emit_intrin_1f_param(&ctx->ac, "llvm.cos", ac_to_float_type(&ctx->ac, def_type), src[0]);
-      break;
    case nir_op_fsin_amd:
    case nir_op_fcos_amd:
       /* before GFX9, v_sin_f32 and v_cos_f32 had a valid input domain of [-256, +256] */
