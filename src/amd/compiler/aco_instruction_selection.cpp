@@ -9044,6 +9044,33 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       ctx->block->kind |= block_kind_export_end;
       break;
    }
+   case nir_intrinsic_strict_wqm_coord_amd: {
+      Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+      Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
+      Temp tmp = bld.tmp(RegClass::get(RegType::vgpr, dst.bytes()));
+      unsigned begin_size = nir_intrinsic_base(instr);
+
+      unsigned num_src = 1;
+      auto it = ctx->allocated_vec.find(src.id());
+      if (it != ctx->allocated_vec.end())
+         num_src = src.bytes() / it->second[0].bytes();
+
+      aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(
+         aco_opcode::p_create_vector, Format::PSEUDO, num_src + !!begin_size, 1)};
+
+      if (begin_size)
+         vec->operands[0] = Operand(RegClass::get(RegType::vgpr, begin_size));
+      for (unsigned i = 0; i < num_src; i++) {
+         Temp comp = it != ctx->allocated_vec.end() ? it->second[i] : src;
+         vec->operands[i + !!begin_size] = Operand(comp);
+      }
+
+      vec->definitions[0] = Definition(tmp);
+      ctx->block->instructions.emplace_back(std::move(vec));
+
+      bld.pseudo(aco_opcode::p_start_linear_vgpr, Definition(dst), tmp);
+      break;
+   }
    default:
       isel_err(&instr->instr, "Unimplemented intrinsic instr");
       abort();

@@ -464,6 +464,13 @@ init_context(isel_context* ctx, nir_shader* shader)
                nir_intrinsic_instr* intrinsic = nir_instr_as_intrinsic(instr);
                if (!nir_intrinsic_infos[intrinsic->intrinsic].has_dest)
                   break;
+               if (intrinsic->intrinsic == nir_intrinsic_strict_wqm_coord_amd) {
+                  regclasses[intrinsic->dest.ssa.index] =
+                     RegClass::get(RegType::vgpr, intrinsic->dest.ssa.num_components * 4 +
+                                                     nir_intrinsic_base(intrinsic))
+                        .as_linear();
+                  break;
+               }
                RegType type = RegType::sgpr;
                switch (intrinsic->intrinsic) {
                case nir_intrinsic_load_push_constant:
