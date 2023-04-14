@@ -2175,7 +2175,6 @@ enum radv_pipeline_type {
    RADV_PIPELINE_GRAPHICS_LIB,
    /* Compute pipeline */
    RADV_PIPELINE_COMPUTE,
-   RADV_PIPELINE_RAY_TRACING_LIB,
    /* Raytracing pipeline */
    RADV_PIPELINE_RAY_TRACING,
 };
@@ -2324,7 +2323,7 @@ struct radv_ray_tracing_stage {
    gl_shader_stage stage;
 };
 
-struct radv_ray_tracing_lib_pipeline {
+struct radv_ray_tracing_pipeline {
    struct radv_compute_pipeline base;
 
    /* ralloc context used for allocating pipeline library resources. */
@@ -2334,6 +2333,7 @@ struct radv_ray_tracing_lib_pipeline {
    unsigned group_count;
    struct radv_ray_tracing_stage *stages;
    uint8_t sha1[SHA1_DIGEST_LENGTH];
+   uint32_t stack_size;
    struct radv_ray_tracing_group groups[];
 };
 
@@ -2358,14 +2358,6 @@ struct radv_graphics_lib_pipeline {
    VkPipelineShaderStageCreateInfo *stages;
 };
 
-struct radv_ray_tracing_pipeline {
-   struct radv_compute_pipeline base;
-
-   uint32_t group_count;
-   uint32_t stack_size;
-   struct radv_ray_tracing_group groups[];
-};
-
 #define RADV_DECL_PIPELINE_DOWNCAST(pipe_type, pipe_enum)            \
    static inline struct radv_##pipe_type##_pipeline *                \
    radv_pipeline_to_##pipe_type(struct radv_pipeline *pipeline)      \
@@ -2377,7 +2369,6 @@ struct radv_ray_tracing_pipeline {
 RADV_DECL_PIPELINE_DOWNCAST(graphics, RADV_PIPELINE_GRAPHICS)
 RADV_DECL_PIPELINE_DOWNCAST(graphics_lib, RADV_PIPELINE_GRAPHICS_LIB)
 RADV_DECL_PIPELINE_DOWNCAST(compute, RADV_PIPELINE_COMPUTE)
-RADV_DECL_PIPELINE_DOWNCAST(ray_tracing_lib, RADV_PIPELINE_RAY_TRACING_LIB)
 RADV_DECL_PIPELINE_DOWNCAST(ray_tracing, RADV_PIPELINE_RAY_TRACING)
 
 struct radv_pipeline_stage {
@@ -3683,8 +3674,6 @@ void radv_destroy_graphics_lib_pipeline(struct radv_device *device,
                                         struct radv_graphics_lib_pipeline *pipeline);
 void radv_destroy_compute_pipeline(struct radv_device *device,
                                    struct radv_compute_pipeline *pipeline);
-void radv_destroy_ray_tracing_lib_pipeline(struct radv_device *device,
-                                           struct radv_ray_tracing_lib_pipeline *pipeline);
 void radv_destroy_ray_tracing_pipeline(struct radv_device *device,
                                        struct radv_ray_tracing_pipeline *pipeline);
 

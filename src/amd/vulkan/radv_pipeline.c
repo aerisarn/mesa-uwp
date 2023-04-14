@@ -98,9 +98,6 @@ radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline
    case RADV_PIPELINE_COMPUTE:
       radv_destroy_compute_pipeline(device, radv_pipeline_to_compute(pipeline));
       break;
-   case RADV_PIPELINE_RAY_TRACING_LIB:
-      radv_destroy_ray_tracing_lib_pipeline(device, radv_pipeline_to_ray_tracing_lib(pipeline));
-      break;
    case RADV_PIPELINE_RAY_TRACING:
       radv_destroy_ray_tracing_pipeline(device, radv_pipeline_to_ray_tracing(pipeline));
       break;
