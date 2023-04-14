@@ -1349,8 +1349,10 @@ exec_mcs_op(struct anv_cmd_buffer *cmd_buffer,
       blorp_mcs_partial_resolve(batch, &surf, format,
                                 base_layer, layer_count);
       break;
-   case ISL_AUX_OP_FULL_RESOLVE:
    case ISL_AUX_OP_AMBIGUATE:
+      blorp_mcs_ambiguate(batch, &surf, base_layer, layer_count);
+      break;
+   case ISL_AUX_OP_FULL_RESOLVE:
    default:
       unreachable("Unsupported MCS operation");
    }
