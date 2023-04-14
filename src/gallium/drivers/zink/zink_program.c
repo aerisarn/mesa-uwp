@@ -2208,12 +2208,12 @@ has_edge_flags(struct zink_context *ctx)
    case PIPE_PRIM_TRIANGLE_FAN:
    case PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY:
    case PIPE_PRIM_QUAD_STRIP:
+   case PIPE_PRIM_PATCHES:
       return false;
    case PIPE_PRIM_TRIANGLES:
    case PIPE_PRIM_TRIANGLES_ADJACENCY:
    case PIPE_PRIM_QUADS:
    case PIPE_PRIM_POLYGON:
-   case PIPE_PRIM_PATCHES:
    case PIPE_PRIM_MAX:
    default:
       break;
