@@ -313,6 +313,7 @@ enum si_shader_dump_type {
    SI_DUMP_INIT_ACO_IR,    /* initial ACO IR before optimizations */
    SI_DUMP_ACO_IR,         /* final ACO IR */
    SI_DUMP_ASM,            /* final asm shaders */
+   SI_DUMP_STATS,          /* print statistics as shader-db */
    SI_DUMP_ALWAYS,
 };
 

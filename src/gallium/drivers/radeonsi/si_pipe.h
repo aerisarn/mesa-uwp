@@ -181,6 +181,7 @@ enum
    DBG_INIT_ACO,
    DBG_ACO,
    DBG_ASM,
+   DBG_STATS,
 
    /* Shader compiler options the shader cache should be aware of: */
    DBG_FS_CORRECT_DERIVS_AFTER_KILL,

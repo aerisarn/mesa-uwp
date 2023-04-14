@@ -46,6 +46,7 @@ static const struct debug_named_value radeonsi_debug_options[] = {
    {"initaco", DBG(INIT_ACO), "Print initial ACO IR before optimizations"},
    {"aco", DBG(ACO), "Print final ACO IR"},
    {"asm", DBG(ASM), "Print final shaders in asm"},
+   {"stats", DBG(STATS), "Print shader-db stats to stderr"},
 
    /* Shader compiler options the shader cache should be aware of: */
    {"w32ge", DBG(W32_GE), "Use Wave32 for vertex, tessellation, and geometry shaders."},

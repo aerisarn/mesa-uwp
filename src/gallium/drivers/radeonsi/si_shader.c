@@ -1176,6 +1176,7 @@ bool si_can_dump_shader(struct si_screen *sscreen, gl_shader_stage stage,
       [SI_DUMP_INIT_ACO_IR] = DBG(INIT_ACO),
       [SI_DUMP_ACO_IR] = DBG(ACO),
       [SI_DUMP_ASM] = DBG(ASM),
+      [SI_DUMP_STATS] = DBG(STATS),
       [SI_DUMP_ALWAYS] = DBG(VS) | DBG(TCS) | DBG(TES) | DBG(GS) | DBG(PS) | DBG(CS),
    };
    assert(dump_type < ARRAY_SIZE(filter));
@@ -2556,6 +2557,14 @@ si_set_spi_ps_input_config(struct si_shader *shader)
    shader->config.spi_ps_input_addr = shader->config.spi_ps_input_ena;
 }
 
+static void
+debug_message_stderr(void *data, unsigned *id, enum util_debug_type ptype,
+                      const char *fmt, va_list args)
+{
+   vfprintf(stderr, fmt, args);
+   fprintf(stderr, "\n");
+}
+
 bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
                        struct si_shader *shader, struct util_debug_callback *debug)
 {
@@ -2730,7 +2739,16 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    }
 
    si_calculate_max_simd_waves(shader);
-   si_shader_dump_stats_for_shader_db(sscreen, shader, debug);
+
+   if (si_can_dump_shader(sscreen, sel->stage, SI_DUMP_STATS)) {
+      struct util_debug_callback out_stderr = {
+         .debug_message = debug_message_stderr,
+      };
+
+      si_shader_dump_stats_for_shader_db(sscreen, shader, &out_stderr);
+   } else {
+      si_shader_dump_stats_for_shader_db(sscreen, shader, debug);
+   }
 
 out:
    if (free_nir)
