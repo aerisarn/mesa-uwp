@@ -11,6 +11,7 @@ struct vk_shader_module;
 struct vk_pipeline_robustness_state;
 struct nvk_device;
 struct nvk_physical_device;
+struct nvk_pipeline_compilation_ctx;
 
 #define GF100_SHADER_HEADER_SIZE (20 * 4)
 #define TU102_SHADER_HEADER_SIZE (32 * 4)
@@ -125,7 +126,8 @@ nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
 VkResult
 nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,
                 const struct nvk_fs_key *fs_key,
-                struct nvk_shader *shader);
+                struct nvk_shader *shader,
+                struct nvk_pipeline_compilation_ctx *ctx);
 
 VkResult
 nvk_shader_upload(struct nvk_device *dev, struct nvk_shader *shader);

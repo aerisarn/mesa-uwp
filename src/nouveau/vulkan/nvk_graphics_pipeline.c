@@ -253,6 +253,10 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
                     state.rp->view_mask != 0, pipeline_layout);
    }
 
+   struct nvk_pipeline_compilation_ctx ctx = {
+      .tesc_domain = MESA_PRIM_POINTS,
+   };
+
    for (gl_shader_stage stage = 0; stage < MESA_SHADER_STAGES; stage++) {
       if (nir[stage] == NULL)
          continue;
@@ -264,7 +268,7 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
       }
 
       result = nvk_compile_nir(pdevice, nir[stage], fs_key,
-                               &pipeline->base.shaders[stage]);
+                               &pipeline->base.shaders[stage], &ctx);
       ralloc_free(nir[stage]);
       if (result != VK_SUCCESS)
          goto fail;
