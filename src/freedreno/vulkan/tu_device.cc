@@ -821,6 +821,8 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    tu_perfetto_init();
 #endif
 
+   util_gpuvis_init();
+
    return VK_SUCCESS;
 }
 
