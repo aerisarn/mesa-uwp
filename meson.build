@@ -2080,6 +2080,11 @@ if with_perfetto
   pre_args += '-DHAVE_PERFETTO'
 endif
 
+with_gpuvis = get_option('gpuvis')
+if with_gpuvis
+  pre_args += '-DHAVE_GPUVIS'
+endif
+
 add_project_arguments(pre_args, language : ['c', 'cpp'])
 add_project_arguments(c_cpp_args, language : ['c', 'cpp'])
 

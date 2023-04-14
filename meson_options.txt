@@ -583,6 +583,13 @@ option(
 )
 
 option(
+  'gpuvis',
+  type : 'boolean',
+  value : false,
+  description : 'Enable tracing markers for gpuvis. Default: false'
+)
+
+option(
   'custom-shader-replacement',
   type : 'string',
   value : '',
