@@ -239,4 +239,10 @@ void si_llvm_ps_build_end(struct si_shader_context *ctx);
 void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part_key *key,
                              bool separate_prolog);
 
+/* si_shader_aco.c */
+bool si_aco_compile_shader(struct si_shader *shader,
+                           struct si_shader_args *args,
+                           struct nir_shader *nir,
+                           struct util_debug_callback *debug);
+
 #endif

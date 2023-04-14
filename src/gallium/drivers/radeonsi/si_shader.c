@@ -2621,14 +2621,11 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
                                                   FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP64))
       float_mode &= ~V_00B028_FP_16_64_DENORMS;
 
-   /* TODO: ACO could compile non-monolithic shaders here (starting
-    * with PS and NGG VS), but monolithic shaders should be compiled
-    * by LLVM due to more complicated compilation.
-    */
-   if (!si_llvm_compile_shader(sscreen, compiler, shader, &args, debug, nir)) {
-      ret = false;
+   ret = shader->use_aco ?
+      si_aco_compile_shader(shader, &args, nir, debug) :
+      si_llvm_compile_shader(sscreen, compiler, shader, &args, debug, nir);
+   if (!ret)
       goto out;
-   }
 
    shader->config.float_mode = float_mode;
 
