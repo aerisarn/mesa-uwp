@@ -7179,6 +7179,12 @@ visit_load_smem(isel_context* ctx, nir_intrinsic_instr* instr)
    Temp base = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
    Temp offset = bld.as_uniform(get_ssa_temp(ctx, instr->src[1].ssa));
 
+   /* If base address is 32bit, convert to 64bit with the high 32bit part. */
+   if (base.bytes() == 4) {
+      base = bld.pseudo(aco_opcode::p_create_vector, bld.def(s2),
+                        base, Operand::c32(ctx->options->address32_hi));
+   }
+
    aco_opcode opcode = aco_opcode::s_load_dword;
    unsigned size = 1;
 
