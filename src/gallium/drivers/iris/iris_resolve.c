@@ -553,6 +553,10 @@ iris_mcs_partial_resolve(struct iris_context *ice,
    struct blorp_surf surf;
    iris_blorp_surf_for_resource(&batch->screen->isl_dev, &surf,
                                 &res->base.b, res->aux.usage, 0, true);
+
+   /* MCS partial resolve will read from the MCS surface. */
+   assert(res->aux.bo == res->bo);
+   iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_SAMPLER_READ);
    iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_RENDER_WRITE);
 
    struct blorp_batch blorp_batch;
