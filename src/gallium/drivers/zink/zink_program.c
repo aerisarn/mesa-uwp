@@ -2236,6 +2236,24 @@ zink_rast_prim_for_pipe(enum pipe_prim_type prim)
    }
 }
 
+static enum pipe_prim_type
+zink_tess_prim_type(struct zink_shader *tess)
+{
+   if (tess->info.tess.point_mode)
+      return PIPE_PRIM_POINTS;
+   else {
+      switch (tess->info.tess._primitive_mode) {
+      case TESS_PRIMITIVE_ISOLINES:
+         return PIPE_PRIM_LINES;
+      case TESS_PRIMITIVE_TRIANGLES:
+      case TESS_PRIMITIVE_QUADS:
+         return PIPE_PRIM_TRIANGLES;
+      default:
+         return PIPE_PRIM_MAX;
+      }
+   }
+}
+
 static inline void
 zink_add_inline_uniform(nir_shader *shader, int offset)
 {
@@ -2334,10 +2352,13 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
                   prev_stage,
                   ZINK_INLINE_VAL_PV_LAST_VERT * 4);
             } else {
+               enum pipe_prim_type prim = ctx->gfx_pipeline_state.gfx_prim_mode;
+               if (prev_vertex_stage == MESA_SHADER_TESS_EVAL)
+                  prim = zink_tess_prim_type(ctx->gfx_stages[MESA_SHADER_TESS_EVAL]);
                nir = nir_create_passthrough_gs(
                   &screen->nir_options,
                   prev_stage,
-                  ctx->gfx_pipeline_state.gfx_prim_mode,
+                  prim,
                   ZINK_INLINE_VAL_FLAT_MASK * sizeof(uint32_t),
                   ZINK_INLINE_VAL_PV_LAST_VERT * sizeof(uint32_t),
                   lower_edge_flags,
