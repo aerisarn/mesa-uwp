@@ -537,11 +537,12 @@ iris_resolve_color(struct iris_context *ice,
 }
 
 static void
-iris_mcs_partial_resolve(struct iris_context *ice,
-                         struct iris_batch *batch,
-                         struct iris_resource *res,
-                         uint32_t start_layer,
-                         uint32_t num_layers)
+iris_mcs_exec(struct iris_context *ice,
+              struct iris_batch *batch,
+              struct iris_resource *res,
+              uint32_t start_layer,
+              uint32_t num_layers,
+              enum isl_aux_op op)
 {
    //DBG("%s to mt %p layers %u-%u\n", __func__, mt,
        //start_layer, start_layer + num_layers - 1);
@@ -562,8 +563,15 @@ iris_mcs_partial_resolve(struct iris_context *ice,
    struct blorp_batch blorp_batch;
    iris_batch_sync_region_start(batch);
    blorp_batch_init(&ice->blorp, &blorp_batch, batch, 0);
-   blorp_mcs_partial_resolve(&blorp_batch, &surf, res->surf.format,
-                             start_layer, num_layers);
+
+   if (op == ISL_AUX_OP_PARTIAL_RESOLVE) {
+      blorp_mcs_partial_resolve(&blorp_batch, &surf, res->surf.format,
+                                start_layer, num_layers);
+   } else {
+      assert(op == ISL_AUX_OP_AMBIGUATE);
+      blorp_mcs_ambiguate(&blorp_batch, &surf, start_layer, num_layers);
+   }
+
    blorp_batch_finish(&blorp_batch);
    iris_batch_sync_region_end(batch);
 }
@@ -846,8 +854,7 @@ iris_resource_prepare_access(struct iris_context *ice,
          if (aux_op == ISL_AUX_OP_NONE) {
             /* Nothing to do here. */
          } else if (isl_aux_usage_has_mcs(res->aux.usage)) {
-            assert(aux_op == ISL_AUX_OP_PARTIAL_RESOLVE);
-            iris_mcs_partial_resolve(ice, batch, res, layer, 1);
+            iris_mcs_exec(ice, batch, res, layer, 1, aux_op);
          } else if (isl_aux_usage_has_hiz(res->aux.usage)) {
             iris_hiz_exec(ice, batch, res, level, layer, 1, aux_op, false);
          } else if (res->aux.usage == ISL_AUX_USAGE_STC_CCS) {

@@ -866,20 +866,12 @@ iris_resource_configure_aux(struct iris_screen *screen,
    case ISL_AUX_USAGE_HIZ:
    case ISL_AUX_USAGE_HIZ_CCS:
    case ISL_AUX_USAGE_HIZ_CCS_WT:
-      initial_state = ISL_AUX_STATE_AUX_INVALID;
-      break;
    case ISL_AUX_USAGE_MCS:
    case ISL_AUX_USAGE_MCS_CCS:
-      /* The Ivybridge PRM, Vol 2 Part 1 p326 says:
-       *
-       *    "When MCS buffer is enabled and bound to MSRT, it is required
-       *     that it is cleared prior to any rendering."
-       *
-       * Since we only use the MCS buffer for rendering, we just clear it
-       * immediately on allocation.  The clear value for MCS buffers is all
-       * 1's, so we simply memset it to 0xff.
+      /* Leave the auxiliary buffer uninitialized. We can ambiguate it before
+       * accessing it later on, if needed.
        */
-      initial_state = ISL_AUX_STATE_CLEAR;
+      initial_state = ISL_AUX_STATE_AUX_INVALID;
       break;
    case ISL_AUX_USAGE_CCS_D:
    case ISL_AUX_USAGE_CCS_E:
@@ -950,10 +942,7 @@ iris_resource_init_aux_buf(struct iris_screen *screen,
       if (!map)
          return false;
 
-      /* See iris_resource_configure_aux for the memset_value rationale. */
-      uint8_t memset_value = isl_aux_usage_has_mcs(res->aux.usage) ? 0xFF : 0;
-      memset((char*)map + res->aux.offset, memset_value,
-             res->aux.surf.size_B);
+      memset((char*)map + res->aux.offset, 0, res->aux.surf.size_B);
    }
 
    if (res->aux.extra_aux.surf.size_B > 0) {
