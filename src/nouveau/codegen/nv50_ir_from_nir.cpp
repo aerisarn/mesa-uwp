@@ -997,7 +997,6 @@ bool Converter::assignSlots() {
       }
 
       if (var->data.compact) {
-         assert(!var->data.patch);
          assert(!(nir->info.outputs_read & 1ull << slot));
          if (nir_is_arrayed_io(var, nir->info.stage)) {
             assert(glsl_type_is_array(type->fields.array));
@@ -1015,6 +1014,7 @@ bool Converter::assignSlots() {
 
          if (comps & 0x0f) {
             nv50_ir_varying *v = &info_out->in[vary];
+            v->patch = var->data.patch;
             v->sn = name;
             v->si = index;
             v->mask |= comps & 0x0f;
@@ -1023,6 +1023,7 @@ bool Converter::assignSlots() {
          }
          if (comps & 0xf0) {
             nv50_ir_varying *v = &info_out->in[vary + 1];
+            v->patch = var->data.patch;
             v->sn = name;
             v->si = index + 1;
             v->mask |= (comps & 0xf0) >> 4;
@@ -1110,7 +1111,6 @@ bool Converter::assignSlots() {
       }
 
       if (var->data.compact) {
-         assert(!var->data.patch);
          assert(!(nir->info.outputs_read & 1ull << slot));
          if (nir_is_arrayed_io(var, nir->info.stage)) {
             assert(glsl_type_is_array(type->fields.array));
@@ -1128,6 +1128,7 @@ bool Converter::assignSlots() {
 
          if (comps & 0x0f) {
             nv50_ir_varying *v = &info_out->out[vary];
+            v->patch = var->data.patch;
             v->sn = name;
             v->si = index;
             v->mask |= comps & 0x0f;
@@ -1136,6 +1137,7 @@ bool Converter::assignSlots() {
          }
          if (comps & 0xf0) {
             nv50_ir_varying *v = &info_out->out[vary + 1];
+            v->patch = var->data.patch;
             v->sn = name;
             v->si = index + 1;
             v->mask |= (comps & 0xf0) >> 4;
