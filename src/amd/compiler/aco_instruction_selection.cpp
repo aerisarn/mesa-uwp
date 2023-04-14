@@ -5933,7 +5933,14 @@ emit_mimg(Builder& bld, aco_opcode op, Temp dst, Temp rsrc, Operand samp, std::v
    size_t nsa_size = bld.program->dev.max_nsa_vgprs;
    nsa_size = bld.program->gfx_level >= GFX11 || coords.size() <= nsa_size ? nsa_size : 0;
 
+   const bool strict_wqm = coords[0].regClass().is_linear_vgpr();
+   if (strict_wqm)
+      nsa_size = coords.size();
+
    for (unsigned i = 0; i < std::min(coords.size(), nsa_size); i++) {
+      if (!coords[i].id())
+         continue;
+
       coords[i] = as_vgpr(bld, coords[i]);
    }
 
@@ -5973,6 +5980,7 @@ emit_mimg(Builder& bld, aco_opcode op, Temp dst, Temp rsrc, Operand samp, std::v
    mimg->operands[2] = vdata;
    for (unsigned i = 0; i < coords.size(); i++)
       mimg->operands[3 + i] = Operand(coords[i]);
+   mimg->strict_wqm = strict_wqm;
 
    MIMG_instruction* res = mimg.get();
    bld.insert(std::move(mimg));
@@ -9102,10 +9110,10 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
    Builder bld(ctx->program, ctx->block);
    bool has_bias = false, has_lod = false, level_zero = false, has_compare = false,
         has_offset = false, has_ddx = false, has_ddy = false, has_derivs = false,
-        has_sample_index = false, has_clamped_lod = false;
+        has_sample_index = false, has_clamped_lod = false, has_wqm_coord = false;
    Temp resource, sampler, bias = Temp(), compare = Temp(), sample_index = Temp(), lod = Temp(),
                            offset = Temp(), ddx = Temp(), ddy = Temp(), clamped_lod = Temp(),
-                           coord = Temp();
+                           coord = Temp(), wqm_coord = Temp();
    std::vector<Temp> coords;
    std::vector<Temp> derivs;
    nir_const_value* const_offset[4] = {NULL, NULL, NULL, NULL};
@@ -9144,6 +9152,12 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
          coord = get_ssa_temp_tex(ctx, instr->src[i].src.ssa, a16);
          break;
       }
+      case nir_tex_src_backend1: {
+         assert(instr->src[i].src.ssa->bit_size == 32);
+         wqm_coord = get_ssa_temp(ctx, instr->src[i].src.ssa);
+         has_wqm_coord = true;
+         break;
+      }
       case nir_tex_src_bias:
          assert(instr->src[i].src.ssa->bit_size == (a16 ? 16 : 32));
          /* Doesn't need get_ssa_temp_tex because we pack it into its own dword anyway. */
@@ -9173,6 +9187,7 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
          }
          break;
       case nir_tex_src_offset:
+      case nir_tex_src_backend2:
          assert(instr->src[i].src.ssa->bit_size == 32);
          offset = get_ssa_temp(ctx, instr->src[i].src.ssa);
          get_const_vec(instr->src[i].src.ssa, const_offset);
@@ -9197,6 +9212,12 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
       case nir_tex_src_sampler_offset:
       default: break;
       }
+   }
+
+   if (has_wqm_coord) {
+      assert(instr->op == nir_texop_tex || instr->op == nir_texop_txb || instr->op == nir_texop_lod);
+      assert(wqm_coord.regClass().is_linear_vgpr());
+      assert(!a16 && !g16);
    }
 
    if (instr->op == nir_texop_tg4 && !has_lod && !instr->is_gather_implicit_lod)
@@ -9467,6 +9488,11 @@ visit_tex(isel_context* ctx, nir_tex_instr* instr)
 
    /* gather MIMG address components */
    std::vector<Temp> args;
+   if (has_wqm_coord) {
+      args.emplace_back(wqm_coord);
+      if (!(ctx->block->kind & block_kind_top_level))
+         ctx->unended_linear_vgprs.push_back(wqm_coord);
+   }
    if (has_offset)
       args.emplace_back(offset);
    if (has_bias)
@@ -10043,6 +10069,13 @@ visit_jump(isel_context* ctx, nir_jump_instr* instr)
 void
 visit_block(isel_context* ctx, nir_block* block)
 {
+   if (ctx->block->kind & block_kind_top_level) {
+      Builder bld(ctx->program, ctx->block);
+      for (Temp tmp : ctx->unended_linear_vgprs)
+         bld.pseudo(aco_opcode::p_end_linear_vgpr, tmp);
+      ctx->unended_linear_vgprs.clear();
+   }
+
    ctx->block->instructions.reserve(ctx->block->instructions.size() +
                                     exec_list_length(&block->instr_list) * 2);
    nir_foreach_instr (instr, block) {
