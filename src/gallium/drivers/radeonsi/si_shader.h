@@ -822,6 +822,9 @@ struct si_shader_binary {
    size_t uploaded_code_size;
 
    char *llvm_ir_string;
+
+   const char *disasm_string;
+   size_t disasm_size;
 };
 
 struct gfx9_gs_info {

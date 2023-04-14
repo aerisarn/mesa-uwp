@@ -986,32 +986,10 @@ bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader
    }
 }
 
-static void si_shader_dump_disassembly(struct si_screen *screen,
-                                       const struct si_shader_binary *binary,
-                                       gl_shader_stage stage, unsigned wave_size,
-                                       struct util_debug_callback *debug, const char *name,
-                                       FILE *file)
+static void print_disassembly(const char *disasm, size_t nbytes,
+                              const char *name, FILE *file,
+                              struct util_debug_callback *debug)
 {
-   struct ac_rtld_binary rtld_binary;
-
-   if (!ac_rtld_open(&rtld_binary, (struct ac_rtld_open_info){
-                                      .info = &screen->info,
-                                      .shader_type = stage,
-                                      .wave_size = wave_size,
-                                      .num_parts = 1,
-                                      .elf_ptrs = &binary->code_buffer,
-                                      .elf_sizes = &binary->code_size}))
-      return;
-
-   const char *disasm;
-   size_t nbytes;
-
-   if (!ac_rtld_get_section_by_name(&rtld_binary, ".AMDGPU.disasm", &disasm, &nbytes))
-      goto out;
-
-   if (nbytes > INT_MAX)
-      goto out;
-
    if (debug && debug->debug_message) {
       /* Very long debug messages are cut off, so send the
        * disassembly one line at a time. This causes more
@@ -1041,6 +1019,40 @@ static void si_shader_dump_disassembly(struct si_screen *screen,
       fprintf(file, "Shader %s disassembly:\n", name);
       fprintf(file, "%*s", (int)nbytes, disasm);
    }
+}
+
+static void si_shader_dump_disassembly(struct si_screen *screen,
+                                       const struct si_shader_binary *binary,
+                                       gl_shader_stage stage, unsigned wave_size,
+                                       struct util_debug_callback *debug, const char *name,
+                                       FILE *file)
+{
+   if (binary->type == SI_SHADER_BINARY_RAW) {
+      print_disassembly(binary->disasm_string, binary->disasm_size, name, file, debug);
+      return;
+   }
+
+   struct ac_rtld_binary rtld_binary;
+
+   if (!ac_rtld_open(&rtld_binary, (struct ac_rtld_open_info){
+                                      .info = &screen->info,
+                                      .shader_type = stage,
+                                      .wave_size = wave_size,
+                                      .num_parts = 1,
+                                      .elf_ptrs = &binary->code_buffer,
+                                      .elf_sizes = &binary->code_size}))
+      return;
+
+   const char *disasm;
+   size_t nbytes;
+
+   if (!ac_rtld_get_section_by_name(&rtld_binary, ".AMDGPU.disasm", &disasm, &nbytes))
+      goto out;
+
+   if (nbytes > INT_MAX)
+      goto out;
+
+   print_disassembly(disasm, nbytes, name, file, debug);
 
 out:
    ac_rtld_close(&rtld_binary);
