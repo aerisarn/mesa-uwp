@@ -2332,8 +2332,8 @@ agx_encode_state(struct agx_batch *batch, uint8_t *out, bool is_lines,
          /* This avoids broken derivatives along primitive edges */
          cfg.disable_tri_merging =
             (is_lines || is_points || ctx->fs->info.disable_tri_merging);
-         cfg.no_colour_output = ctx->fs->info.no_colour_output ||
-                                ctx->rast->base.rasterizer_discard;
+         cfg.tag_write_disable = ctx->fs->info.tag_write_disable ||
+                                 ctx->rast->base.rasterizer_discard;
          cfg.pass_type = agx_pass_type_for_shader(&ctx->fs->info);
       }
    }

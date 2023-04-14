@@ -100,8 +100,11 @@ struct agx_shader_info {
    /* Depth layout, never equal to NONE */
    enum gl_frag_depth_layout depth_layout;
 
-   /* Is colour output omitted? */
-   bool no_colour_output;
+   /* Based only the compiled shader, should tag writes be disabled? This is set
+    * based on what is outputted. Note if rasterizer discard is used, that needs
+    * to disable tag writes regardless of this flag.
+    */
+   bool tag_write_disable;
 
    /* Shader is incompatible with triangle merging */
    bool disable_tri_merging;

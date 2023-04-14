@@ -2376,7 +2376,8 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
       out->writes_psiz =
          nir->info.outputs_written & BITFIELD_BIT(VARYING_SLOT_PSIZ);
    } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      out->no_colour_output = !(nir->info.outputs_written >> FRAG_RESULT_DATA0);
+      out->tag_write_disable =
+         !(nir->info.outputs_written >> FRAG_RESULT_DATA0);
       out->disable_tri_merging = nir->info.fs.needs_all_helper_invocations ||
                                  nir->info.fs.needs_quad_helper_invocations ||
                                  nir->info.writes_memory;
