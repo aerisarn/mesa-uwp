@@ -11252,20 +11252,22 @@ add_startpgm(struct isel_context* ctx)
       }
    }
 
-   if (ctx->program->gfx_level < GFX9) {
-      /* Stash these in the program so that they can be accessed later when
-       * handling spilling.
-       */
-      ctx->program->private_segment_buffer = get_arg(ctx, ctx->args->ring_offsets);
-      ctx->program->scratch_offset = get_arg(ctx, ctx->args->scratch_offset);
+   if (ctx->args->ring_offsets.used) {
+      if (ctx->program->gfx_level < GFX9) {
+         /* Stash these in the program so that they can be accessed later when
+          * handling spilling.
+          */
+         ctx->program->private_segment_buffer = get_arg(ctx, ctx->args->ring_offsets);
+         ctx->program->scratch_offset = get_arg(ctx, ctx->args->scratch_offset);
 
-   } else if (ctx->program->gfx_level <= GFX10_3 && ctx->program->stage != raytracing_cs) {
-      /* Manually initialize scratch. For RT stages scratch initialization is done in the prolog. */
-      Operand scratch_offset = Operand(get_arg(ctx, ctx->args->scratch_offset));
-      scratch_offset.setLateKill(true);
-      Builder bld(ctx->program, ctx->block);
-      bld.pseudo(aco_opcode::p_init_scratch, bld.def(s2), bld.def(s1, scc),
-                 get_arg(ctx, ctx->args->ring_offsets), scratch_offset);
+      } else if (ctx->program->gfx_level <= GFX10_3 && ctx->program->stage != raytracing_cs) {
+         /* Manually initialize scratch. For RT stages scratch initialization is done in the prolog. */
+         Operand scratch_offset = Operand(get_arg(ctx, ctx->args->scratch_offset));
+         scratch_offset.setLateKill(true);
+         Builder bld(ctx->program, ctx->block);
+         bld.pseudo(aco_opcode::p_init_scratch, bld.def(s2), bld.def(s1, scc),
+                    get_arg(ctx, ctx->args->ring_offsets), scratch_offset);
+      }
    }
 
    return startpgm;
