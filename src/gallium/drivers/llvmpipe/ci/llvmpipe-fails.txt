@@ -1,5 +1,4 @@
 dEQP-EGL.functional.robustness.reset_context.shaders.infinite_loop.query_status.compute,Fail
-dEQP-EGL.functional.robustness.reset_context.shaders.infinite_loop.query_status.fragment,Timeout
 dEQP-EGL.functional.robustness.reset_context.shaders.infinite_loop.query_status.vertex,Fail
 dEQP-EGL.functional.robustness.reset_context.shaders.infinite_loop.query_status.vertex_and_fragment,Fail
 dEQP-EGL.functional.robustness.reset_context.shaders.infinite_loop.reset_status.compute,Fail
