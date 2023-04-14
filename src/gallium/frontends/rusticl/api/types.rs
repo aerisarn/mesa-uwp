@@ -214,3 +214,12 @@ where
         vec?.try_into().map_err(|_| CL_OUT_OF_HOST_MEMORY)
     }
 }
+
+impl<T> From<[T; 3]> for CLVec<T>
+where
+    T: Copy,
+{
+    fn from(arr: [T; 3]) -> Self {
+        Self::new(arr)
+    }
+}
