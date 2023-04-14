@@ -202,9 +202,7 @@ struct dzn_physical_device {
    ID3D12Device4 *dev;
    ID3D12Device10 *dev10;
    ID3D12Device11 *dev11;
-#if D3D12_SDK_VERSION >= 610
    ID3D12Device12 *dev12;
-#endif
    D3D_FEATURE_LEVEL feature_level;
    D3D_SHADER_MODEL shader_model;
    D3D_ROOT_SIGNATURE_VERSION root_sig_version;
@@ -218,12 +216,8 @@ struct dzn_physical_device {
    D3D12_FEATURE_DATA_D3D12_OPTIONS13 options13;
    D3D12_FEATURE_DATA_D3D12_OPTIONS14 options14;
    D3D12_FEATURE_DATA_D3D12_OPTIONS15 options15;
-#if D3D12_SDK_VERSION >= 609
    D3D12_FEATURE_DATA_D3D12_OPTIONS17 options17;
-#endif
-#if D3D12_SDK_VERSION >= 610
    D3D12_FEATURE_DATA_D3D12_OPTIONS19 options19;
-#endif
    VkPhysicalDeviceMemoryProperties memory;
    D3D12_HEAP_FLAGS heap_flags_for_mem_type[VK_MAX_MEMORY_TYPES];
    const struct vk_sync_type *sync_types[MAX_SYNC_TYPES + 1];
@@ -290,9 +284,7 @@ struct dzn_device {
    ID3D12Device4 *dev;
    ID3D12Device10 *dev10;
    ID3D12Device11 *dev11;
-#if D3D12_SDK_VERSION >= 610
    ID3D12Device12 *dev12;
-#endif
    ID3D12DeviceConfiguration *dev_config;
 
    struct dzn_meta_indirect_draw indirect_draws[DZN_NUM_INDIRECT_DRAW_TYPES];
@@ -752,28 +744,6 @@ struct dzn_descriptor_set_layout_binding {
    };
    bool variable_size;
 };
-
-#if D3D12_SDK_VERSION < 609
-typedef struct D3D12_STATIC_SAMPLER_DESC1
-{
-   D3D12_FILTER Filter;
-   D3D12_TEXTURE_ADDRESS_MODE AddressU;
-   D3D12_TEXTURE_ADDRESS_MODE AddressV;
-   D3D12_TEXTURE_ADDRESS_MODE AddressW;
-   FLOAT MipLODBias;
-   UINT MaxAnisotropy;
-   D3D12_COMPARISON_FUNC ComparisonFunc;
-   D3D12_STATIC_BORDER_COLOR BorderColor;
-   FLOAT MinLOD;
-   FLOAT MaxLOD;
-   UINT ShaderRegister;
-   UINT RegisterSpace;
-   D3D12_SHADER_VISIBILITY ShaderVisibility;
-   D3D12_SAMPLER_FLAGS Flags;
-} 	D3D12_STATIC_SAMPLER_DESC1;
-
-static const D3D_ROOT_SIGNATURE_VERSION D3D_ROOT_SIGNATURE_VERSION_1_2 = 0x3;
-#endif
 
 struct dzn_descriptor_set_layout {
    struct vk_descriptor_set_layout vk;

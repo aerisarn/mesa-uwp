@@ -30,10 +30,6 @@
 
 #include "dxil_spirv_nir.h"
 
-#if D3D12_SDK_VERSION >= 608
-static const D3D12_BARRIER_SYNC D3D12_BARRIER_SYNC_INPUT_ASSEMBLER = D3D12_BARRIER_SYNC_INDEX_INPUT;
-#endif
-
 static void
 dzn_cmd_buffer_exec_transition_barriers(struct dzn_cmd_buffer *cmdbuf,
                                         D3D12_RESOURCE_BARRIER *barriers,
@@ -1193,7 +1189,7 @@ translate_sync(VkPipelineStageFlags2 flags, bool before)
    if (flags & (VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT |
                 VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT |
                 VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT))
-      ret |= D3D12_BARRIER_SYNC_INPUT_ASSEMBLER;
+      ret |= D3D12_BARRIER_SYNC_INDEX_INPUT;
    if (flags & VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT)
       ret |= D3D12_BARRIER_SYNC_VERTEX_SHADING;
    if (flags & (VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT |
@@ -1405,7 +1401,7 @@ adjust_sync_for_access(D3D12_BARRIER_SYNC in, D3D12_BARRIER_ACCESS access)
                    D3D12_BARRIER_SYNC_ALL_SHADING |
                    D3D12_BARRIER_SYNC_NON_PIXEL_SHADING);
    if (access & D3D12_BARRIER_ACCESS_INDEX_BUFFER)
-      out |= in & D3D12_BARRIER_SYNC_INPUT_ASSEMBLER;
+      out |= in & D3D12_BARRIER_SYNC_INDEX_INPUT;
    if (access & D3D12_BARRIER_ACCESS_RENDER_TARGET)
       out |= in & D3D12_BARRIER_SYNC_RENDER_TARGET;
    if (access & D3D12_BARRIER_ACCESS_UNORDERED_ACCESS)
@@ -3579,7 +3575,7 @@ dzn_cmd_buffer_triangle_fan_rewrite_index(struct dzn_cmd_buffer *cmdbuf,
 
    if (cmdbuf->enhanced_barriers) {
       dzn_cmd_buffer_buffer_barrier(cmdbuf, new_index_buf,
-                                    D3D12_BARRIER_SYNC_COMPUTE_SHADING, D3D12_BARRIER_SYNC_INPUT_ASSEMBLER,
+                                    D3D12_BARRIER_SYNC_COMPUTE_SHADING, D3D12_BARRIER_SYNC_INDEX_INPUT,
                                     D3D12_BARRIER_ACCESS_UNORDERED_ACCESS, D3D12_BARRIER_ACCESS_INDEX_BUFFER);
    } else {
       dzn_cmd_buffer_queue_transition_barriers(cmdbuf, new_index_buf, 0, 1,
@@ -3864,7 +3860,7 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
       if (cmdbuf->enhanced_barriers) {
          buf_barriers[enhanced_barriers.NumBarriers++] = (D3D12_BUFFER_BARRIER){
             .SyncBefore = D3D12_BARRIER_SYNC_COMPUTE_SHADING,
-            .SyncAfter = D3D12_BARRIER_SYNC_INPUT_ASSEMBLER,
+            .SyncAfter = D3D12_BARRIER_SYNC_INDEX_INPUT,
             .AccessBefore = D3D12_BARRIER_ACCESS_UNORDERED_ACCESS,
             .AccessAfter = D3D12_BARRIER_ACCESS_INDEX_BUFFER,
             .pResource = triangle_fan_index_buf,
