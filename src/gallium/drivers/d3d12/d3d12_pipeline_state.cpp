@@ -316,14 +316,10 @@ create_gfx_pipeline_state(struct d3d12_context *ctx)
          rast.ForcedSampleCount = 1;
          pso_desc.DSVFormat = DXGI_FORMAT_UNKNOWN;
       }
-   } else if (state->samples > 1) {
-#if D3D12_SDK_VERSION >= 609
-      if (!(screen->opts19.SupportedSampleCountsWithNoOutputs & (1 << state->samples)))
-#endif
-      {
-         samples.Count = 1;
-         rast.ForcedSampleCount = state->samples;
-      }
+   } else if (state->samples > 1 &&
+              !(screen->opts19.SupportedSampleCountsWithNoOutputs & (1 << state->samples))) {
+      samples.Count = 1;
+      rast.ForcedSampleCount = state->samples;
    }
    samples.Quality = 0;
 

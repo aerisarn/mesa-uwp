@@ -40,7 +40,7 @@
 #include <wrl/client.h>
 using Microsoft::WRL::ComPtr;
 
-#if !defined(_WIN32) || defined(_MSC_VER) || D3D12_SDK_VERSION < 606
+#if !defined(_WIN32) || defined(_MSC_VER)
 inline D3D12_VIDEO_DECODER_HEAP_DESC
 GetDesc(ID3D12VideoDecoderHeap *heap)
 {

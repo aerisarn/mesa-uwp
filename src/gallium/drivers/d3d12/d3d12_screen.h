@@ -116,9 +116,7 @@ struct d3d12_screen {
    D3D12_FEATURE_DATA_D3D12_OPTIONS3 opts3;
    D3D12_FEATURE_DATA_D3D12_OPTIONS4 opts4;
    D3D12_FEATURE_DATA_D3D12_OPTIONS14 opts14;
-#if D3D12_SDK_VERSION >= 610
    D3D12_FEATURE_DATA_D3D12_OPTIONS19 opts19;
-#endif
 
    nir_shader_compiler_options nir_options;
 
