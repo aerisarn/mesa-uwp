@@ -56,6 +56,30 @@ lp_build_create_jit_buffer_type(struct gallivm_state *gallivm)
    return buffer_type;
 }
 
+LLVMValueRef
+lp_llvm_descriptor_base(struct gallivm_state *gallivm,
+                        LLVMValueRef buffers_ptr,
+                        LLVMValueRef index, unsigned buffers_limit)
+{
+   LLVMBuilderRef builder = gallivm->builder;
+
+   LLVMValueRef desc_set_index = LLVMBuildExtractValue(builder, index, 0, "");
+   if (LLVMGetTypeKind(LLVMTypeOf(desc_set_index)) == LLVMVectorTypeKind)
+      desc_set_index = LLVMBuildExtractElement(builder, desc_set_index, lp_build_const_int32(gallivm, 0), "");
+   LLVMValueRef desc_set_base = lp_llvm_buffer_base(gallivm, buffers_ptr, desc_set_index, buffers_limit);
+
+   LLVMValueRef binding_index = LLVMBuildExtractValue(builder, index, 1, "");
+   if (LLVMGetTypeKind(LLVMTypeOf(binding_index)) == LLVMVectorTypeKind)
+      binding_index = LLVMBuildExtractElement(builder, binding_index, lp_build_const_int32(gallivm, 0), "");
+
+   LLVMValueRef binding_offset = LLVMBuildMul(builder, binding_index, lp_build_const_int32(gallivm, sizeof(union lp_descriptor)), "");
+   LLVMTypeRef int64_type = LLVMInt64TypeInContext(gallivm->context);
+   binding_offset = LLVMBuildIntCast2(builder, binding_offset, int64_type, false, "");
+
+   LLVMValueRef desc_ptr = LLVMBuildPtrToInt(builder, desc_set_base, int64_type, "");
+   return LLVMBuildAdd(builder, desc_ptr, binding_offset, "");
+}
+
 static LLVMValueRef
 lp_llvm_buffer_member(struct gallivm_state *gallivm,
                       LLVMValueRef buffers_ptr,

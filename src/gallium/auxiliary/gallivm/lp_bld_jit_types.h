@@ -46,6 +46,11 @@ enum {
 };
 
 LLVMValueRef
+lp_llvm_descriptor_base(struct gallivm_state *gallivm,
+                        LLVMValueRef buffers_ptr,
+                        LLVMValueRef index, unsigned buffers_limit);
+
+LLVMValueRef
 lp_llvm_buffer_base(struct gallivm_state *gallivm,
                     LLVMValueRef buffers_ptr,
                     LLVMValueRef buffers_offset, unsigned buffers_limit);
