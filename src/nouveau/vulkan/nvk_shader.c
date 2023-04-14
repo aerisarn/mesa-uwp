@@ -1,4 +1,3 @@
-
 #include "nvk_device.h"
 #include "nvk_shader.h"
 #include "nvk_physical_device.h"
@@ -18,6 +17,7 @@
 #include "cla097.h"
 #include "clc397.h"
 #include "clc597.h"
+#include "nvk_cl9097.h"
 
 static void
 shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
@@ -74,6 +74,7 @@ nvk_physical_device_spirv_options(const struct nvk_physical_device *pdevice,
          .multiview = true,
          .physical_storage_buffer_address = true,
          .shader_viewport_index_layer = true,
+         .tessellation = true,
          .transform_feedback = true,
       },
       .ssbo_addr_format = nvk_buffer_addr_format(rs->storage_buffers),
@@ -675,6 +676,110 @@ nvk_gs_gen_header(struct nvk_shader *gs,
    return nvk_vtgp_gen_header(gs, info);
 }
 
+static void
+nvk_generate_tessellation_parameters(const struct nv50_ir_prog_info_out *info,
+                                     struct nvk_shader *shader)
+{
+   // TODO: this is a little confusing because nouveau codegen uses
+   // MESA_PRIM_POINTS for unspecified domain and
+   // MESA_PRIM_POINTS = 0, the same as NV9097 ISOLINE enum
+   uint32_t domain_type;
+   switch (info->prop.tp.domain) {
+   case MESA_PRIM_LINES:
+      domain_type = NV9097_SET_TESSELLATION_PARAMETERS_DOMAIN_TYPE_ISOLINE;
+      break;
+   case MESA_PRIM_TRIANGLES:
+      domain_type = NV9097_SET_TESSELLATION_PARAMETERS_DOMAIN_TYPE_TRIANGLE;
+      break;
+   case MESA_PRIM_QUADS:
+      domain_type = NV9097_SET_TESSELLATION_PARAMETERS_DOMAIN_TYPE_QUAD;
+      break;
+   default:
+      domain_type = ~0;
+      break;
+   }
+   shader->tp.domain_type = domain_type;
+   if (domain_type == ~0) {
+      return;
+   }
+
+   uint32_t spacing;
+   switch (info->prop.tp.partitioning) {
+   case PIPE_TESS_SPACING_EQUAL:
+      spacing = NV9097_SET_TESSELLATION_PARAMETERS_SPACING_INTEGER;
+      break;
+   case PIPE_TESS_SPACING_FRACTIONAL_ODD:
+      spacing = NV9097_SET_TESSELLATION_PARAMETERS_SPACING_FRACTIONAL_ODD;
+      break;
+   case PIPE_TESS_SPACING_FRACTIONAL_EVEN:
+      spacing = NV9097_SET_TESSELLATION_PARAMETERS_SPACING_FRACTIONAL_EVEN;
+      break;
+   default:
+      assert(!"invalid tessellator partitioning");
+      break;
+   }
+   shader->tp.spacing = spacing;
+
+   uint32_t output_prims;
+   if (info->prop.tp.outputPrim == MESA_PRIM_POINTS) { // point_mode
+      output_prims = NV9097_SET_TESSELLATION_PARAMETERS_OUTPUT_PRIMITIVES_POINTS;
+   } else if (info->prop.tp.domain == MESA_PRIM_LINES) { // isoline domain
+      output_prims = NV9097_SET_TESSELLATION_PARAMETERS_OUTPUT_PRIMITIVES_LINES;
+   } else {  // triangle/quad domain
+      if (info->prop.tp.winding > 0) {
+         output_prims = NV9097_SET_TESSELLATION_PARAMETERS_OUTPUT_PRIMITIVES_TRIANGLES_CW;
+      } else {
+         output_prims = NV9097_SET_TESSELLATION_PARAMETERS_OUTPUT_PRIMITIVES_TRIANGLES_CCW;
+      }
+   }
+   shader->tp.output_prims = output_prims;
+}
+
+static int
+nvk_tcs_gen_header(struct nvk_shader *tcs, struct nv50_ir_prog_info_out *info)
+{
+   unsigned opcs = 6; /* output patch constants (at least the TessFactors) */
+
+   if (info->numPatchConstants)
+      opcs = 8 + info->numPatchConstants * 4;
+
+   tcs->hdr[0] = 0x20061 | (2 << 10);
+
+   tcs->hdr[1] = opcs << 24;
+   tcs->hdr[2] = info->prop.tp.outputPatchSize << 24;
+
+   tcs->hdr[4] = 0xff000; /* initial min/max parallel output read address */
+
+   nvk_vtgp_gen_header(tcs, info);
+
+   if (info->target >= NVISA_GM107_CHIPSET) {
+      /* On GM107+, the number of output patch components has moved in the TCP
+       * header, but it seems like blob still also uses the old position.
+       * Also, the high 8-bits are located in between the min/max parallel
+       * field and has to be set after updating the outputs. */
+      tcs->hdr[3] = (opcs & 0x0f) << 28;
+      tcs->hdr[4] |= (opcs & 0xf0) << 16;
+   }
+
+   nvk_generate_tessellation_parameters(info, tcs);
+
+   return 0;
+}
+
+static int
+nvk_tes_gen_header(struct nvk_shader *tes, struct nv50_ir_prog_info_out *info)
+{
+   tes->hdr[0] = 0x20061 | (3 << 10);
+   tes->hdr[4] = 0xff000;
+
+   nvk_vtgp_gen_header(tes, info);
+
+   nvk_generate_tessellation_parameters(info, tes);
+
+   tes->hdr[18] |= 0x3 << 12; /* ? */
+
+   return 0;
+}
 
 #define NVC0_INTERP_FLAT          (1 << 0)
 #define NVC0_INTERP_PERSPECTIVE   (2 << 0)
@@ -891,6 +996,12 @@ nvk_compile_nir(struct nvk_physical_device *device, nir_shader *nir,
       break;
    case PIPE_SHADER_GEOMETRY:
       ret = nvk_gs_gen_header(shader, nir, &info_out);
+      break;
+   case PIPE_SHADER_TESS_CTRL:
+      ret = nvk_tcs_gen_header(shader, &info_out);
+      break;
+   case PIPE_SHADER_TESS_EVAL:
+      ret = nvk_tes_gen_header(shader, &info_out);
       break;
    case PIPE_SHADER_COMPUTE:
       break;

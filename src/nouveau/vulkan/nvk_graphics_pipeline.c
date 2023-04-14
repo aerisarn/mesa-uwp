@@ -18,7 +18,7 @@ static void
 emit_pipeline_ts_state(struct nv_push *p,
                        const struct vk_tessellation_state *ts)
 {
-   assert(ts->domain_origin == VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT);
+   P_IMMD(p, NV9097, SET_PATCH, ts->patch_control_points);
 }
 
 static void
@@ -341,6 +341,18 @@ nvk_graphics_pipeline_create(struct nvk_device *device,
           */
          force_max_samples = shader->fs.sample_mask_in ||
                              shader->fs.uses_sample_shading;
+         break;
+
+      case MESA_SHADER_TESS_CTRL:
+      case MESA_SHADER_TESS_EVAL:
+         if (shader->tp.domain_type != ~0) {
+            P_MTHD(p, NV9097, SET_TESSELLATION_PARAMETERS);
+            P_NV9097_SET_TESSELLATION_PARAMETERS(p, {
+               shader->tp.domain_type,
+               shader->tp.spacing,
+               shader->tp.output_prims,
+            });
+         }
          break;
 
       default:
