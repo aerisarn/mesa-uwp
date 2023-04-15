@@ -1112,6 +1112,30 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
          return true;
       case PIPE_VIDEO_CAP_SUPPORTS_CONTIGUOUS_PLANES_MAP:
          return true;
+      case PIPE_VIDEO_CAP_ENC_RATE_CONTROL_QVBR:
+      {
+         D3D12_FEATURE_DATA_VIDEO_ENCODER_RATE_CONTROL_MODE capRateControlModeData =
+         {
+            0,
+            d3d12_video_encoder_convert_codec_to_d3d12_enc_codec(profile),
+            D3D12_VIDEO_ENCODER_RATE_CONTROL_MODE_QVBR,
+            false
+         };
+
+         ComPtr<ID3D12VideoDevice3> spD3D12VideoDevice;
+         struct d3d12_screen *pD3D12Screen = (struct d3d12_screen *) pscreen;
+         if (FAILED(pD3D12Screen->dev->QueryInterface(IID_PPV_ARGS(spD3D12VideoDevice.GetAddressOf())))) {
+            // No video encode support in underlying d3d12 device (needs ID3D12VideoDevice3)
+            return 0;
+         }
+
+         if (SUCCEEDED(spD3D12VideoDevice->CheckFeatureSupport(D3D12_FEATURE_VIDEO_ENCODER_RATE_CONTROL_MODE, &capRateControlModeData, sizeof(capRateControlModeData)))
+            && capRateControlModeData.IsSupported)
+            return 1; // Driver returns QVBR support OK
+
+         // No QVBR support
+         return 0;
+      } break;
       default:
          debug_printf("[d3d12_screen_get_video_param] unknown video param: %d\n", param);
          return 0;
