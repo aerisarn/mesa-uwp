@@ -6457,6 +6457,16 @@ visit_image_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
       buf_op64 = aco_opcode::buffer_atomic_cmpswap_x2;
       image_op = aco_opcode::image_atomic_cmpswap;
       break;
+   case nir_intrinsic_bindless_image_atomic_inc_wrap:
+      buf_op = aco_opcode::buffer_atomic_inc;
+      buf_op64 = aco_opcode::buffer_atomic_inc_x2;
+      image_op = aco_opcode::image_atomic_inc;
+      break;
+   case nir_intrinsic_bindless_image_atomic_dec_wrap:
+      buf_op = aco_opcode::buffer_atomic_dec;
+      buf_op64 = aco_opcode::buffer_atomic_dec_x2;
+      image_op = aco_opcode::image_atomic_dec;
+      break;
    case nir_intrinsic_bindless_image_atomic_fadd:
       buf_op = aco_opcode::buffer_atomic_add_f32;
       buf_op64 = aco_opcode::num_opcodes;
@@ -8198,6 +8208,8 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_bindless_image_atomic_xor:
    case nir_intrinsic_bindless_image_atomic_exchange:
    case nir_intrinsic_bindless_image_atomic_comp_swap:
+   case nir_intrinsic_bindless_image_atomic_inc_wrap:
+   case nir_intrinsic_bindless_image_atomic_dec_wrap:
    case nir_intrinsic_bindless_image_atomic_fadd:
    case nir_intrinsic_bindless_image_atomic_fmin:
    case nir_intrinsic_bindless_image_atomic_fmax: visit_image_atomic(ctx, instr); break;
