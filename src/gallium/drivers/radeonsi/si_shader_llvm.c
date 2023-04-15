@@ -832,8 +832,6 @@ static bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shade
       break;
 
    case MESA_SHADER_FRAGMENT: {
-      ctx->abi.num_interp = si_get_ps_num_interp(shader);
-
       ctx->abi.kill_ps_if_inf_interp =
          ctx->screen->options.no_infinite_interp &&
          (ctx->shader->selector->info.uses_persp_center ||

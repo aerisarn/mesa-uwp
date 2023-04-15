@@ -121,9 +121,6 @@ struct ac_shader_abi {
 
    /* Equal to radeon_info::conformant_trunc_coord. */
    bool conformant_trunc_coord;
-
-   /* Number of all interpolated inputs */
-   unsigned num_interp;
 };
 
 #endif /* AC_SHADER_ABI_H */

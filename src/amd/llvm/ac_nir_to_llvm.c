@@ -3812,14 +3812,6 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
                                        nir_intrinsic_io_semantics(instr).high_16bits);
       break;
    }
-   case nir_intrinsic_load_point_coord_maybe_flipped: {
-      LLVMValueRef interp_param = lookup_interp_param(ctx, INTERP_MODE_NONE, INTERP_CENTER);
-      /* Load point coordinates (x, y) which are written by the hw after the interpolated inputs */
-      result = load_interpolated_input(ctx, interp_param, ctx->abi->num_interp, 2,
-                                       instr->dest.ssa.num_components, instr->dest.ssa.bit_size,
-                                       false);
-      break;
-   }
    case nir_intrinsic_emit_vertex_with_counter: {
       unsigned stream = nir_intrinsic_stream_id(instr);
       LLVMValueRef next_vertex = get_src(ctx, instr->src[0]);
