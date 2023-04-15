@@ -56,18 +56,6 @@ GetDesc(ID3D12VideoDecoderHeap *heap)
 }
 #endif
 
-// Allow encoder to continue the encoding session when an optional 
-// rate control mode such as the following is used but not supported
-//
-// D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_VBV_SIZES
-// D3D12_VIDEO_ENCODER_RATE_CONTROL_FLAG_ENABLE_MAX_FRAME_SIZE
-//
-// If setting this OS Env variable to true, the encoding process will continue, disregarding the settings
-// requested for the optional RC mode
-//
-
-const bool D3D12_VIDEO_ENC_FALLBACK_RATE_CONTROL_CONFIG = debug_get_bool_option("D3D12_VIDEO_ENC_FALLBACK_RATE_CONTROL_CONFIG", false);
-
 /* For CBR mode, to guarantee bitrate of generated stream complies with
 * target bitrate (e.g. no over +/-10%), vbv_buffer_size should be same
 * as target bitrate. Controlled by OS env var D3D12_VIDEO_ENC_CBR_FORCE_VBV_EQUAL_BITRATE
