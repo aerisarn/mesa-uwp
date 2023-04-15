@@ -240,6 +240,11 @@ vlVaHandleVAEncMiscParameterTypeRateControlHEVC(vlVaContext *context, VAEncMiscP
    context->desc.h265enc.rc.max_qp = rc->max_qp;
    context->desc.h265enc.rc.min_qp = rc->min_qp;
 
+   if (context->desc.h265enc.rc.rate_ctrl_method ==
+       PIPE_H2645_ENC_RATE_CONTROL_METHOD_QUALITY_VARIABLE)
+      context->desc.h265enc.rc.vbr_quality_factor =
+         rc->quality_factor;
+
    return VA_STATUS_SUCCESS;
 }
 

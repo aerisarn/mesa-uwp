@@ -143,7 +143,8 @@ enum pipe_h2645_enc_rate_control_method
    PIPE_H2645_ENC_RATE_CONTROL_METHOD_CONSTANT_SKIP = 0x01,
    PIPE_H2645_ENC_RATE_CONTROL_METHOD_VARIABLE_SKIP = 0x02,
    PIPE_H2645_ENC_RATE_CONTROL_METHOD_CONSTANT = 0x03,
-   PIPE_H2645_ENC_RATE_CONTROL_METHOD_VARIABLE = 0x04
+   PIPE_H2645_ENC_RATE_CONTROL_METHOD_VARIABLE = 0x04,
+   PIPE_H2645_ENC_RATE_CONTROL_METHOD_QUALITY_VARIABLE = 0x05
 };
 
 enum pipe_slice_buffer_placement_type
@@ -417,6 +418,9 @@ struct pipe_h264_enc_rate_control
    unsigned max_au_size;
    unsigned max_qp;
    unsigned min_qp;
+
+   /* Used with PIPE_H2645_ENC_RATE_CONTROL_METHOD_QUALITY_VARIABLE */
+   unsigned vbr_quality_factor;
 };
 
 struct pipe_h264_enc_motion_estimation
@@ -617,6 +621,9 @@ struct pipe_h265_enc_rate_control
    unsigned max_au_size;
    unsigned max_qp;
    unsigned min_qp;
+
+   /* Used with PIPE_H2645_ENC_RATE_CONTROL_METHOD_QUALITY_VARIABLE */
+   unsigned vbr_quality_factor;
 };
 
 struct pipe_h265_enc_picture_desc
