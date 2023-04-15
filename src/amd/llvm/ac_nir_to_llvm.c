@@ -673,21 +673,6 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       else
          result = LLVMBuildMul(ctx->ac.builder, src[0], src[1], "");
       break;
-   case nir_op_imod:
-      result = LLVMBuildSRem(ctx->ac.builder, src[0], src[1], "");
-      break;
-   case nir_op_umod:
-      result = LLVMBuildURem(ctx->ac.builder, src[0], src[1], "");
-      break;
-   case nir_op_irem:
-      result = LLVMBuildSRem(ctx->ac.builder, src[0], src[1], "");
-      break;
-   case nir_op_idiv:
-      result = LLVMBuildSDiv(ctx->ac.builder, src[0], src[1], "");
-      break;
-   case nir_op_udiv:
-      result = LLVMBuildUDiv(ctx->ac.builder, src[0], src[1], "");
-      break;
    case nir_op_fmul:
       src[0] = ac_to_float(&ctx->ac, src[0]);
       src[1] = ac_to_float(&ctx->ac, src[1]);
