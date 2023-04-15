@@ -24,6 +24,7 @@ libasahi_agx_files = files(
   'agx_pack.c',
   'agx_performance.c',
   'agx_print.c',
+  'agx_pressure_schedule.c',
   'agx_ir.c',
   'agx_opt_cse.c',
   'agx_opt_empty_else.c',

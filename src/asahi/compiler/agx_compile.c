@@ -32,6 +32,7 @@ static const struct debug_named_value agx_debug_options[] = {
    {"wait",      AGX_DBG_WAIT,      "Wait after all async instructions"},
    {"nopreamble",AGX_DBG_NOPREAMBLE,"Do not use shader preambles"},
    {"demand",    AGX_DBG_DEMAND,    "Bound tightly to register demand"},
+   {"nosched",   AGX_DBG_NOSCHED,   "Do not schedule the shader"},
    DEBUG_NAMED_VALUE_END
 };
 /* clang-format on */
@@ -2556,6 +2557,14 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    /* RA correctness depends on DCE */
    agx_dce(ctx, true);
    agx_validate(ctx, "Pre-RA passes");
+
+   if (agx_should_dump(nir, AGX_DBG_SHADERS))
+      agx_print_shader(ctx, stdout);
+
+   if (likely(!(agx_compiler_debug & AGX_DBG_NOSCHED))) {
+      agx_pressure_schedule(ctx);
+      agx_validate(ctx, "Pre-RA scheduler");
+   }
 
    if (agx_should_dump(nir, AGX_DBG_SHADERS))
       agx_print_shader(ctx, stdout);
