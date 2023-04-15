@@ -339,6 +339,10 @@ vlVaHandleVAEncMiscParameterTypeHRDH264(vlVaContext *context, VAEncMiscParameter
    if (ms->buffer_size) {
       context->desc.h264enc.rate_ctrl[0].vbv_buffer_size = ms->buffer_size;
       context->desc.h264enc.rate_ctrl[0].vbv_buf_lv = (ms->initial_buffer_fullness << 6 ) / ms->buffer_size;
+      context->desc.h264enc.rate_ctrl[0].vbv_buf_initial_size = ms->initial_buffer_fullness;
+      /* Distinguishes from the default params set for these values in other
+      functions and app specific params passed down via HRD buffer */
+      context->desc.h264enc.rate_ctrl[0].app_requested_hrd_buffer = true;
    }
 
    return VA_STATUS_SUCCESS;

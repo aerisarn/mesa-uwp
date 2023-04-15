@@ -409,6 +409,8 @@ struct pipe_h264_enc_rate_control
    unsigned frame_rate_den;
    unsigned vbv_buffer_size;
    unsigned vbv_buf_lv;
+   unsigned vbv_buf_initial_size;
+   bool app_requested_hrd_buffer;
    unsigned target_bits_picture;
    unsigned peak_bits_picture_integer;
    unsigned peak_bits_picture_fraction;
@@ -612,6 +614,8 @@ struct pipe_h265_enc_rate_control
    unsigned quant_b_frames;
    unsigned vbv_buffer_size;
    unsigned vbv_buf_lv;
+   unsigned vbv_buf_initial_size;
+   bool app_requested_hrd_buffer;
    unsigned target_bits_picture;
    unsigned peak_bits_picture_integer;
    unsigned peak_bits_picture_fraction;

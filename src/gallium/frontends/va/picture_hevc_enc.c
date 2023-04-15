@@ -412,6 +412,10 @@ vlVaHandleVAEncMiscParameterTypeHRDHEVC(vlVaContext *context, VAEncMiscParameter
    if (ms->buffer_size) {
       context->desc.h265enc.rc.vbv_buffer_size = ms->buffer_size;
       context->desc.h265enc.rc.vbv_buf_lv = (ms->initial_buffer_fullness << 6 ) / ms->buffer_size;
+      context->desc.h265enc.rc.vbv_buf_initial_size = ms->initial_buffer_fullness;
+      /* Distinguishes from the default params set for these values in other
+         functions and app specific params passed down via HRD buffer */
+      context->desc.h265enc.rc.app_requested_hrd_buffer = true;
    }
 
    return VA_STATUS_SUCCESS;
