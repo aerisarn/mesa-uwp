@@ -137,8 +137,6 @@ shaders@point-vertex-id gl_vertexid,Fail
 
 spec@!opengl 1.0@gl-1.0-no-op-paths,Fail
 
-spec@!opengl 1.0@gl-1.0-spot-light,Fail
-
 spec@!opengl 1.0@gl-1.0-swapbuffers-behavior,Fail
 
 spec@!opengl 1.1@depthstencil-default_fb-blit samples=16,Fail

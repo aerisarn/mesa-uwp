@@ -728,11 +728,10 @@ calculate_light_attenuation(struct tnl_program *p,
 
       nir_ssa_def *spot = nir_fdot3(p->b, nir_fneg(p->b, VPpli),
                                     spot_dir_norm);
-      nir_ssa_def *slt = nir_slt(p->b, nir_channel(p->b, spot_dir_norm, 3),
+      nir_ssa_def *cmp = nir_flt(p->b, nir_channel(p->b, spot_dir_norm, 3),
                                  spot);
-      spot = nir_fabs(p->b, spot);
       spot = nir_fpow(p->b, spot, nir_channel(p->b, attenuation, 3));
-      att = nir_fmul(p->b, slt, spot);
+      att = nir_bcsel(p->b, cmp, spot, nir_imm_zero(p->b, 1, 32));
    }
 
    /* Calculate distance attenuation(See formula (2.4) at glspec 2.1 page 62):
@@ -1399,7 +1398,6 @@ create_new_program( const struct state_key *key,
    nir_shader *s = b.shader;
 
    s->info.separate_shader = true;
-   s->info.use_legacy_math_rules = true;
 
    p.b = &b;
 
