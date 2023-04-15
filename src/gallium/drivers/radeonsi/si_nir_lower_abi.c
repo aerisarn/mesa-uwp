@@ -256,7 +256,8 @@ static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_s
       unsigned num_components = intrin->dest.ssa.num_components;
       unsigned offset =
          intrin->intrinsic == nir_intrinsic_load_tess_level_inner_default ? 16 : 0;
-      replacement = nir_load_smem_buffer_amd(b, num_components, buf, nir_imm_int(b, offset));
+      replacement = nir_load_ubo(b, num_components, 32, buf, nir_imm_int(b, offset),
+                                 .range = ~0);
       break;
    }
    case nir_intrinsic_load_patch_vertices_in:
@@ -361,7 +362,8 @@ static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_s
    case nir_intrinsic_load_user_clip_plane: {
       nir_ssa_def *buf = si_nir_load_internal_binding(b, args, SI_VS_CONST_CLIP_PLANES, 4);
       unsigned offset = nir_intrinsic_ucp_id(intrin) * 16;
-      replacement = nir_load_smem_buffer_amd(b, 4, buf, nir_imm_int(b, offset));
+      replacement = nir_load_ubo(b, 4, 32, buf, nir_imm_int(b, offset),
+                                 .range = ~0);
       break;
    }
    case nir_intrinsic_load_streamout_buffer_amd: {
@@ -453,7 +455,7 @@ static bool lower_abi_instr(nir_builder *b, nir_instr *instr, struct lower_abi_s
          nir_ssa_def *offset = nir_ishl_imm(b, sample_id, 3);
 
          nir_ssa_def *buf = si_nir_load_internal_binding(b, args, SI_PS_CONST_SAMPLE_POSITIONS, 4);
-         nir_ssa_def *sample_pos = nir_load_smem_buffer_amd(b, 2, buf, offset);
+         nir_ssa_def *sample_pos = nir_load_ubo(b, 2, 32, buf, offset, .range = ~0);
 
          sample_pos = nir_fsub(b, sample_pos, nir_imm_float(b, 0.5));
 
