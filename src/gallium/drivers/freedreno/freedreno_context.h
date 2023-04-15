@@ -179,6 +179,69 @@ enum fd_dirty_3d_state {
 #define NUM_DIRTY_BITS 28
 };
 
+static inline void
+fd_print_dirty_state(BITMASK_ENUM(fd_dirty_3d_state) dirty)
+{
+#ifdef DEBUG
+   if (!FD_DBG(MSGS))
+      return;
+
+   struct {
+      enum fd_dirty_3d_state state;
+      const char *name;
+   } tbl[] = {
+#define STATE(n) { FD_DIRTY_ ## n, #n }
+         STATE(BLEND),
+         STATE(RASTERIZER),
+         STATE(ZSA),
+         STATE(BLEND_COLOR),
+         STATE(STENCIL_REF),
+         STATE(SAMPLE_MASK),
+         STATE(FRAMEBUFFER),
+         STATE(STIPPLE),
+         STATE(VIEWPORT),
+         STATE(VTXSTATE),
+         STATE(VTXBUF),
+         STATE(MIN_SAMPLES),
+         STATE(SCISSOR),
+         STATE(STREAMOUT),
+         STATE(UCP),
+         STATE(PROG),
+         STATE(CONST),
+         STATE(TEX),
+         STATE(IMAGE),
+         STATE(SSBO),
+         STATE(QUERY),
+         STATE(TEXSTATE),
+         STATE(RASTERIZER_DISCARD),
+         STATE(RASTERIZER_CLIP_PLANE_ENABLE),
+         STATE(BLEND_DUAL),
+         STATE(BLEND_COHERENT),
+#undef STATE
+   };
+
+   struct log_stream *s = mesa_log_streami();
+
+   mesa_log_stream_printf(s, "dirty:");
+
+   if ((uint32_t)dirty == ~0) {
+      mesa_log_stream_printf(s, " ALL");
+      dirty = 0;
+   }
+
+   for (unsigned i = 0; i < ARRAY_SIZE(tbl); i++) {
+      if (dirty & tbl[i].state) {
+         mesa_log_stream_printf(s, " %s", tbl[i].name);
+         dirty &= ~tbl[i].state;
+      }
+   }
+
+   assert(!dirty);
+
+   mesa_log_stream_destroy(s);
+#endif
+}
+
 /* per shader-stage dirty state: */
 enum fd_dirty_shader_state {
    FD_DIRTY_SHADER_PROG = BIT(0),
