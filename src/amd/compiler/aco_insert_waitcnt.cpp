@@ -1037,6 +1037,15 @@ insert_wait_states(Program* program)
 
    for (unsigned i = 0; i < program->blocks.size();) {
       Block& current = program->blocks[i++];
+
+      if (current.kind & block_kind_discard_early_exit) {
+         /* Because the jump to the discard early exit block may happen anywhere in a block, it's
+          * not possible to join it with its predecessors this way.
+          * We emit all required waits when emitting the discard block.
+          */
+         continue;
+      }
+
       wait_ctx ctx = in_ctx[current.index];
 
       if (current.kind & block_kind_loop_header) {
