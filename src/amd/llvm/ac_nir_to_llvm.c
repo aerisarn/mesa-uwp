@@ -4227,7 +4227,6 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
    struct ac_image_args args = {0};
    LLVMValueRef sample_index = NULL;
    LLVMValueRef ddx = NULL, ddy = NULL;
-   unsigned offset_src = 0;
    struct waterfall_context wctx[2] = {{{0}}};
 
    tex_fetch_ptrs(ctx, instr, wctx, &args.resource, &args.sampler);
@@ -4252,7 +4251,6 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
          break;
       case nir_tex_src_offset:
          args.offset = get_src(ctx, instr->src[i].src);
-         offset_src = i;
          /* We pack it with bit shifts, so we need it to be 32-bit. */
          assert(ac_get_elem_bits(&ctx->ac, LLVMTypeOf(args.offset)) == 32);
          break;
@@ -4288,7 +4286,10 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       }
    }
 
-   if (args.offset && instr->op != nir_texop_txf && instr->op != nir_texop_txf_ms) {
+   if (args.offset) {
+      /* offset for txf has been lowered in nir. */
+      assert(instr->op != nir_texop_txf);
+
       LLVMValueRef offset[3], pack;
       for (unsigned chan = 0; chan < 3; ++chan)
          offset[chan] = ctx->ac.i32_0;
@@ -4409,18 +4410,6 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
    /* Pack sample index */
    if (sample_index && (instr->op == nir_texop_txf_ms || instr->op == nir_texop_fragment_fetch_amd))
       args.coords[instr->coord_components] = sample_index;
-
-   if (args.offset && (instr->op == nir_texop_txf || instr->op == nir_texop_txf_ms)) {
-      int num_offsets = instr->src[offset_src].src.ssa->num_components;
-      num_offsets = MIN2(num_offsets, instr->coord_components);
-      for (unsigned i = 0; i < num_offsets; ++i) {
-         LLVMValueRef off = ac_llvm_extract_elem(&ctx->ac, args.offset, i);
-         if (args.a16)
-            off = LLVMBuildTrunc(ctx->ac.builder, off, ctx->ac.i16, "");
-         args.coords[i] = LLVMBuildAdd(ctx->ac.builder, args.coords[i], off, "");
-      }
-      args.offset = NULL;
-   }
 
    /* DMASK was repurposed for GATHER4. 4 components are always
     * returned and DMASK works like a swizzle - it selects
