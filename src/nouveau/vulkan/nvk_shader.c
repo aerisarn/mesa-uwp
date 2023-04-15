@@ -365,6 +365,8 @@ nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
               bool is_multiview,
               const struct vk_pipeline_layout *layout)
 {
+   struct nvk_physical_device *pdev = nvk_device_physical(device);
+
    NIR_PASS(_, nir, nir_split_struct_vars, nir_var_function_temp);
    NIR_PASS(_, nir, nir_lower_vars_to_ssa);
 
@@ -423,6 +425,27 @@ nvk_lower_nir(struct nvk_device *device, nir_shader *nir,
 
    NIR_PASS(_, nir, nir_shader_instructions_pass, lower_image_size_to_txs,
             nir_metadata_block_index | nir_metadata_dominance, NULL);
+
+   /* Lower non-uniform access before lower_descriptors */
+   enum nir_lower_non_uniform_access_type lower_non_uniform_access_types =
+      nir_lower_non_uniform_ubo_access;
+
+   if (pdev->info.cls_eng3d < TURING_A) {
+      lower_non_uniform_access_types |= nir_lower_non_uniform_texture_access |
+                                        nir_lower_non_uniform_image_access;
+   }
+
+   /* In practice, most shaders do not have non-uniform-qualified accesses
+    * thus a cheaper and likely to fail check is run first.
+    */
+   if (nir_has_non_uniform_access(nir, lower_non_uniform_access_types)) {
+      struct nir_lower_non_uniform_access_options opts = {
+         .types = lower_non_uniform_access_types,
+         .callback = NULL,
+      };
+      NIR_PASS(_, nir, nir_opt_non_uniform_access);
+      NIR_PASS(_, nir, nir_lower_non_uniform_access, &opts);
+   }
 
    NIR_PASS(_, nir, nvk_nir_lower_descriptors, rs, layout);
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_global,
