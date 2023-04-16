@@ -440,7 +440,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
       return 0;
 
    case PIPE_CAP_DMABUF:
-#if defined(HAVE_LIBDRM) && (DETECT_OS_LINUX || DETECT_OS_BSD)
+#if defined(HAVE_LIBDRM) && (DETECT_OS_LINUX || DETECT_OS_BSD || DETECT_OS_MANAGARM)
       fd = pscreen->get_screen_fd(pscreen);
       if (fd != -1 && (drmGetCap(fd, DRM_CAP_PRIME, &cap) == 0))
          return cap;
