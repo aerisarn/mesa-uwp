@@ -524,6 +524,14 @@ lvp_shader_lower(struct lvp_device *pdevice, nir_shader *nir, struct lvp_shader 
    };
    NIR_PASS_V(nir, nir_fold_16bit_tex_image, &fold_16bit_options);
 
+   /* Lower texture OPs llvmpipe supports to reduce the amount of sample
+    * functions that need to be pre-compiled.
+    */
+   const nir_lower_tex_options tex_options = {
+      .lower_txd = true,
+   };
+   NIR_PASS(_, nir, nir_lower_tex, &tex_options);
+
    lvp_shader_optimize(nir);
 
    if (nir->info.stage != MESA_SHADER_VERTEX)
