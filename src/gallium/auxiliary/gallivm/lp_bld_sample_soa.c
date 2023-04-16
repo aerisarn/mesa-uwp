@@ -3285,7 +3285,7 @@ lp_build_texel_type(struct lp_type texel_type,
  * \param sample_key
  * \param derivs  partial derivatives of (s,t,r,q) with respect to x and y
  */
-static void
+void
 lp_build_sample_soa_code(struct gallivm_state *gallivm,
                          const struct lp_static_texture_state *static_texture_state,
                          const struct lp_static_sampler_state *static_sampler_state,

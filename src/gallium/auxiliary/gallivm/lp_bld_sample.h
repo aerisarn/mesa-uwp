@@ -715,6 +715,28 @@ lp_build_sample_offset(struct lp_build_context *bld,
 
 
 void
+lp_build_sample_soa_code(struct gallivm_state *gallivm,
+                         const struct lp_static_texture_state *static_texture_state,
+                         const struct lp_static_sampler_state *static_sampler_state,
+                         struct lp_sampler_dynamic_state *dynamic_state,
+                         struct lp_type type,
+                         unsigned sample_key,
+                         unsigned texture_index,
+                         unsigned sampler_index,
+                         LLVMTypeRef resources_type,
+                         LLVMValueRef resources_ptr,
+                         LLVMTypeRef thread_data_type,
+                         LLVMValueRef thread_data_ptr,
+                         const LLVMValueRef *coords,
+                         const LLVMValueRef *offsets,
+                         const struct lp_derivatives *derivs, /* optional */
+                         LLVMValueRef lod, /* optional */
+                         LLVMValueRef ms_index, /* optional */
+                         LLVMValueRef aniso_filter_table,
+                         LLVMValueRef texel_out[4]);
+
+
+void
 lp_build_sample_soa(const struct lp_static_texture_state *static_texture_state,
                     const struct lp_static_sampler_state *static_sampler_state,
                     struct lp_sampler_dynamic_state *dynamic_texture_state,
