@@ -579,6 +579,3 @@ x11-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgb888_no_depth_no_stenc
 x11-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgba8888_depth_no_stencil,Fail
 x11-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgba8888_depth_stencil,Fail
 x11-dEQP-EGL.functional.create_context_ext.robust_gl_31.rgba8888_no_depth_no_stencil,Fail
-
-# Issue in common code, see https://gitlab.freedesktop.org/mesa/mesa/-/issues/8727
-dEQP-VK.wsi.xlib.surface.query_formats,Fail
