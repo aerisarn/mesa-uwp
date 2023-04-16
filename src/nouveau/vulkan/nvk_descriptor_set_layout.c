@@ -211,22 +211,44 @@ nvk_CreateDescriptorSetLayout(VkDevice _device,
       if (stride > 0) {
          assert(stride <= UINT8_MAX);
          assert(util_is_power_of_two_nonzero(align));
+
          buffer_size = ALIGN_POT(buffer_size, align);
          layout->binding[b].offset = buffer_size;
          layout->binding[b].stride = stride;
-         buffer_size += stride * binding->descriptorCount;
+
+         if (layout->binding[b].flags &
+             VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT) {
+            /* From the Vulkan 1.3.256 spec:
+             *
+             *    VUID-VkDescriptorSetLayoutBindingFlagsCreateInfo-pBindingFlags-03004
+             *    "If an element of pBindingFlags includes
+             *    VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT, then
+             *    all other elements of
+             *    VkDescriptorSetLayoutCreateInfo::pBindings must have a
+             *    smaller value of binding"
+             *
+             * In other words, it has to be the last binding.
+             */
+            assert(b == num_bindings - 1);
+         } else {
+            /* the allocation size will be computed at descriptor allocation,
+             * but the buffer size will be already aligned as this binding will
+             * be the last
+             */
+            buffer_size += stride * binding->descriptorCount;
+         }
       }
 
    }
 
-   layout->descriptor_buffer_size = buffer_size;
+   layout->non_variable_descriptor_buffer_size = buffer_size;
    layout->dynamic_buffer_count = dynamic_buffer_count;
 
    struct mesa_sha1 sha1_ctx;
    _mesa_sha1_init(&sha1_ctx);
 
 #define SHA1_UPDATE_VALUE(x) _mesa_sha1_update(&sha1_ctx, &(x), sizeof(x));
-   SHA1_UPDATE_VALUE(layout->descriptor_buffer_size);
+   SHA1_UPDATE_VALUE(layout->non_variable_descriptor_buffer_size);
    SHA1_UPDATE_VALUE(layout->dynamic_buffer_count);
    SHA1_UPDATE_VALUE(layout->binding_count);
 

@@ -277,7 +277,7 @@ nvk_push_descriptor_set_update(struct nvk_push_descriptor_set *push_set,
                                uint32_t write_count,
                                const VkWriteDescriptorSet *writes)
 {
-   assert(layout->descriptor_buffer_size < sizeof(push_set->data));
+   assert(layout->non_variable_descriptor_buffer_size < sizeof(push_set->data));
    struct nvk_descriptor_set set = {
       .layout = layout,
       .bo_size = sizeof(push_set->data),
@@ -447,7 +447,7 @@ static VkResult
 nvk_descriptor_set_create(struct nvk_device *device,
                           struct nvk_descriptor_pool *pool,
                           struct nvk_descriptor_set_layout *layout,
-                          const uint32_t *variable_count,
+                          uint32_t variable_count,
                           struct nvk_descriptor_set **out_set)
 {
    struct nvk_descriptor_set *set;
@@ -463,8 +463,16 @@ nvk_descriptor_set_create(struct nvk_device *device,
    if (pool->entry_count == pool->max_entry_count)
       return VK_ERROR_OUT_OF_POOL_MEMORY;
 
-   set->bo_size = layout->descriptor_buffer_size;
-   if (layout->descriptor_buffer_size > 0) {
+   set->bo_size = layout->non_variable_descriptor_buffer_size;
+
+   if (layout->binding_count > 0 &&
+       (layout->binding[layout->binding_count - 1].flags &
+        VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT)) {
+      uint32_t stride = layout->binding[layout->binding_count-1].stride;
+      set->bo_size += stride * variable_count;
+   }
+
+   if (set->bo_size > 0) {
       if (pool->current_offset + set->bo_size > pool->size)
          return VK_ERROR_OUT_OF_POOL_MEMORY;
 
@@ -490,7 +498,12 @@ nvk_descriptor_set_create(struct nvk_device *device,
       if (layout->binding[b].immutable_samplers == NULL)
          continue;
 
-      for (uint32_t j = 0; j < layout->binding[b].array_size; j++)
+      uint32_t array_size = layout->binding[b].array_size;
+      if (layout->binding[b].flags &
+          VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT)
+         array_size = variable_count;
+
+      for (uint32_t j = 0; j < array_size; j++)
          write_image_view_desc(set, NULL, b, j, layout->binding[b].type);
    }
 
@@ -512,11 +525,21 @@ nvk_AllocateDescriptorSets(VkDevice _device,
 
    struct nvk_descriptor_set *set = NULL;
 
+   const VkDescriptorSetVariableDescriptorCountAllocateInfo *var_desc_count =
+      vk_find_struct_const(pAllocateInfo->pNext,
+                           DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO);
+
    /* allocate a set of buffers for each shader to contain descriptors */
    for (i = 0; i < pAllocateInfo->descriptorSetCount; i++) {
       VK_FROM_HANDLE(nvk_descriptor_set_layout, layout,
                      pAllocateInfo->pSetLayouts[i]);
-      const uint32_t *variable_count = NULL;
+      /* If descriptorSetCount is zero or this structure is not included in
+       * the pNext chain, then the variable lengths are considered to be zero.
+       */
+      const uint32_t variable_count =
+         var_desc_count && var_desc_count->descriptorSetCount > 0 ?
+         var_desc_count->pDescriptorCounts[i] : 0;
+
       result = nvk_descriptor_set_create(device, pool, layout,
                                          variable_count, &set);
       if (result != VK_SUCCESS)
