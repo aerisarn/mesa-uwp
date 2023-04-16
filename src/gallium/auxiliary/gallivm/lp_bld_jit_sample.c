@@ -226,3 +226,10 @@ lp_bld_llvm_image_soa_create(const struct lp_image_static_state *static_state,
    image->nr_images = nr_images;
    return &image->base;
 }
+
+struct lp_sampler_dynamic_state *
+lp_build_sampler_soa_dynamic_state(struct lp_build_sampler_soa *_sampler)
+{
+   struct lp_bld_llvm_sampler_soa *sampler = (struct lp_bld_llvm_sampler_soa *)_sampler;
+   return &sampler->dynamic_state.base;
+}

@@ -359,6 +359,12 @@ struct lp_sampler_dynamic_state
 };
 
 
+struct lp_build_sampler_soa;
+
+struct lp_sampler_dynamic_state *
+lp_build_sampler_soa_dynamic_state(struct lp_build_sampler_soa *sampler);
+
+
 /**
  * Keep all information for sampling code generation in a single place.
  */
