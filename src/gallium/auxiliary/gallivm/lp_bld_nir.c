@@ -2293,6 +2293,7 @@ visit_txs(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
    LLVMValueRef sizes_out[NIR_MAX_VEC_COMPONENTS];
    LLVMValueRef explicit_lod = NULL;
    LLVMValueRef texture_unit_offset = NULL;
+   LLVMValueRef resource = NULL;
 
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       switch (instr->src[i].src_type) {
@@ -2303,6 +2304,9 @@ visit_txs(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
          break;
       case nir_tex_src_texture_offset:
          texture_unit_offset = get_src(bld_base, instr->src[i].src);
+         break;
+      case nir_tex_src_texture_handle:
+         resource = get_src(bld_base, instr->src[i].src);
          break;
       default:
          break;
@@ -2319,6 +2323,9 @@ visit_txs(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
 
    if (instr->op == nir_texop_query_levels)
       params.explicit_lod = bld_base->uint_bld.zero;
+
+   params.resource = resource;
+
    bld_base->tex_size(bld_base, &params);
    assign_dest(bld_base, &instr->dest,
                &sizes_out[instr->op == nir_texop_query_levels ? 3 : 0]);
@@ -2434,6 +2441,9 @@ visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
    LLVMValueRef coord_undef = LLVMGetUndef(bld_base->base.vec_type);
    unsigned coord_vals = is_aos(bld_base) ? 1 : instr->coord_components;
 
+   LLVMValueRef texture_resource = NULL;
+   LLVMValueRef sampler_resource = NULL;
+
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       switch (instr->src[i].src_type) {
       case nir_tex_src_coord: {
@@ -2524,6 +2534,12 @@ visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
          break;
       case nir_tex_src_sampler_offset:
          break;
+      case nir_tex_src_texture_handle:
+         texture_resource = get_src(bld_base, instr->src[i].src);
+         break;
+      case nir_tex_src_sampler_handle:
+         sampler_resource = get_src(bld_base, instr->src[i].src);
+         break;
       default:
          assert(0);
          break;
@@ -2531,6 +2547,9 @@ visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
    }
    if (!sampler_deref_instr)
       sampler_deref_instr = texture_deref_instr;
+
+   if (!sampler_resource)
+      sampler_resource = texture_resource;
 
    switch (instr->op) {
    case nir_texop_tex:
@@ -2584,6 +2603,8 @@ visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *instr)
    params.lod = explicit_lod;
    params.ms_index = ms_index;
    params.aniso_filter_table = bld_base->aniso_filter_table;
+   params.texture_resource = texture_resource;
+   params.sampler_resource = sampler_resource;
    bld_base->tex(bld_base, &params);
 
    if (nir_dest_bit_size(instr->dest) != 32) {
