@@ -239,6 +239,9 @@ vlVaHandleVAEncMiscParameterTypeRateControlHEVC(vlVaContext *context, VAEncMiscP
    context->desc.h265enc.rc.skip_frame_enable = 0;
    context->desc.h265enc.rc.max_qp = rc->max_qp;
    context->desc.h265enc.rc.min_qp = rc->min_qp;
+   /* Distinguishes from the default params set for these values in other
+      functions and app specific params passed down */
+   context->desc.h265enc.rc.app_requested_qp_range = ((rc->max_qp > 0) || (rc->min_qp > 0));
 
    if (context->desc.h265enc.rc.rate_ctrl_method ==
        PIPE_H2645_ENC_RATE_CONTROL_METHOD_QUALITY_VARIABLE)

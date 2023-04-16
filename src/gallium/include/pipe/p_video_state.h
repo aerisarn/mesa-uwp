@@ -420,6 +420,7 @@ struct pipe_h264_enc_rate_control
    unsigned max_au_size;
    unsigned max_qp;
    unsigned min_qp;
+   bool app_requested_qp_range;
 
    /* Used with PIPE_H2645_ENC_RATE_CONTROL_METHOD_QUALITY_VARIABLE */
    unsigned vbr_quality_factor;
@@ -625,6 +626,7 @@ struct pipe_h265_enc_rate_control
    unsigned max_au_size;
    unsigned max_qp;
    unsigned min_qp;
+   bool app_requested_qp_range;
 
    /* Used with PIPE_H2645_ENC_RATE_CONTROL_METHOD_QUALITY_VARIABLE */
    unsigned vbr_quality_factor;

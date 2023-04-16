@@ -268,6 +268,9 @@ vlVaHandleVAEncMiscParameterTypeRateControlH264(vlVaContext *context, VAEncMiscP
 
    context->desc.h264enc.rate_ctrl[temporal_id].max_qp = rc->max_qp;
    context->desc.h264enc.rate_ctrl[temporal_id].min_qp = rc->min_qp;
+   /* Distinguishes from the default params set for these values in other
+      functions and app specific params passed down */
+   context->desc.h264enc.rate_ctrl[temporal_id].app_requested_qp_range = ((rc->max_qp > 0) || (rc->min_qp > 0));
 
    if (context->desc.h264enc.rate_ctrl[0].rate_ctrl_method ==
        PIPE_H2645_ENC_RATE_CONTROL_METHOD_QUALITY_VARIABLE)
