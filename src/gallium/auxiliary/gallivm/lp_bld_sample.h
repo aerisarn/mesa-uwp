@@ -117,6 +117,10 @@ struct lp_sampler_params
    LLVMValueRef aniso_filter_table;
    const struct lp_derivatives *derivs;
    LLVMValueRef *texel;
+
+   LLVMValueRef texture_resource;
+   LLVMValueRef sampler_resource;
+   LLVMValueRef exec_mask;
 };
 
 /* Parameters used to handle sampler_size instructions */
@@ -133,6 +137,10 @@ struct lp_sampler_size_query_params
    enum lp_sampler_lod_property lod_property;
    LLVMValueRef explicit_lod;
    LLVMValueRef *sizes_out;
+
+   LLVMValueRef resource;
+   LLVMValueRef exec_mask;
+   enum pipe_format format;
 };
 
 #define LP_IMG_LOAD 0
@@ -159,6 +167,9 @@ struct lp_img_params
    LLVMValueRef indata[4];
    LLVMValueRef indata2[4];
    LLVMValueRef *outdata;
+
+   LLVMValueRef resource;
+   enum pipe_format format;
 };
 
 

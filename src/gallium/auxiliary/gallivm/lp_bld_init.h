@@ -66,6 +66,9 @@ struct gallivm_state
    LLVMTypeRef coro_free_hook_type;
 
    LLVMValueRef get_time_hook;
+
+   LLVMValueRef texture_descriptor;
+   LLVMValueRef sampler_descriptor;
 };
 
 unsigned
