@@ -33,6 +33,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <sys/stat.h>
+#include "util/hex.h"
 #include "util/mesa-sha1.h"
 #include "util/detect_os.h"
 
@@ -82,16 +83,7 @@ struct disk_cache;
 static inline char *
 disk_cache_format_hex_id(char *buf, const uint8_t *hex_id, unsigned size)
 {
-   static const char hex_digits[] = "0123456789abcdef";
-   unsigned i;
-
-   for (i = 0; i < size; i += 2) {
-      buf[i] = hex_digits[hex_id[i >> 1] >> 4];
-      buf[i + 1] = hex_digits[hex_id[i >> 1] & 0x0f];
-   }
-   buf[i] = '\0';
-
-   return buf;
+   return mesa_bytes_to_hex(buf, hex_id, size / 2);
 }
 
 #ifdef HAVE_DLADDR
