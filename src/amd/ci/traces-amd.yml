@@ -104,7 +104,7 @@ traces:
       checksum: 60f74020451e9beaf586b4551541b763
   ror/ror-default.trace:
     gl-radeonsi-stoney:
-      checksum: ea53f93df31703bf7a07a4efb922608f
+      checksum: a37b58424c4289a6de77e61d599b6fab
   nheko/nheko-colors.trace:
     gl-radeonsi-stoney:
       checksum: d3234cd6ccc2ab5d3ceab7db79300c69

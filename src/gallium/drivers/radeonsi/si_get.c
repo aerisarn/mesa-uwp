@@ -1280,6 +1280,7 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
       .fuse_ffma32 = use_fma32,
       .fuse_ffma64 = true,
       .lower_fmod = true,
+      .lower_fpow = true,
       .lower_ineg = true,
       .lower_pack_snorm_4x8 = true,
       .lower_pack_unorm_4x8 = true,
