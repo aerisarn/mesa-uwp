@@ -7503,20 +7503,13 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
 
    for (uint32_t i = 0; i < commandBufferCount; i++) {
       RADV_FROM_HANDLE(radv_cmd_buffer, secondary, pCmdBuffers[i]);
-      bool allow_ib2 = true;
 
-      if (secondary->device->physical_device->rad_info.gfx_level <= GFX7 &&
-          secondary->state.uses_draw_indirect_multi) {
-         /* Do not launch an IB2 for secondary command buffers that contain
-          * DRAW_{INDEX}_INDIRECT_MULTI on GFX7 because it's illegal and hang the GPU.
-          */
-         allow_ib2 = false;
-      }
-
-      if (secondary->qf == RADV_QUEUE_COMPUTE) {
-         /* IB2 packets are not supported on compute queues according to PAL. */
-         allow_ib2 = false;
-      }
+      /* Do not launch an IB2 for secondary command buffers that contain
+       * DRAW_{INDEX}_INDIRECT_MULTI on GFX7 because it's illegal and hang the GPU.
+       */
+      const bool allow_ib2 =
+         !secondary->state.uses_draw_indirect_multi ||
+         secondary->device->physical_device->rad_info.gfx_level >= GFX8;
 
       primary->scratch_size_per_wave_needed =
          MAX2(primary->scratch_size_per_wave_needed, secondary->scratch_size_per_wave_needed);
