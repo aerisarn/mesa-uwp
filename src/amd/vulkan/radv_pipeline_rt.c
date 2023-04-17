@@ -596,6 +596,8 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
 
    radv_compute_pipeline_init(device, &rt_pipeline->base, pipeline_layout);
 
+   radv_rmv_log_compute_pipeline_create(device, pCreateInfo->flags, &rt_pipeline->base.base, false);
+
    *pPipeline = radv_pipeline_to_handle(&rt_pipeline->base.base);
 shader_fail:
    ralloc_free(shader);
@@ -645,11 +647,6 @@ radv_CreateRayTracingPipelinesKHR(VkDevice _device, VkDeferredOperationKHR defer
 
    if (result != VK_SUCCESS)
       return result;
-
-   RADV_FROM_HANDLE(radv_device, device, _device);
-   for (uint32_t j = 0; j < count; ++j)
-      radv_rmv_log_compute_pipeline_create(device, pCreateInfos[i].flags,
-                                           radv_pipeline_from_handle(pPipelines[j]), false);
 
    /* Work around Portal RTX not handling VK_OPERATION_NOT_DEFERRED_KHR correctly. */
    if (deferredOperation != VK_NULL_HANDLE)

@@ -867,7 +867,9 @@ radv_rmv_log_compute_pipeline_create(struct radv_device *device, VkPipelineCreat
 
    VkPipeline _pipeline = radv_pipeline_to_handle(pipeline);
 
-   VkShaderStageFlagBits active_stages = VK_SHADER_STAGE_COMPUTE_BIT;
+   VkShaderStageFlagBits active_stages = pipeline->type == RADV_PIPELINE_COMPUTE
+                                            ? VK_SHADER_STAGE_COMPUTE_BIT
+                                            : VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 
    simple_mtx_lock(&device->vk.memory_trace_data.token_mtx);
    struct vk_rmv_resource_create_token create_token = {0};
@@ -881,7 +883,7 @@ radv_rmv_log_compute_pipeline_create(struct radv_device *device, VkPipelineCreat
 
    vk_rmv_emit_token(&device->vk.memory_trace_data, VK_RMV_TOKEN_TYPE_RESOURCE_CREATE,
                      &create_token);
-   struct radv_shader *shader = pipeline->shaders[MESA_SHADER_COMPUTE];
+   struct radv_shader *shader = pipeline->shaders[vk_to_mesa_shader_stage(active_stages)];
    log_resource_bind_locked(device, (uint64_t)_pipeline, shader->bo, shader->alloc->offset,
                             shader->alloc->size);
    simple_mtx_unlock(&device->vk.memory_trace_data.token_mtx);
