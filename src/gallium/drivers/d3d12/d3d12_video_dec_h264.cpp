@@ -136,44 +136,67 @@ d3d12_video_decoder_prepare_dxva_slices_control_h264(struct d3d12_video_decoder 
                                                      std::vector<uint8_t> &vecOutSliceControlBuffers,
                                                      struct pipe_h264_picture_desc *picture_h264)
 {
-   debug_printf("[d3d12_video_decoder_h264] Upper layer reported %d slices for this frame, parsing them below...\n",
-                  picture_h264->slice_count);
-
    uint64_t TotalSlicesDXVAArrayByteSize = picture_h264->slice_count * sizeof(DXVA_Slice_H264_Short);
    vecOutSliceControlBuffers.resize(TotalSlicesDXVAArrayByteSize);
    uint8_t* pData = vecOutSliceControlBuffers.data();
-   size_t processedBitstreamBytes = 0u;
-   uint32_t sliceIdx = 0;
-   bool sliceFound = false;
-   do {
-      DXVA_Slice_H264_Short currentSliceEntry = {};
-      // From DXVA spec: All bits for the slice are located within the corresponding bitstream data buffer.
-      currentSliceEntry.wBadSliceChopping = 0u;
-      sliceFound = d3d12_video_decoder_get_next_slice_size_and_offset_h264(pD3D12Dec->m_stagingDecodeBitstream,
-                                                                           processedBitstreamBytes,
-                                                                           currentSliceEntry.SliceBytesInBuffer,
-                                                                           currentSliceEntry.BSNALunitDataLocation);
+   assert(picture_h264->slice_parameter.slice_info_present);
+   debug_printf("[d3d12_video_decoder_h264] Upper layer reported %d slices for this frame...\n",
+                  picture_h264->slice_count);
 
-      if (sliceFound) {
-         d3d12_video_decoder_nal_unit_type_h264 naluType = (d3d12_video_decoder_nal_unit_type_h264)(
-            pD3D12Dec->m_stagingDecodeBitstream[currentSliceEntry.BSNALunitDataLocation +
-                                                (DXVA_H264_START_CODE_LEN_BITS / 8)] &
-            0x1F);
-         debug_printf("[d3d12_video_decoder_h264] Detected slice (NALU Type %d) index %" PRIu32 " with size %d and offset %d "
-                        "for frame with "
-                        "fenceValue: %d\n",
-                        naluType,
-                        sliceIdx,
-                        currentSliceEntry.SliceBytesInBuffer,
-                        currentSliceEntry.BSNALunitDataLocation,
-                        pD3D12Dec->m_fenceValue);
+   static const uint32_t start_code_size = 3;
+   uint32_t acum_slice_offset = (picture_h264->slice_count > 0) ? picture_h264->slice_parameter.slice_data_offset[0] : 0;
+   for (uint32_t sliceIdx = 0; sliceIdx < picture_h264->slice_count; sliceIdx++)
+   {
+      DXVA_Slice_H264_Short* currentSliceEntry = (DXVA_Slice_H264_Short*) pData;
+      // From H264 DXVA Spec
+      // wBadSliceChopping
+      // 0	All bits for the slice are located within the corresponding bitstream data buffer.
+      // 1	The bitstream data buffer contains the start of the slice, but not the entire slice, because the buffer is full.
+      // 2	The bitstream data buffer contains the end of the slice. It does not contain the start of the slice, because the start of the slice was located in the previous bitstream data buffer.
+      // 3	The bitstream data buffer does not contain the start of the slice (because the start of the slice was located in the previous bitstream data buffer),
+      //     and it does not contain the end of the slice (because the current bitstream data buffer is also full).
 
-         sliceIdx++;
-         processedBitstreamBytes += currentSliceEntry.SliceBytesInBuffer;
-         memcpy(pData, &currentSliceEntry, sizeof(DXVA_Slice_H264_Short));
-         pData += sizeof(DXVA_Slice_H264_Short);
+      switch (picture_h264->slice_parameter.slice_data_flag[sliceIdx]) {
+         /* whole slice is in the buffer */
+         case PIPE_SLICE_BUFFER_PLACEMENT_TYPE_WHOLE:
+            currentSliceEntry->wBadSliceChopping = 0u;
+            break;
+         /* The beginning of the slice is in the buffer but the end is not */
+         case PIPE_SLICE_BUFFER_PLACEMENT_TYPE_BEGIN:
+            currentSliceEntry->wBadSliceChopping = 1u;
+            break;
+         /* Neither beginning nor end of the slice is in the buffer */
+         case PIPE_SLICE_BUFFER_PLACEMENT_TYPE_MIDDLE:
+            currentSliceEntry->wBadSliceChopping = 3u;
+            break;
+         /* end of the slice is in the buffer */
+         case PIPE_SLICE_BUFFER_PLACEMENT_TYPE_END:
+            currentSliceEntry->wBadSliceChopping = 2u;
+            break;
+         default:
+         {
+            unreachable("Unsupported pipe_slice_buffer_placement_type");
+         } break;
       }
-   } while (sliceFound && (sliceIdx < picture_h264->slice_count));
+
+      /* slice_data_size from pipe/va does not include the NAL unit size, DXVA requires it */
+      currentSliceEntry->SliceBytesInBuffer = picture_h264->slice_parameter.slice_data_size[sliceIdx] + start_code_size;
+
+      /* slice_data_offset from pipe/va are relative to the current slice, and in DXVA they are absolute within the frame source buffer */
+      currentSliceEntry->BSNALunitDataLocation = acum_slice_offset;
+      acum_slice_offset += (currentSliceEntry->SliceBytesInBuffer + picture_h264->slice_parameter.slice_data_offset[sliceIdx]);
+
+      debug_printf("[d3d12_video_decoder_h264] Reported slice index %" PRIu32 " with SliceBytesInBuffer %d - BSNALunitDataLocation %d - wBadSliceChopping: %" PRIu16
+                  " for frame with "
+                  "fenceValue: %d\n",
+                  sliceIdx,
+                  currentSliceEntry->SliceBytesInBuffer,
+                  currentSliceEntry->BSNALunitDataLocation,
+                  currentSliceEntry->wBadSliceChopping,
+                  pD3D12Dec->m_fenceValue);
+
+      pData += sizeof(DXVA_Slice_H264_Short);
+   }
    assert(vecOutSliceControlBuffers.size() == TotalSlicesDXVAArrayByteSize);
 }
 
