@@ -1693,7 +1693,7 @@ LLVMValueRef ac_build_umsb(struct ac_llvm_context *ctx, LLVMValueRef arg, LLVMTy
       zero = ctx->i8_0;
       break;
    default:
-      unreachable(!"invalid bitsize");
+      unreachable("invalid bitsize");
       break;
    }
 
@@ -2483,7 +2483,7 @@ LLVMValueRef ac_build_bit_count(struct ac_llvm_context *ctx, LLVMValueRef src0)
       result = LLVMBuildZExt(ctx->builder, result, ctx->i32, "");
       break;
    default:
-      unreachable(!"invalid bitsize");
+      unreachable("invalid bitsize");
       break;
    }
 
@@ -2514,7 +2514,7 @@ LLVMValueRef ac_build_bitfield_reverse(struct ac_llvm_context *ctx, LLVMValueRef
       result = LLVMBuildZExt(ctx->builder, result, ctx->i32, "");
       break;
    default:
-      unreachable(!"invalid bitsize");
+      unreachable("invalid bitsize");
       break;
    }
 
@@ -2595,7 +2595,7 @@ LLVMValueRef ac_find_lsb(struct ac_llvm_context *ctx, LLVMTypeRef dst_type, LLVM
       zero = ctx->i8_0;
       break;
    default:
-      unreachable(!"invalid bitsize");
+      unreachable("invalid bitsize");
    }
 
    LLVMValueRef params[2] = {
