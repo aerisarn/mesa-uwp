@@ -2074,6 +2074,7 @@ st_TexSubImage(struct gl_context *ctx, GLuint dims,
    GLubyte *map;
    unsigned dstz = texImage->Face + texImage->TexObject->Attrib.MinLayer;
    unsigned dst_level = 0;
+   bool is_ms = dst->nr_samples > 1;
    bool throttled = false;
 
    st_flush_bitmap_cache(st);
@@ -2092,6 +2093,7 @@ st_TexSubImage(struct gl_context *ctx, GLuint dims,
    /* Try texture_subdata, which should be the fastest memcpy path. */
    if (pixels &&
        !unpack->BufferObj &&
+       !is_ms &&
        _mesa_texstore_can_use_memcpy(ctx, texImage->_BaseFormat,
                                      texImage->TexFormat, format, type,
                                      unpack)) {
@@ -2171,7 +2173,7 @@ st_TexSubImage(struct gl_context *ctx, GLuint dims,
     * in which case the memcpy-based fast path will likely be used and
     * we don't have to blit. */
    if (_mesa_format_matches_format_and_type(texImage->TexFormat, format,
-                                            type, unpack->SwapBytes, NULL)) {
+                                            type, unpack->SwapBytes, NULL) && !is_ms) {
       goto fallback;
    }
 
@@ -2189,7 +2191,7 @@ st_TexSubImage(struct gl_context *ctx, GLuint dims,
     * etc. */
    if (!_mesa_texstore_can_use_memcpy(ctx,
                              _mesa_get_format_base_format(mesa_src_format),
-                             mesa_src_format, format, type, unpack)) {
+                             mesa_src_format, format, type, unpack) && !is_ms) {
       goto fallback;
    }
 
