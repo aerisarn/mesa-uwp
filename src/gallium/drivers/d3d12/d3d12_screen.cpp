@@ -1474,12 +1474,7 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
       debug_printf("D3D12: failed to get device options\n");
       return false;
    }
-   if (FAILED(screen->dev->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS14,
-                                               &screen->opts14,
-                                               sizeof(screen->opts14)))) {
-      debug_printf("D3D12: failed to get device options\n");
-      return false;
-   }
+   screen->dev->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS14, &screen->opts14, sizeof(screen->opts14));
    screen->dev->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS19, &screen->opts19, sizeof(screen->opts19));
 
    screen->architecture.NodeIndex = 0;
