@@ -845,7 +845,7 @@ struct radv_queue {
    struct radeon_winsys_ctx *hw_ctx;
    enum radeon_ctx_priority priority;
    struct radv_queue_state state;
-   struct radv_queue_state *ace_internal_state;
+   struct radv_queue_state *follower_state;
    struct radeon_winsys_bo *gang_sem_bo;
 
    uint64_t last_shader_upload_seq;
@@ -1806,29 +1806,35 @@ struct radv_cmd_buffer {
    uint64_t mec_inv_pred_va;  /* For inverted predication when using MEC. */
    bool mec_inv_pred_emitted; /* To ensure we don't have to repeat inverting the VA. */
 
+   /**
+    * Gang state.
+    * Used when the command buffer needs work done on a different queue
+    * (eg. when a graphics command buffer needs compute work).
+    * Currently only one follower is possible per command buffer.
+    */
    struct {
-      /**
-       * Internal command stream that is used when some graphics work
-       * also requires a submission to the compute queue.
-       */
+      /** Follower command stream. */
       struct radeon_cmdbuf *cs;
 
-      /** Flush bits for the internal cmdbuf. */
+      /** Flush bits for the follower cmdbuf. */
       enum radv_cmd_flush_bits flush_bits;
 
       /**
-       * For synchronization between the ACE and GFX cmdbuf.
-       * The value of this semaphore is incremented whenever we
-       * encounter a barrier that affects ACE. At sync points,
-       * GFX writes the value to its address, and ACE waits until
-       * it detects that the value has been written.
+       * For synchronization between the follower and leader.
+       * The value of these semaphores are incremented whenever we
+       * encounter a barrier that affects the follower.
+       *
+       * DWORD 0: Leader to follower semaphore.
+       *          The leader writes the value and the follower waits.
+       * DWORD 1: Follower to leader semaphore.
+       *          The follower writes the value, and the leader waits.
        */
       struct {
          uint64_t va;                    /* Virtual address of the semaphore. */
-         uint32_t gfx2ace_value;         /* Current value on GFX. */
-         uint32_t emitted_gfx2ace_value; /* Emitted value on GFX. */
+         uint32_t leader_value;          /* Current value of the leader. */
+         uint32_t emitted_leader_value;  /* Emitted value emitted by the leader. */
       } sem;
-   } ace_internal;
+   } gang;
 
    /**
     * Whether a query pool has been reset and we have to flush caches.

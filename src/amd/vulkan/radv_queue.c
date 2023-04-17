@@ -54,9 +54,9 @@ radv_get_queue_global_priority(const VkDeviceQueueGlobalPriorityCreateInfoKHR *p
 }
 
 static bool
-radv_cmd_buffer_needs_ace(const struct radv_cmd_buffer *cmd_buffer)
+radv_cmd_buffer_has_follower(const struct radv_cmd_buffer *cmd_buffer)
 {
-   return cmd_buffer->ace_internal.cs && cmd_buffer->task_rings_needed;
+   return cmd_buffer->gang.cs && cmd_buffer->task_rings_needed;
 }
 
 static VkResult
@@ -1232,7 +1232,7 @@ fail:
 static VkResult
 radv_update_preambles(struct radv_queue_state *queue, struct radv_device *device,
                       struct vk_command_buffer *const *cmd_buffers, uint32_t cmd_buffer_count,
-                      bool *use_perf_counters, bool *use_ace)
+                      bool *use_perf_counters, bool *has_follower)
 {
    if (queue->qf != RADV_QUEUE_GENERAL && queue->qf != RADV_QUEUE_COMPUTE)
       return VK_SUCCESS;
@@ -1245,7 +1245,7 @@ radv_update_preambles(struct radv_queue_state *queue, struct radv_device *device
     */
    struct radv_queue_ring_info needs = queue->ring_info;
    *use_perf_counters = false;
-   *use_ace = false;
+   *has_follower = false;
 
    for (uint32_t j = 0; j < cmd_buffer_count; j++) {
       struct radv_cmd_buffer *cmd_buffer = container_of(cmd_buffers[j], struct radv_cmd_buffer, vk);
@@ -1266,7 +1266,7 @@ radv_update_preambles(struct radv_queue_state *queue, struct radv_device *device
       needs.gds_oa |= cmd_buffer->gds_oa_needed;
       needs.sample_positions |= cmd_buffer->sample_positions_needed;
       *use_perf_counters |= cmd_buffer->state.uses_perf_counters;
-      *use_ace |= !!cmd_buffer->ace_internal.cs;
+      *has_follower |= !!cmd_buffer->gang.cs;
    }
 
    /* Sanitize scratch size information. */
@@ -1405,8 +1405,8 @@ radv_create_gang_wait_preambles_postambles(struct radv_queue *queue)
    queue->gang_sem_bo = gang_sem_bo;
    queue->state.gang_wait_preamble_cs = leader_pre_cs;
    queue->state.gang_wait_postamble_cs = leader_post_cs;
-   queue->ace_internal_state->gang_wait_preamble_cs = ace_pre_cs;
-   queue->ace_internal_state->gang_wait_postamble_cs = ace_post_cs;
+   queue->follower_state->gang_wait_preamble_cs = ace_pre_cs;
+   queue->follower_state->gang_wait_postamble_cs = ace_post_cs;
 
    return VK_SUCCESS;
 
@@ -1426,23 +1426,23 @@ fail:
 }
 
 static bool
-radv_queue_init_ace_internal_state(struct radv_queue *queue)
+radv_queue_init_follower_state(struct radv_queue *queue)
 {
-   if (queue->ace_internal_state)
+   if (queue->follower_state)
       return true;
 
-   queue->ace_internal_state = calloc(1, sizeof(struct radv_queue_state));
-   if (!queue->ace_internal_state)
+   queue->follower_state = calloc(1, sizeof(struct radv_queue_state));
+   if (!queue->follower_state)
       return false;
 
-   queue->ace_internal_state->qf = RADV_QUEUE_COMPUTE;
+   queue->follower_state->qf = RADV_QUEUE_COMPUTE;
    return true;
 }
 
 static VkResult
 radv_update_gang_preambles(struct radv_queue *queue)
 {
-   if (!radv_queue_init_ace_internal_state(queue))
+   if (!radv_queue_init_follower_state(queue))
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    VkResult r = VK_SUCCESS;
@@ -1451,19 +1451,19 @@ radv_update_gang_preambles(struct radv_queue *queue)
     * Task shaders that are submitted on the ACE queue need to share
     * their ring buffers with the mesh shaders on the GFX queue.
     */
-   queue->ace_internal_state->ring_info.task_rings = queue->state.ring_info.task_rings;
-   queue->ace_internal_state->task_rings_bo = queue->state.task_rings_bo;
+   queue->follower_state->ring_info.task_rings = queue->state.ring_info.task_rings;
+   queue->follower_state->task_rings_bo = queue->state.task_rings_bo;
 
    /* Copy some needed states from the parent queue state.
     * These can only increase so it's okay to copy them as-is without checking.
     * Note, task shaders use the scratch size from their graphics pipeline.
     */
-   struct radv_queue_ring_info needs = queue->ace_internal_state->ring_info;
+   struct radv_queue_ring_info needs = queue->follower_state->ring_info;
    needs.compute_scratch_size_per_wave = queue->state.ring_info.scratch_size_per_wave;
    needs.compute_scratch_waves = queue->state.ring_info.scratch_waves;
    needs.task_rings = queue->state.ring_info.task_rings;
 
-   r = radv_update_preamble_cs(queue->ace_internal_state, queue->device, &needs);
+   r = radv_update_preamble_cs(queue->follower_state, queue->device, &needs);
    if (r != VK_SUCCESS)
       return r;
 
@@ -1665,18 +1665,18 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
 
    if (use_ace) {
       initial_preambles[num_initial_preambles++] = queue->state.gang_wait_preamble_cs;
-      initial_preambles[num_initial_preambles++] = queue->ace_internal_state->gang_wait_preamble_cs;
+      initial_preambles[num_initial_preambles++] = queue->follower_state->gang_wait_preamble_cs;
       initial_preambles[num_initial_preambles++] =
-         need_wait ? queue->ace_internal_state->initial_full_flush_preamble_cs
-                   : queue->ace_internal_state->initial_preamble_cs;
+         need_wait ? queue->follower_state->initial_full_flush_preamble_cs
+                   : queue->follower_state->initial_preamble_cs;
 
       continue_preambles[num_continue_preambles++] = queue->state.gang_wait_preamble_cs;
       continue_preambles[num_continue_preambles++] =
-         queue->ace_internal_state->gang_wait_preamble_cs;
+         queue->follower_state->gang_wait_preamble_cs;
       continue_preambles[num_continue_preambles++] =
-         queue->ace_internal_state->continue_preamble_cs;
+         queue->follower_state->continue_preamble_cs;
 
-      postambles[num_postambles++] = queue->ace_internal_state->gang_wait_postamble_cs;
+      postambles[num_postambles++] = queue->follower_state->gang_wait_postamble_cs;
       postambles[num_postambles++] = queue->state.gang_wait_postamble_cs;
    }
 
@@ -1715,14 +1715,14 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
          const bool can_chain_next =
             !(cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
 
-         /* ACE needs to be first because the last CS must match the queue's IP type. */
-         if (radv_cmd_buffer_needs_ace(cmd_buffer)) {
-            queue->device->ws->cs_unchain(cmd_buffer->ace_internal.cs);
+         /* Follower needs to be first because the last CS must match the queue's IP type. */
+         if (radv_cmd_buffer_has_follower(cmd_buffer)) {
+            queue->device->ws->cs_unchain(cmd_buffer->gang.cs);
             if (!chainable_ace ||
-                !queue->device->ws->cs_chain(chainable_ace, cmd_buffer->ace_internal.cs, false))
-               cs_array[num_submitted_cs++] = cmd_buffer->ace_internal.cs;
+                !queue->device->ws->cs_chain(chainable_ace, cmd_buffer->gang.cs, false))
+               cs_array[num_submitted_cs++] = cmd_buffer->gang.cs;
 
-            chainable_ace = can_chain_next ? cmd_buffer->ace_internal.cs : NULL;
+            chainable_ace = can_chain_next ? cmd_buffer->gang.cs : NULL;
             submit_ace = true;
          }
 
@@ -1757,7 +1757,7 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       }
 
       initial_preambles[0] = queue->state.initial_preamble_cs;
-      initial_preambles[1] = !use_ace ? NULL : queue->ace_internal_state->initial_preamble_cs;
+      initial_preambles[1] = !use_ace ? NULL : queue->follower_state->initial_preamble_cs;
    }
 
    queue->last_shader_upload_seq =
@@ -1920,13 +1920,13 @@ radv_queue_state_finish(struct radv_queue_state *queue, struct radv_device *devi
 void
 radv_queue_finish(struct radv_queue *queue)
 {
-   if (queue->ace_internal_state) {
+   if (queue->follower_state) {
       /* Prevent double free */
-      queue->ace_internal_state->task_rings_bo = NULL;
+      queue->follower_state->task_rings_bo = NULL;
 
       /* Clean up the internal ACE queue state. */
-      radv_queue_state_finish(queue->ace_internal_state, queue->device);
-      free(queue->ace_internal_state);
+      radv_queue_state_finish(queue->follower_state, queue->device);
+      free(queue->follower_state);
    }
 
    if (queue->gang_sem_bo)
