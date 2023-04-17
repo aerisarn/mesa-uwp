@@ -617,8 +617,6 @@ radv_check_status(struct vk_device *vk_device)
             return vk_device_set_lost(&device->vk, "GPU hung detected in this process");
 	 if (status == RADV_INNOCENT_CONTEXT_RESET)
             return vk_device_set_lost(&device->vk, "GPU hung triggered by other process");
-	 if (status == RADV_UNKNOWN_CONTEXT_RESET)
-            return vk_device_set_lost(&device->vk, "GPU hung triggered by unknown source");
       }
    }
 

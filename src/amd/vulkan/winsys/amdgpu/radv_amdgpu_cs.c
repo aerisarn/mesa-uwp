@@ -1324,41 +1324,21 @@ radv_amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx)
 {
    int ret;
    struct radv_amdgpu_ctx *ctx = (struct radv_amdgpu_ctx *)rwctx;
+   uint64_t flags;
 
-   if (ctx->ws->info.drm_minor >= 24) {
-      uint64_t flags;
-      ret = amdgpu_cs_query_reset_state2(ctx->ctx, &flags);
+   ret = amdgpu_cs_query_reset_state2(ctx->ctx, &flags);
+   if (ret) {
+      fprintf(stderr, "radv/amdgpu: amdgpu_cs_query_reset_state2 failed. (%i)\n", ret);
+      return RADV_NO_RESET;
+   }
 
-      if (ret) {
-         fprintf(stderr, "radv/amdgpu: amdgpu_cs_query_reset_state2 failed. (%i)\n", ret);
-	 return RADV_NO_RESET;
-      }
-
-      if (flags & AMDGPU_CTX_QUERY2_FLAGS_RESET) {
-         if (flags & AMDGPU_CTX_QUERY2_FLAGS_GUILTY) {
-            /* Some job from this context once caused a GPU hang */
-            return RADV_GUILTY_CONTEXT_RESET;
-         } else {
-            /* Some job from other context caused a GPU hang */
-            return RADV_INNOCENT_CONTEXT_RESET;
-         }
-      }
-   } else {
-      uint32_t result, hangs;
-
-      ret = amdgpu_cs_query_reset_state(ctx->ctx, &result, &hangs);
-      if (ret) {
-         fprintf(stderr, "radv/amdgpu: amdgpu_cs_query_reset_state failed. (%i)\n", ret);
-         return RADV_NO_RESET;
-      }
-
-      switch (result) {
-      case AMDGPU_CTX_GUILTY_RESET:
+   if (flags & AMDGPU_CTX_QUERY2_FLAGS_RESET) {
+      if (flags & AMDGPU_CTX_QUERY2_FLAGS_GUILTY) {
+         /* Some job from this context once caused a GPU hang */
          return RADV_GUILTY_CONTEXT_RESET;
-      case AMDGPU_CTX_INNOCENT_RESET:
+      } else {
+         /* Some job from other context caused a GPU hang */
          return RADV_INNOCENT_CONTEXT_RESET;
-      case AMDGPU_CTX_UNKNOWN_RESET:
-         return RADV_UNKNOWN_CONTEXT_RESET;
       }
    }
 

@@ -106,7 +106,6 @@ enum radv_reset_status {
    RADV_NO_RESET,
    RADV_GUILTY_CONTEXT_RESET,
    RADV_INNOCENT_CONTEXT_RESET,
-   RADV_UNKNOWN_CONTEXT_RESET,
 };
 
 struct radeon_cmdbuf {
