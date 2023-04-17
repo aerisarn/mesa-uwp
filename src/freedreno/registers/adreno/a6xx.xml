@@ -3684,7 +3684,7 @@ to upconvert to 32b float internally?
 		<bitfield name="LOCALIDREGID" low="24" high="31" type="a3xx_regid"/>
 	</reg32>
 	<!-- new in a6xx gen4, matches HLSQ_CS_CNTL_1 -->
-	<reg32 offset="0xa9c3" name="SP_CS_CNTL_1" usage="cmd">
+	<reg32 offset="0xa9c3" name="SP_CS_CNTL_1" variants="A6XX" usage="cmd">
 		<!-- gl_LocalInvocationIndex -->
 		<bitfield name="LINEARLOCALIDREGID" low="0" high="7" type="a3xx_regid"/>
 		<!-- a650 has 6 "SP cores" (but 3 "SP"). this makes it use only
@@ -3694,11 +3694,20 @@ to upconvert to 32b float internally?
 		<bitfield name="THREADSIZE" pos="9" type="a6xx_threadsize"/>
 		<!-- 1 thread per wave (ignored if bit9 set) -->
 		<bitfield name="THREADSIZE_SCALAR" pos="10" type="boolean"/>
+	</reg32>
+
+	<reg32 offset="0xa9c3" name="SP_CS_CNTL_1" variants="A7XX-" usage="cmd">
+		<!-- gl_LocalInvocationIndex -->
+		<bitfield name="LINEARLOCALIDREGID" low="0" high="7" type="a3xx_regid"/>
+		<!-- Must match SP_CS_CTRL -->
+		<bitfield name="THREADSIZE" pos="8" type="a6xx_threadsize"/>
+		<!-- 1 thread per wave (would hang if THREAD128 is also set) -->
+		<bitfield name="THREADSIZE_SCALAR" pos="9" type="boolean"/>
 
 		<!-- Affects getone. If enabled, getone sometimes executed 1? less times
 		     than there are subgroups.
 		 -->
-		<bitfield name="UNK15" pos="15" type="boolean" variants="A7XX"/>
+		<bitfield name="UNK15" pos="15" type="boolean"/>
 	</reg32>
 
 	<!-- TODO: two 64kb aligned addresses at a9d0/a9d2 -->
@@ -4146,13 +4155,22 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xa9dd" name="HLSQ_CS_KERNEL_GROUP_Y" variants="A7XX-" usage="rp_blit"/>
 	<reg32 offset="0xa9de" name="HLSQ_CS_KERNEL_GROUP_Z" variants="A7XX-" usage="rp_blit"/>
 
-	<reg32 offset="0xa9db" name="HLSQ_CS_UNKNOWN_A9DB" variants="A7XX-" usage="rp_blit">
+	<enum name="a7xx_cs_yalign">
+		<value name="CS_YALIGN_1" value="8"/>
+		<value name="CS_YALIGN_2" value="4"/>
+		<value name="CS_YALIGN_4" value="2"/>
+		<value name="CS_YALIGN_8" value="1"/>
+	</enum>
+
+	<reg32 offset="0xa9db" name="HLSQ_CS_CNTL_1" variants="A7XX-" usage="rp_blit">
+		<!-- gl_LocalInvocationIndex -->
 		<bitfield name="LINEARLOCALIDREGID" low="0" high="7" type="a3xx_regid"/>
+		<!-- Must match SP_CS_CTRL -->
 		<bitfield name="THREADSIZE" pos="9" type="a6xx_threadsize"/>
 		<bitfield name="UNK11" pos="11" type="boolean"/>
 		<bitfield name="UNK22" pos="22" type="boolean"/>
-		<bitfield name="UNK27" low="27" high="30" type="uint" variants="A7XX"/>
-		<!-- TODO: other bits -->
+		<bitfield name="UNK26" pos="26" type="boolean"/>
+		<bitfield name="YALIGN" low="27" high="30" type="a7xx_cs_yalign"/>
 	</reg32>
 
 	<reg32 offset="0xa9df" name="HLSQ_CS_LOCAL_SIZE" variants="A7XX-" usage="cmd">
