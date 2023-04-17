@@ -1172,6 +1172,9 @@ d3d12_screen_get_video_param_encode(struct pipe_screen *pscreen,
          return true;
       case PIPE_VIDEO_CAP_ENC_SUPPORTS_MAX_FRAME_SIZE:
          return true;
+      case PIPE_VIDEO_CAP_ENC_QUALITY_LEVEL:
+         /* VAEncMiscParameterBufferQualityLevel */
+         return 1;
       case PIPE_VIDEO_CAP_ENC_RATE_CONTROL_QVBR:
       {
          D3D12_FEATURE_DATA_VIDEO_ENCODER_RATE_CONTROL_MODE capRateControlModeData =
