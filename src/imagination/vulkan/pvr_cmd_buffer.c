@@ -5736,7 +5736,7 @@ static void pvr_emit_dirty_vdm_state(struct pvr_cmd_buffer *const cmd_buffer,
             break;
 
          default:
-            unreachable(!"Invalid index type");
+            unreachable("Invalid index type");
          }
       }
    }
