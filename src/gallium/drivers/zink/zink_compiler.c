@@ -805,8 +805,8 @@ struct lower_line_smooth_state {
    nir_variable *line_coord_out;
    nir_variable *prev_pos;
    nir_variable *pos_counter;
-   nir_variable *prev_varyings[VARYING_SLOT_MAX],
-                *varyings[VARYING_SLOT_MAX];
+   nir_variable *prev_varyings[VARYING_SLOT_MAX][4],
+                *varyings[VARYING_SLOT_MAX][4]; // location_frac
 };
 
 static bool
@@ -821,10 +821,11 @@ lower_line_smooth_gs_store(nir_builder *b,
 
       // we take care of position elsewhere
       gl_varying_slot location = var->data.location;
+      unsigned location_frac = var->data.location_frac;
       if (location != VARYING_SLOT_POS) {
          assert(state->varyings[location]);
          assert(intrin->src[1].is_ssa);
-         nir_store_var(b, state->varyings[location],
+         nir_store_var(b, state->varyings[location][location_frac],
                        intrin->src[1].ssa,
                        nir_intrinsic_write_mask(intrin));
          nir_instr_remove(&intrin->instr);
@@ -902,8 +903,9 @@ lower_line_smooth_gs_emit_vertex(nir_builder *b,
    for (int i = 0; i < 4; ++i) {
       nir_foreach_variable_with_modes(var, b->shader, nir_var_shader_out) {
          gl_varying_slot location = var->data.location;
-         if (state->prev_varyings[location])
-            nir_copy_var(b, var, state->prev_varyings[location]);
+         unsigned location_frac = var->data.location_frac;
+         if (state->prev_varyings[location][location_frac])
+            nir_copy_var(b, var, state->prev_varyings[location][location_frac]);
       }
       nir_store_var(b, state->pos_out,
                     nir_fadd(b, prev, nir_fmul(b, line_offets[i],
@@ -916,8 +918,9 @@ lower_line_smooth_gs_emit_vertex(nir_builder *b,
    for (int i = 4; i < 8; ++i) {
       nir_foreach_variable_with_modes(var, b->shader, nir_var_shader_out) {
          gl_varying_slot location = var->data.location;
-         if (state->varyings[location])
-            nir_copy_var(b, var, state->varyings[location]);
+         unsigned location_frac = var->data.location_frac;
+         if (state->varyings[location][location_frac])
+            nir_copy_var(b, var, state->varyings[location][location_frac]);
       }
       nir_store_var(b, state->pos_out,
                     nir_fadd(b, curr, nir_fmul(b, line_offets[i],
@@ -932,8 +935,9 @@ lower_line_smooth_gs_emit_vertex(nir_builder *b,
    nir_copy_var(b, state->prev_pos, state->pos_out);
    nir_foreach_variable_with_modes(var, b->shader, nir_var_shader_out) {
       gl_varying_slot location = var->data.location;
-      if (state->varyings[location])
-         nir_copy_var(b, state->prev_varyings[location], state->varyings[location]);
+      unsigned location_frac = var->data.location_frac;
+      if (state->varyings[location][location_frac])
+         nir_copy_var(b, state->prev_varyings[location][location_frac], state->varyings[location][location_frac]);
    }
 
    // update prev_pos and pos_counter for next vertex
@@ -995,17 +999,18 @@ lower_line_smooth_gs(nir_shader *shader)
    memset(state.prev_varyings, 0, sizeof(state.prev_varyings));
    nir_foreach_variable_with_modes(var, shader, nir_var_shader_out) {
       gl_varying_slot location = var->data.location;
+      unsigned location_frac = var->data.location_frac;
       if (location == VARYING_SLOT_POS)
          continue;
 
       char name[100];
-      snprintf(name, sizeof(name), "__tmp_%d", location);
-      state.varyings[location] =
+      snprintf(name, sizeof(name), "__tmp_%d_%d", location, location_frac);
+      state.varyings[location][location_frac] =
          nir_variable_create(shader, nir_var_shader_temp,
                               var->type, name);
 
-      snprintf(name, sizeof(name), "__tmp_prev_%d", location);
-      state.prev_varyings[location] =
+      snprintf(name, sizeof(name), "__tmp_prev_%d_%d", location, location_frac);
+      state.prev_varyings[location][location_frac] =
          nir_variable_create(shader, nir_var_shader_temp,
                               var->type, name);
    }
