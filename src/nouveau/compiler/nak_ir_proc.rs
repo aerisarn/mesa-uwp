@@ -10,8 +10,7 @@ extern crate quote;
 extern crate syn;
 
 use proc_macro::TokenStream;
-use proc_macro2::{Span, TokenStream as TokenStream2, TokenTree};
-use quote::ToTokens;
+use proc_macro2::{Span, TokenStream as TokenStream2};
 use syn::*;
 
 fn count_type(ty: &Type, search_type: &str) -> TokenStream2 {
@@ -198,36 +197,25 @@ pub fn enum_derive_display(input: TokenStream) -> TokenStream {
     }
 }
 
-#[proc_macro_derive(FromOps)]
-pub fn derive_from_ops(input: TokenStream) -> TokenStream {
-    let DeriveInput { data, .. } = parse_macro_input!(input);
+#[proc_macro_derive(FromVariants)]
+pub fn derive_from_variants(input: TokenStream) -> TokenStream {
+    let DeriveInput { ident, data, .. } = parse_macro_input!(input);
+    let enum_type = ident;
 
     let mut impls = TokenStream2::new();
 
     if let Data::Enum(e) = data {
         for v in e.variants {
-            let (old_token, new_token) = match v.fields {
-                Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
-                    let mut tt: Vec<_> =
-                        unnamed.to_token_stream().into_iter().collect();
-
-                    let old_ident = match tt.pop() {
-                        Some(TokenTree::Ident(ident)) => ident,
-                        _ => panic!("Expected Op(OpFoo)"),
-                    };
-                    let new_ident = Ident::new(
-                        &old_ident.to_string().replace("Op", ""),
-                        old_ident.span(),
-                    );
-                    (old_ident, new_ident)
-                }
+            let var_ident = v.ident;
+            let from_type = match v.fields {
+                Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => unnamed,
                 _ => panic!("Expected Op(OpFoo)"),
             };
 
             let quote = quote! {
-                impl From<#old_token> for crate::nak_ir::Op {
-                    fn from (op: #old_token) -> crate::nak_ir::Op {
-                        crate::nak_ir::Op::#new_token(op)
+                impl From<#from_type> for #enum_type {
+                    fn from (op: #from_type) -> #enum_type {
+                        #enum_type::#var_ident(op)
                     }
                 }
             };
