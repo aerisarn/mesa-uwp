@@ -492,6 +492,10 @@ radv_rmv_log_heap_create(struct radv_device *device, VkDeviceMemory heap, bool i
 
    RADV_FROM_HANDLE(radv_device_memory, memory, heap);
 
+   /* Do not log zero-sized device memory objects. */
+   if (!memory->alloc_size)
+      return;
+
    radv_rmv_log_bo_allocate(device, memory->bo, memory->alloc_size, false);
    simple_mtx_lock(&device->vk.memory_trace_data.token_mtx);
 
