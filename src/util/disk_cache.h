@@ -33,7 +33,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <sys/stat.h>
-#include "util/hex.h"
 #include "util/mesa-sha1.h"
 #include "util/detect_os.h"
 
@@ -79,12 +78,6 @@ struct cache_item_metadata {
 };
 
 struct disk_cache;
-
-static inline char *
-disk_cache_format_hex_id(char *buf, const uint8_t *hex_id, unsigned size)
-{
-   return mesa_bytes_to_hex(buf, hex_id, size / 2);
-}
 
 #ifdef HAVE_DLADDR
 static inline bool

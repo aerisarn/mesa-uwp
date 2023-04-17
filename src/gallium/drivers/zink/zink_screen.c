@@ -46,6 +46,7 @@
 #include "util/u_string.h"
 #include "util/perf/u_trace.h"
 #include "util/u_transfer_helper.h"
+#include "util/hex.h"
 #include "util/xmlconfig.h"
 
 #include "util/u_cpu_detect.h"
@@ -284,7 +285,7 @@ disk_cache_init(struct zink_screen *screen)
    _mesa_sha1_final(&ctx, sha1);
 
    char cache_id[20 * 2 + 1];
-   disk_cache_format_hex_id(cache_id, sha1, 20 * 2);
+   mesa_bytes_to_hex(cache_id, sha1, 20);
 
    screen->disk_cache = disk_cache_create("zink", cache_id, 0);
 

@@ -16,6 +16,7 @@
 #include "git_sha1.h"
 #include "util/u_debug.h"
 #include "util/disk_cache.h"
+#include "util/hex.h"
 #include "util/driconf.h"
 #include "util/os_misc.h"
 #include "vk_shader_module.h"
@@ -388,7 +389,7 @@ tu_physical_device_init(struct tu_physical_device *device,
     * when creating the cache.
     */
    char buf[VK_UUID_SIZE * 2 + 1];
-   disk_cache_format_hex_id(buf, device->cache_uuid, VK_UUID_SIZE * 2);
+   mesa_bytes_to_hex(buf, device->cache_uuid, VK_UUID_SIZE);
    device->vk.disk_cache = disk_cache_create(device->name, buf, 0);
 
    device->vk.pipeline_cache_import_ops = cache_import_ops;

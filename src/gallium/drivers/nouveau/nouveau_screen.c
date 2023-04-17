@@ -7,6 +7,7 @@
 #include "util/format/u_format.h"
 #include "util/format/u_format_s3tc.h"
 #include "util/u_string.h"
+#include "util/hex.h"
 
 #include "util/os_mman.h"
 #include "util/os_time.h"
@@ -167,7 +168,7 @@ nouveau_disk_cache_create(struct nouveau_screen *screen)
       return;
 
    _mesa_sha1_final(&ctx, sha1);
-   disk_cache_format_hex_id(cache_id, sha1, 20 * 2);
+   mesa_bytes_to_hex(cache_id, sha1, 20);
 
    if (screen->prefer_nir)
       driver_flags |= NOUVEAU_SHADER_CACHE_FLAGS_IR_NIR;
