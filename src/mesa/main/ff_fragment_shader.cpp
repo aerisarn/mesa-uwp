@@ -155,7 +155,7 @@ need_saturate( GLuint mode )
  * has access to and filters input bitmask.
  */
 static GLbitfield filter_fp_input_mask( GLbitfield fp_inputs,
-		    struct gl_context *ctx )
+                                        struct gl_context *ctx )
 {
    if (ctx->VertexProgram._Overriden) {
       /* Somebody's messing with the vertex program and we don't have
@@ -286,7 +286,7 @@ static GLuint make_state_key( struct gl_context *ctx,  struct state_key *key )
       if (samp->Attrib.CompareMode == GL_COMPARE_R_TO_TEXTURE) {
          const GLenum format = _mesa_texture_base_format(texObj);
          key->unit[i].shadow = (format == GL_DEPTH_COMPONENT ||
-				format == GL_DEPTH_STENCIL_EXT);
+                                format == GL_DEPTH_STENCIL_EXT);
       }
 
       key->unit[i].ModeRGB = comb->ModeRGB;
@@ -344,9 +344,9 @@ public:
     * else undef.
     */
 
-   ir_rvalue *src_previous;	/**< Reg containing color from previous
-				 * stage.  May need to be decl'd.
-				 */
+   ir_rvalue *src_previous;     /**< Reg containing color from previous
+                                 * stage.  May need to be decl'd.
+                                 */
 };
 
 static ir_rvalue *
@@ -376,7 +376,7 @@ get_gl_Color(texenv_fragment_program *p)
 
 static ir_rvalue *
 get_source(texenv_fragment_program *p,
-	   GLuint src, GLuint unit)
+           GLuint src, GLuint unit)
 {
    ir_variable *var;
    ir_dereference *deref;
@@ -394,7 +394,7 @@ get_source(texenv_fragment_program *p,
    case TEXENV_SRC_TEXTURE6:
    case TEXENV_SRC_TEXTURE7:
       return new(p->mem_ctx)
-	 ir_dereference_variable(p->src_texture[src - TEXENV_SRC_TEXTURE0]);
+         ir_dereference_variable(p->src_texture[src - TEXENV_SRC_TEXTURE0]);
 
    case TEXENV_SRC_CONSTANT:
       var = p->shader->symbols->get_variable("gl_TextureEnvColor");
@@ -402,7 +402,7 @@ get_source(texenv_fragment_program *p,
       deref = new(p->mem_ctx) ir_dereference_variable(var);
       var->data.max_array_access = MAX2(var->data.max_array_access, (int)unit);
       return new(p->mem_ctx) ir_dereference_array(deref,
-						  new(p->mem_ctx) ir_constant(unit));
+                                                  new(p->mem_ctx) ir_constant(unit));
 
    case TEXENV_SRC_PRIMARY_COLOR:
       var = p->shader->symbols->get_variable("gl_Color");
@@ -417,9 +417,9 @@ get_source(texenv_fragment_program *p,
 
    case TEXENV_SRC_PREVIOUS:
       if (!p->src_previous) {
-	 return get_gl_Color(p);
+         return get_gl_Color(p);
       } else {
-	 return p->src_previous->clone(p->mem_ctx, NULL);
+         return p->src_previous->clone(p->mem_ctx, NULL);
       }
 
    default:
@@ -430,9 +430,9 @@ get_source(texenv_fragment_program *p,
 
 static ir_rvalue *
 emit_combine_source(texenv_fragment_program *p,
-		    GLuint unit,
-		    GLuint source,
-		    GLuint operand)
+                    GLuint unit,
+                    GLuint source,
+                    GLuint operand)
 {
    ir_rvalue *src;
 
@@ -471,29 +471,29 @@ static GLboolean args_match( const struct state_key *key, GLuint unit )
 
    for (i = 0; i < numArgs; i++) {
       if (key->unit[unit].ArgsA[i].Source != key->unit[unit].ArgsRGB[i].Source)
-	 return GL_FALSE;
+         return GL_FALSE;
 
       switch (key->unit[unit].ArgsA[i].Operand) {
       case TEXENV_OPR_ALPHA:
-	 switch (key->unit[unit].ArgsRGB[i].Operand) {
-	 case TEXENV_OPR_COLOR:
-	 case TEXENV_OPR_ALPHA:
-	    break;
-	 default:
-	    return GL_FALSE;
-	 }
-	 break;
+         switch (key->unit[unit].ArgsRGB[i].Operand) {
+         case TEXENV_OPR_COLOR:
+         case TEXENV_OPR_ALPHA:
+            break;
+         default:
+            return GL_FALSE;
+         }
+         break;
       case TEXENV_OPR_ONE_MINUS_ALPHA:
-	 switch (key->unit[unit].ArgsRGB[i].Operand) {
-	 case TEXENV_OPR_ONE_MINUS_COLOR:
-	 case TEXENV_OPR_ONE_MINUS_ALPHA:
-	    break;
-	 default:
-	    return GL_FALSE;
-	 }
-	 break;
+         switch (key->unit[unit].ArgsRGB[i].Operand) {
+         case TEXENV_OPR_ONE_MINUS_COLOR:
+         case TEXENV_OPR_ONE_MINUS_ALPHA:
+            break;
+         default:
+            return GL_FALSE;
+         }
+         break;
       default:
-	 return GL_FALSE;	/* impossible */
+         return GL_FALSE;        /* impossible */
       }
    }
 
@@ -511,10 +511,10 @@ smear(ir_rvalue *val)
 
 static ir_rvalue *
 emit_combine(texenv_fragment_program *p,
-	     GLuint unit,
-	     GLuint nr,
-	     GLuint mode,
-	     const struct gl_tex_env_argument *opt)
+             GLuint unit,
+             GLuint nr,
+             GLuint mode,
+             const struct gl_tex_env_argument *opt)
 {
    ir_rvalue *src[MAX_COMBINER_TERMS];
    ir_rvalue *tmp0, *tmp1;
@@ -542,7 +542,7 @@ emit_combine(texenv_fragment_program *p,
       /* Arg0 * (Arg2) + Arg1 * (1-Arg2) */
       tmp0 = mul(src[0], src[2]);
       tmp1 = mul(src[1], sub(new(p->mem_ctx) ir_constant(1.0f),
-			     src[2]->clone(p->mem_ctx, NULL)));
+                             src[2]->clone(p->mem_ctx, NULL)));
       return add(tmp0, tmp1);
 
    case TEXENV_MODE_SUBTRACT:
@@ -565,7 +565,7 @@ emit_combine(texenv_fragment_program *p,
 
    case TEXENV_MODE_MODULATE_SIGNED_ADD_ATI:
       return add(add(mul(src[0], src[2]), src[1]),
-		 new(p->mem_ctx) ir_constant(-0.5f));
+                 new(p->mem_ctx) ir_constant(-0.5f));
 
    case TEXENV_MODE_MODULATE_SUBTRACT_ATI:
       return sub(mul(src[0], src[2]), src[1]);
@@ -575,7 +575,7 @@ emit_combine(texenv_fragment_program *p,
 
    case TEXENV_MODE_ADD_PRODUCTS_SIGNED_NV:
       return add(add(mul(src[0], src[1]), mul(src[2], src[3])),
-		 new(p->mem_ctx) ir_constant(-0.5f));
+                 new(p->mem_ctx) ir_constant(-0.5f));
    default:
       assert(0);
       return src[0];
@@ -637,24 +637,24 @@ emit_texenv(texenv_fragment_program *p, GLuint unit)
    if (key->unit[unit].ModeRGB == key->unit[unit].ModeA &&
        args_match(key, unit)) {
       val = emit_combine(p, unit,
-			 key->unit[unit].NumArgsRGB,
-			 key->unit[unit].ModeRGB,
-			 key->unit[unit].ArgsRGB);
+                         key->unit[unit].NumArgsRGB,
+                         key->unit[unit].ModeRGB,
+                         key->unit[unit].ArgsRGB);
       val = smear(val);
       if (rgb_saturate)
-	 val = saturate(val);
+         val = saturate(val);
 
       p->emit(assign(temp_var, val));
    }
    else if (key->unit[unit].ModeRGB == TEXENV_MODE_DOT3_RGBA_EXT ||
-	    key->unit[unit].ModeRGB == TEXENV_MODE_DOT3_RGBA) {
+            key->unit[unit].ModeRGB == TEXENV_MODE_DOT3_RGBA) {
       ir_rvalue *val = emit_combine(p, unit,
-				    key->unit[unit].NumArgsRGB,
-				    key->unit[unit].ModeRGB,
-				    key->unit[unit].ArgsRGB);
+                                    key->unit[unit].NumArgsRGB,
+                                    key->unit[unit].ModeRGB,
+                                    key->unit[unit].ArgsRGB);
       val = smear(val);
       if (rgb_saturate)
-	 val = saturate(val);
+         val = saturate(val);
       p->emit(assign(temp_var, val));
    }
    else {
@@ -662,21 +662,21 @@ emit_texenv(texenv_fragment_program *p, GLuint unit)
        * argument calculations here:
        */
       val = emit_combine(p, unit,
-			 key->unit[unit].NumArgsRGB,
-			 key->unit[unit].ModeRGB,
-			 key->unit[unit].ArgsRGB);
+                         key->unit[unit].NumArgsRGB,
+                         key->unit[unit].ModeRGB,
+                         key->unit[unit].ArgsRGB);
       val = swizzle_xyz(smear(val));
       if (rgb_saturate)
-	 val = saturate(val);
+         val = saturate(val);
       p->emit(assign(temp_var, val, WRITEMASK_XYZ));
 
       val = emit_combine(p, unit,
-			 key->unit[unit].NumArgsA,
-			 key->unit[unit].ModeA,
-			 key->unit[unit].ArgsA);
+                         key->unit[unit].NumArgsA,
+                         key->unit[unit].ModeA,
+                         key->unit[unit].ArgsA);
       val = swizzle_w(smear(val));
       if (alpha_saturate)
-	 val = saturate(val);
+         val = saturate(val);
       p->emit(assign(temp_var, val, WRITEMASK_W));
    }
 
@@ -688,7 +688,7 @@ emit_texenv(texenv_fragment_program *p, GLuint unit)
       ir_constant *shift;
 
       if (rgb_shift == alpha_shift) {
-	 shift = new(p->mem_ctx) ir_constant((float)(1 << rgb_shift));
+         shift = new(p->mem_ctx) ir_constant((float)(1 << rgb_shift));
       }
       else {
          ir_constant_data const_data;
@@ -735,7 +735,7 @@ static void load_texture( texenv_fragment_program *p, GLuint unit )
 
    if (!p->state->unit[unit].enabled) {
       p->src_texture[unit] = p->make_temp(glsl_type::vec4_type,
-					  "dummy_tex");
+                                          "dummy_tex");
       p->emit(p->src_texture[unit]);
 
       p->emit(assign(p->src_texture[unit], new(p->mem_ctx) ir_constant(0.0f)));
@@ -748,37 +748,37 @@ static void load_texture( texenv_fragment_program *p, GLuint unit )
    switch (texTarget) {
    case TEXTURE_1D_INDEX:
       if (p->state->unit[unit].shadow)
-	 sampler_type = glsl_type::sampler1DShadow_type;
+         sampler_type = glsl_type::sampler1DShadow_type;
       else
-	 sampler_type = glsl_type::sampler1D_type;
+         sampler_type = glsl_type::sampler1D_type;
       coords = 1;
       break;
    case TEXTURE_1D_ARRAY_INDEX:
       if (p->state->unit[unit].shadow)
-	 sampler_type = glsl_type::sampler1DArrayShadow_type;
+         sampler_type = glsl_type::sampler1DArrayShadow_type;
       else
-	 sampler_type = glsl_type::sampler1DArray_type;
+         sampler_type = glsl_type::sampler1DArray_type;
       coords = 2;
       break;
    case TEXTURE_2D_INDEX:
       if (p->state->unit[unit].shadow)
-	 sampler_type = glsl_type::sampler2DShadow_type;
+         sampler_type = glsl_type::sampler2DShadow_type;
       else
-	 sampler_type = glsl_type::sampler2D_type;
+         sampler_type = glsl_type::sampler2D_type;
       coords = 2;
       break;
    case TEXTURE_2D_ARRAY_INDEX:
       if (p->state->unit[unit].shadow)
-	 sampler_type = glsl_type::sampler2DArrayShadow_type;
+         sampler_type = glsl_type::sampler2DArrayShadow_type;
       else
-	 sampler_type = glsl_type::sampler2DArray_type;
+         sampler_type = glsl_type::sampler2DArray_type;
       coords = 3;
       break;
    case TEXTURE_RECT_INDEX:
       if (p->state->unit[unit].shadow)
-	 sampler_type = glsl_type::sampler2DRectShadow_type;
+         sampler_type = glsl_type::sampler2DRectShadow_type;
       else
-	 sampler_type = glsl_type::sampler2DRect_type;
+         sampler_type = glsl_type::sampler2DRect_type;
       coords = 2;
       break;
    case TEXTURE_3D_INDEX:
@@ -788,9 +788,9 @@ static void load_texture( texenv_fragment_program *p, GLuint unit )
       break;
    case TEXTURE_CUBE_INDEX:
       if (p->state->unit[unit].shadow)
-	 sampler_type = glsl_type::samplerCubeShadow_type;
+         sampler_type = glsl_type::samplerCubeShadow_type;
       else
-	 sampler_type = glsl_type::samplerCube_type;
+         sampler_type = glsl_type::samplerCube_type;
       coords = 3;
       break;
    case TEXTURE_EXTERNAL_INDEX:
@@ -801,15 +801,15 @@ static void load_texture( texenv_fragment_program *p, GLuint unit )
    }
 
    p->src_texture[unit] = p->make_temp(glsl_type::vec4_type,
-				       "tex");
+                                       "tex");
 
    ir_texture *tex = new(p->mem_ctx) ir_texture(ir_tex);
 
 
    char *sampler_name = ralloc_asprintf(p->mem_ctx, "sampler_%d", unit);
    ir_variable *sampler = new(p->mem_ctx) ir_variable(sampler_type,
-						      sampler_name,
-						      ir_var_uniform);
+                                                      sampler_name,
+                                                      ir_var_uniform);
    p->top_instructions->push_head(sampler);
 
    /* Set the texture unit for this sampler in the same way that
@@ -826,8 +826,8 @@ static void load_texture( texenv_fragment_program *p, GLuint unit )
    if (p->state->unit[unit].shadow) {
       texcoord = texcoord->clone(p->mem_ctx, NULL);
       tex->shadow_comparator = new(p->mem_ctx) ir_swizzle(texcoord,
-							  coords, 0, 0, 0,
-							  1);
+                                                          coords, 0, 0, 0,
+                                                          1);
       coords++;
    }
 
@@ -839,7 +839,7 @@ static void load_texture( texenv_fragment_program *p, GLuint unit )
 
 static void
 load_texenv_source(texenv_fragment_program *p,
-		   GLuint src, GLuint unit)
+                   GLuint src, GLuint unit)
 {
    switch (src) {
    case TEXENV_SRC_TEXTURE:
@@ -893,7 +893,7 @@ load_texunit_sources( texenv_fragment_program *p, GLuint unit )
  */
 static ir_rvalue *
 emit_fog_instructions(texenv_fragment_program *p,
-		      ir_rvalue *fragcolor)
+                      ir_rvalue *fragcolor)
 {
    struct state_key *key = p->state;
    ir_rvalue *f, *temp;
@@ -979,16 +979,16 @@ emit_instructions(texenv_fragment_program *p)
        * for each:
        */
       for (unit = 0; unit < key->nr_enabled_units; unit++)
-	 if (key->unit[unit].enabled) {
-	    load_texunit_sources(p, unit);
-	 }
+         if (key->unit[unit].enabled) {
+            load_texunit_sources(p, unit);
+         }
 
       /* Second pass - emit combine instructions to build final color:
        */
       for (unit = 0; unit < key->nr_enabled_units; unit++) {
-	 if (key->unit[unit].enabled) {
-	    p->src_previous = emit_texenv(p, unit);
-	 }
+         if (key->unit[unit].enabled) {
+            p->src_previous = emit_texenv(p, unit);
+         }
       }
    }
 
@@ -996,21 +996,21 @@ emit_instructions(texenv_fragment_program *p)
 
    if (key->separate_specular) {
       ir_variable *spec_result = p->make_temp(glsl_type::vec4_type,
-					      "specular_add");
+                                              "specular_add");
       p->emit(assign(spec_result, cf));
 
       ir_rvalue *secondary;
       if (p->state->inputs_available & VARYING_BIT_COL1) {
-	 ir_variable *var =
-	    p->shader->symbols->get_variable("gl_SecondaryColor");
-	 assert(var);
-	 secondary = swizzle_xyz(var);
+         ir_variable *var =
+            p->shader->symbols->get_variable("gl_SecondaryColor");
+         assert(var);
+         secondary = swizzle_xyz(var);
       } else {
-	 secondary = swizzle_xyz(get_current_attrib(p, VERT_ATTRIB_COLOR1));
+         secondary = swizzle_xyz(get_current_attrib(p, VERT_ATTRIB_COLOR1));
       }
 
       p->emit(assign(spec_result, add(swizzle_xyz(spec_result), secondary),
-		     WRITEMASK_XYZ));
+                     WRITEMASK_XYZ));
 
       cf = new(p->mem_ctx) ir_dereference_variable(spec_result);
    }
@@ -1039,7 +1039,7 @@ create_new_program(struct gl_context *ctx, struct state_key *key)
    p.shader = _mesa_new_shader(0, MESA_SHADER_FRAGMENT);
    p.shader->ir = new(p.shader) exec_list;
    state = new(p.shader) _mesa_glsl_parse_state(ctx, MESA_SHADER_FRAGMENT,
-						p.shader);
+                                                p.shader);
    p.shader->symbols = state->symbols;
    p.top_instructions = p.shader->ir;
    p.instructions = p.shader->ir;
@@ -1135,7 +1135,7 @@ _mesa_get_fixed_func_fragment_program(struct gl_context *ctx)
       shader_program = create_new_program(ctx, &key);
 
       _mesa_shader_cache_insert(ctx, ctx->FragmentProgram.Cache,
-				&key, keySize, shader_program);
+                                &key, keySize, shader_program);
    }
 
    return shader_program;
