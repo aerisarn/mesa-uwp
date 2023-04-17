@@ -200,68 +200,6 @@ d3d12_video_decoder_prepare_dxva_slices_control_h264(struct d3d12_video_decoder 
    assert(vecOutSliceControlBuffers.size() == TotalSlicesDXVAArrayByteSize);
 }
 
-bool
-d3d12_video_decoder_get_next_slice_size_and_offset_h264(std::vector<uint8_t> &buf,
-                                                        unsigned int bufferOffset,
-                                                        uint32_t &outSliceSize,
-                                                        uint32_t &outSliceOffset)
-{
-   // Search the rest of the full frame buffer after the offset
-   uint numBitsToSearchIntoBuffer = buf.size() - bufferOffset;
-   int currentSlicePosition = d3d12_video_decoder_get_next_startcode_offset(buf,
-                                                                            bufferOffset,
-                                                                            DXVA_H264_START_CODE,
-                                                                            DXVA_H264_START_CODE_LEN_BITS,
-                                                                            numBitsToSearchIntoBuffer);
-
-   // Return false now if we didn't find a next slice based on the bufferOffset parameter
-   if (currentSlicePosition < 0) {
-      return false;
-   } else {
-      // Save the absolute buffer offset until the next slice in the output param
-      outSliceOffset = currentSlicePosition + bufferOffset;
-
-      // Found a next NALU, make sure it's a slice:
-      d3d12_video_decoder_nal_unit_type_h264 naluType =
-         (d3d12_video_decoder_nal_unit_type_h264)(buf[outSliceOffset + (DXVA_H264_START_CODE_LEN_BITS / 8)] & 0x1F);
-
-      bool isNaluSliceType = (naluType == type_slice) || (naluType == type_slice_part_A) ||
-                             (naluType == type_slice_part_B) || (naluType == type_slice_part_C) ||
-                             (naluType == type_slice_IDR) || (naluType == type_slice_aux) ||
-                             (naluType == type_slice_layer_ext);
-
-      if (!isNaluSliceType) {
-         // We found a NALU, but it's not a slice
-         return false;
-      } else {
-         // We did find a next slice based on the bufferOffset parameter
-
-         // Skip current start code, to get the slice after this, to calculate its size
-         bufferOffset += (DXVA_H264_START_CODE_LEN_BITS / 8 /*convert bits to bytes*/);
-         numBitsToSearchIntoBuffer = buf.size() - bufferOffset;
-
-         int c_signedStartCodeLen = (DXVA_H264_START_CODE_LEN_BITS / 8 /*convert bits to bytes*/);
-         int nextSlicePosition = c_signedStartCodeLen   // Takes into account the skipped start code
-                                 + d3d12_video_decoder_get_next_startcode_offset(buf,
-                                                                                 bufferOffset,
-                                                                                 DXVA_H264_START_CODE,
-                                                                                 DXVA_H264_START_CODE_LEN_BITS,
-                                                                                 numBitsToSearchIntoBuffer);
-
-         if (nextSlicePosition <
-             c_signedStartCodeLen)   // if no slice found, d3d12_video_decoder_get_next_startcode_offset returns - 1
-         {
-            // This means currentSlicePosition points to the last slice in the buffer
-            outSliceSize = buf.size() - outSliceOffset;
-         } else {
-            // This means there are more slices after the one pointed by currentSlicePosition
-            outSliceSize = nextSlicePosition - currentSlicePosition;
-         }
-         return true;
-      }
-   }
-}
-
 static void
 d3d12_video_decoder_log_pic_entry_h264(DXVA_PicEntry_H264 &picEntry)
 {
