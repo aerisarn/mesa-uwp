@@ -2127,6 +2127,20 @@ init_cache_buckets(struct iris_bufmgr *bufmgr, enum iris_heap heap)
    }
 }
 
+static enum iris_mmap_mode
+iris_bo_alloc_aux_map_get_mmap_mode(struct iris_bufmgr *bufmgr,
+                                    enum iris_heap heap)
+{
+   switch (bufmgr->devinfo.kmd_type) {
+   case INTEL_KMD_TYPE_I915:
+      return heap != IRIS_HEAP_SYSTEM_MEMORY ? IRIS_MMAP_WC : IRIS_MMAP_WB;
+   case INTEL_KMD_TYPE_XE:
+      return iris_xe_bo_flags_to_mmap_mode(bufmgr, heap, 0);
+   default:
+      return IRIS_MMAP_NONE;
+   }
+}
+
 static struct intel_buffer *
 intel_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
 {
@@ -2161,8 +2175,8 @@ intel_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
    bo->index = -1;
    bo->real.kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED |
                      EXEC_OBJECT_CAPTURE;
-   bo->real.mmap_mode =
-      bo->real.heap != IRIS_HEAP_SYSTEM_MEMORY ? IRIS_MMAP_WC : IRIS_MMAP_WB;
+   bo->real.mmap_mode = iris_bo_alloc_aux_map_get_mmap_mode(bufmgr,
+                                                            bo->real.heap);
 
    buf->driver_bo = bo;
    buf->gpu = bo->address;
