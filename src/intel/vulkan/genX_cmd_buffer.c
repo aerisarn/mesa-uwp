@@ -3206,7 +3206,7 @@ genX(streamout_prologue)(struct anv_cmd_buffer *cmd_buffer)
     * level preemption for another reason in genX_state.c so we can skip this
     * for Gfx12.
     */
-   if (!intel_device_info_is_dg2(cmd_buffer->device->info))
+   if (!intel_needs_workaround(cmd_buffer->device->info, 16013994831))
       return;
 
    if (cmd_buffer->state.gfx.pipeline->uses_xfb) {
