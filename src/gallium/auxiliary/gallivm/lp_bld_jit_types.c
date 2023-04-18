@@ -566,26 +566,44 @@ lp_build_llvm_image_member(struct gallivm_state *gallivm,
                            bool emit_load)
 {
    LLVMBuilderRef builder = gallivm->builder;
-   LLVMValueRef indices[4];
 
-   assert(image_unit < PIPE_MAX_SHADER_IMAGES);
+   LLVMValueRef ptr;
+   if (gallivm->texture_descriptor) {
+      LLVMValueRef image_offset = lp_build_const_int64(gallivm, offsetof(union lp_descriptor, image));
+      LLVMValueRef image_ptr = LLVMBuildAdd(builder, gallivm->texture_descriptor, image_offset, "");
 
-   /* resources[0] */
-   indices[0] = lp_build_const_int32(gallivm, 0);
-   /* resources[0].images */
-   indices[1] = lp_build_const_int32(gallivm, LP_JIT_RES_IMAGES);
-   /* resources[0].images[unit] */
-   indices[2] = lp_build_const_int32(gallivm, image_unit);
-   if (image_unit_offset) {
-      indices[2] = LLVMBuildAdd(gallivm->builder, indices[2], image_unit_offset, "");
-      LLVMValueRef cond = LLVMBuildICmp(gallivm->builder, LLVMIntULT, indices[2], lp_build_const_int32(gallivm, PIPE_MAX_SHADER_IMAGES), "");
-      indices[2] = LLVMBuildSelect(gallivm->builder, cond, indices[2], lp_build_const_int32(gallivm, image_unit), "");
+      LLVMTypeRef image_ptr_type = LLVMStructGetTypeAtIndex(resources_type, LP_JIT_RES_IMAGES);
+      LLVMTypeRef image_type = LLVMGetElementType(image_ptr_type);
+      image_ptr_type = LLVMPointerType(image_type, 0);
+
+      image_ptr = LLVMBuildIntToPtr(builder, image_ptr, image_ptr_type, "");
+
+      LLVMValueRef indices[2] = {
+         lp_build_const_int32(gallivm, 0),
+         lp_build_const_int32(gallivm, member_index),
+      };
+      ptr = LLVMBuildGEP2(builder, image_type, image_ptr, indices, ARRAY_SIZE(indices), "");
+   } else {
+      LLVMValueRef indices[4];
+
+      assert(image_unit < PIPE_MAX_SHADER_IMAGES);
+
+      /* resources[0] */
+      indices[0] = lp_build_const_int32(gallivm, 0);
+      /* resources[0].images */
+      indices[1] = lp_build_const_int32(gallivm, LP_JIT_RES_IMAGES);
+      /* resources[0].images[unit] */
+      indices[2] = lp_build_const_int32(gallivm, image_unit);
+      if (image_unit_offset) {
+         indices[2] = LLVMBuildAdd(gallivm->builder, indices[2], image_unit_offset, "");
+         LLVMValueRef cond = LLVMBuildICmp(gallivm->builder, LLVMIntULT, indices[2], lp_build_const_int32(gallivm, PIPE_MAX_SHADER_IMAGES), "");
+         indices[2] = LLVMBuildSelect(gallivm->builder, cond, indices[2], lp_build_const_int32(gallivm, image_unit), "");
+      }
+      /* resources[0].images[unit].member */
+      indices[3] = lp_build_const_int32(gallivm, member_index);
+
+      ptr = LLVMBuildGEP2(builder, resources_type, resources_ptr, indices, ARRAY_SIZE(indices), "");
    }
-   /* resources[0].images[unit].member */
-   indices[3] = lp_build_const_int32(gallivm, member_index);
-
-   LLVMValueRef ptr =
-      LLVMBuildGEP2(builder, resources_type, resources_ptr, indices, ARRAY_SIZE(indices), "");
 
    LLVMValueRef res;
    if (emit_load) {

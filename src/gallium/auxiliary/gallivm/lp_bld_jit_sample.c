@@ -34,6 +34,7 @@
 #include "gallivm/lp_bld_sample.h"
 #include "gallivm/lp_bld_jit_types.h"
 #include "gallivm/lp_bld_jit_sample.h"
+#include "gallivm/lp_bld_flow.h"
 
 struct lp_bld_sampler_dynamic_state
 {
@@ -436,6 +437,121 @@ lp_bld_llvm_image_soa_emit_op(const struct lp_build_image_soa *base,
                               struct gallivm_state *gallivm,
                               const struct lp_img_params *params)
 {
+   LLVMBuilderRef builder = gallivm->builder;
+
+   if (params->resource) {
+      const struct util_format_description *desc = util_format_description(params->format);
+      LLVMTypeRef out_data_type = lp_build_vec_type(gallivm, lp_build_texel_type(params->type, desc));
+
+      LLVMValueRef out_data[4];
+      for (uint32_t i = 0; i < 4; i++) {
+         out_data[i] = lp_build_alloca(gallivm, out_data_type, "");
+         LLVMBuildStore(builder, lp_build_const_vec(gallivm, lp_build_texel_type(params->type, desc), 0), out_data[i]);
+      }
+
+      struct lp_type uint_type = lp_uint_type(params->type);
+      LLVMValueRef uint_zero = lp_build_const_int_vec(gallivm, uint_type, 0);
+
+      LLVMValueRef bitmask = LLVMBuildICmp(builder, LLVMIntNE, params->exec_mask, uint_zero, "exec_bitvec");
+
+      LLVMTypeRef bitmask_type = LLVMIntTypeInContext(gallivm->context, uint_type.length);
+      bitmask = LLVMBuildBitCast(builder, bitmask, bitmask_type, "exec_bitmask");
+
+      LLVMValueRef any_active = LLVMBuildICmp(builder, LLVMIntNE, bitmask, LLVMConstInt(bitmask_type, 0, false), "any_active");
+
+      LLVMValueRef binding_index = LLVMBuildExtractValue(builder, params->resource, 1, "");
+      LLVMValueRef inbounds = LLVMBuildICmp(builder, LLVMIntSGE, binding_index, lp_build_const_int32(gallivm, 0), "inbounds");
+
+      struct lp_build_if_state if_state;
+      lp_build_if(&if_state, gallivm, LLVMBuildAnd(builder, any_active, inbounds, ""));
+
+      LLVMValueRef consts = lp_jit_resources_constants(gallivm, params->resources_type, params->resources_ptr);
+
+      LLVMValueRef image_descriptor = lp_llvm_descriptor_base(gallivm, consts, params->resource, LP_MAX_TGSI_CONST_BUFFERS);
+
+      LLVMValueRef image_base_ptr = load_texture_functions_ptr(
+         gallivm, image_descriptor, offsetof(union lp_descriptor, image_functions),
+         offsetof(struct lp_texture_functions, image_functions));
+
+      LLVMTypeRef image_function_type = lp_build_image_function_type(gallivm, params, params->ms_index);
+      LLVMTypeRef image_function_ptr_type = LLVMPointerType(image_function_type, 0);
+      LLVMTypeRef image_functions_type = LLVMPointerType(image_function_ptr_type, 0);
+      LLVMTypeRef image_base_type = LLVMPointerType(image_functions_type, 0);
+
+      image_base_ptr = LLVMBuildIntToPtr(builder, image_base_ptr, image_base_type, "");
+      LLVMValueRef image_functions = LLVMBuildLoad2(builder, image_functions_type, image_base_ptr, "");
+
+      uint32_t op = params->img_op;
+      if (op == LP_IMG_ATOMIC_CAS)
+         op--;
+      else if (op == LP_IMG_ATOMIC)
+         op = params->op + (LP_IMG_OP_COUNT - 1);
+
+      if (params->ms_index)
+         op += LP_TOTAL_IMAGE_OP_COUNT / 2;
+
+      LLVMValueRef function_index = lp_build_const_int32(gallivm, op);
+
+      LLVMValueRef image_function_ptr = LLVMBuildGEP2(builder, image_function_ptr_type, image_functions, &function_index, 1, "");
+      LLVMValueRef image_function = LLVMBuildLoad2(builder, image_function_ptr_type, image_function_ptr, "");
+
+      LLVMValueRef args[LP_MAX_TEX_FUNC_ARGS] = { 0 };
+      uint32_t num_args = 0;
+
+      args[num_args++] = image_descriptor;
+
+      if (params->img_op != LP_IMG_LOAD)
+         args[num_args++] = params->exec_mask;
+
+      for (uint32_t i = 0; i < 3; i++)
+         args[num_args++] = params->coords[i];
+
+      if (params->ms_index)
+         args[num_args++] = params->ms_index;
+
+      if (params->img_op != LP_IMG_LOAD)
+         for (uint32_t i = 0; i < 4; i++)
+            args[num_args++] = params->indata[i];
+
+      if (params->img_op == LP_IMG_ATOMIC_CAS)
+         for (uint32_t i = 0; i < 4; i++)
+            args[num_args++] = params->indata2[i];
+
+      assert(num_args == LLVMCountParamTypes(image_function_type));
+
+      LLVMTypeRef param_types[LP_MAX_TEX_FUNC_ARGS];
+      LLVMGetParamTypes(image_function_type, param_types);
+      for (uint32_t i = 0; i < num_args; i++)
+         if (!args[i])
+            args[i] = LLVMGetUndef(param_types[i]);
+
+      if (params->type.length != lp_native_vector_width / 32)
+         for (uint32_t i = 0; i < num_args; i++)
+            args[i] = widen_to_simd_width(gallivm, args[i]);
+
+      LLVMValueRef result = LLVMBuildCall2(builder, image_function_type, image_function, args, num_args, "");
+
+      if (params->img_op != LP_IMG_STORE) {
+         for (unsigned i = 0; i < 4; i++) {
+            LLVMValueRef channel = LLVMBuildExtractValue(gallivm->builder, result, i, "");
+            if (params->type.length != lp_native_vector_width / 32)
+               channel = truncate_to_type_width(gallivm, channel, params->type);
+
+            LLVMBuildStore(builder, channel, out_data[i]);
+         }
+      }
+
+      lp_build_endif(&if_state);
+
+      if (params->img_op != LP_IMG_STORE) {
+         for (unsigned i = 0; i < 4; i++) {
+            params->outdata[i] = LLVMBuildLoad2(gallivm->builder, out_data_type, out_data[i], "");
+         }
+      }
+
+      return;
+   }
+
    struct lp_bld_llvm_image_soa *image = (struct lp_bld_llvm_image_soa *)base;
    const unsigned image_index = params->image_index;
    assert(image_index < PIPE_MAX_SHADER_IMAGES);
@@ -474,6 +590,29 @@ lp_bld_llvm_image_soa_emit_size_query(const struct lp_build_image_soa *base,
                                       const struct lp_sampler_size_query_params *params)
 {
    struct lp_bld_llvm_image_soa *image = (struct lp_bld_llvm_image_soa *)base;
+
+   if (params->resource) {
+      LLVMValueRef old_texture = gallivm->texture_descriptor;
+
+      LLVMValueRef consts = lp_jit_resources_constants(gallivm, params->resources_type, params->resources_ptr);
+      gallivm->texture_descriptor = lp_llvm_descriptor_base(gallivm, consts, params->resource, LP_MAX_TGSI_CONST_BUFFERS);
+
+      enum pipe_format format = params->format;
+      if (format == PIPE_FORMAT_NONE)
+         format = PIPE_FORMAT_R8G8B8A8_UNORM;
+
+      struct lp_static_texture_state state = {
+         .format = format,
+         .res_format = format,
+         .target = params->target,
+      };
+      
+      lp_build_size_query_soa(gallivm, &state, &image->dynamic_state.base, params);
+
+      gallivm->texture_descriptor = old_texture;
+
+      return;
+   }
 
    assert(params->texture_unit < PIPE_MAX_SHADER_IMAGES);
 

@@ -1713,6 +1713,9 @@ static void emit_image_op(struct lp_build_nir_context *bld_base,
       params->image_index_offset = LLVMBuildExtractElement(gallivm->builder, params->image_index_offset,
                                                            first_active_invocation(bld_base), "");
 
+   if (params->resource)
+      params->resource = build_resource_to_scalar(bld_base, params->resource);
+
    bld->image->emit_op(bld->image,
                        bld->bld_base.base.gallivm,
                        params);
@@ -1840,6 +1843,12 @@ static void emit_tex(struct lp_build_nir_context *bld_base,
       params->texture_index_offset = LLVMBuildExtractElement(gallivm->builder, params->texture_index_offset,
                                                              first_active_invocation(bld_base), "");
    }
+
+   if (params->texture_resource)
+      params->texture_resource = build_resource_to_scalar(bld_base, params->texture_resource);
+
+   if (params->sampler_resource)
+      params->sampler_resource = build_resource_to_scalar(bld_base, params->sampler_resource);
 
    params->type = bld_base->base.type;
    bld->sampler->emit_tex_sample(bld->sampler,

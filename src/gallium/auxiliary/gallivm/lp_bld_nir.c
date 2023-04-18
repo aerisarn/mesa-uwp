@@ -1623,6 +1623,35 @@ visit_ssbo_atomic(struct lp_build_nir_context *bld_base,
                         offset, val, val2, &result[0]);
 }
 
+static void
+img_params_init_resource(struct lp_build_nir_context *bld_base, struct lp_img_params *params, nir_src src)
+{
+   if (nir_src_num_components(src) == 1) {
+      if (nir_src_is_const(src))
+         params->image_index = nir_src_as_int(src);
+      else
+         params->image_index_offset = get_src(bld_base, src);
+   
+      return;
+   }
+
+   params->resource = get_src(bld_base, src);
+}
+
+static void
+sampler_size_params_init_resource(struct lp_build_nir_context *bld_base, struct lp_sampler_size_query_params *params, nir_src src)
+{
+   if (nir_src_num_components(src) == 1) {
+      if (nir_src_is_const(src))
+         params->texture_unit = nir_src_as_int(src);
+      else
+         params->texture_unit_offset = get_src(bld_base, src);
+   
+      return;
+   }
+
+   params->resource = get_src(bld_base, src);
+}
 
 static void
 visit_load_image(struct lp_build_nir_context *bld_base,
@@ -1649,10 +1678,10 @@ visit_load_image(struct lp_build_nir_context *bld_base,
        nir_intrinsic_image_dim(instr) == GLSL_SAMPLER_DIM_SUBPASS_MS)
       params.ms_index = cast_type(bld_base, get_src(bld_base, instr->src[2]),
                                   nir_type_uint, 32);
-   if (nir_src_is_const(instr->src[0]))
-      params.image_index = nir_src_as_int(instr->src[0]);
-   else
-      params.image_index_offset = get_src(bld_base, instr->src[0]);
+
+   img_params_init_resource(bld_base, &params, instr->src[0]);
+   params.format = nir_intrinsic_format(instr);
+
    bld_base->image_op(bld_base, &params);
 }
 
@@ -1675,17 +1704,24 @@ visit_store_image(struct lp_build_nir_context *bld_base,
       coords[2] = coords[1];
    params.coords = coords;
 
+   params.format = nir_intrinsic_format(instr);
+
+   const struct util_format_description *desc = util_format_description(params.format);
+   bool integer = desc->channel[util_format_get_first_non_void_channel(params.format)].pure_integer;
+
    for (unsigned i = 0; i < 4; i++) {
       params.indata[i] = LLVMBuildExtractValue(builder, in_val, i, "");
-      params.indata[i] = LLVMBuildBitCast(builder, params.indata[i], bld_base->base.vec_type, "");
+
+      if (integer)
+         params.indata[i] = LLVMBuildBitCast(builder, params.indata[i], bld_base->int_bld.vec_type, "");
+      else
+         params.indata[i] = LLVMBuildBitCast(builder, params.indata[i], bld_base->base.vec_type, "");
    }
    if (nir_intrinsic_image_dim(instr) == GLSL_SAMPLER_DIM_MS)
       params.ms_index = get_src(bld_base, instr->src[2]);
    params.img_op = LP_IMG_STORE;
-   if (nir_src_is_const(instr->src[0]))
-      params.image_index = nir_src_as_int(instr->src[0]);
-   else
-      params.image_index_offset = get_src(bld_base, instr->src[0]);
+
+   img_params_init_resource(bld_base, &params, instr->src[0]);
 
    if (params.target == PIPE_TEXTURE_1D_ARRAY)
       coords[2] = coords[1];
@@ -1768,27 +1804,38 @@ visit_atomic_image(struct lp_build_nir_context *bld_base,
 
    params.coords = coords;
 
+   params.format = nir_intrinsic_format(instr);
+
+   const struct util_format_description *desc = util_format_description(params.format);
+   bool integer = desc->channel[util_format_get_first_non_void_channel(params.format)].pure_integer;
+
    if (nir_intrinsic_image_dim(instr) == GLSL_SAMPLER_DIM_MS)
       params.ms_index = get_src(bld_base, instr->src[2]);
-   if (instr->intrinsic == nir_intrinsic_image_atomic_swap) {
+
+   if (instr->intrinsic == nir_intrinsic_image_atomic_swap ||
+       instr->intrinsic == nir_intrinsic_bindless_image_atomic_swap) {
       LLVMValueRef cas_val = get_src(bld_base, instr->src[4]);
       params.indata[0] = in_val;
       params.indata2[0] = cas_val;
+
+      if (integer)
+         params.indata2[0] = LLVMBuildBitCast(builder, params.indata2[0], bld_base->int_bld.vec_type, "");
+      else
+         params.indata2[0] = LLVMBuildBitCast(builder, params.indata2[0], bld_base->base.vec_type, "");
    } else {
       params.indata[0] = in_val;
    }
+
+   if (integer)
+      params.indata[0] = LLVMBuildBitCast(builder, params.indata[0], bld_base->int_bld.vec_type, "");
+   else
+      params.indata[0] = LLVMBuildBitCast(builder, params.indata[0], bld_base->base.vec_type, "");
 
    params.outdata = result;
 
    lp_img_op_from_intrinsic(&params, instr);
 
-   params.img_op =
-      (instr->intrinsic == nir_intrinsic_image_atomic_swap)
-      ? LP_IMG_ATOMIC_CAS : LP_IMG_ATOMIC;
-   if (nir_src_is_const(instr->src[0]))
-      params.image_index = nir_src_as_int(instr->src[0]);
-   else
-      params.image_index_offset = get_src(bld_base, instr->src[0]);
+   img_params_init_resource(bld_base, &params, instr->src[0]);
 
    bld_base->image_op(bld_base, &params);
 }
@@ -1801,13 +1848,13 @@ visit_image_size(struct lp_build_nir_context *bld_base,
 {
    struct lp_sampler_size_query_params params = { 0 };
 
-   if (nir_src_is_const(instr->src[0]))
-      params.texture_unit = nir_src_as_int(instr->src[0]);
-   else
-      params.texture_unit_offset = get_src(bld_base, instr->src[0]);
+   sampler_size_params_init_resource(bld_base, &params, instr->src[0]);
+
    params.target = glsl_sampler_to_pipe(nir_intrinsic_image_dim(instr),
                                         nir_intrinsic_image_array(instr));
    params.sizes_out = result;
+
+   params.format = nir_intrinsic_format(instr);
 
    bld_base->image_size(bld_base, &params);
 }
@@ -1820,14 +1867,14 @@ visit_image_samples(struct lp_build_nir_context *bld_base,
 {
    struct lp_sampler_size_query_params params = { 0 };
 
-   if (nir_src_is_const(instr->src[0]))
-      params.texture_unit = nir_src_as_int(instr->src[0]);
-   else
-      params.texture_unit_offset = get_src(bld_base, instr->src[0]);
+   sampler_size_params_init_resource(bld_base, &params, instr->src[0]);
+
    params.target = glsl_sampler_to_pipe(nir_intrinsic_image_dim(instr),
                                         nir_intrinsic_image_array(instr));
    params.sizes_out = result;
    params.samples_only = true;
+
+   params.format = nir_intrinsic_format(instr);
 
    bld_base->image_size(bld_base, &params);
 }
@@ -2164,19 +2211,25 @@ visit_intrinsic(struct lp_build_nir_context *bld_base,
       visit_ssbo_atomic(bld_base, instr, result);
       break;
    case nir_intrinsic_image_load:
+   case nir_intrinsic_bindless_image_load:
       visit_load_image(bld_base, instr, result);
       break;
    case nir_intrinsic_image_store:
+   case nir_intrinsic_bindless_image_store:
       visit_store_image(bld_base, instr);
       break;
    case nir_intrinsic_image_atomic:
    case nir_intrinsic_image_atomic_swap:
+   case nir_intrinsic_bindless_image_atomic:
+   case nir_intrinsic_bindless_image_atomic_swap:
       visit_atomic_image(bld_base, instr, result);
       break;
    case nir_intrinsic_image_size:
+   case nir_intrinsic_bindless_image_size:
       visit_image_size(bld_base, instr, result);
       break;
    case nir_intrinsic_image_samples:
+   case nir_intrinsic_bindless_image_samples:
       visit_image_samples(bld_base, instr, result);
       break;
    case nir_intrinsic_load_shared:
