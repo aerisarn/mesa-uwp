@@ -18,7 +18,7 @@ from collections import defaultdict
 from dataclasses import dataclass, fields
 from datetime import datetime, timedelta
 from io import StringIO
-from os import getenv
+from os import environ, getenv, path
 from typing import Any, Optional
 
 import fire
@@ -282,6 +282,7 @@ def print_job_final_status(job):
 def execute_job_with_retries(
     proxy, job_definition, retry_count, jobs_log
 ) -> Optional[LAVAJob]:
+    last_failed_job = None
     for attempt_no in range(1, retry_count + 2):
         # Need to get the logger value from its object to enable autosave
         # features, if AutoSaveDict is enabled from StructuredLogging module
@@ -290,40 +291,51 @@ def execute_job_with_retries(
         job = LAVAJob(proxy, job_definition, job_log)
         STRUCTURAL_LOG["dut_attempt_counter"] = attempt_no
         try:
+            job_log["submitter_start_time"] = datetime.now().isoformat()
             submit_job(job)
             wait_for_job_get_started(job)
             log_follower: LogFollower = bootstrap_log_follower()
             follow_job_execution(job, log_follower)
             return job
+
         except (MesaCIException, KeyboardInterrupt) as exception:
             job.handle_exception(exception)
+
+        finally:
+            print_job_final_status(job)
+            # If LAVA takes too long to post process the job, the submitter
+            # gives up and proceeds.
+            job_log["submitter_end_time"] = datetime.now().isoformat()
+            last_failed_job = job
             print_log(
                 f"{CONSOLE_LOG['BOLD']}"
                 f"Finished executing LAVA job in the attempt #{attempt_no}"
                 f"{CONSOLE_LOG['RESET']}"
             )
-        finally:
-            job_log["finished_time"] = datetime.now().isoformat()
-            print_job_final_status(job)
+
+    return last_failed_job
 
 
 def retriable_follow_job(proxy, job_definition) -> LAVAJob:
     number_of_retries = NUMBER_OF_RETRIES_TIMEOUT_DETECTION
 
-    if finished_job := execute_job_with_retries(
+    last_attempted_job = execute_job_with_retries(
         proxy, job_definition, number_of_retries, STRUCTURAL_LOG["dut_jobs"]
-    ):
-        return finished_job
-
-    # Job failed in all attempts
-    raise MesaCIRetryError(
-        f"{CONSOLE_LOG['BOLD']}"
-        f"{CONSOLE_LOG['FG_RED']}"
-        "Job failed after it exceeded the number of "
-        f"{number_of_retries} retries."
-        f"{CONSOLE_LOG['RESET']}",
-        retry_count=number_of_retries,
     )
+
+    if last_attempted_job.exception is not None:
+        # Infra failed in all attempts
+        raise MesaCIRetryError(
+            f"{CONSOLE_LOG['BOLD']}"
+            f"{CONSOLE_LOG['FG_RED']}"
+            "Job failed after it exceeded the number of "
+            f"{number_of_retries} retries."
+            f"{CONSOLE_LOG['RESET']}",
+            retry_count=number_of_retries,
+            last_job=last_attempted_job,
+        )
+
+    return last_attempted_job
 
 
 @dataclass
@@ -371,20 +383,9 @@ class LAVAJobSubmitter(PathResolver):
             return
 
         self.__structured_log_context = StructuredLoggerWrapper(self).logger_context()
+        self.proxy = setup_lava_proxy()
 
-    def dump(self, job_definition):
-        if self.dump_yaml:
-            with GitlabSection(
-                "yaml_dump",
-                "LAVA job definition (YAML)",
-                type=LogSectionType.LAVA_BOOT,
-                start_collapsed=True,
-            ):
-                print(hide_sensitive_data(job_definition))
-
-    def submit(self):
-        proxy = setup_lava_proxy()
-
+    def __prepare_submission(self) -> str:
         # Overwrite the timeout for the testcases with the value offered by the
         # user. The testcase running time should be at least 4 times greater than
         # the other sections (boot and setup), so we can safely ignore them.
@@ -398,27 +399,81 @@ class LAVAJobSubmitter(PathResolver):
         lava_yaml.dump(generate_lava_yaml_payload(self), job_definition_stream)
         job_definition = job_definition_stream.getvalue()
 
-        self.dump(job_definition)
+        if self.dump_yaml:
+            self.dump_job_definition(job_definition)
 
-        job = LAVAJob(proxy, job_definition)
-        if errors := job.validate():
+        validation_job = LAVAJob(self.proxy, job_definition)
+        if errors := validation_job.validate():
             fatal_err(f"Error in LAVA job definition: {errors}")
         print_log("LAVA job definition validated successfully")
+
+        return job_definition
+
+    @classmethod
+    def is_under_ci(cls):
+        ci_envvar: str = getenv("CI", "false")
+        return ci_envvar.lower() == "true"
+
+    def dump_job_definition(self, job_definition) -> None:
+        with GitlabSection(
+            "yaml_dump",
+            "LAVA job definition (YAML)",
+            type=LogSectionType.LAVA_BOOT,
+            start_collapsed=True,
+        ):
+            print(hide_sensitive_data(job_definition))
+
+    def submit(self) -> None:
+        """
+        Prepares and submits the LAVA job.
+        If `validate_only` is True, it validates the job without submitting it.
+        If the job finishes with a non-pass status or encounters an exception,
+        the program exits with a non-zero return code.
+        """
+        job_definition: str = self.__prepare_submission()
 
         if self.validate_only:
             return
 
         with self.__structured_log_context:
+            last_attempt_job = None
             try:
-                finished_job = retriable_follow_job(proxy, job_definition)
-                exit_code = 0 if finished_job.status == "pass" else 1
-                STRUCTURAL_LOG["job_combined_status"] = job.status
-                sys.exit(exit_code)
+                last_attempt_job = retriable_follow_job(self.proxy, job_definition)
+
+            except MesaCIRetryError as retry_exception:
+                last_attempt_job = retry_exception.last_job
 
             except Exception as exception:
                 STRUCTURAL_LOG["job_combined_fail_reason"] = str(exception)
                 raise exception
 
+            finally:
+                self.finish_script(last_attempt_job)
+
+    def print_log_artifact_url(self):
+        base_url = "https://$CI_PROJECT_ROOT_NAMESPACE.pages.freedesktop.org/"
+        artifacts_path = "-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/"
+        relative_log_path = self.structured_log_file.relative_to(pathlib.Path.cwd())
+        full_path = f"{base_url}{artifacts_path}{relative_log_path}"
+        artifact_url = path.expandvars(full_path)
+
+        print_log(f"Structural Logging data available at: {artifact_url}")
+
+    def finish_script(self, last_attempt_job):
+        if self.is_under_ci() and self.structured_log_file:
+            self.print_log_artifact_url()
+
+        if not last_attempt_job:
+            # No job was run, something bad happened
+            STRUCTURAL_LOG["job_combined_status"] = "script_crash"
+            current_exception = str(sys.exc_info()[0])
+            STRUCTURAL_LOG["job_combined_fail_reason"] = current_exception
+            raise SystemExit(1)
+
+        STRUCTURAL_LOG["job_combined_status"] = last_attempt_job.status
+
+        if last_attempt_job.status != "pass":
+            raise SystemExit(1)
 
 class StructuredLoggerWrapper:
     def __init__(self, submitter: LAVAJobSubmitter) -> None:

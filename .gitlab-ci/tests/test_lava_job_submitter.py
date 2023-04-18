@@ -5,11 +5,13 @@
 #
 # SPDX-License-Identifier: MIT
 
+import os
 import xmlrpc.client
 from contextlib import nullcontext as does_not_raise
 from datetime import datetime
 from itertools import chain, repeat
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 from lava.exceptions import MesaCIException, MesaCIRetryError
@@ -48,6 +50,32 @@ def mock_proxy_waiting_time(mock_proxy):
         return proxy_mock
 
     return update_mock_proxy
+
+
+@pytest.fixture(params=[{"CI": "true"}, {"CI": "false"}], ids=["Under CI", "Local run"])
+def ci_environment(request):
+    with patch.dict(os.environ, request.param):
+        yield
+
+
+@pytest.fixture
+def lava_job_submitter(
+    ci_environment,
+    tmp_path,
+    mock_proxy,
+):
+    os.chdir(tmp_path)
+    tmp_file = Path(tmp_path) / "log.json"
+
+    with patch("lava.lava_job_submitter.setup_lava_proxy") as mock_setup_lava_proxy:
+        mock_setup_lava_proxy.return_value = mock_proxy()
+        yield LAVAJobSubmitter(
+            boot_method="test_boot",
+            ci_project_dir="test_dir",
+            device_type="test_device",
+            job_timeout_min=1,
+            structured_log_file=tmp_file,
+        )
 
 
 @pytest.mark.parametrize("exception", [RuntimeError, SystemError, KeyError])
@@ -301,7 +329,7 @@ def test_parse_job_result_from_log(message, expectation, mock_proxy):
 @pytest.mark.slow(
     reason="Slow and sketchy test. Needs a LAVA log raw file at /tmp/log.yaml"
 )
-def test_full_yaml_log(mock_proxy, frozen_time, tmp_path):
+def test_full_yaml_log(mock_proxy, frozen_time, lava_job_submitter):
     import random
 
     from lavacli.utils import flow_yaml as lava_yaml
@@ -352,10 +380,61 @@ def test_full_yaml_log(mock_proxy, frozen_time, tmp_path):
     def reset_logs(*args):
         proxy.scheduler.jobs.logs.side_effect = load_lines()
 
-    tmp_file = Path(tmp_path) / "log.json"
-    LAVAJobSubmitter(structured_log_file=tmp_file)
     proxy.scheduler.jobs.submit = reset_logs
     with pytest.raises(MesaCIRetryError):
         time_travel_to_test_time()
+        lava_job_submitter.submit()
         retriable_follow_job(proxy, "")
-        print(tmp_file.read_text())
+        print(lava_job_submitter.structured_log_file.read_text())
+
+
+@pytest.mark.parametrize(
+    "validate_only,finished_job_status,expected_combined_status,expected_exit_code",
+    [
+        (True, "pass", None, None),
+        (False, "pass", "pass", 0),
+        (False, "fail", "fail", 1),
+    ],
+    ids=[
+        "validate_only_no_job_submission",
+        "successful_job_submission",
+        "failed_job_submission",
+    ],
+)
+def test_job_combined_status(
+    lava_job_submitter,
+    validate_only,
+    finished_job_status,
+    expected_combined_status,
+    expected_exit_code,
+):
+    lava_job_submitter.validate_only = validate_only
+
+    with patch(
+        "lava.lava_job_submitter.retriable_follow_job"
+    ) as mock_retriable_follow_job, patch(
+        "lava.lava_job_submitter.LAVAJobSubmitter._LAVAJobSubmitter__prepare_submission"
+    ) as mock_prepare_submission, patch(
+        "sys.exit"
+    ):
+        from lava.lava_job_submitter import STRUCTURAL_LOG
+
+        mock_retriable_follow_job.return_value = MagicMock(status=finished_job_status)
+
+        mock_job_definition = MagicMock(spec=str)
+        mock_prepare_submission.return_value = mock_job_definition
+        original_status: str = STRUCTURAL_LOG.get("job_combined_status")
+
+        if validate_only:
+            lava_job_submitter.submit()
+            mock_retriable_follow_job.assert_not_called()
+            assert STRUCTURAL_LOG.get("job_combined_status") == original_status
+            return
+
+        try:
+            lava_job_submitter.submit()
+
+        except SystemExit as e:
+            assert e.code == expected_exit_code
+
+        assert STRUCTURAL_LOG["job_combined_status"] == expected_combined_status

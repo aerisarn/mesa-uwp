@@ -34,6 +34,7 @@ class LAVAJob:
         self._is_finished = False
         self.log: dict[str, Any] = log
         self.status = "not_submitted"
+        self.__exception: Optional[str] = None
 
     def heartbeat(self) -> None:
         self.last_log_time: datetime = datetime.now()
@@ -60,6 +61,15 @@ class LAVAJob:
     @property
     def is_finished(self) -> bool:
         return self._is_finished
+
+    @property
+    def exception(self) -> str:
+        return self.__exception
+
+    @exception.setter
+    def exception(self, exception: Exception) -> None:
+        self.__exception = repr(exception)
+        self.log["dut_job_fail_reason"] = self.__exception
 
     def validate(self) -> Optional[dict]:
         """Returns a dict with errors, if the validation fails.
@@ -158,6 +168,10 @@ class LAVAJob:
 
     def handle_exception(self, exception: Exception):
         print_log(exception)
+        self.cancel()
+        self.exception = exception
+
+        # Give more accurate status depending on exception
         if isinstance(exception, MesaCIKnownIssueException):
             self.status = "canceled"
         elif isinstance(exception, MesaCITimeoutError):
@@ -165,11 +179,8 @@ class LAVAJob:
         elif isinstance(exception, MesaCIException):
             self.status = "failed"
         elif isinstance(exception, KeyboardInterrupt):
-            self.status = "canceled_by_user"
+            self.status = "interrupted"
             print_log("LAVA job submitter was interrupted. Cancelling the job.")
-            raise exception
+            raise
         else:
             self.status = "job_submitter_error"
-
-        self.cancel()
-        self.log["dut_job_fail_reason"] = str(exception)
