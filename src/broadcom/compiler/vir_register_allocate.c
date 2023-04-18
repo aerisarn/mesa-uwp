@@ -582,7 +582,8 @@ interferes(int32_t t0_start, int32_t t0_end, int32_t t1_start, int32_t t1_end)
 }
 
 static void
-v3d_spill_reg(struct v3d_compile *c, int *acc_nodes, int spill_temp)
+v3d_spill_reg(struct v3d_compile *c, int *acc_nodes, int *implicit_rf_nodes,
+              int spill_temp)
 {
         c->spill_start_num_temps = c->num_temps;
         c->spilling = true;
@@ -594,8 +595,20 @@ v3d_spill_reg(struct v3d_compile *c, int *acc_nodes, int spill_temp)
                 spill_offset = c->spill_size;
                 c->spill_size += V3D_CHANNELS * sizeof(uint32_t);
 
-                if (spill_offset == 0)
+                if (spill_offset == 0) {
                         v3d_setup_spill_base(c);
+
+                        /* Don't allocate our spill base to rf0 to avoid
+                         * conflicts with instructions doing implicit writes
+                         * to that register.
+                         */
+                        if (!c->devinfo->has_accumulators) {
+                                ra_add_node_interference(
+                                        c->g,
+                                        temp_to_node(c, c->spill_base.index),
+                                        implicit_rf_nodes[0]);
+                        }
+                }
         }
 
         struct qinst *last_thrsw = c->last_thrsw;
@@ -1346,7 +1359,7 @@ v3d_register_allocate(struct v3d_compile *c)
                         int node = v3d_choose_spill_node(c);
                         uint32_t temp = node_to_temp(c, node);
                         if (node != -1) {
-                                v3d_spill_reg(c, acc_nodes, temp);
+                                v3d_spill_reg(c, acc_nodes, implicit_rf_nodes, temp);
                                 continue;
                         }
                 }
@@ -1363,7 +1376,7 @@ v3d_register_allocate(struct v3d_compile *c)
                 enum temp_spill_type spill_type =
                         get_spill_type_for_temp(c, temp);
                 if (spill_type != SPILL_TYPE_TMU || tmu_spilling_allowed(c)) {
-                        v3d_spill_reg(c, acc_nodes, temp);
+                        v3d_spill_reg(c, acc_nodes, implicit_rf_nodes, temp);
                         if (c->spills + c->fills > c->max_tmu_spills)
                                 goto spill_fail;
                 } else {
