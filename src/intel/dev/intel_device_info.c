@@ -1653,6 +1653,17 @@ intel_device_info_wa_stepping(struct intel_device_info *devinfo)
       if (devinfo->revision < 4)
          return INTEL_STEPPING_A0;
       return INTEL_STEPPING_B0;
+   } else if (devinfo->platform == INTEL_PLATFORM_TGL) {
+      switch (devinfo->revision) {
+      case 0:
+         return INTEL_STEPPING_A0;
+      case 1:
+         return INTEL_STEPPING_B0;
+      case 3:
+         return INTEL_STEPPING_C0;
+      default:
+         return INTEL_STEPPING_RELEASE;
+      }
    }
 
    /* all other platforms support only released steppings */
