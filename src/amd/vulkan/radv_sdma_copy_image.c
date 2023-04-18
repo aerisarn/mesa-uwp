@@ -159,8 +159,14 @@ radv_sdma_copy_buffer(struct radv_device *device, struct radeon_cmdbuf *cs, uint
 
    assert(gfx_level >= GFX7);
 
-   /* Align copy size to dw if src/dst address are dw aligned */
-   if ((src_va & 0x3) == 0 && (src_va & 0x3) == 0 && size > 4 && (size & 3) != 0) {
+   /* SDMA FW automatically enables a faster dword copy mode when
+    * source, destination and size are all dword-aligned.
+    *
+    * When source and destination are dword-aligned, round down the size to
+    * take advantage of faster dword copy, and copy the remaining few bytes
+    * with the last copy packet.
+    */
+   if ((src_va & 0x3) == 0 && (dst_va & 0x3) == 0 && size > 4 && (size & 0x3) != 0) {
       align = ~0x3u;
       ncopy++;
    }
