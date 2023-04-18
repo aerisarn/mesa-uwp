@@ -139,6 +139,7 @@ struct lp_sampler_size_query_params
 #define LP_IMG_STORE 1
 #define LP_IMG_ATOMIC 2
 #define LP_IMG_ATOMIC_CAS 3
+#define LP_IMG_OP_COUNT 4
 
 struct lp_img_params
 {
