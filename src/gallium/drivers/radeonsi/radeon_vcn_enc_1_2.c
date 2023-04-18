@@ -242,7 +242,8 @@ static void radeon_enc_quality_params(struct radeon_encoder *enc)
    enc->enc_pic.quality_params.vbaq_mode = enc->enc_pic.quality_modes.vbaq_mode;
    enc->enc_pic.quality_params.scene_change_sensitivity = 0;
    enc->enc_pic.quality_params.scene_change_min_idr_interval = 0;
-   enc->enc_pic.quality_params.two_pass_search_center_map_mode = 0;
+   enc->enc_pic.quality_params.two_pass_search_center_map_mode =
+                    (enc->enc_pic.quality_modes.pre_encode_mode) ? 1 : 0;
 
    RADEON_ENC_BEGIN(enc->cmd.quality_params);
    RADEON_ENC_CS(enc->enc_pic.quality_params.vbaq_mode);
@@ -1504,7 +1505,6 @@ void radeon_enc_1_2_init(struct radeon_encoder *enc)
    enc->op_init_rc = radeon_enc_op_init_rc;
    enc->op_init_rc_vbv = radeon_enc_op_init_rc_vbv;
    enc->op_preset = radeon_enc_op_preset;
-   enc->encode_params = radeon_enc_encode_params;
    enc->session_init = radeon_enc_session_init;
    enc->encode_statistics = radeon_enc_encode_statistics;
    enc->nalu_aud = radeon_enc_nalu_aud;

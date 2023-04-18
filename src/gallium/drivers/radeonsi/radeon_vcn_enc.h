@@ -309,6 +309,8 @@ typedef struct rvcn_enc_hevc_spec_misc_s {
    uint32_t cabac_init_flag;
    uint32_t half_pel_enabled;
    uint32_t quarter_pel_enabled;
+   uint32_t transform_skip_discarded;
+   uint32_t cu_qp_delta_enabled_flag;
 } rvcn_enc_hevc_spec_misc_t;
 
 typedef struct rvcn_enc_rate_ctl_session_init_s {
@@ -342,6 +344,7 @@ typedef struct rvcn_enc_quality_params_s {
    uint32_t scene_change_sensitivity;
    uint32_t scene_change_min_idr_interval;
    uint32_t two_pass_search_center_map_mode;
+   uint32_t vbaq_strength;
 } rvcn_enc_quality_params_t;
 
 typedef struct rvcn_enc_direct_output_nalu_s {

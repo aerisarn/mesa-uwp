@@ -535,8 +535,9 @@ static void radeon_enc_rec_offset(rvcn_enc_reconstructed_picture_t *recon,
 
 static int setup_dpb(struct radeon_encoder *enc)
 {
-   uint32_t rec_alignment = (u_reduce_video_profile(enc->base.profile)
-                             == PIPE_VIDEO_FORMAT_MPEG4_AVC) ? 16 : 64;
+   bool is_h264 = u_reduce_video_profile(enc->base.profile)
+                             == PIPE_VIDEO_FORMAT_MPEG4_AVC;
+   uint32_t rec_alignment = is_h264 ? 16 : 64;
    uint32_t aligned_width = align(enc->base.width, rec_alignment);
    uint32_t aligned_height = align(enc->base.height, rec_alignment);
    uint32_t aligned_chroma_height = align(aligned_height / 2, rec_alignment);
@@ -561,6 +562,22 @@ static int setup_dpb(struct radeon_encoder *enc)
    enc_pic->ctx_buf.pre_encode_picture_chroma_pitch = pitch;
 
    offset = 0;
+   if (enc_pic->quality_modes.pre_encode_mode) {
+      uint32_t pre_size  = ALIGN_TO((aligned_width >> 2), rec_alignment) *
+                           ALIGN_TO((aligned_height >> 2), rec_alignment);
+      uint32_t full_size = ALIGN_TO(aligned_width, rec_alignment) *
+                           ALIGN_TO(aligned_height, rec_alignment);
+      pre_size  = align(pre_size, 4);
+      full_size = align(full_size, 4);
+
+      enc_pic->ctx_buf.two_pass_search_center_map_offset = offset;
+      if (is_h264)
+         offset += align((pre_size * 4 + full_size) * sizeof(uint32_t), enc->alignment);
+      else
+         offset += align((pre_size * 52 + full_size) * sizeof(uint32_t), enc->alignment);
+   } else
+      enc_pic->ctx_buf.two_pass_search_center_map_offset = 0;
+
    for (i = 0; i < num_reconstructed_pictures; i++) {
       radeon_enc_rec_offset(&enc_pic->ctx_buf.reconstructed_pictures[i],
                             &offset, luma_size, chroma_size);
