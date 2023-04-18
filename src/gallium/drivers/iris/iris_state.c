@@ -6721,10 +6721,8 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
 #if GFX_VERx10 >= 120
          /* Wa_16013994831 - Disable preemption. */
-         if (batch->screen->devinfo->verx10 == 120 ||
-             intel_device_info_is_dg2(batch->screen->devinfo)) {
+         if (intel_needs_workaround(batch->screen->devinfo, 16013994831))
             iris_preemption_streamout_wa(ice, batch, false);
-         }
 #endif
 
          uint32_t dynamic_sol[GENX(3DSTATE_STREAMOUT_length)];
