@@ -233,3 +233,10 @@ lp_build_sampler_soa_dynamic_state(struct lp_build_sampler_soa *_sampler)
    struct lp_bld_llvm_sampler_soa *sampler = (struct lp_bld_llvm_sampler_soa *)_sampler;
    return &sampler->dynamic_state.base;
 }
+
+struct lp_sampler_dynamic_state *
+lp_build_image_soa_dynamic_state(struct lp_build_image_soa *_image)
+{
+   struct lp_bld_llvm_image_soa *image = (struct lp_bld_llvm_image_soa *)_image;
+   return &image->dynamic_state.base;
+}

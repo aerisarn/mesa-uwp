@@ -360,10 +360,13 @@ struct lp_sampler_dynamic_state
 
 
 struct lp_build_sampler_soa;
+struct lp_build_image_soa;
 
 struct lp_sampler_dynamic_state *
 lp_build_sampler_soa_dynamic_state(struct lp_build_sampler_soa *sampler);
 
+struct lp_sampler_dynamic_state *
+lp_build_image_soa_dynamic_state(struct lp_build_image_soa *_image);
 
 /**
  * Keep all information for sampling code generation in a single place.
