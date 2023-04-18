@@ -1249,7 +1249,10 @@ void anv_GetPhysicalDeviceFeatures2(
       .shaderImageGatherExtended                = true,
       .shaderStorageImageExtendedFormats        = true,
       .shaderStorageImageMultisample            = false,
-      .shaderStorageImageReadWithoutFormat      = false,
+      /* Gfx12.5 has all the required format supported in HW for typed
+       * read/writes
+       */
+      .shaderStorageImageReadWithoutFormat      = pdevice->info.verx10 >= 125,
       .shaderStorageImageWriteWithoutFormat     = true,
       .shaderUniformBufferArrayDynamicIndexing  = true,
       .shaderSampledImageArrayDynamicIndexing   = true,
