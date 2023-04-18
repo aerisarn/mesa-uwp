@@ -466,5 +466,11 @@ if __name__ == "__main__":
     # more buffering
     sys.stdout.reconfigure(line_buffering=True)
     sys.stderr.reconfigure(line_buffering=True)
+    # LAVA farm is giving datetime in UTC timezone, let's set it locally for the
+    # script run.
+    # Setting environ here will not affect the system time, as the os.environ
+    # lifetime follows the script one.
+    environ["TZ"] = "UTC"
+    time.tzset()
 
     fire.Fire(LAVAJobSubmitter)
