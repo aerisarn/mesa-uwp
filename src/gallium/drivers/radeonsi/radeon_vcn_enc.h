@@ -162,6 +162,8 @@
 
 #define RENCODE_REC_SWIZZLE_MODE_LINEAR                                             0
 #define RENCODE_REC_SWIZZLE_MODE_256B_S                                             1
+#define RENCODE_REC_SWIZZLE_MODE_256B_D                                             2
+#define RENCODE_REC_SWIZZLE_MODE_8x8_1D_THIN_12_24BPP                               0x10000001
 
 #define RENCODE_VIDEO_BITSTREAM_BUFFER_MODE_LINEAR                                  0
 #define RENCODE_VIDEO_BITSTREAM_BUFFER_MODE_CIRCULAR                                1
