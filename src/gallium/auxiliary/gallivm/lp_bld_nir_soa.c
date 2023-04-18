@@ -1312,9 +1312,30 @@ ssbo_base_pointer(struct lp_build_nir_context *bld_base,
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
    uint32_t shift_val = bit_size_to_shift_size(bit_size);
 
-   LLVMValueRef ssbo_idx = LLVMBuildExtractElement(gallivm->builder, index, invocation, "");
-   LLVMValueRef ssbo_size_ptr = lp_llvm_buffer_num_elements(gallivm, bld->ssbo_ptr, ssbo_idx, LP_MAX_TGSI_SHADER_BUFFERS);
-   LLVMValueRef ssbo_ptr = lp_llvm_buffer_base(gallivm, bld->ssbo_ptr, ssbo_idx, LP_MAX_TGSI_SHADER_BUFFERS);
+   LLVMValueRef ssbo_idx;
+   LLVMValueRef buffers;
+   uint32_t buffers_limit;
+   if (LLVMGetTypeKind(LLVMTypeOf(index)) == LLVMArrayTypeKind) {
+      LLVMValueRef set = LLVMBuildExtractValue(gallivm->builder, index, 0, "");
+      set = LLVMBuildExtractElement(gallivm->builder, set, invocation, "");
+
+      LLVMValueRef binding = LLVMBuildExtractValue(gallivm->builder, index, 1, "");
+      binding = LLVMBuildExtractElement(gallivm->builder, binding, invocation, "");
+
+      LLVMValueRef components[2] = { set, binding };
+      ssbo_idx = lp_nir_array_build_gather_values(gallivm->builder, components, 2);
+
+      buffers = bld->consts_ptr;
+      buffers_limit = LP_MAX_TGSI_CONST_BUFFERS;
+   } else {
+      ssbo_idx = LLVMBuildExtractElement(gallivm->builder, index, invocation, "");
+
+      buffers = bld->ssbo_ptr;
+      buffers_limit = LP_MAX_TGSI_SHADER_BUFFERS;
+   }
+
+   LLVMValueRef ssbo_size_ptr = lp_llvm_buffer_num_elements(gallivm, buffers, ssbo_idx, buffers_limit);
+   LLVMValueRef ssbo_ptr = lp_llvm_buffer_base(gallivm, buffers, ssbo_idx, buffers_limit);
    if (bounds)
       *bounds = LLVMBuildAShr(gallivm->builder, ssbo_size_ptr, lp_build_const_int32(gallivm, shift_val), "");
 
@@ -1667,17 +1688,12 @@ static void emit_barrier(struct lp_build_nir_context *bld_base)
 static LLVMValueRef emit_get_ssbo_size(struct lp_build_nir_context *bld_base,
                                        LLVMValueRef index)
 {
-   struct gallivm_state *gallivm = bld_base->base.gallivm;
-   struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
-   LLVMBuilderRef builder = bld->bld_base.base.gallivm->builder;
    struct lp_build_context *bld_broad = &bld_base->uint_bld;
-   LLVMValueRef ssbo_index = LLVMBuildExtractElement(builder, index,
-                                                     first_active_invocation(bld_base), "");
-   LLVMValueRef size_ptr = lp_llvm_buffer_num_elements(gallivm, bld->ssbo_ptr,
-                                                       ssbo_index,
-                                                       LP_MAX_TGSI_SHADER_BUFFERS);
 
-   return lp_build_broadcast_scalar(bld_broad, size_ptr);
+   LLVMValueRef size;
+   ssbo_base_pointer(bld_base, 8, index, first_active_invocation(bld_base), &size);
+
+   return lp_build_broadcast_scalar(bld_broad, size);
 }
 
 static void emit_image_op(struct lp_build_nir_context *bld_base,
