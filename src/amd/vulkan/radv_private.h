@@ -1627,6 +1627,8 @@ struct radv_cmd_state {
    uint32_t last_sx_blend_opt_epsilon;
    uint32_t last_sx_blend_opt_control;
 
+   uint32_t last_db_count_control;
+
    /* Whether CP DMA is busy/idle. */
    bool dma_is_busy;
 
