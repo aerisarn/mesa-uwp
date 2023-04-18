@@ -2949,6 +2949,12 @@ impl fmt::Display for Instr {
     }
 }
 
+impl<T: Into<Op>> From<T> for Instr {
+    fn from(value: T) -> Self {
+        Self::new(value)
+    }
+}
+
 pub struct BasicBlock {
     pub id: u32,
     pub instrs: Vec<Instr>,
