@@ -598,7 +598,7 @@ st_translate_vertex_program(struct st_context *st,
    if (prog->Parameters->NumParameters)
       prog->affected_states |= ST_NEW_VS_CONSTANTS;
 
-   if (prog->nir)
+   if (prog->arb.Instructions && prog->nir)
       ralloc_free(prog->nir);
 
    if (prog->serialized_nir) {
@@ -607,8 +607,11 @@ st_translate_vertex_program(struct st_context *st,
    }
 
    prog->state.type = PIPE_SHADER_IR_NIR;
-   prog->nir = st_translate_prog_to_nir(st, prog,
-                                          MESA_SHADER_VERTEX);
+   if (prog->arb.Instructions)
+      prog->nir = st_translate_prog_to_nir(st, prog,
+                                           MESA_SHADER_VERTEX);
+   else
+      st_prog_to_nir_postprocess(st, prog->nir, prog);
    prog->info = prog->nir->info;
 
    st_prepare_vertex_program(prog);
