@@ -2245,11 +2245,6 @@ PFN_vkVoidFunction anv_GetInstanceProcAddr(
 PUBLIC
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
     VkInstance                                  instance,
-    const char*                                 pName);
-
-PUBLIC
-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
-    VkInstance                                  instance,
     const char*                                 pName)
 {
    return anv_GetInstanceProcAddr(instance, pName);
@@ -2258,11 +2253,6 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
 /* With version 4+ of the loader interface the ICD should expose
  * vk_icdGetPhysicalDeviceProcAddr()
  */
-PUBLIC
-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetPhysicalDeviceProcAddr(
-    VkInstance  _instance,
-    const char* pName);
-
 PFN_vkVoidFunction vk_icdGetPhysicalDeviceProcAddr(
     VkInstance  _instance,
     const char* pName)
@@ -4027,12 +4017,6 @@ void anv_GetPhysicalDeviceMultisamplePropertiesEXT(
    vk_foreach_struct(ext, pMultisampleProperties->pNext)
       anv_debug_ignored_stype(ext->sType);
 }
-
-/* vk_icd.h does not declare this function, so we declare it here to
- * suppress Wmissing-prototypes.
- */
-PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion);
 
 PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
 vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)

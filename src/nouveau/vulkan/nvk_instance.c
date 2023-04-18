@@ -19,12 +19,6 @@ nvk_EnumerateInstanceVersion(uint32_t *pApiVersion)
    return VK_SUCCESS;
 }
 
-/* vk_icd.h does not declare this function, so we declare it here to
- * suppress Wmissing-prototypes.
- */
-PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion);
-
 PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
 vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
 {

@@ -1857,13 +1857,6 @@ dzn_GetInstanceProcAddr(VkInstance _instance,
 #define PUBLIC
 #endif
 
-/* With version 1+ of the loader interface the ICD should expose
- * vk_icdGetInstanceProcAddr to work around certain LD_PRELOAD issues seen in apps.
- */
-PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
-vk_icdGetInstanceProcAddr(VkInstance instance,
-                          const char *pName);
-
 PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 vk_icdGetInstanceProcAddr(VkInstance instance,
                           const char *pName)
@@ -1874,10 +1867,6 @@ vk_icdGetInstanceProcAddr(VkInstance instance,
 /* With version 4+ of the loader interface the ICD should expose
  * vk_icdGetPhysicalDeviceProcAddr()
  */
-PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
-vk_icdGetPhysicalDeviceProcAddr(VkInstance  _instance,
-                                const char *pName);
-
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 vk_icdGetPhysicalDeviceProcAddr(VkInstance  _instance,
                                 const char *pName)
@@ -1885,12 +1874,6 @@ vk_icdGetPhysicalDeviceProcAddr(VkInstance  _instance,
    VK_FROM_HANDLE(dzn_instance, instance, _instance);
    return vk_instance_get_physical_device_proc_addr(&instance->vk, pName);
 }
-
-/* vk_icd.h does not declare this function, so we declare it here to
- * suppress Wmissing-prototypes.
- */
-PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion);
 
 PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
 vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion)

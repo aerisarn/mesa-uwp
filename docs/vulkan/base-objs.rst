@@ -120,18 +120,10 @@ instance-level ``vkGet*ProcAddr()`` entrypoints is trivial:
 
    PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
    vk_icdGetInstanceProcAddr(VkInstance instance,
-                             const char *pName);
-
-   PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
-   vk_icdGetInstanceProcAddr(VkInstance instance,
                              const char *pName)
    {
       return drv_GetInstanceProcAddr(instance, pName);
    }
-
-   PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
-   vk_icdGetPhysicalDeviceProcAddr(VkInstance  _instance,
-                                   const char* pName);
 
    PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
    vk_icdGetPhysicalDeviceProcAddr(VkInstance  _instance,
@@ -140,11 +132,6 @@ instance-level ``vkGet*ProcAddr()`` entrypoints is trivial:
       VK_FROM_HANDLE(vk_instance, instance, _instance);
       return vk_instance_get_physical_device_proc_addr(instance, pName);
    }
-
-The prototypes for the ``vk_icd*`` versions are needed because those are not
-actually defined in the Vulkan headers and you need the prototype somewhere
-to get the C compiler to not complain.  These are all implemented by
-wrapping one of the provided ``vk_instance_get*_proc_addr()`` functions.
 
 .. c:autofunction:: vk_instance_get_proc_addr
 

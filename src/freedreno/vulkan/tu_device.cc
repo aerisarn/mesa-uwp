@@ -2570,10 +2570,6 @@ tu_GetInstanceProcAddr(VkInstance _instance, const char *pName)
  */
 PUBLIC
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
-vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName);
-
-PUBLIC
-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName)
 {
    return tu_GetInstanceProcAddr(instance, pName);
@@ -2582,11 +2578,6 @@ vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName)
 /* With version 4+ of the loader interface the ICD should expose
  * vk_icdGetPhysicalDeviceProcAddr()
  */
-PUBLIC
-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
-vk_icdGetPhysicalDeviceProcAddr(VkInstance  _instance,
-                                const char* pName);
-
 PFN_vkVoidFunction
 vk_icdGetPhysicalDeviceProcAddr(VkInstance  _instance,
                                 const char* pName)
@@ -3215,12 +3206,6 @@ tu_DestroySampler(VkDevice _device,
 
    vk_object_free(&device->vk, pAllocator, sampler);
 }
-
-/* vk_icd.h does not declare this function, so we declare it here to
- * suppress Wmissing-prototypes.
- */
-PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion);
 
 PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
 vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion)
