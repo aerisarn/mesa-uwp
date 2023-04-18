@@ -902,7 +902,7 @@ impl AssignRegsBlock {
                 self.assign_regs_instr(instr, ip, &sum, &killed, &mut pcopy);
 
             if !pcopy.is_empty() {
-                instrs.push(Instr::new(Op::ParCopy(pcopy)));
+                instrs.push(pcopy.into());
             }
 
             if let Some(instr) = instr {
@@ -937,11 +937,10 @@ impl AssignRegsBlock {
             pcopy.dsts.push(dst.into());
         }
 
-        let pcopy = Instr::new(Op::ParCopy(pcopy));
         if b.branch().is_some() {
-            b.instrs.insert(b.instrs.len() - 1, pcopy);
+            b.instrs.insert(b.instrs.len() - 1, pcopy.into());
         } else {
-            b.instrs.push(pcopy);
+            b.instrs.push(pcopy.into());
         };
     }
 }

@@ -2625,74 +2625,82 @@ impl Instr {
     }
 
     pub fn new_fadd(dst: Dst, x: Src, y: Src) -> Instr {
-        Instr::new(Op::FAdd(OpFAdd {
+        OpFAdd {
             dst: dst,
             srcs: [x, y],
             saturate: false,
             rnd_mode: FRndMode::NearestEven,
-        }))
+        }
+        .into()
     }
 
     pub fn new_fmul(dst: Dst, x: Src, y: Src) -> Instr {
-        Instr::new(Op::FMul(OpFMul {
+        OpFMul {
             dst: dst,
             srcs: [x, y],
             saturate: false,
             rnd_mode: FRndMode::NearestEven,
-        }))
+        }
+        .into()
     }
 
     pub fn new_fset(dst: Dst, cmp_op: FloatCmpOp, x: Src, y: Src) -> Instr {
-        Instr::new(Op::FSet(OpFSet {
+        OpFSet {
             dst: dst,
             cmp_op: cmp_op,
             srcs: [x, y],
-        }))
+        }
+        .into()
     }
 
     pub fn new_fsetp(dst: Dst, cmp_op: FloatCmpOp, x: Src, y: Src) -> Instr {
-        Instr::new(Op::FSetP(OpFSetP {
+        OpFSetP {
             dst: dst,
             cmp_op: cmp_op,
             srcs: [x, y],
-        }))
+        }
+        .into()
     }
 
     pub fn new_mufu(dst: Dst, op: MuFuOp, src: Src) -> Instr {
-        Instr::new(Op::MuFu(OpMuFu {
+        OpMuFu {
             dst: dst,
             op: op,
             src: src,
-        }))
+        }
+        .into()
     }
 
     pub fn new_iadd(dst: Dst, x: Src, y: Src) -> Instr {
-        Instr::new(Op::IAdd3(OpIAdd3 {
+        OpIAdd3 {
             dst: dst,
             overflow: Dst::None,
             srcs: [Src::new_zero(), x, y],
             carry: Src::new_imm_bool(false),
-        }))
+        }
+        .into()
     }
 
     pub fn new_i2f(dst: Dst, src: Src) -> Instr {
-        Instr::new(Op::I2F(OpI2F {
+        OpI2F {
             dst: dst,
             src: src,
             dst_type: FloatType::F32,
             src_type: IntType::I32,
             rnd_mode: FRndMode::NearestEven,
-        }))
+        }
+        .into()
     }
 
     pub fn new_u2f(dst: Dst, src: Src) -> Instr {
-        Instr::new(Op::I2F(OpI2F {
+        OpI2F {
             dst: dst,
             src: src,
             dst_type: FloatType::F32,
             src_type: IntType::U32,
             rnd_mode: FRndMode::NearestEven,
-        }))
+        }
+        .into()
     }
 
     pub fn new_isetp(
@@ -2702,12 +2710,13 @@ impl Instr {
         x: Src,
         y: Src,
     ) -> Instr {
-        Instr::new(Op::ISetP(OpISetP {
+        OpISetP {
             dst: dst,
             cmp_op: cmp_op,
             cmp_type: cmp_type,
             srcs: [x, y],
-        }))
+        }
+        .into()
     }
 
     pub fn new_lop2(dst: Dst, op: LogicOp, x: Src, y: Src) -> Instr {
@@ -2723,17 +2732,19 @@ impl Instr {
         assert!(x.src_ref.is_predicate() == is_predicate);
 
         if is_predicate {
-            Instr::new(OpPLop3 {
+            OpPLop3 {
                 dsts: [dst, Dst::None],
                 srcs: [x, y, Src::new_imm_bool(true)],
                 ops: [op, LogicOp::new_const(false)],
-            })
+            }
+            .into()
         } else {
-            Instr::new(OpLop3 {
+            OpLop3 {
                 dst: dst,
                 srcs: [x, y, Src::new_zero()],
                 op: op,
-            })
+            }
+            .into()
         }
     }
 
@@ -2743,28 +2754,31 @@ impl Instr {
     }
 
     pub fn new_mov(dst: Dst, src: Src) -> Instr {
-        Instr::new(Op::Mov(OpMov {
+        OpMov {
             dst: dst,
             src: src,
             quad_lanes: 0xf,
-        }))
+        }
+        .into()
     }
 
     pub fn new_sel(dst: Dst, sel: Src, x: Src, y: Src) -> Instr {
-        Instr::new(Op::Sel(OpSel {
+        OpSel {
             dst: dst,
             cond: sel,
             srcs: [x, y],
-        }))
+        }
+        .into()
     }
 
     pub fn new_plop3(dst: Dst, op: LogicOp, x: Src, y: Src, z: Src) -> Instr {
         assert!(x.is_predicate() && y.is_predicate() && z.is_predicate());
-        Instr::new(Op::PLop3(OpPLop3 {
+        OpPLop3 {
             dsts: [dst, Dst::None],
             srcs: [x, y, z],
             ops: [op, LogicOp::new_const(false)],
-        }))
+        }
+        .into()
     }
 
     pub fn new_ld(
@@ -2773,12 +2787,13 @@ impl Instr {
         addr: Src,
         offset: i32,
     ) -> Instr {
-        Instr::new(Op::Ld(OpLd {
+        OpLd {
             dst: dst,
             addr: addr,
             offset: offset,
             access: access,
-        }))
+        }
+        .into()
     }
 
     pub fn new_st(
@@ -2787,16 +2802,17 @@ impl Instr {
         offset: i32,
         data: Src,
     ) -> Instr {
-        Instr::new(Op::St(OpSt {
+        OpSt {
             addr: addr,
             data: data,
             offset: offset,
             access: access,
-        }))
+        }
+        .into()
     }
 
     pub fn new_ald(dst: Dst, attr_addr: u16, vtx: Src, offset: Src) -> Instr {
-        Instr::new(Op::ALd(OpALd {
+        OpALd {
             dst: dst,
             vtx: vtx,
             offset: offset,
@@ -2807,11 +2823,12 @@ impl Instr {
                 out_load: false,
                 flags: 0,
             },
-        }))
+        }
+        .into()
     }
 
     pub fn new_ast(attr_addr: u16, data: Src, vtx: Src, offset: Src) -> Instr {
-        Instr::new(Op::ASt(OpASt {
+        OpASt {
             vtx: vtx,
             offset: offset,
             data: data,
@@ -2822,33 +2839,36 @@ impl Instr {
                 out_load: false,
                 flags: 0,
             },
-        }))
+        }
+        .into()
     }
 
     pub fn new_bra(block: u32) -> Instr {
-        Instr::new(Op::Bra(OpBra { target: block }))
+        OpBra { target: block }.into()
     }
 
     pub fn new_exit() -> Instr {
-        Instr::new(Op::Exit(OpExit {}))
+        OpExit {}.into()
     }
 
     pub fn new_s2r(dst: Dst, idx: u8) -> Instr {
-        Instr::new(Op::S2R(OpS2R { dst: dst, idx: idx }))
+        OpS2R { dst: dst, idx: idx }.into()
     }
 
     pub fn new_swap(x: RegRef, y: RegRef) -> Instr {
         assert!(x.file() == y.file());
-        Instr::new(Op::Swap(OpSwap {
+        OpSwap {
             dsts: [x.into(), y.into()],
             srcs: [y.into(), x.into()],
-        }))
+        }
+        .into()
     }
 
     pub fn new_fs_out(srcs: &[Src]) -> Instr {
-        Instr::new(Op::FSOut(OpFSOut {
+        OpFSOut {
             srcs: srcs.to_vec(),
-        }))
+        }
+        .into()
     }
 
     pub fn dsts(&self) -> &[Dst] {
@@ -3083,20 +3103,22 @@ impl Shader {
         self.map_instrs(&|instr: Instr, _| -> Vec<Instr> {
             match instr.op {
                 Op::FMov(mov) => {
-                    vec![Instr::new(Op::FAdd(OpFAdd {
+                    vec![OpFAdd {
                         dst: mov.dst,
                         srcs: [Src::new_zero(), mov.src],
                         saturate: mov.saturate,
                         rnd_mode: FRndMode::NearestEven,
-                    }))]
+                    }
+                    .into()]
                 }
                 Op::IMov(mov) => {
-                    vec![Instr::new(Op::IAdd3(OpIAdd3 {
+                    vec![OpIAdd3 {
                         dst: mov.dst,
                         overflow: Dst::None,
                         srcs: [Src::new_zero(), mov.src, Src::new_zero()],
                         carry: Src::new_imm_bool(false),
-                    }))]
+                    }
+                    .into()]
                 }
                 Op::FSOut(out) => {
                     let mut pcopy = OpParCopy::new();
@@ -3106,7 +3128,7 @@ impl Shader {
                         pcopy.srcs.push(*src);
                         pcopy.dsts.push(dst.into());
                     }
-                    vec![Instr::new(Op::ParCopy(pcopy))]
+                    vec![pcopy.into()]
                 }
                 _ => vec![instr],
             }
@@ -3130,14 +3152,15 @@ impl Shader {
                     if x == y {
                         Vec::new()
                     } else if x.is_predicate() {
-                        vec![Instr::new(Op::PLop3(OpPLop3 {
+                        vec![OpPLop3 {
                             dsts: [x.into(), y.into()],
                             srcs: [x.into(), y.into(), Src::new_imm_bool(true)],
                             ops: [
                                 LogicOp::new_lut(&|_, y, _| y),
                                 LogicOp::new_lut(&|x, _, _| x),
                             ],
-                        }))]
+                        }
+                        .into()]
                     } else {
                         vec![
                             Instr::new_xor(x.into(), x.into(), y.into()),
