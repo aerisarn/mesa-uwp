@@ -3631,9 +3631,11 @@ radv_emit_index_buffer(struct radv_cmd_buffer *cmd_buffer, bool indirect)
    cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_INDEX_BUFFER;
 }
 
-void
-radv_set_db_count_control(struct radv_cmd_buffer *cmd_buffer, bool enable_occlusion_queries)
+static void
+radv_flush_occlusion_query_state(struct radv_cmd_buffer *cmd_buffer)
 {
+   const bool enable_occlusion_queries = cmd_buffer->state.active_occlusion_queries ||
+                                         cmd_buffer->state.inherited_occlusion_queries;
    uint32_t db_count_control;
 
    if (!enable_occlusion_queries) {
@@ -3643,7 +3645,8 @@ radv_set_db_count_control(struct radv_cmd_buffer *cmd_buffer, bool enable_occlus
       uint32_t sample_rate = util_logbase2(cmd_buffer->state.render.max_samples);
       bool gfx10_perfect =
          cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX10 &&
-         cmd_buffer->state.perfect_occlusion_queries_enabled;
+         (cmd_buffer->state.perfect_occlusion_queries_enabled ||
+          cmd_buffer->state.inherited_query_control_flags & VK_QUERY_CONTROL_PRECISE_BIT);
 
       if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
          /* Always enable PERFECT_ZPASS_COUNTS due to issues with partially
@@ -5841,7 +5844,8 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
    cmd_buffer->state.last_pa_sc_binner_cntl_0 = -1;
    cmd_buffer->usage_flags = pBeginInfo->flags;
 
-   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_ALL | RADV_CMD_DIRTY_GUARDBAND;
+   cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_ALL | RADV_CMD_DIRTY_GUARDBAND |
+                              RADV_CMD_DIRTY_OCCLUSION_QUERY;
 
    if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
       uint32_t pred_value = 0;
@@ -5919,6 +5923,12 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
       if (cmd_buffer->state.inherited_pipeline_statistics &
           VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT)
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_NGG_QUERY;
+
+      cmd_buffer->state.inherited_occlusion_queries =
+         pBeginInfo->pInheritanceInfo->occlusionQueryEnable;
+      cmd_buffer->state.inherited_query_control_flags = pBeginInfo->pInheritanceInfo->queryFlags;
+      if (cmd_buffer->state.inherited_occlusion_queries)
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_OCCLUSION_QUERY;
    }
 
    if (unlikely(cmd_buffer->device->trace_bo))
@@ -7634,7 +7644,7 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
     */
    primary->state.dirty |= RADV_CMD_DIRTY_PIPELINE | RADV_CMD_DIRTY_INDEX_BUFFER |
                            RADV_CMD_DIRTY_GUARDBAND | RADV_CMD_DIRTY_DYNAMIC_ALL |
-                           RADV_CMD_DIRTY_NGG_QUERY;
+                           RADV_CMD_DIRTY_NGG_QUERY | RADV_CMD_DIRTY_OCCLUSION_QUERY;
    radv_mark_descriptor_sets_dirty(primary, VK_PIPELINE_BIND_POINT_GRAPHICS);
    radv_mark_descriptor_sets_dirty(primary, VK_PIPELINE_BIND_POINT_COMPUTE);
 
@@ -8934,6 +8944,11 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
    if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_NGG_QUERY) {
       cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_NGG_QUERY;
       radv_flush_ngg_query_state(cmd_buffer);
+   }
+
+   if (cmd_buffer->state.dirty & RADV_CMD_DIRTY_OCCLUSION_QUERY) {
+      radv_flush_occlusion_query_state(cmd_buffer);
+      cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_OCCLUSION_QUERY;
    }
 
    if ((cmd_buffer->state.dirty &
