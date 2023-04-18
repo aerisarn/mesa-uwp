@@ -95,7 +95,7 @@ equals_descriptor_layout(const void *a, const void *b)
    const struct zink_descriptor_layout_key *a_k = a;
    const struct zink_descriptor_layout_key *b_k = b;
    return a_k->num_bindings == b_k->num_bindings &&
-          !memcmp(a_k->bindings, b_k->bindings, a_k->num_bindings * sizeof(VkDescriptorSetLayoutBinding));
+          (!a_k->num_bindings || !memcmp(a_k->bindings, b_k->bindings, a_k->num_bindings * sizeof(VkDescriptorSetLayoutBinding)));
 }
 
 static struct zink_descriptor_layout *
