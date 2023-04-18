@@ -7505,10 +7505,10 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
       RADV_FROM_HANDLE(radv_cmd_buffer, secondary, pCmdBuffers[i]);
 
       /* Do not launch an IB2 for secondary command buffers that contain
-       * DRAW_{INDEX}_INDIRECT_MULTI on GFX7 because it's illegal and hang the GPU.
+       * DRAW_{INDEX}_INDIRECT_{MULTI} on GFX6-7 because it's illegal and hangs the GPU.
        */
       const bool allow_ib2 =
-         !secondary->state.uses_draw_indirect_multi ||
+         !secondary->state.uses_draw_indirect ||
          secondary->device->physical_device->rad_info.gfx_level >= GFX8;
 
       primary->scratch_size_per_wave_needed =
@@ -8073,9 +8073,9 @@ radv_cs_emit_indirect_draw_packet(struct radv_cmd_buffer *cmd_buffer, bool index
       radeon_emit(cs, count_va >> 32);
       radeon_emit(cs, stride); /* stride */
       radeon_emit(cs, di_src_sel);
-
-      cmd_buffer->state.uses_draw_indirect_multi = true;
    }
+
+   cmd_buffer->state.uses_draw_indirect = true;
 }
 
 ALWAYS_INLINE static void

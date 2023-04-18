@@ -1657,8 +1657,8 @@ struct radv_cmd_state {
 
    uint8_t cb_mip[MAX_RTS];
 
-   /* Whether DRAW_{INDEX}_INDIRECT_MULTI is emitted. */
-   bool uses_draw_indirect_multi;
+   /* Whether DRAW_{INDEX}_INDIRECT_{MULTI} is emitted. */
+   bool uses_draw_indirect;
 
    uint32_t rt_stack_size;
 
