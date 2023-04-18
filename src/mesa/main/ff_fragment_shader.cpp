@@ -31,28 +31,20 @@
 #include "main/context.h"
 
 #include "main/macros.h"
-#include "main/samplerobj.h"
-#include "main/shaderobj.h"
 #include "main/state.h"
 #include "main/texenvprogram.h"
 #include "main/texobj.h"
-#include "main/uniforms.h"
-#include "compiler/glsl/ir_builder.h"
-#include "compiler/glsl/ir_optimization.h"
-#include "compiler/glsl/glsl_parser_extras.h"
-#include "compiler/glsl/glsl_symbol_table.h"
-#include "compiler/glsl_types.h"
-#include "program/link_program.h"
 #include "program/program.h"
-#include "program/programopt.h"
 #include "program/prog_cache.h"
-#include "program/prog_instruction.h"
-#include "program/prog_parameter.h"
-#include "program/prog_print.h"
 #include "program/prog_statevars.h"
+#include "program/prog_to_nir.h"
 #include "util/bitscan.h"
 
-using namespace ir_builder;
+#include "state_tracker/st_context.h"
+#include "state_tracker/st_program.h"
+
+#include "compiler/nir/nir_builder.h"
+#include "compiler/nir/nir_builtin_builder.h"
 
 /*
  * Note on texture units:
@@ -332,58 +324,107 @@ static GLuint make_state_key( struct gl_context *ctx,  struct state_key *key )
 
 /** State used to build the fragment program:
  */
-class texenv_fragment_program : public ir_factory {
-public:
-   struct gl_shader_program *shader_program;
-   struct gl_shader *shader;
-   exec_list *top_instructions;
+struct texenv_fragment_program {
+   nir_builder *b;
+   struct gl_program_parameter_list *state_params;
+
    struct state_key *state;
 
-   ir_variable *src_texture[MAX_TEXTURE_COORD_UNITS];
-   /* Reg containing each texture unit's sampled texture color,
-    * else undef.
+   nir_variable *sampler_vars[MAX_TEXTURE_COORD_UNITS];
+
+   nir_ssa_def *src_texture[MAX_TEXTURE_COORD_UNITS];
+   /* ssa-def containing each texture unit's sampled texture color,
+    * else NULL.
     */
 
-   ir_rvalue *src_previous;     /**< Reg containing color from previous
-                                 * stage.  May need to be decl'd.
-                                 */
+   nir_ssa_def *src_previous;   /**< Color from previous stage */
 };
 
-static ir_rvalue *
-get_current_attrib(texenv_fragment_program *p, GLuint attrib)
+static nir_variable *
+register_state_var(texenv_fragment_program *p,
+                   gl_state_index s0,
+                   gl_state_index s1,
+                   gl_state_index s2,
+                   gl_state_index s3,
+                   const struct glsl_type *type)
 {
-   ir_variable *current;
-   char name[128];
+   gl_state_index16 tokens[STATE_LENGTH];
+   tokens[0] = s0;
+   tokens[1] = s1;
+   tokens[2] = s2;
+   tokens[3] = s3;
+   nir_variable *var = nir_find_state_variable(p->b->shader, tokens);
+   if (var)
+      return var;
 
-   snprintf(name, sizeof(name), "gl_CurrentAttribFrag%uMESA", attrib);
+   int loc = _mesa_add_state_reference(p->state_params, tokens);
 
-   current = p->shader->symbols->get_variable(name);
-   assert(current);
-   return new(p->mem_ctx) ir_dereference_variable(current);
+   char *name = _mesa_program_state_string(tokens);
+   var = nir_variable_create(p->b->shader, nir_var_uniform, type, name);
+   free(name);
+
+   var->num_state_slots = 1;
+   var->state_slots = ralloc_array(var, nir_state_slot, 1);
+   var->data.driver_location = loc;
+   memcpy(var->state_slots[0].tokens, tokens,
+          sizeof(var->state_slots[0].tokens));
+
+   p->b->shader->num_uniforms++;
+   return var;
 }
 
-static ir_rvalue *
+static nir_ssa_def *
+load_state_var(texenv_fragment_program *p,
+               gl_state_index s0,
+               gl_state_index s1,
+               gl_state_index s2,
+               gl_state_index s3,
+               const struct glsl_type *type)
+{
+   nir_variable *var = register_state_var(p, s0, s1, s2, s3, type);
+   return nir_load_var(p->b, var);
+}
+
+static nir_ssa_def *
+load_input(texenv_fragment_program *p, gl_varying_slot slot,
+           const struct glsl_type *type)
+{
+   nir_variable *var =
+      nir_get_variable_with_location(p->b->shader,
+                                     nir_var_shader_in,
+                                     slot,
+                                     type);
+   var->data.interpolation = INTERP_MODE_NONE;
+   return nir_load_var(p->b, var);
+}
+
+static nir_ssa_def *
+get_current_attrib(texenv_fragment_program *p, GLuint attrib)
+{
+   return load_state_var(p, STATE_CURRENT_ATTRIB_MAYBE_VP_CLAMPED,
+                         (gl_state_index)attrib,
+                         STATE_NOT_STATE_VAR,
+                         STATE_NOT_STATE_VAR,
+                         glsl_vec4_type());
+}
+
+static nir_ssa_def *
 get_gl_Color(texenv_fragment_program *p)
 {
    if (p->state->inputs_available & VARYING_BIT_COL0) {
-      ir_variable *var = p->shader->symbols->get_variable("gl_Color");
-      assert(var);
-      return new(p->mem_ctx) ir_dereference_variable(var);
+      return load_input(p, VARYING_SLOT_COL0, glsl_vec4_type());
    } else {
       return get_current_attrib(p, VERT_ATTRIB_COLOR0);
    }
 }
 
-static ir_rvalue *
+static nir_ssa_def *
 get_source(texenv_fragment_program *p,
            GLuint src, GLuint unit)
 {
-   ir_variable *var;
-   ir_dereference *deref;
-
    switch (src) {
    case TEXENV_SRC_TEXTURE:
-      return new(p->mem_ctx) ir_dereference_variable(p->src_texture[unit]);
+      return p->src_texture[unit];
 
    case TEXENV_SRC_TEXTURE0:
    case TEXENV_SRC_TEXTURE1:
@@ -393,33 +434,29 @@ get_source(texenv_fragment_program *p,
    case TEXENV_SRC_TEXTURE5:
    case TEXENV_SRC_TEXTURE6:
    case TEXENV_SRC_TEXTURE7:
-      return new(p->mem_ctx)
-         ir_dereference_variable(p->src_texture[src - TEXENV_SRC_TEXTURE0]);
+      return p->src_texture[src - TEXENV_SRC_TEXTURE0];
 
    case TEXENV_SRC_CONSTANT:
-      var = p->shader->symbols->get_variable("gl_TextureEnvColor");
-      assert(var);
-      deref = new(p->mem_ctx) ir_dereference_variable(var);
-      var->data.max_array_access = MAX2(var->data.max_array_access, (int)unit);
-      return new(p->mem_ctx) ir_dereference_array(deref,
-                                                  new(p->mem_ctx) ir_constant(unit));
+      return load_state_var(p, STATE_TEXENV_COLOR,
+                            (gl_state_index)unit,
+                            STATE_NOT_STATE_VAR,
+                            STATE_NOT_STATE_VAR,
+                            glsl_vec4_type());
 
    case TEXENV_SRC_PRIMARY_COLOR:
-      var = p->shader->symbols->get_variable("gl_Color");
-      assert(var);
-      return new(p->mem_ctx) ir_dereference_variable(var);
+      return get_gl_Color(p);
 
    case TEXENV_SRC_ZERO:
-      return new(p->mem_ctx) ir_constant(0.0f);
+      return nir_imm_zero(p->b, 4, 32);
 
    case TEXENV_SRC_ONE:
-      return new(p->mem_ctx) ir_constant(1.0f);
+      return nir_imm_vec4(p->b, 1.0f, 1.0f, 1.0f, 1.0f);
 
    case TEXENV_SRC_PREVIOUS:
       if (!p->src_previous) {
          return get_gl_Color(p);
       } else {
-         return p->src_previous->clone(p->mem_ctx, NULL);
+         return p->src_previous;
       }
 
    default:
@@ -428,27 +465,28 @@ get_source(texenv_fragment_program *p,
    }
 }
 
-static ir_rvalue *
+static nir_ssa_def *
 emit_combine_source(texenv_fragment_program *p,
                     GLuint unit,
                     GLuint source,
                     GLuint operand)
 {
-   ir_rvalue *src;
+   nir_ssa_def *src;
 
    src = get_source(p, source, unit);
 
    switch (operand) {
    case TEXENV_OPR_ONE_MINUS_COLOR:
-      return sub(new(p->mem_ctx) ir_constant(1.0f), src);
+      return nir_fsub(p->b, nir_imm_float(p->b, 1.0), src);
 
    case TEXENV_OPR_ALPHA:
-      return src->type->is_scalar() ? src : swizzle_w(src);
+      return src->num_components == 1 ? src : nir_channel(p->b, src, 3);
 
    case TEXENV_OPR_ONE_MINUS_ALPHA: {
-      ir_rvalue *const scalar = src->type->is_scalar() ? src : swizzle_w(src);
+      nir_ssa_def *scalar =
+         src->num_components == 1 ? src : nir_channel(p->b, src, 3);
 
-      return sub(new(p->mem_ctx) ir_constant(1.0f), scalar);
+      return nir_fsub(p->b, nir_imm_float(p->b, 1.0), scalar);
    }
 
    case TEXENV_OPR_COLOR:
@@ -500,24 +538,24 @@ static GLboolean args_match( const struct state_key *key, GLuint unit )
    return GL_TRUE;
 }
 
-static ir_rvalue *
-smear(ir_rvalue *val)
+static nir_ssa_def *
+smear(nir_builder *b, nir_ssa_def *val)
 {
-   if (!val->type->is_scalar())
+   if (val->num_components != 1)
       return val;
 
-   return swizzle_xxxx(val);
+   return nir_vec4(b, val, val, val, val);
 }
 
-static ir_rvalue *
-emit_combine(texenv_fragment_program *p,
+static nir_ssa_def *
+emit_combine(struct texenv_fragment_program *p,
              GLuint unit,
              GLuint nr,
              GLuint mode,
              const struct gl_tex_env_argument *opt)
 {
-   ir_rvalue *src[MAX_COMBINER_TERMS];
-   ir_rvalue *tmp0, *tmp1;
+   nir_ssa_def *src[MAX_COMBINER_TERMS];
+   nir_ssa_def *tmp0, *tmp1;
    GLuint i;
 
    assert(nr <= MAX_COMBINER_TERMS);
@@ -530,52 +568,51 @@ emit_combine(texenv_fragment_program *p,
       return src[0];
 
    case TEXENV_MODE_MODULATE:
-      return mul(src[0], src[1]);
+      return nir_fmul(p->b, src[0], src[1]);
 
    case TEXENV_MODE_ADD:
-      return add(src[0], src[1]);
+      return nir_fadd(p->b, src[0], src[1]);
 
    case TEXENV_MODE_ADD_SIGNED:
-      return add(add(src[0], src[1]), new(p->mem_ctx) ir_constant(-0.5f));
+      return nir_fadd_imm(p->b, nir_fadd(p->b, src[0], src[1]), -0.5f);
 
    case TEXENV_MODE_INTERPOLATE:
-      /* Arg0 * (Arg2) + Arg1 * (1-Arg2) */
-      tmp0 = mul(src[0], src[2]);
-      tmp1 = mul(src[1], sub(new(p->mem_ctx) ir_constant(1.0f),
-                             src[2]->clone(p->mem_ctx, NULL)));
-      return add(tmp0, tmp1);
+      return nir_flrp(p->b, src[1], src[0], src[2]);
 
    case TEXENV_MODE_SUBTRACT:
-      return sub(src[0], src[1]);
+      return nir_fsub(p->b, src[0], src[1]);
 
    case TEXENV_MODE_DOT3_RGBA:
    case TEXENV_MODE_DOT3_RGBA_EXT:
    case TEXENV_MODE_DOT3_RGB_EXT:
-   case TEXENV_MODE_DOT3_RGB: {
-      tmp0 = mul(src[0], new(p->mem_ctx) ir_constant(2.0f));
-      tmp0 = add(tmp0, new(p->mem_ctx) ir_constant(-1.0f));
+   case TEXENV_MODE_DOT3_RGB:
+      tmp0 = nir_fadd_imm(p->b, nir_fmul_imm(p->b, src[0], 2.0f), -1.0f);
+      tmp1 = nir_fadd_imm(p->b, nir_fmul_imm(p->b, src[1], 2.0f), -1.0f);
+      return nir_fdot3(p->b, smear(p->b, tmp0), smear(p->b, tmp1));
 
-      tmp1 = mul(src[1], new(p->mem_ctx) ir_constant(2.0f));
-      tmp1 = add(tmp1, new(p->mem_ctx) ir_constant(-1.0f));
-
-      return dot(swizzle_xyz(smear(tmp0)), swizzle_xyz(smear(tmp1)));
-   }
    case TEXENV_MODE_MODULATE_ADD_ATI:
-      return add(mul(src[0], src[2]), src[1]);
+      return nir_fmad(p->b, src[0], src[2], src[1]);
 
    case TEXENV_MODE_MODULATE_SIGNED_ADD_ATI:
-      return add(add(mul(src[0], src[2]), src[1]),
-                 new(p->mem_ctx) ir_constant(-0.5f));
+      return nir_fadd_imm(p->b,
+                          nir_fadd(p->b,
+                                   nir_fmul(p->b, src[0], src[2]),
+                                   src[1]),
+                          -0.5f);
 
    case TEXENV_MODE_MODULATE_SUBTRACT_ATI:
-      return sub(mul(src[0], src[2]), src[1]);
+      return nir_fsub(p->b, nir_fmul(p->b, src[0], src[2]), src[1]);
 
    case TEXENV_MODE_ADD_PRODUCTS_NV:
-      return add(mul(src[0], src[1]), mul(src[2], src[3]));
+      return nir_fadd(p->b, nir_fmul(p->b, src[0], src[1]),
+                            nir_fmul(p->b, src[2], src[3]));
 
    case TEXENV_MODE_ADD_PRODUCTS_SIGNED_NV:
-      return add(add(mul(src[0], src[1]), mul(src[2], src[3])),
-                 new(p->mem_ctx) ir_constant(-0.5f));
+      return nir_fadd_imm(p->b,
+                          nir_fadd(p->b,
+                                   nir_fmul(p->b, src[0], src[1]),
+                                   nir_fmul(p->b, src[2], src[3])),
+                          -0.5f);
    default:
       assert(0);
       return src[0];
@@ -585,7 +622,7 @@ emit_combine(texenv_fragment_program *p,
 /**
  * Generate instructions for one texture unit's env/combiner mode.
  */
-static ir_rvalue *
+static nir_ssa_def *
 emit_texenv(texenv_fragment_program *p, GLuint unit)
 {
    const struct state_key *key = p->state;
@@ -628,9 +665,7 @@ emit_texenv(texenv_fragment_program *p, GLuint unit)
    else
       alpha_saturate = GL_FALSE;
 
-   ir_variable *temp_var = p->make_temp(glsl_type::vec4_type, "texenv_combine");
-   ir_dereference *deref;
-   ir_rvalue *val;
+   nir_ssa_def *val;
 
    /* Emit the RGB and A combine ops
     */
@@ -640,22 +675,19 @@ emit_texenv(texenv_fragment_program *p, GLuint unit)
                          key->unit[unit].NumArgsRGB,
                          key->unit[unit].ModeRGB,
                          key->unit[unit].ArgsRGB);
-      val = smear(val);
+      val = smear(p->b, val);
       if (rgb_saturate)
-         val = saturate(val);
-
-      p->emit(assign(temp_var, val));
+         val = nir_fsat(p->b, val);
    }
    else if (key->unit[unit].ModeRGB == TEXENV_MODE_DOT3_RGBA_EXT ||
             key->unit[unit].ModeRGB == TEXENV_MODE_DOT3_RGBA) {
-      ir_rvalue *val = emit_combine(p, unit,
-                                    key->unit[unit].NumArgsRGB,
-                                    key->unit[unit].ModeRGB,
-                                    key->unit[unit].ArgsRGB);
-      val = smear(val);
+      val = emit_combine(p, unit,
+                         key->unit[unit].NumArgsRGB,
+                         key->unit[unit].ModeRGB,
+                         key->unit[unit].ArgsRGB);
+      val = smear(p->b, val);
       if (rgb_saturate)
-         val = saturate(val);
-      p->emit(assign(temp_var, val));
+         val = nir_fsat(p->b, val);
    }
    else {
       /* Need to do something to stop from re-emitting identical
@@ -665,47 +697,46 @@ emit_texenv(texenv_fragment_program *p, GLuint unit)
                          key->unit[unit].NumArgsRGB,
                          key->unit[unit].ModeRGB,
                          key->unit[unit].ArgsRGB);
-      val = swizzle_xyz(smear(val));
+      val = smear(p->b, val);
       if (rgb_saturate)
-         val = saturate(val);
-      p->emit(assign(temp_var, val, WRITEMASK_XYZ));
+         val = nir_fsat(p->b, val);
+      nir_ssa_def *rgb = val;
 
       val = emit_combine(p, unit,
                          key->unit[unit].NumArgsA,
                          key->unit[unit].ModeA,
                          key->unit[unit].ArgsA);
-      val = swizzle_w(smear(val));
-      if (alpha_saturate)
-         val = saturate(val);
-      p->emit(assign(temp_var, val, WRITEMASK_W));
-   }
 
-   deref = new(p->mem_ctx) ir_dereference_variable(temp_var);
+      if (val->num_components != 1)
+         val = nir_channel(p->b, val, 3);
+
+      if (alpha_saturate)
+         val = nir_fsat(p->b, val);
+      nir_ssa_def *a = val;
+
+      val = nir_vector_insert_imm(p->b, rgb, a, 3);
+   }
 
    /* Deal with the final shift:
     */
    if (alpha_shift || rgb_shift) {
-      ir_constant *shift;
+      nir_ssa_def *shift;
 
       if (rgb_shift == alpha_shift) {
-         shift = new(p->mem_ctx) ir_constant((float)(1 << rgb_shift));
+         shift = nir_imm_float(p->b, (float)(1 << rgb_shift));
       }
       else {
-         ir_constant_data const_data;
-
-         const_data.f[0] = float(1 << rgb_shift);
-         const_data.f[1] = float(1 << rgb_shift);
-         const_data.f[2] = float(1 << rgb_shift);
-         const_data.f[3] = float(1 << alpha_shift);
-
-         shift = new(p->mem_ctx) ir_constant(glsl_type::vec4_type,
-                                             &const_data);
+         shift = nir_imm_vec4(p->b,
+            (float)(1 << rgb_shift),
+            (float)(1 << rgb_shift),
+            (float)(1 << rgb_shift),
+            (float)(1 << alpha_shift));
       }
 
-      return saturate(mul(deref, shift));
+      return nir_fsat(p->b, nir_fmul(p->b, val, shift));
    }
    else
-      return deref;
+      return val;
 }
 
 
@@ -714,127 +745,90 @@ emit_texenv(texenv_fragment_program *p, GLuint unit)
  */
 static void load_texture( texenv_fragment_program *p, GLuint unit )
 {
-   ir_dereference *deref;
-
    if (p->src_texture[unit])
       return;
 
    const GLuint texTarget = p->state->unit[unit].source_index;
-   ir_rvalue *texcoord;
+   nir_ssa_def *texcoord;
 
    if (!(p->state->inputs_available & (VARYING_BIT_TEX0 << unit))) {
       texcoord = get_current_attrib(p, VERT_ATTRIB_TEX0 + unit);
    } else {
-      ir_variable *tc_array = p->shader->symbols->get_variable("gl_TexCoord");
-      assert(tc_array);
-      texcoord = new(p->mem_ctx) ir_dereference_variable(tc_array);
-      ir_rvalue *index = new(p->mem_ctx) ir_constant(unit);
-      texcoord = new(p->mem_ctx) ir_dereference_array(texcoord, index);
-      tc_array->data.max_array_access = MAX2(tc_array->data.max_array_access, (int)unit);
+      texcoord = load_input(p,
+         (gl_varying_slot)(VARYING_SLOT_TEX0 + unit),
+         glsl_vec4_type());
    }
 
    if (!p->state->unit[unit].enabled) {
-      p->src_texture[unit] = p->make_temp(glsl_type::vec4_type,
-                                          "dummy_tex");
-      p->emit(p->src_texture[unit]);
-
-      p->emit(assign(p->src_texture[unit], new(p->mem_ctx) ir_constant(0.0f)));
+      p->src_texture[unit] = nir_imm_zero(p->b, 4, 32);
       return ;
    }
 
-   const glsl_type *sampler_type = NULL;
-   int coords = 0;
+   unsigned num_srcs = 4;
+   if (p->state->unit[unit].shadow)
+      num_srcs++;
 
-   switch (texTarget) {
-   case TEXTURE_1D_INDEX:
-      if (p->state->unit[unit].shadow)
-         sampler_type = glsl_type::sampler1DShadow_type;
-      else
-         sampler_type = glsl_type::sampler1D_type;
-      coords = 1;
-      break;
-   case TEXTURE_1D_ARRAY_INDEX:
-      if (p->state->unit[unit].shadow)
-         sampler_type = glsl_type::sampler1DArrayShadow_type;
-      else
-         sampler_type = glsl_type::sampler1DArray_type;
-      coords = 2;
-      break;
-   case TEXTURE_2D_INDEX:
-      if (p->state->unit[unit].shadow)
-         sampler_type = glsl_type::sampler2DShadow_type;
-      else
-         sampler_type = glsl_type::sampler2D_type;
-      coords = 2;
-      break;
-   case TEXTURE_2D_ARRAY_INDEX:
-      if (p->state->unit[unit].shadow)
-         sampler_type = glsl_type::sampler2DArrayShadow_type;
-      else
-         sampler_type = glsl_type::sampler2DArray_type;
-      coords = 3;
-      break;
-   case TEXTURE_RECT_INDEX:
-      if (p->state->unit[unit].shadow)
-         sampler_type = glsl_type::sampler2DRectShadow_type;
-      else
-         sampler_type = glsl_type::sampler2DRect_type;
-      coords = 2;
-      break;
-   case TEXTURE_3D_INDEX:
-      assert(!p->state->unit[unit].shadow);
-      sampler_type = glsl_type::sampler3D_type;
-      coords = 3;
-      break;
-   case TEXTURE_CUBE_INDEX:
-      if (p->state->unit[unit].shadow)
-         sampler_type = glsl_type::samplerCubeShadow_type;
-      else
-         sampler_type = glsl_type::samplerCube_type;
-      coords = 3;
-      break;
-   case TEXTURE_EXTERNAL_INDEX:
-      assert(!p->state->unit[unit].shadow);
-      sampler_type = glsl_type::samplerExternalOES_type;
-      coords = 2;
-      break;
+   nir_tex_instr *tex = nir_tex_instr_create(p->b->shader, num_srcs);
+   tex->op = nir_texop_tex;
+   tex->dest_type = nir_type_float32;
+   tex->texture_index = unit;
+   tex->sampler_index = unit;
+
+   tex->sampler_dim =
+      _mesa_texture_index_to_sampler_dim((gl_texture_index)texTarget,
+                                         &tex->is_array);
+
+   tex->coord_components =
+      glsl_get_sampler_dim_coordinate_components(tex->sampler_dim);
+   if (tex->is_array)
+      tex->coord_components++;
+
+   nir_variable *var = p->sampler_vars[unit];
+   if (!var) {
+      const struct glsl_type *sampler_type =
+         glsl_sampler_type(tex->sampler_dim,
+                           p->state->unit[unit].shadow,
+                           tex->is_array, GLSL_TYPE_FLOAT);
+
+      var = nir_variable_create(p->b->shader, nir_var_uniform,
+                                sampler_type,
+                                ralloc_asprintf(p->b->shader,
+                                                "sampler_%d", unit));
+      var->data.binding = unit;
+      var->data.explicit_binding = true;
+
+      p->sampler_vars[unit] = var;
    }
 
-   p->src_texture[unit] = p->make_temp(glsl_type::vec4_type,
-                                       "tex");
+   nir_deref_instr *deref = nir_build_deref_var(p->b, var);
+   tex->src[0].src = nir_src_for_ssa(&deref->dest.ssa);
+   tex->src[0].src_type = nir_tex_src_texture_deref;
+   tex->src[1].src = nir_src_for_ssa(&deref->dest.ssa);
+   tex->src[1].src_type = nir_tex_src_sampler_deref;
 
-   ir_texture *tex = new(p->mem_ctx) ir_texture(ir_tex);
+   nir_ssa_def *src2 =
+      nir_channels(p->b, texcoord,
+                   nir_component_mask(tex->coord_components));
+   tex->src[2].src_type = nir_tex_src_coord;
+   tex->src[2].src = nir_src_for_ssa(src2);
 
-
-   char *sampler_name = ralloc_asprintf(p->mem_ctx, "sampler_%d", unit);
-   ir_variable *sampler = new(p->mem_ctx) ir_variable(sampler_type,
-                                                      sampler_name,
-                                                      ir_var_uniform);
-   p->top_instructions->push_head(sampler);
-
-   /* Set the texture unit for this sampler in the same way that
-    * layout(binding=X) would.
-    */
-   sampler->data.explicit_binding = true;
-   sampler->data.binding = unit;
-
-   deref = new(p->mem_ctx) ir_dereference_variable(sampler);
-   tex->set_sampler(deref, glsl_type::vec4_type);
-
-   tex->coordinate = new(p->mem_ctx) ir_swizzle(texcoord, 0, 1, 2, 3, coords);
+   tex->src[3].src_type = nir_tex_src_projector;
+   tex->src[3].src = nir_src_for_ssa(nir_channel(p->b, texcoord, 3));
 
    if (p->state->unit[unit].shadow) {
-      texcoord = texcoord->clone(p->mem_ctx, NULL);
-      tex->shadow_comparator = new(p->mem_ctx) ir_swizzle(texcoord,
-                                                          coords, 0, 0, 0,
-                                                          1);
-      coords++;
+      tex->is_shadow = true;
+      nir_ssa_def *src4 =
+         nir_channel(p->b, texcoord, tex->coord_components);
+      tex->src[4].src_type = nir_tex_src_comparator;
+      tex->src[4].src = nir_src_for_ssa(src4);
    }
 
-   texcoord = texcoord->clone(p->mem_ctx, NULL);
-   tex->projector = swizzle_w(texcoord);
+   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32);
+   p->src_texture[unit] = &tex->dest.ssa;
 
-   p->emit(assign(p->src_texture[unit], tex));
+   nir_builder_instr_insert(p->b, &tex->instr);
+   BITSET_SET(p->b->shader->info.textures_used, unit);
+   BITSET_SET(p->b->shader->info.samplers_used, unit);
 }
 
 static void
@@ -891,34 +885,38 @@ load_texunit_sources( texenv_fragment_program *p, GLuint unit )
  * that ffvertex_prog.c produces fogcoord for us when
  * GL_FOG_COORDINATE_EXT is set to GL_FRAGMENT_DEPTH_EXT.
  */
-static ir_rvalue *
+static nir_ssa_def *
 emit_fog_instructions(texenv_fragment_program *p,
-                      ir_rvalue *fragcolor)
+                      nir_ssa_def *fragcolor)
 {
    struct state_key *key = p->state;
-   ir_rvalue *f, *temp;
-   ir_variable *params, *oparams;
-   ir_variable *fogcoord;
+   nir_ssa_def *color, *oparams;
+   nir_ssa_def *fogcoord;
 
    /* Temporary storage for the whole fog result.  Fog calculations
     * only affect rgb so we're hanging on to the .a value of fragcolor
     * this way.
     */
-   ir_variable *fog_result = p->make_temp(glsl_type::vec4_type, "fog_result");
-   p->emit(assign(fog_result, fragcolor));
+   nir_ssa_def *fog_alpha = nir_channel(p->b, fragcolor, 3);
 
-   fragcolor = swizzle_xyz(fog_result);
-
-   oparams = p->shader->symbols->get_variable("gl_FogParamsOptimizedMESA");
+   oparams = load_state_var(p, STATE_FOG_PARAMS_OPTIMIZED,
+                            STATE_NOT_STATE_VAR,
+                            STATE_NOT_STATE_VAR,
+                            STATE_NOT_STATE_VAR,
+                            glsl_vec4_type());
    assert(oparams);
-   fogcoord = p->shader->symbols->get_variable("gl_FogFragCoord");
+
+   fogcoord = load_input(p, VARYING_SLOT_FOGC, glsl_float_type());
    assert(fogcoord);
-   params = p->shader->symbols->get_variable("gl_Fog");
-   assert(params);
-   f = new(p->mem_ctx) ir_dereference_variable(fogcoord);
 
-   ir_variable *f_var = p->make_temp(glsl_type::float_type, "fog_factor");
+   color = load_state_var(p, STATE_FOG_COLOR,
+                          STATE_NOT_STATE_VAR,
+                          STATE_NOT_STATE_VAR,
+                          STATE_NOT_STATE_VAR,
+                          glsl_vec4_type());
+   assert(color);
 
+   nir_ssa_def *f = fogcoord;
    switch (key->fog_mode) {
    case FOG_LINEAR:
       /* f = (end - z) / (end - start)
@@ -926,7 +924,9 @@ emit_fog_instructions(texenv_fragment_program *p,
        * gl_MesaFogParamsOptimized gives us (-1 / (end - start)) and
        * (end / (end - start)) so we can generate a single MAD.
        */
-      f = add(mul(f, swizzle_x(oparams)), swizzle_y(oparams));
+      f = nir_fadd(p->b, nir_fmul(p->b, f,
+                                  nir_channel(p->b, oparams, 0)),
+                   nir_channel(p->b, oparams, 1));
       break;
    case FOG_EXP:
       /* f = e^(-(density * fogcoord))
@@ -935,9 +935,8 @@ emit_fog_instructions(texenv_fragment_program *p,
        * use EXP2 which is generally the native instruction without
        * having to do any further math on the fog density uniform.
        */
-      f = mul(f, swizzle_z(oparams));
-      f = new(p->mem_ctx) ir_expression(ir_unop_neg, f);
-      f = new(p->mem_ctx) ir_expression(ir_unop_exp2, f);
+      f = nir_fmul(p->b, f, nir_channel(p->b, oparams, 2));
+      f = nir_fexp2(p->b, nir_fneg(p->b, f));
       break;
    case FOG_EXP2:
       /* f = e^(-(density * fogcoord)^2)
@@ -946,25 +945,15 @@ emit_fog_instructions(texenv_fragment_program *p,
        * can do this like FOG_EXP but with a squaring after the
        * multiply by density.
        */
-      ir_variable *temp_var = p->make_temp(glsl_type::float_type, "fog_temp");
-      p->emit(assign(temp_var, mul(f, swizzle_w(oparams))));
-
-      f = mul(temp_var, temp_var);
-      f = new(p->mem_ctx) ir_expression(ir_unop_neg, f);
-      f = new(p->mem_ctx) ir_expression(ir_unop_exp2, f);
+      f = nir_fmul(p->b, f, nir_channel(p->b, oparams, 3));
+      f = nir_fmul(p->b, f, f);
+      f = nir_fexp2(p->b, nir_fneg(p->b, f));
       break;
    }
 
-   p->emit(assign(f_var, saturate(f)));
-
-   f = sub(new(p->mem_ctx) ir_constant(1.0f), f_var);
-   temp = new(p->mem_ctx) ir_dereference_variable(params);
-   temp = new(p->mem_ctx) ir_dereference_record(temp, "color");
-   temp = mul(swizzle_xyz(temp), f);
-
-   p->emit(assign(fog_result, add(temp, mul(fragcolor, f_var)), WRITEMASK_XYZ));
-
-   return new(p->mem_ctx) ir_dereference_variable(fog_result);
+   f = nir_fsat(p->b, f);
+   nir_ssa_def *fog_rgb = nir_flrp(p->b, color, fragcolor, f);
+   return nir_vector_insert_imm(p->b, fog_rgb, fog_alpha, 3);
 }
 
 static void
@@ -992,124 +981,77 @@ emit_instructions(texenv_fragment_program *p)
       }
    }
 
-   ir_rvalue *cf = get_source(p, TEXENV_SRC_PREVIOUS, 0);
+   nir_ssa_def *cf = get_source(p, TEXENV_SRC_PREVIOUS, 0);
 
    if (key->separate_specular) {
-      ir_variable *spec_result = p->make_temp(glsl_type::vec4_type,
-                                              "specular_add");
-      p->emit(assign(spec_result, cf));
+      nir_ssa_def *spec_result = cf;
 
-      ir_rvalue *secondary;
-      if (p->state->inputs_available & VARYING_BIT_COL1) {
-         ir_variable *var =
-            p->shader->symbols->get_variable("gl_SecondaryColor");
-         assert(var);
-         secondary = swizzle_xyz(var);
-      } else {
-         secondary = swizzle_xyz(get_current_attrib(p, VERT_ATTRIB_COLOR1));
-      }
+      nir_ssa_def *secondary;
+      if (p->state->inputs_available & VARYING_BIT_COL1)
+         secondary = load_input(p, VARYING_SLOT_COL1, glsl_vec4_type());
+      else
+         secondary = get_current_attrib(p, VERT_ATTRIB_COLOR1);
 
-      p->emit(assign(spec_result, add(swizzle_xyz(spec_result), secondary),
-                     WRITEMASK_XYZ));
-
-      cf = new(p->mem_ctx) ir_dereference_variable(spec_result);
+      secondary = nir_vector_insert_imm(p->b, secondary,
+                                        nir_imm_zero(p->b, 1, 32), 3);
+      cf = nir_fadd(p->b, spec_result, secondary);
    }
 
    if (key->fog_mode) {
       cf = emit_fog_instructions(p, cf);
    }
 
-   ir_variable *frag_color = p->shader->symbols->get_variable("gl_FragColor");
-   assert(frag_color);
-   p->emit(assign(frag_color, cf));
+   const char *name =
+      gl_frag_result_name(FRAG_RESULT_COLOR);
+   nir_variable *var =
+      nir_variable_create(p->b->shader, nir_var_shader_out,
+                          glsl_vec4_type(), name);
+
+   var->data.location = FRAG_RESULT_COLOR;
+   var->data.driver_location = p->b->shader->num_outputs++;
+
+   p->b->shader->info.outputs_written |= BITFIELD64_BIT(FRAG_RESULT_COLOR);
+
+   nir_store_var(p->b, var, cf, 0xf);
 }
 
 /**
  * Generate a new fragment program which implements the context's
  * current texture env/combine mode.
  */
-static struct gl_shader_program *
-create_new_program(struct gl_context *ctx, struct state_key *key)
+static nir_shader *
+create_new_program(struct state_key *key,
+                   struct gl_program *program,
+                   const nir_shader_compiler_options *options)
 {
    texenv_fragment_program p;
-   unsigned int unit;
-   _mesa_glsl_parse_state *state;
 
-   p.mem_ctx = ralloc_context(NULL);
-   p.shader = _mesa_new_shader(0, MESA_SHADER_FRAGMENT);
-   p.shader->ir = new(p.shader) exec_list;
-   state = new(p.shader) _mesa_glsl_parse_state(ctx, MESA_SHADER_FRAGMENT,
-                                                p.shader);
-   p.shader->symbols = state->symbols;
-   p.top_instructions = p.shader->ir;
-   p.instructions = p.shader->ir;
+   memset(&p, 0, sizeof(p));
    p.state = key;
-   p.shader_program = _mesa_new_shader_program(0);
 
-   /* Tell the linker to ignore the fact that we're building a
-    * separate shader, in case we're in a GLES2 context that would
-    * normally reject that.  The real problem is that we're building a
-    * fixed function program in a GLES2 context at all, but that's a
-    * big mess to clean up.
-    */
-   p.shader_program->SeparateShader = GL_TRUE;
+   program->Parameters = _mesa_new_parameter_list();
+   p.state_params = _mesa_new_parameter_list();
 
-   /* The legacy GLSL shadow functions follow the depth texture
-    * mode and return vec4. The GLSL 1.30 shadow functions return float and
-    * ignore the depth texture mode. That's a shader and state dependency
-    * that's difficult to deal with. st/mesa uses a simple but not
-    * completely correct solution: if the shader declares GLSL >= 1.30 and
-    * the depth texture mode is GL_ALPHA (000X), it sets the XXXX swizzle
-    * instead. Thus, the GLSL 1.30 shadow function will get the result in .x
-    * and legacy shadow functions will get it in .w as expected.
-    * For the fixed-function fragment shader, use 120 to get correct behavior
-    * for GL_ALPHA.
-    */
-   state->language_version = 120;
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
+                                                  options,
+                                                  "ff-fs");
 
-   state->es_shader = false;
-   if (_mesa_is_gles(ctx) && ctx->Extensions.OES_EGL_image_external)
-      state->OES_EGL_image_external_enable = true;
-   _mesa_glsl_initialize_types(state);
-   _mesa_glsl_initialize_variables(p.instructions, state);
+   nir_shader *s = b.shader;
 
-   for (unit = 0; unit < ctx->Const.MaxTextureUnits; unit++)
-      p.src_texture[unit] = NULL;
+   s->info.separate_shader = true;
+   s->info.subgroup_size = SUBGROUP_SIZE_UNIFORM;
 
-   p.src_previous = NULL;
+   p.b = &b;
 
-   ir_function *main_f = new(p.mem_ctx) ir_function("main");
-   p.emit(main_f);
-   state->symbols->add_function(main_f);
-
-   ir_function_signature *main_sig =
-      new(p.mem_ctx) ir_function_signature(glsl_type::void_type);
-   main_sig->is_defined = true;
-   main_f->add_signature(main_sig);
-
-   p.instructions = &main_sig->body;
    if (key->num_draw_buffers)
       emit_instructions(&p);
 
-   validate_ir_tree(p.shader->ir);
+   nir_validate_shader(b.shader, "after generating ff-vertex shader");
 
-   reparent_ir(p.shader->ir, p.shader->ir);
+   _mesa_add_separate_state_parameters(program, p.state_params);
+   _mesa_free_parameter_list(p.state_params);
 
-   p.shader->CompileStatus = COMPILE_SUCCESS;
-   p.shader->Version = state->language_version;
-   p.shader_program->Shaders =
-      (gl_shader **)malloc(sizeof(*p.shader_program->Shaders));
-   p.shader_program->Shaders[0] = p.shader;
-   p.shader_program->NumShaders = 1;
-
-   _mesa_glsl_link_shader(ctx, p.shader_program);
-
-   if (!p.shader_program->data->LinkStatus)
-      _mesa_problem(ctx, "Failed to link fixed function fragment shader: %s\n",
-                    p.shader_program->data->InfoLog);
-
-   ralloc_free(p.mem_ctx);
-   return p.shader_program;
+   return s;
 }
 
 extern "C" {
@@ -1118,27 +1060,46 @@ extern "C" {
  * Return a fragment program which implements the current
  * fixed-function texture, fog and color-sum operations.
  */
-struct gl_shader_program *
+struct gl_program *
 _mesa_get_fixed_func_fragment_program(struct gl_context *ctx)
 {
-   struct gl_shader_program *shader_program;
+   struct gl_program *prog;
    struct state_key key;
    GLuint keySize;
 
    keySize = make_state_key(ctx, &key);
 
-   shader_program = (struct gl_shader_program *)
+   prog = (struct gl_program *)
       _mesa_search_program_cache(ctx->FragmentProgram.Cache,
                                  &key, keySize);
 
-   if (!shader_program) {
-      shader_program = create_new_program(ctx, &key);
+   if (!prog) {
+      prog = ctx->Driver.NewProgram(ctx, MESA_SHADER_FRAGMENT, 0, false);
+      if (!prog)
+         return NULL;
 
-      _mesa_shader_cache_insert(ctx, ctx->FragmentProgram.Cache,
-                                &key, keySize, shader_program);
+      const struct nir_shader_compiler_options *options =
+         st_get_nir_compiler_options(ctx->st, MESA_SHADER_FRAGMENT);
+
+      nir_shader *s =
+         create_new_program(&key, prog, options);
+
+      prog->state.type = PIPE_SHADER_IR_NIR;
+      prog->nir = s;
+
+      prog->SamplersUsed = s->info.samplers_used[0];
+
+      /* default mapping from samplers to texture units */
+      for (unsigned i = 0; i < MAX_SAMPLERS; i++)
+         prog->SamplerUnits[i] = i;
+
+      st_program_string_notify(ctx, GL_FRAGMENT_PROGRAM_ARB, prog);
+
+      _mesa_program_cache_insert(ctx, ctx->FragmentProgram.Cache,
+                                 &key, keySize, prog);
    }
 
-   return shader_program;
+   return prog;
 }
 
 }
