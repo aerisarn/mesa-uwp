@@ -232,7 +232,8 @@ apply_nuw_to_offsets(isel_context* ctx, nir_function_impl* impl)
                apply_nuw_to_ssa(ctx, intrin->src[2].ssa);
             break;
          case nir_intrinsic_load_scratch: apply_nuw_to_ssa(ctx, intrin->src[0].ssa); break;
-         case nir_intrinsic_store_scratch: apply_nuw_to_ssa(ctx, intrin->src[1].ssa); break;
+         case nir_intrinsic_store_scratch:
+         case nir_intrinsic_load_smem_amd: apply_nuw_to_ssa(ctx, intrin->src[1].ssa); break;
          default: break;
          }
       }
