@@ -48,6 +48,7 @@
 
 #define RENCODE_ENCODE_STANDARD_HEVC                                                0
 #define RENCODE_ENCODE_STANDARD_H264                                                1
+#define RENCODE_ENCODE_STANDARD_AV1                                                 2
 
 #define RENCODE_PREENCODE_MODE_NONE                                                 0x00000000
 #define RENCODE_PREENCODE_MODE_1X                                                   0x00000001
@@ -96,6 +97,41 @@
 #define RENCODE_H264_HEADER_INSTRUCTION_FIRST_MB                                    0x00020000
 #define RENCODE_H264_HEADER_INSTRUCTION_SLICE_QP_DELTA                              0x00020001
 
+#define RENCODE_AV1_BITSTREAM_INSTRUCTION_OBU_START                                 0x00000002
+#define RENCODE_AV1_BITSTREAM_INSTRUCTION_OBU_SIZE                                  0x00000003
+#define RENCODE_AV1_BITSTREAM_INSTRUCTION_OBU_END                                   0x00000004
+
+#define RENCODE_OBU_START_TYPE_FRAME                                                1
+#define RENCODE_OBU_START_TYPE_FRAME_HEADER                                         2
+#define RENCODE_OBU_START_TYPE_TILE_GROUP                                           3
+
+#define RENCODE_OBU_TYPE_SEQUENCE_HEADER                                            1
+#define RENCODE_OBU_TYPE_TEMPORAL_DELIMITER                                         2
+#define RENCODE_OBU_TYPE_FRAME_HEADER                                               3
+#define RENCODE_OBU_TYPE_TILE_GROUP                                                 4
+#define RENCODE_OBU_TYPE_METADATA                                                   5
+#define RENCODE_OBU_TYPE_FRAME                                                      6
+#define RENCODE_OBU_TYPE_REDUNDANT_FRAME_HEADER                                     7
+#define RENCODE_OBU_TYPE_TILE_LIST                                                  8
+#define RENCODE_OBU_TYPE_PADDING                                                    15
+
+#define RENCODE_AV1_MV_PRECISION_ALLOW_HIGH_PRECISION                               0x00
+#define RENCODE_AV1_MV_PRECISION_DISALLOW_HIGH_PRECISION                            0x10
+#define RENCODE_AV1_MV_PRECISION_FORCE_INTEGER_MV                                   0x30
+
+#define RENCODE_AV1_CDEF_MODE_DISABLE                                               0
+#define RENCODE_AV1_CDEF_MODE_ENABLE                                                1
+
+#define RENCODE_AV1_ORDER_HINT_BITS                                                 8
+#define RENCODE_AV1_DELTA_FRAME_ID_LENGTH                                           15
+#define RENCODE_AV1_ADDITIONAL_FRAME_ID_LENGTH                                      1
+
+#define RENCDOE_AV1_NUM_REF_FRAMES                                                  8
+#define RENCDOE_AV1_REFS_PER_FRAME                                                  7
+#define RENCODE_AV1_SDB_FRAME_CONTEXT_SIZE                                          947200
+#define RENCODE_AV1_FRAME_CONTEXT_CDF_TABLE_SIZE                                    22528
+#define RENCODE_AV1_CDEF_ALGORITHM_FRAME_CONTEXT_SIZE                               (64 * 8 * 2)
+
 #define RENCODE_PICTURE_TYPE_B                                                      0
 #define RENCODE_PICTURE_TYPE_P                                                      1
 #define RENCODE_PICTURE_TYPE_I                                                      2
@@ -138,41 +174,51 @@
 
 #define RENCODE_MAX_NUM_TEMPORAL_LAYERS                                             4
 
+#define PIPE_AV1_ENC_SB_SIZE                                                        64
 #define PIPE_H265_ENC_CTB_SIZE                                                      64
 #define PIPE_H264_MB_SIZE                                                           16
 
-#define RENCODE_COLOR_VOLUME_G22_BT709                                               0
+#define RENCODE_COLOR_VOLUME_G22_BT709                                              0
 
-#define RENCODE_COLOR_RANGE_FULL                                                     0
-#define RENCODE_CHROMA_LOCATION_INTERSTITIAL                                         0
+#define RENCODE_COLOR_RANGE_FULL                                                    0
+#define RENCODE_CHROMA_LOCATION_INTERSTITIAL                                        0
 
-#define RENCODE_COLOR_BIT_DEPTH_8_BIT                                                0
-#define RENCODE_COLOR_BIT_DEPTH_10_BIT                                               1
+#define RENCODE_COLOR_BIT_DEPTH_8_BIT                                               0
+#define RENCODE_COLOR_BIT_DEPTH_10_BIT                                              1
 
-#define RENCODE_CHROMA_SUBSAMPLING_4_2_0                                             0
+#define RENCODE_CHROMA_SUBSAMPLING_4_2_0                                            0
 
-#define RENCODE_COLOR_PACKING_FORMAT_NV12                                            0
-#define RENCODE_COLOR_PACKING_FORMAT_P010                                            1
+#define RENCODE_COLOR_PACKING_FORMAT_NV12                                           0
+#define RENCODE_COLOR_PACKING_FORMAT_P010                                           1
 
-#define RENCODE_COLOR_SPACE_YUV                                                      0
+#define RENCODE_COLOR_SPACE_YUV                                                     0
 
-#define PIPE_ALIGN_IN_BLOCK_SIZE(value, align) (((value) + ((align) - 1))/(align))
+#define ALIGN_TO(value, align)                 (((value) + ((align) - 1))/(align))
+#define PIPE_ALIGN_IN_BLOCK_SIZE(value, align) ALIGN_TO(value, align)
 
 #define RADEON_ENC_CS(value) (enc->cs.current.buf[enc->cs.current.cdw++] = (value))
-#define RADEON_ENC_BEGIN(cmd)                                                                      \
-   {                                                                                               \
+#define RADEON_ENC_BEGIN(cmd)                                                                    \
+   {                                                                                             \
       uint32_t *begin = &enc->cs.current.buf[enc->cs.current.cdw++];                             \
       RADEON_ENC_CS(cmd)
-#define RADEON_ENC_READ(buf, domain, off)                                                          \
+#define RADEON_ENC_READ(buf, domain, off)                                                        \
    radeon_enc_add_buffer(enc, (buf), RADEON_USAGE_READ, (domain), (off))
-#define RADEON_ENC_WRITE(buf, domain, off)                                                         \
+#define RADEON_ENC_WRITE(buf, domain, off)                                                       \
    radeon_enc_add_buffer(enc, (buf), RADEON_USAGE_WRITE, (domain), (off))
-#define RADEON_ENC_READWRITE(buf, domain, off)                                                     \
+#define RADEON_ENC_READWRITE(buf, domain, off)                                                   \
    radeon_enc_add_buffer(enc, (buf), RADEON_USAGE_READWRITE, (domain), (off))
-#define RADEON_ENC_END()                                                                           \
+#define RADEON_ENC_END()                                                                         \
    *begin = (&enc->cs.current.buf[enc->cs.current.cdw] - begin) * 4;                             \
-   enc->total_task_size += *begin;                                                                 \
+   enc->total_task_size += *begin;                                                               \
    }
+#define RADEON_ENC_ADDR_SWAP()                                                                   \
+   do {                                                                                          \
+      unsigned int *low  = &enc->cs.current.buf[enc->cs.current.cdw - 2];                        \
+      unsigned int *high = &enc->cs.current.buf[enc->cs.current.cdw - 1];                        \
+      unsigned int temp = *low;                                                                  \
+      *low = *high;                                                                              \
+      *high = temp;                                                                              \
+   } while(0)
 
 #define RADEON_ENC_DESTROY_VIDEO_BUFFER(buf)                                                     \
    do {                                                                                          \
