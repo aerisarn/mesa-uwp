@@ -3634,21 +3634,21 @@ radv_emit_index_buffer(struct radv_cmd_buffer *cmd_buffer, bool indirect)
 static void
 radv_flush_occlusion_query_state(struct radv_cmd_buffer *cmd_buffer)
 {
+   const enum amd_gfx_level gfx_level = cmd_buffer->device->physical_device->rad_info.gfx_level;
    const bool enable_occlusion_queries = cmd_buffer->state.active_occlusion_queries ||
                                          cmd_buffer->state.inherited_occlusion_queries;
    uint32_t db_count_control;
 
    if (!enable_occlusion_queries) {
-      db_count_control =
-         S_028004_ZPASS_INCREMENT_DISABLE(cmd_buffer->device->physical_device->rad_info.gfx_level < GFX11);
+      db_count_control = S_028004_ZPASS_INCREMENT_DISABLE(gfx_level < GFX11);
    } else {
       uint32_t sample_rate = util_logbase2(cmd_buffer->state.render.max_samples);
       bool gfx10_perfect =
-         cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX10 &&
+         gfx_level >= GFX10 &&
          (cmd_buffer->state.perfect_occlusion_queries_enabled ||
           cmd_buffer->state.inherited_query_control_flags & VK_QUERY_CONTROL_PRECISE_BIT);
 
-      if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX7) {
+      if (gfx_level >= GFX7) {
          /* Always enable PERFECT_ZPASS_COUNTS due to issues with partially
           * covered tiles, discards, and early depth testing. For more details,
           * see https://gitlab.freedesktop.org/mesa/mesa/-/issues/3218 */
