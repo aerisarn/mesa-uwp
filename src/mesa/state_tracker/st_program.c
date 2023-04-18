@@ -865,7 +865,7 @@ st_translate_fragment_program(struct st_context *st,
 
    /* Translate to NIR.  ATI_fs translates at variant time. */
    if (!prog->ati_fs) {
-      if (prog->nir)
+      if (prog->nir && prog->arb.Instructions)
          ralloc_free(prog->nir);
 
       if (prog->serialized_nir) {
@@ -874,8 +874,11 @@ st_translate_fragment_program(struct st_context *st,
       }
 
       prog->state.type = PIPE_SHADER_IR_NIR;
-      prog->nir = st_translate_prog_to_nir(st, prog,
-                                           MESA_SHADER_FRAGMENT);
+      if (prog->arb.Instructions)
+         prog->nir = st_translate_prog_to_nir(st, prog,
+                                             MESA_SHADER_FRAGMENT);
+      else
+         st_prog_to_nir_postprocess(st, prog->nir, prog);
       prog->info = prog->nir->info;
    }
 
