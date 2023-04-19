@@ -432,10 +432,11 @@ handleVAEncMiscParameterTypeRateControl(vlVaContext *context, VAEncMiscParameter
       status = vlVaHandleVAEncMiscParameterTypeRateControlHEVC(context, misc);
       break;
 
+#if VA_CHECK_VERSION(1, 16, 0)
    case PIPE_VIDEO_FORMAT_AV1:
       status = vlVaHandleVAEncMiscParameterTypeRateControlAV1(context, misc);
       break;
-
+#endif
    default:
       break;
    }
@@ -457,9 +458,11 @@ handleVAEncMiscParameterTypeFrameRate(vlVaContext *context, VAEncMiscParameterBu
       status = vlVaHandleVAEncMiscParameterTypeFrameRateHEVC(context, misc);
       break;
 
+#if VA_CHECK_VERSION(1, 16, 0)
    case PIPE_VIDEO_FORMAT_AV1:
       status = vlVaHandleVAEncMiscParameterTypeFrameRateAV1(context, misc);
       break;
+#endif
    default:
       break;
    }
@@ -501,9 +504,11 @@ handleVAEncSequenceParameterBufferType(vlVaDriver *drv, vlVaContext *context, vl
       status = vlVaHandleVAEncSequenceParameterBufferTypeHEVC(drv, context, buf);
       break;
 
+#if VA_CHECK_VERSION(1, 16, 0)
    case PIPE_VIDEO_FORMAT_AV1:
       status = vlVaHandleVAEncSequenceParameterBufferTypeAV1(drv, context, buf);
       break;
+#endif
 
    default:
       break;
@@ -526,9 +531,11 @@ handleVAEncMiscParameterTypeQualityLevel(vlVaContext *context, VAEncMiscParamete
       status = vlVaHandleVAEncMiscParameterTypeQualityLevelHEVC(context, misc);
       break;
 
+#if VA_CHECK_VERSION(1, 16, 0)
    case PIPE_VIDEO_FORMAT_AV1:
       status = vlVaHandleVAEncMiscParameterTypeQualityLevelAV1(context, misc);
       break;
+#endif
 
    default:
       break;
@@ -551,8 +558,11 @@ handleVAEncMiscParameterTypeMaxFrameSize(vlVaContext *context, VAEncMiscParamete
       status = vlVaHandleVAEncMiscParameterTypeMaxFrameSizeHEVC(context, misc);
       break;
 
+#if VA_CHECK_VERSION(1, 16, 0)
    case PIPE_VIDEO_FORMAT_AV1:
       status = vlVaHandleVAEncMiscParameterTypeMaxFrameSizeAV1(context, misc);
+      break;
+#endif
 
    default:
       break;
@@ -574,9 +584,11 @@ handleVAEncMiscParameterTypeHRD(vlVaContext *context, VAEncMiscParameterBuffer *
       status = vlVaHandleVAEncMiscParameterTypeHRDHEVC(context, misc);
       break;
 
+#if VA_CHECK_VERSION(1, 16, 0)
    case PIPE_VIDEO_FORMAT_AV1:
       status = vlVaHandleVAEncMiscParameterTypeHRDAV1(context, misc);
       break;
+#endif
 
    default:
       break;
@@ -638,9 +650,11 @@ handleVAEncPictureParameterBufferType(vlVaDriver *drv, vlVaContext *context, vlV
       status = vlVaHandleVAEncPictureParameterBufferTypeHEVC(drv, context, buf);
       break;
 
+#if VA_CHECK_VERSION(1, 16, 0)
    case PIPE_VIDEO_FORMAT_AV1:
       status = vlVaHandleVAEncPictureParameterBufferTypeAV1(drv, context, buf);
       break;
+#endif
 
    default:
       break;
@@ -707,9 +721,11 @@ handleVAEncPackedHeaderDataBufferType(vlVaContext *context, vlVaBuffer *buf)
       status = vlVaHandleVAEncPackedHeaderDataBufferTypeHEVC(context, buf);
       break;
 
+#if VA_CHECK_VERSION(1, 16, 0)
    case PIPE_VIDEO_FORMAT_AV1:
       status = vlVaHandleVAEncPackedHeaderDataBufferTypeAV1(context, buf);
       break;
+#endif
 
    default:
       break;

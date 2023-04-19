@@ -30,6 +30,8 @@
 #include "va_private.h"
 #include "util/vl_vlc.h"
 
+#if VA_CHECK_VERSION(1, 16, 0)
+
 #define AV1_SELECT_SCREEN_CONTENT_TOOLS (2)
 #define AV1_SELECT_INTEGER_MV           (2)
 #define AV1_PRIMARY_REF_NON             (7)
@@ -698,3 +700,4 @@ void getEncParamPresetAV1(vlVaContext *context)
    }
 }
 
+#endif /* VA_CHECK_VERSION(1, 16, 0) */

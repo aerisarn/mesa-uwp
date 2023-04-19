@@ -601,7 +601,8 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
              (sscreen->info.family >= CHIP_RAVEN || si_vce_is_fw_version_supported(sscreen))) ||
             (profile == PIPE_VIDEO_PROFILE_HEVC_MAIN &&
              (sscreen->info.family >= CHIP_RAVEN || si_radeon_uvd_enc_supported(sscreen))) ||
-            (profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10 && sscreen->info.family >= CHIP_RENOIR)));
+            (profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10 && sscreen->info.family >= CHIP_RENOIR) ||
+            (profile == PIPE_VIDEO_PROFILE_AV1_MAIN && (sscreen->info.family >= CHIP_GFX1100))));
       case PIPE_VIDEO_CAP_NPOT_TEXTURES:
          return 1;
       case PIPE_VIDEO_CAP_MIN_WIDTH:
@@ -697,6 +698,71 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
                          PIPE_VIDEO_CAP_SLICE_STRUCTURE_EQUAL_MULTI_ROWS);
             return value;
          } else
+            return 0;
+
+      case PIPE_VIDEO_CAP_ENC_AV1_FEATURE:
+         if (sscreen->info.family >= CHIP_GFX1100) {
+            union pipe_av1_enc_cap_features attrib;
+            attrib.value = 0;
+
+            attrib.bits.support_128x128_superblock = PIPE_ENC_FEATURE_NOT_SUPPORTED;
+            attrib.bits.support_filter_intra = PIPE_ENC_FEATURE_NOT_SUPPORTED;
+            attrib.bits.support_intra_edge_filter = PIPE_ENC_FEATURE_NOT_SUPPORTED;
+            attrib.bits.support_interintra_compound = PIPE_ENC_FEATURE_NOT_SUPPORTED;
+            attrib.bits.support_masked_compound = PIPE_ENC_FEATURE_NOT_SUPPORTED;
+            attrib.bits.support_warped_motion = PIPE_ENC_FEATURE_NOT_SUPPORTED;
+            attrib.bits.support_palette_mode = PIPE_ENC_FEATURE_SUPPORTED;
+            attrib.bits.support_dual_filter = PIPE_ENC_FEATURE_NOT_SUPPORTED;
+            attrib.bits.support_jnt_comp = PIPE_ENC_FEATURE_NOT_SUPPORTED;
+            attrib.bits.support_ref_frame_mvs = PIPE_ENC_FEATURE_NOT_SUPPORTED;
+            attrib.bits.support_superres = PIPE_ENC_FEATURE_NOT_SUPPORTED;
+            attrib.bits.support_restoration = PIPE_ENC_FEATURE_NOT_SUPPORTED;
+            attrib.bits.support_allow_intrabc = PIPE_ENC_FEATURE_NOT_SUPPORTED;
+            attrib.bits.support_cdef_channel_strength = PIPE_ENC_FEATURE_SUPPORTED;
+
+            return attrib.value;
+         } else
+            return 0;
+
+      case PIPE_VIDEO_CAP_ENC_AV1_FEATURE_EXT1:
+         if (sscreen->info.family >= CHIP_GFX1100) {
+            union pipe_av1_enc_cap_features_ext1 attrib_ext1;
+            attrib_ext1.value = 0;
+            attrib_ext1.bits.interpolation_filter = PIPE_VIDEO_CAP_ENC_AV1_INTERPOLATION_FILTER_EIGHT_TAP |
+                           PIPE_VIDEO_CAP_ENC_AV1_INTERPOLATION_FILTER_EIGHT_TAP_SMOOTH |
+                           PIPE_VIDEO_CAP_ENC_AV1_INTERPOLATION_FILTER_EIGHT_TAP_SHARP |
+                           PIPE_VIDEO_CAP_ENC_AV1_INTERPOLATION_FILTER_BILINEAR |
+                           PIPE_VIDEO_CAP_ENC_AV1_INTERPOLATION_FILTER_SWITCHABLE;
+            attrib_ext1.bits.min_segid_block_size_accepted = 0;
+            attrib_ext1.bits.segment_feature_support = 0;
+
+            return attrib_ext1.value;
+         } else
+            return 0;
+
+      case PIPE_VIDEO_CAP_ENC_AV1_FEATURE_EXT2:
+         if (sscreen->info.family >= CHIP_GFX1100) {
+            union pipe_av1_enc_cap_features_ext2 attrib_ext2;
+            attrib_ext2.value = 0;
+
+           attrib_ext2.bits.tile_size_bytes_minus1 = 1;
+           attrib_ext2.bits.obu_size_bytes_minus1 = 1;
+           /**
+            * tx_mode supported.
+            * (tx_mode_support & 0x01) == 1: ONLY_4X4 is supported, 0: not.
+            * (tx_mode_support & 0x02) == 1: TX_MODE_LARGEST is supported, 0: not.
+            * (tx_mode_support & 0x04) == 1: TX_MODE_SELECT is supported, 0: not.
+            */
+           attrib_ext2.bits.tx_mode_support = PIPE_VIDEO_CAP_ENC_AV1_TX_MODE_SELECT;
+           attrib_ext2.bits.max_tile_num_minus1 = 31;
+
+            return attrib_ext2.value;
+         } else
+            return 0;
+      case PIPE_VIDEO_CAP_ENC_SUPPORTS_TILE:
+         if (sscreen->info.family >= CHIP_GFX1100 && profile == PIPE_VIDEO_PROFILE_AV1_MAIN)
+            return 1;
+         else
             return 0;
 
       default:
@@ -916,12 +982,13 @@ static bool si_vid_is_format_supported(struct pipe_screen *screen, enum pipe_for
       }
    }
 
-   /* support 10 bit input for encoding on some of the chips with vcn 2.0 and up */
-   if (profile == PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH &&
-       entrypoint == PIPE_VIDEO_ENTRYPOINT_ENCODE &&
-       sscreen->info.family >= CHIP_RENOIR) {
+   if ((entrypoint == PIPE_VIDEO_ENTRYPOINT_ENCODE) &&
+          (((profile == PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH) &&
+          (sscreen->info.family >= CHIP_RENOIR)) ||
+          ((profile == PIPE_VIDEO_PROFILE_AV1_MAIN) &&
+          (sscreen->info.family >= CHIP_GFX1100))))
       return (format == PIPE_FORMAT_P010 || format == PIPE_FORMAT_NV12);
-   }
+
 
    /* we can only handle this one with UVD */
    if (profile != PIPE_VIDEO_PROFILE_UNKNOWN)
