@@ -664,7 +664,7 @@ radv_dump_umr_ring(struct radv_queue *queue, FILE *f)
    if (ring != AMD_IP_GFX)
       return;
 
-   sprintf(cmd, "umr -R %s 2>&1",
+   sprintf(cmd, "umr -RS %s 2>&1",
            device->physical_device->rad_info.gfx_level >= GFX10 ? "gfx_0.0.0" : "gfx");
 
    fprintf(f, "\nUMR GFX ring:\n\n");
