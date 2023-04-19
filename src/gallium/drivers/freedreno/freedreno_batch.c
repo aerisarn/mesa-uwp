@@ -268,28 +268,6 @@ batch_reset_resources(struct fd_batch *batch)
    }
 }
 
-static void
-batch_reset(struct fd_batch *batch) assert_dt
-{
-   DBG("%p", batch);
-
-   batch_reset_dependencies(batch);
-
-   fd_screen_lock(batch->ctx->screen);
-   batch_reset_resources(batch);
-   fd_screen_unlock(batch->ctx->screen);
-
-   batch_fini(batch);
-   batch_init(batch);
-}
-
-void
-fd_batch_reset(struct fd_batch *batch)
-{
-   if (batch->needs_flush)
-      batch_reset(batch);
-}
-
 void
 __fd_batch_destroy_locked(struct fd_batch *batch)
 {
