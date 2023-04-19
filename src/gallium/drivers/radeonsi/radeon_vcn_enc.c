@@ -734,7 +734,7 @@ static void radeon_enc_get_feedback(struct pipe_video_codec *encoder, void *feed
       uint32_t *ptr = enc->ws->buffer_map(enc->ws, fb->res->buf, &enc->cs,
                                           PIPE_MAP_READ_WRITE | RADEON_MAP_TEMPORARY);
       if (ptr[1])
-         *size = ptr[6];
+         *size = ptr[6] - ptr[8];
       else
          *size = 0;
       enc->ws->buffer_unmap(enc->ws, fb->res->buf);
