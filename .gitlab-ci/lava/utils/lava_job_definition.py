@@ -13,7 +13,7 @@ JOB_PRIORITY = int(getenv("LAVA_JOB_PRIORITY", 75))
 def generate_lava_yaml_payload(args) -> dict[str, Any]:
     # General metadata and permissions, plus also inexplicably kernel arguments
     values = {
-        "job_name": "mesa: {}".format(args.pipeline_info),
+        "job_name": f"mesa: {args.pipeline_info}",
         "device_type": args.device_type,
         "visibility": {"group": [args.visibility_group]},
         "priority": JOB_PRIORITY,
@@ -50,20 +50,16 @@ def generate_lava_yaml_payload(args) -> dict[str, Any]:
         "timeout": {"minutes": 10},
         "to": "tftp",
         "os": "oe",
-        "kernel": {
-            "url": "{}/{}".format(args.kernel_url_prefix, args.kernel_image_name),
-        },
+        "kernel": {"url": f"{args.kernel_url_prefix}/{args.kernel_image_name}"},
         "nfsrootfs": {
-            "url": "{}/lava-rootfs.tar.zst".format(args.rootfs_url_prefix),
+            "url": f"{args.rootfs_url_prefix}/lava-rootfs.tar.zst",
             "compression": "zstd",
         },
     }
     if args.kernel_image_type:
         deploy["kernel"]["type"] = args.kernel_image_type
     if args.dtb_filename:
-        deploy["dtb"] = {
-            "url": "{}/{}.dtb".format(args.kernel_url_prefix, args.dtb_filename)
-        }
+        deploy["dtb"] = {"url": f"{args.kernel_url_prefix}/{args.dtb_filename}.dtb"}
 
     # always boot over NFS
     boot = {
@@ -110,7 +106,8 @@ def generate_lava_yaml_payload(args) -> dict[str, Any]:
             x.rstrip() for x in init_sh if not x.startswith("#") and x.rstrip()
         ]
         run_steps.append(
-            f"curl -L --retry 4 -f --retry-all-errors --retry-delay 60 {args.job_rootfs_overlay_url} | tar -xz -C /",
+            "curl -L --retry 4 -f --retry-all-errors --retry-delay 60 "
+            f"{args.job_rootfs_overlay_url} | tar -xz -C /",
         )
 
     if args.jwt_file:
@@ -128,8 +125,8 @@ def generate_lava_yaml_payload(args) -> dict[str, Any]:
         ]
 
     run_steps += [
-        "mkdir -p {}".format(args.ci_project_dir),
-        "curl {} | tar --zstd -x -C {}".format(args.build_url, args.ci_project_dir),
+        f"mkdir -p {args.ci_project_dir}",
+        f"curl {args.build_url} | tar --zstd -x -C {args.ci_project_dir}",
         # Sleep a bit to give time for bash to dump shell xtrace messages into
         # console which may cause interleaving with LAVA_SIGNAL_STARTTC in some
         # devices like a618.
