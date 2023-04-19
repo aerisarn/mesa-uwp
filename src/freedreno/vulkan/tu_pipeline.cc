@@ -317,19 +317,23 @@ tu_blend_state_is_dual_src(const struct vk_color_blend_state *cb)
    return false;
 }
 
-static const struct xs_config {
+template <chip CHIP>
+struct xs_config {
    uint16_t reg_sp_xs_ctrl;
    uint16_t reg_sp_xs_config;
    uint16_t reg_sp_xs_instrlen;
    uint16_t reg_hlsq_xs_ctrl;
    uint16_t reg_sp_xs_first_exec_offset;
    uint16_t reg_sp_xs_pvt_mem_hw_stack_offset;
-} xs_config[] = {
+};
+
+template <chip CHIP>
+const xs_config<CHIP> xs_configs[] = {
    [MESA_SHADER_VERTEX] = {
       REG_A6XX_SP_VS_CTRL_REG0,
       REG_A6XX_SP_VS_CONFIG,
       REG_A6XX_SP_VS_INSTRLEN,
-      REG_A6XX_HLSQ_VS_CNTL,
+      CHIP == A6XX ? REG_A6XX_HLSQ_VS_CNTL : REG_A7XX_HLSQ_VS_CNTL,
       REG_A6XX_SP_VS_OBJ_FIRST_EXEC_OFFSET,
       REG_A6XX_SP_VS_PVT_MEM_HW_STACK_OFFSET,
    },
@@ -337,7 +341,7 @@ static const struct xs_config {
       REG_A6XX_SP_HS_CTRL_REG0,
       REG_A6XX_SP_HS_CONFIG,
       REG_A6XX_SP_HS_INSTRLEN,
-      REG_A6XX_HLSQ_HS_CNTL,
+      CHIP == A6XX ? REG_A6XX_HLSQ_HS_CNTL : REG_A7XX_HLSQ_HS_CNTL,
       REG_A6XX_SP_HS_OBJ_FIRST_EXEC_OFFSET,
       REG_A6XX_SP_HS_PVT_MEM_HW_STACK_OFFSET,
    },
@@ -345,7 +349,7 @@ static const struct xs_config {
       REG_A6XX_SP_DS_CTRL_REG0,
       REG_A6XX_SP_DS_CONFIG,
       REG_A6XX_SP_DS_INSTRLEN,
-      REG_A6XX_HLSQ_DS_CNTL,
+      CHIP == A6XX ? REG_A6XX_HLSQ_DS_CNTL : REG_A7XX_HLSQ_DS_CNTL,
       REG_A6XX_SP_DS_OBJ_FIRST_EXEC_OFFSET,
       REG_A6XX_SP_DS_PVT_MEM_HW_STACK_OFFSET,
    },
@@ -353,7 +357,7 @@ static const struct xs_config {
       REG_A6XX_SP_GS_CTRL_REG0,
       REG_A6XX_SP_GS_CONFIG,
       REG_A6XX_SP_GS_INSTRLEN,
-      REG_A6XX_HLSQ_GS_CNTL,
+      CHIP == A6XX ? REG_A6XX_HLSQ_GS_CNTL : REG_A7XX_HLSQ_GS_CNTL,
       REG_A6XX_SP_GS_OBJ_FIRST_EXEC_OFFSET,
       REG_A6XX_SP_GS_PVT_MEM_HW_STACK_OFFSET,
    },
@@ -361,7 +365,7 @@ static const struct xs_config {
       REG_A6XX_SP_FS_CTRL_REG0,
       REG_A6XX_SP_FS_CONFIG,
       REG_A6XX_SP_FS_INSTRLEN,
-      REG_A6XX_HLSQ_FS_CNTL,
+      CHIP == A6XX ? REG_A6XX_HLSQ_FS_CNTL : REG_A7XX_HLSQ_FS_CNTL,
       REG_A6XX_SP_FS_OBJ_FIRST_EXEC_OFFSET,
       REG_A6XX_SP_FS_PVT_MEM_HW_STACK_OFFSET,
    },
@@ -369,7 +373,7 @@ static const struct xs_config {
       REG_A6XX_SP_CS_CTRL_REG0,
       REG_A6XX_SP_CS_CONFIG,
       REG_A6XX_SP_CS_INSTRLEN,
-      REG_A6XX_HLSQ_CS_CNTL,
+      CHIP == A6XX ? REG_A6XX_HLSQ_CS_CNTL : REG_A7XX_HLSQ_CS_CNTL,
       REG_A6XX_SP_CS_OBJ_FIRST_EXEC_OFFSET,
       REG_A6XX_SP_CS_PVT_MEM_HW_STACK_OFFSET,
    },
@@ -412,12 +416,13 @@ tu_xs_get_additional_cs_size_dwords(const struct ir3_shader_variant *xs)
    return size;
 }
 
+template <chip CHIP>
 void
 tu6_emit_xs_config(struct tu_cs *cs,
                    gl_shader_stage stage, /* xs->type, but xs may be NULL */
                    const struct ir3_shader_variant *xs)
 {
-   const struct xs_config *cfg = &xs_config[stage];
+   const struct xs_config<CHIP> *cfg = &xs_configs<CHIP>[stage];
 
    if (!xs) {
       /* shader stage disabled */
@@ -442,7 +447,9 @@ tu6_emit_xs_config(struct tu_cs *cs,
    tu_cs_emit(cs, A6XX_HLSQ_VS_CNTL_CONSTLEN(xs->constlen) |
                   A6XX_HLSQ_VS_CNTL_ENABLED);
 }
+TU_GENX(tu6_emit_xs_config);
 
+template <chip CHIP>
 void
 tu6_emit_xs(struct tu_cs *cs,
             gl_shader_stage stage, /* xs->type, but xs may be NULL */
@@ -450,7 +457,7 @@ tu6_emit_xs(struct tu_cs *cs,
             const struct tu_pvtmem_config *pvtmem,
             uint64_t binary_iova)
 {
-   const struct xs_config *cfg = &xs_config[stage];
+   const struct xs_config<CHIP> *cfg = &xs_configs<CHIP>[stage];
 
    if (!xs) {
       /* shader stage disabled */
@@ -540,16 +547,18 @@ tu6_emit_xs(struct tu_cs *cs,
    tu_cs_emit_pkt4(cs, cfg->reg_sp_xs_pvt_mem_hw_stack_offset, 1);
    tu_cs_emit(cs, A6XX_SP_VS_PVT_MEM_HW_STACK_OFFSET_OFFSET(pvtmem->per_sp_size));
 
-   uint32_t shader_preload_size =
-      MIN2(xs->instrlen, cs->device->physical_device->info->a6xx.instr_cache_size);
+   if (CHIP == A6XX) {
+      uint32_t shader_preload_size =
+         MIN2(xs->instrlen, cs->device->physical_device->info->a6xx.instr_cache_size);
 
-   tu_cs_emit_pkt7(cs, tu6_stage2opcode(stage), 3);
-   tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(0) |
-                  CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
-                  CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
-                  CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(stage)) |
-                  CP_LOAD_STATE6_0_NUM_UNIT(shader_preload_size));
-   tu_cs_emit_qw(cs, binary_iova);
+      tu_cs_emit_pkt7(cs, tu6_stage2opcode(stage), 3);
+      tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(0) |
+                     CP_LOAD_STATE6_0_STATE_TYPE(ST6_SHADER) |
+                     CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
+                     CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(stage)) |
+                     CP_LOAD_STATE6_0_NUM_UNIT(shader_preload_size));
+      tu_cs_emit_qw(cs, binary_iova);
+   }
 
    /* emit immediates */
 
@@ -636,6 +645,7 @@ tu6_emit_xs(struct tu_cs *cs,
       }
    }
 }
+TU_GENX(tu6_emit_xs);
 
 static void
 tu6_emit_dynamic_offset(struct tu_cs *cs,
@@ -661,16 +671,23 @@ tu6_emit_dynamic_offset(struct tu_cs *cs,
    }
 }
 
+template <chip CHIP>
 static void
 tu6_emit_shared_consts_enable(struct tu_cs *cs, bool enable)
 {
-   /* Enable/disable shared constants */
-   tu_cs_emit_regs(cs, A6XX_HLSQ_SHARED_CONSTS(.enable = enable));
+   if (CHIP == A6XX) {
+      /* Enable/disable shared constants */
+      tu_cs_emit_regs(cs, A6XX_HLSQ_SHARED_CONSTS(.enable = enable));
+   } else {
+      assert(!enable);
+   }
+
    tu_cs_emit_regs(cs, A6XX_SP_MODE_CONTROL(.constant_demotion_enable = true,
                                             .isammode = ISAMMODE_GL,
                                             .shared_consts_enable = enable));
 }
 
+template <chip CHIP>
 static void
 tu6_emit_cs_config(struct tu_cs *cs,
                    const struct ir3_shader_variant *v,
@@ -678,22 +695,22 @@ tu6_emit_cs_config(struct tu_cs *cs,
                    uint64_t binary_iova)
 {
    bool shared_consts_enable = ir3_const_state(v)->shared_consts_enable;
-   tu6_emit_shared_consts_enable(cs, shared_consts_enable);
+   tu6_emit_shared_consts_enable<CHIP>(cs, shared_consts_enable);
 
-   tu_cs_emit_regs(cs, A6XX_HLSQ_INVALIDATE_CMD(
+   tu_cs_emit_regs(cs, HLSQ_INVALIDATE_CMD(CHIP,
          .cs_state = true,
          .cs_ibo = true,
          .cs_shared_const = shared_consts_enable));
 
-   tu6_emit_xs_config(cs, MESA_SHADER_COMPUTE, v);
-   tu6_emit_xs(cs, MESA_SHADER_COMPUTE, v, pvtmem, binary_iova);
+   tu6_emit_xs_config<CHIP>(cs, MESA_SHADER_COMPUTE, v);
+   tu6_emit_xs<CHIP>(cs, MESA_SHADER_COMPUTE, v, pvtmem, binary_iova);
 
    uint32_t shared_size = MAX2(((int)v->shared_size - 1) / 1024, 1);
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_UNKNOWN_A9B1, 1);
    tu_cs_emit(cs, A6XX_SP_CS_UNKNOWN_A9B1_SHARED_SIZE(shared_size) |
                   A6XX_SP_CS_UNKNOWN_A9B1_UNK6);
 
-   if (cs->device->physical_device->info->a6xx.has_lpac) {
+   if (CHIP == A6XX && cs->device->physical_device->info->a6xx.has_lpac) {
       tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CS_UNKNOWN_B9D0, 1);
       tu_cs_emit(cs, A6XX_HLSQ_CS_UNKNOWN_B9D0_SHARED_SIZE(shared_size) |
                      A6XX_HLSQ_CS_UNKNOWN_B9D0_UNK6);
@@ -712,28 +729,65 @@ tu6_emit_cs_config(struct tu_cs *cs,
    enum a6xx_threadsize thrsz = v->info.double_threadsize ? THREAD128 : THREAD64;
    enum a6xx_threadsize thrsz_cs = cs->device->physical_device->info->a6xx
       .supports_double_threadsize ? thrsz : THREAD128;
-   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CS_CNTL_0, 2);
-   tu_cs_emit(cs,
-              A6XX_HLSQ_CS_CNTL_0_WGIDCONSTID(work_group_id) |
-              A6XX_HLSQ_CS_CNTL_0_WGSIZECONSTID(regid(63, 0)) |
-              A6XX_HLSQ_CS_CNTL_0_WGOFFSETCONSTID(regid(63, 0)) |
-              A6XX_HLSQ_CS_CNTL_0_LOCALIDREGID(local_invocation_id));
-   tu_cs_emit(cs, A6XX_HLSQ_CS_CNTL_1_LINEARLOCALIDREGID(regid(63, 0)) |
-                  A6XX_HLSQ_CS_CNTL_1_THREADSIZE(thrsz_cs));
-   if (!cs->device->physical_device->info->a6xx.supports_double_threadsize) {
-      tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_FS_CNTL_0, 1);
-      tu_cs_emit(cs, A6XX_HLSQ_FS_CNTL_0_THREADSIZE(thrsz));
-   }
-
-   if (cs->device->physical_device->info->a6xx.has_lpac) {
-      tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_CNTL_0, 2);
+   if (CHIP == A6XX) {
+      tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CS_CNTL_0, 2);
       tu_cs_emit(cs,
-                 A6XX_SP_CS_CNTL_0_WGIDCONSTID(work_group_id) |
-                 A6XX_SP_CS_CNTL_0_WGSIZECONSTID(regid(63, 0)) |
-                 A6XX_SP_CS_CNTL_0_WGOFFSETCONSTID(regid(63, 0)) |
-                 A6XX_SP_CS_CNTL_0_LOCALIDREGID(local_invocation_id));
-      tu_cs_emit(cs, A6XX_SP_CS_CNTL_1_LINEARLOCALIDREGID(regid(63, 0)) |
-                     A6XX_SP_CS_CNTL_1_THREADSIZE(thrsz));
+                 A6XX_HLSQ_CS_CNTL_0_WGIDCONSTID(work_group_id) |
+                 A6XX_HLSQ_CS_CNTL_0_WGSIZECONSTID(regid(63, 0)) |
+                 A6XX_HLSQ_CS_CNTL_0_WGOFFSETCONSTID(regid(63, 0)) |
+                 A6XX_HLSQ_CS_CNTL_0_LOCALIDREGID(local_invocation_id));
+      tu_cs_emit(cs, A6XX_HLSQ_CS_CNTL_1_LINEARLOCALIDREGID(regid(63, 0)) |
+                     A6XX_HLSQ_CS_CNTL_1_THREADSIZE(thrsz_cs));
+      if (!cs->device->physical_device->info->a6xx.supports_double_threadsize) {
+         tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_FS_CNTL_0, 1);
+         tu_cs_emit(cs, A6XX_HLSQ_FS_CNTL_0_THREADSIZE(thrsz));
+      }
+
+      if (cs->device->physical_device->info->a6xx.has_lpac) {
+         tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_CNTL_0, 2);
+         tu_cs_emit(cs,
+                    A6XX_SP_CS_CNTL_0_WGIDCONSTID(work_group_id) |
+                    A6XX_SP_CS_CNTL_0_WGSIZECONSTID(regid(63, 0)) |
+                    A6XX_SP_CS_CNTL_0_WGOFFSETCONSTID(regid(63, 0)) |
+                    A6XX_SP_CS_CNTL_0_LOCALIDREGID(local_invocation_id));
+         tu_cs_emit(cs, A6XX_SP_CS_CNTL_1_LINEARLOCALIDREGID(regid(63, 0)) |
+                  A6XX_SP_CS_CNTL_1_THREADSIZE(thrsz));
+      }
+   } else {
+      enum a7xx_cs_yalign yalign = (v->local_size[1] % 8 == 0)   ? CS_YALIGN_8
+                                   : (v->local_size[1] % 4 == 0) ? CS_YALIGN_4
+                                   : (v->local_size[1] % 2 == 0) ? CS_YALIGN_2
+                                                                 : CS_YALIGN_1;
+      tu_cs_emit_regs(
+         cs, A7XX_HLSQ_CS_CNTL_1(
+                   .linearlocalidregid = regid(63, 0), .threadsize = thrsz_cs,
+                   /* A7XX TODO: blob either sets all of these unknowns
+                    * together or doesn't set them at all.
+                    */
+                   .unk11 = true, .unk22 = true, .yalign = yalign, ));
+
+      tu_cs_emit_regs(cs, HLSQ_FS_CNTL_0(CHIP, .threadsize = THREAD64));
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_SP_CS_CNTL_0, 1);
+      tu_cs_emit(cs, A6XX_SP_CS_CNTL_0_WGIDCONSTID(work_group_id) |
+                        A6XX_SP_CS_CNTL_0_WGSIZECONSTID(regid(63, 0)) |
+                        A6XX_SP_CS_CNTL_0_WGOFFSETCONSTID(regid(63, 0)) |
+                        A6XX_SP_CS_CNTL_0_LOCALIDREGID(local_invocation_id));
+
+      tu_cs_emit_regs(cs,
+                      A7XX_SP_CS_CNTL_1(
+                        .linearlocalidregid = regid(63, 0),
+                        .threadsize = thrsz_cs,
+                        /* A7XX TODO: enable UNK15 when we don't use subgroup ops. */
+                        .unk15 = false, ));
+
+      tu_cs_emit_regs(
+         cs, A7XX_HLSQ_CS_LOCAL_SIZE(.localsizex = v->local_size[0] - 1,
+                                     .localsizey = v->local_size[1] - 1,
+                                     .localsizez = v->local_size[2] - 1, ));
+
+      tu_cs_emit_regs(cs, A7XX_SP_CS_UNKNOWN_A9BE(0)); // Sometimes is 0x08000000
+      tu_cs_emit_regs(cs, A7XX_HLSQ_UNKNOWN_A9C5(0)); // Sometimes is 0x00000401
    }
 }
 
@@ -1137,6 +1191,7 @@ tu6_emit_vpc_varying_modes(struct tu_cs *cs,
    }
 }
 
+template <chip CHIP>
 void
 tu6_emit_vpc(struct tu_cs *cs,
              const struct ir3_shader_variant *vs,
@@ -1421,11 +1476,13 @@ tu6_emit_vpc(struct tu_cs *cs,
             A6XX_PC_PRIMITIVE_CNTL_5_GS_OUTPUT(output) |
             A6XX_PC_PRIMITIVE_CNTL_5_GS_INVOCATIONS(invocations));
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_GS_PARAM, 1);
-      tu_cs_emit(cs, 0xff);
+      if (CHIP == A6XX) {
+         tu_cs_emit_pkt4(cs, REG_A6XX_VPC_GS_PARAM, 1);
+         tu_cs_emit(cs, 0xff);
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_6, 1);
-      tu_cs_emit(cs, A6XX_PC_PRIMITIVE_CNTL_6_STRIDE_IN_VPC(vec4_size));
+         tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_6, 1);
+         tu_cs_emit(cs, A6XX_PC_PRIMITIVE_CNTL_6_STRIDE_IN_VPC(vec4_size));
+      }
 
       uint32_t prim_size = prev_stage_output_size;
       if (prim_size > 64)
@@ -1438,6 +1495,7 @@ tu6_emit_vpc(struct tu_cs *cs,
 
    tu6_emit_vpc_varying_modes(cs, fs, last_shader);
 }
+TU_GENX(tu6_emit_vpc);
 
 static enum a6xx_tex_prefetch_cmd
 tu6_tex_opc_to_prefetch_cmd(opc_t tex_opc)
@@ -1450,6 +1508,7 @@ tu6_tex_opc_to_prefetch_cmd(opc_t tex_opc)
    }
 }
 
+template <chip CHIP>
 void
 tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 {
@@ -1476,21 +1535,21 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_PREFETCH_CNTL, 1 + fs->num_sampler_prefetch);
    tu_cs_emit(cs, A6XX_SP_FS_PREFETCH_CNTL_COUNT(fs->num_sampler_prefetch) |
+                     COND(CHIP >= A7XX, A6XX_SP_FS_PREFETCH_CNTL_CONSTSLOTID(0x1ff)) |
+                     COND(CHIP >= A7XX, A6XX_SP_FS_PREFETCH_CNTL_CONSTSLOTID4COORD(0x1ff)) |
                      COND(!VALIDREG(ij_regid[IJ_PERSP_PIXEL]),
                           A6XX_SP_FS_PREFETCH_CNTL_IJ_WRITE_DISABLE) |
                      COND(fs->prefetch_end_of_quad,
                           A6XX_SP_FS_PREFETCH_CNTL_ENDOFQUAD));
    for (int i = 0; i < fs->num_sampler_prefetch; i++) {
       const struct ir3_sampler_prefetch *prefetch = &fs->sampler_prefetch[i];
-      tu_cs_emit(cs, A6XX_SP_FS_PREFETCH_CMD_SRC(prefetch->src) |
-                     A6XX_SP_FS_PREFETCH_CMD_SAMP_ID(prefetch->samp_id) |
-                     A6XX_SP_FS_PREFETCH_CMD_TEX_ID(prefetch->tex_id) |
-                     A6XX_SP_FS_PREFETCH_CMD_DST(prefetch->dst) |
-                     A6XX_SP_FS_PREFETCH_CMD_WRMASK(prefetch->wrmask) |
-                     COND(prefetch->half_precision, A6XX_SP_FS_PREFETCH_CMD_HALF) |
-                     COND(prefetch->bindless, A6XX_SP_FS_PREFETCH_CMD_BINDLESS) |
-                     A6XX_SP_FS_PREFETCH_CMD_CMD(
-                        tu6_tex_opc_to_prefetch_cmd(prefetch->tex_opc)));
+      tu_cs_emit(
+         cs, SP_FS_PREFETCH_CMD(
+                CHIP, i, .src = prefetch->src, .samp_id = prefetch->samp_id,
+                .tex_id = prefetch->tex_id, .dst = prefetch->dst,
+                .wrmask = prefetch->wrmask, .half = prefetch->half_precision,
+                .bindless = prefetch->bindless,
+                .cmd = tu6_tex_opc_to_prefetch_cmd(prefetch->tex_opc), ).value);
    }
 
    if (fs->num_sampler_prefetch > 0) {
@@ -1503,27 +1562,26 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
       }
    }
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CONTROL_1_REG, 5);
-   tu_cs_emit(cs, A6XX_HLSQ_CONTROL_1_REG_PRIMALLOCTHRESHOLD(
-      cs->device->physical_device->info->a6xx.prim_alloc_threshold));
-   tu_cs_emit(cs, A6XX_HLSQ_CONTROL_2_REG_FACEREGID(face_regid) |
-                  A6XX_HLSQ_CONTROL_2_REG_SAMPLEID(samp_id_regid) |
-                  A6XX_HLSQ_CONTROL_2_REG_SAMPLEMASK(smask_in_regid) |
-                  A6XX_HLSQ_CONTROL_2_REG_CENTERRHW(ij_regid[IJ_PERSP_CENTER_RHW]));
-   tu_cs_emit(cs, A6XX_HLSQ_CONTROL_3_REG_IJ_PERSP_PIXEL(ij_regid[IJ_PERSP_PIXEL]) |
-                  A6XX_HLSQ_CONTROL_3_REG_IJ_LINEAR_PIXEL(ij_regid[IJ_LINEAR_PIXEL]) |
-                  A6XX_HLSQ_CONTROL_3_REG_IJ_PERSP_CENTROID(ij_regid[IJ_PERSP_CENTROID]) |
-                  A6XX_HLSQ_CONTROL_3_REG_IJ_LINEAR_CENTROID(ij_regid[IJ_LINEAR_CENTROID]));
-   tu_cs_emit(cs, A6XX_HLSQ_CONTROL_4_REG_XYCOORDREGID(coord_regid) |
-                  A6XX_HLSQ_CONTROL_4_REG_ZWCOORDREGID(zwcoord_regid) |
-                  A6XX_HLSQ_CONTROL_4_REG_IJ_PERSP_SAMPLE(ij_regid[IJ_PERSP_SAMPLE]) |
-                  A6XX_HLSQ_CONTROL_4_REG_IJ_LINEAR_SAMPLE(ij_regid[IJ_LINEAR_SAMPLE]));
-   tu_cs_emit(cs, 0xfcfc);
+   tu_cs_emit_regs(cs,
+      HLSQ_CONTROL_1_REG(CHIP,
+         .primallocthreshold =
+            cs->device->physical_device->info->a6xx.prim_alloc_threshold),
+      HLSQ_CONTROL_2_REG(CHIP, .faceregid = face_regid,
+                         .sampleid = samp_id_regid,
+                         .samplemask = smask_in_regid,
+                         .centerrhw = ij_regid[IJ_PERSP_CENTER_RHW]),
+      HLSQ_CONTROL_3_REG(CHIP, .ij_persp_pixel = ij_regid[IJ_PERSP_PIXEL],
+                         .ij_linear_pixel = ij_regid[IJ_LINEAR_PIXEL],
+                         .ij_persp_centroid = ij_regid[IJ_PERSP_CENTROID],
+                         .ij_linear_centroid = ij_regid[IJ_LINEAR_CENTROID]),
+      HLSQ_CONTROL_4_REG(CHIP, .ij_persp_sample = ij_regid[IJ_PERSP_SAMPLE],
+                         .ij_linear_sample = ij_regid[IJ_LINEAR_SAMPLE],
+                         .xycoordregid = coord_regid,
+                         .zwcoordregid = zwcoord_regid),
+      HLSQ_CONTROL_5_REG(CHIP, .dword = 0xfcfc), );
 
    enum a6xx_threadsize thrsz = fs->info.double_threadsize ? THREAD128 : THREAD64;
-   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_FS_CNTL_0, 1);
-   tu_cs_emit(cs, A6XX_HLSQ_FS_CNTL_0_THREADSIZE(thrsz) |
-                  COND(enable_varyings, A6XX_HLSQ_FS_CNTL_0_VARYINGS));
+   tu_cs_emit_regs(cs, HLSQ_FS_CNTL_0(CHIP, .threadsize = thrsz, .varyings = enable_varyings));
 
    bool need_size = fs->frag_face || fs->fragcoord_compmask != 0;
    bool need_size_persamp = false;
@@ -1579,6 +1637,7 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SAMPLE_CNTL, 1);
    tu_cs_emit(cs, COND(sample_shading, A6XX_GRAS_SAMPLE_CNTL_PER_SAMP_MODE));
 }
+TU_GENX(tu6_emit_fs_inputs)
 
 static void
 tu6_emit_fs_outputs(struct tu_cs *cs,
@@ -1694,7 +1753,8 @@ static const enum mesa_vk_dynamic_graphics_state tu_patch_control_points_state[]
    MESA_VK_DYNAMIC_TS_PATCH_CONTROL_POINTS,
 };
 
-static unsigned 
+template <chip CHIP>
+static unsigned
 tu6_patch_control_points_size(struct tu_device *dev,
                               const struct tu_pipeline *pipeline,
                               uint32_t patch_control_points)
@@ -1705,6 +1765,7 @@ tu6_patch_control_points_size(struct tu_device *dev,
 #undef EMIT_CONST_DWORDS
 }
 
+template <chip CHIP>
 void
 tu6_emit_patch_control_points(struct tu_cs *cs,
                               const struct tu_pipeline *pipeline,
@@ -1834,6 +1895,7 @@ tu6_emit_geom_tess_consts(struct tu_cs *cs,
    }
 }
 
+template <chip CHIP>
 static void
 tu6_emit_program_config(struct tu_cs *cs,
                         struct tu_pipeline_builder *builder)
@@ -1842,9 +1904,9 @@ tu6_emit_program_config(struct tu_cs *cs,
 
    bool shared_consts_enable = tu6_shared_constants_enable(&builder->layout,
          builder->device->compiler);
-   tu6_emit_shared_consts_enable(cs, shared_consts_enable);
+   tu6_emit_shared_consts_enable<CHIP>(cs, shared_consts_enable);
 
-   tu_cs_emit_regs(cs, A6XX_HLSQ_INVALIDATE_CMD(
+   tu_cs_emit_regs(cs, HLSQ_INVALIDATE_CMD(CHIP,
          .vs_state = true,
          .hs_state = true,
          .ds_state = true,
@@ -1855,10 +1917,11 @@ tu6_emit_program_config(struct tu_cs *cs,
    for (size_t stage_idx = MESA_SHADER_VERTEX;
         stage_idx < ARRAY_SIZE(builder->shader_iova); stage_idx++) {
       gl_shader_stage stage = (gl_shader_stage) stage_idx;
-      tu6_emit_xs_config(cs, stage, builder->variants[stage]);
+      tu6_emit_xs_config<CHIP>(cs, stage, builder->variants[stage]);
    }
 }
 
+template <chip CHIP>
 static void
 tu6_emit_program(struct tu_cs *cs,
                  struct tu_pipeline_builder *builder,
@@ -1879,7 +1942,7 @@ tu6_emit_program(struct tu_cs *cs,
    */
    if (binning_pass && !gs) {
       vs = bs;
-      tu6_emit_xs(cs, stage, bs, &builder->pvtmem, builder->binning_vs_iova);
+      tu6_emit_xs<CHIP>(cs, stage, bs, &builder->pvtmem, builder->binning_vs_iova);
       tu6_emit_dynamic_offset(cs, bs, builder);
       stage = (gl_shader_stage) (stage + 1);
    }
@@ -1891,7 +1954,7 @@ tu6_emit_program(struct tu_cs *cs,
       if (stage == MESA_SHADER_FRAGMENT && binning_pass)
          fs = xs = NULL;
 
-      tu6_emit_xs(cs, stage, xs, &builder->pvtmem, builder->shader_iova[stage]);
+      tu6_emit_xs<CHIP>(cs, stage, xs, &builder->pvtmem, builder->shader_iova[stage]);
       tu6_emit_dynamic_offset(cs, xs, builder);
    }
 
@@ -1929,16 +1992,22 @@ tu6_emit_program(struct tu_cs *cs,
 
    tu6_emit_vfd_dest(cs, vs);
 
-   tu6_emit_vpc(cs, vs, hs, ds, gs, fs);
+   tu6_emit_vpc<CHIP>(cs, vs, hs, ds, gs, fs);
+
+   if (CHIP >= A7XX) {
+      tu_cs_emit_regs(cs, A7XX_HLSQ_UNKNOWN_A9AE(.unk0 = 0x2, .unk8 = 1));
+      tu_cs_emit_regs(cs, A6XX_GRAS_UNKNOWN_8110(0x2));
+      tu_cs_emit_regs(cs, A7XX_HLSQ_FS_UNKNOWN_A9AA(.consts_load_disable = false));
+   }
 
    if (fs) {
-      tu6_emit_fs_inputs(cs, fs);
+      tu6_emit_fs_inputs<CHIP>(cs, fs);
       tu6_emit_fs_outputs(cs, fs, pipeline);
       pipeline->program.per_samp = fs->per_samp || fs->key.sample_shading;
    } else {
       /* TODO: check if these can be skipped if fs is disabled */
       struct ir3_shader_variant dummy_variant = {};
-      tu6_emit_fs_inputs(cs, &dummy_variant);
+      tu6_emit_fs_inputs<CHIP>(cs, &dummy_variant);
       tu6_emit_fs_outputs(cs, &dummy_variant, NULL);
    }
 
@@ -3299,6 +3368,7 @@ tu_pipeline_set_linkage(struct tu_program_descriptor_linkage *link,
    link->constlen = v->constlen;
 }
 
+template <chip CHIP>
 static void
 tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
                                         struct tu_pipeline *pipeline)
@@ -3317,15 +3387,15 @@ tu_pipeline_builder_parse_shader_stages(struct tu_pipeline_builder *builder,
     * and draw passes.
     */
    tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);
-   tu6_emit_program_config(&prog_cs, builder);
+   tu6_emit_program_config<CHIP>(&prog_cs, builder);
    pipeline->program.config_state = tu_cs_end_draw_state(&pipeline->cs, &prog_cs);
 
    tu_cs_begin_sub_stream(&pipeline->cs, 512 + builder->additional_cs_reserve_size, &prog_cs);
-   tu6_emit_program(&prog_cs, builder, false, pipeline);
+   tu6_emit_program<CHIP>(&prog_cs, builder, false, pipeline);
    pipeline->program.state = tu_cs_end_draw_state(&pipeline->cs, &prog_cs);
 
    tu_cs_begin_sub_stream(&pipeline->cs, 512 + builder->additional_cs_reserve_size, &prog_cs);
-   tu6_emit_program(&prog_cs, builder, true, pipeline);
+   tu6_emit_program<CHIP>(&prog_cs, builder, true, pipeline);
    pipeline->program.binning_state = tu_cs_end_draw_state(&pipeline->cs, &prog_cs);
 
    for (unsigned i = 0; i < ARRAY_SIZE(builder->variants); i++) {
@@ -3410,6 +3480,7 @@ static const enum mesa_vk_dynamic_graphics_state tu_vertex_input_state[] = {
    MESA_VK_DYNAMIC_VI,
 };
 
+template <chip CHIP>
 static unsigned
 tu6_vertex_input_size(struct tu_device *dev,
                       const struct vk_vertex_input_state *vi)
@@ -3417,6 +3488,7 @@ tu6_vertex_input_size(struct tu_device *dev,
    return 1 + 2 * util_last_bit(vi->attributes_valid);
 }
 
+template <chip CHIP>
 static void
 tu6_emit_vertex_input(struct tu_cs *cs,
                       const struct vk_vertex_input_state *vi)
@@ -3455,6 +3527,7 @@ static const enum mesa_vk_dynamic_graphics_state tu_vertex_stride_state[] = {
    MESA_VK_DYNAMIC_VI_BINDING_STRIDES,
 };
 
+template <chip CHIP>
 static unsigned
 tu6_vertex_stride_size(struct tu_device *dev,
                        const struct vk_vertex_input_state *vi)
@@ -3462,6 +3535,7 @@ tu6_vertex_stride_size(struct tu_device *dev,
    return 1 + 2 * util_last_bit(vi->bindings_valid);
 }
 
+template <chip CHIP>
 static void
 tu6_emit_vertex_stride(struct tu_cs *cs, const struct vk_vertex_input_state *vi)
 {
@@ -3475,6 +3549,7 @@ tu6_emit_vertex_stride(struct tu_cs *cs, const struct vk_vertex_input_state *vi)
    }
 }
 
+template <chip CHIP>
 static unsigned
 tu6_vertex_stride_size_dyn(struct tu_device *dev,
                            const uint16_t *vi_binding_stride,
@@ -3483,6 +3558,7 @@ tu6_vertex_stride_size_dyn(struct tu_device *dev,
    return 1 + 2 * util_last_bit(bindings_valid);
 }
 
+template <chip CHIP>
 static void
 tu6_emit_vertex_stride_dyn(struct tu_cs *cs, const uint16_t *vi_binding_stride,
                            uint32_t bindings_valid)
@@ -3503,6 +3579,7 @@ static const enum mesa_vk_dynamic_graphics_state tu_viewport_state[] = {
    MESA_VK_DYNAMIC_VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE,
 };
 
+template <chip CHIP>
 static unsigned
 tu6_viewport_size(struct tu_device *dev, const struct vk_viewport_state *vp)
 {
@@ -3510,6 +3587,7 @@ tu6_viewport_size(struct tu_device *dev, const struct vk_viewport_state *vp)
       1 + vp->viewport_count * 2 + 5;
 }
 
+template <chip CHIP>
 static void
 tu6_emit_viewport(struct tu_cs *cs, const struct vk_viewport_state *vp)
 {
@@ -3682,7 +3760,7 @@ fdm_apply_viewports(struct tu_cs *cs, void *data, VkRect2D bin, unsigned views,
       vp.viewports[i].y = scale_y * viewport.y + offset.y;
    }
 
-   tu6_emit_viewport(cs, &vp);
+   TU_CALLX(cs->device, tu6_emit_viewport)(cs, &vp);
 }
 
 static void
@@ -3696,7 +3774,7 @@ tu6_emit_viewport_fdm(struct tu_cs *cs, struct tu_cmd_buffer *cmd,
    };
    if (!state.share_scale)
       state.vp.viewport_count = num_views;
-   unsigned size = tu6_viewport_size(cmd->device, &state.vp);
+   unsigned size = TU_CALLX(cs->device, tu6_viewport_size)(cmd->device, &state.vp);
    tu_cs_begin_sub_stream(&cmd->sub_cs, size, cs);
    tu_create_fdm_bin_patchpoint(cmd, cs, size, fdm_apply_viewports, state);
 }
@@ -3706,12 +3784,14 @@ static const enum mesa_vk_dynamic_graphics_state tu_scissor_state[] = {
    MESA_VK_DYNAMIC_VP_SCISSOR_COUNT,
 };
 
+template <chip CHIP>
 static unsigned
 tu6_scissor_size(struct tu_device *dev, const struct vk_viewport_state *vp)
 {
    return 1 + vp->scissor_count * 2;
 }
 
+template <chip CHIP>
 void
 tu6_emit_scissor(struct tu_cs *cs, const struct vk_viewport_state *vp)
 {
@@ -3791,7 +3871,7 @@ fdm_apply_scissors(struct tu_cs *cs, void *data, VkRect2D bin, unsigned views,
          MIN2(max.y, bin.offset.y + scaled_height) - vp.scissors[i].offset.y;
    }
 
-   tu6_emit_scissor(cs, &vp);
+   TU_CALLX(cs->device, tu6_emit_scissor)(cs, &vp);
 }
 
 static void
@@ -3805,7 +3885,7 @@ tu6_emit_scissor_fdm(struct tu_cs *cs, struct tu_cmd_buffer *cmd,
    };
    if (!state.share_scale)
       state.vp.scissor_count = num_views;
-   unsigned size = tu6_scissor_size(cmd->device, &state.vp);
+   unsigned size = TU_CALLX(cs->device, tu6_scissor_size)(cmd->device, &state.vp);
    tu_cs_begin_sub_stream(&cmd->sub_cs, size, cs);
    tu_create_fdm_bin_patchpoint(cmd, cs, size, fdm_apply_scissors, state);
 }
@@ -3814,12 +3894,14 @@ static const enum mesa_vk_dynamic_graphics_state tu_sample_locations_enable_stat
    MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS_ENABLE,
 };
 
+template <chip CHIP>
 static unsigned
 tu6_sample_locations_enable_size(struct tu_device *dev, bool enable)
 {
    return 6;
 }
 
+template <chip CHIP>
 void
 tu6_emit_sample_locations_enable(struct tu_cs *cs, bool enable)
 {
@@ -3840,6 +3922,7 @@ static const enum mesa_vk_dynamic_graphics_state tu_sample_locations_state[] = {
    MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS,
 };
 
+template <chip CHIP>
 static unsigned
 tu6_sample_locations_size(struct tu_device *dev,
                           const struct vk_sample_locations_state *samp_loc)
@@ -3847,6 +3930,7 @@ tu6_sample_locations_size(struct tu_device *dev,
    return 6;
 }
 
+template <chip CHIP>
 void
 tu6_emit_sample_locations(struct tu_cs *cs, const struct vk_sample_locations_state *samp_loc)
 {
@@ -3892,6 +3976,7 @@ static const enum mesa_vk_dynamic_graphics_state tu_depth_bias_state[] = {
    MESA_VK_DYNAMIC_RS_DEPTH_BIAS_FACTORS,
 };
 
+template <chip CHIP>
 static unsigned
 tu6_depth_bias_size(struct tu_device *dev,
                     const struct vk_rasterization_state *rs)
@@ -3899,6 +3984,7 @@ tu6_depth_bias_size(struct tu_device *dev,
    return 4;
 }
 
+template <chip CHIP>
 void
 tu6_emit_depth_bias(struct tu_cs *cs, const struct vk_rasterization_state *rs)
 {
@@ -4024,6 +4110,7 @@ static const enum mesa_vk_dynamic_graphics_state tu_blend_state[] = {
    MESA_VK_DYNAMIC_MS_SAMPLE_MASK,
 };
 
+template <chip CHIP>
 static unsigned
 tu6_blend_size(struct tu_device *dev,
                const struct vk_color_blend_state *cb,
@@ -4036,6 +4123,7 @@ tu6_blend_size(struct tu_device *dev,
    return 8 + 3 * num_rts;
 }
 
+template <chip CHIP>
 static void
 tu6_emit_blend(struct tu_cs *cs,
                const struct vk_color_blend_state *cb,
@@ -4125,6 +4213,7 @@ static const enum mesa_vk_dynamic_graphics_state tu_blend_constants_state[] = {
    MESA_VK_DYNAMIC_CB_BLEND_CONSTANTS,
 };
 
+template <chip CHIP>
 static unsigned
 tu6_blend_constants_size(struct tu_device *dev,
                          const struct vk_color_blend_state *cb)
@@ -4132,6 +4221,7 @@ tu6_blend_constants_size(struct tu_device *dev,
    return 5;
 }
 
+template <chip CHIP>
 static void
 tu6_emit_blend_constants(struct tu_cs *cs, const struct vk_color_blend_state *cb)
 {
@@ -4150,6 +4240,7 @@ static const enum mesa_vk_dynamic_graphics_state tu_rast_state[] = {
    MESA_VK_DYNAMIC_VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE,
 };
 
+template <chip CHIP>
 uint32_t
 tu6_rast_size(struct tu_device *dev,
               const struct vk_rasterization_state *rs,
@@ -4157,9 +4248,10 @@ tu6_rast_size(struct tu_device *dev,
               bool multiview,
               bool per_view_viewport)
 {
-   return 11 + (dev->physical_device->info->a6xx.has_shading_rate ? 8 : 0);
+   return 11 + (CHIP == A6XX && dev->physical_device->info->a6xx.has_shading_rate ? 8 : 0);
 }
 
+template <chip CHIP>
 void
 tu6_emit_rast(struct tu_cs *cs,
               const struct vk_rasterization_state *rs,
@@ -4184,7 +4276,7 @@ tu6_emit_rast(struct tu_cs *cs,
 
    bool depth_clip_enable = vk_rasterization_state_depth_clip_enable(rs);
 
-   tu_cs_emit_regs(cs, 
+   tu_cs_emit_regs(cs,
                    A6XX_GRAS_CL_CNTL(
                      .znear_clip_disable = !depth_clip_enable,
                      .zfar_clip_disable = !depth_clip_enable,
@@ -4198,14 +4290,14 @@ tu6_emit_rast(struct tu_cs *cs,
                    A6XX_VPC_POLYGON_MODE(polygon_mode));
 
    tu_cs_emit_regs(cs,
-                   A6XX_PC_POLYGON_MODE(polygon_mode));
+                   PC_POLYGON_MODE(CHIP, polygon_mode));
 
    /* move to hw ctx init? */
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_SU_POINT_MINMAX(.min = 1.0f / 16.0f, .max = 4092.0f),
                    A6XX_GRAS_SU_POINT_SIZE(1.0f));
 
-   if (cs->device->physical_device->info->a6xx.has_shading_rate) {
+   if (CHIP == A6XX && cs->device->physical_device->info->a6xx.has_shading_rate) {
       tu_cs_emit_regs(cs, A6XX_RB_UNKNOWN_8A00());
       tu_cs_emit_regs(cs, A6XX_RB_UNKNOWN_8A10());
       tu_cs_emit_regs(cs, A6XX_RB_UNKNOWN_8A20());
@@ -4218,22 +4310,26 @@ static const enum mesa_vk_dynamic_graphics_state tu_pc_raster_cntl_state[] = {
    MESA_VK_DYNAMIC_RS_RASTERIZATION_STREAM,
 };
 
+template <chip CHIP>
 static unsigned
 tu6_pc_raster_cntl_size(struct tu_device *dev,
                         const struct vk_rasterization_state *rs)
 {
-   return 4;
+   return CHIP == A6XX ? 4 : 2;
 }
 
+template <chip CHIP>
 static void
 tu6_emit_pc_raster_cntl(struct tu_cs *cs,
                         const struct vk_rasterization_state *rs)
 {
-   tu_cs_emit_regs(cs, A6XX_PC_RASTER_CNTL(
+   tu_cs_emit_regs(cs, PC_RASTER_CNTL(CHIP,
       .stream = rs->rasterization_stream,
       .discard = rs->rasterizer_discard_enable));
-   tu_cs_emit_regs(cs, A6XX_VPC_UNKNOWN_9107(
-      .raster_discard = rs->rasterizer_discard_enable));
+   if (CHIP == A6XX) {
+      tu_cs_emit_regs(cs, A6XX_VPC_UNKNOWN_9107(
+         .raster_discard = rs->rasterizer_discard_enable));
+   }
 }
 
 static const enum mesa_vk_dynamic_graphics_state tu_ds_state[] = {
@@ -4246,6 +4342,7 @@ static const enum mesa_vk_dynamic_graphics_state tu_ds_state[] = {
    MESA_VK_DYNAMIC_RS_DEPTH_CLAMP_ENABLE,
 };
 
+template <chip CHIP>
 static unsigned
 tu6_ds_size(struct tu_device *dev,
             const struct vk_depth_stencil_state *ds,
@@ -4255,6 +4352,7 @@ tu6_ds_size(struct tu_device *dev,
    return 4;
 }
 
+template <chip CHIP>
 static void
 tu6_emit_ds(struct tu_cs *cs,
             const struct vk_depth_stencil_state *ds,
@@ -4308,6 +4406,7 @@ static const enum mesa_vk_dynamic_graphics_state tu_depth_bounds_state[] = {
    MESA_VK_DYNAMIC_DS_DEPTH_BOUNDS_TEST_BOUNDS,
 };
 
+template <chip CHIP>
 static unsigned
 tu6_depth_bounds_size(struct tu_device *dev,
                       const struct vk_depth_stencil_state *ds)
@@ -4315,6 +4414,7 @@ tu6_depth_bounds_size(struct tu_device *dev,
    return 3;
 }
 
+template <chip CHIP>
 static void
 tu6_emit_depth_bounds(struct tu_cs *cs,
                       const struct vk_depth_stencil_state *ds)
@@ -4328,6 +4428,7 @@ static const enum mesa_vk_dynamic_graphics_state tu_stencil_compare_mask_state[]
    MESA_VK_DYNAMIC_DS_STENCIL_COMPARE_MASK,
 };
 
+template <chip CHIP>
 static unsigned
 tu6_stencil_compare_mask_size(struct tu_device *dev,
                               const struct vk_depth_stencil_state *ds)
@@ -4335,6 +4436,7 @@ tu6_stencil_compare_mask_size(struct tu_device *dev,
    return 2;
 }
 
+template <chip CHIP>
 static void
 tu6_emit_stencil_compare_mask(struct tu_cs *cs,
                               const struct vk_depth_stencil_state *ds)
@@ -4348,6 +4450,7 @@ static const enum mesa_vk_dynamic_graphics_state tu_stencil_write_mask_state[] =
    MESA_VK_DYNAMIC_DS_STENCIL_WRITE_MASK,
 };
 
+template <chip CHIP>
 static unsigned
 tu6_stencil_write_mask_size(struct tu_device *dev,
                             const struct vk_depth_stencil_state *ds)
@@ -4355,6 +4458,7 @@ tu6_stencil_write_mask_size(struct tu_device *dev,
    return 2;
 }
 
+template <chip CHIP>
 static void
 tu6_emit_stencil_write_mask(struct tu_cs *cs,
                             const struct vk_depth_stencil_state *ds)
@@ -4368,6 +4472,7 @@ static const enum mesa_vk_dynamic_graphics_state tu_stencil_reference_state[] = 
    MESA_VK_DYNAMIC_DS_STENCIL_REFERENCE,
 };
 
+template <chip CHIP>
 static unsigned
 tu6_stencil_reference_size(struct tu_device *dev,
                            const struct vk_depth_stencil_state *ds)
@@ -4375,6 +4480,7 @@ tu6_stencil_reference_size(struct tu_device *dev,
    return 2;
 }
 
+template <chip CHIP>
 static void
 tu6_emit_stencil_reference(struct tu_cs *cs,
                            const struct vk_depth_stencil_state *ds)
@@ -4425,6 +4531,7 @@ emit_pipeline_state(BITSET_WORD *keep, BITSET_WORD *remove,
    return true;
 }
 
+template <chip CHIP>
 static void
 tu_pipeline_builder_emit_state(struct tu_pipeline_builder *builder,
                                struct tu_pipeline *pipeline)
@@ -4442,10 +4549,10 @@ tu_pipeline_builder_emit_state(struct tu_pipeline_builder *builder,
 
 #define DRAW_STATE_COND(name, id, extra_cond, ...)                            \
    if (EMIT_STATE(name, extra_cond)) {                                        \
-      unsigned size = tu6_##name##_size(builder->device, __VA_ARGS__);        \
+      unsigned size = tu6_##name##_size<CHIP>(builder->device, __VA_ARGS__);  \
       if (size > 0) {                                                         \
          tu_cs_begin_sub_stream(&pipeline->cs, size, &cs);                    \
-         tu6_emit_##name(&cs, __VA_ARGS__);                                   \
+         tu6_emit_##name<CHIP>(&cs, __VA_ARGS__);                             \
          pipeline->dynamic_state[id] =                                        \
             tu_cs_end_draw_state(&pipeline->cs, &cs);                         \
       }                                                                       \
@@ -4610,11 +4717,12 @@ emit_draw_state(const struct vk_dynamic_graphics_state *dynamic_state,
    return !BITSET_IS_EMPTY(temp);
 }
 
+template <chip CHIP>
 uint32_t
 tu_emit_draw_state(struct tu_cmd_buffer *cmd)
 {
    struct tu_cs cs;
-   uint32_t dirty_draw_states = 0; 
+   uint32_t dirty_draw_states = 0;
 
 #define EMIT_STATE(name)                                                      \
    emit_draw_state(&cmd->vk.dynamic_graphics_state, tu_##name##_state,        \
@@ -4622,10 +4730,10 @@ tu_emit_draw_state(struct tu_cmd_buffer *cmd)
 #define DRAW_STATE_COND(name, id, extra_cond, ...)                            \
    if ((EMIT_STATE(name) || extra_cond) &&                                    \
        !(cmd->state.pipeline->base.set_state_mask & (1u << id))) {            \
-      unsigned size = tu6_##name##_size(cmd->device, __VA_ARGS__);            \
+      unsigned size = tu6_##name##_size<CHIP>(cmd->device, __VA_ARGS__);      \
       if (size > 0) {                                                         \
          tu_cs_begin_sub_stream(&cmd->sub_cs, size, &cs);                     \
-         tu6_emit_##name(&cs, __VA_ARGS__);                                   \
+         tu6_emit_##name<CHIP>(&cs, __VA_ARGS__);                             \
          cmd->state.dynamic_state[id] =                                       \
             tu_cs_end_draw_state(&cmd->sub_cs, &cs);                          \
       } else {                                                                \
@@ -4643,19 +4751,19 @@ tu_emit_draw_state(struct tu_cmd_buffer *cmd)
          cmd->state.dynamic_state[id] =                                       \
             tu_cs_end_draw_state(&cmd->sub_cs, &cs);                          \
       } else {                                                                \
-         unsigned size = tu6_##name##_size(cmd->device, __VA_ARGS__);         \
+         unsigned size = tu6_##name##_size<CHIP>(cmd->device, __VA_ARGS__);   \
          if (size > 0) {                                                      \
             tu_cs_begin_sub_stream(&cmd->sub_cs, size, &cs);                  \
-            tu6_emit_##name(&cs, __VA_ARGS__);                                \
+            tu6_emit_##name<CHIP>(&cs, __VA_ARGS__);                          \
             cmd->state.dynamic_state[id] =                                    \
                tu_cs_end_draw_state(&cmd->sub_cs, &cs);                       \
          } else {                                                             \
             cmd->state.dynamic_state[id] = {};                                \
          }                                                                    \
          tu_cs_begin_sub_stream(&cmd->sub_cs,                                 \
-                                tu6_##name##_size(cmd->device, __VA_ARGS__),  \
+                                tu6_##name##_size<CHIP>(cmd->device, __VA_ARGS__),  \
                                 &cs);                                         \
-         tu6_emit_##name(&cs, __VA_ARGS__);                                   \
+         tu6_emit_##name<CHIP>(&cs, __VA_ARGS__);                             \
          cmd->state.dynamic_state[id] =                                       \
             tu_cs_end_draw_state(&cmd->sub_cs, &cs);                          \
       }                                                                       \
@@ -4747,6 +4855,7 @@ tu_emit_draw_state(struct tu_cmd_buffer *cmd)
 
    return dirty_draw_states;
 }
+TU_GENX(tu_emit_draw_state);
 
 static void
 tu_pipeline_builder_parse_depth_stencil(
@@ -4928,6 +5037,7 @@ vk_shader_stage_to_pipeline_library_flags(VkShaderStageFlagBits stage)
    }
 }
 
+template <chip CHIP>
 static VkResult
 tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
                           struct tu_pipeline **pipeline)
@@ -5031,8 +5141,14 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
          return result;
       }
 
-      tu_pipeline_builder_parse_shader_stages(builder, *pipeline);
-      tu6_emit_load_state(*pipeline, &builder->layout);
+      tu_pipeline_builder_parse_shader_stages<CHIP>(builder, *pipeline);
+
+      if (CHIP == A6XX) {
+         /* Blob doesn't preload state on A7XX, likely preloading either
+          * doesn't work or doesn't provide benefits.
+          */
+         tu6_emit_load_state(*pipeline, &builder->layout);
+      }
    }
 
    if (builder->state & VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT) {
@@ -5050,7 +5166,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
       tu_pipeline_builder_parse_rasterization_order(builder, *pipeline);
    }
 
-   tu_pipeline_builder_emit_state(builder, *pipeline);
+   tu_pipeline_builder_emit_state<CHIP>(builder, *pipeline);
 
    if ((*pipeline)->type == TU_PIPELINE_GRAPHICS_LIB) {
       struct tu_graphics_lib_pipeline *library =
@@ -5292,6 +5408,7 @@ tu_pipeline_builder_init_graphics(
    }
 }
 
+template <chip CHIP>
 static VkResult
 tu_graphics_pipeline_create(VkDevice device,
                             VkPipelineCache pipelineCache,
@@ -5309,7 +5426,7 @@ tu_graphics_pipeline_create(VkDevice device,
                                      pCreateInfo, pAllocator);
 
    struct tu_pipeline *pipeline = NULL;
-   VkResult result = tu_pipeline_builder_build(&builder, &pipeline);
+   VkResult result = tu_pipeline_builder_build<CHIP>(&builder, &pipeline);
    tu_pipeline_builder_finish(&builder);
 
    if (result == VK_SUCCESS)
@@ -5320,6 +5437,7 @@ tu_graphics_pipeline_create(VkDevice device,
    return result;
 }
 
+template <chip CHIP>
 VKAPI_ATTR VkResult VKAPI_CALL
 tu_CreateGraphicsPipelines(VkDevice device,
                            VkPipelineCache pipelineCache,
@@ -5333,7 +5451,7 @@ tu_CreateGraphicsPipelines(VkDevice device,
    uint32_t i = 0;
 
    for (; i < count; i++) {
-      VkResult result = tu_graphics_pipeline_create(device, pipelineCache,
+      VkResult result = tu_graphics_pipeline_create<CHIP>(device, pipelineCache,
                                                     &pCreateInfos[i], pAllocator,
                                                     &pPipelines[i]);
 
@@ -5352,7 +5470,9 @@ tu_CreateGraphicsPipelines(VkDevice device,
 
    return final_result;
 }
+TU_GENX(tu_CreateGraphicsPipelines);
 
+template <chip CHIP>
 static VkResult
 tu_compute_pipeline_create(VkDevice device,
                            VkPipelineCache pipelineCache,
@@ -5508,10 +5628,12 @@ tu_compute_pipeline_create(VkDevice device,
    struct tu_cs prog_cs;
    additional_reserve_size = tu_xs_get_additional_cs_size_dwords(v);
    tu_cs_begin_sub_stream(&pipeline->base.cs, 64 + additional_reserve_size, &prog_cs);
-   tu6_emit_cs_config(&prog_cs, v, &pvtmem, shader_iova);
+   tu6_emit_cs_config<CHIP>(&prog_cs, v, &pvtmem, shader_iova);
    pipeline->base.program.state = tu_cs_end_draw_state(&pipeline->base.cs, &prog_cs);
 
-   tu6_emit_load_state(&pipeline->base, layout);
+   if (CHIP == A6XX) {
+      tu6_emit_load_state(&pipeline->base, layout);
+   }
 
    tu_append_executable(&pipeline->base, v, nir_initial_disasm);
 
@@ -5535,6 +5657,7 @@ fail:
    return result;
 }
 
+template <chip CHIP>
 VKAPI_ATTR VkResult VKAPI_CALL
 tu_CreateComputePipelines(VkDevice device,
                           VkPipelineCache pipelineCache,
@@ -5548,7 +5671,7 @@ tu_CreateComputePipelines(VkDevice device,
    uint32_t i = 0;
 
    for (; i < count; i++) {
-      VkResult result = tu_compute_pipeline_create(device, pipelineCache,
+      VkResult result = tu_compute_pipeline_create<CHIP>(device, pipelineCache,
                                                    &pCreateInfos[i],
                                                    pAllocator, &pPipelines[i]);
       if (result != VK_SUCCESS) {
@@ -5566,6 +5689,7 @@ tu_CreateComputePipelines(VkDevice device,
 
    return final_result;
 }
+TU_GENX(tu_CreateComputePipelines);
 
 VKAPI_ATTR void VKAPI_CALL
 tu_DestroyPipeline(VkDevice _device,

@@ -2107,8 +2107,8 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x8113" name="GRAS_UNKNOWN_8113" variants="A7XX-" usage="rp_blit"/>
 
 	<!-- Always written together and always equal 09510840 00000a62 -->
-	<reg32 offset="0x8120" name="GRAS_UNKNOWN_8120" variants="A7XX-"/>
-	<reg32 offset="0x8121" name="GRAS_UNKNOWN_8121" variants="A7XX-"/>
+	<reg32 offset="0x8120" name="GRAS_UNKNOWN_8120" variants="A7XX-" usage="cmd"/>
+	<reg32 offset="0x8121" name="GRAS_UNKNOWN_8121" variants="A7XX-" usage="cmd"/>
 
 	<!-- 0x8112-0x83ff invalid -->
 
@@ -4001,7 +4001,7 @@ to upconvert to 32b float internally?
 	<!-- Used in VK_KHR_fragment_shading_rate -->
 	<reg32 offset="0xa9ad" name="HLSQ_UNKNOWN_A9AD" variants="A7XX-"/>
 
-	<reg32 offset="0xa9ae" name="HLSQ_UNKNOWN_A9AE" variants="A7XX-">
+	<reg32 offset="0xa9ae" name="HLSQ_UNKNOWN_A9AE" variants="A7XX-" usage="cmd">
 		<bitfield name="UNK0" low="0" high="7" type="uint"/>
 		<bitfield name="UNK8" pos="8" type="boolean"/>
 	</reg32>

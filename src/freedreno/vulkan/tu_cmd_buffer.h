@@ -599,11 +599,14 @@ void tu_render_pass_state_merge(struct tu_render_pass_state *dst,
 VkResult tu_cmd_buffer_begin(struct tu_cmd_buffer *cmd_buffer,
                              const VkCommandBufferBeginInfo *pBeginInfo);
 
+template <chip CHIP>
 void
 tu_emit_cache_flush(struct tu_cmd_buffer *cmd_buffer);
 
+template <chip CHIP>
 void tu_emit_cache_flush_renderpass(struct tu_cmd_buffer *cmd_buffer);
 
+template <chip CHIP>
 void tu_emit_cache_flush_ccu(struct tu_cmd_buffer *cmd_buffer,
                              struct tu_cs *cs,
                              enum tu_cmd_ccu_state ccu_state);
@@ -624,12 +627,16 @@ void
 tu_restore_suspended_pass(struct tu_cmd_buffer *cmd,
                           struct tu_cmd_buffer *suspended);
 
+template <chip CHIP>
 void tu_cmd_render(struct tu_cmd_buffer *cmd);
 
+enum fd_gpu_event : uint32_t;
+
+template <chip CHIP>
 void
-tu6_emit_event_write(struct tu_cmd_buffer *cmd,
-                     struct tu_cs *cs,
-                     enum vgt_event_type event);
+tu_emit_event_write(struct tu_cmd_buffer *cmd,
+                    struct tu_cs *cs,
+                    enum fd_gpu_event event);
 
 static inline struct tu_descriptor_state *
 tu_get_descriptors_state(struct tu_cmd_buffer *cmd_buffer,

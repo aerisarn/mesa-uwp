@@ -263,6 +263,7 @@ TU_DECL_PIPELINE_DOWNCAST(compute, TU_PIPELINE_COMPUTE)
 
 VkOffset2D tu_fdm_per_bin_offset(VkExtent2D frag_area, VkRect2D bin);
 
+template <chip CHIP>
 uint32_t tu_emit_draw_state(struct tu_cmd_buffer *cmd);
 
 struct tu_pvtmem_config {
@@ -272,11 +273,13 @@ struct tu_pvtmem_config {
    bool per_wave;
 };
 
+template <chip CHIP>
 void
 tu6_emit_xs_config(struct tu_cs *cs,
                    gl_shader_stage stage,
                    const struct ir3_shader_variant *xs);
 
+template <chip CHIP>
 void
 tu6_emit_xs(struct tu_cs *cs,
             gl_shader_stage stage,
@@ -284,6 +287,7 @@ tu6_emit_xs(struct tu_cs *cs,
             const struct tu_pvtmem_config *pvtmem,
             uint64_t binary_iova);
 
+template <chip CHIP>
 void
 tu6_emit_vpc(struct tu_cs *cs,
              const struct ir3_shader_variant *vs,
@@ -292,6 +296,7 @@ tu6_emit_vpc(struct tu_cs *cs,
              const struct ir3_shader_variant *gs,
              const struct ir3_shader_variant *fs);
 
+template <chip CHIP>
 void
 tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs);
 

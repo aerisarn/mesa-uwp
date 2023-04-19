@@ -612,7 +612,8 @@ tu_physical_device_init(struct tu_physical_device *device,
       goto fail_free_name;
    }
    switch (fd_dev_gen(&device->dev_id)) {
-   case 6: {
+   case 6:
+   case 7: {
       device->info = info;
       uint32_t depth_cache_size =
          device->info->num_ccu * device->info->a6xx.sysmem_per_ccu_cache_size;
