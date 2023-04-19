@@ -129,6 +129,7 @@ files_libglsl = files(
   'generate_ir.cpp',
   'gl_nir_lower_atomics.c',
   'gl_nir_lower_images.c',
+  'gl_nir_lower_blend_equation_advanced.c',
   'gl_nir_lower_buffers.c',
   'gl_nir_lower_packed_varyings.c',
   'gl_nir_lower_samplers.c',
