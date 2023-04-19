@@ -916,6 +916,11 @@ struct anv_physical_device {
     /** Whether the i915 driver has the ability to create VM objects */
     bool                                        has_vm_control;
 
+    /** True if we have the means to do sparse binding (e.g., a Kernel driver
+     * a vm_bind ioctl).
+     */
+    bool                                        has_sparse;
+
     /**/
     bool                                        uses_ex_bso;
 
@@ -1648,6 +1653,14 @@ struct anv_device {
      * Command pool for companion RCS command buffer.
      */
     VkCommandPool                               companion_rcs_cmd_pool;
+
+    /* This is true if the user ever bound a sparse resource to memory. This
+     * is used for a workaround that makes every memoryBarrier flush more
+     * things than it should. Many applications request for the sparse
+     * featuers to be enabled but don't use them, and some create sparse
+     * resources but never use them.
+     */
+    bool                                         using_sparse;
 };
 
 static inline uint32_t
@@ -2576,12 +2589,85 @@ const struct anv_descriptor_set_layout *
 anv_pipeline_layout_get_push_set(const struct anv_pipeline_sets_layout *layout,
                                  uint8_t *desc_idx);
 
+struct anv_sparse_binding_data {
+   uint64_t address;
+   uint64_t size;
+
+   /* This is kept only because it's given to us by vma_alloc() and need to be
+    * passed back to vma_free(), we have no other particular use for it
+    */
+   struct util_vma_heap *vma_heap;
+};
+
+#define ANV_SPARSE_BLOCK_SIZE (64 * 1024)
+
+static inline bool
+anv_sparse_binding_is_enabled(struct anv_device *device)
+{
+   return device->vk.enabled_features.sparseBinding;
+}
+
+static inline bool
+anv_sparse_residency_is_enabled(struct anv_device *device)
+{
+   return device->vk.enabled_features.sparseResidencyBuffer ||
+          device->vk.enabled_features.sparseResidencyImage2D ||
+          device->vk.enabled_features.sparseResidencyImage3D ||
+          device->vk.enabled_features.sparseResidency2Samples ||
+          device->vk.enabled_features.sparseResidency4Samples ||
+          device->vk.enabled_features.sparseResidency8Samples ||
+          device->vk.enabled_features.sparseResidency16Samples ||
+          device->vk.enabled_features.sparseResidencyAliased;
+}
+
+VkResult anv_init_sparse_bindings(struct anv_device *device,
+                                  uint64_t size,
+                                  struct anv_sparse_binding_data *sparse,
+                                  enum anv_bo_alloc_flags alloc_flags,
+                                  uint64_t client_address,
+                                  struct anv_address *out_address);
+VkResult anv_free_sparse_bindings(struct anv_device *device,
+                                  struct anv_sparse_binding_data *sparse);
+VkResult anv_sparse_bind_resource_memory(struct anv_device *device,
+                                         struct anv_sparse_binding_data *data,
+                                         const VkSparseMemoryBind *bind_);
+VkResult anv_sparse_bind_image_memory(struct anv_queue *queue,
+                                      struct anv_image *image,
+                                      const VkSparseImageMemoryBind *bind);
+
+VkSparseImageFormatProperties
+anv_sparse_calc_image_format_properties(struct anv_physical_device *pdevice,
+                                        VkImageAspectFlags aspect,
+                                        VkImageType vk_image_type,
+                                        struct isl_surf *surf);
+void anv_sparse_calc_miptail_properties(struct anv_device *device,
+                                        struct anv_image *image,
+                                        VkImageAspectFlags vk_aspect,
+                                        uint32_t *imageMipTailFirstLod,
+                                        VkDeviceSize *imageMipTailSize,
+                                        VkDeviceSize *imageMipTailOffset,
+                                        VkDeviceSize *imageMipTailStride);
+VkResult anv_sparse_image_check_support(struct anv_physical_device *pdevice,
+                                        VkImageCreateFlags flags,
+                                        VkImageTiling tiling,
+                                        VkSampleCountFlagBits samples,
+                                        VkImageType type,
+                                        VkFormat format);
+
 struct anv_buffer {
    struct vk_buffer vk;
 
    /* Set when bound */
    struct anv_address address;
+
+   struct anv_sparse_binding_data sparse_data;
 };
+
+static inline bool
+anv_buffer_is_sparse(struct anv_buffer *buffer)
+{
+   return buffer->vk.create_flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT;
+}
 
 enum anv_cmd_dirty_bits {
    ANV_CMD_DIRTY_PIPELINE                            = 1 << 0,
@@ -4472,6 +4558,7 @@ struct anv_image {
    struct anv_image_binding {
       struct anv_image_memory_range memory_range;
       struct anv_address address;
+      struct anv_sparse_binding_data sparse_data;
    } bindings[ANV_IMAGE_MEMORY_BINDING_END];
 
    /**
@@ -4524,6 +4611,12 @@ struct anv_image {
    /* Link in the anv_device.image_private_objects list */
    struct list_head link;
 };
+
+static inline bool
+anv_image_is_sparse(struct anv_image *image)
+{
+   return image->vk.create_flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT;
+}
 
 static inline bool
 anv_image_is_externally_shared(const struct anv_image *image)
@@ -4748,6 +4841,10 @@ anv_cmd_buffer_load_clear_color_from_image(struct anv_cmd_buffer *cmd_buffer,
                                            struct anv_state state,
                                            const struct anv_image *image);
 
+struct anv_image_binding *
+anv_image_aspect_to_binding(struct anv_image *image,
+                            VkImageAspectFlags aspect);
+
 void
 anv_image_clear_color(struct anv_cmd_buffer *cmd_buffer,
                       const struct anv_image *image,
@@ -4808,6 +4905,12 @@ anv_image_ccs_op(struct anv_cmd_buffer *cmd_buffer,
                  uint32_t base_layer, uint32_t layer_count,
                  enum isl_aux_op ccs_op, union isl_color_value *clear_value,
                  bool predicate);
+
+isl_surf_usage_flags_t
+anv_image_choose_isl_surf_usage(VkImageCreateFlags vk_create_flags,
+                                VkImageUsageFlags vk_usage,
+                                isl_surf_usage_flags_t isl_extra_usage,
+                                VkImageAspectFlagBits aspect);
 
 void
 anv_cmd_buffer_fill_area(struct anv_cmd_buffer *cmd_buffer,

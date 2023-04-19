@@ -3845,17 +3845,43 @@ mask_is_shader_write(const VkAccessFlags2 access)
                      VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT));
 }
 
+static inline bool
+mask_is_write(const VkAccessFlags2 access)
+{
+   return access & (VK_ACCESS_2_SHADER_WRITE_BIT |
+                    VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT |
+                    VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
+                    VK_ACCESS_2_TRANSFER_WRITE_BIT |
+                    VK_ACCESS_2_HOST_WRITE_BIT |
+                    VK_ACCESS_2_MEMORY_WRITE_BIT |
+                    VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT |
+                    VK_ACCESS_2_VIDEO_DECODE_WRITE_BIT_KHR |
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+                    VK_ACCESS_2_VIDEO_ENCODE_WRITE_BIT_KHR |
+#endif
+                    VK_ACCESS_2_TRANSFORM_FEEDBACK_WRITE_BIT_EXT |
+                    VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT |
+                    VK_ACCESS_2_COMMAND_PREPROCESS_WRITE_BIT_NV |
+                    VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR |
+                    VK_ACCESS_2_MICROMAP_WRITE_BIT_EXT |
+                    VK_ACCESS_2_OPTICAL_FLOW_WRITE_BIT_NV);
+}
+
 static void
 cmd_buffer_barrier(struct anv_cmd_buffer *cmd_buffer,
                    const VkDependencyInfo *dep_info,
                    const char *reason)
 {
+   struct anv_device *device = cmd_buffer->device;
+
    /* XXX: Right now, we're really dumb and just flush whatever categories
     * the app asks for.  One of these days we may make this a bit better
     * but right now that's all the hardware allows for in most areas.
     */
    VkAccessFlags2 src_flags = 0;
    VkAccessFlags2 dst_flags = 0;
+
+   bool apply_sparse_flushes = false;
 
    if (anv_cmd_buffer_is_video_queue(cmd_buffer))
       return;
@@ -3873,21 +3899,34 @@ cmd_buffer_barrier(struct anv_cmd_buffer *cmd_buffer,
          cmd_buffer->state.queries.buffer_write_bits |=
             ANV_QUERY_COMPUTE_WRITES_PENDING_BITS;
       }
+
+      /* There's no way of knowing if this memory barrier is related to sparse
+       * buffers! This is pretty horrible.
+       */
+      if (device->using_sparse && mask_is_write(src_flags))
+         apply_sparse_flushes = true;
    }
 
    for (uint32_t i = 0; i < dep_info->bufferMemoryBarrierCount; i++) {
-      src_flags |= dep_info->pBufferMemoryBarriers[i].srcAccessMask;
-      dst_flags |= dep_info->pBufferMemoryBarriers[i].dstAccessMask;
+      const VkBufferMemoryBarrier2 *buf_barrier =
+         &dep_info->pBufferMemoryBarriers[i];
+      ANV_FROM_HANDLE(anv_buffer, buffer, buf_barrier->buffer);
+
+      src_flags |= buf_barrier->srcAccessMask;
+      dst_flags |= buf_barrier->dstAccessMask;
 
       /* Shader writes to buffers that could then be written by a transfer
        * command (including queries).
        */
-      if (stage_is_shader(dep_info->pBufferMemoryBarriers[i].srcStageMask) &&
-          mask_is_shader_write(dep_info->pBufferMemoryBarriers[i].srcAccessMask) &&
-          stage_is_transfer(dep_info->pBufferMemoryBarriers[i].dstStageMask)) {
+      if (stage_is_shader(buf_barrier->srcStageMask) &&
+          mask_is_shader_write(buf_barrier->srcAccessMask) &&
+          stage_is_transfer(buf_barrier->dstStageMask)) {
          cmd_buffer->state.queries.buffer_write_bits |=
             ANV_QUERY_COMPUTE_WRITES_PENDING_BITS;
       }
+
+      if (anv_buffer_is_sparse(buffer) && mask_is_write(src_flags))
+         apply_sparse_flushes = true;
    }
 
    for (uint32_t i = 0; i < dep_info->imageMemoryBarrierCount; i++) {
@@ -3951,7 +3990,7 @@ cmd_buffer_barrier(struct anv_cmd_buffer *cmd_buffer,
       anv_foreach_image_aspect_bit(aspect_bit, image, aspects) {
          VkImageAspectFlagBits aspect = 1UL << aspect_bit;
          if (anv_layout_has_untracked_aux_writes(
-                cmd_buffer->device->info,
+                device->info,
                 image, aspect,
                 img_barrier->newLayout,
                 cmd_buffer->queue_family->queueFlags)) {
@@ -3963,11 +4002,24 @@ cmd_buffer_barrier(struct anv_cmd_buffer *cmd_buffer,
             }
          }
       }
+
+      if (anv_image_is_sparse(image) && mask_is_write(src_flags))
+         apply_sparse_flushes = true;
    }
 
    enum anv_pipe_bits bits =
-      anv_pipe_flush_bits_for_access_flags(cmd_buffer->device, src_flags) |
-      anv_pipe_invalidate_bits_for_access_flags(cmd_buffer->device, dst_flags);
+      anv_pipe_flush_bits_for_access_flags(device, src_flags) |
+      anv_pipe_invalidate_bits_for_access_flags(device, dst_flags);
+
+   /* Our HW implementation of the sparse feature lives in the GAM unit
+    * (interface between all the GPU caches and external memory). As a result
+    * writes to NULL bound images & buffers that should be ignored are
+    * actually still visible in the caches. The only way for us to get correct
+    * NULL bound regions to return 0s is to evict the caches to force the
+    * caches to be repopulated with 0s.
+    */
+   if (apply_sparse_flushes)
+      bits |= ANV_PIPE_FLUSH_BITS;
 
    if (dst_flags & VK_ACCESS_INDIRECT_COMMAND_READ_BIT)
       genX(cmd_buffer_flush_generated_draws)(cmd_buffer);

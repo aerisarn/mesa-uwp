@@ -56,8 +56,9 @@ memory_range_end(struct anv_image_memory_range memory_range)
  * Get binding for VkImagePlaneMemoryRequirementsInfo,
  * VkBindImagePlaneMemoryInfo and VkDeviceImageMemoryRequirements.
  */
-static struct anv_image_binding *
-image_aspect_to_binding(struct anv_image *image, VkImageAspectFlags aspect)
+struct anv_image_binding *
+anv_image_aspect_to_binding(struct anv_image *image,
+                            VkImageAspectFlags aspect)
 {
    uint32_t plane = 0;
 
@@ -200,11 +201,11 @@ memory_range_merge(struct anv_image_memory_range *a,
    a->size = MAX2(a->size, b.offset + b.size);
 }
 
-static isl_surf_usage_flags_t
-choose_isl_surf_usage(VkImageCreateFlags vk_create_flags,
-                      VkImageUsageFlags vk_usage,
-                      isl_surf_usage_flags_t isl_extra_usage,
-                      VkImageAspectFlagBits aspect)
+isl_surf_usage_flags_t
+anv_image_choose_isl_surf_usage(VkImageCreateFlags vk_create_flags,
+                                VkImageUsageFlags vk_usage,
+                                isl_surf_usage_flags_t isl_extra_usage,
+                                VkImageAspectFlagBits aspect)
 {
    isl_surf_usage_flags_t isl_usage = isl_extra_usage;
 
@@ -222,6 +223,10 @@ choose_isl_surf_usage(VkImageCreateFlags vk_create_flags,
 
    if (vk_usage & VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR)
       isl_usage |= ISL_SURF_USAGE_CPB_BIT;
+
+   if (vk_create_flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT)
+      isl_usage |= ISL_SURF_USAGE_SPARSE_BIT |
+                   ISL_SURF_USAGE_DISABLE_AUX_BIT;
 
    if (vk_usage & VK_IMAGE_USAGE_VIDEO_DECODE_DST_BIT_KHR ||
        vk_usage & VK_IMAGE_USAGE_VIDEO_DECODE_DPB_BIT_KHR)
@@ -663,6 +668,10 @@ add_aux_surface_if_supported(struct anv_device *device,
    assert(!anv_surface_is_valid(&image->planes[plane].aux_surface));
 
    if ((isl_extra_usage_flags & ISL_SURF_USAGE_DISABLE_AUX_BIT))
+      return VK_SUCCESS;
+
+   /* TODO: consider whether compression with sparse is workable. */
+   if (anv_image_is_sparse(image))
       return VK_SUCCESS;
 
    if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
@@ -1180,8 +1189,8 @@ add_all_surfaces_implicit_layout(
 
       VkImageUsageFlags vk_usage = vk_image_usage(&image->vk, aspect);
       isl_surf_usage_flags_t isl_usage =
-         choose_isl_surf_usage(image->vk.create_flags, vk_usage,
-                               isl_extra_usage_flags, aspect);
+         anv_image_choose_isl_surf_usage(image->vk.create_flags, vk_usage,
+                                         isl_extra_usage_flags, aspect);
 
       result = add_primary_surface(device, image, plane, plane_format,
                                    ANV_OFFSET_IMPLICIT, plane_stride,
@@ -1387,6 +1396,63 @@ alloc_private_binding(struct anv_device *device,
    return result;
 }
 
+static void
+anv_image_finish_sparse_bindings(struct anv_image *image)
+{
+   struct anv_device *device =
+      container_of(image->vk.base.device, struct anv_device, vk);
+
+   assert(anv_image_is_sparse(image));
+
+   for (int i = 0; i < ANV_IMAGE_MEMORY_BINDING_END; i++) {
+      struct anv_image_binding *b = &image->bindings[i];
+
+      if (b->sparse_data.size != 0) {
+         assert(b->memory_range.size == b->sparse_data.size);
+         assert(b->address.offset == b->sparse_data.address);
+         anv_free_sparse_bindings(device, &b->sparse_data);
+      }
+   }
+}
+
+static VkResult MUST_CHECK
+anv_image_init_sparse_bindings(struct anv_image *image)
+{
+   struct anv_device *device =
+      container_of(image->vk.base.device, struct anv_device, vk);
+   VkResult result;
+
+   assert(anv_image_is_sparse(image));
+
+   for (int i = 0; i < ANV_IMAGE_MEMORY_BINDING_END; i++) {
+      struct anv_image_binding *b = &image->bindings[i];
+
+      if (b->memory_range.size != 0) {
+         assert(b->sparse_data.size == 0);
+
+         /* From the spec, Custom Sparse Image Block Shapes section:
+          *   "... the size in bytes of the custom sparse image block shape
+          *    will be reported in VkMemoryRequirements::alignment."
+          *
+          * ISL should have set this for us, so just assert it here.
+          */
+         assert(b->memory_range.alignment == ANV_SPARSE_BLOCK_SIZE);
+         assert(b->memory_range.size % ANV_SPARSE_BLOCK_SIZE == 0);
+
+         result = anv_init_sparse_bindings(device,
+                                           b->memory_range.size,
+                                           &b->sparse_data, 0, 0,
+                                           &b->address);
+         if (result != VK_SUCCESS) {
+            anv_image_finish_sparse_bindings(image);
+            return result;
+         }
+      }
+   }
+
+   return VK_SUCCESS;
+}
+
 VkResult
 anv_image_init(struct anv_device *device, struct anv_image *image,
                const struct anv_image_create_info *create_info)
@@ -1502,6 +1568,12 @@ anv_image_init(struct anv_device *device, struct anv_image *image,
          can_fast_clear_with_non_zero_color(device->info, image, p, fmt_list);
    }
 
+   if (anv_image_is_sparse(image)) {
+      r = anv_image_init_sparse_bindings(image);
+      if (r != VK_SUCCESS)
+         goto fail;
+   }
+
    return VK_SUCCESS;
 
 fail:
@@ -1514,6 +1586,9 @@ anv_image_finish(struct anv_image *image)
 {
    struct anv_device *device =
       container_of(image->vk.base.device, struct anv_device, vk);
+
+   if (anv_image_is_sparse(image))
+      anv_image_finish_sparse_bindings(image);
 
    if (image->from_gralloc) {
       assert(!image->disjoint);
@@ -1549,6 +1624,18 @@ anv_image_init_from_create_info(struct anv_device *device,
                                 const VkImageCreateInfo *pCreateInfo,
                                 bool no_private_binding_alloc)
 {
+   if (pCreateInfo->flags & VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT) {
+      VkResult result =
+         anv_sparse_image_check_support(device->physical,
+                                        pCreateInfo->flags,
+                                        pCreateInfo->tiling,
+                                        pCreateInfo->samples,
+                                        pCreateInfo->imageType,
+                                        pCreateInfo->format);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
    const VkNativeBufferANDROID *gralloc_info =
       vk_find_struct_const(pCreateInfo->pNext, NATIVE_BUFFER_ANDROID);
    if (gralloc_info)
@@ -1583,10 +1670,11 @@ VkResult anv_CreateImage(
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
 
-   if (INTEL_DEBUG(DEBUG_SPARSE) && (pCreateInfo->flags &
-         (VK_IMAGE_CREATE_SPARSE_BINDING_BIT |
-          VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT |
-          VK_IMAGE_CREATE_SPARSE_ALIASED_BIT)))
+   if (!device->physical->has_sparse &&
+       INTEL_DEBUG(DEBUG_SPARSE) &&
+       pCreateInfo->flags & (VK_IMAGE_CREATE_SPARSE_BINDING_BIT |
+                             VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT |
+                             VK_IMAGE_CREATE_SPARSE_ALIASED_BIT))
       fprintf(stderr, "=== %s %s:%d flags:0x%08x\n", __func__, __FILE__,
               __LINE__, pCreateInfo->flags);
 
@@ -1733,7 +1821,7 @@ anv_image_get_memory_requirements(struct anv_device *device,
    if (image->disjoint) {
       assert(util_bitcount(aspects) == 1);
       assert(aspects & image->vk.aspects);
-      binding = image_aspect_to_binding(image, aspects);
+      binding = anv_image_aspect_to_binding(image, aspects);
    } else {
       assert(aspects == image->vk.aspects);
       binding = &image->bindings[ANV_IMAGE_MEMORY_BINDING_MAIN];
@@ -1784,10 +1872,11 @@ void anv_GetDeviceImageMemoryRequirementsKHR(
    ANV_FROM_HANDLE(anv_device, device, _device);
    struct anv_image image = { 0 };
 
-   if (INTEL_DEBUG(DEBUG_SPARSE) && (pInfo->pCreateInfo->flags &
-         (VK_IMAGE_CREATE_SPARSE_BINDING_BIT |
-          VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT |
-          VK_IMAGE_CREATE_SPARSE_ALIASED_BIT)))
+   if (!device->physical->has_sparse &&
+       INTEL_DEBUG(DEBUG_SPARSE) &&
+       pInfo->pCreateInfo->flags & (VK_IMAGE_CREATE_SPARSE_BINDING_BIT |
+                                    VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT |
+                                    VK_IMAGE_CREATE_SPARSE_ALIASED_BIT))
       fprintf(stderr, "=== %s %s:%d flags:0x%08x\n", __func__, __FILE__,
               __LINE__, pInfo->pCreateInfo->flags);
 
@@ -1800,39 +1889,158 @@ void anv_GetDeviceImageMemoryRequirementsKHR(
 
    anv_image_get_memory_requirements(device, &image, aspects,
                                      pMemoryRequirements);
+   anv_image_finish(&image);
 }
 
-void anv_GetImageSparseMemoryRequirements(
-    VkDevice                                    device,
-    VkImage                                     image,
-    uint32_t*                                   pSparseMemoryRequirementCount,
-    VkSparseImageMemoryRequirements*            pSparseMemoryRequirements)
+static void
+anv_image_get_sparse_memory_requirements(
+      struct anv_device *device,
+      struct anv_image *image,
+      VkImageAspectFlags aspects,
+      uint32_t *pSparseMemoryRequirementCount,
+      VkSparseImageMemoryRequirements2 *pSparseMemoryRequirements)
 {
-   if (INTEL_DEBUG(DEBUG_SPARSE))
-      fprintf(stderr, "=== [%s:%d] [%s]\n", __FILE__, __LINE__, __func__);
-   *pSparseMemoryRequirementCount = 0;
+   VK_OUTARRAY_MAKE_TYPED(VkSparseImageMemoryRequirements2, reqs,
+                          pSparseMemoryRequirements,
+                          pSparseMemoryRequirementCount);
+
+   /* From the spec:
+    *   "The sparse image must have been created using the
+    *    VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT flag to retrieve valid sparse
+    *    image memory requirements."
+    */
+   if (!(image->vk.create_flags & VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT))
+      return;
+
+   VkSparseImageMemoryRequirements ds_mem_reqs = {};
+   VkSparseImageMemoryRequirements2 *ds_reqs_ptr = NULL;
+
+   u_foreach_bit(b, aspects) {
+      VkImageAspectFlagBits aspect = 1 << b;
+      const uint32_t plane = anv_image_aspect_to_plane(image, aspect);
+      struct isl_surf *surf = &image->planes[plane].primary_surface.isl;
+
+      VkSparseImageFormatProperties format_props =
+         anv_sparse_calc_image_format_properties(device->physical, aspect,
+                                                 image->vk.image_type, surf);
+
+      uint32_t miptail_first_lod;
+      VkDeviceSize miptail_size, miptail_offset, miptail_stride;
+      anv_sparse_calc_miptail_properties(device, image, aspect,
+                                         &miptail_first_lod, &miptail_size,
+                                         &miptail_offset, &miptail_stride);
+
+      VkSparseImageMemoryRequirements mem_reqs = {
+         .formatProperties = format_props,
+         .imageMipTailFirstLod = miptail_first_lod,
+         .imageMipTailSize = miptail_size,
+         .imageMipTailOffset = miptail_offset,
+         .imageMipTailStride = miptail_stride,
+      };
+
+      /* If both depth and stencil are the same, unify them if possible. */
+      if (aspect & (VK_IMAGE_ASPECT_DEPTH_BIT |
+                    VK_IMAGE_ASPECT_STENCIL_BIT)) {
+         if (!ds_reqs_ptr) {
+            ds_mem_reqs = mem_reqs;
+         } else if (ds_mem_reqs.formatProperties.imageGranularity.width ==
+                       mem_reqs.formatProperties.imageGranularity.width &&
+                    ds_mem_reqs.formatProperties.imageGranularity.height ==
+                       mem_reqs.formatProperties.imageGranularity.height &&
+                    ds_mem_reqs.formatProperties.imageGranularity.depth ==
+                       mem_reqs.formatProperties.imageGranularity.depth &&
+                    ds_mem_reqs.imageMipTailFirstLod ==
+                       mem_reqs.imageMipTailFirstLod &&
+                    ds_mem_reqs.imageMipTailSize ==
+                       mem_reqs.imageMipTailSize &&
+                    ds_mem_reqs.imageMipTailOffset ==
+                       mem_reqs.imageMipTailOffset &&
+                    ds_mem_reqs.imageMipTailStride ==
+                       mem_reqs.imageMipTailStride) {
+            ds_reqs_ptr->memoryRequirements.formatProperties.aspectMask |=
+               aspect;
+            continue;
+         }
+      }
+
+      vk_outarray_append_typed(VkSparseImageMemoryRequirements2, &reqs, r) {
+         r->memoryRequirements = mem_reqs;
+         if (aspect & (VK_IMAGE_ASPECT_DEPTH_BIT |
+                       VK_IMAGE_ASPECT_STENCIL_BIT))
+            ds_reqs_ptr = r;
+      }
+   }
 }
 
 void anv_GetImageSparseMemoryRequirements2(
-    VkDevice                                    device,
+    VkDevice                                    _device,
     const VkImageSparseMemoryRequirementsInfo2* pInfo,
     uint32_t*                                   pSparseMemoryRequirementCount,
     VkSparseImageMemoryRequirements2*           pSparseMemoryRequirements)
 {
-   if (INTEL_DEBUG(DEBUG_SPARSE))
-      fprintf(stderr, "=== [%s:%d] [%s]\n", __FILE__, __LINE__, __func__);
-   *pSparseMemoryRequirementCount = 0;
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   ANV_FROM_HANDLE(anv_image, image, pInfo->image);
+
+   if (!anv_sparse_residency_is_enabled(device)) {
+      if (!device->physical->has_sparse && INTEL_DEBUG(DEBUG_SPARSE))
+         fprintf(stderr, "=== [%s:%d] [%s]\n", __FILE__, __LINE__, __func__);
+
+      *pSparseMemoryRequirementCount = 0;
+      return;
+   }
+
+   anv_image_get_sparse_memory_requirements(device, image, image->vk.aspects,
+                                            pSparseMemoryRequirementCount,
+                                            pSparseMemoryRequirements);
 }
 
-void anv_GetDeviceImageSparseMemoryRequirementsKHR(
-    VkDevice                                    device,
-    const VkDeviceImageMemoryRequirements* pInfo,
+void anv_GetDeviceImageSparseMemoryRequirements(
+    VkDevice                                    _device,
+    const VkDeviceImageMemoryRequirements*      pInfo,
     uint32_t*                                   pSparseMemoryRequirementCount,
     VkSparseImageMemoryRequirements2*           pSparseMemoryRequirements)
 {
-   if (INTEL_DEBUG(DEBUG_SPARSE))
-      fprintf(stderr, "=== [%s:%d] [%s]\n", __FILE__, __LINE__, __func__);
-   *pSparseMemoryRequirementCount = 0;
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   struct anv_image image = { 0 };
+
+   if (!anv_sparse_residency_is_enabled(device)) {
+      if (!device->physical->has_sparse && INTEL_DEBUG(DEBUG_SPARSE))
+         fprintf(stderr, "=== [%s:%d] [%s]\n", __FILE__, __LINE__, __func__);
+
+      *pSparseMemoryRequirementCount = 0;
+      return;
+   }
+
+   /* This function is similar to anv_GetDeviceImageMemoryRequirementsKHR, in
+    * which it actually creates an image, gets the properties and then
+    * destroys the image.
+    *
+    * We could one day refactor things to allow us to gather the properties
+    * without having to actually create the image, maybe by reworking ISL to
+    * separate creation from parameter computing.
+    */
+
+   ASSERTED VkResult result =
+      anv_image_init_from_create_info(device, &image, pInfo->pCreateInfo,
+                                      true /* no_private_binding_alloc */);
+   assert(result == VK_SUCCESS);
+
+   /* The spec says:
+    *  "planeAspect is a VkImageAspectFlagBits value specifying the aspect
+    *   corresponding to the image plane to query. This parameter is ignored
+    *   unless pCreateInfo::tiling is VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT,
+    *   or pCreateInfo::flags has VK_IMAGE_CREATE_DISJOINT_BIT set."
+    */
+   VkImageAspectFlags aspects =
+      (pInfo->pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT) ||
+      (pInfo->pCreateInfo->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
+         ? pInfo->planeAspect : image.vk.aspects;
+
+   anv_image_get_sparse_memory_requirements(device, &image, aspects,
+                                            pSparseMemoryRequirementCount,
+                                            pSparseMemoryRequirements);
+
+   anv_image_finish(&image);
 }
 
 VkResult anv_BindImageMemory2(
@@ -1847,6 +2055,8 @@ VkResult anv_BindImageMemory2(
       ANV_FROM_HANDLE(anv_device_memory, mem, bind_info->memory);
       ANV_FROM_HANDLE(anv_image, image, bind_info->image);
       bool did_bind = false;
+
+      assert(!anv_image_is_sparse(image));
 
       /* Resolve will alter the image's aspects, do this first. */
       if (mem && mem->vk.ahardware_buffer)
@@ -1872,7 +2082,7 @@ VkResult anv_BindImageMemory2(
                break;
 
             struct anv_image_binding *binding =
-               image_aspect_to_binding(image, plane_info->planeAspect);
+               anv_image_aspect_to_binding(image, plane_info->planeAspect);
 
             binding->address = (struct anv_address) {
                .bo = mem->bo,

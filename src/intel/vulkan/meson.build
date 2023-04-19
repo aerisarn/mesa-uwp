@@ -182,6 +182,7 @@ libanv_files = files(
   'anv_pipeline_cache.c',
   'anv_private.h',
   'anv_queue.c',
+  'anv_sparse.c',
   'anv_util.c',
   'anv_utrace.c',
   'anv_va.c',
