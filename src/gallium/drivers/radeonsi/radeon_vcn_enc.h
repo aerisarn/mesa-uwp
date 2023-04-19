@@ -315,6 +315,15 @@ typedef struct rvcn_enc_hevc_spec_misc_s {
    uint32_t cu_qp_delta_enabled_flag;
 } rvcn_enc_hevc_spec_misc_t;
 
+typedef struct rvcn_enc_av1_spec_misc_s {
+   uint32_t palette_mode_enable;
+   uint32_t mv_precision;
+   uint32_t cdef_mode;
+   uint32_t disable_cdf_update;
+   uint32_t disable_frame_end_update_cdf;
+   uint32_t num_tiles_per_picture;
+} rvcn_enc_av1_spec_misc_t;
+
 typedef struct rvcn_enc_rate_ctl_session_init_s {
    uint32_t rate_control_method;
    uint32_t vbv_buffer_level;
@@ -491,6 +500,12 @@ typedef struct rvcn_enc_feedback_buffer_s {
    uint32_t feedback_data_size;
 } rvcn_enc_feedback_buffer_t;
 
+typedef struct rvcn_enc_av1_cdf_default_table_s {
+   uint32_t use_cdf_default;
+   uint32_t cdf_default_buffer_address_lo;
+   uint32_t cdf_default_buffer_address_hi;
+} rvcn_enc_av1_cdf_default_table_t;
+
 typedef struct rvcn_encode_stats_type_0_s
 {
     uint32_t qp_frame;
@@ -541,6 +556,9 @@ typedef struct rvcn_enc_cmd_s {
    uint32_t spec_misc_h264;
    uint32_t enc_params_h264;
    uint32_t deblocking_filter_h264;
+   uint32_t spec_misc_av1;
+   uint32_t bitstream_instruction_av1;
+   uint32_t cdf_default_table_av1;
    uint32_t input_format;
    uint32_t output_format;
    uint32_t enc_statistics;
@@ -586,6 +604,37 @@ typedef struct rvcn_enc_output_format_s
    uint32_t output_color_bit_depth;
 } rvcn_enc_output_format_t;
 
+typedef struct rvcn_enc_av1_timing_info_s
+{
+   uint32_t num_units_in_display_tick;
+   uint32_t time_scale;
+   uint32_t num_tick_per_picture_minus1;
+}rvcn_enc_av1_timing_info_t;
+
+typedef struct rvcn_enc_av1_color_description_s
+{
+   uint32_t color_primaries;
+   uint32_t transfer_characteristics;
+   uint32_t maxtrix_coefficients;
+   uint32_t color_range;
+   uint32_t chroma_sample_position;
+}rvcn_enc_av1_color_description_t;
+
+typedef struct rvcn_enc_av1_ref_frame_s
+{
+   bool in_use;
+   uint32_t frame_id;
+   uint32_t temporal_id;
+   uint32_t slot_id;
+   enum pipe_av1_enc_frame_type frame_type;
+} rvcn_enc_av1_ref_frame_t;
+
+typedef struct rvcn_enc_av1_recon_slot_s
+{
+   bool in_use;
+   bool is_orphaned;
+} rvcn_enc_av1_recon_slot_t;
+
 typedef void (*radeon_enc_get_buffer)(struct pipe_resource *resource, struct pb_buffer **handle,
                                       struct radeon_surf **surface);
 
@@ -595,7 +644,10 @@ struct pipe_video_codec *radeon_create_encoder(struct pipe_context *context,
                                                radeon_enc_get_buffer get_buffer);
 
 struct radeon_enc_pic {
-   enum pipe_h2645_enc_picture_type picture_type;
+   union {
+      enum pipe_h2645_enc_picture_type picture_type;
+      enum pipe_av1_enc_frame_type frame_type;
+   };
 
    unsigned frame_num;
    unsigned pic_order_cnt;
@@ -640,6 +692,46 @@ struct radeon_enc_pic {
    bool sample_adaptive_offset_enabled_flag;
    bool pcm_enabled_flag;
    bool sps_temporal_mvp_enabled_flag;
+
+   struct {
+      struct {
+         struct {
+            uint32_t enable_tile_obu:1;
+            uint32_t enable_render_size:1;
+            uint32_t enable_error_resilient_mode:1;
+            uint32_t enable_order_hint:1;
+            uint32_t enable_color_description:1;
+            uint32_t timing_info_present:1;
+            uint32_t timing_info_equal_picture_interval:1;
+            uint32_t frame_id_numbers_present:1;
+            uint32_t force_integer_mv:1;
+            uint32_t disable_screen_content_tools:1;
+            uint32_t is_obu_frame:1;
+            uint32_t stream_obu_frame:1;  /* all frames have the same number of tiles */
+            uint32_t need_av1_seq:1;
+         };
+         uint32_t render_width;
+         uint32_t render_height;
+         uint32_t frame_to_show_map_index;
+         enum pipe_av1_enc_frame_type last_frame_type;
+         uint32_t display_frame_id;
+         uint32_t frame_id;
+         uint32_t order_hint;
+         uint32_t order_hint_bits;
+         uint32_t refresh_frame_flags;
+         uint32_t reference_delta_frame_id;
+         uint32_t reference_frame_index;
+         uint32_t reference_order_hint[RENCDOE_AV1_NUM_REF_FRAMES];
+         uint32_t *copy_start;
+      };
+      rvcn_enc_av1_spec_misc_t av1_spec_misc;
+      rvcn_enc_av1_cdf_default_table_t av1_cdf_default_table;
+      rvcn_enc_av1_timing_info_t av1_timing_info;
+      rvcn_enc_av1_color_description_t av1_color_description;
+      uint32_t count_last_layer;
+      rvcn_enc_av1_ref_frame_t frames[RENCDOE_AV1_NUM_REF_FRAMES];
+      rvcn_enc_av1_recon_slot_t recon_slots[RENCDOE_AV1_NUM_REF_FRAMES + 1];
+   };
 
    rvcn_enc_session_info_t session_info;
    rvcn_enc_task_info_t task_info;
@@ -709,6 +801,8 @@ struct radeon_encoder {
    void (*input_format)(struct radeon_encoder *enc);
    void (*output_format)(struct radeon_encoder *enc);
    void (*encode_statistics)(struct radeon_encoder *enc);
+   void (*obu_instructions)(struct radeon_encoder *enc);
+   void (*cdf_default_table)(struct radeon_encoder *enc);
    /* mq is used for preversing multiple queue ibs */
    void (*mq_begin)(struct radeon_encoder *enc);
    void (*mq_encode)(struct radeon_encoder *enc);
@@ -732,6 +826,7 @@ struct radeon_encoder {
    struct rvid_buffer *si;
    struct rvid_buffer *fb;
    struct rvid_buffer *dpb;
+   struct rvid_buffer *cdf;
    struct radeon_enc_pic enc_pic;
    struct pb_buffer *stats;
    rvcn_enc_cmd_t cmd;
