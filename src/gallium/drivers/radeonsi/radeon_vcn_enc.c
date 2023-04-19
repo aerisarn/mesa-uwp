@@ -26,6 +26,7 @@
  **************************************************************************/
 
 #include "radeon_vcn_enc.h"
+#include "radeon_vcn_enc_av1_default_cdf.h"
 
 #include "pipe/p_video_codec.h"
 #include "radeon_video.h"
@@ -509,16 +510,25 @@ static void radeon_enc_cs_flush(void *ctx, unsigned flags, struct pipe_fence_han
 static void radeon_enc_rec_offset(rvcn_enc_reconstructed_picture_t *recon,
                                   uint32_t *offset,
                                   uint32_t luma_size,
-                                  uint32_t chroma_size)
+                                  uint32_t chroma_size,
+                                  bool is_av1)
 {
    if (offset) {
       recon->luma_offset = *offset;
       *offset += luma_size;
       recon->chroma_offset = *offset;
       *offset += chroma_size;
+      if (is_av1) {
+         recon->av1.av1_cdf_frame_context_offset = *offset;
+         *offset += RENCODE_AV1_FRAME_CONTEXT_CDF_TABLE_SIZE;
+         recon->av1.av1_cdef_algorithm_context_offset = *offset;
+         *offset += RENCODE_AV1_CDEF_ALGORITHM_FRAME_CONTEXT_SIZE;
+      }
    } else {
       recon->luma_offset = 0;
       recon->chroma_offset = 0;
+      recon->av1.av1_cdf_frame_context_offset = 0;
+      recon->av1.av1_cdef_algorithm_context_offset = 0;
    }
 }
 
@@ -526,6 +536,8 @@ static int setup_dpb(struct radeon_encoder *enc)
 {
    bool is_h264 = u_reduce_video_profile(enc->base.profile)
                              == PIPE_VIDEO_FORMAT_MPEG4_AVC;
+   bool is_av1 = u_reduce_video_profile(enc->base.profile)
+                             == PIPE_VIDEO_FORMAT_AV1;
    uint32_t rec_alignment = is_h264 ? 16 : 64;
    uint32_t aligned_width = align(enc->base.width, rec_alignment);
    uint32_t aligned_height = align(enc->base.height, rec_alignment);
@@ -567,21 +579,26 @@ static int setup_dpb(struct radeon_encoder *enc)
    } else
       enc_pic->ctx_buf.two_pass_search_center_map_offset = 0;
 
+   if (is_av1) {
+      enc_pic->ctx_buf.av1.av1_sdb_intermedidate_context_offset = offset;
+      offset += RENCODE_AV1_SDB_FRAME_CONTEXT_SIZE;
+   }
+
    for (i = 0; i < num_reconstructed_pictures; i++) {
       radeon_enc_rec_offset(&enc_pic->ctx_buf.reconstructed_pictures[i],
-                            &offset, luma_size, chroma_size);
+                            &offset, luma_size, chroma_size, is_av1);
 
       if (enc_pic->quality_modes.pre_encode_mode)
          radeon_enc_rec_offset(&enc_pic->ctx_buf.pre_encode_reconstructed_pictures[i],
-                               &offset, luma_size, chroma_size);
+                               &offset, luma_size, chroma_size, is_av1);
    }
 
    for (; i < RENCODE_MAX_NUM_RECONSTRUCTED_PICTURES; i++) {
       radeon_enc_rec_offset(&enc_pic->ctx_buf.reconstructed_pictures[i],
-                            NULL, 0, 0);
+                            NULL, 0, 0, false);
       if (enc_pic->quality_modes.pre_encode_mode)
          radeon_enc_rec_offset(&enc_pic->ctx_buf.pre_encode_reconstructed_pictures[i],
-                               NULL, 0, 0);
+                               NULL, 0, 0, false);
    }
 
    if (enc_pic->quality_modes.pre_encode_mode) {

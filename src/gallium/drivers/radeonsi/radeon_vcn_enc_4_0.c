@@ -71,9 +71,15 @@ static uint32_t radeon_enc_ref_swizzle_mode(struct radeon_encoder *enc)
 
 static void radeon_enc_ctx(struct radeon_encoder *enc)
 {
+
+   bool is_av1 = u_reduce_video_profile(enc->base.profile)
+                                           == PIPE_VIDEO_FORMAT_AV1;
    enc->enc_pic.ctx_buf.swizzle_mode = radeon_enc_ref_swizzle_mode(enc);
    enc->enc_pic.ctx_buf.two_pass_search_center_map_offset = 0;
-   enc->enc_pic.ctx_buf.colloc_buffer_offset = enc->dpb_size;
+   if (is_av1)
+      enc->enc_pic.ctx_buf.colloc_buffer_offset = 0;
+   else
+      enc->enc_pic.ctx_buf.colloc_buffer_offset = enc->dpb_size;
 
    RADEON_ENC_BEGIN(enc->cmd.ctx);
    RADEON_ENC_READWRITE(enc->dpb->res->buf, enc->dpb->res->domains, 0);
@@ -83,20 +89,34 @@ static void radeon_enc_ctx(struct radeon_encoder *enc)
    RADEON_ENC_CS(enc->enc_pic.ctx_buf.num_reconstructed_pictures);
 
    for (int i = 0; i < RENCODE_MAX_NUM_RECONSTRUCTED_PICTURES; i++) {
-      RADEON_ENC_CS(enc->enc_pic.ctx_buf.reconstructed_pictures[i].luma_offset);
-      RADEON_ENC_CS(enc->enc_pic.ctx_buf.reconstructed_pictures[i].chroma_offset);
-      RADEON_ENC_CS(0x00000000); /* unused offset 1 */
-      RADEON_ENC_CS(0x00000000); /* unused offset 2 */
+      rvcn_enc_reconstructed_picture_t *pic =
+                            &enc->enc_pic.ctx_buf.reconstructed_pictures[i];
+      RADEON_ENC_CS(pic->luma_offset);
+      RADEON_ENC_CS(pic->chroma_offset);
+      if (is_av1) {
+         RADEON_ENC_CS(pic->av1.av1_cdf_frame_context_offset);
+         RADEON_ENC_CS(pic->av1.av1_cdef_algorithm_context_offset);
+      } else {
+         RADEON_ENC_CS(0x00000000); /* unused offset 1 */
+         RADEON_ENC_CS(0x00000000); /* unused offset 2 */
+      }
    }
 
    RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_picture_luma_pitch);
    RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_picture_chroma_pitch);
 
    for (int i = 0; i < RENCODE_MAX_NUM_RECONSTRUCTED_PICTURES; i++) {
-      RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_reconstructed_pictures[i].luma_offset);
-      RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_reconstructed_pictures[i].chroma_offset);
-      RADEON_ENC_CS(0x00000000); /* unused offset 1 */
-      RADEON_ENC_CS(0x00000000); /* unused offset 2 */
+      rvcn_enc_reconstructed_picture_t *pic =
+                            &enc->enc_pic.ctx_buf.pre_encode_reconstructed_pictures[i];
+      RADEON_ENC_CS(pic->luma_offset);
+      RADEON_ENC_CS(pic->chroma_offset);
+      if (is_av1) {
+         RADEON_ENC_CS(pic->av1.av1_cdf_frame_context_offset);
+         RADEON_ENC_CS(pic->av1.av1_cdef_algorithm_context_offset);
+      } else {
+         RADEON_ENC_CS(0x00000000); /* unused offset 1 */
+         RADEON_ENC_CS(0x00000000); /* unused offset 2 */
+      }
    }
 
    RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_input_picture.rgb.red_offset);
@@ -104,7 +124,10 @@ static void radeon_enc_ctx(struct radeon_encoder *enc)
    RADEON_ENC_CS(enc->enc_pic.ctx_buf.pre_encode_input_picture.rgb.blue_offset);
 
    RADEON_ENC_CS(enc->enc_pic.ctx_buf.two_pass_search_center_map_offset);
-   RADEON_ENC_CS(enc->enc_pic.ctx_buf.colloc_buffer_offset);
+   if (is_av1)
+      RADEON_ENC_CS(enc->enc_pic.ctx_buf.av1.av1_sdb_intermedidate_context_offset);
+   else
+      RADEON_ENC_CS(enc->enc_pic.ctx_buf.colloc_buffer_offset);
    RADEON_ENC_END();
 }
 

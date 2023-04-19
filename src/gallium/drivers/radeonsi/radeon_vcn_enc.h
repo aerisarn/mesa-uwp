@@ -426,9 +426,9 @@ typedef struct rvcn_enc_reconstructed_picture_s {
    union {
       struct
       {
-         uint32_t  unused_offset1;
-         uint32_t  unused_offset2;
-      } unused;
+         uint32_t av1_cdf_frame_context_offset;
+         uint32_t av1_cdef_algorithm_context_offset;
+      } av1;
    };
 } rvcn_enc_reconstructed_picture_t;
 
@@ -467,7 +467,12 @@ typedef struct rvcn_enc_encode_context_buffer_s {
    pre_encode_reconstructed_pictures[RENCODE_MAX_NUM_RECONSTRUCTED_PICTURES];
    rvcn_enc_pre_encode_input_picture_t pre_encode_input_picture;
    uint32_t two_pass_search_center_map_offset;
-   uint32_t colloc_buffer_offset;
+   union {
+      uint32_t colloc_buffer_offset;
+      struct {
+         uint32_t av1_sdb_intermedidate_context_offset;
+      } av1;
+   };
 } rvcn_enc_encode_context_buffer_t;
 
 typedef struct rvcn_enc_video_bitstream_buffer_s {
