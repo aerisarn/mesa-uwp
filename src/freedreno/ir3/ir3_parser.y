@@ -1138,7 +1138,10 @@ cat6_a6xx_global_address_pt3:
                         new_src(0, IR3_REG_IMMED)->uim_val = $3 - 2;
                         new_src(0, IR3_REG_IMMED)->uim_val = $4;
                    }
-|                  '+' cat6_reg_or_immed
+|                  '+' cat6_reg_or_immed {
+                        // Dummy src to smooth the difference between a6xx and a7xx
+                        new_src(0, IR3_REG_IMMED)->uim_val = 0;
+                   }
 
 cat6_a6xx_global_address_pt2:
                    '(' src offset ')' '<' '<' integer {
