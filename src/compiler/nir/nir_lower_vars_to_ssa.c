@@ -598,21 +598,33 @@ rename_variables(struct lower_variables_state *state)
             if (!node->lower_to_ssa)
                continue;
 
-            nir_alu_instr *mov = nir_alu_instr_create(state->shader,
-                                                      nir_op_mov);
-            mov->src[0].src = nir_src_for_ssa(
-               nir_phi_builder_value_get_block_def(node->pb_value, block));
-            for (unsigned i = intrin->num_components; i < NIR_MAX_VEC_COMPONENTS; i++)
-               mov->src[0].swizzle[i] = 0;
+            nir_def *val =
+               nir_phi_builder_value_get_block_def(node->pb_value, block);
 
-            nir_def_init(&mov->instr, &mov->def,
-                         intrin->num_components, intrin->def.bit_size);
+            /* As tempting as it is to just rewrite the uses of our load
+             * instruction with the value we got out of the phi builder, we
+             * can't do that without risking messing ourselves up.  In
+             * particular, the get_deref_node() function we call during
+             * variable renaming uses nir_src_is_const() to determine which
+             * deref node to fetch.  If we propagate directly, we may end up
+             * propagating a constant into an array index, changing the
+             * behavior of get_deref_node() for that deref and invalidating
+             * our analysis.
+             *
+             * With enough work, we could probably make our analysis and data
+             * structures robust against this but it would make everything
+             * more complicated to reason about.  It's easier to just insert
+             * a mov and let copy-prop clean up after us.  This pass is
+             * complicated enough as-is.
+             */
+            b.cursor = nir_before_instr(&intrin->instr);
+            val = nir_mov(&b, val);
 
-            nir_instr_insert_before(&intrin->instr, &mov->instr);
+            assert(val->bit_size == intrin->def.bit_size);
+            assert(val->num_components == intrin->def.num_components);
+
+            nir_def_rewrite_uses(&intrin->def, val);
             nir_instr_remove(&intrin->instr);
-
-            nir_def_rewrite_uses(&intrin->def,
-                                 &mov->def);
             break;
          }
 
