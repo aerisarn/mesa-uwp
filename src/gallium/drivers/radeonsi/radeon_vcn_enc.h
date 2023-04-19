@@ -854,6 +854,8 @@ struct radeon_encoder {
 void radeon_enc_add_buffer(struct radeon_encoder *enc, struct pb_buffer *buf,
                            unsigned usage, enum radeon_bo_domain domain, signed offset);
 
+void radeon_enc_dummy(struct radeon_encoder *enc);
+
 void radeon_enc_set_emulation_prevention(struct radeon_encoder *enc, bool set);
 
 void radeon_enc_output_one_byte(struct radeon_encoder *enc, unsigned char byte);
@@ -873,6 +875,11 @@ void radeon_enc_code_ue(struct radeon_encoder *enc, unsigned int value);
 
 void radeon_enc_code_se(struct radeon_encoder *enc, int value);
 
+void radeon_enc_code_uvlc(struct radeon_encoder *enc, unsigned int value);
+
+void radeon_enc_code_leb128(unsigned char *buf, unsigned int value,
+                            unsigned int num_bytes);
+
 void radeon_enc_1_2_init(struct radeon_encoder *enc);
 
 void radeon_enc_2_0_init(struct radeon_encoder *enc);
@@ -880,5 +887,12 @@ void radeon_enc_2_0_init(struct radeon_encoder *enc);
 void radeon_enc_3_0_init(struct radeon_encoder *enc);
 
 void radeon_enc_4_0_init(struct radeon_encoder *enc);
+
+void radeon_enc_av1_bs_instruction_type(struct radeon_encoder *enc,
+                                        unsigned int inst, unsigned int obu_type);
+
+unsigned char *radeon_enc_av1_header_size_offset(struct radeon_encoder *enc);
+
+unsigned int radeon_enc_value_bits(unsigned int value);
 
 #endif // _RADEON_VCN_ENC_H

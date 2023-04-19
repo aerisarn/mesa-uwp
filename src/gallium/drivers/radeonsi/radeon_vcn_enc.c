@@ -894,6 +894,39 @@ void radeon_enc_code_fixed_bits(struct radeon_encoder *enc, unsigned int value,
    }
 }
 
+void radeon_enc_code_uvlc(struct radeon_encoder *enc, unsigned int value)
+{
+   uint32_t num_bits = 0;
+   uint64_t value_plus1 = (uint64_t)value + 1;
+   uint32_t num_leading_zeros = 0;
+
+   while ((uint64_t)1 << num_bits <= value_plus1)
+      num_bits++;
+
+   num_leading_zeros = num_bits - 1;
+   radeon_enc_code_fixed_bits(enc, 0, num_leading_zeros);
+   radeon_enc_code_fixed_bits(enc, 1, 1);
+   radeon_enc_code_fixed_bits(enc, (uint32_t)value_plus1, num_leading_zeros);
+}
+
+void radeon_enc_code_leb128(uint8_t *buf, uint32_t value,
+                            uint32_t num_bytes)
+{
+   uint8_t leb128_byte = 0;
+   uint32_t i = 0;
+
+   do {
+      leb128_byte = (value & 0x7f);
+      value >>= 7;
+      if (num_bytes > 1)
+         leb128_byte |= 0x80;
+
+      *(buf + i) = leb128_byte;
+      num_bytes--;
+      i++;
+   } while((leb128_byte & 0x80));
+}
+
 void radeon_enc_reset(struct radeon_encoder *enc)
 {
    enc->emulation_prevention = false;
@@ -954,4 +987,53 @@ void radeon_enc_code_se(struct radeon_encoder *enc, int value)
       v = (value < 0 ? ((unsigned int)(0 - value) << 1) : (((unsigned int)(value) << 1) - 1));
 
    radeon_enc_code_ue(enc, v);
+}
+
+/* dummy function for re-using the same pipeline */
+void radeon_enc_dummy(struct radeon_encoder *enc) {}
+
+/* this function has to be in pair with AV1 header copy instruction type at the end */
+static void radeon_enc_av1_bs_copy_end(struct radeon_encoder *enc, uint32_t bits)
+{
+   assert(bits > 0);
+   /* it must be dword aligned at the end */
+   *enc->enc_pic.copy_start = ALIGN_TO(bits, 32) * 4 + 12;
+   *(enc->enc_pic.copy_start + 2) = bits;
+}
+
+/* av1 bitstream instruction type */
+void radeon_enc_av1_bs_instruction_type(struct radeon_encoder *enc,
+                                        uint32_t inst,
+                                        uint32_t obu_type)
+{
+   radeon_enc_flush_headers(enc);
+
+   if (enc->bits_output)
+      radeon_enc_av1_bs_copy_end(enc, enc->bits_output);
+
+   enc->enc_pic.copy_start = &enc->cs.current.buf[enc->cs.current.cdw++];
+   RADEON_ENC_CS(inst);
+
+   if (inst != RENCODE_HEADER_INSTRUCTION_COPY) {
+      *enc->enc_pic.copy_start = 8;
+      if (inst == RENCODE_AV1_BITSTREAM_INSTRUCTION_OBU_START) {
+         *enc->enc_pic.copy_start += 4;
+         RADEON_ENC_CS(obu_type);
+      }
+   } else
+      RADEON_ENC_CS(0); /* allocate a dword for number of bits */
+
+   radeon_enc_reset(enc);
+}
+
+uint32_t radeon_enc_value_bits(uint32_t value)
+{
+   uint32_t i = 1;
+
+   while (value > 1) {
+      i++;
+      value >>= 1;
+   }
+
+   return i;
 }
