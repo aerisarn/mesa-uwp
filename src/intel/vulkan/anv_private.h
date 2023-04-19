@@ -3893,7 +3893,7 @@ anv_image_get_compression_state_addr(const struct anv_device *device,
    assert(level < anv_image_aux_levels(image, aspect));
    assert(array_layer < anv_image_aux_layers(image, aspect, level));
    UNUSED uint32_t plane = anv_image_aspect_to_plane(image, aspect);
-   assert(image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_E);
+   assert(isl_aux_usage_has_ccs_e(image->planes[plane].aux_usage));
 
    /* Relative to start of the plane's fast clear memory range */
    uint32_t offset;

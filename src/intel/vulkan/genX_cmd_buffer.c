@@ -562,7 +562,7 @@ set_image_compressed_bit(struct anv_cmd_buffer *cmd_buffer,
    const uint32_t plane = anv_image_aspect_to_plane(image, aspect);
 
    /* We only have compression tracking for CCS_E */
-   if (image->planes[plane].aux_usage != ISL_AUX_USAGE_CCS_E)
+   if (!isl_aux_usage_has_ccs_e(image->planes[plane].aux_usage))
       return;
 
    for (uint32_t a = 0; a < layer_count; a++) {
@@ -968,7 +968,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
          must_init_aux_surface = true;
 
       } else {
-         assert(image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_E);
+         assert(isl_aux_usage_has_ccs_e(image->planes[plane].aux_usage));
 
          /* We can start using the CCS immediately without ambiguating. The
           * two conditions that enable this are:
@@ -1160,8 +1160,8 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
    if (final_fast_clear < initial_fast_clear)
       resolve_op = ISL_AUX_OP_PARTIAL_RESOLVE;
 
-   if (initial_aux_usage == ISL_AUX_USAGE_CCS_E &&
-       final_aux_usage != ISL_AUX_USAGE_CCS_E)
+   if (isl_aux_usage_has_ccs_e(initial_aux_usage) &&
+       !isl_aux_usage_has_ccs_e(final_aux_usage))
       resolve_op = ISL_AUX_OP_FULL_RESOLVE;
 
    if (resolve_op == ISL_AUX_OP_NONE)
