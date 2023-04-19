@@ -482,12 +482,157 @@ static void radeon_vcn_enc_hevc_get_param(struct radeon_encoder *enc,
    radeon_vcn_enc_get_output_format_param(enc);
 }
 
+static void radeon_vcn_enc_av1_get_spec_misc_param(struct radeon_encoder *enc,
+                                                   struct pipe_av1_enc_picture_desc *pic)
+{
+   enc->enc_pic.av1_spec_misc.cdef_mode = pic->seq.seq_bits.enable_cdef;
+   enc->enc_pic.av1_spec_misc.disable_cdf_update = pic->disable_cdf_update;
+   enc->enc_pic.av1_spec_misc.disable_frame_end_update_cdf = pic->disable_frame_end_update_cdf;
+   enc->enc_pic.av1_spec_misc.num_tiles_per_picture = pic->num_tiles_in_pic;
+   enc->enc_pic.av1_spec_misc.palette_mode_enable = pic->palette_mode_enable;
+
+   if (enc->enc_pic.disable_screen_content_tools) {
+       enc->enc_pic.force_integer_mv  = 0;
+       enc->enc_pic.av1_spec_misc.palette_mode_enable = 0;
+   }
+
+   if (enc->enc_pic.force_integer_mv)
+      enc->enc_pic.av1_spec_misc.mv_precision = RENCODE_AV1_MV_PRECISION_FORCE_INTEGER_MV;
+   else
+      enc->enc_pic.av1_spec_misc.mv_precision = RENCODE_AV1_MV_PRECISION_ALLOW_HIGH_PRECISION;
+}
+
+static void radeon_vcn_enc_av1_timing_info(struct radeon_encoder *enc,
+                                           struct pipe_av1_enc_picture_desc *pic)
+{
+   if (pic->seq.seq_bits.timing_info_present_flag)
+   {
+      enc->enc_pic.av1_timing_info.num_units_in_display_tick =
+         pic->seq.num_units_in_display_tick;
+      enc->enc_pic.av1_timing_info.time_scale = pic->seq.time_scale;
+      enc->enc_pic.av1_timing_info.num_tick_per_picture_minus1 =
+         pic->seq.num_tick_per_picture_minus1;
+   }
+}
+
+static void radeon_vcn_enc_av1_color_description(struct radeon_encoder *enc,
+                                                 struct pipe_av1_enc_picture_desc *pic)
+{
+   if (pic->seq.seq_bits.color_description_present_flag)
+   {
+      enc->enc_pic.av1_color_description.color_primaries = pic->seq.color_config.color_primaries;
+      enc->enc_pic.av1_color_description.transfer_characteristics = pic->seq.color_config.transfer_characteristics;
+      enc->enc_pic.av1_color_description.maxtrix_coefficients = pic->seq.color_config.matrix_coefficients;
+      enc->enc_pic.av1_color_description.color_range = pic->seq.color_config.color_range;
+      enc->enc_pic.av1_color_description.chroma_sample_position = pic->seq.color_config.chroma_sample_position;
+   }
+}
+
+static void radeon_vcn_enc_av1_get_rc_param(struct radeon_encoder *enc,
+                                            struct pipe_av1_enc_picture_desc *pic)
+{
+   uint32_t frame_rate_den, frame_rate_num;
+
+   for (int i = 0; i < ARRAY_SIZE(enc->enc_pic.rc_layer_init); i++) {
+      enc->enc_pic.rc_layer_init[i].target_bit_rate = pic->rc[i].target_bitrate;
+      enc->enc_pic.rc_layer_init[i].peak_bit_rate = pic->rc[i].peak_bitrate;
+      frame_rate_den = pic->rc[i].frame_rate_den;
+      frame_rate_num = pic->rc[i].frame_rate_num;
+      radeon_vcn_enc_invalid_frame_rate(&frame_rate_den, &frame_rate_num);
+      enc->enc_pic.rc_layer_init[i].frame_rate_den = frame_rate_den;
+      enc->enc_pic.rc_layer_init[i].frame_rate_num = frame_rate_num;
+      enc->enc_pic.rc_layer_init[i].vbv_buffer_size = pic->rc[i].vbv_buffer_size;
+      enc->enc_pic.rc_layer_init[i].avg_target_bits_per_picture =
+          radeon_vcn_per_frame_integer(pic->rc[i].target_bitrate,
+                                       frame_rate_den,
+                                       frame_rate_num);
+      enc->enc_pic.rc_layer_init[i].peak_bits_per_picture_integer =
+          radeon_vcn_per_frame_integer(pic->rc[i].peak_bitrate,
+                                       frame_rate_den,
+                                       frame_rate_num);
+      enc->enc_pic.rc_layer_init[i].peak_bits_per_picture_fractional =
+          radeon_vcn_per_frame_frac(pic->rc[i].peak_bitrate,
+                                    frame_rate_den,
+                                    frame_rate_num);
+   }
+   enc->enc_pic.rc_session_init.vbv_buffer_level = pic->rc[0].vbv_buf_lv;
+   enc->enc_pic.rc_per_pic.qp = pic->rc[0].qp;
+   enc->enc_pic.rc_per_pic.min_qp_app = pic->rc[0].min_qp ? pic->rc[0].min_qp : 1;
+   enc->enc_pic.rc_per_pic.max_qp_app = pic->rc[0].max_qp ? pic->rc[0].max_qp : 255;
+   enc->enc_pic.rc_per_pic.enabled_filler_data = pic->rc[0].fill_data_enable;
+   enc->enc_pic.rc_per_pic.skip_frame_enable = pic->rc[0].skip_frame_enable;
+   enc->enc_pic.rc_per_pic.enforce_hrd = pic->rc[0].enforce_hrd;
+   switch (pic->rc[0].rate_ctrl_method) {
+      case PIPE_H2645_ENC_RATE_CONTROL_METHOD_DISABLE:
+         enc->enc_pic.rc_session_init.rate_control_method = RENCODE_RATE_CONTROL_METHOD_NONE;
+         break;
+      case PIPE_H2645_ENC_RATE_CONTROL_METHOD_CONSTANT_SKIP:
+      case PIPE_H2645_ENC_RATE_CONTROL_METHOD_CONSTANT:
+         enc->enc_pic.rc_session_init.rate_control_method = RENCODE_RATE_CONTROL_METHOD_CBR;
+         break;
+      case PIPE_H2645_ENC_RATE_CONTROL_METHOD_VARIABLE_SKIP:
+      case PIPE_H2645_ENC_RATE_CONTROL_METHOD_VARIABLE:
+         enc->enc_pic.rc_session_init.rate_control_method =
+            RENCODE_RATE_CONTROL_METHOD_PEAK_CONSTRAINED_VBR;
+         break;
+      default:
+         enc->enc_pic.rc_session_init.rate_control_method = RENCODE_RATE_CONTROL_METHOD_NONE;
+   }
+   enc->enc_pic.rc_per_pic.max_au_size = pic->rc[0].max_au_size;
+}
+
+static void radeon_vcn_enc_av1_get_param(struct radeon_encoder *enc,
+                                         struct pipe_av1_enc_picture_desc *pic)
+{
+   struct radeon_enc_pic *enc_pic = &enc->enc_pic;
+   enc_pic->frame_type = pic->frame_type;
+   enc_pic->frame_num = pic->frame_num;
+   enc_pic->bit_depth_luma_minus8 = enc_pic->bit_depth_chroma_minus8 =
+      pic->seq.bit_depth_minus8;
+   enc_pic->pic_width_in_luma_samples = pic->seq.pic_width_in_luma_samples;
+   enc_pic->pic_height_in_luma_samples = pic->seq.pic_height_in_luma_samples;
+   enc_pic->general_profile_idc = pic->seq.profile;
+   enc_pic->general_level_idc = pic->seq.level;
+   enc_pic->general_tier_flag = pic->seq.tier;
+
+   enc_pic->num_temporal_layers =
+            pic->seq.num_temporal_layers <= RENCODE_MAX_NUM_TEMPORAL_LAYERS ?
+            pic->seq.num_temporal_layers : RENCODE_MAX_NUM_TEMPORAL_LAYERS;
+
+   /* 1, 2 layer needs 1 reference, and 3, 4 layer needs 2 references */
+   enc->base.max_references = (enc_pic->num_temporal_layers + 1) / 2;
+   radeon_vcn_enc_quality_modes(enc, &pic->quality_modes);
+   enc_pic->frame_id_numbers_present = pic->seq.seq_bits.frame_id_number_present_flag;
+   enc_pic->enable_error_resilient_mode = pic->error_resilient_mode;
+   enc_pic->force_integer_mv = pic->force_integer_mv;
+   enc_pic->enable_order_hint = pic->seq.seq_bits.enable_order_hint;
+   enc_pic->order_hint_bits = pic->seq.order_hint_bits;
+   enc_pic->enable_render_size = pic->enable_render_size;
+   enc_pic->render_width = pic->render_width;
+   enc_pic->render_height = pic->render_height;
+   enc_pic->enable_color_description = pic->seq.seq_bits.color_description_present_flag;
+   enc_pic->timing_info_present = pic->seq.seq_bits.timing_info_present_flag;
+   enc_pic->timing_info_equal_picture_interval = pic->seq.seq_bits.equal_picture_interval;
+   enc_pic->disable_screen_content_tools = !pic->allow_screen_content_tools;
+   enc_pic->is_obu_frame = pic->enable_frame_obu;
+   enc_pic->need_av1_seq = (pic->frame_type == PIPE_AV1_ENC_FRAME_TYPE_KEY);
+
+   radeon_vcn_enc_av1_get_spec_misc_param(enc, pic);
+   radeon_vcn_enc_av1_timing_info(enc, pic);
+   radeon_vcn_enc_av1_color_description(enc, pic);
+   radeon_vcn_enc_av1_get_rc_param(enc, pic);
+   radeon_vcn_enc_get_input_format_param(enc, &pic->base);
+   radeon_vcn_enc_get_output_format_param(enc);
+}
+
 static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_picture_desc *picture)
 {
    if (u_reduce_video_profile(picture->profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC)
       radeon_vcn_enc_h264_get_param(enc, (struct pipe_h264_enc_picture_desc *)picture);
    else if (u_reduce_video_profile(picture->profile) == PIPE_VIDEO_FORMAT_HEVC)
       radeon_vcn_enc_hevc_get_param(enc, (struct pipe_h265_enc_picture_desc *)picture);
+   else if (u_reduce_video_profile(picture->profile) == PIPE_VIDEO_FORMAT_AV1)
+      radeon_vcn_enc_av1_get_param(enc, (struct pipe_av1_enc_picture_desc *)picture);
 }
 
 static void flush(struct radeon_encoder *enc)
@@ -530,6 +675,35 @@ static void radeon_enc_rec_offset(rvcn_enc_reconstructed_picture_t *recon,
       recon->av1.av1_cdf_frame_context_offset = 0;
       recon->av1.av1_cdef_algorithm_context_offset = 0;
    }
+}
+
+static int setup_cdf(struct radeon_encoder *enc)
+{
+   unsigned char *p_cdf = NULL;
+
+   if (!enc->cdf ||
+         !si_vid_create_buffer(enc->screen,
+                               enc->cdf,
+                               VCN_ENC_AV1_DEFAULT_CDF_SIZE,
+                               PIPE_USAGE_DYNAMIC)) {
+      RVID_ERR("Can't create CDF buffer.\n");
+      goto error;
+   }
+
+   p_cdf = enc->ws->buffer_map(enc->ws,
+                               enc->cdf->res->buf,
+                              &enc->cs,
+                               PIPE_MAP_READ_WRITE | RADEON_MAP_TEMPORARY);
+   if (!p_cdf)
+      goto error;
+
+   memcpy(p_cdf, rvcn_av1_cdf_default_table, VCN_ENC_AV1_DEFAULT_CDF_SIZE);
+   enc->ws->buffer_unmap(enc->ws, enc->cdf->res->buf);
+
+   return 0;
+
+error:
+   return -1;
 }
 
 static int setup_dpb(struct radeon_encoder *enc)
@@ -635,6 +809,20 @@ static void radeon_enc_begin_frame(struct pipe_video_codec *encoder,
    } else if (u_reduce_video_profile(picture->profile) == PIPE_VIDEO_FORMAT_HEVC) {
       struct pipe_h265_enc_picture_desc *pic = (struct pipe_h265_enc_picture_desc *)picture;
       need_rate_control = enc->enc_pic.rc_layer_init[0].target_bit_rate != pic->rc.target_bitrate;
+   } else if (u_reduce_video_profile(picture->profile) == PIPE_VIDEO_FORMAT_AV1) {
+      struct pipe_av1_enc_picture_desc *pic = (struct pipe_av1_enc_picture_desc *)picture;
+      need_rate_control =
+         (enc->enc_pic.rc_layer_init[0].target_bit_rate != pic->rc[0].target_bitrate) ||
+         (enc->enc_pic.rc_layer_init[0].frame_rate_num != pic->rc[0].frame_rate_num) ||
+         (enc->enc_pic.rc_layer_init[0].frame_rate_den != pic->rc[0].frame_rate_den);
+
+      if (!enc->cdf) {
+         enc->cdf = CALLOC_STRUCT(rvid_buffer);
+         if (setup_cdf(enc)) {
+            RVID_ERR("Can't create cdf buffer.\n");
+            goto error;
+         }
+      }
    }
 
    radeon_vcn_enc_get_param(enc, picture);
@@ -677,6 +865,7 @@ static void radeon_enc_begin_frame(struct pipe_video_codec *encoder,
 error:
    RADEON_ENC_DESTROY_VIDEO_BUFFER(enc->dpb);
    RADEON_ENC_DESTROY_VIDEO_BUFFER(enc->si);
+   RADEON_ENC_DESTROY_VIDEO_BUFFER(enc->cdf);
 }
 
 static void radeon_enc_encode_bitstream(struct pipe_video_codec *encoder,
@@ -734,6 +923,7 @@ static void radeon_enc_destroy(struct pipe_video_codec *encoder)
    }
 
    RADEON_ENC_DESTROY_VIDEO_BUFFER(enc->dpb);
+   RADEON_ENC_DESTROY_VIDEO_BUFFER(enc->cdf);
    enc->ws->cs_destroy(&enc->cs);
    if (enc->ectx)
       enc->ectx->destroy(enc->ectx);
