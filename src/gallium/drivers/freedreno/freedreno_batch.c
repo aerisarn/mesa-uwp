@@ -57,10 +57,22 @@ alloc_ring(struct fd_batch *batch, unsigned sz, enum fd_ringbuffer_flags flags)
    return fd_submit_new_ringbuffer(batch->submit, sz, flags);
 }
 
-static void
-batch_init(struct fd_batch *batch)
+struct fd_batch *
+fd_batch_create(struct fd_context *ctx, bool nondraw)
 {
-   struct fd_context *ctx = batch->ctx;
+   struct fd_batch *batch = CALLOC_STRUCT(fd_batch);
+
+   if (!batch)
+      return NULL;
+
+   DBG("%p", batch);
+
+   pipe_reference_init(&batch->reference, 1);
+   batch->ctx = ctx;
+   batch->nondraw = nondraw;
+
+   batch->resources =
+      _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
 
    batch->submit = fd_submit_new(ctx->pipe);
    if (batch->nondraw) {
@@ -86,23 +98,10 @@ batch_init(struct fd_batch *batch)
    if (ctx->screen->gen < 6)
       batch->fence = fd_pipe_fence_create(batch);
 
-   batch->cleared = 0;
-   batch->fast_cleared = 0;
-   batch->invalidated = 0;
-   batch->restore = batch->resolve = 0;
-   batch->needs_flush = false;
-   batch->flushed = false;
-   batch->gmem_reason = 0;
-   batch->num_draws = 0;
-   batch->num_vertices = 0;
-   batch->num_bins_per_pipe = 0;
-   batch->prim_strm_bits = 0;
-   batch->draw_strm_bits = 0;
-
    fd_reset_wfi(batch);
 
    util_dynarray_init(&batch->draw_patches, NULL);
-      util_dynarray_init(&(batch->fb_read_patches), NULL);
+   util_dynarray_init(&(batch->fb_read_patches), NULL);
 
    if (is_a2xx(ctx->screen)) {
       util_dynarray_init(&batch->shader_patches, NULL);
@@ -112,36 +111,19 @@ batch_init(struct fd_batch *batch)
    if (is_a3xx(ctx->screen))
       util_dynarray_init(&batch->rbrc_patches, NULL);
 
-   assert(batch->resources->entries == 0);
-
    util_dynarray_init(&batch->samples, NULL);
 
    u_trace_init(&batch->trace, &ctx->trace_context);
    batch->last_timestamp_cmd = NULL;
-}
-
-struct fd_batch *
-fd_batch_create(struct fd_context *ctx, bool nondraw)
-{
-   struct fd_batch *batch = CALLOC_STRUCT(fd_batch);
-
-   if (!batch)
-      return NULL;
-
-   DBG("%p", batch);
-
-   pipe_reference_init(&batch->reference, 1);
-   batch->ctx = ctx;
-   batch->nondraw = nondraw;
-
-   batch->resources =
-      _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
-
-   batch_init(batch);
 
    return batch;
 }
 
+/**
+ * Cleanup that we normally do when the submit is flushed, like dropping
+ * rb references.  But also called when batch is destroyed just in case
+ * it wasn't flushed.
+ */
 static void
 cleanup_submit(struct fd_batch *batch)
 {
@@ -183,46 +165,6 @@ cleanup_submit(struct fd_batch *batch)
 
    fd_submit_del(batch->submit);
    batch->submit = NULL;
-}
-
-static void
-batch_fini(struct fd_batch *batch)
-{
-   DBG("%p", batch);
-
-   pipe_resource_reference(&batch->query_buf, NULL);
-
-   if (batch->in_fence_fd != -1)
-      close(batch->in_fence_fd);
-
-   /* in case batch wasn't flushed but fence was created: */
-   if (batch->fence)
-      fd_pipe_fence_set_batch(batch->fence, NULL);
-
-   fd_pipe_fence_ref(&batch->fence, NULL);
-
-   cleanup_submit(batch);
-
-   util_dynarray_fini(&batch->draw_patches);
-   for (int i = 0; i < MAX_RENDER_TARGETS; i++)
-      util_dynarray_fini(&(batch->fb_read_patches));
-
-   if (is_a2xx(batch->ctx->screen)) {
-      util_dynarray_fini(&batch->shader_patches);
-      util_dynarray_fini(&batch->gmem_patches);
-   }
-
-   if (is_a3xx(batch->ctx->screen))
-      util_dynarray_fini(&batch->rbrc_patches);
-
-   while (batch->samples.size > 0) {
-      struct fd_hw_sample *samp =
-         util_dynarray_pop(&batch->samples, struct fd_hw_sample *);
-      fd_hw_sample_reference(batch->ctx, &samp, NULL);
-   }
-   util_dynarray_fini(&batch->samples);
-
-   u_trace_fini(&batch->trace);
 }
 
 static void
@@ -288,7 +230,39 @@ __fd_batch_destroy_locked(struct fd_batch *batch)
    assert(batch->dependents_mask == 0);
 
    util_copy_framebuffer_state(&batch->framebuffer, NULL);
-   batch_fini(batch);
+
+   pipe_resource_reference(&batch->query_buf, NULL);
+
+   if (batch->in_fence_fd != -1)
+      close(batch->in_fence_fd);
+
+   /* in case batch wasn't flushed but fence was created: */
+   if (batch->fence)
+      fd_pipe_fence_set_batch(batch->fence, NULL);
+
+   fd_pipe_fence_ref(&batch->fence, NULL);
+
+   cleanup_submit(batch);
+
+   util_dynarray_fini(&batch->draw_patches);
+   util_dynarray_fini(&(batch->fb_read_patches));
+
+   if (is_a2xx(batch->ctx->screen)) {
+      util_dynarray_fini(&batch->shader_patches);
+      util_dynarray_fini(&batch->gmem_patches);
+   }
+
+   if (is_a3xx(batch->ctx->screen))
+      util_dynarray_fini(&batch->rbrc_patches);
+
+   while (batch->samples.size > 0) {
+      struct fd_hw_sample *samp =
+         util_dynarray_pop(&batch->samples, struct fd_hw_sample *);
+      fd_hw_sample_reference(batch->ctx, &samp, NULL);
+   }
+   util_dynarray_fini(&batch->samples);
+
+   u_trace_fini(&batch->trace);
 
    free(batch->key);
    free(batch);
