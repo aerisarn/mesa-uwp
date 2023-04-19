@@ -137,6 +137,15 @@ enum pipe_h2645_enc_picture_type
    PIPE_H2645_ENC_PICTURE_TYPE_SKIP = 0x04
 };
 
+enum pipe_av1_enc_frame_type
+{
+   PIPE_AV1_ENC_FRAME_TYPE_KEY = 0x00,
+   PIPE_AV1_ENC_FRAME_TYPE_INTER = 0x01,
+   PIPE_AV1_ENC_FRAME_TYPE_INTRA_ONLY = 0x02,
+   PIPE_AV1_ENC_FRAME_TYPE_SWITCH = 0x03,
+   PIPE_AV1_ENC_FRAME_TYPE_SHOW_EXISTING = 0x04
+};
+
 enum pipe_h2645_enc_rate_control_method
 {
    PIPE_H2645_ENC_RATE_CONTROL_METHOD_DISABLE = 0x00,
@@ -666,6 +675,116 @@ struct pipe_h265_enc_picture_desc
 
    unsigned num_slice_descriptors;
    struct h265_slice_descriptor slices_descriptors[128];
+};
+
+struct pipe_av1_enc_rate_control
+{
+   enum pipe_h2645_enc_rate_control_method rate_ctrl_method;
+   unsigned target_bitrate;
+   unsigned peak_bitrate;
+   unsigned frame_rate_num;
+   unsigned frame_rate_den;
+   unsigned vbv_buffer_size;
+   unsigned vbv_buf_lv;
+   unsigned target_bits_picture;
+   unsigned peak_bits_picture_integer;
+   unsigned peak_bits_picture_fraction;
+   unsigned fill_data_enable;
+   unsigned skip_frame_enable;
+   unsigned enforce_hrd;
+   unsigned max_au_size;
+   unsigned qp;
+   unsigned max_qp;
+   unsigned min_qp;
+};
+
+struct pipe_av1_enc_decoder_model_info
+{
+   uint32_t buffer_delay_length_minus1;
+   uint32_t num_units_in_decoding_tick;
+   uint32_t buffer_removal_time_length_minus1;
+   uint32_t frame_presentation_time_length_minus1;
+};
+
+struct pipe_av1_enc_color_description
+{
+   uint32_t color_primaries;
+   uint32_t transfer_characteristics;
+   uint32_t matrix_coefficients;
+   uint32_t color_range;
+   uint32_t chroma_sample_position;
+};
+struct pipe_av1_enc_seq_param
+{
+   uint32_t profile;
+   uint32_t level;
+   uint32_t tier;
+   uint32_t num_temporal_layers;
+   uint32_t intra_period;
+   uint32_t bit_depth_minus8;
+   uint32_t pic_width_in_luma_samples;
+   uint32_t pic_height_in_luma_samples;
+   struct
+   {
+      uint32_t enable_cdef:1;
+      uint32_t enable_superres:1;
+      uint32_t enable_order_hint:1;
+      uint32_t color_description_present_flag:1;
+      uint32_t enable_ref_frame_mvs:1;
+      uint32_t frame_id_number_present_flag:1;
+      uint32_t disable_screen_content_tools:1;
+      uint32_t timing_info_present_flag:1;
+      uint32_t equal_picture_interval:1;
+      uint32_t decoder_model_info_present_flag:1;
+      uint32_t force_screen_content_tools:2;
+      uint32_t force_integer_mv:2;
+   } seq_bits;
+
+   /* timing info params */
+   uint32_t num_units_in_display_tick;
+   uint32_t time_scale;
+   uint32_t num_tick_per_picture_minus1;
+   uint32_t delta_frame_id_length;
+   uint32_t additional_frame_id_length;
+   uint32_t order_hint_bits;
+   struct pipe_av1_enc_decoder_model_info decoder_model_info;
+   struct pipe_av1_enc_color_description color_config;
+   uint16_t frame_width_bits_minus1;
+   uint16_t frame_height_bits_minus1;
+   uint16_t operating_point_idc[32];
+   uint8_t decoder_model_present_for_this_op[32];
+};
+
+struct pipe_av1_enc_picture_desc
+{
+   struct pipe_picture_desc base;
+   enum pipe_av1_enc_frame_type frame_type;
+   struct pipe_av1_enc_seq_param seq;
+   struct pipe_av1_enc_rate_control rc[4];
+   struct {
+      uint32_t enable_frame_obu:1;
+      uint32_t error_resilient_mode:1;
+      uint32_t disable_cdf_update:1;
+      uint32_t frame_size_override_flag:1;
+      uint32_t allow_screen_content_tools:1;
+      uint32_t force_integer_mv:1;
+      uint32_t disable_frame_end_update_cdf:1;
+      uint32_t palette_mode_enable:1;
+      uint32_t allow_high_precision_mv:1;
+      uint32_t use_ref_frame_mvs;
+      uint32_t show_existing_frame:1;
+      uint32_t enable_render_size:1;
+   };
+   struct pipe_enc_quality_modes quality_modes;
+   uint32_t num_tiles_in_pic; /* [1, 32], */
+   uint32_t frame_num;
+   uint32_t number_of_skips;
+   uint32_t temporal_id;
+   uint32_t spatial_id;
+   uint16_t frame_width;
+   uint16_t upscaled_width;
+   uint16_t render_width;
+   uint16_t render_height;
 };
 
 struct pipe_h265_sps
@@ -1374,6 +1493,150 @@ union pipe_h265_enc_cap_block_sizes {
       uint32_t config_supported                          : 1;
       } bits;
       uint32_t value;
+};
+
+union pipe_av1_enc_cap_features {
+    struct {
+        /**
+         * Use 128x128 superblock.
+         *
+         * Allows setting use_128x128_superblock in the SPS.
+         */
+        uint32_t support_128x128_superblock     : 2;
+        /**
+         * Intra  filter.
+         * Allows setting enable_filter_intra in the SPS.
+         */
+        uint32_t support_filter_intra           : 2;
+        /**
+         *  Intra edge filter.
+         * Allows setting enable_intra_edge_filter in the SPS.
+         */
+        uint32_t support_intra_edge_filter      : 2;
+        /**
+         *  Interintra compound.
+         * Allows setting enable_interintra_compound in the SPS.
+         */
+        uint32_t support_interintra_compound    : 2;
+        /**
+         *  Masked compound.
+         * Allows setting enable_masked_compound in the SPS.
+         */
+        uint32_t support_masked_compound        : 2;
+        /**
+         *  Warped motion.
+         * Allows setting enable_warped_motion in the SPS.
+         */
+        uint32_t support_warped_motion          : 2;
+        /**
+         *  Palette mode.
+         * Allows setting palette_mode in the PPS.
+         */
+        uint32_t support_palette_mode           : 2;
+        /**
+         *  Dual filter.
+         * Allows setting enable_dual_filter in the SPS.
+         */
+        uint32_t support_dual_filter            : 2;
+        /**
+         *  Jnt compound.
+         * Allows setting enable_jnt_comp in the SPS.
+         */
+        uint32_t support_jnt_comp               : 2;
+        /**
+         *  Refrence frame mvs.
+         * Allows setting enable_ref_frame_mvs in the SPS.
+         */
+        uint32_t support_ref_frame_mvs          : 2;
+        /**
+         *  Super resolution.
+         * Allows setting enable_superres in the SPS.
+         */
+        uint32_t support_superres               : 2;
+        /**
+         *  Restoration.
+         * Allows setting enable_restoration in the SPS.
+         */
+        uint32_t support_restoration            : 2;
+        /**
+         *  Allow intraBC.
+         * Allows setting allow_intrabc in the PPS.
+         */
+        uint32_t support_allow_intrabc          : 2;
+        /**
+         *  Cdef channel strength.
+         * Allows setting cdef_y_strengths and cdef_uv_strengths in PPS.
+         */
+        uint32_t support_cdef_channel_strength  : 2;
+        /** Reserved bits for future, must be zero. */
+        uint32_t reserved                       : 4;
+    } bits;
+    uint32_t value;
+};
+
+union pipe_av1_enc_cap_features_ext1 {
+    struct {
+        /**
+         * Fields indicate which types of interpolation filter are supported.
+         * (interpolation_filter & 0x01) == 1: eight_tap filter is supported, 0: not.
+         * (interpolation_filter & 0x02) == 1: eight_tap_smooth filter is supported, 0: not.
+         * (interpolation_filter & 0x04) == 1: eight_sharp filter is supported, 0: not.
+         * (interpolation_filter & 0x08) == 1: bilinear filter is supported, 0: not.
+         * (interpolation_filter & 0x10) == 1: switchable filter is supported, 0: not.
+         */
+        uint32_t interpolation_filter          : 5;
+        /**
+         * Min segmentId block size accepted.
+         * Application need to send seg_id_block_size in PPS equal or larger than this value.
+         */
+        uint32_t min_segid_block_size_accepted : 8;
+        /**
+         * Type of segment feature supported.
+         * (segment_feature_support & 0x01) == 1: SEG_LVL_ALT_Q is supported, 0: not.
+         * (segment_feature_support & 0x02) == 1: SEG_LVL_ALT_LF_Y_V is supported, 0: not.
+         * (segment_feature_support & 0x04) == 1: SEG_LVL_ALT_LF_Y_H is supported, 0: not.
+         * (segment_feature_support & 0x08) == 1: SEG_LVL_ALT_LF_U is supported, 0: not.
+         * (segment_feature_support & 0x10) == 1: SEG_LVL_ALT_LF_V is supported, 0: not.
+         * (segment_feature_support & 0x20) == 1: SEG_LVL_REF_FRAME is supported, 0: not.
+         * (segment_feature_support & 0x40) == 1: SEG_LVL_SKIP is supported, 0: not.
+         * (segment_feature_support & 0x80) == 1: SEG_LVL_GLOBALMV is supported, 0: not.
+         */
+        uint32_t segment_feature_support       : 8;
+        /** Reserved bits for future, must be zero. */
+        uint32_t reserved                      : 11;
+    } bits;
+    uint32_t value;
+};
+
+union pipe_av1_enc_cap_features_ext2 {
+    struct {
+        /**
+        * Tile size bytes minus1.
+        * Specify the number of bytes needed to code tile size supported.
+        * This value need to be set in frame header obu.
+        */
+        uint32_t tile_size_bytes_minus1        : 2;
+        /**
+        * Tile size bytes minus1.
+        * Specify the fixed number of bytes needed to code syntax obu_size.
+        */
+        uint32_t obu_size_bytes_minus1         : 2;
+        /**
+         * tx_mode supported.
+         * (tx_mode_support & 0x01) == 1: ONLY_4X4 is supported, 0: not.
+         * (tx_mode_support & 0x02) == 1: TX_MODE_LARGEST is supported, 0: not.
+         * (tx_mode_support & 0x04) == 1: TX_MODE_SELECT is supported, 0: not.
+         */
+        uint32_t tx_mode_support               : 3;
+        /**
+         * Max tile num minus1.
+         * Specify the max number of tile supported by driver.
+         */
+        uint32_t max_tile_num_minus1           : 13;
+        /** Reserved bits for future, must be zero. */
+        uint32_t reserved                      : 12;
+    } bits;
+    uint32_t value;
 };
 
 #ifdef __cplusplus
