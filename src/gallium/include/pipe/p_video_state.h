@@ -127,6 +127,14 @@ enum pipe_h265_slice_type
    PIPE_H265_SLICE_TYPE_I = 0x2,
 };
 
+/* To be used on each encoding feature bit field */
+enum pipe_enc_feature
+{
+   PIPE_ENC_FEATURE_NOT_SUPPORTED = 0x0,
+   PIPE_ENC_FEATURE_SUPPORTED = 0x1,
+   PIPE_ENC_FEATURE_REQUIRED = 0x2,
+};
+
 /* Same enum for h264/h265 */
 enum pipe_h2645_enc_picture_type
 {
@@ -1292,16 +1300,6 @@ enum pipe_h265_enc_pred_direction
    PIPE_H265_PRED_DIRECTION_FUTURE = 0x2,
    /* Low delay B frames */
    PIPE_H265_PRED_DIRECTION_BI_NOT_EMPTY = 0x4,
-};
-
-/* To be used on each h265 feature bit field
-   defined in pipe_h265_enc_cap_features
-*/
-enum pipe_h265_enc_feature
-{
-   PIPE_H265_ENC_FEATURE_NOT_SUPPORTED = 0x0,
-   PIPE_H265_ENC_FEATURE_SUPPORTED = 0x1,
-   PIPE_H265_ENC_FEATURE_REQUIRED = 0x2,
 };
 
 /* To be used with PIPE_VIDEO_CAP_ENC_HEVC_FEATURE_FLAGS

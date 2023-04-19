@@ -652,13 +652,13 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
             union pipe_h265_enc_cap_features pipe_features;
             pipe_features.value = 0;
 
-            pipe_features.bits.amp = PIPE_H265_ENC_FEATURE_SUPPORTED;
-            pipe_features.bits.strong_intra_smoothing = PIPE_H265_ENC_FEATURE_SUPPORTED;
-            pipe_features.bits.constrained_intra_pred = PIPE_H265_ENC_FEATURE_SUPPORTED;
+            pipe_features.bits.amp = PIPE_ENC_FEATURE_SUPPORTED;
+            pipe_features.bits.strong_intra_smoothing = PIPE_ENC_FEATURE_SUPPORTED;
+            pipe_features.bits.constrained_intra_pred = PIPE_ENC_FEATURE_SUPPORTED;
             pipe_features.bits.deblocking_filter_disable
-                                                      = PIPE_H265_ENC_FEATURE_SUPPORTED;
+                                                      = PIPE_ENC_FEATURE_SUPPORTED;
             if (sscreen->info.family >= CHIP_RENOIR)
-               pipe_features.bits.sao = PIPE_H265_ENC_FEATURE_SUPPORTED;
+               pipe_features.bits.sao = PIPE_ENC_FEATURE_SUPPORTED;
 
             return pipe_features.value;
          } else
