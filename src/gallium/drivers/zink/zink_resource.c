@@ -2251,7 +2251,7 @@ zink_resource_copy_box_intersects(struct zink_resource *res, unsigned level, con
 
 /* track a new region for TRANSFER_DST barrier emission */
 void
-zink_resource_copy_box_add(struct zink_resource *res, unsigned level, const struct pipe_box *box)
+zink_resource_copy_box_add(struct zink_context *ctx, struct zink_resource *res, unsigned level, const struct pipe_box *box)
 {
    if (res->obj->copies_valid) {
       struct pipe_box *b = res->obj->copies[level].data;
@@ -2408,7 +2408,7 @@ zink_resource_copy_box_add(struct zink_resource *res, unsigned level, const stru
    }
    util_dynarray_append(&res->obj->copies[level], struct pipe_box, *box);
    if (!res->copies_warned && util_dynarray_num_elements(&res->obj->copies[level], struct pipe_box) > 100) {
-      mesa_logw("zink: PERF WARNING! > 100 copy boxes detected for %p\n", res);
+      perf_debug(ctx, "zink: PERF WARNING! > 100 copy boxes detected for %p\n", res);
       res->copies_warned = true;
    }
    res->obj->copies_valid = true;

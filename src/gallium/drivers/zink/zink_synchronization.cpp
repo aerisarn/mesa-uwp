@@ -427,7 +427,7 @@ zink_resource_image_transfer_dst_barrier(struct zink_context *ctx, struct zink_r
       res->obj->last_write = VK_ACCESS_TRANSFER_WRITE_BIT;
       res->obj->access_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
    }
-   zink_resource_copy_box_add(res, level, box);
+   zink_resource_copy_box_add(ctx, res, level, box);
 }
 
 bool
@@ -457,7 +457,7 @@ zink_resource_buffer_transfer_dst_barrier(struct zink_context *ctx, struct zink_
          res->obj->ordered_access_is_copied = true;
       }
    }
-   zink_resource_copy_box_add(res, 0, &box);
+   zink_resource_copy_box_add(ctx, res, 0, &box);
    /* this return value implies that the caller could do an unordered op on this resource */
    return unordered;
 }

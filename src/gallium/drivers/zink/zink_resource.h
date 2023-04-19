@@ -96,7 +96,7 @@ zink_is_swapchain(const struct zink_resource *res)
 bool
 zink_resource_copy_box_intersects(struct zink_resource *res, unsigned level, const struct pipe_box *box);
 void
-zink_resource_copy_box_add(struct zink_resource *res, unsigned level, const struct pipe_box *box);
+zink_resource_copy_box_add(struct zink_context *ctx, struct zink_resource *res, unsigned level, const struct pipe_box *box);
 void
 zink_resource_copies_reset(struct zink_resource *res);
 
