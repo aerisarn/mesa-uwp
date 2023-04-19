@@ -1666,6 +1666,7 @@ struct zink_context {
    struct slab_child_pool transfer_pool;
    struct slab_child_pool transfer_pool_unsync;
    struct blitter_context *blitter;
+   struct util_debug_callback dbg;
 
    unsigned flags;
 

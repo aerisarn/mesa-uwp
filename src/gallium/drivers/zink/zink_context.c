@@ -284,6 +284,17 @@ zink_set_context_param(struct pipe_context *pctx, enum pipe_context_param param,
    }
 }
 
+static void
+zink_set_debug_callback(struct pipe_context *pctx, const struct util_debug_callback *cb)
+{
+   struct zink_context *ctx = zink_context(pctx);
+
+   if (cb)
+      ctx->dbg = *cb;
+   else
+      memset(&ctx->dbg, 0, sizeof(ctx->dbg));
+}
+
 static VkSamplerMipmapMode
 sampler_mipmap_mode(enum pipe_tex_mipfilter filter)
 {
