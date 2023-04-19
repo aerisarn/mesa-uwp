@@ -339,6 +339,15 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
    assert(options);
    nir_shader *nir = prog->nir;
 
+   if (prog->info.stage == MESA_SHADER_FRAGMENT &&
+       st->screen->get_param(st->screen, PIPE_CAP_FBFETCH)) {
+      nir_shader_gather_info(prog->nir, nir_shader_get_entrypoint(prog->nir));
+      NIR_PASS_V(prog->nir, gl_nir_lower_blend_equation_advanced,
+                 st->ctx->Extensions.KHR_blend_equation_advanced_coherent);
+      nir_lower_global_vars_to_local(prog->nir);
+      NIR_PASS_V(prog->nir, nir_opt_combine_stores, nir_var_shader_out);
+   }
+
    /* Set the next shader stage hint for VS and TES. */
    if (!nir->info.separate_shader &&
        (nir->info.stage == MESA_SHADER_VERTEX ||
