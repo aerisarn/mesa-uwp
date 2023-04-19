@@ -3260,6 +3260,39 @@ cmd_buffer_emit_streamout(struct anv_cmd_buffer *cmd_buffer)
       .RenderStreamSelect = dyn->rs.rasterization_stream,
    };
 
+#if INTEL_NEEDS_WA_14017076903
+   /* Wa_14017076903 :
+    *
+    * SKL PRMs, Volume 7: 3D-Media-GPGPU, Stream Output Logic (SOL) Stage:
+    *
+    * SOL_INT::Render_Enable =
+    *   (3DSTATE_STREAMOUT::Force_Rending == Force_On) ||
+    *   (
+    *     (3DSTATE_STREAMOUT::Force_Rending != Force_Off) &&
+    *     !(3DSTATE_GS::Enable && 3DSTATE_GS::Output Vertex Size == 0) &&
+    *     !3DSTATE_STREAMOUT::API_Render_Disable &&
+    *     (
+    *       3DSTATE_DEPTH_STENCIL_STATE::Stencil_TestEnable ||
+    *       3DSTATE_DEPTH_STENCIL_STATE::Depth_TestEnable ||
+    *       3DSTATE_DEPTH_STENCIL_STATE::Depth_WriteEnable ||
+    *       3DSTATE_PS_EXTRA::PS_Valid ||
+    *       3DSTATE_WM::Legacy Depth_Buffer_Clear ||
+    *       3DSTATE_WM::Legacy Depth_Buffer_Resolve_Enable ||
+    *       3DSTATE_WM::Legacy Hierarchical_Depth_Buffer_Resolve_Enable
+    *     )
+    *   )
+    *
+    * If SOL_INT::Render_Enable is false, the SO stage will not forward any
+    * topologies down the pipeline. Which is not what we want for occlusion
+    * queries.
+    *
+    * Here we force rendering to get SOL_INT::Render_Enable when occlusion
+    * queries are active.
+    */
+   if (!so.RenderingDisable && cmd_buffer->state.gfx.n_occlusion_queries > 0)
+      so.ForceRendering = Force_on;
+#endif
+
    switch (dyn->rs.provoking_vertex) {
    case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
       so.ReorderMode = LEADING;
@@ -3722,6 +3755,9 @@ genX(BeginCommandBuffer)(
        */
       cmd_buffer->state.conditional_render_enabled =
          conditional_rendering_info && conditional_rendering_info->conditionalRenderingEnable;
+
+      if (pBeginInfo->pInheritanceInfo->occlusionQueryEnable)
+         cmd_buffer->state.gfx.n_occlusion_queries = 1;
    }
 
    return VK_SUCCESS;
