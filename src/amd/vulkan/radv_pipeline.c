@@ -1099,7 +1099,7 @@ radv_copy_shader_stage_create_info(struct radv_device *device, uint32_t stageCou
          vk_object_base_init(&device->vk, &new_module->base, VK_OBJECT_TYPE_SHADER_MODULE);
 
          new_module->nir = NULL;
-         memcpy(new_module->sha1, module->sha1, sizeof(module->sha1));
+         memcpy(new_module->hash, module->hash, sizeof(module->hash));
          new_module->size = module->size;
          memcpy(new_module->data, module->data, module->size);
 
