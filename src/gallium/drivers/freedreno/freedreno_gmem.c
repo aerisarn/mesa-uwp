@@ -672,7 +672,11 @@ render_sysmem(struct fd_batch *batch) assert_dt
       trace_start_draw_ib(&batch->trace, batch->gmem);
    }
    /* emit IB to drawcmds: */
-   ctx->screen->emit_ib(batch->gmem, batch->draw);
+   if (ctx->emit_sysmem) {
+      ctx->emit_sysmem(batch);
+   } else {
+      ctx->screen->emit_ib(batch->gmem, batch->draw);
+   }
 
    if (!batch->nondraw) {
       trace_end_draw_ib(&batch->trace, batch->gmem);

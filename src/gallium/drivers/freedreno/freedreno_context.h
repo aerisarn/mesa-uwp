@@ -559,6 +559,7 @@ struct fd_context {
 
    /* optional, for GMEM bypass: */
    void (*emit_sysmem_prep)(struct fd_batch *batch) dt;
+   void (*emit_sysmem)(struct fd_batch *batch) dt;
    void (*emit_sysmem_fini)(struct fd_batch *batch) dt;
 
    /* draw: */

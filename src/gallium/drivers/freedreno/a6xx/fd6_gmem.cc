@@ -1630,7 +1630,6 @@ static void
 fd6_emit_sysmem_prep(struct fd_batch *batch) assert_dt
 {
    struct fd_ringbuffer *ring = batch->gmem;
-   struct fd_screen *screen = batch->ctx->screen;
 
    fd6_emit_restore<CHIP>(batch, ring);
    fd6_emit_lrz_flush(ring);
@@ -1663,8 +1662,6 @@ fd6_emit_sysmem_prep(struct fd_batch *batch) assert_dt
          .buffers_location = BUFFERS_IN_SYSMEM,
    });
 
-   emit_sysmem_clears<CHIP>(batch, ring);
-
    emit_marker6(ring, 7);
    OUT_PKT7(ring, CP_SET_MARKER, 1);
    OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BYPASS));
@@ -1677,12 +1674,6 @@ fd6_emit_sysmem_prep(struct fd_batch *batch) assert_dt
    OUT_PKT7(ring, CP_SKIP_IB2_ENABLE_LOCAL, 1);
    OUT_RING(ring, 0x1);
 
-   fd6_event_write(batch, ring, PC_CCU_INVALIDATE_COLOR, false);
-   fd6_cache_inv(batch, ring);
-
-   fd_wfi(batch, ring);
-   fd6_emit_ccu_cntl(ring, screen, false);
-
    /* enable stream-out, with sysmem there is only one pass: */
    OUT_REG(ring, A6XX_VPC_SO_DISABLE(false));
 
@@ -1694,9 +1685,29 @@ fd6_emit_sysmem_prep(struct fd_batch *batch) assert_dt
    emit_msaa(ring, pfb->samples);
    patch_fb_read_sysmem(batch);
 
+   emit_common_init(batch);
+}
+
+template <chip CHIP>
+static void
+fd6_emit_sysmem(struct fd_batch *batch)
+   assert_dt
+{
+   struct fd_ringbuffer *ring = batch->gmem;
+   struct fd_screen *screen = batch->ctx->screen;
+
+   emit_sysmem_clears<CHIP>(batch, ring);
+
+   fd6_event_write(batch, ring, PC_CCU_INVALIDATE_COLOR, false);
+   fd6_cache_inv(batch, ring);
+
+   fd_wfi(batch, ring);
+   fd6_emit_ccu_cntl(ring, screen, false);
+
+   struct pipe_framebuffer_state *pfb = &batch->framebuffer;
    update_render_cntl<CHIP>(batch, pfb, false);
 
-   emit_common_init(batch);
+   fd6_emit_ib(ring, batch->draw);
 }
 
 static void
@@ -1737,6 +1748,7 @@ fd6_gmem_init(struct pipe_context *pctx)
    ctx->emit_tile_gmem2mem = fd6_emit_tile_gmem2mem;
    ctx->emit_tile_fini = fd6_emit_tile_fini;
    ctx->emit_sysmem_prep = fd6_emit_sysmem_prep<CHIP>;
+   ctx->emit_sysmem = fd6_emit_sysmem<CHIP>;
    ctx->emit_sysmem_fini = fd6_emit_sysmem_fini;
 }
 
