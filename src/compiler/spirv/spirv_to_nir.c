@@ -6911,6 +6911,10 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
       return NULL;
    }
 
+   const char *dump_path = getenv("MESA_SPIRV_DUMP_PATH");
+   if (dump_path)
+      vtn_dump_shader(b, dump_path, "spirv");
+
    b->shader = nir_shader_create(b, stage, nir_options, NULL);
    b->shader->info.subgroup_size = options->subgroup_size;
    b->shader->info.float_controls_execution_mode = options->float_controls_execution_mode;
