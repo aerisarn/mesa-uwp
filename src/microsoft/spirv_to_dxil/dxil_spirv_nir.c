@@ -946,6 +946,9 @@ dxil_spirv_nir_passes(nir_shader *nir,
       .lower_to_scalar = true,
       .lower_relative_shuffle = true,
    };
+   if (nir->info.stage != MESA_SHADER_FRAGMENT &&
+       nir->info.stage != MESA_SHADER_COMPUTE)
+      subgroup_options.lower_quad = true;
    NIR_PASS_V(nir, nir_lower_subgroups, &subgroup_options);
    NIR_PASS_V(nir, nir_lower_bit_size, lower_bit_size_callback, NULL);
 
