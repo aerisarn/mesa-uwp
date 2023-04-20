@@ -395,6 +395,9 @@ dzn_cmd_buffer_destroy(struct vk_command_buffer *cbuf)
    if (cmdbuf->cmdlist8)
       ID3D12GraphicsCommandList8_Release(cmdbuf->cmdlist8);
 
+   if (cmdbuf->cmdlist9)
+      ID3D12GraphicsCommandList9_Release(cmdbuf->cmdlist9);
+
    if (cmdbuf->cmdalloc)
       ID3D12CommandAllocator_Release(cmdbuf->cmdalloc);
 
@@ -660,6 +663,7 @@ dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
    }
 
    (void)ID3D12GraphicsCommandList_QueryInterface(cmdbuf->cmdlist, &IID_ID3D12GraphicsCommandList8, (void **)&cmdbuf->cmdlist8);
+   (void)ID3D12GraphicsCommandList_QueryInterface(cmdbuf->cmdlist, &IID_ID3D12GraphicsCommandList9, (void **)&cmdbuf->cmdlist9);
 
    cmdbuf->type = type;
    cmdbuf->valid_sync = cmd_buffer_valid_sync[type];
@@ -3470,6 +3474,18 @@ dzn_cmd_buffer_update_depth_bounds(struct dzn_cmd_buffer *cmdbuf)
    }
 }
 
+static void
+dzn_cmd_buffer_update_depth_bias(struct dzn_cmd_buffer *cmdbuf)
+{
+   if (cmdbuf->state.dirty & DZN_CMD_DIRTY_DEPTH_BIAS) {
+      assert(cmdbuf->cmdlist9);
+      ID3D12GraphicsCommandList9_RSSetDepthBias(cmdbuf->cmdlist9,
+                                                cmdbuf->state.pipeline_variant.depth_bias.constant_factor,
+                                                cmdbuf->state.pipeline_variant.depth_bias.clamp,
+                                                cmdbuf->state.pipeline_variant.depth_bias.slope_factor);
+   }
+}
+
 static VkResult
 dzn_cmd_buffer_triangle_fan_create_index(struct dzn_cmd_buffer *cmdbuf, uint32_t *vertex_count)
 {
@@ -3620,6 +3636,7 @@ dzn_cmd_buffer_prepare_draw(struct dzn_cmd_buffer *cmdbuf, bool indexed)
    dzn_cmd_buffer_update_zsa(cmdbuf);
    dzn_cmd_buffer_update_blend_constants(cmdbuf);
    dzn_cmd_buffer_update_depth_bounds(cmdbuf);
+   dzn_cmd_buffer_update_depth_bias(cmdbuf);
 
    /* Reset the dirty states */
    cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty &= DZN_CMD_BINDPOINT_DIRTY_HEAPS;
@@ -5666,11 +5683,15 @@ dzn_CmdSetDepthBias(VkCommandBuffer commandBuffer,
                     float depthBiasSlopeFactor)
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
+   struct dzn_physical_device *pdev = container_of(cmdbuf->vk.base.device->physical, struct dzn_physical_device, vk);
 
    cmdbuf->state.pipeline_variant.depth_bias.constant_factor = depthBiasConstantFactor;
    cmdbuf->state.pipeline_variant.depth_bias.clamp = depthBiasClamp;
    cmdbuf->state.pipeline_variant.depth_bias.slope_factor = depthBiasSlopeFactor;
-   cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty |= DZN_CMD_BINDPOINT_DIRTY_PIPELINE;
+   if (pdev->options16.DynamicDepthBiasSupported)
+      cmdbuf->state.dirty |= DZN_CMD_DIRTY_DEPTH_BIAS;
+   else
+      cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].dirty |= DZN_CMD_BINDPOINT_DIRTY_PIPELINE;
 }
 
 VKAPI_ATTR void VKAPI_CALL

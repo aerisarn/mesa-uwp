@@ -51,16 +51,19 @@
       __wrapper = (void *)((uint8_t *)(__stream)->pPipelineStateSubobjectStream + (__stream)->SizeInBytes); \
       (__stream)->SizeInBytes += sizeof(*__wrapper); \
       assert((__stream)->SizeInBytes <= __maxstreamsz); \
-      __wrapper->type = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ ## __id; \
+      __wrapper->type = __id; \
       __desc = &__wrapper->desc; \
       memset(__desc, 0, sizeof(*__desc)); \
    } while (0)
 
+#define d3d12_pipeline_state_stream_new_desc_abbrev(__stream, __maxstreamsz, __id, __type, __desc) \
+   d3d12_pipeline_state_stream_new_desc(__stream, __maxstreamsz, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ ## __id, __type, __desc)
+
 #define d3d12_gfx_pipeline_state_stream_new_desc(__stream, __id, __type, __desc) \
-   d3d12_pipeline_state_stream_new_desc(__stream, MAX_GFX_PIPELINE_STATE_STREAM_SIZE, __id, __type, __desc)
+   d3d12_pipeline_state_stream_new_desc_abbrev(__stream, MAX_GFX_PIPELINE_STATE_STREAM_SIZE, __id, __type, __desc)
 
 #define d3d12_compute_pipeline_state_stream_new_desc(__stream, __id, __type, __desc) \
-   d3d12_pipeline_state_stream_new_desc(__stream, MAX_COMPUTE_PIPELINE_STATE_STREAM_SIZE, __id, __type, __desc)
+   d3d12_pipeline_state_stream_new_desc_abbrev(__stream, MAX_COMPUTE_PIPELINE_STATE_STREAM_SIZE, __id, __type, __desc)
 
 static bool
 gfx_pipeline_variant_key_equal(const void *a, const void *b)
@@ -1282,10 +1285,12 @@ translate_depth_bias(double depth_bias)
 }
 
 static void
-dzn_graphics_pipeline_translate_rast(struct dzn_graphics_pipeline *pipeline,
+dzn_graphics_pipeline_translate_rast(struct dzn_device *device,
+                                     struct dzn_graphics_pipeline *pipeline,
                                      D3D12_PIPELINE_STATE_STREAM_DESC *out,
                                      const VkGraphicsPipelineCreateInfo *in)
 {
+   struct dzn_physical_device *pdev = container_of(device->vk.physical, struct dzn_physical_device, vk);
    const VkPipelineRasterizationStateCreateInfo *in_rast =
       in->pRasterizationState;
    const VkPipelineViewportStateCreateInfo *in_vp =
@@ -1307,7 +1312,11 @@ dzn_graphics_pipeline_translate_rast(struct dzn_graphics_pipeline *pipeline,
       }
    }
 
-   d3d12_gfx_pipeline_state_stream_new_desc(out, RASTERIZER, D3D12_RASTERIZER_DESC, desc);
+   static_assert(sizeof(D3D12_RASTERIZER_DESC) == sizeof(D3D12_RASTERIZER_DESC1), "Casting between these");
+   D3D12_PIPELINE_STATE_SUBOBJECT_TYPE rast_type = pdev->options16.DynamicDepthBiasSupported ?
+      D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER1 :
+      D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER;
+   d3d12_pipeline_state_stream_new_desc(out, MAX_GFX_PIPELINE_STATE_STREAM_SIZE, rast_type, D3D12_RASTERIZER_DESC, desc);
    pipeline->templates.desc_offsets.rast =
       (uintptr_t)desc - (uintptr_t)out->pPipelineStateSubobjectStream;
    desc->DepthClipEnable = !in_rast->depthClampEnable;
@@ -1316,7 +1325,10 @@ dzn_graphics_pipeline_translate_rast(struct dzn_graphics_pipeline *pipeline,
    desc->FrontCounterClockwise =
       in_rast->frontFace == VK_FRONT_FACE_COUNTER_CLOCKWISE;
    if (in_rast->depthBiasEnable) {
-      desc->DepthBias = translate_depth_bias(in_rast->depthBiasConstantFactor);
+      if (rast_type == D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER1)
+         ((D3D12_RASTERIZER_DESC1 *)desc)->DepthBias = in_rast->depthBiasConstantFactor;
+      else
+         desc->DepthBias = translate_depth_bias(in_rast->depthBiasConstantFactor);
       desc->SlopeScaledDepthBias = in_rast->depthBiasSlopeFactor;
       desc->DepthBiasClamp = in_rast->depthBiasClamp;
    }
@@ -1710,8 +1722,8 @@ dzn_pipeline_init(struct dzn_pipeline *pipeline,
       MAX_GFX_PIPELINE_STATE_STREAM_SIZE :
       MAX_COMPUTE_PIPELINE_STATE_STREAM_SIZE;
 
-   d3d12_pipeline_state_stream_new_desc(stream_desc, max_streamsz, ROOT_SIGNATURE,
-                                        ID3D12RootSignature *, root_sig);
+   d3d12_pipeline_state_stream_new_desc_abbrev(stream_desc, max_streamsz, ROOT_SIGNATURE,
+                                               ID3D12RootSignature *, root_sig);
    *root_sig = pipeline->root.sig;
 }
 
@@ -1817,6 +1829,9 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
    if (ret != VK_SUCCESS)
       goto out;
 
+   d3d12_gfx_pipeline_state_stream_new_desc(stream_desc, FLAGS, D3D12_PIPELINE_STATE_FLAGS, flags);
+   *flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+
    if (pCreateInfo->pDynamicState) {
       for (uint32_t i = 0; i < pCreateInfo->pDynamicState->dynamicStateCount; i++) {
          switch (pCreateInfo->pDynamicState->pDynamicStates[i]) {
@@ -1848,10 +1863,14 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
             pipeline->zsa.depth_bounds.dynamic = true;
             break;
          case VK_DYNAMIC_STATE_DEPTH_BIAS:
-            pipeline->zsa.dynamic_depth_bias = true;
-            ret = dzn_graphics_pipeline_prepare_for_variants(device, pipeline);
-            if (ret)
-               goto out;
+            if (pdev->options16.DynamicDepthBiasSupported) {
+               *flags |= D3D12_PIPELINE_STATE_FLAG_DYNAMIC_DEPTH_BIAS;
+            } else {
+               pipeline->zsa.dynamic_depth_bias = true;
+               ret = dzn_graphics_pipeline_prepare_for_variants(device, pipeline);
+               if (ret)
+                  goto out;
+            }
             break;
          case VK_DYNAMIC_STATE_LINE_WIDTH:
             /* Nothing to do since we just support lineWidth = 1. */
@@ -1865,7 +1884,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
    if (ret)
       goto out;
 
-   dzn_graphics_pipeline_translate_rast(pipeline, stream_desc, pCreateInfo);
+   dzn_graphics_pipeline_translate_rast(device, pipeline, stream_desc, pCreateInfo);
    dzn_graphics_pipeline_translate_ms(pipeline, stream_desc, pCreateInfo);
    dzn_graphics_pipeline_translate_zsa(device, pipeline, stream_desc, pCreateInfo);
    dzn_graphics_pipeline_translate_blend(pipeline, stream_desc, pCreateInfo);
@@ -2138,6 +2157,7 @@ dzn_graphics_pipeline_get_state(struct dzn_graphics_pipeline *pipeline,
       D3D12_RASTERIZER_DESC *rast =
          dzn_graphics_pipeline_get_desc(pipeline, stream_buf, rast);
       if (rast && pipeline->zsa.dynamic_depth_bias) {
+         assert(!pdev->options16.DynamicDepthBiasSupported);
          rast->DepthBias = translate_depth_bias(masked_key.depth_bias.constant_factor);
          rast->DepthBiasClamp = masked_key.depth_bias.clamp;
          rast->SlopeScaledDepthBias = masked_key.depth_bias.slope_factor;
