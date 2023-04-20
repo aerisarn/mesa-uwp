@@ -125,7 +125,6 @@ spec@!opengl 3.1@minmax,Fail
 spec@!opengl 3.1@primitive-restart-xfb flush,Fail
 spec@!opengl 3.1@primitive-restart-xfb generated,Fail
 spec@!opengl 3.1@required-texture-attachment-formats,Fail
-spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail
 spec@arb_color_buffer_float@gl_rgba32f-render,Fail
 spec@arb_color_buffer_float@gl_rgba32f-render-fog,Fail
 spec@arb_color_buffer_float@gl_rgba32f-render-sanity,Fail
@@ -505,6 +504,9 @@ spec@nv_read_depth@read_depth_gles3,Fail
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Crash
 spec@oes_point_sprite@arb_point_sprite-checkerboard_gles1,Fail
 spec@oes_shader_io_blocks@compiler@layout-location-aliasing.vert,Fail
+
+# https://gitlab.freedesktop.org/mesa/piglit/-/merge_requests/800
+spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail
 
 # Precission differences between expected and obtained; works if
 # exporting V3D_DEBUG=tmu32.
