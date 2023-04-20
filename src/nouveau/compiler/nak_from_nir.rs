@@ -935,8 +935,11 @@ impl<'a> ShaderFromNir<'a> {
         self.instrs.push(Instr::new(Op::ParCopy(pcopy)));
     }
 
-    fn parse_undef(&mut self, _ssa_undef: &nir_undef_instr) {
-        panic!("SSA undef not implemented yet");
+    fn parse_undef(&mut self, undef: &nir_undef_instr) {
+        let vec: Vec<_> = self.get_ssa(&undef.def).into();
+        for ssa in vec {
+            self.instrs.push(Instr::new(OpUndef { dst: ssa.into() }));
+        }
     }
 
     fn parse_block(&mut self, nb: &nir_block) {

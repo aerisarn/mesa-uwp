@@ -1986,6 +1986,18 @@ impl fmt::Display for OpS2R {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpUndef {
+    pub dst: Dst,
+}
+
+impl fmt::Display for OpUndef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "UNDEF {}", self.dst)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpFMov {
     pub dst: Dst,
     pub src: Src,
@@ -2288,6 +2300,7 @@ pub enum Op {
     Bra(OpBra),
     Exit(OpExit),
     S2R(OpS2R),
+    Undef(OpUndef),
     FMov(OpFMov),
     DMov(OpDMov),
     IMov(OpIMov),
@@ -2735,7 +2748,8 @@ impl Instr {
             Op::Ld(_) => None,
             Op::St(_) => None,
             Op::Bra(_) | Op::Exit(_) => Some(15),
-            Op::FMov(_)
+            Op::Undef(_)
+            | Op::FMov(_)
             | Op::DMov(_)
             | Op::IMov(_)
             | Op::PhiSrcs(_)

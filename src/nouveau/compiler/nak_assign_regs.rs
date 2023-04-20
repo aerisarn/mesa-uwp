@@ -809,6 +809,14 @@ impl AssignRegsBlock {
         pcopy: &mut OpParCopy,
     ) -> Option<Instr> {
         match &instr.op {
+            Op::Undef(undef) => {
+                if let Dst::SSA(ssa) = undef.dst {
+                    assert!(ssa.comps() == 1);
+                    let ra = self.ra.file_mut(ssa.file());
+                    ra.alloc_scalar(ip, sum, ssa[0]);
+                }
+                None
+            }
             Op::PhiSrcs(phi) => {
                 for (id, src) in phi.iter() {
                     assert!(src.src_mod.is_none());
