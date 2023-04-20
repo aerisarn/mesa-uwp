@@ -2,6 +2,9 @@
 # shellcheck disable=SC1091 # The relative paths in this file only become valid at runtime.
 # shellcheck disable=SC2034 # Variables are used in scripts called from here
 # shellcheck disable=SC2086 # we want word splitting
+# When changing this file, you need to bump the following
+# .gitlab-ci/image-tags.yml tags:
+# KERNEL_ROOTFS_TAG
 
 set -e
 set -o xtrace
@@ -257,6 +260,18 @@ chroot $ROOTFS sh /create-rootfs.sh
 rm $ROOTFS/{llvm-snapshot,winehq}.gpg.key
 rm $ROOTFS/create-rootfs.sh
 cp /etc/wgetrc $ROOTFS/etc/.
+
+############### Inject missing firmwares from Debian 11
+if [[ "$DEBIAN_ARCH" == "arm64" ]]; then
+  # This A660 firmware is included from Debian 12 (bookworm) up
+  mkdir -p /lava-files/rootfs-arm64/lib/firmware/qcom/sm8350/  # for firmware imported later
+  curl -L --retry 4 -f --retry-all-errors --retry-delay 60 \
+    "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/qcom/a660_gmu.bin?id=8451c2b1d529dc1a49328ac9235d3cf5bb8a8fcb" \
+    -o /lava-files/rootfs-arm64/lib/firmware/qcom/a660_gmu.bin
+  curl -L --retry 4 -f --retry-all-errors --retry-delay 60 \
+    "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/qcom/a660_sqe.fw?id=8451c2b1d529dc1a49328ac9235d3cf5bb8a8fcb" \
+    -o /lava-files/rootfs-arm64/lib/firmware/qcom/a660_sqe.fw
+fi
 
 
 ############### Install the built libdrm
