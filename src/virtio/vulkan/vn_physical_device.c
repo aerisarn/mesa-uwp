@@ -766,8 +766,20 @@ vn_physical_device_init_queue_family_properties(
    vn_call_vkGetPhysicalDeviceQueueFamilyProperties2(
       instance, vn_physical_device_to_handle(physical_dev), &count, props);
 
+   /* Filter out queue families that exclusively support sparse binding as
+    * we need additional support for submitting feedback commands
+    */
+   uint32_t non_sparse_only_count = 0;
+   for (uint32_t i = 0; i < count; i++) {
+      if (props[i].queueFamilyProperties.queueFlags &
+          ~VK_QUEUE_SPARSE_BINDING_BIT) {
+         props[non_sparse_only_count++].queueFamilyProperties =
+            props[i].queueFamilyProperties;
+      }
+   }
+
    physical_dev->queue_family_properties = props;
-   physical_dev->queue_family_count = count;
+   physical_dev->queue_family_count = non_sparse_only_count;
 
    return VK_SUCCESS;
 }
