@@ -46,6 +46,42 @@ impl BitSet {
         }
     }
 
+    pub fn next_set(&self, start: usize) -> Option<usize> {
+        if start >= self.words.len() * 32 {
+            return None;
+        }
+
+        let mut w = start / 32;
+        let mut mask = u32::MAX << (start % 32);
+        while w < self.words.len() {
+            let b = (self.words[w] & mask).trailing_zeros();
+            if b < 32 {
+                return Some(w * 32 + usize::try_from(b).unwrap());
+            }
+            mask = 0;
+            w += 1;
+        }
+        None
+    }
+
+    pub fn next_unset(&self, start: usize) -> usize {
+        if start >= self.words.len() * 32 {
+            return start;
+        }
+
+        let mut w = start / 32;
+        let mut mask = !(u32::MAX << (start % 32));
+        while w < self.words.len() {
+            let b = (self.words[w] | mask).trailing_ones();
+            if b < 32 {
+                return w * 32 + usize::try_from(b).unwrap();
+            }
+            mask = 0;
+            w += 1;
+        }
+        self.words.len() * 32
+    }
+
     pub fn insert(&mut self, idx: usize) -> bool {
         let w = idx / 32;
         let b = idx % 32;

@@ -306,51 +306,36 @@ impl RegFileAllocation {
         let comps_mask = u32::MAX >> (32 - comps);
         let align = comps.next_power_of_two();
 
-        let start_word = usize::from(start_reg / 32);
-        for w in start_word..self.used.words().len() {
-            let word = self.used.words()[w];
+        let mut next_reg = start_reg;
+        loop {
+            let reg = self.used.next_unset(next_reg.into());
 
-            let mut avail = !word;
-            if w == start_word {
-                avail &= u32::MAX << (start_reg % 32);
+            /* Ensure we're properly aligned */
+            let reg = match u8::try_from(reg.next_multiple_of(align.into())) {
+                Ok(r) => r,
+                Err(_) => return None,
+            };
+
+            if !self.is_reg_in_bounds(reg, comps) {
+                return None;
             }
 
-            if w < self.pinned.words().len() {
-                avail &= !self.pinned.words()[w];
-            }
-
-            while avail != 0 {
-                let bit = u8::try_from(avail.trailing_zeros()).unwrap();
-
-                /* Ensure we're properly aligned */
-                if bit & (align - 1) != 0 {
-                    avail &= !(1 << bit);
-                    continue;
+            let mut avail = true;
+            for c in 0..comps {
+                let reg_c = usize::from(reg + c);
+                if self.used.get(reg_c) || self.pinned.get(reg_c) {
+                    avail = false;
+                    break;
                 }
-
-                let mask = comps_mask << bit;
-                if avail & mask == mask {
-                    let reg = u8::try_from(w * 32).unwrap() + bit;
-                    if self.is_reg_in_bounds(reg, comps) {
-                        return Some(reg);
-                    } else {
-                        return None;
-                    }
-                }
-
-                avail &= !mask;
             }
-        }
-
-        if let Ok(reg) = u8::try_from(self.used.words().len() * 32) {
-            let reg = max(start_reg, reg);
-            if self.is_reg_in_bounds(reg, comps) {
-                Some(reg)
-            } else {
-                None
+            if avail {
+                return Some(reg);
             }
-        } else {
-            None
+
+            next_reg = match reg.checked_add(align) {
+                Some(r) => r,
+                None => return None,
+            }
         }
     }
 
@@ -381,8 +366,20 @@ impl RegFileAllocation {
     ) -> Option<u8> {
         let align = comps.next_power_of_two();
 
-        let mut reg = start_reg.next_multiple_of(align);
-        while self.is_reg_in_bounds(reg, comps) {
+        let mut next_reg = start_reg;
+        loop {
+            let reg = self.pinned.next_unset(next_reg.into());
+
+            /* Ensure we're properly aligned */
+            let reg = match u8::try_from(reg.next_multiple_of(align.into())) {
+                Ok(r) => r,
+                Err(_) => return None,
+            };
+
+            if !self.is_reg_in_bounds(reg, comps) {
+                return None;
+            }
+
             let mut is_pinned = false;
             for i in 0..comps {
                 if self.pinned.get((reg + i).into()) {
@@ -393,7 +390,11 @@ impl RegFileAllocation {
             if !is_pinned {
                 return Some(reg);
             }
-            reg += align;
+
+            next_reg = match reg.checked_add(align) {
+                Some(r) => r,
+                None => return None,
+            }
         }
 
         None
