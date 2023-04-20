@@ -355,6 +355,10 @@ vkcts-navi10-valve:
     # Use Linux 5.17 to work around hitting __vm_enough_memory then hanging on Linux 6.1
     # See https://gitlab.freedesktop.org/mesa/mesa/-/issues/7888 for details
     B2C_KERNEL_URL: 'https://gitlab.freedesktop.org/mupuf/valve-infra/-/package_files/144/download'  # 5.17.1
+    # NAVI10 hangs quite often while running vkcts. This is being investigated,
+    # but in the mean time, retry up to 2 times.
+    B2C_SESSION_REBOOT_REGEX: '(GPU hang detected!|\*ERROR\* ring [^\s]+ timeout(?!, but soft recovered)|The CS has been cancelled because the context is lost)'
+    B2C_TIMEOUT_BOOT_RETRIES: 2
 
 vkcts-navi21-valve:
   parallel: 3
