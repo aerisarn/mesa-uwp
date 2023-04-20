@@ -429,7 +429,8 @@ class Parser(object):
 
 			xml_doc = etree.parse(filename)
 			if not xmlschema.validate(xml_doc):
-				raise self.error("Schema validation failed for: " + filename)
+				error_str = str(xmlschema.error_log.filter_from_errors()[0])
+				raise self.error("Schema validation failed for: " + filename + "\n" + error_str)
 		except ImportError:
 			print("lxml not found, skipping validation", file=sys.stderr)
 
