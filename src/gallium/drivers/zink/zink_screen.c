@@ -2582,6 +2582,15 @@ init_driver_workarounds(struct zink_screen *screen)
    default:
       break;
    }
+
+   /* these drivers have no difference between unoptimized and optimized shader compilation */
+   switch (screen->info.driver_props.driverID) {
+   case VK_DRIVER_ID_MESA_LLVMPIPE:
+      screen->driver_workarounds.disable_optimized_compile = true;
+      break;
+   default:
+      break;
+   }
 }
 
 static struct disk_cache *

@@ -786,7 +786,10 @@ optimized_compile_job(void *data, void *gdata, int thread_index)
 void
 zink_gfx_program_compile_queue(struct zink_context *ctx, struct zink_gfx_pipeline_cache_entry *pc_entry)
 {
-   util_queue_add_job(&zink_screen(ctx->base.screen)->cache_get_thread, pc_entry, &pc_entry->fence, optimized_compile_job, NULL, 0);
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   if (screen->driver_workarounds.disable_optimized_compile)
+      return;
+   util_queue_add_job(&screen->cache_get_thread, pc_entry, &pc_entry->fence, optimized_compile_job, NULL, 0);
 }
 
 static void

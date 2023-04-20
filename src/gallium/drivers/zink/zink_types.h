@@ -1458,6 +1458,7 @@ struct zink_screen {
        */
       bool broken_cache_semantics;
       bool implicit_sync;
+      bool disable_optimized_compile;
       bool always_feedback_loop;
       bool always_feedback_loop_zs;
       bool needs_sanitised_layer;
