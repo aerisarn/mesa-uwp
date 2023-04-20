@@ -136,7 +136,7 @@ VkResult pvr_csb_bake(struct pvr_csb *const csb,
    if (csb->status != VK_SUCCESS)
       return csb->status;
 
-   *bo_list_out = csb->pvr_bo_list;
+   list_replace(&csb->pvr_bo_list, bo_list_out);
 
    /* Same as pvr_csb_finish(). */
    pvr_csb_init(NULL, PVR_CMD_STREAM_TYPE_INVALID, csb);
