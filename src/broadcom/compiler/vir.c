@@ -89,7 +89,7 @@ vir_has_side_effects(struct v3d_compile *c, struct qinst *inst)
          * pointer, so each read has a side effect (we don't care for ldunif
          * because we reconstruct the uniform stream buffer after compiling
          * with the surviving uniforms), so allowing DCE to remove
-         * one would break follow-up loads. We could fix this by emiting a
+         * one would break follow-up loads. We could fix this by emitting a
          * unifa for each ldunifa, but each unifa requires 3 delay slots
          * before a ldunifa, so that would be quite expensive.
          */
@@ -1159,7 +1159,7 @@ v3d_instr_delay_cb(nir_instr *instr, void *data)
    /* We should not use very large delays for TMU instructions. Typically,
     * thread switches will be sufficient to hide all or most of the latency,
     * so we typically only need a little bit of extra room. If we over-estimate
-    * the latency here we may end up unnecesarily delaying the critical path in
+    * the latency here we may end up unnecessarily delaying the critical path in
     * the shader, which would have a negative effect in performance, so here
     * we are trying to strike a balance based on empirical testing.
     */
@@ -1629,7 +1629,7 @@ v3d_attempt_compile(struct v3d_compile *c)
                 .threshold = c->threads == 4 ? 24 : 48,
 
                 /* Vertex shaders share the same memory for inputs and outputs,
-                 * fragement and geometry shaders do not.
+                 * fragment and geometry shaders do not.
                  */
                 .stages_with_shared_io_memory =
                 (((1 << MESA_ALL_SHADER_STAGES) - 1) &
@@ -1727,7 +1727,7 @@ static const struct v3d_compiler_strategy strategies[] = {
 
 /**
  * If a particular optimization didn't make any progress during a compile
- * attempt disabling it alone won't allow us to compile the shader successfuly,
+ * attempt disabling it alone won't allow us to compile the shader successfully,
  * since we'll end up with the same code. Detect these scenarios so we can
  * avoid wasting time with useless compiles. We should also consider if the
  * gy changes other aspects of the compilation process though, like

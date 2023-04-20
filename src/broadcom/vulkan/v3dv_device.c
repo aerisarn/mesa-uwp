@@ -1174,7 +1174,7 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .uniformAndStorageBuffer8BitAccess = true,
       .uniformBufferStandardLayout = true,
       /* V3D 4.2 wraps TMU vector accesses to 16-byte boundaries, so loads and
-       * stores of vectors that cross these boundaries would not work correcly
+       * stores of vectors that cross these boundaries would not work correctly
        * with scalarBlockLayout and would need to be split into smaller vectors
        * (and/or scalars) that don't cross these boundaries. For load/stores
        * with dynamic offsets where we can't identify if the offset is
@@ -2436,7 +2436,7 @@ v3dv_AllocateMemory(VkDevice _device,
 
    /* If this memory can be used via VK_KHR_buffer_device_address then we
     * will need to manually add the BO to any job submit that makes use of
-    * VK_KHR_buffer_device_address, since such jobs may produde buffer
+    * VK_KHR_buffer_device_address, since such jobs may produce buffer
     * load/store operations that may access any buffer memory allocated with
     * this flag and we don't have any means to tell which buffers will be
     * accessed through this mechanism since they don't even have to be bound

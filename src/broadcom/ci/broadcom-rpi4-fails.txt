@@ -508,7 +508,7 @@ spec@oes_shader_io_blocks@compiler@layout-location-aliasing.vert,Fail
 # https://gitlab.freedesktop.org/mesa/piglit/-/merge_requests/800
 spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail
 
-# Precission differences between expected and obtained; works if
+# Precision differences between expected and obtained; works if
 # exporting V3D_DEBUG=tmu32.
 spec@oes_texture_view@rendering-formats,Fail
 spec@oes_texture_view@rendering-formats@clear GL_R8 as GL_R8I,Fail
@@ -521,7 +521,7 @@ spec@oes_texture_view@rendering-formats@clear GL_RGBA8 as GL_RG16F,Fail
 spec@oes_texture_view@rendering-formats@clear GL_RGBA8 as GL_RG16I,Fail
 spec@oes_texture_view@rendering-formats@clear GL_RGBA8 as GL_RGBA8I,Fail
 
-# Also related with precission issues
+# Also related with precision issues
 spec@oes_texture_view@rendering-formats@clear GL_RGB10_A2 as GL_R32F,Fail
 spec@oes_texture_view@rendering-formats@clear GL_RGB10_A2 as GL_R32I,Fail
 spec@oes_texture_view@rendering-formats@clear GL_RGB10_A2 as GL_RG16F,Fail

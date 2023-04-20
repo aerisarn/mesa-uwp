@@ -1410,7 +1410,7 @@ v3d_create_image_view_texture_shader_state(struct v3d_context *v3d,
 #else /* V3D_VERSION < 40 */
         /* V3D 3.x doesn't use support shader image load/store operations on
          * textures, so it would get lowered in the shader to general memory
-         * acceses.
+         * accesses.
          */
 #endif
 }

@@ -164,7 +164,7 @@ vir_emit_thrsw(struct v3d_compile *c)
         c->last_thrsw->qpu.sig.thrsw = true;
         c->last_thrsw_at_top_level = !c->in_control_flow;
 
-        /* We need to lock the scoreboard before any tlb acess happens. If this
+        /* We need to lock the scoreboard before any tlb access happens. If this
          * thread switch comes after we have emitted a tlb load, then it means
          * that we can't lock on the last thread switch any more.
          */
@@ -304,7 +304,7 @@ ntq_flush_tmu(struct v3d_compile *c)
 
 /**
  * Queues a pending thread switch + LDTMU/TMUWT for a TMU operation. The caller
- * is reponsible for ensuring that doing this doesn't overflow the TMU fifos,
+ * is responsible for ensuring that doing this doesn't overflow the TMU fifos,
  * and more specifically, the output fifo, since that can't stall.
  */
 void
@@ -1741,7 +1741,7 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
 
 /* Each TLB read/write setup (a render target or depth buffer) takes an 8-bit
  * specifier.  They come from a register that's preloaded with 0xffffffff
- * (0xff gets you normal vec4 f16 RT0 writes), and when one is neaded the low
+ * (0xff gets you normal vec4 f16 RT0 writes), and when one is needed the low
  * 8 bits are shifted off the bottom and 0xff shifted in from the top.
  */
 #define TLB_TYPE_F16_COLOR         (3 << 6)
@@ -2555,7 +2555,7 @@ vir_emit_tlb_color_read(struct v3d_compile *c, nir_intrinsic_instr *instr)
          *
          * To fix that, we make sure we always emit a thread switch before the
          * first tlb color read. If that happens to be the last thread switch
-         * we emit, then everything is fine, but otherwsie, if any code after
+         * we emit, then everything is fine, but otherwise, if any code after
          * this point needs to emit additional thread switches, then we will
          * switch the strategy to locking the scoreboard on the first thread
          * switch instead -- see vir_emit_thrsw().

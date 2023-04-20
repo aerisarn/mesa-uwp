@@ -629,7 +629,7 @@ mux_read_stalls(struct choose_scoreboard *scoreboard,
 }
 
 /* We define a max schedule priority to allow negative priorities as result of
- * substracting this max when an instruction stalls. So instructions that
+ * subtracting this max when an instruction stalls. So instructions that
  * stall have lower priority than regular instructions. */
 #define MAX_SCHEDULE_PRIORITY 16
 
@@ -1196,13 +1196,13 @@ retry:
                         if (pixel_scoreboard_too_soon(c, scoreboard, inst))
                                 continue;
 
-                        /* When we succesfully pair up an ldvary we then try
+                        /* When we successfully pair up an ldvary we then try
                          * to merge it into the previous instruction if
                          * possible to improve pipelining. Don't pick up the
                          * ldvary now if the follow-up fixup would place
                          * it in the delay slots of a thrsw, which is not
                          * allowed and would prevent the fixup from being
-                         * successul.
+                         * successful.
                          */
                         if (inst->sig.ldvary &&
                             scoreboard->last_thrsw_tick + 2 >= scoreboard->tick - 1) {
@@ -1687,7 +1687,7 @@ qpu_inst_after_thrsw_valid_in_delay_slot(struct v3d_compile *c,
         assert(slot <= 2);
 
         /* We merge thrsw instructions back into the instruction stream
-         * manually, so any instructions scheduled after a thrsw shold be
+         * manually, so any instructions scheduled after a thrsw should be
          * in the actual delay slots and not in the same slot as the thrsw.
          */
         assert(slot >= 1);
@@ -2122,7 +2122,7 @@ fixup_pipelined_ldvary(struct v3d_compile *c,
                        struct qblock *block,
                        struct v3d_qpu_instr *inst)
 {
-        /* We only call this if we have successfuly merged an ldvary into a
+        /* We only call this if we have successfully merged an ldvary into a
          * previous instruction.
          */
         assert(inst->type == V3D_QPU_INSTR_TYPE_ALU);
@@ -2209,7 +2209,7 @@ fixup_pipelined_ldvary(struct v3d_compile *c,
 
         /* By moving ldvary to the previous instruction we make it update
          * r5 in the current one, so nothing else in it should write r5.
-         * This should've been prevented by our depedency tracking, which
+         * This should've been prevented by our dependency tracking, which
          * would not allow ldvary to be paired up with an instruction that
          * writes r5 (since our dependency tracking doesn't know that the
          * ldvary write r5 happens in the next instruction).

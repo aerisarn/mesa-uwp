@@ -277,7 +277,7 @@ v3d_flush_jobs_reading_resource(struct v3d_context *v3d,
 }
 
 /**
- * Returns a v3d_job struture for tracking V3D rendering to a particular FBO.
+ * Returns a v3d_job structure for tracking V3D rendering to a particular FBO.
  *
  * If we've already started rendering to this FBO, then return the same job,
  * otherwise make a new one.  If we're beginning rendering to an FBO, make

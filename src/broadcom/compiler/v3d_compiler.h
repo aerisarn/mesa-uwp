@@ -87,7 +87,7 @@ enum qfile {
 
         /** A physical register, such as the W coordinate payload. */
         QFILE_REG,
-        /** One of the regsiters for fixed function interactions. */
+        /** One of the registers for fixed function interactions. */
         QFILE_MAGIC,
 
         /**
@@ -490,7 +490,7 @@ struct v3d_vs_key {
         bool clamp_color;
 };
 
-/** A basic block of VIR intructions. */
+/** A basic block of VIR instructions. */
 struct qblock {
         struct list_head link;
 
