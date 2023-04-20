@@ -1236,10 +1236,6 @@ nvk_compile_nir_with_nak(struct nvk_physical_device *pdev,
    shader->code_ptr = (void *)bin->code;
    shader->code_size = bin->code_size;
 
-#ifndef NDEBUG
-   nvk_shader_dump(shader);
-#endif
-
    return VK_SUCCESS;
 }
 
