@@ -1827,12 +1827,6 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
          return result;
       }
 
-      result = pvr_cmd_buffer_process_deferred_clears(cmd_buffer);
-      if (result != VK_SUCCESS) {
-         state->status = result;
-         return result;
-      }
-
       break;
    }
 
@@ -1865,6 +1859,25 @@ VkResult pvr_cmd_buffer_end_sub_cmd(struct pvr_cmd_buffer *cmd_buffer)
    }
 
    state->current_sub_cmd = NULL;
+
+   /* pvr_cmd_buffer_process_deferred_clears() must be called with a NULL
+    * current_sub_cmd.
+    *
+    * We can start a sub_cmd of a different type from the current sub_cmd only
+    * after having ended the current sub_cmd. However, we can't end the current
+    * sub_cmd if this depends on starting sub_cmd(s) of a different type. Hence,
+    * don't try to start transfer sub_cmd(s) with
+    * pvr_cmd_buffer_process_deferred_clears() until the current hasn't ended.
+    * Failing to do so we will cause a circular dependency between
+    * pvr_cmd_buffer_{end,start}_cmd and blow the stack.
+    */
+   if (sub_cmd->type == PVR_SUB_CMD_TYPE_GRAPHICS) {
+      result = pvr_cmd_buffer_process_deferred_clears(cmd_buffer);
+      if (result != VK_SUCCESS) {
+         state->status = result;
+         return result;
+      }
+   }
 
    if (query_pool) {
       struct pvr_sub_cmd_event *sub_cmd;
