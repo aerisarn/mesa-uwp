@@ -533,6 +533,8 @@ static struct rnndelem *trydelem(struct rnndb *db, char *file, xmlNode *node) {
 				if (!res->index) {
 					rnn_err(db, "%s:%d: invalid enum name \"%s\"\n", file, node->line, enumname);
 				}
+			} else if (!strcmp(attr->name, "usage")) {
+				// no-op
 			} else {
 				rnn_err(db, "%s:%d: wrong attribute \"%s\" for %s\n", file, node->line, attr->name, node->name);
 			}
@@ -601,6 +603,8 @@ static struct rnndelem *trydelem(struct rnndb *db, char *file, xmlNode *node) {
 				res->access = RNN_ACCESS_RW;
 			else
 				fprintf (stderr, "%s:%d: wrong access type \"%s\" for register\n", file, node->line, str);
+		} else if (!strcmp(attr->name, "usage")) {
+			// no-op
 		} else if (!trytypeattr(db, file, node, attr, &res->typeinfo)) {
 			rnn_err(db, "%s:%d: wrong attribute \"%s\" for register\n", file, node->line, attr->name);
 		}

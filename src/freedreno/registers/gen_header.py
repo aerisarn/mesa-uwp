@@ -3,6 +3,7 @@
 import xml.parsers.expat
 import sys
 import os
+import collections
 
 class Error(Exception):
 	def __init__(self, message):
@@ -263,6 +264,10 @@ class Array(object):
 		self.offset = int(attrs["offset"], 0)
 		self.stride = int(attrs["stride"], 0)
 		self.length = int(attrs["length"], 0)
+		if "usage" in attrs:
+			self.usages = attrs["usage"].split(',')
+		else:
+			self.usages = None
 
 	def dump(self):
 		print("#define REG_%s_%s(i0) (0x%08x + 0x%x*(i0))\n" % (self.domain, self.name, self.offset, self.stride))
@@ -319,8 +324,12 @@ class Parser(object):
 		# Regs that have multiple variants.. we only generated the C++
 		# template based struct-packers for these
 		self.variant_regs = {}
+		# Information in which contexts regs are used, to be used in
+		# debug options
+		self.usage_regs = collections.defaultdict(list)
 		self.bitsets = {}
 		self.enums = {}
+		self.variants = set()
 		self.file = []
 
 	def error(self, message):
@@ -404,6 +413,15 @@ class Parser(object):
 
 		self.variant_regs[reg.name][variant] = reg;
 
+	def add_all_usages(self, reg, usages):
+		if not usages:
+			return
+
+		for usage in usages:
+			self.usage_regs[usage].append(reg)
+
+		self.variants.add(reg.domain)
+
 	def do_validate(self, schemafile):
 		try:
 			from lxml import etree
@@ -480,6 +498,14 @@ class Parser(object):
 		if variant is not None:
 			self.add_all_variants(self.current_reg, attrs, variant)
 
+		usages = None
+		if "usage" in attrs:
+			usages = attrs["usage"].split(',')
+		elif self.current_array:
+			usages = self.current_array.usages
+
+		self.add_all_usages(self.current_reg, usages)
+
 	def start_element(self, name, attrs):
 		if name == "import":
 			filename = attrs["file"]
@@ -548,6 +574,47 @@ class Parser(object):
 		elif name == "enum":
 			self.current_enum = None
 
+	def dump_reg_usages(self):
+		d = collections.defaultdict(list)
+		for usage, regs in self.usage_regs.items():
+			for reg in regs:
+				variants = self.variant_regs.get(reg.name)
+				if variants:
+					for variant, vreg in variants.items():
+						if reg == vreg:
+							d[(usage, variant)].append(reg)
+				else:
+					for variant in self.variants:
+						d[(usage, variant)].append(reg)
+
+		print("#ifdef __cplusplus")
+
+		for usage, regs in self.usage_regs.items():
+			print("template<chip CHIP> constexpr inline uint16_t %s_REGS[] = {};" % (usage.upper()))
+
+		for (usage, variant), regs in d.items():
+			offsets = []
+
+			for reg in regs:
+				if reg.array:
+					for i in range(reg.array.length):
+						offsets.append(reg.array.offset + reg.offset + i * reg.array.stride)
+						if reg.bit_size == 64:
+							offsets.append(offsets[-1] + 1)
+				else:
+					offsets.append(reg.offset)
+					if reg.bit_size == 64:
+						offsets.append(offsets[-1] + 1)
+
+			offsets.sort()
+
+			print("template<> constexpr inline uint16_t %s_REGS<%s>[] = {" % (usage.upper(), variant))
+			for offset in offsets:
+				print("\t%s," % hex(offset))
+			print("};")
+
+		print("#endif")
+
 	def dump(self):
 		enums = []
 		bitsets = []
@@ -562,6 +629,8 @@ class Parser(object):
 
 		for e in enums + bitsets + regs:
 			e.dump()
+
+		self.dump_reg_usages()
 
 	def dump_reg_variants(self, regname, variants):
 		# Don't bother for things that only have a single variant:
