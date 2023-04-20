@@ -535,6 +535,25 @@ impl<'a> ShaderFromNir<'a> {
                     dst_high: true,
                 })));
             }
+            nir_op_ixor => {
+                if alu.def.bit_size() == 1 {
+                    self.instrs.push(Instr::new_plop3(
+                        dst,
+                        LogicOp::new_lut(&|x, y, _| x ^ y),
+                        srcs[0],
+                        srcs[1],
+                        Src::new_imm_bool(true),
+                    ));
+                } else {
+                    self.instrs.push(Instr::new_lop3(
+                        dst,
+                        LogicOp::new_lut(&|x, y, _| x ^ y),
+                        srcs[0],
+                        srcs[1],
+                        Src::new_zero(),
+                    ));
+                }
+            }
             nir_op_mov => {
                 self.instrs.push(Instr::new_mov(dst, srcs[0]));
             }
