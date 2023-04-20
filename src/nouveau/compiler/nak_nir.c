@@ -578,7 +578,8 @@ nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak)
       }
    }
 
-   nir_print_shader(nir, stderr);
+   if (nak_should_print_nir())
+      nir_print_shader(nir, stderr);
 }
 
 static bool

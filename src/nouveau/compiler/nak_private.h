@@ -14,6 +14,8 @@
 extern "C" {
 #endif
 
+bool nak_should_print_nir(void);
+
 struct nak_compiler {
    uint8_t sm;
 

@@ -24,8 +24,62 @@ use crate::nir::NirShader;
 use bitview::*;
 use nak_bindings::*;
 use nak_from_nir::*;
+use std::env;
+use std::ffi::CStr;
 use std::os::raw::c_void;
+use std::sync::OnceLock;
 use util::NextMultipleOf;
+
+#[repr(u8)]
+enum DebugFlags {
+    Print,
+}
+
+struct Debug {
+    flags: u32,
+}
+
+impl Debug {
+    fn new() -> Debug {
+        let debug_var = "NAK_DEBUG";
+        let debug_str = match env::var(debug_var) {
+            Ok(s) => s,
+            Err(_) => {
+                return Debug { flags: 0 };
+            }
+        };
+
+        let mut flags = 0;
+        for flag in debug_str.split(',') {
+            match flag.trim() {
+                "print" => flags |= 1 << DebugFlags::Print as u8,
+                unk => eprintln!("Unknown NAK_DEBUG flag \"{}\"", unk),
+            }
+        }
+        Debug { flags: flags }
+    }
+}
+
+trait GetDebugFlags {
+    fn debug_flags(&self) -> u32;
+
+    fn print(&self) -> bool {
+        self.debug_flags() & (1 << DebugFlags::Print as u8) != 0
+    }
+}
+
+static DEBUG: OnceLock<Debug> = OnceLock::new();
+
+impl GetDebugFlags for OnceLock<Debug> {
+    fn debug_flags(&self) -> u32 {
+        self.get().unwrap().flags
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn nak_should_print_nir() -> bool {
+    DEBUG.print()
+}
 
 fn nir_options(dev: &nv_device_info) -> nir_shader_compiler_options {
     let mut op: nir_shader_compiler_options = unsafe { std::mem::zeroed() };
@@ -69,6 +123,8 @@ pub extern "C" fn nak_compiler_create(
     assert!(!dev.is_null());
     let dev = unsafe { &*dev };
 
+    DEBUG.get_or_init(|| Debug::new());
+
     let nak = Box::new(nak_compiler {
         sm: dev.sm,
         nir_options: nir_options(dev),
@@ -80,6 +136,11 @@ pub extern "C" fn nak_compiler_create(
 #[no_mangle]
 pub extern "C" fn nak_compiler_destroy(nak: *mut nak_compiler) {
     unsafe { Box::from_raw(nak) };
+}
+
+#[no_mangle]
+pub extern "C" fn nak_debug_flags(nak: *const nak_compiler) -> u64 {
+    DEBUG.debug_flags().into()
 }
 
 #[no_mangle]
@@ -335,6 +396,18 @@ fn encode_hdr_for_nir(nir: &nir_shader, tls_size: u32) -> [u32; 32] {
     hdr
 }
 
+fn print_hex(label: &str, data: &[u32]) {
+    print!("{}:", label);
+    for i in 0..data.len() {
+        if (i % 8) == 0 {
+            println!("");
+            print!(" ");
+        }
+        print!(" {:08x}", data[i]);
+    }
+    println!("");
+}
+
 #[no_mangle]
 pub extern "C" fn nak_compile_shader(
     nir: *mut nir_shader,
@@ -346,32 +419,43 @@ pub extern "C" fn nak_compile_shader(
 
     let mut s = nak_shader_from_nir(nir, nak.sm);
 
-    println!("NAK IR:\n{}", &s);
+    if DEBUG.print() {
+        println!("NAK IR:\n{}", &s);
+    }
 
     s.opt_copy_prop();
-
-    println!("NAK IR:\n{}", &s);
+    if DEBUG.print() {
+        println!("NAK IR:\n{}", &s);
+    }
 
     s.opt_dce();
-
-    println!("NAK IR:\n{}", &s);
+    if DEBUG.print() {
+        println!("NAK IR:\n{}", &s);
+    }
 
     s.legalize();
-
-    println!("NAK IR:\n{}", &s);
+    if DEBUG.print() {
+        println!("NAK IR:\n{}", &s);
+    }
 
     s.assign_regs();
     //s.assign_regs_trivial();
-    println!("NAK IR:\n{}", &s);
+    if DEBUG.print() {
+        println!("NAK IR:\n{}", &s);
+    }
+
     s.lower_vec_split();
     s.lower_par_copies();
     s.lower_swap();
     s.lower_mov_predicate();
     s.calc_instr_deps();
 
-    println!("NAK IR:\n{}", &s);
+    if DEBUG.print() {
+        println!("NAK IR:\n{}", &s);
+    }
 
     let info = nak_shader_info {
+        stage: nir.info.stage(),
         num_gprs: 255,
         tls_size: 0,
         cs: nak_shader_info__bindgen_ty_1 {
@@ -391,14 +475,30 @@ pub extern "C" fn nak_compile_shader(
         panic!("Unsupported shader model");
     };
 
-    print!("Encoded shader:");
-    for i in 0..code.len() {
-        if (i % 8) == 0 {
-            print!("\n  ");
+    if DEBUG.print() {
+        let stage_name = unsafe {
+            let c_name = _mesa_shader_stage_to_string(info.stage as u32);
+            CStr::from_ptr(c_name).to_str().expect("Invalid UTF-8")
+        };
+        println!("Stage: {}", stage_name);
+        println!("Num GPRs: {}", info.num_gprs);
+        println!("TLS size: {}", info.tls_size);
+        if info.stage == MESA_SHADER_COMPUTE {
+            println!(
+                "Local size: {}x{}x{}",
+                info.cs.local_size[0],
+                info.cs.local_size[1],
+                info.cs.local_size[2],
+            );
+            println!("Shared memory size: {:#x}", info.cs.smem_size);
         }
-        print!("  {:#x}", code[i]);
+
+        if info.stage != MESA_SHADER_COMPUTE {
+            print_hex("Header", &info.hdr);
+        }
+
+        print_hex("Encoded shader", &code);
     }
-    print!("\n\n");
 
     Box::into_raw(Box::new(ShaderBin::new(info, code))) as *mut nak_shader_bin
 }

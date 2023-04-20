@@ -56,6 +56,7 @@ nak_bindings_rs = rust.bindgen(
     '--allowlist-type', 'mesa_scope',
     '--allowlist-type', 'mesa_prim',
     '--allowlist-var', 'nir_.*_infos',
+    '--allowlist-function', '_mesa_shader_stage_to_string',
     '--allowlist-function', 'nak_.*',
     '--allowlist-function', 'nir_.*',
     '--allowlist-function', 'glsl_.*',

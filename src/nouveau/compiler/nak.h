@@ -6,6 +6,8 @@
 #ifndef NAK_H
 #define NAK_H
 
+#include "compiler/shader_enums.h"
+
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -22,6 +24,8 @@ struct nv_device_info;
 struct nak_compiler *nak_compiler_create(const struct nv_device_info *dev);
 void nak_compiler_destroy(struct nak_compiler *nak);
 
+uint64_t nak_debug_flags(const struct nak_compiler *nak);
+
 const struct nir_shader_compiler_options *
 nak_nir_options(const struct nak_compiler *nak);
 
@@ -30,6 +34,8 @@ void nak_preprocess_nir(nir_shader *nir, const struct nak_compiler *nak);
 void nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak);
 
 struct nak_shader_info {
+   gl_shader_stage stage;
+
    /** Number of GPRs used */
    uint8_t num_gprs;
 
