@@ -1873,6 +1873,39 @@ static const struct debug_named_value tu_reg_stomper_options[] = {
    { NULL, 0 }
 };
 
+template <chip CHIP>
+static inline void
+tu_cs_dbg_stomp_regs(struct tu_cs *cs,
+                     bool is_rp_blit,
+                     uint32_t first_reg,
+                     uint32_t last_reg,
+                     bool inverse)
+{
+   const uint16_t *regs = NULL;
+   size_t count = 0;
+
+   if (is_rp_blit) {
+      regs = &RP_BLIT_REGS<CHIP>[0];
+      count = ARRAY_SIZE(RP_BLIT_REGS<CHIP>);
+   } else {
+      regs = &CMD_REGS<CHIP>[0];
+      count = ARRAY_SIZE(CMD_REGS<CHIP>);
+   }
+
+   for (size_t i = 0; i < count; i++) {
+      if (inverse) {
+         if (regs[i] >= first_reg && regs[i] <= last_reg)
+            continue;
+      } else {
+         if (regs[i] < first_reg || regs[i] > last_reg)
+            continue;
+      }
+
+      if (fd_reg_stomp_allowed(CHIP, regs[i]))
+         tu_cs_emit_write_reg(cs, regs[i], 0xffffffff);
+   }
+}
+
 static void
 tu_init_dbg_reg_stomper(struct tu_device *device)
 {
@@ -1901,32 +1934,9 @@ tu_init_dbg_reg_stomper(struct tu_device *device)
    tu_cs_init(rp_cs, device, TU_CS_MODE_GROW, 4096, "rp reg stomp cs");
    tu_cs_begin(rp_cs);
 
-   size_t reg_ranges_count = ARRAY_SIZE(a6xx_fd_cmdbuf_stompable_reg_ranges);
-   for (size_t i = 0; i < reg_ranges_count; i++) {
-      struct fd_stompable_reg_range reg_range =
-         a6xx_fd_cmdbuf_stompable_reg_ranges[i];
-      for (uint16_t reg = reg_range.start_reg; reg <= reg_range.end_reg;
-           reg++) {
-         if (debug_flags & TU_DEBUG_REG_STOMP_INVERSE) {
-            if (reg >= first_reg && reg <= last_reg)
-               continue;
-         } else {
-            if (reg < first_reg || reg > last_reg)
-               continue;
-         }
-
-         if (a6xx_fd_reg_do_not_stomp(true, reg))
-            continue;
-
-         if (debug_flags & TU_DEBUG_REG_STOMP_CMDBUF)
-            tu_cs_emit_write_reg(cmdbuf_cs, reg, 0xffffffff);
-
-         if ((debug_flags & TU_DEBUG_REG_STOMP_RENDERPASS) &&
-             a6xx_fd_reg_rp_stompable(true, reg)) {
-            tu_cs_emit_write_reg(rp_cs, reg, 0xffffffff);
-         }
-      }
-   }
+   bool inverse = debug_flags & TU_DEBUG_REG_STOMP_INVERSE;
+   tu_cs_dbg_stomp_regs<A6XX>(cmdbuf_cs, false, first_reg, last_reg, inverse);
+   tu_cs_dbg_stomp_regs<A6XX>(rp_cs, true, first_reg, last_reg, inverse);
 
    tu_cs_end(cmdbuf_cs);
    tu_cs_end(rp_cs);
