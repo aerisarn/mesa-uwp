@@ -276,6 +276,9 @@ dzn_image_get_dxgi_format(const struct dzn_physical_device *pdev,
 {
    enum pipe_format pfmt = vk_format_to_pipe_format(format);
 
+   if (pfmt == PIPE_FORMAT_A4R4G4B4_UNORM && !pdev->support_a4b4g4r4)
+      return DXGI_FORMAT_B4G4R4A4_UNORM;
+
    if (!vk_format_is_depth_or_stencil(format))
       return dzn_pipe_to_dxgi_format(pfmt);
 
@@ -1043,17 +1046,31 @@ dzn_image_view_prepare_srv_desc(struct dzn_image_view *iview)
 
    /* Swap components to fake B4G4R4A4 support. */
    if (iview->vk.format == VK_FORMAT_B4G4R4A4_UNORM_PACK16) {
-      static const D3D12_SHADER_COMPONENT_MAPPING bgra4_remap[] = {
-         D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_1,
-         D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_0,
-         D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_3,
-         D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_2,
-         D3D12_SHADER_COMPONENT_MAPPING_FORCE_VALUE_0,
-         D3D12_SHADER_COMPONENT_MAPPING_FORCE_VALUE_1,
-      };
+      if (pdev->support_a4b4g4r4) {
+         static const D3D12_SHADER_COMPONENT_MAPPING bgra4_remap[] = {
+            D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_2,
+            D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_1,
+            D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_0,
+            D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_3,
+            D3D12_SHADER_COMPONENT_MAPPING_FORCE_VALUE_0,
+            D3D12_SHADER_COMPONENT_MAPPING_FORCE_VALUE_1,
+         };
 
-      for (uint32_t i = 0; i < ARRAY_SIZE(swz); i++)
-         swz[i] = bgra4_remap[swz[i]];
+         for (uint32_t i = 0; i < ARRAY_SIZE(swz); i++)
+            swz[i] = bgra4_remap[swz[i]];
+      } else {
+         static const D3D12_SHADER_COMPONENT_MAPPING bgra4_remap[] = {
+            D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_1,
+            D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_0,
+            D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_3,
+            D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_2,
+            D3D12_SHADER_COMPONENT_MAPPING_FORCE_VALUE_0,
+            D3D12_SHADER_COMPONENT_MAPPING_FORCE_VALUE_1,
+         };
+
+         for (uint32_t i = 0; i < ARRAY_SIZE(swz); i++)
+            swz[i] = bgra4_remap[swz[i]];
+      }
    } else if (iview->vk.aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
       /* D3D puts stencil in G, not R. Requests for R should be routed to G and vice versa. */
       for (uint32_t i = 0; i < ARRAY_SIZE(swz); i++) {

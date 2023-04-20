@@ -40,31 +40,6 @@ dEQP-VK.glsl.texture_functions.textureprojgradoffset.sampler2dshadow_vertex,Fail
 dEQP-VK.glsl.texture_functions.textureprojoffset.sampler1dshadow_bias_fragment,Fail
 dEQP-VK.glsl.texture_functions.textureprojoffset.sampler2dshadow_bias_fragment,Fail
 
-# We need to use a format that has alpha in the right spot to be able to get the right border color here. Fix incoming,
-# needs updated WARP for correct support.
-dEQP-VK.pipeline.monolithic.sampler.border_swizzle.b4g4r4a4_unorm_pack16.igba.opaque_black.gather_2.no_swizzle_hint,Fail
-dEQP-VK.pipeline.monolithic.sampler.border_swizzle.b4g4r4a4_unorm_pack16.igba.opaque_black.gather_3.no_swizzle_hint,Fail
-dEQP-VK.pipeline.monolithic.sampler.border_swizzle.b4g4r4a4_unorm_pack16.igba.opaque_black.no_gather.no_swizzle_hint,Fail
-dEQP-VK.pipeline.monolithic.sampler.border_swizzle.b4g4r4a4_unorm_pack16.rgba.opaque_black.gather_2.no_swizzle_hint,Fail
-dEQP-VK.pipeline.monolithic.sampler.border_swizzle.b4g4r4a4_unorm_pack16.rgba.opaque_black.gather_3.no_swizzle_hint,Fail
-dEQP-VK.pipeline.monolithic.sampler.border_swizzle.b4g4r4a4_unorm_pack16.rgba.opaque_black.no_gather.no_swizzle_hint,Fail
-dEQP-VK.pipeline.monolithic.sampler.border_swizzle.b4g4r4a4_unorm_pack16.rgbi.opaque_black.gather_2.no_swizzle_hint,Fail
-dEQP-VK.pipeline.monolithic.sampler.border_swizzle.b4g4r4a4_unorm_pack16.rgbi.opaque_black.gather_3.no_swizzle_hint,Fail
-dEQP-VK.pipeline.monolithic.sampler.border_swizzle.b4g4r4a4_unorm_pack16.rgbi.opaque_black.no_gather.no_swizzle_hint,Fail
-dEQP-VK.pipeline.monolithic.sampler.border_swizzle.b4g4r4a4_unorm_pack16.rgia.opaque_black.gather_2.no_swizzle_hint,Fail
-dEQP-VK.pipeline.monolithic.sampler.border_swizzle.b4g4r4a4_unorm_pack16.rgia.opaque_black.gather_3.no_swizzle_hint,Fail
-dEQP-VK.pipeline.monolithic.sampler.border_swizzle.b4g4r4a4_unorm_pack16.rgia.opaque_black.no_gather.no_swizzle_hint,Fail
-dEQP-VK.pipeline.monolithic.sampler.border_swizzle.b4g4r4a4_unorm_pack16.riba.opaque_black.gather_2.no_swizzle_hint,Fail
-dEQP-VK.pipeline.monolithic.sampler.border_swizzle.b4g4r4a4_unorm_pack16.riba.opaque_black.gather_3.no_swizzle_hint,Fail
-dEQP-VK.pipeline.monolithic.sampler.border_swizzle.b4g4r4a4_unorm_pack16.riba.opaque_black.no_gather.no_swizzle_hint,Fail
-dEQP-VK.pipeline.monolithic.sampler.view_type.1d.format.b4g4r4a4_unorm_pack16.address_modes.all_mode_clamp_to_border_opaque_black,Fail
-dEQP-VK.pipeline.monolithic.sampler.view_type.1d_array.format.b4g4r4a4_unorm_pack16.address_modes.all_mode_clamp_to_border_opaque_black,Fail
-dEQP-VK.pipeline.monolithic.sampler.view_type.1d_unnormalized.format.b4g4r4a4_unorm_pack16.address_modes.all_mode_clamp_to_border_opaque_black,Fail
-dEQP-VK.pipeline.monolithic.sampler.view_type.2d.format.b4g4r4a4_unorm_pack16.address_modes.all_mode_clamp_to_border_opaque_black,Fail
-dEQP-VK.pipeline.monolithic.sampler.view_type.2d_array.format.b4g4r4a4_unorm_pack16.address_modes.all_mode_clamp_to_border_opaque_black,Fail
-dEQP-VK.pipeline.monolithic.sampler.view_type.2d_unnormalized.format.b4g4r4a4_unorm_pack16.address_modes.all_mode_clamp_to_border_opaque_black,Fail
-dEQP-VK.pipeline.monolithic.sampler.view_type.3d.format.b4g4r4a4_unorm_pack16.address_modes.all_mode_clamp_to_border_opaque_black,Fail
-
 # WARP/DXC bug, some phi/control flow lowering caused incorrect values to be loaded after the loop.
 # Fix incoming: https://github.com/microsoft/DirectXShaderCompiler/pull/5180
 dEQP-VK.glsl.loops.generic.do_while_dynamic_iterations.basic_highp_float_fragment,Fail

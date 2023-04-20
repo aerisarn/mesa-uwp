@@ -223,6 +223,7 @@ struct dzn_physical_device {
    D3D12_HEAP_FLAGS heap_flags_for_mem_type[VK_MAX_MEMORY_TYPES];
    const struct vk_sync_type *sync_types[MAX_SYNC_TYPES + 1];
    float timestamp_period;
+   bool support_a4b4g4r4;
 };
 
 D3D12_FEATURE_DATA_FORMAT_SUPPORT

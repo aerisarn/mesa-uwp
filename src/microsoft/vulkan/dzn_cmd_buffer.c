@@ -1967,15 +1967,20 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
 }
 
 static VkClearColorValue
-adjust_clear_color(VkFormat format, const VkClearColorValue *col)
+adjust_clear_color(struct dzn_physical_device *pdev,
+                   VkFormat format, const VkClearColorValue *col)
 {
    VkClearColorValue out = *col;
 
    // D3D12 doesn't support bgra4, so we map it to rgba4 and swizzle things
    // manually where it matters, like here, in the clear path.
    if (format == VK_FORMAT_B4G4R4A4_UNORM_PACK16) {
-      DZN_SWAP(float, out.float32[0], out.float32[1]);
-      DZN_SWAP(float, out.float32[2], out.float32[3]);
+      if (pdev->support_a4b4g4r4) {
+         DZN_SWAP(float, out.float32[0], out.float32[2]);
+      } else {
+         DZN_SWAP(float, out.float32[0], out.float32[1]);
+         DZN_SWAP(float, out.float32[2], out.float32[3]);
+      }
    }
 
    return out;
@@ -2123,6 +2128,8 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
 {
    struct dzn_image *image =
       container_of(view->vk.image, struct dzn_image, vk);
+   struct dzn_physical_device *pdev =
+      container_of(cmdbuf->vk.base.device->physical, struct dzn_physical_device, vk);
 
    VkImageSubresourceRange range = {
       .aspectMask = aspects,
@@ -2176,7 +2183,7 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
          }
       }
    } else if (aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
-      VkClearColorValue color = adjust_clear_color(view->vk.format, &value->color);
+      VkClearColorValue color = adjust_clear_color(pdev, view->vk.format, &value->color);
       bool clear_with_cpy = false;
       float vals[4];
 
@@ -2245,13 +2252,15 @@ dzn_cmd_buffer_clear_color(struct dzn_cmd_buffer *cmdbuf,
                            uint32_t range_count,
                            const VkImageSubresourceRange *ranges)
 {
+   struct dzn_physical_device *pdev =
+      container_of(cmdbuf->vk.base.device->physical, struct dzn_physical_device, vk);
    if (!(image->desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) ||
        cmdbuf->type != D3D12_COMMAND_LIST_TYPE_DIRECT) {
       dzn_cmd_buffer_clear_ranges_with_copy(cmdbuf, image, layout, col, range_count, ranges);
       return;
    }
 
-   VkClearColorValue color = adjust_clear_color(image->vk.format, col);
+   VkClearColorValue color = adjust_clear_color(pdev, image->vk.format, col);
    float clear_vals[4];
 
    enum pipe_format pfmt = vk_format_to_pipe_format(image->vk.format);

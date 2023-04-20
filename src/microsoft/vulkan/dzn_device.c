@@ -475,6 +475,13 @@ dzn_physical_device_cache_caps(struct dzn_physical_device *pdev)
       pdev->options19.MaxSamplerDescriptorHeapSizeWithStaticSamplers = pdev->options19.MaxSamplerDescriptorHeapSize;
       pdev->options19.MaxViewDescriptorHeapSize = D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_1;
    }
+   {
+      D3D12_FEATURE_DATA_FORMAT_SUPPORT a4b4g4r4_support = {
+         .Format = DXGI_FORMAT_A4B4G4R4_UNORM
+      };
+      pdev->support_a4b4g4r4 =
+         SUCCEEDED(ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_FORMAT_SUPPORT, &a4b4g4r4_support, sizeof(a4b4g4r4_support)));
+   }
 
    pdev->queue_families[pdev->queue_family_count++] = (struct dzn_queue_family) {
       .props = {
@@ -856,10 +863,16 @@ dzn_physical_device_get_format_properties(struct dzn_physical_device *pdev,
       }
    }
 
-   /* B4G4R4A4 support is required, but d3d12 doesn't support it. We map this
-    * format to R4G4B4A4 and adjust the SRV component-mapping to fake
+   /* B4G4R4A4 support is required, but d3d12 doesn't support it. The needed
+    * d3d12 format would be A4R4G4B4. We map this format to d3d12's B4G4R4A4,
+    * which is Vulkan's A4R4G4B4, and adjust the SRV component-mapping to fake
     * B4G4R4A4, but that forces us to limit the usage to sampling, which,
     * luckily, is exactly what we need to support the required features.
+    *
+    * However, since this involves swizzling the alpha channel, it can cause
+    * problems for border colors. Fortunately, d3d12 added an A4B4G4R4 format,
+    * which still isn't quite right (it'd be Vulkan R4G4B4A4), but can be
+    * swizzled by just swapping R and B, so no border color issues arise.
     */
    if (format == VK_FORMAT_B4G4R4A4_UNORM_PACK16) {
       VkFormatFeatureFlags bgra4_req_features =
