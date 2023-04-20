@@ -285,6 +285,9 @@ dead_cf_block(nir_block *block)
       if (nir_src_is_const(following_if->condition)) {
          opt_constant_if(following_if, nir_src_as_bool(following_if->condition));
          return true;
+      } else if (nir_src_is_undef(following_if->condition)) {
+         opt_constant_if(following_if, false);
+         return true;
       }
 
       if (node_is_dead(&following_if->cf_node)) {
