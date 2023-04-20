@@ -525,6 +525,17 @@ nak_mem_access_size_align(nir_intrinsic_op intrin,
    }
 }
 
+static bool
+nir_shader_has_local_variables(const nir_shader *nir)
+{
+   nir_foreach_function(func, nir) {
+      if (func->impl && !exec_list_is_empty(&func->impl->locals))
+         return true;
+   }
+
+   return false;
+}
+
 void
 nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak)
 {
@@ -532,8 +543,15 @@ nak_postprocess_nir(nir_shader *nir, const struct nak_compiler *nak)
 
    nak_optimize_nir(nir, nak);
 
+   if (nir_shader_has_local_variables(nir)) {
+      OPT(nir, nir_lower_vars_to_explicit_types, nir_var_function_temp,
+          glsl_get_natural_size_align_bytes);
+      OPT(nir, nir_lower_explicit_io, nir_var_function_temp,
+          nir_address_format_32bit_offset);
+   }
+
    nir_lower_mem_access_bit_sizes_options mem_bit_size_options = {
-      .modes = nir_var_mem_global,
+      .modes = nir_var_mem_generic,
       .callback = nak_mem_access_size_align,
    };
    OPT(nir, nir_lower_mem_access_bit_sizes, &mem_bit_size_options);

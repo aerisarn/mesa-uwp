@@ -461,7 +461,7 @@ pub extern "C" fn nak_compile_shader(
     let info = nak_shader_info {
         stage: nir.info.stage(),
         num_gprs: 255,
-        tls_size: 0,
+        tls_size: nir.scratch_size,
         cs: nak_shader_info__bindgen_ty_1 {
             local_size: [
                 nir.info.workgroup_size[0].into(),
@@ -470,7 +470,7 @@ pub extern "C" fn nak_compile_shader(
             ],
             smem_size: nir.info.shared_size.try_into().unwrap(),
         },
-        hdr: encode_hdr_for_nir(nir, 0 /* tls_size */),
+        hdr: encode_hdr_for_nir(nir, nir.scratch_size),
     };
 
     let code = if nak.sm >= 75 {
