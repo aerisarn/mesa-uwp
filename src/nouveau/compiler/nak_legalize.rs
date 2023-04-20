@@ -5,6 +5,8 @@
 
 use crate::nak_ir::*;
 
+use std::collections::{HashMap, HashSet};
+
 struct LegalizeInstr<'a> {
     ssa_alloc: &'a mut SSAValueAllocator,
     instrs: Vec<Instr>,
@@ -168,6 +170,51 @@ impl<'a> LegalizeInstr<'a> {
             }
             _ => (),
         }
+
+        let mut vec_src_map: HashMap<SSARef, SSARef> = HashMap::new();
+        let mut vec_comps = HashSet::new();
+        let mut pcopy = OpParCopy::new();
+        for src in instr.srcs_mut() {
+            if let SrcRef::SSA(vec) = &src.src_ref {
+                if vec.comps() == 1 {
+                    continue;
+                }
+
+                /* If the same vector shows up twice in one instruction, that's
+                 * okay. Just make it look the same as the previous source we
+                 * fixed up.
+                 */
+                if let Some(new_vec) = vec_src_map.get(&vec) {
+                    src.src_ref = (*new_vec).into();
+                    continue;
+                }
+
+                let mut new_vec = *vec;
+                for c in 0..vec.comps() {
+                    let ssa = vec[usize::from(c)];
+                    /* If the same SSA value shows up in multiple non-identical
+                     * vector sources or as multiple components in the same
+                     * source, we need to make a copy so it can get assigned to
+                     * multiple different registers.
+                     */
+                    if vec_comps.get(&ssa).is_some() {
+                        let copy = self.ssa_alloc.alloc(ssa.file());
+                        pcopy.push(ssa.into(), copy.into());
+                        new_vec[usize::from(c)] = copy;
+                    } else {
+                        vec_comps.insert(ssa);
+                    }
+                }
+
+                vec_src_map.insert(*vec, new_vec);
+                src.src_ref = new_vec.into();
+            }
+        }
+
+        if !pcopy.is_empty() {
+            self.instrs.push(Instr::new(Op::ParCopy(pcopy)));
+        }
+
         self.instrs.push(instr);
         std::mem::replace(&mut self.instrs, Vec::new())
     }
