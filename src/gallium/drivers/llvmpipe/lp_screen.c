@@ -1037,6 +1037,13 @@ llvmpipe_screen_late_init(struct llvmpipe_screen *screen)
       goto out;
    }
 
+   if (!lp_jit_screen_init(screen)) {
+      ret = false;
+      goto out;
+   }
+
+   lp_build_init(); /* get lp_native_vector_width initialised */
+
    lp_disk_cache_create(screen);
    screen->late_init_done = true;
 out:
@@ -1063,11 +1070,6 @@ llvmpipe_create_screen(struct sw_winsys *winsys)
    screen = CALLOC_STRUCT(llvmpipe_screen);
    if (!screen)
       return NULL;
-
-   if (!lp_jit_screen_init(screen)) {
-      FREE(screen);
-      return NULL;
-   }
 
    screen->winsys = winsys;
 
@@ -1109,7 +1111,6 @@ llvmpipe_create_screen(struct sw_winsys *winsys)
                                               screen->num_threads);
    screen->num_threads = MIN2(screen->num_threads, LP_MAX_THREADS);
 
-   lp_build_init(); /* get lp_native_vector_width initialised */
 
    snprintf(screen->renderer_string, sizeof(screen->renderer_string),
             "llvmpipe (LLVM " MESA_LLVM_VERSION_STRING ", %u bits)",
