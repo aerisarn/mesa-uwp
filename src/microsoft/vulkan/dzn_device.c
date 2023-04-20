@@ -3245,7 +3245,7 @@ dzn_sampler_create(struct dzn_device *device,
    /* TODO: have a sampler pool to allocate shader-invisible descs which we
     * can copy to the desc_set when UpdateDescriptorSets() is called.
     */
-   sampler->desc.Filter = dzn_translate_sampler_filter(pCreateInfo);
+   sampler->desc.Filter = dzn_translate_sampler_filter(pdev, pCreateInfo);
    sampler->desc.AddressU = dzn_sampler_translate_addr_mode(pCreateInfo->addressModeU);
    sampler->desc.AddressV = dzn_sampler_translate_addr_mode(pCreateInfo->addressModeV);
    sampler->desc.AddressW = dzn_sampler_translate_addr_mode(pCreateInfo->addressModeW);
