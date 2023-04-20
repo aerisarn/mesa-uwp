@@ -4887,6 +4887,31 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       }
    }
 
+   /* Use v_fma_mix for f2f32/f2f16 if it has higher throughput.
+    * Do this late to not disturb other optimizations.
+    */
+   if ((instr->opcode == aco_opcode::v_cvt_f32_f16 || instr->opcode == aco_opcode::v_cvt_f16_f32) &&
+       ctx.program->gfx_level >= GFX11 && ctx.program->wave_size == 64 && !instr->valu().omod &&
+       !instr->isDPP()) {
+      bool is_f2f16 = instr->opcode == aco_opcode::v_cvt_f16_f32;
+      Instruction* fma = create_instruction<VALU_instruction>(
+         is_f2f16 ? aco_opcode::v_fma_mixlo_f16 : aco_opcode::v_fma_mix_f32, Format::VOP3P, 3, 1);
+      fma->definitions[0] = instr->definitions[0];
+      fma->operands[0] = instr->operands[0];
+      fma->valu().opsel_hi[0] = !is_f2f16;
+      fma->valu().opsel_lo[0] = instr->valu().opsel[0];
+      fma->valu().clamp = instr->valu().clamp;
+      fma->valu().abs[0] = instr->valu().abs[0];
+      fma->valu().neg[0] = instr->valu().neg[0];
+      fma->operands[1] = Operand::c32(fui(1.0f));
+      fma->operands[2] = Operand::zero();
+      /* fma_mix is only dual issued if dst and acc type match */
+      fma->valu().opsel_hi[2] = is_f2f16;
+      fma->valu().neg[2] = true;
+      instr.reset(fma);
+      ctx.info[instr->definitions[0].tempId()].label = 0;
+   }
+
    if (instr->isSDWA() || (instr->isVOP3() && ctx.program->gfx_level < GFX10) ||
        (instr->isVOP3P() && ctx.program->gfx_level < GFX10))
       return; /* some encodings can't ever take literals */
