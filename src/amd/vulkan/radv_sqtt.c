@@ -793,3 +793,64 @@ radv_get_thread_trace(struct radv_queue *queue, struct ac_thread_trace *thread_t
    thread_trace->data = &device->thread_trace;
    return true;
 }
+
+void
+radv_reset_thread_trace(struct radv_device *device)
+{
+   struct ac_thread_trace_data *thread_trace_data = &device->thread_trace;
+   struct rgp_clock_calibration *clock_calibration = &thread_trace_data->rgp_clock_calibration;
+
+   /* Clear clock calibration records. */
+   simple_mtx_lock(&clock_calibration->lock);
+   list_for_each_entry_safe(struct rgp_clock_calibration_record, record, &clock_calibration->record,
+                            list)
+   {
+      clock_calibration->record_count--;
+      list_del(&record->list);
+      free(record);
+   }
+   simple_mtx_unlock(&clock_calibration->lock);
+}
+
+static VkResult
+radv_get_calibrated_timestamps(struct radv_device *device, uint64_t *cpu_timestamp,
+                               uint64_t *gpu_timestamp)
+{
+   uint64_t timestamps[2];
+   uint64_t max_deviation;
+   VkResult result;
+
+   const VkCalibratedTimestampInfoEXT timestamp_infos[2] = {
+      {
+         .sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT,
+         .timeDomain = VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT,
+      },
+      {
+         .sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT,
+         .timeDomain = VK_TIME_DOMAIN_DEVICE_EXT,
+      }
+   };
+
+   result = radv_GetCalibratedTimestampsEXT(radv_device_to_handle(device), 2, timestamp_infos,
+                                            timestamps, &max_deviation);
+   if (result != VK_SUCCESS)
+      return result;
+
+   *cpu_timestamp = timestamps[0];
+   *gpu_timestamp = timestamps[1];
+
+   return result;
+}
+
+bool
+radv_thread_trace_sample_clocks(struct radv_device *device)
+{
+   uint64_t cpu_timestamp = 0, gpu_timestamp = 0;
+   VkResult result;
+
+   result = radv_get_calibrated_timestamps(device, &cpu_timestamp, &gpu_timestamp);
+   if (result != VK_SUCCESS)
+      return false;
+
+   return ac_sqtt_add_clock_calibration(&device->thread_trace, cpu_timestamp, gpu_timestamp);
+}

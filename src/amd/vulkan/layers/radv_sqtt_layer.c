@@ -554,6 +554,9 @@ radv_handle_thread_trace(VkQueue _queue)
           */
          resize_trigger = true;
       }
+
+      /* Clear resources used for this capture. */
+      radv_reset_thread_trace(queue->device);
    }
 
    if (!thread_trace_enabled) {
@@ -579,6 +582,11 @@ radv_handle_thread_trace(VkQueue _queue)
                             "\"echo profile_peak  > "
                             "/sys/class/drm/card0/device/power_dpm_force_performance_level\"\n");
             return;
+         }
+
+         /* Sample CPU/GPU clocks before starting the trace. */
+         if (!radv_thread_trace_sample_clocks(queue->device)) {
+            fprintf(stderr, "radv: Failed to sample clocks\n");
          }
 
          radv_begin_thread_trace(queue);
