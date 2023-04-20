@@ -916,6 +916,77 @@ impl SM75Instr {
         self.set_field(72..76, op.mask);
     }
 
+    fn set_image_dim(&mut self, range: Range<usize>, dim: ImageDim) {
+        assert!(range.len() == 3);
+        self.set_field(
+            range,
+            match dim {
+                ImageDim::_1D => 0_u8,
+                ImageDim::_1DBuffer => 1_u8,
+                ImageDim::_1DArray => 2_u8,
+                ImageDim::_2D => 3_u8,
+                ImageDim::_2DArray => 4_u8,
+                ImageDim::_3D => 5_u8,
+            },
+        );
+    }
+
+    fn set_mem_order_scope(&mut self, order: &MemOrder, scope: &MemScope) {
+        if self.sm <= 75 {
+            self.set_field(
+                77..79,
+                match scope {
+                    MemScope::CTA => 0_u8,
+                    MemScope::Cluster => 1_u8,
+                    MemScope::GPU => 2_u8,
+                    MemScope::System => 3_u8,
+                },
+            );
+            self.set_field(
+                79..81,
+                match order {
+                    /* Constant => 0_u8, */
+                    MemOrder::Weak => 1_u8,
+                    MemOrder::Strong => 2_u8,
+                    /* MMIO => 3_u8, */
+                },
+            );
+        } else {
+            assert!(*scope == MemScope::System);
+            assert!(*order == MemOrder::Strong);
+            self.set_field(77..81, 0xa);
+        }
+    }
+
+    fn encode_suld(&mut self, op: &OpSuLd) {
+        self.set_opcode(0x998);
+
+        self.set_dst(op.dst);
+        self.set_reg_src(24..32, op.coord);
+        self.set_reg_src(64..72, op.handle);
+        self.set_pred_dst(81..84, op.resident);
+
+        self.set_image_dim(61..64, op.image_dim);
+        self.set_mem_order_scope(&op.mem_order, &op.mem_scope);
+
+        assert!(op.mask == 0x1 || op.mask == 0x3 || op.mask == 0xf);
+        self.set_field(72..76, op.mask);
+    }
+
+    fn encode_sust(&mut self, op: &OpSuSt) {
+        self.set_opcode(0x99c);
+
+        self.set_reg_src(24..32, op.coord);
+        self.set_reg_src(32..40, op.data);
+        self.set_reg_src(64..72, op.handle);
+
+        self.set_image_dim(61..64, op.image_dim);
+        self.set_mem_order_scope(&op.mem_order, &op.mem_scope);
+
+        assert!(op.mask == 0x1 || op.mask == 0x3 || op.mask == 0xf);
+        self.set_field(72..76, op.mask);
+    }
+
     fn set_mem_access(&mut self, access: &MemAccess) {
         self.set_field(
             72..73,
@@ -936,30 +1007,7 @@ impl SM75Instr {
                 MemType::B128 => 6_u8,
             },
         );
-        if self.sm <= 75 {
-            self.set_field(
-                77..79,
-                match access.scope {
-                    MemScope::CTA => 0_u8,
-                    MemScope::Cluster => 1_u8,
-                    MemScope::GPU => 2_u8,
-                    MemScope::System => 3_u8,
-                },
-            );
-            self.set_field(
-                79..81,
-                match access.order {
-                    /* Constant => 0_u8, */
-                    /* Weak? => 1_u8, */
-                    MemOrder::Strong => 2_u8,
-                    /* MMIO => 3_u8, */
-                },
-            );
-        } else {
-            assert!(access.scope == MemScope::System);
-            assert!(access.order == MemOrder::Strong);
-            self.set_field(77..81, 0xa);
-        }
+        self.set_mem_order_scope(&access.order, &access.scope);
     }
 
     fn encode_ld(&mut self, op: &OpLd) {
@@ -1118,6 +1166,8 @@ impl SM75Instr {
             Op::Tmml(op) => si.encode_tmml(&op),
             Op::Txd(op) => si.encode_txd(&op),
             Op::Txq(op) => si.encode_txq(&op),
+            Op::SuLd(op) => si.encode_suld(&op),
+            Op::SuSt(op) => si.encode_sust(&op),
             Op::Ld(op) => si.encode_ld(&op),
             Op::St(op) => si.encode_st(&op),
             Op::ALd(op) => si.encode_ald(&op),

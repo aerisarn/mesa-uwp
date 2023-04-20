@@ -778,9 +778,84 @@ impl<'a> ShaderFromNir<'a> {
         }
     }
 
+    fn get_image_dim(&mut self, intrin: &nir_intrinsic_instr) -> ImageDim {
+        let is_array = intrin.image_array();
+        let image_dim = intrin.image_dim();
+        match intrin.image_dim() {
+            GLSL_SAMPLER_DIM_1D => {
+                if is_array {
+                    ImageDim::_1DArray
+                } else {
+                    ImageDim::_1D
+                }
+            }
+            GLSL_SAMPLER_DIM_2D => {
+                if is_array {
+                    ImageDim::_2DArray
+                } else {
+                    ImageDim::_2D
+                }
+            }
+            GLSL_SAMPLER_DIM_3D => {
+                assert!(!is_array);
+                ImageDim::_3D
+            }
+            GLSL_SAMPLER_DIM_CUBE => ImageDim::_2DArray,
+            GLSL_SAMPLER_DIM_BUF => {
+                assert!(!is_array);
+                ImageDim::_1DBuffer
+            }
+            _ => panic!("Unsupported image dimension: {}", image_dim),
+        }
+    }
+
+    fn get_image_coord(
+        &mut self,
+        intrin: &nir_intrinsic_instr,
+        dim: ImageDim,
+    ) -> Src {
+        let vec = self.get_ssa(intrin.get_src(1).as_def());
+        /* let sample = self.get_src(&srcs[2]); */
+        let comps = usize::from(dim.coord_comps());
+        SSARef::try_from(&vec[0..comps]).unwrap().into()
+    }
+
     fn parse_intrinsic(&mut self, intrin: &nir_intrinsic_instr) {
         let srcs = intrin.srcs_as_slice();
         match intrin.intrinsic {
+            nir_intrinsic_bindless_image_load => {
+                let handle = self.get_src(&srcs[0]);
+                let dim = self.get_image_dim(intrin);
+                let coord = self.get_image_coord(intrin, dim);
+                /* let sample = self.get_src(&srcs[2]); */
+                let dst = self.get_dst(&intrin.def);
+                self.instrs.push(Instr::new(OpSuLd {
+                    dst: dst,
+                    resident: Dst::None,
+                    image_dim: dim,
+                    mem_order: MemOrder::Weak,
+                    mem_scope: MemScope::CTA,
+                    mask: 0xf,
+                    handle: handle,
+                    coord: coord,
+                }));
+            }
+            nir_intrinsic_bindless_image_store => {
+                let handle = self.get_src(&srcs[0]);
+                let dim = self.get_image_dim(intrin);
+                let coord = self.get_image_coord(intrin, dim);
+                /* let sample = self.get_src(&srcs[2]); */
+                let data = self.get_src(&srcs[3]);
+                self.instrs.push(Instr::new(OpSuSt {
+                    image_dim: dim,
+                    mem_order: MemOrder::Weak,
+                    mem_scope: MemScope::CTA,
+                    mask: 0xf,
+                    handle: handle,
+                    coord: coord,
+                    data: data,
+                }));
+            }
             nir_intrinsic_load_barycentric_centroid => (),
             nir_intrinsic_load_barycentric_pixel => (),
             nir_intrinsic_load_barycentric_sample => (),

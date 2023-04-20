@@ -1015,6 +1015,42 @@ impl fmt::Display for TexQuery {
     }
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum ImageDim {
+    _1D,
+    _1DBuffer,
+    _1DArray,
+    _2D,
+    _2DArray,
+    _3D,
+}
+
+impl ImageDim {
+    pub fn coord_comps(&self) -> u8 {
+        match self {
+            ImageDim::_1D => 1,
+            ImageDim::_1DBuffer => 1,
+            ImageDim::_1DArray => 2,
+            ImageDim::_2D => 2,
+            ImageDim::_2DArray => 3,
+            ImageDim::_3D => 3,
+        }
+    }
+}
+
+impl fmt::Display for ImageDim {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ImageDim::_1D => write!(f, "1D"),
+            ImageDim::_1DBuffer => write!(f, "1D_BUFFER"),
+            ImageDim::_1DArray => write!(f, "1D_ARRAY"),
+            ImageDim::_2D => write!(f, "2D"),
+            ImageDim::_2DArray => write!(f, "2D_ARRAY"),
+            ImageDim::_3D => write!(f, "3D"),
+        }
+    }
+}
+
 pub enum IntType {
     U8,
     I8,
@@ -1158,7 +1194,17 @@ impl fmt::Display for MemType {
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum MemOrder {
+    Weak,
     Strong,
+}
+
+impl fmt::Display for MemOrder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MemOrder::Weak => write!(f, "WEAK"),
+            MemOrder::Strong => write!(f, "STRONG"),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
@@ -1835,6 +1881,63 @@ impl fmt::Display for OpTxq {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpSuLd {
+    pub dst: Dst,
+    pub resident: Dst,
+
+    pub image_dim: ImageDim,
+    pub mem_order: MemOrder,
+    pub mem_scope: MemScope,
+    pub mask: u8,
+    pub handle: Src,
+    pub coord: Src,
+}
+
+impl fmt::Display for OpSuLd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "SULD.P.{}.{}.{} {{ {} {} }} [{}] {}",
+            self.image_dim,
+            self.mem_order,
+            self.mem_scope,
+            self.dst,
+            self.resident,
+            self.coord,
+            self.handle,
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpSuSt {
+    pub image_dim: ImageDim,
+    pub mem_order: MemOrder,
+    pub mem_scope: MemScope,
+    pub mask: u8,
+    pub handle: Src,
+    pub coord: Src,
+    pub data: Src,
+}
+
+impl fmt::Display for OpSuSt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "SUST.P.{}.{}.{} [{}] {} {}",
+            self.image_dim,
+            self.mem_order,
+            self.mem_scope,
+            self.coord,
+            self.data,
+            self.handle,
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpLd {
     pub dst: Dst,
     pub addr: Src,
@@ -2292,6 +2395,8 @@ pub enum Op {
     Tmml(OpTmml),
     Txd(OpTxd),
     Txq(OpTxq),
+    SuLd(OpSuLd),
+    SuSt(OpSuSt),
     Ld(OpLd),
     St(OpSt),
     ALd(OpALd),
@@ -2707,6 +2812,7 @@ impl Instr {
     pub fn can_eliminate(&self) -> bool {
         match self.op {
             Op::ASt(_)
+            | Op::SuSt(_)
             | Op::St(_)
             | Op::Bra(_)
             | Op::Exit(_)
@@ -2745,6 +2851,8 @@ impl Instr {
             Op::Tmml(_) => None,
             Op::Txd(_) => None,
             Op::Txq(_) => None,
+            Op::SuLd(_) => None,
+            Op::SuSt(_) => None,
             Op::Ld(_) => None,
             Op::St(_) => None,
             Op::Bra(_) | Op::Exit(_) => Some(15),
