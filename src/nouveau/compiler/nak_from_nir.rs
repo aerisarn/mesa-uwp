@@ -866,6 +866,7 @@ impl<'a> ShaderFromNir<'a> {
                 let access = MemAccess {
                     addr_type: MemAddrType::A64,
                     mem_type: MemType::from_size(size_B, false),
+                    space: MemSpace::Global,
                     order: MemOrder::Strong,
                     scope: MemScope::System,
                 };
@@ -945,6 +946,7 @@ impl<'a> ShaderFromNir<'a> {
                 let access = MemAccess {
                     addr_type: MemAddrType::A64,
                     mem_type: MemType::from_size(size_B, false),
+                    space: MemSpace::Global,
                     order: MemOrder::Strong,
                     scope: MemScope::System,
                 };

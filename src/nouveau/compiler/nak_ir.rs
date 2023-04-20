@@ -1129,6 +1129,7 @@ impl fmt::Display for IntType {
     }
 }
 
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum MemAddrType {
     A32,
     A64,
@@ -1143,6 +1144,7 @@ impl fmt::Display for MemAddrType {
     }
 }
 
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub enum MemType {
     U8,
     I8,
@@ -1246,13 +1248,18 @@ impl fmt::Display for MemSpace {
 pub struct MemAccess {
     pub addr_type: MemAddrType,
     pub mem_type: MemType,
+    pub space: MemSpace,
     pub order: MemOrder,
     pub scope: MemScope,
 }
 
 impl fmt::Display for MemAccess {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}.{}.{}", self.addr_type, self.mem_type, self.scope)
+        write!(
+            f,
+            "{}.{}.{}.{}",
+            self.addr_type, self.mem_type, self.space, self.scope
+        )
     }
 }
 

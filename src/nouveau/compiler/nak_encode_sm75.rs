@@ -987,17 +987,11 @@ impl SM75Instr {
         self.set_field(72..76, op.mask);
     }
 
-    fn set_mem_access(&mut self, access: &MemAccess) {
+    fn set_mem_type(&mut self, range: Range<usize>, mem_type: MemType) {
+        assert!(range.len() == 3);
         self.set_field(
-            72..73,
-            match access.addr_type {
-                MemAddrType::A32 => 0_u8,
-                MemAddrType::A64 => 1_u8,
-            },
-        );
-        self.set_field(
-            73..76,
-            match access.mem_type {
+            range,
+            match mem_type {
                 MemType::U8 => 0_u8,
                 MemType::I8 => 1_u8,
                 MemType::U16 => 2_u8,
@@ -1007,10 +1001,21 @@ impl SM75Instr {
                 MemType::B128 => 6_u8,
             },
         );
+    }
+
+    fn set_mem_access(&mut self, access: &MemAccess) {
+        self.set_field(
+            72..73,
+            match access.addr_type {
+                MemAddrType::A32 => 0_u8,
+                MemAddrType::A64 => 1_u8,
+            },
+        );
+        self.set_mem_type(73..76, access.mem_type);
         self.set_mem_order_scope(&access.order, &access.scope);
     }
 
-    fn encode_ld(&mut self, op: &OpLd) {
+    fn encode_ldg(&mut self, op: &OpLd) {
         self.set_opcode(0x980);
 
         self.set_dst(op.dst);
@@ -1020,7 +1025,42 @@ impl SM75Instr {
         self.set_mem_access(&op.access);
     }
 
-    fn encode_st(&mut self, op: &OpSt) {
+    fn encode_ldl(&mut self, op: &OpLd) {
+        self.set_opcode(0x983);
+        self.set_field(84..87, 1_u8);
+
+        self.set_dst(op.dst);
+        self.set_reg_src(24..32, op.addr);
+        self.set_field(40..64, op.offset);
+
+        assert!(op.access.addr_type == MemAddrType::A32);
+        self.set_mem_type(73..76, op.access.mem_type);
+        assert!(op.access.order == MemOrder::Strong);
+        assert!(op.access.scope == MemScope::CTA);
+    }
+
+    fn encode_lds(&mut self, op: &OpLd) {
+        self.set_opcode(0x984);
+
+        self.set_dst(op.dst);
+        self.set_reg_src(24..32, op.addr);
+        self.set_field(40..64, op.offset);
+
+        assert!(op.access.addr_type == MemAddrType::A32);
+        self.set_mem_type(73..76, op.access.mem_type);
+        assert!(op.access.order == MemOrder::Strong);
+        assert!(op.access.scope == MemScope::CTA);
+    }
+
+    fn encode_ld(&mut self, op: &OpLd) {
+        match op.access.space {
+            MemSpace::Global => self.encode_ldg(op),
+            MemSpace::Local => self.encode_ldl(op),
+            MemSpace::Shared => self.encode_lds(op),
+        }
+    }
+
+    fn encode_stg(&mut self, op: &OpSt) {
         self.set_opcode(0x385);
 
         self.set_reg_src(24..32, op.addr);
@@ -1028,6 +1068,41 @@ impl SM75Instr {
         self.set_reg_src(64..72, op.data);
 
         self.set_mem_access(&op.access);
+    }
+
+    fn encode_stl(&mut self, op: &OpSt) {
+        self.set_opcode(0x387);
+        self.set_field(84..87, 1_u8);
+
+        self.set_reg_src(24..32, op.addr);
+        self.set_reg_src(32..40, op.data);
+        self.set_field(40..64, op.offset);
+
+        assert!(op.access.addr_type == MemAddrType::A32);
+        self.set_mem_type(73..76, op.access.mem_type);
+        assert!(op.access.order == MemOrder::Strong);
+        assert!(op.access.scope == MemScope::CTA);
+    }
+
+    fn encode_sts(&mut self, op: &OpSt) {
+        self.set_opcode(0x388);
+
+        self.set_reg_src(24..32, op.addr);
+        self.set_reg_src(32..40, op.data);
+        self.set_field(40..64, op.offset);
+
+        assert!(op.access.addr_type == MemAddrType::A32);
+        self.set_mem_type(73..76, op.access.mem_type);
+        assert!(op.access.order == MemOrder::Strong);
+        assert!(op.access.scope == MemScope::CTA);
+    }
+
+    fn encode_st(&mut self, op: &OpSt) {
+        match op.access.space {
+            MemSpace::Global => self.encode_stg(op),
+            MemSpace::Local => self.encode_stl(op),
+            MemSpace::Shared => self.encode_sts(op),
+        }
     }
 
     fn encode_ald(&mut self, op: &OpALd) {
