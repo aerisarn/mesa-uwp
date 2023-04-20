@@ -540,6 +540,10 @@ bool ac_sqtt_add_code_object_loader_event(struct ac_thread_trace_data *thread_tr
                                           uint64_t pipeline_hash,
                                           uint64_t base_address);
 
+bool ac_sqtt_add_clock_calibration(struct ac_thread_trace_data *thread_trace_data,
+                                   uint64_t cpu_timestamp,
+                                   uint64_t gpu_timestamp);
+
 bool ac_check_profile_state(const struct radeon_info *info);
 
 union rgp_sqtt_marker_cb_id ac_sqtt_get_next_cmdbuf_id(struct ac_thread_trace_data *data,

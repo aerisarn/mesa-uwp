@@ -149,6 +149,28 @@ ac_sqtt_add_code_object_loader_event(struct ac_thread_trace_data *thread_trace_d
    return true;
 }
 
+bool
+ac_sqtt_add_clock_calibration(struct ac_thread_trace_data *thread_trace_data,
+                              uint64_t cpu_timestamp, uint64_t gpu_timestamp)
+{
+   struct rgp_clock_calibration *clock_calibration = &thread_trace_data->rgp_clock_calibration;
+   struct rgp_clock_calibration_record *record;
+
+   record = malloc(sizeof(struct rgp_clock_calibration_record));
+   if (!record)
+      return false;
+
+   record->cpu_timestamp = cpu_timestamp;
+   record->gpu_timestamp = gpu_timestamp;
+
+   simple_mtx_lock(&clock_calibration->lock);
+   list_addtail(&record->list, &clock_calibration->record);
+   clock_calibration->record_count++;
+   simple_mtx_unlock(&clock_calibration->lock);
+
+   return true;
+}
+
 /* See https://gitlab.freedesktop.org/mesa/mesa/-/issues/5260
  * On some HW SQTT can hang if we're not in one of the profiling pstates. */
 bool
