@@ -451,6 +451,13 @@ impl<'a> ShaderFromNir<'a> {
                     signed: false,
                 })));
             }
+            nir_op_imul_2x32_64 | nir_op_umul_2x32_64 => {
+                self.instrs.push(Instr::new(Op::IMad64(OpIMad64 {
+                    dst: dst,
+                    srcs: [srcs[0], srcs[1], Src::new_zero()],
+                    signed: alu.op == nir_op_imul_2x32_64,
+                })));
+            }
             nir_op_imul_high | nir_op_umul_high => {
                 let dst_hi = dst.as_ssa().unwrap()[0];
                 let dst_lo = self.alloc_ssa(RegFile::GPR);
