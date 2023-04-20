@@ -162,6 +162,14 @@ def generate_lava_yaml_payload(args) -> dict[str, Any]:
         run_steps += [
             x.rstrip() for x in init_sh if not x.startswith("#") and x.rstrip()
         ]
+        # We cannot distribute the Adreno 660 shader firmware inside rootfs,
+        # since the license isn't bundled inside the repository
+        if args.device_type == "sm8350-hdk":
+            run_steps.append(
+                    "curl -L --retry 4 -f --retry-all-errors --retry-delay 60 " +
+                    "https://github.com/allahjasif1990/hdk888-firmware/raw/main/a660_zap.mbn " +
+                    "-o \"/lib/firmware/qcom/sm8350/a660_zap.mbn\""
+            )
         run_steps.append(
             "curl -L --retry 4 -f --retry-all-errors --retry-delay 60 "
             f"{args.job_rootfs_overlay_url} | tar -xz -C /",
