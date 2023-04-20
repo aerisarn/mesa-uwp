@@ -2654,24 +2654,10 @@ anv_CreateImageView(VkDevice _device,
    const VkSamplerYcbcrConversionInfo *conv_info =
       vk_find_struct_const(pCreateInfo->pNext, SAMPLER_YCBCR_CONVERSION_INFO);
 
-#ifdef ANDROID
-   /* If image has an external format, the pNext chain must contain an
-    * instance of VKSamplerYcbcrConversionInfo with a conversion object
-    * created with the same external format as image."
-    */
-   assert(!image->vk.android_external_format || conv_info);
-#endif
-
    if (conv_info) {
       VK_FROM_HANDLE(vk_ycbcr_conversion, conversion, conv_info->conversion);
       conv_format = conversion->state.format;
    }
-
-#ifdef ANDROID
-   /* "If image has an external format, format must be VK_FORMAT_UNDEFINED." */
-   assert(!image->vk.android_external_format ||
-          pCreateInfo->format == VK_FORMAT_UNDEFINED);
-#endif
 
    /* Format is undefined, this can happen when using external formats. Set
     * view format from the passed conversion info.

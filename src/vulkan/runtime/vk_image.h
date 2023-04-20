@@ -36,7 +36,13 @@ struct vk_image {
 
    VkImageCreateFlags create_flags;
    VkImageType image_type;
+
+   /* format is from VkImageCreateInfo::format or
+    * VkExternalFormatANDROID::externalFormat.  This works because only one of
+    * them can be defined and the runtime uses VkFormat for external formats.
+    */
    VkFormat format;
+
    VkExtent3D extent;
    uint32_t mip_levels;
    uint32_t array_layers;
@@ -76,9 +82,6 @@ struct vk_image {
     * but it may be overridden by the driver as needed.
     */
    unsigned ahardware_buffer_format;
-
-   /* VK_ANDROID_external_memory_android_hardware_buffer */
-   uint64_t android_external_format;
 #endif
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(vk_image, base, VkImage,

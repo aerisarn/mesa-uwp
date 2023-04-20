@@ -108,9 +108,7 @@ vk_image_init(struct vk_device *device,
       assert(image->format == VK_FORMAT_UNDEFINED);
       assert(image->external_handle_types &
              VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID);
-      image->android_external_format = ext_format->externalFormat;
-   } else {
-      image->android_external_format = 0;
+      vk_image_set_format(image, (VkFormat)ext_format->externalFormat);
    }
 #endif
 }
