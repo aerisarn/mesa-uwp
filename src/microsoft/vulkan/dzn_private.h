@@ -869,7 +869,8 @@ enum dzn_register_space {
 
 static_assert(sizeof(D3D12_DEPTH_STENCIL_DESC2) > sizeof(D3D12_DEPTH_STENCIL_DESC1),
               "Using just one of these descs in the max size calculation");
-static_assert(sizeof(D3D12_RASTERIZER_DESC) == sizeof(D3D12_RASTERIZER_DESC1),
+static_assert(sizeof(D3D12_RASTERIZER_DESC) >= sizeof(D3D12_RASTERIZER_DESC1) &&
+              sizeof(D3D12_RASTERIZER_DESC) >= sizeof(D3D12_RASTERIZER_DESC2),
               "Using just one of these descs in the max size calculation");
 
 #define MAX_GFX_PIPELINE_STATE_STREAM_SIZE \

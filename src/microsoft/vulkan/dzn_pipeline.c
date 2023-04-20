@@ -1312,35 +1312,53 @@ dzn_graphics_pipeline_translate_rast(struct dzn_device *device,
       }
    }
 
-   static_assert(sizeof(D3D12_RASTERIZER_DESC) == sizeof(D3D12_RASTERIZER_DESC1), "Casting between these");
-   D3D12_PIPELINE_STATE_SUBOBJECT_TYPE rast_type = pdev->options16.DynamicDepthBiasSupported ?
-      D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER1 :
-      D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER;
-   d3d12_pipeline_state_stream_new_desc(out, MAX_GFX_PIPELINE_STATE_STREAM_SIZE, rast_type, D3D12_RASTERIZER_DESC, desc);
-   pipeline->templates.desc_offsets.rast =
-      (uintptr_t)desc - (uintptr_t)out->pPipelineStateSubobjectStream;
-   desc->DepthClipEnable = !in_rast->depthClampEnable;
-   desc->FillMode = translate_polygon_mode(in_rast->polygonMode);
-   desc->CullMode = translate_cull_mode(in_rast->cullMode);
-   desc->FrontCounterClockwise =
-      in_rast->frontFace == VK_FRONT_FACE_COUNTER_CLOCKWISE;
-   if (in_rast->depthBiasEnable) {
-      if (rast_type == D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER1)
-         ((D3D12_RASTERIZER_DESC1 *)desc)->DepthBias = in_rast->depthBiasConstantFactor;
-      else
-         desc->DepthBias = translate_depth_bias(in_rast->depthBiasConstantFactor);
-      desc->SlopeScaledDepthBias = in_rast->depthBiasSlopeFactor;
-      desc->DepthBiasClamp = in_rast->depthBiasClamp;
-   }
+   if (pdev->options19.NarrowQuadrilateralLinesSupported) {
+      assert(pdev->options16.DynamicDepthBiasSupported);
+      d3d12_gfx_pipeline_state_stream_new_desc(out, RASTERIZER2, D3D12_RASTERIZER_DESC2, desc);
+      pipeline->templates.desc_offsets.rast =
+         (uintptr_t)desc - (uintptr_t)out->pPipelineStateSubobjectStream;
+      desc->DepthClipEnable = !in_rast->depthClampEnable;
+      desc->FillMode = translate_polygon_mode(in_rast->polygonMode);
+      desc->CullMode = translate_cull_mode(in_rast->cullMode);
+      desc->FrontCounterClockwise =
+         in_rast->frontFace == VK_FRONT_FACE_COUNTER_CLOCKWISE;
+      if (in_rast->depthBiasEnable) {
+         desc->DepthBias = in_rast->depthBiasConstantFactor;
+         desc->SlopeScaledDepthBias = in_rast->depthBiasSlopeFactor;
+         desc->DepthBiasClamp = in_rast->depthBiasClamp;
+      }
+      desc->LineRasterizationMode = D3D12_LINE_RASTERIZATION_MODE_QUADRILATERAL_NARROW;
+   } else {
+      static_assert(sizeof(D3D12_RASTERIZER_DESC) == sizeof(D3D12_RASTERIZER_DESC1), "Casting between these");
+      D3D12_PIPELINE_STATE_SUBOBJECT_TYPE rast_type = pdev->options16.DynamicDepthBiasSupported ?
+         D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER1 :
+         D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER;
+      d3d12_pipeline_state_stream_new_desc(out, MAX_GFX_PIPELINE_STATE_STREAM_SIZE, rast_type, D3D12_RASTERIZER_DESC, desc);
+      pipeline->templates.desc_offsets.rast =
+         (uintptr_t)desc - (uintptr_t)out->pPipelineStateSubobjectStream;
+      desc->DepthClipEnable = !in_rast->depthClampEnable;
+      desc->FillMode = translate_polygon_mode(in_rast->polygonMode);
+      desc->CullMode = translate_cull_mode(in_rast->cullMode);
+      desc->FrontCounterClockwise =
+         in_rast->frontFace == VK_FRONT_FACE_COUNTER_CLOCKWISE;
+      if (in_rast->depthBiasEnable) {
+         if (rast_type == D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RASTERIZER1)
+            ((D3D12_RASTERIZER_DESC1 *)desc)->DepthBias = in_rast->depthBiasConstantFactor;
+         else
+            desc->DepthBias = translate_depth_bias(in_rast->depthBiasConstantFactor);
+         desc->SlopeScaledDepthBias = in_rast->depthBiasSlopeFactor;
+         desc->DepthBiasClamp = in_rast->depthBiasClamp;
+      }
 
-   /* The Vulkan conformance tests use different reference rasterizers for single-sampled
-    * and multi-sampled lines. The single-sampled lines can be bresenham lines, but multi-
-    * sampled need to be quadrilateral lines. This still isn't *quite* sufficient, because
-    * D3D only supports a line width of 1.4 (per spec), but Vulkan requires us to support
-    * 1.0 (and without claiming wide lines, that's all we can support).
-    */
-   if (in_ms && in_ms->rasterizationSamples > 1)
-      desc->MultisampleEnable = true;
+      /* The Vulkan conformance tests use different reference rasterizers for single-sampled
+       * and multi-sampled lines. The single-sampled lines can be bresenham lines, but multi-
+       * sampled need to be quadrilateral lines. This still isn't *quite* sufficient, because
+       * D3D only supports a line width of 1.4 (per spec), but Vulkan requires us to support
+       * 1.0 (and without claiming wide lines, that's all we can support).
+       */
+      if (in_ms && in_ms->rasterizationSamples > 1)
+         desc->MultisampleEnable = true;
+   }
 
    assert(in_rast->lineWidth == 1.0f);
 }
