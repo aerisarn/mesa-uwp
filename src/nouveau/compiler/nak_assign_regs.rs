@@ -55,6 +55,79 @@ impl KillSet {
     }
 }
 
+enum SSAUse {
+    FixedReg(u8),
+    Vec(SSARef),
+}
+
+struct SSAUseMap {
+    ssa_map: HashMap<SSAValue, Vec<(usize, SSAUse)>>,
+}
+
+impl SSAUseMap {
+    fn add_fixed_reg_use(&mut self, ip: usize, ssa: SSAValue, reg: u8) {
+        let v = self.ssa_map.entry(ssa).or_insert_with(|| Vec::new());
+        v.push((ip, SSAUse::FixedReg(reg)));
+    }
+
+    fn add_vec_use(&mut self, ip: usize, vec: SSARef) {
+        if vec.comps() == 1 {
+            return;
+        }
+
+        for ssa in vec.iter() {
+            let v = self.ssa_map.entry(*ssa).or_insert_with(|| Vec::new());
+            v.push((ip, SSAUse::Vec(vec)));
+        }
+    }
+
+    fn find_vec_use_after(&self, ssa: &SSAValue, ip: usize) -> Option<&SSAUse> {
+        if let Some(v) = self.ssa_map.get(ssa) {
+            let p = v.partition_point(|(uip, _)| *uip <= ip);
+            if p == v.len() {
+                None
+            } else {
+                let (_, u) = &v[p];
+                Some(u)
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn add_block(&mut self, b: &BasicBlock) {
+        for (ip, instr) in b.instrs.iter().enumerate() {
+            match &instr.op {
+                Op::FSOut(op) => {
+                    for (i, src) in op.srcs.iter().enumerate() {
+                        let out_reg = u8::try_from(i).unwrap();
+                        if let SrcRef::SSA(ssa) = src.src_ref {
+                            assert!(ssa.comps() == 1);
+                            self.add_fixed_reg_use(ip, ssa[0], out_reg);
+                        }
+                    }
+                }
+                _ => {
+                    /* We don't care about predicates because they're scalar */
+                    for src in instr.srcs() {
+                        if let SrcRef::SSA(ssa) = src.src_ref {
+                            self.add_vec_use(ip, ssa);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn for_block(b: &BasicBlock) -> SSAUseMap {
+        let mut am = SSAUseMap {
+            ssa_map: HashMap::new(),
+        };
+        am.add_block(b);
+        am
+    }
+}
+
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 enum LiveRef {
     SSA(SSAValue),
@@ -129,8 +202,12 @@ impl RegFileAllocation {
         }
     }
 
+    pub fn try_get_reg(&self, ssa: SSAValue) -> Option<u8> {
+        self.ssa_reg.get(&ssa).cloned()
+    }
+
     pub fn get_reg(&self, ssa: SSAValue) -> u8 {
-        *self.ssa_reg.get(&ssa).unwrap()
+        self.try_get_reg(ssa).unwrap()
     }
 
     pub fn get_ssa(&self, reg: u8) -> Option<SSAValue> {
@@ -277,6 +354,26 @@ impl RegFileAllocation {
         }
     }
 
+    fn try_find_unused_reg(
+        &self,
+        start_reg: u8,
+        align: u8,
+        comp: u8,
+    ) -> Option<u8> {
+        let mut reg = start_reg;
+        loop {
+            reg = match self.try_find_unused_reg_range(reg, 1) {
+                Some(r) => r,
+                None => break None,
+            };
+
+            if reg % align == comp {
+                return Some(reg);
+            }
+            reg += 1;
+        }
+    }
+
     fn try_find_unpinned_reg_range(
         &self,
         start_reg: u8,
@@ -360,7 +457,59 @@ impl RegFileAllocation {
         self.move_to_reg(pcopy, ssa, reg)
     }
 
-    pub fn alloc_scalar(&mut self, ssa: SSAValue) -> RegRef {
+    pub fn alloc_scalar(
+        &mut self,
+        ip: usize,
+        sum: &SSAUseMap,
+        ssa: SSAValue,
+    ) -> RegRef {
+        if let Some(u) = sum.find_vec_use_after(&ssa, ip) {
+            match u {
+                SSAUse::FixedReg(reg) => {
+                    if !self.used.get((*reg).into()) {
+                        return self.assign_reg(ssa, *reg);
+                    }
+                }
+                SSAUse::Vec(vec) => {
+                    let mut comp = u8::MAX;
+                    for c in 0..vec.comps() {
+                        if vec[usize::from(c)] == ssa {
+                            comp = c;
+                            break;
+                        }
+                    }
+                    assert!(comp < vec.comps());
+
+                    let align = vec.comps().next_power_of_two();
+                    for c in 0..vec.comps() {
+                        if c == comp {
+                            continue;
+                        }
+
+                        let other = vec[usize::from(c)];
+                        if let Some(other_reg) = self.try_get_reg(other) {
+                            let vec_reg = other_reg & !(align - 1);
+                            if other_reg != vec_reg + c {
+                                continue;
+                            }
+
+                            if !self.used.get((vec_reg + comp).into()) {
+                                return self.assign_reg(ssa, vec_reg + comp);
+                            }
+                        }
+                    }
+
+                    /* We weren't able to pair it with an already allocated
+                     * register but maybe we can at least find an aligned one.
+                     */
+                    if let Some(reg) = self.try_find_unused_reg(0, align, comp)
+                    {
+                        return self.assign_reg(ssa, reg);
+                    }
+                }
+            }
+        }
+
         let reg = self.try_find_unused_reg_range(0, 1).unwrap();
         self.assign_reg(ssa, reg)
     }
@@ -413,12 +562,17 @@ fn instr_remap_srcs_file(
     }
 }
 
-fn instr_alloc_scalar_dsts_file(instr: &mut Instr, ra: &mut RegFileAllocation) {
+fn instr_alloc_scalar_dsts_file(
+    instr: &mut Instr,
+    ip: usize,
+    sum: &SSAUseMap,
+    ra: &mut RegFileAllocation,
+) {
     for dst in instr.dsts_mut() {
         if let Dst::SSA(ssa) = dst {
             assert!(ssa.comps() == 1);
             if ssa.file() == ra.file() {
-                *dst = ra.alloc_scalar(ssa[0]).into();
+                *dst = ra.alloc_scalar(ip, sum, ssa[0]).into();
             }
         }
     }
@@ -426,6 +580,8 @@ fn instr_alloc_scalar_dsts_file(instr: &mut Instr, ra: &mut RegFileAllocation) {
 
 fn instr_assign_regs_file(
     instr: &mut Instr,
+    ip: usize,
+    sum: &SSAUseMap,
     killed: &KillSet,
     pcopy: &mut OpParCopy,
     ra: &mut RegFileAllocation,
@@ -460,7 +616,7 @@ fn instr_assign_regs_file(
         ra.end_alloc();
         ra.free_killed(killed);
         ra.begin_alloc();
-        instr_alloc_scalar_dsts_file(instr, ra);
+        instr_alloc_scalar_dsts_file(instr, ip, sum, ra);
         ra.end_alloc();
         return;
     }
@@ -539,7 +695,7 @@ fn instr_assign_regs_file(
                 .into();
         }
 
-        instr_alloc_scalar_dsts_file(instr, ra);
+        instr_alloc_scalar_dsts_file(instr, ip, sum, ra);
     } else if could_trivially_allocate {
         for vec_dst in vec_dsts {
             let dst = &mut instr.dsts_mut()[vec_dst.dst_idx];
@@ -550,7 +706,7 @@ fn instr_assign_regs_file(
 
         instr_remap_srcs_file(instr, pcopy, ra);
         ra.free_killed(killed);
-        instr_alloc_scalar_dsts_file(instr, ra);
+        instr_alloc_scalar_dsts_file(instr, ip, sum, ra);
     } else {
         instr_remap_srcs_file(instr, pcopy, ra);
         ra.free_killed(killed);
@@ -566,7 +722,7 @@ fn instr_assign_regs_file(
             }
         }
 
-        instr_alloc_scalar_dsts_file(instr, ra);
+        instr_alloc_scalar_dsts_file(instr, ip, sum, ra);
     }
 
     ra.end_alloc();
@@ -626,10 +782,6 @@ impl RegAllocation {
     pub fn get_scalar(&mut self, ssa: SSAValue) -> RegRef {
         self.file_mut(ssa.file()).get_scalar(ssa)
     }
-
-    pub fn alloc_scalar(&mut self, ssa: SSAValue) -> RegRef {
-        self.file_mut(ssa.file()).alloc_scalar(ssa)
-    }
 }
 
 struct AssignRegsBlock {
@@ -650,6 +802,8 @@ impl AssignRegsBlock {
     fn assign_regs_instr(
         &mut self,
         mut instr: Instr,
+        ip: usize,
+        sum: &SSAUseMap,
         killed: &KillSet,
         pcopy: &mut OpParCopy,
     ) -> Option<Instr> {
@@ -674,9 +828,10 @@ impl AssignRegsBlock {
                 for (id, dst) in phi.iter() {
                     if let Dst::SSA(ssa) = dst {
                         assert!(ssa.comps() == 1);
+                        let ra = self.ra.file_mut(ssa.file());
                         self.live_in.push(LiveValue {
                             live_ref: LiveRef::Phi(*id),
-                            reg_ref: self.ra.alloc_scalar(ssa[0]),
+                            reg_ref: ra.alloc_scalar(ip, sum, ssa[0]),
                         });
                     }
                 }
@@ -685,7 +840,9 @@ impl AssignRegsBlock {
             }
             _ => {
                 for file in &mut self.ra.files {
-                    instr_assign_regs_file(&mut instr, killed, pcopy, file);
+                    instr_assign_regs_file(
+                        &mut instr, ip, sum, killed, pcopy, file,
+                    );
                 }
                 Some(instr)
             }
@@ -704,6 +861,8 @@ impl AssignRegsBlock {
                 });
             }
         }
+
+        let sum = SSAUseMap::for_block(b);
 
         let mut instrs = Vec::new();
         let mut killed = KillSet::new();
@@ -726,7 +885,8 @@ impl AssignRegsBlock {
 
             let mut pcopy = OpParCopy::new();
 
-            let instr = self.assign_regs_instr(instr, &killed, &mut pcopy);
+            let instr =
+                self.assign_regs_instr(instr, ip, &sum, &killed, &mut pcopy);
 
             if !pcopy.is_empty() {
                 instrs.push(Instr::new(Op::ParCopy(pcopy)));
