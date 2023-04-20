@@ -52,7 +52,7 @@ impl<'a> LegalizeInstr<'a> {
     }
 
     pub fn mov_src(&mut self, src: &mut Src, file: RegFile) {
-        let val = self.ssa_alloc.alloc(file, 1);
+        let val = self.ssa_alloc.alloc(file);
         self.instrs
             .push(Instr::new_mov(val.into(), src.src_ref.into()));
         src.src_ref = val.into();

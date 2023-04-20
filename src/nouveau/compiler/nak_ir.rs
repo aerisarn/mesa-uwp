@@ -8,7 +8,7 @@ extern crate nak_ir_proc;
 use nak_ir_proc::*;
 use std::fmt;
 use std::iter::Zip;
-use std::ops::{BitAnd, BitOr, Not, Range};
+use std::ops::{BitAnd, BitOr, Deref, DerefMut, Not, Range};
 use std::slice;
 
 #[repr(u8)]
@@ -111,32 +111,23 @@ pub struct SSAValue {
 }
 
 impl SSAValue {
-    pub fn new(file: RegFile, idx: u32, comps: u8) -> SSAValue {
-        assert!(idx < (1 << 27));
+    pub const NONE: Self = SSAValue { packed: 0 };
+
+    pub fn new(file: RegFile, idx: u32) -> SSAValue {
+        /* Reserve 2 numbers for use for SSARef::comps() */
+        assert!(idx > 0 && idx < (1 << 30) - 2);
         let mut packed = idx;
-        assert!(comps > 0 && comps <= 8);
-        packed |= u32::from(comps - 1) << 27;
         assert!(u8::from(file) < 4);
         packed |= u32::from(u8::from(file)) << 30;
         SSAValue { packed: packed }
     }
 
     pub fn idx(&self) -> u32 {
-        self.packed & 0x07ffffff
+        self.packed & 0x3fffffff
     }
 
-    pub fn comps(&self) -> u8 {
-        (((self.packed >> 27) & 0x7) + 1).try_into().unwrap()
-    }
-
-    pub fn comp(&self, comp: u8) -> SSAComp {
-        assert!(comp < self.comps());
-        SSAComp::new(self.file(), self.idx(), comp)
-    }
-
-    pub fn as_comp(&self) -> SSAComp {
-        assert!(self.comps() == 1);
-        SSAComp::new(self.file(), self.idx(), 0)
+    pub fn is_none(&self) -> bool {
+        self.packed == 0
     }
 }
 
@@ -148,38 +139,125 @@ impl HasRegFile for SSAValue {
 
 impl fmt::Display for SSAValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.is_uniform() {
-            write!(f, "USSA{}@{}", self.idx(), self.comps())
-        } else {
-            write!(f, "SSA{}@{}", self.idx(), self.comps())
+        match self.file() {
+            RegFile::GPR => write!(f, "S")?,
+            RegFile::UGPR => write!(f, "US")?,
+            RegFile::Pred => write!(f, "PS")?,
+            RegFile::UPred => write!(f, "UPS")?,
         }
+        write!(f, "{}", self.idx())
     }
 }
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
-pub struct SSAComp {
-    v: SSAValue,
+pub struct SSARef {
+    v: [SSAValue; 4],
 }
 
-impl SSAComp {
-    pub fn new(file: RegFile, idx: u32, comp: u8) -> SSAComp {
-        SSAComp {
-            v: SSAValue::new(file, idx, comp + 1),
+impl SSARef {
+    #[inline]
+    fn new(comps: &[SSAValue]) -> SSARef {
+        assert!(comps.len() > 0 && comps.len() <= 4);
+        let mut r = SSARef {
+            v: [SSAValue::NONE; 4],
+        };
+        for i in 0..comps.len() {
+            r.v[i] = comps[i];
+        }
+        if comps.len() < 4 {
+            r.v[3].packed = (comps.len() as u32).wrapping_neg();
+        }
+        r
+    }
+
+    pub fn comps(&self) -> u8 {
+        if self.v[3].packed >= u32::MAX - 2 {
+            self.v[3].packed.wrapping_neg() as u8
+        } else {
+            4
         }
     }
+}
 
-    pub fn idx(&self) -> u32 {
-        self.v.idx()
-    }
-
-    pub fn comp(&self) -> u8 {
-        self.v.comps() - 1
+impl HasRegFile for SSARef {
+    fn file(&self) -> RegFile {
+        let comps = usize::from(self.comps());
+        for i in 1..comps {
+            assert!(self.v[i].file() == self.v[0].file());
+        }
+        self.v[0].file()
     }
 }
 
-impl HasRegFile for SSAComp {
-    fn file(&self) -> RegFile {
-        self.v.file()
+impl Deref for SSARef {
+    type Target = [SSAValue];
+
+    fn deref(&self) -> &[SSAValue] {
+        let comps = usize::from(self.comps());
+        &self.v[..comps]
+    }
+}
+
+impl DerefMut for SSARef {
+    fn deref_mut(&mut self) -> &mut [SSAValue] {
+        let comps = usize::from(self.comps());
+        &mut self.v[..comps]
+    }
+}
+
+impl TryFrom<&[SSAValue]> for SSARef {
+    type Error = &'static str;
+
+    fn try_from(comps: &[SSAValue]) -> Result<Self, Self::Error> {
+        if comps.len() == 0 {
+            Err("Empty vector")
+        } else if comps.len() > 4 {
+            Err("Too many vector components")
+        } else {
+            Ok(SSARef::new(comps))
+        }
+    }
+}
+
+impl TryFrom<Vec<SSAValue>> for SSARef {
+    type Error = &'static str;
+
+    fn try_from(comps: Vec<SSAValue>) -> Result<Self, Self::Error> {
+        SSARef::try_from(&comps[..])
+    }
+}
+
+macro_rules! impl_ssa_ref_from_arr {
+    ($n: expr) => {
+        impl From<[SSAValue; $n]> for SSARef {
+            fn from(comps: [SSAValue; $n]) -> Self {
+                SSARef::new(&comps[..])
+            }
+        }
+    };
+}
+impl_ssa_ref_from_arr!(1);
+impl_ssa_ref_from_arr!(2);
+impl_ssa_ref_from_arr!(3);
+impl_ssa_ref_from_arr!(4);
+
+impl From<SSAValue> for SSARef {
+    fn from(val: SSAValue) -> Self {
+        [val].into()
+    }
+}
+
+impl fmt::Display for SSARef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.comps() == 1 {
+            write!(f, "{}", self[0])
+        } else {
+            write!(f, "{{")?;
+            for v in self.iter() {
+                write!(f, " {}", v)?;
+            }
+            write!(f, " }}")
+        }
     }
 }
 
@@ -188,20 +266,17 @@ pub struct SSAValueAllocator {
 }
 
 impl SSAValueAllocator {
-    pub fn new(initial_count: u32) -> SSAValueAllocator {
-        SSAValueAllocator {
-            count: initial_count,
-        }
+    pub fn new() -> SSAValueAllocator {
+        SSAValueAllocator { count: 0 }
     }
 
     pub fn count(&self) -> u32 {
         self.count
     }
 
-    pub fn alloc(&mut self, file: RegFile, comps: u8) -> SSAValue {
-        let idx = self.count;
+    pub fn alloc(&mut self, file: RegFile) -> SSAValue {
         self.count += 1;
-        SSAValue::new(file, idx, comps)
+        SSAValue::new(file, self.count)
     }
 }
 
@@ -282,7 +357,7 @@ impl fmt::Display for RegRef {
 #[derive(Clone, Copy)]
 pub enum Dst {
     None,
-    SSA(SSAValue),
+    SSA(SSARef),
     Reg(RegRef),
 }
 
@@ -294,7 +369,7 @@ impl Dst {
         }
     }
 
-    pub fn as_ssa(&self) -> Option<&SSAValue> {
+    pub fn as_ssa(&self) -> Option<&SSARef> {
         match self {
             Dst::SSA(r) => Some(r),
             _ => None,
@@ -308,9 +383,9 @@ impl From<RegRef> for Dst {
     }
 }
 
-impl From<SSAValue> for Dst {
-    fn from(ssa: SSAValue) -> Dst {
-        Dst::SSA(ssa)
+impl<T: Into<SSARef>> From<T> for Dst {
+    fn from(ssa: T) -> Dst {
+        Dst::SSA(ssa.into())
     }
 }
 
@@ -345,7 +420,7 @@ pub enum SrcRef {
     False,
     Imm32(u32),
     CBuf(CBufRef),
-    SSA(SSAValue),
+    SSA(SSARef),
     Reg(RegRef),
 }
 
@@ -357,7 +432,7 @@ impl SrcRef {
         }
     }
 
-    pub fn as_ssa(&self) -> Option<&SSAValue> {
+    pub fn as_ssa(&self) -> Option<&SSARef> {
         match self {
             SrcRef::SSA(r) => Some(r),
             _ => None,
@@ -379,19 +454,20 @@ impl SrcRef {
         }
     }
 
-    pub fn get_ssa(&self) -> Option<&SSAValue> {
+    pub fn iter_ssa(&self) -> slice::Iter<'_, SSAValue> {
         match self {
             SrcRef::Zero
             | SrcRef::True
             | SrcRef::False
             | SrcRef::Imm32(_)
-            | SrcRef::Reg(_) => None,
+            | SrcRef::Reg(_) => &[],
             SrcRef::CBuf(cb) => match &cb.buf {
-                CBuf::Binding(_) | CBuf::BindlessGPR(_) => None,
-                CBuf::BindlessSSA(ssa) => Some(ssa),
+                CBuf::Binding(_) | CBuf::BindlessGPR(_) => &[],
+                CBuf::BindlessSSA(ssa) => slice::from_ref(ssa),
             },
-            SrcRef::SSA(ssa) => Some(ssa),
+            SrcRef::SSA(ssa) => ssa,
         }
+        .iter()
     }
 }
 
@@ -401,9 +477,9 @@ impl From<RegRef> for SrcRef {
     }
 }
 
-impl From<SSAValue> for SrcRef {
-    fn from(ssa: SSAValue) -> SrcRef {
-        SrcRef::SSA(ssa)
+impl<T: Into<SSARef>> From<T> for SrcRef {
+    fn from(ssa: T) -> SrcRef {
+        SrcRef::SSA(ssa.into())
     }
 }
 
@@ -484,7 +560,7 @@ impl SrcMod {
         }
     }
 
-    pub fn abs(&self) -> SrcMod {
+    pub fn abs(self) -> SrcMod {
         match self {
             SrcMod::None | SrcMod::Abs | SrcMod::Neg | SrcMod::NegAbs => {
                 SrcMod::Abs
@@ -493,7 +569,7 @@ impl SrcMod {
         }
     }
 
-    pub fn neg(&self) -> SrcMod {
+    pub fn neg(self) -> SrcMod {
         match self {
             SrcMod::None => SrcMod::Neg,
             SrcMod::Abs => SrcMod::NegAbs,
@@ -503,11 +579,21 @@ impl SrcMod {
         }
     }
 
-    pub fn not(&self) -> SrcMod {
+    pub fn not(self) -> SrcMod {
         match self {
             SrcMod::None => SrcMod::Not,
             SrcMod::Not => SrcMod::None,
             _ => panic!("Not a boolean source modifier"),
+        }
+    }
+
+    pub fn modify(self, other: SrcMod) -> SrcMod {
+        match other {
+            SrcMod::None => self,
+            SrcMod::Abs => self.abs(),
+            SrcMod::Neg => self.neg(),
+            SrcMod::NegAbs => self.abs().neg(),
+            SrcMod::Not => self.not(),
         }
     }
 }
@@ -560,7 +646,7 @@ impl Src {
         }
     }
 
-    pub fn as_ssa(&self) -> Option<&SSAValue> {
+    pub fn as_ssa(&self) -> Option<&SSARef> {
         if self.src_mod.is_none() {
             self.src_ref.as_ssa()
         } else {
@@ -572,8 +658,8 @@ impl Src {
         self.src_ref.get_reg()
     }
 
-    pub fn get_ssa(&self) -> Option<&SSAValue> {
-        self.src_ref.get_ssa()
+    pub fn iter_ssa(&self) -> slice::Iter<'_, SSAValue> {
+        self.src_ref.iter_ssa()
     }
 
     pub fn is_uniform(&self) -> bool {
@@ -615,24 +701,12 @@ impl Src {
     }
 }
 
-impl From<SrcRef> for Src {
-    fn from(src_ref: SrcRef) -> Src {
+impl<T: Into<SrcRef>> From<T> for Src {
+    fn from(value: T) -> Src {
         Src {
-            src_ref: src_ref,
+            src_ref: value.into(),
             src_mod: SrcMod::None,
         }
-    }
-}
-
-impl From<RegRef> for Src {
-    fn from(reg: RegRef) -> Src {
-        SrcRef::from(reg).into()
-    }
-}
-
-impl From<SSAValue> for Src {
-    fn from(ssa: SSAValue) -> Src {
-        SrcRef::from(ssa).into()
     }
 }
 
@@ -1930,6 +2004,24 @@ impl fmt::Display for OpFMov {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpDMov {
+    pub dst: Dst,
+    pub src: Src,
+    pub saturate: bool,
+}
+
+impl fmt::Display for OpDMov {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "DMOV")?;
+        if self.saturate {
+            write!(f, ".SAT")?;
+        }
+        write!(f, " {} {}", self.dst, self.src)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpIMov {
     pub dst: Dst,
     pub src: Src,
@@ -1938,60 +2030,6 @@ pub struct OpIMov {
 impl fmt::Display for OpIMov {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "IMOV {} {}", self.dst, self.src)
-    }
-}
-
-#[repr(C)]
-#[derive(DstsAsSlice)]
-pub struct OpVec {
-    pub dst: Dst,
-    pub srcs: Vec<Src>,
-}
-
-impl SrcsAsSlice for OpVec {
-    fn srcs_as_slice(&self) -> &[Src] {
-        &self.srcs
-    }
-
-    fn srcs_as_mut_slice(&mut self) -> &mut [Src] {
-        &mut self.srcs
-    }
-}
-
-impl fmt::Display for OpVec {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "VEC {} {{ {}", self.dst, self.srcs[0])?;
-        for src in &self.srcs[1..] {
-            write!(f, " {}", src)?;
-        }
-        write!(f, " }}")
-    }
-}
-
-#[repr(C)]
-#[derive(SrcsAsSlice)]
-pub struct OpSplit {
-    pub dsts: Vec<Dst>,
-    pub src: Src,
-}
-
-impl DstsAsSlice for OpSplit {
-    fn dsts_as_slice(&self) -> &[Dst] {
-        &self.dsts
-    }
-
-    fn dsts_as_mut_slice(&mut self) -> &mut [Dst] {
-        &mut self.dsts
-    }
-}
-
-impl fmt::Display for OpSplit {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "SPLIT {{ {}", self.dsts[0])?;
-        for dst in &self.dsts[1..] {
-            write!(f, " {}", dst)?;
-        }
-        write!(f, " }} {}", self.src)
     }
 }
 
@@ -2018,6 +2056,12 @@ impl OpPhiSrcs {
     pub fn iter(&self) -> Zip<slice::Iter<'_, u32>, slice::Iter<'_, Src>> {
         assert!(self.ids.len() == self.srcs.len());
         self.ids.iter().zip(self.srcs.iter())
+    }
+
+    pub fn push(&mut self, id: u32, src: Src) {
+        assert!(self.ids.len() == self.srcs.len());
+        self.ids.push(id);
+        self.srcs.push(src);
     }
 }
 
@@ -2053,6 +2097,13 @@ pub struct OpPhiDsts {
 }
 
 impl OpPhiDsts {
+    pub fn new() -> OpPhiDsts {
+        OpPhiDsts {
+            ids: Vec::new(),
+            dsts: Vec::new(),
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         assert!(self.ids.len() == self.dsts.len());
         self.ids.is_empty()
@@ -2061,6 +2112,12 @@ impl OpPhiDsts {
     pub fn iter(&self) -> Zip<slice::Iter<'_, u32>, slice::Iter<'_, Dst>> {
         assert!(self.ids.len() == self.dsts.len());
         self.ids.iter().zip(self.dsts.iter())
+    }
+
+    pub fn push(&mut self, id: u32, dst: Dst) {
+        assert!(self.ids.len() == self.dsts.len());
+        self.ids.push(id);
+        self.dsts.push(dst);
     }
 }
 
@@ -2127,6 +2184,12 @@ impl OpParCopy {
     pub fn iter(&self) -> Zip<slice::Iter<'_, Src>, slice::Iter<'_, Dst>> {
         assert!(self.srcs.len() == self.dsts.len());
         self.srcs.iter().zip(&self.dsts)
+    }
+
+    pub fn push(&mut self, src: Src, dst: Dst) {
+        assert!(self.srcs.len() == self.dsts.len());
+        self.srcs.push(src);
+        self.dsts.push(dst);
     }
 }
 
@@ -2226,11 +2289,10 @@ pub enum Op {
     Exit(OpExit),
     S2R(OpS2R),
     FMov(OpFMov),
+    DMov(OpDMov),
     IMov(OpIMov),
     PhiSrcs(OpPhiSrcs),
     PhiDsts(OpPhiDsts),
-    Vec(OpVec),
-    Split(OpSplit),
     Swap(OpSwap),
     ParCopy(OpParCopy),
     FSOut(OpFSOut),
@@ -2281,13 +2343,7 @@ impl fmt::Display for Pred {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Pred::None => (),
-            Pred::SSA(v) => {
-                if v.is_uniform() {
-                    write!(f, "USSA{}@{}", v.idx(), v.comps())?;
-                } else {
-                    write!(f, "SSA{}@{}", v.idx(), v.comps())?;
-                }
-            }
+            Pred::SSA(s) => s.fmt(f)?,
             Pred::Reg(r) => r.fmt(f)?,
         }
         Ok(())
@@ -2598,20 +2654,6 @@ impl Instr {
         Instr::new(Op::S2R(OpS2R { dst: dst, idx: idx }))
     }
 
-    pub fn new_vec(dst: Dst, srcs: &[Src]) -> Instr {
-        Instr::new(Op::Vec(OpVec {
-            dst: dst,
-            srcs: srcs.to_vec(),
-        }))
-    }
-
-    pub fn new_split(dsts: &[Dst], src: Src) -> Instr {
-        Instr::new(Op::Split(OpSplit {
-            dsts: dsts.to_vec(),
-            src: src,
-        }))
-    }
-
     pub fn new_swap(x: RegRef, y: RegRef) -> Instr {
         assert!(x.file() == y.file());
         Instr::new(Op::Swap(OpSwap {
@@ -2694,11 +2736,10 @@ impl Instr {
             Op::St(_) => None,
             Op::Bra(_) | Op::Exit(_) => Some(15),
             Op::FMov(_)
+            | Op::DMov(_)
             | Op::IMov(_)
             | Op::PhiSrcs(_)
             | Op::PhiDsts(_)
-            | Op::Vec(_)
-            | Op::Split(_)
             | Op::Swap(_)
             | Op::ParCopy(_)
             | Op::FSOut(_) => {
@@ -2796,10 +2837,10 @@ pub struct Function {
 }
 
 impl Function {
-    pub fn new(id: u32, reserved_ssa_count: u32) -> Function {
+    pub fn new(id: u32) -> Function {
         Function {
             id: id,
-            ssa_alloc: SSAValueAllocator::new(reserved_ssa_count),
+            ssa_alloc: SSAValueAllocator::new(),
             blocks: Vec::new(),
         }
     }
@@ -2862,46 +2903,6 @@ impl Shader {
                         overflow: Dst::None,
                         srcs: [Src::new_zero(), mov.src, Src::new_zero()],
                         carry: Src::new_imm_bool(false),
-                    }))]
-                }
-                Op::Vec(vec) => {
-                    let comps = u8::try_from(vec.srcs.len()).unwrap();
-                    let vec_dst = vec.dst.as_reg().unwrap();
-                    assert!(comps == vec_dst.comps());
-
-                    let mut dsts = Vec::new();
-                    for i in 0..comps {
-                        dsts.push(Dst::from(vec_dst.as_comp(i).unwrap()));
-                    }
-                    vec![Instr::new(Op::ParCopy(OpParCopy {
-                        srcs: vec.srcs,
-                        dsts: dsts,
-                    }))]
-                }
-                Op::Split(split) => {
-                    let vec_src = split.src.src_ref.as_reg().unwrap();
-                    assert!(usize::from(vec_src.comps()) == split.dsts.len());
-
-                    let mut dsts = Vec::new();
-                    let mut srcs = Vec::new();
-                    for (i, dst) in split.dsts.iter().enumerate() {
-                        let i = u8::try_from(i).unwrap();
-                        let src = vec_src.as_comp(i).unwrap();
-                        match dst {
-                            Dst::None => continue,
-                            Dst::Reg(reg) => {
-                                if *reg == src {
-                                    continue;
-                                }
-                            }
-                            _ => (),
-                        }
-                        dsts.push(*dst);
-                        srcs.push(src.into());
-                    }
-                    vec![Instr::new(Op::ParCopy(OpParCopy {
-                        srcs: srcs,
-                        dsts: dsts,
                     }))]
                 }
                 Op::FSOut(out) => {

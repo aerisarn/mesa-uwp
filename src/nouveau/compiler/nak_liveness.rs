@@ -47,14 +47,16 @@ impl BlockLiveness {
             }
 
             for src in instr.srcs() {
-                if let Some(val) = src.get_ssa() {
-                    self.add_use(val, ip);
+                for sv in src.iter_ssa() {
+                    self.add_use(sv, ip);
                 }
             }
 
             for dst in instr.dsts() {
-                if let Dst::SSA(val) = dst {
-                    self.add_def(val);
+                if let Dst::SSA(sr) = dst {
+                    for sv in sr.iter() {
+                        self.add_def(sv);
+                    }
                 }
             }
         }

@@ -445,7 +445,6 @@ pub extern "C" fn nak_compile_shader(
     }
 
     s.assign_regs();
-    //s.assign_regs_trivial();
     if DEBUG.print() {
         println!("NAK IR:\n{}", &s);
     }
