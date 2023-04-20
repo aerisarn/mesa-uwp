@@ -162,9 +162,9 @@ VkResult pvr_csb_bake(struct pvr_csb *const csb,
  */
 static bool pvr_csb_buffer_extend(struct pvr_csb *csb)
 {
-   const uint8_t stream_link_space = (pvr_cmd_length(VDMCTRL_STREAM_LINK0) +
-                                      pvr_cmd_length(VDMCTRL_STREAM_LINK1)) *
-                                     sizeof(uint32_t);
+   const uint8_t stream_link_space =
+      PVR_DW_TO_BYTES(pvr_cmd_length(VDMCTRL_STREAM_LINK0) +
+                      pvr_cmd_length(VDMCTRL_STREAM_LINK1));
    const uint32_t cache_line_size =
       rogue_get_slc_cache_line_size(&csb->device->pdevice->dev_info);
    struct pvr_bo *pvr_bo;
@@ -273,9 +273,9 @@ void *pvr_csb_alloc_dwords(struct pvr_csb *csb, uint32_t num_dwords)
  */
 VkResult pvr_csb_copy(struct pvr_csb *csb_dst, struct pvr_csb *csb_src)
 {
-   const uint8_t stream_link_space = (pvr_cmd_length(VDMCTRL_STREAM_LINK0) +
-                                      pvr_cmd_length(VDMCTRL_STREAM_LINK1)) *
-                                     sizeof(uint32_t);
+   const uint8_t stream_link_space =
+      PVR_DW_TO_BYTES(pvr_cmd_length(VDMCTRL_STREAM_LINK0) +
+                      pvr_cmd_length(VDMCTRL_STREAM_LINK1));
    const uint32_t size =
       util_dynarray_num_elements(&csb_src->deferred_cs_mem, char);
    const uint8_t *start = util_dynarray_begin(&csb_src->deferred_cs_mem);
