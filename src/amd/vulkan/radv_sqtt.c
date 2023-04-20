@@ -551,6 +551,73 @@ radv_thread_trace_finish_bo(struct radv_device *device)
    }
 }
 
+static VkResult
+radv_register_queue(struct radv_device *device, struct radv_queue *queue)
+{
+   struct ac_thread_trace_data *thread_trace_data = &device->thread_trace;
+   struct rgp_queue_info *queue_info = &thread_trace_data->rgp_queue_info;
+   struct rgp_queue_info_record *record;
+
+   record = malloc(sizeof(struct rgp_queue_info_record));
+   if (!record)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   record->queue_id = (uintptr_t)queue;
+   record->queue_context = (uintptr_t)queue->hw_ctx;
+   if (queue->vk.queue_family_index == RADV_QUEUE_GENERAL) {
+      record->hardware_info.queue_type = SQTT_QUEUE_TYPE_UNIVERSAL;
+      record->hardware_info.engine_type = SQTT_ENGINE_TYPE_UNIVERSAL;
+   } else {
+      record->hardware_info.queue_type = SQTT_QUEUE_TYPE_COMPUTE;
+      record->hardware_info.engine_type = SQTT_ENGINE_TYPE_COMPUTE;
+   }
+
+   simple_mtx_lock(&queue_info->lock);
+   list_addtail(&record->list, &queue_info->record);
+   queue_info->record_count++;
+   simple_mtx_unlock(&queue_info->lock);
+
+   return VK_SUCCESS;
+}
+
+static void
+radv_unregister_queue(struct radv_device *device, struct radv_queue *queue)
+{
+   struct ac_thread_trace_data *thread_trace_data = &device->thread_trace;
+   struct rgp_queue_info *queue_info = &thread_trace_data->rgp_queue_info;
+
+   /* Destroy queue info record. */
+   simple_mtx_lock(&queue_info->lock);
+   if (queue_info->record_count > 0) {
+      list_for_each_entry_safe(struct rgp_queue_info_record, record, &queue_info->record, list)
+      {
+         if (record->queue_id == (uintptr_t)queue) {
+            queue_info->record_count--;
+            list_del(&record->list);
+            free(record);
+            break;
+         }
+      }
+   }
+   simple_mtx_unlock(&queue_info->lock);
+}
+
+static void
+radv_register_queues(struct radv_device *device, struct ac_thread_trace_data *thread_trace_data)
+{
+   radv_register_queue(device, &device->queues[RADV_QUEUE_GENERAL][0]);
+   for (uint32_t i = 0; i < device->queue_count[RADV_QUEUE_COMPUTE]; i++)
+      radv_register_queue(device, &device->queues[RADV_QUEUE_COMPUTE][i]);
+}
+
+static void
+radv_unregister_queues(struct radv_device *device, struct ac_thread_trace_data *thread_trace_data)
+{
+   radv_unregister_queue(device, &device->queues[RADV_QUEUE_GENERAL][0]);
+   for (uint32_t i = 0; i < device->queue_count[RADV_QUEUE_COMPUTE]; i++)
+      radv_unregister_queue(device, &device->queues[RADV_QUEUE_COMPUTE][i]);
+}
+
 bool
 radv_thread_trace_init(struct radv_device *device)
 {
@@ -573,6 +640,8 @@ radv_thread_trace_init(struct radv_device *device)
 
    ac_thread_trace_init(thread_trace_data);
 
+   radv_register_queues(device, thread_trace_data);
+
    return true;
 }
 
@@ -592,6 +661,8 @@ radv_thread_trace_finish(struct radv_device *device)
       if (device->thread_trace.stop_cs[i])
          ws->cs_destroy(device->thread_trace.stop_cs[i]);
    }
+
+   radv_unregister_queues(device, thread_trace_data);
 
    ac_thread_trace_finish(thread_trace_data);
 }
