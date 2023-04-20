@@ -2689,8 +2689,10 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    }
 
    struct zink_screen *screen = rzalloc(NULL, struct zink_screen);
-   if (!screen)
+   if (!screen) {
+      mesa_loge("ZINK: failed to allocate screen");
       return NULL;
+   }
 
    zink_debug = debug_get_option_zink_debug();
    zink_descriptor_mode = debug_get_option_zink_descriptor_mode();
@@ -2706,14 +2708,18 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    u_trace_state_init();
 
    screen->loader_lib = util_dl_open(VK_LIBNAME);
-   if (!screen->loader_lib)
+   if (!screen->loader_lib) {
+      mesa_loge("ZINK: failed to load "VK_LIBNAME);
       goto fail;
+   }
 
    screen->vk_GetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)util_dl_get_proc_address(screen->loader_lib, "vkGetInstanceProcAddr");
    screen->vk_GetDeviceProcAddr = (PFN_vkGetDeviceProcAddr)util_dl_get_proc_address(screen->loader_lib, "vkGetDeviceProcAddr");
    if (!screen->vk_GetInstanceProcAddr ||
-       !screen->vk_GetDeviceProcAddr)
+       !screen->vk_GetDeviceProcAddr) {
+      mesa_loge("ZINK: failed to get proc address");
       goto fail;
+   }
 
    screen->instance_info.loader_version = zink_get_loader_version(screen);
    if (config) {
@@ -2751,8 +2757,10 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       debug_printf("ZINK: failed to setup debug utils\n");
 
    choose_pdev(screen);
-   if (screen->pdev == VK_NULL_HANDLE)
+   if (screen->pdev == VK_NULL_HANDLE) {
+      mesa_loge("ZINK: failed to choose pdev");
       goto fail;
+   }
    screen->is_cpu = screen->info.props.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU;
 
    update_queue_props(screen);
@@ -2889,12 +2897,17 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    if (!zink_screen_resource_init(&screen->base))
       goto fail;
-   zink_bo_init(screen);
+   if (!zink_bo_init(screen)) {
+      mesa_loge("ZINK: failed to initialize suballocator");
+      goto fail;
+   }
    zink_screen_fence_init(&screen->base);
 
    zink_screen_init_compiler(screen);
-   if (!disk_cache_init(screen))
+   if (!disk_cache_init(screen)) {
+      mesa_loge("ZINK: failed to initialize disk cache");
       goto fail;
+   }
    if (!util_queue_init(&screen->cache_get_thread, "zcfq", 8, 4,
                         UTIL_QUEUE_INIT_RESIZE_IF_FULL | UTIL_QUEUE_INIT_SCALE_THREADS, screen))
       goto fail;
@@ -2906,8 +2919,10 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    screen->total_video_mem = get_video_mem(screen);
    screen->clamp_video_mem = screen->total_video_mem * 0.8;
-   if (!os_get_total_physical_memory(&screen->total_mem))
+   if (!os_get_total_physical_memory(&screen->total_mem)) {
+      mesa_loge("ZINK: failed to get total physical memory");
       goto fail;
+   }
 
    if (!zink_screen_init_semaphore(screen)) {
       mesa_loge("zink: failed to create timeline semaphore");
@@ -3049,11 +3064,15 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    zink_init_screen_pipeline_libs(screen);
 
-   if (!init_layouts(screen))
+   if (!init_layouts(screen)) {
+      mesa_loge("ZINK: failed to initialize layouts");
       goto fail;
+   }
 
-   if (!zink_descriptor_layouts_init(screen))
+   if (!zink_descriptor_layouts_init(screen)) {
+      mesa_loge("ZINK: failed to initialize descriptor layouts");
       goto fail;
+   }
 
    simple_mtx_init(&screen->copy_context_lock, mtx_plain);
 
