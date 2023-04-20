@@ -219,25 +219,23 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
 
    /* clang-format off */
 
-   /* vkQueueBindSparse relies on explicit sync primitives. To intercept the
-    * timeline semaphores within each bind info to write the feedback buffer,
-    * we have to split the call into bindInfoCount number of calls while
-    * inserting vkQueueSubmit to wait on the signal timeline semaphores before
-    * filling the feedback buffer. To intercept the fence to be signaled, we
-    * have to relocate the fence to another vkQueueSubmit call and potentially
-    * have to use an internal timeline semaphore to synchronize between them.
-    * Those would make the code overly complex, so we disable sparse binding
-    * for simplicity.
+   /* To support sparse binding with feedback, we require sparse binding queue families
+    * to  also support submiting feedback commands. Any queue families that exclusively
+    * support sparse binding are filtered out.
+    * If a device only supports sparse binding with exclusive queue families that get
+    * filtered out then disable the feature.
     */
-   VN_SET_CORE_VALUE(vk10_feats, sparseBinding, false);
-   VN_SET_CORE_VALUE(vk10_feats, sparseResidencyBuffer, false);
-   VN_SET_CORE_VALUE(vk10_feats, sparseResidencyImage2D, false);
-   VN_SET_CORE_VALUE(vk10_feats, sparseResidencyImage3D, false);
-   VN_SET_CORE_VALUE(vk10_feats, sparseResidency2Samples, false);
-   VN_SET_CORE_VALUE(vk10_feats, sparseResidency4Samples, false);
-   VN_SET_CORE_VALUE(vk10_feats, sparseResidency8Samples, false);
-   VN_SET_CORE_VALUE(vk10_feats, sparseResidency16Samples, false);
-   VN_SET_CORE_VALUE(vk10_feats, sparseResidencyAliased, false);
+   if (physical_dev->sparse_binding_disabled) {
+      VN_SET_CORE_VALUE(vk10_feats, sparseBinding, false);
+      VN_SET_CORE_VALUE(vk10_feats, sparseResidencyBuffer, false);
+      VN_SET_CORE_VALUE(vk10_feats, sparseResidencyImage2D, false);
+      VN_SET_CORE_VALUE(vk10_feats, sparseResidencyImage3D, false);
+      VN_SET_CORE_VALUE(vk10_feats, sparseResidency2Samples, false);
+      VN_SET_CORE_VALUE(vk10_feats, sparseResidency4Samples, false);
+      VN_SET_CORE_VALUE(vk10_feats, sparseResidency8Samples, false);
+      VN_SET_CORE_VALUE(vk10_feats, sparseResidency16Samples, false);
+      VN_SET_CORE_VALUE(vk10_feats, sparseResidencyAliased, false);
+   }
 
    if (renderer_version < VK_API_VERSION_1_2) {
       /* Vulkan 1.1 */
@@ -769,6 +767,7 @@ vn_physical_device_init_queue_family_properties(
    /* Filter out queue families that exclusively support sparse binding as
     * we need additional support for submitting feedback commands
     */
+   uint32_t sparse_count = 0;
    uint32_t non_sparse_only_count = 0;
    for (uint32_t i = 0; i < count; i++) {
       if (props[i].queueFamilyProperties.queueFlags &
@@ -776,7 +775,14 @@ vn_physical_device_init_queue_family_properties(
          props[non_sparse_only_count++].queueFamilyProperties =
             props[i].queueFamilyProperties;
       }
+      if (props[i].queueFamilyProperties.queueFlags &
+          VK_QUEUE_SPARSE_BINDING_BIT) {
+         sparse_count++;
+      }
    }
+
+   if (sparse_count && non_sparse_only_count + sparse_count == count)
+      physical_dev->sparse_binding_disabled = true;
 
    physical_dev->queue_family_properties = props;
    physical_dev->queue_family_count = non_sparse_only_count;
@@ -1329,13 +1335,13 @@ vn_physical_device_init(struct vn_physical_device *physical_dev)
 
    vn_physical_device_init_supported_extensions(physical_dev);
 
-   /* TODO query all caps with minimal round trips */
-   vn_physical_device_init_features(physical_dev);
-   vn_physical_device_init_properties(physical_dev);
-
    result = vn_physical_device_init_queue_family_properties(physical_dev);
    if (result != VK_SUCCESS)
       goto fail;
+
+   /* TODO query all caps with minimal round trips */
+   vn_physical_device_init_features(physical_dev);
+   vn_physical_device_init_properties(physical_dev);
 
    vn_physical_device_init_memory_properties(physical_dev);
 
