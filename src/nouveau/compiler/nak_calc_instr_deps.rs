@@ -7,6 +7,7 @@
 
 use crate::nak_ir::*;
 use crate::util::NextMultipleOf;
+use crate::{GetDebugFlags, DEBUG};
 
 use std::cmp::max;
 use std::ops::Range;
@@ -318,8 +319,35 @@ impl CalcDelay {
 }
 
 impl Shader {
+    pub fn assign_deps_serial(&mut self) {
+        for f in &mut self.functions {
+            for b in &mut f.blocks.iter_mut().rev() {
+                let mut wt = 0_u8;
+                for (i, instr) in &mut b.instrs.iter_mut().enumerate() {
+                    if instr.is_branch() {
+                        instr.deps.add_wt_bar_mask(0x3f);
+                    } else {
+                        instr.deps.add_wt_bar_mask(wt);
+                        if instr.dsts().len() > 0 {
+                            instr.deps.set_wr_bar(0);
+                            wt |= 1 << 0;
+                        }
+                        if !instr.pred.is_none() || instr.srcs().len() > 0 {
+                            instr.deps.set_rd_bar(1);
+                            wt |= 1 << 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     pub fn calc_instr_deps(&mut self) {
-        AllocBarriers::new().alloc_barriers(self);
-        CalcDelay::new().calc_delay(self);
+        if DEBUG.serial() {
+            self.assign_deps_serial();
+        } else {
+            AllocBarriers::new().alloc_barriers(self);
+            CalcDelay::new().calc_delay(self);
+        }
     }
 }

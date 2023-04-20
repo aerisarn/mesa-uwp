@@ -33,6 +33,7 @@ use util::NextMultipleOf;
 #[repr(u8)]
 enum DebugFlags {
     Print,
+    Serial,
 }
 
 struct Debug {
@@ -53,6 +54,7 @@ impl Debug {
         for flag in debug_str.split(',') {
             match flag.trim() {
                 "print" => flags |= 1 << DebugFlags::Print as u8,
+                "serial" => flags |= 1 << DebugFlags::Serial as u8,
                 unk => eprintln!("Unknown NAK_DEBUG flag \"{}\"", unk),
             }
         }
@@ -65,6 +67,10 @@ trait GetDebugFlags {
 
     fn print(&self) -> bool {
         self.debug_flags() & (1 << DebugFlags::Print as u8) != 0
+    }
+
+    fn serial(&self) -> bool {
+        self.debug_flags() & (1 << DebugFlags::Serial as u8) != 0
     }
 }
 
