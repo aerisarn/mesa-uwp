@@ -1911,7 +1911,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
       rts->NumRenderTargets = color_count;
       for (uint32_t i = 0; i < color_count; i++) {
          rts->RTFormats[i] =
-            dzn_image_get_dxgi_format(color_fmts[i],
+            dzn_image_get_dxgi_format(pdev, color_fmts[i],
                                       VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                                       VK_IMAGE_ASPECT_COLOR_BIT);
       }
@@ -1920,7 +1920,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
    if (zs_fmt != VK_FORMAT_UNDEFINED) {
       d3d12_gfx_pipeline_state_stream_new_desc(stream_desc, DEPTH_STENCIL_FORMAT, DXGI_FORMAT, ds_fmt);
       *ds_fmt =
-         dzn_image_get_dxgi_format(zs_fmt,
+         dzn_image_get_dxgi_format(pdev, zs_fmt,
                                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                                    VK_IMAGE_ASPECT_DEPTH_BIT |
                                    VK_IMAGE_ASPECT_STENCIL_BIT);

@@ -672,7 +672,7 @@ dzn_get_most_capable_format_for_casting(VkFormat format, VkImageCreateFlags crea
    bool block_compressed = util_format_is_compressed(pfmt);
    if (block_compressed &&
        !(create_flags & VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT))
-      return dzn_image_get_dxgi_format(format, 0, 0);
+      return dzn_image_get_dxgi_format(NULL, format, 0, 0);
    unsigned blksz = util_format_get_blocksize(pfmt);
    switch (blksz) {
    case 1: return DXGI_FORMAT_R8_UNORM;
@@ -701,7 +701,7 @@ dzn_physical_device_get_format_support(struct dzn_physical_device *pdev,
       aspects = VK_IMAGE_ASPECT_STENCIL_BIT;
 
    D3D12_FEATURE_DATA_FORMAT_SUPPORT dfmt_info = {
-     .Format = dzn_image_get_dxgi_format(format, usage, aspects),
+     .Format = dzn_image_get_dxgi_format(pdev, format, usage, aspects),
    };
 
    /* KHR_maintenance2: If an image is created with the extended usage flag
@@ -729,7 +729,7 @@ dzn_physical_device_get_format_support(struct dzn_physical_device *pdev,
     */
    dzn_foreach_aspect(aspect, aspects) {
       D3D12_FEATURE_DATA_FORMAT_SUPPORT dfmt_info2 = {
-        .Format = dzn_image_get_dxgi_format(format, 0, aspect),
+        .Format = dzn_image_get_dxgi_format(pdev, format, 0, aspect),
       };
 
       hres = ID3D12Device1_CheckFeatureSupport(dev, D3D12_FEATURE_FORMAT_SUPPORT,
@@ -2869,6 +2869,8 @@ dzn_buffer_get_copy_loc(const struct dzn_buffer *buf,
                         VkImageAspectFlagBits aspect,
                         uint32_t layer)
 {
+   struct dzn_physical_device *pdev =
+      container_of(buf->base.device->physical, struct dzn_physical_device, vk);
    const uint32_t buffer_row_length =
       region->bufferRowLength ? region->bufferRowLength : region->imageExtent.width;
 
@@ -2885,7 +2887,7 @@ dzn_buffer_get_copy_loc(const struct dzn_buffer *buf,
      .PlacedFootprint = {
         .Footprint = {
            .Format =
-              dzn_image_get_placed_footprint_format(format, aspect),
+              dzn_image_get_placed_footprint_format(pdev, format, aspect),
            .Width = region->imageExtent.width,
            .Height = region->imageExtent.height,
            .Depth = region->imageExtent.depth,

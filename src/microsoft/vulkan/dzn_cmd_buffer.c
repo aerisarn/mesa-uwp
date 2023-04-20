@@ -2543,6 +2543,7 @@ dzn_cmd_buffer_copy_img_chunk(struct dzn_cmd_buffer *cmdbuf,
                               uint32_t l)
 {
    struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
+   struct dzn_physical_device *pdev = container_of(device->vk.physical, struct dzn_physical_device, vk);
    VK_FROM_HANDLE(dzn_image, src, info->srcImage);
    VK_FROM_HANDLE(dzn_image, dst, info->dstImage);
 
@@ -2611,7 +2612,7 @@ dzn_cmd_buffer_copy_img_chunk(struct dzn_cmd_buffer *cmdbuf,
    }
 
    tmp_desc->Format =
-      dzn_image_get_placed_footprint_format(src->vk.format, aspect);
+      dzn_image_get_placed_footprint_format(pdev, src->vk.format, aspect);
    tmp_desc->Width = region.extent.width;
    tmp_desc->Height = region.extent.height;
 
@@ -2651,7 +2652,7 @@ dzn_cmd_buffer_copy_img_chunk(struct dzn_cmd_buffer *cmdbuf,
    }
 
    tmp_desc->Format =
-      dzn_image_get_placed_footprint_format(dst->vk.format, aspect);
+      dzn_image_get_placed_footprint_format(pdev, dst->vk.format, aspect);
    if (src_blkw != dst_blkw)
       tmp_desc->Width = DIV_ROUND_UP(region.extent.width, src_blkw) * dst_blkw;
    if (src_blkh != dst_blkh)
@@ -2768,13 +2769,14 @@ dzn_cmd_buffer_blit_set_pipeline(struct dzn_cmd_buffer *cmdbuf,
                                  VkFilter filter, bool resolve)
 {
    struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
+   struct dzn_physical_device *pdev = container_of(device->vk.physical, struct dzn_physical_device, vk);
    enum pipe_format pfmt = vk_format_to_pipe_format(dst->vk.format);
    VkImageUsageFlags usage =
       vk_format_is_depth_or_stencil(dst->vk.format) ?
       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT :
       VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
    struct dzn_meta_blit_key ctx_key = {
-      .out_format = dzn_image_get_dxgi_format(dst->vk.format, usage, aspect),
+      .out_format = dzn_image_get_dxgi_format(pdev, dst->vk.format, usage, aspect),
       .samples = (uint32_t)src->vk.samples,
       .loc = (uint32_t)(aspect == VK_IMAGE_ASPECT_DEPTH_BIT ?
                         FRAG_RESULT_DEPTH :
@@ -4016,6 +4018,7 @@ dzn_CmdCopyImage2(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
    struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
+   struct dzn_physical_device *pdev = container_of(device->vk.physical, struct dzn_physical_device, vk);
    VK_FROM_HANDLE(dzn_image, src, info->srcImage);
    VK_FROM_HANDLE(dzn_image, dst, info->dstImage);
 
@@ -4131,7 +4134,7 @@ dzn_CmdCopyImage2(VkCommandBuffer commandBuffer,
          uint64_t region_size = 0;
 
          tmp_desc.Format =
-            dzn_image_get_dxgi_format(src->vk.format,
+            dzn_image_get_dxgi_format(pdev, src->vk.format,
                                       VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                                       aspect);
          tmp_desc.Width = region->extent.width;

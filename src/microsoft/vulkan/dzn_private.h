@@ -1055,7 +1055,8 @@ dzn_image_align_extent(const struct dzn_image *image,
                        VkExtent3D *extent);
 
 DXGI_FORMAT
-dzn_image_get_dxgi_format(VkFormat format,
+dzn_image_get_dxgi_format(const struct dzn_physical_device *pdev,
+                          VkFormat format,
                           VkImageUsageFlags usage,
                           VkImageAspectFlags aspects);
 
@@ -1063,7 +1064,8 @@ VkFormat
 dzn_image_get_plane_format(VkFormat fmt, VkImageAspectFlags aspect);
 
 DXGI_FORMAT
-dzn_image_get_placed_footprint_format(VkFormat fmt, VkImageAspectFlags aspect);
+dzn_image_get_placed_footprint_format(const struct dzn_physical_device *pdev,
+                                      VkFormat fmt, VkImageAspectFlags aspect);
 
 D3D12_DEPTH_STENCIL_VIEW_DESC
 dzn_image_get_dsv_desc(const struct dzn_image *image,

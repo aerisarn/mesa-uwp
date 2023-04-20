@@ -121,7 +121,7 @@ dzn_image_create(struct dzn_device *device,
    image->castable_format_count = 0;
    for (uint32_t i = 0; i < compat_format_count; i++) {
       castable_formats[image->castable_format_count] =
-         dzn_image_get_dxgi_format(compat_formats[i], usage, 0);
+         dzn_image_get_dxgi_format(pdev, compat_formats[i], usage, 0);
 
       if (castable_formats[image->castable_format_count] != DXGI_FORMAT_UNKNOWN)
          image->castable_format_count++;
@@ -162,7 +162,7 @@ dzn_image_create(struct dzn_device *device,
          .DepthOrArraySize = 1,
          .MipLevels = 1,
          .Format =
-            dzn_image_get_dxgi_format(pCreateInfo->format, usage, 0),
+            dzn_image_get_dxgi_format(pdev, pCreateInfo->format, usage, 0),
          .SampleDesc = { .Count = 1, .Quality = 0 },
          .Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
          .Flags = D3D12_RESOURCE_FLAG_NONE
@@ -186,7 +186,7 @@ dzn_image_create(struct dzn_device *device,
       image->castable_format_count = 0;
    } else {
       image->desc.Format =
-         dzn_image_get_dxgi_format(pCreateInfo->format,
+         dzn_image_get_dxgi_format(pdev, pCreateInfo->format,
                                    usage & ~VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                                    0),
       image->desc.Dimension = (D3D12_RESOURCE_DIMENSION)(D3D12_RESOURCE_DIMENSION_TEXTURE1D + pCreateInfo->imageType);
@@ -269,7 +269,8 @@ dzn_image_create(struct dzn_device *device,
 }
 
 DXGI_FORMAT
-dzn_image_get_dxgi_format(VkFormat format,
+dzn_image_get_dxgi_format(const struct dzn_physical_device *pdev,
+                          VkFormat format,
                           VkImageUsageFlags usage,
                           VkImageAspectFlags aspects)
 {
@@ -329,11 +330,12 @@ dzn_image_get_dxgi_format(VkFormat format,
 }
 
 DXGI_FORMAT
-dzn_image_get_placed_footprint_format(VkFormat format,
+dzn_image_get_placed_footprint_format(const struct dzn_physical_device *pdev,
+                                      VkFormat format,
                                       VkImageAspectFlags aspect)
 {
    DXGI_FORMAT out =
-      dzn_image_get_dxgi_format(format,
+      dzn_image_get_dxgi_format(pdev, format,
                                 VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
                                 VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                                 aspect);
@@ -409,6 +411,8 @@ dzn_image_get_copy_loc(const struct dzn_image *image,
                        VkImageAspectFlagBits aspect,
                        uint32_t layer)
 {
+   struct dzn_physical_device *pdev =
+      container_of(image->vk.base.device->physical, struct dzn_physical_device, vk);
    D3D12_TEXTURE_COPY_LOCATION loc = {
       .pResource = image->res,
    };
@@ -421,7 +425,7 @@ dzn_image_get_copy_loc(const struct dzn_image *image,
       loc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
       loc.PlacedFootprint.Offset = 0;
       loc.PlacedFootprint.Footprint.Format =
-         dzn_image_get_placed_footprint_format(image->vk.format, aspect);
+         dzn_image_get_placed_footprint_format(pdev, image->vk.format, aspect);
       loc.PlacedFootprint.Footprint.Width = image->vk.extent.width;
       loc.PlacedFootprint.Footprint.Height = image->vk.extent.height;
       loc.PlacedFootprint.Footprint.Depth = image->vk.extent.depth;
@@ -439,10 +443,12 @@ dzn_image_get_dsv_desc(const struct dzn_image *image,
                        const VkImageSubresourceRange *range,
                        uint32_t level)
 {
+   struct dzn_physical_device *pdev =
+      container_of(image->vk.base.device->physical, struct dzn_physical_device, vk);
    uint32_t layer_count = dzn_get_layer_count(image, range);
    D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc = {
       .Format =
-         dzn_image_get_dxgi_format(image->vk.format,
+         dzn_image_get_dxgi_format(pdev, image->vk.format,
                                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                                    range->aspectMask),
    };
@@ -506,10 +512,12 @@ dzn_image_get_rtv_desc(const struct dzn_image *image,
                        const VkImageSubresourceRange *range,
                        uint32_t level)
 {
+   struct dzn_physical_device *pdev =
+      container_of(image->vk.base.device->physical, struct dzn_physical_device, vk);
    uint32_t layer_count = dzn_get_layer_count(image, range);
    D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {
       .Format =
-         dzn_image_get_dxgi_format(image->vk.format,
+         dzn_image_get_dxgi_format(pdev, image->vk.format,
                                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                                    VK_IMAGE_ASPECT_COLOR_BIT),
    };
@@ -715,8 +723,8 @@ dzn_image_formats_are_compatible(const struct dzn_device *device,
 {
    const struct dzn_physical_device *pdev =
       container_of(device->vk.physical, struct dzn_physical_device, vk);
-   DXGI_FORMAT orig_dxgi = dzn_image_get_dxgi_format(orig_fmt, usage, aspect);
-   DXGI_FORMAT new_dxgi = dzn_image_get_dxgi_format(new_fmt, usage, aspect);
+   DXGI_FORMAT orig_dxgi = dzn_image_get_dxgi_format(pdev, orig_fmt, usage, aspect);
+   DXGI_FORMAT new_dxgi = dzn_image_get_dxgi_format(pdev, new_fmt, usage, aspect);
 
    if (orig_dxgi == new_dxgi)
       return true;
@@ -1005,6 +1013,8 @@ translate_swizzle(VkComponentSwizzle in, uint32_t comp)
 static void
 dzn_image_view_prepare_srv_desc(struct dzn_image_view *iview)
 {
+   struct dzn_physical_device *pdev =
+      container_of(iview->vk.base.device->physical, struct dzn_physical_device, vk);
    uint32_t plane_slice = (iview->vk.aspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) ==
       VK_IMAGE_ASPECT_STENCIL_BIT ? 1 : 0;
    bool ms = iview->vk.image->samples > 1;
@@ -1018,7 +1028,7 @@ dzn_image_view_prepare_srv_desc(struct dzn_image_view *iview)
 
    iview->srv_desc = (D3D12_SHADER_RESOURCE_VIEW_DESC) {
       .Format =
-         dzn_image_get_dxgi_format(iview->vk.format,
+         dzn_image_get_dxgi_format(pdev, iview->vk.format,
                                    iview->vk.usage & ~VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                                    iview->vk.aspects),
    };
@@ -1135,13 +1145,15 @@ dzn_image_view_prepare_srv_desc(struct dzn_image_view *iview)
 static void
 dzn_image_view_prepare_uav_desc(struct dzn_image_view *iview)
 {
+   struct dzn_physical_device *pdev =
+      container_of(iview->vk.base.device->physical, struct dzn_physical_device, vk);
    bool use_array = iview->vk.base_array_layer > 0 || iview->vk.layer_count > 1;
 
    assert(iview->vk.image->samples == 1);
 
    iview->uav_desc = (D3D12_UNORDERED_ACCESS_VIEW_DESC) {
       .Format =
-         dzn_image_get_dxgi_format(iview->vk.format,
+         dzn_image_get_dxgi_format(pdev, iview->vk.format,
                                    VK_IMAGE_USAGE_STORAGE_BIT,
                                    iview->vk.aspects),
    };
@@ -1189,6 +1201,8 @@ dzn_image_view_prepare_uav_desc(struct dzn_image_view *iview)
 static void
 dzn_image_view_prepare_rtv_desc(struct dzn_image_view *iview)
 {
+   struct dzn_physical_device *pdev =
+      container_of(iview->vk.base.device->physical, struct dzn_physical_device, vk);
    bool use_array = iview->vk.base_array_layer > 0 || iview->vk.layer_count > 1;
    bool from_3d_image = iview->vk.image->image_type == VK_IMAGE_TYPE_3D;
    bool ms = iview->vk.image->samples > 1;
@@ -1198,7 +1212,7 @@ dzn_image_view_prepare_rtv_desc(struct dzn_image_view *iview)
 
    iview->rtv_desc = (D3D12_RENDER_TARGET_VIEW_DESC) {
       .Format =
-         dzn_image_get_dxgi_format(iview->vk.format,
+         dzn_image_get_dxgi_format(pdev, iview->vk.format,
                                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                                    iview->vk.aspects),
    };
@@ -1259,12 +1273,14 @@ dzn_image_view_prepare_rtv_desc(struct dzn_image_view *iview)
 static void
 dzn_image_view_prepare_dsv_desc(struct dzn_image_view *iview)
 {
+   struct dzn_physical_device *pdev =
+      container_of(iview->vk.base.device->physical, struct dzn_physical_device, vk);
    bool use_array = iview->vk.base_array_layer > 0 || iview->vk.layer_count > 1;
    bool ms = iview->vk.image->samples > 1;
 
    iview->dsv_desc = (D3D12_DEPTH_STENCIL_VIEW_DESC) {
       .Format =
-         dzn_image_get_dxgi_format(iview->vk.format,
+         dzn_image_get_dxgi_format(pdev, iview->vk.format,
                                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                                    iview->vk.aspects),
    };
