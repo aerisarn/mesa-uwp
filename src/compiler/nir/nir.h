@@ -213,7 +213,8 @@ typedef enum {
    /* Modes where vector derefs can be indexed as arrays. nir_var_shader_out
     * is only for mesh stages.
     */
-   nir_var_vec_indexable_modes   = nir_var_mem_ubo | nir_var_mem_ssbo |
+   nir_var_vec_indexable_modes   = nir_var_shader_temp | nir_var_function_temp |
+                                 nir_var_mem_ubo | nir_var_mem_ssbo |
                                  nir_var_mem_shared | nir_var_mem_global |
                                  nir_var_mem_push_const | nir_var_mem_task_payload |
                                  nir_var_shader_out,
