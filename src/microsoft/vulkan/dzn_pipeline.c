@@ -776,11 +776,11 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       active_stage_mask |= BITFIELD_BIT(stage);
    }
 
-   bool use_gs_for_polygon_mode_point =
+   pipeline->use_gs_for_polygon_mode_point =
       info->pRasterizationState &&
       info->pRasterizationState->polygonMode == VK_POLYGON_MODE_POINT &&
       !(active_stage_mask & (1 << MESA_SHADER_GEOMETRY));
-   if (use_gs_for_polygon_mode_point)
+   if (pipeline->use_gs_for_polygon_mode_point)
       last_raster_stage = MESA_SHADER_GEOMETRY;
 
    enum dxil_spirv_yz_flip_mode yz_flip_mode = DXIL_SPIRV_YZ_FLIP_NONE;
@@ -825,7 +825,7 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
       _mesa_sha1_update(&pipeline_hash_ctx, &z_flip_mask, sizeof(z_flip_mask));
       _mesa_sha1_update(&pipeline_hash_ctx, &force_sample_rate_shading, sizeof(force_sample_rate_shading));
       _mesa_sha1_update(&pipeline_hash_ctx, &lower_view_index, sizeof(lower_view_index));
-      _mesa_sha1_update(&pipeline_hash_ctx, &use_gs_for_polygon_mode_point, sizeof(use_gs_for_polygon_mode_point));
+      _mesa_sha1_update(&pipeline_hash_ctx, &pipeline->use_gs_for_polygon_mode_point, sizeof(pipeline->use_gs_for_polygon_mode_point));
 
       u_foreach_bit(stage, active_stage_mask) {
          vk_pipeline_hash_shader_stage(stages[stage].info, NULL, stages[stage].spirv_hash);
@@ -895,12 +895,25 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
          return ret;
    }
 
-   if (use_gs_for_polygon_mode_point) {
+   if (pipeline->use_gs_for_polygon_mode_point) {
       /* TODO: Cache; handle TES */
+      struct dzn_nir_point_gs_info gs_info = {
+         .cull_mode = info->pRasterizationState->cullMode,
+         .front_ccw = info->pRasterizationState->frontFace == VK_FRONT_FACE_COUNTER_CLOCKWISE,
+         .depth_bias = info->pRasterizationState->depthBiasEnable,
+         .depth_bias_dynamic = pipeline->zsa.dynamic_depth_bias,
+         .ds_fmt = pipeline->zsa.ds_fmt,
+         .constant_depth_bias = info->pRasterizationState->depthBiasConstantFactor,
+         .slope_scaled_depth_bias = info->pRasterizationState->depthBiasSlopeFactor,
+         .depth_bias_clamp = info->pRasterizationState->depthBiasClamp,
+         .runtime_data_cbv = {
+            .register_space = DZN_REGISTER_SPACE_SYSVALS,
+            .base_shader_register = 0,
+         }
+      };
       pipeline->templates.shaders[MESA_SHADER_GEOMETRY].nir =
          dzn_nir_polygon_point_mode_gs(pipeline->templates.shaders[MESA_SHADER_VERTEX].nir,
-                                       info->pRasterizationState->cullMode,
-                                       info->pRasterizationState->frontFace == VK_FRONT_FACE_COUNTER_CLOCKWISE);
+                                       &gs_info);
 
       struct dxil_spirv_runtime_conf conf = {
          .runtime_data_cbv = {
@@ -976,7 +989,7 @@ dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
 
          if (stage == MESA_SHADER_FRAGMENT) {
             _mesa_sha1_update(&dxil_hash_ctx, &force_sample_rate_shading, sizeof(force_sample_rate_shading));
-            _mesa_sha1_update(&dxil_hash_ctx, &use_gs_for_polygon_mode_point, sizeof(use_gs_for_polygon_mode_point));
+            _mesa_sha1_update(&dxil_hash_ctx, &pipeline->use_gs_for_polygon_mode_point, sizeof(pipeline->use_gs_for_polygon_mode_point));
          }
 
          _mesa_sha1_update(&dxil_hash_ctx, stages[stage].spirv_hash, sizeof(stages[stage].spirv_hash));
@@ -1881,10 +1894,10 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
             pipeline->zsa.depth_bounds.dynamic = true;
             break;
          case VK_DYNAMIC_STATE_DEPTH_BIAS:
+            pipeline->zsa.dynamic_depth_bias = true;
             if (pdev->options16.DynamicDepthBiasSupported) {
                *flags |= D3D12_PIPELINE_STATE_FLAG_DYNAMIC_DEPTH_BIAS;
             } else {
-               pipeline->zsa.dynamic_depth_bias = true;
                ret = dzn_graphics_pipeline_prepare_for_variants(device, pipeline);
                if (ret)
                   goto out;
@@ -1961,6 +1974,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
                                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                                    VK_IMAGE_ASPECT_DEPTH_BIT |
                                    VK_IMAGE_ASPECT_STENCIL_BIT);
+      pipeline->zsa.ds_fmt = *ds_fmt;
    }
 
    pipeline->multiview.view_mask = MAX2(view_mask, 1);
@@ -2144,7 +2158,8 @@ dzn_graphics_pipeline_get_state(struct dzn_graphics_pipeline *pipeline,
    if (dzn_graphics_pipeline_get_desc_template(pipeline, ib_strip_cut))
       masked_key.ib_strip_cut = key->ib_strip_cut;
 
-   if (dzn_graphics_pipeline_get_desc_template(pipeline, rast) &&
+   if (!pdev->options16.DynamicDepthBiasSupported &&
+       dzn_graphics_pipeline_get_desc_template(pipeline, rast) &&
        pipeline->zsa.dynamic_depth_bias)
       masked_key.depth_bias = key->depth_bias;
 
@@ -2174,8 +2189,7 @@ dzn_graphics_pipeline_get_state(struct dzn_graphics_pipeline *pipeline,
 
       D3D12_RASTERIZER_DESC *rast =
          dzn_graphics_pipeline_get_desc(pipeline, stream_buf, rast);
-      if (rast && pipeline->zsa.dynamic_depth_bias) {
-         assert(!pdev->options16.DynamicDepthBiasSupported);
+      if (!pdev->options16.DynamicDepthBiasSupported && rast && pipeline->zsa.dynamic_depth_bias) {
          rast->DepthBias = translate_depth_bias(masked_key.depth_bias.constant_factor);
          rast->DepthBiasClamp = masked_key.depth_bias.clamp;
          rast->SlopeScaledDepthBias = masked_key.depth_bias.slope_factor;

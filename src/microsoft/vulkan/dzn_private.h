@@ -969,6 +969,7 @@ struct dzn_graphics_pipeline {
          float min, max;
       } depth_bounds;
       bool dynamic_depth_bias;
+      DXGI_FORMAT ds_fmt;
    } zsa;
 
    struct {
@@ -977,6 +978,7 @@ struct dzn_graphics_pipeline {
    } blend;
 
    bool rast_disabled_from_missing_position;
+   bool use_gs_for_polygon_mode_point;
 
    struct {
       uint32_t view_mask;

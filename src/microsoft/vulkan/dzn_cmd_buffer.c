@@ -3128,6 +3128,9 @@ dzn_cmd_buffer_update_pipeline(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint
             ID3D12GraphicsCommandList1_SetViewInstanceMask(cmdbuf->cmdlist, gfx->multiview.view_mask);
          else
             ID3D12GraphicsCommandList1_SetViewInstanceMask(cmdbuf->cmdlist, 1);
+
+         if (gfx->zsa.dynamic_depth_bias && gfx->use_gs_for_polygon_mode_point)
+            cmdbuf->state.bindpoint[bindpoint].dirty |= DZN_CMD_BINDPOINT_DIRTY_SYSVALS;
       }
    }
 
@@ -5692,6 +5695,7 @@ dzn_CmdSetDepthBias(VkCommandBuffer commandBuffer,
    cmdbuf->state.pipeline_variant.depth_bias.constant_factor = depthBiasConstantFactor;
    cmdbuf->state.pipeline_variant.depth_bias.clamp = depthBiasClamp;
    cmdbuf->state.pipeline_variant.depth_bias.slope_factor = depthBiasSlopeFactor;
+   cmdbuf->state.sysvals.gfx.depth_bias = depthBiasConstantFactor;
    if (pdev->options16.DynamicDepthBiasSupported)
       cmdbuf->state.dirty |= DZN_CMD_DIRTY_DEPTH_BIAS;
    else
