@@ -23,7 +23,6 @@
 
 #include "nir.h"
 #include "nir_builder.h"
-#include "program/prog_instruction.h"
 
 /* Lower gl_FragCoord (and fddy) to account for driver's requested coordinate-
  * origin and pixel-center vs. shader.  If transformation is required, a
@@ -56,7 +55,6 @@ get_transform(lower_wpos_ytransform_state *state)
 
       var->num_state_slots = 1;
       var->state_slots = ralloc_array(var, nir_state_slot, 1);
-      var->state_slots[0].swizzle = SWIZZLE_XYZW;
       memcpy(var->state_slots[0].tokens, state->options->state_tokens,
              sizeof(var->state_slots[0].tokens));
       var->data.how_declared = nir_var_hidden;

@@ -46,7 +46,6 @@ lower_impl(nir_function_impl *impl,
                             glsl_vec4_type(), "gl_PointSizeClampedMESA");
    in->num_state_slots = 1;
    in->state_slots = ralloc_array(in, nir_state_slot, 1);
-   in->state_slots[0].swizzle = BITFIELD_MASK(4);
    memcpy(in->state_slots[0].tokens,
          pointsize_state_tokens,
          sizeof(in->state_slots[0].tokens));

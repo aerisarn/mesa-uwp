@@ -171,7 +171,6 @@ struct nir_xfb_info;
  */
 typedef struct {
    gl_state_index16 tokens[STATE_LENGTH];
-   uint16_t swizzle;
 } nir_state_slot;
 
 typedef enum {
