@@ -323,7 +323,10 @@ vk_image_view_init(struct vk_device *device,
    image_view->create_flags = pCreateInfo->flags;
    image_view->image = image;
    image_view->view_type = pCreateInfo->viewType;
+
    image_view->format = pCreateInfo->format;
+   if (image_view->format == VK_FORMAT_UNDEFINED)
+      image_view->format = image->format;
 
    if (!driver_internal) {
       switch (image_view->view_type) {
@@ -356,7 +359,7 @@ vk_image_view_init(struct vk_device *device,
 
    if (driver_internal) {
       image_view->aspects = range->aspectMask;
-      image_view->view_format = pCreateInfo->format;
+      image_view->view_format = image_view->format;
    } else {
       image_view->aspects =
          vk_image_expand_aspect_mask(image, range->aspectMask);
@@ -382,7 +385,7 @@ vk_image_view_init(struct vk_device *device,
        */
       if ((image->aspects & VK_IMAGE_ASPECT_PLANE_1_BIT) &&
           (range->aspectMask == VK_IMAGE_ASPECT_COLOR_BIT))
-         assert(pCreateInfo->format == image->format);
+         assert(image_view->format == image->format);
 
       /* From the Vulkan 1.2.184 spec:
        *
@@ -390,10 +393,10 @@ vk_image_view_init(struct vk_device *device,
        */
       if (image_view->aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
                                  VK_IMAGE_ASPECT_STENCIL_BIT))
-         assert(pCreateInfo->format == image->format);
+         assert(image_view->format == image->format);
 
       if (!(image->create_flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT))
-         assert(pCreateInfo->format == image->format);
+         assert(image_view->format == image->format);
 
       /* Restrict the format to only the planes chosen.
        *
@@ -416,11 +419,11 @@ vk_image_view_init(struct vk_device *device,
        *    enable sampler Y′CBCR conversion."
        */
       if (image_view->aspects == VK_IMAGE_ASPECT_STENCIL_BIT) {
-         image_view->view_format = vk_format_stencil_only(pCreateInfo->format);
+         image_view->view_format = vk_format_stencil_only(image_view->format);
       } else if (image_view->aspects == VK_IMAGE_ASPECT_DEPTH_BIT) {
-         image_view->view_format = vk_format_depth_only(pCreateInfo->format);
+         image_view->view_format = vk_format_depth_only(image_view->format);
       } else {
-         image_view->view_format = pCreateInfo->format;
+         image_view->view_format = image_view->format;
       }
    }
 

@@ -2404,22 +2404,6 @@ anv_CreateImageView(VkDevice _device,
    iview->image = image;
    iview->n_planes = anv_image_aspect_get_planes(iview->vk.aspects);
 
-   /* Check if a conversion info was passed. */
-   VkFormat conv_format = VK_FORMAT_UNDEFINED;
-   const VkSamplerYcbcrConversionInfo *conv_info =
-      vk_find_struct_const(pCreateInfo->pNext, SAMPLER_YCBCR_CONVERSION_INFO);
-
-   if (conv_info) {
-      VK_FROM_HANDLE(vk_ycbcr_conversion, conversion, conv_info->conversion);
-      conv_format = conversion->state.format;
-   }
-
-   /* Format is undefined, this can happen when using external formats. Set
-    * view format from the passed conversion info.
-    */
-   if (iview->vk.view_format == VK_FORMAT_UNDEFINED && conv_format)
-      iview->vk.view_format = conv_format;
-
    /* Now go through the underlying image selected planes and map them to
     * planes in the image view.
     */

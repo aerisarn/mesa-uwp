@@ -219,7 +219,7 @@ struct vk_image_view {
    struct vk_image *image;
    VkImageViewType view_type;
 
-   /** VkImageViewCreateInfo::format */
+   /** VkImageViewCreateInfo::format or vk_image::format */
    VkFormat format;
 
    /** Image view format, relative to the selected aspects
@@ -235,7 +235,8 @@ struct vk_image_view {
     * For color images, we have three cases:
     *
     *  1. It's a single-plane image in which case this is the unmodified
-    *     format provided to VkImageViewCreateInfo::format.
+    *     format provided to VkImageViewCreateInfo::format or
+    *     vk_image::format.
     *
     *  2. It's a YCbCr view of a multi-plane image in which case the
     *     client will have asked for VK_IMAGE_ASPECT_COLOR_BIT and the
