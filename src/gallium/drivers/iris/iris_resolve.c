@@ -1209,31 +1209,11 @@ iris_resource_render_aux_usage(struct iris_context *ice,
 
    case ISL_AUX_USAGE_MCS:
    case ISL_AUX_USAGE_MCS_CCS:
+   case ISL_AUX_USAGE_CCS_D:
       return res->aux.usage;
 
-   case ISL_AUX_USAGE_CCS_D:
    case ISL_AUX_USAGE_CCS_E:
    case ISL_AUX_USAGE_FCV_CCS_E:
-      /* Disable CCS for some cases of texture-view rendering. On gfx12, HW
-       * may convert some subregions of shader output to fast-cleared blocks
-       * if CCS is enabled and the shader output matches the clear color.
-       * Existing fast-cleared blocks are correctly interpreted by the clear
-       * color and the resource format (see can_fast_clear_color). To avoid
-       * gaining new fast-cleared blocks that can't be interpreted by the
-       * resource format (and to avoid misinterpreting existing ones), shut
-       * off CCS when the interpretation of the clear color differs between
-       * the render_format and the resource format.
-       */
-      if (!iris_render_formats_color_compatible(render_format,
-                                                res->surf.format,
-                                                res->aux.clear_color,
-                                                res->aux.clear_color_unknown)) {
-         return ISL_AUX_USAGE_NONE;
-      }
-
-      if (res->aux.usage == ISL_AUX_USAGE_CCS_D)
-         return ISL_AUX_USAGE_CCS_D;
-
       if (isl_formats_are_ccs_e_compatible(devinfo, res->surf.format,
                                            render_format)) {
          return res->aux.usage;
@@ -1255,6 +1235,54 @@ iris_resource_prepare_render(struct iris_context *ice,
    iris_resource_prepare_access(ice, res, level, 1, start_layer,
                                 layer_count, aux_usage,
                                 isl_aux_usage_has_fast_clears(aux_usage));
+
+   /* If the resource's clear color is incompatible with render_format,
+    * replace it with one that is. This process keeps the aux buffer
+    * compatible with render_format and the resource's format.
+    */
+   if (!iris_render_formats_color_compatible(render_format,
+                                             res->surf.format,
+                                             res->aux.clear_color,
+                                             res->aux.clear_color_unknown)) {
+
+      /* Remove references to the clear color with resolves. */
+      iris_resource_prepare_access(ice, res, 0, INTEL_REMAINING_LEVELS, 0,
+                                   INTEL_REMAINING_LAYERS, res->aux.usage,
+                                   false);
+
+      /* The clear color is no longer in use; replace it now. */
+      const union isl_color_value zero = { .u32 = { 0, } };
+      iris_resource_set_clear_color(ice, res, zero);
+
+      if (res->aux.clear_color_bo) {
+         /* Update dwords used for rendering and sampling. */
+         iris_emit_pipe_control_write(&ice->batches[IRIS_BATCH_RENDER],
+                                      "zero fast clear color (RG____)",
+                                      PIPE_CONTROL_WRITE_IMMEDIATE,
+                                      res->aux.clear_color_bo,
+                                      res->aux.clear_color_offset, 0);
+
+         iris_emit_pipe_control_write(&ice->batches[IRIS_BATCH_RENDER],
+                                      "zero fast clear color (__BA__)",
+                                      PIPE_CONTROL_WRITE_IMMEDIATE,
+                                      res->aux.clear_color_bo,
+                                      res->aux.clear_color_offset + 8, 0);
+
+         iris_emit_pipe_control_write(&ice->batches[IRIS_BATCH_RENDER],
+                                      "zero fast clear color (____PX)",
+                                      PIPE_CONTROL_WRITE_IMMEDIATE,
+                                      res->aux.clear_color_bo,
+                                      res->aux.clear_color_offset + 16, 0);
+
+         iris_emit_pipe_control_flush(&ice->batches[IRIS_BATCH_RENDER],
+                                      "new clear color affects state cache",
+                                      PIPE_CONTROL_FLUSH_ENABLE |
+                                      PIPE_CONTROL_STATE_CACHE_INVALIDATE);
+      } else {
+         /* Flag surface states with inline clear colors as dirty. */
+         ice->state.stage_dirty |= IRIS_ALL_STAGE_DIRTY_BINDINGS;
+      }
+   }
 }
 
 void
