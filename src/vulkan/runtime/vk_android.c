@@ -150,13 +150,13 @@ vk_alloc_ahardware_buffer(const VkMemoryAllocateInfo *pAllocateInfo)
    /* If caller passed dedicated information. */
    if (dedicated_info && dedicated_info->image) {
       VK_FROM_HANDLE(vk_image, image, dedicated_info->image);
+
+      if (!image->ahb_format)
+         return NULL;
+
       w = image->extent.width;
       h = image->extent.height;
       layers = image->array_layers;
-      assert(image->ahb_format != 0);
-      /* TODO: This feels a bit sketchy.  We should probably be taking the
-       * external format into account somehow.
-       */
       format = image->ahb_format;
       usage = vk_image_usage_to_ahb_usage(image->create_flags,
                                           image->usage);

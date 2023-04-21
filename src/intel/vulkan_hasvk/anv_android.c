@@ -150,7 +150,7 @@ anv_ahb_format_for_vk_format(VkFormat vk_format)
       return HAL_PIXEL_FORMAT_NV12_Y_TILED_INTEL;
 #endif
    default:
-      return AHARDWAREBUFFER_FORMAT_BLOB;
+      return 0;
    }
 }
 

@@ -416,7 +416,7 @@ radv_ahb_format_for_vk_format(VkFormat vk_format)
    case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
       return AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420;
    default:
-      return AHARDWAREBUFFER_FORMAT_BLOB;
+      return 0;
    }
 }
 
