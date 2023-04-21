@@ -1061,6 +1061,13 @@ dzn_image_view_prepare_srv_desc(struct dzn_image_view *iview)
          else if (swz[i] == D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_1)
             swz[i] = D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_0;
       }
+   } else if (iview->vk.view_format == VK_FORMAT_BC1_RGB_SRGB_BLOCK ||
+              iview->vk.view_format == VK_FORMAT_BC1_RGB_UNORM_BLOCK) {
+      /* D3D has no opaque version of these; force alpha to 1 */
+      for (uint32_t i = 0; i < ARRAY_SIZE(swz); i++) {
+         if (swz[i] == D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_3)
+            swz[i] = D3D12_SHADER_COMPONENT_MAPPING_FORCE_VALUE_1;
+      }
    }
 
    iview->srv_desc.Shader4ComponentMapping =
