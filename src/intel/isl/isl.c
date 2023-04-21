@@ -494,8 +494,8 @@ isl_tiling_get_info(enum isl_tiling tiling,
 #define tile_extent(bs, cv, cu, a) \
       isl_extent4d((1 << cu) / bs, 1 << cv, 1, a)
 
-      /* Only 2D surfaces are handled. */
-      assert(dim == ISL_SURF_DIM_2D);
+      /* Only 1D and 2D surfaces are handled. */
+      assert(dim != ISL_SURF_DIM_3D);
 
       if (samples == 1 || msaa_layout == ISL_MSAA_LAYOUT_INTERLEAVED) {
          switch (format_bpb) {
