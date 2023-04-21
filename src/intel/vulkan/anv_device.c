@@ -1296,7 +1296,7 @@ void anv_GetPhysicalDeviceFeatures2(
       .shaderInputAttachmentArrayDynamicIndexing          = false,
       .shaderUniformTexelBufferArrayDynamicIndexing       = true,
       .shaderStorageTexelBufferArrayDynamicIndexing       = true,
-      .shaderUniformBufferArrayNonUniformIndexing         = false,
+      .shaderUniformBufferArrayNonUniformIndexing         = true,
       .shaderSampledImageArrayNonUniformIndexing          = true,
       .shaderStorageBufferArrayNonUniformIndexing         = true,
       .shaderStorageImageArrayNonUniformIndexing          = true,
