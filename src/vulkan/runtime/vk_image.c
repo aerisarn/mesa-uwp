@@ -100,8 +100,6 @@ vk_image_init(struct vk_device *device,
 #endif
 
 #ifdef ANDROID
-   image->ahb_format = 0;
-
    const VkExternalFormatANDROID *ext_format =
       vk_find_struct_const(pCreateInfo->pNext, EXTERNAL_FORMAT_ANDROID);
    if (ext_format && ext_format->externalFormat != 0) {
@@ -110,6 +108,8 @@ vk_image_init(struct vk_device *device,
              VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID);
       vk_image_set_format(image, (VkFormat)ext_format->externalFormat);
    }
+
+   image->ahb_format = vk_image_format_to_ahb_format(image->format);
 #endif
 }
 

@@ -99,6 +99,43 @@ vk_ahb_format_to_image_format(uint32_t ahb_format)
    }
 }
 
+/* Convert a VkFormat to an AHB format, based on the "AHardwareBuffer Format
+ * Equivalence" table in Vulkan spec.
+ *
+ * Note that this only covers a subset of AHB formats defined in NDK.  Drivers
+ * can support more AHB formats, including private ones.
+ */
+uint32_t
+vk_image_format_to_ahb_format(VkFormat vk_format)
+{
+   switch (vk_format) {
+   case VK_FORMAT_R8G8B8A8_UNORM:
+      return AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
+   case VK_FORMAT_R8G8B8_UNORM:
+      return AHARDWAREBUFFER_FORMAT_R8G8B8_UNORM;
+   case VK_FORMAT_R5G6B5_UNORM_PACK16:
+      return AHARDWAREBUFFER_FORMAT_R5G6B5_UNORM;
+   case VK_FORMAT_R16G16B16A16_SFLOAT:
+      return AHARDWAREBUFFER_FORMAT_R16G16B16A16_FLOAT;
+   case VK_FORMAT_A2B10G10R10_UNORM_PACK32:
+      return AHARDWAREBUFFER_FORMAT_R10G10B10A2_UNORM;
+   case VK_FORMAT_D16_UNORM:
+      return AHARDWAREBUFFER_FORMAT_D16_UNORM;
+   case VK_FORMAT_X8_D24_UNORM_PACK32:
+      return AHARDWAREBUFFER_FORMAT_D24_UNORM;
+   case VK_FORMAT_D24_UNORM_S8_UINT:
+      return AHARDWAREBUFFER_FORMAT_D24_UNORM_S8_UINT;
+   case VK_FORMAT_D32_SFLOAT:
+      return AHARDWAREBUFFER_FORMAT_D32_FLOAT;
+   case VK_FORMAT_D32_SFLOAT_S8_UINT:
+      return AHARDWAREBUFFER_FORMAT_D32_FLOAT_S8_UINT;
+   case VK_FORMAT_S8_UINT:
+      return AHARDWAREBUFFER_FORMAT_S8_UINT;
+   default:
+      return 0;
+   }
+}
+
 /* Construct ahw usage mask from image usage bits, see
  * 'AHardwareBuffer Usage Equivalence' in Vulkan spec.
  */

@@ -33,6 +33,8 @@ extern "C" {
 
 VkFormat vk_ahb_format_to_image_format(uint32_t ahb_format);
 
+uint32_t vk_image_format_to_ahb_format(VkFormat vk_format);
+
 uint64_t vk_image_usage_to_ahb_usage(const VkImageCreateFlags vk_create,
                                      const VkImageUsageFlags vk_usage);
 
@@ -45,6 +47,12 @@ static inline VkFormat
 vk_ahb_format_to_image_format(uint32_t ahb_format)
 {
    return VK_FORMAT_UNDEFINED;
+}
+
+static inline uint32_t
+vk_image_format_to_ahb_format(VkFormat vk_format)
+{
+   return 0;
 }
 
 static inline uint64_t
