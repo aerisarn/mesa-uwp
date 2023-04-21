@@ -100,7 +100,7 @@ vk_image_init(struct vk_device *device,
 #endif
 
 #ifdef ANDROID
-   image->ahardware_buffer_format = 0;
+   image->ahb_format = 0;
 
    const VkExternalFormatANDROID *ext_format =
       vk_find_struct_const(pCreateInfo->pNext, EXTERNAL_FORMAT_ANDROID);

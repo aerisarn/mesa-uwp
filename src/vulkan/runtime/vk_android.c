@@ -115,11 +115,11 @@ vk_alloc_ahardware_buffer(const VkMemoryAllocateInfo *pAllocateInfo)
       w = image->extent.width;
       h = image->extent.height;
       layers = image->array_layers;
-      assert(image->ahardware_buffer_format != 0);
+      assert(image->ahb_format != 0);
       /* TODO: This feels a bit sketchy.  We should probably be taking the
        * external format into account somehow.
        */
-      format = image->ahardware_buffer_format;
+      format = image->ahb_format;
       usage = vk_image_usage_to_ahb_usage(image->create_flags,
                                           image->usage);
    } else if (dedicated_info && dedicated_info->buffer) {

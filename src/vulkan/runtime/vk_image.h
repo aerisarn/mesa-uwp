@@ -81,7 +81,7 @@ struct vk_image {
     * A default is provided by the Vulkan runtime code based on the VkFormat
     * but it may be overridden by the driver as needed.
     */
-   unsigned ahardware_buffer_format;
+   uint32_t ahb_format;
 #endif
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(vk_image, base, VkImage,

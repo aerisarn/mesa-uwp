@@ -1997,8 +1997,7 @@ radv_image_create(VkDevice _device, const struct radv_image_create_info *create_
    if (image->vk.external_handle_types &
        VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID) {
 #ifdef ANDROID
-      image->vk.ahardware_buffer_format =
-         radv_ahb_format_for_vk_format(image->vk.format);
+      image->vk.ahb_format = radv_ahb_format_for_vk_format(image->vk.format);
 #endif
 
       *pImage = radv_image_to_handle(image);
