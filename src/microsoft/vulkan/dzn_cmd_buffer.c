@@ -3302,17 +3302,10 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
             uint32_t dynamic_buffer_count = pipeline->sets[s].dynamic_buffer_count;
             for (uint32_t o = 0; o < dynamic_buffer_count; o++) {
                const struct dzn_buffer_desc *bdesc = &set->dynamic_buffers[o];
-               struct dxil_spirv_bindless_entry *map_entry = &map[pipeline->sets[s].dynamic_buffer_heap_offsets[o].primary];
-               if (*bdesc->bindless_descriptor_slot >= 0) {
-                  uint32_t embedded_offset = (bdesc->offset / D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT) * D3D12_RAW_UAV_SRV_BYTE_ALIGNMENT;
-                  uint32_t additional_offset = bdesc->offset - embedded_offset;
-                  map_entry->buffer_idx = *bdesc->bindless_descriptor_slot;
-                  map_entry->buffer_offset = additional_offset + desc_state->sets[s].dynamic_offsets[o];
-               } else {
-                  map_entry->buffer_idx = bdesc->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ?
-                     bdesc->buffer->uav_bindless_slot : bdesc->buffer->cbv_bindless_slot;
-                  map_entry->buffer_offset = bdesc->offset + desc_state->sets[s].dynamic_offsets[o];
-               }
+               volatile struct dxil_spirv_bindless_entry *map_entry = &map[pipeline->sets[s].dynamic_buffer_heap_offsets[o].primary];
+               struct dzn_buffer_desc bdesc_updated = *bdesc;
+               bdesc_updated.offset += cmdbuf->state.bindpoint[bindpoint].desc_state.sets[s].dynamic_offsets[o];
+               dzn_buffer_get_bindless_buffer_descriptor(device, &bdesc_updated, map_entry);
             }
          }
 

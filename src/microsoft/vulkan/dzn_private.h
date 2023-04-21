@@ -420,12 +420,9 @@ struct dzn_buffer_view;
 
 struct dzn_buffer_desc {
    VkDescriptorType type;
-   const struct dzn_buffer *buffer;
+   struct dzn_buffer *buffer;
    VkDeviceSize range;
    VkDeviceSize offset;
-   /* Points to an array owned by the descriptor set.
-    * Value is -1 if the buffer's pre-allocated descriptor is used. */
-   int *bindless_descriptor_slot;
 };
 
 #define MAX_DESCS_PER_SAMPLER_HEAP     D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE
@@ -719,7 +716,7 @@ struct dzn_descriptor_pool {
       struct dzn_descriptor_heap heaps[NUM_POOL_TYPES];
       struct {
          ID3D12Resource *buf;
-         struct dxil_spirv_bindless_entry *map;
+         volatile struct dxil_spirv_bindless_entry *map;
          uint64_t gpuva;
       } bindless;
    };
@@ -788,8 +785,6 @@ struct dzn_descriptor_set {
    uint32_t heap_sizes[NUM_POOL_TYPES];
    /* Layout (and pool) is null for a freed descriptor set */
    const struct dzn_descriptor_set_layout *layout;
-   /* When bindless, stores dynamically-allocated heap slots for buffers */
-   int *buffer_heap_slots;
 };
 
 struct dzn_pipeline_layout_set {
@@ -1146,9 +1141,16 @@ struct dzn_buffer {
    D3D12_BARRIER_ACCESS valid_access;
    D3D12_GPU_VIRTUAL_ADDRESS gpuva;
 
+   mtx_t bindless_view_lock;
    int cbv_bindless_slot;
    int uav_bindless_slot;
+   struct hash_table *custom_views;
 };
+
+void
+dzn_buffer_get_bindless_buffer_descriptor(struct dzn_device *device,
+                                          const struct dzn_buffer_desc *bdesc,
+                                          volatile struct dxil_spirv_bindless_entry *out);
 
 DXGI_FORMAT
 dzn_buffer_get_dxgi_format(VkFormat format);

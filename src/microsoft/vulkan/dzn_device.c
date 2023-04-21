@@ -2776,6 +2776,13 @@ dzn_buffer_destroy(struct dzn_buffer *buf, const VkAllocationCallbacks *pAllocat
 
    dzn_device_descriptor_heap_free_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, buf->cbv_bindless_slot);
    dzn_device_descriptor_heap_free_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, buf->uav_bindless_slot);
+   if (buf->custom_views) {
+      hash_table_foreach(buf->custom_views, entry) {
+         free((void *)entry->key);
+         dzn_device_descriptor_heap_free_slot(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, (int)(intptr_t)entry->data);
+      }
+      _mesa_hash_table_destroy(buf->custom_views, NULL);
+   }
 
    vk_object_base_finish(&buf->base);
    vk_free2(&device->vk.alloc, pAllocator, buf);
@@ -2851,6 +2858,9 @@ dzn_buffer_create(struct dzn_device *device,
          }
       }
    }
+
+   if (device->bindless)
+      mtx_init(&buf->bindless_view_lock, mtx_plain);
 
    *out = dzn_buffer_to_handle(buf);
    return VK_SUCCESS;
