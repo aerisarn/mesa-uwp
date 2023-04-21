@@ -1815,12 +1815,6 @@ anv_graphics_pipeline_load_nir(struct anv_graphics_base_pipeline *pipeline,
                          stages[s].imported.nir;
       }
 
-      /* We might not have a NIR version of shader if it's coming from a
-       * library.
-       */
-      if (stages[s].nir != NULL)
-         nir_shader_gather_info(stages[s].nir, nir_shader_get_entrypoint(stages[s].nir));
-
       stages[s].feedback.duration += os_time_get_nano() - stage_start;
    }
 
@@ -1896,6 +1890,8 @@ anv_pipeline_nir_preprocess(struct anv_pipeline *pipeline, nir_shader *nir)
       NIR_PASS(_, nir, nir_opt_dce);
       NIR_PASS(_, nir, nir_remove_dead_variables, nir_var_shader_out, NULL);
    }
+
+   nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 }
 
 static void
