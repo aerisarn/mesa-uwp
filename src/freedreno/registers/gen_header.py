@@ -253,12 +253,13 @@ class Bitset(object):
 		print()
 
 class Array(object):
-	def __init__(self, attrs, domain):
+	def __init__(self, attrs, domain, variant):
 		if "name" in attrs:
 			self.name = attrs["name"]
 		else:
 			self.name = ""
 		self.domain = domain
+		self.variant = variant
 		self.offset = int(attrs["offset"], 0)
 		self.stride = int(attrs["stride"], 0)
 		self.length = int(attrs["length"], 0)
@@ -386,11 +387,13 @@ class Parser(object):
 
 		return variant
 
-	def add_all_variants(self, reg, attrs):
+	def add_all_variants(self, reg, attrs, parent_variant):
 		# TODO this should really handle *all* variants, including dealing
 		# with open ended ranges (ie. "A2XX,A4XX-") (we have the varset
 		# enum now to make that possible)
 		variant = self.parse_variants(attrs)
+		if not variant:
+			variant = parent_variant
 
 		if reg.name not in self.variant_regs:
 			self.variant_regs[reg.name] = {}
@@ -465,6 +468,9 @@ class Parser(object):
 				self.parse_field(None, attrs)
 
 		variant = self.parse_variants(attrs)
+		if not variant and self.current_array:
+			variant = self.current_array.variant
+
 		self.current_reg = Reg(attrs, self.prefix(variant), self.current_array, bit_size)
 		self.current_reg.bitset = self.current_bitset
 
@@ -472,7 +478,7 @@ class Parser(object):
 			self.file.append(self.current_reg)
 
 		if variant is not None:
-			self.add_all_variants(self.current_reg, attrs)
+			self.add_all_variants(self.current_reg, attrs, variant)
 
 	def start_element(self, name, attrs):
 		if name == "import":
@@ -510,7 +516,7 @@ class Parser(object):
 		elif name == "array":
 			self.current_bitsize = 32
 			variant = self.parse_variants(attrs)
-			self.current_array = Array(attrs, self.prefix(variant))
+			self.current_array = Array(attrs, self.prefix(variant), variant)
 			if len(self.stack) == 1:
 				self.file.append(self.current_array)
 		elif name == "bitset":
