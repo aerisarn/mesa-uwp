@@ -11,6 +11,7 @@
 #include "vn_device.h"
 
 #include "util/disk_cache.h"
+#include "util/hex.h"
 #include "venus-protocol/vn_protocol_driver_device.h"
 
 #include "vn_android.h"
@@ -363,20 +364,9 @@ vn_device_update_shader_cache_id(struct vn_device *dev)
 #if !defined(ANDROID) && defined(ENABLE_SHADER_CACHE)
    const VkPhysicalDeviceProperties *vulkan_1_0_props =
       &dev->physical_device->properties.vulkan_1_0;
-   struct mesa_sha1 sha1_ctx;
-   uint8_t sha1[SHA1_DIGEST_LENGTH];
 
-   _mesa_sha1_init(&sha1_ctx);
-   _mesa_sha1_update(&sha1_ctx, vulkan_1_0_props->pipelineCacheUUID,
-                     sizeof(vulkan_1_0_props->pipelineCacheUUID));
-   _mesa_sha1_update(&sha1_ctx, &vulkan_1_0_props->vendorID,
-                     sizeof(vulkan_1_0_props->vendorID));
-   _mesa_sha1_update(&sha1_ctx, &vulkan_1_0_props->deviceID,
-                     sizeof(vulkan_1_0_props->deviceID));
-   _mesa_sha1_final(&sha1_ctx, sha1);
-
-   char uuid[VK_UUID_SIZE];
-   _mesa_sha1_format(uuid, sha1);
+   char uuid[VK_UUID_SIZE * 2 + 1];
+   mesa_bytes_to_hex(uuid, vulkan_1_0_props->pipelineCacheUUID, VK_UUID_SIZE);
 
    struct disk_cache *cache = disk_cache_create("venus", uuid, 0);
    if (!cache)
