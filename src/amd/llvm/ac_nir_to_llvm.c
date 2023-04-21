@@ -453,7 +453,7 @@ static LLVMValueRef enter_waterfall(struct ac_nir_context *ctx, struct waterfall
 
    ac_build_bgnloop(&ctx->ac, 6000);
 
-   LLVMValueRef active = LLVMConstInt(ctx->ac.i1, 1, false);
+   LLVMValueRef active = ctx->ac.i1true;
    LLVMValueRef scalar_value[NIR_MAX_VEC_COMPONENTS];
 
    for (unsigned i = 0; i < ac_get_llvm_num_components(value); i++) {
@@ -475,7 +475,7 @@ static LLVMValueRef exit_waterfall(struct ac_nir_context *ctx, struct waterfall_
    LLVMValueRef ret = NULL;
    LLVMValueRef phi_src[2];
    LLVMValueRef cc_phi_src[2] = {
-      LLVMConstInt(ctx->ac.i32, 0, false),
+      ctx->ac.i32_0,
       LLVMConstInt(ctx->ac.i32, 0xffffffff, false),
    };
 
@@ -1610,9 +1610,9 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx, nir_int
       if (load_dwords > 1) {
          LLVMValueRef res_vec = LLVMBuildBitCast(ctx->ac.builder, res, ctx->ac.v2i32, "");
          params[0] = LLVMBuildExtractElement(ctx->ac.builder, res_vec,
-                                             LLVMConstInt(ctx->ac.i32, 1, false), "");
+                                             ctx->ac.i32_1, "");
          params[1] = LLVMBuildExtractElement(ctx->ac.builder, res_vec,
-                                             LLVMConstInt(ctx->ac.i32, 0, false), "");
+                                             ctx->ac.i32_0, "");
       } else {
          res = LLVMBuildBitCast(ctx->ac.builder, res, ctx->ac.i32, "");
          params[0] = ctx->ac.i32_0;
@@ -1637,7 +1637,7 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx, nir_int
       LLVMValueRef cond = LLVMBuildLShr(ctx->ac.builder, addr, ctx->ac.i32_1, "");
       cond = LLVMBuildTrunc(ctx->ac.builder, cond, ctx->ac.i1, "");
       LLVMValueRef mask[] = {
-         LLVMConstInt(ctx->ac.i32, 0, false), LLVMConstInt(ctx->ac.i32, 1, false),
+         ctx->ac.i32_0, ctx->ac.i32_1,
          LLVMConstInt(ctx->ac.i32, 2, false), LLVMConstInt(ctx->ac.i32, 3, false),
          LLVMConstInt(ctx->ac.i32, 4, false)};
       LLVMValueRef swizzle_aligned = LLVMConstVector(&mask[0], instr->dest.ssa.num_components);
@@ -1843,7 +1843,7 @@ static LLVMValueRef emit_ssbo_comp_swap_64(struct ac_nir_context *ctx, LLVMValue
       };
 
       LLVMValueRef incoming_values[2] = {
-         LLVMConstInt(ctx->ac.i64, 0, 0),
+         ctx->ac.i64_0,
          result,
       };
       LLVMValueRef ret = LLVMBuildPhi(ctx->ac.builder, ctx->ac.i64, "");
@@ -2269,8 +2269,8 @@ static void get_image_coords(struct ac_nir_context *ctx, const nir_intrinsic_ins
 {
    LLVMValueRef src0 = get_src(ctx, instr->src[1]);
    LLVMValueRef masks[] = {
-      LLVMConstInt(ctx->ac.i32, 0, false),
-      LLVMConstInt(ctx->ac.i32, 1, false),
+      ctx->ac.i32_0,
+      ctx->ac.i32_1,
       LLVMConstInt(ctx->ac.i32, 2, false),
       LLVMConstInt(ctx->ac.i32, 3, false),
    };
@@ -2734,7 +2734,7 @@ static LLVMValueRef visit_load_num_subgroups(struct ac_nir_context *ctx)
    } else if (ctx->args->merged_wave_info.used) {
       return ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->merged_wave_info), 28, 4);
    } else {
-      return LLVMConstInt(ctx->ac.i32, 1, false);
+      return ctx->ac.i32_1;
    }
 }
 
@@ -3147,7 +3147,7 @@ emit_load_frag_shading_rate(struct ac_nir_context *ctx)
    /* yRate = yRate == 0x1 ? Vertical2Pixels : None. */
    cond = LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, y_rate, ctx->ac.i32_1, "");
    y_rate = LLVMBuildSelect(ctx->ac.builder, cond,
-                            LLVMConstInt(ctx->ac.i32, 1, false), ctx->ac.i32_0, "");
+                            ctx->ac.i32_1, ctx->ac.i32_0, "");
 
    return LLVMBuildOr(ctx->ac.builder, x_rate, y_rate, "");
 }
@@ -4026,9 +4026,9 @@ static LLVMValueRef sici_fix_sampler_aniso(struct ac_nir_context *ctx, LLVMValue
       return samp;
 
    img7 = LLVMBuildExtractElement(builder, res, LLVMConstInt(ctx->ac.i32, 7, 0), "");
-   samp0 = LLVMBuildExtractElement(builder, samp, LLVMConstInt(ctx->ac.i32, 0, 0), "");
+   samp0 = LLVMBuildExtractElement(builder, samp, ctx->ac.i32_0, "");
    samp0 = LLVMBuildAnd(builder, samp0, img7, "");
-   return LLVMBuildInsertElement(builder, samp, samp0, LLVMConstInt(ctx->ac.i32, 0, 0), "");
+   return LLVMBuildInsertElement(builder, samp, samp0, ctx->ac.i32_0, "");
 }
 
 static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,

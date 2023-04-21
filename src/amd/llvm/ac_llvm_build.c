@@ -3031,9 +3031,9 @@ static LLVMValueRef get_reduction_identity(struct ac_llvm_context *ctx, nir_op o
       switch (op) {
       case nir_op_ior:
       case nir_op_ixor:
-         return LLVMConstInt(ctx->i1, 0, 0);
+         return ctx->i1false;
       case nir_op_iand:
-         return LLVMConstInt(ctx->i1, 1, 0);
+         return ctx->i1true;
       default:
          unreachable("bad reduction intrinsic");
       }
@@ -3267,7 +3267,7 @@ static LLVMValueRef ac_wavefront_shift_right_1(struct ac_llvm_context *ctx, LLVM
    tmp2 = ac_build_readlane(ctx, src, LLVMConstInt(ctx->i32, 31, 0));
    active = LLVMBuildICmp(ctx->builder, LLVMIntEQ, tid, LLVMConstInt(ctx->i32, 32, 0), "");
    tmp1 = LLVMBuildSelect(ctx->builder, active, tmp2, tmp1, "");
-   active = LLVMBuildICmp(ctx->builder, LLVMIntEQ, tid, LLVMConstInt(ctx->i32, 0, 0), "");
+   active = LLVMBuildICmp(ctx->builder, LLVMIntEQ, tid, ctx->i32_0, "");
    return LLVMBuildSelect(ctx->builder, active, identity, tmp1, "");
 }
 
