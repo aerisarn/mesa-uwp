@@ -2954,8 +2954,11 @@ dzn_buffer_get_line_copy_loc(const struct dzn_buffer *buf, VkFormat format,
 }
 
 bool
-dzn_buffer_supports_region_copy(const D3D12_TEXTURE_COPY_LOCATION *loc)
+dzn_buffer_supports_region_copy(struct dzn_physical_device *pdev,
+                                const D3D12_TEXTURE_COPY_LOCATION *loc)
 {
+   if (pdev->options13.UnrestrictedBufferTextureCopyPitchSupported)
+      return true;
    return !(loc->PlacedFootprint.Offset & (D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT - 1)) &&
           !(loc->PlacedFootprint.Footprint.RowPitch & (D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1));
 }

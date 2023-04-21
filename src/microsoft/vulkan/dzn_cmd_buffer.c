@@ -2390,6 +2390,8 @@ dzn_cmd_buffer_copy_buf2img_region(struct dzn_cmd_buffer *cmdbuf,
 {
    VK_FROM_HANDLE(dzn_buffer, src_buffer, info->srcBuffer);
    VK_FROM_HANDLE(dzn_image, dst_image, info->dstImage);
+   struct dzn_physical_device *pdev =
+      container_of(cmdbuf->vk.base.device->physical, struct dzn_physical_device, vk);
 
    ID3D12GraphicsCommandList1 *cmdlist = cmdbuf->cmdlist;
 
@@ -2409,7 +2411,7 @@ dzn_cmd_buffer_copy_buf2img_region(struct dzn_cmd_buffer *cmdbuf,
    D3D12_TEXTURE_COPY_LOCATION src_buf_loc =
       dzn_buffer_get_copy_loc(src_buffer, dst_image->vk.format, &region, aspect, l);
 
-   if (dzn_buffer_supports_region_copy(&src_buf_loc)) {
+   if (dzn_buffer_supports_region_copy(pdev, &src_buf_loc)) {
       /* RowPitch and Offset are properly aligned, we can copy
        * the whole thing in one call.
        */
@@ -2469,6 +2471,8 @@ dzn_cmd_buffer_copy_img2buf_region(struct dzn_cmd_buffer *cmdbuf,
 {
    VK_FROM_HANDLE(dzn_image, src_image, info->srcImage);
    VK_FROM_HANDLE(dzn_buffer, dst_buffer, info->dstBuffer);
+   struct dzn_physical_device *pdev =
+      container_of(cmdbuf->vk.base.device->physical, struct dzn_physical_device, vk);
 
    ID3D12GraphicsCommandList1 *cmdlist = cmdbuf->cmdlist;
 
@@ -2488,7 +2492,7 @@ dzn_cmd_buffer_copy_img2buf_region(struct dzn_cmd_buffer *cmdbuf,
    D3D12_TEXTURE_COPY_LOCATION dst_buf_loc =
       dzn_buffer_get_copy_loc(dst_buffer, src_image->vk.format, &region, aspect, l);
 
-   if (dzn_buffer_supports_region_copy(&dst_buf_loc)) {
+   if (dzn_buffer_supports_region_copy(pdev, &dst_buf_loc)) {
       /* RowPitch and Offset are properly aligned on 256 bytes, we can copy
        * the whole thing in one call.
        */

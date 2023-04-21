@@ -1164,7 +1164,8 @@ dzn_buffer_get_line_copy_loc(const struct dzn_buffer *buf, VkFormat format,
                              uint32_t y, uint32_t z, uint32_t *start_x);
 
 bool
-dzn_buffer_supports_region_copy(const D3D12_TEXTURE_COPY_LOCATION *loc);
+dzn_buffer_supports_region_copy(struct dzn_physical_device *pdev,
+                                const D3D12_TEXTURE_COPY_LOCATION *loc);
 
 struct dzn_buffer_view {
    struct vk_object_base base;
