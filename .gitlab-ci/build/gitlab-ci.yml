@@ -314,7 +314,7 @@ fedora-release:
       -D gallium-xa=enabled
       -D gallium-nine=false
       -D gallium-opencl=icd
-      -D gallium-rusticl=false
+      -D gallium-rusticl=true
       -D gles1=disabled
       -D gles2=enabled
       -D llvm=enabled
