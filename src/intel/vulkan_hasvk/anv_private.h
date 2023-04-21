@@ -88,6 +88,7 @@
 #include "vk_util.h"
 #include "vk_queue.h"
 #include "vk_log.h"
+#include "vk_ycbcr_conversion.h"
 
 /* Pre-declarations needed for WSI entrypoints */
 struct wl_surface;
@@ -3702,24 +3703,12 @@ struct gfx8_border_color {
    uint32_t _pad[12];
 };
 
-struct anv_ycbcr_conversion {
-   struct vk_object_base base;
-
-   const struct anv_format *        format;
-   VkSamplerYcbcrModelConversion    ycbcr_model;
-   VkSamplerYcbcrRange              ycbcr_range;
-   VkComponentSwizzle               mapping[4];
-   VkChromaLocation                 chroma_offsets[2];
-   VkFilter                         chroma_filter;
-   bool                             chroma_reconstruction;
-};
-
 struct anv_sampler {
    struct vk_object_base        base;
 
    uint32_t                     state[3][4];
    uint32_t                     n_planes;
-   struct anv_ycbcr_conversion *conversion;
+   struct vk_ycbcr_conversion  *conversion;
 
    /* Blob of sampler state data which is guaranteed to be 32-byte aligned
     * and with a 32-byte stride for use as bindless samplers.
@@ -3886,9 +3875,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_query_pool, base, VkQueryPool,
                                VK_OBJECT_TYPE_QUERY_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_sampler, base, VkSampler,
                                VK_OBJECT_TYPE_SAMPLER)
-VK_DEFINE_NONDISP_HANDLE_CASTS(anv_ycbcr_conversion, base,
-                               VkSamplerYcbcrConversion,
-                               VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_performance_configuration_intel, base,
                                VkPerformanceConfigurationINTEL,
                                VK_OBJECT_TYPE_PERFORMANCE_CONFIGURATION_INTEL)
