@@ -1582,12 +1582,9 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
          return result;
    }
 
-   const unsigned num_perfctr_cs = use_perf_counters ? 2 : 0;
-   const unsigned num_gang_wait_cs = use_ace ? 4 : 0;
    const unsigned cmd_buffer_count = submission->command_buffer_count;
    const unsigned max_cs_submission = queue->device->trace_bo ? 1 : cmd_buffer_count;
-   const unsigned cs_array_size = (use_ace ? 2 : 1) * MIN2(max_cs_submission, cmd_buffer_count) +
-                                  num_perfctr_cs + num_gang_wait_cs;
+   const unsigned cs_array_size = (use_ace ? 2 : 1) * MIN2(max_cs_submission, cmd_buffer_count);
 
    struct radeon_cmdbuf **cs_array = malloc(sizeof(struct radeon_cmdbuf *) * cs_array_size);
    if (!cs_array)
