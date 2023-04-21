@@ -3556,6 +3556,9 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
          if (zink_fs_key_base(key)->force_dual_color_blend && nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DATA1)) {
             NIR_PASS_V(nir, lower_dual_blend);
          }
+         if (zink_fs_key_base(key)->single_sample) {
+            NIR_PASS_V(nir, nir_lower_single_sampled);
+         }
          if (zink_fs_key_base(key)->coord_replace_bits)
             NIR_PASS_V(nir, nir_lower_texcoord_replace, zink_fs_key_base(key)->coord_replace_bits, false, false);
          if (zink_fs_key_base(key)->point_coord_yinvert)

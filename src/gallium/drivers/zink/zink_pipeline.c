@@ -114,7 +114,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
 
    VkPipelineMultisampleStateCreateInfo ms_state = {0};
    ms_state.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-   ms_state.rasterizationSamples = state->rast_samples + 1;
+   ms_state.rasterizationSamples = state->multisample ? state->rast_samples + 1 : 1;
    if (state->blend_state) {
       ms_state.alphaToCoverageEnable = state->blend_state->alpha_to_coverage;
       if (state->blend_state->alpha_to_one && !screen->info.feats.features.alphaToOne) {
@@ -508,7 +508,7 @@ zink_create_gfx_pipeline_output(struct zink_screen *screen, struct zink_gfx_pipe
          }
          ms_state.alphaToOneEnable = state->blend_state->alpha_to_one;
       }
-      ms_state.rasterizationSamples = state->rast_samples + 1;
+      ms_state.rasterizationSamples = state->multisample ? state->rast_samples + 1 : 1;
       /* "If pSampleMask is NULL, it is treated as if the mask has all bits set to 1."
        * - Chapter 27. Rasterization
        * 
