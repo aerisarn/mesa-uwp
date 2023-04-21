@@ -673,6 +673,37 @@ llvmpipe_get_compiler_options(struct pipe_screen *screen,
 
 
 bool
+lp_storage_render_image_format_supported(enum pipe_format format)
+{
+   const struct util_format_description *format_desc = util_format_description(format);
+
+   if (format_desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB) {
+      /* this is a lie actually other formats COULD exist where we would fail */
+      if (format_desc->nr_channels < 3)
+         return false;
+   } else if (format_desc->colorspace != UTIL_FORMAT_COLORSPACE_RGB) {
+      return false;
+   }
+
+   if (format_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN &&
+       format != PIPE_FORMAT_R11G11B10_FLOAT)
+      return false;
+
+   assert(format_desc->block.width == 1);
+   assert(format_desc->block.height == 1);
+
+   if (format_desc->is_mixed)
+      return false;
+
+   if (!format_desc->is_array && !format_desc->is_bitmask &&
+       format != PIPE_FORMAT_R11G11B10_FLOAT)
+      return false;
+
+   return true;
+}
+
+
+bool
 lp_storage_image_format_supported(enum pipe_format format)
 {
    switch (format) {
@@ -754,29 +785,9 @@ llvmpipe_is_format_supported(struct pipe_screen *_screen,
    if (sample_count != 0 && sample_count != 1 && sample_count != 4)
       return false;
 
-   if (bind & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_SHADER_IMAGE)) {
-      if (format_desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB) {
-         /* this is a lie actually other formats COULD exist where we would fail */
-         if (format_desc->nr_channels < 3)
-            return false;
-      } else if (format_desc->colorspace != UTIL_FORMAT_COLORSPACE_RGB) {
+   if (bind & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_SHADER_IMAGE))
+      if (!lp_storage_render_image_format_supported(format))
          return false;
-      }
-
-      if (format_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN &&
-          format != PIPE_FORMAT_R11G11B10_FLOAT)
-         return false;
-
-      assert(format_desc->block.width == 1);
-      assert(format_desc->block.height == 1);
-
-      if (format_desc->is_mixed)
-         return false;
-
-      if (!format_desc->is_array && !format_desc->is_bitmask &&
-          format != PIPE_FORMAT_R11G11B10_FLOAT)
-         return false;
-   }
 
    if (bind & PIPE_BIND_SHADER_IMAGE) {
       if (!lp_storage_image_format_supported(format))

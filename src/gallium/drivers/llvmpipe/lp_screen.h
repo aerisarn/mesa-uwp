@@ -108,6 +108,10 @@ lp_get_constant_buffer_stride(struct pipe_screen *_screen)
 
 
 bool
+lp_storage_render_image_format_supported(enum pipe_format format);
+
+
+bool
 lp_storage_image_format_supported(enum pipe_format format);
 
 
