@@ -1003,6 +1003,15 @@ isl_surf_choose_tiling(const struct isl_device *dev,
       CHOOSE(ISL_TILING_LINEAR);
    }
 
+   /* For sparse images, prefer the formats that use the standard block
+    * shapes.
+    */
+   if (info->usage & ISL_SURF_USAGE_SPARSE_BIT) {
+      CHOOSE(ISL_TILING_64);
+      CHOOSE(ISL_TILING_ICL_Ys);
+      CHOOSE(ISL_TILING_SKL_Ys);
+   }
+
    /* Choose suggested 4K tilings first, then 64K tilings:
     *
     * Then following quotes can be found in the SKL PRMs,
@@ -2454,6 +2463,14 @@ isl_calc_size(const struct isl_device *dev,
                row_pitch_B;
    }
 
+   /* If for some reason we can't support the appropriate tiling format and
+    * end up falling to linear or some other format, make sure the image size
+    * and alignment are aligned to the expected block size so we can at least
+    * do opaque binds.
+    */
+   if (info->usage & ISL_SURF_USAGE_SPARSE_BIT)
+      size_B = isl_align(size_B, 64 * 1024);
+
    if (ISL_GFX_VER(dev) < 9) {
       /* From the Broadwell PRM Vol 5, Surface Layout:
        *
@@ -2562,6 +2579,14 @@ isl_calc_base_alignment(const struct isl_device *dev,
                1024 * 1024 : 64 * 1024);
       }
    }
+
+   /* If for some reason we can't support the appropriate tiling format and
+    * end up falling to linear or some other format, make sure the image size
+    * and alignment are aligned to the expected block size so we can at least
+    * do opaque binds.
+    */
+   if (info->usage & ISL_SURF_USAGE_SPARSE_BIT)
+      base_alignment_B = MAX(base_alignment_B, 64 * 1024);
 
    return base_alignment_B;
 }
