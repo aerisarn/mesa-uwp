@@ -1285,7 +1285,7 @@ fd6_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
    if (!batch->tile_setup)
       return;
 
-   trace_start_clear_restore(&batch->trace, batch->gmem, batch->fast_cleared);
+   trace_start_clear_restore(&batch->trace, batch->gmem, batch->fast_cleared, batch->restore);
    if (batch->fast_cleared || !use_hw_binning(batch)) {
       fd6_emit_ib(batch->gmem, batch->tile_setup);
    } else {
@@ -1483,7 +1483,7 @@ fd6_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
    OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_RESOLVE));
    emit_marker6(ring, 7);
 
-   trace_start_resolve(&batch->trace, batch->gmem);
+   trace_start_resolve(&batch->trace, batch->gmem, batch->resolve);
    if (batch->fast_cleared || !use_hw_binning(batch)) {
       fd6_emit_ib(batch->gmem, batch->tile_fini);
    } else {
@@ -1525,7 +1525,7 @@ emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring) assert_dt
    struct pipe_box box2d;
    u_box_2d(0, 0, pfb->width, pfb->height, &box2d);
 
-   trace_start_clear_restore(&batch->trace, ring, buffers);
+   trace_start_clear_restore(&batch->trace, ring, buffers, 0);
 
    if (buffers & PIPE_CLEAR_COLOR) {
       for (int i = 0; i < pfb->nr_cbufs; i++) {
