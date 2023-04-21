@@ -378,7 +378,7 @@
     </field>
   </struct>
   <struct name="MEMORYADDRESSATTRIBUTES" length="1">
-    <field name="MOCS" start="1" end="6" type="uint" nonzero="true" />
+    <field name="MOCS" start="0" end="6" type="uint" nonzero="true" />
     <field name="Arbitration Priority Control" start="7" end="8" type="HEVC_ARBITRATION_PRIORITY" />
     <field name="Memory Compression Enable" start="9" end="9" type="bool" />
     <field name="Memory Compression Mode" start="10" end="10" type="uint" />
@@ -1130,7 +1130,7 @@
     <field name="Stream 3 Decl" start="48" end="63" type="SO_DECL" />
   </struct>
   <struct name="VDENC_SURFACE_CONTROL_BITS" length="1">
-    <field name="MOCS" start="1" end="6" type="uint" nonzero="true" />
+    <field name="MOCS" start="0" end="6" type="uint" nonzero="true" />
     <field name="Arbitration Priority Control" start="7" end="8" type="uint">
       <value name="Highest priority" value="0" />
       <value name="Second highest priority" value="1" />
@@ -4906,7 +4906,7 @@
     <field name="Pipeline" start="27" end="28" type="uint" default="2" />
     <field name="Command Type" start="29" end="31" type="uint" default="3" />
     <field name="Pre Deblocking Source - Address" start="38" end="79" type="address" />
-    <field name="Pre Deblocking Source - MOCS" start="97" end="102" type="uint" nonzero="true" />
+    <field name="Pre Deblocking Source - MOCS" start="96" end="102" type="uint" nonzero="true" />
     <field name="Pre Deblocking Source - Arbitration Priority Control" start="103" end="104" type="uint">
       <value name="Highest priority" value="0" />
       <value name="Second highest priority" value="1" />
@@ -4921,7 +4921,7 @@
       <value name="TRMODE_TILEYS" value="2" />
     </field>
     <field name="Deblocking Control - Address" start="134" end="175" type="address" />
-    <field name="Deblocking Control - MOCS" start="193" end="198" type="uint" nonzero="true" />
+    <field name="Deblocking Control - MOCS" start="192" end="198" type="uint" nonzero="true" />
     <field name="Deblocking Control - Arbitration Priority Control" start="199" end="200" type="uint">
       <value name="Highest priority" value="0" />
       <value name="Second highest priority" value="1" />
@@ -4936,7 +4936,7 @@
       <value name="TRMODE_TILEYS" value="2" />
     </field>
     <field name="Deblocking Destination - Address High" start="230" end="271" type="address" />
-    <field name="Deblocking Destination - MOCS" start="289" end="294" type="uint" nonzero="true" />
+    <field name="Deblocking Destination - MOCS" start="288" end="294" type="uint" nonzero="true" />
     <field name="Deblocking Destination - Arbitration Priority Control" start="295" end="296" type="uint">
       <value name="Highest priority" value="0" />
       <value name="Second highest priority" value="1" />
@@ -4951,7 +4951,7 @@
       <value name="TRMODE_TILEYS" value="2" />
     </field>
     <field name="Deblock Row Store - Address" start="326" end="367" type="address" />
-    <field name="CoeffProbability Stream-In - MOCS" start="385" end="390" type="uint" nonzero="true" />
+    <field name="CoeffProbability Stream-In - MOCS" start="384" end="390" type="uint" nonzero="true" />
     <field name="Deblock Row Store - Arbitration Priority Control" start="391" end="392" type="uint">
       <value name="Highest priority" value="0" />
       <value name="Second highest priority" value="1" />
@@ -5615,7 +5615,7 @@
     <field name="Quantizer Value [3][Y2DC]" start="480" end="488" type="uint" />
     <field name="Quantizer Value [3][Y2AC]" start="496" end="504" type="uint" />
     <field name="CoeffProbability Stream-In - Address" start="518" end="559" type="uint" />
-    <field name="CoeffProbability Stream-In - MOCS (Encoder Only)" start="577" end="582" type="uint" nonzero="true" />
+    <field name="CoeffProbability Stream-In - MOCS (Encoder Only)" start="576" end="582" type="uint" nonzero="true" />
     <field name="CoeffProbability Stream-In - Arbitration Priority Control" start="583" end="584" type="uint">
       <value name="Highest priority" value="0" />
       <value name="Second highest priority" value="1" />
@@ -5690,7 +5690,7 @@
     <field name="ModeLFDelta2" start="1104" end="1110" type="int" />
     <field name="ModeLFDelta3" start="1112" end="1118" type="int" />
     <field name="Segmentation ID Stream - Address" start="1120" end="1167" type="uint" />
-    <field name="CoeffProbability Stream-In - MOCS" start="1185" end="1190" type="uint" nonzero="true" />
+    <field name="CoeffProbability Stream-In - MOCS" start="1184" end="1190" type="uint" nonzero="true" />
     <field name="Segmentation ID Stream - Arbitration Priority Control" start="1191" end="1192" type="uint">
       <value name="Highest priority" value="0" />
       <value name="Second highest priority" value="1" />
@@ -6382,7 +6382,7 @@
     <field name="Scaling Factor Height" start="448" end="468" type="u4.17" />
     <field name="Scaling Factor Width" start="480" end="500" type="u4.17" />
     <field name="Output Frame - Address" start="556" end="591" type="uint" />
-    <field name="Output Frame - MOCS" start="609" end="614" type="uint" nonzero="true" />
+    <field name="Output Frame - MOCS" start="608" end="614" type="uint" nonzero="true" />
     <field name="Output Frame - Arbitration Priority Control" start="615" end="616" type="HEVC_ARBITRATION_PRIORITY" />
     <field name="Output Frame - Memory Compression Enable" start="617" end="617" type="bool" />
     <field name="Output Frame - Memory Compression Mode" start="618" end="618" type="uint" />
@@ -6393,7 +6393,7 @@
       <value name="TRMODE_TILEYS" value="2" />
     </field>
     <field name="AVS Line Buffer - Address" start="652" end="687" type="uint" />
-    <field name="AVS Line Buffer - MOCS" start="705" end="710" type="uint" nonzero="true" />
+    <field name="AVS Line Buffer - MOCS" start="704" end="710" type="uint" nonzero="true" />
     <field name="AVS Line Buffer - Arbitration Priority Control" start="711" end="712" type="HEVC_ARBITRATION_PRIORITY" />
     <field name="AVS Line Buffer - Memory Compression Enable" start="713" end="713" type="bool" />
     <field name="AVS Line Buffer - Memory Compression Mode" start="714" end="714" type="uint">
@@ -6408,7 +6408,7 @@
       <value name="TRMODE_TILEYS" value="2" />
     </field>
     <field name="IEF Line Buffer - Address" start="748" end="783" type="uint" />
-    <field name="IEF Line Buffer - MOCS" start="801" end="806" type="uint" nonzero="true" />
+    <field name="IEF Line Buffer - MOCS" start="800" end="806" type="uint" nonzero="true" />
     <field name="IEF Line Buffer - Arbitration Priority Control" start="807" end="808" type="HEVC_ARBITRATION_PRIORITY" />
     <field name="IEF Line Buffer - Memory Compression Enable" start="809" end="809" type="bool" />
     <field name="IEF Line Buffer - Memory Compression Mode" start="810" end="810" type="uint" />
