@@ -3132,8 +3132,6 @@ anv_get_isl_format(const struct intel_device_info *devinfo, VkFormat vk_format,
 extern VkFormat
 vk_format_from_android(unsigned android_format, unsigned android_usage);
 
-unsigned anv_ahb_format_for_vk_format(VkFormat vk_format);
-
 static inline struct isl_swizzle
 anv_swizzle_for_render(struct isl_swizzle swizzle)
 {
