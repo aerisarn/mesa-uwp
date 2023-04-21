@@ -276,6 +276,7 @@ files_libnir = files(
   'nir_range_analysis.c',
   'nir_range_analysis.h',
   'nir_remove_dead_variables.c',
+  'nir_remove_tex_shadow.c',
   'nir_repair_ssa.c',
   'nir_scale_fdiv.c',
   'nir_schedule.c',

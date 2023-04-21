@@ -1063,6 +1063,18 @@ st_create_fp_variant(struct st_context *st,
       finalize = true;
    }
 
+   /* It is undefined behavior when an ARB assembly uses SHADOW2D target
+    * with a texture in not depth format. In this case NVIDIA automatically
+    * replaces SHADOW sampler with a normal sampler and some games like
+    * Penumbra Overture which abuses this UB (issues/8425) works fine but
+    * breaks with mesa. Replace the shadow sampler with a normal one here
+    */
+   if (!fp->shader_program && ~key->depth_textures & fp->ShadowSamplers) {
+      NIR_PASS_V(state.ir.nir, nir_remove_tex_shadow,
+                 ~key->depth_textures & fp->ShadowSamplers);
+      finalize = true;
+   }
+
    if (finalize || !st->allow_st_finalize_nir_twice) {
       /* Some of the lowering above may have introduced new varyings */
       nir_shader_gather_info(state.ir.nir,
@@ -1104,7 +1116,7 @@ st_get_fp_variant(struct st_context *st,
 
       if (fp->variants != NULL) {
          _mesa_perf_debug(st->ctx, MESA_DEBUG_SEVERITY_MEDIUM,
-                          "Compiling fragment shader variant (%s%s%s%s%s%s%s%s%s%s%s%s)",
+                          "Compiling fragment shader variant (%s%s%s%s%s%s%s%s%s%s%s%s%s%d)",
                           key->bitmap ? "bitmap," : "",
                           key->drawpixels ? "drawpixels," : "",
                           key->scaleAndBias ? "scale_bias," : "",
@@ -1117,7 +1129,8 @@ st_get_fp_variant(struct st_context *st,
                           key->lower_alpha_func ? "alpha_compare," : "",
                           /* skipped ATI_fs targets */
                           fp->ExternalSamplersUsed ? "external?," : "",
-                          key->gl_clamp[0] || key->gl_clamp[1] || key->gl_clamp[2] ? "GL_CLAMP," : "");
+                          key->gl_clamp[0] || key->gl_clamp[1] || key->gl_clamp[2] ? "GL_CLAMP," : "",
+                          "depth_textures=", key->depth_textures);
       }
 
       fpv = st_create_fp_variant(st, fp, key);
@@ -1307,6 +1320,10 @@ st_precompile_shader_variant(struct st_context *st,
          for (int i = 0; i < ARRAY_SIZE(key.texture_index); i++)
             key.texture_index[i] = TEXTURE_2D_INDEX;
       }
+
+      /* Shadow samplers require texture in depth format */
+      key.depth_textures = prog->ShadowSamplers;
+
       st_get_fp_variant(st, prog, &key);
       break;
    }
