@@ -346,7 +346,10 @@
     <field name="Arbitration Priority Control" start="7" end="8" type="HEVC_ARBITRATION_PRIORITY" />
     <field name="Memory Compression Enable" start="9" end="9" type="bool" />
     <field name="Memory Compression Mode" start="10" end="10" type="uint" />
-    <field name="Row Store Scratch Buffer Cache Select" start="12" end="12" type="uint" />
+    <field name="Row Store Scratch Buffer Cache Select" start="12" end="12" type="uint">
+      <value name="LLC" value="0" />
+      <value name="Internal Media Storage" value="1" />
+    </field>
     <field name="Tiled Resource Mode" start="13" end="14" type="uint">
       <value name="TRMODE_NONE" value="0" />
       <value name="TRMODE_TILEYF" value="1" />
@@ -3242,8 +3245,8 @@
     <field name="Reference Picture - Memory Address Attributes" start="1696" end="1727" type="MEMORYADDRESSATTRIBUTES" />
     <field name="Original Uncompressed Picture Source - Address" start="1728" end="1791" type="address" />
     <field name="Original Uncompressed Picture Source - Memory Address Attributes" start="1792" end="1823" type="MEMORYADDRESSATTRIBUTES" />
-    <field name="SAO Row Store Buffer - Address" start="1824" end="1887" type="address" />
-    <field name="SAO Row Store Buffer - Memory Address Attributes" start="1888" end="1919" type="MEMORYADDRESSATTRIBUTES" />
+    <field name="Stream-Out Data Destination - Address" start="1824" end="1887" type="address" />
+    <field name="Stream-Out Data Destination - Memory Address Attributes" start="1888" end="1919" type="MEMORYADDRESSATTRIBUTES" />
     <field name="Decoded Picture Status Buffer - Address" start="1920" end="1983" type="address" />
     <field name="Decoded Picture Status Buffer - Memory Address Attributes" start="1984" end="2015" type="MEMORYADDRESSATTRIBUTES" />
     <field name="LCU ILDB Stream-Out Buffer - Address" start="2016" end="2079" type="address" />
