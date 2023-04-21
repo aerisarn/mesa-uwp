@@ -6202,7 +6202,7 @@ pvr_write_draw_indirect_vdm_stream(struct pvr_cmd_buffer *cmd_buffer,
       pvr_csb_emit (csb, VDMCTRL_PDS_STATE1, state1) {
          const uint32_t data_offset =
             pds_bo->vma->dev_addr.addr +
-            PVR_DW_TO_BYTES(pds_prog.program.code_size) -
+            PVR_DW_TO_BYTES(pds_prog.program.code_size_aligned) -
             cmd_buffer->device->heaps.pds_heap->base_addr.addr;
 
          state1.pds_data_addr = PVR_DEV_ADDR(data_offset);
