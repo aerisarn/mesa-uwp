@@ -131,6 +131,10 @@ impl<'a> LegalizeInstr<'a> {
                 self.mov_src_if_not_reg(src0, RegFile::GPR);
                 self.mov_src_if_not_reg(src2, RegFile::GPR);
             }
+            Op::Shf(op) => {
+                self.mov_src_if_not_reg(&mut op.low, RegFile::GPR);
+                self.mov_src_if_not_reg(&mut op.high, RegFile::GPR);
+            }
             Op::PLop3(op) => {
                 /* Fold constants if we can */
                 for lop in &mut op.ops {
