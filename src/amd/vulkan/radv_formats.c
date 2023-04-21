@@ -28,6 +28,7 @@
 #include "sid.h"
 #include "vk_format.h"
 
+#include "vk_android.h"
 #include "vk_util.h"
 
 #include "ac_drm_fourcc.h"
@@ -37,10 +38,6 @@
 #include "util/half_float.h"
 #include "vulkan/util/vk_format.h"
 #include "vulkan/util/vk_enum_defines.h"
-
-#ifdef ANDROID
-#include "vk_android.h"
-#endif
 
 uint32_t
 radv_translate_buffer_dataformat(const struct util_format_description *desc, int first_non_void)
@@ -1812,10 +1809,8 @@ radv_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
    bool ahb_supported =
       physical_device->vk.supported_extensions.ANDROID_external_memory_android_hardware_buffer;
    if (android_usage && ahb_supported) {
-#if RADV_SUPPORT_ANDROID_HARDWARE_BUFFER
       android_usage->androidHardwareBufferUsage =
          vk_image_usage_to_ahb_usage(base_info->flags, base_info->usage);
-#endif
    }
 
    /* From the Vulkan 1.0.97 spec:

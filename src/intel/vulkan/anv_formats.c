@@ -23,14 +23,11 @@
 
 #include "anv_private.h"
 #include "drm-uapi/drm_fourcc.h"
+#include "vk_android.h"
 #include "vk_enum_defines.h"
 #include "vk_enum_to_str.h"
 #include "vk_format.h"
 #include "vk_util.h"
-
-#if defined(ANDROID) && ANDROID_API_LEVEL >= 26
-#include "vk_android.h"
-#endif
 
 /*
  * gcc-4 and earlier don't allow compound literals where a constant
@@ -1587,7 +1584,6 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
    bool ahw_supported =
       physical_device->vk.supported_extensions.ANDROID_external_memory_android_hardware_buffer;
 
-#if defined(ANDROID) && ANDROID_API_LEVEL >= 26
    if (ahw_supported && android_usage) {
       android_usage->androidHardwareBufferUsage =
          vk_image_usage_to_ahb_usage(base_info->flags, base_info->usage);
@@ -1595,7 +1591,6 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
       /* Limit maxArrayLayers to 1 for AHardwareBuffer based images for now. */
       base_props->imageFormatProperties.maxArrayLayers = 1;
    }
-#endif
 
    /* From the Vulkan 1.0.42 spec:
     *
