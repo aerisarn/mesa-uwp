@@ -207,7 +207,7 @@ impl RegFileAllocation {
     }
 
     pub fn get_reg(&self, ssa: SSAValue) -> u8 {
-        self.try_get_reg(ssa).unwrap()
+        self.try_get_reg(ssa).expect("Undefined SSA value")
     }
 
     pub fn get_ssa(&self, reg: u8) -> Option<SSAValue> {
@@ -511,7 +511,9 @@ impl RegFileAllocation {
             }
         }
 
-        let reg = self.try_find_unused_reg_range(0, 1).unwrap();
+        let reg = self
+            .try_find_unused_reg_range(0, 1)
+            .expect("Failed to find free register");
         self.assign_reg(ssa, reg)
     }
 
