@@ -66,6 +66,12 @@ impl<'a> LegalizeInstr<'a> {
         }
     }
 
+    pub fn mov_src_if_not_ssa(&mut self, src: &mut Src, file: RegFile) {
+        if src.as_ssa().is_none() {
+            self.mov_src(src, file);
+        }
+    }
+
     pub fn swap_srcs_if_not_reg(&mut self, x: &mut Src, y: &mut Src) {
         if !src_is_reg(x) && src_is_reg(y) {
             std::mem::swap(x, y);
@@ -188,20 +194,21 @@ impl<'a> LegalizeInstr<'a> {
             Op::St(op) => {
                 self.mov_src_if_not_reg(&mut op.data, RegFile::GPR);
             }
-            Op::ALd(_)
-            | Op::ASt(_)
-            | Op::Tex(_)
+            Op::ALd(_) | Op::ASt(_) | Op::Ld(_) | Op::St(_) => {
+                for src in instr.srcs_mut() {
+                    self.mov_src_if_not_reg(src, RegFile::GPR);
+                }
+            }
+            Op::Tex(_)
             | Op::Tld(_)
             | Op::Tld4(_)
             | Op::Tmml(_)
             | Op::Txd(_)
             | Op::Txq(_)
             | Op::SuLd(_)
-            | Op::SuSt(_)
-            | Op::Ld(_)
-            | Op::St(_) => {
+            | Op::SuSt(_) => {
                 for src in instr.srcs_mut() {
-                    self.mov_src_if_not_reg(src, RegFile::GPR);
+                    self.mov_src_if_not_ssa(src, RegFile::GPR);
                 }
             }
             _ => (),
