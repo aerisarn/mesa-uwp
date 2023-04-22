@@ -866,10 +866,12 @@ impl AssignRegsBlock {
          */
         for raf in &self.ra.files {
             for (ssa, reg) in &raf.ssa_reg {
-                self.live_in.push(LiveValue {
-                    live_ref: LiveRef::SSA(*ssa),
-                    reg_ref: RegRef::new(raf.file(), *reg, 1),
-                });
+                if bl.is_live_in(ssa) {
+                    self.live_in.push(LiveValue {
+                        live_ref: LiveRef::SSA(*ssa),
+                        reg_ref: RegRef::new(raf.file(), *reg, 1),
+                    });
+                }
             }
         }
 
