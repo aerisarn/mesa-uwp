@@ -474,10 +474,9 @@ impl SM75Instr {
         self.set_bit(80, false); /* TODO: Denorm mode */
 
         self.set_pred_dst(81..84, op.dst);
-        self.set_field(84..87, 7_u32); /* TODO: dst1 */
+        self.set_pred_dst(84..87, Dst::None); /* dst1 */
 
-        self.set_field(87..90, 0x7_u8); /* TODO: src pred */
-        self.set_bit(90, false); /* TODO: src pred neg */
+        self.set_pred_src(87..90, 90, SrcRef::True.into());
     }
 
     fn encode_mufu(&mut self, op: &OpMuFu) {
@@ -607,6 +606,8 @@ impl SM75Instr {
             ALUSrc::None,
         );
 
+        self.set_pred_src(68..71, 71, SrcRef::True.into());
+
         self.set_field(
             73..74,
             match op.cmp_type {
@@ -618,10 +619,9 @@ impl SM75Instr {
         self.set_int_cmp_op(76..79, op.cmp_op);
 
         self.set_pred_dst(81..84, op.dst);
-        self.set_field(84..87, 7_u32); /* dst1 */
+        self.set_pred_dst(84..87, Dst::None); /* dst1 */
 
-        self.set_field(87..90, 7_u32); /* src pred */
-        self.set_bit(90, false); /* src pred neg */
+        self.set_pred_src(87..90, 90, SrcRef::True.into());
     }
 
     fn encode_lop3(&mut self, op: &OpLop3) {
