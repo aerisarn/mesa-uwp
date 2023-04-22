@@ -200,16 +200,6 @@ class Opcode(object):
    NOTE: this must be kept in sync with aco_op_info
    """
    def __init__(self, name, opcode_gfx7, opcode_gfx9, opcode_gfx10, opcode_gfx11, format, input_mod, output_mod, is_atomic, cls):
-      """Parameters:
-
-      - name is the name of the opcode (prepend nir_op_ for the enum name)
-      - all types are strings that get nir_type_ prepended to them
-      - input_types is a list of types
-      - algebraic_properties is a space-separated string, where nir_op_is_ is
-        prepended before each entry
-      - const_expr is an expression or series of statements that computes the
-        constant value of the opcode given the constant values of its inputs.
-      """
       assert isinstance(name, str)
       assert isinstance(opcode_gfx7, int)
       assert isinstance(opcode_gfx9, int)
