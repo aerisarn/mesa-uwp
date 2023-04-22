@@ -647,12 +647,23 @@ emit_common_fini(struct fd_batch *batch)
 /*
  * Emit conditional CP_INDIRECT_BRANCH based on VSC_STATE[p], ie. the IB
  * is skipped for tiles that have no visible geometry.
+ *
+ * If we aren't using binning pass, this just emits a normal IB.
  */
 static void
 emit_conditional_ib(struct fd_batch *batch, const struct fd_tile *tile,
                     struct fd_ringbuffer *target)
 {
    struct fd_ringbuffer *ring = batch->gmem;
+
+   /* If we have fast clear, that won't count in the VSC state, so it
+    * forces an unconditional IB (because we know there is something
+    * to do for this tile)
+    */
+   if (batch->fast_cleared || !use_hw_binning(batch)) {
+      fd6_emit_ib(batch->gmem, target);
+      return;
+   }
 
    if (target->cur == target->start)
       return;
@@ -1331,16 +1342,11 @@ fd6_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 static void
 fd6_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
 {
-   if (!batch->tile_setup)
-      return;
-
-   trace_start_clear_restore(&batch->trace, batch->gmem, batch->fast_cleared, batch->restore);
-   if (batch->fast_cleared || !use_hw_binning(batch)) {
-      fd6_emit_ib(batch->gmem, batch->tile_setup);
-   } else {
+   if (batch->tile_setup) {
+      trace_start_clear_restore(&batch->trace, batch->gmem, batch->fast_cleared, batch->restore);
       emit_conditional_ib(batch, tile, batch->tile_setup);
+      trace_end_clear_restore(&batch->trace, batch->gmem);
    }
-   trace_end_clear_restore(&batch->trace, batch->gmem);
 }
 
 static bool
@@ -1534,13 +1540,11 @@ fd6_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
    OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_RESOLVE));
    emit_marker6(ring, 7);
 
-   trace_start_resolve(&batch->trace, batch->gmem, batch->resolve);
-   if (batch->fast_cleared || !use_hw_binning(batch)) {
-      fd6_emit_ib(batch->gmem, batch->tile_fini);
-   } else {
+   if (batch->tile_fini) {
+      trace_start_resolve(&batch->trace, batch->gmem, batch->resolve);
       emit_conditional_ib(batch, tile, batch->tile_fini);
+      trace_end_resolve(&batch->trace, batch->gmem);
    }
-   trace_end_resolve(&batch->trace, batch->gmem);
 }
 
 static void
