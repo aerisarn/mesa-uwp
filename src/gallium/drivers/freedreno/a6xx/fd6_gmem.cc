@@ -660,7 +660,7 @@ emit_conditional_ib(struct fd_batch *batch, const struct fd_tile *tile,
     * forces an unconditional IB (because we know there is something
     * to do for this tile)
     */
-   if (batch->fast_cleared || !use_hw_binning(batch)) {
+   if (batch->cleared || !use_hw_binning(batch)) {
       fd6_emit_ib(batch->gmem, target);
       return;
    }
