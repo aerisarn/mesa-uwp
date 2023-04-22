@@ -3686,7 +3686,7 @@ tx_ctor(struct shader_translator *tx, struct pipe_screen *screen, struct nine_sh
         TGSI_SEMANTIC_TEXCOORD : TGSI_SEMANTIC_GENERIC;
     tx->wpos_is_sysval = GET_CAP(FS_POSITION_IS_SYSVAL);
     tx->face_is_sysval_integer = GET_CAP(FS_FACE_IS_INTEGER_SYSVAL);
-    tx->no_vs_window_space = GET_CAP(VS_WINDOW_SPACE_POSITION);
+    tx->no_vs_window_space = !GET_CAP(VS_WINDOW_SPACE_POSITION);
 
     if (IS_VS) {
         tx->num_constf_allowed = NINE_MAX_CONST_F;
