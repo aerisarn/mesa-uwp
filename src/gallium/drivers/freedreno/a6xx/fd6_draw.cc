@@ -433,6 +433,20 @@ is_z32(enum pipe_format format)
    }
 }
 
+static bool
+do_lrz_clear(struct fd_context *ctx, enum fd_buffer_mask buffers)
+{
+   struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
+
+   if (!pfb->zsbuf)
+      return false;
+
+   struct fd_resource *zsbuf = fd_resource(pfb->zsbuf->texture);
+
+   return (buffers & FD_BUFFER_DEPTH) &&
+         zsbuf->lrz && !is_z32(pfb->zsbuf->format);
+}
+
 template <chip CHIP>
 static bool
 fd6_clear(struct fd_context *ctx, enum fd_buffer_mask buffers,
@@ -440,28 +454,44 @@ fd6_clear(struct fd_context *ctx, enum fd_buffer_mask buffers,
           unsigned stencil) assert_dt
 {
    struct pipe_framebuffer_state *pfb = &ctx->batch->framebuffer;
-   const bool has_depth = pfb->zsbuf;
+   struct fd_batch_subpass *subpass = ctx->batch->subpass;
    unsigned color_buffers = buffers >> 2;
 
-   /* If we're clearing after draws, fallback to 3D pipe clears.  We could
-    * use blitter clears in the draw batch but then we'd have to patch up the
-    * gmem offsets. This doesn't seem like a useful thing to optimize for
-    * however.*/
-   if (ctx->batch->num_draws > 0)
-      return false;
+   /* If we are clearing after draws, split out a new subpass:
+    */
+   if (subpass->num_draws > 0) {
+      /* If we won't be able to do any fast-clears, avoid pointlessly
+       * splitting out a new subpass:
+       */
+      if (pfb->samples > 1 && !do_lrz_clear(ctx, buffers))
+         return false;
 
-   if (has_depth && (buffers & FD_BUFFER_DEPTH)) {
-      struct fd_resource *zsbuf = fd_resource(pfb->zsbuf->texture);
-      if (zsbuf->lrz && !is_z32(pfb->zsbuf->format)) {
-         fd6_clear_lrz<CHIP>(ctx->batch, zsbuf, depth);
+      subpass = fd_batch_create_subpass(ctx->batch);
+
+      /* If doing an LRZ clear, replace the existing LRZ buffer with a
+       * freshly allocated one so that we have valid LRZ state for the
+       * new pass.  Otherwise unconditional writes to the depth buffer
+       * would cause LRZ state to be invalid.
+       */
+      if (do_lrz_clear(ctx, buffers)) {
+         struct fd_resource *zsbuf = fd_resource(pfb->zsbuf->texture);
+
+         fd_bo_del(subpass->lrz);
+         subpass->lrz = fd_bo_new(ctx->screen->dev, fd_bo_size(zsbuf->lrz),
+                                  FD_BO_NOMAP, "lrz");
+         fd_bo_del(zsbuf->lrz);
+         zsbuf->lrz = fd_bo_ref(subpass->lrz);
       }
+   }
+
+   if (do_lrz_clear(ctx, buffers)) {
+      struct fd_resource *zsbuf = fd_resource(pfb->zsbuf->texture);
+      fd6_clear_lrz<CHIP>(ctx->batch, zsbuf, depth);
    }
 
    /* we need to do multisample clear on 3d pipe, so fallback to u_blitter: */
    if (pfb->samples > 1)
       return false;
-
-   struct fd_batch_subpass *subpass = ctx->batch->subpass;
 
    u_foreach_bit (i, color_buffers)
       subpass->clear_color[i] = *color;

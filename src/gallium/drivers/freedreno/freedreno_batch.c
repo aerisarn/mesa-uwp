@@ -152,6 +152,24 @@ fd_batch_create(struct fd_context *ctx, bool nondraw)
    return batch;
 }
 
+struct fd_batch_subpass *
+fd_batch_create_subpass(struct fd_batch *batch)
+{
+   assert(!batch->nondraw);
+
+   struct fd_batch_subpass *subpass = subpass_create(batch);
+
+   /* This new subpass inherits the current subpass.. this is replaced
+    * if there is a depth clear
+    */
+   if (batch->subpass->lrz)
+      subpass->lrz = fd_bo_ref(batch->subpass->lrz);
+
+   batch->subpass = subpass;
+
+   return subpass;
+}
+
 /**
  * Cleanup that we normally do when the submit is flushed, like dropping
  * rb references.  But also called when batch is destroyed just in case
