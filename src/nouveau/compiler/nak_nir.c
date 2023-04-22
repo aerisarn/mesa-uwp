@@ -196,6 +196,11 @@ nak_preprocess_nir(nir_shader *nir, const struct nak_compiler *nak)
    OPT(nir, nir_lower_tex, &tex_options);
    OPT(nir, nir_normalize_cubemap_coords);
 
+   nir_lower_image_options image_options = {
+      .lower_cube_size = true,
+   };
+   OPT(nir, nir_lower_image, &image_options);
+
    OPT(nir, nir_lower_global_vars_to_local);
 
    OPT(nir, nir_split_var_copies);

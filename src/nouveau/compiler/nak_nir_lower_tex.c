@@ -288,30 +288,95 @@ lower_txq(nir_builder *b, nir_tex_instr *tex, const struct nak_compiler *nak)
 }
 
 static bool
+lower_image_txq(nir_builder *b, nir_intrinsic_instr *intrin,
+                const struct nak_compiler *nak)
+{
+   b->cursor = nir_instr_remove(&intrin->instr);
+
+   /* TODO: We should only support 32-bit handles */
+   nir_def *img_h = nir_u2u32(b, intrin->src[0].ssa);
+
+   nir_tex_instr *txq = nir_tex_instr_create(b->shader, 1);
+   txq->sampler_dim = nir_intrinsic_image_dim(intrin);
+   txq->is_array = nir_intrinsic_image_array(intrin);
+   txq->dest_type = nir_type_int32;
+
+   nir_component_mask_t mask;
+   switch (intrin->intrinsic) {
+   case nir_intrinsic_bindless_image_size: {
+      nir_def *lod = intrin->src[1].ssa;
+
+      txq->op = nir_texop_hdr_dim_nv;
+      txq->src[0] = (nir_tex_src) {
+         .src_type = nir_tex_src_backend1,
+         .src = nir_src_for_ssa(nir_vec2(b, img_h, lod)),
+      };
+      mask = BITSET_MASK(intrin->def.num_components);
+      break;
+   }
+
+   case nir_intrinsic_bindless_image_samples:
+      txq->op = nir_texop_tex_type_nv;
+      txq->src[0] = (nir_tex_src) {
+         .src_type = nir_tex_src_backend1,
+         .src = nir_src_for_ssa(img_h),
+      };
+      mask = BITSET_BIT(2);
+      break;
+
+   default:
+      unreachable("Invalid image query op");
+   }
+
+   nir_def_init(&txq->instr, &txq->def, 4, 32);
+   nir_builder_instr_insert(b, &txq->instr);
+
+   /* Only pick off slected components */
+   nir_def *res = nir_channels(b, &txq->def, mask);
+
+   nir_def_rewrite_uses(&intrin->def, res);
+
+   return true;
+}
+
+static bool
 lower_tex_instr(nir_builder *b, nir_instr *instr, void *_data)
 {
    const struct nak_compiler *nak = _data;
 
-   if (instr->type != nir_instr_type_tex)
-      return false;
-
-   nir_tex_instr *tex = nir_instr_as_tex(instr);
-   switch (tex->op) {
-   case nir_texop_tex:
-   case nir_texop_txb:
-   case nir_texop_txl:
-   case nir_texop_txd:
-   case nir_texop_txf:
-   case nir_texop_txf_ms:
-   case nir_texop_tg4:
-   case nir_texop_lod:
-      return lower_tex(b, tex, nak);
-   case nir_texop_txs:
-   case nir_texop_query_levels:
-   case nir_texop_texture_samples:
-      return lower_txq(b, tex, nak);
+   switch (instr->type) {
+   case nir_instr_type_tex: {
+      nir_tex_instr *tex = nir_instr_as_tex(instr);
+      switch (tex->op) {
+      case nir_texop_tex:
+      case nir_texop_txb:
+      case nir_texop_txl:
+      case nir_texop_txd:
+      case nir_texop_txf:
+      case nir_texop_txf_ms:
+      case nir_texop_tg4:
+      case nir_texop_lod:
+         return lower_tex(b, tex, nak);
+      case nir_texop_txs:
+      case nir_texop_query_levels:
+      case nir_texop_texture_samples:
+         return lower_txq(b, tex, nak);
+      default:
+         unreachable("Unsupported texture instruction");
+      }
+   }
+   case nir_instr_type_intrinsic: {
+      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+      switch (intrin->intrinsic) {
+      case nir_intrinsic_bindless_image_size:
+      case nir_intrinsic_bindless_image_samples:
+         return lower_image_txq(b, intrin, nak);
+      default:
+         return false;
+      }
+   }
    default:
-      unreachable("Unsupported texture instruction");
+      return false;
    }
 }
 
