@@ -453,7 +453,7 @@ impl Mem {
             (image_format, image_format.to_pipe_format().unwrap())
         };
 
-        let texture = context.import_gl_buffer(
+        let imported_gl_tex = context.import_gl_buffer(
             export_out.dmabuf_fd as u32,
             export_out.modifier,
             mem_type,
@@ -461,10 +461,30 @@ impl Mem {
             gl_mem_props.clone(),
         )?;
 
+        // Cube maps faces are not linear in memory, so copy all contents
+        // of desired face into a 2D image and copy it back after gl release.
+        let (shadow_map, texture) = if is_cube_map_face(export_in.target) {
+            let shadow = create_shadow_slice(&imported_gl_tex, image_format)?;
+
+            let mut res_map = HashMap::new();
+            shadow
+                .iter()
+                .map(|(k, v)| {
+                    let gl_res = imported_gl_tex.get(k).unwrap().clone();
+                    res_map.insert(v.clone(), gl_res);
+                })
+                .for_each(drop);
+
+            (Some(res_map), shadow)
+        } else {
+            (None, imported_gl_tex)
+        };
+
         let gl_obj = GLObject {
             gl_object_target: gl_export_manager.export_in.target,
             gl_object_type: gl_object_type,
             gl_object_name: export_in.obj,
+            shadow_map: shadow_map,
         };
 
         let desc = cl_image_desc {

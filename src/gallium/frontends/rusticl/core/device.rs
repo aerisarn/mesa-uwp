@@ -100,6 +100,16 @@ pub struct HelperContext<'a> {
 }
 
 impl<'a> HelperContext<'a> {
+    pub fn resource_copy_region(
+        &self,
+        src: &PipeResource,
+        dst: &PipeResource,
+        dst_offset: &[u32; 3],
+        bx: &pipe_box,
+    ) {
+        self.lock.resource_copy_region(src, dst, dst_offset, bx);
+    }
+
     pub fn buffer_subdata(
         &self,
         res: &PipeResource,

@@ -3067,7 +3067,7 @@ fn enqueue_acquire_gl_objects(
         evs,
         event,
         false,
-        Box::new(|_, _| Ok(())),
+        Box::new(move |q, ctx| copy_cube_to_slice(q, ctx, &objs)),
     )
 }
 
@@ -3101,6 +3101,6 @@ fn enqueue_release_gl_objects(
         evs,
         event,
         false,
-        Box::new(move |_, _| Ok(())),
+        Box::new(move |q, ctx| copy_slice_to_cube(q, ctx, &objs)),
     )
 }

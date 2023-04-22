@@ -1,13 +1,26 @@
 use crate::api::icd::*;
+use crate::api::types::*;
+use crate::core::device::*;
 use crate::core::format::*;
+use crate::core::memory::*;
+use crate::core::queue::*;
+use crate::core::util::*;
 
 use libc_rust_gen::{close, dlsym};
 use rusticl_opencl_gen::*;
 
+use mesa_rust::pipe::context::*;
+use mesa_rust::pipe::resource::*;
+use mesa_rust::pipe::screen::*;
+
+use std::collections::HashMap;
 use std::ffi::CString;
 use std::mem;
 use std::os::raw::c_void;
 use std::ptr;
+use std::sync::Arc;
+
+type CLGLMappings = Option<HashMap<Arc<PipeResource>, Arc<PipeResource>>>;
 
 pub struct XPlatManager {
     glx_get_proc_addr: PFNGLXGETPROCADDRESSPROC,
@@ -286,6 +299,9 @@ impl GLExportManager {
             }
             _ => {}
         }
+        if is_cube_map_face(self.export_in.target) {
+            array_size = 6;
+        }
 
         Ok(GLMemProps {
             height: height,
@@ -314,6 +330,95 @@ pub struct GLObject {
     pub gl_object_target: cl_GLenum,
     pub gl_object_type: cl_gl_object_type,
     pub gl_object_name: cl_GLuint,
+    pub shadow_map: CLGLMappings,
+}
+
+pub fn create_shadow_slice(
+    cube_map: &HashMap<&'static Device, Arc<PipeResource>>,
+    image_format: cl_image_format,
+) -> CLResult<HashMap<&'static Device, Arc<PipeResource>>> {
+    let mut slice = HashMap::new();
+
+    for (dev, imported_gl_res) in cube_map {
+        let width = imported_gl_res.width();
+        let height = imported_gl_res.height();
+
+        let shadow = dev
+            .screen()
+            .resource_create_texture(
+                width,
+                height,
+                1,
+                1,
+                cl_mem_type_to_texture_target(CL_MEM_OBJECT_IMAGE2D),
+                image_format.to_pipe_format().unwrap(),
+                ResourceType::Normal,
+                false,
+            )
+            .ok_or(CL_OUT_OF_HOST_MEMORY)?;
+
+        slice.insert(*dev, Arc::new(shadow));
+    }
+
+    Ok(slice)
+}
+
+pub fn copy_cube_to_slice(
+    q: &Arc<Queue>,
+    ctx: &PipeContext,
+    mem_objects: &[Arc<Mem>],
+) -> CLResult<()> {
+    for mem in mem_objects {
+        let gl_obj = mem.gl_obj.as_ref().unwrap();
+        if !is_cube_map_face(gl_obj.gl_object_target) {
+            continue;
+        }
+        let width = mem.image_desc.image_width;
+        let height = mem.image_desc.image_height;
+
+        // Fill in values for doing the copy
+        let idx = get_array_slice_idx(gl_obj.gl_object_target);
+        let src_origin = CLVec::<usize>::new([0, 0, idx]);
+        let dst_offset: [u32; 3] = [0, 0, 0];
+        let region = CLVec::<usize>::new([width, height, 1]);
+        let src_bx = create_pipe_box(src_origin, region, CL_MEM_OBJECT_IMAGE2D_ARRAY)?;
+
+        let cl_res = mem.get_res_of_dev(q.device)?;
+        let gl_res = gl_obj.shadow_map.as_ref().unwrap().get(cl_res).unwrap();
+
+        ctx.resource_copy_region(gl_res.as_ref(), cl_res.as_ref(), &dst_offset, &src_bx);
+    }
+
+    Ok(())
+}
+
+pub fn copy_slice_to_cube(
+    q: &Arc<Queue>,
+    ctx: &PipeContext,
+    mem_objects: &[Arc<Mem>],
+) -> CLResult<()> {
+    for mem in mem_objects {
+        let gl_obj = mem.gl_obj.as_ref().unwrap();
+        if !is_cube_map_face(gl_obj.gl_object_target) {
+            continue;
+        }
+        let width = mem.image_desc.image_width;
+        let height = mem.image_desc.image_height;
+
+        // Fill in values for doing the copy
+        let idx = get_array_slice_idx(gl_obj.gl_object_target) as u32;
+        let src_origin = CLVec::<usize>::new([0, 0, 0]);
+        let dst_offset: [u32; 3] = [0, 0, idx];
+        let region = CLVec::<usize>::new([width, height, 1]);
+        let src_bx = create_pipe_box(src_origin, region, CL_MEM_OBJECT_IMAGE2D_ARRAY)?;
+
+        let cl_res = mem.get_res_of_dev(q.device)?;
+        let gl_res = gl_obj.shadow_map.as_ref().unwrap().get(cl_res).unwrap();
+
+        ctx.resource_copy_region(cl_res.as_ref(), gl_res.as_ref(), &dst_offset, &src_bx);
+    }
+
+    Ok(())
 }
 
 pub fn interop_to_cl_error(error: i32) -> CLError {
@@ -378,6 +483,30 @@ pub fn is_valid_gl_texture_2d(target: u32) -> bool {
         GL_TEXTURE_2D
             | GL_TEXTURE_RECTANGLE
             | GL_TEXTURE_CUBE_MAP_NEGATIVE_X
+            | GL_TEXTURE_CUBE_MAP_NEGATIVE_Y
+            | GL_TEXTURE_CUBE_MAP_NEGATIVE_Z
+            | GL_TEXTURE_CUBE_MAP_POSITIVE_X
+            | GL_TEXTURE_CUBE_MAP_POSITIVE_Y
+            | GL_TEXTURE_CUBE_MAP_POSITIVE_Z
+    )
+}
+
+pub fn get_array_slice_idx(target: u32) -> usize {
+    match target {
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_X
+        | GL_TEXTURE_CUBE_MAP_NEGATIVE_Y
+        | GL_TEXTURE_CUBE_MAP_NEGATIVE_Z
+        | GL_TEXTURE_CUBE_MAP_POSITIVE_X
+        | GL_TEXTURE_CUBE_MAP_POSITIVE_Y
+        | GL_TEXTURE_CUBE_MAP_POSITIVE_Z => (target - GL_TEXTURE_CUBE_MAP_POSITIVE_X) as usize,
+        _ => 0,
+    }
+}
+
+pub fn is_cube_map_face(target: u32) -> bool {
+    matches!(
+        target,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_X
             | GL_TEXTURE_CUBE_MAP_NEGATIVE_Y
             | GL_TEXTURE_CUBE_MAP_NEGATIVE_Z
             | GL_TEXTURE_CUBE_MAP_POSITIVE_X
