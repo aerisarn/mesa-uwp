@@ -256,6 +256,8 @@ struct fd_batch {
 
 struct fd_batch *fd_batch_create(struct fd_context *ctx, bool nondraw);
 
+void fd_batch_set_fb(struct fd_batch *batch, const struct pipe_framebuffer_state *pfb) assert_dt;
+
 void fd_batch_flush(struct fd_batch *batch) assert_dt;
 bool fd_batch_has_dep(struct fd_batch *batch, struct fd_batch *dep) assert_dt;
 void fd_batch_add_dep(struct fd_batch *batch, struct fd_batch *dep) assert_dt;

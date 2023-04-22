@@ -339,6 +339,14 @@ batch_flush(struct fd_batch *batch) assert_dt
    cleanup_submit(batch);
 }
 
+void
+fd_batch_set_fb(struct fd_batch *batch, const struct pipe_framebuffer_state *pfb)
+{
+   assert(!batch->nondraw);
+
+   util_copy_framebuffer_state(&batch->framebuffer, pfb);
+}
+
 /* NOTE: could drop the last ref to batch
  */
 void
