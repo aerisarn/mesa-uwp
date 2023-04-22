@@ -564,6 +564,15 @@ NineDevice9_ctor( struct NineDevice9 *This,
      * TODO: Only generate pointsize for draw calls that need it */
     This->driver_caps.always_output_pointsize = !GET_PCAP(POINT_SIZE_FIXED);
     This->driver_caps.emulate_ucp = !(GET_PCAP(CLIP_PLANES) == 1 || GET_PCAP(CLIP_PLANES) >= 8);
+    This->driver_caps.shader_emulate_features =  pCTX->force_emulation;
+
+    if (pCTX->force_emulation) {
+        This->driver_caps.user_sw_vbufs = false;
+        This->driver_caps.window_space_position_support = false;
+        This->driver_caps.alpha_test_emulation = true;
+        This->driver_caps.always_output_pointsize = true;
+        This->driver_caps.emulate_ucp = true;
+    }
 
     /* Disable SPE constants if there is no room for them */
     if (This->max_vs_const_f != NINE_MAX_CONST_F) {

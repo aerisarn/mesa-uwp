@@ -506,6 +506,10 @@
    DRI_CONF_OPT_B(force_sw_rendering_on_cpu, def, \
                   "If set to false, emulates software rendering on the requested device, else uses a software renderer.")
 
+#define DRI_CONF_NINE_FORCEFEATURESEMULATION(def) \
+   DRI_CONF_OPT_B(force_features_emulation, def, \
+                  "If set to true, force emulation of d3d9 features when possible instead of using native hw support.")
+
 #define DRI_CONF_V3D_NONMSAA_TEXTURE_SIZE_LIMIT(def) \
    DRI_CONF_OPT_B(v3d_nonmsaa_texture_size_limit, def, \
                   "Report the non-MSAA-only texture size limit")

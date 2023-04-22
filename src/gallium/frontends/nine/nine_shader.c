@@ -3687,6 +3687,13 @@ tx_ctor(struct shader_translator *tx, struct pipe_screen *screen, struct nine_sh
     tx->wpos_is_sysval = GET_CAP(FS_POSITION_IS_SYSVAL);
     tx->face_is_sysval_integer = GET_CAP(FS_FACE_IS_INTEGER_SYSVAL);
     tx->no_vs_window_space = !GET_CAP(VS_WINDOW_SPACE_POSITION);
+    tx->mul_zero_wins = GET_CAP(LEGACY_MATH_RULES);
+
+    if (info->emulate_features) {
+        tx->shift_wpos = true;
+        tx->no_vs_window_space = true;
+        tx->mul_zero_wins = false;
+    }
 
     if (IS_VS) {
         tx->num_constf_allowed = NINE_MAX_CONST_F;
@@ -3724,7 +3731,6 @@ tx_ctor(struct shader_translator *tx, struct pipe_screen *screen, struct nine_sh
             ureg_property(tx->ureg, TGSI_PROPERTY_FS_COORD_PIXEL_CENTER, TGSI_FS_COORD_PIXEL_CENTER_INTEGER);
     }
 
-    tx->mul_zero_wins = GET_CAP(LEGACY_MATH_RULES);
     if (tx->mul_zero_wins)
        ureg_property(tx->ureg, TGSI_PROPERTY_LEGACY_MATH_RULES, 1);
 
@@ -4076,6 +4082,8 @@ nine_translate_shader(struct NineDevice9 *device, struct nine_shader_info *info,
     tx = MALLOC_STRUCT(shader_translator);
     if (!tx)
         return E_OUTOFMEMORY;
+
+    info->emulate_features = device->driver_caps.shader_emulate_features;
 
     if (tx_ctor(tx, screen, info) == E_OUTOFMEMORY) {
         hr = E_OUTOFMEMORY;

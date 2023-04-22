@@ -77,6 +77,7 @@ struct nine_shader_info
     uint16_t fetch4;
     uint8_t alpha_test_emulation;
     uint8_t clip_plane_emulation;
+    boolean emulate_features;
 
     unsigned const_i_base; /* in vec4 (16 byte) units */
     unsigned const_b_base; /* in vec4 (16 byte) units */

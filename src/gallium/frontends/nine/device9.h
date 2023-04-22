@@ -136,6 +136,7 @@ struct NineDevice9
         boolean alpha_test_emulation;
         boolean always_output_pointsize;
         boolean emulate_ucp;
+        boolean shader_emulate_features;
     } driver_caps;
 
     struct {
