@@ -444,6 +444,44 @@ spec@glsl-1.10@execution@glsl-vs-inline-explosion,Crash
 spec@glsl-1.20@compiler@invalid-vec4-array-to-vec3-array-conversion.vert,Fail
 spec@glsl-1.20@execution@clipping@vs-clip-vertex-primitives,Fail
 spec@glsl-1.20@execution@fs-underflow-mul-compare-zero,Fail
+spec@glsl-1.30@built-in constants,Fail
+spec@glsl-1.30@built-in constants@gl_MaxDrawBuffers,Fail
+spec@glsl-1.30@execution@clipping@fs-clip-distance-interpolated,Crash
+spec@glsl-1.30@execution@clipping@vs-clip-distance-primitives,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texture() 1darray,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texture() 1darrayshadow,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texture(bias) 1darray,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texture(bias) 1darrayshadow,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 1darray,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 1darrayshadow,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texturegradoffset 1darray,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texturegradoffset 1darrayshadow,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texturelod 1darray,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texturelod 1darrayshadow,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texturelodoffset 1darray,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texturelodoffset 1darrayshadow,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection textureoffset 1darray,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection textureoffset 1darrayshadow,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection textureoffset(bias) 1darray,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection textureoffset(bias) 1darrayshadow,Fail
+spec@glsl-1.30@execution@texelfetch fs sampler1darray 1x281-501x281,Fail
+spec@glsl-1.30@execution@texelfetch fs sampler1darray 1x71-501x71,Fail
+spec@glsl-1.30@execution@texelfetch fs sampler1darray 281x1-281x281,Fail
+spec@glsl-1.30@execution@texelfetch fs sampler1darray 71x1-71x281,Fail
+spec@glsl-1.30@execution@texelfetch@fs-texelfetch-isampler1darray,Fail
+spec@glsl-1.30@execution@texelfetch@fs-texelfetch-sampler1darray,Fail
+spec@glsl-1.30@execution@texelfetch@fs-texelfetch-usampler1darray,Fail
+spec@glsl-1.30@execution@texelfetch@vs-texelfetch-isampler1darray,Fail
+spec@glsl-1.30@execution@texelfetch@vs-texelfetch-sampler1darray,Fail
+spec@glsl-1.30@execution@texelfetch@vs-texelfetch-usampler1darray,Fail
+spec@glsl-1.30@execution@texelfetchoffset@fs-texelfetch-isampler1darray,Fail
+spec@glsl-1.30@execution@texelfetchoffset@fs-texelfetch-sampler1darray,Fail
+spec@glsl-1.30@execution@texelfetchoffset@fs-texelfetch-usampler1darray,Fail
+spec@glsl-1.30@execution@texelfetchoffset@vs-texelfetch-isampler1darray,Fail
+spec@glsl-1.30@execution@texelfetchoffset@vs-texelfetch-sampler1darray,Fail
+spec@glsl-1.30@execution@texelfetchoffset@vs-texelfetch-usampler1darray,Fail
+spec@glsl-1.40@built-in constants,Fail
+spec@glsl-1.40@built-in constants@gl_MaxDrawBuffers,Fail
 spec@intel_performance_query@intel_performance_query-issue_2235,Fail
 spec@khr_texture_compression_astc@miptree-gles srgb-fp,Fail
 spec@khr_texture_compression_astc@miptree-gles srgb-fp@sRGB decode full precision,Fail
