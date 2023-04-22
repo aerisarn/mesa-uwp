@@ -183,21 +183,6 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
       fd6_emit_flag_reference(ring, rsc, zsbuf->u.tex.level,
                               zsbuf->u.tex.first_layer);
 
-      if (rsc->lrz) {
-         OUT_REG(ring, A6XX_GRAS_LRZ_BUFFER_BASE(.bo = rsc->lrz),
-                 A6XX_GRAS_LRZ_BUFFER_PITCH(.pitch = rsc->lrz_pitch),
-                 // XXX a6xx seems to use a different buffer here.. not sure
-                 // what for..
-                 A6XX_GRAS_LRZ_FAST_CLEAR_BUFFER_BASE());
-      } else {
-         OUT_PKT4(ring, REG_A6XX_GRAS_LRZ_BUFFER_BASE, 5);
-         OUT_RING(ring, 0x00000000);
-         OUT_RING(ring, 0x00000000);
-         OUT_RING(ring, 0x00000000); /* GRAS_LRZ_BUFFER_PITCH */
-         OUT_RING(ring, 0x00000000); /* GRAS_LRZ_FAST_CLEAR_BUFFER_BASE_LO */
-         OUT_RING(ring, 0x00000000);
-      }
-
       /* NOTE: blob emits GRAS_LRZ_CNTL plus GRAZ_LRZ_BUFFER_BASE
        * plus this CP_EVENT_WRITE at the end in it's own IB..
        */
@@ -243,6 +228,33 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 
       OUT_REG(ring, RB_STENCIL_INFO(CHIP, 0));
    }
+}
+
+static void
+emit_lrz(struct fd_batch *batch, struct fd_batch_subpass *subpass)
+{
+   struct pipe_framebuffer_state *pfb = &batch->framebuffer;
+   struct fd_ringbuffer *ring = batch->gmem;
+
+   if (!subpass->lrz) {
+      OUT_REG(ring, A6XX_GRAS_LRZ_BUFFER_BASE(),
+              A6XX_GRAS_LRZ_BUFFER_PITCH(),
+              A6XX_GRAS_LRZ_FAST_CLEAR_BUFFER_BASE());
+      return;
+   }
+
+   /* When swapping LRZ buffers we need to flush LRZ cache..
+    * we possibly don't need this during the binning pass, it
+    * appears that the corruption happens on the read-side, ie.
+    * we change the LRZ buffer after a sub-pass, but get a
+    * cache-hit on stale data from the previous LRZ buffer.
+    */
+   fd6_emit_lrz_flush(ring);
+
+   struct fd_resource *zsbuf = fd_resource(pfb->zsbuf->texture);
+   OUT_REG(ring, A6XX_GRAS_LRZ_BUFFER_BASE(.bo = subpass->lrz),
+           A6XX_GRAS_LRZ_BUFFER_PITCH(.pitch = zsbuf->lrz_pitch),
+           A6XX_GRAS_LRZ_FAST_CLEAR_BUFFER_BASE());
 }
 
 static bool
@@ -786,6 +798,7 @@ emit_binning_pass(struct fd_batch *batch) assert_dt
    /* emit IB to binning drawcmds: */
    trace_start_binning_ib(&batch->trace, ring);
    foreach_subpass (subpass, batch) {
+      emit_lrz(batch, subpass);
       fd6_emit_ib(ring, subpass->draw);
    }
    trace_end_binning_ib(&batch->trace, ring);
@@ -1525,6 +1538,8 @@ fd6_emit_tile(struct fd_batch *batch, const struct fd_tile *tile)
          trace_end_clears(&batch->trace, batch->gmem);
       }
 
+      emit_lrz(batch, subpass);
+
       fd6_emit_ib(batch->gmem, subpass->draw);
    }
 
@@ -1739,6 +1754,8 @@ fd6_emit_sysmem(struct fd_batch *batch)
 
       struct pipe_framebuffer_state *pfb = &batch->framebuffer;
       update_render_cntl<CHIP>(batch, pfb, false);
+
+      emit_lrz(batch, subpass);
 
       fd6_emit_ib(ring, subpass->draw);
    }

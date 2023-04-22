@@ -51,6 +51,12 @@ struct fd_batch_result;
  * can be split out into another sub-pass.  At gmem time, the appropriate
  * sysmem or gmem clears can be interleaved with the CP_INDIRECT_BUFFER
  * to the subpass's draw cmdstream.
+ *
+ * For depth clears, a replacement LRZ buffer can be allocated (clear
+ * still inserted into the prologue cmdstream since it needs be executed
+ * even in sysmem or if we aren't binning, since later batches could
+ * depend in the LRZ state).  The alternative would be to invalidate
+ * LRZ for draws after the start of the new subpass.
  */
 struct fd_batch_subpass {
    struct list_head node;
@@ -73,6 +79,15 @@ struct fd_batch_subpass {
     * always come at the start of a subpass).
     */
    unsigned num_draws;
+
+   /**
+    * If a subpass starts with a LRZ clear, it gets a new LRZ buffer.
+    * The fd_resource::lrz always tracks the current lrz buffer, but at
+    * binning/gmem time we need to know what was the current lrz buffer
+    * at the time draws were emitted to the subpass.  Which is tracked
+    * here.
+    */
+   struct fd_bo *lrz;
 };
 
 /**
