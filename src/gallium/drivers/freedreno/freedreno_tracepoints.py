@@ -123,17 +123,20 @@ begin_end_tp('binning_ib')
 begin_end_tp('vsc_overflow_test')
 begin_end_tp('prologue')
 
-# For GMEM pass, where this could either be a clear or restore
-begin_end_tp('clear_restore',
-    args=[TracepointArg(type='uint16_t', var='fast_cleared', c_format='0x%x'),
-          TracepointArg(type='uint16_t', var='restore', c_format='0x%x')],
-    tp_print=['fast_cleared: 0x%x, restore=0x%x', '__entry->fast_cleared',
-              '__entry->restore'],
+# Either sysmem or gmem clears
+begin_end_tp('clears',
+    args=[TracepointArg(type='uint16_t', var='fast_cleared', c_format='0x%x')],
+    tp_print=['fast_cleared: 0x%x', '__entry->fast_cleared'],
 )
 
-begin_end_tp('resolve',
-    args=[TracepointArg(type='uint16_t', var='stored', c_format='0x%x')],
-    tp_print=['stored: 0x%x', '__entry->stored'],
+begin_end_tp('tile_loads',
+    args=[TracepointArg(type='uint16_t', var='load', c_format='0x%x')],
+    tp_print=['load=0x%x', '__entry->load'],
+)
+
+begin_end_tp('tile_stores',
+    args=[TracepointArg(type='uint16_t', var='store', c_format='0x%x')],
+    tp_print=['store: 0x%x', '__entry->store'],
 )
 
 singular_tp('start_tile',

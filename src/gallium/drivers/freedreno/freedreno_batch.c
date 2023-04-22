@@ -153,14 +153,19 @@ cleanup_submit(struct fd_batch *batch)
       batch->epilogue = NULL;
    }
 
-   if (batch->tile_setup) {
-      fd_ringbuffer_del(batch->tile_setup);
-      batch->tile_setup = NULL;
+   if (batch->tile_loads) {
+      fd_ringbuffer_del(batch->tile_loads);
+      batch->tile_loads = NULL;
    }
 
-   if (batch->tile_fini) {
-      fd_ringbuffer_del(batch->tile_fini);
-      batch->tile_fini = NULL;
+   if (batch->tile_clears) {
+      fd_ringbuffer_del(batch->tile_clears);
+      batch->tile_clears = NULL;
+   }
+
+   if (batch->tile_store) {
+      fd_ringbuffer_del(batch->tile_store);
+      batch->tile_store = NULL;
    }
 
    fd_submit_del(batch->submit);

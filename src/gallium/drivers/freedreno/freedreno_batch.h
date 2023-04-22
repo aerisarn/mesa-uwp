@@ -206,8 +206,9 @@ struct fd_batch {
    /** epilogue cmdstream (executed after all tiles): */
    struct fd_ringbuffer *epilogue;
 
-   struct fd_ringbuffer *tile_setup;
-   struct fd_ringbuffer *tile_fini;
+   struct fd_ringbuffer *tile_loads;
+   struct fd_ringbuffer *tile_clears;
+   struct fd_ringbuffer *tile_store;
 
    union pipe_color_union clear_color[MAX_RENDER_TARGETS];
    double clear_depth;

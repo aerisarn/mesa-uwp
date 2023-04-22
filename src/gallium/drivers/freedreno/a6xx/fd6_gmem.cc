@@ -848,9 +848,9 @@ emit_msaa(struct fd_ringbuffer *ring, unsigned nr)
    OUT_RING(ring, A6XX_RB_BLIT_GMEM_MSAA_CNTL_SAMPLES(samples));
 }
 
-static void prepare_tile_setup_ib(struct fd_batch *batch);
+static void prepare_tile_setup(struct fd_batch *batch);
 template <chip CHIP>
-static void prepare_tile_fini_ib(struct fd_batch *batch);
+static void prepare_tile_fini(struct fd_batch *batch);
 
 /* before first tile */
 template <chip CHIP>
@@ -874,8 +874,8 @@ fd6_emit_tile_init(struct fd_batch *batch) assert_dt
 
    fd6_cache_inv(batch, ring);
 
-   prepare_tile_setup_ib(batch);
-   prepare_tile_fini_ib<CHIP>(batch);
+   prepare_tile_setup(batch);
+   prepare_tile_fini<CHIP>(batch);
 
    OUT_PKT7(ring, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
    OUT_RING(ring, 0x0);
@@ -1316,18 +1316,23 @@ emit_restore_blits(struct fd_batch *batch, struct fd_ringbuffer *ring)
 }
 
 static void
-prepare_tile_setup_ib(struct fd_batch *batch)
+prepare_tile_setup(struct fd_batch *batch)
 {
-   if (!(batch->restore || batch->fast_cleared))
-      return;
+   if (batch->restore) {
+      batch->tile_loads =
+         fd_submit_new_ringbuffer(batch->submit, 0x1000, FD_RINGBUFFER_STREAMING);
 
-   batch->tile_setup =
-      fd_submit_new_ringbuffer(batch->submit, 0x1000, FD_RINGBUFFER_STREAMING);
+      set_blit_scissor(batch, batch->tile_loads);
+      emit_restore_blits(batch, batch->tile_loads);
+   }
 
-   set_blit_scissor(batch, batch->tile_setup);
+   if (batch->fast_cleared) {
+      batch->tile_clears =
+         fd_submit_new_ringbuffer(batch->submit, 0x1000, FD_RINGBUFFER_STREAMING);
 
-   emit_restore_blits(batch, batch->tile_setup);
-   emit_clears(batch, batch->tile_setup);
+      set_blit_scissor(batch, batch->tile_clears);
+      emit_clears(batch, batch->tile_clears);
+   }
 }
 
 /*
@@ -1342,10 +1347,16 @@ fd6_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 static void
 fd6_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
 {
-   if (batch->tile_setup) {
-      trace_start_clear_restore(&batch->trace, batch->gmem, batch->fast_cleared, batch->restore);
-      emit_conditional_ib(batch, tile, batch->tile_setup);
-      trace_end_clear_restore(&batch->trace, batch->gmem);
+   if (batch->tile_loads) {
+      trace_start_tile_loads(&batch->trace, batch->gmem, batch->restore);
+      emit_conditional_ib(batch, tile, batch->tile_loads);
+      trace_end_tile_loads(&batch->trace, batch->gmem);
+   }
+
+   if (batch->tile_clears) {
+      trace_start_clears(&batch->trace, batch->gmem, batch->fast_cleared);
+      emit_conditional_ib(batch, tile, batch->tile_clears);
+      trace_end_clears(&batch->trace, batch->gmem);
    }
 }
 
@@ -1465,15 +1476,16 @@ emit_resolve_blit(struct fd_batch *batch, struct fd_ringbuffer *ring,
 
 template <chip CHIP>
 static void
-prepare_tile_fini_ib(struct fd_batch *batch) assert_dt
+prepare_tile_fini(struct fd_batch *batch)
+   assert_dt
 {
    const struct fd_gmem_stateobj *gmem = batch->gmem_state;
    struct pipe_framebuffer_state *pfb = &batch->framebuffer;
    struct fd_ringbuffer *ring;
 
-   batch->tile_fini =
+   batch->tile_store =
       fd_submit_new_ringbuffer(batch->submit, 0x1000, FD_RINGBUFFER_STREAMING);
-   ring = batch->tile_fini;
+   ring = batch->tile_store;
 
    set_blit_scissor(batch, ring);
 
@@ -1540,10 +1552,10 @@ fd6_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
    OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_RESOLVE));
    emit_marker6(ring, 7);
 
-   if (batch->tile_fini) {
-      trace_start_resolve(&batch->trace, batch->gmem, batch->resolve);
-      emit_conditional_ib(batch, tile, batch->tile_fini);
-      trace_end_resolve(&batch->trace, batch->gmem);
+   if (batch->tile_store) {
+      trace_start_tile_stores(&batch->trace, batch->gmem, batch->resolve);
+      emit_conditional_ib(batch, tile, batch->tile_store);
+      trace_end_tile_stores(&batch->trace, batch->gmem);
    }
 }
 
@@ -1581,7 +1593,7 @@ emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring) assert_dt
    struct pipe_box box2d;
    u_box_2d(0, 0, pfb->width, pfb->height, &box2d);
 
-   trace_start_clear_restore(&batch->trace, ring, buffers, 0);
+   trace_start_clears(&batch->trace, ring, buffers);
 
    if (buffers & PIPE_CLEAR_COLOR) {
       for (int i = 0; i < pfb->nr_cbufs; i++) {
@@ -1626,7 +1638,7 @@ emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring) assert_dt
    fd6_event_write(batch, ring, PC_CCU_FLUSH_COLOR_TS, true);
    fd_wfi(batch, ring);
 
-   trace_end_clear_restore(&batch->trace, ring);
+   trace_end_clears(&batch->trace, ring);
 }
 
 template <chip CHIP>
