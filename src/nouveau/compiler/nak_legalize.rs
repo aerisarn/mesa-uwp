@@ -90,6 +90,14 @@ impl<'a> LegalizeInstr<'a> {
                 self.swap_srcs_if_not_reg(src0, src1);
                 self.mov_src_if_not_reg(src0, RegFile::GPR);
             }
+            Op::FSetP(op) => {
+                let [ref mut src0, ref mut src1] = op.srcs;
+                if !src_is_reg(src0) && src_is_reg(src1) {
+                    std::mem::swap(src0, src1);
+                    op.cmp_op = op.cmp_op.flip();
+                }
+                self.mov_src_if_not_reg(src0, RegFile::GPR);
+            }
             Op::IAdd3(op) => {
                 let [ref mut src0, ref mut src1, ref mut src2] = op.srcs;
                 self.swap_srcs_if_not_reg(src0, src1);
@@ -102,6 +110,14 @@ impl<'a> LegalizeInstr<'a> {
                 self.swap_srcs_if_not_reg(src0, src1);
                 self.mov_src_if_not_reg(src0, RegFile::GPR);
                 self.mov_src_if_not_reg(src2, RegFile::GPR);
+            }
+            Op::ISetP(op) => {
+                let [ref mut src0, ref mut src1] = op.srcs;
+                if !src_is_reg(src0) && src_is_reg(src1) {
+                    std::mem::swap(src0, src1);
+                    op.cmp_op = op.cmp_op.flip();
+                }
+                self.mov_src_if_not_reg(src0, RegFile::GPR);
             }
             Op::Lop3(op) => {
                 /* Fold constants if we can */

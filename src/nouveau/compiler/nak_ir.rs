@@ -769,6 +769,24 @@ pub enum FloatCmpOp {
     IsNan,
 }
 
+impl FloatCmpOp {
+    pub fn flip(self) -> FloatCmpOp {
+        match self {
+            FloatCmpOp::OrdEq | FloatCmpOp::OrdNe => self,
+            FloatCmpOp::OrdLt => FloatCmpOp::OrdGt,
+            FloatCmpOp::OrdLe => FloatCmpOp::OrdGe,
+            FloatCmpOp::OrdGt => FloatCmpOp::OrdLt,
+            FloatCmpOp::OrdGe => FloatCmpOp::OrdLe,
+            FloatCmpOp::UnordEq | FloatCmpOp::UnordNe => self,
+            FloatCmpOp::UnordLt => FloatCmpOp::UnordGt,
+            FloatCmpOp::UnordLe => FloatCmpOp::UnordGe,
+            FloatCmpOp::UnordGt => FloatCmpOp::UnordLt,
+            FloatCmpOp::UnordGe => FloatCmpOp::UnordLe,
+            FloatCmpOp::IsNum | FloatCmpOp::IsNan => panic!("Cannot flip unop"),
+        }
+    }
+}
+
 impl fmt::Display for FloatCmpOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -798,6 +816,18 @@ pub enum IntCmpOp {
     Le,
     Gt,
     Ge,
+}
+
+impl IntCmpOp {
+    pub fn flip(self) -> IntCmpOp {
+        match self {
+            IntCmpOp::Eq | IntCmpOp::Ne => self,
+            IntCmpOp::Lt => IntCmpOp::Gt,
+            IntCmpOp::Le => IntCmpOp::Ge,
+            IntCmpOp::Gt => IntCmpOp::Lt,
+            IntCmpOp::Ge => IntCmpOp::Le,
+        }
+    }
 }
 
 impl fmt::Display for IntCmpOp {
