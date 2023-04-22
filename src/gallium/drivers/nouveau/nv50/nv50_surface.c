@@ -1067,9 +1067,8 @@ nv50_blitter_make_fp(struct pipe_context *pipe,
    /* return shader */
    NIR_PASS_V(b.shader, nir_lower_samplers);
 
-   struct pipe_shader_state state = {};
-   state.type = PIPE_SHADER_IR_NIR;
-   state.ir.nir = b.shader;
+   struct pipe_shader_state state;
+   pipe_shader_state_from_nir(&state, b.shader);
    return pipe->create_fs_state(pipe, &state);
 }
 

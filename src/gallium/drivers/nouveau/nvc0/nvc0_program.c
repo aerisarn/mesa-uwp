@@ -1025,8 +1025,7 @@ nvc0_program_init_tcp_empty(struct nvc0_context *nvc0)
 
    nir_validate_shader(b.shader, "in nvc0_program_init_tcp_empty");
 
-   struct pipe_shader_state state = {0};
-   state.type = PIPE_SHADER_IR_NIR;
-   state.ir.nir = b.shader;
+   struct pipe_shader_state state;
+   pipe_shader_state_from_nir(&state, b.shader);
    nvc0->tcp_empty = nvc0->base.pipe.create_tcs_state(&nvc0->base.pipe, &state);
 }

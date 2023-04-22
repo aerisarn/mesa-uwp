@@ -318,6 +318,16 @@ pipe_shader_state_from_tgsi(struct pipe_shader_state *state,
    memset(&state->stream_output, 0, sizeof(state->stream_output));
 }
 
+static inline void
+pipe_shader_state_from_nir(struct pipe_shader_state *state,
+                           void *nir)
+{
+   state->type = PIPE_SHADER_IR_NIR;
+   state->ir.nir = nir;
+   state->tokens = NULL;
+   memset(&state->stream_output, 0, sizeof(state->stream_output));
+}
+
 
 struct pipe_stencil_state
 {
