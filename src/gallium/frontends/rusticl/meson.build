@@ -73,6 +73,7 @@ rusticl_files = files(
   'core/queue.rs',
   'core/util.rs',
   'core/version.rs',
+  'core/gl.rs',
 )
 
 rusticl_args = [
