@@ -162,10 +162,18 @@ rusticl_opencl_bindings_rs = rust.bindgen(
     '--raw-line', 'unsafe impl std::marker::Sync for _cl_image_desc {}',
     '--allowlist-type', 'cl_.*',
     '--allowlist-var', 'CL_.*',
+    # needed for gl_sharing extension
+    '--allowlist-var', 'GL_.*',
+    '--allowlist-var', 'MESA_GLINTEROP_.*',
+    '--allowlist-type', 'PFNEGLGETPROCADDRESSPROC',
+    '--allowlist-type', 'PFNGLXGETPROCADDRESSPROC',
+    '--allowlist-type', 'PFNMESAGLINTEROP.*',
     # some info types need to be strongly typed so we can implement various get_infos
-    '--new-type-alias-deref', 'cl_(mem|image|pipe)_info',
+    '--new-type-alias-deref', 'cl_(mem|image|pipe|gl_texture)_info',
     '--new-type-alias-deref', 'cl_kernel_(arg|work_group)_info',
     '--new-type-alias-deref', 'cl_(event|profiling)_info',
+    # turn gl interop enums into constfields so we can compare with rust types
+    '--constified-enum', 'MESA_GLINTEROP_.*',
   ],
 )
 
@@ -233,6 +241,8 @@ rusticl_libc_bindings_rs = rust.bindgen(
   ],
   args : [
     rusticl_bindgen_args,
+    '--allowlist-function',     'close',
+    '--allowlist-function',     'dlsym',
     '--allowlist-function',     'free',
     '--allowlist-function',     'malloc',
   ]
@@ -312,6 +322,9 @@ rusticl_mesa_bindings_rs = rust.bindgen(
     # rusticl C functions
     '--allowlist-function',     'rusticl_.*',
     '--allowlist-function',     'std(err|out)_ptr',
+
+    # winsys
+    '--allowlist-var',          'WINSYS_HANDLE_TYPE_.*',
   ],
 )
 
