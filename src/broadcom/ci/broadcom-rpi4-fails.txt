@@ -528,8 +528,6 @@ spec@oes_texture_view@rendering-formats@clear GL_RGB10_A2 as GL_RG16F,Fail
 spec@oes_texture_view@rendering-formats@clear GL_RGB10_A2 as GL_RG16I,Fail
 spec@oes_texture_view@rendering-formats@clear GL_RGB10_A2 as GL_RGBA8I,Fail
 
-dEQP-VK.draw.renderpass.inverted_depth_ranges.nodepthclamp_deltazero,Fail
-
 spec@!opengl 1.0@depth-clear-precision-check,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth16,Fail
 spec@!opengl 1.0@depth-clear-precision-check@depth24,Fail
