@@ -355,23 +355,12 @@ impl<'a> ShaderFromNir<'a> {
                 }
             }
             nir_op_iand => {
-                if alu.def.bit_size() == 1 {
-                    self.instrs.push(Instr::new_plop3(
-                        dst,
-                        LogicOp::new_lut(&|x, y, _| x & y),
-                        srcs[0],
-                        srcs[1],
-                        Src::new_imm_bool(true),
-                    ));
-                } else {
-                    self.instrs.push(Instr::new_lop3(
-                        dst,
-                        LogicOp::new_lut(&|x, y, _| x & y),
-                        srcs[0],
-                        srcs[1],
-                        Src::new_zero(),
-                    ));
-                }
+                self.instrs.push(Instr::new_lop2(
+                    dst,
+                    LogicOp::new_lut(&|x, y, _| x & y),
+                    srcs[0],
+                    srcs[1],
+                ));
             }
             nir_op_ieq => {
                 if alu.get_src(0).bit_size() == 1 {
@@ -474,42 +463,20 @@ impl<'a> ShaderFromNir<'a> {
                 })));
             }
             nir_op_inot => {
-                if alu.def.bit_size() == 1 {
-                    self.instrs.push(Instr::new_plop3(
-                        dst,
-                        LogicOp::new_lut(&|x, _, _| !x),
-                        srcs[0],
-                        Src::new_imm_bool(true),
-                        Src::new_imm_bool(true),
-                    ));
-                } else {
-                    self.instrs.push(Instr::new_lop3(
-                        dst,
-                        LogicOp::new_lut(&|x, _, _| !x),
-                        srcs[0],
-                        Src::new_zero(),
-                        Src::new_zero(),
-                    ));
-                }
+                self.instrs.push(Instr::new_lop2(
+                    dst,
+                    LogicOp::new_lut(&|x, _, _| !x),
+                    srcs[0],
+                    Src::new_imm_bool(true),
+                ));
             }
             nir_op_ior => {
-                if alu.def.bit_size() == 1 {
-                    self.instrs.push(Instr::new_plop3(
-                        dst,
-                        LogicOp::new_lut(&|x, y, _| x | y),
-                        srcs[0],
-                        srcs[1],
-                        Src::new_imm_bool(true),
-                    ));
-                } else {
-                    self.instrs.push(Instr::new_lop3(
-                        dst,
-                        LogicOp::new_lut(&|x, y, _| x | y),
-                        srcs[0],
-                        srcs[1],
-                        Src::new_zero(),
-                    ));
-                }
+                self.instrs.push(Instr::new_lop2(
+                    dst,
+                    LogicOp::new_lut(&|x, y, _| x | y),
+                    srcs[0],
+                    srcs[1],
+                ));
             }
             nir_op_ishl => {
                 self.instrs.push(Instr::new(Op::Shf(OpShf {
@@ -536,23 +503,12 @@ impl<'a> ShaderFromNir<'a> {
                 })));
             }
             nir_op_ixor => {
-                if alu.def.bit_size() == 1 {
-                    self.instrs.push(Instr::new_plop3(
-                        dst,
-                        LogicOp::new_lut(&|x, y, _| x ^ y),
-                        srcs[0],
-                        srcs[1],
-                        Src::new_imm_bool(true),
-                    ));
-                } else {
-                    self.instrs.push(Instr::new_lop3(
-                        dst,
-                        LogicOp::new_lut(&|x, y, _| x ^ y),
-                        srcs[0],
-                        srcs[1],
-                        Src::new_zero(),
-                    ));
-                }
+                self.instrs.push(Instr::new_lop2(
+                    dst,
+                    LogicOp::new_lut(&|x, y, _| x ^ y),
+                    srcs[0],
+                    srcs[1],
+                ));
             }
             nir_op_mov => {
                 self.instrs.push(Instr::new_mov(dst, srcs[0]));

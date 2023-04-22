@@ -425,6 +425,15 @@ pub enum SrcRef {
 }
 
 impl SrcRef {
+    pub fn is_predicate(&self) -> bool {
+        match self {
+            SrcRef::Zero | SrcRef::Imm32(_) | SrcRef::CBuf(_) => false,
+            SrcRef::True | SrcRef::False => true,
+            SrcRef::SSA(ssa) => ssa.is_predicate(),
+            SrcRef::Reg(reg) => reg.is_predicate(),
+        }
+    }
+
     pub fn as_reg(&self) -> Option<&RegRef> {
         match self {
             SrcRef::Reg(r) => Some(r),
@@ -2671,17 +2680,36 @@ impl Instr {
         }))
     }
 
-    pub fn new_lop3(dst: Dst, op: LogicOp, x: Src, y: Src, z: Src) -> Instr {
-        Instr::new(Op::Lop3(OpLop3 {
-            dst: dst,
-            srcs: [x, y, z],
-            op: op,
-        }))
+    pub fn new_lop2(dst: Dst, op: LogicOp, x: Src, y: Src) -> Instr {
+        /* Only uses x and y */
+        assert!(op.eval(0x5, 0x3, 0x0) == op.eval(0x5, 0x3, 0xf));
+
+        let is_predicate = match dst {
+            Dst::None => panic!("No LOP destination"),
+            Dst::SSA(ssa) => ssa.is_predicate(),
+            Dst::Reg(reg) => reg.is_predicate(),
+        };
+        assert!(x.src_ref.is_predicate() == is_predicate);
+        assert!(x.src_ref.is_predicate() == is_predicate);
+
+        if is_predicate {
+            Instr::new(OpPLop3 {
+                dsts: [dst, Dst::None],
+                srcs: [x, y, Src::new_imm_bool(true)],
+                ops: [op, LogicOp::new_const(false)],
+            })
+        } else {
+            Instr::new(OpLop3 {
+                dst: dst,
+                srcs: [x, y, Src::new_zero()],
+                op: op,
+            })
+        }
     }
 
     pub fn new_xor(dst: Dst, x: Src, y: Src) -> Instr {
         let xor_lop = LogicOp::new_lut(&|x, y, _| x ^ y);
-        Instr::new_lop3(dst, xor_lop, x, y, Src::new_zero())
+        Instr::new_lop2(dst, xor_lop, x, y)
     }
 
     pub fn new_mov(dst: Dst, src: Src) -> Instr {
