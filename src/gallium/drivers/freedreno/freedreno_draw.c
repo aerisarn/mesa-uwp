@@ -369,6 +369,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    }
 
    batch->num_draws++;
+   batch->subpass->num_draws++;
 
    fd_print_dirty_state(ctx->dirty);
 

@@ -57,6 +57,35 @@ alloc_ring(struct fd_batch *batch, unsigned sz, enum fd_ringbuffer_flags flags)
    return fd_submit_new_ringbuffer(batch->submit, sz, flags);
 }
 
+static struct fd_batch_subpass *
+subpass_create(struct fd_batch *batch)
+{
+   struct fd_batch_subpass *subpass = CALLOC_STRUCT(fd_batch_subpass);
+
+   subpass->draw = alloc_ring(batch, 0x100000, 0);
+
+   /* Replace batch->draw with reference to current subpass, for
+    * backwards compat with code that is not subpass aware.
+    */
+   if (batch->draw)
+      fd_ringbuffer_del(batch->draw);
+   batch->draw = fd_ringbuffer_ref(subpass->draw);
+
+   list_addtail(&subpass->node, &batch->subpasses);
+
+   return subpass;
+}
+
+static void
+subpass_destroy(struct fd_batch_subpass *subpass)
+{
+   fd_ringbuffer_del(subpass->draw);
+   if (subpass->subpass_clears)
+      fd_ringbuffer_del(subpass->subpass_clears);
+   list_del(&subpass->node);
+   free(subpass);
+}
+
 struct fd_batch *
 fd_batch_create(struct fd_context *ctx, bool nondraw)
 {
@@ -74,19 +103,21 @@ fd_batch_create(struct fd_context *ctx, bool nondraw)
    batch->resources =
       _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
 
+   list_inithead(&batch->subpasses);
+
    batch->submit = fd_submit_new(ctx->pipe);
    if (batch->nondraw) {
       batch->gmem = alloc_ring(batch, 0x1000, FD_RINGBUFFER_PRIMARY);
-      batch->draw = alloc_ring(batch, 0x100000, 0);
    } else {
       batch->gmem = alloc_ring(batch, 0x100000, FD_RINGBUFFER_PRIMARY);
-      batch->draw = alloc_ring(batch, 0x100000, 0);
 
       /* a6xx+ re-uses draw rb for both draw and binning pass: */
       if (ctx->screen->gen < 6) {
          batch->binning = alloc_ring(batch, 0x100000, 0);
       }
    }
+
+   batch->subpass = subpass_create(batch);
 
    batch->in_fence_fd = -1;
    batch->fence = NULL;
@@ -130,6 +161,10 @@ cleanup_submit(struct fd_batch *batch)
    if (!batch->submit)
       return;
 
+   foreach_subpass_safe (subpass, batch) {
+      subpass_destroy(subpass);
+   }
+
    fd_ringbuffer_del(batch->draw);
    fd_ringbuffer_del(batch->gmem);
 
@@ -156,11 +191,6 @@ cleanup_submit(struct fd_batch *batch)
    if (batch->tile_loads) {
       fd_ringbuffer_del(batch->tile_loads);
       batch->tile_loads = NULL;
-   }
-
-   if (batch->tile_clears) {
-      fd_ringbuffer_del(batch->tile_clears);
-      batch->tile_clears = NULL;
    }
 
    if (batch->tile_store) {

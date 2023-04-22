@@ -461,14 +461,16 @@ fd6_clear(struct fd_context *ctx, enum fd_buffer_mask buffers,
    if (pfb->samples > 1)
       return false;
 
-   u_foreach_bit (i, color_buffers)
-      ctx->batch->clear_color[i] = *color;
-   if (buffers & FD_BUFFER_DEPTH)
-      ctx->batch->clear_depth = depth;
-   if (buffers & FD_BUFFER_STENCIL)
-      ctx->batch->clear_stencil = stencil;
+   struct fd_batch_subpass *subpass = ctx->batch->subpass;
 
-   ctx->batch->fast_cleared |= buffers;
+   u_foreach_bit (i, color_buffers)
+      subpass->clear_color[i] = *color;
+   if (buffers & FD_BUFFER_DEPTH)
+      subpass->clear_depth = depth;
+   if (buffers & FD_BUFFER_STENCIL)
+      subpass->clear_stencil = stencil;
+
+   subpass->fast_cleared |= buffers;
 
    return true;
 }

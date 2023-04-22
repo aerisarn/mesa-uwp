@@ -785,7 +785,9 @@ emit_binning_pass(struct fd_batch *batch) assert_dt
 
    /* emit IB to binning drawcmds: */
    trace_start_binning_ib(&batch->trace, ring);
-   fd6_emit_ib(ring, batch->draw);
+   foreach_subpass (subpass, batch) {
+      fd6_emit_ib(ring, subpass->draw);
+   }
    trace_end_binning_ib(&batch->trace, ring);
 
    fd_reset_wfi(batch);
@@ -1124,18 +1126,19 @@ emit_restore_blit(struct fd_batch *batch, struct fd_ringbuffer *ring,
 }
 
 static void
-emit_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
+emit_subpass_clears(struct fd_batch *batch, struct fd_batch_subpass *subpass)
 {
    struct pipe_framebuffer_state *pfb = &batch->framebuffer;
    const struct fd_gmem_stateobj *gmem = batch->gmem_state;
+   struct fd_ringbuffer *ring = subpass->subpass_clears;
    enum a3xx_msaa_samples samples = fd_msaa_samples(pfb->samples);
 
-   uint32_t buffers = batch->fast_cleared;
+   uint32_t buffers = subpass->fast_cleared;
 
    if (buffers & PIPE_CLEAR_COLOR) {
 
       for (int i = 0; i < pfb->nr_cbufs; i++) {
-         union pipe_color_union *color = &batch->clear_color[i];
+         union pipe_color_union *color = &subpass->clear_color[i];
          union util_color uc = {0};
 
          if (!pfb->cbufs[i])
@@ -1216,11 +1219,11 @@ emit_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
 
       if (has_separate_stencil) {
          pfmt = util_format_get_depth_only(pfb->zsbuf->format);
-         clear_value = util_pack_z(pfmt, batch->clear_depth);
+         clear_value = util_pack_z(pfmt, subpass->clear_depth);
       } else {
          pfmt = pfb->zsbuf->format;
          clear_value =
-            util_pack_z_stencil(pfmt, batch->clear_depth, batch->clear_stencil);
+            util_pack_z_stencil(pfmt, subpass->clear_depth, subpass->clear_stencil);
       }
 
       if (buffers & PIPE_CLEAR_DEPTH)
@@ -1274,7 +1277,7 @@ emit_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
       OUT_RING(ring, 0);
 
       OUT_PKT4(ring, REG_A6XX_RB_BLIT_CLEAR_COLOR_DW0, 1);
-      OUT_RING(ring, batch->clear_stencil & 0xff);
+      OUT_RING(ring, subpass->clear_stencil & 0xff);
 
       fd6_emit_blit(batch, ring);
    }
@@ -1326,12 +1329,15 @@ prepare_tile_setup(struct fd_batch *batch)
       emit_restore_blits(batch, batch->tile_loads);
    }
 
-   if (batch->fast_cleared) {
-      batch->tile_clears =
+   foreach_subpass (subpass, batch) {
+      if (!subpass->fast_cleared)
+         continue;
+
+      subpass->subpass_clears =
          fd_submit_new_ringbuffer(batch->submit, 0x1000, FD_RINGBUFFER_STREAMING);
 
-      set_blit_scissor(batch, batch->tile_clears);
-      emit_clears(batch, batch->tile_clears);
+      set_blit_scissor(batch, subpass->subpass_clears);
+      emit_subpass_clears(batch, subpass);
    }
 }
 
@@ -1351,12 +1357,6 @@ fd6_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
       trace_start_tile_loads(&batch->trace, batch->gmem, batch->restore);
       emit_conditional_ib(batch, tile, batch->tile_loads);
       trace_end_tile_loads(&batch->trace, batch->gmem);
-   }
-
-   if (batch->tile_clears) {
-      trace_start_clears(&batch->trace, batch->gmem, batch->fast_cleared);
-      emit_conditional_ib(batch, tile, batch->tile_clears);
-      trace_end_clears(&batch->trace, batch->gmem);
    }
 }
 
@@ -1518,7 +1518,15 @@ prepare_tile_fini(struct fd_batch *batch)
 static void
 fd6_emit_tile(struct fd_batch *batch, const struct fd_tile *tile)
 {
-   fd6_emit_ib(batch->gmem, batch->draw);
+   foreach_subpass (subpass, batch) {
+      if (subpass->subpass_clears) {
+         trace_start_clears(&batch->trace, batch->gmem, subpass->fast_cleared);
+         emit_conditional_ib(batch, tile, subpass->subpass_clears);
+         trace_end_clears(&batch->trace, batch->gmem);
+      }
+
+      fd6_emit_ib(batch->gmem, subpass->draw);
+   }
 
    if (batch->tile_epilogue)
       fd6_emit_ib(batch->gmem, batch->tile_epilogue);
@@ -1580,12 +1588,14 @@ fd6_emit_tile_fini(struct fd_batch *batch)
 
 template <chip CHIP>
 static void
-emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring) assert_dt
+emit_sysmem_clears(struct fd_batch *batch, struct fd_batch_subpass *subpass)
+   assert_dt
 {
    struct fd_context *ctx = batch->ctx;
+   struct fd_ringbuffer *ring = batch->gmem;
    struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 
-   uint32_t buffers = batch->fast_cleared;
+   uint32_t buffers = subpass->fast_cleared;
 
    if (!buffers)
       return;
@@ -1597,7 +1607,7 @@ emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring) assert_dt
 
    if (buffers & PIPE_CLEAR_COLOR) {
       for (int i = 0; i < pfb->nr_cbufs; i++) {
-         union pipe_color_union color = batch->clear_color[i];
+         union pipe_color_union color = subpass->clear_color[i];
 
          if (!pfb->cbufs[i])
             continue;
@@ -1618,14 +1628,14 @@ emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring) assert_dt
             : NULL;
 
       if ((buffers & PIPE_CLEAR_DEPTH) || (!separate_stencil && (buffers & PIPE_CLEAR_STENCIL))) {
-         value.f[0] = batch->clear_depth;
-         value.ui[1] = batch->clear_stencil;
+         value.f[0] = subpass->clear_depth;
+         value.ui[1] = subpass->clear_stencil;
          fd6_clear_surface<CHIP>(ctx, ring, pfb->zsbuf, &box2d,
                                  &value, fd6_unknown_8c01(pfb->zsbuf->format, buffers));
       }
 
       if (separate_stencil && (buffers & PIPE_CLEAR_STENCIL)) {
-         value.ui[0] = batch->clear_stencil;
+         value.ui[0] = subpass->clear_stencil;
 
          struct pipe_surface stencil_surf = *pfb->zsbuf;
          stencil_surf.format = PIPE_FORMAT_S8_UINT;
@@ -1712,18 +1722,26 @@ fd6_emit_sysmem(struct fd_batch *batch)
    struct fd_ringbuffer *ring = batch->gmem;
    struct fd_screen *screen = batch->ctx->screen;
 
-   emit_sysmem_clears<CHIP>(batch, ring);
+   foreach_subpass (subpass, batch) {
+      if (subpass->fast_cleared) {
+         unsigned flushes = 0;
+         if (subpass->fast_cleared & FD_BUFFER_COLOR)
+            flushes |= FD6_INVALIDATE_CCU_COLOR;
+         if (subpass->fast_cleared & (FD_BUFFER_DEPTH | FD_BUFFER_STENCIL))
+            flushes |= FD6_INVALIDATE_CCU_DEPTH;
 
-   fd6_event_write(batch, ring, PC_CCU_INVALIDATE_COLOR, false);
-   fd6_cache_inv(batch, ring);
+         fd6_emit_flushes(batch->ctx, ring, flushes);
+         emit_sysmem_clears<CHIP>(batch, subpass);
+      }
 
-   fd_wfi(batch, ring);
-   fd6_emit_ccu_cntl(ring, screen, false);
+      fd_wfi(batch, ring);
+      fd6_emit_ccu_cntl(ring, screen, false);
 
-   struct pipe_framebuffer_state *pfb = &batch->framebuffer;
-   update_render_cntl<CHIP>(batch, pfb, false);
+      struct pipe_framebuffer_state *pfb = &batch->framebuffer;
+      update_render_cntl<CHIP>(batch, pfb, false);
 
-   fd6_emit_ib(ring, batch->draw);
+      fd6_emit_ib(ring, subpass->draw);
+   }
 }
 
 static void
