@@ -636,7 +636,11 @@ static void
 agx_emit_load_frag_coord(agx_builder *b, agx_index dst,
                          nir_intrinsic_instr *instr)
 {
-   agx_index dests[4] = {agx_null()};
+   agx_index dests[4];
+
+   for (unsigned i = 0; i < ARRAY_SIZE(dests); ++i) {
+      dests[i] = agx_undef(AGX_SIZE_32);
+   }
 
    u_foreach_bit(i, nir_ssa_def_components_read(&instr->dest.ssa)) {
       agx_index fp32 = agx_temp(b->shader, AGX_SIZE_32);
