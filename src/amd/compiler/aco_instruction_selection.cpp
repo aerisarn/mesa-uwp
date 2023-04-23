@@ -9170,6 +9170,28 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       ctx->block->instructions.emplace_back(std::move(exp));
       break;
    }
+   case nir_intrinsic_export_dual_src_blend_amd: {
+      Temp val0 = get_ssa_temp(ctx, instr->src[0].ssa);
+      Temp val1 = get_ssa_temp(ctx, instr->src[1].ssa);
+      unsigned write_mask = nir_intrinsic_write_mask(instr);
+
+      struct aco_export_mrt mrt0, mrt1;
+      for (unsigned i = 0; i < 4; i++) {
+         mrt0.out[i] = write_mask & BITFIELD_BIT(i) ?
+            Operand(emit_extract_vector(ctx, val0, i, v1)) :
+            Operand(v1);
+
+         mrt1.out[i] = write_mask & BITFIELD_BIT(i) ?
+            Operand(emit_extract_vector(ctx, val1, i, v1)) :
+            Operand(v1);
+      }
+      mrt0.enabled_channels = mrt1.enabled_channels = write_mask;
+
+      create_fs_dual_src_export_gfx11(ctx, &mrt0, &mrt1);
+
+      ctx->block->kind |= block_kind_export_end;
+      break;
+   }
    default:
       isel_err(&instr->instr, "Unimplemented intrinsic instr");
       abort();
