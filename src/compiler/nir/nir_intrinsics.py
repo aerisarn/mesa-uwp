@@ -1607,6 +1607,10 @@ system_value("lds_ngg_gs_out_vertex_base_amd", 1)
 # FLAGS = AC_EXP_FLAG_*
 intrinsic("export_amd", [0], indices=[BASE, WRITE_MASK, FLAGS])
 
+# Export dual source blend outputs with swizzle operation
+# src[] = { mrt0, mrt1 }
+intrinsic("export_dual_src_blend_amd", [0, 0], indices=[WRITE_MASK])
+
 # Alpha test reference value
 system_value("alpha_reference_amd", 1)
 
