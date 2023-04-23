@@ -32,6 +32,7 @@
 #include "util/u_prim.h"
 #include "util/u_string.h"
 
+#include "freedreno_blitter.h"
 #include "freedreno_resource.h"
 #include "freedreno_state.h"
 
@@ -456,6 +457,15 @@ fd6_clear(struct fd_context *ctx, enum fd_buffer_mask buffers,
    struct fd_batch_subpass *subpass = ctx->batch->subpass;
    unsigned color_buffers = buffers >> 2;
 
+   if (pfb->samples > 1) {
+      /* we need to do multisample clear on 3d pipe, so fallback to u_blitter.
+       * But we do this ourselves so that we can still benefit from LRZ, as
+       * normally zfunc==ALWAYS would invalidate LRZ.  So we want to mark the
+       * LRZ state as valid *after* the fallback clear.
+       */
+      fd_blitter_clear(&ctx->base, (unsigned)buffers, color, depth, stencil);
+   }
+
    /* If we are clearing after draws, split out a new subpass:
     */
    if (subpass->num_draws > 0) {
@@ -463,7 +473,7 @@ fd6_clear(struct fd_context *ctx, enum fd_buffer_mask buffers,
        * splitting out a new subpass:
        */
       if (pfb->samples > 1 && !do_lrz_clear(ctx, buffers))
-         return false;
+         return true;
 
       subpass = fd_batch_create_subpass(ctx->batch);
 
@@ -494,9 +504,9 @@ fd6_clear(struct fd_context *ctx, enum fd_buffer_mask buffers,
       STATIC_ASSERT((FD_BUFFER_LRZ & FD_BUFFER_ALL) == 0);
    }
 
-   /* we need to do multisample clear on 3d pipe, so fallback to u_blitter: */
+   /* We've already done the fallback 3d clear: */
    if (pfb->samples > 1)
-      return false;
+      return true;
 
    u_foreach_bit (i, color_buffers)
       subpass->clear_color[i] = *color;
