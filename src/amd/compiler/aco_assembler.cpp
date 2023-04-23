@@ -1010,7 +1010,10 @@ fix_exports(asm_context& ctx, std::vector<uint32_t>& out, Program* program)
       }
    }
 
-   if (!exported) {
+   /* GFX10+ FS may not export anything if no discard is used. */
+   bool may_skip_export = program->stage.hw == HWStage::FS && program->gfx_level >= GFX10;
+
+   if (!exported && !may_skip_export) {
       /* Abort in order to avoid a GPU hang. */
       bool is_vertex_or_ngg =
          (program->stage.hw == HWStage::VS || program->stage.hw == HWStage::NGG);
