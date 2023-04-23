@@ -93,7 +93,7 @@ __reg_iova(const struct fd_reg_pair *reg)
                                                                                \
       BEGIN_RING(ring, count + 1);                                             \
       uint32_t *__p = ring->cur;                                               \
-      *__p++ = pm4_pkt4_hdr(__regs[0].reg, count);                             \
+      *__p++ = pm4_pkt4_hdr((uint16_t)__regs[0].reg, (uint16_t)count);         \
                                                                                \
       __ONE_REG(0, __VA_ARGS__);                                               \
       __ONE_REG(1, __VA_ARGS__);                                               \
