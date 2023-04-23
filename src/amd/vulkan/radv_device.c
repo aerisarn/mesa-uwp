@@ -608,18 +608,24 @@ radv_check_status(struct vk_device *vk_device)
 {
    struct radv_device *device = container_of(vk_device, struct radv_device, vk);
    enum radv_reset_status status;
+   bool context_reset = false;
 
+   /* If an INNOCENT_CONTEXT_RESET is found in one of the contexts, we need to
+    * keep querying in case there's a guilty one, so we can correctly log if the
+    * hung happened in this app or not */
    for (int i = 0; i < RADV_NUM_HW_CTX; i++) {
       if (device->hw_ctx[i]) {
          status = device->ws->ctx_query_reset_status(device->hw_ctx[i]);
 
          if (status == RADV_GUILTY_CONTEXT_RESET)
             return vk_device_set_lost(&device->vk, "GPU hung detected in this process");
-	 if (status == RADV_INNOCENT_CONTEXT_RESET)
-            return vk_device_set_lost(&device->vk, "GPU hung triggered by other process");
+         else if (status == RADV_INNOCENT_CONTEXT_RESET)
+            context_reset = true;
       }
    }
 
+   if (context_reset)
+      return vk_device_set_lost(&device->vk, "GPU hung triggered by other process");
    return VK_SUCCESS;
 }
 
