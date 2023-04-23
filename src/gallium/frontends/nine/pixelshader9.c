@@ -58,6 +58,7 @@ NinePixelShader9_ctor( struct NinePixelShader9 *This,
     info.const_b_base = NINE_CONST_B_BASE(NINE_MAX_CONST_F_PS3) / 16;
     info.sampler_mask_shadow = 0x0;
     info.fetch4 = 0x0;
+    info.force_color_in_centroid = 0;
     info.sampler_ps1xtypes = 0x0;
     info.fog_enable = 0;
     info.projected = 0;
