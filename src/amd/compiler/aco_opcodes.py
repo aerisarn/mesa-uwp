@@ -69,8 +69,8 @@ class Format(Enum):
    PSEUDO_BRANCH = 17
    PSEUDO_BARRIER = 18
    PSEUDO_REDUCTION = 19
-   VOP3P = 20
    VINTERP_INREG = 21
+   VOP3P = 1 << 7
    VOP1 = 1 << 8
    VOP2 = 1 << 9
    VOPC = 1 << 10

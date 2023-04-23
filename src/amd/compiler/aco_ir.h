@@ -98,8 +98,8 @@ enum class Format : std::uint16_t {
    PSEUDO_REDUCTION = 19,
 
    /* Vector ALU Formats */
-   VOP3P = 20,
    VINTERP_INREG = 21,
+   VOP3P = 1 << 7,
    VOP1 = 1 << 8,
    VOP2 = 1 << 9,
    VOPC = 1 << 10,
@@ -1248,7 +1248,7 @@ struct Instruction {
       return *(Pseudo_reduction_instruction*)this;
    }
    constexpr bool isReduction() const noexcept { return format == Format::PSEUDO_REDUCTION; }
-   constexpr bool isVOP3P() const noexcept { return format == Format::VOP3P; }
+   constexpr bool isVOP3P() const noexcept { return (uint16_t)format & (uint16_t)Format::VOP3P; }
    VINTERP_inreg_instruction& vinterp_inreg() noexcept
    {
       assert(isVINTERP_INREG());
