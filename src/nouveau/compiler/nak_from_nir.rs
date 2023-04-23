@@ -205,7 +205,15 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs.push(Instr::new_fadd(dst, srcs[0], srcs[1]));
             }
             nir_op_fcos => {
-                self.instrs.push(Instr::new_mufu(dst, MuFuOp::Cos, srcs[0]));
+                let frac_1_2pi = 1.0 / (2.0 * std::f32::consts::PI);
+                let tmp = self.alloc_ssa(RegFile::GPR);
+                self.instrs.push(Instr::new_fmul(
+                    tmp.into(),
+                    srcs[0],
+                    Src::new_imm_u32(frac_1_2pi.to_bits()),
+                ));
+                self.instrs
+                    .push(Instr::new_mufu(dst, MuFuOp::Cos, tmp.into()));
             }
             nir_op_feq => {
                 self.instrs.push(Instr::new_fsetp(
@@ -316,7 +324,15 @@ impl<'a> ShaderFromNir<'a> {
                 ));
             }
             nir_op_fsin => {
-                self.instrs.push(Instr::new_mufu(dst, MuFuOp::Sin, srcs[0]));
+                let frac_1_2pi = 1.0 / (2.0 * std::f32::consts::PI);
+                let tmp = self.alloc_ssa(RegFile::GPR);
+                self.instrs.push(Instr::new_fmul(
+                    tmp.into(),
+                    srcs[0],
+                    Src::new_imm_u32(frac_1_2pi.to_bits()),
+                ));
+                self.instrs
+                    .push(Instr::new_mufu(dst, MuFuOp::Sin, tmp.into()));
             }
             nir_op_fsqrt => {
                 self.instrs
