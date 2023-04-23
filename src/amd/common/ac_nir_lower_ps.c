@@ -661,6 +661,14 @@ emit_ps_dual_src_blend_swizzle(nir_builder *b, lower_ps_state *s, unsigned first
    /* Swizzle code is right before mrt0_exp. */
    b->cursor = nir_before_instr(&mrt0_exp->instr);
 
+   /* ACO need to emit the swizzle code by a pseudo instruction. */
+   if (s->options->use_aco) {
+      nir_export_dual_src_blend_amd(b, mrt0_arg, mrt1_arg, .write_mask = write_mask);
+      nir_instr_remove(&mrt0_exp->instr);
+      nir_instr_remove(&mrt1_exp->instr);
+      return;
+   }
+
    nir_ssa_def *undef = nir_ssa_undef(b, 1, 32);
    nir_ssa_def *arg0_vec[4] = {undef, undef, undef, undef};
    nir_ssa_def *arg1_vec[4] = {undef, undef, undef, undef};
@@ -785,8 +793,14 @@ export_ps_outputs(nir_builder *b, lower_ps_state *s)
    }
 
    if (s->exp_num) {
-      if (s->options->dual_src_blend_swizzle)
+      if (s->options->dual_src_blend_swizzle) {
          emit_ps_dual_src_blend_swizzle(b, s, first_color_export);
+         /* Skip last export flag setting because they have been replaced by
+          * a pseudo instruction.
+          */
+         if (s->options->use_aco)
+            return;
+      }
 
       /* Specify that this is the last export */
       nir_intrinsic_instr *final_exp = s->exp[s->exp_num - 1];
