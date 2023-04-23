@@ -921,6 +921,22 @@ impl<'a> ShaderFromNir<'a> {
                 let dst = self.get_dst(&intrin.def);
                 self.instrs.push(Instr::new_ld(dst, access, addr, offset));
             }
+            nir_intrinsic_load_shared => {
+                let size_B =
+                    (intrin.def.bit_size() / 8) * intrin.def.num_components();
+                assert!(u32::from(size_B) <= intrin.align());
+                let access = MemAccess {
+                    addr_type: MemAddrType::A32,
+                    mem_type: MemType::from_size(size_B, false),
+                    space: MemSpace::Shared,
+                    order: MemOrder::Strong,
+                    scope: MemScope::CTA,
+                };
+                let (addr, offset) = self.get_io_addr_offset(&srcs[0], 24);
+                let offset = offset + intrin.base();
+                let dst = self.get_dst(&intrin.def);
+                self.instrs.push(Instr::new_ld(dst, access, addr, offset));
+            }
             nir_intrinsic_load_sysval_nv => {
                 let idx = u8::try_from(intrin.base()).unwrap();
                 let dst = self.get_dst(&intrin.def);
@@ -1013,6 +1029,22 @@ impl<'a> ShaderFromNir<'a> {
                     scope: MemScope::CTA,
                 };
                 let (addr, offset) = self.get_io_addr_offset(&srcs[1], 24);
+                self.instrs.push(Instr::new_st(access, addr, offset, data));
+            }
+            nir_intrinsic_store_shared => {
+                let data = self.get_src(&srcs[0]);
+                let size_B =
+                    (srcs[0].bit_size() / 8) * srcs[0].num_components();
+                assert!(u32::from(size_B) <= intrin.align());
+                let access = MemAccess {
+                    addr_type: MemAddrType::A32,
+                    mem_type: MemType::from_size(size_B, false),
+                    space: MemSpace::Shared,
+                    order: MemOrder::Strong,
+                    scope: MemScope::CTA,
+                };
+                let (addr, offset) = self.get_io_addr_offset(&srcs[1], 24);
+                let offset = offset + intrin.base();
                 self.instrs.push(Instr::new_st(access, addr, offset, data));
             }
             _ => panic!(
