@@ -388,7 +388,7 @@ llvmpipe_nir_fn_is_linear_compat(const struct nir_shader *shader,
                   return false;
                nir_load_const_instr *load =
                   nir_instr_as_load_const(intrin->src[0].ssa->parent_instr);
-               if (load->value[0].u32 != 0)
+               if (load->value[0].u32 != 0 || load->def.num_components > 1)
                   return false;
             } else if (intrin->intrinsic == nir_intrinsic_store_deref) {
                /*
@@ -418,6 +418,9 @@ llvmpipe_nir_fn_is_linear_compat(const struct nir_shader *shader,
                      //debug nir_print_shader((nir_shader *) shader, stdout);
                      return false;
                   }
+               } else if (tex->src[i].src_type == nir_tex_src_texture_handle ||
+                          tex->src[i].src_type == nir_tex_src_sampler_handle) {
+                  return false;
                }
             }
 
