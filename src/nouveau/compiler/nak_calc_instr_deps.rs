@@ -324,7 +324,9 @@ impl Shader {
             for b in &mut f.blocks.iter_mut().rev() {
                 let mut wt = 0_u8;
                 for (i, instr) in &mut b.instrs.iter_mut().enumerate() {
-                    if instr.is_branch() {
+                    if instr.is_barrier() {
+                        instr.deps.set_yield(true);
+                    } else if instr.is_branch() {
                         instr.deps.add_wt_bar_mask(0x3f);
                     } else {
                         instr.deps.add_wt_bar_mask(wt);

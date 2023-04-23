@@ -950,6 +950,21 @@ impl<'a> ShaderFromNir<'a> {
                     panic!("Indirect UBO indices not yet supported");
                 }
             }
+            nir_intrinsic_barrier => {
+                if intrin.memory_scope() != SCOPE_NONE {
+                    let mem_scope = match intrin.memory_scope() {
+                        SCOPE_INVOCATION | SCOPE_SUBGROUP => MemScope::CTA,
+                        SCOPE_WORKGROUP | SCOPE_QUEUE_FAMILY | SCOPE_DEVICE => {
+                            MemScope::GPU
+                        }
+                        _ => panic!("Unhandled memory scope"),
+                    };
+                    self.instrs.push(OpMemBar { scope: mem_scope }.into());
+                }
+                if intrin.execution_scope() != SCOPE_NONE {
+                    self.instrs.push(OpBar {}.into());
+                }
+            }
             nir_intrinsic_store_global => {
                 let data = self.get_src(&srcs[0]);
                 let size_B =

@@ -461,6 +461,11 @@ pub extern "C" fn nak_compile_shader(
     let info = nak_shader_info {
         stage: nir.info.stage(),
         num_gprs: 255,
+        num_barriers: if nir.info.uses_control_barrier() {
+            1
+        } else {
+            0
+        },
         tls_size: nir.scratch_size,
         cs: nak_shader_info__bindgen_ty_1 {
             local_size: [

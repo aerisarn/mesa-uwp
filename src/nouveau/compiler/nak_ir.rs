@@ -2125,6 +2125,18 @@ impl fmt::Display for OpIpa {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpMemBar {
+    pub scope: MemScope,
+}
+
+impl fmt::Display for OpMemBar {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "MEMBAR.SC.{}", self.scope)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpBra {
     pub target: u32,
 }
@@ -2142,6 +2154,16 @@ pub struct OpExit {}
 impl fmt::Display for OpExit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "EXIT")
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpBar {}
+
+impl fmt::Display for OpBar {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "BAR.SYNC")
     }
 }
 
@@ -2474,8 +2496,10 @@ pub enum Op {
     ALd(OpALd),
     ASt(OpASt),
     Ipa(OpIpa),
+    MemBar(OpMemBar),
     Bra(OpBra),
     Exit(OpExit),
+    Bar(OpBar),
     S2R(OpS2R),
     Undef(OpUndef),
     FMov(OpFMov),
@@ -2920,13 +2944,22 @@ impl Instr {
         }
     }
 
+    pub fn is_barrier(&self) -> bool {
+        match self.op {
+            Op::Bar(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn can_eliminate(&self) -> bool {
         match self.op {
             Op::ASt(_)
             | Op::SuSt(_)
             | Op::St(_)
+            | Op::MemBar(_)
             | Op::Bra(_)
             | Op::Exit(_)
+            | Op::Bar(_)
             | Op::FSOut(_) => false,
             _ => true,
         }
@@ -2966,6 +2999,8 @@ impl Instr {
             Op::SuSt(_) => None,
             Op::Ld(_) => None,
             Op::St(_) => None,
+            Op::MemBar(_) => None,
+            Op::Bar(_) => None,
             Op::Bra(_) | Op::Exit(_) => Some(15),
             Op::Undef(_)
             | Op::FMov(_)

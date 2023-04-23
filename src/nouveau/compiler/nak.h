@@ -39,6 +39,9 @@ struct nak_shader_info {
    /** Number of GPRs used */
    uint8_t num_gprs;
 
+   /** Number of barriers used */
+   uint8_t num_barriers;
+
    /** Size of thread-local storage */
    uint32_t tls_size;
 

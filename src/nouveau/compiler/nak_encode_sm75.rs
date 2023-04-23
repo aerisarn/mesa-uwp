@@ -1178,6 +1178,22 @@ impl SM75Instr {
         self.set_pred_dst(81..84, Dst::None);
     }
 
+    fn encode_membar(&mut self, op: &OpMemBar) {
+        self.set_opcode(0x992);
+
+        self.set_bit(72, false); /* !.MMIO */
+        self.set_field(
+            76..79,
+            match op.scope {
+                MemScope::CTA => 0_u8,
+                MemScope::Cluster => 1_u8,
+                MemScope::GPU => 2_u8,
+                MemScope::System => 3_u8,
+            },
+        );
+        self.set_bit(80, false); /* .SC */
+    }
+
     fn encode_bra(
         &mut self,
         op: &OpBra,
@@ -1208,6 +1224,30 @@ impl SM75Instr {
         self.set_field(85..86, false); /* .NO_ATEXIT */
         self.set_field(87..90, 0x7_u8); /* TODO: Predicate */
         self.set_field(90..91, false); /* NOT */
+    }
+
+    fn encode_bar(&mut self, op: &OpBar) {
+        self.set_opcode(0x31d);
+
+        /* src0 == src1 */
+        self.set_reg_src(32..40, SrcRef::Zero.into());
+
+        /*
+         * 00: RED.POPC
+         * 01: RED.AND
+         * 02: RED.OR
+         */
+        self.set_field(74..76, 0_u8);
+
+        /*
+         * 00: SYNC
+         * 01: ARV
+         * 02: RED
+         * 03: SCAN
+         */
+        self.set_field(77..79, 0_u8);
+
+        self.set_pred_src(87..90, 90, SrcRef::True.into());
     }
 
     fn encode_s2r(&mut self, op: &OpS2R) {
@@ -1263,8 +1303,10 @@ impl SM75Instr {
             Op::ALd(op) => si.encode_ald(&op),
             Op::ASt(op) => si.encode_ast(&op),
             Op::Ipa(op) => si.encode_ipa(&op),
+            Op::MemBar(op) => si.encode_membar(&op),
             Op::Bra(op) => si.encode_bra(&op, ip, block_offsets),
             Op::Exit(op) => si.encode_exit(&op),
+            Op::Bar(op) => si.encode_bar(&op),
             Op::S2R(op) => si.encode_s2r(&op),
             _ => panic!("Unhandled instruction"),
         }
