@@ -8105,6 +8105,40 @@ ds_ordered_count_offsets(isel_context *ctx, unsigned index_operand,
       *offset1 |= 3 /* GS shader type */ << 2;
 }
 
+struct aco_export_mrt {
+   Operand out[4];
+   unsigned enabled_channels;
+   unsigned target;
+   bool compr;
+};
+
+static void
+create_fs_dual_src_export_gfx11(isel_context* ctx, const struct aco_export_mrt* mrt0,
+                                const struct aco_export_mrt* mrt1)
+{
+   Builder bld(ctx->program, ctx->block);
+
+   aco_ptr<Pseudo_instruction> exp{create_instruction<Pseudo_instruction>(
+      aco_opcode::p_dual_src_export_gfx11, Format::PSEUDO, 8, 6)};
+   for (unsigned i = 0; i < 4; i++) {
+      exp->operands[i] = mrt0 ? mrt0->out[i] : Operand(v1);
+      exp->operands[i].setLateKill(true);
+      exp->operands[i + 4] = mrt1 ? mrt1->out[i] : Operand(v1);
+      exp->operands[i + 4].setLateKill(true);
+   }
+
+   RegClass type = RegClass(RegType::vgpr, util_bitcount(mrt0->enabled_channels));
+   exp->definitions[0] = bld.def(type); /* mrt0 */
+   exp->definitions[1] = bld.def(type); /* mrt1 */
+   exp->definitions[2] = bld.def(v1);
+   exp->definitions[3] = bld.def(bld.lm);
+   exp->definitions[4] = bld.def(bld.lm, vcc);
+   exp->definitions[5] = bld.def(s1, scc);
+   ctx->block->instructions.emplace_back(std::move(exp));
+
+   ctx->program->has_color_exports = true;
+}
+
 void
 visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 {
@@ -10830,13 +10864,6 @@ struct mrt_color_export {
    bool enable_mrt_output_nan_fixup;
 };
 
-struct aco_export_mrt {
-   Operand out[4];
-   unsigned enabled_channels;
-   unsigned target;
-   bool compr;
-};
-
 static void
 export_mrt(isel_context* ctx, const struct aco_export_mrt* mrt)
 {
@@ -11092,33 +11119,6 @@ create_fs_jump_to_epilog(isel_context* ctx)
       jump->operands[i + 1] = color_exports[i];
    }
    ctx->block->instructions.emplace_back(std::move(jump));
-}
-
-static void
-create_fs_dual_src_export_gfx11(isel_context* ctx, const struct aco_export_mrt* mrt0,
-                                const struct aco_export_mrt* mrt1)
-{
-   Builder bld(ctx->program, ctx->block);
-
-   aco_ptr<Pseudo_instruction> exp{create_instruction<Pseudo_instruction>(
-      aco_opcode::p_dual_src_export_gfx11, Format::PSEUDO, 8, 6)};
-   for (unsigned i = 0; i < 4; i++) {
-      exp->operands[i] = mrt0 ? mrt0->out[i] : Operand(v1);
-      exp->operands[i].setLateKill(true);
-      exp->operands[i + 4] = mrt1 ? mrt1->out[i] : Operand(v1);
-      exp->operands[i + 4].setLateKill(true);
-   }
-
-   RegClass type = RegClass(RegType::vgpr, util_bitcount(mrt0->enabled_channels));
-   exp->definitions[0] = bld.def(type); /* mrt0 */
-   exp->definitions[1] = bld.def(type); /* mrt1 */
-   exp->definitions[2] = bld.def(v1);
-   exp->definitions[3] = bld.def(bld.lm);
-   exp->definitions[4] = bld.def(bld.lm, vcc);
-   exp->definitions[5] = bld.def(s1, scc);
-   ctx->block->instructions.emplace_back(std::move(exp));
-
-   ctx->program->has_color_exports = true;
 }
 
 static void
