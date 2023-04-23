@@ -1803,11 +1803,12 @@ bool can_use_opsel(amd_gfx_level gfx_level, aco_opcode op, int idx);
 bool instr_is_16bit(amd_gfx_level gfx_level, aco_opcode op);
 uint8_t get_gfx11_true16_mask(aco_opcode op);
 bool can_use_SDWA(amd_gfx_level gfx_level, const aco_ptr<Instruction>& instr, bool pre_ra);
-bool can_use_DPP(const aco_ptr<Instruction>& instr, bool pre_ra, bool dpp8);
+bool can_use_DPP(amd_gfx_level gfx_level, const aco_ptr<Instruction>& instr, bool dpp8);
 bool can_write_m0(const aco_ptr<Instruction>& instr);
 /* updates "instr" and returns the old instruction (or NULL if no update was needed) */
 aco_ptr<Instruction> convert_to_SDWA(amd_gfx_level gfx_level, aco_ptr<Instruction>& instr);
-aco_ptr<Instruction> convert_to_DPP(aco_ptr<Instruction>& instr, bool dpp8);
+aco_ptr<Instruction> convert_to_DPP(amd_gfx_level gfx_level, aco_ptr<Instruction>& instr,
+                                    bool dpp8);
 bool needs_exec_mask(const Instruction* instr);
 
 aco_opcode get_ordered(aco_opcode op);
@@ -1820,7 +1821,8 @@ unsigned get_cmp_bitsize(aco_opcode op);
 bool is_fp_cmp(aco_opcode op);
 bool is_cmpx(aco_opcode op);
 
-bool can_swap_operands(aco_ptr<Instruction>& instr, aco_opcode* new_op);
+bool can_swap_operands(aco_ptr<Instruction>& instr, aco_opcode* new_op, unsigned idx0 = 0,
+                       unsigned idx1 = 1);
 
 uint32_t get_reduction_identity(ReduceOp op, unsigned idx);
 

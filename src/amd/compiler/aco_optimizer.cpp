@@ -4810,7 +4810,7 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    }
 
    /* Combine DPP copies into VALU. This should be done after creating MAD/FMA. */
-   if (instr->isVALU()) {
+   if (instr->isVALU() && !instr->isDPP()) {
       for (unsigned i = 0; i < instr->operands.size(); i++) {
          if (!instr->operands[i].isTemp())
             continue;
@@ -4819,40 +4819,43 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          if (!info.is_dpp() || info.instr->pass_flags != instr->pass_flags)
             continue;
 
-         aco_opcode swapped_op;
-         if (i != 0 && !can_swap_operands(instr, &swapped_op))
-            continue;
+         if (i != 0) {
+            if (!can_swap_operands(instr, &instr->opcode, 0, i))
+               continue;
+            std::swap(instr->operands[0], instr->operands[i]);
+            instr->valu().neg[0].swap(instr->valu().neg[i]);
+            instr->valu().abs[0].swap(instr->valu().abs[i]);
+            instr->valu().opsel[0].swap(instr->valu().opsel[i]);
+            instr->valu().opsel_lo[0].swap(instr->valu().opsel_lo[i]);
+            instr->valu().opsel_hi[0].swap(instr->valu().opsel_hi[i]);
+         }
 
-         if (instr->isDPP() || !can_use_DPP(instr, true, info.is_dpp8()))
+         if (!can_use_DPP(ctx.program->gfx_level, instr, info.is_dpp8()))
             continue;
 
          bool dpp8 = info.is_dpp8();
          bool input_mods = instr_info.can_use_input_modifiers[(int)instr->opcode] &&
                            instr_info.operand_size[(int)instr->opcode] == 32;
-         if (!dpp8 && (info.instr->dpp16().neg[0] || info.instr->dpp16().abs[0]) && !input_mods)
+         bool mov_uses_mods = info.instr->valu().neg[0] || info.instr->valu().abs[0];
+         if (((dpp8 && ctx.program->gfx_level < GFX11) || !input_mods) && mov_uses_mods)
             continue;
 
-         convert_to_DPP(instr, dpp8);
-
-         if (i != 0) {
-            instr->opcode = swapped_op;
-            std::swap(instr->operands[0], instr->operands[1]);
-            instr->valu().neg[0].swap(instr->valu().neg[1]);
-            instr->valu().abs[0].swap(instr->valu().abs[1]);
-            instr->valu().opsel[0].swap(instr->valu().opsel[1]);
-         }
+         convert_to_DPP(ctx.program->gfx_level, instr, dpp8);
 
          if (dpp8) {
             DPP8_instruction* dpp = &instr->dpp8();
             for (unsigned j = 0; j < 8; ++j)
                dpp->lane_sel[j] = info.instr->dpp8().lane_sel[j];
+            if (mov_uses_mods)
+               instr->format = asVOP3(instr->format);
          } else {
             DPP16_instruction* dpp = &instr->dpp16();
             dpp->dpp_ctrl = info.instr->dpp16().dpp_ctrl;
             dpp->bound_ctrl = info.instr->dpp16().bound_ctrl;
-            dpp->neg[0] ^= info.instr->dpp16().neg[0] && !dpp->abs[0];
-            dpp->abs[0] |= info.instr->dpp16().abs[0];
          }
+
+         instr->valu().neg[0] ^= info.instr->valu().neg[0] && !instr->valu().abs[0];
+         instr->valu().abs[0] |= info.instr->valu().abs[0];
 
          if (--ctx.uses[info.instr->definitions[0].tempId()])
             ctx.uses[info.instr->operands[0].tempId()]++;
