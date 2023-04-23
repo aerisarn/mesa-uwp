@@ -3,7 +3,7 @@ variables:
    DEBIAN_BASE_TAG: "2023-04-16-kernel-6.3"
 
    DEBIAN_X86_BUILD_IMAGE_PATH: "debian/x86_build"
-   DEBIAN_BUILD_TAG: "2023-04-14-pyfire"
+   DEBIAN_BUILD_TAG: "2023-04-29-mold"
 
    DEBIAN_X86_BUILD_MINGW_IMAGE_PATH: "debian/x86_build-mingw"
    DEBIAN_BUILD_MINGW_TAG: "2023-01-03-ci-libva-2.17"
