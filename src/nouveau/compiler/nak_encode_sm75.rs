@@ -664,6 +664,20 @@ impl SM75Instr {
         self.set_bit(80, op.dst_high);
     }
 
+    fn encode_f2f(&mut self, op: &OpF2F) {
+        self.encode_alu(
+            0x104,
+            Some(op.dst),
+            ALUSrc::None,
+            ALUSrc::from_src(&op.src.into()),
+            ALUSrc::None,
+        );
+        self.set_field(75..77, op.dst_type.bytes().ilog2());
+        self.set_rnd_mode(78..80, op.rnd_mode);
+        self.set_bit(80, op.ftz);
+        self.set_field(84..86, op.src_type.bytes().ilog2());
+    }
+
     fn encode_f2i(&mut self, op: &OpF2I) {
         self.encode_alu(
             0x105,
@@ -1230,6 +1244,7 @@ impl SM75Instr {
             Op::ISetP(op) => si.encode_isetp(&op),
             Op::Lop3(op) => si.encode_lop3(&op),
             Op::Shf(op) => si.encode_shf(&op),
+            Op::F2F(op) => si.encode_f2f(&op),
             Op::F2I(op) => si.encode_f2i(&op),
             Op::I2F(op) => si.encode_i2f(&op),
             Op::Mov(op) => si.encode_mov(&op),

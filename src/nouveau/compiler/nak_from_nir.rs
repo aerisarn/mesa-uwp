@@ -287,6 +287,31 @@ impl<'a> ShaderFromNir<'a> {
                     saturate: false,
                 })));
             }
+            nir_op_fquantize2f16 => {
+                let tmp = self.alloc_ssa(RegFile::GPR);
+                self.instrs.push(
+                    OpF2F {
+                        dst: tmp.into(),
+                        src: srcs[0],
+                        src_type: FloatType::F32,
+                        dst_type: FloatType::F16,
+                        rnd_mode: FRndMode::NearestEven,
+                        ftz: true,
+                    }
+                    .into(),
+                );
+                self.instrs.push(
+                    OpF2F {
+                        dst: dst,
+                        src: tmp.into(),
+                        src_type: FloatType::F16,
+                        dst_type: FloatType::F32,
+                        rnd_mode: FRndMode::NearestEven,
+                        ftz: true,
+                    }
+                    .into(),
+                );
+            }
             nir_op_frcp => {
                 self.instrs.push(Instr::new_mufu(dst, MuFuOp::Rcp, srcs[0]));
             }

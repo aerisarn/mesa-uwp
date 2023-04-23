@@ -1651,6 +1651,31 @@ impl fmt::Display for OpShf {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpF2F {
+    pub dst: Dst,
+    pub src: Src,
+    pub src_type: FloatType,
+    pub dst_type: FloatType,
+    pub rnd_mode: FRndMode,
+    pub ftz: bool,
+}
+
+impl fmt::Display for OpF2F {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "F2F")?;
+        if self.ftz {
+            write!(f, ".FTZ")?;
+        }
+        write!(
+            f,
+            ".{}.{}.{} {} {}",
+            self.dst_type, self.src_type, self.rnd_mode, self.dst, self.src,
+        )
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpF2I {
     pub dst: Dst,
     pub src: Src,
@@ -2430,6 +2455,7 @@ pub enum Op {
     ISetP(OpISetP),
     Lop3(OpLop3),
     Shf(OpShf),
+    F2F(OpF2F),
     F2I(OpF2I),
     I2F(OpI2F),
     Mov(OpMov),
@@ -2923,7 +2949,7 @@ impl Instr {
             | Op::PLop3(_)
             | Op::ISetP(_)
             | Op::Shf(_) => Some(6),
-            Op::F2I(_) | Op::I2F(_) | Op::Mov(_) => Some(15),
+            Op::F2F(_) | Op::F2I(_) | Op::I2F(_) | Op::Mov(_) => Some(15),
             Op::MuFu(_) => None,
             Op::Sel(_) => Some(15),
             Op::S2R(_) => None,
