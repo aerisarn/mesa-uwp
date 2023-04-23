@@ -93,7 +93,11 @@ agx_read_registers(const agx_instr *I, unsigned s)
          /* Depth (bit 0) is fp32, stencil (bit 1) is u16 in the hw but we pad
           * up to u32 for simplicity
           */
-         return 2 * (!!(I->zs & 1) + !!(I->zs & 2));
+         bool z = !!(I->zs & 1);
+         bool s = !!(I->zs & 2);
+         assert(z || s);
+
+         return (z && s) ? 4 : z ? 2 : 1;
       } else {
          return 1;
       }

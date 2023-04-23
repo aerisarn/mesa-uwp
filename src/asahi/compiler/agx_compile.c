@@ -484,6 +484,15 @@ agx_emit_store_zs(agx_builder *b, nir_intrinsic_instr *instr)
    agx_index z = agx_src_index(&instr->src[1]);
    agx_index s = agx_src_index(&instr->src[2]);
 
+   assert(!write_z || z.size == AGX_SIZE_32);
+   assert(!write_s || s.size == AGX_SIZE_16);
+
+   if (write_z && write_s) {
+      agx_index u2u32 = agx_temp(b->shader, AGX_SIZE_32);
+      agx_mov_to(b, u2u32, s);
+      s = u2u32;
+   }
+
    agx_index zs = (write_z && write_s) ? agx_vec2(b, z, s) : write_z ? z : s;
 
    /* Not necessarily a sample mask but overlapping hw mechanism... Should
