@@ -43,7 +43,8 @@ unsigned fd6_tile_mode(const struct pipe_resource *tmpl);
  */
 
 template <chip CHIP>
-void fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth) assert_dt;
+void fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf,
+                   struct fd_bo *lrz, double depth) assert_dt;
 template <chip CHIP>
 void fd6_clear_surface(struct fd_context *ctx, struct fd_ringbuffer *ring,
                        struct pipe_surface *psurf, const struct pipe_box *box2d,

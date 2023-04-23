@@ -258,6 +258,11 @@ enum fd_buffer_mask {
    FD_BUFFER_DEPTH = PIPE_CLEAR_DEPTH,
    FD_BUFFER_STENCIL = PIPE_CLEAR_STENCIL,
    FD_BUFFER_ALL = FD_BUFFER_COLOR | FD_BUFFER_DEPTH | FD_BUFFER_STENCIL,
+
+   /* A special internal buffer bit to signify that the LRZ buffer needs
+    * clearing
+    */
+   FD_BUFFER_LRZ = BIT(15),
 };
 
 #define MAX_HW_SAMPLE_PROVIDERS 7

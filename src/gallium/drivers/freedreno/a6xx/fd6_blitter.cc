@@ -802,23 +802,16 @@ emit_clear_color(struct fd_ringbuffer *ring, enum pipe_format pfmt,
 
 template <chip CHIP>
 void
-fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
+fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf,
+              struct fd_bo *lrz, double depth)
 {
    struct fd_ringbuffer *ring = fd_batch_get_prologue(batch);
-   struct fd_context *ctx = batch->ctx;
 
    if (DEBUG_BLIT) {
       fprintf(stderr, "lrz clear:\ndst resource: ");
       util_dump_resource(stderr, &zsbuf->b.b);
       fprintf(stderr, "\n");
    }
-
-   fd6_emit_ccu_cntl(ring, ctx->screen, false);
-
-   OUT_PKT7(ring, CP_SET_MARKER, 1);
-   OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
-
-   fd6_event_write(batch, ring, CACHE_FLUSH_TS, true);
 
    OUT_PKT4(ring, REG_A6XX_GRAS_2D_DST_TL, 2);
    OUT_RING(ring, A6XX_GRAS_2D_DST_TL_X(0) | A6XX_GRAS_2D_DST_TL_Y(0));
@@ -837,7 +830,7 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
                  .color_swap = WZYX,
            ),
            A6XX_RB_2D_DST(
-                 .bo = zsbuf->lrz,
+                 .bo = lrz,
            ),
            A6XX_RB_2D_DST_PITCH(zsbuf->lrz_pitch * 2),
    );
@@ -846,33 +839,12 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
     * Blit command:
     */
 
-   if (ctx->screen->info->a6xx.magic.RB_DBG_ECO_CNTL_blit != ctx->screen->info->a6xx.magic.RB_DBG_ECO_CNTL) {
-      /* This a non-context register, so we have to WFI before changing. */
-      OUT_WFI5(ring);
-      OUT_PKT4(ring, REG_A6XX_RB_DBG_ECO_CNTL, 1);
-      OUT_RING(ring, ctx->screen->info->a6xx.magic.RB_DBG_ECO_CNTL_blit);
-   }
-
    OUT_PKT7(ring, CP_BLIT, 1);
    OUT_RING(ring, CP_BLIT_0_OP(BLIT_OP_SCALE));
-
-   if (ctx->screen->info->a6xx.magic.RB_DBG_ECO_CNTL_blit != ctx->screen->info->a6xx.magic.RB_DBG_ECO_CNTL) {
-      OUT_WFI5(ring);
-      OUT_PKT4(ring, REG_A6XX_RB_DBG_ECO_CNTL, 1);
-      OUT_RING(ring, ctx->screen->info->a6xx.magic.RB_DBG_ECO_CNTL);
-   }
-
-   fd6_event_write(batch, ring, PC_CCU_FLUSH_COLOR_TS, true);
-   fd6_event_write(batch, ring, PC_CCU_FLUSH_DEPTH_TS, true);
-   fd6_event_write(batch, ring, CACHE_FLUSH_TS, true);
-   fd_wfi(batch, ring);
-
-   zsbuf->lrz_valid = true;
-   zsbuf->lrz_direction = FD_LRZ_UNKNOWN;
 }
 
-template void fd6_clear_lrz<A6XX>(struct fd_batch *batch, struct fd_resource *zsbuf, double depth);
-template void fd6_clear_lrz<A7XX>(struct fd_batch *batch, struct fd_resource *zsbuf, double depth);
+template void fd6_clear_lrz<A6XX>(struct fd_batch *batch, struct fd_resource *zsbuf, struct fd_bo *lrz, double depth);
+template void fd6_clear_lrz<A7XX>(struct fd_batch *batch, struct fd_resource *zsbuf, struct fd_bo *lrz, double depth);
 
 /**
  * Handle conversion of clear color

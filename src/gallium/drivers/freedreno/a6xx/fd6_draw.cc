@@ -447,7 +447,6 @@ do_lrz_clear(struct fd_context *ctx, enum fd_buffer_mask buffers)
          zsbuf->lrz && !is_z32(pfb->zsbuf->format);
 }
 
-template <chip CHIP>
 static bool
 fd6_clear(struct fd_context *ctx, enum fd_buffer_mask buffers,
           const union pipe_color_union *color, double depth,
@@ -486,7 +485,13 @@ fd6_clear(struct fd_context *ctx, enum fd_buffer_mask buffers,
 
    if (do_lrz_clear(ctx, buffers)) {
       struct fd_resource *zsbuf = fd_resource(pfb->zsbuf->texture);
-      fd6_clear_lrz<CHIP>(ctx->batch, zsbuf, depth);
+
+      zsbuf->lrz_valid = true;
+      zsbuf->lrz_direction = FD_LRZ_UNKNOWN;
+      subpass->clear_depth = depth;
+      subpass->fast_cleared |= FD_BUFFER_LRZ;
+
+      STATIC_ASSERT((FD_BUFFER_LRZ & FD_BUFFER_ALL) == 0);
    }
 
    /* we need to do multisample clear on 3d pipe, so fallback to u_blitter: */
@@ -511,7 +516,7 @@ fd6_draw_init(struct pipe_context *pctx)
    disable_thread_safety_analysis
 {
    struct fd_context *ctx = fd_context(pctx);
-   ctx->clear = fd6_clear<CHIP>;
+   ctx->clear = fd6_clear;
    ctx->draw_vbos = fd6_draw_vbos<CHIP>;
 }
 

@@ -257,6 +257,78 @@ emit_lrz(struct fd_batch *batch, struct fd_batch_subpass *subpass)
            A6XX_GRAS_LRZ_FAST_CLEAR_BUFFER_BASE());
 }
 
+/* Emit any needed lrz clears to the prologue cmds
+ */
+template <chip CHIP>
+static void
+emit_lrz_clears(struct fd_batch *batch)
+{
+   struct pipe_framebuffer_state *pfb = &batch->framebuffer;
+   struct fd_context *ctx = batch->ctx;
+   unsigned count = 0;
+
+   if (!pfb->zsbuf)
+      return;
+
+   struct fd_resource *zsbuf = fd_resource(pfb->zsbuf->texture);
+
+   foreach_subpass (subpass, batch) {
+      if (!(subpass->fast_cleared & FD_BUFFER_LRZ))
+         continue;
+
+      subpass->fast_cleared &= ~FD_BUFFER_LRZ;
+
+      /* prep before first clear: */
+      if (count == 0) {
+         struct fd_ringbuffer *ring = fd_batch_get_prologue(batch);
+
+         fd6_emit_ccu_cntl(ring, ctx->screen, false);
+
+         OUT_PKT7(ring, CP_SET_MARKER, 1);
+         OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
+
+         fd6_event_write(batch, ring, CACHE_FLUSH_TS, true);
+
+         if (ctx->screen->info->a6xx.magic.RB_DBG_ECO_CNTL_blit !=
+             ctx->screen->info->a6xx.magic.RB_DBG_ECO_CNTL) {
+            /* This a non-context register, so we have to WFI before changing. */
+            OUT_WFI5(ring);
+            OUT_PKT4(ring, REG_A6XX_RB_DBG_ECO_CNTL, 1);
+            OUT_RING(ring, ctx->screen->info->a6xx.magic.RB_DBG_ECO_CNTL_blit);
+         }
+      }
+
+      fd6_clear_lrz<CHIP>(batch, zsbuf, subpass->lrz, subpass->clear_depth);
+
+      count++;
+   }
+
+   /* cleanup after last clear: */
+   if (count > 0) {
+      struct fd_ringbuffer *ring = fd_batch_get_prologue(batch);
+
+      if (ctx->screen->info->a6xx.magic.RB_DBG_ECO_CNTL_blit !=
+          ctx->screen->info->a6xx.magic.RB_DBG_ECO_CNTL) {
+         OUT_WFI5(ring);
+         OUT_PKT4(ring, REG_A6XX_RB_DBG_ECO_CNTL, 1);
+         OUT_RING(ring, ctx->screen->info->a6xx.magic.RB_DBG_ECO_CNTL);
+      }
+
+      /* Clearing writes via CCU color in the PS stage, and LRZ is read via
+       * UCHE in the earlier GRAS stage.
+       *
+       * Note tu also asks for WFI but maybe that is only needed if
+       * has_ccu_flush_bug (and it is added by fd6_emit_flushes() already
+       * in that case)
+       */
+      fd6_emit_flushes(batch->ctx, ring,
+                       FD6_FLUSH_CCU_COLOR |
+                       FD6_INVALIDATE_CACHE);
+
+      fd_wfi(batch, ring);
+   }
+}
+
 static bool
 use_hw_binning(struct fd_batch *batch)
 {
@@ -876,6 +948,8 @@ fd6_emit_tile_init(struct fd_batch *batch) assert_dt
    struct pipe_framebuffer_state *pfb = &batch->framebuffer;
    const struct fd_gmem_stateobj *gmem = batch->gmem_state;
    struct fd_screen *screen = batch->ctx->screen;
+
+   emit_lrz_clears<CHIP>(batch);
 
    fd6_emit_restore<CHIP>(batch, ring);
 
@@ -1671,6 +1745,8 @@ static void
 fd6_emit_sysmem_prep(struct fd_batch *batch) assert_dt
 {
    struct fd_ringbuffer *ring = batch->gmem;
+
+   emit_lrz_clears<CHIP>(batch);
 
    fd6_emit_restore<CHIP>(batch, ring);
    fd6_emit_lrz_flush(ring);
