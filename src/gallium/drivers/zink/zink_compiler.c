@@ -50,6 +50,26 @@
 bool
 zink_lower_cubemap_to_array(nir_shader *s, uint32_t nonseamless_cube_mask);
 
+
+static void
+copy_vars(nir_builder *b, nir_deref_instr *dst, nir_deref_instr *src)
+{
+   assert(glsl_get_bare_type(dst->type) == glsl_get_bare_type(src->type));
+   if (glsl_type_is_struct(dst->type)) {
+      for (unsigned i = 0; i < glsl_get_length(dst->type); ++i) {
+         copy_vars(b, nir_build_deref_struct(b, dst, i), nir_build_deref_struct(b, src, i));
+      }
+   } else if (glsl_type_is_array_or_matrix(dst->type)) {
+      unsigned count = glsl_type_is_array(dst->type) ? glsl_array_size(dst->type) : glsl_get_matrix_columns(dst->type);
+      for (unsigned i = 0; i < count; i++) {
+         copy_vars(b, nir_build_deref_array_imm(b, dst, i), nir_build_deref_array_imm(b, src, i));
+      }
+   } else {
+      nir_ssa_def *load = nir_load_deref(b, src);
+      nir_store_deref(b, dst, load, BITFIELD_MASK(load->num_components));
+   }
+}
+
 #define SIZEOF_FIELD(type, field) sizeof(((type *)0)->field)
 
 static void
@@ -488,8 +508,8 @@ lower_pv_mode_emit_rotated_prim(nir_builder *b,
          gl_varying_slot location = var->data.location;
          if (state->varyings[location]) {
             nir_ssa_def *index = lower_pv_mode_gs_ring_index(b, state, rotated_i);
-            nir_ssa_def *value = nir_load_array_var(b, state->varyings[location], index);
-            nir_store_var(b, var, value, (1u << value->num_components) - 1);
+            nir_deref_instr *value = nir_build_deref_array(b, nir_build_deref_var(b, state->varyings[location]), index);
+            copy_vars(b, nir_build_deref_var(b, var), value);
          }
       }
       nir_emit_vertex(b);
@@ -1158,25 +1178,6 @@ lower_64bit_pack(nir_shader *shader)
 {
    return nir_shader_instructions_pass(shader, lower_64bit_pack_instr,
                                        nir_metadata_block_index | nir_metadata_dominance, NULL);
-}
-
-static void
-copy_vars(nir_builder *b, nir_deref_instr *dst, nir_deref_instr *src)
-{
-   assert(glsl_get_bare_type(dst->type) == glsl_get_bare_type(src->type));
-   if (glsl_type_is_struct(dst->type)) {
-      for (unsigned i = 0; i < glsl_get_length(dst->type); ++i) {
-         copy_vars(b, nir_build_deref_struct(b, dst, i), nir_build_deref_struct(b, src, i));
-      }
-   } else if (glsl_type_is_array_or_matrix(dst->type)) {
-      unsigned count = glsl_type_is_array(dst->type) ? glsl_array_size(dst->type) : glsl_get_matrix_columns(dst->type);
-      for (unsigned i = 0; i < count; i++) {
-         copy_vars(b, nir_build_deref_array_imm(b, dst, i), nir_build_deref_array_imm(b, src, i));
-      }
-   } else {
-      nir_ssa_def *load = nir_load_deref(b, src);
-      nir_store_deref(b, dst, load, BITFIELD_MASK(load->num_components));
-   }
 }
 
 nir_shader *
