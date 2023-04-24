@@ -197,6 +197,8 @@ extern void *intel_debug_get_identifier_block(void *buffer,
                                               uint32_t buffer_size,
                                               enum intel_debug_block_type type);
 
+bool intel_debug_batch_in_range(uint64_t frame_id);
+
 #ifdef __cplusplus
 }
 #endif
