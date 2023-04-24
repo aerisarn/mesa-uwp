@@ -892,9 +892,9 @@ fbconfigs_compatible(const struct glx_config * const a,
 }
 
 
-/* There's some trickly language in the GLX spec about how this is supposed
+/* There's some tricky language in the GLX spec about how this is supposed
  * to work.  Basically, if a given component size is either not specified
- * or the requested size is zero, it is supposed to act like PERFER_SMALLER.
+ * or the requested size is zero, it is supposed to act like PREFER_SMALLER.
  * Well, that's really hard to do with the code as-is.  This behavior is
  * closer to correct, but still not technically right.
  */
@@ -1893,7 +1893,7 @@ __glxGetMscRate(struct glx_screen *psc,
  * \param dpy          Display whose refresh rate is to be determined.
  * \param drawable     Drawable whose refresh rate is to be determined.
  * \param numerator    Numerator of the refresh rate.
- * \param demoninator  Denominator of the refresh rate.
+ * \param denominator  Denominator of the refresh rate.
  * \return  If the refresh rate for the specified display and drawable could
  *          be calculated, True is returned.  Otherwise False is returned.
  *
