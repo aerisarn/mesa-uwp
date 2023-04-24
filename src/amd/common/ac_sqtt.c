@@ -73,6 +73,15 @@ ac_thread_trace_init(struct ac_thread_trace_data *data)
 
    list_inithead(&data->rgp_code_object.record);
    simple_mtx_init(&data->rgp_code_object.lock, mtx_plain);
+
+   list_inithead(&data->rgp_clock_calibration.record);
+   simple_mtx_init(&data->rgp_clock_calibration.lock, mtx_plain);
+
+   list_inithead(&data->rgp_queue_info.record);
+   simple_mtx_init(&data->rgp_queue_info.lock, mtx_plain);
+
+   list_inithead(&data->rgp_queue_event.record);
+   simple_mtx_init(&data->rgp_queue_event.lock, mtx_plain);
 }
 
 void
@@ -86,6 +95,15 @@ ac_thread_trace_finish(struct ac_thread_trace_data *data)
 
    assert(data->rgp_code_object.record_count == 0);
    simple_mtx_destroy(&data->rgp_code_object.lock);
+
+   assert(data->rgp_clock_calibration.record_count == 0);
+   simple_mtx_destroy(&data->rgp_clock_calibration.lock);
+
+   assert(data->rgp_queue_info.record_count == 0);
+   simple_mtx_destroy(&data->rgp_queue_info.lock);
+
+   assert(data->rgp_queue_event.record_count == 0);
+   simple_mtx_destroy(&data->rgp_queue_event.lock);
 }
 
 bool
