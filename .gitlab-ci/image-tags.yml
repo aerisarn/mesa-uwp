@@ -1,6 +1,6 @@
 variables:
    DEBIAN_X86_64_BUILD_BASE_IMAGE: "debian/x86_64_build-base"
-   DEBIAN_BASE_TAG: "2023-07-11-dekernelize"
+   DEBIAN_BASE_TAG: "2023-07-26-meson-1.2"
 
    DEBIAN_X86_64_BUILD_IMAGE_PATH: "debian/x86_64_build"
    DEBIAN_BUILD_TAG: "2023-06-24-agility-711"
@@ -20,7 +20,7 @@ variables:
 
    ALPINE_X86_64_BUILD_TAG: "2023-05-01-3.18-bump-1"
    ALPINE_X86_64_LAVA_SSH_TAG: "2023-06-26-first-version"
-   FEDORA_X86_64_BUILD_TAG: "2023-05-05-ccache-on"
+   FEDORA_X86_64_BUILD_TAG: "2023-07-26-meson-1.2"
    KERNEL_ROOTFS_TAG: "2023-07-24-piglit-ed58dfbd"
    KERNEL_TAG: "v6.3.13-for-mesa-ci-a7f02a9f9591"
 
