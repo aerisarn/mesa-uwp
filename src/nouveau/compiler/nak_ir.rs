@@ -1362,7 +1362,7 @@ impl fmt::Display for OpPLop3 {
 pub struct OpLd {
     pub dst: Dst,
     pub addr: Src,
-    pub offset: u32,
+    pub offset: i32,
     pub access: MemAccess,
 }
 
@@ -1370,7 +1370,7 @@ impl fmt::Display for OpLd {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "LD.{} {} [{}", self.access, self.dst, self.addr)?;
         if self.offset > 0 {
-            write!(f, "+{}", self.offset)?;
+            write!(f, "+{:#x}", self.offset)?;
         }
         write!(f, "]")
     }
@@ -1381,7 +1381,7 @@ impl fmt::Display for OpLd {
 pub struct OpSt {
     pub addr: Src,
     pub data: Src,
-    pub offset: u32,
+    pub offset: i32,
     pub access: MemAccess,
 }
 
@@ -1389,7 +1389,7 @@ impl fmt::Display for OpSt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ST.{} [{}", self.access, self.addr)?;
         if self.offset > 0 {
-            write!(f, "+{}", self.offset)?;
+            write!(f, "+{:#x}", self.offset)?;
         }
         write!(f, "] {}", self.data)
     }
@@ -2123,20 +2123,30 @@ impl Instr {
         }))
     }
 
-    pub fn new_ld(dst: Dst, access: MemAccess, addr: Src) -> Instr {
+    pub fn new_ld(
+        dst: Dst,
+        access: MemAccess,
+        addr: Src,
+        offset: i32,
+    ) -> Instr {
         Instr::new(Op::Ld(OpLd {
             dst: dst,
             addr: addr,
-            offset: 0,
+            offset: offset,
             access: access,
         }))
     }
 
-    pub fn new_st(access: MemAccess, addr: Src, data: Src) -> Instr {
+    pub fn new_st(
+        access: MemAccess,
+        addr: Src,
+        offset: i32,
+        data: Src,
+    ) -> Instr {
         Instr::new(Op::St(OpSt {
             addr: addr,
             data: data,
-            offset: 0,
+            offset: offset,
             access: access,
         }))
     }

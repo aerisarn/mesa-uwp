@@ -66,6 +66,26 @@ impl<'a> ShaderFromNir<'a> {
         self.get_ssa(dst).into()
     }
 
+    fn get_io_addr_offset(
+        &mut self,
+        addr: &nir_src,
+        imm_bits: u8,
+    ) -> (Src, i32) {
+        let addr = addr.as_def();
+        let addr_offset = unsafe {
+            nak_get_io_addr_offset(addr as *const _ as *mut _, imm_bits)
+        };
+
+        if let Some(base_def) = std::ptr::NonNull::new(addr_offset.base.def) {
+            let base_def = unsafe { base_def.as_ref() };
+            assert!(addr_offset.base.comp == 0);
+            let base = self.get_ssa(base_def);
+            (base.into(), addr_offset.offset)
+        } else {
+            (SrcRef::Zero.into(), addr_offset.offset)
+        }
+    }
+
     fn get_alu_src(&mut self, alu_src: &nir_alu_src) -> Src {
         if alu_src.src.num_components() == 1 {
             self.get_src(&alu_src.src)
@@ -497,9 +517,9 @@ impl<'a> ShaderFromNir<'a> {
                     order: MemOrder::Strong,
                     scope: MemScope::System,
                 };
-                let addr = self.get_src(&srcs[0]);
+                let (addr, offset) = self.get_io_addr_offset(&srcs[0], 32);
                 let dst = self.get_dst(&intrin.def);
-                self.instrs.push(Instr::new_ld(dst, access, addr));
+                self.instrs.push(Instr::new_ld(dst, access, addr, offset));
             }
             nir_intrinsic_load_input => {
                 let addr = u16::try_from(intrin.base()).unwrap();
@@ -582,8 +602,8 @@ impl<'a> ShaderFromNir<'a> {
                     order: MemOrder::Strong,
                     scope: MemScope::System,
                 };
-                let addr = self.get_src(&srcs[1]);
-                self.instrs.push(Instr::new_st(access, addr, data));
+                let (addr, offset) = self.get_io_addr_offset(&srcs[1], 32);
+                self.instrs.push(Instr::new_st(access, addr, offset, data));
             }
             nir_intrinsic_store_output => {
                 if self.nir.info.stage() == MESA_SHADER_FRAGMENT {

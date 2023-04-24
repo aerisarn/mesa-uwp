@@ -20,6 +20,14 @@ struct nak_compiler {
    struct nir_shader_compiler_options nir_options;
 };
 
+struct nak_io_addr_offset {
+   nir_scalar base;
+   int32_t offset;
+};
+
+struct nak_io_addr_offset
+nak_get_io_addr_offset(nir_def *addr, uint8_t imm_bits);
+
 #ifdef __cplusplus
 }
 #endif
