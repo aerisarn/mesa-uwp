@@ -2612,6 +2612,7 @@ dzn_device_memory_create(struct dzn_device *device,
          D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
    }
 
+   heap_desc.SizeInBytes = ALIGN_POT(heap_desc.SizeInBytes, heap_desc.Alignment);
    heap_desc.Flags =
       dzn_physical_device_get_heap_flags_for_mem_type(pdevice,
                                                       pAllocateInfo->memoryTypeIndex);
