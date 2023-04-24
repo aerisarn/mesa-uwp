@@ -367,10 +367,13 @@ impl<'a> ShaderFromNir<'a> {
                 self.instrs.push(Instr::new_i2f(dst, srcs[0]));
             }
             nir_op_iabs => {
-                self.instrs.push(Instr::new(Op::IMov(OpIMov {
-                    dst: dst,
-                    src: srcs[0].abs(),
-                })));
+                self.instrs.push(
+                    OpIAbs {
+                        dst: dst,
+                        src: srcs[0],
+                    }
+                    .into(),
+                );
             }
             nir_op_iadd => {
                 if alu.def.bit_size == 64 {

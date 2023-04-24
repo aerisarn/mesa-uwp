@@ -1496,6 +1496,19 @@ impl fmt::Display for OpMuFu {
 
 #[repr(C)]
 #[derive(SrcsAsSlice, DstsAsSlice)]
+pub struct OpIAbs {
+    pub dst: Dst,
+    pub src: Src,
+}
+
+impl fmt::Display for OpIAbs {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "IABS {} {}", self.dst, self.src,)
+    }
+}
+
+#[repr(C)]
+#[derive(SrcsAsSlice, DstsAsSlice)]
 pub struct OpIAdd3 {
     pub dst: Dst,
     pub overflow: Dst,
@@ -2470,6 +2483,7 @@ pub enum Op {
     MuFu(OpMuFu),
     FSet(OpFSet),
     FSetP(OpFSetP),
+    IAbs(OpIAbs),
     IAdd3(OpIAdd3),
     IMad(OpIMad),
     IMad64(OpIMad64),
@@ -2974,6 +2988,7 @@ impl Instr {
             | Op::FSet(_)
             | Op::FSetP(_)
             | Op::MuFu(_)
+            | Op::IAbs(_)
             | Op::IAdd3(_)
             | Op::IMad(_)
             | Op::IMad64(_)

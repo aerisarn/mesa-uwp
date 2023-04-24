@@ -504,6 +504,16 @@ impl SM75Instr {
         );
     }
 
+    fn encode_iabs(&mut self, op: &OpIAbs) {
+        self.encode_alu(
+            0x013,
+            Some(op.dst),
+            ALUSrc::None,
+            ALUSrc::from_src(&op.src),
+            ALUSrc::None,
+        );
+    }
+
     fn encode_iadd3(&mut self, op: &OpIAdd3) {
         /* TODO: This should happen as part of a legalization pass */
         assert!(op.srcs[0].is_reg_or_zero());
@@ -1277,6 +1287,7 @@ impl SM75Instr {
             Op::FSet(op) => si.encode_fset(&op),
             Op::FSetP(op) => si.encode_fsetp(&op),
             Op::MuFu(op) => si.encode_mufu(&op),
+            Op::IAbs(op) => si.encode_iabs(&op),
             Op::IAdd3(op) => si.encode_iadd3(&op),
             Op::IMad(op) => si.encode_imad(&op),
             Op::IMad64(op) => si.encode_imad64(&op),
