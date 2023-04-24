@@ -776,8 +776,7 @@ radv_amdgpu_add_cs_to_bo_list(struct radv_amdgpu_cs *cs, struct drm_amdgpu_bo_li
 
 static VkResult
 radv_amdgpu_get_bo_list(struct radv_amdgpu_winsys *ws, struct radeon_cmdbuf **cs_array,
-                        unsigned count, struct radv_amdgpu_winsys_bo **extra_bo_array,
-                        unsigned num_extra_bo, struct radeon_cmdbuf **extra_cs_array,
+                        unsigned count, struct radeon_cmdbuf **extra_cs_array,
                         unsigned num_extra_cs, unsigned *rnum_handles,
                         struct drm_amdgpu_bo_list_entry **rhandles)
 {
@@ -795,8 +794,7 @@ radv_amdgpu_get_bo_list(struct radv_amdgpu_winsys *ws, struct radeon_cmdbuf **cs
          handles[i].bo_priority = ws->global_bo_list.bos[i]->priority;
          num_handles++;
       }
-   } else if (count == 1 && !num_extra_bo && !num_extra_cs &&
-              !radv_amdgpu_cs(cs_array[0])->num_virtual_buffers &&
+   } else if (count == 1 && !num_extra_cs && !radv_amdgpu_cs(cs_array[0])->num_virtual_buffers &&
               !radv_amdgpu_cs(cs_array[0])->chained_to && !ws->global_bo_list.count) {
       struct radv_amdgpu_cs *cs = (struct radv_amdgpu_cs *)cs_array[0];
       if (cs->num_buffers == 0)
@@ -809,8 +807,7 @@ radv_amdgpu_get_bo_list(struct radv_amdgpu_winsys *ws, struct radeon_cmdbuf **cs
       memcpy(handles, cs->handles, sizeof(handles[0]) * cs->num_buffers);
       num_handles = cs->num_buffers;
    } else {
-      unsigned total_buffer_count = num_extra_bo;
-      num_handles = num_extra_bo;
+      unsigned total_buffer_count = 0;
       for (unsigned i = 0; i < count; ++i) {
          struct radv_amdgpu_cs *start_cs = (struct radv_amdgpu_cs *)cs_array[i];
          for (struct radv_amdgpu_cs *cs = start_cs; cs; cs = cs->chained_to) {
@@ -833,11 +830,6 @@ radv_amdgpu_get_bo_list(struct radv_amdgpu_winsys *ws, struct radeon_cmdbuf **cs
       handles = malloc(sizeof(handles[0]) * total_buffer_count);
       if (!handles)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-      for (unsigned i = 0; i < num_extra_bo; i++) {
-         handles[i].bo_handle = extra_bo_array[i]->bo_handle;
-         handles[i].bo_priority = extra_bo_array[i]->priority;
-      }
 
       for (unsigned i = 0; i < count + num_extra_cs; ++i) {
          struct radv_amdgpu_cs *start_cs = i >= count
@@ -909,7 +901,7 @@ radv_amdgpu_winsys_cs_submit_internal(
       extra_cs[extra_cs_idx++] = postamble_cs[i];
 
    u_rwlock_rdlock(&ws->global_bo_list.lock);
-   result = radv_amdgpu_get_bo_list(ws, &cs_array[0], cs_count, NULL, 0, extra_cs, num_extra_cs,
+   result = radv_amdgpu_get_bo_list(ws, &cs_array[0], cs_count, extra_cs, num_extra_cs,
                                     &num_handles, &handles);
    if (result != VK_SUCCESS)
       goto fail;
