@@ -2705,7 +2705,7 @@
     <field name="Bottom Execution Mask" start="448" end="479" type="uint" />
   </instruction>
   <instruction name="HCP_BSD_OBJECT" bias="2" length="3" engine="video">
-    <field name="DWord Length" start="0" end="11" type="uint" />
+    <field name="DWord Length" start="0" end="11" type="uint" default="1" />
     <field name="SubOpcode" start="16" end="22" type="uint" default="32" />
     <field name="Media Command Opcode" start="23" end="26" type="uint" default="7" />
     <field name="Pipeline" start="27" end="28" type="uint" default="2" />
@@ -2740,7 +2740,7 @@
     </group>
   </instruction>
   <instruction name="HCP_IND_OBJ_BASE_ADDR_STATE" bias="2" length="14" engine="video">
-    <field name="DWord Length" start="0" end="11" type="uint" />
+    <field name="DWord Length" start="0" end="11" type="uint" default="12" />
     <field name="SubOpcode" start="16" end="22" type="uint" default="3" />
     <field name="Media Command Opcode" start="23" end="26" type="uint" default="7" />
     <field name="Pipeline" start="27" end="28" type="uint" default="2" />
@@ -2794,8 +2794,8 @@
     <field name="Current LCU X Address" start="64" end="79" type="uint" />
     <field name="Current LCU Y Address" start="80" end="95" type="uint" />
   </instruction>
-  <instruction name="HCP_PIC_STATE" bias="2" length="2" engine="video">
-    <field name="DWord Length" start="0" end="11" type="uint" />
+  <instruction name="HCP_PIC_STATE" bias="2" length="32" engine="video">
+    <field name="DWord Length" start="0" end="11" type="uint" default="30" />
     <field name="SubOpcode" start="16" end="22" type="uint" default="16" />
     <field name="Media Command Opcode" start="23" end="26" type="uint" default="7" />
     <field name="Pipeline" start="27" end="28" type="uint" default="2" />
@@ -2905,8 +2905,8 @@
       <value name="16Kb" value="1" />
     </field>
   </instruction>
-  <instruction name="HCP_PIPE_BUF_ADDR_STATE" bias="2" length="95" engine="video">
-    <field name="DWord Length" start="0" end="11" type="uint" />
+  <instruction name="HCP_PIPE_BUF_ADDR_STATE" bias="2" length="104" engine="video">
+    <field name="DWord Length" start="0" end="11" type="uint" default="102" />
     <field name="SubOpcode" start="16" end="22" type="uint" default="2" />
     <field name="Media Command Opcode" start="23" end="26" type="uint" default="7" />
     <field name="Pipeline" start="27" end="28" type="uint" default="2" />
@@ -2958,8 +2958,8 @@
     <field name="VP9 HVD Tile Row Store Buffer - Address" start="2944" end="3007" type="address" />
     <field name="VP9 HVD Tile Row Store Buffer - Memory Address Attributes" start="3008" end="3039" type="MEMORYADDRESSATTRIBUTES" />
   </instruction>
-  <instruction name="HCP_PIPE_MODE_SELECT" bias="2" length="4" engine="video">
-    <field name="DWord Length" start="0" end="11" type="uint" />
+  <instruction name="HCP_PIPE_MODE_SELECT" bias="2" length="6" engine="video">
+    <field name="DWord Length" start="0" end="11" type="uint" default="4" />
     <field name="SubOpcode" start="16" end="22" type="uint" default="0" />
     <field name="Media Command Opcode" start="23" end="26" type="uint" default="7" />
     <field name="Pipeline" start="27" end="28" type="uint" default="2" />
@@ -2979,9 +2979,10 @@
     <field name="PAK Frame Level Stream-Out Enable" start="44" end="44" type="bool" />
     <field name="Media Soft-Reset Counter" start="64" end="95" type="uint" />
     <field name="Pic Status/Error Report ID" start="96" end="127" type="uint" />
+    <field name="HprVp9ModeSwitchEcoDisable" start="134" end="134" type="bool" />
   </instruction>
-  <instruction name="HCP_QM_STATE" bias="2" length="34" engine="video">
-    <field name="DWord Length" start="0" end="11" type="uint" />
+  <instruction name="HCP_QM_STATE" bias="2" length="18" engine="video">
+    <field name="DWord Length" start="0" end="11" type="uint" default="16" />
     <field name="SubOpcode" start="16" end="22" type="uint" default="4" />
     <field name="Media Command Opcode" start="23" end="26" type="uint" default="7" />
     <field name="Pipeline" start="27" end="28" type="uint" default="2" />
@@ -3007,7 +3008,7 @@
     </group>
   </instruction>
   <instruction name="HCP_REF_IDX_STATE" bias="2" length="18" engine="video">
-    <field name="DWord Length" start="0" end="11" type="uint" />
+    <field name="DWord Length" start="0" end="11" type="uint" default="16" />
     <field name="SubOpcode" start="16" end="22" type="uint" default="18" />
     <field name="Media Command Opcode" start="23" end="26" type="uint" default="7" />
     <field name="Pipeline" start="27" end="28" type="uint" default="2" />
@@ -3018,8 +3019,8 @@
       <field name="Reference List Entry" start="0" end="31" type="HCP_REF_LIST_ENTRY" />
     </group>
   </instruction>
-  <instruction name="HCP_SLICE_STATE" bias="2" length="2" engine="video">
-    <field name="DWord Length" start="0" end="11" type="uint" />
+  <instruction name="HCP_SLICE_STATE" bias="2" length="11" engine="video">
+    <field name="DWord Length" start="0" end="11" type="uint" default="9" />
     <field name="SubOpcode" start="16" end="22" type="uint" default="20" />
     <field name="Media Command Opcode" start="23" end="26" type="uint" default="7" />
     <field name="Pipeline" start="27" end="28" type="uint" default="2" />
@@ -3066,7 +3067,6 @@
       <value name="-2" value="30" />
       <value name="-1" value="31" />
     </field>
-    <field name="Last Slice of Tile" start="120" end="120" type="bool" />
     <field name="Slice Header Disable Deblocking Filter" start="128" end="128" type="bool" />
     <field name="Slice TC Offset Div2" start="129" end="132" type="int" />
     <field name="Slice Beta Offset Div2" start="133" end="136" type="int" />
@@ -3131,7 +3131,7 @@
     <field name="Transform Skip Number of Non-Zero Coeffs Factor1" start="344" end="351" type="uint" />
   </instruction>
   <instruction name="HCP_SURFACE_STATE" bias="2" length="3" engine="video">
-    <field name="DWord Length" start="0" end="11" type="uint" />
+    <field name="DWord Length" start="0" end="11" type="uint" default="1" />
     <field name="SubOpcode" start="16" end="22" type="uint" default="1" />
     <field name="Media Command Opcode" start="23" end="26" type="uint" default="7" />
     <field name="Pipeline" start="27" end="28" type="uint" default="2" />
@@ -3159,7 +3159,7 @@
     <field name="SAO Parameter Offset" start="128" end="159" type="uint" />
   </instruction>
   <instruction name="HCP_TILE_STATE" bias="2" length="13" engine="video">
-    <field name="DWord Length" start="0" end="11" type="uint" />
+    <field name="DWord Length" start="0" end="11" type="uint" default="11" />
     <field name="Media Instruction Command" start="16" end="22" type="uint" default="17" />
     <field name="Media Command Opcode" start="23" end="26" type="uint" default="7" />
     <field name="Pipeline" start="27" end="28" type="uint" default="2" />
@@ -3295,7 +3295,7 @@
     <field name="Chroma AC Quant Scale" start="208" end="222" type="uint" />
   </instruction>
   <instruction name="HCP_WEIGHTOFFSET_STATE" bias="2" length="34" engine="video">
-    <field name="DWord Length" start="0" end="11" type="uint" />
+    <field name="DWord Length" start="0" end="11" type="uint" default="32" />
     <field name="SubOpcode" start="16" end="22" type="uint" default="19" />
     <field name="Media Command Opcode" start="23" end="26" type="uint" default="7" />
     <field name="Pipeline" start="27" end="28" type="uint" default="2" />
