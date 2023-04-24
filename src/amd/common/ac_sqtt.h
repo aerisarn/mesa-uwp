@@ -129,6 +129,26 @@ enum rgp_sqtt_marker_identifier
 };
 
 /**
+ * Command buffer IDs used in RGP SQ thread-tracing markers (only 20 bits).
+ */
+union rgp_sqtt_marker_cb_id {
+   struct {
+      uint32_t per_frame : 1; /* Must be 1, frame-based command buffer ID. */
+      uint32_t frame_index : 7;
+      uint32_t cb_index : 12; /* Command buffer index within the frame. */
+      uint32_t reserved : 12;
+   } per_frame_cb_id;
+
+   struct {
+      uint32_t per_frame : 1; /* Must be 0, global command buffer ID. */
+      uint32_t cb_index : 19; /* Global command buffer index. */
+      uint32_t reserved : 12;
+   } global_cb_id;
+
+   uint32_t all;
+};
+
+/**
  * RGP SQ thread-tracing marker for the start of a command buffer. (Table 2)
  */
 struct rgp_sqtt_marker_cb_start {
