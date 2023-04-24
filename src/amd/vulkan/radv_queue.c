@@ -1334,6 +1334,11 @@ radv_create_gang_wait_preambles_postambles(struct radv_queue *queue)
    if (!leader_pre_cs || !leader_post_cs || !ace_pre_cs || !ace_post_cs)
       goto fail;
 
+   radeon_check_space(ws, leader_pre_cs, 256);
+   radeon_check_space(ws, leader_post_cs, 256);
+   radeon_check_space(ws, ace_pre_cs, 256);
+   radeon_check_space(ws, ace_post_cs, 256);
+
    radv_cs_add_buffer(ws, leader_pre_cs, gang_sem_bo);
    radv_cs_add_buffer(ws, leader_post_cs, gang_sem_bo);
    radv_cs_add_buffer(ws, ace_pre_cs, gang_sem_bo);
