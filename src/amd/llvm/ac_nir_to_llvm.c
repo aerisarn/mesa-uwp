@@ -4158,14 +4158,6 @@ static void tex_fetch_ptrs(struct ac_nir_context *ctx, nir_tex_instr *instr,
    }
 }
 
-static LLVMValueRef apply_round_slice(struct ac_llvm_context *ctx, LLVMValueRef coord)
-{
-   coord = ac_to_float(ctx, coord);
-   coord = ac_build_round(ctx, coord);
-   coord = ac_to_integer(ctx, coord);
-   return coord;
-}
-
 static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
 {
    LLVMValueRef result = NULL;
@@ -4323,22 +4315,6 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
    }
 
    /* Texture coordinates fixups */
-   if (instr->coord_components > 1 && instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
-       instr->is_array && instr->op != nir_texop_txf) {
-      if (!ctx->abi->conformant_trunc_coord)
-         args.coords[1] = apply_round_slice(&ctx->ac, args.coords[1]);
-   }
-
-   if (instr->coord_components > 2 &&
-       (instr->sampler_dim == GLSL_SAMPLER_DIM_2D || instr->sampler_dim == GLSL_SAMPLER_DIM_MS ||
-        instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS ||
-        instr->sampler_dim == GLSL_SAMPLER_DIM_SUBPASS_MS) &&
-       instr->is_array && instr->op != nir_texop_txf && instr->op != nir_texop_txf_ms &&
-       instr->op != nir_texop_fragment_fetch_amd && instr->op != nir_texop_fragment_mask_fetch_amd) {
-      if (!ctx->abi->conformant_trunc_coord)
-         args.coords[2] = apply_round_slice(&ctx->ac, args.coords[2]);
-   }
-
    if (ctx->ac.gfx_level == GFX9 && instr->sampler_dim == GLSL_SAMPLER_DIM_1D &&
        instr->op != nir_texop_lod) {
       LLVMValueRef filler;
