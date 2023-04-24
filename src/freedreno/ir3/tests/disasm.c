@@ -446,6 +446,7 @@ static const struct test {
    INSTR_6XX(e2080000_00000000, "dccln.all"),
 
    INSTR_7XX(e3c20000_00000000, "lock"),
+   INSTR_7XX(fbc21000_00000000, "(sy)(ss)(jp)lock"),
 
    /* dEQP-VK.pipeline.monolithic.sampler.border_swizzle.r4g4b4a4_unorm_pack16.rg1a.opaque_white.gather_1.no_swizzle_hint */
    INSTR_7XX(e45401a0_bfba7736, "alias.tex.b32.1 r40.x, (-1.456763)"),
