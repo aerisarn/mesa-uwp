@@ -118,66 +118,6 @@ spec@arb_sample_shading@interpolate-at-sample-position 4,Fail
 spec@arb_sample_shading@interpolate-at-sample-position 6,Fail
 spec@arb_sample_shading@interpolate-at-sample-position 8,Fail
 
-# broken multisampling state handling: #6302
-spec@arb_sample_shading@samplemask 2,Fail
-spec@arb_sample_shading@samplemask 2 all,Fail
-spec@arb_sample_shading@samplemask 2 all@0.500000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 2 all@1.000000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 2 all@noms mask_in_one,Fail
-spec@arb_sample_shading@samplemask 2 all@noms partition,Fail
-spec@arb_sample_shading@samplemask 2 all@sample mask_in_one,Fail
-spec@arb_sample_shading@samplemask 2@0.500000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 2@1.000000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 2@noms mask_in_one,Fail
-spec@arb_sample_shading@samplemask 2@noms partition,Fail
-spec@arb_sample_shading@samplemask 2@sample mask_in_one,Fail
-spec@arb_sample_shading@samplemask 4,Fail
-spec@arb_sample_shading@samplemask 4 all,Fail
-spec@arb_sample_shading@samplemask 4 all@0.250000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 4 all@0.500000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 4 all@1.000000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 4 all@noms mask_in_one,Fail
-spec@arb_sample_shading@samplemask 4 all@noms partition,Fail
-spec@arb_sample_shading@samplemask 4 all@sample mask_in_one,Fail
-spec@arb_sample_shading@samplemask 4@0.250000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 4@0.500000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 4@1.000000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 4@noms mask_in_one,Fail
-spec@arb_sample_shading@samplemask 4@noms partition,Fail
-spec@arb_sample_shading@samplemask 4@sample mask_in_one,Fail
-spec@arb_sample_shading@samplemask 6,Fail
-spec@arb_sample_shading@samplemask 6 all,Fail
-spec@arb_sample_shading@samplemask 6 all@0.125000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 6 all@0.250000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 6 all@0.500000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 6 all@1.000000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 6 all@noms mask_in_one,Fail
-spec@arb_sample_shading@samplemask 6 all@noms partition,Fail
-spec@arb_sample_shading@samplemask 6 all@sample mask_in_one,Fail
-spec@arb_sample_shading@samplemask 6@0.125000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 6@0.250000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 6@0.500000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 6@1.000000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 6@noms mask_in_one,Fail
-spec@arb_sample_shading@samplemask 6@noms partition,Fail
-spec@arb_sample_shading@samplemask 6@sample mask_in_one,Fail
-spec@arb_sample_shading@samplemask 8,Fail
-spec@arb_sample_shading@samplemask 8 all,Fail
-spec@arb_sample_shading@samplemask 8 all@0.125000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 8 all@0.250000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 8 all@0.500000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 8 all@1.000000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 8 all@noms mask_in_one,Fail
-spec@arb_sample_shading@samplemask 8 all@noms partition,Fail
-spec@arb_sample_shading@samplemask 8 all@sample mask_in_one,Fail
-spec@arb_sample_shading@samplemask 8@0.125000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 8@0.250000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 8@0.500000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 8@1.000000 mask_in_one,Fail
-spec@arb_sample_shading@samplemask 8@noms mask_in_one,Fail
-spec@arb_sample_shading@samplemask 8@noms partition,Fail
-spec@arb_sample_shading@samplemask 8@sample mask_in_one,Fail
-
 spec@arb_shader_clock@execution@clock2x32,Fail
 spec@arb_shader_clock@execution@clock,Fail
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgradcube,Fail
@@ -202,23 +142,6 @@ spec@ext_framebuffer_multisample@draw-buffers-alpha-to-one 2,Fail
 spec@ext_framebuffer_multisample@draw-buffers-alpha-to-one 4,Fail
 spec@ext_framebuffer_multisample@draw-buffers-alpha-to-one 6,Fail
 spec@ext_framebuffer_multisample@draw-buffers-alpha-to-one 8,Fail
-spec@ext_framebuffer_multisample@enable-flag,Fail
-spec@ext_framebuffer_multisample@interpolation 2 centroid-deriv-disabled,Fail
-spec@ext_framebuffer_multisample@interpolation 2 centroid-disabled,Fail
-spec@ext_framebuffer_multisample@interpolation 2 non-centroid-deriv-disabled,Fail
-spec@ext_framebuffer_multisample@interpolation 2 non-centroid-disabled,Fail
-spec@ext_framebuffer_multisample@interpolation 4 centroid-deriv-disabled,Fail
-spec@ext_framebuffer_multisample@interpolation 4 centroid-disabled,Fail
-spec@ext_framebuffer_multisample@interpolation 4 non-centroid-deriv-disabled,Fail
-spec@ext_framebuffer_multisample@interpolation 4 non-centroid-disabled,Fail
-spec@ext_framebuffer_multisample@interpolation 6 centroid-deriv-disabled,Fail
-spec@ext_framebuffer_multisample@interpolation 6 centroid-disabled,Fail
-spec@ext_framebuffer_multisample@interpolation 6 non-centroid-deriv-disabled,Fail
-spec@ext_framebuffer_multisample@interpolation 6 non-centroid-disabled,Fail
-spec@ext_framebuffer_multisample@interpolation 8 centroid-deriv-disabled,Fail
-spec@ext_framebuffer_multisample@interpolation 8 centroid-disabled,Fail
-spec@ext_framebuffer_multisample@interpolation 8 non-centroid-deriv-disabled,Fail
-spec@ext_framebuffer_multisample@interpolation 8 non-centroid-disabled,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-one 2,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-one 4,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-one 6,Fail
