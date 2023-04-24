@@ -291,7 +291,7 @@ pub fn build_program(
     if res {
         Ok(())
     } else {
-        if Platform::get().debug.program {
+        if Platform::dbg().program {
             for dev in &devs {
                 eprintln!("{}", p.log(dev));
             }
@@ -370,7 +370,7 @@ pub fn compile_program(
     if res {
         Ok(())
     } else {
-        if Platform::get().debug.program {
+        if Platform::dbg().program {
             for dev in &devs {
                 eprintln!("{}", p.log(dev));
             }

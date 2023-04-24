@@ -569,7 +569,7 @@ impl Program {
         let info = Self::dev_build_info(&mut lock, d);
         assert_eq!(info.status, CL_BUILD_SUCCESS as cl_build_status);
 
-        let mut log = Platform::get().debug.program.then(Vec::new);
+        let mut log = Platform::dbg().program.then(Vec::new);
         let nir = info.spirv.as_ref().unwrap().to_nir(
             kernel,
             d.screen

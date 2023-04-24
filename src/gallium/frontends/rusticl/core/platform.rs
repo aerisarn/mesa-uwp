@@ -15,14 +15,15 @@ pub struct Platform {
     dispatch: &'static cl_icd_dispatch,
     pub extensions: [cl_name_version; 2],
     pub devs: Vec<Arc<Device>>,
-    pub debug: PlatformDebug,
 }
 
 pub struct PlatformDebug {
     pub program: bool,
 }
 
+static PLATFORM_ENV_ONCE: Once = Once::new();
 static PLATFORM_ONCE: Once = Once::new();
+
 static mut PLATFORM: Platform = Platform {
     dispatch: &DISPATCH,
     extensions: [
@@ -30,8 +31,20 @@ static mut PLATFORM: Platform = Platform {
         mk_cl_version_ext(1, 0, 0, "cl_khr_il_program"),
     ],
     devs: Vec::new(),
-    debug: PlatformDebug { program: false },
 };
+static mut PLATFORM_DBG: PlatformDebug = PlatformDebug { program: false };
+
+fn load_env() {
+    let debug = unsafe { &mut PLATFORM_DBG };
+    if let Ok(debug_flags) = env::var("RUSTICL_DEBUG") {
+        for flag in debug_flags.split(',') {
+            match flag {
+                "program" => debug.program = true,
+                _ => eprintln!("Unknown RUSTICL_DEBUG flag found: {}", flag),
+            }
+        }
+    }
+}
 
 impl Platform {
     pub fn as_ptr(&self) -> cl_platform_id {
@@ -44,23 +57,21 @@ impl Platform {
         unsafe { &PLATFORM }
     }
 
+    pub fn dbg() -> &'static PlatformDebug {
+        debug_assert!(PLATFORM_ENV_ONCE.is_completed());
+        unsafe { &PLATFORM_DBG }
+    }
+
     fn init(&mut self) {
         unsafe {
             glsl_type_singleton_init_or_ref();
         }
 
         self.devs.extend(Device::all());
-        if let Ok(debug_flags) = env::var("RUSTICL_DEBUG") {
-            for flag in debug_flags.split(',') {
-                match flag {
-                    "program" => self.debug.program = true,
-                    _ => eprintln!("Unknown RUSTICL_DEBUG flag found: {}", flag),
-                }
-            }
-        }
     }
 
     pub fn init_once() {
+        PLATFORM_ENV_ONCE.call_once(load_env);
         // SAFETY: no concurrent static mut access due to std::Once
         PLATFORM_ONCE.call_once(|| unsafe { PLATFORM.init() });
     }
