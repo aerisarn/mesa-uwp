@@ -15,7 +15,7 @@ fi
 INSTALL=$(realpath -s "$PWD"/install)
 
 # Set up the driver environment.
-export LD_LIBRARY_PATH="$INSTALL"/lib/
+export LD_LIBRARY_PATH="$INSTALL"/lib/:$LD_LIBRARY_PATH
 export EGL_PLATFORM=surfaceless
 export VK_ICD_FILENAMES="$PWD"/install/share/vulkan/icd.d/"$VK_DRIVER"_icd.${VK_CPU:-$(uname -m)}.json
 export OCL_ICD_VENDORS="$PWD"/install/etc/OpenCL/vendors/
