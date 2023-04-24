@@ -39,8 +39,7 @@ impl Platform {
     }
 
     pub fn get() -> &'static Self {
-        // SAFETY: no concurrent static mut access due to std::Once
-        PLATFORM_ONCE.call_once(|| unsafe { PLATFORM.init() });
+        debug_assert!(PLATFORM_ONCE.is_completed());
         // SAFETY: no mut references exist at this point
         unsafe { &PLATFORM }
     }
@@ -59,6 +58,11 @@ impl Platform {
                 }
             }
         }
+    }
+
+    pub fn init_once() {
+        // SAFETY: no concurrent static mut access due to std::Once
+        PLATFORM_ONCE.call_once(|| unsafe { PLATFORM.init() });
     }
 }
 

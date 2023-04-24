@@ -44,6 +44,9 @@ pub fn get_platform_ids(
         return Err(CL_INVALID_VALUE);
     }
 
+    // run initialization code once
+    Platform::init_once();
+
     // platforms returns a list of OpenCL platforms available for access through the Khronos ICD Loader.
     // The cl_platform_id values returned in platforms are ICD compatible and can be used to identify a
     // specific OpenCL platform. If the platforms argument is NULL, then this argument is ignored. The
