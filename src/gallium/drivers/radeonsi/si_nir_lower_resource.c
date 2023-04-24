@@ -496,6 +496,23 @@ static nir_ssa_def *load_bindless_sampler_desc(nir_builder *b, nir_ssa_def *inde
    return load_sampler_desc(b, list, index, desc_type);
 }
 
+static nir_ssa_def *fixup_sampler_desc(nir_builder *b,
+                                       nir_tex_instr *tex,
+                                       nir_ssa_def *sampler,
+                                       struct lower_resource_state *s)
+{
+   const struct si_shader_selector *sel = s->shader->selector;
+
+   if (tex->op != nir_texop_tg4 || sel->screen->info.conformant_trunc_coord)
+      return sampler;
+
+   /* Set TRUNC_COORD=0 for textureGather(). */
+   nir_ssa_def *dword0 = nir_channel(b, sampler, 0);
+   dword0 = nir_iand_imm(b, dword0, C_008F30_TRUNC_COORD);
+   sampler = nir_vector_insert_imm(b, sampler, dword0, 0);
+   return sampler;
+}
+
 static bool lower_resource_tex(nir_builder *b, nir_tex_instr *tex,
                                struct lower_resource_state *s)
 {
@@ -560,6 +577,9 @@ static bool lower_resource_tex(nir_builder *b, nir_tex_instr *tex,
       sampler = load_deref_sampler_desc(b, sampler_deref, AC_DESC_SAMPLER, s, !tex->sampler_non_uniform);
    else if (sampler_handle)
       sampler = load_bindless_sampler_desc(b, sampler_handle, AC_DESC_SAMPLER, s);
+
+   if (sampler && sampler->num_components > 1)
+      sampler = fixup_sampler_desc(b, tex, sampler, s);
 
    for (unsigned i = 0; i < tex->num_srcs; i++) {
       switch (tex->src[i].src_type) {
