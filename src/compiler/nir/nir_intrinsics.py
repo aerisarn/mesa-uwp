@@ -1142,6 +1142,14 @@ load("mesh_view_indices", [1], [BASE, RANGE], [CAN_ELIMINATE, CAN_REORDER])
 load("preamble", [], indices=[BASE], flags=[CAN_ELIMINATE, CAN_REORDER])
 store("preamble", [], indices=[BASE])
 
+# A 32 bits bitfield storing 1 in bits corresponding to varyings
+# that have the flat interpolation specifier in the fragment shader
+# and 0 otherwise
+system_value("flat_mask", 1)
+
+# Whether provoking vertex mode is last
+system_value("provoking_last", 1)
+
 # IR3-specific version of most SSBO intrinsics. The only different
 # compare to the originals is that they add an extra source to hold
 # the dword-offset, which is needed by the backend code apart from

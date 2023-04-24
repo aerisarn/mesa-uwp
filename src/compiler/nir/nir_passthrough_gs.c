@@ -150,8 +150,6 @@ nir_shader *
 nir_create_passthrough_gs(const nir_shader_compiler_options *options,
                           const nir_shader *prev_stage,
                           enum shader_prim primitive_type,
-                          int flat_interp_mask_offset,
-                          int last_pv_vert_offset,
                           bool emulate_edgeflags,
                           bool force_line_strip_out)
 {
@@ -255,12 +253,8 @@ nir_create_passthrough_gs(const nir_shader_compiler_options *options,
    }
 
    nir_variable *edge_var = nir_find_variable_with_location(nir, nir_var_shader_in, VARYING_SLOT_EDGE);
-   nir_ssa_def *flat_interp_mask_def = nir_load_ubo(&b, 1, 32,
-                                                    nir_imm_int(&b, 0), nir_imm_int(&b, flat_interp_mask_offset),
-                                                    .align_mul = 4, .align_offset = 0, .range_base = 0, .range = ~0);
-   nir_ssa_def *last_pv_vert_def = nir_load_ubo(&b, 1, 32,
-                                                nir_imm_int(&b, 0), nir_imm_int(&b, last_pv_vert_offset),
-                                                .align_mul = 4, .align_offset = 0, .range_base = 0, .range = ~0);
+   nir_ssa_def *flat_interp_mask_def = nir_load_flat_mask(&b);
+   nir_ssa_def *last_pv_vert_def = nir_load_provoking_last(&b);
    last_pv_vert_def = nir_ine_imm(&b, last_pv_vert_def, 0);
    nir_ssa_def *start_vert_index = nir_imm_int(&b, start_vert);
    nir_ssa_def *end_vert_index = nir_imm_int(&b, end_vert - 1);

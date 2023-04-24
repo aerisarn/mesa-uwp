@@ -58,8 +58,10 @@ zink_tgsi_to_nir(struct pipe_screen *screen, const struct tgsi_token *tokens);
 
 nir_shader*
 zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
-                               const nir_shader *prev_stage,
-                               int last_pv_vert_offset);
+                               const nir_shader *prev_stage);
+
+bool
+zink_lower_system_values_to_inlined_uniforms(nir_shader *nir);
 
 void
 zink_screen_init_compiler(struct zink_screen *screen);

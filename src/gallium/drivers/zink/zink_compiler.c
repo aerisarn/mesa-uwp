@@ -1182,8 +1182,7 @@ lower_64bit_pack(nir_shader *shader)
 
 nir_shader *
 zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
-                               const nir_shader *prev_stage,
-                               int last_pv_vert_offset)
+                               const nir_shader *prev_stage)
 {
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_GEOMETRY,
                                                   options,
@@ -1241,9 +1240,7 @@ zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
 
    int mapping_first[] = {0, 1, 2, 0, 2, 3};
    int mapping_last[] = {0, 1, 3, 1, 2, 3};
-   nir_ssa_def *last_pv_vert_def = nir_load_ubo(&b, 1, 32,
-                                                nir_imm_int(&b, 0), nir_imm_int(&b, last_pv_vert_offset),
-                                                .align_mul = 4, .align_offset = 0, .range_base = 0, .range = ~0);
+   nir_ssa_def *last_pv_vert_def = nir_load_provoking_last(&b);
    last_pv_vert_def = nir_ine_imm(&b, last_pv_vert_def, 0);
    for (unsigned i = 0; i < 6; ++i) {
       /* swap indices 2 and 3 */
@@ -1267,6 +1264,43 @@ zink_create_quads_emulation_gs(const nir_shader_compiler_options *options,
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
    nir_validate_shader(nir, "in zink_create_quads_emulation_gs");
    return nir;
+}
+
+static bool
+lower_system_values_to_inlined_uniforms_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+   int inlined_uniform_offset;
+   switch (intrin->intrinsic) {
+   case nir_intrinsic_load_flat_mask:
+      inlined_uniform_offset = ZINK_INLINE_VAL_FLAT_MASK * sizeof(uint32_t);
+      break;
+   case nir_intrinsic_load_provoking_last:
+      inlined_uniform_offset = ZINK_INLINE_VAL_PV_LAST_VERT * sizeof(uint32_t);
+      break;
+   default:
+      return false;
+   }
+
+   b->cursor = nir_before_instr(&intrin->instr);
+   nir_ssa_def *new_dest_def = nir_load_ubo(b, 1, 32, nir_imm_int(b, 0),
+                                            nir_imm_int(b, inlined_uniform_offset),
+                                            .align_mul = 4, .align_offset = 0,
+                                            .range_base = 0, .range = ~0);
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, new_dest_def);
+   nir_instr_remove(instr);
+   return true;
+}
+
+bool
+zink_lower_system_values_to_inlined_uniforms(nir_shader *nir)
+{
+   return nir_shader_instructions_pass(nir, lower_system_values_to_inlined_uniforms_instr,
+                                       nir_metadata_dominance, NULL);
 }
 
 void

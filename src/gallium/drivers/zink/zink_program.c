@@ -2362,8 +2362,7 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
             if (lower_filled_quad) {
                nir = zink_create_quads_emulation_gs(
                   &screen->nir_options,
-                  prev_stage,
-                  ZINK_INLINE_VAL_PV_LAST_VERT * 4);
+                  prev_stage);
             } else {
                enum pipe_prim_type prim = ctx->gfx_pipeline_state.gfx_prim_mode;
                if (prev_vertex_stage == MESA_SHADER_TESS_EVAL)
@@ -2372,11 +2371,10 @@ zink_set_primitive_emulation_keys(struct zink_context *ctx)
                   &screen->nir_options,
                   prev_stage,
                   prim,
-                  ZINK_INLINE_VAL_FLAT_MASK * sizeof(uint32_t),
-                  ZINK_INLINE_VAL_PV_LAST_VERT * sizeof(uint32_t),
                   lower_edge_flags,
                   lower_line_stipple || lower_quad_prim);
             }
+            zink_lower_system_values_to_inlined_uniforms(nir);
 
             zink_add_inline_uniform(nir, ZINK_INLINE_VAL_FLAT_MASK);
             zink_add_inline_uniform(nir, ZINK_INLINE_VAL_PV_LAST_VERT);
