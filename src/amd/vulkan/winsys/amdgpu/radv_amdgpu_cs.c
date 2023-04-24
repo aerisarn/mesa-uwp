@@ -909,10 +909,17 @@ radv_amdgpu_winsys_cs_submit_internal(
    struct radv_amdgpu_cs *last_cs = radv_amdgpu_cs(cs_array[cs_count - 1]);
    struct radv_amdgpu_winsys *ws = last_cs->ws;
 
+   assert(cs_count);
+   const unsigned num_pre_post_cs =
+      MAX2(initial_preamble_count, continue_preamble_count) + postamble_count;
+   const unsigned ib_array_size = MIN2(RADV_MAX_IBS_PER_SUBMIT, num_pre_post_cs + cs_count);
+   STACK_ARRAY(struct radv_amdgpu_cs_ib_info, ibs, ib_array_size);
+
    struct drm_amdgpu_bo_list_entry *handles = NULL;
    unsigned num_handles = 0;
 
    u_rwlock_rdlock(&ws->global_bo_list.lock);
+
    result = radv_amdgpu_get_bo_list(
       ws, &cs_array[0], cs_count, initial_preamble_cs, initial_preamble_count, continue_preamble_cs,
       continue_preamble_count, postamble_cs, postamble_count, &num_handles, &handles);
@@ -921,7 +928,6 @@ radv_amdgpu_winsys_cs_submit_internal(
 
    /* Configure the CS request. */
    const uint8_t *max_ib_per_ip = ws->info.max_submitted_ibs;
-   struct radv_amdgpu_cs_ib_info ibs[RADV_MAX_IBS_PER_SUBMIT];
    struct radv_amdgpu_cs_request request = {
       .ip_type = last_cs->hw_ip,
       .ip_instance = 0,
@@ -931,10 +937,6 @@ radv_amdgpu_winsys_cs_submit_internal(
       .ibs = ibs,
       .number_of_ibs = 0, /* set below */
    };
-
-   assert(cs_count);
-   assert(MAX2(initial_preamble_count, continue_preamble_count) + postamble_count <
-          RADV_MAX_IBS_PER_SUBMIT);
 
    for (unsigned cs_idx = 0, cs_ib_idx = 0; cs_idx < cs_count;) {
       struct radeon_cmdbuf **preambles = cs_idx ? continue_preamble_cs : initial_preamble_cs;
@@ -1029,6 +1031,7 @@ radv_amdgpu_winsys_cs_submit_internal(
 
 fail:
    u_rwlock_rdunlock(&ws->global_bo_list.lock);
+   STACK_ARRAY_FINISH(ibs);
    return result;
 }
 
