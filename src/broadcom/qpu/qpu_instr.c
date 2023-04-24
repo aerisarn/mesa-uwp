@@ -664,12 +664,14 @@ v3d_qpu_uses_sfu(const struct v3d_qpu_instr *inst)
                 return true;
 
         if (inst->type == V3D_QPU_INSTR_TYPE_ALU) {
-                if (inst->alu.add.magic_write &&
+                if (inst->alu.add.op != V3D_QPU_A_NOP &&
+                    inst->alu.add.magic_write &&
                     v3d_qpu_magic_waddr_is_sfu(inst->alu.add.waddr)) {
                         return true;
                 }
 
-                if (inst->alu.mul.magic_write &&
+                if (inst->alu.mul.op != V3D_QPU_M_NOP &&
+                    inst->alu.mul.magic_write &&
                     v3d_qpu_magic_waddr_is_sfu(inst->alu.mul.waddr)) {
                         return true;
                 }
