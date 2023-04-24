@@ -1,6 +1,6 @@
 # Please include a comment with the log message and a testcase triggering each
 # VUID at the bottom of the file.
-khronos_validation.message_id_filter = VUID-vkCmdDrawMultiEXT-colorAttachmentCount-06188,VUID-VkGraphicsPipelineCreateInfo-Geometry-07725,VUID-VkShaderModuleCreateInfo-pCode-01091,VUID-vkCmdCopyImage-srcImage-07743,VUID-RuntimeSpirv-Location-06272,VUID-vkCmdDrawMultiEXT-None-02699,VUID-VkPhysicalDeviceProperties2-pNext-pNext,VUID-VkDeviceCreateInfo-pNext-pNext
+khronos_validation.message_id_filter = VUID-vkCmdDrawMultiEXT-colorAttachmentCount-06188,VUID-VkGraphicsPipelineCreateInfo-Geometry-07725,VUID-VkShaderModuleCreateInfo-pCode-01091,VUID-vkCmdCopyImage-srcImage-07743,VUID-RuntimeSpirv-Location-06272,VUID-vkCmdDrawMultiEXT-None-02699,VUID-VkPhysicalDeviceProperties2-pNext-pNext,VUID-VkDeviceCreateInfo-pNext-pNext,VUID-VkShaderModuleCreateInfo-pCode-01091,VUID-VkShaderModuleCreateInfo-pCode-08740,VUID-RuntimeSpirv-OpEntryPoint-08743
 khronos_validation.report_flags = error
 khronos_validation.debug_action = VK_DBG_LAYER_ACTION_LOG_MSG,VK_DBG_LAYER_ACTION_BREAK
 VK_LAYER_ENABLES=VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT
@@ -95,6 +95,46 @@ khronos_validation.log_filename = stdout
 # equal to the value for the matching {ExecutionModel} defined in Shader
 # Input and Output Locations
 # (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-Location-06272)
+
+#  KHR-GL46.shading_language_420pack.binding_image_array
+#
+# VUID-VkShaderModuleCreateInfo-pCode-01091(ERROR / SPEC): msgNum: -1480880714 -
+# Validation Error: [ VUID-VkShaderModuleCreateInfo-pCode-01091 ]
+# vkCreateShaderModule(): The SPIR-V Capability (StorageImageArrayDynamicIndexing) was declared,
+# but none of the requirements were met to use it.
+# The Vulkan spec states: If pCode declares any of the capabilities listed in the
+# SPIR-V Environment appendix, one of the corresponding requirements must be satisfied
+# (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-VkShaderModuleCreateInfo-pCode-01091)
+#
+# VUID-VkShaderModuleCreateInfo-pCode-08740(ERROR / SPEC): msgNum: 115483881 -
+# Validation Error: [ VUID-VkShaderModuleCreateInfo-pCode-08740 ]
+# vkCreateShaderModule(): The SPIR-V Capability (StorageImageArrayDynamicIndexing)
+# was declared, but none of the requirements were met to use it.
+# The Vulkan spec states: If pname:codeType is ename:VK_SHADER_CODE_TYPE_SPIRV_EXT,
+# and pCode declares any of the capabilities listed in the SPIR-V Environment appendix,
+# one of the corresponding requirements must be satisfied
+# (https://www.khronos.org/registry/vulkan/specs/1.3-khr-extensions/html/vkspec.html#VUID-VkShaderModuleCreateInfo-pCode-08740)
+#
+# needs lavapipe features
+
+# dEQP-GLES31.functional.separate_shader.random.69
+# 
+# UNASSIGNED-CoreValidation-Shader-MissingOutput(ERROR / SPEC): msgNum: 1086655814 -
+# Validation Error: [ UNASSIGNED-CoreValidation-Shader-MissingOutput ]
+# vkCreateGraphicsPipelines(): pCreateInfos[0] VK_SHADER_STAGE_FRAGMENT_BIT declared input at Location 0
+# Comonent 2 but it is not an Output declared in VK_SHADER_STAGE_VERTEX_BIT
+#
+# VUID-RuntimeSpirv-OpEntryPoint-08743(ERROR / SPEC): msgNum: -1986897773 -
+# Validation Error: [ VUID-RuntimeSpirv-OpEntryPoint-08743 ]
+# vkCreateGraphicsPipelines(): pCreateInfos[0] VK_SHADER_STAGE_FRAGMENT_BIT declared input at
+# Location 1 Comonent 2 but it is not an Output declared in VK_SHADER_STAGE_VERTEX_BIT
+# The Vulkan spec states: Any user-defined variables shared between the OpEntryPoint of two shader stages,
+# and declared with Input as its {StorageClass} for the subsequent shader stage,
+# must have all Location slots and Component words declared in the preceding shader stage's
+# OpEntryPoint with Output as the {StorageClass}
+# (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-OpEntryPoint-08743)
+#
+# VVL bug https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/5735
 
 
 # VUID-VkPhysicalDeviceProperties2-pNext-pNext

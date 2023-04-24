@@ -1,6 +1,6 @@
 # Please include a comment with the log message and a testcase triggering each
 # VUID at the bottom of the file.
-khronos_validation.message_id_filter = UNASSIGNED-CoreValidation-Shader-InconsistentSpirv,VUID-vkDestroyDevice-device-00378,VUID-VkShaderModuleCreateInfo-pCode-01377,VUID-vkCmdDrawMultiIndexedEXT-None-02699,VUID-RuntimeSpirv-Location-06272,VUID-VkGraphicsPipelineCreateInfo-renderPass-06590,VUID-VkGraphicsPipelineCreateInfo-Geometry-07725,VUID-vkCmdDrawMultiIndexedEXT-format-07753,UNASSIGNED-CoreValidation-Shader-InterfaceTypeMismatch
+khronos_validation.message_id_filter = UNASSIGNED-CoreValidation-Shader-InconsistentSpirv,VUID-vkDestroyDevice-device-00378,VUID-VkShaderModuleCreateInfo-pCode-01377,VUID-vkCmdDrawMultiIndexedEXT-None-02699,VUID-RuntimeSpirv-Location-06272,VUID-VkGraphicsPipelineCreateInfo-renderPass-06590,VUID-VkGraphicsPipelineCreateInfo-Geometry-07725,VUID-vkCmdDrawMultiIndexedEXT-format-07753,UNASSIGNED-CoreValidation-Shader-InterfaceTypeMismatch,VUID-RuntimeSpirv-OpEntryPoint-07754,VUID-VkShaderModuleCreateInfo-pCode-01379,VUID-RuntimeSpirv-OpEntryPoint-08743
 khronos_validation.report_flags = error
 khronos_validation.debug_action = VK_DBG_LAYER_ACTION_LOG_MSG,VK_DBG_LAYER_ACTION_BREAK
 VK_LAYER_ENABLES=VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT
@@ -92,3 +92,38 @@ khronos_validation.log_filename = stdout
 # 0xb6cf33fe | Type mismatch on location 0.0, between geometry shader and fragment
 # shader: 'ptr to Output vec2 of uint64' vs 'ptr to Input struct of (vec4 of
 # float32, vec4 of float32)'
+
+# KHR-Single-GL46.enhanced_layouts.varying_locations
+# [ VUID-RuntimeSpirv-OpEntryPoint-07754 ]
+# vkCreateGraphicsPipelines(): pCreateInfos[0] Type mismatch on Location 0 Component 0, between
+# VK_SHADER_STAGE_GEOMETRY_BIT stage:
+# pointer to Output ->
+#	vec2 of 	uint64
+# VK_SHADER_STAGE_FRAGMENT_BIT stage:
+# pointer to Input ->
+#	struct of {
+#		vec4 of 		float32
+#		vec4 of 		float32
+#	}
+# The Vulkan spec states: Any user-defined variables between the OpEntryPoint
+# of two shader stages must have the same type and width for each Component
+# (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-OpEntryPoint-07754)
+
+# KHR-Single-GL46.enhanced_layouts.xfb_struct_explicit_location
+# [ VUID-VkShaderModuleCreateInfo-pCode-01379 ]
+# SPIR-V module not valid: The Component Type of Vector 1 must be the same as ResultType.
+#   %142 = OpVectorShuffle %v2uint %141 %141 0 1
+
+# KHR-Single-GL46.enhanced_layouts.varying_locations
+# 
+# VUID-RuntimeSpirv-OpEntryPoint-08743(ERROR / SPEC): msgNum: -1986897773 -
+# Validation Error: [ VUID-RuntimeSpirv-OpEntryPoint-08743 ]
+# vkCreateGraphicsPipelines(): pCreateInfos[0] VK_SHADER_STAGE_FRAGMENT_BIT declared input at
+# Location 1 Comonent 2 but it is not an Output declared in VK_SHADER_STAGE_VERTEX_BIT
+# The Vulkan spec states: Any user-defined variables shared between the OpEntryPoint of two shader stages,
+# and declared with Input as its {StorageClass} for the subsequent shader stage,
+# must have all Location slots and Component words declared in the preceding shader stage's
+# OpEntryPoint with Output as the {StorageClass}
+# (https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-RuntimeSpirv-OpEntryPoint-08743)
+#
+# VVL bug https://github.com/KhronosGroup/Vulkan-ValidationLayers/issues/5735
