@@ -448,7 +448,9 @@ Intel driver environment variables
    ``ann``
       annotate IR in assembly dumps
    ``bat``
-      emit batch information
+      emit batch information. Can control in which frames batches
+      get dumped using ``INTEL_DEBUG_BATCH_FRAME_*``, where
+      ``INTEL_DEBUG_BATCH_FRAME_START`` <= frame < ``INTEL_DEBUG_BATCH_FRAME_STOP``
    ``blit``
       emit messages about blit operations
    ``blorp``
