@@ -1809,6 +1809,8 @@ struct radv_cmd_buffer {
    } video;
 
    uint64_t shader_upload_seq;
+
+   uint32_t sqtt_cb_id;
 };
 
 static inline bool

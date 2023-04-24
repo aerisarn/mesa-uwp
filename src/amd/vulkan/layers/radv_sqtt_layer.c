@@ -245,7 +245,7 @@ radv_write_event_marker(struct radv_cmd_buffer *cmd_buffer,
    marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_EVENT;
    marker.api_type = api_type;
    marker.cmd_id = cmd_buffer->state.num_events++;
-   marker.cb_id = 0;
+   marker.cb_id = cmd_buffer->sqtt_cb_id;
 
    if (vertex_offset_user_data == UINT_MAX || instance_offset_user_data == UINT_MAX) {
       vertex_offset_user_data = 0;
@@ -272,7 +272,7 @@ radv_write_event_with_dims_marker(struct radv_cmd_buffer *cmd_buffer,
    marker.event.identifier = RGP_SQTT_MARKER_IDENTIFIER_EVENT;
    marker.event.api_type = api_type;
    marker.event.cmd_id = cmd_buffer->state.num_events++;
-   marker.event.cb_id = 0;
+   marker.event.cb_id = cmd_buffer->sqtt_cb_id;
    marker.event.has_thread_dims = 1;
 
    marker.thread_x = x;
@@ -320,8 +320,15 @@ radv_describe_begin_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
    if (likely(!cmd_buffer->device->thread_trace.bo))
       return;
 
+   /* Reserve a command buffer ID for SQTT. */
+   enum amd_ip_type ip_type =
+      radv_queue_family_to_ring(cmd_buffer->device->physical_device, cmd_buffer->qf);
+   union rgp_sqtt_marker_cb_id cb_id =
+      ac_sqtt_get_next_cmdbuf_id(&cmd_buffer->device->thread_trace, ip_type);
+   cmd_buffer->sqtt_cb_id = cb_id.all;
+
    marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_CB_START;
-   marker.cb_id = 0;
+   marker.cb_id = cmd_buffer->sqtt_cb_id;
    marker.device_id_low = device_id;
    marker.device_id_high = device_id >> 32;
    marker.queue = cmd_buffer->qf;
@@ -343,7 +350,7 @@ radv_describe_end_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
       return;
 
    marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_CB_END;
-   marker.cb_id = 0;
+   marker.cb_id = cmd_buffer->sqtt_cb_id;
    marker.device_id_low = device_id;
    marker.device_id_high = device_id >> 32;
 
@@ -407,7 +414,7 @@ radv_describe_barrier_end_delayed(struct radv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.pending_sqtt_barrier_end = false;
 
    marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_BARRIER_END;
-   marker.cb_id = 0;
+   marker.cb_id = cmd_buffer->sqtt_cb_id;
 
    marker.num_layout_transitions = cmd_buffer->state.num_layout_transitions;
 
@@ -461,7 +468,7 @@ radv_describe_barrier_start(struct radv_cmd_buffer *cmd_buffer, enum rgp_barrier
    cmd_buffer->state.sqtt_flush_bits = 0;
 
    marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_BARRIER_START;
-   marker.cb_id = 0;
+   marker.cb_id = cmd_buffer->sqtt_cb_id;
    marker.dword02 = reason;
 
    radv_emit_thread_trace_userdata(cmd_buffer, &marker, sizeof(marker) / 4);
@@ -507,7 +514,7 @@ radv_describe_pipeline_bind(struct radv_cmd_buffer *cmd_buffer,
       return;
 
    marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_BIND_PIPELINE;
-   marker.cb_id = 0;
+   marker.cb_id = cmd_buffer->sqtt_cb_id;
    marker.bind_point = pipelineBindPoint;
    marker.api_pso_hash[0] = pipeline->pipeline_hash;
    marker.api_pso_hash[1] = pipeline->pipeline_hash >> 32;
