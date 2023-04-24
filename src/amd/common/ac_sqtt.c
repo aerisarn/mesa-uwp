@@ -173,3 +173,15 @@ ac_check_profile_state(const struct radeon_info *info)
    data[n] = 0;
    return strstr(data, "profile") == NULL;
 }
+
+union rgp_sqtt_marker_cb_id
+ac_sqtt_get_next_cmdbuf_id(struct ac_thread_trace_data *data,
+                           enum amd_ip_type ip_type)
+{
+   union rgp_sqtt_marker_cb_id cb_id = {0};
+
+   cb_id.global_cb_id.cb_index =
+      p_atomic_inc_return(&data->cmdbuf_ids_per_queue[ip_type]);
+
+   return cb_id;
+}

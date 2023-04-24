@@ -31,6 +31,7 @@
 
 #include <assert.h>
 #include "ac_rgp.h"
+#include "amd_family.h"
 
 struct radeon_cmdbuf;
 struct radeon_info;
@@ -44,6 +45,8 @@ struct ac_thread_trace_data {
    uint32_t buffer_size;
    int start_frame;
    char *trigger_file;
+
+   uint32_t cmdbuf_ids_per_queue[AMD_NUM_IP_TYPES];
 
    struct rgp_code_object rgp_code_object;
    struct rgp_loader_events rgp_loader_events;
@@ -530,5 +533,8 @@ bool ac_sqtt_add_code_object_loader_event(struct ac_thread_trace_data *thread_tr
                                           uint64_t base_address);
 
 bool ac_check_profile_state(const struct radeon_info *info);
+
+union rgp_sqtt_marker_cb_id ac_sqtt_get_next_cmdbuf_id(struct ac_thread_trace_data *data,
+                                                       enum amd_ip_type ip_type);
 
 #endif
