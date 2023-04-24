@@ -910,6 +910,11 @@ Rusticl environment variables
    -  ``RUSTICL_ENABLE=iris:1,radeonsi:0,2`` (enables second iris and first
       and third radeonsi device)
 
+.. envvar:: RUSTICL_FEATURES
+
+   a comma-separated list of features to enable. Those are disabled by default
+   as they might not be stable enough or break OpenCL conformance.
+
 .. envvar:: RUSTICL_DEBUG
 
    a comma-separated list of debug channels to enable.

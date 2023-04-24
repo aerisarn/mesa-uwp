@@ -21,6 +21,8 @@ pub struct PlatformDebug {
     pub program: bool,
 }
 
+pub struct PlatformFeatures {}
+
 static PLATFORM_ENV_ONCE: Once = Once::new();
 static PLATFORM_ONCE: Once = Once::new();
 
@@ -33,6 +35,7 @@ static mut PLATFORM: Platform = Platform {
     devs: Vec::new(),
 };
 static mut PLATFORM_DBG: PlatformDebug = PlatformDebug { program: false };
+static mut PLATFORM_FEATURES: PlatformFeatures = PlatformFeatures {};
 
 fn load_env() {
     let debug = unsafe { &mut PLATFORM_DBG };
@@ -41,6 +44,15 @@ fn load_env() {
             match flag {
                 "program" => debug.program = true,
                 _ => eprintln!("Unknown RUSTICL_DEBUG flag found: {}", flag),
+            }
+        }
+    }
+
+    let features = unsafe { &mut PLATFORM_FEATURES };
+    if let Ok(feature_flags) = env::var("RUSTICL_FEATURES") {
+        for flag in feature_flags.split(',') {
+            match flag {
+                _ => eprintln!("Unknown RUSTICL_FEATURES flag found: {}", flag),
             }
         }
     }
@@ -60,6 +72,11 @@ impl Platform {
     pub fn dbg() -> &'static PlatformDebug {
         debug_assert!(PLATFORM_ENV_ONCE.is_completed());
         unsafe { &PLATFORM_DBG }
+    }
+
+    pub fn features() -> &'static PlatformFeatures {
+        debug_assert!(PLATFORM_ENV_ONCE.is_completed());
+        unsafe { &PLATFORM_FEATURES }
     }
 
     fn init(&mut self) {
