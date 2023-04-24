@@ -827,8 +827,11 @@ radv_amdgpu_copy_global_bo_list(struct radv_amdgpu_winsys *ws,
 
 static VkResult
 radv_amdgpu_get_bo_list(struct radv_amdgpu_winsys *ws, struct radeon_cmdbuf **cs_array,
-                        unsigned count, struct radeon_cmdbuf **extra_cs_array,
-                        unsigned num_extra_cs, unsigned *rnum_handles,
+                        unsigned count, struct radeon_cmdbuf **initial_preamble_array,
+                        unsigned num_initial_preambles,
+                        struct radeon_cmdbuf **continue_preamble_array,
+                        unsigned num_continue_preambles, struct radeon_cmdbuf **postamble_array,
+                        unsigned num_postambles, unsigned *rnum_handles,
                         struct drm_amdgpu_bo_list_entry **rhandles)
 {
    struct drm_amdgpu_bo_list_entry *handles = NULL;
@@ -840,7 +843,8 @@ radv_amdgpu_get_bo_list(struct radv_amdgpu_winsys *ws, struct radeon_cmdbuf **cs
          return VK_ERROR_OUT_OF_HOST_MEMORY;
 
       num_handles = radv_amdgpu_copy_global_bo_list(ws, handles);
-   } else if (count == 1 && !num_extra_cs && !radv_amdgpu_cs(cs_array[0])->num_virtual_buffers &&
+   } else if (count == 1 && !num_initial_preambles && !num_continue_preambles && !num_postambles &&
+              !radv_amdgpu_cs(cs_array[0])->num_virtual_buffers &&
               !radv_amdgpu_cs(cs_array[0])->chained_to && !ws->global_bo_list.count) {
       struct radv_amdgpu_cs *cs = (struct radv_amdgpu_cs *)cs_array[0];
       if (cs->num_buffers == 0)
@@ -855,7 +859,11 @@ radv_amdgpu_get_bo_list(struct radv_amdgpu_winsys *ws, struct radeon_cmdbuf **cs
    } else {
       unsigned total_buffer_count = ws->global_bo_list.count;
       total_buffer_count += radv_amdgpu_count_cs_array_bo(cs_array, count);
-      total_buffer_count += radv_amdgpu_count_cs_array_bo(extra_cs_array, num_extra_cs);
+      total_buffer_count +=
+         radv_amdgpu_count_cs_array_bo(initial_preamble_array, num_initial_preambles);
+      total_buffer_count +=
+         radv_amdgpu_count_cs_array_bo(continue_preamble_array, num_continue_preambles);
+      total_buffer_count += radv_amdgpu_count_cs_array_bo(postamble_array, num_postambles);
 
       if (total_buffer_count == 0)
          return VK_SUCCESS;
@@ -866,8 +874,12 @@ radv_amdgpu_get_bo_list(struct radv_amdgpu_winsys *ws, struct radeon_cmdbuf **cs
 
       num_handles = radv_amdgpu_copy_global_bo_list(ws, handles);
       num_handles = radv_amdgpu_add_cs_array_to_bo_list(cs_array, count, handles, num_handles);
+      num_handles = radv_amdgpu_add_cs_array_to_bo_list(
+         initial_preamble_array, num_initial_preambles, handles, num_handles);
+      num_handles = radv_amdgpu_add_cs_array_to_bo_list(
+         continue_preamble_array, num_continue_preambles, handles, num_handles);
       num_handles =
-         radv_amdgpu_add_cs_array_to_bo_list(extra_cs_array, num_extra_cs, handles, num_handles);
+         radv_amdgpu_add_cs_array_to_bo_list(postamble_array, num_postambles, handles, num_handles);
    }
 
    *rhandles = handles;
@@ -900,21 +912,10 @@ radv_amdgpu_winsys_cs_submit_internal(
    struct drm_amdgpu_bo_list_entry *handles = NULL;
    unsigned num_handles = 0;
 
-   unsigned num_extra_cs = initial_preamble_count + continue_preamble_count + postamble_count;
-   unsigned extra_cs_idx = 0;
-
-   STACK_ARRAY(struct radeon_cmdbuf *, extra_cs, num_extra_cs);
-
-   for (unsigned i = 0; i < initial_preamble_count; i++)
-      extra_cs[extra_cs_idx++] = initial_preamble_cs[i];
-   for (unsigned i = 0; i < continue_preamble_count; i++)
-      extra_cs[extra_cs_idx++] = continue_preamble_cs[i];
-   for (unsigned i = 0; i < postamble_count; i++)
-      extra_cs[extra_cs_idx++] = postamble_cs[i];
-
    u_rwlock_rdlock(&ws->global_bo_list.lock);
-   result = radv_amdgpu_get_bo_list(ws, &cs_array[0], cs_count, extra_cs, num_extra_cs,
-                                    &num_handles, &handles);
+   result = radv_amdgpu_get_bo_list(
+      ws, &cs_array[0], cs_count, initial_preamble_cs, initial_preamble_count, continue_preamble_cs,
+      continue_preamble_count, postamble_cs, postamble_count, &num_handles, &handles);
    if (result != VK_SUCCESS)
       goto fail;
 
@@ -1027,7 +1028,6 @@ radv_amdgpu_winsys_cs_submit_internal(
    radv_assign_last_submit(ctx, &request);
 
 fail:
-   STACK_ARRAY_FINISH(extra_cs);
    u_rwlock_rdunlock(&ws->global_bo_list.lock);
    return result;
 }
