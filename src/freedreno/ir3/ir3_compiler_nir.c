@@ -5004,6 +5004,18 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
       }
    }
 
+   if (ctx->compiler->gen >= 7 && so->type == MESA_SHADER_COMPUTE) {
+      struct ir3_instruction *end = find_end(so->ir);
+      struct ir3_instruction *lock =
+         ir3_instr_create(ctx->block, OPC_LOCK, 0, 0);
+      /* TODO: This flags should be set by scheduler only when needed */
+      lock->flags = IR3_INSTR_SS | IR3_INSTR_SY | IR3_INSTR_JP;
+      ir3_instr_move_before(lock, end);
+      struct ir3_instruction *unlock =
+         ir3_instr_create(ctx->block, OPC_UNLOCK, 0, 0);
+      ir3_instr_move_before(unlock, end);
+   }
+
    so->branchstack = ctx->max_stack;
 
    so->pvtmem_size = ALIGN(so->pvtmem_size, compiler->pvtmem_per_fiber_align);
