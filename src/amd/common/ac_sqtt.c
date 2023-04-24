@@ -62,6 +62,32 @@ ac_thread_trace_get_data_va(const struct radeon_info *rad_info,
    return va + ac_thread_trace_get_data_offset(rad_info, data, se);
 }
 
+void
+ac_thread_trace_init(struct ac_thread_trace_data *data)
+{
+   list_inithead(&data->rgp_pso_correlation.record);
+   simple_mtx_init(&data->rgp_pso_correlation.lock, mtx_plain);
+
+   list_inithead(&data->rgp_loader_events.record);
+   simple_mtx_init(&data->rgp_loader_events.lock, mtx_plain);
+
+   list_inithead(&data->rgp_code_object.record);
+   simple_mtx_init(&data->rgp_code_object.lock, mtx_plain);
+}
+
+void
+ac_thread_trace_finish(struct ac_thread_trace_data *data)
+{
+   assert(data->rgp_pso_correlation.record_count == 0);
+   simple_mtx_destroy(&data->rgp_pso_correlation.lock);
+
+   assert(data->rgp_loader_events.record_count == 0);
+   simple_mtx_destroy(&data->rgp_loader_events.lock);
+
+   assert(data->rgp_code_object.record_count == 0);
+   simple_mtx_destroy(&data->rgp_code_object.lock);
+}
+
 bool
 ac_is_thread_trace_complete(struct radeon_info *rad_info,
                             const struct ac_thread_trace_data *data,

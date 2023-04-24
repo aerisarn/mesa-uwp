@@ -571,14 +571,7 @@ radv_thread_trace_init(struct radv_device *device)
    if (!radv_device_acquire_performance_counters(device))
       return false;
 
-   list_inithead(&thread_trace_data->rgp_pso_correlation.record);
-   simple_mtx_init(&thread_trace_data->rgp_pso_correlation.lock, mtx_plain);
-
-   list_inithead(&thread_trace_data->rgp_loader_events.record);
-   simple_mtx_init(&thread_trace_data->rgp_loader_events.lock, mtx_plain);
-
-   list_inithead(&thread_trace_data->rgp_code_object.record);
-   simple_mtx_init(&thread_trace_data->rgp_code_object.lock, mtx_plain);
+   ac_thread_trace_init(thread_trace_data);
 
    return true;
 }
@@ -600,14 +593,7 @@ radv_thread_trace_finish(struct radv_device *device)
          ws->cs_destroy(device->thread_trace.stop_cs[i]);
    }
 
-   assert(thread_trace_data->rgp_pso_correlation.record_count == 0);
-   simple_mtx_destroy(&thread_trace_data->rgp_pso_correlation.lock);
-
-   assert(thread_trace_data->rgp_loader_events.record_count == 0);
-   simple_mtx_destroy(&thread_trace_data->rgp_loader_events.lock);
-
-   assert(thread_trace_data->rgp_code_object.record_count == 0);
-   simple_mtx_destroy(&thread_trace_data->rgp_code_object.lock);
+   ac_thread_trace_finish(thread_trace_data);
 }
 
 static bool

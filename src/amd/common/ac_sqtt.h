@@ -99,6 +99,12 @@ uint64_t
 ac_thread_trace_get_data_va(const struct radeon_info *rad_info,
                             const struct ac_thread_trace_data *data, uint64_t va, unsigned se);
 
+void
+ac_thread_trace_init(struct ac_thread_trace_data *data);
+
+void
+ac_thread_trace_finish(struct ac_thread_trace_data *data);
+
 bool
 ac_is_thread_trace_complete(struct radeon_info *rad_info,
                             const struct ac_thread_trace_data *data,

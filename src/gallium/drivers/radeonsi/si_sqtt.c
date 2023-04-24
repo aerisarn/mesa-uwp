@@ -720,14 +720,7 @@ si_init_thread_trace(struct si_context *sctx)
    if (!si_thread_trace_init_bo(sctx))
       return false;
 
-   list_inithead(&sctx->thread_trace->rgp_pso_correlation.record);
-   simple_mtx_init(&sctx->thread_trace->rgp_pso_correlation.lock, mtx_plain);
-
-   list_inithead(&sctx->thread_trace->rgp_loader_events.record);
-   simple_mtx_init(&sctx->thread_trace->rgp_loader_events.lock, mtx_plain);
-
-   list_inithead(&sctx->thread_trace->rgp_code_object.record);
-   simple_mtx_init(&sctx->thread_trace->rgp_code_object.lock, mtx_plain);
+   ac_thread_trace_init(sctx->thread_trace);
 
    if (sctx->gfx_level >= GFX10 &&
        debug_get_bool_option("AMD_THREAD_TRACE_SPM", sctx->gfx_level < GFX11)) {
@@ -764,14 +757,12 @@ si_destroy_thread_trace(struct si_context *sctx)
       list_del(&record->list);
       free(record);
    }
-   simple_mtx_destroy(&sctx->thread_trace->rgp_pso_correlation.lock);
 
    list_for_each_entry_safe(struct rgp_loader_events_record, record,
                             &loader_events->record, list) {
       list_del(&record->list);
       free(record);
    }
-   simple_mtx_destroy(&sctx->thread_trace->rgp_loader_events.lock);
 
    list_for_each_entry_safe(struct rgp_code_object_record, record,
              &code_object->record, list) {
@@ -786,7 +777,8 @@ si_destroy_thread_trace(struct si_context *sctx)
       list_del(&record->list);
       free(record);
    }
-   simple_mtx_destroy(&sctx->thread_trace->rgp_code_object.lock);
+
+   ac_thread_trace_finish(sctx->thread_trace);
 
    hash_table_foreach(sctx->thread_trace->pipeline_bos->table, entry) {
       struct si_sqtt_fake_pipeline *pipeline = (struct si_sqtt_fake_pipeline *)entry->data;
