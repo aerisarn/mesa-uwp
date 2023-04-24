@@ -660,9 +660,15 @@ v3d_qpu_uses_tlb(const struct v3d_qpu_instr *inst)
 bool
 v3d_qpu_uses_sfu(const struct v3d_qpu_instr *inst)
 {
-        if (v3d_qpu_instr_is_sfu(inst))
-                return true;
+        return v3d_qpu_instr_is_sfu(inst) || v3d_qpu_instr_is_legacy_sfu(inst);
+}
 
+/* Checks whether the instruction implements a SFU operation by the writing
+ * to specific magic register addresses instead of using SFU ALU opcodes.
+ */
+bool
+v3d_qpu_instr_is_legacy_sfu(const struct v3d_qpu_instr *inst)
+{
         if (inst->type == V3D_QPU_INSTR_TYPE_ALU) {
                 if (inst->alu.add.op != V3D_QPU_A_NOP &&
                     inst->alu.add.magic_write &&
