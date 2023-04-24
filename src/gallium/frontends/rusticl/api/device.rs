@@ -45,18 +45,23 @@ impl CLInfo<cl_device_info> for cl_device_id {
             CL_DEVICE_DEVICE_ENQUEUE_CAPABILITIES => {
                 cl_prop::<cl_device_device_enqueue_capabilities>(0)
             }
-            CL_DEVICE_DOUBLE_FP_CONFIG => {
-                cl_prop::<cl_device_fp_config>(if dev.doubles_supported() {
-                    (CL_FP_FMA
+            CL_DEVICE_DOUBLE_FP_CONFIG => cl_prop::<cl_device_fp_config>(
+                if dev.doubles_supported() {
+                    let mut fp64_config = CL_FP_FMA
                         | CL_FP_ROUND_TO_NEAREST
                         | CL_FP_ROUND_TO_ZERO
                         | CL_FP_ROUND_TO_INF
                         | CL_FP_INF_NAN
-                        | CL_FP_DENORM) as cl_device_fp_config
+                        | CL_FP_DENORM;
+                    if dev.doubles_is_softfp() {
+                        fp64_config |= CL_FP_SOFT_FLOAT;
+                    }
+                    fp64_config
                 } else {
                     0
-                })
-            }
+                }
+                .into(),
+            ),
             CL_DEVICE_ENDIAN_LITTLE => cl_prop::<bool>(dev.little_endian()),
             CL_DEVICE_ERROR_CORRECTION_SUPPORT => cl_prop::<bool>(false),
             CL_DEVICE_EXECUTION_CAPABILITIES => {
@@ -125,7 +130,9 @@ impl CLInfo<cl_device_info> for cl_device_id {
             }
             CL_DEVICE_NAME => cl_prop(dev.screen().name()),
             CL_DEVICE_NATIVE_VECTOR_WIDTH_CHAR => cl_prop::<cl_uint>(1),
-            CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE => cl_prop::<cl_uint>(0),
+            CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE => {
+                cl_prop::<cl_uint>(if dev.doubles_supported() { 1 } else { 0 })
+            }
             CL_DEVICE_NATIVE_VECTOR_WIDTH_FLOAT => cl_prop::<cl_uint>(1),
             CL_DEVICE_NATIVE_VECTOR_WIDTH_HALF => cl_prop::<cl_uint>(0),
             CL_DEVICE_NATIVE_VECTOR_WIDTH_INT => cl_prop::<cl_uint>(1),
