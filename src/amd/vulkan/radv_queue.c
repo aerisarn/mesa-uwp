@@ -1620,25 +1620,6 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       wait_count += 1;
    }
 
-   struct radeon_cmdbuf *perf_ctr_lock_cs = NULL;
-   struct radeon_cmdbuf *perf_ctr_unlock_cs = NULL;
-
-   if (use_perf_counters) {
-      /* Create the lock/unlock CS. */
-      perf_ctr_lock_cs =
-         radv_create_perf_counter_lock_cs(queue->device, submission->perf_pass_index, false);
-      perf_ctr_unlock_cs =
-         radv_create_perf_counter_lock_cs(queue->device, submission->perf_pass_index, true);
-
-      /* RADV only supports perf counters on the GFX queue currently. */
-      assert(radv_queue_ring(queue) == AMD_IP_GFX);
-
-      if (!perf_ctr_lock_cs || !perf_ctr_unlock_cs) {
-         result = VK_ERROR_OUT_OF_HOST_MEMORY;
-         goto fail;
-      }
-   }
-
    /* For fences on the same queue/vm amdgpu doesn't wait till all processing is finished
     * before starting the next cmdbuffer, so we need to do it here.
     */
@@ -1657,6 +1638,20 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       continue_preambles[num_continue_preambles++] = queue->state.continue_preamble_cs;
 
       if (use_perf_counters) {
+         /* RADV only supports perf counters on the GFX queue currently. */
+         assert(queue->state.qf == RADV_QUEUE_GENERAL);
+
+         /* Create the lock/unlock CS. */
+         struct radeon_cmdbuf *perf_ctr_lock_cs =
+            radv_create_perf_counter_lock_cs(queue->device, submission->perf_pass_index, false);
+         struct radeon_cmdbuf *perf_ctr_unlock_cs =
+            radv_create_perf_counter_lock_cs(queue->device, submission->perf_pass_index, true);
+
+         if (!perf_ctr_lock_cs || !perf_ctr_unlock_cs) {
+            result = VK_ERROR_OUT_OF_HOST_MEMORY;
+            goto fail;
+         }
+
          initial_preambles[num_initial_preambles++] = perf_ctr_lock_cs;
          continue_preambles[num_continue_preambles++] = perf_ctr_lock_cs;
          postambles[num_postambles++] = perf_ctr_unlock_cs;
