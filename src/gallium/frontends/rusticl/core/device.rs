@@ -1,6 +1,7 @@
 use crate::api::icd::*;
 use crate::api::util::*;
 use crate::core::format::*;
+use crate::core::platform::*;
 use crate::core::util::*;
 use crate::core::version::*;
 use crate::impl_cl_type_trait;
@@ -582,11 +583,11 @@ impl Device {
     }
 
     pub fn doubles_supported(&self) -> bool {
-        false
-        /*
+        if !Platform::features().fp64 {
+            return false;
+        }
 
         self.screen.param(pipe_cap::PIPE_CAP_DOUBLES) == 1
-        */
     }
 
     pub fn doubles_is_softfp(&self) -> bool {

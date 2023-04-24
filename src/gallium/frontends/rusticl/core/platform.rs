@@ -21,7 +21,9 @@ pub struct PlatformDebug {
     pub program: bool,
 }
 
-pub struct PlatformFeatures {}
+pub struct PlatformFeatures {
+    pub fp64: bool,
+}
 
 static PLATFORM_ENV_ONCE: Once = Once::new();
 static PLATFORM_ONCE: Once = Once::new();
@@ -35,7 +37,7 @@ static mut PLATFORM: Platform = Platform {
     devs: Vec::new(),
 };
 static mut PLATFORM_DBG: PlatformDebug = PlatformDebug { program: false };
-static mut PLATFORM_FEATURES: PlatformFeatures = PlatformFeatures {};
+static mut PLATFORM_FEATURES: PlatformFeatures = PlatformFeatures { fp64: false };
 
 fn load_env() {
     let debug = unsafe { &mut PLATFORM_DBG };
@@ -52,6 +54,7 @@ fn load_env() {
     if let Ok(feature_flags) = env::var("RUSTICL_FEATURES") {
         for flag in feature_flags.split(',') {
             match flag {
+                "fp64" => features.fp64 = true,
                 _ => eprintln!("Unknown RUSTICL_FEATURES flag found: {}", flag),
             }
         }
