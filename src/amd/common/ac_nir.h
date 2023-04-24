@@ -316,6 +316,17 @@ typedef struct {
     * integer for all array ops.
     */
    bool lower_array_layer_round_even;
+
+   /* Fix derivatives of constants and FS inputs in control flow.
+    *
+    * Ignores interpolateAtSample()/interpolateAtOffset(), dynamically indexed input loads,
+    * pervertexEXT input loads, textureGather() with implicit LOD and 16-bit derivatives and
+    * texture samples with nir_tex_src_min_lod.
+    *
+    * The layer must also be a constant or FS input.
+    */
+   bool fix_derivs_in_divergent_cf;
+   unsigned max_wqm_vgprs;
 } ac_nir_lower_tex_options;
 
 bool

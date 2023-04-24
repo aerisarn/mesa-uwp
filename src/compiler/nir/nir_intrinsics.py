@@ -1589,6 +1589,11 @@ system_value("alpha_reference_amd", 1)
 # Whether to enable barycentric optimization
 system_value("barycentric_optimize_amd", dest_comp=1, bit_sizes=[1])
 
+# Copy the input into a register which will remain valid for entire quads, even in control flow.
+# This should only be used directly for texture sources.
+intrinsic("strict_wqm_coord_amd", src_comp=[0], dest_comp=0, bit_sizes=[32], indices=[BASE],
+          flags=[CAN_ELIMINATE])
+
 # V3D-specific instrinc for tile buffer color reads.
 #
 # The hardware requires that we read the samples and components of a pixel

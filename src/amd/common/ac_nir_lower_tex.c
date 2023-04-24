@@ -242,9 +242,300 @@ lower_tex(nir_builder *b, nir_instr *instr, void *options_)
    return false;
 }
 
+typedef struct {
+   nir_intrinsic_instr *bary;
+   nir_intrinsic_instr *load;
+} coord_info;
+
+static bool
+can_move_coord(nir_ssa_scalar scalar, coord_info *info)
+{
+   if (scalar.def->bit_size != 32)
+      return false;
+
+   if (nir_ssa_scalar_is_const(scalar))
+      return true;
+
+   if (scalar.def->parent_instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(scalar.def->parent_instr);
+   if (intrin->intrinsic == nir_intrinsic_load_input) {
+      info->bary = NULL;
+      info->load = intrin;
+      return true;
+   }
+
+   if (intrin->intrinsic != nir_intrinsic_load_interpolated_input)
+      return false;
+
+   nir_ssa_scalar coord_x = nir_ssa_scalar_resolved(intrin->src[0].ssa, 0);
+   nir_ssa_scalar coord_y = nir_ssa_scalar_resolved(intrin->src[0].ssa, 1);
+   if (coord_x.def->parent_instr->type != nir_instr_type_intrinsic || coord_x.comp != 0 ||
+       coord_y.def->parent_instr->type != nir_instr_type_intrinsic || coord_y.comp != 1)
+      return false;
+
+   nir_intrinsic_instr *intrin_x = nir_instr_as_intrinsic(coord_x.def->parent_instr);
+   nir_intrinsic_instr *intrin_y = nir_instr_as_intrinsic(coord_y.def->parent_instr);
+   if (intrin_x->intrinsic != intrin_y->intrinsic ||
+       (intrin_x->intrinsic != nir_intrinsic_load_barycentric_sample &&
+        intrin_x->intrinsic != nir_intrinsic_load_barycentric_pixel &&
+        intrin_x->intrinsic != nir_intrinsic_load_barycentric_centroid) ||
+       nir_intrinsic_interp_mode(intrin_x) != nir_intrinsic_interp_mode(intrin_y))
+      return false;
+
+   info->bary = intrin_x;
+   info->load = intrin;
+
+   return true;
+}
+
+struct move_tex_coords_state {
+   const ac_nir_lower_tex_options *options;
+   unsigned num_wqm_vgprs;
+   nir_builder toplevel_b;
+};
+
+static nir_ssa_def *
+build_coordinate(struct move_tex_coords_state *state, nir_ssa_scalar scalar, coord_info info)
+{
+   nir_builder *b = &state->toplevel_b;
+
+   if (nir_ssa_scalar_is_const(scalar))
+      return nir_imm_intN_t(b, nir_ssa_scalar_as_uint(scalar), scalar.def->bit_size);
+
+   ASSERTED nir_src offset = *nir_get_io_offset_src(info.load);
+   assert(nir_src_is_const(offset) && !nir_src_as_uint(offset));
+
+   nir_ssa_def *zero = nir_imm_int(b, 0);
+   nir_ssa_def *res;
+   if (info.bary) {
+      enum glsl_interp_mode interp_mode = nir_intrinsic_interp_mode(info.bary);
+      nir_ssa_def *bary = nir_load_system_value(b, info.bary->intrinsic, interp_mode, 2, 32);
+      res = nir_load_interpolated_input(b, 1, 32, bary, zero);
+   } else {
+      res = nir_load_input(b, 1, 32, zero);
+   }
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(res->parent_instr);
+   nir_intrinsic_set_base(intrin, nir_intrinsic_base(info.load));
+   nir_intrinsic_set_component(intrin, nir_intrinsic_component(info.load) + scalar.comp);
+   nir_intrinsic_set_dest_type(intrin, nir_intrinsic_dest_type(info.load));
+   nir_intrinsic_set_io_semantics(intrin, nir_intrinsic_io_semantics(info.load));
+   return res;
+}
+
+static bool
+move_tex_coords(struct move_tex_coords_state *state, nir_function_impl *impl, nir_instr *instr)
+{
+   nir_tex_instr *tex = nir_instr_as_tex(instr);
+   if (tex->op != nir_texop_tex && tex->op != nir_texop_txb && tex->op != nir_texop_lod)
+      return false;
+
+   switch (tex->sampler_dim) {
+   case GLSL_SAMPLER_DIM_1D:
+   case GLSL_SAMPLER_DIM_2D:
+   case GLSL_SAMPLER_DIM_3D:
+   case GLSL_SAMPLER_DIM_CUBE:
+   case GLSL_SAMPLER_DIM_EXTERNAL:
+      break;
+   case GLSL_SAMPLER_DIM_RECT:
+   case GLSL_SAMPLER_DIM_BUF:
+   case GLSL_SAMPLER_DIM_MS:
+   case GLSL_SAMPLER_DIM_SUBPASS:
+   case GLSL_SAMPLER_DIM_SUBPASS_MS:
+      return false; /* No LOD or can't be sampled. */
+   }
+
+   if (nir_tex_instr_src_index(tex, nir_tex_src_min_lod) != -1)
+      return false;
+
+   nir_tex_src *src = &tex->src[nir_tex_instr_src_index(tex, nir_tex_src_coord)];
+   nir_ssa_scalar components[NIR_MAX_VEC_COMPONENTS];
+   coord_info infos[NIR_MAX_VEC_COMPONENTS];
+   bool can_move_all = true;
+   for (unsigned i = 0; i < tex->coord_components; i++) {
+      components[i] = nir_ssa_scalar_resolved(src->src.ssa, i);
+      can_move_all &= can_move_coord(components[i], &infos[i]);
+   }
+   if (!can_move_all)
+      return false;
+
+   int coord_base = 0;
+   unsigned linear_vgpr_size = tex->coord_components;
+   if (tex->sampler_dim == GLSL_SAMPLER_DIM_1D && state->options->gfx_level == GFX9)
+      linear_vgpr_size++;
+   if (tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE && tex->is_array)
+      linear_vgpr_size--; /* cube array layer and face are combined */
+   for (unsigned i = 0; i < tex->num_srcs; i++) {
+      switch (tex->src[i].src_type) {
+      case nir_tex_src_offset:
+      case nir_tex_src_bias:
+      case nir_tex_src_comparator:
+         coord_base++;
+         linear_vgpr_size++;
+         break;
+      default:
+         break;
+      }
+   }
+
+   if (state->num_wqm_vgprs + linear_vgpr_size > state->options->max_wqm_vgprs)
+      return false;
+
+   for (unsigned i = 0; i < tex->coord_components; i++)
+      components[i] = nir_get_ssa_scalar(build_coordinate(state, components[i], infos[i]), 0);
+
+   nir_ssa_def *linear_vgpr = nir_vec_scalars(&state->toplevel_b, components, tex->coord_components);
+   lower_tex_coords(&state->toplevel_b, tex, &linear_vgpr, state->options);
+
+   linear_vgpr = nir_strict_wqm_coord_amd(&state->toplevel_b, linear_vgpr, coord_base * 4);
+
+   nir_tex_instr_remove_src(tex, nir_tex_instr_src_index(tex, nir_tex_src_coord));
+   tex->coord_components = 0;
+
+   nir_tex_instr_add_src(tex, nir_tex_src_backend1, nir_src_for_ssa(linear_vgpr));
+
+   int offset_src = nir_tex_instr_src_index(tex, nir_tex_src_offset);
+   if (offset_src >= 0) /* Workaround requirement in nir_tex_instr_src_size(). */
+      tex->src[offset_src].src_type = nir_tex_src_backend2;
+
+   state->num_wqm_vgprs += linear_vgpr_size;
+
+   return true;
+}
+
+static bool
+move_fddxy(struct move_tex_coords_state *state, nir_function_impl *impl, nir_alu_instr *instr)
+{
+   switch (instr->op) {
+   case nir_op_fddx:
+   case nir_op_fddy:
+   case nir_op_fddx_fine:
+   case nir_op_fddy_fine:
+   case nir_op_fddx_coarse:
+   case nir_op_fddy_coarse:
+      break;
+   default:
+      return false;
+   }
+
+   unsigned num_components = instr->dest.dest.ssa.num_components;
+   nir_ssa_scalar components[NIR_MAX_VEC_COMPONENTS];
+   coord_info infos[NIR_MAX_VEC_COMPONENTS];
+   bool can_move_all = true;
+   for (unsigned i = 0; i < num_components; i++) {
+      components[i] = nir_ssa_scalar_chase_alu_src(nir_get_ssa_scalar(&instr->dest.dest.ssa, i), 0);
+      components[i] = nir_ssa_scalar_chase_movs(components[i]);
+      can_move_all &= can_move_coord(components[i], &infos[i]);
+   }
+   if (!can_move_all || state->num_wqm_vgprs + num_components > state->options->max_wqm_vgprs)
+      return false;
+
+   for (unsigned i = 0; i < num_components; i++) {
+      nir_ssa_def *def = build_coordinate(state, components[i], infos[i]);
+      components[i] = nir_get_ssa_scalar(def, 0);
+   }
+
+   nir_ssa_def *def = nir_vec_scalars(&state->toplevel_b, components, num_components);
+   def = nir_build_alu1(&state->toplevel_b, instr->op, def);
+   nir_ssa_def_rewrite_uses(&instr->dest.dest.ssa, def);
+
+   state->num_wqm_vgprs += num_components;
+
+   return true;
+}
+
+static bool
+move_coords_from_divergent_cf(struct move_tex_coords_state *state, nir_function_impl *impl,
+                              struct exec_list *cf_list, bool *divergent_discard, bool divergent_cf)
+{
+   bool progress = false;
+   foreach_list_typed (nir_cf_node, cf_node, node, cf_list) {
+      switch (cf_node->type) {
+      case nir_cf_node_block: {
+         nir_block *block = nir_cf_node_as_block(cf_node);
+
+         bool top_level = cf_list == &impl->body;
+
+         nir_foreach_instr (instr, block) {
+            if (top_level && !*divergent_discard)
+               state->toplevel_b.cursor = nir_before_instr(instr);
+
+            if (instr->type == nir_instr_type_tex && (divergent_cf || *divergent_discard)) {
+               progress |= move_tex_coords(state, impl, instr);
+            } else if (instr->type == nir_instr_type_alu && (divergent_cf || *divergent_discard)) {
+               progress |= move_fddxy(state, impl, nir_instr_as_alu(instr));
+            } else if (instr->type == nir_instr_type_intrinsic) {
+               nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+               switch (intrin->intrinsic) {
+               case nir_intrinsic_discard:
+               case nir_intrinsic_terminate:
+                  if (divergent_cf)
+                     *divergent_discard = true;
+                  break;
+               case nir_intrinsic_discard_if:
+               case nir_intrinsic_terminate_if:
+                  if (divergent_cf || nir_src_is_divergent(intrin->src[0]))
+                     *divergent_discard = true;
+                  break;
+               default:
+                  break;
+               }
+            }
+         }
+
+         if (top_level && !*divergent_discard)
+            state->toplevel_b.cursor = nir_after_block_before_jump(block);
+         break;
+      }
+      case nir_cf_node_if: {
+         nir_if *nif = nir_cf_node_as_if(cf_node);
+         bool divergent_discard_then = *divergent_discard;
+         bool divergent_discard_else = *divergent_discard;
+         bool then_else_divergent = divergent_cf || nir_src_is_divergent(nif->condition);
+         progress |= move_coords_from_divergent_cf(state, impl, &nif->then_list,
+                                                   &divergent_discard_then, then_else_divergent);
+         progress |= move_coords_from_divergent_cf(state, impl, &nif->else_list,
+                                                   &divergent_discard_else, then_else_divergent);
+         *divergent_discard |= divergent_discard_then || divergent_discard_else;
+         break;
+      }
+      case nir_cf_node_loop: {
+         nir_loop *loop = nir_cf_node_as_loop(cf_node);
+         assert(!nir_loop_has_continue_construct(loop));
+         progress |=
+            move_coords_from_divergent_cf(state, impl, &loop->body, divergent_discard, true);
+         break;
+      }
+      case nir_cf_node_function:
+         unreachable("Invalid cf type");
+      }
+   }
+
+   return progress;
+}
+
 bool
 ac_nir_lower_tex(nir_shader *nir, const ac_nir_lower_tex_options *options)
 {
-   return nir_shader_instructions_pass(
+   bool progress = false;
+   if (options->fix_derivs_in_divergent_cf) {
+      nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+
+      struct move_tex_coords_state state;
+      nir_builder_init(&state.toplevel_b, impl);
+      state.options = options;
+      state.num_wqm_vgprs = 0;
+
+      bool divergent_discard = false;
+      if (move_coords_from_divergent_cf(&state, impl, &impl->body, &divergent_discard, false))
+         nir_metadata_preserve(impl, nir_metadata_block_index | nir_metadata_dominance);
+      else
+         nir_metadata_preserve(impl, nir_metadata_all);
+   }
+
+   progress |= nir_shader_instructions_pass(
       nir, lower_tex, nir_metadata_block_index | nir_metadata_dominance, (void *)options);
+
+   return progress;
 }
