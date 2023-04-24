@@ -149,6 +149,10 @@ bool brw_nir_lower_mem_access_bit_sizes(nir_shader *shader,
                                         const struct
                                         intel_device_info *devinfo);
 
+bool brw_nir_lower_non_uniform_resource_intel(nir_shader *shader);
+
+bool brw_nir_cleanup_resource_intel(nir_shader *shader);
+
 void brw_postprocess_nir(nir_shader *nir,
                          const struct brw_compiler *compiler,
                          bool debug_enabled,
