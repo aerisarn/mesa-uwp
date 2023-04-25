@@ -338,6 +338,7 @@ enum rgp_sqtt_marker_event_type
    EventCmdDrawMeshTasksEXT = 41,
    EventCmdDrawMeshTasksIndirectCountEXT = 42,
    EventCmdDrawMeshTasksIndirectEXT = 43,
+   EventUnknown = 0x7fff,
    EventInvalid = 0xffffffff
 };
 
