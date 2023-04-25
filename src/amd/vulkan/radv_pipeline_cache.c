@@ -251,7 +251,7 @@ radv_pipeline_cache_object_create(struct vk_device *device, unsigned num_shaders
    assert(num_stack_sizes == 0 || ps_epilog_binary_size == 0);
    const size_t size = sizeof(struct radv_pipeline_cache_object) +
                        (num_shaders * sizeof(struct radv_shader *)) + ps_epilog_binary_size +
-                       (num_stack_sizes * sizeof(struct radv_pipeline_shader_stack_size));
+                       (num_stack_sizes * sizeof(uint32_t));
 
    struct radv_pipeline_cache_object *object =
       vk_alloc(&device->alloc, size, 8, VK_SYSTEM_ALLOCATION_SCOPE_CACHE);
@@ -325,8 +325,7 @@ radv_pipeline_cache_object_deserialize(struct vk_pipeline_cache *cache, const vo
       object->shaders[i] = container_of(shader, struct radv_shader, base);
    }
 
-   const size_t data_size =
-      ps_epilog_binary_size + (num_stack_sizes * sizeof(struct radv_pipeline_shader_stack_size));
+   const size_t data_size = ps_epilog_binary_size + (num_stack_sizes * sizeof(uint32_t));
    blob_copy_bytes(blob, object->data, data_size);
 
    if (ps_epilog_binary_size) {
@@ -358,8 +357,7 @@ radv_pipeline_cache_object_serialize(struct vk_pipeline_cache_object *object, st
       blob_write_bytes(blob, pipeline_obj->shaders[i]->sha1, SHA1_DIGEST_LENGTH);
 
    const size_t data_size =
-      pipeline_obj->ps_epilog_binary_size +
-      (pipeline_obj->num_stack_sizes * sizeof(struct radv_pipeline_shader_stack_size));
+      pipeline_obj->ps_epilog_binary_size + (pipeline_obj->num_stack_sizes * sizeof(uint32_t));
    blob_write_bytes(blob, pipeline_obj->data, data_size);
 
    return true;
@@ -417,12 +415,12 @@ radv_pipeline_cache_search(struct radv_device *device, struct vk_pipeline_cache 
    }
 
    if (pipeline->type == RADV_PIPELINE_RAY_TRACING) {
-      unsigned num_rt_groups = radv_pipeline_to_ray_tracing(pipeline)->group_count;
-      assert(num_rt_groups == pipeline_obj->num_stack_sizes);
-      struct radv_pipeline_shader_stack_size *stack_sizes = pipeline_obj->data;
-      struct radv_ray_tracing_group *rt_groups = radv_pipeline_to_ray_tracing(pipeline)->groups;
-      for (unsigned i = 0; i < num_rt_groups; i++)
-         rt_groups[i].stack_size = stack_sizes[i];
+      unsigned num_rt_stages = radv_pipeline_to_ray_tracing(pipeline)->stage_count;
+      assert(num_rt_stages == pipeline_obj->num_stack_sizes);
+      uint32_t *stack_sizes = pipeline_obj->data;
+      struct radv_ray_tracing_stage *rt_stages = radv_pipeline_to_ray_tracing(pipeline)->stages;
+      for (unsigned i = 0; i < num_rt_stages; i++)
+         rt_stages[i].stack_size = stack_sizes[i];
    }
 
    vk_pipeline_cache_object_unref(&device->vk, object);
@@ -448,12 +446,12 @@ radv_pipeline_cache_insert(struct radv_device *device, struct vk_pipeline_cache 
    num_shaders += pipeline->gs_copy_shader ? 1 : 0;
 
    unsigned ps_epilog_binary_size = ps_epilog_binary ? ps_epilog_binary->total_size : 0;
-   unsigned num_rt_groups = 0;
+   unsigned num_rt_stages = 0;
    if (pipeline->type == RADV_PIPELINE_RAY_TRACING)
-      num_rt_groups = radv_pipeline_to_ray_tracing(pipeline)->group_count;
+      num_rt_stages = radv_pipeline_to_ray_tracing(pipeline)->stage_count;
 
    struct radv_pipeline_cache_object *pipeline_obj;
-   pipeline_obj = radv_pipeline_cache_object_create(&device->vk, num_shaders, sha1, num_rt_groups,
+   pipeline_obj = radv_pipeline_cache_object_create(&device->vk, num_shaders, sha1, num_rt_stages,
                                                     ps_epilog_binary_size);
 
    if (!pipeline_obj)
@@ -482,10 +480,10 @@ radv_pipeline_cache_insert(struct radv_device *device, struct vk_pipeline_cache 
    }
 
    if (pipeline->type == RADV_PIPELINE_RAY_TRACING) {
-      struct radv_pipeline_shader_stack_size *stack_sizes = pipeline_obj->data;
-      struct radv_ray_tracing_group *rt_groups = radv_pipeline_to_ray_tracing(pipeline)->groups;
-      for (unsigned i = 0; i < num_rt_groups; i++)
-         stack_sizes[i] = rt_groups[i].stack_size;
+      uint32_t *stack_sizes = pipeline_obj->data;
+      struct radv_ray_tracing_stage *rt_stages = radv_pipeline_to_ray_tracing(pipeline)->stages;
+      for (unsigned i = 0; i < num_rt_stages; i++)
+         stack_sizes[i] = rt_stages[i].stack_size;
    }
 
    /* Add the object to the cache */

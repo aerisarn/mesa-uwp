@@ -818,7 +818,7 @@ inline_constants(nir_shader *dst, nir_shader *src)
 static void
 insert_rt_case(nir_builder *b, nir_shader *shader, struct rt_variables *vars, nir_ssa_def *idx,
                uint32_t call_idx_base, uint32_t call_idx, unsigned stage_idx,
-               struct radv_ray_tracing_group *groups)
+               struct radv_ray_tracing_stage *stages)
 {
    uint32_t workgroup_size = b->shader->info.workgroup_size[0] * b->shader->info.workgroup_size[1] *
                              b->shader->info.workgroup_size[2];
@@ -850,18 +850,9 @@ insert_rt_case(nir_builder *b, nir_shader *shader, struct rt_variables *vars, ni
 
    ralloc_free(var_remap);
 
-   /* reserve stack sizes */
-   for (uint32_t group_idx = 0; group_idx < vars->create_info->groupCount; group_idx++) {
-      struct radv_ray_tracing_group *group = groups + group_idx;
-
-      if (stage_idx == group->recursive_shader)
-         group->stack_size.recursive_size =
-            MAX2(group->stack_size.recursive_size, src_vars.stack_size);
-
-      if (stage_idx == group->any_hit_shader || stage_idx == group->intersection_shader)
-         group->stack_size.non_recursive_size =
-            MAX2(group->stack_size.non_recursive_size, src_vars.stack_size);
-   }
+   /* reserve stack size */
+   if (stages)
+      stages[stage_idx].stack_size = MAX2(stages[stage_idx].stack_size, src_vars.stack_size);
 }
 
 nir_shader *
@@ -987,6 +978,9 @@ lower_any_hit_for_intersection(nir_shader *any_hit)
             /* We place all any_hit scratch variables after intersection scratch variables.
              * For that reason, we increment the scratch offset by the intersection scratch
              * size. For call_data, we have to subtract the offset again.
+             *
+             * Note that we don't increase the scratch size as it is already reflected via
+             * the any_hit stack_size.
              */
             case nir_intrinsic_load_scratch:
                b->cursor = nir_before_instr(instr);
@@ -1114,8 +1108,6 @@ nir_lower_intersection_shader(nir_shader *intersection, nir_shader *any_hit)
          nir_ssa_def_rewrite_uses(&intrin->dest.ssa, accepted);
       }
    }
-   /* Any-hit scratch variables are placed after intersection scratch variables. */
-   intersection->scratch_size += any_hit->scratch_size;
    nir_metadata_preserve(impl, nir_metadata_none);
 
    /* We did some inlining; have to re-index SSA defs */
@@ -1232,7 +1224,7 @@ visit_any_hit_shaders(struct radv_device *device,
       assert(nir_stage);
 
       insert_rt_case(b, nir_stage, vars, sbt_idx, 0, data->groups[i].handle.any_hit_index,
-                     shader_id, data->groups);
+                     shader_id, data->stages);
       ralloc_free(nir_stage);
    }
 
@@ -1375,12 +1367,15 @@ handle_candidate_aabb(nir_builder *b, struct radv_leaf_intersection *intersectio
             radv_pipeline_cache_handle_to_nir(data->device, data->stages[any_hit_shader_id].shader);
          assert(any_hit_stage);
 
+         /* reserve stack size for any_hit before it is inlined */
+         data->stages[any_hit_shader_id].stack_size = any_hit_stage->scratch_size;
+
          nir_lower_intersection_shader(nir_stage, any_hit_stage);
          ralloc_free(any_hit_stage);
       }
 
       insert_rt_case(b, nir_stage, &inner_vars, nir_load_var(b, inner_vars.idx), 0,
-                     data->groups[i].handle.intersection_index, shader_id, data->groups);
+                     data->groups[i].handle.intersection_index, shader_id, data->stages);
       ralloc_free(nir_stage);
    }
 
@@ -1644,7 +1639,7 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
    nir_shader *traversal = build_traversal_shader(device, stages, pCreateInfo, groups, key);
    b.shader->info.shared_size = MAX2(b.shader->info.shared_size, traversal->info.shared_size);
    assert(b.shader->info.shared_size <= 32768);
-   insert_rt_case(&b, traversal, &vars, idx, 0, 1, -1u, groups);
+   insert_rt_case(&b, traversal, &vars, idx, 0, 1, -1u, NULL);
    ralloc_free(traversal);
 
    unsigned call_idx_base = 1;
@@ -1685,10 +1680,10 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
       nir_lower_shader_calls(nir_stage, &opts, &resume_shaders, &num_resume_shaders, nir_stage);
 
       insert_rt_case(&b, nir_stage, &vars, idx, call_idx_base, groups[i].handle.general_index,
-                     stage_idx, groups);
+                     stage_idx, stages);
       for (unsigned j = 0; j < num_resume_shaders; ++j) {
          insert_rt_case(&b, resume_shaders[j], &vars, idx, call_idx_base, call_idx_base + 1 + j,
-                        stage_idx, groups);
+                        stage_idx, stages);
       }
 
       ralloc_free(nir_stage);

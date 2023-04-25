@@ -2190,12 +2190,6 @@ struct radv_pipeline_group_handle {
    };
 };
 
-struct radv_pipeline_shader_stack_size {
-   uint32_t recursive_size;
-   /* anyhit + intersection */
-   uint32_t non_recursive_size;
-};
-
 enum radv_depth_clamp_mode {
    RADV_DEPTH_CLAMP_MODE_VIEWPORT = 0,       /* Clamp to the viewport min/max depth bounds */
    RADV_DEPTH_CLAMP_MODE_ZERO_TO_ONE = 1,    /* Clamp between 0.0f and 1.0f */
@@ -2315,12 +2309,12 @@ struct radv_ray_tracing_group {
    uint32_t any_hit_shader;
    uint32_t intersection_shader;
    struct radv_pipeline_group_handle handle;
-   struct radv_pipeline_shader_stack_size stack_size;
 };
 
 struct radv_ray_tracing_stage {
    struct vk_pipeline_cache_object *shader;
    gl_shader_stage stage;
+   uint32_t stack_size;
 };
 
 struct radv_ray_tracing_pipeline {

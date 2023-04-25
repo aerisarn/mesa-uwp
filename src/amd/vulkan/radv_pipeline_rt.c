@@ -393,52 +393,50 @@ radv_rt_pipeline_has_dynamic_stack_size(const VkRayTracingPipelineCreateInfoKHR 
    return false;
 }
 
-static unsigned
+static void
 compute_rt_stack_size(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
-                      const struct radv_ray_tracing_group *groups,
-                      const struct radv_ray_tracing_stage *stages)
+                      struct radv_ray_tracing_pipeline *pipeline)
 {
-   if (radv_rt_pipeline_has_dynamic_stack_size(pCreateInfo))
-      return -1u;
+   if (radv_rt_pipeline_has_dynamic_stack_size(pCreateInfo)) {
+      pipeline->stack_size = -1u;
+      return;
+   }
 
    unsigned raygen_size = 0;
    unsigned callable_size = 0;
-   unsigned chit_size = 0;
-   unsigned miss_size = 0;
-   unsigned non_recursive_size = 0;
+   unsigned chit_miss_size = 0;
+   unsigned intersection_size = 0;
+   unsigned any_hit_size = 0;
 
-   for (unsigned i = 0; i < pCreateInfo->groupCount; ++i) {
-      non_recursive_size = MAX2(groups[i].stack_size.non_recursive_size, non_recursive_size);
-
-      uint32_t shader_id = groups[i].recursive_shader;
-      unsigned size = groups[i].stack_size.recursive_size;
-
-      if (shader_id == VK_SHADER_UNUSED_KHR)
-         continue;
-
-      switch (stages[shader_id].stage) {
+   for (unsigned i = 0; i < pipeline->stage_count; ++i) {
+      uint32_t size = pipeline->stages[i].stack_size;
+      switch (pipeline->stages[i].stage) {
       case MESA_SHADER_RAYGEN:
          raygen_size = MAX2(raygen_size, size);
          break;
-      case MESA_SHADER_MISS:
-         miss_size = MAX2(miss_size, size);
-         break;
       case MESA_SHADER_CLOSEST_HIT:
-         chit_size = MAX2(chit_size, size);
+      case MESA_SHADER_MISS:
+         chit_miss_size = MAX2(chit_miss_size, size);
          break;
       case MESA_SHADER_CALLABLE:
          callable_size = MAX2(callable_size, size);
+         break;
+      case MESA_SHADER_INTERSECTION:
+         intersection_size = MAX2(intersection_size, size);
+         break;
+      case MESA_SHADER_ANY_HIT:
+         any_hit_size = MAX2(any_hit_size, size);
          break;
       default:
          unreachable("Invalid stage type in RT shader");
       }
    }
-   return raygen_size +
-          MIN2(pCreateInfo->maxPipelineRayRecursionDepth, 1) *
-             MAX2(MAX2(chit_size, miss_size), non_recursive_size) +
-          MAX2(0, (int)(pCreateInfo->maxPipelineRayRecursionDepth) - 1) *
-             MAX2(chit_size, miss_size) +
-          2 * callable_size;
+   pipeline->stack_size =
+      raygen_size +
+      MIN2(pCreateInfo->maxPipelineRayRecursionDepth, 1) *
+         MAX2(chit_miss_size, intersection_size + any_hit_size) +
+      MAX2(0, (int)(pCreateInfo->maxPipelineRayRecursionDepth) - 1) * chit_miss_size +
+      2 * callable_size;
 }
 
 static struct radv_pipeline_key
@@ -540,7 +538,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    if (result != VK_SUCCESS)
       goto done;
 
-   pipeline->stack_size = compute_rt_stack_size(&local_create_info, pipeline->groups, pipeline->stages);
+   compute_rt_stack_size(pCreateInfo, pipeline);
    pipeline->base.base.shaders[MESA_SHADER_COMPUTE] = radv_create_rt_prolog(device);
 
    combine_config(&pipeline->base.base.shaders[MESA_SHADER_COMPUTE]->config,
@@ -641,14 +639,18 @@ radv_GetRayTracingShaderGroupStackSizeKHR(VkDevice device, VkPipeline _pipeline,
 {
    RADV_FROM_HANDLE(radv_pipeline, pipeline, _pipeline);
    struct radv_ray_tracing_pipeline *rt_pipeline = radv_pipeline_to_ray_tracing(pipeline);
-   const struct radv_pipeline_shader_stack_size *stack_size =
-      &rt_pipeline->groups[group].stack_size;
-
-   if (groupShader == VK_SHADER_GROUP_SHADER_ANY_HIT_KHR ||
-       groupShader == VK_SHADER_GROUP_SHADER_INTERSECTION_KHR)
-      return stack_size->non_recursive_size;
-   else
-      return stack_size->recursive_size;
+   struct radv_ray_tracing_group *rt_group = &rt_pipeline->groups[group];
+   switch (groupShader) {
+   case VK_SHADER_GROUP_SHADER_GENERAL_KHR:
+   case VK_SHADER_GROUP_SHADER_CLOSEST_HIT_KHR:
+      return rt_pipeline->stages[rt_group->recursive_shader].stack_size;
+   case VK_SHADER_GROUP_SHADER_ANY_HIT_KHR:
+      return rt_pipeline->stages[rt_group->any_hit_shader].stack_size;
+   case VK_SHADER_GROUP_SHADER_INTERSECTION_KHR:
+      return rt_pipeline->stages[rt_group->intersection_shader].stack_size;
+   default:
+      return 0;
+   }
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
