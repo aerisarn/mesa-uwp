@@ -733,6 +733,8 @@ vk_common_GetPipelineCacheData(VkDevice _device,
 
          assert(data_size_resv >= 0);
          blob_overwrite_uint32(&blob, data_size_resv, data_size);
+
+         count++;
       }
    }
 
