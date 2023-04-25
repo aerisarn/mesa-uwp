@@ -995,7 +995,8 @@ VkResult pvr_CreatePipelineLayout(VkDevice _device,
    for (uint32_t i = 0; i < pCreateInfo->pushConstantRangeCount; i++) {
       const VkPushConstantRange *range = &pCreateInfo->pPushConstantRanges[i];
 
-      layout->push_constants_shader_stages |= range->stageFlags;
+      layout->push_constants_shader_stages |=
+         vk_to_pvr_shader_stage_flags(range->stageFlags);
 
       /* From the Vulkan spec. 1.3.237
        * VUID-VkPipelineLayoutCreateInfo-pPushConstantRanges-00292 :
