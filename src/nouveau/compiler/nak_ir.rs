@@ -8,7 +8,7 @@ extern crate nak_ir_proc;
 use nak_ir_proc::*;
 use std::fmt;
 use std::iter::Zip;
-use std::ops::{BitAnd, BitOr, Deref, DerefMut, Not, Range};
+use std::ops::{BitAnd, BitOr, Deref, DerefMut, Index, Not, Range};
 use std::slice;
 
 #[repr(u8)]
@@ -607,6 +607,18 @@ impl SrcMod {
     }
 }
 
+#[repr(u8)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+pub enum SrcType {
+    SSA,
+    GPR,
+    ALU,
+    F32,
+    F64,
+    I32,
+    Pred,
+}
+
 #[derive(Clone, Copy)]
 pub struct Src {
     pub src_ref: SrcRef,
@@ -731,9 +743,30 @@ impl fmt::Display for Src {
     }
 }
 
+impl SrcType {
+    const DEFAULT: SrcType = SrcType::GPR;
+}
+
+pub enum SrcTypeList {
+    Array(&'static [SrcType]),
+    Uniform(SrcType),
+}
+
+impl Index<usize> for SrcTypeList {
+    type Output = SrcType;
+
+    fn index(&self, idx: usize) -> &SrcType {
+        match self {
+            SrcTypeList::Array(arr) => &arr[idx],
+            SrcTypeList::Uniform(typ) => &typ,
+        }
+    }
+}
+
 pub trait SrcsAsSlice {
     fn srcs_as_slice(&self) -> &[Src];
     fn srcs_as_mut_slice(&mut self) -> &mut [Src];
+    fn src_types(&self) -> SrcTypeList;
 }
 
 pub trait DstsAsSlice {
@@ -2294,6 +2327,10 @@ impl SrcsAsSlice for OpPhiSrcs {
     fn srcs_as_mut_slice(&mut self) -> &mut [Src] {
         &mut self.srcs
     }
+
+    fn src_types(&self) -> SrcTypeList {
+        SrcTypeList::Uniform(SrcType::GPR)
+    }
 }
 
 impl fmt::Display for OpPhiSrcs {
@@ -2422,6 +2459,10 @@ impl SrcsAsSlice for OpParCopy {
     fn srcs_as_mut_slice(&mut self) -> &mut [Src] {
         &mut self.srcs
     }
+
+    fn src_types(&self) -> SrcTypeList {
+        SrcTypeList::Uniform(SrcType::GPR)
+    }
 }
 
 impl DstsAsSlice for OpParCopy {
@@ -2461,6 +2502,10 @@ impl SrcsAsSlice for OpFSOut {
 
     fn srcs_as_mut_slice(&mut self) -> &mut [Src] {
         &mut self.srcs
+    }
+
+    fn src_types(&self) -> SrcTypeList {
+        SrcTypeList::Uniform(SrcType::GPR)
     }
 }
 
@@ -2949,6 +2994,10 @@ impl Instr {
 
     pub fn srcs_mut(&mut self) -> &mut [Src] {
         self.op.srcs_as_mut_slice()
+    }
+
+    pub fn src_types(&self) -> SrcTypeList {
+        self.op.src_types()
     }
 
     pub fn is_branch(&self) -> bool {

@@ -49,6 +49,17 @@ fn count_type(ty: &Type, search_type: &str) -> usize {
     }
 }
 
+fn get_src_type(field: &Field) -> Option<String> {
+    for attr in &field.attrs {
+        if let Meta::List(ml) = &attr.meta {
+            if ml.path.is_ident("src_type") {
+                return Some(format!("{}", ml.tokens));
+            }
+        }
+    }
+    None
+}
+
 fn derive_as_slice(
     input: TokenStream,
     trait_name: &str,
@@ -86,10 +97,32 @@ fn derive_as_slice(
             let mut first = None;
             let mut count = 0_usize;
             let mut found_last = false;
+            let mut src_types = TokenStream2::new();
 
             if let Fields::Named(named) = s.fields {
                 for f in named.named {
                     let ty_count = count_type(&f.ty, search_type);
+
+                    if search_type == "Src" {
+                        let src_type = get_src_type(&f);
+                        if ty_count == 0 && !src_type.is_none() {
+                            panic!(
+                                "src_type attribute is only allowed on sources"
+                            );
+                        }
+
+                        let src_type = if let Some(s) = src_type {
+                            let s = syn::parse_str::<Ident>(&s).unwrap();
+                            quote! { SrcType::#s, }
+                        } else {
+                            quote! { SrcType::DEFAULT, }
+                        };
+
+                        for i in 0..ty_count {
+                            src_types.extend(src_type.clone());
+                        }
+                    }
+
                     if ty_count > 0 {
                         assert!(
                             !found_last,
@@ -108,6 +141,17 @@ fn derive_as_slice(
                 panic!("Fields are not named");
             }
 
+            let src_type_func = if search_type == "Src" {
+                quote! {
+                    fn src_types(&self) -> SrcTypeList {
+                        static SRC_TYPES: [SrcType; #count]  = [#src_types];
+                        SrcTypeList::Array(&SRC_TYPES)
+                    }
+                }
+            } else {
+                TokenStream2::new()
+            };
+
             if let Some(name) = first {
                 quote! {
                     impl #trait_name for #ident {
@@ -124,6 +168,8 @@ fn derive_as_slice(
                                 std::slice::from_raw_parts_mut(first, #count)
                             }
                         }
+
+                        #src_type_func
                     }
                 }
             } else {
@@ -136,6 +182,8 @@ fn derive_as_slice(
                         fn #as_mut_slice(&mut self) -> &mut [#elem_type] {
                             &mut []
                         }
+
+                        #src_type_func
                     }
                 }
             }
@@ -144,6 +192,7 @@ fn derive_as_slice(
         Data::Enum(e) => {
             let mut as_slice_cases = TokenStream2::new();
             let mut as_mut_slice_cases = TokenStream2::new();
+            let mut src_types_cases = TokenStream2::new();
             for v in e.variants {
                 let case = v.ident;
                 as_slice_cases.extend(quote! {
@@ -152,7 +201,23 @@ fn derive_as_slice(
                 as_mut_slice_cases.extend(quote! {
                     #ident::#case(x) => x.#as_mut_slice(),
                 });
+                if search_type == "Src" {
+                    src_types_cases.extend(quote! {
+                        #ident::#case(x) => x.src_types(),
+                    });
+                }
             }
+            let src_type_func = if search_type == "Src" {
+                quote! {
+                    fn src_types(&self) -> SrcTypeList {
+                        match self {
+                            #src_types_cases
+                        }
+                    }
+                }
+            } else {
+                TokenStream2::new()
+            };
             quote! {
                 impl #trait_name for #ident {
                     fn #as_slice(&self) -> &[#elem_type] {
@@ -166,6 +231,8 @@ fn derive_as_slice(
                             #as_mut_slice_cases
                         }
                     }
+
+                    #src_type_func
                 }
             }
             .into()
@@ -174,7 +241,7 @@ fn derive_as_slice(
     }
 }
 
-#[proc_macro_derive(SrcsAsSlice)]
+#[proc_macro_derive(SrcsAsSlice, attributes(src_type))]
 pub fn derive_srcs_as_slice(input: TokenStream) -> TokenStream {
     derive_as_slice(input, "SrcsAsSlice", "srcs", "Src")
 }
