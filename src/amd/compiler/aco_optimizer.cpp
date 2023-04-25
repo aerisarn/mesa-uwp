@@ -4819,6 +4819,13 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          if (!info.is_dpp() || info.instr->pass_flags != instr->pass_flags)
             continue;
 
+         /* We won't eliminate the DPP mov if the operand is used twice */
+         bool op_used_twice = false;
+         for (unsigned j = 0; j < instr->operands.size(); j++)
+            op_used_twice |= i != j && instr->operands[i] == instr->operands[j];
+         if (op_used_twice)
+            continue;
+
          if (i != 0) {
             if (!can_swap_operands(instr, &instr->opcode, 0, i))
                continue;

@@ -505,6 +505,13 @@ try_combine_dpp(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
       if (is_overwritten_since(ctx, mov->operands[0], op_instr_idx))
          continue;
 
+      /* We won't eliminate the DPP mov if the operand is used twice */
+      bool op_used_twice = false;
+      for (unsigned j = 0; j < instr->operands.size(); j++)
+         op_used_twice |= i != j && instr->operands[i] == instr->operands[j];
+      if (op_used_twice)
+         continue;
+
       bool dpp8 = mov->isDPP8();
       bool input_mods = instr_info.can_use_input_modifiers[(int)instr->opcode] &&
                         instr_info.operand_size[(int)instr->opcode] == 32;
