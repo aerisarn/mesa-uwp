@@ -441,7 +441,11 @@ struct rgp_sqtt_marker_barrier_end {
          uint32_t inval_db : 1;
          uint32_t num_layout_transitions : 16;
          uint32_t inval_gl1 : 1;
-         uint32_t reserved : 5;
+         uint32_t wait_on_ts : 1;
+         uint32_t eop_ts_bottom_of_pipe : 1;
+         uint32_t eos_ts_ps_done : 1;
+         uint32_t eos_ts_cs_done : 1;
+         uint32_t reserved : 1;
       };
       uint32_t dword02;
    };
